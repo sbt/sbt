@@ -88,6 +88,7 @@ object Dag
 		def visit(nodes: List[B], stack: List[B]): List[B] = nodes match {
 			case Nil => Nil
 			case node :: tail =>
+				def indent = "\t" * stack.size
 				val atom = toA(node)
 				if(!visited(atom))
 				{
@@ -102,7 +103,7 @@ object Dag
 				else if(!finished(atom))
 				{
 					// cycle. If negation is involved, it is an error.
-					val between = stack.takeWhile(f => toA(f) != atom)
+					val between = node :: stack.takeWhile(f => toA(f) != atom)
 					if(between exists isNegated)
 						between
 					else

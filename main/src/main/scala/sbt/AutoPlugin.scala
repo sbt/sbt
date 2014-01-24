@@ -1,6 +1,7 @@
 package sbt
 
-	import logic.{Atom, Clause, Clauses, Formula, Literal, Logic}
+	import logic.{Atom, Clause, Clauses, Formula, Literal, Logic, Negated}
+	import Logic.{CyclicNegation, InitialContradictions, InitialOverlap, LogicException}
 	import Def.Setting
 	import Natures._
 
@@ -75,6 +76,11 @@ abstract class AutoPlugin
 	// TODO?: def commands: Seq[Command]
 }
 
+final class AutoPluginException(val origin: LogicException, prefix: String) extends RuntimeException(prefix + Natures.translateMessage(origin)) {
+	def withPrefix(p: String) = new AutoPluginException(origin, p)
+}
+
+
 /** An expression that matches `Nature`s. */
 sealed trait Natures {
 	def && (o: Basic): Natures
@@ -101,13 +107,23 @@ object Natures
 		{
 			val byAtom = defined.map(x => (Atom(x.provides.label), x)).toMap
 			val clauses = Clauses( defined.map(d => asClause(d)) )
-			requestedNatures => {
-				val results = Logic.reduce(clauses, flatten(requestedNatures).toSet)
-				// results includes the originally requested (positive) atoms,
-				//   which won't have a corresponding AutoPlugin to map back to
-				results.ordered.flatMap(a => byAtom.get(a).toList)
-			}
+			requestedNatures =>
+				Logic.reduce(clauses, flatten(requestedNatures).toSet) match {
+					case Left(problem) => throw new AutoPluginException(problem, "")
+					case Right(results) =>
+						// results includes the originally requested (positive) atoms,
+						//   which won't have a corresponding AutoPlugin to map back to
+						results.ordered.flatMap(a => byAtom.get(a).toList)
+				}
 		}
+
+	private[sbt] def translateMessage(e: LogicException) = e match {
+		case ic: InitialContradictions => s"Contradiction in selected natures.  These natures were both included and excluded: ${literalsString(ic.literals.toSeq)}"
+		case io: InitialOverlap => s"Cannot directly enable plugins.  Plugins are enabled when their required natures are satisifed.  The directly selected plugins were: ${literalsString(io.literals.toSeq)}"
+		case cn: CyclicNegation => s"Cycles in plugin requirements cannot involve excludes.  The problematic cycle is: ${literalsString(cn.cycle)}"
+	}
+	private[this] def literalsString(lits: Seq[Literal]): String =
+		lits map { case Atom(l) => l; case Negated(Atom(l)) => l } mkString(", ")
 
 	/** [[Natures]] instance that doesn't require any [[Nature]]s. */
 	def empty: Natures = Empty

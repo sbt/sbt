@@ -82,22 +82,26 @@ object Formula {
 
 object Logic
 {
-	def reduceAll(clauses: List[Clause], initialFacts: Set[Literal]): Matched = reduce(Clauses(clauses), initialFacts)
+	def reduceAll(clauses: List[Clause], initialFacts: Set[Literal]): Either[LogicException, Matched] =
+		reduce(Clauses(clauses), initialFacts)
 
 	/** Computes the variables in the unique stable model for the program represented by `clauses` and `initialFacts`.
 	* `clause` may not have any negative feedback (that is, negation is acyclic)
 	* and `initialFacts` cannot be in the head of any clauses in `clause`.
 	* These restrictions ensure that the logic program has a unique minimal model. */
-	def reduce(clauses: Clauses, initialFacts: Set[Literal]): Matched =
+	def reduce(clauses: Clauses, initialFacts: Set[Literal]): Either[LogicException, Matched] =
 	{
 		val (posSeq, negSeq) = separate(initialFacts.toSeq)
 		val (pos, neg) = (posSeq.toSet, negSeq.toSet)
 
-		checkContradictions(pos, neg)
-		checkOverlap(clauses, pos)
-		checkAcyclic(clauses)
+		val problem =
+			checkContradictions(pos, neg) orElse
+			checkOverlap(clauses, pos) orElse
+			checkAcyclic(clauses)
 
-		reduce0(clauses, initialFacts, Matched.empty)
+		problem.toLeft(
+			reduce0(clauses, initialFacts, Matched.empty)
+		)
 	}
 
 
@@ -105,22 +109,21 @@ object Logic
 	* This avoids the situation where an atom is proved but no clauses prove it.
 	* This isn't necessarily a problem, but the main sbt use cases expects
 	* a proven atom to have at least one clause satisfied. */
-	def checkOverlap(clauses: Clauses, initialFacts: Set[Atom]) {
+	private[this] def checkOverlap(clauses: Clauses, initialFacts: Set[Atom]): Option[InitialOverlap] = {
 		val as = atoms(clauses)
 		val initialOverlap = initialFacts.filter(as.inHead)
-		if(initialOverlap.nonEmpty) throw new InitialOverlap(initialOverlap)
+		if(initialOverlap.nonEmpty) Some(new InitialOverlap(initialOverlap)) else None
 	}
 
-	private[this] def checkContradictions(pos: Set[Atom], neg: Set[Atom]) {
+	private[this] def checkContradictions(pos: Set[Atom], neg: Set[Atom]): Option[InitialContradictions] = {
 		val contradictions = pos intersect neg
-		if(contradictions.nonEmpty) throw new InitialContradictions(contradictions)
+		if(contradictions.nonEmpty) Some(new InitialContradictions(contradictions)) else None
 	}
 
-	def checkAcyclic(clauses: Clauses) {
+	private[this] def checkAcyclic(clauses: Clauses): Option[CyclicNegation] = {
 		val deps = dependencyMap(clauses)
 		val cycle = Dag.findNegativeCycle(system(deps))(deps.keys.toList)
-		if(cycle.nonEmpty)
-			throw new CyclicNegation(cycle)
+		if(cycle.nonEmpty) Some(new CyclicNegation(cycle)) else None
 	}
 	private[this] def system(deps: Map[Atom, Set[Literal]]) = new Dag.System[Atom] {
 		type B = Literal
@@ -139,9 +142,10 @@ object Logic
 				(m /: heads) { (n, head) => n.updated(head, n.getOrElse(head, Set.empty) ++ deps) }
 		}
 
-	final class InitialContradictions(val literals: Set[Atom]) extends RuntimeException("Initial facts cannot be both true and false:\n\t" + literals.mkString("\n\t"))
-	final class InitialOverlap(val literals: Set[Atom]) extends RuntimeException("Initial positive facts cannot be implied by any clauses:\n\t" + literals.mkString("\n\t"))
-	final class CyclicNegation(val cycle: List[Literal]) extends RuntimeException("Negation may not be involved in a cycle:\n\t" + cycle.mkString("\n\t"))
+	sealed abstract class LogicException(override val toString: String)
+	final class InitialContradictions(val literals: Set[Atom]) extends LogicException("Initial facts cannot be both true and false:\n\t" + literals.mkString("\n\t"))
+	final class InitialOverlap(val literals: Set[Atom]) extends LogicException("Initial positive facts cannot be implied by any clauses:\n\t" + literals.mkString("\n\t"))
+	final class CyclicNegation(val cycle: List[Literal]) extends LogicException("Negation may not be involved in a cycle:\n\t" + cycle.mkString("\n\t"))
 
 	/** Tracks proven atoms in the reverse order they were proved. */
 	final class Matched private(val provenSet: Set[Atom], reverseOrdered: List[Atom]) {

@@ -6,11 +6,10 @@ package sbt
 	import java.io.File
 	import java.net.{URI,URL}
 	import compiler.{Eval,EvalImports}
-	import xsbti.compile.CompileOrder
 	import classpath.ClasspathUtilities
 	import scala.annotation.tailrec
 	import collection.mutable
-	import Compiler.{Compilers,Inputs}
+	import Compiler.Compilers
 	import inc.{FileValueCache, Locate}
 	import Project.{inScope,makeSettings}
 	import Def.{isDummy, ScopedKey, ScopeLocal, Setting}
@@ -463,7 +462,9 @@ object Load
 		def loadSbtFiles(auto: AddSettings, base: File, autoPlugins: Seq[AutoPlugin]): LoadedSbtFile =
 			loadSettings(auto, base, plugins, eval, injectSettings, memoSettings, autoPlugins)
 		def loadForProjects = newProjects map { project =>
-			val autoPlugins = plugins.detected.compileNatures(project.natures)
+			val autoPlugins =
+				try plugins.detected.compileNatures(project.natures)
+				catch { case e: AutoPluginException => throw translateAutoPluginException(e, project) }
 			val autoConfigs = autoPlugins.flatMap(_.projectConfigurations)
 			val loadedSbtFiles = loadSbtFiles(project.auto, project.base, autoPlugins)
 			val newSettings = (project.settings: Seq[Setting[_]]) ++ loadedSbtFiles.settings
@@ -485,6 +486,8 @@ object Load
 		else
 			loadTransitive(nextProjects, buildBase, plugins, eval, injectSettings, loadedProjects, memoSettings)
 	}
+	private[this] def translateAutoPluginException(e: AutoPluginException, project: Project): AutoPluginException =
+		e.withPrefix(s"Error determining plugins for project '${project.id}' in ${project.base}:\n")
 
 	private[this] def loadSettings(auto: AddSettings, projectBase: File, loadedPlugins: sbt.LoadedPlugins, eval: ()=>Eval, injectSettings: InjectSettings, memoSettings: mutable.Map[File, LoadedSbtFile], autoPlugins: Seq[AutoPlugin]): LoadedSbtFile =
 	{
