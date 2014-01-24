@@ -30,30 +30,86 @@ final class StructureIndex(
 	val keyIndex: KeyIndex,
 	val aggregateKeyIndex: KeyIndex
 )
+
+/** A resolved build unit.  (`ResolvedBuildUnit` would be a better name to distinguish it from the loaded, but unresolved `BuildUnit`.)
+* @param unit The loaded, but unresolved [[BuildUnit]] this was resolved from.
+* @param defined The definitive map from project IDs to resolved projects.
+*                These projects have had [[Reference]]s resolved and [[AutoPlugin]]s evaluated.
+* @param rootProjects The list of project IDs for the projects considered roots of this build.
+*                The first root project is used as the default in several situations where a project is not otherwise selected.
+*/
 final class LoadedBuildUnit(val unit: BuildUnit, val defined: Map[String, ResolvedProject], val rootProjects: Seq[String], val buildSettings: Seq[Setting[_]]) extends BuildUnitBase
 {
 	assert(!rootProjects.isEmpty, "No root projects defined for build unit " + unit)
+	/** The project to use as the default when one is not otherwise selected.
+	* [[LocalRootProject]] resolves to this from within the same build.*/
 	val root = rootProjects.head
+
+	/** The base directory of the build unit (not the build definition).*/
 	def localBase = unit.localBase
+
+	/** The classpath to use when compiling against this build unit's publicly visible code.
+	* It includes build definition and plugin classes, but not classes for .sbt file statements and expressions. */
 	def classpath: Seq[File] = unit.definitions.target ++ unit.plugins.classpath
+
+	/** The class loader to use for this build unit's publicly visible code.
+	* It includes build definition and plugin classes, but not classes for .sbt file statements and expressions. */
 	def loader = unit.definitions.loader
+
+	/** The imports to use for .sbt files, `consoleProject` and other contexts that use code from the build definition. */
 	def imports = BuildUtil.getImports(unit)
 	override def toString = unit.toString
 }
 
 // TODO: figure out how to deprecate and drop buildNames
+/** The built and loaded build definition, including loaded but unresolved [[Project]]s, for a build unit (for a single URI).
+*
+* @param base The base directory of the build definition, typically `<build base>/project/`.
+* @param loader The ClassLoader containing all classes and plugins for the build definition project.
+*               Note that this does not include classes for .sbt files.
+* @param builds The list of [[Build]]s for the build unit.
+*               In addition to auto-discovered [[Build]]s, this includes any auto-generated default [[Build]]s.
+* @param projects The list of all [[Project]]s from all [[Build]]s.
+*                 These projects have not yet been resolved, but they have had auto-plugins applied.
+*                 In particular, each [[Project]]'s `autoPlugins` field is populated according to their configured `natures`
+*                 and their `settings` and `configurations` updated as appropriate.
+* @param buildNames No longer used and will be deprecated once feasible.
+*/
 final class LoadedDefinitions(val base: File, val target: Seq[File], val loader: ClassLoader, val builds: Seq[Build], val projects: Seq[Project], val buildNames: Seq[String])
 
-final class DetectedModules[T](val modules: Seq[(String, T)]) {
+/** Auto-detected top-level modules (as in `object X`) of type `T` paired with their source names. */
+final class DetectedModules[T](val modules: Seq[(String, T)])
+{
+	/** The source names of the modules.  This is "X" in `object X`, as opposed to the implementation class name "X$".
+	* The names are returned in a stable order such that `names zip values` pairs a name with the actual module. */
 	def names: Seq[String] = modules.map(_._1)
+
+	/** The singleton value of the module.
+	* The values are returned in a stable order such that `names zip values` pairs a name with the actual module. */
 	def values: Seq[T] = modules.map(_._2)
 }
 
+/** Auto-discovered modules for the build definition project.  These include modules defined in build definition sources
+* as well as modules in binary dependencies.
+*
+* @param builds The [[Build]]s detected in the build definition.  This does not include the default [[Build]] that sbt creates if none is defined.
+*/
 final class DetectedPlugins(val plugins: DetectedModules[Plugin], val autoImports: DetectedModules[AutoImport], val autoPlugins: DetectedModules[AutoPlugin], val builds: DetectedModules[Build])
 {
+	/** Sequence of import expressions for the build definition.  This includes the names of the [[Plugin]], [[Build]], and [[AutoImport]] modules, but not the [[AutoPlugin]] modules. */
 	lazy val imports: Seq[String] = BuildUtil.getImports(plugins.names ++ builds.names ++ autoImports.names)
+
+	/** A function to select the right [[AutoPlugin]]s from [[autoPlugins]] given the defined [[Natures]] for a [[Project]]. */
 	lazy val compileNatures: Natures => Seq[AutoPlugin] = Natures.compile(autoPlugins.values.toList)
 }
+
+/** The built and loaded build definition project.
+* @param base The base directory for the build definition project (not the base of the project itself).
+* @param pluginData Evaluated tasks/settings from the build definition for later use.
+*                   This is necessary because the build definition project is discarded.
+* @param loader The class loader for the build definition project, notably excluding classes used for .sbt files.
+* @param detected Auto-detected modules in the build definition.
+*/
 final class LoadedPlugins(val base: File, val pluginData: PluginData, val loader: ClassLoader, val detected: DetectedPlugins)
 {
 /*
@@ -71,6 +127,11 @@ final class LoadedPlugins(val base: File, val pluginData: PluginData, val loader
 	def classpath = data(fullClasspath)
 
 }
+/** The loaded, but unresolved build unit.
+* @param uri The uniquely identifying URI for the build.
+* @param localBase The working location of the build on the filesystem.
+*        For local URIs, this is the same as `uri`, but for remote URIs, this is the local copy or workspace allocated for the build.
+*/
 final class BuildUnit(val uri: URI, val localBase: File, val definitions: LoadedDefinitions, val plugins: LoadedPlugins)
 {
 	override def toString = if(uri.getScheme == "file") localBase.toString else (uri + " (locally: " + localBase +")")

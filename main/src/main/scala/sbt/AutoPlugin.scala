@@ -16,7 +16,7 @@ The `select` method defines the conditions,
 Steps for plugin authors:
 1. Determine the natures that, when present (or absent), activate the AutoPlugin.
 2. Determine the settings/configurations to automatically inject when activated.
-3. Define a new, unique identifying [[Nature]] (which is a wrapper around a String ID).
+3. Define a new, unique identifying [[Nature]], which is a wrapper around a String ID.
 
 For example, the following will automatically add the settings in `projectSettings`
   to a project that has both the `Web` and `Javascript` natures enabled.  It will itself
@@ -26,7 +26,7 @@ For example, the following will automatically add the settings in `projectSettin
     object MyPlugin extends AutoPlugin {
         def select = Web && Javascript
         def provides = MyStuff
-        def projectSettings = Seq(...)
+        override def projectSettings = Seq(...)
     }
 
 Steps for users:
@@ -92,6 +92,8 @@ object Natures
 {
 	// TODO: allow multiple AutoPlugins to provide the same Nature?
 	// TODO: translate error messages
+	/** Given the available auto plugins `defined`, returns a function that selects [[AutoPlugin]]s for the provided [[Nature]]s.
+	* The [[AutoPlugin]]s are topologically sorted so that a selected [[AutoPlugin]] comes before its selecting [[AutoPlugin]].*/
 	def compile(defined: List[AutoPlugin]): Natures => Seq[AutoPlugin] =
 		if(defined.isEmpty)
 			Types.const(Nil)
@@ -101,10 +103,13 @@ object Natures
 			val clauses = Clauses( defined.map(d => asClause(d)) )
 			requestedNatures => {
 				val results = Logic.reduce(clauses, flatten(requestedNatures).toSet)
+				// results includes the originally requested (positive) atoms,
+				//   which won't have a corresponding AutoPlugin to map back to
 				results.ordered.flatMap(a => byAtom.get(a).toList)
 			}
 		}
 
+	/** [[Natures]] instance that doesn't require any [[Nature]]s. */
 	def empty: Natures = Empty
 	private[sbt] final object Empty extends Natures {
 		def &&(o: Basic): Natures = o
@@ -129,6 +134,7 @@ object Natures
 		case b: Basic => a && b
 	}
 
+	/** Defines a clause for `ap` such that the [[Nature]] provided by `ap` is the head and the selector for `ap` is the body. */
 	private[sbt] def asClause(ap: AutoPlugin): Clause =
 		Clause( convert(ap.select), Set(Atom(ap.provides.label)) )
 

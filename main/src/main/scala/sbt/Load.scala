@@ -469,6 +469,7 @@ object Load
 			val autoConfigs = autoPlugins.flatMap(_.projectConfigurations)
 			val loadedSbtFiles = loadSbtFiles(project.auto, project.base, autoPlugins)
 			val newSettings = (project.settings: Seq[Setting[_]]) ++ loadedSbtFiles.settings
+			// add the automatically selected settings, record the selected AutoPlugins, and register the automatically selected configurations
 			val transformed = project.copy(settings = newSettings).setAutoPlugins(autoPlugins).overrideConfigs(autoConfigs : _*)
 			(transformed, loadedSbtFiles.projects)
 		}
@@ -621,6 +622,9 @@ object Load
 */
 
 	def loadPlugins(dir: File, data: PluginData, loader: ClassLoader): sbt.LoadedPlugins =
+		new sbt.LoadedPlugins(dir, data, loader, autoDetect(data, loader))
+
+	private[this] def autoDetect(data: PluginData, loader: ClassLoader): DetectedPlugins =
 	{
 		// TODO: binary detection for builds, autoImports, autoPlugins
 		import AutoBinaryResource._
@@ -628,8 +632,7 @@ object Load
 		val builds = detectModules[Build](data, loader, Builds)
 		val autoImports = detectModules[AutoImport](data, loader, AutoImports)
 		val autoPlugins = detectModules[AutoPlugin](data, loader, AutoPlugins)
-		val detected = new DetectedPlugins(plugins, autoImports, autoPlugins, builds)
-		new sbt.LoadedPlugins(dir, data, loader, detected)
+		new DetectedPlugins(plugins, autoImports, autoPlugins, builds)
 	}
 	private[this] def detectModules[T](data: PluginData, loader: ClassLoader, resourceName: String)(implicit mf: reflect.ClassManifest[T]): DetectedModules[T] =
 	{
@@ -677,6 +680,8 @@ TODO: UNCOMMENT BEFORE COMMIT
 		binaryPlugins(classpath, loader, AutoBinaryResource.Plugins)
 */
 
+	/** Relative paths of resources that list top-level modules that are available.
+	* Normally, the classes for those modules will be in the same classpath entry as the resource. */
 	object AutoBinaryResource {
 		final val AutoPlugins = "sbt/sbt.autoplugins"
 		final val Plugins = "sbt/sbt.plugins"
