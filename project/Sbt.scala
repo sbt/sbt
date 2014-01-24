@@ -74,7 +74,7 @@ object Sbt extends Build
 		// cross versioning
 	lazy val crossSub = baseProject(utilPath / "cross", "Cross") settings(inConfig(Compile)(Transform.crossGenSettings): _*)
 		// A logic with restricted negation as failure for a unique, stable model
-	lazy val logicSub = baseProject(utilPath / "logic", "Logic").dependsOn(collectionSub, relationSub)
+	lazy val logicSub = testedBaseProject(utilPath / "logic", "Logic").dependsOn(collectionSub, relationSub)
 
 	/* **** Intermediate-level Modules **** */
 
