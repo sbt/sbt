@@ -1,3 +1,6 @@
+
+
+
 =======================
  Deploying to Sonatype
 =======================
@@ -161,7 +164,7 @@ In sbt, run `publishSigned` and you should see something like the following:
 
 After publishing you have to follow the `Release workflow of
 nexus <https://docs.sonatype.org/display/Repository/Sonatype+OSS+Maven+Repository+Usage+Guide#SonatypeOSSMavenRepositoryUsageGuide-8.ReleaseIt>`_.
-In the future, we hope to provide a Nexus sbt plugin that allows the
+`sbt-sonatype plugin <https://github.com/xerial/sbt-sonatype>`_ allows the
 release workflow procedures to be performed directly from sbt.
 
 *Note: Staged releases allow testing across large projects of
