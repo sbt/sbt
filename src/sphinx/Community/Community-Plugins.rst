@@ -68,6 +68,8 @@ Plugins for IDEs:
 -  Sublime Text: https://github.com/orrsella/sbt-sublime
 -  Ensime: https://github.com/aemoncannon/ensime-sbt-cmd
 -  sbt-mode for Emacs: https://github.com/hvesalai/sbt-mode
+-  sbt-ctags (manage library dependency sources for vim, emacs, sublime) 
+   https://github.com/kalmanb/sbt-ctags
 
 Web Plugins
 ~~~~~~~~~~~
