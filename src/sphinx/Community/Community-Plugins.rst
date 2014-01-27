@@ -4,9 +4,9 @@ Community Plugins
 
 sbt Organization
 ================
-           
-The `sbt organization <http://github.com/sbt>`_ is available for use by any sbt plugin.  
-Developers who contribute their plugins into the community organization will still retain 
+
+The `sbt organization <http://github.com/sbt>`_ is available for use by any sbt plugin.
+Developers who contribute their plugins into the community organization will still retain
 control over their repository and its access.   The goal of the sbt organization is to
 organize sbt software into one central location.
 
@@ -21,18 +21,18 @@ If you would like to publish your project to this Ivy repository, first contact 
 ::
 
      publishTo := Some(Resolver.url("sbt-plugin-releases", new URL("http://repo.scala-sbt.org/scalasbt/sbt-plugin-releases/"))(Resolver.ivyStylePatterns))
-     
+
      publishMavenStyle := false
- 
+
 You'll also need to add your credentials somewhere.  For example, you might use a `~/.sbt/pluginpublish.sbt` file:
- 
+
 ::
 
-     credentials += Credentials("Artifactory Realm", 
+     credentials += Credentials("Artifactory Realm",
  "repo.scala-sbt.org", "@user name@", "@my encrypted password@")
- 
+
 Where `@my encrypted password@` is actually obtained using the following `instructions <http://wiki.jfrog.org/confluence/display/RTF/Centrally+Secure+Passwords>`_.
- 
+
 *Note: Your code must abide by the* `repository polices <Repository-Rules>`_.
 
 To automatically deploy snapshot/release versions of your plugin use the following configuration:
@@ -55,8 +55,8 @@ Available Plugins
 
 Please feel free to `submit a pull request <https://github.com/sbt/sbt/pulls>`_ that adds your plugin to the list.
 
-Plugins for IDEs:
-~~~~~~~~~~~~~~~~~
+Plugins for IDEs
+~~~~~~~~~~~~~~~~
 
 -  IntelliJ IDEA
 -  sbt Plugin to generate IDEA project configuration:
@@ -116,25 +116,6 @@ One jar plugins
 -  sbt-onejar (Packages your project using One-JAR™):
    https://github.com/sbt/sbt-onejar
 
-Frontend development plugins
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
--  coffeescripted-sbt: https://github.com/softprops/coffeescripted-sbt
--  less-sbt (for less-1.3.0): https://github.com/softprops/less-sbt
--  sbt-less-plugin (it uses less-1.3.0):
-   https://github.com/btd/sbt-less-plugin
--  sbt-emberjs: https://github.com/stefri/sbt-emberjs
--  sbt-closure: https://github.com/eltimn/sbt-closure
--  sbt-yui-compressor: https://github.com/indrajitr/sbt-yui-compressor
--  sbt-requirejs: https://github.com/scalatra/sbt-requirejs
--  sbt-vaadin-plugin: https://github.com/henrikerola/sbt-vaadin-plugin
-
-Game development plugins
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
--  sbt-lwjgl-plugin (Light Weight Java Game Library): https://github.com/philcali/sbt-lwjgl-plugin
--  sbt-scage-plugin (Scala Game Engine): https://github.com/mvallerie/sbt-scage-plugin
-
 Release plugins
 ~~~~~~~~~~~~~~~
 
@@ -160,6 +141,27 @@ Release plugins
    https://github.com/sbt/sbt-native-packager
 -  sbt-sonatype-plugin (releases to Sonatype Nexus repository)
    https://github.com/xerial/sbt-sonatype
+-  xitrum-package (collects dependency .jar files for standalone Scala programs):
+   https://github.com/ngocdaothanh/xitrum-package
+
+Frontend development plugins
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+-  coffeescripted-sbt: https://github.com/softprops/coffeescripted-sbt
+-  less-sbt (for less-1.3.0): https://github.com/softprops/less-sbt
+-  sbt-less-plugin (it uses less-1.3.0):
+   https://github.com/btd/sbt-less-plugin
+-  sbt-emberjs: https://github.com/stefri/sbt-emberjs
+-  sbt-closure: https://github.com/eltimn/sbt-closure
+-  sbt-yui-compressor: https://github.com/indrajitr/sbt-yui-compressor
+-  sbt-requirejs: https://github.com/scalatra/sbt-requirejs
+-  sbt-vaadin-plugin: https://github.com/henrikerola/sbt-vaadin-plugin
+
+Game development plugins
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+-  sbt-lwjgl-plugin (Light Weight Java Game Library): https://github.com/philcali/sbt-lwjgl-plugin
+-  sbt-scage-plugin (Scala Game Engine): https://github.com/mvallerie/sbt-scage-plugin
 
 System plugins
 ~~~~~~~~~~~~~~
@@ -305,5 +307,5 @@ OSGi plugin
 Plugin bundles
 ~~~~~~~~~~~~~~
 
--   tl-os-sbt-plugins (Version, Release, and Package Management, Play 2.0 and Git utilities) : 
+-   tl-os-sbt-plugins (Version, Release, and Package Management, Play 2.0 and Git utilities) :
     https://github.com/trafficland/tl-os-sbt-plugins
