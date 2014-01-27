@@ -46,5 +46,12 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler]
 		}
 
 	def readCacheUncaught(file: File): (Analysis, CompileSetup) =
-    Using.fileReader(IO.utf8)(file) { reader => TextAnalysisFormat.read(reader) }
+		Using.fileReader(IO.utf8)(file) { reader =>
+			try {
+				TextAnalysisFormat.read(reader)
+			} catch {
+				case ex: sbt.inc.ReadException =>
+					throw new java.io.IOException(s"Error while reading $file", ex)
+			}
+		}
 }
