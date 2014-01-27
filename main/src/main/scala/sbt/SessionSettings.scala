@@ -110,7 +110,7 @@ object SessionSettings
 				val RangePosition(_, r@LineRange(start, end)) = s.pos
 				settings find (_._1.key == s.key) match {
 					case Some(ss@(ns, newLines)) if !ns.init.dependencies.contains(ns.key) =>
-						val shifted = ns withPos RangePosition(path, LineRange(start - offs, start - offs + 1))
+						val shifted = ns withPos RangePosition(path, LineRange(start - offs, start - offs + newLines.size))
 						(offs + end - start - newLines.size, shifted::olds, ss::repl, lineMap + (start -> (end, newLines)))
 					case _ =>
 						val shifted = s withPos RangePosition(path, r shift -offs)
