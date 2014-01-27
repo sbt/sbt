@@ -225,8 +225,8 @@ object TextAnalysisFormat {
 			if (nameHashing)
 				Relations.make(srcProd, binaryDep, memberRefSrcDeps, inheritanceSrcDeps, classes, names)
 			else {
-				assert(names.all.isEmpty, s"When `nameHashing` is disabled `names` relation " +
-					"should be empty: $names")
+				assert(names.all.isEmpty, "When `nameHashing` is disabled `names` relation " +
+					s"should be empty: $names")
 				Relations.make(srcProd, binaryDep, directSrcDeps, publicInheritedSrcDeps, classes)
 			}
 		}
