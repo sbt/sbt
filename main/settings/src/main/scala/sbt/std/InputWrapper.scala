@@ -75,8 +75,16 @@ object InputWrapper
 		sel.setPos(pos) // need to set the position on Select, because that is where the compileTimeOnly check looks
 		val tree = ApplyTree(TypeApply(sel, TypeTree(tpe) :: Nil), ts.tree :: Nil)
 		tree.setPos(ts.tree.pos)
-		tree.setType(tpe)
-		c.Expr[T](tree)
+		// JZ: I'm not sure why we need to do this. Presumably a caller is wrapping this tree in a
+		//     typed tree *before* handing the whole thing back to the macro engine. One must never splice
+		//     untyped trees under typed trees, as the type checker doesn't descend if `tree.tpe == null`.
+		//
+		//     #1031 The previous attempt to fix this just set the type on `tree`, which worked in cases when the
+		//     call to `.value` was inside a the task macro and eliminated before the end of the typer phase.
+		//     But, if a "naked" call to `.value` left the typer, the superaccessors phase would freak out when
+		//     if hit the untyped trees, before we could get to refchecks and the desired @compileTimeOnly warning.
+		val typedTree = c.typeCheck(tree)
+		c.Expr[T](typedTree)
 	}
 
 	def valueMacroImpl[T: c.WeakTypeTag](c: Context): c.Expr[T] =
