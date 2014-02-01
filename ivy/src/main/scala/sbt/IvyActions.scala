@@ -16,7 +16,11 @@ import core.resolve.ResolveOptions
 import plugins.resolver.{BasicResolver, DependencyResolver}
 
 final class DeliverConfiguration(val deliverIvyPattern: String, val status: String, val configurations: Option[Seq[Configuration]], val logging: UpdateLogging.Value)
-final class PublishConfiguration(val ivyFile: Option[File], val resolverName: String, val artifacts: Map[Artifact, File], val checksums: Seq[String], val logging: UpdateLogging.Value)
+final class PublishConfiguration(val ivyFile: Option[File], val resolverName: String, val artifacts: Map[Artifact, File], val checksums: Seq[String], val logging: UpdateLogging.Value,
+                                 val overwrite: Boolean) {
+	def this(ivyFile: Option[File], resolverName: String, artifacts: Map[Artifact, File], checksums: Seq[String], logging: UpdateLogging.Value) =
+		this(ivyFile, resolverName, artifacts, checksums, logging, false)
+}
 
 final class UpdateConfiguration(val retrieve: Option[RetrieveConfiguration], val missingOk: Boolean, val logging: UpdateLogging.Value)
 final class RetrieveConfiguration(val retrieveDirectory: File, val outputPattern: String)
@@ -86,11 +90,11 @@ object IvyActions
 		import configuration._
 		module.withModule(log) { case (ivy, md, default) =>
 			val resolver = ivy.getSettings.getResolver(resolverName)
-			if(resolver eq null) error("Undefined resolver '" + resolverName + "'")
+			if(resolver eq null) sys.error("Undefined resolver '" + resolverName + "'")
 			val ivyArtifact = ivyFile map { file => (MDArtifact.newIvyArtifact(md), file) }
 			val cross = crossVersionMap(module.moduleSettings)
-			val as = mapArtifacts(md, cross, artifacts) ++ ivyArtifact.toList
-			withChecksums(resolver, checksums) { publish(md, as, resolver, overwrite = true) }
+			val as = mapArtifacts(md, cross, artifacts) ++ ivyArtifact.toSeq
+			withChecksums(resolver, checksums) { publish(md, as, resolver, overwrite = overwrite) }
 		}
 	}
 	private[this] def withChecksums[T](resolver: DependencyResolver, checksums: Seq[String])(act: => T): T =
