@@ -8,9 +8,7 @@ import testing._
 import java.net.ServerSocket
 import java.io._
 import Tests.{Output => TestOutput, _}
-import ForkMain._
 import scala.util.control.NonFatal
-import net.sf.cglib.proxy.Callback
 import java.util.concurrent.ConcurrentLinkedQueue
 import scala.annotation.tailrec
 import java.util.concurrent.atomic.AtomicReference
@@ -117,7 +115,7 @@ private[sbt] object ForkTests
 			try {
 				thread.start() 
 	
-				val fullCp = classpath ++: Seq(IO.classLocationFile[ForkMain], IO.classLocationFile[Framework], IO.classLocationFile[Callback])
+				val fullCp = classpath ++: Seq(IO.classLocationFile[ForkMain], IO.classLocationFile[Framework])
 				vmArgs = Seq("-classpath", fullCp mkString File.pathSeparator, classOf[ForkMain].getCanonicalName, getLocalPort.toString)
 	
 				val newOptions = if( usePipedProcessOutput ) {

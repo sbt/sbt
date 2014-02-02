@@ -234,7 +234,7 @@ public class ForkMain {
 			if( config.isCaptureStandardOutput() ) {
 				OutputCapturer outputCapturer;
 				if( config.isHideStandardOutput() ) {
-					outputCapturer = new OutputCapturer(new NullOutputStream(), System.err, Charset.defaultCharset());
+					outputCapturer = new OutputCapturer(NullOutputStream.INSTANCE, System.err, Charset.defaultCharset());
 				} else {
 					outputCapturer = new OutputCapturer(System.out, System.err, Charset.defaultCharset());
 				}

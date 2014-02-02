@@ -18,14 +18,14 @@ public class OutputCapturer {
     private final PrintStream err;
 
     public OutputCapturer() {
-        this(new NullOutputStream(), new NullOutputStream(), StandardCharsets.UTF_16BE);
+        this(NullOutputStream.INSTANCE, NullOutputStream.INSTANCE, StandardCharsets.UTF_16BE);
     }
 
     public OutputCapturer(OutputStream realOut, OutputStream realErr, Charset charset) {
         OutputStream capturedOut = new WriterOutputStream(outCapturer, charset);
         OutputStream capturedErr = new WriterOutputStream(errCapturer, charset);
         err = createNonSynchronizedPrintStream(new OutputStreamReplicator(realErr, capturedErr), charset);
-        out = SynchronizedPrintStream.create(new OutputStreamReplicator(realOut, capturedOut), charset, err);
+        out = createNonSynchronizedPrintStream(new OutputStreamReplicator(realOut, capturedOut), charset);
     }
 
     private static PrintStream createNonSynchronizedPrintStream(OutputStream out, Charset charset) {
