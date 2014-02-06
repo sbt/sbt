@@ -77,13 +77,8 @@ Here's an example:
 Each `Setting` is defined with a Scala expression.
 The expressions in `build.sbt` are independent of one another, and
 they are expressions, rather than complete Scala statements.  These
-<<<<<<< HEAD
 expressions may be interspersed with `val`\ s, `lazy val`\ s, and `def`\ s.
 Top-level `object`\ s and `class`\ es are not allowed in `build.sbt`.
-=======
-expressions may be interspersed with `val`s, `lazy val`s, and `def`s.
-Top-level `object`s and `class`es are not allowed in `build.sbt`.
->>>>>>> 2caadce... Small changes
 Those should go in the `project/` directory as full Scala source files.
 
 On the left, :key:`name`, :key:`version`, and :key:`scalaVersion` are *keys*. A
