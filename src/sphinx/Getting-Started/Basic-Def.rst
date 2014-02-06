@@ -48,7 +48,7 @@ becomes sbt's new map.
 To create the map, sbt first sorts the list of settings so that all
 changes to the same key are made together, and values that depend on
 other keys are processed after the keys they depend on. Then sbt walks
-over the sorted list of `Setting`s and applies each one to the map in
+over the sorted list of `Setting`\ s and applies each one to the map in
 turn.
 
 Summary: A build definition defines a list of `Setting[T]`, where a
@@ -77,8 +77,8 @@ Here's an example:
 Each `Setting` is defined with a Scala expression.
 The expressions in `build.sbt` are independent of one another, and
 they are expressions, rather than complete Scala statements.  These
-expressions may be interspersed with `val`s, `lazy val`s, and `def`s.
-Top-level `object`s and `class`es are not allowed in `build.sbt`.
+expressions may be interspersed with `val`\ s, `lazy val`\ s, and `def`\ s.
+Top-level `object`\ s and `class`\ es are not allowed in `build.sbt`.
 Those should go in the `project/` directory as full Scala source files.
 
 On the left, :key:`name`, :key:`version`, and :key:`scalaVersion` are *keys*. A
