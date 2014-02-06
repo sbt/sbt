@@ -200,28 +200,34 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 	@tailrec private[this] final def getAppProvider0(id: xsbti.ApplicationID, explicitScalaVersion: Option[String], forceAppUpdate: Boolean): xsbti.AppProvider =
 	{
 		val app = appModule(id, explicitScalaVersion, true, "app")
-		val baseDirs = (base: File) => appBaseDirs(base, id)
+		/** Replace the version of an ApplicationID with the given one, if set. */
+		def resolveId(appVersion: Option[String], id: xsbti.ApplicationID) = appVersion map { v =>
+			import id._
+			AppID(groupID(), name(), v, mainClass(), mainComponents(), crossVersionedValue(), classpathExtra())
+		} getOrElse id
+		val baseDirs = (resolvedVersion: Option[String]) => (base: File) => appBaseDirs(base, resolveId(resolvedVersion, id))
 		def retrieve() = {
-			val sv = update(app, "")
+			val (appv, sv) = update(app, "")
 			val scalaVersion = strictOr(explicitScalaVersion, sv)
-			new RetrievedModule(true, app, sv, baseDirs(scalaHome(ScalaOrg, scalaVersion)))
+			new RetrievedModule(true, app, sv, appv, baseDirs(appv)(scalaHome(ScalaOrg, scalaVersion)))
 		}
 		val retrievedApp =
 			if(forceAppUpdate)
 				retrieve()
 			else
-				existing(app, ScalaOrg, explicitScalaVersion, baseDirs) getOrElse retrieve()
+				existing(app, ScalaOrg, explicitScalaVersion, baseDirs(None)) getOrElse retrieve()
 
 		val scalaVersion = getOrError(strictOr(explicitScalaVersion, retrievedApp.detectedScalaVersion), "No Scala version specified or detected")
 		val scalaProvider = getScala(scalaVersion, "(for " + id.name + ")")
+		val resolvedId = resolveId(retrievedApp.resolvedAppVersion, id)
 
-		val (missing, appProvider) = checkedAppProvider(id, retrievedApp, scalaProvider)
+		val (missing, appProvider) = checkedAppProvider(resolvedId, retrievedApp, scalaProvider)
 		if(missing.isEmpty)
 			appProvider
 		else if(retrievedApp.fresh)
 			app.retrieveCorrupt(missing)
 		else
-			getAppProvider0(id, explicitScalaVersion, true)
+			getAppProvider0(resolvedId, explicitScalaVersion, true)
 	}
 	def scalaHome(scalaOrg: String, scalaVersion: Option[String]): File = new File(bootDirectory, baseDirectoryName(scalaOrg, scalaVersion))
 	def appHome(id: xsbti.ApplicationID, scalaVersion: Option[String]): File = appDirectory(scalaHome(ScalaOrg, scalaVersion), id)
@@ -248,7 +254,7 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 			try Some(provider(mod))
 			catch { case e: Exception => None }
 		} getOrElse {
-			val scalaVersion = update(scalaM, reason)
+			val (_, scalaVersion) = update(scalaM, reason)
 			provider( new RetrievedModule(true, scalaM, scalaVersion, baseDirs) )
 		}
 	}
@@ -343,10 +349,11 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 		failLabel = "Scala " + version,
 		extraClasspath = array()
 	)
-	def update(mm: ModuleDefinition, reason: String): Option[String] =
+	/** Returns the resolved appVersion (if this was an App), as well as the scalaVersion. */
+	def update(mm: ModuleDefinition, reason: String): (Option[String], Option[String]) =
 	{
 		val result = ( new Update(mm.configuration) )(mm.target, reason)
-		if(result.success) result.scalaVersion else mm.retrieveFailed
+		if(result.success) result.appVersion -> result.scalaVersion else mm.retrieveFailed
 	}
 }
 object Launcher
