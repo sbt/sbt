@@ -167,7 +167,7 @@ object Instance
 		def addType(tpe: Type, qual: Tree, selection: Tree): Tree =
 		{
 			qual.foreach(checkQual)
-			val vd = util.freshValDef(tpe, qual.symbol.pos, functionSym)
+			val vd = util.freshValDef(tpe, qual.pos, functionSym)
 			inputs ::= new Input(tpe, qual, vd)
 			util.refVal(selection, vd)
 		}

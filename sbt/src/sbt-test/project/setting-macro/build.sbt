@@ -27,3 +27,8 @@ key1 := {
 	)
   ()
 }
+
+// https://github.com/sbt/sbt/issues/1107
+def appcfgTask(a: String, b: String) = Def.task("")
+
+TaskKey[Unit]("test") := appcfgTask(b = "", a = "").value
