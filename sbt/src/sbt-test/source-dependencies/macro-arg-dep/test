@@ -1,0 +1,15 @@
+> compile
+
+# remove `Foo.str` which is an argument to a macro that incremental compiler doesn't see in
+# Client.scala because macro has been already expanded
+
+$ copy-file macro-client/changes/Foo.scala macro-client/Foo.scala
+
+# we should recompile Foo.scala first and then fail to compile Client.scala due to missing
+# `Foo.str`; however recompilation of Client.scala is never triggered due to missing
+# dependency
+-> macro-client/compile
+
+> clean
+
+-> compile
