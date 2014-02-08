@@ -12,7 +12,7 @@ trait AutoImport
 An AutoPlugin defines a group of settings and the conditions that the settings are automatically added to a build (called "activation").
 The `select` method defines the conditions,
   `provides` defines an identifier for the AutoPlugin,
-  and the a method like `projectSettings` defines the settings to add.
+  and a method like `projectSettings` defines the settings to add.
 
 Steps for plugin authors:
 1. Determine the natures that, when present (or absent), activate the AutoPlugin.
@@ -42,7 +42,7 @@ will activate `MyPlugin` defined above and have its settings automatically added
 
   <Project>.natures( Web && Javascript && !MyStuff)
 
-then the `MyPlugin` settings (and anything that activates when `MyStuff` is activated) will not be added.
+then the `MyPlugin` settings (and anything that activates only when `MyStuff` is activated) will not be added.
 */
 abstract class AutoPlugin
 {
