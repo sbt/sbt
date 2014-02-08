@@ -9,15 +9,15 @@ package sbt
 trait AutoImport
 
 /**
-An AutoPlugin defines a group of settings and the conditions that the settings are automatically added to a build (called "activation").
+An AutoPlugin defines a group of settings and the conditions where the settings are automatically added to a build (called "activation").
 The `select` method defines the conditions,
   `provides` defines an identifier for the AutoPlugin,
   and a method like `projectSettings` defines the settings to add.
 
 Steps for plugin authors:
-1. Determine the natures that, when present (or absent), activate the AutoPlugin.
+1. Determine the [[Nature]]s that, when present (or absent), activate the AutoPlugin.
 2. Determine the settings/configurations to automatically inject when activated.
-3. Define a new, unique identifying [[Nature]], which is a wrapper around a String ID.
+3. Define a new, unique identifying [[Nature]] associated with the AutoPlugin, where a Nature is essentially a String ID.
 
 For example, the following will automatically add the settings in `projectSettings`
   to a project that has both the `Web` and `Javascript` natures enabled.  It will itself
