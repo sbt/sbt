@@ -1,11 +1,11 @@
-// !C will exclude C, and thus D, from being auto-added
-lazy val a = project.addNatures(A && B && !C)
+// excludePlugins(C) will prevent C, and thus D, from being auto-added
+lazy val a = project.addNatures(A, B).disablePlugins(Q)
 
 // without B, C is not added
 lazy val b = project.addNatures(A)
 
 // with both A and B, C is selected, which in turn selects D
-lazy val c = project.addNatures(A && B)
+lazy val c = project.addNatures(A, B)
 
 // with no natures defined, nothing is auto-added
 lazy val d = project

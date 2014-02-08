@@ -67,7 +67,7 @@ sealed trait ProjectDefinition[PR <: ProjectReference]
 		val agg = ifNonEmpty("aggregate", aggregate)
 		val dep = ifNonEmpty("dependencies", dependencies)
 		val conf = ifNonEmpty("configurations", configurations)
-		val autos = ifNonEmpty("autoPlugins", autoPlugins.map(_.provides))
+		val autos = ifNonEmpty("autoPlugins", autoPlugins.map(_.label))
 		val fields = s"id $id" :: s"base: $base" :: agg ::: dep ::: conf ::: (s"natures: List($natures)" :: autos)
 		s"Project(${fields.mkString(", ")})"
 	}
@@ -136,11 +136,17 @@ sealed trait Project extends ProjectDefinition[ProjectReference]
 	* Any configured .sbt files are removed from this project's list.*/
 	def setSbtFiles(files: File*): Project = copy(auto = AddSettings.append( AddSettings.clearSbtFiles(auto), AddSettings.sbtFiles(files: _*)) )
 
-	/** Sets the [[Natures]] of this project.
+	/** Sets the [[Nature]]s of this project.
 	A [[Nature]] is a common label that is used by plugins to determine what settings, if any, to add to a project. */
-	def addNatures(ns: Natures): Project = {
+	def addNatures(ns: Nature*): Project = setNatures(Natures.and(natures, Natures.And(ns.toList)))
+
+	/** Disable the given plugins on this project. */
+	def disablePlugins(plugins: AutoPlugin*): Project =
+		setNatures(Natures.and(natures, Natures.And(plugins.map(p => Natures.Exclude(p)).toList)))
+
+	private[this] def setNatures(ns: Natures): Project = {
 		// TODO: for 0.14.0, use copy when it has the additional `natures` parameter
-		unresolved(id, base, aggregate = aggregate, dependencies = dependencies, delegates = delegates, settings, configurations, auto, Natures.and(natures, ns), autoPlugins)
+		unresolved(id, base, aggregate = aggregate, dependencies = dependencies, delegates = delegates, settings, configurations, auto, ns, autoPlugins)
 	}
 
 	/** Definitively set the [[AutoPlugin]]s for this project. */

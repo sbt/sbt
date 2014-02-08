@@ -3,7 +3,6 @@ import Keys._
 
 
 object C extends AutoImport {
-	lazy val aN = Nature("A")
 	lazy val bN = Nature("B")
 	lazy val check = taskKey[Unit]("Checks that the AutoPlugin and Build are automatically added.")
 }
@@ -11,7 +10,6 @@ object C extends AutoImport {
 	import C._
 
 object A extends AutoPlugin {
-	override def provides = aN
 	override def select = bN
 	override def projectSettings = Seq(
 		check := {}

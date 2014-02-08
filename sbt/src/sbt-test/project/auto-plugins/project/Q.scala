@@ -6,9 +6,7 @@ object AI extends AutoImport
 {
 	lazy val A = Nature("A")
 	lazy val B = Nature("B")
-	lazy val C = Nature("C")
 	lazy val D = Nature("D")
-	lazy val E = Nature("E")
 
 	lazy val q = config("q")
 	lazy val p = config("p").extend(q)
@@ -24,8 +22,6 @@ object AI extends AutoImport
 object Q extends AutoPlugin
 {
 	def select: Natures = A && B
-
-	def provides = C
 
 	override def projectConfigurations: Seq[Configuration] =
 		p ::
@@ -52,9 +48,7 @@ object Q extends AutoPlugin
 
 object R extends AutoPlugin
 {
-	def select = C && !D
-
-	def provides = E
+	def select = Q && !D
 
 	override def projectSettings = Seq(
 		// tests proper ordering: R requires C, so C settings should come first
