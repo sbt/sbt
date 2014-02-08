@@ -1,3 +1,12 @@
+/*
+TODO:
+- Natured type contains AutoPlugin and Nature
+- atoms of AutoPlugin.select are Natured
+- atoms of Project.natures are Nature
+- no more AutoPlugin.provides: name comes from module name
+- index all available AutoPlugins to get the tasks that will be added
+- error message when a task doesn't exist that it would be provided by plugin x, enabled by natures y,z, blocked by a, b
+*/
 package sbt
 
 	import Def.Setting
