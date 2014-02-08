@@ -78,7 +78,7 @@ abstract class AutoPlugin
 
 /** An error that occurs when auto-plugins aren't configured properly.
 * It translates the error from the underlying logic system to be targeted at end users. */
-final class AutoPluginException(val origin: LogicException, prefix: String) extends RuntimeException(prefix + Natures.translateMessage(origin))
+final class AutoPluginException(val origin: Option[LogicException], prefix: String) extends RuntimeException(prefix + Natures.translateMessage(origin))
 {
 	/** Prepends `p` to the error message derived from `origin`. */
 	def withPrefix(p: String) = new AutoPluginException(origin, p)
@@ -109,7 +109,9 @@ object Natures
 			Types.const(Nil)
 		else
 		{
-			val byAtom = defined.map(x => (Atom(x.provides.label), x)).toMap
+			val byAtom = defined.map(x => (Atom(x.provides.label), x))
+			val byAtomMap = byAtom.toMap
+			if(byAtom.size != byAtomMap.size) duplicateProvidesError(byAtom)
 			val clauses = Clauses( defined.map(d => asClause(d)) )
 			requestedNatures =>
 				Logic.reduce(clauses, flatten(requestedNatures).toSet) match {
@@ -117,7 +119,7 @@ object Natures
 					case Right(results) =>
 						// results includes the originally requested (positive) atoms,
 						//   which won't have a corresponding AutoPlugin to map back to
-						results.ordered.flatMap(a => byAtom.get(a).toList)
+						results.ordered.flatMap(a => byAtomMap.get(a).toList)
 				}
 		}
 
@@ -128,6 +130,15 @@ object Natures
 	}
 	private[this] def literalsString(lits: Seq[Literal]): String =
 		lits map { case Atom(l) => l; case Negated(Atom(l)) => l } mkString(", ")
+
+	private[this] def duplicateProvidesError(byAtom: Seq[(Atom, AutoPlugin)]) {
+		val dupsByAtom = defined.groupBy(_._1).mapValues(_._2)
+		val dupStrings = for( (atom, dups) <- dupsByAtom if dups.size > 1 ) yield
+			s"${atom.label} by ${dups.mkString(", ")}
+		val (ns, nl) = if(dupStrings > 1) ("s", "\n\t") else ("", " ")
+		val message = s"Nature$ns provided by multiple AutoPlugins:$nl${dupStrings.mkString(nl)}"
+		throw new AutoPluginException(None, message)
+	}
 
 	/** [[Natures]] instance that doesn't require any [[Nature]]s. */
 	def empty: Natures = Empty
