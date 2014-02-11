@@ -39,7 +39,10 @@ final class UpdateConfiguration(val bootDirectory: File, val ivyHome: Option[Fil
 	def getScalaVersion = scalaVersion match { case Some(sv) => sv; case None => "" }
 }
 
-final class UpdateResult(val success: Boolean, val scalaVersion: Option[String])
+final class UpdateResult(val success: Boolean, val scalaVersion: Option[String], val appVersion: Option[String]) {
+	@deprecated("0.13.2", "Please use the other constructor providing appVersion.")
+	def this(success: Boolean, scalaVersion: Option[String]) = this(success, scalaVersion, None)
+}
 
 /** Ensures that the Scala and application jars exist for the given versions or else downloads them.*/
 final class Update(config: UpdateConfiguration)
@@ -109,7 +112,7 @@ final class Update(config: UpdateConfiguration)
 				e.printStackTrace(logWriter)
 				log(e.toString)
 				System.out.println("  (see " + logFile + " for complete log)")
-				new UpdateResult(false, None)
+				new UpdateResult(false, None, None)
 		}
 		finally
 		{
@@ -127,15 +130,16 @@ final class Update(config: UpdateConfiguration)
 		moduleID.setLastModified(System.currentTimeMillis)
 		moduleID.addConfiguration(new IvyConfiguration(DefaultIvyConfiguration, PUBLIC, "", new Array(0), true, null))
 		// add dependencies based on which target needs updating
-		target match
+		val dep = target match
 		{
 			case u: UpdateScala =>
 				val scalaVersion = getScalaVersion
 				addDependency(moduleID, scalaOrg, CompilerModuleName, scalaVersion, "default;optional(default)", u.classifiers)
-				addDependency(moduleID, scalaOrg, LibraryModuleName, scalaVersion, "default", u.classifiers)
+				val ddesc = addDependency(moduleID, scalaOrg, LibraryModuleName, scalaVersion, "default", u.classifiers)
 				excludeJUnit(moduleID)
 				val scalaOrgString = if (scalaOrg != ScalaOrg) " " + scalaOrg else ""
 				System.out.println("Getting" + scalaOrgString + " Scala " + scalaVersion + " " + reason + "...")
+				ddesc.getDependencyId
 			case u: UpdateApp =>
 				val app = u.id
 				val resolvedName = (app.crossVersioned, scalaVersion) match {
@@ -143,24 +147,31 @@ final class Update(config: UpdateConfiguration)
 					case (xsbti.CrossValue.Binary, Some(sv)) => app.name + "_" + CrossVersionUtil.binaryScalaVersion(sv)
 					case _ => app.name
 				}
-				addDependency(moduleID, app.groupID, resolvedName, app.getVersion, "default(compile)", u.classifiers)
+				val ddesc = addDependency(moduleID, app.groupID, resolvedName, app.getVersion, "default(compile)", u.classifiers)
 				System.out.println("Getting " + app.groupID + " " + resolvedName + " " + app.getVersion + " " + reason + "...")
+				ddesc.getDependencyId
 		}
-		update(moduleID, target)
+		update(moduleID, target, dep)
 	}
 	/** Runs the resolve and retrieve for the given moduleID, which has had its dependencies added already. */
-	private def update(moduleID: DefaultModuleDescriptor,  target: UpdateTarget): UpdateResult =
+	private def update(moduleID: DefaultModuleDescriptor,  target: UpdateTarget, dep: ModuleId): UpdateResult =
 	{
 		val eventManager = new EventManager
-		val autoScalaVersion = resolve(eventManager, moduleID)
+		val (autoScalaVersion, depVersion) = resolve(eventManager, moduleID, dep)
+		// Fix up target.id with the depVersion that we know for sure is resolved (not dynamic) -- this way, `retrieve`
+		// will put them in the right version directory.
+		val target1 = (depVersion, target) match {
+			case (Some(dv), u: UpdateApp) => import u._; new UpdateApp(id.copy(version = new Explicit(dv)), classifiers, tpe)
+			case _ => target
+		}
 		setScalaVariable(settings, autoScalaVersion)
-		retrieve(eventManager, moduleID, target, autoScalaVersion)
-		new UpdateResult(true, autoScalaVersion)
+		retrieve(eventManager, moduleID, target1, autoScalaVersion)
+		new UpdateResult(true, autoScalaVersion, depVersion)
 	}
 	private def createID(organization: String, name: String, revision: String) =
 		ModuleRevisionId.newInstance(organization, name, revision)
 	/** Adds the given dependency to the default configuration of 'moduleID'. */
-	private def addDependency(moduleID: DefaultModuleDescriptor, organization: String, name: String, revision: String, conf: String, classifiers: List[String])
+	private def addDependency(moduleID: DefaultModuleDescriptor, organization: String, name: String, revision: String, conf: String, classifiers: List[String]) =
 	{
 		val dep = new DefaultDependencyDescriptor(moduleID, createID(organization, name, revision), false, false, true)
 		for(c <- conf.split(";"))
@@ -168,6 +179,7 @@ final class Update(config: UpdateConfiguration)
 		for(classifier <- classifiers)
 			addClassifier(dep, name, classifier)
 		moduleID.addDependency(dep)
+		dep
 	}
 	private def addClassifier(dep: DefaultDependencyDescriptor, name: String, classifier: String)
 	{
@@ -186,8 +198,9 @@ final class Update(config: UpdateConfiguration)
 		rule.addConfiguration(DefaultIvyConfiguration)
 		rule
 	}
-	// returns the version of any Scala dependency
-	private def resolve(eventManager: EventManager, module: ModuleDescriptor): Option[String] =
+	val scalaLibraryId = ModuleId.newInstance(ScalaOrg, LibraryModuleName)
+	// Returns the version of the scala library, as well as `dep` (a dependency of `module`) after it's been resolved
+	private def resolve(eventManager: EventManager, module: ModuleDescriptor, dep: ModuleId): (Option[String], Option[String]) =
 	{
 		val resolveOptions = new ResolveOptions
 		  // this reduces the substantial logging done by Ivy, including the progress dots when downloading artifacts
@@ -203,18 +216,18 @@ final class Update(config: UpdateConfiguration)
 			System.out.println(seen.toArray.mkString(System.getProperty("line.separator")))
 			error("Error retrieving required libraries")
 		}
-		scalaDependencyVersion(resolveReport).headOption
+		val modules = moduleRevisionIDs(resolveReport)
+		extractVersion(modules, scalaLibraryId) -> extractVersion(modules, dep)
 	}
-	private[this] def scalaDependencyVersion(report: ResolveReport): List[String] =
+	private[this] def extractVersion(modules: Seq[ModuleRevisionId], dep: ModuleId): Option[String] =
 	{
-		val modules = report.getConfigurations.toList flatMap { config =>
-			report.getConfigurationReport(config).getModuleRevisionIds.toArray
-		}
-		modules flatMap {
-			case module: ModuleRevisionId if module.getOrganisation == ScalaOrg && module.getName == LibraryModuleName =>
-				module.getRevision :: Nil
-			case _ => Nil
-		}
+		modules collectFirst { case m if m.getModuleId.equals(dep) => m.getRevision }
+	}
+	private[this] def moduleRevisionIDs(report: ResolveReport): Seq[ModuleRevisionId] =
+	{
+		import collection.JavaConverters._
+		import org.apache.ivy.core.resolve.IvyNode
+		report.getDependencies.asInstanceOf[java.util.List[IvyNode]].asScala map (_.getResolvedId)
 	}
 
 	/** Exceptions are logged to the update log file. */
@@ -244,7 +257,8 @@ final class Update(config: UpdateConfiguration)
 		val filter = (a: IArtifact) => retrieveType(a.getType) && a.getExtraAttribute("classifier") == null && extraFilter(a)
 		retrieveOptions.setArtifactFilter(new ArtifactFilter(filter))
 		val scalaV = strictOr(scalaVersion, autoScalaVersion)
-		retrieveEngine.retrieve(module.getModuleRevisionId, baseDirectoryName(scalaOrg, scalaV) + "/" + pattern, retrieveOptions)
+		retrieveOptions.setDestArtifactPattern(baseDirectoryName(scalaOrg, scalaV) + "/" + pattern)
+		retrieveEngine.retrieve(module.getModuleRevisionId, retrieveOptions)
 	}
 	private[this] def notCoreScala(a: IArtifact) = a.getName match {
 		case LibraryModuleName | CompilerModuleName => false
