@@ -285,7 +285,7 @@ Utility plugins
 Code coverage plugins
 ~~~~~~~~~~~~~~~~~~~~~
 
--  sbt-scct: https://github.com/dvc94ch/sbt-scct
+-  sbt-scct: https://github.com/sqality/sbt-scct
 -  sbt-scoverage: https://github.com/scoverage/sbt-scoverage
 -  jacoco4sbt: https://github.com/sbt/jacoco4sbt
 -  xsbt-coveralls-plugin: https://github.com/theon/xsbt-coveralls-plugin
