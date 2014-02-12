@@ -12,7 +12,7 @@ import testing.{Event => TEvent, Status => TStatus, OptionalThrowable, TestSelec
  * report format. XSD can be found here: http://windyroad.com.au/dl/Open%20Source/JUnit.xsd (note: we might want to download this into the project?)
  * @param outputDir path to the dir in which a folder with results is generated
  */
-class JUnitXmlTestsListener(val outputDir:String) extends TestsListener
+class JUnitXmlTestsListener(val outputDir:String, logger: Logger) extends TestsListener
 {
 		/**Current hostname so we know which machine executed the tests*/
     val hostname = InetAddress.getLocalHost.getHostName
@@ -95,8 +95,7 @@ class JUnitXmlTestsListener(val outputDir:String) extends TestsListener
 
     private def writeSuite(name: String, suite: SuiteReport) = {
       val file = new File(targetDir, name + ".xml").getAbsolutePath
-      // TODO would be nice to have a logger and log this with level debug
-      // System.err.println("Writing JUnit XML test report: " + file)
+      logger.debug("Writing JUnit XML test report: " + file)
       XML.save (file, toXml(name, suite), "UTF-8", true, null)
     }
 }

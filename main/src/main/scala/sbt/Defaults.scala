@@ -369,7 +369,7 @@ object Defaults extends BuildCommon
 		},
 		testOnly <<= inputTests(testOnly),
 		testQuick <<= inputTests(testQuick),
-		testListeners ++= (if( testReportJUnitXml.value ) Seq(new JUnitXmlTestsListener(target.value.getAbsolutePath)) else Nil)
+		testListeners ++= (if( testReportJUnitXml.value ) Seq(new JUnitXmlTestsListener(target.value.getAbsolutePath, streams.value.log)) else Nil)
 	)
 	private[this] def noTestsMessage(scoped: ScopedKey[_])(implicit display: Show[ScopedKey[_]]): String =
 		"No tests to run for " + display(scoped)
