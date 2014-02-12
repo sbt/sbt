@@ -24,7 +24,7 @@ object KListBuilder extends TupleBuilder
 		val kconsTC: Type = kconsTpe.typeConstructor
 
 		/** This is the L in the type function [L[x]] ...  */
-		val tcVariable: TypeSymbol = newTCVariable(NoSymbol)
+		val tcVariable: TypeSymbol = newTCVariable(util.initialOwner)
 
 		/** Instantiates KCons[h, t <: KList[L], L], where L is the type constructor variable */
 		def kconsType(h: Type, t: Type): Type =
