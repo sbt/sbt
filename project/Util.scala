@@ -172,7 +172,7 @@ object Common
 	lazy val httpclient = lib("commons-httpclient" % "commons-httpclient" % "3.1")
 	lazy val jsch = lib("com.jcraft" % "jsch" % "0.1.46" intransitive() )
 	lazy val sbinary = libraryDependencies <+= Util.nightly211(n => "org.scala-tools.sbinary" % "sbinary" % "0.4.2" cross(if(n) CrossVersion.full else CrossVersion.binary))
-	lazy val scalaCompiler = libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _ )
+	lazy val scalaCompiler = libraryDependencies <+= scalaVersion(sv => "org.scala-lang" % "scala-compiler" % sv)
 	lazy val testInterface = lib("org.scala-sbt" % "test-interface" % "1.0")
 	def libModular(name: String) = libraryDependencies <++= (scalaVersion, scalaOrganization)( (sv,o) =>
 		if(sv.startsWith("2.11.")) (o % name % sv) :: Nil else Nil
