@@ -409,7 +409,7 @@ private[sbt] object ForkTests
 
 			if( noForkedVm > 1 ) {
 				val noTests = opts.tests.size
-				val adjustedNoForkedVm = if( noTests > noForkedVm ) {
+				val adjustedNoForkedVm = if( noForkedVm > noTests ) {
 					// note: if a test spawns new tests then this might be of a problem
 					//       we should ask the testing framework if it supports spawning of new tests
 					//       and disable this feature if it does
