@@ -25,7 +25,7 @@ object TupleNBuilder extends TupleBuilder
 
 		val ctx: c.type = c
 		val representationC: PolyType = {
-			val tcVariable: Symbol = newTCVariable(NoSymbol)
+			val tcVariable: Symbol = newTCVariable(util.initialOwner)
 			val tupleTypeArgs = inputs.map(in => typeRef(NoPrefix, tcVariable, in.tpe :: Nil).asInstanceOf[global.Type])
 			val tuple = global.definitions.tupleType(tupleTypeArgs)
 			PolyType(tcVariable :: Nil, tuple.asInstanceOf[Type] )
