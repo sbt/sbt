@@ -508,7 +508,7 @@ object Defaults extends BuildCommon
 
 						s.log.debug(
 						 s"""Forking tests
-								|  - parallelism=${forkedConfig.parallel}
+								|  - parallel=${forkedConfig.parallel}
 								|  - hiding-successful-output=$hideSuccessfulOutput
 								|  - noForkedVm=$noForkedVm""".stripMargin)
 

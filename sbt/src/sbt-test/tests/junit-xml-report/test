@@ -13,24 +13,31 @@
 # try parallel first (as it is more likely to fail than its serial counterpart)
 > set testForkedParallel := true
 -> test
-> checkReport
+# when parallel, stdout cannot be captured properly and is just printed on the console
+> checkReportNoStdOut
 
 > clean
 > checkNoReport
 
 > set testForkedParallel := false
+> set testNumberForkedJvm := 3
 -> test
 > checkReport
 
-# TODO - check non-forked mode
+> clean
+> checkNoReport
+
+> set testNumberForkedJvm := 1
+-> test
+> checkReport
 
 # there might be discrepancies between the 'normal' and the 'forked' mode
 
-# > set fork in Test := false
-# > clean
-# > checkNoReport
+> clean
+> checkNoReport
 
-# -> test
-# > checkReport
+> set fork in Test := false
+-> test
+> checkReportNoStdOut
 
-## AND serial non-forked...
+## TODO serial non-forked should be able to capture output?

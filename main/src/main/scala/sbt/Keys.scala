@@ -197,7 +197,7 @@ object Keys
 	val testListeners = TaskKey[Seq[TestReportListener]]("test-listeners", "Defines test listeners.", DTask)
 	val testForkedParallel = SettingKey[Boolean]("test-forked-parallel", "Whether forked tests should be executed in parallel", CTask)
 	val testReportJUnitXml = SettingKey[Boolean]("test-report-junit-xml", "Produce JUnit XML test reports", BPlusTask)
-	val testHideSuccessfulOutput = SettingKey[Boolean]("test-hide-successful-output","Do not show standard output of successful tests - this works only in forked tests")
+	val testHideSuccessfulOutput = SettingKey[Boolean]("test-hide-successful-output","Do not show standard output of successful tests - this works only in serial forked tests")
 	val testNumberForkedJvm = SettingKey[Int]("test-number-forked-jvm", "How many forked JVM will be used for executing the tests - this only applies in forked tests")
 	val testExecution = TaskKey[Tests.Execution]("test-execution", "Settings controlling test execution", DTask)
 	val testFilter = TaskKey[Seq[String] => Seq[String => Boolean]]("test-filter", "Filter controlling whether the test is executed", DTask)

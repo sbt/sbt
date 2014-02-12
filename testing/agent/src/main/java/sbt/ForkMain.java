@@ -9,12 +9,16 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.io.PrintStream;
-import java.net.Socket;
 import java.net.InetAddress;
-import java.nio.charset.Charset;
-import java.util.*;
-import java.util.concurrent.*;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class ForkMain {
 
@@ -200,8 +204,8 @@ public class ForkMain {
 			};
 		}
 
-		void writeEndTest(ObjectOutputStream os, String suiteName, String stdout, ForkEvent event) {
-			write(os, new Object[]{ForkTags.EndTest, suiteName, stdout, event});
+		void writeEndTest(ObjectOutputStream os, String suiteName, ForkEvent event) {
+			write(os, new Object[]{ForkTags.EndTest, suiteName, event});
 		}
 
 		void writeStartSuite(ObjectOutputStream os, String suiteName) {
@@ -229,26 +233,9 @@ public class ForkMain {
 			}
 		}
 
-		/** @return null if stdout shouldn't be captured */
-		private OutputCapturer installOutputCapturer(ForkConfiguration config) {
-			if( config.isCaptureStandardOutput() ) {
-				OutputCapturer outputCapturer;
-				if( config.isHideStandardOutput() ) {
-					outputCapturer = new OutputCapturer(NullOutputStream.INSTANCE, System.err, Charset.defaultCharset());
-				} else {
-					outputCapturer = new OutputCapturer(System.out, System.err, Charset.defaultCharset());
-				}
-				new OutputCapturerInstaller(new SystemOutErr()).install(outputCapturer);
-				return outputCapturer;
-			} else {
-				return null;
-			}
-		}
 
 		void runTests(ObjectInputStream is, final ObjectOutputStream os) throws Exception {
 			final ForkConfiguration config = (ForkConfiguration) is.readObject();
-			PrintStream originalStdout = System.out;
-			OutputCapturer outputCapturer = installOutputCapturer(config);
 
 			ExecutorService executor = executorService(config, os);
 
@@ -286,7 +273,7 @@ public class ForkMain {
 						logWarn(os, "Couldn't find a runner for framework " + suites.getFrameworkName());
 					} else {
 						Task[] tasks = runner.tasks(suites.getTaskDefs());
-						runTestTasks(executor, tasks, loggers, os, outputCapturer, config.isHideStandardOutput(), originalStdout);
+						runTestTasks(executor, tasks, loggers, os);
 					}
 					write(os, ForkTags.Done);
 				} else {
@@ -300,11 +287,11 @@ public class ForkMain {
 			}
 		}
 
-		void runTestTasks(ExecutorService executor, Task[] tasks, Logger[] loggers, ObjectOutputStream os, OutputCapturer outputCapturer, final boolean printFailedStdout, final PrintStream originalStdout) {
+		void runTestTasks(ExecutorService executor, Task[] tasks, Logger[] loggers, ObjectOutputStream os) {
 			if( tasks.length > 0 ) {
 				List<Future<Task[]>> futureNestedTasks = new ArrayList<Future<Task[]>>();
 				for( Task task : tasks ) {
-					futureNestedTasks.add(runTest(executor, task, loggers, os, outputCapturer, printFailedStdout, originalStdout));
+					futureNestedTasks.add(runTest(executor, task, loggers, os));
 				}
 
 				// Note: this could be optimized further, we could have a callback once a test finishes that executes immediately the nested tasks
@@ -317,11 +304,11 @@ public class ForkMain {
 						logError(os, "Failed to execute task " + futureNestedTask + ": " + e.getMessage());
 					}
 				}
-				runTestTasks(executor, nestedTasks.toArray(new Task[nestedTasks.size()]), loggers, os, outputCapturer, printFailedStdout, originalStdout);
+				runTestTasks(executor, nestedTasks.toArray(new Task[nestedTasks.size()]), loggers, os);
 			}
 		}
 
-		Future<Task[]> runTest(ExecutorService executor, final Task task, final Logger[] loggers, final ObjectOutputStream os, final OutputCapturer outputCapturer, final boolean printFailedStdout, final PrintStream originalStdout) {
+		Future<Task[]> runTest(ExecutorService executor, final Task task, final Logger[] loggers, final ObjectOutputStream os) {
 			// one thread per suite
 			return executor.submit(new Callable<Task[]>() {
 				@Override
@@ -330,23 +317,12 @@ public class ForkMain {
 					final TaskDef taskDef = task.taskDef();
 					final String suiteName = taskDef.fullyQualifiedName();
 					writeStartSuite(os, suiteName);
-					final OutputStringBuilder outputCapture = new OutputStringBuilder();
-					if(outputCapturer != null ) {
-						outputCapturer.captureTo(outputCapture);
-					} // if no output capturer was defined then outputCapture will always return ""
 
 					try {
 						EventHandler handler = new EventHandler() {
 							public void handle(Event e){
-								// note: we suppose the test-framework won't be executing tests of the same suite
-								//       concurrently. If it did, this output capture strategy would be invalid.
-								// TODO capture stderr
 								ForkEvent event = new ForkEvent(e);
-								String stdout = outputCapture.getOutAndReset();
-								if( (event.status == Status.Error || event.status == Status.Failure) && printFailedStdout) {
-									originalStdout.print(stdout);
-								}
-								writeEndTest(os, suiteName, stdout, event);
+								writeEndTest(os, suiteName, event);
 							}
 						};
 						logDebug(os, "  Running " + taskDef);

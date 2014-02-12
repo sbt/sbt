@@ -7,6 +7,7 @@ import org.backuity.matchete.{Matcher, AssertionMatchers, XmlMatchers, FileMatch
 
 object JUnitXmlReportTest extends Build with AssertionMatchers with XmlMatchers with FileMatchers {
 	val checkReport = taskKey[Unit]("Check the test reports")
+	val checkReportNoStdOut = taskKey[Unit]("Check the test reports (not checking stdout)")
 	val checkNoReport = taskKey[Unit]("Check that no reports are present")
 
 	private val oneSecondReportFile = "target/test-reports/a.pkg.OneSecondTest.xml"
@@ -27,48 +28,11 @@ object JUnitXmlReportTest extends Build with AssertionMatchers with XmlMatchers 
 		testReportJUnitXml := true,
 
 		checkReport := {
-			val oneSecondReport = XML.loadFile(oneSecondReportFile)
-			oneSecondReport must haveLabel("testsuite")
-			oneSecondReport must haveAttribute("name", equalTo("a.pkg.OneSecondTest"))
+			doCheckReport(checkStdOut = true)
+		},
 
-			// junit-interface does not report time yet...
-//			oneSecondReport must haveAttribute("time", greaterThan(1f))
-
-			oneSecondReport \ "testcase" must containExactly(
-				a("one-second testcase") { case tc =>
-					tc must haveAttribute("name", equalTo("oneSecond"))
-					tc must haveAttribute("classname", equalTo("a.pkg.OneSecondTest"))
-//					tc must haveAttribute("time", greaterThan(1f))
-				})
-
-			val failingReport = XML.loadFile(failingReportFile)
-			failingReport must haveLabel("testsuite")
-			failingReport must haveAttribute("failures", equalTo("2"))
-//			failingReport must haveAttribute("time", greaterThan(1.5f)) // time is sumed-up in the testsuite element
-			failingReport must haveAttribute("name", equalTo("another.pkg.FailingTest"))
-			// TODO more checks -> the two test cases with time etc..
-
-			val failUponConstructionReport = XML.loadFile(failUponConstructionReportFile)
-			failUponConstructionReport must haveLabel("testsuite")
-			failUponConstructionReport must haveAttribute("errors", equalTo("1"))
-			(failUponConstructionReport \ "system-err").text must (contain("failed upon construction") and contain("RuntimeException"))
-			failUponConstructionReport \ "testcase" must haveSize(0)
-
-			val consoleReport = XML.loadFile(consoleReportFile)
-			consoleReport must haveLabel("testsuite")
-			consoleReport must haveAttribute("tests", equalTo("2"))
-			consoleReport must haveAttribute("name", equalTo("console.test.pkg.ConsoleTests"))
-			consoleReport must haveAttribute("failures", equalTo("0"))
-			consoleReport \ "testcase" must containExactly(
-				a("sayHello test-case") { case tc =>
-					tc must haveAttribute("name", equalTo("sayHello"))
-					tc must haveAttribute("classname", equalTo("console.test.pkg.ConsoleTests"))
-					tc \ "system-out" must haveTrimmedText("Hello\nWorld!")},
-
-				a("multiThreadedHello test-case") { case tc =>
-					tc must haveAttribute("name", equalTo("multiThreadedHello"))
-					tc must haveAttribute("classname", equalTo("console.test.pkg.ConsoleTests"))
-					(tc \ "system-out").text.trim.split("\n").toList must containElements( (for( i <- 1 to 15) yield s"Hello from thread $i") : _*)})
+		checkReportNoStdOut := {
+			doCheckReport(checkStdOut = false)
 		},
 
 		checkNoReport := {
@@ -78,4 +42,54 @@ object JUnitXmlReportTest extends Build with AssertionMatchers with XmlMatchers 
 			file(consoleReportFile) must not(exist)
 		}
 	))
+
+	private def doCheckReport(checkStdOut: Boolean) {
+		val oneSecondReport = XML.loadFile(oneSecondReportFile)
+		oneSecondReport must haveLabel("testsuite")
+		oneSecondReport must haveAttribute("name", equalTo("a.pkg.OneSecondTest"))
+
+		// junit-interface does not report time yet...
+		//			oneSecondReport must haveAttribute("time", greaterThan(1f))
+
+		oneSecondReport \ "testcase" must containExactly(
+			a("one-second testcase") { case tc =>
+				tc must haveAttribute("name", equalTo("oneSecond"))
+				tc must haveAttribute("classname", equalTo("a.pkg.OneSecondTest"))
+				//					tc must haveAttribute("time", greaterThan(1f))
+			})
+
+		val failingReport = XML.loadFile(failingReportFile)
+		failingReport must haveLabel("testsuite")
+		failingReport must haveAttribute("failures", equalTo("2"))
+		//			failingReport must haveAttribute("time", greaterThan(1.5f)) // time is sumed-up in the testsuite element
+		failingReport must haveAttribute("name", equalTo("another.pkg.FailingTest"))
+		// TODO more checks -> the two test cases with time etc..
+
+		val failUponConstructionReport = XML.loadFile(failUponConstructionReportFile)
+		failUponConstructionReport must haveLabel("testsuite")
+		failUponConstructionReport must haveAttribute("errors", equalTo("1"))
+		(failUponConstructionReport \ "system-err").text must (contain("failed upon construction") and contain("RuntimeException"))
+		failUponConstructionReport \ "testcase" must haveSize(0)
+
+		val consoleReport = XML.loadFile(consoleReportFile)
+		consoleReport must haveLabel("testsuite")
+		consoleReport must haveAttribute("tests", equalTo("2"))
+		consoleReport must haveAttribute("name", equalTo("console.test.pkg.ConsoleTests"))
+		consoleReport must haveAttribute("failures", equalTo("0"))
+		consoleReport \ "testcase" must containExactly(
+			a("sayHello test-case") { case tc =>
+				tc must haveAttribute("name", equalTo("sayHello"))
+				tc must haveAttribute("classname", equalTo("console.test.pkg.ConsoleTests"))
+				if( checkStdOut ) {
+					tc \ "system-out" must haveTrimmedText("Hello\nWorld!")
+				}},
+
+			a("multiThreadedHello test-case") { case tc =>
+				tc must haveAttribute("name", equalTo("multiThreadedHello"))
+				tc must haveAttribute("classname", equalTo("console.test.pkg.ConsoleTests"))
+				if( checkStdOut ) {
+					(tc \ "system-out").text.trim.split("\n").toList must containElements( (for( i <- 1 to 15) yield s"Hello from thread $i") : _*)
+				}})
+
+	}
 }
