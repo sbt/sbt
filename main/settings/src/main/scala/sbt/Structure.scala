@@ -27,7 +27,7 @@ sealed trait ScopedTaskable[T] extends Scoped {
 
 /** Identifies a setting.  It consists of three parts: the scope, the name, and the type of a value associated with this key.
 * The scope is represented by a value of type Scope.
-* The name and the type are represented by a value of type AttributeKey[T].
+* The name and the type are represented by a value of type `AttributeKey[T]`.
 * Instances are constructed using the companion object. */
 sealed abstract class SettingKey[T] extends ScopedTaskable[T] with KeyedInitialize[T] with Scoped.ScopingSetting[SettingKey[T]] with Scoped.DefinableSetting[T]
 {
@@ -52,7 +52,7 @@ sealed abstract class SettingKey[T] extends ScopedTaskable[T] with KeyedInitiali
 
 /** Identifies a task.  It consists of three parts: the scope, the name, and the type of the value computed by a task associated with this key.
 * The scope is represented by a value of type Scope.
-* The name and the type are represented by a value of type AttributeKey[Task[T]].
+* The name and the type are represented by a value of type `AttributeKey[Task[T]]`.
 * Instances are constructed using the companion object. */
 sealed abstract class TaskKey[T] extends ScopedTaskable[T] with KeyedInitialize[Task[T]] with Scoped.ScopingSetting[TaskKey[T]] with Scoped.DefinableTask[T]
 {
@@ -76,7 +76,7 @@ sealed abstract class TaskKey[T] extends ScopedTaskable[T] with KeyedInitialize[
 /** Identifies an input task.  An input task parses input and produces a task to run.
 * It consists of three parts: the scope, the name, and the type of the value produced by an input task associated with this key.
 * The scope is represented by a value of type Scope.
-* The name and the type are represented by a value of type AttributeKey[InputTask[T]].
+* The name and the type are represented by a value of type `AttributeKey[InputTask[T]]`.
 * Instances are constructed using the companion object. */
 sealed trait InputKey[T] extends Scoped with KeyedInitialize[InputTask[T]] with Scoped.ScopingSetting[InputKey[T]] with Scoped.DefinableSetting[InputTask[T]]
 {
@@ -95,6 +95,21 @@ object Scoped
 	implicit def taskScopedToKey[T](s: TaskKey[T]): ScopedKey[Task[T]] = ScopedKey(s.scope, s.key)
 	implicit def inputScopedToKey[T](s: InputKey[T]): ScopedKey[InputTask[T]] = ScopedKey(s.scope, s.key)
 
+    /** 
+      * Mixin trait for adding convenience vocabulary associated with specifiying the [[Scope]] of a setting.
+      * Allows specification of the Scope or part of the [[Scope]] of a setting being referenced. 
+      * @example 
+      *  {{{
+      *  name in Global := "hello Global scope"
+      * 
+      *  name in (Compile, packageBin) := "hello Compile scope packageBin"
+      *  
+      *  name in Compile := "hello Compile scope"
+
+      *  name.in(Compile).:=("hello ugly syntax")
+      *  }}}
+      * 
+      */
 	sealed trait ScopingSetting[Result]
 	{
 		def in(s: Scope): Result
@@ -113,16 +128,25 @@ object Scoped
 	def scopedInput[T](s: Scope, k: AttributeKey[InputTask[T]]): InputKey[T]  =  new InputKey[T] { val scope = s; val key = k }
 	def scopedTask[T](s: Scope, k: AttributeKey[Task[T]]): TaskKey[T]  =  new TaskKey[T] { val scope = s; val key = k }
 
+    /** 
+      * Mixin trait for adding convenience vocabulary associated with applying a setting to a configuration item.
+      */
 	sealed trait DefinableSetting[S]
 	{
 		def scopedKey: ScopedKey[S]
 
 		private[sbt] final def :==(app: S): Setting[S]  =  macro std.TaskMacro.settingAssignPure[S]
+        /** Binds a single value to this. A new `Setting` is defined using the value(s) of `app`. */
 		final def <<= (app: Initialize[S]): Setting[S]  =  macro std.TaskMacro.settingAssignPosition[S]
+        /** Internally used function for setting a value along with the `.sbt` file location where it is defined. */
 		final def set (app: Initialize[S], source: SourcePosition): Setting[S]  =  setting(scopedKey, app, source)
+        /** Setting accessor with explicit Scope specification. */
 		final def get(settings: Settings[Scope]): Option[S] = settings.get(scopedKey.scope, scopedKey.key)
+        /** Lift this into an Option. */
 		final def ? : Initialize[Option[S]] = Def.optional(scopedKey)(idFun)
+        /** Lift this into an Option, and then call `getOrElse` using `i` as the fallback value. */
 		final def or[T >: S](i: Initialize[T]): Initialize[T] = (this.?, i)(_ getOrElse _ )
+        /** Lift this into an Option, and then call `getOrElse`, evaluating `or` if needed. */
 		final def ??[T >: S](or: => T): Initialize[T] = Def.optional(scopedKey)(_ getOrElse or )
 	}
 	final class RichInitialize[S](init: Initialize[S])
