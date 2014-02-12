@@ -87,7 +87,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 		val value = (cl: ClassLoader) => getValue[Any](i.enclosingModule, i.loader(cl))
 		new EvalResult(i.extra, value, i.generated, i.enclosingModule)
 	}
-	def evalDefinitions(definitions: Seq[(String,Range)], imports: EvalImports, srcName: String, valTypes: Seq[String]): EvalDefinitions =
+	def evalDefinitions(definitions: Seq[(String,scala.Range)], imports: EvalImports, srcName: String, valTypes: Seq[String]): EvalDefinitions =
 	{
 		require(definitions.nonEmpty, "Definitions to evaluate cannot be empty.")
 		val ev = new EvalType[Seq[String]] {
@@ -349,7 +349,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 	}
 	/** Constructs a CompilationUnit for each definition, which can be used to independently parse the definition into a Tree.
 	* Additionally, a CompilationUnit for the combined definitions is constructed for use by combined compilation after parsing. */
-	private[this] def mkDefsUnit(srcName: String, definitions: Seq[(String,Range)]): (CompilationUnit, Seq[CompilationUnit]) =
+	private[this] def mkDefsUnit(srcName: String, definitions: Seq[(String,scala.Range)]): (CompilationUnit, Seq[CompilationUnit]) =
 	{
 		def fragmentUnit(content: String, lineMap: Array[Int]) = new CompilationUnit(fragmentSourceFile(srcName, content, lineMap))
 
