@@ -276,7 +276,7 @@ object Sbt extends Build
 		artifact in (Compile, packageSrc) := Artifact(srcID).copy(configurations = Compile :: Nil).extra("e:component" -> srcID)
 	)
 	def compilerSettings = Seq(
-		libraryDependencies <+= scalaVersion( "org.scala-lang" % "scala-compiler" % _ % "test" excludeAll(ExclusionRule(organization = "org.scala-lang.modules"))),
+		libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _ % "test"),
 		unmanagedJars in Test <<= (packageSrc in compileInterfaceSub in Compile).map(x => Seq(x).classpath)
 	)
 	def precompiled(scalav: String): Project = baseProject(compilePath / "interface", "Precompiled " + scalav.replace('.', '_')) dependsOn(interfaceSub) settings(precompiledSettings : _*) settings(
@@ -290,6 +290,6 @@ object Sbt extends Build
 		sources in Test := Nil
 	)
 	def ioSettings: Seq[Setting[_]] = Seq(
-		libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _ % "test" excludeAll(ExclusionRule(organization = "org.scala-lang.modules")))
+		libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _ % "test")
 	)
 }
