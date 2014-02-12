@@ -136,19 +136,42 @@ object Scoped
 		def scopedKey: ScopedKey[S]
 
 		private[sbt] final def :==(app: S): Setting[S]  =  macro std.TaskMacro.settingAssignPure[S]
-        /** Binds a single value to this. A new `Setting` is defined using the value(s) of `app`. */
+
+        /** Binds a single value to this. A new [Def.Setting] is defined using the value(s) of `app`. 
+          * @param app value to bind to this key
+          * @return setting binding this key to the given value.
+          */
 		final def <<= (app: Initialize[S]): Setting[S]  =  macro std.TaskMacro.settingAssignPosition[S]
+
         /** Internally used function for setting a value along with the `.sbt` file location where it is defined. */
 		final def set (app: Initialize[S], source: SourcePosition): Setting[S]  =  setting(scopedKey, app, source)
-        /** Setting accessor with explicit Scope specification. */
+
+        /** From the given [[Settings]], extract the value bound to this key. */
 		final def get(settings: Settings[Scope]): Option[S] = settings.get(scopedKey.scope, scopedKey.key)
-        /** Lift this into an Option. */
+
+        /** Creates an [[Def.Initialize]] with value [[scala.None]] if there was no previous definition of this key, 
+          * and `[[scala.Some]](value)` if a definition exists. Useful for when you want to use the ''existence'' of 
+          * one setting in order to define another setting. 
+          * @return currently bound value wrapped in `Initialize[Some[T]]`, or `Initialize[None]` if unbound. */
 		final def ? : Initialize[Option[S]] = Def.optional(scopedKey)(idFun)
-        /** Lift this into an Option, and then call `getOrElse` using `i` as the fallback value. */
+
+        /** Creates an [[Def.Initialize]] with value bound to this key, or returns `i` parameter if unbound.
+          * @param i value to return if this setting doesn't have a value.
+          * @return currently bound setting value, or `i` if unbound.
+          */
 		final def or[T >: S](i: Initialize[T]): Initialize[T] = (this.?, i)(_ getOrElse _ )
-        /** Lift this into an Option, and then call `getOrElse`, evaluating `or` if needed. */
+
+        /** Like [[?]], but with a call-by-name parameter rather than an existing [[Def.Initialize]].
+          * Useful when you want to have a value computed when no value is bound to this key. 
+          * @param or by-name expression evaluated when a value is needed.
+          * @return currently bound setting value, or the result of `or` if unbound.
+          */
 		final def ??[T >: S](or: => T): Initialize[T] = Def.optional(scopedKey)(_ getOrElse or )
 	}
+
+    /**
+      * Wraps an [[sbt.Def.Initialize]] instance to provide `map` and `flatMap` symantics.
+      */
 	final class RichInitialize[S](init: Initialize[S])
 	{
 		def map[T](f: S => T): Initialize[Task[T]] = init(s => mktask(f(s)) )
