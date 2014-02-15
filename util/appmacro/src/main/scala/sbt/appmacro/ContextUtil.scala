@@ -43,7 +43,6 @@ final class ContextUtil[C <: Context](val ctx: C)
 
 	val powerContext = ctx.asInstanceOf[reflect.macros.runtime.Context]
 	val global: powerContext.universe.type = powerContext.universe
-	def callsiteTyper: global.analyzer.Typer = powerContext.callsiteTyper
 
 	lazy val alistType = ctx.typeOf[AList[KList]]
 	lazy val alist: Symbol = alistType.typeSymbol.companionSymbol
@@ -143,7 +142,7 @@ final class ContextUtil[C <: Context](val ctx: C)
 
 	/** Creates a new anonymous function symbol with Position `pos`. */
 	def functionSymbol(pos: Position): Symbol =
-		callsiteTyper.context.owner.newAnonymousFunctionValue(pos.asInstanceOf[global.Position]).asInstanceOf[ctx.universe.Symbol]
+		enclosingOwner.asInstanceOf[global.Symbol].newAnonymousFunctionValue(pos.asInstanceOf[global.Position]).asInstanceOf[ctx.universe.Symbol]
 
 	def functionType(args: List[Type], result: Type): Type =
 		appliedType(definitions.FunctionClass(args.length), args :+ result)
