@@ -40,6 +40,7 @@ final class ContextUtil[C <: Context](val ctx: C)
 		import ctx.universe.{Apply=>ApplyTree,_}
 		import ctx.internal._
 		import decorators._
+		import Flag._
 
 	val powerContext = ctx.asInstanceOf[reflect.macros.runtime.Context]
 	val global: powerContext.universe.type = powerContext.universe
@@ -119,7 +120,7 @@ final class ContextUtil[C <: Context](val ctx: C)
 
 	/** Creates a new, synthetic type variable with the specified `owner`. */
 	def newTypeVariable(owner: Symbol, prefix: String = "T0"): TypeSymbol =
-		owner.asInstanceOf[global.Symbol].newSyntheticTypeParam(prefix, 0L).asInstanceOf[ctx.universe.TypeSymbol]
+		owner.newTypeSymbol(newTypeName(prefix), NoPosition, PARAM | DEFERRED).setInfo(emptyTypeBounds)
 
 	/** The type representing the type constructor `[X] X` */
 	lazy val idTC: Type =
