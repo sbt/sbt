@@ -162,25 +162,11 @@ final class ContextUtil[C <: Context](val ctx: C)
 	/** Creates a Function tree using `functionSym` as the Symbol and changing `initialOwner` to `functionSym` in `body`.*/
 	def createFunction(params: List[ValDef], body: Tree, functionSym: Symbol): Tree =
 	{
-		changeOwner(body, initialOwner, functionSym)
+		import internal.decorators._
+		body.changeOwner(initialOwner, functionSym)
 		val f = Function(params, body)
 		setSymbol(f, functionSym)
 		f
-	}
-
-	def changeOwner(tree: Tree, prev: Symbol, next: Symbol): Unit =
-		new ChangeOwnerAndModuleClassTraverser(prev.asInstanceOf[global.Symbol], next.asInstanceOf[global.Symbol]).traverse(tree.asInstanceOf[global.Tree])
-
-	// Workaround copied from scala/async:can be removed once https://github.com/scala/scala/pull/3179 is merged.
-	private[this] class ChangeOwnerAndModuleClassTraverser(oldowner: global.Symbol, newowner: global.Symbol) extends global.ChangeOwnerTraverser(oldowner, newowner)
-	{
-		override def traverse(tree: global.Tree) {
-			tree match {
-				case _: global.DefTree => change(tree.symbol.moduleClass)
-				case _ =>
-			}
-			super.traverse(tree)
-		}
 	}
 
 	/** Returns the Symbol that references the statically accessible singleton `i`. */
