@@ -38,7 +38,8 @@ object ContextUtil {
 final class ContextUtil[C <: Context](val ctx: C)
 {
 		import ctx.universe.{Apply=>ApplyTree,_}
-		import compat._
+		import internal._
+		import decorators._
 
 	val powerContext = ctx.asInstanceOf[reflect.macros.runtime.Context]
 	val global: powerContext.universe.type = powerContext.universe
@@ -64,8 +65,8 @@ final class ContextUtil[C <: Context](val ctx: C)
 	{
 		val SYNTHETIC = (1 << 21).toLong.asInstanceOf[FlagSet]
 		val sym = owner.newTermSymbol(freshTermName("q"), pos, SYNTHETIC)
-		setInfo(sym, tpe)
-		val vd = ValDef(sym, EmptyTree)
+		sym.setInfo(tpe)
+		val vd = valDef(sym, EmptyTree)
 		vd.setPos(pos)
 		vd
 	}
@@ -139,11 +140,11 @@ final class ContextUtil[C <: Context](val ctx: C)
 	{
 		val tc = newTypeVariable(owner)
 		val arg = newTypeVariable(tc, "x")
-		tc.setTypeSignature(PolyType(arg :: Nil, emptyTypeBounds))
+		tc.setInfo(polyType(arg :: Nil, emptyTypeBounds))
 		tc
 	}
 	/** >: Nothing <: Any */
-	def emptyTypeBounds: TypeBounds = TypeBounds(definitions.NothingClass.toType, definitions.AnyClass.toType)
+	def emptyTypeBounds: TypeBounds = typeBounds(definitions.NothingClass.toType, definitions.AnyClass.toType)
 
 	/** Creates a new anonymous function symbol with Position `pos`. */
 	def functionSymbol(pos: Position): Symbol =

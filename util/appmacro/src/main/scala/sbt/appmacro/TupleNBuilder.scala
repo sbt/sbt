@@ -18,7 +18,7 @@ object TupleNBuilder extends TupleBuilder
 	{
 		val util = ContextUtil[c.type](c)
 			import c.universe.{Apply=>ApplyTree,_}
-			import compat._
+			import internal._
 			import util._
 
 		val global: Global = c.universe.asInstanceOf[Global]
@@ -29,7 +29,7 @@ object TupleNBuilder extends TupleBuilder
 			val tcVariable: Symbol = newTCVariable(util.initialOwner)
 			val tupleTypeArgs = inputs.map(in => typeRef(NoPrefix, tcVariable, in.tpe :: Nil).asInstanceOf[global.Type])
 			val tuple = global.definitions.tupleType(tupleTypeArgs)
-			PolyType(tcVariable :: Nil, tuple.asInstanceOf[Type] )
+			polyType(tcVariable :: Nil, tuple.asInstanceOf[Type] )
 		}
 		val resultType = appliedType(representationC, idTC :: Nil)
 

@@ -14,7 +14,7 @@ object KListBuilder extends TupleBuilder
 		val ctx: c.type = c
 		val util = ContextUtil[c.type](c)
 			import c.universe.{Apply=>ApplyTree,_}
-			import compat._
+			import internal._
 			import util._
 
 		val knilType = c.typeOf[KNil]
@@ -60,7 +60,7 @@ object KListBuilder extends TupleBuilder
 		* When applied to `M`, this type gives the type of the `input` KList. */
 		val klistType: Type = (inputs :\ knilType)( (in, klist) => kconsType(in.tpe, klist) )
 
-		val representationC = PolyType(tcVariable :: Nil, klistType)
+		val representationC = polyType(tcVariable :: Nil, klistType)
 		val resultType = appliedType(representationC, idTC :: Nil)
 		val input = klist
 		val alistInstance: ctx.universe.Tree = TypeApply(select(Ident(alist), "klist"), TypeTree(representationC) :: Nil)
