@@ -14,6 +14,7 @@ object KListBuilder extends TupleBuilder
 		val ctx: c.type = c
 		val util = ContextUtil[c.type](c)
 			import c.universe.{Apply=>ApplyTree,_}
+			import compat._
 			import util._
 
 		val knilType = c.typeOf[KNil]

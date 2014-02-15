@@ -18,6 +18,7 @@ object TupleNBuilder extends TupleBuilder
 	{
 		val util = ContextUtil[c.type](c)
 			import c.universe.{Apply=>ApplyTree,_}
+			import compat._
 			import util._
 
 		val global: Global = c.universe.asInstanceOf[Global]

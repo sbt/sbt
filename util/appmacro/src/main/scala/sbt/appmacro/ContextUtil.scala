@@ -38,6 +38,7 @@ object ContextUtil {
 final class ContextUtil[C <: Context](val ctx: C)
 {
 		import ctx.universe.{Apply=>ApplyTree,_}
+		import compat._
 
 	val powerContext = ctx.asInstanceOf[reflect.macros.runtime.Context]
 	val global: powerContext.universe.type = powerContext.universe
