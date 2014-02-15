@@ -32,12 +32,16 @@ object ContextUtil {
 	def unexpectedTree[C <: Context](tree: C#Tree): Nothing = sys.error("Unexpected macro application tree (" + tree.getClass + "): " + tree)
 }
 
+// TODO 2.11 Remove this after dropping 2.10.x support.
+private object HasCompat { val compat = ??? }; import HasCompat._
+
 /** Utility methods for macros.  Several methods assume that the context's universe is a full compiler (`scala.tools.nsc.Global`).
 * This is not thread safe due to the underlying Context and related data structures not being thread safe.
 * Use `ContextUtil[c.type](c)` to construct. */
 final class ContextUtil[C <: Context](val ctx: C)
 {
 		import ctx.universe.{Apply=>ApplyTree,_}
+		import compat._
 
 	val powerContext = ctx.asInstanceOf[reflect.macros.runtime.Context]
 	val global: powerContext.universe.type = powerContext.universe
