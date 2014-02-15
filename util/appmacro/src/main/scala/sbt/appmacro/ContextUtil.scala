@@ -170,11 +170,8 @@ final class ContextUtil[C <: Context](val ctx: C)
 	def select(t: Tree, name: String): Tree = Select(t, newTermName(name))
 
 	/** Returns the symbol for the non-private method named `name` for the class/module `obj`. */
-	def method(obj: Symbol, name: String): Symbol = {
-		val ts: Type = obj.typeSignature
-		val m: global.Symbol = ts.asInstanceOf[global.Type].nonPrivateMember(global.newTermName(name))
-		m.asInstanceOf[Symbol]
-	}
+	def method(obj: Symbol, name: String): Symbol =
+		obj.info.member(TermName(name)).filter(!_.isPrivate)
 
 	/** Returns a Type representing the type constructor tcp.<name>.  For example, given
 	*  `object Demo { type M[x] = List[x] }`, the call `extractTC(Demo, "M")` will return a type representing
@@ -182,9 +179,8 @@ final class ContextUtil[C <: Context](val ctx: C)
 	**/
 	def extractTC(tcp: AnyRef with Singleton, name: String)(implicit it: ctx.TypeTag[tcp.type]): ctx.Type =
 	{
-		val itTpe = it.tpe.asInstanceOf[global.Type]
-		val m = itTpe.nonPrivateMember(global.newTypeName(name))
-		val tc = itTpe.memberInfo(m).asInstanceOf[ctx.universe.Type]
+		val m = it.tpe.member(TypeName(name)).filter(!_.isPrivate)
+		val tc = m.infoIn(it.tpe)
 		assert(tc != NoType && tc.takesTypeArgs, "Invalid type constructor: " + tc)
 		tc
 	}
