@@ -142,7 +142,7 @@ final class ContextUtil[C <: Context](val ctx: C)
 
 	/** Creates a new anonymous function symbol with Position `pos`. */
 	def functionSymbol(pos: Position): Symbol =
-		enclosingOwner.asInstanceOf[global.Symbol].newAnonymousFunctionValue(pos.asInstanceOf[global.Position]).asInstanceOf[ctx.universe.Symbol]
+		enclosingOwner.newTermSymbol(TermName("$anonfun"), pos, SYNTHETIC) setInfo NoType
 
 	def functionType(args: List[Type], result: Type): Type =
 		appliedType(definitions.FunctionClass(args.length), args :+ result)
