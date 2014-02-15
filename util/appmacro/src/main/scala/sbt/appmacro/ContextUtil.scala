@@ -150,10 +150,7 @@ final class ContextUtil[C <: Context](val ctx: C)
 		callsiteTyper.context.owner.newAnonymousFunctionValue(pos.asInstanceOf[global.Position]).asInstanceOf[ctx.universe.Symbol]
 
 	def functionType(args: List[Type], result: Type): Type =
-	{
-		val tpe = global.definitions.functionType(args.asInstanceOf[List[global.Type]], result.asInstanceOf[global.Type])
-		tpe.asInstanceOf[Type]
-	}
+		appliedType(definitions.FunctionClass(args.length), args :+ result)
 
 	/** Create a Tree that references the `val` represented by `vd`, copying attributes from `replaced`. */
 	def refVal(replaced: Tree, vd: ValDef): Tree =
