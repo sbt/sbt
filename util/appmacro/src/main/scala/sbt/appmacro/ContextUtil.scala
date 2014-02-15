@@ -62,7 +62,6 @@ final class ContextUtil[C <: Context](val ctx: C)
 	* Position `pos`, an empty implementation (no rhs), and owned by `owner`. */
 	def freshValDef(tpe: Type, pos: Position, owner: Symbol): ValDef =
 	{
-		val SYNTHETIC = (1 << 21).toLong.asInstanceOf[FlagSet]
 		val sym = owner.newTermSymbol(freshTermName("q"), pos, SYNTHETIC)
 		sym.setInfo(tpe)
 		val vd = valDef(sym, EmptyTree)
