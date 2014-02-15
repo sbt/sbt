@@ -3,7 +3,6 @@ package appmacro
 
 	import scala.reflect._
 	import macros._
-	import scala.tools.nsc.Global
 	import ContextUtil.{DynamicDependencyError, DynamicReferenceError}
 
 object ContextUtil {
@@ -32,7 +31,7 @@ object ContextUtil {
 	def unexpectedTree[C <: Context](tree: C#Tree): Nothing = sys.error("Unexpected macro application tree (" + tree.getClass + "): " + tree)
 }
 
-/** Utility methods for macros.  Several methods assume that the context's universe is a full compiler (`scala.tools.nsc.Global`).
+/** Utility methods for macros.
 * This is not thread safe due to the underlying Context and related data structures not being thread safe.
 * Use `ContextUtil[c.type](c)` to construct. */
 final class ContextUtil[C <: Context](val ctx: C)
@@ -41,9 +40,6 @@ final class ContextUtil[C <: Context](val ctx: C)
 		import ctx.internal._
 		import decorators._
 		import Flag._
-
-	val powerContext = ctx.asInstanceOf[reflect.macros.runtime.Context]
-	val global: powerContext.universe.type = powerContext.universe
 
 	lazy val alistType = ctx.typeOf[AList[KList]]
 	lazy val alist: Symbol = alistType.typeSymbol.companionSymbol
