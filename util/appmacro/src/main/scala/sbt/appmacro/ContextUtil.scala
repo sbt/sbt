@@ -38,13 +38,12 @@ object ContextUtil {
 final class ContextUtil[C <: Context](val ctx: C)
 {
 		import ctx.universe.{Apply=>ApplyTree,_}
-		import internal._
+		import ctx.internal._
 		import decorators._
 
 	val powerContext = ctx.asInstanceOf[reflect.macros.runtime.Context]
 	val global: powerContext.universe.type = powerContext.universe
 	def callsiteTyper: global.analyzer.Typer = powerContext.callsiteTyper
-	val initialOwner: Symbol = callsiteTyper.context.owner.asInstanceOf[ctx.universe.Symbol]
 
 	lazy val alistType = ctx.typeOf[AList[KList]]
 	lazy val alist: Symbol = alistType.typeSymbol.companionSymbol
@@ -163,8 +162,7 @@ final class ContextUtil[C <: Context](val ctx: C)
 	/** Creates a Function tree using `functionSym` as the Symbol and changing `initialOwner` to `functionSym` in `body`.*/
 	def createFunction(params: List[ValDef], body: Tree, functionSym: Symbol): Tree =
 	{
-		import internal.decorators._
-		body.changeOwner(initialOwner, functionSym)
+		body.changeOwner(enclosingOwner, functionSym)
 		val f = Function(params, body)
 		setSymbol(f, functionSym)
 		f
