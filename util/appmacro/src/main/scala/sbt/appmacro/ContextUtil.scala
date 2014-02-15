@@ -117,11 +117,6 @@ final class ContextUtil[C <: Context](val ctx: C)
 	def mkTuple(args: List[Tree]): Tree =
 		global.gen.mkTuple(args.asInstanceOf[List[global.Tree]]).asInstanceOf[ctx.universe.Tree]
 
-	def setSymbol[Tree](t: Tree, sym: Symbol): Unit =
-		t.asInstanceOf[global.Tree].setSymbol(sym.asInstanceOf[global.Symbol])
-	def setInfo[Tree](sym: Symbol, tpe: Type): Unit =
-		sym.asInstanceOf[global.Symbol].setInfo(tpe.asInstanceOf[global.Type])
-
 	/** Creates a new, synthetic type variable with the specified `owner`. */
 	def newTypeVariable(owner: Symbol, prefix: String = "T0"): TypeSymbol =
 		owner.asInstanceOf[global.Symbol].newSyntheticTypeParam(prefix, 0L).asInstanceOf[ctx.universe.TypeSymbol]
