@@ -115,7 +115,8 @@ final class ContextUtil[C <: Context](val ctx: C)
 
 	/** Constructs a tuple value of the right TupleN type from the provided inputs.*/
 	def mkTuple(args: List[Tree]): Tree =
-		global.gen.mkTuple(args.asInstanceOf[List[global.Tree]]).asInstanceOf[ctx.universe.Tree]
+		if (args.length == 1) args.head
+		else q"(..$args)"
 
 	/** Creates a new, synthetic type variable with the specified `owner`. */
 	def newTypeVariable(owner: Symbol, prefix: String = "T0"): TypeSymbol =
