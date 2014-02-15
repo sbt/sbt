@@ -2,7 +2,6 @@ package sbt
 package appmacro
 
 	import Types.Id
-	import scala.tools.nsc.Global
 	import scala.reflect._
 	import macros._
 
@@ -16,26 +15,23 @@ object TupleNBuilder extends TupleBuilder
 
 	def make(c: Context)(mt: c.Type, inputs: Inputs[c.universe.type]): BuilderResult[c.type] = new BuilderResult[c.type]
 	{
+		import c.universe.{Apply=>ApplyTree,_}
+		import c.internal._
+		import decorators._
 		val util = ContextUtil[c.type](c)
-			import c.universe.{Apply=>ApplyTree,_}
-			import internal._
-			import util._
-
-		val global: Global = c.universe.asInstanceOf[Global]
-		val mTC: Type = mt.asInstanceOf[c.universe.Type]
 
 		val ctx: c.type = c
 		val representationC: PolyType = {
-			val tcVariable: Symbol = newTCVariable(util.initialOwner)
-			val tupleTypeArgs = inputs.map(in => typeRef(NoPrefix, tcVariable, in.tpe :: Nil).asInstanceOf[global.Type])
-			val tuple = global.definitions.tupleType(tupleTypeArgs)
-			polyType(tcVariable :: Nil, tuple.asInstanceOf[Type] )
+			val tcVariable: Symbol = util.newTCVariable(enclosingOwner)
+			val tupleTypeArgs = inputs.map(in => typeRef(NoPrefix, tcVariable, in.tpe :: Nil))
+			val tuple = appliedType(definitions.TupleClass(tupleTypeArgs.length), tupleTypeArgs)
+			polyType(tcVariable :: Nil, tuple)
 		}
-		val resultType = appliedType(representationC, idTC :: Nil)
+		val resultType = appliedType(representationC, util.idTC :: Nil)
 
-		val input: Tree = mkTuple(inputs.map(_.expr))
+		val input: Tree = util.mkTuple(inputs.map(_.expr))
 		val alistInstance: Tree = {
-			val selectTree = select(Ident(alist), TupleMethodName + inputs.size.toString)
+			val selectTree = util.select(Ident(util.alist), TupleMethodName + inputs.size.toString)
 			TypeApply(selectTree, inputs.map(in => TypeTree(in.tpe)))
 		}
 		def extract(param: ValDef): List[ValDef] = bindTuple(param, Nil, inputs.map(_.local), 1)
@@ -44,9 +40,9 @@ object TupleNBuilder extends TupleBuilder
 			params match
 			{
 				case (x @ ValDef(mods, name, tpt, _)) :: xs =>
-					val rhs = select(Ident(param.name), "_" + i.toString)
+					val rhs = util.select(Ident(param.name), "_" + i.toString)
 					val newVal = treeCopy.ValDef(x, mods, name, tpt, rhs)
-					util.setSymbol(newVal, x.symbol)
+					newVal.setSymbol(x.symbol)
 					bindTuple(param, newVal :: revBindings, xs, i+1)
 				case Nil => revBindings.reverse
 			}
