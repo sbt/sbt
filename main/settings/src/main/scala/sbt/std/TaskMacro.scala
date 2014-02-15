@@ -284,6 +284,8 @@ object TaskMacro
 	private[this] def inputTaskDynMacro0[T: c.WeakTypeTag](c: Context)(t: c.Expr[Initialize[Task[T]]]): c.Expr[Initialize[InputTask[T]]] =
 	{
 			import c.universe.{Apply=>ApplyTree,_}
+			import internal._
+			import decorators._
 
 		val tag = implicitly[c.WeakTypeTag[T]]
 		val util = ContextUtil[c.type](c)

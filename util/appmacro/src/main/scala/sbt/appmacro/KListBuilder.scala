@@ -2,7 +2,6 @@ package sbt
 package appmacro
 
 	import Types.Id
-	import scala.tools.nsc.Global
 	import scala.reflect._
 	import macros._
 
@@ -11,33 +10,34 @@ object KListBuilder extends TupleBuilder
 {
 	def make(c: Context)(mt: c.Type, inputs: Inputs[c.universe.type]): BuilderResult[c.type] = new BuilderResult[c.type]
 	{
-		val ctx: c.type = c
+		import c.universe.{Apply=>ApplyTree,_}
+		import c.internal._
+		import decorators._
 		val util = ContextUtil[c.type](c)
-			import c.universe.{Apply=>ApplyTree,_}
-			import util._
+		val ctx: c.type = c
 
 		val knilType = c.typeOf[KNil]
 		val knil = Ident(knilType.typeSymbol.companionSymbol)
 		val kconsTpe = c.typeOf[KCons[Int,KNil,List]]
 		val kcons = kconsTpe.typeSymbol.companionSymbol
-		val mTC: Type = mt.asInstanceOf[c.universe.Type]
+		val mTC: Type = mt
 		val kconsTC: Type = kconsTpe.typeConstructor
 
 		/** This is the L in the type function [L[x]] ...  */
-		val tcVariable: TypeSymbol = newTCVariable(util.initialOwner)
+		val tcVariable: TypeSymbol = util.newTCVariable(enclosingOwner)
 
 		/** Instantiates KCons[h, t <: KList[L], L], where L is the type constructor variable */
 		def kconsType(h: Type, t: Type): Type =
-			appliedType(kconsTC, h :: t :: refVar(tcVariable) :: Nil)
+			appliedType(kconsTC, h :: t :: util.refVar(tcVariable) :: Nil)
 
 		def bindKList(prev: ValDef, revBindings: List[ValDef], params: List[ValDef]): List[ValDef] =
 			params match
 			{
 				case (x @ ValDef(mods, name, tpt, _)) :: xs =>
-					val rhs = select(Ident(prev.name), "head")
+					val rhs = util.select(Ident(prev.name), "head")
 					val head = treeCopy.ValDef(x, mods, name, tpt, rhs)
-					util.setSymbol(head, x.symbol)
-					val tail = localValDef(TypeTree(), select(Ident(prev.name), "tail"))
+					head.setSymbol(x.symbol)
+					val tail = util.localValDef(TypeTree(), util.select(Ident(prev.name), "tail"))
 					val base = head :: revBindings
 					bindKList(tail, if(xs.isEmpty) base else tail :: base, xs)
 				case Nil => revBindings.reverse
@@ -59,10 +59,10 @@ object KListBuilder extends TupleBuilder
 		* When applied to `M`, this type gives the type of the `input` KList. */
 		val klistType: Type = (inputs :\ knilType)( (in, klist) => kconsType(in.tpe, klist) )
 
-		val representationC = PolyType(tcVariable :: Nil, klistType)
-		val resultType = appliedType(representationC, idTC :: Nil)
+		val representationC = polyType(tcVariable :: Nil, klistType)
+		val resultType = appliedType(representationC, util.idTC :: Nil)
 		val input = klist
-		val alistInstance: ctx.universe.Tree = TypeApply(select(Ident(alist), "klist"), TypeTree(representationC) :: Nil)
+		val alistInstance: Tree = TypeApply(util.select(Ident(util.alist), "klist"), TypeTree(representationC) :: Nil)
 		def extract(param: ValDef) = bindKList(param, Nil, inputs.map(_.local))
 	}
 }

@@ -3,7 +3,6 @@ package appmacro
 
 	import scala.reflect._
 	import macros._
-	import scala.tools.nsc.Global
 	import ContextUtil.{DynamicDependencyError, DynamicReferenceError}
 
 object ContextUtil {
@@ -32,17 +31,15 @@ object ContextUtil {
 	def unexpectedTree[C <: Context](tree: C#Tree): Nothing = sys.error("Unexpected macro application tree (" + tree.getClass + "): " + tree)
 }
 
-/** Utility methods for macros.  Several methods assume that the context's universe is a full compiler (`scala.tools.nsc.Global`).
+/** Utility methods for macros.
 * This is not thread safe due to the underlying Context and related data structures not being thread safe.
 * Use `ContextUtil[c.type](c)` to construct. */
 final class ContextUtil[C <: Context](val ctx: C)
 {
 		import ctx.universe.{Apply=>ApplyTree,_}
-
-	val powerContext = ctx.asInstanceOf[reflect.macros.runtime.Context]
-	val global: powerContext.universe.type = powerContext.universe
-	def callsiteTyper: global.analyzer.Typer = powerContext.callsiteTyper
-	val initialOwner: Symbol = callsiteTyper.context.owner.asInstanceOf[ctx.universe.Symbol]
+		import ctx.internal._
+		import decorators._
+		import Flag._
 
 	lazy val alistType = ctx.typeOf[AList[KList]]
 	lazy val alist: Symbol = alistType.typeSymbol.companionSymbol
@@ -61,10 +58,9 @@ final class ContextUtil[C <: Context](val ctx: C)
 	* Position `pos`, an empty implementation (no rhs), and owned by `owner`. */
 	def freshValDef(tpe: Type, pos: Position, owner: Symbol): ValDef =
 	{
-		val SYNTHETIC = (1 << 21).toLong.asInstanceOf[FlagSet]
 		val sym = owner.newTermSymbol(freshTermName("q"), pos, SYNTHETIC)
-		setInfo(sym, tpe)
-		val vd = ValDef(sym, EmptyTree)
+		sym.setInfo(tpe)
+		val vd = valDef(sym, EmptyTree)
 		vd.setPos(pos)
 		vd
 	}
@@ -114,16 +110,12 @@ final class ContextUtil[C <: Context](val ctx: C)
 
 	/** Constructs a tuple value of the right TupleN type from the provided inputs.*/
 	def mkTuple(args: List[Tree]): Tree =
-		global.gen.mkTuple(args.asInstanceOf[List[global.Tree]]).asInstanceOf[ctx.universe.Tree]
-
-	def setSymbol[Tree](t: Tree, sym: Symbol): Unit =
-		t.asInstanceOf[global.Tree].setSymbol(sym.asInstanceOf[global.Symbol])
-	def setInfo[Tree](sym: Symbol, tpe: Type): Unit =
-		sym.asInstanceOf[global.Symbol].setInfo(tpe.asInstanceOf[global.Type])
+		if (args.length == 1) args.head
+		else q"(..$args)"
 
 	/** Creates a new, synthetic type variable with the specified `owner`. */
 	def newTypeVariable(owner: Symbol, prefix: String = "T0"): TypeSymbol =
-		owner.asInstanceOf[global.Symbol].newSyntheticTypeParam(prefix, 0L).asInstanceOf[ctx.universe.TypeSymbol]
+		owner.newTypeSymbol(newTypeName(prefix), NoPosition, PARAM | DEFERRED).setInfo(emptyTypeBounds)
 
 	/** The type representing the type constructor `[X] X` */
 	lazy val idTC: Type =
@@ -138,21 +130,18 @@ final class ContextUtil[C <: Context](val ctx: C)
 	{
 		val tc = newTypeVariable(owner)
 		val arg = newTypeVariable(tc, "x")
-		tc.setTypeSignature(PolyType(arg :: Nil, emptyTypeBounds))
+		tc.setInfo(polyType(arg :: Nil, emptyTypeBounds))
 		tc
 	}
 	/** >: Nothing <: Any */
-	def emptyTypeBounds: TypeBounds = TypeBounds(definitions.NothingClass.toType, definitions.AnyClass.toType)
+	def emptyTypeBounds: TypeBounds = typeBounds(definitions.NothingClass.toType, definitions.AnyClass.toType)
 
 	/** Creates a new anonymous function symbol with Position `pos`. */
 	def functionSymbol(pos: Position): Symbol =
-		callsiteTyper.context.owner.newAnonymousFunctionValue(pos.asInstanceOf[global.Position]).asInstanceOf[ctx.universe.Symbol]
+		enclosingOwner.newTermSymbol(TermName("$anonfun"), pos, SYNTHETIC) setInfo NoType
 
 	def functionType(args: List[Type], result: Type): Type =
-	{
-		val tpe = global.definitions.functionType(args.asInstanceOf[List[global.Type]], result.asInstanceOf[global.Type])
-		tpe.asInstanceOf[Type]
-	}
+		appliedType(definitions.FunctionClass(args.length), args :+ result)
 
 	/** Create a Tree that references the `val` represented by `vd`, copying attributes from `replaced`. */
 	def refVal(replaced: Tree, vd: ValDef): Tree =
@@ -161,25 +150,10 @@ final class ContextUtil[C <: Context](val ctx: C)
 	/** Creates a Function tree using `functionSym` as the Symbol and changing `initialOwner` to `functionSym` in `body`.*/
 	def createFunction(params: List[ValDef], body: Tree, functionSym: Symbol): Tree =
 	{
-		changeOwner(body, initialOwner, functionSym)
+		body.changeOwner(enclosingOwner, functionSym)
 		val f = Function(params, body)
 		setSymbol(f, functionSym)
 		f
-	}
-
-	def changeOwner(tree: Tree, prev: Symbol, next: Symbol): Unit =
-		new ChangeOwnerAndModuleClassTraverser(prev.asInstanceOf[global.Symbol], next.asInstanceOf[global.Symbol]).traverse(tree.asInstanceOf[global.Tree])
-
-	// Workaround copied from scala/async:can be removed once https://github.com/scala/scala/pull/3179 is merged.
-	private[this] class ChangeOwnerAndModuleClassTraverser(oldowner: global.Symbol, newowner: global.Symbol) extends global.ChangeOwnerTraverser(oldowner, newowner)
-	{
-		override def traverse(tree: global.Tree) {
-			tree match {
-				case _: global.DefTree => change(tree.symbol.moduleClass)
-				case _ =>
-			}
-			super.traverse(tree)
-		}
 	}
 
 	/** Returns the Symbol that references the statically accessible singleton `i`. */
@@ -192,11 +166,8 @@ final class ContextUtil[C <: Context](val ctx: C)
 	def select(t: Tree, name: String): Tree = Select(t, newTermName(name))
 
 	/** Returns the symbol for the non-private method named `name` for the class/module `obj`. */
-	def method(obj: Symbol, name: String): Symbol = {
-		val ts: Type = obj.typeSignature
-		val m: global.Symbol = ts.asInstanceOf[global.Type].nonPrivateMember(global.newTermName(name))
-		m.asInstanceOf[Symbol]
-	}
+	def method(obj: Symbol, name: String): Symbol =
+		obj.info.member(TermName(name)).filter(!_.isPrivate)
 
 	/** Returns a Type representing the type constructor tcp.<name>.  For example, given
 	*  `object Demo { type M[x] = List[x] }`, the call `extractTC(Demo, "M")` will return a type representing
@@ -204,9 +175,8 @@ final class ContextUtil[C <: Context](val ctx: C)
 	**/
 	def extractTC(tcp: AnyRef with Singleton, name: String)(implicit it: ctx.TypeTag[tcp.type]): ctx.Type =
 	{
-		val itTpe = it.tpe.asInstanceOf[global.Type]
-		val m = itTpe.nonPrivateMember(global.newTypeName(name))
-		val tc = itTpe.memberInfo(m).asInstanceOf[ctx.universe.Type]
+		val m = it.tpe.member(TypeName(name)).filter(!_.isPrivate)
+		val tc = m.infoIn(it.tpe)
 		assert(tc != NoType && tc.takesTypeArgs, "Invalid type constructor: " + tc)
 		tc
 	}

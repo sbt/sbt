@@ -67,6 +67,8 @@ object InputWrapper
 	def wrapImpl[T: c.WeakTypeTag, S <: AnyRef with Singleton](c: Context, s: S, wrapName: String)(ts: c.Expr[Any], pos: c.Position)(implicit it: c.TypeTag[s.type]): c.Expr[T] =
 	{
 			import c.universe.{Apply=>ApplyTree,_}
+			import internal._
+			import decorators._
 		val util = new ContextUtil[c.type](c)
 		val iw = util.singleton(s)
 		val tpe = c.weakTypeOf[T]

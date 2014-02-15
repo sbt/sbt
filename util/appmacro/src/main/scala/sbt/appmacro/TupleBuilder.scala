@@ -2,11 +2,10 @@ package sbt
 package appmacro
 
 	import Types.Id
-	import scala.tools.nsc.Global
 	import scala.reflect._
 	import macros._
 
-/** 
+/**
 * A `TupleBuilder` abstracts the work of constructing a tuple data structure such as a `TupleN` or `KList`
 * and extracting values from it.  The `Instance` macro implementation will (roughly) traverse the tree of its argument
 * and ultimately obtain a list of expressions with type `M[T]` for different types `T`.
