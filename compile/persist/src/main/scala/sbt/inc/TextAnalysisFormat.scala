@@ -57,31 +57,33 @@ object TextAnalysisFormat {
 
 	def write(out: Writer, analysis: Analysis, setup: CompileSetup) {
 		VersionF.write(out)
-		// We start with relations because that's the part of greatest interest to external readers,
+		// We start with writing compile setup which contains value of the `nameHashing`
+		// flag that is needed to properly deserialize relations
+		FormatTimer.time("write setup") { CompileSetupF.write(out, setup) }
+		// Next we write relations because that's the part of greatest interest to external readers,
 		// who can abort reading early once they're read them.
 		FormatTimer.time("write relations") { RelationsF.write(out, analysis.relations) }
 		FormatTimer.time("write stamps") { StampsF.write(out, analysis.stamps) }
 		FormatTimer.time("write apis") { APIsF.write(out, analysis.apis) }
 		FormatTimer.time("write sourceinfos") { SourceInfosF.write(out, analysis.infos) }
 		FormatTimer.time("write compilations") { CompilationsF.write(out, analysis.compilations) }
-		FormatTimer.time("write setup") { CompileSetupF.write(out, setup) }
 		out.flush()
 	}
 
 	def read(in: BufferedReader): (Analysis, CompileSetup) = {
 		VersionF.read(in)
-		val relations = FormatTimer.time("read relations") { RelationsF.read(in) }
+		val setup = FormatTimer.time("read setup") { CompileSetupF.read(in) }
+		val relations = FormatTimer.time("read relations") { RelationsF.read(in, setup.nameHashing) }
 		val stamps = FormatTimer.time("read stamps") { StampsF.read(in) }
 		val apis = FormatTimer.time("read apis") { APIsF.read(in) }
 		val infos = FormatTimer.time("read sourceinfos") { SourceInfosF.read(in) }
 		val compilations = FormatTimer.time("read compilations") { CompilationsF.read(in) }
-		val setup = FormatTimer.time("read setup") { CompileSetupF.read(in) }
 
 		(Analysis.Empty.copy(stamps, apis, relations, infos, compilations), setup)
 	}
 
   private[this] object VersionF {
-		val currentVersion = "4"
+		val currentVersion = "5"
 
 		def write(out: Writer) {
 			out.write("format version: %s\n".format(currentVersion))
@@ -165,7 +167,7 @@ object TextAnalysisFormat {
 			writeRelation(Headers.usedNames, names)
 		}
 
-		def read(in: BufferedReader): Relations = {
+		def read(in: BufferedReader, nameHashing: Boolean): Relations = {
 			def readRelation[T](expectedHeader: String, s2t: String => T): Relation[File, T] = {
 				val items = readPairs(in)(expectedHeader, new File(_), s2t).toIterator
 				// Reconstruct the forward map. This is more efficient than Relation.empty ++ items.
@@ -216,9 +218,10 @@ object TextAnalysisFormat {
 			}
 			// we don't check for emptiness of publicInherited/inheritance relations because
 			// we assume that invariant that says they are subsets of direct/memberRef holds
-			assert((directSrcDeps == emptySource) || (memberRefSrcDeps == emptySourceDependencies),
-					"One mechanism is supported for tracking source dependencies at the time")
-			val nameHashing = memberRefSrcDeps != emptySourceDependencies
+			assert(nameHashing || (memberRefSrcDeps == emptySourceDependencies),
+				"When name hashing is disabled the `memberRef` relation should be empty.")
+			assert(!nameHashing || (directSrcDeps == emptySource),
+				"When name hashing is enabled the `direct` relation should be empty.")
 			val classes = readStringRelation(Headers.classes)
 			val names = readStringRelation(Headers.usedNames)
 
@@ -322,6 +325,7 @@ object TextAnalysisFormat {
 			val javacOptions = "javac options"
 			val compilerVersion = "compiler version"
 			val compileOrder = "compile order"
+			val nameHashing = "name hashing"
 		}
 
 		private[this] val singleOutputMode = "single"
@@ -340,16 +344,19 @@ object TextAnalysisFormat {
 			writeSeq(out)(Headers.javacOptions, setup.options.javacOptions, identity[String])
 			writeSeq(out)(Headers.compilerVersion, setup.compilerVersion :: Nil, identity[String])
 			writeSeq(out)(Headers.compileOrder, setup.order.name :: Nil, identity[String])
+			writeSeq(out)(Headers.nameHashing, setup.nameHashing :: Nil, (b: Boolean) => b.toString)
 		}
 
 		def read(in: BufferedReader): CompileSetup = {
 			def s2f(s: String) = new File(s)
+			def s2b(s: String): Boolean = s.toBoolean
 			val outputDirMode = readSeq(in)(Headers.outputMode, identity[String]).headOption
 			val outputAsMap = readMap(in)(Headers.outputDir, s2f, s2f)
 			val compileOptions = readSeq(in)(Headers.compileOptions, identity[String])
 			val javacOptions = readSeq(in)(Headers.javacOptions, identity[String])
 			val compilerVersion = readSeq(in)(Headers.compilerVersion, identity[String]).head
 			val compileOrder = readSeq(in)(Headers.compileOrder, identity[String]).head
+			val nameHashing = readSeq(in)(Headers.nameHashing, s2b).head
 
 			val output = outputDirMode match {
 				case Some(s) => s match {
@@ -370,7 +377,7 @@ object TextAnalysisFormat {
 			}
 
 			new CompileSetup(output, new CompileOptions(compileOptions, javacOptions), compilerVersion,
-				xsbti.compile.CompileOrder.valueOf(compileOrder))
+				xsbti.compile.CompileOrder.valueOf(compileOrder), nameHashing)
 		}
 	}
 
