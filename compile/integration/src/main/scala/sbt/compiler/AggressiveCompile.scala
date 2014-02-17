@@ -41,7 +41,8 @@ class AggressiveCompile(cacheFile: File)
 	    skip: Boolean = false,
 	    incrementalCompilerOptions: IncOptions)(implicit log: Logger): Analysis =
 	{
-		val setup = new CompileSetup(output, new CompileOptions(options, javacOptions), compiler.scalaInstance.actualVersion, compileOrder)
+		val setup = new CompileSetup(output, new CompileOptions(options, javacOptions),
+			compiler.scalaInstance.actualVersion, compileOrder, incrementalCompilerOptions.nameHashing)
 		compile1(sources, classpath, setup, progress, store, analysisMap, definesClass,
 		    compiler, javac, reporter, skip, cache, incrementalCompilerOptions)
 	}
@@ -144,6 +145,12 @@ class AggressiveCompile(cacheFile: File)
 
 		val sourcesSet = sources.toSet
 		val analysis = previousSetup match {
+			case Some(previous) if previous.nameHashing != currentSetup.nameHashing =>
+				// if the value of `nameHashing` flag has changed we have to throw away
+				// previous Analysis completely and start with empty Analysis object
+				// that supports the particular value of the `nameHashing` flag.
+				// Otherwise we'll be getting UnsupportedOperationExceptions
+				Analysis.empty(currentSetup.nameHashing)
 			case Some(previous) if equiv.equiv(previous, currentSetup) => previousAnalysis
 			case _ => Incremental.prune(sourcesSet, previousAnalysis)
 		}
