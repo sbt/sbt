@@ -73,8 +73,8 @@ object AnalysisFormats
 		wrap[Severity, Byte]( _.ordinal.toByte, b => Severity.values.apply(b.toInt) )
 
 
-	implicit def setupFormat(implicit outputF: Format[APIOutput], optionF: Format[CompileOptions], compilerVersion: Format[String], orderF: Format[CompileOrder]): Format[CompileSetup] =
-		asProduct4[CompileSetup, APIOutput, CompileOptions, String, CompileOrder]( (a,b,c,d) => new CompileSetup(a,b,c,d) )(s => (s.output, s.options, s.compilerVersion, s.order))(outputF, optionF, compilerVersion, orderF)
+	implicit def setupFormat(implicit outputF: Format[APIOutput], optionF: Format[CompileOptions], compilerVersion: Format[String], orderF: Format[CompileOrder], nameHashingF: Format[Boolean]): Format[CompileSetup] =
+		asProduct5[CompileSetup, APIOutput, CompileOptions, String, CompileOrder, Boolean]( (a,b,c,d,e) => new CompileSetup(a,b,c,d,e) )(s => (s.output, s.options, s.compilerVersion, s.order, s.nameHashing))(outputF, optionF, compilerVersion, orderF, nameHashingF)
 
 	implicit val outputGroupFormat: Format[OutputGroup] =
 		asProduct2((a: File,b: File) => new OutputGroup{def sourceDirectory = a; def outputDirectory = b}) { out => (out.sourceDirectory, out.outputDirectory) }(fileFormat, fileFormat)
