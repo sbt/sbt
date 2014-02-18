@@ -12,7 +12,12 @@ package sbt
 //     (6 > 4)
 final class CompileOptions(val options: Seq[String], val javacOptions: Seq[String])
 final class CompileSetup(val output: APIOutput, val options: CompileOptions, val compilerVersion: String,
-	val order: CompileOrder, val nameHashing: Boolean)
+	val order: CompileOrder, val nameHashing: Boolean) {
+	@deprecated("Use the other overloaded variant of the constructor that takes `nameHashing` value, instead.", "0.13.2")
+	def this(output: APIOutput, options: CompileOptions, compilerVersion: String, order: CompileOrder) = {
+		this(output, options, compilerVersion, order, false)
+	}
+}
 
 object CompileSetup
 {
