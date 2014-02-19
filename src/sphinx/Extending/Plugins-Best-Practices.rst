@@ -16,6 +16,12 @@ Specifically:
 Here are some current plugin best practices. **NOTE:** Best practices
 are evolving, so check back frequently.
 
+Don't use default package
+---------------------------
+
+Users who have their build files in some package will not be able to
+use your plugin if it's defined in default (no-name) package.
+
 Avoid overriding `settings`
 -----------------------------
 
