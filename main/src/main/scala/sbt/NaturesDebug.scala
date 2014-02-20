@@ -3,6 +3,7 @@ package sbt
 	import Def.Setting
 	import Natures._
 	import NaturesDebug._
+	import java.net.URI
 
 private[sbt] class NaturesDebug(val available: List[AutoPlugin], val nameToKey: Map[String, AttributeKey[_]], val provided: Relation[AutoPlugin, AttributeKey[_]])
 {
@@ -55,7 +56,7 @@ private[sbt] class NaturesDebug(val available: List[AutoPlugin], val nameToKey: 
 			activatedHelp(plugin)
 		else
 			deactivatedHelp(plugin, context)
-	private[this] def activatedHelp(plugin: AutoPlugin): String =
+	private def activatedHelp(plugin: AutoPlugin): String =
 	{
 		val prefix = s"${plugin.label} is activated."
 		val keys = provided.forward(plugin)
@@ -64,9 +65,9 @@ private[sbt] class NaturesDebug(val available: List[AutoPlugin], val nameToKey: 
 		val confsString = if(configs.isEmpty) "" else s"\nIt defines these configurations: ${multi(configs.map(_.name))}"
 		prefix + keysString + confsString
 	}
-	private[this] def deactivatedHelp(plugin: AutoPlugin, context: Context): String =
+	private def deactivatedHelp(plugin: AutoPlugin, context: Context): String =
 	{
-		val prefix = s"${plugin.label} is not activated."
+		val prefix = s"${plugin.label} is NOT activated."
 		val keys = provided.forward(plugin)
 		val keysString = if(keys.isEmpty) "" else s"\nActivating it may affect these keys: ${multi(keys.toList.map(_.label))}"
 		val configs = plugin.projectConfigurations
@@ -80,6 +81,66 @@ private[sbt] class NaturesDebug(val available: List[AutoPlugin], val nameToKey: 
 
 private[sbt] object NaturesDebug
 {
+	def helpAll(s: State): String =
+		if(Project.isProjectLoaded(s))
+		{
+			val extracted = Project.extract(s)
+			import extracted._
+			def helpBuild(uri: URI, build: LoadedBuildUnit): String =
+			{
+				val pluginStrings = for(plugin <- availableAutoPlugins(build)) yield {
+					val activatedIn = build.defined.values.toList.filter(_.autoPlugins.contains(plugin)).map(_.id)
+					val actString = if(activatedIn.nonEmpty) activatedIn.mkString(": enabled in ", ", ", "") else "" // TODO: deal with large builds
+					s"\n\t${plugin.label}$actString"
+				}
+				s"In $uri${pluginStrings.mkString}"
+			}
+			val buildStrings = for((uri, build) <- structure.units) yield helpBuild(uri, build)
+			buildStrings.mkString("\n")
+		}
+		else
+			"No project is currently loaded."
+
+	def autoPluginMap(s: State): Map[String, AutoPlugin] =
+	{
+		val extracted = Project.extract(s)
+		import extracted._
+		structure.units.values.toList.flatMap(availableAutoPlugins).map(plugin => (plugin.label, plugin)).toMap
+	}
+	private[this] def availableAutoPlugins(build: LoadedBuildUnit): Seq[AutoPlugin] =
+		build.unit.plugins.detected.autoPlugins.values
+
+	def help(plugin: AutoPlugin, s: State): String =
+	{
+		val extracted = Project.extract(s)
+		import extracted._
+		def definesPlugin(p: ResolvedProject): Boolean = p.autoPlugins.contains(plugin)
+		def projectForRef(ref: ProjectRef): ResolvedProject = get(Keys.thisProject in ref)
+		val perBuild: Map[URI, Set[AutoPlugin]] = structure.units.mapValues(unit => availableAutoPlugins(unit).toSet)
+		val pluginsThisBuild = perBuild.getOrElse(currentRef.build, Set.empty).toList
+		lazy val context = Context(currentProject.natures, currentProject.autoPlugins, Natures.compile(pluginsThisBuild), pluginsThisBuild)
+		lazy val debug = NaturesDebug(context.available)
+		if(!pluginsThisBuild.contains(plugin)) {
+			val availableInBuilds: List[URI] = perBuild.toList.filter(_._2(plugin)).map(_._1)
+			s"Plugin ${plugin.label} is only available in builds:\n\t${availableInBuilds.mkString("\n\t")}\nSwitch to a project in one of those builds using `project` and rerun this command for more information."
+		} else if(definesPlugin(currentProject))
+			debug.activatedHelp(plugin)
+		else {
+			val thisAggregated = BuildUtil.dependencies(structure.units).aggregateTransitive.getOrElse(currentRef, Nil)
+			val definedInAggregated = thisAggregated.filter(ref => definesPlugin(projectForRef(ref)))
+			if(definedInAggregated.nonEmpty) {
+				val projectNames = definedInAggregated.map(_.project) // TODO: usually in this build, but could technically require the build to be qualified
+				s"Plugin ${plugin.label} is not activated on this project, but this project aggregates projects where it is activated:\n\t${projectNames.mkString("\n\t")}"
+			} else {
+				val base = debug.deactivatedHelp(plugin, context)
+				val aggNote = if(thisAggregated.nonEmpty) "Note: This project aggregates other projects and this" else "Note: This"
+				val common =  " information is for this project only."
+				val helpOther = "To see how to activate this plugin for another project, change to the project using `project <name>` and rerun this command."
+				s"$base\n$aggNote$common\n$helpOther"
+			}
+		}
+	}
+
 	/** Precomputes information for debugging natures and plugins. */
 	def apply(available: List[AutoPlugin]): NaturesDebug =
 	{
@@ -230,14 +291,16 @@ private[sbt] object NaturesDebug
 	def explainPluginEnable(ps: PluginEnable): String =
 		ps match {
 			case PluginRequirements(plugin, context, blockingExcludes, enablingNatures, extraEnabledPlugins, toBeRemoved, deactivate) =>
+				def indent(str: String) = if(str.isEmpty) "" else s"\t$str"
+				def note(str: String) = if(str.isEmpty) "" else s"Note: $str"
 				val parts =
-					excludedError(false /* TODO */, blockingExcludes.toList) ::
-					required(enablingNatures.toList) ::
-					willAdd(plugin, extraEnabledPlugins.toList) ::
-					willRemove(plugin, toBeRemoved.toList) ::
-					needToDeactivate(deactivate) ::
+					indent(excludedError(false /* TODO */, blockingExcludes.toList)) ::
+					indent(required(enablingNatures.toList)) ::
+					indent(needToDeactivate(deactivate)) ::
+					note(willAdd(plugin, extraEnabledPlugins.toList)) ::
+					note(willRemove(plugin, toBeRemoved.toList)) ::
 					Nil
-				parts.mkString("\n")
+				parts.filterNot(_.isEmpty).mkString("\n")
 			case PluginImpossible(plugin, context, contradictions) => pluginImpossible(plugin, contradictions)
 			case PluginActivated(plugin, context) => s"Plugin ${plugin.label} already activated."
 		}
@@ -299,16 +362,16 @@ private[sbt] object NaturesDebug
 	private[this] def needToDeactivate(deactivate: List[DeactivatePlugin]): String =
 		str(deactivate)(deactivate1, deactivateN)
 	private[this] def deactivateN(plugins: List[DeactivatePlugin]): String =
-		plugins.map(deactivate1).mkString("These plugins need to be deactivated:\n\t", "\n\t", "")
+		plugins.map(deactivateString).mkString("These plugins need to be deactivated:\n\t", "\n\t", "")
 	private[this] def deactivate1(deactivate: DeactivatePlugin): String =
-		s"Deactivate ${deactivateString(deactivate)}"
+		s"Need to deactivate ${deactivateString(deactivate)}"
 	private[this] def deactivateString(d: DeactivatePlugin): String =
 	{
 		val removeNaturesString: String =
 			d.removeOneOf.toList match {
 				case Nil => ""
-				case x :: Nil => s"or no longer include $x"
-				case xs => s"or remove one of ${xs.mkString(", ")}"
+				case x :: Nil => s" or no longer include $x"
+				case xs => s" or remove one of ${xs.mkString(", ")}"
 			}
 		s"${d.plugin.label}: directly exclude it${removeNaturesString}"
 	}

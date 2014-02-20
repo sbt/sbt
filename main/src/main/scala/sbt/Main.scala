@@ -89,7 +89,7 @@ object BuiltinCommands
 	def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, setLogLevel, early, act, nop)
 	def DefaultCommands: Seq[Command] = Seq(ignore, help, completionsCommand, about, tasks, settingsCommand, loadProject,
 		projects, project, reboot, read, history, set, sessionCommand, inspect, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
-		setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, setLogLevel,
+		setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, setLogLevel, plugin, plugins,
 		ifLast, multi, shell, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, early, initialize, act) ++
 		compatCommands
 	def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
@@ -375,6 +375,20 @@ object BuiltinCommands
 			Help.detailOnly(taskDetail(allTaskAndSettingKeys(s)))
 		else
 			Help.empty
+	def plugins = Command.command(PluginsCommand, pluginsBrief, pluginsDetailed) { s =>
+		val helpString = NaturesDebug.helpAll(s)
+		System.out.println(helpString)
+		s
+	}
+	val pluginParser: State => Parser[AutoPlugin] = s => {
+		val autoPlugins: Map[String, AutoPlugin] = NaturesDebug.autoPluginMap(s)
+		token(Space) ~> Act.knownIDParser(autoPlugins, "plugin")
+	}
+	def plugin = Command(PluginCommand)(pluginParser) { (s, plugin) =>
+		val helpString = NaturesDebug.help(plugin, s)
+		System.out.println(helpString)
+		s
+	}
 
 	def projects = Command(ProjectsCommand, (ProjectsCommand, projectsBrief), projectsDetailed )(s => projectsParser(s).?) {
 		case (s, Some(modifyBuilds)) => transformExtraBuilds(s, modifyBuilds)

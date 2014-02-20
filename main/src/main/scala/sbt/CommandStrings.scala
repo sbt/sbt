@@ -49,6 +49,11 @@ $ShowCommand <task>
 
 	Evaluates the specified task and display the value returned by the task."""
 
+	val PluginsCommand = "plugins"
+	val PluginCommand = "plugin"
+	def pluginsBrief = "Lists currently available plugins."
+	def pluginsDetailed = pluginsBrief // TODO: expand
+
 	val LastCommand = "last"
 	val LastGrepCommand = "last-grep"
 	val ExportCommand = "export"
