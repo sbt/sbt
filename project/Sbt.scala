@@ -73,6 +73,8 @@ object Sbt extends Build
 	lazy val datatypeSub = baseProject(utilPath /"datatype", "Datatype Generator") dependsOn(ioSub)
 		// cross versioning
 	lazy val crossSub = baseProject(utilPath / "cross", "Cross") settings(inConfig(Compile)(Transform.crossGenSettings): _*)
+		// A logic with restricted negation as failure for a unique, stable model
+	lazy val logicSub = testedBaseProject(utilPath / "logic", "Logic").dependsOn(collectionSub, relationSub)
 
 	/* **** Intermediate-level Modules **** */
 
@@ -130,7 +132,7 @@ object Sbt extends Build
 		completeSub, classpathSub, stdTaskSub, processSub) settings( sbinary )
 
 		// The main integration project for sbt.  It brings all of the subsystems together, configures them, and provides for overriding conventions.
-	lazy val mainSub = testedBaseProject(mainPath, "Main") dependsOn(actionsSub, mainSettingsSub, interfaceSub, ioSub, ivySub, launchInterfaceSub, logSub, processSub, runSub, commandSub) settings(scalaXml)
+	lazy val mainSub = testedBaseProject(mainPath, "Main") dependsOn(actionsSub, mainSettingsSub, interfaceSub, ioSub, ivySub, launchInterfaceSub, logSub, logicSub, processSub, runSub, commandSub) settings(scalaXml)
 
 		// Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 		//  technically, we need a dependency on all of mainSub's dependencies, but we don't do that since this is strictly an integration project

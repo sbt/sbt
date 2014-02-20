@@ -35,7 +35,7 @@ final class BuildUtil[Proj](
 		case _ => None
 	}
 
-	val configurationsForAxis: Option[ResolvedReference] => Seq[String] = 
+	val configurationsForAxis: Option[ResolvedReference] => Seq[String] =
 		refOpt => configurations(projectForAxis(refOpt)).map(_.name)
 }
 object BuildUtil
@@ -46,6 +46,20 @@ object BuildUtil
 		val configs = (_: ResolvedProject).configurations.map(c => ConfigKey(c.name))
 		val aggregates = aggregationRelation(units)
 		new BuildUtil(keyIndex, data, root, Load getRootProject units, getp, configs, aggregates)
+	}
+
+	def dependencies(units: Map[URI, LoadedBuildUnit]): BuildDependencies =
+	{
+			import collection.mutable.HashMap
+		val agg = new HashMap[ProjectRef, Seq[ProjectRef]]
+		val cp = new HashMap[ProjectRef, Seq[ClasspathDep[ProjectRef]]]
+		for(lbu <- units.values; rp <- lbu.defined.values)
+		{
+			val ref = ProjectRef(lbu.unit.uri, rp.id)
+			cp(ref) = rp.dependencies
+			agg(ref) = rp.aggregate
+		}
+		BuildDependencies(cp.toMap, agg.toMap)
 	}
 
 	def checkCycles(units: Map[URI, LoadedBuildUnit])
@@ -60,8 +74,14 @@ object BuildUtil
 		}
 	}
 	def baseImports: Seq[String] = "import sbt._, Keys._" :: Nil
-	def getImports(unit: BuildUnit): Seq[String] = getImports(unit.plugins.pluginNames, unit.definitions.buildNames)
-	def getImports(pluginNames: Seq[String], buildNames: Seq[String]): Seq[String] = baseImports ++ importAllRoot(pluginNames ++ buildNames)
+
+	def getImports(unit: BuildUnit): Seq[String] = unit.plugins.detected.imports
+
+	@deprecated("Use getImports(Seq[String]).", "0.13.2")
+	def getImports(pluginNames: Seq[String], buildNames: Seq[String]): Seq[String] = getImports(pluginNames ++ buildNames)
+
+	def getImports(names: Seq[String]): Seq[String] = baseImports ++ importAllRoot(names)
+
 	def importAll(values: Seq[String]): Seq[String] = if(values.isEmpty) Nil else values.map( _ + "._" ).mkString("import ", ", ", "") :: Nil
 	def importAllRoot(values: Seq[String]): Seq[String] = importAll(values map rootedName)
 	def rootedName(s: String): String = if(s contains '.') "_root_." + s else s
