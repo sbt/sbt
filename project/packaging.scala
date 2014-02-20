@@ -127,7 +127,7 @@ object Packaging {
       val nums = (v split "[^\\d]")
       "%s-%s-build-%03d" format (sv, (nums.init mkString "."), nums.last.toInt + 1)
     },
-    debianPackageDependencies in Debian ++= Seq("curl", "java2-runtime", "bash (>= 2.05a-11)"),
+    debianPackageDependencies in Debian ++= Seq("java6-runtime-headless", "bash (>= 2.05a-11)"),
     debianPackageRecommends in Debian += "git",
     linuxPackageMappings in Debian <+= (sourceDirectory) map { bd =>
       (packageMapping(
