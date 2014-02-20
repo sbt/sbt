@@ -15,29 +15,24 @@ trait AutoImport
 
 /**
 An AutoPlugin defines a group of settings and the conditions where the settings are automatically added to a build (called "activation").
-The `select` method defines the conditions,
-  `provides` defines an identifier for the AutoPlugin,
-  and a method like `projectSettings` defines the settings to add.
+The `select` method defines the conditions and a method like `projectSettings` defines the settings to add.
 
 Steps for plugin authors:
 1. Determine the [[Nature]]s that, when present (or absent), activate the AutoPlugin.
 2. Determine the settings/configurations to automatically inject when activated.
-3. Define a new, unique identifying [[Nature]] associated with the AutoPlugin, where a Nature is essentially a String ID.
 
 For example, the following will automatically add the settings in `projectSettings`
-  to a project that has both the `Web` and `Javascript` natures enabled.  It will itself
-  define the `MyStuff` nature.  This nature can be explicitly disabled by the user to
-  prevent the plugin from activating.
+  to a project that has both the `Web` and `Javascript` natures enabled.
 
     object MyPlugin extends AutoPlugin {
         def select = Web && Javascript
-        def provides = MyStuff
         override def projectSettings = Seq(...)
     }
 
 Steps for users:
-1. add dependencies on plugins as usual with addSbtPlugin
-2. add Natures to Projects, which will automatically select the plugin settings to add for those Projects.
+1. Add dependencies on plugins as usual with addSbtPlugin
+2. Add Natures to Projects, which will automatically select the plugin settings to add for those Projects.
+3. Exclude plugins, if desired.
 
 For example, given natures Web and Javascript (perhaps provided by plugins added with addSbtPlugin),
 
@@ -45,9 +40,9 @@ For example, given natures Web and Javascript (perhaps provided by plugins added
 
 will activate `MyPlugin` defined above and have its settings automatically added.  If the user instead defines
 
-  <Project>.natures( Web && Javascript && !MyStuff)
+  <Project>.natures( Web && Javascript && !MyPlugin)
 
-then the `MyPlugin` settings (and anything that activates only when `MyStuff` is activated) will not be added.
+then the `MyPlugin` settings (and anything that activates only when `MyPlugin` is activated) will not be added.
 */
 abstract class AutoPlugin extends Natures.Basic
 {
@@ -75,6 +70,8 @@ abstract class AutoPlugin extends Natures.Basic
 	def globalSettings: Seq[Setting[_]] = Nil
 
 	// TODO?: def commands: Seq[Command]
+
+	def unary_! : Exclude = Exclude(this)
 }
 
 /** An error that occurs when auto-plugins aren't configured properly.
@@ -99,7 +96,6 @@ sealed trait Natures {
 * `label` is the unique ID for this nature. */
 final case class Nature(label: String) extends Basic {
 	/** Constructs a Natures matcher that excludes this Nature. */
-	def unary_! : Basic = Exclude(this)
 	override def toString = label
 }
 
@@ -117,7 +113,7 @@ object Natures
 			if(byAtom.size != byAtomMap.size) duplicateProvidesError(byAtom)
 			val clauses = Clauses( defined.map(d => asClause(d)) )
 			requestedNatures =>
-				Logic.reduce(clauses, flatten(requestedNatures).toSet) match {
+				Logic.reduce(clauses, flattenConvert(requestedNatures).toSet) match {
 					case Left(problem) => throw AutoPluginException(problem)
 					case Right(results) =>
 						// results includes the originally requested (positive) atoms,
@@ -154,8 +150,7 @@ object Natures
 	sealed abstract class Basic extends Natures {
 		def &&(o: Basic): Natures = And(this :: o :: Nil)
 	}
-	private[sbt] final case class Exclude(n: Basic) extends Basic  {
-		def unary_! : Basic = n
+	private[sbt] final case class Exclude(n: AutoPlugin) extends Basic  {
 		override def toString = s"!$n"
 	}
 	private[sbt] final case class And(natures: List[Basic]) extends Natures {
@@ -167,14 +162,26 @@ object Natures
 		case And(ns) => (a /: ns)(_ && _)
 		case b: Basic => a && b
 	}
+	private[sbt] def remove(a: Natures, del: Set[Basic]): Natures = a match {
+		case b: Basic => if(del(b)) Empty else b
+		case Empty => Empty
+		case And(ns) =>
+			val removed = ns.filterNot(del)
+			if(removed.isEmpty) Empty else And(removed)
+	}
 
 	/** Defines a clause for `ap` such that the [[Nature]] provided by `ap` is the head and the selector for `ap` is the body. */
 	private[sbt] def asClause(ap: AutoPlugin): Clause =
 		Clause( convert(ap.select), Set(Atom(ap.label)) )
 
-	private[this] def flatten(n: Natures): Seq[Literal] = n match {
+	private[this] def flattenConvert(n: Natures): Seq[Literal] = n match {
 		case And(ns) => convertAll(ns)
 		case b: Basic => convertBasic(b) :: Nil
+		case Empty => Nil
+	}
+	private[sbt] def flatten(n: Natures): Seq[Basic] = n match {
+		case And(ns) => ns
+		case b: Basic => b :: Nil
 		case Empty => Nil
 	}
 
@@ -189,4 +196,12 @@ object Natures
 		case a: AutoPlugin => Atom(a.label)
 	}
 	private[this] def convertAll(ns: Seq[Basic]): Seq[Literal] = ns map convertBasic
+
+	/** True if the select clause `n` is satisifed by `model`. */
+	def satisfied(n: Natures, model: Set[AutoPlugin], natures: Set[Nature]): Boolean =
+		flatten(n) forall {
+			case Exclude(a) => !model(a)
+			case n: Nature => natures(n)
+			case ap: AutoPlugin => model(ap)
+		}
 }
