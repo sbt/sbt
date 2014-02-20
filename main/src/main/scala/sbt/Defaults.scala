@@ -1254,19 +1254,8 @@ object Classpaths
 			if(useJars) Seq(pkgTask).join else psTask
 		}
 
-	def constructBuildDependencies: Initialize[BuildDependencies] =
-		loadedBuild { lb =>
-				import collection.mutable.HashMap
-			val agg = new HashMap[ProjectRef, Seq[ProjectRef]]
-			val cp = new HashMap[ProjectRef, Seq[ClasspathDep[ProjectRef]]]
-			for(lbu <- lb.units.values; rp <- lbu.defined.values)
-			{
-				val ref = ProjectRef(lbu.unit.uri, rp.id)
-				cp(ref) = rp.dependencies
-				agg(ref) = rp.aggregate
-			}
-			BuildDependencies(cp.toMap, agg.toMap)
-		}
+	def constructBuildDependencies: Initialize[BuildDependencies] = loadedBuild(lb => BuildUtil.dependencies(lb.units))
+
 	def internalDependencies: Initialize[Task[Classpath]] =
 		(thisProjectRef, classpathConfiguration, configuration, settingsData, buildDependencies) flatMap internalDependencies0
 	def unmanagedDependencies: Initialize[Task[Classpath]] =
