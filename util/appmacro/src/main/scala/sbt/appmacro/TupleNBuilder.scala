@@ -14,10 +14,14 @@ object TupleNBuilder extends TupleBuilder
 	final val MaxInputs = 11
 	final val TupleMethodName = "tuple"
 
+	// TODO 2.11 Remove this after dropping 2.10.x support.
+	private object HasCompat { val compat = ??? }; import HasCompat._
+
 	def make(c: Context)(mt: c.Type, inputs: Inputs[c.universe.type]): BuilderResult[c.type] = new BuilderResult[c.type]
 	{
 		val util = ContextUtil[c.type](c)
 			import c.universe.{Apply=>ApplyTree,_}
+			import compat._
 			import util._
 
 		val global: Global = c.universe.asInstanceOf[Global]
