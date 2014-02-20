@@ -59,6 +59,9 @@ object InputWrapper
 	private[std] def wrapPrevious[T: c.WeakTypeTag](c: Context)(ts: c.Expr[Any], pos: c.Position): c.Expr[Option[T]] =
 		wrapImpl[Option[T],InputWrapper.type](c, InputWrapper, WrapPreviousName)(ts, pos)
 
+	// TODO 2.11 Remove this after dropping 2.10.x support.
+	private object HasCompat { val compat = ??? }; import HasCompat._
+
 	/** Wraps an arbitrary Tree in a call to the `<s>.<wrapName>` method of this module for later processing by an enclosing macro.
 	* The resulting Tree is the manually constructed version of:
 	*
@@ -67,6 +70,7 @@ object InputWrapper
 	def wrapImpl[T: c.WeakTypeTag, S <: AnyRef with Singleton](c: Context, s: S, wrapName: String)(ts: c.Expr[Any], pos: c.Position)(implicit it: c.TypeTag[s.type]): c.Expr[T] =
 	{
 			import c.universe.{Apply=>ApplyTree,_}
+			import compat._
 		val util = new ContextUtil[c.type](c)
 		val iw = util.singleton(s)
 		val tpe = c.weakTypeOf[T]

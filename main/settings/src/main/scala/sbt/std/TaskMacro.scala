@@ -281,9 +281,13 @@ object TaskMacro
 	private[this] def iTaskMacro[T: c.WeakTypeTag](c: Context)(t: c.Expr[T]): c.Expr[Task[T]] =
 		Instance.contImpl[T,Id](c, TaskInstance, TaskConvert, MixedBuilder)(Left(t), Instance.idTransform)
 
+	// TODO 2.11 Remove this after dropping 2.10.x support.
+	private object HasCompat { val compat = ??? }; import HasCompat._
+
 	private[this] def inputTaskDynMacro0[T: c.WeakTypeTag](c: Context)(t: c.Expr[Initialize[Task[T]]]): c.Expr[Initialize[InputTask[T]]] =
 	{
 			import c.universe.{Apply=>ApplyTree,_}
+			import compat._
 
 		val tag = implicitly[c.WeakTypeTag[T]]
 		val util = ContextUtil[c.type](c)
