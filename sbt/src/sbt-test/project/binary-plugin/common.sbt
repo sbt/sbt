@@ -1,7 +1,7 @@
 organization in ThisBuild := "org.example"
 
-version in ThisBuild := "3.4"
+// We have to use snapshot because this is publishing to our local ivy cache instead of
+// an integration cache, so we're in danger land.
+version in ThisBuild := "3.4-SNAPSHOT"
 
-lazy val define = project
 
-lazy val use = project
