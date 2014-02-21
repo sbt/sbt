@@ -18,6 +18,19 @@ Follow the instructions for the plugin and you'll have PGP signed artifacts in n
 artifacts. It can work with the GPG command line tool, but the command
 line is not needed.*
 
+If your PGP key has not yet been distributed to the keyserver pool, i.e.,
+you've just generated it, you'll need to publish it. You can do so using
+the `sbt-pgp <http://scala-sbt.org/sbt-pgp>`_ plugin:
+
+::
+
+    pgp-cmd send-key keyname hkp://pool.sks-keyservers.net/
+
+(where keyname is the name, email address used when creating the key or
+hexadecimal identifier for the key.)
+
+If you see no output from sbt-pgp then the key name specified was not found.
+
 Second - Maven Publishing Settings
 ----------------------------------
 
