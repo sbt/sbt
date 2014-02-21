@@ -1,0 +1,9 @@
+language: scala
+script:
+  - sbt launcher/test actions/test api/test apply-macro/test cache/test classfile/test classpath/test collections/test command/test compile/test completion/test contorl/test cross/test incremental-compiler/test io/test ivy/test logic/test main/test main-settings/test persist/test relation/test run/test tasks/test test-agent/test tracking/test testing/test
+  - sbt scripted 
+jdk:
+  - openjdk6
+notifications:
+  email:
+    - qbranch@typesafe.com
