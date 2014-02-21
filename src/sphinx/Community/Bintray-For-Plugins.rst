@@ -88,6 +88,9 @@ Make sure your project has a valid license specified, as well as unique name and
 Make a release
 ==============
 
+
+*Note: bintray does not support snapshots.  We recommend using `git-revisions supplied by the sbt-git plugin <https://github.com/sbt/sbt-git#versioning-with-git>`_.
+
 Once your build is configured, open the sbt console in your build and run:
 
 .. code-block:: console

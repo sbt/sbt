@@ -16,39 +16,7 @@ Community Ivy Repository
 ========================
 
 `Typesafe <http://www.typesafe.com>`_ has provided a freely available `Ivy Repository <http://repo.scala-sbt.org/scalasbt>`_ for sbt projects to use.
-If you would like to publish your project to this Ivy repository, first contact `sbt-repo-admins <http://groups.google.com/group/sbt-repo-admins?hl=en>`_ and request privileges (we have to verify code ownership, rights to publish, etc.).  After which, you can deploy your plugins using the following configuration:
-
-::
-
-     publishTo := Some(Resolver.url("sbt-plugin-releases", new URL("http://repo.scala-sbt.org/scalasbt/sbt-plugin-releases/"))(Resolver.ivyStylePatterns))
-
-     publishMavenStyle := false
-
-You'll also need to add your credentials somewhere.  For example, you might use a `~/.sbt/pluginpublish.sbt` file:
-
-::
-
-     credentials += Credentials("Artifactory Realm",
- "repo.scala-sbt.org", "@user name@", "@my encrypted password@")
-
-Where `@my encrypted password@` is actually obtained using the following `instructions <http://wiki.jfrog.org/confluence/display/RTF/Centrally+Secure+Passwords>`_.
-
-*Note: Your code must abide by the* `repository polices <Repository-Rules>`_.
-
-To automatically deploy snapshot/release versions of your plugin use the following configuration:
-
-::
-
-    publishTo := {
-       val scalasbt = "http://repo.scala-sbt.org/scalasbt/"
-       val (name, url) = if (version.value.contains("-SNAPSHOT"))
-         ("sbt-plugin-snapshots", scalasbt+"sbt-plugin-snapshots")
-       else
-         ("sbt-plugin-releases", scalasbt+"sbt-plugin-releases")
-       Some(Resolver.url(name, new URL(url))(Resolver.ivyStylePatterns))
-    }
-
-*Note: ivy repositories currently don't support Maven-style snapshots.*
+This ivy repository is mirrored from the freely available `Bintray service <http://bintray.com>`_.   If you'd like to submit your plugin, please follow these instructions: `Bintray For Plugins <Bintray-For-Plugins.html>`_.
 
 Available Plugins
 =================
