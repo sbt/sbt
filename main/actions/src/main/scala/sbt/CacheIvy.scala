@@ -3,7 +3,7 @@
  */
 package sbt
 
-	import Predef.{conforms => _, _}
+	import Predef.{Map, Set, implicitly} // excludes *both 2.10.x conforms and 2.11.x $conforms in source compatible manner.
 
 	import FileInfo.{exists, hash}
 	import java.io.File
