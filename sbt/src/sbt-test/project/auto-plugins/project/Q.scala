@@ -6,7 +6,7 @@ object AI extends AutoImport
 {
 	lazy val A = Nature("A")
 	lazy val B = Nature("B")
-	lazy val D = Nature("D")
+	lazy val E = Nature("E")
 
 	lazy val q = config("q")
 	lazy val p = config("p").extend(q)
@@ -18,6 +18,10 @@ object AI extends AutoImport
 }
 
 	import AI._
+
+object D extends AutoPlugin {
+	def select: Natures = E
+}
 
 object Q extends AutoPlugin
 {
@@ -48,6 +52,7 @@ object Q extends AutoPlugin
 
 object R extends AutoPlugin
 {
+	// NOTE - Only plugins themselves support exclusions...
 	def select = Q && !D
 
 	override def projectSettings = Seq(
