@@ -4,7 +4,7 @@ import java.io.{StringWriter, PrintWriter, File}
 import java.net.InetAddress
 import scala.collection.mutable.ListBuffer
 import scala.util.DynamicVariable
-import scala.xml.{Elem, Node, XML}
+import scala.xml.{PCData, Elem, Node, XML}
 import testing.{Event => TEvent, Status => TStatus, OptionalThrowable, TestSelector}
 
 /**
@@ -32,7 +32,11 @@ class JUnitXmlTestsListener(val outputDir:String, logger: Logger) extends TestsL
         }
         </properties>
 
-		private def cdata(content: String) = scala.xml.Unparsed("<![CDATA[%s]]>".format(content))
+		private def cdata(content: String) : Node = {
+			val escapedCData = content.replaceAll("]]>", "]]]]><![CDATA[>")
+			// unfortunately PCData does not escape ']]>'
+			PCData(escapedCData)
+		}
 
 		private def stackTraceToString(t: Throwable) : String = {
 			val stringWriter = new StringWriter()
