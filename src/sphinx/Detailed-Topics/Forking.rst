@@ -104,7 +104,7 @@ directory:
 
 ::
 
-    javaHome := file("/path/to/jre/")
+    javaHome := Some(file("/path/to/jre/"))
 
 Note that if this is set globally, it also sets the Java installation
 used to compile Java sources. You can restrict it to running only by
@@ -112,7 +112,7 @@ setting it in the :key:`run` scope:
 
 ::
 
-    javaHome in run := file("/path/to/jre/")
+    javaHome in run := Some(file("/path/to/jre/"))
 
 As with the other settings, you can specify the configuration to affect
 only the main or test :key:`run` tasks or just the :key:`test` tasks.
