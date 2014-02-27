@@ -204,7 +204,7 @@ available with :key:`testGrouping` key. For example:
       def groupByFirst(tests: Seq[TestDefinition]) =
         tests groupBy (_.name(0)) map {
           case (letter, tests) => new Group(letter.toString, tests, SubProcess(Seq("-Dfirst.letter"+letter)))
-        } toSeq;
+        } toSeq
 
       lazy val root = Project("root", file("."), settings = defaultSettings ++  Seq(
         scalaVersion := "2.10.3",
