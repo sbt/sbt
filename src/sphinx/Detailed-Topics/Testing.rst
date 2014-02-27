@@ -195,14 +195,22 @@ available with :key:`testGrouping` key. For example:
 
 ::
 
+    import sbt._
+    import Keys._
     import Tests._
+    import Defaults._
 
-    {
+    object ForkTestsBuild extends Build {
       def groupByFirst(tests: Seq[TestDefinition]) =
         tests groupBy (_.name(0)) map {
           case (letter, tests) => new Group(letter.toString, tests, SubProcess(Seq("-Dfirst.letter"+letter)))
         } toSeq;
-      testGrouping := groupByFirst( (definedTests in Test).value )
+
+      lazy val root = Project("root", file("."), settings = defaultSettings ++  Seq(
+        scalaVersion := "2.10.3",
+        testGrouping in Test := groupByFirst( (definedTests in Test).value ),
+        libraryDependencies += "org.scalatest" %% "scalatest" % "2.0" % "test"
+      ))
     }
 
 The tests in a single group are run sequentially. Control the number
