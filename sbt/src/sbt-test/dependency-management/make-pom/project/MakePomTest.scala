@@ -8,8 +8,10 @@ object MakePomTest extends Build
 		readPom <<= makePom map XML.loadFile,
 		TaskKey[Unit]("check-pom") <<= checkPom,
 		TaskKey[Unit]("check-extra") <<= checkExtra,
+		TaskKey[Unit]("check-version-plus-mapping") <<= checkVersionPlusMapping,
 		resolvers += Resolver.sonatypeRepo("snapshots"),
-		makePomConfiguration ~= { _.copy(extra = <extra-tag/>) }
+		makePomConfiguration ~= { _.copy(extra = <extra-tag/>) },
+		libraryDependencies += "com.google.code.findbugs" % "jsr305" % "1.3.+"
 	)
 
 	val readPom = TaskKey[Elem]("read-pom")
@@ -33,6 +35,16 @@ object MakePomTest extends Build
 		if(extra.isEmpty) error("'" + extraTagName + "' not found in generated pom.xml.") else ()
 	}
 	
+	lazy val checkVersionPlusMapping = (readPom) map { (pomXml) =>
+		var found = false
+		for {
+			dep <- pomXml \ "dependencies" \ "dependency"
+			if (dep \ "artifactId").text == "jsr305"
+			if (dep \ "version").text contains "+"
+		} sys.error(s"Found dependency with invalid maven version: $dep")
+		()
+	}
+
 	lazy val checkPom = (readPom, fullResolvers) map { (pomXML, ivyRepositories) =>
 		checkProject(pomXML)
 		withRepositories(pomXML) { repositoriesElement =>
