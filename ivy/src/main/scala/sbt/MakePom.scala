@@ -188,13 +188,32 @@ class MakePom(val log: Logger)
 		<dependency>
 			<groupId>{mrid.getOrganisation}</groupId>
 			<artifactId>{mrid.getName}</artifactId>
-			<version>{mrid.getRevision}</version>
+			<version>{makeDependencyVersion(mrid.getRevision)}</version>
 			{ scopeElem(scope) }
 			{ optionalElem(optional) }
 			{ classifierElem(classifier) }
 			{ typeElem(tpe) }
 			{ exclusions(dependency) }
 		</dependency>
+	}
+
+
+
+	def makeDependencyVersion(revision: String): String = {
+		if(revision endsWith "+") try {
+			// TODO - this is the slowest possible implementation.
+			val beforePlus = revision.reverse.dropWhile(_ != '.').drop(1).reverse
+			val lastVersion = beforePlus.reverse.takeWhile(_ != '.').reverse
+			val lastVersionInt = lastVersion.toInt
+			val prefixVersion = beforePlus.reverse.dropWhile(_ != '.').drop(1).reverse
+			s"[$beforePlus, ${prefixVersion}.${lastVersionInt+1})"
+		} catch {
+			case e: NumberFormatException => 
+			  // TODO - if the version deosn't meet our expectations, maybe we just issue a hard
+			  //        error instead of softly ignoring the attempt to rewrite.
+			  //sys.error(s"Could not fix version [$revision] into maven style version")
+			  revision
+		} else revision
 	}
 
 	@deprecated("No longer used and will be removed.", "0.12.1")

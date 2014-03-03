@@ -40,7 +40,7 @@ object MakePomTest extends Build
 		for {
 			dep <- pomXml \ "dependencies" \ "dependency"
 			if (dep \ "artifactId").text == "jsr305"
-			if (dep \ "version").text contains "+"
+			if (dep \ "version").text != "[1.3, 1.4)"
 		} sys.error(s"Found dependency with invalid maven version: $dep")
 		()
 	}
