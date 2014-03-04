@@ -1,5 +1,5 @@
 [Google Code]: http://code.google.com/p/simple-build-tool
-[CONTRIBUTING]: https://github.com/sbt/sbt/blob/0.13/CONTRIBUTING.md
+[CONTRIBUTING]: CONTRIBUTING.md
 [Setup]: http://www.scala-sbt.org/release/docs/Getting-Started/Setup
 [FAQ]: http://www.scala-sbt.org/release/docs/faq
 
