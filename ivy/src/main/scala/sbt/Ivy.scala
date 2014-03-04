@@ -99,6 +99,8 @@ final class IvySbt(val configuration: IvyConfiguration)
 	def withIvy[T](log: MessageLogger)(f: Ivy => T): T =
 		withDefaultLogger(log)
 		{
+			// See #429 - We always insert a helper authenticator here which lets us get more useful authentication errors.
+			ivyint.ErrorMessageAuthenticator.install()
 			ivy.pushContext()
 			ivy.getLoggerEngine.pushLogger(log)
 			try { f(ivy) }
