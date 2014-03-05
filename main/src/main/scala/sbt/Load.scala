@@ -505,19 +505,23 @@ object Load
 		def loadSettingsFile(src: File): LoadedSbtFile =
 			EvaluateConfigurations.evaluateSbtFile(eval(), src, IO.readLines(src), loadedPlugins.detected.imports, 0)(loader)
 
-			import AddSettings.{User,SbtFiles,DefaultSbtFiles,Plugins,Sequence, ProjectSettings}
+		import AddSettings.{User,SbtFiles,DefaultSbtFiles,Plugins,AutoPlugins,Sequence, ProjectSettings}
 		def pluginSettings(f: Plugins) = {
 			val included = loadedPlugins.detected.plugins.values.filter(f.include) // don't apply the filter to AutoPlugins, only Plugins
-			val oldStyle = included.flatMap(p => p.settings.filter(isProjectThis) ++ p.projectSettings)
-			val autoStyle = autoPlugins.flatMap(_.projectSettings)
-			oldStyle ++ autoStyle
+			included.flatMap(p => p.settings.filter(isProjectThis) ++ p.projectSettings)
 		}
+		// Filter the AutoPlugin settings we included based on which ones are
+		// intended in the AddSettings.AutoPlugins filter.
+		def autoPluginSettings(f: AutoPlugins) =
+			autoPlugins.filter(f.include).flatMap(_.projectSettings)
+
 		def expand(auto: AddSettings): LoadedSbtFile = auto match {
 			case ProjectSettings => settings(projectSettings)
 			case User => settings(injectSettings.projectLoaded(loader))
 			case sf: SbtFiles => loadSettings( sf.files.map(f => IO.resolve(projectBase, f)))
 			case sf: DefaultSbtFiles => loadSettings( defaultSbtFiles.filter(sf.include))
 			case p: Plugins => settings(pluginSettings(p))
+			case p: AutoPlugins => settings(autoPluginSettings(p))
 			case q: Sequence => (LoadedSbtFile.empty /: q.sequence) { (b,add) => b.merge( expand(add) ) }
 		}
 		expand(auto)

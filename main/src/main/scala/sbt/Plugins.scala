@@ -72,6 +72,24 @@ abstract class AutoPlugin extends Plugins.Basic
 	// TODO?: def commands: Seq[Command]
 
 	def unary_! : Exclude = Exclude(this)
+
+
+	/** If this plugin requries itself to be included, it means we're actually a nature,
+	 * not a normal plugin.   The user must specifically enable this plugin
+	 * but other plugins can rely on its existence. 
+	 */
+	final def isRoot: Boolean = 
+	  this match {
+	  	case _: RootAutoPlugin => true
+	  	case _ => false
+	  }
+}
+/**
+ * A root AutoPlugin is a plugin which must be explicitly enabled by users in their `setPlugins` method
+ * on a project.  However, RootAutoPlugins represent the "root" of a tree of dependent auto-plugins.
+ */
+abstract class RootAutoPlugin extends AutoPlugin {
+	final def select: Plugins = this
 }
 
 /** An error that occurs when auto-plugins aren't configured properly.
@@ -104,7 +122,10 @@ object Plugins
 			val byAtom = defined.map(x => (Atom(x.label), x))
 			val byAtomMap = byAtom.toMap
 			if(byAtom.size != byAtomMap.size) duplicateProvidesError(byAtom)
-			val clauses = Clauses( defined.map(d => asClause(d)) )
+			// Ignore clauses for plugins that just require themselves be specified.
+			// Avoids the requirement for pure Nature strings *and* possible
+			// circular dependencies in the logic.
+			val clauses = Clauses( defined.filterNot(_.isRoot).map(d => asClause(d)) )
 			requestedPlugins =>
 				Logic.reduce(clauses, flattenConvert(requestedPlugins).toSet) match {
 					case Left(problem) => throw AutoPluginException(problem)
