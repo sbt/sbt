@@ -459,20 +459,19 @@ object Load
 
 	private[this] def loadTransitive(newProjects: Seq[Project], buildBase: File, plugins: sbt.LoadedPlugins, eval: () => Eval, injectSettings: InjectSettings, acc: Seq[Project], memoSettings: mutable.Map[File, LoadedSbtFile]): Seq[Project] =
 	{
-		def loadSbtFiles(auto: AddSettings, base: File, autoPlugins: Seq[AutoPlugin]): LoadedSbtFile =
-			loadSettings(auto, base, plugins, eval, injectSettings, memoSettings, autoPlugins)
+		def loadSbtFiles(auto: AddSettings, base: File, autoPlugins: Seq[AutoPlugin], projectSettings: Seq[Setting[_]]): LoadedSbtFile =
+			loadSettings(auto, base, plugins, eval, injectSettings, memoSettings, autoPlugins, projectSettings)
 		def loadForProjects = newProjects map { project =>
 			val autoPlugins =
 				try plugins.detected.compilePlugins(project.plugins)
 				catch { case e: AutoPluginException => throw translateAutoPluginException(e, project) }
 			val autoConfigs = autoPlugins.flatMap(_.projectConfigurations)
-			val loadedSbtFiles = loadSbtFiles(project.auto, project.base, autoPlugins)
-			val newSettings = (project.settings: Seq[Setting[_]]) ++ loadedSbtFiles.settings
+			val loadedSbtFiles = loadSbtFiles(project.auto, project.base, autoPlugins, project.settings)
 			// add the automatically selected settings, record the selected AutoPlugins, and register the automatically selected configurations
-			val transformed = project.copy(settings = newSettings).setAutoPlugins(autoPlugins).overrideConfigs(autoConfigs : _*)
+			val transformed = project.copy(settings = loadedSbtFiles.settings).setAutoPlugins(autoPlugins).overrideConfigs(autoConfigs : _*)
 			(transformed, loadedSbtFiles.projects)
 		}
-		def defaultLoad = loadSbtFiles(AddSettings.defaultSbtFiles, buildBase, Nil).projects
+		def defaultLoad = loadSbtFiles(AddSettings.defaultSbtFiles, buildBase, Nil, Nil).projects
 		val (nextProjects, loadedProjects) =
 			if(newProjects.isEmpty) // load the .sbt files in the root directory to look for Projects
 				(defaultLoad, acc)
@@ -489,7 +488,7 @@ object Load
 	private[this] def translateAutoPluginException(e: AutoPluginException, project: Project): AutoPluginException =
 		e.withPrefix(s"Error determining plugins for project '${project.id}' in ${project.base}:\n")
 
-	private[this] def loadSettings(auto: AddSettings, projectBase: File, loadedPlugins: sbt.LoadedPlugins, eval: ()=>Eval, injectSettings: InjectSettings, memoSettings: mutable.Map[File, LoadedSbtFile], autoPlugins: Seq[AutoPlugin]): LoadedSbtFile =
+	private[this] def loadSettings(auto: AddSettings, projectBase: File, loadedPlugins: sbt.LoadedPlugins, eval: ()=>Eval, injectSettings: InjectSettings, memoSettings: mutable.Map[File, LoadedSbtFile], autoPlugins: Seq[AutoPlugin], projectSettings: Seq[Setting[_]]): LoadedSbtFile =
 	{
 		lazy val defaultSbtFiles = configurationSources(projectBase)
 		def settings(ss: Seq[Setting[_]]) = new LoadedSbtFile(ss, Nil, Nil)
@@ -506,7 +505,7 @@ object Load
 		def loadSettingsFile(src: File): LoadedSbtFile =
 			EvaluateConfigurations.evaluateSbtFile(eval(), src, IO.readLines(src), loadedPlugins.detected.imports, 0)(loader)
 
-			import AddSettings.{User,SbtFiles,DefaultSbtFiles,Plugins,Sequence}
+			import AddSettings.{User,SbtFiles,DefaultSbtFiles,Plugins,Sequence, ProjectSettings}
 		def pluginSettings(f: Plugins) = {
 			val included = loadedPlugins.detected.plugins.values.filter(f.include) // don't apply the filter to AutoPlugins, only Plugins
 			val oldStyle = included.flatMap(p => p.settings.filter(isProjectThis) ++ p.projectSettings)
@@ -514,6 +513,7 @@ object Load
 			oldStyle ++ autoStyle
 		}
 		def expand(auto: AddSettings): LoadedSbtFile = auto match {
+			case ProjectSettings => settings(projectSettings)
 			case User => settings(injectSettings.projectLoaded(loader))
 			case sf: SbtFiles => loadSettings( sf.files.map(f => IO.resolve(projectBase, f)))
 			case sf: DefaultSbtFiles => loadSettings( defaultSbtFiles.filter(sf.include))
