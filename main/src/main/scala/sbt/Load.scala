@@ -463,7 +463,7 @@ object Load
 			loadSettings(auto, base, plugins, eval, injectSettings, memoSettings, autoPlugins)
 		def loadForProjects = newProjects map { project =>
 			val autoPlugins =
-				try plugins.detected.compileNatures(project.natures)
+				try plugins.detected.compilePlugins(project.plugins)
 				catch { case e: AutoPluginException => throw translateAutoPluginException(e, project) }
 			val autoConfigs = autoPlugins.flatMap(_.projectConfigurations)
 			val loadedSbtFiles = loadSbtFiles(project.auto, project.base, autoPlugins)

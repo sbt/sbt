@@ -4,9 +4,12 @@
 
 object AI extends AutoImport
 {
-	lazy val A = Nature("A")
-	lazy val B = Nature("B")
-	lazy val E = Nature("E")
+	trait EmptyAutoPlugin extends AutoPlugin {
+		def select = Plugins.empty
+	}
+	object A extends EmptyAutoPlugin
+	object B extends EmptyAutoPlugin
+	object E extends EmptyAutoPlugin
 
 	lazy val q = config("q")
 	lazy val p = config("p").extend(q)
@@ -20,12 +23,12 @@ object AI extends AutoImport
 	import AI._
 
 object D extends AutoPlugin {
-	def select: Natures = E
+	def select: Plugins = E
 }
 
 object Q extends AutoPlugin
 {
-	def select: Natures = A && B
+	def select: Plugins = A && B
 
 	override def projectConfigurations: Seq[Configuration] =
 		p ::

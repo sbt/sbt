@@ -50,9 +50,9 @@ sealed trait ProjectDefinition[PR <: ProjectReference]
 	/** Configures the sources of automatically appended settings.*/
 	def auto: AddSettings
 
-	/** The [[Natures]] associated with this project.
-	A [[Nature]] is a common label that is used by plugins to determine what settings, if any, to add to a project. */
-	def natures: Natures
+	/** The defined [[Plugins]] associated with this project.
+	A [[AutoPlguin]] is a common label that is used by plugins to determine what settings, if any, to add to a project. */
+	def plugins: Plugins
 
 	/** The [[AutoPlugin]]s enabled for this project.  This value is only available on a loaded Project. */
 	private[sbt] def autoPlugins: Seq[AutoPlugin]
@@ -68,18 +68,18 @@ sealed trait ProjectDefinition[PR <: ProjectReference]
 		val dep = ifNonEmpty("dependencies", dependencies)
 		val conf = ifNonEmpty("configurations", configurations)
 		val autos = ifNonEmpty("autoPlugins", autoPlugins.map(_.label))
-		val fields = s"id $id" :: s"base: $base" :: agg ::: dep ::: conf ::: (s"natures: List($natures)" :: autos)
+		val fields = s"id $id" :: s"base: $base" :: agg ::: dep ::: conf ::: (s"plugins: List($plugins)" :: autos)
 		s"Project(${fields.mkString(", ")})"
 	}
 	private[this] def ifNonEmpty[T](label: String, ts: Iterable[T]): List[String] = if(ts.isEmpty) Nil else s"$label: $ts" :: Nil
 }
 sealed trait Project extends ProjectDefinition[ProjectReference]
 {
-	// TODO: add parameters for natures and autoPlugins in 0.14.0 (not reasonable to do in a binary compatible way in 0.13)
+	// TODO: add parameters for plugins in 0.14.0 (not reasonable to do in a binary compatible way in 0.13)
 	def copy(id: String = id, base: File = base, aggregate: => Seq[ProjectReference] = aggregate, dependencies: => Seq[ClasspathDep[ProjectReference]] = dependencies,
 		delegates: => Seq[ProjectReference] = delegates, settings: => Seq[Setting[_]] = settings, configurations: Seq[Configuration] = configurations,
 		auto: AddSettings = auto): Project =
-			unresolved(id, base, aggregate = aggregate, dependencies = dependencies, delegates = delegates, settings, configurations, auto, natures, autoPlugins)
+			unresolved(id, base, aggregate = aggregate, dependencies = dependencies, delegates = delegates, settings, configurations, auto, plugins, autoPlugins)
 
 	def resolve(resolveRef: ProjectReference => ProjectRef): ResolvedProject =
 	{
@@ -87,7 +87,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference]
 		def resolveDeps(ds: Seq[ClasspathDep[ProjectReference]]) = ds map resolveDep
 		def resolveDep(d: ClasspathDep[ProjectReference]) = ResolvedClasspathDependency(resolveRef(d.project), d.configuration)
 		resolved(id, base, aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies), delegates = resolveRefs(delegates),
-			settings, configurations, auto, natures, autoPlugins)
+			settings, configurations, auto, plugins, autoPlugins)
 	}
 	def resolveBuild(resolveRef: ProjectReference => ProjectReference): Project =
 	{
@@ -95,7 +95,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference]
 		def resolveDeps(ds: Seq[ClasspathDep[ProjectReference]]) = ds map resolveDep
 		def resolveDep(d: ClasspathDep[ProjectReference]) = ClasspathDependency(resolveRef(d.project), d.configuration)
 		unresolved(id, base, aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies), delegates = resolveRefs(delegates),
-			settings, configurations, auto, natures, autoPlugins)
+			settings, configurations, auto, plugins, autoPlugins)
 	}
 
 	/** Applies the given functions to this Project.
@@ -136,27 +136,27 @@ sealed trait Project extends ProjectDefinition[ProjectReference]
 	* Any configured .sbt files are removed from this project's list.*/
 	def setSbtFiles(files: File*): Project = copy(auto = AddSettings.append( AddSettings.clearSbtFiles(auto), AddSettings.sbtFiles(files: _*)) )
 
-	/** Sets the [[Nature]]s of this project.
-	A [[Nature]] is a common label that is used by plugins to determine what settings, if any, to add to a project. */
-	def addNatures(ns: Nature*): Project = setNatures(Natures.and(natures, Natures.And(ns.toList)))
+	/** Sets the [[AutoPlugin]]s of this project.
+	A [[AutoPlugin]] is a common label that is used by plugins to determine what settings, if any, to add to a project. */
+	def addPlugins(ns: AutoPlugin*): Project = setPlugins(Plugins.and(plugins, Plugins.And(ns.toList)))
 
 	/** Disable the given plugins on this project. */
-	def disablePlugins(plugins: AutoPlugin*): Project =
-		setNatures(Natures.and(natures, Natures.And(plugins.map(p => Natures.Exclude(p)).toList)))
+	def disablePlugins(ps: AutoPlugin*): Project =
+		setPlugins(Plugins.and(plugins, Plugins.And(ps.map(p => Plugins.Exclude(p)).toList)))
 
-	private[this] def setNatures(ns: Natures): Project = {
-		// TODO: for 0.14.0, use copy when it has the additional `natures` parameter
+	private[this] def setPlugins(ns: Plugins): Project = {
+		// TODO: for 0.14.0, use copy when it has the additional `plugins` parameter
 		unresolved(id, base, aggregate = aggregate, dependencies = dependencies, delegates = delegates, settings, configurations, auto, ns, autoPlugins)
 	}
 
 	/** Definitively set the [[AutoPlugin]]s for this project. */
 	private[sbt] def setAutoPlugins(autos: Seq[AutoPlugin]): Project = {
 		// TODO: for 0.14.0, use copy when it has the additional `autoPlugins` parameter
-		unresolved(id, base, aggregate = aggregate, dependencies = dependencies, delegates = delegates, settings, configurations, auto, natures, autos)
+		unresolved(id, base, aggregate = aggregate, dependencies = dependencies, delegates = delegates, settings, configurations, auto, plugins, autos)
 	}
 }
 sealed trait ResolvedProject extends ProjectDefinition[ProjectRef] {
-	/** The [[AutoPlugin]]s enabled for this project as computed from [[natures]].*/
+	/** The [[AutoPlugin]]s enabled for this project as computed from [[plugins]].*/
 	def autoPlugins: Seq[AutoPlugin]
 }
 
@@ -192,7 +192,7 @@ object Project extends ProjectExtra
 
 	private abstract class ProjectDef[PR <: ProjectReference](val id: String, val base: File, aggregate0: => Seq[PR], dependencies0: => Seq[ClasspathDep[PR]],
 		delegates0: => Seq[PR], settings0: => Seq[Def.Setting[_]], val configurations: Seq[Configuration], val auto: AddSettings,
-		val natures: Natures, val autoPlugins: Seq[AutoPlugin]) extends ProjectDefinition[PR]
+		val plugins: Plugins, val autoPlugins: Seq[AutoPlugin]) extends ProjectDefinition[PR]
 	{
 		lazy val aggregate = aggregate0
 		lazy val dependencies = dependencies0
@@ -202,11 +202,11 @@ object Project extends ProjectExtra
 		Dag.topologicalSort(configurations)(_.extendsConfigs) // checks for cyclic references here instead of having to do it in Scope.delegates
 	}
 
-	// TODO: add parameter for natures in 0.14.0
+	// TODO: add parameter for plugins in 0.14.0
 	def apply(id: String, base: File, aggregate: => Seq[ProjectReference] = Nil, dependencies: => Seq[ClasspathDep[ProjectReference]] = Nil,
 		delegates: => Seq[ProjectReference] = Nil, settings: => Seq[Def.Setting[_]] = defaultSettings, configurations: Seq[Configuration] = Configurations.default,
 		auto: AddSettings = AddSettings.allDefaults): Project =
-			unresolved(id, base, aggregate, dependencies, delegates, settings, configurations, auto, Natures.empty, Nil)
+			unresolved(id, base, aggregate, dependencies, delegates, settings, configurations, auto, Plugins.empty, Nil)
 
 	/** Returns None if `id` is a valid Project ID or Some containing the parser error message if it is not.*/
 	def validProjectID(id: String): Option[String] = DefaultParsers.parse(id, DefaultParsers.ID).left.toOption
@@ -228,19 +228,19 @@ object Project extends ProjectExtra
 	@deprecated("Will be removed.", "0.13.2")
 	def resolved(id: String, base: File, aggregate: => Seq[ProjectRef], dependencies: => Seq[ResolvedClasspathDependency], delegates: => Seq[ProjectRef],
 		settings: Seq[Def.Setting[_]], configurations: Seq[Configuration], auto: AddSettings): ResolvedProject =
-			resolved(id, base, aggregate, dependencies, delegates, settings, configurations, auto, Natures.empty, Nil)
+			resolved(id, base, aggregate, dependencies, delegates, settings, configurations, auto, Plugins.empty, Nil)
 
 	private def resolved(id: String, base: File, aggregate: => Seq[ProjectRef], dependencies: => Seq[ClasspathDep[ProjectRef]],
 		delegates: => Seq[ProjectRef], settings: Seq[Def.Setting[_]], configurations: Seq[Configuration], auto: AddSettings,
-		natures: Natures, autoPlugins: Seq[AutoPlugin]): ResolvedProject =
-			new ProjectDef[ProjectRef](id, base, aggregate, dependencies, delegates, settings, configurations, auto, natures, autoPlugins) with ResolvedProject
+		plugins: Plugins, autoPlugins: Seq[AutoPlugin]): ResolvedProject =
+			new ProjectDef[ProjectRef](id, base, aggregate, dependencies, delegates, settings, configurations, auto, plugins, autoPlugins) with ResolvedProject
 
 	private def unresolved(id: String, base: File, aggregate: => Seq[ProjectReference], dependencies: => Seq[ClasspathDep[ProjectReference]],
 		delegates: => Seq[ProjectReference], settings: => Seq[Def.Setting[_]], configurations: Seq[Configuration], auto: AddSettings,
-		natures: Natures, autoPlugins: Seq[AutoPlugin]): Project =
+		plugins: Plugins, autoPlugins: Seq[AutoPlugin]): Project =
 	{
 		validProjectID(id).foreach(errMsg => sys.error("Invalid project ID: " + errMsg))
-		new ProjectDef[ProjectReference](id, base, aggregate, dependencies, delegates, settings, configurations, auto, natures, autoPlugins) with Project
+		new ProjectDef[ProjectReference](id, base, aggregate, dependencies, delegates, settings, configurations, auto, plugins, autoPlugins) with Project
 	}
 
 	def defaultSettings: Seq[Def.Setting[_]] = Defaults.defaultSettings

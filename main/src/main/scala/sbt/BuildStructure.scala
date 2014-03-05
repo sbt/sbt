@@ -71,7 +71,7 @@ final class LoadedBuildUnit(val unit: BuildUnit, val defined: Map[String, Resolv
 *               In addition to auto-discovered [[Build]]s, this includes any auto-generated default [[Build]]s.
 * @param projects The list of all [[Project]]s from all [[Build]]s.
 *                 These projects have not yet been resolved, but they have had auto-plugins applied.
-*                 In particular, each [[Project]]'s `autoPlugins` field is populated according to their configured `natures`
+*                 In particular, each [[Project]]'s `autoPlugins` field is populated according to their configured `plugins`
 *                 and their `settings` and `configurations` updated as appropriate.
 * @param buildNames No longer used and will be deprecated once feasible.
 */
@@ -99,8 +99,8 @@ final class DetectedPlugins(val plugins: DetectedModules[Plugin], val autoImport
 	/** Sequence of import expressions for the build definition.  This includes the names of the [[Plugin]], [[Build]], and [[AutoImport]] modules, but not the [[AutoPlugin]] modules. */
 	lazy val imports: Seq[String] = BuildUtil.getImports(plugins.names ++ builds.names ++ autoImports.names)
 
-	/** A function to select the right [[AutoPlugin]]s from [[autoPlugins]] given the defined [[Natures]] for a [[Project]]. */
-	lazy val compileNatures: Natures => Seq[AutoPlugin] = Natures.compile(autoPlugins.values.toList)
+	/** A function to select the right [[AutoPlugin]]s from [[autoPlugins]] for a [[Project]]. */
+	lazy val compilePlugins: Plugins => Seq[AutoPlugin] = Plugins.compile(autoPlugins.values.toList)
 }
 
 /** The built and loaded build definition project.
