@@ -12,6 +12,7 @@ trait Build
 {
 	def projectDefinitions(baseDirectory: File): Seq[Project] = projects
 	def projects: Seq[Project] = ReflectUtilities.allVals[Project](this).values.toSeq
+	// TODO: Should we grab the build core setting shere or in a plugin?
 	def settings: Seq[Setting[_]] = Defaults.buildCore
 	def buildLoaders: Seq[BuildLoader.Components] = Nil
 	/** Explicitly defines the root project.
@@ -46,8 +47,16 @@ object Build
 	@deprecated("Explicitly specify the ID", "0.13.0")
 	def defaultProject(base: File): Project = defaultProject(defaultID(base), base)
 	def defaultProject(id: String, base: File): Project = Project(id, base).settings(
+		// TODO - Can we move this somewhere else?  ordering of settings is causing this to get borked.
 		// if the user has overridden the name, use the normal organization that is derived from the name.
-		organization <<= (thisProject, organization, name) { (p, o, n) => if(p.id == n) "default" else o }
+		organization := {
+			val overridden = thisProject.value.id == name.value
+			organization.?.value match {
+				case Some(o) if !overridden => o
+				case _ => "default"
+			}
+			//(thisProject, organization, name) { (p, o, n) => if(p.id == n) "default" else o }
+		}
 	)
 	def defaultAggregatedProject(id: String, base: File, agg: Seq[ProjectRef]): Project =
 		defaultProject(id, base).aggregate(agg : _*)

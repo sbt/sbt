@@ -56,94 +56,107 @@ object Defaults extends BuildCommon
 	def thisBuildCore: Seq[Setting[_]] = inScope(GlobalScope.copy(project = Select(ThisBuild)))(Seq(
 		managedDirectory := baseDirectory.value / "lib_managed"
 	))
+	@deprecated("0.13.2", "Use AutoPlugins and globalSbtCore instead.")
 	lazy val globalCore: Seq[Setting[_]] = globalDefaults(defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
+		excludeFilter :== HiddenFileFilter
+	) ++ globalIvyCore ++ globalJvmCore) ++ globalSbtCore
+
+	private[sbt] lazy val globalJvmCore: Seq[Setting[_]] =
+	   Seq(
 		compilerCache := state.value get Keys.stateCompilerCache getOrElse compiler.CompilerCache.fresh,
-		crossVersion :== CrossVersion.Disabled,
+		sourcesInBase :== true,
+		autoAPIMappings := false,
+		apiMappings := Map.empty,
+		autoScalaLibrary :== true,
+		managedScalaInstance :== true,
+		definesClass :== FileValueCache(Locate.definesClass _ ).get,
+		traceLevel in run :== 0,
+		traceLevel in runMain :== 0,
+		traceLevel in console :== Int.MaxValue,
+		traceLevel in consoleProject :== Int.MaxValue,
+		autoCompilerPlugins :== true,
+		scalaHome :== None,
+		apiURL := None,
+		javaHome :== None,
+		testForkedParallel :== false,
+		javaOptions :== Nil,
+		sbtPlugin :== false,
+		crossPaths :== true,
+		sourcePositionMappers :== Nil,
+		artifactClassifier in packageSrc :== Some(SourceClassifier),
+		artifactClassifier in packageDoc :== Some(DocClassifier),
+		includeFilter :== NothingFilter,
+		includeFilter in unmanagedSources :== "*.java" | "*.scala",
+		includeFilter in unmanagedJars :== "*.jar" | "*.so" | "*.dll" | "*.jnilib" | "*.zip",
+		includeFilter in unmanagedResources :== AllPassFilter
+	   )
+
+	private[sbt] lazy val globalIvyCore: Seq[Setting[_]] =
+	  Seq(
+	    internalConfigurationMap :== Configurations.internalMap _,
+	  	credentials :== Nil,
+		exportJars :== false,
+	  	retrieveManaged :== false,
 		scalaOrganization :== ScalaArtifacts.Organization,
+		sbtResolver := { if(sbtVersion.value endsWith "-SNAPSHOT") Classpaths.typesafeSnapshots else Classpaths.typesafeReleases },
+		crossVersion :== CrossVersion.Disabled,
 		buildDependencies <<= Classpaths.constructBuildDependencies,
+	  	version :== "0.1-SNAPSHOT",
+	  	classpathTypes :== Set("jar", "bundle") ++ CustomPomParser.JarPackagings,
+	  	artifactClassifier :== None,
+	  	checksums := Classpaths.bootChecksums(appConfiguration.value),
+		conflictManager := ConflictManager.default,
+		pomExtra :== NodeSeq.Empty,
+		pomPostProcess :== idFun,
+		pomAllRepositories :== false,
+	  	pomIncludeRepository :== Classpaths.defaultRepositoryFilter
+	  )
+
+	/** Core non-plugin settings for sbt builds.  These *must* be on every build or the sbt engine will fail to run at all. */
+	private[sbt] lazy val globalSbtCore: Seq[Setting[_]] = globalDefaults(Seq(
+		outputStrategy :== None,  // TODO - This might belong elsewhere.
+		buildStructure := Project.structure(state.value),
+		settingsData := buildStructure.value.data,
+		trapExit :== true,
+		connectInput :== false,
+		cancelable :== false,
+		envVars :== Map.empty,
+		sbtVersion := appConfiguration.value.provider.id.version,
+		sbtBinaryVersion := binarySbtVersion(sbtVersion.value),
+		watchingMessage := Watched.defaultWatchingMessage,
+		triggeredMessage := Watched.defaultTriggeredMessage,
+		onLoad := idFun[State],
+		onUnload := idFun[State],
+		onUnload := { s => try onUnload.value(s) finally IO.delete(taskTemporaryDirectory.value) },
+		extraLoggers :== { _ => Nil },
+		watchSources :== Nil,
+		skip :== false,
 		taskTemporaryDirectory := { val dir = IO.createTemporaryDirectory; dir.deleteOnExit(); dir },
 		onComplete := { val dir = taskTemporaryDirectory.value; () => {IO.delete(dir); IO.createDirectory(dir) }},
 		Previous.cache <<= Previous.cacheSetting,
 		Previous.references :== new Previous.References,
 		concurrentRestrictions <<= defaultRestrictions,
 		parallelExecution :== true,
-		sbtVersion := appConfiguration.value.provider.id.version,
-		sbtBinaryVersion := binarySbtVersion(sbtVersion.value),
-		sbtResolver := { if(sbtVersion.value endsWith "-SNAPSHOT") Classpaths.typesafeSnapshots else Classpaths.typesafeReleases },
 		pollInterval :== 500,
 		logBuffered :== false,
-		connectInput :== false,
-		cancelable :== false,
-		envVars :== Map.empty,
-		sourcesInBase :== true,
-		autoAPIMappings := false,
-		apiMappings := Map.empty,
-		autoScalaLibrary :== true,
-		managedScalaInstance :== true,
-		onLoad := idFun[State],
-		onUnload := idFun[State],
-		onUnload := { s => try onUnload.value(s) finally IO.delete(taskTemporaryDirectory.value) },
-		watchingMessage := Watched.defaultWatchingMessage,
-		triggeredMessage := Watched.defaultTriggeredMessage,
-		definesClass :== FileValueCache(Locate.definesClass _ ).get,
-		trapExit :== true,
-		traceLevel in run :== 0,
-		traceLevel in runMain :== 0,
-		traceLevel in console :== Int.MaxValue,
-		traceLevel in consoleProject :== Int.MaxValue,
-		autoCompilerPlugins :== true,
-		internalConfigurationMap :== Configurations.internalMap _,
-		initialize :== {},
-		credentials :== Nil,
-		scalaHome :== None,
-		apiURL := None,
-		javaHome :== None,
-		extraLoggers :== { _ => Nil },
-		skip :== false,
-		watchSources :== Nil,
-		version :== "0.1-SNAPSHOT",
-		outputStrategy :== None,
-		exportJars :== false,
-		fork :== false,
-		testForkedParallel :== false,
-		javaOptions :== Nil,
-		sbtPlugin :== false,
-		crossPaths :== true,
-		classpathTypes :== Set("jar", "bundle") ++ CustomPomParser.JarPackagings,
-		aggregate :== true,
-		maxErrors :== 100,
-		sourcePositionMappers :== Nil,
+		commands :== Nil,
+		showSuccess :== true,
 		showTiming :== true,
 		timingFormat :== Aggregation.defaultFormat,
-		showSuccess :== true,
-		commands :== Nil,
-		retrieveManaged :== false,
-		buildStructure := Project.structure(state.value),
-		settingsData := buildStructure.value.data,
-		artifactClassifier :== None,
-		artifactClassifier in packageSrc :== Some(SourceClassifier),
-		artifactClassifier in packageDoc :== Some(DocClassifier),
-		checksums := Classpaths.bootChecksums(appConfiguration.value),
-		conflictManager := ConflictManager.default,
-		pomExtra :== NodeSeq.Empty,
-		pomPostProcess :== idFun,
-		pomAllRepositories :== false,
-		includeFilter :== NothingFilter,
-		includeFilter in unmanagedSources :== "*.java" | "*.scala",
-		includeFilter in unmanagedJars :== "*.jar" | "*.so" | "*.dll" | "*.jnilib" | "*.zip",
-		includeFilter in unmanagedResources :== AllPassFilter,
-		excludeFilter :== HiddenFileFilter,
-		pomIncludeRepository :== Classpaths.defaultRepositoryFilter
+		aggregate :== true,
+		maxErrors :== 100,
+		fork :== false,
+		initialize :== {}
 	))
 	def defaultTestTasks(key: Scoped): Seq[Setting[_]] = inTask(key)(Seq(
 		tags := Seq(Tags.Test -> 1),
 		logBuffered := true
 	))
+	// TODO: This should be on the new default settings for a project.
 	def projectCore: Seq[Setting[_]] = Seq(
 		name := thisProject.value.id,
 		logManager := LogManager.defaults(extraLoggers.value, StandardMain.console),
-		onLoadMessage <<= onLoadMessage or (name, thisProjectRef)("Set current project to " + _ + " (in build " + _.build +")"),
-		runnerTask
+		onLoadMessage <<= onLoadMessage or (name, thisProjectRef)("Set current project to " + _ + " (in build " + _.build +")")
 	)
 	def paths = Seq(
 		baseDirectory := thisProject.value.base,
@@ -852,6 +865,7 @@ object Defaults extends BuildCommon
 	lazy val disableAggregation = Defaults.globalDefaults( noAggregation map disableAggregate )
 	def disableAggregate(k: Scoped) = aggregate in k :== false
 
+    lazy val runnerSettings: Seq[Setting[_]] = Seq(runnerTask)
 	lazy val baseTasks: Seq[Setting[_]] = projectTasks ++ packageBase
 
 	lazy val baseClasspaths: Seq[Setting[_]] = Classpaths.publishSettings ++ Classpaths.baseSettings
@@ -865,7 +879,12 @@ object Defaults extends BuildCommon
 
 
 	// settings that are not specific to a configuration
-	lazy val projectBaseSettings: Seq[Setting[_]] = projectCore ++ paths ++ baseClasspaths ++ baseTasks ++ compileBase ++ disableAggregation
+	@deprecated("0.13.2", "Settings now split into AutoPlugins.")
+	lazy val projectBaseSettings: Seq[Setting[_]] = projectCore ++ runnerSettings ++ paths ++ baseClasspaths ++ baseTasks ++ compileBase ++ disableAggregation
+
+	// These are project level settings that MUST be on every project.  
+	lazy val coreDefaultSettings: Seq[Setting[_]] = projectCore ++ disableAggregation
+	@deprecated("0.13.2", "Default settings split into `coreDefaultSettings` and IvyModule/JvmModule plugins.")
 	lazy val defaultSettings: Seq[Setting[_]] = projectBaseSettings ++ defaultConfigs
 }
 object Classpaths
@@ -935,9 +954,14 @@ object Classpaths
 		publishArtifact in Test:== false
 	))
 
-	val publishSettings: Seq[Setting[_]] = publishGlobalDefaults ++ Seq(
-		artifacts <<= artifactDefs(defaultArtifactTasks),
-		packagedArtifacts <<= packaged(defaultArtifactTasks),
+    val jvmPublishSettings: Seq[Setting[_]] = Seq(
+      artifacts <<= artifactDefs(defaultArtifactTasks),
+      packagedArtifacts <<= packaged(defaultArtifactTasks)
+   	)
+
+	val ivyPublishSettings: Seq[Setting[_]] = publishGlobalDefaults ++ Seq(
+		artifacts :== Nil,
+		packagedArtifacts :== Map.empty,
 		makePom := { val config = makePomConfiguration.value; IvyActions.makePom(ivyModule.value, config, streams.value.log); config.file },
 		packagedArtifact in makePom := (artifact in makePom value, makePom value),
 		deliver <<= deliverTask(deliverConfiguration),
@@ -946,6 +970,8 @@ object Classpaths
 		publishLocal <<= publishTask(publishLocalConfiguration, deliverLocal),
 		publishM2 <<= publishTask(publishM2Configuration, deliverLocal)
 	)
+	@deprecated("0.13.2", "This has been split into jvmIvySettings and ivyPublishSettings.")
+	val publishSettings: Seq[Setting[_]] = jvmPublishSettings ++ ivyPublishSettings
 
 	private[this] def baseGlobalDefaults = Defaults.globalDefaults(Seq(
 		conflictWarning :== ConflictWarning.default("global"),
@@ -976,7 +1002,7 @@ object Classpaths
 		}
 	))
 
-	val baseSettings: Seq[Setting[_]] = baseGlobalDefaults ++ sbtClassifiersTasks ++ Seq(
+	val ivyBaseSettings: Seq[Setting[_]] = baseGlobalDefaults ++ sbtClassifiersTasks ++ Seq(
 		conflictWarning := conflictWarning.value.copy(label = Reference.display(thisProjectRef.value)),
 		unmanagedBase := baseDirectory.value / "lib",
 		normalizedName := Project.normalizeModuleID(name.value),
@@ -1007,14 +1033,11 @@ object Classpaths
 		otherResolvers := Resolver.publishMavenLocal :: publishTo.value.toList,
 		projectResolver <<= projectResolverTask,
 		projectDependencies <<= projectDependenciesTask,
-		libraryDependencies ++= autoLibraryDependency(autoScalaLibrary.value && !scalaHome.value.isDefined && managedScalaInstance.value, sbtPlugin.value, scalaOrganization.value, scalaVersion.value),
+		// TODO - Is this the appropriate split?  Ivy defines this simply as
+		//        just project + library, while the JVM plugin will define it as 
+		//        having the additional sbtPlugin + autoScala magikz. 
 		allDependencies := {
-			val base = projectDependencies.value ++ libraryDependencies.value
-			val pluginAdjust = if(sbtPlugin.value) sbtDependency.value.copy(configurations = Some(Provided.name)) +: base else base
-			if(scalaHome.value.isDefined || ivyScala.value.isEmpty || !managedScalaInstance.value)
-				pluginAdjust
-			else
-				ScalaArtifacts.toolDependencies(scalaOrganization.value, scalaVersion.value) ++ pluginAdjust
+			projectDependencies.value ++ libraryDependencies.value
 		},
 		ivyScala <<= ivyScala or (scalaHome, scalaVersion in update, scalaBinaryVersion in update, scalaOrganization) { (sh,fv,bv,so) =>
 			Some(new IvyScala(fv, bv, Nil, filterImplicit = false, checkExplicit = true, overrideScalaVersion = false, scalaOrganization = so))
@@ -1054,6 +1077,22 @@ object Classpaths
 			}
 		} tag(Tags.Update, Tags.Network)
 	)
+
+	val jvmBaseSettings: Seq[Setting[_]] = Seq(
+		libraryDependencies ++= autoLibraryDependency(autoScalaLibrary.value && !scalaHome.value.isDefined && managedScalaInstance.value, sbtPlugin.value, scalaOrganization.value, scalaVersion.value),
+		// Override the default to handle mixing in the sbtPlugin + scala dependencies.
+		allDependencies := {
+			val base = projectDependencies.value ++ libraryDependencies.value
+			val pluginAdjust = if(sbtPlugin.value) sbtDependency.value.copy(configurations = Some(Provided.name)) +: base else base
+			if(scalaHome.value.isDefined || ivyScala.value.isEmpty || !managedScalaInstance.value)
+				pluginAdjust
+			else
+				ScalaArtifacts.toolDependencies(scalaOrganization.value, scalaVersion.value) ++ pluginAdjust
+		}
+	)
+	@deprecated("0.13.2", "Split into ivyBaseSettings and jvmBaseSettings.")
+	val baseSettings: Seq[Setting[_]] = ivyBaseSettings ++ jvmBaseSettings
+
 	def warnResolversConflict(ress: Seq[Resolver], log: Logger) {
 		val resset = ress.toSet
 		for ((name, r) <- resset groupBy (_.name) if r.size > 1) {

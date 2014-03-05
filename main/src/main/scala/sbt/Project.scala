@@ -203,10 +203,11 @@ object Project extends ProjectExtra
 	}
 
 	// TODO: add parameter for plugins in 0.14.0
+	// TODO: Modify default settings to be the core settings, and automatically add the IvyModule + JvmPlugins.
 	def apply(id: String, base: File, aggregate: => Seq[ProjectReference] = Nil, dependencies: => Seq[ClasspathDep[ProjectReference]] = Nil,
-		delegates: => Seq[ProjectReference] = Nil, settings: => Seq[Def.Setting[_]] = defaultSettings, configurations: Seq[Configuration] = Configurations.default,
+		delegates: => Seq[ProjectReference] = Nil, settings: => Seq[Def.Setting[_]] = Nil, configurations: Seq[Configuration] = Nil,
 		auto: AddSettings = AddSettings.allDefaults): Project =
-			unresolved(id, base, aggregate, dependencies, delegates, settings, configurations, auto, Plugins.empty, Nil)
+			unresolved(id, base, aggregate, dependencies, delegates, settings, configurations, auto, Plugins.empty, Nil)  // Note: JvmModule/IvyModule auto included...
 
 	/** Returns None if `id` is a valid Project ID or Some containing the parser error message if it is not.*/
 	def validProjectID(id: String): Option[String] = DefaultParsers.parse(id, DefaultParsers.ID).left.toOption
@@ -243,6 +244,7 @@ object Project extends ProjectExtra
 		new ProjectDef[ProjectReference](id, base, aggregate, dependencies, delegates, settings, configurations, auto, plugins, autoPlugins) with Project
 	}
 
+	@deprecated("0.13.2", "Use Defaults.coreDefaultSettings instead, combined with AutoPlugins.")
 	def defaultSettings: Seq[Def.Setting[_]] = Defaults.defaultSettings
 
 	final class Constructor(p: ProjectReference) {
