@@ -113,7 +113,7 @@ The following two files illustrate. First, if your project is in
 
         lazy val root = Project(id = "hello",
                                 base = file("."),
-                                settings = Project.defaultSettings ++ Seq(sampleKeyB := "B: in the root project settings in Build.scala"))
+                                settings = Seq(sampleKeyB := "B: in the root project settings in Build.scala"))
     }
 
 Now, create `hello/build.sbt` as follows:

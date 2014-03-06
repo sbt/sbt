@@ -16,7 +16,7 @@ into multiple files.
       val buildVersion      = "2.0.29"
       val buildScalaVersion = "2.9.0-1"
 
-      val buildSettings = Defaults.defaultSettings ++ Seq (
+      val buildSettings = Seq (
         organization := buildOrganization,
         version      := buildVersion,
         scalaVersion := buildScalaVersion,
