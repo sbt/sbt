@@ -22,20 +22,12 @@ Don't use default package
 Users who have their build files in some package will not be able to
 use your plugin if it's defined in default (no-name) package.
 
-Avoid overriding `settings`
------------------------------
+Avoid older `sbt.Plugin` mechanism
+----------------------------------
 
-sbt will automatically load your plugin's `settings` into the build.
-Overriding `val settings` should only be done by plugins intending to
-provide commands. Regular plugins defining tasks and settings should
-provide a sequence named after the plugin like so:
-
-::
-
-    val obfuscateSettings = Seq(...)
-
-This allows build user to choose which subproject the plugin would be
-used. See later section for how the settings should be scoped.
+sbt has deprecated the old `sbt.Plugin` mechanism in favor of `sbt.AutoPlugin`.
+The new mechanism features a set of user-level controls and dependency declarations
+that cleans up a lot of long-standing issues with plugins.
 
 Reuse existing keys
 -------------------

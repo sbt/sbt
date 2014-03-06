@@ -176,6 +176,10 @@ It is recommended to explicitly specify the commit or tag by appending it to the
 
     lazy val assemblyPlugin = uri("git://github.com/sbt/sbt-assembly#0.9.1")
 
+One caveat to using this method is that the local sbt will try to run the remote plugin's build.   It
+is quite possible that the plugin's own build uses a different sbt version, as many plugins cross-publish for
+several sbt versions.   As such, it is recommended to stick with binary artifacts when possible.
+
 2) Use the library
 ~~~~~~~~~~~~~~~~~~
 
@@ -221,22 +225,25 @@ To make a plugin, create a project and configure `sbtPlugin` to
 `true`. Then, write the plugin code and publish your project to a
 repository. The plugin can be used as described in the previous section.
 
-A plugin can implement `sbt.Plugin`. The contents of a Plugin
-singleton, declared like `object MyPlugin extends Plugin`, are
+A plugin can implement `sbt.AutoImpot`. The contents of an AutoImport
+singleton, declared like `object MyPlugin extends AutoImport`, are
 wildcard imported in `set`, `eval`, and `.sbt` files. Typically,
 this is used to provide new keys (SettingKey, TaskKey, or InputKey) or
 core methods without requiring an import or qualification.
 
-In addition, a `Plugin` can implement `projectSettings`, `buildSettings`, and `globalSettings` as appropriate.
-The Plugin's `projectSettings` is automatically appended to each project's settings.
+In addition, a plugin can implement the `AutoPlugin` class.   This has additoinal features, such as
+
+* Specifying plugin dependencies.
+* Specifying `projectSettings`, `buildSettings`, and `globalSettings` as appropriate.
+
+The AutoPlugin's `projectSettings` is automatically appended to each project's settings, when its dependencies also exist on that project
+The `select` method defines the conditions by which this plugin's settings are automatically imported.
 The `buildSettings` is appended to each build's settings (that is, `in ThisBuild`).
 The `globalSettings` is appended once to the global settings (`in Global`).
 These allow a plugin to automatically provide new functionality or new defaults.
 One main use of this feature is to globally add commands, such as for IDE plugins.
 Use `globalSettings` to define the default value of a setting.
 
-These automatic features should be used judiciously because the automatic activation generally reduces control for the build author (the user of the plugin).
-Some control is returned to them via `Project.autoSettings`, which changes how automatically added settings are added and in what order.
 
 Example Plugin
 --------------
@@ -258,16 +265,18 @@ An example of a typical plugin:
 ::
 
     import sbt._
-    object MyPlugin extends Plugin
+    object MyPlugin extends AutoPlugin
     {
+        // Only enable this plugin for projects which are JvmModules.
+        def select = sbt.plugins.JvmModule 
+
         // configuration points, like the built in `version`, `libraryDependencies`, or `compile`
         // by implementing Plugin, these are automatically imported in a user's `build.sbt`
         val newTask = taskKey[Unit]("A new task.")
         val newSetting = settingKey[String]("A new setting.")
 
-        // a group of settings ready to be added to a Project
-        // to automatically add them, do 
-        val newSettings = Seq(
+        // a group of settings that are automatically added to projects.
+        val projectSettings = Seq(
             newSetting := "test",
             newTask := println(newSetting.value)
         )
@@ -289,7 +298,17 @@ A build definition that uses the plugin might look like:
 
     newSetting := "example"
 
-Example command plugin
+
+Root Plugins
+------------
+
+Some plugins should always be explicitly enabled on projects.  Sbt calls these "RootPlugins", i.e. plugins
+that are "root" nodes in the plugin depdendency graph.   To define a root plugin, just extend the `sbt.RootPlugin`
+interface.  This interface is exactly like the `AutoPlugin` interface except that a `select` method is not
+needed.
+
+
+Example command root plugin
 ----------------------
 
 A basic plugin that adds commands looks like:
@@ -310,9 +329,9 @@ A basic plugin that adds commands looks like:
 
     import sbt._
     import Keys._
-    object MyPlugin extends Plugin
+    object MyPlugin extends RootPlugin
     {
-      override lazy val settings = Seq(commands += myCommand)
+      override lazy val projectSettings = Seq(commands += myCommand)
 
       lazy val myCommand = 
         Command.command("hello") { (state: State) =>
@@ -326,6 +345,28 @@ and distribute it in a plugin. Note that multiple commands can be
 included in one plugin (for example, use `commands ++= Seq(a,b)`). See
 :doc:`Commands` for defining more useful commands, including ones that
 accept arguments and affect the execution state.
+
+For a user to consume this plugin, it requires an explicit include via the `Project` instance.
+Here's what their local sbt will look like.
+
+`build.sbt`
+
+::
+
+    val root = Project("example-plugin-usage", file(".")).setPlugins(MyPlugin)
+
+
+The `setPlugins` method allows projects to explicitly define the `RootPlugin`s they wish to consume.
+`AutoPlugin`s are automatically added to the project as appropriate.   
+
+Projects can also exclude any type of plugin using the `disablePlugins` method.  For example, if
+we wish to remove the JvmModule settings (`compile`,`test`,`run`), we modify our `build.sbt` as
+follows:
+
+::
+
+    val root = Project("example-plugin-usage", file(".")).setPlugins(MyPlugin).disablePlugins(plugins.JvmModule)
+
 
 Global plugins example
 ----------------------
