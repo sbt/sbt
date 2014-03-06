@@ -95,110 +95,39 @@ By Example
 Using a library in a build definition
 -------------------------------------
 
-As an example, we'll add the Grizzled Scala library as a plugin.
-Although this does not provide sbt-specific functionality, it
-demonstrates how to declare plugins.
+As an example, we'll add the `xsbt-web-plugin
+<https://github.com/JamesEarlDouglas/xsbt-web-plugin>`_.
 
-1a) Manually managed
-~~~~~~~~~~~~~~~~~~~~
-
-1. Download the jar manually from
-   https://oss.sonatype.org/content/repositories/releases/org/clapper/grizzled-scala\_2.8.1/1.0.4/grizzled-scala\_2.8.1-1.0.4.jar
-2. Put it in `project/lib/`
-
-1b) Automatically managed: direct editing approach
+1) Automatically managed: direct editing approach
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Edit `project/plugins.sbt` to contain:
 
 ::
 
-    libraryDependencies += "org.clapper" %% "grizzled-scala" % "1.0.4"
+    addSbtPlugin("com.earldouglas" % "xsbt-web-plugin" % "0.5.0")
 
 If sbt is running, do `reload`.
-
-1c) Automatically managed: command line approach
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-We can change to the plugins project in `project/` using
-`reload plugins`.
-
-.. code-block:: console
-
-    $ sbt
-    > reload plugins
-    [info] Set current project to default (in build file:/Users/harrah/demo2/project/)
-    >
-
-Then, we can add dependencies like usual and save them to
-`project/plugins.sbt`. It is useful, but not required, to run
-:key:`update` to verify that the dependencies are correct.
-
-.. code-block:: console
-
-    > set libraryDependencies += "org.clapper" %% "grizzled-scala" % "1.0.4"
-    ...
-    > update
-    ...
-    > session save
-    ...
-
-To switch back to the main project:
-
-.. code-block:: console
-
-    > reload return
-    [info] Set current project to root (in build file:/Users/harrah/demo2/)
-
-1d) Project dependency
-~~~~~~~~~~~~~~~~~~~~~~
-
-This variant shows how to use sbt's external project support to declare a source dependency on a plugin.
-This means that the plugin will be built from source and used on the classpath.
-
-Edit `project/plugins.sbt`
-
-::
-
-    lazy val root = project.in( file(".") ).dependsOn( assemblyPlugin )
-    lazy val assemblyPlugin = uri("git://github.com/sbt/sbt-assembly")
-
-If sbt is running, run `reload`.
-
-Note that this approach can be useful used when developing a plugin.
-A project that uses the plugin will rebuild the plugin on `reload`.
-This saves the intermediate steps of :key:`publishLocal` and :key:`update`.
-It can also be used to work with the development version of a plugin from its repository.
-
-It is recommended to explicitly specify the commit or tag by appending it to the repository as a fragment:
-
-::
-
-    lazy val assemblyPlugin = uri("git://github.com/sbt/sbt-assembly#0.9.1")
 
 2) Use the library
 ~~~~~~~~~~~~~~~~~~
 
-Grizzled Scala is ready to be used in build definitions. This includes
+xsbt-web-plugin is ready to be used in build definitions. This includes
 the `eval` and `set` commands and `.sbt` and `project/*.scala`
 files.
 
 .. code-block:: console
 
-    > eval grizzled.sys.os
+    > eval com.earldouglas.xsbtwebplugin.PluginKeys.DefaultConf
 
-In a `build.sbt` file:
+This outputs:
 
-::
+.. code-block:: console
 
-    import grizzled.sys._
-    import OperatingSystem._
+    [info] ans: sbt.Configuration = compile
 
-    libraryDependencies ++=
-        if(os ==Windows)
-            ("org.example" % "windows-only" % "1.0") :: Nil
-        else
-            Nil
+See the `xsbt-web-plugin
+<https://github.com/JamesEarlDouglas/xsbt-web-plugin>`_ documentation for further usage information.
 
 Creating a plugin
 =================
