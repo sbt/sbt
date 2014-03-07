@@ -29,7 +29,7 @@ As a specific example, the following generates a hello world source file:
 
 ::
 
-    sourceGenerators in Compile += Def.task {
+    sourceGenerators in Compile <+= Def.task {
       val file = (sourceManaged in Compile).value / "demo" / "Test.scala"
       IO.write(file, """object Test extends App { println("Hi") }""")
       Seq(file)
@@ -44,7 +44,7 @@ By default, generated sources are not included in the packaged source artifact. 
    :title: Generate resources
    :type: setting
 
-   resourceGenerators in Compile += <task of type Seq[File]>
+   resourceGenerators in Compile += <task of type Seq[File]>.taskValue
 
 A resource generation task should generate resources in a subdirectory of :key:`resourceManaged` and return a sequence of files generated.  The key to add the task to is called :key:`resourceGenerators`.  Because we want to add the unexecuted task, we use `taskValue` instead of the usual `value`.  It should be scoped according to whether the generated files are main (`Compile`) or test (`Test`) resources.  This basic structure looks like:
 
@@ -56,7 +56,7 @@ For example, assuming a method `def makeSomeResources(base: File): Seq[File]`,
 
 ::
 
-    resourceGenerators in Compile += Def.task {
+    resourceGenerators in Compile <+= Def.task {
       makeSomeResources( (resourceManaged in Compile).value / "demo")
     }.taskValue
 

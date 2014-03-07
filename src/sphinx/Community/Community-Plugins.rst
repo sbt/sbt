@@ -86,6 +86,25 @@ One jar plugins
 -  sbt-onejar (Packages your project using One-JAR™):
    https://github.com/sbt/sbt-onejar
 
+Frontend development plugins
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+-  coffeescripted-sbt: https://github.com/softprops/coffeescripted-sbt
+-  less-sbt (for less-1.3.0): https://github.com/softprops/less-sbt
+-  sbt-less-plugin (it uses less-1.3.0):
+   https://github.com/btd/sbt-less-plugin
+-  sbt-emberjs: https://github.com/stefri/sbt-emberjs
+-  sbt-closure: https://github.com/eltimn/sbt-closure
+-  sbt-yui-compressor: https://github.com/indrajitr/sbt-yui-compressor
+-  sbt-requirejs: https://github.com/scalatra/sbt-requirejs
+-  sbt-vaadin-plugin: https://github.com/henrikerola/sbt-vaadin-plugin
+
+Game development plugins
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+-  sbt-lwjgl-plugin (Light Weight Java Game Library): https://github.com/philcali/sbt-lwjgl-plugin
+-  sbt-scage-plugin (Scala Game Engine): https://github.com/mvallerie/sbt-scage-plugin
+
 Release plugins
 ~~~~~~~~~~~~~~~
 
@@ -114,24 +133,6 @@ Release plugins
 -  xitrum-package (collects dependency .jar files for standalone Scala programs):
    https://github.com/ngocdaothanh/xitrum-package
 
-Frontend development plugins
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
--  coffeescripted-sbt: https://github.com/softprops/coffeescripted-sbt
--  less-sbt (for less-1.3.0): https://github.com/softprops/less-sbt
--  sbt-less-plugin (it uses less-1.3.0):
-   https://github.com/btd/sbt-less-plugin
--  sbt-emberjs: https://github.com/stefri/sbt-emberjs
--  sbt-closure: https://github.com/eltimn/sbt-closure
--  sbt-yui-compressor: https://github.com/indrajitr/sbt-yui-compressor
--  sbt-requirejs: https://github.com/scalatra/sbt-requirejs
--  sbt-vaadin-plugin: https://github.com/henrikerola/sbt-vaadin-plugin
-
-Game development plugins
-~~~~~~~~~~~~~~~~~~~~~~~~
-
--  sbt-lwjgl-plugin (Light Weight Java Game Library): https://github.com/philcali/sbt-lwjgl-plugin
--  sbt-scage-plugin (Scala Game Engine): https://github.com/mvallerie/sbt-scage-plugin
 
 System plugins
 ~~~~~~~~~~~~~~
@@ -253,7 +254,7 @@ Utility plugins
 Code coverage plugins
 ~~~~~~~~~~~~~~~~~~~~~
 
--  sbt-scct: https://github.com/sqality/sbt-scct
+-  sbt-scct: https://github.com/dvc94ch/sbt-scct
 -  sbt-scoverage: https://github.com/scoverage/sbt-scoverage
 -  jacoco4sbt: https://github.com/sbt/jacoco4sbt
 -  xsbt-coveralls-plugin: https://github.com/theon/xsbt-coveralls-plugin
