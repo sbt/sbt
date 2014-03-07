@@ -226,17 +226,19 @@ final class ContextUtil[C <: Context](val ctx: C)
 		object appTransformer extends Transformer
 		{
 			override def transform(tree: Tree): Tree =
-				tree match
-				{
-					case ApplyTree(TypeApply(Select(_, nme), targ :: Nil), qual :: Nil) => subWrapper(nme.decoded, targ.tpe, qual, tree) match {
-						case Converted.Success(t, finalTx) => finalTx(t)
-						case Converted.Failure(p,m) => ctx.abort(p, m)
-						case _: Converted.NotApplicable[_] => super.transform(tree)
-					}
+				tree match {
+					case ApplyTree(TypeApply(Select(_, nme), targ :: Nil), qual :: Nil) =>
+						changeOwner(qual, currentOwner, initialOwner) // Fixes https://github.com/sbt/sbt/issues/1150
+						subWrapper(nme.decoded, targ.tpe, qual, tree) match {
+							case Converted.Success(t, finalTx) => finalTx(t)
+							case Converted.Failure(p,m) => ctx.abort(p, m)
+							case _: Converted.NotApplicable[_] => super.transform(tree)
+						}
 					case _ => super.transform(tree)
 				}
 		}
-
-		appTransformer.transform(t)
+		appTransformer.atOwner(initialOwner) {
+			appTransformer.transform(t)
+		}
 	}
 }
