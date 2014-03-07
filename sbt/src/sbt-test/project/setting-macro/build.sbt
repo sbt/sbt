@@ -15,3 +15,12 @@ demo := {
   val (n, s) = parser.parsed
   s * n
 }
+
+// Tests for correct Symbol owner structure in the lifted qualifiers of
+// the `.value` macro within a task macro. (#1150)
+val touchIfChanged = taskKey[Unit]("")
+
+touchIfChanged := { 
+  val foo = (sourceDirectory in Compile).apply(base => base).value.get
+  ()
+}
