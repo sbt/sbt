@@ -11,7 +11,6 @@
 
 @echo off
 set SBT_HOME=%~dp0
-set ERROR_CODE=0
 
 rem FIRST we load the config file of extra options.
 set FN=%SBT_HOME%\..\conf\sbtconfig.txt
@@ -45,10 +44,10 @@ if ERRORLEVEL 1 goto error
 goto end
 
 :error
-set ERROR_CODE=1
+@endlocal
+exit /B 1
+
 
 :end
-
 @endlocal
-
-exit /B %ERROR_CODE%
+exit /B 0
