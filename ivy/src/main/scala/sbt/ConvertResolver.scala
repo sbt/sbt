@@ -61,7 +61,13 @@ private object ConvertResolver
 			}
 			case repo: FileRepository =>
 			{
-				val resolver = new FileSystemResolver with DescriptorRequired
+				val resolver = new FileSystemResolver with DescriptorRequired {
+					// Workaround for #1156
+					// Temporarily in sbt 0.13.x we deprecate overwriting
+					// in local files for non-changing revisions.
+					// This will be fully enforced in sbt 1.0.
+					setRepository(new WarnOnOverwriteFileRepo())
+				}
 				resolver.setName(repo.name)
 				initializePatterns(resolver, repo.patterns, settings)
 				import repo.configuration.{isLocal, isTransactional}
@@ -135,13 +141,25 @@ private object ConvertResolver
 	/** A custom Ivy URLRepository that returns FileResources for file URLs.
 	* This allows using the artifacts from the Maven local repository instead of copying them to the Ivy cache. */
 	private[this] final class LocalIfFileRepo extends URLRepo {
-		private[this] val repo = new FileRepo
+		private[this] val repo = new WarnOnOverwriteFileRepo()
 		override def getResource(source: String) = {
 			val url = new URL(source)
 			if(url.getProtocol == IO.FileScheme)
 				new FileResource(repo, IO.toFile(url))
 			else
 				super.getResource(source)
+		}
+	}
+
+	private[this] final class WarnOnOverwriteFileRepo extends FileRepo() {
+		override def put(source: java.io.File, destination: String, overwrite: Boolean): Unit = {
+        	try super.put(source, destination, overwrite)
+        	catch {
+        		case e: java.io.IOException if e.getMessage.contains("destination already exists") =>
+        			import org.apache.ivy.util.Message
+        			Message.warn(s"Attempting to overwrite $destination\n\tThis usage is deprecated and will be removed in sbt 1.0.")
+        			super.put(source, destination, true)
+        	}
 		}
 	}
 }
