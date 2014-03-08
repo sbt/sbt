@@ -20,7 +20,7 @@ object Output
 	def last(keys: Values[_], streams: Streams, printLines: Seq[String] => Unit)(implicit display: Show[ScopedKey[_]]): Unit =
 		last(keys, streams, printLines, None)(display)
 
-	def last(keys: Values[_], streams: Streams, printLines: Seq[String] => Unit, sid: Option[String])(implicit display: Show[ScopedKey[_]]): Unit =
+	def last(keys: Values[_], streams: Streams, printLines: Seq[String] => Unit, sid: Option[String])(implicit display: Show[ScopedKey[_]]): Unit = 
 		printLines( flatLines(lastLines(keys, streams, sid))(idFun) )
 
 	def last(file: File, printLines: Seq[String] => Unit, tailDelim: String = DefaultTail): Unit =
@@ -55,7 +55,17 @@ object Output
 	@deprecated("Explicitly provide None for the stream ID.", "0.13.0")
 	def lastLines(key: ScopedKey[_], mgr: Streams): Seq[String] = lastLines(key, mgr, None)
 
-	def lastLines(key: ScopedKey[_], mgr: Streams, sid: Option[String]): Seq[String]  =	 mgr.use(key) { s => IO.readLines(s.readText( Project.fillTaskAxis(key), sid )) }
+	def lastLines(key: ScopedKey[_], mgr: Streams, sid: Option[String]): Seq[String]  =	 
+	  mgr.use(key) { s => 
+	  	// Workaround for #1155 - Keys.streams are always scoped by the task they're included in
+	  	// but are keyed by the Keys.streams key.  I think this isn't actually a workaround, but
+	  	// is how things are expected to work now.
+	  	// You can see where streams are injected using their own key scope in 
+	  	// EvaluateTask.injectStreams.
+	  	val streamScopedKey: ScopedKey[_] = ScopedKey(Project.fillTaskAxis(key).scope, Keys.streams.key)
+	  	val tmp = s.readText( streamScopedKey, sid )
+	  	IO.readLines(tmp) 
+	  }
 
 	def tailLines(file: File, tailDelim: String): Seq[String]  =  headLines(IO.readLines(file).reverse, tailDelim).reverse
 
