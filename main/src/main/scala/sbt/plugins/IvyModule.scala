@@ -14,7 +14,8 @@ import Def.Setting
  * - `publishedArtifacts`
  */
 object IvyModule extends AutoPlugin {
-  // We must be explicitly enabled
+  // We are automatically included on everything that has the global module,
+  // which is automatically included on everything.
   def select = GlobalModule
   
   override lazy val projectSettings: Seq[Setting[_]] = 

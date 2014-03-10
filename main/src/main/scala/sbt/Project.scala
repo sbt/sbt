@@ -51,7 +51,7 @@ sealed trait ProjectDefinition[PR <: ProjectReference]
 	def auto: AddSettings
 
 	/** The defined [[Plugins]] associated with this project.
-	A [[AutoPlguin]] is a common label that is used by plugins to determine what settings, if any, to add to a project. */
+	A [[AutoPlugin]] is a common label that is used by plugins to determine what settings, if any, to add to a project. */
 	def plugins: Plugins
 
 	/** The [[AutoPlugin]]s enabled for this project.  This value is only available on a loaded Project. */

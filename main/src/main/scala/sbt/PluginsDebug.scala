@@ -165,9 +165,9 @@ private[sbt] object PluginsDebug
 	final case class PluginImpossible(plugin: AutoPlugin, context: Context, contradictions: Set[AutoPlugin]) extends EnableDeactivated
 
 	/** Describes the requirements for activating [[plugin]] in [[context]].
-	* @param context The base plguins, exclusions, and ultimately activated plugins
+	* @param context The base plugins, exclusions, and ultimately activated plugins
 	* @param blockingExcludes Existing exclusions that prevent [[plugin]] from being activated and must be dropped
-	* @param enablingPlguins [[AutoPlugin]]s that are not currently enabled, but need to be enabled for [[plugin]] to activate
+	* @param enablingPlugins [[AutoPlugin]]s that are not currently enabled, but need to be enabled for [[plugin]] to activate
 	* @param extraEnabledPlugins Plugins that will be enabled as a result of [[plugin]] activating, but are not required for [[plugin]] to activate
 	* @param willRemove Plugins that will be deactivated as a result of [[plugin]] activating
 	* @param deactivate Describes plugins that must be deactivated for [[plugin]] to activate.  These require an explicit exclusion or dropping a transitive [[AutoPlugin]].*/

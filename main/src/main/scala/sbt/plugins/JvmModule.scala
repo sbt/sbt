@@ -15,7 +15,8 @@ import Def.Setting
  *  - `Compile`
  */
 object JvmModule extends AutoPlugin {
-  // We must be explicitly enabled
+  // We are automatically enabled for any IvyModule project.  We also require its settings
+  // for ours to work.
   def select = IvyModule
   
   override lazy val projectSettings: Seq[Setting[_]] = 

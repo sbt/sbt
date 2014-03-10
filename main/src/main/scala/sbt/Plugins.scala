@@ -85,7 +85,7 @@ abstract class AutoPlugin extends Plugins.Basic
 	  }
 }
 /**
- * A root AutoPlugin is a plugin which must be explicitly enabled by users in their `setPlugins` method
+ * A root AutoPlugin is a plugin which must be explicitly enabled by users in their `addPlugins` method
  * on a project.  However, RootAutoPlugins represent the "root" of a tree of dependent auto-plugins.
  */
 abstract class RootAutoPlugin extends AutoPlugin {
