@@ -1208,8 +1208,9 @@ object Classpaths
 
 	def deliverConfig(outputDirectory: File, status: String = "release", logging: UpdateLogging.Value = UpdateLogging.DownloadOnly) =
 	    new DeliverConfiguration(deliverPattern(outputDirectory), status, None, logging)
+	@deprecated("0.13.2", "Previous semantics allowed overwriting cached files, which was unsafe.  Please specify overwrite parameter.")
 	def publishConfig(artifacts: Map[Artifact, File], ivyFile: Option[File], checksums: Seq[String], resolverName: String, logging: UpdateLogging.Value): PublishConfiguration =
-		publishConfig(artifacts, ivyFile, checksums, resolverName, logging, overwrite = false)
+		publishConfig(artifacts, ivyFile, checksums, resolverName, logging, overwrite = true)
 	def publishConfig(artifacts: Map[Artifact, File], ivyFile: Option[File], checksums: Seq[String], resolverName: String = "local", logging: UpdateLogging.Value = UpdateLogging.DownloadOnly, overwrite: Boolean = false) =
 		new PublishConfiguration(ivyFile, resolverName, artifacts, checksums, logging, overwrite)
 
