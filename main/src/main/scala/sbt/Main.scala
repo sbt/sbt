@@ -376,16 +376,16 @@ object BuiltinCommands
 		else
 			Help.empty
 	def plugins = Command.command(PluginsCommand, pluginsBrief, pluginsDetailed) { s =>
-		val helpString = NaturesDebug.helpAll(s)
+		val helpString = PluginsDebug.helpAll(s)
 		System.out.println(helpString)
 		s
 	}
 	val pluginParser: State => Parser[AutoPlugin] = s => {
-		val autoPlugins: Map[String, AutoPlugin] = NaturesDebug.autoPluginMap(s)
+		val autoPlugins: Map[String, AutoPlugin] = PluginsDebug.autoPluginMap(s)
 		token(Space) ~> Act.knownIDParser(autoPlugins, "plugin")
 	}
 	def plugin = Command(PluginCommand)(pluginParser) { (s, plugin) =>
-		val helpString = NaturesDebug.help(plugin, s)
+		val helpString = PluginsDebug.help(plugin, s)
 		System.out.println(helpString)
 		s
 	}

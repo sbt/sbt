@@ -28,7 +28,15 @@ object PluginDiscovery
 		def discover[T](resource: String)(implicit mf: reflect.ClassManifest[T]) =
 			binarySourceModules[T](data, loader, resource)
 		import Paths._
-		new DetectedPlugins(discover[Plugin](Plugins), discover[AutoImport](AutoImports), discover[AutoPlugin](AutoPlugins), discover[Build](Builds))
+		// TODO - Fix this once we can autodetect AutoPlugins defined by sbt itself.
+		val defaultAutoPlugins = Seq(
+			"sbt.plugins.IvyModule" -> sbt.plugins.IvyModule,
+			"sbt.plugins.JvmModule" -> sbt.plugins.JvmModule,
+			"sbt.plugins.GlobalModule" -> sbt.plugins.GlobalModule
+		)
+		val detectedAutoPugins = discover[AutoPlugin](AutoPlugins)
+		val allAutoPlugins = new DetectedModules(defaultAutoPlugins ++ detectedAutoPugins.modules)
+		new DetectedPlugins(discover[Plugin](Plugins), discover[AutoImport](AutoImports), allAutoPlugins, discover[Build](Builds))
 	}
 
 	/** Discovers the sbt-plugin-related top-level modules from the provided source `analysis`. */

@@ -444,24 +444,28 @@ before it is initialized with an empty sequence.
         settings = Seq(
           libraryDependencies += "commons-io" % "commons-io" % "1.4" % "test"
         )
-      )
+      ).disablePlugins(plugins.IvyModule)
     }
 
-To correct this, include the default settings, which includes
-`libraryDependencies := Seq()`.
+To correct this, include the IvyModule plugin settings, which includes
+`libraryDependencies := Seq()`.  So, we just drop the explicit disabling.
 
 ::
 
-    settings = Defaults.defaultSettings ++ Seq(
-      libraryDependencies += "commons-io" % "commons-io" % "1.4" % "test"
-    )
+    object MyBuild extends Build {
+      val root = Project(id = "root", base = file("."),
+        settings = Seq(
+          libraryDependencies += "commons-io" % "commons-io" % "1.4" % "test"
+        )
+      )
+    }
 
 A more subtle variation of this error occurs when using :doc:`scoped settings </Getting-Started/Scopes>`.
 
 ::
 
     // error: Reference to uninitialized setting
-    settings = Defaults.defaultSettings ++ Seq(
+    settings = Seq(
       libraryDependencies += "commons-io" % "commons-io" % "1.2" % "test",
       fullClasspath := fullClasspath.value.filterNot(_.data.name.contains("commons-io"))
     )

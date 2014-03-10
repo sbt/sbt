@@ -3,7 +3,9 @@ import Keys._
 
 
 object C extends AutoImport {
-	lazy val bN = Nature("B")
+	object bN extends AutoPlugin {
+		def select = Plugins.empty
+	}
 	lazy val check = taskKey[Unit]("Checks that the AutoPlugin and Build are automatically added.")
 }
 
@@ -17,5 +19,5 @@ object A extends AutoPlugin {
 }
 
 object B extends Build {
-	lazy val extra = project.addNatures(bN)
+	lazy val extra = project.addPlugins(bN)
 }
