@@ -12,6 +12,9 @@ a particular build key.  Sbt converts all registered ``Setting[_]`` objects into
 
 All of sbt's loading semantics are contained within the `Load.scala <../../sxr/sbt/Load.scala.html>` file.  It is approximately the following:
 
+.. Note: This image comes from a google drawing: https://docs.google.com/a/typesafe.com/drawings/d/1Aj_IkOaJpRXJNhrVtVJaS8m-YRcKsympVOj3M2sUz7E/edit
+.. Feel free to request access to modify as appropriate.
+
 .. image:: settings-initialization-load-ordering.png
 
 The blue circles represent actions happening when sbt loads a project.  We can see that sbt performs the following actions in load:
@@ -26,14 +29,19 @@ The blue circles represent actions happening when sbt loads a project.  We can s
 
 Each of these loads defines several sequences of settings.  The diagram shows the two most important:
 
-* ``buildSettings`` - These are settings defined to be ``in ThisBuild``.   They are initialized *once* for the build.
+* ``buildSettings`` - These are settings defined to be ``in ThisBuild`` or directly against the ``Build`` object.   They are initialized *once* for the build.
   You can add these, e.g. in ``project/build.scala`` ::
 
     object MyBuild extends Build {
-      override val settings = ...
+      override val settings = Seq(foo := "hi")
     }
 
-* ``projectSettings`` - These are settings specific to a project.  They are specific to a *particular submodule* in the build.  A
+  or in a ``build.sbt`` file ::
+
+    foo in ThisBuild := "hi"
+
+
+* ``projectSettings`` - These are settings specific to a project.  They are specific to a *particular sub project* in the build.  A
   plugin may be contributing its settings to more than on project, in which case the values are duplicated for each project.
   You add project specific settings, eg. in ``project/build.scala`` ::
 
@@ -95,3 +103,29 @@ The AddSettings object provides the following "groups" of settings you can use f
 
 
 *Note: Be very careful when reordering settings.  It's easy to accidentally remove core functionality.*
+
+For example, let's see what happens if we move the ``build.sbt`` files *before* the ``projectSettings``.
+
+Let's create an example project the following defintiion:
+
+`project/build.scala` ::
+
+  object MyTestBuild extends Build {
+
+    val testProject = project.in(file(".")).autoSettings(autoPlugins, defaultSbtFiles, projectSettings).settings(
+      version := scalaBinaryVersion.value match {
+        case "2.10" => "1.0-SNAPSHOT"
+        case v => "1.0-for-${v}-SNAPSHOT"
+      }
+    )
+  }
+
+This build defines a version string which appends the scala version if the current scala version is not the in the ``2.10.x`` series.
+Now, when issuing a release we want to lock down the version.  Most tools assume this can happen by writing a ``version.sbt`` file:
+
+`version.sbt` ::
+
+  version := "1.0.0"
+
+However, when we load this new build, we find that the ``version`` in ``version.sbt`` has been **overriden** by the one defined
+in ``project/Build.scala`` because of the order we defined for settings, so the new ``version.sbt`` file has no effect.
