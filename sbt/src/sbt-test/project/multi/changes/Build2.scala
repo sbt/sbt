@@ -11,5 +11,6 @@ object SecondBuild extends MakeBuild
 }
 trait MakeBuild extends Build
 {
-	def proj(id: String, dir: String) = Project(id, file(dir), settings = Seq( name := id ) )
+	import AddSettings._
+	def proj(id: String, dir: String) = Project(id, file(dir), settings = Seq( name := id ) ).autoSettings(projectSettings, defaultSbtFiles)
 }

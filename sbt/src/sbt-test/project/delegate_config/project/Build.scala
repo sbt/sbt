@@ -1,6 +1,7 @@
 import sbt._
 import complete.DefaultParsers._
 import Keys._
+import AddSettings._
 
 object B extends Build
 {
@@ -11,8 +12,11 @@ object B extends Build
 	val sample = SettingKey[Int]("sample")
 	val check = TaskKey[Unit]("check")
 	
-	lazy val root = Project("root", file("."), settings = Nil)
-	lazy val sub = Project("sub", file("."), delegates = root :: Nil, configurations = newConfig :: Nil, settings = incSample :: checkTask(4) :: Nil)
+	lazy val root = Project("root", file("."), settings = Nil).autoSettings()
+	lazy val sub = Project("sub", file("."), 
+		delegates = root :: Nil, 
+		configurations = newConfig :: Nil, 
+		settings = incSample :: checkTask(4) :: Nil).autoSettings(projectSettings)
 	override lazy val settings =
 		(sample in newConfig := 3) ::
 		checkTask(3) ::
