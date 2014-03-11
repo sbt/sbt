@@ -2,6 +2,33 @@
 Changes
 =======
 
+0.13.1 to 0.13.2
+~~~~~~~~~~~~~~~~
+- Improved the control over included settings in ``Addsettings``.  Can now control when settings in ``project/*.scala`` files are included.
+- Adding new ``AutoPlugin`` feature, and associated ``plugins`` command.
+- Adding new name-hashing feature to incremental compiler.   Alters how scala dependencies are tracked, reducing number of recompiles necessary.
+- Added the ability to launch servers via the sbt-launcher.
+- Added ``.previous`` feature on tasks which can load the pervious value.
+- Added an ``all`` command which can run more than tasks in parallel.
+- Exposed the 'overwrite' flags from ivy.  Added warning if overwriting a release version.
+- Improve the error message when credentials are not found in Ivy.
+- Improve task macros to handle more scala constructs.
+- Fix ``last`` and ``export`` tasks to read from the correct stream.
+- Fix issue where ivy's ``.+`` dependency ranges were not correctly translated to maven.
+- Override security manager to ignore file permissions (performance issue)
+- 2.11 compatibility fixes
+- Launcher can now handle ivy's ``.+`` revisions.
+- SessionSettings now correctly overwrite existing settings.
+- Adding a simple Logic system for inclusionary/dependency logic of plugins.
+- Improve build hooks for ``LoggerReporter`` and ``TaskProgress``.
+- Serialize incremental compiler analysis into text-file format.
+- Issue a warning when generating Paths and separate already exists in the path.
+- Migrate to Ivy 2.3.0-final.
+- Docs: Use bintray as default repository host
+- Docs: improved docs on test groups.
+- Docs: updated documentation on the Launcher.
+- Docs: started architecture document.
+
 0.13.0 to 0.13.1
 ~~~~~~~~~~~~~~~~
 
