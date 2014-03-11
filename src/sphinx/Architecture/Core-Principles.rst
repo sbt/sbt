@@ -60,15 +60,15 @@ the AttributeMap, we first need to construct one of these keys.  Let's look at t
 Now that there's a definition of what build state is, there needs to be a way to dynamically construct it.  In sbt, this is
 done through the ``Setting[_]`` sequence.
 
-Introduction to Settings
-========================
+Settings Architecture
+=====================
 
 A Setting represents the means of constructing the value of one particular ``AttributeKey[_]`` in the ``AttributeMap`` of build state.  A setting consists of two pieces:
 
 1. The ``AttributeKey[T]`` where the value of the setting should be assigned.
-2. An ``Intialize[T]`` object which is able to construct the value for this setting.
+2. An ``Initialize[T]`` object which is able to construct the value for this setting.
 
-Sbt's intiialization time is basically just taking a sequence of these ``Setting[_]`` objects and running their initialization objects and then storing the value into the ``AttributeMap``.   This means overwriting an exisitng value at a key is as easy as appending a
+Sbt's initialization time is basically just taking a sequence of these ``Setting[_]`` objects and running their initialization objects and then storing the value into the ``AttributeMap``.   This means overwriting an exisitng value at a key is as easy as appending a
 ``Setting[_]`` to the end of the sequence which does so.
 
 Where it gets interesting is that ``Initialize[T]`` can depend on other ``AttributeKey[_]``s in the build state.  Each ``Initialize[_]``
@@ -79,7 +79,7 @@ when it comes to ``Initialize[_]`` dependencies:
 2. If one ``Initialize[_]`` depends on another ``Initialize[_]`` key, then *all* associated ``Initialize[_]`` blocks for that key must
    have run before we load the value.
 
-The above image shows a bit of what's expLet's look at what gets stored for the setting ::
+Let's look at what gets stored for the setting ::
 
   normalizedName := normalize(name.value)
 
@@ -91,7 +91,7 @@ The above image shows a bit of what's expLet's look at what gets stored for the 
 .. image:: overview-setting-example.png
 
 
-Here, a ``Setting[_]`` is constructed that understands it depends on the value in the ``name`` AttributeKey.  Its intiialize block first grabs the value of the ``name`` key, then runs the function normalize on it to compute its value.
+Here, a ``Setting[_]`` is constructed that understands it depends on the value in the ``name`` AttributeKey.  Its initialize block first grabs the value of the ``name`` key, then runs the function normalize on it to compute its value.
 
 This represents the core mechanism of how to construct sbt's build state.  Conceptually, at some point we have a graph of dependencies
 and initialization functions which we can use to construct the first build state.   Once this is completed, we can then start to process
@@ -99,14 +99,14 @@ user requests.
 
 
 
-Introduction to Tasks
-=====================
+Task Architecture
+=================
 
 The next layer in sbt is around these user request, or tasks.   When a user configures a build, they are defining a set of repeatable
 tasks that they can run on their project.  Things like ``compile`` or ``test``.   These tasks *also* have a dependency graph, where
 e.g. the ``test`` task requires that ``compile`` has run before it can successfully execute.
 
-Sbt's defines a class ``Task[T]``.  The ``T`` type parameter represents the type of data returned by a task.  Remember the tenenats of
+Sbt's defines a class ``Task[T]``.  The ``T`` type parameter represents the type of data returned by a task.  Remember the tenets of
 sbt?  "All things have types" and "Dependencies are explicit" both hold true for tasks.   Sbt promotes a style of task dependencies that
 is closer to functional programming:  Return data for your users rather than using shared mutable state.
 
