@@ -6,22 +6,22 @@
 object B extends Build
 {
 	// version should be from explicit/a.txt
-	lazy val root = project("root", "1.4") autoSettings( userSettings, sbtFiles(file("explicit/a.txt")) )
+	lazy val root = project("root", "1.4") autoSettings( projectSettings,userSettings, sbtFiles(file("explicit/a.txt")) )
 
 	// version should be from global/user.sbt
-	lazy val a = project("a", "1.1") autoSettings( userSettings )
+	lazy val a = project("a", "1.1") autoSettings( projectSettings, userSettings )
 
 	// version should be the default 0.1-SNAPSHOT
-	lazy val b = project("b", "0.1-SNAPSHOT") autoSettings()
+	lazy val b = project("b", "0.1-SNAPSHOT") autoSettings(projectSettings)
 
 	// version should be from the explicit settings call
-	lazy val c = project("c", "0.9") settings(version := "0.9") autoSettings()
+	lazy val c = project("c", "0.9") settings(version := "0.9") autoSettings(projectSettings)
 
 	// version should be from d/build.sbt
-	lazy val d = project("d", "1.3") settings(version := "0.9") autoSettings( defaultSbtFiles )
+	lazy val d = project("d", "1.3") settings(version := "0.9") autoSettings( projectSettings, defaultSbtFiles )
 
 	// version should be from global/user.sbt
-	lazy val e = project("e", "1.1") settings(version := "0.9") autoSettings( defaultSbtFiles, sbtFiles(file("../explicit/a.txt")), userSettings )
+	lazy val e = project("e", "1.1") settings(version := "0.9") autoSettings( projectSettings, defaultSbtFiles, sbtFiles(file("../explicit/a.txt")), userSettings )
 
 	def project(id: String, expectedVersion: String): Project = Project(id, if(id == "root") file(".") else file(id)) settings(
 		TaskKey[Unit]("check") <<= version map { v =>
