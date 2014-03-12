@@ -971,7 +971,7 @@ object Classpaths
 		publishM2 <<= publishTask(publishM2Configuration, deliverLocal)
 	)
 	@deprecated("0.13.2", "This has been split into jvmIvySettings and ivyPublishSettings.")
-	val publishSettings: Seq[Setting[_]] = jvmPublishSettings ++ ivyPublishSettings
+	val publishSettings: Seq[Setting[_]] = ivyPublishSettings ++ jvmPublishSettings
 
 	private[this] def baseGlobalDefaults = Defaults.globalDefaults(Seq(
 		conflictWarning :== ConflictWarning.default("global"),
