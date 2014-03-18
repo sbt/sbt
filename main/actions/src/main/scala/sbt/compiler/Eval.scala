@@ -219,7 +219,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 		private[this] var vals = List[String]()
 		def getVals(t: Tree): List[String] = { vals = Nil; traverse(t); vals }
 		override def traverse(tree: Tree): Unit = tree match {
-			case ValDef(_, n, actualTpe, _) if isTopLevelModule(tree.symbol.owner) && types.exists(_ <:< actualTpe.tpe) =>
+			case ValDef(_, n, actualTpe, _) if isTopLevelModule(tree.symbol.owner) && types.exists(actualTpe.tpe.<:<) =>
 				vals ::= nme.localToGetter(n).encoded
 			case _ => super.traverse(tree)
 		}
