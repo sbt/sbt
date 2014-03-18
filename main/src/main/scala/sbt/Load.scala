@@ -22,6 +22,7 @@ package sbt
 	import BuildPaths._
 	import BuildStreams._
 	import Locate.DefinesClass
+	import sbt.AddSettings.{Sequence, DefaultSbtFiles, SbtFiles}
 
 object Load
 {
@@ -459,19 +460,20 @@ object Load
 
 	private[this] def loadTransitive(newProjects: Seq[Project], buildBase: File, plugins: sbt.LoadedPlugins, eval: () => Eval, injectSettings: InjectSettings, acc: Seq[Project], memoSettings: mutable.Map[File, LoadedSbtFile]): Seq[Project] =
 	{
-		def loadSbtFiles(auto: AddSettings, base: File, autoPlugins: Seq[AutoPlugin], projectSettings: Seq[Setting[_]]): LoadedSbtFile =
+		def loadSettingsFromSbtFiles(auto: AddSettings, base: File, autoPlugins: Seq[AutoPlugin], projectSettings: Seq[Setting[_]]): LoadedSbtFile =
 			loadSettings(auto, base, plugins, eval, injectSettings, memoSettings, autoPlugins, projectSettings)
 		def loadForProjects = newProjects map { project =>
+			val autoPluginsFromSbtFile = loadAutoPlugins(project.auto, project.base, plugins, eval, memoSettings)
 			val autoPlugins =
-				try plugins.detected.compilePlugins(project.plugins)
+				try plugins.detected.compilePlugins(Plugins.and(project.plugins, autoPluginsFromSbtFile))
 				catch { case e: AutoPluginException => throw translateAutoPluginException(e, project) }
 			val autoConfigs = autoPlugins.flatMap(_.projectConfigurations)
-			val loadedSbtFiles = loadSbtFiles(project.auto, project.base, autoPlugins, project.settings)
+			val loadedSbtFiles = loadSettingsFromSbtFiles(project.auto, project.base, autoPlugins, project.settings)
 			// add the automatically selected settings, record the selected AutoPlugins, and register the automatically selected configurations
 			val transformed = project.copy(settings = loadedSbtFiles.settings).setAutoPlugins(autoPlugins).overrideConfigs(autoConfigs : _*)
 			(transformed, loadedSbtFiles.projects)
 		}
-		def defaultLoad = loadSbtFiles(AddSettings.defaultSbtFiles, buildBase, Nil, Nil).projects
+		def defaultLoad = loadSettingsFromSbtFiles(AddSettings.defaultSbtFiles, buildBase, Nil, Nil).projects
 		val (nextProjects, loadedProjects) =
 			if(newProjects.isEmpty) // load the .sbt files in the root directory to look for Projects
 				(defaultLoad, acc)
@@ -488,22 +490,41 @@ object Load
 	private[this] def translateAutoPluginException(e: AutoPluginException, project: Project): AutoPluginException =
 		e.withPrefix(s"Error determining plugins for project '${project.id}' in ${project.base}:\n")
 
-	private[this] def loadSettings(auto: AddSettings, projectBase: File, loadedPlugins: sbt.LoadedPlugins, eval: ()=>Eval, injectSettings: InjectSettings, memoSettings: mutable.Map[File, LoadedSbtFile], autoPlugins: Seq[AutoPlugin], projectSettings: Seq[Setting[_]]): LoadedSbtFile =
-	{
-		lazy val defaultSbtFiles = configurationSources(projectBase)
-		def settings(ss: Seq[Setting[_]]) = new LoadedSbtFile(ss, Nil, Nil)
-		val loader = loadedPlugins.loader
-
-		def merge(ls: Seq[LoadedSbtFile]): LoadedSbtFile = (LoadedSbtFile.empty /: ls) { _ merge _ }
-		def loadSettings(fs: Seq[File]): LoadedSbtFile =
-			merge( fs.sortBy(_.getName).map(memoLoadSettingsFile) )
+	private[this] def loadSbtFiles(ls: Seq[File], loadedPlugins: sbt.LoadedPlugins, memoSettings: mutable.Map[File, LoadedSbtFile], eval: () => Eval): LoadedSbtFile = {
+		def merge(ls: Seq[LoadedSbtFile]): LoadedSbtFile = (LoadedSbtFile.empty /: ls) {
+			_ merge _
+		}
 		def memoLoadSettingsFile(src: File): LoadedSbtFile = memoSettings.get(src) getOrElse {
 			val lf = loadSettingsFile(src)
 			memoSettings.put(src, lf.clearProjects) // don't load projects twice
 			lf
 		}
 		def loadSettingsFile(src: File): LoadedSbtFile =
-			EvaluateConfigurations.evaluateSbtFile(eval(), src, IO.readLines(src), loadedPlugins.detected.imports, 0)(loader)
+			EvaluateConfigurations.evaluateSbtFile(eval(), src, IO.readLines(src), loadedPlugins.detected.imports, 0)(loadedPlugins.loader)
+
+		merge(ls.sortBy(_.getName).map(memoLoadSettingsFile))
+	}
+
+	private[this] def loadAutoPlugins(auto: AddSettings, projectBase: File, loadedPlugins: sbt.LoadedPlugins, eval: () => Eval, memoSettings: mutable.Map[File, LoadedSbtFile]): Plugins = {
+		lazy val defaultSbtFiles = configurationSources(projectBase)
+
+		def collectSbtFiles(auto: AddSettings): Seq[File] = auto match {
+			case sf: SbtFiles => sf.files.map(f => IO.resolve(projectBase, f))
+			case sf: DefaultSbtFiles => defaultSbtFiles.filter(sf.include)
+			case q: Sequence => q.sequence.flatMap(collectSbtFiles)
+			case _ => Nil
+		}
+
+		val allSbtFiles = collectSbtFiles(auto)
+		loadSbtFiles(allSbtFiles, loadedPlugins, memoSettings, eval).plugins
+	}
+
+	private[this] def loadSettings(auto: AddSettings, projectBase: File, loadedPlugins: sbt.LoadedPlugins, eval: ()=>Eval, injectSettings: InjectSettings, memoSettings: mutable.Map[File, LoadedSbtFile], autoPlugins: Seq[AutoPlugin], projectSettings: Seq[Setting[_]]): LoadedSbtFile =
+	{
+		lazy val defaultSbtFiles = configurationSources(projectBase)
+		def settings(ss: Seq[Setting[_]]) = new LoadedSbtFile(ss, Nil, Nil, Plugins.empty)
+		val loader = loadedPlugins.loader
+
 
 		import AddSettings.{User,SbtFiles,DefaultSbtFiles,Plugins,AutoPlugins,Sequence, ProjectSettings}
 		def pluginSettings(f: Plugins) = {
@@ -518,8 +539,8 @@ object Load
 		def expand(auto: AddSettings): LoadedSbtFile = auto match {
 			case ProjectSettings => settings(projectSettings)
 			case User => settings(injectSettings.projectLoaded(loader))
-			case sf: SbtFiles => loadSettings( sf.files.map(f => IO.resolve(projectBase, f)))
-			case sf: DefaultSbtFiles => loadSettings( defaultSbtFiles.filter(sf.include))
+			case sf: SbtFiles => loadSbtFiles( sf.files.map(f => IO.resolve(projectBase, f)), loadedPlugins, memoSettings, eval)
+			case sf: DefaultSbtFiles => loadSbtFiles( defaultSbtFiles.filter(sf.include), loadedPlugins, memoSettings, eval)
 			case p: Plugins => settings(pluginSettings(p))
 			case p: AutoPlugins => settings(autoPluginSettings(p))
 			case q: Sequence => (LoadedSbtFile.empty /: q.sequence) { (b,add) => b.merge( expand(add) ) }

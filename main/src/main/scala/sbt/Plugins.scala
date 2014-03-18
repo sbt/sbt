@@ -36,11 +36,11 @@ Steps for users:
 
 For example, given plugins Web and Javascript (perhaps provided by plugins added with addSbtPlugin),
 
-  <Project>.plugins( Web && Javascript )
+  <Project>.addPlugins( Web && Javascript )
 
 will activate `MyPlugin` defined above and have its settings automatically added.  If the user instead defines
 
-  <Project>.plugins( Web && Javascript && !MyPlugin)
+  <Project>.addPlugins( Web && Javascript ).disablePlugins(MyPlugin)
 
 then the `MyPlugin` settings (and anything that activates only when `MyPlugin` is activated) will not be added.
 */
@@ -186,7 +186,7 @@ object Plugins
 			if(removed.isEmpty) Empty else And(removed)
 	}
 
-	/** Defines a clause for `ap` such that the [[AutPlugin]] provided by `ap` is the head and the selector for `ap` is the body. */
+	/** Defines a clause for `ap` such that the [[AutoPlugin]] provided by `ap` is the head and the selector for `ap` is the body. */
 	private[sbt] def asClause(ap: AutoPlugin): Clause =
 		Clause( convert(ap.select), Set(Atom(ap.label)) )
 

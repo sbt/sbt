@@ -44,11 +44,20 @@ object EvaluateConfigurations
 	{
 		val name = file.getPath
 		val parsed = parseConfiguration(lines, imports, offset)
-		val (importDefs, projects) = if(parsed.definitions.isEmpty) (Nil, (l: ClassLoader) => Nil) else {
+		val (importDefs, projectsPlugins) = if(parsed.definitions.isEmpty) (Nil, (l: ClassLoader) => (Nil, Plugins.empty)) else {
 			val definitions = evaluateDefinitions(eval, name, parsed.imports, parsed.definitions)
 			val imp = BuildUtil.importAllRoot(definitions.enclosingModule :: Nil)
-			val projs = (loader: ClassLoader) => definitions.values(loader).map(p => resolveBase(file.getParentFile, p.asInstanceOf[Project]))
-			(imp, projs)
+			val projPlugs = (loader: ClassLoader) => {
+				val definitonValues = definitions.values(loader)
+				val projs = definitonValues.collect {
+					case p: Project => resolveBase(file.getParentFile, p)
+				}
+				val plugs = definitonValues.collect {
+					case pl: Plugins => pl
+				}.foldLeft(Plugins.empty)(Plugins.and)
+				(projs, plugs)
+			}
+			(imp, projPlugs)
 		}
 		val allImports = importDefs.map(s => (s, -1)) ++ parsed.imports
 		val settings = parsed.settings map { case (settingExpression,range) =>
@@ -56,7 +65,10 @@ object EvaluateConfigurations
 		}
 		eval.unlinkDeferred()
 		val loadSettings = flatten(settings)
-		loader => new LoadedSbtFile(loadSettings(loader), projects(loader), importDefs)
+		loader => {
+			val (projs, plugs) = projectsPlugins(loader)
+			new LoadedSbtFile(loadSettings(loader), projs, importDefs, plugs)
+		}
 	}
 	private[this] def resolveBase(f: File, p: Project) = p.copy(base = IO.resolve(f, p.base))
 	def flatten(mksettings: Seq[ClassLoader => Seq[Setting[_]]]): ClassLoader => Seq[Setting[_]] =
@@ -121,7 +133,7 @@ object EvaluateConfigurations
 	private[this] def evaluateDefinitions(eval: Eval, name: String, imports: Seq[(String,Int)], definitions: Seq[(String,LineRange)]) =
 	{
 		val convertedRanges = definitions.map { case (s, r) => (s, r.start to r.end) }
-		val findTypes = (classOf[Project] :: /*classOf[Build] :: */ Nil).map(_.getName)
+		val findTypes = (classOf[Project] :: classOf[Plugins] :: /*classOf[Build] :: */ Nil).map(_.getName)
 		eval.evalDefinitions(convertedRanges, new EvalImports(imports, name), name, findTypes)
 	}
 }

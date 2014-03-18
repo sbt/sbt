@@ -138,7 +138,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference]
 
 	/** Sets the [[AutoPlugin]]s of this project.
 	A [[AutoPlugin]] is a common label that is used by plugins to determine what settings, if any, to add to a project. */
-	def addPlugins(ns: AutoPlugin*): Project = setPlugins(Plugins.and(plugins, Plugins.And(ns.toList)))
+	def addPlugins(ns: Plugins*): Project = setPlugins(ns.foldLeft(plugins)(Plugins.and))
 
 	/** Disable the given plugins on this project. */
 	def disablePlugins(ps: AutoPlugin*): Project =
