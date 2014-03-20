@@ -119,11 +119,12 @@ To create an sbt plugin,
 
   1. Create a new project for the plugin.
   2. Set `sbtPlugin := true` for the project in `build.sbt`.  This adds a dependency on sbt and will detect and record Plugins that you define.
-  3. Define an `object` that extends `AutoPlugin` or `RootPlugin`.  The contents of this object will be automatically imported in `.sbt` files, so ensure it only contains important API definitions and types.
-  4. Define any custom tasks or settings (see the next section :doc:`Custom-Settings`).
-  5. Collect the default settings to apply to a project in a list for the user to add.  Optionally override one or more of `AutoPlugin`'s methods to have settings automatically added to user projects.
-  6. (Optional) For non-root plguins, declare dependencies on other plugins by overriding the `select` method.
-  6. Publish the project.  There is a  :doc:`community repository </Community/Community-Plugins>` available for open source plugins.
+  3. Define another `object` that extends `AutoImport`. The contents of this object will be automatically imported in `.sbt` files, so ensure it only contains important API definitions and types.
+  4. Define an `object` that extends `AutoPlugin`.
+  5. Declare dependencies on other plugins by defining the `requires` method.
+  5. Define any custom tasks or settings (see the next section :doc:`Custom-Settings`).
+  6. Collect the default settings to apply to a project in a list for the user to add.  Optionally override one or more of `AutoPlugin`'s methods to have settings automatically added to user projects.
+  8. Publish the project.  There is a  :doc:`community repository </Community/Community-Plugins>` available for open source plugins.
 
 For more details, including ways of developing plugins, see :doc:`/Extending/Plugins`.
 For best practices, see :doc:`/Extending/Plugins-Best-Practices`.
