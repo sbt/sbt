@@ -4,8 +4,6 @@ Changes
 
 0.13.1 to 0.13.2
 ~~~~~~~~~~~~~~~~
-- Improved the control over included settings in ``Addsettings``.  Can now control when settings in ``project/*.scala`` files are included.
-- Adding new ``AutoPlugin`` feature, and associated ``plugins`` command.
 - Adding new name-hashing feature to incremental compiler.   Alters how scala dependencies are tracked, reducing number of recompiles necessary.
 - Added the ability to launch servers via the sbt-launcher.
 - Added ``.previous`` feature on tasks which can load the pervious value.
