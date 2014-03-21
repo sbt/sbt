@@ -43,7 +43,7 @@ object CustomPomParser
 	val JarPackagings = Set("eclipse-plugin", "hk2-jar", "orbit")
 	val default = new CustomPomParser(PomModuleDescriptorParser.getInstance, defaultTransform)
 
-	private[this] val TransformedHashKey = "sbtTransformHash"
+	private[this] val TransformedHashKey = "e:sbtTransformHash"
 	// A hash of the parameters transformation is based on.
 	// If a descriptor has a different hash, we need to retransform it.
 	private[this] val TransformHash: String = hash((unqualifiedKeys ++ JarPackagings).toSeq.sorted)
