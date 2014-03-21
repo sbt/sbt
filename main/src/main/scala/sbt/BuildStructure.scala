@@ -89,18 +89,24 @@ final class DetectedModules[T](val modules: Seq[(String, T)])
 	def values: Seq[T] = modules.map(_._2)
 }
 
+/** Auto-detected auto plugin. */
+case class DetectedAutoPlugin(val name: String, val value: AutoPlugin, val hasStableAutoImport: Boolean)
+
 /** Auto-discovered modules for the build definition project.  These include modules defined in build definition sources
 * as well as modules in binary dependencies.
 *
 * @param builds The [[Build]]s detected in the build definition.  This does not include the default [[Build]] that sbt creates if none is defined.
 */
-final class DetectedPlugins(val plugins: DetectedModules[Plugin], val autoImports: DetectedModules[AutoImport], val autoPlugins: DetectedModules[AutoPlugin], val builds: DetectedModules[Build])
+final class DetectedPlugins(val plugins: DetectedModules[Plugin], val autoPlugins: Seq[DetectedAutoPlugin], val builds: DetectedModules[Build])
 {
 	/** Sequence of import expressions for the build definition.  This includes the names of the [[Plugin]], [[Build]], and [[AutoImport]] modules, but not the [[AutoPlugin]] modules. */
-	lazy val imports: Seq[String] = BuildUtil.getImports(plugins.names ++ builds.names ++ autoImports.names)
-
+	lazy val imports: Seq[String] = BuildUtil.getImports(plugins.names ++ builds.names ++
+		(autoPlugins flatMap { case DetectedAutoPlugin(name, ap, hasAutoImport) =>
+			if (hasAutoImport) Some(name + ".autoImport")
+			else None
+		}))
 	/** A function to select the right [[AutoPlugin]]s from [[autoPlugins]] for a [[Project]]. */
-	lazy val compilePlugins: Plugins => Seq[AutoPlugin] = Plugins.compile(autoPlugins.values.toList)
+	lazy val compilePlugins: Plugins => Seq[AutoPlugin] = Plugins.compile(autoPlugins.map(_.value).toList)
 }
 
 /** The built and loaded build definition project.
@@ -115,7 +121,7 @@ final class LoadedPlugins(val base: File, val pluginData: PluginData, val loader
 	@deprecated("Use the primary constructor.", "0.13.2")
 	def this(base: File, pluginData: PluginData, loader: ClassLoader, plugins: Seq[Plugin], pluginNames: Seq[String]) =
 		this(base, pluginData, loader,
-			new DetectedPlugins(new DetectedModules(pluginNames zip plugins), new DetectedModules(Nil), new DetectedModules(Nil), new DetectedModules(Nil))
+			new DetectedPlugins(new DetectedModules(pluginNames zip plugins), Nil, new DetectedModules(Nil))
 		)
 
 	@deprecated("Use detected.plugins.values.", "0.13.2")

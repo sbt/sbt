@@ -1,15 +1,21 @@
+package sbttest // you need package http://stackoverflow.com/questions/9822008/
+
 import sbt._
 import Keys._
 
-
-object C extends AutoImport {
+object Imports {
 	object bN extends AutoPlugin {
 		def select = Plugins.empty
 	}
-	lazy val check = taskKey[Unit]("Checks that the AutoPlugin and Build are automatically added.")
+	lazy val check = taskKey[Unit]("Checks that the AutoPlugin and Build are automatically added.")	
 }
 
-	import C._
+object C extends AutoPlugin {
+	override lazy val autoImport = Imports
+	def select = Plugins.empty
+}
+
+	import Imports._
 
 object A extends AutoPlugin {
 	override def select = bN
