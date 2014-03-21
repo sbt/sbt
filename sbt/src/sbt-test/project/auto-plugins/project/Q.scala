@@ -1,8 +1,10 @@
+package sbttest // you need package http://stackoverflow.com/questions/9822008/
+
 	import sbt._
 	import sbt.Keys.{name, resolvedScoped}
 	import java.util.concurrent.atomic.{AtomicInteger => AInt}
 
-object AI extends AutoImport
+object Imports
 {
 	trait EmptyAutoPlugin extends AutoPlugin {
 		def requires = empty
@@ -21,7 +23,12 @@ object AI extends AutoImport
 	lazy val check = settingKey[Unit]("Verifies settings are as they should be.")
 }
 
-	import AI._
+object X extends AutoPlugin {
+	override lazy val autoImport = Imports
+	def select = Plugins.empty
+}
+
+	import Imports._
 
 object D extends AutoPlugin {
 	def requires: Plugins = E
