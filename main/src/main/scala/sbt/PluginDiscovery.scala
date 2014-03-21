@@ -15,12 +15,11 @@ object PluginDiscovery
 		final val AutoPlugins = "sbt/sbt.autoplugins"
 		final val Plugins = "sbt/sbt.plugins"
 		final val Builds = "sbt/sbt.builds"
-		final val AutoImports = "sbt/sbt.autoimports"
 	}
-	/** Names of top-level modules that subclass sbt plugin-related classes: [[Plugin]], [[AutoImport]], [[AutoPlugin]], and [[Build]]. */
-	final class DiscoveredNames(val plugins: Seq[String], val autoImports: Seq[String], val autoPlugins: Seq[String], val builds: Seq[String])
+	/** Names of top-level modules that subclass sbt plugin-related classes: [[Plugin]], [[AutoPlugin]], and [[Build]]. */
+	final class DiscoveredNames(val plugins: Seq[String], val autoPlugins: Seq[String], val builds: Seq[String])
 
-	def emptyDiscoveredNames: DiscoveredNames = new DiscoveredNames(Nil, Nil, Nil, Nil)
+	def emptyDiscoveredNames: DiscoveredNames = new DiscoveredNames(Nil, Nil, Nil)
 
 	/** Discovers and loads the sbt-plugin-related top-level modules from the classpath and source analysis in `data` and using the provided class `loader`. */
 	def discoverAll(data: PluginData, loader: ClassLoader): DetectedPlugins =
@@ -35,8 +34,10 @@ object PluginDiscovery
 			"sbt.plugins.GlobalModule" -> sbt.plugins.GlobalModule
 		)
 		val detectedAutoPugins = discover[AutoPlugin](AutoPlugins)
-		val allAutoPlugins = new DetectedModules(defaultAutoPlugins ++ detectedAutoPugins.modules)
-		new DetectedPlugins(discover[Plugin](Plugins), discover[AutoImport](AutoImports), allAutoPlugins, discover[Build](Builds))
+		val allAutoPlugins = (defaultAutoPlugins ++ detectedAutoPugins.modules) map { case (name, value) =>
+			DetectedAutoPlugin(name, value, sbt.Plugins.hasStableAutoImport(value, loader))
+		}
+		new DetectedPlugins(discover[Plugin](Plugins), allAutoPlugins, discover[Build](Builds))
 	}
 
 	/** Discovers the sbt-plugin-related top-level modules from the provided source `analysis`. */
@@ -44,7 +45,7 @@ object PluginDiscovery
 	{
 		def discover[T](implicit mf: reflect.ClassManifest[T]): Seq[String] =
 			sourceModuleNames(analysis, mf.erasure.getName)
-		new DiscoveredNames(discover[Plugin], discover[AutoImport], discover[AutoPlugin], discover[Build])
+		new DiscoveredNames(discover[Plugin], discover[AutoPlugin], discover[Build])
 	}
 
 	// TODO: for 0.14.0, consider consolidating into a single file, which would make the classpath search 4x faster
@@ -56,7 +57,6 @@ object PluginDiscovery
 			writeDescriptor(names.plugins, dir, Plugins) ::
 			writeDescriptor(names.autoPlugins, dir, AutoPlugins) ::
 			writeDescriptor(names.builds, dir, Builds) ::
-			writeDescriptor(names.autoImports, dir, AutoImports) ::
 			Nil
 		files.flatMap(_.toList)
 	}

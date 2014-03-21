@@ -10,9 +10,6 @@ TODO:
 	import Def.Setting
 	import Plugins._
 
-/** Marks a top-level object so that sbt will wildcard import it for .sbt files, `consoleProject`, and `set`. */
-trait AutoImport
-
 /**
 An AutoPlugin defines a group of settings and the conditions where the settings are automatically added to a build (called "activation").
 The `select` method defines the conditions and a method like `projectSettings` defines the settings to add.
@@ -54,6 +51,10 @@ abstract class AutoPlugin extends Plugins.Basic
 	def select: Plugins
 
 	val label: String = getClass.getName.stripSuffix("$")
+
+	/** When this method is overridden with a val or a lazy val, `autoImport._` is automatically
+	 * imported to *.sbt scripts. */
+	def autoImport: Any = ()
 
 	/** The [[Configuration]]s to add to each project that activates this AutoPlugin.*/
 	def projectConfigurations: Seq[Configuration] = Nil
@@ -218,4 +219,16 @@ object Plugins
 			case Exclude(a) => !model(a)
 			case ap: AutoPlugin => model(ap)
 		}
+
+	private[sbt] def hasStableAutoImport(ap: AutoPlugin, loader: ClassLoader): Boolean = {
+		import reflect.runtime.{universe => ru}
+		import util.control.Exception.catching
+		val m = ru.runtimeMirror(loader)
+		val im = m.reflect(ap)
+		val fmOpt = catching(classOf[ScalaReflectionException]) opt {
+			val autoImportSym = im.symbol.asType.toType.declaration(ru.newTermName("autoImport")).asTerm
+			im.reflectField(autoImportSym)
+		}
+		fmOpt.isDefined
+	} 
 }

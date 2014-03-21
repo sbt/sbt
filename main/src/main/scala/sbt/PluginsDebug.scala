@@ -108,7 +108,7 @@ private[sbt] object PluginsDebug
 		structure.units.values.toList.flatMap(availableAutoPlugins).map(plugin => (plugin.label, plugin)).toMap
 	}
 	private[this] def availableAutoPlugins(build: LoadedBuildUnit): Seq[AutoPlugin] =
-		build.unit.plugins.detected.autoPlugins.values
+		build.unit.plugins.detected.autoPlugins map {_.value}
 
 	def help(plugin: AutoPlugin, s: State): String =
 	{

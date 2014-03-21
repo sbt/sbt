@@ -1,3 +1,5 @@
+import sbttest.{Q}
+
 // excludePlugins(C) will prevent C, and thus D, from being auto-added
 lazy val a = project.addPlugins(A, B).disablePlugins(Q)
 
