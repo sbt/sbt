@@ -16,17 +16,19 @@ trait AutoImport
 
 /**
 An AutoPlugin defines a group of settings and the conditions where the settings are automatically added to a build (called "activation").
-The `requires` and `trigger` method defines the conditions and a method like `projectSettings` defines the settings to add.
+The `requires` and `trigger` methods together define the conditions, and a method like `projectSettings` defines the settings to add.
 
 Steps for plugin authors:
-1. Determine the [[AutoPlugins]]s that, when present (or absent), activate the AutoPlugin.
-2. Determine the settings/configurations to automatically inject when activated.
+1. Determine if the AutoPlugin should automatically be activated when all requirements are met, or should be opt-in.
+2. Determine the [[AutoPlugins]]s that, when present (or absent), act as the requirements for the AutoPlugin.
+3. Determine the settings/configurations to that the AutoPlugin injects when activated.
 
 For example, the following will automatically add the settings in `projectSettings`
   to a project that has both the `Web` and `Javascript` plugins enabled.
 
     object MyPlugin extends AutoPlugin {
         def requires = Web && Javascript
+        def trigger = allRequirements
         override def projectSettings = Seq(...)
     }
 
