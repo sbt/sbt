@@ -160,12 +160,19 @@ object Plugins extends PluginsFunctions
 				log.debug(s"deducing auto plugins based on known facts ${knowlege0.toString} and clauses ${clauses.toString}")
 				Logic.reduce(clauses, (flattenConvert(requestedPlugins) ++ convertAll(alwaysEnabled)).toSet) match {
 					case Left(problem) => throw AutoPluginException(problem)
-					case Right(results0) =>
-						log.debug(s"  :: deduced result: ${results0}")
-						val plugins = results0.ordered map { a =>
+					case Right(results) =>
+						log.debug(s"  :: deduced result: ${results}")
+						val selectedAtoms: List[Atom] = results.ordered
+						val selectedPlugins = selectedAtoms map { a =>
 							byAtomMap.getOrElse(a, throw AutoPluginException(s"${a} was not found in atom map."))
 						}
-						val retval = topologicalSort(plugins, log)
+						val forbidden: Set[AutoPlugin] = (selectedPlugins flatMap { Plugins.asExclusions }).toSet
+						val c = selectedPlugins.toSet & forbidden
+						if (!c.isEmpty) {
+							val listString = (c map {_.label}).mkString(", ")
+							throw AutoPluginException(s"Contradiction in selected plugins.  These plguins were both included and excluded: ${listString}")
+						}
+						val retval = topologicalSort(selectedPlugins, log)
 						log.debug(s"  :: sorted deduced result: ${retval.toString}")
 						retval
 				}
@@ -244,6 +251,9 @@ object Plugins extends PluginsFunctions
 		asRequirements(ap) map { x => Clause( convert(ap), Set(Atom(x.label)) ) }
 	private[sbt] def asRequirements(ap: AutoPlugin): List[AutoPlugin] = flatten(ap.requires).toList collect {
 		case x: AutoPlugin => x
+	}
+	private[sbt] def asExclusions(ap: AutoPlugin): List[AutoPlugin] = flatten(ap.requires).toList collect {
+		case Exclude(x) => x
 	}
 	private[this] def flattenConvert(n: Plugins): Seq[Literal] = n match {
 		case And(ns) => convertAll(ns)
