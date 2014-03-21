@@ -234,10 +234,12 @@ core methods without requiring an import or qualification.
 In addition, a plugin can implement the `AutoPlugin` class.   This has additoinal features, such as
 
 * Specifying plugin dependencies.
+* Automatically activating itself when all dependencies are present.
 * Specifying `projectSettings`, `buildSettings`, and `globalSettings` as appropriate.
 
 The AutoPlugin's `projectSettings` is automatically appended to each project's settings, when its dependencies also exist on that project
-The `select` method defines the conditions by which this plugin's settings are automatically imported.
+The `requires` method defines the dependencies to other plugins.
+The `trigger` method defines the conditions by which this plugin's settings are automatically activated.
 The `buildSettings` is appended to each build's settings (that is, `in ThisBuild`).
 The `globalSettings` is appended once to the global settings (`in Global`).
 These allow a plugin to automatically provide new functionality or new defaults.
@@ -268,8 +270,9 @@ An example of a typical plugin:
     object MyPlugin extends AutoPlugin
     {
         // Only enable this plugin for projects which are JvmModules.
-        def select = sbt.plugins.JvmModule 
-
+        def trigger = allRequirements
+        def requires = sbt.plugins.JvmModule
+        
         // configuration points, like the built in `version`, `libraryDependencies`, or `compile`
         // by implementing Plugin, these are automatically imported in a user's `build.sbt`
         val newTask = taskKey[Unit]("A new task.")
@@ -302,11 +305,8 @@ A build definition that uses the plugin might look like:
 Root Plugins
 ------------
 
-Some plugins should always be explicitly enabled on projects.  Sbt calls these "RootPlugins", i.e. plugins
-that are "root" nodes in the plugin depdendency graph.   To define a root plugin, just extend the `sbt.RootPlugin`
-interface.  This interface is exactly like the `AutoPlugin` interface except that a `select` method is not
-needed.
-
+Some plugins should always be explicitly enabled on projects.  Sbt calls these root plugins, i.e. plugins
+that are "root" nodes in the plugin depdendency graph.   To define a root plugin, set the `trigger` method to `noTrigger` and the `requires` method to `empty`.
 
 Example command root plugin
 ----------------------
@@ -329,8 +329,11 @@ A basic plugin that adds commands looks like:
 
     import sbt._
     import Keys._
-    object MyPlugin extends RootPlugin
+    object MyPlugin extends AutoPlugin
     {
+      def trigger = noTrigger
+      def requires = empty
+
       override lazy val projectSettings = Seq(commands += myCommand)
 
       lazy val myCommand = 

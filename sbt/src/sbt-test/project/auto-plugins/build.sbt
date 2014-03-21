@@ -1,32 +1,36 @@
-// excludePlugins(C) will prevent C, and thus D, from being auto-added
-lazy val a = project.addPlugins(A, B).disablePlugins(Q)
+// disablePlugins(Q) will prevent R from being auto-added
+lazy val projA = project.addPlugins(A, B).disablePlugins(Q)
 
-// without B, C is not added
-lazy val b = project.addPlugins(A)
+// without B, Q is not added
+lazy val projB = project.addPlugins(A)
 
-// with both A and B, C is selected, which in turn selects D
-lazy val c = project.addPlugins(A, B)
+// with both A and B, Q is selected, which in turn selects R, but not S
+lazy val projC = project.addPlugins(A, B)
 
 // with no natures defined, nothing is auto-added
-lazy val d = project
+lazy val projD = project
 
+// with S selected, Q is loaded automatically, which in turn selects R
+lazy val projE = project.addPlugins(S)
 
 check := {
-	val ddel = (del in d).?.value // should be None
-	same(ddel, None, "del in d")
-	val bdel = (del in b).?.value // should be None
-	same(bdel, None, "del in b")
-	val adel = (del in a).?.value // should be None
-	same(adel, None, "del in a")
+	val adel = (del in projA).?.value // should be None
+	same(adel, None, "del in projA")
+	val bdel = (del in projB).?.value // should be None
+	same(bdel, None, "del in projB")	
+	val ddel = (del in projD).?.value // should be None
+	same(ddel, None, "del in projD")
 //
 	val buildValue = (demo in ThisBuild).value
 	same(buildValue, "build 0", "demo in ThisBuild")
 	val globalValue = (demo in Global).value
 	same(globalValue, "global 0", "demo in Global")
-	val projValue = (demo in c).value
-	same(projValue, "project c Q R", "demo in c")
-	val qValue = (del in c in q).value
-	same(qValue, " Q R", "del in c in q")
+	val projValue = (demo in projC).value
+	same(projValue, "project projC Q R", "demo in projC")
+	val qValue = (del in projC in q).value
+	same(qValue, " Q R", "del in projC in q")
+	val optInValue = (del in projE in q).value
+	same(optInValue, " Q S R", "del in projE in q")
 }
 
 def same[T](actual: T, expected: T, label: String) {
