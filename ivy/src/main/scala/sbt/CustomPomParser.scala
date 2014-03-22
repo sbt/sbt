@@ -57,8 +57,14 @@ object CustomPomParser
 
 	private[this] def transformedByThisVersion(md: ModuleDescriptor): Boolean = 
 	{
+		val oldTransformedHashKey = "sbtTransformHash"
 		val extraInfo = md.getExtraInfo
-		extraInfo != null && extraInfo.get(TransformedHashKey) == TransformHash
+		// sbt 0.13.1 used "sbtTransformHash" instead of "e:sbtTransformHash" until #1192 so read both 
+		Option(extraInfo).isDefined &&
+		((Option(extraInfo get TransformedHashKey) orElse Option(extraInfo get oldTransformedHashKey)) match {
+			case Some(TransformHash) => true
+			case _ => false
+		})
 	}
 
 	private[this] def defaultTransformImpl(parser: ModuleDescriptorParser, md: ModuleDescriptor): ModuleDescriptor =
