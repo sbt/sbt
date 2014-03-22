@@ -64,6 +64,8 @@ abstract class AutoPlugin extends Plugins.Basic with PluginsFunctions
 
 	val label: String = getClass.getName.stripSuffix("$")
 
+	override def toString: String = label
+
 	/** The [[Configuration]]s to add to each project that activates this AutoPlugin.*/
 	def projectConfigurations: Seq[Configuration] = Nil
 
@@ -169,8 +171,7 @@ object Plugins extends PluginsFunctions
 						val forbidden: Set[AutoPlugin] = (selectedPlugins flatMap { Plugins.asExclusions }).toSet
 						val c = selectedPlugins.toSet & forbidden
 						if (!c.isEmpty) {
-							val listString = (c map {_.label}).mkString(", ")
-							throw AutoPluginException(s"Contradiction in selected plugins.  These plguins were both included and excluded: ${listString}")
+							exlusionConflictError(requestedPlugins, selectedPlugins, c.toSeq sortBy {_.label})
 						}
 						val retval = topologicalSort(selectedPlugins, log)
 						log.debug(s"  :: sorted deduced result: ${retval.toString}")
@@ -193,7 +194,7 @@ object Plugins extends PluginsFunctions
 		doSort(roots, nonRoots, ns.size * ns.size + 1)
 	}
 	private[sbt] def translateMessage(e: LogicException) = e match {
-		case ic: InitialContradictions => s"Contradiction in selected plugins.  These plguins were both included and excluded: ${literalsString(ic.literals.toSeq)}"
+		case ic: InitialContradictions => s"Contradiction in selected plugins.  These plugins were both included and excluded: ${literalsString(ic.literals.toSeq)}"
 		case io: InitialOverlap => s"Cannot directly enable plugins.  Plugins are enabled when their required plugins are satisifed.  The directly selected plugins were: ${literalsString(io.literals.toSeq)}"
 		case cn: CyclicNegation => s"Cycles in plugin requirements cannot involve excludes.  The problematic cycle is: ${literalsString(cn.cycle)}"
 	}
@@ -207,6 +208,29 @@ object Plugins extends PluginsFunctions
 		val (ns, nl) = if(dupStrings.size > 1) ("s", "\n\t") else ("", " ")
 		val message = s"Plugin$ns provided by multiple AutoPlugins:$nl${dupStrings.mkString(nl)}"
 		throw AutoPluginException(message)
+	}
+	private[this] def exlusionConflictError(requested: Plugins, selected: Seq[AutoPlugin], conflicting: Seq[AutoPlugin]) {
+		def listConflicts(ns: Seq[AutoPlugin]) = (ns map { c =>
+			val reasons = (if (flatten(requested) contains c) List("requested")
+							else Nil) ++
+				(if (c.requires != empty && c.trigger == allRequirements) List(s"enabled by ${c.requires.toString}")
+					else Nil) ++
+				{
+					val reqs = selected filter { x => asRequirements(x) contains c }
+					if (!reqs.isEmpty) List(s"""required by ${reqs.mkString(", ")}""")
+					else Nil
+				} ++
+				{
+					val exs = selected filter { x => asExclusions(x) contains c }
+					if (!exs.isEmpty) List(s"""excluded by ${exs.mkString(", ")}""")
+					else Nil
+				}
+			s"""  - conflict: ${c.label} is ${reasons.mkString("; ")}"""
+		}).mkString("\n")
+		throw AutoPluginException(s"""Contradiction in enabled plugins:
+  - requested: ${requested.toString}
+  - enabled: ${selected.mkString(", ")}
+${listConflicts(conflicting)}""")
 	}
 
 	private[sbt] final object Empty extends Plugins {
@@ -225,7 +249,7 @@ object Plugins extends PluginsFunctions
 	}
 	private[sbt] final case class And(plugins: List[Basic]) extends Plugins {
 		def &&(o: Basic): Plugins = And(o :: plugins)
-		override def toString = plugins.mkString(", ")
+		override def toString = plugins.mkString(" && ")
 	}
 	private[sbt] def and(a: Plugins, b: Plugins) = b match {
 		case Empty => a
