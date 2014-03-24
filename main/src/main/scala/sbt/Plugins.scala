@@ -82,7 +82,7 @@ abstract class AutoPlugin extends Plugins.Basic with PluginsFunctions
 
 	// TODO?: def commands: Seq[Command]
 
-	def unary_! : Exclude = Exclude(this)
+	private[sbt] def unary_! : Exclude = Exclude(this)
 
 
 	/** If this plugin does not have any requirements, it means it is actually a root plugin. */

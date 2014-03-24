@@ -59,7 +59,7 @@ object Q extends AutoPlugin
 object R extends AutoPlugin
 {
 	// NOTE - Only plugins themselves support exclusions...
-	def requires = Q && !D
+	def requires = Q
 	def trigger = allRequirements
 
 	override def projectSettings = Seq(
