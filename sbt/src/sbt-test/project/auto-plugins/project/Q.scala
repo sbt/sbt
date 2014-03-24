@@ -25,7 +25,8 @@ object Imports
 
 object X extends AutoPlugin {
 	override lazy val autoImport = Imports
-	def select = Plugins.empty
+	def requires = Plugins.empty
+	def trigger = noTrigger
 }
 
 	import Imports._

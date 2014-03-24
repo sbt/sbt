@@ -106,7 +106,7 @@ final class DetectedPlugins(val plugins: DetectedModules[Plugin], val autoPlugin
 			else None
 		}))
 	/** A function to select the right [[AutoPlugin]]s from [[autoPlugins]] for a [[Project]]. */
-	lazy val deducePlugins: (Plugins, Logger) => Seq[AutoPlugin] = Plugins.deducer(autoPlugins.values.toList)
+	lazy val deducePlugins: (Plugins, Logger) => Seq[AutoPlugin] = Plugins.deducer(autoPlugins.toList map {_.value})
 }
 
 /** The built and loaded build definition project.
