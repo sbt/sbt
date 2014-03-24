@@ -100,7 +100,7 @@ final class DetectedPlugins(val plugins: DetectedModules[Plugin], val autoImport
 	lazy val imports: Seq[String] = BuildUtil.getImports(plugins.names ++ builds.names ++ autoImports.names)
 
 	/** A function to select the right [[AutoPlugin]]s from [[autoPlugins]] for a [[Project]]. */
-	lazy val compilePlugins: Plugins => Seq[AutoPlugin] = Plugins.compile(autoPlugins.values.toList)
+	lazy val deducePlugins: (Plugins, Logger) => Seq[AutoPlugin] = Plugins.deducer(autoPlugins.values.toList)
 }
 
 /** The built and loaded build definition project.

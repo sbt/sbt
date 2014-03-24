@@ -4,7 +4,8 @@ import Keys._
 
 object C extends AutoImport {
 	object bN extends AutoPlugin {
-		def select = Plugins.empty
+		def requires = empty
+		def trigger = allRequirements
 	}
 	lazy val check = taskKey[Unit]("Checks that the AutoPlugin and Build are automatically added.")
 }
@@ -12,7 +13,8 @@ object C extends AutoImport {
 	import C._
 
 object A extends AutoPlugin {
-	override def select = bN
+	def requires = bN
+	def trigger = allRequirements
 	override def projectSettings = Seq(
 		check := {}
 	)

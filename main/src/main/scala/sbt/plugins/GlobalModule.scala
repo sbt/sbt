@@ -9,8 +9,9 @@ import Def.Setting
  * Can control task-level paralleism, logging, etc.
  */
 object GlobalModule extends AutoPlugin {
-  // We must be explicitly enabled
-  def select = Plugins.empty
+  // This is included by default
+  def requires = empty
+  def trigger = allRequirements
   
   override lazy val projectSettings: Seq[Setting[_]] = 
     Defaults.coreDefaultSettings

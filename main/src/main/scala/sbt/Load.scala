@@ -415,7 +415,7 @@ object Load
 		val initialProjects = defsScala.flatMap(b => projectsFromBuild(b, normBase))
 
 		val memoSettings = new mutable.HashMap[File, LoadedSbtFile]
-		def loadProjects(ps: Seq[Project]) = loadTransitive(ps, normBase, plugs, () => eval, config.injectSettings, Nil, memoSettings)
+		def loadProjects(ps: Seq[Project]) = loadTransitive(ps, normBase, plugs, () => eval, config.injectSettings, Nil, memoSettings, config.log)
 		val loadedProjectsRaw = loadProjects(initialProjects)
 		val hasRoot = loadedProjectsRaw.exists(_.base == normBase) || defsScala.exists(_.rootProject.isDefined)
 		val (loadedProjects, defaultBuildIfNone) =
@@ -457,13 +457,14 @@ object Load
 	private[this] def projectsFromBuild(b: Build, base: File): Seq[Project] =
 		b.projectDefinitions(base).map(resolveBase(base))
 
-	private[this] def loadTransitive(newProjects: Seq[Project], buildBase: File, plugins: sbt.LoadedPlugins, eval: () => Eval, injectSettings: InjectSettings, acc: Seq[Project], memoSettings: mutable.Map[File, LoadedSbtFile]): Seq[Project] =
+	private[this] def loadTransitive(newProjects: Seq[Project], buildBase: File, plugins: sbt.LoadedPlugins, eval: () => Eval, injectSettings: InjectSettings,
+		acc: Seq[Project], memoSettings: mutable.Map[File, LoadedSbtFile], log: Logger): Seq[Project] =
 	{
 		def loadSbtFiles(auto: AddSettings, base: File, autoPlugins: Seq[AutoPlugin], projectSettings: Seq[Setting[_]]): LoadedSbtFile =
 			loadSettings(auto, base, plugins, eval, injectSettings, memoSettings, autoPlugins, projectSettings)
 		def loadForProjects = newProjects map { project =>
 			val autoPlugins =
-				try plugins.detected.compilePlugins(project.plugins)
+				try plugins.detected.deducePlugins(project.plugins, log)
 				catch { case e: AutoPluginException => throw translateAutoPluginException(e, project) }
 			val autoConfigs = autoPlugins.flatMap(_.projectConfigurations)
 			val loadedSbtFiles = loadSbtFiles(project.auto, project.base, autoPlugins, project.settings)
@@ -483,7 +484,7 @@ object Load
 		if(nextProjects.isEmpty)
 			loadedProjects
 		else
-			loadTransitive(nextProjects, buildBase, plugins, eval, injectSettings, loadedProjects, memoSettings)
+			loadTransitive(nextProjects, buildBase, plugins, eval, injectSettings, loadedProjects, memoSettings, log)
 	}
 	private[this] def translateAutoPluginException(e: AutoPluginException, project: Project): AutoPluginException =
 		e.withPrefix(s"Error determining plugins for project '${project.id}' in ${project.base}:\n")

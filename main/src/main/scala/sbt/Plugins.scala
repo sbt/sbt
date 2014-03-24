@@ -9,23 +9,26 @@ TODO:
 	import Logic.{CyclicNegation, InitialContradictions, InitialOverlap, LogicException}
 	import Def.Setting
 	import Plugins._
+	import annotation.tailrec
 
 /** Marks a top-level object so that sbt will wildcard import it for .sbt files, `consoleProject`, and `set`. */
 trait AutoImport
 
 /**
 An AutoPlugin defines a group of settings and the conditions where the settings are automatically added to a build (called "activation").
-The `select` method defines the conditions and a method like `projectSettings` defines the settings to add.
+The `requires` and `trigger` methods together define the conditions, and a method like `projectSettings` defines the settings to add.
 
 Steps for plugin authors:
-1. Determine the [[AutoPlugins]]s that, when present (or absent), activate the AutoPlugin.
-2. Determine the settings/configurations to automatically inject when activated.
+1. Determine if the AutoPlugin should automatically be activated when all requirements are met, or should be opt-in.
+2. Determine the [[AutoPlugins]]s that, when present (or absent), act as the requirements for the AutoPlugin.
+3. Determine the settings/configurations to that the AutoPlugin injects when activated.
 
 For example, the following will automatically add the settings in `projectSettings`
   to a project that has both the `Web` and `Javascript` plugins enabled.
 
     object MyPlugin extends AutoPlugin {
-        def select = Web && Javascript
+        def requires = Web && Javascript
+        def trigger = allRequirements
         override def projectSettings = Seq(...)
     }
 
@@ -44,16 +47,24 @@ will activate `MyPlugin` defined above and have its settings automatically added
 
 then the `MyPlugin` settings (and anything that activates only when `MyPlugin` is activated) will not be added.
 */
-abstract class AutoPlugin extends Plugins.Basic
+abstract class AutoPlugin extends Plugins.Basic with PluginsFunctions
 {
-	/** This AutoPlugin will be activated for a project when the [[Plugins]] matcher returned by this method matches that project's plugins
-	* AND the user does not explicitly exclude the Plugin returned by `provides`.
-	*
-	* For example, if this method returns `Web && Javascript`, this plugin instance will only be added
-	* if the `Web` and `Javascript` plugins are enabled. */
-	def select: Plugins
+	/** Determines whether this AutoPlugin will be activated for this project when the `requires` clause is satisfied.
+	 *
+	 * When this method returns `allRequirements`, and `requires` method returns `Web && Javascript`, this plugin
+	 * instance will be added automatically if the `Web` and `Javascript` plugins are enbled.
+	 * 
+	 * When this method returns `noTrigger`, and `requires` method returns `Web && Javascript`, this plugin
+	 * instance will be added only if the build user enables it, but it will automatically add both `Web` and `Javascript`. */
+	def trigger: PluginTrigger
+
+	/** This AutoPlugin requires the plugins the [[Plugins]] matcher returned by this method. See [[trigger]].
+	 */
+	def requires: Plugins
 
 	val label: String = getClass.getName.stripSuffix("$")
+
+	override def toString: String = label
 
 	/** The [[Configuration]]s to add to each project that activates this AutoPlugin.*/
 	def projectConfigurations: Seq[Configuration] = Nil
@@ -71,25 +82,19 @@ abstract class AutoPlugin extends Plugins.Basic
 
 	// TODO?: def commands: Seq[Command]
 
-	def unary_! : Exclude = Exclude(this)
+	private[sbt] def unary_! : Exclude = Exclude(this)
 
 
-	/** If this plugin requries itself to be included, it means we're actually a nature,
-	 * not a normal plugin.   The user must specifically enable this plugin
-	 * but other plugins can rely on its existence. 
-	 */
-	final def isRoot: Boolean = 
-	  this match {
-	  	case _: RootAutoPlugin => true
+	/** If this plugin does not have any requirements, it means it is actually a root plugin. */
+	private[sbt] final def isRoot: Boolean = 
+	  requires match {
+	  	case Empty => true
 	  	case _ => false
 	  }
-}
-/**
- * A root AutoPlugin is a plugin which must be explicitly enabled by users in their `addPlugins` method
- * on a project.  However, RootAutoPlugins represent the "root" of a tree of dependent auto-plugins.
- */
-abstract class RootAutoPlugin extends AutoPlugin {
-	final def select: Plugins = this
+
+	/** If this plugin does not have any requirements, it means it is actually a root plugin. */
+	private[sbt] final def isAlwaysEnabled: Boolean =
+		isRoot && (trigger == AllRequirements)
 }
 
 /** An error that occurs when auto-plugins aren't configured properly.
@@ -105,39 +110,91 @@ object AutoPluginException
 	def apply(origin: LogicException): AutoPluginException = new AutoPluginException(Plugins.translateMessage(origin), Some(origin))
 }
 
+sealed trait PluginTrigger
+case object AllRequirements extends PluginTrigger
+case object NoTrigger extends PluginTrigger	
+
 /** An expression that matches `AutoPlugin`s. */
 sealed trait Plugins {
 	def && (o: Basic): Plugins
 }
 
-object Plugins
+
+sealed trait PluginsFunctions
+{
+	/** [[Plugins]] instance that doesn't require any [[Plugins]]s. */
+	def empty: Plugins = Plugins.Empty
+
+	/** This plugin is activated when all required plugins are present. */
+	def allRequirements: PluginTrigger = AllRequirements
+	/** This plugin is activated only when it is manually activated. */
+	def noTrigger: PluginTrigger = NoTrigger
+}
+
+object Plugins extends PluginsFunctions
 {
 	/** Given the available auto plugins `defined`, returns a function that selects [[AutoPlugin]]s for the provided [[AutoPlugin]]s.
-	* The [[AutoPlugin]]s are topologically sorted so that a selected [[AutoPlugin]] comes before its selecting [[AutoPlugin]].*/
-	def compile(defined: List[AutoPlugin]): Plugins => Seq[AutoPlugin] =
-		if(defined.isEmpty)
-			Types.const(Nil)
+	* The [[AutoPlugin]]s are topologically sorted so that a required [[AutoPlugin]] comes before its requiring [[AutoPlugin]].*/
+	def deducer(defined0: List[AutoPlugin]): (Plugins, Logger) => Seq[AutoPlugin] =
+		if(defined0.isEmpty) (_, _) => Nil
 		else
 		{
-			val byAtom = defined.map(x => (Atom(x.label), x))
+			// TODO: defined should return all the plugins
+			val allReqs = (defined0 flatMap { asRequirements }).toSet
+			val diff = allReqs diff defined0.toSet
+			val defined = if (!diff.isEmpty) diff.toList ::: defined0
+						  else defined0
+
+			val byAtom = defined map { x => (Atom(x.label), x) }
 			val byAtomMap = byAtom.toMap
 			if(byAtom.size != byAtomMap.size) duplicateProvidesError(byAtom)
-			// Ignore clauses for plugins that just require themselves be specified.
+			// Ignore clauses for plugins that does not require anything else.
 			// Avoids the requirement for pure Nature strings *and* possible
 			// circular dependencies in the logic.
-			val clauses = Clauses( defined.filterNot(_.isRoot).map(d => asClause(d)) )
-			requestedPlugins =>
-				Logic.reduce(clauses, flattenConvert(requestedPlugins).toSet) match {
+			val allRequirementsClause = defined.filterNot(_.isRoot).flatMap(d => asRequirementsClauses(d))
+			val allEnabledByClause = defined.filterNot(_.isRoot).flatMap(d => asEnabledByClauses(d))
+			(requestedPlugins, log) => {
+				val alwaysEnabled: List[AutoPlugin] = defined.filter(_.isAlwaysEnabled)
+				val knowlege0: Set[Atom] = ((flatten(requestedPlugins) ++ alwaysEnabled) collect {
+					case x: AutoPlugin => Atom(x.label)
+				}).toSet
+				val clauses = Clauses((allRequirementsClause ::: allEnabledByClause) filterNot { _.head subsetOf knowlege0 })
+				log.debug(s"deducing auto plugins based on known facts ${knowlege0.toString} and clauses ${clauses.toString}")
+				Logic.reduce(clauses, (flattenConvert(requestedPlugins) ++ convertAll(alwaysEnabled)).toSet) match {
 					case Left(problem) => throw AutoPluginException(problem)
 					case Right(results) =>
-						// results includes the originally requested (positive) atoms,
-						//   which won't have a corresponding AutoPlugin to map back to
-						results.ordered.flatMap(a => byAtomMap.get(a).toList)
+						log.debug(s"  :: deduced result: ${results}")
+						val selectedAtoms: List[Atom] = results.ordered
+						val selectedPlugins = selectedAtoms map { a =>
+							byAtomMap.getOrElse(a, throw AutoPluginException(s"${a} was not found in atom map."))
+						}
+						val forbidden: Set[AutoPlugin] = (selectedPlugins flatMap { Plugins.asExclusions }).toSet
+						val c = selectedPlugins.toSet & forbidden
+						if (!c.isEmpty) {
+							exlusionConflictError(requestedPlugins, selectedPlugins, c.toSeq sortBy {_.label})
+						}
+						val retval = topologicalSort(selectedPlugins, log)
+						log.debug(s"  :: sorted deduced result: ${retval.toString}")
+						retval
 				}
+			}
 		}
-
+	private[sbt] def topologicalSort(ns: List[AutoPlugin], log: Logger): List[AutoPlugin] = {
+		log.debug(s"sorting: ns: ${ns.toString}")
+		@tailrec def doSort(found0: List[AutoPlugin], notFound0: List[AutoPlugin], limit0: Int): List[AutoPlugin] = {
+			log.debug(s"  :: sorting:: found: ${found0.toString} not found ${notFound0.toString}")
+			if (limit0 < 0) throw AutoPluginException(s"Failed to sort ${ns} topologically")
+			else if (notFound0.isEmpty) found0
+			else {
+				val (found1, notFound1) = notFound0 partition { n => asRequirements(n).toSet subsetOf found0.toSet }
+				doSort(found0 ::: found1, notFound1, limit0 - 1)
+			}
+		}
+		val (roots, nonRoots) = ns partition (_.isRoot)
+		doSort(roots, nonRoots, ns.size * ns.size + 1)
+	}
 	private[sbt] def translateMessage(e: LogicException) = e match {
-		case ic: InitialContradictions => s"Contradiction in selected plugins.  These plguins were both included and excluded: ${literalsString(ic.literals.toSeq)}"
+		case ic: InitialContradictions => s"Contradiction in selected plugins.  These plugins were both included and excluded: ${literalsString(ic.literals.toSeq)}"
 		case io: InitialOverlap => s"Cannot directly enable plugins.  Plugins are enabled when their required plugins are satisifed.  The directly selected plugins were: ${literalsString(io.literals.toSeq)}"
 		case cn: CyclicNegation => s"Cycles in plugin requirements cannot involve excludes.  The problematic cycle is: ${literalsString(cn.cycle)}"
 	}
@@ -152,9 +209,30 @@ object Plugins
 		val message = s"Plugin$ns provided by multiple AutoPlugins:$nl${dupStrings.mkString(nl)}"
 		throw AutoPluginException(message)
 	}
+	private[this] def exlusionConflictError(requested: Plugins, selected: Seq[AutoPlugin], conflicting: Seq[AutoPlugin]) {
+		def listConflicts(ns: Seq[AutoPlugin]) = (ns map { c =>
+			val reasons = (if (flatten(requested) contains c) List("requested")
+							else Nil) ++
+				(if (c.requires != empty && c.trigger == allRequirements) List(s"enabled by ${c.requires.toString}")
+					else Nil) ++
+				{
+					val reqs = selected filter { x => asRequirements(x) contains c }
+					if (!reqs.isEmpty) List(s"""required by ${reqs.mkString(", ")}""")
+					else Nil
+				} ++
+				{
+					val exs = selected filter { x => asExclusions(x) contains c }
+					if (!exs.isEmpty) List(s"""excluded by ${exs.mkString(", ")}""")
+					else Nil
+				}
+			s"""  - conflict: ${c.label} is ${reasons.mkString("; ")}"""
+		}).mkString("\n")
+		throw AutoPluginException(s"""Contradiction in enabled plugins:
+  - requested: ${requested.toString}
+  - enabled: ${selected.mkString(", ")}
+${listConflicts(conflicting)}""")
+	}
 
-	/** [[Plugins]] instance that doesn't require any [[Plugins]]s. */
-	def empty: Plugins = Empty
 	private[sbt] final object Empty extends Plugins {
 		def &&(o: Basic): Plugins = o
 		override def toString = "<none>"
@@ -171,7 +249,7 @@ object Plugins
 	}
 	private[sbt] final case class And(plugins: List[Basic]) extends Plugins {
 		def &&(o: Basic): Plugins = And(o :: plugins)
-		override def toString = plugins.mkString(", ")
+		override def toString = plugins.mkString(" && ")
 	}
 	private[sbt] def and(a: Plugins, b: Plugins) = b match {
 		case Empty => a
@@ -186,10 +264,21 @@ object Plugins
 			if(removed.isEmpty) Empty else And(removed)
 	}
 
-	/** Defines a clause for `ap` such that the [[AutoPlugin]] provided by `ap` is the head and the selector for `ap` is the body. */
-	private[sbt] def asClause(ap: AutoPlugin): Clause =
-		Clause( convert(ap.select), Set(Atom(ap.label)) )
-
+	/** Defines enabled-by clauses for `ap`. */
+	private[sbt] def asEnabledByClauses(ap: AutoPlugin): List[Clause] =
+		// `ap` is the head and the required plugins for `ap` is the body.
+		if (ap.trigger == AllRequirements) Clause( convert(ap.requires), Set(Atom(ap.label)) ) :: Nil
+		else Nil
+	/** Defines requirements clauses for `ap`. */
+	private[sbt] def asRequirementsClauses(ap: AutoPlugin): List[Clause] =
+		// required plugin is the head and `ap` is the body.
+		asRequirements(ap) map { x => Clause( convert(ap), Set(Atom(x.label)) ) }
+	private[sbt] def asRequirements(ap: AutoPlugin): List[AutoPlugin] = flatten(ap.requires).toList collect {
+		case x: AutoPlugin => x
+	}
+	private[sbt] def asExclusions(ap: AutoPlugin): List[AutoPlugin] = flatten(ap.requires).toList collect {
+		case Exclude(x) => x
+	}
 	private[this] def flattenConvert(n: Plugins): Seq[Literal] = n match {
 		case And(ns) => convertAll(ns)
 		case b: Basic => convertBasic(b) :: Nil
@@ -212,7 +301,7 @@ object Plugins
 	}
 	private[this] def convertAll(ns: Seq[Basic]): Seq[Literal] = ns map convertBasic
 
-	/** True if the select clause `n` is satisifed by `model`. */
+	/** True if the trigger clause `n` is satisifed by `model`. */
 	def satisfied(n: Plugins, model: Set[AutoPlugin]): Boolean =
 		flatten(n) forall {
 			case Exclude(a) => !model(a)

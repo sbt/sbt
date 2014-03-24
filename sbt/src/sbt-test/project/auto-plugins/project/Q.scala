@@ -5,7 +5,8 @@
 object AI extends AutoImport
 {
 	trait EmptyAutoPlugin extends AutoPlugin {
-		def select = Plugins.empty
+		def requires = empty
+		def trigger = noTrigger
 	}
 	object A extends EmptyAutoPlugin
 	object B extends EmptyAutoPlugin
@@ -23,12 +24,14 @@ object AI extends AutoImport
 	import AI._
 
 object D extends AutoPlugin {
-	def select: Plugins = E
+	def requires: Plugins = E
+	def trigger = allRequirements
 }
 
 object Q extends AutoPlugin
 {
-	def select: Plugins = A && B
+	def requires: Plugins = A && B
+	def trigger = allRequirements
 
 	override def projectConfigurations: Seq[Configuration] =
 		p ::
@@ -56,12 +59,25 @@ object Q extends AutoPlugin
 object R extends AutoPlugin
 {
 	// NOTE - Only plugins themselves support exclusions...
-	def select = Q && !D
+	def requires = Q
+	def trigger = allRequirements
 
 	override def projectSettings = Seq(
-		// tests proper ordering: R requires C, so C settings should come first
+		// tests proper ordering: R requires Q, so Q settings should come first
 		del in q += " R",
 		// tests that configurations are properly registered, enabling delegation from p to q
 		demo += (del in p).value
+	)
+}
+
+// This is an opt-in plugin with a requirement
+// Unless explicitly loaded by the build user, this will not be activated.
+object S extends AutoPlugin
+{
+	def requires = Q
+	def trigger = noTrigger
+
+	override def projectSettings = Seq(
+		del in q += " S"
 	)
 }

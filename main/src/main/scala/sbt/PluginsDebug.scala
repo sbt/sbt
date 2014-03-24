@@ -118,7 +118,7 @@ private[sbt] object PluginsDebug
 		def projectForRef(ref: ProjectRef): ResolvedProject = get(Keys.thisProject in ref)
 		val perBuild: Map[URI, Set[AutoPlugin]] = structure.units.mapValues(unit => availableAutoPlugins(unit).toSet)
 		val pluginsThisBuild = perBuild.getOrElse(currentRef.build, Set.empty).toList
-		lazy val context = Context(currentProject.plugins, currentProject.autoPlugins, Plugins.compile(pluginsThisBuild), pluginsThisBuild)
+		lazy val context = Context(currentProject.plugins, currentProject.autoPlugins, Plugins.deducer(pluginsThisBuild), pluginsThisBuild, s.log)
 		lazy val debug = PluginsDebug(context.available)
 		if(!pluginsThisBuild.contains(plugin)) {
 			val availableInBuilds: List[URI] = perBuild.toList.filter(_._2(plugin)).map(_._1)
@@ -152,9 +152,9 @@ private[sbt] object PluginsDebug
 	/** The context for debugging a plugin (de)activation.
 	* @param initial The initially defined [[AutoPlugin]]s.
 	* @param enabled The resulting model.
-	* @param compile The function used to compute the model.
+	* @param deducePlugin The function used to compute the model.
 	* @param available All [[AutoPlugin]]s available for consideration. */
-	final case class Context(initial: Plugins, enabled: Seq[AutoPlugin], compile: Plugins => Seq[AutoPlugin], available: List[AutoPlugin])
+	final case class Context(initial: Plugins, enabled: Seq[AutoPlugin], deducePlugin: (Plugins, Logger) => Seq[AutoPlugin], available: List[AutoPlugin], log: Logger)
 
 	/** Describes the steps to activate a plugin in some context. */
 	sealed abstract class PluginEnable
@@ -236,10 +236,10 @@ private[sbt] object PluginsDebug
 			// The model that results when the minimal plugins are enabled and the minimal plugins are excluded.
 			//  This can include more plugins than just `minRequiredPlugins` because the plguins required for `plugin`
 			//  might activate other plugins as well.
-			val modelForMin = context.compile(and(includeAll(minRequiredPlugins), excludeAll(minAbsentPlugins)))
+			val modelForMin = context.deducePlugin(and(includeAll(minRequiredPlugins), excludeAll(minAbsentPlugins)), context.log)
 
 			val incrementalInputs = and( includeAll(minRequiredPlugins ++ initialPlugins), excludeAll(minAbsentPlugins ++ initialExcludes -- minRequiredPlugins))
-			val incrementalModel = context.compile(incrementalInputs).toSet
+			val incrementalModel = context.deducePlugin(incrementalInputs, context.log).toSet
 
 			// Plugins that are newly enabled as a result of selecting the plugins needed for `plugin`, but aren't strictly required for `plugin`.
 			//   These could be excluded and `plugin` and the user's current plugins would still be activated.
@@ -252,7 +252,7 @@ private[sbt] object PluginsDebug
 			// If both A and B must be deactivated, but A transitively depends on B, deactivating B will deactivate A.
 			// If A must be deactivated, but one if its (transitively) required plugins isn't present, it won't be activated.
 			//   So, in either of these cases, A doesn't need to be considered further and won't be included in this set.
-			val minDeactivate = minAbsentPlugins.filter(p => Plugins.satisfied(p.select, incrementalModel))
+			val minDeactivate = minAbsentPlugins.filter(p => Plugins.satisfied(p.requires, incrementalModel))
 
 			val deactivate = for(d <- minDeactivate.toList) yield {
 				// removing any one of these plugins will deactivate `d`.  TODO: This is not an especially efficient implementation.
@@ -280,7 +280,7 @@ private[sbt] object PluginsDebug
 	// The actual model might be larger, since other plugins might be enabled by the selected plugins.
 	private[this] def minimalModel(plugin: AutoPlugin): Seq[Basic] = Dag.topologicalSortUnchecked(plugin: Basic) {
 		case _: Exclude  => Nil
-		case ap: AutoPlugin => Plugins.flatten(ap.select)
+		case ap: AutoPlugin => Plugins.flatten(ap.requires) :+ plugin
 	}
 
 	/** String representation of [[PluginEnable]], intended for end users. */

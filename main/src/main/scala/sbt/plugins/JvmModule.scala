@@ -17,7 +17,8 @@ import Def.Setting
 object JvmModule extends AutoPlugin {
   // We are automatically enabled for any IvyModule project.  We also require its settings
   // for ours to work.
-  def select = IvyModule
+  def requires = IvyModule
+  def trigger = allRequirements
   
   override lazy val projectSettings: Seq[Setting[_]] = 
     Defaults.runnerSettings ++
