@@ -35,7 +35,7 @@ Adding settings for a plugin
 
 A plugin can declare that its settings be automatically added, in which case you don't have to do anything to add them.
 
-As of sbt 0.13.2, there is a new :doc:`auto-plugins <../DetailedTopics/AutoPlugins>` feature that enables plugins
+As of sbt 0.13.5, there is a new :doc:`auto-plugins <../DetailedTopics/AutoPlugins>` feature that enables plugins
 to automatically, and safely, ensure their settings and dependencies are on a project.  Most plugins should have
 their default settings automatically, however some may require explicit enablement.
 
@@ -51,16 +51,16 @@ For example ::
 
     > plugins
     In file:/home/jsuereth/projects/sbt/test-ivy-issues/
-      sbt.plugins.IvyModule: enabled in test-ivy-issues
-      sbt.plugins.JvmModule: enabled in test-ivy-issues
-      sbt.plugins.GlobalModule: enabled in test-ivy-issues
+      sbt.plugins.IvyPlugin: enabled in test-ivy-issues
+      sbt.plugins.JvmPlugin: enabled in test-ivy-issues
+      sbt.plugins.CorePlugin: enabled in test-ivy-issues
 
 
 Here, the plugins output is showing that the sbt default plugins are all enabled.  Sbt's default settings are provided via three plugins:
 
-1. GlobalModule:  Provides the core parallelism controls for tasks
-2. IvyModule:     Provides the mechanisms to publish/resolve modules.
-3. JvmModule:     Provides the mechanisms to compile/test/run/package Java/Scala projects.
+1. CorePlugin:    Provides the core parallelism controls for tasks
+2. IvyPlugin:     Provides the mechanisms to publish/resolve modules.
+3. JvmPlugin:     Provides the mechanisms to compile/test/run/package Java/Scala projects.
 
 
 However, older plugins often required settings to be added explictly, so that :doc:`multi-project build <Multi-Project>` could have different types of projects.  The plugin documentation will indicate how to configure it, but typically for older plugins this involves adding the base settings for the plugin and customizing as necessary.

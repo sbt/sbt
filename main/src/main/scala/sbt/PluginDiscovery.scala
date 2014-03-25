@@ -29,9 +29,9 @@ object PluginDiscovery
 		import Paths._
 		// TODO - Fix this once we can autodetect AutoPlugins defined by sbt itself.
 		val defaultAutoPlugins = Seq(
-			"sbt.plugins.IvyModule" -> sbt.plugins.IvyModule,
-			"sbt.plugins.JvmModule" -> sbt.plugins.JvmModule,
-			"sbt.plugins.GlobalModule" -> sbt.plugins.GlobalModule
+			"sbt.plugins.IvyPlugin" -> sbt.plugins.IvyPlugin,
+			"sbt.plugins.JvmPlugin" -> sbt.plugins.JvmPlugin,
+			"sbt.plugins.CorePlugin" -> sbt.plugins.CorePlugin
 		)
 		val detectedAutoPugins = discover[AutoPlugin](AutoPlugins)
 		val allAutoPlugins = (defaultAutoPlugins ++ detectedAutoPugins.modules) map { case (name, value) =>
