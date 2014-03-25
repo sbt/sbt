@@ -90,7 +90,7 @@ final class DetectedModules[T](val modules: Seq[(String, T)])
 }
 
 /** Auto-detected auto plugin. */
-case class DetectedAutoPlugin(val name: String, val value: AutoPlugin, val hasStableAutoImport: Boolean)
+case class DetectedAutoPlugin(val name: String, val value: AutoPlugin, val hasAutoImport: Boolean)
 
 /** Auto-discovered modules for the build definition project.  These include modules defined in build definition sources
 * as well as modules in binary dependencies.
@@ -105,6 +105,7 @@ final class DetectedPlugins(val plugins: DetectedModules[Plugin], val autoPlugin
 			if (hasAutoImport) Some(name + ".autoImport")
 			else None
 		}))
+
 	/** A function to select the right [[AutoPlugin]]s from [[autoPlugins]] for a [[Project]]. */
 	lazy val deducePlugins: (Plugins, Logger) => Seq[AutoPlugin] = Plugins.deducer(autoPlugins.toList map {_.value})
 }

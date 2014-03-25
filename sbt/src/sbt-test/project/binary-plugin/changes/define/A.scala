@@ -3,21 +3,19 @@ package sbttest // you need package http://stackoverflow.com/questions/9822008/
 import sbt._
 import Keys._
 
-object Imports {
-	object bN extends AutoPlugin {
-		def requires = empty
-		def trigger = allRequirements
-	}
-	lazy val check = taskKey[Unit]("Checks that the AutoPlugin and Build are automatically added.")	
-}
-
 object C extends AutoPlugin {
-	override lazy val autoImport = Imports
+	object autoImport {
+		object bN extends AutoPlugin {
+			def requires = empty
+			def trigger = allRequirements
+		}
+		lazy val check = taskKey[Unit]("Checks that the AutoPlugin and Build are automatically added.")			
+	}
 	def requires = empty
 	def trigger = noTrigger
 }
 
-	import Imports._
+	import C.autoImport._
 
 object A extends AutoPlugin {
 	def requires = bN

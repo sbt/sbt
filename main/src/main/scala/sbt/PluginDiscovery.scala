@@ -35,7 +35,7 @@ object PluginDiscovery
 		)
 		val detectedAutoPugins = discover[AutoPlugin](AutoPlugins)
 		val allAutoPlugins = (defaultAutoPlugins ++ detectedAutoPugins.modules) map { case (name, value) =>
-			DetectedAutoPlugin(name, value, sbt.Plugins.hasStableAutoImport(value, loader))
+			DetectedAutoPlugin(name, value, sbt.Plugins.hasAutoImportGetter(value, loader))
 		}
 		new DetectedPlugins(discover[Plugin](Plugins), allAutoPlugins, discover[Build](Builds))
 	}
