@@ -25,8 +25,8 @@ For example, the following will automatically add the settings in `projectSettin
   to a project that has both the `Web` and `Javascript` plugins enabled.
 
     object Plugin extends sbt.AutoPlugin {
-        def requires = Web && Javascript
-        def trigger = allRequirements
+        override def requires = Web && Javascript
+        override def trigger = allRequirements
         override def projectSettings = Seq(...)
         
         object autoImport {
@@ -59,11 +59,11 @@ abstract class AutoPlugin extends Plugins.Basic with PluginsFunctions
 	 * 
 	 * When this method returns `noTrigger`, and `requires` method returns `Web && Javascript`, this plugin
 	 * instance will be added only if the build user enables it, but it will automatically add both `Web` and `Javascript`. */
-	def trigger: PluginTrigger
+	def trigger: PluginTrigger = noTrigger
 
 	/** This AutoPlugin requires the plugins the [[Plugins]] matcher returned by this method. See [[trigger]].
 	 */
-	def requires: Plugins
+	def requires: Plugins = empty
 
 	val label: String = getClass.getName.stripSuffix("$")
 

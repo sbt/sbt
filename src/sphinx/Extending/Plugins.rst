@@ -225,19 +225,17 @@ To make a plugin, create a project and configure `sbtPlugin` to
 `true`. Then, write the plugin code and publish your project to a
 repository. The plugin can be used as described in the previous section.
 
-A plugin can implement `sbt.AutoImpot`. The contents of an AutoImport
-singleton, declared like `object MyPlugin extends AutoImport`, are
-wildcard imported in `set`, `eval`, and `.sbt` files. Typically,
-this is used to provide new keys (SettingKey, TaskKey, or InputKey) or
-core methods without requiring an import or qualification.
-
-In addition, a plugin can implement the `AutoPlugin` class.   This has additoinal features, such as
-
+* Automatically importing selective names to `.sbt` files. 
 * Specifying plugin dependencies.
 * Automatically activating itself when all dependencies are present.
 * Specifying `projectSettings`, `buildSettings`, and `globalSettings` as appropriate.
 
-The AutoPlugin's `projectSettings` is automatically appended to each project's settings, when its dependencies also exist on that project
+When an AutoPlugin provides a stable field such as `val` or `object` named `autoImport`,
+the contents of the field are wildcard imported in in `set`, `eval`, and `.sbt` files. Typically,
+this is used to provide new keys (SettingKey, TaskKey, or InputKey) or
+core methods without requiring an import or qualification.
+
+The AutoPlugin's `projectSettings` is automatically appended to each project's settings, when its dependencies also exist on that project.
 The `requires` method defines the dependencies to other plugins.
 The `trigger` method defines the conditions by which this plugin's settings are automatically activated.
 The `buildSettings` is appended to each build's settings (that is, `in ThisBuild`).
@@ -245,7 +243,6 @@ The `globalSettings` is appended once to the global settings (`in Global`).
 These allow a plugin to automatically provide new functionality or new defaults.
 One main use of this feature is to globally add commands, such as for IDE plugins.
 Use `globalSettings` to define the default value of a setting.
-
 
 Example Plugin
 --------------
@@ -258,34 +255,51 @@ An example of a typical plugin:
 
     sbtPlugin := true
 
-    name := "example-plugin"
+    name := "sbt-obfuscate"
 
     organization := "org.example"
 
-`MyPlugin.scala`:
+`Plugin.scala`:
 
 ::
 
+    package sbtobfuscate
+
     import sbt._
-    object MyPlugin extends AutoPlugin
+
+    object Plugin extends AutoPlugin
     {
-        // Only enable this plugin for projects which are JvmModules.
-        def trigger = allRequirements
-        def requires = sbt.plugins.JvmModule
+        // by definging autoImport, these are automatically imported into user's `*.sbt`
+        object autoImport
+        {
+            // configuration points, like the built in `version`, `libraryDependencies`, or `compile`
+            val obfuscate = taskKey[Seq[File]]("Obfuscates files.")
+            val obfuscateLiterals = settingKey[Boolean]("Obfuscate literals.")
+
+            // default values for the tasks and settings
+            lazy val baseObfuscateSettings: Seq[sbt.Def.Setting[_]] = Seq(
+                obfuscate := {
+                    Obfuscate(sources.value, (obfuscateLiterals in obfuscate).value)
+                },
+                obfuscateLiterals in obfuscate := false                
+            )
+        }
+
+        import autoImport._
+        override def requires = sbt.plugins.JvmModule
         
-        // configuration points, like the built in `version`, `libraryDependencies`, or `compile`
-        // by implementing Plugin, these are automatically imported in a user's `build.sbt`
-        val newTask = taskKey[Unit]("A new task.")
-        val newSetting = settingKey[String]("A new setting.")
-
+        // This plugin is automatically enabled for projects which are JvmModules.
+        override def trigger = allRequirements
+        
         // a group of settings that are automatically added to projects.
-        val projectSettings = Seq(
-            newSetting := "test",
-            newTask := println(newSetting.value)
-        )
+        override val projectSettings =
+            inConfig(Compile)(baseObfucscateSettings) ++
+            inConfig(Test)(baseObfuscateSettings)
+    }
 
-        // alternatively, by overriding `settings`, they could be automatically added to a Project
-        // override val settings = Seq(...)
+    object Obfuscate
+    {
+        def apply(sources: Seq[File]): Seq[File] := sources
     }
 
 Usage example
@@ -293,20 +307,18 @@ Usage example
 
 A build definition that uses the plugin might look like:
 
-`build.sbt`
+`obfuscate.sbt`
 
 ::
 
-    MyPlugin.newSettings
-
-    newSetting := "example"
+    obfuscateLiterals in obfuscate := true
 
 
 Root Plugins
 ------------
 
 Some plugins should always be explicitly enabled on projects.  Sbt calls these root plugins, i.e. plugins
-that are "root" nodes in the plugin depdendency graph.   To define a root plugin, set the `trigger` method to `noTrigger` and the `requires` method to `empty`.
+that are "root" nodes in the plugin depdendency graph. `AutoPlugin` by default defines a root plugin.
 
 Example command root plugin
 ----------------------
@@ -319,21 +331,20 @@ A basic plugin that adds commands looks like:
 
     sbtPlugin := true
 
-    name := "example-plugin"
+    name := "sbt-sample"
 
     organization := "org.example"
 
-`MyPlugin.scala`
+`Plugin.scala`
 
 ::
 
+    package sbtsample
+
     import sbt._
     import Keys._
-    object MyPlugin extends AutoPlugin
+    object Plugin extends AutoPlugin
     {
-      def trigger = noTrigger
-      def requires = empty
-
       override lazy val projectSettings = Seq(commands += myCommand)
 
       lazy val myCommand = 

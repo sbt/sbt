@@ -10,8 +10,7 @@ import Def.Setting
  */
 object GlobalModule extends AutoPlugin {
   // This is included by default
-  def requires = empty
-  def trigger = allRequirements
+  override def trigger = allRequirements
   
   override lazy val projectSettings: Seq[Setting[_]] = 
     Defaults.coreDefaultSettings

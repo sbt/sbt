@@ -6,13 +6,9 @@ package sbttest // you need package http://stackoverflow.com/questions/9822008/
 
 object Imports
 {
-	trait EmptyAutoPlugin extends AutoPlugin {
-		def requires = empty
-		def trigger = noTrigger
-	}
-	object A extends EmptyAutoPlugin
-	object B extends EmptyAutoPlugin
-	object E extends EmptyAutoPlugin
+	object A extends AutoPlugin
+	object B extends AutoPlugin
+	object E extends AutoPlugin
 
 	lazy val q = config("q")
 	lazy val p = config("p").extend(q)
@@ -25,21 +21,19 @@ object Imports
 
 object X extends AutoPlugin {
 	val autoImport = Imports
-	def requires = Plugins.empty
-	def trigger = noTrigger
 }
 
 	import Imports._
 
 object D extends AutoPlugin {
-	def requires: Plugins = E
-	def trigger = allRequirements
+	override def requires: Plugins = E
+	override def trigger = allRequirements
 }
 
 object Q extends AutoPlugin
 {
-	def requires: Plugins = A && B
-	def trigger = allRequirements
+	override def requires: Plugins = A && B
+	override def trigger = allRequirements
 
 	override def projectConfigurations: Seq[Configuration] =
 		p ::
@@ -67,8 +61,8 @@ object Q extends AutoPlugin
 object R extends AutoPlugin
 {
 	// NOTE - Only plugins themselves support exclusions...
-	def requires = Q
-	def trigger = allRequirements
+	override def requires = Q
+	override def trigger = allRequirements
 
 	override def projectSettings = Seq(
 		// tests proper ordering: R requires Q, so Q settings should come first
@@ -82,8 +76,8 @@ object R extends AutoPlugin
 // Unless explicitly loaded by the build user, this will not be activated.
 object S extends AutoPlugin
 {
-	def requires = Q
-	def trigger = noTrigger
+	override def requires = Q
+	override def trigger = noTrigger
 
 	override def projectSettings = Seq(
 		del in q += " S"
