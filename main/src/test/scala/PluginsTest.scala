@@ -53,44 +53,38 @@ object AI
 	lazy val deducePlugin = Plugins.deducer(allPlugins)
 	lazy val log = Logger.Null
 
-	trait EmptyAutoPlugin extends AutoPlugin {
-		def requires = empty
-		def trigger = noTrigger
-	}
-	object A extends EmptyAutoPlugin
-	object B extends EmptyAutoPlugin
+	object A extends AutoPlugin
+	object B extends AutoPlugin
 
 	object Q extends AutoPlugin
 	{
-		def requires: Plugins = A && B
-		def trigger = allRequirements
+		override def requires: Plugins = A && B
+		override def trigger = allRequirements
 	}
 
 	object R extends AutoPlugin
 	{
-		def requires = Q
-		def trigger = allRequirements
+		override def requires = Q
+		override def trigger = allRequirements
 	}
 
 	object S extends AutoPlugin
 	{
-		def requires = Q && !R
-		def trigger = allRequirements
+		override def requires = Q && !R
+		override def trigger = allRequirements
 	}
 
 	// This is an opt-in plugin with a requirement
 	// Unless explicitly loaded by the build user, this will not be activated.
 	object T extends AutoPlugin
 	{
-		def requires = Q && !R
-		def trigger = noTrigger
+		override def requires = Q && !R
 	}
 
 	// This is an opt-in plugin with a requirement
 	// Unless explicitly loaded by the build user, this will not be activated.
 	object U extends AutoPlugin
 	{
-		def requires = A && !Q
-		def trigger = noTrigger
+		override def requires = A && !Q
 	}
 }
