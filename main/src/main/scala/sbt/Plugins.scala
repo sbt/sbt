@@ -11,9 +11,6 @@ TODO:
 	import Plugins._
 	import annotation.tailrec
 
-/** Marks a top-level object so that sbt will wildcard import it for .sbt files, `consoleProject`, and `set`. */
-trait AutoImport
-
 /**
 An AutoPlugin defines a group of settings and the conditions where the settings are automatically added to a build (called "activation").
 The `requires` and `trigger` methods together define the conditions, and a method like `projectSettings` defines the settings to add.
@@ -22,14 +19,19 @@ Steps for plugin authors:
 1. Determine if the AutoPlugin should automatically be activated when all requirements are met, or should be opt-in.
 2. Determine the [[AutoPlugins]]s that, when present (or absent), act as the requirements for the AutoPlugin.
 3. Determine the settings/configurations to that the AutoPlugin injects when activated.
+4. Determine the keys and other names to be automatically imported to *.sbt scripts.
 
 For example, the following will automatically add the settings in `projectSettings`
   to a project that has both the `Web` and `Javascript` plugins enabled.
 
-    object MyPlugin extends AutoPlugin {
+    object Plugin extends sbt.AutoPlugin {
         def requires = Web && Javascript
         def trigger = allRequirements
         override def projectSettings = Seq(...)
+        
+        object autoImport {
+			lazy val obfuscate = taskKey[Seq[File]]("Obfuscates the source.")
+        }
     }
 
 Steps for users:
@@ -46,6 +48,7 @@ will activate `MyPlugin` defined above and have its settings automatically added
   <Project>.addPlugins( Web && Javascript ).disablePlugins(MyPlugin)
 
 then the `MyPlugin` settings (and anything that activates only when `MyPlugin` is activated) will not be added.
+
 */
 abstract class AutoPlugin extends Plugins.Basic with PluginsFunctions
 {
@@ -307,4 +310,18 @@ ${listConflicts(conflicting)}""")
 			case Exclude(a) => !model(a)
 			case ap: AutoPlugin => model(ap)
 		}
+
+	private[sbt] def hasAutoImportGetter(ap: AutoPlugin, loader: ClassLoader): Boolean = {
+		import reflect.runtime.{universe => ru}
+		import util.control.Exception.catching
+		val m = ru.runtimeMirror(loader)
+		val im = m.reflect(ap)
+		val hasGetterOpt = catching(classOf[ScalaReflectionException]) opt {
+			im.symbol.asType.toType.declaration(ru.newTermName("autoImport")) match {
+				case ru.NoSymbol => false
+				case sym => sym.asTerm.isGetter
+			}
+		}
+		hasGetterOpt getOrElse false
+	} 
 }

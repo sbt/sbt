@@ -1,16 +1,21 @@
+package sbttest // you need package http://stackoverflow.com/questions/9822008/
+
 import sbt._
 import Keys._
 
-
-object C extends AutoImport {
-	object bN extends AutoPlugin {
-		def requires = empty
-		def trigger = allRequirements
+object C extends AutoPlugin {
+	object autoImport {
+		object bN extends AutoPlugin {
+			def requires = empty
+			def trigger = allRequirements
+		}
+		lazy val check = taskKey[Unit]("Checks that the AutoPlugin and Build are automatically added.")			
 	}
-	lazy val check = taskKey[Unit]("Checks that the AutoPlugin and Build are automatically added.")
+	def requires = empty
+	def trigger = noTrigger
 }
 
-	import C._
+	import C.autoImport._
 
 object A extends AutoPlugin {
 	def requires = bN
