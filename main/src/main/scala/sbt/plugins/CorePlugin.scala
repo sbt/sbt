@@ -8,7 +8,7 @@ import Def.Setting
  *
  * Can control task-level paralleism, logging, etc.
  */
-object GlobalModule extends AutoPlugin {
+object CorePlugin extends AutoPlugin {
   // This is included by default
   override def trigger = allRequirements
   
