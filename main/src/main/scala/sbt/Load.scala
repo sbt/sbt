@@ -489,7 +489,7 @@ object Load
 	private[this] def translateAutoPluginException(e: AutoPluginException, project: Project): AutoPluginException =
 		e.withPrefix(s"Error determining plugins for project '${project.id}' in ${project.base}:\n")
 
-	private[this] def loadSettings(auto: AddSettings, projectBase: File, loadedPlugins: sbt.LoadedPlugins, eval: ()=>Eval, injectSettings: InjectSettings, memoSettings: mutable.Map[File, LoadedSbtFile], autoPlugins: Seq[AutoPlugin], projectSettings: Seq[Setting[_]]): LoadedSbtFile =
+	private[this] def loadSettings(auto: AddSettings, projectBase: File, loadedPlugins: sbt.LoadedPlugins, eval: ()=>Eval, injectSettings: InjectSettings, memoSettings: mutable.Map[File, LoadedSbtFile], autoPlugins: Seq[AutoPlugin], buildScalaFiles: Seq[Setting[_]]): LoadedSbtFile =
 	{
 		lazy val defaultSbtFiles = configurationSources(projectBase)
 		def settings(ss: Seq[Setting[_]]) = new LoadedSbtFile(ss, Nil, Nil)
@@ -506,7 +506,7 @@ object Load
 		def loadSettingsFile(src: File): LoadedSbtFile =
 			EvaluateConfigurations.evaluateSbtFile(eval(), src, IO.readLines(src), loadedPlugins.detected.imports, 0)(loader)
 
-		import AddSettings.{User,SbtFiles,DefaultSbtFiles,Plugins,AutoPlugins,Sequence, ProjectSettings}
+		import AddSettings.{User,SbtFiles,DefaultSbtFiles,Plugins,AutoPlugins,Sequence,BuildScalaFiles}
 		def pluginSettings(f: Plugins) = {
 			val included = loadedPlugins.detected.plugins.values.filter(f.include) // don't apply the filter to AutoPlugins, only Plugins
 			included.flatMap(p => p.settings.filter(isProjectThis) ++ p.projectSettings)
@@ -517,7 +517,7 @@ object Load
 			autoPlugins.filter(f.include).flatMap(_.projectSettings)
 
 		def expand(auto: AddSettings): LoadedSbtFile = auto match {
-			case ProjectSettings => settings(projectSettings)
+			case BuildScalaFiles => settings(buildScalaFiles)
 			case User => settings(injectSettings.projectLoaded(loader))
 			case sf: SbtFiles => loadSettings( sf.files.map(f => IO.resolve(projectBase, f)))
 			case sf: DefaultSbtFiles => loadSettings( defaultSbtFiles.filter(sf.include))
