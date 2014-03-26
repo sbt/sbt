@@ -125,8 +125,11 @@ sealed trait Project extends ProjectDefinition[ProjectReference]
 	/** Appends settings to the current settings sequence for this project. */
 	def settings(ss: Setting[_]*): Project = copy(settings = (settings: Seq[Setting[_]]) ++ ss)
 
+	@deprecated("Use settingSets method.", "0.13.5")
+	def autoSettings(select: AddSettings*): Project = settingSets(select.toSeq: _*)
+
 	/** Configures how settings from other sources, such as .sbt files, are appended to the explicitly specified settings for this project. */
-	def autoSettings(select: AddSettings*): Project = copy(auto = AddSettings.seq(select : _*))
+	def settingSets(select: AddSettings*): Project = copy(auto = AddSettings.seq(select : _*))
 
 	/** Adds a list of .sbt files whose settings will be appended to the settings of this project.
 	* They will be appended after the explicit settings and already defined automatic settings sources. */

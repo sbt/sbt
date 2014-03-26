@@ -74,7 +74,7 @@ To do so, use the ``AddSettings`` class ::
 
     object MyOwnOrder extends Build {
 	  // here we load config from a txt file.
-	  lazy val root = project.in(file(".")).autoSettings( autoPlugins, projectSettings, sbtFiles(file("silly.txt")) )
+	  lazy val root = project.in(file(".")).settingSets( autoPlugins, buildScalaFiles, sbtFiles(file("silly.txt")) )
 	}
 
 In the above project, we've modified the order of settings to be:
@@ -92,7 +92,7 @@ The AddSettings object provides the following "groups" of settings you can use f
 
 ``autoPlugins``
   All the ordered settings of plugins after they've gone through dependency resolution
-``projectSettings``
+``buildScalaFiles``
   The full sequence of settings defined directly in ``project/*.scala`` builds.
 ``sbtFiles(*)``
   Specifies the exact setting DSL files to include (files must use the ``.sbt`` file format)
@@ -104,7 +104,7 @@ The AddSettings object provides the following "groups" of settings you can use f
 
 *Note: Be very careful when reordering settings.  It's easy to accidentally remove core functionality.*
 
-For example, let's see what happens if we move the ``build.sbt`` files *before* the ``projectSettings``.
+For example, let's see what happens if we move the ``build.sbt`` files *before* the ``buildScalaFile``.
 
 Let's create an example project the following defintiion:
 
@@ -112,7 +112,7 @@ Let's create an example project the following defintiion:
 
   object MyTestBuild extends Build {
 
-    val testProject = project.in(file(".")).autoSettings(autoPlugins, defaultSbtFiles, projectSettings).settings(
+    val testProject = project.in(file(".")).settingSets(autoPlugins, defaultSbtFiles, buildScalaFile).settings(
       version := scalaBinaryVersion.value match {
         case "2.10" => "1.0-SNAPSHOT"
         case v => "1.0-for-${v}-SNAPSHOT"

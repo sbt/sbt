@@ -12,11 +12,11 @@ object B extends Build
 	val sample = SettingKey[Int]("sample")
 	val check = TaskKey[Unit]("check")
 	
-	lazy val root = Project("root", file("."), settings = Nil).autoSettings()
+	lazy val root = Project("root", file("."), settings = Nil).settingSets()
 	lazy val sub = Project("sub", file("."), 
 		delegates = root :: Nil, 
 		configurations = newConfig :: Nil, 
-		settings = incSample :: checkTask(4) :: Nil).autoSettings(projectSettings)
+		settings = incSample :: checkTask(4) :: Nil).settingSets(buildScalaFiles)
 	override lazy val settings =
 		(sample in newConfig := 3) ::
 		checkTask(3) ::
