@@ -16,7 +16,7 @@ object Sbt extends Build
 		organization := "org.scala-sbt",
 		version := "0.13.5-M1",
 		publishArtifact in packageDoc := false,
-		scalaVersion := "2.10.3",
+		scalaVersion := "2.10.4",
 		publishMavenStyle := false,
 		componentID := None,
 		crossPaths := false,

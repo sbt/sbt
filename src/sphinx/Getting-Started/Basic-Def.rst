@@ -72,7 +72,7 @@ Here's an example:
 
     version := "1.0"
 
-    scalaVersion := "2.10.3"
+    scalaVersion := "2.10.4"
 
 Each `Setting` is defined with a Scala expression.
 The expressions in `build.sbt` are independent of one another, and
