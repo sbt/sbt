@@ -1,5 +1,3 @@
-import sbttest.{Q, S}
-
 // disablePlugins(Q) will prevent R from being auto-added
 lazy val projA = project.addPlugins(A, B).disablePlugins(Q)
 

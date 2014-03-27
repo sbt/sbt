@@ -104,7 +104,8 @@ final class DetectedPlugins(val plugins: DetectedModules[Plugin], val autoPlugin
 		(autoPlugins flatMap { case DetectedAutoPlugin(name, ap, hasAutoImport) =>
 			if (hasAutoImport) Some(name + ".autoImport")
 			else None
-		}))
+		})) ++
+		BuildUtil.importNamesRoot(autoPlugins map { _.name })
 
 	/** A function to select the right [[AutoPlugin]]s from [[autoPlugins]] for a [[Project]]. */
 	lazy val deducePlugins: (Plugins, Logger) => Seq[AutoPlugin] = Plugins.deducer(autoPlugins.toList map {_.value})

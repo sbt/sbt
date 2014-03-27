@@ -80,9 +80,16 @@ object BuildUtil
 	@deprecated("Use getImports(Seq[String]).", "0.13.2")
 	def getImports(pluginNames: Seq[String], buildNames: Seq[String]): Seq[String] = getImports(pluginNames ++ buildNames)
 
+	/** `import sbt._, Keys._`, and wildcard import `._` for all names. */
 	def getImports(names: Seq[String]): Seq[String] = baseImports ++ importAllRoot(names)
 
-	def importAll(values: Seq[String]): Seq[String] = if(values.isEmpty) Nil else values.map( _ + "._" ).mkString("import ", ", ", "") :: Nil
+	/** Import just the names. */
+	def importNames(names: Seq[String]): Seq[String] = if (names.isEmpty) Nil else names.mkString("import ", ", ", "") :: Nil
+	/** Prepend `_root_` and import just the names. */
+	def importNamesRoot(names: Seq[String]): Seq[String] = importNames(names map rootedName)
+
+	/** Wildcard import `._` for all values. */
+	def importAll(values: Seq[String]): Seq[String] = importNames(values map { _ + "._" })
 	def importAllRoot(values: Seq[String]): Seq[String] = importAll(values map rootedName)
 	def rootedName(s: String): String = if(s contains '.') "_root_." + s else s
 
