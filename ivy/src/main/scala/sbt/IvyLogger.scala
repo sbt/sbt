@@ -31,7 +31,7 @@ private final class IvyLoggerInterface(logger: Logger) extends MessageLogger
 	def warn(msg: String) = logger.warn(msg)
 	def error(msg: String) = if(SbtIvyLogger.acceptError(msg)) logger.error(msg)
 	
-	private def emptyList = java.util.Collections.emptyList[T forSome { type T}]
+	private def emptyList = java.util.Collections.emptyList[String]
 	def getProblems = emptyList
 	def getWarns = emptyList
 	def getErrors = emptyList
