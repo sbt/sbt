@@ -279,6 +279,8 @@ Utility plugins
    https://github.com/davidharcombe/sbt-multi-publish
 -  sbt-about-plugins (shows some details about plugins loaded):
    https://github.com/jozic/sbt-about-plugins
+-  sbt-git-stamp (include git metadata in MANIFEST.MF file in artifact):
+   https://bitbucket.org/pkaeding/sbt-git-stamp
 
 Code coverage plugins
 ~~~~~~~~~~~~~~~~~~~~~
