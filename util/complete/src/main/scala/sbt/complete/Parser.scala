@@ -70,7 +70,7 @@ sealed trait RichParser[A]
 	/** If an exception is thrown by the original Parser,
 	* capture it and fail locally instead of allowing the exception to propagate up and terminate parsing.*/
 	def failOnException: Parser[A]
-	
+
 	@deprecated("Use `not` and explicitly provide the failure message", "0.12.2")
 	def unary_- : Parser[Unit]
 
@@ -86,6 +86,9 @@ sealed trait RichParser[A]
 
 	/** Explicitly defines the completions for the original Parser.*/
 	def examples(s: Set[String], check: Boolean = false): Parser[A]
+
+	/** Explicitly defines the completions for the original Parser.*/
+	def examples(s: SourceOfExamples, maxNumberOfExamples: Int): Parser[A]
 
 	/** Converts a Parser returning a Char sequence to a Parser returning a String.*/
 	def string(implicit ev: A <:< Seq[Char]): Parser[String]
@@ -239,7 +242,7 @@ object Parser extends ParserMain
 						case None => if(max.isZero) success(revAcc.reverse) else new Repeat(partial, repeated, min, max, revAcc)
 					}
 			}
-		
+
 		partial match
 		{
 			case Some(part) =>
@@ -285,6 +288,7 @@ trait ParserMain
 		def - (o: Parser[_]) = sub(a, o)
 		def examples(s: String*): Parser[A] = examples(s.toSet)
 		def examples(s: Set[String], check: Boolean = false): Parser[A] = Parser.examples(a, s, check)
+		def examples(s: SourceOfExamples, maxNumberOfExamples: Int): Parser[A] = Parser.examples(a, s, maxNumberOfExamples)
 		def filter(f: A => Boolean, msg: String => String): Parser[A] = filterParser(a, f, "", msg)
 		def string(implicit ev: A <:< Seq[Char]): Parser[String] = map(_.mkString)
 		def flatMap[B](f: A => Parser[B]) = bindParser(a, f)
@@ -295,7 +299,7 @@ trait ParserMain
 
 	/** Construct a parser that is valid, but has no valid result.  This is used as a way
 	* to provide a definitive Failure when a parser doesn't match empty input.  For example,
-	* in `softFailure(...) | p`, if `p` doesn't match the empty sequence, the failure will come 
+	* in `softFailure(...) | p`, if `p` doesn't match the empty sequence, the failure will come
 	* from the Parser constructed by the `softFailure` method. */
 	private[sbt] def softFailure(msg: => String, definitive: Boolean = false): Parser[Nothing] =
 		SoftInvalid( mkFailures(msg :: Nil, definitive) )
@@ -430,6 +434,17 @@ trait ParserMain
 		}
 		else a
 
+	def examples[A](a: Parser[A], completions: SourceOfExamples, maxNumberOfExamples: Int): Parser[A] =
+		if(a.valid) {
+			a.result match
+			{
+				case Some(av) => success( av )
+				case None =>
+					new DynamicExamples(a, completions, maxNumberOfExamples)
+			}
+		}
+		else a
+
 	def matched(t: Parser[_], seen: Vector[Char] = Vector.empty, partial: Boolean = false): Parser[String] =
 		t match
 		{
@@ -442,7 +457,7 @@ trait ParserMain
 		}
 
 	/** Establishes delegate parser `t` as a single token of tab completion.
-	* When tab completion of part of this token is requested, the completions provided by the delegate `t` or a later derivative are appended to 
+	* When tab completion of part of this token is requested, the completions provided by the delegate `t` or a later derivative are appended to
 	* the prefix String already seen by this parser. */
 	def token[T](t: Parser[T]): Parser[T] = token(t, TokenCompletions.default)
 
@@ -702,6 +717,26 @@ private final class Examples[T](delegate: Parser[T], fixed: Set[String]) extends
 		else
 			Completions(fixed map(f => Completion.suggestion(f)) )
 	override def toString = "examples(" + delegate + ", " + fixed.take(2) + ")"
+}
+abstract class SourceOfExamples
+{
+	def apply(): Iterable[String]
+	def withAddedPrefix(addedPrefix: String): SourceOfExamples
+}
+private final class DynamicExamples[T](delegate: Parser[T], sourceOfExamples: SourceOfExamples, maxNumberOfExamples: Int = 10) extends ValidParser[T]
+{
+	def derive(c: Char) = examples(delegate derive c, sourceOfExamples.withAddedPrefix(c.toString), maxNumberOfExamples)
+	def result = delegate.result
+	lazy val resultEmpty = delegate.resultEmpty
+	def completions(level: Int) = {
+		if(sourceOfExamples().isEmpty)
+			if(resultEmpty.isValid) Completions.nil else Completions.empty
+		else {
+			val examplesBasedOnTheResult = sourceOfExamples().take(maxNumberOfExamples).toSet
+			Completions(examplesBasedOnTheResult.map(ex => Completion.suggestion(ex)))
+		}
+	}
+	override def toString = "examples(" + delegate + ", " + sourceOfExamples().take(2).toList + ")"
 }
 private final class StringLiteral(str: String, start: Int) extends ValidParser[String]
 {

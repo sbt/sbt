@@ -7,6 +7,7 @@ package sbt.complete
 	import java.io.File
 	import java.net.URI
 	import java.lang.Character.{getType, MATH_SYMBOL, OTHER_SYMBOL, DASH_PUNCTUATION, OTHER_PUNCTUATION, MODIFIER_SYMBOL, CURRENCY_SYMBOL}
+    import java.nio.file.{Files, Path}
 
 /** Provides standard implementations of commonly useful [[Parser]]s. */
 trait Parsers
@@ -78,7 +79,7 @@ trait Parsers
 	def isScalaIDChar(c: Char) = c.isLetterOrDigit || c == '_'
 
 	def isDelimiter(c: Char) = c match { case '`' | '\'' | '\"' | /*';' | */',' | '.' => true ; case _ => false }
-	
+
 	/** Matches a single character that is not a whitespace character. */
 	lazy val NotSpaceClass = charClass(!_.isWhitespace, "non-whitespace character")
 
@@ -128,8 +129,32 @@ trait Parsers
 	/** Returns true if `c` is an ASCII letter or digit. */
 	def alphanum(c: Char) = ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9')
 
-	// TODO: implement
-	def fileParser(base: File): Parser[File] = token(mapOrFail(NotSpace)(s => new File(s.mkString)), "<file>")
+	class FileExamples(base: Path, prefix: String = "") extends SourceOfExamples {
+		private val prefixPath: String = "." + File.separator + prefix
+
+		override def apply(): Iterable[String] = files(base).map(base.relativize).map(_.toString.substring(prefix.length))
+
+		override def withAddedPrefix(addedPrefix: String): FileExamples = new FileExamples(base, prefix + addedPrefix)
+
+		protected def fileStartsWithPrefix(path: Path): Boolean = path.toString.startsWith(prefixPath)
+
+		protected def directoryStartsWithPrefix(path: Path): Boolean = {
+			val pathString = path.toString
+			pathString.startsWith(prefixPath) || prefixPath.startsWith(pathString)
+		}
+
+		protected def files(directory: Path): Iterable[Path] = {
+			import scala.collection.JavaConversions._
+			val subPathStream = Files.newDirectoryStream(directory).toStream
+			val (subDirectories, filesOnly) = subPathStream.partition(path => Files.isDirectory(path))
+			filesOnly.filter(fileStartsWithPrefix) ++ subDirectories.filter(directoryStartsWithPrefix).flatMap(files)
+		}
+	}
+
+	def fileParser(base: File, maxNumberOfExamples: Int = 25): Parser[File] =
+		OptSpace ~> StringBasic
+			.examples(new FileExamples(base.toPath), maxNumberOfExamples)
+			.map(new File(_))
 
 	/** Parses a port number.  Currently, this accepts any integer and presents a tab completion suggestion of `<port>`. */
 	lazy val Port = token(IntBasic, "<port>")
@@ -153,7 +178,7 @@ trait Parsers
 	/** Parses a verbatim quoted String value, discarding the quotes in the result.  This kind of quoted text starts with triple quotes `"""`
 	* and ends at the next triple quotes and may contain any character in between. */
 	lazy val StringVerbatim: Parser[String] = VerbatimDQuotes ~>
-		any.+.string.filter(!_.contains(VerbatimDQuotes), _ => "Invalid verbatim string") <~ 
+		any.+.string.filter(!_.contains(VerbatimDQuotes), _ => "Invalid verbatim string") <~
 		VerbatimDQuotes
 
 	/** Parses a string value, interpreting escapes and discarding the surrounding quotes in the result.
@@ -168,7 +193,7 @@ trait Parsers
 	  BackslashChar ~> ('b' ^^^ '\b' | 't' ^^^ '\t' | 'n' ^^^ '\n' | 'f' ^^^ '\f' | 'r' ^^^ '\r' |
 	  '\"' ^^^ '\"' | '\'' ^^^ '\'' | '\\' ^^^ '\\' | UnicodeEscape)
 
-	/** Parses a single unicode escape sequence into the represented Char. 
+	/** Parses a single unicode escape sequence into the represented Char.
 	* A unicode escape begins with a backslash, followed by a `u` and 4 hexadecimal digits representing the unicode value. */
 	lazy val UnicodeEscape: Parser[Char] =
 	  ("u" ~> repeat(HexDigit, 4, 4)) map { seq => Integer.parseInt(seq.mkString, 16).toChar }
