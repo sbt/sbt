@@ -173,13 +173,13 @@ When sbt traverses :key:`unmanagedResourceDirectories` for resources, it only in
 :key:`includeFilter` and :key:`excludeFilter` have type `java.io.FileFilter` and sbt :ref:`provides some useful combinators <file-filter>` for constructing a `FileFilter`.
 For example, in addition to the default hidden files exclusion, the following also ignores files containing `impl` in their name, ::
 
-    excludeFilter in unmanagedSources := HiddenFileFilter || "*impl*"
+    excludeFilter in unmanagedResources := HiddenFileFilter || "*impl*"
 
 To have different filters for main and test libraries, configure `Compile` and `Test` separately: ::
 
-    includeFilter in (Compile, unmanagedSources) := "*.txt"
+    includeFilter in (Compile, unmanagedResources) := "*.txt"
 
-    includeFilter in (Test, unmanagedSources) := "*.html"
+    includeFilter in (Test, unmanagedResources) := "*.html"
 
 .. note::
 
