@@ -7,7 +7,6 @@ package sbt.complete
 	import java.io.File
 	import java.net.URI
 	import java.lang.Character.{getType, MATH_SYMBOL, OTHER_SYMBOL, DASH_PUNCTUATION, OTHER_PUNCTUATION, MODIFIER_SYMBOL, CURRENCY_SYMBOL}
-    import java.nio.file.{Files, Path}
 
 /** Provides standard implementations of commonly useful [[Parser]]s. */
 trait Parsers
@@ -129,31 +128,29 @@ trait Parsers
 	/** Returns true if `c` is an ASCII letter or digit. */
 	def alphanum(c: Char) = ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9')
 
-	class FileExamples(base: Path, prefix: String = "") extends SourceOfExamples {
-		private val prefixPath: String = "." + File.separator + prefix
+	class FileExamples(base: File, prefix: String = "") extends SourceOfExamples {
+		private val relativizedPrefix: String = "." + File.separator + prefix
 
-		override def apply(): Iterable[String] = files(base).map(base.relativize).map(_.toString.substring(prefix.length))
+		override def apply(): Iterable[String] = files(base).map(_.toString.substring(relativizedPrefix.length))
 
 		override def withAddedPrefix(addedPrefix: String): FileExamples = new FileExamples(base, prefix + addedPrefix)
 
-		protected def fileStartsWithPrefix(path: Path): Boolean = path.toString.startsWith(prefixPath)
+		protected def fileStartsWithPrefix(path: File): Boolean = path.toString.startsWith(relativizedPrefix)
 
-		protected def directoryStartsWithPrefix(path: Path): Boolean = {
+		protected def directoryStartsWithPrefix(path: File): Boolean = {
 			val pathString = path.toString
-			pathString.startsWith(prefixPath) || prefixPath.startsWith(pathString)
+			pathString.startsWith(relativizedPrefix) || relativizedPrefix.startsWith(pathString)
 		}
 
-		protected def files(directory: Path): Iterable[Path] = {
-			import scala.collection.JavaConversions._
-			val subPathStream = Files.newDirectoryStream(directory).toStream
-			val (subDirectories, filesOnly) = subPathStream.partition(path => Files.isDirectory(path))
+		protected def files(directory: File): Iterable[File] = {
+			val (subDirectories, filesOnly) = directory.listFiles().toStream.partition(_.isDirectory)
 			filesOnly.filter(fileStartsWithPrefix) ++ subDirectories.filter(directoryStartsWithPrefix).flatMap(files)
 		}
 	}
 
 	def fileParser(base: File, maxNumberOfExamples: Int = 25): Parser[File] =
 		OptSpace ~> StringBasic
-			.examples(new FileExamples(base.toPath), maxNumberOfExamples)
+			.examples(new FileExamples(base), maxNumberOfExamples)
 			.map(new File(_))
 
 	/** Parses a port number.  Currently, this accepts any integer and presents a tab completion suggestion of `<port>`. */
