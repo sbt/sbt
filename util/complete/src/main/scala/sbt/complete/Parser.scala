@@ -88,7 +88,7 @@ sealed trait RichParser[A]
 	def examples(s: Set[String], check: Boolean = false): Parser[A]
 
 	/** Explicitly defines the completions for the original Parser.*/
-	def examples(s: SourceOfExamples, maxNumberOfExamples: Int): Parser[A]
+	def examples(s: ExampleSource, maxNumberOfExamples: Int): Parser[A]
 
 	/** Converts a Parser returning a Char sequence to a Parser returning a String.*/
 	def string(implicit ev: A <:< Seq[Char]): Parser[String]
@@ -288,7 +288,7 @@ trait ParserMain
 		def - (o: Parser[_]) = sub(a, o)
 		def examples(s: String*): Parser[A] = examples(s.toSet)
 		def examples(s: Set[String], check: Boolean = false): Parser[A] = Parser.examples(a, s, check)
-		def examples(s: SourceOfExamples, maxNumberOfExamples: Int): Parser[A] = Parser.examples(a, s, maxNumberOfExamples)
+		def examples(s: ExampleSource, maxNumberOfExamples: Int): Parser[A] = Parser.examples(a, s, maxNumberOfExamples)
 		def filter(f: A => Boolean, msg: String => String): Parser[A] = filterParser(a, f, "", msg)
 		def string(implicit ev: A <:< Seq[Char]): Parser[String] = map(_.mkString)
 		def flatMap[B](f: A => Parser[B]) = bindParser(a, f)
@@ -434,7 +434,7 @@ trait ParserMain
 		}
 		else a
 
-	def examples[A](a: Parser[A], completions: SourceOfExamples, maxNumberOfExamples: Int): Parser[A] =
+	def examples[A](a: Parser[A], completions: ExampleSource, maxNumberOfExamples: Int): Parser[A] =
 		if(a.valid) {
 			a.result match
 			{
@@ -718,25 +718,41 @@ private final class Examples[T](delegate: Parser[T], fixed: Set[String]) extends
 			Completions(fixed map(f => Completion.suggestion(f)) )
 	override def toString = "examples(" + delegate + ", " + fixed.take(2) + ")"
 }
-abstract class SourceOfExamples
+
+/**
+ * These sources of examples are used in parsers for user input completion. An example of such a source is the
+ * [[sbt.complete.Parsers.FileExamples]] class, which provides a list of suggested files to the user as they press the
+ * TAB key in the console.
+ */
+abstract class ExampleSource
 {
+  /**
+   * @return a (possibly lazy) list of completion example strings. These strings are continuations of user's input. The
+   *         user's input is incremented with calls to [[withAddedPrefix]].
+   */
 	def apply(): Iterable[String]
-	def withAddedPrefix(addedPrefix: String): SourceOfExamples
+
+  /**
+   * @param addedPrefix a string that just typed in by the user.
+   * @return a new source of only those examples that start with the string typed by the user so far (with addition of
+   *         the just added prefix).
+   */
+	def withAddedPrefix(addedPrefix: String): ExampleSource
 }
-private final class DynamicExamples[T](delegate: Parser[T], sourceOfExamples: SourceOfExamples, maxNumberOfExamples: Int = 10) extends ValidParser[T]
+private final class DynamicExamples[T](delegate: Parser[T], exampleSource: ExampleSource, maxNumberOfExamples: Int) extends ValidParser[T]
 {
-	def derive(c: Char) = examples(delegate derive c, sourceOfExamples.withAddedPrefix(c.toString), maxNumberOfExamples)
+	def derive(c: Char) = examples(delegate derive c, exampleSource.withAddedPrefix(c.toString), maxNumberOfExamples)
 	def result = delegate.result
 	lazy val resultEmpty = delegate.resultEmpty
 	def completions(level: Int) = {
-		if(sourceOfExamples().isEmpty)
+		if(exampleSource().isEmpty)
 			if(resultEmpty.isValid) Completions.nil else Completions.empty
 		else {
-			val examplesBasedOnTheResult = sourceOfExamples().take(maxNumberOfExamples).toSet
+			val examplesBasedOnTheResult = exampleSource().take(maxNumberOfExamples).toSet
 			Completions(examplesBasedOnTheResult.map(ex => Completion.suggestion(ex)))
 		}
 	}
-	override def toString = "examples(" + delegate + ", " + sourceOfExamples().take(2).toList + ")"
+	override def toString = "examples(" + delegate + ", " + exampleSource().take(2).toList + ")"
 }
 private final class StringLiteral(str: String, start: Int) extends ValidParser[String]
 {
