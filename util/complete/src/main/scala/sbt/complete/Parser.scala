@@ -718,27 +718,6 @@ private final class Examples[T](delegate: Parser[T], fixed: Set[String]) extends
 			Completions(fixed map(f => Completion.suggestion(f)) )
 	override def toString = "examples(" + delegate + ", " + fixed.take(2) + ")"
 }
-
-/**
- * These sources of examples are used in parsers for user input completion. An example of such a source is the
- * [[sbt.complete.Parsers.FileExamples]] class, which provides a list of suggested files to the user as they press the
- * TAB key in the console.
- */
-abstract class ExampleSource
-{
-  /**
-   * @return a (possibly lazy) list of completion example strings. These strings are continuations of user's input. The
-   *         user's input is incremented with calls to [[withAddedPrefix]].
-   */
-	def apply(): Iterable[String]
-
-  /**
-   * @param addedPrefix a string that just typed in by the user.
-   * @return a new source of only those examples that start with the string typed by the user so far (with addition of
-   *         the just added prefix).
-   */
-	def withAddedPrefix(addedPrefix: String): ExampleSource
-}
 private final class DynamicExamples[T](delegate: Parser[T], exampleSource: ExampleSource, maxNumberOfExamples: Int) extends ValidParser[T]
 {
 	def derive(c: Char) = examples(delegate derive c, exampleSource.withAddedPrefix(c.toString), maxNumberOfExamples)

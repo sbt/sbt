@@ -129,31 +129,6 @@ trait Parsers
 	def alphanum(c: Char) = ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9')
 
   /**
-   * Provides path completion examples based on files in the base directory.
-   * @param base the directory within which this class will search for completion examples.
-   * @param prefix the part of the path already written by the user.
-   */
-	class FileExamples(base: File, prefix: String = "") extends ExampleSource {
-		private val relativizedPrefix: String = "." + File.separator + prefix
-
-		override def apply(): Iterable[String] = files(base).map(_.toString.substring(relativizedPrefix.length))
-
-		override def withAddedPrefix(addedPrefix: String): FileExamples = new FileExamples(base, prefix + addedPrefix)
-
-		protected def fileStartsWithPrefix(path: File): Boolean = path.toString.startsWith(relativizedPrefix)
-
-		protected def directoryStartsWithPrefix(path: File): Boolean = {
-			val pathString = path.toString
-			pathString.startsWith(relativizedPrefix) || relativizedPrefix.startsWith(pathString)
-		}
-
-		protected def files(directory: File): Iterable[File] = {
-			val (subDirectories, filesOnly) = directory.listFiles().toStream.partition(_.isDirectory)
-			filesOnly.filter(fileStartsWithPrefix) ++ subDirectories.filter(directoryStartsWithPrefix).flatMap(files)
-		}
-	}
-
-  /**
    * @param base the directory used for completion proposals (when the user presses the TAB key). Only paths under this
    *             directory will be proposed.
    * @return the file that was parsed from the input string. The returned path may or may not exist.
