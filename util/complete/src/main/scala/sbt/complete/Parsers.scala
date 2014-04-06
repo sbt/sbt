@@ -128,20 +128,15 @@ trait Parsers
 	/** Returns true if `c` is an ASCII letter or digit. */
 	def alphanum(c: Char) = ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9')
 
-  /**
-   * @param base the directory used for completion proposals (when the user presses the TAB key). Only paths under this
-   *             directory will be proposed.
-   * @return the file that was parsed from the input string. The returned path may or may not exist.
-   */
-	def fileParser(base: File, maxNumberOfExamples: Int): Parser[File] =
+	/**
+	 * @param base the directory used for completion proposals (when the user presses the TAB key). Only paths under this
+	 *             directory will be proposed.
+	 * @return the file that was parsed from the input string. The returned path may or may not exist.
+	 */
+	def fileParser(base: File): Parser[File] =
 		OptSpace ~> StringBasic
-			.examples(new FileExamples(base), maxNumberOfExamples)
+			.examples(new FileExamples(base))
 			.map(new File(_))
-
-  /**
-   * See the overloaded [[fileParser]] method.
-   */
-	def fileParser(base: File): Parser[File] = fileParser(base, 25)
 
 	/** Parses a port number.  Currently, this accepts any integer and presents a tab completion suggestion of `<port>`. */
 	lazy val Port = token(IntBasic, "<port>")
