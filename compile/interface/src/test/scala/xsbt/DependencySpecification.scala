@@ -76,7 +76,7 @@ class DependencySpecification extends Specification {
 		inheritance('B) === Set.empty
 		memberRef('C) === Set.empty
 		inheritance('C) === Set.empty
-	}
+	}.pendingUntilFixed("Improved macro arguments handling has been reverted due to http://github.com/sbt/sbt/issues/1237")
 
 	private def extractSourceDependenciesPublic: ExtractedSourceDependencies = {
 		val srcA = "class A"
