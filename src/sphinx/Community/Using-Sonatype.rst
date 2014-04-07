@@ -1,3 +1,6 @@
+
+
+
 =======================
  Deploying to Sonatype
 =======================
@@ -14,6 +17,19 @@ Follow the instructions for the plugin and you'll have PGP signed artifacts in n
 *Note: The plugin is a jvm-only solution to generate PGP keys and sign
 artifacts. It can work with the GPG command line tool, but the command
 line is not needed.*
+
+If your PGP key has not yet been distributed to the keyserver pool, i.e.,
+you've just generated it, you'll need to publish it. You can do so using
+the `sbt-pgp <http://scala-sbt.org/sbt-pgp>`_ plugin:
+
+::
+
+    pgp-cmd send-key keyname hkp://pool.sks-keyservers.net/
+
+(where keyname is the name, email address used when creating the key or
+hexadecimal identifier for the key.)
+
+If you see no output from sbt-pgp then the key name specified was not found.
 
 Second - Maven Publishing Settings
 ----------------------------------
@@ -161,7 +177,7 @@ In sbt, run `publishSigned` and you should see something like the following:
 
 After publishing you have to follow the `Release workflow of
 nexus <https://docs.sonatype.org/display/Repository/Sonatype+OSS+Maven+Repository+Usage+Guide#SonatypeOSSMavenRepositoryUsageGuide-8.ReleaseIt>`_.
-In the future, we hope to provide a Nexus sbt plugin that allows the
+`sbt-sonatype plugin <https://github.com/xerial/sbt-sonatype>`_ allows the
 release workflow procedures to be performed directly from sbt.
 
 *Note: Staged releases allow testing across large projects of

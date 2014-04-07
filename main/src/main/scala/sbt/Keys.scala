@@ -131,6 +131,7 @@ object Keys
 	val crossVersion = SettingKey[CrossVersion]("cross-version", "Configures handling of the Scala version when cross-building.", CSetting)
 	val classpathOptions = SettingKey[ClasspathOptions]("classpath-options", "Configures handling of Scala classpaths.", DSetting)
 	val definedSbtPlugins = TaskKey[Set[String]]("defined-sbt-plugins", "The set of names of Plugin implementations defined by this project.", CTask)
+	val discoveredSbtPlugins = TaskKey[PluginDiscovery.DiscoveredNames]("discovered-sbt-plugins", "The names of sbt plugin-related modules (modules that extend Build, Plugin, AutoPlugin) defined by this project.", CTask)
 	val sbtPlugin = SettingKey[Boolean]("sbt-plugin", "If true, enables adding sbt as a dependency and auto-generation of the plugin descriptor file.", BMinusSetting)
 	val printWarnings = TaskKey[Unit]("print-warnings", "Shows warnings from compilation, including ones that weren't printed initially.", BPlusTask)
 	val fileInputOptions = SettingKey[Seq[String]]("file-input-options", "Options that take file input, which may invalidate the cache.", CSetting)
@@ -344,7 +345,10 @@ object Keys
 
 	// wrapper to work around SI-2915
 	private[sbt] final class TaskProgress(val progress: ExecuteProgress[Task])
-	private[sbt] val executeProgress = SettingKey[TaskProgress]("executeProgress", "Experimental task execution listener.", DTask)
+	private[sbt] val executeProgress = SettingKey[State => TaskProgress]("executeProgress", "Experimental task execution listener.", DTask)
+
+	// Experimental in sbt 0.13.2 to enable grabing semantic compile failures.
+	private[sbt] val compilerReporter = TaskKey[Option[xsbti.Reporter]]("compilerReporter", "Experimental hook to listen (or send) compilation failure messages.", DTask)
 
 	val triggeredBy = Def.triggeredBy
 	val runBefore = Def.runBefore

@@ -89,7 +89,7 @@ object BuiltinCommands
 	def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, setLogLevel, early, act, nop)
 	def DefaultCommands: Seq[Command] = Seq(ignore, help, completionsCommand, about, tasks, settingsCommand, loadProject,
 		projects, project, reboot, read, history, set, sessionCommand, inspect, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
-		setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, setLogLevel,
+		setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, setLogLevel, plugin, plugins,
 		ifLast, multi, shell, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, early, initialize, act) ++
 		compatCommands
 	def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
@@ -125,7 +125,8 @@ object BuiltinCommands
 
 	def aboutPlugins(e: Extracted): String =
 	{
-		val allPluginNames = e.structure.units.values.flatMap(_.unit.plugins.pluginNames).toSeq.distinct
+		def list(b: BuildUnit) = b.plugins.detected.autoPlugins.map(_.value.label) ++ b.plugins.detected.plugins.names
+		val allPluginNames = e.structure.units.values.flatMap(u => list(u.unit)).toSeq.distinct
 		if(allPluginNames.isEmpty) "" else allPluginNames.mkString("Available Plugins: ", ", ", "")
 	}
 	def aboutScala(s: State, e: Extracted): String =
@@ -374,6 +375,20 @@ object BuiltinCommands
 			Help.detailOnly(taskDetail(allTaskAndSettingKeys(s)))
 		else
 			Help.empty
+	def plugins = Command.command(PluginsCommand, pluginsBrief, pluginsDetailed) { s =>
+		val helpString = PluginsDebug.helpAll(s)
+		System.out.println(helpString)
+		s
+	}
+	val pluginParser: State => Parser[AutoPlugin] = s => {
+		val autoPlugins: Map[String, AutoPlugin] = PluginsDebug.autoPluginMap(s)
+		token(Space) ~> Act.knownIDParser(autoPlugins, "plugin")
+	}
+	def plugin = Command(PluginCommand)(pluginParser) { (s, plugin) =>
+		val helpString = PluginsDebug.help(plugin, s)
+		System.out.println(helpString)
+		s
+	}
 
 	def projects = Command(ProjectsCommand, (ProjectsCommand, projectsBrief), projectsDetailed )(s => projectsParser(s).?) {
 		case (s, Some(modifyBuilds)) => transformExtraBuilds(s, modifyBuilds)

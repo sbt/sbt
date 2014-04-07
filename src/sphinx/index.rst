@@ -22,7 +22,6 @@ the :doc:`index of names and types <Name-Index>`.
    Examples/index
    Name-Index
 
-
 .. The following includes documents that are not important enough to be in a visible toctree
    They are linked from other documents, which is enough.
 

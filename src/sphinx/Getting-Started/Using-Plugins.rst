@@ -34,8 +34,36 @@ Adding settings for a plugin
 ----------------------------
 
 A plugin can declare that its settings be automatically added, in which case you don't have to do anything to add them.
-However, plugins often avoid this because you wouldn't control which projects in a :doc:`multi-project build <Multi-Project>` would use the plugin.
-The plugin documentation will indicate how to configure it, but typically it involves adding the base settings for the plugin and customizing as necessary.
+
+As of sbt 0.13.5, there is a new :doc:`auto-plugins <../DetailedTopics/AutoPlugins>` feature that enables plugins
+to automatically, and safely, ensure their settings and dependencies are on a project.  Most plugins should have
+their default settings automatically, however some may require explicit enablement.
+
+If you're using a plugin that requires explicit enablement, then you you have to add the following to your
+`build.sbt` ::
+
+    lazy val util = project.setPlugins(ThePluginIWant)
+
+Most plugins document whether they need to explicitly enabled.  If you're curious which plugins are enabled
+for a given project, just run the `plugins` command on the sbt console.
+
+For example ::
+
+    > plugins
+    In file:/home/jsuereth/projects/sbt/test-ivy-issues/
+      sbt.plugins.IvyPlugin: enabled in test-ivy-issues
+      sbt.plugins.JvmPlugin: enabled in test-ivy-issues
+      sbt.plugins.CorePlugin: enabled in test-ivy-issues
+
+
+Here, the plugins output is showing that the sbt default plugins are all enabled.  Sbt's default settings are provided via three plugins:
+
+1. CorePlugin:    Provides the core parallelism controls for tasks
+2. IvyPlugin:     Provides the mechanisms to publish/resolve modules.
+3. JvmPlugin:     Provides the mechanisms to compile/test/run/package Java/Scala projects.
+
+
+However, older plugins often required settings to be added explictly, so that :doc:`multi-project build <Multi-Project>` could have different types of projects.  The plugin documentation will indicate how to configure it, but typically for older plugins this involves adding the base settings for the plugin and customizing as necessary.
 
 For example, for the sbt-site plugin, add ::
 
@@ -91,10 +119,12 @@ To create an sbt plugin,
 
   1. Create a new project for the plugin.
   2. Set `sbtPlugin := true` for the project in `build.sbt`.  This adds a dependency on sbt and will detect and record Plugins that you define.
-  3. (optional) Define an `object` that extends `Plugin`.  The contents of this object will be automatically imported in `.sbt` files, so ensure it only contains important API definitions and types.
-  4. Define any custom tasks or settings (see the next section :doc:`Custom-Settings`).
-  5. Collect the default settings to apply to a project in a list for the user to add.  Optionally override one or more of Plugin's methods to have settings automatically added to user projects.
-  6. Publish the project.  There is a  :doc:`community repository </Community/Community-Plugins>` available for open source plugins.
+  3. Define another `object` that extends `AutoImport`. The contents of this object will be automatically imported in `.sbt` files, so ensure it only contains important API definitions and types.
+  4. Define an `object` that extends `AutoPlugin`.
+  5. Declare dependencies on other plugins by defining the `requires` method.
+  5. Define any custom tasks or settings (see the next section :doc:`Custom-Settings`).
+  6. Collect the default settings to apply to a project in a list for the user to add.  Optionally override one or more of `AutoPlugin`'s methods to have settings automatically added to user projects.
+  8. Publish the project.  There is a  :doc:`community repository </Community/Community-Plugins>` available for open source plugins.
 
 For more details, including ways of developing plugins, see :doc:`/Extending/Plugins`.
 For best practices, see :doc:`/Extending/Plugins-Best-Practices`.

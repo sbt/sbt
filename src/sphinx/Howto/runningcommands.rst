@@ -84,5 +84,5 @@ For example,
     > eval 2+2
     4: Int
 
-Variables defined by an `eval` are not visible to subsequent `eval`s, although changes to system properties persist and affect the JVM that is running sbt.
+Variables defined by an `eval` are not visible to subsequent `eval`\ s, although changes to system properties persist and affect the JVM that is running sbt.
 Use the Scala REPL (:key:`console` and related commands) for full support for evaluating Scala code interactively.

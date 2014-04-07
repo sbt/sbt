@@ -33,17 +33,11 @@ object Initialize
 	def fill(file: File, spec: List[AppProperty]): Unit = process(file, spec, selectFill)
 	def process(file: File, appProperties: List[AppProperty], select: AppProperty => Option[PropertyInit])
 	{
-		val properties = new Properties
-		if(file.exists)
-			Using(new FileInputStream(file))( properties.load )
+		val properties = readProperties(file)
 		val uninitialized =
 			for(property <- appProperties; init <- select(property) if properties.getProperty(property.name) == null) yield
 				initialize(properties, property.name, init)
-		if(!uninitialized.isEmpty)
-		{
-			file.getParentFile.mkdirs()
-			Using(new FileOutputStream(file))( out => properties.store(out, "") )
-		}
+		if(!uninitialized.isEmpty) writeProperties(properties, file, "")
 	}
 	def initialize(properties: Properties, name: String, init: PropertyInit)
 	{

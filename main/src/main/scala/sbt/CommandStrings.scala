@@ -38,7 +38,7 @@ s"""$multiTaskSyntax
 	def multiTaskBrief = """Executes all of the specified tasks concurrently."""
 
 
-	def showHelp = Help(ShowCommand, (ShowCommand + " <key>", actBrief), actDetailed)
+	def showHelp = Help(ShowCommand, (s"$ShowCommand <key>", showBrief), showDetailed)
 	def showBrief = "Displays the result of evaluating the setting or task associated with 'key'."
 	def showDetailed =
 s"""$ShowCommand <setting>
@@ -48,6 +48,11 @@ s"""$ShowCommand <setting>
 $ShowCommand <task>
 
 	Evaluates the specified task and display the value returned by the task."""
+
+	val PluginsCommand = "plugins"
+	val PluginCommand = "plugin"
+	def pluginsBrief = "Lists currently available plugins."
+	def pluginsDetailed = pluginsBrief // TODO: expand
 
 	val LastCommand = "last"
 	val LastGrepCommand = "last-grep"
@@ -167,7 +172,7 @@ Syntax summary
 	Displays the main %<s defined directly or indirectly for the current project.
 
 -v
-	Displays additional tasks.  More 'v's increase the number of tasks displayed.
+	Displays additional %<s.  More 'v's increase the number of %<s displayed.
 
 -V
 	displays all %<s

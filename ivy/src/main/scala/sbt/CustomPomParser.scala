@@ -43,7 +43,7 @@ object CustomPomParser
 	val JarPackagings = Set("eclipse-plugin", "hk2-jar", "orbit")
 	val default = new CustomPomParser(PomModuleDescriptorParser.getInstance, defaultTransform)
 
-	private[this] val TransformedHashKey = "sbtTransformHash"
+	private[this] val TransformedHashKey = "e:sbtTransformHash"
 	// A hash of the parameters transformation is based on.
 	// If a descriptor has a different hash, we need to retransform it.
 	private[this] val TransformHash: String = hash((unqualifiedKeys ++ JarPackagings).toSeq.sorted)
@@ -57,8 +57,14 @@ object CustomPomParser
 
 	private[this] def transformedByThisVersion(md: ModuleDescriptor): Boolean = 
 	{
+		val oldTransformedHashKey = "sbtTransformHash"
 		val extraInfo = md.getExtraInfo
-		extraInfo != null && extraInfo.get(TransformedHashKey) == TransformHash
+		// sbt 0.13.1 used "sbtTransformHash" instead of "e:sbtTransformHash" until #1192 so read both 
+		Option(extraInfo).isDefined &&
+		((Option(extraInfo get TransformedHashKey) orElse Option(extraInfo get oldTransformedHashKey)) match {
+			case Some(TransformHash) => true
+			case _ => false
+		})
 	}
 
 	private[this] def defaultTransformImpl(parser: ModuleDescriptorParser, md: ModuleDescriptor): ModuleDescriptor =

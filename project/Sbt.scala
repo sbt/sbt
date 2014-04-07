@@ -14,9 +14,9 @@ object Sbt extends Build
 	override lazy val settings = super.settings ++ buildSettings ++ Status.settings ++ nightlySettings
 	def buildSettings = Seq(
 		organization := "org.scala-sbt",
-		version := "0.13.2-SNAPSHOT",
+		version := "0.13.5-SNAPSHOT",
 		publishArtifact in packageDoc := false,
-		scalaVersion := "2.10.3",
+		scalaVersion := "2.10.4",
 		publishMavenStyle := false,
 		componentID := None,
 		crossPaths := false,
@@ -73,6 +73,8 @@ object Sbt extends Build
 	lazy val datatypeSub = baseProject(utilPath /"datatype", "Datatype Generator") dependsOn(ioSub)
 		// cross versioning
 	lazy val crossSub = baseProject(utilPath / "cross", "Cross") settings(inConfig(Compile)(Transform.crossGenSettings): _*)
+		// A logic with restricted negation as failure for a unique, stable model
+	lazy val logicSub = testedBaseProject(utilPath / "logic", "Logic").dependsOn(collectionSub, relationSub)
 
 	/* **** Intermediate-level Modules **** */
 
@@ -130,7 +132,7 @@ object Sbt extends Build
 		completeSub, classpathSub, stdTaskSub, processSub) settings( sbinary )
 
 		// The main integration project for sbt.  It brings all of the subsystems together, configures them, and provides for overriding conventions.
-	lazy val mainSub = testedBaseProject(mainPath, "Main") dependsOn(actionsSub, mainSettingsSub, interfaceSub, ioSub, ivySub, launchInterfaceSub, logSub, processSub, runSub, commandSub) settings(scalaXml)
+	lazy val mainSub = testedBaseProject(mainPath, "Main") dependsOn(actionsSub, mainSettingsSub, interfaceSub, ioSub, ivySub, launchInterfaceSub, logSub, logicSub, processSub, runSub, commandSub) settings(scalaXml)
 
 		// Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 		//  technically, we need a dependency on all of mainSub's dependencies, but we don't do that since this is strictly an integration project
@@ -276,7 +278,7 @@ object Sbt extends Build
 		artifact in (Compile, packageSrc) := Artifact(srcID).copy(configurations = Compile :: Nil).extra("e:component" -> srcID)
 	)
 	def compilerSettings = Seq(
-		libraryDependencies <+= scalaVersion( "org.scala-lang" % "scala-compiler" % _ % "test"),
+		libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _ % "test"),
 		unmanagedJars in Test <<= (packageSrc in compileInterfaceSub in Compile).map(x => Seq(x).classpath)
 	)
 	def precompiled(scalav: String): Project = baseProject(compilePath / "interface", "Precompiled " + scalav.replace('.', '_')) dependsOn(interfaceSub) settings(precompiledSettings : _*) settings(

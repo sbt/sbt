@@ -4,9 +4,9 @@ Community Plugins
 
 sbt Organization
 ================
-           
-The `sbt organization <http://github.com/sbt>`_ is available for use by any sbt plugin.  
-Developers who contribute their plugins into the community organization will still retain 
+
+The `sbt organization <http://github.com/sbt>`_ is available for use by any sbt plugin.
+Developers who contribute their plugins into the community organization will still retain
 control over their repository and its access.   The goal of the sbt organization is to
 organize sbt software into one central location.
 
@@ -16,47 +16,15 @@ Community Ivy Repository
 ========================
 
 `Typesafe <http://www.typesafe.com>`_ has provided a freely available `Ivy Repository <http://repo.scala-sbt.org/scalasbt>`_ for sbt projects to use.
-If you would like to publish your project to this Ivy repository, first contact `sbt-repo-admins <http://groups.google.com/group/sbt-repo-admins?hl=en>`_ and request privileges (we have to verify code ownership, rights to publish, etc.).  After which, you can deploy your plugins using the following configuration:
-
-::
-
-     publishTo := Some(Resolver.url("sbt-plugin-releases", new URL("http://repo.scala-sbt.org/scalasbt/sbt-plugin-releases/"))(Resolver.ivyStylePatterns))
-     
-     publishMavenStyle := false
- 
-You'll also need to add your credentials somewhere.  For example, you might use a `~/.sbt/pluginpublish.sbt` file:
- 
-::
-
-     credentials += Credentials("Artifactory Realm", 
- "repo.scala-sbt.org", "@user name@", "@my encrypted password@")
- 
-Where `@my encrypted password@` is actually obtained using the following `instructions <http://wiki.jfrog.org/confluence/display/RTF/Centrally+Secure+Passwords>`_.
- 
-*Note: Your code must abide by the* `repository polices <Repository-Rules>`_.
-
-To automatically deploy snapshot/release versions of your plugin use the following configuration:
-
-::
-
-    publishTo := {
-       val scalasbt = "http://repo.scala-sbt.org/scalasbt/"
-       val (name, url) = if (version.value.contains("-SNAPSHOT"))
-         ("sbt-plugin-snapshots", scalasbt+"sbt-plugin-snapshots")
-       else
-         ("sbt-plugin-releases", scalasbt+"sbt-plugin-releases")
-       Some(Resolver.url(name, new URL(url))(Resolver.ivyStylePatterns))
-    }
-
-*Note: ivy repositories currently don't support Maven-style snapshots.*
+This ivy repository is mirrored from the freely available `Bintray service <http://bintray.com>`_.   If you'd like to submit your plugin, please follow these instructions: `Bintray For Plugins <Bintray-For-Plugins.html>`_.
 
 Available Plugins
 =================
 
 Please feel free to `submit a pull request <https://github.com/sbt/sbt/pulls>`_ that adds your plugin to the list.
 
-Plugins for IDEs:
-~~~~~~~~~~~~~~~~~
+Plugins for IDEs
+~~~~~~~~~~~~~~~~
 
 -  IntelliJ IDEA
 -  sbt Plugin to generate IDEA project configuration:
@@ -68,6 +36,8 @@ Plugins for IDEs:
 -  Sublime Text: https://github.com/orrsella/sbt-sublime
 -  Ensime: https://github.com/aemoncannon/ensime-sbt-cmd
 -  sbt-mode for Emacs: https://github.com/hvesalai/sbt-mode
+-  sbt-ctags (manage library dependency sources for vim, emacs, sublime) 
+   https://github.com/kalmanb/sbt-ctags
 
 Web Plugins
 ~~~~~~~~~~~
@@ -158,6 +128,11 @@ Release plugins
    https://github.com/sbt/sbt-start-script
 -  sbt-native-packager:
    https://github.com/sbt/sbt-native-packager
+-  sbt-sonatype-plugin (releases to Sonatype Nexus repository)
+   https://github.com/xerial/sbt-sonatype
+-  xitrum-package (collects dependency .jar files for standalone Scala programs):
+   https://github.com/ngocdaothanh/xitrum-package
+
 
 System plugins
 ~~~~~~~~~~~~~~
@@ -228,6 +203,8 @@ Documentation plugins
    Textile, to HTML): http://software.clapper.org/sbt-lwm/
 -  sbt-site (Site generation for SBT):
    https://github.com/sbt/sbt-site
+-  Laika (Template-based site generation, Markdown, reStructuredText,
+   no external tools): http://planet42.github.io/Laika/
 -  literator-plugin (Converts sources into markdown documents):
    https://github.com/laughedelic/literator
 
@@ -278,6 +255,7 @@ Code coverage plugins
 ~~~~~~~~~~~~~~~~~~~~~
 
 -  sbt-scct: https://github.com/dvc94ch/sbt-scct
+-  sbt-scoverage: https://github.com/scoverage/sbt-scoverage
 -  jacoco4sbt: https://github.com/sbt/jacoco4sbt
 -  xsbt-coveralls-plugin: https://github.com/theon/xsbt-coveralls-plugin
 
@@ -300,5 +278,5 @@ OSGi plugin
 Plugin bundles
 ~~~~~~~~~~~~~~
 
--   tl-os-sbt-plugins (Version, Release, and Package Management, Play 2.0 and Git utilities) : 
+-   tl-os-sbt-plugins (Version, Release, and Package Management, Play 2.0 and Git utilities) :
     https://github.com/trafficland/tl-os-sbt-plugins

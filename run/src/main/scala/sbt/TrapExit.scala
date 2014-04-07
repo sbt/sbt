@@ -413,6 +413,15 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
 	private def isRealExit(element: StackTraceElement): Boolean =
 		element.getClassName == "java.lang.Runtime" && element.getMethodName == "exit"
 
+	// These are overridden to do nothing because there is a substantial filesystem performance penalty
+	// when there is a SecurityManager defined.  The default implementations of these construct a
+	// FilePermission, and its initialization involves canonicalization, which is expensive.
+	override def checkRead(file: String) {}
+	override def checkRead(file: String, context: AnyRef) {}
+	override def checkWrite(file: String) {}
+	override def checkDelete(file: String) {}
+	override def checkExec(cmd: String) {}
+
 	override def checkPermission(perm: Permission)
 	{
 		if(delegateManager ne null)

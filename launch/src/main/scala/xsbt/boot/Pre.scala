@@ -70,6 +70,10 @@ object Pre
 		classes.toList.filter(classMissing)
 	}
 	def toURLs(files: Array[File]): Array[URL] = files.map(_.toURI.toURL)
+	def toFile(url: URL): File =
+		try { new File(url.toURI) }
+		catch { case _: java.net.URISyntaxException => new File(url.getPath) }
+
 
 	def delete(f: File)
 	{
@@ -82,4 +86,25 @@ object Pre
 	}
 	final val isWindows: Boolean = System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("windows")
 	final val isCygwin: Boolean = isWindows && java.lang.Boolean.getBoolean("sbt.cygwin")
+	
+	import java.util.Properties
+	import java.io.{FileInputStream,FileOutputStream}
+	private[boot] def readProperties(propertiesFile: File) =
+	{
+		val properties = new Properties
+		if(propertiesFile.exists)
+			Using( new FileInputStream(propertiesFile) )( properties.load )
+		properties
+	}
+	private[boot] def writeProperties(properties: Properties, file: File, msg: String): Unit = {
+	  file.getParentFile.mkdirs()
+	  Using(new FileOutputStream(file))( out => properties.store(out, msg) )
+	}
+	private[boot] def setSystemProperties(properties: Properties): Unit = {
+		val nameItr = properties.stringPropertyNames.iterator
+		while(nameItr.hasNext) {
+			val propName = nameItr.next
+			System.setProperty(propName, properties.getProperty(propName))
+		}
+	}
 }
