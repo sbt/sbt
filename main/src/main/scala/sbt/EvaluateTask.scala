@@ -14,7 +14,7 @@ package sbt
 	import std.Transform.{DummyTaskMap,TaskAndValue}
 	import TaskName._
 
-@deprecated("Use EvaluateTaskConfig instead.", "0.13.2")
+@deprecated("Use EvaluateTaskConfig instead.", "0.13.5")
 final case class EvaluateConfig(cancelable: Boolean, restrictions: Seq[Tags.Rule], checkCycles: Boolean = false, progress: ExecuteProgress[Task] = EvaluateTask.defaultProgress)
 
 
@@ -242,7 +242,7 @@ object EvaluateTask
 	def nodeView[HL <: HList](state: State, streams: Streams, roots: Seq[ScopedKey[_]], dummies: DummyTaskMap = DummyTaskMap(Nil)): NodeView[Task] =
 		Transform((dummyRoots, roots) :: (dummyStreamsManager, streams) :: (dummyState, state) :: dummies )
 
-	@deprecated("Use new EvalauteTaskConfig option to runTask", "0.13.2")
+	@deprecated("Use new EvalauteTaskConfig option to runTask", "0.13.5")
     def runTask[T](root: Task[T], state: State, streams: Streams, triggers: Triggers[Task], config: EvaluateConfig)(implicit taskToNode: NodeView[Task]): (State, Result[T]) =
     {
     	val newConfig = EvaluateTaskConfig(config)
