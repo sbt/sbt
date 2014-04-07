@@ -7,7 +7,6 @@ import Resolver.PluginPattern
 
 import java.io.File
 import java.net.URI
-import java.text.ParseException
 import java.util.concurrent.Callable
 import java.util.{Collection, Collections => CS}
 import CS.singleton
@@ -24,9 +23,7 @@ import core.settings.IvySettings
 import plugins.latest.LatestRevisionStrategy
 import plugins.matcher.PatternMatcher
 import plugins.parser.m2.PomModuleDescriptorParser
-import plugins.repository.ResourceDownloader
 import plugins.resolver.{ChainResolver, DependencyResolver}
-import plugins.resolver.util.ResolvedResource
 import util.{Message, MessageLogger}
 import util.extendable.ExtendableItem
 
@@ -99,6 +96,8 @@ final class IvySbt(val configuration: IvyConfiguration)
 	def withIvy[T](log: MessageLogger)(f: Ivy => T): T =
 		withDefaultLogger(log)
 		{
+			// See #429 - We always insert a helper authenticator here which lets us get more useful authentication errors.
+			ivyint.ErrorMessageAuthenticator.install()
 			ivy.pushContext()
 			ivy.getLoggerEngine.pushLogger(log)
 			try { f(ivy) }
@@ -356,41 +355,8 @@ private object IvySbt
 				case pr: ProjectResolver => true
 				case _ => false
 			}
-			/** This is overridden to delete outofdate artifacts of changing modules that are not listed in the metadata.
-			* This occurs for artifacts with classifiers, for example. */
-			@throws(classOf[ParseException])
-			override def cacheModuleDescriptor(resolver: DependencyResolver, mdRef: ResolvedResource, dd: DependencyDescriptor, moduleArtifact: IArtifact, downloader: ResourceDownloader, options: CacheMetadataOptions): ResolvedModuleRevision =
-			{
-				val rmrRaw = super.cacheModuleDescriptor(null, mdRef, dd, moduleArtifact, downloader, options)
-				val rmr = resetArtifactResolver(rmrRaw)
-				val mrid = moduleArtifact.getModuleRevisionId
-				def shouldClear(): Boolean = rmr != null &&
-					( (rmr.getReport != null && rmr.getReport.isSearched && isChanging(dd, mrid)) ||
-						isProjectResolver(rmr.getResolver) )
-				// only handle changing modules whose metadata actually changed.
-				// Typically, the publication date in the metadata has to change to get here.
-				if(shouldClear()) {
-					// this is the locally cached metadata as originally retrieved (e.g. the pom)
-					val original = rmr.getReport.getOriginalLocalFile
-					if(original != null) {
-						// delete all files in subdirectories that are older than the original metadata file's publication date
-						//  The publication date is used because the metadata will be redownloaded for changing files,
-						//  so the last modified time changes, but the publication date doesn't
-						val pubDate = rmrRaw.getPublicationDate
-						val lm = if(pubDate eq null) original.lastModified else pubDate.getTime
-						val indirectFiles = PathFinder(original.getParentFile).*(DirectoryFilter).**(-DirectoryFilter).get.toList
-						val older = indirectFiles.filter(f => f.lastModified < lm).toList
-						Message.verbose("Deleting additional old artifacts from cache for changed module " + mrid + older.mkString(":\n\t", "\n\t", ""))
-						IO.delete(older)
-					}
-				}
-				rmr
-			}
 			// ignore the original resolver wherever possible to avoid issues like #704
 			override def saveResolvers(descriptor: ModuleDescriptor, metadataResolverName: String, artifactResolverName: String) {}
-
-			def isChanging(dd: DependencyDescriptor, requestedRevisionId: ModuleRevisionId): Boolean =
-				!localOnly && (dd.isChanging || requestedRevisionId.getRevision.contains("-SNAPSHOT"))
 		}
 		manager.setArtifactPattern(PluginPattern + manager.getArtifactPattern)
 		manager.setDataFilePattern(PluginPattern + manager.getDataFilePattern)
