@@ -36,9 +36,22 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler]
 	def readCache(file: File): Maybe[(Analysis, CompileSetup)] =
 		try { Maybe.just(readCacheUncaught(file)) } catch { case _: Exception => Maybe.nothing() }
 
+	@deprecated("Use overloaded variant which takes `IncOptions` as parameter.", "0.13.2")
 	def readAnalysis(file: File): Analysis =
 		try { readCacheUncaught(file)._1 } catch { case _: Exception => Analysis.Empty }
 
+	def readAnalysis(file: File, incOptions: IncOptions): Analysis =
+		try { readCacheUncaught(file)._1 } catch {
+			case _: Exception => Analysis.empty(nameHashing = incOptions.nameHashing)
+		}
+
 	def readCacheUncaught(file: File): (Analysis, CompileSetup) =
-    Using.fileReader(IO.utf8)(file) { reader => TextAnalysisFormat.read(reader) }
+		Using.fileReader(IO.utf8)(file) { reader =>
+			try {
+				TextAnalysisFormat.read(reader)
+			} catch {
+				case ex: sbt.inc.ReadException =>
+					throw new java.io.IOException(s"Error while reading $file", ex)
+			}
+		}
 }
