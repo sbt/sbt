@@ -32,12 +32,16 @@ object ContextUtil {
 	def unexpectedTree[C <: Context](tree: C#Tree): Nothing = sys.error("Unexpected macro application tree (" + tree.getClass + "): " + tree)
 }
 
+// TODO 2.11 Remove this after dropping 2.10.x support.
+private object HasCompat { val compat = ??? }; import HasCompat._
+
 /** Utility methods for macros.  Several methods assume that the context's universe is a full compiler (`scala.tools.nsc.Global`).
 * This is not thread safe due to the underlying Context and related data structures not being thread safe.
 * Use `ContextUtil[c.type](c)` to construct. */
 final class ContextUtil[C <: Context](val ctx: C)
 {
 		import ctx.universe.{Apply=>ApplyTree,_}
+		import compat._
 
 	val powerContext = ctx.asInstanceOf[reflect.macros.runtime.Context]
 	val global: powerContext.universe.type = powerContext.universe
@@ -222,17 +226,20 @@ final class ContextUtil[C <: Context](val ctx: C)
 		object appTransformer extends Transformer
 		{
 			override def transform(tree: Tree): Tree =
-				tree match
-				{
-					case ApplyTree(TypeApply(Select(_, nme), targ :: Nil), qual :: Nil) => subWrapper(nme.decoded, targ.tpe, qual, tree) match {
-						case Converted.Success(t, finalTx) => finalTx(t)
-						case Converted.Failure(p,m) => ctx.abort(p, m)
-						case _: Converted.NotApplicable[_] => super.transform(tree)
-					}
+				tree match {
+					case ApplyTree(TypeApply(Select(_, nme), targ :: Nil), qual :: Nil) =>
+						subWrapper(nme.decoded, targ.tpe, qual, tree) match {
+							case Converted.Success(t, finalTx) =>
+								changeOwner(qual, currentOwner, initialOwner) // Fixes https://github.com/sbt/sbt/issues/1150
+								finalTx(t)
+							case Converted.Failure(p,m) => ctx.abort(p, m)
+							case _: Converted.NotApplicable[_] => super.transform(tree)
+						}
 					case _ => super.transform(tree)
 				}
 		}
-
-		appTransformer.transform(t)
+		appTransformer.atOwner(initialOwner) {
+			appTransformer.transform(t)
+		}
 	}
 }

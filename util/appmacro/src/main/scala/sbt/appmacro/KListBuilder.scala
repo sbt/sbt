@@ -9,11 +9,15 @@ package appmacro
 /** A `TupleBuilder` that uses a KList as the tuple representation.*/
 object KListBuilder extends TupleBuilder
 {
+	// TODO 2.11 Remove this after dropping 2.10.x support.
+	private object HasCompat { val compat = ??? }; import HasCompat._
+
 	def make(c: Context)(mt: c.Type, inputs: Inputs[c.universe.type]): BuilderResult[c.type] = new BuilderResult[c.type]
 	{
 		val ctx: c.type = c
 		val util = ContextUtil[c.type](c)
 			import c.universe.{Apply=>ApplyTree,_}
+			import compat._
 			import util._
 
 		val knilType = c.typeOf[KNil]
@@ -24,7 +28,7 @@ object KListBuilder extends TupleBuilder
 		val kconsTC: Type = kconsTpe.typeConstructor
 
 		/** This is the L in the type function [L[x]] ...  */
-		val tcVariable: TypeSymbol = newTCVariable(NoSymbol)
+		val tcVariable: TypeSymbol = newTCVariable(util.initialOwner)
 
 		/** Instantiates KCons[h, t <: KList[L], L], where L is the type constructor variable */
 		def kconsType(h: Type, t: Type): Type =
