@@ -124,19 +124,15 @@ sealed abstract class PathFinder
 	* If the result is empty (None) and `errorIfNone` is true, an exception is thrown.
 	* If `errorIfNone` is false, the path is dropped from the returned Traversable.*/
 	def pair[T](mapper: File => Option[T], errorIfNone: Boolean = true): Seq[(File,T)] =
-		x(mapper, errorIfNone)
+  {
+    val apply = if(errorIfNone) mapper | fail else mapper
+    for(file <- get; mapped <- apply(file)) yield (file, mapped)
+  }
 
-	/** Applies `mapper` to each path selected by this PathFinder and returns the path paired with the non-empty result.
-	* If the result is empty (None) and `errorIfNone` is true, an exception is thrown.
-	* If `errorIfNone` is false, the path is dropped from the returned Traversable.*/
 	@deprecated("Use pair.", "0.13.1")
-	def x[T](mapper: File => Option[T], errorIfNone: Boolean = true): Seq[(File,T)] =
-	{
-		val apply = if(errorIfNone) mapper | fail else mapper
-		for(file <- get; mapped <- apply(file)) yield (file, mapped)
-	}
+	def x[T](mapper: File => Option[T], errorIfNone: Boolean = true): Seq[(File,T)] = pair(mapper, errorIfNone)
 
-	/** Selects all descendant paths with a name that matches <code>include</code> and do not have an intermediate
+  /** Selects all descendant paths with a name that matches <code>include</code> and do not have an intermediate
 	* path with a name that matches <code>intermediateExclude</code>.  Typical usage is:
 	*
 	* <code>descendantsExcept("*.jar", ".svn")</code>*/
