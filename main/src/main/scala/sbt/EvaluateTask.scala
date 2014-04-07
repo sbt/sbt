@@ -14,7 +14,11 @@ package sbt
 	import std.Transform.{DummyTaskMap,TaskAndValue}
 	import TaskName._
 
-final case class EvaluateConfig(cancelable: Boolean, restrictions: Seq[Tags.Rule], checkCycles: Boolean = false, progress: ExecuteProgress[Task] = EvaluateTask.defaultProgress)
+final case class EvaluateConfig(
+	cancelable: Boolean, 
+	restrictions: Seq[Tags.Rule], 
+	checkCycles: Boolean = false, 
+	progress: ExecuteProgress[Task] = EvaluateTask.defaultProgress)
 final case class PluginData(dependencyClasspath: Seq[Attributed[File]], definitionClasspath: Seq[Attributed[File]], resolvers: Option[Seq[Resolver]], report: Option[UpdateReport], scalacOptions: Seq[String])
 {
 	val classpath: Seq[Attributed[File]] = definitionClasspath ++ dependencyClasspath
@@ -37,6 +41,19 @@ object EvaluateTask
 
 	private[sbt] def defaultProgress: ExecuteProgress[Task] =
 		if(java.lang.Boolean.getBoolean("sbt.task.timings")) new TaskTimings else ExecuteProgress.empty[Task]
+
+
+	// Default is true, but can be disabled.
+	private[sbt] val isAutoGcEnabled =
+		System.getProperty("sbt.task.autogc") == null ||
+		java.lang.Boolean.getBoolean("sbt.task.autogc")
+	private[sbt] val isPoorlyActingGcOnJvm: Boolean = {
+		// TODO - Not so hacky a mechanism here.
+		val javaVersion = System.getProperty("java.version")
+		javaVersion.startsWith("1.5") ||
+		javaVersion.startsWith("1.6") ||
+		javaVersion.startsWith("1.7")
+	}
 
 	val SystemProcessors = Runtime.getRuntime.availableProcessors
 
@@ -185,6 +202,22 @@ object EvaluateTask
 		val tags = tagged[Task[_]](_.info get tagsKey getOrElse Map.empty, Tags.predicate(config.restrictions))
 		val (service, shutdown) = completionService[Task[_], Completed](tags, (s: String) => log.warn(s))
 
+		// FIX - We create a cleanup method here which ensures the thread pool is closed down
+		//       and we attempt to force the JVM < 8 to release classloaders, due to issues
+		//       with WeakHashMaps/WeakHashSets and lazy GCs not running finalizers.
+		def shutdownAndCleanup(): Unit = {
+			shutdown()
+			if(isAutoGcEnabled && isPoorlyActingGcOnJvm) {
+				// Force the detection of finalizers for scala.reflect weakhashsets
+				System.gc()
+				// Force finalizers to run.
+				System.runFinalization()
+				// Force actually cleaning the weak hash maps.
+				System.gc()
+			}
+		}
+
+
 		// propagate the defining key for reporting the origin
 		def overwriteNode(i: Incomplete): Boolean = i.node match {
 			case Some(t: Task[_]) => transformNode(t).isEmpty
@@ -198,7 +231,7 @@ object EvaluateTask
 					storeValuesForPrevious(results, state, streams)
 					applyResults(results, state, root)
 				} catch { case inc: Incomplete => (state, Inc(inc)) }
-				finally shutdown()
+				finally shutdownAndCleanup()
 			val replaced = transformInc(result)
 			logIncResult(replaced, state, streams)
 			(newState, replaced)
@@ -206,7 +239,7 @@ object EvaluateTask
 		val cancel = () => {
 			println("")
 			log.warn("Canceling execution...")
-			shutdown()
+			shutdownAndCleanup()
 		}
 		if(config.cancelable)
 			Signals.withHandler(cancel) { run }
