@@ -14,7 +14,73 @@ package sbt
 	import std.Transform.{DummyTaskMap,TaskAndValue}
 	import TaskName._
 
+@deprecated("Use EvaluateTaskConfig instead.", "0.13.2")
 final case class EvaluateConfig(cancelable: Boolean, restrictions: Seq[Tags.Rule], checkCycles: Boolean = false, progress: ExecuteProgress[Task] = EvaluateTask.defaultProgress)
+
+
+
+/** Represents something that can be cancelled. */
+trait TaskCancel {
+	/** cancels whatever this points at. */
+	def cancel(): Unit
+}
+/** A handler for registering/remmoving listeners that allow you to cancel tasks. */
+trait TaskEvaluationCancelHandler {
+  /* Evaluation is starting, here's a mechanism to cancel things. */
+  def start(canceller: TaskCancel): Unit
+  /* Task Evaluation is complete, whether success or failure. */
+  def finish(): Unit
+}
+object TaskEvaluationCancelHandler {
+   /** An empty handler that does nothing. */
+   object Null extends TaskEvaluationCancelHandler {
+   	  def start(canceller: TaskCancel): Unit = ()
+      def finish(): Unit = ()
+   }
+   /** Cancel handler which registers for SIGINT and cancels tasks when it is received. */
+   object Signal extends TaskEvaluationCancelHandler {
+   	 private var registration: Option[Signals.Registration] = None
+   	 def start(canceller: TaskCancel): Unit = {
+   	 	registration = Some(Signals.register(() => canceller.cancel()))
+   	 }
+   	 def finish(): Unit =
+   	   registration match {
+   	   	 case Some(value) => 
+   	   	   value.remove()
+   	   	   registration = None
+         case None =>
+   	   }
+   }
+}
+
+
+/** The new API for running tasks.  
+ *
+ * This represents all the hooks possible when running the task engine.
+ * We expose this trait so that we can, in a binary compatible way, modify what is used
+ * inside this configuration and how to construct it.
+ */
+sealed trait EvaluateTaskConfig {
+	def restrictions: Seq[Tags.Rule]
+	def checkCycles: Boolean
+	def progressReporter: ExecuteProgress[Task]
+	def cancelHandler: TaskEvaluationCancelHandler
+}
+final object EvaluateTaskConfig {
+	/** Pulls in the old configuration format. */
+	def apply(old: EvaluateConfig): EvaluateTaskConfig = {
+	  object AdaptedTaskConfig extends EvaluateTaskConfig {
+        def restrictions: Seq[Tags.Rule] = old.restrictions
+        def checkCycles: Boolean = old.checkCycles
+        def progressReporter: ExecuteProgress[Task] = old.progress
+        def cancelHandler: TaskEvaluationCancelHandler =
+          if(old.cancelable) TaskEvaluationCancelHandler.Signal
+          else TaskEvaluationCancelHandler.Null
+	  }
+	  AdaptedTaskConfig
+	}
+}
+
 final case class PluginData(dependencyClasspath: Seq[Attributed[File]], definitionClasspath: Seq[Attributed[File]], resolvers: Option[Seq[Resolver]], report: Option[UpdateReport], scalacOptions: Seq[String])
 {
 	val classpath: Seq[Attributed[File]] = definitionClasspath ++ dependencyClasspath
@@ -176,12 +242,18 @@ object EvaluateTask
 	def nodeView[HL <: HList](state: State, streams: Streams, roots: Seq[ScopedKey[_]], dummies: DummyTaskMap = DummyTaskMap(Nil)): NodeView[Task] =
 		Transform((dummyRoots, roots) :: (dummyStreamsManager, streams) :: (dummyState, state) :: dummies )
 
-	def runTask[T](root: Task[T], state: State, streams: Streams, triggers: Triggers[Task], config: EvaluateConfig)(implicit taskToNode: NodeView[Task]): (State, Result[T]) =
+	@deprecated("Use new EvalauteTaskConfig option to runTask", "0.13.2")
+    def runTask[T](root: Task[T], state: State, streams: Streams, triggers: Triggers[Task], config: EvaluateConfig)(implicit taskToNode: NodeView[Task]): (State, Result[T]) =
+    {
+    	val newConfig = EvaluateTaskConfig(config)
+    	runTask(root, state, streams, triggers, config)(taskToNode)
+    }
+	def runTask[T](root: Task[T], state: State, streams: Streams, triggers: Triggers[Task], config: EvaluateTaskConfig)(implicit taskToNode: NodeView[Task]): (State, Result[T]) =
 	{
-			import ConcurrentRestrictions.{completionService, TagMap, Tag, tagged, tagsKey}
+		import ConcurrentRestrictions.{completionService, TagMap, Tag, tagged, tagsKey}
 
 		val log = state.log
-		log.debug("Running task... Cancelable: " + config.cancelable + ", check cycles: " + config.checkCycles)
+		log.debug("Running task... Cancel: " + config.cancelHandler + ", check cycles: " + config.checkCycles)
 		val tags = tagged[Task[_]](_.info get tagsKey getOrElse Map.empty, Tags.predicate(config.restrictions))
 		val (service, shutdown) = completionService[Task[_], Completed](tags, (s: String) => log.warn(s))
 
@@ -191,7 +263,7 @@ object EvaluateTask
 			case _ => true
 		}
 		def run() = {
-			val x = new Execute[Task]( Execute.config(config.checkCycles, overwriteNode), triggers, config.progress)(taskToNode)
+			val x = new Execute[Task]( Execute.config(config.checkCycles, overwriteNode), triggers, config.progressReporter)(taskToNode)
 			val (newState, result) =
 				try {
 					val results = x.runKeep(root)(service)
@@ -203,15 +275,17 @@ object EvaluateTask
 			logIncResult(replaced, state, streams)
 			(newState, replaced)
 		}
-		val cancel = () => {
-			println("")
-			log.warn("Canceling execution...")
-			shutdown()
+		object taskCancel extends TaskCancel { 
+			def cancel(): Unit = {
+			  println("")
+			  log.warn("Canceling execution...")
+			  shutdown()
+			}
 		}
-		if(config.cancelable)
-			Signals.withHandler(cancel) { run }
-		else
-			run()
+		// Register with our cancel handler we're about to start.
+		config.cancelHandler.start(taskCancel)
+		try run()
+		finally config.cancelHandler.finish()
 	}
 
 	private[this] def storeValuesForPrevious(results: RMap[Task, Result], state: State, streams: Streams): Unit =
