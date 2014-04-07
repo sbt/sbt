@@ -9,64 +9,120 @@ package sbt
 trait TestReportListener
 {
 	/** called for each class or equivalent grouping */
-  def startGroup(name: String)
+  def startSuite(name: String) {}
+
 	/** called for each test method or equivalent */
-  def testEvent(event: TestEvent)
-	/** called if there was an error during test */
-  def endGroup(name: String, t: Throwable)
+  def endTest(report: TestReport) {}
+
 	/** called if test completed */
-  def endGroup(name: String, result: TestResult.Value)
-  /** Used by the test framework for logging test results*/
+  def endSuite(name: String, report: SuiteReport) {}
+
+	/** Used by the test framework for logging test results*/
   def contentLogger(test: TestDefinition): Option[ContentLogger] = None
 }
 
 trait TestsListener extends TestReportListener
 {
 	/** called once, at beginning. */
-  def doInit()
+  def doInit() {}
 	/** called once, at end. */
-  def doComplete(finalResult: TestResult.Value)
+  def doComplete(finalResult: TestResult.Value) {}
 }
 
 /** Provides the overall `result` of a group of tests (a suite) and test counts for each result type. */
 final class SuiteResult(
 	val result: TestResult.Value,
 	val passedCount: Int, val failureCount: Int, val errorCount: Int,
-	val skippedCount: Int, val ignoredCount: Int, val canceledCount: Int, val pendingCount: Int)
+	val skippedCount: Int, val ignoredCount: Int, val canceledCount: Int, val pendingCount: Int) {
+
+	def error : SuiteResult = new SuiteResult(
+		TestResult.Error, passedCount, failureCount, errorCount,
+		skippedCount, ignoredCount, canceledCount, pendingCount)
+}
 
 object SuiteResult
 {
 	/** Computes the overall result and counts for a suite with individual test results in `events`. */
-	def apply(events: Seq[TEvent]): SuiteResult =
+	def apply(events: Seq[TestReport]): SuiteResult =
 	{
-		def count(status: TStatus) = events.count(_.status == status)
-		new SuiteResult(TestEvent.overallResult(events), count(TStatus.Success), count(TStatus.Failure), count(TStatus.Error),
+		def count(status: TStatus) = events.count(_.detail.status == status)
+		val result = TestResult.overall(events.view.map(_.result))
+		new SuiteResult(result, count(TStatus.Success), count(TStatus.Failure), count(TStatus.Error),
 			count(TStatus.Skipped), count(TStatus.Ignored), count(TStatus.Canceled), count(TStatus.Pending))
 	}
+
 	val Error: SuiteResult = new SuiteResult(TestResult.Error, 0, 0, 0, 0, 0, 0, 0)
 	val Empty: SuiteResult = new SuiteResult(TestResult.Passed, 0, 0, 0, 0, 0, 0, 0)
 }
 
-abstract class TestEvent
-{
-	def result: Option[TestResult.Value]
-	def detail: Seq[TEvent] = Nil
-}
-object TestEvent
-{
-	def apply(events: Seq[TEvent]): TestEvent =
-		new TestEvent {
-			val result = Some(overallResult(events))
-			override val detail = events
-		}
+abstract class SuiteReport
+{ outer =>
+	def result: SuiteResult
 
-	private[sbt] def overallResult(events: Seq[TEvent]): TestResult.Value =
-		(TestResult.Passed /: events) { (sum, event) =>
-			val status = event.status
-			if(sum == TestResult.Error || status == TStatus.Error) TestResult.Error
-			else if(sum == TestResult.Failed || status == TStatus.Failure) TestResult.Failed
-			else TestResult.Passed
+	/**
+	 * @note it might happen that a class is flagged as a test suite but contains no tests, therefore
+	 *       producing a suite report with no test report. The test suite might also fail while
+	 *       being constructed.
+	 * @return the test reports of this suite - can be empty
+	 */
+	def detail: Seq[TestReport]
+
+	/** defined if an error has interrupted the suite execution */
+	def errorCause: Option[Throwable]
+
+	def addTest(test: TestReport) : SuiteReport = {
+		SuiteReport(detail :+ test)
+	}
+
+	/** @return a copy of this suite report with result `Error` (result counts and details are preserved) */
+	def error(err: Throwable) : SuiteReport = new SuiteReport {
+		val result = outer.result.error
+		val errorCause = Some(err)
+		def detail = outer.detail
+	}
+
+	/** Duration of the Suite in milliseconds.
+		* @see [[sbt.testing.Event.duration()]]
+		*/
+	lazy val duration : Long = detail.view.map( _.detail.duration() ).sum
+}
+object SuiteReport
+{
+	val empty : SuiteReport = apply(Nil)
+
+	def apply(err: Throwable) : SuiteReport = {
+		empty.error(err)
+	}
+
+	def apply(events: Seq[TestReport]): SuiteReport =
+		new SuiteReport {
+			val result = SuiteResult(events)
+			val detail = events
+			val errorCause = None
 		}
+}
+
+abstract class TestReport {
+	def stdout : String
+	def detail : TEvent
+	def result : TestResult.Value
+}
+object TestReport {
+	
+	def apply(out: String, event: TEvent) : TestReport = 
+		new TestReport {
+			val stdout = out
+			val detail = event
+			val result = toTestResult(event)
+		}
+	
+	private[sbt] def toTestResult(event: TEvent) : TestResult.Value = {
+		event.status() match {
+			case TStatus.Error => TestResult.Error
+			case TStatus.Failure => TestResult.Failed
+			case _ => TestResult.Passed
+		}
+	}
 }
 
 object TestLogger
@@ -117,16 +173,12 @@ class TestLogger(val logging: TestLogging) extends TestsListener
 {
 	import logging.{global => log, logTest}
 
-	def startGroup(name: String) {}
-	def testEvent(event: TestEvent): Unit = {}
-	def endGroup(name: String, t: Throwable)
+	override def endSuite(name: String, suite: SuiteReport)
 	{
-		log.trace(t)
-		log.error("Could not run test " + name + ": " + t.toString)
+		for( error <- suite.errorCause ) {
+			log.trace(error)
+			log.error("Could not run test " + name + ": " + error.toString)
+		}
 	}
-	def endGroup(name: String, result: TestResult.Value) {}
-	def doInit {}
-	/** called once, at end of test group. */
-	def doComplete(finalResult: TestResult.Value): Unit = {}
 	override def contentLogger(test: TestDefinition): Option[ContentLogger] = Some(logTest(test))
 }

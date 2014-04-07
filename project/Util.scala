@@ -52,7 +52,8 @@ object Util
 		if(incl) Seq(
 			"org.scalacheck" %% "scalacheck" % "1.11.1" % "test",
 			"org.specs2" %% "specs2" % "1.12.3" % "test",
-			"junit" % "junit" % "4.11" % "test"
+			"junit" % "junit" % "4.11" % "test",
+			"org.backuity" %% "matchete" % "1.8" % "test"
 		)
 		else Seq()
 	}
