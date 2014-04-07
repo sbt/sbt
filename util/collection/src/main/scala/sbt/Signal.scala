@@ -19,6 +19,38 @@ object Signals
 			case Right(v) => v
 		}
 	}
+
+	/** Helper interface so we can expose internals of signal-isms to others. */
+	sealed trait Registration {
+		def remove(): Unit
+	}
+    /** Register a signal handler that can be removed later. 
+     * NOTE: Does not stack with other signal handlers!!!!
+     */
+    def register(handler: () => Unit, signal: String = INT): Registration =
+    	// TODO - Maybe we can just ignore things if not is-supported.
+    	if(supported(signal)) {
+	    	import sun.misc.{Signal,SignalHandler}
+	    	val intSignal = new Signal(signal)
+	    	val newHandler = new SignalHandler {
+				def handle(sig: Signal) { handler() }
+			}
+			val oldHandler = Signal.handle(intSignal, newHandler)
+			object unregisterNewHandler extends Registration {
+				override def remove(): Unit = {
+					Signal.handle(intSignal, oldHandler)
+				}
+			}
+			unregisterNewHandler
+		} else {
+			// TODO - Maybe we should just throw an exception if we don't support signals...
+			object NullUnregisterNewHandler extends Registration {
+				override def remove(): Unit = ()
+			}
+			NullUnregisterNewHandler
+		}
+
+
 	def supported(signal: String): Boolean =
 		try
 		{
