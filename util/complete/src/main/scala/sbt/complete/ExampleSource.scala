@@ -24,7 +24,8 @@ trait ExampleSource
 }
 
 /**
- * @param examples the source of examples that will be displayed to the user when they press the TAB key.
+ * A convenience example source that wraps any collection of strings into a source of examples.
+ * @param examples the examples that will be displayed to the user when they press the TAB key.
  */
 sealed case class FixedSetExamples(examples: Iterable[String]) extends ExampleSource {
 	override def withAddedPrefix(addedPrefix: String): ExampleSource = FixedSetExamples(examplesWithRemovedPrefix(addedPrefix))
