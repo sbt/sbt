@@ -19,20 +19,34 @@ final case class EvaluateConfig(cancelable: Boolean, restrictions: Seq[Tags.Rule
 
 
 
-/** Represents something that can be cancelled. */
+/** Represents something that can be cancelled. 
+ *  For example, this is implemented by the TaskEngine; invoking `cancel()` allows you
+ *  to cancel the current task exeuction.   A `TaskCancel` is passed to the 
+ *  [[TaskEvalautionCancelHandler]] which is responsible for calling `cancel()` when
+ *  appropriate.
+ */
 trait TaskCancel {
 	/** cancels whatever this points at. */
 	def cancel(): Unit
 }
-/** A handler for registering/remmoving listeners that allow you to cancel tasks. */
+/** 
+ * A handler for registering/remmoving listeners that allow you to cancel task
+ * execution.
+ *
+ * Implementations of this trait determine what will trigger `cancel()` for
+ * the task engine, providing in the `start` method.
+ */
 trait TaskEvaluationCancelHandler {
-  /* Evaluation is starting, here's a mechanism to cancel things. */
+  /** Called when task evaluation starts.
+   *
+   * @param canceller An object that can cancel the current task evaluation session.
+   */
   def start(canceller: TaskCancel): Unit
-  /* Task Evaluation is complete, whether success or failure. */
+  /** Called when task evaluation completes, either in success or failure. */
   def finish(): Unit
 }
 object TaskEvaluationCancelHandler {
-   /** An empty handler that does nothing. */
+   /** An empty handler that does not cancel tasks. */
    object Null extends TaskEvaluationCancelHandler {
    	  def start(canceller: TaskCancel): Unit = ()
       def finish(): Unit = ()
