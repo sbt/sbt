@@ -79,6 +79,19 @@ final object EvaluateTaskConfig {
 	  }
 	  AdaptedTaskConfig
 	}
+	/** Raw constructor for EvaluateTaskConfig. */
+	def apply(restrictions: Seq[Tags.Rule],
+	          checkCycles: Boolean,
+	          progressReporter: ExecuteProgress[Task],
+	          cancelHandler: TaskEvaluationCancelHandler): EvaluateTaskConfig = {
+		object SimpleEvaluateTaskConfig extends EvaluateTaskConfig {
+			def restrictions = restrictions
+			def checkCycles = checkCycles
+			def progressReporter = progressReporter
+			def cancelHandler = cancelHandler
+		}
+		SimpleEvaluateTaskConfig
+	}
 }
 
 final case class PluginData(dependencyClasspath: Seq[Attributed[File]], definitionClasspath: Seq[Attributed[File]], resolvers: Option[Seq[Resolver]], report: Option[UpdateReport], scalacOptions: Seq[String])
@@ -106,30 +119,38 @@ object EvaluateTask
 
 	val SystemProcessors = Runtime.getRuntime.availableProcessors
 
-	@deprecated("Use extractedConfig.", "0.13.0")
+	@deprecated("Use extractedTaskConfig.", "0.13.0")
 	def defaultConfig(state: State): EvaluateConfig =
 	{
 		val extracted = Project.extract(state)
 		extractedConfig(extracted, extracted.structure, state)
 	}
 
-	@deprecated("Use extractedConfig.", "0.13.0")
+	@deprecated("Use extractedTaskConfig.", "0.13.0")
 	def defaultConfig(extracted: Extracted, structure: BuildStructure) =
 		EvaluateConfig(false, restrictions(extracted, structure), progress = defaultProgress)
 
-  @deprecated("Use other extractedConfig", "0.13.2")
+    @deprecated("Use other extractedTaskConfig", "0.13.2")
 	def extractedConfig(extracted: Extracted, structure: BuildStructure): EvaluateConfig =
 	{
 		val workers = restrictions(extracted, structure)
 		val canCancel = cancelable(extracted, structure)
 		EvaluateConfig(cancelable = canCancel, restrictions = workers, progress = defaultProgress)
 	}
+	@deprecated("Use other extractedTaskConfig", "0.13.5")
 	def extractedConfig(extracted: Extracted, structure: BuildStructure, state: State): EvaluateConfig =
 	{
 		val workers = restrictions(extracted, structure)
 		val canCancel = cancelable(extracted, structure)
 		val progress = executeProgress(extracted, structure, state)
 		EvaluateConfig(cancelable = canCancel, restrictions = workers, progress = progress)
+	}
+	def extractedTaskConfig(extracted: Extracted, structure: BuildStructure, state: State): EvaluateTaskConfig =
+	{
+		val rs = restrictions(extracted, structure)
+		val canceller = cancelHandler(extracted, structure, state)
+		val progress = executeProgress(extracted, structure, state)
+		EvaluateTaskConfig(rs, false, progress, canceller)
 	}
 
 	def defaultRestrictions(maxWorkers: Int) = Tags.limitAll(maxWorkers) :: Nil
@@ -150,11 +171,13 @@ object EvaluateTask
 			1
 	def cancelable(extracted: Extracted, structure: BuildStructure): Boolean =
 		getSetting(Keys.cancelable, false, extracted, structure)
+   def cancelHandler(extracted: Extracted, structure: BuildStructure, state: State): TaskEvaluationCancelHandler =
+   	  getSetting(Keys.taskCancelHandler, {(_: State) => TaskEvaluationCancelHandler.Null}, extracted, structure)(state)
 
 	private[sbt] def executeProgress(extracted: Extracted, structure: BuildStructure, state: State): ExecuteProgress[Task] = {
 		import Types.const
-		 val maker: State => Keys.TaskProgress = getSetting(Keys.executeProgress, const(new Keys.TaskProgress(defaultProgress)), extracted, structure)
-		 maker(state).progress
+		val maker: State => Keys.TaskProgress = getSetting(Keys.executeProgress, const(new Keys.TaskProgress(defaultProgress)), extracted, structure)
+		maker(state).progress
    }
 
 	def getSetting[T](key: SettingKey[T], default: T, extracted: Extracted, structure: BuildStructure): T =
@@ -185,16 +208,20 @@ object EvaluateTask
 	* If the task is not defined, None is returned.  The provided task key is resolved against the current project `ref`.
 	* Task execution is configured according to settings defined in the loaded project.*/
 	def apply[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef): Option[(State, Result[T])] =
-		apply[T](structure, taskKey, state, ref, extractedConfig(Project.extract(state), structure))
+		apply[T](structure, taskKey, state, ref, extractedTaskConfig(Project.extract(state), structure, state))
 
 	/** Evaluates `taskKey` and returns the new State and the result of the task wrapped in Some.
 	* If the task is not defined, None is returned.  The provided task key is resolved against the current project `ref`.
 	* `config` configures concurrency and canceling of task execution.  */
+	@deprecated("Use EvalauteTaskConfig option instead.", "0.13.5")
 	def apply[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef, config: EvaluateConfig): Option[(State, Result[T])] =
+		apply(structure, taskKey, state, ref, EvaluateTaskConfig(config))
+	def apply[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef, config: EvaluateTaskConfig): Option[(State, Result[T])] = {
 		withStreams(structure, state) { str =>
 			for( (task, toNode) <- getTask(structure, taskKey, state, str, ref) ) yield
 				runTask(task, state, str, structure.index.triggers, config)(toNode)
 		}
+	}
 	def logIncResult(result: Result[_], state: State, streams: Streams) = result match { case Inc(i) => logIncomplete(i, state, streams); case _ => () }
 	def logIncomplete(result: Incomplete, state: State, streams: Streams)
 	{

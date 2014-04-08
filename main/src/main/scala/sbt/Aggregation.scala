@@ -59,7 +59,7 @@ final object Aggregation
 		import extracted.structure
 		val toRun = ts map { case KeyValue(k,t) => t.map(v => KeyValue(k,v)) } join;
 		val roots = ts map { case KeyValue(k,_) => k }
-		val config = extractedConfig(extracted, structure, s)
+		val config = extractedTaskConfig(extracted, structure, s)
 
 		val start = System.currentTimeMillis
 		val (newS, result) = withStreams(structure, s){ str =>

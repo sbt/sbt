@@ -498,12 +498,24 @@ object Project extends ProjectExtra
 	@deprecated("This method does not apply state changes requested during task execution.  Use 'runTask' instead, which does.", "0.11.1")
 	def evaluateTask[T](taskKey: ScopedKey[Task[T]], state: State, checkCycles: Boolean = false, maxWorkers: Int = EvaluateTask.SystemProcessors): Option[Result[T]] =
 		runTask(taskKey, state, EvaluateConfig(true, EvaluateTask.defaultRestrictions(maxWorkers), checkCycles)).map(_._2)
+
 	def runTask[T](taskKey: ScopedKey[Task[T]], state: State, checkCycles: Boolean = false): Option[(State, Result[T])] =
-		runTask(taskKey, state, EvaluateConfig(true, EvaluateTask.restrictions(state), checkCycles))
+	{
+		val extracted = Project.extract(state)
+		val ch = EvaluateTask.cancelHandler(extracted, extracted.structure, state)
+		val p = EvaluateTask.executeProgress(extracted, extracted.structure, state)
+		val r = EvaluateTask.restrictions(state)
+		runTask(taskKey, state, EvaluateTaskConfig(r, checkCycles, p, ch))
+	}
+    @deprecated("Use EvalauteTaskConfig option instead.", "0.13.5")
 	def runTask[T](taskKey: ScopedKey[Task[T]], state: State, config: EvaluateConfig): Option[(State, Result[T])] =
 	{
 		val extracted = Project.extract(state)
 		EvaluateTask(extracted.structure, taskKey, state, extracted.currentRef, config)
+	}
+	def runTask[T](taskKey: ScopedKey[Task[T]], state: State, config: EvaluateTaskConfig): Option[(State, Result[T])] = {
+		val extracted = Project.extract(state)
+		EvaluateTask(extracted.structure, taskKey, state, extracted.currentRef, config)	
 	}
 
 	implicit def projectToRef(p: Project): ProjectReference = LocalProject(p.id)
