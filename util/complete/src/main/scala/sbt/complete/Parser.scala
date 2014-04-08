@@ -744,6 +744,22 @@ private final class Examples[T](delegate: Parser[T], fixed: Set[String]) extends
 			Completions(fixed map(f => Completion.suggestion(f)) )
 	override def toString = "examples(" + delegate + ", " + fixed.take(2) + ")"
 }
+
+/**
+ * This class wraps an existing parser (the delegate), and replaces the delegate's completions with examples from
+ * the given example source.
+ *
+ * This class asks the example source for a limited amount of examples (to prevent lengthy and expensive
+ * computations and large amounts of allocated data). It then passes these examples on to the UI.
+ *
+ * @param delegate the parser to decorate with completion examples (i.e., completion of user input).
+ * @param exampleSource the source from which this class will take examples (potentially filter them with the delegate
+ *                      parser), and pass them to the UI.
+ * @param maxNumberOfExamples the maximum number of completions to read from the example source and pass to the UI. This
+ *                            limit prevents lengthy example generation and allocation of large amounts of memory.
+ * @param removeInvalidExamples indicates whether to remove examples that are deemed invalid by the delegate parser.
+ * @tparam T the type of value produced by the parser.
+ */
 private final class DynamicExamples[T](delegate: Parser[T], exampleSource: ExampleSource, maxNumberOfExamples: Int, removeInvalidExamples: Boolean) extends ValidParser[T]
 {
 	def derive(c: Char) = examples(delegate derive c, exampleSource.withAddedPrefix(c.toString), maxNumberOfExamples, removeInvalidExamples)
