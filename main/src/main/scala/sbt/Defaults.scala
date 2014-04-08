@@ -120,9 +120,9 @@ object Defaults extends BuildCommon
 		trapExit :== true,
 		connectInput :== false,
 		cancelable :== false,
-		taskCancelHandler := { state: State => 
-			if(cancelable.value) TaskEvaluationCancelHandler.Signal
-			else TaskEvaluationCancelHandler.Null
+		taskCancelStrategy := { state: State => 
+			if(cancelable.value) TaskCancellationStrategy.Signal
+			else TaskCancellationStrategy.Null
 		},
 		envVars :== Map.empty,
 		sbtVersion := appConfiguration.value.provider.id.version,

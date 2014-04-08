@@ -502,7 +502,7 @@ object Project extends ProjectExtra
 	def runTask[T](taskKey: ScopedKey[Task[T]], state: State, checkCycles: Boolean = false): Option[(State, Result[T])] =
 	{
 		val extracted = Project.extract(state)
-		val ch = EvaluateTask.cancelHandler(extracted, extracted.structure, state)
+		val ch = EvaluateTask.cancelStrategy(extracted, extracted.structure, state)
 		val p = EvaluateTask.executeProgress(extracted, extracted.structure, state)
 		val r = EvaluateTask.restrictions(state)
 		runTask(taskKey, state, EvaluateTaskConfig(r, checkCycles, p, ch))

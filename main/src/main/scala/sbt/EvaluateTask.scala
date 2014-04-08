@@ -19,7 +19,8 @@ final case class EvaluateConfig(cancelable: Boolean, restrictions: Seq[Tags.Rule
 
 
 
-/** Represents something that can be cancelled. 
+/** An API that allows you to cancel executing tasks upon some signal.
+ *
  *  For example, this is implemented by the TaskEngine; invoking `cancel()` allows you
  *  to cancel the current task exeuction.   A `TaskCancel` is passed to the 
  *  [[TaskEvalautionCancelHandler]] which is responsible for calling `cancel()` when
@@ -30,13 +31,14 @@ trait TaskCancel {
 	def cancel(): Unit
 }
 /** 
- * A handler for registering/remmoving listeners that allow you to cancel task
- * execution.
+ * A handler for how to handle task cancellation.
  *
  * Implementations of this trait determine what will trigger `cancel()` for
  * the task engine, providing in the `start` method.
+ *
+ * All methods on this API are expected to be called from the same thread.
  */
-trait TaskEvaluationCancelHandler {
+trait TaskCancellationStrategy {
   /** Called when task evaluation starts.
    *
    * @param canceller An object that can cancel the current task evaluation session.
@@ -45,14 +47,14 @@ trait TaskEvaluationCancelHandler {
   /** Called when task evaluation completes, either in success or failure. */
   def finish(): Unit
 }
-object TaskEvaluationCancelHandler {
+object TaskCancellationStrategy {
    /** An empty handler that does not cancel tasks. */
-   object Null extends TaskEvaluationCancelHandler {
+   object Null extends TaskCancellationStrategy {
    	  def start(canceller: TaskCancel): Unit = ()
       def finish(): Unit = ()
    }
    /** Cancel handler which registers for SIGINT and cancels tasks when it is received. */
-   object Signal extends TaskEvaluationCancelHandler {
+   object Signal extends TaskCancellationStrategy {
    	 private var registration: Option[Signals.Registration] = None
    	 def start(canceller: TaskCancel): Unit = {
    	 	registration = Some(Signals.register(() => canceller.cancel()))
@@ -78,7 +80,7 @@ sealed trait EvaluateTaskConfig {
 	def restrictions: Seq[Tags.Rule]
 	def checkCycles: Boolean
 	def progressReporter: ExecuteProgress[Task]
-	def cancelHandler: TaskEvaluationCancelHandler
+	def cancelStrategy: TaskCancellationStrategy
 }
 final object EvaluateTaskConfig {
 	/** Pulls in the old configuration format. */
@@ -87,9 +89,9 @@ final object EvaluateTaskConfig {
         def restrictions: Seq[Tags.Rule] = old.restrictions
         def checkCycles: Boolean = old.checkCycles
         def progressReporter: ExecuteProgress[Task] = old.progress
-        def cancelHandler: TaskEvaluationCancelHandler =
-          if(old.cancelable) TaskEvaluationCancelHandler.Signal
-          else TaskEvaluationCancelHandler.Null
+        def cancelStrategy: TaskCancellationStrategy =
+          if(old.cancelable) TaskCancellationStrategy.Signal
+          else TaskCancellationStrategy.Null
 	  }
 	  AdaptedTaskConfig
 	}
@@ -97,12 +99,12 @@ final object EvaluateTaskConfig {
 	def apply(restrictions: Seq[Tags.Rule],
 	          checkCycles: Boolean,
 	          progressReporter: ExecuteProgress[Task],
-	          cancelHandler: TaskEvaluationCancelHandler): EvaluateTaskConfig = {
+	          cancelStrategy: TaskCancellationStrategy): EvaluateTaskConfig = {
 		object SimpleEvaluateTaskConfig extends EvaluateTaskConfig {
 			def restrictions = restrictions
 			def checkCycles = checkCycles
 			def progressReporter = progressReporter
-			def cancelHandler = cancelHandler
+			def cancelStrategy = cancelStrategy
 		}
 		SimpleEvaluateTaskConfig
 	}
@@ -162,7 +164,7 @@ object EvaluateTask
 	def extractedTaskConfig(extracted: Extracted, structure: BuildStructure, state: State): EvaluateTaskConfig =
 	{
 		val rs = restrictions(extracted, structure)
-		val canceller = cancelHandler(extracted, structure, state)
+		val canceller = cancelStrategy(extracted, structure, state)
 		val progress = executeProgress(extracted, structure, state)
 		EvaluateTaskConfig(rs, false, progress, canceller)
 	}
@@ -185,8 +187,8 @@ object EvaluateTask
 			1
 	def cancelable(extracted: Extracted, structure: BuildStructure): Boolean =
 		getSetting(Keys.cancelable, false, extracted, structure)
-   def cancelHandler(extracted: Extracted, structure: BuildStructure, state: State): TaskEvaluationCancelHandler =
-   	  getSetting(Keys.taskCancelHandler, {(_: State) => TaskEvaluationCancelHandler.Null}, extracted, structure)(state)
+    def cancelStrategy(extracted: Extracted, structure: BuildStructure, state: State): TaskCancellationStrategy =
+   	  getSetting(Keys.taskCancelStrategy, {(_: State) => TaskCancellationStrategy.Null}, extracted, structure)(state)
 
 	private[sbt] def executeProgress(extracted: Extracted, structure: BuildStructure, state: State): ExecuteProgress[Task] = {
 		import Types.const
@@ -294,7 +296,7 @@ object EvaluateTask
 		import ConcurrentRestrictions.{completionService, TagMap, Tag, tagged, tagsKey}
 
 		val log = state.log
-		log.debug("Running task... Cancel: " + config.cancelHandler + ", check cycles: " + config.checkCycles)
+		log.debug("Running task... Cancel: " + config.cancelStrategy + ", check cycles: " + config.checkCycles)
 		val tags = tagged[Task[_]](_.info get tagsKey getOrElse Map.empty, Tags.predicate(config.restrictions))
 		val (service, shutdown) = completionService[Task[_], Completed](tags, (s: String) => log.warn(s))
 
@@ -324,9 +326,9 @@ object EvaluateTask
 			}
 		}
 		// Register with our cancel handler we're about to start.
-		config.cancelHandler.start(taskCancel)
+		config.cancelStrategy.start(taskCancel)
 		try run()
-		finally config.cancelHandler.finish()
+		finally config.cancelStrategy.finish()
 	}
 
 	private[this] def storeValuesForPrevious(results: RMap[Task, Result], state: State, streams: Streams): Unit =
