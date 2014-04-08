@@ -174,15 +174,8 @@ object Parser extends ParserMain
 	def mkFailures(errors: => Seq[String], definitive: Boolean = false): Failure = new Failure(errors.distinct, definitive)
 	def mkFailure(error: => String, definitive: Boolean = false): Failure = new Failure(error :: Nil, definitive)
 
-	def checkMatches(a: Parser[_], completions: Seq[String])
-	{
-		val bad = completions.filter( apply(a)(_).resultEmpty.isFailure)
-		if(!bad.isEmpty) sys.error("Invalid example completions: " + bad.mkString("'", "', '", "'"))
-	}
-
 	def tuple[A,B](a: Option[A], b: Option[B]): Option[(A,B)] =
 		(a,b) match { case (Some(av), Some(bv)) => Some((av, bv)); case _ => None }
-
 
 	def mapParser[A,B](a: Parser[A], f: A => B): Parser[B] =
 		a.ifValid {
@@ -302,7 +295,7 @@ trait ParserMain
 		def & (o: Parser[_]) = and(a, o)
 		def - (o: Parser[_]) = sub(a, o)
 		def examples(s: String*): Parser[A] = examples(s.toSet)
-		def examples(s: Set[String], check: Boolean = false): Parser[A] = Parser.examples(a, s, check)
+		def examples(s: Set[String], check: Boolean = false): Parser[A] = examples(new FixedSetExamples(s), s.size, check)
 		def examples(s: ExampleSource, maxNumberOfExamples: Int, removeInvalidExamples: Boolean): Parser[A] = Parser.examples(a, s, maxNumberOfExamples, removeInvalidExamples)
 		def filter(f: A => Boolean, msg: String => String): Parser[A] = filterParser(a, f, "", msg)
 		def string(implicit ev: A <:< Seq[Char]): Parser[String] = map(_.mkString)
@@ -437,18 +430,6 @@ trait ParserMain
 		// The x Completions.empty removes any trailing token completions where append.isEmpty
 		apply(p)(s).completions(level) x Completions.empty
 
-	def examples[A](a: Parser[A], completions: Set[String], check: Boolean = false): Parser[A] =
-		if(a.valid) {
-			a.result match
-			{
-				case Some(av) => success( av )
-				case None =>
-					if(check) checkMatches(a, completions.toSeq)
-					new Examples(a, completions)
-			}
-		}
-		else a
-
 	/**
 	 * @param a the parser to decorate with a source of examples. All validation and parsing is delegated to this parser,
 	 *          only [[Parser.completions]] is modified.
@@ -466,7 +447,7 @@ trait ParserMain
 			{
 				case Some(av) => success( av )
 				case None =>
-					new DynamicExamples(a, completions, maxNumberOfExamples, removeInvalidExamples)
+					new ParserWithExamples(a, completions, maxNumberOfExamples, removeInvalidExamples)
 			}
 		}
 		else a
@@ -732,18 +713,6 @@ private final class Not(delegate: Parser[_], failMessage: String) extends ValidP
 	}
 	override def toString = " -(%s)".format(delegate)
 }
-private final class Examples[T](delegate: Parser[T], fixed: Set[String]) extends ValidParser[T]
-{
-	def derive(c: Char) = examples(delegate derive c, fixed.collect { case x if x.length > 0 && x(0) == c => x substring 1 })
-	def result = delegate.result
-	lazy val resultEmpty = delegate.resultEmpty
-	def completions(level: Int) =
-		if(fixed.isEmpty)
-			if(resultEmpty.isValid) Completions.nil else Completions.empty
-		else
-			Completions(fixed map(f => Completion.suggestion(f)) )
-	override def toString = "examples(" + delegate + ", " + fixed.take(2) + ")"
-}
 
 /**
  * This class wraps an existing parser (the delegate), and replaces the delegate's completions with examples from
@@ -760,7 +729,7 @@ private final class Examples[T](delegate: Parser[T], fixed: Set[String]) extends
  * @param removeInvalidExamples indicates whether to remove examples that are deemed invalid by the delegate parser.
  * @tparam T the type of value produced by the parser.
  */
-private final class DynamicExamples[T](delegate: Parser[T], exampleSource: ExampleSource, maxNumberOfExamples: Int, removeInvalidExamples: Boolean) extends ValidParser[T]
+private final class ParserWithExamples[T](delegate: Parser[T], exampleSource: ExampleSource, maxNumberOfExamples: Int, removeInvalidExamples: Boolean) extends ValidParser[T]
 {
 	def derive(c: Char) = examples(delegate derive c, exampleSource.withAddedPrefix(c.toString), maxNumberOfExamples, removeInvalidExamples)
 	def result = delegate.result
