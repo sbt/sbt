@@ -5,6 +5,9 @@ Changes
 0.13.2 to 0.13.5
 ~~~~~~~~~~~~~~~~
 - The Scala version for sbt and sbt plugins is now 2.10.4.  This is a compatible version bump.
+- Added a new setting ``testResultLogger`` to allow customisation of logging of test results. (gh-1225)
+- When ``test`` is run and there are no tests available, omit logging output.
+  Especially useful for aggregate modules. ``test-only`` et al unaffected. (gh-1185)
 
 0.13.1 to 0.13.2
 ~~~~~~~~~~~~~~~~

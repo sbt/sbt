@@ -197,6 +197,7 @@ object Keys
 	val testForkedParallel = SettingKey[Boolean]("test-forked-parallel", "Whether forked tests should be executed in parallel", CTask)
 	val testExecution = TaskKey[Tests.Execution]("test-execution", "Settings controlling test execution", DTask)
 	val testFilter = TaskKey[Seq[String] => Seq[String => Boolean]]("test-filter", "Filter controlling whether the test is executed", DTask)
+	val testResultLogger = SettingKey[TestResultLogger]("test-result-logger", "Logs results after a test task completes.", DTask)
 	val testGrouping = TaskKey[Seq[Tests.Group]]("test-grouping", "Collects discovered tests into groups. Whether to fork and the options for forking are configurable on a per-group basis.", BMinusTask)
 	val isModule = AttributeKey[Boolean]("is-module", "True if the target is a module.", DSetting)
 

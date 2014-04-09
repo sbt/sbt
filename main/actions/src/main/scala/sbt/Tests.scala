@@ -264,78 +264,10 @@ object Tests
 		(tests, mains.toSet)
 	}
 
+	@deprecated("Tests.showResults() has been superseded with TestResultLogger and setting 'testResultLogger'.", "0.13.5")
 	def showResults(log: Logger, results: Output, noTestsMessage: =>String): Unit =
-	{
-		val multipleFrameworks = results.summaries.size > 1
-		def printSummary(name: String, message: String) 
-		{
-			if(message.isEmpty)
-				log.debug("Summary for " + name + " not available.")
-			else
-			{
-				if(multipleFrameworks) log.info(name)
-				log.info(message)
-			}
-		}
-
-		for (Summary(name, messages) <- results.summaries)
-			printSummary(name, messages)
-		val noSummary = results.summaries.headOption.forall(_.summaryText.size == 0)
-		val printStandard = multipleFrameworks || noSummary
-		// Print the standard one-liner statistic if no framework summary is defined, or when > 1 framework is in used.
-		if (printStandard)
-		{
-			val (skippedCount, errorsCount, passedCount, failuresCount, ignoredCount, canceledCount, pendingCount) = 
-				results.events.foldLeft((0, 0, 0, 0, 0, 0, 0)) { case ((skippedAcc, errorAcc, passedAcc, failureAcc, ignoredAcc, canceledAcc, pendingAcc), (name, testEvent)) =>
-					(skippedAcc + testEvent.skippedCount, errorAcc + testEvent.errorCount, passedAcc + testEvent.passedCount, failureAcc + testEvent.failureCount, 
-					 ignoredAcc + testEvent.ignoredCount, canceledAcc + testEvent.canceledCount, pendingAcc + testEvent.pendingCount)
-				}
-			val totalCount = failuresCount + errorsCount + skippedCount + passedCount
-			val base = s"Total $totalCount, Failed $failuresCount, Errors $errorsCount, Passed $passedCount"
-
-			val otherCounts = Seq("Skipped" -> skippedCount, "Ignored" -> ignoredCount, "Canceled" -> canceledCount, "Pending" -> pendingCount)
-			val extra = otherCounts.filter(_._2 > 0).map{case(label,count) => s", $label $count" }
-
-			val postfix = base + extra.mkString
-			results.overall match {
-				case TestResult.Error => log.error("Error: " + postfix)
-				case TestResult.Passed => log.info("Passed: " + postfix)
-				case TestResult.Failed => log.error("Failed: " + postfix)
-			}
-		}
-		// Let's always print out Failed tests for now
-		if (results.events.isEmpty)
-			log.info(noTestsMessage)
-		else {
-			import TestResult.{Error, Failed, Passed}
-			import scala.reflect.NameTransformer.decode
-
-			def select(resultTpe: TestResult.Value) = results.events collect {
-				case (name, tpe) if tpe.result == resultTpe =>
-					decode(name)
-			}
-
-			val failures = select(Failed)
-			val errors = select(Error)
-			val passed = select(Passed)
-
-			def show(label: String, level: Level.Value, tests: Iterable[String]): Unit =
-				if(!tests.isEmpty)
-				{
-					log.log(level, label)
-					log.log(level, tests.mkString("\t", "\n\t", ""))
-				}
-
-			show("Passed tests:", Level.Debug, passed )
-			show("Failed tests:", Level.Error, failures)
-			show("Error during tests:", Level.Error, errors)
-		}
-
-		results.overall match {
-			case TestResult.Error | TestResult.Failed => throw new TestsFailedException
-			case TestResult.Passed => 
-		}
-	}
+    TestResultLogger.Default.copy(printNoTests = TestResultLogger.const(_ info noTestsMessage))
+      .run(log, results, "")
 }
 
 final class TestsFailedException extends RuntimeException("Tests unsuccessful") with FeedbackProvidedException

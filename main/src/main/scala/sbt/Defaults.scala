@@ -371,6 +371,7 @@ object Defaults extends BuildCommon
 		},
 		testListeners :== Nil,
 		testOptions :== Nil,
+		testResultLogger :== TestResultLogger.Default,
 		testFilter in testOnly :== (selectedFilter _)
 	))
 	lazy val testTasks: Seq[Setting[_]] = testTaskOptions(test) ++ testTaskOptions(testOnly) ++ testTaskOptions(testQuick) ++ testDefaults ++ Seq(
@@ -380,16 +381,15 @@ object Defaults extends BuildCommon
 		definedTestNames <<= definedTests map ( _.map(_.name).distinct) storeAs definedTestNames triggeredBy compile,
 		testFilter in testQuick <<= testQuickFilter,
 		executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, testForkedParallel) flatMap allTestGroupsTask,
+		testResultLogger in (Test, test) :== TestResultLogger.SilentWhenNoTests, // https://github.com/sbt/sbt/issues/1185
 		test := {
-			implicit val display = Project.showContextKey(state.value)
-			Tests.showResults(streams.value.log, executeTests.value, noTestsMessage(resolvedScoped.value))
+			val trl = (testResultLogger in (Test, test)).value
+			val taskName = Project.showContextKey(state.value)(resolvedScoped.value)
+			trl.run(streams.value.log, executeTests.value, taskName)
 		},
 		testOnly <<= inputTests(testOnly),
 		testQuick <<= inputTests(testQuick)
 	)
-	private[this] def noTestsMessage(scoped: ScopedKey[_])(implicit display: Show[ScopedKey[_]]): String =
-		"No tests to run for " + display(scoped)
-
 	lazy val TaskGlobal: Scope = ThisScope.copy(task = Global)
 	lazy val ConfigGlobal: Scope = ThisScope.copy(config = Global)
 	def testTaskOptions(key: Scoped): Seq[Setting[_]] = inTask(key)( Seq(
@@ -488,9 +488,9 @@ object Defaults extends BuildCommon
 			val modifiedOpts = Tests.Filters(filter(selected)) +: Tests.Argument(frameworkOptions : _*) +: config.options
 			val newConfig = config.copy(options = modifiedOpts)
 			val output = allTestGroupsTask(s, loadedTestFrameworks.value, testLoader.value, testGrouping.value, newConfig, fullClasspath.value, javaHome.value, testForkedParallel.value)
-			val processed =
-				for(out <- output) yield
-					Tests.showResults(s.log, out, noTestsMessage(resolvedScoped.value))
+			val taskName = display(resolvedScoped.value)
+			val trl = testResultLogger.value
+			val processed = output.map(out => trl.run(s.log, out, taskName))
 			Def.value(processed)
 		}
 	}
