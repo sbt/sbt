@@ -99,11 +99,15 @@ final object EvaluateTaskConfig {
 	          checkCycles: Boolean,
 	          progressReporter: ExecuteProgress[Task],
 	          cancelStrategy: TaskCancellationStrategy): EvaluateTaskConfig = {
+		val r = restrictions
+		val check = checkCycles
+		val cs = cancelStrategy
+		val pr = progressReporter
 		object SimpleEvaluateTaskConfig extends EvaluateTaskConfig {
-			def restrictions = restrictions
-			def checkCycles = checkCycles
-			def progressReporter = progressReporter
-			def cancelStrategy = cancelStrategy
+			def restrictions = r
+			def checkCycles = check
+			def progressReporter = pr
+			def cancelStrategy = cs
 		}
 		SimpleEvaluateTaskConfig
 	}
