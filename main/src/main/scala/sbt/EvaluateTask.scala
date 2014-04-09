@@ -26,12 +26,12 @@ final case class EvaluateConfig(cancelable: Boolean, restrictions: Seq[Tags.Rule
  *  [[TaskEvalautionCancelHandler]] which is responsible for calling `cancel()` when
  *  appropriate.
  */
-trait TaskCancel {
-	/** cancels whatever this points at. */
-	def cancel(): Unit
+trait RunningTaskEngine {
+	/** Attempts to kill and shutdown the running task engine.*/
+	def cancelAndShutdown(): Unit
 }
 /** 
- * A handler for how to handle task cancellation.
+ * A startegy for being able to cancle tasks.
  *
  * Implementations of this trait determine what will trigger `cancel()` for
  * the task engine, providing in the `start` method.
@@ -39,33 +39,32 @@ trait TaskCancel {
  * All methods on this API are expected to be called from the same thread.
  */
 trait TaskCancellationStrategy {
+  /** The state used by this task. */
+  type State
   /** Called when task evaluation starts.
    *
    * @param canceller An object that can cancel the current task evaluation session.
+   * @return Whatever state you need to cleanup in your finish method.
    */
-  def start(canceller: TaskCancel): Unit
+  def onTaskEngineStart(canceller: RunningTaskEngine): State
   /** Called when task evaluation completes, either in success or failure. */
-  def finish(): Unit
+  def onTaskEngineFinish(state: State): Unit
 }
 object TaskCancellationStrategy {
    /** An empty handler that does not cancel tasks. */
    object Null extends TaskCancellationStrategy {
-   	  def start(canceller: TaskCancel): Unit = ()
-      def finish(): Unit = ()
+   	  type State = Unit
+   	  def onTaskEngineStart(canceller: RunningTaskEngine): Unit = ()
+      def onTaskEngineFinish(state: Unit): Unit = ()
    }
    /** Cancel handler which registers for SIGINT and cancels tasks when it is received. */
    object Signal extends TaskCancellationStrategy {
-   	 private var registration: Option[Signals.Registration] = None
-   	 def start(canceller: TaskCancel): Unit = {
-   	 	registration = Some(Signals.register(() => canceller.cancel()))
+   	type State = Signals.Registration
+   	 def onTaskEngineStart(canceller: RunningTaskEngine): Signals.Registration = {
+   	 	Signals.register(() => canceller.cancelAndShutdown())
    	 }
-   	 def finish(): Unit =
-   	   registration match {
-   	   	 case Some(value) => 
-   	   	   value.remove()
-   	   	   registration = None
-         case None =>
-   	   }
+   	 def onTaskEngineFinish(registration: Signals.Registration): Unit =
+   	   registration.remove()
    }
 }
 
@@ -318,17 +317,18 @@ object EvaluateTask
 			logIncResult(replaced, state, streams)
 			(newState, replaced)
 		}
-		object taskCancel extends TaskCancel { 
-			def cancel(): Unit = {
+		object runningEngine extends RunningTaskEngine { 
+			def cancelAndShutdown(): Unit = {
 			  println("")
 			  log.warn("Canceling execution...")
 			  shutdown()
 			}
 		}
 		// Register with our cancel handler we're about to start.
-		config.cancelStrategy.start(taskCancel)
+		val strat = config.cancelStrategy
+		val cancelState = strat.onTaskEngineStart(runningEngine)
 		try run()
-		finally config.cancelStrategy.finish()
+		finally strat.onTaskEngineFinish(cancelState)
 	}
 
 	private[this] def storeValuesForPrevious(results: RMap[Task, Result], state: State, streams: Streams): Unit =
