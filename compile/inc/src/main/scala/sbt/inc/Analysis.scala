@@ -30,7 +30,18 @@ trait Analysis
 	/** Mappings between sources, classes, and binaries. */
 	val relations: Relations
 	val infos: SourceInfos
-	/** Information about compiler runs accumulated since `clean` command has been run. */
+	/**
+	 * Information about compiler runs accumulated since `clean` command has been run.
+	 *
+	 * The main use-case for using `compilations` field is to determine how
+	 * many iterations it took to compilen give code. The `Compilation` object
+	 * are also stored in `Source` objects so there's an indirect way to recover
+	 * information about files being recompiled in every iteration.
+	 *
+	 * The incremental compilation algorithm doesn't use information stored in
+	 * `compilations`. It's safe to prune contents of that field without breaking
+	 * internal consistency of the entire Analysis object.
+	 */
 	val compilations: Compilations
 
 	/** Concatenates Analysis objects naively, i.e., doesn't internalize external deps on added files. See `Analysis.merge`. */
