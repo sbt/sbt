@@ -120,6 +120,10 @@ object Defaults extends BuildCommon
 		trapExit :== true,
 		connectInput :== false,
 		cancelable :== false,
+		taskCancelStrategy := { state: State => 
+			if(cancelable.value) TaskCancellationStrategy.Signal
+			else TaskCancellationStrategy.Null
+		},
 		envVars :== Map.empty,
 		sbtVersion := appConfiguration.value.provider.id.version,
 		sbtBinaryVersion := binarySbtVersion(sbtVersion.value),
