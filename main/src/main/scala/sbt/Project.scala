@@ -112,7 +112,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference]
     /** Adds configuration at the *start* of the configuration list for this rpoject.  Prevous configurations replace this prefix
      * list with the same name. 
      */
-    def prefixConfigs(cs: Configuration*): Project = copy(configurations = Defaults.overrideConfigs(configurations : _*)(cs))
+    private[sbt] def prefixConfigs(cs: Configuration*): Project = copy(configurations = Defaults.overrideConfigs(configurations : _*)(cs))
 
 	/** Adds new configurations directly to this project.  To override an existing configuration, use `overrideConfigs`. */
 	def configs(cs: Configuration*): Project = copy(configurations = configurations ++ cs)
