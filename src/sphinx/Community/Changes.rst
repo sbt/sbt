@@ -8,6 +8,12 @@ Changes
 - Added a new setting ``testResultLogger`` to allow customisation of logging of test results. (gh-1225)
 - When ``test`` is run and there are no tests available, omit logging output.
   Especially useful for aggregate modules. ``test-only`` et al unaffected. (gh-1185)
+- sbt now uses minor-patch version of ivy 2.4 (org.scala-sbt.ivy:ivy:2.4.0-sbt-<git sha>)
+- ``sbt.Plugin`` deprecated in favor of ``sbt.AutoPlugin``
+- name-hashing incremental compiler now supports scala macros.
+- ``testResultLogger`` is now configured.
+- sbt-server hooks for task cancellation.
+
 
 0.13.1 to 0.13.2
 ~~~~~~~~~~~~~~~~
