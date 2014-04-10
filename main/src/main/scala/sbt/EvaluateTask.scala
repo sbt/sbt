@@ -292,7 +292,7 @@ object EvaluateTask
     def runTask[T](root: Task[T], state: State, streams: Streams, triggers: Triggers[Task], config: EvaluateConfig)(implicit taskToNode: NodeView[Task]): (State, Result[T]) =
     {
     	val newConfig = EvaluateTaskConfig(config)
-    	runTask(root, state, streams, triggers, config)(taskToNode)
+    	runTask(root, state, streams, triggers, newConfig)(taskToNode)
     }
 	def runTask[T](root: Task[T], state: State, streams: Streams, triggers: Triggers[Task], config: EvaluateTaskConfig)(implicit taskToNode: NodeView[Task]): (State, Result[T]) =
 	{
