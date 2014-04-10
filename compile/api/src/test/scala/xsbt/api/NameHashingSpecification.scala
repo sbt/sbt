@@ -1,8 +1,7 @@
-package sbt.inc
+package xsbt.api
 
 import org.junit.runner.RunWith
 import xsbti.api._
-import xsbt.api.HashAPI
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
 
