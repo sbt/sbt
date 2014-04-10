@@ -469,7 +469,7 @@ object Load
 			val autoConfigs = autoPlugins.flatMap(_.projectConfigurations)
 			val loadedSbtFiles = loadSbtFiles(project.auto, project.base, autoPlugins, project.settings)
 			// add the automatically selected settings, record the selected AutoPlugins, and register the automatically selected configurations
-			val transformed = project.copy(settings = loadedSbtFiles.settings).setAutoPlugins(autoPlugins).overrideConfigs(autoConfigs : _*)
+			val transformed = project.copy(settings = loadedSbtFiles.settings).setAutoPlugins(autoPlugins).prefixConfigs(autoConfigs : _*)
 			(transformed, loadedSbtFiles.projects)
 		}
 		def defaultLoad = loadSbtFiles(AddSettings.defaultSbtFiles, buildBase, Nil, Nil).projects
