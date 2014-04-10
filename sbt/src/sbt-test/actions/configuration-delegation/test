@@ -1,0 +1,8 @@
+# First make sure a task just on the new config delegates.
+> bar
+$ exists pt-bar
+
+
+# Now make sure compile is the default configuration
+> foo
+$ exists compile-foo
