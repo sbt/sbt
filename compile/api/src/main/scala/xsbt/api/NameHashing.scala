@@ -1,4 +1,4 @@
-package sbt.inc
+package xsbt.api
 
 import xsbti.api.SourceAPI
 import xsbti.api.Definition
@@ -6,7 +6,10 @@ import xsbti.api.DefinitionType
 import xsbti.api.ClassLike
 import xsbti.api._internalOnly_NameHash
 import xsbti.api._internalOnly_NameHashes
-import xsbt.api.Visit
+import xsbti.api.DefinitionType.ClassDef
+import xsbti.api.DefinitionType.Module
+import xsbti.api.DefinitionType.PackageModule
+import xsbti.api.DefinitionType.Trait
 
 /**
  * A class that computes hashes for each group of definitions grouped by a simple name.
