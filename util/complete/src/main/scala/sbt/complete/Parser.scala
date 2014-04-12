@@ -752,7 +752,7 @@ private final class ParserWithExamples[T](delegate: Parser[T], exampleSource: Ex
 	}
 
 	private def isExampleValid(example: String): Boolean = {
-		apply(delegate)(example).resultEmpty.isFailure
+		apply(delegate)(example).resultEmpty.isValid
 	}
 }
 private final class StringLiteral(str: String, start: Int) extends ValidParser[String]
