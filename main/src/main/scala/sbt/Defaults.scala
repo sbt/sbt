@@ -215,7 +215,8 @@ object Defaults extends BuildCommon
 	)
 
 	def compileBase = inTask(console)(compilersSetting :: Nil) ++ compileBaseGlobal ++ Seq(
-		incOptions := IncOptions.setTransactional(incOptions.value, crossTarget.value / "classes.bak"),
+		incOptions := incOptions.value.withNewClassfileManager(
+			sbt.inc.ClassfileManager.transactional(crossTarget.value / "classes.bak", sbt.Logger.Null)),
 		scalaInstance <<= scalaInstanceTask,
 		crossVersion := (if(crossPaths.value) CrossVersion.binary else CrossVersion.Disabled),
 		crossTarget := makeCrossTarget(target.value, scalaBinaryVersion.value, sbtBinaryVersion.value, sbtPlugin.value, crossPaths.value)

@@ -234,9 +234,12 @@ object IncOptions extends Serializable {
     private def readResolve(): Object = IncOptions
 	//- EXPANDED CASE CLASS METHOD END -//
 
-	def defaultTransactional(tempDir: File): IncOptions = setTransactional(Default, tempDir)
+	@deprecated("Use IncOptions.Default.withNewClassfileManager(ClassfileManager.transactional(tempDir)), instead.", "0.13.5")
+	def defaultTransactional(tempDir: File): IncOptions =
+		setTransactional(Default, tempDir)
+	@deprecated("Use opts.withNewClassfileManager(ClassfileManager.transactional(tempDir)), instead.", "0.13.5")
 	def setTransactional(opts: IncOptions, tempDir: File): IncOptions =
-		opts.copy(newClassfileManager = ClassfileManager.transactional(tempDir))
+		opts.withNewClassfileManager(ClassfileManager.transactional(tempDir, sbt.Logger.Null))
 
 	private val transitiveStepKey       = "transitiveStep"
 	private val recompileAllFractionKey = "recompileAllFraction"
