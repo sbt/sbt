@@ -77,7 +77,6 @@ typesafe_ivy_releases = typesafe_base + 'ivy-releases/'
 launcher_release_base = typesafe_ivy_releases + 'org.scala-sbt/sbt-launch/'
 bintray_dl_base = 'http://dl.bintray.com/'
 launcher_snapshots_base = typesafe_ivy_snapshots + 'org.scala-sbt/sbt-launch/'
-sbt_native_package_base_old = 'http://repo.scala-sbt.org/scalasbt/sbt-native-packages/org/scala-sbt/sbt/'
 sbt_native_package_base = bintray_dl_base + 'sbt/native-packages/sbt/'
 sbt_debian_base = bintray_dl_base + 'sbt/debian/'
 sbt_rpm_base = bintray_dl_base + 'sbt/rpm/'
@@ -88,7 +87,7 @@ rst_epilog = """
 .. _typesafe-snapshots: %(typesafe_ivy_snapshots)s
 .. |typesafe-snapshots| replace:: Typesafe Snapshots
 .. _sbt-launch.jar: %(launcher_release_base)s%(release)s/sbt-launch.jar
-.. _MSI: %(sbt_native_package_base_old)s%(release)s/sbt.msi
+.. _MSI: %(sbt_native_package_base)s%(release)s/sbt-%(release)s.msi
 .. _TGZ: %(sbt_native_package_base)s%(release)s/sbt-%(release)s.tgz
 .. _ZIP: %(sbt_native_package_base)s%(release)s/sbt-%(release)s.zip
 .. _DEB: %(sbt_debian_base)ssbt-%(release)s.deb
