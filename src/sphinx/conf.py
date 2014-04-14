@@ -75,8 +75,12 @@ typesafe_base = 'http://repo.typesafe.com/typesafe/'
 typesafe_ivy_snapshots = typesafe_base + 'ivy-snapshots/'
 typesafe_ivy_releases = typesafe_base + 'ivy-releases/'
 launcher_release_base = typesafe_ivy_releases + 'org.scala-sbt/sbt-launch/'
+bintray_dl_base = 'http://dl.bintray.com/'
 launcher_snapshots_base = typesafe_ivy_snapshots + 'org.scala-sbt/sbt-launch/'
-sbt_native_package_base = 'http://repo.scala-sbt.org/scalasbt/sbt-native-packages/org/scala-sbt/sbt/'
+sbt_native_package_base_old = 'http://repo.scala-sbt.org/scalasbt/sbt-native-packages/org/scala-sbt/sbt/'
+sbt_native_package_base = bintray_dl_base + 'sbt/native-packages/sbt/'
+sbt_debian_base = bintray_dl_base + 'sbt/debian/'
+sbt_rpm_base = bintray_dl_base + 'sbt/rpm/'
 
 rst_epilog = """
 .. |scalaVersion| replace:: %(scalaVersion)s
@@ -84,11 +88,11 @@ rst_epilog = """
 .. _typesafe-snapshots: %(typesafe_ivy_snapshots)s
 .. |typesafe-snapshots| replace:: Typesafe Snapshots
 .. _sbt-launch.jar: %(launcher_release_base)s%(release)s/sbt-launch.jar
-.. _MSI: %(sbt_native_package_base)s%(release)s/sbt.msi
-.. _TGZ: %(sbt_native_package_base)s%(release)s/sbt.tgz
-.. _ZIP: %(sbt_native_package_base)s%(release)s/sbt.zip
-.. _DEB: %(sbt_native_package_base)s%(release)s/sbt.deb
-.. _RPM: %(sbt_native_package_base)s%(release)s/sbt.rpm
+.. _MSI: %(sbt_native_package_base_old)s%(release)s/sbt.msi
+.. _TGZ: %(sbt_native_package_base)s%(release)s/sbt-%(release)s.tgz
+.. _ZIP: %(sbt_native_package_base)s%(release)s/sbt-%(release)s.zip
+.. _DEB: %(sbt_debian_base)ssbt-%(release)s.deb
+.. _RPM: %(sbt_rpm_base)ssbt-%(release)s.rpm
 .. |nightly-launcher| replace:: %(launcher_snapshots_base)s
 .. _sbt-dev mailing list: https://groups.google.com/forum/#!forum/sbt-dev
 .. _adept: https://groups.google.com/group/adept-dev/topics
@@ -102,6 +106,9 @@ rst_epilog = """
    'launcher_snapshots_base': launcher_snapshots_base,
    'typesafe_ivy_snapshots': typesafe_ivy_snapshots,
    'sbt_native_package_base': sbt_native_package_base,
+   'sbt_rpm_base': sbt_rpm_base,
+   'sbt_debian_base': sbt_debian_base,
+   'sbt_native_package_base_old': sbt_native_package_base_old,
    'scalaRelease': scalaRelease,
    'scalaVersion': scalaVersion,
    'release': release
