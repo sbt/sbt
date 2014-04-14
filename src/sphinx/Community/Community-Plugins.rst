@@ -219,6 +219,8 @@ Library dependency plugins
    https://github.com/sbt/sbt-dirty-money
 -  sbt-updates (Checks Maven repos for dependency updates):
    https://github.com/rtimush/sbt-updates
+-  sbt-lock (Locks library versions for reproducible build):
+   https://github.com/tkawachi/sbt-lock
 
 Utility plugins
 ~~~~~~~~~~~~~~~
@@ -250,6 +252,8 @@ Utility plugins
    https://github.com/davidharcombe/sbt-multi-publish
 -  sbt-about-plugins (shows some details about plugins loaded):
    https://github.com/jozic/sbt-about-plugins
+-  sbt-git-stamp (include git metadata in MANIFEST.MF file in artifact):
+   https://bitbucket.org/pkaeding/sbt-git-stamp
 
 Code coverage plugins
 ~~~~~~~~~~~~~~~~~~~~~
