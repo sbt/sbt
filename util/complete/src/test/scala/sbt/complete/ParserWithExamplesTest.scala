@@ -7,14 +7,14 @@ import Completion._
 class ParserWithExamplesTest extends Specification {
 
 	"listing a limited number of completions" should {
-		"grab only the needed number of elements the iterable source of examples" in new parserWithLazyExamples {
+		"grab only the needed number of elements from the iterable source of examples" in new parserWithLazyExamples {
 			parserWithExamples.completions(0)
 			examples.size shouldEqual maxNumberOfExamples
 		}
 	}
 
 	"listing only valid completions" should {
-		"remove invalid examples" in new parserWithValidExamples {
+		"use the delegate parser to remove invalid examples" in new parserWithValidExamples {
 			val validCompletions = Completions(Set(
 				suggestion("blue"),
 				suggestion("red")
@@ -23,8 +23,8 @@ class ParserWithExamplesTest extends Specification {
 		}
 	}
 
-	"listing completions in a derived parser" should {
-		"produce only examples that match the derivation" in new parserWithValidExamples {
+	"listing valid completions in a derived parser" should {
+		"produce only valid examples that start with the character of the derivation" in new parserWithValidExamples {
 			val derivedCompletions = Completions(Set(
 				suggestion("lue")
 			))
@@ -32,15 +32,15 @@ class ParserWithExamplesTest extends Specification {
 		}
 	}
 
-	"listing unfiltered completions" should {
-		"produce all examples" in new parserWithAllExamples {
+	"listing valid and invalid completions" should {
+		"produce the entire source of examples" in new parserWithAllExamples {
 			val completions = Completions(examples.map(suggestion(_)).toSet)
 			parserWithExamples.completions(0) shouldEqual completions
 		}
 	}
 
-	"listing completions in a derived parser" should {
-		"produce only examples that match the derivation" in new parserWithAllExamples {
+	"listing valid and invalid completions in a derived parser" should {
+		"produce only examples that start with the character of the derivation" in new parserWithAllExamples {
 			val derivedCompletions = Completions(Set(
 				suggestion("lue"),
 				suggestion("lock")
@@ -62,7 +62,7 @@ class ParserWithExamplesTest extends Specification {
 		import DefaultParsers._
 
 		val colorParser = "blue" | "green" | "black" | "red"
-		val parserWithExamples = new ParserWithExamples[String](
+		val parserWithExamples: Parser[String] = new ParserWithExamples[String](
 			colorParser,
 			FixedSetExamples(examples),
 			maxNumberOfExamples,
@@ -71,7 +71,7 @@ class ParserWithExamplesTest extends Specification {
 	}
 
 	case class GrowableSourceOfExamples() extends Iterable[String] {
-		var numberOfIteratedElements: Int = 0
+		private var numberOfIteratedElements: Int = 0
 
 		override def iterator: Iterator[String] = {
 			new Iterator[String] {
