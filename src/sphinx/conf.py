@@ -107,7 +107,6 @@ rst_epilog = """
    'sbt_native_package_base': sbt_native_package_base,
    'sbt_rpm_base': sbt_rpm_base,
    'sbt_debian_base': sbt_debian_base,
-   'sbt_native_package_base_old': sbt_native_package_base_old,
    'scalaRelease': scalaRelease,
    'scalaVersion': scalaVersion,
    'release': release
