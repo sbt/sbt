@@ -13,7 +13,7 @@ When you find a bug in sbt we want to hear about it. Your bug reports play an im
 
 Effective bug reports are more likely to be fixed. These guidelines explain how to write such reports and pull requests.
 
-Preliminatries
+Preliminaries
 --------------
 
 - Make sure your sbt version is up to date.
@@ -43,7 +43,7 @@ Repro steps are the most important part of a bug report. If we cannot reproduce 
 
 ### Problems
 
-Next, describe the problems, or what *you think* is the problem. It might be "obvious" to you that it's a problem, but it could actually be an intentional behavior for some backward compatibility etc. For complication errors, include stack trace. More raw info the better.
+Next, describe the problems, or what *you think* is the problem. It might be "obvious" to you that it's a problem, but it could actually be an intentional behavior for some backward compatibility etc. For compilation errors, include the stack trace. The more raw info the better.
 
 ### Expectations
 
