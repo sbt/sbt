@@ -154,7 +154,7 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 		if (APIUtil.isScalaSourceName(sourceFile.getName) && APIUtil.hasMacro(source)) macroSources += sourceFile
 		publicNameHashes(sourceFile) = {
 			if (nameHashing)
-				(new NameHashing).nameHashes(source)
+				(new xsbt.api.NameHashing).nameHashes(source)
 			else
 				emptyNameHashes
 		}
