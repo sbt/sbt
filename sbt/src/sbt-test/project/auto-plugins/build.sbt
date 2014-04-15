@@ -13,6 +13,8 @@ lazy val projD = project
 // with S selected, Q is loaded automatically, which in turn selects R
 lazy val projE = project.enablePlugins(S)
 
+disablePlugins(plugins.IvyPlugin)
+
 check := {
 	val adel = (del in projA).?.value // should be None
 	same(adel, None, "del in projA")

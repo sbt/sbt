@@ -122,8 +122,8 @@ object EvaluateConfigurations {
    * The name of the class we cast DSL "setting" (vs. definition) lines to.
    */
   val SettingsDefinitionName = {
-    val _ = classOf[sbt.Def.SettingsDefinition] // this line exists to try to provide a compile-time error when the following line needs to be changed
-    "sbt.Def.SettingsDefinition"
+    val _ = classOf[sbt.internals.DslEntry] // this line exists to try to provide a compile-time error when the following line needs to be changed
+    "sbt.internals.DslEntry"
   }
   /**
    * This actually compiles a scala expression which represents a Seq[Setting[_]], although the
@@ -147,7 +147,10 @@ object EvaluateConfigurations {
       }
       loader => {
         val pos = RangePosition(name, range shift 1)
-        result.getValue(loader).asInstanceOf[SettingsDefinition].settings map (_ withPos pos)
+        (result.getValue(loader).asInstanceOf[internals.DslEntry] match {
+          case internals.DslSetting(value) => value.settings
+          case _                           => Nil
+        }) map (_ withPos pos)
       }
     }
   private[this] def isSpace = (c: Char) => Character isWhitespace c

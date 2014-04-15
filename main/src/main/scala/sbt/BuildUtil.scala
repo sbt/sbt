@@ -68,7 +68,8 @@ object BuildUtil {
       deps(proj)(_.aggregate)
     }
   }
-  def baseImports: Seq[String] = "import sbt._, Keys._" :: Nil
+
+  def baseImports: Seq[String] = "import sbt._, Keys._, dsl._" :: Nil
 
   def getImports(unit: BuildUnit): Seq[String] = unit.plugins.detected.imports
 
