@@ -1,17 +1,17 @@
 // disablePlugins(Q) will prevent R from being auto-added
-lazy val projA = project.addPlugins(A, B).disablePlugins(Q)
+lazy val projA = project.enablePlugins(A, B).disablePlugins(Q)
 
 // without B, Q is not added
-lazy val projB = project.addPlugins(A)
+lazy val projB = project.enablePlugins(A)
 
 // with both A and B, Q is selected, which in turn selects R, but not S
-lazy val projC = project.addPlugins(A, B)
+lazy val projC = project.enablePlugins(A, B)
 
 // with no natures defined, nothing is auto-added
 lazy val projD = project
 
 // with S selected, Q is loaded automatically, which in turn selects R
-lazy val projE = project.addPlugins(S)
+lazy val projE = project.enablePlugins(S)
 
 check := {
 	val adel = (del in projA).?.value // should be None

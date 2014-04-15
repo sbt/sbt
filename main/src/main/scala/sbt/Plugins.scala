@@ -41,11 +41,11 @@ Steps for users:
 
 For example, given plugins Web and Javascript (perhaps provided by plugins added with addSbtPlugin),
 
-  <Project>.addPlugins( Web && Javascript )
+  <Project>.enablePlugins( Web && Javascript )
 
 will activate `MyPlugin` defined above and have its settings automatically added.  If the user instead defines
 
-  <Project>.addPlugins( Web && Javascript ).disablePlugins(MyPlugin)
+  <Project>.enablePlugins( Web && Javascript ).disablePlugins(MyPlugin)
 
 then the `MyPlugin` settings (and anything that activates only when `MyPlugin` is activated) will not be added.
 
