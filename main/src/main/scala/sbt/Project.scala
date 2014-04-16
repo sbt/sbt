@@ -145,8 +145,8 @@ sealed trait Project extends ProjectDefinition[ProjectReference]
 	def setSbtFiles(files: File*): Project = copy(auto = AddSettings.append( AddSettings.clearSbtFiles(auto), AddSettings.sbtFiles(files: _*)) )
 
 	/** Sets the [[AutoPlugin]]s of this project.
-	A [[AutoPlugin]] is a common label that is used by plugins to determine what settings, if any, to add to a project. */
-	def addPlugins(ns: Plugins*): Project = setPlugins(ns.foldLeft(plugins)(Plugins.and))
+	A [[AutoPlugin]] is a common label that is used by plugins to determine what settings, if any, to enable on a project. */
+	def enablePlugins(ns: Plugins*): Project = setPlugins(ns.foldLeft(plugins)(Plugins.and))
 
 	/** Disable the given plugins on this project. */
 	def disablePlugins(ps: AutoPlugin*): Project =

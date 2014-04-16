@@ -11,21 +11,51 @@ package sbt
 	import Scope.GlobalScope
 	import scala.annotation.tailrec
 
+	
+/** 
+ *  This file is responsible for compiling the .sbt files used to configure sbt builds.
+ *  
+ *  Compilation is done in three phases:
+ *  
+ *  1. Parsing high-level constructs (definitions, settings, imports)
+ *  2. Compiling scala code into local .class files
+ *  3. Evaluating the expressions and obtaining in-memory objects of the results (Setting[_] instances, or val references).
+ *  
+ *  
+ */
 object EvaluateConfigurations
 {
+	/**
+	 * This represents the parsed expressions in a build sbt, as well as where they were defined.
+	 */
 	private[this] final class ParsedFile(val imports: Seq[(String,Int)], val definitions: Seq[(String,LineRange)], val settings: Seq[(String,LineRange)])
 
+	/** The keywords we look for when classifying a string as a definition. */
 	private[this] val DefinitionKeywords = Seq("lazy val ", "def ", "val ")
 
+	/** Using an evaluating instance of the scala compiler, a sequence of files and
+	 *  the default imports to use, this method will take a ClassLoader of sbt-classes and
+	 *  return a parsed, compiled + evaluated [[LoadedSbtFile]].   The result has
+	 *  raw sbt-types that can be accessed and used.  
+	 */
 	def apply(eval: Eval, srcs: Seq[File], imports: Seq[String]): ClassLoader => LoadedSbtFile =
 	{
 		val loadFiles = srcs.sortBy(_.getName) map { src =>  evaluateSbtFile(eval, src, IO.readLines(src), imports, 0) }
 		loader => (LoadedSbtFile.empty /: loadFiles) { (loaded, load) => loaded merge load(loader) }
 	}
 
+	/**
+	 * Reads a given .sbt file and evaluates it into a sequence of setting values.
+     */
 	def evaluateConfiguration(eval: Eval, src: File, imports: Seq[String]): ClassLoader => Seq[Setting[_]] =
 		evaluateConfiguration(eval, src, IO.readLines(src), imports, 0)
 
+	/**
+	 * Parses a sequence of build.sbt lines into a [[ParsedFile]].  The result contains
+	 * a fragmentation of all imports, settings and definitions.
+	 *
+	 * @param buildinImports  The set of import statements to add to those parsed in the .sbt file.
+	 */
 	private[this] def parseConfiguration(lines: Seq[String], builtinImports: Seq[String], offset: Int): ParsedFile =
 	{
 		val (importStatements, settingsAndDefinitions) = splitExpressions(lines)
@@ -34,12 +64,33 @@ object EvaluateConfigurations
 		new ParsedFile(allImports, definitions, settings)
 	}
 
+    /**
+     * Evaluates a  parsed sbt configuration file.
+     *
+     * @param eval    The evaluating scala compiler instance we use to handle evaluating scala configuration.
+     * @param file    The file we've parsed
+     * @param imports The default imports to use in this .sbt configuration
+     * @param lines   The lines of the configurtion we'd like to evaluate.
+     *
+     * @return Just the Setting[_] instances defined in the .sbt file.
+     */
 	def evaluateConfiguration(eval: Eval, file: File, lines: Seq[String], imports: Seq[String], offset: Int): ClassLoader => Seq[Setting[_]] =
 	{
 		val l = evaluateSbtFile(eval, file, lines, imports, offset)
 		loader => l(loader).settings
 	}
 
+    /**
+     * Evaluates a parsed sbt configuration file.
+     *
+     * @param eval    The evaluating scala compiler instance we use to handle evaluating scala configuration.
+     * @param file    The file we've parsed
+     * @param lines   The lines of the configurtion we'd like to evaluate.
+     * @param imports The default imports to use in this .sbt configuration.
+     *
+     * @return A function which can take an sbt classloader and return the raw types/configuratoin
+     *         which was compiled/parsed for the given file.
+     */
 	private[sbt] def evaluateSbtFile(eval: Eval, file: File, lines: Seq[String], imports: Seq[String], offset: Int): ClassLoader => LoadedSbtFile =
 	{
 		val name = file.getPath
@@ -58,6 +109,7 @@ object EvaluateConfigurations
 		val loadSettings = flatten(settings)
 		loader => new LoadedSbtFile(loadSettings(loader), projects(loader), importDefs)
 	}
+	/** move a project to be relative to this file after we've evaluated it. */
 	private[this] def resolveBase(f: File, p: Project) = p.copy(base = IO.resolve(f, p.base))
 	def flatten(mksettings: Seq[ClassLoader => Seq[Setting[_]]]): ClassLoader => Seq[Setting[_]] =
 		loader => mksettings.flatMap(_ apply loader)
@@ -66,10 +118,26 @@ object EvaluateConfigurations
 	def addOffsetToRange(offset: Int, ranges: Seq[(String,LineRange)]): Seq[(String,LineRange)] =
 		ranges.map { case (s, r) => (s, r shift offset) }
 
+	/** 
+	 * The name of the class we cast DSL "setting" (vs. definition) lines to.
+	 */
 	val SettingsDefinitionName = {
 		val _ = classOf[sbt.Def.SettingsDefinition] // this line exists to try to provide a compile-time error when the following line needs to be changed
 		"sbt.Def.SettingsDefinition"
 	}
+	/**
+	 * This actually compiles a scala expression which represents a Seq[Setting[_]], although the
+	 * expression may be just a single setting.
+	 *
+	 * @param eval The mechanism to compile and evaluate Scala expressions.
+	 * @param name The name for the thing we're compiling
+	 * @param imports The scala imports to have in place when we compile the expression
+	 * @param expression The scala expression we're compiling
+	 * @param range The original position in source of the expression, for error messages.
+     *
+	 * @return A method that given an sbt classloader, can return the actual Seq[Setting[_]] defined by
+	 *         the expression.
+	 */
 	def evaluateSetting(eval: Eval, name: String, imports: Seq[(String,Int)], expression: String, range: LineRange): ClassLoader => Seq[Setting[_]] =
 	{
 		val result = try {
@@ -86,6 +154,10 @@ object EvaluateConfigurations
 	private[this] def fstS(f: String => Boolean): ((String,Int)) => Boolean = { case (s,i) => f(s) }
 	private[this] def firstNonSpaceIs(lit: String) = (_: String).view.dropWhile(isSpace).startsWith(lit)
 	private[this] def or[A](a: A => Boolean, b: A => Boolean): A => Boolean = in => a(in) || b(in)
+	/**
+	 * Splits a set of lines into (imports, expressions).  That is,
+	 * anything on the right of the tuple is a scala expression (definition or setting).
+	 */
 	def splitExpressions(lines: Seq[String]): (Seq[(String,Int)], Seq[(String,LineRange)]) =
 	{
 		val blank = (_: String).forall(isSpace)
