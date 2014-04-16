@@ -1,6 +1,7 @@
 package sbt.complete
 
 import java.io.File
+import sbt.IO._
 
 /**
  * These sources of examples are used in parsers for user input completion. An example of such a source is the
@@ -27,12 +28,15 @@ trait ExampleSource
  * A convenience example source that wraps any collection of strings into a source of examples.
  * @param examples the examples that will be displayed to the user when they press the TAB key.
  */
-sealed case class FixedSetExamples(examples: Iterable[String]) extends ExampleSource {
+sealed case class FixedSetExamples(examples: Iterable[String]) extends ExampleSource
+{
 	override def withAddedPrefix(addedPrefix: String): ExampleSource = FixedSetExamples(examplesWithRemovedPrefix(addedPrefix))
 
 	override def apply(): Iterable[String] = examples
 
-	private def examplesWithRemovedPrefix(prefix: String) = examples.collect { case example if example startsWith prefix => example substring prefix.length }
+	private def examplesWithRemovedPrefix(prefix: String) = examples.collect {
+		case example if example startsWith prefix => example substring prefix.length
+	}
 }
 
 /**
@@ -40,22 +44,19 @@ sealed case class FixedSetExamples(examples: Iterable[String]) extends ExampleSo
  * @param base the directory within which this class will search for completion examples.
  * @param prefix the part of the path already written by the user.
  */
-class FileExamples(base: File, prefix: String = "") extends ExampleSource {
-	private val relativizedPrefix: String = "." + File.separator + prefix
-
-	override def apply(): Iterable[String] = files(base).map(_.toString.substring(relativizedPrefix.length))
+class FileExamples(base: File, prefix: String = "") extends ExampleSource
+{
+	override def apply(): Stream[String] = files(base).map(_ substring prefix.length)
 
 	override def withAddedPrefix(addedPrefix: String): FileExamples = new FileExamples(base, prefix + addedPrefix)
 
-	protected def fileStartsWithPrefix(path: File): Boolean = path.toString.startsWith(relativizedPrefix)
-
-	protected def directoryStartsWithPrefix(path: File): Boolean = {
-		val pathString = path.toString
-		pathString.startsWith(relativizedPrefix) || relativizedPrefix.startsWith(pathString)
+	protected def files(directory: File): Stream[String] = {
+		val childPaths = directory.listFiles().toStream
+		val prefixedDirectChildPaths = childPaths.map(relativize(base, _).get).filter(_ startsWith prefix)
+		val dirsToRecurseInto = childPaths.filter(_.isDirectory).map(relativize(base, _).get).filter(dirStartsWithPrefix)
+		prefixedDirectChildPaths append dirsToRecurseInto.flatMap(dir => files(new File(base, dir)))
 	}
 
-	protected def files(directory: File): Iterable[File] = {
-		val (subDirectories, filesOnly) = directory.listFiles().toStream.partition(_.isDirectory)
-		filesOnly.filter(fileStartsWithPrefix) ++ subDirectories.filter(directoryStartsWithPrefix).flatMap(files)
-	}
+	private def dirStartsWithPrefix(relativizedPath: String): Boolean =
+		(relativizedPath startsWith prefix) || (prefix startsWith relativizedPath)
 }
