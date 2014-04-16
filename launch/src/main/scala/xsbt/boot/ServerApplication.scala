@@ -150,7 +150,12 @@ object ServerLauncher {
     } finally {
       errorDumper.close()
       stdout.close()
-      stderr.close()
+      // Note:  Closing this causes windows to block waiting for the server
+      // to close, but it ne'er will, as it is obstinate, and not designed
+      // to close immediately, unlike this process.
+      // We leave it open because this JVM shold be shut down soon anyway,
+      // and that will clean up al this memory.
+      //stderr.close()
     }
   }
   
