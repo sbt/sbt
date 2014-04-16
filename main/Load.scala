@@ -531,7 +531,7 @@ object Load
 	{
 		val (eval,pluginDef) = apply(dir, s, config)
 		val pluginState = Project.setProject(Load.initialSession(pluginDef, eval), pluginDef, s)
-		config.evalPluginDef(pluginDef, pluginState)
+		config.evalPluginDef(Project.structure(pluginState), pluginState)
 	}
 
 	def definitions(base: File, targetBase: File, srcs: Seq[File], plugins: LoadedPlugins, definesClass: DefinesClass, compilers: Compilers, log: Logger): LoadedDefinitions =
