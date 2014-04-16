@@ -612,7 +612,7 @@ object Load
 	{
 		val (eval,pluginDef) = apply(dir, s, config)
 		val pluginState = Project.setProject(Load.initialSession(pluginDef, eval), pluginDef, s)
-		config.evalPluginDef(pluginDef, pluginState)
+		config.evalPluginDef(Project.structure(pluginState), pluginState)
 	}
 
 	@deprecated("Use ModuleUtilities.getCheckedObjects[Build].", "0.13.2")
