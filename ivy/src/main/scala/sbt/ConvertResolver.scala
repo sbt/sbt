@@ -10,13 +10,91 @@ import core.module.id.ModuleRevisionId
 import core.module.descriptor.DependencyDescriptor
 import core.resolve.ResolveData
 import core.settings.IvySettings
-import plugins.resolver.{BasicResolver, DependencyResolver, IBiblioResolver}
+import plugins.resolver.{BasicResolver, DependencyResolver, IBiblioResolver, RepositoryResolver}
 import plugins.resolver.{AbstractPatternsBasedResolver, AbstractSshBasedResolver, FileSystemResolver, SFTPResolver, SshResolver, URLResolver}
 import plugins.repository.url.{URLRepository => URLRepo}
 import plugins.repository.file.{FileRepository => FileRepo, FileResource}
+import java.io.File
+import org.apache.ivy.util.ChecksumHelper
+import org.apache.ivy.core.module.descriptor.{Artifact=>IArtifact}
+
 
 private object ConvertResolver
 {
+   /** This class contains all the reflective lookups used in the 
+    * checksum-friendly URL publishing shim.
+    */
+   private object ChecksumFriendlyURLResolver {
+   	  // TODO - When we dump JDK6 support we can remove this hackery
+   	  // import java.lang.reflect.AccessibleObject
+   	  type AccessibleObject = {
+   	  	def setAccessible(value: Boolean): Unit
+   	  }
+      private def reflectiveLookup[A <: AccessibleObject](f: Class[_] => A): Option[A] =
+        try {
+        	val cls = classOf[RepositoryResolver]
+        	val thing = f(cls)
+        	import scala.language.reflectiveCalls
+        	thing.setAccessible(true)
+        	Some(thing)
+        } catch {
+     	  case (_: java.lang.NoSuchFieldException) |
+     	       (_: java.lang.SecurityException) |
+     	       (_: java.lang.NoSuchMethodException) => None
+       }
+   	 private val signerNameField: Option[java.lang.reflect.Field] =
+   	   reflectiveLookup(_.getDeclaredField("signerName"))  
+     private val putChecksumMethod: Option[java.lang.reflect.Method] =
+       reflectiveLookup(_.getDeclaredMethod("putChecksum", 
+           	  classOf[IArtifact], classOf[File], classOf[String], 
+           	  classOf[Boolean], classOf[String]))
+     private val putSignatureMethod: Option[java.lang.reflect.Method] =
+       reflectiveLookup(_.getDeclaredMethod("putSignature", 
+           	  classOf[IArtifact], classOf[File], classOf[String], 
+           	  classOf[Boolean]))
+   }
+   /**
+    * The default behavior of ivy's overwrite flags ignores the fact that a lot of repositories
+    * will autogenerate checksums *for* an artifact if it doesn't already exist.  Therefore
+    * if we succeed in publishing an artifact, we need to just blast the checksums in place.
+    * This acts as a "shim" on RepositoryResolvers so that we can hook our methods into
+    * both the IBiblioResolver + URLResolver without having to duplicate the code in two
+    * places.   However, this does mean our use of reflection is awesome.
+    *
+    * TODO - See about contributing back to ivy.
+    */
+   private trait ChecksumFriendlyURLResolver extends RepositoryResolver {
+   	 import ChecksumFriendlyURLResolver._
+   	 private def signerName: String = signerNameField match {
+   		case Some(field) => field.get(this).asInstanceOf[String]
+   		case None => null
+   	 }
+   	 override protected def put(artifact: IArtifact, src: File, dest: String, overwrite: Boolean): Unit = {
+        // verify the checksum algorithms before uploading artifacts!
+        val checksums = getChecksumAlgorithms()
+        val repository = getRepository()
+        for {
+          checksum <- checksums
+          if !ChecksumHelper.isKnownAlgorithm(checksum)
+        } throw new IllegalArgumentException("Unknown checksum algorithm: " + checksum)
+        repository.put(artifact, src, dest, overwrite);
+        // Fix for sbt#1156 - Artifactory will auto-generate MD5/sha1 files, so
+        // we need to overwrite what it has.
+        for (checksum <- checksums) {
+            putChecksumMethod match {
+              case Some(method) => method.invoke(this, artifact, src, dest, true: java.lang.Boolean, checksum)
+              case None => // TODO - issue warning?
+            }
+        }
+        if (signerName != null) {
+        	putSignatureMethod match {
+        		case None => ()
+                case Some(method) => method.invoke(artifact, src, dest, true: java.lang.Boolean)
+            }
+        }
+    }
+   }
+
 	/** Converts the given sbt resolver into an Ivy resolver..*/
 	def apply(r: Resolver, settings: IvySettings, log: Logger) =
 	{
@@ -25,7 +103,7 @@ private object ConvertResolver
 			case repo: MavenRepository =>
 			{
 				val pattern = Collections.singletonList(Resolver.resolvePattern(repo.root, Resolver.mavenStyleBasePattern))
-				final class PluginCapableResolver extends IBiblioResolver with DescriptorRequired {
+				final class PluginCapableResolver extends IBiblioResolver with ChecksumFriendlyURLResolver with DescriptorRequired {
 					def setPatterns() { // done this way for access to protected methods.
 						setArtifactPatterns(pattern)
 						setIvyPatterns(pattern)
@@ -77,7 +155,7 @@ private object ConvertResolver
 			}
 			case repo: URLRepository =>
 			{
-				val resolver = new URLResolver with DescriptorRequired
+				val resolver = new URLResolver with ChecksumFriendlyURLResolver with DescriptorRequired 
 				resolver.setName(repo.name)
 				initializePatterns(resolver, repo.patterns, settings)
 				resolver
