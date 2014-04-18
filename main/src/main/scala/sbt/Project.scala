@@ -109,6 +109,11 @@ sealed trait Project extends ProjectDefinition[ProjectReference]
 	/** Adds configurations to this project.  Added configurations replace existing configurations with the same name.*/
 	def overrideConfigs(cs: Configuration*): Project = copy(configurations = Defaults.overrideConfigs(cs : _*)(configurations))
 
+    /** Adds configuration at the *start* of the configuration list for this rpoject.  Prevous configurations replace this prefix
+     * list with the same name. 
+     */
+    private[sbt] def prefixConfigs(cs: Configuration*): Project = copy(configurations = Defaults.overrideConfigs(configurations : _*)(cs))
+
 	/** Adds new configurations directly to this project.  To override an existing configuration, use `overrideConfigs`. */
 	def configs(cs: Configuration*): Project = copy(configurations = configurations ++ cs)
 
@@ -140,8 +145,8 @@ sealed trait Project extends ProjectDefinition[ProjectReference]
 	def setSbtFiles(files: File*): Project = copy(auto = AddSettings.append( AddSettings.clearSbtFiles(auto), AddSettings.sbtFiles(files: _*)) )
 
 	/** Sets the [[AutoPlugin]]s of this project.
-	A [[AutoPlugin]] is a common label that is used by plugins to determine what settings, if any, to add to a project. */
-	def addPlugins(ns: Plugins*): Project = setPlugins(ns.foldLeft(plugins)(Plugins.and))
+	A [[AutoPlugin]] is a common label that is used by plugins to determine what settings, if any, to enable on a project. */
+	def enablePlugins(ns: Plugins*): Project = setPlugins(ns.foldLeft(plugins)(Plugins.and))
 
 	/** Disable the given plugins on this project. */
 	def disablePlugins(ps: AutoPlugin*): Project =
@@ -498,12 +503,24 @@ object Project extends ProjectExtra
 	@deprecated("This method does not apply state changes requested during task execution.  Use 'runTask' instead, which does.", "0.11.1")
 	def evaluateTask[T](taskKey: ScopedKey[Task[T]], state: State, checkCycles: Boolean = false, maxWorkers: Int = EvaluateTask.SystemProcessors): Option[Result[T]] =
 		runTask(taskKey, state, EvaluateConfig(true, EvaluateTask.defaultRestrictions(maxWorkers), checkCycles)).map(_._2)
+
 	def runTask[T](taskKey: ScopedKey[Task[T]], state: State, checkCycles: Boolean = false): Option[(State, Result[T])] =
-		runTask(taskKey, state, EvaluateConfig(true, EvaluateTask.restrictions(state), checkCycles))
+	{
+		val extracted = Project.extract(state)
+		val ch = EvaluateTask.cancelStrategy(extracted, extracted.structure, state)
+		val p = EvaluateTask.executeProgress(extracted, extracted.structure, state)
+		val r = EvaluateTask.restrictions(state)
+		runTask(taskKey, state, EvaluateTaskConfig(r, checkCycles, p, ch))
+	}
+    @deprecated("Use EvalauteTaskConfig option instead.", "0.13.5")
 	def runTask[T](taskKey: ScopedKey[Task[T]], state: State, config: EvaluateConfig): Option[(State, Result[T])] =
 	{
 		val extracted = Project.extract(state)
 		EvaluateTask(extracted.structure, taskKey, state, extracted.currentRef, config)
+	}
+	def runTask[T](taskKey: ScopedKey[Task[T]], state: State, config: EvaluateTaskConfig): Option[(State, Result[T])] = {
+		val extracted = Project.extract(state)
+		EvaluateTask(extracted.structure, taskKey, state, extracted.currentRef, config)	
 	}
 
 	implicit def projectToRef(p: Project): ProjectReference = LocalProject(p.id)

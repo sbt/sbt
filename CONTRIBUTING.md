@@ -1,36 +1,99 @@
-[Setup]: http://www.scala-sbt.org/release/docs/Getting-Started/Setup
+  [sbt-dev]: https://groups.google.com/d/forum/sbt-dev‎
+  [StackOverflow]: http://stackoverflow.com/tags/sbt  
+  [Setup]: http://www.scala-sbt.org/release/docs/Getting-Started/Setup
+  [Issues]: https://github.com/sbt/sbt/issues
+  [sbt-dev]: https://groups.google.com/d/forum/sbt-dev‎
+  [subscriptions]: http://typesafe.com/how/subscription
+  [327]: https://github.com/sbt/sbt/issues/327
 
-# Issues and Pull Requests
+Issues and Pull Requests
+========================
 
-## New issues
+When you find a bug in sbt we want to hear about it. Your bug reports play an important part in making sbt more reliable.
 
-Please use the issue tracker to report confirmed bugs.
-Do not use it to ask questions.
-If you are uncertain whether something is a bug, please ask on StackOverflow or the sbt-dev mailing list first.
+Effective bug reports are more likely to be fixed. These guidelines explain how to write such reports and pull requests.
 
-When opening a new issue,
+Preliminaries
+--------------
 
- * Please state the problem clearly and provide enough context.
-  + Code examples and build transcripts are often useful when appropriately edited.
-  + Show error messages and stack traces if appropriate.
- * Minimize the problem to reduce non-essential factors.  For example, dependencies or special environments.
- * Include all relevant information needed to reproduce, such as the version of sbt and Scala being used.
+- Make sure your sbt version is up to date.
+- Search [StackOverflow] and [Issues] to see whether your bug has already been reported.
+- Open one case for each problem.
+- Proceed to the next steps for details.
 
+Where to get help and/or file a bug report
+------------------------------------------
+
+sbt project uses GitHub issue as a publically visible todo list. Please open a GitHub issue only when asked to do so.
+
+- If you need help with sbt, please ask on [StackOverflow] with the tag "sbt" and the name of the sbt plugin if any.
+- If you run into an issue, have an enhancement idea, or a general discussion, bring it up to [sbt-dev] Google Group first.
+- If you need faster response time, consider one of the [Typesafe subscriptions][subscriptions].
+
+What to report
+--------------
+
+The developers need three things from you: **steps**, **problems**, and **expectations**.
+
+### Steps
+
+The most important thing to remember about bug reporting is to clearly distinguish facts and opinions. What we need first is **the exact steps to reproduce your problems on our computers**. This is called *reproduction steps*, which is often shortened to "repro steps" or "steps." Describe your method of running sbt. Provide `build.sbt` that caused the problem and the version of sbt or Scala that was used. Provide sample Scala code if it's to do with incremental compilation. If possible, minimize the problem to reduce non-essential factors.
+
+Repro steps are the most important part of a bug report. If we cannot reproduce the problem in one way or the other, the problem can't be fixed. Telling us the error messages is not enough.
+
+### Problems
+
+Next, describe the problems, or what *you think* is the problem. It might be "obvious" to you that it's a problem, but it could actually be an intentional behavior for some backward compatibility etc. For compilation errors, include the stack trace. The more raw info the better.
+
+### Expectations
+
+Same as the problems. Describe what *you think* should've happened.
+
+### Notes
+
+Add an optional notes section to describe your analysis.
+
+### Subject
+
+The subject of the bug report doesn't matter. A more descriptive subject is certainly better, but a good subject really depends on the analysis of the problem, so don't worry too much about it. "StackOverflowError while name hashing is enabled" is good enough.
+
+### Formatting
+
+If possible, please format code or console outputs.
+
+On Github it's:
+
+    ```scala
+    name := "foo"
+    ```
+
+On StackOverflow, it's:
+
+```
+<!-- language: lang-scala -->
+
+    name := "foo"
+```
+
+Here's a simple sample case: [#327][327].
 Finally, thank you for taking the time to report a problem.
 
-## Pull Requests
+Pull Requests
+-------------
 
 Whether implementing a new feature, fixing a bug, or modifying documentation, please work against the latest development branch (currently, 0.13).
 Binary compatible changes will be backported to a previous series (currently, 0.12.x) at the time of the next stable release.
 See below for instructions on building sbt from source.
 
-## Documentation
+Documentation
+-------------
 
 Documentation fixes and contributions are welcome.
 They are made via pull requests, as described in the previous section.
 See below for details on getting sbt sources and modifying the documentation.
 
-# Build from source
+Build from source
+=================
 
 1. Install the current stable binary release of sbt (see [Setup]), which will be used to build sbt from source.
 2. Get the source code.
@@ -73,7 +136,8 @@ See below for details on getting sbt sources and modifying the documentation.
 
 4. If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `0.13.2-SNAPSHOT`.
 
-## Building Documentation
+Building Documentation
+----------------------
 
 The scala-sbt.org site documentation is built using sphinx and requires some external packages to be manually installed first:
 

@@ -469,7 +469,7 @@ object Load
 			val autoConfigs = autoPlugins.flatMap(_.projectConfigurations)
 			val loadedSbtFiles = loadSbtFiles(project.auto, project.base, autoPlugins, project.settings)
 			// add the automatically selected settings, record the selected AutoPlugins, and register the automatically selected configurations
-			val transformed = project.copy(settings = loadedSbtFiles.settings).setAutoPlugins(autoPlugins).overrideConfigs(autoConfigs : _*)
+			val transformed = project.copy(settings = loadedSbtFiles.settings).setAutoPlugins(autoPlugins).prefixConfigs(autoConfigs : _*)
 			(transformed, loadedSbtFiles.projects)
 		}
 		def defaultLoad = loadSbtFiles(AddSettings.defaultSbtFiles, buildBase, Nil, Nil).projects
@@ -612,7 +612,7 @@ object Load
 	{
 		val (eval,pluginDef) = apply(dir, s, config)
 		val pluginState = Project.setProject(Load.initialSession(pluginDef, eval), pluginDef, s)
-		config.evalPluginDef(pluginDef, pluginState)
+		config.evalPluginDef(Project.structure(pluginState), pluginState)
 	}
 
 	@deprecated("Use ModuleUtilities.getCheckedObjects[Build].", "0.13.2")

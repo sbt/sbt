@@ -197,6 +197,7 @@ object Keys
 	val testForkedParallel = SettingKey[Boolean]("test-forked-parallel", "Whether forked tests should be executed in parallel", CTask)
 	val testExecution = TaskKey[Tests.Execution]("test-execution", "Settings controlling test execution", DTask)
 	val testFilter = TaskKey[Seq[String] => Seq[String => Boolean]]("test-filter", "Filter controlling whether the test is executed", DTask)
+	val testResultLogger = SettingKey[TestResultLogger]("test-result-logger", "Logs results after a test task completes.", DTask)
 	val testGrouping = TaskKey[Seq[Tests.Group]]("test-grouping", "Collects discovered tests into groups. Whether to fork and the options for forking are configurable on a per-group basis.", BMinusTask)
 	val isModule = AttributeKey[Boolean]("is-module", "True if the target is a module.", DSetting)
 
@@ -346,6 +347,7 @@ object Keys
 	// wrapper to work around SI-2915
 	private[sbt] final class TaskProgress(val progress: ExecuteProgress[Task])
 	private[sbt] val executeProgress = SettingKey[State => TaskProgress]("executeProgress", "Experimental task execution listener.", DTask)
+    private[sbt] val taskCancelStrategy = SettingKey[State => TaskCancellationStrategy]("taskCancelStrategy", "Experimental task cancellation handler.", DTask)	
 
 	// Experimental in sbt 0.13.2 to enable grabing semantic compile failures.
 	private[sbt] val compilerReporter = TaskKey[Option[xsbti.Reporter]]("compilerReporter", "Experimental hook to listen (or send) compilation failure messages.", DTask)
