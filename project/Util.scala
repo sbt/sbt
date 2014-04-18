@@ -82,8 +82,8 @@ object Util
 	}
 	def lastCompilationTime(analysis: sbt.inc.Analysis): Long =
 	{
-		val times = analysis.apis.internal.values.map(_.compilation.startTime)
-		if(times.isEmpty) 0L else times.max
+		val lastCompilation = analysis.compilations.allCompilations.lastOption
+		lastCompilation.map(_.startTime) getOrElse 0L
 	}
 	def generateVersionFile(version: String, dir: File, s: TaskStreams, analysis: sbt.inc.Analysis): Seq[File] =
 	{
