@@ -80,8 +80,16 @@ sealed trait EvaluateTaskConfig {
 	def checkCycles: Boolean
 	def progressReporter: ExecuteProgress[Task]
 	def cancelStrategy: TaskCancellationStrategy
+	/** If true, we force a finalizer/gc run (or two) after task execution completes.
+	 * This helps in instances where 
+	 */
+	def forceGarbageCollection: Boolean
 }
 final object EvaluateTaskConfig {
+	// Returns the default force garbage collection flag,
+	// as specified by system properties.
+	private[sbt] def defaultForceGarbageCollection: Boolean =
+	  sys.props.get("sbt.task.forcegc").map(java.lang.Boolean.parseBoolean).getOrElse(true)
 	/** Pulls in the old configuration format. */
 	def apply(old: EvaluateConfig): EvaluateTaskConfig = {
 	  object AdaptedTaskConfig extends EvaluateTaskConfig {
@@ -91,6 +99,7 @@ final object EvaluateTaskConfig {
         def cancelStrategy: TaskCancellationStrategy =
           if(old.cancelable) TaskCancellationStrategy.Signal
           else TaskCancellationStrategy.Null
+        def forceGarbageCollection = defaultForceGarbageCollection
 	  }
 	  AdaptedTaskConfig
 	}
@@ -98,16 +107,19 @@ final object EvaluateTaskConfig {
 	def apply(restrictions: Seq[Tags.Rule],
 	          checkCycles: Boolean,
 	          progressReporter: ExecuteProgress[Task],
-	          cancelStrategy: TaskCancellationStrategy): EvaluateTaskConfig = {
+	          cancelStrategy: TaskCancellationStrategy,
+	          forceGarbageCollection: Boolean): EvaluateTaskConfig = {
 		val r = restrictions
 		val check = checkCycles
 		val cs = cancelStrategy
 		val pr = progressReporter
+		val fgc = forceGarbageCollection
 		object SimpleEvaluateTaskConfig extends EvaluateTaskConfig {
 			def restrictions = r
 			def checkCycles = check
 			def progressReporter = pr
 			def cancelStrategy = cs
+			def forceGarbageCollection = fgc
 		}
 		SimpleEvaluateTaskConfig
 	}
@@ -169,7 +181,8 @@ object EvaluateTask
 		val rs = restrictions(extracted, structure)
 		val canceller = cancelStrategy(extracted, structure, state)
 		val progress = executeProgress(extracted, structure, state)
-		EvaluateTaskConfig(rs, false, progress, canceller)
+		val fgc = forcegc(extracted, structure)
+		EvaluateTaskConfig(rs, false, progress, canceller, fgc)
 	}
 
 	def defaultRestrictions(maxWorkers: Int) = Tags.limitAll(maxWorkers) :: Nil
@@ -198,6 +211,9 @@ object EvaluateTask
 		val maker: State => Keys.TaskProgress = getSetting(Keys.executeProgress, const(new Keys.TaskProgress(defaultProgress)), extracted, structure)
 		maker(state).progress
    }
+   // TODO - Should this pull from Global or from the project itself?
+   private[sbt] def forcegc(extracted: Extracted, structure: BuildStructure): Boolean =
+      getSetting(Keys.forcegc in Global, EvaluateTaskConfig.defaultForceGarbageCollection, extracted, structure)
 
 	def getSetting[T](key: SettingKey[T], default: T, extracted: Extracted, structure: BuildStructure): T =
 		key in extracted.currentRef get structure.data getOrElse default
@@ -301,8 +317,21 @@ object EvaluateTask
 		val log = state.log
 		log.debug("Running task... Cancel: " + config.cancelStrategy + ", check cycles: " + config.checkCycles)
 		val tags = tagged[Task[_]](_.info get tagsKey getOrElse Map.empty, Tags.predicate(config.restrictions))
-		val (service, shutdown) = completionService[Task[_], Completed](tags, (s: String) => log.warn(s))
+		val (service, shutdownThreads) = completionService[Task[_], Completed](tags, (s: String) => log.warn(s))
 
+		def shutdown(): Unit = {
+		  // First ensure that all threads are stopped for task execution.
+		  shutdownThreads()
+		  // Now we run the gc cleanup to force finalizers to clear out file handles (yay GC!)
+		  if(config.forceGarbageCollection) {
+		  	// Force the detection of finalizers for scala.reflect weakhashsets
+ 			System.gc()
+ 			// Force finalizers to run.
+ 			System.runFinalization()
+ 			// Force actually cleaning the weak hash maps.
+ 			System.gc()
+		  }
+		}
 		// propagate the defining key for reporting the origin
 		def overwriteNode(i: Incomplete): Boolean = i.node match {
 			case Some(t: Task[_]) => transformNode(t).isEmpty
