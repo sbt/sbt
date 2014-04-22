@@ -13,6 +13,7 @@ Changes
 - name-hashing incremental compiler now supports scala macros.
 - ``testResultLogger`` is now configured.
 - sbt-server hooks for task cancellation.
+- Add ``JUnitXmlReportPlugin`` which generates junit-xml-reports for all tests.
 
 
 0.13.1 to 0.13.2
