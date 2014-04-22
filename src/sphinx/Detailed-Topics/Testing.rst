@@ -104,6 +104,18 @@ tests for that file complete. This can be disabled by setting :key:`logBuffered`
 
     logBuffered in Test := false
 
+
+Test Reports
+------------
+By default, sbt will generate JUnit XML test reports for all tests in the build, located
+in the ``target/test-reports`` directory for a project.   This can be disabled by
+disabling the ``JUnitXmlReportPlugin``
+
+::
+    
+    val myProject = project in file(".") disablePlugins (plugins.JUnitXmlReportPlugin)  
+
+
 Options
 =======
 
