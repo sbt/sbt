@@ -482,7 +482,7 @@ object Project extends ProjectExtra
 	def projectReturn(s: State): List[File] = getOrNil(s, ProjectReturn)
 	def inPluginProject(s: State): Boolean = projectReturn(s).toList.length > 1
 	def setProjectReturn(s: State, pr: List[File]): State = s.copy(attributes = s.attributes.put( ProjectReturn, pr) )
-	def loadAction(s: State, action: LoadAction.Value) = action match {
+	def loadAction(s: State, action: LoadAction.Value): (State, File) = action match {
 		case Return =>
 			projectReturn(s) match
 			{
