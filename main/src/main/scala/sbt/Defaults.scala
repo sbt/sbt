@@ -246,6 +246,14 @@ object Defaults extends BuildCommon
 	lazy val configTasks = docTaskSettings(doc) ++ inTask(compile)(compileInputsSettings) ++ configGlobal ++ Seq(
 		compile <<= compileTask tag(Tags.Compile, Tags.CPU),
 		printWarnings <<= printWarningsTask,
+		compileAnalysisFilename := {
+			// Here, if the user wants cross-scala-versioning, we also append it
+			// to the analysis cache, so we keep the scala versions separated.
+			val extra = 
+			  if(crossPaths.value) s"_${scalaBinaryVersion.value}"
+			  else ""
+			s"inc_compile${extra}"
+		},
 		compileIncSetup <<= compileIncSetupTask,
 		console <<= consoleTask,
 		consoleQuick <<= consoleQuickTask,
@@ -763,10 +771,16 @@ object Defaults extends BuildCommon
 		}
 		finally x.close() // workaround for #937
 	}
-	def compileIncSetupTask =
-		(dependencyClasspath, skip in compile, definesClass, compilerCache, streams, incOptions) map { (cp, skip, definesC, cache, s, incOptions) =>
-			Compiler.IncSetup(analysisMap(cp), definesC, skip, s.cacheDirectory / "inc_compile", cache, incOptions)
-		}
+	def compileIncSetupTask = Def.task {
+		Compiler.IncSetup(
+			analysisMap(dependencyClasspath.value), 
+			definesClass.value, 
+			(skip in compile).value, 
+			// TODO - this is kind of a bad way to grab the cache directory for streams...
+			streams.value.cacheDirectory / compileAnalysisFilename.value,
+			compilerCache.value, 
+			incOptions.value)
+	}
 	def compileInputsSettings: Seq[Setting[_]] =
 		Seq(compileInputs := {
 			val cp = classDirectory.value +: data(dependencyClasspath.value)

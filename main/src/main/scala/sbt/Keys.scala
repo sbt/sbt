@@ -142,6 +142,7 @@ object Keys
 	val consoleProject = TaskKey[Unit]("console-project", "Starts the Scala interpreter with the sbt and the build definition on the classpath and useful imports.", AMinusTask)
 	val compile = TaskKey[Analysis]("compile", "Compiles sources.", APlusTask)
 	val compilers = TaskKey[Compiler.Compilers]("compilers", "Defines the Scala and Java compilers to use for compilation.", DTask)
+	val compileAnalysisFilename = TaskKey[String]("compileAnalysisFilename", "Defines the filename used to store the incremental compiler analysis file (inside the streams cacheDirectory).", DTask)
 	val compileIncSetup = TaskKey[Compiler.IncSetup]("inc-compile-setup", "Configures aspects of incremental compilation.", DTask)
 	val compilerCache = TaskKey[GlobalsCache]("compiler-cache", "Cache of scala.tools.nsc.Global instances.  This should typically be cached so that it isn't recreated every task run.", DTask)
 	val stateCompilerCache = AttributeKey[GlobalsCache]("compiler-cache", "Internal use: Global cache.")
