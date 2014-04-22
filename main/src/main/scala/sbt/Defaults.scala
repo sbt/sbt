@@ -371,7 +371,6 @@ object Defaults extends BuildCommon
 			Seq(ScalaCheck, Specs2, Specs, ScalaTest, JUnit)
 		},
 		testListeners :== Nil,
-		testReportJUnitXml :== false,
 		testOptions :== Nil,
 		testResultLogger :== TestResultLogger.Default,
 		testFilter in testOnly :== (selectedFilter _)
@@ -390,8 +389,7 @@ object Defaults extends BuildCommon
 			trl.run(streams.value.log, executeTests.value, taskName)
 		},
 		testOnly <<= inputTests(testOnly),
-		testQuick <<= inputTests(testQuick),
-		testListeners ++= (if( testReportJUnitXml.value ) Seq(new JUnitXmlTestsListener(target.value.getAbsolutePath)) else Nil)
+		testQuick <<= inputTests(testQuick)
 	)
 	lazy val TaskGlobal: Scope = ThisScope.copy(task = Global)
 	lazy val ConfigGlobal: Scope = ThisScope.copy(config = Global)

@@ -31,7 +31,8 @@ object PluginDiscovery
 		val defaultAutoPlugins = Seq(
 			"sbt.plugins.IvyPlugin" -> sbt.plugins.IvyPlugin,
 			"sbt.plugins.JvmPlugin" -> sbt.plugins.JvmPlugin,
-			"sbt.plugins.CorePlugin" -> sbt.plugins.CorePlugin
+			"sbt.plugins.CorePlugin" -> sbt.plugins.CorePlugin,
+			"sbt.plugins.JUnitXmlReportPlugin" -> sbt.plugins.JUnitXmlReportPlugin
 		)
 		val detectedAutoPugins = discover[AutoPlugin](AutoPlugins)
 		val allAutoPlugins = (defaultAutoPlugins ++ detectedAutoPugins.modules) map { case (name, value) =>
