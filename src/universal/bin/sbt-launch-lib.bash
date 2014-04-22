@@ -77,20 +77,20 @@ addDebugger () {
   addJava "-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=$1"
 }
 
-# a ham-fisted attempt to move some memory settings in concert
-# so they need not be messed around with individually.
 get_mem_opts () {
-  local mem=${1:-1024}
-  local perm=$(( $mem / 4 ))
-  (( $perm > 256 )) || perm=256
-  (( $perm < 1024 )) || perm=1024
-  local codecache=$(( $perm / 2 ))
-
   # if we detect any of these settings in ${java_opts} we need to NOT output our settings.
   # The reason is the Xms/Xmx, if they don't line up, cause errors.
   if [[ "${java_opts}" == *-Xmx* ]] || [[ "${java_opts}" == *-Xms* ]] || [[ "${java_opts}" == *-XX:MaxPermSize* ]] || [[ "${java_opts}" == *-XX:ReservedCodeCacheSize* ]]; then
      echo ""
-  else 
+  else
+    # a ham-fisted attempt to move some memory settings in concert
+    # so they need not be messed around with individually.
+    local mem=${1:-1024}
+    local perm=$(( $mem / 4 ))
+    (( $perm > 256 )) || perm=256
+    (( $perm < 1024 )) || perm=1024
+    local codecache=$(( $perm / 2 ))
+
     echo "-Xms${mem}m -Xmx${mem}m -XX:MaxPermSize=${perm}m -XX:ReservedCodeCacheSize=${codecache}m"
   fi
 }
