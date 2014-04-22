@@ -15,8 +15,6 @@ object JUnitXmlReportTest extends Build {
 		scalaVersion := "2.9.2",
 		libraryDependencies += "com.novocode" % "junit-interface" % "0.10" % "test",
 
-		testReportJUnitXml := true,
-
 		// TODO use matchers instead of sys.error
 		checkReport := {
 			val oneSecondReport = XML.loadFile(oneSecondReportFile)

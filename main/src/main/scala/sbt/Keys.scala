@@ -195,7 +195,6 @@ object Keys
 	val testFrameworks = SettingKey[Seq[TestFramework]]("test-frameworks", "Registered, although not necessarily present, test frameworks.", CTask)
 	val testListeners = TaskKey[Seq[TestReportListener]]("test-listeners", "Defines test listeners.", DTask)
 	val testForkedParallel = SettingKey[Boolean]("test-forked-parallel", "Whether forked tests should be executed in parallel", CTask)
-	val testReportJUnitXml = SettingKey[Boolean]("test-report-junit-xml", "Produce JUnit XML test reports", BPlusTask)
 	val testExecution = TaskKey[Tests.Execution]("test-execution", "Settings controlling test execution", DTask)
 	val testFilter = TaskKey[Seq[String] => Seq[String => Boolean]]("test-filter", "Filter controlling whether the test is executed", DTask)
 	val testResultLogger = SettingKey[TestResultLogger]("test-result-logger", "Logs results after a test task completes.", DTask)

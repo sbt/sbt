@@ -6,13 +6,14 @@ import Keys._
 import Project.inConfig
 import Configurations.Test
 
-/** A plugin that adds the ability for junit-xml to be generated.
+/** An experimental plugin that adds the ability for junit-xml to be generated.
  *
- *  While this plugin automatically includes its settings, to enable, you need to
- *  add:
+ *  To disable this plugin, you need to add:
  *  {{{
- *     testReportJunitXml in Global := true
+ *     val myProject = project in file(".") disablePlugins (plugins.JunitXmlReportPlugin)
  *  }}}
+ *
+ *  Note:  Using AutoPlugins to enable/disable build features is experimental in sbt 0.13.5.
  */
 object JUnitXmlReportPlugin extends AutoPlugin {
   // TODO - If testing becomes its own plugin, we only rely on the core settings.
@@ -23,13 +24,6 @@ object JUnitXmlReportPlugin extends AutoPlugin {
   // It might be a good idea to derive this setting into specific test scopes.
   override lazy val projectSettings: Seq[Setting[_]] =
     Seq(
-      testListeners ++= (if( testReportJUnitXml.value ) Seq(new JUnitXmlTestsListener(target.value.getAbsolutePath)) else Nil)
+      testListeners += new JUnitXmlTestsListener(target.value.getAbsolutePath)
     )
-  override lazy val globalSettings: Seq[Setting[_]] =
-    Seq(
-      // TODO - in sbt 1.0, this should default to true.
-      testReportJUnitXml :== false
-    )
-
-  override def projectConfigurations: Seq[Configuration] = Seq()
 }
