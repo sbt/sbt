@@ -325,6 +325,7 @@ object Keys
 	val tags = SettingKey[Seq[(Tags.Tag,Int)]]("tags", ConcurrentRestrictions.tagsKey.label, BSetting)
 	val concurrentRestrictions = SettingKey[Seq[Tags.Rule]]("concurrent-restrictions", "Rules describing restrictions on concurrent task execution.", BSetting)
 	val cancelable = SettingKey[Boolean]("cancelable", "Enables (true) or disables (false) the ability to interrupt task execution with CTRL+C.", BMinusSetting)
+	val forcegc = SettingKey[Boolean]("forcegc", "Enables (true) or disables (false) forcing garbage collection after each task run.", BMinusSetting)
 	val settingsData = std.FullInstance.settingsData
 	val streams = TaskKey[TaskStreams]("streams", "Provides streams for logging and persisting data.", DTask)
 	val taskDefinitionKey = Def.taskDefinitionKey

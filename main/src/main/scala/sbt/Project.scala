@@ -510,7 +510,8 @@ object Project extends ProjectExtra
 		val ch = EvaluateTask.cancelStrategy(extracted, extracted.structure, state)
 		val p = EvaluateTask.executeProgress(extracted, extracted.structure, state)
 		val r = EvaluateTask.restrictions(state)
-		runTask(taskKey, state, EvaluateTaskConfig(r, checkCycles, p, ch))
+		val fgc = EvaluateTask.forcegc(extracted, extracted.structure)
+		runTask(taskKey, state, EvaluateTaskConfig(r, checkCycles, p, ch, fgc))
 	}
     @deprecated("Use EvalauteTaskConfig option instead.", "0.13.5")
 	def runTask[T](taskKey: ScopedKey[Task[T]], state: State, config: EvaluateConfig): Option[(State, Result[T])] =
