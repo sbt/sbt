@@ -1,2 +1,5 @@
 target/
 __pycache__
+.idea/
+.idea_modules/
+*.iml
