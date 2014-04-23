@@ -227,6 +227,8 @@ Utility plugins
    https://github.com/softprops/jot
 -  np (Dead simple new project directory generation):
    https://github.com/softprops/np
+-  npt (Creates new project skeletons based on templates):
+   https://github.com/reikje/npt
 -  sbt-editsource (A poor man's *sed*\ (1), for sbt):
    http://software.clapper.org/sbt-editsource/
 -  sbt-cross-building (Simplifies building your plugins for multiple
