@@ -642,7 +642,7 @@ or
 
 ::
 
-    externalPom(baseDirectory(_ / "custom-name.xml"))
+    externalPom(baseDirectory.value / "custom-name.xml")
 
 Full Ivy Example
 ~~~~~~~~~~~~~~~~
