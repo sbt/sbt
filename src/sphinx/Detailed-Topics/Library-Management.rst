@@ -51,7 +51,7 @@ default directory, you can do:
 ::
 
     unmanagedJars in Compile ++= {
-	     val base = baseDirectory.value
+        val base = baseDirectory.value
         val baseDirectories = (base / "libA") +++ (base / "b" / "lib") +++ (base / "libC")
         val customJars = (baseDirectories ** "*.jar") +++ (base / "d" / "my.jar")
         customJars.classpath
@@ -179,8 +179,7 @@ To use the local repository, but not the Maven Central repository:
 
 ::
 
-    externalResolvers :=
-      Resolver.withDefaultResolvers(resolvers.value, mavenCentral = false)
+    externalResolvers := Resolver.withDefaultResolvers(resolvers.value, mavenCentral = false)
 
 Override all resolvers for all builds
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -545,7 +544,7 @@ your dependency definition:
 
 ::
 
-    libraryDependencies += "org.scalatest" % "scalatest" % "1.2" % "test->compile"
+    libraryDependencies += "org.scalatest" %% "scalatest" % "2.1.3" % "test->compile"
 
 This says that your project's `"test"` configuration uses
 `ScalaTest`'s `"compile"` configuration. See the `Ivy
@@ -564,7 +563,7 @@ it in your jar by modifying :key:`resources`. For example:
 
     libraryDependencies += "jquery" % "jquery" % "1.3.2" % "js->default" from "http://jqueryjs.googlecode.com/files/jquery-1.3.2.min.js"
 
-    resources ++= update.value.select( configurationFilter("js") )
+    resources ++= update.value.select(configurationFilter("js"))
 
 The `config` method defines a new configuration with name `"js"` and
 makes it private to the project so that it is not used for publishing.
@@ -578,7 +577,7 @@ shortened to:
 
 ::
 
-    libraryDependencies += "org.scala-tools.testing" % "scalatest" % "1.0" % "test"
+    libraryDependencies += "org.scalatest" %% "scalatest" % "2.1.3" % "test"
 
 .. _external-maven-ivy:
 
@@ -602,7 +601,7 @@ or
 
 ::
 
-    externalIvySettings(baseDirectory(_ / "custom-settings-name.xml"))
+    externalIvySettings(baseDirectory.value / "custom-settings-name.xml")
 
 or
 
@@ -621,7 +620,7 @@ or
 
 ::
 
-    externalIvyFile(baseDirectory(_ / "custom-name.xml"))
+    externalIvyFile(baseDirectory.value / "custom-name.xml")
 
 Because Ivy files specify their own configurations, sbt needs to know
 which configurations to use for the compile, runtime, and test
@@ -654,7 +653,7 @@ For example, a `build.sbt` using external Ivy files might look like:
 
     externalIvySettings()
 
-    externalIvyFile( baseDirectory { base => base / "ivyA.xml"} )
+    externalIvyFile(baseDirectory.value / "ivyA.xml")
 
     classpathConfiguration in Compile := Compile
 
