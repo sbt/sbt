@@ -1087,7 +1087,24 @@ object Classpaths
 		ivyModule := { val is = ivySbt.value; new is.Module(moduleSettings.value) },
 		transitiveUpdate <<= transitiveUpdateTask,
 		update <<= updateTask tag(Tags.Update, Tags.Network),
-		update := { val report = update.value; ConflictWarning(conflictWarning.value, report, streams.value.log); report },
+		updateConflictReport := update.value.conflicts,
+		// TODO - more simpler settings to configure this.
+		update := { 
+			val report = update.value; 
+			// TODO - less hacky detection of project build...
+			val isProjectBuild = (
+			  (baseDirectory.value.getName == "project") || 
+			  (name.value == "global-plugins")
+			)
+			val cconfig = conflictWarning.value
+			val scalaLog =  Level.union(cconfig.level,
+			  if(isProjectBuild) Level.Debug 
+			  else Level.Warn)
+			val sConfig = ConflictScalaConfig(scalaVersion.value, scalaOrganization.value, 
+				scalaLog)
+			ConflictWarning(cconfig, sConfig, report, streams.value.log); 
+			report 
+		},
 		classifiersModule in updateClassifiers := GetClassifiersModule(projectID.value, update.value.allModules, ivyConfigurations.in(updateClassifiers).value, transitiveClassifiers.in(updateClassifiers).value),
 		updateClassifiers <<= (ivySbt, classifiersModule in updateClassifiers, updateConfiguration, ivyScala, appConfiguration, streams) map { (is, mod, c, ivyScala, app, s) =>
 			val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
@@ -1211,7 +1228,8 @@ object Classpaths
 		val transform: UpdateReport => UpdateReport = r => substituteScalaFiles(scalaOrganization.value, r)(subScalaJars)
 
 		val show = Reference.display(thisProjectRef.value)
-		cachedUpdate(s.cacheDirectory, show, ivyModule.value, updateConfiguration.value, transform, skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated, log = s.log)
+		val result = cachedUpdate(s.cacheDirectory, show, ivyModule.value, updateConfiguration.value, transform, skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated, log = s.log)
+		result
 	}
 
 	def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration, transform: UpdateReport=>UpdateReport, skip: Boolean, force: Boolean, depsUpdated: Boolean, log: Logger): UpdateReport =

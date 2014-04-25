@@ -32,6 +32,9 @@ final class UpdateReport(val cachedDescriptor: File, val configurations: Seq[Con
 
 	/** Gets the names of all resolved configurations.  This `UpdateReport` contains one `ConfigurationReport` for each configuration in this list. */
 	def allConfigurations: Seq[String] = configurations.map(_.configuration)
+
+	/** A faster index to conflicts/evictions in this update report. */
+	lazy val conflicts: ConflictReport = ConflictReport.makeConflictReport(this)
 }
 
 /** Provides information about resolution of a single configuration.

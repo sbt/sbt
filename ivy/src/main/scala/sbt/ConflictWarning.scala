@@ -9,6 +9,7 @@ final case class ConflictWarning(label: String, level: Level.Value, failOnConfli
 	@deprecated("`group` is no longer used", "0.13.0")
 	val group: ModuleID => String = ConflictWarning.org
 }
+private[sbt] final case class ConflictScalaConfig(version: String, organization: String, level: Level.Value)
 object ConflictWarning
 {
 	@deprecated("`group` and `filter` are no longer used.  Use a standard Ivy conflict manager.", "0.13.0")
@@ -25,9 +26,27 @@ object ConflictWarning
 	@deprecated("Warning on evicted modules is no longer done, so this is the same as `default`.  Use a standard Ivy conflict manager.", "0.13.0")
 	def strict(label: String): ConflictWarning = ConflictWarning(label, Level.Error, true)
 
+	@deprecated("Conflict warnings now display issues with scala version, and calling is private.", "0.13.5")
 	def apply(config: ConflictWarning, report: UpdateReport, log: Logger)
 	{
 		processCrossVersioned(config, report, log)
+	}
+	// We don't expose this so we can change the ConflictScalaConfig in the future.
+	private[sbt] def apply(config: ConflictWarning, scala: ConflictScalaConfig, report: UpdateReport, log: Logger)
+	{
+		processCrossVersioned(config, report, log)
+		processScalaVersion(config, scala, report, log)
+	}
+	private[this] def processScalaVersion(config: ConflictWarning, scala: ConflictScalaConfig, report: UpdateReport, log: Logger): Unit = {
+		// For now, only warn for the compile scope.
+		for(eviction <- report.conflicts.configurations.filter(_.config == "compile").flatMap(_.evictions).find { e =>
+			  (e.chosen.organization == scala.organization) &&
+			  (e.chosen.revision != scala.version)
+		}) {
+			log.log(scala.level, 
+				s"""|Scala version was updated by one of the library dependencies:
+				    | scalaVersion := "${scala.version}", but resolved ${eviction.chosen.organization}:${eviction.chosen.name}:${eviction.chosen.revision}""".stripMargin)
+		}
 	}
 	private[this] def processCrossVersioned(config: ConflictWarning, report: UpdateReport, log: Logger)
 	{
@@ -72,7 +91,7 @@ object ConflictWarning
 		case CrossSuffixPattern(raw, _) => raw
 		case _ => s
 	}
-	private[this] def getCrossSuffix(s: String): String = s match {
+	private[sbt] def getCrossSuffix(s: String): String = s match {
 		case CrossSuffixPattern(_, v) => "_" + v
 		case _ => "<none>"
 	}

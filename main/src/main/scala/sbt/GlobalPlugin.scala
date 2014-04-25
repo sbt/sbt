@@ -9,6 +9,9 @@ package sbt
 	import org.apache.ivy.core.module.{descriptor, id}
 	import descriptor.ModuleDescriptor, id.ModuleRevisionId
 
+/**
+ * This object knows how to load ~/.sbt/<version> projects and their settings.
+ */
 object GlobalPlugin
 {
 		// constructs a sequence of settings that may be appended to a project's settings to
