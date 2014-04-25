@@ -41,7 +41,7 @@ object Util
 	lazy val javaOnly = Seq[Setting[_]](/*crossPaths := false, */compileOrder := CompileOrder.JavaThenScala, unmanagedSourceDirectories in Compile <<= Seq(javaSource in Compile).join)
 	lazy val base: Seq[Setting[_]] = Seq(projectComponent) ++ baseScalacOptions ++ Licensed.settings
 	lazy val baseScalacOptions = Seq(
-		scalacOptions ++= Seq("-Xelide-below", "0"),
+		scalacOptions ++= Seq("-Xelide-below", "0", "-deprecation"),
 		scalacOptions <++= scalaVersion map CrossVersion.partialVersion map {
 			case Some((2, 9)) => Nil // support 2.9 for some subprojects for the Scala Eclipse IDE
 			case _ => Seq("-feature", "-language:implicitConversions", "-language:postfixOps", "-language:higherKinds", "-language:existentials")

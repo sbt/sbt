@@ -8,13 +8,13 @@
 	import Licensed._
 	import Scope.ThisScope
 	import LaunchProguard.{proguard, Proguard}
+	import com.typesafe.sbt.SbtGit.{git, versionWithGit}
 
 object Sbt extends Build
 {
-	override lazy val settings = super.settings ++ buildSettings ++ Status.settings ++ nightlySettings
+	override lazy val settings = super.settings ++ versionWithGit ++ buildSettings ++ Status.settings ++ nightlySettings
 	def buildSettings = Seq(
 		organization := "org.scala-sbt",
-		version := "0.13.5-SNAPSHOT",
 		publishArtifact in packageDoc := false,
 		scalaVersion := "2.10.4",
 		publishMavenStyle := false,
