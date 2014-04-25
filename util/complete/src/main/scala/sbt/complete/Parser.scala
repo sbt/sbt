@@ -4,7 +4,7 @@
 package sbt.complete
 
 	import Parser._
-	import sbt.Types.{const, left, right, some}
+	import sbt.Types.{left, right, some}
 	import sbt.Util.{makeList,separate}
 
 /** A String parser that provides semi-automatic tab completion.
@@ -70,7 +70,7 @@ sealed trait RichParser[A]
 	/** If an exception is thrown by the original Parser,
 	* capture it and fail locally instead of allowing the exception to propagate up and terminate parsing.*/
 	def failOnException: Parser[A]
-	
+
 	@deprecated("Use `not` and explicitly provide the failure message", "0.12.2")
 	def unary_- : Parser[Unit]
 
@@ -86,6 +86,24 @@ sealed trait RichParser[A]
 
 	/** Explicitly defines the completions for the original Parser.*/
 	def examples(s: Set[String], check: Boolean = false): Parser[A]
+
+	/**
+	 * @param exampleSource the source of examples when displaying completions to the user.
+	 * @param maxNumberOfExamples limits the number of examples that the source of examples should return. This can
+	 *                            prevent lengthy pauses and avoids bad interactive user experience.
+	 * @param removeInvalidExamples indicates whether completion examples should be checked for validity (against the
+	 *                              given parser). Invalid examples will be filtered out and only valid suggestions will
+	 *                              be displayed.
+	 * @return a new parser with a new source of completions.
+	 */
+	def examples(exampleSource: ExampleSource, maxNumberOfExamples: Int, removeInvalidExamples: Boolean): Parser[A]
+
+	/**
+	 * @param exampleSource the source of examples when displaying completions to the user.
+	 * @return a new parser with a new source of completions. It displays at most 25 completion examples and does not
+	 *         remove invalid examples.
+	 */
+	def examples(exampleSource: ExampleSource): Parser[A] = examples(exampleSource, maxNumberOfExamples = 25, removeInvalidExamples = false)
 
 	/** Converts a Parser returning a Char sequence to a Parser returning a String.*/
 	def string(implicit ev: A <:< Seq[Char]): Parser[String]
@@ -156,6 +174,7 @@ object Parser extends ParserMain
 	def mkFailures(errors: => Seq[String], definitive: Boolean = false): Failure = new Failure(errors.distinct, definitive)
 	def mkFailure(error: => String, definitive: Boolean = false): Failure = new Failure(error :: Nil, definitive)
 
+	@deprecated("This method is deprecated and will be removed in the next major version. Use the parser directly to check for invalid completions.", since = "0.13.2")
 	def checkMatches(a: Parser[_], completions: Seq[String])
 	{
 		val bad = completions.filter( apply(a)(_).resultEmpty.isFailure)
@@ -164,7 +183,6 @@ object Parser extends ParserMain
 
 	def tuple[A,B](a: Option[A], b: Option[B]): Option[(A,B)] =
 		(a,b) match { case (Some(av), Some(bv)) => Some((av, bv)); case _ => None }
-
 
 	def mapParser[A,B](a: Parser[A], f: A => B): Parser[B] =
 		a.ifValid {
@@ -239,7 +257,7 @@ object Parser extends ParserMain
 						case None => if(max.isZero) success(revAcc.reverse) else new Repeat(partial, repeated, min, max, revAcc)
 					}
 			}
-		
+
 		partial match
 		{
 			case Some(part) =>
@@ -284,7 +302,8 @@ trait ParserMain
 		def & (o: Parser[_]) = and(a, o)
 		def - (o: Parser[_]) = sub(a, o)
 		def examples(s: String*): Parser[A] = examples(s.toSet)
-		def examples(s: Set[String], check: Boolean = false): Parser[A] = Parser.examples(a, s, check)
+		def examples(s: Set[String], check: Boolean = false): Parser[A] = examples(new FixedSetExamples(s), s.size, check)
+		def examples(s: ExampleSource, maxNumberOfExamples: Int, removeInvalidExamples: Boolean): Parser[A] = Parser.examples(a, s, maxNumberOfExamples, removeInvalidExamples)
 		def filter(f: A => Boolean, msg: String => String): Parser[A] = filterParser(a, f, "", msg)
 		def string(implicit ev: A <:< Seq[Char]): Parser[String] = map(_.mkString)
 		def flatMap[B](f: A => Parser[B]) = bindParser(a, f)
@@ -295,7 +314,7 @@ trait ParserMain
 
 	/** Construct a parser that is valid, but has no valid result.  This is used as a way
 	* to provide a definitive Failure when a parser doesn't match empty input.  For example,
-	* in `softFailure(...) | p`, if `p` doesn't match the empty sequence, the failure will come 
+	* in `softFailure(...) | p`, if `p` doesn't match the empty sequence, the failure will come
 	* from the Parser constructed by the `softFailure` method. */
 	private[sbt] def softFailure(msg: => String, definitive: Boolean = false): Parser[Nothing] =
 		SoftInvalid( mkFailures(msg :: Nil, definitive) )
@@ -419,13 +438,26 @@ trait ParserMain
 		apply(p)(s).completions(level) x Completions.empty
 
 	def examples[A](a: Parser[A], completions: Set[String], check: Boolean = false): Parser[A] =
+		examples(a, new FixedSetExamples(completions), completions.size, check)
+
+	/**
+	 * @param a the parser to decorate with a source of examples. All validation and parsing is delegated to this parser,
+	 *          only [[Parser.completions]] is modified.
+	 * @param completions the source of examples when displaying completions to the user.
+	 * @param maxNumberOfExamples limits the number of examples that the source of examples should return. This can
+	 *                            prevent lengthy pauses and avoids bad interactive user experience.
+	 * @param removeInvalidExamples indicates whether completion examples should be checked for validity (against the given parser). An
+	 *                              exception is thrown if the example source contains no valid completion suggestions.
+	 * @tparam A the type of values that are returned by the parser.
+	 * @return
+	 */
+	def examples[A](a: Parser[A], completions: ExampleSource, maxNumberOfExamples: Int, removeInvalidExamples: Boolean): Parser[A] =
 		if(a.valid) {
 			a.result match
 			{
 				case Some(av) => success( av )
 				case None =>
-					if(check) checkMatches(a, completions.toSeq)
-					new Examples(a, completions)
+					new ParserWithExamples(a, completions, maxNumberOfExamples, removeInvalidExamples)
 			}
 		}
 		else a
@@ -442,7 +474,7 @@ trait ParserMain
 		}
 
 	/** Establishes delegate parser `t` as a single token of tab completion.
-	* When tab completion of part of this token is requested, the completions provided by the delegate `t` or a later derivative are appended to 
+	* When tab completion of part of this token is requested, the completions provided by the delegate `t` or a later derivative are appended to
 	* the prefix String already seen by this parser. */
 	def token[T](t: Parser[T]): Parser[T] = token(t, TokenCompletions.default)
 
@@ -691,17 +723,52 @@ private final class Not(delegate: Parser[_], failMessage: String) extends ValidP
 	}
 	override def toString = " -(%s)".format(delegate)
 }
-private final class Examples[T](delegate: Parser[T], fixed: Set[String]) extends ValidParser[T]
+
+/**
+ * This class wraps an existing parser (the delegate), and replaces the delegate's completions with examples from
+ * the given example source.
+ *
+ * This class asks the example source for a limited amount of examples (to prevent lengthy and expensive
+ * computations and large amounts of allocated data). It then passes these examples on to the UI.
+ *
+ * @param delegate the parser to decorate with completion examples (i.e., completion of user input).
+ * @param exampleSource the source from which this class will take examples (potentially filter them with the delegate
+ *                      parser), and pass them to the UI.
+ * @param maxNumberOfExamples the maximum number of completions to read from the example source and pass to the UI. This
+ *                            limit prevents lengthy example generation and allocation of large amounts of memory.
+ * @param removeInvalidExamples indicates whether to remove examples that are deemed invalid by the delegate parser.
+ * @tparam T the type of value produced by the parser.
+ */
+private final class ParserWithExamples[T](delegate: Parser[T], exampleSource: ExampleSource, maxNumberOfExamples: Int, removeInvalidExamples: Boolean) extends ValidParser[T]
 {
-	def derive(c: Char) = examples(delegate derive c, fixed.collect { case x if x.length > 0 && x(0) == c => x substring 1 })
+	def derive(c: Char) =
+		examples(delegate derive c, exampleSource.withAddedPrefix(c.toString), maxNumberOfExamples, removeInvalidExamples)
+
 	def result = delegate.result
+
 	lazy val resultEmpty = delegate.resultEmpty
-	def completions(level: Int) =
-		if(fixed.isEmpty)
+
+	def completions(level: Int) = {
+		if(exampleSource().isEmpty)
 			if(resultEmpty.isValid) Completions.nil else Completions.empty
+		else {
+			val examplesBasedOnTheResult = filteredExamples.take(maxNumberOfExamples).toSet
+			Completions(examplesBasedOnTheResult.map(ex => Completion.suggestion(ex)))
+		}
+	}
+
+	override def toString = "examples(" + delegate + ", " + exampleSource().take(2).toList + ")"
+
+	private def filteredExamples: Iterable[String] = {
+		if (removeInvalidExamples)
+			exampleSource().filter(isExampleValid)
 		else
-			Completions(fixed map(f => Completion.suggestion(f)) )
-	override def toString = "examples(" + delegate + ", " + fixed.take(2) + ")"
+			exampleSource()
+	}
+
+	private def isExampleValid(example: String): Boolean = {
+		apply(delegate)(example).resultEmpty.isValid
+	}
 }
 private final class StringLiteral(str: String, start: Int) extends ValidParser[String]
 {
