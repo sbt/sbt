@@ -252,7 +252,18 @@ ProjectsCommand + """
 	def LoadProjectImpl = "loadp"
 	def LoadProject = "reload"
 	def LoadProjectBrief = (LoadProject, LoadProjectDetailed)
-	def LoadProjectDetailed = "(Re)loads the project in the current directory"
+	def LoadProjectDetailed = LoadProject +
+s"""
+
+\t(Re)loads the project in the current directory.
+
+$LoadProject plugins
+
+\t(Re)loads the plugins project (under project directory).
+
+$LoadProject return
+
+\t(Re)loads the root project (and leaves the plugins project)."""
 
 	def InitCommand = "initialize"
 	def InitBrief = (InitCommand, "Initializes command processing.")
