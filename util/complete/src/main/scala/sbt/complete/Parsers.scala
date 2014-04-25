@@ -78,7 +78,7 @@ trait Parsers
 	def isScalaIDChar(c: Char) = c.isLetterOrDigit || c == '_'
 
 	def isDelimiter(c: Char) = c match { case '`' | '\'' | '\"' | /*';' | */',' | '.' => true ; case _ => false }
-	
+
 	/** Matches a single character that is not a whitespace character. */
 	lazy val NotSpaceClass = charClass(!_.isWhitespace, "non-whitespace character")
 
@@ -128,8 +128,15 @@ trait Parsers
 	/** Returns true if `c` is an ASCII letter or digit. */
 	def alphanum(c: Char) = ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9')
 
-	// TODO: implement
-	def fileParser(base: File): Parser[File] = token(mapOrFail(NotSpace)(s => new File(s.mkString)), "<file>")
+	/**
+	 * @param base the directory used for completion proposals (when the user presses the TAB key). Only paths under this
+	 *             directory will be proposed.
+	 * @return the file that was parsed from the input string. The returned path may or may not exist.
+	 */
+	def fileParser(base: File): Parser[File] =
+		OptSpace ~> StringBasic
+			.examples(new FileExamples(base))
+			.map(new File(_))
 
 	/** Parses a port number.  Currently, this accepts any integer and presents a tab completion suggestion of `<port>`. */
 	lazy val Port = token(IntBasic, "<port>")
@@ -153,7 +160,7 @@ trait Parsers
 	/** Parses a verbatim quoted String value, discarding the quotes in the result.  This kind of quoted text starts with triple quotes `"""`
 	* and ends at the next triple quotes and may contain any character in between. */
 	lazy val StringVerbatim: Parser[String] = VerbatimDQuotes ~>
-		any.+.string.filter(!_.contains(VerbatimDQuotes), _ => "Invalid verbatim string") <~ 
+		any.+.string.filter(!_.contains(VerbatimDQuotes), _ => "Invalid verbatim string") <~
 		VerbatimDQuotes
 
 	/** Parses a string value, interpreting escapes and discarding the surrounding quotes in the result.
@@ -168,7 +175,7 @@ trait Parsers
 	  BackslashChar ~> ('b' ^^^ '\b' | 't' ^^^ '\t' | 'n' ^^^ '\n' | 'f' ^^^ '\f' | 'r' ^^^ '\r' |
 	  '\"' ^^^ '\"' | '\'' ^^^ '\'' | '\\' ^^^ '\\' | UnicodeEscape)
 
-	/** Parses a single unicode escape sequence into the represented Char. 
+	/** Parses a single unicode escape sequence into the represented Char.
 	* A unicode escape begins with a backslash, followed by a `u` and 4 hexadecimal digits representing the unicode value. */
 	lazy val UnicodeEscape: Parser[Char] =
 	  ("u" ~> repeat(HexDigit, 4, 4)) map { seq => Integer.parseInt(seq.mkString, 16).toChar }
