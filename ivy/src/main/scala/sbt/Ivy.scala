@@ -4,13 +4,11 @@
 package sbt
 
 import Resolver.PluginPattern
-
 import java.io.File
 import java.net.URI
 import java.util.concurrent.Callable
 import java.util.{Collection, Collections => CS}
 import CS.singleton
-
 import org.apache.ivy.{core, plugins, util, Ivy}
 import core.{IvyPatternHelper, LogOptions}
 import core.cache.{CacheMetadataOptions, DefaultRepositoryCacheManager, ModuleDescriptorWriter}
@@ -26,8 +24,11 @@ import plugins.parser.m2.PomModuleDescriptorParser
 import plugins.resolver.{ChainResolver, DependencyResolver}
 import util.{Message, MessageLogger}
 import util.extendable.ExtendableItem
-
 import scala.xml.{NodeSeq, Text}
+import org.apache.ivy.core.sort.SortEngine
+import org.apache.ivy.core.event.EventManager
+import org.apache.ivy.core.resolve.ResolveEngine
+import sbt.ivyint.ParallelResolveEngine
 
 final class IvySbt(val configuration: IvyConfiguration)
 {
@@ -79,7 +80,17 @@ final class IvySbt(val configuration: IvyConfiguration)
 	}
 	private lazy val ivy: Ivy =
 	{
-		val i = new Ivy() { private val loggerEngine = new SbtMessageLoggerEngine; override def getLoggerEngine = loggerEngine }
+		val i = new Ivy() { 
+		  private val loggerEngine = new SbtMessageLoggerEngine; 
+		  override def getLoggerEngine = loggerEngine
+		  override def bind(): Unit = {
+		    // We inject the deps we need before we can hook our resolve engine.
+		    setSortEngine(new SortEngine(getSettings))
+		    setEventManager(new EventManager())
+		    setResolveEngine(new ResolveEngine(getSettings, getEventManager, getSortEngine) with ParallelResolveEngine)
+		    super.bind()
+		  } 
+		}
 		i.setSettings(settings)
 		i.bind()
 		i.getLoggerEngine.pushLogger(new IvyLoggerInterface(configuration.log))
