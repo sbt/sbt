@@ -620,7 +620,7 @@ or
 
 ::
 
-    externalIvyFile(baseDirectory.value / "custom-name.xml")
+    externalIvyFile(Def.setting(baseDirectory.value / "custom-name.xml"))
 
 Because Ivy files specify their own configurations, sbt needs to know
 which configurations to use for the compile, runtime, and test
@@ -642,7 +642,7 @@ or
 
 ::
 
-    externalPom(baseDirectory.value / "custom-name.xml")
+    externalPom(Def.setting(baseDirectory.value / "custom-name.xml"))
 
 Full Ivy Example
 ~~~~~~~~~~~~~~~~
@@ -653,7 +653,7 @@ For example, a `build.sbt` using external Ivy files might look like:
 
     externalIvySettings()
 
-    externalIvyFile(baseDirectory.value / "ivyA.xml")
+    externalIvyFile(Def.setting(baseDirectory.value / "ivyA.xml"))
 
     classpathConfiguration in Compile := Compile
 
