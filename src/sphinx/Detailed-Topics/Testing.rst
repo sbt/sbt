@@ -213,9 +213,8 @@ available with :key:`testGrouping` key. For example in build.sbt:
       def groupByFirst(tests: Seq[TestDefinition]) =
         tests groupBy (_.name(0)) map {
           case (letter, tests) => new Group(letter.toString, tests, SubProcess(Seq("-Dfirst.letter"+letter)))
-        } toSeq
-
-        testGrouping in Test <<= groupByFirst( (definedTests in Test).value )
+        } toSeq;
+        testGrouping in Test := groupByFirst( (definedTests in Test).value )
     }
 
 The tests in a single group are run sequentially. Control the number
