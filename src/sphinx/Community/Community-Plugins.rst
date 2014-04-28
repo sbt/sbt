@@ -95,6 +95,7 @@ Frontend development plugins
    https://github.com/btd/sbt-less-plugin
 -  sbt-emberjs: https://github.com/stefri/sbt-emberjs
 -  sbt-closure: https://github.com/eltimn/sbt-closure
+-  sbt-imagej: https://github.com/jpsacha/sbt-imagej
 -  sbt-yui-compressor: https://github.com/indrajitr/sbt-yui-compressor
 -  sbt-requirejs: https://github.com/scalatra/sbt-requirejs
 -  sbt-vaadin-plugin: https://github.com/henrikerola/sbt-vaadin-plugin
@@ -122,6 +123,7 @@ Release plugins
    https://github.com/sbt/sbt-release
 -  sbt-unique-version (emulates unique snapshots):
    https://github.com/sbt/sbt-unique-version
+-  sbt-install4j: https://github.com/jpsacha/sbt-install4j
 -  sbt-pack (generates packages with dependent jars and launch scripts):
    https://github.com/xerial/sbt-pack
 -  sbt-start-script:
