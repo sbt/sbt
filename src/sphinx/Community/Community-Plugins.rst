@@ -250,6 +250,8 @@ Utility plugins
    https://github.com/davidharcombe/sbt-multi-publish
 -  sbt-about-plugins (shows some details about plugins loaded):
    https://github.com/jozic/sbt-about-plugins
+-  sbt-one-log (make Log dependency easy):
+   https://github.com/zavakid/sbt-one-log
 
 Code coverage plugins
 ~~~~~~~~~~~~~~~~~~~~~
