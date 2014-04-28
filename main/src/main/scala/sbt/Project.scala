@@ -471,12 +471,12 @@ object Project extends ProjectExtra
 	def updateExtraBuilds(s: State, f: List[URI] => List[URI]): State = setExtraBuilds(s, f(extraBuilds(s)))
 
 	object LoadAction extends Enumeration {
-		val Return, Current, Plugins = Value
+		val Return, Current, Plugins, DefaultProject = Value
 	}
 	import LoadAction._
 	import DefaultParsers._
 
-	val loadActionParser = token(Space ~> ("plugins" ^^^ Plugins | "return" ^^^ Return)) ?? Current
+	val loadActionParser = token(Space ~> ("plugins" ^^^ LoadAction.Plugins | "return" ^^^ Return | "project" ^^^ DefaultProject)) ?? Current
 
 	val ProjectReturn = AttributeKey[List[File]]("project-return", "Maintains a stack of builds visited using reload.")
 	def projectReturn(s: State): List[File] = getOrNil(s, ProjectReturn)
@@ -492,13 +492,19 @@ object Project extends ProjectExtra
 		case Current =>
 			val base = s.configuration.baseDirectory
 			projectReturn(s) match { case Nil => (setProjectReturn(s, base :: Nil), base); case x :: xs => (s, x) }
-		case Plugins =>
+		case LoadAction.Plugins =>
 			val (newBase, oldStack) = if(Project.isProjectLoaded(s))
 					(Project.extract(s).currentUnit.unit.plugins.base, projectReturn(s))
 				else // support changing to the definition project if it fails to load
 					(BuildPaths.projectStandard(s.baseDir), s.baseDir :: Nil)
 			val newS = setProjectReturn(s, newBase :: oldStack)
 			(newS, newBase)
+    case DefaultProject =>
+      val extracted = Project extract s
+      val p = (extracted get Keys.defaultProject) getOrElse { extracted get thisProject }
+      val base = p.base
+      println(s"Project chosen as the target of reload: defaultProject ($base)")
+      (setProjectReturn(s, base :: Nil), base)
 	}
 	@deprecated("This method does not apply state changes requested during task execution.  Use 'runTask' instead, which does.", "0.11.1")
 	def evaluateTask[T](taskKey: ScopedKey[Task[T]], state: State, checkCycles: Boolean = false, maxWorkers: Int = EvaluateTask.SystemProcessors): Option[Result[T]] =

@@ -14,7 +14,7 @@ package sbt
 	import Project.{inScope,makeSettings}
 	import Def.{isDummy, ScopedKey, ScopeLocal, Setting}
 	import Keys.{appConfiguration, baseDirectory, configuration, fullResolvers, fullClasspath, pluginData, streams, thisProject, thisProjectRef, update}
-	import Keys.{exportedProducts, loadedBuild, onLoadMessage, resolvedScoped, sbtPlugin, scalacOptions, taskDefinitionKey}
+	import Keys.{exportedProducts, loadedBuild, onLoadMessage, resolvedScoped, sbtPlugin, scalacOptions, defaultProject}
 	import tools.nsc.reporters.ConsoleReporter
 	import Attributed.data
 	import Scope.{GlobalScope, ThisScope}
