@@ -255,16 +255,18 @@ object IvyActions
 
 	def publish(module: ModuleDescriptor, artifacts: Seq[(IArtifact, File)], resolver: DependencyResolver, overwrite: Boolean): Unit =
 	{
-		checkFilesPresent(artifacts)
-		try {
-			resolver.beginPublishTransaction(module.getModuleRevisionId(), overwrite);
-			for( (artifact, file) <- artifacts)
-				resolver.publish(artifact, file, overwrite)
-			resolver.commitPublishTransaction()
-		} catch {
-			case e: Throwable =>
-				try { resolver.abortPublishTransaction() }
-				finally { throw e }
+		if (artifacts.nonEmpty) {
+			checkFilesPresent(artifacts)
+			try {
+				resolver.beginPublishTransaction(module.getModuleRevisionId(), overwrite);
+				for( (artifact, file) <- artifacts)
+					resolver.publish(artifact, file, overwrite)
+				resolver.commitPublishTransaction()
+			} catch {
+				case e: Throwable =>
+					try { resolver.abortPublishTransaction() }
+					finally { throw e }
+			}
 		}
 	}
 	private[this] def checkFilesPresent(artifacts: Seq[(IArtifact, File)])
