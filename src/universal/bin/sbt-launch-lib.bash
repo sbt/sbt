@@ -17,6 +17,7 @@ declare -a java_args
 declare -a scalac_args
 declare -a sbt_commands
 declare java_cmd=java
+declare java_version
 declare -r sbt_bin_dir="$(dirname "$(realpath "$0")")"
 declare -r sbt_home="$(dirname "$sbt_bin_dir")"
 
@@ -77,21 +78,26 @@ addDebugger () {
   addJava "-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=$1"
 }
 
-# a ham-fisted attempt to move some memory settings in concert
-# so they need not be messed around with individually.
 get_mem_opts () {
-  local mem=${1:-1024}
-  local perm=$(( $mem / 4 ))
-  (( $perm > 256 )) || perm=256
-  (( $perm < 1024 )) || perm=1024
-  local codecache=$(( $perm / 2 ))
-
   # if we detect any of these settings in ${java_opts} we need to NOT output our settings.
   # The reason is the Xms/Xmx, if they don't line up, cause errors.
   if [[ "${java_opts}" == *-Xmx* ]] || [[ "${java_opts}" == *-Xms* ]] || [[ "${java_opts}" == *-XX:MaxPermSize* ]] || [[ "${java_opts}" == *-XX:ReservedCodeCacheSize* ]]; then
      echo ""
-  else 
-    echo "-Xms${mem}m -Xmx${mem}m -XX:MaxPermSize=${perm}m -XX:ReservedCodeCacheSize=${codecache}m"
+  else
+    # a ham-fisted attempt to move some memory settings in concert
+    # so they need not be messed around with individually.
+    local mem=${1:-1024}
+    local codecache=$(( $mem / 8 ))
+    (( $codecache > 128 )) || codecache=128
+    (( $codecache < 512 )) || codecache=512
+
+    local common_opts="-Xms${mem}m -Xmx${mem}m -XX:ReservedCodeCacheSize=${codecache}m"
+    if [[ "$java_version" < "1.8" ]]; then
+      local perm=$(( $codecache * 2 ))
+      echo "$common_opts -XX:MaxPermSize=${perm}m"
+    else
+      echo "$common_opts"
+    fi
   fi
 }
 
@@ -136,13 +142,15 @@ process_args () {
     residual_args=()
     process_my_args "${myargs[@]}"
   }
+
+  java_version=$("$java_cmd" -version 2>&1 | awk -F '"' '/version/ {print $2}')
+  vlog "[process_args] java_version = '$java_version'"
 }
 
 # Detect that we have java installed.
 checkJava() {
   local required_version="$1"
   # Now check to see if it's a good enough version
-  declare -r java_version=$("$java_cmd" -version 2>&1 | awk -F '"' '/version/ {print $2}')
   if [[ "$java_version" == "" ]]; then
     echo
     echo No java installations was detected.
