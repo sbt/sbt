@@ -122,11 +122,8 @@ object Packaging {
       } yield link
     },
     // DEBIAN SPECIFIC    
-    name in Debian <<= (sbtVersion) apply { (sv) => "sbt" /* + "-" + (sv split "[^\\d]" take 3 mkString ".")*/ },
-    version in Debian <<= (version, sbtVersion) apply { (v, sv) =>
-      val nums = (v split "[^\\d]")
-      "%s-%s-build-%03d" format (sv, (nums.init mkString "."), nums.last.toInt + 1)
-    },
+    name in Debian <<= "sbt",
+    version in Debian <<= sbtVersion,
     debianPackageDependencies in Debian ++= Seq("java6-runtime-headless", "bash (>= 2.05a-11)"),
     debianPackageRecommends in Debian += "git",
     linuxPackageMappings in Debian <+= (sourceDirectory) map { bd =>
