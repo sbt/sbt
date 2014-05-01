@@ -3,7 +3,7 @@ package sbt
 /** Define our settings system */
 
 // A basic scope indexed by an integer.
-final case class Scope(index: Int)
+final case class Scope(nestIndex: Int, idAtIndex: Int = 0)
 
 // Extend the Init trait.
 //  (It is done this way because the Scope type parameter is used everywhere in Init.
@@ -14,12 +14,12 @@ object SettingsExample extends Init[Scope]
 {
 	// Provides a way of showing a Scope+AttributeKey[_]
 	val showFullKey: Show[ScopedKey[_]] = new Show[ScopedKey[_]] {
-		def apply(key: ScopedKey[_]) = key.scope.index + "/" + key.key.label
+		def apply(key: ScopedKey[_]) = s"${key.scope.nestIndex}(${key.scope.idAtIndex})/${key.key.label}"
 	}
 
 	// A sample delegation function that delegates to a Scope with a lower index.
-	val delegates: Scope => Seq[Scope] = { case s @ Scope(index) =>
-		s +: (if(index <= 0) Nil else delegates(Scope(index-1)) )
+	val delegates: Scope => Seq[Scope] = { case s @ Scope(index, proj) =>
+		s +: (if(index <= 0) Nil else { (if (proj > 0) List(Scope(index)) else Nil) ++: delegates(Scope(index-1)) })
 	}
 
 	// Not using this feature in this example.
