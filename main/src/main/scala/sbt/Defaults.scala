@@ -151,7 +151,7 @@ object Defaults extends BuildCommon
 		maxErrors :== 100,
 		fork :== false,
 		initialize :== {},
-    defaultProject :== None
+    defaultProject := None
 	))
 	def defaultTestTasks(key: Scoped): Seq[Setting[_]] = inTask(key)(Seq(
 		tags := Seq(Tags.Test -> 1),

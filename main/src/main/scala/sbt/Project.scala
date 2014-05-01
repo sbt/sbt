@@ -14,6 +14,7 @@ package sbt
 	import complete.DefaultParsers
 
 	import language.experimental.macros
+import sbt.Resolver.file
 
 sealed trait ProjectDefinition[PR <: ProjectReference]
 {
@@ -500,11 +501,25 @@ object Project extends ProjectExtra
 			val newS = setProjectReturn(s, newBase :: oldStack)
 			(newS, newBase)
     case DefaultProject =>
-      val extracted = Project extract s
-      val p = (extracted get Keys.defaultProject) getOrElse { extracted get thisProject }
-      val base = p.base
-      println(s"Project chosen as the target of reload: defaultProject ($base)")
-      (setProjectReturn(s, base :: Nil), base)
+      projectReturn(s) match
+      {
+        case current :: returnTo :: rest =>
+          val (eval, structure) = Load.defaultLoad(s, returnTo, s.log, Project.inPluginProject(s), Project.extraBuilds(s))
+          val ss = Load.initialSession(structure, eval, s)
+          val extracted = Project extract (ss, structure)
+          val dp = extracted get (Keys.defaultProject in GlobalScope)
+          println(s"dp = $dp")
+          val p = dp getOrElse { extracted get thisProject }
+          println(s"p = $p")
+          val rootBase = extracted get Keys.baseDirectory
+          println(s"rootBase = $rootBase")
+          val projBase = p.base.getCanonicalFile
+          //val rootBase = extracted.rootProject(structure.root)
+          println(s"Project chosen as the target of reload: $projBase in $rootBase")
+          //val sN: State = new ProjectNavigation(s).selectProject(structure.root, p.id)
+          (setProjectReturn(s, projBase :: rest), rootBase)
+        case _ => sys.error("Not currently in a plugin definition")
+      }
 	}
 	@deprecated("This method does not apply state changes requested during task execution.  Use 'runTask' instead, which does.", "0.11.1")
 	def evaluateTask[T](taskKey: ScopedKey[Task[T]], state: State, checkCycles: Boolean = false, maxWorkers: Int = EvaluateTask.SystemProcessors): Option[Result[T]] =
