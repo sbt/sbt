@@ -230,11 +230,10 @@ object Defaults extends BuildCommon
 		javacOptions :== Nil,
 		scalacOptions :== Nil,
 		scalaVersion := appConfiguration.value.provider.scalaProvider.version,
-		crossScalaVersions := Seq(scalaVersion.value)
-	)) ++ Seq(
+		crossScalaVersions := Seq(scalaVersion.value),
 		derive(compilersSetting),
 		derive(scalaBinaryVersion := binaryScalaVersion(scalaVersion.value))
-	)
+	))
 	def makeCrossTarget(t: File, sv: String, sbtv: String, plugin: Boolean, cross: Boolean): File =
 	{
 		val scalaBase = if(cross) t / ("scala-" + sv) else t
@@ -409,9 +408,9 @@ object Defaults extends BuildCommon
 		},
 		testOptions := Tests.Listeners(testListeners.value) +: (testOptions in TaskGlobal).value,
 		testExecution <<= testExecutionTask(key)
-	) ) ++ Seq(
+	) ) ++ inScope(GlobalScope)(Seq(
 		derive(testGrouping <<= singleTestGroupDefault)
-	)
+	))
 	@deprecated("Doesn't provide for closing the underlying resources.", "0.13.1")
 	def testLogger(manager: Streams, baseKey: Scoped)(tdef: TestDefinition): Logger =
 	{
@@ -1741,5 +1740,5 @@ trait BuildCommon
 	def getPrevious[T](task: TaskKey[T]): Initialize[Task[Option[T]]] =
 		(state, resolvedScoped) map { (s, ctx) => getFromContext(task, ctx, s) }
 
-	private[sbt] def derive[T](s: Setting[T]): Setting[T] = Def.derive(s, allowDynamic=true, trigger = _ != streams.key)
+	private[sbt] def derive[T](s: Setting[T]): Setting[T] = Def.derive(s, allowDynamic=true, trigger = _ != streams.key, default = true)
 }
