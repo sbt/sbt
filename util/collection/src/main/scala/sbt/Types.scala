@@ -5,9 +5,8 @@ package sbt
 
 object Types extends Types
 
-trait Types extends TypeFunctions
-{
-	val :^: = KCons
-	type :+:[H, T <: HList] = HCons[H,T]
-	val :+: = HCons
+trait Types extends TypeFunctions {
+  val :^: = KCons
+  type :+:[H, T <: HList] = HCons[H, T]
+  val :+: = HCons
 }
