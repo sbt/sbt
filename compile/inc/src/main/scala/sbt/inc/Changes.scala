@@ -6,14 +6,13 @@ package inc
 
 import xsbt.api.NameChanges
 import java.io.File
-import xsbti.api.{_internalOnly_NameHashes => NameHashes}
-import xsbti.api.{_internalOnly_NameHash => NameHash}
+import xsbti.api.{ _internalOnly_NameHashes => NameHashes }
+import xsbti.api.{ _internalOnly_NameHash => NameHash }
 
 final case class InitialChanges(internalSrc: Changes[File], removedProducts: Set[File], binaryDeps: Set[File], external: APIChanges[String])
-final class APIChanges[T](val apiChanges: Iterable[APIChange[T]])
-{
-	override def toString = "API Changes: " + apiChanges
-	def allModified: Iterable[T] = apiChanges.map(_.modified)
+final class APIChanges[T](val apiChanges: Iterable[APIChange[T]]) {
+  override def toString = "API Changes: " + apiChanges
+  def allModified: Iterable[T] = apiChanges.map(_.modified)
 }
 
 sealed abstract class APIChange[T](val modified: T)
@@ -40,28 +39,26 @@ final case class NamesChange[T](modified0: T, modifiedNames: ModifiedNames) exte
  * due to difficulty of reasoning about the implicit scope.
  */
 final case class ModifiedNames(regularNames: Set[String], implicitNames: Set[String]) {
-	override def toString: String =
-		s"ModifiedNames(regularNames = ${regularNames mkString ", "}, implicitNames = ${implicitNames mkString ", "})"
+  override def toString: String =
+    s"ModifiedNames(regularNames = ${regularNames mkString ", "}, implicitNames = ${implicitNames mkString ", "})"
 }
 object ModifiedNames {
-	def compareTwoNameHashes(a: NameHashes, b: NameHashes): ModifiedNames = {
-		val modifiedRegularNames = calculateModifiedNames(a.regularMembers.toSet, b.regularMembers.toSet)
-		val modifiedImplicitNames = calculateModifiedNames(a.implicitMembers.toSet, b.implicitMembers.toSet)
-		ModifiedNames(modifiedRegularNames, modifiedImplicitNames)
-	}
-	private def calculateModifiedNames(xs: Set[NameHash], ys: Set[NameHash]): Set[String] = {
-	  val differentNameHashes = (xs union ys) diff (xs intersect ys)
-	  differentNameHashes.map(_.name)
-	}
+  def compareTwoNameHashes(a: NameHashes, b: NameHashes): ModifiedNames = {
+    val modifiedRegularNames = calculateModifiedNames(a.regularMembers.toSet, b.regularMembers.toSet)
+    val modifiedImplicitNames = calculateModifiedNames(a.implicitMembers.toSet, b.implicitMembers.toSet)
+    ModifiedNames(modifiedRegularNames, modifiedImplicitNames)
+  }
+  private def calculateModifiedNames(xs: Set[NameHash], ys: Set[NameHash]): Set[String] = {
+    val differentNameHashes = (xs union ys) diff (xs intersect ys)
+    differentNameHashes.map(_.name)
+  }
 }
 
-
-trait Changes[A]
-{
-	def added: Set[A]
-	def removed: Set[A]
-	def changed: Set[A]
-	def unmodified: Set[A]
+trait Changes[A] {
+  def added: Set[A]
+  def removed: Set[A]
+  def changed: Set[A]
+  def unmodified: Set[A]
 }
 
 sealed abstract class Change(val file: File)

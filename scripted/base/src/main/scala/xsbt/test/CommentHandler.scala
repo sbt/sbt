@@ -3,7 +3,6 @@
  */
 package xsbt.test
 
-object CommentHandler extends BasicStatementHandler
-{
-	def apply(command: String, args: List[String]) = ()
+object CommentHandler extends BasicStatementHandler {
+  def apply(command: String, args: List[String]) = ()
 }

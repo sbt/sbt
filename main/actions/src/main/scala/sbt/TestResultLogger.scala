@@ -1,6 +1,6 @@
 package sbt
 
-import sbt.Tests.{Output, Summary}
+import sbt.Tests.{ Output, Summary }
 
 /**
  * Logs information about tests after they finish.
@@ -49,7 +49,7 @@ object TestResultLogger {
     }
 
   /** Creates a `TestResultLogger` that ignores its input and always performs the same logging. */
-  def const(f: Logger => Unit) = apply((l,_,_) => f(l))
+  def const(f: Logger => Unit) = apply((l, _, _) => f(l))
 
   /**
    * Selects a `TestResultLogger` based on a given predicate.
@@ -65,7 +65,7 @@ object TestResultLogger {
   def silenceWhenNoTests(d: Defaults.Main) =
     d.copy(
       printStandard = d.printStandard.unless((results, _) => results.events.isEmpty),
-      printNoTests  = Null
+      printNoTests = Null
     )
 
   object Defaults {
@@ -73,11 +73,10 @@ object TestResultLogger {
     /** SBT's default `TestResultLogger`. Use `copy()` to change selective portions. */
     case class Main(
         printStandard_? : Output => Boolean = Defaults.printStandard_?,
-        printSummary    : TestResultLogger = Defaults.printSummary,
-        printStandard   : TestResultLogger = Defaults.printStandard,
-        printFailures   : TestResultLogger = Defaults.printFailures,
-        printNoTests    : TestResultLogger = Defaults.printNoTests
-      ) extends TestResultLogger {
+        printSummary: TestResultLogger = Defaults.printSummary,
+        printStandard: TestResultLogger = Defaults.printStandard,
+        printFailures: TestResultLogger = Defaults.printFailures,
+        printNoTests: TestResultLogger = Defaults.printNoTests) extends TestResultLogger {
 
       override def run(log: Logger, results: Output, taskName: String): Unit = {
         def run(r: TestResultLogger): Unit = r.run(log, results, taskName)
@@ -94,7 +93,7 @@ object TestResultLogger {
 
         results.overall match {
           case TestResult.Error | TestResult.Failed => throw new TestsFailedException
-          case TestResult.Passed =>
+          case TestResult.Passed                    =>
         }
       }
     }
@@ -102,10 +101,10 @@ object TestResultLogger {
     val printSummary = TestResultLogger((log, results, _) => {
       val multipleFrameworks = results.summaries.size > 1
       for (Summary(name, message) <- results.summaries)
-        if(message.isEmpty)
+        if (message.isEmpty)
           log.debug("Summary for " + name + " not available.")
         else {
-          if(multipleFrameworks) log.info(name)
+          if (multipleFrameworks) log.info(name)
           log.info(message)
         }
     })
@@ -117,19 +116,20 @@ object TestResultLogger {
 
     val printStandard = TestResultLogger((log, results, _) => {
       val (skippedCount, errorsCount, passedCount, failuresCount, ignoredCount, canceledCount, pendingCount) =
-        results.events.foldLeft((0, 0, 0, 0, 0, 0, 0)) { case ((skippedAcc, errorAcc, passedAcc, failureAcc, ignoredAcc, canceledAcc, pendingAcc), (name, testEvent)) =>
-          (skippedAcc + testEvent.skippedCount, errorAcc + testEvent.errorCount, passedAcc + testEvent.passedCount, failureAcc + testEvent.failureCount,
-            ignoredAcc + testEvent.ignoredCount, canceledAcc + testEvent.canceledCount, pendingAcc + testEvent.pendingCount)
+        results.events.foldLeft((0, 0, 0, 0, 0, 0, 0)) {
+          case ((skippedAcc, errorAcc, passedAcc, failureAcc, ignoredAcc, canceledAcc, pendingAcc), (name, testEvent)) =>
+            (skippedAcc + testEvent.skippedCount, errorAcc + testEvent.errorCount, passedAcc + testEvent.passedCount, failureAcc + testEvent.failureCount,
+              ignoredAcc + testEvent.ignoredCount, canceledAcc + testEvent.canceledCount, pendingAcc + testEvent.pendingCount)
         }
       val totalCount = failuresCount + errorsCount + skippedCount + passedCount
       val base = s"Total $totalCount, Failed $failuresCount, Errors $errorsCount, Passed $passedCount"
 
       val otherCounts = Seq("Skipped" -> skippedCount, "Ignored" -> ignoredCount, "Canceled" -> canceledCount, "Pending" -> pendingCount)
-      val extra = otherCounts.filter(_._2 > 0).map{case(label,count) => s", $label $count" }
+      val extra = otherCounts.filter(_._2 > 0).map { case (label, count) => s", $label $count" }
 
       val postfix = base + extra.mkString
       results.overall match {
-        case TestResult.Error => log.error("Error: " + postfix)
+        case TestResult.Error  => log.error("Error: " + postfix)
         case TestResult.Passed => log.info("Passed: " + postfix)
         case TestResult.Failed => log.error("Failed: " + postfix)
       }
