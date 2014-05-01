@@ -13,7 +13,7 @@ private[sbt] case class Realm(host: String, realm: String) extends CredentialKey
 
 /**
  * Helper mechanism to improve credential related error messages.
- * 
+ *
  * This evil class exposes to us the necessary information to warn on credential failure and offer
  * spelling/typo suggestions.
  */
@@ -21,17 +21,18 @@ private[sbt] object IvyCredentialsLookup {
 
   /** Helper extractor for Ivy's key-value store of credentials. */
   private object KeySplit {
-    def unapply(key: String): Option[(String,String)] = {
+    def unapply(key: String): Option[(String, String)] = {
       key.indexOf('@') match {
         case -1 => None
-        case n => Some(key.take(n) -> key.drop(n+1))
+        case n  => Some(key.take(n) -> key.drop(n + 1))
       }
     }
   }
 
-  /** Here we cheat runtime private so we can look in the credentials store. 
+  /**
+   * Here we cheat runtime private so we can look in the credentials store.
    *
-   *  TODO - Don't bomb at class load time...  
+   *  TODO - Don't bomb at class load time...
    */
   private val credKeyringField = {
     val tmp = classOf[CredentialsStore].getDeclaredField("KEYRING")
@@ -45,10 +46,10 @@ private[sbt] object IvyCredentialsLookup {
     // make a clone of the set...
     (map.keySet.asScala.map {
       case KeySplit(realm, host) => Realm(host, realm)
-      case host => Host(host)
+      case host                  => Host(host)
     })(collection.breakOut)
   }
-  
+
   /**
    * A mapping of host -> realms in the ivy credentials store.
    */
@@ -58,6 +59,6 @@ private[sbt] object IvyCredentialsLookup {
     } groupBy { realm =>
       realm.host
     } mapValues { realms =>
-      realms map (_.realm)  
+      realms map (_.realm)
     }
 }
