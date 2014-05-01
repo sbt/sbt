@@ -11,7 +11,7 @@ import scala.annotation.tailrec
 /** A wrapper around 'raw' static methods to meet the sbt application interface. */
 class ServerApplication private (provider: xsbti.AppProvider) extends xsbti.AppMain {
   import ServerApplication._
-  
+
   override def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     val serverMain = provider.entryPoint.asSubclass(ServerMainClass).newInstance
     val server = serverMain.start(configuration)
@@ -27,9 +27,9 @@ object ServerApplication {
   // We could even structurally type things that have a uri + awaitTermination method...
   def isServerApplication(clazz: Class[_]): Boolean =
     ServerMainClass.isAssignableFrom(clazz)
-  def apply(provider: xsbti.AppProvider): xsbti.AppMain = 
-  	new ServerApplication(provider)
-  
+  def apply(provider: xsbti.AppProvider): xsbti.AppMain =
+    new ServerApplication(provider)
+
 }
 object ServerLocator {
   // TODO - Probably want to drop this to reduce classfile size
@@ -45,20 +45,20 @@ object ServerLocator {
   def makeLockFile(f: File): File =
     new File(f.getParentFile, s"${f.getName}.lock")
   // Launch the process and read the port...
-  def locate(currentDirectory: File, config: LaunchConfiguration): URI = 
+  def locate(currentDirectory: File, config: LaunchConfiguration): URI =
     config.serverConfig match {
       case None => sys.error("No server lock file configured.  Cannot locate server.")
       case Some(sc) => locked(makeLockFile(sc.lockFile)) {
         readProperties(sc.lockFile) match {
           case Some(uri) if isReachable(uri) => uri
-          case _ => 
+          case _ =>
             val uri = ServerLauncher.startServer(currentDirectory, config)
             writeProperties(sc.lockFile, uri)
             uri
         }
       }
     }
-  
+
   private val SERVER_URI_PROPERTY = "server.uri"
   def readProperties(f: File): Option[java.net.URI] = {
     try {
@@ -79,8 +79,8 @@ object ServerLocator {
     df.setTimeZone(java.util.TimeZone.getTimeZone("UTC"))
     Pre.writeProperties(props, f, s"Server Startup at ${df.format(new java.util.Date)}")
   }
-  
-  def isReachable(uri: java.net.URI): Boolean = 
+
+  def isReachable(uri: java.net.URI): Boolean =
     try {
       // TODO - For now we assume if we can connect, it means
       // that the server is working...
@@ -97,16 +97,16 @@ class StreamDumper(in: java.io.BufferedReader, out: java.io.PrintStream) extends
   setDaemon(true)
   private val running = new java.util.concurrent.atomic.AtomicBoolean(true)
   override def run(): Unit = {
-    def read(): Unit = if(running.get) in.readLine match {
+    def read(): Unit = if (running.get) in.readLine match {
       case null => ()
-      case line => 
+      case line =>
         out.println(line)
         read()
     }
     read()
     out.close()
   }
-  
+
   def close(): Unit = running.set(false)
 }
 object ServerLauncher {
@@ -114,26 +114,26 @@ object ServerLauncher {
   def startServer(currentDirectory: File, config: LaunchConfiguration): URI = {
     val serverConfig = config.serverConfig match {
       case Some(c) => c
-      case None => throw new RuntimeException("Logic Failure:  Attempting to start a server that isn't configured to be a server.  Please report a bug.")
+      case None    => throw new RuntimeException("Logic Failure:  Attempting to start a server that isn't configured to be a server.  Please report a bug.")
     }
     val launchConfig = java.io.File.createTempFile("sbtlaunch", "config")
     launchConfig.deleteOnExit()
     LaunchConfiguration.save(config, launchConfig)
     val jvmArgs: List[String] = serverConfig.jvmArgs map readLines match {
       case Some(args) => args
-      case None => Nil
+      case None       => Nil
     }
-    val cmd: List[String] = 
+    val cmd: List[String] =
       ("java" :: jvmArgs) ++
-      ("-jar" :: defaultLauncherLookup.getCanonicalPath :: s"@load:${launchConfig.toURI.toURL.toString}" :: Nil)
+        ("-jar" :: defaultLauncherLookup.getCanonicalPath :: s"@load:${launchConfig.toURI.toURL.toString}" :: Nil)
     launchProcessAndGetUri(cmd, currentDirectory)
   }
-  
+
   // Here we try to isolate all the stupidity of dealing with Java processes.
   def launchProcessAndGetUri(cmd: List[String], cwd: File): URI = {
     // TODO - Handle windows path stupidity in arguments.
     val pb = new java.lang.ProcessBuilder()
-    pb.command(cmd:_*)
+    pb.command(cmd: _*)
     pb.directory(cwd)
     val process = pb.start()
     // First we need to grab all the input streams, and close the ones we don't care about.
@@ -146,7 +146,7 @@ object ServerLauncher {
     // Now we look for the URI synch value, and then make sure we close the output files.
     try readUntilSynch(new java.io.BufferedReader(new java.io.InputStreamReader(stdout))) match {
       case Some(uri) => uri
-      case _ =>  sys.error("Failed to start server!")
+      case _         => sys.error("Failed to start server!")
     } finally {
       errorDumper.close()
       stdout.close()
@@ -158,10 +158,10 @@ object ServerLauncher {
       //stderr.close()
     }
   }
-  
+
   object ServerUriLine {
     def unapply(in: String): Option[URI] =
-      if(in startsWith SERVER_SYNCH_TEXT) {
+      if (in startsWith SERVER_SYNCH_TEXT) {
         Some(new URI(in.substring(SERVER_SYNCH_TEXT.size)))
       } else None
   }
@@ -169,19 +169,19 @@ object ServerLauncher {
   def readUntilSynch(in: java.io.BufferedReader): Option[URI] = {
     @tailrec
     def read(): Option[URI] = in.readLine match {
-      case null => None
+      case null               => None
       case ServerUriLine(uri) => Some(uri)
-      case line => read()
+      case line               => read()
     }
     try read()
     finally in.close()
   }
   /** Reads all the lines in a file. If it doesn't exist, returns an empty list.  Forces UTF-8 strings. */
-  def readLines(f: File): List[String] = 
-    if(!f.exists) Nil else {
+  def readLines(f: File): List[String] =
+    if (!f.exists) Nil else {
       val reader = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(f), "UTF-8"))
       @tailrec
-      def read(current: List[String]): List[String] = 
+      def read(current: List[String]): List[String] =
         reader.readLine match {
           case null => current.reverse
           case line => read(line :: current)
@@ -189,7 +189,7 @@ object ServerLauncher {
       try read(Nil)
       finally reader.close()
     }
-  
+
   def defaultLauncherLookup: File =
     try {
       val classInLauncher = classOf[AppConfiguration]

@@ -3,56 +3,51 @@
  */
 package sbt
 
-import org.apache.ivy.util.{Message, MessageLogger, MessageLoggerEngine}
+import org.apache.ivy.util.{ Message, MessageLogger, MessageLoggerEngine }
 
 /** Interface to Ivy logging. */
-private final class IvyLoggerInterface(logger: Logger) extends MessageLogger
-{
-	def rawlog(msg: String, level: Int) = log(msg, level)
-	def log(msg: String, level: Int)
-	{
-		import Message.{MSG_DEBUG, MSG_VERBOSE, MSG_INFO, MSG_WARN, MSG_ERR}
-		level match
-		{
-			case MSG_DEBUG => debug(msg)
-			case MSG_VERBOSE => verbose(msg)
-			case MSG_INFO => info(msg)
-			case MSG_WARN => warn(msg)
-			case MSG_ERR => error(msg)
-		}
-	}
-	//DEBUG level messages are very verbose and rarely useful to users.
-	// TODO: provide access to this information some other way
-	def debug(msg: String) {}
-	def verbose(msg: String) = logger.verbose(msg)
-	def deprecated(msg: String) = warn(msg)
-	def info(msg: String) = logger.info(msg)
-	def rawinfo(msg: String) = info(msg)
-	def warn(msg: String) = logger.warn(msg)
-	def error(msg: String) = if(SbtIvyLogger.acceptError(msg)) logger.error(msg)
-	
-	private def emptyList = java.util.Collections.emptyList[String]
-	def getProblems = emptyList
-	def getWarns = emptyList
-	def getErrors = emptyList
+private final class IvyLoggerInterface(logger: Logger) extends MessageLogger {
+  def rawlog(msg: String, level: Int) = log(msg, level)
+  def log(msg: String, level: Int) {
+    import Message.{ MSG_DEBUG, MSG_VERBOSE, MSG_INFO, MSG_WARN, MSG_ERR }
+    level match {
+      case MSG_DEBUG   => debug(msg)
+      case MSG_VERBOSE => verbose(msg)
+      case MSG_INFO    => info(msg)
+      case MSG_WARN    => warn(msg)
+      case MSG_ERR     => error(msg)
+    }
+  }
+  //DEBUG level messages are very verbose and rarely useful to users.
+  // TODO: provide access to this information some other way
+  def debug(msg: String) {}
+  def verbose(msg: String) = logger.verbose(msg)
+  def deprecated(msg: String) = warn(msg)
+  def info(msg: String) = logger.info(msg)
+  def rawinfo(msg: String) = info(msg)
+  def warn(msg: String) = logger.warn(msg)
+  def error(msg: String) = if (SbtIvyLogger.acceptError(msg)) logger.error(msg)
 
-	def clearProblems = ()
-	def sumupProblems = clearProblems()
-	def progress = ()
-	def endProgress = ()
+  private def emptyList = java.util.Collections.emptyList[String]
+  def getProblems = emptyList
+  def getWarns = emptyList
+  def getErrors = emptyList
 
-	def endProgress(msg: String) = info(msg)
-	def isShowProgress = false
-	def setShowProgress(progress: Boolean) {}
+  def clearProblems = ()
+  def sumupProblems = clearProblems()
+  def progress = ()
+  def endProgress = ()
+
+  def endProgress(msg: String) = info(msg)
+  def isShowProgress = false
+  def setShowProgress(progress: Boolean) {}
 }
-private final class SbtMessageLoggerEngine extends MessageLoggerEngine
-{
-	/** This is a hack to filter error messages about 'unknown resolver ...'. */
-	override def error(msg: String) = if(SbtIvyLogger.acceptError(msg)) super.error(msg)
-	override def sumupProblems = clearProblems()
+private final class SbtMessageLoggerEngine extends MessageLoggerEngine {
+  /** This is a hack to filter error messages about 'unknown resolver ...'. */
+  override def error(msg: String) = if (SbtIvyLogger.acceptError(msg)) super.error(msg)
+  override def sumupProblems = clearProblems()
 }
-private object SbtIvyLogger
-{
-	val UnknownResolver = "unknown resolver"
-	def acceptError(msg: String) = (msg ne null) && !msg.startsWith(UnknownResolver)
+private object SbtIvyLogger {
+  val UnknownResolver = "unknown resolver"
+  def acceptError(msg: String) = (msg ne null) && !msg.startsWith(UnknownResolver)
 }

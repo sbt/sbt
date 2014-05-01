@@ -51,74 +51,73 @@ import xsbt.api.APIUtil
  * of regular members then we'll invalidate sources that use those names.
  */
 private[inc] class MemberRefInvalidator(log: Logger) {
-	def get[T](memberRef: Relation[File, T], usedNames: Relation[File, String], apiChange: APIChange[_]):
-		T => Set[File] = apiChange match {
-			case _: APIChangeDueToMacroDefinition[_] =>
-				new InvalidateUnconditionally(memberRef)
-			case NamesChange(_, modifiedNames) if !modifiedNames.implicitNames.isEmpty =>
-				new InvalidateUnconditionally(memberRef)
-			case NamesChange(modifiedSrcFile, modifiedNames) =>
-				new NameHashFilteredInvalidator[T](usedNames, memberRef, modifiedNames.regularNames)
-			case _: SourceAPIChange[_] =>
-				sys.error(wrongAPIChangeMsg)
-		}
+  def get[T](memberRef: Relation[File, T], usedNames: Relation[File, String], apiChange: APIChange[_]): T => Set[File] = apiChange match {
+    case _: APIChangeDueToMacroDefinition[_] =>
+      new InvalidateUnconditionally(memberRef)
+    case NamesChange(_, modifiedNames) if !modifiedNames.implicitNames.isEmpty =>
+      new InvalidateUnconditionally(memberRef)
+    case NamesChange(modifiedSrcFile, modifiedNames) =>
+      new NameHashFilteredInvalidator[T](usedNames, memberRef, modifiedNames.regularNames)
+    case _: SourceAPIChange[_] =>
+      sys.error(wrongAPIChangeMsg)
+  }
 
-	def invalidationReason(apiChange: APIChange[_]): String = apiChange match {
-		case APIChangeDueToMacroDefinition(modifiedSrcFile) =>
-			s"The $modifiedSrcFile source file declares a macro."
-		case NamesChange(modifiedSrcFile, modifiedNames) if !modifiedNames.implicitNames.isEmpty =>
-			s"""|The $modifiedSrcFile source file has the following implicit definitions changed:
+  def invalidationReason(apiChange: APIChange[_]): String = apiChange match {
+    case APIChangeDueToMacroDefinition(modifiedSrcFile) =>
+      s"The $modifiedSrcFile source file declares a macro."
+    case NamesChange(modifiedSrcFile, modifiedNames) if !modifiedNames.implicitNames.isEmpty =>
+      s"""|The $modifiedSrcFile source file has the following implicit definitions changed:
 				|\t${modifiedNames.implicitNames.mkString(", ")}.""".stripMargin
-		case NamesChange(modifiedSrcFile, modifiedNames) =>
-			s"""|The $modifiedSrcFile source file has the following regular definitions changed:
+    case NamesChange(modifiedSrcFile, modifiedNames) =>
+      s"""|The $modifiedSrcFile source file has the following regular definitions changed:
 				|\t${modifiedNames.regularNames.mkString(", ")}.""".stripMargin
-		case _: SourceAPIChange[_] =>
-			sys.error(wrongAPIChangeMsg)
-	}
+    case _: SourceAPIChange[_] =>
+      sys.error(wrongAPIChangeMsg)
+  }
 
-	private val wrongAPIChangeMsg =
-		"MemberReferenceInvalidator.get should be called when name hashing is enabled " +
-			"and in that case we shouldn't have SourceAPIChange as an api change."
+  private val wrongAPIChangeMsg =
+    "MemberReferenceInvalidator.get should be called when name hashing is enabled " +
+      "and in that case we shouldn't have SourceAPIChange as an api change."
 
-	private class InvalidateUnconditionally[T](memberRef: Relation[File, T]) extends (T => Set[File]) {
-		def apply(from: T): Set[File] = {
-			val invalidated = memberRef.reverse(from)
-			if (!invalidated.isEmpty)
-				log.debug(s"The following member ref dependencies of $from are invalidated:\n" +
-					formatInvalidated(invalidated))
-			invalidated
-		}
-		private def formatInvalidated(invalidated: Set[File]): String = {
-			val sortedFiles = invalidated.toSeq.sortBy(_.getAbsolutePath)
-			sortedFiles.map(file => "\t"+file).mkString("\n")
-		}
-	}
+  private class InvalidateUnconditionally[T](memberRef: Relation[File, T]) extends (T => Set[File]) {
+    def apply(from: T): Set[File] = {
+      val invalidated = memberRef.reverse(from)
+      if (!invalidated.isEmpty)
+        log.debug(s"The following member ref dependencies of $from are invalidated:\n" +
+          formatInvalidated(invalidated))
+      invalidated
+    }
+    private def formatInvalidated(invalidated: Set[File]): String = {
+      val sortedFiles = invalidated.toSeq.sortBy(_.getAbsolutePath)
+      sortedFiles.map(file => "\t" + file).mkString("\n")
+    }
+  }
 
-	private class NameHashFilteredInvalidator[T](
-		usedNames: Relation[File, String],
-		memberRef: Relation[File, T],
-		modifiedNames: Set[String]) extends (T => Set[File]) {
+  private class NameHashFilteredInvalidator[T](
+      usedNames: Relation[File, String],
+      memberRef: Relation[File, T],
+      modifiedNames: Set[String]) extends (T => Set[File]) {
 
-		def apply(to: T): Set[File] = {
-			val dependent = memberRef.reverse(to)
-			filteredDependencies(dependent)
-		}
-		private def filteredDependencies(dependent: Set[File]): Set[File] = {
-			dependent.filter {
-				case from if APIUtil.isScalaSourceName(from.getName) =>
-					val usedNamesInDependent = usedNames.forward(from)
-					val modifiedAndUsedNames = modifiedNames intersect usedNamesInDependent
-					if (modifiedAndUsedNames.isEmpty) {
-						log.debug(s"None of the modified names appears in $from. This dependency is not being considered for invalidation.")
-						false
-					} else {
-						log.debug(s"The following modified names cause invalidation of $from: $modifiedAndUsedNames")
-						true
-					}
-				case from =>
-					log.debug(s"Name hashing optimization doesn't apply to non-Scala dependency: $from")
-					true
-			}
-		}
-	}
+    def apply(to: T): Set[File] = {
+      val dependent = memberRef.reverse(to)
+      filteredDependencies(dependent)
+    }
+    private def filteredDependencies(dependent: Set[File]): Set[File] = {
+      dependent.filter {
+        case from if APIUtil.isScalaSourceName(from.getName) =>
+          val usedNamesInDependent = usedNames.forward(from)
+          val modifiedAndUsedNames = modifiedNames intersect usedNamesInDependent
+          if (modifiedAndUsedNames.isEmpty) {
+            log.debug(s"None of the modified names appears in $from. This dependency is not being considered for invalidation.")
+            false
+          } else {
+            log.debug(s"The following modified names cause invalidation of $from: $modifiedAndUsedNames")
+            true
+          }
+        case from =>
+          log.debug(s"Name hashing optimization doesn't apply to non-Scala dependency: $from")
+          true
+      }
+    }
+  }
 }
