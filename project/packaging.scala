@@ -122,7 +122,7 @@ object Packaging {
       } yield link
     },
     // DEBIAN SPECIFIC    
-    name in Debian <<= "sbt",
+    name in Debian := "sbt",
     version in Debian <<= sbtVersion,
     debianPackageDependencies in Debian ++= Seq("java6-runtime-headless", "bash (>= 2.05a-11)"),
     debianPackageRecommends in Debian += "git",
