@@ -7,6 +7,9 @@ import SettingsExample._
 
 object SettingsTest extends Properties("settings")
 {
+
+	import scala.reflect.Manifest
+
 	final val ChainMax = 5000
 	lazy val chainLengthGen = Gen.choose(1, ChainMax)
 
@@ -35,31 +38,84 @@ object SettingsTest extends Properties("settings")
 		evaluate( setting(chk, iterate(top)) :: Nil); true
 	}
 
-  property("Derived setting chain depending on (prev derived, normal setting)") = forAllNoShrink(Gen.choose(1, 100)) { derivedSettings }
-  final def derivedSettings(nr: Int): Prop =
-  {
-    val alphaStr = Gen.alphaStr
-    val genScopedKeys = {
-      val attrKeys = for {
-        list <- Gen.listOfN(nr, alphaStr) suchThat (l => l.size == l.distinct.size)
-        item <- list
-      } yield AttributeKey[Int](item)
-      attrKeys map (_ map (ak => ScopedKey(Scope(0), ak)))
-    }
-    forAll(genScopedKeys) { scopedKeys =>
-      val last = scopedKeys.last
-      val derivedSettings: Seq[Setting[Int]] = (
-        for {
-          List(scoped0, scoped1) <- chk :: scopedKeys sliding 2
-          nextInit = if (scoped0 == chk) chk
-                     else (scoped0 zipWith chk) { (p, _) => p + 1 }
-        } yield derive(setting(scoped1, nextInit))
-      ).toSeq
+	property("Derived setting chain depending on (prev derived, normal setting)") = forAllNoShrink(Gen.choose(1, 100)) { derivedSettings }
+	final def derivedSettings(nr: Int): Prop =
+	{
+		val genScopedKeys = {
+			val attrKeys = mkAttrKeys[Int](nr)
+			attrKeys map (_ map (ak => ScopedKey(Scope(0), ak)))
+		}
+		forAll(genScopedKeys) { scopedKeys =>
+			val last = scopedKeys.last
+			val derivedSettings: Seq[Setting[Int]] = (
+				for {
+					List(scoped0, scoped1) <- chk :: scopedKeys sliding 2
+					nextInit = if (scoped0 == chk) chk
+										 else (scoped0 zipWith chk) { (p, _) => p + 1 }
+				} yield derive(setting(scoped1, nextInit))
+			).toSeq
 
-      { checkKey(last, Some(nr-1), evaluate(setting(chk, value(0)) +: derivedSettings)) :| "Not derived?" } &&
-      { checkKey( last, None, evaluate(derivedSettings)) :| "Should not be derived" }
-    }
-  }
+			{ checkKey(last, Some(nr-1), evaluate(setting(chk, value(0)) +: derivedSettings)) :| "Not derived?" } &&
+			{ checkKey( last, None, evaluate(derivedSettings)) :| "Should not be derived" }
+		}
+	}
+
+	private def mkAttrKeys[T](nr: Int)(implicit mf: Manifest[T]): Gen[List[AttributeKey[T]]] =
+	{
+		val alphaStr = Gen.alphaStr
+		for {
+			list <- Gen.listOfN(nr, alphaStr) suchThat (l => l.size == l.distinct.size)
+			item <- list
+		} yield AttributeKey[T](item)
+	}
+
+	property("Derived setting(s) replace DerivedSetting in the Seq[Setting[_]]") = derivedKeepsPosition
+	final def derivedKeepsPosition: Prop =
+	{
+		val a: ScopedKey[Int] = ScopedKey(Scope(0), AttributeKey[Int]("a"))
+		val b: ScopedKey[Int] = ScopedKey(Scope(0), AttributeKey[Int]("b"))
+		val prop1 = {
+			val settings: Seq[Setting[_]] = Seq(
+				setting(a, value(3)),
+				setting(b, value(6)),
+				derive(setting(b, a)),
+				setting(a, value(5)),
+				setting(b, value(8))
+			)
+			val ev = evaluate(settings)
+			checkKey(a, Some(5), ev) && checkKey(b, Some(8), ev)
+		}
+		val prop2 = {
+			val settings: Seq[Setting[Int]] = Seq(
+				setting(a, value(3)),
+				setting(b, value(6)),
+				derive(setting(b, a)),
+				setting(a, value(5))
+			)
+			val ev = evaluate(settings)
+			checkKey(a, Some(5), ev) && checkKey(b, Some(5), ev)
+		}
+		prop1 && prop2
+	}
+
+	property("DerivedSetting in ThisBuild scopes derived settings under projects thus allowing safe +=") = forAllNoShrink(Gen.choose(1, 100)) { derivedSettingsScope }
+	final def derivedSettingsScope(nrProjects: Int): Prop =
+	{
+		forAll(mkAttrKeys[Int](2)) { case List(key, derivedKey) =>
+			val projectKeys = for { proj <- 1 to nrProjects } yield ScopedKey(Scope(1, proj), key)
+			val projectDerivedKeys = for { proj <- 1 to nrProjects } yield ScopedKey(Scope(1, proj), derivedKey)
+			val globalKey   = ScopedKey(Scope(0), key)
+			val globalDerivedKey = ScopedKey(Scope(0), derivedKey)
+			// Each project defines an initial value, but the update is defined in globalKey.
+			// However, the derived Settings that come from this should be scoped in each project.
+			val settings: Seq[Setting[_]] =
+				derive(setting(globalDerivedKey, SettingsExample.map(globalKey)(_ + 1))) +: projectKeys.map(pk => setting(pk, value(0)))
+			val ev = evaluate(settings)
+			// Also check that the key has no value at the "global" scope
+			val props = for { pk <- projectDerivedKeys } yield checkKey(pk, Some(1), ev)
+			checkKey(globalDerivedKey, None, ev) && Prop.all(props: _*)
+		}
+	}
 
 // Circular (dynamic) references currently loop infinitely.
 //  This is the expected behavior (detecting dynamic cycles is expensive),
