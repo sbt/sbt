@@ -64,7 +64,7 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
                          }
                        } time={ (e.duration() / 1000.0).toString }>
                                                  {
-                                                   var trace: String = if (e.throwable.isDefined) {
+                                                   val trace: String = if (e.throwable.isDefined) {
                                                      val stringWriter = new StringWriter()
                                                      val writer = new PrintWriter(stringWriter)
                                                      e.throwable.get.printStackTrace(writer)
@@ -94,7 +94,7 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
   }
 
   /**The currently running test suite*/
-  var testSuite = new DynamicVariable(null: TestSuite)
+  val testSuite = new DynamicVariable(null: TestSuite)
 
   /**Creates the output Dir*/
   override def doInit() = { targetDir.mkdirs() }
