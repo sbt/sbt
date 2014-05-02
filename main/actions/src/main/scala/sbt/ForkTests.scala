@@ -112,17 +112,17 @@ private[sbt] object ForkTests {
 private final class React(is: ObjectInputStream, os: ObjectOutputStream, log: Logger, listeners: Seq[TestReportListener], results: mutable.Map[String, SuiteResult]) {
   import ForkTags._
   @annotation.tailrec def react(): Unit = is.readObject match {
-    case `Done`                    =>
+    case `Done` =>
       os.writeObject(Done); os.flush()
     case Array(`Error`, s: String) =>
       log.error(s); react()
-    case Array(`Warn`, s: String)  =>
+    case Array(`Warn`, s: String) =>
       log.warn(s); react()
-    case Array(`Info`, s: String)  =>
+    case Array(`Info`, s: String) =>
       log.info(s); react()
     case Array(`Debug`, s: String) =>
       log.debug(s); react()
-    case t: Throwable              =>
+    case t: Throwable =>
       log.trace(t); react()
     case Array(group: String, tEvents: Array[Event]) =>
       listeners.foreach(_ startGroup group)

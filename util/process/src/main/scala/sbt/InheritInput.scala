@@ -10,7 +10,7 @@ private[sbt] object InheritInput {
   def apply(p: JProcessBuilder): Boolean = (redirectInput, inherit) match {
     case (Some(m), Some(f)) =>
       m.invoke(p, f); true
-    case _                  => false
+    case _ => false
   }
 
   private[this] val pbClass = Class.forName("java.lang.ProcessBuilder")

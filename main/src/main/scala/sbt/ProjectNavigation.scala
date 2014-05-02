@@ -28,7 +28,7 @@ final class ProjectNavigation(s: State) {
 
   def apply(action: Option[ResolvedReference]): State =
     action match {
-      case None                      =>
+      case None =>
         show(); s
       case Some(BuildRef(uri))       => changeBuild(uri)
       case Some(ProjectRef(uri, id)) => selectProject(uri, id)
