@@ -1384,10 +1384,10 @@ object Classpaths {
     {
       val ms: Seq[(String, Seq[String])] =
         trim(confString.split("->", 2)) match {
-          case x :: Nil      => for (a <- parseList(x, masterConfs)) yield (a, default(a))
+          case x :: Nil => for (a <- parseList(x, masterConfs)) yield (a, default(a))
           case x :: y :: Nil =>
             val target = parseList(y, depConfs); for (a <- parseList(x, masterConfs)) yield (a, target)
-          case _             => error("Invalid configuration '" + confString + "'") // shouldn't get here
+          case _ => error("Invalid configuration '" + confString + "'") // shouldn't get here
         }
       val m = ms.toMap
       s => m.getOrElse(s, Nil)

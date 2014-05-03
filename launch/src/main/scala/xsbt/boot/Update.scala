@@ -157,7 +157,7 @@ final class Update(config: UpdateConfiguration) {
       val target1 = (depVersion, target) match {
         case (Some(dv), u: UpdateApp) =>
           import u._; new UpdateApp(id.copy(version = new Explicit(dv)), classifiers, tpe)
-        case _                        => target
+        case _ => target
       }
       setScalaVariable(settings, autoScalaVersion)
       retrieve(eventManager, moduleID, target1, autoScalaVersion)

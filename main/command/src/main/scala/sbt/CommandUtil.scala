@@ -28,7 +28,7 @@ object CommandUtil {
 
   def withAttribute[T](s: State, key: AttributeKey[T], ifMissing: String)(f: T => State): State =
     (s get key) match {
-      case None      =>
+      case None =>
         s.log.error(ifMissing); s.fail
       case Some(nav) => f(nav)
     }
