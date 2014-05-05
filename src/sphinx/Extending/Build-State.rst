@@ -148,9 +148,9 @@ provides information about a single build. The key members of
     defined: Map[String, ResolvedProject]
 
 `ResolvedProject <../../api/sbt/ResolvedProject.html>`_ has the same
-information as the `Project` used in a `project/Build.scala` except
+information as the `Project <../../api/sbt/Project.html>`_ used in a `project/Build.scala` except
 that `ProjectReferences <../../api/sbt/ProjectReference.html>`_ are
-resolved to `ProjectRef`\ s.
+resolved to `ProjectRef <../../api/sbt/ProjectRef.html>`\ s.
 
 Classpaths
 ----------
