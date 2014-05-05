@@ -256,6 +256,8 @@ Utility plugins
    https://github.com/jozic/sbt-about-plugins
 -  sbt-one-log (make Log dependency easy):
    https://github.com/zavakid/sbt-one-log
+-  fm-sbt-s3-resolver (Resolve and Publish using Amazon S3):
+   https://github.com/frugalmechanic/fm-sbt-s3-resolver
 
 Code coverage plugins
 ~~~~~~~~~~~~~~~~~~~~~
