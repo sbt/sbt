@@ -16,7 +16,7 @@ object Imports
 	lazy val demo = settingKey[String]("A demo setting.")
 	lazy val del = settingKey[String]("Another demo setting.")
 
-	lazy val check = settingKey[Unit]("Verifies settings are as they should be.")
+	lazy val check = taskKey[Unit]("Verifies settings are as they should be.")
 }
 
 object X extends AutoPlugin {

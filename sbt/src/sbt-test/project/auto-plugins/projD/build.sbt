@@ -1,0 +1,1 @@
+disablePlugins(plugins.IvyPlugin)

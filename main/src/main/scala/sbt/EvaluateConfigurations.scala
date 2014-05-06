@@ -37,6 +37,7 @@ object EvaluateConfigurations {
    *  return a parsed, compiled + evaluated [[LoadedSbtFile]].   The result has
    *  raw sbt-types that can be accessed and used.
    */
+  @deprecated("We no longer merge build.sbt files together unless they are in the same directory.", "0.13.6")
   def apply(eval: Eval, srcs: Seq[File], imports: Seq[String]): ClassLoader => LoadedSbtFile =
     {
       val loadFiles = srcs.sortBy(_.getName) map { src => evaluateSbtFile(eval, src, IO.readLines(src), imports, 0) }
@@ -45,6 +46,8 @@ object EvaluateConfigurations {
 
   /**
    * Reads a given .sbt file and evaluates it into a sequence of setting values.
+   *
+   * Note: This ignores any non-Setting[_] values in the file.
    */
   def evaluateConfiguration(eval: Eval, src: File, imports: Seq[String]): ClassLoader => Seq[Setting[_]] =
     evaluateConfiguration(eval, src, IO.readLines(src), imports, 0)
@@ -92,6 +95,8 @@ object EvaluateConfigurations {
    */
   private[sbt] def evaluateSbtFile(eval: Eval, file: File, lines: Seq[String], imports: Seq[String], offset: Int): ClassLoader => LoadedSbtFile =
     {
+      // TODO - Store the file on the LoadedSbtFile (or the parent dir) so we can accurately do
+      //        detection for which project project manipulations should be applied.
       val name = file.getPath
       val parsed = parseConfiguration(lines, imports, offset)
       val (importDefs, projects) = if (parsed.definitions.isEmpty) (Nil, (l: ClassLoader) => Nil) else {
@@ -101,16 +106,32 @@ object EvaluateConfigurations {
         (imp, projs)
       }
       val allImports = importDefs.map(s => (s, -1)) ++ parsed.imports
-      val settings = parsed.settings map {
-        case (settingExpression, range) =>
-          evaluateSetting(eval, name, allImports, settingExpression, range)
+      val dslEntries = parsed.settings map {
+        case (dslExpression, range) =>
+          evaluateDslEntry(eval, name, allImports, dslExpression, range)
       }
       eval.unlinkDeferred()
-      val loadSettings = flatten(settings)
-      loader => new LoadedSbtFile(loadSettings(loader), projects(loader), importDefs)
+      loader => {
+        val (settingsRaw, manipulationsRaw) =
+          dslEntries map (_ apply loader) partition {
+            case internals.ProjectSettings(_) => true
+            case _                            => false
+          }
+        val settings = settingsRaw flatMap {
+          case internals.ProjectSettings(settings) => settings
+          case _                                   => Nil
+        }
+        val manipulations = manipulationsRaw map {
+          case internals.ProjectManipulation(f) => f
+        }
+        val ps = projects(loader)
+        // TODO -get project manipulations.
+        new LoadedSbtFile(settings, ps, importDefs, manipulations)
+      }
     }
   /** move a project to be relative to this file after we've evaluated it. */
   private[this] def resolveBase(f: File, p: Project) = p.copy(base = IO.resolve(f, p.base))
+  @deprecated("Will no longer be public.", "0.13.6")
   def flatten(mksettings: Seq[ClassLoader => Seq[Setting[_]]]): ClassLoader => Seq[Setting[_]] =
     loader => mksettings.flatMap(_ apply loader)
   def addOffset(offset: Int, lines: Seq[(String, Int)]): Seq[(String, Int)] =
@@ -125,6 +146,31 @@ object EvaluateConfigurations {
     val _ = classOf[sbt.internals.DslEntry] // this line exists to try to provide a compile-time error when the following line needs to be changed
     "sbt.internals.DslEntry"
   }
+
+  /**
+   * This actually compiles a scala expression which represents a sbt.internals.DslEntry.
+   *
+   * @param eval The mechanism to compile and evaluate Scala expressions.
+   * @param name The name for the thing we're compiling
+   * @param imports The scala imports to have in place when we compile the expression
+   * @param expression The scala expression we're compiling
+   * @param range The original position in source of the expression, for error messages.
+   *
+   * @return A method that given an sbt classloader, can return the actual [[DslEntry]] defined by
+   *         the expression.
+   */
+  private[sbt] def evaluateDslEntry(eval: Eval, name: String, imports: Seq[(String, Int)], expression: String, range: LineRange): ClassLoader => internals.DslEntry = {
+    val result = try {
+      eval.eval(expression, imports = new EvalImports(imports, name), srcName = name, tpeName = Some(SettingsDefinitionName), line = range.start)
+    } catch {
+      case e: sbt.compiler.EvalException => throw new MessageOnlyException(e.getMessage)
+    }
+    loader => {
+      val pos = RangePosition(name, range shift 1)
+      result.getValue(loader).asInstanceOf[internals.DslEntry].withPos(pos)
+    }
+  }
+
   /**
    * This actually compiles a scala expression which represents a Seq[Setting[_]], although the
    * expression may be just a single setting.
@@ -138,19 +184,12 @@ object EvaluateConfigurations {
    * @return A method that given an sbt classloader, can return the actual Seq[Setting[_]] defined by
    *         the expression.
    */
+  @deprecated("Build DSL now includes non-Setting[_] type settings.", "0.13.6")
   def evaluateSetting(eval: Eval, name: String, imports: Seq[(String, Int)], expression: String, range: LineRange): ClassLoader => Seq[Setting[_]] =
     {
-      val result = try {
-        eval.eval(expression, imports = new EvalImports(imports, name), srcName = name, tpeName = Some(SettingsDefinitionName), line = range.start)
-      } catch {
-        case e: sbt.compiler.EvalException => throw new MessageOnlyException(e.getMessage)
-      }
-      loader => {
-        val pos = RangePosition(name, range shift 1)
-        (result.getValue(loader).asInstanceOf[internals.DslEntry] match {
-          case internals.DslSetting(value) => value.settings
-          case _                           => Nil
-        }) map (_ withPos pos)
+      evaluateDslEntry(eval, name, imports, expression, range) andThen {
+        case internals.ProjectSettings(values) => values
+        case _                                 => Nil
       }
     }
   private[this] def isSpace = (c: Char) => Character isWhitespace c
