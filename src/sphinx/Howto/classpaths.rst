@@ -4,7 +4,7 @@ Classpaths
 
 .. howto::
    :id: classpath-types
-   :title: Include a new type of managed artifact on the classpath, such as `mar`
+   :title: Include a new type of managed artifact on the classpath, such as ``mar``
    :type: setting
 
    classpathTypes += "mar"
