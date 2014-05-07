@@ -9,7 +9,8 @@ env:
   - SCRIPTED_TEST="scripted dependency-management/*2of2"
   - SCRIPTED_TEST="scripted java/*"
   - SCRIPTED_TEST="scripted package/*"
-  - SCRIPTED_TEST="scripted project/*"
+  - SCRIPTED_TEST="scripted project/*1of2"
+  - SCRIPTED_TEST="scripted project/*2of2"
   - SCRIPTED_TEST="scripted reporter/*"
   - SCRIPTED_TEST="scripted run/*"
   - SCRIPTED_TEST="scripted source-dependencies/*1of3"
@@ -21,6 +22,9 @@ env:
 # TODO - we'd like to actually test everything, but the process library has a deadlock right now
 jdk:
   - openjdk6
+#  - oraclejdk7
 notifications:
   email:
     - qbranch@typesafe.com
+before_script:
+  - export JVM_OPTS="-Xms1024m -Xmx1024m -XX:ReservedCodeCacheSize=128m -XX:MaxPermSize=256m"
