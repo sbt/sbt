@@ -13,6 +13,8 @@ lazy val projD = project
 // with S selected, Q is loaded automatically, which in turn selects R
 lazy val projE = project.enablePlugins(S)
 
+lazy val projF = project
+
 disablePlugins(plugins.IvyPlugin)
 
 check := {
@@ -21,6 +23,9 @@ check := {
     same(dversion, None, "projectID in projD")
     val rversion = projectID.?.value // Should be None
     same(rversion, None, "projectID")
+//  Ensure with multiple .sbt files that disabling/enabling works across them
+    val fDel = (del in q in projF).?.value
+    same(fDel, Some(" Q"), "del in q in projF")
 //
 	val adel = (del in projA).?.value // should be None
 	same(adel, None, "del in projA")
