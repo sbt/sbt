@@ -1,17 +1,16 @@
 package xsbt.boot
 
-import java.io.{File,InputStream}
+import java.io.{ File, InputStream }
 import java.net.URL
 import java.util.Properties
 import xsbti._
 import org.specs2._
 import mutable.Specification
 import LaunchTest._
-import sbt.IO.{createDirectory, touch,withTemporaryDirectory}
+import sbt.IO.{ createDirectory, touch, withTemporaryDirectory }
 import java.net.URI
 
-object ServerLocatorTest extends Specification
-{
+object ServerLocatorTest extends Specification {
   "ServerLocator" should {
     // TODO - Maybe use scalacheck to randomnly generate URIs
     "read and write server URI properties" in {
@@ -46,7 +45,7 @@ object ServerLocatorTest extends Specification
                       |Some more output.""".stripMargin
       val inputStream = new java.io.BufferedReader(new java.io.StringReader(input))
       val result = try ServerLauncher.readUntilSynch(inputStream)
-                   finally inputStream.close()
+      finally inputStream.close()
       result must equalTo(Some(expected))
     }
   }
