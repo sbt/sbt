@@ -1,18 +1,23 @@
 language: scala
 script:
-  - sbt "scripted $SCRIPTED_TEST"
+  - sbt "$SCRIPTED_TEST"
 env:
-  - SCRIPTED_TEST=actions/*
-  - SCRIPTED_TEST=api/*
-  - SCRIPTED_TEST=compiler-project/*
-  - SCRIPTED_TEST=dependency-management/*
-  - SCRIPTED_TEST=java/*
-  - SCRIPTED_TEST=package/*
-  - SCRIPTED_TEST=project/*
-  - SCRIPTED_TEST=reporter/*
-  - SCRIPTED_TEST=run/*
-  - SCRIPTED_TEST=source-dependencies/*
-  - SCRIPTED_TEST=tests/*
+  - SCRIPTED_TEST=scripted actions/*
+  - SCRIPTED_TEST=scripted api/*
+  - SCRIPTED_TEST=scripted compiler-project/*
+  - SCRIPTED_TEST=scripted dependency-management/*1of2
+  - SCRIPTED_TEST=scripted dependency-management/*2of2
+  - SCRIPTED_TEST=scripted java/*
+  - SCRIPTED_TEST=scripted package/*
+  - SCRIPTED_TEST=scripted project/*
+  - SCRIPTED_TEST=scripted reporter/*
+  - SCRIPTED_TEST=scripted run/*
+  - SCRIPTED_TEST=scripted source-dependencies/*1of3
+  - SCRIPTED_TEST=scripted source-dependencies/*2of3
+  - SCRIPTED_TEST=scripted source-dependencies/*3of3
+  - SCRIPTED_TEST=scripted tests/*
+  - SCRIPTED_TEST=launcher/test
+# TODO - we'd like to actually test everything, but the process library has a deadlock right now
 jdk:
   - openjdk6
 notifications:
