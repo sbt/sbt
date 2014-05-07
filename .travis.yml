@@ -8,6 +8,7 @@ env:
   - SCRIPTED_TEST=dependency-management/*
   - SCRIPTED_TEST=java/*
   - SCRIPTED_TEST=package/*
+  - SCRIPTED_TEST=project/*
   - SCRIPTED_TEST=reporter/*
   - SCRIPTED_TEST=run/*
   - SCRIPTED_TEST=source-dependencies/*
