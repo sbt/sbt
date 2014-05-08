@@ -1,6 +1,6 @@
 logLevel := Level.Debug
 
-incOptions := incOptions.value.withNameHashing(true)
+incOptions := incOptions.value.withAntStyle(true)
 
 /* Performs checks related to compilations:
  *  a) checks in which compilation given set of files was recompiled

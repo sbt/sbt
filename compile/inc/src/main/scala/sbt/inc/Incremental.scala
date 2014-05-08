@@ -21,10 +21,12 @@ object Incremental {
     options: IncOptions)(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
     {
       val incremental: IncrementalCommon =
-        if (!options.nameHashing)
-          new IncrementalDefaultImpl(log, options)
-        else
+        if (options.nameHashing)
           new IncrementalNameHashing(log, options)
+        else if (options.antStyle)
+          new IncrementalAntStyle(log, options)
+        else
+          new IncrementalDefaultImpl(log, options)
       val initialChanges = incremental.changedInitial(entry, sources, previous, current, forEntry)
       val binaryChanges = new DependencyChanges {
         val modifiedBinaries = initialChanges.binaryDeps.toArray
@@ -571,5 +573,24 @@ private final class IncrementalNameHashing(log: Logger, options: IncOptions) ext
 
   override protected def allDeps(relations: Relations): File => Set[File] =
     f => relations.memberRef.internal.reverse(f)
+
+}
+
+private final class IncrementalAntStyle(log: Logger, options: IncOptions) extends IncrementalCommon(log, options) {
+
+  /** Ant-style mode doesn't do anything special with package objects */
+  override protected def invalidatedPackageObjects(invalidated: Set[File], relations: Relations): Set[File] = Set.empty
+
+  /** In Ant-style mode we don't need to compare APIs because we don't perform any invalidation */
+  override protected def sameAPI[T](src: T, a: Source, b: Source): Option[APIChange[T]] = None
+
+  /** In Ant-style mode we don't perform any invalidation */
+  override protected def invalidateByExternal(relations: Relations, externalAPIChange: APIChange[String]): Set[File] = Set.empty
+
+  /** In Ant-style mode we don't perform any invalidation */
+  override protected def invalidateSource(relations: Relations, change: APIChange[File]): Set[File] = Set.empty
+
+  /** In Ant-style mode we don't need to perform any dependency analysis hence we can always return an empty set. */
+  override protected def allDeps(relations: Relations): File => Set[File] = _ => Set.empty
 
 }
