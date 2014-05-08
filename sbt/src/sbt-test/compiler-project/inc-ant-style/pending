@@ -1,0 +1,9 @@
+# introduces first compile iteration
+> compile
+# this change is local to method and does not change api so introduces
+# only one additional compile iteration
+$ copy-file changes/A1.scala src/main/scala/A.scala
+# second iteration
+> compile
+# check if there are only two compile iterations performed
+> check-compilations
