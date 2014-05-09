@@ -2,6 +2,10 @@
 Changes
 =======
 
+0.13.5-RC1 to 0.13.5-RC2
+~~~~~~~~~~~~~~~~~~~~~~~~
+- Fixes auto plugins not detecting ``object autoImport``. (gh-1314) 
+
 0.13.2 to 0.13.5
 ~~~~~~~~~~~~~~~~
 - The Scala version for sbt and sbt plugins is now 2.10.4.  This is a compatible version bump.
