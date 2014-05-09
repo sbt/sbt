@@ -33,6 +33,8 @@ check := {
 	same(optInValue, " Q S R", "del in projE in q")
 }
 
+keyTest := "foo"
+
 def same[T](actual: T, expected: T, label: String) {
 	assert(actual == expected, s"Expected '$expected' for `$label`, got '$actual'")
 }
