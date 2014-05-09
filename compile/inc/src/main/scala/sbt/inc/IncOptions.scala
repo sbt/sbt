@@ -65,7 +65,22 @@ final class IncOptions(
      *   3. Hashing of public names is enabled. See `sbt.inc.AnalysisCallback` for details.
      *
      */
-    val nameHashing: Boolean) extends Product with Serializable {
+    val nameHashing: Boolean,
+    /**
+     * THE `antStyle` OPTION IS UNSUPPORTED, MAY GO AWAY AT ANY POINT.
+     *
+     * Enables "ant-style" mode of incremental compilation. This mode emulates what Ant's scalac command does.
+     * The idea is to recompile just changed source files and not perform any invalidation of dependencies. This
+     * is a very naive mode of incremental compilation that very often leads to broken binaries.
+     *
+     * The Ant-style mode has been introduced because Scala team needs it for migration of Scala compiler to sbt.
+     * The name hashing algorithm doesn't work well with Scala compiler sources due to deep inheritance chains.
+     * There's a plan to refactor compiler's code to use more composition instead of inheritance.
+     *
+     * Once Scala compiler sources are refactored to work well with name hashing algorithm this option will be
+     * deleted immediately.
+     */
+    val antStyle: Boolean) extends Product with Serializable {
 
   /**
    * Secondary constructor introduced to make IncOptions to be binary compatible with version that didn't have
@@ -74,52 +89,60 @@ final class IncOptions(
   def this(transitiveStep: Int, recompileAllFraction: Double, relationsDebug: Boolean, apiDebug: Boolean,
     apiDiffContextSize: Int, apiDumpDirectory: Option[java.io.File], newClassfileManager: () => ClassfileManager) = {
     this(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-      apiDumpDirectory, newClassfileManager, IncOptions.recompileOnMacroDefDefault, IncOptions.nameHashingDefault)
+      apiDumpDirectory, newClassfileManager, IncOptions.recompileOnMacroDefDefault, IncOptions.nameHashingDefault,
+      IncOptions.antStyleDefault)
   }
+
+  assert(!(antStyle && nameHashing), "Name hashing and Ant-style cannot be enabled at the same time.")
 
   def withTransitiveStep(transitiveStep: Int): IncOptions = {
     new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
+      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing, antStyle)
   }
 
   def withRecompileAllFraction(recompileAllFraction: Double): IncOptions = {
     new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
+      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing, antStyle)
   }
 
   def withRelationsDebug(relationsDebug: Boolean): IncOptions = {
     new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
+      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing, antStyle)
   }
 
   def withApiDebug(apiDebug: Boolean): IncOptions = {
     new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
+      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing, antStyle)
   }
 
   def withApiDiffContextSize(apiDiffContextSize: Int): IncOptions = {
     new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
+      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing, antStyle)
   }
 
   def withApiDumpDirectory(apiDumpDirectory: Option[File]): IncOptions = {
     new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
+      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing, antStyle)
   }
 
   def withNewClassfileManager(newClassfileManager: () => ClassfileManager): IncOptions = {
     new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
+      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing, antStyle)
   }
 
   def withRecompileOnMacroDef(recompileOnMacroDef: Boolean): IncOptions = {
     new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
+      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing, antStyle)
   }
 
   def withNameHashing(nameHashing: Boolean): IncOptions = {
     new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
+      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing, antStyle)
+  }
+
+  def withAntStyle(antStyle: Boolean): IncOptions = {
+    new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
+      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing, antStyle)
   }
 
   //- EXPANDED CASE CLASS METHOD BEGIN -//
@@ -130,14 +153,14 @@ final class IncOptions(
     apiDumpDirectory: Option[java.io.File] = this.apiDumpDirectory,
     newClassfileManager: () => ClassfileManager = this.newClassfileManager): IncOptions = {
     new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
+      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing, antStyle)
   }
 
   @deprecated("Methods generated for case class will be removed in the future.", "0.13.2")
   override def productPrefix: String = "IncOptions"
 
   @deprecated("Methods generated for case class will be removed in the future.", "0.13.2")
-  def productArity: Int = 9
+  def productArity: Int = 10
 
   @deprecated("Methods generated for case class will be removed in the future.", "0.13.2")
   def productElement(x$1: Int): Any = x$1 match {
@@ -150,6 +173,7 @@ final class IncOptions(
     case 6 => IncOptions.this.newClassfileManager
     case 7 => IncOptions.this.recompileOnMacroDef
     case 8 => IncOptions.this.nameHashing
+    case 9 => IncOptions.this.antStyle
     case _ => throw new IndexOutOfBoundsException(x$1.toString())
   }
 
@@ -171,6 +195,7 @@ final class IncOptions(
     acc = Statics.mix(acc, Statics.anyHash(newClassfileManager))
     acc = Statics.mix(acc, if (recompileOnMacroDef) 1231 else 1237)
     acc = Statics.mix(acc, if (nameHashing) 1231 else 1237)
+    acc = Statics.mix(acc, if (antStyle) 1231 else 1237)
     Statics.finalizeHash(acc, 9)
   }
 
@@ -183,7 +208,8 @@ final class IncOptions(
         relationsDebug == IncOptions$1.relationsDebug && apiDebug == IncOptions$1.apiDebug &&
         apiDiffContextSize == IncOptions$1.apiDiffContextSize && apiDumpDirectory == IncOptions$1.apiDumpDirectory &&
         newClassfileManager == IncOptions$1.newClassfileManager &&
-        recompileOnMacroDef == IncOptions$1.recompileOnMacroDef && nameHashing == IncOptions$1.nameHashing
+        recompileOnMacroDef == IncOptions$1.recompileOnMacroDef && nameHashing == IncOptions$1.nameHashing &&
+        antStyle == IncOptions$1.antStyle
     }))
   }
   //- EXPANDED CASE CLASS METHOD END -//
@@ -192,6 +218,7 @@ final class IncOptions(
 object IncOptions extends Serializable {
   private val recompileOnMacroDefDefault: Boolean = true
   private val nameHashingDefault: Boolean = false
+  private val antStyleDefault: Boolean = false
   val Default = IncOptions(
     //    1. recompile changed sources
     // 2(3). recompile direct dependencies and transitive public inheritance dependencies of sources with API changes in 1(2).
@@ -220,7 +247,7 @@ object IncOptions extends Serializable {
     newClassfileManager: () => ClassfileManager, recompileOnMacroDef: Boolean,
     nameHashing: Boolean): IncOptions = {
     new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
+      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing, antStyleDefault)
   }
   @deprecated("Methods generated for case class will be removed in the future.", "0.13.2")
   def unapply(x$0: IncOptions): Option[(Int, Double, Boolean, Boolean, Int, Option[java.io.File], () => AnyRef)] = {
@@ -248,6 +275,7 @@ object IncOptions extends Serializable {
   private val apiDiffContextSizeKey = "apiDiffContextSize"
   private val recompileOnMacroDefKey = "recompileOnMacroDef"
   private val nameHashingKey = "nameHashing"
+  private val antStyleKey = "antStyle"
 
   def fromStringMap(m: java.util.Map[String, String]): IncOptions = {
     // all the code below doesn't look like idiomatic Scala for a good reason: we are working with Java API
@@ -286,8 +314,13 @@ object IncOptions extends Serializable {
       if (m.containsKey(k)) m.get(k).toBoolean else Default.nameHashing
     }
 
+    def getAntStyle: Boolean = {
+      val k = antStyleKey
+      if (m.containsKey(k)) m.get(k).toBoolean else Default.antStyle
+    }
+
     new IncOptions(getTransitiveStep, getRecompileAllFraction, getRelationsDebug, getApiDebug, getApiDiffContextSize,
-      getApiDumpDirectory, ClassfileManager.deleteImmediately, getRecompileOnMacroDef, getNameHashing)
+      getApiDumpDirectory, ClassfileManager.deleteImmediately, getRecompileOnMacroDef, getNameHashing, getAntStyle)
   }
 
   def toStringMap(o: IncOptions): java.util.Map[String, String] = {
