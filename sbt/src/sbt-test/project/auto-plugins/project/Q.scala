@@ -28,6 +28,10 @@ object X extends AutoPlugin {
 object D extends AutoPlugin {
 	override def requires: Plugins = E
 	override def trigger = allRequirements
+
+	object autoImport {
+		lazy val keyTest = settingKey[String]("Another demo setting.")
+	}
 }
 
 object Q extends AutoPlugin

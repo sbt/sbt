@@ -319,9 +319,9 @@ ${listConflicts(conflicting)}""")
 		val hasGetterOpt = catching(classOf[ScalaReflectionException]) opt {
 			im.symbol.asType.toType.declaration(ru.newTermName("autoImport")) match {
 				case ru.NoSymbol => false
-				case sym => sym.asTerm.isGetter
+				case sym => sym.asTerm.isGetter || sym.asTerm.isModule
 			}
 		}
 		hasGetterOpt getOrElse false
-	} 
+	}
 }
