@@ -1,9 +1,8 @@
 # introduces first compile iteration
 > compile
-# this change is local to method and does not change api so introduces
-# only one additional compile iteration
+# remove A.foo method
 $ copy-file changes/A1.scala src/main/scala/A.scala
-# second iteration
+# recompiles just A.scala in Ant mode so it introduces one more iteration
 > compile
 # check if there are only two compile iterations performed
 > check-compilations
