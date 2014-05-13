@@ -51,9 +51,9 @@ trait Analysis {
   def copy(stamps: Stamps = stamps, apis: APIs = apis, relations: Relations = relations, infos: SourceInfos = infos,
     compilations: Compilations = compilations): Analysis
 
-  def addSource(src: File, api: Source, stamp: Stamp, directInternal: Iterable[File], inheritedInternal: Iterable[File], info: SourceInfo): Analysis
+  def addSource(src: File, api: Source, stamp: Stamp, dependencies: Iterable[Dependency], info: SourceInfo): Analysis
   def addBinaryDep(src: File, dep: File, className: String, stamp: Stamp): Analysis
-  def addExternalDep(src: File, dep: String, api: Source, inherited: Boolean): Analysis
+  def addExternalDep(dep: Dependency): Analysis
   def addProduct(src: File, product: File, stamp: Stamp, name: String): Analysis
 
   /** Partitions this Analysis using the discriminator function. Externalizes internal deps that cross partitions. */
@@ -155,14 +155,24 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
   def copy(stamps: Stamps, apis: APIs, relations: Relations, infos: SourceInfos, compilations: Compilations = compilations): Analysis =
     new MAnalysis(stamps, apis, relations, infos, compilations)
 
-  def addSource(src: File, api: Source, stamp: Stamp, directInternal: Iterable[File], inheritedInternal: Iterable[File], info: SourceInfo): Analysis =
-    copy(stamps.markInternalSource(src, stamp), apis.markInternalSource(src, api), relations.addInternalSrcDeps(src, directInternal, inheritedInternal), infos.add(src, info))
+  def addSource(src: File, api: Source, stamp: Stamp, dependencies: Iterable[Dependency], info: SourceInfo): Analysis = {
+    copy(stamps.markInternalSource(src, stamp), apis.markInternalSource(src, api), relations.addInternalSrcDeps(src, dependencies), infos.add(src, info))
+  }
 
   def addBinaryDep(src: File, dep: File, className: String, stamp: Stamp): Analysis =
     copy(stamps.markBinary(dep, className, stamp), apis, relations.addBinaryDep(src, dep), infos)
 
-  def addExternalDep(src: File, dep: String, depAPI: Source, inherited: Boolean): Analysis =
-    copy(stamps, apis.markExternalAPI(dep, depAPI), relations.addExternalDep(src, dep, inherited), infos)
+  def addExternalDep(dep: Dependency): Analysis = {
+    // TODO: there's no static enforcment that Dependency passed as parameter has ExternalDependencyEdge
+    // as its edge. We risk MathError below; We should have just one method for adding dependencies
+    // where all cases are handled
+    val ExternalDepndencyEdge(fromSrc, toClassName, classApi) = dep.edge
+    val inherited = dep.context match {
+      case DependencyByInheritance => true
+      case _ => false
+    }
+    copy(stamps, apis.markExternalAPI(toClassName, classApi), relations.addExternalDep(fromSrc, toClassName, inherited), infos)
+  }
 
   def addProduct(src: File, product: File, stamp: Stamp, name: String): Analysis =
     copy(stamps.markProduct(product, stamp), apis, relations.addProduct(src, product, name), infos)

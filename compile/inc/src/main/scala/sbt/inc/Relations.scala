@@ -74,11 +74,12 @@ trait Relations {
   def addBinaryDep(src: File, dependsOn: File): Relations
 
   /**
+   * TODO: Update comment below.
    * Records internal source file `src` as having direct dependencies on internal source files `directDependsOn`
    * and inheritance dependencies on `inheritedDependsOn`.  Everything in `inheritedDependsOn` must be included in `directDependsOn`;
    * this method does not automatically record direct dependencies like `addExternalDep` does.
    */
-  def addInternalSrcDeps(src: File, directDependsOn: Iterable[File], inheritedDependsOn: Iterable[File]): Relations
+  def addInternalSrcDeps(src: File, dependencies: Iterable[Dependency]): Relations
 
   private[inc] def addUsedName(src: File, name: String): Relations
 
@@ -398,12 +399,21 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
     new MRelationsDefaultImpl(srcProd, binaryDep, direct = newD, publicInherited = newI, classes)
   }
 
-  def addInternalSrcDeps(src: File, dependsOn: Iterable[File], inherited: Iterable[File]): Relations =
-    {
-      val newI = publicInherited.addInternal(src, inherited)
-      val newD = direct.addInternal(src, dependsOn)
-      new MRelationsDefaultImpl(srcProd, binaryDep, direct = newD, publicInherited = newI, classes)
-    }
+  def addInternalSrcDeps(src: File, dependencies: Iterable[Dependency]): Relations = {
+  	val depsByInheritance = dependencies.collect {
+  		case Dependency(InternalDependencyEdge(fromSrc, toSrc), DependencyByInheritance) =>
+  			assert(src == fromSrc)
+  			toSrc
+  	}
+  	val depsByMemberRef = dependencies.collect {
+  		case Dependency(InternalDependencyEdge(fromSrc, toSrc), DependencyByMemberRef) =>
+  			assert(src == fromSrc)
+  			toSrc
+  	}
+    val newI = publicInherited.addInternal(src, depsByInheritance)
+    val newD = direct.addInternal(src, depsByMemberRef)
+    new MRelationsDefaultImpl(srcProd, binaryDep, direct = newD, publicInherited = newI, classes)
+  }
 
   def names: Relation[File, String] =
     throw new UnsupportedOperationException("Tracking of used names is not supported " +
