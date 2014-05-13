@@ -12,11 +12,13 @@ incOptions := incOptions.value.copy(recompileAllFraction = 1.0)
  *  a) checks in which compilation given set of files was recompiled
  *  b) checks overall number of compilations performed
  */
-TaskKey[Unit]("check-compilations") <<= (compile in Compile, scalaSource in Compile) map { (a: sbt.inc.Analysis, src: java.io.File) =>
-  def relative(f: java.io.File): java.io.File =  f.relativeTo(src) getOrElse f
-  val allCompilations = a.compilations.allCompilations
+TaskKey[Unit]("check-compilations") := {
+  val analysis = (compile in Compile).value
+  val srcDir = (scalaSource in Compile).value
+  def relative(f: java.io.File): java.io.File =  f.relativeTo(srcDir) getOrElse f
+  val allCompilations = analysis.compilations.allCompilations
   val recompiledFiles: Seq[Set[java.io.File]] = allCompilations map { c =>
-    val recompiledFiles = a.apis.internal.collect {
+    val recompiledFiles = analysis.apis.internal.collect {
       case (file, api) if api.compilation.startTime == c.startTime => relative(file)
     }
     recompiledFiles.toSet
