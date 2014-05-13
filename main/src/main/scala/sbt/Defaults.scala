@@ -1086,6 +1086,7 @@ object Classpaths {
     ivySbt <<= ivySbt0,
     ivyModule := { val is = ivySbt.value; new is.Module(moduleSettings.value) },
     transitiveUpdate <<= transitiveUpdateTask,
+    updateCacheName := "update_cache" + (if (crossPaths.value) s"_${scalaBinaryVersion.value}" else ""),
     update <<= updateTask tag (Tags.Update, Tags.Network),
     update := { val report = update.value; ConflictWarning(conflictWarning.value, report, streams.value.log); report },
     classifiersModule in updateClassifiers := GetClassifiersModule(projectID.value, update.value.allModules, ivyConfigurations.in(updateClassifiers).value, transitiveClassifiers.in(updateClassifiers).value),
@@ -1213,7 +1214,7 @@ object Classpaths {
     val transform: UpdateReport => UpdateReport = r => substituteScalaFiles(scalaOrganization.value, r)(subScalaJars)
 
     val show = Reference.display(thisProjectRef.value)
-    cachedUpdate(s.cacheDirectory, show, ivyModule.value, updateConfiguration.value, transform, skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated, log = s.log)
+    cachedUpdate(s.cacheDirectory / updateCacheName.value, show, ivyModule.value, updateConfiguration.value, transform, skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated, log = s.log)
   }
 
   def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration, transform: UpdateReport => UpdateReport, skip: Boolean, force: Boolean, depsUpdated: Boolean, log: Logger): UpdateReport =
