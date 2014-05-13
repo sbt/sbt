@@ -536,7 +536,7 @@ object Load {
             case DiscoveredProjects(Some(root), discovered, files) =>
               log.debug(s"[Loading] Found root project ${root.id} w/ remaining ${discovered.map(_.id).mkString(",")}")
               val finalRoot = finalizeProject(root, files)
-              loadTransitive(discovered, buildBase, plugins, eval, injectSettings, acc :+ finalRoot, memoSettings, log, false, buildUri, context)
+              loadTransitive(discovered, buildBase, plugins, eval, injectSettings, finalRoot +: acc, memoSettings, log, false, buildUri, context)
             // Here we need to create a root project...
             case DiscoveredProjects(None, discovered, files) =>
               log.debug(s"[Loading] Found non-root projects ${discovered.map(_.id).mkString(",")}")
@@ -546,7 +546,7 @@ object Load {
               val refs = existingIds map (id => ProjectRef(buildUri, id))
               val defaultID = autoID(buildBase, context, existingIds)
               val root = finalizeProject(Build.defaultAggregatedProject(defaultID, buildBase, refs), files)
-              val result = (acc ++ otherProjects) :+ root
+              val result = root +: (acc ++ otherProjects)
               log.debug(s"[Loading] Done in ${buildBase}, returning: ${result.map(_.id).mkString("(", ", ", ")")}")
               result
           }
