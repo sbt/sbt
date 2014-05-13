@@ -89,7 +89,7 @@ final object EvaluateTaskConfig {
 	// Returns the default force garbage collection flag,
 	// as specified by system properties.
 	private[sbt] def defaultForceGarbageCollection: Boolean =
-	  sys.props.get("sbt.task.forcegc").map(java.lang.Boolean.parseBoolean).getOrElse(true)
+	  sys.props.get("sbt.task.forcegc").map(java.lang.Boolean.parseBoolean).getOrElse(false)
 	/** Pulls in the old configuration format. */
 	def apply(old: EvaluateConfig): EvaluateTaskConfig = {
 	  object AdaptedTaskConfig extends EvaluateTaskConfig {
