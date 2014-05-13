@@ -14,6 +14,8 @@ Changes
 - ``testResultLogger`` is now configured.
 - sbt-server hooks for task cancellation.
 - Add ``JUnitXmlReportPlugin`` which generates junit-xml-reports for all tests.
+- Fixes auto plugins not detecting ``object autoImport``. (gh-1314) 
+- Optionally enable forced garbage collection after tasks (``-Dsbt.task.forcegc=true``).
 
 
 0.13.1 to 0.13.2
