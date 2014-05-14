@@ -51,8 +51,12 @@ object LocksTest extends Properties("Locks") {
     (true /: forkWait(n)(impl))(_ && _)
   private def forkWait(n: Int)(impl: Int => Boolean): Iterable[Boolean] =
     {
-      import scala.concurrent.ops.future
-      val futures = (0 until n).map { i => future { impl(i) } }
-      futures.toList.map(_())
+      import scala.concurrent.Future
+      import scala.concurrent.ExecutionContext.Implicits.global
+      import scala.concurrent.Await
+      import scala.concurrent.duration.Duration.Inf
+      // TODO - Don't wait forever...
+      val futures = (0 until n).map { i => Future { impl(i) } }
+      futures.toList.map(f => Await.result(f, Inf))
     }
 }

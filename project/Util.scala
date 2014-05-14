@@ -31,7 +31,8 @@ object Util {
   )
   def commonSettings(nameString: String) = Seq(
     crossVersion in update <<= (crossVersion, nightly211) { (cv, n) => if (n) CrossVersion.full else cv },
-    name := nameString
+    name := nameString,
+    resolvers += Resolver.typesafeIvyRepo("releases")
   )
   def minProject(path: File, nameString: String) = Project(normalize(nameString), path) settings (commonSettings(nameString) ++ publishPomSettings: _*)
   def baseProject(path: File, nameString: String) = minProject(path, nameString) settings (base: _*)
@@ -49,8 +50,8 @@ object Util {
 
   def testDependencies = libraryDependencies <++= includeTestDependencies { incl =>
     if (incl) Seq(
-      "org.scalacheck" %% "scalacheck" % "1.11.1" % "test",
-      "org.specs2" %% "specs2" % "1.12.3" % "test",
+      "org.scalacheck" %% "scalacheck" % "1.11.4" % "test",
+      "org.specs2" %% "specs2" % "2.3.11" % "test",
       "junit" % "junit" % "4.11" % "test"
     )
     else Seq()
@@ -169,7 +170,7 @@ object Common {
   lazy val ivy = lib("org.scala-sbt.ivy" % "ivy" % "2.4.0-sbt-d6fca11d63402c92e4167cdf2da91a660d043392")
   lazy val httpclient = lib("commons-httpclient" % "commons-httpclient" % "3.1")
   lazy val jsch = lib("com.jcraft" % "jsch" % "0.1.46" intransitive ())
-  lazy val sbinary = libraryDependencies <+= Util.nightly211(n => "org.scala-tools.sbinary" % "sbinary" % "0.4.2" cross (if (n) CrossVersion.full else CrossVersion.binary))
+  lazy val sbinary = libraryDependencies += "org.scala-tools.sbinary" %% "sbinary" % "0.4.2"
   lazy val scalaCompiler = libraryDependencies <+= scalaVersion(sv => "org.scala-lang" % "scala-compiler" % sv)
   lazy val testInterface = lib("org.scala-sbt" % "test-interface" % "1.0")
   private def scala211Module(name: String, moduleVersion: String) =
@@ -177,8 +178,8 @@ object Common {
       if (scalaVersion startsWith "2.11.") ("org.scala-lang.modules" %% name % moduleVersion) :: Nil
       else Nil
     )
-  lazy val scalaXml = scala211Module("scala-xml", "1.0.0-RC7")
-  lazy val scalaParsers = scala211Module("scala-parser-combinators", "1.0.0-RC5")
+  lazy val scalaXml = scala211Module("scala-xml", "1.0.1")
+  lazy val scalaParsers = scala211Module("scala-parser-combinators", "1.0.1")
 }
 object Licensed {
   lazy val notice = SettingKey[File]("notice")

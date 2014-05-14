@@ -17,8 +17,8 @@ env:
   - SCRIPTED_TEST="scripted source-dependencies/*2of3"
   - SCRIPTED_TEST="scripted source-dependencies/*3of3"
   - SCRIPTED_TEST="scripted tests/*"
-  - SCRIPTED_TEST="all launcher/test main-settings/test main/test ivy/test logic/test completion/test"
-  - SCRIPTED_TEST="all actions/test classpath/test collections/test incremental-compiler/test logging/test run/test task-system/test"
+  - SCRIPTED_TEST="safeUnitTests"
+  - SCRIPTED_TEST="checkBuildScala211"
 # TODO - we'd like to actually test everything, but the process library has a deadlock right now
 jdk:
   - openjdk6

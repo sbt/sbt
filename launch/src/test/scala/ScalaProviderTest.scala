@@ -59,8 +59,8 @@ object ScalaProviderTest extends Specification {
       testResources.foreach(resource => touch(new File(resourceDirectory, resource.replace('/', File.separatorChar))))
       Array(resourceDirectory)
     }
-  private def checkScalaLoader(version: String): Unit = withLauncher(checkLauncher(version, mapScalaVersion(version)))
-  private def checkLauncher(version: String, versionValue: String)(launcher: Launcher): Unit =
+  private def checkScalaLoader(version: String) = withLauncher(checkLauncher(version, mapScalaVersion(version)))
+  private def checkLauncher(version: String, versionValue: String)(launcher: Launcher) =
     {
       val provider = launcher.getScala(version)
       val loader = provider.loader
@@ -68,7 +68,7 @@ object ScalaProviderTest extends Specification {
       tryScala(loader)
       getScalaVersion(loader) must beEqualTo(versionValue)
     }
-  private def tryScala(loader: ClassLoader): Unit = Class.forName("scala.Product", false, loader).getClassLoader must be(loader)
+  private def tryScala(loader: ClassLoader) = Class.forName("scala.Product", false, loader).getClassLoader must be(loader)
 }
 object LaunchTest {
   def testApp(main: String): Application = testApp(main, Array[File]())

@@ -26,7 +26,7 @@ object CheckStash extends Specification {
     }
   }
 
-  def checkRestore(seq: Seq[File]) {
+  def checkRestore(seq: Seq[File]) = {
     allCorrect(seq)
 
     stash0(seq, throw new TestRuntimeException) must beFalse
@@ -38,7 +38,7 @@ object CheckStash extends Specification {
     stash0(seq, throw new TestError) must beFalse
     noneExist(seq)
   }
-  def checkMove(seq: Seq[File]) {
+  def checkMove(seq: Seq[File]) = {
     allCorrect(seq)
     stash0(seq, ()) must beTrue
     noneExist(seq)
