@@ -106,17 +106,30 @@ object ParseKey extends Properties("Key parser test") {
         f(parsed)
     }
 
-  def genStructure(implicit genEnv: Gen[Env]): Gen[Structure] =
+  // Here we're shadowing the in-scope implicit called `mkEnv` for this method
+  // so that it will use the passed-in `Gen` rather than the one imported
+  // from TestBuild.
+  def genStructure(implicit mkEnv: Gen[Env]): Gen[Structure] =
     structureGenF { (scopes: Seq[Scope], env: Env, current: ProjectRef) =>
-      val settings = for (scope <- scopes; t <- env.tasks) yield Def.setting(ScopedKey(scope, t.key), Def.value(""))
+      val settings =
+        for {
+          scope <- scopes
+          t <- env.tasks
+        } yield Def.setting(ScopedKey(scope, t.key), Def.value(""))
       TestBuild.structure(env, settings, current)
     }
 
-  def structureGenF(f: (Seq[Scope], Env, ProjectRef) => Structure)(implicit genEnv: Gen[Env]): Gen[Structure] =
+  // Here we're shadowing the in-scope implicit called `mkEnv` for this method
+  // so that it will use the passed-in `Gen` rather than the one imported
+  // from TestBuild.
+  def structureGenF(f: (Seq[Scope], Env, ProjectRef) => Structure)(implicit mkEnv: Gen[Env]): Gen[Structure] =
     structureGen((s, e, p) => Gen.value(f(s, e, p)))
-  def structureGen(f: (Seq[Scope], Env, ProjectRef) => Gen[Structure])(implicit genEnv: Gen[Env]): Gen[Structure] =
+  // Here we're shadowing the in-scope implicit called `mkEnv` for this method
+  // so that it will use the passed-in `Gen` rather than the one imported
+  // from TestBuild.
+  def structureGen(f: (Seq[Scope], Env, ProjectRef) => Gen[Structure])(implicit mkEnv: Gen[Env]): Gen[Structure] =
     for {
-      env <- genEnv
+      env <- mkEnv
       loadFactor <- choose(0.0, 1.0)
       scopes <- pickN(loadFactor, env.allFullScopes)
       current <- oneOf(env.allProjects.unzip._1)

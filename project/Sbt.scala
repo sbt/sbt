@@ -23,7 +23,20 @@ object Sbt extends Build {
     concurrentRestrictions in Global += Util.testExclusiveRestriction,
     testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
     javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
-    incOptions := incOptions.value.withNameHashing(true)
+    incOptions := incOptions.value.withNameHashing(true),
+    commands += Command.command("checkBuildScala211") { state =>
+      """set scalaVersion in ThisBuild := "2.11.0" """ ::
+        "set Util.includeTestDependencies in ThisBuild := true" ::
+        // First compile everything before attempting to test
+        "all compile test:compile" ::
+        // Now run known working tests.
+        "safeUnitTests" ::
+        state
+    },
+    commands += Command.command("safeUnitTests") { state =>
+      "all launcher/test main-settings/test main/test ivy/test logic/test completion/test actions/test classpath/test collections/test incremental-compiler/test logging/test run/test task-system/test" ::
+        state
+    }
   )
 
   lazy val myProvided = config("provided") intransitive;
