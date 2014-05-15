@@ -165,14 +165,14 @@ class NameHashingSpecification extends Specification {
   }
 
   private def assertNameHashEqualForRegularName(name: String, nameHashes1: _internalOnly_NameHashes,
-    nameHashes2: _internalOnly_NameHashes): Unit = {
+    nameHashes2: _internalOnly_NameHashes) = {
     val nameHash1 = nameHashForRegularName(nameHashes1, name)
     val nameHash2 = nameHashForRegularName(nameHashes1, name)
     nameHash1 === nameHash2
   }
 
   private def assertNameHashNotEqualForRegularName(name: String, nameHashes1: _internalOnly_NameHashes,
-    nameHashes2: _internalOnly_NameHashes): Unit = {
+    nameHashes2: _internalOnly_NameHashes) = {
     val nameHash1 = nameHashForRegularName(nameHashes1, name)
     val nameHash2 = nameHashForRegularName(nameHashes2, name)
     nameHash1 !=== nameHash2
