@@ -128,7 +128,7 @@ object Escape {
   def pad(s: String, minLength: Int, extra: Char) =
     {
       val diff = minLength - s.length
-      if (diff <= 0) s else List.make(diff, extra).mkString("", "", s)
+      if (diff <= 0) s else List.fill(diff)(extra).mkString("", "", s)
     }
   /** Replaces a \n character at the end of a string `s` with `nl`.*/
   def newline(s: String, nl: String): String =
