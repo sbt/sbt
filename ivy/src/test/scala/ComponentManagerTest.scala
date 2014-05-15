@@ -35,13 +35,13 @@ object ComponentManagerTest extends Specification {
     "return the files for a multi-file component" in {
       withManager { manager =>
         val hashes = defineFiles(manager, TestID, "a", "b")
-        checksum(manager.files(TestID)(Fail)) must haveTheSameElementsAs(hashes)
+        checksum(manager.files(TestID)(Fail)) must containTheSameElementsAs(hashes)
       }
     }
     "return the files for a single-file component" in {
       withManager { manager =>
         val hashes = defineFiles(manager, TestID, "a")
-        checksum(manager.files(TestID)(Fail)) must haveTheSameElementsAs(hashes)
+        checksum(manager.files(TestID)(Fail)) must containTheSameElementsAs(hashes)
       }
     }
     "throw an exception if 'files' is called for a non-existing component" in {
