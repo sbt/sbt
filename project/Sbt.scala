@@ -36,6 +36,26 @@ object Sbt extends Build {
     commands += Command.command("safeUnitTests") { state =>
       "all launcher/test main-settings/test main/test ivy/test logic/test completion/test actions/test classpath/test collections/test incremental-compiler/test logging/test run/test task-system/test" ::
         state
+    },
+    // TODO - To some extent these should take args to figure out what to do.
+    commands += Command.command("release-libs-211") { state =>
+      def lameAgregateTask(task: String): String = 
+        s"all control/$task collectoins/$task io/$task"  
+      // TODO - Pull scala version from setting somewhere useful
+      "++ 2.11.0" ::
+      /// First test
+      lameAgregateTask("test") ::
+      // Note: You need the sbt-pgp plugin installed to release.
+      lameAgregateTask("publishSigned") ::
+      // Now restore the defaults.
+      "reload" :: state
+    },
+    commands += Command.command("release-sbt") { state =>
+      // TODO - Any sort of validation
+      "publishSigned" :: 
+      "publishLauncher" ::
+      "release-libs-211" ::
+      state
     }
   )
 
@@ -65,13 +85,13 @@ object Sbt extends Build {
 
   /* **** Utilities **** */
 
-  lazy val controlSub = baseProject(utilPath / "control", "Control")
-  lazy val collectionSub = testedBaseProject(utilPath / "collection", "Collections") settings (Util.keywordsSettings: _*)
+  lazy val controlSub = baseProject(utilPath / "control", "Control") settings (Util.crossBuild:_*)
+  lazy val collectionSub = testedBaseProject(utilPath / "collection", "Collections") settings (Util.keywordsSettings: _*) settings (Util.crossBuild:_*)
   lazy val applyMacroSub = testedBaseProject(utilPath / "appmacro", "Apply Macro") dependsOn (collectionSub) settings (scalaCompiler)
   // The API for forking, combining, and doing I/O with system processes
   lazy val processSub = baseProject(utilPath / "process", "Process") dependsOn (ioSub % "test->test") settings (scalaXml)
   // Path, IO (formerly FileUtilities), NameFilter and other I/O utility classes
-  lazy val ioSub = testedBaseProject(utilPath / "io", "IO") dependsOn (controlSub) settings (ioSettings: _*)
+  lazy val ioSub = testedBaseProject(utilPath / "io", "IO") dependsOn (controlSub) settings (ioSettings: _*) settings (Util.crossBuild:_*)
   // Utilities related to reflection, managing Scala versions, and custom class loaders
   lazy val classpathSub = testedBaseProject(utilPath / "classpath", "Classpath") dependsOn (launchInterfaceSub, interfaceSub, ioSub) settings (scalaCompiler)
   // Command line-related utilities.
