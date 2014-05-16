@@ -272,7 +272,7 @@ object Load {
     loaders updatePluginManagement PluginManagement.extractOverrides(unit.plugins.fullClasspath)
 
   def addResolvers(unit: sbt.BuildUnit, isRoot: Boolean, loaders: BuildLoader): BuildLoader =
-    unit.definitions.builds.flatMap(_.buildLoaders) match {
+    unit.definitions.builds.flatMap(_.buildLoaders).toList match {
       case Nil => loaders
       case x :: xs =>
         import Alternatives._
