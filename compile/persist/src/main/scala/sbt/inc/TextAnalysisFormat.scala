@@ -436,7 +436,7 @@ object TextAnalysisFormat {
   }
 
   private[this] def readSeq[T](in: BufferedReader)(expectedHeader: String, s2t: String => T): Seq[T] =
-    (readPairs(in)(expectedHeader, identity[String], s2t) map (_._2)).toSeq
+    (readPairs(in)(expectedHeader, identity[String], s2t).toSeq.sortBy(_._1) map (_._2))
 
   private[this] def writeMap[K, V](out: Writer)(header: String, m: Map[K, V], v2s: V => String, inlineVals: Boolean = true)(implicit ord: Ordering[K]) {
     writeHeader(out, header)
