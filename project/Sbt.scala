@@ -24,9 +24,13 @@ object Sbt extends Build {
     testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
     javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
     incOptions := incOptions.value.withNameHashing(true),
-    commands += Command.command("checkBuildScala211") { state =>
+    commands += Command.command("setupBuildScala211") { state =>
       """set scalaVersion in ThisBuild := "2.11.0" """ ::
         "set Util.includeTestDependencies in ThisBuild := true" ::
+        state
+    },
+    commands += Command.command("checkBuildScala211") { state =>
+      "setupBuildScala211" ::
         // First compile everything before attempting to test
         "all compile test:compile" ::
         // Now run known working tests.
@@ -40,9 +44,8 @@ object Sbt extends Build {
     // TODO - To some extent these should take args to figure out what to do.
     commands += Command.command("release-libs-211") { state =>
       def lameAgregateTask(task: String): String =
-        s"all control/$task collectoins/$task io/$task"
-      // TODO - Pull scala version from setting somewhere useful
-      "++ 2.11.0" ::
+        s"all control/$task collections/$task io/$task"
+        "setupBuildScala211" ::
         /// First test
         lameAgregateTask("test") ::
         // Note: You need the sbt-pgp plugin installed to release.
