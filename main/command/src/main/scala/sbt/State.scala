@@ -183,7 +183,6 @@ object State {
           log.debug(s"> $x")
           f(x, s.copy(remainingCommands = xs, history = x :: s.history))
       }
-    s.copy(remainingCommands = s.remainingCommands.drop(1))
     def :::(newCommands: Seq[String]): State = s.copy(remainingCommands = newCommands ++ s.remainingCommands)
     def ::(command: String): State = (command :: Nil) ::: this
     def ++(newCommands: Seq[Command]): State = s.copy(definedCommands = (s.definedCommands ++ newCommands).distinct)
