@@ -1,6 +1,6 @@
 import sbt._
 import Keys._
-import Status.{ isSnapshot, publishStatus }
+import Status.{ publishStatus }
 import com.typesafe.sbt.{ SbtGhPages, SbtGit, SbtSite, site => sbtsite }
 import SbtSite.{ site, SiteKeys }
 import SbtGhPages.{ ghpages, GhPagesKeys => ghkeys }

@@ -59,7 +59,7 @@ object Transform {
     (ss --- sdirs) x (rebase(sdirs, sm) | flat(sm)) toSeq
   }
   def configSettings = transResourceSettings ++ seq(
-    resourceProperties <<= (organization, version, scalaVersion, Status.isSnapshot) map { (org, v, sv, isSnapshot) =>
+    resourceProperties <<= (organization, version, scalaVersion, isSnapshot) map { (org, v, sv, isSnapshot) =>
       Map("org" -> org, "sbt.version" -> v, "scala.version" -> sv, "repositories" -> repositories(isSnapshot).mkString(IO.Newline))
     }
   )

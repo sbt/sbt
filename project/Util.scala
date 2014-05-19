@@ -29,11 +29,11 @@ object Util {
     nightly211 <<= scalaVersion(_.startsWith("2.11.")),
     includeTestDependencies <<= nightly211(x => !x)
   )
-  def crossBuild: Seq[Setting[_]] = 
+  def crossBuild: Seq[Setting[_]] =
     Seq(
       crossPaths := (scalaBinaryVersion.value match {
         case "2.11" => true
-        case _ => false
+        case _      => false
       })
     )
   def commonSettings(nameString: String) = Seq(

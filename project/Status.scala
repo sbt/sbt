@@ -3,7 +3,6 @@ import Keys._
 import java.util.regex.Pattern
 
 object Status {
-  lazy val isSnapshot = SettingKey[Boolean]("is-snapshot")
   lazy val publishStatus = SettingKey[String]("publish-status")
 
   def settings: Seq[Setting[_]] = Seq(
@@ -25,5 +24,7 @@ object Status {
       format.format(new java.util.Date(time))
     }
   final val Snapshot = "-SNAPSHOT"
-  def snapshotQualifier(v: String) = !Pattern.matches(""".+-(M|Alpha|Beta|RC)\d*""", v)
+  // NOte: This moved into sbt itself...  But we need to add semantic knowledge of how
+  // we stamp our nightlies.
+  def snapshotQualifier(v: String) = Pattern.matches(""".+-.*SNAPSHOT.*""", v)
 }
