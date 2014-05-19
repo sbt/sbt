@@ -18,6 +18,7 @@ object GlobalPlugin {
       projectDescriptors ~= { _ ++ gp.descriptors },
       projectDependencies ++= gp.projectID +: gp.dependencies,
       resolvers <<= resolvers { rs => (rs ++ gp.resolvers).distinct },
+      globalPluginUpdate := gp.updateReport,
       // TODO: these shouldn't be required (but are): the project* settings above should take care of this
       injectInternalClasspath(Runtime, gp.internalClasspath),
       injectInternalClasspath(Compile, gp.internalClasspath)
@@ -44,10 +45,16 @@ object GlobalPlugin {
     {
       import structure.{ data, root, rootProject }
       val p: Scope = Scope.GlobalScope in ProjectRef(root, rootProject(root))
-      val taskInit = (projectID, projectDependencies, projectDescriptors, resolvers, fullClasspath in Runtime, internalDependencyClasspath in Runtime, exportedProducts in Runtime, ivyModule) map {
-        (pid, pdeps, pdescs, rs, cp, intcp, prods, mod) =>
-          val depMap = pdescs + mod.dependencyMapping(state.log)
-          GlobalPluginData(pid, pdeps, depMap, rs, cp, (prods ++ intcp).distinct)
+
+      val taskInit = Def.task {
+        val intcp = (internalDependencyClasspath in Runtime).value
+        val prods = (exportedProducts in Runtime).value
+        val depMap = projectDescriptors.value + ivyModule.value.dependencyMapping(state.log)
+        // If we reference it directly (if it's an executionRoot) then it forces an update, which is not what we want.
+        val updateReport = Def.taskDyn { Def.task { update.value } }.value
+
+        GlobalPluginData(projectID.value, projectDependencies.value, depMap, resolvers.value, (fullClasspath in Runtime).value,
+          (prods ++ intcp).distinct, updateReport)
       }
       val resolvedTaskInit = taskInit mapReferenced Project.mapScope(Scope replaceThis p)
       val task = resolvedTaskInit evaluate data
@@ -72,5 +79,5 @@ object GlobalPlugin {
     version := "0.0"
   ))
 }
-final case class GlobalPluginData(projectID: ModuleID, dependencies: Seq[ModuleID], descriptors: Map[ModuleRevisionId, ModuleDescriptor], resolvers: Seq[Resolver], fullClasspath: Classpath, internalClasspath: Classpath)
+final case class GlobalPluginData(projectID: ModuleID, dependencies: Seq[ModuleID], descriptors: Map[ModuleRevisionId, ModuleDescriptor], resolvers: Seq[Resolver], fullClasspath: Classpath, internalClasspath: Classpath, updateReport: UpdateReport)
 final case class GlobalPlugin(data: GlobalPluginData, structure: BuildStructure, inject: Seq[Setting[_]], base: File)

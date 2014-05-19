@@ -301,7 +301,8 @@ object Defaults extends BuildCommon {
     import ScopeFilter.Make.{ inDependencies => inDeps, _ }
     val selectDeps = ScopeFilter(inDeps(ThisProject, includeRoot = false))
     val allUpdates = update.?.all(selectDeps)
-    Def.task { allUpdates.value.flatten }
+    // If I am a "build" (a project inside project/) then I have a globalPluginUpdate.
+    Def.task { allUpdates.value.flatten ++ globalPluginUpdate.?.value }
   }
 
   def watchSetting: Initialize[Watched] = (pollInterval, thisProjectRef, watchingMessage, triggeredMessage) { (interval, base, msg, trigMsg) =>
