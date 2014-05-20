@@ -20,16 +20,25 @@ object Scope {
   val GlobalScope = Scope(Global, Global, Global, Global)
 
   def resolveScope(thisScope: Scope, current: URI, rootProject: URI => String): Scope => Scope =
-    resolveProject(current, rootProject) compose replaceThis(thisScope)
+    resolveProject(current, rootProject) compose replaceThis(thisScope) compose subThisProject
 
   def resolveBuildScope(thisScope: Scope, current: URI): Scope => Scope =
-    buildResolve(current) compose replaceThis(thisScope)
+    buildResolve(current) compose replaceThis(thisScope) compose subThisProject
 
   def replaceThis(thisScope: Scope): Scope => Scope = (scope: Scope) =>
     Scope(subThis(thisScope.project, scope.project), subThis(thisScope.config, scope.config), subThis(thisScope.task, scope.task), subThis(thisScope.extra, scope.extra))
 
   def subThis[T](sub: ScopeAxis[T], into: ScopeAxis[T]): ScopeAxis[T] =
     if (into == This) sub else into
+
+  /**
+   * `Select(ThisProject)` cannot be resolved by [[resolveProject]] (it doesn't know what to replace it with), so we
+   * perform this transformation so that [[replaceThis]] picks it up.
+   */
+  def subThisProject: Scope => Scope = {
+    case s @ Scope(Select(ThisProject), _, _, _) => s.copy(project = This)
+    case s                                       => s
+  }
 
   def fillTaskAxis(scope: Scope, key: AttributeKey[_]): Scope =
     scope.task match {
@@ -59,7 +68,6 @@ object Scope {
     }
   def resolveProjectBuild(current: URI, ref: ProjectReference): ProjectReference =
     ref match {
-      case ThisProject         => RootProject(current)
       case LocalRootProject    => RootProject(current)
       case LocalProject(id)    => ProjectRef(current, id)
       case RootProject(uri)    => RootProject(resolveBuild(current, uri))
@@ -79,8 +87,8 @@ object Scope {
 
   def resolveProjectRef(current: URI, rootProject: URI => String, ref: ProjectReference): ProjectRef =
     ref match {
-      case ThisProject | LocalRootProject => ProjectRef(current, rootProject(current))
-      case LocalProject(id)               => ProjectRef(current, id)
+      case LocalRootProject => ProjectRef(current, rootProject(current))
+      case LocalProject(id) => ProjectRef(current, id)
       case RootProject(uri) =>
         val res = resolveBuild(current, uri); ProjectRef(res, rootProject(res))
       case ProjectRef(uri, id) => ProjectRef(resolveBuild(current, uri), id)
