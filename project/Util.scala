@@ -168,7 +168,7 @@ object Common
 	def lib(m: ModuleID) = libraryDependencies += m
 	lazy val jlineDep = "jline" % "jline" % "2.11"
 	lazy val jline = lib(jlineDep)
-	lazy val ivy = lib("org.scala-sbt.ivy" % "ivy" % "2.4.0-sbt-ac90d3086ecd76eebccc4f7ca260c95041fa916f")
+	lazy val ivy = lib("org.scala-sbt.ivy" % "ivy" % "2.4.0-sbt-48e96a4a2a89ab6c88e93b3f9b939b8aeac89f0e")
 	lazy val httpclient = lib("commons-httpclient" % "commons-httpclient" % "3.1")
 	lazy val jsch = lib("com.jcraft" % "jsch" % "0.1.46" intransitive() )
 	lazy val sbinary = libraryDependencies <+= Util.nightly211(n => "org.scala-tools.sbinary" % "sbinary" % "0.4.2" cross(if(n) CrossVersion.full else CrossVersion.binary))
