@@ -403,47 +403,6 @@ private abstract class IncrementalCommon(log: Logger, options: IncOptions) {
       }
       xs.toSet
     }
-
-  // unmodifiedSources should not contain any sources in the previous compilation run
-  //  (this may unnecessarily invalidate them otherwise)
-  /*def scopeInvalidation(previous: Analysis, otherSources: Set[File], names: NameChanges): Set[File] =
-	{
-		val newNames = newTypes ++ names.newTerms
-		val newMap = pkgNameMap(newNames)
-		otherSources filter { src => scopeAffected(previous.extAPI(src), previous.srcDependencies(src), newNames, newMap) }
-	}
-
-	def scopeAffected(api: Source, srcDependencies: Iterable[Source], newNames: Set[String], newMap: Map[String, List[String]]): Boolean =
-		collisions_?(TopLevel.names(api.definitions), newNames) ||
-			pkgs(api) exists {p => shadowed_?(p, srcDependencies, newMap) }
-
-	def collisions_?(existing: Set[String], newNames: Map[String, List[String]]): Boolean =
-		!(existing ** newNames).isEmpty
-
-	// A proper implementation requires the actual symbol names used.  This is a crude approximation in the meantime.
-	def shadowed_?(fromPkg: List[String], srcDependencies: Iterable[Source], newNames: Map[String, List[String]]): Boolean =
-	{
-		lazy val newPN = newNames.filter { pn => properSubPkg(fromPkg, pn._2) }
-
-		def isShadowed(usedName: String): Boolean =
-		{
-			val (usedPkg, name) = pkgAndName(usedName)
-			newPN.get(name).forall { nPkg => properSubPkg(usedPkg, nPkg) }
-		}
-
-		val usedNames = TopLevel.names(srcDependencies) // conservative approximation of referenced top-level names
-		usedNames exists isShadowed
-	}
-	def pkgNameMap(names: Iterable[String]): Map[String, List[String]] =
-		(names map pkgAndName).toMap
-	def pkgAndName(s: String) =
-	{
-		val period = s.lastIndexOf('.')
-		if(period < 0) (Nil, s) else (s.substring(0, period).split("\\."), s.substring(period+1))
-	}
-	def pkg(s: String) = pkgAndName(s)._1
-	def properSubPkg(testParent: Seq[String], testSub: Seq[String]) = testParent.length < testSub.length && testSub.startsWith(testParent)
-	def pkgs(api: Source) = names(api :: Nil).map(pkg)*/
 }
 
 private final class IncrementalDefaultImpl(log: Logger, options: IncOptions) extends IncrementalCommon(log, options) {
