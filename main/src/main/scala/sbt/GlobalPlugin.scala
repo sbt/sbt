@@ -54,7 +54,7 @@ object GlobalPlugin {
         val updateReport = Def.taskDyn { Def.task { update.value } }.value
 
         GlobalPluginData(projectID.value, projectDependencies.value, depMap, resolvers.value, (fullClasspath in Runtime).value,
-          (prods ++ intcp).distinct, updateReport)
+          (prods ++ intcp).distinct)(updateReport)
       }
       val resolvedTaskInit = taskInit mapReferenced Project.mapScope(Scope replaceThis p)
       val task = resolvedTaskInit evaluate data
@@ -79,5 +79,5 @@ object GlobalPlugin {
     version := "0.0"
   ))
 }
-final case class GlobalPluginData(projectID: ModuleID, dependencies: Seq[ModuleID], descriptors: Map[ModuleRevisionId, ModuleDescriptor], resolvers: Seq[Resolver], fullClasspath: Classpath, internalClasspath: Classpath, updateReport: UpdateReport)
+final case class GlobalPluginData(projectID: ModuleID, dependencies: Seq[ModuleID], descriptors: Map[ModuleRevisionId, ModuleDescriptor], resolvers: Seq[Resolver], fullClasspath: Classpath, internalClasspath: Classpath)(val updateReport: UpdateReport)
 final case class GlobalPlugin(data: GlobalPluginData, structure: BuildStructure, inject: Seq[Setting[_]], base: File)
