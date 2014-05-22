@@ -15,6 +15,16 @@ lazy val projE = project.enablePlugins(S)
 
 lazy val projF = project
 
+// with X enabled, TopA is loaded automatically
+lazy val projG = project.enablePlugins(X)
+
+// only TopB should be enabled
+lazy val projH = project.enablePlugins(TopB)
+
+// enables TopC, which declares topLevelKeyTest
+lazy val projI = project.enablePlugins(TopC)
+
+
 disablePlugins(plugins.IvyPlugin)
 
 check := {
@@ -49,9 +59,20 @@ check := {
 	same(optInValue, " Q S R", "del in projE in q")
 	val overrideOrgValue = (organization in projE).value
 	same(overrideOrgValue, "S", "organization in projE")
+// tests for top level plugins
+  val topLevelAValueG = (topLevelDemo in projG).value
+  same(topLevelAValueG, "TopA: topLevelDemo project projG", "topLevelDemo in projG")
+  val demoValueG = (demo in projG).value
+  same(demoValueG, "TopA: demo project projG", "demo in projG")
+  val topLevelBValueH = (topLevelDemo in projH).value
+  same(topLevelBValueH, "TopB: topLevelDemo project projH", "topLevelDemo in projH")
+  val hdel = (del in projH).?.value
+  same(hdel, None, "del in projH")
 }
 
 keyTest := "foo"
+
+topLevelKeyTest := "bar"
 
 def same[T](actual: T, expected: T, label: String) {
 	assert(actual == expected, s"Expected '$expected' for `$label`, got '$actual'")
