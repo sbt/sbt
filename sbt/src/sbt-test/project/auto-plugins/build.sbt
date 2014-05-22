@@ -13,6 +13,15 @@ lazy val projD = project
 // with S selected, Q is loaded automatically, which in turn selects R
 lazy val projE = project.enablePlugins(S)
 
+// with X enabled, TopA is loaded automatically
+lazy val projF = project.enablePlugins(X)
+
+// only TopB should be enabled
+lazy val projG = project.enablePlugins(TopB)
+
+// enables TopC, which declares topLevelKeyTest
+lazy val projH = project.enablePlugins(TopC)
+
 check := {
 	val adel = (del in projA).?.value // should be None
 	same(adel, None, "del in projA")
@@ -31,9 +40,20 @@ check := {
 	same(qValue, " Q R", "del in projC in q")
 	val optInValue = (del in projE in q).value
 	same(optInValue, " Q S R", "del in projE in q")
+// tests for top level plugins
+  val topLevelAValueF = (topLevelDemo in projF).value
+  same(topLevelAValueF, "TopA: topLevelDemo project projF", "topLevelDemo in projF")
+  val demoValueF = (demo in projF).value
+  same(demoValueF, "TopA: demo project projF", "demo in projF")
+  val topLevelBValueG = (topLevelDemo in projG).value
+  same(topLevelBValueG, "TopB: topLevelDemo project projG", "topLevelDemo in projG")
+  val gdel = (del in projG).?.value
+  same(gdel, None, "del in projG")
 }
 
 keyTest := "foo"
+
+topLevelKeyTest := "bar"
 
 def same[T](actual: T, expected: T, label: String) {
 	assert(actual == expected, s"Expected '$expected' for `$label`, got '$actual'")
