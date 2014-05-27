@@ -95,9 +95,9 @@ object ServerLocator {
 class StreamDumper(in: java.io.BufferedReader, out: java.io.PrintStream) extends Thread {
   // Don't block the application for this thread.
   setDaemon(true)
-  private val running = new java.util.concurrent.atomic.AtomicBoolean(true)
+  val endTime = new java.util.concurrent.atomic.AtomicLong(Long.MaxValue)
   override def run(): Unit = {
-    def read(): Unit = if (running.get) in.readLine match {
+    def read(): Unit = if (endTime.get > System.currentTimeMillis) in.readLine match {
       case null => ()
       case line =>
         out.println(line)
@@ -107,7 +107,19 @@ class StreamDumper(in: java.io.BufferedReader, out: java.io.PrintStream) extends
     out.close()
   }
 
-  def close(): Unit = running.set(false)
+  def close(waitForErrors: Boolean): Unit = {
+    // closing "in" blocks forever on Windows, so don't do it;
+    // just wait a couple seconds to read more stuff if there is
+    // any stuff.
+    if (waitForErrors) {
+      endTime.set(System.currentTimeMillis + 2000)
+      // let ourselves read more (thread should exit on earlier of endTime or EOF)
+      while (isAlive() && (endTime.get > System.currentTimeMillis))
+        Thread.sleep(50)
+    } else {
+      endTime.set(System.currentTimeMillis)
+    }
+  }
 }
 object ServerLauncher {
   import ServerApplication.SERVER_SYNCH_TEXT
@@ -146,16 +158,20 @@ object ServerLauncher {
     // Now we look for the URI synch value, and then make sure we close the output files.
     try readUntilSynch(new java.io.BufferedReader(new java.io.InputStreamReader(stdout))) match {
       case Some(uri) => uri
-      case _         => sys.error("Failed to start server!")
+      case _ =>
+        // attempt to get rid of the server (helps prevent hanging / stuck locks,
+        // though this is not reliable)
+        try process.destroy() catch { case e: Exception => }
+        // block a second to try to get stuff from stderr
+        errorDumper.close(waitForErrors = true)
+        sys.error(s"Failed to start server process in ${pb.directory} command line ${pb.command}")
     } finally {
-      errorDumper.close()
+      errorDumper.close(waitForErrors = false)
       stdout.close()
-      // Note:  Closing this causes windows to block waiting for the server
-      // to close, but it ne'er will, as it is obstinate, and not designed
-      // to close immediately, unlike this process.
-      // We leave it open because this JVM shold be shut down soon anyway,
-      // and that will clean up al this memory.
-      //stderr.close()
+      // Do not close stderr here because on Windows that will block,
+      // and since the child process has no reason to exit, it may
+      // block forever. errorDumper.close() instead owns the problem
+      // of deciding what to do with stderr.
     }
   }
 
