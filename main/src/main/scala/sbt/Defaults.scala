@@ -14,7 +14,8 @@ import Configurations.{ Compile, CompilerPlugin, IntegrationTest, names, Provide
 import CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
 import complete._
 import std.TaskExtra._
-import inc.{ FileValueCache, IncOptions, Locate }
+import sbt.inc.{ Analysis, FileValueCache, IncOptions, Locate }
+import sbt.compiler.AggressiveCompile
 import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
 
 import sys.error
@@ -246,8 +247,9 @@ object Defaults extends BuildCommon {
 
   def compilersSetting = compilers := Compiler.compilers(scalaInstance.value, classpathOptions.value, javaHome.value)(appConfiguration.value, streams.value.log)
 
-  lazy val configTasks = docTaskSettings(doc) ++ inTask(compile)(compileInputsSettings) ++ configGlobal ++ Seq(
-    compile <<= compileTask tag (Tags.Compile, Tags.CPU),
+  lazy val configTasks = docTaskSettings(doc) ++ inTask(compile)(compileInputsSettings) ++ configGlobal ++ compileAnalysisSettings ++ Seq(
+    compile <<= compileTask,
+    compileIncremental <<= compileIncrementalTask tag (Tags.Compile, Tags.CPU),
     printWarnings <<= printWarningsTask,
     compileAnalysisFilename := {
       // Here, if the user wants cross-scala-versioning, we also append it
@@ -778,8 +780,11 @@ object Defaults extends BuildCommon {
   @deprecated("Use inTask(compile)(compileInputsSettings)", "0.13.0")
   def compileTaskSettings: Seq[Setting[_]] = inTask(compile)(compileInputsSettings)
 
-  def compileTask: Initialize[Task[inc.Analysis]] = Def.task { compileTaskImpl(streams.value, (compileInputs in compile).value, (compilerReporter in compile).value) }
-  private[this] def compileTaskImpl(s: TaskStreams, ci: Compiler.Inputs, reporter: Option[xsbti.Reporter]): inc.Analysis =
+  def compileTask: Initialize[Task[inc.Analysis]] = Def.task { saveAnalysis.value }
+  def compileIncrementalTask = Def.task {
+    compileIncrementalTaskImpl(streams.value, (compileInputs in compile).value, (compilerReporter in compile).value)
+  }
+  private[this] def compileIncrementalTaskImpl(s: TaskStreams, ci: Compiler.Inputs, reporter: Option[xsbti.Reporter]): Compiler.AnalysisResult =
     {
       lazy val x = s.text(ExportStream)
       def onArgs(cs: Compiler.Compilers) = cs.copy(scalac = cs.scalac.onArgs(exported(x, "scalac")), javac = cs.javac.onArgs(exported(x, "javac")))
@@ -803,9 +808,29 @@ object Defaults extends BuildCommon {
   def compileInputsSettings: Seq[Setting[_]] =
     Seq(compileInputs := {
       val cp = classDirectory.value +: data(dependencyClasspath.value)
-      Compiler.inputs(cp, sources.value, classDirectory.value, scalacOptions.value, javacOptions.value, maxErrors.value, sourcePositionMappers.value, compileOrder.value)(compilers.value, compileIncSetup.value, streams.value.log)
+      Compiler.inputs(cp, sources.value, classDirectory.value, scalacOptions.value, javacOptions.value,
+        maxErrors.value, sourcePositionMappers.value, compileOrder.value, readAnalysis.value)(compilers.value, compileIncSetup.value, streams.value.log)
     },
       compilerReporter := None)
+  def compileAnalysisSettings: Seq[Setting[_]] = Seq(
+    readAnalysis := {
+      val setup: Compiler.IncSetup = compileIncSetup.value
+      val store = AggressiveCompile.staticCachedStore(setup.cacheFile)
+      store.get() match {
+        case Some((an, setup)) => Compiler.PreviousAnalysis(an, Some(setup))
+        case None              => Compiler.PreviousAnalysis(Analysis.empty(nameHashing = setup.incOptions.nameHashing), None)
+      }
+    },
+    saveAnalysis := {
+      val setup: Compiler.IncSetup = compileIncSetup.value
+      val analysisResult: Compiler.AnalysisResult = compileIncremental.value
+      if (analysisResult.modified) {
+        val store = AggressiveCompile.staticCachedStore(setup.cacheFile)
+        store.set(analysisResult.analysis, analysisResult.setup)
+      }
+      analysisResult.analysis
+    }
+  )
 
   def printWarningsTask: Initialize[Task[Unit]] =
     (streams, compile, maxErrors, sourcePositionMappers) map { (s, analysis, max, spms) =>

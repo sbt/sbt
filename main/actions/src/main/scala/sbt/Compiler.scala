@@ -15,9 +15,10 @@ import java.io.File
 object Compiler {
   val DefaultMaxErrors = 100
 
-  final case class Inputs(compilers: Compilers, config: Options, incSetup: IncSetup)
+  final case class Inputs(compilers: Compilers, config: Options, incSetup: IncSetup, previousAnalysis: PreviousAnalysis)
   final case class Options(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, sourcePositionMapper: Position => Position, order: CompileOrder)
   final case class IncSetup(analysisMap: File => Option[Analysis], definesClass: DefinesClass, skip: Boolean, cacheFile: File, cache: GlobalsCache, incOptions: IncOptions)
+<<<<<<< HEAD
   private[sbt] trait JavaToolWithNewInterface extends JavaTool {
     def newJavac: IncrementalCompilerJavaTools
   }
@@ -29,12 +30,20 @@ object Compiler {
       }
   }
   final case class NewCompilers(scalac: AnalyzingCompiler, javac: JavaTools)
+=======
+  final case class Compilers(scalac: AnalyzingCompiler, javac: JavaTool)
+  final case class PreviousAnalysis(analysis: Analysis, setup: Option[CompileSetup])
+  final case class AnalysisResult(analysis: Analysis, setup: CompileSetup, modified: Boolean)
+>>>>>>> Allow bytecode enhancement to update analysis
 
-  def inputs(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, sourcePositionMappers: Seq[Position => Option[Position]], order: CompileOrder)(implicit compilers: Compilers, incSetup: IncSetup, log: Logger): Inputs =
+  def inputs(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String],
+    javacOptions: Seq[String], maxErrors: Int, sourcePositionMappers: Seq[Position => Option[Position]],
+    order: CompileOrder, previousAnalysis: PreviousAnalysis)(implicit compilers: Compilers, incSetup: IncSetup, log: Logger): Inputs =
     new Inputs(
       compilers,
       new Options(classpath, sources, classesDirectory, options, javacOptions, maxErrors, foldMappers(sourcePositionMappers), order),
-      incSetup
+      incSetup,
+      previousAnalysis
     )
 
   def compilers(cpOptions: ClasspathOptions)(implicit app: AppConfiguration, log: Logger): Compilers =
@@ -79,14 +88,14 @@ object Compiler {
       val provider = ComponentCompiler.interfaceProvider(componentManager)
       new AnalyzingCompiler(instance, provider, cpOptions, log)
     }
-  def apply(in: Inputs, log: Logger): Analysis =
+  def apply(in: Inputs, log: Logger): AnalysisResult =
     {
       import in.compilers._
       import in.config._
       import in.incSetup._
       apply(in, log, new LoggerReporter(maxErrors, log, sourcePositionMapper))
     }
-  def apply(in: Inputs, log: Logger, reporter: xsbti.Reporter): Analysis =
+  def apply(in: Inputs, log: Logger, reporter: xsbti.Reporter): AnalysisResult =
     {
       import in.compilers._
       import in.config._
@@ -98,7 +107,7 @@ object Compiler {
       val javacChosen: xsbti.compile.JavaCompiler =
         in.compilers.newJavac.map(_.xsbtiCompiler).getOrElse(in.compilers.javac)
       agg(scalac, javacChosen, sources, classpath, CompileOutput(classesDirectory), cache, None, options, javacOptions,
-        analysisMap, definesClass, reporter, order, skip, incOptions)(log)
+        in.previousAnalysis.analysis, in.previousAnalysis.setup, analysisMap, definesClass, reporter, order, skip, incOptions)(log)
     }
 
   private[sbt] def foldMappers[A](mappers: Seq[A => Option[A]]) =

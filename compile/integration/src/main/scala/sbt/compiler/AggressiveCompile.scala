@@ -24,7 +24,7 @@ final class CompileConfiguration(val sources: Seq[File], val classpath: Seq[File
   val previousAnalysis: Analysis, val previousSetup: Option[CompileSetup], val currentSetup: CompileSetup, val progress: Option[CompileProgress], val getAnalysis: File => Option[Analysis], val definesClass: DefinesClass,
   val reporter: Reporter, val compiler: AnalyzingCompiler, val javac: xsbti.compile.JavaCompiler, val cache: GlobalsCache, val incOptions: IncOptions)
 
-class AggressiveCompile(cacheFile: File) {
+class AggressiveCompile {
   def apply(compiler: AnalyzingCompiler,
     javac: xsbti.compile.JavaCompiler,
     sources: Seq[File], classpath: Seq[File],
@@ -33,17 +33,20 @@ class AggressiveCompile(cacheFile: File) {
     progress: Option[CompileProgress] = None,
     options: Seq[String] = Nil,
     javacOptions: Seq[String] = Nil,
+    previousAnalysis: Analysis,
+    previousSetup: Option[CompileSetup],
     analysisMap: File => Option[Analysis] = { _ => None },
     definesClass: DefinesClass = Locate.definesClass _,
     reporter: Reporter,
     compileOrder: CompileOrder = Mixed,
     skip: Boolean = false,
-    incrementalCompilerOptions: IncOptions)(implicit log: Logger): Analysis =
+    incrementalCompilerOptions: IncOptions)(implicit log: Logger): (Analysis, CompileSetup, Boolean) =
     {
       val setup = new CompileSetup(output, new CompileOptions(options, javacOptions),
         compiler.scalaInstance.actualVersion, compileOrder, incrementalCompilerOptions.nameHashing)
-      compile1(sources, classpath, setup, progress, store, analysisMap, definesClass,
+      val (analysis, modified) = compile1(sources, classpath, setup, progress, previousAnalysis, previousSetup, analysisMap, definesClass,
         compiler, javac, reporter, skip, cache, incrementalCompilerOptions)
+      (analysis, setup, modified)
     }
 
   def withBootclasspath(args: CompilerArguments, classpath: Seq[File]): Seq[File] =
@@ -52,25 +55,23 @@ class AggressiveCompile(cacheFile: File) {
   def compile1(sources: Seq[File],
     classpath: Seq[File],
     setup: CompileSetup, progress: Option[CompileProgress],
-    store: AnalysisStore,
+    previousAnalysis: Analysis,
+    previousSetup: Option[CompileSetup],
     analysis: File => Option[Analysis],
     definesClass: DefinesClass,
     compiler: AnalyzingCompiler,
     javac: xsbti.compile.JavaCompiler,
     reporter: Reporter, skip: Boolean,
     cache: GlobalsCache,
-    incrementalCompilerOptions: IncOptions)(implicit log: Logger): Analysis =
+    incrementalCompilerOptions: IncOptions)(implicit log: Logger): (Analysis, Boolean) =
     {
-      val (previousAnalysis, previousSetup) = extract(store.get(), incrementalCompilerOptions)
       if (skip)
-        previousAnalysis
+        (previousAnalysis, false)
       else {
         val config = new CompileConfiguration(sources, classpath, previousAnalysis, previousSetup, setup,
           progress, analysis, definesClass, reporter, compiler, javac, cache, incrementalCompilerOptions)
         val (modified, result) = compile2(config)
-        if (modified)
-          store.set(result, setup)
-        result
+        (result, modified)
       }
     }
   def compile2(config: CompileConfiguration)(implicit log: Logger, equiv: Equiv[CompileSetup]): (Boolean, Analysis) =
@@ -176,17 +177,11 @@ class AggressiveCompile(cacheFile: File) {
     if (!combined.isEmpty)
       log.info(combined.mkString("Compiling ", " and ", " to " + outputDirs.map(_.getAbsolutePath).mkString(",") + "..."))
   }
-  private def extract(previous: Option[(Analysis, CompileSetup)], incOptions: IncOptions): (Analysis, Option[CompileSetup]) =
-    previous match {
-      case Some((an, setup)) => (an, Some(setup))
-      case None              => (Analysis.empty(nameHashing = incOptions.nameHashing), None)
-    }
   def javaOnly(f: File) = f.getName.endsWith(".java")
 
   private[this] def explicitBootClasspath(options: Seq[String]): Seq[File] =
     options.dropWhile(_ != CompilerArguments.BootClasspathOption).drop(1).take(1).headOption.toList.flatMap(IO.parseClasspath)
 
-  val store = AggressiveCompile.staticCache(cacheFile, AnalysisStore.sync(AnalysisStore.cached(FileBasedStore(cacheFile))))
 }
 object AggressiveCompile {
   import collection.mutable
@@ -200,6 +195,9 @@ object AggressiveCompile {
         b
       }
     }
+
+  def staticCachedStore(cacheFile: File) = staticCache(cacheFile, AnalysisStore.sync(AnalysisStore.cached(FileBasedStore(cacheFile))))
+
   @deprecated("0.13.8", "Deprecated in favor of new sbt.compiler.javac package.")
   def directOrFork(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File]): JavaTool =
     if (javaHome.isDefined)
