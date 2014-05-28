@@ -6,12 +6,11 @@ package sbt
 import java.io.ByteArrayInputStream
 import java.net.URL
 
-import org.apache.ivy.{ core, plugins }
-import core.module.descriptor.{ DefaultDependencyDescriptor, DefaultModuleDescriptor }
-import core.settings.IvySettings
-import plugins.parser.xml.XmlModuleDescriptorParser
-import plugins.repository.Resource
-import plugins.repository.url.URLResource
+import org.apache.ivy.core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor}
+import org.apache.ivy.core.settings.IvySettings
+import org.apache.ivy.plugins.parser.xml.XmlModuleDescriptorParser
+import org.apache.ivy.plugins.repository.Resource
+import org.apache.ivy.plugins.repository.url.URLResource
 
 /** Subclasses the default Ivy file parser in order to provide access to protected methods.*/
 private[sbt] object CustomXmlParser extends XmlModuleDescriptorParser {
