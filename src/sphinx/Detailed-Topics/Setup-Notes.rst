@@ -4,6 +4,18 @@ Setup Notes
 
 Some notes on how to set up your `sbt` script.
 
+
+JDK8 compat issue
+---------------------
+
+Since JDK 8 , The MaxPemSize not supported anymore.
+
+You should remove -XX:MaxPermSize=???m  from JAVA_OPTS
+
+The sbt default configure file locate at  /usr/share/sbt-launcher-packaging/bin/sbt-launch-lib.bash
+
+You may modify it by hand if you want
+
 Do not put `sbt-launch.jar` on your classpath.
 ------------------------------------------------
 
