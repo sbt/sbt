@@ -6,11 +6,10 @@ package sbt
 import java.util.Collections.emptyMap
 import scala.collection.mutable.HashSet
 
-import org.apache.ivy.{core, plugins}
-import core.module.descriptor.{DefaultExcludeRule, ExcludeRule}
-import core.module.descriptor.{DependencyDescriptor, DefaultModuleDescriptor, ModuleDescriptor, OverrideDependencyDescriptorMediator}
-import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
-import plugins.matcher.ExactPatternMatcher
+import org.apache.ivy.core.module.descriptor.{DefaultExcludeRule, ExcludeRule}
+import org.apache.ivy.core.module.descriptor.{DependencyDescriptor, DefaultModuleDescriptor, ModuleDescriptor, OverrideDependencyDescriptorMediator}
+import org.apache.ivy.core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
+import org.apache.ivy.plugins.matcher.ExactPatternMatcher
 
 object ScalaArtifacts
 {
