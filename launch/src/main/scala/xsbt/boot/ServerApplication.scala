@@ -113,6 +113,9 @@ class StreamDumper(in: java.io.BufferedReader, out: java.io.PrintStream) extends
     // any stuff.
     if (waitForErrors) {
       endTime.set(System.currentTimeMillis + 2000)
+      // at this point we'd rather the dumper thread run
+      // before we check whether to sleep
+      Thread.yield()
       // let ourselves read more (thread should exit on earlier of endTime or EOF)
       while (isAlive() && (endTime.get > System.currentTimeMillis))
         Thread.sleep(50)
