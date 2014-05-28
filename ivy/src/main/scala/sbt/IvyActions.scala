@@ -7,13 +7,13 @@ import java.io.File
 import scala.xml.{ Node => XNode, NodeSeq }
 
 import org.apache.ivy.Ivy
-import org.apache.ivy.core.{IvyPatternHelper, LogOptions}
+import org.apache.ivy.core.{ IvyPatternHelper, LogOptions }
 import org.apache.ivy.core.deliver.DeliverOptions
 import org.apache.ivy.core.install.InstallOptions
-import org.apache.ivy.core.module.descriptor.{Artifact => IArtifact, MDArtifact, ModuleDescriptor, DefaultModuleDescriptor}
+import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact, MDArtifact, ModuleDescriptor, DefaultModuleDescriptor }
 import org.apache.ivy.core.report.ResolveReport
 import org.apache.ivy.core.resolve.ResolveOptions
-import org.apache.ivy.plugins.resolver.{BasicResolver, DependencyResolver}
+import org.apache.ivy.plugins.resolver.{ BasicResolver, DependencyResolver }
 
 final class DeliverConfiguration(val deliverIvyPattern: String, val status: String, val configurations: Option[Seq[Configuration]], val logging: UpdateLogging.Value)
 final class PublishConfiguration(val ivyFile: Option[File], val resolverName: String, val artifacts: Map[Artifact, File], val checksums: Seq[String], val logging: UpdateLogging.Value,

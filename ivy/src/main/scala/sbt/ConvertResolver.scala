@@ -9,10 +9,10 @@ import org.apache.ivy.core.module.id.ModuleRevisionId
 import org.apache.ivy.core.module.descriptor.DependencyDescriptor
 import org.apache.ivy.core.resolve.ResolveData
 import org.apache.ivy.core.settings.IvySettings
-import org.apache.ivy.plugins.resolver.{BasicResolver, DependencyResolver, IBiblioResolver, RepositoryResolver}
-import org.apache.ivy.plugins.resolver.{AbstractPatternsBasedResolver, AbstractSshBasedResolver, FileSystemResolver, SFTPResolver, SshResolver, URLResolver}
-import org.apache.ivy.plugins.repository.url.{URLRepository => URLRepo}
-import org.apache.ivy.plugins.repository.file.{FileRepository => FileRepo, FileResource}
+import org.apache.ivy.plugins.resolver.{ BasicResolver, DependencyResolver, IBiblioResolver, RepositoryResolver }
+import org.apache.ivy.plugins.resolver.{ AbstractPatternsBasedResolver, AbstractSshBasedResolver, FileSystemResolver, SFTPResolver, SshResolver, URLResolver }
+import org.apache.ivy.plugins.repository.url.{ URLRepository => URLRepo }
+import org.apache.ivy.plugins.repository.file.{ FileRepository => FileRepo, FileResource }
 import java.io.File
 import org.apache.ivy.util.ChecksumHelper
 import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact }

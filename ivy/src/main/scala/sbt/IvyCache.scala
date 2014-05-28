@@ -6,10 +6,10 @@ package sbt
 import java.io.File
 import java.net.URL
 
-import org.apache.ivy.core.cache.{ArtifactOrigin, CacheDownloadOptions, DefaultRepositoryCacheManager}
-import org.apache.ivy.core.module.descriptor.{Artifact => IvyArtifact, DefaultArtifact}
-import org.apache.ivy.plugins.repository.file.{FileRepository=>IvyFileRepository, FileResource}
-import org.apache.ivy.plugins.repository.{ArtifactResourceResolver, Resource, ResourceDownloader}
+import org.apache.ivy.core.cache.{ ArtifactOrigin, CacheDownloadOptions, DefaultRepositoryCacheManager }
+import org.apache.ivy.core.module.descriptor.{ Artifact => IvyArtifact, DefaultArtifact }
+import org.apache.ivy.plugins.repository.file.{ FileRepository => IvyFileRepository, FileResource }
+import org.apache.ivy.plugins.repository.{ ArtifactResourceResolver, Resource, ResourceDownloader }
 import org.apache.ivy.plugins.resolver.util.ResolvedResource
 import org.apache.ivy.util.FileUtil
 
