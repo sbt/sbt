@@ -6,13 +6,13 @@ package sbt
 import java.io.File
 import java.util.Date
 
-	import org.apache.ivy.core.{cache,module, report, resolve,search}
+import org.apache.ivy.core.{ cache, module, report, resolve, search }
 import cache.{ ArtifactOrigin, RepositoryCacheManager }
 import search.{ ModuleEntry, OrganisationEntry, RevisionEntry }
 import module.id.ModuleRevisionId
 import module.descriptor.{ Artifact => IArtifact, DefaultArtifact, DependencyDescriptor, ModuleDescriptor }
-	import org.apache.ivy.plugins.namespace.Namespace
-	import org.apache.ivy.plugins.resolver.{DependencyResolver,ResolverSettings}
+import org.apache.ivy.plugins.namespace.Namespace
+import org.apache.ivy.plugins.resolver.{ DependencyResolver, ResolverSettings }
 import report.{ ArtifactDownloadReport, DownloadReport, DownloadStatus, MetadataArtifactDownloadReport }
 import resolve.{ DownloadOptions, ResolveData, ResolvedModuleRevision }
 

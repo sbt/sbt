@@ -1,13 +1,13 @@
 package sbt
 
-	import org.apache.ivy.core.module.id.ModuleRevisionId
-	import org.apache.ivy.core.module.descriptor.{DefaultArtifact, DefaultExtendsDescriptor, DefaultModuleDescriptor, ModuleDescriptor}
-	import org.apache.ivy.core.module.descriptor.{DefaultDependencyDescriptor, DependencyDescriptor}
-	import org.apache.ivy.plugins.parser.{ModuleDescriptorParser, ModuleDescriptorParserRegistry, ParserSettings}
-	import org.apache.ivy.plugins.parser.m2.{PomModuleDescriptorBuilder, PomModuleDescriptorParser}
-	import org.apache.ivy.plugins.repository.Resource
-	import org.apache.ivy.plugins.namespace.NamespaceTransformer
-	import org.apache.ivy.util.extendable.ExtendableItem
+import org.apache.ivy.core.module.id.ModuleRevisionId
+import org.apache.ivy.core.module.descriptor.{ DefaultArtifact, DefaultExtendsDescriptor, DefaultModuleDescriptor, ModuleDescriptor }
+import org.apache.ivy.core.module.descriptor.{ DefaultDependencyDescriptor, DependencyDescriptor }
+import org.apache.ivy.plugins.parser.{ ModuleDescriptorParser, ModuleDescriptorParserRegistry, ParserSettings }
+import org.apache.ivy.plugins.parser.m2.{ PomModuleDescriptorBuilder, PomModuleDescriptorParser }
+import org.apache.ivy.plugins.repository.Resource
+import org.apache.ivy.plugins.namespace.NamespaceTransformer
+import org.apache.ivy.util.extendable.ExtendableItem
 
 import java.io.{ File, InputStream }
 import java.net.URL

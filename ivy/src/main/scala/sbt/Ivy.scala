@@ -12,19 +12,19 @@ import java.util.{ Collection, Collections => CS }
 import CS.singleton
 
 import org.apache.ivy.Ivy
-import org.apache.ivy.core.{IvyPatternHelper, LogOptions}
-import org.apache.ivy.core.cache.{CacheMetadataOptions, DefaultRepositoryCacheManager, ModuleDescriptorWriter}
-import org.apache.ivy.core.module.descriptor.{Artifact => IArtifact, DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact}
-import org.apache.ivy.core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor, License}
-import org.apache.ivy.core.module.descriptor.{OverrideDependencyDescriptorMediator}
-import org.apache.ivy.core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
-import org.apache.ivy.core.resolve.{IvyNode, ResolveData, ResolvedModuleRevision}
+import org.apache.ivy.core.{ IvyPatternHelper, LogOptions }
+import org.apache.ivy.core.cache.{ CacheMetadataOptions, DefaultRepositoryCacheManager, ModuleDescriptorWriter }
+import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact, DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact }
+import org.apache.ivy.core.module.descriptor.{ DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor, License }
+import org.apache.ivy.core.module.descriptor.{ OverrideDependencyDescriptorMediator }
+import org.apache.ivy.core.module.id.{ ArtifactId, ModuleId, ModuleRevisionId }
+import org.apache.ivy.core.resolve.{ IvyNode, ResolveData, ResolvedModuleRevision }
 import org.apache.ivy.core.settings.IvySettings
 import org.apache.ivy.plugins.latest.LatestRevisionStrategy
 import org.apache.ivy.plugins.matcher.PatternMatcher
 import org.apache.ivy.plugins.parser.m2.PomModuleDescriptorParser
-import org.apache.ivy.plugins.resolver.{ChainResolver, DependencyResolver}
-import org.apache.ivy.util.{Message, MessageLogger}
+import org.apache.ivy.plugins.resolver.{ ChainResolver, DependencyResolver }
+import org.apache.ivy.util.{ Message, MessageLogger }
 import org.apache.ivy.util.extendable.ExtendableItem
 
 import scala.xml.{ NodeSeq, Text }
