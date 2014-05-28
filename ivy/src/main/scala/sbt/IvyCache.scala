@@ -6,13 +6,12 @@ package sbt
 import java.io.File
 import java.net.URL
 
-import org.apache.ivy.{ core, plugins, util }
-import core.cache.{ ArtifactOrigin, CacheDownloadOptions, DefaultRepositoryCacheManager }
-import core.module.descriptor.{ Artifact => IvyArtifact, DefaultArtifact }
-import plugins.repository.file.{ FileRepository => IvyFileRepository, FileResource }
-import plugins.repository.{ ArtifactResourceResolver, Resource, ResourceDownloader }
-import plugins.resolver.util.ResolvedResource
-import util.FileUtil
+import org.apache.ivy.core.cache.{ArtifactOrigin, CacheDownloadOptions, DefaultRepositoryCacheManager}
+import org.apache.ivy.core.module.descriptor.{Artifact => IvyArtifact, DefaultArtifact}
+import org.apache.ivy.plugins.repository.file.{FileRepository=>IvyFileRepository, FileResource}
+import org.apache.ivy.plugins.repository.{ArtifactResourceResolver, Resource, ResourceDownloader}
+import org.apache.ivy.plugins.resolver.util.ResolvedResource
+import org.apache.ivy.util.FileUtil
 
 class NotInCache(val id: ModuleID, cause: Throwable)
     extends RuntimeException(NotInCache(id, cause), cause) {

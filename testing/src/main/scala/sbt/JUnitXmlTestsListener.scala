@@ -4,7 +4,7 @@ import java.io.{ StringWriter, PrintWriter, File }
 import java.net.InetAddress
 import scala.collection.mutable.ListBuffer
 import scala.util.DynamicVariable
-import scala.xml.{ Elem, Node, XML }
+import scala.xml.{Elem, Node=>XNode, XML}
 import testing.{ Event => TEvent, Status => TStatus, OptionalThrowable, TestSelector }
 
 /**
@@ -23,7 +23,7 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
     <properties>
       {
         val iter = System.getProperties.entrySet.iterator
-        val props: ListBuffer[Node] = new ListBuffer()
+            val props:ListBuffer[XNode] = new ListBuffer()
         while (iter.hasNext) {
           val next = iter.next
           props += <property name={ next.getKey.toString } value={ next.getValue.toString }/>
