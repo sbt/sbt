@@ -18,7 +18,10 @@ lazy val projF = project
 disablePlugins(plugins.IvyPlugin)
 
 check := {
-    // TODO - this will pass when the raw disablePlugin works.
+    // Ensure organization on root is overridable.
+    val rorg = (organization).value // Should be None
+    same(rorg, "override", "organization")
+    // this will pass when the raw disablePlugin works.
     val dversion = (projectID in projD).?.value // Should be None
     same(dversion, None, "projectID in projD")
     val rversion = projectID.?.value // Should be None
@@ -44,6 +47,8 @@ check := {
 	same(qValue, Some(" Q R"), "del in projC in q")
 	val optInValue = (del in projE in q).value
 	same(optInValue, " Q S R", "del in projE in q")
+	val overrideOrgValue = (organization in projE).value
+	same(overrideOrgValue, "S", "organization in projE")
 }
 
 keyTest := "foo"
