@@ -365,7 +365,7 @@ object IvyActions {
     {
       val mextra = IvySbt.javaMap(mid.extraAttributes, true)
       val aextra = IvySbt.extra(art, true)
-      IvyPatternHelper.substitute(pattern, mid.organization, mid.name, mid.revision, art.name, art.`type`, art.extension, conf, mextra, aextra)
+      IvyPatternHelper.substitute(pattern, mid.organization, mid.name, mid.branchName.orNull, mid.revision, art.name, art.`type`, art.extension, conf, null, mextra, aextra)
     }
 
   import UpdateLogging.{ Quiet, Full, DownloadOnly, Default }
