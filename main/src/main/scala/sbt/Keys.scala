@@ -345,6 +345,7 @@ object Keys {
   val stateStreams = AttributeKey[Streams]("streams-manager", "Streams manager, which provides streams for different contexts.  Setting this on State will override the default Streams implementation.")
   val resolvedScoped = Def.resolvedScoped
   val pluginData = TaskKey[PluginData]("plugin-data", "Information from the plugin build needed in the main build definition.", DTask)
+  val globalPluginUpdate = TaskKey[UpdateReport]("global-plugin-update", "A hook to get the UpdateReport of the global plugin.", DTask)
 
   // wrapper to work around SI-2915
   private[sbt] final class TaskProgress(val progress: ExecuteProgress[Task])

@@ -11,7 +11,8 @@ $ copy-file changes/global-plugins.sbt global/plugins/plugins.sbt
 # check that it is on the classpath
 > eval (x => ()) : (org.junit.Test => Unit)
 
-# ensure that the global plugin version overrides the local version
+# ensure that the global plugin version is overridden by the local version
+# (because it's older)
 $ copy-file changes/plugins.sbt project/plugins.sbt
 > reload
 > check

@@ -10,11 +10,11 @@ object MyBuild extends Build {
 
   lazy val proj = Project("my-test-proj", file("."), settings = mySettings)
 
-  lazy val check = taskKey[Unit]("Verifies that the junit dependency has the older version (4.5)")
+  lazy val check = taskKey[Unit]("Verifies that the junit dependency has the newer version (4.8)")
 
   def checkVersion(report: UpdateReport) {
     for(mod <- report.allModules) {
-      if(mod.name == "junit") assert(mod.revision == "4.5", s"JUnit version (${mod.revision}) was not overridden")
+      if(mod.name == "junit") assert(mod.revision == "4.8", s"JUnit version (${mod.revision}) does not have the correct version")
     }
   }
 }
