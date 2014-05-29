@@ -423,7 +423,7 @@ private[sbt] object IvySbt {
   def toID(m: ModuleID) =
     {
       import m._
-      ModuleRevisionId.newInstance(organization, name, revision, javaMap(extraAttributes))
+      ModuleRevisionId.newInstance(organization, name, branch.orNull, revision, javaMap(extraAttributes))
     }
 
   private def substituteCross(m: ModuleSettings): ModuleSettings =
