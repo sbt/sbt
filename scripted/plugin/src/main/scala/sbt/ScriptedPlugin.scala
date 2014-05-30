@@ -5,6 +5,7 @@ package sbt
 
 import Def.Initialize
 import Keys._
+import complete.{ Parser, DefaultParsers }
 import classpath.ClasspathUtilities
 import java.lang.reflect.{ InvocationTargetException, Method }
 import java.util.Properties
@@ -37,8 +38,24 @@ object ScriptedPlugin extends Plugin {
       m.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[Array[String]], classOf[File], classOf[Array[String]])
   }
 
+  private def scriptedParser(scriptedBase: File): Parser[Seq[String]] =
+    {
+      import DefaultParsers._
+      val pairs = (scriptedBase * AllPassFilter * AllPassFilter * "test").get map { (f: File) =>
+        val p = f.getParentFile
+        (p.getParentFile.getName, p.getName)
+      }
+      val pairMap = pairs.groupBy(_._1).mapValues(_.map(_._2).toSet)
+
+      val id = charClass(c => !c.isWhitespace && c != '/').+.string
+      val groupP = token(id.examples(pairMap.keySet.toSet)) <~ token('/')
+      def nameP(group: String) = token("*".id | id.examples(pairMap(group)))
+      val testID = for (group <- groupP; name <- nameP(group)) yield (group, name)
+      (token(Space) ~> matched(testID)).*
+    }
+
   def scriptedTask: Initialize[InputTask[Unit]] = Def.inputTask {
-    val args = Def.spaceDelimited().parsed
+    val args = scriptedParser(sbtTestDirectory.value).parsed
     val prereq: Unit = scriptedDependencies.value
     try {
       scriptedRun.value.invoke(
