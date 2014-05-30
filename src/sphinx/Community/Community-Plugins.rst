@@ -99,6 +99,7 @@ Frontend development plugins
 -  sbt-yui-compressor: https://github.com/indrajitr/sbt-yui-compressor
 -  sbt-requirejs: https://github.com/scalatra/sbt-requirejs
 -  sbt-vaadin-plugin: https://github.com/henrikerola/sbt-vaadin-plugin
+-  sbt-purescript: https://github.com/eamelink/sbt-purescript
 
 Game development plugins
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
