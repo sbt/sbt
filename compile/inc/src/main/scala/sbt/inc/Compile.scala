@@ -175,10 +175,11 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
         val info = SourceInfos.makeInfo(getOrNil(reporteds, src), getOrNil(unreporteds, src))
         val direct = sourceDeps.getOrElse(src, Nil: Iterable[File])
         val publicInherited = inheritedSourceDeps.getOrElse(src, Nil: Iterable[File])
-        a.addSource(src, s, stamp, direct, publicInherited, info)
+        val allDeps = direct.map((_, DependencyByMemberRef)) ++ publicInherited.map((_, DependencyByInheritance))
+        a.addSource(src, s, stamp, allDeps, info)
     }
   def getOrNil[A, B](m: collection.Map[A, Seq[B]], a: A): Seq[B] = m.get(a).toList.flatten
-  def addExternals(base: Analysis): Analysis = (base /: extSrcDeps) { case (a, (source, name, api, inherited)) => a.addExternalDep(source, name, api, inherited) }
+  def addExternals(base: Analysis): Analysis = (base /: extSrcDeps) { case (a, (source, name, api, inherited)) => a.addExternalDep(source, name, api, if (inherited) DependencyByInheritance else DependencyByMemberRef) }
   def addCompilation(base: Analysis): Analysis = base.copy(compilations = base.compilations.add(compilation))
   def addUsedNames(base: Analysis): Analysis = (base /: usedNames) {
     case (a, (src, names)) =>

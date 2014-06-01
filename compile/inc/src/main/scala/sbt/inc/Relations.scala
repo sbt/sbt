@@ -65,19 +65,33 @@ trait Relations {
 
   /**
    * Records internal source file `src` as depending on class `dependsOn` in an external source file.
+   * `context` indicates where the dependency comes from (for instance, member reference or inheritance).
+   * @type {[type]}
+   */
+  def addExternalDep(src: File, dependsOn: String, context: DependencyContext): Relations
+  /**
+   * Records internal source file `src` as depending on class `dependsOn` in an external source file.
    * If `inherited` is true, this dependency is recorded as coming from a public template in `src` extending something in `dependsOn` (an inheritance dependency).
    * Whatever the value of `inherited`, the dependency is also recorded as a direct dependency.
    */
+  @deprecated("Indicate the context using DependencyContext", "0.13.5")
   def addExternalDep(src: File, dependsOn: String, inherited: Boolean): Relations
 
   /** Records internal source file `src` depending on a dependency binary dependency `dependsOn`.*/
   def addBinaryDep(src: File, dependsOn: File): Relations
 
   /**
+   * Records internal source file `src` as having direct `dependencies`. Each element in `dependencies`
+   * consist of a `File` on which `src` depends, and a `context` that indicates where the dependency comes from.
+   * @type {[type]}
+   */
+  def addInternalSrcDeps(src: File, dependencies: Iterable[(File, DependencyContext)]): Relations
+  /**
    * Records internal source file `src` as having direct dependencies on internal source files `directDependsOn`
    * and inheritance dependencies on `inheritedDependsOn`.  Everything in `inheritedDependsOn` must be included in `directDependsOn`;
    * this method does not automatically record direct dependencies like `addExternalDep` does.
    */
+  @deprecated("Indicate the context using DependencyContext", "0.13.5")
   def addInternalSrcDeps(src: File, directDependsOn: Iterable[File], inheritedDependsOn: Iterable[File]): Relations
 
   private[inc] def addUsedName(src: File, name: String): Relations
@@ -334,18 +348,35 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
     new MRelationsDefaultImpl(srcProd + (src, prod), binaryDep, direct = direct,
       publicInherited = publicInherited, classes + (src, name))
 
-  def addExternalDep(src: File, dependsOn: String, inherited: Boolean): Relations = {
-    val newI = if (inherited) publicInherited.addExternal(src, dependsOn) else publicInherited
-    val newD = direct.addExternal(src, dependsOn)
+  def addExternalDep(src: File, dependsOn: String, context: DependencyContext): Relations = {
+    val (newI, newD) = context match {
+      case DependencyByInheritance =>
+        (publicInherited.addExternal(src, dependsOn), direct.addExternal(src, dependsOn))
+      case DependencyByMemberRef =>
+        (publicInherited, direct.addExternal(src, dependsOn))
+      case _ =>
+        throw new UnsupportedOperationException("This kind of dependency context is not supported.")
+    }
+    new MRelationsDefaultImpl(srcProd, binaryDep, direct = newD, publicInherited = newI, classes)
+  }
+
+  def addExternalDep(src: File, dependsOn: String, inherited: Boolean): Relations =
+    addExternalDep(src, dependsOn, if (inherited) DependencyByInheritance else DependencyByMemberRef)
+
+  def addInternalSrcDeps(src: File, dependencies: Iterable[(File, DependencyContext)]): Relations = {
+    val byMemberRef = dependencies.collect { case (file, DependencyByMemberRef) => file }
+    val byInheritance = dependencies.collect { case (file, DependencyByInheritance) => file }
+
+    if (byMemberRef.size + byInheritance.size != dependencies.size)
+      throw new UnsupportedOperationException("Some of the received dependency context are not supported.")
+
+    val newD = direct.addInternal(src, byMemberRef)
+    val newI = publicInherited.addInternal(src, byInheritance)
     new MRelationsDefaultImpl(srcProd, binaryDep, direct = newD, publicInherited = newI, classes)
   }
 
   def addInternalSrcDeps(src: File, dependsOn: Iterable[File], inherited: Iterable[File]): Relations =
-    {
-      val newI = publicInherited.addInternal(src, inherited)
-      val newD = direct.addInternal(src, dependsOn)
-      new MRelationsDefaultImpl(srcProd, binaryDep, direct = newD, publicInherited = newI, classes)
-    }
+    addInternalSrcDeps(src, dependsOn.map((_, DependencyByMemberRef)) ++ inherited.map((_, DependencyByInheritance)))
 
   def names: Relation[File, String] =
     throw new UnsupportedOperationException("Tracking of used names is not supported " +
@@ -443,19 +474,38 @@ private class MRelationsNameHashing(srcProd: Relation[File, File], binaryDep: Re
     new MRelationsNameHashing(srcProd + (src, prod), binaryDep, memberRef = memberRef,
       inheritance = inheritance, classes + (src, name), names = names)
 
-  def addExternalDep(src: File, dependsOn: String, inherited: Boolean): Relations = {
-    val newIH = if (inherited) inheritance.addExternal(src, dependsOn) else inheritance
-    val newMR = memberRef.addExternal(src, dependsOn)
+  def addExternalDep(src: File, dependsOn: String, context: DependencyContext): Relations = {
+    val (newIH, newMR) = context match {
+      case DependencyByInheritance =>
+        (inheritance.addExternal(src, dependsOn), memberRef.addExternal(src, dependsOn))
+      case DependencyByMemberRef =>
+        (inheritance, memberRef.addExternal(src, dependsOn))
+      case _ =>
+        throw new UnsupportedOperationException("This kind of dependency context is not supported.")
+    }
+
     new MRelationsNameHashing(srcProd, binaryDep, memberRef = newMR, inheritance = newIH, classes,
       names = names)
   }
 
-  def addInternalSrcDeps(src: File, dependsOn: Iterable[File], inherited: Iterable[File]): Relations = {
-    val newIH = inheritance.addInternal(src, inherited)
-    val newMR = memberRef.addInternal(src, dependsOn)
+  def addExternalDep(src: File, dependsOn: String, inherited: Boolean): Relations =
+    addExternalDep(src, dependsOn, if (inherited) DependencyByInheritance else DependencyByMemberRef)
+
+  def addInternalSrcDeps(src: File, dependencies: Iterable[(File, DependencyContext)]): Relations = {
+    val byMemberRef = dependencies.collect { case (file, DependencyByMemberRef) => file }
+    val byInheritance = dependencies.collect { case (file, DependencyByInheritance) => file }
+
+    if (byMemberRef.size + byInheritance.size != dependencies.size)
+      throw new UnsupportedOperationException("Some of the received dependency context are not supported.")
+
+    val newMR = memberRef.addInternal(src, byMemberRef)
+    val newIH = inheritance.addInternal(src, byInheritance)
     new MRelationsNameHashing(srcProd, binaryDep, memberRef = newMR, inheritance = newIH, classes,
       names = names)
   }
+
+  def addInternalSrcDeps(src: File, dependsOn: Iterable[File], inherited: Iterable[File]): Relations =
+    addInternalSrcDeps(src, dependsOn.map((_, DependencyByMemberRef)) ++ inherited.map((_, DependencyByInheritance)))
 
   def addUsedName(src: File, name: String): Relations =
     new MRelationsNameHashing(srcProd, binaryDep, memberRef = memberRef,
