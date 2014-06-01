@@ -12,7 +12,6 @@
 
 object Docs
 {
-	val rootFiles = SettingKey[Seq[File]]("root-files", "Location of file that will be copied to the website root.")
 	val latestRelease = SettingKey[Boolean]("latest-release")
 
 	val siteExcludes = Set(".buildinfo", "objects.inv")
@@ -27,27 +26,18 @@ object Docs
 	val HomeHtml = "home.html"
 	val VersionPattern = """(\d+)\.(\d+)\.(\d+)(-.+)?""".r.pattern
 
-	def settings: Seq[Setting[_]] =
-		site.settings ++
-		site.sphinxSupport(DocsPath) ++
-		site.includeScaladoc("api") ++
-		siteIncludeSxr("sxr") ++
-		ghPagesSettings ++
-		Seq(
-			SphinxSupport.sphinxEnv in SphinxSupport.Sphinx <<= sphinxEnvironmentVariables,
-			SphinxSupport.sphinxIncremental in SphinxSupport.Sphinx := true,
-			// TODO: set to true with newer sphinx plugin release
-			SphinxSupport.enableOutput in SphinxSupport.generatePdf := false
-		)
-
+	// There shouldn't be any reason to publish docs from 0.13.5 any more.
+	// Uncomment the below after it merges to 0.13 for 0.13.6 API and SXR.
+	def settings: Seq[Setting[_]] = Nil
+		// site.settings ++
+		// site.includeScaladoc("api") ++
+		// siteIncludeSxr("sxr") ++
+		// ghPagesSettings
+	
 	def ghPagesSettings = ghpages.settings ++ Seq(
 		git.remoteRepo := "git@github.com:sbt/sbt.github.com.git",
 		localRepoDirectory,
 		ghkeys.synchLocal <<= synchLocalImpl,
-		rootFiles :=  {
-			val base = (sourceDirectory in SphinxSupport.Sphinx).value
-			Seq("CNAME", "robots.txt").map(base / _)
-		},
 		latestRelease in ThisBuild := false,
 		commands += setLatestRelease,
 		GitKeys.gitBranch in ghkeys.updatedRepository := Some("master")
@@ -66,47 +56,22 @@ object Docs
 		site.addMappingsToSiteDir(mappings in sxr, prefix)
 	)
 
-	def sphinxEnvironmentVariables = (scalaVersion, version, isSnapshot) map { (scalaV, sbtV, snap) =>
-		// sphinx's terminology: major.minor
-		def release(v: String): String = CrossVersion.partialVersion(v) match {
-			case Some((major,minor)) => major + "." + minor
-			case None => v
-		}
-		val siteVersion = sbtV.takeWhile(_ != '-')
-		val siteSourceVersion = if(snap) release(siteVersion) else siteVersion
-		Map[String,String](
-			"sbt.full.version" -> sbtV,
-			"sbt.partial.version" -> release(sbtV),
-			"sbt.site.version" -> siteVersion,
-			"sbt.site.source.base" -> siteSourceBase(siteSourceVersion),
-			"sbt.binary.version" -> CrossVersion.binarySbtVersion(sbtV),
-			"scala.full.version" -> scalaV,
-			"scala.partial.version" -> release(scalaV),
-			"scala.binary.version" -> CrossVersion.binaryScalaVersion(scalaV)
-		)
-	}
-
-	def synchLocalImpl = (ghkeys.privateMappings, ghkeys.updatedRepository, version, isSnapshot, latestRelease, streams, rootFiles) map {
-		(mappings, repo, v, snap, latest, s, roots) =>
+	def synchLocalImpl = (ghkeys.privateMappings, ghkeys.updatedRepository, version, isSnapshot, latestRelease, streams) map {
+		(mappings, repo, v, snap, latest, s) =>
 		val versioned = repo / v
 		IO.delete(versioned)
 		val toCopy = for( (file, target) <- mappings if siteInclude(file) ) yield (file, versioned / target)
 		IO.copy(toCopy)
-		for(f <- roots)
-			IO.copyFile(f, repo / f.getName)
-		IO.touch(repo / ".nojekyll")
-		IO.write(repo / "versions.js", versionsJs(sortVersions(collectVersions(repo))))
-		if(!snap && latest)
-			RootIndex(versioned / DocsPath / "home.html", repo / IndexHtml)
-		if(snap || latest)
-			linkSite(repo, v, if(snap) SnapshotPath else ReleasePath, s.log)
-		s.log.info("Copied site to " + versioned)
 
+		// IO.write(repo / "versions.js", versionsJs(sortVersions(collectVersions(repo))))
+		s.log.info("Copied site to " + versioned)
+		/*
 		if(latest) {
 			val (index, siteMaps) = SiteMap.generate(repo, sbtSiteBase, gzip=true, siteEntry(v), s.log)
 			s.log.info(s"Generated site map index: $index")
 			s.log.debug(s"Generated site maps: ${siteMaps.mkString("\n\t", "\n\t", "")}")
 		}
+		*/
 
 		repo
 	}
@@ -150,14 +115,6 @@ object Docs
 			None
 	}
 	def versionFilter = new PatternFilter(VersionPattern) && DirectoryFilter
-
-	def linkSite(base: File, to: String, from: String, log: Logger) {
-		val current = base / to
-		assert(current.isDirectory, "Versioned site not present at " + current.getAbsolutePath)
-		val symlinkDir = base / from
-		symlinkDir.delete()
-		symlink(path = to, file = symlinkDir, log = log)
-	}
 
 	// TODO: platform independence/use symlink from Java 7
 	def symlink(path: String, file: File, log: Logger): Unit =
