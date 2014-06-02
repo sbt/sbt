@@ -44,7 +44,7 @@ object Sbt extends Build {
     // TODO - To some extent these should take args to figure out what to do.
     commands += Command.command("release-libs-211") { state =>
       def lameAgregateTask(task: String): String =
-        s"all control/$task collections/$task io/$task"
+        s"all control/$task collections/$task io/$task completion/$task"
       "setupBuildScala211" ::
         /// First test
         lameAgregateTask("test") ::
