@@ -1,6 +1,6 @@
 import sbt._
 import Keys._
-import Status.{ isSnapshot, publishStatus }
+import Status.{ publishStatus }
 import org.apache.ivy.util.url.CredentialsStore
 
 object Release extends Build {
