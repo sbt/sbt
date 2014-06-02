@@ -1,7 +1,7 @@
 package sbttest // you need package http://stackoverflow.com/questions/9822008/
 
 	import sbt._
-	import sbt.Keys.{name, resolvedScoped}
+	import sbt.Keys.{name, resolvedScoped, organization	}
 	import java.util.concurrent.atomic.{AtomicInteger => AInt}
 
 object Imports
@@ -17,6 +17,13 @@ object Imports
 	lazy val del = settingKey[String]("Another demo setting.")
 
 	lazy val check = taskKey[Unit]("Verifies settings are as they should be.")
+}
+
+object OrgPlugin extends AutoPlugin {
+	override def trigger = allRequirements
+	override def projectSettings = Seq(
+      organization := "override"
+	)
 }
 
 object X extends AutoPlugin {
@@ -84,6 +91,7 @@ object S extends AutoPlugin
 	override def trigger = noTrigger
 
 	override def projectSettings = Seq(
-		del in q += " S"
+		del in q += " S",
+		organization := "S"
 	)
 }

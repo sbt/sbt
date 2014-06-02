@@ -46,12 +46,12 @@ object Sbt extends Build {
       def lameAgregateTask(task: String): String =
         s"all control/$task collections/$task io/$task completion/$task"
       "setupBuildScala211" ::
-        /// First test
-        lameAgregateTask("test") ::
-        // Note: You need the sbt-pgp plugin installed to release.
-        lameAgregateTask("publishSigned") ::
-        // Now restore the defaults.
-        "reload" :: state
+      /// First test
+      lameAgregateTask("test") ::
+      // Note: You need the sbt-pgp plugin installed to release.
+      lameAgregateTask("publishSigned") ::
+      // Now restore the defaults.
+      "reload" :: state
     },
     commands += Command.command("release-sbt") { state =>
       // TODO - Any sort of validation
