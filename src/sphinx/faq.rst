@@ -233,7 +233,7 @@ to `samples`:
 How do I add a test configuration?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-See the `Additional test configurations` section of :doc`/Detailed-Topics/Testing`.
+See the `Additional test configurations` section of :doc:`/Detailed-Topics/Testing`.
 
 How can I create a custom run task, in addition to `run`?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

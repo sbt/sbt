@@ -12,9 +12,9 @@ started up with these commands already executed:
 ::
 
     import sbt._
-    import Process._
     import Keys._
     import <your-project-definition>._
+    import <your-plugins>._
     import currentState._
     import extracted._
     import cpHelpers._
