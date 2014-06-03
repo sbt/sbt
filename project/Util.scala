@@ -26,7 +26,7 @@ object Util {
   def noRemotePublish(in: Seq[Setting[_]]) = in filterNot { _.key.key == publish.key }
 
   def nightlySettings = Seq(
-    nightly211 <<= scalaVersion(_.startsWith("2.11.")),
+    nightly211 <<= scalaVersion(v => v.startsWith("2.11.") || v.startsWith("2.12.")),
     includeTestDependencies <<= nightly211(x => !x)
   )
   def crossBuild: Seq[Setting[_]] =
@@ -182,7 +182,7 @@ object Common {
   lazy val testInterface = lib("org.scala-sbt" % "test-interface" % "1.0")
   private def scala211Module(name: String, moduleVersion: String) =
     libraryDependencies <++= (scalaVersion)(scalaVersion =>
-      if (scalaVersion startsWith "2.11.") ("org.scala-lang.modules" %% name % moduleVersion) :: Nil
+      if (scalaVersion.startsWith("2.11.") || scalaVersion.startsWith("2.12.")) ("org.scala-lang.modules" %% name % moduleVersion) :: Nil
       else Nil
     )
   lazy val scalaXml = scala211Module("scala-xml", "1.0.1")
