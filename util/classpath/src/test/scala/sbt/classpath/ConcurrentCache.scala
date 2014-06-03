@@ -15,12 +15,17 @@ object ConcurrentCache extends Properties("ClassLoaderCache concurrent access") 
       else None
   }
 
+  private def showCp(cp: ClassLoader): String = cp match {
+    case u: java.net.URLClassLoader => u.getURLs.mkString("UrlClassLoader(", ", ", ")")
+    case _                          => cp.toString
+  }
+
   property("Same class loader for same classpaths concurrently processed") = forAll { (names: List[String], concurrent: Int) =>
     withcp(names.distinct) { files =>
       val cache = new ClassLoaderCache(null)
       val loaders = (1 to concurrent).par.map(_ => cache(files)).toList
       loaders match {
-        case DifferentClassloader(left, right) => false :| s"$left != $right"
+        case DifferentClassloader(left, right) => false :| s"${showCp(left)} != ${showCp(right)}"
         case _                                 => true :| ""
       }
     }
