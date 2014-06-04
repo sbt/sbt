@@ -11,6 +11,10 @@ import LaunchProguard.{ proguard, Proguard }
 
 object Sbt extends Build {
   override lazy val settings = super.settings ++ buildSettings ++ Status.settings ++ nightlySettings
+
+  // Aggregate task for 2.11
+  private def lameAgregateTask(task: String): String =
+        s"all control/$task collections/$task io/$task completion/$task"
   def buildSettings = Seq(
     organization := "org.scala-sbt",
     version := "0.13.6-SNAPSHOT",
@@ -43,8 +47,6 @@ object Sbt extends Build {
     },
     // TODO - To some extent these should take args to figure out what to do.
     commands += Command.command("release-libs-211") { state =>
-      def lameAgregateTask(task: String): String =
-        s"all control/$task collections/$task io/$task completion/$task"
       "setupBuildScala211" ::
       /// First test
       lameAgregateTask("test") ::
@@ -53,8 +55,16 @@ object Sbt extends Build {
       // Now restore the defaults.
       "reload" :: state
     },
+    commands += Command.command("release-sbt-local") { state =>
+      "publishLocal" ::
+      "setupBuildScala211" ::
+      lameAgregateTask("publishLocal") ::
+      "reload" ::
+      state
+    },
     commands += Command.command("release-sbt") { state =>
       // TODO - Any sort of validation
+      "checkCredentials" ::
       "publishSigned" ::
         "publishLauncher" ::
         "release-libs-211" ::
