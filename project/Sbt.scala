@@ -98,7 +98,7 @@ object Sbt extends Build {
   // Utilities related to reflection, managing Scala versions, and custom class loaders
   lazy val classpathSub = testedBaseProject(utilPath / "classpath", "Classpath") dependsOn (launchInterfaceSub, interfaceSub, ioSub) settings (scalaCompiler)
   // Command line-related utilities.
-  lazy val completeSub = testedBaseProject(utilPath / "complete", "Completion") dependsOn (collectionSub, controlSub, ioSub) settings (jline)
+  lazy val completeSub = testedBaseProject(utilPath / "complete", "Completion") dependsOn (collectionSub, controlSub, ioSub) settings (jline) settings (Util.crossBuild: _*)
   // logging
   lazy val logSub = testedBaseProject(utilPath / "log", "Logging") dependsOn (interfaceSub, processSub) settings (jline)
   // Relation
@@ -304,7 +304,7 @@ object Sbt extends Build {
     moduleName := "sbt-launch",
     autoScalaLibrary := false,
     description := "sbt application launcher",
-    publishLauncher <<= publish,
+    publishLauncher <<= Release.deployLauncher,
     packageBin in Compile <<= (proguard in Proguard, Transform.conscriptConfigs).map((x, y) => x)
   )
 
