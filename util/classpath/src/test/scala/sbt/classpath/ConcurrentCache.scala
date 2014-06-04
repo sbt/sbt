@@ -22,7 +22,7 @@ object ConcurrentCache extends Properties("ClassLoaderCache concurrent access") 
 
   property("Same class loader for same classpaths concurrently processed") = forAll { (names: List[String], concurrent: Int) =>
     withcp(names.distinct) { files =>
-      val cache = new ClassLoaderCache(null)
+      val cache = new ClassLoaderCache(null, errorEvicted = true)
       val loaders = (1 to concurrent).par.map(_ => cache(files)).toList
       loaders match {
         case DifferentClassloader(left, right) => false :| s"${showCp(left)} != ${showCp(right)}"
@@ -32,7 +32,7 @@ object ConcurrentCache extends Properties("ClassLoaderCache concurrent access") 
   }
 
   private[this] def withcp[T](names: List[String])(f: List[File] => T): T = IO.withTemporaryDirectory { tmp =>
-    val files = names.map { name =>
+    val files = names.sorted.map { name =>
       val file = new File(tmp, name)
       IO.touch(file)
       file
