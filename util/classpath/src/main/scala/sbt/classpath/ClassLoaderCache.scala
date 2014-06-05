@@ -6,7 +6,7 @@ import java.net.URLClassLoader
 import java.util.HashMap
 
 // Hack for testing only
-private[sbt] final class ClassLoaderCache(val commonParent: ClassLoader, errorEvicted: Boolean = false) {
+private[sbt] final class ClassLoaderCache(val commonParent: ClassLoader) {
   private[this] val delegate = new HashMap[List[File], Reference[CachedClassLoader]]
 
   /**
@@ -27,7 +27,6 @@ private[sbt] final class ClassLoaderCache(val commonParent: ClassLoader, errorEv
 
   private[this] def get(files: List[File], stamps: List[Long], existing: CachedClassLoader): ClassLoader =
     if (existing == null || stamps != existing.timestamps) {
-      if (existing == null && errorEvicted) sys.error(s"Evicted classloader for [${files mkString ", "}]!!!! Not allowed, Travis!")
       newEntry(files, stamps)
     } else
       existing.loader
