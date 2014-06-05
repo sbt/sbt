@@ -11,6 +11,10 @@ import LaunchProguard.{ proguard, Proguard }
 
 object Sbt extends Build {
   override lazy val settings = super.settings ++ buildSettings ++ Status.settings ++ nightlySettings
+
+  // Aggregate task for 2.11
+  private def lameAgregateTask(task: String): String =
+        s"all control/$task collections/$task io/$task completion/$task"
   def buildSettings = Seq(
     organization := "org.scala-sbt",
     version := "0.13.6-SNAPSHOT",
@@ -43,8 +47,6 @@ object Sbt extends Build {
     },
     // TODO - To some extent these should take args to figure out what to do.
     commands += Command.command("release-libs-211") { state =>
-      def lameAgregateTask(task: String): String =
-        s"all control/$task collections/$task io/$task completion/$task"
       "setupBuildScala211" ::
       /// First test
       lameAgregateTask("test") ::
@@ -53,8 +55,16 @@ object Sbt extends Build {
       // Now restore the defaults.
       "reload" :: state
     },
+    commands += Command.command("release-sbt-local") { state =>
+      "publishLocal" ::
+      "setupBuildScala211" ::
+      lameAgregateTask("publishLocal") ::
+      "reload" ::
+      state
+    },
     commands += Command.command("release-sbt") { state =>
       // TODO - Any sort of validation
+      "checkCredentials" ::
       "publishSigned" ::
         "publishLauncher" ::
         "release-libs-211" ::
@@ -98,7 +108,7 @@ object Sbt extends Build {
   // Utilities related to reflection, managing Scala versions, and custom class loaders
   lazy val classpathSub = testedBaseProject(utilPath / "classpath", "Classpath") dependsOn (launchInterfaceSub, interfaceSub, ioSub) settings (scalaCompiler)
   // Command line-related utilities.
-  lazy val completeSub = testedBaseProject(utilPath / "complete", "Completion") dependsOn (collectionSub, controlSub, ioSub) settings (jline)
+  lazy val completeSub = testedBaseProject(utilPath / "complete", "Completion") dependsOn (collectionSub, controlSub, ioSub) settings (jline) settings (Util.crossBuild: _*)
   // logging
   lazy val logSub = testedBaseProject(utilPath / "log", "Logging") dependsOn (interfaceSub, processSub) settings (jline)
   // Relation
@@ -304,7 +314,7 @@ object Sbt extends Build {
     moduleName := "sbt-launch",
     autoScalaLibrary := false,
     description := "sbt application launcher",
-    publishLauncher <<= publish,
+    publishLauncher <<= Release.deployLauncher,
     packageBin in Compile <<= (proguard in Proguard, Transform.conscriptConfigs).map((x, y) => x)
   )
 
