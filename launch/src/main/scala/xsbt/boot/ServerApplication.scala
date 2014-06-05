@@ -101,6 +101,7 @@ class StreamDumper(in: java.io.BufferedReader, out: java.io.PrintStream) extends
       case null => ()
       case line =>
         out.println(line)
+        out.flush()
         read()
     }
     read()
