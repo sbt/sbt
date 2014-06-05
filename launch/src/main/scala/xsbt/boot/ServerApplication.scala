@@ -133,7 +133,8 @@ object ServerLauncher {
       case None    => throw new RuntimeException("Logic Failure:  Attempting to start a server that isn't configured to be a server.  Please report a bug.")
     }
     val launchConfig = java.io.File.createTempFile("sbtlaunch", "config")
-    launchConfig.deleteOnExit()
+    if (System.getenv("SBT_SERVER_SAVE_TEMPS") eq null)
+      launchConfig.deleteOnExit()
     LaunchConfiguration.save(config, launchConfig)
     val jvmArgs: List[String] = serverConfig.jvmArgs map readLines match {
       case Some(args) => args
