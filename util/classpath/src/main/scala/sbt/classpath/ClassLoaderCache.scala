@@ -5,6 +5,7 @@ import java.io.File
 import java.net.URLClassLoader
 import java.util.HashMap
 
+// Hack for testing only
 private[sbt] final class ClassLoaderCache(val commonParent: ClassLoader) {
   private[this] val delegate = new HashMap[List[File], Reference[CachedClassLoader]]
 
@@ -25,9 +26,9 @@ private[sbt] final class ClassLoaderCache(val commonParent: ClassLoader) {
       get(files, stamps, existingRef.get)
 
   private[this] def get(files: List[File], stamps: List[Long], existing: CachedClassLoader): ClassLoader =
-    if (existing == null || stamps != existing.timestamps)
+    if (existing == null || stamps != existing.timestamps) {
       newEntry(files, stamps)
-    else
+    } else
       existing.loader
 
   private[this] def newEntry(files: List[File], stamps: List[Long]): ClassLoader =
