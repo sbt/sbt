@@ -101,6 +101,7 @@ class StreamDumper(in: java.io.BufferedReader, out: java.io.PrintStream) extends
       case null => ()
       case line =>
         out.println(line)
+        out.flush()
         read()
     }
     read()
@@ -112,7 +113,7 @@ class StreamDumper(in: java.io.BufferedReader, out: java.io.PrintStream) extends
     // just wait a couple seconds to read more stuff if there is
     // any stuff.
     if (waitForErrors) {
-      endTime.set(System.currentTimeMillis + 2000)
+      endTime.set(System.currentTimeMillis + 5000)
       // at this point we'd rather the dumper thread run
       // before we check whether to sleep
       Thread.`yield`()
@@ -132,7 +133,8 @@ object ServerLauncher {
       case None    => throw new RuntimeException("Logic Failure:  Attempting to start a server that isn't configured to be a server.  Please report a bug.")
     }
     val launchConfig = java.io.File.createTempFile("sbtlaunch", "config")
-    launchConfig.deleteOnExit()
+    if (System.getenv("SBT_SERVER_SAVE_TEMPS") eq null)
+      launchConfig.deleteOnExit()
     LaunchConfiguration.save(config, launchConfig)
     val jvmArgs: List[String] = serverConfig.jvmArgs map readLines match {
       case Some(args) => args

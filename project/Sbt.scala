@@ -29,7 +29,7 @@ object Sbt extends Build {
     javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
     incOptions := incOptions.value.withNameHashing(true),
     commands += Command.command("setupBuildScala211") { state =>
-      """set scalaVersion in ThisBuild := "2.11.0" """ ::
+      """set scalaVersion in ThisBuild := "2.11.1" """ ::
         "set Util.includeTestDependencies in ThisBuild := true" ::
         state
     },
@@ -48,12 +48,12 @@ object Sbt extends Build {
     // TODO - To some extent these should take args to figure out what to do.
     commands += Command.command("release-libs-211") { state =>
       "setupBuildScala211" ::
-      /// First test
-      lameAgregateTask("test") ::
-      // Note: You need the sbt-pgp plugin installed to release.
-      lameAgregateTask("publishSigned") ::
-      // Now restore the defaults.
-      "reload" :: state
+        /// First test
+        lameAgregateTask("test") ::
+        // Note: You need the sbt-pgp plugin installed to release.
+        lameAgregateTask("publishSigned") ::
+        // Now restore the defaults.
+        "reload" :: state
     },
     commands += Command.command("release-sbt-local") { state =>
       "publishLocal" ::
