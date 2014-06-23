@@ -161,7 +161,7 @@ object Sbt extends Build {
     compileIncrementalSub, compilerSub, compilePersistSub, apiSub, classfileSub)
   lazy val compilerIvySub = baseProject(compilePath / "ivy", "Compiler Ivy Integration") dependsOn (ivySub, compilerSub)
 
-  lazy val scriptedBaseSub = baseProject(scriptedPath / "base", "Scripted Framework") dependsOn (ioSub, processSub) settings (scalaParsers)
+  lazy val scriptedBaseSub = testedBaseProject(scriptedPath / "base", "Scripted Framework") dependsOn (ioSub, processSub) settings (scalaParsers)
   lazy val scriptedSbtSub = baseProject(scriptedPath / "sbt", "Scripted sbt") dependsOn (ioSub, logSub, processSub, scriptedBaseSub, launchInterfaceSub % "provided")
   lazy val scriptedPluginSub = baseProject(scriptedPath / "plugin", "Scripted Plugin") dependsOn (sbtSub, classpathSub)
 

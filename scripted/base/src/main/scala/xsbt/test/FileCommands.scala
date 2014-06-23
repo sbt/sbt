@@ -53,7 +53,10 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
     {
       val pathA = fromString(a)
       val pathB = fromString(b)
-      pathA.exists && (!pathB.exists || pathA.lastModified > pathB.lastModified)
+      val isNewer = pathA.exists && (!pathB.exists || pathA.lastModified > pathB.lastModified)
+      if (!isNewer) {
+        scriptError(s"$pathA is not newer than $pathB")
+      }
     }
   def exists(paths: List[String]) {
     val notPresent = fromStrings(paths).filter(!_.exists)
