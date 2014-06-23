@@ -832,7 +832,7 @@ object IO {
     {
       if (!uri.isAbsolute) return uri; //assertAbsolute(uri)
       val str = uri.toASCIIString
-      val dirStr = if (str.endsWith("/") || uri.getScheme != FileScheme || uri.getRawFragment != null) str else str + "/"
+      val dirStr = if (str.endsWith("/") || uri.getScheme != FileScheme || Option(uri.getRawFragment).isDefined) str else str + "/"
       (new URI(dirStr)).normalize
     }
   /** Converts the given File to a URI.  If the File is relative, the URI is relative, unlike File.toURI*/
