@@ -905,7 +905,7 @@ object Defaults extends BuildCommon {
 
   // These are project level settings that MUST be on every project.  
   lazy val coreDefaultSettings: Seq[Setting[_]] = projectCore ++ disableAggregation
-  @deprecated("0.13.2", "Default settings split into `coreDefaultSettings` and IvyModule/JvmModule plugins.")
+  @deprecated("Default settings split into `coreDefaultSettings` and IvyModule/JvmModule plugins.", "0.13.2")
   lazy val defaultSettings: Seq[Setting[_]] = projectBaseSettings ++ defaultConfigs
 }
 object Classpaths {
