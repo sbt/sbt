@@ -40,7 +40,7 @@ final class UpdateConfiguration(val bootDirectory: File, val ivyHome: Option[Fil
 }
 
 final class UpdateResult(val success: Boolean, val scalaVersion: Option[String], val appVersion: Option[String]) {
-  @deprecated("0.13.2", "Please use the other constructor providing appVersion.")
+  @deprecated("Please use the other constructor providing appVersion.", "0.13.2")
   def this(success: Boolean, scalaVersion: Option[String]) = this(success, scalaVersion, None)
 }
 
