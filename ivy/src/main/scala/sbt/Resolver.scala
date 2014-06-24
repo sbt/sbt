@@ -228,7 +228,7 @@ object Resolver {
   object sftp extends Define[SftpRepository] {
     protected def construct(name: String, connection: SshConnection, patterns: Patterns) = SftpRepository(name, connection, patterns)
   }
-  /** A factory to construct an interface to an Ivy filesytem resolver. */
+  /** A factory to construct an interface to an Ivy filesystem resolver. */
   object file {
     /**
      * Constructs a file resolver with the given name.  The patterns to use must be explicitly specified
