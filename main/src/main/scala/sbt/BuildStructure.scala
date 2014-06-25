@@ -108,16 +108,25 @@ case class DetectedAutoPlugin(val name: String, val value: AutoPlugin, val hasAu
  */
 final class DetectedPlugins(val plugins: DetectedModules[Plugin], val autoPlugins: Seq[DetectedAutoPlugin], val builds: DetectedModules[Build]) {
   /** Sequence of import expressions for the build definition.  This includes the names of the [[Plugin]], [[Build]], and [[AutoImport]] modules, but not the [[AutoPlugin]] modules. */
-  lazy val imports: Seq[String] = BuildUtil.getImports(plugins.names ++ builds.names ++
-    (autoPlugins flatMap {
+  lazy val imports: Seq[String] = BuildUtil.getImports(plugins.names ++ builds.names) ++
+    BuildUtil.importAllRoot(autoImports(autoPluginAutoImports)) ++
+    BuildUtil.importAll(autoImports(topLevelAutoPluginAutoImports)) ++
+    BuildUtil.importNamesRoot(autoPlugins.map(_.name).filter(nonTopLevelPlugin))
+
+  private[this] lazy val (autoPluginAutoImports, topLevelAutoPluginAutoImports) =
+    autoPlugins.flatMap {
       case DetectedAutoPlugin(name, ap, hasAutoImport) =>
-        if (hasAutoImport) Some(name + ".autoImport")
+        if (hasAutoImport) Some(name)
         else None
-    })) ++
-    BuildUtil.importNamesRoot(autoPlugins map { _.name })
+    }.partition(nonTopLevelPlugin)
 
   /** A function to select the right [[AutoPlugin]]s from [[autoPlugins]] for a [[Project]]. */
   lazy val deducePlugins: (Plugins, Logger) => Seq[AutoPlugin] = Plugins.deducer(autoPlugins.toList map { _.value })
+
+  private[this] def autoImports(pluginNames: Seq[String]) = pluginNames.map(_ + ".autoImport")
+
+  private[this] def nonTopLevelPlugin(name: String) = name.contains('.')
+
 }
 
 /**
