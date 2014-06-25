@@ -55,7 +55,7 @@ abstract class AutoPlugin extends Plugins.Basic with PluginsFunctions
 	/** Determines whether this AutoPlugin will be activated for this project when the `requires` clause is satisfied.
 	 *
 	 * When this method returns `allRequirements`, and `requires` method returns `Web && Javascript`, this plugin
-	 * instance will be added automatically if the `Web` and `Javascript` plugins are enbled.
+	 * instance will be added automatically if the `Web` and `Javascript` plugins are enabled.
 	 * 
 	 * When this method returns `noTrigger`, and `requires` method returns `Web && Javascript`, this plugin
 	 * instance will be added only if the build user enables it, but it will automatically add both `Web` and `Javascript`. */

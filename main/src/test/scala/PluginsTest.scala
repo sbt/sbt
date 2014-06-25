@@ -12,7 +12,7 @@ object PluginsTest extends Specification
 		"enable plugins with trigger=allRequirements AND requirements met" in {
 			deducePlugin(A && B, log) must contain(Q)
 		}
-		"enable transive plugins with trigger=allRequirements AND requirements met" in {
+		"enable transitive plugins with trigger=allRequirements AND requirements met" in {
 			deducePlugin(A && B, log) must contain(R)
 		}
 		"order enable plugins after required plugins" in {
