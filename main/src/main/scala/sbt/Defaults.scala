@@ -55,7 +55,7 @@ object Defaults extends BuildCommon {
   def thisBuildCore: Seq[Setting[_]] = inScope(GlobalScope.copy(project = Select(ThisBuild)))(Seq(
     managedDirectory := baseDirectory.value / "lib_managed"
   ))
-  @deprecated("0.13.2", "Use AutoPlugins and globalSbtCore instead.")
+  @deprecated("Use AutoPlugins and globalSbtCore instead.", "0.13.2")
   lazy val globalCore: Seq[Setting[_]] = globalDefaults(defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
     excludeFilter :== HiddenFileFilter
   ) ++ globalIvyCore ++ globalJvmCore) ++ globalSbtCore
@@ -900,12 +900,12 @@ object Defaults extends BuildCommon {
   lazy val defaultConfigs: Seq[Setting[_]] = inConfig(Compile)(compileSettings) ++ inConfig(Test)(testSettings) ++ inConfig(Runtime)(Classpaths.configSettings)
 
   // settings that are not specific to a configuration
-  @deprecated("0.13.2", "Settings now split into AutoPlugins.")
+  @deprecated("Settings now split into AutoPlugins.", "0.13.2")
   lazy val projectBaseSettings: Seq[Setting[_]] = projectCore ++ runnerSettings ++ paths ++ baseClasspaths ++ baseTasks ++ compileBase ++ disableAggregation
 
   // These are project level settings that MUST be on every project.  
   lazy val coreDefaultSettings: Seq[Setting[_]] = projectCore ++ disableAggregation
-  @deprecated("Default settings split into `coreDefaultSettings` and IvyModule/JvmModule plugins.", "0.13.2")
+  @deprecated("Default settings split into coreDefaultSettings and IvyModule/JvmModule plugins.", "0.13.2")
   lazy val defaultSettings: Seq[Setting[_]] = projectBaseSettings ++ defaultConfigs
 }
 object Classpaths {
@@ -990,7 +990,7 @@ object Classpaths {
     publishLocal <<= publishTask(publishLocalConfiguration, deliverLocal),
     publishM2 <<= publishTask(publishM2Configuration, deliverLocal)
   )
-  @deprecated("0.13.2", "This has been split into jvmIvySettings and ivyPublishSettings.")
+  @deprecated("This has been split into jvmPublishSettings and ivyPublishSettings.", "0.13.2")
   val publishSettings: Seq[Setting[_]] = ivyPublishSettings ++ jvmPublishSettings
 
   private[this] def baseGlobalDefaults = Defaults.globalDefaults(Seq(
@@ -1111,7 +1111,7 @@ object Classpaths {
         ScalaArtifacts.toolDependencies(scalaOrganization.value, scalaVersion.value) ++ pluginAdjust
     }
   )
-  @deprecated("0.13.2", "Split into ivyBaseSettings and jvmBaseSettings.")
+  @deprecated("Split into ivyBaseSettings and jvmBaseSettings.", "0.13.2")
   val baseSettings: Seq[Setting[_]] = ivyBaseSettings ++ jvmBaseSettings
 
   def warnResolversConflict(ress: Seq[Resolver], log: Logger) {
@@ -1271,7 +1271,7 @@ object Classpaths {
 
   def deliverConfig(outputDirectory: File, status: String = "release", logging: UpdateLogging.Value = UpdateLogging.DownloadOnly) =
     new DeliverConfiguration(deliverPattern(outputDirectory), status, None, logging)
-  @deprecated("0.13.2", "Previous semantics allowed overwriting cached files, which was unsafe.  Please specify overwrite parameter.")
+  @deprecated("Previous semantics allowed overwriting cached files, which was unsafe. Please specify overwrite parameter.", "0.13.2")
   def publishConfig(artifacts: Map[Artifact, File], ivyFile: Option[File], checksums: Seq[String], resolverName: String, logging: UpdateLogging.Value): PublishConfiguration =
     publishConfig(artifacts, ivyFile, checksums, resolverName, logging, overwrite = true)
   def publishConfig(artifacts: Map[Artifact, File], ivyFile: Option[File], checksums: Seq[String], resolverName: String = "local", logging: UpdateLogging.Value = UpdateLogging.DownloadOnly, overwrite: Boolean = false) =

@@ -271,7 +271,7 @@ object Project extends ProjectExtra {
       new ProjectDef[ProjectReference](id, base, aggregate, dependencies, delegates, settings, configurations, auto, plugins, autoPlugins) with Project
     }
 
-  @deprecated("0.13.2", "Use Defaults.coreDefaultSettings instead, combined with AutoPlugins.")
+  @deprecated("Use Defaults.coreDefaultSettings instead, combined with AutoPlugins.", "0.13.2")
   def defaultSettings: Seq[Def.Setting[_]] = Defaults.defaultSettings
 
   final class Constructor(p: ProjectReference) {
