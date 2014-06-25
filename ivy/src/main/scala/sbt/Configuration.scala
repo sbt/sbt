@@ -24,14 +24,14 @@ object Configurations {
     case _               => c
   }
 
-  def internal(base: Configuration, ext: Configuration*) = config(base.name + "-internal") extend (ext: _*) hide;
+  def internal(base: Configuration, ext: Configuration*) = config(base.name + "-internal") extend (ext: _*) hide
   def fullInternal(base: Configuration): Configuration = internal(base, base, Optional, Provided)
   def optionalInternal(base: Configuration): Configuration = internal(base, base, Optional)
 
   lazy val Default = config("default")
   lazy val Compile = config("compile")
   lazy val IntegrationTest = config("it") extend (Runtime)
-  lazy val Provided = config("provided");
+  lazy val Provided = config("provided")
   lazy val Docs = config("docs")
   lazy val Runtime = config("runtime") extend (Compile)
   lazy val Test = config("test") extend (Runtime)
