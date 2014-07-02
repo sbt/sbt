@@ -1090,7 +1090,13 @@ object Classpaths {
     updateCacheName := "update_cache" + (if (crossPaths.value) s"_${scalaBinaryVersion.value}" else ""),
     update <<= updateTask tag (Tags.Update, Tags.Network),
     update := { val report = update.value; ConflictWarning(conflictWarning.value, report, streams.value.log); report },
-    classifiersModule in updateClassifiers := GetClassifiersModule(projectID.value, update.value.allModules, ivyConfigurations.in(updateClassifiers).value, transitiveClassifiers.in(updateClassifiers).value),
+    classifiersModule in updateClassifiers := {
+      import language.implicitConversions
+      implicit val key = (m: ModuleID) => (m.organization, m.name, m.revision)
+      val projectDeps = projectDependencies.value.iterator.map(key).toSet
+      val externalModules = update.value.allModules.filterNot(m => projectDeps contains key(m))
+      GetClassifiersModule(projectID.value, externalModules, ivyConfigurations.in(updateClassifiers).value, transitiveClassifiers.in(updateClassifiers).value)
+    },
     updateClassifiers <<= (ivySbt, classifiersModule in updateClassifiers, updateConfiguration, ivyScala, appConfiguration, streams) map { (is, mod, c, ivyScala, app, s) =>
       val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
       withExcludes(out, mod.classifiers, lock(app)) { excludes =>
