@@ -378,7 +378,7 @@ object BuiltinCommands {
   }
   val pluginParser: State => Parser[AutoPlugin] = s => {
     val autoPlugins: Map[String, AutoPlugin] = PluginsDebug.autoPluginMap(s)
-    token(Space) ~> Act.knownIDParser(autoPlugins, "plugin")
+    token(Space) ~> Act.knownPluginParser(autoPlugins, "plugin")
   }
   def plugin = Command(PluginCommand)(pluginParser) { (s, plugin) =>
     val helpString = PluginsDebug.help(plugin, s)

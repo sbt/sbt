@@ -191,6 +191,11 @@ object Act {
   def knownIDParser[T](knownKeys: Map[String, T], label: String): Parser[T] =
     token(examplesStrict(ID, knownKeys.keys.toSet, label)) map knownKeys
 
+  def knownPluginParser[T](knownPlugins: Map[String, T], label: String): Parser[T] = {
+    val pluginLabelParser = rep1sep(ID, '.').map(_.mkString("."))
+    token(examplesStrict(pluginLabelParser, knownPlugins.keys.toSet, label)) map knownPlugins
+  }
+
   def projectRef(index: KeyIndex, currentBuild: URI): Parser[ParsedAxis[ResolvedReference]] =
     {
       val global = token(GlobalString ~ '/') ^^^ ParsedGlobal
