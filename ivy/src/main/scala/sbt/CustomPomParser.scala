@@ -37,7 +37,7 @@ object CustomPomParser {
   private[this] val unqualifiedKeys = Set(SbtVersionKey, ScalaVersionKey, ExtraAttributesKey, ApiURLKey)
 
   // packagings that should be jars, but that Ivy doesn't handle as jars
-  val JarPackagings = Set("eclipse-plugin", "hk2-jar", "orbit")
+  val JarPackagings = Set("eclipse-plugin", "hk2-jar", "orbit", "scala-jar")
   val default = new CustomPomParser(PomModuleDescriptorParser.getInstance, defaultTransform)
 
   private[this] val TransformedHashKey = "e:sbtTransformHash"
