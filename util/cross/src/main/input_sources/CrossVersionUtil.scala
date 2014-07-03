@@ -24,7 +24,7 @@ object CrossVersionUtil
 	{
 		val ReleaseV = """(\d+)\.(\d+)\.(\d+)(-\d+)?""".r
 		val CandidateV = """(\d+)\.(\d+)\.(\d+)(-RC\d+)""".r
-		val NonReleaseV = """(\d+)\.(\d+)\.(\d+)(-\w+)""".r
+		val NonReleaseV = """(\d+)\.(\d+)\.(\d+)([-\w+]*)""".r		
 		v match {
 			case ReleaseV(x, y, z, ht)    => Some((x.toInt, y.toInt))
 			case CandidateV(x, y, z, ht)  => Some((x.toInt, y.toInt))
