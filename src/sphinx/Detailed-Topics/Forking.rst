@@ -48,7 +48,7 @@ the :key:`test` scope:
 
 ::
 
-    fork in test := true
+    fork in Test := true
 
 See :doc:`Testing` for more control over how tests are assigned to JVMs and
 what options to pass to each group.
