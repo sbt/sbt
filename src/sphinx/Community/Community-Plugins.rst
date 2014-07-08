@@ -115,8 +115,8 @@ Release plugins
 -  sbt-signer-plugin: https://github.com/rossabaker/sbt-signer-plugin
 -  sbt-izpack (generates IzPack an installer):
    http://software.clapper.org/sbt-izpack/
--  sbt-ghpages-plugin (publishes generated site and api):
-   https://github.com/jsuereth/xsbt-ghpages-plugin
+-  sbt-ghpages (publishes generated site and api):
+   https://github.com/sbt/sbt-ghpages
 -  sbt-pgp (PGP signing plugin, can generate keys too):
    https://github.com/sbt/sbt-pgp
 -  sbt-release (customizable release process):
