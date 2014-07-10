@@ -17,7 +17,7 @@ object Release extends Build {
 
   // Add credentials if they exist.
   def lameCredentialSettings: Seq[Setting[_]] =
-    if(CredentialsFile.exists) Seq(credentials in ThisBuild += Credentials(CredentialsFile)) 
+    if (CredentialsFile.exists) Seq(credentials in ThisBuild += Credentials(CredentialsFile))
     else Nil
   def releaseSettings(nonRoots: => Seq[ProjectReference], launcher: TaskKey[File]): Seq[Setting[_]] = Seq(
     publishTo in ThisBuild <<= publishResolver,
