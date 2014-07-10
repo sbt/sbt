@@ -146,6 +146,17 @@ object IvyActions {
       withExtra foreach { id => log.warn("\t\t" + id) }
       log.warn("")
     }
+    err.failed foreach { x =>
+      val failedPaths = err.failedPaths(x)
+      if (!failedPaths.isEmpty) {
+        log.warn("\n\tNote: Unresolved dependencies path:")
+        val reverseFailedPaths = (failedPaths.toList map { _.toString }).reverse
+        log.warn("\t\t" + reverseFailedPaths.head)
+        reverseFailedPaths.tail foreach { id =>
+          log.warn("\t\t  +- " + id)
+        }
+      }
+    }
   }
   def groupedConflicts[T](moduleFilter: ModuleFilter, grouping: ModuleID => T)(report: UpdateReport): Map[T, Set[String]] =
     report.configurations.flatMap { confReport =>
@@ -209,8 +220,15 @@ object IvyActions {
       val err =
         if (resolveReport.hasError) {
           val messages = resolveReport.getAllProblemMessages.toArray.map(_.toString).distinct
-          val failed = resolveReport.getUnresolvedDependencies.map(node => IvyRetrieve.toModuleID(node.getId))
-          Some(new ResolveException(messages, failed))
+          val failedPaths = Map(resolveReport.getUnresolvedDependencies map { node =>
+            val m = IvyRetrieve.toModuleID(node.getId)
+            val path = IvyRetrieve.findPath(node, module.getModuleRevisionId) map { x =>
+              IvyRetrieve.toModuleID(x.getId)
+            }
+            m -> path
+          }: _*)
+          val failed = failedPaths.keys.toSeq
+          Some(new ResolveException(messages, failed, failedPaths))
         } else None
       (resolveReport, err)
     }
@@ -269,4 +287,10 @@ object IvyActions {
       error("Missing files for publishing:\n\t" + missing.map(_._2.getAbsolutePath).mkString("\n\t"))
   }
 }
-final class ResolveException(val messages: Seq[String], val failed: Seq[ModuleID]) extends RuntimeException(messages.mkString("\n"))
+final class ResolveException(
+    val messages: Seq[String],
+    val failed: Seq[ModuleID],
+    val failedPaths: Map[ModuleID, Seq[ModuleID]]) extends RuntimeException(messages.mkString("\n")) {
+  def this(messages: Seq[String], failed: Seq[ModuleID]) =
+    this(messages, failed, Map(failed map { m => m -> Nil }: _*))
+}
