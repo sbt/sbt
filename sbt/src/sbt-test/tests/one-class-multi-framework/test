@@ -6,3 +6,7 @@ $ absent succeed
 # it will fail if run via junit and succeed if run via specs
 $ touch succeed
 > test
+
+# also run with forked tests
+> set fork in Test := true
+> test
