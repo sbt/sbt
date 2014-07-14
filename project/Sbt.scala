@@ -14,7 +14,7 @@ object Sbt extends Build {
 
   // Aggregate task for 2.11
   private def lameAgregateTask(task: String): String =
-        s"all control/$task collections/$task io/$task completion/$task"
+    s"all control/$task collections/$task io/$task completion/$task"
   def buildSettings = Seq(
     organization := "org.scala-sbt",
     version := "0.13.6-SNAPSHOT",
@@ -57,15 +57,15 @@ object Sbt extends Build {
     },
     commands += Command.command("release-sbt-local") { state =>
       "publishLocal" ::
-      "setupBuildScala211" ::
-      lameAgregateTask("publishLocal") ::
-      "reload" ::
-      state
+        "setupBuildScala211" ::
+        lameAgregateTask("publishLocal") ::
+        "reload" ::
+        state
     },
     commands += Command.command("release-sbt") { state =>
       // TODO - Any sort of validation
       "checkCredentials" ::
-      "publishSigned" ::
+        "publishSigned" ::
         "publishLauncher" ::
         "release-libs-211" ::
         state

@@ -5,10 +5,10 @@ package sbt
 
 import java.io.File
 import collection.mutable
-
-import org.apache.ivy.core.{ module, report }
+import org.apache.ivy.core.{ module, report, resolve }
 import module.descriptor.{ Artifact => IvyArtifact }
 import module.id.ModuleRevisionId
+import resolve.IvyNode
 import report.{ ArtifactDownloadReport, ConfigurationResolveReport, ResolveReport }
 
 object IvyRetrieve {
@@ -51,4 +51,34 @@ object IvyRetrieve {
     new UpdateStats(report.getResolveTime, report.getDownloadTime, report.getDownloadSize, false)
   def configurationReport(confReport: ConfigurationResolveReport): ConfigurationReport =
     new ConfigurationReport(confReport.getConfiguration, moduleReports(confReport), evicted(confReport))
+
+  /**
+   * Tries to find Ivy graph path the from node to target.
+   */
+  def findPath(target: IvyNode, from: ModuleRevisionId): List[IvyNode] = {
+    def doFindPath(current: IvyNode, path: List[IvyNode]): List[IvyNode] = {
+      val callers = current.getAllRealCallers.toList
+      // Ivy actually returns non-direct callers here.
+      // that's why we have to calculate all possible paths below and pick the longest path.
+      val directCallers = callers filter { caller =>
+        val md = caller.getModuleDescriptor
+        val dd = md.getDependencies.toList find { dd =>
+          (dd.getDependencyRevisionId == current.getId) &&
+            (dd.getParentRevisionId == caller.getModuleRevisionId)
+        }
+        dd.isDefined
+      }
+      val directCallersRevId = (directCallers map { _.getModuleRevisionId }).distinct
+      val paths: List[List[IvyNode]] = ((directCallersRevId map { revId =>
+        val node = current.findNode(revId)
+        if (revId == from) node :: path
+        else if (node == node.getRoot) Nil
+        else if (path contains node) path
+        else doFindPath(node, node :: path)
+      }) sortBy { _.size }).reverse
+      paths.headOption getOrElse Nil
+    }
+    if (target.getId == from) List(target)
+    else doFindPath(target, List(target))
+  }
 }
