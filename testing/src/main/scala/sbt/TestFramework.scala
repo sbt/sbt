@@ -131,19 +131,13 @@ object TestFramework {
     log: Logger,
     listeners: Seq[TestReportListener]): (() => Unit, Seq[(String, TestFunction)], TestResult.Value => () => Unit) =
     {
-      val unique = distinctBy(tests)(_.name)
-      val mappedTests = testMap(frameworks.values.toSeq, unique)
+      val mappedTests = testMap(frameworks.values.toSeq, tests)
       if (mappedTests.isEmpty)
         (() => (), Nil, _ => () => ())
       else
-        createTestTasks(testLoader, runners.map { case (tf, r) => (frameworks(tf), new TestRunner(r, listeners, log)) }, mappedTests, unique, log, listeners)
+        createTestTasks(testLoader, runners.map { case (tf, r) => (frameworks(tf), new TestRunner(r, listeners, log)) }, mappedTests, tests, log, listeners)
     }
 
-  private[this] def distinctBy[T, K](in: Seq[T])(f: T => K): Seq[T] =
-    {
-      val seen = new collection.mutable.HashSet[K]
-      in.filter(t => seen.add(f(t)))
-    }
   private[this] def order(mapped: Map[String, TestFunction], inputs: Seq[TestDefinition]): Seq[(String, TestFunction)] =
     for (d <- inputs; act <- mapped.get(d.name)) yield (d.name, act)
 

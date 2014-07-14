@@ -150,7 +150,14 @@ object Tests {
       def includeTest(test: TestDefinition) = !excludeTestsSet.contains(test.name) && testFilters.forall(filter => filter(test.name))
       val filtered0 = discovered.filter(includeTest).toList.distinct
       val tests = if (orderedFilters.isEmpty) filtered0 else orderedFilters.flatMap(f => filtered0.filter(d => f(d.name))).toList.distinct
-      new ProcessedOptions(tests, setup.toList, cleanup.toList, testListeners.toList)
+      val uniqueTests = distinctBy(tests)(_.name)
+      new ProcessedOptions(uniqueTests, setup.toList, cleanup.toList, testListeners.toList)
+    }
+
+  private[this] def distinctBy[T, K](in: Seq[T])(f: T => K): Seq[T] =
+    {
+      val seen = new collection.mutable.HashSet[K]
+      in.filter(t => seen.add(f(t)))
     }
 
   def apply(frameworks: Map[TestFramework, Framework], testLoader: ClassLoader, runners: Map[TestFramework, Runner], discovered: Seq[TestDefinition], config: Execution, log: Logger): Task[Output] =
