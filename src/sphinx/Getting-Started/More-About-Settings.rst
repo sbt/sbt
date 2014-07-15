@@ -146,6 +146,20 @@ in the :doc:`scope <Scopes>` that defines it.
 It's possible to create cycles, which is an error; sbt will tell you if
 you do this.
 
+Tasks based on other keys' values
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Reference the value of other tasks or settings by using `Def.task`, 
+and with call to `value` on the key for the task or setting.
+
+As a first example, consider appending a source generator using the project base directory and compilation classpath.
+
+::
+
+    sourceGenerators in Compile <+= Def.task {
+      myGenerator(baseDirectory.value, (managedClasspath in Compile).value)
+    }
+
 Tasks with dependencies
 ~~~~~~~~~~~~~~~~~~~~~~~
 
