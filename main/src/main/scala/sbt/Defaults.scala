@@ -904,7 +904,12 @@ object Defaults extends BuildCommon {
   lazy val projectBaseSettings: Seq[Setting[_]] = projectCore ++ runnerSettings ++ paths ++ baseClasspaths ++ baseTasks ++ compileBase ++ disableAggregation
 
   // These are project level settings that MUST be on every project.  
-  lazy val coreDefaultSettings: Seq[Setting[_]] = projectCore ++ disableAggregation
+  lazy val coreDefaultSettings: Seq[Setting[_]] =
+    projectCore ++ disableAggregation ++ Seq(
+      // Missing but core settings
+      baseDirectory := thisProject.value.base,
+      target := baseDirectory.value / "target"
+    )
   @deprecated("Default settings split into coreDefaultSettings and IvyModule/JvmModule plugins.", "0.13.2")
   lazy val defaultSettings: Seq[Setting[_]] = projectBaseSettings ++ defaultConfigs
 }
@@ -982,6 +987,7 @@ object Classpaths {
   val ivyPublishSettings: Seq[Setting[_]] = publishGlobalDefaults ++ Seq(
     artifacts :== Nil,
     packagedArtifacts :== Map.empty,
+    crossTarget := target.value,
     makePom := { val config = makePomConfiguration.value; IvyActions.makePom(ivyModule.value, config, streams.value.log); config.file },
     packagedArtifact in makePom := (artifact in makePom value, makePom value),
     deliver <<= deliverTask(deliverConfiguration),
