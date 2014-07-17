@@ -217,6 +217,11 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
   private[this] final class ValExtractor() extends Traverser {
     private[this] var vals = List[String]()
     def getVals(t: Tree): List[String] = { vals = Nil; traverse(t); vals }
+    def isAcceptableType(tpe: Type): Boolean = {
+      tpe.baseClasses.exists { sym =>
+        sym.fullName startsWith "sbt."
+      }
+    }
     override def traverse(tree: Tree): Unit = tree match {
       // TODO - We really need to clean this up so that we can filter by type and
       // track which vals are projects vs. other vals.  It's important so that we avoid
@@ -225,7 +230,8 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
       // are used to instantiate each other i.e. a valuing in a build.sbt file is most likely
       // used in something which is contained in a `Project` vaue, therefore it will be
       // instantiated anyway.
-      case ValDef(_, n, actualTpe, _) if isTopLevelModule(tree.symbol.owner) =>
+      // For now, we just check that the type
+      case ValDef(_, n, actualTpe, _) if isTopLevelModule(tree.symbol.owner) && isAcceptableType(actualTpe.tpe) =>
         vals ::= nme.localToGetter(n).encoded
       case _ => super.traverse(tree)
     }
