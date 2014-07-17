@@ -9,14 +9,16 @@ object ConsoleProject {
   def apply(state: State, extra: String, cleanupCommands: String = "", options: Seq[String] = Nil)(implicit log: Logger) {
     val extracted = Project extract state
     val cpImports = new Imports(extracted, state)
-
     val bindings = ("currentState" -> state) :: ("extracted" -> extracted) :: ("cpHelpers" -> cpImports) :: Nil
     val unit = extracted.currentUnit
     val compiler = Compiler.compilers(ClasspathOptions.repl)(state.configuration, log).scalac
     val imports = BuildUtil.getImports(unit.unit) ++ BuildUtil.importAll(bindings.map(_._1))
     val importString = imports.mkString("", ";\n", ";\n\n")
     val initCommands = importString + extra
-    (new Console(compiler))(unit.classpath, options, initCommands, cleanupCommands)(Some(unit.loader), bindings)
+    // TODO - Hook up dsl classpath correctly...
+    (new Console(compiler))(
+      unit.classpath, options, initCommands, cleanupCommands
+    )(Some(unit.loader), bindings)
   }
   /** Conveniences for consoleProject that shouldn't normally be used for builds. */
   final class Imports private[sbt] (extracted: Extracted, state: State) {
