@@ -71,13 +71,13 @@ object IvyRetrieve {
     }
     val revId = dep.getResolvedId
     val moduleId = toModuleID(revId)
-    val branch = Some(revId.getBranch)
+    val branch = Option(revId.getBranch)
     val (status, publicationDate, resolver, artifactResolver) = dep.isLoaded match {
       case true =>
-        (Some(dep.getDescriptor.getStatus),
+        (Option(dep.getDescriptor.getStatus),
           Some(new ju.Date(dep.getPublication)),
-          Some(dep.getModuleRevision.getResolver.getName),
-          Some(dep.getModuleRevision.getArtifactResolver.getName))
+          Option(dep.getModuleRevision.getResolver.getName),
+          Option(dep.getModuleRevision.getArtifactResolver.getName))
       case _ => (None, None, None, None)
     }
     val (evicted, evictedData, evictedReason) = dep.isEvicted(confReport.getConfiguration) match {
@@ -89,7 +89,7 @@ object IvyRetrieve {
       case _ => (false, None, None)
     }
     val problem = dep.hasProblem match {
-      case true => Some(dep.getProblem.getMessage)
+      case true => Option(dep.getProblem.getMessage)
       case _    => None
     }
     val mdOpt = for {

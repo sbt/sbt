@@ -48,10 +48,12 @@ final class ConfigurationReport(
     val modules: Seq[ModuleReport],
     val details: Seq[ModuleDetailReport],
     val evicted: Seq[ModuleID]) {
-  // def this(configuration: String, modules: Seq[ModuleReport], evicted: Seq[ModuleID]) =
-  //  this(configuration, modules, Nil, evicted)
+  def this(configuration: String, modules: Seq[ModuleReport], evicted: Seq[ModuleID]) =
+    this(configuration, modules, Nil, evicted)
 
-  override def toString = "\t" + configuration + ":\n" + modules.mkString + evicted.map("\t\t(EVICTED) " + _ + "\n").mkString
+  override def toString = s"\t$configuration:\n" +
+    (if (details.isEmpty) modules.mkString + evicted.map("\t\t(EVICTED) " + _ + "\n").mkString
+    else details.mkString)
 
   /**
    * All resolved modules for this configuration.
@@ -73,8 +75,10 @@ final class ModuleDetailReport(
     val organization: String,
     val name: String,
     val modules: Seq[ModuleReport]) {
-  override def toString: String =
-    { s"$organization:$name" }
+  override def toString: String = {
+    val details = modules map { _.detailReport }
+    s"\t$organization:$name\n${details.mkString}\n"
+  }
 }
 
 /**
@@ -104,11 +108,40 @@ final class ModuleReport(
     val licenses: Seq[(String, URL)],
     val callers: Seq[Caller]) {
 
-  override def toString = {
-    val arts = artifacts.map(_.toString) ++ missingArtifacts.map(art => "(MISSING) " + art)
+  private[this] lazy val arts: Seq[String] = artifacts.map(_.toString) ++ missingArtifacts.map(art => "(MISSING) " + art)
+  override def toString: String = {
     s"\t\t$module: " +
       (if (arts.size <= 1) "" else "\n\t\t\t") + arts.mkString("\n\t\t\t") + "\n"
   }
+  private[sbt] def detailReport: String =
+    s"\t\t- ${module.revision}\n" +
+      (if (arts.size <= 1) "" else arts.mkString("\t\t\t", "\n\t\t\t", "\n")) +
+      reportStr("status", status) +
+      reportStr("publicationDate", publicationDate map { _.toString }) +
+      reportStr("resolver", resolver) +
+      reportStr("artifactResolver", artifactResolver) +
+      reportStr("evicted", Some(evicted.toString)) +
+      reportStr("evictedData", evictedData) +
+      reportStr("evictedReason", evictedReason) +
+      reportStr("problem", problem) +
+      reportStr("homepage", homepage) +
+      reportStr("textraAttributes",
+        if (extraAttributes.isEmpty) None
+        else { Some(extraAttributes.toString) }) +
+        reportStr("isDefault", isDefault map { _.toString }) +
+        reportStr("branch", branch) +
+        reportStr("configurations",
+          if (configurations.isEmpty) None
+          else { Some(configurations.mkString(", ")) }) +
+          reportStr("licenses",
+            if (licenses.isEmpty) None
+            else { Some(licenses.mkString(", ")) }) +
+            reportStr("callers",
+              if (callers.isEmpty) None
+              else { Some(callers.mkString(", ")) })
+  private[sbt] def reportStr(key: String, value: Option[String]): String =
+    value map { x => s"\t\t\t$key: $x\n" } getOrElse ""
+
   def retrieve(f: (ModuleID, Artifact, File) => File): ModuleReport =
     copy(artifacts = artifacts.map { case (art, file) => (art, f(module, art, file)) })
 

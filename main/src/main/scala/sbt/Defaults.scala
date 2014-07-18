@@ -1269,13 +1269,11 @@ object Classpaths {
         }
       def doWork: In => UpdateReport =
         Tracked.inputChanged(cacheFile / "inputs") { (inChanged: Boolean, in: In) =>
-          // TODO FIX THIS!
-          // val outCache = Tracked.lastOutput[In, UpdateReport](outCacheFile) {
-          //   case (_, Some(out)) if uptodate(inChanged, out) => out
-          //   case _ => work(in)
-          // }
-          // outCache(in)
-          work(in)
+          val outCache = Tracked.lastOutput[In, UpdateReport](outCacheFile) {
+            case (_, Some(out)) if uptodate(inChanged, out) => out
+            case _ => work(in)
+          }
+          outCache(in)
         }
       val f = if (skip && !force) skipWork else doWork
       f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)
