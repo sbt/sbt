@@ -7,6 +7,7 @@ import Predef.{ Map, Set, implicitly } // excludes *both 2.10.x conforms and 2.1
 
 import FileInfo.{ exists, hash }
 import java.io.File
+import java.{ util => ju }
 import java.net.URL
 import Types.{ :+:, idFun }
 import scala.xml.NodeSeq
@@ -62,16 +63,23 @@ object CacheIvy {
     }
   implicit def updateStatsFormat: Format[UpdateStats] =
     wrap[UpdateStats, (Long, Long, Long)](us => (us.resolveTime, us.downloadTime, us.downloadSize), { case (rt, dt, ds) => new UpdateStats(rt, dt, ds, true) })
-  implicit def confReportFormat(implicit m: Format[String], mr: Format[Seq[ModuleReport]], mi: Format[Seq[ModuleID]]): Format[ConfigurationReport] =
-    wrap[ConfigurationReport, (String, Seq[ModuleReport], Seq[ModuleID])](r => (r.configuration, r.modules, r.evicted), { case (c, m, v) => new ConfigurationReport(c, m, v) })
-  implicit def moduleReportFormat(implicit ff: Format[File]): Format[ModuleReport] =
-    wrap[ModuleReport, (ModuleID, Seq[(Artifact, File)], Seq[Artifact])](m => (m.module, m.artifacts, m.missingArtifacts), { case (m, as, ms) => new ModuleReport(m, as, ms) })
+  implicit def confReportFormat(implicit m: Format[String], mr: Format[Seq[ModuleReport]], mdr: Format[Seq[ModuleDetailReport]], mi: Format[Seq[ModuleID]]): Format[ConfigurationReport] =
+    wrap[ConfigurationReport, (String, Seq[ModuleReport], Seq[ModuleDetailReport], Seq[ModuleID])](r => (r.configuration, r.modules, r.details, r.evicted), { case (c, m, d, v) => new ConfigurationReport(c, m, d, v) })
+  implicit def moduleReportFormat(implicit cf: Format[Seq[Caller]], ff: Format[File]): Format[ModuleReport] = {
+    wrap[ModuleReport, (ModuleID, Seq[(Artifact, File)], Seq[Artifact], Option[String], Option[Long], Option[String], Option[String], Boolean, Option[String], Option[String], Option[String], Option[String], Map[String, String], Option[Boolean], Option[String], Seq[String], Seq[(String, URL)], Seq[Caller])](
+      m => (m.module, m.artifacts, m.missingArtifacts, m.status, m.publicationDate map { _.getTime }, m.resolver, m.artifactResolver, m.evicted, m.evictedData, m.evictedReason, m.problem, m.homepage, m.extraAttributes, m.isDefault, m.branch, m.configurations, m.licenses, m.callers),
+      { case (m, as, ms, s, pd, r, a, e, ed, er, p, h, ea, d, b, cs, ls, ks) => new ModuleReport(m, as, ms, s, pd map { new ju.Date(_) }, r, a, e, ed, er, p, h, ea, d, b, cs, ls, ks) })
+  }
   implicit def artifactFormat(implicit sf: Format[String], uf: Format[Option[URL]]): Format[Artifact] = {
     wrap[Artifact, (String, String, String, Option[String], Seq[Configuration], Option[URL], Map[String, String])](
       a => (a.name, a.`type`, a.extension, a.classifier, a.configurations.toSeq, a.url, a.extraAttributes),
       { case (n, t, x, c, cs, u, e) => Artifact(n, t, x, c, cs, u, e) }
     )
   }
+  implicit def moduleDetailReportFormat(implicit sf: Format[String], bf: Format[Boolean], df: Format[Seq[ModuleReport]]): Format[ModuleDetailReport] =
+    wrap[ModuleDetailReport, (String, String, Seq[ModuleReport])](m => (m.organization, m.name, m.modules), { case (o, n, r) => new ModuleDetailReport(o, n, r) })
+  implicit def callerFormat: Format[Caller] =
+    wrap[Caller, (ModuleID, Seq[String], Map[String, String])](c => (c.caller, c.callerConfigurations, c.callerExtraAttributes), { case (c, cc, ea) => new Caller(c, cc, ea) })
   implicit def exclusionRuleFormat(implicit sf: Format[String]): Format[ExclusionRule] =
     wrap[ExclusionRule, (String, String, String, Seq[String])](e => (e.organization, e.name, e.artifact, e.configurations), { case (o, n, a, cs) => ExclusionRule(o, n, a, cs) })
   implicit def crossVersionFormat: Format[CrossVersion] = wrap(crossToInt, crossFromInt)

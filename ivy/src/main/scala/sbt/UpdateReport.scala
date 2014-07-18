@@ -4,6 +4,8 @@
 package sbt
 
 import java.io.File
+import java.net.URL
+import java.{ util => ju }
 
 /**
  * Provides information about dependency resolution.
@@ -37,9 +39,18 @@ final class UpdateReport(val cachedDescriptor: File, val configurations: Seq[Con
 /**
  * Provides information about resolution of a single configuration.
  * @param configuration the configuration this report is for.
- * @param modules a seqeuence containing one report for each module resolved for this configuration.
+ * @param modules a sequence containing one report for each module resolved for this configuration.
+ * @param details a sequence containing one report for each org/name, which may or may not be part of the final resolution.
+ * @param evicted a sequence of evicted modules
  */
-final class ConfigurationReport(val configuration: String, val modules: Seq[ModuleReport], val evicted: Seq[ModuleID]) {
+final class ConfigurationReport(
+    val configuration: String,
+    val modules: Seq[ModuleReport],
+    val details: Seq[ModuleDetailReport],
+    val evicted: Seq[ModuleID]) {
+  // def this(configuration: String, modules: Seq[ModuleReport], evicted: Seq[ModuleID]) =
+  //  this(configuration, modules, Nil, evicted)
+
   override def toString = "\t" + configuration + ":\n" + modules.mkString + evicted.map("\t\t(EVICTED) " + _ + "\n").mkString
 
   /**
@@ -50,25 +61,94 @@ final class ConfigurationReport(val configuration: String, val modules: Seq[Modu
   private[this] def addConfiguration(mod: ModuleID): ModuleID = if (mod.configurations.isEmpty) mod.copy(configurations = Some(configuration)) else mod
 
   def retrieve(f: (String, ModuleID, Artifact, File) => File): ConfigurationReport =
-    new ConfigurationReport(configuration, modules map { _.retrieve((mid, art, file) => f(configuration, mid, art, file)) }, evicted)
+    new ConfigurationReport(configuration, modules map { _.retrieve((mid, art, file) => f(configuration, mid, art, file)) }, details, evicted)
+}
+
+/**
+ * In sbt's terminology, "module" consists of organization, name, and version.
+ * In Ivy's, "module" means just organization and name, and the one including version numbers
+ * are called revisions.
+ */
+final class ModuleDetailReport(
+    val organization: String,
+    val name: String,
+    val modules: Seq[ModuleReport]) {
+  override def toString: String =
+    { s"$organization:$name" }
 }
 
 /**
  * Provides information about the resolution of a module.
  * This information is in the context of a specific configuration.
  * @param module the `ModuleID` this report is for.
- * @param artifacts the resolved artifacts for this module, paired with the File the artifact was retrieved to.  This File may be in the
+ * @param artifacts the resolved artifacts for this module, paired with the File the artifact was retrieved to.
+ * @param missingArtifacts the missing artifacts for this module.
  */
-final class ModuleReport(val module: ModuleID, val artifacts: Seq[(Artifact, File)], val missingArtifacts: Seq[Artifact]) {
-  override def toString =
-    {
-      val arts = artifacts.map(_.toString) ++ missingArtifacts.map(art => "(MISSING) " + art)
-      "\t\t" + module + ": " +
-        (if (arts.size <= 1) "" else "\n\t\t\t") + arts.mkString("\n\t\t\t") + "\n"
-    }
+final class ModuleReport(
+    val module: ModuleID,
+    val artifacts: Seq[(Artifact, File)],
+    val missingArtifacts: Seq[Artifact],
+    val status: Option[String],
+    val publicationDate: Option[ju.Date],
+    val resolver: Option[String],
+    val artifactResolver: Option[String],
+    val evicted: Boolean,
+    val evictedData: Option[String],
+    val evictedReason: Option[String],
+    val problem: Option[String],
+    val homepage: Option[String],
+    val extraAttributes: Map[String, String],
+    val isDefault: Option[Boolean],
+    val branch: Option[String],
+    val configurations: Seq[String],
+    val licenses: Seq[(String, URL)],
+    val callers: Seq[Caller]) {
+
+  override def toString = {
+    val arts = artifacts.map(_.toString) ++ missingArtifacts.map(art => "(MISSING) " + art)
+    s"\t\t$module: " +
+      (if (arts.size <= 1) "" else "\n\t\t\t") + arts.mkString("\n\t\t\t") + "\n"
+  }
   def retrieve(f: (ModuleID, Artifact, File) => File): ModuleReport =
-    new ModuleReport(module, artifacts.map { case (art, file) => (art, f(module, art, file)) }, missingArtifacts)
+    copy(artifacts = artifacts.map { case (art, file) => (art, f(module, art, file)) })
+
+  private[sbt] def copy(
+    module: ModuleID = module,
+    artifacts: Seq[(Artifact, File)] = artifacts,
+    missingArtifacts: Seq[Artifact] = missingArtifacts,
+    status: Option[String] = status,
+    publicationDate: Option[ju.Date] = publicationDate,
+    resolver: Option[String] = resolver,
+    artifactResolver: Option[String] = artifactResolver,
+    evicted: Boolean = evicted,
+    evictedData: Option[String] = evictedData,
+    evictedReason: Option[String] = evictedReason,
+    problem: Option[String] = problem,
+    homepage: Option[String] = homepage,
+    extraAttributes: Map[String, String] = extraAttributes,
+    isDefault: Option[Boolean] = isDefault,
+    branch: Option[String] = branch,
+    configurations: Seq[String] = configurations,
+    licenses: Seq[(String, URL)] = licenses,
+    callers: Seq[Caller] = callers): ModuleReport =
+    new ModuleReport(module, artifacts, missingArtifacts, status, publicationDate, resolver, artifactResolver,
+      evicted, evictedData, evictedReason, problem, homepage, extraAttributes, isDefault, branch, configurations, licenses, callers)
 }
+
+object ModuleReport {
+  def apply(module: ModuleID, artifacts: Seq[(Artifact, File)], missingArtifacts: Seq[Artifact]): ModuleReport =
+    new ModuleReport(module, artifacts, missingArtifacts, None, None, None, None,
+      false, None, None, None, None, Map(), None, None, Nil, Nil, Nil)
+}
+
+final class Caller(
+    val caller: ModuleID,
+    val callerConfigurations: Seq[String],
+    val callerExtraAttributes: Map[String, String]) {
+  override def toString: String =
+    s"$caller"
+}
+
 object UpdateReport {
   implicit def richUpdateReport(report: UpdateReport): RichUpdateReport = new RichUpdateReport(report)
 
@@ -101,15 +181,18 @@ object UpdateReport {
     /** Constructs a new report that only contains files matching the specified filter.*/
     def filter(f: DependencyFilter): UpdateReport =
       moduleReportMap { (configuration, modReport) =>
-        import modReport._
-        val newArtifacts = artifacts filter { case (art, file) => f(configuration, module, art) }
-        val newMissing = missingArtifacts filter { art => f(configuration, module, art) }
-        new ModuleReport(module, newArtifacts, newMissing)
+        modReport.copy(
+          artifacts = modReport.artifacts filter { case (art, file) => f(configuration, modReport.module, art) },
+          missingArtifacts = modReport.missingArtifacts filter { art => f(configuration, modReport.module, art) }
+        )
       }
     def substitute(f: (String, ModuleID, Seq[(Artifact, File)]) => Seq[(Artifact, File)]): UpdateReport =
       moduleReportMap { (configuration, modReport) =>
         val newArtifacts = f(configuration, modReport.module, modReport.artifacts)
-        new ModuleReport(modReport.module, newArtifacts, Nil)
+        modReport.copy(
+          artifacts = f(configuration, modReport.module, modReport.artifacts),
+          missingArtifacts = Nil
+        )
       }
 
     def toSeq: Seq[(String, ModuleID, Artifact, File)] =
@@ -120,8 +203,9 @@ object UpdateReport {
 
     def addMissing(f: ModuleID => Seq[Artifact]): UpdateReport =
       moduleReportMap { (configuration, modReport) =>
-        import modReport._
-        new ModuleReport(module, artifacts, (missingArtifacts ++ f(module)).distinct)
+        modReport.copy(
+          missingArtifacts = (modReport.missingArtifacts ++ f(modReport.module)).distinct
+        )
       }
 
     def moduleReportMap(f: (String, ModuleReport) => ModuleReport): UpdateReport =
@@ -129,7 +213,7 @@ object UpdateReport {
         val newConfigurations = report.configurations.map { confReport =>
           import confReport._
           val newModules = modules map { modReport => f(configuration, modReport) }
-          new ConfigurationReport(configuration, newModules, evicted)
+          new ConfigurationReport(configuration, newModules, details, evicted)
         }
         new UpdateReport(report.cachedDescriptor, newConfigurations, report.stats, report.stamps)
       }
