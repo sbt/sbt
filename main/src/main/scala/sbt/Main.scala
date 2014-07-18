@@ -235,9 +235,9 @@ object BuiltinCommands {
       val extracted = Project extract s
       import extracted._
       val dslVals = extracted.currentUnit.unit.definitions.dslDefinitions
-      // TODO - This is horribly inefficient.  We should try to only attach the
-      // classloader + imports NEEDED to compile the set command.
-      System.err.println(s"DSL imports: ${dslVals.imports mkString "\n"}")
+      // TODO - This is possibly inefficient (or stupid).  We should try to only attach the
+      // classloader + imports NEEDED to compile the set command, rather than
+      // just ALL of them.
       val ims = (imports(extracted) ++ dslVals.imports.map(i => (i, -1)))
       val cl = dslVals.classloader(currentLoader)
       val settings = EvaluateConfigurations.evaluateSetting(

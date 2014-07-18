@@ -235,10 +235,12 @@ object EvaluateConfigurations {
       val trimmed = line.trim
       DefinitionKeywords.exists(trimmed startsWith _)
     }
+  private[this] def extractedValTypes: Seq[String] =
+    Seq(classOf[Project], classOf[InputKey[_]], classOf[TaskKey[_]], classOf[SettingKey[_]]).map(_.getName)
   private[this] def evaluateDefinitions(eval: Eval, name: String, imports: Seq[(String, Int)], definitions: Seq[(String, LineRange)]): compiler.EvalDefinitions =
     {
       val convertedRanges = definitions.map { case (s, r) => (s, r.start to r.end) }
-      eval.evalDefinitions(convertedRanges, new EvalImports(imports, name), name)
+      eval.evalDefinitions(convertedRanges, new EvalImports(imports, name), name, extractedValTypes)
     }
 }
 object Index {

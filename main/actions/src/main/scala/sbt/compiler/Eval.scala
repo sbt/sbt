@@ -88,7 +88,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
       val value = (cl: ClassLoader) => getValue[Any](i.enclosingModule, i.loader(cl))
       new EvalResult(i.extra, value, i.generated, i.enclosingModule)
     }
-  def evalDefinitions(definitions: Seq[(String, scala.Range)], imports: EvalImports, srcName: String): EvalDefinitions =
+  def evalDefinitions(definitions: Seq[(String, scala.Range)], imports: EvalImports, srcName: String, valTypes: Seq[String]): EvalDefinitions =
     {
       require(definitions.nonEmpty, "Definitions to evaluate cannot be empty.")
       val ev = new EvalType[Seq[String]] {
@@ -101,7 +101,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
           syntheticModule(fullParser, importTrees, trees.toList, moduleName)
         }
         def extra(run: Run, unit: CompilationUnit) = {
-          atPhase(run.typerPhase.next) { (new ValExtractor()).getVals(unit.body) }
+          atPhase(run.typerPhase.next) { (new ValExtractor(valTypes.toSet)).getVals(unit.body) }
         }
         def read(file: File) = IO.readLines(file)
         def write(value: Seq[String], file: File) = IO.writeLines(file, value)
@@ -214,23 +214,15 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
     }
   }
   /** Tree traverser that obtains the names of vals in a top-level module whose type is a subtype of one of `types`.*/
-  private[this] final class ValExtractor() extends Traverser {
+  private[this] final class ValExtractor(tpes: Set[String]) extends Traverser {
     private[this] var vals = List[String]()
     def getVals(t: Tree): List[String] = { vals = Nil; traverse(t); vals }
     def isAcceptableType(tpe: Type): Boolean = {
       tpe.baseClasses.exists { sym =>
-        sym.fullName startsWith "sbt."
+        tpes.contains(sym.fullName)
       }
     }
     override def traverse(tree: Tree): Unit = tree match {
-      // TODO - We really need to clean this up so that we can filter by type and
-      // track which vals are projects vs. other vals.  It's important so that we avoid
-      // instantiating values more than absolutely necessary on different classloaders.
-      // However, it's not terrible right now if we do, as most likely the values
-      // are used to instantiate each other i.e. a valuing in a build.sbt file is most likely
-      // used in something which is contained in a `Project` vaue, therefore it will be
-      // instantiated anyway.
-      // For now, we just check that the type
       case ValDef(_, n, actualTpe, _) if isTopLevelModule(tree.symbol.owner) && isAcceptableType(actualTpe.tpe) =>
         vals ::= nme.localToGetter(n).encoded
       case _ => super.traverse(tree)
