@@ -1101,7 +1101,13 @@ object Classpaths {
     transitiveUpdate <<= transitiveUpdateTask,
     updateCacheName := "update_cache" + (if (crossPaths.value) s"_${scalaBinaryVersion.value}" else ""),
     update <<= updateTask tag (Tags.Update, Tags.Network),
-    update := { val report = update.value; ConflictWarning(conflictWarning.value, report, streams.value.log); report },
+    update := {
+      val report = update.value
+      val log = streams.value.log
+      ConflictWarning(conflictWarning.value, report, log)
+      EvictionWarning(EvictionWarningOptions(), report, log)
+      report
+    },
     classifiersModule in updateClassifiers := {
       import language.implicitConversions
       implicit val key = (m: ModuleID) => (m.organization, m.name, m.revision)
@@ -1263,11 +1269,13 @@ object Classpaths {
         }
       def doWork: In => UpdateReport =
         Tracked.inputChanged(cacheFile / "inputs") { (inChanged: Boolean, in: In) =>
-          val outCache = Tracked.lastOutput[In, UpdateReport](outCacheFile) {
-            case (_, Some(out)) if uptodate(inChanged, out) => out
-            case _ => work(in)
-          }
-          outCache(in)
+          // TODO FIX THIS!
+          // val outCache = Tracked.lastOutput[In, UpdateReport](outCacheFile) {
+          //   case (_, Some(out)) if uptodate(inChanged, out) => out
+          //   case _ => work(in)
+          // }
+          // outCache(in)
+          work(in)
         }
       val f = if (skip && !force) skipWork else doWork
       f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)
