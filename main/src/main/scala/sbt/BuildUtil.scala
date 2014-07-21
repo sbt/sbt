@@ -71,7 +71,7 @@ object BuildUtil {
 
   def baseImports: Seq[String] = "import sbt._, Keys._, dsl._" :: Nil
 
-  def getImports(unit: BuildUnit): Seq[String] = unit.plugins.detected.imports
+  def getImports(unit: BuildUnit): Seq[String] = unit.plugins.detected.imports ++ unit.definitions.dslDefinitions.imports
 
   @deprecated("Use getImports(Seq[String]).", "0.13.2")
   def getImports(pluginNames: Seq[String], buildNames: Seq[String]): Seq[String] = getImports(pluginNames ++ buildNames)

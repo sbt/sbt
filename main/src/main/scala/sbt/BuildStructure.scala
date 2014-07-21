@@ -50,15 +50,15 @@ final class LoadedBuildUnit(val unit: BuildUnit, val defined: Map[String, Resolv
 
   /**
    * The classpath to use when compiling against this build unit's publicly visible code.
-   * It includes build definition and plugin classes, but not classes for .sbt file statements and expressions.
+   * It includes build definition and plugin classes and classes for .sbt file statements and expressions.
    */
-  def classpath: Seq[File] = unit.definitions.target ++ unit.plugins.classpath
+  def classpath: Seq[File] = unit.definitions.target ++ unit.plugins.classpath ++ unit.definitions.dslDefinitions.classpath
 
   /**
    * The class loader to use for this build unit's publicly visible code.
-   * It includes build definition and plugin classes, but not classes for .sbt file statements and expressions.
+   * It includes build definition and plugin classes and classes for .sbt file statements and expressions.
    */
-  def loader = unit.definitions.loader
+  def loader = unit.definitions.dslDefinitions.classloader(unit.definitions.loader)
 
   /** The imports to use for .sbt files, `consoleProject` and other contexts that use code from the build definition. */
   def imports = BuildUtil.getImports(unit)
@@ -80,7 +80,21 @@ final class LoadedBuildUnit(val unit: BuildUnit, val defined: Map[String, Resolv
  *                 and their `settings` and `configurations` updated as appropriate.
  * @param buildNames No longer used and will be deprecated once feasible.
  */
-final class LoadedDefinitions(val base: File, val target: Seq[File], val loader: ClassLoader, val builds: Seq[Build], val projects: Seq[Project], val buildNames: Seq[String])
+final class LoadedDefinitions(
+    val base: File,
+    val target: Seq[File],
+    val loader: ClassLoader,
+    val builds: Seq[Build],
+    val projects: Seq[Project],
+    val buildNames: Seq[String],
+    val dslDefinitions: DefinedSbtValues) {
+  def this(base: File,
+    target: Seq[File],
+    loader: ClassLoader,
+    builds: Seq[Build],
+    projects: Seq[Project],
+    buildNames: Seq[String]) = this(base, target, loader, builds, projects, buildNames, DefinedSbtValues.empty)
+}
 
 /** Auto-detected top-level modules (as in `object X`) of type `T` paired with their source names. */
 final class DetectedModules[T](val modules: Seq[(String, T)]) {

@@ -234,7 +234,19 @@ object BuiltinCommands {
     case (s, (all, arg)) =>
       val extracted = Project extract s
       import extracted._
-      val settings = EvaluateConfigurations.evaluateSetting(session.currentEval(), "<set>", imports(extracted), arg, LineRange(0, 0))(currentLoader)
+      val dslVals = extracted.currentUnit.unit.definitions.dslDefinitions
+      // TODO - This is possibly inefficient (or stupid).  We should try to only attach the
+      // classloader + imports NEEDED to compile the set command, rather than
+      // just ALL of them.
+      val ims = (imports(extracted) ++ dslVals.imports.map(i => (i, -1)))
+      val cl = dslVals.classloader(currentLoader)
+      val settings = EvaluateConfigurations.evaluateSetting(
+        session.currentEval(),
+        "<set>",
+        ims,
+        arg,
+        LineRange(0, 0)
+      )(cl)
       val setResult = if (all) SettingCompletions.setAll(extracted, settings) else SettingCompletions.setThis(s, extracted, settings, arg)
       s.log.info(setResult.quietSummary)
       s.log.debug(setResult.verboseSummary)

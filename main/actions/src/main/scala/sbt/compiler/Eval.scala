@@ -101,8 +101,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
           syntheticModule(fullParser, importTrees, trees.toList, moduleName)
         }
         def extra(run: Run, unit: CompilationUnit) = {
-          val tpes = valTypes.map(tpe => rootMirror.getRequiredClass(tpe).tpe)
-          atPhase(run.typerPhase.next) { (new ValExtractor(tpes)).getVals(unit.body) }
+          atPhase(run.typerPhase.next) { (new ValExtractor(valTypes.toSet)).getVals(unit.body) }
         }
         def read(file: File) = IO.readLines(file)
         def write(value: Seq[String], file: File) = IO.writeLines(file, value)
@@ -215,11 +214,16 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
     }
   }
   /** Tree traverser that obtains the names of vals in a top-level module whose type is a subtype of one of `types`.*/
-  private[this] final class ValExtractor(types: Seq[Type]) extends Traverser {
+  private[this] final class ValExtractor(tpes: Set[String]) extends Traverser {
     private[this] var vals = List[String]()
     def getVals(t: Tree): List[String] = { vals = Nil; traverse(t); vals }
+    def isAcceptableType(tpe: Type): Boolean = {
+      tpe.baseClasses.exists { sym =>
+        tpes.contains(sym.fullName)
+      }
+    }
     override def traverse(tree: Tree): Unit = tree match {
-      case ValDef(_, n, actualTpe, _) if isTopLevelModule(tree.symbol.owner) && types.exists(_ <:< actualTpe.tpe) =>
+      case ValDef(_, n, actualTpe, _) if isTopLevelModule(tree.symbol.owner) && isAcceptableType(actualTpe.tpe) =>
         vals ::= nme.localToGetter(n).encoded
       case _ => super.traverse(tree)
     }
@@ -387,7 +391,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
     private[this] def index(a: Array[Int], i: Int): Int = if (i < 0 || i >= a.length) 0 else a(i)
   }
 }
-private object Eval {
+private[sbt] object Eval {
   def optBytes[T](o: Option[T])(f: T => Array[Byte]): Array[Byte] = seqBytes(o.toSeq)(f)
   def stringSeqBytes(s: Seq[String]): Array[Byte] = seqBytes(s)(bytes)
   def seqBytes[T](s: Seq[T])(f: T => Array[Byte]): Array[Byte] = bytes(s map f)

@@ -99,12 +99,13 @@ object EvaluateConfigurations {
       //        detection for which project project manipulations should be applied.
       val name = file.getPath
       val parsed = parseConfiguration(lines, imports, offset)
-      val (importDefs, projects) = if (parsed.definitions.isEmpty) (Nil, (l: ClassLoader) => Nil) else {
-        val definitions = evaluateDefinitions(eval, name, parsed.imports, parsed.definitions)
-        val imp = BuildUtil.importAllRoot(definitions.enclosingModule :: Nil)
-        val projs = (loader: ClassLoader) => definitions.values(loader).map(p => resolveBase(file.getParentFile, p.asInstanceOf[Project]))
-        (imp, projs)
-      }
+      val (importDefs, definitions) =
+        if (parsed.definitions.isEmpty) (Nil, DefinedSbtValues.empty) else {
+          val definitions = evaluateDefinitions(eval, name, parsed.imports, parsed.definitions)
+          val imp = BuildUtil.importAllRoot(definitions.enclosingModule :: Nil)
+          val projs = (loader: ClassLoader) => definitions.values(loader).map(p => resolveBase(file.getParentFile, p.asInstanceOf[Project]))
+          (imp, DefinedSbtValues(definitions))
+        }
       val allImports = importDefs.map(s => (s, -1)) ++ parsed.imports
       val dslEntries = parsed.settings map {
         case (dslExpression, range) =>
@@ -112,6 +113,10 @@ object EvaluateConfigurations {
       }
       eval.unlinkDeferred()
       loader => {
+        val projects =
+          definitions.values(loader).collect {
+            case p: Project => resolveBase(file.getParentFile, p)
+          }
         val (settingsRaw, manipulationsRaw) =
           dslEntries map (_ apply loader) partition {
             case internals.ProjectSettings(_) => true
@@ -124,9 +129,8 @@ object EvaluateConfigurations {
         val manipulations = manipulationsRaw map {
           case internals.ProjectManipulation(f) => f
         }
-        val ps = projects(loader)
         // TODO -get project manipulations.
-        new LoadedSbtFile(settings, ps, importDefs, manipulations)
+        new LoadedSbtFile(settings, projects, importDefs, manipulations, definitions)
       }
     }
   /** move a project to be relative to this file after we've evaluated it. */
@@ -184,7 +188,7 @@ object EvaluateConfigurations {
    * @return A method that given an sbt classloader, can return the actual Seq[Setting[_]] defined by
    *         the expression.
    */
-  @deprecated("Build DSL now includes non-Setting[_] type settings.", "0.13.6")
+  @deprecated("Build DSL now includes non-Setting[_] type settings.", "0.13.6") // Note: This method is used by the SET command, so we may want to evaluate that sucker a bit.
   def evaluateSetting(eval: Eval, name: String, imports: Seq[(String, Int)], expression: String, range: LineRange): ClassLoader => Seq[Setting[_]] =
     {
       evaluateDslEntry(eval, name, imports, expression, range) andThen {
@@ -231,11 +235,12 @@ object EvaluateConfigurations {
       val trimmed = line.trim
       DefinitionKeywords.exists(trimmed startsWith _)
     }
-  private[this] def evaluateDefinitions(eval: Eval, name: String, imports: Seq[(String, Int)], definitions: Seq[(String, LineRange)]) =
+  private[this] def extractedValTypes: Seq[String] =
+    Seq(classOf[Project], classOf[InputKey[_]], classOf[TaskKey[_]], classOf[SettingKey[_]]).map(_.getName)
+  private[this] def evaluateDefinitions(eval: Eval, name: String, imports: Seq[(String, Int)], definitions: Seq[(String, LineRange)]): compiler.EvalDefinitions =
     {
       val convertedRanges = definitions.map { case (s, r) => (s, r.start to r.end) }
-      val findTypes = (classOf[Project] :: /*classOf[Build] :: */ Nil).map(_.getName)
-      eval.evalDefinitions(convertedRanges, new EvalImports(imports, name), name, findTypes)
+      eval.evalDefinitions(convertedRanges, new EvalImports(imports, name), name, extractedValTypes)
     }
 }
 object Index {
