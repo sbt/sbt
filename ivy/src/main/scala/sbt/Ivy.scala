@@ -4,6 +4,7 @@
 package sbt
 
 import Resolver.PluginPattern
+import ivyint.{ ConsolidatedResolveEngine, ConsolidatedResolveCache }
 
 import java.io.File
 import java.net.URI
@@ -14,12 +15,14 @@ import CS.singleton
 import org.apache.ivy.Ivy
 import org.apache.ivy.core.{ IvyPatternHelper, LogOptions }
 import org.apache.ivy.core.cache.{ CacheMetadataOptions, DefaultRepositoryCacheManager, ModuleDescriptorWriter }
+import org.apache.ivy.core.event.EventManager
 import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact, DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact }
 import org.apache.ivy.core.module.descriptor.{ DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor, License }
 import org.apache.ivy.core.module.descriptor.{ OverrideDependencyDescriptorMediator }
 import org.apache.ivy.core.module.id.{ ArtifactId, ModuleId, ModuleRevisionId }
-import org.apache.ivy.core.resolve.{ IvyNode, ResolveData, ResolvedModuleRevision }
+import org.apache.ivy.core.resolve.{ IvyNode, ResolveData, ResolvedModuleRevision, ResolveEngine }
 import org.apache.ivy.core.settings.IvySettings
+import org.apache.ivy.core.sort.SortEngine
 import org.apache.ivy.plugins.latest.LatestRevisionStrategy
 import org.apache.ivy.plugins.matcher.PatternMatcher
 import org.apache.ivy.plugins.parser.m2.PomModuleDescriptorParser
@@ -28,6 +31,7 @@ import org.apache.ivy.util.{ Message, MessageLogger }
 import org.apache.ivy.util.extendable.ExtendableItem
 
 import scala.xml.{ NodeSeq, Text }
+import scala.collection.mutable
 
 final class IvySbt(val configuration: IvyConfiguration) {
   import configuration.baseDirectory
@@ -76,7 +80,23 @@ final class IvySbt(val configuration: IvyConfiguration) {
     }
   private lazy val ivy: Ivy =
     {
-      val i = new Ivy() { private val loggerEngine = new SbtMessageLoggerEngine; override def getLoggerEngine = loggerEngine }
+      val i = new Ivy() {
+        private val loggerEngine = new SbtMessageLoggerEngine
+        override def getLoggerEngine = loggerEngine
+        override def bind(): Unit = {
+          val prOpt = Option(getSettings.getResolver(ProjectResolver.InterProject)) map { case pr: ProjectResolver => pr }
+          // We inject the deps we need before we can hook our resolve engine.
+          setSortEngine(new SortEngine(getSettings))
+          setEventManager(new EventManager())
+          if (configuration.updateOptions.consolidatedResolution) {
+            setResolveEngine(new ResolveEngine(getSettings, getEventManager, getSortEngine) with ConsolidatedResolveEngine {
+              val consolidatedResolveCache = IvySbt.consolidatedResolveCache
+              val projectResolver = prOpt
+            })
+          } else setResolveEngine(new ResolveEngine(getSettings, getEventManager, getSortEngine))
+          super.bind()
+        }
+      }
       i.setSettings(settings)
       i.bind()
       i.getLoggerEngine.pushLogger(new IvyLoggerInterface(configuration.log))
@@ -100,6 +120,18 @@ final class IvySbt(val configuration: IvyConfiguration) {
       finally {
         ivy.getLoggerEngine.popLogger()
         ivy.popContext()
+      }
+    }
+
+  /**
+   * Cleans consolidated resolution cache.
+   * @param md - module descriptor of the original Ivy graph.
+   */
+  private[sbt] def cleanConsolidatedResolutionCache(md: ModuleDescriptor, log: Logger): Unit =
+    withIvy(log) { i =>
+      val prOpt = Option(i.getSettings.getResolver(ProjectResolver.InterProject)) map { case pr: ProjectResolver => pr }
+      if (configuration.updateOptions.consolidatedResolution) {
+        IvySbt.consolidatedResolveCache.clean(md, prOpt)
       }
     }
 
@@ -204,6 +236,7 @@ private object IvySbt {
   val DefaultIvyFilename = "ivy.xml"
   val DefaultMavenFilename = "pom.xml"
   val DefaultChecksums = Seq("sha1", "md5")
+  private[sbt] val consolidatedResolveCache: ConsolidatedResolveCache = new ConsolidatedResolveCache()
 
   def defaultIvyFile(project: File) = new File(project, DefaultIvyFilename)
   def defaultIvyConfiguration(project: File) = new File(project, DefaultIvyConfigFilename)
