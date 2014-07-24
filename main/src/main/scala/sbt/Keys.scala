@@ -242,6 +242,7 @@ object Keys {
   val moduleSettings = TaskKey[ModuleSettings]("module-settings", "Module settings, which configure dependency management for a specific module, such as a project.", DTask)
   val unmanagedBase = SettingKey[File]("unmanaged-base", "The default directory for manually managed libraries.", ASetting)
   val updateConfiguration = SettingKey[UpdateConfiguration]("update-configuration", "Configuration for resolving and retrieving managed dependencies.", DSetting)
+  val updateOptions = SettingKey[UpdateOptions]("update-options", "Options for resolving managed dependencies.", DSetting)
   val ivySbt = TaskKey[IvySbt]("ivy-sbt", "Provides the sbt interface to Ivy.", CTask)
   val ivyModule = TaskKey[IvySbt#Module]("ivy-module", "Provides the sbt interface to a configured Ivy module.", CTask)
   val updateCacheName = TaskKey[String]("updateCacheName", "Defines the directory name used to store the update cache files (inside the streams cacheDirectory).", DTask)

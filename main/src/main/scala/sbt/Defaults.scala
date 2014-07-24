@@ -108,7 +108,8 @@ object Defaults extends BuildCommon {
       pomExtra :== NodeSeq.Empty,
       pomPostProcess :== idFun,
       pomAllRepositories :== false,
-      pomIncludeRepository :== Classpaths.defaultRepositoryFilter
+      pomIncludeRepository :== Classpaths.defaultRepositoryFilter,
+      updateOptions := UpdateOptions()
     )
 
   /** Core non-plugin settings for sbt builds.  These *must* be on every build or the sbt engine will fail to run at all. */
@@ -218,7 +219,11 @@ object Defaults extends BuildCommon {
       sbt.inc.ClassfileManager.transactional(crossTarget.value / "classes.bak", sbt.Logger.Null)),
     scalaInstance <<= scalaInstanceTask,
     crossVersion := (if (crossPaths.value) CrossVersion.binary else CrossVersion.Disabled),
-    crossTarget := makeCrossTarget(target.value, scalaBinaryVersion.value, sbtBinaryVersion.value, sbtPlugin.value, crossPaths.value)
+    crossTarget := makeCrossTarget(target.value, scalaBinaryVersion.value, sbtBinaryVersion.value, sbtPlugin.value, crossPaths.value),
+    clean := {
+      val _ = clean.value
+      IvyActions.cleanConsolidatedResolutionCache(ivyModule.value, streams.value.log)
+    }
   )
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(Seq(
@@ -1075,6 +1080,7 @@ object Classpaths {
     projectID <<= pluginProjectID,
     projectDescriptors <<= depMap,
     updateConfiguration := new UpdateConfiguration(retrieveConfiguration.value, false, ivyLoggingLevel.value),
+    updateOptions := (updateOptions in Global).value,
     retrieveConfiguration := { if (retrieveManaged.value) Some(new RetrieveConfiguration(managedDirectory.value, retrievePattern.value)) else None },
     ivyConfiguration <<= mkIvyConfiguration,
     ivyConfigurations := {
@@ -1162,7 +1168,8 @@ object Classpaths {
       val explicit = buildStructure.value.units(thisProjectRef.value.build).unit.plugins.pluginData.resolvers
       explicit orElse bootRepositories(appConfiguration.value) getOrElse externalResolvers.value
     },
-    ivyConfiguration := new InlineIvyConfiguration(ivyPaths.value, externalResolvers.value, Nil, Nil, offline.value, Option(lock(appConfiguration.value)), checksums.value, Some(target.value / "resolution-cache"), streams.value.log),
+    ivyConfiguration := new InlineIvyConfiguration(ivyPaths.value, externalResolvers.value, Nil, Nil, offline.value, Option(lock(appConfiguration.value)),
+      checksums.value, Some(target.value / "resolution-cache"), UpdateOptions(), streams.value.log),
     ivySbt <<= ivySbt0,
     classifiersModule <<= (projectID, sbtDependency, transitiveClassifiers, loadedBuild, thisProjectRef) map { (pid, sbtDep, classifiers, lb, ref) =>
       val pluginClasspath = lb.units(ref.build).unit.plugins.fullClasspath
@@ -1312,7 +1319,7 @@ object Classpaths {
 
   def projectResolverTask: Initialize[Task[Resolver]] =
     projectDescriptors map { m =>
-      new RawRepository(new ProjectResolver("inter-project", m))
+      new RawRepository(new ProjectResolver(ProjectResolver.InterProject, m))
     }
 
   def analyzed[T](data: T, analysis: inc.Analysis) = Attributed.blank(data).put(Keys.analysis, analysis)
@@ -1340,11 +1347,13 @@ object Classpaths {
   def unmanagedDependencies: Initialize[Task[Classpath]] =
     (thisProjectRef, configuration, settingsData, buildDependencies) flatMap unmanagedDependencies0
   def mkIvyConfiguration: Initialize[Task[IvyConfiguration]] =
-    (fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums in update, appConfiguration, target, streams) map { (rs, paths, other, moduleConfs, off, check, app, t, s) =>
-      warnResolversConflict(rs ++: other, s.log)
-      val resCacheDir = t / "resolution-cache"
-      new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Option(lock(app)), check, Some(resCacheDir), s.log)
-    }
+    (fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums in update, appConfiguration,
+      target, updateOptions, streams) map { (rs, paths, other, moduleConfs, off, check, app, t, uo, s) =>
+        warnResolversConflict(rs ++: other, s.log)
+        val resCacheDir = t / "resolution-cache"
+
+        new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Option(lock(app)), check, Some(resCacheDir), uo, s.log)
+      }
 
   import java.util.LinkedHashSet
   import collection.JavaConversions.asScalaSet
@@ -1648,13 +1657,13 @@ trait BuildExtra extends BuildCommon {
     externalIvySettingsURI(Def.value(url.toURI), addMultiResolver)
   def externalIvySettingsURI(uri: Initialize[URI], addMultiResolver: Boolean = true): Setting[Task[IvyConfiguration]] =
     {
-      val other = (baseDirectory, appConfiguration, projectResolver, streams).identityMap
+      val other = (baseDirectory, appConfiguration, projectResolver, updateOptions, streams).identityMap
       ivyConfiguration <<= (uri zipWith other) {
         case (u, otherTask) =>
           otherTask map {
-            case (base, app, pr, s) =>
+            case (base, app, pr, uo, s) =>
               val extraResolvers = if (addMultiResolver) pr :: Nil else Nil
-              new ExternalIvyConfiguration(base, u, Option(lock(app)), extraResolvers, s.log)
+              new ExternalIvyConfiguration(base, u, Option(lock(app)), extraResolvers, uo, s.log)
           }
       }
     }
