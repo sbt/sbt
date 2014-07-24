@@ -16,27 +16,42 @@ sealed trait IvyConfiguration {
   def baseDirectory: File
   def log: Logger
   def withBase(newBaseDirectory: File): This
+  def updateOptions: UpdateOptions
 }
 final class InlineIvyConfiguration(val paths: IvyPaths, val resolvers: Seq[Resolver], val otherResolvers: Seq[Resolver],
     val moduleConfigurations: Seq[ModuleConfiguration], val localOnly: Boolean, val lock: Option[xsbti.GlobalLock],
-    val checksums: Seq[String], val resolutionCacheDir: Option[File], val log: Logger) extends IvyConfiguration {
-  @deprecated("Use the variant that accepts the resolution cache location.", "0.13.0")
+    val checksums: Seq[String], val resolutionCacheDir: Option[File], val updateOptions: UpdateOptions,
+    val log: Logger) extends IvyConfiguration {
+  @deprecated("Use the variant that accepts resolutionCacheDir and updateOptions.", "0.13.0")
   def this(paths: IvyPaths, resolvers: Seq[Resolver], otherResolvers: Seq[Resolver],
     moduleConfigurations: Seq[ModuleConfiguration], localOnly: Boolean, lock: Option[xsbti.GlobalLock],
     checksums: Seq[String], log: Logger) =
-    this(paths, resolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums, None, log)
+    this(paths, resolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums, None, UpdateOptions(), log)
+
+  @deprecated("Use the variant that accepts updateOptions.", "0.13.6")
+  def this(paths: IvyPaths, resolvers: Seq[Resolver], otherResolvers: Seq[Resolver],
+    moduleConfigurations: Seq[ModuleConfiguration], localOnly: Boolean, lock: Option[xsbti.GlobalLock],
+    checksums: Seq[String], resolutionCacheDir: Option[File], log: Logger) =
+    this(paths, resolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums, resolutionCacheDir, UpdateOptions(), log)
 
   type This = InlineIvyConfiguration
   def baseDirectory = paths.baseDirectory
-  def withBase(newBase: File) = new InlineIvyConfiguration(paths.withBase(newBase), resolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums, resolutionCacheDir, log)
-  def changeResolvers(newResolvers: Seq[Resolver]) = new InlineIvyConfiguration(paths, newResolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums, resolutionCacheDir, log)
+  def withBase(newBase: File) = new InlineIvyConfiguration(paths.withBase(newBase), resolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums,
+    resolutionCacheDir, updateOptions, log)
+  def changeResolvers(newResolvers: Seq[Resolver]) = new InlineIvyConfiguration(paths, newResolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums,
+    resolutionCacheDir, updateOptions, log)
 }
-final class ExternalIvyConfiguration(val baseDirectory: File, val uri: URI, val lock: Option[xsbti.GlobalLock], val extraResolvers: Seq[Resolver], val log: Logger) extends IvyConfiguration {
+final class ExternalIvyConfiguration(val baseDirectory: File, val uri: URI, val lock: Option[xsbti.GlobalLock],
+    val extraResolvers: Seq[Resolver], val updateOptions: UpdateOptions, val log: Logger) extends IvyConfiguration {
+  @deprecated("Use the variant that accepts updateOptions.", "0.13.6")
+  def this(baseDirectory: File, uri: URI, lock: Option[xsbti.GlobalLock], extraResolvers: Seq[Resolver], log: Logger) =
+    this(baseDirectory, uri, lock, extraResolvers, UpdateOptions(), log)
+
   type This = ExternalIvyConfiguration
   def withBase(newBase: File) = new ExternalIvyConfiguration(newBase, uri, lock, extraResolvers, log)
 }
 object ExternalIvyConfiguration {
-  def apply(baseDirectory: File, file: File, lock: Option[xsbti.GlobalLock], log: Logger) = new ExternalIvyConfiguration(baseDirectory, file.toURI, lock, Nil, log)
+  def apply(baseDirectory: File, file: File, lock: Option[xsbti.GlobalLock], log: Logger) = new ExternalIvyConfiguration(baseDirectory, file.toURI, lock, Nil, UpdateOptions(), log)
 }
 
 object IvyConfiguration {

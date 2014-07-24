@@ -34,6 +34,8 @@ class ProjectResolver(name: String, map: Map[ModuleRevisionId, ModuleDescriptor]
       map get revisionId map constructResult
     }
 
+  private[sbt] def getModuleDescriptor(revisionId: ModuleRevisionId): Option[ModuleDescriptor] = map.get(revisionId)
+
   def report(revisionId: ModuleRevisionId): MetadataArtifactDownloadReport =
     {
       val artifact = DefaultArtifact.newIvyArtifact(revisionId, new Date)
@@ -86,4 +88,8 @@ class ProjectResolver(name: String, map: Map[ModuleRevisionId, ModuleDescriptor]
   def dumpSettings() {}
   def setSettings(settings: ResolverSettings) { this.settings = Some(settings) }
   def getRepositoryCacheManager = settings match { case Some(s) => s.getDefaultRepositoryCacheManager; case None => sys.error("No settings defined for ProjectResolver") }
+}
+
+object ProjectResolver {
+  private[sbt] val InterProject = "inter-project"
 }
