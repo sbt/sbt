@@ -59,6 +59,15 @@ object IvyActions {
     iv.getSettings.getRepositoryCacheManagers.foreach(_.clean())
   }
 
+  /**
+   * Cleans the consolidated resolution cache, if any.
+   * This is called by clean.
+   */
+  private[sbt] def cleanConsolidatedResolutionCache(module: IvySbt#Module, log: Logger): Unit =
+    module.withModule(log) { (ivy, md, default) =>
+      module.owner.cleanConsolidatedResolutionCache(md, log)
+    }
+
   /** Creates a Maven pom from the given Ivy configuration*/
   def makePom(module: IvySbt#Module, configuration: MakePomConfiguration, log: Logger) {
     import configuration.{ allRepositories, moduleInfo, configurations, extra, file, filterRepositories, process, includeTypes }
