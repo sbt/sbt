@@ -9,7 +9,7 @@
 Issues and Pull Requests
 ========================
 
-When you find a bug in sbt we want to hear about it. Your bug reports play an important part in making sbt more reliable.
+When you find a bug in sbt we want to hear about it. Your bug reports play an important part in making sbt more reliable and usable.
 
 Effective bug reports are more likely to be fixed. These guidelines explain how to write such reports and pull requests.
 
@@ -24,11 +24,11 @@ Preliminaries
 Where to get help and/or file a bug report
 ------------------------------------------
 
-sbt project uses GitHub issue as a publically visible todo list. Please open a GitHub issue only when asked to do so.
+sbt project uses GitHub Issues as a publicly visible todo list. Please open a GitHub issue only when asked to do so.
 
 - If you need help with sbt, please ask on [StackOverflow] with the tag "sbt" and the name of the sbt plugin if any.
 - If you run into an issue, have an enhancement idea, or a general discussion, bring it up to [sbt-dev] Google Group first.
-- If you need faster response time, consider one of the [Typesafe subscriptions][subscriptions].
+- If you need a faster response time, consider one of the [Typesafe subscriptions][subscriptions].
 
 What to report
 --------------
@@ -88,9 +88,7 @@ See below for instructions on building sbt from source.
 Documentation
 -------------
 
-Documentation fixes and contributions are welcome.
-They are made via pull requests, as described in the previous section.
-See below for details on getting sbt sources and modifying the documentation.
+Documentation fixes and contributions are as much welcome as to the source code itself. Visit [the website project](https://github.com/sbt/website) to learn about how to contribute.
 
 Build from source
 =================
@@ -101,30 +99,24 @@ Build from source
 		$ git clone git://github.com/sbt/sbt.git
 		$ cd sbt
 
-3. The initial branch is the development branch 0.13, which contains the latest code for the next major sbt release.  To build a specific release or commit, switch to the associated tag.  The tag for the latest stable release is v0.13.1:
+3. The initial branch is the development branch [0.13](https://github.com/sbt/sbt/tree/0.13), which contains the latest code for the next major sbt release.  To build a specific release or commit, switch to the associated tag.  The tag for the latest stable release is [v0.13.5](https://github.com/sbt/sbt/tree/v0.13.5):
 
-		$ git checkout v0.13.1
+		$ git checkout v0.13.5
 
-	Note that sbt is always built with the previous stable release.  For example, the 0.13 branch is built with 0.13.1 and the v0.13.1 tag is built with 0.13.0.
+	Note that sbt is always built with the previous stable release.  For example, the [0.13](https://github.com/sbt/sbt/tree/0.13) branch is built with 0.13.2 and the [v0.13.2](https://github.com/sbt/sbt/tree/v0.13.2) tag is built with 0.13.1.
 
 4. To build the launcher and publish all components locally,
 
 		$ sbt
 		> publishLocal
 
-	To build documentation, run `makeSite` or the individual commands directly:
+5. To use this locally built version of sbt, copy your stable `~/bin/sbt` script to `~/bin/xsbt` and change it to use the launcher jar in `<sbt>/target/`.  For the v0.13.5 tag, the full location is:
 
-		> doc
-		> sphinx:mappings
-		> sxr
-
-5. To use this locally built version of sbt, copy your stable `~/bin/sbt` script to `~/bin/xsbt` and change it to use the launcher jar in `<sbt>/target/`.  For the v0.13.1 tag, the full location is:
-
-		<sbt>/target/sbt-launch-0.13.1.jar
+		<sbt>/target/sbt-launch-0.13.5.jar
 
 	If using the 0.13 development branch, the launcher is at:
 
-		<sbt>/target/sbt-launch-0.13.2-SNAPSHOT.jar
+		<sbt>/target/sbt-launch-0.13.6-SNAPSHOT.jar
 
 ## Modifying sbt
 
@@ -134,19 +126,9 @@ Build from source
 
 3. After each `publishLocal`, clean the `~/.sbt/boot/` directory.  Alternatively, if sbt is running and the launcher hasn't changed, run `reboot full` to have sbt do this for you.
 
-4. If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `0.13.2-SNAPSHOT`.
+4. If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `0.13.6-SNAPSHOT`.
 
 Building Documentation
 ----------------------
 
-The scala-sbt.org site documentation is built using sphinx and requires some external packages to be manually installed first:
-
-```text
-$ pip install pygments
-$ pip install sphinx
-$ pip install sphinxcontrib-issuetracker
-```
-
-To build the full site, run the `make-site` task, which will generate the manual, API, SXR, and other site pages in `target/site/`.
-To only work on the site and not API or SXR, run `sphinx:mappings`.
-To only build API documentation, run `doc`.  Sphinx is not required for generating API or SXR documentation.
+The scala-sbt.org site documentation is a separate project [website](https://github.com/sbt/website). Follow [the steps in the README](https://github.com/sbt/website#scala-sbtorg) to generate the documentation.
