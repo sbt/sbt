@@ -107,9 +107,12 @@ object IvyRetrieve {
     })
     val isDefault = Option(dep.getDescriptor) map { _.isDefault }
     val configurations = dep.getConfigurations(confReport.getConfiguration).toArray.toList
-    val licenses: Seq[(String, URL)] = mdOpt match {
-      case Some(md) => md.getLicenses.toArray.toVector collect { case lic: IvyLicense => (lic.getName, new URL(lic.getUrl)) }
-      case _        => Nil
+    val licenses: Seq[(String, Option[String])] = mdOpt match {
+      case Some(md) => md.getLicenses.toArray.toVector collect {
+        case lic: IvyLicense =>
+          (lic.getName, Option(lic.getUrl))
+      }
+      case _ => Nil
     }
     val callers = dep.getCallers(confReport.getConfiguration).toArray.toVector map { toCaller }
     val (resolved, missing) = artifacts(moduleId, confReport getDownloadReports revId)
