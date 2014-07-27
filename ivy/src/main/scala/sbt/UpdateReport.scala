@@ -105,7 +105,7 @@ final class ModuleReport(
     val isDefault: Option[Boolean],
     val branch: Option[String],
     val configurations: Seq[String],
-    val licenses: Seq[(String, URL)],
+    val licenses: Seq[(String, Option[String])],
     val callers: Seq[Caller]) {
 
   private[this] lazy val arts: Seq[String] = artifacts.map(_.toString) ++ missingArtifacts.map(art => "(MISSING) " + art)
@@ -162,7 +162,7 @@ final class ModuleReport(
     isDefault: Option[Boolean] = isDefault,
     branch: Option[String] = branch,
     configurations: Seq[String] = configurations,
-    licenses: Seq[(String, URL)] = licenses,
+    licenses: Seq[(String, Option[String])] = licenses,
     callers: Seq[Caller] = callers): ModuleReport =
     new ModuleReport(module, artifacts, missingArtifacts, status, publicationDate, resolver, artifactResolver,
       evicted, evictedData, evictedReason, problem, homepage, extraAttributes, isDefault, branch, configurations, licenses, callers)
