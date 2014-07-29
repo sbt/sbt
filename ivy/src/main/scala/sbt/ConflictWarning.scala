@@ -2,6 +2,11 @@ package sbt
 
 import DependencyFilter._
 
+/**
+ * Provide warnings for cross version conflicts.
+ * A library foo_2.10 and foo_2.11 can potentially be both included on the
+ * library dependency graph by mistake, but it won't be caught by eviction.
+ */
 final case class ConflictWarning(label: String, level: Level.Value, failOnConflict: Boolean) {
   @deprecated("`filter` is no longer used", "0.13.0")
   val filter: ModuleFilter = (_: ModuleID) => false
