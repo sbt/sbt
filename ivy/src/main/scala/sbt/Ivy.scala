@@ -496,7 +496,8 @@ private[sbt] object IvySbt {
     }
   private[this] def defaultInfo(module: ModuleID): scala.xml.Elem = {
     import module._
-    <info organisation={ organization } module={ name } revision={ revision }/>
+    val base = <info organisation={ organization } module={ name } revision={ revision }/>
+    branch.fold(base) { br => base % new scala.xml.UnprefixedAttribute("branch", br, scala.xml.Null) }
   }
   private[this] def addExtraAttributes(elem: scala.xml.Elem, extra: Map[String, String]): scala.xml.Elem =
     (elem /: extra) { case (e, (key, value)) => e % new scala.xml.UnprefixedAttribute(key, value, scala.xml.Null) }
