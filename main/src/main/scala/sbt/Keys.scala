@@ -247,6 +247,8 @@ object Keys {
   val ivyModule = TaskKey[IvySbt#Module]("ivy-module", "Provides the sbt interface to a configured Ivy module.", CTask)
   val updateCacheName = TaskKey[String]("updateCacheName", "Defines the directory name used to store the update cache files (inside the streams cacheDirectory).", DTask)
   val update = TaskKey[UpdateReport]("update", "Resolves and optionally retrieves dependencies, producing a report.", ATask)
+  val evicted = TaskKey[EvictionWarning]("evicted", "Display detailed eviction warnings.", CTask)
+  val evictionWarningOptions = SettingKey[EvictionWarningOptions]("eviction-warning-options", "Options on eviction warnings after resolving managed dependencies.", DSetting)
   val transitiveUpdate = TaskKey[Seq[UpdateReport]]("transitive-update", "UpdateReports for the internal dependencies of this project.", DTask)
   val updateClassifiers = TaskKey[UpdateReport]("update-classifiers", "Resolves and optionally retrieves classified artifacts, such as javadocs and sources, for dependency definitions, transitively.", BPlusTask, update)
   val transitiveClassifiers = SettingKey[Seq[String]]("transitive-classifiers", "List of classifiers used for transitively obtaining extra artifacts for sbt or declared dependencies.", BSetting)

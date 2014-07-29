@@ -1100,8 +1100,27 @@ object Classpaths {
     ivyModule := { val is = ivySbt.value; new is.Module(moduleSettings.value) },
     transitiveUpdate <<= transitiveUpdateTask,
     updateCacheName := "update_cache" + (if (crossPaths.value) s"_${scalaBinaryVersion.value}" else ""),
+    evictionWarningOptions in update := EvictionWarningOptions.default,
     update <<= updateTask tag (Tags.Update, Tags.Network),
-    update := { val report = update.value; ConflictWarning(conflictWarning.value, report, streams.value.log); report },
+    update := {
+      import ShowLines._
+      val report = update.value
+      val log = streams.value.log
+      ConflictWarning(conflictWarning.value, report, log)
+      val ewo = (evictionWarningOptions in update).value
+      val ew = EvictionWarning(ivyModule.value, ewo, report, log)
+      ew.lines foreach { log.warn(_) }
+      report
+    },
+    evictionWarningOptions in evicted := EvictionWarningOptions.full,
+    evicted := {
+      import ShowLines._
+      val report = (updateTask tag (Tags.Update, Tags.Network)).value
+      val log = streams.value.log
+      val ew = EvictionWarning(ivyModule.value, (evictionWarningOptions in evicted).value, report, log)
+      ew.lines foreach { log.warn(_) }
+      ew
+    },
     classifiersModule in updateClassifiers := {
       import language.implicitConversions
       implicit val key = (m: ModuleID) => (m.organization, m.name, m.revision)
