@@ -47,8 +47,7 @@ final class ConfigurationReport(
     val configuration: String,
     val modules: Seq[ModuleReport],
     val details: Seq[ModuleDetailReport],
-    @deprecated("Use details instead to get better eviction info.", "0.13.6")
-    val evicted: Seq[ModuleID]) {
+    @deprecated("Use details instead to get better eviction info.", "0.13.6") val evicted: Seq[ModuleID]) {
   def this(configuration: String, modules: Seq[ModuleReport], evicted: Seq[ModuleID]) =
     this(configuration, modules, Nil, evicted)
 
