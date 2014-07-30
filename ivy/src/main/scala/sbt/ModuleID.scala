@@ -146,4 +146,17 @@ private[sbt] trait ModuleIDSetBranch { self: ModuleID =>
 }
 
 /** This will be removed in 1.0 when the `branch` parameter can be added directly to ModuleID, breaking binary compatibility. */
-final class ModuleIDWithBranch(m: ModuleID, override val branch: Option[String]) extends ModuleID(m.organization, m.name, m.revision, m.configurations, m.isChanging, m.isTransitive, m.isForce, m.explicitArtifacts, m.exclusions, m.extraAttributes, m.crossVersion) with ModuleIDSetBranch
+final class ModuleIDWithBranch(m: ModuleID, override val branch: Option[String]) extends ModuleID(m.organization, m.name, m.revision, m.configurations, m.isChanging, m.isTransitive, m.isForce, m.explicitArtifacts, m.exclusions, m.extraAttributes, m.crossVersion) with ModuleIDSetBranch {
+  override def copy(organization: String,
+    name: String,
+    revision: String,
+    configurations: Option[String],
+    isChanging: Boolean,
+    isTransitive: Boolean,
+    isForce: Boolean,
+    explicitArtifacts: Seq[Artifact],
+    exclusions: Seq[ExclusionRule],
+    extraAttributes: Map[String, String],
+    crossVersion: CrossVersion) =
+    m.copy(organization, name, revision, configurations, isChanging, isTransitive, isForce, explicitArtifacts, exclusions, extraAttributes, crossVersion).onBranch(branch)
+}
