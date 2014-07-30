@@ -2,6 +2,7 @@ import sbt._
 import Keys._
 import Status.{ publishStatus }
 import org.apache.ivy.util.url.CredentialsStore
+import com.typesafe.sbt.JavaVersionCheckPlugin.autoImport._
 
 object Release extends Build {
   lazy val remoteBase = SettingKey[String]("remote-base")
@@ -57,4 +58,8 @@ object Release extends Build {
         case None        => error("No credentials defined for " + PublishRepoHost)
       }
     }
+
+  def javaVersionCheckSettings = Seq(
+    javaVersionPrefix in javaVersionCheck := Some("1.6")
+  )
 }
