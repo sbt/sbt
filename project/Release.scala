@@ -31,7 +31,7 @@ object Release extends Build {
       // Note - This will eitehr issue a failure or succeed.
       getCredentials(credentials.value, streams.value.log)
     }
-  ) ++ lameCredentialSettings
+  ) ++ lameCredentialSettings ++ javaVersionCheckSettings
 
   def snapshotPattern(version: String) = Resolver.localBasePattern.replaceAll("""\[revision\]""", version)
   def publishResolver: Project.Initialize[Option[Resolver]] = (remoteID, remoteBase) { (id, base) =>

@@ -290,7 +290,7 @@ object Sbt extends Build {
   def releaseSettings = Release.settings(nonRoots, proguard in Proguard)
   def rootSettings = releaseSettings ++ fullDocSettings ++ LaunchProguard.settings ++ LaunchProguard.specific(launchSub) ++
     Util.publishPomSettings ++ otherRootSettings ++ proguardedLauncherSettings ++ Formatting.sbtFilesSettings ++
-    Transform.conscriptSettings(launchSub) ++ Release.javaVersionCheckSettings
+    Transform.conscriptSettings(launchSub)
   def otherRootSettings = Seq(
     scripted <<= scriptedTask,
     scriptedUnpublished <<= scriptedUnpublishedTask,
