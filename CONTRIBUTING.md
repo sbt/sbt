@@ -2,7 +2,6 @@
   [StackOverflow]: http://stackoverflow.com/tags/sbt  
   [Setup]: http://www.scala-sbt.org/release/docs/Getting-Started/Setup
   [Issues]: https://github.com/sbt/sbt/issues
-  [sbt-dev]: https://groups.google.com/d/forum/sbt-dev‎
   [subscriptions]: http://typesafe.com/how/subscription
   [327]: https://github.com/sbt/sbt/issues/327
 
