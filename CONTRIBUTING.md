@@ -1,4 +1,4 @@
-  [sbt-dev]: https://groups.google.com/d/forum/sbt-dev‎
+  [sbt-dev]: https://groups.google.com/d/forum/sbt-dev
   [StackOverflow]: http://stackoverflow.com/tags/sbt  
   [Setup]: http://www.scala-sbt.org/release/docs/Getting-Started/Setup
   [Issues]: https://github.com/sbt/sbt/issues
