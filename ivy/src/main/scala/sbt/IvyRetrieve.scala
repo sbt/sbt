@@ -58,6 +58,13 @@ object IvyRetrieve {
     moduleIds map { moduleDetail }
   }
 
+  private[sbt] def nonEmptyString(s: String): Option[String] =
+    s match {
+      case null              => None
+      case x if x.trim == "" => None
+      case x                 => Some(x.trim)
+    }
+
   private[sbt] def moduleRevisionDetail(confReport: ConfigurationResolveReport, dep: IvyNode): ModuleReport = {
     def toExtraAttributes(ea: ju.Map[_, _]): Map[String, String] =
       Map(ea.entrySet.toArray collect {
@@ -71,25 +78,29 @@ object IvyRetrieve {
     }
     val revId = dep.getResolvedId
     val moduleId = toModuleID(revId)
-    val branch = Option(revId.getBranch)
+    val branch = nonEmptyString(revId.getBranch)
     val (status, publicationDate, resolver, artifactResolver) = dep.isLoaded match {
       case true =>
-        (Option(dep.getDescriptor.getStatus),
+        (nonEmptyString(dep.getDescriptor.getStatus),
           Some(new ju.Date(dep.getPublication)),
-          Option(dep.getModuleRevision.getResolver.getName),
-          Option(dep.getModuleRevision.getArtifactResolver.getName))
+          nonEmptyString(dep.getModuleRevision.getResolver.getName),
+          nonEmptyString(dep.getModuleRevision.getArtifactResolver.getName))
       case _ => (None, None, None, None)
     }
     val (evicted, evictedData, evictedReason) = dep.isEvicted(confReport.getConfiguration) match {
       case true =>
-        val ed = dep.getEvictedData(confReport.getConfiguration)
-        (true,
-          Some(Option(ed.getConflictManager) map { _.toString } getOrElse { "transitive" }),
-          Option(ed.getDetail))
+        val edOpt = Option(dep.getEvictedData(confReport.getConfiguration))
+        edOpt match {
+          case Some(ed) =>
+            (true,
+              nonEmptyString(Option(ed.getConflictManager) map { _.toString } getOrElse { "transitive" }),
+              nonEmptyString(ed.getDetail))
+          case None => (true, None, None)
+        }
       case _ => (false, None, None)
     }
     val problem = dep.hasProblem match {
-      case true => Option(dep.getProblem.getMessage)
+      case true => nonEmptyString(dep.getProblem.getMessage)
       case _    => None
     }
     val mdOpt = for {
@@ -98,7 +109,7 @@ object IvyRetrieve {
     } yield md
     val homepage = mdOpt match {
       case Some(md) =>
-        Option(md.getHomePage)
+        nonEmptyString(md.getHomePage)
       case _ => None
     }
     val extraAttributes: Map[String, String] = toExtraAttributes(mdOpt match {
@@ -110,7 +121,7 @@ object IvyRetrieve {
     val licenses: Seq[(String, Option[String])] = mdOpt match {
       case Some(md) => md.getLicenses.toArray.toVector collect {
         case lic: IvyLicense =>
-          (lic.getName, Option(lic.getUrl))
+          (lic.getName, nonEmptyString(lic.getUrl))
       }
       case _ => Nil
     }
