@@ -242,7 +242,10 @@ object Project extends ProjectExtra {
   def normalizeProjectID(id: String): Either[String, String] =
     {
       val attempt = normalizeBase(id)
-      val refined = if (!validProjectIDStart(attempt.substring(0, 1))) "root-" + attempt else attempt
+      val refined =
+        if (attempt.length < 1) "root"
+        else if (!validProjectIDStart(attempt.substring(0, 1))) "root-" + attempt
+        else attempt
       validProjectID(refined).toLeft(refined)
     }
   private[this] def normalizeBase(s: String) = s.toLowerCase(Locale.ENGLISH).replaceAll("""\W+""", "-")
