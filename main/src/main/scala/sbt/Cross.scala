@@ -41,6 +41,12 @@ object Cross {
         case _           => ("", arg)
       }
       val home = IO.resolve(x.currentProject.base, new File(homePath))
+      // Basic Algorithm.
+      // 1. First we figure out what the new scala instances should be, create settings for them.
+      // 2. Find any non-overridden scalaVersion setting in the whole build and force it to delegate
+      //    to the new global settings.
+      // 3. Append these to the session, so that the session is up-to-date and
+      //    things like set/session clear, etc. work.
       val (add, exclude) =
         if (home.exists) {
           val instance = ScalaInstance(home)(state.classLoaderCache.apply _)
@@ -63,10 +69,18 @@ object Cross {
           )
           (settings, excludeKeys(Set(scalaVersion.key, scalaHome.key)))
         }
-      val cleared = session.mergeSettings.filterNot(exclude)
-      val newStructure = Load.reapply(add ++ cleared, structure)
-      Project.setProject(session, newStructure, command :: state)
+      // TODO - Track delegates and avoid regenerating.
+      val delegates: Seq[Setting[_]] = session.mergeSettings collect {
+        case x if exclude(x) => delegateToGlobal(x.key)
+      }
+      val fixedSession = session.appendRaw(add ++ delegates)
+      BuiltinCommands.reapply(fixedSession, structure, state)
   }
+
+  // Creates a delegate for a scoped key that pulls the setting from the global scope.
+  private[this] def delegateToGlobal[T](key: ScopedKey[T]): Setting[_] =
+    SettingKey[T](key.key) in key.scope := (SettingKey[T](key.key) in GlobalScope).value
+
   @deprecated("No longer used.", "0.13.0")
   def crossExclude(s: Setting[_]): Boolean = excludeKeys(Set(scalaVersion.key, scalaHome.key))(s)
 
