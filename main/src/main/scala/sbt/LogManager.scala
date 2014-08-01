@@ -105,8 +105,8 @@ object LogManager {
   // construct a Logger that delegates to the global logger, but only holds a weak reference
   //  this is an approximation to the ideal that would invalidate the delegate after loading completes
   private[this] def globalWrapper(s: State): Logger = {
-    val ref = new java.lang.ref.WeakReference(s.globalLogging.full)
     new Logger {
+      private[this] val ref = new java.lang.ref.WeakReference(s.globalLogging.full)
       private[this] def slog: Logger = Option(ref.get) getOrElse sys.error("Settings logger used after project was loaded.")
 
       override val ansiCodesSupported = slog.ansiCodesSupported
