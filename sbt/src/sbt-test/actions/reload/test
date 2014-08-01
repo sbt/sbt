@@ -1,3 +1,6 @@
+# Note: We aren't actively running this test, but it checks to make sure the setting-level logger is ok across reloads.
+# > evil-clear-logger
+# > reload
 -> f
 > project sub
 > f

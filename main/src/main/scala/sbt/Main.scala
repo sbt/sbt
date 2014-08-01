@@ -227,7 +227,10 @@ object BuiltinCommands {
   def reapply(newSession: SessionSettings, structure: BuildStructure, s: State): State =
     {
       s.log.info("Reapplying settings...")
-      val newStructure = Load.reapply(newSession.mergeSettings, structure)(Project.showContextKey(newSession, structure))
+      // Here, for correct behavior, we also need to re-inject a settings logger, as we'll be re-evaluating settings.
+      val loggerInject = LogManager.settingsLogger(s)
+      val withLogger = newSession.appendRaw(loggerInject :: Nil)
+      val newStructure = Load.reapply(withLogger.mergeSettings, structure)(Project.showContextKey(newSession, structure))
       Project.setProject(newSession, newStructure, s)
     }
   def set = Command(SetCommand, setBrief, setDetailed)(setParser) {
