@@ -1286,7 +1286,17 @@ object Classpaths {
             case (_, Some(out)) if uptodate(inChanged, out) => out
             case _ => work(in)
           }
-          outCache(in)
+          try {
+            outCache(in)
+          } catch {
+            case e: NullPointerException =>
+              val r = work(in)
+              log.warn("Update task has failed to cache the report due to null.")
+              log.warn("Report the following output to sbt:")
+              r.toString.lines foreach { log.warn(_) }
+              log.trace(e)
+              r
+          }
         }
       val f = if (skip && !force) skipWork else doWork
       f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)
