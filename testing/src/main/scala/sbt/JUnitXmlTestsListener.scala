@@ -2,6 +2,7 @@ package sbt
 
 import java.io.{ StringWriter, PrintWriter, File }
 import java.net.InetAddress
+
 import scala.collection.mutable.ListBuffer
 import scala.util.DynamicVariable
 import scala.xml.{ Elem, Node => XNode, XML }
@@ -154,8 +155,12 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
     writeSuite()
   }
 
+  // Here we normalize the name to ensure that it's a nicer filename, rather than
+  // contort the user into not using spaces.
+  private[this] def normalizeName(s: String) = s.replaceAll("""\s+""", "-")
+
   private def writeSuite() = {
-    val file = new File(targetDir, testSuite.value.name + ".xml").getAbsolutePath
+    val file = new File(targetDir, s"${normalizeName(testSuite.value.name)}.xml").getAbsolutePath
     // TODO would be nice to have a logger and log this with level debug
     // System.err.println("Writing JUnit XML test report: " + file)
     XML.save(file, testSuite.value.stop(), "UTF-8", true, null)
