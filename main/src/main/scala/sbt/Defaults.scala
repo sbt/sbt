@@ -1253,17 +1253,37 @@ object Classpaths {
     val transform: UpdateReport => UpdateReport = r => substituteScalaFiles(scalaOrganization.value, r)(subScalaJars)
 
     val show = Reference.display(thisProjectRef.value)
-    cachedUpdate(s.cacheDirectory / updateCacheName.value, show, ivyModule.value, updateConfiguration.value, transform, skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated, log = s.log)
+    cachedUpdate(s.cacheDirectory / updateCacheName.value, show, ivyModule.value, updateConfiguration.value, transform,
+      skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated,
+      unresolvedHandler = { r =>
+        import ShowLines._
+        UnresolvedDependencyWarning(r, Some(state.value)).lines foreach { s.log.warn(_) }
+      },
+      log = s.log)
   }
-
-  def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration, transform: UpdateReport => UpdateReport, skip: Boolean, force: Boolean, depsUpdated: Boolean, log: Logger): UpdateReport =
+  @deprecated("Use cachedUpdate with the variant that takes unresolvedHandler instead.", "0.13.6")
+  def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration,
+    transform: UpdateReport => UpdateReport, skip: Boolean, force: Boolean, depsUpdated: Boolean, log: Logger): UpdateReport =
+    cachedUpdate(cacheFile, label, module, config, transform, skip, force, depsUpdated,
+      { r =>
+        import ShowLines._
+        UnresolvedDependencyWarning(r, None).lines foreach { log.warn(_) }
+      }, log)
+  def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration,
+    transform: UpdateReport => UpdateReport, skip: Boolean, force: Boolean, depsUpdated: Boolean,
+    unresolvedHandler: ResolveException => Unit, log: Logger): UpdateReport =
     {
       implicit val updateCache = updateIC
       type In = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
       def work = (_: In) match {
         case conf :+: settings :+: config :+: HNil =>
           log.info("Updating " + label + "...")
-          val r = IvyActions.update(module, config, log)
+          val r = IvyActions.updateEither(module, config, log) match {
+            case Right(ur) => ur
+            case Left(re) =>
+              unresolvedHandler(re)
+              throw re
+          }
           log.info("Done updating.")
           transform(r)
       }

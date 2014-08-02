@@ -130,43 +130,36 @@ object IvyActions {
    * Resolves and retrieves dependencies.  'ivyConfig' is used to produce an Ivy file and configuration.
    * 'updateConfig' configures the actual resolution and retrieval process.
    */
+  @deprecated("Use updateEither instead.", "0.13.6")
   def update(module: IvySbt#Module, configuration: UpdateConfiguration, log: Logger): UpdateReport =
+    updateEither(module, configuration, log) match {
+      case Right(r) => r
+      case Left(e)  => throw e
+    }
+
+  /**
+   * Resolves and retrieves dependencies.  'ivyConfig' is used to produce an Ivy file and configuration.
+   * 'updateConfig' configures the actual resolution and retrieval process.
+   */
+  def updateEither(module: IvySbt#Module, configuration: UpdateConfiguration, log: Logger): Either[ResolveException, UpdateReport] =
     module.withModule(log) {
       case (ivy, md, default) =>
         val (report, err) = resolve(configuration.logging)(ivy, md, default)
         err match {
           case Some(x) if !configuration.missingOk =>
             processUnresolved(x, log)
-            throw x
+            Left(x)
           case _ =>
             val cachedDescriptor = ivy.getSettings.getResolutionCacheManager.getResolvedIvyFileInCache(md.getModuleRevisionId)
             val uReport = IvyRetrieve.updateReport(report, cachedDescriptor)
             configuration.retrieve match {
-              case Some(rConf) => retrieve(ivy, uReport, rConf)
-              case None        => uReport
+              case Some(rConf) => Right(retrieve(ivy, uReport, rConf))
+              case None        => Right(uReport)
             }
         }
     }
-
-  def processUnresolved(err: ResolveException, log: Logger) {
-    val withExtra = err.failed.filter(!_.extraDependencyAttributes.isEmpty)
-    if (!withExtra.isEmpty) {
-      log.warn("\n\tNote: Some unresolved dependencies have extra attributes.  Check that these dependencies exist with the requested attributes.")
-      withExtra foreach { id => log.warn("\t\t" + id) }
-      log.warn("")
-    }
-    err.failed foreach { x =>
-      val failedPaths = err.failedPaths(x)
-      if (!failedPaths.isEmpty) {
-        log.warn("\n\tNote: Unresolved dependencies path:")
-        val reverseFailedPaths = (failedPaths.toList map { _.toString }).reverse
-        log.warn("\t\t" + reverseFailedPaths.head)
-        reverseFailedPaths.tail foreach { id =>
-          log.warn("\t\t  +- " + id)
-        }
-      }
-    }
-  }
+  @deprecated("No longer used.", "0.13.6")
+  def processUnresolved(err: ResolveException, log: Logger): Unit = ()
   def groupedConflicts[T](moduleFilter: ModuleFilter, grouping: ModuleID => T)(report: UpdateReport): Map[T, Set[String]] =
     report.configurations.flatMap { confReport =>
       val evicted = confReport.evicted.filter(moduleFilter)
