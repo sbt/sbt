@@ -1101,6 +1101,7 @@ object Classpaths {
     transitiveUpdate <<= transitiveUpdateTask,
     updateCacheName := "update_cache" + (if (crossPaths.value) s"_${scalaBinaryVersion.value}" else ""),
     evictionWarningOptions in update := EvictionWarningOptions.default,
+    unresolvedWarningConfiguration in update <<= unresolvedWarningConfigurationTask,
     update <<= updateTask tag (Tags.Update, Tags.Network),
     update := {
       import ShowLines._
@@ -1214,7 +1215,13 @@ object Classpaths {
     } tag (Tags.Publish, Tags.Network)
 
   import Cache._
-  import CacheIvy.{ classpathFormat, /*publishIC,*/ updateIC, updateReportFormat, excludeMap }
+  import CacheIvy.{
+    classpathFormat, /*publishIC,*/ updateIC,
+    updateReportFormat,
+    excludeMap,
+    moduleIDSeqIC,
+    unresolvedWarningConfigurationFormat
+  }
 
   def withExcludes(out: File, classifiers: Seq[String], lock: xsbti.GlobalLock)(f: Map[ModuleID, Set[String]] => UpdateReport): UpdateReport =
     {
@@ -1251,38 +1258,32 @@ object Classpaths {
       case None     => sv => if (scalaProvider.version == sv) scalaProvider.jars else Nil
     }
     val transform: UpdateReport => UpdateReport = r => substituteScalaFiles(scalaOrganization.value, r)(subScalaJars)
-
+    val uwConfig = (unresolvedWarningConfiguration in update).value
     val show = Reference.display(thisProjectRef.value)
     cachedUpdate(s.cacheDirectory / updateCacheName.value, show, ivyModule.value, updateConfiguration.value, transform,
       skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated,
-      unresolvedHandler = { r =>
-        import ShowLines._
-        UnresolvedDependencyWarning(r, Some(state.value)).lines foreach { s.log.warn(_) }
-      },
-      log = s.log)
+      uwConfig = uwConfig, log = s.log)
   }
   @deprecated("Use cachedUpdate with the variant that takes unresolvedHandler instead.", "0.13.6")
   def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration,
     transform: UpdateReport => UpdateReport, skip: Boolean, force: Boolean, depsUpdated: Boolean, log: Logger): UpdateReport =
     cachedUpdate(cacheFile, label, module, config, transform, skip, force, depsUpdated,
-      { r =>
-        import ShowLines._
-        UnresolvedDependencyWarning(r, None).lines foreach { log.warn(_) }
-      }, log)
+      UnresolvedWarningConfiguration(), log)
   def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration,
     transform: UpdateReport => UpdateReport, skip: Boolean, force: Boolean, depsUpdated: Boolean,
-    unresolvedHandler: ResolveException => Unit, log: Logger): UpdateReport =
+    uwConfig: UnresolvedWarningConfiguration, log: Logger): UpdateReport =
     {
       implicit val updateCache = updateIC
       type In = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
       def work = (_: In) match {
         case conf :+: settings :+: config :+: HNil =>
           log.info("Updating " + label + "...")
-          val r = IvyActions.updateEither(module, config, log) match {
+          val r = IvyActions.updateEither(module, config, uwConfig, log) match {
             case Right(ur) => ur
-            case Left(re) =>
-              unresolvedHandler(re)
-              throw re
+            case Left(uw) =>
+              import ShowLines._
+              uw.lines foreach { log.warn(_) }
+              throw uw.resolveException
           }
           log.info("Done updating.")
           transform(r)
@@ -1313,6 +1314,39 @@ object Classpaths {
     }
   private[this] def fileUptodate(file: File, stamps: Map[File, Long]): Boolean =
     stamps.get(file).forall(_ == file.lastModified)
+  private[sbt] def unresolvedWarningConfigurationTask: Initialize[Task[UnresolvedWarningConfiguration]] = Def.task {
+    val projRef = thisProjectRef.value
+    val st = state.value
+    val s = streams.value
+    val cacheFile = s.cacheDirectory / updateCacheName.value
+    implicit val uwConfigCache = moduleIDSeqIC
+    def modulePositions: Seq[(ModuleID, SourcePosition)] =
+      try {
+        val extracted = (Project extract st)
+        val sk = (libraryDependencies in (GlobalScope in projRef)).scopedKey
+        val empty = extracted.structure.data set (sk.scope, sk.key, Nil)
+        val settings = extracted.structure.settings filter { s: Setting[_] =>
+          (s.key.key == libraryDependencies.key) &&
+            (s.key.scope.project == Select(projRef))
+        }
+        settings flatMap {
+          case s: Setting[Seq[ModuleID]] @unchecked =>
+            s.init.evaluate(empty) map { _ -> s.pos }
+        }
+      } catch {
+        case _: Throwable => Seq()
+      }
+    val outCacheFile = cacheFile / "output_uwc"
+    val f = Tracked.inputChanged(cacheFile / "input_uwc") { (inChanged: Boolean, in: Seq[ModuleID]) =>
+      val outCache = Tracked.lastOutput[Seq[ModuleID], UnresolvedWarningConfiguration](outCacheFile) {
+        case (_, Some(out)) if !inChanged => out
+        case _                            => UnresolvedWarningConfiguration(modulePositions)
+      }
+      outCache(in)
+    }
+    f(libraryDependencies.value)
+  }
+
   /*
 	// can't cache deliver/publish easily since files involved are hidden behind patterns.  publish will be difficult to verify target-side anyway
 	def cachedPublish(cacheFile: File)(g: (IvySbt#Module, PublishConfiguration) => Unit, module: IvySbt#Module, config: PublishConfiguration) => Unit =

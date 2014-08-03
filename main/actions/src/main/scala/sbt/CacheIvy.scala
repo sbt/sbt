@@ -55,6 +55,7 @@ object CacheIvy {
   lazy val updateIC: InputCache[IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil] = implicitly
   /*	def deliverIC: InputCache[IvyConfiguration :+: ModuleSettings :+: DeliverConfiguration :+: HNil] = implicitly
 	def publishIC: InputCache[IvyConfiguration :+: ModuleSettings :+: PublishConfiguration :+: HNil] = implicitly*/
+  lazy val moduleIDSeqIC: InputCache[Seq[ModuleID]] = implicitly
 
   implicit lazy val updateReportFormat: Format[UpdateReport] =
     {
@@ -83,6 +84,21 @@ object CacheIvy {
   implicit def exclusionRuleFormat(implicit sf: Format[String]): Format[ExclusionRule] =
     wrap[ExclusionRule, (String, String, String, Seq[String])](e => (e.organization, e.name, e.artifact, e.configurations), { case (o, n, a, cs) => ExclusionRule(o, n, a, cs) })
   implicit def crossVersionFormat: Format[CrossVersion] = wrap(crossToInt, crossFromInt)
+  implicit def sourcePositionFormat: Format[SourcePosition] =
+    wrap[SourcePosition, (Int, String, Int, Int)](
+      {
+        case NoPosition                        => (0, "", 0, 0)
+        case LinePosition(p, s)                => (1, p, s, 0)
+        case RangePosition(p, LineRange(s, e)) => (2, p, s, e)
+      },
+      {
+        case (0, _, _, _) => NoPosition
+        case (1, p, s, _) => LinePosition(p, s)
+        case (2, p, s, e) => RangePosition(p, LineRange(s, e))
+      }
+    )
+  implicit def unresolvedWarningConfigurationFormat: Format[UnresolvedWarningConfiguration] =
+    wrap[UnresolvedWarningConfiguration, (Seq[(ModuleID, SourcePosition)])](c => (c.modulePositions), { case ps => UnresolvedWarningConfiguration(ps) })
 
   private[this] final val DisabledValue = 0
   private[this] final val BinaryValue = 1
