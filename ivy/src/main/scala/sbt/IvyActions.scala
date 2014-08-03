@@ -5,6 +5,7 @@ package sbt
 
 import java.io.File
 import scala.xml.{ Node => XNode, NodeSeq }
+import collection.mutable
 
 import org.apache.ivy.Ivy
 import org.apache.ivy.core.{ IvyPatternHelper, LogOptions }
@@ -28,6 +29,14 @@ final case class MakePomConfiguration(file: File, moduleInfo: ModuleInfo, config
 // exclude is a map on a restricted ModuleID
 final case class GetClassifiersConfiguration(module: GetClassifiersModule, exclude: Map[ModuleID, Set[String]], configuration: UpdateConfiguration, ivyScala: Option[IvyScala])
 final case class GetClassifiersModule(id: ModuleID, modules: Seq[ModuleID], configurations: Seq[Configuration], classifiers: Seq[String])
+
+final class UnresolvedWarningConfiguration private[sbt] (
+  val modulePositions: Seq[(ModuleID, SourcePosition)])
+object UnresolvedWarningConfiguration {
+  def apply(): UnresolvedWarningConfiguration = apply(Seq())
+  def apply(modulePositions: Seq[(ModuleID, SourcePosition)]): UnresolvedWarningConfiguration =
+    new UnresolvedWarningConfiguration(modulePositions)
+}
 
 /**
  * Configures logging during an 'update'.  `level` determines the amount of other information logged.
@@ -132,23 +141,24 @@ object IvyActions {
    */
   @deprecated("Use updateEither instead.", "0.13.6")
   def update(module: IvySbt#Module, configuration: UpdateConfiguration, log: Logger): UpdateReport =
-    updateEither(module, configuration, log) match {
+    updateEither(module, configuration, UnresolvedWarningConfiguration(), log) match {
       case Right(r) => r
-      case Left(e)  => throw e
+      case Left(w) =>
+        throw w.resolveException
     }
 
   /**
    * Resolves and retrieves dependencies.  'ivyConfig' is used to produce an Ivy file and configuration.
    * 'updateConfig' configures the actual resolution and retrieval process.
    */
-  def updateEither(module: IvySbt#Module, configuration: UpdateConfiguration, log: Logger): Either[ResolveException, UpdateReport] =
+  def updateEither(module: IvySbt#Module, configuration: UpdateConfiguration,
+    uwconfig: UnresolvedWarningConfiguration, log: Logger): Either[UnresolvedWarning, UpdateReport] =
     module.withModule(log) {
       case (ivy, md, default) =>
         val (report, err) = resolve(configuration.logging)(ivy, md, default)
         err match {
           case Some(x) if !configuration.missingOk =>
-            processUnresolved(x, log)
-            Left(x)
+            Left(UnresolvedWarning(x, uwconfig))
           case _ =>
             val cachedDescriptor = ivy.getSettings.getResolutionCacheManager.getResolvedIvyFileInCache(md.getModuleRevisionId)
             val uReport = IvyRetrieve.updateReport(report, cachedDescriptor)
@@ -295,4 +305,60 @@ final class ResolveException(
     val failedPaths: Map[ModuleID, Seq[ModuleID]]) extends RuntimeException(messages.mkString("\n")) {
   def this(messages: Seq[String], failed: Seq[ModuleID]) =
     this(messages, failed, Map(failed map { m => m -> Nil }: _*))
+}
+/**
+ * Represents unresolved dependency warning, which displays reconstructed dependency tree
+ * along with source position of each node.
+ */
+final class UnresolvedWarning private[sbt] (
+  val resolveException: ResolveException,
+  val failedPaths: Seq[Seq[(ModuleID, Option[SourcePosition])]])
+object UnresolvedWarning {
+  private[sbt] def apply(err: ResolveException, config: UnresolvedWarningConfiguration): UnresolvedWarning = {
+    def modulePosition(m0: ModuleID): Option[SourcePosition] =
+      config.modulePositions.find {
+        case (m, p) =>
+          (m.organization == m0.organization) &&
+            (m0.name startsWith m.name) &&
+            (m.revision == m0.revision)
+      } map {
+        case (m, p) => p
+      }
+    val failedPaths = err.failed map { x: ModuleID =>
+      err.failedPaths(x).toList.reverse map { id =>
+        (id, modulePosition(id))
+      }
+    }
+    apply(err, failedPaths)
+  }
+  private[sbt] def apply(err: ResolveException, failedPaths: Seq[Seq[(ModuleID, Option[SourcePosition])]]): UnresolvedWarning =
+    new UnresolvedWarning(err, failedPaths)
+  private[sbt] def sourcePosStr(posOpt: Option[SourcePosition]): String =
+    posOpt match {
+      case Some(LinePosition(path, start)) => s" ($path#L$start)"
+      case Some(RangePosition(path, LineRange(start, end))) => s" ($path#L$start-$end)"
+      case _ => ""
+    }
+  implicit val unresolvedWarningLines: ShowLines[UnresolvedWarning] = ShowLines { a =>
+    val withExtra = a.resolveException.failed.filter(!_.extraDependencyAttributes.isEmpty)
+    val buffer = mutable.ListBuffer[String]()
+    if (!withExtra.isEmpty) {
+      buffer += "\n\tNote: Some unresolved dependencies have extra attributes.  Check that these dependencies exist with the requested attributes."
+      withExtra foreach { id => buffer += "\t\t" + id }
+    }
+    if (!a.failedPaths.isEmpty) {
+      buffer += "\n\tNote: Unresolved dependencies path:"
+      a.failedPaths foreach { path =>
+        if (!path.isEmpty) {
+          val head = path.head
+          buffer += "\t\t" + head._1.toString + sourcePosStr(head._2)
+          path.tail foreach {
+            case (m, pos) =>
+              buffer += "\t\t  +- " + m.toString + sourcePosStr(pos)
+          }
+        }
+      }
+    }
+    buffer.toList
+  }
 }
