@@ -6,7 +6,7 @@ package sbt
 import java.io.File
 import java.net.URL
 import scala.xml.NodeSeq
-import org.apache.ivy.plugins.resolver.{ DependencyResolver, IBiblioResolver }
+import org.apache.ivy.plugins.resolver.DependencyResolver
 
 sealed trait Resolver {
   def name: String
@@ -135,7 +135,7 @@ final case class SftpRepository(name: String, connection: SshConnection, pattern
 
 import Resolver._
 
-object DefaultMavenRepository extends MavenRepository("public", IBiblioResolver.DEFAULT_M2_ROOT)
+object DefaultMavenRepository extends MavenRepository("public", DefaultMavenRepositoryRoot)
 object JavaNet2Repository extends MavenRepository(JavaNet2RepositoryName, JavaNet2RepositoryRoot)
 object JCenterRepository extends MavenRepository(JCenterRepositoryName, JCenterRepositoryRoot)
 object JavaNet1Repository extends JavaNet1Repository
@@ -151,6 +151,7 @@ object Resolver {
   val JavaNet2RepositoryRoot = "http://download.java.net/maven/2"
   val JCenterRepositoryName = "jcenter"
   val JCenterRepositoryRoot = "https://jcenter.bintray.com/"
+  val DefaultMavenRepositoryRoot = "https://repo1.maven.org/maven2/"
 
   // obsolete: kept only for launcher compatibility
   private[sbt] val ScalaToolsReleasesName = "Sonatype OSS Releases"
