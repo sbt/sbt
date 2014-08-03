@@ -491,7 +491,7 @@ as a jar or pom.xml. An example of such an error is:
 ::
 
     [warn]  problem while downloading module descriptor:
-    http://repo1.maven.org/maven2/commons-fileupload/commons-fileupload/1.2.2/commons-fileupload-1.2.2.pom:
+    https://repo1.maven.org/maven2/commons-fileupload/commons-fileupload/1.2.2/commons-fileupload-1.2.2.pom:
     invalid sha1: expected=ad3fda4adc95eb0d061341228cc94845ddb9a6fe computed=0ce5d4a03b07c8b00ab60252e5cacdc708a4e6d8 (1070ms)
 
 The invalid checksum should generally be reported to the repository
