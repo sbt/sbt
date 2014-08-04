@@ -122,8 +122,10 @@ object Scope {
   def projectPrefix(project: ScopeAxis[Reference], show: Reference => String = showProject): String = project.foldStrict(show, "*/", "./")
   def showProject = (ref: Reference) => Reference.display(ref) + "/"
 
+  @deprecated("No longer used", "0.13.6")
   def parseScopedKey(command: String): (Scope, String) =
     {
+      val ScopedKeyRegex2 = """([{](.*?)[}])?((\w*)\/)?(([\w\*]+)\:)?(([\w\-]+)\:\:)?([\w\-]+)""".r
       val ScopedKeyRegex2(_, uriOrNull, _, projectIdOrNull, _, configOrNull, _, inTaskOrNull, key) = command
       val uriOpt = Option(uriOrNull) map { new URI(_) }
       val projectIdOpt = Option(projectIdOrNull)
@@ -147,9 +149,8 @@ object Scope {
       }
       (scope, transformTaskName(key))
     }
-  // TODO: Change to ScopedKeyRegex2 on sbt 1.0
+  @deprecated("No longer used", "0.13.6")
   val ScopedKeyRegex = """((\w+)\/)?((\w+)\:)?([\w\-]+)""".r
-  private[sbt] val ScopedKeyRegex2 = """([{](.*?)[}])?((\w*)\/)?(([\w\*]+)\:)?(([\w\-]+)\:\:)?([\w\-]+)""".r
 
   def transformTaskName(s: String) =
     {
