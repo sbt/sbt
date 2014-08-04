@@ -34,7 +34,7 @@ object Release extends Build {
   ) ++ lameCredentialSettings ++ javaVersionCheckSettings
 
   def snapshotPattern(version: String) = Resolver.localBasePattern.replaceAll("""\[revision\]""", version)
-  def publishResolver: Project.Initialize[Option[Resolver]] = (remoteID, remoteBase) { (id, base) =>
+  def publishResolver: Def.Initialize[Option[Resolver]] = (remoteID, remoteBase) { (id, base) =>
     Some(Resolver.url("publish-" + id, url(base))(Resolver.ivyStylePatterns))
   }
 

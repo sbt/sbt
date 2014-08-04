@@ -11,7 +11,15 @@ object Status {
     commands += stampVersion
   )
   def stampVersion = Command.command("stamp-version") { state =>
-    Project.extract(state).append((version in ThisBuild ~= stamp) :: Nil, state)
+    val extracted = Project.extract(state)
+    val status = extracted.get(publishStatus)
+    // Set new version AND lock down the publishStatus to what it was, as
+    // our release regexes no longer support ivy data format, due to other issues.
+    extracted.append(
+      (version in ThisBuild ~= stamp) ::
+        (publishStatus in ThisBuild := status) ::
+        Nil,
+      state)
   }
   def stamp(v: String): String =
     if (v endsWith Snapshot)
