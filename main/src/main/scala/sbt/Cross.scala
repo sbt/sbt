@@ -74,7 +74,9 @@ object Cross {
         case x if exclude(x) => delegateToGlobal(x.key)
       }
       val fixedSession = session.appendRaw(add ++ delegates)
-      BuiltinCommands.reapply(fixedSession, structure, state)
+      val fixedState = BuiltinCommands.reapply(fixedSession, structure, state)
+      if (!command.isEmpty) command :: fixedState
+      else fixedState
   }
 
   // Creates a delegate for a scoped key that pulls the setting from the global scope.
@@ -98,7 +100,10 @@ object Cross {
     import x._
     val versions = crossVersions(state)
     val current = scalaVersion in currentRef get structure.data map (SwitchCommand + " " + _) toList;
-    if (versions.isEmpty) command :: state else versions.map(SwitchCommand + " " + _ + " " + command) ::: current ::: state
+    if (versions.isEmpty) command :: state
+    else {
+      versions.map(v => s"$SwitchCommand $v $command") ::: current ::: state
+    }
   }
   def crossVersions(state: State): Seq[String] =
     {
