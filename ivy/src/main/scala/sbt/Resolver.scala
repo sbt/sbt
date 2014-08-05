@@ -20,6 +20,10 @@ sealed case class MavenRepository(name: String, root: String) extends Resolver {
   override def toString = name + ": " + root
 }
 
+sealed class JCenter(isSecure: Boolean = false) extends MavenRepository("jcenter", s"http${if (isSecure) "s" else ""}://jcenter.bintray.com/")
+
+sealed class BintrayMavenRepository(subject: String, repo: String, isSecure: Boolean = false) extends MavenRepository(s"bintray$subject/$repo/", s"http${if (isSecure) "s" else ""}://dl.bintray.com/$subject/$repo/")
+
 final class Patterns(val ivyPatterns: Seq[String], val artifactPatterns: Seq[String], val isMavenCompatible: Boolean, val descriptorOptional: Boolean, val skipConsistencyCheck: Boolean) {
   private[sbt] def mavenStyle(): Patterns = Patterns(ivyPatterns, artifactPatterns, true)
   private[sbt] def withDescriptorOptional(): Patterns = Patterns(ivyPatterns, artifactPatterns, isMavenCompatible, true, skipConsistencyCheck)
@@ -135,6 +139,7 @@ final case class SftpRepository(name: String, connection: SshConnection, pattern
 
 import Resolver._
 
+object JCenter extends JCenter(false)
 object DefaultMavenRepository extends MavenRepository("public", IBiblioResolver.DEFAULT_M2_ROOT)
 object JavaNet2Repository extends MavenRepository(JavaNet2RepositoryName, JavaNet2RepositoryRoot)
 object JavaNet1Repository extends JavaNet1Repository
