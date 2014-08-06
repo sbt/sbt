@@ -248,7 +248,7 @@ Syntax summary
 
   def LoadProjectImpl = "loadp"
   def LoadProject = "reload"
-  def LoadProjectBrief = (LoadProject, LoadProjectDetailed)
+  def LoadProjectBrief = (LoadProject, "(Re)loads the current project or changes to plugins project or returns from it.")
   def LoadProjectDetailed = LoadProject +
     s"""
 
