@@ -20,10 +20,6 @@ sealed case class MavenRepository(name: String, root: String) extends Resolver {
   override def toString = name + ": " + root
 }
 
-sealed class JCenter(isSecure: Boolean = false) extends MavenRepository("jcenter", s"http${if (isSecure) "s" else ""}://jcenter.bintray.com/")
-
-sealed class BintrayMavenRepository(subject: String, repo: String, isSecure: Boolean = false) extends MavenRepository(s"bintray$subject/$repo/", s"http${if (isSecure) "s" else ""}://dl.bintray.com/$subject/$repo/")
-
 final class Patterns(val ivyPatterns: Seq[String], val artifactPatterns: Seq[String], val isMavenCompatible: Boolean, val descriptorOptional: Boolean, val skipConsistencyCheck: Boolean) {
   private[sbt] def mavenStyle(): Patterns = Patterns(ivyPatterns, artifactPatterns, true)
   private[sbt] def withDescriptorOptional(): Patterns = Patterns(ivyPatterns, artifactPatterns, isMavenCompatible, true, skipConsistencyCheck)
@@ -139,9 +135,9 @@ final case class SftpRepository(name: String, connection: SshConnection, pattern
 
 import Resolver._
 
-object JCenter extends JCenter(false)
 object DefaultMavenRepository extends MavenRepository("public", IBiblioResolver.DEFAULT_M2_ROOT)
 object JavaNet2Repository extends MavenRepository(JavaNet2RepositoryName, JavaNet2RepositoryRoot)
+object JCenterRepository extends MavenRepository(JCenterRepositoryName, JCenterRepositoryRoot)
 object JavaNet1Repository extends JavaNet1Repository
 sealed trait JavaNet1Repository extends Resolver {
   def name = "java.net Maven1 Repository"
@@ -151,6 +147,10 @@ object Resolver {
   val TypesafeRepositoryRoot = "http://repo.typesafe.com/typesafe"
   val SbtPluginRepositoryRoot = "http://repo.scala-sbt.org/scalasbt"
   val SonatypeRepositoryRoot = "https://oss.sonatype.org/content/repositories"
+  val JavaNet2RepositoryName = "java.net Maven2 Repository"
+  val JavaNet2RepositoryRoot = "http://download.java.net/maven/2"
+  val JCenterRepositoryName = "jcenter"
+  val JCenterRepositoryRoot = "https://jcenter.bintray.com/"
 
   // obsolete: kept only for launcher compatibility
   private[sbt] val ScalaToolsReleasesName = "Sonatype OSS Releases"
@@ -160,13 +160,12 @@ object Resolver {
   private[sbt] val ScalaToolsReleases = new MavenRepository(ScalaToolsReleasesName, ScalaToolsReleasesRoot)
   private[sbt] val ScalaToolsSnapshots = new MavenRepository(ScalaToolsSnapshotsName, ScalaToolsSnapshotsRoot)
 
-  val JavaNet2RepositoryName = "java.net Maven2 Repository"
-  val JavaNet2RepositoryRoot = "http://download.java.net/maven/2"
-
   def typesafeRepo(status: String) = new MavenRepository("typesafe-" + status, TypesafeRepositoryRoot + "/" + status)
   def typesafeIvyRepo(status: String) = url("typesafe-ivy-" + status, new URL(TypesafeRepositoryRoot + "/ivy-" + status + "/"))(ivyStylePatterns)
   def sbtPluginRepo(status: String) = url("sbt-plugin-" + status, new URL(SbtPluginRepositoryRoot + "/sbt-plugin-" + status + "/"))(ivyStylePatterns)
   def sonatypeRepo(status: String) = new MavenRepository("sonatype-" + status, SonatypeRepositoryRoot + "/" + status)
+  def bintrayRepo(owner: String, repo: String) = new MavenRepository(s"bintray-$owner-$repo", s"https://dl.bintray.com/$owner/$repo/")
+  def jcenterRepo = JCenterRepository
 
   /** Add the local and Maven Central repositories to the user repositories.  */
   def withDefaultResolvers(userResolvers: Seq[Resolver]): Seq[Resolver] =
