@@ -25,6 +25,10 @@ lazy val projH = project.enablePlugins(TopB)
 lazy val projI = project.enablePlugins(TopC)
 
 
+// Tests that we can disable an auto-enabled root plugin
+lazy val disableAutoNoRequirePlugin = project.disablePlugins(OrgPlugin)
+
+
 disablePlugins(plugins.IvyPlugin)
 
 check := {

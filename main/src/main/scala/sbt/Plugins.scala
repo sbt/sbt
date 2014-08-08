@@ -156,8 +156,13 @@ object Plugins extends PluginsFunctions
 			// circular dependencies in the logic.
 			val allRequirementsClause = defined.filterNot(_.isRoot).flatMap(d => asRequirementsClauses(d))
 			val allEnabledByClause = defined.filterNot(_.isRoot).flatMap(d => asEnabledByClauses(d))
+
+      // Note: Here is where the function begins.  We're given a list of plugins now.
 			(requestedPlugins, log) => {
-				val alwaysEnabled: List[AutoPlugin] = defined.filter(_.isAlwaysEnabled)
+        def explicitlyDisabled(p: AutoPlugin): Boolean = hasExclude(requestedPlugins, p)
+				val alwaysEnabled: List[AutoPlugin] = defined.filter(_.isAlwaysEnabled).filterNot(explicitlyDisabled)
+        System.err.println(s"Always Enabled Plugins = ${alwaysEnabled.mkString(", ")}")
+        System.err.println(s"Requested = $requestedPlugins")
 				val knowlege0: Set[Atom] = ((flatten(requestedPlugins) ++ alwaysEnabled) collect {
 					case x: AutoPlugin => Atom(x.label)
 				}).toSet
@@ -282,6 +287,25 @@ ${listConflicts(conflicting)}""")
 	private[sbt] def asExclusions(ap: AutoPlugin): List[AutoPlugin] = flatten(ap.requires).toList collect {
 		case Exclude(x) => x
 	}
+  // TODO - This doesn't handle nested AND boolean logic...
+  private[sbt] def hasExclude(n: Plugins, p: AutoPlugin): Boolean = n match {
+    case `p` => false
+    case Exclude(`p`) => true
+    // TODO - This is stupidly advanced.  We do a nested check through possible and-ed
+    // lists of plugins exclusions to see if the plugin ever winds up in an excluded=true case.
+    // This would handle things like !!p or !(p && z)
+    case Exclude(n) => hasInclude(n, p)
+    case And(ns) => ns.forall(n => hasExclude(n, p))
+    case b: Basic => false
+    case Empty => false
+  }
+  private[sbt] def hasInclude(n: Plugins, p: AutoPlugin): Boolean = n match {
+    case `p` => true
+    case Exclude(n) => hasExclude(n, p)
+    case And(ns) => ns.forall(n => hasInclude(n, p))
+    case b: Basic => false
+    case Empty => false
+  }
 	private[this] def flattenConvert(n: Plugins): Seq[Literal] = n match {
 		case And(ns) => convertAll(ns)
 		case b: Basic => convertBasic(b) :: Nil
