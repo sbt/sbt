@@ -56,6 +56,7 @@ object CacheIvy {
   /*	def deliverIC: InputCache[IvyConfiguration :+: ModuleSettings :+: DeliverConfiguration :+: HNil] = implicitly
 	def publishIC: InputCache[IvyConfiguration :+: ModuleSettings :+: PublishConfiguration :+: HNil] = implicitly*/
   lazy val moduleIDSeqIC: InputCache[Seq[ModuleID]] = implicitly
+  lazy val modulePositionMapFormat: Format[Map[ModuleID, SourcePosition]] = implicitly
 
   implicit lazy val updateReportFormat: Format[UpdateReport] =
     {
@@ -97,9 +98,6 @@ object CacheIvy {
         case (2, p, s, e) => RangePosition(p, LineRange(s, e))
       }
     )
-  implicit def unresolvedWarningConfigurationFormat: Format[UnresolvedWarningConfiguration] =
-    wrap[UnresolvedWarningConfiguration, (Seq[(ModuleID, SourcePosition)])](c => (c.modulePositions), { case ps => UnresolvedWarningConfiguration(ps) })
-
   private[this] final val DisabledValue = 0
   private[this] final val BinaryValue = 1
   private[this] final val FullValue = 2

@@ -1101,7 +1101,8 @@ object Classpaths {
     transitiveUpdate <<= transitiveUpdateTask,
     updateCacheName := "update_cache" + (if (crossPaths.value) s"_${scalaBinaryVersion.value}" else ""),
     evictionWarningOptions in update := EvictionWarningOptions.default,
-    unresolvedWarningConfiguration in update <<= unresolvedWarningConfigurationTask,
+    dependencyPositions <<= dependencyPositionsTask,
+    unresolvedWarningConfiguration in update := UnresolvedWarningConfiguration(dependencyPositions.value),
     update <<= updateTask tag (Tags.Update, Tags.Network),
     update := {
       import ShowLines._
@@ -1220,7 +1221,7 @@ object Classpaths {
     updateReportFormat,
     excludeMap,
     moduleIDSeqIC,
-    unresolvedWarningConfigurationFormat
+    modulePositionMapFormat
   }
 
   def withExcludes(out: File, classifiers: Seq[String], lock: xsbti.GlobalLock)(f: Map[ModuleID, Set[String]] => UpdateReport): UpdateReport =
@@ -1314,13 +1315,14 @@ object Classpaths {
     }
   private[this] def fileUptodate(file: File, stamps: Map[File, Long]): Boolean =
     stamps.get(file).forall(_ == file.lastModified)
-  private[sbt] def unresolvedWarningConfigurationTask: Initialize[Task[UnresolvedWarningConfiguration]] = Def.task {
+  private[sbt] def dependencyPositionsTask: Initialize[Task[Map[ModuleID, SourcePosition]]] = Def.task {
     val projRef = thisProjectRef.value
     val st = state.value
     val s = streams.value
     val cacheFile = s.cacheDirectory / updateCacheName.value
-    implicit val uwConfigCache = moduleIDSeqIC
-    def modulePositions: Seq[(ModuleID, SourcePosition)] =
+    implicit val depSourcePosCache = moduleIDSeqIC
+    implicit val outFormat = modulePositionMapFormat
+    def modulePositions: Map[ModuleID, SourcePosition] =
       try {
         val extracted = (Project extract st)
         val sk = (libraryDependencies in (GlobalScope in projRef)).scopedKey
@@ -1329,18 +1331,19 @@ object Classpaths {
           (s.key.key == libraryDependencies.key) &&
             (s.key.scope.project == Select(projRef))
         }
-        settings flatMap {
+        Map(settings flatMap {
           case s: Setting[Seq[ModuleID]] @unchecked =>
             s.init.evaluate(empty) map { _ -> s.pos }
-        }
+        }: _*)
       } catch {
-        case _: Throwable => Seq()
+        case _: Throwable => Map()
       }
-    val outCacheFile = cacheFile / "output_uwc"
-    val f = Tracked.inputChanged(cacheFile / "input_uwc") { (inChanged: Boolean, in: Seq[ModuleID]) =>
-      val outCache = Tracked.lastOutput[Seq[ModuleID], UnresolvedWarningConfiguration](outCacheFile) {
+
+    val outCacheFile = cacheFile / "output_dsp"
+    val f = Tracked.inputChanged(cacheFile / "input_dsp") { (inChanged: Boolean, in: Seq[ModuleID]) =>
+      val outCache = Tracked.lastOutput[Seq[ModuleID], Map[ModuleID, SourcePosition]](outCacheFile) {
         case (_, Some(out)) if !inChanged => out
-        case _                            => UnresolvedWarningConfiguration(modulePositions)
+        case _                            => modulePositions
       }
       outCache(in)
     }
