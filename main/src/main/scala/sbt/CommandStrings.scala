@@ -273,9 +273,6 @@ Runs the following commands.
 defaults
 	Registers default commands.
 
-load-commands -base ~/.sbt/commands
-	Builds and loads command definitions from ~/.sbt/commands
-
 < ~/.sbtrc
 < .sbtrc
 	Runs commands from ~/.sbtrc and ./.sbtrc if they exist
