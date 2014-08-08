@@ -348,8 +348,21 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 
   val DefaultStartLine = 0
   private[this] def makeModuleName(hash: String): String = "$" + Hash.halve(hash)
-  private[this] def noImports = new EvalImports(Nil, "")
-  private[this] def mkUnit(srcName: String, firstLine: Int, s: String) = new CompilationUnit(new EvalSourceFile(srcName, firstLine, s))
+  private[sbt] def noImports = new EvalImports(Nil, "")
+  private[sbt] def mkUnit(srcName: String, firstLine: Int, s: String) = new CompilationUnit(new EvalSourceFile(srcName, firstLine, s)) {
+    // This is overridden as a workaround for #1181/#1501,
+    // When the compiler reports an error back, the position sometimes comes back with source set to NoSourceFile. 
+    override def error(pos0: Position, msg: String) = {
+      import scala.reflect.internal.util._
+      val pos = pos0 match {
+        case op: OffsetPosition if op.point >= 0 =>
+          if (op.source eq source) op
+          else new OffsetPosition(source, op.point)
+        case _ => pos0
+      }
+      super.error(pos, msg)
+    }
+  }
   private[this] def checkError(label: String) = if (reporter.hasErrors) throw new EvalException(label)
 
   private[this] final class EvalSourceFile(name: String, startLine: Int, contents: String) extends BatchSourceFile(name, contents) {
