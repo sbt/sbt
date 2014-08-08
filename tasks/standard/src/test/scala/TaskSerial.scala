@@ -27,6 +27,9 @@ object TaskSerial extends Properties("task serial") {
     checkResult(eval(() => i), i)
   }
 
+  // Note - This test is flaky on cpu/mem pressured machines, so we ignore it for now.
+  // Any test using a timeout (especially 100ms) on EC2 is guaranteed flaky.
+  /*
   // verifies that all tasks get scheduled simultaneously (1-3) or do not (4)
   property("Allows arbitrary task limit") = forAll(MaxWorkersGen) { (sze: Int) =>
     val size = math.max(1, sze)
@@ -38,6 +41,7 @@ object TaskSerial extends Properties("task serial") {
         checkArbitrary(size, limitTotal[Task[_]](halfSize), size <= halfSize)
     all :| ("Size: " + size) :| ("Half size: " + halfSize)
   }
+  */
 
   def checkArbitrary(size: Int, restrictions: ConcurrentRestrictions[Task[_]], shouldSucceed: Boolean) =
     {
