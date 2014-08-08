@@ -31,10 +31,10 @@ final case class GetClassifiersConfiguration(module: GetClassifiersModule, exclu
 final case class GetClassifiersModule(id: ModuleID, modules: Seq[ModuleID], configurations: Seq[Configuration], classifiers: Seq[String])
 
 final class UnresolvedWarningConfiguration private[sbt] (
-  val modulePositions: Seq[(ModuleID, SourcePosition)])
+  val modulePositions: Map[ModuleID, SourcePosition])
 object UnresolvedWarningConfiguration {
-  def apply(): UnresolvedWarningConfiguration = apply(Seq())
-  def apply(modulePositions: Seq[(ModuleID, SourcePosition)]): UnresolvedWarningConfiguration =
+  def apply(): UnresolvedWarningConfiguration = apply(Map())
+  def apply(modulePositions: Map[ModuleID, SourcePosition]): UnresolvedWarningConfiguration =
     new UnresolvedWarningConfiguration(modulePositions)
 }
 
