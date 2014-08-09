@@ -6,7 +6,7 @@ package sbt
 import java.io.File
 import java.net.URL
 import scala.xml.NodeSeq
-import org.apache.ivy.plugins.resolver.{ DependencyResolver, IBiblioResolver }
+import org.apache.ivy.plugins.resolver.DependencyResolver
 
 sealed trait Resolver {
   def name: String
@@ -135,7 +135,7 @@ final case class SftpRepository(name: String, connection: SshConnection, pattern
 
 import Resolver._
 
-object DefaultMavenRepository extends MavenRepository("public", IBiblioResolver.DEFAULT_M2_ROOT)
+object DefaultMavenRepository extends MavenRepository("public", centralRepositoryRoot(useSecureResolvers))
 object JavaNet2Repository extends MavenRepository(JavaNet2RepositoryName, JavaNet2RepositoryRoot)
 object JCenterRepository extends MavenRepository(JCenterRepositoryName, JCenterRepositoryRoot)
 object JavaNet1Repository extends JavaNet1Repository
@@ -144,6 +144,8 @@ sealed trait JavaNet1Repository extends Resolver {
 }
 
 object Resolver {
+  private[sbt] def useSecureResolvers = sys.props.get("sbt.repository.secure") map { _.toLowerCase == "true" } getOrElse true
+
   val TypesafeRepositoryRoot = "http://repo.typesafe.com/typesafe"
   val SbtPluginRepositoryRoot = "http://repo.scala-sbt.org/scalasbt"
   val SonatypeRepositoryRoot = "https://oss.sonatype.org/content/repositories"
@@ -151,6 +153,8 @@ object Resolver {
   val JavaNet2RepositoryRoot = "http://download.java.net/maven/2"
   val JCenterRepositoryName = "jcenter"
   val JCenterRepositoryRoot = "https://jcenter.bintray.com/"
+  val DefaultMavenRepositoryRoot = "https://repo1.maven.org/maven2/"
+  private[sbt] def centralRepositoryRoot(secure: Boolean) = (if (secure) "https" else "http") + "://repo1.maven.org/maven2/"
 
   // obsolete: kept only for launcher compatibility
   private[sbt] val ScalaToolsReleasesName = "Sonatype OSS Releases"
