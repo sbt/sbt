@@ -30,6 +30,8 @@ lazy val common = project.
 lazy val dependent = project.
   settings(customIvyPaths: _*).
   settings(
+    // Uncomment the following to test the before/after
+    // updateOptions := updateOptions.value.withLatestSnapshots(false),
     // Ignore the inter-project resolver, so we force to look remotely.
     resolvers += sharedResolver,
     fullResolvers := fullResolvers.value.filterNot(_==projectResolver.value),
