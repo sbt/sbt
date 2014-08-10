@@ -1,6 +1,3 @@
-# First clean any previous test state
-> cleanLocalCache
-
 # Validate that a bad dependency fails the compile
 $ copy-file changes/BadCommon.scala common/src/main/scala/Common.scala
 > common/publish
@@ -11,21 +8,10 @@ $ copy-file changes/BadCommon.scala common/src/main/scala/Common.scala
 
 # Push new good change to a DIFFERENT repository.
 $ copy-file changes/GoodCommon.scala common/src/main/scala/Common.scala
+# Ensure timestamp change
+$ sleep 1000
 > common/publishLocal
 
-# Force the update task to look for the new -SNAPSHOT.
 > dependent/update
-
-
-$ copy-file changes/BadCommon.scala common/src/main/scala/Common.scala
-> common/publish
-> dependent/update
-
-
-$ copy-file changes/GoodCommon.scala common/src/main/scala/Common.scala
-> common/publishLocal
-> dependent/update
-
-
 # This should compile now, because Ivy should look at each repository for the most up-to-date file.
 > dependent/compile
