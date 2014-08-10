@@ -9,19 +9,26 @@ import java.io.File
  *
  * See also UpdateConfiguration in IvyActions.scala.
  */
-final class UpdateOptions(
+final class UpdateOptions private[sbt] (
+    /** If set to true, check all resolvers for snapshots. */
+    val latestSnapshots: Boolean,
     /** If set to true, use consolidated resolution. */
     val consolidatedResolution: Boolean) {
 
+  def withLatestSnapshots(latestSnapshots: Boolean): UpdateOptions =
+    copy(latestSnapshots = latestSnapshots)
   def withConsolidatedResolution(consolidatedResolution: Boolean): UpdateOptions =
     copy(consolidatedResolution = consolidatedResolution)
 
   private[sbt] def copy(
+    latestSnapshots: Boolean = this.latestSnapshots,
     consolidatedResolution: Boolean = this.consolidatedResolution): UpdateOptions =
-    new UpdateOptions(consolidatedResolution)
+    new UpdateOptions(latestSnapshots, consolidatedResolution)
 }
 
 object UpdateOptions {
   def apply(): UpdateOptions =
-    new UpdateOptions(false)
+    new UpdateOptions(
+      latestSnapshots = true,
+      consolidatedResolution = false)
 }
