@@ -41,10 +41,11 @@ object SettingsTest extends Properties("settings") {
   final def derivedSettings(nr: Int): Prop =
     {
       val genScopedKeys = {
-        val attrKeys = mkAttrKeys[Int](nr)
+        val attrKeys = mkAttrKeys[Int](nr).filter(!_.isEmpty)
         attrKeys map (_ map (ak => ScopedKey(Scope(0), ak)))
-      }
+      }.label("scopedKeys")
       forAll(genScopedKeys) { scopedKeys =>
+        // Note; It's evil to grab last IF you haven't verified the set can't be empty.
         val last = scopedKeys.last
         val derivedSettings: Seq[Setting[Int]] = (
           for {
@@ -65,10 +66,10 @@ object SettingsTest extends Properties("settings") {
       val nonEmptyAlphaStr =
         nonEmptyListOf(alphaChar).map(_.mkString).suchThat(_.forall(_.isLetter))
 
-      for {
+      (for {
         list <- Gen.listOfN(nr, nonEmptyAlphaStr) suchThat (l => l.size == l.distinct.size)
         item <- list
-      } yield AttributeKey[T](item)
+      } yield AttributeKey[T](item)).label(s"mkAttrKeys($nr)")
     }
 
   property("Derived setting(s) replace DerivedSetting in the Seq[Setting[_]]") = derivedKeepsPosition
