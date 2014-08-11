@@ -155,8 +155,6 @@ object Plugins extends PluginsFunctions {
       (requestedPlugins, log) => {
         def explicitlyDisabled(p: AutoPlugin): Boolean = hasExclude(requestedPlugins, p)
         val alwaysEnabled: List[AutoPlugin] = defined.filter(_.isAlwaysEnabled).filterNot(explicitlyDisabled)
-        System.err.println(s"Always Enabled Plugins = ${alwaysEnabled.mkString(", ")}")
-        System.err.println(s"Requested = $requestedPlugins")
         val knowlege0: Set[Atom] = ((flatten(requestedPlugins) ++ alwaysEnabled) collect {
           case x: AutoPlugin => Atom(x.label)
         }).toSet
