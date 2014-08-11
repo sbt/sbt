@@ -373,6 +373,7 @@ private object IvySbt {
                   // Now that we know the real latest revision, let's force Ivy to use it
                   val artifactOpt = findFirstArtifactRef(rmr.getDescriptor, dd, data, resolver)
                   artifactOpt match {
+                    case None if resolver.getName == "inter-project" => // do nothing
                     case None => throw new RuntimeException("\t" + resolver.getName
                       + ": no ivy file nor artifact found for " + rmr)
                     case Some(artifactRef) =>
