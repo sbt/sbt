@@ -23,6 +23,11 @@ import scala.annotation.tailrec
  *
  */
 object EvaluateConfigurations {
+
+  type LazyClassLoaded[T] = ClassLoader => T
+
+  private[sbt] case class TrackedEvalResult[T](generated: Seq[File], result: LazyClassLoaded[T])
+
   /**
    * This represents the parsed expressions in a build sbt, as well as where they were defined.
    */
@@ -38,7 +43,7 @@ object EvaluateConfigurations {
    *  raw sbt-types that can be accessed and used.
    */
   @deprecated("We no longer merge build.sbt files together unless they are in the same directory.", "0.13.6")
-  def apply(eval: Eval, srcs: Seq[File], imports: Seq[String]): ClassLoader => LoadedSbtFile =
+  def apply(eval: Eval, srcs: Seq[File], imports: Seq[String]): LazyClassLoaded[LoadedSbtFile] =
     {
       val loadFiles = srcs.sortBy(_.getName) map { src => evaluateSbtFile(eval, src, IO.readLines(src), imports, 0) }
       loader => (LoadedSbtFile.empty /: loadFiles) { (loaded, load) => loaded merge load(loader) }
@@ -49,7 +54,7 @@ object EvaluateConfigurations {
    *
    * Note: This ignores any non-Setting[_] values in the file.
    */
-  def evaluateConfiguration(eval: Eval, src: File, imports: Seq[String]): ClassLoader => Seq[Setting[_]] =
+  def evaluateConfiguration(eval: Eval, src: File, imports: Seq[String]): LazyClassLoaded[Seq[Setting[_]]] =
     evaluateConfiguration(eval, src, IO.readLines(src), imports, 0)
 
   /**
@@ -76,7 +81,7 @@ object EvaluateConfigurations {
    *
    * @return Just the Setting[_] instances defined in the .sbt file.
    */
-  def evaluateConfiguration(eval: Eval, file: File, lines: Seq[String], imports: Seq[String], offset: Int): ClassLoader => Seq[Setting[_]] =
+  def evaluateConfiguration(eval: Eval, file: File, lines: Seq[String], imports: Seq[String], offset: Int): LazyClassLoaded[Seq[Setting[_]]] =
     {
       val l = evaluateSbtFile(eval, file, lines, imports, offset)
       loader => l(loader).settings
@@ -93,7 +98,7 @@ object EvaluateConfigurations {
    * @return A function which can take an sbt classloader and return the raw types/configuratoin
    *         which was compiled/parsed for the given file.
    */
-  private[sbt] def evaluateSbtFile(eval: Eval, file: File, lines: Seq[String], imports: Seq[String], offset: Int): ClassLoader => LoadedSbtFile =
+  private[sbt] def evaluateSbtFile(eval: Eval, file: File, lines: Seq[String], imports: Seq[String], offset: Int): LazyClassLoaded[LoadedSbtFile] =
     {
       // TODO - Store the file on the LoadedSbtFile (or the parent dir) so we can accurately do
       //        detection for which project project manipulations should be applied.
@@ -112,13 +117,15 @@ object EvaluateConfigurations {
           evaluateDslEntry(eval, name, allImports, dslExpression, range)
       }
       eval.unlinkDeferred()
+      // Tracks all the files we generated from evaluating the sbt file.
+      val allGeneratedFiles = (definitions.generated ++ dslEntries.flatMap(_.generated))
       loader => {
         val projects =
           definitions.values(loader).collect {
             case p: Project => resolveBase(file.getParentFile, p)
           }
         val (settingsRaw, manipulationsRaw) =
-          dslEntries map (_ apply loader) partition {
+          dslEntries map (_.result apply loader) partition {
             case internals.ProjectSettings(_) => true
             case _                            => false
           }
@@ -130,7 +137,7 @@ object EvaluateConfigurations {
           case internals.ProjectManipulation(f) => f
         }
         // TODO -get project manipulations.
-        new LoadedSbtFile(settings, projects, importDefs, manipulations, definitions)
+        new LoadedSbtFile(settings, projects, importDefs, manipulations, definitions, allGeneratedFiles)
       }
     }
   /** move a project to be relative to this file after we've evaluated it. */
@@ -161,18 +168,22 @@ object EvaluateConfigurations {
    * @param range The original position in source of the expression, for error messages.
    *
    * @return A method that given an sbt classloader, can return the actual [[DslEntry]] defined by
-   *         the expression.
+   *         the expression, and the sequence of .class files generated.
    */
-  private[sbt] def evaluateDslEntry(eval: Eval, name: String, imports: Seq[(String, Int)], expression: String, range: LineRange): ClassLoader => internals.DslEntry = {
+  private[sbt] def evaluateDslEntry(eval: Eval, name: String, imports: Seq[(String, Int)], expression: String, range: LineRange): TrackedEvalResult[internals.DslEntry] = {
+    // TODO - Should we try to namespace these between.sbt files?  IF they hash to the same value, they may actually be
+    // exactly the same setting, so perhaps we don't care?
     val result = try {
       eval.eval(expression, imports = new EvalImports(imports, name), srcName = name, tpeName = Some(SettingsDefinitionName), line = range.start)
     } catch {
       case e: sbt.compiler.EvalException => throw new MessageOnlyException(e.getMessage)
     }
-    loader => {
-      val pos = RangePosition(name, range shift 1)
-      result.getValue(loader).asInstanceOf[internals.DslEntry].withPos(pos)
-    }
+    // TODO - keep track of configuration classes defined.
+    TrackedEvalResult(result.generated,
+      loader => {
+        val pos = RangePosition(name, range shift 1)
+        result.getValue(loader).asInstanceOf[internals.DslEntry].withPos(pos)
+      })
   }
 
   /**
@@ -189,9 +200,9 @@ object EvaluateConfigurations {
    *         the expression.
    */
   @deprecated("Build DSL now includes non-Setting[_] type settings.", "0.13.6") // Note: This method is used by the SET command, so we may want to evaluate that sucker a bit.
-  def evaluateSetting(eval: Eval, name: String, imports: Seq[(String, Int)], expression: String, range: LineRange): ClassLoader => Seq[Setting[_]] =
+  def evaluateSetting(eval: Eval, name: String, imports: Seq[(String, Int)], expression: String, range: LineRange): LazyClassLoaded[Seq[Setting[_]]] =
     {
-      evaluateDslEntry(eval, name, imports, expression, range) andThen {
+      evaluateDslEntry(eval, name, imports, expression, range).result andThen {
         case internals.ProjectSettings(values) => values
         case _                                 => Nil
       }

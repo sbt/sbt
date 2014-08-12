@@ -153,8 +153,8 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
           finally { unlinkAll() }
       }
 
-      val classFiles = getClassFiles(backing, moduleName)
-      new EvalIntermediate(extra, loader, classFiles, moduleName)
+      val generatedFiles = getGeneratedFiles(backing, moduleName)
+      new EvalIntermediate(extra, loader, generatedFiles, moduleName)
     }
   // location of the cached type or definition information
   private[this] def cacheFile(base: File, moduleName: String): File = new File(base, moduleName + ".cache")
@@ -254,11 +254,20 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 
   private[this] def classExists(dir: File, name: String) = (new File(dir, name + ".class")).exists
   // TODO: use the code from Analyzer
+  private[this] def getGeneratedFiles(backing: Option[File], moduleName: String): Seq[File] =
+    backing match {
+      case None      => Nil
+      case Some(dir) => dir listFiles moduleFileFilter(moduleName)
+    }
   private[this] def getClassFiles(backing: Option[File], moduleName: String): Seq[File] =
     backing match {
       case None      => Nil
       case Some(dir) => dir listFiles moduleClassFilter(moduleName)
     }
+  private[this] def moduleFileFilter(moduleName: String) = new java.io.FilenameFilter {
+    def accept(dir: File, s: String) =
+      (s contains moduleName)
+  }
   private[this] def moduleClassFilter(moduleName: String) = new java.io.FilenameFilter {
     def accept(dir: File, s: String) =
       (s contains moduleName) && (s endsWith ".class")

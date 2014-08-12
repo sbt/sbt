@@ -1,0 +1,3 @@
+organization := "more"
+
+version := "settings"

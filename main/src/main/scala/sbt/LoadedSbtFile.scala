@@ -14,17 +14,19 @@ private[sbt] final class LoadedSbtFile(
     val manipulations: Seq[Project => Project],
     // TODO - we may want to expose a simpler interface on top of here for the set command,
     // rather than what we have now...
-    val definitions: DefinedSbtValues) {
-  @deprecated("LoadedSbtFiles are no longer directly merged.", "0.13.6")
+    val definitions: DefinedSbtValues,
+    val generatedFiles: Seq[File]) {
+  // We still use merge for now.  We track originating sbt file in an alternative manner.
   def merge(o: LoadedSbtFile): LoadedSbtFile =
     new LoadedSbtFile(
       settings ++ o.settings,
       projects ++ o.projects,
       importedDefs ++ o.importedDefs,
       manipulations,
-      definitions zip o.definitions)
+      definitions zip o.definitions,
+      generatedFiles ++ o.generatedFiles)
 
-  def clearProjects = new LoadedSbtFile(settings, Nil, importedDefs, manipulations, definitions)
+  def clearProjects = new LoadedSbtFile(settings, Nil, importedDefs, manipulations, definitions, generatedFiles)
 }
 
 /**
@@ -74,6 +76,6 @@ private[sbt] object DefinedSbtValues {
 
 private[sbt] object LoadedSbtFile {
   /** Represents an empty .sbt file: no Projects, imports, or settings.*/
-  def empty = new LoadedSbtFile(Nil, Nil, Nil, Nil, DefinedSbtValues.empty)
+  def empty = new LoadedSbtFile(Nil, Nil, Nil, Nil, DefinedSbtValues.empty, Nil)
 }
 
