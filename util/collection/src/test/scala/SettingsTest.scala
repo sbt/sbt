@@ -37,25 +37,39 @@ object SettingsTest extends Properties("settings") {
       evaluate(setting(chk, iterate(top)) :: Nil); true
     }
 
-  property("Derived setting chain depending on (prev derived, normal setting)") = forAllNoShrink(Gen.choose(1, 100)) { derivedSettings }
+  property("Derived setting chain depending on (prev derived, normal setting)") = forAllNoShrink(Gen.choose(1, 100).label("numSettings")) { derivedSettings }
   final def derivedSettings(nr: Int): Prop =
     {
       val genScopedKeys = {
-        val attrKeys = mkAttrKeys[Int](nr)
+        // We wan
+        // t to generate lists of keys that DO NOT inclue the "ch" key we use to check thigns.
+        val attrKeys = mkAttrKeys[Int](nr).filter(_.forall(_.label != "ch"))
         attrKeys map (_ map (ak => ScopedKey(Scope(0), ak)))
-      }
+      }.label("scopedKeys").filter(!_.isEmpty)
       forAll(genScopedKeys) { scopedKeys =>
-        val last = scopedKeys.last
-        val derivedSettings: Seq[Setting[Int]] = (
-          for {
-            List(scoped0, scoped1) <- chk :: scopedKeys sliding 2
-            nextInit = if (scoped0 == chk) chk
-            else (scoped0 zipWith chk) { (p, _) => p + 1 }
-          } yield derive(setting(scoped1, nextInit))
-        ).toSeq
+        try {
+          // Note; It's evil to grab last IF you haven't verified the set can't be empty.
+          val last = scopedKeys.last
+          val derivedSettings: Seq[Setting[Int]] = (
+            for {
+              List(scoped0, scoped1) <- chk :: scopedKeys sliding 2
+              nextInit = if (scoped0 == chk) chk
+              else (scoped0 zipWith chk) { (p, _) => p + 1 }
+            } yield derive(setting(scoped1, nextInit))
+          ).toSeq
 
-        { checkKey(last, Some(nr - 1), evaluate(setting(chk, value(0)) +: derivedSettings)) :| "Not derived?" } &&
-          { checkKey(last, None, evaluate(derivedSettings)) :| "Should not be derived" }
+          {
+            // Note: This causes a cycle refernec error, quite frequently.
+            checkKey(last, Some(nr - 1), evaluate(setting(chk, value(0)) +: derivedSettings)) :| "Not derived?"
+          } && {
+            checkKey(last, None, evaluate(derivedSettings)) :| "Should not be derived"
+          }
+        } catch {
+          case t: Throwable =>
+            // TODO - For debugging only.
+            t.printStackTrace(System.err)
+            throw t
+        }
       }
     }
 
@@ -65,10 +79,10 @@ object SettingsTest extends Properties("settings") {
       val nonEmptyAlphaStr =
         nonEmptyListOf(alphaChar).map(_.mkString).suchThat(_.forall(_.isLetter))
 
-      for {
+      (for {
         list <- Gen.listOfN(nr, nonEmptyAlphaStr) suchThat (l => l.size == l.distinct.size)
         item <- list
-      } yield AttributeKey[T](item)
+      } yield AttributeKey[T](item)).label(s"mkAttrKeys($nr)")
     }
 
   property("Derived setting(s) replace DerivedSetting in the Seq[Setting[_]]") = derivedKeepsPosition
