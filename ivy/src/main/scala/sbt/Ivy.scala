@@ -81,13 +81,6 @@ final class IvySbt(val configuration: IvyConfiguration) {
           IvySbt.setResolvers(is, i.resolvers, i.otherResolvers, i.localOnly, configuration.updateOptions, configuration.log)
           IvySbt.setModuleConfigurations(is, i.moduleConfigurations, configuration.log)
       }
-      // is.addVersionMatcher(new ExactVersionMatcher {
-      //   override def isDynamic(askedMrid: ModuleRevisionId): Boolean = {
-      //     askedMrid.getRevision endsWith "-SNAPSHOT"
-      //   }
-      //   override def accept(askedMrid: ModuleRevisionId, foundMrid: ModuleRevisionId): Boolean =
-      //     askedMrid.getRevision == foundMrid.getRevision
-      // })
       is
     }
   private lazy val ivy: Ivy =
@@ -438,12 +431,13 @@ private object IvySbt {
                 case _ =>
                   None
               }
-            val artifactRefs = md.getConfigurations.toVector flatMap { conf =>
-              md.getArtifacts(conf.getName).toVector flatMap { af =>
-                artifactRef(af, data.getDate).toVector
+            val artifactRefs = md.getConfigurations.toIterator flatMap { conf =>
+              md.getArtifacts(conf.getName).toIterator flatMap { af =>
+                artifactRef(af, data.getDate).toIterator
               }
             }
-            artifactRefs.headOption
+            if (artifactRefs.hasNext) Some(artifactRefs.next)
+            else None
           }
         /** Ported from ChainResolver#forcedRevision. */
         private[this] def forcedRevision(rmr: ResolvedModuleRevision): ResolvedModuleRevision =
