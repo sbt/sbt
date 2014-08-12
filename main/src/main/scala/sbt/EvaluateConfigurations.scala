@@ -101,7 +101,7 @@ object EvaluateConfigurations {
       val parsed = parseConfiguration(lines, imports, offset)
       val (importDefs, definitions) =
         if (parsed.definitions.isEmpty) (Nil, DefinedSbtValues.empty) else {
-          val definitions = evaluateDefinitions(eval, name, parsed.imports, parsed.definitions)
+          val definitions = evaluateDefinitions(eval, name, parsed.imports, parsed.definitions, Some(file))
           val imp = BuildUtil.importAllRoot(definitions.enclosingModule :: Nil)
           val projs = (loader: ClassLoader) => definitions.values(loader).map(p => resolveBase(file.getParentFile, p.asInstanceOf[Project]))
           (imp, DefinedSbtValues(definitions))
@@ -237,10 +237,10 @@ object EvaluateConfigurations {
     }
   private[this] def extractedValTypes: Seq[String] =
     Seq(classOf[Project], classOf[InputKey[_]], classOf[TaskKey[_]], classOf[SettingKey[_]]).map(_.getName)
-  private[this] def evaluateDefinitions(eval: Eval, name: String, imports: Seq[(String, Int)], definitions: Seq[(String, LineRange)]): compiler.EvalDefinitions =
+  private[this] def evaluateDefinitions(eval: Eval, name: String, imports: Seq[(String, Int)], definitions: Seq[(String, LineRange)], file: Option[File]): compiler.EvalDefinitions =
     {
       val convertedRanges = definitions.map { case (s, r) => (s, r.start to r.end) }
-      eval.evalDefinitions(convertedRanges, new EvalImports(imports, name), name, extractedValTypes)
+      eval.evalDefinitions(convertedRanges, new EvalImports(imports, name), name, file, extractedValTypes)
     }
 }
 object Index {

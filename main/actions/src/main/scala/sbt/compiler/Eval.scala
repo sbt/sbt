@@ -91,12 +91,13 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
         def extra(run: Run, unit: CompilationUnit) = atPhase(run.typerPhase.next) { (new TypeExtractor).getType(unit.body) }
         def read(file: File) = IO.read(file)
         def write(value: String, f: File) = IO.write(f, value)
+        def extraHash = ""
       }
       val i = evalCommon(expression :: Nil, imports, tpeName, ev)
       val value = (cl: ClassLoader) => getValue[Any](i.enclosingModule, i.loader(cl))
       new EvalResult(i.extra, value, i.generated, i.enclosingModule)
     }
-  def evalDefinitions(definitions: Seq[(String, scala.Range)], imports: EvalImports, srcName: String, valTypes: Seq[String]): EvalDefinitions =
+  def evalDefinitions(definitions: Seq[(String, scala.Range)], imports: EvalImports, srcName: String, file: Option[File], valTypes: Seq[String]): EvalDefinitions =
     {
       require(definitions.nonEmpty, "Definitions to evaluate cannot be empty.")
       val ev = new EvalType[Seq[String]] {
@@ -113,6 +114,10 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
         }
         def read(file: File) = IO.readLines(file)
         def write(value: Seq[String], file: File) = IO.writeLines(file, value)
+        def extraHash = file match {
+          case Some(f) => f.getAbsolutePath
+          case None    => ""
+        }
       }
       val i = evalCommon(definitions.map(_._1), imports, Some(""), ev)
       new EvalDefinitions(i.loader, i.generated, i.enclosingModule, i.extra)
@@ -121,8 +126,12 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
   private[this] def evalCommon[T](content: Seq[String], imports: EvalImports, tpeName: Option[String], ev: EvalType[T]): EvalIntermediate[T] =
     {
       import Eval._
+      // TODO - We also encode the source of the setting into the hash to avoid conflicts where the exact SAME setting
+      // is defined in multiple evaluated instances with a backing.  This leads to issues with finding a previous
+      // value on the classpath when compiling.
       val hash = Hash.toHex(Hash(bytes(stringSeqBytes(content) :: optBytes(backing)(fileExistsBytes) :: stringSeqBytes(options) ::
-        seqBytes(classpath)(fileModifiedBytes) :: stringSeqBytes(imports.strings.map(_._1)) :: optBytes(tpeName)(bytes) :: Nil)))
+        seqBytes(classpath)(fileModifiedBytes) :: stringSeqBytes(imports.strings.map(_._1)) :: optBytes(tpeName)(bytes) ::
+        bytes(ev.extraHash) :: Nil)))
       val moduleName = makeModuleName(hash)
 
       lazy val unit = {
@@ -354,6 +363,9 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
      * The Tree doesn't need to be parsed from the contents of `unit`.
      */
     def unitBody(unit: CompilationUnit, importTrees: Seq[Tree], moduleName: String): Tree
+
+    /** Extra information to include in the hash'd object name to help avoid collisions. */
+    def extraHash: String
   }
 
   val DefaultStartLine = 0
