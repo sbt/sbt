@@ -26,5 +26,7 @@ jdk:
 notifications:
   email:
     - qbranch@typesafe.com
+install:
+  - ./.load-travis-cache.sh
 before_script:
   - export JVM_OPTS="-Xms1024m -Xmx1024m -XX:ReservedCodeCacheSize=128m -XX:MaxPermSize=256m"
