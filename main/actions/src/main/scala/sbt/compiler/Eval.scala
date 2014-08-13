@@ -58,7 +58,15 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
       s
     }
   lazy val reporter = mkReporter(settings)
-  lazy val global: Global = new Global(settings, reporter)
+  /**
+   * Subclass of Global which allows us to mutate currentRun from outside.
+   * See for rationale https://issues.scala-lang.org/browse/SI-8794
+   */
+  final class EvalGlobal(settings: Settings, reporter: Reporter) extends Global(settings, reporter) {
+    override def currentRun: Run = curRun
+    var curRun: Run = null
+  }
+  lazy val global: EvalGlobal = new EvalGlobal(settings, reporter)
   import global._
   import definitions._
 
@@ -143,6 +151,8 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
   private[this] def cacheFile(base: File, moduleName: String): File = new File(base, moduleName + ".cache")
   private[this] def compileAndLoad[T](run: Run, unit: CompilationUnit, imports: EvalImports, backing: Option[File], moduleName: String, ev: EvalType[T]): (T, ClassLoader => ClassLoader) =
     {
+      global.curRun = run
+      run.currentUnit = unit
       val dir = outputDirectory(backing)
       settings.outputDirs setSingleOutput dir
 
@@ -348,21 +358,8 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 
   val DefaultStartLine = 0
   private[this] def makeModuleName(hash: String): String = "$" + Hash.halve(hash)
-  private[sbt] def noImports = new EvalImports(Nil, "")
-  private[sbt] def mkUnit(srcName: String, firstLine: Int, s: String) = new CompilationUnit(new EvalSourceFile(srcName, firstLine, s)) {
-    // This is overridden as a workaround for #1181/#1501,
-    // When the compiler reports an error back, the position sometimes comes back with source set to NoSourceFile. 
-    override def error(pos0: Position, msg: String) = {
-      import scala.reflect.internal.util._
-      val pos = pos0 match {
-        case op: OffsetPosition if op.point >= 0 =>
-          if (op.source eq source) op
-          else new OffsetPosition(source, op.point)
-        case _ => pos0
-      }
-      super.error(pos, msg)
-    }
-  }
+  private[this] def noImports = new EvalImports(Nil, "")
+  private[this] def mkUnit(srcName: String, firstLine: Int, s: String) = new CompilationUnit(new EvalSourceFile(srcName, firstLine, s))
   private[this] def checkError(label: String) = if (reporter.hasErrors) throw new EvalException(label)
 
   private[this] final class EvalSourceFile(name: String, startLine: Int, contents: String) extends BatchSourceFile(name, contents) {
