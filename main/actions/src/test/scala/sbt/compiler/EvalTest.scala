@@ -60,7 +60,7 @@ val p = {
 
   property("val test") = secure {
     val defs = (ValTestContent, 1 to 7) :: Nil
-    val res = eval.evalDefinitions(defs, new EvalImports(Nil, ""), "<defs>", "scala.Int" :: Nil)
+    val res = eval.evalDefinitions(defs, new EvalImports(Nil, ""), "<defs>", None, "scala.Int" :: Nil)
     label("Val names", res.valNames) |: (res.valNames.toSet == ValTestNames)
   }
 
