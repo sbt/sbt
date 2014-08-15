@@ -209,7 +209,7 @@ object ServerLauncher {
     }
 
   // None = couldn't figure it out
-  def javaIsAbove(currentDirectory: File, version: Int): Option[Boolean] = {
+  def javaIsAbove(currentDirectory: File, version: Int): Option[Boolean] = try {
     val pb = new java.lang.ProcessBuilder()
     // hopefully "java -version" is a lot faster than booting the full JVM.
     // not sure how else we can do this.
@@ -231,6 +231,11 @@ object ServerLauncher {
       process.destroy()
       try { process.waitFor() } catch { case NonFatal(_) => }
     }
+  } catch {
+    case e: IOException =>
+      // both process.start and reading the output streams can throw IOException.
+      // all OS exceptions from process.start are supposed to be IOException.
+      None
   }
 
   def serverJvmArgs(currentDirectory: File, serverConfig: ServerConfiguration): List[String] =
