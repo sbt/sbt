@@ -225,7 +225,9 @@ object ServerLauncher {
       val re = """java version "[0-9]+\.([0-9]+)\..*".*""".r
       lineOption flatMap {
         case re(v) => try Some(Integer.parseInt(v) > version) catch { case NonFatal(_) => None }
-        case other => None
+        case other =>
+          System.err.println(s"Failed to parse version from 'java -version' output '$other'")
+          None
       }
     } finally {
       process.destroy()
@@ -235,6 +237,7 @@ object ServerLauncher {
     case e: IOException =>
       // both process.start and reading the output streams can throw IOException.
       // all OS exceptions from process.start are supposed to be IOException.
+      System.err.println(s"Failed to run 'java -version': ${e.getClass.getName}: ${e.getMessage}")
       None
   }
 
