@@ -68,11 +68,14 @@ object IvyRetrieve {
   private[sbt] def moduleRevisionDetail(confReport: ConfigurationResolveReport, dep: IvyNode): ModuleReport = {
     def toExtraAttributes(ea: ju.Map[_, _]): Map[String, String] =
       Map(ea.entrySet.toArray collect {
-        case entry: ju.Map.Entry[_, _] => (entry.getKey.toString, entry.getValue.toString)
+        case entry: ju.Map.Entry[_, _] if nonEmptyString(entry.getKey.toString).isDefined && nonEmptyString(entry.getValue.toString).isDefined =>
+          (entry.getKey.toString, entry.getValue.toString)
       }: _*)
     def toCaller(caller: IvyCaller): Caller = {
       val m = toModuleID(caller.getModuleRevisionId)
-      val callerConfigurations = caller.getCallerConfigurations.toArray.toVector
+      val callerConfigurations = caller.getCallerConfigurations.toArray.toVector collect {
+        case x if nonEmptyString(x).isDefined => x
+      }
       val extraAttributes = toExtraAttributes(caller.getDependencyDescriptor.getExtraAttributes)
       new Caller(m, callerConfigurations, extraAttributes)
     }
@@ -120,7 +123,7 @@ object IvyRetrieve {
     val configurations = dep.getConfigurations(confReport.getConfiguration).toArray.toList
     val licenses: Seq[(String, Option[String])] = mdOpt match {
       case Some(md) => md.getLicenses.toArray.toVector collect {
-        case lic: IvyLicense =>
+        case lic: IvyLicense if Option(lic.getName).isDefined =>
           (lic.getName, nonEmptyString(lic.getUrl))
       }
       case _ => Nil
