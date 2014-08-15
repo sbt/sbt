@@ -1,7 +1,7 @@
 package sbt
 
-import java.io.{IOException, StringWriter, PrintWriter, File}
-import java.net.{InetAddress}
+import java.io.{ IOException, StringWriter, PrintWriter, File }
+import java.net.{ InetAddress }
 
 import scala.collection.mutable.ListBuffer
 import scala.util.DynamicVariable
