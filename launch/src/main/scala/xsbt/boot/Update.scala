@@ -393,18 +393,20 @@ final class Update(config: UpdateConfiguration) {
     }
 }
 
-import SbtIvyLogger.{ acceptError, acceptMessage }
+import SbtIvyLogger.{ acceptError, acceptMessage, isAlwaysIgnoreMessage }
 
 /**
  * A custom logger for Ivy to ignore the messages about not finding classes
  * intentionally filtered using proguard and about 'unknown resolver'.
  */
 private final class SbtIvyLogger(logWriter: PrintWriter) extends DefaultMessageLogger(Message.MSG_INFO) {
-  override def log(msg: String, level: Int) {
-    logWriter.println(msg)
-    if (level <= getLevel && acceptMessage(msg))
-      System.out.println(msg)
-  }
+  override def log(msg: String, level: Int): Unit =
+    if (isAlwaysIgnoreMessage(msg)) ()
+    else {
+      logWriter.println(msg)
+      if (level <= getLevel && acceptMessage(msg))
+        System.out.println(msg)
+    }
   override def rawlog(msg: String, level: Int) { log(msg, level) }
   /** This is a hack to filter error messages about 'unknown resolver ...'. */
   override def error(msg: String) = if (acceptError(msg)) super.error(msg)
@@ -418,4 +420,7 @@ private object SbtIvyLogger {
   val UnknownResolver = "unknown resolver"
   def acceptError(msg: String) = acceptMessage(msg) && !msg.startsWith(UnknownResolver)
   def acceptMessage(msg: String) = (msg ne null) && !msg.startsWith(IgnorePrefix)
+  def isAlwaysIgnoreMessage(msg: String): Boolean =
+    (msg eq null) ||
+      (msg startsWith "setting 'http.proxyPassword'")
 }
