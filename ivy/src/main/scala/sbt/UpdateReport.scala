@@ -46,7 +46,7 @@ final class UpdateReport(val cachedDescriptor: File, val configurations: Seq[Con
 final class ConfigurationReport(
     val configuration: String,
     val modules: Seq[ModuleReport],
-    val details: Seq[ModuleDetailReport],
+    val details: Seq[OrganizationArtifactReport],
     @deprecated("Use details instead to get better eviction info.", "0.13.6") val evicted: Seq[ModuleID]) {
   def this(configuration: String, modules: Seq[ModuleReport], evicted: Seq[ModuleID]) =
     this(configuration, modules, Nil, evicted)
@@ -67,17 +67,17 @@ final class ConfigurationReport(
 }
 
 /**
- * ModuleDetailReport represents an organization+name entry in Ivy resolution report.
+ * OrganizationArtifactReport represents an organization+name entry in Ivy resolution report.
  * In sbt's terminology, "module" consists of organization, name, and version.
  * In Ivy's, "module" means just organization and name, and the one including version numbers
  * are called revisions.
  *
- * A sequence of ModuleDetailReport called details is newly added to ConfigurationReport, replacing evicted.
+ * A sequence of OrganizationArtifactReport called details is newly added to ConfigurationReport, replacing evicted.
  * (Note old evicted was just a seq of ModuleIDs).
- * ModuleDetailReport groups the ModuleReport of both winners and evicted reports by their organization and name,
+ * OrganizationArtifactReport groups the ModuleReport of both winners and evicted reports by their organization and name,
  * which can be used to calculate detailed evction warning etc.
  */
-final class ModuleDetailReport(
+final class OrganizationArtifactReport private[sbt] (
     val organization: String,
     val name: String,
     val modules: Seq[ModuleReport]) {
@@ -85,6 +85,10 @@ final class ModuleDetailReport(
     val details = modules map { _.detailReport }
     s"\t$organization:$name\n${details.mkString}\n"
   }
+}
+object OrganizationArtifactReport {
+  def apply(organization: String, name: String, modules: Seq[ModuleReport]): OrganizationArtifactReport =
+    new OrganizationArtifactReport(organization, name, modules)
 }
 
 /**

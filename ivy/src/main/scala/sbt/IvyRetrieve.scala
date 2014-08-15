@@ -48,14 +48,14 @@ object IvyRetrieve {
   // We need this because current module report used as part of UpdateReport/ConfigurationReport contains
   // only the revolved modules.
   // Sometimes the entire module can be excluded via rules etc.
-  private[sbt] def details(confReport: ConfigurationResolveReport): Seq[ModuleDetailReport] = {
+  private[sbt] def organizationArtifactReports(confReport: ConfigurationResolveReport): Seq[OrganizationArtifactReport] = {
     val dependencies = confReport.getModuleRevisionIds.toArray.toVector collect { case revId: ModuleRevisionId => revId }
     val moduleIds = confReport.getModuleIds.toArray.toVector collect { case mId: IvyModuleId => mId }
-    def moduleDetail(mid: IvyModuleId): ModuleDetailReport = {
+    def organizationArtifact(mid: IvyModuleId): OrganizationArtifactReport = {
       val deps = confReport.getNodes(mid).toArray.toVector collect { case node: IvyNode => node }
-      new ModuleDetailReport(mid.getOrganisation, mid.getName, deps map { moduleRevisionDetail(confReport, _) })
+      OrganizationArtifactReport(mid.getOrganisation, mid.getName, deps map { moduleRevisionDetail(confReport, _) })
     }
-    moduleIds map { moduleDetail }
+    moduleIds map { organizationArtifact }
   }
 
   private[sbt] def nonEmptyString(s: String): Option[String] =
@@ -150,7 +150,7 @@ object IvyRetrieve {
   def updateStats(report: ResolveReport): UpdateStats =
     new UpdateStats(report.getResolveTime, report.getDownloadTime, report.getDownloadSize, false)
   def configurationReport(confReport: ConfigurationResolveReport): ConfigurationReport =
-    new ConfigurationReport(confReport.getConfiguration, moduleReports(confReport), details(confReport), evicted(confReport))
+    new ConfigurationReport(confReport.getConfiguration, moduleReports(confReport), organizationArtifactReports(confReport), evicted(confReport))
 
   /**
    * Tries to find Ivy graph path the from node to target.
