@@ -222,12 +222,15 @@ object ServerLauncher {
       val stderr = new java.io.LineNumberReader(new java.io.InputStreamReader(process.getErrorStream))
       // Looking for the first line which is `java version "1.7.0_60"` or similar
       val lineOption = try Option(stderr.readLine()) finally stderr.close()
-      val re = """java version "[0-9]+\.([0-9]+)\..*".*""".r
-      lineOption flatMap {
-        case re(v) => try Some(Integer.parseInt(v) > version) catch { case NonFatal(_) => None }
-        case other =>
-          System.err.println(s"Failed to parse version from 'java -version' output '$other'")
+      val pattern = java.util.regex.Pattern.compile("""java version "[0-9]+\.([0-9]+)\..*".*""")
+      lineOption flatMap { line =>
+        val matcher = pattern.matcher(line)
+        if (matcher.matches()) {
+          try Some(Integer.parseInt(matcher.group(1)) > version) catch { case NonFatal(_) => None }
+        } else {
+          System.err.println(s"Failed to parse version from 'java -version' output '$line'")
           None
+        }
       }
     } finally {
       process.destroy()
