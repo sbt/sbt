@@ -123,7 +123,7 @@ final class ModuleReport(
     s"\t\t$module: " +
       (if (arts.size <= 1) "" else "\n\t\t\t") + arts.mkString("\n\t\t\t") + "\n"
   }
-  private[sbt] def detailReport: String =
+  def detailReport: String =
     s"\t\t- ${module.revision}\n" +
       (if (arts.size <= 1) "" else arts.mkString("\t\t\t", "\n\t\t\t", "\n")) +
       reportStr("status", status) +
