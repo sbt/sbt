@@ -136,10 +136,7 @@ object ServerLauncher {
     if (System.getenv("SBT_SERVER_SAVE_TEMPS") eq null)
       launchConfig.deleteOnExit()
     LaunchConfiguration.save(config, launchConfig)
-    val jvmArgs: List[String] = serverConfig.jvmArgs map readLines match {
-      case Some(args) => args
-      case None       => Nil
-    }
+    val jvmArgs: List[String] = serverJvmArgs(currentDirectory, serverConfig)
     val cmd: List[String] =
       ("java" :: jvmArgs) ++
         ("-jar" :: defaultLauncherLookup.getCanonicalPath :: s"@load:${launchConfig.toURI.toURL.toString}" :: Nil)
@@ -210,6 +207,74 @@ object ServerLauncher {
       try read(Nil)
       finally reader.close()
     }
+
+  // None = couldn't figure it out
+  def javaIsAbove(currentDirectory: File, version: Int): Option[Boolean] = try {
+    val pb = new java.lang.ProcessBuilder()
+    // hopefully "java -version" is a lot faster than booting the full JVM.
+    // not sure how else we can do this.
+    pb.command("java", "-version")
+    pb.directory(currentDirectory)
+    val process = pb.start()
+    try {
+      process.getOutputStream.close()
+      process.getInputStream.close()
+      val stderr = new java.io.LineNumberReader(new java.io.InputStreamReader(process.getErrorStream))
+      // Looking for the first line which is `java version "1.7.0_60"` or similar
+      val lineOption = try Option(stderr.readLine()) finally stderr.close()
+      val pattern = java.util.regex.Pattern.compile("""java version "[0-9]+\.([0-9]+)\..*".*""")
+      lineOption flatMap { line =>
+        val matcher = pattern.matcher(line)
+        if (matcher.matches()) {
+          try Some(Integer.parseInt(matcher.group(1)) > version) catch { case NonFatal(_) => None }
+        } else {
+          System.err.println(s"Failed to parse version from 'java -version' output '$line'")
+          None
+        }
+      }
+    } finally {
+      process.destroy()
+      try { process.waitFor() } catch { case NonFatal(_) => }
+    }
+  } catch {
+    case e: IOException =>
+      // both process.start and reading the output streams can throw IOException.
+      // all OS exceptions from process.start are supposed to be IOException.
+      System.err.println(s"Failed to run 'java -version': ${e.getClass.getName}: ${e.getMessage}")
+      None
+  }
+
+  def serverJvmArgs(currentDirectory: File, serverConfig: ServerConfiguration): List[String] =
+    serverJvmArgs(currentDirectory, serverConfig.jvmArgs map readLines getOrElse Nil)
+
+  final val memOptPrefixes = List("-Xmx", "-Xms", "-XX:MaxPermSize", "-XX:PermSize", "-XX:ReservedCodeCacheSize", "-XX:MaxMetaspaceSize", "-XX:MetaspaceSize")
+
+  final val defaultMinHeapM = 256
+  final val defaultMaxHeapM = defaultMinHeapM * 4
+  final val defaultMinPermM = 64
+  final val defaultMaxPermM = defaultMinPermM * 4
+
+  // this is separate just for the test suite
+  def serverJvmArgs(currentDirectory: File, baseArgs: List[String]): List[String] = {
+    // ignore blank lines
+    val trimmed = baseArgs.map(_.trim).filterNot(_.isEmpty)
+    // If the user config has provided ANY memory options we bail out and do NOT add
+    // any defaults. This means people can always fix our mistakes, and it avoids
+    // issues where the JVM refuses to start because of (for example) min size greater
+    // than max size. We don't want to deal with coordinating our changes with the
+    // user configuration.
+    def isMemoryOption(s: String) = memOptPrefixes.exists(s.startsWith(_))
+    if (trimmed.exists(isMemoryOption(_)))
+      trimmed
+    else {
+      val permOptions = javaIsAbove(currentDirectory, 7) match {
+        case Some(true)  => List(s"-XX:MetaspaceSize=${defaultMinPermM}m", s"-XX:MaxMetaspaceSize=${defaultMaxPermM}m")
+        case Some(false) => List(s"-XX:PermSize=${defaultMinPermM}m", s"-XX:MaxPermSize=${defaultMaxPermM}m")
+        case None        => Nil // don't know what we're doing, so don't set options
+      }
+      s"-Xms${defaultMinHeapM}m" :: s"-Xmx${defaultMaxHeapM}m" :: (permOptions ++ trimmed)
+    }
+  }
 
   def defaultLauncherLookup: File =
     try {
