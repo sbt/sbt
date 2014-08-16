@@ -65,8 +65,8 @@ object CacheIvy {
     }
   implicit def updateStatsFormat: Format[UpdateStats] =
     wrap[UpdateStats, (Long, Long, Long)](us => (us.resolveTime, us.downloadTime, us.downloadSize), { case (rt, dt, ds) => new UpdateStats(rt, dt, ds, true) })
-  implicit def confReportFormat(implicit m: Format[String], mr: Format[Seq[ModuleReport]], mdr: Format[Seq[ModuleDetailReport]], mi: Format[Seq[ModuleID]]): Format[ConfigurationReport] =
-    wrap[ConfigurationReport, (String, Seq[ModuleReport], Seq[ModuleDetailReport], Seq[ModuleID])](r => (r.configuration, r.modules, r.details, r.evicted), { case (c, m, d, v) => new ConfigurationReport(c, m, d, v) })
+  implicit def confReportFormat(implicit m: Format[String], mr: Format[Seq[ModuleReport]], oar: Format[Seq[OrganizationArtifactReport]], mi: Format[Seq[ModuleID]]): Format[ConfigurationReport] =
+    wrap[ConfigurationReport, (String, Seq[ModuleReport], Seq[OrganizationArtifactReport], Seq[ModuleID])](r => (r.configuration, r.modules, r.details, r.evicted), { case (c, m, d, v) => new ConfigurationReport(c, m, d, v) })
   implicit def moduleReportFormat(implicit cf: Format[Seq[Caller]], ff: Format[File]): Format[ModuleReport] = {
     wrap[ModuleReport, (ModuleID, Seq[(Artifact, File)], Seq[Artifact], Option[String], Option[Long], Option[String], Option[String], Boolean, Option[String], Option[String], Option[String], Option[String], Map[String, String], Option[Boolean], Option[String], Seq[String], Seq[(String, Option[String])], Seq[Caller])](
       m => (m.module, m.artifacts, m.missingArtifacts, m.status, m.publicationDate map { _.getTime }, m.resolver, m.artifactResolver, m.evicted, m.evictedData, m.evictedReason, m.problem, m.homepage, m.extraAttributes, m.isDefault, m.branch, m.configurations, m.licenses, m.callers),
@@ -78,8 +78,8 @@ object CacheIvy {
       { case (n, t, x, c, cs, u, e) => Artifact(n, t, x, c, cs, u, e) }
     )
   }
-  implicit def moduleDetailReportFormat(implicit sf: Format[String], bf: Format[Boolean], df: Format[Seq[ModuleReport]]): Format[ModuleDetailReport] =
-    wrap[ModuleDetailReport, (String, String, Seq[ModuleReport])](m => (m.organization, m.name, m.modules), { case (o, n, r) => new ModuleDetailReport(o, n, r) })
+  implicit def organizationArtifactReportFormat(implicit sf: Format[String], bf: Format[Boolean], df: Format[Seq[ModuleReport]]): Format[OrganizationArtifactReport] =
+    wrap[OrganizationArtifactReport, (String, String, Seq[ModuleReport])](m => (m.organization, m.name, m.modules), { case (o, n, r) => OrganizationArtifactReport(o, n, r) })
   implicit def callerFormat: Format[Caller] =
     wrap[Caller, (ModuleID, Seq[String], Map[String, String])](c => (c.caller, c.callerConfigurations, c.callerExtraAttributes), { case (c, cc, ea) => new Caller(c, cc, ea) })
   implicit def exclusionRuleFormat(implicit sf: Format[String]): Format[ExclusionRule] =

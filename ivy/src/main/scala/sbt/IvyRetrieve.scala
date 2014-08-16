@@ -48,14 +48,14 @@ object IvyRetrieve {
   // We need this because current module report used as part of UpdateReport/ConfigurationReport contains
   // only the revolved modules.
   // Sometimes the entire module can be excluded via rules etc.
-  private[sbt] def details(confReport: ConfigurationResolveReport): Seq[ModuleDetailReport] = {
+  private[sbt] def organizationArtifactReports(confReport: ConfigurationResolveReport): Seq[OrganizationArtifactReport] = {
     val dependencies = confReport.getModuleRevisionIds.toArray.toVector collect { case revId: ModuleRevisionId => revId }
     val moduleIds = confReport.getModuleIds.toArray.toVector collect { case mId: IvyModuleId => mId }
-    def moduleDetail(mid: IvyModuleId): ModuleDetailReport = {
+    def organizationArtifact(mid: IvyModuleId): OrganizationArtifactReport = {
       val deps = confReport.getNodes(mid).toArray.toVector collect { case node: IvyNode => node }
-      new ModuleDetailReport(mid.getOrganisation, mid.getName, deps map { moduleRevisionDetail(confReport, _) })
+      OrganizationArtifactReport(mid.getOrganisation, mid.getName, deps map { moduleRevisionDetail(confReport, _) })
     }
-    moduleIds map { moduleDetail }
+    moduleIds map { organizationArtifact }
   }
 
   private[sbt] def nonEmptyString(s: String): Option[String] =
@@ -68,11 +68,14 @@ object IvyRetrieve {
   private[sbt] def moduleRevisionDetail(confReport: ConfigurationResolveReport, dep: IvyNode): ModuleReport = {
     def toExtraAttributes(ea: ju.Map[_, _]): Map[String, String] =
       Map(ea.entrySet.toArray collect {
-        case entry: ju.Map.Entry[_, _] => (entry.getKey.toString, entry.getValue.toString)
+        case entry: ju.Map.Entry[_, _] if nonEmptyString(entry.getKey.toString).isDefined && nonEmptyString(entry.getValue.toString).isDefined =>
+          (entry.getKey.toString, entry.getValue.toString)
       }: _*)
     def toCaller(caller: IvyCaller): Caller = {
       val m = toModuleID(caller.getModuleRevisionId)
-      val callerConfigurations = caller.getCallerConfigurations.toArray.toVector
+      val callerConfigurations = caller.getCallerConfigurations.toArray.toVector collect {
+        case x if nonEmptyString(x).isDefined => x
+      }
       val extraAttributes = toExtraAttributes(caller.getDependencyDescriptor.getExtraAttributes)
       new Caller(m, callerConfigurations, extraAttributes)
     }
@@ -120,7 +123,7 @@ object IvyRetrieve {
     val configurations = dep.getConfigurations(confReport.getConfiguration).toArray.toList
     val licenses: Seq[(String, Option[String])] = mdOpt match {
       case Some(md) => md.getLicenses.toArray.toVector collect {
-        case lic: IvyLicense =>
+        case lic: IvyLicense if Option(lic.getName).isDefined =>
           (lic.getName, nonEmptyString(lic.getUrl))
       }
       case _ => Nil
@@ -150,7 +153,7 @@ object IvyRetrieve {
   def updateStats(report: ResolveReport): UpdateStats =
     new UpdateStats(report.getResolveTime, report.getDownloadTime, report.getDownloadSize, false)
   def configurationReport(confReport: ConfigurationResolveReport): ConfigurationReport =
-    new ConfigurationReport(confReport.getConfiguration, moduleReports(confReport), details(confReport), evicted(confReport))
+    new ConfigurationReport(confReport.getConfiguration, moduleReports(confReport), organizationArtifactReports(confReport), evicted(confReport))
 
   /**
    * Tries to find Ivy graph path the from node to target.
