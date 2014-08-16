@@ -112,8 +112,8 @@ object EvictionWarning {
     processEvictions(module, options, evictions)
   }
 
-  private[sbt] def buildEvictions(options: EvictionWarningOptions, report: UpdateReport): Seq[ModuleDetailReport] = {
-    val buffer: mutable.ListBuffer[ModuleDetailReport] = mutable.ListBuffer()
+  private[sbt] def buildEvictions(options: EvictionWarningOptions, report: UpdateReport): Seq[OrganizationArtifactReport] = {
+    val buffer: mutable.ListBuffer[OrganizationArtifactReport] = mutable.ListBuffer()
     val confs = report.configurations filter { x => options.configStrings contains x.configuration }
     confs flatMap { confReport =>
       confReport.details map { detail =>
@@ -134,7 +134,7 @@ object EvictionWarning {
       case _ => false
     }
 
-  private[sbt] def processEvictions(module: IvySbt#Module, options: EvictionWarningOptions, reports: Seq[ModuleDetailReport]): EvictionWarning = {
+  private[sbt] def processEvictions(module: IvySbt#Module, options: EvictionWarningOptions, reports: Seq[OrganizationArtifactReport]): EvictionWarning = {
     val directDependencies = module.moduleSettings match {
       case x: InlineConfiguration => x.dependencies
       case _                      => Seq()
