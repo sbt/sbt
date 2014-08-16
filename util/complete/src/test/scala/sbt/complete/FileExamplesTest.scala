@@ -80,8 +80,7 @@ class FileExamplesTest extends Specification {
       (childDirectories ++ nestedDirectories).map(_.mkdirs())
       (childFiles ++ nestedFiles).map(_.createNewFile())
 
-      // NOTE: Creating a new file here because `tempDir.listFiles()` returned an empty list.
-      baseDir = new File(tempDir.getCanonicalPath)
+      baseDir = tempDir
     }
 
     private def toChildFiles(baseDir: File, files: List[String]): List[File] = files.map(new File(baseDir, _))
