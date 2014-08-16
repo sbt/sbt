@@ -1,7 +1,7 @@
 package sbt.complete
 
 import java.io.File
-import sbt.IO._
+import sbt.IO
 
 /**
  * These sources of examples are used in parsers for user input completion. An example of such a source is the
@@ -48,9 +48,9 @@ class FileExamples(base: File, prefix: String = "") extends ExampleSource {
   override def withAddedPrefix(addedPrefix: String): FileExamples = new FileExamples(base, prefix + addedPrefix)
 
   protected def files(directory: File): Stream[String] = {
-    val childPaths = directory.listFiles().toStream
-    val prefixedDirectChildPaths = childPaths.map(relativize(base, _).get).filter(_ startsWith prefix)
-    val dirsToRecurseInto = childPaths.filter(_.isDirectory).map(relativize(base, _).get).filter(dirStartsWithPrefix)
+    val childPaths = IO.listFiles(directory).toStream
+    val prefixedDirectChildPaths = childPaths map { IO.relativize(base, _).get } filter { _ startsWith prefix }
+    val dirsToRecurseInto = childPaths filter { _.isDirectory } map { IO.relativize(base, _).get } filter { dirStartsWithPrefix }
     prefixedDirectChildPaths append dirsToRecurseInto.flatMap(dir => files(new File(base, dir)))
   }
 
