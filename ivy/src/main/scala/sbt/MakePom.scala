@@ -196,6 +196,7 @@ class MakePom(val log: Logger) {
       </dependency>
     }
 
+  /** Converts Ivy revision ranges to that of Maven POM */
   def makeDependencyVersion(revision: String): String = {
     def plusRange(s: String, shift: Int = 0) = {
       def pow(i: Int): Int = if (i > 0) 10 * pow(i - 1) else 1
@@ -209,20 +210,24 @@ class MakePom(val log: Logger) {
     }
     val startSym = Set(']', '[', '(')
     val stopSym = Set(']', '[', ')')
+    val PlusPattern = """(.+)(\.\d*\+)""".r
     try {
-      if (revision endsWith ".+") {
-        plusRange(revision.substring(0, revision.length - 2))
-      } else if (revision endsWith "+") {
-        val base = revision.take(revision.length - 1)
-        // This is a heuristic.  Maven just doesn't support Ivy's notions of 1+, so
-        // we assume version ranges never go beyond 5 siginificant digits.
-        (0 to 5).map(plusRange(base, _)).mkString(",")
-      } else if (startSym(revision(0)) && stopSym(revision(revision.length - 1))) {
-        val start = revision(0)
-        val stop = revision(revision.length - 1)
-        val mid = revision.substring(1, revision.length - 1)
-        (if (start == ']') "(" else start) + mid + (if (stop == '[') ")" else stop)
-      } else revision
+      revision match {
+        case PlusPattern(base, tail) => plusRange(base)
+        // There's no direct translation for a dynamic revision like "1+".
+        // This is likely the build user misunderstanding the meaning of "+",
+        // which means pick the latest in the version segment.
+        // So if someone wanted (1.0 <= x), then it should be "[1.0)" or "1.+".
+        // Technically speaking, "1+" should convert to "LATEST",
+        // but that seems to be deprecated now, so picking the minimum version "0".
+        case rev if rev endsWith "+" => "[0,)"
+        case rev if startSym(rev(0)) && stopSym(rev(rev.length - 1)) =>
+          val start = rev(0)
+          val stop = rev(rev.length - 1)
+          val mid = rev.substring(1, rev.length - 1)
+          (if (start == ']') "(" else start) + mid + (if (stop == '[') ")" else stop)
+        case _ => revision
+      }
     } catch {
       case e: NumberFormatException =>
         // TODO - if the version doesn't meet our expectations, maybe we just issue a hard
