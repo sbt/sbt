@@ -1070,8 +1070,8 @@ object Classpaths {
     allDependencies := {
       projectDependencies.value ++ libraryDependencies.value
     },
-    ivyScala <<= ivyScala or (scalaHome, scalaVersion in update, scalaBinaryVersion in update, scalaOrganization) { (sh, fv, bv, so) =>
-      Some(new IvyScala(fv, bv, Nil, filterImplicit = false, checkExplicit = true, overrideScalaVersion = false, scalaOrganization = so))
+    ivyScala <<= ivyScala or (scalaHome, scalaVersion in update, scalaBinaryVersion in update, scalaOrganization, sbtPlugin) { (sh, fv, bv, so, plugin) =>
+      Some(new IvyScala(fv, bv, Nil, filterImplicit = false, checkExplicit = true, overrideScalaVersion = plugin, scalaOrganization = so))
     },
     artifactPath in makePom <<= artifactPathSetting(artifact in makePom),
     publishArtifact in makePom := publishMavenStyle.value && publishArtifact.value,
