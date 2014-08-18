@@ -2,6 +2,7 @@ package sbt
 
 import collection.mutable
 import Configurations.Compile
+import ScalaArtifacts.{ LibraryID, CompilerID }
 
 final class EvictionWarningOptions private[sbt] (
     val configurations: Seq[Configuration],
@@ -130,7 +131,7 @@ object EvictionWarning {
     module.moduleSettings.ivyScala match {
       case Some(s) =>
         organization == s.scalaOrganization &&
-          (name == "scala-library") || (name == "scala-compiler")
+          (name == LibraryID) || (name == CompilerID)
       case _ => false
     }
 
@@ -182,6 +183,8 @@ object EvictionWarning {
     if (!a.scalaEvictions.isEmpty) {
       out += "Scala version was updated by one of library dependencies:"
       out ++= (a.scalaEvictions flatMap { _.lines })
+      out += "To force scalaVersion, add the following:"
+      out += "\tivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }"
     }
 
     if (!a.directEvictions.isEmpty || !a.transitiveEvictions.isEmpty) {
