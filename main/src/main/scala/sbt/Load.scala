@@ -262,7 +262,6 @@ object Load {
       val existing = (baseTarget.***.get).filterNot(_.isDirectory)
       val toDelete = existing.filterNot(keepFile)
       if (!toDelete.isEmpty) {
-        System.err.println(s"Discovered unused files: ${toDelete.mkString("\n * ", "\n * ", "\n")}.  Note: Please reload all other running sbt instances in $base")
         IO.delete(toDelete)
       }
     }
