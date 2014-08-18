@@ -86,6 +86,8 @@ class EvictionWarningSpec extends BaseIvySpecification {
     EvictionWarning(m, defaultOptions, report, log).lines must_==
       List("Scala version was updated by one of library dependencies:",
         "\t* org.scala-lang:scala-library:2.10.2 -> 2.10.3",
+        "To force scalaVersion, add the following:",
+        "\tivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }",
         "Run 'evicted' to see detailed eviction warnings")
   }
 
@@ -94,7 +96,9 @@ class EvictionWarningSpec extends BaseIvySpecification {
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions.withShowCallers(true), report, log).lines must_==
       List("Scala version was updated by one of library dependencies:",
-        "\t* org.scala-lang:scala-library:2.10.2 -> 2.10.3 (caller: com.typesafe.akka:akka-actor_2.10:2.3.0, com.example:foo:0.1.0)")
+        "\t* org.scala-lang:scala-library:2.10.2 -> 2.10.3 (caller: com.typesafe.akka:akka-actor_2.10:2.3.0, com.example:foo:0.1.0)",
+        "To force scalaVersion, add the following:",
+        "\tivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }")
   }
 
   def javaLibDirectDeps = Seq(commonsIo14, commonsIo24)
