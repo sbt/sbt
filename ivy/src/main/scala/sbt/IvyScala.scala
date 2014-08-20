@@ -16,6 +16,7 @@ object ScalaArtifacts {
   val Organization = ScalaOrganization
   val LibraryID = ScalaLibraryID
   val CompilerID = ScalaCompilerID
+  val ReflectID = "scala-reflect"
   def libraryDependency(version: String): ModuleID = ModuleID(Organization, LibraryID, version)
 
   private[sbt] def toolDependencies(org: String, version: String): Seq[ModuleID] = Seq(
@@ -47,6 +48,7 @@ private object IvyScala {
   def overrideScalaVersion(module: DefaultModuleDescriptor, version: String) {
     overrideVersion(module, Organization, LibraryID, version)
     overrideVersion(module, Organization, CompilerID, version)
+    overrideVersion(module, Organization, ReflectID, version)
   }
   def overrideVersion(module: DefaultModuleDescriptor, org: String, name: String, version: String) {
     val id = new ModuleId(org, name)
