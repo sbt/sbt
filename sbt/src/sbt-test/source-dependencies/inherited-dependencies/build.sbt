@@ -1,3 +1,6 @@
+// this test is specific to the old incremental compilation algorithm
+incOptions := incOptions.value.withNameHashing(false)
+
 lazy val verifyDeps = taskKey[Unit]("verify inherited dependencies are properly extracted")
 
 verifyDeps := {

@@ -217,7 +217,7 @@ final class IncOptions(
 
 object IncOptions extends Serializable {
   private val recompileOnMacroDefDefault: Boolean = true
-  private val nameHashingDefault: Boolean = false
+  private val nameHashingDefault: Boolean = true
   private val antStyleDefault: Boolean = false
   val Default = IncOptions(
     //    1. recompile changed sources
