@@ -92,5 +92,5 @@ object Transform {
   lazy val Releases = typesafeRepository("releases")
   lazy val Snapshots = typesafeRepository("snapshots")
   def typesafeRepository(status: String) =
-    """  typesafe-ivy-%s: http://repo.typesafe.com/typesafe/ivy-%<s/, [organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext], bootOnly""" format status
+    """  typesafe-ivy-%s: https://repo.typesafe.com/typesafe/ivy-%<s/, [organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext], bootOnly""" format status
 }
