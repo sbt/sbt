@@ -227,7 +227,7 @@ object Relations {
 
   def emptySource: Source = es
   private[inc] lazy val emptySourceDependencies: SourceDependencies = new SourceDependencies(e, estr)
-  def empty: Relations = empty(nameHashing = false)
+  def empty: Relations = empty(nameHashing = IncOptions.nameHashingDefault)
   private[inc] def empty(nameHashing: Boolean): Relations =
     if (nameHashing)
       new MRelationsNameHashing(e, e, emptySourceDependencies, emptySourceDependencies, estr, estr)
