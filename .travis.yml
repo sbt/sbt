@@ -35,3 +35,4 @@ script:
 notifications:
   email:
     - qbranch@typesafe.com
+
