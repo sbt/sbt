@@ -146,11 +146,11 @@ sealed trait JavaNet1Repository extends Resolver {
 object Resolver {
   private[sbt] def useSecureResolvers = sys.props.get("sbt.repository.secure") map { _.toLowerCase == "true" } getOrElse true
 
-  val TypesafeRepositoryRoot = "http://repo.typesafe.com/typesafe"
-  val SbtPluginRepositoryRoot = "http://repo.scala-sbt.org/scalasbt"
+  val TypesafeRepositoryRoot = "https://repo.typesafe.com/typesafe"
+  val SbtPluginRepositoryRoot = "https://repo.scala-sbt.org/scalasbt"
   val SonatypeRepositoryRoot = "https://oss.sonatype.org/content/repositories"
   val JavaNet2RepositoryName = "java.net Maven2 Repository"
-  val JavaNet2RepositoryRoot = "http://download.java.net/maven/2"
+  // val JavaNet2RepositoryRoot = "http://download.java.net/maven/2" // DANGER: unavailable via https.
   val JCenterRepositoryName = "jcenter"
   val JCenterRepositoryRoot = "https://jcenter.bintray.com/"
   val DefaultMavenRepositoryRoot = "https://repo1.maven.org/maven2/"
