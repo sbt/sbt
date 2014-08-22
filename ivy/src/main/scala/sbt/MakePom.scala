@@ -210,17 +210,19 @@ class MakePom(val log: Logger) {
     }
     val startSym = Set(']', '[', '(')
     val stopSym = Set(']', '[', ')')
-    val PlusPattern = """(.+)(\.\d*\+)""".r
+    val DotPlusPattern = """(.+)\.\+""".r
+    val DotNumPlusPattern = """(.+)\.(\d+)\+""".r
+    val NumPlusPattern = """(\d+)\+""".r
+    val maxDigit = 5
     try {
       revision match {
-        case PlusPattern(base, tail) => plusRange(base)
-        // There's no direct translation for a dynamic revision like "1+".
-        // This is likely the build user misunderstanding the meaning of "+",
-        // which means pick the latest in the version segment.
-        // So if someone wanted (1.0 <= x), then it should be "[1.0)" or "1.+".
-        // Technically speaking, "1+" should convert to "LATEST",
-        // but that seems to be deprecated now, so picking the minimum version "0".
-        case rev if rev endsWith "+" => "[0,)"
+        case "+"                           => "[0,)"
+        case DotPlusPattern(base)          => plusRange(base)
+        // This is a heuristic.  Maven just doesn't support Ivy's notions of 1+, so
+        // we assume version ranges never go beyond 5 siginificant digits.
+        case NumPlusPattern(tail)          => (0 until maxDigit).map(plusRange(tail, _)).mkString(",")
+        case DotNumPlusPattern(base, tail) => (0 until maxDigit).map(plusRange(base + "." + tail, _)).mkString(",")
+        case rev if rev endsWith "+"       => sys.error(s"dynamic revision '$rev' cannot be translated to POM")
         case rev if startSym(rev(0)) && stopSym(rev(rev.length - 1)) =>
           val start = rev(0)
           val stop = rev(rev.length - 1)
