@@ -1,3 +1,5 @@
+# Marked pending due to https://github.com/sbt/sbt/issues/1553
+
 > output-empty
 > compile
 -> output-empty
