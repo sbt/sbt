@@ -138,7 +138,9 @@ import Resolver._
 object DefaultMavenRepository extends MavenRepository("public", centralRepositoryRoot(useSecureResolvers))
 object JavaNet2Repository extends MavenRepository(JavaNet2RepositoryName, JavaNet2RepositoryRoot)
 object JCenterRepository extends MavenRepository(JCenterRepositoryName, JCenterRepositoryRoot)
+@deprecated("HTTP repository is no longer recommended.", "0.13.6")
 object JavaNet1Repository extends JavaNet1Repository
+@deprecated("HTTP repository is no longer recommended.", "0.13.6")
 sealed trait JavaNet1Repository extends Resolver {
   def name = "java.net Maven1 Repository"
 }
