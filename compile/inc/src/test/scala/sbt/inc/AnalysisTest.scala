@@ -21,7 +21,7 @@ object AnalysisTest extends Properties("Analysis") {
     val sourceInfos = SourceInfos.makeInfo(Nil, Nil)
 
     // a
-    var a = Analysis.Empty
+    var a = Analysis.empty(false)
     a = a.addProduct(aScala, f("A.class"), exists, "A")
     a = a.addProduct(aScala, f("A$.class"), exists, "A$")
     a = a.addSource(aScala, aSource, exists, Nil, Nil, sourceInfos)
@@ -29,7 +29,7 @@ object AnalysisTest extends Properties("Analysis") {
     a = a.addExternalDep(aScala, "C", cSource, inherited = false)
 
     // b
-    var b = Analysis.Empty
+    var b = Analysis.empty(false)
     b = b.addProduct(bScala, f("B.class"), exists, "B")
     b = b.addProduct(bScala, f("B$.class"), exists, "B$")
     b = b.addSource(bScala, bSource, exists, Nil, Nil, sourceInfos)
@@ -38,7 +38,7 @@ object AnalysisTest extends Properties("Analysis") {
     b = b.addExternalDep(bScala, "A", aSource, inherited = true)
 
     // ab
-    var ab = Analysis.Empty
+    var ab = Analysis.empty(false)
     ab = ab.addProduct(aScala, f("A.class"), exists, "A")
     ab = ab.addProduct(aScala, f("A$.class"), exists, "A$")
     ab = ab.addProduct(bScala, f("B.class"), exists, "B")
@@ -52,8 +52,8 @@ object AnalysisTest extends Properties("Analysis") {
 
     val split: Map[String, Analysis] = ab.groupBy({ f: File => f.getName.substring(0, 1) })
 
-    val aSplit = split.getOrElse("A", Analysis.Empty)
-    val bSplit = split.getOrElse("B", Analysis.Empty)
+    val aSplit = split.getOrElse("A", Analysis.empty(false))
+    val bSplit = split.getOrElse("B", Analysis.empty(false))
 
     val merged = Analysis.merge(a :: b :: Nil)
 
@@ -67,7 +67,7 @@ object AnalysisTest extends Properties("Analysis") {
   // a divide-by-zero error masking the original error.
   property("Complex Merge and Split") = forAllNoShrink(genAnalysis, choose(1, 10)) { (analysis: Analysis, numSplits: Int) =>
     val grouped: Map[Int, Analysis] = analysis.groupBy({ f: File => abs(f.hashCode()) % numSplits })
-    def getGroup(i: Int): Analysis = grouped.getOrElse(i, Analysis.Empty)
+    def getGroup(i: Int): Analysis = grouped.getOrElse(i, Analysis.empty(false))
     val splits = (Range(0, numSplits) map getGroup).toList
 
     val merged: Analysis = Analysis.merge(splits)
