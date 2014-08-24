@@ -112,6 +112,8 @@ private object ConvertResolver {
             resolver.setPatterns() // has to be done after initializeMavenStyle, which calls methods that overwrite the patterns
             resolver
           }
+        // TODO: HTTP repository is no longer recommended. #1541
+        // Remove `JavaNet1Repository` when we bump up the API.
         case r: JavaNet1Repository =>
           {
             // Thanks to Matthias Pfau for posting how to use the Maven 1 repository on java.net with Ivy:

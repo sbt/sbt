@@ -344,20 +344,20 @@ final class Update(config: UpdateConfiguration) {
   /** Creates a maven-style resolver.*/
   private def mavenResolver(name: String, root: String) =
     {
-      val resolver = defaultMavenResolver(name)
+      val resolver = new IBiblioResolver
+      resolver.setName(name)
+      resolver.setM2compatible(true)
       resolver.setRoot(root)
       resolver
     }
+  private def useSecureResolvers = sys.props.get("sbt.repository.secure") map { _.toLowerCase == "true" } getOrElse true
+  private def centralRepositoryRoot(secure: Boolean) = (if (secure) "https" else "http") + "://repo1.maven.org/maven2/"
+
   /** Creates a resolver for Maven Central.*/
   private def mavenMainResolver = defaultMavenResolver("Maven Central")
   /** Creates a maven-style resolver with the default root.*/
   private def defaultMavenResolver(name: String) =
-    {
-      val resolver = new IBiblioResolver
-      resolver.setName(name)
-      resolver.setM2compatible(true)
-      resolver
-    }
+    mavenResolver(name, centralRepositoryRoot(useSecureResolvers))
   private def localResolver(ivyUserDirectory: String) =
     {
       val localIvyRoot = ivyUserDirectory + "/local"
