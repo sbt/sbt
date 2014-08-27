@@ -106,7 +106,7 @@ object Plugin extends sbt.Plugin {
 
           if (!force) {
             streams.log.info("\n")
-            streams.log.info("Note: The graph was estimated to be too big to display (> 15 nodes). Use `dependency-graph --force` to force graph display.")
+            streams.log.info("Note: The graph was estimated to be too big to display (> 15 nodes). Use `sbt 'dependency-graph --force'` (with the single quotes) to force graph display.")
           }
         }
       }
