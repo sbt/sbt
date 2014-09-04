@@ -8,7 +8,7 @@ object PluginCommandTestPlugin0 extends AutoPlugin
 
 package subpackage {
 
-object PluginCommandTestPlugin1 extends AutoPlugin
+  object PluginCommandTestPlugin1 extends AutoPlugin
 
 }
 

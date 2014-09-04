@@ -63,9 +63,9 @@ object EvaluateConfigurations {
    *
    * @param buildinImports  The set of import statements to add to those parsed in the .sbt file.
    */
-  private[this] def parseConfiguration(lines: Seq[String], builtinImports: Seq[String], offset: Int): ParsedFile =
+  private[this] def parseConfiguration(file: File, lines: Seq[String], builtinImports: Seq[String], offset: Int): ParsedFile =
     {
-      val (importStatements, settingsAndDefinitions) = splitExpressions(lines)
+      val (importStatements, settingsAndDefinitions) = splitExpressions(file, lines)
       val allImports = builtinImports.map(s => (s, -1)) ++ addOffset(offset, importStatements)
       val (definitions, settings) = splitSettingsDefinitions(addOffsetToRange(offset, settingsAndDefinitions))
       new ParsedFile(allImports, definitions, settings)
@@ -103,7 +103,7 @@ object EvaluateConfigurations {
       // TODO - Store the file on the LoadedSbtFile (or the parent dir) so we can accurately do
       //        detection for which project project manipulations should be applied.
       val name = file.getPath
-      val parsed = parseConfiguration(lines, imports, offset)
+      val parsed = parseConfiguration(file, lines, imports, offset)
       val (importDefs, definitions) =
         if (parsed.definitions.isEmpty) (Nil, DefinedSbtValues.empty) else {
           val definitions = evaluateDefinitions(eval, name, parsed.imports, parsed.definitions, Some(file))
@@ -208,37 +208,18 @@ object EvaluateConfigurations {
       }
     }
   private[this] def isSpace = (c: Char) => Character isWhitespace c
-  private[this] def fstS(f: String => Boolean): ((String, Int)) => Boolean = { case (s, i) => f(s) }
   private[this] def firstNonSpaceIs(lit: String) = (_: String).view.dropWhile(isSpace).startsWith(lit)
   private[this] def or[A](a: A => Boolean, b: A => Boolean): A => Boolean = in => a(in) || b(in)
   /**
    * Splits a set of lines into (imports, expressions).  That is,
    * anything on the right of the tuple is a scala expression (definition or setting).
    */
-  def splitExpressions(lines: Seq[String]): (Seq[(String, Int)], Seq[(String, LineRange)]) =
+  def splitExpressions(file: File, lines: Seq[String]): (Seq[(String, Int)], Seq[(String, LineRange)]) =
     {
-      val blank = (_: String).forall(isSpace)
-      val isImport = firstNonSpaceIs("import ")
-      val comment = firstNonSpaceIs("//")
-      val blankOrComment = or(blank, comment)
-      val importOrBlank = fstS(or(blankOrComment, isImport))
+      val split = SplitExpressionsNoBlankies(null, lines)
+      (split.imports, split.settings)
+    }
 
-      val (imports, settings) = lines.zipWithIndex span importOrBlank
-      (imports filterNot fstS(blankOrComment), groupedLines(settings, blank, blankOrComment))
-    }
-  def groupedLines(lines: Seq[(String, Int)], delimiter: String => Boolean, skipInitial: String => Boolean): Seq[(String, LineRange)] =
-    {
-      val fdelim = fstS(delimiter)
-      @tailrec def group0(lines: Seq[(String, Int)], accum: Seq[(String, LineRange)]): Seq[(String, LineRange)] =
-        if (lines.isEmpty) accum.reverse
-        else {
-          val start = lines dropWhile fstS(skipInitial)
-          val (next, tail) = start.span { case (s, _) => !delimiter(s) }
-          val grouped = if (next.isEmpty) accum else (next.map(_._1).mkString("\n"), LineRange(next.head._2, next.last._2 + 1)) +: accum
-          group0(tail, grouped)
-        }
-      group0(lines, Nil)
-    }
   private[this] def splitSettingsDefinitions(lines: Seq[(String, LineRange)]): (Seq[(String, LineRange)], Seq[(String, LineRange)]) =
     lines partition { case (line, range) => isDefinition(line) }
   private[this] def isDefinition(line: String): Boolean =
