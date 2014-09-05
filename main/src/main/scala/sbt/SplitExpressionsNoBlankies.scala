@@ -6,7 +6,8 @@ import scala.annotation.tailrec
 import SplitExpressionsNoBlankies._
 
 object SplitExpressionsNoBlankies {
-  val END_OF_LINE = "\n"
+  val END_OF_LINE_CHAR = '\n'
+  val END_OF_LINE = String.valueOf(END_OF_LINE_CHAR)
 }
 
 case class SplitExpressionsNoBlankies(file: File, lines: Seq[String]) {
@@ -26,13 +27,14 @@ case class SplitExpressionsNoBlankies(file: File, lines: Seq[String]) {
     val indexedLines = lines.toIndexedSeq
     val original = indexedLines.mkString(END_OF_LINE)
     val merged = handleXmlContent(original)
-    val fileName = if (file == null) "Here should be file name" else file.getAbsolutePath
+    val fileName = file.getAbsolutePath
 
     val parsed =
       try {
         toolbox.parse(merged)
       } catch {
         case e: ToolBoxError =>
+          ConsoleLogger(System.err).trace(e)
           val seq = toolbox.frontEnd.infos.map { i =>
             s"""[$fileName]:${i.pos.line}: ${i.msg}"""
           }
@@ -54,17 +56,28 @@ case class SplitExpressionsNoBlankies(file: File, lines: Seq[String]) {
     def convertImport(t: Tree): (String, Int) =
       (merged.substring(t.pos.start, t.pos.end), t.pos.line - 1)
 
+    /**
+     * See BugInParser
+     * @param t - tree
+     * @param originalStatement - original
+     * @return originalStatement or originalStatement with missing bracket
+     */
+    def parseStatementAgain(t: Tree, originalStatement: String): String = {
+      val statement = util.Try(toolbox.parse(originalStatement)) match {
+        case util.Failure(th) =>
+          val missingText = tryWithNextStatement(merged, t.pos.end, t.pos.line, fileName, th)
+          originalStatement + missingText
+        case _ =>
+          originalStatement
+      }
+      statement
+    }
+
     def convertStatement(t: Tree): Option[(String, LineRange)] =
       if (t.pos.isDefined) {
         val originalStatement = merged.substring(t.pos.start, t.pos.end)
-        val statement = util.Try(toolbox.parse(originalStatement)) match {
-          case util.Failure(th) =>
-            val missingText = tryWithNextStatement(merged, t.pos.end, t.pos.line, fileName, th)
-            originalStatement + missingText
-          case _ =>
-            originalStatement
-        }
-        val numberLines = statement.count(c => c == '\n')
+        val statement = parseStatementAgain(t, originalStatement)
+        val numberLines = statement.count(c => c == END_OF_LINE_CHAR)
         Some((statement, LineRange(t.pos.line - 1, t.pos.line + numberLines)))
       } else {
         None
@@ -85,7 +98,7 @@ private[sbt] object BugInParser {
    * @param content - parsed file
    * @param positionEnd - from index
    * @param positionLine - number of start position line
-   * @param fileName -
+   * @param fileName - file name
    * @param th - original exception
    * @return
    */
@@ -156,7 +169,7 @@ private object XmlContent {
 
   /**
    * Cut file for normal text - xml - normal text - xml ....
-   * @param content -
+   * @param content - content
    * @param ts - import/statements
    * @return (text,true) - is xml (text,false) - if normal text
    */
@@ -181,7 +194,7 @@ private object XmlContent {
 
   /**
    * Cut potential xmls from content
-   * @param content -
+   * @param content - content
    * @return sorted by openIndex xml parts
    */
   private def findXmlParts(content: String): Seq[(String, Int, Int)] = {
@@ -283,9 +296,9 @@ private object XmlContent {
 
   /**
    *
-   * @param content -
-   * @param xmlParts -
-   * @return
+   * @param content - content
+   * @param xmlParts - xmlParts
+   * @return content with xml with brackets
    */
   private def addExplicitXmlContent(content: String, xmlParts: Seq[(String, Int, Int)]): String = {
     val statements: Seq[(String, Boolean)] = splitFile(content, xmlParts)
@@ -323,12 +336,12 @@ private object XmlContent {
 
   /**
    * Add to head if option is not empty
-   * @param acc - seq
-   * @param option -
+   * @param ts - seq
+   * @param option - option
    * @tparam T - type
    * @return original seq for None, add to head for Some[T]
    */
-  private def addOptionToCollection[T](acc: Seq[T], option: Option[T]) = option.fold(acc)(el => el +: acc)
+  private def addOptionToCollection[T](ts: Seq[T], option: Option[T]) = option.fold(ts)(el => el +: ts)
 
   private def findNotModifiedOpeningTag(content: String, closeTagStartIndex: Int, closeTagEndIndex: Int): Option[(String, Int, Int)] = {
 
@@ -348,8 +361,8 @@ private object XmlContent {
   /**
    * Check, if xmlPart is valid xml. If not - None is returned
    * @param content - file content
-   * @param openIndex -
-   * @param closeIndex -
+   * @param openIndex - open index
+   * @param closeIndex - close index
    * @return Some((String,Int,Int))
    */
   private def xmlFragmentOption(content: String, openIndex: Int, closeIndex: Int): Option[(String, Int, Int)] = {
@@ -362,7 +375,7 @@ private object XmlContent {
 
   /**
    * If xml is in brackets - we do not need to add them
-   * @param statement -
+   * @param statement - statement
    * @return are brackets necessary?
    */
   private def areBracketsNecessary(statement: String): Boolean = {

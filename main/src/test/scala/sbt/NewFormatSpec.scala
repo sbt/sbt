@@ -1,8 +1,13 @@
 package sbt
 
 import java.io.File
+
+import org.junit.runner.RunWith
+import org.specs2.runner.JUnitRunner
+
 import scala.io.Source
 
+@RunWith(classOf[JUnitRunner])
 class NewFormatSpec extends AbstractSpec {
   implicit val splitter: SplitExpressions.SplitExpression = EvaluateConfigurations.splitExpressions
 
@@ -16,10 +21,9 @@ class NewFormatSpec extends AbstractSpec {
           println(s"$path")
           val lines = Source.fromFile(path).getLines().toList
           val (_, statements) = splitter(path, lines)
-          statements.nonEmpty must be_==(true)
-        //          orPending(s"""
-        //                       |***should contains statements***
-        //                       |$lines """.stripMargin)
+          statements.nonEmpty must be_==(true).setMessage(s"""
+                               |***should contains statements***
+                               |$lines """.stripMargin)
       }
     }
   }

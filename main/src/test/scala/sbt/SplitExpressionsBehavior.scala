@@ -1,9 +1,11 @@
 package sbt
 
+import java.io.File
+
 import org.specs2.mutable.SpecificationLike
 
 trait SplitExpression {
-  def split(s: String)(implicit splitter: SplitExpressions.SplitExpression) = splitter(null, s.split("\n").toSeq)
+  def split(s: String, file: File = new File("noFile"))(implicit splitter: SplitExpressions.SplitExpression) = splitter(file, s.split("\n").toSeq)
 }
 
 trait SplitExpressionsBehavior extends SplitExpression {

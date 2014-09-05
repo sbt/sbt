@@ -4,12 +4,10 @@
 package sbt
 
 import java.io.File
-import java.net.URI
 import compiler.{ Eval, EvalImports }
 import complete.DefaultParsers.validID
-import Def.{ ScopedKey, Setting, SettingsDefinition }
+import Def.{ ScopedKey, Setting }
 import Scope.GlobalScope
-import scala.annotation.tailrec
 
 /**
  *  This file is responsible for compiling the .sbt files used to configure sbt builds.
@@ -61,7 +59,7 @@ object EvaluateConfigurations {
    * Parses a sequence of build.sbt lines into a [[ParsedFile]].  The result contains
    * a fragmentation of all imports, settings and definitions.
    *
-   * @param buildinImports  The set of import statements to add to those parsed in the .sbt file.
+   * @param builtinImports  The set of import statements to add to those parsed in the .sbt file.
    */
   private[this] def parseConfiguration(file: File, lines: Seq[String], builtinImports: Seq[String], offset: Int): ParsedFile =
     {
@@ -167,7 +165,7 @@ object EvaluateConfigurations {
    * @param expression The scala expression we're compiling
    * @param range The original position in source of the expression, for error messages.
    *
-   * @return A method that given an sbt classloader, can return the actual [[DslEntry]] defined by
+   * @return A method that given an sbt classloader, can return the actual [[internals.DslEntry]] defined by
    *         the expression, and the sequence of .class files generated.
    */
   private[sbt] def evaluateDslEntry(eval: Eval, name: String, imports: Seq[(String, Int)], expression: String, range: LineRange): TrackedEvalResult[internals.DslEntry] = {
@@ -216,7 +214,7 @@ object EvaluateConfigurations {
    */
   def splitExpressions(file: File, lines: Seq[String]): (Seq[(String, Int)], Seq[(String, LineRange)]) =
     {
-      val split = SplitExpressionsNoBlankies(null, lines)
+      val split = SplitExpressionsNoBlankies(file, lines)
       (split.imports, split.settings)
     }
 
@@ -255,7 +253,7 @@ object Index {
       val multiMap = settings.groupBy(label)
       val duplicates = multiMap collect { case (k, xs) if xs.size > 1 => (k, xs.map(_.manifest)) } collect { case (k, xs) if xs.size > 1 => (k, xs) }
       if (duplicates.isEmpty)
-        multiMap.collect { case (k, v) if validID(k) => (k, v.head) } toMap;
+        multiMap.collect { case (k, v) if validID(k) => (k, v.head) } toMap
       else
         sys.error(duplicates map { case (k, tps) => "'" + k + "' (" + tps.mkString(", ") + ")" } mkString ("Some keys were defined with the same name but different types: ", ", ", ""))
     }
