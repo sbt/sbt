@@ -166,7 +166,7 @@ object Resolver {
   private[sbt] def typesafeRepositoryRoot(secure: Boolean) = (if (secure) "https" else "http") + "://repo.typesafe.com/typesafe"
   // TODO: This switch is only kept for backward compatibility. Hardcode to HTTPS in the future.
   private[sbt] def sbtPluginRepositoryRoot(secure: Boolean) = (if (secure) "https" else "http") + "://repo.scala-sbt.org/scalasbt"
-  
+
   // obsolete: kept only for launcher compatibility
   private[sbt] val ScalaToolsReleasesName = "Sonatype OSS Releases"
   private[sbt] val ScalaToolsSnapshotsName = "Sonatype OSS Snapshots"
