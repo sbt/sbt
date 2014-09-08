@@ -439,7 +439,8 @@ object Load {
 
       val memoSettings = new mutable.HashMap[File, LoadedSbtFile]
       def loadProjects(ps: Seq[Project], createRoot: Boolean) = {
-        loadTransitive(ps, normBase, plugs, () => eval, config.injectSettings, Nil, memoSettings, config.log, createRoot, uri, config.pluginManagement.context, Nil)
+        val result = loadTransitive(ps, normBase, plugs, () => eval, config.injectSettings, Nil, memoSettings, config.log, createRoot, uri, config.pluginManagement.context, Nil)
+        result
       }
 
       val loadedProjectsRaw = loadProjects(initialProjects, !hasRootAlreadyDefined)
@@ -567,14 +568,14 @@ object Load {
         case Seq(next, rest @ _*) =>
           log.debug(s"[Loading] Loading project ${next.id} @ ${next.base}")
           val (finished, discovered, generated) = discoverAndLoad(next)
-          loadTransitive(rest ++ discovered, buildBase, plugins, eval, injectSettings, acc :+ finished, memoSettings, log, false, buildUri, context, generated)
+          loadTransitive(rest ++ discovered, buildBase, plugins, eval, injectSettings, acc :+ finished, memoSettings, log, false, buildUri, context, generated ++ generatedConfigClassFiles)
         case Nil if makeOrDiscoverRoot =>
           log.debug(s"[Loading] Scanning directory ${buildBase}")
           discover(AddSettings.defaultSbtFiles, buildBase) match {
             case DiscoveredProjects(Some(root), discovered, files, generated) =>
               log.debug(s"[Loading] Found root project ${root.id} w/ remaining ${discovered.map(_.id).mkString(",")}")
               val finalRoot = finalizeProject(root, files)
-              loadTransitive(discovered, buildBase, plugins, eval, injectSettings, finalRoot +: acc, memoSettings, log, false, buildUri, context, generated)
+              loadTransitive(discovered, buildBase, plugins, eval, injectSettings, finalRoot +: acc, memoSettings, log, false, buildUri, context, generated ++ generatedConfigClassFiles)
             // Here we need to create a root project...
             case DiscoveredProjects(None, discovered, files, generated) =>
               log.debug(s"[Loading] Found non-root projects ${discovered.map(_.id).mkString(",")}")
@@ -587,7 +588,7 @@ object Load {
               val root = finalizeProject(Build.defaultAggregatedProject(defaultID, buildBase, refs), files)
               val result = root +: (acc ++ otherProjects.projects)
               log.debug(s"[Loading] Done in ${buildBase}, returning: ${result.map(_.id).mkString("(", ", ", ")")}")
-              LoadedProjects(result, generated ++ otherGenerated)
+              LoadedProjects(result, generated ++ otherGenerated ++ generatedConfigClassFiles)
           }
         case Nil =>
           log.debug(s"[Loading] Done in ${buildBase}, returning: ${acc.map(_.id).mkString("(", ", ", ")")}")
