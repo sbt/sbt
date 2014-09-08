@@ -149,7 +149,7 @@ object Resolver {
   private[sbt] def useSecureResolvers = sys.props.get("sbt.repository.secure") map { _.toLowerCase == "true" } getOrElse true
 
   val TypesafeRepositoryRoot = typesafeRepositoryRoot(useSecureResolvers)
-  val SbtPluginRepositoryRoot = "http://repo.scala-sbt.org/scalasbt"
+  val SbtPluginRepositoryRoot = sbtPluginRepositoryRoot(useSecureResolvers)
   val SonatypeRepositoryRoot = "https://oss.sonatype.org/content/repositories"
   val JavaNet2RepositoryName = "java.net Maven2 Repository"
   val JavaNet2RepositoryRoot = javanet2RepositoryRoot(useSecureResolvers)
@@ -164,6 +164,8 @@ object Resolver {
     else "http://download.java.net/maven/2"
   // TODO: This switch is only kept for backward compatibility. Hardcode to HTTPS in the future.
   private[sbt] def typesafeRepositoryRoot(secure: Boolean) = (if (secure) "https" else "http") + "://repo.typesafe.com/typesafe"
+  // TODO: This switch is only kept for backward compatibility. Hardcode to HTTPS in the future.
+  private[sbt] def sbtPluginRepositoryRoot(secure: Boolean) = (if (secure) "https" else "http") + "://repo.scala-sbt.org/scalasbt"
 
   // obsolete: kept only for launcher compatibility
   private[sbt] val ScalaToolsReleasesName = "Sonatype OSS Releases"
