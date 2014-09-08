@@ -1,0 +1,7 @@
+> scripted some/good-test
+-> scripted some/bad-test
+-> scripted some/*
+-> scripted someOther/*
+-> scripted some/NonExistentTest
+-> scripted someNonExistentGroup/*
+-> scripted someNonExistentGroup/someNonExistentTest

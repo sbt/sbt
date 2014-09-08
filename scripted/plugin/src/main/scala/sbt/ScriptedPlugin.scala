@@ -10,6 +10,8 @@ import classpath.ClasspathUtilities
 import java.lang.reflect.{ InvocationTargetException, Method }
 import java.util.Properties
 
+// TODO - This should hook into the sbt test-interface
+// TODO - Adapt this into an autoplugin as well.
 object ScriptedPlugin extends Plugin {
   def scriptedConf = config("scripted-sbt") hide
   def scriptedLaunchConf = config("scripted-sbt-launch") hide
