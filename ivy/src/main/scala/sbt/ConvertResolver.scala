@@ -17,7 +17,7 @@ import java.io.File
 import org.apache.ivy.util.ChecksumHelper
 import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact }
 
-private object ConvertResolver {
+private[sbt] object ConvertResolver {
   /**
    * This class contains all the reflective lookups used in the
    * checksum-friendly URL publishing shim.
