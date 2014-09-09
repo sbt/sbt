@@ -4,7 +4,7 @@ import org.apache.ivy.core.module.id.ModuleRevisionId
 import org.apache.ivy.core.module.descriptor.{ DefaultArtifact, DefaultExtendsDescriptor, DefaultModuleDescriptor, ModuleDescriptor }
 import org.apache.ivy.core.module.descriptor.{ DefaultDependencyDescriptor, DependencyDescriptor }
 import org.apache.ivy.plugins.parser.{ ModuleDescriptorParser, ModuleDescriptorParserRegistry, ParserSettings }
-import org.apache.ivy.plugins.parser.m2.{ PomModuleDescriptorBuilder, PomModuleDescriptorParser }
+import org.apache.ivy.plugins.parser.m2.{ EvilHackery, PomModuleDescriptorBuilder, PomModuleDescriptorParser }
 import org.apache.ivy.plugins.repository.Resource
 import org.apache.ivy.plugins.namespace.NamespaceTransformer
 import org.apache.ivy.util.extendable.ExtendableItem
@@ -27,6 +27,10 @@ final class CustomPomParser(delegate: ModuleDescriptorParser, transform: (Module
   override def getMetadataArtifact(mrid: ModuleRevisionId, res: Resource) = delegate.getMetadataArtifact(mrid, res)
 }
 object CustomPomParser {
+
+  // Evil hackery to override the default maven pom mappings.
+  EvilHackery.init()
+
   /** The key prefix that indicates that this is used only to store extra information and is not intended for dependency resolution.*/
   val InfoKeyPrefix = "info."
   val ApiURLKey = "info.apiURL"
