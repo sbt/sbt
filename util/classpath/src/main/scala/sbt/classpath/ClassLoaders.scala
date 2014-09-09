@@ -59,13 +59,8 @@ final class ClasspathFilter(parent: ClassLoader, root: ClassLoader, classpath: S
       val c = super.loadClass(className, resolve)
       if (includeLoader(c.getClassLoader, root) || fromClasspath(c))
         c
-      else {
-        System.err.println(s"DEBUGME: Failing to load class $className because it was not in expected parent chain.")
-        System.err.println(s"DEBUGME: Found: ${c.getClassLoader}")
-        System.err.println(s"DEBUGME: Expected: ${root}")
-        System.err.println(s"DEBUGME: onClasspath: ${fromClasspath(c)}")
+      else
         throw new ClassNotFoundException(className)
-      }
     }
   private[this] def fromClasspath(c: Class[_]): Boolean =
     {
