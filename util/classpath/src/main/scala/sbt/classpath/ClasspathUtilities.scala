@@ -26,6 +26,13 @@ object ClasspathUtilities {
     new URLClassLoader(Path.toURLs(paths), parent) with RawResources with NativeCopyLoader {
       override def resources = resourceMap
       override val config = new NativeCopyConfig(nativeTemp, paths, javaLibraryPaths)
+      override def toString =
+        s"""|URLClassLoader with NativeCopyLoader with RawResources(
+            |  urls = $paths,
+            |  parent = $parent,
+            |  resourceMap = ${resourceMap.keySet},
+            |  nativeTemp = $nativeTemp
+            |)""".stripMargin
     }
 
   def javaLibraryPaths: Seq[File] = IO.parseClasspath(System.getProperty("java.library.path"))
