@@ -65,11 +65,11 @@ object Sbt extends Build {
     commands += Command.command("release-sbt") { state =>
       // TODO - Any sort of validation
       "checkCredentials" ::
-      "conscript-configs" ::
-      "publishSigned" ::
-      "publishLauncher" ::
-      "release-libs-211" ::
-      state
+        "conscript-configs" ::
+        "publishSigned" ::
+        "publishLauncher" ::
+        "release-libs-211" ::
+        state
     }
   )
 
