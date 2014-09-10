@@ -54,4 +54,8 @@ case class DslEnablePlugins(plugins: Seq[AutoPlugin]) extends ProjectManipulatio
 case class DslDisablePlugins(plugins: Seq[AutoPlugin]) extends ProjectManipulation {
   override val toFunction: Project => Project = _.disablePlugins(plugins: _*)
 }
+/** Represents registering a set of configurations with the current project. */
+case class DslConfigs(cs: Seq[Configuration]) extends ProjectManipulation {
+  override val toFunction: Project => Project = _.configs(cs: _*)
+}
 

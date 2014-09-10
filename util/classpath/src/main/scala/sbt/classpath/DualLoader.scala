@@ -12,6 +12,7 @@ final class NullLoader extends ClassLoader {
   override final def loadClass(className: String, resolve: Boolean): Class[_] = throw new ClassNotFoundException("No classes can be loaded from the null loader")
   override def getResource(name: String): URL = null
   override def getResources(name: String): Enumeration[URL] = null
+  override def toString = "NullLoader"
 }
 
 /** Exception thrown when `loaderA` and `loaderB` load a different Class for the same name. */
@@ -84,6 +85,8 @@ class DualLoader(parentA: ClassLoader, aOnlyClasses: String => Boolean, aOnlyRes
           new DualEnumeration(urlsA, urlsB)
       }
     }
+
+  override def toString = s"DualLoader(a = $parentA, b = $parentB)"
 }
 
 /** Concatenates `a` and `b` into a single `Enumeration`.*/
