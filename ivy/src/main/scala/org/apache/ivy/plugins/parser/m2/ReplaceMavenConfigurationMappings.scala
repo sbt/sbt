@@ -3,42 +3,62 @@ package org.apache.ivy.plugins.parser.m2
 import org.apache.ivy.core.module.descriptor.DefaultDependencyDescriptor;
 
 /**
- * Helper evil hackery method to ensure Maven configurations + Ivy i
+ * It turns out there was a very subtle, and evil, issue sitting the Ivy/maven configuration, and it
+ * related to dependency mapping.    A mapping of `foo->bar(*)` means that the local configuration
+ * `foo` depends on the remote configuration `bar`, if it exists, or *ALL CONFIGURATIONS* if `bar`
+ * does not exist.   Since the default Ivy configuration mapping was using the random `master`
+ * configuration, which AFAICT is NEVER specified, just an assumed default, this would cause leaks
+ * between maven + ivy projects.
+ *
+ * i.e. if  a maven POM depends on a module denoted by an ivy.xml file, then you'd wind up accidentally
+ * bleeding ALL the ivy module's configurations into the maven module's configurations.
+ *
+ * This fix works around the issue, by assuming that if there is no `master` configuration, than the
+ * maven default of `compile` is intended.   As sbt forces generated `ivy.xml` files to abide by
+ * maven conventions, this works in all of our test cases.   The only scenario where it wouldn't work
+ * is those who have custom ivy.xml files *and* have pom.xml files which rely on those custom ivy.xml files,
+ * a very unlikely situation where the workaround is:  "define a master configuration".
+ *
+ * Also see: http://ant.apache.org/ivy/history/2.3.0/ivyfile/dependency.html
+ * and: http://svn.apache.org/repos/asf/ant/ivy/core/tags/2.3.0/src/java/org/apache/ivy/plugins/parser/m2/PomModuleDescriptorBuilder.java
+ *
+ *
  */
-object EvilHackery {
+object ReplaceMavenConfigurationMappings {
 
   val REPLACEMENT_MAVEN_MAPPINGS = {
     // Here we copy paste from Ivy
     val REPLACEMENT_MAPPINGS = new java.util.HashMap[String, PomModuleDescriptorBuilder.ConfMapper]
 
+    // NOTE - This code is copied from org.apache.ivy.plugins.parser.m2.PomModuleDescriptorBuilder
+    // except with altered default configurations...
     REPLACEMENT_MAPPINGS.put("compile", new PomModuleDescriptorBuilder.ConfMapper {
       def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean) {
         if (isOptional) {
           dd.addDependencyConfiguration("optional", "compile(*)")
-          // NOTE - This is the problematic piece we're dropping.  EVIL!!!!
+          // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
           dd.addDependencyConfiguration("optional", "master(compile)")
         } else {
           dd.addDependencyConfiguration("compile", "compile(*)")
-          // NOTE - This is the problematic piece we're dropping, as `master` is not special cased.
+          // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
           dd.addDependencyConfiguration("compile", "master(compile)")
           dd.addDependencyConfiguration("runtime", "runtime(*)")
         }
       }
     })
-
     REPLACEMENT_MAPPINGS.put("provided", new PomModuleDescriptorBuilder.ConfMapper {
       def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean) {
         if (isOptional) {
           dd.addDependencyConfiguration("optional", "compile(*)")
           dd.addDependencyConfiguration("optional", "provided(*)")
           dd.addDependencyConfiguration("optional", "runtime(*)")
-          // Remove evil hackery
+          // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
           dd.addDependencyConfiguration("optional", "master(compile)")
         } else {
           dd.addDependencyConfiguration("provided", "compile(*)")
           dd.addDependencyConfiguration("provided", "provided(*)")
           dd.addDependencyConfiguration("provided", "runtime(*)")
-          // Remove evil hackery
+          // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
           dd.addDependencyConfiguration("provided", "master(compile)")
         }
       }
@@ -49,12 +69,12 @@ object EvilHackery {
         if (isOptional) {
           dd.addDependencyConfiguration("optional", "compile(*)")
           dd.addDependencyConfiguration("optional", "provided(*)")
-          // Remove evil hackery
+          // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
           dd.addDependencyConfiguration("optional", "master(compile)")
         } else {
           dd.addDependencyConfiguration("runtime", "compile(*)")
           dd.addDependencyConfiguration("runtime", "runtime(*)")
-          // Remove evil hackery
+          // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
           dd.addDependencyConfiguration("runtime", "master(compile)")
         }
       }
@@ -63,14 +83,14 @@ object EvilHackery {
     REPLACEMENT_MAPPINGS.put("test", new PomModuleDescriptorBuilder.ConfMapper {
       def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean) {
         dd.addDependencyConfiguration("test", "runtime(*)")
-        // Remove evil hackery
+        // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
         dd.addDependencyConfiguration("test", "master(compile)")
       }
     })
 
     REPLACEMENT_MAPPINGS.put("system", new PomModuleDescriptorBuilder.ConfMapper {
       def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean) {
-        // Hacked
+        // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
         dd.addDependencyConfiguration("system", "master(compile)")
       }
     })
@@ -79,7 +99,7 @@ object EvilHackery {
   }
 
   def init(): Unit = {
-    // SUPER EVIL INITIALIZATION
+    // Here we mutate a static final field, because we have to AND because it's evil.
     try {
       val map = PomModuleDescriptorBuilder.MAVEN2_CONF_MAPPING.asInstanceOf[java.util.Map[String, PomModuleDescriptorBuilder.ConfMapper]]
       map.clear()
