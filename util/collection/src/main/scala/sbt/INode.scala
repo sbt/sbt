@@ -24,14 +24,14 @@ abstract class EvaluateSettings[Scope] {
 
   private[this] val transform: Initialize ~> INode = new (Initialize ~> INode) {
     def apply[T](i: Initialize[T]): INode[T] = i match {
-      case k: Keyed[s, T]          => single(getStatic(k.scopedKey), k.transform)
-      case a: Apply[k, T]          => new MixedNode[k, T](a.alist.transform[Initialize, INode](a.inputs, transform), a.f, a.alist)
-      case b: Bind[s, T]           => new BindNode[s, T](transform(b.in), x => transform(b.f(x)))
-      case init.StaticScopes       => strictConstant(allScopes.asInstanceOf[T]) // can't convince scalac that StaticScopes => T == Set[Scope]
-      case v: Value[T]             => constant(v.value)
-      case v: ValidationCapture[T] => strictConstant(v.key)
-      case t: TransformCapture     => strictConstant(t.f)
-      case o: Optional[s, T] => o.a match {
+      case k: Keyed[s, T] @unchecked          => single(getStatic(k.scopedKey), k.transform)
+      case a: Apply[k, T] @unchecked          => new MixedNode[k, T](a.alist.transform[Initialize, INode](a.inputs, transform), a.f, a.alist)
+      case b: Bind[s, T] @unchecked           => new BindNode[s, T](transform(b.in), x => transform(b.f(x)))
+      case init.StaticScopes                  => strictConstant(allScopes.asInstanceOf[T]) // can't convince scalac that StaticScopes => T == Set[Scope]
+      case v: Value[T] @unchecked             => constant(v.value)
+      case v: ValidationCapture[T] @unchecked => strictConstant(v.key)
+      case t: TransformCapture                => strictConstant(t.f)
+      case o: Optional[s, T] @unchecked => o.a match {
         case None    => constant(() => o.f(None))
         case Some(i) => single[s, T](transform(i), x => o.f(Some(x)))
       }
