@@ -175,9 +175,67 @@ trait Relations {
    * Relation between source files and _unqualified_ term and type names used in given source file.
    */
   private[inc] def names: Relation[File, String]
+
+  /**
+   * Lists of all the pairs (header, relation) that sbt knows of.
+   * Used by TextAnalysisFormat to persist relations.
+   * This cannot be stored as a Map because the order is important.
+   */
+  private[inc] def allRelations: List[(String, Relation[File, _])]
 }
 
 object Relations {
+
+  /**
+   * Represents all the relations that sbt knows of along with a way to recreate each
+   * of their elements from their string representation.
+   */
+  private[inc] val existingRelations = {
+    val string2File: String => File = new File(_)
+    List(
+      ("products", string2File),
+      ("binary dependencies", string2File),
+      ("direct source dependencies", string2File),
+      ("direct external dependencies", identity[String] _),
+      ("public inherited source dependencies", string2File),
+      ("public inherited external dependencies", identity[String] _),
+      ("member reference internal dependencies", string2File),
+      ("member reference external dependencies", identity[String] _),
+      ("inheritance internal dependencies", string2File),
+      ("inheritance external dependencies", identity[String] _),
+      ("class names", identity[String] _),
+      ("used names", identity[String] _))
+  }
+  /**
+   * Reconstructs a Relations from a list of Relation
+   * The order in which the relations are read matters and is defined by `existingRelations`.
+   */
+  def construct(nameHashing: Boolean, relations: List[Relation[_, _]]) =
+    relations match {
+      case p :: bin :: di :: de :: pii :: pie :: mri :: mre :: ii :: ie :: cn :: un :: Nil =>
+        val srcProd = p.asInstanceOf[Relation[File, File]]
+        val binaryDep = bin.asInstanceOf[Relation[File, File]]
+        val directSrcDeps = makeSource(di.asInstanceOf[Relation[File, File]], de.asInstanceOf[Relation[File, String]])
+        val publicInheritedSrcDeps = makeSource(pii.asInstanceOf[Relation[File, File]], pie.asInstanceOf[Relation[File, String]])
+        val memberRefSrcDeps = makeSourceDependencies(mri.asInstanceOf[Relation[File, File]], mre.asInstanceOf[Relation[File, String]])
+        val inheritanceSrcDeps = makeSourceDependencies(ii.asInstanceOf[Relation[File, File]], ie.asInstanceOf[Relation[File, String]])
+        val classes = cn.asInstanceOf[Relation[File, String]]
+        val names = un.asInstanceOf[Relation[File, String]]
+
+        // we don't check for emptiness of publicInherited/inheritance relations because
+        // we assume that invariant that says they are subsets of direct/memberRef holds
+        assert(nameHashing || (memberRefSrcDeps == emptySourceDependencies), "When name hashing is disabled the `memberRef` relation should be empty.")
+        assert(!nameHashing || (directSrcDeps == emptySource), "When name hashing is enabled the `direct` relation should be empty.")
+
+        if (nameHashing)
+          Relations.make(srcProd, binaryDep, memberRefSrcDeps, inheritanceSrcDeps, classes, names)
+        else {
+          assert(names.all.isEmpty, s"When `nameHashing` is disabled `names` relation should be empty: $names")
+          Relations.make(srcProd, binaryDep, directSrcDeps, publicInheritedSrcDeps, classes)
+        }
+      case _ => throw new java.io.IOException(s"Expected to read ${existingRelations.length} relations but read ${relations.length}.")
+    }
+
   /** Tracks internal and external source dependencies for a specific dependency type, such as direct or inherited.*/
   final class Source private[sbt] (val internal: Relation[File, File], val external: Relation[File, String]) {
     def addInternal(source: File, dependsOn: Iterable[File]): Source = new Source(internal + (source, dependsOn), external)
@@ -403,6 +461,23 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
     case _ => false
   }
 
+  def allRelations = {
+    val rels = List(
+      srcProd,
+      binaryDep,
+      direct.internal,
+      direct.external,
+      publicInherited.internal,
+      publicInherited.external,
+      Relations.emptySourceDependencies.internal, // Default implementation doesn't provide memberRef source deps
+      Relations.emptySourceDependencies.external, // Default implementation doesn't provide memberRef source deps
+      Relations.emptySourceDependencies.internal, // Default implementation doesn't provide inheritance source deps
+      Relations.emptySourceDependencies.external, // Default implementation doesn't provide inheritance source deps
+      classes,
+      Relation.empty[File, String]) // Default implementation doesn't provide used names relation
+    Relations.existingRelations map (_._1) zip rels
+  }
+
   override def hashCode = (srcProd :: binaryDep :: direct :: publicInherited :: classes :: Nil).hashCode
 
   override def toString = (
@@ -488,6 +563,23 @@ private class MRelationsNameHashing(srcProd: Relation[File, File], binaryDep: Re
       srcProd == o.srcProd && binaryDep == o.binaryDep && memberRef == o.memberRef &&
         inheritance == o.inheritance && classes == o.classes
     case _ => false
+  }
+
+  def allRelations = {
+    val rels = List(
+      srcProd,
+      binaryDep,
+      Relations.emptySource.internal, // NameHashing doesn't provide direct dependencies
+      Relations.emptySource.external, // NameHashing doesn't provide direct dependencies
+      Relations.emptySource.internal, // NameHashing doesn't provide public inherited dependencies
+      Relations.emptySource.external, // NameHashing doesn't provide public inherited dependencies
+      memberRef.internal,
+      memberRef.external,
+      inheritance.internal,
+      inheritance.external,
+      classes,
+      names)
+    Relations.existingRelations map (_._1) zip rels
   }
 
   override def hashCode = (srcProd :: binaryDep :: memberRef :: inheritance :: classes :: Nil).hashCode
