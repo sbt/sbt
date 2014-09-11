@@ -11,6 +11,8 @@ import org.apache.ivy.util.url.CredentialsStore
 
 /** Additional information about a project module */
 final case class ModuleInfo(nameFormal: String, description: String = "", homepage: Option[URL] = None, startYear: Option[Int] = None, licenses: Seq[(String, URL)] = Nil, organizationName: String = "", organizationHomepage: Option[URL] = None, scmInfo: Option[ScmInfo] = None, developers: Seq[Developer] = Seq()) {
+  def this(nameFormal: String, description: String = "", homepage: Option[URL] = None, startYear: Option[Int] = None, licenses: Seq[(String, URL)] = Nil, organizationName: String = "", organizationHomepage: Option[URL] = None, scmInfo: Option[ScmInfo] = None) =
+    new ModuleInfo(nameFormal = nameFormal, description = description, homepage = homepage, startYear = startYear, licenses = licenses, organizationName = organizationName, organizationHomepage = organizationHomepage, scmInfo = scmInfo, developers = Seq())
   def formally(name: String) = copy(nameFormal = name)
   def describing(desc: String, home: Option[URL]) = copy(description = desc, homepage = home)
   def licensed(lics: (String, URL)*) = copy(licenses = lics)
