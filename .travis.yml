@@ -26,6 +26,7 @@ env:
     - SCRIPTED_TEST="scripted source-dependencies/*2of3"
     - SCRIPTED_TEST="scripted source-dependencies/*3of3"
     - SCRIPTED_TEST="scripted tests/*"
+    - SCRIPTED_TEST="scripted project-load/*"
     - SCRIPTED_TEST="safeUnitTests"
     - SCRIPTED_TEST="checkBuildScala211"
 
