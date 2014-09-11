@@ -65,7 +65,9 @@ object AnalysisTest extends Properties("Analysis") {
   // Merge and split large, generated examples.
   // Mustn't shrink, as the default Shrink[Int] doesn't respect the lower bound of choose(), which will cause
   // a divide-by-zero error masking the original error.
-  property("Complex Merge and Split") = forAllNoShrink(genAnalysis, choose(1, 10)) { (analysis: Analysis, numSplits: Int) =>
+  // Note that the generated Analyses have nameHashing = false (Grouping of Analyses with name hashing enabled
+  // is not supported right now)
+  property("Complex Merge and Split") = forAllNoShrink(genAnalysis(nameHashing = false), choose(1, 10)) { (analysis: Analysis, numSplits: Int) =>
     val grouped: Map[Int, Analysis] = analysis.groupBy({ f: File => abs(f.hashCode()) % numSplits })
     def getGroup(i: Int): Analysis = grouped.getOrElse(i, Analysis.empty(false))
     val splits = (Range(0, numSplits) map getGroup).toList

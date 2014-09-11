@@ -154,7 +154,7 @@ object Sbt extends Build {
   //   Defines the data structures for representing file fingerprints and relationships and the overall source analysis
   lazy val compileIncrementalSub = testedBaseProject(compilePath / "inc", "Incremental Compiler") dependsOn (apiSub, ioSub, logSub, classpathSub, relationSub)
   // Persists the incremental data structures using SBinary
-  lazy val compilePersistSub = baseProject(compilePath / "persist", "Persist") dependsOn (compileIncrementalSub, apiSub) settings (sbinary)
+  lazy val compilePersistSub = testedBaseProject(compilePath / "persist", "Persist") dependsOn (compileIncrementalSub, apiSub, compileIncrementalSub % "test->test") settings (sbinary)
   // sbt-side interface to compiler.  Calls compiler-side interface reflectively
   lazy val compilerSub = testedBaseProject(compilePath, "Compile") dependsOn (launchInterfaceSub, interfaceSub % "compile;test->test", logSub, ioSub, classpathSub,
     logSub % "test->test", launchSub % "test->test", apiSub % "test") settings (compilerSettings: _*)
