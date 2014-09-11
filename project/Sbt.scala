@@ -65,6 +65,7 @@ object Sbt extends Build {
     commands += Command.command("release-sbt") { state =>
       // TODO - Any sort of validation
       "checkCredentials" ::
+        "conscript-configs" ::
         "publishSigned" ::
         "publishLauncher" ::
         "release-libs-211" ::
@@ -315,7 +316,7 @@ object Sbt extends Build {
     autoScalaLibrary := false,
     description := "sbt application launcher",
     publishLauncher <<= Release.deployLauncher,
-    packageBin in Compile <<= (proguard in Proguard, Transform.conscriptConfigs).map((x, y) => x)
+    packageBin in Compile <<= proguard in Proguard
   )
 
   def interfaceSettings = javaOnly ++ Seq(
