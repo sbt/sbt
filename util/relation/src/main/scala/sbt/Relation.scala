@@ -129,7 +129,7 @@ private final class MRelation[A, B](fwd: Map[A, Set[B]], rev: Map[B, Set[A]]) ex
 
   def +(pair: (A, B)) = this + (pair._1, Set(pair._2))
   def +(from: A, to: B) = this + (from, to :: Nil)
-  def +(from: A, to: Traversable[B]) =
+  def +(from: A, to: Traversable[B]) = if (to.isEmpty) this else
     new MRelation(add(fwd, from, to), (rev /: to) { (map, t) => add(map, t, from :: Nil) })
 
   def ++(rs: Traversable[(A, B)]) = ((this: Relation[A, B]) /: rs) { _ + _ }
