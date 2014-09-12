@@ -113,15 +113,8 @@ object SessionSettings {
           }
       }
       val newSettings = settings diff replace
-      val (tmpLines, _) = ((List[String](), 1) /: IO.readLines(writeTo).zipWithIndex) {
-        case ((accLines, n), (line, m)) if n == m + 1 =>
-          lineMap.get(n) match {
-            case Some(Pair(end, lines)) => (lines reverse_::: accLines, end)
-            case None                   => (line :: accLines, n + 1)
-          }
-        case (res, _) => res
-      }
-      val exist = tmpLines.reverse
+      val oldContentWithIndex = IO.readLines(writeTo).zipWithIndex
+      val exist: List[String] = toLines(oldContentWithIndex, lineMap)
       val adjusted = if (!newSettings.isEmpty && needsTrailingBlank(exist)) exist :+ "" else exist
       val lines = adjusted ++ newSettings.flatMap(_._2 ::: "" :: Nil)
       IO.writeLines(writeTo, lines)
@@ -132,6 +125,19 @@ object SessionSettings {
       }
       (newWithPos.reverse, other ++ oldShifted)
     }
+
+  private[sbt] def toLines(oldContentWithIndex: List[(String,Int)], lineMap: Map[Int, (Int, List[String])]): List[String] = {
+    val (tmpLines, _) = ((List[String](), 1) /: oldContentWithIndex) {
+      case ((accLines, n), (line, m)) if n == m + 1 =>
+        lineMap.get(n) match {
+          case Some(Pair(end, lines)) => (lines reverse_::: accLines, end)
+          case None                   => (line :: accLines, n + 1)
+        }
+      case (res, _) => res
+    }
+    tmpLines.reverse
+  }
+
   def needsTrailingBlank(lines: Seq[String]) = !lines.isEmpty && !lines.takeRight(1).exists(_.trim.isEmpty)
   def printAllSettings(s: State): State =
     withSettings(s) { session =>
