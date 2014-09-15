@@ -5,7 +5,7 @@ package sbt
 
 import java.io.File
 import java.net.URL
-import scala.xml.NodeSeq
+import scala.xml.{ XML, NodeSeq }
 import org.apache.ivy.plugins.resolver.DependencyResolver
 
 sealed trait Resolver {
@@ -300,8 +300,19 @@ object Resolver {
   def localBasePattern = "[organisation]/[module]/" + PluginPattern + "[revision]/[type]s/[artifact](-[classifier]).[ext]"
   def defaultRetrievePattern = "[type]s/[organisation]/[module]/" + PluginPattern + "[artifact](-[revision])(-[classifier]).[ext]"
   final val PluginPattern = "(scala_[scalaVersion]/)(sbt_[sbtVersion]/)"
-
-  private[this] def mavenLocalDir = new File(Path.userHome, ".m2/repository/")
+  private[this] def mavenLocalDir: File =
+    {
+      val homeConfig = XML.loadFile(new File(Path.userHome, ".m2/settings.xml"))
+      homeConfig \ "settings" \ "localRepository" match {
+        case scala.xml.Text(x) => new File(x)
+        case _ =>
+          val globalConfig = XML.loadFile(new File(Path.fileProperty("M2_HOME"), "conf/settings.xml"))
+          globalConfig \ "settings" \ "localRepository" match {
+            case scala.xml.Text(x) => new File(x)
+            case _                 => new File(Path.userHome, ".m2/repository/")
+          }
+      }
+    }
   def publishMavenLocal = Resolver.file("publish-m2-local", mavenLocalDir)
   def mavenLocal = MavenRepository("Maven2 Local", mavenLocalDir.toURI.toString)
   def defaultLocal = defaultUserFileRepository("local")
