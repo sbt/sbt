@@ -1,0 +1,7 @@
+<settings>
+    <setting>
+        <start>1</start>
+        <end>2</end>
+        <set>name := "alaMaKota"</set>
+    </setting>
+</settings>

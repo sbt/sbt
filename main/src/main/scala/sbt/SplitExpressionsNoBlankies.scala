@@ -4,6 +4,7 @@ import java.io.File
 
 import scala.annotation.tailrec
 import SplitExpressionsNoBlankies._
+import scala.reflect.runtime.universe._
 
 object SplitExpressionsNoBlankies {
   val END_OF_LINE_CHAR = '\n'
@@ -11,11 +12,12 @@ object SplitExpressionsNoBlankies {
 }
 
 case class SplitExpressionsNoBlankies(file: File, lines: Seq[String]) {
-  val (imports, settings) = splitExpressions(file, lines)
+  //settingsTrees needed for "session save"
+  val (imports, settings, settingsTrees) = splitExpressions(file, lines)
 
-  private def splitExpressions(file: File, lines: Seq[String]): (Seq[(String, Int)], Seq[(String, LineRange)]) = {
+  private def splitExpressions(file: File, lines: Seq[String]): (Seq[(String, Int)], Seq[(String, LineRange)], Seq[(String, Tree)]) = {
     import scala.reflect.runtime._
-    import scala.reflect.runtime.universe._
+
     import scala.tools.reflect.ToolBoxError
     import scala.tools.reflect.ToolBox
     import scala.compat.Platform.EOL
@@ -34,12 +36,14 @@ case class SplitExpressionsNoBlankies(file: File, lines: Seq[String]) {
         toolbox.parse(merged)
       } catch {
         case e: ToolBoxError =>
-          ConsoleLogger(System.err).trace(e)
           val seq = toolbox.frontEnd.infos.map { i =>
             s"""[$fileName]:${i.pos.line}: ${i.msg}"""
           }
           throw new MessageOnlyException(
-            s"""${seq.mkString(EOL)}""".stripMargin)
+            s"""======
+               |$merged
+               |======
+               |${seq.mkString(EOL)}""".stripMargin)
       }
     val parsedTrees = parsed match {
       case Block(stmt, expr) =>
@@ -73,19 +77,18 @@ case class SplitExpressionsNoBlankies(file: File, lines: Seq[String]) {
       statement
     }
 
-    def convertStatement(t: Tree): Option[(String, LineRange)] =
+    def convertStatement(t: Tree): Option[(String, Tree, LineRange)] =
       if (t.pos.isDefined) {
         val originalStatement = merged.substring(t.pos.start, t.pos.end)
         val statement = parseStatementAgain(t, originalStatement)
         val numberLines = statement.count(c => c == END_OF_LINE_CHAR)
-        Some((statement, LineRange(t.pos.line - 1, t.pos.line + numberLines)))
+        Some((statement, t, LineRange(t.pos.line - 1, t.pos.line + numberLines)))
       } else {
         None
       }
-
-    (imports map convertImport, statements flatMap convertStatement)
+    val statementsTreeLineRange = statements flatMap convertStatement
+    (imports map convertImport, statementsTreeLineRange.map(t => (t._1, t._3)), statementsTreeLineRange.map(t => (t._1, t._2)))
   }
-
 }
 
 /**
@@ -143,14 +146,14 @@ private[sbt] object BugInParser {
 /**
  * #ToolBox#parse(String) will fail for xml sequence:
  * <pre>
- *   val xml = <div>txt</div>
- *            <a>rr</a>
- *   </pre>
- *   At least brackets have to be added
+ * val xml = <div>txt</div>
+ * <a>rr</a>
+ * </pre>
+ * At least brackets have to be added
  * <pre>
- *   val xml = (<div>txt</div>
- *            <a>rr</a>)
- *   </pre>
+ * val xml = (<div>txt</div>
+ * <a>rr</a>)
+ * </pre>
  */
 private object XmlContent {
   /**
