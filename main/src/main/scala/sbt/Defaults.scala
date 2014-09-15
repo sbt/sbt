@@ -1009,6 +1009,7 @@ object Classpaths {
     homepage :== None,
     startYear :== None,
     licenses :== Nil,
+    developers :== Nil,
     scmInfo :== None,
     offline :== false,
     defaultConfiguration :== Some(Configurations.Compile),
