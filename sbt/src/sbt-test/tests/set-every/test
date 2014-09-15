@@ -1,0 +1,3 @@
+> set every version := '"1.0"'
+> trySetEvery
+
