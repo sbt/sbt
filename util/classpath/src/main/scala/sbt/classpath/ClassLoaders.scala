@@ -46,6 +46,13 @@ final class SelfFirstLoader(classpath: Seq[URL], parent: ClassLoader) extends Lo
 
 /** Doesn't load any classes itself, but instead verifies that all classes loaded through `parent` either come from `root` or `classpath`.*/
 final class ClasspathFilter(parent: ClassLoader, root: ClassLoader, classpath: Set[File]) extends ClassLoader(parent) {
+  override def toString =
+    s"""|ClasspathFilter(
+        |  parent = $parent
+        |  root = $root
+        |  cp = $classpath
+        |)""".stripMargin
+
   private[this] val directories: Seq[File] = classpath.toSeq.filter(_.isDirectory)
   override def loadClass(className: String, resolve: Boolean): Class[_] =
     {
