@@ -74,10 +74,6 @@
   [@puffnfresh]: https://github.com/puffnfresh
   [@rtyley]: https://github.com/rtyley
 
-### Changes since 0.13.6-M1
-
-- Fixes `NullPointerException` during `update`. [#1484][1484] by [@eed3si9n][@eed3si9n]
-
 ### Fixes with compatibility implications
 
 - Maven Central Repository, Java.net Maven 2 Repository, Typesafe Repository, and sbt Plugin repository now defaults to HTTPS. (See below)
