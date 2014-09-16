@@ -12,6 +12,8 @@ import compiler.Eval
 
 import SessionSettings._
 
+import scala.collection.immutable.SortedMap
+
 final case class SessionSettings(currentBuild: URI, currentProject: Map[URI, String], original: Seq[Setting[_]], append: SessionMap, rawAppend: Seq[Setting[_]], currentEval: () => Eval) {
   assert(currentProject contains currentBuild, "Current build (" + currentBuild + ") not associated with a current project.")
   def setCurrent(build: URI, project: String, eval: () => Eval): SessionSettings = copy(currentBuild = build, currentProject = currentProject.updated(build, project), currentEval = eval)
@@ -100,28 +102,23 @@ object SessionSettings {
           }
       }
 
-      val (_, oldShifted, replace, lineMap) = ((0, List[Setting[_]](), List[SessionSetting](), Map.empty[Int, (Int, List[String])]) /: inFile) {
+      val (_, oldShifted, replace, lineMap) = ((0, List[Setting[_]](), List[SessionSetting](), SortedMap.empty[Int, List[(Int, List[String])]](Ordering[Int].reverse)) /: inFile) {
         case ((offs, olds, repl, lineMap), s) =>
           val RangePosition(_, r @ LineRange(start, end)) = s.pos
           settings find (_._1.key == s.key) match {
             case Some(ss @ (ns, newLines)) if !ns.init.dependencies.contains(ns.key) =>
               val shifted = ns withPos RangePosition(path, LineRange(start - offs, start - offs + newLines.size))
-              (offs + end - start - newLines.size, shifted :: olds, ss :: repl, lineMap + (start -> (end, newLines)))
+              val head = (end, newLines)
+              val seq = lineMap.getOrElse(start, List())
+              (offs + end - start - newLines.size, shifted :: olds, ss :: repl, lineMap + (start -> (head +: seq)))
             case _ =>
               val shifted = s withPos RangePosition(path, r shift -offs)
               (offs, shifted :: olds, repl, lineMap)
           }
       }
       val newSettings = settings diff replace
-      val (tmpLines, _) = ((List[String](), 1) /: IO.readLines(writeTo).zipWithIndex) {
-        case ((accLines, n), (line, m)) if n == m + 1 =>
-          lineMap.get(n) match {
-            case Some(Pair(end, lines)) => (lines reverse_::: accLines, end)
-            case None                   => (line :: accLines, n + 1)
-          }
-        case (res, _) => res
-      }
-      val exist = tmpLines.reverse
+      val oldContent = IO.readLines(writeTo)
+      val exist: List[String] = SessionSettingsNoBlankies.oldLinesToNew(oldContent, lineMap)
       val adjusted = if (!newSettings.isEmpty && needsTrailingBlank(exist)) exist :+ "" else exist
       val lines = adjusted ++ newSettings.flatMap(_._2 ::: "" :: Nil)
       IO.writeLines(writeTo, lines)
@@ -132,6 +129,7 @@ object SessionSettings {
       }
       (newWithPos.reverse, other ++ oldShifted)
     }
+
   def needsTrailingBlank(lines: Seq[String]) = !lines.isEmpty && !lines.takeRight(1).exists(_.trim.isEmpty)
   def printAllSettings(s: State): State =
     withSettings(s) { session =>
