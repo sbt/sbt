@@ -2,6 +2,6 @@
     <setting>
         <start>1</start>
         <end>2</end>
-        <set>name := "alaMaKota"</set>
+        <set><![CDATA[name := "alaMaKota"]]></set>
     </setting>
 </settings>
