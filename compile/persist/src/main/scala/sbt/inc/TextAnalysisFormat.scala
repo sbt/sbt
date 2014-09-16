@@ -122,7 +122,13 @@ object TextAnalysisFormat {
     }
 
     def write(out: Writer, relations: Relations) {
-      def writeRelation[T](header: String, rel: Relation[File, T])(implicit ord: Ordering[T]) {
+      // This ordering is used to persist all values in order. Since all values will be
+      // persisted using their string representation, it makes sense to sort them using
+      // their string representation.
+      val toStringOrd = new Ordering[Any] {
+        def compare(a: Any, b: Any) = a.toString compare b.toString
+      }
+      def writeRelation[T](header: String, rel: Relation[File, T]) {
         writeHeader(out, header)
         writeSize(out, rel.size)
         // We sort for ease of debugging and for more efficient reconstruction when reading.
@@ -131,38 +137,15 @@ object TextAnalysisFormat {
         rel.forwardMap.toSeq.sortBy(_._1).foreach {
           case (k, vs) =>
             val kStr = k.toString
-            vs.toSeq.sorted foreach { v =>
+            vs.toSeq.sorted(toStringOrd) foreach { v =>
               out.write(kStr); out.write(" -> "); out.write(v.toString); out.write("\n")
             }
         }
       }
 
-      val nameHashing = relations.nameHashing
-      writeRelation(Headers.srcProd, relations.srcProd)
-      writeRelation(Headers.binaryDep, relations.binaryDep)
-
-      val direct = if (nameHashing) Relations.emptySource else relations.direct
-      val publicInherited = if (nameHashing)
-        Relations.emptySource else relations.publicInherited
-
-      val memberRef = if (nameHashing)
-        relations.memberRef else Relations.emptySourceDependencies
-      val inheritance = if (nameHashing)
-        relations.inheritance else Relations.emptySourceDependencies
-      val names = if (nameHashing) relations.names else Relation.empty[File, String]
-
-      writeRelation(Headers.directSrcDep, direct.internal)
-      writeRelation(Headers.directExternalDep, direct.external)
-      writeRelation(Headers.internalSrcDepPI, publicInherited.internal)
-      writeRelation(Headers.externalDepPI, publicInherited.external)
-
-      writeRelation(Headers.memberRefInternalDep, memberRef.internal)
-      writeRelation(Headers.memberRefExternalDep, memberRef.external)
-      writeRelation(Headers.inheritanceInternalDep, inheritance.internal)
-      writeRelation(Headers.inheritanceExternalDep, inheritance.external)
-
-      writeRelation(Headers.classes, relations.classes)
-      writeRelation(Headers.usedNames, names)
+      relations.allRelations.foreach {
+        case (header, rel) => writeRelation(header, rel)
+      }
     }
 
     def read(in: BufferedReader, nameHashing: Boolean): Relations = {
@@ -186,56 +169,9 @@ object TextAnalysisFormat {
         Relation.reconstruct(forward.toMap)
       }
 
-      def readFileRelation(expectedHeader: String) = readRelation(expectedHeader, { new File(_) })
-      def readStringRelation(expectedHeader: String) = readRelation(expectedHeader, identity[String])
+      val relations = Relations.existingRelations map { case (header, fun) => readRelation(header, fun) }
 
-      val srcProd = readFileRelation(Headers.srcProd)
-      val binaryDep = readFileRelation(Headers.binaryDep)
-
-      import sbt.inc.Relations.{
-        Source,
-        SourceDependencies,
-        makeSourceDependencies,
-        emptySource,
-        makeSource,
-        emptySourceDependencies
-      }
-      val directSrcDeps: Source = {
-        val internalSrcDep = readFileRelation(Headers.directSrcDep)
-        val externalDep = readStringRelation(Headers.directExternalDep)
-        makeSource(internalSrcDep, externalDep)
-      }
-      val publicInheritedSrcDeps: Source = {
-        val internalSrcDepPI = readFileRelation(Headers.internalSrcDepPI)
-        val externalDepPI = readStringRelation(Headers.externalDepPI)
-        makeSource(internalSrcDepPI, externalDepPI)
-      }
-      val memberRefSrcDeps: SourceDependencies = {
-        val internalMemberRefDep = readFileRelation(Headers.memberRefInternalDep)
-        val externalMemberRefDep = readStringRelation(Headers.memberRefExternalDep)
-        makeSourceDependencies(internalMemberRefDep, externalMemberRefDep)
-      }
-      val inheritanceSrcDeps: SourceDependencies = {
-        val internalInheritanceDep = readFileRelation(Headers.inheritanceInternalDep)
-        val externalInheritanceDep = readStringRelation(Headers.inheritanceExternalDep)
-        makeSourceDependencies(internalInheritanceDep, externalInheritanceDep)
-      }
-      // we don't check for emptiness of publicInherited/inheritance relations because
-      // we assume that invariant that says they are subsets of direct/memberRef holds
-      assert(nameHashing || (memberRefSrcDeps == emptySourceDependencies),
-        "When name hashing is disabled the `memberRef` relation should be empty.")
-      assert(!nameHashing || (directSrcDeps == emptySource),
-        "When name hashing is enabled the `direct` relation should be empty.")
-      val classes = readStringRelation(Headers.classes)
-      val names = readStringRelation(Headers.usedNames)
-
-      if (nameHashing)
-        Relations.make(srcProd, binaryDep, memberRefSrcDeps, inheritanceSrcDeps, classes, names)
-      else {
-        assert(names.all.isEmpty, "When `nameHashing` is disabled `names` relation " +
-          s"should be empty: $names")
-        Relations.make(srcProd, binaryDep, directSrcDeps, publicInheritedSrcDeps, classes)
-      }
+      Relations.construct(nameHashing, relations)
     }
   }
 
