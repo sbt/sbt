@@ -9,14 +9,14 @@ import scala.collection.immutable.{ SortedMap, TreeMap }
 import scala.io.Source
 import scala.xml.XML
 
-abstract class AbstractSessionSettingsSpec(folder: String) extends AbstractSpec {
+abstract class AbstractSessionSettingsSpec(folder: String, printDetails: Boolean = false) extends AbstractSpec {
   protected val rootPath = getClass.getResource("").getPath + folder
   println(s"Reading files from: $rootPath")
   protected val rootDir = new File(rootPath)
 
   "SessionSettings " should {
     "Be identical for empty map " in {
-      def unit(f: File) = Seq((Source.fromFile(f).getLines().toSeq, SortedMap.empty[Int, List[(Int, List[String])]]))
+      def unit(f: File) = Seq((Source.fromFile(f).getLines().toList, SortedMap.empty[Int, List[(Int, List[String])]]))
       runTestOnFiles(unit)
     }
 
@@ -25,7 +25,7 @@ abstract class AbstractSessionSettingsSpec(folder: String) extends AbstractSpec 
     }
   }
 
-  private def runTestOnFiles(expectedResultAndMap: File => Seq[(Seq[String], SortedMap[Int, List[(Int, List[String])]])]): MatchResult[GenTraversableOnce[File]] = {
+  private def runTestOnFiles(expectedResultAndMap: File => Seq[(List[String], SortedMap[Int, List[(Int, List[String])]])]): MatchResult[GenTraversableOnce[File]] = {
 
     val allFiles = rootDir.listFiles(new FilenameFilter() {
       def accept(dir: File, name: String) = name.endsWith(".sbt.txt")
@@ -34,9 +34,11 @@ abstract class AbstractSessionSettingsSpec(folder: String) extends AbstractSpec 
       file =>
         val originalLines = Source.fromFile(file).getLines().toList
         foreach(expectedResultAndMap(file)) {
-          case (expectedResult, map) =>
-            val result = SessionSettingsNoBlankies.oldLinesToNew(originalLines, map)
-            expectedResult === result
+          case (expectedResultList, map) =>
+            val resultList = SessionSettingsNoBlankies.oldLinesToNew(originalLines, map)
+            val expected = SplitExpressionsNoBlankies(file, expectedResultList)
+            val result = SplitExpressionsNoBlankies(file, resultList)
+            result.settings must_== expected.settings
         }
     }
   }
@@ -55,7 +57,7 @@ abstract class AbstractSessionSettingsSpec(folder: String) extends AbstractSpec 
         })
         files.map { xmlFile =>
           val xml = XML.loadFile(xmlFile)
-          val result = Source.fromFile(xmlFile.getAbsolutePath + ".result").getLines().toSeq
+          val result = Source.fromFile(xmlFile.getAbsolutePath + ".result").getLines().toList
           val tupleCollection = (xml \\ "settings" \\ "setting").map {
             node =>
               val set = (node \\ "set").text

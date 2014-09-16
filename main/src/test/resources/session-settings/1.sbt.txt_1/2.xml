@@ -2,11 +2,11 @@
     <setting>
         <start>1</start>
         <end>2</end>
-        <set>name := "alaMaKota"</set>
+        <set><![CDATA[name := "alaMaKota"]]></set>
     </setting>
     <setting>
         <start>25</start>
         <end>26</end>
-        <set>organization := "scalania"</set>
+        <set><![CDATA[organization := "scalania"]]></set>
     </setting>
 </settings>

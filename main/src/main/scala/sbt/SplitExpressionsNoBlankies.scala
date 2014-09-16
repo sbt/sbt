@@ -28,12 +28,12 @@ case class SplitExpressionsNoBlankies(file: File, lines: Seq[String]) {
     val toolbox = mirror.mkToolBox(options = "-Yrangepos")
     val indexedLines = lines.toIndexedSeq
     val original = indexedLines.mkString(END_OF_LINE)
-    val merged = handleXmlContent(original)
+    val modifiedContent = handleXmlContent(original)
     val fileName = file.getAbsolutePath
 
     val parsed =
       try {
-        toolbox.parse(merged)
+        toolbox.parse(modifiedContent)
       } catch {
         case e: ToolBoxError =>
           val seq = toolbox.frontEnd.infos.map { i =>
@@ -41,7 +41,7 @@ case class SplitExpressionsNoBlankies(file: File, lines: Seq[String]) {
           }
           throw new MessageOnlyException(
             s"""======
-               |$merged
+               |$modifiedContent
                |======
                |${seq.mkString(EOL)}""".stripMargin)
       }
@@ -58,7 +58,7 @@ case class SplitExpressionsNoBlankies(file: File, lines: Seq[String]) {
     }
 
     def convertImport(t: Tree): (String, Int) =
-      (merged.substring(t.pos.start, t.pos.end), t.pos.line - 1)
+      (modifiedContent.substring(t.pos.start, t.pos.end), t.pos.line - 1)
 
     /**
      * See BugInParser
@@ -69,7 +69,7 @@ case class SplitExpressionsNoBlankies(file: File, lines: Seq[String]) {
     def parseStatementAgain(t: Tree, originalStatement: String): String = {
       val statement = util.Try(toolbox.parse(originalStatement)) match {
         case util.Failure(th) =>
-          val missingText = tryWithNextStatement(merged, t.pos.end, t.pos.line, fileName, th)
+          val missingText = tryWithNextStatement(modifiedContent, t.pos.end, t.pos.line, fileName, th)
           originalStatement + missingText
         case _ =>
           originalStatement
@@ -79,7 +79,7 @@ case class SplitExpressionsNoBlankies(file: File, lines: Seq[String]) {
 
     def convertStatement(t: Tree): Option[(String, Tree, LineRange)] =
       if (t.pos.isDefined) {
-        val originalStatement = merged.substring(t.pos.start, t.pos.end)
+        val originalStatement = modifiedContent.substring(t.pos.start, t.pos.end)
         val statement = parseStatementAgain(t, originalStatement)
         val numberLines = statement.count(c => c == END_OF_LINE_CHAR)
         Some((statement, t, LineRange(t.pos.line - 1, t.pos.line + numberLines)))
