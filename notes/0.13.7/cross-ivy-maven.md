@@ -1,6 +1,11 @@
   [1586]: https://github.com/sbt/sbt/pull/1586
+  [1590]: Https://github.com/sbt/sbt/pull/1590
   [@jsuereth]: https://github.com/jsuereth
   
+  
+### Improvements
+
+* Add developers key
 
 ### Fixes with compatibility implications
 
