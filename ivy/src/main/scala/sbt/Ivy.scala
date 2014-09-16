@@ -69,6 +69,7 @@ final class IvySbt(val configuration: IvyConfiguration) {
     {
       val is = new IvySettings
       is.setBaseDir(baseDirectory)
+      is.setCircularDependencyStrategy(configuration.updateOptions.circularDependencyLevel.ivyStrategy)
       CustomPomParser.registerDefault
       configuration match {
         case e: ExternalIvyConfiguration =>
