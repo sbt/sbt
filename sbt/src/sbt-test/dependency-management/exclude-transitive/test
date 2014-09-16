@@ -1,3 +1,4 @@
+> debug
 # load the project definition with transitive dependencies enabled
 # and check that they are not downloaded
 #$ pause

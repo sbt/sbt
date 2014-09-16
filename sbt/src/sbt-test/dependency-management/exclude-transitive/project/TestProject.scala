@@ -16,9 +16,14 @@ object TestProject extends Build
 	private def check(transitive: Boolean) =
 		(dependencyClasspath in Compile) map { downloaded =>
 			val jars = downloaded.size
-			if(transitive)
-				if(jars <= 2) error("Transitive dependencies not downloaded") else ()
-			else
-				if(jars > 2) error("Transitive dependencies downloaded (" + downloaded.files.mkString(", ") + ")") else ()
+			if(transitive) {
+        if (jars <= 2)
+          sys.error(s"Transitive dependencies not downloaded, found:\n * ${downloaded.mkString("\n * ")}")
+        else ()
+      } else {
+        if (jars > 2)
+          sys.error(s"Transitive dependencies not downloaded, found:\n * ${downloaded.mkString("\n * ")}")
+        else ()
+      }
 		}
 }

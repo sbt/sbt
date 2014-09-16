@@ -17,7 +17,7 @@ object Sbt extends Build {
     s"all control/$task collections/$task io/$task completion/$task"
   def buildSettings = Seq(
     organization := "org.scala-sbt",
-    version := "0.13.6-SNAPSHOT",
+    version := "0.13.7-SNAPSHOT",
     publishArtifact in packageDoc := false,
     scalaVersion := "2.10.4",
     publishMavenStyle := false,
@@ -65,6 +65,7 @@ object Sbt extends Build {
     commands += Command.command("release-sbt") { state =>
       // TODO - Any sort of validation
       "checkCredentials" ::
+        "conscript-configs" ::
         "publishSigned" ::
         "publishLauncher" ::
         "release-libs-211" ::
@@ -153,7 +154,7 @@ object Sbt extends Build {
   //   Defines the data structures for representing file fingerprints and relationships and the overall source analysis
   lazy val compileIncrementalSub = testedBaseProject(compilePath / "inc", "Incremental Compiler") dependsOn (apiSub, ioSub, logSub, classpathSub, relationSub)
   // Persists the incremental data structures using SBinary
-  lazy val compilePersistSub = baseProject(compilePath / "persist", "Persist") dependsOn (compileIncrementalSub, apiSub) settings (sbinary)
+  lazy val compilePersistSub = testedBaseProject(compilePath / "persist", "Persist") dependsOn (compileIncrementalSub, apiSub, compileIncrementalSub % "test->test") settings (sbinary)
   // sbt-side interface to compiler.  Calls compiler-side interface reflectively
   lazy val compilerSub = testedBaseProject(compilePath, "Compile") dependsOn (launchInterfaceSub, interfaceSub % "compile;test->test", logSub, ioSub, classpathSub,
     logSub % "test->test", launchSub % "test->test", apiSub % "test") settings (compilerSettings: _*)
@@ -315,7 +316,7 @@ object Sbt extends Build {
     autoScalaLibrary := false,
     description := "sbt application launcher",
     publishLauncher <<= Release.deployLauncher,
-    packageBin in Compile <<= (proguard in Proguard, Transform.conscriptConfigs).map((x, y) => x)
+    packageBin in Compile <<= proguard in Proguard
   )
 
   def interfaceSettings = javaOnly ++ Seq(
