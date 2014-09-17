@@ -1,0 +1,12 @@
+<settings>
+    <setting>
+        <start>1</start>
+        <end>2</end>
+        <set><![CDATA[name := "alaMaKota"]]></set>
+    </setting>
+    <setting>
+        <start>25</start>
+        <end>26</end>
+        <set><![CDATA[organization := "scalania"]]></set>
+    </setting>
+</settings>

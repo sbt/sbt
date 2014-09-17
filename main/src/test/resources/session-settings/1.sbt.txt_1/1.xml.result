@@ -1,0 +1,27 @@
+name := "alaMaKota"
+libraryDependencies := Seq("org.scala-sbt" %% "sbinary" % "0.4.1")
+
+lazy val checkPom = taskKey[Unit]("check pom to ensure no <type> sections are generated"); checkPom := {
+	val pomFile = makePom.value
+	val pom = xml.XML.loadFile(pomFile)
+	val tpe = pom \\ "type"
+	if(!tpe.isEmpty)
+		sys.error("Expected no <type> sections, got: " + tpe + " in \n\n" + pom)
+};scalacOptions := Seq("-deprecation")
+
+val b = ( <b/>)
+val a = <aaa>
+
+</aaa>
+/*
+
+*/
+
+
+organization := "jozwikr" // OK
+
+scalaVersion := "2.9.2"
+
+organization := "ololol"
+
+

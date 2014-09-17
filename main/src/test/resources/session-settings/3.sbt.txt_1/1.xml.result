@@ -1,0 +1,5 @@
+import sbt._
+
+val scmpom = taskKey[xml.NodeBuffer]("Node buffer")
+
+scmpom :=  ( <a/><b a="rt">OK</b> )

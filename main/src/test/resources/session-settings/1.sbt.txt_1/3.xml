@@ -1,0 +1,7 @@
+<settings>
+    <setting>
+        <start>4</start>
+        <end>11</end>
+        <set><![CDATA[checkPom := "OK"]]></set>
+    </setting>
+</settings>

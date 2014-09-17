@@ -191,7 +191,12 @@ object TestFramework {
       val notInterfaceFilter = (name: String) => !interfaceFilter(name)
       val dual = new DualLoader(scalaInstance.loader, notInterfaceFilter, x => true, getClass.getClassLoader, interfaceFilter, x => false)
       val main = ClasspathUtilities.makeLoader(classpath, dual, scalaInstance, tempDir)
-      ClasspathUtilities.filterByClasspath(interfaceJar +: classpath, main)
+      // TODO - There's actually an issue with the classpath facility such that unmanagedScalaInstances are not added
+      // to the classpath correctly.  We have a temporary workaround here.
+      val cp: Seq[File] =
+        if (scalaInstance.isManagedVersion) interfaceJar +: classpath
+        else scalaInstance.allJars ++ (interfaceJar +: classpath)
+      ClasspathUtilities.filterByClasspath(cp, main)
     }
   def createTestFunction(loader: ClassLoader, taskDef: TaskDef, runner: TestRunner, testTask: TestTask): TestFunction =
     new TestFunction(taskDef, runner, (r: TestRunner) => withContextLoader(loader) { r.run(taskDef, testTask) }) { def tags = testTask.tags }

@@ -74,13 +74,9 @@
   [@puffnfresh]: https://github.com/puffnfresh
   [@rtyley]: https://github.com/rtyley
 
-### Changes since 0.13.6-M1
-
-- Fixes `NullPointerException` during `update`. [#1484][1484] by [@eed3si9n][@eed3si9n]
-
 ### Fixes with compatibility implications
 
-- Maven Central Repository, Java.net Maven 2 Repository, and Typesafe Repository now defaults to HTTPS. (See below)
+- Maven Central Repository, Java.net Maven 2 Repository, Typesafe Repository, and sbt Plugin repository now defaults to HTTPS. (See below)
 - `ThisProject` used to resolve to the root project in a build even when it's place in `subproj/build.sbt`. sbt 0.13.6 fixes it to resolve to the sub project. [#1194][1194]/[#1358][1358] by [@dansanduleac][@dansanduleac]
 - Global plugins classpath used to be injected into every build. This will no longer be the case. [#1347][1347]/[#1352][1352] by [@dansanduleac][@dansanduleac]
 - Fixes `newer` command in scripted. [#1419][1419] by [@jroper][@jroper]
@@ -130,7 +126,7 @@ Thanks to Sonatype, HTTPS access to Maven Central Repository is available to pub
 
     -Dsbt.repository.secure=false
 
-Java.net Maven 2 repository and Typesafe repository also defaults to HTTPS.
+Java.net Maven 2 repository, Typesafe repository, and sbt Plugin repository also defaults to HTTPS.
 
 [#1494][1494] by [@rtyley][@rtyley], [#1536][1536] by [@benmccann][@benmccann], and [#1541][1541] by [@eed3si9n][@eed3si9n].
 

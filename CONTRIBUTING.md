@@ -84,6 +84,22 @@ Whether implementing a new feature, fixing a bug, or modifying documentation, pl
 Binary compatible changes will be backported to a previous series (currently, 0.12.x) at the time of the next stable release.
 See below for instructions on building sbt from source.
 
+All pull requests are required to include a "Notes" file which documents the change.  This file should reside in the
+directory:
+
+    <sbt root>
+      notes/
+        <target release>/
+           <your-change-name>.md
+           
+Notes files should have the following contents:
+
+* Bullet item description under one of the following sections:
+  - `### Bug fixes`
+  - `### Improvements`
+  - `### Fixes with compatibility implications`
+* Complete section describing new features.
+
 Documentation
 -------------
 

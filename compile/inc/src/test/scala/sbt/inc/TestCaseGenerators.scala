@@ -25,9 +25,18 @@ object TestCaseGenerators {
 
   // Ensure that we generate unique class names and file paths every time.
   // Using repeated strings may lead to all sorts of undesirable interactions.
-  val used = scala.collection.mutable.Set.empty[String]
+  val used1 = scala.collection.mutable.Set.empty[String]
+  val used2 = scala.collection.mutable.Set.empty[String]
 
-  def unique[T](g: Gen[T]) = g retryUntil { o: T => used.add(o.toString) }
+  // When using `retryUntil`, the condition is actually tested twice (see implementation in ScalaCheck),
+  // which is why we need to insert twice the element.
+  // If the element is present in both sets, then it has already been used.
+  def unique[T](g: Gen[T]) = g retryUntil { o: T =>
+    if (used1.add(o.toString))
+      true
+    else
+      used2.add(o.toString)
+  }
 
   def identifier: Gen[String] = sized { size =>
     resize(Math.max(size, 3), Gen.identifier)
@@ -134,6 +143,18 @@ object TestCaseGenerators {
     external <- someOf(src.external.all.toList)
   } yield Relations.makeSource(Relation.empty ++ internal, Relation.empty ++ external)
 
+  def genRSourceDependencies(srcs: List[File]): Gen[Relations.SourceDependencies] = for {
+    internal <- listOfN(srcs.length, someOf(srcs))
+    external <- genStringRelation(srcs)
+  } yield Relations.makeSourceDependencies(
+    Relation.reconstruct((srcs zip (internal map { _.toSet }) map { case (a, b) => (a, b - a) }).toMap),
+    external)
+
+  def genSubRSourceDependencies(src: Relations.SourceDependencies): Gen[Relations.SourceDependencies] = for {
+    internal <- someOf(src.internal.all.toList)
+    external <- someOf(src.external.all.toList)
+  } yield Relations.makeSourceDependencies(Relation.empty ++ internal, Relation.empty ++ external)
+
   def genRelations: Gen[Relations] = for {
     numSrcs <- choose(0, maxSources)
     srcs <- listOfN(numSrcs, genFile)
@@ -145,8 +166,19 @@ object TestCaseGenerators {
 
   } yield Relations.make(srcProd, binaryDep, direct, publicInherited, classes)
 
-  def genAnalysis: Gen[Analysis] = for {
-    rels <- genRelations
+  def genRelationsNameHashing: Gen[Relations] = for {
+    numSrcs <- choose(0, maxSources)
+    srcs <- listOfN(numSrcs, genFile)
+    srcProd <- genFileRelation(srcs)
+    binaryDep <- genFileRelation(srcs)
+    memberRef <- genRSourceDependencies(srcs)
+    inheritance <- genSubRSourceDependencies(memberRef)
+    classes <- genStringRelation(srcs)
+    names <- genStringRelation(srcs)
+  } yield Relations.make(srcProd, binaryDep, memberRef, inheritance, classes, names)
+
+  def genAnalysis(nameHashing: Boolean): Gen[Analysis] = for {
+    rels <- if (nameHashing) genRelationsNameHashing else genRelations
     stamps <- genStamps(rels)
     apis <- genAPIs(rels)
   } yield new MAnalysis(stamps, apis, rels, SourceInfos.empty, Compilations.empty)
