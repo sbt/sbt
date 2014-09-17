@@ -5,7 +5,7 @@ package sbt
 
 import java.io.File
 import java.net.URL
-import scala.xml.{ XML, NodeSeq }
+import scala.xml.{ Text, NodeSeq, Elem, XML }
 import org.apache.ivy.plugins.resolver.DependencyResolver
 
 sealed trait Resolver {
@@ -303,17 +303,19 @@ object Resolver {
   private[this] def mavenLocalDir: File = {
     def loadHomeFromSettings(f: () => File): Option[File] =
       try {
-        XML.loadFile(f()) \ "settings" \ "localRepository" match {
-          case scala.xml.Text(loc) => Some(new File(loc))
-          case _                   => None
+        val file = XML.loadFile(f())
+        (file \ "localRepository").text match {
+          case ""    => None
+          case e @ _ => Some(new File(e))
         }
       } catch {
-        case _: Throwable => None
+        // Occurs inside File constructor when property or environment variable does not exist
+        case _: NullPointerException => None
       }
     loadHomeFromSettings(() => new File(Path.userHome, ".m2/settings.xml")) orElse
-      loadHomeFromSettings(() => new File(Path.fileProperty("M2_HOME"), "conf/settings.xml")) getOrElse
+      loadHomeFromSettings(() => new File(new File(System.getenv("M2_HOME")), "conf/settings.xml")) getOrElse
       new File(Path.userHome, ".m2/repository")
-    }
+  }
   def publishMavenLocal = Resolver.file("publish-m2-local", mavenLocalDir)
   def mavenLocal = MavenRepository("Maven2 Local", mavenLocalDir.toURI.toString)
   def defaultLocal = defaultUserFileRepository("local")
