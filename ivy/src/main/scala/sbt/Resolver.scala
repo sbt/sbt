@@ -7,6 +7,7 @@ import java.io.File
 import java.net.URL
 import scala.xml.{ Text, NodeSeq, Elem, XML }
 import org.apache.ivy.plugins.resolver.DependencyResolver
+import org.xml.sax.SAXParseException
 
 sealed trait Resolver {
   def name: String
@@ -311,6 +312,7 @@ object Resolver {
       } catch {
         // Occurs inside File constructor when property or environment variable does not exist
         case _: NullPointerException => None
+        case e: SAXParseException    => System.err.println(s"WARNING: Problem parsing ${f().getAbsolutePath}, ${e.getMessage}"); None
       }
     loadHomeFromSettings(() => new File(Path.userHome, ".m2/settings.xml")) orElse
       loadHomeFromSettings(() => new File(new File(System.getenv("M2_HOME")), "conf/settings.xml")) getOrElse
