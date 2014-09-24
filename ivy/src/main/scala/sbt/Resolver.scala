@@ -5,8 +5,9 @@ package sbt
 
 import java.io.File
 import java.net.URL
-import scala.xml.NodeSeq
+import scala.xml.{ Text, NodeSeq, Elem, XML }
 import org.apache.ivy.plugins.resolver.DependencyResolver
+import org.xml.sax.SAXParseException
 
 sealed trait Resolver {
   def name: String
@@ -300,8 +301,23 @@ object Resolver {
   def localBasePattern = "[organisation]/[module]/" + PluginPattern + "[revision]/[type]s/[artifact](-[classifier]).[ext]"
   def defaultRetrievePattern = "[type]s/[organisation]/[module]/" + PluginPattern + "[artifact](-[revision])(-[classifier]).[ext]"
   final val PluginPattern = "(scala_[scalaVersion]/)(sbt_[sbtVersion]/)"
-
-  private[this] def mavenLocalDir = new File(Path.userHome, ".m2/repository/")
+  private[this] def mavenLocalDir: File = {
+    def loadHomeFromSettings(f: () => File): Option[File] =
+      try {
+        val file = XML.loadFile(f())
+        (file \ "localRepository").text match {
+          case ""    => None
+          case e @ _ => Some(new File(e))
+        }
+      } catch {
+        // Occurs inside File constructor when property or environment variable does not exist
+        case _: NullPointerException => None
+        case e: SAXParseException    => System.err.println(s"WARNING: Problem parsing ${f().getAbsolutePath}, ${e.getMessage}"); None
+      }
+    loadHomeFromSettings(() => new File(Path.userHome, ".m2/settings.xml")) orElse
+      loadHomeFromSettings(() => new File(new File(System.getenv("M2_HOME")), "conf/settings.xml")) getOrElse
+      new File(Path.userHome, ".m2/repository")
+  }
   def publishMavenLocal = Resolver.file("publish-m2-local", mavenLocalDir)
   def mavenLocal = MavenRepository("Maven2 Local", mavenLocalDir.toURI.toString)
   def defaultLocal = defaultUserFileRepository("local")
