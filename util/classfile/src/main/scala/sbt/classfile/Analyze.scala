@@ -76,7 +76,7 @@ private[sbt] object Analyze {
     }
   private def trapAndLog(log: Logger)(execute: => Unit) {
     try { execute }
-    catch { case e => log.trace(e); log.error(e.toString) }
+    catch { case e: Throwable => log.trace(e); log.error(e.toString) }
   }
   private def guessSourceName(name: String) = Some(takeToDollar(trimClassExt(name)))
   private def takeToDollar(name: String) =
