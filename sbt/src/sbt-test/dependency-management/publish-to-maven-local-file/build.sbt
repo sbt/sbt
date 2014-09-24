@@ -22,6 +22,7 @@ lazy val analyze =
       organization := "com.example",
       version := "1.0.0-SNAPSHOT",
       resolvers += localRemote,
+      resolvers += Resolver.mavenLocal,
       resolvers += Resolver.sonatypeRepo("snapshots"),
       fullResolvers := fullResolvers.value.filterNot(_.name == "inter-project")
     )
