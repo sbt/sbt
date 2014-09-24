@@ -163,8 +163,8 @@ object Act {
     }
   def resolveTask(task: ParsedAxis[AttributeKey[_]]): Option[AttributeKey[_]] =
     task match {
-      case ParsedGlobal | Omitted                    => None
-      case t: ParsedValue[AttributeKey[_]]@unchecked => Some(t.value)
+      case ParsedGlobal | Omitted                     => None
+      case t: ParsedValue[AttributeKey[_]] @unchecked => Some(t.value)
     }
 
   def filterStrings(base: Parser[String], valid: Set[String], label: String): Parser[String] =
