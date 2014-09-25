@@ -98,10 +98,13 @@ class SbtChainResolver(name: String, resolvers: Seq[DependencyResolver], setting
               case Right(Some((rmr, _))) =>
                 rmr.getDescriptor.getPublicationDate match {
                   case null =>
-                    val ivf = resolver.findIvyFileRef(dd, data)
-                    val lmd = new java.util.Date(ivf.getLastModified)
-                    rmr.getDescriptor match {
-                      case dmd: DefaultModuleDescriptor =>
+                    (resolver.findIvyFileRef(dd, data), rmr.getDescriptor) match {
+                      case (null, _) =>
+                        // In this instance, the dependency is specified by a direct URL or some other sort of "non-ivy" file
+                        if (dd.isChanging)
+                          Message.warn(s"Resolving a changing dependency (${rmr.getId}) with no ivy/pom file!, resolution order is undefined!")
+                      case (ivf, dmd: DefaultModuleDescriptor) =>
+                        val lmd = new java.util.Date(ivf.getLastModified)
                         Message.info(s"Getting null publication date from resolver: ${resolver} for ${rmr.getId}, setting to: ${lmd}")
                         dmd.setPublicationDate(lmd)
                       case _ =>
