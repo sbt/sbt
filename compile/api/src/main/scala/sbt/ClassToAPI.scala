@@ -138,7 +138,7 @@ object ClassToAPI {
     }
 
   def methodToDef(enclPkg: Option[String])(m: Method): api.Def =
-    defLike(m.getName, m.getModifiers, m.getDeclaredAnnotations, typeParameterTypes(m), m.getParameterAnnotations, parameterTypes(m), Some(returnType(m)), exceptionTypes(m), m.isVarArgs, enclPkg)
+    defLike(m.getName, m.getModifiers, m.getDeclaredAnnotations, typeParameterTypes(m), m.getParameterAnnotations, parameterTypes(m), Option(returnType(m)), exceptionTypes(m), m.isVarArgs, enclPkg)
 
   def constructorToDef(enclPkg: Option[String])(c: Constructor[_]): api.Def =
     defLike("<init>", c.getModifiers, c.getDeclaredAnnotations, typeParameterTypes(c), c.getParameterAnnotations, parameterTypes(c), None, exceptionTypes(c), c.isVarArgs, enclPkg)
