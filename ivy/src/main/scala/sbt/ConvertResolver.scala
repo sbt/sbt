@@ -9,12 +9,13 @@ import org.apache.ivy.core.module.id.ModuleRevisionId
 import org.apache.ivy.core.module.descriptor.DependencyDescriptor
 import org.apache.ivy.core.resolve.ResolveData
 import org.apache.ivy.core.settings.IvySettings
+import org.apache.ivy.plugins.repository.{ RepositoryCopyProgressListener, TransferEvent }
 import org.apache.ivy.plugins.resolver.{ BasicResolver, DependencyResolver, IBiblioResolver, RepositoryResolver }
 import org.apache.ivy.plugins.resolver.{ AbstractPatternsBasedResolver, AbstractSshBasedResolver, FileSystemResolver, SFTPResolver, SshResolver, URLResolver }
 import org.apache.ivy.plugins.repository.url.{ URLRepository => URLRepo }
 import org.apache.ivy.plugins.repository.file.{ FileRepository => FileRepo, FileResource }
-import java.io.File
-import org.apache.ivy.util.ChecksumHelper
+import java.io.{ IOException, File }
+import org.apache.ivy.util.{ FileUtil, ChecksumHelper }
 import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact }
 
 private[sbt] object ConvertResolver {
@@ -216,12 +217,42 @@ private[sbt] object ConvertResolver {
    */
   private[this] final class LocalIfFileRepo extends URLRepo {
     private[this] val repo = new WarnOnOverwriteFileRepo()
+    private[this] val progress = new RepositoryCopyProgressListener(this);
     override def getResource(source: String) = {
       val url = new URL(source)
       if (url.getProtocol == IO.FileScheme)
         new FileResource(repo, IO.toFile(url))
       else
         super.getResource(source)
+    }
+
+    override def put(source: File, destination: String, overwrite: Boolean): Unit = {
+      val url = new URL(destination)
+      if (url.getProtocol != IO.FileScheme) super.put(source, destination, overwrite)
+      else {
+        // Here we duplicate the put method for files so we don't just bail on trying ot use Http handler
+        val resource = getResource(destination)
+        if (!overwrite && resource.exists()) {
+          throw new IOException("destination file exists and overwrite == false");
+        }
+        fireTransferInitiated(resource, TransferEvent.REQUEST_PUT);
+        try {
+          var totalLength = source.length
+          if (totalLength > 0) {
+            progress.setTotalLength(totalLength);
+          }
+          FileUtil.copy(source, new java.io.File(url.toURI), progress)
+        } catch {
+          case ex: IOException =>
+            fireTransferError(ex)
+            throw ex
+          case ex: RuntimeException =>
+            fireTransferError(ex)
+            throw ex
+        } finally {
+          progress.setTotalLength(null);
+        }
+      }
     }
   }
 
