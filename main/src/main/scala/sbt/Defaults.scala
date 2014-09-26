@@ -1009,6 +1009,7 @@ object Classpaths {
     homepage :== None,
     startYear :== None,
     licenses :== Nil,
+    developers :== Nil,
     scmInfo :== None,
     offline :== false,
     defaultConfiguration :== Some(Configurations.Compile),
@@ -1042,7 +1043,7 @@ object Classpaths {
     organization <<= organization or normalizedName,
     organizationName <<= organizationName or organization,
     organizationHomepage <<= organizationHomepage or homepage,
-    projectInfo <<= (name, description, homepage, startYear, licenses, organizationName, organizationHomepage, scmInfo) apply ModuleInfo,
+    projectInfo <<= (name, description, homepage, startYear, licenses, organizationName, organizationHomepage, scmInfo, developers) apply ModuleInfo,
     overrideBuildResolvers <<= appConfiguration(isOverrideRepositories),
     externalResolvers <<= (externalResolvers.task.?, resolvers, appResolvers) {
       case (Some(delegated), Seq(), _) => delegated

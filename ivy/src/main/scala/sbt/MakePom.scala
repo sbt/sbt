@@ -42,6 +42,7 @@ class MakePom(val log: Logger) {
        { makeStartYear(moduleInfo) }
        { makeOrganization(moduleInfo) }
        { makeScmInfo(moduleInfo) }
+       { makeDeveloperInfo(moduleInfo) }
        { extra }
        {
          val deps = depsInConfs(module, configurations)
@@ -99,6 +100,21 @@ class MakePom(val log: Logger) {
           </scm>
         case _ => NodeSeq.Empty
       }
+    }
+  def makeDeveloperInfo(moduleInfo: ModuleInfo): NodeSeq =
+    {
+      if (moduleInfo.developers.nonEmpty) {
+        <developers>
+          moduleInfo.developers.map{ developer: Developer =>
+            <developer>
+              <id>{ developer.id }</id>
+              <name>{ developer.name }</name>
+              <email>{ developer.email }</email>
+              <url>{ developer.url }</url>
+            </developer>
+          }
+        </developers>
+      } else NodeSeq.Empty
     }
   def makeProperties(module: ModuleDescriptor, dependencies: Seq[DependencyDescriptor]): NodeSeq =
     {

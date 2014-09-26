@@ -7,7 +7,7 @@ import java.util.Date
 
 import org.apache.ivy.core.settings.IvySettings
 import org.apache.ivy.core.{ IvyContext, LogOptions }
-import org.apache.ivy.core.module.descriptor.{ ModuleDescriptor, DependencyDescriptor, Artifact => IArtifact }
+import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact, DefaultModuleDescriptor, DefaultDependencyDescriptor, ModuleDescriptor, DependencyDescriptor }
 import org.apache.ivy.core.resolve.{ ResolvedModuleRevision, ResolveData }
 import org.apache.ivy.plugins.latest.LatestStrategy
 import org.apache.ivy.plugins.repository.file.{ FileRepository => IFileRepository, FileResource }
@@ -94,6 +94,26 @@ class SbtChainResolver(name: String, resolvers: Seq[DependencyResolver], setting
               }
               else temp map { x => (forcedRevision(x), resolver) }
             )
+            retval match {
+              case Right(Some((rmr, _))) =>
+                rmr.getDescriptor.getPublicationDate match {
+                  case null =>
+                    (resolver.findIvyFileRef(dd, data), rmr.getDescriptor) match {
+                      case (null, _) =>
+                        // In this instance, the dependency is specified by a direct URL or some other sort of "non-ivy" file
+                        if (dd.isChanging)
+                          Message.warn(s"Resolving a changing dependency (${rmr.getId}) with no ivy/pom file!, resolution order is undefined!")
+                      case (ivf, dmd: DefaultModuleDescriptor) =>
+                        val lmd = new java.util.Date(ivf.getLastModified)
+                        Message.info(s"Getting null publication date from resolver: ${resolver} for ${rmr.getId}, setting to: ${lmd}")
+                        dmd.setPublicationDate(lmd)
+                      case _ =>
+                        Message.warn(s"Getting null publication date from resolver: ${resolver} for ${rmr.getId}, resolution order is undefined!")
+                    }
+                  case _ => // All other cases ok
+                }
+              case _ =>
+            }
             retval
           } catch {
             case ex: Exception =>
@@ -111,7 +131,10 @@ class SbtChainResolver(name: String, resolvers: Seq[DependencyResolver], setting
       val sorted =
         if (useLatest) (foundRevisions.sortBy {
           case (rmr, _) =>
-            rmr.getDescriptor.getPublicationDate.getTime
+            rmr.getDescriptor.getPublicationDate match {
+              case null => 0L
+              case d    => d.getTime
+            }
         }).reverse.headOption map {
           case (rmr, resolver) =>
             // Now that we know the real latest revision, let's force Ivy to use it
