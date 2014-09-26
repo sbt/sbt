@@ -1,6 +1,7 @@
-package sbt
+package sbt.internals.parser
 
 import org.specs2.mutable.Specification
+import sbt.EvaluateConfigurations
 
 class SplitExpressionsTest extends Specification with SplitExpressionsBehavior {
 

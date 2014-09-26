@@ -1,4 +1,6 @@
-package sbt
+package sbt.internals.parser
+
+import sbt.EvaluateConfigurations
 
 abstract class CheckIfParsedSpec(implicit val splitter: SplitExpressions.SplitExpression = EvaluateConfigurations.splitExpressions) extends AbstractSpec {
 

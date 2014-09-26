@@ -1,10 +1,9 @@
-package sbt
+package sbt.internals.parser
 
 import java.io.File
 
-import org.scalacheck.Gen._
-import org.scalacheck.Prop._
 import org.specs2.ScalaCheck
+import sbt.{ EvaluateConfigurations, MessageOnlyException }
 
 import scala.io.Source
 
@@ -14,7 +13,7 @@ class ErrorSpec extends AbstractSpec with ScalaCheck {
   "Parser " should {
 
     "contains file name and line number" in {
-      val rootPath = getClass.getResource("").getPath + "../error-format/"
+      val rootPath = getClass.getClassLoader.getResource("").getPath + "/error-format/"
       println(s"Reading files from: $rootPath")
       foreach(new File(rootPath).listFiles) { file =>
         print(s"Processing ${file.getName}: ")

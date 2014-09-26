@@ -1,5 +1,8 @@
 package sbt
 
+import java.io.File
+
+import sbt.internals.parser.{ XmlContent, SplitExpressionsNoBlankies }
 import scala.collection.immutable.SortedMap
 import scala.reflect.runtime.universe._
 

@@ -1,5 +1,7 @@
 package sbt
 
+import sbt.internals.parser.AbstractSpec
+
 class SessionSettingsCutExpressionSpec extends AbstractSpec {
 
   "Cut expression " should {
