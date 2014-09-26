@@ -7,6 +7,7 @@ import scala.reflect.runtime.universe._
 
 object SessionSettingsNoBlankies {
 
+  private val FAKE_FILE = new File("fake")
   val REVERSE_ORDERING_INT = Ordering[Int].reverse
 
   def oldLinesToNew(content: List[String], lineMap: SortedMap[Int, List[(Int, List[String])]]): List[String] =
@@ -49,16 +50,25 @@ object SessionSettingsNoBlankies {
     content.take(from - 1) ++ newLines ++ content.drop(to - 1)
   }
 
-  private def cutExpression(l: List[String], name: String): List[String] = l match {
+  private[sbt] def cutExpression(l: List[String], name: String): List[String] = l match {
     case h +: t =>
-      val array = h.split(";").filter(_.contains(name))
-      array.mkString(";") +: t
+      val statements = SplitExpressionsNoBlankies(FAKE_FILE, l).settingsTrees
+      val lastIndex = statements.lastIndexWhere {
+        tuple => extractSettingName(tuple._2) == name
+      }
+      val (statement, tree) = statements(lastIndex)
+
+      if (tree.pos.end >= h.length) {
+        l
+      } else {
+        statement +: t
+      }
     case _ =>
       l
   }
 
   private def toTreeStringMap(lines: List[String]) = {
-    val split = SplitExpressionsNoBlankies(new File("fake"), lines)
+    val split = SplitExpressionsNoBlankies(FAKE_FILE, lines)
     val trees = split.settingsTrees
     val seq = trees.map {
       case (statement, tree) =>

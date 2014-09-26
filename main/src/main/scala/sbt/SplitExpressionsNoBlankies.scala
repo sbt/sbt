@@ -69,7 +69,7 @@ case class SplitExpressionsNoBlankies(file: File, lines: Seq[String]) {
     def parseStatementAgain(t: Tree, originalStatement: String): String = {
       val statement = util.Try(toolbox.parse(originalStatement)) match {
         case util.Failure(th) =>
-          val missingText = tryWithNextStatement(modifiedContent, t.pos.end, t.pos.line, fileName, th)
+          val missingText = findMissingText(modifiedContent, t.pos.end, t.pos.line, fileName, th)
           originalStatement + missingText
         case _ =>
           originalStatement
@@ -105,8 +105,9 @@ private[sbt] object BugInParser {
    * @param th - original exception
    * @return
    */
-  private[sbt] def tryWithNextStatement(content: String, positionEnd: Int, positionLine: Int, fileName: String, th: Throwable): String = {
-    findFirstNotBlankNotCommentedIndex(content, positionEnd) match {
+  private[sbt] def findMissingText(content: String, positionEnd: Int, positionLine: Int, fileName: String, th: Throwable): String = {
+    //    val scanner = new syntaxAnalyzer.UnitScanner(new CompilationUnit(source))
+    findClosingBracketIndex(content, positionEnd) match {
       case Some(index) =>
         content.substring(positionEnd, index + 1)
       case _ =>
@@ -120,8 +121,8 @@ private[sbt] object BugInParser {
    * @param from - start index
    * @return first not commented index or None
    */
-  private def findFirstNotBlankNotCommentedIndex(content: String, from: Int): Option[Int] = {
-    val index = content.indexWhere(c => !c.isWhitespace, from)
+  private[sbt] def findClosingBracketIndex(content: String, from: Int): Option[Int] = {
+    val index = content.indexWhere(c => c == '}' || c == ')', from)
     if (index == -1) {
       None
     } else {
@@ -130,11 +131,11 @@ private[sbt] object BugInParser {
         val nextChar = content.charAt(index + 1)
         if (nextChar == '/') {
           val endOfLine = content.indexOf('\n', index)
-          findFirstNotBlankNotCommentedIndex(content, endOfLine)
+          findClosingBracketIndex(content, endOfLine)
         } else {
           //if (nextChar == '*')
           val endOfCommented = content.indexOf("*/", index + 1)
-          findFirstNotBlankNotCommentedIndex(content, endOfCommented + 2)
+          findClosingBracketIndex(content, endOfCommented + 2)
         }
       } else {
         Some(index)
