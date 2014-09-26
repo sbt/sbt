@@ -2,3 +2,5 @@
 $ must-mirror build.sbt build.check.1
 > UpdateK1
 $ must-mirror build.sbt build.check.1
+> UpdateK3
+$ must-mirror build.sbt build.check.2
