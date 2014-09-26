@@ -26,7 +26,7 @@ $ must-mirror build.sbt build.check.3
 
 > set k4 := { val x = k4.value; () }
 > session save
-$ must-mirror build.sbt exbuild.check.4
+$ must-mirror build.sbt build.check.4
 
 > set k4 := ()
 > session save

@@ -14,13 +14,63 @@ import SessionSettings._
 
 import scala.collection.immutable.SortedMap
 
+
+/**
+ * Represents (potentially) transient settings added into a build via commands/user.
+ *
+ * @param currentBuild
+ *                 The current sbt build with which we scope new settings
+ * @param currentProject
+ *                 The current project with which we scope new settings.
+ * @param original
+ *                 The original list of settings for this build.
+ * @param append
+ *                 Settings which have been defined and appended that may ALSO be saved to disk.
+ * @param rawAppend
+ *                 Settings which have been defined and appended which CANNOT be saved to disk
+ * @param currentEval
+ *                 A compiler we can use to compile new setting strings.
+ */
 final case class SessionSettings(currentBuild: URI, currentProject: Map[URI, String], original: Seq[Setting[_]], append: SessionMap, rawAppend: Seq[Setting[_]], currentEval: () => Eval) {
   assert(currentProject contains currentBuild, "Current build (" + currentBuild + ") not associated with a current project.")
+
+  /**
+   * Modifiy the current state.
+   *
+   * @param build  The buid with which we scope new settings.
+   * @param project The project reference with which we scope new settings.
+   * @param eval  The mechanism to compile new settings.
+   * @return  A new SessionSettings object
+   */
   def setCurrent(build: URI, project: String, eval: () => Eval): SessionSettings = copy(currentBuild = build, currentProject = currentProject.updated(build, project), currentEval = eval)
+
+  /**
+   * @return  The current ProjectRef with which we scope settings.
+   */
   def current: ProjectRef = ProjectRef(currentBuild, currentProject(currentBuild))
+
+  /**
+   * Appends a set of settings which can be persisted to disk
+   * @param s  A sequence of SessionSetting objects, which contain a Setting[_] and a string.
+   * @return  A new SessionSettings which contains this new sequence.
+   */
   def appendSettings(s: Seq[SessionSetting]): SessionSettings = copy(append = modify(append, _ ++ s))
+
+  /**
+   * Appends a set of raw Setting[_] objects to the current session.
+   * @param ss  The raw settings to include
+   * @return A new SessionSettings with the appeneded settings.
+   */
   def appendRaw(ss: Seq[Setting[_]]): SessionSettings = copy(rawAppend = rawAppend ++ ss)
+
+  /**
+   * @return  A combined list of all Setting[_] objects for the current session, in priority order.
+   */
   def mergeSettings: Seq[Setting[_]] = original ++ merge(append) ++ rawAppend
+
+  /**
+   * @return  A new SessionSettings object where additional transient settings are removed.
+   */
   def clearExtraSettings: SessionSettings = copy(append = Map.empty, rawAppend = Nil)
 
   private[this] def merge(map: SessionMap): Seq[Setting[_]] = map.values.toSeq.flatten[SessionSetting].map(_._1)
@@ -31,17 +81,33 @@ final case class SessionSettings(currentBuild: URI, currentProject: Map[URI, Str
     }
 }
 object SessionSettings {
+  /** A session setting is simply a tuple of a Setting[_] and the strings which define it. */
   type SessionSetting = (Setting[_], List[String])
   type SessionMap = Map[ProjectRef, Seq[SessionSetting]]
 
+  /** This will re-evaluate all Setting[_]'s on this session against the current build state and
+    * return the new build state.
+    */
   def reapply(session: SessionSettings, s: State): State =
     BuiltinCommands.reapply(session, Project.structure(s), s)
 
+  /** This will clear any user-added session settings for a given build state and return the new build state.
+    *
+    * Note: Does not clear `rawAppend` settings
+    */
   def clearSettings(s: State): State =
     withSettings(s)(session => reapply(session.copy(append = session.append - session.current), s))
+  /** This will clear ALL transient session settings in a given build state, returning the new build state. */
   def clearAllSettings(s: State): State =
     withSettings(s)(session => reapply(session.clearExtraSettings, s))
 
+  /**
+   * A convenience method to alter the current build state using the current SessionSettings.
+   *
+   * @param s  The current build state
+   * @param f  A function which takes the current SessionSettings and returns the new build state.
+   * @return The new build state
+   */
   def withSettings(s: State)(f: SessionSettings => State): State =
     {
       val extracted = Project extract s
@@ -53,12 +119,18 @@ object SessionSettings {
         f(session)
     }
 
+  /** Adds `s` to a strings when needed.    Maybe one day we'll care about non-english languages. */
   def pluralize(size: Int, of: String) = size.toString + (if (size == 1) of else (of + "s"))
+
+  /** Checks to see if any session settings are being discarded and issues a warning. */
   def checkSession(newSession: SessionSettings, oldState: State) {
     val oldSettings = (oldState get Keys.sessionSettings).toList.flatMap(_.append).flatMap(_._2)
     if (newSession.append.isEmpty && !oldSettings.isEmpty)
       oldState.log.warn("Discarding " + pluralize(oldSettings.size, " session setting") + ".  Use 'session save' to persist session settings.")
   }
+
+
+
   def removeRanges[T](in: Seq[T], ranges: Seq[(Int, Int)]): Seq[T] =
     {
       val asSet = (Set.empty[Int] /: ranges) { case (s, (hi, lo)) => s ++ (hi to lo) }
@@ -70,12 +142,20 @@ object SessionSettings {
       val newAppend = session.append.updated(current, removeRanges(session.append.getOrElse(current, Nil), ranges))
       reapply(session.copy(append = newAppend), s)
     }
+  /** Saves *all* session settings to disk for all projects. */
   def saveAllSettings(s: State): State = saveSomeSettings(s)(_ => true)
+  /** Saves the session settings to disk for the current project. */
   def saveSettings(s: State): State =
     {
       val current = Project.session(s).current
       saveSomeSettings(s)(_ == current)
     }
+
+  /** Saves session settings to disk if they match the filter.
+    * @param s  The build state
+    * @param include  A filter function to determine which project's settings to persist.
+    * @return  The new build state.
+    */
   def saveSomeSettings(s: State)(include: ProjectRef => Boolean): State =
     withSettings(s) { session =>
       val newSettings =
@@ -131,6 +211,8 @@ object SessionSettings {
     }
 
   def needsTrailingBlank(lines: Seq[String]) = !lines.isEmpty && !lines.takeRight(1).exists(_.trim.isEmpty)
+
+  /** Prints all the user-defined SessionSettings (not raw) to System.out. */
   def printAllSettings(s: State): State =
     withSettings(s) { session =>
       for ((ref, settings) <- session.append if !settings.isEmpty) {
@@ -181,6 +263,7 @@ save, save-all
 	The session settings defined for a project are appended to the first '.sbt' configuration file in that project.
 	If no '.sbt' configuration file exists, the settings are written to 'build.sbt' in the project's base directory."""
 
+  /** AST for the syntax of the session command.  Each subclass is an action that can be performed. */
   sealed trait SessionCommand
   final class Print(val all: Boolean) extends SessionCommand
   final class Clear(val all: Boolean) extends SessionCommand
@@ -190,6 +273,7 @@ save, save-all
   import complete._
   import DefaultParsers._
 
+  /** Parser for the session command. */
   lazy val parser =
     token(Space) ~>
       (token("list-all" ^^^ new Print(true)) | token("list" ^^^ new Print(false)) | token("clear" ^^^ new Clear(false)) |
@@ -200,6 +284,7 @@ save, save-all
   def natSelect = rep1sep(token(range, "<range>"), ',')
   def range: Parser[(Int, Int)] = (NatBasic ~ ('-' ~> NatBasic).?).map { case lo ~ hi => (lo, hi getOrElse lo) }
 
+  /** The raw implementation of the sessoin command. */
   def command(s: State) = Command.applyEffect(parser) {
     case p: Print  => if (p.all) printAllSettings(s) else printSettings(s)
     case v: Save   => if (v.all) saveAllSettings(s) else saveSettings(s)
