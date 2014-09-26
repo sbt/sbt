@@ -1,4 +1,6 @@
-package sbt
+package sbt.internals.parser
+
+import sbt.MessageOnlyException
 
 class EmbeddedXmlSpec extends CheckIfParsedSpec {
 

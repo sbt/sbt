@@ -1,9 +1,10 @@
-package sbt
+package sbt.internals.parser
 
 import java.io.File
 
 import org.junit.runner.RunWith
 import org.specs2.runner.JUnitRunner
+import sbt.EvaluateConfigurations
 
 import scala.io.Source
 
@@ -13,7 +14,7 @@ class NewFormatSpec extends AbstractSpec {
 
   "New Format " should {
     "Handle lines " in {
-      val rootPath = getClass.getResource("").getPath + "../new-format/"
+      val rootPath = getClass.getClassLoader.getResource("").getPath + "/new-format/"
       println(s"Reading files from: $rootPath")
       val allFiles = new File(rootPath).listFiles.toList
       foreach(allFiles) {

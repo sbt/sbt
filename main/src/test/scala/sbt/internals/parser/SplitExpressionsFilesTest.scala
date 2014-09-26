@@ -1,4 +1,6 @@
 package sbt
+package internals
+package parser
 
 import java.io.File
 
@@ -8,7 +10,7 @@ import scala.annotation.tailrec
 import scala.io.Source
 import scala.tools.reflect.ToolBoxError
 
-class SplitExpressionsFilesTest extends AbstractSplitExpressionsFilesTest("../old-format/")
+class SplitExpressionsFilesTest extends AbstractSplitExpressionsFilesTest("/old-format/")
 
 abstract class AbstractSplitExpressionsFilesTest(pathName: String) extends Specification {
 
@@ -23,7 +25,7 @@ abstract class AbstractSplitExpressionsFilesTest(pathName: String) extends Speci
 
   s"$getClass " should {
     "split whole sbt files" in {
-      val rootPath = getClass.getResource("").getPath + pathName
+      val rootPath = getClass.getClassLoader.getResource("").getPath + pathName
       println(s"Reading files from: $rootPath")
       val allFiles = new File(rootPath).listFiles.toList
 
