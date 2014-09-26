@@ -285,7 +285,7 @@ object Resolver {
   private def resolvePatterns(base: String, basePatterns: Patterns): Patterns =
     {
       def resolveAll(patterns: Seq[String]) = patterns.map(p => resolvePattern(base, p))
-      Patterns(resolveAll(basePatterns.ivyPatterns), resolveAll(basePatterns.artifactPatterns), basePatterns.isMavenCompatible)
+      Patterns(resolveAll(basePatterns.ivyPatterns), resolveAll(basePatterns.artifactPatterns), basePatterns.isMavenCompatible, basePatterns.descriptorOptional, basePatterns.skipConsistencyCheck)
     }
   private[sbt] def resolvePattern(base: String, pattern: String): String =
     {
