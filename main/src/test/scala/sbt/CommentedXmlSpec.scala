@@ -7,8 +7,8 @@ class CommentedXmlSpec extends CheckIfParsedSpec {
       s"""|
          |val pom = "</scm>"
          |
-         |val aaa= <scm><url>git@github.com:mohiva/play.git</url>
-         |    <cc>ewrer</cc>
+         |val aaa= <scm><url>git@a.com:a/a.git</url>
+         |    <cc>e</cc>
          |  </scm>
          |
          |val tra = "</scm>"
