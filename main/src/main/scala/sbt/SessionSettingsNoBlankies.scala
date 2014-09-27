@@ -1,13 +1,12 @@
 package sbt
 
-import java.io.File
-
 import scala.collection.immutable.SortedMap
 import scala.reflect.runtime.universe._
 
 object SessionSettingsNoBlankies {
 
-  private val FAKE_FILE = new File("fake")
+  import SplitExpressionsNoBlankies.FAKE_FILE
+
   val REVERSE_ORDERING_INT = Ordering[Int].reverse
 
   def oldLinesToNew(content: List[String], lineMap: SortedMap[Int, List[(Int, List[String])]]): List[String] =
