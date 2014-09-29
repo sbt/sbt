@@ -102,23 +102,21 @@ object SessionSettings {
           }
       }
 
-      val (_, oldShifted, replace, lineMap) = ((0, List[Setting[_]](), List[SessionSetting](), SortedMap.empty[Int, List[(Int, List[String])]](Ordering[Int].reverse)) /: inFile) {
-        case ((offs, olds, repl, lineMap), s) =>
+      val (_, oldShifted, replace, statements) = ((0, List[Setting[_]](), List[SessionSetting](), List[List[String]]()) /: inFile) {
+        case ((offs, olds, repl, statements), s) =>
           val RangePosition(_, r @ LineRange(start, end)) = s.pos
           settings find (_._1.key == s.key) match {
             case Some(ss @ (ns, newLines)) if !ns.init.dependencies.contains(ns.key) =>
               val shifted = ns withPos RangePosition(path, LineRange(start - offs, start - offs + newLines.size))
-              val head = (end, newLines)
-              val seq = lineMap.getOrElse(start, List())
-              (offs + end - start - newLines.size, shifted :: olds, ss :: repl, lineMap + (start -> (head +: seq)))
+              (offs + end - start - newLines.size, shifted :: olds, ss :: repl, newLines +: statements)
             case _ =>
               val shifted = s withPos RangePosition(path, r shift -offs)
-              (offs, shifted :: olds, repl, lineMap)
+              (offs, shifted :: olds, repl, statements)
           }
       }
       val newSettings = settings diff replace
       val oldContent = IO.readLines(writeTo)
-      val exist: List[String] = SessionSettingsNoBlankies.oldLinesToNew(oldContent, lineMap)
+      val exist: List[String] = SessionSettingsNoBlankies.oldLinesToNew(oldContent, statements)
       val adjusted = if (!newSettings.isEmpty && needsTrailingBlank(exist)) exist :+ "" else exist
       val lines = adjusted ++ newSettings.flatMap(_._2 ::: "" :: Nil)
       IO.writeLines(writeTo, lines)

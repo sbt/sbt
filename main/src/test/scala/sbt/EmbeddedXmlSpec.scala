@@ -4,6 +4,14 @@ class EmbeddedXmlSpec extends CheckIfParsedSpec {
 
   "File with xml content " should {
 
+    "Do not change xml " in {
+      val xml =
+        """
+          | val pom = ( <scm/><a/> )
+        """.stripMargin
+      XmlContent.handleXmlContent(xml) must_== xml
+    }
+
     "Handle last xml part" in {
       val errorLine = """<version>4.0<version>"""
       val buildSbt = s"""|
