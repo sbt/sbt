@@ -120,7 +120,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
   def overrideConfigs(cs: Configuration*): Project = copy(configurations = Defaults.overrideConfigs(cs: _*)(configurations))
 
   /**
-   * Adds configuration at the *start* of the configuration list for this rpoject.  Prevous configurations replace this prefix
+   * Adds configuration at the *start* of the configuration list for this project.  Previous configurations replace this prefix
    * list with the same name.
    */
   private[sbt] def prefixConfigs(cs: Configuration*): Project = copy(configurations = Defaults.overrideConfigs(configurations: _*)(cs))

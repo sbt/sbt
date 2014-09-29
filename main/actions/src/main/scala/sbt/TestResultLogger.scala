@@ -6,7 +6,7 @@ import sbt.Tests.{ Output, Summary }
  * Logs information about tests after they finish.
  *
  * Log output can be customised by providing a specialised instance of this
- * trait via the `testTestResultLogger` setting.
+ * trait via the `testResultLogger` setting.
  *
  * @since 0.13.5
  */
