@@ -105,7 +105,7 @@ class SbtChainResolver(name: String, resolvers: Seq[DependencyResolver], setting
                           Message.warn(s"Resolving a changing dependency (${rmr.getId}) with no ivy/pom file!, resolution order is undefined!")
                       case (ivf, dmd: DefaultModuleDescriptor) =>
                         val lmd = new java.util.Date(ivf.getLastModified)
-                        Message.info(s"Getting null publication date from resolver: ${resolver} for ${rmr.getId}, setting to: ${lmd}")
+                        Message.debug(s"Getting no publication date from resolver: ${resolver} for ${rmr.getId}, setting to: ${lmd}")
                         dmd.setPublicationDate(lmd)
                       case _ =>
                         Message.warn(s"Getting null publication date from resolver: ${resolver} for ${rmr.getId}, resolution order is undefined!")
