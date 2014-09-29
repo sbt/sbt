@@ -1,4 +1,4 @@
-package sbt
+package sbt.internals.parser
 
 class CommentedXmlSpec extends CheckIfParsedSpec {
 

@@ -23,3 +23,11 @@ $ must-mirror build.sbt build.check.2
 -> k1
 > k2
 $ must-mirror build.sbt build.check.3
+
+> set k4 := { val x = k4.value; () }
+> session save
+$ must-mirror build.sbt build.check.4
+
+> set k4 := ()
+> session save
+$ must-mirror build.sbt build.check.5

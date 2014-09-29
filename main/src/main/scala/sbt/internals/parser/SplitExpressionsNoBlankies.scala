@@ -1,29 +1,31 @@
 package sbt
+package internals
+package parser
 
 import java.io.File
 
+import sbt.internals.parser.SplitExpressionsNoBlankies._
 import scala.annotation.tailrec
-import SplitExpressionsNoBlankies._
+import scala.reflect.runtime.universe
 import scala.reflect.runtime.universe._
 
-object SplitExpressionsNoBlankies {
+private[sbt] object SplitExpressionsNoBlankies {
   val END_OF_LINE_CHAR = '\n'
   val END_OF_LINE = String.valueOf(END_OF_LINE_CHAR)
   private[sbt] val FAKE_FILE = new File("fake")
 }
 
-case class SplitExpressionsNoBlankies(file: File, lines: Seq[String]) {
+private[sbt] case class SplitExpressionsNoBlankies(file: File, lines: Seq[String]) {
   //settingsTrees needed for "session save"
   val (imports, settings, settingsTrees) = splitExpressions(file, lines)
 
   private def splitExpressions(file: File, lines: Seq[String]): (Seq[(String, Int)], Seq[(String, LineRange)], Seq[(String, Tree)]) = {
-    import scala.reflect.runtime._
+    import sbt.internals.parser.BugInParser._
+    import sbt.internals.parser.XmlContent._
 
-    import scala.tools.reflect.ToolBoxError
-    import scala.tools.reflect.ToolBox
     import scala.compat.Platform.EOL
     import BugInParser._
-    import XmlContent._
+    import scala.tools.reflect.{ ToolBox, ToolBoxError }
 
     val mirror = universe.runtimeMirror(this.getClass.getClassLoader)
     val toolbox = mirror.mkToolBox(options = "-Yrangepos")
@@ -150,7 +152,7 @@ private[sbt] object BugInParser {
  * <a>rr</a>)
  * </pre>
  */
-private object XmlContent {
+private[sbt] object XmlContent {
   /**
    *
    * @param original - file content

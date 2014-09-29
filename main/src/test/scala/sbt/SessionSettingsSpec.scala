@@ -3,6 +3,7 @@ package sbt
 import java.io.{ File, FilenameFilter }
 
 import org.specs2.matcher.MatchResult
+import sbt.internals.parser.{ AbstractSpec, SplitExpressionsNoBlankies }
 
 import scala.collection.GenTraversableOnce
 import scala.collection.immutable.{ SortedMap, TreeMap }

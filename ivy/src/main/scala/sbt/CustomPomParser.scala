@@ -54,7 +54,8 @@ object CustomPomParser {
   lazy val registerDefault: Unit = ModuleDescriptorParserRegistry.getInstance.addParser(default)
 
   def defaultTransform(parser: ModuleDescriptorParser, md: ModuleDescriptor): ModuleDescriptor =
-    if (transformedByThisVersion(md)) md else defaultTransformImpl(parser, md)
+    if (transformedByThisVersion(md)) md
+    else defaultTransformImpl(parser, md)
 
   private[this] def transformedByThisVersion(md: ModuleDescriptor): Boolean =
     {

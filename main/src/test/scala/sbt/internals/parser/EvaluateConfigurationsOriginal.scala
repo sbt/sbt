@@ -1,6 +1,8 @@
-package sbt
+package sbt.internals.parser
 
 import java.io.File
+
+import sbt.LineRange
 
 import scala.annotation.tailrec
 
