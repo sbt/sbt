@@ -187,7 +187,10 @@ object ModuleReport {
 final class Caller(
     val caller: ModuleID,
     val callerConfigurations: Seq[String],
-    val callerExtraAttributes: Map[String, String]) {
+    val callerExtraAttributes: Map[String, String],
+    val isForceDependency: Boolean,
+    val isChangingDependency: Boolean,
+    val isTransitiveDependency: Boolean) {
   override def toString: String =
     s"$caller"
 }
