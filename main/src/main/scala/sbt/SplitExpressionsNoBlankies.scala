@@ -14,9 +14,9 @@ object SplitExpressionsNoBlankies {
 
 case class SplitExpressionsNoBlankies(file: File, lines: Seq[String]) {
   //settingsTrees needed for "session save"
-  val (imports, settings, settingsTrees) = splitExpressions(file, lines)
+  val (imports, settings, settingsTrees, modifiedContent) = splitExpressions(file, lines)
 
-  private def splitExpressions(file: File, lines: Seq[String]): (Seq[(String, Int)], Seq[(String, LineRange)], Seq[(String, Tree)]) = {
+  private def splitExpressions(file: File, lines: Seq[String]): (Seq[(String, Int)], Seq[(String, LineRange)], Seq[(String, Tree)], String) = {
     import scala.reflect.runtime._
 
     import scala.tools.reflect.ToolBoxError
@@ -88,7 +88,7 @@ case class SplitExpressionsNoBlankies(file: File, lines: Seq[String]) {
         None
       }
     val statementsTreeLineRange = statements flatMap convertStatement
-    (imports map convertImport, statementsTreeLineRange.map(t => (t._1, t._3)), statementsTreeLineRange.map(t => (t._1, t._2)))
+    (imports map convertImport, statementsTreeLineRange.map(t => (t._1, t._3)), statementsTreeLineRange.map(t => (t._1, t._2)), modifiedContent)
   }
 }
 
@@ -300,31 +300,32 @@ private object XmlContent {
    */
   private def addExplicitXmlContent(content: String, xmlParts: Seq[(String, Int, Int)]): String = {
     val statements: Seq[(String, Boolean)] = splitFile(content, xmlParts)
-    val (builder, wasPreviousXml, wasXml, _) = statements.foldLeft((Seq.empty[String], false, false, "")) {
-      (acc, el) =>
-        val (bAcc, wasXml, _, previous) = acc
-        val (content, isXml) = el
-        val contentEmpty = content.trim.isEmpty
-        val (isNotCommentedXml, newAcc) = if (isXml) {
-          if (!wasXml) {
-            if (areBracketsNecessary(previous)) {
-              (true, " ( " +: bAcc)
-            } else {
-              (false, bAcc)
-            }
-          } else {
-            (true, bAcc)
-          }
-        } else if (wasXml && !contentEmpty) {
-          (false, " ) " +: bAcc)
+    val (builder, addCloseBrackets, wasXml, _) = statements.foldLeft((Seq.empty[String], false, false, "")) {
+      case ((bAcc, addCloseBrackets, wasXml, previous), (content, isXml)) =>
+        if (content.trim.isEmpty) {
+          (content +: bAcc, addCloseBrackets, wasXml, content)
         } else {
-          (false, bAcc)
-        }
+          val (newAddCloseBrackets, newAcc) = if (isXml) {
+            if (wasXml) {
+              (addCloseBrackets, bAcc)
+            } else {
+              if (areBracketsNecessary(previous)) {
+                (true, " ( " +: bAcc)
+              } else {
+                (false, bAcc)
+              }
+            }
+          } else if (addCloseBrackets) {
+            (false, " ) " +: bAcc)
+          } else {
+            (false, bAcc)
+          }
 
-        (content +: newAcc, isNotCommentedXml || (wasXml && contentEmpty), isXml, content)
+          (content +: newAcc, newAddCloseBrackets, isXml, content)
+        }
     }
     val closeIfNecessaryBuilder =
-      if (wasPreviousXml && !wasXml) {
+      if (addCloseBrackets && wasXml) {
         builder.head +: " ) " +: builder.tail
       } else {
         builder

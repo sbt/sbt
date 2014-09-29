@@ -10,7 +10,7 @@ import scala.tools.reflect.ToolBoxError
 
 class SplitExpressionsFilesTest extends AbstractSplitExpressionsFilesTest("../old-format/")
 
-abstract class AbstractSplitExpressionsFilesTest(pathName: String) extends Specification {
+abstract class AbstractSplitExpressionsFilesTest(pathName: String, printDetails: Boolean = false) extends Specification {
 
   case class SplitterComparison(oldSplitterResult: util.Try[(Seq[(String, Int)], Seq[LineRange])], newSplitterResult: util.Try[(Seq[(String, Int)], Seq[LineRange])])
 

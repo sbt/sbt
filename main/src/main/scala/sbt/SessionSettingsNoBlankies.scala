@@ -1,6 +1,5 @@
 package sbt
 
-import scala.collection.immutable.SortedMap
 import scala.reflect.runtime.universe._
 
 object SessionSettingsNoBlankies {
@@ -9,65 +8,43 @@ object SessionSettingsNoBlankies {
 
   val REVERSE_ORDERING_INT = Ordering[Int].reverse
 
-  def oldLinesToNew(content: List[String], lineMap: SortedMap[Int, List[(Int, List[String])]]): List[String] =
-    if (lineMap.isEmpty) {
-      content
-    } else {
-      val head = lineMap.head
-      val newContent = toNewContent(content, head)
-      oldLinesToNew(newContent, lineMap.tail)
-    }
-
-  private def toNewContent(content: List[String], setCommands: (Int, List[(Int, List[String])])): List[String] = {
-    val (from, newSettings) = setCommands
-
-    val newTreeStringsMap = newSettings.map {
-      case (_, lines) => toTreeStringMap(lines)
-    }
-    val to = newSettings.map(_._1).max
-    val originalLine = content.slice(from - 1, to - 1)
-
-    val operations = newTreeStringsMap.flatMap {
-      map =>
+  def oldLinesToNew(lines: List[String], setCommands: List[List[String]]): List[String] = {
+    val split = SplitExpressionsNoBlankies(FAKE_FILE, lines)
+    val recordedCommand = setCommands.flatMap {
+      command =>
+        val map = toTreeStringMap(command)
         map.flatMap {
-          case (name, (startIndex, statement)) =>
-            val validLines = cutExpression(originalLine, name)
-            val treeStringMap = toTreeStringMap(validLines)
-            treeStringMap.get(name).map {
-              case (t, oldContent) =>
-                (startIndex, oldContent, statement)
+          case (name, (startPos, statement)) =>
+            split.settingsTrees.foldLeft(Seq.empty[(Int, String, String)]) {
+              case (acc, (statement, tree)) =>
+                val treeName = extractSettingName(tree)
+                if (name == treeName) {
+                  val replacement = if (acc.isEmpty) {
+                    command.mkString("\n")
+                  } else {
+                    ""
+                  }
+                  (tree.pos.start, statement, replacement) +: acc
+                } else {
+                  acc
+                }
             }
         }
     }
-    val statements = XmlContent.handleXmlContent(originalLine.mkString("\n"))
-    val sortedOperations = operations.sortBy(_._1)(REVERSE_ORDERING_INT)
-    val newContent = sortedOperations.foldLeft(statements) {
-      case (acc, (startIndex, old, newStatement)) =>
-        acc.replace(old, newStatement)
+    val sortedRecordedCommand = recordedCommand.sortBy(_._1)(REVERSE_ORDERING_INT)
+
+    val newContent = sortedRecordedCommand.foldLeft(split.modifiedContent) {
+      case (acc, (from, old, replacement)) =>
+        val before = acc.substring(0, from)
+        val after = acc.substring(from + old.length, acc.length)
+        before + replacement + after
+      //        acc.replace(old, replacement)
     }
-    val newLines = newContent.lines.toList
-    content.take(from - 1) ++ newLines ++ content.drop(to - 1)
+    newContent.lines.toList
   }
 
-  private[sbt] def cutExpression(l: List[String], name: String): List[String] = l match {
-    case h +: t =>
-      val statements = SplitExpressionsNoBlankies(FAKE_FILE, l).settingsTrees
-      val lastIndex = statements.lastIndexWhere {
-        tuple => extractSettingName(tuple._2) == name
-      }
-      val (statement, tree) = statements(lastIndex)
-
-      if (tree.pos.end >= h.length) {
-        l
-      } else {
-        statement +: t
-      }
-    case _ =>
-      l
-  }
-
-  private def toTreeStringMap(lines: List[String]) = {
-    val split = SplitExpressionsNoBlankies(FAKE_FILE, lines)
+  private def toTreeStringMap(command: List[String]) = {
+    val split = SplitExpressionsNoBlankies(FAKE_FILE, command)
     val trees = split.settingsTrees
     val seq = trees.map {
       case (statement, tree) =>

@@ -5,7 +5,6 @@ import java.io.{ File, FilenameFilter }
 import org.specs2.matcher.MatchResult
 
 import scala.collection.GenTraversableOnce
-import scala.collection.immutable.{ SortedMap, TreeMap }
 import scala.io.Source
 import scala.xml.XML
 
@@ -16,7 +15,7 @@ abstract class AbstractSessionSettingsSpec(folder: String, printDetails: Boolean
 
   "SessionSettings " should {
     "Be identical for empty map " in {
-      def unit(f: File) = Seq((Source.fromFile(f).getLines().toList, SortedMap.empty[Int, List[(Int, List[String])]]))
+      def unit(f: File) = Seq((Source.fromFile(f).getLines().toList, Nil))
       runTestOnFiles(unit)
     }
 
@@ -25,7 +24,7 @@ abstract class AbstractSessionSettingsSpec(folder: String, printDetails: Boolean
     }
   }
 
-  private def runTestOnFiles(expectedResultAndMap: File => Seq[(List[String], SortedMap[Int, List[(Int, List[String])]])]): MatchResult[GenTraversableOnce[File]] = {
+  private def runTestOnFiles(expectedResultAndMap: File => Seq[(List[String], List[List[String]])]): MatchResult[GenTraversableOnce[File]] = {
 
     val allFiles = rootDir.listFiles(new FilenameFilter() {
       def accept(dir: File, name: String) = name.endsWith(".sbt.txt")
@@ -63,12 +62,10 @@ abstract class AbstractSessionSettingsSpec(folder: String, printDetails: Boolean
               val set = (node \\ "set").text
               val start = (node \\ "start").text.toInt
               val end = (node \\ "end").text.toInt
-              (start, (end, List(set)))
+              List(set)
           }.toList
-          val map = tupleCollection.groupBy(el => el._1).map {
-            case (k, seq) => (k, seq.map(el => el._2))
-          }
-          (result, TreeMap(map.toArray: _*)(SessionSettingsNoBlankies.REVERSE_ORDERING_INT))
+
+          (result, tupleCollection)
         }
     }
   }
