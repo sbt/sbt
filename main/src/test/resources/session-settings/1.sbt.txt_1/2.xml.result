@@ -18,10 +18,10 @@ val a = <aaa>
 */
 
 
-organization := "jozwikr" // OK
+organization := "scalania" // OK
 
 scalaVersion := "2.9.2"
 
-organization := "scalania"
+
 
 

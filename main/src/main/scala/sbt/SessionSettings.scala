@@ -6,14 +6,10 @@ package sbt
 import java.io.File
 import java.net.URI
 import Def.{ ScopedKey, Setting }
-import Project._
 import Types.Endo
 import compiler.Eval
 
 import SessionSettings._
-
-import scala.collection.immutable.SortedMap
-
 
 /**
  * Represents (potentially) transient settings added into a build via commands/user.
@@ -85,16 +81,18 @@ object SessionSettings {
   type SessionSetting = (Setting[_], List[String])
   type SessionMap = Map[ProjectRef, Seq[SessionSetting]]
 
-  /** This will re-evaluate all Setting[_]'s on this session against the current build state and
-    * return the new build state.
-    */
+  /**
+   * This will re-evaluate all Setting[_]'s on this session against the current build state and
+   * return the new build state.
+   */
   def reapply(session: SessionSettings, s: State): State =
     BuiltinCommands.reapply(session, Project.structure(s), s)
 
-  /** This will clear any user-added session settings for a given build state and return the new build state.
-    *
-    * Note: Does not clear `rawAppend` settings
-    */
+  /**
+   * This will clear any user-added session settings for a given build state and return the new build state.
+   *
+   * Note: Does not clear `rawAppend` settings
+   */
   def clearSettings(s: State): State =
     withSettings(s)(session => reapply(session.copy(append = session.append - session.current), s))
   /** This will clear ALL transient session settings in a given build state, returning the new build state. */
@@ -128,9 +126,6 @@ object SessionSettings {
     if (newSession.append.isEmpty && !oldSettings.isEmpty)
       oldState.log.warn("Discarding " + pluralize(oldSettings.size, " session setting") + ".  Use 'session save' to persist session settings.")
   }
-
-
-
   def removeRanges[T](in: Seq[T], ranges: Seq[(Int, Int)]): Seq[T] =
     {
       val asSet = (Set.empty[Int] /: ranges) { case (s, (hi, lo)) => s ++ (hi to lo) }
@@ -151,11 +146,12 @@ object SessionSettings {
       saveSomeSettings(s)(_ == current)
     }
 
-  /** Saves session settings to disk if they match the filter.
-    * @param s  The build state
-    * @param include  A filter function to determine which project's settings to persist.
-    * @return  The new build state.
-    */
+  /**
+   * Saves session settings to disk if they match the filter.
+   * @param s  The build state
+   * @param include  A filter function to determine which project's settings to persist.
+   * @return  The new build state.
+   */
   def saveSomeSettings(s: State)(include: ProjectRef => Boolean): State =
     withSettings(s) { session =>
       val newSettings =
@@ -182,23 +178,21 @@ object SessionSettings {
           }
       }
 
-      val (_, oldShifted, replace, lineMap) = ((0, List[Setting[_]](), List[SessionSetting](), SortedMap.empty[Int, List[(Int, List[String])]](Ordering[Int].reverse)) /: inFile) {
-        case ((offs, olds, repl, lineMap), s) =>
+      val (_, oldShifted, replace, statements) = ((0, List[Setting[_]](), List[SessionSetting](), List[List[String]]()) /: inFile) {
+        case ((offs, olds, repl, statements), s) =>
           val RangePosition(_, r @ LineRange(start, end)) = s.pos
           settings find (_._1.key == s.key) match {
             case Some(ss @ (ns, newLines)) if !ns.init.dependencies.contains(ns.key) =>
               val shifted = ns withPos RangePosition(path, LineRange(start - offs, start - offs + newLines.size))
-              val head = (end, newLines)
-              val seq = lineMap.getOrElse(start, List())
-              (offs + end - start - newLines.size, shifted :: olds, ss :: repl, lineMap + (start -> (head +: seq)))
+              (offs + end - start - newLines.size, shifted :: olds, ss :: repl, newLines +: statements)
             case _ =>
               val shifted = s withPos RangePosition(path, r shift -offs)
-              (offs, shifted :: olds, repl, lineMap)
+              (offs, shifted :: olds, repl, statements)
           }
       }
       val newSettings = settings diff replace
       val oldContent = IO.readLines(writeTo)
-      val exist: List[String] = SessionSettingsNoBlankies.oldLinesToNew(oldContent, lineMap)
+      val exist: List[String] = SessionSettingsNoBlankies.oldLinesToNew(oldContent, statements)
       val adjusted = if (!newSettings.isEmpty && needsTrailingBlank(exist)) exist :+ "" else exist
       val lines = adjusted ++ newSettings.flatMap(_._2 ::: "" :: Nil)
       IO.writeLines(writeTo, lines)
