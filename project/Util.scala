@@ -178,6 +178,9 @@ object Common {
   lazy val httpclient = lib("commons-httpclient" % "commons-httpclient" % "3.1")
   lazy val jsch = lib("com.jcraft" % "jsch" % "0.1.46" intransitive ())
   lazy val sbinary = libraryDependencies += "org.scala-tools.sbinary" %% "sbinary" % "0.4.2"
+  lazy val json4sNative = lib("org.json4s" %% "json4s-native" % "3.2.10")
+  lazy val jawnParser = lib("org.spire-math" %% "jawn-parser" % "0.6.0")
+  lazy val jawnJson4s = lib("org.spire-math" %% "json4s-support" % "0.6.0")
   lazy val scalaCompiler = libraryDependencies <+= scalaVersion(sv => "org.scala-lang" % "scala-compiler" % sv)
   lazy val testInterface = lib("org.scala-sbt" % "test-interface" % "1.0")
   private def scala211Module(name: String, moduleVersion: String) =

@@ -4,7 +4,7 @@
 package sbt
 
 import Resolver.PluginPattern
-import ivyint.{ ConsolidatedResolveEngine, ConsolidatedResolveCache }
+import ivyint.{ CachedResolutionResolveEngine, CachedResolutionResolveCache }
 
 import java.io.File
 import java.net.URI
@@ -84,7 +84,7 @@ final class IvySbt(val configuration: IvyConfiguration) {
       }
       is
     }
-  private lazy val ivy: Ivy =
+  private[sbt] def mkIvy: Ivy =
     {
       val i = new Ivy() {
         private val loggerEngine = new SbtMessageLoggerEngine
@@ -94,9 +94,9 @@ final class IvySbt(val configuration: IvyConfiguration) {
           // We inject the deps we need before we can hook our resolve engine.
           setSortEngine(new SortEngine(getSettings))
           setEventManager(new EventManager())
-          if (configuration.updateOptions.consolidatedResolution) {
-            setResolveEngine(new ResolveEngine(getSettings, getEventManager, getSortEngine) with ConsolidatedResolveEngine {
-              val consolidatedResolveCache = IvySbt.consolidatedResolveCache
+          if (configuration.updateOptions.cachedResolution) {
+            setResolveEngine(new ResolveEngine(getSettings, getEventManager, getSortEngine) with CachedResolutionResolveEngine {
+              val cachedResolutionResolveCache = IvySbt.cachedResolutionResolveCache
               val projectResolver = prOpt
             })
           } else setResolveEngine(new ResolveEngine(getSettings, getEventManager, getSortEngine))
@@ -108,6 +108,8 @@ final class IvySbt(val configuration: IvyConfiguration) {
       i.getLoggerEngine.pushLogger(new IvyLoggerInterface(configuration.log))
       i
     }
+
+  private lazy val ivy: Ivy = mkIvy
   // Must be the same file as is used in Update in the launcher
   private lazy val ivyLockFile = new File(settings.getDefaultIvyUserDir, ".sbt.ivy.lock")
   /** ========== End Configuration/Setup ============*/
@@ -130,14 +132,14 @@ final class IvySbt(val configuration: IvyConfiguration) {
     }
 
   /**
-   * Cleans consolidated resolution cache.
+   * Cleans cached resolution cache.
    * @param md - module descriptor of the original Ivy graph.
    */
-  private[sbt] def cleanConsolidatedResolutionCache(md: ModuleDescriptor, log: Logger): Unit =
+  private[sbt] def cleanCachedResolutionCache(md: ModuleDescriptor, log: Logger): Unit =
     withIvy(log) { i =>
       val prOpt = Option(i.getSettings.getResolver(ProjectResolver.InterProject)) map { case pr: ProjectResolver => pr }
-      if (configuration.updateOptions.consolidatedResolution) {
-        IvySbt.consolidatedResolveCache.clean(md, prOpt)
+      if (configuration.updateOptions.cachedResolution) {
+        IvySbt.cachedResolutionResolveCache.clean(md, prOpt)
       }
     }
 
@@ -242,7 +244,7 @@ private[sbt] object IvySbt {
   val DefaultIvyFilename = "ivy.xml"
   val DefaultMavenFilename = "pom.xml"
   val DefaultChecksums = Seq("sha1", "md5")
-  private[sbt] val consolidatedResolveCache: ConsolidatedResolveCache = new ConsolidatedResolveCache()
+  private[sbt] val cachedResolutionResolveCache: CachedResolutionResolveCache = new CachedResolutionResolveCache()
 
   def defaultIvyFile(project: File) = new File(project, DefaultIvyFilename)
   def defaultIvyConfiguration(project: File) = new File(project, DefaultIvyConfigFilename)
@@ -270,6 +272,8 @@ private[sbt] object IvySbt {
     val mainChain = makeChain("Default", "sbt-chain", resolvers)
     settings.setDefaultResolver(mainChain.getName)
   }
+  private[sbt] def isChanging(module: ModuleID): Boolean =
+    module.revision endsWith "-SNAPSHOT"
   private[sbt] def isChanging(mrid: ModuleRevisionId): Boolean =
     mrid.getRevision endsWith "-SNAPSHOT"
   def resolverChain(name: String, resolvers: Seq[Resolver], localOnly: Boolean, settings: IvySettings, log: Logger): DependencyResolver =

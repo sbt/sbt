@@ -222,7 +222,7 @@ object Defaults extends BuildCommon {
     crossTarget := makeCrossTarget(target.value, scalaBinaryVersion.value, sbtBinaryVersion.value, sbtPlugin.value, crossPaths.value),
     clean := {
       val _ = clean.value
-      IvyActions.cleanConsolidatedResolutionCache(ivyModule.value, streams.value.log)
+      IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log)
     }
   )
   // must be a val: duplication detected by object identity
@@ -1255,6 +1255,8 @@ object Classpaths {
         case (Some(res), _, Some(decl)) if res == decl => jars
         case _                                         => Nil
       }
+    def intToByteArray(x: Int): Array[Byte] =
+      Array((x >>> 24).toByte, (x >> 16 & 0xff).toByte, (x >> 8 & 0xff).toByte, (x & 0xff).toByte)
     val subScalaJars: String => Seq[File] = Defaults.unmanagedScalaInstanceOnly.value match {
       case Some(si) => subUnmanaged(si.version, si.jars)
       case None     => sv => if (scalaProvider.version == sv) scalaProvider.jars else Nil
@@ -1262,25 +1264,28 @@ object Classpaths {
     val transform: UpdateReport => UpdateReport = r => substituteScalaFiles(scalaOrganization.value, r)(subScalaJars)
     val uwConfig = (unresolvedWarningConfiguration in update).value
     val show = Reference.display(thisProjectRef.value)
+    val st = state.value
+    val logicalClock = LogicalClock(Hash.toHex(intToByteArray(st.hashCode)))
+    val depDir = BuildPaths.getDependencyDirectory(st, BuildPaths.getGlobalBase(st))
     cachedUpdate(s.cacheDirectory / updateCacheName.value, show, ivyModule.value, updateConfiguration.value, transform,
       skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated,
-      uwConfig = uwConfig, log = s.log)
+      uwConfig = uwConfig, logicalClock = logicalClock, depDir = Some(depDir), log = s.log)
   }
   @deprecated("Use cachedUpdate with the variant that takes unresolvedHandler instead.", "0.13.6")
   def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration,
     transform: UpdateReport => UpdateReport, skip: Boolean, force: Boolean, depsUpdated: Boolean, log: Logger): UpdateReport =
     cachedUpdate(cacheFile, label, module, config, transform, skip, force, depsUpdated,
-      UnresolvedWarningConfiguration(), log)
-  def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration,
+      UnresolvedWarningConfiguration(), LogicalClock.unknown, None, log)
+  private[sbt] def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration,
     transform: UpdateReport => UpdateReport, skip: Boolean, force: Boolean, depsUpdated: Boolean,
-    uwConfig: UnresolvedWarningConfiguration, log: Logger): UpdateReport =
+    uwConfig: UnresolvedWarningConfiguration, logicalClock: LogicalClock, depDir: Option[File], log: Logger): UpdateReport =
     {
       implicit val updateCache = updateIC
       type In = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
       def work = (_: In) match {
         case conf :+: settings :+: config :+: HNil =>
           log.info("Updating " + label + "...")
-          val r = IvyActions.updateEither(module, config, uwConfig, log) match {
+          val r = IvyActions.updateEither(module, config, uwConfig, logicalClock, depDir, log) match {
             case Right(ur) => ur
             case Left(uw) =>
               import ShowLines._
