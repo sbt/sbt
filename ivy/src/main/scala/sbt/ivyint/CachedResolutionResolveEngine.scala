@@ -22,7 +22,7 @@ private[sbt] object CachedResolutionResolveCache {
   def sbtOrgTemp = "org.scala-sbt.temp"
 }
 
-class CachedResolutionResolveCache() {
+private[sbt] class CachedResolutionResolveCache() {
   import CachedResolutionResolveCache._
   val updateReportCache: concurrent.Map[ModuleRevisionId, Either[ResolveException, UpdateReport]] = concurrent.TrieMap()
   val resolveReportCache: concurrent.Map[ModuleRevisionId, ResolveReport] = concurrent.TrieMap()
@@ -57,8 +57,6 @@ class CachedResolutionResolveCache() {
       val rootModuleConfigs = md0.getConfigurations.toVector
       expanded map { buildArtificialModuleDescriptor(_, rootModuleConfigs, prOpt) }
     }
-  def isDependencyChanging(dd: DependencyDescriptor): Boolean =
-    dd.isChanging || IvySbt.isChanging(dd.getDependencyRevisionId)
   def buildArtificialModuleDescriptor(dd: DependencyDescriptor, rootModuleConfigs: Vector[IvyConfiguration], prOpt: Option[ProjectResolver]): (DefaultModuleDescriptor, Boolean) =
     {
       val mrid = dd.getDependencyRevisionId
@@ -74,7 +72,7 @@ class CachedResolutionResolveCache() {
         conf <- rootModuleConfigs
       } yield md1.addConfiguration(conf)
       md1.addDependency(dd)
-      (md1, isDependencyChanging(dd))
+      (md1, IvySbt.isChanging(dd))
     }
   def getOrElseUpdateMiniGraph(md: ModuleDescriptor, changing0: Boolean, logicalClock: LogicalClock, miniGraphPath: File, cachedDescriptor: File, log: Logger)(f: => Either[ResolveException, UpdateReport]): Either[ResolveException, UpdateReport] =
     {
