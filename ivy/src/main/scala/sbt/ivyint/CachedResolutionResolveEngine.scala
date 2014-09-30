@@ -6,6 +6,7 @@ import java.net.URL
 import java.io.File
 import collection.concurrent
 import collection.immutable.ListMap
+import org.apache.ivy.Ivy
 import org.apache.ivy.core
 import core.resolve._
 import core.module.id.{ ModuleRevisionId, ModuleId => IvyModuleId }
@@ -260,6 +261,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
 
   private[sbt] def cachedResolutionResolveCache: CachedResolutionResolveCache
   private[sbt] def projectResolver: Option[ProjectResolver]
+  private[sbt] def makeInstance: Ivy
 
   // Return sbt's UpdateReport.
   def customResolve(md0: ModuleDescriptor, logicalClock: LogicalClock, options0: ResolveOptions, depDir: File, log: Logger): Either[ResolveException, UpdateReport] = {
@@ -271,7 +273,8 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
     def doWork(md: ModuleDescriptor): Either[ResolveException, UpdateReport] =
       {
         val options1 = new ResolveOptions(options0)
-        var rr = super.resolve(md, options1)
+        val i = makeInstance
+        var rr = i.resolve(md, options1)
         if (!rr.hasError) Right(IvyRetrieve.updateReport(rr, cachedDescriptor))
         else {
           val messages = rr.getAllProblemMessages.toArray.map(_.toString).distinct

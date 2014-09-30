@@ -98,6 +98,7 @@ final class IvySbt(val configuration: IvyConfiguration) {
             setResolveEngine(new ResolveEngine(getSettings, getEventManager, getSortEngine) with CachedResolutionResolveEngine {
               val cachedResolutionResolveCache = IvySbt.cachedResolutionResolveCache
               val projectResolver = prOpt
+              def makeInstance = mkIvy
             })
           } else setResolveEngine(new ResolveEngine(getSettings, getEventManager, getSortEngine))
           super.bind()
