@@ -273,6 +273,8 @@ private[sbt] object IvySbt {
     val mainChain = makeChain("Default", "sbt-chain", resolvers)
     settings.setDefaultResolver(mainChain.getName)
   }
+  private[sbt] def isChanging(dd: DependencyDescriptor): Boolean =
+    dd.isChanging || isChanging(dd.getDependencyRevisionId)
   private[sbt] def isChanging(module: ModuleID): Boolean =
     module.revision endsWith "-SNAPSHOT"
   private[sbt] def isChanging(mrid: ModuleRevisionId): Boolean =
