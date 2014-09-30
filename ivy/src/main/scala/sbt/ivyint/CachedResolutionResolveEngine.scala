@@ -15,7 +15,6 @@ import core.module.descriptor.{ DefaultModuleDescriptor, ModuleDescriptor, Depen
 import core.{ IvyPatternHelper, LogOptions }
 import org.apache.ivy.util.Message
 import org.apache.ivy.plugins.latest.{ ArtifactInfo => IvyArtifactInfo }
-import org.json4s._
 
 private[sbt] object CachedResolutionResolveCache {
   def createID(organization: String, name: String, revision: String) =
@@ -39,7 +38,6 @@ class CachedResolutionResolveCache() {
       else buildArtificialModuleDescriptors(md0, prOpt) map { _._1 }
     mds foreach { md =>
       updateReportCache.remove(md.getModuleRevisionId)
-      // todo: backport this
       directDependencyCache.remove(md.getModuleRevisionId)
     }
   }
@@ -98,7 +96,7 @@ class CachedResolutionResolveCache() {
         else if (dynamicGraphPath.exists) Some(dynamicGraphPath)
         else None) map { path =>
           log.debug(s"parsing ${path.getAbsolutePath.toString}")
-          val ur = parseUpdateReport(md, path, cachedDescriptor, log)
+          val ur = JsonUtil.parseUpdateReport(md, path, cachedDescriptor, log)
           updateReportCache(md.getModuleRevisionId) = Right(ur)
           Right(ur)
         }
@@ -115,9 +113,10 @@ class CachedResolutionResolveCache() {
                 }
               })
               IO.createDirectory(miniGraphPath)
-              writeUpdateReport(ur,
-                if (changing) dynamicGraphPath
-                else staticGraphPath)
+              val gp = if (changing) dynamicGraphPath
+              else staticGraphPath
+              log.debug(s"saving minigraph to $gp")
+              JsonUtil.writeUpdateReport(ur, gp)
               // don't cache dynamic graphs in memory.
               if (!changing) {
                 updateReportCache(md.getModuleRevisionId) = Right(ur)
@@ -131,56 +130,7 @@ class CachedResolutionResolveCache() {
           }
       }
     }
-  def parseUpdateReport(md: ModuleDescriptor, path: File, cachedDescriptor: File, log: Logger): UpdateReport =
-    {
-      import org.json4s._
-      implicit val formats = native.Serialization.formats(NoTypeHints) +
-        new ConfigurationSerializer +
-        new ArtifactSerializer +
-        new FileSerializer
-      try {
-        val json = jawn.support.json4s.Parser.parseFromFile(path)
-        fromLite(json.get.extract[UpdateReportLite], cachedDescriptor)
-      } catch {
-        case e: Throwable =>
-          log.error("Unable to parse mini graph: " + path.toString)
-          throw e
-      }
-    }
-  def writeUpdateReport(ur: UpdateReport, graphPath: File): Unit =
-    {
-      implicit val formats = native.Serialization.formats(NoTypeHints) +
-        new ConfigurationSerializer +
-        new ArtifactSerializer +
-        new FileSerializer
-      import native.Serialization.write
-      println(graphPath.toString)
-      val str = write(toLite(ur))
-      IO.write(graphPath, str, IO.utf8)
-    }
-  def toLite(ur: UpdateReport): UpdateReportLite =
-    UpdateReportLite(ur.configurations map { cr =>
-      ConfigurationReportLite(cr.configuration, cr.details)
-    })
-  def fromLite(lite: UpdateReportLite, cachedDescriptor: File): UpdateReport =
-    {
-      val stats = new UpdateStats(0L, 0L, 0L, false)
-      val configReports = lite.configurations map { cr =>
-        val details = cr.details
-        val modules = details flatMap {
-          _.modules filter { mr =>
-            !mr.evicted && mr.problem.isEmpty
-          }
-        }
-        val evicted = details flatMap {
-          _.modules filter { mr =>
-            mr.evicted
-          }
-        } map { _.module }
-        new ConfigurationReport(cr.configuration, modules, details, evicted)
-      }
-      new UpdateReport(cachedDescriptor, configReports, stats)
-    }
+
   def getOrElseUpdateConflict(cf0: ModuleID, cf1: ModuleID, conflicts: Vector[ModuleReport])(f: => (Vector[ModuleReport], Vector[ModuleReport], String)): (Vector[ModuleReport], Vector[ModuleReport]) =
     {
       def reconstructReports(surviving: Vector[ModuleID], evicted: Vector[ModuleID], mgr: String): (Vector[ModuleReport], Vector[ModuleReport]) = {
@@ -202,59 +152,11 @@ class CachedResolutionResolveCache() {
           }
       }
     }
-  class FileSerializer extends CustomSerializer[File](format => (
-    {
-      case JString(s) => new File(s)
-    },
-    {
-      case x: File => JString(x.toString)
-    }
-  ))
-  class ConfigurationSerializer extends CustomSerializer[Configuration](format => (
-    {
-      case JString(s) => new Configuration(s)
-    },
-    {
-      case x: Configuration => JString(x.name)
-    }
-  ))
-  class ArtifactSerializer extends CustomSerializer[Artifact](format => (
-    {
-      case json: JValue =>
-        implicit val fmt = format
-        Artifact(
-          (json \ "name").extract[String],
-          (json \ "type").extract[String],
-          (json \ "extension").extract[String],
-          (json \ "classifier").extract[Option[String]],
-          (json \ "configurations").extract[List[Configuration]],
-          (json \ "url").extract[Option[URL]],
-          (json \ "extraAttributes").extract[Map[String, String]]
-        )
-    },
-    {
-      case x: Artifact =>
-        import DefaultJsonFormats.{ OptionWriter, StringWriter, mapWriter }
-        val optStr = implicitly[Writer[Option[String]]]
-        val mw = implicitly[Writer[Map[String, String]]]
-        JObject(JField("name", JString(x.name)) ::
-          JField("type", JString(x.`type`)) ::
-          JField("extension", JString(x.extension)) ::
-          JField("classifier", optStr.write(x.classifier)) ::
-          JField("configurations", JArray(x.configurations.toList map { x => JString(x.name) })) ::
-          JField("url", optStr.write(x.url map { _.toString })) ::
-          JField("extraAttributes", mw.write(x.extraAttributes)) ::
-          Nil)
-    }
-  ))
 }
 
 private[sbt] trait ArtificialModuleDescriptor { self: DefaultModuleDescriptor =>
   def targetModuleRevisionId: ModuleRevisionId
 }
-
-private[sbt] case class UpdateReportLite(configurations: Seq[ConfigurationReportLite])
-private[sbt] case class ConfigurationReportLite(configuration: String, details: Seq[OrganizationArtifactReport])
 
 private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
   import CachedResolutionResolveCache._
