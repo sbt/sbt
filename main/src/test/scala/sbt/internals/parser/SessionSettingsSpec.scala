@@ -1,4 +1,6 @@
-package sbt.internals.parser
+package sbt
+package internals
+package parser
 
 import java.io.{ File, FilenameFilter }
 
@@ -6,15 +8,16 @@ import org.specs2.matcher.MatchResult
 
 import scala.collection.GenTraversableOnce
 import scala.io.Source
+import SessionSettings.SessionSetting
 
-abstract class AbstractSessionSettingsSpec(folder: String, deepCompare: Boolean = false) extends AbstractSpec {
+abstract class AbstractSessionSettingsSpec(folder: String) extends AbstractSpec {
   protected val rootPath = getClass.getClassLoader.getResource("").getPath + folder
   println(s"Reading files from: $rootPath")
   protected val rootDir = new File(rootPath)
 
   "SessionSettings " should {
     "Be identical for empty map " in {
-      def unit(f: File) = Seq((Source.fromFile(f).getLines().toList, Nil))
+      def unit(f: File) = Seq((Source.fromFile(f).getLines().toList, Seq()))
       runTestOnFiles(unit)
     }
 
@@ -23,7 +26,7 @@ abstract class AbstractSessionSettingsSpec(folder: String, deepCompare: Boolean 
     }
   }
 
-  private def runTestOnFiles(expectedResultAndMap: File => Seq[(List[String], List[String])]): MatchResult[GenTraversableOnce[File]] = {
+  private def runTestOnFiles(expectedResultAndMap: File => Seq[(List[String], Seq[SessionSetting])]): MatchResult[GenTraversableOnce[File]] = {
 
     val allFiles = rootDir.listFiles(new FilenameFilter() {
       def accept(dir: File, name: String) = name.endsWith(".sbt.txt")
@@ -33,12 +36,9 @@ abstract class AbstractSessionSettingsSpec(folder: String, deepCompare: Boolean 
         val originalLines = Source.fromFile(file).getLines().toList
         foreach(expectedResultAndMap(file)) {
           case (expectedResultList, commands) =>
-            val resultList = SbtRefactorings.applyStatements(originalLines, commands.map(List(_)))
+            val resultList = SbtRefactorings.applySessionSettings((file, originalLines), commands)
             val expected = SplitExpressionsNoBlankies(file, expectedResultList)
-            val result = SplitExpressionsNoBlankies(file, resultList)
-            if (deepCompare) {
-              expectedResultList must_== resultList
-            }
+            val result = SplitExpressionsNoBlankies(file, resultList._2)
             result.settings must_== expected.settings
 
         }
@@ -58,9 +58,10 @@ abstract class AbstractSessionSettingsSpec(folder: String, deepCompare: Boolean 
           override def accept(dir: File, name: String) = name.endsWith(".set")
         })
         files.map { file =>
-          val list = Source.fromFile(file).getLines().toList
+          val seq = Source.fromFile(file).getLines().toSeq
           val result = Source.fromFile(file.getAbsolutePath + ".result").getLines().toList
-          (result, list)
+          val sessionSettings = seq.map(line => (null, Seq(line)))
+          (result, sessionSettings)
         }
     }
   }
