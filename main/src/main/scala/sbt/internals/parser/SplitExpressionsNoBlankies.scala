@@ -22,7 +22,7 @@ private[sbt] case class SplitExpressionsNoBlankies(file: File, lines: Seq[String
     import scala.reflect.runtime._
 
     import scala.compat.Platform.EOL
-    import BugInParser._
+    import MissingBracketHandler._
     import XmlContent._
     import scala.tools.reflect.{ ToolBox, ToolBoxError }
 
@@ -97,7 +97,7 @@ private[sbt] case class SplitExpressionsNoBlankies(file: File, lines: Seq[String
  * Scala parser cuts last bracket -
  * @see http://stackoverflow.com/questions/25547149/scala-parser-cuts-last-bracket
  */
-private[sbt] object BugInParser {
+private[sbt] object MissingBracketHandler {
   /**
    *
    * @param content - parsed file
