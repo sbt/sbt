@@ -1,7 +1,0 @@
-<settings>
-    <setting>
-        <start>5</start>
-        <end>18</end>
-        <set><![CDATA[scmpom := <a/><b a="rt">OK</b>]]></set>
-    </setting>
-</settings>

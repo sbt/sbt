@@ -1,16 +1,14 @@
-package sbt
+package sbt.internals.parser
 
 import java.io.{ File, FilenameFilter }
 
 import org.specs2.matcher.MatchResult
-import sbt.internals.parser.{ AbstractSpec, SplitExpressionsNoBlankies }
 
 import scala.collection.GenTraversableOnce
 import scala.io.Source
-import scala.xml.XML
 
-abstract class AbstractSessionSettingsSpec(folder: String, printDetails: Boolean = false) extends AbstractSpec {
-  protected val rootPath = getClass.getResource("").getPath + folder
+abstract class AbstractSessionSettingsSpec(folder: String, deepCompare: Boolean = false) extends AbstractSpec {
+  protected val rootPath = getClass.getClassLoader.getResource("").getPath + folder
   println(s"Reading files from: $rootPath")
   protected val rootDir = new File(rootPath)
 
@@ -25,7 +23,7 @@ abstract class AbstractSessionSettingsSpec(folder: String, printDetails: Boolean
     }
   }
 
-  private def runTestOnFiles(expectedResultAndMap: File => Seq[(List[String], List[List[String]])]): MatchResult[GenTraversableOnce[File]] = {
+  private def runTestOnFiles(expectedResultAndMap: File => Seq[(List[String], List[String])]): MatchResult[GenTraversableOnce[File]] = {
 
     val allFiles = rootDir.listFiles(new FilenameFilter() {
       def accept(dir: File, name: String) = name.endsWith(".sbt.txt")
@@ -34,11 +32,15 @@ abstract class AbstractSessionSettingsSpec(folder: String, printDetails: Boolean
       file =>
         val originalLines = Source.fromFile(file).getLines().toList
         foreach(expectedResultAndMap(file)) {
-          case (expectedResultList, map) =>
-            val resultList = SessionSettingsNoBlankies.oldLinesToNew(originalLines, map)
+          case (expectedResultList, commands) =>
+            val resultList = SbtRefactorings.applyStatements(originalLines, commands.map(List(_)))
             val expected = SplitExpressionsNoBlankies(file, expectedResultList)
             val result = SplitExpressionsNoBlankies(file, resultList)
+            if (deepCompare) {
+              expectedResultList must_== resultList
+            }
             result.settings must_== expected.settings
+
         }
     }
   }
@@ -49,28 +51,22 @@ abstract class AbstractSessionSettingsSpec(folder: String, printDetails: Boolean
         val startsWith = f.getName + "_"
         name.startsWith(startsWith)
       }
-    }).toList
+    }).toSeq
     dirs.flatMap {
       dir =>
         val files = dir.listFiles(new FilenameFilter {
-          override def accept(dir: File, name: String) = name.endsWith(".xml")
+          override def accept(dir: File, name: String) = name.endsWith(".set")
         })
-        files.map { xmlFile =>
-          val xml = XML.loadFile(xmlFile)
-          val result = Source.fromFile(xmlFile.getAbsolutePath + ".result").getLines().toList
-          val tupleCollection = (xml \\ "settings" \\ "setting").map {
-            node =>
-              val set = (node \\ "set").text
-              val start = (node \\ "start").text.toInt
-              val end = (node \\ "end").text.toInt
-              List(set)
-          }.toList
-
-          (result, tupleCollection)
+        files.map { file =>
+          val list = Source.fromFile(file).getLines().toList
+          val result = Source.fromFile(file.getAbsolutePath + ".result").getLines().toList
+          (result, list)
         }
     }
   }
 
 }
 
-class SessionSettingsSpec extends AbstractSessionSettingsSpec("../session-settings")
+class SessionSettingsSpec extends AbstractSessionSettingsSpec("session-settings")
+
+//class SessionSettingsQuickSpec extends AbstractSessionSettingsSpec("session-settings-quick", true)

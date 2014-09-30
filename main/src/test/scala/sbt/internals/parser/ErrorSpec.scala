@@ -37,7 +37,7 @@ class ErrorSpec extends AbstractSpec with ScalaCheck {
           | } /* */ //
           |}
         """.stripMargin
-      BugInParser.findMissingText(buildSbt, buildSbt.length, 2, "fake.txt", new MessageOnlyException("fake")) must throwA[MessageOnlyException]
+      MissingBracketHandler.findMissingText(buildSbt, buildSbt.length, 2, "fake.txt", new MessageOnlyException("fake")) must throwA[MessageOnlyException]
     }
   }
 

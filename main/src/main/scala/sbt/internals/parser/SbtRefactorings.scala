@@ -1,15 +1,14 @@
-package sbt
+package sbt.internals.parser
 
 import scala.reflect.runtime.universe._
-import sbt.internals.parser.{ XmlContent, SplitExpressionsNoBlankies }
 
-object SessionSettingsNoBlankies {
+private[sbt] object SbtRefactorings {
 
-  import SplitExpressionsNoBlankies.FAKE_FILE
-
+  import sbt.internals.parser.SplitExpressionsNoBlankies.{ END_OF_LINE, FAKE_FILE }
+  val EMPTY_STRING = ""
   val REVERSE_ORDERING_INT = Ordering[Int].reverse
 
-  def oldLinesToNew(lines: List[String], setCommands: List[List[String]]): List[String] = {
+  def applyStatements(lines: List[String], setCommands: List[List[String]]): List[String] = {
     val split = SplitExpressionsNoBlankies(FAKE_FILE, lines)
     val recordedCommand = setCommands.flatMap {
       command =>
@@ -21,9 +20,9 @@ object SessionSettingsNoBlankies {
                 val treeName = extractSettingName(tree)
                 if (name == treeName) {
                   val replacement = if (acc.isEmpty) {
-                    command.mkString("\n")
+                    command.mkString(END_OF_LINE)
                   } else {
-                    ""
+                    EMPTY_STRING
                   }
                   (tree.pos.start, statement, replacement) +: acc
                 } else {
@@ -39,7 +38,6 @@ object SessionSettingsNoBlankies {
         val before = acc.substring(0, from)
         val after = acc.substring(from + old.length, acc.length)
         before + replacement + after
-      //        acc.replace(old, replacement)
     }
     newContent.lines.toList
   }

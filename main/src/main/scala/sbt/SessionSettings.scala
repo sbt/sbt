@@ -10,6 +10,7 @@ import Types.Endo
 import compiler.Eval
 
 import SessionSettings._
+import sbt.internals.parser.SbtRefactorings
 
 /**
  * Represents (potentially) transient settings added into a build via commands/user.
@@ -192,7 +193,7 @@ object SessionSettings {
       }
       val newSettings = settings diff replace
       val oldContent = IO.readLines(writeTo)
-      val exist: List[String] = SessionSettingsNoBlankies.oldLinesToNew(oldContent, statements)
+      val exist: List[String] = SbtRefactorings.applyStatements(oldContent, statements)
       val adjusted = if (!newSettings.isEmpty && needsTrailingBlank(exist)) exist :+ "" else exist
       val lines = adjusted ++ newSettings.flatMap(_._2 ::: "" :: Nil)
       IO.writeLines(writeTo, lines)
