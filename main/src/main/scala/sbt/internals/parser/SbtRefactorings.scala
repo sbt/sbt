@@ -14,9 +14,9 @@ private[sbt] object SbtRefactorings {
       command =>
         val map = toTreeStringMap(command)
         map.flatMap {
-          case (name, (startPos, statement)) =>
+          case (name, statement) =>
             split.settingsTrees.foldLeft(Seq.empty[(Int, String, String)]) {
-              case (acc, (statement, tree)) =>
+              case (acc, (st, tree)) =>
                 val treeName = extractSettingName(tree)
                 if (name == treeName) {
                   val replacement = if (acc.isEmpty) {
@@ -24,7 +24,7 @@ private[sbt] object SbtRefactorings {
                   } else {
                     EMPTY_STRING
                   }
-                  (tree.pos.start, statement, replacement) +: acc
+                  (tree.pos.start, st, replacement) +: acc
                 } else {
                   acc
                 }
@@ -37,7 +37,8 @@ private[sbt] object SbtRefactorings {
       case (acc, (from, old, replacement)) =>
         val before = acc.substring(0, from)
         val after = acc.substring(from + old.length, acc.length)
-        before + replacement + after
+        val afterLast = if (after.trim.isEmpty) after.trim else after
+        before + replacement + afterLast
     }
     newContent.lines.toList
   }
@@ -47,7 +48,7 @@ private[sbt] object SbtRefactorings {
     val trees = split.settingsTrees
     val seq = trees.map {
       case (statement, tree) =>
-        (extractSettingName(tree), (tree.pos.start, statement))
+        (extractSettingName(tree), statement)
     }
     seq.toMap
   }
