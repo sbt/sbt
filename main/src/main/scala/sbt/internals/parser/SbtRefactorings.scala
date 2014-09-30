@@ -7,31 +7,48 @@ import scala.reflect.runtime.universe._
 private[sbt] object SbtRefactorings {
 
   import sbt.internals.parser.SplitExpressionsNoBlankies.{ END_OF_LINE, FAKE_FILE }
+  import sbt.SessionSettings.{ SessionSetting, SbtConfigFile }
 
   val EMPTY_STRING = ""
   val REVERSE_ORDERING_INT = Ordering[Int].reverse
 
-  def applyStatements(lines: List[String], commands: List[List[String]]): List[String] = {
+  /**
+   * Refactoring a `.sbt` file so that the new settings are used instead of any existing settings.
+   * @param configFile SbtConfigFile with the lines of an sbt file as a List[String] where each string is one line
+   * @param commands A List of settings (space separate) that should be inserted into the current file.
+   *                 If the settings replaces a value, it will replace the original line in the .sbt file.
+   *                 If in the `.sbt` file we have multiply value for one settings -
+   *                 the first will be replaced and the other will be removed.
+   * @return a SbtConfigFile with new lines which represent the contents of the refactored .sbt file.
+   */
+  def applySessionSettings(configFile: SbtConfigFile, commands: Seq[SessionSetting]): SbtConfigFile = {
+    val (file, lines) = configFile
     val split = SplitExpressionsNoBlankies(FAKE_FILE, lines)
-    val recordedCommand = recordCommands(commands, split)
-    val sortedRecordedCommand = recordedCommand.sortBy(_._1)(REVERSE_ORDERING_INT)
+    val recordedCommands = recordCommands(commands, split)
+    val sortedRecordedCommands = recordedCommands.sortBy(_._1)(REVERSE_ORDERING_INT)
 
-    val newContent = sortedRecordedCommand.foldLeft(split.modifiedContent) {
+    val newContent = replaceFromBottomToTop(split.modifiedContent, sortedRecordedCommands)
+    (file, newContent.lines.toList)
+  }
+
+  private def replaceFromBottomToTop(modifiedContent: String, sortedRecordedCommands: Seq[(Int, String, String)]) = {
+    sortedRecordedCommands.foldLeft(modifiedContent) {
       case (acc, (from, old, replacement)) =>
         val before = acc.substring(0, from)
         val after = acc.substring(from + old.length, acc.length)
-        val afterLast = emptyStringForEmptyStatement(after)
+        val afterLast = emptyStringForEmptyString(after)
         before + replacement + afterLast
     }
-    newContent.lines.toList
   }
 
-  def emptyStringForEmptyStatement(after: String) =
-    if (after.trim.isEmpty) EMPTY_STRING else after
+  private def emptyStringForEmptyString(text: String) = {
+    val trimmed = text.trim
+    if (trimmed.isEmpty) trimmed else text
+  }
 
-  private def recordCommands(commands: List[List[String]], split: SplitExpressionsNoBlankies) =
+  private def recordCommands(commands: Seq[SessionSetting], split: SplitExpressionsNoBlankies) =
     commands.flatMap {
-      command =>
+      case (_, command) =>
         val map = toTreeStringMap(command)
         map.flatMap {
           case (name, statement) =>
@@ -39,7 +56,7 @@ private[sbt] object SbtRefactorings {
         }
     }
 
-  private def treesToReplacements(split: SplitExpressionsNoBlankies, name: String, command: List[String]) =
+  private def treesToReplacements(split: SplitExpressionsNoBlankies, name: String, command: Seq[String]) =
     split.settingsTrees.foldLeft(Seq.empty[(Int, String, String)]) {
       case (acc, (st, tree)) =>
         val treeName = extractSettingName(tree)
@@ -55,7 +72,7 @@ private[sbt] object SbtRefactorings {
         }
     }
 
-  private def toTreeStringMap(command: List[String]) = {
+  private def toTreeStringMap(command: Seq[String]) = {
     val split = SplitExpressionsNoBlankies(FAKE_FILE, command)
     val trees = split.settingsTrees
     val seq = trees.map {
