@@ -304,11 +304,12 @@ object Resolver {
   private[this] def mavenLocalDir: File = {
     def loadHomeFromSettings(f: () => File): Option[File] =
       try {
-        val file = XML.loadFile(f())
-        (file \ "localRepository").text match {
+        val file = f()
+        if(!file.exists) None
+        else ((XML.loadFile(file) \ "localRepository").text match {
           case ""    => None
           case e @ _ => Some(new File(e))
-        }
+        })
       } catch {
         // Occurs inside File constructor when property or environment variable does not exist
         case _: NullPointerException => None
