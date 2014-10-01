@@ -3,7 +3,7 @@
  */
 package sbt
 
-import java.io.File
+import java.io.{ IOException, File }
 import java.net.URL
 import scala.xml.{ Text, NodeSeq, Elem, XML }
 import org.apache.ivy.plugins.resolver.DependencyResolver
@@ -312,6 +312,8 @@ object Resolver {
       } catch {
         // Occurs inside File constructor when property or environment variable does not exist
         case _: NullPointerException => None
+        // Occurs when File does not exist
+        case _: IOException          => None
         case e: SAXParseException    => System.err.println(s"WARNING: Problem parsing ${f().getAbsolutePath}, ${e.getMessage}"); None
       }
     loadHomeFromSettings(() => new File(Path.userHome, ".m2/settings.xml")) orElse
