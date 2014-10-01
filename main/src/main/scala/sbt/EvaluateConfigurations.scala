@@ -8,7 +8,7 @@ import compiler.{ Eval, EvalImports }
 import complete.DefaultParsers.validID
 import Def.{ ScopedKey, Setting }
 import Scope.GlobalScope
-import sbt.internals.parser.SplitExpressionsNoBlankies
+import sbt.internals.parser.SbtParser
 
 import scala.annotation.tailrec
 
@@ -218,7 +218,9 @@ object EvaluateConfigurations {
    */
   private[sbt] def splitExpressions(file: File, lines: Seq[String]): (Seq[(String, Int)], Seq[(String, LineRange)]) =
     {
-      val split = SplitExpressionsNoBlankies(file, lines)
+      val split = SbtParser(file, lines)
+      // TODO - Look at pulling the parsed expression trees from the SbtParser and stitch them back into a different
+      // scala compiler rather than re-parsing.
       (split.imports, split.settings)
     }
 

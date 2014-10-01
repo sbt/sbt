@@ -6,7 +6,7 @@ import scala.reflect.runtime.universe._
 
 private[sbt] object SbtRefactorings {
 
-  import sbt.internals.parser.SplitExpressionsNoBlankies.{ END_OF_LINE, FAKE_FILE }
+  import sbt.internals.parser.SbtParser.{ END_OF_LINE, FAKE_FILE }
   import sbt.SessionSettings.{ SessionSetting, SbtConfigFile }
 
   val EMPTY_STRING = ""
@@ -23,7 +23,7 @@ private[sbt] object SbtRefactorings {
    */
   def applySessionSettings(configFile: SbtConfigFile, commands: Seq[SessionSetting]): SbtConfigFile = {
     val (file, lines) = configFile
-    val split = SplitExpressionsNoBlankies(FAKE_FILE, lines)
+    val split = SbtParser(FAKE_FILE, lines)
     val recordedCommands = recordCommands(commands, split)
     val sortedRecordedCommands = recordedCommands.sortBy(_._1)(REVERSE_ORDERING_INT)
 
@@ -46,7 +46,7 @@ private[sbt] object SbtRefactorings {
     if (trimmed.isEmpty) trimmed else text
   }
 
-  private def recordCommands(commands: Seq[SessionSetting], split: SplitExpressionsNoBlankies) =
+  private def recordCommands(commands: Seq[SessionSetting], split: SbtParser) =
     commands.flatMap {
       case (_, command) =>
         val map = toTreeStringMap(command)
@@ -56,7 +56,7 @@ private[sbt] object SbtRefactorings {
         }
     }
 
-  private def treesToReplacements(split: SplitExpressionsNoBlankies, name: String, command: Seq[String]) =
+  private def treesToReplacements(split: SbtParser, name: String, command: Seq[String]) =
     split.settingsTrees.foldLeft(Seq.empty[(Int, String, String)]) {
       case (acc, (st, tree)) =>
         val treeName = extractSettingName(tree)
@@ -73,7 +73,7 @@ private[sbt] object SbtRefactorings {
     }
 
   private def toTreeStringMap(command: Seq[String]) = {
-    val split = SplitExpressionsNoBlankies(FAKE_FILE, command)
+    val split = SbtParser(FAKE_FILE, command)
     val trees = split.settingsTrees
     val seq = trees.map {
       case (statement, tree) =>
