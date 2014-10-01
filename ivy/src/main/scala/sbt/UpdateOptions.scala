@@ -15,22 +15,31 @@ final class UpdateOptions private[sbt] (
     /** If set to true, check all resolvers for snapshots. */
     val latestSnapshots: Boolean,
     /** If set to true, use consolidated resolution. */
-    val consolidatedResolution: Boolean) {
+    val consolidatedResolution: Boolean,
+    /** If set to true, use cached resolution. */
+    val cachedResolution: Boolean) {
 
   def withCircularDependencyLevel(circularDependencyLevel: CircularDependencyLevel): UpdateOptions =
     copy(circularDependencyLevel = circularDependencyLevel)
   def withLatestSnapshots(latestSnapshots: Boolean): UpdateOptions =
     copy(latestSnapshots = latestSnapshots)
+  @deprecated("Use withCachedResolution instead.", "0.13.7")
   def withConsolidatedResolution(consolidatedResolution: Boolean): UpdateOptions =
-    copy(consolidatedResolution = consolidatedResolution)
+    copy(consolidatedResolution = consolidatedResolution,
+      cachedResolution = consolidatedResolution)
+  def withCachedResolution(cachedResoluton: Boolean): UpdateOptions =
+    copy(cachedResolution = cachedResoluton,
+      consolidatedResolution = cachedResolution)
 
   private[sbt] def copy(
     circularDependencyLevel: CircularDependencyLevel = this.circularDependencyLevel,
     latestSnapshots: Boolean = this.latestSnapshots,
-    consolidatedResolution: Boolean = this.consolidatedResolution): UpdateOptions =
+    consolidatedResolution: Boolean = this.consolidatedResolution,
+    cachedResolution: Boolean = this.cachedResolution): UpdateOptions =
     new UpdateOptions(circularDependencyLevel,
       latestSnapshots,
-      consolidatedResolution)
+      consolidatedResolution,
+      cachedResolution)
 }
 
 object UpdateOptions {
@@ -38,5 +47,6 @@ object UpdateOptions {
     new UpdateOptions(
       circularDependencyLevel = CircularDependencyLevel.Warn,
       latestSnapshots = true,
-      consolidatedResolution = false)
+      consolidatedResolution = false,
+      cachedResolution = false)
 }
