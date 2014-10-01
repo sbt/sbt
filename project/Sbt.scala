@@ -126,7 +126,7 @@ object Sbt extends Build {
   /* **** Intermediate-level Modules **** */
 
   // Apache Ivy integration
-  lazy val ivySub = baseProject(file("ivy"), "Ivy") dependsOn (interfaceSub, launchInterfaceSub, crossSub, logSub % "compile;test->test", ioSub % "compile;test->test", launchSub % "test->test", collectionSub) settings (ivy, jsch, testExclusive)
+  lazy val ivySub = baseProject(file("ivy"), "Ivy") dependsOn (interfaceSub, launchInterfaceSub, crossSub, logSub % "compile;test->test", ioSub % "compile;test->test", launchSub % "test->test", collectionSub) settings (ivy, jsch, testExclusive, json4sNative, jawnParser, jawnJson4s)
   // Runner for uniform test interface
   lazy val testingSub = baseProject(file("testing"), "Testing") dependsOn (ioSub, classpathSub, logSub, launchInterfaceSub, testAgentSub) settings (testInterface)
   // Testing agent for running tests in a separate process.

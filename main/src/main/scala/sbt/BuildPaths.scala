@@ -12,6 +12,7 @@ object BuildPaths {
   val globalPluginsDirectory = AttributeKey[File]("global-plugins-directory", "The base directory for global sbt plugins.", DSetting)
   val globalSettingsDirectory = AttributeKey[File]("global-settings-directory", "The base directory for global sbt settings.", DSetting)
   val stagingDirectory = AttributeKey[File]("staging-directory", "The directory for staging remote projects.", DSetting)
+  val dependencyBaseDirectory = AttributeKey[File]("dependency-base-directory", "The base directory for caching dependency resolution.", DSetting)
 
   import Path._
 
@@ -39,6 +40,9 @@ object BuildPaths {
   def getGlobalSettingsDirectory(state: State, globalBase: File): File =
     fileSetting(globalSettingsDirectory, GlobalSettingsProperty, globalBase)(state)
 
+  def getDependencyDirectory(state: State, globalBase: File): File =
+    fileSetting(dependencyBaseDirectory, DependencyBaseProperty, defaultDependencyBase(globalBase))(state)
+
   private[this] def fileSetting(stateKey: AttributeKey[File], property: String, default: File)(state: State): File =
     getFileSetting(stateKey, property, default)(state)
 
@@ -56,6 +60,7 @@ object BuildPaths {
     sbt.cross.CrossVersionUtil.binarySbtVersion(state.configuration.provider.id.version)
   private[this] def defaultStaging(globalBase: File) = globalBase / "staging"
   private[this] def defaultGlobalPlugins(globalBase: File) = globalBase / PluginsDirectoryName
+  private[this] def defaultDependencyBase(globalBase: File) = globalBase / "dependency"
 
   def configurationSources(base: File): Seq[File] = (base * (GlobFilter("*.sbt") - ".sbt")).get
   def pluginDirectory(definitionBase: File) = definitionBase / PluginsDirectoryName
@@ -77,6 +82,7 @@ object BuildPaths {
   final val StagingProperty = "sbt.global.staging"
   final val GlobalPluginsProperty = "sbt.global.plugins"
   final val GlobalSettingsProperty = "sbt.global.settings"
+  final val DependencyBaseProperty = "sbt.dependency.base"
 
   def crossPath(base: File, instance: xsbti.compile.ScalaInstance): File = base / ("scala_" + instance.version)
 

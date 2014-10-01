@@ -6,6 +6,7 @@ package sbt
 import java.io.File
 import scala.xml.{ Node => XNode, NodeSeq }
 import collection.mutable
+import ivyint.CachedResolutionResolveEngine
 
 import org.apache.ivy.Ivy
 import org.apache.ivy.core.{ IvyPatternHelper, LogOptions }
@@ -69,12 +70,12 @@ object IvyActions {
   }
 
   /**
-   * Cleans the consolidated resolution cache, if any.
+   * Cleans the cached resolution cache, if any.
    * This is called by clean.
    */
-  private[sbt] def cleanConsolidatedResolutionCache(module: IvySbt#Module, log: Logger): Unit =
+  private[sbt] def cleanCachedResolutionCache(module: IvySbt#Module, log: Logger): Unit =
     module.withModule(log) { (ivy, md, default) =>
-      module.owner.cleanConsolidatedResolutionCache(md, log)
+      module.owner.cleanCachedResolutionCache(md, log)
     }
 
   /** Creates a Maven pom from the given Ivy configuration*/
@@ -139,9 +140,9 @@ object IvyActions {
    * Resolves and retrieves dependencies.  'ivyConfig' is used to produce an Ivy file and configuration.
    * 'updateConfig' configures the actual resolution and retrieval process.
    */
-  @deprecated("Use updateEither instead.", "0.13.6")
+  @deprecated("This is no longer public.", "0.13.6")
   def update(module: IvySbt#Module, configuration: UpdateConfiguration, log: Logger): UpdateReport =
-    updateEither(module, configuration, UnresolvedWarningConfiguration(), log) match {
+    updateEither(module, configuration, UnresolvedWarningConfiguration(), LogicalClock.unknown, None, log) match {
       case Right(r) => r
       case Left(w) =>
         throw w.resolveException
@@ -151,9 +152,25 @@ object IvyActions {
    * Resolves and retrieves dependencies.  'ivyConfig' is used to produce an Ivy file and configuration.
    * 'updateConfig' configures the actual resolution and retrieval process.
    */
-  def updateEither(module: IvySbt#Module, configuration: UpdateConfiguration,
-    uwconfig: UnresolvedWarningConfiguration, log: Logger): Either[UnresolvedWarning, UpdateReport] =
+  private[sbt] def updateEither(module: IvySbt#Module, configuration: UpdateConfiguration,
+    uwconfig: UnresolvedWarningConfiguration, logicalClock: LogicalClock, depDir: Option[File], log: Logger): Either[UnresolvedWarning, UpdateReport] =
     module.withModule(log) {
+      case (ivy, md, default) if module.owner.configuration.updateOptions.cachedResolution =>
+        ivy.getResolveEngine match {
+          case x: CachedResolutionResolveEngine =>
+            val resolveOptions = new ResolveOptions
+            val resolveId = ResolveOptions.getDefaultResolveId(md)
+            resolveOptions.setResolveId(resolveId)
+            x.customResolve(md, logicalClock, resolveOptions, depDir getOrElse { sys.error("dependency base directory is not specified") }, log) match {
+              case Left(x) =>
+                Left(UnresolvedWarning(x, uwconfig))
+              case Right(uReport) =>
+                configuration.retrieve match {
+                  case Some(rConf) => Right(retrieve(ivy, uReport, rConf))
+                  case None        => Right(uReport)
+                }
+            }
+        }
       case (ivy, md, default) =>
         val (report, err) = resolve(configuration.logging)(ivy, md, default)
         err match {

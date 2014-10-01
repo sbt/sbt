@@ -76,8 +76,12 @@ object IvyRetrieve {
       val callerConfigurations = caller.getCallerConfigurations.toArray.toVector collect {
         case x if nonEmptyString(x).isDefined => x
       }
-      val extraAttributes = toExtraAttributes(caller.getDependencyDescriptor.getExtraAttributes)
-      new Caller(m, callerConfigurations, extraAttributes)
+      val ddOpt = Option(caller.getDependencyDescriptor)
+      val (extraAttributes, isForce, isChanging, isTransitive) = ddOpt match {
+        case Some(dd) => (toExtraAttributes(dd.getExtraAttributes), dd.isForce, dd.isChanging, dd.isTransitive)
+        case None     => (Map.empty[String, String], false, false, true)
+      }
+      new Caller(m, callerConfigurations, extraAttributes, isForce, isChanging, isTransitive)
     }
     val revId = dep.getResolvedId
     val moduleId = toModuleID(revId)
@@ -160,19 +164,11 @@ object IvyRetrieve {
    */
   def findPath(target: IvyNode, from: ModuleRevisionId): List[IvyNode] = {
     def doFindPath(current: IvyNode, path: List[IvyNode]): List[IvyNode] = {
-      val callers = current.getAllRealCallers.toList
-      // Ivy actually returns non-direct callers here.
+      // Ivy actually returns mix of direct and non-direct callers here.
       // that's why we have to calculate all possible paths below and pick the longest path.
-      val directCallers = callers filter { caller =>
-        val md = caller.getModuleDescriptor
-        val dd = md.getDependencies.toList find { dd =>
-          (dd.getDependencyRevisionId == current.getId) &&
-            (dd.getParentRevisionId == caller.getModuleRevisionId)
-        }
-        dd.isDefined
-      }
-      val directCallersRevId = (directCallers map { _.getModuleRevisionId }).distinct
-      val paths: List[List[IvyNode]] = ((directCallersRevId map { revId =>
+      val callers = current.getAllRealCallers.toList
+      val callersRevId = (callers map { _.getModuleRevisionId }).distinct
+      val paths: List[List[IvyNode]] = ((callersRevId map { revId =>
         val node = current.findNode(revId)
         if (revId == from) node :: path
         else if (node == node.getRoot) Nil
