@@ -4,20 +4,56 @@ package parser
 
 import java.io.File
 
-import sbt.internals.parser.SplitExpressionsNoBlankies._
+import sbt.internals.parser.SbtParser._
 
 import scala.annotation.tailrec
 import scala.reflect.runtime.universe._
 
-private[sbt] object SplitExpressionsNoBlankies {
+private[sbt] object SbtParser {
   val END_OF_LINE_CHAR = '\n'
   val END_OF_LINE = String.valueOf(END_OF_LINE_CHAR)
   private[parser] val NOT_FOUND_INDEX = -1
   private[sbt] val FAKE_FILE = new File("fake")
 }
 
-private[sbt] case class SplitExpressionsNoBlankies(file: File, lines: Seq[String]) {
+/**
+ * This method soley exists to add scaladoc to members in SbtParser which
+ * are defined using pattern matching.
+ */
+sealed trait ParsedSbtFileExpressions {
+  /** The set of parsed import expressions. */
+  def imports: Seq[(String, Int)]
+  /** The set of parsed defintions and/or sbt build settings. */
+  def settings: Seq[(String, LineRange)]
+  /** The set of scala tree's for parsed definitions/settings and the underlying string representation.. */
+  def settingsTrees: Seq[(String, Tree)]
+  /** Represents the changes we had to perform to the sbt file so that XML will parse correctly. */
+  def modifiedContent: String
+}
+
+/**
+ * An initial parser/splitter of .sbt files.
+ *
+ * This class is responsible for chunking a `.sbt` file into expression ranges
+ * which we can then compile using the Scala compiler.
+ *
+ * Example:
+ *
+ * {{{
+ *   val parser = SbtParser(myFile, IO.readLines(myFile))
+ *   // All import statements
+ *   val imports = parser.imports
+ *   // All other statements (val x =, or raw settings)
+ *   val settings = parser.settings
+ * }}}
+ *
+ * @param file  The file we're parsing (may be a dummy file)
+ * @param lines The parsed "lines" of the file, where each string is a line.
+ */
+private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends ParsedSbtFileExpressions {
   //settingsTrees,modifiedContent needed for "session save"
+  // TODO - We should look into splitting out "defintiions" vs. "settings" here instead of further string lookups, since we have the
+  // parsed trees.
   val (imports, settings, settingsTrees, modifiedContent) = splitExpressions(file, lines)
 
   private def splitExpressions(file: File, lines: Seq[String]): (Seq[(String, Int)], Seq[(String, LineRange)], Seq[(String, Tree)], String) = {
@@ -117,7 +153,7 @@ private[sbt] object MissingBracketHandler {
       case Some(index) =>
         val text = content.substring(positionEnd, index + 1)
         val textWithoutBracket = text.substring(0, text.length - 1)
-        util.Try(SplitExpressionsNoBlankies(FAKE_FILE, textWithoutBracket.lines.toSeq)) match {
+        util.Try(SbtParser(FAKE_FILE, textWithoutBracket.lines.toSeq)) match {
           case util.Success(_) =>
             text
           case util.Failure(th) =>
