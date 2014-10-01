@@ -82,16 +82,17 @@ private[sbt] case class SplitExpressionsNoBlankies(file: File, lines: Seq[String
     }
 
     def convertStatement(t: Tree): Option[(String, Tree, LineRange)] =
-      if (t.pos.isDefined) {
-        val originalStatement = modifiedContent.substring(t.pos.start, t.pos.end)
-        val statement = parseStatementAgain(t, originalStatement)
-        val numberLines = countLines(statement)
-        Some((statement, t, LineRange(t.pos.line - 1, t.pos.line + numberLines)))
-      } else {
-        None
+      t.pos match {
+        case NoPosition =>
+          None
+        case position =>
+          val originalStatement = modifiedContent.substring(position.start, position.end)
+          val statement = parseStatementAgain(t, originalStatement)
+          val numberLines = countLines(statement)
+          Some((statement, t, LineRange(position.line - 1, position.line + numberLines)))
       }
-    val statementsTreeLineRange = statements flatMap convertStatement
-    (imports map convertImport, statementsTreeLineRange.map(t => (t._1, t._3)), statementsTreeLineRange.map(t => (t._1, t._2)), modifiedContent)
+    val stmtTreeLineRange = statements flatMap convertStatement
+    (imports map convertImport, stmtTreeLineRange.map { case (stmt, _, lr) => (stmt, lr) }, stmtTreeLineRange.map { case (stmt, tree, _) => (stmt, tree) }, modifiedContent)
   }
 
   private def countLines(statement: String) = statement.count(c => c == END_OF_LINE_CHAR)
