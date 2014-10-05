@@ -305,7 +305,7 @@ object Resolver {
     def loadHomeFromSettings(f: () => File): Option[File] =
       try {
         val file = f()
-        if(!file.exists) None
+        if (!file.exists) None
         else ((XML.loadFile(file) \ "localRepository").text match {
           case ""    => None
           case e @ _ => Some(new File(e))

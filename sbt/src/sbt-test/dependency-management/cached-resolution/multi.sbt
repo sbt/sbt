@@ -2,7 +2,8 @@ lazy val check = taskKey[Unit]("Runs the check")
 
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
-    ivyPaths := new IvyPaths( (baseDirectory in ThisBuild).value, Some((target in LocalRootProject).value / "ivy-cache")),
+    ivyPaths := new IvyPaths( (baseDirectory in ThisBuild).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),
+    dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",
     libraryDependencies := Seq(
       "net.sf.json-lib" % "json-lib" % "2.4" classifier "jdk15" intransitive(),
       "com.typesafe.akka" %% "akka-remote" % "2.3.4" exclude("com.typesafe.akka", "akka-actor_2.10"),

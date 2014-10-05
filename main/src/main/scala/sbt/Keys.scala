@@ -297,6 +297,7 @@ object Keys {
   val retrieveConfiguration = SettingKey[Option[RetrieveConfiguration]]("retrieve-configuration", "Configures retrieving dependencies to the current build.", DSetting)
   val offline = SettingKey[Boolean]("offline", "Configures sbt to work without a network connection where possible.", ASetting)
   val ivyPaths = SettingKey[IvyPaths]("ivy-paths", "Configures paths used by Ivy for dependency management.", DSetting)
+  val dependencyCacheDirectory = TaskKey[File]("dependency-cache-directory", "The base directory for cached dependencies.", DTask)
   val libraryDependencies = SettingKey[Seq[ModuleID]]("library-dependencies", "Declares managed dependencies.", APlusSetting)
   val dependencyOverrides = SettingKey[Set[ModuleID]]("dependency-overrides", "Declares managed dependency overrides.", BSetting)
   val allDependencies = TaskKey[Seq[ModuleID]]("all-dependencies", "Inter-project and library dependencies.", CTask)
