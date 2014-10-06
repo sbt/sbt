@@ -7,6 +7,7 @@
   [@cocumpkin]: https://github.com/copumpkin
   [@Duhemm]: https://github.com/Duhemm
   [@jedesah]: https://github.com/jedesah
+  [@rkrzewski]: https://github.com/rkrzewski
   [@tmandke]: https://github.com/tmandke
   [@topping]: https://github.com/topping
   [1237]: https://github.com/sbt/sbt/issues/1237
@@ -37,7 +38,7 @@
 
 ### Improvements
 
-- Natural whitespace handling. See below. [#1606][1606] by [@ajozwik][@ajozwik]
+- Natural whitespace handling. See below. [#1606][1606] by [@rkrzewski][@rkrzewski], [@ajozwik][@ajozwik], and others at @WarszawScala
 - Adds support for publishing to a custom Maven local repository. See below. [#1589][1589]/[#1600][1600] by [@topping][@topping]
 - Adds circular dependency check. See below. [#1601][1601] by [@eed3si9n][@eed3si9n]
 - Adds cached resolution (minigraph caching). See below. [#1631][1631] by [@eed3si9n][@eed3si9n]
@@ -64,7 +65,7 @@
 
 Starting sbt 0.13.7, build.sbt will be parsed using a customized Scala parser. This eliminates the requirement to use blank line as the delimiter between each settings, and also allows blank lines to be inserted at arbitrary position within a block.
 
-This feature was contributed by [Andrzej Jozwik (@ajozwik)](https://github.com/ajozwik) inspired by Typesafe's [@gkossakowski][@gkossakowski] organizing multiple meetups/hackathons with Warszaw Scala on [how to patch sbt with the focus on this blank line issue](http://blog.japila.pl/2014/07/gkossakowski-on-warszawscala-about-how-to-patch-scalasbt/). [#1606][1606]
+This feature was contributed by [Andrzej Jozwik (@ajozwik)](https://github.com/ajozwik), [Rafał Krzewski (@rkrzewski)][@rkrzewski] and others at @WarszawScala inspired by Typesafe's [@gkossakowski][@gkossakowski] organizing multiple meetups/hackathons on [how to patch sbt with the focus on this blank line issue](http://blog.japila.pl/2014/07/gkossakowski-on-warszawscala-about-how-to-patch-scalasbt/). Dziękujemy! [#1606][1606]
 
 ### Custom Maven local repository location
 
