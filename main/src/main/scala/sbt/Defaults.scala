@@ -1062,6 +1062,10 @@ object Classpaths {
     },
     moduleName <<= normalizedName,
     ivyPaths := new IvyPaths(baseDirectory.value, bootIvyHome(appConfiguration.value)),
+    dependencyCacheDirectory := {
+      val st = state.value
+      BuildPaths.getDependencyDirectory(st, BuildPaths.getGlobalBase(st))
+    },
     otherResolvers := Resolver.publishMavenLocal :: publishTo.value.toList,
     projectResolver <<= projectResolverTask,
     projectDependencies <<= projectDependenciesTask,
@@ -1266,7 +1270,7 @@ object Classpaths {
     val show = Reference.display(thisProjectRef.value)
     val st = state.value
     val logicalClock = LogicalClock(Hash.toHex(intToByteArray(st.hashCode)))
-    val depDir = BuildPaths.getDependencyDirectory(st, BuildPaths.getGlobalBase(st))
+    val depDir = dependencyCacheDirectory.value
     cachedUpdate(s.cacheDirectory / updateCacheName.value, show, ivyModule.value, updateConfiguration.value, transform,
       skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated,
       uwConfig = uwConfig, logicalClock = logicalClock, depDir = Some(depDir), log = s.log)

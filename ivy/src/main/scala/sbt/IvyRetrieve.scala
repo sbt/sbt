@@ -128,7 +128,8 @@ object IvyRetrieve {
     val licenses: Seq[(String, Option[String])] = mdOpt match {
       case Some(md) => md.getLicenses.toArray.toVector collect {
         case lic: IvyLicense if Option(lic.getName).isDefined =>
-          (lic.getName, nonEmptyString(lic.getUrl))
+          val temporaryURL = "http://localhost"
+          (lic.getName, nonEmptyString(lic.getUrl) orElse { Some(temporaryURL) })
       }
       case _ => Nil
     }
