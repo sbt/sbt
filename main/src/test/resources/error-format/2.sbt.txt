@@ -1,0 +1,13 @@
+import sbt._
+import aaa._
+
+import scala._
+
+scalaVersion in Global := "2.11.2"
+
+ala
+
+libraryDependencies in Global ++= Seq(
+  errorText
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
+  "ch.qos.logback" % "logback-classic" % "1.1.2")

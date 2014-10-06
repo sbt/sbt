@@ -4,11 +4,12 @@
 package sbt
 
 import java.io.File
-import java.net.URI
 import compiler.{ Eval, EvalImports }
 import complete.DefaultParsers.validID
-import Def.{ ScopedKey, Setting, SettingsDefinition }
+import Def.{ ScopedKey, Setting }
 import Scope.GlobalScope
+import sbt.internals.parser.SbtParser
+
 import scala.annotation.tailrec
 
 /**
@@ -61,11 +62,11 @@ object EvaluateConfigurations {
    * Parses a sequence of build.sbt lines into a [[ParsedFile]].  The result contains
    * a fragmentation of all imports, settings and definitions.
    *
-   * @param buildinImports  The set of import statements to add to those parsed in the .sbt file.
+   * @param builtinImports  The set of import statements to add to those parsed in the .sbt file.
    */
-  private[this] def parseConfiguration(lines: Seq[String], builtinImports: Seq[String], offset: Int): ParsedFile =
+  private[this] def parseConfiguration(file: File, lines: Seq[String], builtinImports: Seq[String], offset: Int): ParsedFile =
     {
-      val (importStatements, settingsAndDefinitions) = splitExpressions(lines)
+      val (importStatements, settingsAndDefinitions) = splitExpressions(file, lines)
       val allImports = builtinImports.map(s => (s, -1)) ++ addOffset(offset, importStatements)
       val (definitions, settings) = splitSettingsDefinitions(addOffsetToRange(offset, settingsAndDefinitions))
       new ParsedFile(allImports, definitions, settings)
@@ -103,7 +104,7 @@ object EvaluateConfigurations {
       // TODO - Store the file on the LoadedSbtFile (or the parent dir) so we can accurately do
       //        detection for which project project manipulations should be applied.
       val name = file.getPath
-      val parsed = parseConfiguration(lines, imports, offset)
+      val parsed = parseConfiguration(file, lines, imports, offset)
       val (importDefs, definitions) =
         if (parsed.definitions.isEmpty) (Nil, DefinedSbtValues.empty) else {
           val definitions = evaluateDefinitions(eval, name, parsed.imports, parsed.definitions, Some(file))
@@ -167,7 +168,7 @@ object EvaluateConfigurations {
    * @param expression The scala expression we're compiling
    * @param range The original position in source of the expression, for error messages.
    *
-   * @return A method that given an sbt classloader, can return the actual [[DslEntry]] defined by
+   * @return A method that given an sbt classloader, can return the actual [[internals.DslEntry]] defined by
    *         the expression, and the sequence of .class files generated.
    */
   private[sbt] def evaluateDslEntry(eval: Eval, name: String, imports: Seq[(String, Int)], expression: String, range: LineRange): TrackedEvalResult[internals.DslEntry] = {
@@ -215,17 +216,26 @@ object EvaluateConfigurations {
    * Splits a set of lines into (imports, expressions).  That is,
    * anything on the right of the tuple is a scala expression (definition or setting).
    */
-  def splitExpressions(lines: Seq[String]): (Seq[(String, Int)], Seq[(String, LineRange)]) =
+  private[sbt] def splitExpressions(file: File, lines: Seq[String]): (Seq[(String, Int)], Seq[(String, LineRange)]) =
     {
-      val blank = (_: String).forall(isSpace)
-      val isImport = firstNonSpaceIs("import ")
-      val comment = firstNonSpaceIs("//")
-      val blankOrComment = or(blank, comment)
-      val importOrBlank = fstS(or(blankOrComment, isImport))
-
-      val (imports, settings) = lines.zipWithIndex span importOrBlank
-      (imports filterNot fstS(blankOrComment), groupedLines(settings, blank, blankOrComment))
+      val split = SbtParser(file, lines)
+      // TODO - Look at pulling the parsed expression trees from the SbtParser and stitch them back into a different
+      // scala compiler rather than re-parsing.
+      (split.imports, split.settings)
     }
+
+  @deprecated("This method is no longer part of the public API.", "0.13.7")
+  def splitExpressions(lines: Seq[String]): (Seq[(String, Int)], Seq[(String, LineRange)]) = {
+    val blank = (_: String).forall(isSpace)
+    val isImport = firstNonSpaceIs("import ")
+    val comment = firstNonSpaceIs("//")
+    val blankOrComment = or(blank, comment)
+    val importOrBlank = fstS(or(blankOrComment, isImport))
+
+    val (imports, settings) = lines.zipWithIndex span importOrBlank
+    (imports filterNot fstS(blankOrComment), groupedLines(settings, blank, blankOrComment))
+  }
+  @deprecated("This method is deprecated and no longer used.", "0.13.7")
   def groupedLines(lines: Seq[(String, Int)], delimiter: String => Boolean, skipInitial: String => Boolean): Seq[(String, LineRange)] =
     {
       val fdelim = fstS(delimiter)
@@ -239,6 +249,7 @@ object EvaluateConfigurations {
         }
       group0(lines, Nil)
     }
+
   private[this] def splitSettingsDefinitions(lines: Seq[(String, LineRange)]): (Seq[(String, LineRange)], Seq[(String, LineRange)]) =
     lines partition { case (line, range) => isDefinition(line) }
   private[this] def isDefinition(line: String): Boolean =
@@ -274,7 +285,7 @@ object Index {
       val multiMap = settings.groupBy(label)
       val duplicates = multiMap collect { case (k, xs) if xs.size > 1 => (k, xs.map(_.manifest)) } collect { case (k, xs) if xs.size > 1 => (k, xs) }
       if (duplicates.isEmpty)
-        multiMap.collect { case (k, v) if validID(k) => (k, v.head) } toMap;
+        multiMap.collect { case (k, v) if validID(k) => (k, v.head) } toMap
       else
         sys.error(duplicates map { case (k, tps) => "'" + k + "' (" + tps.mkString(", ") + ")" } mkString ("Some keys were defined with the same name but different types: ", ", ", ""))
     }
