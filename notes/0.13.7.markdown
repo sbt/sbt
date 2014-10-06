@@ -1,0 +1,101 @@
+
+  [@cunei]: https://github.com/cunei
+  [@eed3si9n]: https://github.com/eed3si9n
+  [@gkossakowski]: https://github.com/gkossakowski
+  [@jsuereth]: https://github.com/jsuereth
+  [@ajozwik]: https://github.com/ajozwik
+  [@cocumpkin]: https://github.com/copumpkin
+  [@Duhemm]: https://github.com/Duhemm
+  [@jedesah]: https://github.com/jedesah
+  [@tmandke]: https://github.com/tmandke
+  [@topping]: https://github.com/topping
+  [1237]: https://github.com/sbt/sbt/issues/1237
+  [1430]: https://github.com/sbt/sbt/issues/1430
+  [1544]: https://github.com/sbt/sbt/issues/1544
+  [1572]: https://github.com/sbt/sbt/pull/1572
+  [1573]: https://github.com/sbt/sbt/pull/1573
+  [1579]: https://github.com/sbt/sbt/pull/1579
+  [1584]: https://github.com/sbt/sbt/pull/1584
+  [1586]: https://github.com/sbt/sbt/pull/1586
+  [1589]: https://github.com/sbt/sbt/issues/1589
+  [1591]: https://github.com/sbt/sbt/pull/1591
+  [1598]: https://github.com/sbt/sbt/issues/1598
+  [1600]: https://github.com/sbt/sbt/pull/1600
+  [1601]: https://github.com/sbt/sbt/pull/1601
+  [1602]: https://github.com/sbt/sbt/pull/1602
+  [1606]: https://github.com/sbt/sbt/issues/1606
+  [1607]: https://github.com/sbt/sbt/pull/1607
+  [1611]: Https://github.com/sbt/sbt/issues/1611
+  [1618]: https://github.com/sbt/sbt/pull/1618
+  [1621]: https://github.com/sbt/sbt/pull/1621
+  [1631]: https://github.com/sbt/sbt/pull/1631
+  [1642]: https://github.com/sbt/sbt/pull/1642
+
+### Fixes with compatibility implications
+
+- Maven artifact dependencies will limit their transitive dependencies to `Compile` rather than *every configuration* if no `master` configuration is found. [#1586][1586] by [@jsuereth][@jsuereth]
+
+### Improvements
+
+- Natural whitespace handling. See below. [#1606][1606] by [@ajozwik][@ajozwik]
+- Adds support for publishing to a custom Maven local repository. See below. [#1589][1589]/[#1600][1600] by [@topping][@topping]
+- Adds circular dependency check. See below. [#1601][1601] by [@eed3si9n][@eed3si9n]
+- Adds cached resolution (minigraph caching). See below. [#1631][1631] by [@eed3si9n][@eed3si9n]
+- Allows the "-bin" Scala version suffix to specify a bincompat version. [#1573][1573] by [@cunei][@cunei]
+- Adds support for publishing to file repositories specified in `~/.sbt/repositories`. [#1579][1579] by [@copumpkin][@copumpkin]
+- Adds support for publishing to a Maven repository with `file` URLs. [#1618][1618] by [@jsuereth][@jsuereth]
+- Don't hardcode existing relations in `TextAnalysisFormat`. [#1572][1572] by [@Duhemm][@Duhemm]
+- Adds `developers` key. [#1590][1590] by [@jedesah][@jedesah]
+
+### Bug fixes
+
+- Fixes issues with specifying `scalaHome`/`scalaInstance` and running tests. [#1584][1584] by [@jsuereth][@jsuereth]
+- Fixes StackOverflow error in dependencies extraction with macro and name hashing. [#1563][1563]/[#1642][1642]/[#1237][1237]/[#1544][1544] by [@Duhemm][@Duhemm]
+- Fixes `set every`. [#1591][1591]/[#1430][1430] by [@cunei][@cunei]
+- Ivy no longer silently flops to `HttpClient` resolver when httpclient is on the classpath. [#1602][1602] by [@jsuereth][@jsuereth]
+- Backports Ivy fix to not throw exceptions when modules are evicted.  [#1607][1607]/[#1598][1598] by [@jsuereth][@jsuereth]
+- When resolving from a Maven repository, and unable to read `maven-metadata.xml` file (common given the divergence in
+  Maven 3 and Ivy 2), we attempt to use `LastModified` timestamp in lieu of "published" timestamp.  
+  [#1611][1611]/[#1618][1618] by [@jsuereth][@jsuereth]
+- Fixes NullPointerException when using `ChainResolver` and Maven repositories. [#1611][1611]/[#1618][1618] by [@jsuereth][@jsuereth]
+- Fixes `Resolver`'s `url` method dropping `descriptorOptional` and `skipConsistencyCheck`. [#1621][1621] by [@tmandke][@tmandke]
+
+### Natural whitespace handling
+
+Starting sbt 0.13.7, build.sbt will be parsed using a customized Scala parser. This eliminates the requirement to use blank line as the delimiter between each settings, and also allows blank lines to be inserted at arbitrary position within a block.
+
+This feature was contributed by [Andrzej Jozwik (@ajozwik)](https://github.com/ajozwik) inspired by Typesafe's [@gkossakowski][@gkossakowski] organizing multiple meetups/hackathons with Warszaw Scala on [how to patch sbt with the focus on this blank line issue](http://blog.japila.pl/2014/07/gkossakowski-on-warszawscala-about-how-to-patch-scalasbt/). [#1606][1606]
+
+### Custom Maven local repository location
+
+Maven local repository is now resolved from the first of:
+
+- `<localRepository/>` element in `~/.m2/settings.xml`
+- `<localRepository/>` element in `$M2_HOME/conf/settings.xml`, or
+- the default of `~/.m2/repository` if neither of those configuration elements exist
+
+If more Maven settings are required to be recovered, the proper thing to do is merge the two possible `settings.xml` files, then query against the element path of the merge. This code avoids the merge by checking sequentially.
+
+[#1589][1589]/[#1600][1600] by [@topping][@topping]
+
+### Circular dependency
+
+By default circular dependencies are warned, but they do not halt the dependency resolution. Using the following setting, circular dependencies can be treated as an error.
+
+    updateOptions := updateOptions.value.withCircularDependencyLevel(CircularDependencyLevel.Error)
+
+[#1601][1601] by [@eed3si9n][@eed3si9n]
+
+### Cached resolution (minigraph caching)
+
+sbt 0.13.7 adds a new update option called *cached resolution*, which replaces consolidated resolution:
+
+    updateOptions := updateOptions.value.withCachedResolution(true)
+
+Unlike consolidated resolution, which only consolidated subprojects with identical dependency graph, cached resolution create an artificial graph for each direct dependency (minigraph) for all subprojects, resolves them independently, saves them into json file, and stiches the minigraphs together.
+
+Once the minigraphs are resolved and saved as files, dependency resolution turns into a matter of loading json file from the second run onwards, which should complete in a matter of seconds even for large projects. Also, because the files are saved under a global `~/.sbt/0.13/dependency` (or what's specified by `sbt.dependency.base` flag), the resolution result is shared across all builds.
+
+Breaking graphs into minigraphs allows partial resolution results to be shared, which scales better for subprojects with similar but slightly different dependencies, and also for making small changes to the dependencies graph over time.
+
+[#1631][1631] by [@eed3si9n][@eed3si9n]
