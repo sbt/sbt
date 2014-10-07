@@ -65,7 +65,7 @@
 
 Starting sbt 0.13.7, build.sbt will be parsed using a customized Scala parser. This eliminates the requirement to use blank line as the delimiter between each settings, and also allows blank lines to be inserted at arbitrary position within a block.
 
-This feature was contributed by [Andrzej Jozwik (@ajozwik)](https://github.com/ajozwik), [Rafał Krzewski (@rkrzewski)][@rkrzewski] and others at @WarszawScala inspired by Typesafe's [@gkossakowski][@gkossakowski] organizing multiple meetups/hackathons on [how to patch sbt with the focus on this blank line issue](http://blog.japila.pl/2014/07/gkossakowski-on-warszawscala-about-how-to-patch-scalasbt/). Dziękujemy! [#1606][1606]
+This feature was contributed by [Andrzej Jozwik (@ajozwik)](https://github.com/ajozwik), [Rafał Krzewski (@rkrzewski)][@rkrzewski] and others at @WarszawScala inspired by Typesafe's [@gkossakowski][@gkossakowski] organizing multiple [meetups](http://blog.japila.pl/2014/07/gkossakowski-on-warszawscala-about-how-to-patch-scalasbt/) and [hackathons](http://blog.japila.pl/2014/07/hacking-scalasbt-with-gkossakowski-on-warszawscala-meetup-in-javeo_eu/) on how to patch sbt with the focus on this blank line issue. Dziękujemy! [#1606][1606]
 
 ### Custom Maven local repository location
 
