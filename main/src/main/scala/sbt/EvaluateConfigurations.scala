@@ -212,16 +212,23 @@ object EvaluateConfigurations {
   private[this] def fstS(f: String => Boolean): ((String, Int)) => Boolean = { case (s, i) => f(s) }
   private[this] def firstNonSpaceIs(lit: String) = (_: String).view.dropWhile(isSpace).startsWith(lit)
   private[this] def or[A](a: A => Boolean, b: A => Boolean): A => Boolean = in => a(in) || b(in)
+
+  /** Configures the use of the old sbt parser. */
+  private[sbt] def useOldParser: Boolean =
+    sys.props.get("sbt.parser.simple").map(java.lang.Boolean.parseBoolean).getOrElse(false)
   /**
    * Splits a set of lines into (imports, expressions).  That is,
    * anything on the right of the tuple is a scala expression (definition or setting).
    */
   private[sbt] def splitExpressions(file: File, lines: Seq[String]): (Seq[(String, Int)], Seq[(String, LineRange)]) =
     {
-      val split = SbtParser(file, lines)
-      // TODO - Look at pulling the parsed expression trees from the SbtParser and stitch them back into a different
-      // scala compiler rather than re-parsing.
-      (split.imports, split.settings)
+      if (useOldParser) splitExpressions(lines)
+      else {
+        val split = SbtParser(file, lines)
+        // TODO - Look at pulling the parsed expression trees from the SbtParser and stitch them back into a different
+        // scala compiler rather than re-parsing.
+        (split.imports, split.settings)
+      }
     }
 
   @deprecated("This method is no longer part of the public API.", "0.13.7")
