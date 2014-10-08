@@ -11,7 +11,7 @@ import org.apache.ivy.core
 import core.resolve._
 import core.module.id.{ ModuleRevisionId, ModuleId => IvyModuleId }
 import core.report.{ ResolveReport, ConfigurationResolveReport, DownloadReport }
-import core.module.descriptor.{ DefaultModuleDescriptor, ModuleDescriptor, DependencyDescriptor, Configuration => IvyConfiguration }
+import core.module.descriptor.{ DefaultModuleDescriptor, ModuleDescriptor, DependencyDescriptor, Configuration => IvyConfiguration, ExcludeRule, IncludeRule }
 import core.{ IvyPatternHelper, LogOptions }
 import org.apache.ivy.util.Message
 import org.apache.ivy.plugins.latest.{ ArtifactInfo => IvyArtifactInfo }
@@ -59,11 +59,28 @@ private[sbt] class CachedResolutionResolveCache() {
     }
   def buildArtificialModuleDescriptor(dd: DependencyDescriptor, rootModuleConfigs: Vector[IvyConfiguration], prOpt: Option[ProjectResolver]): (DefaultModuleDescriptor, Boolean) =
     {
+      def excludeRuleString(rule: ExcludeRule): String =
+        s"""Exclude(${rule.getId},${rule.getConfigurations.mkString(",")},${rule.getMatcher})"""
+      def includeRuleString(rule: IncludeRule): String =
+        s"""Include(${rule.getId},${rule.getConfigurations.mkString(",")},${rule.getMatcher})"""
       val mrid = dd.getDependencyRevisionId
       val confMap = (dd.getModuleConfigurations map { conf =>
         conf + "->(" + dd.getDependencyConfigurations(conf).mkString(",") + ")"
       })
-      val depsString = mrid.toString + ";" + confMap.mkString(";")
+      val exclusions = (dd.getModuleConfigurations.toVector flatMap { conf =>
+        dd.getExcludeRules(conf).toVector match {
+          case Vector() => None
+          case rules    => Some(conf + "->(" + (rules map excludeRuleString).mkString(",") + ")")
+        }
+      })
+      val inclusions = (dd.getModuleConfigurations.toVector flatMap { conf =>
+        dd.getIncludeRules(conf).toVector match {
+          case Vector() => None
+          case rules    => Some(conf + "->(" + (rules map includeRuleString).mkString(",") + ")")
+        }
+      })
+      val depsString = s"""$mrid;${confMap.mkString(",")};isForce=${dd.isForce};isChanging=${dd.isChanging};isTransitive=${dd.isTransitive};""" +
+        s"""exclusions=${exclusions.mkString(",")};inclusions=${inclusions.mkString(",")};"""
       val sha1 = Hash.toHex(Hash(depsString))
       val md1 = new DefaultModuleDescriptor(createID(sbtOrgTemp, "temp-resolve-" + sha1, "1.0"), "release", null, false) with ArtificialModuleDescriptor {
         def targetModuleRevisionId: ModuleRevisionId = mrid
