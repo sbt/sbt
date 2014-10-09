@@ -190,7 +190,8 @@ final class Caller(
     val callerExtraAttributes: Map[String, String],
     val isForceDependency: Boolean,
     val isChangingDependency: Boolean,
-    val isTransitiveDependency: Boolean) {
+    val isTransitiveDependency: Boolean,
+    val isDirectlyForceDependency: Boolean) {
   override def toString: String =
     s"$caller"
 }

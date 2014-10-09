@@ -4,7 +4,7 @@
 package sbt
 
 import Resolver.PluginPattern
-import ivyint.{ CachedResolutionResolveEngine, CachedResolutionResolveCache }
+import ivyint.{ CachedResolutionResolveEngine, CachedResolutionResolveCache, SbtDefaultDependencyDescriptor }
 
 import java.io.File
 import java.net.URI
@@ -570,7 +570,9 @@ private[sbt] object IvySbt {
   /** Transforms an sbt ModuleID into an Ivy DefaultDependencyDescriptor.*/
   def convertDependency(moduleID: DefaultModuleDescriptor, dependency: ModuleID, parser: CustomXmlParser.CustomParser): DefaultDependencyDescriptor =
     {
-      val dependencyDescriptor = new DefaultDependencyDescriptor(moduleID, toID(dependency), dependency.isForce, dependency.isChanging, dependency.isTransitive)
+      val dependencyDescriptor = new DefaultDependencyDescriptor(moduleID, toID(dependency), dependency.isForce, dependency.isChanging, dependency.isTransitive) with SbtDefaultDependencyDescriptor {
+        def dependencyModuleId = dependency
+      }
       dependency.configurations match {
         case None => // The configuration for this dependency was not explicitly specified, so use the default
           parser.parseDepsConfs(parser.getDefaultConf, dependencyDescriptor)
