@@ -36,6 +36,9 @@ private[sbt] class CachedResolutionResolveCache() {
     val mds =
       if (mrid0.getOrganisation == sbtOrgTemp) Vector(md0)
       else buildArtificialModuleDescriptors(md0, prOpt) map { _._1 }
+
+    updateReportCache.remove(md0.getModuleRevisionId)
+    directDependencyCache.remove(md0.getModuleRevisionId)
     mds foreach { md =>
       updateReportCache.remove(md.getModuleRevisionId)
       directDependencyCache.remove(md.getModuleRevisionId)
@@ -186,6 +189,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
     val miniGraphPath = depDir / "module"
     val cachedDescriptor = getSettings.getResolutionCacheManager.getResolvedIvyFileInCache(md0.getModuleRevisionId)
     val cache = cachedResolutionResolveCache
+    cache.directDependencyCache.remove(md0.getModuleRevisionId)
     val mds = cache.buildArtificialModuleDescriptors(md0, projectResolver)
     def doWork(md: ModuleDescriptor): Either[ResolveException, UpdateReport] =
       {
@@ -292,10 +296,13 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       val name = head.module.name
       log.debug(s"- conflict in $rootModuleConf:$organization:$name " + (conflicts map { _.module }).mkString("(", ", ", ")"))
       def useLatest(lcm: LatestConflictManager): (Vector[ModuleReport], Vector[ModuleReport], String) =
-        conflicts find { m =>
+        (conflicts find { m =>
+          m.callers.exists { _.isDirectlyForceDependency }
+        } orElse (conflicts find { m =>
           m.callers.exists { _.isForceDependency }
-        } match {
+        })) match {
           case Some(m) =>
+            log.debug(s"- forced dependency: $m")
             (Vector(m), conflicts filterNot { _ == m } map { _.copy(evicted = true, evictedReason = Some(lcm.toString)) }, lcm.toString)
           case None =>
             val strategy = lcm.getStrategy

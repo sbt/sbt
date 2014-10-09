@@ -13,6 +13,7 @@ import module.id.{ ModuleRevisionId, ModuleId => IvyModuleId }
 import report.{ ArtifactDownloadReport, ConfigurationResolveReport, ResolveReport }
 import resolve.{ IvyNode, IvyNodeCallers }
 import IvyNodeCallers.{ Caller => IvyCaller }
+import ivyint.SbtDefaultDependencyDescriptor
 
 object IvyRetrieve {
   def reports(report: ResolveReport): Seq[ConfigurationResolveReport] =
@@ -77,11 +78,14 @@ object IvyRetrieve {
         case x if nonEmptyString(x).isDefined => x
       }
       val ddOpt = Option(caller.getDependencyDescriptor)
-      val (extraAttributes, isForce, isChanging, isTransitive) = ddOpt match {
-        case Some(dd) => (toExtraAttributes(dd.getExtraAttributes), dd.isForce, dd.isChanging, dd.isTransitive)
-        case None     => (Map.empty[String, String], false, false, true)
+      val (extraAttributes, isForce, isChanging, isTransitive, isDirectlyForce) = ddOpt match {
+        case Some(dd: SbtDefaultDependencyDescriptor) =>
+          val mod = dd.dependencyModuleId
+          (toExtraAttributes(dd.getExtraAttributes), mod.isForce, mod.isChanging, mod.isTransitive, mod.isForce)
+        case Some(dd) => (toExtraAttributes(dd.getExtraAttributes), dd.isForce, dd.isChanging, dd.isTransitive, false)
+        case None     => (Map.empty[String, String], false, false, true, false)
       }
-      new Caller(m, callerConfigurations, extraAttributes, isForce, isChanging, isTransitive)
+      new Caller(m, callerConfigurations, extraAttributes, isForce, isChanging, isTransitive, isDirectlyForce)
     }
     val revId = dep.getResolvedId
     val moduleId = toModuleID(revId)
