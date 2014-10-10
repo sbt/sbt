@@ -9,6 +9,11 @@ trait LogicalClock {
 }
 
 object LogicalClock {
+  def apply(hashCode: Int): LogicalClock = {
+    def intToByteArray(x: Int): Array[Byte] =
+      Array((x >>> 24).toByte, (x >> 16 & 0xff).toByte, (x >> 8 & 0xff).toByte, (x & 0xff).toByte)
+    apply(Hash.toHex(intToByteArray(hashCode)))
+  }
   def apply(x: String): LogicalClock = new LogicalClock {
     override def toString: String = x
   }

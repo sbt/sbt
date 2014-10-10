@@ -1135,10 +1135,20 @@ object Classpaths {
       val externalModules = update.value.allModules.filterNot(m => projectDeps contains key(m))
       GetClassifiersModule(projectID.value, externalModules, ivyConfigurations.in(updateClassifiers).value, transitiveClassifiers.in(updateClassifiers).value)
     },
-    updateClassifiers <<= (ivySbt, classifiersModule in updateClassifiers, updateConfiguration, ivyScala, appConfiguration, streams) map { (is, mod, c, ivyScala, app, s) =>
+    updateClassifiers <<= Def.task {
+      val s = streams.value
+      val is = ivySbt.value
+      val mod = (classifiersModule in updateClassifiers).value
+      val c = updateConfiguration.value
+      val app = appConfiguration.value
       val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
+      val uwConfig = (unresolvedWarningConfiguration in update).value
+      val depDir = dependencyCacheDirectory.value
       withExcludes(out, mod.classifiers, lock(app)) { excludes =>
-        IvyActions.updateClassifiers(is, GetClassifiersConfiguration(mod, excludes, c, ivyScala), s.log)
+        val uwConfig = (unresolvedWarningConfiguration in update).value
+        val logicalClock = LogicalClock(state.value.hashCode)
+        val depDir = dependencyCacheDirectory.value
+        IvyActions.updateClassifiers(is, GetClassifiersConfiguration(mod, excludes, c, ivyScala.value), uwConfig, LogicalClock(state.value.hashCode), Some(depDir), s.log)
       }
     } tag (Tags.Update, Tags.Network)
   )
@@ -1203,13 +1213,19 @@ object Classpaths {
       val pluginIDs: Seq[ModuleID] = pluginJars.flatMap(_ get moduleID.key)
       GetClassifiersModule(pid, sbtDep +: pluginIDs, Configurations.Default :: Nil, classifiers)
     },
-    updateSbtClassifiers in TaskGlobal <<= (ivySbt, classifiersModule, updateConfiguration, ivyScala, appConfiguration, streams) map {
-      (is, mod, c, ivyScala, app, s) =>
-        val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
-        withExcludes(out, mod.classifiers, lock(app)) { excludes =>
-          val noExplicitCheck = ivyScala.map(_.copy(checkExplicit = false))
-          IvyActions.transitiveScratch(is, "sbt", GetClassifiersConfiguration(mod, excludes, c, noExplicitCheck), s.log)
-        }
+    updateSbtClassifiers in TaskGlobal <<= Def.task {
+      val s = streams.value
+      val is = ivySbt.value
+      val mod = classifiersModule.value
+      val c = updateConfiguration.value
+      val app = appConfiguration.value
+      val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
+      val uwConfig = (unresolvedWarningConfiguration in update).value
+      val depDir = dependencyCacheDirectory.value
+      withExcludes(out, mod.classifiers, lock(app)) { excludes =>
+        val noExplicitCheck = ivyScala.value.map(_.copy(checkExplicit = false))
+        IvyActions.transitiveScratch(is, "sbt", GetClassifiersConfiguration(mod, excludes, c, noExplicitCheck), uwConfig, LogicalClock(state.value.hashCode), Some(depDir), s.log)
+      }
     } tag (Tags.Update, Tags.Network)
   ))
 
@@ -1259,8 +1275,6 @@ object Classpaths {
         case (Some(res), _, Some(decl)) if res == decl => jars
         case _                                         => Nil
       }
-    def intToByteArray(x: Int): Array[Byte] =
-      Array((x >>> 24).toByte, (x >> 16 & 0xff).toByte, (x >> 8 & 0xff).toByte, (x & 0xff).toByte)
     val subScalaJars: String => Seq[File] = Defaults.unmanagedScalaInstanceOnly.value match {
       case Some(si) => subUnmanaged(si.version, si.jars)
       case None     => sv => if (scalaProvider.version == sv) scalaProvider.jars else Nil
@@ -1269,7 +1283,7 @@ object Classpaths {
     val uwConfig = (unresolvedWarningConfiguration in update).value
     val show = Reference.display(thisProjectRef.value)
     val st = state.value
-    val logicalClock = LogicalClock(Hash.toHex(intToByteArray(st.hashCode)))
+    val logicalClock = LogicalClock(st.hashCode)
     val depDir = dependencyCacheDirectory.value
     cachedUpdate(s.cacheDirectory / updateCacheName.value, show, ivyModule.value, updateConfiguration.value, transform,
       skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated,
