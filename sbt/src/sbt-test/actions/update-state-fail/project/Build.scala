@@ -10,7 +10,7 @@ object TestBuild extends Build
     check := checkState(checkParser.parsed, state.value)
   )
 
-  lazy val a = Project("a", file("a")).settings(t := error("Failing"))
+  lazy val a = Project("a", file("a")).settings(t := sys.error("Failing"))
 
   lazy val b = Project("b", file("b")).settings(t <<= Def.task("").updateState(updater))
 

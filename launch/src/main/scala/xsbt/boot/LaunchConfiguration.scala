@@ -57,7 +57,7 @@ final class Implicit[T](val name: String, val default: Option[T]) extends Value[
 object Value {
   def get[T](v: Value[T]): T = v match { case e: Explicit[T] => e.value; case _ => throw new BootException("Unresolved version: " + v) }
   def readImplied[T](s: String, name: String, default: Option[String])(implicit read: String => T): Value[T] =
-    if (s == "read") new Implicit(name, default map read) else error("Expected 'read', got '" + s + "'")
+    if (s == "read") new Implicit(name, default map read) else sys.error("Expected 'read', got '" + s + "'")
 }
 
 final case class Classifiers(forScala: Value[List[String]], app: Value[List[String]])
@@ -71,7 +71,7 @@ object LaunchCrossVersion {
       case x if CrossVersionUtil.isFull(s)     => xsbti.CrossValue.Full
       case x if CrossVersionUtil.isBinary(s)   => xsbti.CrossValue.Binary
       case x if CrossVersionUtil.isDisabled(s) => xsbti.CrossValue.Disabled
-      case x                                   => error("Unknown value '" + x + "' for property 'cross-versioned'")
+      case x                                   => sys.error("Unknown value '" + x + "' for property 'cross-versioned'")
     }
 }
 

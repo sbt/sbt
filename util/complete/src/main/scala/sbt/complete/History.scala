@@ -13,7 +13,7 @@ final class History private (val lines: IndexedSeq[String], val path: Option[Fil
   def all: Seq[String] = lines
   def size = lines.length
   def !! : Option[String] = !-(1)
-  def apply(i: Int): Option[String] = if (0 <= i && i < size) Some(lines(i)) else { error("Invalid history index: " + i); None }
+  def apply(i: Int): Option[String] = if (0 <= i && i < size) Some(lines(i)) else { sys.error("Invalid history index: " + i); None }
   def !(i: Int): Option[String] = apply(i)
 
   def !(s: String): Option[String] =
@@ -27,7 +27,7 @@ final class History private (val lines: IndexedSeq[String], val path: Option[Fil
 
   private def nonEmpty[T](s: String)(act: => Option[T]): Option[T] =
     if (s.isEmpty) {
-      error("No action specified to history command")
+      sys.error("No action specified to history command")
       None
     } else
       act
@@ -37,7 +37,7 @@ final class History private (val lines: IndexedSeq[String], val path: Option[Fil
 }
 
 object History {
-  def apply(lines: Seq[String], path: Option[File], error: String => Unit): History = new History(lines.toIndexedSeq, path, error)
+  def apply(lines: Seq[String], path: Option[File], error: String => Unit): History = new History(lines.toIndexedSeq, path, sys.error)
 
   def number(s: String): Option[Int] =
     try { Some(s.toInt) }

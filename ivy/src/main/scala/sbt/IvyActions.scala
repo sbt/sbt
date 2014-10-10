@@ -313,7 +313,7 @@ object IvyActions {
   private[this] def checkFilesPresent(artifacts: Seq[(IArtifact, File)]) {
     val missing = artifacts filter { case (a, file) => !file.exists }
     if (missing.nonEmpty)
-      error("Missing files for publishing:\n\t" + missing.map(_._2.getAbsolutePath).mkString("\n\t"))
+      sys.error("Missing files for publishing:\n\t" + missing.map(_._2.getAbsolutePath).mkString("\n\t"))
   }
 }
 final class ResolveException(

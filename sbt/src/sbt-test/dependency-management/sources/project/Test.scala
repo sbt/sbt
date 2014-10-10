@@ -17,15 +17,15 @@ object Test extends Build
 	{
 		val srcs = getSources(report)
 		if(srcs.isEmpty)
-			error("No sources retrieved")
+			sys.error("No sources retrieved")
 		else if(srcs.size != 2)
-			error("Incorrect sources retrieved:\n\t" + srcs.mkString("\n\t"))
+			sys.error("Incorrect sources retrieved:\n\t" + srcs.mkString("\n\t"))
 		else
 			()
 	}
 	def checkBinaries(report: UpdateReport): Unit =
 	{
 		val srcs = getSources(report)
-		if(!srcs.isEmpty) error("Sources retrieved:\n\t" + srcs.mkString("\n\t")) else ()
+		if(!srcs.isEmpty) sys.error("Sources retrieved:\n\t" + srcs.mkString("\n\t")) else ()
 	}
 }

@@ -106,7 +106,7 @@ private[sbt] object ForkTests {
     f match {
       case s: SubclassFingerprint  => new ForkMain.SubclassFingerscan(s)
       case a: AnnotatedFingerprint => new ForkMain.AnnotatedFingerscan(a)
-      case _                       => error("Unknown fingerprint type: " + f.getClass)
+      case _                       => sys.error("Unknown fingerprint type: " + f.getClass)
     }
 }
 private final class React(is: ObjectInputStream, os: ObjectOutputStream, log: Logger, listeners: Seq[TestReportListener], results: mutable.Map[String, SuiteResult]) {

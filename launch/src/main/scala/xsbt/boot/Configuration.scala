@@ -70,7 +70,7 @@ object Configuration {
       if (!resolving.hasNext) multiPartError("Could not find configuration file '" + path + "'.  Searched:", against)
       resolving.next()
     }
-  def multiPartError[T](firstLine: String, lines: List[T]) = error((firstLine :: lines).mkString("\n\t"))
+  def multiPartError[T](firstLine: String, lines: List[T]) = sys.error((firstLine :: lines).mkString("\n\t"))
 
   def UnspecifiedVersionPart = "Unspecified"
   def DefaultVersionPart = "Default"
@@ -131,7 +131,7 @@ object Configuration {
   def classLocation(cl: Class[_]): URL =
     {
       val codeSource = cl.getProtectionDomain.getCodeSource
-      if (codeSource == null) error("No class location for " + cl)
+      if (codeSource == null) sys.error("No class location for " + cl)
       else codeSource.getLocation
     }
   // single-arg constructor doesn't properly escape

@@ -155,7 +155,7 @@ object EvictionWarning {
     val transitiveEvictions: mutable.ListBuffer[EvictionPair] = mutable.ListBuffer()
     def guessCompatible(p: EvictionPair): Boolean =
       p.evicteds forall { r =>
-        options.guessCompatible(r.module, p.winner map { _.module }, module.moduleSettings.ivyScala)
+        options.guessCompatible((r.module, p.winner map { _.module }, module.moduleSettings.ivyScala))
       }
     pairs foreach {
       case p if isScalaArtifact(module, p.organization, p.name) =>

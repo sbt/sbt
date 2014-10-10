@@ -18,7 +18,7 @@ object Transform {
 
   def conscriptSettings(launch: Reference) = Seq(
     conscriptConfigs <<= (managedResources in launch in Compile, sourceDirectory in Compile).map { (res, src) =>
-      val source = res.filter(_.getName == "sbt.boot.properties").headOption getOrElse error("No managed boot.properties file.")
+      val source = res.filter(_.getName == "sbt.boot.properties").headOption getOrElse sys.error("No managed boot.properties file.")
       copyConscriptProperties(source, src / "conscript")
       ()
     }
@@ -79,7 +79,7 @@ object Transform {
 
   def transform(in: File, out: File, map: Map[String, String]): File =
     {
-      def get(key: String): String = map.getOrElse(key, error("No value defined for key '" + key + "'"))
+      def get(key: String): String = map.getOrElse(key, sys.error("No value defined for key '" + key + "'"))
       val newString = Property.replaceAllIn(IO.read(in), mtch => get(mtch.group(1)))
       if (Some(newString) != read(out))
         IO.write(out, newString)

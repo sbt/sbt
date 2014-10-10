@@ -124,7 +124,7 @@ object LaunchProguard {
     IO.delete(outputJar)
     val fileString = mkpath(configFile.getAbsolutePath, '\'')
     val exitValue = Process("java", List("-Xmx256M", "-cp", Path.makeString(cp), "proguard.ProGuard", "-include " + fileString)) ! log
-    if (exitValue != 0) error("Proguard failed with nonzero exit code (" + exitValue + ")")
+    if (exitValue != 0) sys.error("Proguard failed with nonzero exit code (" + exitValue + ")")
   }
 
   def mapInJars(inJars: Seq[File], log: Logger): Seq[String] =

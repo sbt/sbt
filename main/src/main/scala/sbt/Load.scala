@@ -477,7 +477,7 @@ object Load {
     {
       def normalizeID(f: File) = Project.normalizeProjectID(f.getName) match {
         case Right(id) => id
-        case Left(msg) => error(autoIDError(f, msg))
+        case Left(msg) => sys.error(autoIDError(f, msg))
       }
       def nthParentName(f: File, i: Int): String =
         if (f eq null) Build.defaultID(localBase) else if (i <= 0) normalizeID(f) else nthParentName(f.getParentFile, i - 1)

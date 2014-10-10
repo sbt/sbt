@@ -21,18 +21,18 @@ object MakePomTest extends Build
 	val fakeRepo = fakeName at fakeURL
 	def extraTagName = "extra-tag"
 
-	def checkProject(pom: Elem) = if(pom.label != "project") error("Top level element was not 'project': " + pom.label)
+	def checkProject(pom: Elem) = if(pom.label != "project") sys.error("Top level element was not 'project': " + pom.label)
 	
 	def withRepositories[T](pomXML: Elem)(f: NodeSeq => T) =
 	{
 		val repositoriesElement = pomXML \ "repositories"
-		if(repositoriesElement.size == 1) f(repositoriesElement) else error("'repositories' element not found in generated pom")
+		if(repositoriesElement.size == 1) f(repositoriesElement) else sys.error("'repositories' element not found in generated pom")
 	}
 	
 	lazy val checkExtra = readPom map { pomXML =>
 		checkProject(pomXML)
 		val extra =  pomXML \ extraTagName
-		if(extra.isEmpty) error("'" + extraTagName + "' not found in generated pom.xml.") else ()
+		if(extra.isEmpty) sys.error("'" + extraTagName + "' not found in generated pom.xml.") else ()
 	}
 	
 	lazy val checkVersionPlusMapping = (readPom) map { (pomXml) =>
@@ -56,7 +56,7 @@ object MakePomTest extends Build
 			lazy val explain = (("Written:" +: writtenRepositories) ++ ("Declared:" +: mavenStyleRepositories)).mkString("\n\t")
 			
 			if( writtenRepositories != mavenStyleRepositories )
-				error("Written repositories did not match declared repositories.\n\t" + explain)
+				sys.error("Written repositories did not match declared repositories.\n\t" + explain)
 			else
 				()
 		}

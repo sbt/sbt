@@ -60,7 +60,7 @@ object Cross {
           )
           (settings, excludeKeys(Set(scalaVersion.key, scalaHome.key, scalaInstance.key)))
         } else if (!resolveVersion.isEmpty) {
-          error("Scala home directory did not exist: " + home)
+          sys.error("Scala home directory did not exist: " + home)
         } else {
           state.log.info("Setting version to " + arg)
           val settings = Seq(

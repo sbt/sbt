@@ -41,7 +41,7 @@ object InputWrapper {
   @compileTimeOnly("`previous` can only be called on a task within a task or input task definition macro, such as :=, +=, ++=, Def.task, or Def.inputTask.")
   def wrapPrevious_\u2603\u2603[T](in: Any): T = implDetailError
 
-  private[this] def implDetailError = error("This method is an implementation detail and should not be referenced.")
+  private[this] def implDetailError = sys.error("This method is an implementation detail and should not be referenced.")
 
   private[std] def wrapTask[T: c.WeakTypeTag](c: Context)(ts: c.Expr[Any], pos: c.Position): c.Expr[T] =
     wrapImpl[T, InputWrapper.type](c, InputWrapper, WrapTaskName)(ts, pos)
@@ -166,10 +166,10 @@ object ParserInput {
   private[std] val WrapInitName = "initParser_\u2603\u2603"
 
   @compileTimeOnly("`parsed` can only be used within an input task macro, such as := or Def.inputTask.")
-  def parser_\u2603\u2603[T](i: Any): T = error("This method is an implementation detail and should not be referenced.")
+  def parser_\u2603\u2603[T](i: Any): T = sys.error("This method is an implementation detail and should not be referenced.")
 
   @compileTimeOnly("`parsed` can only be used within an input task macro, such as := or Def.inputTask.")
-  def initParser_\u2603\u2603[T](i: Any): T = error("This method is an implementation detail and should not be referenced.")
+  def initParser_\u2603\u2603[T](i: Any): T = sys.error("This method is an implementation detail and should not be referenced.")
 
   private[std] def wrap[T: c.WeakTypeTag](c: Context)(ts: c.Expr[Any], pos: c.Position): c.Expr[T] =
     InputWrapper.wrapImpl[T, ParserInput.type](c, ParserInput, WrapName)(ts, pos)

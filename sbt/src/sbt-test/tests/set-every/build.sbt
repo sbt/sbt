@@ -11,6 +11,6 @@ trySetEvery := {
         val aVer = (version in aProj get structure.data).get
         if (aVer != "1.0") {
           println("Version of project a: " + aVer + ", expected: 1.0")
-          error("\"set every\" did not change the version of all projects.")
+          sys.error("\"set every\" did not change the version of all projects.")
         }
 }
