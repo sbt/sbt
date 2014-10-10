@@ -155,7 +155,7 @@ object IvyActions {
   private[sbt] def updateEither(module: IvySbt#Module, configuration: UpdateConfiguration,
     uwconfig: UnresolvedWarningConfiguration, logicalClock: LogicalClock, depDir: Option[File], log: Logger): Either[UnresolvedWarning, UpdateReport] =
     module.withModule(log) {
-      case (ivy, md, default) if module.owner.configuration.updateOptions.cachedResolution =>
+      case (ivy, md, default) if module.owner.configuration.updateOptions.cachedResolution && depDir.isDefined =>
         ivy.getResolveEngine match {
           case x: CachedResolutionResolveEngine =>
             val resolveOptions = new ResolveOptions
