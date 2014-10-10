@@ -19,7 +19,7 @@ object LogicTest extends Properties("Logic") {
     Logic.reduceAll(badClauses, Set()) match {
       case Right(res)                      => false
       case Left(err: Logic.CyclicNegation) => true
-      case Left(err)                       => error(s"Expected cyclic error, got: $err")
+      case Left(err)                       => sys.error(s"Expected cyclic error, got: $err")
     }
   )
 
@@ -27,7 +27,7 @@ object LogicTest extends Properties("Logic") {
     case Left(err) => false
     case Right(res) =>
       val actual = res.provenSet
-      (actual == expected) || error(s"Expected to prove $expected, but actually proved $actual")
+      (actual == expected) || sys.error(s"Expected to prove $expected, but actually proved $actual")
   }
 }
 
