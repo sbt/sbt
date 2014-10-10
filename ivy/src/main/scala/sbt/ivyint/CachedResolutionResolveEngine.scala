@@ -119,7 +119,11 @@ private[sbt] class CachedResolutionResolveCache() {
           Right(ur)
         }
       (updateReportCache.get(mrid) orElse loadMiniGraphFromFile) match {
-        case Some(result) => result
+        case Some(result) =>
+          result match {
+            case Right(ur) => Right(ur.withStats(ur.stats.withCached(true)))
+            case x         => x
+          }
         case None =>
           f match {
             case Right(ur) =>
@@ -186,6 +190,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
   // Return sbt's UpdateReport.
   def customResolve(md0: ModuleDescriptor, logicalClock: LogicalClock, options0: ResolveOptions, depDir: File, log: Logger): Either[ResolveException, UpdateReport] = {
     import Path._
+    val start = System.currentTimeMillis
     val miniGraphPath = depDir / "module"
     val cachedDescriptor = getSettings.getResolutionCacheManager.getResolvedIvyFileInCache(md0.getModuleRevisionId)
     val cache = cachedResolutionResolveCache
@@ -217,7 +222,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
           doWork(md)
         }
     }
-    val uReport = mergeResults(md0, results, log)
+    val uReport = mergeResults(md0, results, System.currentTimeMillis - start, log)
     val cacheManager = getSettings.getResolutionCacheManager
     cacheManager.saveResolvedModuleDescriptor(md0)
     val prop0 = ""
@@ -225,9 +230,9 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
     IO.write(ivyPropertiesInCache0, prop0)
     uReport
   }
-  def mergeResults(md0: ModuleDescriptor, results: Vector[Either[ResolveException, UpdateReport]], log: Logger): Either[ResolveException, UpdateReport] =
+  def mergeResults(md0: ModuleDescriptor, results: Vector[Either[ResolveException, UpdateReport]], resolveTime: Long, log: Logger): Either[ResolveException, UpdateReport] =
     if (results exists { _.isLeft }) Left(mergeErrors(md0, results collect { case Left(re) => re }, log))
-    else Right(mergeReports(md0, results collect { case Right(ur) => ur }, log))
+    else Right(mergeReports(md0, results collect { case Right(ur) => ur }, resolveTime, log))
   def mergeErrors(md0: ModuleDescriptor, errors: Vector[ResolveException], log: Logger): ResolveException =
     {
       val messages = errors flatMap { _.messages }
@@ -241,11 +246,12 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       }
       new ResolveException(messages, failed, ListMap(failedPaths: _*))
     }
-  def mergeReports(md0: ModuleDescriptor, reports: Vector[UpdateReport], log: Logger): UpdateReport =
+  def mergeReports(md0: ModuleDescriptor, reports: Vector[UpdateReport], resolveTime: Long, log: Logger): UpdateReport =
     {
       val cachedDescriptor = getSettings.getResolutionCacheManager.getResolvedIvyFileInCache(md0.getModuleRevisionId)
       val rootModuleConfigs = md0.getConfigurations.toVector
-      val stats = new UpdateStats(0L, 0L, 0L, false)
+      val cachedReports = reports filter { !_.stats.cached }
+      val stats = new UpdateStats(resolveTime, (cachedReports map { _.stats.downloadTime }).sum, (cachedReports map { _.stats.downloadSize }).sum, false)
       val configReports = rootModuleConfigs map { conf =>
         val crs = reports flatMap { _.configurations filter { _.configuration == conf.getName } }
         mergeConfigurationReports(conf.getName, crs, log)
