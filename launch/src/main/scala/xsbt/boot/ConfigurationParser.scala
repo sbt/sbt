@@ -101,14 +101,14 @@ class ConfigurationParser {
   def readValue[T](label: String)(implicit read: String => T): String => Value[T] = value0 =>
     {
       val value = substituteVariables(value0)
-      if (isEmpty(value)) sys.error(label + " cannot be empty (omit declaration to use the default)")
+      if (isEmpty(value)) Pre.error(label + " cannot be empty (omit declaration to use the default)")
       try { parsePropertyValue(label, value)(Value.readImplied[T]) }
       catch { case e: BootException => new Explicit(read(value)) }
     }
   def processSection[T](sections: SectionMap, name: String, f: LabelMap => T) =
     process[String, LabelMap, T](sections, name, m => f(m default (x => None)))
   def process[K, V, T](sections: ListMap[K, V], name: K, f: V => T): (T, ListMap[K, V]) = (f(sections(name)), sections - name)
-  def check(map: ListMap[String, _], label: String): Unit = if (map.isEmpty) () else sys.error(map.keys.mkString("Invalid " + label + "(s): ", ",", ""))
+  def check(map: ListMap[String, _], label: String): Unit = if (map.isEmpty) () else Pre.error(map.keys.mkString("Invalid " + label + "(s): ", ",", ""))
   def check[T](label: String, pair: (T, ListMap[String, _])): T = { check(pair._2, label); pair._1 }
   def id(map: LabelMap, name: String, default: String): (String, LabelMap) =
     (substituteVariables(orElse(getOrNone(map, name), default)), map - name)
@@ -198,7 +198,7 @@ class ConfigurationParser {
         case (key, Some(BootOnly)) => Predefined(key, true)
         case (key, Some(value)) =>
           val r = trim(substituteVariables(value).split(",", 7))
-          val url = try { new URL(r(0)) } catch { case e: MalformedURLException => sys.error("Invalid URL specified for '" + key + "': " + e.getMessage) }
+          val url = try { new URL(r(0)) } catch { case e: MalformedURLException => Pre.error("Invalid URL specified for '" + key + "': " + e.getMessage) }
           val (optionPart, patterns) = r.tail.partition(OptSet.contains(_))
           val options = (optionPart.contains(BootOnly), optionPart.contains(MvnComp), optionPart.contains(DescriptorOptional), optionPart.contains(DontCheckConsistency))
           (patterns, options) match {
@@ -206,7 +206,7 @@ class ConfigurationParser {
             case (ivy :: art :: Nil, (bo, mc, dso, cc)) => Ivy(key, url, ivy, art, mavenCompatible = mc, bootOnly = bo, descriptorOptional = dso, skipConsistencyCheck = cc)
             case (Nil, (true, false, false, cc))        => Maven(key, url, bootOnly = true)
             case (Nil, (false, false, false, false))    => Maven(key, url)
-            case _                                      => sys.error("Could not parse %s: %s".format(key, value))
+            case _                                      => Pre.error("Could not parse %s: %s".format(key, value))
           }
       }
     }
@@ -217,19 +217,19 @@ class ConfigurationParser {
     }
   def parsePropertyDefinition(name: String)(value: String) = value.split("=", 2) match {
     case Array(mode, value) => (mode, parsePropertyValue(name, value)(defineProperty(name)))
-    case x                  => sys.error("Invalid property definition '" + x + "' for property '" + name + "'")
+    case x                  => Pre.error("Invalid property definition '" + x + "' for property '" + name + "'")
   }
   def defineProperty(name: String)(action: String, requiredArg: String, optionalArg: Option[String]) =
     action match {
       case "prompt" => new PromptProperty(requiredArg, optionalArg)
       case "set"    => new SetProperty(requiredArg)
-      case _        => sys.error("Unknown action '" + action + "' for property '" + name + "'")
+      case _        => Pre.error("Unknown action '" + action + "' for property '" + name + "'")
     }
   private[this] lazy val propertyPattern = Pattern.compile("""(.+)\((.*)\)(?:\[(.*)\])?""") // examples: prompt(Version)[1.0] or set(1.0)
   def parsePropertyValue[T](name: String, definition: String)(f: (String, String, Option[String]) => T): T =
     {
       val m = propertyPattern.matcher(definition)
-      if (!m.matches()) sys.error("Invalid property definition '" + definition + "' for property '" + name + "'")
+      if (!m.matches()) Pre.error("Invalid property definition '" + definition + "' for property '" + name + "'")
       val optionalArg = m.group(3)
       f(m.group(1), m.group(2), if (optionalArg eq null) None else Some(optionalArg))
     }
@@ -244,10 +244,10 @@ class ConfigurationParser {
         (((ListMap.empty.default(x => ListMap.empty[String, Option[String]]), None): State) /: lines) {
           case (x, Comment)            => x
           case ((map, _), s: Section)  => (map, Some(s.name))
-          case ((_, None), l: Labeled) => sys.error("Label " + l.label + " is not in a section")
+          case ((_, None), l: Labeled) => Pre.error("Label " + l.label + " is not in a section")
           case ((map, s @ Some(section)), l: Labeled) =>
             val sMap = map(section)
-            if (sMap.contains(l.label)) sys.error("Duplicate label '" + l.label + "' in section '" + section + "'")
+            if (sMap.contains(l.label)) Pre.error("Duplicate label '" + l.label + "' in section '" + section + "'")
             else (map(section) = (sMap(l.label) = l.value), s)
         }
       s._1
