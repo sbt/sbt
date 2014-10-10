@@ -161,7 +161,7 @@ object IvyActions {
             val resolveOptions = new ResolveOptions
             val resolveId = ResolveOptions.getDefaultResolveId(md)
             resolveOptions.setResolveId(resolveId)
-            x.customResolve(md, logicalClock, resolveOptions, depDir getOrElse { sys.error("dependency base directory is not specified") }, log) match {
+            x.customResolve(md, configuration.missingOk, logicalClock, resolveOptions, depDir getOrElse { sys.error("dependency base directory is not specified") }, log) match {
               case Left(x) =>
                 Left(UnresolvedWarning(x, uwconfig))
               case Right(uReport) =>
