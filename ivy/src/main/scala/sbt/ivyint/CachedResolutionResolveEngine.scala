@@ -195,8 +195,11 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
   private[sbt] def projectResolver: Option[ProjectResolver]
   private[sbt] def makeInstance: Ivy
 
-  // Return sbt's UpdateReport.
-  def customResolve(md0: ModuleDescriptor, logicalClock: LogicalClock, options0: ResolveOptions, depDir: File, log: Logger): Either[ResolveException, UpdateReport] = {
+  /**
+   * This returns sbt's UpdateReport structure.
+   * missingOk allows sbt to call this with classifiers that may or may not exist, and grab the JARs.
+   */
+  def customResolve(md0: ModuleDescriptor, missingOk: Boolean, logicalClock: LogicalClock, options0: ResolveOptions, depDir: File, log: Logger): Either[ResolveException, UpdateReport] = {
     import Path._
     val start = System.currentTimeMillis
     val miniGraphPath = depDir / "module"
@@ -209,7 +212,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
         val options1 = new ResolveOptions(options0)
         val i = makeInstance
         var rr = i.resolve(md, options1)
-        if (!rr.hasError) Right(IvyRetrieve.updateReport(rr, cachedDescriptor))
+        if (!rr.hasError || missingOk) Right(IvyRetrieve.updateReport(rr, cachedDescriptor))
         else {
           val messages = rr.getAllProblemMessages.toArray.map(_.toString).distinct
           val failedPaths = ListMap(rr.getUnresolvedDependencies map { node =>
@@ -230,7 +233,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
           doWork(md)
         }
     }
-    val uReport = mergeResults(md0, results, System.currentTimeMillis - start, log)
+    val uReport = mergeResults(md0, results, missingOk, System.currentTimeMillis - start, log)
     val cacheManager = getSettings.getResolutionCacheManager
     cacheManager.saveResolvedModuleDescriptor(md0)
     val prop0 = ""
@@ -238,8 +241,8 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
     IO.write(ivyPropertiesInCache0, prop0)
     uReport
   }
-  def mergeResults(md0: ModuleDescriptor, results: Vector[Either[ResolveException, UpdateReport]], resolveTime: Long, log: Logger): Either[ResolveException, UpdateReport] =
-    if (results exists { _.isLeft }) Left(mergeErrors(md0, results collect { case Left(re) => re }, log))
+  def mergeResults(md0: ModuleDescriptor, results: Vector[Either[ResolveException, UpdateReport]], missingOk: Boolean, resolveTime: Long, log: Logger): Either[ResolveException, UpdateReport] =
+    if (!missingOk && (results exists { _.isLeft })) Left(mergeErrors(md0, results collect { case Left(re) => re }, log))
     else Right(mergeReports(md0, results collect { case Right(ur) => ur }, resolveTime, log))
   def mergeErrors(md0: ModuleDescriptor, errors: Vector[ResolveException], log: Logger): ResolveException =
     {
