@@ -198,17 +198,31 @@ object IvyActions {
   def grouped[T](grouping: ModuleID => T)(mods: Seq[ModuleID]): Map[T, Set[String]] =
     mods groupBy (grouping) mapValues (_.map(_.revision).toSet)
 
+  @deprecated("This is no longer public.", "0.13.6")
   def transitiveScratch(ivySbt: IvySbt, label: String, config: GetClassifiersConfiguration, log: Logger): UpdateReport =
+    transitiveScratch(ivySbt, label, config, UnresolvedWarningConfiguration(), LogicalClock.unknown, None, log)
+
+  private[sbt] def transitiveScratch(ivySbt: IvySbt, label: String, config: GetClassifiersConfiguration,
+    uwconfig: UnresolvedWarningConfiguration, logicalClock: LogicalClock, depDir: Option[File], log: Logger): UpdateReport =
     {
       import config.{ configuration => c, ivyScala, module => mod }
       import mod.{ id, modules => deps }
       val base = restrictedCopy(id, true).copy(name = id.name + "$" + label)
       val module = new ivySbt.Module(InlineConfiguration(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala))
-      val report = update(module, c, log)
+      val report = updateEither(module, c, uwconfig, logicalClock, depDir, log) match {
+        case Right(r) => r
+        case Left(w) =>
+          throw w.resolveException
+      }
       val newConfig = config.copy(module = mod.copy(modules = report.allModules))
-      updateClassifiers(ivySbt, newConfig, log)
+      updateClassifiers(ivySbt, newConfig, uwconfig, logicalClock, depDir, log)
     }
+  @deprecated("This is no longer public.", "0.13.6")
   def updateClassifiers(ivySbt: IvySbt, config: GetClassifiersConfiguration, log: Logger): UpdateReport =
+    updateClassifiers(ivySbt, config, UnresolvedWarningConfiguration(), LogicalClock.unknown, None, log)
+
+  private[sbt] def updateClassifiers(ivySbt: IvySbt, config: GetClassifiersConfiguration,
+    uwconfig: UnresolvedWarningConfiguration, logicalClock: LogicalClock, depDir: Option[File], log: Logger): UpdateReport =
     {
       import config.{ configuration => c, module => mod, _ }
       import mod.{ configurations => confs, _ }
@@ -218,7 +232,11 @@ object IvyActions {
       val base = restrictedCopy(id, true).copy(name = id.name + classifiers.mkString("$", "_", ""))
       val module = new ivySbt.Module(InlineConfiguration(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala, configurations = confs))
       val upConf = new UpdateConfiguration(c.retrieve, true, c.logging)
-      update(module, upConf, log)
+      updateEither(module, upConf, uwconfig, logicalClock, depDir, log) match {
+        case Right(r) => r
+        case Left(w) =>
+          throw w.resolveException
+      }
     }
   def classifiedArtifacts(classifiers: Seq[String], exclude: Map[ModuleID, Set[String]])(m: ModuleID): Option[ModuleID] =
     {
