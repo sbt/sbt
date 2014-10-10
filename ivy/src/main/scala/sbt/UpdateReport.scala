@@ -220,7 +220,7 @@ object UpdateReport {
 
     private[this] def select0(f: DependencyFilter): Seq[File] =
       for (cReport <- report.configurations; mReport <- cReport.modules; (artifact, file) <- mReport.artifacts if f(cReport.configuration, mReport.module, artifact)) yield {
-        if (file == null) error("Null file: conf=" + cReport.configuration + ", module=" + mReport.module + ", art: " + artifact)
+        if (file == null) sys.error("Null file: conf=" + cReport.configuration + ", module=" + mReport.module + ", art: " + artifact)
         file
       }
 
