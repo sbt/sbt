@@ -112,11 +112,19 @@ private[sbt] class CachedResolutionResolveCache() {
       def loadMiniGraphFromFile: Option[Either[ResolveException, UpdateReport]] =
         (if (staticGraphPath.exists) Some(staticGraphPath)
         else if (dynamicGraphPath.exists) Some(dynamicGraphPath)
-        else None) map { path =>
-          log.debug(s"parsing ${path.getAbsolutePath.toString}")
-          val ur = JsonUtil.parseUpdateReport(md, path, cachedDescriptor, log)
-          updateReportCache(md.getModuleRevisionId) = Right(ur)
-          Right(ur)
+        else None) match {
+          case Some(path) =>
+            log.debug(s"parsing ${path.getAbsolutePath.toString}")
+            val ur = JsonUtil.parseUpdateReport(md, path, cachedDescriptor, log)
+            if (ur.allFiles forall { _.exists }) {
+              updateReportCache(md.getModuleRevisionId) = Right(ur)
+              Some(Right(ur))
+            } else {
+              log.debug(s"some files are missing from the cache, so invalidating the minigraph")
+              IO.delete(path)
+              None
+            }
+          case _ => None
         }
       (updateReportCache.get(mrid) orElse loadMiniGraphFromFile) match {
         case Some(result) =>
