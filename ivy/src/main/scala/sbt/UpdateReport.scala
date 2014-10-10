@@ -34,6 +34,12 @@ final class UpdateReport(val cachedDescriptor: File, val configurations: Seq[Con
 
   /** Gets the names of all resolved configurations.  This `UpdateReport` contains one `ConfigurationReport` for each configuration in this list. */
   def allConfigurations: Seq[String] = configurations.map(_.configuration)
+
+  private[sbt] def withStats(us: UpdateStats): UpdateReport =
+    new UpdateReport(this.cachedDescriptor,
+      this.configurations,
+      us,
+      this.stamps)
 }
 
 /**
@@ -268,4 +274,9 @@ object UpdateReport {
 }
 final class UpdateStats(val resolveTime: Long, val downloadTime: Long, val downloadSize: Long, val cached: Boolean) {
   override def toString = Seq("Resolve time: " + resolveTime + " ms", "Download time: " + downloadTime + " ms", "Download size: " + downloadSize + " bytes").mkString(", ")
+  private[sbt] def withCached(c: Boolean): UpdateStats =
+    new UpdateStats(resolveTime = this.resolveTime,
+      downloadTime = this.downloadTime,
+      downloadSize = this.downloadSize,
+      cached = c)
 }
