@@ -92,6 +92,21 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
         Seq(t)
     }
 
+    // Check No val (a,b) = foo *or* val a,b = foo as these are problematic to range positions and the WHOLE architecture.
+    def isBadValDef(t: Tree): Boolean =
+      t match {
+        case (x @ (toolbox.u.ValDef(_, _, _, _) | toolbox.u.DefDef(_, _, _, _, _, _))) =>
+          val content = modifiedContent.substring(x.pos.start, x.pos.end)
+          val prettyPrint = x.toString
+          (!(content contains "=") && (prettyPrint contains "="))
+        case _ => false
+      }
+    parsedTrees.filter(isBadValDef).foreach { badTree =>
+      // Issue errors
+      val positionLine = badTree.pos.line
+      throw new MessageOnlyException(s"""[$fileName]:$positionLine: Pattern matching in val statements is not supported""".stripMargin)
+    }
+
     val (imports, statements) = parsedTrees partition {
       case _: Import => true
       case _         => false

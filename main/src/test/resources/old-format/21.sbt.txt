@@ -1,0 +1,5 @@
+val x = bar
+
+{
+  val a,b = project
+}

@@ -1,3 +1,5 @@
+lazy val a,b = project
+
 def now = System.currentTimeMillis
 
 lazy val v = "1.0-" +
@@ -10,3 +12,5 @@ val descr = "Description"
 name := n
 
 version := v
+
+
