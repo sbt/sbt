@@ -188,7 +188,7 @@ object TaskExtra extends TaskExtra {
     }
   def reduced[S](i: IndexedSeq[Task[S]], f: (S, S) => S): Task[S] =
     i match {
-      case Seq()     => error("Cannot reduce empty sequence")
+      case Seq()     => sys.error("Cannot reduce empty sequence")
       case Seq(x)    => x
       case Seq(x, y) => reducePair(x, y, f)
       case z =>

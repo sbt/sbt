@@ -1,6 +1,6 @@
 TaskKey[Unit]("output-empty") <<= classDirectory in Configurations.Compile map { outputDirectory =>
 	def classes = (outputDirectory ** "*.class").get
-	if(!classes.isEmpty) error("Classes existed:\n\t" + classes.mkString("\n\t")) else ()
+	if(!classes.isEmpty) sys.error("Classes existed:\n\t" + classes.mkString("\n\t")) else ()
 }
 
 // apparently Travis CI stopped allowing long file names

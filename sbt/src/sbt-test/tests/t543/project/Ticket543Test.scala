@@ -30,7 +30,7 @@ object Ticket543Test extends Build {
 		check := {
 			val exists = marker.exists
 			marker.delete()
-			if (!exists) error("Null or invalid error had been returned previously")
+			if (!exists) sys.error("Null or invalid error had been returned previously")
 		}
 	))
 }

@@ -34,7 +34,7 @@ object PomTest extends Build
 		val loaded = xml.XML.loadFile(pom)
 		val deps = loaded \\ "dependency"
 		expected foreach { case (id, scope, opt, classifier) =>
-			val dep = deps.find(d => (d \ "artifactId").text == id).getOrElse( error("Dependency '" + id + "' not written to pom:\n" + loaded))
+			val dep = deps.find(d => (d \ "artifactId").text == id).getOrElse( sys.error("Dependency '" + id + "' not written to pom:\n" + loaded))
 			val actualOpt = java.lang.Boolean.parseBoolean( (dep \\ "optional").text )
 			assert(opt == actualOpt, "Invalid 'optional' section '" + (dep \\ "optional") + "' for " + id + ", expected optional=" + opt)
 

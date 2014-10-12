@@ -39,6 +39,6 @@ object ArtifactTest extends Build
 	def checkTask(classpath: TaskKey[Classpath]) = (classpath in Compile, scalaInstance) map { (cp, si) =>
 		val loader = sbt.classpath.ClasspathUtilities.toLoader(cp.files, si.loader)
 		try { Class.forName("test.Test", false, loader); () }
-		catch { case _: ClassNotFoundException | _: NoClassDefFoundError => error("Dependency not retrieved properly") }
+		catch { case _: ClassNotFoundException | _: NoClassDefFoundError => sys.error("Dependency not retrieved properly") }
 	}
 }

@@ -5,9 +5,9 @@ def runTestTask(pre: Def.Initialize[Task[Unit]]) =
 		val _ = pre.value
 		val r = (runner in (Compile, run)).value
 		val cp = (fullClasspath in Compile).value
-		val main = (mainClass in Compile).value getOrElse error("No main class found")
+		val main = (mainClass in Compile).value getOrElse sys.error("No main class found")
 		val args = baseDirectory.value.getAbsolutePath :: Nil
-		r.run(main, cp.files, args, streams.value.log) foreach error
+		r.run(main, cp.files, args, streams.value.log) foreach sys.error
 	}
 
 lazy val b = project.settings(

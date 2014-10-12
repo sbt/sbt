@@ -25,7 +25,7 @@ object P extends Build
 		(err, shouldSucceed) match
 		{
 			case (None, true) | (Some(_), false) => ()
-			case (None, false) => error("Expected failure")
+			case (None, false) => sys.error("Expected failure")
 			case (Some(x), true) => throw x
 		}
 	}

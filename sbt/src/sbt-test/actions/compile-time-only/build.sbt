@@ -7,6 +7,6 @@ expectErrorNotCrash := {
 	val fail = (compile in Compile).failure.value
 	fail.directCause match {
 		case Some(x: xsbti.CompileFailed) => ()
-		case _ => error("Compiler crashed instead of providing a compile-time-only exception.")
+		case _ => sys.error("Compiler crashed instead of providing a compile-time-only exception.")
 	}
 }

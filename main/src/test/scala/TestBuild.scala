@@ -246,7 +246,7 @@ object TestBuild {
         genAcyclic(maxDeps, xs, next :: acc)
     }
   def sequence[T](gs: Seq[Gen[T]]): Gen[Seq[T]] = Gen.parameterized { prms =>
-    wrap(gs map { g => g(prms) getOrElse error("failed generator") })
+    wrap(gs map { g => g(prms) getOrElse sys.error("failed generator") })
   }
   type Inputs[A, T] = (T, Seq[T], Seq[A] => A)
 }

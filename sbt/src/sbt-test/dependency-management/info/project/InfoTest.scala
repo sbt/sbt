@@ -29,14 +29,14 @@ object InfoTest extends Build
 		else
 			<dependency org="org.scala-tools.testing" name="scalacheck_2.9.1" rev="1.9"/>
 
-	def checkDownload = (dependencyClasspath in Compile) map { cp => if(cp.isEmpty) error("Dependency not downloaded"); () }
+	def checkDownload = (dependencyClasspath in Compile) map { cp => if(cp.isEmpty) sys.error("Dependency not downloaded"); () }
 	def checkInfo = (customInfo, delivered) map { (addInfo, d) =>
 		if((d \ "info").isEmpty)
-			error("No info tag generated")
+			sys.error("No info tag generated")
 		else if(addInfo) {
-			if( !deliveredWithCustom(d) ) error("Expected 'license' and 'description' tags in info tag, got: \n" + (d \ "info")) else ()
+			if( !deliveredWithCustom(d) ) sys.error("Expected 'license' and 'description' tags in info tag, got: \n" + (d \ "info")) else ()
 		} else
-			if( deliveredWithCustom(d) ) error("Expected empty 'info' tag, got: \n" + (d \ "info")) else ()
+			if( deliveredWithCustom(d) ) sys.error("Expected empty 'info' tag, got: \n" + (d \ "info")) else ()
 	}
 	def deliveredWithCustom(d: NodeSeq) = !(d \ "info" \ "license").isEmpty && !(d \ "info" \ "description").isEmpty
 }

@@ -52,6 +52,10 @@ object Util {
     scalacOptions <++= scalaVersion map CrossVersion.partialVersion map {
       case Some((2, 9)) => Nil // support 2.9 for some subprojects for the Scala Eclipse IDE
       case _            => Seq("-feature", "-language:implicitConversions", "-language:postfixOps", "-language:higherKinds", "-language:existentials")
+    },
+    scalacOptions <++= scalaVersion map CrossVersion.partialVersion map {
+      case Some((2, 10)) => Seq("-deprecation", "-Xlint")
+      case _             => Seq()
     }
   )
 
@@ -196,7 +200,7 @@ object Licensed {
   lazy val extractLicenses = TaskKey[Seq[File]]("extract-licenses")
 
   lazy val seeRegex = """\(see (.*?)\)""".r
-  def licensePath(base: File, str: String): File = { val path = base / str; if (path.exists) path else error("Referenced license '" + str + "' not found at " + path) }
+  def licensePath(base: File, str: String): File = { val path = base / str; if (path.exists) path else sys.error("Referenced license '" + str + "' not found at " + path) }
   def seePaths(base: File, noticeString: String): Seq[File] = seeRegex.findAllIn(noticeString).matchData.map(d => licensePath(base, d.group(1))).toList
 
   def settings: Seq[Setting[_]] = Seq(

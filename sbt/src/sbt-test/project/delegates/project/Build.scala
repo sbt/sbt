@@ -11,7 +11,7 @@ object B extends Build
 
 	lazy val checkTask = InputTask(_ => Space ~> NatBasic) { result =>
 		(result, maxErrors) map { (i, max)  =>
-			if(i != max) error("Expected max-errors to be " + i + ", but it was " + max)
+			if(i != max) sys.error("Expected max-errors to be " + i + ", but it was " + max)
 		}
 	}
 }

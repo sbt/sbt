@@ -55,7 +55,7 @@ object Release extends Build {
     {
       Credentials.forHost(cs, PublishRepoHost) match {
         case Some(creds) => (creds.userName, creds.passwd)
-        case None        => error("No credentials defined for " + PublishRepoHost)
+        case None        => sys.error("No credentials defined for " + PublishRepoHost)
       }
     }
 

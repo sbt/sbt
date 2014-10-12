@@ -21,7 +21,7 @@ object TestProject extends Build
 			}
 			catch
 			{
-				case _: ClassNotFoundException => error("Dependency not downloaded.")
+				case _: ClassNotFoundException => sys.error("Dependency not downloaded.")
 			}
 		}
 }

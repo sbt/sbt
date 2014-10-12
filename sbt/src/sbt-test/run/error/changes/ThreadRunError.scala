@@ -6,6 +6,6 @@ object Spawn
 	}
 	class ThreadA extends Thread
 	{
-		override def run(): Unit = error("Test error thread")
+		override def run(): Unit = sys.error("Test error thread")
 	}
 }

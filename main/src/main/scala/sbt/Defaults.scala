@@ -320,7 +320,7 @@ object Defaults extends BuildCommon {
       override def watchPaths(s: State) = EvaluateTask.evaluateTask(Project structure s, key, s, base) match {
         case Some(Value(ps)) => ps
         case Some(Inc(i))    => throw i
-        case None            => error("key not found: " + Def.displayFull(key))
+        case None            => sys.error("key not found: " + Def.displayFull(key))
       }
     }
   }
@@ -360,13 +360,13 @@ object Defaults extends BuildCommon {
 
   def scalaInstanceFromUpdate: Initialize[Task[ScalaInstance]] = Def.task {
     val toolReport = update.value.configuration(Configurations.ScalaTool.name) getOrElse
-      error(noToolConfiguration(managedScalaInstance.value))
+      sys.error(noToolConfiguration(managedScalaInstance.value))
     def files(id: String) =
       for {
         m <- toolReport.modules if m.module.name == id;
         (art, file) <- m.artifacts if art.`type` == Artifact.DefaultType
       } yield file
-    def file(id: String) = files(id).headOption getOrElse error(s"Missing ${id}.jar")
+    def file(id: String) = files(id).headOption getOrElse sys.error(s"Missing ${id}.jar")
     val allFiles = toolReport.modules.flatMap(_.artifacts.map(_._2))
     val libraryJar = file(ScalaArtifacts.LibraryID)
     val compilerJar = file(ScalaArtifacts.CompilerID)
@@ -691,7 +691,7 @@ object Defaults extends BuildCommon {
       import Def.parserToInput
       val parser = Def.spaceDelimited()
       Def.inputTask {
-        val mainClass = mainClassTask.value getOrElse error("No main class detected.")
+        val mainClass = mainClassTask.value getOrElse sys.error("No main class detected.")
         toError(scalaRun.value.run(mainClass, data(classpath.value), parser.parsed, streams.value.log))
       }
     }
@@ -751,7 +751,7 @@ object Defaults extends BuildCommon {
         val fullcp = (cpFiles ++ si.jars).distinct
         val loader = sbt.classpath.ClasspathUtilities.makeLoader(fullcp, si, IO.createUniqueDirectory(temp))
         val compiler = cs.scalac.onArgs(exported(s, "scala"))
-        (new Console(compiler))(cpFiles, options, loader, initCommands, cleanup)()(s.log).foreach(msg => error(msg))
+        (new Console(compiler))(cpFiles, options, loader, initCommands, cleanup)()(s.log).foreach(msg => sys.error(msg))
         println()
     }
 
@@ -964,7 +964,7 @@ object Classpaths {
     {
       val defined = report.allConfigurations.toSet
       val search = map(thisConfig) +: (delegated.toList ++ Seq(Compile, Configurations.Default))
-      def notFound = error("Configuration to use for managed classpath must be explicitly defined when default configurations are not present.")
+      def notFound = sys.error("Configuration to use for managed classpath must be explicitly defined when default configurations are not present.")
       search find { defined contains _.name } getOrElse notFound
     }
 
@@ -1324,7 +1324,7 @@ object Classpaths {
       def skipWork: In => UpdateReport =
         Tracked.lastOutput[In, UpdateReport](outCacheFile) {
           case (_, Some(out)) => out
-          case _              => error("Skipping update requested, but update has not previously run successfully.")
+          case _              => sys.error("Skipping update requested, but update has not previously run successfully.")
         }
       def doWork: In => UpdateReport =
         Tracked.inputChanged(cacheFile / "inputs") { (inChanged: Boolean, in: In) =>
@@ -1396,7 +1396,7 @@ object Classpaths {
 	}*/
 
   def defaultRepositoryFilter = (repo: MavenRepository) => !repo.root.startsWith("file:")
-  def getPublishTo(repo: Option[Resolver]): Resolver = repo getOrElse error("Repository for publishing is not specified.")
+  def getPublishTo(repo: Option[Resolver]): Resolver = repo getOrElse sys.error("Repository for publishing is not specified.")
 
   def deliverConfig(outputDirectory: File, status: String = "release", logging: UpdateLogging.Value = UpdateLogging.DownloadOnly) =
     new DeliverConfiguration(deliverPattern(outputDirectory), status, None, logging)
@@ -1520,7 +1520,7 @@ object Classpaths {
           case x :: Nil => for (a <- parseList(x, masterConfs)) yield (a, default(a))
           case x :: y :: Nil =>
             val target = parseList(y, depConfs); for (a <- parseList(x, masterConfs)) yield (a, target)
-          case _ => error("Invalid configuration '" + confString + "'") // shouldn't get here
+          case _ => sys.error("Invalid configuration '" + confString + "'") // shouldn't get here
         }
       val m = ms.toMap
       s => m.getOrElse(s, Nil)
@@ -1535,7 +1535,7 @@ object Classpaths {
 
   private def trim(a: Array[String]): List[String] = a.toList.map(_.trim)
   def missingConfiguration(in: String, conf: String) =
-    error("Configuration '" + conf + "' not defined in '" + in + "'")
+    sys.error("Configuration '" + conf + "' not defined in '" + in + "'")
   def allConfigs(conf: Configuration): Seq[Configuration] =
     Dag.topologicalSort(conf)(_.extendsConfigs)
 
@@ -1696,7 +1696,7 @@ object Classpaths {
           case Predefined.ScalaToolsSnapshots  => Resolver.ScalaToolsSnapshots
           case Predefined.SonatypeOSSReleases  => Resolver.sonatypeRepo("releases")
           case Predefined.SonatypeOSSSnapshots => Resolver.sonatypeRepo("snapshots")
-          case unknown                         => error("Unknown predefined resolver '" + unknown + "'.  This resolver may only be supported in newer sbt versions.")
+          case unknown                         => sys.error("Unknown predefined resolver '" + unknown + "'.  This resolver may only be supported in newer sbt versions.")
         }
       }
     }

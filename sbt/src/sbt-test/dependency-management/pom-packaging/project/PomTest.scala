@@ -18,7 +18,7 @@ object PomTest extends Build
 	def checkPackaging(pom: File, expected: String) =
 	{
 		val packaging = (xml.XML.loadFile(pom) \\ "packaging").text
-		if(packaging != expected) error("Incorrect packaging for '" + pom + "'.  Expected '" + expected + "', but got '" + packaging + "'")
+		if(packaging != expected) sys.error("Incorrect packaging for '" + pom + "'.  Expected '" + expected + "', but got '" + packaging + "'")
 	}
 	def warArtifact = artifact in (Compile, packageBin) ~= { _.copy(`type` = "war", extension = "war") }
 }
