@@ -11,7 +11,7 @@ import org.apache.ivy.core
 import core.resolve._
 import core.module.id.{ ModuleRevisionId, ModuleId => IvyModuleId }
 import core.report.{ ResolveReport, ConfigurationResolveReport, DownloadReport }
-import core.module.descriptor.{ DefaultModuleDescriptor, ModuleDescriptor, DependencyDescriptor, Configuration => IvyConfiguration }
+import core.module.descriptor.{ DefaultModuleDescriptor, ModuleDescriptor, DependencyDescriptor, Configuration => IvyConfiguration, ExcludeRule, IncludeRule }
 import core.{ IvyPatternHelper, LogOptions }
 import org.apache.ivy.util.Message
 import org.apache.ivy.plugins.latest.{ ArtifactInfo => IvyArtifactInfo }
@@ -36,6 +36,9 @@ private[sbt] class CachedResolutionResolveCache() {
     val mds =
       if (mrid0.getOrganisation == sbtOrgTemp) Vector(md0)
       else buildArtificialModuleDescriptors(md0, prOpt) map { _._1 }
+
+    updateReportCache.remove(md0.getModuleRevisionId)
+    directDependencyCache.remove(md0.getModuleRevisionId)
     mds foreach { md =>
       updateReportCache.remove(md.getModuleRevisionId)
       directDependencyCache.remove(md.getModuleRevisionId)
@@ -59,11 +62,28 @@ private[sbt] class CachedResolutionResolveCache() {
     }
   def buildArtificialModuleDescriptor(dd: DependencyDescriptor, rootModuleConfigs: Vector[IvyConfiguration], prOpt: Option[ProjectResolver]): (DefaultModuleDescriptor, Boolean) =
     {
+      def excludeRuleString(rule: ExcludeRule): String =
+        s"""Exclude(${rule.getId},${rule.getConfigurations.mkString(",")},${rule.getMatcher})"""
+      def includeRuleString(rule: IncludeRule): String =
+        s"""Include(${rule.getId},${rule.getConfigurations.mkString(",")},${rule.getMatcher})"""
       val mrid = dd.getDependencyRevisionId
       val confMap = (dd.getModuleConfigurations map { conf =>
         conf + "->(" + dd.getDependencyConfigurations(conf).mkString(",") + ")"
       })
-      val depsString = mrid.toString + ";" + confMap.mkString(";")
+      val exclusions = (dd.getModuleConfigurations.toVector flatMap { conf =>
+        dd.getExcludeRules(conf).toVector match {
+          case Vector() => None
+          case rules    => Some(conf + "->(" + (rules map excludeRuleString).mkString(",") + ")")
+        }
+      })
+      val inclusions = (dd.getModuleConfigurations.toVector flatMap { conf =>
+        dd.getIncludeRules(conf).toVector match {
+          case Vector() => None
+          case rules    => Some(conf + "->(" + (rules map includeRuleString).mkString(",") + ")")
+        }
+      })
+      val depsString = s"""$mrid;${confMap.mkString(",")};isForce=${dd.isForce};isChanging=${dd.isChanging};isTransitive=${dd.isTransitive};""" +
+        s"""exclusions=${exclusions.mkString(",")};inclusions=${inclusions.mkString(",")};"""
       val sha1 = Hash.toHex(Hash(depsString))
       val md1 = new DefaultModuleDescriptor(createID(sbtOrgTemp, "temp-resolve-" + sha1, "1.0"), "release", null, false) with ArtificialModuleDescriptor {
         def targetModuleRevisionId: ModuleRevisionId = mrid
@@ -92,14 +112,26 @@ private[sbt] class CachedResolutionResolveCache() {
       def loadMiniGraphFromFile: Option[Either[ResolveException, UpdateReport]] =
         (if (staticGraphPath.exists) Some(staticGraphPath)
         else if (dynamicGraphPath.exists) Some(dynamicGraphPath)
-        else None) map { path =>
-          log.debug(s"parsing ${path.getAbsolutePath.toString}")
-          val ur = JsonUtil.parseUpdateReport(md, path, cachedDescriptor, log)
-          updateReportCache(md.getModuleRevisionId) = Right(ur)
-          Right(ur)
+        else None) match {
+          case Some(path) =>
+            log.debug(s"parsing ${path.getAbsolutePath.toString}")
+            val ur = JsonUtil.parseUpdateReport(md, path, cachedDescriptor, log)
+            if (ur.allFiles forall { _.exists }) {
+              updateReportCache(md.getModuleRevisionId) = Right(ur)
+              Some(Right(ur))
+            } else {
+              log.debug(s"some files are missing from the cache, so invalidating the minigraph")
+              IO.delete(path)
+              None
+            }
+          case _ => None
         }
       (updateReportCache.get(mrid) orElse loadMiniGraphFromFile) match {
-        case Some(result) => result
+        case Some(result) =>
+          result match {
+            case Right(ur) => Right(ur.withStats(ur.stats.withCached(true)))
+            case x         => x
+          }
         case None =>
           f match {
             case Right(ur) =>
@@ -163,19 +195,24 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
   private[sbt] def projectResolver: Option[ProjectResolver]
   private[sbt] def makeInstance: Ivy
 
-  // Return sbt's UpdateReport.
-  def customResolve(md0: ModuleDescriptor, logicalClock: LogicalClock, options0: ResolveOptions, depDir: File, log: Logger): Either[ResolveException, UpdateReport] = {
+  /**
+   * This returns sbt's UpdateReport structure.
+   * missingOk allows sbt to call this with classifiers that may or may not exist, and grab the JARs.
+   */
+  def customResolve(md0: ModuleDescriptor, missingOk: Boolean, logicalClock: LogicalClock, options0: ResolveOptions, depDir: File, log: Logger): Either[ResolveException, UpdateReport] = {
     import Path._
+    val start = System.currentTimeMillis
     val miniGraphPath = depDir / "module"
     val cachedDescriptor = getSettings.getResolutionCacheManager.getResolvedIvyFileInCache(md0.getModuleRevisionId)
     val cache = cachedResolutionResolveCache
+    cache.directDependencyCache.remove(md0.getModuleRevisionId)
     val mds = cache.buildArtificialModuleDescriptors(md0, projectResolver)
     def doWork(md: ModuleDescriptor): Either[ResolveException, UpdateReport] =
       {
         val options1 = new ResolveOptions(options0)
         val i = makeInstance
         var rr = i.resolve(md, options1)
-        if (!rr.hasError) Right(IvyRetrieve.updateReport(rr, cachedDescriptor))
+        if (!rr.hasError || missingOk) Right(IvyRetrieve.updateReport(rr, cachedDescriptor))
         else {
           val messages = rr.getAllProblemMessages.toArray.map(_.toString).distinct
           val failedPaths = ListMap(rr.getUnresolvedDependencies map { node =>
@@ -196,7 +233,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
           doWork(md)
         }
     }
-    val uReport = mergeResults(md0, results, log)
+    val uReport = mergeResults(md0, results, missingOk, System.currentTimeMillis - start, log)
     val cacheManager = getSettings.getResolutionCacheManager
     cacheManager.saveResolvedModuleDescriptor(md0)
     val prop0 = ""
@@ -204,9 +241,9 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
     IO.write(ivyPropertiesInCache0, prop0)
     uReport
   }
-  def mergeResults(md0: ModuleDescriptor, results: Vector[Either[ResolveException, UpdateReport]], log: Logger): Either[ResolveException, UpdateReport] =
-    if (results exists { _.isLeft }) Left(mergeErrors(md0, results collect { case Left(re) => re }, log))
-    else Right(mergeReports(md0, results collect { case Right(ur) => ur }, log))
+  def mergeResults(md0: ModuleDescriptor, results: Vector[Either[ResolveException, UpdateReport]], missingOk: Boolean, resolveTime: Long, log: Logger): Either[ResolveException, UpdateReport] =
+    if (!missingOk && (results exists { _.isLeft })) Left(mergeErrors(md0, results collect { case Left(re) => re }, log))
+    else Right(mergeReports(md0, results collect { case Right(ur) => ur }, resolveTime, log))
   def mergeErrors(md0: ModuleDescriptor, errors: Vector[ResolveException], log: Logger): ResolveException =
     {
       val messages = errors flatMap { _.messages }
@@ -220,11 +257,12 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       }
       new ResolveException(messages, failed, ListMap(failedPaths: _*))
     }
-  def mergeReports(md0: ModuleDescriptor, reports: Vector[UpdateReport], log: Logger): UpdateReport =
+  def mergeReports(md0: ModuleDescriptor, reports: Vector[UpdateReport], resolveTime: Long, log: Logger): UpdateReport =
     {
       val cachedDescriptor = getSettings.getResolutionCacheManager.getResolvedIvyFileInCache(md0.getModuleRevisionId)
       val rootModuleConfigs = md0.getConfigurations.toVector
-      val stats = new UpdateStats(0L, 0L, 0L, false)
+      val cachedReports = reports filter { !_.stats.cached }
+      val stats = new UpdateStats(resolveTime, (cachedReports map { _.stats.downloadTime }).sum, (cachedReports map { _.stats.downloadSize }).sum, false)
       val configReports = rootModuleConfigs map { conf =>
         val crs = reports flatMap { _.configurations filter { _.configuration == conf.getName } }
         mergeConfigurationReports(conf.getName, crs, log)
@@ -275,10 +313,13 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       val name = head.module.name
       log.debug(s"- conflict in $rootModuleConf:$organization:$name " + (conflicts map { _.module }).mkString("(", ", ", ")"))
       def useLatest(lcm: LatestConflictManager): (Vector[ModuleReport], Vector[ModuleReport], String) =
-        conflicts find { m =>
+        (conflicts find { m =>
+          m.callers.exists { _.isDirectlyForceDependency }
+        } orElse (conflicts find { m =>
           m.callers.exists { _.isForceDependency }
-        } match {
+        })) match {
           case Some(m) =>
+            log.debug(s"- forced dependency: $m")
             (Vector(m), conflicts filterNot { _ == m } map { _.copy(evicted = true, evictedReason = Some(lcm.toString)) }, lcm.toString)
           case None =>
             val strategy = lcm.getStrategy
