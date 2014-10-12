@@ -225,7 +225,7 @@ object Logic {
         if (newlyFalse.nonEmpty)
           newlyFalse
         else // should never happen due to the acyclic negation rule
-          error(s"No progress:\n\tclauses: $clauses\n\tpossibly true: $possiblyTrue")
+          sys.error(s"No progress:\n\tclauses: $clauses\n\tpossibly true: $possiblyTrue")
       }
     }
 

@@ -131,7 +131,7 @@ private abstract class AbstractProcessBuilder extends ProcessBuilder with SinkPa
     {
       val buffer = new StringBuffer
       val code = this ! BasicIO(buffer, log, withIn)
-      if (code == 0) buffer.toString else error("Nonzero exit value: " + code)
+      if (code == 0) buffer.toString else sys.error("Nonzero exit value: " + code)
     }
   def !! = getString(None, false)
   def !!(log: ProcessLogger) = getString(Some(log), false)
@@ -190,7 +190,7 @@ private abstract class BasicProcess extends Process {
 
 private abstract class CompoundProcess extends BasicProcess {
   def destroy() { destroyer() }
-  def exitValue() = getExitValue().getOrElse(error("No exit code: process destroyed."))
+  def exitValue() = getExitValue().getOrElse(sys.error("No exit code: process destroyed."))
 
   def start() = getExitValue
 
@@ -426,7 +426,7 @@ private object Streamed {
       def next(): Stream[T] =
         q.take match {
           case Left(0)    => Stream.empty
-          case Left(code) => if (nonzeroException) error("Nonzero exit code: " + code) else Stream.empty
+          case Left(code) => if (nonzeroException) sys.error("Nonzero exit code: " + code) else Stream.empty
           case Right(s)   => Stream.cons(s, next)
         }
       new Streamed((s: T) => q.put(Right(s)), code => q.put(Left(code)), () => next())

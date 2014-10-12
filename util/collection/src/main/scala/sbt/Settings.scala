@@ -92,7 +92,7 @@ trait Init[Scope] {
    * Only the static dependencies are tracked, however.  Dependencies on previous values do not introduce a derived setting either.
    */
   final def derive[T](s: Setting[T], allowDynamic: Boolean = false, filter: Scope => Boolean = const(true), trigger: AttributeKey[_] => Boolean = const(true), default: Boolean = false): Setting[T] = {
-    deriveAllowed(s, allowDynamic) foreach error
+    deriveAllowed(s, allowDynamic) foreach sys.error
     val d = new DerivedSetting[T](s.key, s.init, s.pos, filter, trigger)
     if (default) d.default() else d
   }
@@ -248,7 +248,7 @@ trait Init[Scope] {
     new Undefined(fakeUndefinedSetting(definingKey, derived), referencedKey)
   private[this] def fakeUndefinedSetting[T](definingKey: ScopedKey[T], d: Boolean): Setting[T] =
     {
-      val init: Initialize[T] = pure(() => error("Dummy setting for compatibility only."))
+      val init: Initialize[T] = pure(() => sys.error("Dummy setting for compatibility only."))
       new Setting(definingKey, init, NoPosition) { override def isDerived = d }
     }
 
