@@ -27,7 +27,7 @@ object Credentials {
   def toDirect(c: Credentials): DirectCredentials = c match {
     case dc: DirectCredentials => dc
     case fc: FileCredentials => loadCredentials(fc.path) match {
-      case Left(err) => error(err)
+      case Left(err) => sys.error(err)
       case Right(dc) => dc
     }
   }
