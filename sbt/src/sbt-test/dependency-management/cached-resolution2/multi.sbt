@@ -5,8 +5,10 @@ def commonSettings: Seq[Def.Setting[_]] =
     ivyPaths := new IvyPaths( (baseDirectory in ThisBuild).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),
     dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",
     libraryDependencies := Seq(
-      "org.springframework" % "spring-core" % "3.2.2.RELEASE" force() exclude("org.springframework", "spring-asm"),
-      "org.springframework" % "spring-context" % "4.0.3.RELEASE" exclude("org.springframework", "spring-asm")
+      "org.springframework"  % "spring-core"     % "3.2.2.RELEASE" force() exclude("org.springframework", "spring-asm"),
+      "org.springframework"  % "spring-tx"       % "3.1.2.RELEASE" force() exclude("org.springframework", "spring-asm"),
+      "org.springframework"  % "spring-beans"    % "3.2.2.RELEASE" force() exclude("org.springframework", "spring-asm"),
+      "org.springframework"  % "spring-context"  % "3.1.2.RELEASE" force() exclude("org.springframework", "spring-asm")
     ),
     scalaVersion := "2.10.4",
     resolvers += Resolver.sonatypeRepo("snapshots")
@@ -25,7 +27,12 @@ lazy val b = project.
 
 lazy val c = project.
   dependsOn(a).
-  settings(cachedResolutionSettings: _*)
+  settings(cachedResolutionSettings: _*).
+  settings(
+    libraryDependencies := Seq(
+      "org.springframework" % "spring-core" % "4.0.3.RELEASE" exclude("org.springframework", "spring-asm")
+    )
+  )
 
 lazy val root = (project in file(".")).
   aggregate(a, b, c).
@@ -37,6 +44,25 @@ lazy val root = (project in file(".")).
       val acp = (externalDependencyClasspath in Compile in a).value.sortBy {_.data.getName}
       val bcp = (externalDependencyClasspath in Compile in b).value.sortBy {_.data.getName}
       val ccp = (externalDependencyClasspath in Compile in c).value.sortBy {_.data.getName}
+      
+      if (!(acp exists {_.data.getName contains "spring-core-3.2.2.RELEASE"})) {
+        sys.error("spring-core-3.2.2 is not found")
+      }
+      if (!(bcp exists {_.data.getName contains "spring-core-3.2.2.RELEASE"})) {
+        sys.error("spring-core-3.2.2 is not found")
+      }
+      if (!(ccp exists {_.data.getName contains "spring-core-3.2.2.RELEASE"})) {
+        sys.error("spring-core-3.2.2 is not found")
+      }
+      if (!(acp exists {_.data.getName contains "spring-tx-3.1.2.RELEASE"})) {
+        sys.error("spring-tx-3.1.2 is not found")
+      }
+      if (!(bcp exists {_.data.getName contains "spring-tx-3.1.2.RELEASE"})) {
+        sys.error("spring-tx-3.1.2 is not found")
+      }
+      if (!(ccp exists {_.data.getName contains "spring-tx-3.1.2.RELEASE"})) {
+        sys.error("spring-tx-3.1.2 is not found")
+      }
       if (acp == bcp && acp == ccp) ()
       else sys.error("Different classpaths are found:" +
         "\n - a (consolidated)  " + acp.toString +

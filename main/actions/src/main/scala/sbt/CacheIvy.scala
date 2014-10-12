@@ -81,8 +81,8 @@ object CacheIvy {
   implicit def organizationArtifactReportFormat(implicit sf: Format[String], bf: Format[Boolean], df: Format[Seq[ModuleReport]]): Format[OrganizationArtifactReport] =
     wrap[OrganizationArtifactReport, (String, String, Seq[ModuleReport])](m => (m.organization, m.name, m.modules), { case (o, n, r) => OrganizationArtifactReport(o, n, r) })
   implicit def callerFormat: Format[Caller] =
-    wrap[Caller, (ModuleID, Seq[String], Map[String, String], Boolean, Boolean, Boolean)](c => (c.caller, c.callerConfigurations, c.callerExtraAttributes, c.isForceDependency, c.isChangingDependency, c.isTransitiveDependency),
-      { case (c, cc, ea, fd, cd, td) => new Caller(c, cc, ea, fd, cd, td) })
+    wrap[Caller, (ModuleID, Seq[String], Map[String, String], Boolean, Boolean, Boolean, Boolean)](c => (c.caller, c.callerConfigurations, c.callerExtraAttributes, c.isForceDependency, c.isChangingDependency, c.isTransitiveDependency, c.isDirectlyForceDependency),
+      { case (c, cc, ea, fd, cd, td, df) => new Caller(c, cc, ea, fd, cd, td, df) })
   implicit def exclusionRuleFormat(implicit sf: Format[String]): Format[ExclusionRule] =
     wrap[ExclusionRule, (String, String, String, Seq[String])](e => (e.organization, e.name, e.artifact, e.configurations), { case (o, n, a, cs) => ExclusionRule(o, n, a, cs) })
   implicit def crossVersionFormat: Format[CrossVersion] = wrap(crossToInt, crossFromInt)
