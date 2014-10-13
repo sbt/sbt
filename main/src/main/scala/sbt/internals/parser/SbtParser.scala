@@ -439,8 +439,15 @@ private[sbt] object XmlContent {
    */
   private def areBracketsNecessary(statement: String): Boolean = {
     val doubleSlash = statement.indexOf(DOUBLE_SLASH)
-    val endOfLine = statement.indexOf(END_OF_LINE)
-    if (doubleSlash == NOT_FOUND_INDEX || (doubleSlash < endOfLine)) {
+
+    if (doubleSlash != NOT_FOUND_INDEX) {
+      val endOfLine = statement.indexOf(END_OF_LINE, doubleSlash)
+      if (endOfLine == NOT_FOUND_INDEX) {
+        false
+      } else {
+        areBracketsNecessary(statement.substring(endOfLine))
+      }
+    } else {
       val roundBrackets = statement.lastIndexOf(OPEN_CURLY_BRACKET)
       val braces = statement.lastIndexOf(OPEN_PARENTHESIS)
       val max = roundBrackets.max(braces)
@@ -450,8 +457,7 @@ private[sbt] object XmlContent {
         val trimmed = statement.substring(max + 1).trim
         trimmed.nonEmpty
       }
-    } else {
-      false
+
     }
   }
 }
