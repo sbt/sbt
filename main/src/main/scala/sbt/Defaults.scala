@@ -264,9 +264,9 @@ object Defaults extends BuildCommon {
     definedSbtPlugins <<= discoverPlugins,
     discoveredSbtPlugins <<= discoverSbtPluginNames,
     inTask(run)(runnerTask :: Nil).head,
-    selectMainClass := mainClass.value orElse selectRunMain(discoveredMainClasses.value),
+    selectMainClass := pickMainClass(discoveredMainClasses.value) orElse askForMainClass(discoveredMainClasses.value),
     mainClass in run := (selectMainClass in run).value,
-    mainClass := selectPackageMain(discoveredMainClasses.value),
+    mainClass := pickMainClassOrWarn(discoveredMainClasses.value, streams.value.log),
     run <<= runTask(fullClasspath, mainClass in run, runner in run),
     runMain <<= runMainTask(fullClasspath, runner in run),
     copyResources <<= copyResourcesTask
@@ -662,10 +662,22 @@ object Defaults extends BuildCommon {
       new Package.Configuration(srcs, path, options)
     }
 
-  def selectRunMain(classes: Seq[String]): Option[String] =
+  @deprecated("use Defaults.askForMainClass", "0.13.7")
+  def selectRunMain(classes: Seq[String]): Option[String] = askForMainClass(classes)
+  @deprecated("use Defaults.pickMainClass", "0.13.7")
+  def selectPackageMain(classes: Seq[String]): Option[String] = pickMainClass(classes)
+  def askForMainClass(classes: Seq[String]): Option[String] =
     sbt.SelectMainClass(Some(SimpleReader readLine _), classes)
-  def selectPackageMain(classes: Seq[String]): Option[String] =
+  def pickMainClass(classes: Seq[String]): Option[String] =
     sbt.SelectMainClass(None, classes)
+  private def pickMainClassOrWarn(classes: Seq[String], logger: Logger): Option[String] = {
+    classes match {
+      case Nil                           => logger.warn("No main class detected")
+      case multiple if multiple.size > 1 => logger.warn("Multiple main classes detected.  Run 'show discoveredMainClasses' to see the list")
+      case _                             =>
+    }
+    pickMainClass(classes)
+  }
 
   def doClean(clean: Seq[File], preserve: Seq[File]): Unit =
     IO.withTemporaryDirectory { temp =>
