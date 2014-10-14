@@ -23,10 +23,13 @@ private[sbt] object SbtParser {
 sealed trait ParsedSbtFileExpressions {
   /** The set of parsed import expressions. */
   def imports: Seq[(String, Int)]
+
   /** The set of parsed defintions and/or sbt build settings. */
   def settings: Seq[(String, LineRange)]
+
   /** The set of scala tree's for parsed definitions/settings and the underlying string representation.. */
   def settingsTrees: Seq[(String, Tree)]
+
   /** Represents the changes we had to perform to the sbt file so that XML will parse correctly. */
   def modifiedContent: String
 }
@@ -229,13 +232,17 @@ private[sbt] object XmlContent {
       (accSeqIndex, el) =>
         val (statement, startIndex, endIndex) = el
         val (accSeq, index) = accSeqIndex
-        val textStatementOption = if (index >= startIndex) {
-          None
+        val (st, textStatementOption) = if (index >= startIndex) {
+          (statement, None)
         } else {
           val s = content.substring(index, startIndex)
-          Some((s, false))
+          if (s.trim.isEmpty) {
+            (statement + s, None)
+          } else {
+            (statement, Some((s, false)))
+          }
         }
-        val newAccSeq = (statement, true) +: addOptionToCollection(accSeq, textStatementOption)
+        val newAccSeq = (st, true) +: addOptionToCollection(accSeq, textStatementOption)
         (newAccSeq, endIndex)
     }
     val endOfFile = content.substring(index, content.length)
@@ -352,18 +359,22 @@ private[sbt] object XmlContent {
    * @return content with xml with brackets
    */
   private def addExplicitXmlContent(content: String, xmlParts: Seq[(String, Int, Int)]): String = {
-    val statements: Seq[(String, Boolean)] = splitFile(content, xmlParts)
-    val (correctedStmt, shouldAddCloseBrackets, wasXml, _) = addBracketsIfNecessary(statements)
+    val statementsXml = splitFile(content, xmlParts)
+    val (correctedStmt, shouldAddCloseBrackets, wasXml, _) = addBracketsIfNecessary(statementsXml)
     val closeIfNecessaryCorrectedStmt =
       if (shouldAddCloseBrackets && wasXml) {
-        correctedStmt.head +: CLOSE_BRACKET +: correctedStmt.tail
+        if (correctedStmt.head.trim.isEmpty) {
+          CLOSE_BRACKET +: correctedStmt
+        } else {
+          correctedStmt.head +: CLOSE_BRACKET +: correctedStmt.tail
+        }
       } else {
         correctedStmt
       }
     closeIfNecessaryCorrectedStmt.reverse.mkString
   }
 
-  def addBracketsIfNecessary(statements: Seq[(String, Boolean)]): (Seq[String], Boolean, Boolean, String) = {
+  private def addBracketsIfNecessary(statements: Seq[(String, Boolean)]): (Seq[String], Boolean, Boolean, String) = {
     statements.foldLeft((Seq.empty[String], false, false, "")) {
       case ((accStmt, shouldAddCloseBracket, prvWasXml, prvStmt), (stmt, isXml)) =>
         if (stmt.trim.isEmpty) {
