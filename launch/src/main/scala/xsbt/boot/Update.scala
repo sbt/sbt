@@ -305,12 +305,12 @@ final class Update(config: UpdateConfiguration) {
     settings.addRepositoryCacheManager(manager)
     settings.setDefaultRepositoryCacheManager(manager)
   }
-  private def toIvyRepository(settings: IvySettings, repo: xsbti.Repository) =
+  private[boot] def toIvyRepository(settings: IvySettings, repo: xsbti.Repository) =
     {
       import xsbti.Predefined._
       repo match {
         case m: xsbti.MavenRepository => mavenResolver(m.id, m.url.toString)
-        case i: xsbti.IvyRepository   => urlResolver(i.id, i.url.toString, i.ivyPattern, i.artifactPattern, i.mavenCompatible, i.descriptorOptional, i.skipConsistencyCheck)
+        case i: xsbti.IvyRepository   => ivyResolver(i.id, i.url.toString, i.ivyPattern, i.artifactPattern, i.mavenCompatible, i.descriptorOptional, i.skipConsistencyCheck)
         case p: xsbti.PredefinedRepository => p.id match {
           case Local                                      => localResolver(settings.getDefaultIvyUserDir.getAbsolutePath)
           case MavenLocal                                 => mavenLocal
@@ -327,12 +327,13 @@ final class Update(config: UpdateConfiguration) {
     }
   }
   /** Uses the pattern defined in BuildConfiguration to download sbt from Google code.*/
-  private def urlResolver(id: String, base: String, ivyPattern: String, artifactPattern: String, mavenCompatible: Boolean, descriptorOptional: Boolean, skipConsistencyCheck: Boolean) =
+  private def ivyResolver(id: String, base: String, ivyPattern: String, artifactPattern: String, mavenCompatible: Boolean, descriptorOptional: Boolean, skipConsistencyCheck: Boolean) =
     {
-      val resolver = new URLResolver
+      val (resolver, newBase) = if (base.startsWith("file:")) (new FileSystemResolver, base.substring(5)) else (new URLResolver, base)
+      println(base)
       resolver.setName(id)
-      resolver.addIvyPattern(adjustPattern(base, ivyPattern))
-      resolver.addArtifactPattern(adjustPattern(base, artifactPattern))
+      resolver.addIvyPattern(adjustPattern(newBase, ivyPattern))
+      resolver.addArtifactPattern(adjustPattern(newBase, artifactPattern))
       resolver.setM2compatible(mavenCompatible)
       resolver.setDescriptor(if (descriptorOptional) BasicResolver.DESCRIPTOR_OPTIONAL else BasicResolver.DESCRIPTOR_REQUIRED)
       resolver.setCheckconsistency(!skipConsistencyCheck)
