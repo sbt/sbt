@@ -200,9 +200,7 @@ private[sbt] object XmlContent {
 
   private val DOUBLE_SLASH = "//"
 
-  private val OPEN_BRACKET = s" $OPEN_CURLY_BRACKET "
-
-  private val CLOSE_BRACKET = " ) "
+  private val CLOSE_XML_STATEMENT = ";"
 
   /**
    *
@@ -356,7 +354,7 @@ private[sbt] object XmlContent {
     val (correctedStmt, shouldAddCloseBrackets, wasXml, _) = addBracketsIfNecessary(statements)
     val closeIfNecessaryCorrectedStmt =
       if (shouldAddCloseBrackets && wasXml) {
-        correctedStmt.head +: CLOSE_BRACKET +: correctedStmt.tail
+        correctedStmt.head +: CLOSE_XML_STATEMENT +: correctedStmt.tail
       } else {
         correctedStmt
       }
@@ -372,7 +370,7 @@ private[sbt] object XmlContent {
           val (newShouldAddCloseBracket, newStmtAcc) = if (isXml) {
             addOpenBracketIfNecessary(accStmt, shouldAddCloseBracket, prvWasXml, prvStmt)
           } else if (shouldAddCloseBracket) {
-            (false, CLOSE_BRACKET +: accStmt)
+            (false, CLOSE_XML_STATEMENT +: accStmt)
           } else {
             (false, accStmt)
           }
@@ -386,11 +384,7 @@ private[sbt] object XmlContent {
     if (prvWasXml) {
       (shouldAddCloseBracket, stmtAcc)
     } else {
-      if (areBracketsNecessary(prvStatement)) {
-        (true, OPEN_BRACKET +: stmtAcc)
-      } else {
-        (false, stmtAcc)
-      }
+      (areBracketsNecessary(prvStatement), stmtAcc)
     }
 
   /**

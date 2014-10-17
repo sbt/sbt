@@ -1,0 +1,16 @@
+import sbt._
+
+val scmpom = taskKey[xml.NodeBuffer]("Node buffer")
+
+scmpom := <scm>
+    <url>git@github.com:mohiva/play-html-compressor.git</url>
+    <connection>scm:git:git@github.com:mohiva/play-html-compressor.git</connection>
+  </scm>
+ <developers>
+    <developer>
+      <id>akkie</id>
+      <name>Christian Kaps</name>
+      <url>http://mohiva.com</url>
+    </developer>
+  </developers>
+  <a></a>
