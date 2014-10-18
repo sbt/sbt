@@ -13,7 +13,8 @@ private[sbt] object JsonUtil {
       implicit val formats = native.Serialization.formats(NoTypeHints) +
         new ConfigurationSerializer +
         new ArtifactSerializer +
-        new FileSerializer
+        new FileSerializer +
+        new URLSerializer
       try {
         val json = jawn.support.json4s.Parser.parseFromFile(path)
         fromLite(json.get.extract[UpdateReportLite], cachedDescriptor)
@@ -60,6 +61,15 @@ private[sbt] object JsonUtil {
 
 private[sbt] case class UpdateReportLite(configurations: Seq[ConfigurationReportLite])
 private[sbt] case class ConfigurationReportLite(configuration: String, details: Seq[OrganizationArtifactReport])
+
+private[sbt] class URLSerializer extends CustomSerializer[URL](format => (
+  {
+    case JString(s) => new URL(s)
+  },
+  {
+    case x: URL => JString(x.toString)
+  }
+))
 
 private[sbt] class FileSerializer extends CustomSerializer[File](format => (
   {
