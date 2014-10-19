@@ -70,4 +70,4 @@ abstract class AbstractSessionSettingsSpec(folder: String) extends AbstractSpec 
 
 class SessionSettingsSpec extends AbstractSessionSettingsSpec("session-settings")
 
-//class SessionSettingsQuickSpec extends AbstractSessionSettingsSpec("session-settings-quick", true)
+class SessionSettingsQuickSpec extends AbstractSessionSettingsSpec("session-settings-quick")
