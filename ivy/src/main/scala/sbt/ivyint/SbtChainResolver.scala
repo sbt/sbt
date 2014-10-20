@@ -57,12 +57,20 @@ class SbtChainResolver(name: String, resolvers: Seq[DependencyResolver], setting
   // and if a previously resolved or cached revision has been found.
   def doGetDependency(dd: DependencyDescriptor, data0: ResolveData): ResolvedModuleRevision =
     {
+      // useLatest - Means we should always download the JARs from the internet, no matter what.
+      //             This will only be true *IF* the depenendency is dynamic/changing *and* latestSnapshots is true.
+      // If you find multiple candidates,
+      // - If `isReturnFirst` is true, you return the first value found
+      // - If not, we will ATTEMPT to look at the publish date, which is not correctly discovered for Maven modules and
+      //   leads to undefined behavior.
       val useLatest = (dd.isChanging || (IvySbt.isChanging(dd.getDependencyRevisionId))) && updateOptions.latestSnapshots
       if (useLatest) {
         Message.verbose(s"${getName} is changing. Checking all resolvers on the chain")
       }
       val data = new ResolveData(data0, doValidate(data0))
+      // Returns the value if we've already been resolved from some other branch of the resolution tree.
       val resolved = Option(data.getCurrentResolvedModuleRevision)
+      // If we don't have any previously resolved date, we try to pull the value from the cache.
       val resolvedOrCached =
         resolved orElse {
           Message.verbose(getName + ": Checking cache for: " + dd)
@@ -71,50 +79,41 @@ class SbtChainResolver(name: String, resolvers: Seq[DependencyResolver], setting
             forcedRevision(mr)
           }
         }
+
+      // Default value for resolution.  We use this while we loop...
+      //  If useLatest is true, we want to try to download from the internet so we DO NOT start with a valid value.
       var temp: Option[ResolvedModuleRevision] =
         if (useLatest) None
         else resolvedOrCached
+      // Cast resolvers to something useful. TODO - we dropping anything here?
       val resolvers = getResolvers.toArray.toVector collect { case x: DependencyResolver => x }
+
+      // Here we do an attempt to resolve the artifact from each of the resolvers in the chain.
+      // -  If we have a return value already, AND isReturnFirst is true AND useLatest is false, we DO NOT resolve anything
+      // -  If we do not, try to resolve.
+      // RETURNS:   Left -> Error
+      //            Right -> Some(resolved module)  // Found in this resolver, can use this result.
+      //            Right -> None                   // Do not use this resolver
       val results = resolvers map { x =>
-        // if the revision is cached and isReturnFirst is set, don't bother hitting any resolvers
+        // if the revision is cached and isReturnFirst is set, don't bother hitting any resolvers, just return None for this guy.
         if (isReturnFirst && temp.isDefined && !useLatest) Right(None)
         else {
+          // We actually do resolution.
           val resolver = x
           val oldLatest: Option[LatestStrategy] = setLatestIfRequired(resolver, Option(getLatestStrategy))
           try {
             val previouslyResolved = temp
             // if the module qualifies as changing, then resolve all resolvers
-            if (useLatest) data.setCurrentResolvedModuleRevision(None.orNull)
+            if (useLatest) data.setCurrentResolvedModuleRevision(null)
             else data.setCurrentResolvedModuleRevision(temp.orNull)
             temp = Option(resolver.getDependency(dd, data))
-            val retval = Right(
+            Right(
               if (temp eq previouslyResolved) None
               else if (useLatest) temp map { x =>
                 (reparseModuleDescriptor(dd, data, resolver, x), resolver)
               }
               else temp map { x => (forcedRevision(x), resolver) }
             )
-            retval match {
-              case Right(Some((rmr, _))) =>
-                rmr.getDescriptor.getPublicationDate match {
-                  case null =>
-                    (resolver.findIvyFileRef(dd, data), rmr.getDescriptor) match {
-                      case (null, _) =>
-                        // In this instance, the dependency is specified by a direct URL or some other sort of "non-ivy" file
-                        if (dd.isChanging)
-                          Message.warn(s"Resolving a changing dependency (${rmr.getId}) with no ivy/pom file!, resolution order is undefined!")
-                      case (ivf, dmd: DefaultModuleDescriptor) =>
-                        val lmd = new java.util.Date(ivf.getLastModified)
-                        Message.debug(s"Getting no publication date from resolver: ${resolver} for ${rmr.getId}, setting to: ${lmd}")
-                        dmd.setPublicationDate(lmd)
-                      case _ =>
-                        Message.warn(s"Getting null publication date from resolver: ${resolver} for ${rmr.getId}, resolution order is undefined!")
-                    }
-                  case _ => // All other cases ok
-                }
-              case _ =>
-            }
-            retval
           } catch {
             case ex: Exception =>
               Message.verbose("problem occurred while resolving " + dd + " with " + resolver
@@ -130,7 +129,24 @@ class SbtChainResolver(name: String, resolvers: Seq[DependencyResolver], setting
       val foundRevisions: Vector[(ResolvedModuleRevision, DependencyResolver)] = results collect { case Right(Some(x)) => x }
       val sorted =
         if (useLatest) (foundRevisions.sortBy {
-          case (rmr, _) =>
+          case (rmr, resolver) =>
+            // Just issue warning about issues with publication date, and fake one on it for now.
+            rmr.getDescriptor.getPublicationDate match {
+              case null =>
+                (resolver.findIvyFileRef(dd, data), rmr.getDescriptor) match {
+                  case (null, _) =>
+                    // In this instance, the dependency is specified by a direct URL or some other sort of "non-ivy" file
+                    if (dd.isChanging)
+                      Message.warn(s"Resolving a changing dependency (${rmr.getId}) with no ivy/pom file!, resolution order is undefined!")
+                  case (ivf, dmd: DefaultModuleDescriptor) =>
+                    val lmd = new java.util.Date(ivf.getLastModified)
+                    Message.debug(s"Getting no publication date from resolver: ${resolver} for ${rmr.getId}, setting to: ${lmd}")
+                    dmd.setPublicationDate(lmd)
+                  case _ =>
+                    Message.warn(s"Getting null publication date from resolver: ${resolver} for ${rmr.getId}, resolution order is undefined!")
+                }
+              case _ => // All other cases ok
+            }
             rmr.getDescriptor.getPublicationDate match {
               case null => 0L
               case d    => d.getTime
@@ -141,8 +157,7 @@ class SbtChainResolver(name: String, resolvers: Seq[DependencyResolver], setting
             val artifactOpt = findFirstArtifactRef(rmr.getDescriptor, dd, data, resolver)
             artifactOpt match {
               case None if resolver.getName == "inter-project" => // do nothing
-              case None => throw new RuntimeException("\t" + resolver.getName
-                + ": no ivy file nor artifact found for " + rmr)
+              case None                                        => throw new RuntimeException(s"\t${resolver.getName}: no ivy file nor artifact found for $rmr")
               case Some(artifactRef) =>
                 val systemMd = toSystem(rmr.getDescriptor)
                 getRepositoryCacheManager.cacheModuleDescriptor(resolver, artifactRef,
@@ -150,7 +165,8 @@ class SbtChainResolver(name: String, resolvers: Seq[DependencyResolver], setting
             }
             rmr
         }
-        else foundRevisions.reverse.headOption map { _._1 }
+        else foundRevisions.reverse.headOption map { _._1 } // we have to reverse because resolvers are hit in reverse order.
+      // If the value is arleady in cache, SORTED will be a Seq(None, None, ...) which means we'll fall over to the prevously cached or resolved version.
       val mrOpt: Option[ResolvedModuleRevision] = sorted orElse resolvedOrCached
       mrOpt match {
         case None if errors.size == 1 =>
