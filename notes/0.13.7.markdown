@@ -32,6 +32,7 @@
   [1621]: https://github.com/sbt/sbt/pull/1621
   [1631]: https://github.com/sbt/sbt/pull/1631
   [1642]: https://github.com/sbt/sbt/pull/1642
+  [1683]: https://github.com/sbt/sbt/pull/1683
 
 ### Fixes with compatibility implications
 
@@ -61,7 +62,7 @@
   [#1611][1611]/[#1618][1618] by [@jsuereth][@jsuereth]
 - Fixes NullPointerException when using `ChainResolver` and Maven repositories. [#1611][1611]/[#1618][1618] by [@jsuereth][@jsuereth]
 - Fixes `Resolver`'s `url` method dropping `descriptorOptional` and `skipConsistencyCheck`. [#1621][1621] by [@tmandke][@tmandke]
-- Revert `useLatestSnapshot` on `updateOptions` to default to `false`.  Reverts chain resolver to previous behavior.  []/[] by [@jsuereth][@jsuereth]
+- Revert `useLatestSnapshot` on `updateOptions` to default to `false`.  Reverts chain resolver to previous behavior.  [#1683]/[1683] by [@jsuereth][@jsuereth]
 
 ### Natural whitespace handling
 
