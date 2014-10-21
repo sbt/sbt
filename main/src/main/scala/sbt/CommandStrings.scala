@@ -260,7 +260,11 @@ $LoadProject plugins
 
 $LoadProject return
 
-\t(Re)loads the root project (and leaves the plugins project)."""
+\t(Re)loads the root project (and leaves the plugins project).
+
+$LoadProject project
+
+\t(Re)loads the project specified by defaultProject setting (and leaves the plugins project)."""
 
   def InitCommand = "initialize"
   def InitBrief = (InitCommand, "Initializes command processing.")

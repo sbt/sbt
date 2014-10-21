@@ -150,7 +150,8 @@ object Defaults extends BuildCommon {
     aggregate :== true,
     maxErrors :== 100,
     fork :== false,
-    initialize :== {}
+    initialize :== {},
+    defaultProject := None
   ))
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] = inTask(key)(Seq(
     tags := Seq(Tags.Test -> 1),
@@ -917,6 +918,7 @@ object Defaults extends BuildCommon {
     )
   @deprecated("Default settings split into coreDefaultSettings and IvyModule/JvmModule plugins.", "0.13.2")
   lazy val defaultSettings: Seq[Setting[_]] = projectBaseSettings ++ defaultConfigs
+>>>>>>> aa4ee809e59ee119d14684bdde34d2f1e5958510
 }
 object Classpaths {
   import Path._
