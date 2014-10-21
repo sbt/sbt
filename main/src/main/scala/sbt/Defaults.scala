@@ -751,7 +751,7 @@ object Defaults extends BuildCommon {
   def mainRunMainTask = runMain <<= runMainTask(fullClasspath in Runtime, runner in run)
 
   def discoverMainClasses(analysis: inc.Analysis): Seq[String] =
-    Discovery.applications(Tests.allDefs(analysis)) collect { case (definition, discovered) if (discovered.hasMain) => definition.name }
+    Discovery.applications(Tests.allDefs(analysis)).collect({ case (definition, discovered) if discovered.hasMain => definition.name }).sorted
 
   def consoleProjectTask = (state, streams, initialCommands in consoleProject) map { (state, s, extra) => ConsoleProject(state, extra)(s.log); println() }
   def consoleTask: Initialize[Task[Unit]] = consoleTask(fullClasspath, console)
