@@ -12,9 +12,11 @@ import core.resolve._
 import core.module.id.{ ModuleRevisionId, ModuleId => IvyModuleId }
 import core.report.{ ResolveReport, ConfigurationResolveReport, DownloadReport }
 import core.module.descriptor.{ DefaultModuleDescriptor, ModuleDescriptor, DependencyDescriptor, Configuration => IvyConfiguration, ExcludeRule, IncludeRule }
+import core.module.descriptor.OverrideDependencyDescriptorMediator
 import core.{ IvyPatternHelper, LogOptions }
 import org.apache.ivy.util.Message
 import org.apache.ivy.plugins.latest.{ ArtifactInfo => IvyArtifactInfo }
+import org.apache.ivy.plugins.matcher.{ MapMatcher, PatternMatcher }
 
 private[sbt] object CachedResolutionResolveCache {
   def createID(organization: String, name: String, revision: String) =
@@ -58,9 +60,10 @@ private[sbt] class CachedResolutionResolveCache() {
         } getOrElse Vector(dep)
       val expanded = directDependencies(md0) flatMap expandInternalDeps
       val rootModuleConfigs = md0.getConfigurations.toVector
-      expanded map { buildArtificialModuleDescriptor(_, rootModuleConfigs, prOpt) }
+      expanded map { buildArtificialModuleDescriptor(_, rootModuleConfigs, md0, prOpt) }
     }
-  def buildArtificialModuleDescriptor(dd: DependencyDescriptor, rootModuleConfigs: Vector[IvyConfiguration], prOpt: Option[ProjectResolver]): (DefaultModuleDescriptor, Boolean) =
+
+  def buildArtificialModuleDescriptor(dd: DependencyDescriptor, rootModuleConfigs: Vector[IvyConfiguration], parent: ModuleDescriptor, prOpt: Option[ProjectResolver]): (DefaultModuleDescriptor, Boolean) =
     {
       def excludeRuleString(rule: ExcludeRule): String =
         s"""Exclude(${rule.getId},${rule.getConfigurations.mkString(",")},${rule.getMatcher})"""
@@ -82,8 +85,10 @@ private[sbt] class CachedResolutionResolveCache() {
           case rules    => Some(conf + "->(" + (rules map includeRuleString).mkString(",") + ")")
         }
       })
+      val os = extractOverrides(parent)
+      val moduleLevel = s"""dependencyOverrides=${os.mkString(",")}"""
       val depsString = s"""$mrid;${confMap.mkString(",")};isForce=${dd.isForce};isChanging=${dd.isChanging};isTransitive=${dd.isTransitive};""" +
-        s"""exclusions=${exclusions.mkString(",")};inclusions=${inclusions.mkString(",")};"""
+        s"""exclusions=${exclusions.mkString(",")};inclusions=${inclusions.mkString(",")};$moduleLevel;"""
       val sha1 = Hash.toHex(Hash(depsString))
       val md1 = new DefaultModuleDescriptor(createID(sbtOrgTemp, "temp-resolve-" + sha1, "1.0"), "release", null, false) with ArtificialModuleDescriptor {
         def targetModuleRevisionId: ModuleRevisionId = mrid
@@ -92,7 +97,24 @@ private[sbt] class CachedResolutionResolveCache() {
         conf <- rootModuleConfigs
       } yield md1.addConfiguration(conf)
       md1.addDependency(dd)
+      os foreach { ovr =>
+        md1.addDependencyDescriptorMediator(ovr.moduleId, ovr.pm, ovr.ddm)
+      }
       (md1, IvySbt.isChanging(dd))
+    }
+  def extractOverrides(md0: ModuleDescriptor): Vector[IvyOverride] =
+    {
+      import scala.collection.JavaConversions._
+      (md0.getAllDependencyDescriptorMediators.getAllRules).toSeq.toVector sortBy {
+        case (k, v) =>
+          k.toString
+      } collect {
+        case (k: MapMatcher, v: OverrideDependencyDescriptorMediator) =>
+          val attr: Map[Any, Any] = k.getAttributes.toMap
+          val module = IvyModuleId.newInstance(attr(IvyPatternHelper.ORGANISATION_KEY).toString, attr(IvyPatternHelper.MODULE_KEY).toString)
+          val pm = k.getPatternMatcher
+          IvyOverride(module, pm, v)
+      }
     }
   def getOrElseUpdateMiniGraph(md: ModuleDescriptor, changing0: Boolean, logicalClock: LogicalClock, miniGraphPath: File, cachedDescriptor: File, log: Logger)(f: => Either[ResolveException, UpdateReport]): Either[ResolveException, UpdateReport] =
     {
@@ -206,6 +228,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
     val cachedDescriptor = getSettings.getResolutionCacheManager.getResolvedIvyFileInCache(md0.getModuleRevisionId)
     val cache = cachedResolutionResolveCache
     cache.directDependencyCache.remove(md0.getModuleRevisionId)
+    val os = cache.extractOverrides(md0)
     val mds = cache.buildArtificialModuleDescriptors(md0, projectResolver)
     def doWork(md: ModuleDescriptor): Either[ResolveException, UpdateReport] =
       {
@@ -233,7 +256,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
           doWork(md)
         }
     }
-    val uReport = mergeResults(md0, results, missingOk, System.currentTimeMillis - start, log)
+    val uReport = mergeResults(md0, results, missingOk, System.currentTimeMillis - start, os, log)
     val cacheManager = getSettings.getResolutionCacheManager
     cacheManager.saveResolvedModuleDescriptor(md0)
     val prop0 = ""
@@ -241,9 +264,10 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
     IO.write(ivyPropertiesInCache0, prop0)
     uReport
   }
-  def mergeResults(md0: ModuleDescriptor, results: Vector[Either[ResolveException, UpdateReport]], missingOk: Boolean, resolveTime: Long, log: Logger): Either[ResolveException, UpdateReport] =
+  def mergeResults(md0: ModuleDescriptor, results: Vector[Either[ResolveException, UpdateReport]], missingOk: Boolean, resolveTime: Long,
+    os: Vector[IvyOverride], log: Logger): Either[ResolveException, UpdateReport] =
     if (!missingOk && (results exists { _.isLeft })) Left(mergeErrors(md0, results collect { case Left(re) => re }, log))
-    else Right(mergeReports(md0, results collect { case Right(ur) => ur }, resolveTime, log))
+    else Right(mergeReports(md0, results collect { case Right(ur) => ur }, resolveTime, os, log))
   def mergeErrors(md0: ModuleDescriptor, errors: Vector[ResolveException], log: Logger): ResolveException =
     {
       val messages = errors flatMap { _.messages }
@@ -257,7 +281,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       }
       new ResolveException(messages, failed, ListMap(failedPaths: _*))
     }
-  def mergeReports(md0: ModuleDescriptor, reports: Vector[UpdateReport], resolveTime: Long, log: Logger): UpdateReport =
+  def mergeReports(md0: ModuleDescriptor, reports: Vector[UpdateReport], resolveTime: Long, os: Vector[IvyOverride], log: Logger): UpdateReport =
     {
       val cachedDescriptor = getSettings.getResolutionCacheManager.getResolvedIvyFileInCache(md0.getModuleRevisionId)
       val rootModuleConfigs = md0.getConfigurations.toVector
@@ -265,14 +289,14 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       val stats = new UpdateStats(resolveTime, (cachedReports map { _.stats.downloadTime }).sum, (cachedReports map { _.stats.downloadSize }).sum, false)
       val configReports = rootModuleConfigs map { conf =>
         val crs = reports flatMap { _.configurations filter { _.configuration == conf.getName } }
-        mergeConfigurationReports(conf.getName, crs, log)
+        mergeConfigurationReports(conf.getName, crs, os, log)
       }
       new UpdateReport(cachedDescriptor, configReports, stats, Map.empty)
     }
-  def mergeConfigurationReports(rootModuleConf: String, reports: Vector[ConfigurationReport], log: Logger): ConfigurationReport =
+  def mergeConfigurationReports(rootModuleConf: String, reports: Vector[ConfigurationReport], os: Vector[IvyOverride], log: Logger): ConfigurationReport =
     {
       // get the details right, and the rest could be derived
-      val details = mergeOrganizationArtifactReports(rootModuleConf, reports flatMap { _.details }, log)
+      val details = mergeOrganizationArtifactReports(rootModuleConf, reports flatMap { _.details }, os, log)
       val modules = details flatMap {
         _.modules filter { mr =>
           !mr.evicted && mr.problem.isEmpty
@@ -285,13 +309,13 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       } map { _.module }
       new ConfigurationReport(rootModuleConf, modules, details, evicted)
     }
-  def mergeOrganizationArtifactReports(rootModuleConf: String, reports0: Vector[OrganizationArtifactReport], log: Logger): Vector[OrganizationArtifactReport] =
+  def mergeOrganizationArtifactReports(rootModuleConf: String, reports0: Vector[OrganizationArtifactReport], os: Vector[IvyOverride], log: Logger): Vector[OrganizationArtifactReport] =
     (reports0 groupBy { oar => (oar.organization, oar.name) }).toSeq.toVector flatMap {
       case ((org, name), xs) =>
         if (xs.size < 2) xs
-        else Vector(new OrganizationArtifactReport(org, name, mergeModuleReports(rootModuleConf, xs flatMap { _.modules }, log)))
+        else Vector(new OrganizationArtifactReport(org, name, mergeModuleReports(rootModuleConf, xs flatMap { _.modules }, os, log)))
     }
-  def mergeModuleReports(rootModuleConf: String, modules: Vector[ModuleReport], log: Logger): Vector[ModuleReport] =
+  def mergeModuleReports(rootModuleConf: String, modules: Vector[ModuleReport], os: Vector[IvyOverride], log: Logger): Vector[ModuleReport] =
     {
       val merged = (modules groupBy { m => (m.module.organization, m.module.name, m.module.revision) }).toSeq.toVector flatMap {
         case ((org, name, version), xs) =>
@@ -300,12 +324,12 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       }
       val conflicts = merged filter { m => !m.evicted && m.problem.isEmpty }
       if (conflicts.size < 2) merged
-      else resolveConflict(rootModuleConf, conflicts, log) match {
+      else resolveConflict(rootModuleConf, conflicts, os, log) match {
         case (survivor, evicted) =>
           survivor ++ evicted ++ (merged filter { m => m.evicted || m.problem.isDefined })
       }
     }
-  def resolveConflict(rootModuleConf: String, conflicts: Vector[ModuleReport], log: Logger): (Vector[ModuleReport], Vector[ModuleReport]) =
+  def resolveConflict(rootModuleConf: String, conflicts: Vector[ModuleReport], os: Vector[IvyOverride], log: Logger): (Vector[ModuleReport], Vector[ModuleReport]) =
     {
       import org.apache.ivy.plugins.conflict.{ NoConflictManager, StrictConflictManager, LatestConflictManager }
       val head = conflicts.head
@@ -319,7 +343,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
           m.callers.exists { _.isForceDependency }
         })) match {
           case Some(m) =>
-            log.debug(s"- forced dependency: $m")
+            log.debug(s"- forced dependency: $m ${m.callers}")
             (Vector(m), conflicts filterNot { _ == m } map { _.copy(evicted = true, evictedReason = Some(lcm.toString)) }, lcm.toString)
           case None =>
             val strategy = lcm.getStrategy
@@ -331,13 +355,26 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
             }
         }
       def doResolveConflict: (Vector[ModuleReport], Vector[ModuleReport], String) =
-        getSettings.getConflictManager(IvyModuleId.newInstance(organization, name)) match {
-          case ncm: NoConflictManager     => (conflicts, Vector(), ncm.toString)
-          case _: StrictConflictManager   => sys.error((s"conflict was found in $rootModuleConf:$organization:$name " + (conflicts map { _.module }).mkString("(", ", ", ")")))
-          case lcm: LatestConflictManager => useLatest(lcm)
-          case conflictManager            => sys.error(s"Unsupported conflict manager $conflictManager")
+        os find { ovr => ovr.moduleId.getOrganisation == organization && ovr.moduleId.getName == name } match {
+          case Some(ovr) if Option(ovr.ddm.getVersion).isDefined =>
+            val ovrVersion = ovr.ddm.getVersion
+            conflicts find { mr =>
+              mr.module.revision == ovrVersion
+            } match {
+              case Some(m) =>
+                (Vector(m), conflicts filterNot { _ == m } map { _.copy(evicted = true, evictedReason = Some("override")) }, "override")
+              case None =>
+                sys.error(s"override dependency specifies $ovrVersion but no candidates were found: " + (conflicts map { _.module }).mkString("(", ", ", ")"))
+            }
+          case None =>
+            getSettings.getConflictManager(IvyModuleId.newInstance(organization, name)) match {
+              case ncm: NoConflictManager     => (conflicts, Vector(), ncm.toString)
+              case _: StrictConflictManager   => sys.error((s"conflict was found in $rootModuleConf:$organization:$name " + (conflicts map { _.module }).mkString("(", ", ", ")")))
+              case lcm: LatestConflictManager => useLatest(lcm)
+              case conflictManager            => sys.error(s"Unsupported conflict manager $conflictManager")
+            }
         }
-      if (conflicts.size == 2) {
+      if (conflicts.size == 2 && os.isEmpty) {
         val (cf0, cf1) = (conflicts(0).module, conflicts(1).module)
         val cache = cachedResolutionResolveCache
         cache.getOrElseUpdateConflict(cf0, cf1, conflicts) { doResolveConflict }
@@ -345,11 +382,13 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
         val (surviving, evicted, mgr) = doResolveConflict
         (surviving, evicted)
       }
-
     }
 }
 
 private[sbt] case class ModuleReportArtifactInfo(moduleReport: ModuleReport) extends IvyArtifactInfo {
   override def getLastModified: Long = moduleReport.publicationDate map { _.getTime } getOrElse 0L
   override def getRevision: String = moduleReport.module.revision
+}
+private[sbt] case class IvyOverride(moduleId: IvyModuleId, pm: PatternMatcher, ddm: OverrideDependencyDescriptorMediator) {
+  override def toString: String = s"""IvyOverride($moduleId,$pm,${ddm.getVersion},${ddm.getBranch})"""
 }
