@@ -70,3 +70,4 @@ pomPostProcess := { xi: scala.xml.Node =>
   }
 
 credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
+
