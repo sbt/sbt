@@ -4,6 +4,12 @@
 
 > check
 
-> clean
+> a/clean
+
+> b/clean
+
+> c/clean
 
 > check
+
+> check2

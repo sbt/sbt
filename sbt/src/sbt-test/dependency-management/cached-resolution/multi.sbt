@@ -1,4 +1,5 @@
 lazy val check = taskKey[Unit]("Runs the check")
+lazy val check2 = taskKey[Unit]("Runs the check")
 
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
@@ -11,7 +12,6 @@ def commonSettings: Seq[Def.Setting[_]] =
       "commons-io" % "commons-io" % "1.3",
       "com.typesafe" % "config" % "0.4.9-SNAPSHOT"
     ),
-    // dependencyOverrides += "commons-io" % "commons-io" % "1.4",
     scalaVersion := "2.10.4",
     resolvers += Resolver.sonatypeRepo("snapshots")
   )
@@ -37,6 +37,20 @@ lazy val c = project.
     // libraryDependencies := Seq(organization.value %% "a" % version.value)
   )
 
+// overrides cached
+lazy val d = project.
+  settings(consolidatedResolutionSettings: _*).
+  settings(
+    dependencyOverrides += "commons-io" % "commons-io" % "2.0"
+  )
+
+// overrides plain
+lazy val e = project.
+  settings(commonSettings: _*).
+  settings(
+    dependencyOverrides += "commons-io" % "commons-io" % "2.0"
+  )
+
 lazy val root = (project in file(".")).
   settings(
     organization in ThisBuild := "org.example",
@@ -47,8 +61,16 @@ lazy val root = (project in file(".")).
       val ccp = (externalDependencyClasspath in Compile in c).value.sortBy {_.data.getName} filterNot {_.data.getName == "demo_2.10.jar"}
       if (acp == bcp && acp == ccp) ()
       else sys.error("Different classpaths are found:" +
-        "\n - a (consolidated)  " + acp.toString +
+        "\n - a (cached)        " + acp.toString +
         "\n - b (plain)         " + bcp.toString +
         "\n - c (inter-project) " + ccp.toString) 
+    },
+    check2 := {
+      val dcp = (externalDependencyClasspath in Compile in d).value.sortBy {_.data.getName}
+      val ecp = (externalDependencyClasspath in Compile in e).value.sortBy {_.data.getName}
+      if (dcp == ecp) ()
+      else sys.error("Different classpaths are found:" +
+        "\n - d (overrides + cached) " + dcp.toString +
+        "\n - e (overrides + plain)  " + ecp.toString) 
     }
   )
