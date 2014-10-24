@@ -39,6 +39,12 @@
 ### Fixes with compatibility implications
 
 - Maven artifact dependencies will limit their transitive dependencies to `Compile` rather than *every configuration* if no `master` configuration is found. [#1586][1586] by [@jsuereth][@jsuereth]
+- The new natural whitspace handling parser is unable to cope with certain classes of Scala syntax. In particular, top-level pattern matches, or multi-value defintions are no longer supported:
+
+
+    val x, y = project // BAD
+    val x = project  // 
+    val y = project  //  GOOD
 
 ### Improvements
 
