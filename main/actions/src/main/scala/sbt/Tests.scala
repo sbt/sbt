@@ -25,7 +25,7 @@ object Tests {
    * @param events The result of each test group (suite) executed during this test run.
    * @param summaries Explicit summaries directly provided by test frameworks.  This may be empty, in which case a default summary will be generated.
    */
-  final case class Output(overall: TestResult.Value, events: Map[String, SuiteResult], summaries: Iterable[Summary])
+  final case class Output(overall: TestResult.Value, events: Seq[(String, SuiteResult)], summaries: Iterable[Summary])
 
   /**
    * Summarizes a test run.
@@ -246,10 +246,10 @@ object Tests {
     }
 
   def processResults(results: Iterable[(String, SuiteResult)]): Output =
-    Output(overall(results.map(_._2.result)), results.toMap, Iterable.empty)
+    Output(overall(results.map(_._2.result)), results.toSeq, Iterable.empty)
   def foldTasks(results: Seq[Task[Output]], parallel: Boolean): Task[Output] =
     if (results.isEmpty)
-      task { Output(TestResult.Passed, Map.empty, Nil) }
+      task { Output(TestResult.Passed, collection.mutable.ListBuffer.empty, Nil) }
     else if (parallel)
       reduced(results.toIndexedSeq, {
         case (Output(v1, m1, _), Output(v2, m2, _)) => Output(if (v1.id < v2.id) v2 else v1, m1 ++ m2, Iterable.empty)
