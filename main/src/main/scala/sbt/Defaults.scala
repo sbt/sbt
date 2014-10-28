@@ -264,7 +264,7 @@ object Defaults extends BuildCommon {
     definedSbtPlugins <<= discoverPlugins,
     discoveredSbtPlugins <<= discoverSbtPluginNames,
     inTask(run)(runnerTask :: Nil).head,
-    selectMainClass := pickMainClass(discoveredMainClasses.value) orElse askForMainClass(discoveredMainClasses.value),
+    selectMainClass := mainClass.value orElse askForMainClass(discoveredMainClasses.value),
     mainClass in run := (selectMainClass in run).value,
     mainClass := pickMainClassOrWarn(discoveredMainClasses.value, streams.value.log),
     run <<= runTask(fullClasspath, mainClass in run, runner in run),
