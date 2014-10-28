@@ -6,11 +6,26 @@ package compiler
 
 import java.io.{ File, PrintWriter }
 
+import xsbti.{ Severity, Reporter }
+import xsbti.compile.Output
+
+@deprecated("0.13.8", "Please use the new set of compilers in sbt.compilers.javac")
 abstract class JavacContract(val name: String, val clazz: String) {
   def exec(args: Array[String], writer: PrintWriter): Int
 }
+/** An interface we use to call the Java compiler. */
+@deprecated("0.13.8", "Please use the new set of compilers in sbt.compilers.javac")
 trait JavaCompiler extends xsbti.compile.JavaCompiler {
-  def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger)
+  /**
+   * Runs the java compiler
+   *
+   * @param sources  The source files to compile
+   * @param classpath The classpath for the compiler
+   * @param outputDirectory The output directory for class files
+   * @param options The arguments to pass into Javac
+   * @param log  A log in which we write all the output from Javac.
+   */
+  def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger): Unit
 
   def compile(sources: Array[File], classpath: Array[File], output: xsbti.compile.Output, options: Array[String], log: xsbti.Logger): Unit = {
     val outputDirectory = output match {
@@ -20,13 +35,20 @@ trait JavaCompiler extends xsbti.compile.JavaCompiler {
     apply(sources, classpath, outputDirectory, options)(log)
   }
 
+  // TODO - Fix this so that the reporter is actually used.
+  def compileWithReporter(sources: Array[File], classpath: Array[File], output: Output, options: Array[String], reporter: Reporter, log: xsbti.Logger): Unit = {
+    compile(sources, classpath, output, options, log)
+  }
+
   def onArgs(f: Seq[String] => Unit): JavaCompiler
 }
+@deprecated("0.13.8", "Please use the new set of compilers in sbt.compilers.javac")
 trait Javadoc {
   def doc(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], maximumErrors: Int, log: Logger)
 
   def onArgs(f: Seq[String] => Unit): Javadoc
 }
+@deprecated("0.13.8", "Please use the new set of compilers in sbt.compilers.javac")
 trait JavaTool extends Javadoc with JavaCompiler {
   def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger) =
     compile(JavaCompiler.javac, sources, classpath, outputDirectory, options)(log)
@@ -38,7 +60,9 @@ trait JavaTool extends Javadoc with JavaCompiler {
 
   def onArgs(f: Seq[String] => Unit): JavaTool
 }
+@deprecated("0.13.8", "Please use the new set of compilers in sbt.compilers.javac")
 object JavaCompiler {
+  @deprecated("0.13.8", "Please use the new set of compilers in sbt.compilers.javac")
   type Fork = (JavacContract, Seq[String], Logger) => Int
 
   val javac = new JavacContract("javac", "com.sun.tools.javac.Main") {
@@ -56,6 +80,7 @@ object JavaCompiler {
 
   def construct(f: Fork, cp: ClasspathOptions, scalaInstance: ScalaInstance): JavaTool = new JavaTool0(f, cp, scalaInstance, _ => ())
 
+  /** The actual implementation of a JavaTool (javadoc + javac). */
   private[this] class JavaTool0(f: Fork, cp: ClasspathOptions, scalaInstance: ScalaInstance, onArgsF: Seq[String] => Unit) extends JavaTool {
     def onArgs(g: Seq[String] => Unit): JavaTool = new JavaTool0(f, cp, scalaInstance, g)
     def commandArguments(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger): Seq[String] =
@@ -93,7 +118,8 @@ object JavaCompiler {
   def forkJavac(implicit doFork: Fork) = (contract: JavacContract, arguments: Seq[String], log: Logger) =>
     {
       val (jArgs, nonJArgs) = arguments.partition(_.startsWith("-J"))
-      def externalJavac(argFile: File) = doFork(contract, jArgs :+ ("@" + normalizeSlash(argFile.getAbsolutePath)), log)
+      def externalJavac(argFile: File) =
+        doFork(contract, jArgs :+ ("@" + normalizeSlash(argFile.getAbsolutePath)), log)
       withArgumentFile(nonJArgs)(externalJavac)
     }
   val directJavac = (contract: JavacContract, arguments: Seq[String], log: Logger) =>
@@ -108,6 +134,15 @@ object JavaCompiler {
       finally { logger.flushLines(if (exitCode == 0) Level.Warn else Level.Error) }
       exitCode
     }
+
+  /**
+   * Helper method to create an argument file that we pass to Javac.  Gets over the windows
+   * command line length limitation.
+   * @param args The string arguments to pass to Javac.
+   * @param f  A function which is passed the arg file.
+   * @tparam T The return type.
+   * @return  The result of using the argument file.
+   */
   def withArgumentFile[T](args: Seq[String])(f: File => T): T =
     {
       import IO.{ Newline, withTemporaryDirectory, write }
