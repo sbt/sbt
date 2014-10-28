@@ -1,0 +1,6 @@
+[@kretes]: https://github.com/kretes
+[1180]: https://github.com/sbt/sbt/issues/1180
+
+### Improvements
+
+- Discovered main classes are now sorted. [#1180][1180] by [@kretes][@kretes]
