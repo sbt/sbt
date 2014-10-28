@@ -120,7 +120,12 @@ class AggressiveCompile(cacheFile: File) {
 
             val loader = ClasspathUtilities.toLoader(searchClasspath)
             timed("Java compilation", log) {
-              javac.compile(javaSrcs.toArray, absClasspath.toArray, output, options.javacOptions.toArray, log)
+              try javac.compileWithReporter(javaSrcs.toArray, absClasspath.toArray, output, options.javacOptions.toArray, reporter, log)
+              catch {
+                // Handle older APIs
+                case _: NoSuchMethodError =>
+                  javac.compile(javaSrcs.toArray, absClasspath.toArray, output, options.javacOptions.toArray, log)
+              }
             }
 
             def readAPI(source: File, classes: Seq[Class[_]]): Set[String] = {
