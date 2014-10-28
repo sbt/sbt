@@ -216,6 +216,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
   private[sbt] def cachedResolutionResolveCache: CachedResolutionResolveCache
   private[sbt] def projectResolver: Option[ProjectResolver]
   private[sbt] def makeInstance: Ivy
+  private[sbt] val ignoreTransitiveForce: Boolean = true
 
   /**
    * This returns sbt's UpdateReport structure.
@@ -339,19 +340,26 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       def useLatest(lcm: LatestConflictManager): (Vector[ModuleReport], Vector[ModuleReport], String) =
         (conflicts find { m =>
           m.callers.exists { _.isDirectlyForceDependency }
-        } orElse (conflicts find { m =>
-          m.callers.exists { _.isForceDependency }
-        })) match {
+        }) match {
           case Some(m) =>
-            log.debug(s"- forced dependency: $m ${m.callers}")
-            (Vector(m), conflicts filterNot { _ == m } map { _.copy(evicted = true, evictedReason = Some(lcm.toString)) }, lcm.toString)
+            log.debug(s"- directly forced dependency: $m ${m.callers}")
+            (Vector(m), conflicts filterNot { _ == m } map { _.copy(evicted = true, evictedReason = Some("direct-force")) }, "direct-force")
           case None =>
-            val strategy = lcm.getStrategy
-            val infos = conflicts map { ModuleReportArtifactInfo(_) }
-            Option(strategy.findLatest(infos.toArray, None.orNull)) match {
-              case Some(ModuleReportArtifactInfo(m)) =>
-                (Vector(m), conflicts filterNot { _ == m } map { _.copy(evicted = true, evictedReason = Some(lcm.toString)) }, lcm.toString)
-              case _ => (conflicts, Vector(), lcm.toString)
+            (conflicts find { m =>
+              m.callers.exists { _.isForceDependency }
+            }) match {
+              // Ivy translates pom.xml dependencies to forced="true", so transitive force is broken.
+              case Some(m) if !ignoreTransitiveForce =>
+                log.debug(s"- transitively forced dependency: $m ${m.callers}")
+                (Vector(m), conflicts filterNot { _ == m } map { _.copy(evicted = true, evictedReason = Some("transitive-force")) }, "transitive-force")
+              case _ =>
+                val strategy = lcm.getStrategy
+                val infos = conflicts map { ModuleReportArtifactInfo(_) }
+                Option(strategy.findLatest(infos.toArray, None.orNull)) match {
+                  case Some(ModuleReportArtifactInfo(m)) =>
+                    (Vector(m), conflicts filterNot { _ == m } map { _.copy(evicted = true, evictedReason = Some(lcm.toString)) }, lcm.toString)
+                  case _ => (conflicts, Vector(), lcm.toString)
+                }
             }
         }
       def doResolveConflict: (Vector[ModuleReport], Vector[ModuleReport], String) =
