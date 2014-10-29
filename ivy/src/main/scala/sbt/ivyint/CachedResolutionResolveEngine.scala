@@ -330,6 +330,17 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
           survivor ++ evicted ++ (merged filter { m => m.evicted || m.problem.isDefined })
       }
     }
+  /**
+   * resolves dependency resolution conflicts in which multiple candidates are found for organization+name combos.
+   * The main input is conflicts, which is a Vector of ModuleReport, which contains full info on the modulerevision, including its callers.
+   * Conflict resolution could be expensive, so this is first cached to `cachedResolutionResolveCache` if the conflict is between 2 modules.
+   * Otherwise, the default "latest" resolution takes the following precedence:
+   *   1. overrides passed in to `os`.
+   *   2. diretly forced dependency within the artificial module.
+   *   3. latest revision.
+   * Note transitively forced dependencies are not respected. This seems to be the case for stock Ivy's behavior as well,
+   * which may be because Ivy makes all Maven dependencies as forced="true".
+   */
   def resolveConflict(rootModuleConf: String, conflicts: Vector[ModuleReport], os: Vector[IvyOverride], log: Logger): (Vector[ModuleReport], Vector[ModuleReport]) =
     {
       import org.apache.ivy.plugins.conflict.{ NoConflictManager, StrictConflictManager, LatestConflictManager }
