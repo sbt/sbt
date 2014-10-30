@@ -200,13 +200,14 @@ object AggressiveCompile {
         b
       }
     }
-
+  @deprecated("0.13.8", "Deprecated in favor of new sbt.compiler.javac package.")
   def directOrFork(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File]): JavaTool =
     if (javaHome.isDefined)
       JavaCompiler.fork(cpOptions, instance)(forkJavac(javaHome))
     else
       JavaCompiler.directOrFork(cpOptions, instance)(forkJavac(None))
 
+  @deprecated("0.13.8", "Deprecated in favor of new sbt.compiler.javac package.")
   def forkJavac(javaHome: Option[File]): JavaCompiler.Fork =
     {
       import Path._
@@ -225,6 +226,7 @@ object AggressiveCompile {
     }
 }
 
+@deprecated("0.13.8", "Deprecated in favor of new sbt.compiler.javac package.")
 private[sbt] class JavacLogger(log: Logger) extends ProcessLogger {
   import scala.collection.mutable.ListBuffer
   import Level.{ Info, Warn, Error, Value => LogLevel }
