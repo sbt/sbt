@@ -34,6 +34,14 @@ final class DiagnosticsReporter(reporter: Reporter) extends DiagnosticListener[J
       case _ => getRawMessage
     }
   }
+  private def fixSource[T <: JavaFileObject](source: T): Option[String] = {
+    try Option(source).map(_.toUri.normalize).map(new File(_)).map(_.getAbsolutePath)
+    catch {
+      case t: IllegalArgumentException =>
+        // Oracle JDK6 has a super dumb notion of what a URI is
+        Option(source).map(_.toUri.toString)
+    }
+  }
   override def report(d: Diagnostic[_ <: JavaFileObject]) {
     val severity =
       d.getKind match {
@@ -55,12 +63,14 @@ final class DiagnosticsReporter(reporter: Reporter) extends DiagnosticListener[J
             getOrElse("")
         }
         override val offset = Logger.o2m(Option(Integer.valueOf(d.getPosition.toInt)))
-        private val sourceUri = Option(d.getSource).map(_.toUri.toString)
+        private val sourceUri = fixSource(d.getSource)
         override val sourcePath = Logger.o2m(sourceUri)
         override val sourceFile = Logger.o2m(sourceUri.map(new File(_)))
         override val pointer = Logger.o2m(Option.empty[Integer])
         override val pointerSpace = Logger.o2m(Option.empty[String])
-        override def toString = s"${d.getSource}:${d.getLineNumber}"
+        override def toString =
+          if (sourceUri.isDefined) s"${sourceUri.get}:${if (line.isDefined) line.get else -1}"
+          else ""
       }
     reporter.log(pos, msg, severity)
   }
