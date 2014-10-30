@@ -6,12 +6,6 @@
 
 # TODO - Should we merge the main SBT script with this library?
 
-if test -z "$HOME"; then
-  declare -r script_dir="$(dirname $script_path)"
-else
-  declare -r script_dir="$HOME/.sbt"
-fi
-
 declare -a residual_args
 declare -a java_args
 declare -a scalac_args
