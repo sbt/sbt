@@ -81,7 +81,7 @@ addDebugger () {
 get_mem_opts () {
   # if we detect any of these settings in ${java_opts} we need to NOT output our settings.
   # The reason is the Xms/Xmx, if they don't line up, cause errors.
-  if [[ "${java_opts}" == *-Xmx* ]] || [[ "${java_opts}" == *-Xms* ]] || [[ "${java_opts}" == *-XX:MaxPermSize* ]] || [[ "${java_opts}" == *-XX:ReservedCodeCacheSize* ]]; then
+  if [[ "${java_opts}" == *-Xmx* ]] || [[ "${java_opts}" == *-Xms* ]] || [[ "${java_opts}" == *-XX:MaxPermSize* ]] || [[ "${java_opts}" == *-XX:MaxMetaspaceSize* ]] || [[ "${java_opts}" == *-XX:ReservedCodeCacheSize* ]]; then
      echo ""
   else
     # a ham-fisted attempt to move some memory settings in concert
@@ -90,14 +90,10 @@ get_mem_opts () {
     local codecache=$(( $mem / 8 ))
     (( $codecache > 128 )) || codecache=128
     (( $codecache < 512 )) || codecache=512
+    local class_metadata_size=$(( $codecache * 2 ))
+    local class_metadata_opt=$([[ "$java_version" < "1.8" ]] && echo "MaxPermSize" || echo "MaxMetaspaceSize")
 
-    local common_opts="-Xms${mem}m -Xmx${mem}m -XX:ReservedCodeCacheSize=${codecache}m"
-    if [[ "$java_version" < "1.8" ]]; then
-      local perm=$(( $codecache * 2 ))
-      echo "$common_opts -XX:MaxPermSize=${perm}m"
-    else
-      echo "$common_opts"
-    fi
+    echo "-Xms${mem}m -Xmx${mem}m -XX:ReservedCodeCacheSize=${codecache}m -XX:${class_metadata_opt}=${class_metadata_size}m"
   fi
 }
 
