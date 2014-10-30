@@ -4,10 +4,7 @@ import sbt.{ Level, ProcessLogger }
 
 /** Delegates a stream into a process logger. Mimics LoggerWriter, but for the ProcessLogger interface which differs. */
 private class ProcessLoggerWriter(delegate: ProcessLogger, level: Level.Value, nl: String = System.getProperty("line.separator")) extends java.io.Writer {
-
   private[this] val buffer = new StringBuilder
-  private[this] val lines = new collection.mutable.ListBuffer[String]
-
   override def close() = flush()
   override def flush(): Unit =
     synchronized {
@@ -15,12 +12,6 @@ private class ProcessLoggerWriter(delegate: ProcessLogger, level: Level.Value, n
         log(buffer.toString)
         buffer.clear()
       }
-    }
-  def flushLines(level: Level.Value): Unit =
-    synchronized {
-      for (line <- lines)
-        log(line)
-      lines.clear()
     }
   override def write(content: Array[Char], offset: Int, length: Int): Unit =
     synchronized {

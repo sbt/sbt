@@ -11,14 +11,16 @@ import xsbti.{ Severity, Reporter }
  * @param reporter
  */
 final class DiagnosticsReporter(reporter: Reporter) extends DiagnosticListener[JavaFileObject] {
-
+  val END_OF_LINE_MATCHER = "[\r\n]|[\r]|[\n]"
+  val EOL = System.getProperty("line.separator")
   private def fixedDiagnosticMessage(d: Diagnostic[_ <: JavaFileObject]): String = {
     def getRawMessage = d.getMessage(null)
     def fixWarnOrErrorMessage = {
       val tmp = getRawMessage
       // we fragment off the line/source/type report from the message.
+      // NOTE - End of line handling may be off.
       val lines: Seq[String] =
-        tmp.split("[\r\n]") match {
+        tmp.split(END_OF_LINE_MATCHER) match {
           case Array(head, tail @ _*) =>
             val newHead = head.split(":").last
             newHead +: tail
@@ -26,8 +28,7 @@ final class DiagnosticsReporter(reporter: Reporter) extends DiagnosticListener[J
             head.split(":").last :: Nil
           case Array() => Seq.empty[String]
         }
-      // TODO - Real EOL
-      lines.mkString("\n")
+      lines.mkString(EOL)
     }
     d.getKind match {
       case Diagnostic.Kind.ERROR | Diagnostic.Kind.WARNING | Diagnostic.Kind.MANDATORY_WARNING => fixWarnOrErrorMessage
@@ -38,7 +39,9 @@ final class DiagnosticsReporter(reporter: Reporter) extends DiagnosticListener[J
     try Option(source).map(_.toUri.normalize).map(new File(_)).map(_.getAbsolutePath)
     catch {
       case t: IllegalArgumentException =>
-        // Oracle JDK6 has a super dumb notion of what a URI is
+        // Oracle JDK6 has a super dumb notion of what a URI is.  In fact, it's not even a legimitate URL, but a dump
+        // of the filename in a "I hope this works to toString it" kind of way.  This appears to work in practice
+        // but we may need to re-evaluate.
         Option(source).map(_.toUri.toString)
     }
   }
@@ -56,7 +59,9 @@ final class DiagnosticsReporter(reporter: Reporter) extends DiagnosticListener[J
           Logger.o2m(if (d.getLineNumber == -1) None
           else Option(new Integer(d.getLineNumber.toInt)))
         override def lineContent = {
-          // TODO - Is this pulling error correctly? Is null an ok return value?
+          // TODO - Is this pulling contents of the line correctly?
+          // Would be ok to just return null if this version of the JDK doesn't support grabbing
+          // source lines?
           Option(d.getSource).
             flatMap(s => Option(s.getCharContent(true))).
             map(_.subSequence(d.getStartPosition.intValue, d.getEndPosition.intValue).toString).

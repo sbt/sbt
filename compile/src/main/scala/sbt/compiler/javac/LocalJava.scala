@@ -47,6 +47,8 @@ final class LocalJavadoc() extends NewJavadoc {
     try {
       exitCode = LocalJava.unsafeJavadoc(allArguments.toArray, warnOrError, warnOrError, infoWriter)
     } finally {
+      warnOrError.close()
+      infoWriter.close()
       javacLogger.flush(exitCode)
     }
     // We return true or false, depending on success.
