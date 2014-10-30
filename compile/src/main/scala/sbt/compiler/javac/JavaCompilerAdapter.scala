@@ -16,7 +16,8 @@ import xsbti.compile.{ MultipleOutput, SingleOutput, Output }
  */
 class JavaCompilerAdapter(delegate: NewJavaTool, scalaInstance: xsbti.compile.ScalaInstance, cpOptions: xsbti.compile.ClasspathOptions) extends xsbti.compile.JavaCompiler {
   override final def compile(sources: Array[File], classpath: Array[File], output: Output, options: Array[String], log: xsbti.Logger): Unit = {
-    // TODO - 5 max errors ok?
+    // TODO - 5 max errors ok?  We're not expecting this code path to be called, ever.  This is only for clients who try to use the xsbti.compile.JavaCompiler interface
+    // outside of the incremental compiler, for some reason.
     val reporter = new LoggerReporter(5, log)
     compileWithReporter(sources, classpath, output, options, reporter, log)
   }
@@ -26,11 +27,11 @@ class JavaCompilerAdapter(delegate: NewJavaTool, scalaInstance: xsbti.compile.Sc
       case mo: MultipleOutput => throw new RuntimeException("Javac doesn't support multiple output directories")
     }
     val args = commandArguments(Seq(), classpath, target, options, log)
-    // TODO - is sorting the sources correct here?
+    // We sort the sources for deterministic results.
     val success = delegate.run(sources.sortBy(_.getAbsolutePath), args)(log, reporter)
-    // TODO - What should this error message be, and how do we ensure things are correct here?
     if (!success) {
-      // TODO - Should we track only the problems from this javac?
+      // TODO - Will the reporter have problems from Scalac?  It appears like it does not, only from the most recent run.
+      // This is because the incremental compiler will not run javac if scalac fails.
       throw new CompileFailed(args.toArray, "javac returned nonzero exit code", reporter.problems())
     }
   }

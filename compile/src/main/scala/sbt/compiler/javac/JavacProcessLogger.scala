@@ -89,7 +89,7 @@ object JavaNoPosition extends Position {
 
 /** A wrapper around xsbti.Problem with java-specific options. */
 final case class JavaProblem(val position: Position, val severity: Severity, val message: String) extends xsbti.Problem {
-  override def category: String = null // TODO - what is this even supposed to be?
+  override def category: String = "javac" // TODO - what is this even supposed to be?  For now it appears unused.
   override def toString = s"$severity @ $position - $message"
 }
 
@@ -98,6 +98,7 @@ class JavaErrorParser(relativeDir: File) extends util.parsing.combinator.RegexPa
   // Here we track special handlers to catch "Note:" and "Warning:" lines.
   private val NOTE_LINE_PREFIXES = Array("Note: ", "\u6ce8: ", "\u6ce8\u610f\uff1a ")
   private val WARNING_PREFIXES = Array("warning", "\u8b66\u544a", "\u8b66\u544a\uff1a")
+  private val END_OF_LINE = System.getProperty("line.separator")
 
   override val skipWhitespace = false
 
@@ -110,6 +111,7 @@ class JavaErrorParser(relativeDir: File) extends util.parsing.combinator.RegexPa
   }
   // Parses the rest of an input line.
   val restOfLine: Parser[String] =
+    // TODO - Can we use END_OF_LINE here without issues?
     allUntilChars(Array('\n', '\r')) ~ "[\r]?[\n]?".r ^^ {
       case msg ~ _ => msg
     }
@@ -151,9 +153,14 @@ class JavaErrorParser(relativeDir: File) extends util.parsing.combinator.RegexPa
     } catch {
       case e: NumberFormatException => false
     }
+
+  // Helper to extract an integer from a string
+  private object ParsedInteger {
+    def unapply(s: String): Option[Int] = try Some(Integer.parseInt(s)) catch { case e: NumberFormatException => None }
+  }
   // Parses a line number
   val line: Parser[Int] = allUntilChar(':') ^? {
-    case x if isInteger(x) => Integer.parseInt(x)
+    case ParsedInteger(x) => x
   }
   val allUntilCharat: Parser[String] = allUntilChar('^')
 
