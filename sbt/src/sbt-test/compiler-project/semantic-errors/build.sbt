@@ -9,7 +9,8 @@ TaskKey[Unit]("checkJavaFailures") := {
   val first = ps(0)
   assert(first.position.line.get == 3, s"First failure position is not line 3, failure = $first")
   val javaFile = baseDirectory.value / "src/main/java/bad.java"
-  assert(first.position.sourceFile.get == javaFile, s"First failure file location is not $javaFile, $first")
+  val file = new File(first.position.sourcePath.get)
+  assert(file == javaFile, s"First failure file location is not $javaFile, $first")
 }
 
 TaskKey[Unit]("checkScalaFailures") := {
@@ -21,7 +22,8 @@ TaskKey[Unit]("checkScalaFailures") := {
   val first = ps(0)
   assert(first.position.line.get == 2, s"First failure position is not line 2, failure = $first")
   val scalaFile = baseDirectory.value / "src/main/scala/bad.scala"
-  assert(first.position.sourceFile.get == scalaFile, s"First failure file location is not $scalaFile, $first")
+  val file = new File(first.position.sourcePath.get)
+  assert(file == scalaFile, s"First failure file location is not $scalaFile, $first")
 }
 
 compileOrder := CompileOrder.Mixed
