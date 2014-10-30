@@ -3,7 +3,7 @@
  */
 package sbt
 
-import sbt.compiler.javac.{ IncrementalCompilerJavaTools, NewJavaCompiler, JavaTools }
+import sbt.compiler.javac.{ IncrementalCompilerJavaTools, JavaCompiler, JavaTools }
 import xsbti.{ Logger => _, _ }
 import xsbti.compile.{ CompileOrder, GlobalsCache }
 import CompileOrder.{ JavaThenScala, Mixed, ScalaThenJava }
@@ -60,11 +60,13 @@ object Compiler {
       }
       compilers(instance, cpOptions, CheaterJavaTool(javac2, javac))
     }
-  def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javac: JavaCompiler.Fork)(implicit app: AppConfiguration, log: Logger): Compilers =
+  @deprecated("0.13.8", "Deprecated in favor of new sbt.compiler.javac package.")
+  def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javac: sbt.compiler.JavaCompiler.Fork)(implicit app: AppConfiguration, log: Logger): Compilers =
     {
-      val javaCompiler = JavaCompiler.fork(cpOptions, instance)(javac)
+      val javaCompiler = sbt.compiler.JavaCompiler.fork(cpOptions, instance)(javac)
       compilers(instance, cpOptions, javaCompiler)
     }
+  @deprecated("0.13.8", "Deprecated in favor of new sbt.compiler.javac package.")
   def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javac: JavaTool)(implicit app: AppConfiguration, log: Logger): Compilers =
     {
       val scalac = scalaCompiler(instance, cpOptions)

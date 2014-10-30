@@ -115,12 +115,12 @@ object NewJavaCompilerSpec extends Specification {
   }
 
   // TODO - Create one with known JAVA HOME.
-  def forked = JavaTools(NewJavaCompiler.fork(), NewJavadoc.fork())
+  def forked = JavaTools(JavaCompiler.fork(), Javadoc.fork())
 
   def local =
     JavaTools(
-      NewJavaCompiler.local.getOrElse(sys.error("This test cannot be run on a JRE, but only a JDK.")),
-      NewJavadoc.local.getOrElse(NewJavadoc.fork())
+      JavaCompiler.local.getOrElse(sys.error("This test cannot be run on a JRE, but only a JDK.")),
+      Javadoc.local.getOrElse(Javadoc.fork())
     )
 
   def cwd =
