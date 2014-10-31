@@ -17,7 +17,7 @@ import xsbti.{ Severity, Reporter }
  */
 sealed trait JavaTools {
   /** The raw interface of the java compiler for direct access. */
-  def compiler: NewJavaTool
+  def compiler: JavaTool
   /**
    * This will run a java compiler.
    *
@@ -53,7 +53,7 @@ sealed trait IncrementalCompilerJavaTools extends JavaTools {
 /** Factory methods for getting a java toolchain. */
 object JavaTools {
   /** Create a new aggregate tool from existing tools. */
-  def apply(c: NewJavaCompiler, docgen: NewJavadoc): JavaTools =
+  def apply(c: JavaCompiler, docgen: Javadoc): JavaTools =
     new JavaTools {
       override def compiler = c
       def compile(sources: Seq[File], options: Seq[String])(implicit log: Logger, reporter: Reporter): Boolean =
@@ -77,10 +77,10 @@ object JavaTools {
    */
   def directOrFork(instance: xsbti.compile.ScalaInstance, cpOptions: xsbti.compile.ClasspathOptions, javaHome: Option[File]): IncrementalCompilerJavaTools = {
     val (compiler, doc) = javaHome match {
-      case Some(_) => (NewJavaCompiler.fork(javaHome), NewJavadoc.fork(javaHome))
+      case Some(_) => (JavaCompiler.fork(javaHome), Javadoc.fork(javaHome))
       case _ =>
-        val c = NewJavaCompiler.local.getOrElse(NewJavaCompiler.fork(None))
-        val d = NewJavadoc.local.getOrElse(NewJavadoc.fork())
+        val c = JavaCompiler.local.getOrElse(JavaCompiler.fork(None))
+        val d = Javadoc.local.getOrElse(Javadoc.fork())
         (c, d)
     }
     val delegate = apply(compiler, doc)
@@ -102,7 +102,7 @@ object JavaTools {
  * - The all take sources and options and log error messages
  * - They return success or failure.
  */
-sealed trait NewJavaTool {
+sealed trait JavaTool {
   /**
    * This will run a java compiler / or other like tool (e.g. javadoc).
    *
@@ -117,34 +117,34 @@ sealed trait NewJavaTool {
 }
 
 /** Interface we use to compile java code. This is mostly a tag over the raw JavaTool interface. */
-trait NewJavaCompiler extends NewJavaTool {}
+trait JavaCompiler extends JavaTool {}
 /** Factory methods for constructing a java compiler. */
-object NewJavaCompiler {
+object JavaCompiler {
   /** Returns a local compiler, if the current runtime supports it. */
-  def local: Option[NewJavaCompiler] =
+  def local: Option[JavaCompiler] =
     for {
       compiler <- Option(javax.tools.ToolProvider.getSystemJavaCompiler)
     } yield new LocalJavaCompiler(compiler)
 
   /** Returns a local compiler that will fork javac when needed. */
-  def fork(javaHome: Option[File] = None): NewJavaCompiler =
+  def fork(javaHome: Option[File] = None): JavaCompiler =
     new ForkedJavaCompiler(javaHome)
 
 }
 
 /** Interface we use to document java code. This is a tag over the raw JavaTool interface. */
-trait NewJavadoc extends NewJavaTool {}
+trait Javadoc extends JavaTool {}
 /** Factory methods for constructing a javadoc. */
-object NewJavadoc {
+object Javadoc {
   /** Returns a local compiler, if the current runtime supports it. */
-  def local: Option[NewJavadoc] =
+  def local: Option[Javadoc] =
     // TODO - javax doc tool not supported in JDK6
     //Option(javax.tools.ToolProvider.getSystemDocumentationTool)
     if (LocalJava.hasLocalJavadoc) Some(new LocalJavadoc)
     else None
 
   /** Returns a local compiler that will fork javac when needed. */
-  def fork(javaHome: Option[File] = None): NewJavadoc =
+  def fork(javaHome: Option[File] = None): Javadoc =
     new ForkedJavadoc(javaHome)
 
 }

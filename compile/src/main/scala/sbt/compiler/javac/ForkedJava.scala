@@ -63,11 +63,11 @@ object ForkedJava {
 }
 
 /** An implementation of compiling java which forks a Javac instance. */
-final class ForkedJavaCompiler(javaHome: Option[File]) extends NewJavaCompiler {
+final class ForkedJavaCompiler(javaHome: Option[File]) extends JavaCompiler {
   def run(sources: Seq[File], options: Seq[String])(implicit log: Logger, reporter: Reporter): Boolean =
     ForkedJava.launch(javaHome, "javac", sources, options, log, reporter)
 }
-final class ForkedJavadoc(javaHome: Option[File]) extends NewJavadoc {
+final class ForkedJavadoc(javaHome: Option[File]) extends Javadoc {
   def run(sources: Seq[File], options: Seq[String])(implicit log: Logger, reporter: Reporter): Boolean =
     ForkedJava.launch(javaHome, "javadoc", sources, options, log, reporter)
 }
