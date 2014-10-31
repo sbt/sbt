@@ -7,7 +7,7 @@ import sbt._
 import org.specs2.Specification
 import xsbti.{ Severity, Problem }
 
-object NewJavaCompilerSpec extends Specification {
+object JavaCompilerSpec extends Specification {
   def is = s2"""
 
   This is a specification for forking + inline-running of the java compiler, and catching Error messages
