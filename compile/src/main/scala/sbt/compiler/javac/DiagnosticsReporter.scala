@@ -11,7 +11,7 @@ import xsbti.{ Severity, Reporter }
  * @param reporter
  */
 final class DiagnosticsReporter(reporter: Reporter) extends DiagnosticListener[JavaFileObject] {
-  val END_OF_LINE_MATCHER = "[\r\n]|[\r]|[\n]"
+  val END_OF_LINE_MATCHER = "(\r\n)|[\r]|[\n]"
   val EOL = System.getProperty("line.separator")
   private def fixedDiagnosticMessage(d: Diagnostic[_ <: JavaFileObject]): String = {
     def getRawMessage = d.getMessage(null)

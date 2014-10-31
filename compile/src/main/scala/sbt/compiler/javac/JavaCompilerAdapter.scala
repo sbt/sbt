@@ -14,7 +14,7 @@ import xsbti.compile.{ MultipleOutput, SingleOutput, Output }
  * wrapper around running Javac (forked or direct) into the interfaces used by incremental compiler.
  *
  */
-class JavaCompilerAdapter(delegate: NewJavaTool, scalaInstance: xsbti.compile.ScalaInstance, cpOptions: xsbti.compile.ClasspathOptions) extends xsbti.compile.JavaCompiler {
+class JavaCompilerAdapter(delegate: JavaTool, scalaInstance: xsbti.compile.ScalaInstance, cpOptions: xsbti.compile.ClasspathOptions) extends xsbti.compile.JavaCompiler {
   override final def compile(sources: Array[File], classpath: Array[File], output: Output, options: Array[String], log: xsbti.Logger): Unit = {
     // TODO - 5 max errors ok?  We're not expecting this code path to be called, ever.  This is only for clients who try to use the xsbti.compile.JavaCompiler interface
     // outside of the incremental compiler, for some reason.

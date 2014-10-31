@@ -35,7 +35,7 @@ object LocalJava {
   }
 }
 /** Implementation of javadoc tool which attempts to run it locally (in-class). */
-final class LocalJavadoc() extends NewJavadoc {
+final class LocalJavadoc() extends Javadoc {
   override def run(sources: Seq[File], options: Seq[String])(implicit log: Logger, reporter: Reporter): Boolean = {
     val cwd = new File(new File(".").getAbsolutePath).getCanonicalFile
     val (jArgs, nonJArgs) = options.partition(_.startsWith("-J"))
@@ -57,7 +57,7 @@ final class LocalJavadoc() extends NewJavadoc {
 }
 
 /** An implementation of compiling java which delegates to the JVM resident java compiler. */
-final class LocalJavaCompiler(compiler: javax.tools.JavaCompiler) extends NewJavaCompiler {
+final class LocalJavaCompiler(compiler: javax.tools.JavaCompiler) extends JavaCompiler {
   override def run(sources: Seq[File], options: Seq[String])(implicit log: Logger, reporter: Reporter): Boolean = {
     import collection.JavaConverters._
     val logger = new LoggerWriter(log)
