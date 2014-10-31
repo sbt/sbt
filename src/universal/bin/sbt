@@ -131,7 +131,7 @@ process_my_args () {
 }
 
 loadConfigFile() {
-  for line in $(cat "$1" | sed '/^\#/d'); do
+  cat "$1" | sed '/^\#/d' | while read line; do
     eval echo $line
   done
 }
