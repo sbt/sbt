@@ -1,0 +1,3 @@
+> checkScalaFailures
+> set compileOrder := CompileOrder.JavaThenScala
+> checkJavaFailures

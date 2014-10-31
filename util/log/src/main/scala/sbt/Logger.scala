@@ -104,6 +104,7 @@ object Logger {
       val position = pos
       val message = msg
       val severity = sev
+      override def toString = s"[$severity] $pos: $message"
     }
 }
 

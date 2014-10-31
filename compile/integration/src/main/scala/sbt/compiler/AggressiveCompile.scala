@@ -120,7 +120,12 @@ class AggressiveCompile(cacheFile: File) {
 
             val loader = ClasspathUtilities.toLoader(searchClasspath)
             timed("Java compilation", log) {
-              javac.compile(javaSrcs.toArray, absClasspath.toArray, output, options.javacOptions.toArray, log)
+              try javac.compileWithReporter(javaSrcs.toArray, absClasspath.toArray, output, options.javacOptions.toArray, reporter, log)
+              catch {
+                // Handle older APIs
+                case _: NoSuchMethodError =>
+                  javac.compile(javaSrcs.toArray, absClasspath.toArray, output, options.javacOptions.toArray, log)
+              }
             }
 
             def readAPI(source: File, classes: Seq[Class[_]]): Set[String] = {
@@ -195,13 +200,14 @@ object AggressiveCompile {
         b
       }
     }
-
+  @deprecated("0.13.8", "Deprecated in favor of new sbt.compiler.javac package.")
   def directOrFork(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File]): JavaTool =
     if (javaHome.isDefined)
       JavaCompiler.fork(cpOptions, instance)(forkJavac(javaHome))
     else
       JavaCompiler.directOrFork(cpOptions, instance)(forkJavac(None))
 
+  @deprecated("0.13.8", "Deprecated in favor of new sbt.compiler.javac package.")
   def forkJavac(javaHome: Option[File]): JavaCompiler.Fork =
     {
       import Path._
@@ -220,6 +226,7 @@ object AggressiveCompile {
     }
 }
 
+@deprecated("0.13.8", "Deprecated in favor of new sbt.compiler.javac package.")
 private[sbt] class JavacLogger(log: Logger) extends ProcessLogger {
   import scala.collection.mutable.ListBuffer
   import Level.{ Info, Warn, Error, Value => LogLevel }
