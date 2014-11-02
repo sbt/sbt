@@ -321,7 +321,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       val merged = (modules groupBy { m => (m.module.organization, m.module.name, m.module.revision) }).toSeq.toVector flatMap {
         case ((org, name, version), xs) =>
           if (xs.size < 2) xs
-          else Vector(xs.head.copy(evicted = xs exists { _.evicted }, callers = xs flatMap { _.callers }))
+          else Vector(xs.head.copy(evicted = xs forall { _.evicted }, callers = xs flatMap { _.callers }))
       }
       val conflicts = merged filter { m => !m.evicted && m.problem.isEmpty }
       if (conflicts.size < 2) merged
