@@ -73,9 +73,9 @@ addDebugger () {
 }
 
 get_mem_opts () {
-  # if we detect any of these settings in ${java_opts} we need to NOT output our settings.
+  # if we detect any of these settings in ${JAVA_OPTS} we need to NOT output our settings.
   # The reason is the Xms/Xmx, if they don't line up, cause errors.
-  if [[ "${java_opts}" == *-Xmx* ]] || [[ "${java_opts}" == *-Xms* ]] || [[ "${java_opts}" == *-XX:MaxPermSize* ]] || [[ "${java_opts}" == *-XX:MaxMetaspaceSize* ]] || [[ "${java_opts}" == *-XX:ReservedCodeCacheSize* ]]; then
+  if [[ "${JAVA_OPTS}" == *-Xmx* ]] || [[ "${JAVA_OPTS}" == *-Xms* ]] || [[ "${JAVA_OPTS}" == *-XX:MaxPermSize* ]] || [[ "${JAVA_OPTS}" == *-XX:MaxMetaspaceSize* ]] || [[ "${JAVA_OPTS}" == *-XX:ReservedCodeCacheSize* ]]; then
      echo ""
   else
     # a ham-fisted attempt to move some memory settings in concert
@@ -188,7 +188,7 @@ run() {
   execRunner "$java_cmd" \
     ${SBT_OPTS:-$default_sbt_opts} \
     $(get_mem_opts $sbt_mem) \
-  	  ${java_opts} \
+  	  ${JAVA_OPTS} \
     ${java_args[@]} \
     -jar "$sbt_jar" \
     "${sbt_commands[@]}" \
