@@ -4,36 +4,43 @@ def commonSettings: Seq[Def.Setting[_]] =
   Seq(
     ivyPaths := new IvyPaths( (baseDirectory in ThisBuild).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),
     dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",
+    scalaVersion := "2.10.4",
+    resolvers += Resolver.sonatypeRepo("snapshots")
+  )
+
+lazy val a = project.
+  settings(commonSettings: _*).
+  settings(
+    updateOptions := updateOptions.value.withCachedResolution(true),
+    artifact in (Compile, packageBin) := Artifact("demo"),
     libraryDependencies := Seq(
       "net.sf.json-lib" % "json-lib" % "2.4" classifier "jdk15" intransitive(),
       "com.typesafe.akka" %% "akka-remote" % "2.3.4" exclude("com.typesafe.akka", "akka-actor_2.10"),
       "net.databinder" %% "unfiltered-uploads" % "0.8.0",
       "commons-io" % "commons-io" % "1.3",
-      "com.typesafe" % "config" % "0.4.9-SNAPSHOT"
-    ),
-    scalaVersion := "2.10.4",
-    resolvers += Resolver.sonatypeRepo("snapshots")
-  )
-
-def consolidatedResolutionSettings: Seq[Def.Setting[_]] =
-  commonSettings ++ Seq(
-    updateOptions := updateOptions.value.withConsolidatedResolution(true)
-  )
-
-lazy val a = project.
-  settings(consolidatedResolutionSettings: _*).
-  settings(
-    artifact in (Compile, packageBin) := Artifact("demo")
+      "com.typesafe" % "config" % "0.4.9-SNAPSHOT",
+      "junit" % "junit" % "4.11" % "test"
+    )
   )
 
 lazy val b = project.
-  settings(commonSettings: _*)
+  settings(commonSettings: _*).
+  settings(
+    libraryDependencies := Seq(
+      "net.sf.json-lib" % "json-lib" % "2.4" classifier "jdk15" intransitive(),
+      "com.typesafe.akka" %% "akka-remote" % "2.3.4" exclude("com.typesafe.akka", "akka-actor_2.10"),
+      "net.databinder" %% "unfiltered-uploads" % "0.8.0",
+      "commons-io" % "commons-io" % "1.3",
+      "com.typesafe" % "config" % "0.4.9-SNAPSHOT",
+      "junit" % "junit" % "4.11" % "test"
+    ) 
+  )
 
 lazy val c = project.
   dependsOn(a).
-  settings(consolidatedResolutionSettings: _*).
+  settings(commonSettings: _*).
   settings(
-    // libraryDependencies := Seq(organization.value %% "a" % version.value)
+    updateOptions := updateOptions.value.withCachedResolution(true)
   )
 
 lazy val root = (project in file(".")).
@@ -43,7 +50,11 @@ lazy val root = (project in file(".")).
     check := {
       val acp = (externalDependencyClasspath in Compile in a).value.sortBy {_.data.getName}
       val bcp = (externalDependencyClasspath in Compile in b).value.sortBy {_.data.getName}
-      val ccp = (externalDependencyClasspath in Compile in c).value.sortBy {_.data.getName} filterNot {_.data.getName == "demo_2.10.jar"}
+      val ccp = (externalDependencyClasspath in Compile in c).value.sortBy {_.data.getName} filterNot { _.data.getName == "demo_2.10.jar"}
+      val ctestcp = (externalDependencyClasspath in Test in c).value.sortBy {_.data.getName} filterNot { _.data.getName == "demo_2.10.jar"}
+      if (ctestcp exists { _.data.getName contains "junit-4.11.jar" }) {
+        sys.error("junit found when it should be excluded: " + ctestcp.toString)
+      }
       if (acp == bcp && acp == ccp) ()
       else sys.error("Different classpaths are found:" +
         "\n - a (cached)        " + acp.toString +

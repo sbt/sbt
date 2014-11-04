@@ -54,8 +54,10 @@ private[sbt] class CachedResolutionResolveCache() {
       def expandInternalDeps(dep: DependencyDescriptor): Vector[DependencyDescriptor] =
         prOpt map {
           _.getModuleDescriptor(dep.getDependencyRevisionId) match {
-            case Some(internal) => directDependencies(internal) flatMap expandInternalDeps
-            case _              => Vector(dep)
+            case Some(internal) => directDependencies(internal) filter { dd =>
+              !dd.getDependencyConfigurations("compile").isEmpty
+            } flatMap expandInternalDeps
+            case _ => Vector(dep)
           }
         } getOrElse Vector(dep)
       val expanded = directDependencies(md0) flatMap expandInternalDeps
