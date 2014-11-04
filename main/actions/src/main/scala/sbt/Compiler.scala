@@ -15,7 +15,10 @@ import java.io.File
 object Compiler {
   val DefaultMaxErrors = 100
 
-  final case class Inputs(compilers: Compilers, config: Options, incSetup: IncSetup, previousAnalysis: PreviousAnalysis)
+  /** Inputs necessary to run the incremental compiler. */
+  final case class Inputs(compilers: Compilers, config: Options, incSetup: IncSetup)
+  /** The inputs for the copiler *and* the previous analysis of source dependecnies. */
+  final case class InputsWithPrevious(inputs: Inputs, previousAnalysis: PreviousAnalysis)
   final case class Options(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, sourcePositionMapper: Position => Position, order: CompileOrder)
   final case class IncSetup(analysisMap: File => Option[Analysis], definesClass: DefinesClass, skip: Boolean, cacheFile: File, cache: GlobalsCache, incOptions: IncOptions)
   private[sbt] trait JavaToolWithNewInterface extends JavaTool {
@@ -35,12 +38,11 @@ object Compiler {
 
   def inputs(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String],
     javacOptions: Seq[String], maxErrors: Int, sourcePositionMappers: Seq[Position => Option[Position]],
-    order: CompileOrder, previousAnalysis: PreviousAnalysis)(implicit compilers: Compilers, incSetup: IncSetup, log: Logger): Inputs =
+    order: CompileOrder)(implicit compilers: Compilers, incSetup: IncSetup, log: Logger): Inputs =
     new Inputs(
       compilers,
       new Options(classpath, sources, classesDirectory, options, javacOptions, maxErrors, foldMappers(sourcePositionMappers), order),
-      incSetup,
-      previousAnalysis
+      incSetup
     )
 
   def compilers(cpOptions: ClasspathOptions)(implicit app: AppConfiguration, log: Logger): Compilers =
@@ -87,32 +89,41 @@ object Compiler {
     }
 
   @deprecated("0.13.8", "Use the `compile` method instead.")
-  def apply(in: Inputs, log: Logger): Analysis =
-    {
-      import in.compilers._
-      import in.config._
-      import in.incSetup._
-      apply(in, log, new LoggerReporter(maxErrors, log, sourcePositionMapper))
-    }
+  def apply(in: Inputs, log: Logger): Analysis = {
+    import in.config._
+    apply(in, log, new LoggerReporter(maxErrors, log, sourcePositionMapper))
+  }
   @deprecated("0.13.8", "Use the `compile` method instead.")
-  def apply(in: Inputs, log: Logger, reporter: xsbti.Reporter): Analysis = compile(in, log, reporter).analysis
-  def compile(in: Inputs, log: Logger): CompileResult =
+  def apply(in: Inputs, log: Logger, reporter: xsbti.Reporter): Analysis = {
+    import in.compilers._
+    import in.config._
+    import in.incSetup._
+    // Here we load the previous analysis since the new paths don't.
+    val (previousAnalysis, previousSetup) = {
+      MixedAnalyzingCompiler.staticCachedStore(cacheFile).get().map {
+        case (a, s) => (a, Some(s))
+      } getOrElse {
+        (Analysis.empty(nameHashing = incOptions.nameHashing), None)
+      }
+    }
+    compile(InputsWithPrevious(in, PreviousAnalysis(previousAnalysis, previousSetup)), log, reporter).analysis
+  }
+  def compile(in: InputsWithPrevious, log: Logger): CompileResult =
     {
-      import in.compilers._
-      import in.config._
-      import in.incSetup._
+      import in.inputs.config._
       compile(in, log, new LoggerReporter(maxErrors, log, sourcePositionMapper))
     }
-  def compile(in: Inputs, log: Logger, reporter: xsbti.Reporter): CompileResult =
+  def compile(in: InputsWithPrevious, log: Logger, reporter: xsbti.Reporter): CompileResult =
     {
-      import in.compilers._
-      import in.config._
-      import in.incSetup._
+      import in.inputs.compilers._
+      import in.inputs.config._
+      import in.inputs.incSetup._
       // Here is some trickery to choose the more recent (reporter-using) java compiler rather
       // than the previously defined versions.
       // TODO - Remove this hackery in sbt 1.0.
       val javacChosen: xsbti.compile.JavaCompiler =
-        in.compilers.newJavac.map(_.xsbtiCompiler).getOrElse(in.compilers.javac)
+        in.inputs.compilers.newJavac.map(_.xsbtiCompiler).getOrElse(in.inputs.compilers.javac)
+      // TODO - Why are we not using the IC interface???
       MixedAnalyzingCompiler.analyzingCompile(scalac, javacChosen, sources, classpath, CompileOutput(classesDirectory), cache, None, options, javacOptions,
         in.previousAnalysis.analysis, in.previousAnalysis.setup, analysisMap, definesClass, reporter, order, skip, incOptions)(log)
     }

@@ -5,6 +5,7 @@ package sbt
 
 import Attributed.data
 import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
+import sbt.Compiler.InputsWithPrevious
 import xsbt.api.Discovery
 import xsbti.compile.CompileOrder
 import Project.{ inConfig, inScope, inTask, richInitialize, richInitializeTask, richTaskSessionVar }
@@ -782,13 +783,13 @@ object Defaults extends BuildCommon {
 
   def compileTask: Initialize[Task[inc.Analysis]] = Def.task { saveAnalysis.value }
   def compileIncrementalTask = Def.task {
-    compileIncrementalTaskImpl(streams.value, (compileInputs in compile).value, (compilerReporter in compile).value)
+    compileIncrementalTaskImpl(streams.value, (compileInputs in compile).value, (readAnalysis in compile).value, (compilerReporter in compile).value)
   }
-  private[this] def compileIncrementalTaskImpl(s: TaskStreams, ci: Compiler.Inputs, reporter: Option[xsbti.Reporter]): Compiler.CompileResult =
+  private[this] def compileIncrementalTaskImpl(s: TaskStreams, ci: Compiler.Inputs, previous: Compiler.PreviousAnalysis, reporter: Option[xsbti.Reporter]): Compiler.CompileResult =
     {
       lazy val x = s.text(ExportStream)
       def onArgs(cs: Compiler.Compilers) = cs.copy(scalac = cs.scalac.onArgs(exported(x, "scalac")), javac = cs.javac.onArgs(exported(x, "javac")))
-      val i = ci.copy(compilers = onArgs(ci.compilers))
+      val i = InputsWithPrevious(ci.copy(compilers = onArgs(ci.compilers)), previous)
       try reporter match {
         case Some(reporter) => Compiler.compile(i, s.log, reporter)
         case None           => Compiler.compile(i, s.log)
@@ -809,13 +810,13 @@ object Defaults extends BuildCommon {
     Seq(compileInputs := {
       val cp = classDirectory.value +: data(dependencyClasspath.value)
       Compiler.inputs(cp, sources.value, classDirectory.value, scalacOptions.value, javacOptions.value,
-        maxErrors.value, sourcePositionMappers.value, compileOrder.value, readAnalysis.value)(compilers.value, compileIncSetup.value, streams.value.log)
+        maxErrors.value, sourcePositionMappers.value, compileOrder.value)(compilers.value, compileIncSetup.value, streams.value.log)
     },
       compilerReporter := None)
   def compileAnalysisSettings: Seq[Setting[_]] = Seq(
     readAnalysis := {
       val setup: Compiler.IncSetup = compileIncSetup.value
-      val store = AggressiveCompile.staticCachedStore(setup.cacheFile)
+      val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile)
       store.get() match {
         case Some((an, setup)) => Compiler.PreviousAnalysis(an, Some(setup))
         case None              => Compiler.PreviousAnalysis(Analysis.empty(nameHashing = setup.incOptions.nameHashing), None)
