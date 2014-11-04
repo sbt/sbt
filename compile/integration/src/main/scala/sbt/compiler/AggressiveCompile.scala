@@ -184,24 +184,13 @@ class AggressiveCompile(cacheFile: File) {
   private[this] def explicitBootClasspath(options: Seq[String]): Seq[File] =
     options.dropWhile(_ != CompilerArguments.BootClasspathOption).drop(1).take(1).headOption.toList.flatMap(IO.parseClasspath)
 
-  val store = AggressiveCompile.staticCache(cacheFile, AnalysisStore.sync(AnalysisStore.cached(FileBasedStore(cacheFile))))
+  val store = MixedAnalyzingCompiler.staticCachedStore(cacheFile)
 
 }
 @deprecated("0.13.8", "Use MixedAnalyzingCompiler instead.")
 object AggressiveCompile {
-  import collection.mutable
-  import java.lang.ref.{ Reference, SoftReference }
-  private[this] val cache = new collection.mutable.HashMap[File, Reference[AnalysisStore]]
-  private def staticCache(file: File, backing: => AnalysisStore): AnalysisStore =
-    synchronized {
-      cache get file flatMap { ref => Option(ref.get) } getOrElse {
-        val b = backing
-        cache.put(file, new SoftReference(b))
-        b
-      }
-    }
-
-  def staticCachedStore(cacheFile: File) = staticCache(cacheFile, AnalysisStore.sync(AnalysisStore.cached(FileBasedStore(cacheFile))))
+  @deprecated("0.13.8", "Use MixedAnalyzingCompiler.staticCachedStore instead.")
+  def staticCachedStore(cacheFile: File) = MixedAnalyzingCompiler.staticCachedStore(cacheFile)
 
   @deprecated("0.13.8", "Deprecated in favor of new sbt.compiler.javac package.")
   def directOrFork(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File]): JavaTool =
