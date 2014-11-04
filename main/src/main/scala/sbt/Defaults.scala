@@ -15,7 +15,7 @@ import CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
 import complete._
 import std.TaskExtra._
 import sbt.inc.{ Analysis, FileValueCache, IncOptions, Locate }
-import sbt.compiler.AggressiveCompile
+import sbt.compiler.{ MixedAnalyzingCompiler, AggressiveCompile }
 import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
 
 import sys.error
@@ -650,7 +650,7 @@ object Defaults extends BuildCommon {
       key in TaskGlobal <<= packageTask,
       packageConfiguration <<= packageConfigurationTask,
       mappings <<= mappingsTask,
-      packagedArtifact := (artifact.value, key.value),
+      packagedArtifact := (artifact.value -> key.value),
       artifact <<= artifactSetting,
       artifactPath <<= artifactPathSetting(artifact)
     ))
@@ -784,14 +784,14 @@ object Defaults extends BuildCommon {
   def compileIncrementalTask = Def.task {
     compileIncrementalTaskImpl(streams.value, (compileInputs in compile).value, (compilerReporter in compile).value)
   }
-  private[this] def compileIncrementalTaskImpl(s: TaskStreams, ci: Compiler.Inputs, reporter: Option[xsbti.Reporter]): Compiler.AnalysisResult =
+  private[this] def compileIncrementalTaskImpl(s: TaskStreams, ci: Compiler.Inputs, reporter: Option[xsbti.Reporter]): Compiler.CompileResult =
     {
       lazy val x = s.text(ExportStream)
       def onArgs(cs: Compiler.Compilers) = cs.copy(scalac = cs.scalac.onArgs(exported(x, "scalac")), javac = cs.javac.onArgs(exported(x, "javac")))
       val i = ci.copy(compilers = onArgs(ci.compilers))
       try reporter match {
-        case Some(reporter) => Compiler(i, s.log, reporter)
-        case None           => Compiler(i, s.log)
+        case Some(reporter) => Compiler.compile(i, s.log, reporter)
+        case None           => Compiler.compile(i, s.log)
       }
       finally x.close() // workaround for #937
     }
@@ -823,9 +823,9 @@ object Defaults extends BuildCommon {
     },
     saveAnalysis := {
       val setup: Compiler.IncSetup = compileIncSetup.value
-      val analysisResult: Compiler.AnalysisResult = compileIncremental.value
-      if (analysisResult.modified) {
-        val store = AggressiveCompile.staticCachedStore(setup.cacheFile)
+      val analysisResult: Compiler.CompileResult = compileIncremental.value
+      if (analysisResult.hasModified) {
+        val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile)
         store.set(analysisResult.analysis, analysisResult.setup)
       }
       analysisResult.analysis
@@ -1031,7 +1031,7 @@ object Classpaths {
     packagedArtifacts :== Map.empty,
     crossTarget := target.value,
     makePom := { val config = makePomConfiguration.value; IvyActions.makePom(ivyModule.value, config, streams.value.log); config.file },
-    packagedArtifact in makePom := (artifact in makePom value, makePom value),
+    packagedArtifact in makePom := ((artifact in makePom).value -> makePom.value),
     deliver <<= deliverTask(deliverConfiguration),
     deliverLocal <<= deliverTask(deliverLocalConfiguration),
     publish <<= publishTask(publishConfiguration, deliver),
@@ -1510,7 +1510,7 @@ object Classpaths {
       def visit(p: ProjectRef, c: Configuration) {
         val applicableConfigs = allConfigs(c)
         for (ac <- applicableConfigs) // add all configurations in this project
-          visited add (p, ac.name)
+          visited add (p -> ac.name)
         val masterConfs = names(getConfigurations(projectRef, data))
 
         for (ResolvedClasspathDependency(dep, confMapping) <- deps.classpath(p)) {

@@ -6,31 +6,37 @@ import sbt.inc.{ Analysis, IncOptions, TextAnalysisFormat }
 import xsbti.{ Logger, Maybe }
 import xsbti.compile._
 
+/**
+ * An implementation of the incremetnal compiler that can compile inputs and dump out source dependency analysis.
+ */
 object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler] {
   def compile(in: Inputs[Analysis, AnalyzingCompiler], log: Logger): Analysis =
     {
       val setup = in.setup; import setup._
       val options = in.options; import options.{ options => scalacOptions, _ }
       val compilers = in.compilers; import compilers._
-      val agg = new AggressiveCompile
       val aMap = (f: File) => m2o(analysisMap(f))
       val defClass = (f: File) => { val dc = definesClass(f); (name: String) => dc.apply(name) }
       val incOptions = IncOptions.fromStringMap(incrementalCompilerOptions)
       val (previousAnalysis, previousSetup) = {
-        AggressiveCompile.staticCachedStore(setup.cacheFile()).get().map {
+        MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile()).get().map {
           case (a, s) => (a, Some(s))
         } getOrElse {
           (Analysis.empty(nameHashing = incOptions.nameHashing), None)
         }
       }
-      agg(scalac, javac, sources, classpath, output, cache, m2o(progress), scalacOptions, javacOptions, previousAnalysis,
-        previousSetup, aMap, defClass, reporter, order, skip, incOptions)(log)._1
+      MixedAnalyzingCompiler.analyzingCompile(scalac, javac, sources, classpath, output, cache, m2o(progress), scalacOptions, javacOptions, previousAnalysis,
+        previousSetup, aMap, defClass, reporter, order, skip, incOptions)(log).analysis
     }
 
   private[this] def m2o[S](opt: Maybe[S]): Option[S] = if (opt.isEmpty) None else Some(opt.get)
 
+  @deprecated("0.13.8", "A constructor is no longer needed.")
   def newScalaCompiler(instance: ScalaInstance, interfaceJar: File, options: ClasspathOptions, log: Logger): AnalyzingCompiler =
-    new AnalyzingCompiler(instance, CompilerInterfaceProvider.constant(interfaceJar), options, log)
+    new AnalyzingCompiler(instance, CompilerInterfaceProvider.constant(interfaceJar), options)
+
+  def newScalaCompiler(instance: ScalaInstance, interfaceJar: File, options: ClasspathOptions): AnalyzingCompiler =
+    new AnalyzingCompiler(instance, CompilerInterfaceProvider.constant(interfaceJar), options)
 
   def compileInterfaceJar(label: String, sourceJar: File, targetJar: File, interfaceJar: File, instance: ScalaInstance, log: Logger) {
     val raw = new RawCompiler(instance, sbt.ClasspathOptions.auto, log)

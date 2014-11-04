@@ -9,6 +9,7 @@ import Def.ScopedKey
 import complete._
 import inc.Analysis
 import inc.Locate.DefinesClass
+import sbt.compiler.MixedAnalyzingCompiler
 import std.TaskExtra._
 import xsbti.compile.{ CompileOrder, GlobalsCache }
 import scala.xml.{ Node => XNode, NodeSeq }
@@ -141,7 +142,7 @@ object Keys {
   val consoleQuick = TaskKey[Unit]("console-quick", "Starts the Scala interpreter with the project dependencies on the classpath.", ATask, console)
   val consoleProject = TaskKey[Unit]("console-project", "Starts the Scala interpreter with the sbt and the build definition on the classpath and useful imports.", AMinusTask)
   val compile = TaskKey[Analysis]("compile", "Compiles sources.", APlusTask)
-  val compileIncremental = TaskKey[Compiler.AnalysisResult]("compileIncremental", "Actually runs the incremental compliation", DTask)
+  val compileIncremental = TaskKey[Compiler.CompileResult]("compileIncremental", "Actually runs the incremental compliation", DTask)
   val readAnalysis = TaskKey[Compiler.PreviousAnalysis]("readAnalysis", "Read the incremental compiler analysis from disk", DTask)
   val saveAnalysis = TaskKey[Analysis]("saveAnalysis", "Save the incremental compiler analysis to disk", DTask)
   val compilers = TaskKey[Compiler.Compilers]("compilers", "Defines the Scala and Java compilers to use for compilation.", DTask)
