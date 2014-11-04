@@ -17,6 +17,9 @@ import xsbti.compile._
 /**
  * This is a compiler that mixes the `sbt.compiler.AnalyzingCompiler` for Scala incremental compilation
  * with a `xsbti.JavaCompiler`, allowing cross-compilation of mixed Java/Scala projects with analysis output.
+ *
+ *
+ * NOTE: this is actually the core logic of the incremental compiler for sbt.
  */
 object MixedAnalyzingCompiler {
   /** The result of running the compilation. */
@@ -90,6 +93,7 @@ object MixedAnalyzingCompiler {
     cache: GlobalsCache,
     incrementalCompilerOptions: IncOptions)(implicit log: Logger): (Analysis, Boolean) =
     {
+      import CompileSetup._
       if (skip)
         (previousAnalysis, false)
       else {

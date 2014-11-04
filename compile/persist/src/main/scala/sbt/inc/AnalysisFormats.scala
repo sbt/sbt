@@ -76,7 +76,13 @@ object AnalysisFormats {
   implicit val multipleOutputFormat: Format[MultipleOutput] =
     wrap[MultipleOutput, Array[OutputGroup]](
       (_.outputGroups),
-      { groups => new MultipleOutput { def outputGroups = groups } }
+      {
+        groups =>
+          new MultipleOutput {
+            def outputGroups = groups
+            override def toString = s"MultipleOutput($outputGroups)"
+          }
+      }
     )
   implicit val singleOutputFormat: Format[SingleOutput] =
     wrap[SingleOutput, File](

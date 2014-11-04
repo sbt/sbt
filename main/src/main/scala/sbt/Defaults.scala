@@ -783,7 +783,8 @@ object Defaults extends BuildCommon {
 
   def compileTask: Initialize[Task[inc.Analysis]] = Def.task { saveAnalysis.value }
   def compileIncrementalTask = Def.task {
-    compileIncrementalTaskImpl(streams.value, (compileInputs in compile).value, (readAnalysis in compile).value, (compilerReporter in compile).value)
+    // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
+    compileIncrementalTaskImpl(streams.value, (compileInputs in compile).value, readAnalysis.value, (compilerReporter in compile).value)
   }
   private[this] def compileIncrementalTaskImpl(s: TaskStreams, ci: Compiler.Inputs, previous: Compiler.PreviousAnalysis, reporter: Option[xsbti.Reporter]): Compiler.CompileResult =
     {

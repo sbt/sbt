@@ -308,8 +308,10 @@ object TextAnalysisFormat {
               case (src: File, out: File) => new MultipleOutput.OutputGroup {
                 val sourceDirectory = src
                 val outputDirectory = out
+                override def toString = s"OutputGroup($src -> $out)"
               }
             }
+            override def toString = s"MultipleOuput($outputGroups)"
           }
           case str: String => throw new ReadException("Unrecognized output mode: " + str)
         }
