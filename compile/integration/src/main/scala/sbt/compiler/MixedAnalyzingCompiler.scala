@@ -1,77 +1,110 @@
-/* sbt -- Simple Build Tool
- * Copyright 2010 Mark Harrah
- */
-package sbt
-package compiler
+package sbt.compiler
 
-import inc._
-
-import scala.annotation.tailrec
 import java.io.File
-import classpath.ClasspathUtilities
-import classfile.Analyze
-import inc.Locate.DefinesClass
-import inc.IncOptions
-import CompileSetup._
-import sbinary.DefaultProtocol.{ immutableMapFormat, immutableSetFormat, StringFormat }
+import java.lang.ref.{ SoftReference, Reference }
 
-import xsbti.{ Reporter, AnalysisCallback }
+import sbt.classfile.Analyze
+import sbt.classpath.ClasspathUtilities
+import sbt.inc.Locate.DefinesClass
+import sbt._
+import sbt.inc._
+import sbt.inc.Locate
+import xsbti.{ AnalysisCallback, Reporter }
 import xsbti.api.Source
-import xsbti.compile.{ CompileOrder, DependencyChanges, GlobalsCache, Output, SingleOutput, MultipleOutput, CompileProgress }
-import CompileOrder.{ JavaThenScala, Mixed, ScalaThenJava }
+import xsbti.compile.CompileOrder._
+import xsbti.compile._
 
-@deprecated("0.13.8", "Use MixedAnalyzingCompiler instead.")
-class AggressiveCompile(cacheFile: File) {
-  @deprecated("0.13.8", "Use MixedAnalyzingCompiler.analyzingCompile instead.")
-  def apply(compiler: AnalyzingCompiler,
+/**
+ * This is a compiler that mixes the `sbt.compiler.AnalyzingCompiler` for Scala incremental compilation
+ * with a `xsbti.JavaCompiler`, allowing cross-compilation of mixed Java/Scala projects with analysis output.
+ */
+object MixedAnalyzingCompiler {
+  /** The result of running the compilation. */
+  final case class Result(analysis: Analysis, setup: CompileSetup, hasModified: Boolean)
+
+  /**
+   * This will run a mixed-compilation of Java/Scala sources
+   * @param scalac  An instances of the Scalac compiler which can also extract "Analysis" (dependencies)
+   * @param javac  An instance of the Javac compiler.
+   * @param sources  The set of sources to compile
+   * @param classpath  The classpath to use when compiling.
+   * @param output  Configuration for where to output .class files.
+   * @param cache   The caching mechanism to use instead of insantiating new compiler instances.
+   * @param progress  Progress listening for the compilation process.  TODO - Feed this through the Javac Compiler!
+   * @param options   Options for the Scala compiler
+   * @param javacOptions  Options for the Java compiler
+   * @param previousAnalysis  The previous dependency Analysis object/
+   * @param previousSetup  The previous compilation setup (if any)
+   * @param analysisMap   A map of file to the dependency analysis of that file.
+   * @param definesClass  A mehcnaism of looking up whether or not a JAR defines a particular Class.
+   * @param reporter  Where we sent all compilation error/warning events
+   * @param compileOrder  The order we'd like to mix compilation.  JavaThenScala, ScalaThenJava or Mixed.
+   * @param skip  IF true, we skip compilation and just return the previous analysis file.
+   * @param incrementalCompilerOptions  Options specific to incremental compilation.
+   * @param log  The location where we write log messages.
+   * @return  The full configuration used to instantiate this mixed-analyzing compiler, the set of extracted dependencies and
+   *          whether or not any file were modified.
+   */
+  def analyzingCompile(scalac: AnalyzingCompiler,
     javac: xsbti.compile.JavaCompiler,
-    sources: Seq[File], classpath: Seq[File],
+    sources: Seq[File],
+    classpath: Seq[File],
     output: Output,
     cache: GlobalsCache,
     progress: Option[CompileProgress] = None,
     options: Seq[String] = Nil,
     javacOptions: Seq[String] = Nil,
+    previousAnalysis: Analysis,
+    previousSetup: Option[CompileSetup],
     analysisMap: File => Option[Analysis] = { _ => None },
     definesClass: DefinesClass = Locate.definesClass _,
     reporter: Reporter,
     compileOrder: CompileOrder = Mixed,
     skip: Boolean = false,
-    incrementalCompilerOptions: IncOptions)(implicit log: Logger): Analysis =
+    incrementalCompilerOptions: IncOptions)(implicit log: Logger): Result =
     {
       val setup = new CompileSetup(output, new CompileOptions(options, javacOptions),
-        compiler.scalaInstance.actualVersion, compileOrder, incrementalCompilerOptions.nameHashing)
-      compile1(sources, classpath, setup, progress, store, analysisMap, definesClass,
-        compiler, javac, reporter, skip, cache, incrementalCompilerOptions)
+        scalac.scalaInstance.actualVersion, compileOrder, incrementalCompilerOptions.nameHashing)
+      val (analysis, modified) = compile1(sources, classpath, setup, progress, previousAnalysis, previousSetup, analysisMap, definesClass,
+        scalac, javac, reporter, skip, cache, incrementalCompilerOptions)
+      Result(analysis, setup, modified)
     }
 
   def withBootclasspath(args: CompilerArguments, classpath: Seq[File]): Seq[File] =
     args.bootClasspathFor(classpath) ++ args.extClasspath ++ args.finishClasspath(classpath)
 
-  def compile1(sources: Seq[File],
+  /**
+   * The first level of compilation.  This checks to see if we need to skip compiling because of the skip flag,
+   * IF we're not skipping, this setups up the `CompileConfiguration` and delegates to `compile2`
+   */
+  private def compile1(sources: Seq[File],
     classpath: Seq[File],
     setup: CompileSetup, progress: Option[CompileProgress],
-    store: AnalysisStore,
+    previousAnalysis: Analysis,
+    previousSetup: Option[CompileSetup],
     analysis: File => Option[Analysis],
     definesClass: DefinesClass,
     compiler: AnalyzingCompiler,
     javac: xsbti.compile.JavaCompiler,
     reporter: Reporter, skip: Boolean,
     cache: GlobalsCache,
-    incrementalCompilerOptions: IncOptions)(implicit log: Logger): Analysis =
+    incrementalCompilerOptions: IncOptions)(implicit log: Logger): (Analysis, Boolean) =
     {
-      val (previousAnalysis, previousSetup) = extract(store.get(), incrementalCompilerOptions)
       if (skip)
-        previousAnalysis
+        (previousAnalysis, false)
       else {
         val config = new CompileConfiguration(sources, classpath, previousAnalysis, previousSetup, setup,
           progress, analysis, definesClass, reporter, compiler, javac, cache, incrementalCompilerOptions)
         val (modified, result) = compile2(config)
-        if (modified)
-          store.set(result, setup)
-        result
+        (result, modified)
       }
     }
-  def compile2(config: CompileConfiguration)(implicit log: Logger, equiv: Equiv[CompileSetup]): (Boolean, Analysis) =
+  /**
+   * This runs the actual compilation of Java + Scala.  There are two helper methods which
+   * actually perform the compilation of Java or Scala.   This method uses the compile order to determine
+   * which files to pass to which compilers.
+   */
+  private def compile2(config: CompileConfiguration)(implicit log: Logger, equiv: Equiv[CompileSetup]): (Boolean, Analysis) =
     {
       import config._
       import currentSetup._
@@ -92,13 +125,13 @@ class AggressiveCompile(cacheFile: File) {
             val sources = if (order == Mixed) incSrc else scalaSrcs
             val arguments = cArgs(Nil, absClasspath, None, options.options)
             timed("Scala compilation", log) {
-              compiler.compile(sources, changes, arguments, output, callback, reporter, cache, log, progress)
+              compiler.compile(sources, changes, arguments, output, callback, reporter, config.cache, log, progress)
             }
           }
         def compileJava() =
           if (!javaSrcs.isEmpty) {
             import Path._
-            @tailrec def ancestor(f1: File, f2: File): Boolean =
+            @annotation.tailrec def ancestor(f1: File, f2: File): Boolean =
               if (f2 eq null) false else if (f1 == f2) true else ancestor(f1, f2.getParentFile)
 
             val chunks: Map[Option[File], Seq[File]] = output match {
@@ -174,23 +207,12 @@ class AggressiveCompile(cacheFile: File) {
     if (!combined.isEmpty)
       log.info(combined.mkString("Compiling ", " and ", " to " + outputDirs.map(_.getAbsolutePath).mkString(",") + "..."))
   }
-  private def extract(previous: Option[(Analysis, CompileSetup)], incOptions: IncOptions): (Analysis, Option[CompileSetup]) =
-    previous match {
-      case Some((an, setup)) => (an, Some(setup))
-      case None              => (Analysis.empty(nameHashing = incOptions.nameHashing), None)
-    }
+  /** Returns true if the file is java. */
   def javaOnly(f: File) = f.getName.endsWith(".java")
 
   private[this] def explicitBootClasspath(options: Seq[String]): Seq[File] =
     options.dropWhile(_ != CompilerArguments.BootClasspathOption).drop(1).take(1).headOption.toList.flatMap(IO.parseClasspath)
 
-  val store = AggressiveCompile.staticCache(cacheFile, AnalysisStore.sync(AnalysisStore.cached(FileBasedStore(cacheFile))))
-
-}
-@deprecated("0.13.8", "Use MixedAnalyzingCompiler instead.")
-object AggressiveCompile {
-  import collection.mutable
-  import java.lang.ref.{ Reference, SoftReference }
   private[this] val cache = new collection.mutable.HashMap[File, Reference[AnalysisStore]]
   private def staticCache(file: File, backing: => AnalysisStore): AnalysisStore =
     synchronized {
@@ -201,57 +223,7 @@ object AggressiveCompile {
       }
     }
 
+  /** Create a an analysis store cache at the desired location. */
   def staticCachedStore(cacheFile: File) = staticCache(cacheFile, AnalysisStore.sync(AnalysisStore.cached(FileBasedStore(cacheFile))))
 
-  @deprecated("0.13.8", "Deprecated in favor of new sbt.compiler.javac package.")
-  def directOrFork(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File]): JavaTool =
-    if (javaHome.isDefined)
-      JavaCompiler.fork(cpOptions, instance)(forkJavac(javaHome))
-    else
-      JavaCompiler.directOrFork(cpOptions, instance)(forkJavac(None))
-
-  @deprecated("0.13.8", "Deprecated in favor of new sbt.compiler.javac package.")
-  def forkJavac(javaHome: Option[File]): JavaCompiler.Fork =
-    {
-      import Path._
-      def exec(jc: JavacContract) = javaHome match { case None => jc.name; case Some(jh) => (jh / "bin" / jc.name).absolutePath }
-      (contract: JavacContract, args: Seq[String], log: Logger) => {
-        log.debug("Forking " + contract.name + ": " + exec(contract) + " " + args.mkString(" "))
-        val javacLogger = new JavacLogger(log)
-        var exitCode = -1
-        try {
-          exitCode = Process(exec(contract), args) ! javacLogger
-        } finally {
-          javacLogger.flush(exitCode)
-        }
-        exitCode
-      }
-    }
-}
-
-@deprecated("0.13.8", "Deprecated in favor of new sbt.compiler.javac package.")
-private[sbt] class JavacLogger(log: Logger) extends ProcessLogger {
-  import scala.collection.mutable.ListBuffer
-  import Level.{ Info, Warn, Error, Value => LogLevel }
-
-  private val msgs: ListBuffer[(LogLevel, String)] = new ListBuffer()
-
-  def info(s: => String): Unit =
-    synchronized { msgs += ((Info, s)) }
-
-  def error(s: => String): Unit =
-    synchronized { msgs += ((Error, s)) }
-
-  def buffer[T](f: => T): T = f
-
-  private def print(desiredLevel: LogLevel)(t: (LogLevel, String)) = t match {
-    case (Info, msg)  => log.info(msg)
-    case (Error, msg) => log.log(desiredLevel, msg)
-  }
-
-  def flush(exitCode: Int): Unit = {
-    val level = if (exitCode == 0) Warn else Error
-    msgs foreach print(level)
-    msgs.clear()
-  }
 }
