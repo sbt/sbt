@@ -5,6 +5,7 @@ import java.lang.ref.{ SoftReference, Reference }
 
 import sbt.classfile.Analyze
 import sbt.classpath.ClasspathUtilities
+import sbt.compiler.javac.AnalyzingJavaCompiler
 import sbt.inc.Locate.DefinesClass
 import sbt._
 import sbt.inc._
@@ -13,6 +14,80 @@ import xsbti.{ AnalysisCallback, Reporter }
 import xsbti.api.Source
 import xsbti.compile.CompileOrder._
 import xsbti.compile._
+
+/** An instance of an analyzing compiler that can run both javac + scalac. */
+final class MixedAnalyzingCompiler(
+    val scalac: AnalyzingCompiler,
+    val javac: AnalyzingJavaCompiler,
+    val config: CompileConfiguration,
+    val log: Logger) {
+  import config._
+  import currentSetup._
+
+  private[this] val absClasspath = classpath.map(_.getAbsoluteFile)
+  /** Mechanism to work with compiler arguments. */
+  private[this] val cArgs = new CompilerArguments(compiler.scalaInstance, compiler.cp)
+
+  /**
+   * Compiles the given Java/Scala files.
+   *
+   * @param include  The files to compile right now
+   * @param changes  A list of dependency changes.
+   * @param callback  The callback where we report dependency issues.
+   */
+  def compile(include: Set[File], changes: DependencyChanges, callback: AnalysisCallback): Unit = {
+    val outputDirs = outputDirectories(output)
+    outputDirs foreach (IO.createDirectory)
+    val incSrc = sources.filter(include)
+    val (javaSrcs, scalaSrcs) = incSrc partition javaOnly
+    logInputs(log, javaSrcs.size, scalaSrcs.size, outputDirs)
+    /** compiles the scala code necessary using the analyzing compiler. */
+    def compileScala(): Unit =
+      if (!scalaSrcs.isEmpty) {
+        val sources = if (order == Mixed) incSrc else scalaSrcs
+        val arguments = cArgs(Nil, absClasspath, None, options.options)
+        timed("Scala compilation", log) {
+          compiler.compile(sources, changes, arguments, output, callback, reporter, config.cache, log, progress)
+        }
+      }
+    /**
+     * Compiles the Java code necessary.  All analysis code is included in this method.
+     */
+    def compileJava(): Unit =
+      if (!javaSrcs.isEmpty) {
+        // Runs the analysis portion of Javac.
+        timed("Java compile + analysis", log) {
+          javac.compile(javaSrcs, options.javacOptions.toArray[String], output, callback, reporter, log, progress)
+        }
+      }
+    // TODO - Maybe on "Mixed" we should try to compile both Scala + Java.
+    if (order == JavaThenScala) { compileJava(); compileScala() } else { compileScala(); compileJava() }
+  }
+
+  private[this] def outputDirectories(output: Output): Seq[File] = output match {
+    case single: SingleOutput => List(single.outputDirectory)
+    case mult: MultipleOutput => mult.outputGroups map (_.outputDirectory)
+  }
+  /** Debugging method to time how long it takes to run various compilation tasks. */
+  private[this] def timed[T](label: String, log: Logger)(t: => T): T = {
+    val start = System.nanoTime
+    val result = t
+    val elapsed = System.nanoTime - start
+    log.debug(label + " took " + (elapsed / 1e9) + " s")
+    result
+  }
+
+  private[this] def logInputs(log: Logger, javaCount: Int, scalaCount: Int, outputDirs: Seq[File]) {
+    val scalaMsg = Analysis.counted("Scala source", "", "s", scalaCount)
+    val javaMsg = Analysis.counted("Java source", "", "s", javaCount)
+    val combined = scalaMsg ++ javaMsg
+    if (!combined.isEmpty)
+      log.info(combined.mkString("Compiling ", " and ", " to " + outputDirs.map(_.getAbsolutePath).mkString(",") + "..."))
+  }
+
+  /** Returns true if the file is java. */
+  private[this] def javaOnly(f: File) = f.getName.endsWith(".java")
+}
 
 /**
  * This is a compiler that mixes the `sbt.compiler.AnalyzingCompiler` for Scala incremental compilation
@@ -113,91 +188,21 @@ object MixedAnalyzingCompiler {
     {
       import config._
       import currentSetup._
+      // TODO - most of this around classpath-ness sohuld move to AnalyzingJavaCompiler constructor
       val absClasspath = classpath.map(_.getAbsoluteFile)
       val apiOption = (api: Either[Boolean, Source]) => api.right.toOption
       val cArgs = new CompilerArguments(compiler.scalaInstance, compiler.cp)
       val searchClasspath = explicitBootClasspath(options.options) ++ withBootclasspath(cArgs, absClasspath)
       val entry = Locate.entry(searchClasspath, definesClass)
-
-      /** Here we set up a function that can run *one* iteration of the incremental compiler.
-        *
-        * Given:
-        *   A set of files to compile
-        *   A set of dependency changes
-        *   A callback for analysis results
-        *
-        * Run:
-        *   Scalac + Javac on the set of files, the order of which is determined by the current CompileConfiguration.
-        */
-      val compile0 = (include: Set[File], changes: DependencyChanges, callback: AnalysisCallback) => {
-        val outputDirs = outputDirectories(output)
-        outputDirs foreach (IO.createDirectory)
-        val incSrc = sources.filter(include)
-        val (javaSrcs, scalaSrcs) = incSrc partition javaOnly
-        logInputs(log, javaSrcs.size, scalaSrcs.size, outputDirs)
-        /** compiles the scala code necessary using the analyzing compiler. */
-        def compileScala(): Unit =
-          if (!scalaSrcs.isEmpty) {
-            val sources = if (order == Mixed) incSrc else scalaSrcs
-            val arguments = cArgs(Nil, absClasspath, None, options.options)
-            timed("Scala compilation", log) {
-              compiler.compile(sources, changes, arguments, output, callback, reporter, config.cache, log, progress)
-            }
-          }
-        /** Compiles the Java code necessary.  All analysis code is included in this method.
-          *
-          *  TODO - much of this logic should be extracted into an "AnalyzingJavaCompiler" class.
-          */
-        def compileJava(): Unit =
-          if (!javaSrcs.isEmpty) {
-            import Path._
-            @annotation.tailrec def ancestor(f1: File, f2: File): Boolean =
-              if (f2 eq null) false else if (f1 == f2) true else ancestor(f1, f2.getParentFile)
-            // Here we outline "chunks" of compiles we need to run so that the .class files end up in the right
-            // location for Java.
-            val chunks: Map[Option[File], Seq[File]] = output match {
-              case single: SingleOutput => Map(Some(single.outputDirectory) -> javaSrcs)
-              case multi: MultipleOutput =>
-                javaSrcs groupBy { src =>
-                  multi.outputGroups find { out => ancestor(out.sourceDirectory, src) } map (_.outputDirectory)
-                }
-            }
-            // Report warnings about source files that have no output directory.
-            chunks.get(None) foreach { srcs =>
-              log.error("No output directory mapped for: " + srcs.map(_.getAbsolutePath).mkString(","))
-            }
-            // Here we try to memoize (cache) the known class files in the output directory.
-            val memo = for ((Some(outputDirectory), srcs) <- chunks) yield {
-              val classesFinder = PathFinder(outputDirectory) ** "*.class"
-              (classesFinder, classesFinder.get, srcs)
-            }
-            // Here we construct a class-loader we'll use to load + analyze the
-            val loader = ClasspathUtilities.toLoader(searchClasspath)
-            timed("Java compilation", log) {
-              try javac.compileWithReporter(javaSrcs.toArray, absClasspath.toArray, output, options.javacOptions.toArray, reporter, log)
-              catch {
-                // Handle older APIs
-                case _: NoSuchMethodError =>
-                  javac.compile(javaSrcs.toArray, absClasspath.toArray, output, options.javacOptions.toArray, log)
-              }
-            }
-            /** Reads the API information directly from the Class[_] object. Used when Analyzing dependencies. */
-            def readAPI(source: File, classes: Seq[Class[_]]): Set[String] = {
-              val (api, inherits) = ClassToAPI.process(classes)
-              callback.api(source, api)
-              inherits.map(_.getName)
-            }
-            // Runs the analysis portion of Javac.
-            timed("Java analysis", log) {
-              for ((classesFinder, oldClasses, srcs) <- memo) {
-                val newClasses = Set(classesFinder.get: _*) -- oldClasses
-                Analyze(newClasses.toSeq, srcs, log)(callback, loader, readAPI)
-              }
-            }
-          }
-        // TODO - Maybe on "Mixed" we should try to compile both Scala + Java.
-        if (order == JavaThenScala) { compileJava(); compileScala() } else { compileScala(); compileJava() }
-      }
+      // Construct a compiler which can handle both java and scala sources.
+      val mixedCompiler =
+        new MixedAnalyzingCompiler(
+          compiler,
+          // TODO - Construction of analyzing Java compiler MAYBE should be earlier...
+          new AnalyzingJavaCompiler(javac, classpath, compiler.scalaInstance, entry, searchClasspath),
+          config,
+          log
+        )
 
       // Here we check to see if any previous compilation results are invalid, based on altered
       // javac/scalac options.
@@ -212,29 +217,10 @@ object MixedAnalyzingCompiler {
         case Some(previous) if equiv.equiv(previous, currentSetup) => previousAnalysis
         case _ => Incremental.prune(sourcesSet, previousAnalysis)
       }
-      // Run the incremental compiler using the large compile0 "compile step" we've defined.
-      IncrementalCompile(sourcesSet, entry, compile0, analysis, getAnalysis, output, log, incOptions)
+      // Run the incremental compiler using the mixed compiler we've defined.
+      IncrementalCompile(sourcesSet, entry, mixedCompiler.compile, analysis, getAnalysis, output, log, incOptions)
     }
-  private[this] def outputDirectories(output: Output): Seq[File] = output match {
-    case single: SingleOutput => List(single.outputDirectory)
-    case mult: MultipleOutput => mult.outputGroups map (_.outputDirectory)
-  }
-  /** Debugging method to time how long it takes to run various compilation tasks. */
-  private[this] def timed[T](label: String, log: Logger)(t: => T): T =
-    {
-      val start = System.nanoTime
-      val result = t
-      val elapsed = System.nanoTime - start
-      log.debug(label + " took " + (elapsed / 1e9) + " s")
-      result
-    }
-  private[this] def logInputs(log: Logger, javaCount: Int, scalaCount: Int, outputDirs: Seq[File]) {
-    val scalaMsg = Analysis.counted("Scala source", "", "s", scalaCount)
-    val javaMsg = Analysis.counted("Java source", "", "s", javaCount)
-    val combined = scalaMsg ++ javaMsg
-    if (!combined.isEmpty)
-      log.info(combined.mkString("Compiling ", " and ", " to " + outputDirs.map(_.getAbsolutePath).mkString(",") + "..."))
-  }
+
   /** Returns true if the file is java. */
   def javaOnly(f: File) = f.getName.endsWith(".java")
 
