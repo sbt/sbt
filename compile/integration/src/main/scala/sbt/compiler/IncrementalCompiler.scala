@@ -6,11 +6,18 @@ import sbt.inc.{ Analysis, IncOptions, TextAnalysisFormat }
 import xsbti.{ Logger, Maybe }
 import xsbti.compile._
 
+// TODO -
+//  1. Move analyzingCompile from MixedAnalyzingCompiler into here
+//  2. Create AnalyzingJavaComiler class
+//  3. MixedAnalyzingCompiler should just provide the raw 'compile' method used in incremental compiler (and
+//     by this class.
+
 /**
- * An implementation of the incremetnal compiler that can compile inputs and dump out source dependency analysis.
+ * An implementation of the incremental compiler that can compile inputs and dump out source dependency analysis.
  */
 object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler] {
-  def compile(in: Inputs[Analysis, AnalyzingCompiler], log: Logger): Analysis =
+
+  override def compile(in: Inputs[Analysis, AnalyzingCompiler], log: Logger): Analysis =
     {
       val setup = in.setup; import setup._
       val options = in.options; import options.{ options => scalacOptions, _ }
@@ -32,10 +39,10 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler] {
   private[this] def m2o[S](opt: Maybe[S]): Option[S] = if (opt.isEmpty) None else Some(opt.get)
 
   @deprecated("0.13.8", "A logger is no longer needed.")
-  def newScalaCompiler(instance: ScalaInstance, interfaceJar: File, options: ClasspathOptions, log: Logger): AnalyzingCompiler =
+  override def newScalaCompiler(instance: ScalaInstance, interfaceJar: File, options: ClasspathOptions, log: Logger): AnalyzingCompiler =
     new AnalyzingCompiler(instance, CompilerInterfaceProvider.constant(interfaceJar), options)
 
-  def newScalaCompiler(instance: ScalaInstance, interfaceJar: File, options: ClasspathOptions): AnalyzingCompiler =
+  override def newScalaCompiler(instance: ScalaInstance, interfaceJar: File, options: ClasspathOptions): AnalyzingCompiler =
     new AnalyzingCompiler(instance, CompilerInterfaceProvider.constant(interfaceJar), options)
 
   def compileInterfaceJar(label: String, sourceJar: File, targetJar: File, interfaceJar: File, instance: ScalaInstance, log: Logger) {
