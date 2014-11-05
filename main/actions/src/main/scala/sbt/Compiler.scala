@@ -3,7 +3,7 @@
  */
 package sbt
 
-import sbt.compiler.javac.{ IncrementalCompilerJavaTools, JavaCompiler, JavaTools }
+import sbt.compiler.javac.{ IncrementalCompilerJavaTools, JavaTools }
 import xsbti.{ Logger => _, _ }
 import xsbti.compile.{ CompileOrder, GlobalsCache }
 import CompileOrder.{ JavaThenScala, Mixed, ScalaThenJava }
@@ -34,7 +34,7 @@ object Compiler {
   }
   /** The previous source dependency analysis result from compilation. */
   final case class PreviousAnalysis(analysis: Analysis, setup: Option[CompileSetup])
-  type CompileResult = MixedAnalyzingCompiler.Result
+  type CompileResult = IC.Result
 
   def inputs(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String],
     javacOptions: Seq[String], maxErrors: Int, sourcePositionMappers: Seq[Position => Option[Position]],
@@ -124,7 +124,7 @@ object Compiler {
       val javacChosen: xsbti.compile.JavaCompiler =
         in.inputs.compilers.newJavac.map(_.xsbtiCompiler).getOrElse(in.inputs.compilers.javac)
       // TODO - Why are we not using the IC interface???
-      MixedAnalyzingCompiler.analyzingCompile(scalac, javacChosen, sources, classpath, CompileOutput(classesDirectory), cache, None, options, javacOptions,
+      IC.incrementalCompile(scalac, javacChosen, sources, classpath, CompileOutput(classesDirectory), cache, None, options, javacOptions,
         in.previousAnalysis.analysis, in.previousAnalysis.setup, analysisMap, definesClass, reporter, order, skip, incOptions)(log)
     }
 
