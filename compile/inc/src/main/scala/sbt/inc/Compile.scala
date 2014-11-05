@@ -11,7 +11,33 @@ import Logger.{ m2o, problem }
 import java.io.File
 import xsbti.api.Definition
 
+/**
+ * Helper methods for running incremental compilation.  All this is responsible for is
+ * adapting any xsbti.AnalysisCallback into one compatible with the [[sbt.inc.Incremental]] class.
+ */
 object IncrementalCompile {
+  /**
+   * Runs the incremental compilation algorithm.
+   * @param sources
+   *              The full set of input sources
+   * @param entry
+   *              A className -> source file lookup function.
+   * @param compile
+   *                The mechanism to run a single 'step' of compile, for ALL source files involved.
+   * @param previous
+   *                 The previous dependency Analysis (or an empty one).
+   * @param forEntry
+   *                 The dependency Analysis associated with a given file
+   * @param output
+   *               The configured output directory/directory mapping for source files.
+   * @param log
+   *            Where all log messages should go
+   * @param options
+   *                Incremental compiler options (like name hashing vs. not).
+   * @return
+   *         A flag of whether or not compilation completed succesfully, and the resulting dependency analysis object.
+   *
+   */
   def apply(sources: Set[File], entry: String => Option[File],
     compile: (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit,
     previous: Analysis,
