@@ -10,7 +10,28 @@ import xsbti.api.{ Compilation, Source }
 import xsbti.compile.DependencyChanges
 import java.io.File
 
+/** Helper class to run incremental compilation algorithm.
+  *
+  *
+  * This class delegates down to
+  * - IncrementalNameHashing
+  * - IncrementalDefault
+  * - IncrementalAnyStyle
+  */
 object Incremental {
+  /** Runs the incremental compiler algorithm.
+    *
+    * @param sources   The sources to compile
+    * @param entry  The means of looking up a class on the classpath.
+    * @param previous The previously detected source dependencies.
+    * @param current  A mechanism for generating stamps (timestamps, hashes, etc).
+    * @param doCompile  The function which can run one level of compile.
+    * @param log  The log where we write debugging information
+    * @param options  Incremental compilation options
+    * @param equivS  The means of testing whether two "Stamps" are the same.
+    * @return
+    *         A flag of whether or not compilation completed succesfully, and the resulting dependency analysis object.
+    */
   def compile(sources: Set[File],
     entry: String => Option[File],
     previous: Analysis,
