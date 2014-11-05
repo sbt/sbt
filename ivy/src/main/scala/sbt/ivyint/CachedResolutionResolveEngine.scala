@@ -87,8 +87,10 @@ private[sbt] class CachedResolutionResolveCache() {
           case rules    => Some(conf + "->(" + (rules map includeRuleString).mkString(",") + ")")
         }
       })
+      val mes = parent.getAllExcludeRules.toVector
+      val mesStr = (mes map excludeRuleString).mkString(",")
       val os = extractOverrides(parent)
-      val moduleLevel = s"""dependencyOverrides=${os.mkString(",")}"""
+      val moduleLevel = s"""dependencyOverrides=${os.mkString(",")};moduleExclusions=$mesStr"""
       val depsString = s"""$mrid;${confMap.mkString(",")};isForce=${dd.isForce};isChanging=${dd.isChanging};isTransitive=${dd.isTransitive};""" +
         s"""exclusions=${exclusions.mkString(",")};inclusions=${inclusions.mkString(",")};$moduleLevel;"""
       val sha1 = Hash.toHex(Hash(depsString))
@@ -101,6 +103,9 @@ private[sbt] class CachedResolutionResolveCache() {
       md1.addDependency(dd)
       os foreach { ovr =>
         md1.addDependencyDescriptorMediator(ovr.moduleId, ovr.pm, ovr.ddm)
+      }
+      mes foreach { exclude =>
+        md1.addExcludeRule(exclude)
       }
       (md1, IvySbt.isChanging(dd))
     }
