@@ -44,8 +44,18 @@ public interface IncrementalCompiler<Analysis, ScalaCompiler>
 	* @param instance The Scala version to use
 	* @param interfaceJar The compiler interface jar compiled for the Scala version being used
 	* @param options Configures how arguments to the underlying Scala compiler will be built.
+    *
 	*/
+    @Deprecated
 	ScalaCompiler newScalaCompiler(ScalaInstance instance, File interfaceJar, ClasspathOptions options, Logger log);
+    /**
+     * Creates a compiler instance that can be used by the `compile` method.
+     *
+     * @param instance The Scala version to use
+     * @param interfaceJar The compiler interface jar compiled for the Scala version being used
+     * @param options Configures how arguments to the underlying Scala compiler will be built.
+     */
+    ScalaCompiler newScalaCompiler(ScalaInstance instance, File interfaceJar, ClasspathOptions options);
 
 	/** 
 	* Compiles the source interface for a Scala version.  The resulting jar can then be used by the `newScalaCompiler` method
