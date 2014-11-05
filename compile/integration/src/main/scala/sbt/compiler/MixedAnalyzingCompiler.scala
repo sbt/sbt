@@ -5,6 +5,7 @@ import java.lang.ref.{ SoftReference, Reference }
 
 import sbt.classfile.Analyze
 import sbt.classpath.ClasspathUtilities
+import sbt.compiler.CompileConfiguration
 import sbt.compiler.javac.AnalyzingJavaCompiler
 import sbt.inc.Locate.DefinesClass
 import sbt._
@@ -98,33 +99,8 @@ final class MixedAnalyzingCompiler(
  *       down to the incremental compiler for the rest.
  */
 object MixedAnalyzingCompiler {
-  /** The result of running the compilation. */
-  final case class Result(analysis: Analysis, setup: CompileSetup, hasModified: Boolean)
 
-  /**
-   * This will run a mixed-compilation of Java/Scala sources
-   * @param scalac  An instances of the Scalac compiler which can also extract "Analysis" (dependencies)
-   * @param javac  An instance of the Javac compiler.
-   * @param sources  The set of sources to compile
-   * @param classpath  The classpath to use when compiling.
-   * @param output  Configuration for where to output .class files.
-   * @param cache   The caching mechanism to use instead of insantiating new compiler instances.
-   * @param progress  Progress listening for the compilation process.  TODO - Feed this through the Javac Compiler!
-   * @param options   Options for the Scala compiler
-   * @param javacOptions  Options for the Java compiler
-   * @param previousAnalysis  The previous dependency Analysis object/
-   * @param previousSetup  The previous compilation setup (if any)
-   * @param analysisMap   A map of file to the dependency analysis of that file.
-   * @param definesClass  A mehcnaism of looking up whether or not a JAR defines a particular Class.
-   * @param reporter  Where we sent all compilation error/warning events
-   * @param compileOrder  The order we'd like to mix compilation.  JavaThenScala, ScalaThenJava or Mixed.
-   * @param skip  IF true, we skip compilation and just return the previous analysis file.
-   * @param incrementalCompilerOptions  Options specific to incremental compilation.
-   * @param log  The location where we write log messages.
-   * @return  The full configuration used to instantiate this mixed-analyzing compiler, the set of extracted dependencies and
-   *          whether or not any file were modified.
-   */
-  def analyzingCompile(scalac: AnalyzingCompiler,
+  def makeConfig(scalac: AnalyzingCompiler,
     javac: xsbti.compile.JavaCompiler,
     sources: Seq[File],
     classpath: Seq[File],
@@ -140,90 +116,77 @@ object MixedAnalyzingCompiler {
     reporter: Reporter,
     compileOrder: CompileOrder = Mixed,
     skip: Boolean = false,
-    incrementalCompilerOptions: IncOptions)(implicit log: Logger): Result =
+    incrementalCompilerOptions: IncOptions): CompileConfiguration =
     {
-      val setup = new CompileSetup(output, new CompileOptions(options, javacOptions),
+      val compileSetup = new CompileSetup(output, new CompileOptions(options, javacOptions),
         scalac.scalaInstance.actualVersion, compileOrder, incrementalCompilerOptions.nameHashing)
-      val (analysis, modified) = compile1(sources, classpath, setup, progress, previousAnalysis, previousSetup, analysisMap, definesClass,
-        scalac, javac, reporter, skip, cache, incrementalCompilerOptions)
-      Result(analysis, setup, modified)
+      config(
+        sources,
+        classpath,
+        compileSetup,
+        progress,
+        previousAnalysis,
+        previousSetup,
+        analysisMap,
+        definesClass,
+        scalac,
+        javac,
+        reporter,
+        skip,
+        cache,
+        incrementalCompilerOptions)
     }
 
-  def withBootclasspath(args: CompilerArguments, classpath: Seq[File]): Seq[File] =
-    args.bootClasspathFor(classpath) ++ args.extClasspath ++ args.finishClasspath(classpath)
-
-  /**
-   * The first level of compilation.  This checks to see if we need to skip compiling because of the skip flag,
-   * IF we're not skipping, this setups up the `CompileConfiguration` and delegates to `compile2`
-   */
-  private def compile1(sources: Seq[File],
+  def config(
+    sources: Seq[File],
     classpath: Seq[File],
-    setup: CompileSetup, progress: Option[CompileProgress],
+    setup: CompileSetup,
+    progress: Option[CompileProgress],
     previousAnalysis: Analysis,
     previousSetup: Option[CompileSetup],
     analysis: File => Option[Analysis],
     definesClass: DefinesClass,
     compiler: AnalyzingCompiler,
     javac: xsbti.compile.JavaCompiler,
-    reporter: Reporter, skip: Boolean,
+    reporter: Reporter,
+    skip: Boolean,
     cache: GlobalsCache,
-    incrementalCompilerOptions: IncOptions)(implicit log: Logger): (Analysis, Boolean) =
-    {
-      import CompileSetup._
-      if (skip)
-        (previousAnalysis, false)
-      else {
-        val config = new CompileConfiguration(sources, classpath, previousAnalysis, previousSetup, setup,
-          progress, analysis, definesClass, reporter, compiler, javac, cache, incrementalCompilerOptions)
-        val (modified, result) = compile2(config)
-        (result, modified)
-      }
-    }
-  /**
-   * This runs the actual compilation of Java + Scala.  There are two helper methods which
-   * actually perform the compilation of Java or Scala.   This method uses the compile order to determine
-   * which files to pass to which compilers.
-   */
-  private def compile2(config: CompileConfiguration)(implicit log: Logger, equiv: Equiv[CompileSetup]): (Boolean, Analysis) =
-    {
-      import config._
-      import currentSetup._
-      // TODO - most of this around classpath-ness sohuld move to AnalyzingJavaCompiler constructor
-      val absClasspath = classpath.map(_.getAbsoluteFile)
-      val apiOption = (api: Either[Boolean, Source]) => api.right.toOption
-      val cArgs = new CompilerArguments(compiler.scalaInstance, compiler.cp)
-      val searchClasspath = explicitBootClasspath(options.options) ++ withBootclasspath(cArgs, absClasspath)
-      val entry = Locate.entry(searchClasspath, definesClass)
-      // Construct a compiler which can handle both java and scala sources.
-      val mixedCompiler =
-        new MixedAnalyzingCompiler(
-          compiler,
-          // TODO - Construction of analyzing Java compiler MAYBE should be earlier...
-          new AnalyzingJavaCompiler(javac, classpath, compiler.scalaInstance, entry, searchClasspath),
-          config,
-          log
-        )
+    incrementalCompilerOptions: IncOptions): CompileConfiguration = {
+    import CompileSetup._
+    new CompileConfiguration(sources, classpath, previousAnalysis, previousSetup, setup,
+      progress, analysis, definesClass, reporter, compiler, javac, cache, incrementalCompilerOptions)
+  }
 
-      // Here we check to see if any previous compilation results are invalid, based on altered
-      // javac/scalac options.
-      val sourcesSet = sources.toSet
-      val analysis = previousSetup match {
-        case Some(previous) if previous.nameHashing != currentSetup.nameHashing =>
-          // if the value of `nameHashing` flag has changed we have to throw away
-          // previous Analysis completely and start with empty Analysis object
-          // that supports the particular value of the `nameHashing` flag.
-          // Otherwise we'll be getting UnsupportedOperationExceptions
-          Analysis.empty(currentSetup.nameHashing)
-        case Some(previous) if equiv.equiv(previous, currentSetup) => previousAnalysis
-        case _ => Incremental.prune(sourcesSet, previousAnalysis)
-      }
-      // Run the incremental compiler using the mixed compiler we've defined.
-      IncrementalCompile(sourcesSet, entry, mixedCompiler.compile, analysis, getAnalysis, output, log, incOptions)
-    }
+  /** Returns the search classpath (for dependencies) and a function which can also do so. */
+  def searchClasspathAndLookup(config: CompileConfiguration): (Seq[File], String => Option[File]) = {
+    import config._
+    import currentSetup._
+    val absClasspath = classpath.map(_.getAbsoluteFile)
+    val apiOption = (api: Either[Boolean, Source]) => api.right.toOption
+    val cArgs = new CompilerArguments(compiler.scalaInstance, compiler.cp)
+    val searchClasspath = explicitBootClasspath(options.options) ++ withBootclasspath(cArgs, absClasspath)
+    (searchClasspath, Locate.entry(searchClasspath, definesClass))
+  }
 
-  /** Returns true if the file is java. */
-  def javaOnly(f: File) = f.getName.endsWith(".java")
+  /** Returns a "lookup file for a given class name" function. */
+  def classPathLookup(config: CompileConfiguration): String => Option[File] =
+    searchClasspathAndLookup(config)._2
 
+  def apply(config: CompileConfiguration)(implicit log: Logger): MixedAnalyzingCompiler = {
+    import config._
+    val (searchClasspath, entry) = searchClasspathAndLookup(config)
+    // Construct a compiler which can handle both java and scala sources.
+    new MixedAnalyzingCompiler(
+      compiler,
+      // TODO - Construction of analyzing Java compiler MAYBE should be earlier...
+      new AnalyzingJavaCompiler(javac, classpath, compiler.scalaInstance, entry, searchClasspath),
+      config,
+      log
+    )
+  }
+
+  def withBootclasspath(args: CompilerArguments, classpath: Seq[File]): Seq[File] =
+    args.bootClasspathFor(classpath) ++ args.extClasspath ++ args.finishClasspath(classpath)
   private[this] def explicitBootClasspath(options: Seq[String]): Seq[File] =
     options.dropWhile(_ != CompilerArguments.BootClasspathOption).drop(1).take(1).headOption.toList.flatMap(IO.parseClasspath)
 

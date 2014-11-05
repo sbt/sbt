@@ -20,9 +20,9 @@ import xsbti.api.Source
 import xsbti.compile.{ CompileOrder, DependencyChanges, GlobalsCache, Output, SingleOutput, MultipleOutput, CompileProgress }
 import CompileOrder.{ JavaThenScala, Mixed, ScalaThenJava }
 
-@deprecated("0.13.8", "Use MixedAnalyzingCompiler instead.")
+@deprecated("0.13.8", "Use MixedAnalyzingCompiler or IC instead.")
 class AggressiveCompile(cacheFile: File) {
-  @deprecated("0.13.8", "Use MixedAnalyzingCompiler.analyzingCompile instead.")
+  @deprecated("0.13.8", "Use IC.compile instead.")
   def apply(compiler: AnalyzingCompiler,
     javac: xsbti.compile.JavaCompiler,
     sources: Seq[File], classpath: Seq[File],

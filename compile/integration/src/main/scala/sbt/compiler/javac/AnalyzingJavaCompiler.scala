@@ -2,17 +2,14 @@ package sbt.compiler.javac
 
 import java.io.File
 
+import sbt._
 import sbt.classfile.Analyze
 import sbt.classpath.ClasspathUtilities
 import sbt.compiler.CompilerArguments
-import sbt._
+import sbt.inc.Locate
 import xsbti.api.Source
-import xsbti.{ Reporter, AnalysisCallback }
 import xsbti.compile._
-
-object AnalyzingJavaCompiler {
-  type ClasspathLookup = String => Option[File]
-}
+import xsbti.{ AnalysisCallback, Reporter }
 
 /**
  * This is a java compiler which will also report any discovered source dependencies/apis out via
@@ -25,9 +22,8 @@ final class AnalyzingJavaCompiler private[sbt] (
     val javac: xsbti.compile.JavaCompiler,
     val classpath: Seq[File],
     val scalaInstance: xsbti.compile.ScalaInstance,
-    val classLookup: AnalyzingJavaCompiler.ClasspathLookup,
+    val classLookup: (String => Option[File]),
     val searchClasspath: Seq[File]) {
-
   /**
    * Compile some java code using the current configured compiler.
    *
@@ -42,7 +38,6 @@ final class AnalyzingJavaCompiler private[sbt] (
   def compile(sources: Seq[File], options: Seq[String], output: Output, callback: AnalysisCallback, reporter: Reporter, log: Logger, progressOpt: Option[CompileProgress]): Unit = {
     if (!sources.isEmpty) {
       val absClasspath = classpath.map(_.getAbsoluteFile)
-      import Path._
       @annotation.tailrec def ancestor(f1: File, f2: File): Boolean =
         if (f2 eq null) false else if (f1 == f2) true else ancestor(f1, f2.getParentFile)
       // Here we outline "chunks" of compiles we need to run so that the .class files end up in the right
@@ -92,11 +87,6 @@ final class AnalyzingJavaCompiler private[sbt] (
       // TODO - Perhaps we just record task 2/2 here
     }
   }
-
-  // TODO - This code is duplciated later in MixedAnalyzing compiler.  It should probably just live in this class.
-  private[this] def explicitBootClasspath(options: Seq[String]): Seq[File] = options.dropWhile(_ != CompilerArguments.BootClasspathOption).drop(1).take(1).headOption.toList.flatMap(IO.parseClasspath)
-  private[this] def withBootclasspath(args: CompilerArguments, classpath: Seq[File]): Seq[File] =
-    args.bootClasspathFor(classpath) ++ args.extClasspath ++ args.finishClasspath(classpath)
   /** Debugging method to time how long it takes to run various compilation tasks. */
   private[this] def timed[T](label: String, log: Logger)(t: => T): T = {
     val start = System.nanoTime
