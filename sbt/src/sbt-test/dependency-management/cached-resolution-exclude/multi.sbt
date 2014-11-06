@@ -17,7 +17,11 @@ def cachedResolutionSettings: Seq[Def.Setting[_]] =
 lazy val a = project.
   settings(cachedResolutionSettings: _*).
   settings(
-    libraryDependencies += "net.databinder" %% "unfiltered-uploads" % "0.8.0" exclude("commons-io", "commons-io")
+    libraryDependencies += "net.databinder" %% "unfiltered-uploads" % "0.8.0" exclude("commons-io", "commons-io"),
+    ivyXML :=
+      <dependencies>
+        <exclude module="commons-codec"/>
+      </dependencies>
   )
 
 lazy val b = project.
@@ -32,12 +36,15 @@ lazy val root = (project in file(".")).
     organization in ThisBuild := "org.example",
     version in ThisBuild := "1.0",
     check := {
-      // sys.error(dependencyCacheDirectory.value.toString)
       val acp = (externalDependencyClasspath in Compile in a).value.sortBy {_.data.getName}
       val bcp = (externalDependencyClasspath in Compile in b).value.sortBy {_.data.getName}
       if (acp exists { _.data.getName contains "commons-io" }) {
         sys.error("commons-io found when it should be excluded")
       }
+      if (acp exists { _.data.getName contains "commons-codec" }) {
+        sys.error("commons-codec found when it should be excluded")
+      }
+      // This is checking to make sure excluded graph is not getting picked up
       if (!(bcp exists { _.data.getName contains "commons-io" })) {
         sys.error("commons-io NOT found when it should NOT be excluded")
       }

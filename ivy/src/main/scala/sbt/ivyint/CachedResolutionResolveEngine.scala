@@ -11,7 +11,7 @@ import org.apache.ivy.core
 import core.resolve._
 import core.module.id.{ ModuleRevisionId, ModuleId => IvyModuleId }
 import core.report.{ ResolveReport, ConfigurationResolveReport, DownloadReport }
-import core.module.descriptor.{ DefaultModuleDescriptor, ModuleDescriptor, DependencyDescriptor, Configuration => IvyConfiguration, ExcludeRule, IncludeRule }
+import core.module.descriptor.{ DefaultModuleDescriptor, ModuleDescriptor, DefaultDependencyDescriptor, DependencyDescriptor, Configuration => IvyConfiguration, ExcludeRule, IncludeRule }
 import core.module.descriptor.OverrideDependencyDescriptorMediator
 import core.{ IvyPatternHelper, LogOptions }
 import org.apache.ivy.util.Message
@@ -29,40 +29,85 @@ private[sbt] class CachedResolutionResolveCache() {
   val updateReportCache: concurrent.Map[ModuleRevisionId, Either[ResolveException, UpdateReport]] = concurrent.TrieMap()
   val resolveReportCache: concurrent.Map[ModuleRevisionId, ResolveReport] = concurrent.TrieMap()
   val resolvePropertiesCache: concurrent.Map[ModuleRevisionId, String] = concurrent.TrieMap()
-  val directDependencyCache: concurrent.Map[ModuleRevisionId, Vector[DependencyDescriptor]] = concurrent.TrieMap()
   val conflictCache: concurrent.Map[(ModuleID, ModuleID), (Vector[ModuleID], Vector[ModuleID], String)] = concurrent.TrieMap()
   val maxConflictCacheSize: Int = 10000
 
   def clean(md0: ModuleDescriptor, prOpt: Option[ProjectResolver]): Unit = {
-    val mrid0 = md0.getModuleRevisionId
-    val mds =
-      if (mrid0.getOrganisation == sbtOrgTemp) Vector(md0)
-      else buildArtificialModuleDescriptors(md0, prOpt) map { _._1 }
-
-    updateReportCache.remove(md0.getModuleRevisionId)
-    directDependencyCache.remove(md0.getModuleRevisionId)
-    mds foreach { md =>
-      updateReportCache.remove(md.getModuleRevisionId)
-      directDependencyCache.remove(md.getModuleRevisionId)
-    }
+    updateReportCache.clear
   }
   def directDependencies(md0: ModuleDescriptor): Vector[DependencyDescriptor] =
-    directDependencyCache.getOrElseUpdate(md0.getModuleRevisionId, md0.getDependencies.toVector)
-
-  def buildArtificialModuleDescriptors(md0: ModuleDescriptor, prOpt: Option[ProjectResolver]): Vector[(DefaultModuleDescriptor, Boolean)] =
+    md0.getDependencies.toVector
+  def buildArtificialModuleDescriptors(md0: ModuleDescriptor, data: ResolveData, prOpt: Option[ProjectResolver]): Vector[(DefaultModuleDescriptor, Boolean)] =
     {
-      def expandInternalDeps(dep: DependencyDescriptor): Vector[DependencyDescriptor] =
-        prOpt map {
-          _.getModuleDescriptor(dep.getDependencyRevisionId) match {
-            case Some(internal) => directDependencies(internal) flatMap expandInternalDeps
-            case _              => Vector(dep)
-          }
-        } getOrElse Vector(dep)
-      val expanded = directDependencies(md0) flatMap expandInternalDeps
-      val rootModuleConfigs = md0.getConfigurations.toVector
+      val rootModuleConfigs = md0.getConfigurations.toArray.toVector
+      val expanded = expandInternalDependencies(md0, data, prOpt)
       expanded map { buildArtificialModuleDescriptor(_, rootModuleConfigs, md0, prOpt) }
     }
-
+  // This expands out all internal dependencies and merge them into a single graph that consists
+  // only of external dependencies.
+  // The tricky part is the merger of configurations, even though in most cases we will only see compile->compile when it comes to internal deps.
+  // Theoretically, there could be a potential for test->test->runtime kind of situation. nextConfMap and remapConfigurations track
+  // the configuration chains transitively.
+  def expandInternalDependencies(md0: ModuleDescriptor, data: ResolveData, prOpt: Option[ProjectResolver]): Vector[DependencyDescriptor] =
+    {
+      val rootModuleConfigs = md0.getConfigurations.toArray.toVector
+      val rootNode = new IvyNode(data, md0)
+      def expandInternalDeps(dep: DependencyDescriptor, confMap: Map[String, Array[String]]): Vector[DependencyDescriptor] =
+        internalDependency(dep) match {
+          case Some(internal) =>
+            val allConfigurations: Vector[String] =
+              (if (confMap.isEmpty) nextConfMap(dep, confMap)
+              else confMap).values.flatten.toList.distinct.toVector
+            directDependencies(internal) filter { dd =>
+              allConfigurations exists { conf => !dd.getDependencyConfigurations(conf).isEmpty }
+            } flatMap { dd => expandInternalDeps(dd, nextConfMap(dd, confMap)) }
+          case _ =>
+            if (confMap.isEmpty) Vector(dep)
+            else Vector(remapConfigurations(dep, confMap))
+        }
+      def internalDependency(dep: DependencyDescriptor): Option[ModuleDescriptor] =
+        prOpt match {
+          case Some(pr) => pr.getModuleDescriptor(dep.getDependencyRevisionId)
+          case _        => None
+        }
+      // This creates confMap. The key of the map is rootModuleConf for md0, the value is the dependency configs for dd.
+      def nextConfMap(dd: DependencyDescriptor, previous: Map[String, Array[String]]): Map[String, Array[String]] =
+        if (previous.isEmpty) {
+          ListMap(dd.getModuleConfigurations.toList map { conf =>
+            conf -> (dd.getDependencyConfigurations(conf) flatMap { confName =>
+              if (confName == "*") Array(confName)
+              else rootNode.getRealConfs(confName)
+            })
+          }: _*)
+        } else previous map {
+          case (rootModuleConf, vs) =>
+            rootModuleConf -> (vs flatMap { conf =>
+              dd.getDependencyConfigurations(conf) flatMap { confName =>
+                if (confName == "*") Array(confName)
+                else rootNode.getRealConfs(confName)
+              }
+            })
+        }
+      def remapConfigurations(dd0: DependencyDescriptor, confMap: Map[String, Array[String]]): DependencyDescriptor =
+        {
+          val dd = new DefaultDependencyDescriptor(md0, dd0.getDependencyRevisionId, dd0.getDynamicConstraintDependencyRevisionId,
+            dd0.isForce, dd0.isChanging, dd0.isTransitive)
+          for {
+            moduleConf <- dd0.getModuleConfigurations
+            (rootModuleConf, vs) <- confMap
+          } if (vs contains moduleConf) {
+            // moduleConf in dd0 maps to rootModuleConf in dd
+            dd0.getDependencyConfigurations(moduleConf) foreach { conf =>
+              dd.addDependencyConfiguration(rootModuleConf, conf)
+            }
+            dd0.getExcludeRules(moduleConf) foreach { rule =>
+              dd.addExcludeRule(rootModuleConf, rule)
+            }
+          }
+          dd
+        }
+      directDependencies(md0) flatMap { dep => expandInternalDeps(dep, Map()) }
+    }
   def buildArtificialModuleDescriptor(dd: DependencyDescriptor, rootModuleConfigs: Vector[IvyConfiguration], parent: ModuleDescriptor, prOpt: Option[ProjectResolver]): (DefaultModuleDescriptor, Boolean) =
     {
       def excludeRuleString(rule: ExcludeRule): String =
@@ -85,8 +130,10 @@ private[sbt] class CachedResolutionResolveCache() {
           case rules    => Some(conf + "->(" + (rules map includeRuleString).mkString(",") + ")")
         }
       })
+      val mes = parent.getAllExcludeRules.toVector
+      val mesStr = (mes map excludeRuleString).mkString(",")
       val os = extractOverrides(parent)
-      val moduleLevel = s"""dependencyOverrides=${os.mkString(",")}"""
+      val moduleLevel = s"""dependencyOverrides=${os.mkString(",")};moduleExclusions=$mesStr"""
       val depsString = s"""$mrid;${confMap.mkString(",")};isForce=${dd.isForce};isChanging=${dd.isChanging};isTransitive=${dd.isTransitive};""" +
         s"""exclusions=${exclusions.mkString(",")};inclusions=${inclusions.mkString(",")};$moduleLevel;"""
       val sha1 = Hash.toHex(Hash(depsString))
@@ -99,6 +146,9 @@ private[sbt] class CachedResolutionResolveCache() {
       md1.addDependency(dd)
       os foreach { ovr =>
         md1.addDependencyDescriptorMediator(ovr.moduleId, ovr.pm, ovr.ddm)
+      }
+      mes foreach { exclude =>
+        md1.addExcludeRule(exclude)
       }
       (md1, IvySbt.isChanging(dd))
     }
@@ -228,9 +278,10 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
     val miniGraphPath = depDir / "module"
     val cachedDescriptor = getSettings.getResolutionCacheManager.getResolvedIvyFileInCache(md0.getModuleRevisionId)
     val cache = cachedResolutionResolveCache
-    cache.directDependencyCache.remove(md0.getModuleRevisionId)
     val os = cache.extractOverrides(md0)
-    val mds = cache.buildArtificialModuleDescriptors(md0, projectResolver)
+    val options1 = new ResolveOptions(options0)
+    val data = new ResolveData(this, options1)
+    val mds = cache.buildArtificialModuleDescriptors(md0, data, projectResolver)
     def doWork(md: ModuleDescriptor): Either[ResolveException, UpdateReport] =
       {
         val options1 = new ResolveOptions(options0)
