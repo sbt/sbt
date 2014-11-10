@@ -57,15 +57,18 @@ private[sbt] class CachedResolutionResolveCache() {
       def expandInternalDeps(dep: DependencyDescriptor, confMap: Map[String, Array[String]]): Vector[DependencyDescriptor] =
         internalDependency(dep) match {
           case Some(internal) =>
+            log.debug(s""":::: found internal dependency ${internal.getResolvedModuleRevisionId}""")
             val allConfigurations: Vector[String] =
               (if (confMap.isEmpty) nextConfMap(dep, confMap)
               else confMap).values.flatten.toList.distinct.toVector
-            directDependencies(internal) filter { dd =>
+            val next = nextConfMap(dep, confMap)
+            val directs = directDependencies(internal) filter { dd =>
               allConfigurations exists { conf => !dd.getDependencyConfigurations(conf).isEmpty }
-            } flatMap { dd => expandInternalDeps(dd, nextConfMap(dd, confMap)) }
+            }
+            directs flatMap { dd => expandInternalDeps(dd, next) }
           case _ =>
             if (confMap.isEmpty) Vector(dep)
-            else Vector(remapConfigurations(dep, confMap))
+            else Vector(remapConfigurations(dep, confMap, log))
         }
       def internalDependency(dep: DependencyDescriptor): Option[ModuleDescriptor] =
         prOpt match {
@@ -90,15 +93,17 @@ private[sbt] class CachedResolutionResolveCache() {
               }
             })
         }
-      def remapConfigurations(dd0: DependencyDescriptor, confMap: Map[String, Array[String]]): DependencyDescriptor =
+      def remapConfigurations(dd0: DependencyDescriptor, confMap: Map[String, Array[String]], log: Logger): DependencyDescriptor =
         {
+          log.debug(s""":::: remapping configuration of ${dd0} with ${confMap.toList map { case (k, v) => (k, v.toList) }}""")
           val dd = new DefaultDependencyDescriptor(md0, dd0.getDependencyRevisionId, dd0.getDynamicConstraintDependencyRevisionId,
             dd0.isForce, dd0.isChanging, dd0.isTransitive)
+          val moduleConfigurations = dd0.getModuleConfigurations.toVector
           for {
-            moduleConf <- dd0.getModuleConfigurations.toVector
+            moduleConf <- moduleConfigurations
             (rootModuleConf, vs) <- confMap.toSeq
           } if (vs contains moduleConf) {
-            // moduleConf in dd0 maps to rootModuleConf in dd
+            log.debug(s""":::: ${dd0}: $moduleConf maps to $rootModuleConf""")
             dd0.getDependencyConfigurations(moduleConf) foreach { conf =>
               dd.addDependencyConfiguration(rootModuleConf, conf)
             }
@@ -112,6 +117,7 @@ private[sbt] class CachedResolutionResolveCache() {
               dd.addDependencyArtifact(rootModuleConf, dad)
             }
           }
+          log.debug(s""":::: remapped dd: $dd""")
           dd
         }
       directDependencies(md0) flatMap { dep => expandInternalDeps(dep, Map()) }
