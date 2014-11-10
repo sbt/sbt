@@ -8,13 +8,21 @@ def commonSettings: Seq[Def.Setting[_]] =
     resolvers += Resolver.sonatypeRepo("snapshots")
   )
 
+lazy val classifierTest = project.
+  settings(commonSettings: _*).
+  settings(
+    libraryDependencies := Seq(
+      "net.sf.json-lib" % "json-lib" % "2.4" classifier "jdk15" intransitive()
+    )
+  )
+
 lazy val a = project.
+  dependsOn(classifierTest).
   settings(commonSettings: _*).
   settings(
     updateOptions := updateOptions.value.withCachedResolution(true),
     artifact in (Compile, packageBin) := Artifact("demo"),
     libraryDependencies := Seq(
-      "net.sf.json-lib" % "json-lib" % "2.4" classifier "jdk15" intransitive(),
       "com.typesafe.akka" %% "akka-remote" % "2.3.4" exclude("com.typesafe.akka", "akka-actor_2.10"),
       "net.databinder" %% "unfiltered-uploads" % "0.8.0",
       "commons-io" % "commons-io" % "1.3",
@@ -24,10 +32,10 @@ lazy val a = project.
   )
 
 lazy val b = project.
+  dependsOn(classifierTest).
   settings(commonSettings: _*).
   settings(
     libraryDependencies := Seq(
-      "net.sf.json-lib" % "json-lib" % "2.4" classifier "jdk15" intransitive(),
       "com.typesafe.akka" %% "akka-remote" % "2.3.4" exclude("com.typesafe.akka", "akka-actor_2.10"),
       "net.databinder" %% "unfiltered-uploads" % "0.8.0",
       "commons-io" % "commons-io" % "1.3",
