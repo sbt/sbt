@@ -17,7 +17,7 @@ object Sbt extends Build {
     s"all control/$task collections/$task io/$task completion/$task"
   def buildSettings = Seq(
     organization := "org.scala-sbt",
-    version := "0.13.7-RC3",
+    version := "0.13.7-SNAPSHOT",
     publishArtifact in packageDoc := false,
     scalaVersion := "2.10.4",
     publishMavenStyle := false,
