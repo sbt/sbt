@@ -12,7 +12,7 @@ import core.resolve._
 import core.module.id.{ ModuleRevisionId, ModuleId => IvyModuleId }
 import core.report.{ ResolveReport, ConfigurationResolveReport, DownloadReport }
 import core.module.descriptor.{ DefaultModuleDescriptor, ModuleDescriptor, DefaultDependencyDescriptor, DependencyDescriptor, Configuration => IvyConfiguration, ExcludeRule, IncludeRule }
-import core.module.descriptor.OverrideDependencyDescriptorMediator
+import core.module.descriptor.{ OverrideDependencyDescriptorMediator, DependencyArtifactDescriptor }
 import core.{ IvyPatternHelper, LogOptions }
 import org.apache.ivy.util.Message
 import org.apache.ivy.plugins.latest.{ ArtifactInfo => IvyArtifactInfo }
@@ -37,33 +37,38 @@ private[sbt] class CachedResolutionResolveCache() {
   }
   def directDependencies(md0: ModuleDescriptor): Vector[DependencyDescriptor] =
     md0.getDependencies.toVector
-  def buildArtificialModuleDescriptors(md0: ModuleDescriptor, data: ResolveData, prOpt: Option[ProjectResolver]): Vector[(DefaultModuleDescriptor, Boolean)] =
+  def buildArtificialModuleDescriptors(md0: ModuleDescriptor, data: ResolveData, prOpt: Option[ProjectResolver], log: Logger): Vector[(DefaultModuleDescriptor, Boolean)] =
     {
+      log.debug(s":: building artificial module descriptors from ${md0.getModuleRevisionId}")
+      val expanded = expandInternalDependencies(md0, data, prOpt, log)
       val rootModuleConfigs = md0.getConfigurations.toArray.toVector
-      val expanded = expandInternalDependencies(md0, data, prOpt)
-      expanded map { buildArtificialModuleDescriptor(_, rootModuleConfigs, md0, prOpt) }
+      expanded map { buildArtificialModuleDescriptor(_, rootModuleConfigs, md0, prOpt, log) }
     }
   // This expands out all internal dependencies and merge them into a single graph that consists
   // only of external dependencies.
   // The tricky part is the merger of configurations, even though in most cases we will only see compile->compile when it comes to internal deps.
   // Theoretically, there could be a potential for test->test->runtime kind of situation. nextConfMap and remapConfigurations track
   // the configuration chains transitively.
-  def expandInternalDependencies(md0: ModuleDescriptor, data: ResolveData, prOpt: Option[ProjectResolver]): Vector[DependencyDescriptor] =
+  def expandInternalDependencies(md0: ModuleDescriptor, data: ResolveData, prOpt: Option[ProjectResolver], log: Logger): Vector[DependencyDescriptor] =
     {
+      log.debug(s"::: expanding internal dependencies of module descriptor ${md0.getModuleRevisionId}")
       val rootModuleConfigs = md0.getConfigurations.toArray.toVector
       val rootNode = new IvyNode(data, md0)
       def expandInternalDeps(dep: DependencyDescriptor, confMap: Map[String, Array[String]]): Vector[DependencyDescriptor] =
         internalDependency(dep) match {
           case Some(internal) =>
+            log.debug(s""":::: found internal dependency ${internal.getResolvedModuleRevisionId}""")
             val allConfigurations: Vector[String] =
               (if (confMap.isEmpty) nextConfMap(dep, confMap)
               else confMap).values.flatten.toList.distinct.toVector
-            directDependencies(internal) filter { dd =>
+            val next = nextConfMap(dep, confMap)
+            val directs = directDependencies(internal) filter { dd =>
               allConfigurations exists { conf => !dd.getDependencyConfigurations(conf).isEmpty }
-            } flatMap { dd => expandInternalDeps(dd, nextConfMap(dd, confMap)) }
+            }
+            directs flatMap { dd => expandInternalDeps(dd, next) }
           case _ =>
             if (confMap.isEmpty) Vector(dep)
-            else Vector(remapConfigurations(dep, confMap))
+            else Vector(remapConfigurations(dep, confMap, log))
         }
       def internalDependency(dep: DependencyDescriptor): Option[ModuleDescriptor] =
         prOpt match {
@@ -88,32 +93,44 @@ private[sbt] class CachedResolutionResolveCache() {
               }
             })
         }
-      def remapConfigurations(dd0: DependencyDescriptor, confMap: Map[String, Array[String]]): DependencyDescriptor =
+      def remapConfigurations(dd0: DependencyDescriptor, confMap: Map[String, Array[String]], log: Logger): DependencyDescriptor =
         {
+          log.debug(s""":::: remapping configuration of ${dd0} with ${confMap.toList map { case (k, v) => (k, v.toList) }}""")
           val dd = new DefaultDependencyDescriptor(md0, dd0.getDependencyRevisionId, dd0.getDynamicConstraintDependencyRevisionId,
             dd0.isForce, dd0.isChanging, dd0.isTransitive)
+          val moduleConfigurations = dd0.getModuleConfigurations.toVector
           for {
-            moduleConf <- dd0.getModuleConfigurations
-            (rootModuleConf, vs) <- confMap
+            moduleConf <- moduleConfigurations
+            (rootModuleConf, vs) <- confMap.toSeq
           } if (vs contains moduleConf) {
-            // moduleConf in dd0 maps to rootModuleConf in dd
+            log.debug(s""":::: ${dd0}: $moduleConf maps to $rootModuleConf""")
             dd0.getDependencyConfigurations(moduleConf) foreach { conf =>
               dd.addDependencyConfiguration(rootModuleConf, conf)
+            }
+            dd0.getIncludeRules(moduleConf) foreach { rule =>
+              dd.addIncludeRule(rootModuleConf, rule)
             }
             dd0.getExcludeRules(moduleConf) foreach { rule =>
               dd.addExcludeRule(rootModuleConf, rule)
             }
+            dd0.getDependencyArtifacts(moduleConf) foreach { dad =>
+              dd.addDependencyArtifact(rootModuleConf, dad)
+            }
           }
+          log.debug(s""":::: remapped dd: $dd""")
           dd
         }
       directDependencies(md0) flatMap { dep => expandInternalDeps(dep, Map()) }
     }
-  def buildArtificialModuleDescriptor(dd: DependencyDescriptor, rootModuleConfigs: Vector[IvyConfiguration], parent: ModuleDescriptor, prOpt: Option[ProjectResolver]): (DefaultModuleDescriptor, Boolean) =
+  def buildArtificialModuleDescriptor(dd: DependencyDescriptor, rootModuleConfigs: Vector[IvyConfiguration],
+    parent: ModuleDescriptor, prOpt: Option[ProjectResolver], log: Logger): (DefaultModuleDescriptor, Boolean) =
     {
       def excludeRuleString(rule: ExcludeRule): String =
         s"""Exclude(${rule.getId},${rule.getConfigurations.mkString(",")},${rule.getMatcher})"""
       def includeRuleString(rule: IncludeRule): String =
         s"""Include(${rule.getId},${rule.getConfigurations.mkString(",")},${rule.getMatcher})"""
+      def artifactString(dad: DependencyArtifactDescriptor): String =
+        s"""Artifact(${dad.getName},${dad.getType},${dad.getExt},${dad.getUrl},${dad.getConfigurations.mkString(",")})"""
       val mrid = dd.getDependencyRevisionId
       val confMap = (dd.getModuleConfigurations map { conf =>
         conf + "->(" + dd.getDependencyConfigurations(conf).mkString(",") + ")"
@@ -130,6 +147,13 @@ private[sbt] class CachedResolutionResolveCache() {
           case rules    => Some(conf + "->(" + (rules map includeRuleString).mkString(",") + ")")
         }
       })
+      val explicitArtifacts = (dd.getModuleConfigurations.toVector flatMap { conf =>
+        dd.getDependencyArtifacts(conf).toVector match {
+          case Vector() => None
+          case dads     => Some(conf + "->(" + (dads map artifactString).mkString(",") + ")")
+        }
+      })
+
       val mes = parent.getAllExcludeRules.toVector
       val mesStr = (mes map excludeRuleString).mkString(",")
       val os = extractOverrides(parent)
@@ -281,7 +305,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
     val os = cache.extractOverrides(md0)
     val options1 = new ResolveOptions(options0)
     val data = new ResolveData(this, options1)
-    val mds = cache.buildArtificialModuleDescriptors(md0, data, projectResolver)
+    val mds = cache.buildArtificialModuleDescriptors(md0, data, projectResolver, log)
     def doWork(md: ModuleDescriptor): Either[ResolveException, UpdateReport] =
       {
         val options1 = new ResolveOptions(options0)
