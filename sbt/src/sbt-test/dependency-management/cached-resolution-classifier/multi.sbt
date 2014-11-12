@@ -12,7 +12,8 @@ lazy val classifierTest = project.
   settings(commonSettings: _*).
   settings(
     libraryDependencies := Seq(
-      "net.sf.json-lib" % "json-lib" % "2.4" classifier "jdk15" intransitive()
+      "net.sf.json-lib" % "json-lib" % "2.4" classifier "jdk15" intransitive(),
+      "commons-io" % "commons-io" % "1.4"
     )
   )
 
@@ -33,7 +34,7 @@ lazy val a = project.
     libraryDependencies := Seq(
       "com.typesafe.akka" %% "akka-remote" % "2.3.4" exclude("com.typesafe.akka", "akka-actor_2.10"),
       "net.databinder" %% "unfiltered-uploads" % "0.8.0",
-      "commons-io" % "commons-io" % "1.3",
+      "commons-io" % "commons-io" % "1.4" classifier "sources",
       "com.typesafe" % "config" % "0.4.9-SNAPSHOT"
     )
   )
@@ -45,7 +46,7 @@ lazy val b = project.
     libraryDependencies := Seq(
       "com.typesafe.akka" %% "akka-remote" % "2.3.4" exclude("com.typesafe.akka", "akka-actor_2.10"),
       "net.databinder" %% "unfiltered-uploads" % "0.8.0",
-      "commons-io" % "commons-io" % "1.3",
+      "commons-io" % "commons-io" % "1.4" classifier "sources",
       "com.typesafe" % "config" % "0.4.9-SNAPSHOT"
     ) 
   )
@@ -65,18 +66,29 @@ lazy val root = (project in file(".")).
       val acp = (externalDependencyClasspath in Compile in a).value.sortBy {_.data.getName}
       val bcp = (externalDependencyClasspath in Compile in b).value.sortBy {_.data.getName}
       val ccp = (externalDependencyClasspath in Compile in c).value.sortBy {_.data.getName} filterNot { _.data.getName == "demo_2.10.jar"}
+      if (!(acp exists { _.data.getName contains "commons-io-1.4-sources.jar" })) {
+        sys.error("commons-io-1.4-sources not found when it should be included: " + acp.toString)
+      }
+      if (!(acp exists { _.data.getName contains "commons-io-1.4.jar" })) {
+        sys.error("commons-io-1.4 not found when it should be included: " + acp.toString)
+      }
       
-      val atestcp = (externalDependencyClasspath in Test in a).value.sortBy {_.data.getName}
-      val btestcp = (externalDependencyClasspath in Test in b).value.sortBy {_.data.getName}
-      val ctestcp = (externalDependencyClasspath in Test in c).value.sortBy {_.data.getName} filterNot { _.data.getName == "demo_2.10.jar"}
+      // stock Ivy implementation doesn't contain regular (non-source) jar, which probably is a bug
+      val acpWithoutSource = acp filterNot { _.data.getName contains "commons-io-1.4"}
+      val bcpWithoutSource = bcp filterNot { _.data.getName contains "commons-io-1.4"}
+      val ccpWithoutSource = ccp filterNot { _.data.getName contains "commons-io-1.4"}
+      if (acpWithoutSource == bcpWithoutSource && acpWithoutSource == ccpWithoutSource) ()
+      else sys.error("Different classpaths are found:" +
+        "\n - a (cached)        " + acpWithoutSource.toString +
+        "\n - b (plain)         " + bcpWithoutSource.toString +
+        "\n - c (inter-project) " + ccpWithoutSource.toString)
+      
+      val atestcp = (externalDependencyClasspath in Test in a).value.sortBy {_.data.getName} filterNot { _.data.getName contains "commons-io-1.4"}
+      val btestcp = (externalDependencyClasspath in Test in b).value.sortBy {_.data.getName} filterNot { _.data.getName contains "commons-io-1.4"}
+      val ctestcp = (externalDependencyClasspath in Test in c).value.sortBy {_.data.getName} filterNot { _.data.getName == "demo_2.10.jar"} filterNot { _.data.getName contains "commons-io-1.4"}
       if (ctestcp exists { _.data.getName contains "junit-4.11.jar" }) {
         sys.error("junit found when it should be excluded: " + ctestcp.toString)
       }
-      if (acp == bcp && acp == ccp) ()
-      else sys.error("Different classpaths are found:" +
-        "\n - a (cached)        " + acp.toString +
-        "\n - b (plain)         " + bcp.toString +
-        "\n - c (inter-project) " + ccp.toString)
 
       if (atestcp == btestcp) ()
       else sys.error("Different classpaths are found:" +
