@@ -103,7 +103,9 @@ object AnalysisFormats {
           sourceDependencies.internal.all.isEmpty && sourceDependencies.external.all.isEmpty
         // we check direct dependencies only because publicInherited dependencies are subset of direct
         assert(isEmpty(direct), "Direct dependencies are not empty but `nameHashing` flag is enabled.")
-        Relations.make(srcProd, binaryDep, memberRef, inheritance, classes, names)
+        val internalDependencies = InternalDependencies(Map(DependencyByMemberRef -> memberRef.internal, DependencyByInheritance -> inheritance.internal))
+        val externalDependencies = ExternalDependencies(Map(DependencyByMemberRef -> memberRef.external, DependencyByInheritance -> inheritance.external))
+        Relations.make(srcProd, binaryDep, internalDependencies, externalDependencies, classes, names)
       } else {
         def isEmpty(sourceDependencies: SourceDependencies): Boolean =
           sourceDependencies.internal.all.isEmpty && sourceDependencies.external.all.isEmpty

@@ -79,9 +79,8 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
   private[this] val sourceDeps = new HashMap[File, Set[File]]
   // inherited internal source dependencies
   private[this] val inheritedSourceDeps = new HashMap[File, Set[File]]
-  // external source dependencies:
-  //   (internal source, external source depended on, API of external dependency, true if an inheritance dependency)
-  private[this] val extSrcDeps = new ListBuffer[(File, String, Source, Boolean)]
+  // external source dependencies
+  private[this] val extSrcDeps = new HashMap[File, Iterable[ExternalDependency]]
   private[this] val binaryClassName = new HashMap[File, String]
   // source files containing a macro def.
   private[this] val macroSources = Set[File]()
@@ -106,7 +105,12 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
     binaryClassName.put(binary, className)
     add(binaryDeps, source, binary)
   }
-  def externalSourceDependency(t4: (File, String, Source, Boolean)) = extSrcDeps += t4
+
+  // The type corresponds to : (internal source, external source depended on, API of external dependency, true if an inheritance dependency)
+  def externalSourceDependency(t4: (File, String, Source, Boolean)) = {
+    val dependency = ExternalDependency(t4._1, t4._2, t4._3, if (t4._4) DependencyByInheritance else DependencyByMemberRef)
+    extSrcDeps += t4._1 -> (extSrcDeps.getOrElse(t4._1, Nil) ++ List(dependency))
+  }
 
   def binaryDependency(classFile: File, name: String, source: File, inherited: Boolean) =
     internalMap(classFile) match {
@@ -161,10 +165,26 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 
   def nameHashing: Boolean = options.nameHashing
 
-  def get: Analysis = addUsedNames(addCompilation(addExternals(addBinaries(addProducts(addSources(Analysis.empty(nameHashing = nameHashing)))))))
-  def addProducts(base: Analysis): Analysis = addAll(base, classes) { case (a, src, (prod, name)) => a.addProduct(src, prod, current product prod, name) }
-  def addBinaries(base: Analysis): Analysis = addAll(base, binaryDeps)((a, src, bin) => a.addBinaryDep(src, bin, binaryClassName(bin), current binary bin))
-  def addSources(base: Analysis): Analysis =
+  def get: Analysis = addUsedNames(addCompilation(addProductsAndDeps(Analysis.empty(nameHashing = nameHashing))))
+
+  def getOrNil[A, B](m: collection.Map[A, Seq[B]], a: A): Seq[B] = m.get(a).toList.flatten
+  def addCompilation(base: Analysis): Analysis = base.copy(compilations = base.compilations.add(compilation))
+  def addUsedNames(base: Analysis): Analysis = (base /: usedNames) {
+    case (a, (src, names)) =>
+      (a /: names) { case (a, name) => a.copy(relations = a.relations.addUsedName(src, name)) }
+  }
+
+  // This is no longer used by the new implementation relative to Dependency contexts
+  // See https://github.com/sbt/sbt/issues/1340
+  def addAll[A, B](base: Analysis, m: Map[A, Set[B]])(f: (Analysis, A, B) => Analysis): Analysis =
+    (base /: m) {
+      case (outer, (a, bs)) =>
+        (outer /: bs) { (inner, b) =>
+          f(inner, a, b)
+        }
+    }
+
+  def addProductsAndDeps(base: Analysis): Analysis =
     (base /: apis) {
       case (a, (src, api)) =>
         val stamp = current.internalSource(src)
@@ -175,21 +195,15 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
         val info = SourceInfos.makeInfo(getOrNil(reporteds, src), getOrNil(unreporteds, src))
         val direct = sourceDeps.getOrElse(src, Nil: Iterable[File])
         val publicInherited = inheritedSourceDeps.getOrElse(src, Nil: Iterable[File])
-        a.addSource(src, s, stamp, direct, publicInherited, info)
-    }
-  def getOrNil[A, B](m: collection.Map[A, Seq[B]], a: A): Seq[B] = m.get(a).toList.flatten
-  def addExternals(base: Analysis): Analysis = (base /: extSrcDeps) { case (a, (source, name, api, inherited)) => a.addExternalDep(source, name, api, inherited) }
-  def addCompilation(base: Analysis): Analysis = base.copy(compilations = base.compilations.add(compilation))
-  def addUsedNames(base: Analysis): Analysis = (base /: usedNames) {
-    case (a, (src, names)) =>
-      (a /: names) { case (a, name) => a.copy(relations = a.relations.addUsedName(src, name)) }
-  }
+        val binaries = binaryDeps.getOrElse(src, Nil: Iterable[File])
+        val prods = classes.getOrElse(src, Nil: Iterable[(File, String)])
 
-  def addAll[A, B](base: Analysis, m: Map[A, Set[B]])(f: (Analysis, A, B) => Analysis): Analysis =
-    (base /: m) {
-      case (outer, (a, bs)) =>
-        (outer /: bs) { (inner, b) =>
-          f(inner, a, b)
-        }
+        val products = prods.map { case (prod, name) => (prod, name, current product prod) }
+        val internalDeps = direct.map(InternalDependency(src, _, DependencyByMemberRef)) ++ publicInherited.map(InternalDependency(src, _, DependencyByInheritance))
+        val externalDeps = extSrcDeps.getOrElse(src, Nil: Iterable[ExternalDependency])
+        val binDeps = binaries.map(d => (d, binaryClassName(d), current binary d))
+
+        a.addSource(src, s, stamp, info, products, internalDeps, externalDeps, binDeps)
+
     }
 }
