@@ -10,6 +10,7 @@ import xsbti.{ Position, Problem, Severity }
 import Logger.{ m2o, problem }
 import java.io.File
 import xsbti.api.Definition
+import xsbti.DependencyContext._
 
 object IncrementalCompile {
   def apply(sources: Set[File], entry: String => Option[File],
