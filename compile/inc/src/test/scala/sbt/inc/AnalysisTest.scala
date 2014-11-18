@@ -21,34 +21,35 @@ object AnalysisTest extends Properties("Analysis") {
     val sourceInfos = SourceInfos.makeInfo(Nil, Nil)
 
     // a
-    var a = Analysis.empty(false)
-    a = a.addProduct(aScala, f("A.class"), exists, "A")
-    a = a.addProduct(aScala, f("A$.class"), exists, "A$")
-    a = a.addSource(aScala, aSource, exists, Nil, Nil, sourceInfos)
-    a = a.addBinaryDep(aScala, f("x.jar"), "x", exists)
-    a = a.addExternalDep(aScala, "C", cSource, inherited = false)
+    val aProducts = (f("A.class"), "A", exists) :: (f("A$.class"), "A$", exists) :: Nil
+    val aInternal = Nil
+    val aExternal = ExternalDependency(aScala, "C", cSource, DependencyByMemberRef) :: Nil
+    val aBinary = (f("x.jar"), "x", exists) :: Nil
+
+    val a = Analysis.empty(false).addSource(aScala, aSource, exists, sourceInfos, aProducts, aInternal, aExternal, aBinary)
 
     // b
-    var b = Analysis.empty(false)
-    b = b.addProduct(bScala, f("B.class"), exists, "B")
-    b = b.addProduct(bScala, f("B$.class"), exists, "B$")
-    b = b.addSource(bScala, bSource, exists, Nil, Nil, sourceInfos)
-    b = b.addBinaryDep(bScala, f("x.jar"), "x", exists)
-    b = b.addBinaryDep(bScala, f("y.jar"), "y", exists)
-    b = b.addExternalDep(bScala, "A", aSource, inherited = true)
+    val bProducts = (f("B.class"), "B", exists) :: (f("B$.class"), "B$", exists) :: Nil
+    val bInternal = Nil
+    val bExternal = ExternalDependency(bScala, "A", aSource, DependencyByInheritance) :: Nil
+    val bBinary = (f("x.jar"), "x", exists) :: (f("y.jar"), "y", exists) :: Nil
+
+    val b = Analysis.empty(false).addSource(bScala, bSource, exists, sourceInfos, bProducts, bInternal, bExternal, bBinary)
 
     // ab
-    var ab = Analysis.empty(false)
-    ab = ab.addProduct(aScala, f("A.class"), exists, "A")
-    ab = ab.addProduct(aScala, f("A$.class"), exists, "A$")
-    ab = ab.addProduct(bScala, f("B.class"), exists, "B")
-    ab = ab.addProduct(bScala, f("B$.class"), exists, "B$")
-    ab = ab.addSource(aScala, aSource, exists, Nil, Nil, sourceInfos)
-    ab = ab.addSource(bScala, bSource, exists, aScala :: Nil, aScala :: Nil, sourceInfos)
-    ab = ab.addBinaryDep(aScala, f("x.jar"), "x", exists)
-    ab = ab.addBinaryDep(bScala, f("x.jar"), "x", exists)
-    ab = ab.addBinaryDep(bScala, f("y.jar"), "y", exists)
-    ab = ab.addExternalDep(aScala, "C", cSource, inherited = false)
+    // `b` has an external dependency on `a` that will be internalized
+    val abAProducts = (f("A.class"), "A", exists) :: (f("A$.class"), "A$", exists) :: Nil
+    val abAInternal = Nil
+    val abAExternal = ExternalDependency(aScala, "C", cSource, DependencyByMemberRef) :: Nil
+    val abABinary = (f("x.jar"), "x", exists) :: Nil
+
+    val abBProducts = (f("B.class"), "B", exists) :: (f("B$.class"), "B$", exists) :: Nil
+    val abBInternal = InternalDependency(bScala, aScala, DependencyByMemberRef) :: InternalDependency(bScala, aScala, DependencyByInheritance) :: Nil
+    val abBExternal = Nil
+    val abBBinary = (f("x.jar"), "x", exists) :: (f("y.jar"), "y", exists) :: Nil
+
+    val ab = Analysis.empty(false).addSource(aScala, aSource, exists, sourceInfos, abAProducts, abAInternal, abAExternal, abABinary)
+      .addSource(bScala, bSource, exists, sourceInfos, abBProducts, abBInternal, abBExternal, abBBinary)
 
     val split: Map[String, Analysis] = ab.groupBy({ f: File => f.getName.substring(0, 1) })
 

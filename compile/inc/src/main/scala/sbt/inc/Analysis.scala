@@ -51,9 +51,19 @@ trait Analysis {
   def copy(stamps: Stamps = stamps, apis: APIs = apis, relations: Relations = relations, infos: SourceInfos = infos,
     compilations: Compilations = compilations): Analysis
 
+  def addSource(src: File, api: Source, stamp: Stamp, info: SourceInfo,
+    products: Iterable[(File, String, Stamp)],
+    internalDeps: Iterable[InternalDependency],
+    externalDeps: Iterable[ExternalDependency],
+    binaryDeps: Iterable[(File, String, Stamp)]): Analysis
+
+  @deprecated("Register all products and dependencies in addSource.", "0.13.8")
   def addSource(src: File, api: Source, stamp: Stamp, directInternal: Iterable[File], inheritedInternal: Iterable[File], info: SourceInfo): Analysis
+  @deprecated("Register all products and dependencies in addSource.", "0.13.8")
   def addBinaryDep(src: File, dep: File, className: String, stamp: Stamp): Analysis
+  @deprecated("Register all products and dependencies in addSource.", "0.13.8")
   def addExternalDep(src: File, dep: String, api: Source, inherited: Boolean): Analysis
+  @deprecated("Register all products and dependencies in addSource.", "0.13.8")
   def addProduct(src: File, product: File, stamp: Stamp, name: String): Analysis
 
   /** Partitions this Analysis using the discriminator function. Externalizes internal deps that cross partitions. */
@@ -155,17 +165,49 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
   def copy(stamps: Stamps, apis: APIs, relations: Relations, infos: SourceInfos, compilations: Compilations = compilations): Analysis =
     new MAnalysis(stamps, apis, relations, infos, compilations)
 
-  def addSource(src: File, api: Source, stamp: Stamp, directInternal: Iterable[File], inheritedInternal: Iterable[File], info: SourceInfo): Analysis =
-    copy(stamps.markInternalSource(src, stamp), apis.markInternalSource(src, api), relations.addInternalSrcDeps(src, directInternal, inheritedInternal), infos.add(src, info))
+  def addSource(src: File, api: Source, stamp: Stamp, info: SourceInfo,
+    products: Iterable[(File, String, Stamp)],
+    internalDeps: Iterable[InternalDependency],
+    externalDeps: Iterable[ExternalDependency],
+    binaryDeps: Iterable[(File, String, Stamp)]): Analysis = {
+
+    val newStamps = {
+      val productStamps = products.foldLeft(stamps.markInternalSource(src, stamp)) {
+        case (tmpStamps, (toProduct, _, prodStamp)) => tmpStamps.markProduct(toProduct, prodStamp)
+      }
+
+      binaryDeps.foldLeft(productStamps) {
+        case (tmpStamps, (toBinary, className, binStamp)) => tmpStamps.markBinary(toBinary, className, binStamp)
+      }
+    }
+
+    val newAPIs = externalDeps.foldLeft(apis.markInternalSource(src, api)) {
+      case (tmpApis, ExternalDependency(_, toClassName, classApi, _)) => tmpApis.markExternalAPI(toClassName, classApi)
+    }
+
+    val newRelations = relations.addSource(src, products map (p => (p._1, p._2)), internalDeps, externalDeps, binaryDeps)
+
+    copy(newStamps, newAPIs, newRelations, infos.add(src, info))
+  }
+
+  def addSource(src: File, api: Source, stamp: Stamp, directInternal: Iterable[File], inheritedInternal: Iterable[File], info: SourceInfo): Analysis = {
+
+    val directDeps = directInternal.map(InternalDependency(src, _, DependencyByMemberRef))
+    val inheritedDeps = inheritedInternal.map(InternalDependency(src, _, DependencyByInheritance))
+
+    addSource(src, api, stamp, info, products = Nil, directDeps ++ inheritedDeps, Nil, Nil)
+  }
 
   def addBinaryDep(src: File, dep: File, className: String, stamp: Stamp): Analysis =
-    copy(stamps.markBinary(dep, className, stamp), apis, relations.addBinaryDep(src, dep), infos)
+    copy(stamps.markBinary(dep, className, stamp), apis, relations.addBinaryDeps(src, (dep, className, stamp) :: Nil), infos)
 
-  def addExternalDep(src: File, dep: String, depAPI: Source, inherited: Boolean): Analysis =
-    copy(stamps, apis.markExternalAPI(dep, depAPI), relations.addExternalDep(src, dep, inherited), infos)
+  def addExternalDep(src: File, dep: String, depAPI: Source, inherited: Boolean): Analysis = {
+    val context = if (inherited) DependencyByInheritance else DependencyByMemberRef
+    copy(stamps, apis.markExternalAPI(dep, depAPI), relations.addExternalDeps(src, ExternalDependency(src, dep, depAPI, context) :: Nil), infos)
+  }
 
   def addProduct(src: File, product: File, stamp: Stamp, name: String): Analysis =
-    copy(stamps.markProduct(product, stamp), apis, relations.addProduct(src, product, name), infos)
+    copy(stamps.markProduct(product, stamp), apis, relations.addProducts(src, (product, name) :: Nil), infos)
 
   def groupBy[K](discriminator: File => K): Map[K, Analysis] = {
     if (relations.nameHashing)
