@@ -8,6 +8,8 @@ import java.io.File
 import Relations.Source
 import Relations.SourceDependencies
 import xsbti.api.{ Source => APISource }
+import xsbti.DependencyContext
+import xsbti.DependencyContext._
 
 /**
  * Provides mappings between source files, generated classes (products), and binaries.
