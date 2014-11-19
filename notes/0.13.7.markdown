@@ -1,10 +1,11 @@
 
+  [Cached-Resolution]: http://www.scala-sbt.org/0.13/docs/Cached-Resolution.html
   [@cunei]: https://github.com/cunei
   [@eed3si9n]: https://github.com/eed3si9n
   [@gkossakowski]: https://github.com/gkossakowski
   [@jsuereth]: https://github.com/jsuereth
   [@ajozwik]: https://github.com/ajozwik
-  [@cocumpkin]: https://github.com/copumpkin
+  [@copumpkin]: https://github.com/copumpkin
   [@Duhemm]: https://github.com/Duhemm
   [@jedesah]: https://github.com/jedesah
   [@rkrzewski]: https://github.com/rkrzewski
@@ -15,12 +16,14 @@
   [1237]: https://github.com/sbt/sbt/issues/1237
   [1430]: https://github.com/sbt/sbt/issues/1430
   [1544]: https://github.com/sbt/sbt/issues/1544
+  [1563]: https://github.com/sbt/sbt/pull/1563
   [1572]: https://github.com/sbt/sbt/pull/1572
   [1573]: https://github.com/sbt/sbt/pull/1573
   [1579]: https://github.com/sbt/sbt/pull/1579
   [1584]: https://github.com/sbt/sbt/pull/1584
   [1586]: https://github.com/sbt/sbt/pull/1586
   [1589]: https://github.com/sbt/sbt/issues/1589
+  [1590]: https://github.com/sbt/sbt/pull/1590
   [1591]: https://github.com/sbt/sbt/pull/1591
   [1598]: https://github.com/sbt/sbt/issues/1598
   [1600]: https://github.com/sbt/sbt/pull/1600
@@ -39,13 +42,13 @@
 ### Fixes with compatibility implications
 
 - Maven artifact dependencies will limit their transitive dependencies to `Compile` rather than *every configuration* if no `master` configuration is found. [#1586][1586] by [@jsuereth][@jsuereth]
-- The new natural whitspace handling parser is unable to cope with certain classes of Scala syntax. In particular, top-level pattern matches, or multi-value defintions are no longer supported:
+- The new natural whitspace handling parser is unable to cope with certain classes of Scala syntax. In particular, top-level pattern matches, or multi-value defintions are no longer supported.
 
-```scala
+Here are examples:
+
     val x, y = project // BAD
-    val x = project  // 
-    val y = project  //  GOOD
-```
+    val x = project    // 
+    val y = project    //  GOOD
 
 ### Improvements
 
@@ -72,7 +75,7 @@
   [#1611][1611]/[#1618][1618] by [@jsuereth][@jsuereth]
 - Fixes NullPointerException when using `ChainResolver` and Maven repositories. [#1611][1611]/[#1618][1618] by [@jsuereth][@jsuereth]
 - Fixes `Resolver`'s `url` method dropping `descriptorOptional` and `skipConsistencyCheck`. [#1621][1621] by [@tmandke][@tmandke]
-- Revert `useLatestSnapshot` on `updateOptions` to default to `false`.  Reverts chain resolver to previous behavior.  [#1683]/[1683] by [@jsuereth][@jsuereth]
+- Revert `useLatestSnapshot` on `updateOptions` to default to `false`.  Reverts chain resolver to previous behavior.  [#1683][1683] by [@jsuereth][@jsuereth]
 
 ### Natural whitespace handling
 
@@ -104,7 +107,7 @@ By default circular dependencies are warned, but they do not halt the dependency
 
 ### Cached resolution (minigraph caching)
 
-sbt 0.13.7 adds a new update option called *cached resolution*, which replaces consolidated resolution:
+sbt 0.13.7 adds a new **experimental** update option called *cached resolution*, which replaces consolidated resolution:
 
     updateOptions := updateOptions.value.withCachedResolution(true)
 
@@ -112,6 +115,6 @@ Unlike consolidated resolution, which only consolidated subprojects with identic
 
 Once the minigraphs are resolved and saved as files, dependency resolution turns into a matter of loading json file from the second run onwards, which should complete in a matter of seconds even for large projects. Also, because the files are saved under a global `~/.sbt/0.13/dependency` (or what's specified by `sbt.dependency.base` flag), the resolution result is shared across all builds.
 
-Breaking graphs into minigraphs allows partial resolution results to be shared, which scales better for subprojects with similar but slightly different dependencies, and also for making small changes to the dependencies graph over time.
+Breaking graphs into minigraphs allows partial resolution results to be shared, which scales better for subprojects with similar but slightly different dependencies, and also for making small changes to the dependencies graph over time. See [documentation on cached resolution][Cached-Resolution] for more details.
 
 [#1631][1631] by [@eed3si9n][@eed3si9n]
