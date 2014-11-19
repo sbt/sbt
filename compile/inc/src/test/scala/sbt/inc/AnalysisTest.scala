@@ -7,6 +7,7 @@ import sbt.inc.TestCaseGenerators._
 import org.scalacheck._
 import Gen._
 import Prop._
+import xsbti.DependencyContext._
 
 object AnalysisTest extends Properties("Analysis") {
   // Merge and split a hard-coded trivial example.
