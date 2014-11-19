@@ -45,6 +45,12 @@ private final class IncrementalNameHashing(log: Logger, options: IncOptions) ext
     val transitiveInheritance = byExternalInheritance flatMap { file =>
       invalidateByInheritance(relations, file)
     }
+    val externalMacroExpansionR = relations.macroExpansion.external
+    val byExternalMacroExpansion = externalMacroExpansionR.reverse(modified)
+    log.debug(s"Files invalidated by macro expansion from (external) $modified: $byExternalMacroExpansion; now invalidating by macro expansion (internally).")
+    val transitiveMacroExpansion = byExternalMacroExpansion flatMap { file =>
+      invalidateByMacroExpansion(relations, file)
+    }
     val memberRefInvalidationInternal = memberRefInvalidator.get(relations.memberRef.internal,
       relations.names, externalAPIChange)
     val memberRefInvalidationExternal = memberRefInvalidator.get(relations.memberRef.external,
@@ -57,7 +63,7 @@ private final class IncrementalNameHashing(log: Logger, options: IncOptions) ext
     // This includes non-inheritance dependencies and is not transitive.
     log.debug(s"Getting sources that directly depend on (external) $modified.")
     val memberRefB = memberRefInvalidationExternal(modified)
-    transitiveInheritance ++ memberRefA ++ memberRefB
+    transitiveInheritance ++ transitiveMacroExpansion ++ memberRefA ++ memberRefB
   }
 
   private def invalidateByInheritance(relations: Relations, modified: File): Set[File] = {
@@ -68,19 +74,28 @@ private final class IncrementalNameHashing(log: Logger, options: IncOptions) ext
     transitiveInheritance
   }
 
+  private def invalidateByMacroExpansion(relations: Relations, modified: File): Set[File] = {
+    val macroExpansionDeps = relations.macroExpansion.internal.reverse _
+    log.debug(s"Invalidating (transitively) by macro expansion from $modified...")
+    val transitiveByMacroExpansion = transitiveDeps(Set(modified))(macroExpansionDeps)
+    log.debug("Invalidated by transitive macro expansion dependency: " + transitiveByMacroExpansion)
+    transitiveByMacroExpansion
+  }
+
   override protected def invalidateSource(relations: Relations, change: APIChange[File]): Set[File] = {
     log.debug(s"Invalidating ${change.modified}...")
     val transitiveInheritance = invalidateByInheritance(relations, change.modified)
+    val transitiveByMacroExpansion = invalidateByMacroExpansion(relations, change.modified)
     val reasonForInvalidation = memberRefInvalidator.invalidationReason(change)
     log.debug(s"$reasonForInvalidation\nAll member reference dependencies will be considered within this context.")
     val memberRefInvalidation = memberRefInvalidator.get(relations.memberRef.internal,
       relations.names, change)
     val memberRef = transitiveInheritance flatMap memberRefInvalidation
-    val all = transitiveInheritance ++ memberRef
+    val all = transitiveInheritance ++ transitiveByMacroExpansion ++ memberRef
     all
   }
 
   override protected def allDeps(relations: Relations): File => Set[File] =
-    f => relations.memberRef.internal.reverse(f)
+    f => relations.memberRef.internal.reverse(f) ++ relations.macroExpansion.internal.reverse(f)
 
 }
