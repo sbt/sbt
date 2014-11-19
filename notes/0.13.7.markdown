@@ -5,7 +5,7 @@
   [@gkossakowski]: https://github.com/gkossakowski
   [@jsuereth]: https://github.com/jsuereth
   [@ajozwik]: https://github.com/ajozwik
-  [@cocumpkin]: https://github.com/copumpkin
+  [@copumpkin]: https://github.com/copumpkin
   [@Duhemm]: https://github.com/Duhemm
   [@jedesah]: https://github.com/jedesah
   [@rkrzewski]: https://github.com/rkrzewski
@@ -16,12 +16,14 @@
   [1237]: https://github.com/sbt/sbt/issues/1237
   [1430]: https://github.com/sbt/sbt/issues/1430
   [1544]: https://github.com/sbt/sbt/issues/1544
+  [1563]: https://github.com/sbt/sbt/pull/1563
   [1572]: https://github.com/sbt/sbt/pull/1572
   [1573]: https://github.com/sbt/sbt/pull/1573
   [1579]: https://github.com/sbt/sbt/pull/1579
   [1584]: https://github.com/sbt/sbt/pull/1584
   [1586]: https://github.com/sbt/sbt/pull/1586
   [1589]: https://github.com/sbt/sbt/issues/1589
+  [1590]: https://github.com/sbt/sbt/pull/1590
   [1591]: https://github.com/sbt/sbt/pull/1591
   [1598]: https://github.com/sbt/sbt/issues/1598
   [1600]: https://github.com/sbt/sbt/pull/1600
@@ -42,11 +44,9 @@
 - Maven artifact dependencies will limit their transitive dependencies to `Compile` rather than *every configuration* if no `master` configuration is found. [#1586][1586] by [@jsuereth][@jsuereth]
 - The new natural whitspace handling parser is unable to cope with certain classes of Scala syntax. In particular, top-level pattern matches, or multi-value defintions are no longer supported:
 
-```scala
     val x, y = project // BAD
-    val x = project  // 
-    val y = project  //  GOOD
-```
+    val x = project    // 
+    val y = project    //  GOOD
 
 ### Improvements
 
