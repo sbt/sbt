@@ -176,7 +176,7 @@ object SessionSettings {
       reapply(newSession.copy(original = newSession.mergeSettings, append = Map.empty), s)
     }
 
-  @deprecated("This method will no longer be publlic", "0.13.7")
+  @deprecated("This method will no longer be public", "0.13.7")
   def writeSettings(pref: ProjectRef, settings: List[SessionSetting], original: Seq[Setting[_]], structure: BuildStructure): (Seq[SessionSetting], Seq[Setting[_]]) = {
     val project = Project.getProject(pref, structure).getOrElse(sys.error("Invalid project reference " + pref))
     val writeTo: File = BuildPaths.configurationSources(project.base).headOption.getOrElse(new File(project.base, "build.sbt"))
@@ -217,7 +217,7 @@ object SessionSettings {
     (newWithPos.reverse, other ++ oldShifted)
   }
 
-  @deprecated("This method will no longer be publlic", "0.13.7")
+  @deprecated("This method will no longer be public", "0.13.7")
   def needsTrailingBlank(lines: Seq[String]) = !lines.isEmpty && !lines.takeRight(1).exists(_.trim.isEmpty)
 
   /** Prints all the user-defined SessionSettings (not raw) to System.out. */
