@@ -202,10 +202,3 @@ run() {
   fi
   exit $exit_code
 }
-
-runAlternateBoot() {
-  local bootpropsfile="$1"
-  shift
-  addJava "-Dsbt.boot.properties=$bootpropsfile"
-  run $@
-}
