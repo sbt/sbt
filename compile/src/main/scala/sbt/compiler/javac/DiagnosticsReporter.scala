@@ -4,7 +4,8 @@ import java.io.File
 import javax.tools.{ Diagnostic, JavaFileObject, DiagnosticListener }
 
 import sbt.Logger
-import xsbti.{ Severity, Reporter }
+import xsbti.{ Severity, Reporter, Maybe }
+import javax.tools.Diagnostic.NOPOS
 
 /**
  * A diagnostics listener that feeds all messages into the given reporter.
@@ -55,19 +56,31 @@ final class DiagnosticsReporter(reporter: Reporter) extends DiagnosticListener[J
     val msg = fixedDiagnosticMessage(d)
     val pos: xsbti.Position =
       new xsbti.Position {
-        override val line =
-          Logger.o2m(if (d.getLineNumber == -1) None
-          else Option(new Integer(d.getLineNumber.toInt)))
-        override def lineContent = {
-          // TODO - Is this pulling contents of the line correctly?
-          // Would be ok to just return null if this version of the JDK doesn't support grabbing
-          // source lines?
-          Option(d.getSource).
-            flatMap(s => Option(s.getCharContent(true))).
-            map(_.subSequence(d.getStartPosition.intValue, d.getEndPosition.intValue).toString).
-            getOrElse("")
-        }
-        override val offset = Logger.o2m(Option(Integer.valueOf(d.getPosition.toInt)))
+        // https://docs.oracle.com/javase/7/docs/api/javax/tools/Diagnostic.html
+        // Negative values (except NOPOS) and 0 are not valid line or column numbers.
+        private[this] def checkNoPos(n: Long): Option[Long] =
+          n match {
+            case NOPOS       => None
+            case x if x <= 0 => sys.error(s"Invalid position: $x")
+            case x           => Option(x)
+          }
+
+        override val line: Maybe[Integer] = Logger.o2m(checkNoPos(d.getLineNumber) map { x => new Integer(x.toInt) })
+        def startPosition: Option[Long] = checkNoPos(d.getStartPosition)
+        def endPosition: Option[Long] = checkNoPos(d.getEndPosition)
+        override val offset: Maybe[Integer] = Logger.o2m(checkNoPos(d.getPosition) map { x => new Integer(x.toInt) })
+        // TODO - Is this pulling contents of the line correctly?
+        // Would be ok to just return null if this version of the JDK doesn't support grabbing
+        // source lines?
+        override def lineContent: String =
+          Option(d.getSource) match {
+            case Some(source: JavaFileObject) =>
+              (Option(source.getCharContent(true)), startPosition, endPosition) match {
+                case (Some(cc), Some(start), Some(end)) => cc.subSequence(start.toInt, end.toInt).toString
+                case _                                  => ""
+              }
+            case _ => ""
+          }
         private val sourceUri = fixSource(d.getSource)
         override val sourcePath = Logger.o2m(sourceUri)
         override val sourceFile = Logger.o2m(sourceUri.map(new File(_)))

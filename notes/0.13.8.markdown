@@ -4,6 +4,7 @@
 [1180]: https://github.com/sbt/sbt/pull/1702
 [875]: https://github.com/sbt/sbt/issues/875
 [1542]: https://github.com/sbt/sbt/issues/1542
+[1702]: https://github.com/sbt/sbt/pull/1702
 
 ### Improvements
 
@@ -12,5 +13,5 @@
 
 ## Fixes
 
-- Javac warnings now always treated as warnings.  [#875][875] by [@jsuereth][jsuereth]
+- Javac warnings now always treated as warnings.  [#1702][1702]/[#875][875] by [@jsuereth][jsuereth]
 - compilerReporter now fed to javac during incremental compilation. [#1542][1542] by [@jsuereth][jsuereth]
