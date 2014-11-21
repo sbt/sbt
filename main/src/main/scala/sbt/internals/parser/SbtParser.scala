@@ -155,8 +155,8 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
   private def importsToLineRanges(modifiedContent: String, imports: Seq[Tree]): Seq[(String, Int)] = {
     val toLineRange = imports map convertImport(modifiedContent)
     val groupedByLineNumber = toLineRange.groupBy { case (_, lineNumber) => lineNumber }
-    val mergedImports = groupedByLineNumber.map { case (l, seq) => (extractLine(modifiedContent, seq), l) }
-    mergedImports.toSeq.sortBy(_._2)
+    val mergedImports = groupedByLineNumber.map { case (l, seq) => (l, extractLine(modifiedContent, seq)) }
+    mergedImports.toSeq.sortBy(_._1).map { case (k, v) => (v, k) }
   }
 
   /**
