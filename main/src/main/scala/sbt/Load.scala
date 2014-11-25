@@ -723,8 +723,8 @@ object Load {
     // Finds all the build files associated with this project
     import AddSettings.{ User, SbtFiles, DefaultSbtFiles, Plugins, AutoPlugins, Sequence, BuildScalaFiles }
     def associatedFiles(auto: AddSettings): Seq[File] = auto match {
-      case sf: SbtFiles        => sf.files.map(f => IO.resolve(projectBase, f))
-      case sf: DefaultSbtFiles => defaultSbtFiles.filter(sf.include)
+      case sf: SbtFiles        => sf.files.map(f => IO.resolve(projectBase, f)).filterNot(_.isHidden)
+      case sf: DefaultSbtFiles => defaultSbtFiles.filter(sf.include).filterNot(_.isHidden)
       case q: Sequence         => (Seq.empty[File] /: q.sequence) { (b, add) => b ++ associatedFiles(add) }
       case _                   => Seq.empty
     }
