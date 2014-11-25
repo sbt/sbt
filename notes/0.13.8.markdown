@@ -1,10 +1,12 @@
 [@jsuereth]: https://github.com/jsuereth
 [@kretes]: https://github.com/kretes
+[@j-keck]: https://github.com/j-keck
 [1180]: https://github.com/sbt/sbt/issues/1180
 [1180]: https://github.com/sbt/sbt/pull/1702
 [875]: https://github.com/sbt/sbt/issues/875
 [1542]: https://github.com/sbt/sbt/issues/1542
 [1702]: https://github.com/sbt/sbt/pull/1702
+[1746]: https://github.com/sbt/sbt/pull/1746
 
 ### Improvements
 
@@ -15,3 +17,4 @@
 
 - Javac warnings now always treated as warnings.  [#1702][1702]/[#875][875] by [@jsuereth][jsuereth]
 - compilerReporter now fed to javac during incremental compilation. [#1542][1542] by [@jsuereth][jsuereth]
+- ignore hidden build files from the build. [#1746][1746] by [@j-keck][@j-keck]
