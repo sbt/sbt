@@ -1,0 +1,6 @@
+# create a invalid .build.sbt file 
+#   - note the dot - it's a hidden file
+$ copy-file changes/invalid-build.sbt .build.sbt
+
+# trigger a reload - sbt should ignore the hidden build file
+> reload
