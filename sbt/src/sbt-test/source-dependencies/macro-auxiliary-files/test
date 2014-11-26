@@ -1,0 +1,10 @@
+> compile
+
+# Modify the auxiliary file
+$ copy-file changes/util.txt util/util.txt
+
+$ copy-file changes/Bar.scala macro-provider/src/main/scala/Bar.scala
+
+> macro-client/compile
+
+> macro-client/checkRecompiled Client.scala
