@@ -180,6 +180,7 @@ object TextAnalysisFormat {
       val products = "product stamps"
       val sources = "source stamps"
       val binaries = "binary stamps"
+      val auxiliaries = "auxiliary stamps"
       val classNames = "class names"
     }
 
@@ -189,6 +190,7 @@ object TextAnalysisFormat {
       doWriteMap(Headers.products, stamps.products)
       doWriteMap(Headers.sources, stamps.sources)
       doWriteMap(Headers.binaries, stamps.binaries)
+      doWriteMap(Headers.auxiliaries, stamps.auxiliaries)
       doWriteMap(Headers.classNames, stamps.classNames)
     }
 
@@ -197,9 +199,10 @@ object TextAnalysisFormat {
       val products = doReadMap(Headers.products, Stamp.fromString)
       val sources = doReadMap(Headers.sources, Stamp.fromString)
       val binaries = doReadMap(Headers.binaries, Stamp.fromString)
+      val auxiliaries = doReadMap(Headers.auxiliaries, Stamp.fromString)
       val classNames = doReadMap(Headers.classNames, identity[String])
 
-      Stamps(products, sources, binaries, classNames)
+      Stamps(products, sources, binaries, auxiliaries, classNames)
     }
   }
 

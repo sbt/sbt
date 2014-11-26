@@ -127,6 +127,7 @@ private[inc] abstract class IncrementalCommon(log: Logger, options: IncOptions) 
   def changedInitial(entry: String => Option[File], sources: Set[File], previousAnalysis: Analysis, current: ReadStamps,
     forEntry: File => Option[Analysis])(implicit equivS: Equiv[Stamp]): InitialChanges =
     {
+      implicit def immutable[T](set: collection.Set[T]) = Set(set.toSeq: _*)
       val previous = previousAnalysis.stamps
       val previousAPIs = previousAnalysis.apis
 
@@ -134,8 +135,9 @@ private[inc] abstract class IncrementalCommon(log: Logger, options: IncOptions) 
       val removedProducts = previous.allProducts.filter(p => !equivS.equiv(previous.product(p), current.product(p))).toSet
       val binaryDepChanges = previous.allBinaries.filter(externalBinaryModified(entry, forEntry, previous, current)).toSet
       val extChanges = changedIncremental(previousAPIs.allExternals, previousAPIs.externalAPI _, currentExternalAPI(entry, forEntry))
+      val auxChanges = changes(immutable(previous.allAuxiliary), immutable(current.allAuxiliary), f => !equivS.equiv(previous.auxiliary(f), current.auxiliary(f)))
 
-      InitialChanges(srcChanges, removedProducts, binaryDepChanges, extChanges)
+      InitialChanges(srcChanges, removedProducts, binaryDepChanges, extChanges, auxChanges)
     }
 
   def changes(previous: Set[File], current: Set[File], existingModified: File => Boolean): Changes[File] =
@@ -193,6 +195,8 @@ private[inc] abstract class IncrementalCommon(log: Logger, options: IncOptions) 
       val byProduct = changes.removedProducts.flatMap(previous.produced)
       val byBinaryDep = changes.binaryDeps.flatMap(previous.usesBinary)
       val byExtSrcDep = invalidateByAllExternal(previous, changes.external) //changes.external.modified.flatMap(previous.usesExternal) // ++ scopeInvalidations
+      val byAuxiliaryDep = invalidateByAuxiliary(previous, changes.auxiliary)
+
       checkAbsolute(srcChanges.added.toList)
       log.debug(
         "\nInitial source changes: \n\tremoved:" + srcChanges.removed + "\n\tadded: " + srcChanges.added + "\n\tmodified: " + srcChanges.changed +
@@ -203,10 +207,11 @@ private[inc] abstract class IncrementalCommon(log: Logger, options: IncOptions) 
           "\n\nSources indirectly invalidated by:" +
           "\n\tproduct: " + byProduct +
           "\n\tbinary dep: " + byBinaryDep +
-          "\n\texternal source: " + byExtSrcDep
+          "\n\texternal source: " + byExtSrcDep +
+          "\n\tauxiliary dep: " + byAuxiliaryDep
       )
 
-      srcDirect ++ byProduct ++ byBinaryDep ++ byExtSrcDep
+      srcDirect ++ byProduct ++ byBinaryDep ++ byExtSrcDep ++ byAuxiliaryDep
     }
   private[this] def checkAbsolute(addedSources: List[File]): Unit =
     if (addedSources.nonEmpty) {
@@ -221,6 +226,12 @@ private[inc] abstract class IncrementalCommon(log: Logger, options: IncOptions) 
         case Nil =>
       }
     }
+
+  private def invalidateByAuxiliary(relations: Relations, changes: Changes[File]): Set[File] = {
+    changes.changed flatMap { changed =>
+      relations.usesAuxiliary(changed)
+    }
+  }
 
   def invalidateByAllExternal(relations: Relations, externalAPIChanges: APIChanges[String]): Set[File] = {
     (externalAPIChanges.apiChanges.flatMap { externalAPIChange =>

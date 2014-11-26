@@ -15,6 +15,10 @@ trait ReadStamps {
   def internalSource(src: File): Stamp
   /** The Stamp for the given binary dependency at the time represented by this Stamps instance.*/
   def binary(bin: File): Stamp
+  /** The Stamp for the given auxiliary dependency at the time represented by this Stamps instance.*/
+  def auxiliary(aux: File): Stamp
+  /** All the auxiliary dependencies that this Stamps instance knows of. */
+  def allAuxiliary: collection.Set[File]
 }
 
 /** Provides information about files as they were at a specific time.*/
@@ -26,6 +30,7 @@ trait Stamps extends ReadStamps {
   def sources: Map[File, Stamp]
   def binaries: Map[File, Stamp]
   def products: Map[File, Stamp]
+  def auxiliaries: Map[File, Stamp]
   def classNames: Map[File, String]
 
   def className(bin: File): Option[String]
@@ -33,11 +38,12 @@ trait Stamps extends ReadStamps {
   def markInternalSource(src: File, s: Stamp): Stamps
   def markBinary(bin: File, className: String, s: Stamp): Stamps
   def markProduct(prod: File, s: Stamp): Stamps
+  def markAuxiliary(aux: File, s: Stamp): Stamps
 
-  def filter(prod: File => Boolean, removeSources: Iterable[File], bin: File => Boolean): Stamps
+  def filter(prod: File => Boolean, removeSources: Iterable[File], bin: File => Boolean, aux: File => Boolean): Stamps
 
   def ++(o: Stamps): Stamps
-  def groupBy[K](prod: Map[K, File => Boolean], sourcesGrouping: File => K, bin: Map[K, File => Boolean]): Map[K, Stamps]
+  def groupBy[K](prod: Map[K, File => Boolean], sourcesGrouping: File => K, bin: Map[K, File => Boolean], aux: Map[K, File => Boolean]): Map[K, Stamps]
 }
 
 sealed trait Stamp {
@@ -113,40 +119,44 @@ object Stamps {
    * stamp is calculated separately on demand.
    * The stamp for a product is always recalculated.
    */
-  def initial(prodStamp: File => Stamp, srcStamp: File => Stamp, binStamp: File => Stamp): ReadStamps = new InitialStamps(prodStamp, srcStamp, binStamp)
+  def initial(prodStamp: File => Stamp, srcStamp: File => Stamp, binStamp: File => Stamp, auxStamp: File => Stamp): ReadStamps = new InitialStamps(prodStamp, srcStamp, binStamp, auxStamp)
 
   def empty: Stamps =
     {
       val eSt = Map.empty[File, Stamp]
-      apply(eSt, eSt, eSt, Map.empty[File, String])
+      apply(eSt, eSt, eSt, eSt, Map.empty[File, String])
     }
-  def apply(products: Map[File, Stamp], sources: Map[File, Stamp], binaries: Map[File, Stamp], binaryClassNames: Map[File, String]): Stamps =
-    new MStamps(products, sources, binaries, binaryClassNames)
+  def apply(products: Map[File, Stamp], sources: Map[File, Stamp], binaries: Map[File, Stamp], auxiliaries: Map[File, Stamp], binaryClassNames: Map[File, String]): Stamps =
+    new MStamps(products, sources, binaries, auxiliaries, binaryClassNames)
 
   def merge(stamps: Traversable[Stamps]): Stamps = (Stamps.empty /: stamps)(_ ++ _)
 }
 
-private class MStamps(val products: Map[File, Stamp], val sources: Map[File, Stamp], val binaries: Map[File, Stamp], val classNames: Map[File, String]) extends Stamps {
+private class MStamps(val products: Map[File, Stamp], val sources: Map[File, Stamp], val binaries: Map[File, Stamp], val auxiliaries: Map[File, Stamp], val classNames: Map[File, String]) extends Stamps {
   def allInternalSources: collection.Set[File] = sources.keySet
   def allBinaries: collection.Set[File] = binaries.keySet
   def allProducts: collection.Set[File] = products.keySet
+  def allAuxiliary: collection.Set[File] = auxiliaries.keySet
 
   def ++(o: Stamps): Stamps =
-    new MStamps(products ++ o.products, sources ++ o.sources, binaries ++ o.binaries, classNames ++ o.classNames)
+    new MStamps(products ++ o.products, sources ++ o.sources, binaries ++ o.binaries, auxiliaries ++ o.auxiliaries, classNames ++ o.classNames)
 
   def markInternalSource(src: File, s: Stamp): Stamps =
-    new MStamps(products, sources.updated(src, s), binaries, classNames)
+    new MStamps(products, sources.updated(src, s), binaries, auxiliaries, classNames)
 
   def markBinary(bin: File, className: String, s: Stamp): Stamps =
-    new MStamps(products, sources, binaries.updated(bin, s), classNames.updated(bin, className))
+    new MStamps(products, sources, binaries.updated(bin, s), auxiliaries, classNames.updated(bin, className))
 
   def markProduct(prod: File, s: Stamp): Stamps =
-    new MStamps(products.updated(prod, s), sources, binaries, classNames)
+    new MStamps(products.updated(prod, s), sources, binaries, auxiliaries, classNames)
 
-  def filter(prod: File => Boolean, removeSources: Iterable[File], bin: File => Boolean): Stamps =
-    new MStamps(products.filterKeys(prod), sources -- removeSources, binaries.filterKeys(bin), classNames.filterKeys(bin))
+  def markAuxiliary(aux: File, s: Stamp): Stamps =
+    new MStamps(products, sources, binaries, auxiliaries.updated(aux, s), classNames)
 
-  def groupBy[K](prod: Map[K, File => Boolean], f: File => K, bin: Map[K, File => Boolean]): Map[K, Stamps] =
+  def filter(prod: File => Boolean, removeSources: Iterable[File], bin: File => Boolean, aux: File => Boolean): Stamps =
+    new MStamps(products.filterKeys(prod), sources -- removeSources, binaries.filterKeys(bin), auxiliaries.filterKeys(aux), classNames.filterKeys(bin))
+
+  def groupBy[K](prod: Map[K, File => Boolean], f: File => K, bin: Map[K, File => Boolean], aux: Map[K, File => Boolean]): Map[K, Stamps] =
     {
       val sourcesMap: Map[K, Map[File, Stamp]] = sources.groupBy(x => f(x._1))
 
@@ -155,6 +165,7 @@ private class MStamps(val products: Map[File, Stamp], val sources: Map[File, Sta
         products.filterKeys(prod.getOrElse(k, constFalse)),
         sourcesMap.getOrElse(k, Map.empty[File, Stamp]),
         binaries.filterKeys(bin.getOrElse(k, constFalse)),
+        auxiliaries.filterKeys(aux.getOrElse(k, constFalse)),
         classNames.filterKeys(bin.getOrElse(k, constFalse))
       )
 
@@ -164,6 +175,7 @@ private class MStamps(val products: Map[File, Stamp], val sources: Map[File, Sta
   def product(prod: File) = getStamp(products, prod)
   def internalSource(src: File) = getStamp(sources, src)
   def binary(bin: File) = getStamp(binaries, bin)
+  def auxiliary(aux: File) = getStamp(auxiliaries, aux)
   def className(bin: File) = classNames get bin
 
   override def equals(other: Any): Boolean = other match {
@@ -174,16 +186,19 @@ private class MStamps(val products: Map[File, Stamp], val sources: Map[File, Sta
   override lazy val hashCode: Int = (products :: sources :: binaries :: classNames :: Nil).hashCode
 
   override def toString: String =
-    "Stamps for: %d products, %d sources, %d binaries, %d classNames".format(products.size, sources.size, binaries.size, classNames.size)
+    "Stamps for: %d products, %d sources, %d binaries, %d auxiliaries, %d classNames".format(products.size, sources.size, binaries.size, auxiliaries.size, classNames.size)
 }
 
-private class InitialStamps(prodStamp: File => Stamp, srcStamp: File => Stamp, binStamp: File => Stamp) extends ReadStamps {
+private class InitialStamps(prodStamp: File => Stamp, srcStamp: File => Stamp, binStamp: File => Stamp, auxStamp: File => Stamp) extends ReadStamps {
   import collection.mutable.{ HashMap, Map }
   // cached stamps for files that do not change during compilation
   private val sources: Map[File, Stamp] = new HashMap
   private val binaries: Map[File, Stamp] = new HashMap
+  val auxiliaries: Map[File, Stamp] = new HashMap
+  def allAuxiliary = auxiliaries.keySet
 
   def product(prod: File): Stamp = prodStamp(prod)
   def internalSource(src: File): Stamp = synchronized { sources.getOrElseUpdate(src, srcStamp(src)) }
   def binary(bin: File): Stamp = synchronized { binaries.getOrElseUpdate(bin, binStamp(bin)) }
+  def auxiliary(aux: File): Stamp = synchronized { auxiliaries.getOrElseUpdate(aux, auxStamp(aux)) }
 }
