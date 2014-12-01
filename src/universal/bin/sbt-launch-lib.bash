@@ -69,7 +69,7 @@ addResidual () {
   residual_args=( "${residual_args[@]}" "$1" )
 }
 addDebugger () {
-  addJava "-agentlib:jdwp:transport=dt_socket,server=y,suspend=n,address=$1"
+  addJava "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$1"
 }
 
 get_mem_opts () {
