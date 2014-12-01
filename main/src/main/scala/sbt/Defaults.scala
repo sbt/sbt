@@ -250,6 +250,7 @@ object Defaults extends BuildCommon {
 
   lazy val configTasks = docTaskSettings(doc) ++ inTask(compile)(compileInputsSettings) ++ configGlobal ++ compileAnalysisSettings ++ Seq(
     compile <<= compileTask,
+    manipulateBytecode := compileIncremental.value,
     compileIncremental <<= compileIncrementalTask tag (Tags.Compile, Tags.CPU),
     printWarnings <<= printWarningsTask,
     compileAnalysisFilename := {
@@ -781,10 +782,19 @@ object Defaults extends BuildCommon {
   @deprecated("Use inTask(compile)(compileInputsSettings)", "0.13.0")
   def compileTaskSettings: Seq[Setting[_]] = inTask(compile)(compileInputsSettings)
 
-  def compileTask: Initialize[Task[inc.Analysis]] = Def.task { saveAnalysis.value }
+  def compileTask: Initialize[Task[inc.Analysis]] = Def.task {
+    val setup: Compiler.IncSetup = compileIncSetup.value
+    // TODO - expose bytecode manipulation phase.
+    val analysisResult: Compiler.CompileResult = manipulateBytecode.value
+    if (analysisResult.hasModified) {
+      val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile)
+      store.set(analysisResult.analysis, analysisResult.setup)
+    }
+    analysisResult.analysis
+  }
   def compileIncrementalTask = Def.task {
     // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
-    compileIncrementalTaskImpl(streams.value, (compileInputs in compile).value, readAnalysis.value, (compilerReporter in compile).value)
+    compileIncrementalTaskImpl(streams.value, (compileInputs in compile).value, previousCompile.value, (compilerReporter in compile).value)
   }
   private[this] def compileIncrementalTaskImpl(s: TaskStreams, ci: Compiler.Inputs, previous: Compiler.PreviousAnalysis, reporter: Option[xsbti.Reporter]): Compiler.CompileResult =
     {
@@ -815,22 +825,13 @@ object Defaults extends BuildCommon {
     },
       compilerReporter := None)
   def compileAnalysisSettings: Seq[Setting[_]] = Seq(
-    readAnalysis := {
+    previousCompile := {
       val setup: Compiler.IncSetup = compileIncSetup.value
       val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile)
       store.get() match {
         case Some((an, setup)) => Compiler.PreviousAnalysis(an, Some(setup))
         case None              => Compiler.PreviousAnalysis(Analysis.empty(nameHashing = setup.incOptions.nameHashing), None)
       }
-    },
-    saveAnalysis := {
-      val setup: Compiler.IncSetup = compileIncSetup.value
-      val analysisResult: Compiler.CompileResult = compileIncremental.value
-      if (analysisResult.hasModified) {
-        val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile)
-        store.set(analysisResult.analysis, analysisResult.setup)
-      }
-      analysisResult.analysis
     }
   )
 
