@@ -5,6 +5,7 @@ package sbt
 package inc
 
 import xsbti.api.Source
+import xsbti.DependencyContext._
 import java.io.File
 
 /**
