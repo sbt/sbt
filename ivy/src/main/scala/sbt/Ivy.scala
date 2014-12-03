@@ -19,7 +19,7 @@ import org.apache.ivy.core.cache.{ CacheMetadataOptions, DefaultRepositoryCacheM
 import org.apache.ivy.core.event.EventManager
 import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact, DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact }
 import org.apache.ivy.core.module.descriptor.{ DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor, License }
-import org.apache.ivy.core.module.descriptor.{ OverrideDependencyDescriptorMediator }
+import org.apache.ivy.core.module.descriptor.OverrideDependencyDescriptorMediator
 import org.apache.ivy.core.module.id.{ ArtifactId, ModuleId, ModuleRevisionId }
 import org.apache.ivy.core.resolve.{ IvyNode, ResolveData, ResolvedModuleRevision, ResolveEngine }
 import org.apache.ivy.core.settings.IvySettings
@@ -496,7 +496,7 @@ private[sbt] object IvySbt {
   private def hasInfo(module: ModuleID, x: scala.xml.NodeSeq) =
     {
       val info = <g>{ x }</g> \ "info"
-      if (!info.isEmpty) {
+      if (info.nonEmpty) {
         def check(found: NodeSeq, expected: String, label: String) =
           if (found.isEmpty)
             sys.error("Missing " + label + " in inline Ivy XML.")
@@ -508,7 +508,7 @@ private[sbt] object IvySbt {
         check(info \ "@module", module.name, "name")
         check(info \ "@revision", module.revision, "version")
       }
-      !info.isEmpty
+      info.nonEmpty
     }
   /** Parses the given in-memory Ivy file 'xml', using the existing 'moduleID' and specifying the given 'defaultConfiguration'. */
   private def parseIvyXML(settings: IvySettings, xml: scala.xml.NodeSeq, moduleID: DefaultModuleDescriptor, defaultConfiguration: String, validate: Boolean): CustomXmlParser.CustomParser =
@@ -582,7 +582,7 @@ private[sbt] object IvySbt {
       for (artifact <- dependency.explicitArtifacts) {
         import artifact.{ name, classifier, `type`, extension, url }
         val extraMap = extra(artifact)
-        val ivyArtifact = new DefaultDependencyArtifactDescriptor(dependencyDescriptor, name, `type`, extension, url.getOrElse(null), extraMap)
+        val ivyArtifact = new DefaultDependencyArtifactDescriptor(dependencyDescriptor, name, `type`, extension, url.orNull, extraMap)
         copyConfigurations(artifact, ivyArtifact.addConfiguration)
         for (conf <- dependencyDescriptor.getModuleConfigurations)
           dependencyDescriptor.addDependencyArtifact(conf, ivyArtifact)

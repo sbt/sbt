@@ -258,7 +258,7 @@ class MakePom(val log: Logger) {
   @deprecated("No longer used and will be removed.", "0.12.1")
   def classifier(dependency: DependencyDescriptor, includeTypes: Set[String]): NodeSeq =
     {
-      val jarDep = dependency.getAllDependencyArtifacts.filter(d => includeTypes(d.getType)).headOption
+      val jarDep = dependency.getAllDependencyArtifacts.find(d => includeTypes(d.getType))
       jarDep match {
         case Some(a) => classifierElem(artifactClassifier(a))
         case None    => NodeSeq.Empty
@@ -298,15 +298,15 @@ class MakePom(val log: Logger) {
       val (opt, notOptional) = confs.partition(_ == Optional.name)
       val defaultNotOptional = Configurations.defaultMavenConfigurations.find(notOptional contains _.name)
       val scope = defaultNotOptional.map(_.name)
-      (scope, !opt.isEmpty)
+      (scope, opt.nonEmpty)
     }
 
   def exclusions(dependency: DependencyDescriptor): NodeSeq =
     {
       val excl = dependency.getExcludeRules(dependency.getModuleConfigurations)
       val (warns, excls) = IvyUtil.separate(excl.map(makeExclusion))
-      if (!warns.isEmpty) log.warn(warns.mkString(IO.Newline))
-      if (!excls.isEmpty) <exclusions>{ excls }</exclusions>
+      if (warns.nonEmpty) log.warn(warns.mkString(IO.Newline))
+      if (excls.nonEmpty) <exclusions>{ excls }</exclusions>
       else NodeSeq.Empty
     }
   def makeExclusion(exclRule: ExcludeRule): Either[String, NodeSeq] =

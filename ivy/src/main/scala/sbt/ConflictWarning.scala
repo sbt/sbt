@@ -33,7 +33,7 @@ object ConflictWarning {
   }
   private[this] def processCrossVersioned(config: ConflictWarning, report: UpdateReport, log: Logger) {
     val crossMismatches = crossVersionMismatches(report)
-    if (!crossMismatches.isEmpty) {
+    if (crossMismatches.nonEmpty) {
       val pre = s"Modules were resolved with conflicting cross-version suffixes in ${config.label}:\n   "
       val conflictMsgs =
         for (((org, rawName), fullNames) <- crossMismatches) yield {
