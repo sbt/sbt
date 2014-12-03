@@ -156,8 +156,8 @@ object Sbt extends Build {
   // Persists the incremental data structures using SBinary
   lazy val compilePersistSub = testedBaseProject(compilePath / "persist", "Persist") dependsOn (compileIncrementalSub, apiSub, compileIncrementalSub % "test->test") settings (sbinary)
   // sbt-side interface to compiler.  Calls compiler-side interface reflectively
-  lazy val compilerSub = testedBaseProject(compilePath, "Compile") dependsOn (launchInterfaceSub, interfaceSub % "compile;test->test", logSub, ioSub, classpathSub,
-    logSub % "test->test", launchSub % "test->test", apiSub % "test") settings (compilerSettings: _*)
+  lazy val compilerSub = testedBaseProject(compilePath, "Compile") dependsOn (launchInterfaceSub, interfaceSub % "compile;test->test", logSub, ioSub, classpathSub, apiSub, classfileSub,
+    logSub % "test->test", launchSub % "test->test") settings (compilerSettings: _*)
   lazy val compilerIntegrationSub = baseProject(compilePath / "integration", "Compiler Integration") dependsOn (
     compileIncrementalSub, compilerSub, compilePersistSub, apiSub, classfileSub)
   lazy val compilerIvySub = baseProject(compilePath / "ivy", "Compiler Ivy Integration") dependsOn (ivySub, compilerSub)

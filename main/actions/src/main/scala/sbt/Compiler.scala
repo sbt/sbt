@@ -3,7 +3,7 @@
  */
 package sbt
 
-import sbt.compiler.javac.{ IncrementalCompilerJavaTools, JavaCompiler, JavaTools }
+import sbt.compiler.javac.{ IncrementalCompilerJavaTools, JavaTools }
 import xsbti.{ Logger => _, _ }
 import xsbti.compile.{ CompileOrder, GlobalsCache }
 import CompileOrder.{ JavaThenScala, Mixed, ScalaThenJava }
@@ -15,12 +15,16 @@ import java.io.File
 object Compiler {
   val DefaultMaxErrors = 100
 
+  /** Inputs necessary to run the incremental compiler. */
   final case class Inputs(compilers: Compilers, config: Options, incSetup: IncSetup)
+  /** The inputs for the copiler *and* the previous analysis of source dependecnies. */
+  final case class InputsWithPrevious(inputs: Inputs, previousAnalysis: PreviousAnalysis)
   final case class Options(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, sourcePositionMapper: Position => Position, order: CompileOrder)
   final case class IncSetup(analysisMap: File => Option[Analysis], definesClass: DefinesClass, skip: Boolean, cacheFile: File, cache: GlobalsCache, incOptions: IncOptions)
   private[sbt] trait JavaToolWithNewInterface extends JavaTool {
     def newJavac: IncrementalCompilerJavaTools
   }
+  /** The instances of Scalac/Javac used to compile the current project. */
   final case class Compilers(scalac: AnalyzingCompiler, javac: JavaTool) {
     final def newJavac: Option[IncrementalCompilerJavaTools] =
       javac match {
@@ -28,9 +32,13 @@ object Compiler {
         case _                           => None
       }
   }
-  final case class NewCompilers(scalac: AnalyzingCompiler, javac: JavaTools)
+  /** The previous source dependency analysis result from compilation. */
+  final case class PreviousAnalysis(analysis: Analysis, setup: Option[CompileSetup])
+  type CompileResult = IC.Result
 
-  def inputs(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, sourcePositionMappers: Seq[Position => Option[Position]], order: CompileOrder)(implicit compilers: Compilers, incSetup: IncSetup, log: Logger): Inputs =
+  def inputs(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String],
+    javacOptions: Seq[String], maxErrors: Int, sourcePositionMappers: Seq[Position => Option[Position]],
+    order: CompileOrder)(implicit compilers: Compilers, incSetup: IncSetup, log: Logger): Inputs =
     new Inputs(
       compilers,
       new Options(classpath, sources, classesDirectory, options, javacOptions, maxErrors, foldMappers(sourcePositionMappers), order),
@@ -77,28 +85,47 @@ object Compiler {
       val launcher = app.provider.scalaProvider.launcher
       val componentManager = new ComponentManager(launcher.globalLock, app.provider.components, Option(launcher.ivyHome), log)
       val provider = ComponentCompiler.interfaceProvider(componentManager)
-      new AnalyzingCompiler(instance, provider, cpOptions, log)
+      new AnalyzingCompiler(instance, provider, cpOptions)
     }
-  def apply(in: Inputs, log: Logger): Analysis =
-    {
-      import in.compilers._
-      import in.config._
-      import in.incSetup._
-      apply(in, log, new LoggerReporter(maxErrors, log, sourcePositionMapper))
+
+  @deprecated("0.13.8", "Use the `compile` method instead.")
+  def apply(in: Inputs, log: Logger): Analysis = {
+    import in.config._
+    apply(in, log, new LoggerReporter(maxErrors, log, sourcePositionMapper))
+  }
+  @deprecated("0.13.8", "Use the `compile` method instead.")
+  def apply(in: Inputs, log: Logger, reporter: xsbti.Reporter): Analysis = {
+    import in.compilers._
+    import in.config._
+    import in.incSetup._
+    // Here we load the previous analysis since the new paths don't.
+    val (previousAnalysis, previousSetup) = {
+      MixedAnalyzingCompiler.staticCachedStore(cacheFile).get().map {
+        case (a, s) => (a, Some(s))
+      } getOrElse {
+        (Analysis.empty(nameHashing = incOptions.nameHashing), None)
+      }
     }
-  def apply(in: Inputs, log: Logger, reporter: xsbti.Reporter): Analysis =
+    compile(InputsWithPrevious(in, PreviousAnalysis(previousAnalysis, previousSetup)), log, reporter).analysis
+  }
+  def compile(in: InputsWithPrevious, log: Logger): CompileResult =
     {
-      import in.compilers._
-      import in.config._
-      import in.incSetup._
-      val agg = new AggressiveCompile(cacheFile)
+      import in.inputs.config._
+      compile(in, log, new LoggerReporter(maxErrors, log, sourcePositionMapper))
+    }
+  def compile(in: InputsWithPrevious, log: Logger, reporter: xsbti.Reporter): CompileResult =
+    {
+      import in.inputs.compilers._
+      import in.inputs.config._
+      import in.inputs.incSetup._
       // Here is some trickery to choose the more recent (reporter-using) java compiler rather
       // than the previously defined versions.
       // TODO - Remove this hackery in sbt 1.0.
       val javacChosen: xsbti.compile.JavaCompiler =
-        in.compilers.newJavac.map(_.xsbtiCompiler).getOrElse(in.compilers.javac)
-      agg(scalac, javacChosen, sources, classpath, CompileOutput(classesDirectory), cache, None, options, javacOptions,
-        analysisMap, definesClass, reporter, order, skip, incOptions)(log)
+        in.inputs.compilers.newJavac.map(_.xsbtiCompiler).getOrElse(in.inputs.compilers.javac)
+      // TODO - Why are we not using the IC interface???
+      IC.incrementalCompile(scalac, javacChosen, sources, classpath, CompileOutput(classesDirectory), cache, None, options, javacOptions,
+        in.previousAnalysis.analysis, in.previousAnalysis.setup, analysisMap, definesClass, reporter, order, skip, incOptions)(log)
     }
 
   private[sbt] def foldMappers[A](mappers: Seq[A => Option[A]]) =

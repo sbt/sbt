@@ -5,6 +5,7 @@ package sbt
 
 import Attributed.data
 import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
+import sbt.Compiler.InputsWithPrevious
 import xsbt.api.Discovery
 import xsbti.compile.CompileOrder
 import Project.{ inConfig, inScope, inTask, richInitialize, richInitializeTask, richTaskSessionVar }
@@ -14,7 +15,8 @@ import Configurations.{ Compile, CompilerPlugin, IntegrationTest, names, Provide
 import CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
 import complete._
 import std.TaskExtra._
-import inc.{ FileValueCache, IncOptions, Locate }
+import sbt.inc.{ Analysis, FileValueCache, IncOptions, Locate }
+import sbt.compiler.{ MixedAnalyzingCompiler, AggressiveCompile }
 import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
 
 import sys.error
@@ -246,8 +248,10 @@ object Defaults extends BuildCommon {
 
   def compilersSetting = compilers := Compiler.compilers(scalaInstance.value, classpathOptions.value, javaHome.value)(appConfiguration.value, streams.value.log)
 
-  lazy val configTasks = docTaskSettings(doc) ++ inTask(compile)(compileInputsSettings) ++ configGlobal ++ Seq(
-    compile <<= compileTask tag (Tags.Compile, Tags.CPU),
+  lazy val configTasks = docTaskSettings(doc) ++ inTask(compile)(compileInputsSettings) ++ configGlobal ++ compileAnalysisSettings ++ Seq(
+    compile <<= compileTask,
+    manipulateBytecode := compileIncremental.value,
+    compileIncremental <<= compileIncrementalTask tag (Tags.Compile, Tags.CPU),
     printWarnings <<= printWarningsTask,
     compileAnalysisFilename := {
       // Here, if the user wants cross-scala-versioning, we also append it
@@ -648,7 +652,7 @@ object Defaults extends BuildCommon {
       key in TaskGlobal <<= packageTask,
       packageConfiguration <<= packageConfigurationTask,
       mappings <<= mappingsTask,
-      packagedArtifact := (artifact.value, key.value),
+      packagedArtifact := (artifact.value -> key.value),
       artifact <<= artifactSetting,
       artifactPath <<= artifactPathSetting(artifact)
     ))
@@ -778,15 +782,28 @@ object Defaults extends BuildCommon {
   @deprecated("Use inTask(compile)(compileInputsSettings)", "0.13.0")
   def compileTaskSettings: Seq[Setting[_]] = inTask(compile)(compileInputsSettings)
 
-  def compileTask: Initialize[Task[inc.Analysis]] = Def.task { compileTaskImpl(streams.value, (compileInputs in compile).value, (compilerReporter in compile).value) }
-  private[this] def compileTaskImpl(s: TaskStreams, ci: Compiler.Inputs, reporter: Option[xsbti.Reporter]): inc.Analysis =
+  def compileTask: Initialize[Task[inc.Analysis]] = Def.task {
+    val setup: Compiler.IncSetup = compileIncSetup.value
+    // TODO - expose bytecode manipulation phase.
+    val analysisResult: Compiler.CompileResult = manipulateBytecode.value
+    if (analysisResult.hasModified) {
+      val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile)
+      store.set(analysisResult.analysis, analysisResult.setup)
+    }
+    analysisResult.analysis
+  }
+  def compileIncrementalTask = Def.task {
+    // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
+    compileIncrementalTaskImpl(streams.value, (compileInputs in compile).value, previousCompile.value, (compilerReporter in compile).value)
+  }
+  private[this] def compileIncrementalTaskImpl(s: TaskStreams, ci: Compiler.Inputs, previous: Compiler.PreviousAnalysis, reporter: Option[xsbti.Reporter]): Compiler.CompileResult =
     {
       lazy val x = s.text(ExportStream)
       def onArgs(cs: Compiler.Compilers) = cs.copy(scalac = cs.scalac.onArgs(exported(x, "scalac")), javac = cs.javac.onArgs(exported(x, "javac")))
-      val i = ci.copy(compilers = onArgs(ci.compilers))
+      val i = InputsWithPrevious(ci.copy(compilers = onArgs(ci.compilers)), previous)
       try reporter match {
-        case Some(reporter) => Compiler(i, s.log, reporter)
-        case None           => Compiler(i, s.log)
+        case Some(reporter) => Compiler.compile(i, s.log, reporter)
+        case None           => Compiler.compile(i, s.log)
       }
       finally x.close() // workaround for #937
     }
@@ -803,9 +820,20 @@ object Defaults extends BuildCommon {
   def compileInputsSettings: Seq[Setting[_]] =
     Seq(compileInputs := {
       val cp = classDirectory.value +: data(dependencyClasspath.value)
-      Compiler.inputs(cp, sources.value, classDirectory.value, scalacOptions.value, javacOptions.value, maxErrors.value, sourcePositionMappers.value, compileOrder.value)(compilers.value, compileIncSetup.value, streams.value.log)
+      Compiler.inputs(cp, sources.value, classDirectory.value, scalacOptions.value, javacOptions.value,
+        maxErrors.value, sourcePositionMappers.value, compileOrder.value)(compilers.value, compileIncSetup.value, streams.value.log)
     },
       compilerReporter := None)
+  def compileAnalysisSettings: Seq[Setting[_]] = Seq(
+    previousCompile := {
+      val setup: Compiler.IncSetup = compileIncSetup.value
+      val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile)
+      store.get() match {
+        case Some((an, setup)) => Compiler.PreviousAnalysis(an, Some(setup))
+        case None              => Compiler.PreviousAnalysis(Analysis.empty(nameHashing = setup.incOptions.nameHashing), None)
+      }
+    }
+  )
 
   def printWarningsTask: Initialize[Task[Unit]] =
     (streams, compile, maxErrors, sourcePositionMappers) map { (s, analysis, max, spms) =>
@@ -1006,7 +1034,7 @@ object Classpaths {
     packagedArtifacts :== Map.empty,
     crossTarget := target.value,
     makePom := { val config = makePomConfiguration.value; IvyActions.makePom(ivyModule.value, config, streams.value.log); config.file },
-    packagedArtifact in makePom := (artifact in makePom value, makePom value),
+    packagedArtifact in makePom := ((artifact in makePom).value -> makePom.value),
     deliver <<= deliverTask(deliverConfiguration),
     deliverLocal <<= deliverTask(deliverLocalConfiguration),
     publish <<= publishTask(publishConfiguration, deliver),
@@ -1485,7 +1513,7 @@ object Classpaths {
       def visit(p: ProjectRef, c: Configuration) {
         val applicableConfigs = allConfigs(c)
         for (ac <- applicableConfigs) // add all configurations in this project
-          visited add (p, ac.name)
+          visited add (p -> ac.name)
         val masterConfs = names(getConfigurations(projectRef, data))
 
         for (ResolvedClasspathDependency(dep, confMapping) <- deps.classpath(p)) {

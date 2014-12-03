@@ -20,11 +20,9 @@ import xsbti.api.Source
 import xsbti.compile.{ CompileOrder, DependencyChanges, GlobalsCache, Output, SingleOutput, MultipleOutput, CompileProgress }
 import CompileOrder.{ JavaThenScala, Mixed, ScalaThenJava }
 
-final class CompileConfiguration(val sources: Seq[File], val classpath: Seq[File],
-  val previousAnalysis: Analysis, val previousSetup: Option[CompileSetup], val currentSetup: CompileSetup, val progress: Option[CompileProgress], val getAnalysis: File => Option[Analysis], val definesClass: DefinesClass,
-  val reporter: Reporter, val compiler: AnalyzingCompiler, val javac: xsbti.compile.JavaCompiler, val cache: GlobalsCache, val incOptions: IncOptions)
-
+@deprecated("0.13.8", "Use MixedAnalyzingCompiler or IC instead.")
 class AggressiveCompile(cacheFile: File) {
+  @deprecated("0.13.8", "Use IC.compile instead.")
   def apply(compiler: AnalyzingCompiler,
     javac: xsbti.compile.JavaCompiler,
     sources: Seq[File], classpath: Seq[File],
@@ -186,20 +184,14 @@ class AggressiveCompile(cacheFile: File) {
   private[this] def explicitBootClasspath(options: Seq[String]): Seq[File] =
     options.dropWhile(_ != CompilerArguments.BootClasspathOption).drop(1).take(1).headOption.toList.flatMap(IO.parseClasspath)
 
-  val store = AggressiveCompile.staticCache(cacheFile, AnalysisStore.sync(AnalysisStore.cached(FileBasedStore(cacheFile))))
+  val store = MixedAnalyzingCompiler.staticCachedStore(cacheFile)
+
 }
+@deprecated("0.13.8", "Use MixedAnalyzingCompiler instead.")
 object AggressiveCompile {
-  import collection.mutable
-  import java.lang.ref.{ Reference, SoftReference }
-  private[this] val cache = new collection.mutable.HashMap[File, Reference[AnalysisStore]]
-  private def staticCache(file: File, backing: => AnalysisStore): AnalysisStore =
-    synchronized {
-      cache get file flatMap { ref => Option(ref.get) } getOrElse {
-        val b = backing
-        cache.put(file, new SoftReference(b))
-        b
-      }
-    }
+  @deprecated("0.13.8", "Use MixedAnalyzingCompiler.staticCachedStore instead.")
+  def staticCachedStore(cacheFile: File) = MixedAnalyzingCompiler.staticCachedStore(cacheFile)
+
   @deprecated("0.13.8", "Deprecated in favor of new sbt.compiler.javac package.")
   def directOrFork(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File]): JavaTool =
     if (javaHome.isDefined)
