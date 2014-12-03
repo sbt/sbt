@@ -31,7 +31,7 @@ object Initialize {
     val properties = readProperties(file)
     val uninitialized =
       for (property <- appProperties; init <- select(property) if properties.getProperty(property.name) == null) yield initialize(properties, property.name, init)
-    if (!uninitialized.isEmpty) writeProperties(properties, file, "")
+    if (uninitialized.nonEmpty) writeProperties(properties, file, "")
   }
   def initialize(properties: Properties, name: String, init: PropertyInit) {
     init match {

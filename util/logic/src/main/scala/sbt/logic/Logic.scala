@@ -277,7 +277,7 @@ object Logic {
   }
 
   /** Represents the set of atoms in the heads of clauses and in the bodies (formulas) of clauses. */
-  final case class Atoms(val inHead: Set[Atom], val inFormula: Set[Atom]) {
+  final case class Atoms(inHead: Set[Atom], inFormula: Set[Atom]) {
     /** Concatenates this with `as`. */
     def ++(as: Atoms): Atoms = Atoms(inHead ++ as.inHead, inFormula ++ as.inFormula)
     /** Atoms that cannot be true because they do not occur in a head. */

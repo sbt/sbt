@@ -256,12 +256,12 @@ object Load {
     // the files aren't properly returned, even though they should be.
     // TODO - figure out where the caching of whether or not to generate classfiles occurs, and
     // put cleanups there, perhaps.
-    if (!keepSet.isEmpty) {
+    if (keepSet.nonEmpty) {
       def keepFile(f: File) = keepSet(f.getCanonicalPath)
       import Path._
       val existing = (baseTarget.***.get).filterNot(_.isDirectory)
       val toDelete = existing.filterNot(keepFile)
-      if (!toDelete.isEmpty) {
+      if (toDelete.nonEmpty) {
         IO.delete(toDelete)
       }
     }
@@ -711,11 +711,11 @@ object Load {
     // How to merge SbtFiles we read into one thing
     def merge(ls: Seq[LoadedSbtFile]): LoadedSbtFile = (LoadedSbtFile.empty /: ls) { _ merge _ }
     // Loads a given file, or pulls from the cache.
-    def memoLoadSettingsFile(src: File): LoadedSbtFile = memoSettings.get(src) getOrElse {
+    def memoLoadSettingsFile(src: File): LoadedSbtFile = memoSettings.getOrElse(src, {
       val lf = loadSettingsFile(src)
       memoSettings.put(src, lf.clearProjects) // don't load projects twice
       lf
-    }
+    })
     // Loads a set of sbt files, sorted by their lexical name (current behavior of sbt).
     def loadFiles(fs: Seq[File]): LoadedSbtFile =
       merge(fs.sortBy(_.getName).map(memoLoadSettingsFile))
@@ -777,7 +777,7 @@ object Load {
   def hasDefinition(dir: File) =
     {
       import Path._
-      !(dir * -GlobFilter(DefaultTargetName)).get.isEmpty
+      (dir * -GlobFilter(DefaultTargetName)).get.nonEmpty
     }
   def noPlugins(dir: File, config: sbt.LoadBuildConfiguration): sbt.LoadedPlugins =
     loadPluginDefinition(dir, config, PluginData(config.globalPluginClasspath, None, None))

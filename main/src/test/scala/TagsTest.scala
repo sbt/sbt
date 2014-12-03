@@ -1,7 +1,7 @@
 package sbt
 
 import org.scalacheck._
-import Gen.{ listOf }
+import Gen.listOf
 import Prop._
 import Tags._
 

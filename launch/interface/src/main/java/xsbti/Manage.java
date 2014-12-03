@@ -2,5 +2,5 @@ package xsbti;
 
 enum Manage
 {
-	Nop, Clean, Refresh;
+	Nop, Clean, Refresh
 }

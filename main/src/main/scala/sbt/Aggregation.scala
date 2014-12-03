@@ -151,7 +151,7 @@ final object Aggregation {
           base.map { res =>
             () =>
               val newState = res()
-              if (show.settingValues && !settings.isEmpty) printSettings(settings, show.print)
+              if (show.settingValues && settings.nonEmpty) printSettings(settings, show.print)
               newState
           }
         }

@@ -67,7 +67,7 @@ private[sbt] class CachedResolutionResolveCache() {
             // direct dependencies of an internal dependency
             val directs0 = directDependencies(internal)
             val directs = directs0 filter { dd =>
-              allConfigurations exists { conf => !dd.getDependencyConfigurations(conf).isEmpty }
+              allConfigurations exists { conf => dd.getDependencyConfigurations(conf).nonEmpty }
             }
             directs flatMap { dd => expandInternalDeps(dd, next) }
           case _ =>

@@ -24,7 +24,7 @@ object Launch {
       case PropertiesFile => parseAndInitializeConfig(configLocation, currentDirectory)
     }
     if (arguments.isLocate) {
-      if (!newArgs2.isEmpty) {
+      if (newArgs2.nonEmpty) {
         // TODO - Print the arguments without exploding proguard size.
         System.err.println("Warning: --locate option ignores arguments.")
       }

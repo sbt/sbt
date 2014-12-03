@@ -126,7 +126,7 @@ object SessionSettings {
   /** Checks to see if any session settings are being discarded and issues a warning. */
   def checkSession(newSession: SessionSettings, oldState: State) {
     val oldSettings = (oldState get Keys.sessionSettings).toList.flatMap(_.append).flatMap(_._2)
-    if (newSession.append.isEmpty && !oldSettings.isEmpty)
+    if (newSession.append.isEmpty && oldSettings.nonEmpty)
       oldState.log.warn("Discarding " + pluralize(oldSettings.size, " session setting") + ".  Use 'session save' to persist session settings.")
   }
 
@@ -167,7 +167,7 @@ object SessionSettings {
   def saveSomeSettings(s: State)(include: ProjectRef => Boolean): State =
     withSettings(s) { session =>
       val newSettings =
-        for ((ref, settings) <- session.append if !settings.isEmpty && include(ref)) yield {
+        for ((ref, settings) <- session.append if settings.nonEmpty && include(ref)) yield {
           val (news, olds) = writeSettings(ref, settings.toList, session.original, Project.structure(s))
           (ref -> news, olds)
         }
@@ -206,7 +206,7 @@ object SessionSettings {
     val newSettings = settings diff replace
     val oldContent = IO.readLines(writeTo)
     val (_, exist) = SbtRefactorings.applySessionSettings((writeTo, oldContent), replace)
-    val adjusted = if (!newSettings.isEmpty && needsTrailingBlank(exist)) exist :+ "" else exist
+    val adjusted = if (newSettings.nonEmpty && needsTrailingBlank(exist)) exist :+ "" else exist
     val lines = adjusted ++ newSettings.flatMap(x => x._2 :+ "")
     IO.writeLines(writeTo, lines)
     val (newWithPos, _) = ((List[SessionSetting](), adjusted.size + 1) /: newSettings) {
@@ -218,12 +218,12 @@ object SessionSettings {
   }
 
   @deprecated("This method will no longer be public", "0.13.7")
-  def needsTrailingBlank(lines: Seq[String]) = !lines.isEmpty && !lines.takeRight(1).exists(_.trim.isEmpty)
+  def needsTrailingBlank(lines: Seq[String]) = lines.nonEmpty && !lines.takeRight(1).exists(_.trim.isEmpty)
 
   /** Prints all the user-defined SessionSettings (not raw) to System.out. */
   def printAllSettings(s: State): State =
     withSettings(s) { session =>
-      for ((ref, settings) <- session.append if !settings.isEmpty) {
+      for ((ref, settings) <- session.append if settings.nonEmpty) {
         println("In " + Reference.display(ref))
         printSettings(settings)
       }

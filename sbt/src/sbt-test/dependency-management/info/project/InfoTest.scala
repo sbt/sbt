@@ -38,5 +38,5 @@ object InfoTest extends Build
 		} else
 			if( deliveredWithCustom(d) ) sys.error("Expected empty 'info' tag, got: \n" + (d \ "info")) else ()
 	}
-	def deliveredWithCustom(d: NodeSeq) = !(d \ "info" \ "license").isEmpty && !(d \ "info" \ "description").isEmpty
+	def deliveredWithCustom(d: NodeSeq) = (d \ "info" \ "license").nonEmpty && (d \ "info" \ "description").nonEmpty
 }

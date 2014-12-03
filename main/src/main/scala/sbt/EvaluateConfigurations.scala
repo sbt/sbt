@@ -215,7 +215,7 @@ object EvaluateConfigurations {
 
   /** Configures the use of the old sbt parser. */
   private[sbt] def useOldParser: Boolean =
-    sys.props.get("sbt.parser.simple").map(java.lang.Boolean.parseBoolean).getOrElse(false)
+    sys.props.get("sbt.parser.simple").exists(java.lang.Boolean.parseBoolean)
   /**
    * Splits a set of lines into (imports, expressions).  That is,
    * anything on the right of the tuple is a scala expression (definition or setting).

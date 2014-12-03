@@ -11,14 +11,14 @@ import Prop._
 import Gen._
 
 object Delegates extends Properties("delegates") {
-  property("generate non-empty configs") = forAll { (c: Seq[Config]) => !c.isEmpty }
-  property("generate non-empty tasks") = forAll { (t: Seq[Taskk]) => !t.isEmpty }
+  property("generate non-empty configs") = forAll { (c: Seq[Config]) => c.nonEmpty }
+  property("generate non-empty tasks") = forAll { (t: Seq[Taskk]) => t.nonEmpty }
 
   property("no duplicate scopes") = forAll { (keys: Keys) =>
     allDelegates(keys) { (_, ds) => ds.distinct.size == ds.size }
   }
   property("delegates non-empty") = forAll { (keys: Keys) =>
-    allDelegates(keys) { (_, ds) => !ds.isEmpty }
+    allDelegates(keys) { (_, ds) => ds.nonEmpty }
   }
 
   property("An initially Global axis is Global in all delegates") = allAxes(alwaysGlobal)

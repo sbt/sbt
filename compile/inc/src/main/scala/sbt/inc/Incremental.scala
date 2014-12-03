@@ -38,7 +38,7 @@ object Incremental {
       val analysis = manageClassfiles(options) { classfileManager =>
         incremental.cycle(initialInv, sources, binaryChanges, previous, doCompile, classfileManager, 1)
       }
-      (!initialInv.isEmpty, analysis)
+      (initialInv.nonEmpty, analysis)
     }
 
   // the name of system property that was meant to enable debugging mode of incremental compiler but

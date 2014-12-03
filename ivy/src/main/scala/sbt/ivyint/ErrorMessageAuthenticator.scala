@@ -92,7 +92,7 @@ private[sbt] final class ErrorMessageAuthenticator(original: Option[Authenticato
       // TODO - levenshtein distance "did you mean" message.
       Message.error(s"Unable to find credentials for [${getRequestingPrompt} @ ${host}].")
       val configuredRealms = IvyCredentialsLookup.realmsForHost.getOrElse(host, Set.empty)
-      if (!configuredRealms.isEmpty) {
+      if (configuredRealms.nonEmpty) {
         Message.error(s"  Is one of these realms mispelled for host [${host}]:")
         configuredRealms foreach { realm =>
           Message.error(s"  * ${realm}")
@@ -116,7 +116,7 @@ private[sbt] final class ErrorMessageAuthenticator(original: Option[Authenticato
         getRequestingScheme))
       finally Authenticator.setDefault(this)
     }
-    originalAuthentication.getOrElse(null)
+    originalAuthentication.orNull
   }
 
   /**

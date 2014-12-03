@@ -73,7 +73,7 @@ private[sbt] final class Execute[A[_] <: AnyRef](config: Config, triggers: Trigg
   def processAll()(implicit strategy: Strategy) {
     @tailrec def next() {
       pre {
-        assert(!reverse.isEmpty, "Nothing to process.")
+        assert(reverse.nonEmpty, "Nothing to process.")
         if (!state.values.exists(_ == Running)) {
           snapshotCycleCheck()
           assert(false, "Internal task engine error: nothing running.  This usually indicates a cycle in tasks.\n  Calling tasks (internal task engine state):\n" + dumpCalling)
@@ -81,7 +81,7 @@ private[sbt] final class Execute[A[_] <: AnyRef](config: Config, triggers: Trigg
       }
 
       (strategy.take()).process()
-      if (!reverse.isEmpty) next()
+      if (reverse.nonEmpty) next()
     }
     next()
 

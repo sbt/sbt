@@ -172,7 +172,7 @@ object Act {
 
   def extrasParser(knownKeys: Map[String, AttributeKey[_]], knownValues: IMap[AttributeKey, Set]): Parser[AttributeMap] =
     {
-      val validKeys = knownKeys.filter { case (_, key) => knownValues get key exists (!_.isEmpty) }
+      val validKeys = knownKeys.filter { case (_, key) => knownValues get key exists (_.nonEmpty) }
       if (validKeys.isEmpty)
         failure("No valid extra keys.")
       else

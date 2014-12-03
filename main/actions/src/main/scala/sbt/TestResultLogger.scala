@@ -142,7 +142,7 @@ object TestResultLogger {
       }
 
       def show(label: String, level: Level.Value, tests: Iterable[String]): Unit =
-        if (!tests.isEmpty) {
+        if (tests.nonEmpty) {
           log.log(level, label)
           log.log(level, tests.mkString("\t", "\n\t", ""))
         }

@@ -39,7 +39,7 @@ object EvalTest extends Properties("eval") {
       val v = value(result).asInstanceOf[{ def i: Int }].i
       (label("Value", v) |: (v == i)) &&
         (label("Type", result.tpe) |: (result.tpe == LocalType)) &&
-        (label("Files", result.generated) |: (!result.generated.isEmpty))
+        (label("Files", result.generated) |: result.generated.nonEmpty)
     }
   }
 
@@ -79,7 +79,7 @@ val p = {
   private[this] def hasErrors(line: Int, src: String) =
     {
       val is = reporter.infos
-      ("Has errors" |: (!is.isEmpty)) &&
+      ("Has errors" |: is.nonEmpty) &&
         all(is.toSeq.map(validPosition(line, src)): _*)
     }
   private[this] def validPosition(line: Int, src: String)(i: Info) =

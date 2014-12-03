@@ -50,9 +50,9 @@ class Run(instance: ScalaInstance, trapExit: Boolean, nativeTmp: File) extends S
       def execute() =
         try { run0(mainClass, classpath, options, log) }
         catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
-      def directExecute() = try { execute; None } catch { case e: Exception => log.trace(e); Some(e.toString) }
+      def directExecute() = try { execute(); None } catch { case e: Exception => log.trace(e); Some(e.toString) }
 
-      if (trapExit) Run.executeTrapExit(execute, log) else directExecute
+      if (trapExit) Run.executeTrapExit(execute(), log) else directExecute()
     }
   private def run0(mainClassName: String, classpath: Seq[File], options: Seq[String], log: Logger) {
     log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
@@ -62,9 +62,9 @@ class Run(instance: ScalaInstance, trapExit: Boolean, nativeTmp: File) extends S
   }
   private def invokeMain(loader: ClassLoader, main: Method, options: Seq[String]) {
     val currentThread = Thread.currentThread
-    val oldLoader = Thread.currentThread.getContextClassLoader()
+    val oldLoader = Thread.currentThread.getContextClassLoader
     currentThread.setContextClassLoader(loader)
-    try { main.invoke(null, options.toArray[String].asInstanceOf[Array[String]]) }
+    try { main.invoke(null, options.toArray[String]) }
     finally { currentThread.setContextClassLoader(oldLoader) }
   }
   def getMainMethod(mainClassName: String, loader: ClassLoader) =

@@ -22,7 +22,7 @@ object TestFrameworks {
   val JUnit = new TestFramework("com.novocode.junit.JUnitFramework")
 }
 
-case class TestFramework(val implClassNames: String*) {
+case class TestFramework(implClassNames: String*) {
   @tailrec
   private def createFramework(loader: ClassLoader, log: Logger, frameworkClassNames: List[String]): Option[Framework] = {
     frameworkClassNames match {
@@ -150,7 +150,7 @@ object TestFramework {
         for (framework <- frameworks.find(isTestForFramework))
           map.getOrElseUpdate(framework, new HashSet[TestDefinition]) += test
       }
-      if (!frameworks.isEmpty)
+      if (frameworks.nonEmpty)
         for (test <- tests) assignTest(test)
       map.toMap.mapValues(_.toSet)
     }

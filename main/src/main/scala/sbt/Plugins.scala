@@ -139,7 +139,7 @@ object Plugins extends PluginsFunctions {
       // TODO: defined should return all the plugins
       val allReqs = (defined0 flatMap { asRequirements }).toSet
       val diff = allReqs diff defined0.toSet
-      val defined = if (!diff.isEmpty) diff.toList ::: defined0
+      val defined = if (diff.nonEmpty) diff.toList ::: defined0
               else defined0
 
       val byAtom = defined map { x => (Atom(x.label), x) }
@@ -170,7 +170,7 @@ object Plugins extends PluginsFunctions {
             }
             val forbidden: Set[AutoPlugin] = (selectedPlugins flatMap { Plugins.asExclusions }).toSet
             val c = selectedPlugins.toSet & forbidden
-            if (!c.isEmpty) {
+            if (c.nonEmpty) {
               exlusionConflictError(requestedPlugins, selectedPlugins, c.toSeq sortBy {_.label})
             }
             val retval = topologicalSort(selectedPlugins, log)
@@ -217,12 +217,12 @@ object Plugins extends PluginsFunctions {
           else Nil) ++
         {
           val reqs = selected filter { x => asRequirements(x) contains c }
-          if (!reqs.isEmpty) List(s"""required by ${reqs.mkString(", ")}""")
+          if (reqs.nonEmpty) List(s"""required by ${reqs.mkString(", ")}""")
           else Nil
         } ++
         {
           val exs = selected filter { x => asExclusions(x) contains c }
-          if (!exs.isEmpty) List(s"""excluded by ${exs.mkString(", ")}""")
+          if (exs.nonEmpty) List(s"""excluded by ${exs.mkString(", ")}""")
           else Nil
         }
       s"""  - conflict: ${c.label} is ${reasons.mkString("; ")}"""

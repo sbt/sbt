@@ -46,7 +46,7 @@ object AList {
     def traverse[M[_], N[_], P[_]](s: List[M[T]], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[List[P[T]]] = ???
   }
 
-  /** AList for the abitrary arity data structure KList. */
+  /** AList for the arbitrary arity data structure KList. */
   def klist[KL[M[_]] <: KList[M] { type Transform[N[_]] = KL[N] }]: AList[KL] = new AList[KL] {
     def transform[M[_], N[_]](k: KL[M], f: M ~> N) = k.transform(f)
     def foldr[M[_], T](k: KL[M], f: (M[_], T) => T, init: T): T = k.foldr(f, init)
