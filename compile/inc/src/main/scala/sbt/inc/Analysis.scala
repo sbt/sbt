@@ -155,7 +155,7 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
   def --(sources: Iterable[File]): Analysis =
     {
       val newRelations = relations -- sources
-      def keep[T](f: (Relations, T) => Set[_]): T => Boolean = !f(newRelations, _).isEmpty
+      def keep[T](f: (Relations, T) => Set[_]): T => Boolean = f(newRelations, _).nonEmpty
 
       val newAPIs = apis.removeInternal(sources).filterExt(keep(_ usesExternal _))
       val newStamps = stamps.filter(keep(_ produced _), sources, keep(_ usesBinary _))

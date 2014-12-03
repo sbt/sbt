@@ -73,7 +73,7 @@ object ClassToAPI {
       val fields = mergeMap(c, c.getDeclaredFields, c.getFields, fieldToDef(enclPkg))
       val constructors = mergeMap(c, c.getDeclaredConstructors, c.getConstructors, constructorToDef(enclPkg))
       val classes = merge[Class[_]](c, c.getDeclaredClasses, c.getClasses, toDefinitions(cmap), (_: Seq[Class[_]]).partition(isStatic), _.getEnclosingClass != c)
-      val all = (methods ++ fields ++ constructors ++ classes)
+      val all = methods ++ fields ++ constructors ++ classes
       val parentJavaTypes = allSuperTypes(c)
       if (!Modifier.isPrivate(c.getModifiers))
         cmap.inherited ++= parentJavaTypes.collect { case c: Class[_] => c }
@@ -111,7 +111,7 @@ object ClassToAPI {
       }
       @tailrec def flattenAll(interfaces: Seq[Type], accum: Seq[Type] = Seq.empty): Seq[Type] =
         {
-          if (!interfaces.isEmpty) {
+          if (interfaces.nonEmpty) {
             val raw = interfaces map { case p: ParameterizedType => p.getRawType; case i => i }
             val children = raw flatMap { case i: Class[_] => i.getGenericInterfaces; case _ => Seq.empty }
             flattenAll(children, accum ++ interfaces ++ children)
