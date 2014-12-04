@@ -24,7 +24,13 @@ final class PublishConfiguration(val ivyFile: Option[File], val resolverName: St
     this(ivyFile, resolverName, artifacts, checksums, logging, false)
 }
 
-final class UpdateConfiguration(val retrieve: Option[RetrieveConfiguration], val missingOk: Boolean, val logging: UpdateLogging.Value)
+final class UpdateConfiguration(val retrieve: Option[RetrieveConfiguration], val missingOk: Boolean, val logging: UpdateLogging.Value) {
+  private[sbt] def copy(
+    retrieve: Option[RetrieveConfiguration] = this.retrieve,
+    missingOk: Boolean = this.missingOk,
+    logging: UpdateLogging.Value = this.logging): UpdateConfiguration =
+    new UpdateConfiguration(retrieve, missingOk, logging)
+}
 final class RetrieveConfiguration(val retrieveDirectory: File, val outputPattern: String)
 final case class MakePomConfiguration(file: File, moduleInfo: ModuleInfo, configurations: Option[Seq[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: XNode => XNode = n => n, filterRepositories: MavenRepository => Boolean = _ => true, allRepositories: Boolean, includeTypes: Set[String] = Set(Artifact.DefaultType, Artifact.PomType))
 // exclude is a map on a restricted ModuleID
@@ -44,9 +50,10 @@ object UnresolvedWarningConfiguration {
  * `Full` is the default and logs the most.
  * `DownloadOnly` only logs what is downloaded.
  * `Quiet` only displays errors.
+ * `Default` uses the current log level of `update` task.
  */
 object UpdateLogging extends Enumeration {
-  val Full, DownloadOnly, Quiet = Value
+  val Full, DownloadOnly, Quiet, Default = Value
 }
 
 object IvyActions {
@@ -161,6 +168,7 @@ object IvyActions {
             val resolveOptions = new ResolveOptions
             val resolveId = ResolveOptions.getDefaultResolveId(md)
             resolveOptions.setResolveId(resolveId)
+            resolveOptions.setLog(ivyLogLevel(configuration.logging))
             x.customResolve(md, configuration.missingOk, logicalClock, resolveOptions, depDir getOrElse { sys.error("dependency base directory is not specified") }, log) match {
               case Left(x) =>
                 Left(UnresolvedWarning(x, uwconfig))
@@ -303,13 +311,14 @@ object IvyActions {
       IvyPatternHelper.substitute(pattern, mid.organization, mid.name, mid.revision, art.name, art.`type`, art.extension, conf, mextra, aextra)
     }
 
-  import UpdateLogging.{ Quiet, Full, DownloadOnly }
+  import UpdateLogging.{ Quiet, Full, DownloadOnly, Default }
   import LogOptions.{ LOG_QUIET, LOG_DEFAULT, LOG_DOWNLOAD_ONLY }
   private def ivyLogLevel(level: UpdateLogging.Value) =
     level match {
       case Quiet        => LOG_QUIET
       case DownloadOnly => LOG_DOWNLOAD_ONLY
       case Full         => LOG_DEFAULT
+      case Default      => LOG_DOWNLOAD_ONLY
     }
 
   def publish(module: ModuleDescriptor, artifacts: Seq[(IArtifact, File)], resolver: DependencyResolver, overwrite: Boolean): Unit =

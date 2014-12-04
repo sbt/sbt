@@ -1027,7 +1027,7 @@ object Classpaths {
     defaultConfiguration :== Some(Configurations.Compile),
     dependencyOverrides :== Set.empty,
     libraryDependencies :== Nil,
-    ivyLoggingLevel :== UpdateLogging.DownloadOnly,
+    ivyLoggingLevel :== UpdateLogging.Default,
     ivyXML :== NodeSeq.Empty,
     ivyValidate :== false,
     moduleConfigurations :== Nil,
@@ -1297,7 +1297,17 @@ object Classpaths {
     val st = state.value
     val logicalClock = LogicalClock(st.hashCode)
     val depDir = dependencyCacheDirectory.value
-    cachedUpdate(s.cacheDirectory / updateCacheName.value, show, ivyModule.value, updateConfiguration.value, transform,
+    val uc0 = updateConfiguration.value
+    // Normally, log would capture log messages at all levels.
+    // Ivy logs are treated specially using sbt.UpdateConfiguration.logging.
+    // This code bumps up the sbt.UpdateConfiguration.logging to Full when logLevel is Debug.
+    import UpdateLogging.{ Full, DownloadOnly, Default }
+    val uc = (logLevel in update).?.value orElse st.get(logLevel.key) match {
+      case Some(Level.Debug) if uc0.logging == Default => uc0.copy(logging = Full)
+      case Some(x) if uc0.logging == Default => uc0.copy(logging = DownloadOnly)
+      case _ => uc0
+    }
+    cachedUpdate(s.cacheDirectory / updateCacheName.value, show, ivyModule.value, uc0, transform,
       skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated,
       uwConfig = uwConfig, logicalClock = logicalClock, depDir = Some(depDir), log = s.log)
   }
