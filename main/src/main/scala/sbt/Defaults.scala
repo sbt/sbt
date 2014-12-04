@@ -1055,6 +1055,7 @@ object Classpaths {
     defaultConfiguration :== Some(Configurations.Compile),
     dependencyOverrides :== Set.empty,
     libraryDependencies :== Nil,
+    excludeDependencies :== Nil,
     ivyLoggingLevel :== UpdateLogging.Default,
     ivyXML :== NodeSeq.Empty,
     ivyValidate :== false,
@@ -1233,7 +1234,8 @@ object Classpaths {
       new IvySbt(conf)
     }
   def moduleSettings0: Initialize[Task[ModuleSettings]] = Def.task {
-    new InlineConfiguration(projectID.value, projectInfo.value, allDependencies.value, dependencyOverrides.value, ivyXML.value, ivyConfigurations.value, defaultConfiguration.value, ivyScala.value, ivyValidate.value, conflictManager.value)
+    new InlineConfigurationWithExcludes(projectID.value, projectInfo.value, allDependencies.value, dependencyOverrides.value, excludeDependencies.value,
+      ivyXML.value, ivyConfigurations.value, defaultConfiguration.value, ivyScala.value, ivyValidate.value, conflictManager.value)
   }
 
   private[this] def sbtClassifiersGlobalDefaults = Defaults.globalDefaults(Seq(

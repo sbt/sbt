@@ -96,6 +96,13 @@ object CrossVersion {
   def crossName(name: String, cross: String): String =
     name + "_" + cross
 
+  /** Cross-versions `exclude` according to its `crossVersion`. */
+  private[sbt] def substituteCross(exclude: SbtExclusionRule, is: Option[IvyScala]): SbtExclusionRule = {
+    val fopt: Option[String => String] =
+      is flatMap { i => CrossVersion(exclude.crossVersion, i.scalaFullVersion, i.scalaBinaryVersion) }
+    exclude.copy(name = applyCross(exclude.name, fopt))
+  }
+
   /** Cross-versions `a` according to cross-version function `cross`. */
   def substituteCross(a: Artifact, cross: Option[String => String]): Artifact =
     a.copy(name = applyCross(a.name, cross))

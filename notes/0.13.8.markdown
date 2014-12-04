@@ -1,20 +1,34 @@
-[@jsuereth]: https://github.com/jsuereth
-[@kretes]: https://github.com/kretes
-[@j-keck]: https://github.com/j-keck
-[1180]: https://github.com/sbt/sbt/issues/1180
-[1180]: https://github.com/sbt/sbt/pull/1702
-[875]: https://github.com/sbt/sbt/issues/875
-[1542]: https://github.com/sbt/sbt/issues/1542
-[1702]: https://github.com/sbt/sbt/pull/1702
-[1746]: https://github.com/sbt/sbt/pull/1746
+  [@cunei]: https://github.com/cunei
+  [@eed3si9n]: https://github.com/eed3si9n
+  [@gkossakowski]: https://github.com/gkossakowski
+  [@jsuereth]: https://github.com/jsuereth
+  [@kretes]: https://github.com/kretes
+  [@j-keck]: https://github.com/j-keck
+  [875]: https://github.com/sbt/sbt/issues/875
+  [1180]: https://github.com/sbt/sbt/issues/1180
+  [1542]: https://github.com/sbt/sbt/issues/1542
+  [1702]: https://github.com/sbt/sbt/pull/1702
+  [1746]: https://github.com/sbt/sbt/pull/1746
+  [1748]: https://github.com/sbt/sbt/issues/1748
 
 ### Improvements
 
 - Discovered main classes are now sorted. [#1180][1180] by [@kretes][@kretes]
 - Implemented a new mechanism of forking javac, whereby errors are captured.  Also more likely to run in-process. [#1702][1702] by [@jsuereth][jsuereth]
+- Adds project-level dependency exclusions. See below.
 
 ## Fixes
 
 - Javac warnings now always treated as warnings.  [#1702][1702]/[#875][875] by [@jsuereth][jsuereth]
 - compilerReporter now fed to javac during incremental compilation. [#1542][1542] by [@jsuereth][jsuereth]
 - ignore hidden build files from the build. [#1746][1746] by [@j-keck][@j-keck]
+
+## Project-level dependency exclusions
+
+sbt 0.13.8 adds project-level dependency exclusions:
+
+    excludeDependencies += "org.apache.logging.log4j"
+    excludeDependencies += "com.example" %% "foo"
+
+In the first example, all artifacts from the organization `"org.apache.logging.log4j"` are excluded from the managed dependency.
+In the second example, artifacts with the organization `"com.example"` and the name `"foo"` cross versioned to the current `scalaVersion` are excluded.
