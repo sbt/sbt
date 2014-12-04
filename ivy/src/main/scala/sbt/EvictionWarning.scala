@@ -137,8 +137,9 @@ object EvictionWarning {
 
   private[sbt] def processEvictions(module: IvySbt#Module, options: EvictionWarningOptions, reports: Seq[OrganizationArtifactReport]): EvictionWarning = {
     val directDependencies = module.moduleSettings match {
-      case x: InlineConfiguration => x.dependencies
-      case _                      => Seq()
+      case x: InlineConfiguration             => x.dependencies
+      case x: InlineConfigurationWithExcludes => x.dependencies
+      case _                                  => Seq()
     }
     val pairs = reports map { detail =>
       val evicteds = detail.modules filter { _.evicted }

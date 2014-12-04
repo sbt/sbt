@@ -132,9 +132,10 @@ object IvyActions {
     }
   private def crossVersionMap(moduleSettings: ModuleSettings): Option[String => String] =
     moduleSettings match {
-      case i: InlineConfiguration => CrossVersion(i.module, i.ivyScala)
-      case e: EmptyConfiguration  => CrossVersion(e.module, e.ivyScala)
-      case _                      => None
+      case i: InlineConfiguration             => CrossVersion(i.module, i.ivyScala)
+      case i: InlineConfigurationWithExcludes => CrossVersion(i.module, i.ivyScala)
+      case e: EmptyConfiguration              => CrossVersion(e.module, e.ivyScala)
+      case _                                  => None
     }
   def mapArtifacts(module: ModuleDescriptor, cross: Option[String => String], artifacts: Map[Artifact, File]): Seq[(IArtifact, File)] =
     {
@@ -216,7 +217,7 @@ object IvyActions {
       import config.{ configuration => c, ivyScala, module => mod }
       import mod.{ id, modules => deps }
       val base = restrictedCopy(id, true).copy(name = id.name + "$" + label)
-      val module = new ivySbt.Module(InlineConfiguration(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala))
+      val module = new ivySbt.Module(InlineConfigurationWithExcludes(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala))
       val report = updateEither(module, c, uwconfig, logicalClock, depDir, log) match {
         case Right(r) => r
         case Left(w) =>
@@ -238,7 +239,7 @@ object IvyActions {
       val baseModules = modules map { m => restrictedCopy(m, true) }
       val deps = baseModules.distinct flatMap classifiedArtifacts(classifiers, exclude)
       val base = restrictedCopy(id, true).copy(name = id.name + classifiers.mkString("$", "_", ""))
-      val module = new ivySbt.Module(InlineConfiguration(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala, configurations = confs))
+      val module = new ivySbt.Module(InlineConfigurationWithExcludes(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala, configurations = confs))
       val upConf = new UpdateConfiguration(c.retrieve, true, c.logging)
       updateEither(module, upConf, uwconfig, logicalClock, depDir, log) match {
         case Right(r) => r
