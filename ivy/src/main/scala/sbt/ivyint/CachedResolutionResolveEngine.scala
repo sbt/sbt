@@ -14,7 +14,7 @@ import core.report.{ ResolveReport, ConfigurationResolveReport, DownloadReport }
 import core.module.descriptor.{ DefaultModuleDescriptor, ModuleDescriptor, DefaultDependencyDescriptor, DependencyDescriptor, Configuration => IvyConfiguration, ExcludeRule, IncludeRule }
 import core.module.descriptor.{ OverrideDependencyDescriptorMediator, DependencyArtifactDescriptor, DefaultDependencyArtifactDescriptor }
 import core.{ IvyPatternHelper, LogOptions }
-import org.apache.ivy.util.Message
+import org.apache.ivy.util.{ Message, MessageLogger }
 import org.apache.ivy.plugins.latest.{ ArtifactInfo => IvyArtifactInfo }
 import org.apache.ivy.plugins.matcher.{ MapMatcher, PatternMatcher }
 
@@ -297,6 +297,27 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
   private[sbt] def makeInstance: Ivy
   private[sbt] val ignoreTransitiveForce: Boolean = true
 
+  def withIvy[A](log: Logger)(f: Ivy => A): A =
+    withIvy(new IvyLoggerInterface(log))(f)
+  def withIvy[A](log: MessageLogger)(f: Ivy => A): A =
+    withDefaultLogger(log) {
+      val ivy = makeInstance
+      ivy.pushContext()
+      ivy.getLoggerEngine.pushLogger(log)
+      try { f(ivy) }
+      finally {
+        ivy.getLoggerEngine.popLogger()
+        ivy.popContext()
+      }
+    }
+  def withDefaultLogger[A](log: MessageLogger)(f: => A): A =
+    {
+      val originalLogger = Message.getDefaultLogger
+      Message.setDefaultLogger(log)
+      try { f }
+      finally { Message.setDefaultLogger(originalLogger) }
+    }
+
   /**
    * This returns sbt's UpdateReport structure.
    * missingOk allows sbt to call this with classifiers that may or may not exist, and grab the JARs.
@@ -314,8 +335,9 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
     def doWork(md: ModuleDescriptor): Either[ResolveException, UpdateReport] =
       {
         val options1 = new ResolveOptions(options0)
-        val i = makeInstance
-        var rr = i.resolve(md, options1)
+        var rr = withIvy(log) { ivy =>
+          ivy.resolve(md, options1)
+        }
         if (!rr.hasError || missingOk) Right(IvyRetrieve.updateReport(rr, cachedDescriptor))
         else {
           val messages = rr.getAllProblemMessages.toArray.map(_.toString).distinct
