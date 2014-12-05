@@ -24,7 +24,7 @@ trait DependencyBuilders {
     }
 }
 
-final class GroupID private[sbt] (groupID: String) {
+final class GroupID private[sbt] (private[sbt] val groupID: String) {
   def %(artifactID: String) = groupArtifact(artifactID, CrossVersion.Disabled)
   def %%(artifactID: String): GroupArtifactID = groupArtifact(artifactID, CrossVersion.binary)
 
@@ -38,10 +38,12 @@ final class GroupID private[sbt] (groupID: String) {
       nonEmpty(artifactID, "Artifact ID")
       new GroupArtifactID(groupID, artifactID, cross)
     }
-
   private[this] def deprecationMessage = """Use the cross method on the constructed ModuleID.  For example: ("a" % "b" % "1").cross(...)"""
 }
-final class GroupArtifactID private[sbt] (groupID: String, artifactID: String, crossVersion: CrossVersion) {
+final class GroupArtifactID private[sbt] (
+    private[sbt] val groupID: String,
+    private[sbt] val artifactID: String,
+    private[sbt] val crossVersion: CrossVersion) {
   def %(revision: String): ModuleID =
     {
       nonEmpty(revision, "Revision")
