@@ -304,6 +304,7 @@ object Keys {
   val dependencyCacheDirectory = TaskKey[File]("dependency-cache-directory", "The base directory for cached dependencies.", DTask)
   val libraryDependencies = SettingKey[Seq[ModuleID]]("library-dependencies", "Declares managed dependencies.", APlusSetting)
   val dependencyOverrides = SettingKey[Set[ModuleID]]("dependency-overrides", "Declares managed dependency overrides.", BSetting)
+  val excludeDependencies = SettingKey[Seq[SbtExclusionRule]]("exclude-dependencies", "Declares managed dependency exclusions.", BSetting)
   val allDependencies = TaskKey[Seq[ModuleID]]("all-dependencies", "Inter-project and library dependencies.", CTask)
   val projectDependencies = TaskKey[Seq[ModuleID]]("project-dependencies", "Inter-project dependencies.", DTask)
   val ivyXML = SettingKey[NodeSeq]("ivy-xml", "Defines inline Ivy XML for configuring dependency management.", BSetting)
