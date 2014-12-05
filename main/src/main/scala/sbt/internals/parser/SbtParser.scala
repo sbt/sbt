@@ -114,9 +114,6 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
       case _         => false
     }
 
-    def convertImport(t: Tree): (String, Int) =
-      (modifiedContent.substring(t.pos.start, t.pos.end), t.pos.line - 1)
-
     /**
      * See BugInParser
      * @param t - tree
@@ -145,7 +142,46 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
           Some((statement, t, LineRange(position.line - 1, position.line + numberLines)))
       }
     val stmtTreeLineRange = statements flatMap convertStatement
-    (imports map convertImport, stmtTreeLineRange.map { case (stmt, _, lr) => (stmt, lr) }, stmtTreeLineRange.map { case (stmt, tree, _) => (stmt, tree) }, modifiedContent)
+    val importsLineRange = importsToLineRanges(modifiedContent, imports)
+    (importsLineRange, stmtTreeLineRange.map { case (stmt, _, lr) => (stmt, lr) }, stmtTreeLineRange.map { case (stmt, tree, _) => (stmt, tree) }, modifiedContent)
+  }
+
+  /**
+   * import sbt._, Keys._,java.util._ should return ("import sbt._, Keys._,java.util._",0)
+   * @param modifiedContent - modifiedContent
+   * @param imports - trees
+   * @return imports per line
+   */
+  private def importsToLineRanges(modifiedContent: String, imports: Seq[Tree]): Seq[(String, Int)] = {
+    val toLineRange = imports map convertImport(modifiedContent)
+    val groupedByLineNumber = toLineRange.groupBy { case (_, lineNumber) => lineNumber }
+    val mergedImports = groupedByLineNumber.map { case (l, seq) => (l, extractLine(modifiedContent, seq)) }
+    mergedImports.toSeq.sortBy(_._1).map { case (k, v) => (v, k) }
+  }
+
+  /**
+   *
+   * @param modifiedContent - modifiedContent
+   * @param t - tree
+   * @return ((start,end),lineNumber)
+   */
+  private def convertImport(modifiedContent: String)(t: Tree): ((Int, Int), Int) = {
+    val lineNumber = t.pos.line - 1
+    ((t.pos.start, t.pos.end), lineNumber)
+  }
+
+  /**
+   * Search for min begin index and max end index
+   * @param modifiedContent - modifiedContent
+   * @param importsInOneLine - imports in line
+   * @return - text
+   */
+  private def extractLine(modifiedContent: String, importsInOneLine: Seq[((Int, Int), Int)]): String = {
+    val (begin, end) = importsInOneLine.foldLeft((Int.MaxValue, Int.MinValue)) {
+      case ((min, max), ((start, end), _)) =>
+        (min.min(start), max.max(end))
+    }
+    modifiedContent.substring(begin, end)
   }
 
   private def countLines(statement: String) = statement.count(c => c == END_OF_LINE_CHAR)
