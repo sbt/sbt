@@ -34,12 +34,42 @@ final class InlineIvyConfiguration(val paths: IvyPaths, val resolvers: Seq[Resol
     checksums: Seq[String], resolutionCacheDir: Option[File], log: Logger) =
     this(paths, resolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums, resolutionCacheDir, UpdateOptions(), log)
 
+  override def toString: String = s"InlineIvyConfiguration($paths, $resolvers, $otherResolvers, " +
+    s"$moduleConfigurations, $localOnly, $checksums, $resolutionCacheDir, $updateOptions)"
+
   type This = InlineIvyConfiguration
   def baseDirectory = paths.baseDirectory
   def withBase(newBase: File) = new InlineIvyConfiguration(paths.withBase(newBase), resolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums,
     resolutionCacheDir, updateOptions, log)
   def changeResolvers(newResolvers: Seq[Resolver]) = new InlineIvyConfiguration(paths, newResolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums,
     resolutionCacheDir, updateOptions, log)
+
+  override def equals(o: Any): Boolean = o match {
+    case o: InlineIvyConfiguration =>
+      this.paths == o.paths &&
+        this.resolvers == o.resolvers &&
+        this.otherResolvers == o.otherResolvers &&
+        this.moduleConfigurations == o.moduleConfigurations &&
+        this.localOnly == o.localOnly &&
+        this.checksums == o.checksums &&
+        this.resolutionCacheDir == o.resolutionCacheDir &&
+        this.updateOptions == o.updateOptions
+    case _ => false
+  }
+
+  override def hashCode: Int =
+    {
+      var hash = 1
+      hash = hash * 31 + this.paths.##
+      hash = hash * 31 + this.resolvers.##
+      hash = hash * 31 + this.otherResolvers.##
+      hash = hash * 31 + this.moduleConfigurations.##
+      hash = hash * 31 + this.localOnly.##
+      hash = hash * 31 + this.checksums.##
+      hash = hash * 31 + this.resolutionCacheDir.##
+      hash = hash * 31 + this.updateOptions.##
+      hash
+    }
 }
 final class ExternalIvyConfiguration(val baseDirectory: File, val uri: URI, val lock: Option[xsbti.GlobalLock],
     val extraResolvers: Seq[Resolver], val updateOptions: UpdateOptions, val log: Logger) extends IvyConfiguration {
@@ -108,18 +138,18 @@ object InlineConfiguration {
 final class InlineConfigurationWithExcludes private[sbt] (val module: ModuleID,
     val moduleInfo: ModuleInfo,
     val dependencies: Seq[ModuleID],
-    val overrides: Set[ModuleID] = Set.empty,
+    val overrides: Set[ModuleID],
     val excludes: Seq[SbtExclusionRule],
-    val ivyXML: NodeSeq = NodeSeq.Empty,
-    val configurations: Seq[Configuration] = Nil,
-    val defaultConfiguration: Option[Configuration] = None,
-    val ivyScala: Option[IvyScala] = None,
-    val validate: Boolean = false,
-    val conflictManager: ConflictManager = ConflictManager.default) extends ModuleSettings {
+    val ivyXML: NodeSeq,
+    val configurations: Seq[Configuration],
+    val defaultConfiguration: Option[Configuration],
+    val ivyScala: Option[IvyScala],
+    val validate: Boolean,
+    val conflictManager: ConflictManager) extends ModuleSettings {
   def withConfigurations(configurations: Seq[Configuration]) = copy(configurations = configurations)
   def noScala = copy(ivyScala = None)
 
-  def copy(module: ModuleID = this.module,
+  private[sbt] def copy(module: ModuleID = this.module,
     moduleInfo: ModuleInfo = this.moduleInfo,
     dependencies: Seq[ModuleID] = this.dependencies,
     overrides: Set[ModuleID] = this.overrides,
@@ -133,6 +163,41 @@ final class InlineConfigurationWithExcludes private[sbt] (val module: ModuleID,
     InlineConfigurationWithExcludes(module, moduleInfo, dependencies, overrides, excludes, ivyXML,
       configurations, defaultConfiguration, ivyScala, validate, conflictManager)
 
+  override def toString: String =
+    s"InlineConfigurationWithExcludes($module, $moduleInfo, $dependencies, $overrides, $excludes, " +
+      s"$ivyXML, $configurations, $defaultConfiguration, $ivyScala, $validate, $conflictManager)"
+
+  override def equals(o: Any): Boolean = o match {
+    case o: InlineConfigurationWithExcludes =>
+      this.module == o.module &&
+        this.moduleInfo == o.moduleInfo &&
+        this.dependencies == o.dependencies &&
+        this.overrides == o.overrides &&
+        this.excludes == o.excludes &&
+        this.ivyXML == o.ivyXML &&
+        this.configurations == o.configurations &&
+        this.defaultConfiguration == o.defaultConfiguration &&
+        this.ivyScala == o.ivyScala &&
+        this.validate == o.validate &&
+        this.conflictManager == o.conflictManager
+    case _ => false
+  }
+
+  override def hashCode: Int =
+    {
+      var hash = 1
+      hash = hash * 31 + this.module.##
+      hash = hash * 31 + this.dependencies.##
+      hash = hash * 31 + this.overrides.##
+      hash = hash * 31 + this.excludes.##
+      hash = hash * 31 + this.ivyXML.##
+      hash = hash * 31 + this.configurations.##
+      hash = hash * 31 + this.defaultConfiguration.##
+      hash = hash * 31 + this.ivyScala.##
+      hash = hash * 31 + this.validate.##
+      hash = hash * 31 + this.conflictManager.##
+      hash
+    }
 }
 object InlineConfigurationWithExcludes {
   def apply(module: ModuleID,
