@@ -114,9 +114,9 @@ Build from source
 		$ git clone git://github.com/sbt/sbt.git
 		$ cd sbt
 
-3. The initial branch is the development branch [0.13](https://github.com/sbt/sbt/tree/0.13), which contains the latest code for the next major sbt release.  To build a specific release or commit, switch to the associated tag.  The tag for the latest stable release is [v0.13.6](https://github.com/sbt/sbt/tree/v0.13.6):
+3. The initial branch is the development branch [0.13](https://github.com/sbt/sbt/tree/0.13), which contains the latest code for the next major sbt release.  To build a specific release or commit, switch to the associated tag.  The tag for the latest stable release is [v0.13.7](https://github.com/sbt/sbt/tree/v0.13.7):
 
-		$ git checkout v0.13.6
+		$ git checkout v0.13.7
 
 	Note that sbt is always built with the previous stable release.  For example, the [0.13](https://github.com/sbt/sbt/tree/0.13) branch is built with 0.13.2 and the [v0.13.2](https://github.com/sbt/sbt/tree/v0.13.2) tag is built with 0.13.1.
 
@@ -125,25 +125,25 @@ Build from source
 		$ sbt
 		> publishLocal
 
-5. To use this locally built version of sbt, copy your stable `~/bin/sbt` script to `~/bin/xsbt` and change it to use the launcher jar in `<sbt>/target/`.  For the v0.13.6 tag, the full location is:
+5. To use this locally built version of sbt, copy your stable `~/bin/sbt` script to `~/bin/xsbt` and change it to use the launcher jar in `<sbt>/target/`.  For the v0.13.7 tag, the full location is:
 
-		<sbt>/target/sbt-launch-0.13.6.jar
+		<sbt>/target/sbt-launch-0.13.7.jar
 
 	If using the 0.13 development branch, the launcher is at:
 
-		<sbt>/target/sbt-launch-0.13.7-SNAPSHOT.jar
+		<sbt>/target/sbt-launch-0.13.8-SNAPSHOT.jar
 		
 	Directory `target` is removed by clean command. Second solution is using artifact stored in local ivy repository.
 		
 	 The launcher is located in:
 		
-              $HOME/.ivy2/local/org.scala-sbt/sbt-launch/0.13.6/jars/sbt-launch.jar
+              $HOME/.ivy2/local/org.scala-sbt/sbt-launch/0.13.7/jars/sbt-launch.jar
                 
-        for v0.13.6 tag, or in:
+	 for v0.13.7 tag, or in:
                 
-              $HOME/.ivy2/local/org.scala-sbt/sbt-launch/0.13.7-SNAPSHOT/jars/sbt-launch.jar
+              $HOME/.ivy2/local/org.scala-sbt/sbt-launch/0.13.8-SNAPSHOT/jars/sbt-launch.jar
                 
-        for development branch.
+	 for development branch.
 
 ## Modifying sbt
 
@@ -153,7 +153,7 @@ Build from source
 
 3. After each `publishLocal`, clean the `~/.sbt/boot/` directory.  Alternatively, if sbt is running and the launcher hasn't changed, run `reboot full` to have sbt do this for you.
 
-4. If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `0.13.7-SNAPSHOT`.
+4. If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `0.13.8-SNAPSHOT`.
 
 Building Documentation
 ----------------------
