@@ -116,7 +116,7 @@ sealed case class ModuleID(organization: String, name: String, revision: String,
    */
   def jar() = artifacts(Artifact(name))
 
-  override val branch: Option[String] = None
+  override val branchName: Option[String] = None
 }
 
 object ModuleID {
@@ -130,18 +130,18 @@ object ModuleID {
  * This will be removed in 1.0 when the `branch` parameter can be added directly to ModuleID, breaking binary compatibility.
  */
 private[sbt] trait ModuleIDSetBranch { self: ModuleID =>
-  val branch: Option[String]
+  val branchName: Option[String]
 
   /**
    * Sets the Ivy branch of this module.
    */
-  def onBranch(branch: String) = new ModuleIDWithBranch(self, Some(branch))
+  def branch(branchName: String) = new ModuleIDWithBranch(self, Some(branchName))
 
-  def onBranch(branch: Option[String]) = new ModuleIDWithBranch(self, branch)
+  def branch(branchName: Option[String]) = new ModuleIDWithBranch(self, branchName)
 }
 
 /** This will be removed in 1.0 when the `branch` parameter can be added directly to ModuleID, breaking binary compatibility. */
-final class ModuleIDWithBranch(m: ModuleID, override val branch: Option[String]) extends ModuleID(m.organization, m.name, m.revision, m.configurations, m.isChanging, m.isTransitive, m.isForce, m.explicitArtifacts, m.exclusions, m.extraAttributes, m.crossVersion) with ModuleIDSetBranch {
+final class ModuleIDWithBranch(m: ModuleID, override val branchName: Option[String]) extends ModuleID(m.organization, m.name, m.revision, m.configurations, m.isChanging, m.isTransitive, m.isForce, m.explicitArtifacts, m.exclusions, m.extraAttributes, m.crossVersion) with ModuleIDSetBranch {
   override def copy(organization: String,
     name: String,
     revision: String,
@@ -153,5 +153,5 @@ final class ModuleIDWithBranch(m: ModuleID, override val branch: Option[String])
     exclusions: Seq[ExclusionRule],
     extraAttributes: Map[String, String],
     crossVersion: CrossVersion) =
-    m.copy(organization, name, revision, configurations, isChanging, isTransitive, isForce, explicitArtifacts, exclusions, extraAttributes, crossVersion).onBranch(branch)
+    m.copy(organization, name, revision, configurations, isChanging, isTransitive, isForce, explicitArtifacts, exclusions, extraAttributes, crossVersion).branch(branchName)
 }
