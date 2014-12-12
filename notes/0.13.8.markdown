@@ -12,10 +12,16 @@
   [1180]: https://github.com/sbt/sbt/issues/1180
   [1542]: https://github.com/sbt/sbt/issues/1542
   [1702]: https://github.com/sbt/sbt/pull/1702
+  [1738]: https://github.com/sbt/sbt/issues/1738
   [1741]: https://github.com/sbt/sbt/pull/1741
   [1746]: https://github.com/sbt/sbt/pull/1746
   [1748]: https://github.com/sbt/sbt/issues/1748
   [1771]: https://github.com/sbt/sbt/pull/1771
+  [SI-9027]: https://issues.scala-lang.org/browse/SI-9027
+
+### Fixes with compatibility implications
+
+- Rolls back XML parsing workaround. See below.
 
 ### Improvements
 
@@ -30,6 +36,20 @@
 - Ignores hidden build files from the build. [#1746][1746] by [@j-keck][@j-keck]
 - Fixes build.sbt parsing of multiple import. [#1741][1741] by [@ajozwik][@ajozwik]
 - Fixes ANSI escape code for overwriting lines on Windows. [#1771][1771] by [@dwickern][@dwickern]
+
+### Rolling back XML parsing workaround
+
+sbt 0.13.7 implemented natural whitespace handling by switching `build.sbt` parsing to use Scala compiler, instead of blank line delimiting. We realized that some build definitions no longer parsed due to the difference in XML handling.
+
+    val a = <x/><y/>
+    val b = 0
+
+At the time, we thought adding parentheses around XML nodes could work around this behavior. However, the workaround has caused [more issues][1738], and since then we have realized that this is a compiler issue [SI-9027][SI-9027], so we have decided to roll back our workaround. In the meantime, if you have consecutive XML elements in your build.sbt, encose them in `<xml:group>` tag, or parentheses.
+
+    val a = <xml:group><x/><y/></xml:group>
+    val b = 0
+
+[#1765][1765] by [@ajozwik][@ajozwik]
 
 ### Project-level dependency exclusions
 
