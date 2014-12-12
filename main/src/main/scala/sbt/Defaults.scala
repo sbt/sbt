@@ -1337,7 +1337,7 @@ object Classpaths {
       case Some(x) if uc0.logging == Default => uc0.copy(logging = DownloadOnly)
       case _ => uc0
     }
-    cachedUpdate(s.cacheDirectory / updateCacheName.value, show, ivyModule.value, uc0, transform,
+    cachedUpdate(s.cacheDirectory / updateCacheName.value, show, ivyModule.value, uc, transform,
       skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated,
       uwConfig = uwConfig, logicalClock = logicalClock, depDir = Some(depDir), log = s.log)
   }
