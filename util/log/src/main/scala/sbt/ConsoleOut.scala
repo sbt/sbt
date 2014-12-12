@@ -16,7 +16,7 @@ object ConsoleOut {
     cur.contains(s) && prev.contains(s)
 
   /** Move to beginning of previous line and clear the line. */
-  private[this] final val OverwriteLine = "\r\u001BM\u001B[2K"
+  private[this] final val OverwriteLine = "\u001B[A\r\u001B[2K"
 
   /**
    * ConsoleOut instance that is backed by System.out.  It overwrites the previously printed line
