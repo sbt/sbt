@@ -138,9 +138,7 @@ abstract class AbstractSplitExpressionsFilesTest(pathName: String) extends Speci
           println(s"In file: $fileName, new splitter failed. ${ex.toString}")
           ex.printStackTrace()
         case SplitterComparison(util.Success(resultOld), util.Success(resultNew)) =>
-          if (resultOld == resultNew) {
-            println(s"In file: $fileName, same results (imports, settings): $resultOld")
-          } else {
+          if (resultOld != resultNew) {
             println(
               s"""In file: $fileName, results differ:
                  |resultOld:

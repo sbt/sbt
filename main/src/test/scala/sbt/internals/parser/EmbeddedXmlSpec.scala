@@ -14,7 +14,7 @@ class EmbeddedXmlSpec extends CheckIfParsedSpec {
                          |
                          |scalaVersion := "2.11.1"
                          |
-                         |val pom = <scm>
+                         |val pom = <xml:group><scm>
                          |<url>git@github.com:mhiva/play-html-compressor.git</url>
                          |<connection>scm:git:git@github.com:mohiva/play-html-compressor.git</connection>
                          |  </scm>
@@ -24,7 +24,7 @@ class EmbeddedXmlSpec extends CheckIfParsedSpec {
                          |      <name>Christian Kaps</name>
                          |      <url>http://mohiva.com</url>
                          |    </developer>
-                         |  </developers>
+                         |  </developers></xml:group>
                          |$errorLine
                          |
                          |""".stripMargin
@@ -63,7 +63,7 @@ class EmbeddedXmlSpec extends CheckIfParsedSpec {
         |
         |val pom = "</scm>"
         |
-        |val aaa= <scm><url>git@github.com:mohiva/play-html-compressor.git</url>
+        |val aaa= <xml:group><scm><url>git@github.com:mohiva/play-html-compressor.git</url>
         |   <connection>scm:git:git@github.com:mohiva/play-html-compressor.git</connection>
         |  </scm>
         |  <developers>
@@ -73,15 +73,15 @@ class EmbeddedXmlSpec extends CheckIfParsedSpec {
         |      <url>http://mohiva.com</url>
         |    </developer>
         |  </developers>
-        |  <version>4.0</version>
+        |  <version>4.0</version></xml:group>
         |
         |publishMavenStyle := true
         |
-        |val anotherXml = <a a="r"><bbb>
+        |val anotherXml = <xml:group><a a="r"><bbb>
         |        content</bbb>
         |        <ccc atr="tre" />
         |        <aa/>
-        |          </a>
+        |          </a></xml:group>
         |
         |val tra = "</scm>"
         |
@@ -94,7 +94,7 @@ class EmbeddedXmlSpec extends CheckIfParsedSpec {
         |
         |val ok = <ccc atr="tre" />
         |
-        |val pom = <scm>
+        |val pom = <xml:group><scm>
         |<url>git@github.com:mhiva/play-html-compressor.git</url>
         |    <connection>scm:git:git@github.com:mohiva/play-html-compressor.git</connection>
         |</scm>
@@ -105,15 +105,15 @@ class EmbeddedXmlSpec extends CheckIfParsedSpec {
         |<url>http://mohiva.com</url>
         |</developer>
         |</developers>
-        |<version>4.0</version>
+        |<version>4.0</version></xml:group>
         |
         |publishMavenStyle := true
         |
-        |val anotherXml = <a a="r"><bbb>
+        |val anotherXml = <xml:group><a a="r"><bbb>
         |        content</bbb>
         |        <ccc atr="tre" />
         |<aa/>
-        | </a>
+        | </a></xml:group>
         |
         | """.stripMargin, "Xml with attributes", false, true),
     (

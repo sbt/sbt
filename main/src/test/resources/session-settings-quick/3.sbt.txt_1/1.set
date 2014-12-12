@@ -1,1 +1,1 @@
-scmpom := <a/><b a="rt">OK</b>
+scmpom := <xml:group><a/><b a="rt">OK</b></xml:group>
