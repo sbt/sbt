@@ -41,6 +41,8 @@ final class EvictionWarningOptions private[sbt] (
 }
 
 object EvictionWarningOptions {
+  def empty: EvictionWarningOptions =
+    new EvictionWarningOptions(Vector(), false, false, false, false, defaultGuess)
   def default: EvictionWarningOptions =
     new EvictionWarningOptions(Vector(Compile), true, true, false, false, defaultGuess)
   def full: EvictionWarningOptions =
