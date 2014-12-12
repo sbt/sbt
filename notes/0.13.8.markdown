@@ -2,28 +2,36 @@
   [@eed3si9n]: https://github.com/eed3si9n
   [@gkossakowski]: https://github.com/gkossakowski
   [@jsuereth]: https://github.com/jsuereth
+  
+  [@ajozwik]: https://github.com/ajozwik
+  [@dwickern]: https://github.com/dwickern
   [@kretes]: https://github.com/kretes
   [@j-keck]: https://github.com/j-keck
+
   [875]: https://github.com/sbt/sbt/issues/875
   [1180]: https://github.com/sbt/sbt/issues/1180
   [1542]: https://github.com/sbt/sbt/issues/1542
   [1702]: https://github.com/sbt/sbt/pull/1702
+  [1741]: https://github.com/sbt/sbt/pull/1741
   [1746]: https://github.com/sbt/sbt/pull/1746
   [1748]: https://github.com/sbt/sbt/issues/1748
+  [1771]: https://github.com/sbt/sbt/pull/1771
 
 ### Improvements
 
-- Discovered main classes are now sorted. [#1180][1180] by [@kretes][@kretes]
-- Implemented a new mechanism of forking javac, whereby errors are captured.  Also more likely to run in-process. [#1702][1702] by [@jsuereth][jsuereth]
+- Discovered main classes will be sorted. [#1180][1180] by [@kretes][@kretes]
+- Implemented a new mechanism of forking javac, whereby errors are captured.  Also more likely to run in-process. [#1702][1702] by [@jsuereth][@jsuereth]
 - Adds project-level dependency exclusions. See below.
 
-## Fixes
+### Fixes
 
-- Javac warnings now always treated as warnings.  [#1702][1702]/[#875][875] by [@jsuereth][jsuereth]
-- compilerReporter now fed to javac during incremental compilation. [#1542][1542] by [@jsuereth][jsuereth]
-- ignore hidden build files from the build. [#1746][1746] by [@j-keck][@j-keck]
+- Javac warnings are treated as warnings.  [#1702][1702]/[#875][875] by [@jsuereth][@jsuereth]
+- `compilerReporter` is fed to javac during incremental compilation. [#1542][1542] by [@jsuereth][@jsuereth]
+- Ignores hidden build files from the build. [#1746][1746] by [@j-keck][@j-keck]
+- Fixes build.sbt parsing of multiple import. [#1741][1741] by [@ajozwik][@ajozwik]
+- Fixes ANSI escape code for overwriting lines on Windows. [#1771][1771] by [@dwickern][@dwickern]
 
-## Project-level dependency exclusions
+### Project-level dependency exclusions
 
 sbt 0.13.8 adds project-level dependency exclusions:
 
@@ -31,4 +39,4 @@ sbt 0.13.8 adds project-level dependency exclusions:
     excludeDependencies += "com.example" %% "foo"
 
 In the first example, all artifacts from the organization `"org.apache.logging.log4j"` are excluded from the managed dependency.
-In the second example, artifacts with the organization `"com.example"` and the name `"foo"` cross versioned to the current `scalaVersion` are excluded.
+In the second example, artifacts with the organization `"com.example"` and the name `"foo"` cross versioned to the current `scalaVersion` are excluded. [#1748][1748] by [@eed3si9n][@eed3si9n]
