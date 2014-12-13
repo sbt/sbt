@@ -6,37 +6,23 @@ Visualize your project's dependencies.
 How To Use
 ----------
 
-For sbt 0.11/0.12/0.13, add sbt-dependency-graph as a dependency in `project/plugins.sbt`:
+Since sbt-dependency-graph is an informational tool rather than one that changes your build, you will more than likely wish to
+install it as a [global plugin] so that you can use it in any SBT project without the need to explicitly add it to each one. To do
+this, add the plugin dependency to `~/.sbt/0.13/plugins/plugins.sbt`:
 
 ```scala
 addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.7.4")
 ```
 
-Then, add the following to your `<project-root>/build.sbt` (that's not `project/build.sbt`!) as a standalone line:
+Then, apply the plugin's settings in `~/.sbt/0.13/global.sbt`, the [global build configuration]:
 
 ```scala
 net.virtualvoid.sbt.graph.Plugin.graphSettings
 ```
 
-OR, alternatively, if you use the full configuration, i.e. you define your build definition in `project/build.scala`, for example,
-to define a multi-module project, you should add
-
-```scala
-.settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
-```
-
-to each of the project definitions for which you want to use the plugin. The definition of your project should then
-look approximately this way:
-
-```scala
-object MyBuild extends Build {
-  val proj =
-    Project("my-project", file("base"))
-      .settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
-}
-```
-
-Check out the [example project] for a skeleton build setup.
+For both of the above, be sure to use the version directory matching your version of SBT (e.g. 0.12 or 0.13). Be aware that
+different projects using SBT may declare particular versions for their builds, so you may need to set up the plugin for an older
+version if you encounter a project using one.
 
 Tasks
 -----
@@ -115,4 +101,5 @@ Copyright (c) 2011, 2012 Johannes Rudolph
 
 Published under the [Apache License 2.0](http://en.wikipedia.org/wiki/Apache_license).
 
-[example project]: https://gist.github.com/3106492
+[global plugin]: http://www.scala-sbt.org/0.13/tutorial/Using-Plugins.html#Global+plugins
+[global build configuration]: http://www.scala-sbt.org/0.13/docs/Global-Settings.html
