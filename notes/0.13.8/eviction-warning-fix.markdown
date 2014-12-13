@@ -8,6 +8,8 @@
 
 ### Improvements
 
+- `evicted` will display all evictions (including the ones not suspected of binary incompatibility). [#1615][1615] by [@eed3si9n][@eed3si9n]
+
 ### Bug fixes
 
 - Fixes eviction warning being too noisy. [#1615][1615] by [@eed3si9n][@eed3si9n]

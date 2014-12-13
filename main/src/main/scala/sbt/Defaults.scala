@@ -1163,6 +1163,7 @@ object Classpaths {
       val log = streams.value.log
       val ew = EvictionWarning(ivyModule.value, (evictionWarningOptions in evicted).value, report, log)
       ew.lines foreach { log.warn(_) }
+      ew.infoAllTheThings foreach { log.info(_) }
       ew
     },
     classifiersModule in updateClassifiers := {
@@ -1367,6 +1368,7 @@ object Classpaths {
           val result = transform(r)
           val ew = EvictionWarning(module, ewo, result, log)
           ew.lines foreach { log.warn(_) }
+          ew.infoAllTheThings foreach { log.info(_) }
           result
       }
       def uptodate(inChanged: Boolean, out: UpdateReport): Boolean =
