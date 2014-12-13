@@ -676,7 +676,6 @@ object Defaults extends BuildCommon {
     sbt.SelectMainClass(None, classes)
   private def pickMainClassOrWarn(classes: Seq[String], logger: Logger): Option[String] = {
     classes match {
-      case Nil                           => logger.warn("No main class detected")
       case multiple if multiple.size > 1 => logger.warn("Multiple main classes detected.  Run 'show discoveredMainClasses' to see the list")
       case _                             =>
     }
