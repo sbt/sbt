@@ -9,6 +9,7 @@ final class EvictionWarningOptions private[sbt] (
     val warnScalaVersionEviction: Boolean,
     val warnDirectEvictions: Boolean,
     val warnTransitiveEvictions: Boolean,
+    val infoAllEvictions: Boolean,
     val showCallers: Boolean,
     val guessCompatible: Function1[(ModuleID, Option[ModuleID], Option[IvyScala]), Boolean]) {
   private[sbt] def configStrings = configurations map { _.name }
@@ -21,6 +22,8 @@ final class EvictionWarningOptions private[sbt] (
     copy(warnDirectEvictions = warnDirectEvictions)
   def withWarnTransitiveEvictions(warnTransitiveEvictions: Boolean): EvictionWarningOptions =
     copy(warnTransitiveEvictions = warnTransitiveEvictions)
+  def withInfoAllEvictions(infoAllEvictions: Boolean): EvictionWarningOptions =
+    copy(infoAllEvictions = infoAllEvictions)
   def withShowCallers(showCallers: Boolean): EvictionWarningOptions =
     copy(showCallers = showCallers)
   def withGuessCompatible(guessCompatible: Function1[(ModuleID, Option[ModuleID], Option[IvyScala]), Boolean]): EvictionWarningOptions =
@@ -30,23 +33,25 @@ final class EvictionWarningOptions private[sbt] (
     warnScalaVersionEviction: Boolean = warnScalaVersionEviction,
     warnDirectEvictions: Boolean = warnDirectEvictions,
     warnTransitiveEvictions: Boolean = warnTransitiveEvictions,
+    infoAllEvictions: Boolean = infoAllEvictions,
     showCallers: Boolean = showCallers,
     guessCompatible: Function1[(ModuleID, Option[ModuleID], Option[IvyScala]), Boolean] = guessCompatible): EvictionWarningOptions =
     new EvictionWarningOptions(configurations = configurations,
       warnScalaVersionEviction = warnScalaVersionEviction,
       warnDirectEvictions = warnDirectEvictions,
       warnTransitiveEvictions = warnTransitiveEvictions,
+      infoAllEvictions = infoAllEvictions,
       showCallers = showCallers,
       guessCompatible = guessCompatible)
 }
 
 object EvictionWarningOptions {
   def empty: EvictionWarningOptions =
-    new EvictionWarningOptions(Vector(), false, false, false, false, defaultGuess)
+    new EvictionWarningOptions(Vector(), false, false, false, false, false, defaultGuess)
   def default: EvictionWarningOptions =
-    new EvictionWarningOptions(Vector(Compile), true, true, false, false, defaultGuess)
+    new EvictionWarningOptions(Vector(Compile), true, true, false, false, false, defaultGuess)
   def full: EvictionWarningOptions =
-    new EvictionWarningOptions(Vector(Compile), true, true, true, true, defaultGuess)
+    new EvictionWarningOptions(Vector(Compile), true, true, true, true, true, defaultGuess)
 
   lazy val defaultGuess: Function1[(ModuleID, Option[ModuleID], Option[IvyScala]), Boolean] =
     guessSecondSegment orElse guessSemVer orElse guessFalse
@@ -80,6 +85,18 @@ final class EvictionPair private[sbt] (
     val showCallers: Boolean) {
   override def toString: String =
     EvictionPair.evictionPairLines.showLines(this).mkString
+  override def equals(o: Any): Boolean = o match {
+    case o: EvictionPair =>
+      (this.organization == o.organization) &&
+        (this.name == o.name)
+    case _ => false
+  }
+  override def hashCode: Int = {
+    var hash = 1
+    hash = hash * 31 + this.organization.##
+    hash = hash * 31 + this.name.##
+    hash
+  }
 }
 
 object EvictionPair {
@@ -107,6 +124,7 @@ final class EvictionWarning private[sbt] (
     val transitiveEvictions: Seq[EvictionPair],
     val allEvictions: Seq[EvictionPair]) {
   def reportedEvictions: Seq[EvictionPair] = scalaEvictions ++ directEvictions ++ transitiveEvictions
+  private[sbt] def infoAllTheThings: List[String] = EvictionWarning.infoAllTheThings(this)
 }
 
 object EvictionWarning {
@@ -203,4 +221,21 @@ object EvictionWarning {
 
     out.toList
   }
+
+  private[sbt] def infoAllTheThings(a: EvictionWarning): List[String] =
+    if (a.options.infoAllEvictions) {
+      import ShowLines._
+      val evo = a.options
+      val out: mutable.ListBuffer[String] = mutable.ListBuffer()
+      a.allEvictions foreach { ev =>
+        if ((a.scalaEvictions contains ev) && evo.warnScalaVersionEviction) ()
+        else if ((a.directEvictions contains ev) && evo.warnDirectEvictions) ()
+        else if ((a.transitiveEvictions contains ev) && evo.warnTransitiveEvictions) ()
+        else {
+          out ++= ev.lines
+        }
+      }
+      if (out.isEmpty) Nil
+      else List("Here are other libraries that were evicted:") ::: out.toList
+    } else Nil
 }
