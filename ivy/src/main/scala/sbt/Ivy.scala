@@ -527,6 +527,29 @@ private[sbt] object IvySbt {
       parser
     }
 
+  def inconsistentDuplicateWarning(moduleID: DefaultModuleDescriptor): List[String] =
+    {
+      import IvyRetrieve.toModuleID
+      val dds = moduleID.getDependencies
+      inconsistentDuplicateWarning(dds map { dd => toModuleID(dd.getDependencyRevisionId) })
+    }
+
+  def inconsistentDuplicateWarning(dependencies: Seq[ModuleID]): List[String] =
+    {
+      val warningHeader = "Multiple dependencies with the same organization/name but different versions. To avoid conflict, pick one version:"
+      val out: mutable.ListBuffer[String] = mutable.ListBuffer()
+      (dependencies groupBy { dep => (dep.organization, dep.name) }) foreach {
+        case (k, vs) if vs.size > 1 =>
+          val v0 = vs.head
+          (vs find { _.revision != v0.revision }) foreach { v =>
+            out += s" * ${v0.organization}:${v0.name}:(" + (vs map { _.revision }).mkString(", ") + ")"
+          }
+        case _ => ()
+      }
+      if (out.isEmpty) Nil
+      else warningHeader :: out.toList
+    }
+
   /** This method is used to add inline dependencies to the provided module. */
   def addDependencies(moduleID: DefaultModuleDescriptor, dependencies: Seq[ModuleID], parser: CustomXmlParser.CustomParser) {
     val converted = dependencies map { dependency => convertDependency(moduleID, dependency, parser) }
