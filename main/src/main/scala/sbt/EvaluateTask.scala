@@ -4,6 +4,7 @@
 package sbt
 
 import java.io.File
+import java.lang.management.{ ManagementFactory, MemoryMXBean }
 import Def.{ displayFull, dummyState, ScopedKey, Setting }
 import Keys.{ streams, Streams, TaskStreams }
 import Keys.{ dummyRoots, dummyStreamsManager, executionRoots, pluginData, streamsManager, taskDefinitionKey, transformState }
@@ -81,16 +82,21 @@ sealed trait EvaluateTaskConfig {
   def progressReporter: ExecuteProgress[Task]
   def cancelStrategy: TaskCancellationStrategy
   /**
-   * If true, we force a finalizer/gc run (or two) after task execution completes.
-   * This helps in instances where
+   * If true, we force a finalizer/gc run (or two) after task execution completes when needed.
    */
   def forceGarbageCollection: Boolean
+
+  /**
+   * Threshold to forcing garbage collection.
+   */
+  def maxObjectPendingFinalization: Int
 }
 final object EvaluateTaskConfig {
   // Returns the default force garbage collection flag,
   // as specified by system properties.
-  private[sbt] def defaultForceGarbageCollection: Boolean =
-    sys.props.get("sbt.task.forcegc").map(java.lang.Boolean.parseBoolean).getOrElse(false)
+  private[sbt] def defaultForceGarbageCollection: Boolean = true
+  private[sbt] def defaultMaxObjectPendingFinalization: Int = 1024
+
   /** Pulls in the old configuration format. */
   def apply(old: EvaluateConfig): EvaluateTaskConfig = {
     object AdaptedTaskConfig extends EvaluateTaskConfig {
@@ -101,26 +107,39 @@ final object EvaluateTaskConfig {
         if (old.cancelable) TaskCancellationStrategy.Signal
         else TaskCancellationStrategy.Null
       def forceGarbageCollection = defaultForceGarbageCollection
+      def maxObjectPendingFinalization = defaultMaxObjectPendingFinalization
     }
     AdaptedTaskConfig
   }
+
+  @deprecated("Use the alternative that specifies maxObjectPendingFinalization", "0.13.7")
+  def apply(restrictions: Seq[Tags.Rule],
+    checkCycles: Boolean,
+    progressReporter: ExecuteProgress[Task],
+    cancelStrategy: TaskCancellationStrategy,
+    forceGarbageCollection: Boolean): EvaluateTaskConfig =
+    apply(restrictions, checkCycles, progressReporter, cancelStrategy, forceGarbageCollection,
+      defaultMaxObjectPendingFinalization)
   /** Raw constructor for EvaluateTaskConfig. */
   def apply(restrictions: Seq[Tags.Rule],
     checkCycles: Boolean,
     progressReporter: ExecuteProgress[Task],
     cancelStrategy: TaskCancellationStrategy,
-    forceGarbageCollection: Boolean): EvaluateTaskConfig = {
+    forceGarbageCollection: Boolean,
+    maxObjectPendingFinalization: Int): EvaluateTaskConfig = {
     val r = restrictions
     val check = checkCycles
     val cs = cancelStrategy
     val pr = progressReporter
     val fgc = forceGarbageCollection
+    val mopf = maxObjectPendingFinalization
     object SimpleEvaluateTaskConfig extends EvaluateTaskConfig {
       def restrictions = r
       def checkCycles = check
       def progressReporter = pr
       def cancelStrategy = cs
       def forceGarbageCollection = fgc
+      def maxObjectPendingFinalization = mopf
     }
     SimpleEvaluateTaskConfig
   }
@@ -147,6 +166,7 @@ object EvaluateTask {
     if (java.lang.Boolean.getBoolean("sbt.task.timings")) new TaskTimings else ExecuteProgress.empty[Task]
 
   val SystemProcessors = Runtime.getRuntime.availableProcessors
+  lazy val memoryMxBean: MemoryMXBean = ManagementFactory.getMemoryMXBean
 
   @deprecated("Use extractedTaskConfig.", "0.13.0")
   def defaultConfig(state: State): EvaluateConfig =
@@ -180,7 +200,8 @@ object EvaluateTask {
       val canceller = cancelStrategy(extracted, structure, state)
       val progress = executeProgress(extracted, structure, state)
       val fgc = forcegc(extracted, structure)
-      EvaluateTaskConfig(rs, false, progress, canceller, fgc)
+      val mopf = maxObjectPendingFinalization(extracted, structure)
+      EvaluateTaskConfig(rs, false, progress, canceller, fgc, mopf)
     }
 
   def defaultRestrictions(maxWorkers: Int) = Tags.limitAll(maxWorkers) :: Nil
@@ -212,6 +233,9 @@ object EvaluateTask {
   // TODO - Should this pull from Global or from the project itself?
   private[sbt] def forcegc(extracted: Extracted, structure: BuildStructure): Boolean =
     getSetting(Keys.forcegc in Global, EvaluateTaskConfig.defaultForceGarbageCollection, extracted, structure)
+  // TODO - Should this pull from Global or from the project itself?
+  private[sbt] def maxObjectPendingFinalization(extracted: Extracted, structure: BuildStructure): Int =
+    getSetting(Keys.maxObjectPendingFinalization in Global, EvaluateTaskConfig.defaultMaxObjectPendingFinalization, extracted, structure)
 
   def getSetting[T](key: SettingKey[T], default: T, extracted: Extracted, structure: BuildStructure): T =
     key in extracted.currentRef get structure.data getOrElse default
@@ -322,12 +346,20 @@ object EvaluateTask {
         shutdownThreads()
         // Now we run the gc cleanup to force finalizers to clear out file handles (yay GC!)
         if (config.forceGarbageCollection) {
-          // Force the detection of finalizers for scala.reflect weakhashsets
-          System.gc()
-          // Force finalizers to run.
-          System.runFinalization()
-          // Force actually cleaning the weak hash maps.
-          System.gc()
+          try {
+            val opfc = memoryMxBean.getObjectPendingFinalizationCount
+            if (opfc > config.maxObjectPendingFinalization) {
+              log.info(s"Forcing garbage collection... Objects pending finalization: $opfc")
+              // Force the detection of finalizers for scala.reflect weakhashsets
+              System.gc()
+              // Force finalizers to run.
+              System.runFinalization()
+              // Force actually cleaning the weak hash maps.
+              System.gc()
+            }
+          } catch {
+            case _: Throwable => // gotta catch em all
+          }
         }
       }
       // propagate the defining key for reporting the origin

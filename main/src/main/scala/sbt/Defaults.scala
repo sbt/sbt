@@ -155,7 +155,9 @@ object Defaults extends BuildCommon {
     aggregate :== true,
     maxErrors :== 100,
     fork :== false,
-    initialize :== {}
+    initialize :== {},
+    forcegc :== sys.props.get("sbt.task.forcegc").map(java.lang.Boolean.parseBoolean).getOrElse(EvaluateTaskConfig.defaultForceGarbageCollection),
+    maxObjectPendingFinalization :== sys.props.get("sbt.task.maxObjectPendingFinalization").map(java.lang.Integer.parseInt).getOrElse(EvaluateTaskConfig.defaultMaxObjectPendingFinalization)
   ))
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] = inTask(key)(Seq(
     tags := Seq(Tags.Test -> 1),
