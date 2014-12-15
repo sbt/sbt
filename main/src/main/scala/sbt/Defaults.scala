@@ -1150,13 +1150,9 @@ object Classpaths {
     unresolvedWarningConfiguration in update := UnresolvedWarningConfiguration(dependencyPositions.value),
     update <<= updateTask tag (Tags.Update, Tags.Network),
     update := {
-      import ShowLines._
       val report = update.value
       val log = streams.value.log
       ConflictWarning(conflictWarning.value, report, log)
-      val ewo = (evictionWarningOptions in update).value
-      val ew = EvictionWarning(ivyModule.value, ewo, report, log)
-      ew.lines foreach { log.warn(_) }
       report
     },
     evictionWarningOptions in evicted := EvictionWarningOptions.full,
@@ -1166,6 +1162,7 @@ object Classpaths {
       val log = streams.value.log
       val ew = EvictionWarning(ivyModule.value, (evictionWarningOptions in evicted).value, report, log)
       ew.lines foreach { log.warn(_) }
+      ew.infoAllTheThings foreach { log.info(_) }
       ew
     },
     classifiersModule in updateClassifiers := {
@@ -1336,33 +1333,42 @@ object Classpaths {
       case Some(x) if uc0.logging == Default => uc0.copy(logging = DownloadOnly)
       case _ => uc0
     }
-    cachedUpdate(s.cacheDirectory / updateCacheName.value, show, ivyModule.value, uc0, transform,
+    val ewo =
+      if (executionRoots.value exists { _.key == evicted.key }) EvictionWarningOptions.empty
+      else (evictionWarningOptions in update).value
+    cachedUpdate(s.cacheDirectory / updateCacheName.value, show, ivyModule.value, uc, transform,
       skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated,
-      uwConfig = uwConfig, logicalClock = logicalClock, depDir = Some(depDir), log = s.log)
+      uwConfig = uwConfig, logicalClock = logicalClock, depDir = Some(depDir),
+      ewo = ewo, log = s.log)
   }
   @deprecated("Use cachedUpdate with the variant that takes unresolvedHandler instead.", "0.13.6")
   def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration,
     transform: UpdateReport => UpdateReport, skip: Boolean, force: Boolean, depsUpdated: Boolean, log: Logger): UpdateReport =
     cachedUpdate(cacheFile, label, module, config, transform, skip, force, depsUpdated,
-      UnresolvedWarningConfiguration(), LogicalClock.unknown, None, log)
+      UnresolvedWarningConfiguration(), LogicalClock.unknown, None, EvictionWarningOptions.empty, log)
   private[sbt] def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration,
     transform: UpdateReport => UpdateReport, skip: Boolean, force: Boolean, depsUpdated: Boolean,
-    uwConfig: UnresolvedWarningConfiguration, logicalClock: LogicalClock, depDir: Option[File], log: Logger): UpdateReport =
+    uwConfig: UnresolvedWarningConfiguration, logicalClock: LogicalClock, depDir: Option[File],
+    ewo: EvictionWarningOptions, log: Logger): UpdateReport =
     {
       implicit val updateCache = updateIC
       type In = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
       def work = (_: In) match {
         case conf :+: settings :+: config :+: HNil =>
+          import ShowLines._
           log.info("Updating " + label + "...")
           val r = IvyActions.updateEither(module, config, uwConfig, logicalClock, depDir, log) match {
             case Right(ur) => ur
             case Left(uw) =>
-              import ShowLines._
               uw.lines foreach { log.warn(_) }
               throw uw.resolveException
           }
           log.info("Done updating.")
-          transform(r)
+          val result = transform(r)
+          val ew = EvictionWarning(module, ewo, result, log)
+          ew.lines foreach { log.warn(_) }
+          ew.infoAllTheThings foreach { log.info(_) }
+          result
       }
       def uptodate(inChanged: Boolean, out: UpdateReport): Boolean =
         !force &&
