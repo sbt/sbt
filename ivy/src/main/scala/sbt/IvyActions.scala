@@ -166,6 +166,8 @@ object IvyActions {
       case (ivy, md, default) if module.owner.configuration.updateOptions.cachedResolution && depDir.isDefined =>
         ivy.getResolveEngine match {
           case x: CachedResolutionResolveEngine =>
+            val iw = IvySbt.inconsistentDuplicateWarning(md)
+            iw foreach { log.warn(_) }
             val resolveOptions = new ResolveOptions
             val resolveId = ResolveOptions.getDefaultResolveId(md)
             resolveOptions.setResolveId(resolveId)
@@ -181,6 +183,8 @@ object IvyActions {
             }
         }
       case (ivy, md, default) =>
+        val iw = IvySbt.inconsistentDuplicateWarning(md)
+        iw foreach { log.warn(_) }
         val (report, err) = resolve(configuration.logging)(ivy, md, default)
         err match {
           case Some(x) if !configuration.missingOk =>
