@@ -112,7 +112,12 @@ object CacheIvy {
       m => ((m.organization, m.name, m.revision, m.configurations), (m.isChanging, m.isTransitive, m.isForce, m.explicitArtifacts, m.exclusions, m.extraAttributes, m.crossVersion)),
       { case ((o, n, r, cs), (ch, t, f, as, excl, x, cv)) => ModuleID(o, n, r, cs, ch, t, f, as, excl, x, cv) }
     )
-  implicit def moduleSetIC: InputCache[Set[ModuleID]] = basicInput(defaultEquiv, immutableSetFormat)
+  // For some reason sbinary seems to detect unserialized instance Set[ModuleID] to be not equal. #1620
+  implicit def moduleSetIC: InputCache[Set[ModuleID]] =
+    {
+      implicit def toSeq(ms: Set[ModuleID]): Seq[ModuleID] = ms.toSeq.sortBy { _.toString }
+      wrapIn
+    }
 
   implicit def configurationFormat(implicit sf: Format[String]): Format[Configuration] =
     wrap[Configuration, String](_.name, s => new Configuration(s))

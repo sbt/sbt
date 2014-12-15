@@ -16,7 +16,32 @@ import org.apache.ivy.plugins.resolver.{ ChainResolver, BasicResolver, Dependenc
 import org.apache.ivy.plugins.resolver.util.{ HasLatestStrategy, ResolvedResource }
 import org.apache.ivy.util.{ Message, MessageLogger, StringUtils => IvyStringUtils }
 
-class SbtChainResolver(name: String, resolvers: Seq[DependencyResolver], settings: IvySettings, updateOptions: UpdateOptions, log: Logger) extends ChainResolver {
+private[sbt] case class SbtChainResolver(
+    name: String,
+    resolvers: Seq[DependencyResolver],
+    settings: IvySettings,
+    updateOptions: UpdateOptions,
+    log: Logger) extends ChainResolver {
+
+  override def equals(o: Any): Boolean = o match {
+    case o: SbtChainResolver =>
+      this.name == o.name &&
+        this.resolvers == o.resolvers &&
+        this.settings == o.settings &&
+        this.updateOptions == o.updateOptions
+    case _ => false
+  }
+
+  override def hashCode: Int =
+    {
+      var hash = 1
+      hash = hash * 31 + this.name.##
+      hash = hash * 31 + this.resolvers.##
+      hash = hash * 31 + this.settings.##
+      hash = hash * 31 + this.updateOptions.##
+      hash
+    }
+
   // TODO - We need to special case the project resolver so it always "wins" when resolving with inter-project dependencies.
 
   // Initialize ourselves.

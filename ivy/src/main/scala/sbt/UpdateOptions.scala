@@ -40,6 +40,23 @@ final class UpdateOptions private[sbt] (
       latestSnapshots,
       consolidatedResolution,
       cachedResolution)
+
+  override def equals(o: Any): Boolean = o match {
+    case o: UpdateOptions =>
+      this.circularDependencyLevel == o.circularDependencyLevel &&
+        this.latestSnapshots == o.latestSnapshots &&
+        this.cachedResolution == o.cachedResolution
+    case _ => false
+  }
+
+  override def hashCode: Int =
+    {
+      var hash = 1
+      hash = hash * 31 + this.circularDependencyLevel.##
+      hash = hash * 31 + this.latestSnapshots.##
+      hash = hash * 31 + this.cachedResolution.##
+      hash
+    }
 }
 
 object UpdateOptions {

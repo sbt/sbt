@@ -15,6 +15,19 @@ sealed trait Resolver {
 final class RawRepository(val resolver: DependencyResolver) extends Resolver {
   def name = resolver.getName
   override def toString = "Raw(" + resolver.toString + ")"
+
+  override def equals(o: Any): Boolean = o match {
+    case o: RawRepository =>
+      this.name == o.name
+    case _ => false
+  }
+
+  override def hashCode: Int =
+    {
+      var hash = 1
+      hash = hash * 31 + this.name.##
+      hash
+    }
 }
 sealed case class ChainedResolver(name: String, resolvers: Seq[Resolver]) extends Resolver
 sealed case class MavenRepository(name: String, root: String) extends Resolver {
