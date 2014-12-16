@@ -1,0 +1,35 @@
+# Validate that a bad dependency fails the compile
+$ copy-file changes/BadCommon.scala common/src/main/scala/Common.scala
+> common/publish
+
+# Force dep resolution to be successful, then compilation to fail
+> dependent/update
+-> dependent/compile
+
+# Push new good change to a DIFFERENT repository.
+$ copy-file changes/GoodCommon.scala common/src/main/scala/Common.scala
+# Sleep to ensure timestamp change
+$ sleep 1000
+> common/publishLocal
+
+# This should compile now, because Ivy should look at each repository for the most up-to-date file.
+> dependent/update
+> dependent/compile
+
+# Now let's try this on the opposite order: pubishLocal => publish
+$ copy-file changes/BadCommon.scala common/src/main/scala/Common.scala
+> common/publishLocal
+
+# Force dep resolution to be successful, then compilation to fail
+> dependent/update
+-> dependent/compile
+
+# Push new good change to a DIFFERENT repository.
+$ copy-file changes/GoodCommon.scala common/src/main/scala/Common.scala
+# Sleep to ensure timestamp change
+$ sleep 1000
+> common/publish
+
+# This should compile now gain, because Ivy should look at each repository for the most up-to-date file.
+> dependent/update
+> dependent/compile

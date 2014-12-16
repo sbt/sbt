@@ -135,6 +135,7 @@ object %s {
     sourceGenerators <+= generateKeywords map (x => Seq(x))
   ))
 }
+
 object Licensed {
   lazy val notice = SettingKey[File]("notice")
   lazy val extractLicenses = TaskKey[Seq[File]]("extract-licenses")

@@ -4,6 +4,8 @@ import Path._, Configurations._
 import java.io.File
 import org.specs2._
 import cross.CrossVersionUtil
+import sbt.PublishConfiguration
+import sbt.ivyint.SbtChainResolver
 
 trait BaseIvySpecification extends Specification {
   def currentBase: File = new File(".")
@@ -12,6 +14,8 @@ trait BaseIvySpecification extends Specification {
   def currentDependency: File = currentBase / "target" / "dependency"
   def defaultModuleId: ModuleID = ModuleID("com.example", "foo", "0.1.0", Some("compile"))
   lazy val log = ConsoleLogger()
+
+  def configurations = Seq(Compile, Test, Runtime)
   def module(moduleId: ModuleID, deps: Seq[ModuleID], scalaFullVersion: Option[String],
     uo: UpdateOptions = UpdateOptions()): IvySbt#Module = {
     val ivyScala = scalaFullVersion map { fv =>
@@ -28,21 +32,24 @@ trait BaseIvySpecification extends Specification {
       module = moduleId,
       moduleInfo = ModuleInfo("foo"),
       dependencies = deps,
-      configurations = Seq(Compile, Test, Runtime),
+      configurations = configurations,
       ivyScala = ivyScala)
     val ivySbt = new IvySbt(mkIvyConfiguration(uo))
     new ivySbt.Module(moduleSetting)
   }
 
+  def resolvers: Seq[Resolver] = Seq(DefaultMavenRepository)
+
+  def chainResolver = ChainedResolver("sbt-chain", resolvers)
+
   def mkIvyConfiguration(uo: UpdateOptions): IvyConfiguration = {
     val paths = new IvyPaths(currentBase, Some(currentTarget))
-    val rs = Seq(DefaultMavenRepository)
     val other = Nil
-    val moduleConfs = Seq(ModuleConfiguration("*", DefaultMavenRepository))
+    val moduleConfs = Seq(ModuleConfiguration("*", chainResolver))
     val off = false
     val check = Nil
     val resCacheDir = currentTarget / "resolution-cache"
-    new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, None, check, Some(resCacheDir), uo, log)
+    new InlineIvyConfiguration(paths, resolvers, other, moduleConfs, off, None, check, Some(resCacheDir), uo, log)
   }
 
   def ivyUpdateEither(module: IvySbt#Module): Either[UnresolvedWarning, UpdateReport] = {
@@ -58,4 +65,18 @@ trait BaseIvySpecification extends Specification {
       case Left(w) =>
         throw w.resolveException
     }
+
+  def mkPublishConfiguration(resolver: Resolver, artifacts: Map[Artifact, File]): PublishConfiguration = {
+    new PublishConfiguration(
+      ivyFile = None,
+      resolverName = resolver.name,
+      artifacts = artifacts,
+      checksums = Seq(),
+      logging = UpdateLogging.Full,
+      overwrite = true)
+  }
+
+  def ivyPublish(module: IvySbt#Module, config: PublishConfiguration) = {
+    IvyActions.publish(module, config, log)
+  }
 }

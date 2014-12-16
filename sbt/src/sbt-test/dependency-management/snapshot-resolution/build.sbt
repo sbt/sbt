@@ -21,6 +21,7 @@ lazy val common = project.
           case repo: PatternsBasedRepository => repo.patterns.isMavenCompatible
           case _: RawRepository => false // TODO - look deeper
           case _: MavenRepository => true
+          case _: MavenCache => true
           case _ => false  // TODO - Handle chain repository?
         }
       case _ => true

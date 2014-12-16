@@ -26,6 +26,11 @@ import org.apache.ivy.core.module.descriptor.DefaultDependencyDescriptor;
  */
 object ReplaceMavenConfigurationMappings {
 
+  def addMappings(dd: DefaultDependencyDescriptor, scope: String, isOptional: Boolean) = {
+    val mapping = ReplaceMavenConfigurationMappings.REPLACEMENT_MAVEN_MAPPINGS.get(scope)
+    mapping.addMappingConfs(dd, isOptional)
+  }
+
   val REPLACEMENT_MAVEN_MAPPINGS = {
     // Here we copy paste from Ivy
     val REPLACEMENT_MAPPINGS = new java.util.HashMap[String, PomModuleDescriptorBuilder.ConfMapper]

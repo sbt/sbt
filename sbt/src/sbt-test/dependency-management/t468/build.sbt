@@ -16,7 +16,8 @@ TaskKey[Unit]("check-update") <<= update map { report =>
 
 TaskKey[Unit]("check-classpath") <<= dependencyClasspath in Compile map { cp =>
 	val jars = cp.files.map(_.getName).toSet
-	val expected = Set("org.sat4j.pb-2.3.1.jar", "org.sat4j.core-2.3.1.jar")
+	// Note: pb depends on tests artifact in core for no good reason.  Previously this was not correctly added to the classpath.
+	val expected = Set("org.sat4j.pb-2.3.1.jar", "org.sat4j.core-2.3.1.jar", "org.sat4j.core-2.3.1-tests.jar")
 	if(jars != expected)
 		error("Expected jars " + expected  + ", got: " + jars)
 }

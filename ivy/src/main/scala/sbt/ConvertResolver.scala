@@ -94,24 +94,37 @@ private[sbt] object ConvertResolver {
     }
   }
 
+  private[sbt] val USE_AETHER_PROPERTY = "sbt.use.aether"
+  private def isUseAetherForResolution(settings: IvySettings): Boolean =
+    settings.getVariable(USE_AETHER_PROPERTY) == "true"
+
   /** Converts the given sbt resolver into an Ivy resolver..*/
   def apply(r: Resolver, settings: IvySettings, log: Logger) =
     {
       r match {
         case repo: MavenRepository =>
           {
-            val pattern = Collections.singletonList(Resolver.resolvePattern(repo.root, Resolver.mavenStyleBasePattern))
-            final class PluginCapableResolver extends IBiblioResolver with ChecksumFriendlyURLResolver with DescriptorRequired {
-              def setPatterns() { // done this way for access to protected methods.
-                setArtifactPatterns(pattern)
-                setIvyPatterns(pattern)
+            if (isUseAetherForResolution(settings)) {
+              repo match {
+                case cache: MavenCache => new org.apache.ivy.plugins.resolver.MavenCacheRepositoryResolver(cache, settings)
+                case _                 => new org.apache.ivy.plugins.resolver.MavenRemoteRepositoryResolver(repo, settings)
               }
+            } else {
+              val pattern = Collections.singletonList(Resolver.resolvePattern(repo.root, Resolver.mavenStyleBasePattern))
+              final class PluginCapableResolver extends IBiblioResolver with ChecksumFriendlyURLResolver with DescriptorRequired {
+                def setPatterns() {
+                  // done this way for access to protected methods.
+                  setArtifactPatterns(pattern)
+                  setIvyPatterns(pattern)
+                }
+              }
+              val resolver = new PluginCapableResolver
+              resolver.setRepository(new LocalIfFileRepo)
+              initializeMavenStyle(resolver, repo.name, repo.root)
+              resolver.setPatterns() // has to be done after initializeMavenStyle, which calls methods that overwrite the patterns
+              resolver
             }
-            val resolver = new PluginCapableResolver
-            resolver.setRepository(new LocalIfFileRepo)
-            initializeMavenStyle(resolver, repo.name, repo.root)
-            resolver.setPatterns() // has to be done after initializeMavenStyle, which calls methods that overwrite the patterns
-            resolver
+
           }
         // TODO: HTTP repository is no longer recommended. #1541
         // Remove `JavaNet1Repository` when we bump up the API.
