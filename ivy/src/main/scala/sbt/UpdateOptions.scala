@@ -17,7 +17,13 @@ final class UpdateOptions private[sbt] (
     /** If set to true, use consolidated resolution. */
     val consolidatedResolution: Boolean,
     /** If set to true, use cached resolution. */
-    val cachedResolution: Boolean) {
+    val cachedResolution: Boolean,
+    /** If set to true, use aether for resolving maven artifacts. */
+    val aetherResolution: Boolean) {
+
+  /** Enables Aether for dependency resolution. */
+  def withAetherResolution(aetherResolution: Boolean): UpdateOptions =
+    copy(aetherResolution = aetherResolution)
 
   def withCircularDependencyLevel(circularDependencyLevel: CircularDependencyLevel): UpdateOptions =
     copy(circularDependencyLevel = circularDependencyLevel)
@@ -35,11 +41,13 @@ final class UpdateOptions private[sbt] (
     circularDependencyLevel: CircularDependencyLevel = this.circularDependencyLevel,
     latestSnapshots: Boolean = this.latestSnapshots,
     consolidatedResolution: Boolean = this.consolidatedResolution,
-    cachedResolution: Boolean = this.cachedResolution): UpdateOptions =
+    cachedResolution: Boolean = this.cachedResolution,
+    aetherResolution: Boolean = this.aetherResolution): UpdateOptions =
     new UpdateOptions(circularDependencyLevel,
       latestSnapshots,
       consolidatedResolution,
-      cachedResolution)
+      cachedResolution,
+      aetherResolution)
 
   override def equals(o: Any): Boolean = o match {
     case o: UpdateOptions =>
@@ -65,5 +73,7 @@ object UpdateOptions {
       circularDependencyLevel = CircularDependencyLevel.Warn,
       latestSnapshots = false,
       consolidatedResolution = false,
-      cachedResolution = false)
+      cachedResolution = false,
+      // TODO - Disable this before release, but make sure test suite passes with it on.
+      aetherResolution = true)
 }

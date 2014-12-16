@@ -13,6 +13,7 @@ import java.io.{ File, InputStream }
 import java.net.URL
 import java.util.regex.Pattern
 
+@deprecated("0.13.8", "We now use an Aether-based pom parser.")
 final class CustomPomParser(delegate: ModuleDescriptorParser, transform: (ModuleDescriptorParser, ModuleDescriptor) => ModuleDescriptor) extends ModuleDescriptorParser {
   override def parseDescriptor(ivySettings: ParserSettings, descriptorURL: URL, validate: Boolean) =
     transform(this, delegate.parseDescriptor(ivySettings, descriptorURL, validate))
@@ -26,6 +27,7 @@ final class CustomPomParser(delegate: ModuleDescriptorParser, transform: (Module
   override def getType() = delegate.getType()
   override def getMetadataArtifact(mrid: ModuleRevisionId, res: Resource) = delegate.getMetadataArtifact(mrid, res)
 }
+@deprecated("0.13.8", "We now use an Aether-based pom parser.")
 object CustomPomParser {
 
   // Evil hackery to override the default maven pom mappings.
