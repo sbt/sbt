@@ -7,15 +7,9 @@ object Util {
   lazy val componentID = SettingKey[Option[String]]("component-id")
   lazy val scalaKeywords = TaskKey[Set[String]]("scala-keywords")
   lazy val generateKeywords = TaskKey[File]("generateKeywords")
-  lazy val nightly211 = SettingKey[Boolean]("nightly-211")
-  lazy val includeTestDependencies = SettingKey[Boolean]("includeTestDependencies", "Doesn't declare test dependencies.")
 
   def noPublishSettings: Seq[Setting[_]] = Seq(publish := {})
 
-  def nightlySettings = Seq(
-    nightly211 <<= scalaVersion(v => v.startsWith("2.11.") || v.startsWith("2.12.")),
-    includeTestDependencies <<= nightly211(x => !x)
-  )
   def crossBuild: Seq[Setting[_]] =
     Seq(
       crossPaths := (scalaBinaryVersion.value match {
@@ -36,15 +30,6 @@ object Util {
       case _             => Seq()
     }
   )
-
-  def testDependencies = libraryDependencies <++= includeTestDependencies { incl =>
-    if (incl) Seq(
-      "org.scalacheck" %% "scalacheck" % "1.11.4" % "test",
-      "org.specs2" %% "specs2" % "2.3.11" % "test",
-      "junit" % "junit" % "4.11" % "test"
-    )
-    else Seq()
-  }
 
   def projectComponent = projectID <<= (projectID, componentID) { (pid, cid) =>
     cid match { case Some(id) => pid extra ("e:component" -> id); case None => pid }
@@ -149,56 +134,6 @@ object %s {
     generateKeywords <<= (sourceManaged, scalaKeywords) map writeScalaKeywords,
     sourceGenerators <+= generateKeywords map (x => Seq(x))
   ))
-
-  def customCommands: Seq[Setting[_]] = Seq(
-    commands += Command.command("setupBuildScala211") { state =>
-      """set scalaVersion in ThisBuild := "2.11.1" """ ::
-        "set Util.includeTestDependencies in ThisBuild := true" ::
-        state
-    },
-    commands += Command.command("checkBuildScala211") { state =>
-      "setupBuildScala211" ::
-        // First compile everything before attempting to test
-        "all compile test:compile" ::
-        // Now run known working tests.
-        "safeUnitTests" ::
-        state
-    },
-    commands += Command.command("safeUnitTests") { state =>
-      "all launcher/test main-settings/test main/test ivy/test logic/test completion/test actions/test classpath/test collections/test incremental-compiler/test logging/test run/test task-system/test" ::
-        state
-    },
-    // TODO - To some extent these should take args to figure out what to do.
-    commands += Command.command("release-libs-211") { state =>
-      "setupBuildScala211" ::
-        /// First test
-        agregateTaskHack("test") ::
-        // Note: You need the sbt-pgp plugin installed to release.
-        agregateTaskHack("publishSigned") ::
-        // Now restore the defaults.
-        "reload" :: state
-    },
-    commands += Command.command("release-sbt-local") { state =>
-      "publishLocal" ::
-        "setupBuildScala211" ::
-        agregateTaskHack("publishLocal") ::
-        "reload" ::
-        state
-    },
-    commands += Command.command("release-sbt") { state =>
-      // TODO - Any sort of validation
-      "checkCredentials" ::
-        "conscript-configs" ::
-        "publishSigned" ::
-        "publishLauncher" ::
-        "release-libs-211" ::
-        state
-    }
-  )
-  // Aggregate task for 2.11
-  def agregateTaskHack(task: String): String =
-    s"all control/$task collections/$task io/$task completion/$task"
-
 }
 object Licensed {
   lazy val notice = SettingKey[File]("notice")

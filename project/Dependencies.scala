@@ -2,6 +2,9 @@ import sbt._
 import Keys._
 
 object Dependencies {
+  lazy val scala210 = "2.10.4"
+  lazy val scala211 = "2.11.1"
+
   lazy val jline = "jline" % "jline" % "2.11"
   lazy val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-fccfbd44c9f64523b61398a0155784dcbaeae28f"
   lazy val jsch = "com.jcraft" % "jsch" % "0.1.46" intransitive ()
@@ -11,6 +14,10 @@ object Dependencies {
   lazy val jawnJson4s = "org.spire-math" %% "json4s-support" % "0.6.0"
   lazy val scalaCompiler = Def.setting { "org.scala-lang" % "scala-compiler" % scalaVersion.value }
   lazy val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
+  lazy val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.11.4"
+  lazy val specs2 = "org.specs2" %% "specs2" % "2.3.11"
+  lazy val junit = "junit" % "junit" % "4.11"
+
   private def scala211Module(name: String, moduleVersion: String) =
     Def.setting {
       scalaVersion.value match {
