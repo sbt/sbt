@@ -11,8 +11,8 @@ import Sxr.sxr
 def commonSettings: Seq[Setting[_]] = Seq(
   organization := "org.scala-sbt",
   version := "0.13.8-SNAPSHOT",
+  scalaVersion in ThisBuild := "2.10.4",
   publishArtifact in packageDoc := false,
-  scalaVersion := "2.10.4",
   publishMavenStyle := false,
   componentID := None,
   crossPaths := false,
@@ -24,12 +24,8 @@ def commonSettings: Seq[Setting[_]] = Seq(
 )
 
 def minimalSettings: Seq[Setting[_]] =
-  commonSettings ++ customCommands ++ Status.settings ++ nightlySettings ++
-  publishPomSettings ++ Release.javaVersionCheckSettings ++
-  Seq(
-    crossVersion in update <<= (crossVersion, nightly211) { (cv, n) => if (n) CrossVersion.full else cv },
-    resolvers += Resolver.typesafeIvyRepo("releases")
-  )
+  commonSettings ++ customCommands ++ Status.settings ++
+  publishPomSettings ++ Release.javaVersionCheckSettings
 
 def baseSettings: Seq[Setting[_]] =
   minimalSettings ++ Seq(projectComponent) ++ baseScalacOptions ++ Licensed.settings ++ Formatting.settings
@@ -105,13 +101,15 @@ lazy val apiProj = (project in compilePath / "api").
 lazy val controlProj = (project in utilPath / "control").
   settings(baseSettings ++ Util.crossBuild: _*).
   settings(
-    name := "Control"
+    name := "Control",
+    crossScalaVersions := Seq(scala210, scala211)
   )
 
 lazy val collectionProj = (project in utilPath / "collection").
   settings(testedBaseSettings ++ Util.keywordsSettings ++ Util.crossBuild: _*).
   settings(
-    name := "Collections"
+    name := "Collections",
+    crossScalaVersions := Seq(scala210, scala211)
   )
 
 lazy val applyMacroProj = (project in utilPath / "appmacro").
@@ -137,7 +135,8 @@ lazy val ioProj = (project in utilPath / "io").
   settings(testedBaseSettings ++ Util.crossBuild: _*).
   settings(
     name := "IO",
-    libraryDependencies += { "org.scala-lang" % "scala-compiler" % scalaVersion.value % Test }
+    libraryDependencies += scalaCompiler.value % Test,
+    crossScalaVersions := Seq(scala210, scala211)
   )
 
 // Utilities related to reflection, managing Scala versions, and custom class loaders
@@ -155,7 +154,8 @@ lazy val completeProj = (project in utilPath / "complete").
   settings(testedBaseSettings ++ Util.crossBuild: _*).
   settings(
     name := "Completion",
-    libraryDependencies += jline
+    libraryDependencies += jline,
+    crossScalaVersions := Seq(scala210, scala211)
   )
 
 // logging
@@ -517,3 +517,48 @@ def precompiled(scalav: String): Project = Project(id = normalize("Precompiled "
     // so we do not need to worry about cross-versioning testing dependencies
     sources in Test := Nil
   )
+
+lazy val safeUnitTests = taskKey[Unit]("Known working tests (for both 2.10 and 2.11)")
+lazy val safeProjects: ScopeFilter = ScopeFilter(
+  inProjects(launchProj, mainSettingsProj, mainProj, ivyProj, completeProj,
+    actionsProj, classpathProj, collectionProj, compileIncrementalProj,
+    logProj, runProj, stdTaskProj),
+  inConfigurations(Test)
+)
+
+def customCommands: Seq[Setting[_]] = Seq(
+  commands += Command.command("setupBuildScala211") { state =>
+    s"""set scalaVersion in ThisBuild := "$scala211" """ ::
+      state
+  },
+  // This is invoked by Travis
+  commands += Command.command("checkBuildScala211") { state =>
+    s"++ $scala211" ::
+      // First compile everything before attempting to test
+      "all compile test:compile" ::
+      // Now run known working tests.
+      safeUnitTests.key.label ::
+      state
+  },
+  safeUnitTests := {
+    test.all(safeProjects).value
+  },
+  commands += Command.command("release-sbt-local") { state =>
+    "clean" ::
+    "so compile" ::
+    "so publishLocal" ::
+    "reload" ::
+    state
+  },
+  commands += Command.command("release-sbt") { state =>
+    // TODO - Any sort of validation
+    "clean" ::
+      "checkCredentials" ::
+      "conscript-configs" ::
+      "so compile" ::
+      "so publishSigned" ::
+      "publishLauncher" ::
+      "release-libs-211" ::
+      state
+  }
+)
