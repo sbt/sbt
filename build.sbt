@@ -1,6 +1,6 @@
 import Project.Initialize
 import Util._
-import Common._
+import Dependencies._
 import Licensed._
 import Scope.ThisScope
 import LaunchProguard.{ proguard, Proguard }
@@ -23,7 +23,6 @@ def commonSettings: Seq[Setting[_]] = Seq(
   incOptions := incOptions.value.withNameHashing(true)
 )
 
-//override lazy val settings = super.settings ++ buildSettings ++ Status.settings ++ nightlySettings
 def minimalSettings: Seq[Setting[_]] =
   commonSettings ++ customCommands ++ Status.settings ++ nightlySettings ++
   Seq(
@@ -57,7 +56,7 @@ lazy val launchProj = (project in launchPath).
   settings(testedBaseSettings: _*).
   settings(
     name := "Launcher",
-    ivy,
+    libraryDependencies += ivy,
     compile in Test <<= compile in Test dependsOn (publishLocal in interfaceProj, publishLocal in testSamples, publishLocal in launchInterfaceProj)
   ).
   settings(inConfig(Compile)(Transform.configSettings): _*).
@@ -70,7 +69,10 @@ lazy val launchProj = (project in launchPath).
 lazy val testSamples = (project in launchPath / "test-sample").
   dependsOn(interfaceProj, launchInterfaceProj).
   settings(baseSettings ++ noPublishSettings: _*).
-  settings(scalaCompiler)
+  settings(
+    name := "Test Sample",
+    libraryDependencies += scalaCompiler.value
+  )
 
 // defines Java structures used across Scala versions, such as the API structures and relationships extracted by
 //   the analysis compiler phases and passed back to sbt.  The API structures are defined in a simple
@@ -116,7 +118,7 @@ lazy val applyMacroProj = (project in utilPath / "appmacro").
   settings(testedBaseSettings: _*).
   settings(
     name := "Apply Macro",
-    scalaCompiler
+    libraryDependencies += scalaCompiler.value
   )
 
 // The API for forking, combining, and doing I/O with system processes
@@ -125,7 +127,7 @@ lazy val processProj = (project in utilPath / "process").
   settings(baseSettings: _*).
   settings(
     name := "Process",
-    scalaXml
+    libraryDependencies ++= scalaXml.value
   )
 
 // Path, IO (formerly FileUtilities), NameFilter and other I/O utility classes
@@ -143,7 +145,7 @@ lazy val classpathProj = (project in utilPath / "classpath").
   settings(testedBaseSettings: _*).
   settings(
     name := "Classpath",
-    scalaCompiler
+    libraryDependencies += scalaCompiler.value
   )
 
 // Command line-related utilities.
@@ -152,7 +154,7 @@ lazy val completeProj = (project in utilPath / "complete").
   settings(testedBaseSettings ++ Util.crossBuild: _*).
   settings(
     name := "Completion",
-    jline
+    libraryDependencies += jline
   )
 
 // logging
@@ -161,7 +163,7 @@ lazy val logProj = (project in utilPath / "log").
   settings(testedBaseSettings: _*).
   settings(
     name := "Logging",
-    jline
+    libraryDependencies += jline
   ) 
 
 // Relation
@@ -212,7 +214,8 @@ lazy val ivyProj = (project in file("ivy")).
   settings(baseSettings: _*).
   settings(
     name := "Ivy",
-    ivy, jsch, testExclusive, json4sNative, jawnParser, jawnJson4s)
+    libraryDependencies ++= Seq(ivy, jsch, json4sNative, jawnParser, jawnJson4s),
+    testExclusive)
 
 // Runner for uniform test interface
 lazy val testingProj = (project in file("testing")).
@@ -220,7 +223,7 @@ lazy val testingProj = (project in file("testing")).
   settings(baseSettings: _*).
   settings(
     name := "Testing",
-    testInterface
+    libraryDependencies += testInterface
   )
 
 // Testing agent for running tests in a separate process.
@@ -228,7 +231,7 @@ lazy val testAgentProj = (project in file("testing") / "agent").
   settings(minimalSettings: _*).
   settings(
     name := "Test Agent",
-    testInterface
+    libraryDependencies += testInterface
   )
 
 // Basic task engine
@@ -254,10 +257,8 @@ lazy val cacheProj = (project in cachePath).
   settings(baseSettings: _*).
   settings(
     name := "Cache",
-    sbinary, scalaXml
+    libraryDependencies ++= Seq(sbinary) ++ scalaXml.value
   )
-
-// baseProject(cachePath, "Cache") dependsOn (ioProj, collectionProj) settings (sbinary, scalaXml)
 
 // Builds on cache to provide caching for filesystem-related operations
 lazy val trackingProj = (project in cachePath / "tracking").
@@ -312,7 +313,7 @@ lazy val compilePersistProj = (project in compilePath / "persist").
   settings(testedBaseSettings: _*).
   settings(
     name := "Persist",
-    sbinary
+    libraryDependencies += sbinary
   )
 
 // sbt-side interface to compiler.  Calls compiler-side interface reflectively
@@ -322,7 +323,7 @@ lazy val compilerProj = (project in compilePath).
   settings(testedBaseSettings: _*).
   settings(
     name := "Compile",
-    libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _ % Test),
+    libraryDependencies += scalaCompiler.value % Test,
     unmanagedJars in Test <<= (packageSrc in compileInterfaceProj in Compile).map(x => Seq(x).classpath)
   )
 
@@ -345,7 +346,7 @@ lazy val scriptedBaseProj = (project in scriptedPath / "base").
   settings(testedBaseSettings: _*).
   settings(
     name := "Scripted Framework",
-    scalaParsers
+    libraryDependencies ++= scalaParsers.value
   )
 
 lazy val scriptedSbtProj = (project in scriptedPath / "sbt").
@@ -387,7 +388,7 @@ lazy val mainSettingsProj = (project in mainPath / "settings").
   settings(testedBaseSettings: _*).
   settings(
     name := "Main Settings",
-    sbinary
+    libraryDependencies += sbinary
   )
 
 // The main integration project for sbt.  It brings all of the Projsystems together, configures them, and provides for overriding conventions.
@@ -396,7 +397,7 @@ lazy val mainProj = (project in mainPath).
   settings(testedBaseSettings: _*).
   settings(
     name := "Main",
-    scalaXml
+    libraryDependencies ++= scalaXml.value
   )
 
 // Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
@@ -492,7 +493,7 @@ def precompiledSettings = Seq(
   scalacOptions := Nil,
   ivyScala ~= { _.map(_.copy(checkExplicit = false, overrideScalaVersion = false)) },
   exportedProducts in Compile := Nil,
-  libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _ % "provided")
+  libraryDependencies += scalaCompiler.value % "provided"
 )
 
 def precompiled(scalav: String): Project = Project(id = normalize("Precompiled " + scalav.replace('.', '_')), base = compilePath / "interface").
