@@ -10,18 +10,6 @@ object Util {
   lazy val nightly211 = SettingKey[Boolean]("nightly-211")
   lazy val includeTestDependencies = SettingKey[Boolean]("includeTestDependencies", "Doesn't declare test dependencies.")
 
-  def inAll(projects: => Seq[ProjectReference], key: SettingKey[Task[Unit]]): Project.Initialize[Task[Unit]] =
-    inAllProjects(projects, key) { deps => nop dependsOn (deps: _*) }
-
-  def inAllProjects[T](projects: => Seq[ProjectReference], key: SettingKey[T]): Project.Initialize[Seq[T]] =
-    Def.settingDyn {
-      val lb = loadedBuild.value
-      val pr = thisProjectRef.value
-      def resolve(ref: ProjectReference): ProjectRef = Scope.resolveProjectRef(pr.build, Load.getRootProject(lb.units), ref)
-      val refs = projects flatMap { base => Defaults.transitiveDependencies(resolve(base.project), lb, includeRoot = true, classpath = true, aggregate = true) }
-      refs map (ref => (key in ref).?) joinWith (_ flatMap { x => x })
-    }
-
   def noPublishSettings: Seq[Setting[_]] = Seq(publish := {})
 
   def nightlySettings = Seq(
@@ -37,7 +25,6 @@ object Util {
     )
 
   lazy val javaOnlySettings = Seq[Setting[_]]( /*crossPaths := false, */ compileOrder := CompileOrder.JavaThenScala, unmanagedSourceDirectories in Compile <<= Seq(javaSource in Compile).join)
-  // lazy val base: Seq[Setting[_]] = Seq(projectComponent) ++ baseScalacOptions ++ Licensed.settings ++ Formatting.settings
   lazy val baseScalacOptions = Seq(
     scalacOptions ++= Seq("-Xelide-below", "0"),
     scalacOptions <++= scalaVersion map CrossVersion.partialVersion map {
