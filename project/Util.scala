@@ -22,8 +22,7 @@ object Util {
       refs map (ref => (key in ref).?) joinWith (_ flatMap { x => x })
     }
 
-  def noPublish(p: Project) = p.copy(settings = noRemotePublish(p.settings))
-  def noRemotePublish(in: Seq[Setting[_]]) = in filterNot { _.key.key == publish.key }
+  def noPublishSettings: Seq[Setting[_]] = Seq(publish := {})
 
   def nightlySettings = Seq(
     nightly211 <<= scalaVersion(v => v.startsWith("2.11.") || v.startsWith("2.12.")),
@@ -36,17 +35,9 @@ object Util {
         case _      => false
       })
     )
-  def commonSettings(nameString: String) = Seq(
-    crossVersion in update <<= (crossVersion, nightly211) { (cv, n) => if (n) CrossVersion.full else cv },
-    name := nameString,
-    resolvers += Resolver.typesafeIvyRepo("releases")
-  )
-  def minProject(path: File, nameString: String) = Project(normalize(nameString), path) settings (commonSettings(nameString) ++ publishPomSettings ++ Release.javaVersionCheckSettings: _*)
-  def baseProject(path: File, nameString: String) = minProject(path, nameString) settings (base: _*)
-  def testedBaseProject(path: File, nameString: String) = baseProject(path, nameString) settings (testDependencies)
 
-  lazy val javaOnly = Seq[Setting[_]]( /*crossPaths := false, */ compileOrder := CompileOrder.JavaThenScala, unmanagedSourceDirectories in Compile <<= Seq(javaSource in Compile).join)
-  lazy val base: Seq[Setting[_]] = Seq(projectComponent) ++ baseScalacOptions ++ Licensed.settings ++ Formatting.settings
+  lazy val javaOnlySettings = Seq[Setting[_]]( /*crossPaths := false, */ compileOrder := CompileOrder.JavaThenScala, unmanagedSourceDirectories in Compile <<= Seq(javaSource in Compile).join)
+  // lazy val base: Seq[Setting[_]] = Seq(projectComponent) ++ baseScalacOptions ++ Licensed.settings ++ Formatting.settings
   lazy val baseScalacOptions = Seq(
     scalacOptions ++= Seq("-Xelide-below", "0"),
     scalacOptions <++= scalaVersion map CrossVersion.partialVersion map {
@@ -67,8 +58,6 @@ object Util {
     )
     else Seq()
   }
-
-  lazy val minimalSettings: Seq[Setting[_]] = Defaults.paths ++ Seq[Setting[_]](crossTarget := target.value, name <<= thisProject(_.id))
 
   def projectComponent = projectID <<= (projectID, componentID) { (pid, cid) =>
     cid match { case Some(id) => pid extra ("e:component" -> id); case None => pid }
@@ -173,6 +162,56 @@ object %s {
     generateKeywords <<= (sourceManaged, scalaKeywords) map writeScalaKeywords,
     sourceGenerators <+= generateKeywords map (x => Seq(x))
   ))
+
+  def customCommands: Seq[Setting[_]] = Seq(
+    commands += Command.command("setupBuildScala211") { state =>
+      """set scalaVersion in ThisBuild := "2.11.1" """ ::
+        "set Util.includeTestDependencies in ThisBuild := true" ::
+        state
+    },
+    commands += Command.command("checkBuildScala211") { state =>
+      "setupBuildScala211" ::
+        // First compile everything before attempting to test
+        "all compile test:compile" ::
+        // Now run known working tests.
+        "safeUnitTests" ::
+        state
+    },
+    commands += Command.command("safeUnitTests") { state =>
+      "all launcher/test main-settings/test main/test ivy/test logic/test completion/test actions/test classpath/test collections/test incremental-compiler/test logging/test run/test task-system/test" ::
+        state
+    },
+    // TODO - To some extent these should take args to figure out what to do.
+    commands += Command.command("release-libs-211") { state =>
+      "setupBuildScala211" ::
+        /// First test
+        agregateTaskHack("test") ::
+        // Note: You need the sbt-pgp plugin installed to release.
+        agregateTaskHack("publishSigned") ::
+        // Now restore the defaults.
+        "reload" :: state
+    },
+    commands += Command.command("release-sbt-local") { state =>
+      "publishLocal" ::
+        "setupBuildScala211" ::
+        agregateTaskHack("publishLocal") ::
+        "reload" ::
+        state
+    },
+    commands += Command.command("release-sbt") { state =>
+      // TODO - Any sort of validation
+      "checkCredentials" ::
+        "conscript-configs" ::
+        "publishSigned" ::
+        "publishLauncher" ::
+        "release-libs-211" ::
+        state
+    }
+  )
+  // Aggregate task for 2.11
+  def agregateTaskHack(task: String): String =
+    s"all control/$task collections/$task io/$task completion/$task"
+
 }
 object Common {
   def lib(m: ModuleID) = libraryDependencies += m
