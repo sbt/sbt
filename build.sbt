@@ -25,6 +25,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
 
 def minimalSettings: Seq[Setting[_]] =
   commonSettings ++ customCommands ++ Status.settings ++ nightlySettings ++
+  publishPomSettings ++ Release.javaVersionCheckSettings ++
   Seq(
     crossVersion in update <<= (crossVersion, nightly211) { (cv, n) => if (n) CrossVersion.full else cv },
     resolvers += Resolver.typesafeIvyRepo("releases")
@@ -41,7 +42,7 @@ lazy val root: Project = (project in file(".")).
   aggregate(nonRoots: _*).
   settings(minimalSettings ++ rootSettings: _*)
 
-/* ** Projproject declarations ** */
+/* ** subproject declarations ** */
 
 // defines the Java interfaces through which the launcher and the launched application communicate
 lazy val launchInterfaceProj = (project in launchPath / "interface").
@@ -438,11 +439,6 @@ def allProjects = Seq(launchInterfaceProj, launchProj, testSamples, interfacePro
 def projectsWithMyProvided = allProjects.map(p => p.copy(configurations = (p.configurations.filter(_ != Provided)) :+ myProvided))
 lazy val nonRoots = projectsWithMyProvided.map(p => LocalProject(p.id))
 
-def deepTasks[T](scoped: TaskKey[Seq[T]]): Initialize[Task[Seq[T]]] = deep(scoped.task) { _.join.map(_.flatten.distinct) }
-def deep[T](scoped: SettingKey[T]): Initialize[Seq[T]] =
-  Util.inAllProjects(projectsWithMyProvided filterNot Set(root, sbtProj, scriptedBaseProj, scriptedSbtProj, scriptedPluginProj) map { p =>
-    LocalProject(p.id) }, scoped)
-
 def releaseSettings = Release.settings(nonRoots, proguard in Proguard)
 def rootSettings = releaseSettings ++ fullDocSettings ++ LaunchProguard.settings ++ LaunchProguard.specific(launchProj) ++
   Util.publishPomSettings ++ otherRootSettings ++ proguardedLauncherSettings ++ Formatting.sbtFilesSettings ++
@@ -451,16 +447,27 @@ def otherRootSettings = Seq(
   Scripted.scripted <<= scriptedTask,
   Scripted.scriptedUnpublished <<= scriptedUnpublishedTask,
   Scripted.scriptedSource <<= (sourceDirectory in sbtProj) / "sbt-test",
-  publishAll <<= inAll(nonRoots, publishLocal.task),
-  publishAll <<= (publishAll, publishLocal).map((x, y) => ()) // publish all normal deps as well as the sbt-launch jar
+  publishAll := {
+    (publishLocal).all(ScopeFilter(inAnyProject)).value
+  }
+)
+lazy val docProjects: ScopeFilter = ScopeFilter(
+  inAnyProject -- inProjects(root, sbtProj, scriptedBaseProj, scriptedSbtProj, scriptedPluginProj),
+  inConfigurations(Compile)
 )
 def fullDocSettings = Util.baseScalacOptions ++ Docs.settings ++ Sxr.settings ++ Seq(
   scalacOptions += "-Ymacro-no-expand", // for both sxr and doc
-  sources in sxr <<= deepTasks(sources in Compile), //sxr
-  sources in (Compile, doc) <<= sources in sxr, // doc
-  Sxr.sourceDirectories <<= deep(sourceDirectories in Compile).map(_.flatten), // to properly relativize the source paths
-  fullClasspath in sxr <<= (externalDependencyClasspath in Compile in sbtProj),
-  dependencyClasspath in (Compile, doc) <<= fullClasspath in sxr
+  sources in sxr := {
+    val allSources = (sources ?? Nil).all(docProjects).value
+    allSources.flatten.distinct
+  }, //sxr
+  sources in (Compile, doc) := (sources in sxr).value, // doc
+  Sxr.sourceDirectories := {
+    val allSourceDirectories = (sourceDirectories ?? Nil).all(docProjects).value
+    allSourceDirectories.flatten
+  },
+  fullClasspath in sxr := (externalDependencyClasspath in Compile in sbtProj).value,
+  dependencyClasspath in (Compile, doc) := (fullClasspath in sxr).value
 )
 
 // the launcher is published with metadata so that the scripted plugin can pull it in
