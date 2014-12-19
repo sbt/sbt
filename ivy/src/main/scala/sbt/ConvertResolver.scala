@@ -112,6 +112,8 @@ private[sbt] object ConvertResolver {
             initializeMavenStyle(resolver, repo.name, repo.root)
             resolver.setPatterns() // has to be done after initializeMavenStyle, which calls methods that overwrite the patterns
             resolver
+            // Temporary experiment.
+            new org.apache.ivy.plugins.resolver.MavenRepositoryResolver(repo, settings)
           }
         // TODO: HTTP repository is no longer recommended. #1541
         // Remove `JavaNet1Repository` when we bump up the API.
