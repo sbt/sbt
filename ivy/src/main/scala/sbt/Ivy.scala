@@ -103,21 +103,6 @@ final class IvySbt(val configuration: IvyConfiguration) {
               val cachedResolutionResolveCache = IvySbt.cachedResolutionResolveCache
               val projectResolver = prOpt
               def makeInstance = mkIvy
-
-              // TODO - Figure out why aether resolution breaks this.
-              override def outputReport(report: ResolveReport, cacheMgr: ResolutionCacheManager, options: ResolveOptions): Unit = {
-                //
-                try {
-                  report.setProblemMessages(Message.getProblems)
-                  report.output(settings.getReportOutputters, cacheMgr, options)
-                } catch {
-                  case null => Message.warn("NULL EXCEPTION THROWN during reporting!")
-                  case e: Throwable =>
-                    Message.warn(e.toString)
-                  //e.printStackTrace()
-                  //throw e
-                }
-              }
             })
           } else setResolveEngine(new ResolveEngine(getSettings, getEventManager, getSortEngine))
           super.bind()

@@ -15,6 +15,7 @@ import org.eclipse.aether.resolution.{
   ArtifactDescriptorResult => AetherDescriptorResult,
   ArtifactRequest => AetherArtifactRequest
 }
+import org.apache.ivy.core.cache.ArtifactOrigin
 import sbt.MavenRepository
 import scala.collection.JavaConverters._
 
@@ -23,7 +24,7 @@ class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) exte
 
   private val system = MavenRepositorySystemFactory.newRepositorySystemImpl
   // TODO - Maybe create this right before resolving, rathen than every time.
-  private val localRepo = new java.io.File(settings.getDefaultIvyUserDir, s"pom-resolver")
+  private val localRepo = new java.io.File(settings.getDefaultIvyUserDir, s"maven-cache")
   sbt.IO.createDirectory(localRepo)
   private val session = MavenRepositorySystemFactory.newSessionImpl(system, localRepo)
   private val aetherRepository = {
@@ -37,11 +38,11 @@ class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) exte
   override def getDependency(dd: DependencyDescriptor, rd: ResolveData): ResolvedModuleRevision = try {
     val request = new AetherDescriptorRequest()
     val coords = aetherCoordsFromMrid(dd.getDependencyRevisionId)
-    Message.warn(s"Aether about to resolve [$coords] into [${localRepo.getAbsolutePath}]")
+    Message.debug(s"Aether about to resolve [$coords] into [${localRepo.getAbsolutePath}]")
     request.setArtifact(new AetherArtifact(coords))
     request.addRepository(aetherRepository)
     val result = system.readArtifactDescriptor(session, request)
-    Message.warn(s"Aether completed, found result - ${result}")
+    Message.debug(s"Aether completed, found result - ${result}")
 
     val desc: ModuleDescriptor = {
       val md = DefaultModuleDescriptor.newDefaultInstance(dd.getDependencyRevisionId)
@@ -71,13 +72,14 @@ class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) exte
         // TODO - Configuration mappings (are we grabbing scope correctly, or shoudl the default not always be compile?)
         val scope = Option(d.getScope).filterNot(_.isEmpty).getOrElse("compile")
         val mapping = ReplaceMavenConfigurationMappings.addMappings(dd, scope, d.isOptional)
-        Message.warn(s"Adding maven transitive dependency ${md.getModuleRevisionId} -> ${dd}")
+        Message.debug(s"Adding maven transitive dependency ${md.getModuleRevisionId} -> ${dd}")
         md.addDependency(dd)
       }
       // TODO - Dependency management section + dep mediators
 
       // TODO - Rip out extra attributes
 
+      // TODO - Figure our rd updates
       md
     }
     // TODO - better pub date.
@@ -88,9 +90,13 @@ class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) exte
     new ResolvedModuleRevision(this, this, desc, report, false /* Force */ )
   } catch {
     case e: org.eclipse.aether.resolution.ArtifactDescriptorException =>
-      Message.warn(s"Failed to resolve ${dd} from ${repo}, ${e.getMessage}")
-      e.printStackTrace()
-      Option(e.getCause) foreach (_.printStackTrace())
+      Message.warn(s"Failed to read descriptor ${dd} from ${repo}, ${e.getMessage}")
+      null
+    case e: org.eclipse.aether.transfer.ArtifactNotFoundException =>
+      Message.debug(s"Failed to find artifact ${dd} from ${repo}, ${e.getMessage}")
+      null
+    case e: org.eclipse.aether.resolution.ArtifactResolutionException =>
+      Message.debug(s"Failed to resolve artifact ${dd} from ${repo}, ${e.getMessage}")
       null
   }
 
@@ -110,29 +116,51 @@ class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) exte
         request.addRepository(aetherRepository)
         request
       }
-    for ((result, art) <- system.resolveArtifacts(session, requests.toList.asJava).asScala zip artifacts) {
-      val adr = new ArtifactDownloadReport(art)
-      adr.setDownloadDetails(result.toString)
-      // TODO - Fill this out with a real estimate on time...
-      adr.setDownloadTimeMillis(0L)
-      if (result.isMissing) {
-        adr.setDownloadStatus(DownloadStatus.FAILED)
-        adr.setDownloadDetails(ArtifactDownloadReport.MISSING_ARTIFACT)
-      } else if (!result.getExceptions.isEmpty) {
-        adr.setDownloadStatus(DownloadStatus.FAILED)
-        adr.setDownloadDetails(result.toString)
-      } else if (!result.isResolved) {
-        adr.setDownloadStatus(DownloadStatus.NO)
-      } else {
-        val file = result.getArtifact.getFile
-        Message.warn(s"Succesffully downloaded: $file")
-        adr.setLocalFile(file)
-        adr.setSize(file.length)
-        adr.setDownloadStatus(DownloadStatus.SUCCESSFUL)
-        adr.setDownloadDetails(result.toString)
+    val result =
+      try {
+        system.resolveArtifacts(session, requests.toList.asJava).asScala
+        for ((result, art) <- system.resolveArtifacts(session, requests.toList.asJava).asScala zip artifacts) {
+          val adr = new ArtifactDownloadReport(art)
+          adr.setDownloadDetails(result.toString)
+          // TODO - Fill this out with a real estimate on time...
+          adr.setDownloadTimeMillis(0L)
+          adr.setArtifactOrigin(new ArtifactOrigin(
+            art,
+            true,
+            repo.name))
+          if (result.isMissing) {
+            adr.setDownloadStatus(DownloadStatus.FAILED)
+            adr.setDownloadDetails(ArtifactDownloadReport.MISSING_ARTIFACT)
+          } else if (!result.getExceptions.isEmpty) {
+            adr.setDownloadStatus(DownloadStatus.FAILED)
+            adr.setDownloadDetails(result.toString)
+          } else if (!result.isResolved) {
+            adr.setDownloadStatus(DownloadStatus.NO)
+          } else {
+            val file = result.getArtifact.getFile
+            Message.debug(s"Succesffully downloaded: $file")
+            adr.setLocalFile(file)
+            adr.setSize(file.length)
+            adr.setDownloadStatus(DownloadStatus.SUCCESSFUL)
+            adr.setDownloadDetails(result.toString)
+          }
+          report.addArtifactReport(adr)
+        }
+      } catch {
+        case e: org.eclipse.aether.resolution.ArtifactResolutionException =>
+          Message.debug(s"Failed to resolve artifacts from ${repo}, ${e.getMessage}")
+          for (art <- artifacts) {
+            val adr = new ArtifactDownloadReport(art)
+            adr.setDownloadDetails("Failed to download")
+            adr.setDownloadTimeMillis(0L)
+            adr.setDownloadStatus(DownloadStatus.FAILED)
+            adr.setArtifactOrigin(new ArtifactOrigin(
+              art,
+              true,
+              repo.name))
+          }
       }
-      report.addArtifactReport(adr)
-    }
+
     report
   }
   override def publish(art: Artifact, file: File, overwrite: Boolean): Unit = ???
