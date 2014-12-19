@@ -17,6 +17,7 @@ import org.eclipse.aether.resolution.{
   MetadataRequest => AetherMetadataRequest,
   ArtifactRequest => AetherArtifactRequest
 }
+import org.eclipse.aether.deployment.{ DeployRequest => AetherDeployRequest }
 import org.apache.ivy.core.cache.ArtifactOrigin
 import sbt.MavenRepository
 import scala.collection.JavaConverters._
@@ -64,12 +65,10 @@ class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) exte
       catch {
         case e: org.eclipse.aether.resolution.ArtifactResolutionException => None
       }
-
-    Message.warn(s"Maven metadata result: $metadataRequest")
-
     // TODO - better pub date.
     val lastModifiedTime = metadataResultOpt match {
       case Some(md) if md.isResolved =>
+        Message.warn(s"Maven metadata result: $metadataRequest")
         for (prop <- md.getMetadata.getProperties.asScala) {
           // TODO - figure out how to read these.
           Message.warn(s"$coords - ${prop._1}=${prop._2}")
@@ -79,6 +78,9 @@ class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) exte
     }
 
     val desc: ModuleDescriptor = {
+      // TODO - Default instance will autogenerate artifacts, which we do not want.
+      // We should probably create our own instance with no artifacts in it, and add
+      // artifacts based on what was requested *or* have aether try to find them.
       val md = DefaultModuleDescriptor.newDefaultInstance(dd.getDependencyRevisionId)
 
       // Here we add the standard configurations
@@ -86,7 +88,9 @@ class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) exte
         md.addConfiguration(config)
       }
 
+      /*
       // Here we add our own artifacts.
+      // TODO - we need to handle maven classifiers
       val art = new DefaultArtifact(
         dd.getDependencyRevisionId,
         new java.util.Date(lastModifiedTime),
@@ -96,6 +100,7 @@ class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) exte
         result.getArtifact.getExtension
       )
       md.addArtifact("master", art)
+      */
 
       // Here we add dependencies.
       for (d <- result.getDependencies.asScala) {
@@ -205,7 +210,68 @@ class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) exte
 
     report
   }
-  override def publish(art: Artifact, file: File, overwrite: Boolean): Unit = ???
+
+  case class PublishTransaction(module: ModuleRevisionId, artifacts: Seq[(Artifact, File)])
+  private var currentTransaction: Option[PublishTransaction] = None
+
+  override def beginPublishTransaction(module: ModuleRevisionId, overwrite: Boolean): Unit = {
+    // TODO - Set up something to track all artifacts.
+    currentTransaction match {
+      case Some(t) => throw new IllegalStateException(s"Publish Transaction already open for [$getName]")
+      case None    => currentTransaction = Some(PublishTransaction(module, Nil))
+    }
+  }
+  override def abortPublishTransaction(): Unit = {
+    // TODO - Delete all published jars
+    currentTransaction = None
+  }
+
+  def getClassifier(art: Artifact): String = {
+    art.getType match {
+      case "doc" => "javadoc"
+      case "src" => "sources"
+      case _     => null
+    }
+  }
+
+  override def commitPublishTransaction(): Unit = {
+    // TODO - actually send all artifacts to aether
+    currentTransaction match {
+      case Some(t) =>
+        Message.debug(s"Publishing module ${t.module}")
+
+        val request = new AetherDeployRequest()
+        request.setRepository(aetherRepository)
+        for ((art, file) <- t.artifacts) {
+          Message.debug(s"  - $art from $file")
+          val aetherArtifact = new AetherArtifact(
+            t.module.getOrganisation,
+            t.module.getName,
+            getClassifier(art),
+            art.getExt,
+            t.module.getRevision,
+            // TODO - Use correct Props for sbt plugin deploy.
+            Map.empty[String, String].asJava,
+            file
+          )
+          request.addArtifact(aetherArtifact)
+        }
+        val result = system.deploy(session, request)
+      // TODO - Any kind of validity checking?
+
+      case None => throw new IllegalStateException(s"Publish Transaction already open for [$getName]")
+    }
+  }
+
+  override def publish(art: Artifact, file: File, overwrite: Boolean): Unit = {
+    if (currentTransaction.isEmpty)
+      currentTransaction match {
+        case Some(t) =>
+          currentTransaction = Some(t.copy(artifacts = t.artifacts :+ (art, file)))
+        case None =>
+          throw new IllegalStateException(("MavenRepositories require transactional publish"))
+      }
+  }
 
   override def equals(a: Any): Boolean =
     a match {
