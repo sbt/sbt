@@ -67,7 +67,7 @@ lazy val testSamples = (project in launchPath / "test-sample").
   dependsOn(interfaceProj, launchInterfaceProj).
   settings(baseSettings ++ noPublishSettings: _*).
   settings(
-    name := "Test Sample",
+    name := "Launch Test",
     libraryDependencies += scalaCompiler.value
   )
 
