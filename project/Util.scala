@@ -7,28 +7,9 @@ object Util {
   lazy val componentID = SettingKey[Option[String]]("component-id")
   lazy val scalaKeywords = TaskKey[Set[String]]("scala-keywords")
   lazy val generateKeywords = TaskKey[File]("generateKeywords")
-  lazy val nightly211 = SettingKey[Boolean]("nightly-211")
-  lazy val includeTestDependencies = SettingKey[Boolean]("includeTestDependencies", "Doesn't declare test dependencies.")
 
-  def inAll(projects: => Seq[ProjectReference], key: SettingKey[Task[Unit]]): Project.Initialize[Task[Unit]] =
-    inAllProjects(projects, key) { deps => nop dependsOn (deps: _*) }
+  def noPublishSettings: Seq[Setting[_]] = Seq(publish := {})
 
-  def inAllProjects[T](projects: => Seq[ProjectReference], key: SettingKey[T]): Project.Initialize[Seq[T]] =
-    Def.settingDyn {
-      val lb = loadedBuild.value
-      val pr = thisProjectRef.value
-      def resolve(ref: ProjectReference): ProjectRef = Scope.resolveProjectRef(pr.build, Load.getRootProject(lb.units), ref)
-      val refs = projects flatMap { base => Defaults.transitiveDependencies(resolve(base.project), lb, includeRoot = true, classpath = true, aggregate = true) }
-      refs map (ref => (key in ref).?) joinWith (_ flatMap { x => x })
-    }
-
-  def noPublish(p: Project) = p.copy(settings = noRemotePublish(p.settings))
-  def noRemotePublish(in: Seq[Setting[_]]) = in filterNot { _.key.key == publish.key }
-
-  def nightlySettings = Seq(
-    nightly211 <<= scalaVersion(v => v.startsWith("2.11.") || v.startsWith("2.12.")),
-    includeTestDependencies <<= nightly211(x => !x)
-  )
   def crossBuild: Seq[Setting[_]] =
     Seq(
       crossPaths := (scalaBinaryVersion.value match {
@@ -36,17 +17,8 @@ object Util {
         case _      => false
       })
     )
-  def commonSettings(nameString: String) = Seq(
-    crossVersion in update <<= (crossVersion, nightly211) { (cv, n) => if (n) CrossVersion.full else cv },
-    name := nameString,
-    resolvers += Resolver.typesafeIvyRepo("releases")
-  )
-  def minProject(path: File, nameString: String) = Project(normalize(nameString), path) settings (commonSettings(nameString) ++ publishPomSettings ++ Release.javaVersionCheckSettings: _*)
-  def baseProject(path: File, nameString: String) = minProject(path, nameString) settings (base: _*)
-  def testedBaseProject(path: File, nameString: String) = baseProject(path, nameString) settings (testDependencies)
 
-  lazy val javaOnly = Seq[Setting[_]]( /*crossPaths := false, */ compileOrder := CompileOrder.JavaThenScala, unmanagedSourceDirectories in Compile <<= Seq(javaSource in Compile).join)
-  lazy val base: Seq[Setting[_]] = Seq(projectComponent) ++ baseScalacOptions ++ Licensed.settings ++ Formatting.settings
+  lazy val javaOnlySettings = Seq[Setting[_]]( /*crossPaths := false, */ compileOrder := CompileOrder.JavaThenScala, unmanagedSourceDirectories in Compile <<= Seq(javaSource in Compile).join)
   lazy val baseScalacOptions = Seq(
     scalacOptions ++= Seq("-Xelide-below", "0"),
     scalacOptions <++= scalaVersion map CrossVersion.partialVersion map {
@@ -58,17 +30,6 @@ object Util {
       case _             => Seq()
     }
   )
-
-  def testDependencies = libraryDependencies <++= includeTestDependencies { incl =>
-    if (incl) Seq(
-      "org.scalacheck" %% "scalacheck" % "1.11.4" % "test",
-      "org.specs2" %% "specs2" % "2.3.11" % "test",
-      "junit" % "junit" % "4.11" % "test"
-    )
-    else Seq()
-  }
-
-  lazy val minimalSettings: Seq[Setting[_]] = Defaults.paths ++ Seq[Setting[_]](crossTarget := target.value, name <<= thisProject(_.id))
 
   def projectComponent = projectID <<= (projectID, componentID) { (pid, cid) =>
     cid match { case Some(id) => pid extra ("e:component" -> id); case None => pid }
@@ -173,27 +134,6 @@ object %s {
     generateKeywords <<= (sourceManaged, scalaKeywords) map writeScalaKeywords,
     sourceGenerators <+= generateKeywords map (x => Seq(x))
   ))
-}
-object Common {
-  def lib(m: ModuleID) = libraryDependencies += m
-  lazy val jlineDep = "jline" % "jline" % "2.11"
-  lazy val jline = lib(jlineDep)
-  lazy val ivy = lib("org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-fccfbd44c9f64523b61398a0155784dcbaeae28f")
-  lazy val httpclient = lib("commons-httpclient" % "commons-httpclient" % "3.1")
-  lazy val jsch = lib("com.jcraft" % "jsch" % "0.1.46" intransitive ())
-  lazy val sbinary = libraryDependencies += "org.scala-tools.sbinary" %% "sbinary" % "0.4.2"
-  lazy val json4sNative = lib("org.json4s" %% "json4s-native" % "3.2.10")
-  lazy val jawnParser = lib("org.spire-math" %% "jawn-parser" % "0.6.0")
-  lazy val jawnJson4s = lib("org.spire-math" %% "json4s-support" % "0.6.0")
-  lazy val scalaCompiler = libraryDependencies <+= scalaVersion(sv => "org.scala-lang" % "scala-compiler" % sv)
-  lazy val testInterface = lib("org.scala-sbt" % "test-interface" % "1.0")
-  private def scala211Module(name: String, moduleVersion: String) =
-    libraryDependencies <++= (scalaVersion)(scalaVersion =>
-      if (scalaVersion.startsWith("2.11.") || scalaVersion.startsWith("2.12.")) ("org.scala-lang.modules" %% name % moduleVersion) :: Nil
-      else Nil
-    )
-  lazy val scalaXml = scala211Module("scala-xml", "1.0.1")
-  lazy val scalaParsers = scala211Module("scala-parser-combinators", "1.0.1")
 }
 object Licensed {
   lazy val notice = SettingKey[File]("notice")
