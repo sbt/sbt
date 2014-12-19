@@ -1,9 +1,12 @@
+# this mimics any resolver that comes before m2.
+> library/publishLocal
+
 > library/publishM2
 
-# should fail because local Maven repository not added yet
--> main/update
+# should suceed because local Ivy repository works
+> main/update
 
-# should succeed now that local Maven repository is added
+# should succeed when local Maven repository is added
 $ copy-file changes/mvnLocal.sbt main/build.sbt
 > reload
 > main/update
@@ -23,8 +26,6 @@ $ copy-file changes/libA.scala library/A.scala
 # should still succeed with an explicit 'update'
 > main/update
 > main/compile
-
-
 
 # update B.scala to depend on a dependency that 'library' doesn't declare yet
 $ delete main/B.scala
