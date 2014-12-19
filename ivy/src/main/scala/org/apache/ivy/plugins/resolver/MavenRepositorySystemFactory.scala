@@ -21,7 +21,6 @@ import org.eclipse.aether.repository.{ RemoteRepository, LocalRepository }
 import org.eclipse.aether.RepositorySystemSession
 import org.apache.maven.repository.internal.MavenRepositorySystemUtils
 import org.eclipse.aether.spi.connector.transport._
-import org.eclipse.aether.transport.file.FileTransporterFactory
 import org.eclipse.aether.connector.basic.BasicRepositoryConnectorFactory
 import java.io.File
 

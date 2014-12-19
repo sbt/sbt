@@ -31,7 +31,7 @@ object Dependencies {
 
   // Maven related dependnecy craziness
   //val mvnEmbedder = "org.apache.maven" % "maven-embedder" % mvnVersion
-  val mvnWagonVersion = "2.4"
+    val mvnWagonVersion = "2.4"
   val mvnVersion = "3.2.3"
   val aetherVersion = "1.0.1.v20141111"
 
@@ -62,7 +62,6 @@ object Dependencies {
       javaxInject,
       sisuPlexus,
       aetherImpl,
-      aetherTransportFile,
       aetherConnectorBasic,
       mvnAether)
 

@@ -108,6 +108,7 @@ final class IvySbt(val configuration: IvyConfiguration) {
           super.bind()
         }
       }
+
       i.setSettings(settings)
       i.bind()
       i.getLoggerEngine.pushLogger(new IvyLoggerInterface(configuration.log))

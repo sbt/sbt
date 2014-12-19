@@ -10,14 +10,20 @@ import org.apache.ivy.plugins.parser.m2.{ PomModuleDescriptorBuilder, ReplaceMav
 import org.apache.ivy.plugins.resolver.util.ResolvedResource
 import org.apache.ivy.util.Message
 import org.eclipse.aether.artifact.{ DefaultArtifact => AetherArtifact }
+import org.eclipse.aether.metadata.{ Metadata, DefaultMetadata }
 import org.eclipse.aether.resolution.{
   ArtifactDescriptorRequest => AetherDescriptorRequest,
   ArtifactDescriptorResult => AetherDescriptorResult,
+  MetadataRequest => AetherMetadataRequest,
   ArtifactRequest => AetherArtifactRequest
 }
 import org.apache.ivy.core.cache.ArtifactOrigin
 import sbt.MavenRepository
 import scala.collection.JavaConverters._
+
+object MavenRepositoryResolver {
+  val MAVEN_METADATA_XML = "maven-metadata.xml"
+}
 
 class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) extends AbstractResolver {
   setName(repo.name)
@@ -44,6 +50,34 @@ class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) exte
     val result = system.readArtifactDescriptor(session, request)
     Message.debug(s"Aether completed, found result - ${result}")
 
+    val metadataRequest = new AetherMetadataRequest()
+    metadataRequest.setMetadata(
+      new DefaultMetadata(
+        dd.getDependencyRevisionId.getOrganisation,
+        dd.getDependencyRevisionId.getName,
+        dd.getDependencyRevisionId.getRevision,
+        MavenRepositoryResolver.MAVEN_METADATA_XML,
+        Metadata.Nature.RELEASE_OR_SNAPSHOT))
+    metadataRequest.setRepository(aetherRepository)
+    val metadataResultOpt =
+      try system.resolveMetadata(session, java.util.Arrays.asList(metadataRequest)).asScala.headOption
+      catch {
+        case e: org.eclipse.aether.resolution.ArtifactResolutionException => None
+      }
+
+    Message.warn(s"Maven metadata result: $metadataRequest")
+
+    // TODO - better pub date.
+    val lastModifiedTime = metadataResultOpt match {
+      case Some(md) if md.isResolved =>
+        for (prop <- md.getMetadata.getProperties.asScala) {
+          // TODO - figure out how to read these.
+          Message.warn(s"$coords - ${prop._1}=${prop._2}")
+        }
+        0L
+      case _ => 0L
+    }
+
     val desc: ModuleDescriptor = {
       val md = DefaultModuleDescriptor.newDefaultInstance(dd.getDependencyRevisionId)
 
@@ -55,7 +89,7 @@ class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) exte
       // Here we add our own artifacts.
       val art = new DefaultArtifact(
         dd.getDependencyRevisionId,
-        new java.util.Date(),
+        new java.util.Date(lastModifiedTime),
         // TODO - name this based on the name
         result.getArtifact.getArtifactId,
         result.getArtifact.getExtension,
@@ -80,14 +114,19 @@ class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) exte
       // TODO - Rip out extra attributes
 
       // TODO - Figure our rd updates
+
+      md.check()
+
       md
     }
-    // TODO - better pub date.
-    val metadataArtifact: Artifact = DefaultArtifact.newPomArtifact(dd.getDependencyRevisionId, new java.util.Date(0L))
-    val report: MetadataArtifactDownloadReport = new MetadataArtifactDownloadReport(metadataArtifact)
-    report.setSearched(true)
-    report.setOriginalLocalFile(result.getArtifact.getFile)
-    new ResolvedModuleRevision(this, this, desc, report, false /* Force */ )
+
+    // Here we need to pretend we downloaded the pom.xml file
+
+    val pom = DefaultArtifact.newPomArtifact(dd.getDependencyRevisionId, new java.util.Date(lastModifiedTime))
+    val madr = new MetadataArtifactDownloadReport(pom)
+    madr.setSearched(true)
+    madr.setDownloadStatus(DownloadStatus.NO) // TODO - Figure this things out for this report.
+    new ResolvedModuleRevision(this, this, desc, madr, false /* Force */ )
   } catch {
     case e: org.eclipse.aether.resolution.ArtifactDescriptorException =>
       Message.warn(s"Failed to read descriptor ${dd} from ${repo}, ${e.getMessage}")
@@ -100,7 +139,10 @@ class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) exte
       null
   }
 
-  override def findIvyFileRef(dd: DependencyDescriptor, rd: ResolveData): ResolvedResource = ???
+  override def findIvyFileRef(dd: DependencyDescriptor, rd: ResolveData): ResolvedResource = {
+    Message.error("Looking for ivy file ref, method not implemented!")
+    ???
+  }
 
   override def download(artifacts: Array[Artifact], dopts: DownloadOptions): DownloadReport = {
     val report = new DownloadReport
