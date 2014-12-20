@@ -28,7 +28,7 @@ object MavenRepositoryResolver {
   val CLASSIFIER_ATTRIBUTE = "e:classifier"
 }
 
-class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) extends AbstractResolver {
+class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) extends AbstractResolver {
   setName(repo.name)
 
   private val system = MavenRepositorySystemFactory.newRepositorySystemImpl

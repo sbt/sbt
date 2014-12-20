@@ -330,6 +330,8 @@ class MakePom(val log: Logger) {
       val repositories = if (includeAll) allResolvers(settings) else resolvers(settings.getDefaultResolver)
       val mavenRepositories =
         repositories.flatMap {
+          case m: org.apache.ivy.plugins.resolver.MavenRepositoryResolver if m.repo.root != DefaultMavenRepository.root =>
+            MavenRepository(m.repo.name, m.repo.root) :: Nil
           case m: IBiblioResolver if m.isM2compatible && m.getRoot != DefaultMavenRepository.root =>
             MavenRepository(m.getName, m.getRoot) :: Nil
           case _ => Nil
