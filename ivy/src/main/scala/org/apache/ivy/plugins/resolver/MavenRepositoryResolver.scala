@@ -275,8 +275,9 @@ class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) 
 
   def getConfiguration(classifier: String): String =
     classifier match {
-      case null  => "master"
-      case other => other
+      case "sources" => "sources"
+      case "javadoc" => "javadoc"
+      case other     => "master"
     }
 
   override def commitPublishTransaction(): Unit = {
