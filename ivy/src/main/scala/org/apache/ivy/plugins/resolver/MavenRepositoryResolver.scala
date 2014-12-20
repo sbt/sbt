@@ -45,6 +45,9 @@ class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) 
   private def aetherCoordsFromMrid(mrid: ModuleRevisionId): String = s"${mrid.getOrganisation}:${mrid.getName}:${mrid.getRevision}"
   // This grabs the dependency for Ivy.
   override def getDependency(dd: DependencyDescriptor, rd: ResolveData): ResolvedModuleRevision = try {
+    // TODO - Check to see if we're asking for latest.* version, and if so, we should run a latest version query
+    //        first and use that result to return the metadata/final module.
+
     val request = new AetherDescriptorRequest()
     val coords = aetherCoordsFromMrid(dd.getDependencyRevisionId)
     Message.debug(s"Aether about to resolve [$coords] into [${localRepo.getAbsolutePath}]")
@@ -111,6 +114,7 @@ class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) 
       }
 
       // Here we add dependencies.
+
       for (d <- result.getDependencies.asScala) {
         // TODO - Is this correct for changing detection
         val isChanging = d.getArtifact.getVersion.endsWith("-SNAPSHOT")

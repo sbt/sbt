@@ -15,11 +15,12 @@ class MavenResolutionSpec extends BaseIvySpecification {
 
   Resolving a maven dependency should
      resolve transitive maven dependencies                        $resolveTransitiveMavenDependency
+     resolve intransitive maven dependencies                      $resolveIntransitiveMavenDependency
      handle transitive configuration shifts                       $resolveTransitiveConfigurationMavenDependency
      resolve source and doc                                       $resolveSourceAndJavadoc
+     resolve nonstandard (jdk5) classifier                        $resolveNonstandardClassifier
                                                                 """
 
-  // TODO - intransitive dependency resolution.
   // TODO - latest.integration
   // TODO - Check whether maven-metadata.xml is updated on deploy/install
   // TODO - Read lastModified/publicationDate from metadata.xml
@@ -30,7 +31,6 @@ class MavenResolutionSpec extends BaseIvySpecification {
   // TODO - dependency-management / module-confs
   // TODO - dependency-management / pom-classpaths
   // TODO - dependency-management / test-artifact
-  // TODO - dependency-management / make-pom
   // TODO - dependency-management / metadata-only-resolver
   // TODO - dependency-management / pom-advanced
   // TODO - dependency-management / cache-local
@@ -42,8 +42,28 @@ class MavenResolutionSpec extends BaseIvySpecification {
 
   def akkaActor = ModuleID("com.typesafe.akka", "akka-actor_2.11", "2.3.8", Some("compile"))
   def akkaActorTestkit = ModuleID("com.typesafe.akka", "akka-actor-testkit_2.11", "2.3.8", Some("test"))
+  def testngJdk5 = ModuleID("org.testng", "testng", "5.7", Some("compile")).classifier("jdk15")
 
   import ShowLines._
+
+  def resolveNonstandardClassifier = {
+    val m = module(ModuleID("com.example", "foo", "0.1.0", Some("compile")), Seq(testngJdk5), Some("2.10.2"), UpdateOptions())
+    val report = ivyUpdate(m)
+    println(report)
+    val jars =
+      for {
+        conf <- report.configurations
+        if conf.configuration == "compile"
+        m <- conf.modules
+        if m.module.name == "testng"
+        (a, f) <- m.artifacts
+        if a.extension == "jar"
+      } yield f
+    (report.configurations must haveSize(3)) and
+      (jars must haveSize(1))
+    (jars.forall(_.exists) must beTrue)
+
+  }
 
   def resolveTransitiveMavenDependency = {
     val m = module(ModuleID("com.example", "foo", "0.1.0", Some("compile")), Seq(akkaActor), Some("2.10.2"), UpdateOptions())
@@ -64,21 +84,29 @@ class MavenResolutionSpec extends BaseIvySpecification {
   }
 
   def resolveIntransitiveMavenDependency = {
-    val m = module(ModuleID("com.example", "foo", "0.1.0", Some("compile")), Seq(akkaActor.intransitive()), Some("2.10.2"), UpdateOptions())
+    val m = module(ModuleID("com.example", "foo", "0.1.0", Some("compile")), Seq(akkaActorTestkit.intransitive()), Some("2.10.2"), UpdateOptions())
     val report = ivyUpdate(m)
     println(report)
-    val jars =
+    val transitiveJars =
       for {
         conf <- report.configurations
         if conf.configuration == "compile"
         m <- conf.modules
-        if m.module.name == "scala-library"
+        if (m.module.name contains "akka-actor") && !(m.module.name contains "testkit")
+        (a, f) <- m.artifacts
+        if a.extension == "jar"
+      } yield f
+    val directJars =
+      for {
+        conf <- report.configurations
+        if conf.configuration == "compile"
+        m <- conf.modules
+        if (m.module.name contains "akka-actor") && (m.module.name contains "testkit")
         (a, f) <- m.artifacts
         if a.extension == "jar"
       } yield f
     (report.configurations must haveSize(3)) and
-      (jars.forall(_.exists) must beFalse)
-
+      (transitiveJars must beEmpty) and (directJars.forall(_.exists) must beTrue)
   }
 
   def resolveTransitiveConfigurationMavenDependency = {
