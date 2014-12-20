@@ -6,6 +6,7 @@ import org.apache.ivy.core.module.id.{ ModuleId, ArtifactId, ModuleRevisionId }
 import org.apache.ivy.core.report.{ ArtifactDownloadReport, DownloadStatus, MetadataArtifactDownloadReport, DownloadReport }
 import org.apache.ivy.core.resolve.{ ResolvedModuleRevision, ResolveData, DownloadOptions }
 import org.apache.ivy.core.settings.IvySettings
+import org.apache.ivy.plugins.matcher.ExactPatternMatcher
 import org.apache.ivy.plugins.parser.m2.{ PomModuleDescriptorBuilder, ReplaceMavenConfigurationMappings }
 import org.apache.ivy.plugins.resolver.util.ResolvedResource
 import org.apache.ivy.util.Message
@@ -24,6 +25,7 @@ import scala.collection.JavaConverters._
 
 object MavenRepositoryResolver {
   val MAVEN_METADATA_XML = "maven-metadata.xml"
+  val CLASSIFIER_ATTRIBUTE = "e:classifier"
 }
 
 class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) extends AbstractResolver {
@@ -82,25 +84,31 @@ class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) exte
       // We should probably create our own instance with no artifacts in it, and add
       // artifacts based on what was requested *or* have aether try to find them.
       val md = DefaultModuleDescriptor.newDefaultInstance(dd.getDependencyRevisionId)
-
       // Here we add the standard configurations
       for (config <- PomModuleDescriptorBuilder.MAVEN2_CONFIGURATIONS) {
         md.addConfiguration(config)
       }
 
-      /*
-      // Here we add our own artifacts.
-      // TODO - we need to handle maven classifiers
-      val art = new DefaultArtifact(
-        dd.getDependencyRevisionId,
-        new java.util.Date(lastModifiedTime),
-        // TODO - name this based on the name
-        result.getArtifact.getArtifactId,
-        result.getArtifact.getExtension,
-        result.getArtifact.getExtension
-      )
-      md.addArtifact("master", art)
-      */
+      // Here we add in additional artifact requests, which ALLWAYS have to be explicit since
+      // Maven/Aether doesn't include all known artifacts in a pom.xml
+      // TODO - This does not appear to be working correctly.
+      for (requestedArt <- dd.getAllDependencyArtifacts) {
+        getClassifier(requestedArt) match {
+          case null =>
+          // For null scope, we don't need to do it.
+          case scope =>
+            Message.debug(s"Adding additional artifact in $scope, $requestedArt")
+            val mda =
+              new org.apache.ivy.core.module.descriptor.MDArtifact(
+                md,
+                requestedArt.getName,
+                requestedArt.getType,
+                requestedArt.getExt,
+                requestedArt.getUrl,
+                requestedArt.getExtraAttributes)
+            md.addArtifact(getConfiguration(scope), mda)
+        }
+      }
 
       // Here we add dependencies.
       for (d <- result.getDependencies.asScala) {
@@ -114,7 +122,15 @@ class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) exte
         Message.debug(s"Adding maven transitive dependency ${md.getModuleRevisionId} -> ${dd}")
         md.addDependency(dd)
       }
-      // TODO - Dependency management section + dep mediators
+      // Here we use pom.xml Dependency management section to create Ivy dependency mediators.
+      for (d <- result.getManagedDependencies.asScala) {
+        // TODO - For each of these append some kind of dependency mediator.
+        md.addDependencyDescriptorMediator(
+          ModuleId.newInstance(d.getArtifact.getGroupId(), d.getArtifact.getArtifactId()),
+          ExactPatternMatcher.INSTANCE,
+          new OverrideDependencyDescriptorMediator(null, d.getArtifact.getVersion()))
+
+      }
 
       // TODO - Rip out extra attributes
 
@@ -155,9 +171,10 @@ class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) exte
       for (a <- artifacts) yield {
         val request = new AetherArtifactRequest
         val aetherArt =
-          a.getType match {
-            case "jar" => new AetherArtifact(aetherCoordsFromMrid(a.getModuleRevisionId))
-            case other => new AetherArtifact(s"${aetherCoordsFromMrid(a.getModuleRevisionId)}:$other")
+          getClassifier(a) match {
+            case null => new AetherArtifact(aetherCoordsFromMrid(a.getModuleRevisionId))
+            case other => new AetherArtifact(
+              s"${a.getModuleRevisionId.getOrganisation}:${a.getModuleRevisionId.getName}:${a.getExt}:$other:${a.getModuleRevisionId.getRevision}")
           }
         request.setArtifact(aetherArt)
         request.addRepository(aetherRepository)
@@ -167,6 +184,7 @@ class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) exte
       try {
         system.resolveArtifacts(session, requests.toList.asJava).asScala
         for ((result, art) <- system.resolveArtifacts(session, requests.toList.asJava).asScala zip artifacts) {
+          Message.debug(s"Aether resolved artifact: $result")
           val adr = new ArtifactDownloadReport(art)
           adr.setDownloadDetails(result.toString)
           // TODO - Fill this out with a real estimate on time...
@@ -228,11 +246,34 @@ class MavenRepositoryResolver(repo: MavenRepository, settings: IvySettings) exte
 
   def getClassifier(art: Artifact): String = {
     art.getType match {
-      case "doc" => "javadoc"
-      case "src" => "sources"
-      case _     => null
+      case "doc" | "javadoc" => "javadoc"
+      case "src" | "source"  => "sources"
+      case _ =>
+        // Look for extra attributes
+        art.getExtraAttribute(MavenRepositoryResolver.CLASSIFIER_ATTRIBUTE) match {
+          case null => null
+          case c    => c
+        }
     }
   }
+
+  def getClassifier(art: org.apache.ivy.core.module.descriptor.DependencyArtifactDescriptor): String =
+    art.getType match {
+      case "doc" | "javadoc" => "javadoc"
+      case "src" | "source"  => "sources"
+      case _ =>
+        // Look for extra attributes
+        art.getExtraAttribute(MavenRepositoryResolver.CLASSIFIER_ATTRIBUTE) match {
+          case null => null
+          case c    => c
+        }
+    }
+
+  def getConfiguration(classifier: String): String =
+    classifier match {
+      case null  => "master"
+      case other => other
+    }
 
   override def commitPublishTransaction(): Unit = {
     // TODO - actually send all artifacts to aether

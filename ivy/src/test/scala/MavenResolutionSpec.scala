@@ -16,6 +16,7 @@ class MavenResolutionSpec extends BaseIvySpecification {
   Resolving a maven dependency should
      resovle transitive maven dependencies                        $resolveTransitiveMavenDependency
      handle transitive configuration shifts                       $resolveTransitiveConfigurationMavenDependency
+     resolve source and doc                                       $resolveSourceAndJavadoc
                                                                 """
 
   def akkaActor = ModuleID("com.typesafe.akka", "akka-actor_2.11", "2.3.8", Some("compile"))
@@ -57,6 +58,28 @@ class MavenResolutionSpec extends BaseIvySpecification {
     (report.configurations.size must_== 3) and
       (jars.forall(_.exists) must beTrue)
 
+  }
+
+  def resolveSourceAndJavadoc = {
+    val m = module(
+      ModuleID("com.example", "foo", "0.1.0", Some("sources")),
+      Seq(akkaActor.artifacts(Artifact(akkaActor.name, "javadoc"), Artifact(akkaActor.name, "sources"))),
+      Some("2.10.2"),
+      UpdateOptions()
+    )
+    val report = ivyUpdate(m)
+    val jars =
+      for {
+        conf <- report.configurations
+        //  We actually injected javadoc/sources into the compile scope, due to how we did the request.
+        //  SO, we report that here.
+        if conf.configuration == "compile"
+        m <- conf.modules
+        (a, f) <- m.artifacts
+        if (f.getName contains "sources") || (f.getName contains "javadoc")
+      } yield f
+    (report.configurations must haveSize(3)) and
+      (jars must haveSize(2))
   }
 
 }
