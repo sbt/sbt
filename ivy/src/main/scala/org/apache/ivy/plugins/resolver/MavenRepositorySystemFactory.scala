@@ -7,7 +7,7 @@ import org.apache.ivy.plugins.repository.url.URLResource
 import org.apache.ivy.util.Message
 import org.apache.ivy.util.url.URLHandlerRegistry
 import org.eclipse.aether.artifact.Artifact
-import org.eclipse.aether.impl.{ RepositoryConnectorProvider, DefaultServiceLocator }
+import org.eclipse.aether.impl.{ ArtifactDescriptorReader, RepositoryConnectorProvider, DefaultServiceLocator }
 import org.eclipse.aether.metadata.Metadata
 import org.eclipse.aether.spi.connector.RepositoryConnectorFactory
 import org.eclipse.aether.spi.connector.layout.{ RepositoryLayoutProvider, RepositoryLayout }
@@ -19,7 +19,7 @@ import org.eclipse.aether.{
 
 import org.eclipse.aether.repository.{ RemoteRepository, LocalRepository }
 import org.eclipse.aether.RepositorySystemSession
-import org.apache.maven.repository.internal.MavenRepositorySystemUtils
+import org.apache.maven.repository.internal.{ SbtArtifactDescriptorReader, MavenRepositorySystemUtils }
 import org.eclipse.aether.spi.connector.transport._
 import org.eclipse.aether.connector.basic.BasicRepositoryConnectorFactory
 import java.io.File
@@ -38,6 +38,9 @@ object MavenRepositorySystemFactory {
     locator.addService(classOf[TransporterFactory], classOf[MyTransportFactory])
     // This connects the download mechanism to our transports.  Why is it needed? no clue.
     locator.addService(classOf[RepositoryConnectorFactory], classOf[BasicRepositoryConnectorFactory])
+
+    // Add our hook for parsing pom.xml files.
+    locator.setService(classOf[ArtifactDescriptorReader], classOf[SbtArtifactDescriptorReader])
     // Finally, use the DI to create our repository system.
     locator.getService(classOf[RepositorySystem])
   }

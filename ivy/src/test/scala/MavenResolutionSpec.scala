@@ -1,12 +1,6 @@
 package sbt
 
 import org.specs2._
-import sbt.BaseIvySpecification
-import sbt.EvictionWarningOptions
-import sbt.Level
-import sbt.ModuleID
-import sbt.ShowLines
-import sbt.UpdateOptions
 
 class MavenResolutionSpec extends BaseIvySpecification {
   def is = args(sequential = true) ^ s2"""
@@ -19,37 +13,62 @@ class MavenResolutionSpec extends BaseIvySpecification {
      handle transitive configuration shifts                       $resolveTransitiveConfigurationMavenDependency
      resolve source and doc                                       $resolveSourceAndJavadoc
      resolve nonstandard (jdk5) classifier                        $resolveNonstandardClassifier
+     Fail if JAR artifact is not found w/ POM                     $failIfMainArtifactMissing
+     Resolve pom artifact dependencies                            $resolvePomArtifactAndDependencies
                                                                 """
 
   // TODO - latest.integration
   // TODO - Check whether maven-metadata.xml is updated on deploy/install
   // TODO - Read lastModified/publicationDate from metadata.xml
   //
-  // TODO - dependency-management/artifact
-  // TODO - dependency-management/configurations
-  // TODO - dependency-management / cached-resolution-classifier
-  // TODO - dependency-management / module-confs
-  // TODO - dependency-management / pom-classpaths
-  // TODO - dependency-management / test-artifact
-  // TODO - dependency-management / metadata-only-resolver
-  // TODO - dependency-management / pom-advanced
-  // TODO - dependency-management / cache-local
-  // TODO - dependency-management / force
-  // TODO - dependency-management / classifier  - looks like jdk15 classifier + configuration needs to be default.
-  // TODO - dependency-management / mvn-local
-  // TODO - dependency-management / cached-resolution-exclude
-  //
-
+  /* Failing tests -
+[error] 	dependency-management / exclude-transitive
+[error] 	dependency-management / latest-local-plugin
+[error] 	dependency-management / artifact
+[error] 	dependency-management / cached-resolution-classifier
+[error] 	dependency-management / cache-classifiers
+[error] 	dependency-management / ext-pom-classifier
+[error] 	dependency-management / pom-classpaths
+[error] 	dependency-management / metadata-only-resolver
+[error] 	dependency-management / pom-advanced
+[error] 	dependency-management / extra
+[error] 	dependency-management / cache-local
+[error] 	dependency-management / force
+[error] 	dependency-management / mvn-local
+[error] 	dependency-management / cached-resolution-exclude
+  */
   def akkaActor = ModuleID("com.typesafe.akka", "akka-actor_2.11", "2.3.8", Some("compile"))
   def akkaActorTestkit = ModuleID("com.typesafe.akka", "akka-actor-testkit_2.11", "2.3.8", Some("test"))
   def testngJdk5 = ModuleID("org.testng", "testng", "5.7", Some("compile")).classifier("jdk15")
+  def jmxri = ModuleID("com.sun.jmx", "jmxri", "1.2.1", Some("compile"))
+  def scalaLibraryAll = ModuleID("org.scala-lang", "scala-library-all", "2.11.4", Some("compile"))
 
   import ShowLines._
+
+  def resolvePomArtifactAndDependencies = {
+    val m = module(ModuleID("com.example", "foo", "0.1.0", Some("compile")), Seq(scalaLibraryAll), Some("2.10.2"), UpdateOptions())
+    val report = ivyUpdate(m)
+    val jars =
+      for {
+        conf <- report.configurations
+        if conf.configuration == "compile"
+        m <- conf.modules
+        if (m.module.name == "scala-library") || (m.module.name contains "parser")
+        _ = System.err.println(s"Module ${m.module} has ${m.artifacts.size} artifacts")
+        (a, f) <- m.artifacts
+        if a.extension == "jar"
+      } yield f
+    jars must haveSize(2)
+  }
+
+  def failIfMainArtifactMissing = {
+    val m = module(ModuleID("com.example", "foo", "0.1.0", Some("compile")), Seq(jmxri), Some("2.10.2"), UpdateOptions())
+    ivyUpdate(m) must throwAn[Exception]
+  }
 
   def resolveNonstandardClassifier = {
     val m = module(ModuleID("com.example", "foo", "0.1.0", Some("compile")), Seq(testngJdk5), Some("2.10.2"), UpdateOptions())
     val report = ivyUpdate(m)
-    println(report)
     val jars =
       for {
         conf <- report.configurations
@@ -68,7 +87,6 @@ class MavenResolutionSpec extends BaseIvySpecification {
   def resolveTransitiveMavenDependency = {
     val m = module(ModuleID("com.example", "foo", "0.1.0", Some("compile")), Seq(akkaActor), Some("2.10.2"), UpdateOptions())
     val report = ivyUpdate(m)
-    println(report)
     val jars =
       for {
         conf <- report.configurations
@@ -79,6 +97,7 @@ class MavenResolutionSpec extends BaseIvySpecification {
         if a.extension == "jar"
       } yield f
     (report.configurations must haveSize(3)) and
+      (jars must not(beEmpty)) and
       (jars.forall(_.exists) must beTrue)
 
   }
@@ -86,7 +105,6 @@ class MavenResolutionSpec extends BaseIvySpecification {
   def resolveIntransitiveMavenDependency = {
     val m = module(ModuleID("com.example", "foo", "0.1.0", Some("compile")), Seq(akkaActorTestkit.intransitive()), Some("2.10.2"), UpdateOptions())
     val report = ivyUpdate(m)
-    println(report)
     val transitiveJars =
       for {
         conf <- report.configurations
@@ -112,7 +130,6 @@ class MavenResolutionSpec extends BaseIvySpecification {
   def resolveTransitiveConfigurationMavenDependency = {
     val m = module(ModuleID("com.example", "foo", "0.1.0", Some("compile")), Seq(akkaActorTestkit), Some("2.10.2"), UpdateOptions())
     val report = ivyUpdate(m)
-    println(report)
     val jars =
       for {
         conf <- report.configurations
@@ -123,6 +140,7 @@ class MavenResolutionSpec extends BaseIvySpecification {
         if a.extension == "jar"
       } yield f
     (report.configurations.size must_== 3) and
+      (jars must not(beEmpty)) and
       (jars.forall(_.exists) must beTrue)
 
   }
