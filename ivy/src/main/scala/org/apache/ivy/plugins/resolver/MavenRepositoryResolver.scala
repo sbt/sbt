@@ -46,7 +46,7 @@ class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) 
 
   private val system = MavenRepositorySystemFactory.newRepositorySystemImpl
   // TODO - Maybe create this right before resolving, rathen than every time.
-  private val localRepo = new java.io.File(settings.getDefaultIvyUserDir, s"maven-cache")
+  private val localRepo = new java.io.File(settings.getDefaultIvyUserDir, s"maven-cache/${repo.name}")
   sbt.IO.createDirectory(localRepo)
   private val session = MavenRepositorySystemFactory.newSessionImpl(system, localRepo)
   // TODO - We may need a custom layout for sbt-plugins.
@@ -90,7 +90,6 @@ class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) 
       }
     try metadataResultOpt match {
       case Some(md) if md.isResolved =>
-        Message.warn(s"Maven metadata result: $md")
         import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Reader
         import org.codehaus.plexus.util.ReaderFactory
         val readMetadata = {
@@ -111,8 +110,6 @@ class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) 
             lu <- Option(v.getLastUpdated)
             d <- MavenRepositoryResolver.parseTimeString(lu)
           } yield d
-        Message.warn(s"Snapshot timestamp = ${timestampOpt}")
-        Message.warn(s"Last updated = ${lastUpdatedOpt}")
         // TODO - Only look at timestamp *IF* the version is for a snapshot.
         timestampOpt orElse lastUpdatedOpt
       case _ => None
@@ -123,7 +120,7 @@ class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) 
   override def getDependency(dd: DependencyDescriptor, rd: ResolveData): ResolvedModuleRevision = try {
     // TODO - Check to see if we're asking for latest.* version, and if so, we should run a latest version query
     //        first and use that result to return the metadata/final module.
-    Message.warn(s"Requesting conf [${dd.getModuleConfigurations.mkString(",")}] from Aether module ${dd.getDependencyRevisionId} in resolver ${getName}")
+    Message.debug(s"Requesting conf [${dd.getModuleConfigurations.mkString(",")}] from Aether module ${dd.getDependencyRevisionId} in resolver ${getName}")
 
     val request = new AetherDescriptorRequest()
     val coords = aetherCoordsFromMrid(dd.getDependencyRevisionId)
@@ -173,7 +170,7 @@ class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) 
 
       // Here we look into the artifacts specified from the dependency descriptor *and* those that are defaulted,
       // and append them to the appropriate configurations.
-      addArtifactsFromPom(dd, packaging, md)
+      addArtifactsFromPom(dd, packaging, md, lastModifiedTime)
       // Here we add dependencies.
       addDependenciesFromAether(result, md)
       // Here we use pom.xml Dependency management section to create Ivy dependency mediators.
@@ -183,6 +180,11 @@ class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) 
       // TODO - Rip out extra attributes
       // TODO - is this the correct way to add extra info?
       md.addExtraInfo(SbtExtraProperties.MAVEN_PACKAGING_KEY, packaging)
+      Message.info(s"Setting publication date to ${new Date(lastModifiedTime)}")
+      // TODO - Figure out the differences between these items.
+      md.setPublicationDate(new Date(lastModifiedTime))
+      md.setLastModified(lastModifiedTime)
+      md.setResolvedPublicationDate(new Date(lastModifiedTime))
       // TODO - Figure our rd updates
       md.check()
       md
@@ -198,12 +200,12 @@ class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) 
     new ResolvedModuleRevision(this, this, desc, madr, false /* Force */ )
   } catch {
     case e: org.eclipse.aether.resolution.ArtifactDescriptorException =>
-      Message.warn(s"Failed to read descriptor ${dd} from ${repo}, ${e.getMessage}")
+      Message.debug(s"Failed to read descriptor ${dd} from ${repo}, ${e.getMessage}")
       null
   }
 
   /** Determines which artifacts are associated with this maven module and appends them to the descriptor. */
-  def addArtifactsFromPom(dd: DependencyDescriptor, packaging: String, md: DefaultModuleDescriptor) {
+  def addArtifactsFromPom(dd: DependencyDescriptor, packaging: String, md: DefaultModuleDescriptor, lastModifiedTime: Long) {
     Message.debug(s"Calculating artifacts for ${dd.getDependencyId} w/ packaging $packaging")
     // Here we add in additional artifact requests, which ALLWAYS have to be explicit since
     // Maven/Aether doesn't include all known artifacts in a pom.xml
@@ -222,7 +224,7 @@ class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) 
             val result = system.resolveArtifact(session, request)
             if (result.isResolved) {
               val defaultArt =
-                new DefaultArtifact(md.getModuleRevisionId, new Date, artifactId, packaging, "jar")
+                new DefaultArtifact(md.getModuleRevisionId, new Date(lastModifiedTime), artifactId, packaging, "jar")
               md.addArtifact("master", defaultArt)
             }
           } catch {
@@ -232,7 +234,7 @@ class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) 
         case JarPackaging() =>
           // Assume for now everything else is a jar.
           val defaultArt =
-            new DefaultArtifact(md.getModuleRevisionId, new Date, artifactId, packaging, "jar")
+            new DefaultArtifact(md.getModuleRevisionId, new Date(lastModifiedTime), artifactId, packaging, "jar")
           md.addArtifact("master", defaultArt)
         case _ => // Ignore, we have no idea what this artifact is.
       }
@@ -308,8 +310,8 @@ class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) 
 
   // This method appears to be deprecated/unused in all of Ivy so we do not implement it.
   override def findIvyFileRef(dd: DependencyDescriptor, rd: ResolveData): ResolvedResource = {
-    Message.error("Looking for ivy file ref, method not implemented!")
-    throw new NoSuchMethodError("findIvyFileRef no longer used in Ivy, and not implemented.")
+    Message.error(s"Looking for ivy file ref, method not implemented!  MavenRepositoryResolver($getName) will always return null.")
+    null
   }
 
   private def getPackagingFromPomProperties(props: java.util.Map[String, AnyRef]): String =

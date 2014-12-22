@@ -4,6 +4,7 @@ import Path._, Configurations._
 import java.io.File
 import org.specs2._
 import cross.CrossVersionUtil
+import sbt.ivyint.SbtChainResolver
 
 trait BaseIvySpecification extends Specification {
   def currentBase: File = new File(".")
@@ -36,10 +37,12 @@ trait BaseIvySpecification extends Specification {
 
   def resolvers: Seq[Resolver] = Seq(DefaultMavenRepository)
 
+  def chainResolver = ChainedResolver("sbt-chain", resolvers)
+
   def mkIvyConfiguration(uo: UpdateOptions): IvyConfiguration = {
     val paths = new IvyPaths(currentBase, Some(currentTarget))
     val other = Nil
-    val moduleConfs = resolvers map (r => ModuleConfiguration("*", r))
+    val moduleConfs = Seq(ModuleConfiguration("*", chainResolver))
     val off = false
     val check = Nil
     val resCacheDir = currentTarget / "resolution-cache"
