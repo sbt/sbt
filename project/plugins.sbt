@@ -1,7 +1,3 @@
-resolvers += "less is" at "http://repo.lessis.me"
+addSbtPlugin("net.virtual-void" % "sbt-cross-building" % "0.8.1")
 
-addSbtPlugin("me.lessis" % "ls-sbt" % "0.1.2")
-
-resolvers += "Coda Hale's Repo" at "http://repo.codahale.com"
-
-addSbtPlugin("net.virtual-void" % "sbt-cross-building" % "0.8.0-RC1")
+addSbtPlugin("com.typesafe.sbt" % "sbt-scalariform" % "1.2.1")
