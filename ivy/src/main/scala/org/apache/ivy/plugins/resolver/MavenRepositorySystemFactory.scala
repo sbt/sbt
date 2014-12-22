@@ -48,6 +48,12 @@ object MavenRepositorySystemFactory {
     val session = MavenRepositorySystemUtils.newSession()
     val localRepo = new LocalRepository(localRepoDir)
     session setLocalRepositoryManager (system.newLocalRepositoryManager(session, localRepo))
+    // Here we set a descriptor policy that FORCES the pom.xml to exist, otherwise Ivy's resolution
+    // algorithm freaks out.   What we could do is also do the ivy lame-thing of checking for a JAR
+    // instead of a pom.xml, but let's see if this is actually a problem in practice.
+    val descriptorPolicy = new org.eclipse.aether.util.repository.SimpleArtifactDescriptorPolicy(
+      /* ignoreMissing */ false, /* ignoreInvalid. */ true)
+    session.setArtifactDescriptorPolicy(descriptorPolicy)
     session
   }
 

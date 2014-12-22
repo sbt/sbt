@@ -15,29 +15,31 @@ class MavenResolutionSpec extends BaseIvySpecification {
      resolve nonstandard (jdk5) classifier                        $resolveNonstandardClassifier
      Resolve pom artifact dependencies                            $resolvePomArtifactAndDependencies
      Fail if JAR artifact is not found w/ POM                     $failIfMainArtifactMissing
+     Fail if POM.xml is not found                                 $failIfPomMissing
+     resolve publication date for -SNAPSHOT                       $resolveSnapshotPubDate
                                                                 """
 
+  // TODO - Check that if we have two repositories, where ONE has just a pom and ONE has pom + jar, that hte pom + jar is used.
+  //        Note - This may be a fundamental issue with Aether vs. Ivy.   Ideally we don't want to make a network "existence"
+  //               check EVERY time we grab something from the cache.
+  //               Additionally, we should find a way to test NOT hititng the network for things like
+  //               checking if a JAR is associated with pom-packaged artifact.
   // TODO - latest.integration
   // TODO - Check whether maven-metadata.xml is updated on deploy/install
   // TODO - Read lastModified/publicationDate from metadata.xml
   //
   /* Failing tests -
-[error] 	dependency-management / cached-resolution-force
-[error] 	dependency-management / exclude-transitive
 [error] 	dependency-management / latest-local-plugin
-[error] 	dependency-management / inline-dependencies-a
 [error] 	dependency-management / artifact
+[error] 	dependency-management / publish-to-maven-local-file
 [error] 	dependency-management / cached-resolution-classifier
-[error] 	dependency-management / publish-local
 [error] 	dependency-management / cache-classifiers
-[error] 	dependency-management / t468
-[error] 	dependency-management / ext-pom-classifier
-[error] 	dependency-management / pom-classpaths
+[error] 	dependency-management / pom-parent-pom
+[error] 	dependency-management / cross-ivy-maven
 [error] 	dependency-management / metadata-only-resolver
 [error] 	dependency-management / pom-advanced
 [error] 	dependency-management / extra
 [error] 	dependency-management / cache-local
-[error] 	dependency-management / force
 [error] 	dependency-management / mvn-local
   */
   def akkaActor = ModuleID("com.typesafe.akka", "akka-actor_2.11", "2.3.8", Some("compile"))
@@ -46,7 +48,27 @@ class MavenResolutionSpec extends BaseIvySpecification {
   def jmxri = ModuleID("com.sun.jmx", "jmxri", "1.2.1", Some("compile"))
   def scalaLibraryAll = ModuleID("org.scala-lang", "scala-library-all", "2.11.4", Some("compile"))
 
+  // TODO - This snapshot and resolver should be something we own/control so it doesn't disappear on us.
+  def testSnapshot = ModuleID("com.typesafe", "config", "0.4.9-SNAPSHOT", Some("compile"))
+  val SnapshotResolver = MavenRepository("some-snapshots", "https://oss.sonatype.org/content/repositories/snapshots/")
+
+  override def resolvers = Seq(DefaultMavenRepository, SnapshotResolver)
+
   import ShowLines._
+
+  def resolveSnapshotPubDate = {
+    val m = module(ModuleID("com.example", "foo", "0.1.0", Some("compile")), Seq(testSnapshot), Some("2.10.2"), UpdateOptions().withLatestSnapshots(true))
+    val report = ivyUpdate(m)
+    val pubTime =
+      for {
+        conf <- report.configurations
+        if conf.configuration == "compile"
+        m <- conf.modules
+        if m.module.revision endsWith "-SNAPSHOT"
+        date <- m.publicationDate
+      } yield date
+    (pubTime must haveSize(1))
+  }
 
   def resolvePomArtifactAndDependencies = {
     val m = module(ModuleID("com.example", "foo", "0.1.0", Some("compile")), Seq(scalaLibraryAll), Some("2.10.2"), UpdateOptions())
@@ -63,26 +85,15 @@ class MavenResolutionSpec extends BaseIvySpecification {
     jars must haveSize(2)
   }
 
+  def failIfPomMissing = {
+    // TODO - we need the jar to not exist too.
+    val m = module(ModuleID("com.example", "foo", "0.1.0", Some("compile")), Seq(ModuleID("org.scala-sbt", "does-not-exist", "1.0", Some("compile"))), Some("2.10.2"), UpdateOptions())
+    ivyUpdate(m) must throwAn[Exception]
+  }
+
   def failIfMainArtifactMissing = {
     val m = module(ModuleID("com.example", "foo", "0.1.0", Some("compile")), Seq(jmxri), Some("2.10.2"), UpdateOptions())
-    def doTest = {
-      val result = ivyUpdate(m)
-      for {
-        c <- result.configurations
-        m <- c.modules
-      } {
-        System.err.println(s"DEBUGME: Resolution report for ${m.module} in ${c.configuration}")
-        for (p <- m.problem)
-          System.err.println(s"  - issue: ${p}")
-        for (a <- m.missingArtifacts) {
-          System.err.println(s"  - missing: $a")
-        }
-        for ((a, f) <- m.artifacts) {
-          System.err.println(s"  - downloaded: $a at $f")
-        }
-      }
-    }
-    doTest must throwAn[Exception]
+    ivyUpdate(m) must throwAn[Exception]
   }
 
   def resolveNonstandardClassifier = {

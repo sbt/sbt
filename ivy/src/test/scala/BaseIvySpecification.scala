@@ -34,15 +34,16 @@ trait BaseIvySpecification extends Specification {
     new ivySbt.Module(moduleSetting)
   }
 
+  def resolvers: Seq[Resolver] = Seq(DefaultMavenRepository)
+
   def mkIvyConfiguration(uo: UpdateOptions): IvyConfiguration = {
     val paths = new IvyPaths(currentBase, Some(currentTarget))
-    val rs = Seq(DefaultMavenRepository)
     val other = Nil
-    val moduleConfs = Seq(ModuleConfiguration("*", DefaultMavenRepository))
+    val moduleConfs = resolvers map (r => ModuleConfiguration("*", r))
     val off = false
     val check = Nil
     val resCacheDir = currentTarget / "resolution-cache"
-    new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, None, check, Some(resCacheDir), uo, log)
+    new InlineIvyConfiguration(paths, resolvers, other, moduleConfs, off, None, check, Some(resCacheDir), uo, log)
   }
 
   def ivyUpdateEither(module: IvySbt#Module): Either[UnresolvedWarning, UpdateReport] = {

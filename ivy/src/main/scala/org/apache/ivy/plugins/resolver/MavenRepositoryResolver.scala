@@ -15,7 +15,7 @@ import org.apache.ivy.util.Message
 import org.apache.maven.repository.internal.SbtExtraProperties
 import org.eclipse.aether.artifact.{ DefaultArtifact => AetherArtifact }
 import org.eclipse.aether.metadata.{ Metadata, DefaultMetadata }
-import org.eclipse.aether.resolution.{ ArtifactDescriptorRequest => AetherDescriptorRequest, ArtifactDescriptorResult => AetherDescriptorResult, MetadataRequest => AetherMetadataRequest, ArtifactRequest => AetherArtifactRequest, ArtifactResolutionException }
+import org.eclipse.aether.resolution.{ ArtifactDescriptorRequest => AetherDescriptorRequest, ArtifactDescriptorResult => AetherDescriptorResult, MetadataRequest => AetherMetadataRequest, ArtifactRequest => AetherArtifactRequest, ArtifactDescriptorPolicyRequest, ArtifactResolutionException }
 import org.eclipse.aether.deployment.{ DeployRequest => AetherDeployRequest }
 import org.apache.ivy.core.cache.ArtifactOrigin
 import sbt.MavenRepository
@@ -30,6 +30,15 @@ object MavenRepositoryResolver {
   object JarPackaging {
     def unapply(in: String): Boolean = JarPackagings.contains(in)
   }
+
+  // Example: 2014 12 18  09 33 56
+  val LAST_UPDATE_FORMAT = new java.text.SimpleDateFormat("yyyyMMddhhmmss")
+  def parseTimeString(in: String): Option[Long] =
+    try Some(LAST_UPDATE_FORMAT.parse(in).getTime)
+    catch {
+      case _: java.text.ParseException => None
+    }
+
 }
 
 class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) extends AbstractResolver {
@@ -40,6 +49,7 @@ class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) 
   private val localRepo = new java.io.File(settings.getDefaultIvyUserDir, s"maven-cache")
   sbt.IO.createDirectory(localRepo)
   private val session = MavenRepositorySystemFactory.newSessionImpl(system, localRepo)
+  // TODO - We may need a custom layout for sbt-plugins.
   private val aetherRepository = {
     new org.eclipse.aether.repository.RemoteRepository.Builder(repo.name, "default", repo.root).build()
   }
@@ -63,11 +73,57 @@ class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) 
     } md.addLicense(new License(name, url))
   }
 
+  private def getPublicationTime(mrid: ModuleRevisionId): Option[Long] = {
+    val metadataRequest = new AetherMetadataRequest()
+    metadataRequest.setMetadata(
+      new DefaultMetadata(
+        mrid.getOrganisation,
+        mrid.getName,
+        mrid.getRevision,
+        MavenRepositoryResolver.MAVEN_METADATA_XML,
+        Metadata.Nature.RELEASE_OR_SNAPSHOT))
+    metadataRequest.setRepository(aetherRepository)
+    val metadataResultOpt =
+      try system.resolveMetadata(session, java.util.Arrays.asList(metadataRequest)).asScala.headOption
+      catch {
+        case e: org.eclipse.aether.resolution.ArtifactResolutionException => None
+      }
+    try metadataResultOpt match {
+      case Some(md) if md.isResolved =>
+        Message.warn(s"Maven metadata result: $md")
+        import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Reader
+        import org.codehaus.plexus.util.ReaderFactory
+        val readMetadata = {
+          val reader = ReaderFactory.newXmlReader(md.getMetadata.getFile)
+          try new MetadataXpp3Reader().read(reader, false)
+          finally reader.close()
+        }
+        val timestampOpt =
+          for {
+            v <- Option(readMetadata.getVersioning)
+            sp <- Option(v.getSnapshot)
+            ts <- Option(sp.getTimestamp)
+            t <- MavenRepositoryResolver.parseTimeString(ts)
+          } yield t
+        val lastUpdatedOpt =
+          for {
+            v <- Option(readMetadata.getVersioning)
+            lu <- Option(v.getLastUpdated)
+            d <- MavenRepositoryResolver.parseTimeString(lu)
+          } yield d
+        Message.warn(s"Snapshot timestamp = ${timestampOpt}")
+        Message.warn(s"Last updated = ${lastUpdatedOpt}")
+        // TODO - Only look at timestamp *IF* the version is for a snapshot.
+        timestampOpt orElse lastUpdatedOpt
+      case _ => None
+    }
+  }
+
   // This grabs the dependency for Ivy.
   override def getDependency(dd: DependencyDescriptor, rd: ResolveData): ResolvedModuleRevision = try {
     // TODO - Check to see if we're asking for latest.* version, and if so, we should run a latest version query
     //        first and use that result to return the metadata/final module.
-    Message.debug(s"Requesting conf [${dd.getModuleConfigurations.mkString(",")}] from Aether module ${dd.getDependencyRevisionId}")
+    Message.warn(s"Requesting conf [${dd.getModuleConfigurations.mkString(",")}] from Aether module ${dd.getDependencyRevisionId} in resolver ${getName}")
 
     val request = new AetherDescriptorRequest()
     val coords = aetherCoordsFromMrid(dd.getDependencyRevisionId)
@@ -95,17 +151,8 @@ class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) 
       catch {
         case e: org.eclipse.aether.resolution.ArtifactResolutionException => None
       }
-    // TODO - better pub date.
-    val lastModifiedTime = metadataResultOpt match {
-      case Some(md) if md.isResolved =>
-        Message.warn(s"Maven metadata result: $metadataRequest")
-        for (prop <- md.getMetadata.getProperties.asScala) {
-          // TODO - figure out how to read these.
-          Message.warn(s"$coords - ${prop._1}=${prop._2}")
-        }
-        0L
-      case _ => 0L
-    }
+    // TODO - better pub date if we have no metadata.
+    val lastModifiedTime = getPublicationTime(dd.getDependencyRevisionId) getOrElse 0L
 
     // Construct a new Ivy module descriptor
     val desc: ModuleDescriptor = {
