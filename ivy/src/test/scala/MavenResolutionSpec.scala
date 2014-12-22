@@ -26,20 +26,11 @@ class MavenResolutionSpec extends BaseIvySpecification {
   //               checking if a JAR is associated with pom-packaged artifact.
   // TODO - latest.integration
   // TODO - Check whether maven-metadata.xml is updated on deploy/install
-  // TODO - Read lastModified/publicationDate from metadata.xml
   //
   /* Failing tests -
-[error] 	dependency-management / latest-local-plugin
-[error] 	dependency-management / artifact
-[error] 	dependency-management / publish-to-maven-local-file
 [error] 	dependency-management / cached-resolution-classifier
 [error] 	dependency-management / cache-classifiers
-[error] 	dependency-management / pom-parent-pom
-[error] 	dependency-management / cross-ivy-maven
 [error] 	dependency-management / metadata-only-resolver
-[error] 	dependency-management / pom-advanced
-[error] 	dependency-management / extra
-[error] 	dependency-management / cache-local
 [error] 	dependency-management / mvn-local
   */
   def akkaActor = ModuleID("com.typesafe.akka", "akka-actor_2.11", "2.3.8", Some("compile"))

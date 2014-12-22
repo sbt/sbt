@@ -46,6 +46,7 @@ class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) 
 
   private val system = MavenRepositorySystemFactory.newRepositorySystemImpl
   // TODO - Maybe create this right before resolving, rathen than every time.
+  // TODO - linux friendly name...
   private val localRepo = new java.io.File(settings.getDefaultIvyUserDir, s"maven-cache/${repo.name}")
   sbt.IO.createDirectory(localRepo)
   private val session = MavenRepositorySystemFactory.newSessionImpl(system, localRepo)
