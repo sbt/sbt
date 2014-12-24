@@ -334,7 +334,8 @@ object Resolver {
       loadHomeFromSettings(() => new File(new File(System.getenv("M2_HOME")), "conf/settings.xml")) getOrElse
       new File(Path.userHome, ".m2/repository")
   }
-  def publishMavenLocal = Resolver.file("publish-m2-local", mavenLocalDir)
+  // TODO - should this just be the *exact* same as mavenLocal?  probably...
+  def publishMavenLocal = MavenRepository("publish-m2-local", mavenLocalDir.toURI.toString)
   def mavenLocal = MavenRepository("Maven2 Local", mavenLocalDir.toURI.toString)
   def defaultLocal = defaultUserFileRepository("local")
   def defaultShared = defaultUserFileRepository("shared")

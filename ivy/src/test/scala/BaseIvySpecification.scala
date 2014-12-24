@@ -4,6 +4,7 @@ import Path._, Configurations._
 import java.io.File
 import org.specs2._
 import cross.CrossVersionUtil
+import sbt.PublishConfiguration
 import sbt.ivyint.SbtChainResolver
 
 trait BaseIvySpecification extends Specification {
@@ -62,4 +63,18 @@ trait BaseIvySpecification extends Specification {
       case Left(w) =>
         throw w.resolveException
     }
+
+  def mkPublishConfiguration(resolver: Resolver, artifacts: Map[Artifact, File]): PublishConfiguration = {
+    new PublishConfiguration(
+      ivyFile = None,
+      resolverName = resolver.name,
+      artifacts = artifacts,
+      checksums = Seq(),
+      logging = UpdateLogging.Full,
+      overwrite = true)
+  }
+
+  def ivyPublish(module: IvySbt#Module, config: PublishConfiguration) = {
+    IvyActions.publish(module, config, log)
+  }
 }

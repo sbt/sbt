@@ -379,14 +379,12 @@ class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) 
   private var currentTransaction: Option[PublishTransaction] = None
 
   override def beginPublishTransaction(module: ModuleRevisionId, overwrite: Boolean): Unit = {
-    // TODO - Set up something to track all artifacts.
     currentTransaction match {
       case Some(t) => throw new IllegalStateException(s"Publish Transaction already open for [$getName]")
       case None    => currentTransaction = Some(PublishTransaction(module, Nil))
     }
   }
   override def abortPublishTransaction(): Unit = {
-    // TODO - Delete all published jars
     currentTransaction = None
   }
 
@@ -431,7 +429,7 @@ class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) 
     // TODO - actually send all artifacts to aether
     currentTransaction match {
       case Some(t) =>
-        Message.debug(s"Publishing module ${t.module}")
+        Message.debug(s"Publishing module ${t.module}, with artifact count = ${t.artifacts.size}")
 
         val request = new AetherDeployRequest()
         request.setRepository(aetherRepository)
@@ -450,20 +448,20 @@ class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) 
           request.addArtifact(aetherArtifact)
         }
         val result = system.deploy(session, request)
-      // TODO - Any kind of validity checking?
-
+        // TODO - Any kind of validity checking?
+        currentTransaction = None
       case None => throw new IllegalStateException(s"Publish Transaction already open for [$getName]")
     }
   }
 
   override def publish(art: Artifact, file: File, overwrite: Boolean): Unit = {
-    if (currentTransaction.isEmpty)
-      currentTransaction match {
-        case Some(t) =>
-          currentTransaction = Some(t.copy(artifacts = t.artifacts :+ (art, file)))
-        case None =>
-          throw new IllegalStateException(("MavenRepositories require transactional publish"))
-      }
+    currentTransaction match {
+      case Some(t) =>
+        val allArts = t.artifacts ++ List(art -> file)
+        currentTransaction = Some(t.copy(artifacts = allArts))
+      case None =>
+        throw new IllegalStateException(("MavenRepositories require transactional publish"))
+    }
   }
 
   override def equals(a: Any): Boolean =

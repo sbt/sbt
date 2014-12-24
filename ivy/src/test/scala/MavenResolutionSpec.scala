@@ -8,6 +8,7 @@ class MavenResolutionSpec extends BaseIvySpecification {
   This is a specification to check the maven resolution
 
   Resolving a maven dependency should
+     publish with maven-metadata                                  $publishMavenMetadata
      resolve transitive maven dependencies                        $resolveTransitiveMavenDependency
      resolve intransitive maven dependencies                      $resolveIntransitiveMavenDependency
      handle transitive configuration shifts                       $resolveTransitiveConfigurationMavenDependency
@@ -43,7 +44,7 @@ class MavenResolutionSpec extends BaseIvySpecification {
   def testSnapshot = ModuleID("com.typesafe", "config", "0.4.9-SNAPSHOT", Some("compile"))
   val SnapshotResolver = MavenRepository("some-snapshots", "https://oss.sonatype.org/content/repositories/snapshots/")
 
-  override def resolvers = Seq(DefaultMavenRepository, SnapshotResolver)
+  override def resolvers = Seq(DefaultMavenRepository, SnapshotResolver, Resolver.publishMavenLocal)
 
   import ShowLines._
 
@@ -186,6 +187,40 @@ class MavenResolutionSpec extends BaseIvySpecification {
       } yield f
     (report.configurations must haveSize(3)) and
       (jars must haveSize(2))
+  }
+
+  def publishMavenMetadata = {
+    val m = module(
+      ModuleID("com.example", "test-it", "1.0-SNAPSHOT", Some("compile")),
+      Seq(),
+      None,
+      UpdateOptions().withLatestSnapshots(true)
+    )
+    sbt.IO.withTemporaryDirectory { dir =>
+      val pomFile = new java.io.File(dir, "pom.xml")
+      sbt.IO.write(pomFile,
+        """
+          |<project>
+          |   <groupId>com.example</groupId>
+          |   <name>test-it</name>
+          |   <version>1.0-SNAPSHOT</version>
+          |</project>
+        """.stripMargin)
+      val jarFile = new java.io.File(dir, "test-it-1.0-SNAPSHOT.jar")
+      sbt.IO.touch(jarFile)
+      System.err.println(s"DEBUGME - Publishing $m to ${Resolver.publishMavenLocal}")
+      ivyPublish(m, mkPublishConfiguration(
+        Resolver.publishMavenLocal,
+        Map(
+          Artifact("test-it-1.0-SNAPSHOT.jar") -> pomFile,
+          Artifact("test-it-1.0-SNAPSHOT.pom", "pom", "pom") -> jarFile
+        )))
+    }
+    val baseLocalMavenDir = new java.io.File(new java.net.URI(Resolver.publishMavenLocal.root))
+    val allFiles: Seq[java.io.File] = sbt.PathFinder(new java.io.File(baseLocalMavenDir, "com/example/test-it")).***.get
+    val metadataFiles = allFiles.filter(_.getName contains "maven-metadata")
+    // TODO - maybe we check INSIDE the metadata, or make sure we can get a publication date on resolve...
+    metadataFiles must haveSize(2)
   }
 
 }

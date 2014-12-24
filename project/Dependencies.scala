@@ -28,10 +28,9 @@ object Dependencies {
   lazy val scalaXml = scala211Module("scala-xml", "1.0.1")
   lazy val scalaParsers = scala211Module("scala-parser-combinators", "1.0.1")
 
-
   // Maven related dependnecy craziness
   //val mvnEmbedder = "org.apache.maven" % "maven-embedder" % mvnVersion
-    val mvnWagonVersion = "2.4"
+  val mvnWagonVersion = "2.4"
   val mvnVersion = "3.2.3"
   val aetherVersion = "1.0.1.v20141111"
 

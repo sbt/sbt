@@ -7,7 +7,7 @@ import org.apache.ivy.plugins.repository.url.URLResource
 import org.apache.ivy.util.Message
 import org.apache.ivy.util.url.URLHandlerRegistry
 import org.eclipse.aether.artifact.Artifact
-import org.eclipse.aether.impl.{ ArtifactDescriptorReader, RepositoryConnectorProvider, DefaultServiceLocator }
+import org.eclipse.aether.impl.{ MetadataGeneratorFactory, ArtifactDescriptorReader, RepositoryConnectorProvider, DefaultServiceLocator }
 import org.eclipse.aether.metadata.Metadata
 import org.eclipse.aether.spi.connector.RepositoryConnectorFactory
 import org.eclipse.aether.spi.connector.layout.{ RepositoryLayoutProvider, RepositoryLayout }
@@ -19,7 +19,7 @@ import org.eclipse.aether.{
 
 import org.eclipse.aether.repository.{ RemoteRepository, LocalRepository }
 import org.eclipse.aether.RepositorySystemSession
-import org.apache.maven.repository.internal.{ SbtArtifactDescriptorReader, MavenRepositorySystemUtils }
+import org.apache.maven.repository.internal.{ VersionsMetadataGeneratorFactory, SnapshotMetadataGeneratorFactory, SbtArtifactDescriptorReader, MavenRepositorySystemUtils }
 import org.eclipse.aether.spi.connector.transport._
 import org.eclipse.aether.connector.basic.BasicRepositoryConnectorFactory
 import java.io.File
@@ -38,6 +38,11 @@ object MavenRepositorySystemFactory {
     locator.addService(classOf[TransporterFactory], classOf[MyTransportFactory])
     // This connects the download mechanism to our transports.  Why is it needed? no clue.
     locator.addService(classOf[RepositoryConnectorFactory], classOf[BasicRepositoryConnectorFactory])
+
+    //TODO - Plugins cause issues here, as their layout is super odd.
+    // Here we add the metadata services so aether will automatically add maven-metadata.xml files.
+    locator.addService(classOf[MetadataGeneratorFactory], classOf[SnapshotMetadataGeneratorFactory])
+    locator.addService(classOf[MetadataGeneratorFactory], classOf[VersionsMetadataGeneratorFactory])
 
     // Add our hook for parsing pom.xml files.
     locator.setService(classOf[ArtifactDescriptorReader], classOf[SbtArtifactDescriptorReader])
@@ -122,6 +127,7 @@ class FileTransport(repository: RemoteRepository) extends AbstractTransporter {
   override def implPut(put: PutTask): Unit = {
     val to = toFile(put)
     val from = put.getDataFile
+    Message.warn(s"Copying file ${from} to ${to}")
     sbt.IO.copyFile(from, to, true)
   }
   override def classify(err: Throwable): Int =
