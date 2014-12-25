@@ -3,6 +3,8 @@ val repoFile = file("mvn-repo")
 
 resolvers += "bad-mvn-repo" at repoFile.toURI.toURL.toString
 
+resolvers += Resolver.typesafeIvyRepo("releases")
+
 libraryDependencies += "bad" % "mvn" % "1.0"
 
 TaskKey[Unit]("check") := {
