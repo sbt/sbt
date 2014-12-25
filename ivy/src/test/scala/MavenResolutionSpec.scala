@@ -33,6 +33,7 @@ class MavenResolutionSpec extends BaseIvySpecification {
 [error] 	dependency-management / cache-classifiers
 [error] 	dependency-management / metadata-only-resolver
 [error] 	dependency-management / mvn-local
+
   */
   def akkaActor = ModuleID("com.typesafe.akka", "akka-actor_2.11", "2.3.8", Some("compile"))
   def akkaActorTestkit = ModuleID("com.typesafe.akka", "akka-testkit_2.11", "2.3.8", Some("test"))
