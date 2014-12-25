@@ -2,6 +2,7 @@ package org.apache.ivy.plugins.resolver
 
 import java.io.File
 import java.util.Date
+import org.apache.ivy.core.IvyContext
 import org.apache.ivy.core.module.descriptor._
 import org.apache.ivy.core.module.id.{ ModuleId, ArtifactId, ModuleRevisionId }
 import org.apache.ivy.core.report.{ ArtifactDownloadReport, DownloadStatus, MetadataArtifactDownloadReport, DownloadReport }
@@ -118,91 +119,94 @@ class MavenRepositoryResolver(val repo: MavenRepository, settings: IvySettings) 
   }
 
   // This grabs the dependency for Ivy.
-  override def getDependency(dd: DependencyDescriptor, rd: ResolveData): ResolvedModuleRevision = try {
-    // TODO - Check to see if we're asking for latest.* version, and if so, we should run a latest version query
-    //        first and use that result to return the metadata/final module.
-    Message.debug(s"Requesting conf [${dd.getModuleConfigurations.mkString(",")}] from Aether module ${dd.getDependencyRevisionId} in resolver ${getName}")
+  override def getDependency(dd: DependencyDescriptor, rd: ResolveData): ResolvedModuleRevision = {
+    val context = IvyContext.pushNewCopyContext
+    try {
+      // TODO - Check to see if we're asking for latest.* version, and if so, we should run a latest version query
+      //        first and use that result to return the metadata/final module.
+      Message.debug(s"Requesting conf [${dd.getModuleConfigurations.mkString(",")}] from Aether module ${dd.getDependencyRevisionId} in resolver ${getName}")
 
-    val request = new AetherDescriptorRequest()
-    val coords = aetherCoordsFromMrid(dd.getDependencyRevisionId)
-    Message.debug(s"Aether about to resolve [$coords] into [${localRepo.getAbsolutePath}]")
-    request.setArtifact(new AetherArtifact(coords))
-    request.addRepository(aetherRepository)
-    val result = system.readArtifactDescriptor(session, request)
-    val packaging = getPackagingFromPomProperties(result.getProperties)
-    Message.debug(s"Aether resolved ${dd.getDependencyId} w/ packaging ${packaging}")
+      val request = new AetherDescriptorRequest()
+      val coords = aetherCoordsFromMrid(dd.getDependencyRevisionId)
+      Message.debug(s"Aether about to resolve [$coords] into [${localRepo.getAbsolutePath}]")
+      request.setArtifact(new AetherArtifact(coords))
+      request.addRepository(aetherRepository)
+      val result = system.readArtifactDescriptor(session, request)
+      val packaging = getPackagingFromPomProperties(result.getProperties)
+      Message.debug(s"Aether resolved ${dd.getDependencyId} w/ packaging ${packaging}")
 
-    // TODO - grab the parsed packaging attribute from the metadata to figure out if we should FORCE
-    //        the expectation of a jar file or not.
+      // TODO - grab the parsed packaging attribute from the metadata to figure out if we should FORCE
+      //        the expectation of a jar file or not.
 
-    val metadataRequest = new AetherMetadataRequest()
-    metadataRequest.setMetadata(
-      new DefaultMetadata(
-        dd.getDependencyRevisionId.getOrganisation,
-        dd.getDependencyRevisionId.getName,
-        dd.getDependencyRevisionId.getRevision,
-        MavenRepositoryResolver.MAVEN_METADATA_XML,
-        Metadata.Nature.RELEASE_OR_SNAPSHOT))
-    metadataRequest.setRepository(aetherRepository)
-    val metadataResultOpt =
-      try system.resolveMetadata(session, java.util.Arrays.asList(metadataRequest)).asScala.headOption
-      catch {
-        case e: org.eclipse.aether.resolution.ArtifactResolutionException => None
+      val metadataRequest = new AetherMetadataRequest()
+      metadataRequest.setMetadata(
+        new DefaultMetadata(
+          dd.getDependencyRevisionId.getOrganisation,
+          dd.getDependencyRevisionId.getName,
+          dd.getDependencyRevisionId.getRevision,
+          MavenRepositoryResolver.MAVEN_METADATA_XML,
+          Metadata.Nature.RELEASE_OR_SNAPSHOT))
+      metadataRequest.setRepository(aetherRepository)
+      val metadataResultOpt =
+        try system.resolveMetadata(session, java.util.Arrays.asList(metadataRequest)).asScala.headOption
+        catch {
+          case e: org.eclipse.aether.resolution.ArtifactResolutionException => None
+        }
+      // TODO - better pub date if we have no metadata.
+      val lastModifiedTime = getPublicationTime(dd.getDependencyRevisionId) getOrElse 0L
+
+      // Construct a new Ivy module descriptor
+      val desc: ModuleDescriptor = {
+        // TODO - Default instance will autogenerate artifacts, which we do not want.
+        // We should probably create our own instance with no artifacts in it, and add
+        // artifacts based on what was requested *or* have aether try to find them.
+        // TODO - Better detection of snapshot and handling latest.integratoin/latest.snapshot
+        val status =
+          if (dd.getDependencyRevisionId.getRevision.endsWith("-SNAPSHOT")) "release"
+          else "integration"
+        val md =
+          new DefaultModuleDescriptor(dd.getDependencyRevisionId, status, null, false)
+        //DefaultModuleDescriptor.newDefaultInstance(dd.getDependencyRevisionId)
+        // Here we add the standard configurations
+        for (config <- PomModuleDescriptorBuilder.MAVEN2_CONFIGURATIONS) {
+          md.addConfiguration(config)
+        }
+
+        // Here we look into the artifacts specified from the dependency descriptor *and* those that are defaulted,
+        // and append them to the appropriate configurations.
+        addArtifactsFromPom(dd, packaging, md, lastModifiedTime)
+        // Here we add dependencies.
+        addDependenciesFromAether(result, md)
+        // Here we use pom.xml Dependency management section to create Ivy dependency mediators.
+        addManagedDependenciesFromAether(result, md)
+        // Here we rip out license info.
+        addLicenseInfo(md, result.getProperties)
+        // TODO - Rip out extra attributes
+        // TODO - is this the correct way to add extra info?
+        md.addExtraInfo(SbtExtraProperties.MAVEN_PACKAGING_KEY, packaging)
+        Message.info(s"Setting publication date to ${new Date(lastModifiedTime)}")
+        // TODO - Figure out the differences between these items.
+        md.setPublicationDate(new Date(lastModifiedTime))
+        md.setLastModified(lastModifiedTime)
+        md.setResolvedPublicationDate(new Date(lastModifiedTime))
+        // TODO - Figure our rd updates
+        md.check()
+        md
       }
-    // TODO - better pub date if we have no metadata.
-    val lastModifiedTime = getPublicationTime(dd.getDependencyRevisionId) getOrElse 0L
 
-    // Construct a new Ivy module descriptor
-    val desc: ModuleDescriptor = {
-      // TODO - Default instance will autogenerate artifacts, which we do not want.
-      // We should probably create our own instance with no artifacts in it, and add
-      // artifacts based on what was requested *or* have aether try to find them.
-      // TODO - Better detection of snapshot and handling latest.integratoin/latest.snapshot
-      val status =
-        if (dd.getDependencyRevisionId.getRevision.endsWith("-SNAPSHOT")) "release"
-        else "integration"
-      val md =
-        new DefaultModuleDescriptor(dd.getDependencyRevisionId, status, null, false)
-      //DefaultModuleDescriptor.newDefaultInstance(dd.getDependencyRevisionId)
-      // Here we add the standard configurations
-      for (config <- PomModuleDescriptorBuilder.MAVEN2_CONFIGURATIONS) {
-        md.addConfiguration(config)
-      }
+      // Here we need to pretend we downloaded the pom.xml file
 
-      // Here we look into the artifacts specified from the dependency descriptor *and* those that are defaulted,
-      // and append them to the appropriate configurations.
-      addArtifactsFromPom(dd, packaging, md, lastModifiedTime)
-      // Here we add dependencies.
-      addDependenciesFromAether(result, md)
-      // Here we use pom.xml Dependency management section to create Ivy dependency mediators.
-      addManagedDependenciesFromAether(result, md)
-      // Here we rip out license info.
-      addLicenseInfo(md, result.getProperties)
-      // TODO - Rip out extra attributes
-      // TODO - is this the correct way to add extra info?
-      md.addExtraInfo(SbtExtraProperties.MAVEN_PACKAGING_KEY, packaging)
-      Message.info(s"Setting publication date to ${new Date(lastModifiedTime)}")
-      // TODO - Figure out the differences between these items.
-      md.setPublicationDate(new Date(lastModifiedTime))
-      md.setLastModified(lastModifiedTime)
-      md.setResolvedPublicationDate(new Date(lastModifiedTime))
-      // TODO - Figure our rd updates
-      md.check()
-      md
-    }
-
-    // Here we need to pretend we downloaded the pom.xml file
-
-    val pom = DefaultArtifact.newPomArtifact(dd.getDependencyRevisionId, new java.util.Date(lastModifiedTime))
-    val madr = new MetadataArtifactDownloadReport(pom)
-    madr.setSearched(true)
-    madr.setDownloadStatus(DownloadStatus.SUCCESSFUL) // TODO - Figure this things out for this report.
-    Message.debug(s"Returning resolved module information with artifacts = ${desc.getAllArtifacts.mkString(", ")}")
-    new ResolvedModuleRevision(this, this, desc, madr, false /* Force */ )
-  } catch {
-    case e: org.eclipse.aether.resolution.ArtifactDescriptorException =>
-      Message.debug(s"Failed to read descriptor ${dd} from ${repo}, ${e.getMessage}")
-      null
+      val pom = DefaultArtifact.newPomArtifact(dd.getDependencyRevisionId, new java.util.Date(lastModifiedTime))
+      val madr = new MetadataArtifactDownloadReport(pom)
+      madr.setSearched(true)
+      madr.setDownloadStatus(DownloadStatus.SUCCESSFUL) // TODO - Figure this things out for this report.
+      Message.debug(s"Returning resolved module information with artifacts = ${desc.getAllArtifacts.mkString(", ")}")
+      new ResolvedModuleRevision(this, this, desc, madr, false /* Force */ )
+    } catch {
+      case e: org.eclipse.aether.resolution.ArtifactDescriptorException =>
+        Message.debug(s"Failed to read descriptor ${dd} from ${repo}, ${e.getMessage}")
+        rd.getCurrentResolvedModuleRevision
+    } finally IvyContext.popContext()
   }
 
   /** Determines which artifacts are associated with this maven module and appends them to the descriptor. */
