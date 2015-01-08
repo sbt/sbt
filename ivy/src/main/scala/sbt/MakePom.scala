@@ -20,6 +20,7 @@ import org.apache.ivy.Ivy
 import org.apache.ivy.core.settings.IvySettings
 import org.apache.ivy.core.module.descriptor.{ DependencyArtifactDescriptor, DependencyDescriptor, License, ModuleDescriptor, ExcludeRule }
 import org.apache.ivy.plugins.resolver.{ ChainResolver, DependencyResolver, IBiblioResolver }
+import ivyint.CustomRemoteMavenResolver
 
 class MakePom(val log: Logger) {
   @deprecated("Use `write(Ivy, ModuleDescriptor, ModuleInfo, Option[Iterable[Configuration]], Set[String], NodeSeq, XNode => XNode, MavenRepository => Boolean, Boolean, File)` instead", "0.11.2")
@@ -333,7 +334,7 @@ class MakePom(val log: Logger) {
       val repositories = if (includeAll) allResolvers(settings) else resolvers(settings.getDefaultResolver)
       val mavenRepositories =
         repositories.flatMap {
-          case m: org.apache.ivy.plugins.resolver.MavenRemoteRepositoryResolver if m.repo.root != DefaultMavenRepository.root =>
+          case m: CustomRemoteMavenResolver if m.repo.root != DefaultMavenRepository.root =>
             MavenRepository(m.repo.name, m.repo.root) :: Nil
           case m: IBiblioResolver if m.isM2compatible && m.getRoot != DefaultMavenRepository.root =>
             MavenRepository(m.getName, m.getRoot) :: Nil

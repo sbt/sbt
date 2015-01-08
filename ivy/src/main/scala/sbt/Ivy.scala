@@ -73,7 +73,6 @@ final class IvySbt(val configuration: IvyConfiguration) {
       is.setBaseDir(baseDirectory)
       is.setCircularDependencyStrategy(configuration.updateOptions.circularDependencyLevel.ivyStrategy)
       CustomPomParser.registerDefault
-      is.setVariable(ConvertResolver.USE_AETHER_PROPERTY, s"${configuration.updateOptions.aetherResolution}")
 
       configuration match {
         case e: ExternalIvyConfiguration =>
@@ -289,7 +288,7 @@ private[sbt] object IvySbt {
   def resolverChain(name: String, resolvers: Seq[Resolver], localOnly: Boolean, settings: IvySettings, log: Logger): DependencyResolver =
     resolverChain(name, resolvers, localOnly, settings, UpdateOptions(), log)
   def resolverChain(name: String, resolvers: Seq[Resolver], localOnly: Boolean, settings: IvySettings, updateOptions: UpdateOptions, log: Logger): DependencyResolver = {
-    def mapResolvers(rs: Seq[Resolver]) = rs.map(r => ConvertResolver(r, settings, log))
+    def mapResolvers(rs: Seq[Resolver]) = rs.map(r => ConvertResolver(r, settings, updateOptions, log))
     val (projectResolvers, rest) = resolvers.partition(_.name == "inter-project")
     if (projectResolvers.isEmpty) new ivyint.SbtChainResolver(name, mapResolvers(rest), settings, updateOptions, log)
     else {
