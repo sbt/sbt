@@ -215,7 +215,7 @@ lazy val ivyProj = (project in file("ivy")).
   settings(baseSettings: _*).
   settings(
     name := "Ivy",
-    libraryDependencies ++= Seq(ivy, jsch, json4sNative, jawnParser, jawnJson4s) ++ aetherLibs,
+    libraryDependencies ++= Seq(ivy, jsch, json4sNative, jawnParser, jawnJson4s),
     testExclusive)
 
 // Runner for uniform test interface
@@ -412,6 +412,15 @@ lazy val sbtProj = (project in sbtPath).
     normalizedName := "sbt"
   )
 
+lazy val mavenResolverPluginProj = (project in file("sbt-maven-resolver")).
+  dependsOn(sbtProj).
+  settings(baseSettings: _*).
+  settings(
+    name := "sbt-maven-resolver",
+    libraryDependencies ++= aetherLibs,
+    sbtPlugin := true
+  )
+
 def scriptedTask: Initialize[InputTask[Unit]] = InputTask(scriptedSource(dir => (s: State) => scriptedParser(dir))) { result =>
   (proguard in Proguard, fullClasspath in scriptedSbtProj in Test, scalaInstance in scriptedSbtProj, publishAll, scriptedSource, result) map {
     (launcher, scriptedSbtClasspath, scriptedSbtInstance, _, sourcePath, args) =>
@@ -435,7 +444,7 @@ def allProjects = Seq(launchInterfaceProj, launchProj, testSamples, interfacePro
   compileInterfaceProj, compileIncrementalProj, compilePersistProj, compilerProj,
   compilerIntegrationProj, compilerIvyProj,
   scriptedBaseProj, scriptedSbtProj, scriptedPluginProj,
-  actionsProj, commandProj, mainSettingsProj, mainProj, sbtProj)
+  actionsProj, commandProj, mainSettingsProj, mainProj, sbtProj, mavenResolverPluginProj)
 def projectsWithMyProvided = allProjects.map(p => p.copy(configurations = (p.configurations.filter(_ != Provided)) :+ myProvided))
 lazy val nonRoots = projectsWithMyProvided.map(p => LocalProject(p.id))
 

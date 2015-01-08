@@ -19,6 +19,8 @@ import org.apache.ivy.util.{ FileUtil, ChecksumHelper }
 import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact }
 
 private[sbt] object ConvertResolver {
+  import UpdateOptions.ResolverConverter
+
   /**
    * This class contains all the reflective lookups used in the
    * checksum-friendly URL publishing shim.
@@ -94,37 +96,34 @@ private[sbt] object ConvertResolver {
     }
   }
 
-  private[sbt] val USE_AETHER_PROPERTY = "sbt.use.aether"
-  private def isUseAetherForResolution(settings: IvySettings): Boolean =
-    settings.getVariable(USE_AETHER_PROPERTY) == "true"
+  /** Converts the given sbt resolver into an Ivy resolver. */
+  @deprecated("0.13.8", "Use the variant with updateOptions")
+  def apply(r: Resolver, settings: IvySettings, log: Logger): DependencyResolver =
+    apply(r, settings, UpdateOptions(), log)
 
-  /** Converts the given sbt resolver into an Ivy resolver..*/
-  def apply(r: Resolver, settings: IvySettings, log: Logger) =
-    {
+  /** Converts the given sbt resolver into an Ivy resolver. */
+  def apply(r: Resolver, settings: IvySettings, updateOptions: UpdateOptions, log: Logger): DependencyResolver =
+    (updateOptions.resolverConverter orElse defaultConvert)((r, settings, log))
+
+  /** The default implementation of converter. */
+  lazy val defaultConvert: ResolverConverter = {
+    case (r, settings, log) =>
       r match {
         case repo: MavenRepository =>
           {
-            if (isUseAetherForResolution(settings)) {
-              repo match {
-                case cache: MavenCache => new org.apache.ivy.plugins.resolver.MavenCacheRepositoryResolver(cache, settings)
-                case _                 => new org.apache.ivy.plugins.resolver.MavenRemoteRepositoryResolver(repo, settings)
+            val pattern = Collections.singletonList(Resolver.resolvePattern(repo.root, Resolver.mavenStyleBasePattern))
+            final class PluginCapableResolver extends IBiblioResolver with ChecksumFriendlyURLResolver with DescriptorRequired {
+              def setPatterns() {
+                // done this way for access to protected methods.
+                setArtifactPatterns(pattern)
+                setIvyPatterns(pattern)
               }
-            } else {
-              val pattern = Collections.singletonList(Resolver.resolvePattern(repo.root, Resolver.mavenStyleBasePattern))
-              final class PluginCapableResolver extends IBiblioResolver with ChecksumFriendlyURLResolver with DescriptorRequired {
-                def setPatterns() {
-                  // done this way for access to protected methods.
-                  setArtifactPatterns(pattern)
-                  setIvyPatterns(pattern)
-                }
-              }
-              val resolver = new PluginCapableResolver
-              resolver.setRepository(new LocalIfFileRepo)
-              initializeMavenStyle(resolver, repo.name, repo.root)
-              resolver.setPatterns() // has to be done after initializeMavenStyle, which calls methods that overwrite the patterns
-              resolver
             }
-
+            val resolver = new PluginCapableResolver
+            resolver.setRepository(new LocalIfFileRepo)
+            initializeMavenStyle(resolver, repo.name, repo.root)
+            resolver.setPatterns() // has to be done after initializeMavenStyle, which calls methods that overwrite the patterns
+            resolver
           }
         // TODO: HTTP repository is no longer recommended. #1541
         // Remove `JavaNet1Repository` when we bump up the API.
@@ -176,7 +175,7 @@ private[sbt] object ConvertResolver {
         case repo: ChainedResolver => IvySbt.resolverChain(repo.name, repo.resolvers, false, settings, log)
         case repo: RawRepository   => repo.resolver
       }
-    }
+  }
 
   private sealed trait DescriptorRequired extends BasicResolver {
     override def getDependency(dd: DependencyDescriptor, data: ResolveData) =
