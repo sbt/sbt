@@ -5,6 +5,8 @@ package sbt
 
 import java.net.URL
 
+import org.apache.maven.repository.internal.SbtExtraProperties
+
 final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String] = None, isChanging: Boolean = false, isTransitive: Boolean = true, isForce: Boolean = false, explicitArtifacts: Seq[Artifact] = Nil, exclusions: Seq[ExclusionRule] = Nil, extraAttributes: Map[String, String] = Map.empty, crossVersion: CrossVersion = CrossVersion.Disabled) {
   override def toString: String =
     organization + ":" + name + ":" + revision +
@@ -15,7 +17,7 @@ final case class ModuleID(organization: String, name: String, revision: String, 
   def extraString: String = extraDependencyAttributes.map { case (k, v) => k + "=" + v } mkString ("(", ", ", ")")
 
   /** Returns the extra attributes except for ones marked as information only (ones that typically would not be used for dependency resolution). */
-  def extraDependencyAttributes: Map[String, String] = extraAttributes.filterKeys(!_.startsWith(CustomPomParser.InfoKeyPrefix))
+  def extraDependencyAttributes: Map[String, String] = extraAttributes.filterKeys(!_.startsWith(SbtExtraProperties.POM_INFO_KEY_PREFIX))
 
   @deprecated("Use `cross(CrossVersion)`, the variant accepting a CrossVersion value constructed by a member of the CrossVersion object instead.", "0.12.0")
   def cross(v: Boolean): ModuleID = cross(if (v) CrossVersion.binary else CrossVersion.Disabled)

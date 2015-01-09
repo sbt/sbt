@@ -8,6 +8,9 @@
 package sbt
 
 import java.io.File
+
+import org.apache.maven.repository.internal.PomExtraDependencyAttributes
+
 // Node needs to be renamed to XNode because the task subproject contains a Node type that will shadow
 // scala.xml.Node when generating aggregated API documentation
 import scala.xml.{ Elem, Node => XNode, NodeSeq, PrettyPrinter, PrefixedAttribute }
@@ -119,12 +122,12 @@ class MakePom(val log: Logger) {
   def makeProperties(module: ModuleDescriptor, dependencies: Seq[DependencyDescriptor]): NodeSeq =
     {
       val extra = IvySbt.getExtraAttributes(module)
-      val depExtra = CustomPomParser.writeDependencyExtra(dependencies).mkString("\n")
-      val allExtra = if (depExtra.isEmpty) extra else extra.updated(CustomPomParser.ExtraAttributesKey, depExtra)
+      val depExtra = PomExtraDependencyAttributes.writeDependencyExtra(dependencies).mkString("\n")
+      val allExtra = if (depExtra.isEmpty) extra else extra.updated(PomExtraDependencyAttributes.ExtraAttributesKey, depExtra)
       if (allExtra.isEmpty) NodeSeq.Empty else makeProperties(allExtra)
     }
   def makeProperties(extra: Map[String, String]): NodeSeq = {
-    def _extraAttributes(k: String) = if (k == CustomPomParser.ExtraAttributesKey) xmlSpacePreserve else scala.xml.Null
+    def _extraAttributes(k: String) = if (k == PomExtraDependencyAttributes.ExtraAttributesKey) xmlSpacePreserve else scala.xml.Null
     <properties> {
       for ((key, value) <- extra) yield (<x>{ value }</x>).copy(label = key, attributes = _extraAttributes(key))
     } </properties>

@@ -2,6 +2,7 @@ package sbt
 
 import java.io.FileInputStream
 
+import org.apache.maven.repository.internal.PomExtraDependencyAttributes
 import org.specs2._
 
 class MavenResolutionSpec extends BaseIvySpecification {
@@ -37,11 +38,11 @@ class MavenResolutionSpec extends BaseIvySpecification {
   def scalaContinuationPlugin = ModuleID("org.scala-lang.plugins", "continuations", "2.8.1", Some("plugin->default(compile)"))
   def sbtPlugin =
     ModuleID("com.github.mpeltonen", "sbt-idea", "1.6.0", Some("compile")).
-      extra(CustomPomParser.SbtVersionKey -> "0.13", CustomPomParser.ScalaVersionKey -> "2.10").
+      extra(PomExtraDependencyAttributes.SbtVersionKey -> "0.13", PomExtraDependencyAttributes.ScalaVersionKey -> "2.10").
       copy(crossVersion = CrossVersion.Disabled)
   def oldSbtPlugin =
     ModuleID("com.github.mpeltonen", "sbt-idea", "1.6.0", Some("compile")).
-      extra(CustomPomParser.SbtVersionKey -> "0.12", CustomPomParser.ScalaVersionKey -> "2.9.2").
+      extra(PomExtraDependencyAttributes.SbtVersionKey -> "0.12", PomExtraDependencyAttributes.ScalaVersionKey -> "2.9.2").
       copy(crossVersion = CrossVersion.Disabled)
   def majorConflictLib = ModuleID("com.joestelmach", "natty", "0.3", Some("compile"))
   // TODO - This snapshot and resolver should be something we own/control so it doesn't disappear on us.
