@@ -1,5 +1,7 @@
 package org.apache.maven.repository.internal;
 
+
+
 /**
  * Created by jsuereth on 12/20/14.
  */
@@ -19,5 +21,4 @@ public class SbtExtraProperties {
     public static String makeLicenseUrl(int i) {
         return "license." + i + ".url";
     }
-
 }

@@ -15,7 +15,7 @@ import org.apache.ivy.plugins.parser.xml.XmlModuleDescriptorWriter
 import org.apache.ivy.plugins.resolver.MavenRepositoryResolver.JarPackaging
 import org.apache.ivy.plugins.resolver.util.ResolvedResource
 import org.apache.ivy.util.Message
-import org.apache.maven.repository.internal.{ SbtRepositoryLayout, SbtExtraProperties }
+import org.apache.maven.repository.internal.{ PomExtraDependencyAttributes, SbtRepositoryLayout, SbtExtraProperties }
 import org.eclipse.aether.{ RepositorySystemSession, RepositorySystem }
 import org.eclipse.aether.artifact.{ DefaultArtifact => AetherArtifact }
 import org.eclipse.aether.metadata.{ Metadata, DefaultMetadata }
@@ -327,8 +327,7 @@ abstract class AbstractMavenRepositoryResolver(settings: IvySettings) extends Ab
       rmr
     } catch {
       case e: org.eclipse.aether.resolution.ArtifactDescriptorException =>
-        Message.warn(s"Failed to read descriptor ${dd} from ${getName}, ${e.getMessage}")
-        e.printStackTrace(System.err)
+        Message.info(s"Failed to read descriptor ${dd} from ${getName}, ${e.getMessage}")
         rd.getCurrentResolvedModuleRevision
       case e: MavenResolutionException =>
         Message.debug(s"Resolution Exception from ${getName}, ${e.getMessage}, returning: ${rd.getCurrentResolvedModuleRevision}")
@@ -456,10 +455,29 @@ abstract class AbstractMavenRepositoryResolver(settings: IvySettings) extends Ab
 
   /** Adds the list of dependencies this artifact has on other artifacts. */
   def addDependenciesFromAether(result: AetherDescriptorResult, md: DefaultModuleDescriptor) {
+    // First we construct a map of any extra attributes we must append to dependencies.
+    // This is necessary for transitive maven-based sbt plugin dependencies, where we need to
+    // attach the sbtVersion/scalaVersion to the dependency id otherwise we'll fail to resolve the
+    // dependency correctly.
+    val extraAttributes = PomExtraDependencyAttributes.readFromAether(result.getProperties)
     for (d <- result.getDependencies.asScala) {
       // TODO - Is this correct for changing detection.  We should use the Ivy mechanism configured...
       val isChanging = d.getArtifact.getVersion.endsWith("-SNAPSHOT")
-      val drid = ModuleRevisionId.newInstance(d.getArtifact.getGroupId, d.getArtifact.getArtifactId, d.getArtifact.getVersion)
+      val drid = {
+        val tmp = ModuleRevisionId.newInstance(d.getArtifact.getGroupId, d.getArtifact.getArtifactId, d.getArtifact.getVersion)
+        extraAttributes get tmp match {
+          case Some(props) =>
+            Message.debug(s"Found $tmp w/ extra attributes ${props.mkString(",")}")
+            ModuleRevisionId.newInstance(
+              d.getArtifact.getGroupId,
+              d.getArtifact.getArtifactId,
+              d.getArtifact.getVersion,
+              props.asJava
+            )
+          case _ => tmp
+        }
+      }
+
       // Note: The previous maven integration ALWAYS set force to true for dependnecies.  If we do not do this, for some
       //       reason, Ivy will create dummy nodes when doing dependnecy mediation (e.g. dependencyManagement of one pom overrides version of a dependency)
       //       which was leading to "data not found" exceptions as Ivy would pick the correct IvyNode in the dependency tree but never load it with data....
