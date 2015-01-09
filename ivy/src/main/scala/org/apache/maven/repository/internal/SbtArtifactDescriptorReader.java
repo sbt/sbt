@@ -228,6 +228,7 @@ public class SbtArtifactDescriptorReader
 
         if ( model != null )
         {
+
             ArtifactTypeRegistry stereotypes = session.getArtifactTypeRegistry();
 
             for ( Repository r : model.getRepositories() )
@@ -282,7 +283,8 @@ public class SbtArtifactDescriptorReader
                 properties.put(SbtExtraProperties.SCALA_VERSION_KEY, mprops.getProperty(SbtExtraProperties.POM_SCALA_VERSION));
             }
 
-            // TODO - Add extra attributes, e.g. sbtVersion + scalaVersion.
+            // SBT-Added - Here we inject the additional dependency attributes (for transitive plugin resolution).
+            PomExtraDependencyAttributes.transferDependencyExtraAttributes(model.getProperties(), properties);
 
             result.setProperties( properties);
 
