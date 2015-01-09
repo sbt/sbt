@@ -29,7 +29,7 @@ import org.eclipse.aether.resolution.{
 import org.eclipse.aether.deployment.{ DeployRequest => AetherDeployRequest }
 import org.eclipse.aether.installation.{ InstallRequest => AetherInstallRequest }
 import org.apache.ivy.core.cache.{ ModuleDescriptorWriter, ArtifactOrigin }
-import sbt.{ CustomPomParser, MavenCache, MavenRepository }
+import sbt.{ MavenCache, MavenRepository }
 import scala.collection.JavaConverters._
 
 object MavenRepositoryResolver {
@@ -336,11 +336,11 @@ abstract class AbstractMavenRepositoryResolver(settings: IvySettings) extends Ab
   }
 
   def getSbtVersion(dd: ModuleRevisionId): Option[String] =
-    Option(dd.getExtraAttribute(CustomPomParser.SbtVersionKey))
+    Option(dd.getExtraAttribute(PomExtraDependencyAttributes.SbtVersionKey))
 
   def getArtifactProperties(dd: ModuleRevisionId): java.util.Map[String, String] = {
     val m = new java.util.HashMap[String, String]
-    Option(dd.getExtraAttribute(CustomPomParser.ScalaVersionKey)) foreach { sv =>
+    Option(dd.getExtraAttribute(PomExtraDependencyAttributes.ScalaVersionKey)) foreach { sv =>
       m.put(SbtExtraProperties.POM_SCALA_VERSION, sv)
     }
     getSbtVersion(dd) foreach { sv =>
