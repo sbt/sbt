@@ -97,7 +97,20 @@ class HttpTransport(repository: RemoteRepository) extends AbstractTransporter {
     URLHandlerRegistry.getDefault.download(toURL(out), out.getDataFile, null)
   }
   override def implPut(put: PutTask): Unit = {
-    URLHandlerRegistry.getDefault.upload(put.getDataFile, toURL(put), null)
+    val to = toURL(put)
+    Option(put.getDataFile) match {
+      case Some(file) => URLHandlerRegistry.getDefault.upload(file, to, null)
+      case None =>
+        // TODO - Ivy does not support uploading not from a file.  This isn't very efficient in ANY way,
+        //        so if we rewrite the URL handler for Ivy we should fix this as well.
+        sbt.IO.withTemporaryFile("tmp", "upload") { file =>
+          val in = put.newInputStream()
+          try sbt.IO.transfer(in, file)
+          finally in.close()
+          URLHandlerRegistry.getDefault.upload(file, to, null)
+        }
+    }
+
   }
   override def classify(err: Throwable): Int =
     err match {
@@ -128,8 +141,15 @@ class FileTransport(repository: RemoteRepository) extends AbstractTransporter {
   }
   override def implPut(put: PutTask): Unit = {
     val to = toFile(put)
-    val from = put.getDataFile
-    sbt.IO.copyFile(from, to, true)
+    Option(put.getDataFile) match {
+      case Some(from) =>
+        sbt.IO.copyFile(from, to, true)
+      case None =>
+        // Here it's most likely a SHA or somethign where we read from memory.
+        val in = put.newInputStream
+        try sbt.IO.transfer(in, to)
+        finally in.close()
+    }
   }
   override def classify(err: Throwable): Int =
     err match {
