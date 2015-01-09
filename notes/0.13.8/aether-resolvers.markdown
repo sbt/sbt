@@ -9,35 +9,35 @@
 
 ### Improvements
 
-### Aether Resolution
+### Maven resolver plugin
 
-sbt 0.13.8 adds the ability to use Eclipse Aether to resolve maven dependencies.  This is designed to work within Ivy
-so that both Aether + Ivy dependencies cohesively depend on each other.
+sbt 0.13.8 adds an extention point in the dependency resolution to customize Maven resolvers.
+This allows us to write sbt-maven-resolver auto plugin, which internally uses Eclipse Aether
+to resolve Maven dependencies instead of Apache Ivy.
 
-The key called `updateOptions` has been expanded to enable Aether resolutions via the following setting:
+To enable this plugin, add the following to `project/maven.sbt` (or `project/plugin.sbt` the file name doesn't matter):
 
-    updateOptions := updateOptions.value.withAetherResolution(true)
+    libraryDependencies += Defaults.sbtPluginExtra("org.scala-sbt" % "sbt-maven-resolver" % sbtVersion.value,
+      sbtBinaryVersion.value, scalaBinaryVersion.value)
 
-This will create a new `~/.ivy2/maven-cache` directory which contains the Aether cache of files.   You may notice some
-file will be re-downloaded for the new cache layout.   Additionally, sbt will now be able to fully construct
+This will create a new `~/.ivy2/maven-cache` directory, which contains the Aether cache of files.
+You may notice some file will be re-downloaded for the new cache layout.
+Additionally, sbt will now be able to fully construct
 `maven-metadata.xml` files when publishing to remote repositories or when publishing to the local `~/.m2/repository`.
 This should help erase many of the deficiencies encountered when using Maven and sbt together.
 
-Note:  The setting must be places on EVERY subproject within a build if you wish to fully use Aether for all projects.
+**Notes and known limitations**:
 
-Known limitations:
-
-* The current implementation does not support ivy-style version numbers, such as "2.10.+" or "latest.snapshot".  This
+- sbt-maven-resolver requires sbt 0.13.8 and above.
+- The current implementation does not support Ivy-style dynamic revisions, such as "2.10.+" or "latest.snapshot".  This
   is a fixable situation, but the version range query and Ivy -> Maven version range translation code has not been migrated.
-
-
 
 ### Bug fixes
 
-- sbt doens't honor Maven's uniqueVersions (use aether resolver to fix). [#1322][1322]  by [@jsuereth][@jsuereth]
-- sbt doens't see new SNAPSHOT dependency versions in local maven repos (use withLatestSnapshots + aether resolver to fix) [#321][321] by [@jsuereth][@jsuereth]
-- Property in pom's version field results to wrong dependency resolution (use aether resolver to fix). [#647][647] by [@jsuereth][@jsuereth]
-- Maven local resolver with parent POM (use aether resolver). [#1616][1616] by [@jsuereth][@jsuereth]
+- sbt doens't honor Maven's uniqueVersions (use sbt-maven-resolver to fix). [#1322][1322]  by [@jsuereth][@jsuereth]
+- sbt doens't see new SNAPSHOT dependency versions in local maven repos (use withLatestSnapshots + sbt-maven-resolver to fix) [#321][321] by [@jsuereth][@jsuereth]
+- Property in pom's version field results to wrong dependency resolution (use sbt-maven-resolver to fix). [#647][647] by [@jsuereth][@jsuereth]
+- Maven local resolver with parent POM (use sbt-maven-resolver). [#1616][1616] by [@jsuereth][@jsuereth]
 
 // Possibly fixed, need verification.
 - 1676 - SNAPSHOT dependency not updated ???
