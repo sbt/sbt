@@ -15,7 +15,7 @@ import org.apache.ivy.plugins.parser.xml.XmlModuleDescriptorWriter
 import org.apache.ivy.plugins.resolver.MavenRepositoryResolver.JarPackaging
 import org.apache.ivy.plugins.resolver.util.ResolvedResource
 import org.apache.ivy.util.Message
-import org.apache.maven.repository.internal.{ PomExtraDependencyAttributes, SbtRepositoryLayout, SbtExtraProperties }
+import org.apache.maven.repository.internal.{ PomExtraDependencyAttributes, SbtRepositoryLayout }
 import org.eclipse.aether.{ RepositorySystemSession, RepositorySystem }
 import org.eclipse.aether.artifact.{ DefaultArtifact => AetherArtifact }
 import org.eclipse.aether.metadata.{ Metadata, DefaultMetadata }
@@ -29,7 +29,7 @@ import org.eclipse.aether.resolution.{
 import org.eclipse.aether.deployment.{ DeployRequest => AetherDeployRequest }
 import org.eclipse.aether.installation.{ InstallRequest => AetherInstallRequest }
 import org.apache.ivy.core.cache.{ ModuleDescriptorWriter, ArtifactOrigin }
-import sbt.{ MavenCache, MavenRepository }
+import sbt.{ MavenCache, MavenRepository, SbtExtraProperties }
 import sbt.ivyint.{ CustomMavenResolver, CustomRemoteMavenResolver }
 import scala.collection.JavaConverters._
 

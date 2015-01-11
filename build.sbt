@@ -413,7 +413,7 @@ lazy val sbtProj = (project in sbtPath).
   )
 
 lazy val mavenResolverPluginProj = (project in file("sbt-maven-resolver")).
-  dependsOn(sbtProj).
+  dependsOn(sbtProj, ivyProj % "test->test").
   settings(baseSettings: _*).
   settings(
     name := "sbt-maven-resolver",

@@ -81,6 +81,7 @@ import org.eclipse.aether.spi.log.Logger;
 import org.eclipse.aether.spi.log.LoggerFactory;
 import org.eclipse.aether.spi.log.NullLoggerFactory;
 import org.eclipse.aether.transfer.ArtifactNotFoundException;
+import sbt.SbtExtraProperties;
 
 /**
  * A hacked version of maven's default artifact descriptor reader which we use in place of the standard aether adapter.
