@@ -63,30 +63,30 @@ lazy val root = (project in file(".")).
     organization in ThisBuild := "org.example",
     version in ThisBuild := "1.0",
     check := {
-      val acp = (externalDependencyClasspath in Compile in a).value.sortBy {_.data.getName}
-      val bcp = (externalDependencyClasspath in Compile in b).value.sortBy {_.data.getName}
-      val ccp = (externalDependencyClasspath in Compile in c).value.sortBy {_.data.getName} filterNot { _.data.getName == "demo_2.10.jar"}
-      if (!(acp exists { _.data.getName contains "commons-io-1.4-sources.jar" })) {
+      val acp = (externalDependencyClasspath in Compile in a).value.map {_.data.getName}.sorted
+      val bcp = (externalDependencyClasspath in Compile in b).value.map {_.data.getName}.sorted
+      val ccp = (externalDependencyClasspath in Compile in c).value.map {_.data.getName}.sorted filterNot { _ == "demo_2.10.jar"}
+      if (!(acp contains "commons-io-1.4-sources.jar")) {
         sys.error("commons-io-1.4-sources not found when it should be included: " + acp.toString)
       }
-      if (!(acp exists { _.data.getName contains "commons-io-1.4.jar" })) {
+      if (!(acp contains "commons-io-1.4.jar")) {
         sys.error("commons-io-1.4 not found when it should be included: " + acp.toString)
       }
       
       // stock Ivy implementation doesn't contain regular (non-source) jar, which probably is a bug
-      val acpWithoutSource = acp filterNot { _.data.getName contains "commons-io-1.4"}
-      val bcpWithoutSource = bcp filterNot { _.data.getName contains "commons-io-1.4"}
-      val ccpWithoutSource = ccp filterNot { _.data.getName contains "commons-io-1.4"}
+      val acpWithoutSource = acp filterNot { _ == "commons-io-1.4.jar"}
+      val bcpWithoutSource = bcp filterNot { _ == "commons-io-1.4.jar"}
+      val ccpWithoutSource = ccp filterNot { _ == "commons-io-1.4.jar"}
       if (acpWithoutSource == bcpWithoutSource && acpWithoutSource == ccpWithoutSource) ()
       else sys.error("Different classpaths are found:" +
         "\n - a (cached)        " + acpWithoutSource.toString +
         "\n - b (plain)         " + bcpWithoutSource.toString +
         "\n - c (inter-project) " + ccpWithoutSource.toString)
       
-      val atestcp = (externalDependencyClasspath in Test in a).value.sortBy {_.data.getName} filterNot { _.data.getName contains "commons-io-1.4"}
-      val btestcp = (externalDependencyClasspath in Test in b).value.sortBy {_.data.getName} filterNot { _.data.getName contains "commons-io-1.4"}
-      val ctestcp = (externalDependencyClasspath in Test in c).value.sortBy {_.data.getName} filterNot { _.data.getName == "demo_2.10.jar"} filterNot { _.data.getName contains "commons-io-1.4"}
-      if (ctestcp exists { _.data.getName contains "junit-4.11.jar" }) {
+      val atestcp = (externalDependencyClasspath in Test in a).value.map {_.data.getName}.sorted filterNot { _ == "commons-io-1.4.jar"}
+      val btestcp = (externalDependencyClasspath in Test in b).value.map {_.data.getName}.sorted filterNot { _ == "commons-io-1.4.jar"}
+      val ctestcp = (externalDependencyClasspath in Test in c).value.map {_.data.getName}.sorted filterNot { _ == "demo_2.10.jar"} filterNot { _ == "commons-io-1.4.jar"}
+      if (ctestcp contains "junit-4.11.jar") {
         sys.error("junit found when it should be excluded: " + ctestcp.toString)
       }
 
@@ -96,3 +96,4 @@ lazy val root = (project in file(".")).
         "\n - b test (plain)  " + btestcp.toString)
     }
   )
+

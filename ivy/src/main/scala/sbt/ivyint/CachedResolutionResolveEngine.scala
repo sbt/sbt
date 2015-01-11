@@ -58,18 +58,27 @@ private[sbt] class CachedResolutionResolveCache() {
       log.debug(s"::: expanding internal dependencies of module descriptor ${md0.getModuleRevisionId}")
       val rootModuleConfigs = md0.getConfigurations.toArray.toVector
       val rootNode = new IvyNode(data, md0)
+      // Initially confMap contains rootModuleConf mapped to itself.
       def expandInternalDeps(dep: DependencyDescriptor, confMap: Map[String, Array[String]]): Vector[DependencyDescriptor] =
         internalDependency(dep) match {
           case Some(internal) =>
             log.debug(s""":::: found internal dependency ${internal.getResolvedModuleRevisionId}""")
-            val allConfigurations: Vector[String] = confMap.values.flatten.toVector.distinct
+            log.debug(s"""::::: confMap ${confMap.toList map { case (k, v) => k + ": " + v.toList }}""")
             val next = nextConfMap(dep, confMap)
+            log.debug(s"""::::: next ${next.toList map { case (k, v) => k + ": " + v.toList }}""")
+            val allConfigurations: Vector[String] = (next.values.flatten.toVector map {
+              case "default(compile)" => "compile"
+              case x                  => x
+            }).distinct
+            log.debug(s"""::::: allConfigurations $allConfigurations""")
             // direct dependencies of an internal dependency
             val directs0 = directDependencies(internal)
             val directs = directs0 filter { dd =>
               allConfigurations exists { conf => !dd.getDependencyConfigurations(conf).isEmpty }
             }
-            directs flatMap { dd => expandInternalDeps(dd, next) }
+            directs flatMap { dd =>
+              expandInternalDeps(dd, next)
+            }
           case _ =>
             Vector(remapConfigurations(dep, confMap, log))
         }
@@ -82,17 +91,19 @@ private[sbt] class CachedResolutionResolveCache() {
       def nextConfMap(dd: DependencyDescriptor, previous: Map[String, Array[String]]): Map[String, Array[String]] =
         previous map {
           case (rootModuleConf, vs) =>
-            rootModuleConf -> (vs flatMap { conf =>
+            rootModuleConf -> (vs flatMap { conf0 =>
+              val conf = if (conf0 == "default(compile)") "compile"
+              else conf0
               dd.getDependencyConfigurations(conf) flatMap { confName =>
                 if (confName == "*") Array(confName)
-                else rootNode.getRealConfs(confName)
+                else Array(confName)
               }
             })
         }
       // The key of the confMap is rootModuleConf for md0, and the values are modules configuratons of dd0.
-      // For example if project Root depends on project B % "test", and project B depends on junit,
+      // For example if project Root depends on project B % Test, and project B depends on junit,
       // confMap should contain Map("test", Array("compile")).
-      // This remaps junit dependency as junit % "test". 
+      // This remaps junit dependency as junit % "test->default(compile)".
       def remapConfigurations(dd0: DependencyDescriptor, confMap: Map[String, Array[String]], log: Logger): DependencyDescriptor =
         {
           log.debug(s""":::: remapping configuration of ${dd0} with ${confMap.toList map { case (k, v) => (k, v.toList) }}""")
@@ -102,7 +113,9 @@ private[sbt] class CachedResolutionResolveCache() {
           for {
             moduleConf <- moduleConfigurations
             (rootModuleConf, vs) <- confMap.toSeq
-          } if (vs contains moduleConf) {
+          } if ((vs contains moduleConf) ||
+            (vs.contains("default(compile)") &&
+              (moduleConf == "compile" || moduleConf == "master"))) {
             log.debug(s""":::: ${dd0}: $moduleConf maps to $rootModuleConf""")
             dd0.getDependencyConfigurations(moduleConf) foreach { conf =>
               dd.addDependencyConfiguration(rootModuleConf, conf)
@@ -127,8 +140,9 @@ private[sbt] class CachedResolutionResolveCache() {
           dd
         }
       directDependencies(md0) flatMap { dep =>
+        // initial map should be rootModuleConf mapping to itself.
         val initialMap = Map(dep.getModuleConfigurations map { rootModuleConf =>
-          (rootModuleConf -> Array(rootModuleConf))
+          rootModuleConf -> Array(rootModuleConf)
         }: _*)
         expandInternalDeps(dep, initialMap)
       }
