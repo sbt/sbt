@@ -9,6 +9,7 @@ import org.eclipse.aether.metadata.Metadata
 import org.eclipse.aether.spi.connector.layout.RepositoryLayout.Checksum
 import org.eclipse.aether.artifact.Artifact
 import java.net.URI
+import sbt.SbtExtraProperties
 
 import scala.util.matching.Regex
 

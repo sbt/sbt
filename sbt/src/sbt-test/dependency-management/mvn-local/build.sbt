@@ -14,14 +14,13 @@ lazy val main = project.
     libraryDependencies += (projectID in library).value,
     fullResolvers := fullResolvers.value.filterNot(_.name == "inter-project"),
     // TODO - should this not be needed?
-    updateOptions := updateOptions.value.withLatestSnapshots(true).withAetherResolution(true)
+    updateOptions := updateOptions.value.withLatestSnapshots(true)
   )
 
 lazy val library = project.
   settings(commonSettings: _*).
   settings(
-    uniqueName,
-    updateOptions := updateOptions.value.withAetherResolution(true)
+    uniqueName
   )
 
 def uniqueName = 

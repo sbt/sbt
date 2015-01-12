@@ -55,7 +55,7 @@ class MavenResolutionSpec extends BaseIvySpecification {
 
   import ShowLines._
 
-  def defaultUpdateOptions = UpdateOptions().withAetherResolution(true)
+  def defaultUpdateOptions = UpdateOptions().withResolverConverter(MavenResolverConverter.converter)
 
   def resolveMajorConflicts = {
     val m = module(ModuleID("com.example", "foo", "0.1.0", Some("compile")),

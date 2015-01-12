@@ -5,7 +5,7 @@ package sbt
 
 import Attributed.data
 import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
-import org.apache.maven.repository.internal.{ SbtExtraProperties, PomExtraDependencyAttributes }
+import org.apache.maven.repository.internal.PomExtraDependencyAttributes
 import sbt.Compiler.InputsWithPrevious
 import xsbt.api.Discovery
 import xsbti.compile.CompileOrder

@@ -1,6 +1,8 @@
 package sbt
 
 import java.io.File
+import org.apache.ivy.plugins.resolver.DependencyResolver
+import org.apache.ivy.core.settings.IvySettings
 
 /**
  * Represents configurable options for update task.
@@ -18,13 +20,8 @@ final class UpdateOptions private[sbt] (
     val consolidatedResolution: Boolean,
     /** If set to true, use cached resolution. */
     val cachedResolution: Boolean,
-    /** If set to true, use aether for resolving maven artifacts. */
-    val aetherResolution: Boolean) {
-
-  /** Enables Aether for dependency resolution. */
-  def withAetherResolution(aetherResolution: Boolean): UpdateOptions =
-    copy(aetherResolution = aetherResolution)
-
+    /** Extention point for an alternative resolver converter. */
+    val resolverConverter: UpdateOptions.ResolverConverter) {
   def withCircularDependencyLevel(circularDependencyLevel: CircularDependencyLevel): UpdateOptions =
     copy(circularDependencyLevel = circularDependencyLevel)
   def withLatestSnapshots(latestSnapshots: Boolean): UpdateOptions =
@@ -36,24 +33,28 @@ final class UpdateOptions private[sbt] (
   def withCachedResolution(cachedResoluton: Boolean): UpdateOptions =
     copy(cachedResolution = cachedResoluton,
       consolidatedResolution = cachedResolution)
+  /** Extention point for an alternative resolver converter. */
+  def withResolverConverter(resolverConverter: UpdateOptions.ResolverConverter): UpdateOptions =
+    copy(resolverConverter = resolverConverter)
 
   private[sbt] def copy(
     circularDependencyLevel: CircularDependencyLevel = this.circularDependencyLevel,
     latestSnapshots: Boolean = this.latestSnapshots,
     consolidatedResolution: Boolean = this.consolidatedResolution,
     cachedResolution: Boolean = this.cachedResolution,
-    aetherResolution: Boolean = this.aetherResolution): UpdateOptions =
+    resolverConverter: UpdateOptions.ResolverConverter = this.resolverConverter): UpdateOptions =
     new UpdateOptions(circularDependencyLevel,
       latestSnapshots,
       consolidatedResolution,
       cachedResolution,
-      aetherResolution)
+      resolverConverter)
 
   override def equals(o: Any): Boolean = o match {
     case o: UpdateOptions =>
       this.circularDependencyLevel == o.circularDependencyLevel &&
         this.latestSnapshots == o.latestSnapshots &&
-        this.cachedResolution == o.cachedResolution
+        this.cachedResolution == o.cachedResolution &&
+        this.resolverConverter == o.resolverConverter
     case _ => false
   }
 
@@ -63,17 +64,19 @@ final class UpdateOptions private[sbt] (
       hash = hash * 31 + this.circularDependencyLevel.##
       hash = hash * 31 + this.latestSnapshots.##
       hash = hash * 31 + this.cachedResolution.##
+      hash = hash * 31 + this.resolverConverter.##
       hash
     }
 }
 
 object UpdateOptions {
+  type ResolverConverter = PartialFunction[(Resolver, IvySettings, Logger), DependencyResolver]
+
   def apply(): UpdateOptions =
     new UpdateOptions(
       circularDependencyLevel = CircularDependencyLevel.Warn,
       latestSnapshots = false,
       consolidatedResolution = false,
       cachedResolution = false,
-      // TODO - Disable this before release, but make sure test suite passes with it on.
-      aetherResolution = true)
+      resolverConverter = PartialFunction.empty)
 }
