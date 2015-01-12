@@ -1,7 +1,7 @@
 package sbt
 
 import UpdateOptions.ResolverConverter
-import org.apache.ivy.plugins.resolver.{ MavenCacheRepositoryResolver, MavenRemoteRepositoryResolver }
+import sbt.mavenint.{ MavenCacheRepositoryResolver, MavenRemoteRepositoryResolver }
 
 object MavenResolverConverter {
   val converter: ResolverConverter = {

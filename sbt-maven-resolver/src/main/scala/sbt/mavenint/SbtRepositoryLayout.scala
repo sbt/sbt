@@ -1,15 +1,14 @@
-package org.apache.maven.repository.internal
+package sbt.mavenint
 
-import org.apache.ivy.util.Message
-import org.eclipse.aether.spi.connector.layout.{ RepositoryLayout, RepositoryLayoutFactory }
-import org.eclipse.aether.RepositorySystemSession
-import org.eclipse.aether.repository.RemoteRepository
-import org.eclipse.aether.transfer.NoRepositoryLayoutException
-import org.eclipse.aether.metadata.Metadata
-import org.eclipse.aether.spi.connector.layout.RepositoryLayout.Checksum
-import org.eclipse.aether.artifact.Artifact
 import java.net.URI
-import sbt.SbtExtraProperties
+
+import org.eclipse.aether.RepositorySystemSession
+import org.eclipse.aether.artifact.Artifact
+import org.eclipse.aether.metadata.Metadata
+import org.eclipse.aether.repository.RemoteRepository
+import org.eclipse.aether.spi.connector.layout.RepositoryLayout.Checksum
+import org.eclipse.aether.spi.connector.layout.{ RepositoryLayout, RepositoryLayoutFactory }
+import org.eclipse.aether.transfer.NoRepositoryLayoutException
 
 import scala.util.matching.Regex
 
@@ -32,15 +31,13 @@ object SbtRepositoryLayout extends RepositoryLayout {
   // get location is ALMOST the same for Metadata + artifact... but subtle differences are important.
 
   def getLocation(artifact: Artifact, upload: Boolean): URI = {
-    import collection.JavaConverters._
-    val sbtVersion = Option(artifact.getProperties.get(SbtExtraProperties.POM_SBT_VERSION))
-    val scalaVersion = Option(artifact.getProperties.get(SbtExtraProperties.POM_SCALA_VERSION))
+    val sbtVersion = Option(artifact.getProperties.get(SbtPomExtraProperties.POM_SBT_VERSION))
+    val scalaVersion = Option(artifact.getProperties.get(SbtPomExtraProperties.POM_SCALA_VERSION))
     val path = new StringBuilder(128)
     path.append(artifact.getGroupId.replace('.', '/')).append('/')
     (sbtVersion zip scalaVersion).headOption match {
       case Some((sbt, scala)) =>
         if (artifact.getArtifactId contains "_sbt_") {
-          // TODO - Write this handler.
           val SbtNameVersionSplit(name, sbt2) = artifact.getArtifactId
           path.append(name).append('_').append(scala).append('_').append(sbt).append('/')
         } else path.append(artifact.getArtifactId).append('_').append(scala).append('_').append(sbt).append('/')
@@ -69,8 +66,8 @@ object SbtRepositoryLayout extends RepositoryLayout {
   val SbtNameVersionSplit = new Regex("(.*)_sbt_(.*)")
 
   def getLocation(metadata: Metadata, upload: Boolean): URI = {
-    val sbtVersion = Option(metadata.getProperties.get(SbtExtraProperties.POM_SBT_VERSION))
-    val scalaVersion = Option(metadata.getProperties.get(SbtExtraProperties.POM_SCALA_VERSION))
+    val sbtVersion = Option(metadata.getProperties.get(SbtPomExtraProperties.POM_SBT_VERSION))
+    val scalaVersion = Option(metadata.getProperties.get(SbtPomExtraProperties.POM_SCALA_VERSION))
     val path = new StringBuilder(128)
     path.append(metadata.getGroupId.replace('.', '/')).append('/')
     (sbtVersion zip scalaVersion).headOption match {
@@ -78,7 +75,6 @@ object SbtRepositoryLayout extends RepositoryLayout {
         if (metadata.getArtifactId contains "_sbt_") {
           val SbtNameVersionSplit(name, sbt2) = metadata.getArtifactId
           path.append(name).append('_').append(scala).append('_').append(sbt).append('/')
-          // TODO - Write this handler.
         } else path.append(metadata.getArtifactId).append('_').append(scala).append('_').append(sbt).append('/')
       case None =>
         // TODO - Should we automatically append the _<scala-verison> here?  Proabbly not for now.

@@ -9,7 +9,7 @@ package sbt
 
 import java.io.File
 
-import org.apache.maven.repository.internal.PomExtraDependencyAttributes
+import sbt.mavenint.PomExtraDependencyAttributes
 
 // Node needs to be renamed to XNode because the task subproject contains a Node type that will shadow
 // scala.xml.Node when generating aggregated API documentation

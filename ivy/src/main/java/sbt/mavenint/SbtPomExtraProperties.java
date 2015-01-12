@@ -1,9 +1,9 @@
-package sbt;
+package sbt.mavenint;
 
 /**
  * Extra properties we dump from Aether into the properties list.
  */
-public class SbtExtraProperties {
+public class SbtPomExtraProperties {
 
     public static final String MAVEN_PACKAGING_KEY = "sbt.pom.packaging";
     public static final String SCALA_VERSION_KEY = "sbt.pom.scalaversion";

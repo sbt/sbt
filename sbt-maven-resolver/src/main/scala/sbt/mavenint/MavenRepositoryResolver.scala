@@ -1,48 +1,41 @@
-package org.apache.ivy.plugins.resolver
+package sbt.mavenint
 
-import java.io.{ File, IOException }
-import java.text.ParseException
+import java.io.File
 import java.util.Date
+
 import org.apache.ivy.core.IvyContext
+import org.apache.ivy.core.cache.{ ArtifactOrigin, ModuleDescriptorWriter }
 import org.apache.ivy.core.module.descriptor._
-import org.apache.ivy.core.module.id.{ ModuleId, ArtifactId, ModuleRevisionId }
-import org.apache.ivy.core.report.{ ArtifactDownloadReport, DownloadStatus, MetadataArtifactDownloadReport, DownloadReport }
-import org.apache.ivy.core.resolve.{ ResolvedModuleRevision, ResolveData, DownloadOptions }
+import org.apache.ivy.core.module.id.{ ModuleId, ModuleRevisionId }
+import org.apache.ivy.core.report.{ ArtifactDownloadReport, DownloadReport, DownloadStatus, MetadataArtifactDownloadReport }
+import org.apache.ivy.core.resolve.{ DownloadOptions, ResolveData, ResolvedModuleRevision }
 import org.apache.ivy.core.settings.IvySettings
 import org.apache.ivy.plugins.matcher.ExactPatternMatcher
 import org.apache.ivy.plugins.parser.m2.{ PomModuleDescriptorBuilder, ReplaceMavenConfigurationMappings }
 import org.apache.ivy.plugins.parser.xml.XmlModuleDescriptorWriter
-import org.apache.ivy.plugins.resolver.MavenRepositoryResolver.JarPackaging
+import org.apache.ivy.plugins.resolver.AbstractResolver
 import org.apache.ivy.plugins.resolver.util.ResolvedResource
 import org.apache.ivy.util.Message
-import org.apache.maven.repository.internal.{ PomExtraDependencyAttributes, SbtRepositoryLayout }
-import org.eclipse.aether.{ RepositorySystemSession, RepositorySystem }
 import org.eclipse.aether.artifact.{ DefaultArtifact => AetherArtifact }
-import org.eclipse.aether.metadata.{ Metadata, DefaultMetadata }
-import org.eclipse.aether.resolution.{
-  ArtifactDescriptorRequest => AetherDescriptorRequest,
-  ArtifactDescriptorResult => AetherDescriptorResult,
-  MetadataRequest => AetherMetadataRequest,
-  ArtifactRequest => AetherArtifactRequest,
-  ArtifactResolutionException
-}
 import org.eclipse.aether.deployment.{ DeployRequest => AetherDeployRequest }
 import org.eclipse.aether.installation.{ InstallRequest => AetherInstallRequest }
-import org.apache.ivy.core.cache.{ ModuleDescriptorWriter, ArtifactOrigin }
-import sbt.{ MavenCache, MavenRepository, SbtExtraProperties }
+import org.eclipse.aether.metadata.{ DefaultMetadata, Metadata }
+import org.eclipse.aether.resolution.{ ArtifactDescriptorRequest => AetherDescriptorRequest, ArtifactDescriptorResult => AetherDescriptorResult, ArtifactRequest => AetherArtifactRequest, ArtifactResolutionException, MetadataRequest => AetherMetadataRequest }
+import org.eclipse.aether.{ RepositorySystem, RepositorySystemSession }
 import sbt.ivyint.{ CustomMavenResolver, CustomRemoteMavenResolver }
+import sbt.mavenint.MavenRepositoryResolver.JarPackaging
+import sbt.{ MavenCache, MavenRepository }
+
 import scala.collection.JavaConverters._
 
 object MavenRepositoryResolver {
   val MAVEN_METADATA_XML = "maven-metadata.xml"
   val CLASSIFIER_ATTRIBUTE = "e:classifier"
-
+  // TODO - This may be duplciated in more than one location.  We need to consolidate.
   val JarPackagings = Set("eclipse-plugin", "hk2-jar", "orbit", "scala-jar", "jar", "bundle")
-
   object JarPackaging {
     def unapply(in: String): Boolean = JarPackagings.contains(in)
   }
-
   // Example: 2014 12 18  09 33 56
   val LAST_UPDATE_FORMAT = new java.text.SimpleDateFormat("yyyyMMddhhmmss")
   def parseTimeString(in: String): Option[Long] =
@@ -50,157 +43,15 @@ object MavenRepositoryResolver {
     catch {
       case _: java.text.ParseException => None
     }
-
   val DEFAULT_ARTIFACT_CONFIGURATION = "master"
-
 }
 
 /**
- * A resolver instance which can resolve from a REMOTE maven repository.
+ * An abstract repository resolver which has the basic hooks for mapping from Maven (Aether) notions into Ivy notions.
  *
- * Note: This creates its *own* local cache directory for cache metadata. using its name.
- *
+ * THis is used to implement local-cache resolution from ~/.m2 caches or resolving from remote repositories.
  */
-class MavenRemoteRepositoryResolver(val repo: MavenRepository, settings: IvySettings)
-    extends AbstractMavenRepositoryResolver(settings) with CustomRemoteMavenResolver {
-  setName(repo.name)
-  override def toString = s"${repo.name}: ${repo.root}"
-  protected val system = MavenRepositorySystemFactory.newRepositorySystemImpl
-  // Note:  All maven repository resolvers will use the SAME maven cache.
-  //        We're not sure if we care whether or not this means that the wrong resolver may report finding an artifact.
-  //        The key is not to duplicate files repeatedly across many caches.
-  private val localRepo = new java.io.File(settings.getDefaultIvyUserDir, s"maven-cache")
-  sbt.IO.createDirectory(localRepo)
-  protected val session = MavenRepositorySystemFactory.newSessionImpl(system, localRepo)
-  private val aetherRepository = {
-    new org.eclipse.aether.repository.RemoteRepository.Builder(repo.name, SbtRepositoryLayout.LAYOUT_NAME, repo.root).build()
-  }
-  // TODO - Check if isUseCacheOnly is used correctly.
-  private def isUseCacheOnly: Boolean =
-    Option(IvyContext.getContext).flatMap(x => Option(x.getResolveData)).flatMap(x => Option(x.getOptions)).map(_.isUseCacheOnly).getOrElse(false)
-  protected def addRepositories(request: AetherDescriptorRequest): AetherDescriptorRequest =
-    if (isUseCacheOnly) request else request.addRepository(aetherRepository)
-  protected def addRepositories(request: AetherArtifactRequest): AetherArtifactRequest =
-    if (isUseCacheOnly) request else request.addRepository(aetherRepository)
-  /** Actually publishes aether artifacts. */
-  protected def publishArtifacts(artifacts: Seq[AetherArtifact]): Unit = {
-    val request = new AetherDeployRequest()
-    request.setRepository(aetherRepository)
-    artifacts foreach request.addArtifact
-    system.deploy(session, request)
-  }
-  protected def getPublicationTime(mrid: ModuleRevisionId): Option[Long] = {
-    val metadataRequest = new AetherMetadataRequest()
-    metadataRequest.setMetadata(
-      new DefaultMetadata(
-        mrid.getOrganisation,
-        mrid.getName,
-        mrid.getRevision,
-        MavenRepositoryResolver.MAVEN_METADATA_XML,
-        Metadata.Nature.RELEASE_OR_SNAPSHOT))
-    if (!isUseCacheOnly) metadataRequest.setRepository(aetherRepository)
-    val metadataResultOpt =
-      try system.resolveMetadata(session, java.util.Arrays.asList(metadataRequest)).asScala.headOption
-      catch {
-        case e: org.eclipse.aether.resolution.ArtifactResolutionException => None
-      }
-    try metadataResultOpt match {
-      case Some(md) if md.isResolved =>
-        import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Reader
-        import org.codehaus.plexus.util.ReaderFactory
-        val readMetadata = {
-          val reader = ReaderFactory.newXmlReader(md.getMetadata.getFile)
-          try new MetadataXpp3Reader().read(reader, false)
-          finally reader.close()
-        }
-        val timestampOpt =
-          for {
-            v <- Option(readMetadata.getVersioning)
-            sp <- Option(v.getSnapshot)
-            ts <- Option(sp.getTimestamp)
-            t <- MavenRepositoryResolver.parseTimeString(ts)
-          } yield t
-        val lastUpdatedOpt =
-          for {
-            v <- Option(readMetadata.getVersioning)
-            lu <- Option(v.getLastUpdated)
-            d <- MavenRepositoryResolver.parseTimeString(lu)
-          } yield d
-        // TODO - Only look at timestamp *IF* the version is for a snapshot.
-        timestampOpt orElse lastUpdatedOpt
-      case _ => None
-    }
-  }
-}
-
-/**
- * A resolver instance which can resolve from a maven CACHE.
- *
- * Note: This should never hit somethign remote, as it just looks in the maven cache for things already resolved.
- */
-class MavenCacheRepositoryResolver(val repo: MavenCache, settings: IvySettings)
-    extends AbstractMavenRepositoryResolver(settings) with CustomMavenResolver {
-  setName(repo.name)
-  protected val system = MavenRepositorySystemFactory.newRepositorySystemImpl
-  sbt.IO.createDirectory(repo.rootFile)
-  protected val session = MavenRepositorySystemFactory.newSessionImpl(system, repo.rootFile)
-  protected def setRepository(request: AetherMetadataRequest): AetherMetadataRequest = request
-  protected def addRepositories(request: AetherDescriptorRequest): AetherDescriptorRequest = request
-  protected def addRepositories(request: AetherArtifactRequest): AetherArtifactRequest = request
-  protected def publishArtifacts(artifacts: Seq[AetherArtifact]): Unit = {
-    val request = new AetherInstallRequest()
-    artifacts foreach request.addArtifact
-    system.install(session, request)
-  }
-  // TODO - Share this with non-local repository code, since it's MOSTLY the same.
-  protected def getPublicationTime(mrid: ModuleRevisionId): Option[Long] = {
-    val metadataRequest = new AetherMetadataRequest()
-    metadataRequest.setMetadata(
-      new DefaultMetadata(
-        mrid.getOrganisation,
-        mrid.getName,
-        mrid.getRevision,
-        MavenRepositoryResolver.MAVEN_METADATA_XML,
-        Metadata.Nature.RELEASE_OR_SNAPSHOT))
-    val metadataResultOpt =
-      try system.resolveMetadata(session, java.util.Arrays.asList(metadataRequest)).asScala.headOption
-      catch {
-        case e: org.eclipse.aether.resolution.ArtifactResolutionException => None
-      }
-    try metadataResultOpt match {
-      case Some(md) if md.isResolved =>
-        import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Reader
-        import org.codehaus.plexus.util.ReaderFactory
-        val readMetadata = {
-          val reader = ReaderFactory.newXmlReader(md.getMetadata.getFile)
-          try new MetadataXpp3Reader().read(reader, false)
-          finally reader.close()
-        }
-        val timestampOpt =
-          for {
-            v <- Option(readMetadata.getVersioning)
-            sp <- Option(v.getSnapshot)
-            ts <- Option(sp.getTimestamp)
-            t <- MavenRepositoryResolver.parseTimeString(ts)
-          } yield t
-        val lastUpdatedOpt =
-          for {
-            v <- Option(readMetadata.getVersioning)
-            lu <- Option(v.getLastUpdated)
-            d <- MavenRepositoryResolver.parseTimeString(lu)
-          } yield d
-        // TODO - Only look at timestamp *IF* the version is for a snapshot.
-        timestampOpt orElse lastUpdatedOpt
-      case _ => None
-    }
-  }
-  override def toString = s"${repo.name}: ${repo.root}"
-}
-
-/** An exception we can throw if we encounter issues. */
-class MavenResolutionException(msg: String) extends RuntimeException(msg) {}
-
-abstract class AbstractMavenRepositoryResolver(settings: IvySettings) extends AbstractResolver {
+abstract class MavenRepositoryResolver(settings: IvySettings) extends AbstractResolver {
 
   /** Our instance of the aether repository system. */
   protected val system: RepositorySystem
@@ -237,7 +88,7 @@ abstract class AbstractMavenRepositoryResolver(settings: IvySettings) extends Ab
 
   // Handles appending licenses to the module descriptor fromthe pom.
   private def addLicenseInfo(md: DefaultModuleDescriptor, map: java.util.Map[String, AnyRef]) = {
-    val count = map.get(SbtExtraProperties.LICENSE_COUNT_KEY) match {
+    val count = map.get(SbtPomExtraProperties.LICENSE_COUNT_KEY) match {
       case null                 => 0
       case x: java.lang.Integer => x.intValue
       case x: String            => x.toInt
@@ -245,8 +96,8 @@ abstract class AbstractMavenRepositoryResolver(settings: IvySettings) extends Ab
     }
     for {
       i <- 0 until count
-      name <- Option(map.get(SbtExtraProperties.makeLicenseName(i))).map(_.toString)
-      url <- Option(map.get(SbtExtraProperties.makeLicenseUrl(i))).map(_.toString)
+      name <- Option(map.get(SbtPomExtraProperties.makeLicenseName(i))).map(_.toString)
+      url <- Option(map.get(SbtPomExtraProperties.makeLicenseUrl(i))).map(_.toString)
     } md.addLicense(new License(name, url))
   }
 
@@ -294,7 +145,7 @@ abstract class AbstractMavenRepositoryResolver(settings: IvySettings) extends Ab
 
         // Here we rip out license info.
         addLicenseInfo(md, result.getProperties)
-        md.addExtraInfo(SbtExtraProperties.MAVEN_PACKAGING_KEY, packaging)
+        md.addExtraInfo(SbtPomExtraProperties.MAVEN_PACKAGING_KEY, packaging)
         Message.debug(s"Setting publication date to ${new Date(lastModifiedTime)}")
         // TODO - Figure out the differences between these items.
         md.setPublicationDate(new Date(lastModifiedTime))
@@ -344,10 +195,10 @@ abstract class AbstractMavenRepositoryResolver(settings: IvySettings) extends Ab
   def getArtifactProperties(dd: ModuleRevisionId): java.util.Map[String, String] = {
     val m = new java.util.HashMap[String, String]
     Option(dd.getExtraAttribute(PomExtraDependencyAttributes.ScalaVersionKey)) foreach { sv =>
-      m.put(SbtExtraProperties.POM_SCALA_VERSION, sv)
+      m.put(SbtPomExtraProperties.POM_SCALA_VERSION, sv)
     }
     getSbtVersion(dd) foreach { sv =>
-      m.put(SbtExtraProperties.POM_SBT_VERSION, sv)
+      m.put(SbtPomExtraProperties.POM_SBT_VERSION, sv)
     }
     m
   }
@@ -439,11 +290,6 @@ abstract class AbstractMavenRepositoryResolver(settings: IvySettings) extends Ab
   /** Adds the dependency mediators required based on the managed dependency instances from this pom. */
   def addManagedDependenciesFromAether(result: AetherDescriptorResult, md: DefaultModuleDescriptor) {
     for (d <- result.getManagedDependencies.asScala) {
-
-      if (d.getArtifact.getArtifactId == "stringtemplate") {
-        Message.warn(s"Found managed stringtemplate in $md !")
-      }
-
       md.addDependencyDescriptorMediator(
         ModuleId.newInstance(d.getArtifact.getGroupId, d.getArtifact.getArtifactId),
         ExactPatternMatcher.INSTANCE,
@@ -513,12 +359,7 @@ abstract class AbstractMavenRepositoryResolver(settings: IvySettings) extends Ab
         // TOOD - We may need to fix the configuration mappings here.
         dd.addDependencyArtifact(optionalizedScope, depArtifact)
       }
-      // TODO - is toSystem call correct?
       md.addDependency(dd)
-
-      if (d.getArtifact.getArtifactId == "stringtemplate") {
-        Message.warn(s"Found stringtemplate dependency!  $dd")
-      }
     }
   }
 
@@ -529,8 +370,8 @@ abstract class AbstractMavenRepositoryResolver(settings: IvySettings) extends Ab
   }
 
   private def getPackagingFromPomProperties(props: java.util.Map[String, AnyRef]): String =
-    if (props.containsKey(SbtExtraProperties.MAVEN_PACKAGING_KEY))
-      props.get(SbtExtraProperties.MAVEN_PACKAGING_KEY).toString
+    if (props.containsKey(SbtPomExtraProperties.MAVEN_PACKAGING_KEY))
+      props.get(SbtPomExtraProperties.MAVEN_PACKAGING_KEY).toString
     else "jar"
 
   override def download(artifacts: Array[Artifact], dopts: DownloadOptions): DownloadReport = {
@@ -671,7 +512,8 @@ abstract class AbstractMavenRepositoryResolver(settings: IvySettings) extends Ab
 
   override def equals(a: Any): Boolean =
     a match {
-      case x: AbstractMavenRepositoryResolver => x.getName == getName
-      case _                                  => false
+      case x: MavenRepositoryResolver => x.getName == getName
+      case _                          => false
     }
+  override def hashCode: Int = getName.hashCode
 }

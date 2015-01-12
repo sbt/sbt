@@ -1,9 +1,8 @@
 package sbt
 
 import java.io.FileInputStream
-
-import org.apache.maven.repository.internal.PomExtraDependencyAttributes
 import org.specs2._
+import sbt.mavenint.PomExtraDependencyAttributes
 
 class MavenResolutionSpec extends BaseIvySpecification {
   def is = args(sequential = true) ^ s2""".stripMargin

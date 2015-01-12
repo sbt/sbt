@@ -81,7 +81,8 @@ import org.eclipse.aether.spi.log.Logger;
 import org.eclipse.aether.spi.log.LoggerFactory;
 import org.eclipse.aether.spi.log.NullLoggerFactory;
 import org.eclipse.aether.transfer.ArtifactNotFoundException;
-import sbt.SbtExtraProperties;
+import sbt.mavenint.PomExtraDependencyAttributes;
+import sbt.mavenint.SbtPomExtraProperties;
 
 /**
  * A hacked version of maven's default artifact descriptor reader which we use in place of the standard aether adapter.
@@ -260,12 +261,12 @@ public class SbtArtifactDescriptorReader
             }
 
             List<License> licenses = model.getLicenses();
-            properties.put( SbtExtraProperties.LICENSE_COUNT_KEY, licenses.size() );
+            properties.put( SbtPomExtraProperties.LICENSE_COUNT_KEY, licenses.size() );
             for ( int i = 0; i < licenses.size(); i++ )
             {
                 License license = licenses.get( i );
-                properties.put( SbtExtraProperties.makeLicenseName(i), license.getName() );
-                properties.put( SbtExtraProperties.makeLicenseUrl(i), license.getUrl() );
+                properties.put( SbtPomExtraProperties.makeLicenseName(i), license.getName() );
+                properties.put( SbtPomExtraProperties.makeLicenseUrl(i), license.getUrl() );
                 properties.put( "license." + i + ".comments", license.getComments() );
                 properties.put( "license." + i + ".distribution", license.getDistribution() );
             }
@@ -273,15 +274,15 @@ public class SbtArtifactDescriptorReader
             // SBT ADDED - Here we push in the pom packaging type for Ivy expectations.
             final String packaging =
                     (model.getPackaging() == null) ? "jar" : model.getPackaging();
-            properties.put(SbtExtraProperties.MAVEN_PACKAGING_KEY, packaging);
+            properties.put(SbtPomExtraProperties.MAVEN_PACKAGING_KEY, packaging);
             // SBT ADDED - Here we inject the sbt/scala version we parse out of the pom.
             final Properties mprops = model.getProperties();
-            if(mprops.containsKey(SbtExtraProperties.POM_SBT_VERSION)) {
-                final String sbtVersion = mprops.getProperty(SbtExtraProperties.POM_SBT_VERSION);
-                properties.put(SbtExtraProperties.SBT_VERSION_KEY, sbtVersion);
+            if(mprops.containsKey(SbtPomExtraProperties.POM_SBT_VERSION)) {
+                final String sbtVersion = mprops.getProperty(SbtPomExtraProperties.POM_SBT_VERSION);
+                properties.put(SbtPomExtraProperties.SBT_VERSION_KEY, sbtVersion);
             }
-            if(mprops.containsKey(SbtExtraProperties.POM_SCALA_VERSION)) {
-                properties.put(SbtExtraProperties.SCALA_VERSION_KEY, mprops.getProperty(SbtExtraProperties.POM_SCALA_VERSION));
+            if(mprops.containsKey(SbtPomExtraProperties.POM_SCALA_VERSION)) {
+                properties.put(SbtPomExtraProperties.SCALA_VERSION_KEY, mprops.getProperty(SbtPomExtraProperties.POM_SCALA_VERSION));
             }
 
             // SBT-Added - Here we inject the additional dependency attributes (for transitive plugin resolution).

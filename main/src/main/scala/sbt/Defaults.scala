@@ -5,8 +5,8 @@ package sbt
 
 import Attributed.data
 import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
-import org.apache.maven.repository.internal.PomExtraDependencyAttributes
 import sbt.Compiler.InputsWithPrevious
+import sbt.mavenint.{ PomExtraDependencyAttributes, SbtPomExtraProperties }
 import xsbt.api.Discovery
 import xsbti.compile.CompileOrder
 import Project.{ inConfig, inScope, inTask, richInitialize, richInitializeTask, richTaskSessionVar }
@@ -1216,7 +1216,7 @@ object Classpaths {
   private[sbt] def defaultProjectID: Initialize[ModuleID] = Def.setting {
     val base = ModuleID(organization.value, moduleName.value, version.value).cross(crossVersion in projectID value).artifacts(artifacts.value: _*)
     apiURL.value match {
-      case Some(u) if autoAPIMappings.value => base.extra(SbtExtraProperties.POM_API_KEY -> u.toExternalForm)
+      case Some(u) if autoAPIMappings.value => base.extra(SbtPomExtraProperties.POM_API_KEY -> u.toExternalForm)
       case _                                => base
     }
   }
