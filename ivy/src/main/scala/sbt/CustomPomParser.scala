@@ -12,8 +12,7 @@ import org.apache.ivy.util.extendable.ExtendableItem
 import java.io.{ File, InputStream }
 import java.net.URL
 import java.util.regex.Pattern
-
-import org.apache.maven.repository.internal.{ PomExtraDependencyAttributes }
+import sbt.mavenint.{ PomExtraDependencyAttributes, SbtPomExtraProperties }
 
 @deprecated("0.13.8", "We now use an Aether-based pom parser.")
 final class CustomPomParser(delegate: ModuleDescriptorParser, transform: (ModuleDescriptorParser, ModuleDescriptor) => ModuleDescriptor) extends ModuleDescriptorParser {
@@ -36,8 +35,8 @@ object CustomPomParser {
   ReplaceMavenConfigurationMappings.init()
 
   /** The key prefix that indicates that this is used only to store extra information and is not intended for dependency resolution.*/
-  val InfoKeyPrefix = SbtExtraProperties.POM_INFO_KEY_PREFIX
-  val ApiURLKey = SbtExtraProperties.POM_API_KEY
+  val InfoKeyPrefix = SbtPomExtraProperties.POM_INFO_KEY_PREFIX
+  val ApiURLKey = SbtPomExtraProperties.POM_API_KEY
 
   val SbtVersionKey = PomExtraDependencyAttributes.SbtVersionKey
   val ScalaVersionKey = PomExtraDependencyAttributes.ScalaVersionKey
