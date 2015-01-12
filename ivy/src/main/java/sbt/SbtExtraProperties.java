@@ -1,6 +1,4 @@
-package org.apache.maven.repository.internal;
-
-
+package sbt;
 
 /**
  * Extra properties we dump from Aether into the properties list.

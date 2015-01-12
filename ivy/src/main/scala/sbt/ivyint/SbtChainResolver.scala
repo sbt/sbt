@@ -184,7 +184,7 @@ private[sbt] case class SbtChainResolver(
             val artifactOpt = findFirstArtifactRef(rmr.getDescriptor, dd, data, resolver)
             artifactOpt match {
               case None if resolver.getName == "inter-project" => // do nothing
-              case None if resolver.isInstanceOf[AbstractMavenRepositoryResolver] =>
+              case None if resolver.isInstanceOf[CustomMavenResolver] =>
               // do nothing for now....
               // We want to see if the maven caching is sufficient and we do not need to duplicate within the ivy cache...
               case None => throw new RuntimeException(s"\t${resolver.getName}: no ivy file nor artifact found for $rmr")
