@@ -18,10 +18,16 @@ object PomRepoTest extends Build
 	def pomIncludeRepository(base: File, prev: MavenRepository => Boolean) = (r: MavenRepository) =>
 		if(base / "repo.none" exists) false else if(base / "repo.all" exists) true else prev(r)
 
+	def addSlash(s: String): String =
+	  s match {
+	  	case s if s endsWith "/" => s
+	  	case _ => s + "/"
+	  }
+
 	def checkPomRepositories(file: File, args: Seq[String], s: TaskStreams)
 	{
 		val repositories = scala.xml.XML.loadFile(file) \\ "repository"
-		val extracted = repositories.map { repo => MavenRepository(repo \ "name" text, repo \ "url" text) }
+		val extracted = repositories.map { repo => MavenRepository(repo \ "name" text, addSlash(repo \ "url" text)) }
 		val expected = args.map(GlobFilter.apply)
 		s.log.info("Extracted: " + extracted.mkString("\n\t", "\n\t", "\n"))
 		s.log.info("Expected: " + args.mkString("\n\t", "\n\t", "\n"))
