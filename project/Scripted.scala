@@ -8,6 +8,9 @@ object Scripted {
   lazy val scripted = InputKey[Unit]("scripted")
   lazy val scriptedUnpublished = InputKey[Unit]("scripted-unpublished", "Execute scripted without publishing SBT first. Saves you some time when only your test has changed.")
   lazy val scriptedSource = SettingKey[File]("scripted-source")
+  lazy val scriptedPrescripted = TaskKey[File => Unit]("scripted-prescripted")
+
+  lazy val MavenResolverPluginTest = config("mavenResolverPluginTest") extend Compile
 
   import sbt.complete._
   import DefaultParsers._
@@ -55,14 +58,14 @@ object Scripted {
       (token(Space) ~> (PagedIds | testIdAsGroup)).* map (_.flatten)
     }
 
-  def doScripted(launcher: File, scriptedSbtClasspath: Seq[Attributed[File]], scriptedSbtInstance: ScalaInstance, sourcePath: File, args: Seq[String]) {
+  def doScripted(launcher: File, scriptedSbtClasspath: Seq[Attributed[File]], scriptedSbtInstance: ScalaInstance, sourcePath: File, args: Seq[String], prescripted: File => Unit) {
     System.err.println(s"About to run tests: ${args.mkString("\n * ", "\n * ", "\n")}")
     val noJLine = new classpath.FilteredLoader(scriptedSbtInstance.loader, "jline." :: Nil)
     val loader = classpath.ClasspathUtilities.toLoader(scriptedSbtClasspath.files, noJLine)
     val m = ModuleUtilities.getObject("sbt.test.ScriptedTests", loader)
-    val r = m.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[Array[String]], classOf[File], classOf[Array[String]])
+    val r = m.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[Array[String]], classOf[File], classOf[Array[String]], classOf[File => Unit])
     val launcherVmOptions = Array("-XX:MaxPermSize=256M") // increased after a failure in scripted source-dependencies/macro
-    try { r.invoke(m, sourcePath, true: java.lang.Boolean, args.toArray[String], launcher, launcherVmOptions) }
+    try { r.invoke(m, sourcePath, true: java.lang.Boolean, args.toArray[String], launcher, launcherVmOptions, prescripted) }
     catch { case ite: java.lang.reflect.InvocationTargetException => throw ite.getCause }
   }
 
