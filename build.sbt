@@ -421,15 +421,17 @@ lazy val mavenResolverPluginProj = (project in file("sbt-maven-resolver")).
     sbtPlugin := true
   )
 
-def scriptedTask: Initialize[InputTask[Unit]] = InputTask(scriptedSource(dir => (s: State) => scriptedParser(dir))) { result =>
-  (proguard in Proguard, fullClasspath in scriptedSbtProj in Test, scalaInstance in scriptedSbtProj, publishAll, scriptedSource, result) map {
-    (launcher, scriptedSbtClasspath, scriptedSbtInstance, _, sourcePath, args) =>
-      doScripted(launcher, scriptedSbtClasspath, scriptedSbtInstance, sourcePath, args)
-  }
+def scriptedTask: Initialize[InputTask[Unit]] = Def.inputTask {
+  val result = scriptedSource(dir => (s: State) => scriptedParser(dir)).parsed
+  publishAll.value
+  doScripted((proguard in Proguard).value, (fullClasspath in scriptedSbtProj in Test).value,
+    (scalaInstance in scriptedSbtProj).value, scriptedSource.value, result, scriptedPrescripted.value)
 }
 
-def scriptedUnpublishedTask: Initialize[InputTask[Unit]] = InputTask(scriptedSource(dir => (s: State) => scriptedParser(dir))) { result =>
-  (proguard in Proguard, fullClasspath in scriptedSbtProj in Test, scalaInstance in scriptedSbtProj, scriptedSource, result) map doScripted
+def scriptedUnpublishedTask: Initialize[InputTask[Unit]] = Def.inputTask {
+  val result = scriptedSource(dir => (s: State) => scriptedParser(dir)).parsed
+  doScripted((proguard in Proguard).value, (fullClasspath in scriptedSbtProj in Test).value,
+    (scalaInstance in scriptedSbtProj).value, scriptedSource.value, result, scriptedPrescripted.value)
 }
 
 lazy val publishAll = TaskKey[Unit]("publish-all")
@@ -453,13 +455,25 @@ def rootSettings = releaseSettings ++ fullDocSettings ++ LaunchProguard.settings
   Util.publishPomSettings ++ otherRootSettings ++ proguardedLauncherSettings ++ Formatting.sbtFilesSettings ++
   Transform.conscriptSettings(launchProj)
 def otherRootSettings = Seq(
+  Scripted.scriptedPrescripted := { _ => },
   Scripted.scripted <<= scriptedTask,
   Scripted.scriptedUnpublished <<= scriptedUnpublishedTask,
   Scripted.scriptedSource <<= (sourceDirectory in sbtProj) / "sbt-test",
   publishAll := {
     (publishLocal).all(ScopeFilter(inAnyProject)).value
   }
-)
+) ++ inConfig(Scripted.MavenResolverPluginTest)(Seq(
+  Scripted.scripted <<= scriptedTask,
+  Scripted.scriptedUnpublished <<= scriptedUnpublishedTask,
+  Scripted.scriptedPrescripted := { f =>
+    val inj = f / "project" / "maven.sbt"
+    if (!inj.exists) {
+      IO.write(inj, """libraryDependencies += Defaults.sbtPluginExtra("org.scala-sbt" % "sbt-maven-resolver" % sbtVersion.value,
+        |sbtBinaryVersion.value, scalaBinaryVersion.value)""".stripMargin)
+      // sLog.value.info(s"""Injected project/maven.sbt to $f""")
+    }
+  }
+))
 lazy val docProjects: ScopeFilter = ScopeFilter(
   inAnyProject -- inProjects(root, sbtProj, scriptedBaseProj, scriptedSbtProj, scriptedPluginProj),
   inConfigurations(Compile)
