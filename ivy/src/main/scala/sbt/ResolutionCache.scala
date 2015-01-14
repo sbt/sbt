@@ -52,7 +52,7 @@ private[sbt] final class ResolutionCache(base: File, settings: IvySettings) exte
       throw new IllegalStateException("Ivy file not found in cache for " + mrid + "!")
     }
 
-    return XmlModuleDescriptorParser.getInstance().parseDescriptor(settings, ivyFile.toURI().toURL(), false)
+    XmlModuleDescriptorParser.getInstance().parseDescriptor(settings, ivyFile.toURI.toURL, false)
   }
 
   def saveResolvedModuleDescriptor(md: ModuleDescriptor): Unit = {
