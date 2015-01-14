@@ -14,19 +14,20 @@ import java.util.{ Collection, Collections => CS, Date }
 import CS.singleton
 
 import org.apache.ivy.Ivy
+import org.apache.ivy.core.report.ResolveReport
 import org.apache.ivy.core.{ IvyPatternHelper, LogOptions, IvyContext }
-import org.apache.ivy.core.cache.{ CacheMetadataOptions, DefaultRepositoryCacheManager, ModuleDescriptorWriter }
+import org.apache.ivy.core.cache.{ ResolutionCacheManager, CacheMetadataOptions, DefaultRepositoryCacheManager, ModuleDescriptorWriter }
 import org.apache.ivy.core.event.EventManager
 import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact, DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact }
 import org.apache.ivy.core.module.descriptor.{ DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor, License }
 import org.apache.ivy.core.module.descriptor.{ OverrideDependencyDescriptorMediator }
 import org.apache.ivy.core.module.id.{ ArtifactId, ModuleId, ModuleRevisionId }
-import org.apache.ivy.core.resolve.{ IvyNode, ResolveData, ResolvedModuleRevision, ResolveEngine }
+import org.apache.ivy.core.resolve._
 import org.apache.ivy.core.settings.IvySettings
 import org.apache.ivy.core.sort.SortEngine
 import org.apache.ivy.plugins.latest.{ LatestStrategy, LatestRevisionStrategy, ArtifactInfo }
 import org.apache.ivy.plugins.matcher.PatternMatcher
-import org.apache.ivy.plugins.parser.m2.PomModuleDescriptorParser
+import org.apache.ivy.plugins.parser.m2.{ PomModuleDescriptorParser }
 import org.apache.ivy.plugins.resolver.{ ChainResolver, DependencyResolver, BasicResolver }
 import org.apache.ivy.plugins.resolver.util.{ HasLatestStrategy, ResolvedResource }
 import org.apache.ivy.plugins.version.ExactVersionMatcher
@@ -68,9 +69,11 @@ final class IvySbt(val configuration: IvyConfiguration) {
   private lazy val settings: IvySettings =
     {
       val is = new IvySettings
+
       is.setBaseDir(baseDirectory)
       is.setCircularDependencyStrategy(configuration.updateOptions.circularDependencyLevel.ivyStrategy)
       CustomPomParser.registerDefault
+
       configuration match {
         case e: ExternalIvyConfiguration =>
           IvySbt.addResolvers(e.extraResolvers, is, configuration.log)
@@ -104,6 +107,7 @@ final class IvySbt(val configuration: IvyConfiguration) {
           super.bind()
         }
       }
+
       i.setSettings(settings)
       i.bind()
       i.getLoggerEngine.pushLogger(new IvyLoggerInterface(configuration.log))
@@ -284,7 +288,7 @@ private[sbt] object IvySbt {
   def resolverChain(name: String, resolvers: Seq[Resolver], localOnly: Boolean, settings: IvySettings, log: Logger): DependencyResolver =
     resolverChain(name, resolvers, localOnly, settings, UpdateOptions(), log)
   def resolverChain(name: String, resolvers: Seq[Resolver], localOnly: Boolean, settings: IvySettings, updateOptions: UpdateOptions, log: Logger): DependencyResolver = {
-    def mapResolvers(rs: Seq[Resolver]) = rs.map(r => ConvertResolver(r, settings, log))
+    def mapResolvers(rs: Seq[Resolver]) = rs.map(r => ConvertResolver(r, settings, updateOptions, log))
     val (projectResolvers, rest) = resolvers.partition(_.name == "inter-project")
     if (projectResolvers.isEmpty) new ivyint.SbtChainResolver(name, mapResolvers(rest), settings, updateOptions, log)
     else {

@@ -8,6 +8,9 @@
 package sbt
 
 import java.io.File
+
+import sbt.mavenint.PomExtraDependencyAttributes
+
 // Node needs to be renamed to XNode because the task subproject contains a Node type that will shadow
 // scala.xml.Node when generating aggregated API documentation
 import scala.xml.{ Elem, Node => XNode, NodeSeq, PrettyPrinter, PrefixedAttribute }
@@ -17,6 +20,7 @@ import org.apache.ivy.Ivy
 import org.apache.ivy.core.settings.IvySettings
 import org.apache.ivy.core.module.descriptor.{ DependencyArtifactDescriptor, DependencyDescriptor, License, ModuleDescriptor, ExcludeRule }
 import org.apache.ivy.plugins.resolver.{ ChainResolver, DependencyResolver, IBiblioResolver }
+import ivyint.CustomRemoteMavenResolver
 
 class MakePom(val log: Logger) {
   @deprecated("Use `write(Ivy, ModuleDescriptor, ModuleInfo, Option[Iterable[Configuration]], Set[String], NodeSeq, XNode => XNode, MavenRepository => Boolean, Boolean, File)` instead", "0.11.2")
@@ -119,12 +123,12 @@ class MakePom(val log: Logger) {
   def makeProperties(module: ModuleDescriptor, dependencies: Seq[DependencyDescriptor]): NodeSeq =
     {
       val extra = IvySbt.getExtraAttributes(module)
-      val depExtra = CustomPomParser.writeDependencyExtra(dependencies).mkString("\n")
-      val allExtra = if (depExtra.isEmpty) extra else extra.updated(CustomPomParser.ExtraAttributesKey, depExtra)
+      val depExtra = PomExtraDependencyAttributes.writeDependencyExtra(dependencies).mkString("\n")
+      val allExtra = if (depExtra.isEmpty) extra else extra.updated(PomExtraDependencyAttributes.ExtraAttributesKey, depExtra)
       if (allExtra.isEmpty) NodeSeq.Empty else makeProperties(allExtra)
     }
   def makeProperties(extra: Map[String, String]): NodeSeq = {
-    def _extraAttributes(k: String) = if (k == CustomPomParser.ExtraAttributesKey) xmlSpacePreserve else scala.xml.Null
+    def _extraAttributes(k: String) = if (k == PomExtraDependencyAttributes.ExtraAttributesKey) xmlSpacePreserve else scala.xml.Null
     <properties> {
       for ((key, value) <- extra) yield (<x>{ value }</x>).copy(label = key, attributes = _extraAttributes(key))
     } </properties>
@@ -330,6 +334,8 @@ class MakePom(val log: Logger) {
       val repositories = if (includeAll) allResolvers(settings) else resolvers(settings.getDefaultResolver)
       val mavenRepositories =
         repositories.flatMap {
+          case m: CustomRemoteMavenResolver if m.repo.root != DefaultMavenRepository.root =>
+            MavenRepository(m.repo.name, m.repo.root) :: Nil
           case m: IBiblioResolver if m.isM2compatible && m.getRoot != DefaultMavenRepository.root =>
             MavenRepository(m.getName, m.getRoot) :: Nil
           case _ => Nil

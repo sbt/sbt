@@ -3,6 +3,8 @@ package sbt
 import java.io.File
 import java.net.{ MalformedURLException, URL }
 
+import sbt.mavenint.SbtPomExtraProperties
+
 private[sbt] object APIMappings {
   def extract(cp: Seq[Attributed[File]], log: Logger): Seq[(File, URL)] =
     cp.flatMap(entry => extractFromEntry(entry, log))
@@ -15,7 +17,7 @@ private[sbt] object APIMappings {
 
   private[this] def extractFromID(entry: File, mid: ModuleID, log: Logger): Option[(File, URL)] =
     for {
-      urlString <- mid.extraAttributes.get(CustomPomParser.ApiURLKey)
+      urlString <- mid.extraAttributes.get(SbtPomExtraProperties.POM_API_KEY)
       u <- parseURL(urlString, entry, log)
     } yield (entry, u)
 

@@ -156,6 +156,7 @@ object CacheIvy {
   implicit def moduleConfIC: InputCache[ModuleConfiguration] = wrapIn
 
   object L3 {
+    implicit def mavenCacheToHL = (m: MavenCache) => m.name :+: m.rootFile.getAbsolutePath :+: HNil
     implicit def mavenRToHL = (m: MavenRepository) => m.name :+: m.root :+: HNil
     implicit def fileRToHL = (r: FileRepository) => r.name :+: r.configuration :+: r.patterns :+: HNil
     implicit def urlRToHL = (u: URLRepository) => u.name :+: u.patterns :+: HNil
@@ -169,7 +170,7 @@ object CacheIvy {
 
   implicit lazy val chainedIC: InputCache[ChainedResolver] = InputCache.lzy(wrapIn)
   implicit lazy val resolverIC: InputCache[Resolver] =
-    unionInputCache[Resolver, ChainedResolver :+: JavaNet1Repository :+: MavenRepository :+: FileRepository :+: URLRepository :+: SshRepository :+: SftpRepository :+: RawRepository :+: HNil]
+    unionInputCache[Resolver, ChainedResolver :+: JavaNet1Repository :+: MavenRepository :+: MavenCache :+: FileRepository :+: URLRepository :+: SshRepository :+: SftpRepository :+: RawRepository :+: HNil]
   implicit def moduleIC: InputCache[ModuleID] = wrapIn
   implicitly[InputCache[Seq[Configuration]]]
 

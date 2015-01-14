@@ -1,7 +1,7 @@
 // the default, but make it explicit
 publishMavenStyle := true
 
-publishTo <<= baseDirectory(bd => Some( Resolver.file("test-repo", bd / "repo") ) )
+publishTo <<= baseDirectory(bd => Some( MavenRepository("test-repo", (bd / "repo").toURI.toASCIIString )) )
 
 name := "test"
 
