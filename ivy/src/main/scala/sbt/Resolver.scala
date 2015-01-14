@@ -30,8 +30,23 @@ final class RawRepository(val resolver: DependencyResolver) extends Resolver {
     }
 }
 sealed case class ChainedResolver(name: String, resolvers: Seq[Resolver]) extends Resolver
+
+/** An instance of a remote maven repository.  Note:  This will use Aether/Maven to resolve artifacts. */
 sealed case class MavenRepository(name: String, root: String) extends Resolver {
   override def toString = name + ": " + root
+  def isCache: Boolean = false
+}
+
+/**
+ * An instance of maven CACHE directory.  You cannot treat a cache directory the same as a a remote repository because
+ * the metadata is different (see Aether ML discussion).
+ */
+final class MavenCache(name: String, val rootFile: File) extends MavenRepository(name, rootFile.toURI.toURL.toString) {
+  override val toString = "cache:" + name + ": " + rootFile.getAbsolutePath
+  override def isCache: Boolean = true
+}
+object MavenCache {
+  def apply(name: String, rootFile: File): MavenCache = new MavenCache(name, rootFile)
 }
 
 final class Patterns(val ivyPatterns: Seq[String], val artifactPatterns: Seq[String], val isMavenCompatible: Boolean, val descriptorOptional: Boolean, val skipConsistencyCheck: Boolean) {
@@ -334,8 +349,9 @@ object Resolver {
       loadHomeFromSettings(() => new File(new File(System.getenv("M2_HOME")), "conf/settings.xml")) getOrElse
       new File(Path.userHome, ".m2/repository")
   }
-  def publishMavenLocal = Resolver.file("publish-m2-local", mavenLocalDir)
-  def mavenLocal = MavenRepository("Maven2 Local", mavenLocalDir.toURI.toString)
+  // TODO - should this just be the *exact* same as mavenLocal?  probably...
+  def publishMavenLocal: MavenCache = new MavenCache("publish-m2-local", mavenLocalDir)
+  def mavenLocal: MavenRepository = new MavenCache("Maven2 Local", mavenLocalDir)
   def defaultLocal = defaultUserFileRepository("local")
   def defaultShared = defaultUserFileRepository("shared")
   def defaultUserFileRepository(id: String) =

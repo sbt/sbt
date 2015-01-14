@@ -1,6 +1,8 @@
 package sbt
 
 import java.io.File
+import org.apache.ivy.plugins.resolver.DependencyResolver
+import org.apache.ivy.core.settings.IvySettings
 
 /**
  * Represents configurable options for update task.
@@ -17,8 +19,9 @@ final class UpdateOptions private[sbt] (
     /** If set to true, use consolidated resolution. */
     val consolidatedResolution: Boolean,
     /** If set to true, use cached resolution. */
-    val cachedResolution: Boolean) {
-
+    val cachedResolution: Boolean,
+    /** Extention point for an alternative resolver converter. */
+    val resolverConverter: UpdateOptions.ResolverConverter) {
   def withCircularDependencyLevel(circularDependencyLevel: CircularDependencyLevel): UpdateOptions =
     copy(circularDependencyLevel = circularDependencyLevel)
   def withLatestSnapshots(latestSnapshots: Boolean): UpdateOptions =
@@ -30,22 +33,28 @@ final class UpdateOptions private[sbt] (
   def withCachedResolution(cachedResoluton: Boolean): UpdateOptions =
     copy(cachedResolution = cachedResoluton,
       consolidatedResolution = cachedResolution)
+  /** Extention point for an alternative resolver converter. */
+  def withResolverConverter(resolverConverter: UpdateOptions.ResolverConverter): UpdateOptions =
+    copy(resolverConverter = resolverConverter)
 
   private[sbt] def copy(
     circularDependencyLevel: CircularDependencyLevel = this.circularDependencyLevel,
     latestSnapshots: Boolean = this.latestSnapshots,
     consolidatedResolution: Boolean = this.consolidatedResolution,
-    cachedResolution: Boolean = this.cachedResolution): UpdateOptions =
+    cachedResolution: Boolean = this.cachedResolution,
+    resolverConverter: UpdateOptions.ResolverConverter = this.resolverConverter): UpdateOptions =
     new UpdateOptions(circularDependencyLevel,
       latestSnapshots,
       consolidatedResolution,
-      cachedResolution)
+      cachedResolution,
+      resolverConverter)
 
   override def equals(o: Any): Boolean = o match {
     case o: UpdateOptions =>
       this.circularDependencyLevel == o.circularDependencyLevel &&
         this.latestSnapshots == o.latestSnapshots &&
-        this.cachedResolution == o.cachedResolution
+        this.cachedResolution == o.cachedResolution &&
+        this.resolverConverter == o.resolverConverter
     case _ => false
   }
 
@@ -55,15 +64,19 @@ final class UpdateOptions private[sbt] (
       hash = hash * 31 + this.circularDependencyLevel.##
       hash = hash * 31 + this.latestSnapshots.##
       hash = hash * 31 + this.cachedResolution.##
+      hash = hash * 31 + this.resolverConverter.##
       hash
     }
 }
 
 object UpdateOptions {
+  type ResolverConverter = PartialFunction[(Resolver, IvySettings, Logger), DependencyResolver]
+
   def apply(): UpdateOptions =
     new UpdateOptions(
       circularDependencyLevel = CircularDependencyLevel.Warn,
       latestSnapshots = false,
       consolidatedResolution = false,
-      cachedResolution = false)
+      cachedResolution = false,
+      resolverConverter = PartialFunction.empty)
 }
