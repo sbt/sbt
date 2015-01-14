@@ -38,7 +38,7 @@ final class StructureIndex(
  *                The first root project is used as the default in several situations where a project is not otherwise selected.
  */
 final class LoadedBuildUnit(val unit: BuildUnit, val defined: Map[String, ResolvedProject], val rootProjects: Seq[String], val buildSettings: Seq[Setting[_]]) extends BuildUnitBase {
-  assert(!rootProjects.isEmpty, "No root projects defined for build unit " + unit)
+  assert(rootProjects.nonEmpty, "No root projects defined for build unit " + unit)
   /**
    * The project to use as the default when one is not otherwise selected.
    * [[LocalRootProject]] resolves to this from within the same build.
@@ -112,7 +112,7 @@ final class DetectedModules[T](val modules: Seq[(String, T)]) {
 }
 
 /** Auto-detected auto plugin. */
-case class DetectedAutoPlugin(val name: String, val value: AutoPlugin, val hasAutoImport: Boolean)
+case class DetectedAutoPlugin(name: String, value: AutoPlugin, hasAutoImport: Boolean)
 
 /**
  * Auto-discovered modules for the build definition project.  These include modules defined in build definition sources

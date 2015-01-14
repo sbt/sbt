@@ -30,5 +30,5 @@ public enum CompileOrder
 	* Then, Java sources are passed to the Java compiler, which generates class files for the Java sources.
 	* The Scala classes compiled in the first step are included on the classpath to the Java compiler.
 	*/
-	ScalaThenJava;
+	ScalaThenJava
 }

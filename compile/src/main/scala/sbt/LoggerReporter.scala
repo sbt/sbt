@@ -124,7 +124,7 @@ class LoggerReporter(maximumErrors: Int, log: Logger, sourcePositionMapper: Posi
         false
       else {
         val key = new PositionKey(pos)
-        if (positions.get(key).map(_.ordinal >= severity.ordinal).getOrElse(false))
+        if (positions.get(key).exists(_.ordinal >= severity.ordinal))
           true
         else {
           positions(key) = severity

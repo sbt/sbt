@@ -63,7 +63,7 @@ object Sync {
       case (target, srcs) =>
         "\n\t" + target + "\nfrom\n\t" + srcs.mkString("\n\t\t")
     }
-    if (!dups.isEmpty)
+    if (dups.nonEmpty)
       sys.error("Duplicate mappings:" + dups.mkString)
   }
 

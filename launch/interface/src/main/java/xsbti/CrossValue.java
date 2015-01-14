@@ -2,5 +2,5 @@ package xsbti;
 
 public enum CrossValue
 {
-	Disabled, Full, Binary;
+	Disabled, Full, Binary
 }

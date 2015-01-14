@@ -1,6 +1,6 @@
 each compilation group gets an Analysis
 an sbt-style project could have multiple compilation groups or there could be multiple projects per compilation group.
-Tradiationally, there has been a main group and a test group.
+Traditionally, there has been a main group and a test group.
 
 Each Analysis is associated with one or more classpath entries.  Typically, it will be associated with the output directory and/or any artifacts produced from that output directory.
 

@@ -239,7 +239,7 @@ object IvyActions {
     {
       import config.{ configuration => c, module => mod, _ }
       import mod.{ configurations => confs, _ }
-      assert(!classifiers.isEmpty, "classifiers cannot be empty")
+      assert(classifiers.nonEmpty, "classifiers cannot be empty")
       val baseModules = modules map { m => restrictedCopy(m, true) }
       val deps = baseModules.distinct flatMap classifiedArtifacts(classifiers, exclude)
       val base = restrictedCopy(id, true).copy(name = id.name + classifiers.mkString("$", "_", ""))
@@ -389,16 +389,16 @@ object UnresolvedWarning {
       case _ => ""
     }
   implicit val unresolvedWarningLines: ShowLines[UnresolvedWarning] = ShowLines { a =>
-    val withExtra = a.resolveException.failed.filter(!_.extraDependencyAttributes.isEmpty)
+    val withExtra = a.resolveException.failed.filter(_.extraDependencyAttributes.nonEmpty)
     val buffer = mutable.ListBuffer[String]()
-    if (!withExtra.isEmpty) {
+    if (withExtra.nonEmpty) {
       buffer += "\n\tNote: Some unresolved dependencies have extra attributes.  Check that these dependencies exist with the requested attributes."
       withExtra foreach { id => buffer += "\t\t" + id }
     }
-    if (!a.failedPaths.isEmpty) {
+    if (a.failedPaths.nonEmpty) {
       buffer += "\n\tNote: Unresolved dependencies path:"
       a.failedPaths foreach { path =>
-        if (!path.isEmpty) {
+        if (path.nonEmpty) {
           val head = path.head
           buffer += "\t\t" + head._1.toString + sourcePosStr(head._2)
           path.tail foreach {

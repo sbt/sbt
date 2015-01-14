@@ -13,7 +13,7 @@ object ResolveValues {
   private def notEmpty(s: String) = if (isEmpty(s)) None else Some(s)
 }
 
-import ResolveValues.{ trim }
+import ResolveValues.trim
 final class ResolveValues(conf: LaunchConfiguration) {
   private def propertiesFile = conf.boot.properties
   private lazy val properties = readProperties(propertiesFile)

@@ -187,7 +187,7 @@ object Parser extends ParserMain {
   @deprecated("This method is deprecated and will be removed in the next major version. Use the parser directly to check for invalid completions.", since = "0.13.2")
   def checkMatches(a: Parser[_], completions: Seq[String]) {
     val bad = completions.filter(apply(a)(_).resultEmpty.isFailure)
-    if (!bad.isEmpty) sys.error("Invalid example completions: " + bad.mkString("'", "', '", "'"))
+    if (bad.nonEmpty) sys.error("Invalid example completions: " + bad.mkString("'", "', '", "'"))
   }
 
   def tuple[A, B](a: Option[A], b: Option[B]): Option[(A, B)] =
@@ -378,7 +378,7 @@ trait ParserMain {
     def unapply[A, B](t: (A, B)): Some[(A, B)] = Some(t)
   }
 
-  /** Parses input `str` using `parser`.  If successful, the result is provided wrapped in `Right`.  If unsuccesful, an error message is provided in `Left`.*/
+  /** Parses input `str` using `parser`.  If successful, the result is provided wrapped in `Right`.  If unsuccessful, an error message is provided in `Left`.*/
   def parse[T](str: String, parser: Parser[T]): Either[String, T] =
     Parser.result(parser, str).left.map { failures =>
       val (msgs, pos) = failures()
@@ -480,7 +480,7 @@ trait ParserMain {
 
   def matched(t: Parser[_], seen: Vector[Char] = Vector.empty, partial: Boolean = false): Parser[String] =
     t match {
-      case i: Invalid => if (partial && !seen.isEmpty) success(seen.mkString) else i
+      case i: Invalid => if (partial && seen.nonEmpty) success(seen.mkString) else i
       case _ =>
         if (t.result.isEmpty)
           new MatchedString(t, seen, partial)
@@ -634,7 +634,7 @@ private final class HetParser[A, B](a: Parser[A], b: Parser[B]) extends ValidPar
   override def toString = "(" + a + " || " + b + ")"
 }
 private final class ParserSeq[T](a: Seq[Parser[T]], errors: => Seq[String]) extends ValidParser[Seq[T]] {
-  assert(!a.isEmpty)
+  assert(a.nonEmpty)
   lazy val resultEmpty: Result[Seq[T]] =
     {
       val res = a.map(_.resultEmpty)

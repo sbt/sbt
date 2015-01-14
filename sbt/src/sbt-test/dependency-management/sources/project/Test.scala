@@ -26,6 +26,6 @@ object Test extends Build
 	def checkBinaries(report: UpdateReport): Unit =
 	{
 		val srcs = getSources(report)
-		if(!srcs.isEmpty) sys.error("Sources retrieved:\n\t" + srcs.mkString("\n\t")) else ()
+		if(srcs.nonEmpty) sys.error("Sources retrieved:\n\t" + srcs.mkString("\n\t")) else ()
 	}
 }

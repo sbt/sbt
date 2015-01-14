@@ -92,14 +92,14 @@ trait Mapper {
   import Alternatives._
 
   /**
-   * Selects all descendents of `base` directory and maps them to a path relative to `base`.
+   * Selects all descendants of `base` directory and maps them to a path relative to `base`.
    * `base` itself is not included.
    */
   def allSubpaths(base: File): Traversable[(File, String)] =
     selectSubpaths(base, AllPassFilter)
 
   /**
-   * Selects descendents of `base` directory matching `filter` and maps them to a path relative to `base`.
+   * Selects descendants of `base` directory matching `filter` and maps them to a path relative to `base`.
    * `base` itself is not included.
    */
   def selectSubpaths(base: File, filter: FileFilter): Traversable[(File, String)] =

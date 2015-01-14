@@ -132,7 +132,7 @@ public class ForkMain {
 
 	private static class Run {
 
-		void run(ObjectInputStream is, ObjectOutputStream os) throws Exception {
+		void run(ObjectInputStream is, ObjectOutputStream os) {
 			try {
 				runTests(is, os);
 			} catch (RunAborted e) {

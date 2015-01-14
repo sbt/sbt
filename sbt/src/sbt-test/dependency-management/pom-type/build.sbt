@@ -8,6 +8,6 @@ checkPom := {
 	val pomFile = makePom.value
 	val pom = xml.XML.loadFile(pomFile)
 	val tpe = pom \\ "type"
-	if(!tpe.isEmpty)
+	if(tpe.nonEmpty)
 		error("Expected no <type> sections, got: " + tpe + " in \n\n" + pom)
 }

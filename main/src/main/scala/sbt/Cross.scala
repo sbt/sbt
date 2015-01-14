@@ -27,7 +27,7 @@ object Cross {
         val optionalCommand = token(Space ~> matched(state.combinedParser)) ?? ""
         spacedVersion ~ optionalCommand
       }
-      token(SwitchCommand ~> OptSpace) flatMap { sp => versionAndCommand(!sp.isEmpty) }
+      token(SwitchCommand ~> OptSpace) flatMap { sp => versionAndCommand(sp.nonEmpty) }
     }
   def spacedFirst(name: String) = opOrIDSpaced(name) ~ any.+
 

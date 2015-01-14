@@ -18,7 +18,7 @@ object Transform {
 
   def conscriptSettings(launch: Reference) = Seq(
     conscriptConfigs <<= (managedResources in launch in Compile, sourceDirectory in Compile).map { (res, src) =>
-      val source = res.filter(_.getName == "sbt.boot.properties").headOption getOrElse sys.error("No managed boot.properties file.")
+      val source = res.find(_.getName == "sbt.boot.properties") getOrElse sys.error("No managed boot.properties file.")
       copyConscriptProperties(source, src / "conscript")
       ()
     }

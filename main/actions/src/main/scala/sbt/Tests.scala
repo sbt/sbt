@@ -133,7 +133,7 @@ object Tests {
       for (option <- config.options) {
         option match {
           case Filter(include)          => testFilters += include
-          case Filters(includes)        => if (!orderedFilters.isEmpty) sys.error("Cannot define multiple ordered test filters.") else orderedFilters = includes
+          case Filters(includes)        => if (orderedFilters.nonEmpty) sys.error("Cannot define multiple ordered test filters.") else orderedFilters = includes
           case Exclude(exclude)         => excludeTestsSet ++= exclude
           case Listeners(listeners)     => testListeners ++= listeners
           case Setup(setupFunction)     => setup += setupFunction

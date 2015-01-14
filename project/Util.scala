@@ -85,7 +85,7 @@ object Util {
   def cleanPom(pomNode: scala.xml.Node) =
     {
       import scala.xml._
-      def cleanNodes(nodes: Seq[Node]): Seq[Node] = nodes flatMap (_ match {
+      def cleanNodes(nodes: Seq[Node]): Seq[Node] = nodes flatMap {
         case elem @ Elem(prefix, "dependency", attributes, scope, children @ _*) if excludePomDependency(elem) =>
           NodeSeq.Empty
         case Elem(prefix, "classifier", attributes, scope, children @ _*) =>
@@ -93,7 +93,7 @@ object Util {
         case Elem(prefix, label, attributes, scope, children @ _*) =>
           Elem(prefix, label, attributes, scope, cleanNodes(children): _*).theSeq
         case other => other
-      })
+      }
       cleanNodes(pomNode.theSeq)(0)
     }
 

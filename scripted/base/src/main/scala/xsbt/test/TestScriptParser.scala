@@ -30,7 +30,7 @@ private object TestScriptParser {
 
 import TestScriptParser._
 class TestScriptParser(handlers: Map[Char, StatementHandler]) extends RegexParsers {
-  require(!handlers.isEmpty)
+  require(handlers.nonEmpty)
   override def skipWhitespace = false
 
   import IO.read

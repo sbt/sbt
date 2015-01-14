@@ -42,10 +42,10 @@ object SettingsTest extends Properties("settings") {
     {
       val genScopedKeys = {
         // We wan
-        // t to generate lists of keys that DO NOT inclue the "ch" key we use to check thigns.
+        // t to generate lists of keys that DO NOT inclue the "ch" key we use to check things.
         val attrKeys = mkAttrKeys[Int](nr).filter(_.forall(_.label != "ch"))
         attrKeys map (_ map (ak => ScopedKey(Scope(0), ak)))
-      }.label("scopedKeys").filter(!_.isEmpty)
+      }.label("scopedKeys").filter(_.nonEmpty)
       forAll(genScopedKeys) { scopedKeys =>
         try {
           // Note; It's evil to grab last IF you haven't verified the set can't be empty.

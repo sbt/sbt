@@ -112,7 +112,7 @@ object EvictionPair {
           }
         else ""
       r.module.revision + callers
-    }).headOption map { " -> " + _ } getOrElse ""
+    }) map { " -> " + _ } getOrElse ""
     Seq(s"\t* ${a.organization}:${a.name}:${revsStr}$winnerRev")
   }
 }
@@ -181,7 +181,7 @@ object EvictionWarning {
     pairs foreach {
       case p if isScalaArtifact(module, p.organization, p.name) =>
         (module.moduleSettings.ivyScala, p.winner) match {
-          case (Some(s), Some(winner)) if ((s.scalaFullVersion != winner.module.revision) && options.warnScalaVersionEviction) =>
+          case (Some(s), Some(winner)) if (s.scalaFullVersion != winner.module.revision) && options.warnScalaVersionEviction =>
             scalaEvictions += p
           case _ =>
         }
@@ -201,21 +201,21 @@ object EvictionWarning {
   implicit val evictionWarningLines: ShowLines[EvictionWarning] = ShowLines { a: EvictionWarning =>
     import ShowLines._
     val out: mutable.ListBuffer[String] = mutable.ListBuffer()
-    if (!a.scalaEvictions.isEmpty) {
+    if (a.scalaEvictions.nonEmpty) {
       out += "Scala version was updated by one of library dependencies:"
       out ++= (a.scalaEvictions flatMap { _.lines })
       out += "To force scalaVersion, add the following:"
       out += "\tivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }"
     }
 
-    if (!a.directEvictions.isEmpty || !a.transitiveEvictions.isEmpty) {
+    if (a.directEvictions.nonEmpty || a.transitiveEvictions.nonEmpty) {
       out += "There may be incompatibilities among your library dependencies."
       out += "Here are some of the libraries that were evicted:"
       out ++= (a.directEvictions flatMap { _.lines })
       out ++= (a.transitiveEvictions flatMap { _.lines })
     }
 
-    if (!a.allEvictions.isEmpty && !a.reportedEvictions.isEmpty && !a.options.showCallers) {
+    if (a.allEvictions.nonEmpty && a.reportedEvictions.nonEmpty && !a.options.showCallers) {
       out += "Run 'evicted' to see detailed eviction warnings"
     }
 
