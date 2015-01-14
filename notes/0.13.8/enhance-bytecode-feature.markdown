@@ -7,7 +7,7 @@
 
 ### Bytecode Enhancers
 
-sbt 0.13.8 adds an extension point whereby users can effectively manipulate java bytecode (.class files) BEFORE the
+sbt 0.13.8 adds an extension point whereby users can effectively manipulate java bytecode (.class files) *before* the
 incremental compiler attempts to cache the classfile hashes.  This allows libraries like ebean to function with sbt
 without corrupting the compiler cache and rerunning compile every few seconds.
 
