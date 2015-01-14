@@ -54,7 +54,7 @@ private[inc] class MemberRefInvalidator(log: Logger) {
   def get[T](memberRef: Relation[File, T], usedNames: Relation[File, String], apiChange: APIChange[_]): T => Set[File] = apiChange match {
     case _: APIChangeDueToMacroDefinition[_] =>
       new InvalidateUnconditionally(memberRef)
-    case NamesChange(_, modifiedNames) if !modifiedNames.implicitNames.isEmpty =>
+    case NamesChange(_, modifiedNames) if modifiedNames.implicitNames.nonEmpty =>
       new InvalidateUnconditionally(memberRef)
     case NamesChange(modifiedSrcFile, modifiedNames) =>
       new NameHashFilteredInvalidator[T](usedNames, memberRef, modifiedNames.regularNames)
@@ -65,7 +65,7 @@ private[inc] class MemberRefInvalidator(log: Logger) {
   def invalidationReason(apiChange: APIChange[_]): String = apiChange match {
     case APIChangeDueToMacroDefinition(modifiedSrcFile) =>
       s"The $modifiedSrcFile source file declares a macro."
-    case NamesChange(modifiedSrcFile, modifiedNames) if !modifiedNames.implicitNames.isEmpty =>
+    case NamesChange(modifiedSrcFile, modifiedNames) if modifiedNames.implicitNames.nonEmpty =>
       s"""|The $modifiedSrcFile source file has the following implicit definitions changed:
 				|\t${modifiedNames.implicitNames.mkString(", ")}.""".stripMargin
     case NamesChange(modifiedSrcFile, modifiedNames) =>
@@ -82,7 +82,7 @@ private[inc] class MemberRefInvalidator(log: Logger) {
   private class InvalidateUnconditionally[T](memberRef: Relation[File, T]) extends (T => Set[File]) {
     def apply(from: T): Set[File] = {
       val invalidated = memberRef.reverse(from)
-      if (!invalidated.isEmpty)
+      if (invalidated.nonEmpty)
         log.debug(s"The following member ref dependencies of $from are invalidated:\n" +
           formatInvalidated(invalidated))
       invalidated

@@ -30,7 +30,7 @@ object JavaNoPosition extends Position {
 }
 
 /** A wrapper around xsbti.Problem with java-specific options. */
-final case class JavaProblem(val position: Position, val severity: Severity, val message: String) extends xsbti.Problem {
+final case class JavaProblem(position: Position, severity: Severity, message: String) extends xsbti.Problem {
   override def category: String = "javac" // TODO - what is this even supposed to be?  For now it appears unused.
   override def toString = s"$severity @ $position - $message"
 }

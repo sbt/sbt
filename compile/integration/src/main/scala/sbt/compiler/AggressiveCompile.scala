@@ -88,7 +88,7 @@ class AggressiveCompile(cacheFile: File) {
         val (javaSrcs, scalaSrcs) = incSrc partition javaOnly
         logInputs(log, javaSrcs.size, scalaSrcs.size, outputDirs)
         def compileScala() =
-          if (!scalaSrcs.isEmpty) {
+          if (scalaSrcs.nonEmpty) {
             val sources = if (order == Mixed) incSrc else scalaSrcs
             val arguments = cArgs(Nil, absClasspath, None, options.options)
             timed("Scala compilation", log) {
@@ -96,7 +96,7 @@ class AggressiveCompile(cacheFile: File) {
             }
           }
         def compileJava() =
-          if (!javaSrcs.isEmpty) {
+          if (javaSrcs.nonEmpty) {
             import Path._
             @tailrec def ancestor(f1: File, f2: File): Boolean =
               if (f2 eq null) false else if (f1 == f2) true else ancestor(f1, f2.getParentFile)
@@ -171,7 +171,7 @@ class AggressiveCompile(cacheFile: File) {
     val scalaMsg = Analysis.counted("Scala source", "", "s", scalaCount)
     val javaMsg = Analysis.counted("Java source", "", "s", javaCount)
     val combined = scalaMsg ++ javaMsg
-    if (!combined.isEmpty)
+    if (combined.nonEmpty)
       log.info(combined.mkString("Compiling ", " and ", " to " + outputDirs.map(_.getAbsolutePath).mkString(",") + "..."))
   }
   private def extract(previous: Option[(Analysis, CompileSetup)], incOptions: IncOptions): (Analysis, Option[CompileSetup]) =
