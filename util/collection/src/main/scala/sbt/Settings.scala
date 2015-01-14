@@ -24,14 +24,14 @@ private final class Settings0[Scope](val data: Map[Scope, AttributeMap], val del
   def get[T](scope: Scope, key: AttributeKey[T]): Option[T] =
     delegates(scope).toStream.flatMap(sc => getDirect(sc, key)).headOption
   def definingScope(scope: Scope, key: AttributeKey[_]): Option[Scope] =
-    delegates(scope).toStream.filter(sc => getDirect(sc, key).isDefined).headOption
+    delegates(scope).toStream.find(sc => getDirect(sc, key).isDefined)
 
   def getDirect[T](scope: Scope, key: AttributeKey[T]): Option[T] =
     (data get scope).flatMap(_ get key)
 
   def set[T](scope: Scope, key: AttributeKey[T], value: T): Settings[Scope] =
     {
-      val map = (data get scope) getOrElse AttributeMap.empty
+      val map = data getOrElse(scope, AttributeMap.empty)
       val newData = data.updated(scope, map.put(key, value))
       new Settings0(newData, delegates)
     }
@@ -85,7 +85,7 @@ trait Init[Scope] {
    */
   private[sbt] final def validated[T](key: ScopedKey[T], selfRefOk: Boolean): ValidationCapture[T] = new ValidationCapture(key, selfRefOk)
 
-  @deprecated("0.13.7", "Use the version with default arguments and default paramter.")
+  @deprecated("0.13.7", "Use the version with default arguments and default parameter.")
   final def derive[T](s: Setting[T], allowDynamic: Boolean, filter: Scope => Boolean, trigger: AttributeKey[_] => Boolean): Setting[T] =
     derive(s, allowDynamic, filter, trigger, false)
   /**
@@ -258,7 +258,7 @@ trait Init[Scope] {
   def Undefined(defining: Setting[_], referencedKey: ScopedKey[_]): Undefined = new Undefined(defining, referencedKey)
   def Uninitialized(validKeys: Seq[ScopedKey[_]], delegates: Scope => Seq[Scope], keys: Seq[Undefined], runtime: Boolean)(implicit display: Show[ScopedKey[_]]): Uninitialized =
     {
-      assert(!keys.isEmpty)
+      assert(keys.nonEmpty)
       val suffix = if (keys.length > 1) "s" else ""
       val prefix = if (runtime) "Runtime reference" else "Reference"
       val keysString = keys.map(u => showUndefined(u, validKeys, delegates)).mkString("\n\n  ", "\n\n  ", "")
@@ -487,7 +487,7 @@ trait Init[Scope] {
     override def default(_id: => Long): DefaultSetting[T] = new DerivedSetting[T](sk, i, p, filter, trigger) with DefaultSetting[T] { val id = _id }
     override def toString = "derived " + super.toString
   }
-  // Only keep the first occurence of this setting and move it to the front so that it has lower precedence than non-defaults.
+  // Only keep the first occurrence of this setting and move it to the front so that it has lower precedence than non-defaults.
   //  This is intended for internal sbt use only, where alternatives like Plugin.globalSettings are not available.
   private[Init] sealed trait DefaultSetting[T] extends Setting[T] {
     val id: Long

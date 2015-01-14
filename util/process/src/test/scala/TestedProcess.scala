@@ -16,7 +16,7 @@ object cat {
         catFiles(args.toList)
       System.exit(0)
     } catch {
-      case e =>
+      case e: Throwable =>
         e.printStackTrace()
         System.err.println("Error: " + e.toString)
         System.exit(1)

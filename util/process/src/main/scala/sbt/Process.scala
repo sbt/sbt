@@ -34,7 +34,7 @@ object Process extends ProcessExtra {
   /** create ProcessBuilder with working dir set to File and extra environment variables */
   def apply(command: Seq[String], cwd: File, extraEnv: (String, String)*): ProcessBuilder =
     apply(command, Some(cwd), extraEnv: _*)
-  /** create ProcessBuilder with working dir optionaly set to File and extra environment variables */
+  /** create ProcessBuilder with working dir optionally set to File and extra environment variables */
   def apply(command: String, cwd: Option[File], extraEnv: (String, String)*): ProcessBuilder = {
     apply(command.split("""\s+"""), cwd, extraEnv: _*)
     // not smart to use this on windows, because CommandParser uses \ to escape ".
@@ -43,7 +43,7 @@ object Process extends ProcessExtra {
 			case Right((cmd, args)) => apply(cmd :: args, cwd, extraEnv : _*)
 		}*/
   }
-  /** create ProcessBuilder with working dir optionaly set to File and extra environment variables */
+  /** create ProcessBuilder with working dir optionally set to File and extra environment variables */
   def apply(command: Seq[String], cwd: Option[File], extraEnv: (String, String)*): ProcessBuilder = {
     val jpb = new JProcessBuilder(command.toArray: _*)
     cwd.foreach(jpb directory _)
@@ -63,7 +63,7 @@ object Process extends ProcessExtra {
   def cat(file: SourcePartialBuilder, files: SourcePartialBuilder*): ProcessBuilder = cat(file :: files.toList)
   def cat(files: Seq[SourcePartialBuilder]): ProcessBuilder =
     {
-      require(!files.isEmpty)
+      require(files.nonEmpty)
       files.map(_.cat).reduceLeft(_ #&& _)
     }
 }

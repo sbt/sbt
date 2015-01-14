@@ -10,7 +10,7 @@ public final class Modifiers implements java.io.Serializable
 	private static final int LazyBit = 5;
 	private static final int MacroBit = 6;
 
-	private static final int flag(boolean set, int bit)
+	private static int flag(boolean set, int bit)
 	{
 		return set ? (1 << bit) : 0;
 	}
@@ -30,7 +30,7 @@ public final class Modifiers implements java.io.Serializable
 
 	private final byte flags;
 
-	private final boolean flag(int bit)
+	private boolean flag(int bit)
 	{
 		return (flags & (1 << bit)) != 0;
 	}
