@@ -68,13 +68,13 @@ object Compiler {
       }
       compilers(instance, cpOptions, CheaterJavaTool(javac2, javac))
     }
-  @deprecated("0.13.8", "Deprecated in favor of new sbt.compiler.javac package.")
+  @deprecated("Deprecated in favor of new sbt.compiler.javac package.", "0.13.8")
   def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javac: sbt.compiler.JavaCompiler.Fork)(implicit app: AppConfiguration, log: Logger): Compilers =
     {
       val javaCompiler = sbt.compiler.JavaCompiler.fork(cpOptions, instance)(javac)
       compilers(instance, cpOptions, javaCompiler)
     }
-  @deprecated("0.13.8", "Deprecated in favor of new sbt.compiler.javac package.")
+  @deprecated("Deprecated in favor of new sbt.compiler.javac package.", "0.13.8")
   def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javac: JavaTool)(implicit app: AppConfiguration, log: Logger): Compilers =
     {
       val scalac = scalaCompiler(instance, cpOptions)
@@ -88,12 +88,12 @@ object Compiler {
       new AnalyzingCompiler(instance, provider, cpOptions)
     }
 
-  @deprecated("0.13.8", "Use the `compile` method instead.")
+  @deprecated("Use the `compile` method instead.", "0.13.8")
   def apply(in: Inputs, log: Logger): Analysis = {
     import in.config._
     apply(in, log, new LoggerReporter(maxErrors, log, sourcePositionMapper))
   }
-  @deprecated("0.13.8", "Use the `compile` method instead.")
+  @deprecated("Use the `compile` method instead.", "0.13.8")
   def apply(in: Inputs, log: Logger, reporter: xsbti.Reporter): Analysis = {
     import in.compilers._
     import in.config._
