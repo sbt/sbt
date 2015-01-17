@@ -46,7 +46,7 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler] {
 
   private[this] def m2o[S](opt: Maybe[S]): Option[S] = if (opt.isEmpty) None else Some(opt.get)
 
-  @deprecated("0.13.8", "A logger is no longer needed.")
+  @deprecated("A logger is no longer needed.", "0.13.8")
   override def newScalaCompiler(instance: ScalaInstance, interfaceJar: File, options: ClasspathOptions, log: Logger): AnalyzingCompiler =
     new AnalyzingCompiler(instance, CompilerInterfaceProvider.constant(interfaceJar), options)
 
