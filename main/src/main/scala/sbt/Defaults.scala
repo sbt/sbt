@@ -948,7 +948,7 @@ object Defaults extends BuildCommon {
   @deprecated("Settings now split into AutoPlugins.", "0.13.2")
   lazy val projectBaseSettings: Seq[Setting[_]] = projectCore ++ runnerSettings ++ paths ++ baseClasspaths ++ baseTasks ++ compileBase ++ disableAggregation
 
-  // These are project level settings that MUST be on every project.  
+  // These are project level settings that MUST be on every project.
   lazy val coreDefaultSettings: Seq[Setting[_]] =
     projectCore ++ disableAggregation ++ Seq(
       // Missing but core settings
@@ -1111,8 +1111,8 @@ object Classpaths {
     projectResolver <<= projectResolverTask,
     projectDependencies <<= projectDependenciesTask,
     // TODO - Is this the appropriate split?  Ivy defines this simply as
-    //        just project + library, while the JVM plugin will define it as 
-    //        having the additional sbtPlugin + autoScala magikz. 
+    //        just project + library, while the JVM plugin will define it as
+    //        having the additional sbtPlugin + autoScala magikz.
     allDependencies := {
       projectDependencies.value ++ libraryDependencies.value
     },
@@ -1798,6 +1798,14 @@ trait BuildExtra extends BuildCommon {
    */
   def addSbtPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =
     libraryDependencies <+= (sbtBinaryVersion in update, scalaBinaryVersion in update) { (sbtV, scalaV) => sbtPluginExtra(dependency, sbtV, scalaV) }
+
+  /**
+   * Adds `dependency` as an sbt plugin for the sbt and Scala versions configured by
+   * `sbtBinaryVersion` and `scalaBinaryVersion` respectively scoped to `update`.
+   * The plugin version is same as the `sbtBinaryVersion` and does not need to be specified explicitly.
+   */
+  def addSbtPlugin(dependency: impl.GroupArtifactID): Setting[Seq[ModuleID]] =
+    libraryDependencies <+= (sbtBinaryVersion in update, scalaBinaryVersion in update) { (sbtV, scalaV) => sbtPluginExtra(dependency % sbtV, sbtV, scalaV) }
 
   /** Transforms `dependency` to be in the auto-compiler plugin configuration. */
   def compilerPlugin(dependency: ModuleID): ModuleID =

@@ -11,14 +11,13 @@
 
 ### Maven resolver plugin
 
-sbt 0.13.8 adds an extention point in the dependency resolution to customize Maven resolvers.
+sbt 0.13.8 adds an extension point in the dependency resolution to customize Maven resolvers.
 This allows us to write sbt-maven-resolver auto plugin, which internally uses Eclipse Aether
 to resolve Maven dependencies instead of Apache Ivy.
 
 To enable this plugin, add the following to `project/maven.sbt` (or `project/plugin.sbt` the file name doesn't matter):
 
-    libraryDependencies += Defaults.sbtPluginExtra("org.scala-sbt" % "sbt-maven-resolver" % sbtVersion.value,
-      sbtBinaryVersion.value, scalaBinaryVersion.value)
+    addSbtPlugin("org.scala-sbt" % "sbt-maven-resolver")
 
 This will create a new `~/.ivy2/maven-cache` directory, which contains the Aether cache of files.
 You may notice some file will be re-downloaded for the new cache layout.
