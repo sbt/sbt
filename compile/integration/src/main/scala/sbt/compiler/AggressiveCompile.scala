@@ -20,9 +20,9 @@ import xsbti.api.Source
 import xsbti.compile.{ CompileOrder, DependencyChanges, GlobalsCache, Output, SingleOutput, MultipleOutput, CompileProgress }
 import CompileOrder.{ JavaThenScala, Mixed, ScalaThenJava }
 
-@deprecated("0.13.8", "Use MixedAnalyzingCompiler or IC instead.")
+@deprecated("Use MixedAnalyzingCompiler or IC instead.", "0.13.8")
 class AggressiveCompile(cacheFile: File) {
-  @deprecated("0.13.8", "Use IC.compile instead.")
+  @deprecated("Use IC.compile instead.", "0.13.8")
   def apply(compiler: AnalyzingCompiler,
     javac: xsbti.compile.JavaCompiler,
     sources: Seq[File], classpath: Seq[File],
@@ -187,19 +187,19 @@ class AggressiveCompile(cacheFile: File) {
   val store = MixedAnalyzingCompiler.staticCachedStore(cacheFile)
 
 }
-@deprecated("0.13.8", "Use MixedAnalyzingCompiler instead.")
+@deprecated("Use MixedAnalyzingCompiler instead.", "0.13.8")
 object AggressiveCompile {
-  @deprecated("0.13.8", "Use MixedAnalyzingCompiler.staticCachedStore instead.")
+  @deprecated("Use MixedAnalyzingCompiler.staticCachedStore instead.", "0.13.8")
   def staticCachedStore(cacheFile: File) = MixedAnalyzingCompiler.staticCachedStore(cacheFile)
 
-  @deprecated("0.13.8", "Deprecated in favor of new sbt.compiler.javac package.")
+  @deprecated("Deprecated in favor of new sbt.compiler.javac package.", "0.13.8")
   def directOrFork(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File]): JavaTool =
     if (javaHome.isDefined)
       JavaCompiler.fork(cpOptions, instance)(forkJavac(javaHome))
     else
       JavaCompiler.directOrFork(cpOptions, instance)(forkJavac(None))
 
-  @deprecated("0.13.8", "Deprecated in favor of new sbt.compiler.javac package.")
+  @deprecated("Deprecated in favor of new sbt.compiler.javac package.", "0.13.8")
   def forkJavac(javaHome: Option[File]): JavaCompiler.Fork =
     {
       import Path._
@@ -218,7 +218,7 @@ object AggressiveCompile {
     }
 }
 
-@deprecated("0.13.8", "Deprecated in favor of new sbt.compiler.javac package.")
+@deprecated("Deprecated in favor of new sbt.compiler.javac package.", "0.13.8")
 private[sbt] class JavacLogger(log: Logger) extends ProcessLogger {
   import scala.collection.mutable.ListBuffer
   import Level.{ Info, Warn, Error, Value => LogLevel }
