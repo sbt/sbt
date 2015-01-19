@@ -85,7 +85,7 @@ trait Init[Scope] {
    */
   private[sbt] final def validated[T](key: ScopedKey[T], selfRefOk: Boolean): ValidationCapture[T] = new ValidationCapture(key, selfRefOk)
 
-  @deprecated("0.13.7", "Use the version with default arguments and default parameter.")
+  @deprecated("Use the version with default arguments and default parameter.", "0.13.7")
   final def derive[T](s: Setting[T], allowDynamic: Boolean, filter: Scope => Boolean, trigger: AttributeKey[_] => Boolean): Setting[T] =
     derive(s, allowDynamic, filter, trigger, false)
   /**
