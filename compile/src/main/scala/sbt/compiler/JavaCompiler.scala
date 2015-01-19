@@ -9,12 +9,12 @@ import java.io.{ File, PrintWriter }
 import xsbti.{ Severity, Reporter }
 import xsbti.compile.Output
 
-@deprecated("0.13.8", "Please use the new set of compilers in sbt.compilers.javac")
+@deprecated("Please use the new set of compilers in sbt.compilers.javac", "0.13.8")
 abstract class JavacContract(val name: String, val clazz: String) {
   def exec(args: Array[String], writer: PrintWriter): Int
 }
 /** An interface we use to call the Java compiler. */
-@deprecated("0.13.8", "Please use the new set of compilers in sbt.compilers.javac")
+@deprecated("Please use the new set of compilers in sbt.compilers.javac", "0.13.8")
 trait JavaCompiler extends xsbti.compile.JavaCompiler {
   /**
    * Runs the java compiler
@@ -42,13 +42,13 @@ trait JavaCompiler extends xsbti.compile.JavaCompiler {
 
   def onArgs(f: Seq[String] => Unit): JavaCompiler
 }
-@deprecated("0.13.8", "Please use the new set of compilers in sbt.compilers.javac")
+@deprecated("Please use the new set of compilers in sbt.compilers.javac", "0.13.8")
 trait Javadoc {
   def doc(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], maximumErrors: Int, log: Logger)
 
   def onArgs(f: Seq[String] => Unit): Javadoc
 }
-@deprecated("0.13.8", "Please use the new set of compilers in sbt.compilers.javac")
+@deprecated("Please use the new set of compilers in sbt.compilers.javac", "0.13.8")
 trait JavaTool extends Javadoc with JavaCompiler {
   def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger) =
     compile(JavaCompiler.javac, sources, classpath, outputDirectory, options)(log)
@@ -60,9 +60,9 @@ trait JavaTool extends Javadoc with JavaCompiler {
 
   def onArgs(f: Seq[String] => Unit): JavaTool
 }
-@deprecated("0.13.8", "Please use the new set of compilers in sbt.compilers.javac")
+@deprecated("Please use the new set of compilers in sbt.compilers.javac", "0.13.8")
 object JavaCompiler {
-  @deprecated("0.13.8", "Please use the new set of compilers in sbt.compilers.javac")
+  @deprecated("Please use the new set of compilers in sbt.compilers.javac", "0.13.8")
   type Fork = (JavacContract, Seq[String], Logger) => Int
 
   val javac = new JavacContract("javac", "com.sun.tools.javac.Main") {
