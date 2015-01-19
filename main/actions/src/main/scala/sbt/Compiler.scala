@@ -5,7 +5,7 @@ package sbt
 
 import sbt.compiler.javac.{ IncrementalCompilerJavaTools, JavaTools }
 import xsbti.{ Logger => _, _ }
-import xsbti.compile.{ CompileOrder, GlobalsCache }
+import xsbti.compile.{ DependencyChanges, CompileOrder, GlobalsCache }
 import CompileOrder.{ JavaThenScala, Mixed, ScalaThenJava }
 import compiler._
 import inc._
@@ -106,14 +106,14 @@ object Compiler {
         (Analysis.empty(nameHashing = incOptions.nameHashing), None)
       }
     }
-    compile(InputsWithPrevious(in, PreviousAnalysis(previousAnalysis, previousSetup)), log, reporter).analysis
+    compile(InputsWithPrevious(in, PreviousAnalysis(previousAnalysis, previousSetup)), log, reporter, _.compile).analysis
   }
-  def compile(in: InputsWithPrevious, log: Logger): CompileResult =
+  def compile(in: InputsWithPrevious, log: Logger, compile_ : MixedAnalyzingCompiler => (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit = _.compile): CompileResult =
     {
       import in.inputs.config._
-      compile(in, log, new LoggerReporter(maxErrors, log, sourcePositionMapper))
+      compile(in, log, new LoggerReporter(maxErrors, log, sourcePositionMapper), compile_)
     }
-  def compile(in: InputsWithPrevious, log: Logger, reporter: xsbti.Reporter): CompileResult =
+  def compile(in: InputsWithPrevious, log: Logger, reporter: xsbti.Reporter, compile: MixedAnalyzingCompiler => (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit): CompileResult =
     {
       import in.inputs.compilers._
       import in.inputs.config._
@@ -125,7 +125,7 @@ object Compiler {
         in.inputs.compilers.newJavac.map(_.xsbtiCompiler).getOrElse(in.inputs.compilers.javac)
       // TODO - Why are we not using the IC interface???
       IC.incrementalCompile(scalac, javacChosen, sources, classpath, CompileOutput(classesDirectory), cache, None, options, javacOptions,
-        in.previousAnalysis.analysis, in.previousAnalysis.setup, analysisMap, definesClass, reporter, order, skip, incOptions)(log)
+        in.previousAnalysis.analysis, in.previousAnalysis.setup, analysisMap, definesClass, reporter, order, skip, incOptions, compile)(log)
     }
 
   private[sbt] def foldMappers[A](mappers: Seq[A => Option[A]]) =

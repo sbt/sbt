@@ -7,7 +7,7 @@ import Attributed.data
 import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
 import sbt.Compiler.InputsWithPrevious
 import xsbt.api.Discovery
-import xsbti.compile.CompileOrder
+import xsbti.compile.{ DependencyChanges, CompileOrder }
 import Project.{ inConfig, inScope, inTask, richInitialize, richInitializeTask, richTaskSessionVar }
 import Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
 import Artifact.{ DocClassifier, SourceClassifier }
@@ -252,6 +252,7 @@ object Defaults extends BuildCommon {
     compile <<= compileTask,
     manipulateBytecode := compileIncremental.value,
     compileIncremental <<= compileIncrementalTask tag (Tags.Compile, Tags.CPU),
+    javaScalaCompiler := { c: MixedAnalyzingCompiler => c.compile },
     printWarnings <<= printWarningsTask,
     compileAnalysisFilename := {
       // Here, if the user wants cross-scala-versioning, we also append it
@@ -793,15 +794,15 @@ object Defaults extends BuildCommon {
   }
   def compileIncrementalTask = Def.task {
     // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
-    compileIncrementalTaskImpl(streams.value, (compileInputs in compile).value, previousCompile.value, (compilerReporter in compile).value)
+    compileIncrementalTaskImpl(streams.value, (compileInputs in compile).value, previousCompile.value, (compilerReporter in compile).value, (javaScalaCompiler in compile).value)
   }
-  private[this] def compileIncrementalTaskImpl(s: TaskStreams, ci: Compiler.Inputs, previous: Compiler.PreviousAnalysis, reporter: Option[xsbti.Reporter]): Compiler.CompileResult =
+  private[this] def compileIncrementalTaskImpl(s: TaskStreams, ci: Compiler.Inputs, previous: Compiler.PreviousAnalysis, reporter: Option[xsbti.Reporter], compile: MixedAnalyzingCompiler => (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit): Compiler.CompileResult =
     {
       lazy val x = s.text(ExportStream)
       def onArgs(cs: Compiler.Compilers) = cs.copy(scalac = cs.scalac.onArgs(exported(x, "scalac")), javac = cs.javac.onArgs(exported(x, "javac")))
       val i = InputsWithPrevious(ci.copy(compilers = onArgs(ci.compilers)), previous)
       try reporter match {
-        case Some(reporter) => Compiler.compile(i, s.log, reporter)
+        case Some(reporter) => Compiler.compile(i, s.log, reporter, compile)
         case None           => Compiler.compile(i, s.log)
       }
       finally x.close() // workaround for #937
