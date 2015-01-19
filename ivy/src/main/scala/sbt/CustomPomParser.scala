@@ -14,7 +14,7 @@ import java.net.URL
 import java.util.regex.Pattern
 import sbt.mavenint.{ PomExtraDependencyAttributes, SbtPomExtraProperties }
 
-@deprecated("0.13.8", "We now use an Aether-based pom parser.")
+@deprecated("We now use an Aether-based pom parser.", "0.13.8")
 final class CustomPomParser(delegate: ModuleDescriptorParser, transform: (ModuleDescriptorParser, ModuleDescriptor) => ModuleDescriptor) extends ModuleDescriptorParser {
   override def parseDescriptor(ivySettings: ParserSettings, descriptorURL: URL, validate: Boolean) =
     transform(this, delegate.parseDescriptor(ivySettings, descriptorURL, validate))
@@ -28,7 +28,7 @@ final class CustomPomParser(delegate: ModuleDescriptorParser, transform: (Module
   override def getType() = delegate.getType()
   override def getMetadataArtifact(mrid: ModuleRevisionId, res: Resource) = delegate.getMetadataArtifact(mrid, res)
 }
-@deprecated("0.13.8", "We now use an Aether-based pom parser.")
+@deprecated("We now use an Aether-based pom parser.", "0.13.8")
 object CustomPomParser {
 
   // Evil hackery to override the default maven pom mappings.
@@ -65,7 +65,7 @@ object CustomPomParser {
     {
       val oldTransformedHashKey = "sbtTransformHash"
       val extraInfo = md.getExtraInfo
-      // sbt 0.13.1 used "sbtTransformHash" instead of "e:sbtTransformHash" until #1192 so read both 
+      // sbt 0.13.1 used "sbtTransformHash" instead of "e:sbtTransformHash" until #1192 so read both
       Option(extraInfo).isDefined &&
         ((Option(extraInfo get TransformedHashKey) orElse Option(extraInfo get oldTransformedHashKey)) match {
           case Some(TransformHash) => true
