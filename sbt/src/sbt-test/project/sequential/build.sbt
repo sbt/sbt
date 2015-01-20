@@ -29,6 +29,8 @@ lazy val root = project.
       IO.append(t, "1")
     },
     sideEffect2 := {
+      // check for deduplication of tasks
+      val _ = sideEffect1.value
       val t = testFile.value
       IO.append(t, "2")
     },
