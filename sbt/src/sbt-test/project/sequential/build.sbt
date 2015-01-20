@@ -20,6 +20,7 @@ lazy val root = project.
     },
     testFile := target.value / "test.txt",
     sideEffect0 := {
+      Thread.sleep(100)
       val t = testFile.value
       IO.append(t, "0")
     },
