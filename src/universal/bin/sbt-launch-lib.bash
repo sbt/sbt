@@ -133,7 +133,7 @@ process_args () {
     process_my_args "${myargs[@]}"
   }
 
-  java_version=$("$java_cmd" -version 2>&1 | awk -F '"' '/version/ {print $2}')
+  java_version=$("$java_cmd" -Xmx512M -version 2>&1 | awk -F '"' '/version/ {print $2}')
   vlog "[process_args] java_version = '$java_version'"
 }
 
