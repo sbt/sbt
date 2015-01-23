@@ -1760,7 +1760,7 @@ object Classpaths {
     }
 }
 
-trait BuildExtra extends BuildCommon {
+trait BuildExtra extends BuildCommon with DefExtra {
   import Defaults._
 
   /**
@@ -1889,6 +1889,10 @@ trait BuildExtra extends BuildCommon {
 
   def filterKeys(ss: Seq[Setting[_]], transitive: Boolean = false)(f: ScopedKey[_] => Boolean): Seq[Setting[_]] =
     ss filter (s => f(s.key) && (!transitive || s.dependencies.forall(f)))
+}
+trait DefExtra {
+  private[this] val ts: TaskSequential = new TaskSequential {}
+  implicit def toTaskSequential(d: Def.type): TaskSequential = ts
 }
 trait BuildCommon {
   @deprecated("Use Def.inputTask with the `Def.spaceDelimited()` parser.", "0.13.0")
