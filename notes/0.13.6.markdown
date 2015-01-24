@@ -97,7 +97,7 @@
 - Allows keys defined inside `build.sbt` to be used from sbt shell. [#1059][1059]/[#1456][1456]
 - Updates internal Ivy instance to cache the results of dependency exclusion rules. [#1476][1476] by [@eed3si9n][@eed3si9n]
 - Adds `Resolver.jcenterRepo` and `Resolver.bintrayRepo(owner, repo)` to add Bintray easier. [#1405][1405] by [@evgeny-goldin][@evgeny-goldin]
-- AutoPlugins with no requirements enabled by allRequirements can now be disable dby the user. [#1516][1516] by [@jsuereth][@jsuereth]
+- AutoPlugins with no requirements enabled by allRequirements can now be disabled by the user. [#1516][1516] by [@jsuereth][@jsuereth]
 
 ### Bug fixes
 
@@ -105,9 +105,9 @@
 - Fixes auto plugins declared without package object. [#1423][1423] by [@lpiepiora][@lpiepiora]
 - Fixes `plugin` command. [#1416][1416]/[#1426][1426] by [@lpiepiora][@lpiepiora]
 - Adds `scala-jar` to the list of jar artifacts recognized by CustomPomParser. [#1400][1400] by [@dpratt][@dpratt]
-- Fixes cross versioning to recognize version number with mutiple -tags. [#1433][1433] by [@henrikengstrom][@henrikengstrom]
+- Fixes cross versioning to recognize version number with multiple -tags. [#1433][1433] by [@henrikengstrom][@henrikengstrom]
 - Works around "Not a simple type" breaking `-Xfatal-warnings`. [#1477][1477] by [@puffnfresh][@puffnfresh]
-- Fixes sLog usage in tandem with the `set` comamnd [#1486][1486] [@jsuereth][@jsuereth]
+- Fixes sLog usage in tandem with the `set` command [#1486][1486] [@jsuereth][@jsuereth]
 - Test suites with whitespace will have prettier filenames [#1487][1487] [@jsuereth][@jsuereth]
 - sbt no longer crashes when run in root directory [#1488][1488] by [@jsuereth][@jsuereth]
 - set no longer removes any `++` scala version setting.  [#856][856]/[#1489][1489] by [@jsuereth][@jsuereth]
@@ -157,10 +157,10 @@ This is an approximation, but it should help you figure out where the problemati
 
 sbt 0.13.6 displays eviction warnings when it resolves your project's managed dependencies via `update` task.
 Currently the eviction warnings are categorized into three layers: `scalaVersion` eviction, direct evictions, and transitive evictions.
-By default eviction warning on `update` task will display only `scalaVersion` evictin and direct evictions.
+By default eviction warning on `update` task will display only `scalaVersion` eviction and direct evictions.
 
-`scalaVersion` eviction warns you when `scalaVersion` is no longer effecitive. This happens when one of your dependency depends on a newer release of scala-library than your `scalaVersion`.
-Direct evctions are evictions related to your direct dependencies. Warnings are displayed only when API incompatibility is suspected. For Java libraries, Semantic Versioning is used for guessing, and for Scala libraries Second Segment versioning (second segment bump makes API incompatible) is used.
+`scalaVersion` eviction warns you when `scalaVersion` is no longer effective. This happens when one of your dependencies depends on a newer release of scala-library than your `scalaVersion`.
+Direct evictions are evictions related to your direct dependencies. Warnings are displayed only when API incompatibility is suspected. For Java libraries, Semantic Versioning is used for guessing, and for Scala libraries Second Segment versioning (second segment bump makes API incompatible) is used.
 
 To display all eviction warnings with caller information, run `evicted` task.
 
@@ -175,7 +175,7 @@ To display all eviction warnings with caller information, run `evicted` task.
 
 sbt 0.13.6 adds a new setting key called `updateOptions` for customizing the details of managed dependency resolution with `update` task. One of its flags is called `lastestSnapshots`, which controls the behavior of the chained resolver. Up until 0.13.6, sbt was picking the first `-SNAPSHOT` revision it found along the chain. When `latestSnapshots` is enabled (default: `true`), it will look into all resolvers on the chain, and compare them using the publish date.
 
-The tradeoff is probably a longer resolution time if you have many remote repositories on the build or you live away from the severs. So here's how to disable it:
+The tradeoff is probably a longer resolution time if you have many remote repositories on the build or you live away from the servers. So here's how to disable it:
 
     updateOptions := updateOptions.value.withLatestSnapshots(false)
 
@@ -187,4 +187,4 @@ The tradeoff is probably a longer resolution time if you have many remote reposi
 
     updateOptions := updateOptions.value.withConsolidatedResolution(true)
 
-This feature is specifically targeted to address [Ivy resolution is beging slow for multi-module projects #413][413]. Consolidated resolution aims to fix this issue by artificially constructing an Ivy dependency graph for the unique managed dependencies. If two subprojects introduce identical external dependencies, both subprojects should consolidate to the same graph, and therefore resolve immediately for the second `update`. [#1454][1454] by [@eed3si9n][@eed3si9n]
+This feature is specifically targeted to address [Ivy resolution is unreasonably slow for multi-module projects #413][413]. Consolidated resolution aims to fix this issue by artificially constructing an Ivy dependency graph for the unique managed dependencies. If two subprojects introduce identical external dependencies, both subprojects should consolidate to the same graph, and therefore resolve immediately for the second `update`. [#1454][1454] by [@eed3si9n][@eed3si9n]

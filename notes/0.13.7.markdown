@@ -42,7 +42,7 @@
 ### Fixes with compatibility implications
 
 - Maven artifact dependencies will limit their transitive dependencies to `Compile` rather than *every configuration* if no `master` configuration is found. [#1586][1586] by [@jsuereth][@jsuereth]
-- The new natural whitspace handling parser is unable to cope with certain classes of Scala syntax. In particular, top-level pattern matches, or multi-value defintions are no longer supported.
+- The new natural whitespace handling parser is unable to cope with certain classes of Scala syntax. In particular, top-level pattern matches, or multi-value definitions are no longer supported.
 
 Here are examples:
 
@@ -111,7 +111,7 @@ sbt 0.13.7 adds a new **experimental** update option called *cached resolution*,
 
     updateOptions := updateOptions.value.withCachedResolution(true)
 
-Unlike consolidated resolution, which only consolidated subprojects with identical dependency graph, cached resolution create an artificial graph for each direct dependency (minigraph) for all subprojects, resolves them independently, saves them into json file, and stiches the minigraphs together.
+Unlike consolidated resolution, which only consolidated subprojects with identical dependency graph, cached resolution create an artificial graph for each direct dependency (minigraph) for all subprojects, resolves them independently, saves them into json file, and stitches the minigraphs together.
 
 Once the minigraphs are resolved and saved as files, dependency resolution turns into a matter of loading json file from the second run onwards, which should complete in a matter of seconds even for large projects. Also, because the files are saved under a global `~/.sbt/0.13/dependency` (or what's specified by `sbt.dependency.base` flag), the resolution result is shared across all builds.
 
