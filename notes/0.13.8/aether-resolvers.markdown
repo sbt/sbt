@@ -11,7 +11,7 @@
 
 ### Maven resolver plugin
 
-sbt 0.13.8 adds an extention point in the dependency resolution to customize Maven resolvers.
+sbt 0.13.8 adds an extension point in the dependency resolution to customize Maven resolvers.
 This allows us to write sbt-maven-resolver auto plugin, which internally uses Eclipse Aether
 to resolve Maven dependencies instead of Apache Ivy.
 

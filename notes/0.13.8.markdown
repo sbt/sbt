@@ -44,7 +44,7 @@ sbt 0.13.7 implemented natural whitespace handling by switching `build.sbt` pars
     val a = <x/><y/>
     val b = 0
 
-At the time, we thought adding parentheses around XML nodes could work around this behavior. However, the workaround has caused [more issues][1738], and since then we have realized that this is a compiler issue [SI-9027][SI-9027], so we have decided to roll back our workaround. In the meantime, if you have consecutive XML elements in your build.sbt, encose them in `<xml:group>` tag, or parentheses.
+At the time, we thought adding parentheses around XML nodes could work around this behavior. However, the workaround has caused [more issues][1738], and since then we have realized that this is a compiler issue [SI-9027][SI-9027], so we have decided to roll back our workaround. In the meantime, if you have consecutive XML elements in your build.sbt, enclose them in `<xml:group>` tag, or parentheses.
 
     val a = <xml:group><x/><y/></xml:group>
     val b = 0
