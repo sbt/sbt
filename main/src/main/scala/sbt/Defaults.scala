@@ -69,6 +69,8 @@ object Defaults extends BuildCommon {
       sourcesInBase :== true,
       autoAPIMappings := false,
       apiMappings := Map.empty,
+      scalaApiMappings := Map.empty,
+      javaApiMappings := Map.empty,
       autoScalaLibrary :== true,
       managedScalaInstance :== true,
       definesClass :== FileValueCache(Locate.definesClass _).get,
@@ -79,6 +81,8 @@ object Defaults extends BuildCommon {
       autoCompilerPlugins :== true,
       scalaHome :== None,
       apiURL := None,
+      scalaApiURL := None,
+      javaApiURL := None,
       javaHome :== None,
       testForkedParallel :== false,
       javaOptions :== Nil,
@@ -730,7 +734,8 @@ object Defaults extends BuildCommon {
   @deprecated("Use `docTaskSettings` instead", "0.12.0")
   def docSetting(key: TaskKey[File]) = docTaskSettings(key)
   def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[_]] = inTask(key)(Seq(
-    apiMappings ++= { if (autoAPIMappings.value) APIMappings.extract(dependencyClasspath.value, streams.value.log).toMap else Map.empty[File, URL] },
+    scalaApiMappings ++= apiMappings.value ++ { if (autoAPIMappings.value) APIMappings.extractScala(dependencyClasspath.value, streams.value.log).toMap else Map.empty[File, URL] },
+    javaApiMappings ++= { if (autoAPIMappings.value) APIMappings.extractJava(dependencyClasspath.value, streams.value.log).toMap else Map.empty[File, URL] },
     fileInputOptions := Seq("-doc-root-content", "-diagrams-dot-path"),
     key in TaskGlobal := {
       val s = streams.value
@@ -739,7 +744,8 @@ object Defaults extends BuildCommon {
       val out = target.value
       val sOpts = scalacOptions.value
       val jOpts = javacOptions.value
-      val xapis = apiMappings.value
+      val xsapis = scalaApiMappings.value
+      val xjapis = javaApiMappings.value
       val hasScala = srcs.exists(_.name.endsWith(".scala"))
       val hasJava = srcs.exists(_.name.endsWith(".java"))
       val cp = data(dependencyClasspath.value).toList
@@ -747,10 +753,10 @@ object Defaults extends BuildCommon {
       val fiOpts = fileInputOptions.value
       val (options, runDoc) =
         if (hasScala)
-          (sOpts ++ Opts.doc.externalAPI(xapis), // can't put the .value calls directly here until 2.10.2
+          (sOpts ++ Opts.doc.externalScalaAPI(xsapis), // can't put the .value calls directly here until 2.10.2
             Doc.scaladoc(label, s.cacheDirectory / "scala", cs.scalac.onArgs(exported(s, "scaladoc")), fiOpts))
         else if (hasJava)
-          (jOpts,
+          (jOpts ++ Opts.doc.externalJavaAPI(xjapis),
             Doc.javadoc(label, s.cacheDirectory / "java", cs.javac.onArgs(exported(s, "javadoc")), fiOpts))
         else
           (Nil, RawCompileLike.nop)
@@ -1508,7 +1514,7 @@ object Classpaths {
     val art = (artifact in packageBin).value
     val module = projectID.value
     val config = configuration.value
-    for (f <- productsImplTask.value) yield APIMappings.store(analyzed(f, compile.value), apiURL.value).put(artifact.key, art).put(moduleID.key, module).put(configuration.key, config)
+    for (f <- productsImplTask.value) yield APIMappings.store(analyzed(f, compile.value), scalaApiURL.value, javaApiURL.value).put(artifact.key, art).put(moduleID.key, module).put(configuration.key, config)
   }
 
   private[this] def productsImplTask: Initialize[Task[Seq[File]]] =
