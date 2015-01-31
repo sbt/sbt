@@ -1,0 +1,12 @@
+> compile
+
+# Change the return value of `Helper.foo`.
+# We should recompile Client.scala because it uses a macro that transitively
+# depends on `Helper.foo` (via all the `RelayX.relayX`).
+$ copy-file changes/Helper.scala deep-helper/src/main/scala/Helper.scala
+
+> compile
+
+# If we have not recompiled Client.scala, `run` will fail because it asserts
+# that the output of the macro is the same as `Helper.foo`.
+> macro-client/run
