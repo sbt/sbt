@@ -8,6 +8,7 @@
   [@Duhemm]: https://github.com/Duhemm
   [@kretes]: https://github.com/kretes
   [@j-keck]: https://github.com/j-keck
+  [@xuwei-k]: https://github.com/xuwei-k
   [SI-9027]: https://issues.scala-lang.org/browse/SI-9027
   [Custom-Settings0]: http://www.scala-sbt.org/0.13/tutorial/Custom-Settings.html
   [647]: https://github.com/sbt/sbt/issues/647
@@ -31,6 +32,7 @@
   [1752]: https://github.com/sbt/sbt/pull/1752
   [1766]: https://github.com/sbt/sbt/pull/1766
   [1771]: https://github.com/sbt/sbt/pull/1771
+  [1787]: https://github.com/sbt/sbt/pull/1787
   [1793]: https://github.com/sbt/sbt/pull/1793
   [1817]: https://github.com/sbt/sbt/pull/1817
 
@@ -46,7 +48,8 @@
 - Discovered main classes will be sorted. [#1180][1180] by [@kretes][@kretes]
 - Implemented a new mechanism of forking javac, whereby errors are captured.  Also more likely to run in-process. [#1702][1702] by [@jsuereth][@jsuereth]
 - `evicted` will display all evictions (including the ones not suspected of binary incompatibility). [#1615][1615] by [@eed3si9n][@eed3si9n]
-- Better abstration to track new kinds of source dependencies. [#1340][1340] by [@Duhemm][@Duhemm]
+- Better abstration to track new kinds of dependencies for incremental compiler. [#1340][1340] by [@Duhemm][@Duhemm]
+- Source dependency uses `--depth 1` for git clone. [#1787][1787] by [@xuwei-k][@xuwei-k]
 
 ### Fixes
 
