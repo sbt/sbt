@@ -2,9 +2,10 @@
   [@eed3si9n]: https://github.com/eed3si9n
   [@gkossakowski]: https://github.com/gkossakowski
   [@jsuereth]: https://github.com/jsuereth
-  
+
   [@ajozwik]: https://github.com/ajozwik
   [@dwickern]: https://github.com/dwickern
+  [@Duhemm]: https://github.com/Duhemm
   [@kretes]: https://github.com/kretes
   [@j-keck]: https://github.com/j-keck
   [SI-9027]: https://issues.scala-lang.org/browse/SI-9027
@@ -15,6 +16,7 @@
   [1001]: https://github.com/sbt/sbt/issues/1001
   [1180]: https://github.com/sbt/sbt/issues/1180
   [1322]: https://github.com/sbt/sbt/issues/1322
+  [1340]: https://github.com/sbt/sbt/pull/1340
   [1542]: https://github.com/sbt/sbt/issues/1542
   [1615]: https://github.com/sbt/sbt/issues/1615
   [1616]: https://github.com/sbt/sbt/issues/1616
@@ -44,6 +46,7 @@
 - Discovered main classes will be sorted. [#1180][1180] by [@kretes][@kretes]
 - Implemented a new mechanism of forking javac, whereby errors are captured.  Also more likely to run in-process. [#1702][1702] by [@jsuereth][@jsuereth]
 - `evicted` will display all evictions (including the ones not suspected of binary incompatibility). [#1615][1615] by [@eed3si9n][@eed3si9n]
+- Better abstration to track new kinds of source dependencies. [#1340][1340] by [@Duhemm][@Duhemm]
 
 ### Fixes
 
