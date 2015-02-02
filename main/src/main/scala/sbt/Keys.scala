@@ -106,7 +106,7 @@ object Keys {
   val cacheDirectory = SettingKey[File]("cache-directory", "Directory used for caching task data.", BMinusSetting)
   val cleanFiles = SettingKey[Seq[File]]("clean-files", "The files to recursively delete during a clean.", BSetting)
   val cleanKeepFiles = SettingKey[Seq[File]]("clean-keep-files", "Files to keep during a clean.", CSetting)
-  val crossPaths = SettingKey[Boolean]("cross-paths", "If true, enables cross paths, which distinguish output directories for cross-building.", ASetting)
+  val crossPaths = SettingKey[Boolean]("cross-paths", "If true, enables cross paths, which distinguish input and output directories for cross-building.", ASetting)
   val taskTemporaryDirectory = SettingKey[File]("task-temporary-directory", "Directory used for temporary files for tasks that is deleted after each task execution.", DSetting)
 
   // Generators
