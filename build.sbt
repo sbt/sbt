@@ -468,8 +468,7 @@ def otherRootSettings = Seq(
   Scripted.scriptedPrescripted := { f =>
     val inj = f / "project" / "maven.sbt"
     if (!inj.exists) {
-      IO.write(inj, """libraryDependencies += Defaults.sbtPluginExtra("org.scala-sbt" % "sbt-maven-resolver" % sbtVersion.value,
-        |sbtBinaryVersion.value, scalaBinaryVersion.value)""".stripMargin)
+      IO.write(inj, "addMavenResolverPlugin")
       // sLog.value.info(s"""Injected project/maven.sbt to $f""")
     }
   }
