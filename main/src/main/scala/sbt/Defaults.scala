@@ -1807,6 +1807,14 @@ trait BuildExtra extends BuildCommon with DefExtra {
   def addSbtPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =
     libraryDependencies <+= (sbtBinaryVersion in update, scalaBinaryVersion in update) { (sbtV, scalaV) => sbtPluginExtra(dependency, sbtV, scalaV) }
 
+  /**
+   * Adds `dependency` as an sbt plugin for the sbt and Scala versions configured by
+   * `sbtBinaryVersion` and `scalaBinaryVersion` respectively scoped to `update`.
+   * The plugin version is same as the `sbtBinaryVersion` and does not need to be specified explicitly.
+   */
+  def addSbtPlugin(dependency: impl.GroupArtifactID): Setting[Seq[ModuleID]] =
+    libraryDependencies <+= (sbtBinaryVersion in update, scalaBinaryVersion in update) { (sbtV, scalaV) => sbtPluginExtra(dependency % sbtV, sbtV, scalaV) }
+
   /** Transforms `dependency` to be in the auto-compiler plugin configuration. */
   def compilerPlugin(dependency: ModuleID): ModuleID =
     dependency.copy(configurations = Some("plugin->default(compile)"))
