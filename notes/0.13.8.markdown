@@ -7,6 +7,7 @@
   [@dwickern]: https://github.com/dwickern
   [@Duhemm]: https://github.com/Duhemm
   [@kretes]: https://github.com/kretes
+  [@indrajitr]: https://github.com/indrajitr
   [@j-keck]: https://github.com/j-keck
   [@xuwei-k]: https://github.com/xuwei-k
   [SI-9027]: https://issues.scala-lang.org/browse/SI-9027
@@ -36,15 +37,16 @@
   [1793]: https://github.com/sbt/sbt/pull/1793
   [1817]: https://github.com/sbt/sbt/pull/1817
 
-### Fixes with compatibility implications
+### Changes with compatibility implications
 
 - Rolls back XML parsing workaround. See below.
+- Enables cross-version support for Scala sources. See below.
 
 ### Improvements
 
-- Adds Maven resolver plugin. See below. [#1793][1793] by [@jsuereth][@jsuereth]
-- Adds project-level dependency exclusions. See below. [#1748][1748] by [@eed3si9n][@eed3si9n]
-- Adds sequential tasks. See below. [#1817][1817]/[#1001][1001] by [@eed3si9n][@eed3si9n]
+- Adds Maven resolver plugin. See below.
+- Adds project-level dependency exclusions. See below.
+- Adds sequential tasks. See below.
 - Discovered main classes will be sorted. [#1180][1180] by [@kretes][@kretes]
 - Implemented a new mechanism of forking javac, whereby errors are captured.  Also more likely to run in-process. [#1702][1702] by [@jsuereth][@jsuereth]
 - `evicted` will display all evictions (including the ones not suspected of binary incompatibility). [#1615][1615] by [@eed3si9n][@eed3si9n]
@@ -80,6 +82,13 @@ At the time, we thought adding parentheses around XML nodes could work around th
     val b = 0
 
 [#1765][1765] by [@ajozwik][@ajozwik]
+
+### Cross-version support for Scala sources
+
+When `crossPaths` setting is set to `true` (it is `true` by default), sbt 0.13.8 will include
+`src/main/scala-<scalaBinaryVersion>/` to the `Compile` compilation in addition to
+`src/main/scala`. For example, it will include `src/main/scala-2.11/` for Scala 2.11.5, and
+`src/main/scala-2.9.3` for Scala 2.9.3. [#1799][1799] by [@indrajitr][@indrajitr]
 
 ### Maven resolver plugin
 
