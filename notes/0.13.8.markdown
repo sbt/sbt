@@ -101,8 +101,7 @@ to resolve Maven dependencies instead of Apache Ivy.
 
 To enable this plugin, add the following to `project/maven.sbt` (or `project/plugin.sbt` the file name doesn't matter):
 
-    libraryDependencies += Defaults.sbtPluginExtra("org.scala-sbt" % "sbt-maven-resolver" % sbtVersion.value,
-      sbtBinaryVersion.value, scalaBinaryVersion.value)
+    addMavenResolverPlugin
 
 This will create a new `~/.ivy2/maven-cache` directory, which contains the Aether cache of files.
 You may notice some file will be re-downloaded for the new cache layout.

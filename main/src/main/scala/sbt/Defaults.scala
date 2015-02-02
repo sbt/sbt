@@ -1779,6 +1779,12 @@ trait BuildExtra extends BuildCommon with DefExtra {
     }
 
   /**
+   * Adds Maven resolver plugin.
+   */
+  def addMavenResolverPlugin: Setting[Seq[ModuleID]] =
+    libraryDependencies += sbtPluginExtra(ModuleID("org.scala-sbt", "sbt-maven-resolver", sbtVersion.value), sbtBinaryVersion.value, scalaBinaryVersion.value)
+
+  /**
    * Adds `dependency` as an sbt plugin for the specific sbt version `sbtVersion` and Scala version `scalaVersion`.
    * Typically, use the default values for these versions instead of specifying them explicitly.
    */
