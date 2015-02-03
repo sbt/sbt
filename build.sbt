@@ -576,7 +576,6 @@ def customCommands: Seq[Setting[_]] = Seq(
   },
   commands += Command.command("release-sbt-local") { state =>
     "clean" ::
-    "interfaceProj/compile" :: // Java project needs to compile first
     "precompiled-2_8_2/compile" ::
     "precompiled-2_9_2/compile" ::
     "precompiled-2_9_3/compile" ::
@@ -588,12 +587,27 @@ def customCommands: Seq[Setting[_]] = Seq(
     "reload" ::
     state
   },
+  /** There are several complications with sbt's build.
+   * First is the fact that interface project is a Java-only project
+   * that uses source generator from datatype subproject in Scala 2.10.4,
+   * which is depended on by Scala 2.8.2, Scala 2.9.2, and Scala 2.9.3 precompiled project. 
+   *
+   * Second is the fact that sbt project (currently using Scala 2.10.4) depends on
+   * the precompiled projects (that uses Scala 2.8.2 etc.)
+   * 
+   * Finally, there's the fact that all subprojects are released with crossPaths
+   * turned off for the sbt's Scala version 2.10.4, but some of them are also
+   * cross published against 2.11.1 with crossPaths turned on.
+   *
+   * Because of the way ++ (and its improved version wow) is implemented
+   * precompiled compiler briges are handled outside of doge aggregation on root.
+   * `so compile` handles 2.10.x/2.11.x cross building. 
+   */
   commands += Command.command("release-sbt") { state =>
     // TODO - Any sort of validation
     "clean" ::
       "checkCredentials" ::
       "conscript-configs" ::
-      "interfaceProj/compile" :: // Java project needs to compile first
       "precompiled-2_8_2/compile" ::
       "precompiled-2_9_2/compile" ::
       "precompiled-2_9_3/compile" ::
