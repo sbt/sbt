@@ -2,32 +2,58 @@
   [@eed3si9n]: https://github.com/eed3si9n
   [@gkossakowski]: https://github.com/gkossakowski
   [@jsuereth]: https://github.com/jsuereth
-  
+
   [@ajozwik]: https://github.com/ajozwik
   [@dwickern]: https://github.com/dwickern
+  [@Duhemm]: https://github.com/Duhemm
   [@kretes]: https://github.com/kretes
+  [@indrajitr]: https://github.com/indrajitr
   [@j-keck]: https://github.com/j-keck
-
+  [@xuwei-k]: https://github.com/xuwei-k
+  [SI-9027]: https://issues.scala-lang.org/browse/SI-9027
+  [Custom-Settings0]: http://www.scala-sbt.org/0.13/tutorial/Custom-Settings.html
+  [647]: https://github.com/sbt/sbt/issues/647
+  [679]: https://github.com/sbt/sbt/issues/679
   [875]: https://github.com/sbt/sbt/issues/875
+  [1001]: https://github.com/sbt/sbt/issues/1001
   [1180]: https://github.com/sbt/sbt/issues/1180
+  [1322]: https://github.com/sbt/sbt/issues/1322
+  [1340]: https://github.com/sbt/sbt/pull/1340
   [1542]: https://github.com/sbt/sbt/issues/1542
+  [1615]: https://github.com/sbt/sbt/issues/1615
+  [1616]: https://github.com/sbt/sbt/issues/1616
+  [1634]: https://github.com/sbt/sbt/pull/1634
+  [1655]: https://github.com/sbt/sbt/issues/1655
+  [1676]: https://github.com/sbt/sbt/issues/1676
   [1702]: https://github.com/sbt/sbt/pull/1702
+  [1714]: https://github.com/sbt/sbt/issues/1714
   [1738]: https://github.com/sbt/sbt/issues/1738
   [1741]: https://github.com/sbt/sbt/pull/1741
   [1746]: https://github.com/sbt/sbt/pull/1746
   [1748]: https://github.com/sbt/sbt/issues/1748
+  [1752]: https://github.com/sbt/sbt/pull/1752
+  [1754]: https://github.com/sbt/sbt/pull/1754
+  [1766]: https://github.com/sbt/sbt/pull/1766
   [1771]: https://github.com/sbt/sbt/pull/1771
-  [SI-9027]: https://issues.scala-lang.org/browse/SI-9027
+  [1787]: https://github.com/sbt/sbt/pull/1787
+  [1793]: https://github.com/sbt/sbt/pull/1793
+  [1817]: https://github.com/sbt/sbt/pull/1817
 
-### Fixes with compatibility implications
+### Changes with compatibility implications
 
 - Rolls back XML parsing workaround. See below.
+- Enables cross-version support for Scala sources. See below.
 
 ### Improvements
 
+- Adds Maven resolver plugin. See below.
+- Adds project-level dependency exclusions. See below.
+- Adds sequential tasks. See below.
 - Discovered main classes will be sorted. [#1180][1180] by [@kretes][@kretes]
 - Implemented a new mechanism of forking javac, whereby errors are captured.  Also more likely to run in-process. [#1702][1702] by [@jsuereth][@jsuereth]
-- Adds project-level dependency exclusions. See below.
+- `evicted` will display all evictions (including the ones not suspected of binary incompatibility). [#1615][1615] by [@eed3si9n][@eed3si9n]
+- Better abstration to track new kinds of dependencies for incremental compiler. [#1340][1340] by [@Duhemm][@Duhemm]
+- Source dependency uses `--depth 1` for git clone. [#1787][1787] by [@xuwei-k][@xuwei-k]
 
 ### Fixes
 
@@ -36,6 +62,15 @@
 - Ignores hidden build files from the build. [#1746][1746] by [@j-keck][@j-keck]
 - Fixes build.sbt parsing of multiple import. [#1741][1741] by [@ajozwik][@ajozwik]
 - Fixes ANSI escape code for overwriting lines on Windows. [#1771][1771] by [@dwickern][@dwickern]
+- Adds null check in incremental compiler's type tree extraction. [#1754][1754]/[#1655][1655] by [@Duhemm][@Duhemm]
+- sbt doesn't honor Maven's uniqueVersions (use sbt-maven-resolver to fix). [#1322][1322]  by [@jsuereth][@jsuereth]
+- sbt doesn't see new SNAPSHOT dependency versions in local maven repos (use withLatestSnapshots + sbt-maven-resolver to fix) [#321][321] by [@jsuereth][@jsuereth]
+- Property in pom's version field results to wrong dependency resolution (use sbt-maven-resolver to fix). [#647][647] by [@jsuereth][@jsuereth]
+- Maven local resolver with parent POM (use sbt-maven-resolver). [#1616][1616] by [@jsuereth][@jsuereth]
+- Fixes cached resolution being too verbose. [#1752][1752] by [@eed3si9n][@eed3si9n]
+- Fixes eviction warning being too noisy. [#1615][1615] by [@eed3si9n][@eed3si9n]
+- Issues warning if multiple dependencies to a same library is found with different version. [#1634][1634] by [@eed3si9n][@eed3si9n]
+- Removes "No main class detected" warning. [#1766][1766] by [@eed3si9n][@eed3si9n]
 
 ### Rolling back XML parsing workaround
 
@@ -51,6 +86,37 @@ At the time, we thought adding parentheses around XML nodes could work around th
 
 [#1765][1765] by [@ajozwik][@ajozwik]
 
+### Cross-version support for Scala sources
+
+When `crossPaths` setting is set to `true` (it is `true` by default), sbt 0.13.8 will include
+`src/main/scala-<scalaBinaryVersion>/` to the `Compile` compilation in addition to
+`src/main/scala`. For example, it will include `src/main/scala-2.11/` for Scala 2.11.5, and
+`src/main/scala-2.9.3` for Scala 2.9.3. [#1799][1799] by [@indrajitr][@indrajitr]
+
+### Maven resolver plugin
+
+sbt 0.13.8 adds an extension point in the dependency resolution to customize Maven resolvers.
+This allows us to write sbt-maven-resolver auto plugin, which internally uses Eclipse Aether
+to resolve Maven dependencies instead of Apache Ivy.
+
+To enable this plugin, add the following to `project/maven.sbt` (or `project/plugin.sbt` the file name doesn't matter):
+
+    addMavenResolverPlugin
+
+This will create a new `~/.ivy2/maven-cache` directory, which contains the Aether cache of files.
+You may notice some file will be re-downloaded for the new cache layout.
+Additionally, sbt will now be able to fully construct
+`maven-metadata.xml` files when publishing to remote repositories or when publishing to the local `~/.m2/repository`.
+This should help erase many of the deficiencies encountered when using Maven and sbt together.
+
+**Notes and known limitations**:
+
+- sbt-maven-resolver requires sbt 0.13.8 and above.
+- The current implementation does not support Ivy-style dynamic revisions, such as "2.10.+" or "latest.snapshot".  This
+  is a fixable situation, but the version range query and Ivy -> Maven version range translation code has not been migrated.
+
+[#1793][1793] by [@jsuereth][@jsuereth]
+
 ### Project-level dependency exclusions
 
 sbt 0.13.8 adds project-level dependency exclusions:
@@ -60,3 +126,57 @@ sbt 0.13.8 adds project-level dependency exclusions:
 
 In the first example, all artifacts from the organization `"org.apache.logging.log4j"` are excluded from the managed dependency.
 In the second example, artifacts with the organization `"com.example"` and the name `"foo"` cross versioned to the current `scalaVersion` are excluded. [#1748][1748] by [@eed3si9n][@eed3si9n]
+
+### Sequential tasks
+
+sbt 0.13.8 adds a new `Def.sequential` function to run tasks under semi-sequential semantics.
+Here's an example usage:
+
+    lazy val root = project.
+      settings(
+        testFile := target.value / "test.txt",
+        sideEffect0 := {
+          val t = testFile.value
+          IO.append(t, "0")
+          t
+        },
+        sideEffect1 := {
+          val t = testFile.value
+          IO.append(t, "1")
+          t
+        },
+        foo := Def.sequential(compile in Compile, sideEffect0, sideEffect1, test in Test).value
+      )
+
+Normally sbt's task engine will reorder tasks based on the dependencies among the tasks,
+and run as many tasks in parallel (See [Custom settings and tasks][Custom-Settings0] for more details on this).
+`Def.sequential` instead tries to run the tasks in the specified order.
+However, the task engine will still deduplicate tasks. For instance, when `foo` is executed, it will only compile once,
+even though `test in Test` depends on compile. [#1817][1817]/[#1001][1001] by [@eed3si9n][@eed3si9n]
+
+### Bytecode Enhancers
+
+sbt 0.13.8 adds an extension point whereby users can effectively manipulate java bytecode (.class files) *before* the
+incremental compiler attempts to cache the classfile hashes.  This allows libraries like ebean to function with sbt
+without corrupting the compiler cache and rerunning compile every few seconds.
+
+This splits the compile task into several subTasks:
+
+1. `previousCompile`:  This task returns the previously persisted `Analysis` object for this project.
+2. `compileIncremental`: This is the core logic of compiling Scala/Java files together.   This task actually does the
+    work of compiling a project incrementally, including ensuring a minimum number of source files are compiled.
+    After this method, all .class files that would be generated by scalac + javac will be available.
+3. `manipulateByteCode`: This is a stub task which takes the `compileIncremental` result and returns it.
+    Plugins which need to manipulate bytecode are expected to override this task with their own implementation, ensuring
+    to call the previous behavior.
+4. `compile`:  This task depends on `manipulateBytecode` and then persists the `Analysis` object containing all
+    incremental compiler information.
+
+Here's an example of how to hook the new `manipulateBytecode` key in your own plugin:
+
+    manipulateBytecode in Compile := {
+      val previous = (manipulateBytecode in Compile).value
+      doManipulateBytecode(previous)  // Note: This must return a new Compiler.CompileResult with our changes.
+    }
+
+See [#1714][1714] for the full details of the implementation.

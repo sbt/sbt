@@ -31,7 +31,7 @@ private final class Settings0[Scope](val data: Map[Scope, AttributeMap], val del
 
   def set[T](scope: Scope, key: AttributeKey[T], value: T): Settings[Scope] =
     {
-      val map = data getOrElse(scope, AttributeMap.empty)
+      val map = data getOrElse (scope, AttributeMap.empty)
       val newData = data.updated(scope, map.put(key, value))
       new Settings0(newData, delegates)
     }
