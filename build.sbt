@@ -11,7 +11,7 @@ import Sxr.sxr
 def commonSettings: Seq[Setting[_]] = Seq(
   organization := "org.scala-sbt",
   version := "0.13.8-SNAPSHOT",
-  scalaVersion in ThisBuild := "2.10.4",
+  scalaVersion := "2.10.4",
   publishArtifact in packageDoc := false,
   publishMavenStyle := false,
   componentID := None,
@@ -20,7 +20,8 @@ def commonSettings: Seq[Setting[_]] = Seq(
   concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
-  incOptions := incOptions.value.withNameHashing(true)
+  incOptions := incOptions.value.withNameHashing(true),
+  crossScalaVersions := Seq(scala210)
 )
 
 def minimalSettings: Seq[Setting[_]] =
@@ -84,7 +85,13 @@ lazy val interfaceProj = (project in file("interface")).
     watchSources <++= apiDefinitions,
     resourceGenerators in Compile <+= (version, resourceManaged, streams, compile in Compile) map generateVersionFile,
     apiDefinitions <<= baseDirectory map { base => (base / "definition") :: (base / "other") :: (base / "type") :: Nil },
-    sourceGenerators in Compile <+= (cacheDirectory, apiDefinitions, fullClasspath in Compile in datatypeProj, sourceManaged in Compile, mainClass in datatypeProj in Compile, runner, streams) map generateAPICached    
+    sourceGenerators in Compile <+= (cacheDirectory,
+      apiDefinitions,
+      fullClasspath in Compile in datatypeProj,
+      sourceManaged in Compile,
+      mainClass in datatypeProj in Compile,
+      runner,
+      streams) map generateAPICached
   )
 
 // defines operations on the API of a source, including determining whether it has changed and converting it to a string
@@ -101,15 +108,15 @@ lazy val apiProj = (project in compilePath / "api").
 lazy val controlProj = (project in utilPath / "control").
   settings(baseSettings ++ Util.crossBuild: _*).
   settings(
-    name := "Control",
-    crossScalaVersions := Seq(scala210, scala211)
+    name := "Control"
+    // crossScalaVersions := Seq(scala210, scala211)
   )
 
 lazy val collectionProj = (project in utilPath / "collection").
   settings(testedBaseSettings ++ Util.keywordsSettings ++ Util.crossBuild: _*).
   settings(
-    name := "Collections",
-    crossScalaVersions := Seq(scala210, scala211)
+    name := "Collections"
+    // crossScalaVersions := Seq(scala210, scala211)
   )
 
 lazy val applyMacroProj = (project in utilPath / "appmacro").
@@ -135,8 +142,8 @@ lazy val ioProj = (project in utilPath / "io").
   settings(testedBaseSettings ++ Util.crossBuild: _*).
   settings(
     name := "IO",
-    libraryDependencies += scalaCompiler.value % Test,
-    crossScalaVersions := Seq(scala210, scala211)
+    libraryDependencies += scalaCompiler.value % Test
+    // crossScalaVersions := Seq(scala210, scala211)
   )
 
 // Utilities related to reflection, managing Scala versions, and custom class loaders
@@ -154,8 +161,8 @@ lazy val completeProj = (project in utilPath / "complete").
   settings(testedBaseSettings ++ Util.crossBuild: _*).
   settings(
     name := "Completion",
-    libraryDependencies += jline,
-    crossScalaVersions := Seq(scala210, scala211)
+    libraryDependencies += jline
+    // crossScalaVersions := Seq(scala210, scala211)
   )
 
 // logging
@@ -295,9 +302,9 @@ lazy val compileInterfaceProj = (project in compilePath / "interface").
     artifact in (Compile, packageSrc) := Artifact(srcID).copy(configurations = Compile :: Nil).extra("e:component" -> srcID)
   )
 
-lazy val precompiled282 = precompiled("2.8.2")
-lazy val precompiled292 = precompiled("2.9.2")
-lazy val precompiled293 = precompiled("2.9.3")
+lazy val precompiled282 = precompiled(scala282)
+lazy val precompiled292 = precompiled(scala292)
+lazy val precompiled293 = precompiled(scala293)
 
 // Implements the core functionality of detecting and propagating changes incrementally.
 //   Defines the data structures for representing file fingerprints and relationships and the overall source analysis
@@ -447,6 +454,7 @@ def allProjects = Seq(launchInterfaceProj, launchProj, testSamples, interfacePro
   compilerIntegrationProj, compilerIvyProj,
   scriptedBaseProj, scriptedSbtProj, scriptedPluginProj,
   actionsProj, commandProj, mainSettingsProj, mainProj, sbtProj, mavenResolverPluginProj)
+
 def projectsWithMyProvided = allProjects.map(p => p.copy(configurations = (p.configurations.filter(_ != Provided)) :+ myProvided))
 lazy val nonRoots = projectsWithMyProvided.map(p => LocalProject(p.id))
 
@@ -460,7 +468,7 @@ def otherRootSettings = Seq(
   Scripted.scriptedUnpublished <<= scriptedUnpublishedTask,
   Scripted.scriptedSource <<= (sourceDirectory in sbtProj) / "sbt-test",
   publishAll := {
-    (publishLocal).all(ScopeFilter(inAnyProject)).value
+    val _ = (publishLocal).all(ScopeFilter(inAnyProject)).value
   }
 ) ++ inConfig(Scripted.MavenResolverPluginTest)(Seq(
   Scripted.scripted <<= scriptedTask,
@@ -535,6 +543,7 @@ def precompiled(scalav: String): Project = Project(id = normalize("Precompiled "
       assert(sbtScalaV != scalav, "Precompiled compiler interface cannot have the same Scala version (" + scalav + ") as sbt.")
       scalav
     },
+    crossScalaVersions := Seq(scalav),
     // we disable compiling and running tests in precompiled Projprojects of compiler interface
     // so we do not need to worry about cross-versioning testing dependencies
     sources in Test := Nil
@@ -567,7 +576,14 @@ def customCommands: Seq[Setting[_]] = Seq(
   },
   commands += Command.command("release-sbt-local") { state =>
     "clean" ::
+    "interfaceProj/compile" :: // Java project needs to compile first
+    "precompiled-2_8_2/compile" ::
+    "precompiled-2_9_2/compile" ::
+    "precompiled-2_9_3/compile" ::
     "so compile" ::
+    "precompiled-2_8_2/publishLocal" ::
+    "precompiled-2_9_2/publishLocal" ::
+    "precompiled-2_9_3/publishLocal" ::
     "so publishLocal" ::
     "reload" ::
     state
@@ -577,10 +593,21 @@ def customCommands: Seq[Setting[_]] = Seq(
     "clean" ::
       "checkCredentials" ::
       "conscript-configs" ::
+      "interfaceProj/compile" :: // Java project needs to compile first
+      "precompiled-2_8_2/compile" ::
+      "precompiled-2_9_2/compile" ::
+      "precompiled-2_9_3/compile" ::
       "so compile" ::
       "so publishSigned" ::
+      "precompiled-2_8_2/publishSigned" ::
+      "precompiled-2_9_2/publishSigned" ::
+      "precompiled-2_9_3/publishSigned" ::
       "publishLauncher" ::
-      "release-libs-211" ::
+      "++2.11.1" ::
+      "controlProj/publishSigned" ::
+      "collectionProj/publishSigned" ::
+      "ioProj/publishSigned" ::
+      "completeProj/publishSigned" ::
       state
   }
 )
