@@ -108,15 +108,15 @@ lazy val apiProj = (project in compilePath / "api").
 lazy val controlProj = (project in utilPath / "control").
   settings(baseSettings ++ Util.crossBuild: _*).
   settings(
-    name := "Control"
-    // crossScalaVersions := Seq(scala210, scala211)
+    name := "Control",
+    crossScalaVersions := Seq(scala210, scala211)
   )
 
 lazy val collectionProj = (project in utilPath / "collection").
   settings(testedBaseSettings ++ Util.keywordsSettings ++ Util.crossBuild: _*).
   settings(
-    name := "Collections"
-    // crossScalaVersions := Seq(scala210, scala211)
+    name := "Collections",
+    crossScalaVersions := Seq(scala210, scala211)
   )
 
 lazy val applyMacroProj = (project in utilPath / "appmacro").
@@ -142,8 +142,8 @@ lazy val ioProj = (project in utilPath / "io").
   settings(testedBaseSettings ++ Util.crossBuild: _*).
   settings(
     name := "IO",
-    libraryDependencies += scalaCompiler.value % Test
-    // crossScalaVersions := Seq(scala210, scala211)
+    libraryDependencies += scalaCompiler.value % Test,
+    crossScalaVersions := Seq(scala210, scala211)
   )
 
 // Utilities related to reflection, managing Scala versions, and custom class loaders
@@ -161,8 +161,8 @@ lazy val completeProj = (project in utilPath / "complete").
   settings(testedBaseSettings ++ Util.crossBuild: _*).
   settings(
     name := "Completion",
-    libraryDependencies += jline
-    // crossScalaVersions := Seq(scala210, scala211)
+    libraryDependencies += jline,
+    crossScalaVersions := Seq(scala210, scala211)
   )
 
 // logging
@@ -603,11 +603,6 @@ def customCommands: Seq[Setting[_]] = Seq(
       "precompiled-2_9_2/publishSigned" ::
       "precompiled-2_9_3/publishSigned" ::
       "publishLauncher" ::
-      "++2.11.1" ::
-      "controlProj/publishSigned" ::
-      "collectionProj/publishSigned" ::
-      "ioProj/publishSigned" ::
-      "completeProj/publishSigned" ::
       state
   }
 )
