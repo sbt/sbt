@@ -22,8 +22,8 @@ object Util {
   lazy val baseScalacOptions = Seq(
     scalacOptions ++= Seq("-Xelide-below", "0"),
     scalacOptions <++= scalaVersion map CrossVersion.partialVersion map {
-      case Some((2, 9)) => Nil // support 2.9 for some subprojects for the Scala Eclipse IDE
-      case _            => Seq("-feature", "-language:implicitConversions", "-language:postfixOps", "-language:higherKinds", "-language:existentials")
+      case Some((2, 9)) | Some((2, 8)) => Nil // support 2.9 for some subprojects for the Scala Eclipse IDE
+      case _                           => Seq("-feature", "-language:implicitConversions", "-language:postfixOps", "-language:higherKinds", "-language:existentials")
     },
     scalacOptions <++= scalaVersion map CrossVersion.partialVersion map {
       case Some((2, 10)) => Seq("-deprecation", "-Xlint")
