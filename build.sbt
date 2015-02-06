@@ -40,10 +40,17 @@ def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
 
 lazy val root: Project = (project in file(".")).
-  configs(Sxr.sxrConf, Proguard).
+  configs(Sxr.sxrConf).
   aggregate(nonRoots: _*).
   settings(buildLevelSettings: _*).
-  settings(minimalSettings ++ rootSettings: _*)
+  settings(minimalSettings ++ rootSettings: _*).
+  settings(
+    publish := {},
+    publishLocal := {
+      val p = (proguard in (proguardedLauncherProj, Proguard)).value
+      IO.copyFile(p, target.value / p.getName)
+    }
+  )
 
 /* ** subproject declarations ** */
 
@@ -68,6 +75,24 @@ lazy val launchProj = (project in launchPath).
     Transform.inputSourceDirectory <<= (sourceDirectory in crossProj) / "input_sources",
     Transform.sourceProperties := Map("cross.package0" -> "xsbt", "cross.package1" -> "boot")
   )): _*)
+
+// the proguarded launcher
+// the launcher is published with metadata so that the scripted plugin can pull it in
+// being proguarded, it shouldn't ever be on a classpath with other jars, however
+lazy val proguardedLauncherProj = (project in file("sbt-launch")).
+  configs(Proguard).
+  settings(minimalSettings ++ LaunchProguard.settings ++ LaunchProguard.specific(launchProj) ++
+    Release.launcherSettings(proguard in Proguard): _*).
+  settings(
+    name := "sbt-launch",
+    moduleName := "sbt-launch",
+    description := "sbt application launcher",
+    publishArtifact in packageSrc := false,
+    autoScalaLibrary := false,
+    publish <<= Seq(publish, Release.deployLauncher).dependOn,
+    publishLauncher <<= Release.deployLauncher,
+    packageBin in Compile <<= proguard in Proguard
+  )
 
 // used to test the retrieving and loading of an application: sample app is packaged and published to the local repository
 lazy val testSamples = (project in launchPath / "test-sample").
@@ -446,13 +471,13 @@ lazy val mavenResolverPluginProj = (project in file("sbt-maven-resolver")).
 def scriptedTask: Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => scriptedParser(dir)).parsed
   publishAll.value
-  doScripted((proguard in Proguard).value, (fullClasspath in scriptedSbtProj in Test).value,
+  doScripted((proguard in Proguard in proguardedLauncherProj).value, (fullClasspath in scriptedSbtProj in Test).value,
     (scalaInstance in scriptedSbtProj).value, scriptedSource.value, result, scriptedPrescripted.value)
 }
 
 def scriptedUnpublishedTask: Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => scriptedParser(dir)).parsed
-  doScripted((proguard in Proguard).value, (fullClasspath in scriptedSbtProj in Test).value,
+  doScripted((proguard in Proguard in proguardedLauncherProj).value, (fullClasspath in scriptedSbtProj in Test).value,
     (scalaInstance in scriptedSbtProj).value, scriptedSource.value, result, scriptedPrescripted.value)
 }
 
@@ -461,7 +486,8 @@ lazy val publishLauncher = TaskKey[Unit]("publish-launcher")
 
 lazy val myProvided = config("provided") intransitive
 
-def allProjects = Seq(launchInterfaceProj, launchProj, testSamples, interfaceProj, apiProj,
+def allProjects = Seq(launchInterfaceProj, launchProj, proguardedLauncherProj,
+  testSamples, interfaceProj, apiProj,
   controlProj, collectionProj, applyMacroProj, processProj, ioProj, classpathProj, completeProj,
   logProj, relationProj, classfileProj, datatypeProj, crossProj, logicProj, ivyProj,
   testingProj, testAgentProj, taskProj, stdTaskProj, cacheProj, trackingProj, runProj,
@@ -473,9 +499,8 @@ def allProjects = Seq(launchInterfaceProj, launchProj, testSamples, interfacePro
 def projectsWithMyProvided = allProjects.map(p => p.copy(configurations = (p.configurations.filter(_ != Provided)) :+ myProvided))
 lazy val nonRoots = projectsWithMyProvided.map(p => LocalProject(p.id))
 
-def releaseSettings = Release.settings(nonRoots, proguard in Proguard)
-def rootSettings = releaseSettings ++ fullDocSettings ++ LaunchProguard.settings ++ LaunchProguard.specific(launchProj) ++
-  Util.publishPomSettings ++ otherRootSettings ++ proguardedLauncherSettings ++ Formatting.sbtFilesSettings ++
+def rootSettings = Release.releaseSettings ++ fullDocSettings ++
+  Util.publishPomSettings ++ otherRootSettings ++ Formatting.sbtFilesSettings ++
   Transform.conscriptSettings(launchProj)
 def otherRootSettings = Seq(
   Scripted.scriptedPrescripted := { _ => },
@@ -513,17 +538,6 @@ def fullDocSettings = Util.baseScalacOptions ++ Docs.settings ++ Sxr.settings ++
   },
   fullClasspath in sxr := (externalDependencyClasspath in Compile in sbtProj).value,
   dependencyClasspath in (Compile, doc) := (fullClasspath in sxr).value
-)
-
-// the launcher is published with metadata so that the scripted plugin can pull it in
-// being proguarded, it shouldn't ever be on a classpath with other jars, however
-def proguardedLauncherSettings = Seq(
-  publishArtifact in packageSrc := false,
-  moduleName := "sbt-launch",
-  autoScalaLibrary := false,
-  description := "sbt application launcher",
-  publishLauncher <<= Release.deployLauncher,
-  packageBin in Compile <<= proguard in Proguard
 )
 
 /* Nested Projproject paths */

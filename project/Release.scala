@@ -13,20 +13,19 @@ object Release extends Build {
 
   val PublishRepoHost = "private-repo.typesafe.com"
 
-  def settings(nonRoots: => Seq[ProjectReference], launcher: TaskKey[File]): Seq[Setting[_]] =
-    releaseSettings(nonRoots, launcher)
+  def launcherSettings(launcher: TaskKey[File]): Seq[Setting[_]] = Seq(
+    launcherRemotePath <<= (organization, version, moduleName) { (org, v, n) => List(org, n, v, n + ".jar").mkString("/") },
+    deployLauncher <<= deployLauncher(launcher)
+  )
 
   // Add credentials if they exist.
   def lameCredentialSettings: Seq[Setting[_]] =
     if (CredentialsFile.exists) Seq(credentials in ThisBuild += Credentials(CredentialsFile))
     else Nil
-  def releaseSettings(nonRoots: => Seq[ProjectReference], launcher: TaskKey[File]): Seq[Setting[_]] = Seq(
+  def releaseSettings: Seq[Setting[_]] = Seq(
     publishTo in ThisBuild <<= publishResolver,
-    remoteID <<= publishStatus("typesafe-ivy-" + _),
-    remoteBase <<= publishStatus("https://" + PublishRepoHost + "/typesafe/ivy-" + _),
-    launcherRemotePath <<= (organization, version, moduleName) { (org, v, n) => List(org, n, v, n + ".jar").mkString("/") },
-    publish <<= Seq(publish, Release.deployLauncher).dependOn,
-    deployLauncher <<= deployLauncher(launcher),
+    remoteID in ThisBuild <<= publishStatus("typesafe-ivy-" + _),
+    remoteBase in ThisBuild <<= publishStatus("https://" + PublishRepoHost + "/typesafe/ivy-" + _),
     checkCredentials := {
       // Note - This will eitehr issue a failure or succeed.
       getCredentials(credentials.value, streams.value.log)
