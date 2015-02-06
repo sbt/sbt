@@ -8,9 +8,14 @@ import Scripted._
 import StringUtilities.normalize
 import Sxr.sxr
 
+// ThisBuild settings take lower precedence,
+// but can be shared across the multi projects.
+def buildLevelSettings: Seq[Setting[_]] = Seq(
+  organization in ThisBuild := "org.scala-sbt",
+  version in ThisBuild := "0.13.8-SNAPSHOT"
+)
+
 def commonSettings: Seq[Setting[_]] = Seq(
-  organization := "org.scala-sbt",
-  version := "0.13.8-SNAPSHOT",
   scalaVersion := "2.10.4",
   publishArtifact in packageDoc := false,
   publishMavenStyle := false,
@@ -37,6 +42,7 @@ def testedBaseSettings: Seq[Setting[_]] =
 lazy val root: Project = (project in file(".")).
   configs(Sxr.sxrConf, Proguard).
   aggregate(nonRoots: _*).
+  settings(buildLevelSettings: _*).
   settings(minimalSettings ++ rootSettings: _*)
 
 /* ** subproject declarations ** */
