@@ -6,6 +6,7 @@ package classpath
 
 import java.io.File
 import java.net.{ URL, URLClassLoader }
+import java.util.Collections
 import annotation.tailrec
 
 /**
@@ -86,7 +87,7 @@ final class ClasspathFilter(parent: ClassLoader, root: ClassLoader, classpath: S
       import collection.convert.WrapAsScala.{ enumerationAsScalaIterator => asIt }
       import collection.convert.WrapAsJava.{ asJavaEnumeration => asEn }
       val us = super.getResources(name)
-      if (us ne null) asEn(asIt(us).filter(onClasspath)) else null
+      if (us ne null) asEn(asIt(us).filter(onClasspath)) else Collections.emptyEnumeration()
     }
 
   @tailrec private[this] def includeLoader(c: ClassLoader, base: ClassLoader): Boolean =
