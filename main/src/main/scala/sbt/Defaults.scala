@@ -1229,10 +1229,15 @@ object Classpaths {
 
   private[sbt] def defaultProjectID: Initialize[ModuleID] = Def.setting {
     val base = ModuleID(organization.value, moduleName.value, version.value).cross(crossVersion in projectID value).artifacts(artifacts.value: _*)
-    apiURL.value match {
-      case Some(u) if autoAPIMappings.value => base.extra(SbtPomExtraProperties.POM_API_KEY -> u.toExternalForm)
-      case _                                => base
-    }
+    if (autoAPIMappings.value)
+      attachApiURL(attachApiURL(base, SbtPomExtraProperties.POM_SCALA_API_KEY, scalaApiURL.value.orElse(apiURL.value)), SbtPomExtraProperties.POM_JAVA_API_KEY, javaApiURL.value)
+    else
+      base
+  }
+
+  private[this] def attachApiURL(module: ModuleID, pomKey: String, url: Option[URL]): ModuleID = url match {
+    case Some(u) => module.extra(pomKey -> u.toString)
+    case _       => module
   }
 
   def pluginProjectID: Initialize[ModuleID] = (sbtBinaryVersion in update, scalaBinaryVersion in update, projectID, sbtPlugin) {
@@ -1514,7 +1519,7 @@ object Classpaths {
     val art = (artifact in packageBin).value
     val module = projectID.value
     val config = configuration.value
-    for (f <- productsImplTask.value) yield APIMappings.store(analyzed(f, compile.value), scalaApiURL.value, javaApiURL.value).put(artifact.key, art).put(moduleID.key, module).put(configuration.key, config)
+    for (f <- productsImplTask.value) yield APIMappings.store(analyzed(f, compile.value), scalaApiURL.value.orElse(apiURL.value), javaApiURL.value).put(artifact.key, art).put(moduleID.key, module).put(configuration.key, config)
   }
 
   private[this] def productsImplTask: Initialize[Task[Seq[File]]] =
