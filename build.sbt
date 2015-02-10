@@ -8,10 +8,15 @@ import Scripted._
 import StringUtilities.normalize
 import Sxr.sxr
 
+// ThisBuild settings take lower precedence,
+// but can be shared across the multi projects.
+def buildLevelSettings: Seq[Setting[_]] = Seq(
+  organization in ThisBuild := "org.scala-sbt",
+  version in ThisBuild := "0.13.8-SNAPSHOT"
+)
+
 def commonSettings: Seq[Setting[_]] = Seq(
-  organization := "org.scala-sbt",
-  version := "0.13.8-SNAPSHOT",
-  scalaVersion in ThisBuild := "2.10.4",
+  scalaVersion := "2.10.4",
   publishArtifact in packageDoc := false,
   publishMavenStyle := false,
   componentID := None,
@@ -20,7 +25,8 @@ def commonSettings: Seq[Setting[_]] = Seq(
   concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
-  incOptions := incOptions.value.withNameHashing(true)
+  incOptions := incOptions.value.withNameHashing(true),
+  crossScalaVersions := Seq(scala210)
 )
 
 def minimalSettings: Seq[Setting[_]] =
@@ -34,9 +40,17 @@ def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
 
 lazy val root: Project = (project in file(".")).
-  configs(Sxr.sxrConf, Proguard).
+  configs(Sxr.sxrConf).
   aggregate(nonRoots: _*).
-  settings(minimalSettings ++ rootSettings: _*)
+  settings(buildLevelSettings: _*).
+  settings(minimalSettings ++ rootSettings: _*).
+  settings(
+    publish := {},
+    publishLocal := {
+      val p = (proguard in (proguardedLauncherProj, Proguard)).value
+      IO.copyFile(p, target.value / p.getName)
+    }
+  )
 
 /* ** subproject declarations ** */
 
@@ -62,6 +76,24 @@ lazy val launchProj = (project in launchPath).
     Transform.sourceProperties := Map("cross.package0" -> "xsbt", "cross.package1" -> "boot")
   )): _*)
 
+// the proguarded launcher
+// the launcher is published with metadata so that the scripted plugin can pull it in
+// being proguarded, it shouldn't ever be on a classpath with other jars, however
+lazy val proguardedLauncherProj = (project in file("sbt-launch")).
+  configs(Proguard).
+  settings(minimalSettings ++ LaunchProguard.settings ++ LaunchProguard.specific(launchProj) ++
+    Release.launcherSettings(proguard in Proguard): _*).
+  settings(
+    name := "sbt-launch",
+    moduleName := "sbt-launch",
+    description := "sbt application launcher",
+    publishArtifact in packageSrc := false,
+    autoScalaLibrary := false,
+    publish <<= Seq(publish, Release.deployLauncher).dependOn,
+    publishLauncher <<= Release.deployLauncher,
+    packageBin in Compile <<= proguard in Proguard
+  )
+
 // used to test the retrieving and loading of an application: sample app is packaged and published to the local repository
 lazy val testSamples = (project in launchPath / "test-sample").
   dependsOn(interfaceProj, launchInterfaceProj).
@@ -84,7 +116,13 @@ lazy val interfaceProj = (project in file("interface")).
     watchSources <++= apiDefinitions,
     resourceGenerators in Compile <+= (version, resourceManaged, streams, compile in Compile) map generateVersionFile,
     apiDefinitions <<= baseDirectory map { base => (base / "definition") :: (base / "other") :: (base / "type") :: Nil },
-    sourceGenerators in Compile <+= (cacheDirectory, apiDefinitions, fullClasspath in Compile in datatypeProj, sourceManaged in Compile, mainClass in datatypeProj in Compile, runner, streams) map generateAPICached    
+    sourceGenerators in Compile <+= (cacheDirectory,
+      apiDefinitions,
+      fullClasspath in Compile in datatypeProj,
+      sourceManaged in Compile,
+      mainClass in datatypeProj in Compile,
+      runner,
+      streams) map generateAPICached
   )
 
 // defines operations on the API of a source, including determining whether it has changed and converting it to a string
@@ -295,9 +333,18 @@ lazy val compileInterfaceProj = (project in compilePath / "interface").
     artifact in (Compile, packageSrc) := Artifact(srcID).copy(configurations = Compile :: Nil).extra("e:component" -> srcID)
   )
 
-lazy val precompiled282 = precompiled("2.8.2")
-lazy val precompiled292 = precompiled("2.9.2")
-lazy val precompiled293 = precompiled("2.9.3")
+def precompiledSettings = Seq(
+  artifact in packageBin <<= (appConfiguration, scalaVersion) { (app, sv) =>
+    val launcher = app.provider.scalaProvider.launcher
+    val bincID = binID + "_" + ScalaInstance(sv, launcher).actualVersion
+    Artifact(binID) extra ("e:component" -> bincID)
+  },
+  target <<= (target, scalaVersion) { (base, sv) => base / ("precompiled_" + sv) },
+  scalacOptions := Nil,
+  ivyScala ~= { _.map(_.copy(checkExplicit = false, overrideScalaVersion = false)) },
+  exportedProducts in Compile := Nil,
+  libraryDependencies += scalaCompiler.value % "provided"
+)
 
 // Implements the core functionality of detecting and propagating changes incrementally.
 //   Defines the data structures for representing file fingerprints and relationships and the overall source analysis
@@ -405,7 +452,7 @@ lazy val mainProj = (project in mainPath).
 //  technically, we need a dependency on all of mainProj's dependencies, but we don't do that since this is strictly an integration project
 //  with the sole purpose of providing certain identifiers without qualification (with a package object)
 lazy val sbtProj = (project in sbtPath).
-  dependsOn(mainProj, compileInterfaceProj, precompiled282, precompiled292, precompiled293, scriptedSbtProj % "test->test").
+  dependsOn(mainProj, compileInterfaceProj, scriptedSbtProj % "test->test").
   settings(baseSettings: _*).
   settings(
     name := "sbt",
@@ -424,13 +471,13 @@ lazy val mavenResolverPluginProj = (project in file("sbt-maven-resolver")).
 def scriptedTask: Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => scriptedParser(dir)).parsed
   publishAll.value
-  doScripted((proguard in Proguard).value, (fullClasspath in scriptedSbtProj in Test).value,
+  doScripted((proguard in Proguard in proguardedLauncherProj).value, (fullClasspath in scriptedSbtProj in Test).value,
     (scalaInstance in scriptedSbtProj).value, scriptedSource.value, result, scriptedPrescripted.value)
 }
 
 def scriptedUnpublishedTask: Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => scriptedParser(dir)).parsed
-  doScripted((proguard in Proguard).value, (fullClasspath in scriptedSbtProj in Test).value,
+  doScripted((proguard in Proguard in proguardedLauncherProj).value, (fullClasspath in scriptedSbtProj in Test).value,
     (scalaInstance in scriptedSbtProj).value, scriptedSource.value, result, scriptedPrescripted.value)
 }
 
@@ -439,7 +486,8 @@ lazy val publishLauncher = TaskKey[Unit]("publish-launcher")
 
 lazy val myProvided = config("provided") intransitive
 
-def allProjects = Seq(launchInterfaceProj, launchProj, testSamples, interfaceProj, apiProj,
+def allProjects = Seq(launchInterfaceProj, launchProj, proguardedLauncherProj,
+  testSamples, interfaceProj, apiProj,
   controlProj, collectionProj, applyMacroProj, processProj, ioProj, classpathProj, completeProj,
   logProj, relationProj, classfileProj, datatypeProj, crossProj, logicProj, ivyProj,
   testingProj, testAgentProj, taskProj, stdTaskProj, cacheProj, trackingProj, runProj,
@@ -447,12 +495,12 @@ def allProjects = Seq(launchInterfaceProj, launchProj, testSamples, interfacePro
   compilerIntegrationProj, compilerIvyProj,
   scriptedBaseProj, scriptedSbtProj, scriptedPluginProj,
   actionsProj, commandProj, mainSettingsProj, mainProj, sbtProj, mavenResolverPluginProj)
+
 def projectsWithMyProvided = allProjects.map(p => p.copy(configurations = (p.configurations.filter(_ != Provided)) :+ myProvided))
 lazy val nonRoots = projectsWithMyProvided.map(p => LocalProject(p.id))
 
-def releaseSettings = Release.settings(nonRoots, proguard in Proguard)
-def rootSettings = releaseSettings ++ fullDocSettings ++ LaunchProguard.settings ++ LaunchProguard.specific(launchProj) ++
-  Util.publishPomSettings ++ otherRootSettings ++ proguardedLauncherSettings ++ Formatting.sbtFilesSettings ++
+def rootSettings = Release.releaseSettings ++ fullDocSettings ++
+  Util.publishPomSettings ++ otherRootSettings ++ Formatting.sbtFilesSettings ++
   Transform.conscriptSettings(launchProj)
 def otherRootSettings = Seq(
   Scripted.scriptedPrescripted := { _ => },
@@ -460,7 +508,7 @@ def otherRootSettings = Seq(
   Scripted.scriptedUnpublished <<= scriptedUnpublishedTask,
   Scripted.scriptedSource <<= (sourceDirectory in sbtProj) / "sbt-test",
   publishAll := {
-    (publishLocal).all(ScopeFilter(inAnyProject)).value
+    val _ = (publishLocal).all(ScopeFilter(inAnyProject)).value
   }
 ) ++ inConfig(Scripted.MavenResolverPluginTest)(Seq(
   Scripted.scripted <<= scriptedTask,
@@ -492,17 +540,6 @@ def fullDocSettings = Util.baseScalacOptions ++ Docs.settings ++ Sxr.settings ++
   dependencyClasspath in (Compile, doc) := (fullClasspath in sxr).value
 )
 
-// the launcher is published with metadata so that the scripted plugin can pull it in
-// being proguarded, it shouldn't ever be on a classpath with other jars, however
-def proguardedLauncherSettings = Seq(
-  publishArtifact in packageSrc := false,
-  moduleName := "sbt-launch",
-  autoScalaLibrary := false,
-  description := "sbt application launcher",
-  publishLauncher <<= Release.deployLauncher,
-  packageBin in Compile <<= proguard in Proguard
-)
-
 /* Nested Projproject paths */
 def sbtPath    = file("sbt")
 def cachePath  = file("cache")
@@ -511,34 +548,6 @@ def launchPath = file("launch")
 def utilPath   = file("util")
 def compilePath = file("compile")
 def mainPath   = file("main")
-
-def precompiledSettings = Seq(
-  artifact in packageBin <<= (appConfiguration, scalaVersion) { (app, sv) =>
-    val launcher = app.provider.scalaProvider.launcher
-    val bincID = binID + "_" + ScalaInstance(sv, launcher).actualVersion
-    Artifact(binID) extra ("e:component" -> bincID)
-  },
-  target <<= (target, scalaVersion) { (base, sv) => base / ("precompiled_" + sv) },
-  scalacOptions := Nil,
-  ivyScala ~= { _.map(_.copy(checkExplicit = false, overrideScalaVersion = false)) },
-  exportedProducts in Compile := Nil,
-  libraryDependencies += scalaCompiler.value % "provided"
-)
-
-def precompiled(scalav: String): Project = Project(id = normalize("Precompiled " + scalav.replace('.', '_')), base = compilePath / "interface").
-  dependsOn(interfaceProj).
-  settings(baseSettings ++ precompiledSettings: _*).
-  settings(
-    name := "Precompiled " + scalav.replace('.', '_'),
-    scalaHome := None,
-    scalaVersion <<= (scalaVersion in ThisBuild) { sbtScalaV =>
-      assert(sbtScalaV != scalav, "Precompiled compiler interface cannot have the same Scala version (" + scalav + ") as sbt.")
-      scalav
-    },
-    // we disable compiling and running tests in precompiled Projprojects of compiler interface
-    // so we do not need to worry about cross-versioning testing dependencies
-    sources in Test := Nil
-  )
 
 lazy val safeUnitTests = taskKey[Unit]("Known working tests (for both 2.10 and 2.11)")
 lazy val safeProjects: ScopeFilter = ScopeFilter(
@@ -580,7 +589,6 @@ def customCommands: Seq[Setting[_]] = Seq(
       "so compile" ::
       "so publishSigned" ::
       "publishLauncher" ::
-      "release-libs-211" ::
       state
   }
 )
