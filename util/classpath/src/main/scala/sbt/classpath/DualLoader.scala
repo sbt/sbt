@@ -6,12 +6,13 @@ package classpath
 
 import java.net.URL
 import java.util.Enumeration
+import java.util.Collections
 
 /** A class loader that always fails to load classes and resources. */
 final class NullLoader extends ClassLoader {
   override final def loadClass(className: String, resolve: Boolean): Class[_] = throw new ClassNotFoundException("No classes can be loaded from the null loader")
   override def getResource(name: String): URL = null
-  override def getResources(name: String): Enumeration[URL] = null
+  override def getResources(name: String): Enumeration[URL] = Collections.enumeration(Collections.emptyList())
   override def toString = "NullLoader"
 }
 
@@ -77,9 +78,9 @@ class DualLoader(parentA: ClassLoader, aOnlyClasses: String => Boolean, aOnlyRes
       else {
         val urlsA = parentA.getResources(name)
         val urlsB = parentB.getResources(name)
-        if (urlsA eq null)
+        if (!urlsA.hasMoreElements)
           urlsB
-        else if (urlsB eq null)
+        else if (!urlsB.hasMoreElements)
           urlsA
         else
           new DualEnumeration(urlsA, urlsB)
