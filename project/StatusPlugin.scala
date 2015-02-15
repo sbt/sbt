@@ -2,10 +2,17 @@ import sbt._
 import Keys._
 import java.util.regex.Pattern
 
-object Status {
-  lazy val publishStatus = SettingKey[String]("publish-status")
+object StatusPlugin extends AutoPlugin {
+  override def requires = plugins.JvmPlugin
+  override def trigger = allRequirements
 
-  def settings: Seq[Setting[_]] = Seq(
+  object autoImport {
+    lazy val publishStatus = SettingKey[String]("publish-status")
+  }
+
+  import autoImport._
+
+  override def buildSettings: Seq[Setting[_]] = Seq(
     isSnapshot <<= version(v => v.contains("-") && snapshotQualifier(v)),
     publishStatus <<= isSnapshot { snap => if (snap) "snapshots" else "releases" },
     commands += stampVersion
