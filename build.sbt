@@ -513,7 +513,7 @@ def otherRootSettings = Seq(
   }
 ))
 lazy val docProjects: ScopeFilter = ScopeFilter(
-  inAnyProject -- inProjects(root, sbtProj, scriptedBaseProj, scriptedSbtProj, scriptedPluginProj),
+  inAnyProject -- inProjects(root, sbtProj, scriptedBaseProj, scriptedSbtProj, scriptedPluginProj, precompiled282, precompiled292, precompiled293),
   inConfigurations(Compile)
 )
 def fullDocSettings = Util.baseScalacOptions ++ Docs.settings ++ Sxr.settings ++ Seq(
