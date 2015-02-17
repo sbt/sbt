@@ -121,6 +121,8 @@ final case class InlineConfiguration(module: ModuleID, moduleInfo: ModuleInfo, d
   def withExcludes: InlineConfigurationWithExcludes =
     InlineConfigurationWithExcludes(this.module, this.moduleInfo, this.dependencies, this.overrides, Nil, this.ivyXML,
       this.configurations, this.defaultConfiguration, this.ivyScala, this.validate, this.conflictManager)
+  def withOverrides(overrides: Set[ModuleID]): ModuleSettings =
+    copy(overrides = overrides)
 }
 object InlineConfiguration {
   @deprecated("Use InlineConfigurationWithExcludes.explicitConfigurations.", "0.13.8")
@@ -148,6 +150,8 @@ final class InlineConfigurationWithExcludes private[sbt] (val module: ModuleID,
     val conflictManager: ConflictManager) extends ModuleSettings {
   def withConfigurations(configurations: Seq[Configuration]) = copy(configurations = configurations)
   def noScala = copy(ivyScala = None)
+  def withOverrides(overrides: Set[ModuleID]): ModuleSettings =
+    copy(overrides = overrides)
 
   private[sbt] def copy(module: ModuleID = this.module,
     moduleInfo: ModuleInfo = this.moduleInfo,
