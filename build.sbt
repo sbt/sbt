@@ -333,18 +333,9 @@ lazy val compileInterfaceProj = (project in compilePath / "interface").
     artifact in (Compile, packageSrc) := Artifact(srcID).copy(configurations = Compile :: Nil).extra("e:component" -> srcID)
   )
 
-def precompiledSettings = Seq(
-  artifact in packageBin <<= (appConfiguration, scalaVersion) { (app, sv) =>
-    val launcher = app.provider.scalaProvider.launcher
-    val bincID = binID + "_" + ScalaInstance(sv, launcher).actualVersion
-    Artifact(binID) extra ("e:component" -> bincID)
-  },
-  target <<= (target, scalaVersion) { (base, sv) => base / ("precompiled_" + sv) },
-  scalacOptions := Nil,
-  ivyScala ~= { _.map(_.copy(checkExplicit = false, overrideScalaVersion = false)) },
-  exportedProducts in Compile := Nil,
-  libraryDependencies += scalaCompiler.value % "provided"
-)
+lazy val precompiled282 = precompiled(scala282)
+lazy val precompiled292 = precompiled(scala292)
+lazy val precompiled293 = precompiled(scala293)
 
 // Implements the core functionality of detecting and propagating changes incrementally.
 //   Defines the data structures for representing file fingerprints and relationships and the overall source analysis
@@ -452,7 +443,7 @@ lazy val mainProj = (project in mainPath).
 //  technically, we need a dependency on all of mainProj's dependencies, but we don't do that since this is strictly an integration project
 //  with the sole purpose of providing certain identifiers without qualification (with a package object)
 lazy val sbtProj = (project in sbtPath).
-  dependsOn(mainProj, compileInterfaceProj, scriptedSbtProj % "test->test").
+  dependsOn(mainProj, compileInterfaceProj, precompiled282, precompiled292, precompiled293, scriptedSbtProj % "test->test").
   settings(baseSettings: _*).
   settings(
     name := "sbt",
@@ -549,6 +540,35 @@ def utilPath   = file("util")
 def compilePath = file("compile")
 def mainPath   = file("main")
 
+def precompiledSettings = Seq(
+  artifact in packageBin <<= (appConfiguration, scalaVersion) { (app, sv) =>
+    val launcher = app.provider.scalaProvider.launcher
+    val bincID = binID + "_" + ScalaInstance(sv, launcher).actualVersion
+    Artifact(binID) extra ("e:component" -> bincID)
+  },
+  target <<= (target, scalaVersion) { (base, sv) => base / ("precompiled_" + sv) },
+  scalacOptions := Nil,
+  ivyScala ~= { _.map(_.copy(checkExplicit = false, overrideScalaVersion = false)) },
+  exportedProducts in Compile := Nil,
+  libraryDependencies += scalaCompiler.value % "provided"
+)
+
+def precompiled(scalav: String): Project = Project(id = normalize("Precompiled " + scalav.replace('.', '_')), base = compilePath / "interface").
+  dependsOn(interfaceProj).
+  settings(baseSettings ++ precompiledSettings: _*).
+  settings(
+    name := "Precompiled " + scalav.replace('.', '_'),
+    scalaHome := None,
+    scalaVersion <<= (scalaVersion in ThisBuild) { sbtScalaV =>
+      assert(sbtScalaV != scalav, "Precompiled compiler interface cannot have the same Scala version (" + scalav + ") as sbt.")
+      scalav
+    },
+    crossScalaVersions := Seq(scalav),
+    // we disable compiling and running tests in precompiled Projprojects of compiler interface
+    // so we do not need to worry about cross-versioning testing dependencies
+    sources in Test := Nil
+  )
+
 lazy val safeUnitTests = taskKey[Unit]("Known working tests (for both 2.10 and 2.11)")
 lazy val safeProjects: ScopeFilter = ScopeFilter(
   inProjects(launchProj, mainSettingsProj, mainProj, ivyProj, completeProj,
@@ -576,18 +596,46 @@ def customCommands: Seq[Setting[_]] = Seq(
   },
   commands += Command.command("release-sbt-local") { state =>
     "clean" ::
+    "precompiled-2_8_2/compile" ::
+    "precompiled-2_9_2/compile" ::
+    "precompiled-2_9_3/compile" ::
     "so compile" ::
+    "precompiled-2_8_2/publishLocal" ::
+    "precompiled-2_9_2/publishLocal" ::
+    "precompiled-2_9_3/publishLocal" ::
     "so publishLocal" ::
     "reload" ::
     state
   },
+  /** There are several complications with sbt's build.
+   * First is the fact that interface project is a Java-only project
+   * that uses source generator from datatype subproject in Scala 2.10.4,
+   * which is depended on by Scala 2.8.2, Scala 2.9.2, and Scala 2.9.3 precompiled project. 
+   *
+   * Second is the fact that sbt project (currently using Scala 2.10.4) depends on
+   * the precompiled projects (that uses Scala 2.8.2 etc.)
+   * 
+   * Finally, there's the fact that all subprojects are released with crossPaths
+   * turned off for the sbt's Scala version 2.10.4, but some of them are also
+   * cross published against 2.11.1 with crossPaths turned on.
+   *
+   * Because of the way ++ (and its improved version wow) is implemented
+   * precompiled compiler briges are handled outside of doge aggregation on root.
+   * `so compile` handles 2.10.x/2.11.x cross building. 
+   */
   commands += Command.command("release-sbt") { state =>
     // TODO - Any sort of validation
     "clean" ::
       "checkCredentials" ::
       "conscript-configs" ::
+      "precompiled-2_8_2/compile" ::
+      "precompiled-2_9_2/compile" ::
+      "precompiled-2_9_3/compile" ::
       "so compile" ::
       "so publishSigned" ::
+      "precompiled-2_8_2/publishSigned" ::
+      "precompiled-2_9_2/publishSigned" ::
+      "precompiled-2_9_3/publishSigned" ::
       "publishLauncher" ::
       state
   }
