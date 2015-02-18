@@ -30,7 +30,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
 )
 
 def minimalSettings: Seq[Setting[_]] =
-  commonSettings ++ customCommands ++ Status.settings ++
+  commonSettings ++ customCommands ++
   publishPomSettings ++ Release.javaVersionCheckSettings
 
 def baseSettings: Seq[Setting[_]] =
