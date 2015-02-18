@@ -12,50 +12,56 @@ import Plugins._
 import annotation.tailrec
 
 /**
-An AutoPlugin defines a group of settings and the conditions where the settings are automatically added to a build (called "activation").
-The `requires` and `trigger` methods together define the conditions, and a method like `projectSettings` defines the settings to add.
-
-Steps for plugin authors:
-1. Determine if the AutoPlugin should automatically be activated when all requirements are met, or should be opt-in.
-2. Determine the [[AutoPlugins]]s that, when present (or absent), act as the requirements for the AutoPlugin.
-3. Determine the settings/configurations to that the AutoPlugin injects when activated.
-4. Determine the keys and other names to be automatically imported to *.sbt scripts.
-
-For example, the following will automatically add the settings in `projectSettings`
-  to a project that has both the `Web` and `Javascript` plugins enabled.
-
-    object Plugin extends sbt.AutoPlugin {
-        override def requires = Web && Javascript
-        override def trigger = allRequirements
-        override def projectSettings = Seq(...)
-        
-        object autoImport {
-      lazy val obfuscate = taskKey[Seq[File]]("Obfuscates the source.")
-        }
-    }
-
-Steps for users:
-1. Add dependencies on plugins in `project/plugins.sbt` as usual with `addSbtPlugin`
-2. Add key plugins to Projects, which will automatically select the plugin + dependent plugin settings to add for those Projects.
-3. Exclude plugins, if desired.
-
-For example, given plugins Web and Javascript (perhaps provided by plugins added with addSbtPlugin),
-
-  <Project>.enablePlugins( Web && Javascript )
-
-will activate `MyPlugin` defined above and have its settings automatically added.  If the user instead defines
-
-  <Project>.enablePlugins( Web && Javascript ).disablePlugins(MyPlugin)
-
-then the `MyPlugin` settings (and anything that activates only when `MyPlugin` is activated) will not be added.
-
-*/
+ * An AutoPlugin defines a group of settings and the conditions where the settings are automatically added to a build (called "activation").
+ * The `requires` and `trigger` methods together define the conditions, and a method like `projectSettings` defines the settings to add.
+ *
+ * Steps for plugin authors:
+ *
+ *   1. Determine if the `AutoPlugin` should automatically be activated when all requirements are met, or should be opt-in.
+ *   1. Determine the `AutoPlugin`s that, when present (or absent), act as the requirements for the `AutoPlugin`.
+ *   1. Determine the settings/configurations to that the `AutoPlugin` injects when activated.
+ *   1. Determine the keys and other names to be automatically imported to `*.sbt` scripts.
+ *
+ * For example, the following will automatically add the settings in `projectSettings`
+ * to a project that has both the `Web` and `Javascript` plugins enabled.
+ *
+ * {{{
+ * object MyPlugin extends sbt.AutoPlugin {
+ *   override def requires = Web && Javascript
+ *   override def trigger = allRequirements
+ *   override def projectSettings = Seq(...)
+ *
+ *   object autoImport {
+ *     lazy val obfuscate = taskKey[Seq[File]]("Obfuscates the source.")
+ *   }
+ * }
+ * }}}
+ *
+ * Steps for users:
+ *
+ *   1. Add dependencies on plugins in `project/plugins.sbt` as usual with `addSbtPlugin`
+ *   1. Add key plugins to projects, which will automatically select the plugin + dependent plugin settings to add for those projects.
+ *   1. Exclude plugins, if desired.
+ *
+ * For example, given plugins Web and Javascript (perhaps provided by plugins added with `addSbtPlugin`),
+ *
+ * {{{
+ * myProject.enablePlugins(Web && Javascript)
+ * }}}
+ *
+ * will activate `MyPlugin` defined above and have its settings automatically added.  If the user instead defines
+ * {{{
+ * myProject.enablePlugins(Web && Javascript).disablePlugins(MyPlugin)
+ * }}}
+ *
+ * then the `MyPlugin` settings (and anything that activates only when `MyPlugin` is activated) will not be added.
+ */
 abstract class AutoPlugin extends Plugins.Basic with PluginsFunctions {
   /** Determines whether this AutoPlugin will be activated for this project when the `requires` clause is satisfied.
    *
    * When this method returns `allRequirements`, and `requires` method returns `Web && Javascript`, this plugin
    * instance will be added automatically if the `Web` and `Javascript` plugins are enabled.
-   * 
+   *
    * When this method returns `noTrigger`, and `requires` method returns `Web && Javascript`, this plugin
    * instance will be added only if the build user enables it, but it will automatically add both `Web` and `Javascript`. */
   def trigger: PluginTrigger = noTrigger
@@ -88,7 +94,7 @@ abstract class AutoPlugin extends Plugins.Basic with PluginsFunctions {
 
 
   /** If this plugin does not have any requirements, it means it is actually a root plugin. */
-  private[sbt] final def isRoot: Boolean = 
+  private[sbt] final def isRoot: Boolean =
     requires match {
       case Empty => true
       case _ => false
@@ -112,7 +118,7 @@ object AutoPluginException {
 
 sealed trait PluginTrigger
 case object AllRequirements extends PluginTrigger
-case object NoTrigger extends PluginTrigger 
+case object NoTrigger extends PluginTrigger
 
 /** An expression that matches `AutoPlugin`s. */
 sealed trait Plugins {
@@ -238,9 +244,8 @@ ${listConflicts(conflicting)}""")
     override def toString = "<none>"
   }
 
-  /** An included or excluded Nature/Plugin.  TODO: better name than Basic.  Also, can we dump
-   *  this class.
-   */
+  /** An included or excluded Nature/Plugin. */
+  // TODO: better name than Basic.  Also, can we dump this class
   sealed abstract class Basic extends Plugins {
     def &&(o: Basic): Plugins = And(this :: o :: Nil)
   }
