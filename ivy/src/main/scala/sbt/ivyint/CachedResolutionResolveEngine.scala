@@ -17,7 +17,7 @@ import core.{ IvyPatternHelper, LogOptions }
 import org.apache.ivy.util.{ Message, MessageLogger }
 import org.apache.ivy.plugins.latest.{ ArtifactInfo => IvyArtifactInfo }
 import org.apache.ivy.plugins.matcher.{ MapMatcher, PatternMatcher }
-import Configurations.{ Compile, Test, Runtime, IntegrationTest }
+import Configurations.{ System => _, _ }
 
 private[sbt] object CachedResolutionResolveCache {
   def createID(organization: String, name: String, revision: String) =
@@ -448,19 +448,17 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
         (surviving, evicted)
       }
     }
-  // Some of the configurations contain extends, so you can't simply call config.
-  def lookupConfig(name: String): Configuration =
-    name match {
-      case "compile" => Compile
-      case "test"    => Test
-      case "runtime" => Runtime
-      case "it"      => IntegrationTest
-      case x         => Configurations.config(x)
-    }
   def remapInternalProject(node: IvyNode, ur: UpdateReport,
     md0: ModuleDescriptor, dd: DependencyDescriptor,
     os: Vector[IvyOverride], log: Logger): UpdateReport =
     {
+      def parentConfigs(c: String): Vector[String] =
+        Option(md0.getConfiguration(c)) match {
+          case Some(config) =>
+            config.getExtends.toVector ++
+              (config.getExtends.toVector flatMap parentConfigs)
+          case None => Vector()
+        }
       // These are the configurations from the original project we want to resolve.
       val rootModuleConfs = md0.getConfigurations.toArray.toVector
       val configurations0 = ur.configurations.toVector
@@ -473,14 +471,13 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       }: _*)
       // This emulates test-internal extending test configuration etc.
       val remappedConfigs: Map[String, Vector[String]] =
-        (remappedConfigs0 /: rootModuleConfs) { (acc, c) =>
-          val config = lookupConfig(c.getName)
-          val internal = Configurations.internalMap(config)
-          if (config != internal) {
-            val vs0 = acc.getOrElse(internal.name, Vector())
-            val vs = acc.getOrElse(config.name, Vector())
-            acc.updated(internal.name, (vs0 ++ vs).distinct)
-          } else acc
+        (remappedConfigs0 /: rootModuleConfs) { (acc0, c) =>
+          val ps = parentConfigs(c.getName)
+          (acc0 /: ps) { (acc, parent) =>
+            val vs0 = acc.getOrElse(c.getName, Vector())
+            val vs = acc.getOrElse(parent, Vector())
+            acc.updated(c.getName, (vs0 ++ vs).distinct)
+          }
         }
       log.debug(s"::: remapped configs $remappedConfigs")
       val configurations = rootModuleConfs map { conf0 =>
