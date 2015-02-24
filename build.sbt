@@ -52,6 +52,15 @@ lazy val root: Project = (project in file(".")).
     }
   )
 
+// This is used only for command aggregation
+lazy val allPrecompiled: Project = (project in file("all-precompiled")).
+  aggregate(precompiled282, precompiled292, precompiled293).
+  settings(buildLevelSettings ++ minimalSettings: _*).
+  settings(
+    publish := {},
+    publishLocal := {}
+  )
+
 /* ** subproject declarations ** */
 
 // defines the Java interfaces through which the launcher and the launched application communicate
@@ -595,14 +604,11 @@ def customCommands: Seq[Setting[_]] = Seq(
     test.all(safeProjects).value
   },
   commands += Command.command("release-sbt-local") { state =>
-    "clean" ::
-    "precompiled-2_8_2/compile" ::
-    "precompiled-2_9_2/compile" ::
-    "precompiled-2_9_3/compile" ::
+    "so clean" ::
+    "allPrecompiled/clean" ::
+    "allPrecompiled/compile" ::
     "so compile" ::
-    "precompiled-2_8_2/publishLocal" ::
-    "precompiled-2_9_2/publishLocal" ::
-    "precompiled-2_9_3/publishLocal" ::
+    "allPrecompiled/publishLocal" ::
     "so publishLocal" ::
     "reload" ::
     state
@@ -625,18 +631,27 @@ def customCommands: Seq[Setting[_]] = Seq(
    */
   commands += Command.command("release-sbt") { state =>
     // TODO - Any sort of validation
-    "clean" ::
+    "so clean" ::
+      "allPrecompiled/clean" ::
       "checkCredentials" ::
       "conscript-configs" ::
-      "precompiled-2_8_2/compile" ::
-      "precompiled-2_9_2/compile" ::
-      "precompiled-2_9_3/compile" ::
+      "allPrecompiled/compile" ::
       "so compile" ::
       "so publishSigned" ::
-      "precompiled-2_8_2/publishSigned" ::
-      "precompiled-2_9_2/publishSigned" ::
-      "precompiled-2_9_3/publishSigned" ::
+      "allPrecompiled/publishSigned" ::
+      "publishLauncher" ::
+      state
+  },
+  commands += Command.command("release-nightly") { state =>
+    "stamp-version" ::
+      "so clean" ::
+      "allPrecompiled/clean" ::
+      "allPrecompiled/compile" ::
+      "so compile" ::
+      "so publish" ::
+      "allPrecompiled/publish" ::
       "publishLauncher" ::
       state
   }
 )
+
