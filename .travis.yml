@@ -4,16 +4,7 @@ sudo: false
 cache:
   directories:
     - $HOME/.ivy2/cache
-
-    # At the moment, sbt 0.13.5 is preinstalled in Travis VM image,
-    # which fortunately corresponds to current scalaz settings.
-    # The line below can be used to cache a given sbt version.
-    # - $HOME/.sbt/launchers/0.13.x
-
-    # The line below is used to cache the scala version used by the build
-    # job, as these versions might be replaced after a Travis CI build
-    # environment upgrade (e.g. scala 2.11.2 could be replaced by scala 2.11.4).
-    - $HOME/.sbt/boot/scala-$TRAVIS_SCALA_VERSION
+    - $HOME/.sbt/boot
 
 language: scala
 
@@ -23,8 +14,6 @@ jdk:
 #  - oraclejdk7
 
 env:
-  global:
-    - JVM_OPTS="-Xms1024m -Xmx1024m -XX:ReservedCodeCacheSize=128m -XX:MaxPermSize=256m"
   matrix:
     - SCRIPTED_TEST="scripted actions/*"
     - SCRIPTED_TEST="scripted api/*"
@@ -53,7 +42,7 @@ notifications:
     - joshua.suereth@typesafe.com
 
 script:
-  - sbt "$SCRIPTED_TEST"
+  - sbt -J-XX:ReservedCodeCacheSize=128m "$SCRIPTED_TEST"
 
   # Tricks to avoid unnecessary cache updates
   - find $HOME/.sbt -name "*.lock" | xargs rm
