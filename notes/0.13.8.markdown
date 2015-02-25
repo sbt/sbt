@@ -5,6 +5,7 @@
 
   [@ajozwik]: https://github.com/ajozwik
   [@dwickern]: https://github.com/dwickern
+  [@dwijnand]: http://github.com/dwijnand
   [@Duhemm]: https://github.com/Duhemm
   [@kretes]: https://github.com/kretes
   [@indrajitr]: https://github.com/indrajitr
@@ -38,6 +39,8 @@
   [1787]: https://github.com/sbt/sbt/pull/1787
   [1793]: https://github.com/sbt/sbt/pull/1793
   [1817]: https://github.com/sbt/sbt/pull/1817
+  [1869]: https://github.com/sbt/sbt/issues/1869
+  [1871]: https://github.com/sbt/sbt/pull/1871
 
 ### Changes with compatibility implications
 
@@ -71,6 +74,7 @@
 - Fixes eviction warning being too noisy. [#1615][1615] by [@eed3si9n][@eed3si9n]
 - Issues warning if multiple dependencies to a same library is found with different version. [#1634][1634] by [@eed3si9n][@eed3si9n]
 - Removes "No main class detected" warning. [#1766][1766] by [@eed3si9n][@eed3si9n]
+- Disable publishing on implicitly created root project by not enabling `IvyPlugin` by default (`-Dsbt.root.ivyplugin=true` will revert this behavior). [#1871][1871]/[#1869][1869] by [@dwijnand][@dwijnand] 
 
 ### Rolling back XML parsing workaround
 

@@ -135,7 +135,20 @@ final class DetectedPlugins(val plugins: DetectedModules[Plugin], val autoPlugin
     }.partition(nonTopLevelPlugin)
 
   /** A function to select the right [[AutoPlugin]]s from [[autoPlugins]] for a [[Project]]. */
+  @deprecated("Use deducePluginsFromProject", "0.13.8")
   lazy val deducePlugins: (Plugins, Logger) => Seq[AutoPlugin] = Plugins.deducer(autoPlugins.toList map { _.value })
+
+  /** Selects the right [[AutoPlugin]]s from a [[Project]]. */
+  def deducePluginsFromProject(p: Project, log: Logger): Seq[AutoPlugin] =
+    {
+      val ps0 = p.plugins
+      val allDetected = autoPlugins.toList map { _.value }
+      val detected = p match {
+        case _: GeneratedRootProject => allDetected filterNot { _ == sbt.plugins.IvyPlugin }
+        case _                       => allDetected
+      }
+      Plugins.deducer(detected)(ps0, log)
+    }
 
   private[this] def autoImports(pluginNames: Seq[String]) = pluginNames.map(_ + ".autoImport")
 
