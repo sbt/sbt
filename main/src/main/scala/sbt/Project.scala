@@ -234,6 +234,13 @@ object Project extends ProjectExtra {
     auto: AddSettings = AddSettings.allDefaults): Project =
     unresolved(id, base, aggregate, dependencies, delegates, settings, configurations, auto, Plugins.empty, Nil) // Note: JvmModule/IvyModule auto included...
 
+  /** This is a variation of def apply that mixes in  */
+  private[sbt] def mkGeneratedRoot(id: String, base: File, aggregate: => Seq[ProjectReference]): Project =
+    {
+      validProjectID(id).foreach(errMsg => sys.error("Invalid project ID: " + errMsg))
+      new ProjectDef[ProjectReference](id, base, aggregate, Nil, Nil, Nil, Nil, AddSettings.allDefaults, Plugins.empty, Nil) with Project with GeneratedRootProject
+    }
+
   /** Returns None if `id` is a valid Project ID or Some containing the parser error message if it is not.*/
   def validProjectID(id: String): Option[String] = DefaultParsers.parse(id, DefaultParsers.ID).left.toOption
   private[this] def validProjectIDStart(id: String): Boolean = DefaultParsers.parse(id, DefaultParsers.IDStart).isRight
@@ -570,6 +577,8 @@ object Project extends ProjectExtra {
       reify { Project(name.splice, new File(name.splice)) }
     }
 }
+
+private[sbt] trait GeneratedRootProject
 
 trait ProjectExtra {
   implicit def configDependencyConstructor[T <% ProjectReference](p: T): Constructor = new Constructor(p)

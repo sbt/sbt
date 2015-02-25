@@ -585,9 +585,9 @@ object Load {
               val existingIds = otherProjects.projects map (_.id)
               val refs = existingIds map (id => ProjectRef(buildUri, id))
               val defaultID = autoID(buildBase, context, existingIds)
-              val root1 = Build.defaultAggregatedProject(defaultID, buildBase, refs)
-              val root2 = if (discovered.isEmpty) root1 else root1.settings(Keys.publish := (()), Keys.publishLocal := (()))
-              val root = finalizeProject(root2, files)
+              val root0 = if (discovered.isEmpty) Build.defaultAggregatedProject(defaultID, buildBase, refs)
+              else Build.generatedRootWithoutIvyPlugin(defaultID, buildBase, refs)
+              val root = finalizeProject(root0, files)
               val result = root +: (acc ++ otherProjects.projects)
               log.debug(s"[Loading] Done in ${buildBase}, returning: ${result.map(_.id).mkString("(", ", ", ")")}")
               LoadedProjects(result, generated ++ otherGenerated ++ generatedConfigClassFiles)
@@ -647,7 +647,7 @@ object Load {
       }
     // 2. Discover all the autoplugins and contributed configurations.
     val autoPlugins =
-      try loadedPlugins.detected.deducePlugins(transformedProject.plugins, log)
+      try loadedPlugins.detected.deducePluginsFromProject(transformedProject, log)
       catch { case e: AutoPluginException => throw translateAutoPluginException(e, transformedProject) }
     val autoConfigs = autoPlugins.flatMap(_.projectConfigurations)
 
