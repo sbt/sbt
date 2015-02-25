@@ -234,7 +234,7 @@ object Project extends ProjectExtra {
     auto: AddSettings = AddSettings.allDefaults): Project =
     unresolved(id, base, aggregate, dependencies, delegates, settings, configurations, auto, Plugins.empty, Nil) // Note: JvmModule/IvyModule auto included...
 
-  /** This is a variation of def apply that mixes in  */
+  /** This is a variation of def apply that mixes in GeneratedRootProject. */
   private[sbt] def mkGeneratedRoot(id: String, base: File, aggregate: => Seq[ProjectReference]): Project =
     {
       validProjectID(id).foreach(errMsg => sys.error("Invalid project ID: " + errMsg))
