@@ -604,11 +604,12 @@ def customCommands: Seq[Setting[_]] = Seq(
     test.all(safeProjects).value
   },
   commands += Command.command("release-sbt-local") { state =>
-    "so clean" ::
+    "clean" ::
     "allPrecompiled/clean" ::
     "allPrecompiled/compile" ::
-    "so compile" ::
     "allPrecompiled/publishLocal" ::
+    "so clean" ::
+    "so compile" ::
     "so publishLocal" ::
     "reload" ::
     state
@@ -631,27 +632,27 @@ def customCommands: Seq[Setting[_]] = Seq(
    */
   commands += Command.command("release-sbt") { state =>
     // TODO - Any sort of validation
-    "so clean" ::
-      "allPrecompiled/clean" ::
-      "checkCredentials" ::
-      "conscript-configs" ::
+    "checkCredentials" ::
+    "clean" ::
+    "allPrecompiled/clean" ::
       "allPrecompiled/compile" ::
+      "allPrecompiled/publishSigned" ::
+      "so clean" ::
+      "conscript-configs" ::
       "so compile" ::
       "so publishSigned" ::
-      "allPrecompiled/publishSigned" ::
       "publishLauncher" ::
       state
   },
+  // stamp-version doesn't work with ++ or "so".
   commands += Command.command("release-nightly") { state =>
     "stamp-version" ::
-      "so clean" ::
+      "clean" ::
       "allPrecompiled/clean" ::
       "allPrecompiled/compile" ::
-      "so compile" ::
-      "so publish" ::
       "allPrecompiled/publish" ::
-      "publishLauncher" ::
+      "compile" ::
+      "publish" ::
       state
   }
 )
-
