@@ -585,7 +585,7 @@ object Load {
               val existingIds = otherProjects.projects map (_.id)
               val refs = existingIds map (id => ProjectRef(buildUri, id))
               val defaultID = autoID(buildBase, context, existingIds)
-              val root0 = if (discovered.isEmpty) Build.defaultAggregatedProject(defaultID, buildBase, refs)
+              val root0 = if (discovered.isEmpty || java.lang.Boolean.getBoolean("sbt.root.ivyplugin")) Build.defaultAggregatedProject(defaultID, buildBase, refs)
               else Build.generatedRootWithoutIvyPlugin(defaultID, buildBase, refs)
               val root = finalizeProject(root0, files)
               val result = root +: (acc ++ otherProjects.projects)
