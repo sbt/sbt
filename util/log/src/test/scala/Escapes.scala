@@ -37,28 +37,50 @@ object Escapes extends Properties("Escapes") {
 
   property("removeEscapeSequences returns string without escape sequences") =
     forAllNoShrink(genWithoutEscape, genEscapePairs) { (start: String, escapes: List[EscapeAndNot]) =>
-      val withEscapes: String = start + escapes.map { ean => ean.escape.makeString + ean.notEscape }
+      val withEscapes: String = start + (escapes.map { ean => ean.escape.makeString + ean.notEscape }).mkString("")
       val removed: String = removeEscapeSequences(withEscapes)
-      val original = start + escapes.map(_.notEscape)
-      ("Input string with escapes: '" + withEscapes + "'") |:
-        ("Escapes removed '" + removed + "'") |:
+      val original = start + escapes.map(_.notEscape).mkString("")
+      val diffCharString = diffIndex(original, removed)
+      ("Input string    : '" + withEscapes + "'") |:
+        ("Expected        : '" + original + "'") |:
+        ("Escapes removed : '" + removed + "'") |:
+        (diffCharString) |:
         (original == removed)
     }
 
-  final case class EscapeAndNot(escape: EscapeSequence, notEscape: String)
+  def diffIndex(expect: String, original: String): String = {
+    var i = 0;
+    while (i < expect.length && i < original.length) {
+      if (expect.charAt(i) != original.charAt(i)) return ("Differing character, idx: " + i + ", char: " + original.charAt(i) + ", expected: " + expect.charAt(i))
+      i += 1
+    }
+    if (expect.length != original.length) return s"Strings are different lengths!"
+    "No differences found"
+  }
+
+  final case class EscapeAndNot(escape: EscapeSequence, notEscape: String) {
+    override def toString = s"EscapeAntNot(escape = [$escape], notEscape = [${notEscape.map(_.toInt)}])"
+  }
   final case class EscapeSequence(content: String, terminator: Char) {
-    assert(content.forall(c => !isEscapeTerminator(c)), "Escape sequence content contains an escape terminator: '" + content + "'")
+    if (!content.isEmpty) {
+      assert(content.tail.forall(c => !isEscapeTerminator(c)), "Escape sequence content contains an escape terminator: '" + content + "'")
+      assert((content.head == '[') || !isEscapeTerminator(content.head), "Escape sequence content contains an escape terminator: '" + content.headOption + "'")
+    }
     assert(isEscapeTerminator(terminator))
     def makeString: String = ESC + content + terminator
+
+    override def toString =
+      if (content.isEmpty) s"ESC (${terminator.toInt})"
+      else s"ESC ($content) (${terminator.toInt})"
   }
   private[this] def noEscape(s: String): String = s.replace(ESC, ' ')
 
-  lazy val genEscapeSequence: Gen[EscapeSequence] = oneOf(genKnownSequence, genArbitraryEscapeSequence)
+  lazy val genEscapeSequence: Gen[EscapeSequence] = oneOf(genKnownSequence, genTwoCharacterSequence, genArbitraryEscapeSequence)
   lazy val genEscapePair: Gen[EscapeAndNot] = for (esc <- genEscapeSequence; not <- genWithoutEscape) yield EscapeAndNot(esc, not)
   lazy val genEscapePairs: Gen[List[EscapeAndNot]] = listOf(genEscapePair)
 
   lazy val genArbitraryEscapeSequence: Gen[EscapeSequence] =
-    for (content <- genWithoutTerminator; term <- genTerminator) yield new EscapeSequence(content, term)
+    for (content <- genWithoutTerminator if !content.isEmpty; term <- genTerminator) yield new EscapeSequence("[" + content, term)
 
   lazy val genKnownSequence: Gen[EscapeSequence] =
     oneOf((misc ++ setGraphicsMode ++ setMode ++ resetMode).map(toEscapeSequence))
@@ -74,7 +96,12 @@ object Escapes extends Properties("Escapes") {
   lazy val setMode = setModeLike('h')
   def setModeLike(term: Char): Seq[String] = (0 to 19).map(i => "=" + i.toString + term)
 
-  lazy val genWithoutTerminator = genRawString.map(_.filter { c => !isEscapeTerminator(c) })
+  lazy val genWithoutTerminator =
+    genRawString.map(_.filter { c => !isEscapeTerminator(c) && (c != '[') })
+
+  lazy val genTwoCharacterSequence =
+    // 91 == [ which is the CSI escape sequence.
+    oneOf((64 to 95)) filter (_ != 91) map (c => new EscapeSequence("", c.toChar))
 
   lazy val genTerminator: Gen[Char] = Gen.choose('@', '~')
   lazy val genWithoutEscape: Gen[String] = genRawString.map(noEscape)
