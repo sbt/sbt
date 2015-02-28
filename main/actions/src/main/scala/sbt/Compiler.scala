@@ -31,6 +31,7 @@ object Compiler {
         case x: JavaToolWithNewInterface => Some(x.newJavac)
         case _                           => None
       }
+
   }
   /** The previous source dependency analysis result from compilation. */
   final case class PreviousAnalysis(analysis: Analysis, setup: Option[CompileSetup])

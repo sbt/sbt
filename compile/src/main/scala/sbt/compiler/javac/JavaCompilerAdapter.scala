@@ -24,7 +24,7 @@ class JavaCompilerAdapter(delegate: JavaTool, scalaInstance: xsbti.compile.Scala
   override final def compileWithReporter(sources: Array[File], classpath: Array[File], output: Output, options: Array[String], reporter: Reporter, log: xsbti.Logger): Unit = {
     val target = output match {
       case so: SingleOutput   => so.outputDirectory
-      case mo: MultipleOutput => throw new RuntimeException("Javac doesn't support multiple output directories")
+      case mo: MultipleOutput => throw new RuntimeException(delegate + " doesn't support multiple output directories")
     }
     val args = commandArguments(Seq(), classpath, target, options, log)
     // We sort the sources for deterministic results.
@@ -32,7 +32,7 @@ class JavaCompilerAdapter(delegate: JavaTool, scalaInstance: xsbti.compile.Scala
     if (!success) {
       // TODO - Will the reporter have problems from Scalac?  It appears like it does not, only from the most recent run.
       // This is because the incremental compiler will not run javac if scalac fails.
-      throw new CompileFailed(args.toArray, "javac returned nonzero exit code", reporter.problems())
+      throw new CompileFailed(args.toArray, delegate + " returned nonzero exit code", reporter.problems())
     }
   }
   private[this] def commandArguments(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger): Seq[String] =

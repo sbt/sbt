@@ -14,6 +14,7 @@ import sbinary.DefaultProtocol.FileFormat
 import Cache.{ defaultEquiv, hConsCache, hNilCache, seqCache, seqFormat, streamFormat, StringFormat, UnitFormat, wrapIn }
 import Tracked.{ inputChanged, outputChanged }
 import FilesInfo.{ exists, hash, lastModified }
+import xsbti.compile.SingleOutput
 
 object Doc {
   import RawCompileLike._
@@ -21,10 +22,30 @@ object Doc {
     scaladoc(label, cache, compiler, Seq())
   def scaladoc(label: String, cache: File, compiler: AnalyzingCompiler, fileInputOptions: Seq[String]): Gen =
     cached(cache, fileInputOptions, prepare(label + " Scala API documentation", compiler.doc))
+
+  @deprecated("Use new sbt.compiler.javac.* interfaces", "0.13.8")
   def javadoc(label: String, cache: File, doc: sbt.compiler.Javadoc): Gen =
     javadoc(label, cache, doc, Seq())
+  @deprecated("Use new sbt.compiler.javac.* interfaces", "0.13.8")
   def javadoc(label: String, cache: File, doc: sbt.compiler.Javadoc, fileInputOptions: Seq[String]): Gen =
     cached(cache, fileInputOptions, prepare(label + " Java API documentation", filterSources(javaSourcesOnly, doc.doc)))
+
+  // TODO - These new javadoc methods are somewhat gross, like their predecessors.  We should directly use the Javadoc interface.
+  def javadocWithIncrementalConfig(label: String, cache: File, doc: xsbti.compile.JavaCompiler, fileInputOptions: Seq[String]): Gen = {
+
+    def gen(sources: Seq[File], classpath: Seq[File], outputDir: File, options: Seq[String], maximumErrors: Int, log: Logger): Unit = {
+      //doc.run(sources, args)
+      // TODO - Construct logger reporter
+      object output extends SingleOutput {
+        def outputDirectory: File = outputDir
+        override def toString = s"SingleOutput($outputDirectory)"
+      }
+      val reporter = new LoggerReporter(maximumErrors, log)
+      doc.compileWithReporter(sources.toArray, classpath.toArray, output, options.toArray, reporter, log)
+      reporter.printSummary()
+    }
+    cached(cache, fileInputOptions, prepare(label + " Java API documentation", filterSources(javaSourcesOnly, gen)))
+  }
 
   val javaSourcesOnly: File => Boolean = _.getName.endsWith(".java")
 

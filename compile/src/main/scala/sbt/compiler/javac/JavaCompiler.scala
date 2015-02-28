@@ -18,6 +18,8 @@ import xsbti.{ Severity, Reporter }
 sealed trait JavaTools {
   /** The raw interface of the java compiler for direct access. */
   def compiler: JavaTool
+  /** The raw interface for javadoc for direct access. */
+  def javadoc: JavaTool
   /**
    * This will run a java compiler.
    *
@@ -49,6 +51,8 @@ sealed trait JavaTools {
 sealed trait IncrementalCompilerJavaTools extends JavaTools {
   /** An instance of the java Compiler for use with incremental compilation. */
   def xsbtiCompiler: xsbti.compile.JavaCompiler
+  /** An instance of javadoc for use with incremental compilation or other tasks. */
+  def xsbtiJavadoc: xsbti.compile.JavaCompiler
 }
 /** Factory methods for getting a java toolchain. */
 object JavaTools {
@@ -56,8 +60,10 @@ object JavaTools {
   def apply(c: JavaCompiler, docgen: Javadoc): JavaTools =
     new JavaTools {
       override def compiler = c
+      override def javadoc = docgen
       def compile(sources: Seq[File], options: Seq[String])(implicit log: Logger, reporter: Reporter): Boolean =
         c.run(sources, options)
+
       def doc(sources: Seq[File], options: Seq[String])(implicit log: Logger, reporter: Reporter): Boolean =
         docgen.run(sources, options)
     }
@@ -86,7 +92,9 @@ object JavaTools {
     val delegate = apply(compiler, doc)
     new IncrementalCompilerJavaTools {
       val xsbtiCompiler = new JavaCompilerAdapter(delegate.compiler, instance, cpOptions)
+      val xsbtiJavadoc = new JavaCompilerAdapter(delegate.javadoc, instance, cpOptions)
       def compiler = delegate.compiler
+      def javadoc = delegate.javadoc
       def compile(sources: Seq[File], options: Seq[String])(implicit log: Logger, reporter: Reporter): Boolean =
         delegate.compile(sources, options)
       def doc(sources: Seq[File], options: Seq[String])(implicit log: Logger, reporter: Reporter): Boolean =
@@ -117,7 +125,9 @@ sealed trait JavaTool {
 }
 
 /** Interface we use to compile java code. This is mostly a tag over the raw JavaTool interface. */
-trait JavaCompiler extends JavaTool {}
+trait JavaCompiler extends JavaTool {
+  override def toString = "javac"
+}
 /** Factory methods for constructing a java compiler. */
 object JavaCompiler {
   /** Returns a local compiler, if the current runtime supports it. */
@@ -133,7 +143,9 @@ object JavaCompiler {
 }
 
 /** Interface we use to document java code. This is a tag over the raw JavaTool interface. */
-trait Javadoc extends JavaTool {}
+trait Javadoc extends JavaTool {
+  override def toString = "javadoc"
+}
 /** Factory methods for constructing a javadoc. */
 object Javadoc {
   /** Returns a local compiler, if the current runtime supports it. */

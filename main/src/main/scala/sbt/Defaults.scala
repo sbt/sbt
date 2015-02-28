@@ -750,8 +750,13 @@ object Defaults extends BuildCommon {
           (sOpts ++ Opts.doc.externalAPI(xapis), // can't put the .value calls directly here until 2.10.2
             Doc.scaladoc(label, s.cacheDirectory / "scala", cs.scalac.onArgs(exported(s, "scaladoc")), fiOpts))
         else if (hasJava)
-          (jOpts,
-            Doc.javadoc(label, s.cacheDirectory / "java", cs.javac.onArgs(exported(s, "javadoc")), fiOpts))
+          cs.newJavac match {
+            case Some(jc) =>
+              (jOpts,
+                Doc.javadocWithIncrementalConfig(label, s.cacheDirectory / "java", jc.xsbtiJavadoc, fiOpts))
+            case _ =>
+              (jOpts, Doc.javadoc(label, s.cacheDirectory / "java", cs.javac.onArgs(exported(s, "javadoc")), fiOpts))
+          }
         else
           (Nil, RawCompileLike.nop)
       runDoc(srcs, cp, out, options, maxErrors.value, s.log)
