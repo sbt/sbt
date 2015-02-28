@@ -2,5 +2,5 @@
 -> update
 
 # add a repository with the dependency, which should then succeed
-> 'set resolvers += "Nuxeo" at "http://maven.nuxeo.org/nexus/content/groups/public/"'
+> 'set resolvers += "Nuxeo" at s"${(baseDirectory.value / "repo").toURI.toURL}"'
 > update
