@@ -2,6 +2,7 @@ package sbt
 
 import java.io.{ IOException, StringWriter, PrintWriter, File }
 import java.net.InetAddress
+import java.util.Hashtable
 
 import scala.collection.mutable.ListBuffer
 import scala.util.DynamicVariable
@@ -27,7 +28,9 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
   val properties =
     <properties>
       {
-        val iter = System.getProperties.entrySet.iterator
+        // create a clone, defending against [[ConcurrentModificationException]]
+        val clonedProperties = System.getProperties.clone.asInstanceOf[Hashtable[AnyRef, AnyRef]]
+        val iter = clonedProperties.entrySet.iterator
         val props: ListBuffer[XNode] = new ListBuffer()
         while (iter.hasNext) {
           val next = iter.next
