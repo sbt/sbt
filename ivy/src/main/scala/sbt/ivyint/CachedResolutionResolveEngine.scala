@@ -18,6 +18,7 @@ import org.apache.ivy.util.{ Message, MessageLogger }
 import org.apache.ivy.plugins.latest.{ ArtifactInfo => IvyArtifactInfo }
 import org.apache.ivy.plugins.matcher.{ MapMatcher, PatternMatcher }
 import Configurations.{ System => _, _ }
+import annotation.tailrec
 
 private[sbt] object CachedResolutionResolveCache {
   def createID(organization: String, name: String, revision: String) =
@@ -348,14 +349,59 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       } map { _.module }
       new ConfigurationReport(rootModuleConf, modules, details, evicted)
     }
+  /**
+   * Returns a touple of (merged org + name combo, newly evicted modules)
+   */
   def mergeOrganizationArtifactReports(rootModuleConf: String, reports0: Vector[OrganizationArtifactReport], os: Vector[IvyOverride], log: Logger): Vector[OrganizationArtifactReport] =
-    (reports0 groupBy { oar => (oar.organization, oar.name) }).toSeq.toVector flatMap {
-      case ((org, name), xs) =>
-        log.debug(s""":::: $rootModuleConf: $org:$name""")
-        if (xs.size < 2) xs
-        else Vector(new OrganizationArtifactReport(org, name, mergeModuleReports(rootModuleConf, xs flatMap { _.modules }, os, log)))
+    {
+      val pairs = (reports0 groupBy { oar => (oar.organization, oar.name) }).toSeq.toVector map {
+        case ((org, name), xs) =>
+          log.debug(s""":::: $rootModuleConf: $org:$name""")
+          if (xs.size < 2) (xs.head, Vector())
+          else
+            mergeModuleReports(rootModuleConf, xs flatMap { _.modules }, os, log) match {
+              case (survivor, newlyEvicted) =>
+                (new OrganizationArtifactReport(org, name, survivor ++ newlyEvicted), newlyEvicted)
+            }
+      }
+      transitivelyEvict(rootModuleConf, pairs map { _._1 }, pairs flatMap { _._2 }, log)
     }
-  def mergeModuleReports(rootModuleConf: String, modules: Vector[ModuleReport], os: Vector[IvyOverride], log: Logger): Vector[ModuleReport] =
+  /**
+   * This transitively evicts any non-evicted modules whose only callers are newly evicted.
+   */
+  @tailrec
+  private final def transitivelyEvict(rootModuleConf: String, reports0: Vector[OrganizationArtifactReport],
+    evicted0: Vector[ModuleReport], log: Logger): Vector[OrganizationArtifactReport] =
+    {
+      val em = evicted0 map { _.module }
+      def isTransitivelyEvicted(mr: ModuleReport): Boolean =
+        mr.callers forall { c => em contains { c.caller } }
+      // Ordering of the OrganizationArtifactReport matters
+      val pairs: Vector[(OrganizationArtifactReport, Vector[ModuleReport])] = reports0 map { oar =>
+        val organization = oar.organization
+        val name = oar.name
+        val (affected, unaffected) = oar.modules.toVector partition { mr =>
+          val x = !mr.evicted && mr.problem.isEmpty && isTransitivelyEvicted(mr)
+          if (x) {
+            log.debug(s""":::: transitively evicted $rootModuleConf: $organization:$name""")
+          }
+          x
+        }
+        val newlyEvicted = affected map { _.copy(evicted = true, evictedReason = Some("transitive-evict")) }
+        if (affected.isEmpty) (oar, Vector())
+        else
+          (new OrganizationArtifactReport(organization, name, unaffected ++ newlyEvicted), newlyEvicted)
+      }
+      val reports = pairs map { _._1 }
+      val evicted = pairs flatMap { _._2 }
+      if (evicted.isEmpty) reports
+      else transitivelyEvict(rootModuleConf, reports, evicted, log)
+    }
+  /**
+   * Merges ModuleReports, which represents orgnization, name, and version.
+   * Returns a touple of (surviving modules ++ non-conflicting modules, newly evicted modules).
+   */
+  def mergeModuleReports(rootModuleConf: String, modules: Vector[ModuleReport], os: Vector[IvyOverride], log: Logger): (Vector[ModuleReport], Vector[ModuleReport]) =
     {
       def mergeModuleReports(org: String, name: String, version: String, xs: Vector[ModuleReport]): ModuleReport = {
         val completelyEvicted = xs forall { _.evicted }
@@ -370,10 +416,10 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
           else Vector(mergeModuleReports(org, name, version, xs))
       }
       val conflicts = merged filter { m => !m.evicted && m.problem.isEmpty }
-      if (conflicts.size < 2) merged
+      if (conflicts.size < 2) (merged, Vector())
       else resolveConflict(rootModuleConf, conflicts, os, log) match {
         case (survivor, evicted) =>
-          survivor ++ evicted ++ (merged filter { m => m.evicted || m.problem.isDefined })
+          (survivor ++ (merged filter { m => m.evicted || m.problem.isDefined }), evicted)
       }
     }
   /**
