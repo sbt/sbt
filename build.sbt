@@ -262,7 +262,7 @@ lazy val ivyProj = (project in file("ivy")).
   settings(baseSettings: _*).
   settings(
     name := "Ivy",
-    libraryDependencies ++= Seq(ivy, jsch, json4sNative, jawnParser, jawnJson4s),
+    libraryDependencies ++= Seq(ivy, jsch, sbtSerialization),
     testExclusive)
 
 // Runner for uniform test interface
