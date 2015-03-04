@@ -9,6 +9,7 @@ import sbinary.Format
 import scala.reflect.Manifest
 import scala.collection.mutable
 import IO.{ delete, read, write }
+import sbt.serialization._
 
 object Tracked {
   /**
@@ -36,10 +37,41 @@ object Tracked {
       toFile(next)(cacheFile)
       next
     }
+  private[sbt] def lastOuputWithJson[I, O: Pickler: Unpickler](cacheFile: File)(f: (I, Option[O]) => O): I => O = in =>
+    {
+      val previous: Option[O] = fromJsonFile[O](cacheFile)
+      val next = f(in, previous)
+      toJsonFile(next)(cacheFile)
+      next
+    }
+  private[sbt] def fromJsonFile[A: Unpickler](file: File): Option[A] =
+    try {
+      val s = IO.read(file, IO.utf8)
+      fromJsonString[A](s).toOption
+    } catch {
+      case e: Throwable => None
+    }
+  private[sbt] def toJsonFile[A: Pickler](a: A)(file: File): Unit =
+    {
+      val str = toJsonString(a)
+      IO.write(file, str, IO.utf8)
+    }
 
   def inputChanged[I, O](cacheFile: File)(f: (Boolean, I) => O)(implicit ic: InputCache[I]): I => O = in =>
     {
       val help = new CacheHelp(ic)
+      val conv = help.convert(in)
+      val changed = help.changed(cacheFile, conv)
+      val result = f(changed, in)
+
+      if (changed)
+        help.save(cacheFile, conv)
+
+      result
+    }
+  private[sbt] def inputChangedWithJson[I: Pickler: Unpickler, O](cacheFile: File)(f: (Boolean, I) => O): I => O = in =>
+    {
+      val help = new JsonCacheHelp[I]
       val conv = help.convert(in)
       val changed = help.changed(cacheFile, conv)
       val result = f(changed, in)
@@ -61,6 +93,18 @@ object Tracked {
 
       result
     }
+  private[sbt] def outputChangedWithJson[I: Pickler, O](cacheFile: File)(f: (Boolean, I) => O): (() => I) => O = in =>
+    {
+      val initial = in()
+      val help = new JsonCacheHelp[I]
+      val changed = help.changed(cacheFile, help.convert(initial))
+      val result = f(changed, initial)
+
+      if (changed)
+        help.save(cacheFile, help.convert(in()))
+
+      result
+    }
   final class CacheHelp[I](val ic: InputCache[I]) {
     def convert(i: I): ic.Internal = ic.convert(i)
     def save(cacheFile: File, value: ic.Internal): Unit =
@@ -69,6 +113,16 @@ object Tracked {
       try {
         val prev = Using.fileInputStream(cacheFile)(x => ic.read(x))
         !ic.equiv.equiv(converted, prev)
+      } catch { case e: Exception => true }
+  }
+  private[sbt] final class JsonCacheHelp[I: Pickler] {
+    def convert(i: I): String = toJsonString(i)
+    def save(cacheFile: File, value: String): Unit =
+      IO.write(cacheFile, value, IO.utf8)
+    def changed(cacheFile: File, converted: String): Boolean =
+      try {
+        val prev = IO.read(cacheFile, IO.utf8)
+        converted != prev
       } catch { case e: Exception => true }
   }
 }

@@ -305,7 +305,7 @@ lazy val cacheProj = (project in cachePath).
   settings(baseSettings: _*).
   settings(
     name := "Cache",
-    libraryDependencies ++= Seq(sbinary) ++ scalaXml.value
+    libraryDependencies ++= Seq(sbinary, sbtSerialization) ++ scalaXml.value
   )
 
 // Builds on cache to provide caching for filesystem-related operations
