@@ -24,6 +24,7 @@ private[sbt] object CachedResolutionResolveCache {
   def createID(organization: String, name: String, revision: String) =
     ModuleRevisionId.newInstance(organization, name, revision)
   def sbtOrgTemp = "org.scala-sbt.temp"
+  def graphVersion = "0.13.8"
 }
 
 private[sbt] class CachedResolutionResolveCache() {
@@ -88,7 +89,7 @@ private[sbt] class CachedResolutionResolveCache() {
       val moduleLevel = s"""dependencyOverrides=${os.mkString(",")};moduleExclusions=$mesStr"""
       val depsString = s"""$mrid;${confMap.mkString(",")};isForce=${dd.isForce};isChanging=${dd.isChanging};isTransitive=${dd.isTransitive};""" +
         s"""exclusions=${exclusions.mkString(",")};inclusions=${inclusions.mkString(",")};explicitArtifacts=${explicitArtifacts.mkString(",")};$moduleLevel;"""
-      val sha1 = Hash.toHex(Hash(depsString))
+      val sha1 = Hash.toHex(Hash(s"""graphVersion=${CachedResolutionResolveCache.graphVersion};$depsString"""))
       val md1 = new DefaultModuleDescriptor(createID(sbtOrgTemp, "temp-resolve-" + sha1, "1.0"), "release", null, false) with ArtificialModuleDescriptor {
         def targetModuleRevisionId: ModuleRevisionId = mrid
       }
