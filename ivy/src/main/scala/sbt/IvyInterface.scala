@@ -8,6 +8,7 @@ import java.net.{ URI, URL }
 import scala.xml.NodeSeq
 import org.apache.ivy.plugins.resolver.{ DependencyResolver, IBiblioResolver }
 import org.apache.ivy.util.url.CredentialsStore
+import sbt.serialization._
 
 /** Additional information about a project module */
 final case class ModuleInfo(nameFormal: String, description: String = "", homepage: Option[URL] = None, startYear: Option[Int] = None, licenses: Seq[(String, URL)] = Nil, organizationName: String = "", organizationHomepage: Option[URL] = None, scmInfo: Option[ScmInfo] = None, developers: Seq[Developer] = Seq()) {
@@ -26,6 +27,9 @@ final case class Developer(id: String, name: String, email: String, url: URL)
 
 /** Rule to exclude unwanted dependencies pulled in transitively by a module. */
 final case class ExclusionRule(organization: String = "*", name: String = "*", artifact: String = "*", configurations: Seq[String] = Nil)
+object ExclusionRule {
+  implicit val pickler: Pickler[ExclusionRule] with Unpickler[ExclusionRule] = PicklerUnpickler.generate[ExclusionRule]
+}
 
 final case class ModuleConfiguration(organization: String, name: String, revision: String, resolver: Resolver)
 object ModuleConfiguration {

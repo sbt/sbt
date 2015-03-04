@@ -3,6 +3,8 @@
  */
 package sbt
 
+import sbt.serialization._
+
 object Configurations {
   def config(name: String) = new Configuration(name)
   def default: Seq[Configuration] = defaultMavenConfigurations
@@ -60,4 +62,7 @@ final case class Configuration(name: String, description: String, isPublic: Bool
   def intransitive = Configuration(name, description, isPublic, extendsConfigs, false)
   def hide = Configuration(name, description, false, extendsConfigs, transitive)
   override def toString = name
+}
+object Configuration {
+  implicit val pickler: Pickler[Configuration] with Unpickler[Configuration] = PicklerUnpickler.generate[Configuration]
 }
