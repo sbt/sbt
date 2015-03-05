@@ -350,7 +350,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       new ConfigurationReport(rootModuleConf, modules, details, evicted)
     }
   /**
-   * Returns a touple of (merged org + name combo, newly evicted modules)
+   * Returns a tuple of (merged org + name combo, newly evicted modules)
    */
   def mergeOrganizationArtifactReports(rootModuleConf: String, reports0: Vector[OrganizationArtifactReport], os: Vector[IvyOverride], log: Logger): Vector[OrganizationArtifactReport] =
     {
