@@ -68,9 +68,10 @@ private object IvyScala {
         val depBinaryVersion = CrossVersion.binaryScalaVersion(id.getRevision)
         def isScalaLangOrg = id.getOrganisation == Organization
         def isNotScalaActorsMigration = !(id.getName startsWith "scala-actors-migration") // Exception to the rule: sbt/sbt#1818
+        def isNotScalaPickling = !(id.getName startsWith "scala-pickling") // Exception to the rule: sbt/sbt#1899
         def hasBinVerMismatch = depBinaryVersion != scalaBinaryVersion
         def matchesOneOfTheConfigs = dep.getModuleConfigurations.exists(configSet)
-        val mismatched = isScalaLangOrg && isNotScalaActorsMigration && hasBinVerMismatch && matchesOneOfTheConfigs
+        val mismatched = isScalaLangOrg && isNotScalaActorsMigration && isNotScalaPickling && hasBinVerMismatch && matchesOneOfTheConfigs
         if (mismatched)
           Some("Binary version (" + depBinaryVersion + ") for dependency " + id +
             "\n\tin " + module.getModuleRevisionId +
