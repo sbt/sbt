@@ -10,8 +10,7 @@ private[sbt] object JsonUtil {
   def parseUpdateReport(md: ModuleDescriptor, path: File, cachedDescriptor: File, log: Logger): UpdateReport =
     {
       try {
-        val s = IO.read(path, IO.utf8)
-        val lite = fromJsonString[UpdateReportLite](s).get
+        val lite = fromJsonFile[UpdateReportLite](path).get
         fromLite(lite, cachedDescriptor)
       } catch {
         case e: Throwable =>
@@ -21,8 +20,8 @@ private[sbt] object JsonUtil {
     }
   def writeUpdateReport(ur: UpdateReport, graphPath: File): Unit =
     {
-      val str = toJsonString(toLite(ur))
-      IO.write(graphPath, str, IO.utf8)
+      IO.createDirectory(graphPath.getParentFile)
+      toJsonFile(toLite(ur), graphPath)
     }
   def toLite(ur: UpdateReport): UpdateReportLite =
     UpdateReportLite(ur.configurations map { cr =>
