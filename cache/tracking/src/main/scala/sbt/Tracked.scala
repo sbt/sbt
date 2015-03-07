@@ -39,24 +39,16 @@ object Tracked {
     }
   private[sbt] def lastOuputWithJson[I, O: Pickler: Unpickler](cacheFile: File)(f: (I, Option[O]) => O): I => O = in =>
     {
-      val previous: Option[O] = fromJsonFile[O](cacheFile)
+      val previous: Option[O] = try {
+        fromJsonFile[O](cacheFile).toOption
+      } catch {
+        case e: Throwable => None
+      }
       val next = f(in, previous)
-      toJsonFile(next)(cacheFile)
+      IO.createDirectory(cacheFile.getParentFile)
+      toJsonFile(next, cacheFile)
       next
     }
-  private[sbt] def fromJsonFile[A: Unpickler](file: File): Option[A] =
-    try {
-      val s = IO.read(file, IO.utf8)
-      fromJsonString[A](s).toOption
-    } catch {
-      case e: Throwable => None
-    }
-  private[sbt] def toJsonFile[A: Pickler](a: A)(file: File): Unit =
-    {
-      val str = toJsonString(a)
-      IO.write(file, str, IO.utf8)
-    }
-
   def inputChanged[I, O](cacheFile: File)(f: (Boolean, I) => O)(implicit ic: InputCache[I]): I => O = in =>
     {
       val help = new CacheHelp(ic)
