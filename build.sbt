@@ -608,7 +608,6 @@ def customCommands: Seq[Setting[_]] = Seq(
     "allPrecompiled/clean" ::
     "allPrecompiled/compile" ::
     "allPrecompiled/publishLocal" ::
-    "so clean" ::
     "so compile" ::
     "so publishLocal" ::
     "reload" ::
@@ -637,7 +636,6 @@ def customCommands: Seq[Setting[_]] = Seq(
     "allPrecompiled/clean" ::
       "allPrecompiled/compile" ::
       "allPrecompiled/publishSigned" ::
-      "so clean" ::
       "conscript-configs" ::
       "so compile" ::
       "so publishSigned" ::
