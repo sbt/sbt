@@ -126,7 +126,7 @@ object Artifact {
     val tag = implicitly[FastTypeTag[Artifact]]
     def unpickle(tpe: String, reader: PReader): Any = {
       reader.pushHints()
-      reader.hintTag(tag)
+      // reader.hintTag(tag)
       reader.beginEntry()
       val name = stringPickler.unpickleEntry(reader.readField("name")).asInstanceOf[String]
       val tp = stringPickler.unpickleEntry(reader.readField("type")).asInstanceOf[String]

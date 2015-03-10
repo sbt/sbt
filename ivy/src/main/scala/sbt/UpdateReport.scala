@@ -159,13 +159,6 @@ object ModuleReport {
   def apply(module: ModuleID, artifacts: Seq[(Artifact, File)], missingArtifacts: Seq[Artifact]): ModuleReport =
     new ModuleReport(module, artifacts, missingArtifacts, None, None, None, None,
       false, None, None, None, None, Map(), None, None, Nil, Nil, Nil)
-
-  import PairPicklers._
-  import DatePicklers._
-  private implicit val afPairPickler: Pickler[(Artifact, File)] with Unpickler[(Artifact, File)] =
-    pairPickler[Artifact, File]
-  private implicit def tuplePickler2: Pickler[(String, Option[String])] with Unpickler[(String, Option[String])] =
-    pairPickler[String, Option[String]]
   implicit val pickler: Pickler[ModuleReport] with Unpickler[ModuleReport] = PicklerUnpickler.generate[ModuleReport]
 }
 
@@ -289,7 +282,6 @@ object UpdateReport {
       }
   }
 
-  import FileMapPicklers._
   private val vectorConfigurationReportPickler = implicitly[Pickler[Vector[ConfigurationReport]]]
   private val vectorConfigurationReportUnpickler = implicitly[Unpickler[Vector[ConfigurationReport]]]
   private val updateStatsPickler = implicitly[Pickler[UpdateStats]]
