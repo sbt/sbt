@@ -3,6 +3,7 @@
   [@gkossakowski]: https://github.com/gkossakowski
   [@jsuereth]: https://github.com/jsuereth
 
+  [@aerskine]: https://github.com/aerskine
   [@ajozwik]: https://github.com/ajozwik
   [@dwickern]: https://github.com/dwickern
   [@dwijnand]: http://github.com/dwijnand
@@ -13,6 +14,7 @@
   [@xuwei-k]: https://github.com/xuwei-k
   [SI-9027]: https://issues.scala-lang.org/browse/SI-9027
   [Custom-Settings0]: http://www.scala-sbt.org/0.13/tutorial/Custom-Settings.html
+  [321]: https://github.com/sbt/sbt/issues/321
   [647]: https://github.com/sbt/sbt/issues/647
   [679]: https://github.com/sbt/sbt/issues/679
   [875]: https://github.com/sbt/sbt/issues/875
@@ -27,6 +29,7 @@
   [1655]: https://github.com/sbt/sbt/issues/1655
   [1676]: https://github.com/sbt/sbt/issues/1676
   [1702]: https://github.com/sbt/sbt/pull/1702
+  [1711]: https://github.com/sbt/sbt/issues/1711
   [1714]: https://github.com/sbt/sbt/issues/1714
   [1738]: https://github.com/sbt/sbt/issues/1738
   [1741]: https://github.com/sbt/sbt/pull/1741
@@ -34,6 +37,8 @@
   [1748]: https://github.com/sbt/sbt/issues/1748
   [1752]: https://github.com/sbt/sbt/pull/1752
   [1754]: https://github.com/sbt/sbt/pull/1754
+  [1760]: https://github.com/sbt/sbt/pull/1760
+  [1765]: https://github.com/sbt/sbt/pull/1765
   [1766]: https://github.com/sbt/sbt/pull/1766
   [1771]: https://github.com/sbt/sbt/pull/1771
   [1787]: https://github.com/sbt/sbt/pull/1787
@@ -42,7 +47,10 @@
   [1818]: https://github.com/sbt/sbt/pull/1818
   [1869]: https://github.com/sbt/sbt/issues/1869
   [1871]: https://github.com/sbt/sbt/pull/1871
+  [1885]: https://github.com/sbt/sbt/issues/1885
+  [1881]: https://github.com/sbt/sbt/issues/1881
   [1899]: https://github.com/sbt/sbt/pull/1899
+  [1902]: https://github.com/sbt/sbt/pull/1902
 
 ### Changes with compatibility implications
 
@@ -59,6 +67,7 @@
 - `evicted` will display all evictions (including the ones not suspected of binary incompatibility). [#1615][1615] by [@eed3si9n][@eed3si9n]
 - Better abstration to track new kinds of dependencies for incremental compiler. [#1340][1340] by [@Duhemm][@Duhemm]
 - Source dependency uses `--depth 1` for git clone. [#1787][1787] by [@xuwei-k][@xuwei-k]
+- Facilitate nicer ways of declaring project settings. See below. [#1902][1902] by [@dwijnand][@dwijnand]
 
 ### Fixes
 
@@ -72,12 +81,16 @@
 - sbt doesn't see new SNAPSHOT dependency versions in local maven repos (use withLatestSnapshots + sbt-maven-resolver to fix) [#321][321] by [@jsuereth][@jsuereth]
 - Property in pom's version field results to wrong dependency resolution (use sbt-maven-resolver to fix). [#647][647] by [@jsuereth][@jsuereth]
 - Maven local resolver with parent POM (use sbt-maven-resolver). [#1616][1616] by [@jsuereth][@jsuereth]
-- Fixes cached resolution being too verbose. [#1752][1752] by [@eed3si9n][@eed3si9n]
 - Fixes eviction warning being too noisy. [#1615][1615] by [@eed3si9n][@eed3si9n]
 - Issues warning if multiple dependencies to a same library is found with different version. [#1634][1634] by [@eed3si9n][@eed3si9n]
 - Removes "No main class detected" warning. [#1766][1766] by [@eed3si9n][@eed3si9n]
-- Disable publishing on implicitly created root project by not enabling `IvyPlugin` by default (`-Dsbt.root.ivyplugin=true` will revert this behavior). [#1871][1871]/[#1869][1869] by [@dwijnand][@dwijnand] 
+- Disable publishing on implicitly created root project by not enabling `IvyPlugin` by default (`-Dsbt.root.ivyplugin=true` will revert this behavior). [#1871][1871]/[#1869][1869] by [@dwijnand][@dwijnand]
+- Fixes sporadic ConcurrentModificationException from JUnitXmlTestsListener. [#1881][1881] by [@aerskine][@aerskine]
+- Fixes handling of ANSI CSI codes. [#1885][1885] by [@jsuereth][@jsuereth]
 - Exempt org.scala-lang:scala-actors-migration and org.scala-lang:scala-pickling from scala binary version checks. [#1818][1818]/[#1899][1899] by [@dwijnand][@dwijnand]
+- Fixes cached resolution handling of internal depdendencies. [#1711][1711] by [@eed3si9n][@eed3si9n]
+- Fixes cached resolution being too verbose. [#1752][1752] by [@eed3si9n][@eed3si9n]
+- Fixes cached resolution not evicting modules transitively. [#1760][#1760] by [@eed3si9n][@eed3si9n]
 
 ### Rolling back XML parsing workaround
 
@@ -126,13 +139,17 @@ This should help erase many of the deficiencies encountered when using Maven and
 
 ### Project-level dependency exclusions
 
-sbt 0.13.8 adds project-level dependency exclusions:
+sbt 0.13.8 adds **experimental** project-level dependency exclusions:
 
     excludeDependencies += "org.apache.logging.log4j"
     excludeDependencies += "com.example" %% "foo"
 
 In the first example, all artifacts from the organization `"org.apache.logging.log4j"` are excluded from the managed dependency.
-In the second example, artifacts with the organization `"com.example"` and the name `"foo"` cross versioned to the current `scalaVersion` are excluded. [#1748][1748] by [@eed3si9n][@eed3si9n]
+In the second example, artifacts with the organization `"com.example"` and the name `"foo"` cross versioned to the current `scalaVersion` are excluded.
+
+**Note**: This feature currently does not translate to `pom.xml`!
+
+[#1748][1748] by [@eed3si9n][@eed3si9n]
 
 ### Sequential tasks
 
@@ -160,6 +177,28 @@ and run as many tasks in parallel (See [Custom settings and tasks][Custom-Settin
 `Def.sequential` instead tries to run the tasks in the specified order.
 However, the task engine will still deduplicate tasks. For instance, when `foo` is executed, it will only compile once,
 even though `test in Test` depends on compile. [#1817][1817]/[#1001][1001] by [@eed3si9n][@eed3si9n]
+
+### Nicer ways of declaring project settings
+
+Now a `Seq[Setting[_]]` can be passed to `Project.settings` without the needs for "varargs expansion", ie. `: _*`
+
+Instead of:
+
+    lazy val foo = project settings (sharedSettings: _*)
+
+It is now possible to do:
+
+    lazy val foo = project settings sharedSettings
+
+Also, `Seq[Setting[_]]` can be declared at the same level as individual settings in `Project.settings`, for instance:
+
+    lazy val foo = project settings (
+      sharedSettings,
+      version := "1.0",
+      someMoreSettings
+    )
+
+[#1902][1902] by [@dwijnand][@dwijnand]
 
 ### Bytecode Enhancers
 
