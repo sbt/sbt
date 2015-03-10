@@ -43,6 +43,7 @@
   [1771]: https://github.com/sbt/sbt/pull/1771
   [1787]: https://github.com/sbt/sbt/pull/1787
   [1793]: https://github.com/sbt/sbt/pull/1793
+  [1799]: https://github.com/sbt/sbt/pull/1799
   [1817]: https://github.com/sbt/sbt/pull/1817
   [1818]: https://github.com/sbt/sbt/pull/1818
   [1869]: https://github.com/sbt/sbt/issues/1869
@@ -54,6 +55,7 @@
 
 ### Changes with compatibility implications
 
+- Disable publishing on implicitly created root project by not enabling `IvyPlugin` by default (`-Dsbt.root.ivyplugin=true` will revert this behavior). [#1871][1871]/[#1869][1869] by [@dwijnand][@dwijnand]
 - Rolls back XML parsing workaround. See below.
 - Enables cross-version support for Scala sources. See below.
 
@@ -84,7 +86,6 @@
 - Fixes eviction warning being too noisy. [#1615][1615] by [@eed3si9n][@eed3si9n]
 - Issues warning if multiple dependencies to a same library is found with different version. [#1634][1634] by [@eed3si9n][@eed3si9n]
 - Removes "No main class detected" warning. [#1766][1766] by [@eed3si9n][@eed3si9n]
-- Disable publishing on implicitly created root project by not enabling `IvyPlugin` by default (`-Dsbt.root.ivyplugin=true` will revert this behavior). [#1871][1871]/[#1869][1869] by [@dwijnand][@dwijnand]
 - Fixes sporadic ConcurrentModificationException from JUnitXmlTestsListener. [#1881][1881] by [@aerskine][@aerskine]
 - Fixes handling of ANSI CSI codes. [#1885][1885] by [@jsuereth][@jsuereth]
 - Exempt org.scala-lang:scala-actors-migration and org.scala-lang:scala-pickling from scala binary version checks. [#1818][1818]/[#1899][1899] by [@dwijnand][@dwijnand]
