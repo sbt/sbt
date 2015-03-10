@@ -5,6 +5,7 @@ import java.util.Date
 import java.net.URL
 import java.io.File
 import collection.concurrent
+import collection.mutable
 import collection.immutable.ListMap
 import org.apache.ivy.Ivy
 import org.apache.ivy.core
@@ -24,15 +25,19 @@ private[sbt] object CachedResolutionResolveCache {
   def createID(organization: String, name: String, revision: String) =
     ModuleRevisionId.newInstance(organization, name, revision)
   def sbtOrgTemp = "org.scala-sbt.temp"
+  def graphVersion = "0.13.8"
 }
 
 private[sbt] class CachedResolutionResolveCache() {
   import CachedResolutionResolveCache._
   val updateReportCache: concurrent.Map[ModuleRevisionId, Either[ResolveException, UpdateReport]] = concurrent.TrieMap()
+  // Used for subproject
+  val projectReportCache: concurrent.Map[(ModuleRevisionId, LogicalClock), Either[ResolveException, UpdateReport]] = concurrent.TrieMap()
   val resolveReportCache: concurrent.Map[ModuleRevisionId, ResolveReport] = concurrent.TrieMap()
   val resolvePropertiesCache: concurrent.Map[ModuleRevisionId, String] = concurrent.TrieMap()
   val conflictCache: concurrent.Map[(ModuleID, ModuleID), (Vector[ModuleID], Vector[ModuleID], String)] = concurrent.TrieMap()
-  val maxConflictCacheSize: Int = 10000
+  val maxConflictCacheSize: Int = 1024
+  val maxUpdateReportCacheSize: Int = 1024
 
   def clean(md0: ModuleDescriptor, prOpt: Option[ProjectResolver]): Unit = {
     updateReportCache.clear
@@ -88,7 +93,7 @@ private[sbt] class CachedResolutionResolveCache() {
       val moduleLevel = s"""dependencyOverrides=${os.mkString(",")};moduleExclusions=$mesStr"""
       val depsString = s"""$mrid;${confMap.mkString(",")};isForce=${dd.isForce};isChanging=${dd.isChanging};isTransitive=${dd.isTransitive};""" +
         s"""exclusions=${exclusions.mkString(",")};inclusions=${inclusions.mkString(",")};explicitArtifacts=${explicitArtifacts.mkString(",")};$moduleLevel;"""
-      val sha1 = Hash.toHex(Hash(depsString))
+      val sha1 = Hash.toHex(Hash(s"""graphVersion=${CachedResolutionResolveCache.graphVersion};$depsString"""))
       val md1 = new DefaultModuleDescriptor(createID(sbtOrgTemp, "temp-resolve-" + sha1, "1.0"), "release", null, false) with ArtificialModuleDescriptor {
         def targetModuleRevisionId: ModuleRevisionId = mrid
       }
@@ -171,6 +176,10 @@ private[sbt] class CachedResolutionResolveCache() {
               else staticGraphPath
               log.debug(s"saving minigraph to $gp")
               JsonUtil.writeUpdateReport(ur, gp)
+              // limit the update cache size
+              if (updateReportCache.size > maxUpdateReportCacheSize) {
+                updateReportCache.remove(updateReportCache.head._1)
+              }
               // don't cache dynamic graphs in memory.
               if (!changing) {
                 updateReportCache(md.getModuleRevisionId) = Right(ur)
@@ -205,6 +214,13 @@ private[sbt] class CachedResolutionResolveCache() {
               (surviving, evicted)
           }
       }
+    }
+  def getOrElseUpdateProjectReport(mrid: ModuleRevisionId, logicalClock: LogicalClock)(f: => Either[ResolveException, UpdateReport]): Either[ResolveException, UpdateReport] =
+    if (projectReportCache contains (mrid -> logicalClock)) projectReportCache((mrid, logicalClock))
+    else {
+      val oldKeys = projectReportCache.keys filter { case (x, clk) => clk != logicalClock }
+      projectReportCache --= oldKeys
+      projectReportCache.getOrElseUpdate((mrid, logicalClock), f)
     }
 }
 
@@ -245,64 +261,66 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
    * This returns sbt's UpdateReport structure.
    * missingOk allows sbt to call this with classifiers that may or may not exist, and grab the JARs.
    */
-  def customResolve(md0: ModuleDescriptor, missingOk: Boolean, logicalClock: LogicalClock, options0: ResolveOptions, depDir: File, log: Logger): Either[ResolveException, UpdateReport] = {
-    import Path._
-    val start = System.currentTimeMillis
-    val miniGraphPath = depDir / "module"
-    val cachedDescriptor = getSettings.getResolutionCacheManager.getResolvedIvyFileInCache(md0.getModuleRevisionId)
-    val cache = cachedResolutionResolveCache
-    val os = cache.extractOverrides(md0)
-    val options1 = new ResolveOptions(options0)
-    val data = new ResolveData(this, options1)
-    val mds = cache.buildArtificialModuleDescriptors(md0, data, projectResolver, log)
+  def customResolve(md0: ModuleDescriptor, missingOk: Boolean, logicalClock: LogicalClock, options0: ResolveOptions, depDir: File, log: Logger): Either[ResolveException, UpdateReport] =
+    cachedResolutionResolveCache.getOrElseUpdateProjectReport(md0.getModuleRevisionId, logicalClock) {
+      import Path._
+      val start = System.currentTimeMillis
+      val miniGraphPath = depDir / "module"
+      val cachedDescriptor = getSettings.getResolutionCacheManager.getResolvedIvyFileInCache(md0.getModuleRevisionId)
+      val cache = cachedResolutionResolveCache
+      val os = cache.extractOverrides(md0)
+      val options1 = new ResolveOptions(options0)
+      val data = new ResolveData(this, options1)
+      val mds = cache.buildArtificialModuleDescriptors(md0, data, projectResolver, log)
 
-    def doWork(md: ModuleDescriptor, dd: DependencyDescriptor): Either[ResolveException, UpdateReport] =
-      cache.internalDependency(dd, projectResolver) match {
-        case Some(md1) =>
-          log.debug(s":: call customResolve recursively: $dd")
-          customResolve(md1, missingOk, logicalClock, options0, depDir, log) match {
-            case Right(ur) => Right(remapInternalProject(new IvyNode(data, md1), ur, md0, dd, os, log))
-            case Left(e)   => Left(e)
-          }
-        case None =>
-          log.debug(s":: call ivy resolution: $dd")
-          doWorkUsingIvy(md)
-      }
-    def doWorkUsingIvy(md: ModuleDescriptor): Either[ResolveException, UpdateReport] =
-      {
-        val options1 = new ResolveOptions(options0)
-        var rr = withIvy(log) { ivy =>
-          ivy.resolve(md, options1)
-        }
-        if (!rr.hasError || missingOk) Right(IvyRetrieve.updateReport(rr, cachedDescriptor))
-        else {
-          val messages = rr.getAllProblemMessages.toArray.map(_.toString).distinct
-          val failedPaths = ListMap(rr.getUnresolvedDependencies map { node =>
-            val m = IvyRetrieve.toModuleID(node.getId)
-            val path = IvyRetrieve.findPath(node, md.getModuleRevisionId) map { x =>
-              IvyRetrieve.toModuleID(x.getId)
+      def doWork(md: ModuleDescriptor, dd: DependencyDescriptor): Either[ResolveException, UpdateReport] =
+        cache.internalDependency(dd, projectResolver) match {
+          case Some(md1) =>
+            log.debug(s":: call customResolve recursively: $dd")
+            customResolve(md1, missingOk, logicalClock, options0, depDir, log) match {
+              case Right(ur) => Right(remapInternalProject(new IvyNode(data, md1), ur, md0, dd, os, log))
+              case Left(e)   => Left(e)
             }
-            log.debug("- Unresolved path " + path.toString)
-            m -> path
-          }: _*)
-          val failed = failedPaths.keys.toSeq
-          Left(new ResolveException(messages, failed, failedPaths))
+          case None =>
+            log.debug(s":: call ivy resolution: $dd")
+            doWorkUsingIvy(md)
         }
+      def doWorkUsingIvy(md: ModuleDescriptor): Either[ResolveException, UpdateReport] =
+        {
+          val options1 = new ResolveOptions(options0)
+          var rr = withIvy(log) { ivy =>
+            ivy.resolve(md, options1)
+          }
+          if (!rr.hasError || missingOk) Right(IvyRetrieve.updateReport(rr, cachedDescriptor))
+          else {
+            val messages = rr.getAllProblemMessages.toArray.map(_.toString).distinct
+            val failedPaths = ListMap(rr.getUnresolvedDependencies map { node =>
+              val m = IvyRetrieve.toModuleID(node.getId)
+              val path = IvyRetrieve.findPath(node, md.getModuleRevisionId) map { x =>
+                IvyRetrieve.toModuleID(x.getId)
+              }
+              log.debug("- Unresolved path " + path.toString)
+              m -> path
+            }: _*)
+            val failed = failedPaths.keys.toSeq
+            Left(new ResolveException(messages, failed, failedPaths))
+          }
+        }
+      val results = mds map {
+        case (md, changing, dd) =>
+          cache.getOrElseUpdateMiniGraph(md, changing, logicalClock, miniGraphPath, cachedDescriptor, log) {
+            doWork(md, dd)
+          }
       }
-    val results = mds map {
-      case (md, changing, dd) =>
-        cache.getOrElseUpdateMiniGraph(md, changing, logicalClock, miniGraphPath, cachedDescriptor, log) {
-          doWork(md, dd)
-        }
+      val uReport = mergeResults(md0, results, missingOk, System.currentTimeMillis - start, os, log)
+      val cacheManager = getSettings.getResolutionCacheManager
+      cacheManager.saveResolvedModuleDescriptor(md0)
+      val prop0 = ""
+      val ivyPropertiesInCache0 = cacheManager.getResolvedIvyPropertiesInCache(md0.getResolvedModuleRevisionId)
+      IO.write(ivyPropertiesInCache0, prop0)
+      uReport
     }
-    val uReport = mergeResults(md0, results, missingOk, System.currentTimeMillis - start, os, log)
-    val cacheManager = getSettings.getResolutionCacheManager
-    cacheManager.saveResolvedModuleDescriptor(md0)
-    val prop0 = ""
-    val ivyPropertiesInCache0 = cacheManager.getResolvedIvyPropertiesInCache(md0.getResolvedModuleRevisionId)
-    IO.write(ivyPropertiesInCache0, prop0)
-    uReport
-  }
+
   def mergeResults(md0: ModuleDescriptor, results: Vector[Either[ResolveException, UpdateReport]], missingOk: Boolean, resolveTime: Long,
     os: Vector[IvyOverride], log: Logger): Either[ResolveException, UpdateReport] =
     if (!missingOk && (results exists { _.isLeft })) Left(mergeErrors(md0, results collect { case Left(re) => re }, log))
@@ -333,6 +351,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       }
       new UpdateReport(cachedDescriptor, configReports, stats, Map.empty)
     }
+  // memory usage 62%, of which 58% is in mergeOrganizationArtifactReports
   def mergeConfigurationReports(rootModuleConf: String, reports: Vector[ConfigurationReport], os: Vector[IvyOverride], log: Logger): ConfigurationReport =
     {
       // get the details right, and the rest could be derived
@@ -352,35 +371,43 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
   /**
    * Returns a tuple of (merged org + name combo, newly evicted modules)
    */
-  def mergeOrganizationArtifactReports(rootModuleConf: String, reports0: Vector[OrganizationArtifactReport], os: Vector[IvyOverride], log: Logger): Vector[OrganizationArtifactReport] =
+  def mergeOrganizationArtifactReports(rootModuleConf: String, reports0: Seq[OrganizationArtifactReport], os: Vector[IvyOverride], log: Logger): Vector[OrganizationArtifactReport] =
     {
-      val pairs = (reports0 groupBy { oar => (oar.organization, oar.name) }).toSeq.toVector map {
-        case ((org, name), xs) =>
-          log.debug(s""":::: $rootModuleConf: $org:$name""")
-          if (xs.size < 2) (xs.head, Vector())
+      val evicteds: mutable.ListBuffer[ModuleReport] = mutable.ListBuffer()
+      val results: mutable.ListBuffer[OrganizationArtifactReport] = mutable.ListBuffer()
+      // group by takes up too much memory. trading space with time.
+      val orgNamePairs = (reports0 map { oar => (oar.organization, oar.name) }).distinct
+      orgNamePairs foreach {
+        case (organization, name) =>
+          // hand rolling groupBy to avoid memory allocation
+          val xs = reports0 filter { oar => oar.organization == organization && oar.name == name }
+          if (xs.size == 0) () // do nothing
+          else if (xs.size == 1) results += xs.head
           else
-            mergeModuleReports(rootModuleConf, xs flatMap { _.modules }, os, log) match {
+            results += (mergeModuleReports(rootModuleConf, xs flatMap { _.modules }, os, log) match {
               case (survivor, newlyEvicted) =>
-                (new OrganizationArtifactReport(org, name, survivor ++ newlyEvicted), newlyEvicted)
-            }
+                evicteds ++= newlyEvicted
+                new OrganizationArtifactReport(organization, name, survivor ++ newlyEvicted)
+            })
       }
-      transitivelyEvict(rootModuleConf, pairs map { _._1 }, pairs flatMap { _._2 }, log)
+      transitivelyEvict(rootModuleConf, results.toList.toVector, evicteds.toList, log)
     }
   /**
    * This transitively evicts any non-evicted modules whose only callers are newly evicted.
    */
   @tailrec
   private final def transitivelyEvict(rootModuleConf: String, reports0: Vector[OrganizationArtifactReport],
-    evicted0: Vector[ModuleReport], log: Logger): Vector[OrganizationArtifactReport] =
+    evicted0: List[ModuleReport], log: Logger): Vector[OrganizationArtifactReport] =
     {
       val em = evicted0 map { _.module }
       def isTransitivelyEvicted(mr: ModuleReport): Boolean =
         mr.callers forall { c => em contains { c.caller } }
+      val evicteds: mutable.ListBuffer[ModuleReport] = mutable.ListBuffer()
       // Ordering of the OrganizationArtifactReport matters
-      val pairs: Vector[(OrganizationArtifactReport, Vector[ModuleReport])] = reports0 map { oar =>
+      val reports: Vector[OrganizationArtifactReport] = reports0 map { oar =>
         val organization = oar.organization
         val name = oar.name
-        val (affected, unaffected) = oar.modules.toVector partition { mr =>
+        val (affected, unaffected) = oar.modules partition { mr =>
           val x = !mr.evicted && mr.problem.isEmpty && isTransitivelyEvicted(mr)
           if (x) {
             log.debug(s""":::: transitively evicted $rootModuleConf: $organization:$name""")
@@ -388,22 +415,22 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
           x
         }
         val newlyEvicted = affected map { _.copy(evicted = true, evictedReason = Some("transitive-evict")) }
-        if (affected.isEmpty) (oar, Vector())
-        else
-          (new OrganizationArtifactReport(organization, name, unaffected ++ newlyEvicted), newlyEvicted)
+        if (affected.isEmpty) oar
+        else {
+          evicteds ++= newlyEvicted
+          new OrganizationArtifactReport(organization, name, unaffected ++ newlyEvicted)
+        }
       }
-      val reports = pairs map { _._1 }
-      val evicted = pairs flatMap { _._2 }
-      if (evicted.isEmpty) reports
-      else transitivelyEvict(rootModuleConf, reports, evicted, log)
+      if (evicteds.isEmpty) reports
+      else transitivelyEvict(rootModuleConf, reports, evicteds.toList, log)
     }
   /**
    * Merges ModuleReports, which represents orgnization, name, and version.
    * Returns a touple of (surviving modules ++ non-conflicting modules, newly evicted modules).
    */
-  def mergeModuleReports(rootModuleConf: String, modules: Vector[ModuleReport], os: Vector[IvyOverride], log: Logger): (Vector[ModuleReport], Vector[ModuleReport]) =
+  def mergeModuleReports(rootModuleConf: String, modules: Seq[ModuleReport], os: Vector[IvyOverride], log: Logger): (Vector[ModuleReport], Vector[ModuleReport]) =
     {
-      def mergeModuleReports(org: String, name: String, version: String, xs: Vector[ModuleReport]): ModuleReport = {
+      def mergeModuleReports(org: String, name: String, version: String, xs: Seq[ModuleReport]): ModuleReport = {
         val completelyEvicted = xs forall { _.evicted }
         val allCallers = xs flatMap { _.callers }
         val allArtifacts = (xs flatMap { _.artifacts }).distinct

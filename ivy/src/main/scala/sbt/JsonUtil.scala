@@ -2,22 +2,16 @@ package sbt
 
 import java.io.File
 import java.net.URL
-import org.json4s._
 import org.apache.ivy.core
 import core.module.descriptor.ModuleDescriptor
+import sbt.serialization._
 
 private[sbt] object JsonUtil {
   def parseUpdateReport(md: ModuleDescriptor, path: File, cachedDescriptor: File, log: Logger): UpdateReport =
     {
-      import org.json4s._
-      implicit val formats = native.Serialization.formats(NoTypeHints) +
-        new ConfigurationSerializer +
-        new ArtifactSerializer +
-        new FileSerializer +
-        new URLSerializer
       try {
-        val json = jawn.support.json4s.Parser.parseFromFile(path)
-        fromLite(json.get.extract[UpdateReportLite], cachedDescriptor)
+        val lite = fromJsonFile[UpdateReportLite](path).get
+        fromLite(lite, cachedDescriptor)
       } catch {
         case e: Throwable =>
           log.error("Unable to parse mini graph: " + path.toString)
@@ -26,13 +20,8 @@ private[sbt] object JsonUtil {
     }
   def writeUpdateReport(ur: UpdateReport, graphPath: File): Unit =
     {
-      implicit val formats = native.Serialization.formats(NoTypeHints) +
-        new ConfigurationSerializer +
-        new ArtifactSerializer +
-        new FileSerializer
-      import native.Serialization.write
-      val str = write(toLite(ur))
-      IO.write(graphPath, str, IO.utf8)
+      IO.createDirectory(graphPath.getParentFile)
+      toJsonFile(toLite(ur), graphPath)
     }
   def toLite(ur: UpdateReport): UpdateReportLite =
     UpdateReportLite(ur.configurations map { cr =>
@@ -60,61 +49,11 @@ private[sbt] object JsonUtil {
 }
 
 private[sbt] case class UpdateReportLite(configurations: Seq[ConfigurationReportLite])
+private[sbt] object UpdateReportLite {
+  implicit val pickler: Pickler[UpdateReportLite] with Unpickler[UpdateReportLite] = PicklerUnpickler.generate[UpdateReportLite]
+}
+
 private[sbt] case class ConfigurationReportLite(configuration: String, details: Seq[OrganizationArtifactReport])
-
-private[sbt] class URLSerializer extends CustomSerializer[URL](format => (
-  {
-    case JString(s) => new URL(s)
-  },
-  {
-    case x: URL => JString(x.toString)
-  }
-))
-
-private[sbt] class FileSerializer extends CustomSerializer[File](format => (
-  {
-    case JString(s) => new File(s)
-  },
-  {
-    case x: File => JString(x.toString)
-  }
-))
-
-private[sbt] class ConfigurationSerializer extends CustomSerializer[Configuration](format => (
-  {
-    case JString(s) => new Configuration(s)
-  },
-  {
-    case x: Configuration => JString(x.name)
-  }
-))
-
-private[sbt] class ArtifactSerializer extends CustomSerializer[Artifact](format => (
-  {
-    case json: JValue =>
-      implicit val fmt = format
-      Artifact(
-        (json \ "name").extract[String],
-        (json \ "type").extract[String],
-        (json \ "extension").extract[String],
-        (json \ "classifier").extract[Option[String]],
-        (json \ "configurations").extract[List[Configuration]],
-        (json \ "url").extract[Option[URL]],
-        (json \ "extraAttributes").extract[Map[String, String]]
-      )
-  },
-  {
-    case x: Artifact =>
-      import DefaultJsonFormats.{ OptionWriter, StringWriter, mapWriter }
-      val optStr = implicitly[Writer[Option[String]]]
-      val mw = implicitly[Writer[Map[String, String]]]
-      JObject(JField("name", JString(x.name)) ::
-        JField("type", JString(x.`type`)) ::
-        JField("extension", JString(x.extension)) ::
-        JField("classifier", optStr.write(x.classifier)) ::
-        JField("configurations", JArray(x.configurations.toList map { x => JString(x.name) })) ::
-        JField("url", optStr.write(x.url map { _.toString })) ::
-        JField("extraAttributes", mw.write(x.extraAttributes)) ::
-        Nil)
-  }
-))
+private[sbt] object ConfigurationReportLite {
+  implicit val pickler: Pickler[ConfigurationReportLite] with Unpickler[ConfigurationReportLite] = PicklerUnpickler.generate[ConfigurationReportLite]
+}
