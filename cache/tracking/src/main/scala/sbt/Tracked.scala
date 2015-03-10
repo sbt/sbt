@@ -38,7 +38,8 @@ object Tracked {
       toFile(next)(cacheFile)
       next
     }
-  private[sbt] def lastOuputWithJson[I, O: Pickler: Unpickler](cacheFile: File)(f: (I, Option[O]) => O): I => O = in =>
+  // Todo: This function needs more testing.
+  private[sbt] def lastOutputWithJson[I, O: Pickler: Unpickler](cacheFile: File)(f: (I, Option[O]) => O): I => O = in =>
     {
       val previous: Option[O] = try {
         fromJsonFile[O](cacheFile).toOption
