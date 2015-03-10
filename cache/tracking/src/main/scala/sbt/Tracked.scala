@@ -3,7 +3,7 @@
  */
 package sbt
 
-import java.io.File
+import java.io.{ File, IOException }
 import CacheIO.{ fromFile, toFile }
 import sbinary.Format
 import scala.reflect.Manifest
@@ -42,7 +42,7 @@ object Tracked {
       val previous: Option[O] = try {
         fromJsonFile[O](cacheFile).toOption
       } catch {
-        case e: Throwable => None
+        case e: IOException => None
       }
       val next = f(in, previous)
       IO.createDirectory(cacheFile.getParentFile)
