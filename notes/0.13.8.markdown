@@ -91,7 +91,7 @@
 - Exempt org.scala-lang:scala-actors-migration and org.scala-lang:scala-pickling from scala binary version checks. [#1818][1818]/[#1899][1899] by [@dwijnand][@dwijnand]
 - Fixes cached resolution handling of internal depdendencies. [#1711][1711] by [@eed3si9n][@eed3si9n]
 - Fixes cached resolution being too verbose. [#1752][1752] by [@eed3si9n][@eed3si9n]
-- Fixes cached resolution not evicting modules transitively. [#1760][#1760] by [@eed3si9n][@eed3si9n]
+- Fixes cached resolution not evicting modules transitively. [#1760][1760] by [@eed3si9n][@eed3si9n]
 
 ### Rolling back XML parsing workaround
 
