@@ -262,7 +262,7 @@ lazy val ivyProj = (project in file("ivy")).
   settings(baseSettings: _*).
   settings(
     name := "Ivy",
-    libraryDependencies ++= Seq(ivy, jsch, json4sNative, jawnParser, jawnJson4s),
+    libraryDependencies ++= Seq(ivy, jsch, sbtSerialization),
     testExclusive)
 
 // Runner for uniform test interface
@@ -305,7 +305,7 @@ lazy val cacheProj = (project in cachePath).
   settings(baseSettings: _*).
   settings(
     name := "Cache",
-    libraryDependencies ++= Seq(sbinary) ++ scalaXml.value
+    libraryDependencies ++= Seq(sbinary, sbtSerialization) ++ scalaXml.value
   )
 
 // Builds on cache to provide caching for filesystem-related operations
