@@ -6,6 +6,7 @@ package sbt
 import java.io.{ File, IOException }
 import CacheIO.{ fromFile, toFile }
 import sbinary.Format
+import scala.pickling.PicklingException
 import scala.reflect.Manifest
 import scala.collection.mutable
 import IO.{ delete, read, write }
@@ -42,7 +43,8 @@ object Tracked {
       val previous: Option[O] = try {
         fromJsonFile[O](cacheFile).toOption
       } catch {
-        case e: IOException => None
+        case e: PicklingException => None
+        case e: IOException       => None
       }
       val next = f(in, previous)
       IO.createDirectory(cacheFile.getParentFile)
