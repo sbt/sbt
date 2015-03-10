@@ -6,41 +6,7 @@ package sbt
 import java.io.File
 import java.net.URL
 import java.{ util => ju }
-
-/**
- * Provides information about dependency resolution.
- * It does not include information about evicted modules, only about the modules ultimately selected by the conflict manager.
- * This means that for a given configuration, there should only be one revision for a given organization and module name.
- * @param cachedDescriptor the location of the resolved module descriptor in the cache
- * @param configurations a sequence containing one report for each configuration resolved.
- * @param stats information about the update that produced this report
- * @see sbt.RichUpdateReport
- */
-final class UpdateReport(val cachedDescriptor: File, val configurations: Seq[ConfigurationReport], val stats: UpdateStats, private[sbt] val stamps: Map[File, Long]) {
-  @deprecated("Use the variant that provides timestamps of files.", "0.13.0")
-  def this(cachedDescriptor: File, configurations: Seq[ConfigurationReport], stats: UpdateStats) =
-    this(cachedDescriptor, configurations, stats, Map.empty)
-
-  override def toString = "Update report:\n\t" + stats + "\n" + configurations.mkString
-
-  /** All resolved modules in all configurations. */
-  def allModules: Seq[ModuleID] = configurations.flatMap(_.allModules).distinct
-
-  def retrieve(f: (String, ModuleID, Artifact, File) => File): UpdateReport =
-    new UpdateReport(cachedDescriptor, configurations map { _ retrieve f }, stats, stamps)
-
-  /** Gets the report for the given configuration, or `None` if the configuration was not resolved.*/
-  def configuration(s: String) = configurations.find(_.configuration == s)
-
-  /** Gets the names of all resolved configurations.  This `UpdateReport` contains one `ConfigurationReport` for each configuration in this list. */
-  def allConfigurations: Seq[String] = configurations.map(_.configuration)
-
-  private[sbt] def withStats(us: UpdateStats): UpdateReport =
-    new UpdateReport(this.cachedDescriptor,
-      this.configurations,
-      us,
-      this.stamps)
-}
+import sbt.serialization._
 
 /**
  * Provides information about resolution of a single configuration.
@@ -71,6 +37,9 @@ final class ConfigurationReport(
   def retrieve(f: (String, ModuleID, Artifact, File) => File): ConfigurationReport =
     new ConfigurationReport(configuration, modules map { _.retrieve((mid, art, file) => f(configuration, mid, art, file)) }, details, evicted)
 }
+object ConfigurationReport {
+  implicit val pickler: Pickler[ConfigurationReport] with Unpickler[ConfigurationReport] = PicklerUnpickler.generate[ConfigurationReport]
+}
 
 /**
  * OrganizationArtifactReport represents an organization+name entry in Ivy resolution report.
@@ -93,6 +62,8 @@ final class OrganizationArtifactReport private[sbt] (
   }
 }
 object OrganizationArtifactReport {
+  implicit val pickler: Pickler[OrganizationArtifactReport] with Unpickler[OrganizationArtifactReport] = PicklerUnpickler.generate[OrganizationArtifactReport]
+
   def apply(organization: String, name: String, modules: Seq[ModuleReport]): OrganizationArtifactReport =
     new OrganizationArtifactReport(organization, name, modules)
 }
@@ -188,6 +159,7 @@ object ModuleReport {
   def apply(module: ModuleID, artifacts: Seq[(Artifact, File)], missingArtifacts: Seq[Artifact]): ModuleReport =
     new ModuleReport(module, artifacts, missingArtifacts, None, None, None, None,
       false, None, None, None, None, Map(), None, None, Nil, Nil, Nil)
+  implicit val pickler: Pickler[ModuleReport] with Unpickler[ModuleReport] = PicklerUnpickler.generate[ModuleReport]
 }
 
 final class Caller(
@@ -200,6 +172,44 @@ final class Caller(
     val isDirectlyForceDependency: Boolean) {
   override def toString: String =
     s"$caller"
+}
+object Caller {
+  implicit val pickler: Pickler[Caller] with Unpickler[Caller] = PicklerUnpickler.generate[Caller]
+}
+
+/**
+ * Provides information about dependency resolution.
+ * It does not include information about evicted modules, only about the modules ultimately selected by the conflict manager.
+ * This means that for a given configuration, there should only be one revision for a given organization and module name.
+ * @param cachedDescriptor the location of the resolved module descriptor in the cache
+ * @param configurations a sequence containing one report for each configuration resolved.
+ * @param stats information about the update that produced this report
+ * @see sbt.RichUpdateReport
+ */
+final class UpdateReport(val cachedDescriptor: File, val configurations: Seq[ConfigurationReport], val stats: UpdateStats, private[sbt] val stamps: Map[File, Long]) {
+  @deprecated("Use the variant that provides timestamps of files.", "0.13.0")
+  def this(cachedDescriptor: File, configurations: Seq[ConfigurationReport], stats: UpdateStats) =
+    this(cachedDescriptor, configurations, stats, Map.empty)
+
+  override def toString = "Update report:\n\t" + stats + "\n" + configurations.mkString
+
+  /** All resolved modules in all configurations. */
+  def allModules: Seq[ModuleID] = configurations.flatMap(_.allModules).distinct
+
+  def retrieve(f: (String, ModuleID, Artifact, File) => File): UpdateReport =
+    new UpdateReport(cachedDescriptor, configurations map { _ retrieve f }, stats, stamps)
+
+  /** Gets the report for the given configuration, or `None` if the configuration was not resolved.*/
+  def configuration(s: String) = configurations.find(_.configuration == s)
+
+  /** Gets the names of all resolved configurations.  This `UpdateReport` contains one `ConfigurationReport` for each configuration in this list. */
+  def allConfigurations: Seq[String] = configurations.map(_.configuration)
+
+  private[sbt] def withStats(us: UpdateStats): UpdateReport =
+    new UpdateReport(this.cachedDescriptor,
+      this.configurations,
+      us,
+      this.stamps)
 }
 
 object UpdateReport {
@@ -271,7 +281,60 @@ object UpdateReport {
         new UpdateReport(report.cachedDescriptor, newConfigurations, report.stats, report.stamps)
       }
   }
+
+  private val vectorConfigurationReportPickler = implicitly[Pickler[Vector[ConfigurationReport]]]
+  private val vectorConfigurationReportUnpickler = implicitly[Unpickler[Vector[ConfigurationReport]]]
+  private val updateStatsPickler = implicitly[Pickler[UpdateStats]]
+  private val updateStatsUnpickler = implicitly[Unpickler[UpdateStats]]
+  private val flMapPickler = implicitly[Pickler[Map[File, Long]]]
+  private val flMapUnpickler = implicitly[Unpickler[Map[File, Long]]]
+
+  implicit val pickler: Pickler[UpdateReport] with Unpickler[UpdateReport] = new Pickler[UpdateReport] with Unpickler[UpdateReport] {
+    val tag = implicitly[FastTypeTag[UpdateReport]]
+    val fileTag = implicitly[FastTypeTag[File]]
+    val vectorConfigurationReportTag = implicitly[FastTypeTag[Vector[ConfigurationReport]]]
+    val updateStatsTag = implicitly[FastTypeTag[UpdateStats]]
+    val flMapTag = implicitly[FastTypeTag[Map[File, Long]]]
+    def pickle(a: UpdateReport, builder: PBuilder): Unit = {
+      builder.pushHints()
+      builder.hintTag(tag)
+      builder.beginEntry(a)
+      builder.putField("cachedDescriptor", { b =>
+        b.hintTag(fileTag)
+        filePickler.pickle(a.cachedDescriptor, b)
+      })
+      builder.putField("configurations", { b =>
+        b.hintTag(vectorConfigurationReportTag)
+        vectorConfigurationReportPickler.pickle(a.configurations.toVector, b)
+      })
+      builder.putField("stats", { b =>
+        b.hintTag(updateStatsTag)
+        updateStatsPickler.pickle(a.stats, b)
+      })
+      builder.putField("stamps", { b =>
+        b.hintTag(flMapTag)
+        flMapPickler.pickle(a.stamps, b)
+      })
+      builder.endEntry()
+      builder.popHints()
+    }
+
+    def unpickle(tpe: String, reader: PReader): Any = {
+      reader.pushHints()
+      reader.hintTag(tag)
+      reader.beginEntry()
+      val cachedDescriptor = filePickler.unpickleEntry(reader.readField("cachedDescriptor")).asInstanceOf[File]
+      val configurations = vectorConfigurationReportUnpickler.unpickleEntry(reader.readField("configurations")).asInstanceOf[Vector[ConfigurationReport]]
+      val stats = updateStatsUnpickler.unpickleEntry(reader.readField("stats")).asInstanceOf[UpdateStats]
+      val stamps = flMapUnpickler.unpickleEntry(reader.readField("stamps")).asInstanceOf[Map[File, Long]]
+      val result = new UpdateReport(cachedDescriptor, configurations, stats, stamps)
+      reader.endEntry()
+      reader.popHints()
+      result
+    }
+  }
 }
+
 final class UpdateStats(val resolveTime: Long, val downloadTime: Long, val downloadSize: Long, val cached: Boolean) {
   override def toString = Seq("Resolve time: " + resolveTime + " ms", "Download time: " + downloadTime + " ms", "Download size: " + downloadSize + " bytes").mkString(", ")
   private[sbt] def withCached(c: Boolean): UpdateStats =
@@ -279,4 +342,7 @@ final class UpdateStats(val resolveTime: Long, val downloadTime: Long, val downl
       downloadTime = this.downloadTime,
       downloadSize = this.downloadSize,
       cached = c)
+}
+object UpdateStats {
+  implicit val pickler: Pickler[UpdateStats] with Unpickler[UpdateStats] = PicklerUnpickler.generate[UpdateStats]
 }

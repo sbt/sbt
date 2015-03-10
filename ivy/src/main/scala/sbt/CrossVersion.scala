@@ -1,6 +1,7 @@
 package sbt
 
 import cross.CrossVersionUtil
+import sbt.serialization._
 
 final case class ScalaVersion(full: String, binary: String)
 
@@ -33,6 +34,42 @@ object CrossVersion {
    */
   final class Full(val remapVersion: String => String) extends CrossVersion {
     override def toString = "Full"
+  }
+
+  private val disabledTag = implicitly[FastTypeTag[Disabled.type]]
+  private val binaryTag = implicitly[FastTypeTag[Binary]]
+  private val fullTag = implicitly[FastTypeTag[Full]]
+  implicit val pickler: Pickler[CrossVersion] = new Pickler[CrossVersion] {
+    val tag = implicitly[FastTypeTag[CrossVersion]]
+    def pickle(a: CrossVersion, builder: PBuilder): Unit = {
+      builder.pushHints()
+      builder.hintTag(a match {
+        case Disabled  => disabledTag
+        case x: Binary => binaryTag
+        case x: Full   => fullTag
+      })
+      builder.beginEntry(a)
+      builder.endEntry()
+      builder.popHints()
+    }
+  }
+  implicit val unpickler: Unpickler[CrossVersion] = new Unpickler[CrossVersion] {
+    val tag = implicitly[FastTypeTag[CrossVersion]]
+    def unpickle(tpe: String, reader: PReader): Any = {
+      reader.pushHints()
+      reader.hintTag(tag)
+      val tpeStr = reader.beginEntry()
+      val tpe = scala.pickling.FastTypeTag(tpeStr)
+      // sys.error(tpe.toString)
+      val result = tpe match {
+        case t if t == disabledTag => Disabled
+        case t if t == binaryTag   => binary
+        case t if t == fullTag     => full
+      }
+      reader.endEntry()
+      reader.popHints()
+      result
+    }
   }
 
   /** Cross-versions a module with the full version (typically the full Scala version). */

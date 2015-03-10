@@ -6,6 +6,7 @@ package sbt
 import java.net.URL
 
 import sbt.mavenint.SbtPomExtraProperties
+import sbt.serialization._
 
 final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String] = None, isChanging: Boolean = false, isTransitive: Boolean = true, isForce: Boolean = false, explicitArtifacts: Seq[Artifact] = Nil, exclusions: Seq[ExclusionRule] = Nil, extraAttributes: Map[String, String] = Map.empty, crossVersion: CrossVersion = CrossVersion.Disabled) {
   override def toString: String =
@@ -119,6 +120,8 @@ final case class ModuleID(organization: String, name: String, revision: String, 
   def jar() = artifacts(Artifact(name))
 }
 object ModuleID {
+  implicit val pickler: Pickler[ModuleID] with Unpickler[ModuleID] = PicklerUnpickler.generate[ModuleID]
+
   /** Prefixes all keys with `e:` if they are not already so prefixed. */
   def checkE(attributes: Seq[(String, String)]) =
     for ((key, value) <- attributes) yield if (key.startsWith("e:")) (key, value) else ("e:" + key, value)

@@ -1408,6 +1408,11 @@ object Classpaths {
               r.toString.lines foreach { log.warn(_) }
               log.trace(e)
               r
+            case e: OutOfMemoryError =>
+              val r = work(in)
+              log.warn("Update task has failed to cache the report due to OutOfMemoryError.")
+              log.trace(e)
+              r
           }
         }
       val f = if (skip && !force) skipWork else doWork
