@@ -27,7 +27,10 @@ object BasicCommands {
 
   def helpParser(s: State) =
     {
-      val h = (Help.empty /: s.definedCommands)(_ ++ _.help(s))
+      val h = (Help.empty /: s.definedCommands) { (a, b) ⇒
+        a ++
+          (try b.help(s) catch { case ex: Throwable ⇒ Help.empty })
+      }
       val helpCommands = h.detail.keySet
       val spacedArg = singleArgument(helpCommands).?
       applyEffect(spacedArg)(runHelp(s, h))
@@ -35,7 +38,12 @@ object BasicCommands {
 
   def runHelp(s: State, h: Help)(arg: Option[String]): State =
     {
-      val message = Help.message(h, arg)
+      val message = try
+        Help.message(h, arg)
+      catch {
+        case ex: Throwable ⇒
+          ex.toString
+      }
       System.out.println(message)
       s
     }
