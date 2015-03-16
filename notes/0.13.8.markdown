@@ -52,6 +52,7 @@
   [1881]: https://github.com/sbt/sbt/issues/1881
   [1899]: https://github.com/sbt/sbt/pull/1899
   [1902]: https://github.com/sbt/sbt/pull/1902
+  [1922]: https://github.com/sbt/sbt/pull/1922
 
 ### Changes with compatibility implications
 
@@ -70,6 +71,7 @@
 - Better abstration to track new kinds of dependencies for incremental compiler. [#1340][1340] by [@Duhemm][@Duhemm]
 - Source dependency uses `--depth 1` for git clone. [#1787][1787] by [@xuwei-k][@xuwei-k]
 - Facilitate nicer ways of declaring project settings. See below. [#1902][1902] by [@dwijnand][@dwijnand]
+- Add `-=` and `--=` for setings and keys, dual of `+=` and `++=`. [#1922][1922] by [@dwijnand][@dwijnand]
 
 ### Fixes
 
