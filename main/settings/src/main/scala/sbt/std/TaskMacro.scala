@@ -136,29 +136,29 @@ object TaskMacro {
   def taskAppend1Impl[T: c.WeakTypeTag, U: c.WeakTypeTag](c: Context)(v: c.Expr[U])(a: c.Expr[Append.Value[T, U]]): c.Expr[Setting[Task[T]]] =
     {
       val init = taskMacroImpl[U](c)(v)
-      val assign = appendMacroImpl(c)(init.tree, a.tree)(Append1InitName)
-      c.Expr[Setting[Task[T]]](assign)
+      val append = appendMacroImpl(c)(init.tree, a.tree)(Append1InitName)
+      c.Expr[Setting[Task[T]]](append)
     }
   /** Implementation of += macro for settings. */
   def settingAppend1Impl[T: c.WeakTypeTag, U: c.WeakTypeTag](c: Context)(v: c.Expr[U])(a: c.Expr[Append.Value[T, U]]): c.Expr[Setting[T]] =
     {
       val init = SettingMacro.settingMacroImpl[U](c)(v)
-      val assign = appendMacroImpl(c)(init.tree, a.tree)(Append1InitName)
-      c.Expr[Setting[T]](assign)
+      val append = appendMacroImpl(c)(init.tree, a.tree)(Append1InitName)
+      c.Expr[Setting[T]](append)
     }
   /** Implementation of ++= macro for tasks. */
   def taskAppendNImpl[T: c.WeakTypeTag, U: c.WeakTypeTag](c: Context)(vs: c.Expr[U])(a: c.Expr[Append.Values[T, U]]): c.Expr[Setting[Task[T]]] =
     {
       val init = taskMacroImpl[U](c)(vs)
-      val assign = appendMacroImpl(c)(init.tree, a.tree)(AppendNInitName)
-      c.Expr[Setting[Task[T]]](assign)
+      val append = appendMacroImpl(c)(init.tree, a.tree)(AppendNInitName)
+      c.Expr[Setting[Task[T]]](append)
     }
   /** Implementation of ++= macro for settings. */
   def settingAppendNImpl[T: c.WeakTypeTag, U: c.WeakTypeTag](c: Context)(vs: c.Expr[U])(a: c.Expr[Append.Values[T, U]]): c.Expr[Setting[T]] =
     {
       val init = SettingMacro.settingMacroImpl[U](c)(vs)
-      val assign = appendMacroImpl(c)(init.tree, a.tree)(AppendNInitName)
-      c.Expr[Setting[T]](assign)
+      val append = appendMacroImpl(c)(init.tree, a.tree)(AppendNInitName)
+      c.Expr[Setting[T]](append)
     }
 
   private[this] def appendMacroImpl(c: Context)(init: c.Tree, append: c.Tree)(newName: String): c.Tree =
