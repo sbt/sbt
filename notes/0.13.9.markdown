@@ -1,0 +1,11 @@
+
+  [@dwijnand]: http://github.com/dwijnand
+  [1922]: https://github.com/sbt/sbt/pull/1922
+
+### Fixes with compatibility implications
+
+### Improvements
+
+- Add `-=` and `--=` for settings and tasks, dual of `+=` and `++=`. [#1922][1922] by [@dwijnand][@dwijnand]
+
+### Bug fixes
