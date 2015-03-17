@@ -149,9 +149,12 @@ class AggressiveCompile(cacheFile: File) {
           // previous Analysis completely and start with empty Analysis object
           // that supports the particular value of the `nameHashing` flag.
           // Otherwise we'll be getting UnsupportedOperationExceptions
+          log.warn("Ignoring previous analysis due to incompatible nameHashing setting.")
           Analysis.empty(currentSetup.nameHashing)
         case Some(previous) if equiv.equiv(previous, currentSetup) => previousAnalysis
-        case _ => Incremental.prune(sourcesSet, previousAnalysis)
+        case _ =>
+          log.warn("Pruning sources from previous analysis, due to incompatible CompileSetup.")
+          Incremental.prune(sourcesSet, previousAnalysis)
       }
       IncrementalCompile(sourcesSet, entry, compile0, analysis, getAnalysis, output, log, incOptions)
     }
