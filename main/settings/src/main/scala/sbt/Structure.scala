@@ -79,8 +79,8 @@ sealed abstract class TaskKey[T] extends ScopedTaskable[T] with KeyedInitialize[
   def append1[V](v: Initialize[Task[V]], source: SourcePosition)(implicit a: Append.Value[T, V]): Setting[Task[T]] = make(v, source)(a.appendValue)
   def appendN[V](vs: Initialize[Task[V]], source: SourcePosition)(implicit a: Append.Values[T, V]): Setting[Task[T]] = make(vs, source)(a.appendValues)
 
-  def remove1[V](v: Initialize[Task[V]], source: SourcePosition)(implicit r: Remove.Value[T, V]): Setting[Task[T]] = make(v, source)(r.removeValue)
-  def removeN[V](vs: Initialize[Task[V]], source: SourcePosition)(implicit r: Remove.Values[T, V]): Setting[Task[T]] = make(vs, source)(r.removeValues)
+  final def remove1[V](v: Initialize[Task[V]], source: SourcePosition)(implicit r: Remove.Value[T, V]): Setting[Task[T]] = make(v, source)(r.removeValue)
+  final def removeN[V](vs: Initialize[Task[V]], source: SourcePosition)(implicit r: Remove.Values[T, V]): Setting[Task[T]] = make(vs, source)(r.removeValues)
 
   private[this] def make[S](other: Initialize[Task[S]], source: SourcePosition)(f: (T, S) => T): Setting[Task[T]] =
     set((this, other) { (a, b) => (a, b) map f.tupled }, source)
