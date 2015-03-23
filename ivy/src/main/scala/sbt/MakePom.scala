@@ -109,13 +109,15 @@ class MakePom(val log: Logger) {
     {
       if (moduleInfo.developers.nonEmpty) {
         <developers>
-          moduleInfo.developers.map{ developer: Developer =>
-            <developer>
-              <id>{ developer.id }</id>
-              <name>{ developer.name }</name>
-              <email>{ developer.email }</email>
-              <url>{ developer.url }</url>
-            </developer>
+          {
+            moduleInfo.developers.map { developer: Developer =>
+              <developer>
+                <id>{ developer.id }</id>
+                <name>{ developer.name }</name>
+                <email>{ developer.email }</email>
+                <url>{ developer.url }</url>
+              </developer>
+            }
           }
         </developers>
       } else NodeSeq.Empty
