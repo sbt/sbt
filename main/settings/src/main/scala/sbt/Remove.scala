@@ -13,7 +13,7 @@ object Remove {
   }
   sealed trait Sequence[A, -B, T] extends Value[A, T] with Values[A, B]
 
-  implicit def removeSeq[T, V <: T] = new Sequence[Seq[T], Seq[V], V] {
+  implicit def removeSeq[T, V <: T]: Sequence[Seq[T], Seq[V], V] = new Sequence[Seq[T], Seq[V], V] {
     def removeValue(a: Seq[T], b: V): Seq[T] = a filterNot b.==
     def removeValues(a: Seq[T], b: Seq[V]): Seq[T] = a diff b
   }
