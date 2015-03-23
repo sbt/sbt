@@ -12,7 +12,7 @@ import Sxr.sxr
 // but can be shared across the multi projects.
 def buildLevelSettings: Seq[Setting[_]] = Seq(
   organization in ThisBuild := "org.scala-sbt",
-  version in ThisBuild := "0.13.8"
+  version in ThisBuild := "0.13.9-SNAPSHOT"
 )
 
 def commonSettings: Seq[Setting[_]] = Seq(
