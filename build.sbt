@@ -55,10 +55,17 @@ lazy val bundledLauncherProj =
   (project in file("launch")).
   settings(minimalSettings:_*).
   settings(inConfig(Compile)(Transform.configSettings):_*).
+  settings(Release.launcherSettings(sbtLaunchJar):_*).
   enablePlugins(SbtLauncherPlugin).
   settings(
-    publish := {},
-    publishLocal := {}
+      name := "sbt-launch",
+      moduleName := "sbt-launch",
+      description := "sbt application launcher",
+      publishArtifact in packageSrc := false,
+      autoScalaLibrary := false,
+      publish := Release.deployLauncher.value,
+      publishLauncher := Release.deployLauncher.value,
+      packageBin in Compile := sbtLaunchJar.value
   )
 
 
@@ -601,7 +608,7 @@ def customCommands: Seq[Setting[_]] = Seq(
       "conscript-configs" ::
       "so compile" ::
       "so publishSigned" ::
-      "publishLauncher" ::
+      "bundledLauncherProj/publishLauncher" ::
       state
   },
   // stamp-version doesn't work with ++ or "so".
