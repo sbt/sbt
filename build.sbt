@@ -63,21 +63,15 @@ lazy val allPrecompiled: Project = (project in file("all-precompiled")).
 
 /* ** subproject declarations ** */
 
-// defines the Java interfaces through which the launcher and the launched application communicate
-lazy val launchInterfaceProj = (project in launchPath / "interface").
-  settings(minimalSettings ++ javaOnlySettings: _*).
-  settings(
-    name := "Launcher Interface"
-  )
 
 // the launcher.  Retrieves, loads, and runs applications based on a configuration file.
 lazy val launchProj = (project in launchPath).
-  dependsOn(ioProj % "test->test", interfaceProj % Test, launchInterfaceProj).
+  dependsOn(ioProj % "test->test", interfaceProj % Test).
   settings(testedBaseSettings: _*).
   settings(
     name := "Launcher",
-    libraryDependencies += ivy,
-    compile in Test <<= compile in Test dependsOn (publishLocal in interfaceProj, publishLocal in testSamples, publishLocal in launchInterfaceProj)
+    libraryDependencies ++= Seq(ivy, Dependencies.launcherInterface),
+    compile in Test <<= compile in Test dependsOn (publishLocal in interfaceProj, publishLocal in testSamples)
   ).
   settings(inConfig(Compile)(Transform.configSettings): _*).
   settings(inConfig(Compile)(Transform.transSourceSettings ++ Seq(
@@ -105,11 +99,11 @@ lazy val proguardedLauncherProj = (project in file("sbt-launch")).
 
 // used to test the retrieving and loading of an application: sample app is packaged and published to the local repository
 lazy val testSamples = (project in launchPath / "test-sample").
-  dependsOn(interfaceProj, launchInterfaceProj).
+  dependsOn(interfaceProj).
   settings(baseSettings ++ noPublishSettings: _*).
   settings(
     name := "Launch Test",
-    libraryDependencies += scalaCompiler.value
+    libraryDependencies ++= Seq(scalaCompiler.value, Dependencies.launcherInterface)
   )
 
 // defines Java structures used across Scala versions, such as the API structures and relationships extracted by
@@ -188,11 +182,11 @@ lazy val ioProj = (project in utilPath / "io").
 
 // Utilities related to reflection, managing Scala versions, and custom class loaders
 lazy val classpathProj = (project in utilPath / "classpath").
-  dependsOn(launchInterfaceProj, interfaceProj, ioProj).
+  dependsOn(interfaceProj, ioProj).
   settings(testedBaseSettings: _*).
   settings(
     name := "Classpath",
-    libraryDependencies += scalaCompiler.value
+    libraryDependencies ++= Seq(scalaCompiler.value,Dependencies.launcherInterface)
   )
 
 // Command line-related utilities.
@@ -258,20 +252,20 @@ lazy val logicProj = (project in utilPath / "logic").
 
 // Apache Ivy integration
 lazy val ivyProj = (project in file("ivy")).
-  dependsOn(interfaceProj, launchInterfaceProj, crossProj, logProj % "compile;test->test", ioProj % "compile;test->test", launchProj % "test->test", collectionProj).
+  dependsOn(interfaceProj, crossProj, logProj % "compile;test->test", ioProj % "compile;test->test", launchProj % "test->test", collectionProj).
   settings(baseSettings: _*).
   settings(
     name := "Ivy",
-    libraryDependencies ++= Seq(ivy, jsch, sbtSerialization),
+    libraryDependencies ++= Seq(ivy, jsch, sbtSerialization, launcherInterface),
     testExclusive)
 
 // Runner for uniform test interface
 lazy val testingProj = (project in file("testing")).
-  dependsOn(ioProj, classpathProj, logProj, launchInterfaceProj, testAgentProj).
+  dependsOn(ioProj, classpathProj, logProj, testAgentProj).
   settings(baseSettings: _*).
   settings(
     name := "Testing",
-    libraryDependencies += testInterface
+    libraryDependencies ++= Seq(testInterface,launcherInterface)
   )
 
 // Testing agent for running tests in a separate process.
@@ -366,12 +360,12 @@ lazy val compilePersistProj = (project in compilePath / "persist").
 
 // sbt-side interface to compiler.  Calls compiler-side interface reflectively
 lazy val compilerProj = (project in compilePath).
-  dependsOn(launchInterfaceProj, interfaceProj % "compile;test->test", logProj, ioProj, classpathProj, apiProj, classfileProj,
+  dependsOn(interfaceProj % "compile;test->test", logProj, ioProj, classpathProj, apiProj, classfileProj,
     logProj % "test->test", launchProj % "test->test").
   settings(testedBaseSettings: _*).
   settings(
     name := "Compile",
-    libraryDependencies += scalaCompiler.value % Test,
+    libraryDependencies ++= Seq(scalaCompiler.value % Test, launcherInterface),
     unmanagedJars in Test <<= (packageSrc in compileInterfaceProj in Compile).map(x => Seq(x).classpath)
   )
 
@@ -398,10 +392,11 @@ lazy val scriptedBaseProj = (project in scriptedPath / "base").
   )
 
 lazy val scriptedSbtProj = (project in scriptedPath / "sbt").
-  dependsOn (ioProj, logProj, processProj, scriptedBaseProj, launchInterfaceProj % "provided").
+  dependsOn (ioProj, logProj, processProj, scriptedBaseProj).
   settings(baseSettings: _*).
   settings(
-    name := "Scripted sbt"
+    name := "Scripted sbt",
+    libraryDependencies += launcherInterface % "provided"
   )
 
 lazy val scriptedPluginProj = (project in scriptedPath / "plugin").
@@ -423,10 +418,11 @@ lazy val actionsProj = (project in mainPath / "actions").
 
 // General command support and core commands not specific to a build system
 lazy val commandProj = (project in mainPath / "command").
-  dependsOn(interfaceProj, ioProj, launchInterfaceProj, logProj, completeProj, classpathProj, crossProj).
+  dependsOn(interfaceProj, ioProj, logProj, completeProj, classpathProj, crossProj).
   settings(testedBaseSettings: _*).
   settings(
-    name := "Command"
+    name := "Command",
+    libraryDependencies += launcherInterface
   )
 
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
@@ -441,11 +437,11 @@ lazy val mainSettingsProj = (project in mainPath / "settings").
 
 // The main integration project for sbt.  It brings all of the Projsystems together, configures them, and provides for overriding conventions.
 lazy val mainProj = (project in mainPath).
-  dependsOn (actionsProj, mainSettingsProj, interfaceProj, ioProj, ivyProj, launchInterfaceProj, logProj, logicProj, processProj, runProj, commandProj).
+  dependsOn (actionsProj, mainSettingsProj, interfaceProj, ioProj, ivyProj, logProj, logicProj, processProj, runProj, commandProj).
   settings(testedBaseSettings: _*).
   settings(
     name := "Main",
-    libraryDependencies ++= scalaXml.value
+    libraryDependencies ++= scalaXml.value ++ Seq(launcherInterface)
   )
 
 // Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
@@ -486,7 +482,7 @@ lazy val publishLauncher = TaskKey[Unit]("publish-launcher")
 
 lazy val myProvided = config("provided") intransitive
 
-def allProjects = Seq(launchInterfaceProj, launchProj, proguardedLauncherProj,
+def allProjects = Seq(launchProj, proguardedLauncherProj,
   testSamples, interfaceProj, apiProj,
   controlProj, collectionProj, applyMacroProj, processProj, ioProj, classpathProj, completeProj,
   logProj, relationProj, classfileProj, datatypeProj, crossProj, logicProj, ivyProj,
