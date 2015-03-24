@@ -19,6 +19,7 @@ object Dependencies {
   lazy val specs2 = "org.specs2" %% "specs2" % "2.3.11"
   lazy val junit = "junit" % "junit" % "4.11"
   lazy val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0-SNAPSHOT"
+  lazy val rawLauncher = "org.scala-sbt" % "launcher" % "1.0.0-SNAPSHOT"
 
   private def scala211Module(name: String, moduleVersion: String) =
     Def.setting {
