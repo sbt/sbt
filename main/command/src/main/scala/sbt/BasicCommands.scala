@@ -29,7 +29,7 @@ object BasicCommands {
     {
       val h = (Help.empty /: s.definedCommands) { (a, b) ⇒
         a ++
-          (try b.help(s) catch { case ex: Throwable ⇒ Help.empty })
+          (try b.help(s) catch { case ex: Throwable => Help.empty })
       }
       val helpCommands = h.detail.keySet
       val spacedArg = singleArgument(helpCommands).?
