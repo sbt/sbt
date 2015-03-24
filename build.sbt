@@ -22,6 +22,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
   componentID := None,
   crossPaths := false,
   resolvers += Resolver.typesafeIvyRepo("releases"),
+  resolvers += Resolver.sonatypeRepo("snapshots"),
   concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
