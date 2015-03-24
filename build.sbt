@@ -3,7 +3,6 @@ import Util._
 import Dependencies._
 import Licensed._
 import Scope.ThisScope
-import LaunchProguard.{ proguard, Proguard }
 import Scripted._
 import StringUtilities.normalize
 import Sxr.sxr
