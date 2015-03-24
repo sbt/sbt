@@ -42,13 +42,19 @@ sealed abstract class SettingKey[T] extends ScopedTaskable[T] with KeyedInitiali
   final def ++=[U](vs: U)(implicit a: Append.Values[T, U]): Setting[T] = macro std.TaskMacro.settingAppendNImpl[T, U]
   final def <+=[V](v: Initialize[V])(implicit a: Append.Value[T, V]): Setting[T] = macro std.TaskMacro.settingAppend1Position[T, V]
   final def <++=[V](vs: Initialize[V])(implicit a: Append.Values[T, V]): Setting[T] = macro std.TaskMacro.settingAppendNPosition[T, V]
+  final def -=[U](v: U)(implicit r: Remove.Value[T, U]): Setting[T] = macro std.TaskMacro.settingRemove1Impl[T, U]
+  final def --=[U](vs: U)(implicit r: Remove.Values[T, U]): Setting[T] = macro std.TaskMacro.settingRemoveNImpl[T, U]
   final def ~=(f: T => T): Setting[T] = macro std.TaskMacro.settingTransformPosition[T]
-  final def transform(f: T => T, source: SourcePosition): Setting[T] = set(scopedKey(f), source)
 
   final def append1[V](v: Initialize[V], source: SourcePosition)(implicit a: Append.Value[T, V]): Setting[T] = make(v, source)(a.appendValue)
   final def appendN[V](vs: Initialize[V], source: SourcePosition)(implicit a: Append.Values[T, V]): Setting[T] = make(vs, source)(a.appendValues)
 
-  protected[this] def make[S](other: Initialize[S], source: SourcePosition)(f: (T, S) => T): Setting[T] = this.set((this, other)(f), source)
+  final def remove1[V](v: Initialize[V], source: SourcePosition)(implicit r: Remove.Value[T, V]): Setting[T] = make(v, source)(r.removeValue)
+  final def removeN[V](vs: Initialize[V], source: SourcePosition)(implicit r: Remove.Values[T, V]): Setting[T] = make(vs, source)(r.removeValues)
+
+  final def transform(f: T => T, source: SourcePosition): Setting[T] = set(scopedKey(f), source)
+
+  protected[this] def make[S](other: Initialize[S], source: SourcePosition)(f: (T, S) => T): Setting[T] = set((this, other)(f), source)
 }
 
 /**
@@ -67,9 +73,14 @@ sealed abstract class TaskKey[T] extends ScopedTaskable[T] with KeyedInitialize[
   def ++=[U](vs: U)(implicit a: Append.Values[T, U]): Setting[Task[T]] = macro std.TaskMacro.taskAppendNImpl[T, U]
   def <+=[V](v: Initialize[Task[V]])(implicit a: Append.Value[T, V]): Setting[Task[T]] = macro std.TaskMacro.taskAppend1Position[T, V]
   def <++=[V](vs: Initialize[Task[V]])(implicit a: Append.Values[T, V]): Setting[Task[T]] = macro std.TaskMacro.taskAppendNPosition[T, V]
+  final def -=[U](v: U)(implicit r: Remove.Value[T, U]): Setting[Task[T]] = macro std.TaskMacro.taskRemove1Impl[T, U]
+  final def --=[U](vs: U)(implicit r: Remove.Values[T, U]): Setting[Task[T]] = macro std.TaskMacro.taskRemoveNImpl[T, U]
 
   def append1[V](v: Initialize[Task[V]], source: SourcePosition)(implicit a: Append.Value[T, V]): Setting[Task[T]] = make(v, source)(a.appendValue)
   def appendN[V](vs: Initialize[Task[V]], source: SourcePosition)(implicit a: Append.Values[T, V]): Setting[Task[T]] = make(vs, source)(a.appendValues)
+
+  final def remove1[V](v: Initialize[Task[V]], source: SourcePosition)(implicit r: Remove.Value[T, V]): Setting[Task[T]] = make(v, source)(r.removeValue)
+  final def removeN[V](vs: Initialize[Task[V]], source: SourcePosition)(implicit r: Remove.Values[T, V]): Setting[Task[T]] = make(vs, source)(r.removeValues)
 
   private[this] def make[S](other: Initialize[Task[S]], source: SourcePosition)(f: (T, S) => T): Setting[Task[T]] =
     set((this, other) { (a, b) => (a, b) map f.tupled }, source)

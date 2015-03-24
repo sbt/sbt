@@ -67,6 +67,8 @@ object TaskMacro {
   final val AssignInitName = "set"
   final val Append1InitName = "append1"
   final val AppendNInitName = "appendN"
+  final val Remove1InitName = "remove1"
+  final val RemoveNInitName = "removeN"
   final val TransformInitName = "transform"
   final val InputTaskCreateDynName = "createDyn"
   final val InputTaskCreateFreeName = "createFree"
@@ -136,29 +138,58 @@ object TaskMacro {
   def taskAppend1Impl[T: c.WeakTypeTag, U: c.WeakTypeTag](c: Context)(v: c.Expr[U])(a: c.Expr[Append.Value[T, U]]): c.Expr[Setting[Task[T]]] =
     {
       val init = taskMacroImpl[U](c)(v)
-      val assign = appendMacroImpl(c)(init.tree, a.tree)(Append1InitName)
-      c.Expr[Setting[Task[T]]](assign)
+      val append = appendMacroImpl(c)(init.tree, a.tree)(Append1InitName)
+      c.Expr[Setting[Task[T]]](append)
     }
   /** Implementation of += macro for settings. */
   def settingAppend1Impl[T: c.WeakTypeTag, U: c.WeakTypeTag](c: Context)(v: c.Expr[U])(a: c.Expr[Append.Value[T, U]]): c.Expr[Setting[T]] =
     {
       val init = SettingMacro.settingMacroImpl[U](c)(v)
-      val assign = appendMacroImpl(c)(init.tree, a.tree)(Append1InitName)
-      c.Expr[Setting[T]](assign)
+      val append = appendMacroImpl(c)(init.tree, a.tree)(Append1InitName)
+      c.Expr[Setting[T]](append)
     }
   /** Implementation of ++= macro for tasks. */
   def taskAppendNImpl[T: c.WeakTypeTag, U: c.WeakTypeTag](c: Context)(vs: c.Expr[U])(a: c.Expr[Append.Values[T, U]]): c.Expr[Setting[Task[T]]] =
     {
       val init = taskMacroImpl[U](c)(vs)
-      val assign = appendMacroImpl(c)(init.tree, a.tree)(AppendNInitName)
-      c.Expr[Setting[Task[T]]](assign)
+      val append = appendMacroImpl(c)(init.tree, a.tree)(AppendNInitName)
+      c.Expr[Setting[Task[T]]](append)
     }
   /** Implementation of ++= macro for settings. */
   def settingAppendNImpl[T: c.WeakTypeTag, U: c.WeakTypeTag](c: Context)(vs: c.Expr[U])(a: c.Expr[Append.Values[T, U]]): c.Expr[Setting[T]] =
     {
       val init = SettingMacro.settingMacroImpl[U](c)(vs)
-      val assign = appendMacroImpl(c)(init.tree, a.tree)(AppendNInitName)
-      c.Expr[Setting[T]](assign)
+      val append = appendMacroImpl(c)(init.tree, a.tree)(AppendNInitName)
+      c.Expr[Setting[T]](append)
+    }
+
+  /** Implementation of -= macro for tasks. */
+  def taskRemove1Impl[T: c.WeakTypeTag, U: c.WeakTypeTag](c: Context)(v: c.Expr[U])(r: c.Expr[Remove.Value[T, U]]): c.Expr[Setting[Task[T]]] =
+    {
+      val init = taskMacroImpl[U](c)(v)
+      val remove = removeMacroImpl(c)(init.tree, r.tree)(Remove1InitName)
+      c.Expr[Setting[Task[T]]](remove)
+    }
+  /** Implementation of -= macro for settings. */
+  def settingRemove1Impl[T: c.WeakTypeTag, U: c.WeakTypeTag](c: Context)(v: c.Expr[U])(r: c.Expr[Remove.Value[T, U]]): c.Expr[Setting[T]] =
+    {
+      val init = SettingMacro.settingMacroImpl[U](c)(v)
+      val remove = removeMacroImpl(c)(init.tree, r.tree)(Remove1InitName)
+      c.Expr[Setting[T]](remove)
+    }
+  /** Implementation of --= macro for tasks. */
+  def taskRemoveNImpl[T: c.WeakTypeTag, U: c.WeakTypeTag](c: Context)(vs: c.Expr[U])(r: c.Expr[Remove.Values[T, U]]): c.Expr[Setting[Task[T]]] =
+    {
+      val init = taskMacroImpl[U](c)(vs)
+      val remove = removeMacroImpl(c)(init.tree, r.tree)(RemoveNInitName)
+      c.Expr[Setting[Task[T]]](remove)
+    }
+  /** Implementation of --= macro for settings. */
+  def settingRemoveNImpl[T: c.WeakTypeTag, U: c.WeakTypeTag](c: Context)(vs: c.Expr[U])(r: c.Expr[Remove.Values[T, U]]): c.Expr[Setting[T]] =
+    {
+      val init = SettingMacro.settingMacroImpl[U](c)(vs)
+      val remove = removeMacroImpl(c)(init.tree, r.tree)(RemoveNInitName)
+      c.Expr[Setting[T]](remove)
     }
 
   private[this] def appendMacroImpl(c: Context)(init: c.Tree, append: c.Tree)(newName: String): c.Tree =
@@ -167,6 +198,15 @@ object TaskMacro {
       c.macroApplication match {
         case Apply(Apply(TypeApply(Select(preT, nmeT), targs), _), a) =>
           Apply(Apply(TypeApply(Select(preT, newTermName(newName).encodedName), targs), init :: sourcePosition(c).tree :: Nil), a)
+        case x => ContextUtil.unexpectedTree(x)
+      }
+    }
+  private[this] def removeMacroImpl(c: Context)(init: c.Tree, remove: c.Tree)(newName: String): c.Tree =
+    {
+      import c.universe.{ Apply, ApplyTag, newTermName, Select, SelectTag, TypeApply, TypeApplyTag }
+      c.macroApplication match {
+        case Apply(Apply(TypeApply(Select(preT, nmeT), targs), _), r) =>
+          Apply(Apply(TypeApply(Select(preT, newTermName(newName).encodedName), targs), init :: sourcePosition(c).tree :: Nil), r)
         case x => ContextUtil.unexpectedTree(x)
       }
     }
