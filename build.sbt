@@ -12,7 +12,7 @@ import Sxr.sxr
 // but can be shared across the multi projects.
 def buildLevelSettings: Seq[Setting[_]] = Seq(
   organization in ThisBuild := "org.scala-sbt",
-  version in ThisBuild := "0.13.8-SNAPSHOT"
+  version in ThisBuild := "0.13.9-SNAPSHOT"
 )
 
 def commonSettings: Seq[Setting[_]] = Seq(
@@ -522,7 +522,7 @@ def otherRootSettings = Seq(
   }
 ))
 lazy val docProjects: ScopeFilter = ScopeFilter(
-  inAnyProject -- inProjects(root, sbtProj, scriptedBaseProj, scriptedSbtProj, scriptedPluginProj, precompiled282, precompiled292, precompiled293),
+  inAnyProject -- inProjects(root, sbtProj, scriptedBaseProj, scriptedSbtProj, scriptedPluginProj, precompiled282, precompiled292, precompiled293, mavenResolverPluginProj),
   inConfigurations(Compile)
 )
 def fullDocSettings = Util.baseScalacOptions ++ Docs.settings ++ Sxr.settings ++ Seq(
