@@ -27,7 +27,7 @@ object BasicCommands {
 
   def helpParser(s: State) =
     {
-      val h = (Help.empty /: s.definedCommands) { (a, b) ⇒
+      val h = (Help.empty /: s.definedCommands) { (a, b) =>
         a ++
           (try b.help(s) catch { case ex: Throwable => Help.empty })
       }
@@ -41,7 +41,7 @@ object BasicCommands {
       val message = try
         Help.message(h, arg)
       catch {
-        case ex: Throwable ⇒
+        case ex: Throwable =>
           ex.toString
       }
       System.out.println(message)
