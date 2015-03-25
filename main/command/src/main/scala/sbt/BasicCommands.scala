@@ -13,6 +13,8 @@ import BasicKeys._
 
 import java.io.File
 
+import scala.util.control.NonFatal
+
 object BasicCommands {
   lazy val allBasicCommands = Seq(nop, ignore, help, completionsCommand, multi, ifLast, append, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, reboot, call, early, exit, continuous, history, shell, read, alias) ++ compatCommands
 
@@ -29,7 +31,7 @@ object BasicCommands {
     {
       val h = (Help.empty /: s.definedCommands) { (a, b) =>
         a ++
-          (try b.help(s) catch { case ex: Throwable => Help.empty })
+          (try b.help(s) catch { case NonFatal(ex) => Help.empty })
       }
       val helpCommands = h.detail.keySet
       val spacedArg = singleArgument(helpCommands).?
@@ -41,7 +43,7 @@ object BasicCommands {
       val message = try
         Help.message(h, arg)
       catch {
-        case ex: Throwable =>
+        case NonFatal(ex) =>
           ex.toString
       }
       System.out.println(message)
