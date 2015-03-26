@@ -1,0 +1,5 @@
+organization := "com.test"
+name := "maven-version-range-bug"
+version := "1.0.0-SNAPSHOT"
+scalaVersion := "2.11.6"
+libraryDependencies += "com.amazonaws" % "aws-java-sdk" % "1.7.8.1"
