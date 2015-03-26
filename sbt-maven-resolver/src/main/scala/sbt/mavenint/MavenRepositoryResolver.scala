@@ -20,7 +20,15 @@ import org.eclipse.aether.artifact.{ DefaultArtifact => AetherArtifact }
 import org.eclipse.aether.deployment.{ DeployRequest => AetherDeployRequest }
 import org.eclipse.aether.installation.{ InstallRequest => AetherInstallRequest }
 import org.eclipse.aether.metadata.{ DefaultMetadata, Metadata }
-import org.eclipse.aether.resolution.{ ArtifactDescriptorRequest => AetherDescriptorRequest, ArtifactDescriptorResult => AetherDescriptorResult, ArtifactRequest => AetherArtifactRequest, ArtifactResolutionException, MetadataRequest => AetherMetadataRequest }
+import org.eclipse.aether.resolution.{
+  ArtifactDescriptorRequest => AetherDescriptorRequest,
+  ArtifactDescriptorResult => AetherDescriptorResult,
+  ArtifactRequest => AetherArtifactRequest,
+  ArtifactResolutionException,
+  MetadataRequest => AetherMetadataRequest,
+  VersionRequest => AetherVersionRequest,
+  VersionRangeRequest => AetherVersionRangeRequest
+}
 import org.eclipse.aether.{ RepositorySystem, RepositorySystemSession }
 import sbt.ivyint.{ CustomMavenResolver, CustomRemoteMavenResolver }
 import sbt.mavenint.MavenRepositoryResolver.JarPackaging
@@ -67,6 +75,8 @@ abstract class MavenRepositoryResolver(settings: IvySettings) extends AbstractRe
   /** Inject necessary repositories into a descriptor request. */
   protected def addRepositories(request: AetherDescriptorRequest): AetherDescriptorRequest
   protected def addRepositories(request: AetherArtifactRequest): AetherArtifactRequest
+  protected def addRepositories(request: AetherVersionRequest): AetherVersionRequest
+  protected def addRepositories(request: AetherVersionRangeRequest): AetherVersionRangeRequest
 
   /** Actually publishes aether artifacts. */
   protected def publishArtifacts(artifacts: Seq[AetherArtifact]): Unit
@@ -105,29 +115,49 @@ abstract class MavenRepositoryResolver(settings: IvySettings) extends AbstractRe
   override def getDependency(dd: DependencyDescriptor, rd: ResolveData): ResolvedModuleRevision = {
     val context = IvyContext.pushNewCopyContext
     try {
+      val drid: ModuleRevisionId =
+        if (sbt.MakePom.isDependencyVersionRange(dd.getDependencyRevisionId.getRevision)) {
+          Message.debug(s"Got a dynamic revision, attempting to convert to real revision: ${dd.getDependencyRevisionId}")
+          val revision = sbt.MakePom.makeDependencyVersion(dd.getDependencyRevisionId.getRevision)
+          // TODO - Alter revision id to be maven-friendly first.
+          val coords =
+            s"${dd.getDependencyRevisionId.getOrganisation}:${aetherArtifactIdFromMrid(dd.getDependencyRevisionId)}:${revision}"
+          //val coords = aetherCoordsFromMrid(dd.getDependencyRevisionId)
+          Message.debug(s"Aether about to resolve version for [$coords]...")
+          val versionRequest = addRepositories(new AetherVersionRangeRequest().setArtifact(new AetherArtifact(coords, getArtifactProperties(dd.getDependencyRevisionId))))
+          val result = system.resolveVersionRange(session, versionRequest)
+          Message.debug(s"Version result = $result, from $getName")
+          if (result.getVersions.isEmpty) throw new MavenResolutionException(s"Did not find any versions for $dd")
+          ModuleRevisionId.newInstance(
+            dd.getDependencyRevisionId.getOrganisation,
+            dd.getDependencyRevisionId.getName,
+            result.getHighestVersion.toString,
+            dd.getExtraAttributes)
+        } else dd.getDependencyRevisionId
+
       // TODO - Check to see if we're asking for latest.* version, and if so, we should run a latest version query
       //        first and use that result to return the metadata/final module.
-      Message.debug(s"Requesting conf [${dd.getModuleConfigurations.mkString(",")}] from Aether module ${dd.getDependencyRevisionId} in resolver ${getName}")
+      Message.debug(s"Requesting conf [${dd.getModuleConfigurations.mkString(",")}] from Aether module ${drid} in resolver ${getName}")
       val request = new AetherDescriptorRequest()
-      val coords = aetherCoordsFromMrid(dd.getDependencyRevisionId)
+      val coords = aetherCoordsFromMrid(drid)
       Message.debug(s"Aether about to resolve [$coords]...")
-      request.setArtifact(new AetherArtifact(coords, getArtifactProperties(dd.getDependencyRevisionId)))
+      request.setArtifact(new AetherArtifact(coords, getArtifactProperties(drid)))
       addRepositories(request)
       val result = system.readArtifactDescriptor(session, request)
       val packaging = getPackagingFromPomProperties(result.getProperties)
       Message.debug(s"Aether resolved ${dd.getDependencyId} w/ packaging ${packaging}")
 
       // TODO - better pub date if we have no metadata.
-      val lastModifiedTime = getPublicationTime(dd.getDependencyRevisionId) getOrElse 0L
+      val lastModifiedTime = getPublicationTime(drid) getOrElse 0L
 
       // Construct a new Ivy module descriptor
       val desc: ModuleDescriptor = {
         // TODO - Better detection of snapshot and handling latest.integration/latest.snapshot
         val status =
-          if (dd.getDependencyRevisionId.getRevision.endsWith("-SNAPSHOT")) "integration"
+          if (drid.getRevision.endsWith("-SNAPSHOT")) "integration"
           else "release"
         val md =
-          new DefaultModuleDescriptor(dd.getDependencyRevisionId, status, null /* pubDate */ , false)
+          new DefaultModuleDescriptor(drid, status, null /* pubDate */ , false)
         //DefaultModuleDescriptor.newDefaultInstance(dd.getDependencyRevisionId)
         // Here we add the standard configurations
         for (config <- PomModuleDescriptorBuilder.MAVEN2_CONFIGURATIONS) {
@@ -136,7 +166,8 @@ abstract class MavenRepositoryResolver(settings: IvySettings) extends AbstractRe
 
         // Here we look into the artifacts specified from the dependency descriptor *and* those that are defaulted,
         // and append them to the appropriate configurations.
-        addArtifactsFromPom(dd, packaging, md, lastModifiedTime)
+        // TODO - Feed correct revision down here
+        addArtifactsFromPom(drid, dd, packaging, md, lastModifiedTime)
         // Here we add dependencies.
         addDependenciesFromAether(result, md)
         // Here we use pom.xml Dependency management section to create Ivy dependency mediators.
@@ -157,7 +188,7 @@ abstract class MavenRepositoryResolver(settings: IvySettings) extends AbstractRe
       }
 
       // Here we need to pretend we downloaded the pom.xml file
-      val pom = DefaultArtifact.newPomArtifact(dd.getDependencyRevisionId, new java.util.Date(lastModifiedTime))
+      val pom = DefaultArtifact.newPomArtifact(drid, new java.util.Date(lastModifiedTime))
       val madr = new MetadataArtifactDownloadReport(pom)
       madr.setSearched(true)
       madr.setDownloadStatus(DownloadStatus.SUCCESSFUL) // TODO - Figure this things out for this report.
@@ -223,13 +254,13 @@ abstract class MavenRepositoryResolver(settings: IvySettings) extends AbstractRe
   }
 
   /** Determines which artifacts are associated with this maven module and appends them to the descriptor. */
-  def addArtifactsFromPom(dd: DependencyDescriptor, packaging: String, md: DefaultModuleDescriptor, lastModifiedTime: Long): Unit = {
+  def addArtifactsFromPom(drid: ModuleRevisionId, dd: DependencyDescriptor, packaging: String, md: DefaultModuleDescriptor, lastModifiedTime: Long): Unit = {
     Message.debug(s"Calculating artifacts for ${dd.getDependencyId} w/ packaging $packaging")
     // Here we add in additional artifact requests, which ALLWAYS have to be explicit since
     // Maven/Aether doesn't include all known artifacts in a pom.xml
     // TODO - This does not appear to be working correctly.
-    if (dd.getAllDependencyArtifacts.isEmpty) {
-      val artifactId = s"${dd.getDependencyId.getName}-${dd.getDependencyRevisionId.getRevision}"
+    if (dd.getAllDependencyArtifacts.isEmpty) { 
+      val artifactId = s"${drid.getName}-${drid.getRevision}"
       // Add the artifacts we know about the module
       packaging match {
         case "pom" =>
