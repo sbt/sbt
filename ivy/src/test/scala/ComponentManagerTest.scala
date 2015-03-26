@@ -1,11 +1,17 @@
 package sbt
 
 import java.io.File
+import java.util.concurrent.Callable
 import org.specs2._
 import mutable.Specification
 import IO.{ createDirectory, delete, touch, withTemporaryDirectory }
 import org.apache.ivy.util.ChecksumHelper
 import IfMissing.Fail
+import xsbti.ComponentProvider
+
+// TODO - We need to re-enable this test.  Right now, we dont' have a "stub" launcher for this.
+//        This is testing something which uses a launcher interface, but was grabbing the underlying class directly
+//        when it really should, instead, be stubbing out the underyling class.
 
 object ComponentManagerTest extends Specification {
   val TestID = "manager-test"
@@ -82,7 +88,39 @@ object ComponentManagerTest extends Specification {
   private def withManagerHome[T](ivyHome: File)(f: ComponentManager => T): T =
     TestLogger { logger =>
       withTemporaryDirectory { temp =>
-        val mgr = new ComponentManager(xsbt.boot.Locks, new xsbt.boot.ComponentProvider(temp, true), Some(ivyHome), logger)
+        // The actual classes we'll use at runtime.
+        //val mgr = new ComponentManager(xsbt.boot.Locks, new xsbt.boot.ComponentProvider(temp, true), Some(ivyHome), logger)
+
+        // A stub component manager
+        object provider extends ComponentProvider {
+          override def componentLocation(id: String): File = new File(temp, id)
+          override def lockFile(): File = {
+            IO.createDirectory(temp)
+            new java.io.File(temp, "sbt.components.lock")
+          }
+          override def defineComponent(id: String, files: Array[File]): Unit = {
+            val location = componentLocation(id)
+            if (location.exists)
+              throw new RuntimeException(s"Cannot redefine component.  ID: $id, files: ${files.mkString(",")}")
+            else
+              IO.copy(files.map { f => f -> new java.io.File(location, f.getName) })
+          }
+          override def addToComponent(id: String, files: Array[File]): Boolean = {
+            val location = componentLocation(id)
+            IO.copy(files.map { f => f -> new java.io.File(location, f.getName) })
+            true
+          }
+          override def component(id: String): Array[File] =
+            Option(componentLocation(id).listFiles()).map(_.filter(_.isFile)).getOrElse(Array.empty)
+        }
+        // A stubbed locking API.
+        object locks extends xsbti.GlobalLock {
+          override def apply[T](lockFile: File, run: Callable[T]): T = {
+            // TODO - do we need to lock?
+            run.call()
+          }
+        }
+        val mgr = new ComponentManager(locks, provider, Some(ivyHome), logger)
         f(mgr)
       }
     }
