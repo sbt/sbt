@@ -1,7 +1,6 @@
 import sbt._
 import Keys._
 import Def.Initialize
-import LaunchProguard._
 
 object Scripted {
   def scriptedPath = file("scripted")
