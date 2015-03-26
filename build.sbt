@@ -3,7 +3,6 @@ import Util._
 import Dependencies._
 import Licensed._
 import Scope.ThisScope
-import LaunchProguard.{ proguard, Proguard }
 import Scripted._
 import StringUtilities.normalize
 import Sxr.sxr
@@ -22,6 +21,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
   componentID := None,
   crossPaths := false,
   resolvers += Resolver.typesafeIvyRepo("releases"),
+  resolvers += Resolver.sonatypeRepo("snapshots"),
   concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
@@ -46,11 +46,27 @@ lazy val root: Project = (project in file(".")).
   settings(minimalSettings ++ rootSettings: _*).
   settings(
     publish := {},
-    publishLocal := {
-      val p = (proguard in (proguardedLauncherProj, Proguard)).value
-      IO.copyFile(p, target.value / p.getName)
-    }
+    publishLocal := {}
   )
+
+// This is used to configure an sbt-launcher for this version of sbt.
+lazy val bundledLauncherProj =
+  (project in file("launch")).
+  settings(minimalSettings:_*).
+  settings(inConfig(Compile)(Transform.configSettings):_*).
+  settings(Release.launcherSettings(sbtLaunchJar):_*).
+  enablePlugins(SbtLauncherPlugin).
+  settings(
+      name := "sbt-launch",
+      moduleName := "sbt-launch",
+      description := "sbt application launcher",
+      publishArtifact in packageSrc := false,
+      autoScalaLibrary := false,
+      publish := Release.deployLauncher.value,
+      publishLauncher := Release.deployLauncher.value,
+      packageBin in Compile := sbtLaunchJar.value
+  )
+
 
 // This is used only for command aggregation
 lazy val allPrecompiled: Project = (project in file("all-precompiled")).
@@ -62,55 +78,6 @@ lazy val allPrecompiled: Project = (project in file("all-precompiled")).
   )
 
 /* ** subproject declarations ** */
-
-// defines the Java interfaces through which the launcher and the launched application communicate
-lazy val launchInterfaceProj = (project in launchPath / "interface").
-  settings(minimalSettings ++ javaOnlySettings: _*).
-  settings(
-    name := "Launcher Interface"
-  )
-
-// the launcher.  Retrieves, loads, and runs applications based on a configuration file.
-lazy val launchProj = (project in launchPath).
-  dependsOn(ioProj % "test->test", interfaceProj % Test, launchInterfaceProj).
-  settings(testedBaseSettings: _*).
-  settings(
-    name := "Launcher",
-    libraryDependencies += ivy,
-    compile in Test <<= compile in Test dependsOn (publishLocal in interfaceProj, publishLocal in testSamples, publishLocal in launchInterfaceProj)
-  ).
-  settings(inConfig(Compile)(Transform.configSettings): _*).
-  settings(inConfig(Compile)(Transform.transSourceSettings ++ Seq(
-    Transform.inputSourceDirectory <<= (sourceDirectory in crossProj) / "input_sources",
-    Transform.sourceProperties := Map("cross.package0" -> "xsbt", "cross.package1" -> "boot")
-  )): _*)
-
-// the proguarded launcher
-// the launcher is published with metadata so that the scripted plugin can pull it in
-// being proguarded, it shouldn't ever be on a classpath with other jars, however
-lazy val proguardedLauncherProj = (project in file("sbt-launch")).
-  configs(Proguard).
-  settings(minimalSettings ++ LaunchProguard.settings ++ LaunchProguard.specific(launchProj) ++
-    Release.launcherSettings(proguard in Proguard): _*).
-  settings(
-    name := "sbt-launch",
-    moduleName := "sbt-launch",
-    description := "sbt application launcher",
-    publishArtifact in packageSrc := false,
-    autoScalaLibrary := false,
-    publish <<= Seq(publish, Release.deployLauncher).dependOn,
-    publishLauncher <<= Release.deployLauncher,
-    packageBin in Compile <<= proguard in Proguard
-  )
-
-// used to test the retrieving and loading of an application: sample app is packaged and published to the local repository
-lazy val testSamples = (project in launchPath / "test-sample").
-  dependsOn(interfaceProj, launchInterfaceProj).
-  settings(baseSettings ++ noPublishSettings: _*).
-  settings(
-    name := "Launch Test",
-    libraryDependencies += scalaCompiler.value
-  )
 
 // defines Java structures used across Scala versions, such as the API structures and relationships extracted by
 //   the analysis compiler phases and passed back to sbt.  The API structures are defined in a simple
@@ -188,11 +155,11 @@ lazy val ioProj = (project in utilPath / "io").
 
 // Utilities related to reflection, managing Scala versions, and custom class loaders
 lazy val classpathProj = (project in utilPath / "classpath").
-  dependsOn(launchInterfaceProj, interfaceProj, ioProj).
+  dependsOn(interfaceProj, ioProj).
   settings(testedBaseSettings: _*).
   settings(
     name := "Classpath",
-    libraryDependencies += scalaCompiler.value
+    libraryDependencies ++= Seq(scalaCompiler.value,Dependencies.launcherInterface)
   )
 
 // Command line-related utilities.
@@ -258,20 +225,20 @@ lazy val logicProj = (project in utilPath / "logic").
 
 // Apache Ivy integration
 lazy val ivyProj = (project in file("ivy")).
-  dependsOn(interfaceProj, launchInterfaceProj, crossProj, logProj % "compile;test->test", ioProj % "compile;test->test", launchProj % "test->test", collectionProj).
+  dependsOn(interfaceProj, crossProj, logProj % "compile;test->test", ioProj % "compile;test->test", /*launchProj % "test->test",*/ collectionProj).
   settings(baseSettings: _*).
   settings(
     name := "Ivy",
-    libraryDependencies ++= Seq(ivy, jsch, sbtSerialization),
+    libraryDependencies ++= Seq(ivy, jsch, sbtSerialization, launcherInterface),
     testExclusive)
 
 // Runner for uniform test interface
 lazy val testingProj = (project in file("testing")).
-  dependsOn(ioProj, classpathProj, logProj, launchInterfaceProj, testAgentProj).
+  dependsOn(ioProj, classpathProj, logProj, testAgentProj).
   settings(baseSettings: _*).
   settings(
     name := "Testing",
-    libraryDependencies += testInterface
+    libraryDependencies ++= Seq(testInterface,launcherInterface)
   )
 
 // Testing agent for running tests in a separate process.
@@ -327,7 +294,7 @@ lazy val runProj = (project in file("run")).
 // Compiler-side interface to compiler that is compiled against the compiler being used either in advance or on the fly.
 //   Includes API and Analyzer phases that extract source API and relationships.
 lazy val compileInterfaceProj = (project in compilePath / "interface").
-  dependsOn(interfaceProj % "compile;test->test", ioProj % "test->test", logProj % "test->test", launchProj % "test->test", apiProj % "test->test").
+  dependsOn(interfaceProj % "compile;test->test", ioProj % "test->test", logProj % "test->test", /*launchProj % "test->test",*/ apiProj % "test->test").
   settings(baseSettings ++ precompiledSettings: _*).
   settings(
     name := "Compiler Interface",
@@ -366,12 +333,12 @@ lazy val compilePersistProj = (project in compilePath / "persist").
 
 // sbt-side interface to compiler.  Calls compiler-side interface reflectively
 lazy val compilerProj = (project in compilePath).
-  dependsOn(launchInterfaceProj, interfaceProj % "compile;test->test", logProj, ioProj, classpathProj, apiProj, classfileProj,
-    logProj % "test->test", launchProj % "test->test").
+  dependsOn(interfaceProj % "compile;test->test", logProj, ioProj, classpathProj, apiProj, classfileProj,
+    logProj % "test->test" /*,launchProj % "test->test" */).
   settings(testedBaseSettings: _*).
   settings(
     name := "Compile",
-    libraryDependencies += scalaCompiler.value % Test,
+    libraryDependencies ++= Seq(scalaCompiler.value % Test, launcherInterface),
     unmanagedJars in Test <<= (packageSrc in compileInterfaceProj in Compile).map(x => Seq(x).classpath)
   )
 
@@ -398,10 +365,11 @@ lazy val scriptedBaseProj = (project in scriptedPath / "base").
   )
 
 lazy val scriptedSbtProj = (project in scriptedPath / "sbt").
-  dependsOn (ioProj, logProj, processProj, scriptedBaseProj, launchInterfaceProj % "provided").
+  dependsOn (ioProj, logProj, processProj, scriptedBaseProj).
   settings(baseSettings: _*).
   settings(
-    name := "Scripted sbt"
+    name := "Scripted sbt",
+    libraryDependencies += launcherInterface % "provided"
   )
 
 lazy val scriptedPluginProj = (project in scriptedPath / "plugin").
@@ -423,10 +391,11 @@ lazy val actionsProj = (project in mainPath / "actions").
 
 // General command support and core commands not specific to a build system
 lazy val commandProj = (project in mainPath / "command").
-  dependsOn(interfaceProj, ioProj, launchInterfaceProj, logProj, completeProj, classpathProj, crossProj).
+  dependsOn(interfaceProj, ioProj, logProj, completeProj, classpathProj, crossProj).
   settings(testedBaseSettings: _*).
   settings(
-    name := "Command"
+    name := "Command",
+    libraryDependencies += launcherInterface
   )
 
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
@@ -441,11 +410,11 @@ lazy val mainSettingsProj = (project in mainPath / "settings").
 
 // The main integration project for sbt.  It brings all of the Projsystems together, configures them, and provides for overriding conventions.
 lazy val mainProj = (project in mainPath).
-  dependsOn (actionsProj, mainSettingsProj, interfaceProj, ioProj, ivyProj, launchInterfaceProj, logProj, logicProj, processProj, runProj, commandProj).
+  dependsOn (actionsProj, mainSettingsProj, interfaceProj, ioProj, ivyProj, logProj, logicProj, processProj, runProj, commandProj).
   settings(testedBaseSettings: _*).
   settings(
     name := "Main",
-    libraryDependencies ++= scalaXml.value
+    libraryDependencies ++= scalaXml.value ++ Seq(launcherInterface)
   )
 
 // Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
@@ -471,13 +440,13 @@ lazy val mavenResolverPluginProj = (project in file("sbt-maven-resolver")).
 def scriptedTask: Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => scriptedParser(dir)).parsed
   publishAll.value
-  doScripted((proguard in Proguard in proguardedLauncherProj).value, (fullClasspath in scriptedSbtProj in Test).value,
+  doScripted((sbtLaunchJar in bundledLauncherProj).value, (fullClasspath in scriptedSbtProj in Test).value,
     (scalaInstance in scriptedSbtProj).value, scriptedSource.value, result, scriptedPrescripted.value)
 }
 
 def scriptedUnpublishedTask: Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => scriptedParser(dir)).parsed
-  doScripted((proguard in Proguard in proguardedLauncherProj).value, (fullClasspath in scriptedSbtProj in Test).value,
+  doScripted((sbtLaunchJar in bundledLauncherProj).value, (fullClasspath in scriptedSbtProj in Test).value,
     (scalaInstance in scriptedSbtProj).value, scriptedSource.value, result, scriptedPrescripted.value)
 }
 
@@ -486,8 +455,7 @@ lazy val publishLauncher = TaskKey[Unit]("publish-launcher")
 
 lazy val myProvided = config("provided") intransitive
 
-def allProjects = Seq(launchInterfaceProj, launchProj, proguardedLauncherProj,
-  testSamples, interfaceProj, apiProj,
+def allProjects = Seq(interfaceProj, apiProj,
   controlProj, collectionProj, applyMacroProj, processProj, ioProj, classpathProj, completeProj,
   logProj, relationProj, classfileProj, datatypeProj, crossProj, logicProj, ivyProj,
   testingProj, testAgentProj, taskProj, stdTaskProj, cacheProj, trackingProj, runProj,
@@ -500,8 +468,8 @@ def projectsWithMyProvided = allProjects.map(p => p.copy(configurations = (p.con
 lazy val nonRoots = projectsWithMyProvided.map(p => LocalProject(p.id))
 
 def rootSettings = Release.releaseSettings ++ fullDocSettings ++
-  Util.publishPomSettings ++ otherRootSettings ++ Formatting.sbtFilesSettings ++
-  Transform.conscriptSettings(launchProj)
+  Util.publishPomSettings ++ otherRootSettings ++ Formatting.sbtFilesSettings /*++
+  Transform.conscriptSettings(launchProj)*/
 def otherRootSettings = Seq(
   Scripted.scriptedPrescripted := { _ => },
   Scripted.scripted <<= scriptedTask,
@@ -580,7 +548,7 @@ def precompiled(scalav: String): Project = Project(id = normalize("Precompiled "
 
 lazy val safeUnitTests = taskKey[Unit]("Known working tests (for both 2.10 and 2.11)")
 lazy val safeProjects: ScopeFilter = ScopeFilter(
-  inProjects(launchProj, mainSettingsProj, mainProj, ivyProj, completeProj,
+  inProjects(mainSettingsProj, mainProj, ivyProj, completeProj,
     actionsProj, classpathProj, collectionProj, compileIncrementalProj,
     logProj, runProj, stdTaskProj),
   inConfigurations(Test)
@@ -639,7 +607,7 @@ def customCommands: Seq[Setting[_]] = Seq(
       "conscript-configs" ::
       "so compile" ::
       "so publishSigned" ::
-      "publishLauncher" ::
+      "bundledLauncherProj/publishLauncher" ::
       state
   },
   // stamp-version doesn't work with ++ or "so".
