@@ -106,7 +106,7 @@ object Plugin extends sbt.Plugin {
 
           if (!force) {
             streams.log.info("\n")
-            streams.log.info("Note: The graph was estimated to be too big to display (> 15 nodes). Use `dependency-graph --force` to force graph display.")
+            streams.log.info("Note: The graph was estimated to be too big to display (> 15 nodes). Use `sbt 'dependency-graph --force'` (with the single quotes) to force graph display.")
           }
         }
       }
@@ -199,9 +199,14 @@ object Plugin extends sbt.Plugin {
       }
     }
 
+  // This is to support 0.13.8's InlineConfigurationWithExcludes while not forcing 0.13.8
+  type HasModule = {
+    val module: ModuleID
+  }
   def crossName(ivyModule: IvySbt#Module) =
     ivyModule.moduleSettings match {
       case ic: InlineConfiguration => ic.module.name
+      case hm: HasModule if hm.getClass.getName == "sbt.InlineConfigurationWithExcludes" => hm.module.name
       case _ =>
         throw new IllegalStateException("sbt-dependency-graph plugin currently only supports InlineConfiguration of ivy settings (the default in sbt)")
     }
