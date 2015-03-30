@@ -11,7 +11,7 @@ install it as a [global plugin] so that you can use it in any SBT project withou
 this, add the plugin dependency to `~/.sbt/0.13/plugins/plugins.sbt`:
 
 ```scala
-addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.7.4")
+addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.7.5")
 ```
 
 Then, apply the plugin's settings in `~/.sbt/0.13/global.sbt`, the [global build configuration]:
@@ -69,7 +69,7 @@ Standalone usage
 
 You can use the project without sbt as well by either depending on the library and calling
 `IvyGraphMLDependencies.saveAsGraphML(IvyGraphMLDependencies.graph(reportFile), outputFile)` or by just getting the binary
-and calling it like `scala sbt-dependency-graph-0.7.4.jar <ivy-report-xml-path> <target-path>`.
+and calling it like `scala sbt-dependency-graph-0.7.5.jar <ivy-report-xml-path> <target-path>`.
 
 Inner Workings
 --------------
