@@ -298,6 +298,8 @@ object IvyActions {
 
   private[this] def restrictedCopy(m: ModuleID, confs: Boolean) =
     ModuleID(m.organization, m.name, m.revision, crossVersion = m.crossVersion, extraAttributes = m.extraAttributes, configurations = if (confs) m.configurations else None)
+      .branch(m.branchName)
+
   private[this] def resolve(logging: UpdateLogging.Value)(ivy: Ivy, module: DefaultModuleDescriptor, defaultConf: String): (ResolveReport, Option[ResolveException]) =
     {
       val resolveOptions = new ResolveOptions
