@@ -2,9 +2,6 @@ $ exists dependencies/notreal.jar
 > update
 
 $ exists dependencies/notreal.jar
-$ exists dependencies/log4j-1.2.16.jar
-
 > set retrieveManagedSync := true
 > update
 -$ exists dependencies/notreal.jar
-$ exists dependencies/log4j-1.2.16.jar
