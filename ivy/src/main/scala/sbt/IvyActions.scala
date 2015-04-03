@@ -31,7 +31,9 @@ final class UpdateConfiguration(val retrieve: Option[RetrieveConfiguration], val
     logging: UpdateLogging.Value = this.logging): UpdateConfiguration =
     new UpdateConfiguration(retrieve, missingOk, logging)
 }
-final class RetrieveConfiguration(val retrieveDirectory: File, val outputPattern: String, val sync: Boolean)
+final class RetrieveConfiguration(val retrieveDirectory: File, val outputPattern: String, val sync: Boolean) {
+  def this(retrieveDirectory: File, outputPattern: String) = this(retrieveDirectory, outputPattern, false)
+}
 final case class MakePomConfiguration(file: File, moduleInfo: ModuleInfo, configurations: Option[Seq[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: XNode => XNode = n => n, filterRepositories: MavenRepository => Boolean = _ => true, allRepositories: Boolean, includeTypes: Set[String] = Set(Artifact.DefaultType, Artifact.PomType))
 // exclude is a map on a restricted ModuleID
 final case class GetClassifiersConfiguration(module: GetClassifiersModule, exclude: Map[ModuleID, Set[String]], configuration: UpdateConfiguration, ivyScala: Option[IvyScala])
