@@ -39,7 +39,7 @@ def baseSettings: Seq[Setting[_]] =
 def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
 
-lazy val root: Project = (project in file(".")).
+lazy val sbtRoot: Project = (project in file(".")).
   configs(Sxr.sxrConf).
   aggregate(nonRoots: _*).
   settings(
@@ -501,7 +501,7 @@ def otherRootSettings = Seq(
   }
 ))
 lazy val docProjects: ScopeFilter = ScopeFilter(
-  inAnyProject -- inProjects(root, sbtProj, scriptedBaseProj, scriptedSbtProj, scriptedPluginProj, precompiled282, precompiled292, precompiled293, mavenResolverPluginProj),
+  inAnyProject -- inProjects(sbtRoot, sbtProj, scriptedBaseProj, scriptedSbtProj, scriptedPluginProj, precompiled282, precompiled292, precompiled293, mavenResolverPluginProj),
   inConfigurations(Compile)
 )
 def fullDocSettings = Util.baseScalacOptions ++ Docs.settings ++ Sxr.settings ++ Seq(
