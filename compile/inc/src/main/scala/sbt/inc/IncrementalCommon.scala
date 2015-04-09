@@ -196,7 +196,7 @@ private[inc] abstract class IncrementalCommon(log: Logger, options: IncOptions) 
       checkAbsolute(srcChanges.added.toList)
       log.debug(
         "\nInitial source changes: \n\tremoved:" + srcChanges.removed + "\n\tadded: " + srcChanges.added + "\n\tmodified: " + srcChanges.changed +
-          "\nRemoved products: " + changes.removedProducts +
+          "\nInvalidated products: " + changes.removedProducts +
           "\nExternal API changes: " + changes.external +
           "\nModified binary dependencies: " + changes.binaryDeps +
           "\nInitial directly invalidated sources: " + srcDirect +
