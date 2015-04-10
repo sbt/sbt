@@ -316,6 +316,7 @@ object Keys {
   val projectDescriptors = TaskKey[Map[ModuleRevisionId, ModuleDescriptor]]("project-descriptors", "Project dependency map for the inter-project resolver.", DTask)
   val autoUpdate = SettingKey[Boolean]("auto-update", "<unimplemented>", Invisible)
   val retrieveManaged = SettingKey[Boolean]("retrieve-managed", "If true, enables retrieving dependencies to the current build.  Otherwise, dependencies are used directly from the cache.", BSetting)
+  val retrieveManagedSync = SettingKey[Boolean]("retrieve-managed-sync", "If true, enables synchronizing the dependencies retrieved to the current build by removed unneeded files.", BSetting)
   val managedDirectory = SettingKey[File]("managed-directory", "Directory to which managed dependencies are retrieved.", BSetting)
   val classpathTypes = SettingKey[Set[String]]("classpath-types", "Artifact types that are included on the classpath.", BSetting)
   val publishArtifact = SettingKey[Boolean]("publish-artifact", "Enables (true) or disables (false) publishing an artifact.", AMinusSetting)

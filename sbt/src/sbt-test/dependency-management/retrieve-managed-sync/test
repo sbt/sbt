@@ -1,0 +1,7 @@
+$ exists dependencies/notreal.jar
+> update
+
+$ exists dependencies/notreal.jar
+> set retrieveManagedSync := true
+> update
+-$ exists dependencies/notreal.jar
