@@ -259,7 +259,7 @@ abstract class MavenRepositoryResolver(settings: IvySettings) extends AbstractRe
     // Here we add in additional artifact requests, which ALLWAYS have to be explicit since
     // Maven/Aether doesn't include all known artifacts in a pom.xml
     // TODO - This does not appear to be working correctly.
-    if (dd.getAllDependencyArtifacts.isEmpty) { 
+    if (dd.getAllDependencyArtifacts.isEmpty) {
       val artifactId = s"${drid.getName}-${drid.getRevision}"
       // Add the artifacts we know about the module
       packaging match {
