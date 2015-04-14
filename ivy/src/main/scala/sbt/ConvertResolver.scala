@@ -253,7 +253,7 @@ private[sbt] object ConvertResolver {
           if (totalLength > 0) {
             progress.setTotalLength(totalLength);
           }
-          FileUtil.copy(source, new java.io.File(url.toURI), progress)
+          FileUtil.copy(source, new java.io.File(url.toURI), progress, overwrite)
         } catch {
           case ex: IOException =>
             fireTransferError(ex)
