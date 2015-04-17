@@ -566,17 +566,19 @@ object Defaults extends BuildCommon {
 
   def selectedFilter(args: Seq[String]): Seq[String => Boolean] =
     {
-      val (excludeArgs, includeArgs) = args.partition(s => s.startsWith("-"))
+      def matches(nfs: Seq[NameFilter], s: String) = nfs.exists(_.accept(s))
+
+      val (excludeArgs, includeArgs) = args.partition(_.startsWith("-"))
 
       val includeFilters = includeArgs map GlobFilter.apply
       val excludeFilters = excludeArgs.map(_.substring(1)).map(GlobFilter.apply)
 
-      if (includeFilters.isEmpty && excludeArgs.isEmpty)
+      if (includeFilters.isEmpty && excludeArgs.isEmpty) {
         Seq(const(true))
-      else if (includeFilters.isEmpty) {
-        excludeFilters.map { f => (s: String) => !f.accept(s) }
+      } else if (includeFilters.isEmpty) {
+        Seq({ (s: String) => !matches(excludeFilters, s) })
       } else {
-        includeFilters.map { f => (s: String) => (f.accept(s) && !excludeFilters.exists(x => x.accept(s))) }
+        includeFilters.map { f => (s: String) => (f.accept(s) && !matches(excludeFilters, s)) }
       }
     }
   def detectTests: Initialize[Task[Seq[TestDefinition]]] = (loadedTestFrameworks, compile, streams) map { (frameworkMap, analysis, s) =>

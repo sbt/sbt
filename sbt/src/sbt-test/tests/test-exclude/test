@@ -53,3 +53,9 @@ $ delete target/Test2.run
 > test-only -Test*
 -$ exists target/Test1.run
 -$ exists target/Test2.run
+
+
+# with only glob exclusion
+> test-only -T*1 -T*2
+-$ exists target/Test1.run
+-$ exists target/Test2.run

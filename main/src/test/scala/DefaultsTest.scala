@@ -5,13 +5,13 @@ import java.io._
 import org.specs2.mutable.Specification
 
 object DefaultsTest extends Specification {
+  private def assertFiltered(filter: List[String], expected: Map[String, Boolean]) = {
+    val actual = expected.map(t => (t._1, Defaults.selectedFilter(filter).exists(fn => fn(t._1))))
+
+    actual must be equalTo (expected)
+  }
+
   "`selectedFilter`" should {
-    def assertFiltered(filter: List[String], expected: Map[String, Boolean]) = {
-      val actual = expected.map(t => (t._1, Defaults.selectedFilter(filter).exists(fn => fn(t._1))))
-
-      actual must be equalTo (expected)
-    }
-
     "return all tests for an empty list" in {
       assertFiltered(List(), Map("Test1" -> true, "Test2" -> true))
     }
@@ -38,6 +38,14 @@ object DefaultsTest extends Specification {
 
     "cope with multiple filters" in {
       assertFiltered(List("T*1", "T*2", "-F*"), Map("Test1" -> true, "Test2" -> true, "Foo" -> false))
+    }
+
+    "cope with multiple exclusion filters, no includes" in {
+      assertFiltered(List("-A*", "-F*"), Map("Test1" -> true, "Test2" -> true, "AAA" -> false, "Foo" -> false))
+    }
+
+    "cope with multiple exclusion filters with includes" in {
+      assertFiltered(List("T*", "-T*1", "-T*2"), Map("Test1" -> false, "Test2" -> false, "Test3" -> true))
     }
   }
 
