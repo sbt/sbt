@@ -7,4 +7,4 @@
 
 ### Fixes
 
-- Correct incermental compile debug message for invalidated products [#1961][1961] by [@jroper][@jroper]
+- Correct incremental compile debug message for invalidated products [#1961][1961] by [@jroper][@jroper]
