@@ -21,7 +21,7 @@ def buildLevelSettings: Seq[Setting[_]] = Seq(
 )
 
 def commonSettings: Seq[Setting[_]] = Seq(
-  scalaVersion := "2.10.4",
+  scalaVersion := "2.10.5",
   publishArtifact in packageDoc := false,
   publishMavenStyle := false,
   componentID := None,
@@ -603,14 +603,14 @@ def customCommands: Seq[Setting[_]] = Seq(
   },
   /** There are several complications with sbt's build.
    * First is the fact that interface project is a Java-only project
-   * that uses source generator from datatype subproject in Scala 2.10.4,
+   * that uses source generator from datatype subproject in Scala 2.10.5,
    * which is depended on by Scala 2.8.2, Scala 2.9.2, and Scala 2.9.3 precompiled project. 
    *
-   * Second is the fact that sbt project (currently using Scala 2.10.4) depends on
+   * Second is the fact that sbt project (currently using Scala 2.10.5) depends on
    * the precompiled projects (that uses Scala 2.8.2 etc.)
    * 
    * Finally, there's the fact that all subprojects are released with crossPaths
-   * turned off for the sbt's Scala version 2.10.4, but some of them are also
+   * turned off for the sbt's Scala version 2.10.5, but some of them are also
    * cross published against 2.11.1 with crossPaths turned on.
    *
    * Because of the way ++ (and its improved version wow) is implemented
