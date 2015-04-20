@@ -43,4 +43,5 @@ $ copy-file changes/libDeps.sbt library/build.sbt
 > library/publishM2
 
 # should succeed now that the dependency is there
+$ sleep 1000
 > main/compile
