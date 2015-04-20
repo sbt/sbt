@@ -11,7 +11,12 @@ import Sxr.sxr
 // but can be shared across the multi projects.
 def buildLevelSettings: Seq[Setting[_]] = Seq(
   organization in ThisBuild := "org.scala-sbt",
-  version in ThisBuild := "0.13.9-SNAPSHOT"
+  version in ThisBuild := "0.13.9-SNAPSHOT",
+  // bintrayOrganization in ThisBuild := None,
+  // bintrayRepository in ThisBuild := "test-test-test",
+  bintrayOrganization in ThisBuild := Some("sbt"),
+  bintrayRepository in ThisBuild := "ivy-releases",
+  bintrayPackage in ThisBuild := "sbt"
 )
 
 def commonSettings: Seq[Setting[_]] = Seq(
@@ -26,7 +31,9 @@ def commonSettings: Seq[Setting[_]] = Seq(
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
   incOptions := incOptions.value.withNameHashing(true),
-  crossScalaVersions := Seq(scala210)
+  crossScalaVersions := Seq(scala210),
+  bintrayPackage := (bintrayPackage in ThisBuild).value,
+  bintrayRepository := (bintrayRepository in ThisBuild).value
 )
 
 def minimalSettings: Seq[Setting[_]] =
@@ -478,7 +485,7 @@ def allProjects = Seq(interfaceProj, apiProj,
 def projectsWithMyProvided = allProjects.map(p => p.copy(configurations = (p.configurations.filter(_ != Provided)) :+ myProvided))
 lazy val nonRoots = projectsWithMyProvided.map(p => LocalProject(p.id))
 
-def rootSettings = Release.releaseSettings ++ fullDocSettings ++
+def rootSettings = fullDocSettings ++
   Util.publishPomSettings ++ otherRootSettings ++ Formatting.sbtFilesSettings /*++
   Transform.conscriptSettings(launchProj)*/
 def otherRootSettings = Seq(
