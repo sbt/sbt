@@ -88,7 +88,7 @@ object Transform {
   def read(file: File): Option[String] = try { Some(IO.read(file)) } catch { case _: java.io.IOException => None }
   lazy val Property = """\$\{\{([\w.-]+)\}\}""".r
 
-  def repositories(isSnapshot: Boolean) = Releases :: (if (isSnapshot) Snapshots :: SonatypeSnapshots ::  Nil else Nil)
+  def repositories(isSnapshot: Boolean) = Releases :: (if (isSnapshot) Snapshots :: SonatypeSnapshots :: Nil else Nil)
   lazy val Releases = typesafeRepository("releases")
   lazy val Snapshots = typesafeRepository("snapshots")
   lazy val SonatypeSnapshots = sonatypeRepsoitory("snapshots")
