@@ -16,7 +16,8 @@ def buildLevelSettings: Seq[Setting[_]] = Seq(
   // bintrayRepository in ThisBuild := "test-test-test",
   bintrayOrganization in ThisBuild := Some("sbt"),
   bintrayRepository in ThisBuild := s"ivy-${(publishStatus in ThisBuild).value}",
-  bintrayPackage in ThisBuild := "sbt"
+  bintrayPackage in ThisBuild := "sbt",
+  bintrayReleaseOnPublish in ThisBuild := false
 )
 
 def commonSettings: Seq[Setting[_]] = Seq(
@@ -638,6 +639,7 @@ def customCommands: Seq[Setting[_]] = Seq(
       "allPrecompiled/publish" ::
       "compile" ::
       "publish" ::
+      "bintrayRelease" ::
       state
   }
 )
