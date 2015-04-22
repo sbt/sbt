@@ -15,7 +15,7 @@ def buildLevelSettings: Seq[Setting[_]] = Seq(
   // bintrayOrganization in ThisBuild := None,
   // bintrayRepository in ThisBuild := "test-test-test",
   bintrayOrganization in ThisBuild := Some("sbt"),
-  bintrayRepository in ThisBuild := "ivy-releases",
+  bintrayRepository in ThisBuild := s"ivy-${(publishStatus in ThisBuild).value}",
   bintrayPackage in ThisBuild := "sbt"
 )
 
