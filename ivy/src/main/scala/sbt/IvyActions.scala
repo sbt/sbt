@@ -31,8 +31,9 @@ final class UpdateConfiguration(val retrieve: Option[RetrieveConfiguration], val
     logging: UpdateLogging.Value = this.logging): UpdateConfiguration =
     new UpdateConfiguration(retrieve, missingOk, logging)
 }
-final class RetrieveConfiguration(val retrieveDirectory: File, val outputPattern: String, val sync: Boolean) {
-  def this(retrieveDirectory: File, outputPattern: String) = this(retrieveDirectory, outputPattern, false)
+final class RetrieveConfiguration(val retrieveDirectory: File, val outputPattern: String, val sync: Boolean, val configurationsToRetrieve: Option[Set[Configuration]]) {
+  def this(retrieveDirectory: File, outputPattern: String) = this(retrieveDirectory, outputPattern, false, None)
+  def this(retrieveDirectory: File, outputPattern: String, sync: Boolean) = this(retrieveDirectory, outputPattern, sync, None)
 }
 final case class MakePomConfiguration(file: File, moduleInfo: ModuleInfo, configurations: Option[Seq[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: XNode => XNode = n => n, filterRepositories: MavenRepository => Boolean = _ => true, allRepositories: Boolean, includeTypes: Set[String] = Set(Artifact.DefaultType, Artifact.PomType))
 // exclude is a map on a restricted ModuleID
@@ -295,16 +296,22 @@ object IvyActions {
       (resolveReport, err)
     }
   private def retrieve(log: Logger, ivy: Ivy, report: UpdateReport, config: RetrieveConfiguration): UpdateReport =
-    retrieve(log, ivy, report, config.retrieveDirectory, config.outputPattern, config.sync)
+    retrieve(log, ivy, report, config.retrieveDirectory, config.outputPattern, config.sync, config.configurationsToRetrieve)
 
-  private def retrieve(log: Logger, ivy: Ivy, report: UpdateReport, base: File, pattern: String, sync: Boolean): UpdateReport =
+  private def retrieve(log: Logger, ivy: Ivy, report: UpdateReport, base: File, pattern: String, sync: Boolean, configurationsToRetrieve: Option[Set[Configuration]]): UpdateReport =
     {
+      val configurationNames = configurationsToRetrieve match {
+        case None          => None
+        case Some(configs) => Some(configs.map(_.name))
+      }
       val existingFiles = PathFinder(base).***.get filterNot { _.isDirectory }
       val toCopy = new collection.mutable.HashSet[(File, File)]
       val retReport = report retrieve { (conf, mid, art, cached) =>
-        val to = retrieveTarget(conf, mid, art, base, pattern)
-        toCopy += ((cached, to))
-        to
+        configurationNames match {
+          case None                       => performRetrieve(conf, mid, art, base, pattern, cached, toCopy)
+          case Some(names) if names(conf) => performRetrieve(conf, mid, art, base, pattern, cached, toCopy)
+          case _                          => cached
+        }
       }
       IO.copy(toCopy)
       val resolvedFiles = toCopy.map(_._2)
@@ -318,6 +325,13 @@ object IvyActions {
 
       retReport
     }
+
+  private def performRetrieve(conf: String, mid: ModuleID, art: Artifact, base: File, pattern: String, cached: File, toCopy: collection.mutable.HashSet[(File, File)]): File = {
+    val to = retrieveTarget(conf, mid, art, base, pattern)
+    toCopy += ((cached, to))
+    to
+  }
+
   private def retrieveTarget(conf: String, mid: ModuleID, art: Artifact, base: File, pattern: String): File =
     new File(base, substitute(conf, mid, art, pattern))
 
