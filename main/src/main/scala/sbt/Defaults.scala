@@ -100,6 +100,7 @@ object Defaults extends BuildCommon {
       exportJars :== false,
       retrieveManaged :== false,
       retrieveManagedSync :== false,
+      configurationsToRetrieve :== None,
       scalaOrganization :== ScalaArtifacts.Organization,
       sbtResolver := { if (sbtVersion.value endsWith "-SNAPSHOT") Classpaths.typesafeSnapshots else Classpaths.typesafeReleases },
       crossVersion :== CrossVersion.Disabled,
@@ -1136,7 +1137,7 @@ object Classpaths {
     projectDescriptors <<= depMap,
     updateConfiguration := new UpdateConfiguration(retrieveConfiguration.value, false, ivyLoggingLevel.value),
     updateOptions := (updateOptions in Global).value,
-    retrieveConfiguration := { if (retrieveManaged.value) Some(new RetrieveConfiguration(managedDirectory.value, retrievePattern.value, retrieveManagedSync.value)) else None },
+    retrieveConfiguration := { if (retrieveManaged.value) Some(new RetrieveConfiguration(managedDirectory.value, retrievePattern.value, retrieveManagedSync.value, configurationsToRetrieve.value)) else None },
     ivyConfiguration <<= mkIvyConfiguration,
     ivyConfigurations := {
       val confs = thisProject.value.configurations

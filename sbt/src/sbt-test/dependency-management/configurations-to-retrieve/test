@@ -1,0 +1,8 @@
+> update
+$ exists dependencies/compile
+$ absent dependencies/compile-internal
+$ absent dependencies/runtime
+$ absent dependencies/runtime-internal
+$ absent dependencies/scala-tool
+$ absent dependencies/test
+$ absent dependencies/test-internal
