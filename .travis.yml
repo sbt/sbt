@@ -42,7 +42,8 @@ notifications:
     - joshua.suereth@typesafe.com
 
 script:
-  - sbt -J-XX:ReservedCodeCacheSize=128m "$SCRIPTED_TEST"
+  - sbt ";publishLocal;project bundledLauncherProj;publishLocal;project precompiled-2_9_2;publishLocal;project precompiled-2_8_2;publishLocal;project precompiled-2_9_3;publishLocal"     
+  - sbt -J-XX:ReservedCodeCacheSize=128m -Dsbt.version=0.13.9-SNAPSHOT "$SCRIPTED_TEST"
 
   # Tricks to avoid unnecessary cache updates
   - find $HOME/.sbt -name "*.lock" | xargs rm
