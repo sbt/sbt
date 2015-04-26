@@ -124,6 +124,12 @@ $ShowCommand <task>
     |$InspectCommand definitions <key>
     |
     |	Displays the scopes in which `key` is defined.
+    |
+    |$InspectCommand actual <key>
+    |
+    |	Displays the actual dependencies used by `key`.
+    |	This is useful because delegation means that a dependency can come from a scope other than the requested one.
+    |	Using `inspect actual` will show exactly which scope is providing a value for a setting.
   """.stripMargin.trim
 
   val SetCommand = "set"
