@@ -317,6 +317,7 @@ object Keys {
   val autoUpdate = SettingKey[Boolean]("auto-update", "<unimplemented>", Invisible)
   val retrieveManaged = SettingKey[Boolean]("retrieve-managed", "If true, enables retrieving dependencies to the current build.  Otherwise, dependencies are used directly from the cache.", BSetting)
   val retrieveManagedSync = SettingKey[Boolean]("retrieve-managed-sync", "If true, enables synchronizing the dependencies retrieved to the current build by removed unneeded files.", BSetting)
+  val configurationsToRetrieve = SettingKey[Option[Set[Configuration]]]("configurations-to-retrieve", "An optional set of configurations from which to retrieve dependencies if retrieveManaged is set to true", BSetting)
   val managedDirectory = SettingKey[File]("managed-directory", "Directory to which managed dependencies are retrieved.", BSetting)
   val classpathTypes = SettingKey[Set[String]]("classpath-types", "Artifact types that are included on the classpath.", BSetting)
   val publishArtifact = SettingKey[Boolean]("publish-artifact", "Enables (true) or disables (false) publishing an artifact.", AMinusSetting)
