@@ -95,39 +95,42 @@ $ShowCommand <task>
 
   val InspectCommand = "inspect"
   val inspectBrief = (InspectCommand + " [uses|tree|definitions] <key>", "Prints the value for 'key', the defining scope, delegates, related definitions, and dependencies.")
-  val inspectDetailed =
-    InspectCommand + """ <key>
-
-	For a plain setting, the value bound to the key argument is displayed using its toString method.
-	Otherwise, the type of task ("Task" or "Input task") is displayed.
-
-	"Dependencies" shows the settings that this setting depends on.
-
-	"Reverse dependencies" shows the settings that depend on this setting.
-
-	When a key is resolved to a value, it may not actually be defined in the requested scope.
-	In this case, there is a defined search sequence.
-	"Delegates" shows the scopes that are searched for the key.
-	"Provided by" shows the scope that contained the value returned for the key.
-
-	"Related" shows all of the scopes in which the key is defined.
-
-""" +
-      InspectCommand + """ tree <key>
-
-	Displays `key` and its dependencies in a tree structure.
-	For settings, the value bound to the setting is displayed and for tasks, the type of the task is shown.
-
-""" +
-      InspectCommand + """ uses <key>
-
-	Displays the settings and tasks that directly depend on `key`.
-
-""" +
-      InspectCommand + """ definitions <key>
-
-	Displays the scopes in which `key` is defined.
-"""
+  val inspectDetailed = s"""
+    |$InspectCommand <key>
+    |
+    |	For a plain setting, the value bound to the key argument is displayed using its toString method.
+    |	Otherwise, the type of task ("Task" or "Input task") is displayed.
+    |
+    |	"Dependencies" shows the settings that this setting depends on.
+    |
+    |	"Reverse dependencies" shows the settings that depend on this setting.
+    |
+    |	When a key is resolved to a value, it may not actually be defined in the requested scope.
+    |	In this case, there is a defined search sequence.
+    |	"Delegates" shows the scopes that are searched for the key.
+    |	"Provided by" shows the scope that contained the value returned for the key.
+    |
+    |	"Related" shows all of the scopes in which the key is defined.
+    |
+    |$InspectCommand tree <key>
+    |
+    |	Displays `key` and its dependencies in a tree structure.
+    |	For settings, the value bound to the setting is displayed and for tasks, the type of the task is shown.
+    |
+    |$InspectCommand uses <key>
+    |
+    |	Displays the settings and tasks that directly depend on `key`.
+    |
+    |$InspectCommand definitions <key>
+    |
+    |	Displays the scopes in which `key` is defined.
+    |
+    |$InspectCommand actual <key>
+    |
+    |	Displays the actual dependencies used by `key`.
+    |	This is useful because delegation means that a dependency can come from a scope other than the requested one.
+    |	Using `inspect actual` will show exactly which scope is providing a value for a setting.
+  """.stripMargin.trim
 
   val SetCommand = "set"
   val setBrief = (s"$SetCommand [every] <setting>", "Evaluates a Setting and applies it to the current project.")
