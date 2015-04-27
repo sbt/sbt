@@ -592,6 +592,8 @@ trait ProjectExtra {
 
   implicit def richTaskSessionVar[T](init: Initialize[Task[T]]): Project.RichTaskSessionVar[T] = new Project.RichTaskSessionVar(init)
 
+  def inThisBuild(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+    inScope(ThisScope.copy(project = Select(ThisBuild)))(ss)
   def inConfig(conf: Configuration)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
     inScope(ThisScope.copy(config = Select(conf)))((configuration :== conf) +: ss)
   def inTask(t: Scoped)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
@@ -599,6 +601,8 @@ trait ProjectExtra {
   def inScope(scope: Scope)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
     Project.transform(Scope.replaceThis(scope), ss)
 
+  private[sbt] def inThisBuild[T](i: Initialize[T]): Initialize[T] =
+    inScope(ThisScope.copy(project = Select(ThisBuild)), i)
   private[sbt] def inConfig[T](conf: Configuration, i: Initialize[T]): Initialize[T] =
     inScope(ThisScope.copy(config = Select(conf)), i)
   private[sbt] def inTask[T](t: Scoped, i: Initialize[T]): Initialize[T] =
