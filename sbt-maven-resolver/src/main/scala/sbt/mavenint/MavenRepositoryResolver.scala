@@ -234,12 +234,12 @@ abstract class MavenRepositoryResolver(settings: IvySettings) extends AbstractRe
     m
   }
 
-  final def checkJarArtifactExists(dd: DependencyDescriptor): Boolean = {
+  final def checkJarArtifactExists(dd: ModuleRevisionId): Boolean = {
     // TODO - We really want this to be as fast/efficient as possible!
     val request = new AetherArtifactRequest()
     val art = new AetherArtifact(
-      aetherCoordsFromMrid(dd.getDependencyRevisionId, "jar"),
-      getArtifactProperties(dd.getDependencyRevisionId))
+      aetherCoordsFromMrid(dd, "jar"),
+      getArtifactProperties(dd))
     request.setArtifact(art)
     addRepositories(request)
     try {
@@ -266,7 +266,7 @@ abstract class MavenRepositoryResolver(settings: IvySettings) extends AbstractRe
         case "pom" =>
           // THere we have to attempt to download the JAR and see if it comes, if not, we can punt.
           // This is because sometimes pom-packaging attaches a JAR.
-          if (checkJarArtifactExists(dd)) {
+          if (checkJarArtifactExists(drid)) {
             val defaultArt =
               new DefaultArtifact(md.getModuleRevisionId, new Date(lastModifiedTime), artifactId, packaging, "jar")
             md.addArtifact(MavenRepositoryResolver.DEFAULT_ARTIFACT_CONFIGURATION, defaultArt)
@@ -274,7 +274,7 @@ abstract class MavenRepositoryResolver(settings: IvySettings) extends AbstractRe
         case JarPackaging() =>
           // Here we fail the resolution.  This is an issue when pom.xml files exist with no JAR, which happens
           // on maven central for some reason on old artifacts.
-          if (!checkJarArtifactExists(dd))
+          if (!checkJarArtifactExists(drid))
             throw new MavenResolutionException(s"Failed to find JAR file associated with $dd")
           // Assume for now everything else is a jar.
           val defaultArt =
