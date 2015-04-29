@@ -239,7 +239,7 @@ object Defaults extends BuildCommon {
     javacOptions :== Nil,
     scalacOptions :== Nil,
     scalaVersion := appConfiguration.value.provider.scalaProvider.version,
-    crossScalaVersions := Seq(scalaVersion.value),
+    derive(crossScalaVersions := Seq(scalaVersion.value)),
     derive(compilersSetting),
     derive(scalaBinaryVersion := binaryScalaVersion(scalaVersion.value))
   ))
