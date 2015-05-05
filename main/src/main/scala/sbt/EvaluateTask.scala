@@ -93,11 +93,6 @@ sealed trait EvaluateTaskConfig {
   def minForcegcInterval: Int
 }
 final object EvaluateTaskConfig {
-  // Returns the default force garbage collection flag,
-  // as specified by system properties.
-  private[sbt] def defaultForceGarbageCollection: Boolean = true
-  private[sbt] def defaultMinForcegcInterval: Int = 60
-
   /** Pulls in the old configuration format. */
   def apply(old: EvaluateConfig): EvaluateTaskConfig = {
     object AdaptedTaskConfig extends EvaluateTaskConfig {
@@ -107,8 +102,8 @@ final object EvaluateTaskConfig {
       def cancelStrategy: TaskCancellationStrategy =
         if (old.cancelable) TaskCancellationStrategy.Signal
         else TaskCancellationStrategy.Null
-      def forceGarbageCollection = defaultForceGarbageCollection
-      def minForcegcInterval = defaultMinForcegcInterval
+      def forceGarbageCollection = GCUtil.defaultForceGarbageCollection
+      def minForcegcInterval = GCUtil.defaultMinForcegcInterval
     }
     AdaptedTaskConfig
   }
@@ -120,7 +115,7 @@ final object EvaluateTaskConfig {
     cancelStrategy: TaskCancellationStrategy,
     forceGarbageCollection: Boolean): EvaluateTaskConfig =
     apply(restrictions, checkCycles, progressReporter, cancelStrategy, forceGarbageCollection,
-      defaultMinForcegcInterval)
+      GCUtil.defaultMinForcegcInterval)
 
   /** Raw constructor for EvaluateTaskConfig. */
   def apply(restrictions: Seq[Tags.Rule],
@@ -233,10 +228,10 @@ object EvaluateTask {
   }
   // TODO - Should this pull from Global or from the project itself?
   private[sbt] def forcegc(extracted: Extracted, structure: BuildStructure): Boolean =
-    getSetting(Keys.forcegc in Global, EvaluateTaskConfig.defaultForceGarbageCollection, extracted, structure)
+    getSetting(Keys.forcegc in Global, GCUtil.defaultForceGarbageCollection, extracted, structure)
   // TODO - Should this pull from Global or from the project itself?
   private[sbt] def minForcegcInterval(extracted: Extracted, structure: BuildStructure): Int =
-    getSetting(Keys.minForcegcInterval in Global, EvaluateTaskConfig.defaultMinForcegcInterval, extracted, structure)
+    getSetting(Keys.minForcegcInterval in Global, GCUtil.defaultMinForcegcInterval, extracted, structure)
 
   def getSetting[T](key: SettingKey[T], default: T, extracted: Extracted, structure: BuildStructure): T =
     key in extracted.currentRef get structure.data getOrElse default

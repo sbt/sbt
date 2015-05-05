@@ -156,8 +156,8 @@ object Defaults extends BuildCommon {
     maxErrors :== 100,
     fork :== false,
     initialize :== {},
-    forcegc :== sys.props.get("sbt.task.forcegc").map(java.lang.Boolean.parseBoolean).getOrElse(EvaluateTaskConfig.defaultForceGarbageCollection),
-    minForcegcInterval :== sys.props.get("sbt.task.minForcegcInterval").map(java.lang.Integer.parseInt).getOrElse(EvaluateTaskConfig.defaultMinForcegcInterval)
+    forcegc :== sys.props.get("sbt.task.forcegc").map(java.lang.Boolean.parseBoolean).getOrElse(GCUtil.defaultForceGarbageCollection),
+    minForcegcInterval :== sys.props.get("sbt.task.minForcegcInterval").map(java.lang.Integer.parseInt).getOrElse(GCUtil.defaultMinForcegcInterval)
   ))
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] = inTask(key)(Seq(
     tags := Seq(Tags.Test -> 1),

@@ -4,6 +4,10 @@ import java.util.concurrent.atomic.AtomicLong
 import scala.util.control.NonFatal
 
 private[sbt] object GCUtil {
+  // Returns the default force garbage collection flag,
+  // as specified by system properties.
+  val defaultForceGarbageCollection: Boolean = true
+  val defaultMinForcegcInterval: Int = 60
   val lastGcCheck: AtomicLong = new AtomicLong(0L)
 
   def forceGcWithInterval(minForcegcInterval: Int, log: Logger): Unit =
