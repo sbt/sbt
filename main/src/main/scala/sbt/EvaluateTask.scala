@@ -3,6 +3,7 @@
  */
 package sbt
 
+import scala.concurrent.duration.Duration
 import java.io.File
 import Def.{ displayFull, dummyState, ScopedKey, Setting }
 import Keys.{ streams, Streams, TaskStreams }
@@ -88,9 +89,9 @@ sealed trait EvaluateTaskConfig {
   def forceGarbageCollection: Boolean
 
   /**
-   * Interval in seconds.
+   * Interval to force GC.
    */
-  def minForcegcInterval: Int
+  def minForcegcInterval: Duration
 }
 final object EvaluateTaskConfig {
   /** Pulls in the old configuration format. */
@@ -123,7 +124,7 @@ final object EvaluateTaskConfig {
     progressReporter: ExecuteProgress[Task],
     cancelStrategy: TaskCancellationStrategy,
     forceGarbageCollection: Boolean,
-    minForcegcInterval: Int): EvaluateTaskConfig = {
+    minForcegcInterval: Duration): EvaluateTaskConfig = {
     val r = restrictions
     val check = checkCycles
     val cs = cancelStrategy
@@ -230,7 +231,7 @@ object EvaluateTask {
   private[sbt] def forcegc(extracted: Extracted, structure: BuildStructure): Boolean =
     getSetting(Keys.forcegc in Global, GCUtil.defaultForceGarbageCollection, extracted, structure)
   // TODO - Should this pull from Global or from the project itself?
-  private[sbt] def minForcegcInterval(extracted: Extracted, structure: BuildStructure): Int =
+  private[sbt] def minForcegcInterval(extracted: Extracted, structure: BuildStructure): Duration =
     getSetting(Keys.minForcegcInterval in Global, GCUtil.defaultMinForcegcInterval, extracted, structure)
 
   def getSetting[T](key: SettingKey[T], default: T, extracted: Extracted, structure: BuildStructure): T =

@@ -5,6 +5,7 @@ package sbt
 
 import java.io.File
 import java.net.URL
+import scala.concurrent.duration.Duration
 import Def.ScopedKey
 import complete._
 import inc.Analysis
@@ -342,7 +343,7 @@ object Keys {
   val concurrentRestrictions = SettingKey[Seq[Tags.Rule]]("concurrent-restrictions", "Rules describing restrictions on concurrent task execution.", BSetting)
   val cancelable = SettingKey[Boolean]("cancelable", "Enables (true) or disables (false) the ability to interrupt task execution with CTRL+C.", BMinusSetting)
   val forcegc = SettingKey[Boolean]("forcegc", "Enables (true) or disables (false) forcing garbage collection after task run when needed.", BMinusSetting)
-  val minForcegcInterval = SettingKey[Int]("min-forcegc-interval", "Minimal interval (in seconds) to check for forcing garbage collection.")
+  val minForcegcInterval = SettingKey[Duration]("min-forcegc-interval", "Minimal interval to check for forcing garbage collection.")
   val settingsData = std.FullInstance.settingsData
   val streams = TaskKey[TaskStreams]("streams", "Provides streams for logging and persisting data.", DTask)
   val taskDefinitionKey = Def.taskDefinitionKey

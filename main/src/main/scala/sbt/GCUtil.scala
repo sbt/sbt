@@ -1,22 +1,23 @@
 package sbt
 
 import java.util.concurrent.atomic.AtomicLong
+import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
 private[sbt] object GCUtil {
   // Returns the default force garbage collection flag,
   // as specified by system properties.
   val defaultForceGarbageCollection: Boolean = true
-  val defaultMinForcegcInterval: Int = 60
+  val defaultMinForcegcInterval: Duration = 60.seconds
   val lastGcCheck: AtomicLong = new AtomicLong(0L)
 
-  def forceGcWithInterval(minForcegcInterval: Int, log: Logger): Unit =
+  def forceGcWithInterval(minForcegcInterval: Duration, log: Logger): Unit =
     {
       val now = System.currentTimeMillis
       val last = lastGcCheck.get
       // This throttles System.gc calls to interval
-      if (now - last > minForcegcInterval * 1000) {
-        lastGcCheck.set(now)
+      if (now - last > minForcegcInterval.toMillis) {
+        lastGcCheck.lazySet(now)
         forceGc(log)
       }
     }
