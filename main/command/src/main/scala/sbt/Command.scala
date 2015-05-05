@@ -17,6 +17,7 @@ private[sbt] final class SimpleCommand(val name: String, private[sbt] val help0:
   assert(Command validID name, "'" + name + "' is not a valid command name.")
   def tag[T](key: AttributeKey[T], value: T): SimpleCommand = new SimpleCommand(name, help0, parser, tags.put(key, value))
   def help = const(help0)
+  override def toString = s"SimpleCommand($name)"
 }
 private[sbt] final class ArbitraryCommand(val parser: State => Parser[() => State], val help: State => Help, val tags: AttributeMap) extends Command {
   def tag[T](key: AttributeKey[T], value: T): ArbitraryCommand = new ArbitraryCommand(parser, help, tags.put(key, value))
