@@ -3,6 +3,7 @@
  */
 package sbt
 
+import scala.concurrent.duration.Duration
 import Attributed.data
 import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
 import sbt.Compiler.InputsWithPrevious
@@ -155,7 +156,9 @@ object Defaults extends BuildCommon {
     aggregate :== true,
     maxErrors :== 100,
     fork :== false,
-    initialize :== {}
+    initialize :== {},
+    forcegc :== sys.props.get("sbt.task.forcegc").map(java.lang.Boolean.parseBoolean).getOrElse(GCUtil.defaultForceGarbageCollection),
+    minForcegcInterval :== GCUtil.defaultMinForcegcInterval
   ))
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] = inTask(key)(Seq(
     tags := Seq(Tags.Test -> 1),
