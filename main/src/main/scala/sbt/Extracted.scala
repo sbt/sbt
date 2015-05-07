@@ -3,6 +3,7 @@ package sbt
 import Project._
 import Scope.GlobalScope
 import Def.{ ScopedKey, Setting }
+import sbt.complete.Parser
 import std.Transform.DummyTaskMap
 
 final case class Extracted(structure: BuildStructure, session: SessionSettings, currentRef: ProjectRef)(implicit val showKey: Show[ScopedKey[_]]) {
@@ -44,6 +45,34 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
       val (newS, result) = getOrError(rkey.scope, rkey.key, value)
       (newS, processResult(result, newS.log))
     }
+
+  /**
+   * Runs the input task specified by `key`, using the `input` as the input to it, and returns the transformed State
+   * and the resulting value of the input task.
+   *
+   * If the project axis is not defined for the key, it is resolved to be the current project.
+   * Other axes are resolved to `Global` if unspecified.
+   *
+   * This method requests execution of only the given task and does not aggregate execution.
+   */
+  def runInputTask[T](key: InputKey[T], input: String, state: State): (State, T) = {
+    import EvaluateTask._
+
+    val scopedKey = Scoped.scopedSetting(
+      Scope.resolveScope(Load.projectScope(currentRef), currentRef.build, structure.rootProject)(key.scope), key.key)
+    val rkey = resolve(scopedKey.scopedKey)
+    val inputTask = get(Scoped.scopedSetting(rkey.scope, rkey.key))
+    val task = Parser.parse(input, inputTask.parser(state)) match {
+      case Right(t)  => t
+      case Left(msg) => sys.error(s"Invalid programmatic input:\n$msg")
+    }
+    val config = extractedTaskConfig(this, structure, state)
+    withStreams(structure, state) { str =>
+      val nv = nodeView(state, str, rkey :: Nil)
+      val (newS, result) = EvaluateTask.runTask(task, state, str, structure.index.triggers, config)(nv)
+      (newS, processResult(result, newS.log))
+    }
+  }
 
   /**
    * Runs the tasks selected by aggregating `key` and returns the transformed State.
