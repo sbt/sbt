@@ -570,11 +570,20 @@ object Defaults extends BuildCommon {
 
   def selectedFilter(args: Seq[String]): Seq[String => Boolean] =
     {
-      val filters = args map GlobFilter.apply
-      if (filters.isEmpty)
+      def matches(nfs: Seq[NameFilter], s: String) = nfs.exists(_.accept(s))
+
+      val (excludeArgs, includeArgs) = args.partition(_.startsWith("-"))
+
+      val includeFilters = includeArgs map GlobFilter.apply
+      val excludeFilters = excludeArgs.map(_.substring(1)).map(GlobFilter.apply)
+
+      if (includeFilters.isEmpty && excludeArgs.isEmpty) {
         Seq(const(true))
-      else
-        filters.map { f => (s: String) => f accept s }
+      } else if (includeFilters.isEmpty) {
+        Seq({ (s: String) => !matches(excludeFilters, s) })
+      } else {
+        includeFilters.map { f => (s: String) => (f.accept(s) && !matches(excludeFilters, s)) }
+      }
     }
   def detectTests: Initialize[Task[Seq[TestDefinition]]] = (loadedTestFrameworks, compile, streams) map { (frameworkMap, analysis, s) =>
     Tests.discover(frameworkMap.values.toList, analysis, s.log)._1
@@ -896,7 +905,7 @@ object Defaults extends BuildCommon {
       selectTests ~ options
     }
 
-  def distinctParser(exs: Set[String], raw: Boolean): Parser[Seq[String]] =
+  private def distinctParser(exs: Set[String], raw: Boolean): Parser[Seq[String]] =
     {
       import DefaultParsers._
       val base = token(Space) ~> token(NotSpace - "--" examples exs)
