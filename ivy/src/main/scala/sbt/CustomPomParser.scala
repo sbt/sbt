@@ -51,7 +51,15 @@ object CustomPomParser {
   private[this] val TransformedHashKey = "e:sbtTransformHash"
   // A hash of the parameters transformation is based on.
   // If a descriptor has a different hash, we need to retransform it.
-  private[this] val TransformHash: String = hash((unqualifiedKeys ++ JarPackagings).toSeq.sorted)
+  private[this] def makeCoords(mrid: ModuleRevisionId): String = s"${mrid.getOrganisation}:${mrid.getName}:${mrid.getRevision}"
+
+  // We now include the ModuleID in a hash, to ensure that parent-pom transformations don't corrupt child poms.
+  private[this] def MakeTransformHash(md: ModuleDescriptor): String = {
+    val coords: String = makeCoords(md.getModuleRevisionId)
+
+    hash((unqualifiedKeys ++ JarPackagings ++ Set(coords)).toSeq.sorted)
+  }
+
   private[this] def hash(ss: Seq[String]): String = Hash.toHex(Hash(ss.flatMap(_ getBytes "UTF-8").toArray))
 
   // Unfortunately, ModuleDescriptorParserRegistry is add-only and is a singleton instance.
@@ -65,11 +73,16 @@ object CustomPomParser {
     {
       val oldTransformedHashKey = "sbtTransformHash"
       val extraInfo = md.getExtraInfo
+      val MyHash = MakeTransformHash(md)
+      val h = MyHash
       // sbt 0.13.1 used "sbtTransformHash" instead of "e:sbtTransformHash" until #1192 so read both
       Option(extraInfo).isDefined &&
         ((Option(extraInfo get TransformedHashKey) orElse Option(extraInfo get oldTransformedHashKey)) match {
-          case Some(TransformHash) => true
-          case _                   => false
+          case x @ Some(MyHash) =>
+            true
+          case Some(other) =>
+            false
+          case _ => false
         })
     }
 
@@ -95,10 +108,10 @@ object CustomPomParser {
       val mergeDuplicates = IvySbt.hasDuplicateDependencies(md.getDependencies)
 
       val unqualify = toUnqualify(filtered)
-      if (unqualify.isEmpty && extraDepAttributes.isEmpty && !convertArtifacts && !mergeDuplicates)
-        md
-      else
-        addExtra(unqualify, extraDepAttributes, parser, md)
+
+      // Here we always add extra attributes.  There's a scenario where parent-pom information corrupts child-poms with "e:" namespaced xml elements
+      // and we have to force the every generated xml file to have the appropriate xml namespace
+      addExtra(unqualify, extraDepAttributes, parser, md)
     }
   // The <properties> element of the pom is used to store additional metadata, such as for sbt plugins or for the base URL for API docs.
   // This is done because the pom XSD does not appear to allow extra metadata anywhere else.
@@ -185,7 +198,7 @@ object CustomPomParser {
 
       for (l <- md.getLicenses) dmd.addLicense(l)
       for ((key, value) <- md.getExtraInfo.asInstanceOf[java.util.Map[String, String]].asScala) dmd.addExtraInfo(key, value)
-      dmd.addExtraInfo(TransformedHashKey, TransformHash) // mark as transformed by this version, so we don't need to do it again
+      dmd.addExtraInfo(TransformedHashKey, MakeTransformHash(md)) // mark as transformed by this version, so we don't need to do it again
       for ((key, value) <- md.getExtraAttributesNamespaces.asInstanceOf[java.util.Map[String, String]].asScala) dmd.addExtraAttributeNamespace(key, value)
       IvySbt.addExtraNamespace(dmd)
 
