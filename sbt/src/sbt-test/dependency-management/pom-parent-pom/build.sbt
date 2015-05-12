@@ -10,6 +10,8 @@ resolvers +=
 libraryDependencies +=
   "com.example" % "example-child" % "1.0-SNAPSHOT"
 
+libraryDependencies += "org.apache.geronimo.specs" % "geronimo-jta_1.1_spec" % "1.1.1"
+
 version := "1.0-SNAPSHOT"
 
 
@@ -19,4 +21,19 @@ cleanExampleCache := {
       // TODO - Is this actually ok?
       IO.delete(cacheDir / "com.example")
     }
+}
+
+val checkIvyXml = taskKey[Unit]("Checks the ivy.xml transform was correct")
+
+checkIvyXml := {
+  ivySbt.value.withIvy(streams.value.log) { ivy =>
+    val cacheDir = ivy.getSettings.getDefaultRepositoryCacheBasedir
+    // TODO - Is this actually ok?
+    val xmlFile  =
+      cacheDir / "org.apache.geronimo.specs" / "geronimo-jta_1.1_spec" / "ivy-1.1.1.xml"
+      //cacheDir / "com.example" / "example-child" / "ivy-1.0-SNAPSHOT.xml"
+    val lines = IO.read(xmlFile)
+    if(lines.isEmpty) sys.error(s"Unable to read $xmlFile, could not resolve geronimo...")
+    assert(lines contains "xmlns:e", s"Failed to appropriately modify ivy.xml file for sbt extra attributes!\n$lines")
+  }
 }
