@@ -1,0 +1,11 @@
+$ absent target/resolution-cache
+> compile
+$ exists target/resolution-cache
+> checkLastUpdateTime
+$ sleep 10000
+> compile
+# This is expected to fail
+-> checkLastUpdateTime
+> set forceUpdateMs := Some(5000)
+> compile
+> checkLastUpdateTime

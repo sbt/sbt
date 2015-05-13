@@ -115,7 +115,8 @@ object Defaults extends BuildCommon {
       pomPostProcess :== idFun,
       pomAllRepositories :== false,
       pomIncludeRepository :== Classpaths.defaultRepositoryFilter,
-      updateOptions := UpdateOptions()
+      updateOptions := UpdateOptions(),
+      forceUpdateMs :== None
     )
 
   /** Core non-plugin settings for sbt builds.  These *must* be on every build or the sbt engine will fail to run at all. */
@@ -1324,7 +1325,13 @@ object Classpaths {
   def updateTask: Initialize[Task[UpdateReport]] = Def.task {
     val depsUpdated = transitiveUpdate.value.exists(!_.stats.cached)
     val isRoot = executionRoots.value contains resolvedScoped.value
+    val forceUpdate = forceUpdateMs.value
     val s = streams.value
+    val fullUpdateOutput = s.cacheDirectory / "out"
+    val forceUpdateByTime = forceUpdate match {
+      case None         => false
+      case Some(period) => fullUpdateOutput.exists() && fullUpdateOutput.lastModified() <= (System.currentTimeMillis() - period)
+    }
     val scalaProvider = appConfiguration.value.provider.scalaProvider
 
     // Only substitute unmanaged jars for managed jars when the major.minor parts of the versions the same for:
@@ -1360,7 +1367,7 @@ object Classpaths {
       if (executionRoots.value exists { _.key == evicted.key }) EvictionWarningOptions.empty
       else (evictionWarningOptions in update).value
     cachedUpdate(s.cacheDirectory / updateCacheName.value, show, ivyModule.value, uc, transform,
-      skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated,
+      skip = (skip in update).value, force = isRoot || forceUpdateByTime, depsUpdated = depsUpdated,
       uwConfig = uwConfig, logicalClock = logicalClock, depDir = Some(depDir),
       ewo = ewo, log = s.log)
   }
