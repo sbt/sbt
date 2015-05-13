@@ -6,6 +6,6 @@ $ sleep 10000
 > compile
 # This is expected to fail
 -> checkLastUpdateTime
-> set forceUpdateMs := Some(5000)
+> set forceUpdatePeriod := Some(new scala.concurrent.duration.FiniteDuration(5000, java.util.concurrent.TimeUnit.MILLISECONDS))
 > compile
 > checkLastUpdateTime

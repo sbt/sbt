@@ -3,7 +3,7 @@
  */
 package sbt
 
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{ FiniteDuration, Duration }
 import Attributed.data
 import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
 import sbt.Compiler.InputsWithPrevious
@@ -27,7 +27,7 @@ import org.apache.ivy.core.module.{ descriptor, id }
 import descriptor.ModuleDescriptor, id.ModuleRevisionId
 import java.io.{ File, PrintWriter }
 import java.net.{ URI, URL, MalformedURLException }
-import java.util.concurrent.Callable
+import java.util.concurrent.{ TimeUnit, Callable }
 import sbinary.DefaultProtocol.StringFormat
 import Cache.seqFormat
 import CommandStrings.ExportStream
@@ -116,7 +116,7 @@ object Defaults extends BuildCommon {
       pomAllRepositories :== false,
       pomIncludeRepository :== Classpaths.defaultRepositoryFilter,
       updateOptions := UpdateOptions(),
-      forceUpdateMs :== None
+      forceUpdatePeriod :== None
     )
 
   /** Core non-plugin settings for sbt builds.  These *must* be on every build or the sbt engine will fail to run at all. */
@@ -1325,12 +1325,14 @@ object Classpaths {
   def updateTask: Initialize[Task[UpdateReport]] = Def.task {
     val depsUpdated = transitiveUpdate.value.exists(!_.stats.cached)
     val isRoot = executionRoots.value contains resolvedScoped.value
-    val forceUpdate = forceUpdateMs.value
+    val forceUpdate = forceUpdatePeriod.value
     val s = streams.value
     val fullUpdateOutput = s.cacheDirectory / "out"
     val forceUpdateByTime = forceUpdate match {
-      case None         => false
-      case Some(period) => fullUpdateOutput.exists() && fullUpdateOutput.lastModified() <= (System.currentTimeMillis() - period)
+      case None => false
+      case Some(period) =>
+        val elapsedDuration = new FiniteDuration(System.currentTimeMillis() - fullUpdateOutput.lastModified(), TimeUnit.MILLISECONDS)
+        fullUpdateOutput.exists() && elapsedDuration > period
     }
     val scalaProvider = appConfiguration.value.provider.scalaProvider
 
