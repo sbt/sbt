@@ -233,28 +233,33 @@ class MakePom(val log: Logger) {
       val artifacts = dependency.getAllDependencyArtifacts
       val includeArtifacts = artifacts.filter(d => includeTypes(d.getType))
       if (artifacts.isEmpty) {
-        val (scope, optional) = getScopeAndOptional(dependency.getModuleConfigurations)
-        makeDependencyElem(dependency, scope, optional, None, None)
+        val configs = dependency.getModuleConfigurations
+        if (configs.filterNot(Set("sources","docs")).nonEmpty) {
+          val (scope, optional) = getScopeAndOptional(dependency.getModuleConfigurations)
+          makeDependencyElem(dependency, scope, optional, None, None)
+        } else NodeSeq.Empty
       } else if (includeArtifacts.isEmpty)
         NodeSeq.Empty
       else
-        NodeSeq.fromSeq(artifacts.map(a => makeDependencyElem(dependency, a)))
+        NodeSeq.fromSeq(artifacts.flatMap(a => makeDependencyElem(dependency, a)))
     }
 
-  def makeDependencyElem(dependency: DependencyDescriptor, artifact: DependencyArtifactDescriptor): Elem =
+  def makeDependencyElem(dependency: DependencyDescriptor, artifact: DependencyArtifactDescriptor): Option[Elem] =
     {
       val configs = artifact.getConfigurations.toList match {
         case Nil | "*" :: Nil => dependency.getModuleConfigurations
         case x                => x.toArray
       }
-      val (scope, optional) = getScopeAndOptional(configs)
-      val classifier = artifactClassifier(artifact)
-      val baseType = artifactType(artifact)
-      val tpe = (classifier, baseType) match {
-        case (Some(c), Some(tpe)) if Artifact.classifierType(c) == tpe => None
-        case _ => baseType
-      }
-      makeDependencyElem(dependency, scope, optional, classifier, tpe)
+      if (configs.filterNot(Set("sources","docs")).nonEmpty) {
+        val (scope, optional) = getScopeAndOptional(configs)
+        val classifier = artifactClassifier(artifact)
+        val baseType = artifactType(artifact)
+        val tpe = (classifier, baseType) match {
+          case (Some(c), Some(tpe)) if Artifact.classifierType(c) == tpe => None
+          case _ => baseType
+        }
+        Some(makeDependencyElem(dependency, scope, optional, classifier, tpe))
+      } else None
     }
   def makeDependencyElem(dependency: DependencyDescriptor, scope: Option[String], optional: Boolean, classifier: Option[String], tpe: Option[String]): Elem =
     {
