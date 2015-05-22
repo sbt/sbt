@@ -5,7 +5,7 @@ package sbt
 
 import java.io.File
 import java.net.URL
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{ FiniteDuration, Duration }
 import Def.ScopedKey
 import complete._
 import inc.Analysis
@@ -324,6 +324,7 @@ object Keys {
   val publishArtifact = SettingKey[Boolean]("publish-artifact", "Enables (true) or disables (false) publishing an artifact.", AMinusSetting)
   val packagedArtifact = TaskKey[(Artifact, File)]("packaged-artifact", "Generates a packaged artifact, returning the Artifact and the produced File.", CTask)
   val checksums = SettingKey[Seq[String]]("checksums", "The list of checksums to generate and to verify for dependencies.", BSetting)
+  val forceUpdatePeriod = SettingKey[Option[FiniteDuration]]("force-update-period", "Duration after which to force a full update to occur", CSetting)
 
   val classifiersModule = TaskKey[GetClassifiersModule]("classifiers-module", rank = CTask)
   val conflictWarning = SettingKey[ConflictWarning]("conflict-warning", "Configures warnings for conflicts in dependency management.", CSetting)
