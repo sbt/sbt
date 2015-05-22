@@ -25,7 +25,7 @@ private[sbt] object CachedResolutionResolveCache {
   def createID(organization: String, name: String, revision: String) =
     ModuleRevisionId.newInstance(organization, name, revision)
   def sbtOrgTemp = "org.scala-sbt.temp"
-  def graphVersion = "0.13.8"
+  def graphVersion = "0.13.9"
 }
 
 private[sbt] class CachedResolutionResolveCache() {
