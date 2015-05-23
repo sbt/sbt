@@ -148,7 +148,7 @@ private[sbt] class CachedResolutionResolveCache() {
       val dynamicGraphPath = dynamicGraphDirectory / todayStr / logicalClock.toString / pathOrg / pathName / pathRevision / "graphs" / "graph.json"
       def cleanDynamicGraph(): Unit =
         {
-          val list = (dynamicGraphDirectory listFiles DirectoryFilter).toList
+          val list = IO.listFiles(dynamicGraphDirectory, DirectoryFilter).toList
           list filterNot { d =>
             (d.getName == todayStr) || (d.getName == tomorrowStr) || (d.getName == yesterdayStr)
           } foreach { d =>
