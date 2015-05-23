@@ -4,6 +4,7 @@ package ivyint
 import java.util.Date
 import java.net.URL
 import java.io.File
+import java.text.SimpleDateFormat
 import collection.concurrent
 import collection.mutable
 import collection.immutable.ListMap
@@ -20,12 +21,19 @@ import org.apache.ivy.plugins.latest.{ ArtifactInfo => IvyArtifactInfo }
 import org.apache.ivy.plugins.matcher.{ MapMatcher, PatternMatcher }
 import Configurations.{ System => _, _ }
 import annotation.tailrec
+import scala.concurrent.duration._
 
 private[sbt] object CachedResolutionResolveCache {
   def createID(organization: String, name: String, revision: String) =
     ModuleRevisionId.newInstance(organization, name, revision)
   def sbtOrgTemp = "org.scala-sbt.temp"
   def graphVersion = "0.13.9"
+  val buildStartup: Long = System.currentTimeMillis
+  lazy val todayStr: String = toYyyymmdd(buildStartup)
+  lazy val tomorrowStr: String = toYyyymmdd(buildStartup + (1 day).toMillis)
+  lazy val yesterdayStr: String = toYyyymmdd(buildStartup - (1 day).toMillis)
+  def toYyyymmdd(timeSinceEpoch: Long): String = yyyymmdd.format(new Date(timeSinceEpoch))
+  lazy val yyyymmdd: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd")
 }
 
 private[sbt] class CachedResolutionResolveCache() {
@@ -137,7 +145,17 @@ private[sbt] class CachedResolutionResolveCache() {
       val staticGraphDirectory = miniGraphPath / "static"
       val dynamicGraphDirectory = miniGraphPath / "dynamic"
       val staticGraphPath = staticGraphDirectory / pathOrg / pathName / pathRevision / "graphs" / "graph.json"
-      val dynamicGraphPath = dynamicGraphDirectory / logicalClock.toString / pathOrg / pathName / pathRevision / "graphs" / "graph.json"
+      val dynamicGraphPath = dynamicGraphDirectory / todayStr / logicalClock.toString / pathOrg / pathName / pathRevision / "graphs" / "graph.json"
+      def cleanDynamicGraph(): Unit =
+        {
+          val list = IO.listFiles(dynamicGraphDirectory, DirectoryFilter).toList
+          list filterNot { d =>
+            (d.getName == todayStr) || (d.getName == tomorrowStr) || (d.getName == yesterdayStr)
+          } foreach { d =>
+            log.debug(s"deleting old graphs $d...")
+            IO.delete(d)
+          }
+        }
       def loadMiniGraphFromFile: Option[Either[ResolveException, UpdateReport]] =
         (if (staticGraphPath.exists) Some(staticGraphPath)
         else if (dynamicGraphPath.exists) Some(dynamicGraphPath)
@@ -175,6 +193,9 @@ private[sbt] class CachedResolutionResolveCache() {
               val gp = if (changing) dynamicGraphPath
               else staticGraphPath
               log.debug(s"saving minigraph to $gp")
+              if (changing) {
+                cleanDynamicGraph()
+              }
               JsonUtil.writeUpdateReport(ur, gp)
               // limit the update cache size
               if (updateReportCache.size > maxUpdateReportCacheSize) {
