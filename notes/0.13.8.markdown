@@ -8,6 +8,7 @@
   [@dwickern]: https://github.com/dwickern
   [@dwijnand]: http://github.com/dwijnand
   [@Duhemm]: https://github.com/Duhemm
+  [@kamilkloch]: https://github.com/kamilkloch
   [@kretes]: https://github.com/kretes
   [@indrajitr]: https://github.com/indrajitr
   [@j-keck]: https://github.com/j-keck
@@ -53,6 +54,7 @@
   [1899]: https://github.com/sbt/sbt/pull/1899
   [1902]: https://github.com/sbt/sbt/pull/1902
   [1921]: https://github.com/sbt/sbt/issues/1921
+  [2028]: https://github.com/sbt/sbt/issues/2028
 
 ### Changes with compatibility implications
 
@@ -71,6 +73,7 @@
 - Better abstration to track new kinds of dependencies for incremental compiler. [#1340][1340] by [@Duhemm][@Duhemm]
 - Source dependency uses `--depth 1` for git clone. [#1787][1787] by [@xuwei-k][@xuwei-k]
 - Facilitate nicer ways of declaring project settings. See below. [#1902][1902] by [@dwijnand][@dwijnand]
+- Update ForkError.getMessage() to include exception's original name. [#2028][2028] by [@kamilkloch][@kamilkloch]
 
 ### Fixes
 
