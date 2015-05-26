@@ -220,6 +220,10 @@ class MakePom(val log: Logger) {
     }
   val IgnoreTypes: Set[String] = Set(Artifact.SourceType, Artifact.DocType, Artifact.PomType)
 
+  @deprecated("Use `makeDependencies` variant which takes excludes", "0.13.9")
+  def makeDependencies(dependencies: Seq[DependencyDescriptor], includeTypes: Set[String]): NodeSeq =
+    makeDependencies(dependencies, includeTypes, Nil)
+
   def makeDependencies(dependencies: Seq[DependencyDescriptor], includeTypes: Set[String], excludes: Seq[ExcludeRule]): NodeSeq =
     if (dependencies.isEmpty)
       NodeSeq.Empty
@@ -227,6 +231,10 @@ class MakePom(val log: Logger) {
       <dependencies>
         { dependencies.map(makeDependency(_, includeTypes, excludes)) }
       </dependencies>
+
+  @deprecated("Use `makeDependency` variant which takes excludes", "0.13.9")
+  def makeDependency(dependency: DependencyDescriptor, includeTypes: Set[String]): NodeSeq =
+    makeDependency(dependency, includeTypes, Nil)
 
   def makeDependency(dependency: DependencyDescriptor, includeTypes: Set[String], excludes: Seq[ExcludeRule]): NodeSeq =
     {
@@ -243,6 +251,10 @@ class MakePom(val log: Logger) {
       else
         NodeSeq.fromSeq(artifacts.flatMap(a => makeDependencyElem(dependency, a, excludes)))
     }
+
+  @deprecated("Use `makeDependencyElem` variant which takes excludes", "0.13.9")
+  def makeDependencyElem(dependency: DependencyDescriptor, artifact: DependencyArtifactDescriptor): Option[Elem] =
+    makeDependencyElem(dependency, artifact, Nil)
 
   def makeDependencyElem(dependency: DependencyDescriptor, artifact: DependencyArtifactDescriptor, excludes: Seq[ExcludeRule]): Option[Elem] =
     {
@@ -261,6 +273,11 @@ class MakePom(val log: Logger) {
         Some(makeDependencyElem(dependency, scope, optional, classifier, tpe, excludes))
       } else None
     }
+
+  @deprecated("Use `makeDependencyElem` variant which takes excludes", "0.13.9")
+  def makeDependencyElem(dependency: DependencyDescriptor, scope: Option[String], optional: Boolean, classifier: Option[String], tpe: Option[String]): Elem =
+    makeDependencyElem(dependency, scope, optional, classifier, tpe, Nil)
+
   def makeDependencyElem(dependency: DependencyDescriptor, scope: Option[String], optional: Boolean, classifier: Option[String], tpe: Option[String], excludes: Seq[ExcludeRule]): Elem =
     {
       val mrid = dependency.getDependencyRevisionId
@@ -321,6 +338,9 @@ class MakePom(val log: Logger) {
       val scope = defaultNotOptional.map(_.name)
       (scope, opt.nonEmpty)
     }
+
+  @deprecated("Use `exclusions` variant which takes excludes", "0.13.9")
+  def exclusions(dependency: DependencyDescriptor): NodeSeq = exclusions(dependency, Nil)
 
   def exclusions(dependency: DependencyDescriptor, excludes: Seq[ExcludeRule]): NodeSeq =
     {
