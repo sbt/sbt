@@ -10,12 +10,14 @@ sbt
 ===
 
 sbt is a build tool for Scala, Java, and more.
+
 For general documentation, see http://www.scala-sbt.org/.
 
 Issues and Pull Requests
 ------------------------
 
 Please read [CONTRIBUTING] carefully before opening a GitHub Issue.
+
 The short version: try [StackOverflow] and [sbt-dev]. Don't open an Issue.
 
 sbt 0.13
