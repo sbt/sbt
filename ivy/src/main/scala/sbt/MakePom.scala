@@ -104,7 +104,7 @@ class MakePom(val log: Logger) {
        {
          val deps = depsInConfs(module, configurations)
          makeProperties(module, deps) ++
-           makeDependencies(deps, includeTypes)
+           makeDependencies(deps, includeTypes, module.getAllExcludeRules)
        }
        { makeRepositories(ivy.getSettings, allRepositories, filterRepositories) }
      </project>)
@@ -220,15 +220,15 @@ class MakePom(val log: Logger) {
     }
   val IgnoreTypes: Set[String] = Set(Artifact.SourceType, Artifact.DocType, Artifact.PomType)
 
-  def makeDependencies(dependencies: Seq[DependencyDescriptor], includeTypes: Set[String]): NodeSeq =
+  def makeDependencies(dependencies: Seq[DependencyDescriptor], includeTypes: Set[String], excludes: Seq[ExcludeRule]): NodeSeq =
     if (dependencies.isEmpty)
       NodeSeq.Empty
     else
       <dependencies>
-        { dependencies.map(makeDependency(_, includeTypes)) }
+        { dependencies.map(makeDependency(_, includeTypes, excludes)) }
       </dependencies>
 
-  def makeDependency(dependency: DependencyDescriptor, includeTypes: Set[String]): NodeSeq =
+  def makeDependency(dependency: DependencyDescriptor, includeTypes: Set[String], excludes: Seq[ExcludeRule]): NodeSeq =
     {
       val artifacts = dependency.getAllDependencyArtifacts
       val includeArtifacts = artifacts.filter(d => includeTypes(d.getType))
@@ -236,15 +236,15 @@ class MakePom(val log: Logger) {
         val configs = dependency.getModuleConfigurations
         if (configs.filterNot(Set("sources","docs")).nonEmpty) {
           val (scope, optional) = getScopeAndOptional(dependency.getModuleConfigurations)
-          makeDependencyElem(dependency, scope, optional, None, None)
+          makeDependencyElem(dependency, scope, optional, None, None, excludes)
         } else NodeSeq.Empty
       } else if (includeArtifacts.isEmpty)
         NodeSeq.Empty
       else
-        NodeSeq.fromSeq(artifacts.flatMap(a => makeDependencyElem(dependency, a)))
+        NodeSeq.fromSeq(artifacts.flatMap(a => makeDependencyElem(dependency, a, excludes)))
     }
 
-  def makeDependencyElem(dependency: DependencyDescriptor, artifact: DependencyArtifactDescriptor): Option[Elem] =
+  def makeDependencyElem(dependency: DependencyDescriptor, artifact: DependencyArtifactDescriptor, excludes: Seq[ExcludeRule]): Option[Elem] =
     {
       val configs = artifact.getConfigurations.toList match {
         case Nil | "*" :: Nil => dependency.getModuleConfigurations
@@ -258,10 +258,10 @@ class MakePom(val log: Logger) {
           case (Some(c), Some(tpe)) if Artifact.classifierType(c) == tpe => None
           case _ => baseType
         }
-        Some(makeDependencyElem(dependency, scope, optional, classifier, tpe))
+        Some(makeDependencyElem(dependency, scope, optional, classifier, tpe, excludes))
       } else None
     }
-  def makeDependencyElem(dependency: DependencyDescriptor, scope: Option[String], optional: Boolean, classifier: Option[String], tpe: Option[String]): Elem =
+  def makeDependencyElem(dependency: DependencyDescriptor, scope: Option[String], optional: Boolean, classifier: Option[String], tpe: Option[String], excludes: Seq[ExcludeRule]): Elem =
     {
       val mrid = dependency.getDependencyRevisionId
       <dependency>
@@ -272,7 +272,7 @@ class MakePom(val log: Logger) {
         { optionalElem(optional) }
         { classifierElem(classifier) }
         { typeElem(tpe) }
-        { exclusions(dependency) }
+        { exclusions(dependency, excludes) }
       </dependency>
     }
 
@@ -322,9 +322,9 @@ class MakePom(val log: Logger) {
       (scope, opt.nonEmpty)
     }
 
-  def exclusions(dependency: DependencyDescriptor): NodeSeq =
+  def exclusions(dependency: DependencyDescriptor, excludes: Seq[ExcludeRule]): NodeSeq =
     {
-      val excl = dependency.getExcludeRules(dependency.getModuleConfigurations)
+      val excl = dependency.getExcludeRules(dependency.getModuleConfigurations) ++ excludes
       val (warns, excls) = IvyUtil.separate(excl.map(makeExclusion))
       if (warns.nonEmpty) log.warn(warns.mkString(IO.Newline))
       if (excls.nonEmpty) <exclusions>{ excls }</exclusions>
