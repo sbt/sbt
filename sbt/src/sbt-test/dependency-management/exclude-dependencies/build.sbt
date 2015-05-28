@@ -1,3 +1,6 @@
+import scala.xml.{ Node, _ }
+import scala.xml.Utility.trim
+
 lazy val check = taskKey[Unit]("check")
 
 val dispatch = "net.databinder.dispatch" %% "dispatch-core" % "0.11.2"
@@ -31,5 +34,30 @@ lazy val root = (project in file(".")).
       if (bcp exists { _.data.getName contains "dispatch-core_2.11-0.11.1.jar" }) {
         sys.error("dispatch-core_2.11-0.11.1.jar found when it should NOT be included: " + bcp.toString)
       }
+
+      val bPomXml = makePomXml(streams.value.log, (makePomConfiguration in b).value, (ivyModule in b).value)
+
+      val repatchTwitterXml = bPomXml \ "dependencies" \ "dependency" find { d =>
+        (d \ "groupId").text == "com.eed3si9n" && (d \ "artifactId").text == "repatch-twitter-core_2.11"
+      } getOrElse (sys error s"Missing repatch-twitter-core dependency: $bPomXml")
+
+      val excludeDispatchCoreXml =
+        <exclusion>
+          <groupId>net.databinder.dispatch</groupId>
+          <artifactId>dispatch-core_2.11</artifactId>
+        </exclusion>
+
+      if (trim((repatchTwitterXml \ "exclusions" \ "exclusion").head) != trim(excludeDispatchCoreXml))
+        sys error s"Missing dispatch-core exclusion: $repatchTwitterXml"
+
+      ()
     }
   )
+
+def makePomXml(log: Logger, makePomConfig: MakePomConfiguration, ivyModule: IvySbt#Module): Node = {
+  ivyModule.withModule[Node](log) { (ivy, md, default) =>
+    import makePomConfig._
+    new MakePom(log).toPom(
+      ivy, md, moduleInfo, configurations, includeTypes, extra, filterRepositories, allRepositories)
+  }
+}
