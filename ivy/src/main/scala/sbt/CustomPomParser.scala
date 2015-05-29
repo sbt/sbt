@@ -74,14 +74,10 @@ object CustomPomParser {
       val oldTransformedHashKey = "sbtTransformHash"
       val extraInfo = md.getExtraInfo
       val MyHash = MakeTransformHash(md)
-      val h = MyHash
       // sbt 0.13.1 used "sbtTransformHash" instead of "e:sbtTransformHash" until #1192 so read both
       Option(extraInfo).isDefined &&
         ((Option(extraInfo get TransformedHashKey) orElse Option(extraInfo get oldTransformedHashKey)) match {
-          case x @ Some(MyHash) =>
-            true
-          case Some(other) =>
-            false
+          case Some(MyHash) => true
           case _ => false
         })
     }
