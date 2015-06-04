@@ -104,7 +104,7 @@ class MakePom(val log: Logger) {
        {
          val deps = depsInConfs(module, configurations)
          makeProperties(module, deps) ++
-           makeDependencies(deps, includeTypes)
+           makeDependencies(deps, includeTypes, module.getAllExcludeRules)
        }
        { makeRepositories(ivy.getSettings, allRepositories, filterRepositories) }
      </project>)
@@ -220,43 +220,65 @@ class MakePom(val log: Logger) {
     }
   val IgnoreTypes: Set[String] = Set(Artifact.SourceType, Artifact.DocType, Artifact.PomType)
 
+  @deprecated("Use `makeDependencies` variant which takes excludes", "0.13.9")
   def makeDependencies(dependencies: Seq[DependencyDescriptor], includeTypes: Set[String]): NodeSeq =
+    makeDependencies(dependencies, includeTypes, Nil)
+
+  def makeDependencies(dependencies: Seq[DependencyDescriptor], includeTypes: Set[String], excludes: Seq[ExcludeRule]): NodeSeq =
     if (dependencies.isEmpty)
       NodeSeq.Empty
     else
       <dependencies>
-        { dependencies.map(makeDependency(_, includeTypes)) }
+        { dependencies.map(makeDependency(_, includeTypes, excludes)) }
       </dependencies>
 
+  @deprecated("Use `makeDependency` variant which takes excludes", "0.13.9")
   def makeDependency(dependency: DependencyDescriptor, includeTypes: Set[String]): NodeSeq =
+    makeDependency(dependency, includeTypes, Nil)
+
+  def makeDependency(dependency: DependencyDescriptor, includeTypes: Set[String], excludes: Seq[ExcludeRule]): NodeSeq =
     {
       val artifacts = dependency.getAllDependencyArtifacts
       val includeArtifacts = artifacts.filter(d => includeTypes(d.getType))
       if (artifacts.isEmpty) {
-        val (scope, optional) = getScopeAndOptional(dependency.getModuleConfigurations)
-        makeDependencyElem(dependency, scope, optional, None, None)
+        val configs = dependency.getModuleConfigurations
+        if (configs.filterNot(Set("sources", "docs")).nonEmpty) {
+          val (scope, optional) = getScopeAndOptional(dependency.getModuleConfigurations)
+          makeDependencyElem(dependency, scope, optional, None, None, excludes)
+        } else NodeSeq.Empty
       } else if (includeArtifacts.isEmpty)
         NodeSeq.Empty
       else
-        NodeSeq.fromSeq(artifacts.map(a => makeDependencyElem(dependency, a)))
+        NodeSeq.fromSeq(artifacts.flatMap(a => makeDependencyElem(dependency, a, excludes)))
     }
 
-  def makeDependencyElem(dependency: DependencyDescriptor, artifact: DependencyArtifactDescriptor): Elem =
+  @deprecated("Use `makeDependencyElem` variant which takes excludes", "0.13.9")
+  def makeDependencyElem(dependency: DependencyDescriptor, artifact: DependencyArtifactDescriptor): Option[Elem] =
+    makeDependencyElem(dependency, artifact, Nil)
+
+  def makeDependencyElem(dependency: DependencyDescriptor, artifact: DependencyArtifactDescriptor, excludes: Seq[ExcludeRule]): Option[Elem] =
     {
       val configs = artifact.getConfigurations.toList match {
         case Nil | "*" :: Nil => dependency.getModuleConfigurations
         case x                => x.toArray
       }
-      val (scope, optional) = getScopeAndOptional(configs)
-      val classifier = artifactClassifier(artifact)
-      val baseType = artifactType(artifact)
-      val tpe = (classifier, baseType) match {
-        case (Some(c), Some(tpe)) if Artifact.classifierType(c) == tpe => None
-        case _ => baseType
-      }
-      makeDependencyElem(dependency, scope, optional, classifier, tpe)
+      if (configs.filterNot(Set("sources", "docs")).nonEmpty) {
+        val (scope, optional) = getScopeAndOptional(configs)
+        val classifier = artifactClassifier(artifact)
+        val baseType = artifactType(artifact)
+        val tpe = (classifier, baseType) match {
+          case (Some(c), Some(tpe)) if Artifact.classifierType(c) == tpe => None
+          case _ => baseType
+        }
+        Some(makeDependencyElem(dependency, scope, optional, classifier, tpe, excludes))
+      } else None
     }
+
+  @deprecated("Use `makeDependencyElem` variant which takes excludes", "0.13.9")
   def makeDependencyElem(dependency: DependencyDescriptor, scope: Option[String], optional: Boolean, classifier: Option[String], tpe: Option[String]): Elem =
+    makeDependencyElem(dependency, scope, optional, classifier, tpe, Nil)
+
+  def makeDependencyElem(dependency: DependencyDescriptor, scope: Option[String], optional: Boolean, classifier: Option[String], tpe: Option[String], excludes: Seq[ExcludeRule]): Elem =
     {
       val mrid = dependency.getDependencyRevisionId
       <dependency>
@@ -267,7 +289,7 @@ class MakePom(val log: Logger) {
         { optionalElem(optional) }
         { classifierElem(classifier) }
         { typeElem(tpe) }
-        { exclusions(dependency) }
+        { exclusions(dependency, excludes) }
       </dependency>
     }
 
@@ -317,9 +339,12 @@ class MakePom(val log: Logger) {
       (scope, opt.nonEmpty)
     }
 
-  def exclusions(dependency: DependencyDescriptor): NodeSeq =
+  @deprecated("Use `exclusions` variant which takes excludes", "0.13.9")
+  def exclusions(dependency: DependencyDescriptor): NodeSeq = exclusions(dependency, Nil)
+
+  def exclusions(dependency: DependencyDescriptor, excludes: Seq[ExcludeRule]): NodeSeq =
     {
-      val excl = dependency.getExcludeRules(dependency.getModuleConfigurations)
+      val excl = dependency.getExcludeRules(dependency.getModuleConfigurations) ++ excludes
       val (warns, excls) = IvyUtil.separate(excl.map(makeExclusion))
       if (warns.nonEmpty) log.warn(warns.mkString(IO.Newline))
       if (excls.nonEmpty) <exclusions>{ excls }</exclusions>
