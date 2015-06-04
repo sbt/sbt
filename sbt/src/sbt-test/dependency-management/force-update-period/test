@@ -1,0 +1,11 @@
+$ absent target/resolution-cache
+> compile
+$ exists target/resolution-cache
+> checkLastUpdateTime
+$ sleep 10000
+> compile
+# This is expected to fail
+-> checkLastUpdateTime
+> set forceUpdatePeriod := Some(new scala.concurrent.duration.FiniteDuration(5000, java.util.concurrent.TimeUnit.MILLISECONDS))
+> compile
+> checkLastUpdateTime

@@ -61,7 +61,7 @@ object HistoryCommands {
 
   def execute(f: History => Option[String]): History => Option[List[String]] = (h: History) =>
     {
-      val command = f(h)
+      val command = f(h).filterNot(_.startsWith(Start))
       val lines = h.lines.toArray
       command.foreach(lines(lines.length - 1) = _)
       h.path foreach { h => IO.writeLines(h, lines) }

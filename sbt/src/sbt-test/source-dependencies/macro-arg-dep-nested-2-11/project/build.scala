@@ -5,7 +5,7 @@ object build extends Build {
 	val defaultSettings = Seq(
 		libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _ ),
 		incOptions := incOptions.value.withNameHashing(true),
-		scalaVersion := "2.11.0-RC3"
+		scalaVersion := "2.11.6"
 	)
 
 	lazy val root = Project(

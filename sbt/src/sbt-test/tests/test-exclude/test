@@ -1,0 +1,61 @@
+# Test1 & Test2 create files Test1.run & Test2.run respectively
+
+# no parameters
+> test-only
+$ exists target/Test1.run
+$ exists target/Test2.run
+
+$ delete target/Test1.run
+$ delete target/Test2.run
+
+
+# with explicit match
+> test-only Test1*
+$ exists target/Test1.run
+-$ exists target/Test2.run
+
+$ delete target/Test1.run
+
+
+# with explicit match and exclusion
+> test-only Test* -Test1
+-$ exists target/Test1.run
+$ exists target/Test2.run
+
+$ delete target/Test2.run
+
+
+# with explicit match and exclusion
+> test-only Test* -Test2
+$ exists target/Test1.run
+-$ exists target/Test2.run
+
+$ delete target/Test1.run
+
+
+# with only exclusion
+> test-only -Test2
+$ exists target/Test1.run
+-$ exists target/Test2.run
+
+$ delete target/Test1.run
+
+
+# with only exclusion
+> test-only -Test1
+-$ exists target/Test1.run
+$ exists target/Test2.run
+
+$ delete target/Test2.run
+
+
+# with only glob exclusion
+> test-only -Test*
+-$ exists target/Test1.run
+-$ exists target/Test2.run
+
+
+# with only glob exclusion
+> test-only -T*1 -T*2
+-$ exists target/Test1.run
+-$ exists target/Test2.run
