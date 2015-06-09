@@ -78,7 +78,7 @@ object CustomPomParser {
       Option(extraInfo).isDefined &&
         ((Option(extraInfo get TransformedHashKey) orElse Option(extraInfo get oldTransformedHashKey)) match {
           case Some(MyHash) => true
-          case _ => false
+          case _            => false
         })
     }
 
