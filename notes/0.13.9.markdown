@@ -1,11 +1,114 @@
 
+  [@cunei]: https://github.com/cunei
+  [@eed3si9n]: https://github.com/eed3si9n
+  [@gkossakowski]: https://github.com/gkossakowski
+  [@jsuereth]: https://github.com/jsuereth
   [@dwijnand]: http://github.com/dwijnand
+  [@ajsquared]: https://github.com/ajsquared
+  [@jroper]: https://github.com/jroper
+  [@kamilkloch]: https://github.com/kamilkloch
+  [@DavidPerezIngeniero]: https://github.com/DavidPerezIngeniero
+  [@PanAeon]: https://github.com/PanAeon
+  [@asflierl]: http://github.com/asflierl
+  [@matthewfarwell]: http://github.com/matthewfarwell
+
+  [1970]: https://github.com/sbt/sbt/pull/1970
+  [1960]: https://github.com/sbt/sbt/pull/1960
+  [1562]: https://github.com/sbt/sbt/issues/1562
+  [1900]: https://github.com/sbt/sbt/issues/1900
+  [1940]: https://github.com/sbt/sbt/pull/1940
   [1922]: https://github.com/sbt/sbt/pull/1922
+  [1721]: https://github.com/sbt/sbt/issues/1721
+  [2014]: https://github.com/sbt/sbt/issues/2014
+  [2030]: https://github.com/sbt/sbt/pull/2030
+  [1998]: https://github.com/sbt/sbt/issues/1998
+  [2000]: https://github.com/sbt/sbt/pull/2000
+  [1828]: https://github.com/sbt/sbt/issues/1828
+  [1992]: https://github.com/sbt/sbt/pull/1992
+  [1961]: https://github.com/sbt/sbt/issues/1961
+  [1223]: https://github.com/sbt/sbt/issues/1223
+  [1773]: https://github.com/sbt/sbt/pull/1773
+  [2028]: https://github.com/sbt/sbt/issues/2028
+  [1651]: https://github.com/sbt/sbt/issues/1651
+  [1990]: https://github.com/sbt/sbt/pull/1990
+  [1847]: https://github.com/sbt/sbt/issues/1847
+  [1989]: https://github.com/sbt/sbt/pull/1989
+  [1856]: https://github.com/sbt/sbt/issues/1856
+  [1877]: https://github.com/sbt/sbt/issues/1877
+  [2035]: https://github.com/sbt/sbt/pull/2035
 
 ### Fixes with compatibility implications
 
+- Starting 0.13.9, `crossScalaVersions` default value is fixed back to the older 0.12.x behavior. See below for
+  details
+- Starting with 0.13.9, the generated POM files no longer include dependencies on source or javadoc jars obtained via `withSources()` or `withJavadoc()`. See below for details
+
 ### Improvements
 
-- Add `-=` and `--=` for settings and tasks, dual of `+=` and `++=`. [#1922][1922] by [@dwijnand][@dwijnand]
+- Add `-=` and `--=` for settings and tasks, which are the opposites of `+=` and `++=`. [#1922][1922] by [@dwijnand][@dwijnand]
+- Add `inThisBuild`, similar to `inConfig`, to allow specifying multiple settings in `ThisBuild` scope. [#1847][1847]/[#1989][1989] by [@dwijnand][@dwijnand]
+- Add a nicer toString to SimpleCommand to make it more human-friendly. [#1998][1998]/[#2000][2000] by [@dwijnand][@dwijnand]
+- Adds `retrieveManagedSync` key that, when set to true, enables synchronizing retrieved to the current build by removed unneeded files. By [@ajsquared][@ajsquared]
+- Adds `configurationsToRetrieve` key, that takes values of `Option[Set[Configuration]]`. If set, when retrieveManaged is true only artifacts in the specified configurations will be retrieved to the current build. By [@ajsquared][@ajsquared]
+- Adds `forceUpdatePeriod` key, that takes values of `Option[FiniteDuration]`.  If set, a full `update` will occur after that amount of time without needing to explicitly run the `update` task. By [@ajsquared][@ajsquared]
+- Update `ForkError.getMessage()` to include exception's original name. [#2028][2028] by [@kamilkloch][@kamilkloch]
+- Add help message for `inspect actual`. [#1651][1651]/[#1990][1990] by [@dwijnand][@dwijnand]
+- Support excluding tests in `testOnly`/`testQuick` with `-`, for example `-MySpec`.
+  [#1970][1970] by [@matthewfarwell][@matthewfarwell]
 
 ### Bug fixes
+
+- Fixes memory/performance issue with cached resolution. See below.
+- Correct incremental compile debug message for invalidated products [#1961][1961] by [@jroper][@jroper]
+- Enable forced GC by default. See below. 
+- Captures errors on `help` command. [#1900][1900]/[#1940][1940] by [@DavidPerezIngeniero][@DavidPerezIngeniero]
+- Prevent history command(s) from going into an infinite loop [#1562][1562] by [@PanAeon][@PanAeon]
+- Honor overwrite flag when publishing locally. [#1960][1960] by [@asflierl][@asflierl]
+- Fixes a certain class of pom corruption that can occur in the presence of parent-poms. [#1856][1856] by [@jsuereth][@jsuereth]
+- Add dependency-level exclusions in the POM for project-level exclusions. [#1877][1877]/[#2035][2035] by [@dwijnand][@dwijnand]
+
+### `crossScalaVersions` default value
+
+As of this fix `crossScalaVersions` returns to the behaviour present in `0.12.4` whereby it defaults to what
+`scalaVersion` is set to, for example if `scalaVersion` is set to `"2.11.6"`, `crossScalaVersions` now defaults
+to `Seq("2.11.6")`.
+
+Therefore when upgrading from any version between `0.13.0` and `0.13.8` be aware of this new default if
+your build setup depended on it.
+
+[#1828][1828]/[#1992][1992] by [@dwijnand][@dwijnand]
+
+### POM files no longer include certain source and javadoc jars
+
+When declaring library dependencies using the withSources() or withJavadoc() options, sbt was also including
+in the pom file, as dependencies, the source or javadoc jars using the default Maven scope. Such dependencies
+might be erroneously processed as they were regular jars by automated tools
+
+[#2001][2001]/[#2027][2027] by [@cunei][@cunei]
+
+### Cached resolution fixes
+
+On a larger dependency graph, the JSON file growing to be 100MB+
+with 97% of taken up by *caller* information.
+The caller information is not useful once the graph is successfully resolved.
+To make the matter worse, these large JSON files were never cleaned up.
+
+sbt 0.13.9 creates a single caller to represent all callers,
+which fixes `OutOfMemoryException` seen on some builds.
+This generally shrinks the size of JSON, so it should make the IO operations faster.
+Dynamic graphs will be rotated with directories named after `yyyy-mm-dd`,
+and stale JSON files will be cleaned up after few days.
+
+[#2030][2030]/[#1721][1721]/[#2014][2014] by [@eed3si9n][@eed3si9n]
+
+### Force GC
+
+[@cunei][@cunei] in [#1223][1223] discovered that sbt leaks PermGen
+when it creates classloaders to call Scala Compilers.
+sbt 0.13.9 will call GC on a set interval (default: 60s).
+It will also call GC right before cross building.
+This behavior can diabled using by setting false to `forcegc`
+setting or `sbt.task.forcegc` flag.
+
+[#1773][1773] by [@eed3si9n][@eed3si9n]
+
