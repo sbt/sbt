@@ -38,6 +38,8 @@
   [1856]: https://github.com/sbt/sbt/issues/1856
   [1877]: https://github.com/sbt/sbt/issues/1877
   [2035]: https://github.com/sbt/sbt/pull/2035
+  [2001]: https://github.com/sbt/sbt/issues/2001
+  [2027]: https://github.com/sbt/sbt/pull/2027
 
 ### Fixes with compatibility implications
 
