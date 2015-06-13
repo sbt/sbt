@@ -14,7 +14,10 @@ def buildLevelSettings: Seq[Setting[_]] = Seq(
   version in ThisBuild := "0.13.9-SNAPSHOT",
   // bintrayOrganization in ThisBuild := None,
   // bintrayRepository in ThisBuild := "test-test-test",
-  bintrayOrganization in ThisBuild := Some("sbt"),
+  bintrayOrganization in ThisBuild :=  {
+    if ((publishStatus in ThisBuild).value == "releases") Some("typesafe")
+    else Some("sbt")
+  },
   bintrayRepository in ThisBuild := s"ivy-${(publishStatus in ThisBuild).value}",
   bintrayPackage in ThisBuild := "sbt",
   bintrayReleaseOnPublish in ThisBuild := false
@@ -487,8 +490,8 @@ def projectsWithMyProvided = allProjects.map(p => p.copy(configurations = (p.con
 lazy val nonRoots = projectsWithMyProvided.map(p => LocalProject(p.id))
 
 def rootSettings = fullDocSettings ++
-  Util.publishPomSettings ++ otherRootSettings ++ Formatting.sbtFilesSettings /*++
-  Transform.conscriptSettings(launchProj)*/
+  Util.publishPomSettings ++ otherRootSettings ++ Formatting.sbtFilesSettings ++
+  Transform.conscriptSettings(bundledLauncherProj)
 def otherRootSettings = Seq(
   Scripted.scriptedPrescripted := { _ => },
   Scripted.scripted <<= scriptedTask,
@@ -619,7 +622,6 @@ def customCommands: Seq[Setting[_]] = Seq(
    */
   commands += Command.command("release-sbt") { state =>
     // TODO - Any sort of validation
-    "checkCredentials" ::
     "clean" ::
     "allPrecompiled/clean" ::
       "allPrecompiled/compile" ::
