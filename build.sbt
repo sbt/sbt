@@ -484,7 +484,7 @@ def allProjects = Seq(interfaceProj, apiProj,
   compileInterfaceProj, compileIncrementalProj, compilePersistProj, compilerProj,
   compilerIntegrationProj, compilerIvyProj,
   scriptedBaseProj, scriptedSbtProj, scriptedPluginProj,
-  actionsProj, commandProj, mainSettingsProj, mainProj, sbtProj, mavenResolverPluginProj)
+  actionsProj, commandProj, mainSettingsProj, mainProj, sbtProj, bundledLauncherProj, mavenResolverPluginProj)
 
 def projectsWithMyProvided = allProjects.map(p => p.copy(configurations = (p.configurations.filter(_ != Provided)) :+ myProvided))
 lazy val nonRoots = projectsWithMyProvided.map(p => LocalProject(p.id))
