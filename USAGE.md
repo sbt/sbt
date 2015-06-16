@@ -32,6 +32,7 @@ for (dep <- resolution.dependencies if resolution.projectsCache.contains(dep.mod
 for (dep <- resolution.dependencies if resolution.errors.contains(dep.module))
   println(resolution.errors(dep.module))
 
+// Downloading them
 import coursier.core.ArtifactDownloader
 
 val dl = ArtifactDownloader(repository.mavenCentral.root, new java.io.File("cache"))
