@@ -4,6 +4,12 @@
 
 A pure Scala substitute for [Aether](http://www.eclipse.org/aether/)
 
+[![Build Status](https://travis-ci.org/alexarchambault/coursier.svg?branch=master)](https://travis-ci.org/alexarchambault/coursier)
+
+See [Scala JS demo](https://alexarchambault.github.io/coursier/index.html#demo) and [usage](https://github.com/alexarchambault/coursier/blob/master/USAGE.md).
+
+Both a JVM library and a Scala JS one.
+
 Work in progress:
 * full list of dependencies / version conflict resolution working, mildly to well tested,
 * downloading/caching of JARs in its early stages.
@@ -15,8 +21,6 @@ Implements fancy Maven features like
 * [properties](http://books.sonatype.com/mvnref-book/reference/resource-filtering-sect-properties.html).
 
 Restricted to Maven resolution and repositories for now. Support for Ivy seems definitely at reach, just not done yet.
-
-Both a JVM library and a Scala JS one.
 
 
 Released under the Apache license, v2.
