@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Dependency resolution with Coursier</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+  <link rel="stylesheet" href="css/bootstrap-treeview.css">
+
+  <style>
+      .icon-action {
+        cursor: pointer;
+      }
+
+      #resolveButton {
+        margin-top: 20px;
+        margin-bottom: 20px;
+      }
+
+      #results {
+        display: none;
+      }
+
+      .customButton {
+        margin: 5px;
+      }
+  </style>
+
+</head>
+<body style="margin: 0px">
+
+<div class="container theme-showcase" role="main">
+
+<nav class="navbar navbar-default">
+  <div class="container-fluid">
+    <div class="navbar-header">
+        <a class="navbar-brand" href="#mainTab" data-toggle="tab">Coursier</a>
+    </div>
+
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+        <ul class="nav navbar-nav">
+            <!--  class="active" -->
+            <li><a href="#demo" data-toggle="tab">Demo</a></li>
+            <li><a href="https://github.com/alexarchambault/coursier/blob/master/USAGE.md">Usage</a></li>
+            <!-- <li class="dropdown">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Usage <span class="caret"></span></a>
+                <ul class="dropdown-menu">
+                    <li><a href="#usageCli" data-toggle="tab">Command-line</a></li>
+                    <li><a href="#usageApi" data-toggle="tab">API</a></li>
+                </ul>
+            </li> -->
+        </ul>
+
+        <ul class="nav navbar-nav navbar-right">
+            <li><a href="https://github.com/alexarchambault/coursier">Github</a></li>
+        </ul>
+    </div>
+
+  </div>
+</nav>
+
+<div class="tab-content" id="mainTabContent">
+
+    <div class="tab-pane fade in active" id="mainTab">
+        <div class="jumbotron">
+            <h1>Coursier</h1>
+            <p>Pure Scala Artifact Fetching</p>
+            <p><a href="https://github.com/alexarchambault/coursier">Project Page</a></p>
+        </div>
+
+    </div>
+
+    <div class="tab-pane fade" id="demo">
+
+        <div id="demoContent"></div>
+
+    </div>
+
+    <div class="tab-pane fade" id="usageCli">
+        <p>CLI</p>
+    </div>
+
+    <div class="tab-pane fade" id="usageApi">
+        <p>API</p>
+    </div>
+
+</div>
+
+</div>
+
+<script>
+    // From scalajs-react examples
+
+    function jsonp(url, callback) {
+        var callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+        window[callbackName] = function(data) {
+            delete window[callbackName];
+            callback(data);
+        };
+
+        var script = document.createElement('script');
+        script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + callbackName;
+        document.body.appendChild(script);
+    }
+</script>
+
+<script type="text/javascript" src="../web-jsdeps.js"></script>
+<script type="text/javascript" src="../web-fastopt.js"></script>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+
+<script src="js/bootstrap-treeview.js"></script>
+
+<script type="text/javascript" src="js/raphael.js"></script>
+<script type="text/javascript" src="js/dracula_graph.js"></script>
+<script type="text/javascript" src="js/dracula_graffle.js"></script>
+
+<script type="text/javascript" src="js/routie.min.js"></script>
+
+<script>
+  // http://stackoverflow.com/a/13413044/3714539
+  routie({
+    demo: function() {
+        $('#accordionOne').collapse('show');
+    },
+    accordionTwo: function() {
+        $('#accordionTwo').collapse('show');
+    },
+    accordionThree: function() {
+        $('#accordionThree').collapse('show');
+    }
+  });
+</script>
+
+<script>
+  coursier.web.Main().main();
+</script>
+
+</body>
+</html>

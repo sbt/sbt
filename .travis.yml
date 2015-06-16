@@ -1,0 +1,11 @@
+language: scala
+scala:
+- 2.11.6
+- 2.10.5
+jdk:
+- oraclejdk7
+- oraclejdk8
+install:
+- npm install xmldom
+- npm install xhr2
+script: project/travis.sh "$TRAVIS_SCALA_VERSION" "$TRAVIS_PULL_REQUEST" "$TRAVIS_BRANCH"
