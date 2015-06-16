@@ -103,7 +103,12 @@ object CoursierBuild extends Build {
       libraryDependencies ++= Seq(
         "com.github.alexarchambault" %% "case-app" % "0.2.2",
         "ch.qos.logback" % "logback-classic" % "1.1.3"
-      )
+      ) ++ {
+        if (scalaVersion.value startsWith "2.10.")
+          Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.0.1" cross CrossVersion.full))
+        else
+          Seq()
+      }
     )
 
   lazy val web = Project(id = "web", base = file("web"))
