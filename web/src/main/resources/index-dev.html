@@ -36,10 +36,10 @@
 <nav class="navbar navbar-default">
   <div class="container-fluid">
     <div class="navbar-header">
-        <a class="navbar-brand" href="#mainTab" data-toggle="tab">Coursier</a>
+        <a class="navbar-brand active" href="#mainTab" data-toggle="tab" onclick="$('#mainNavBar li').removeClass('active')">Coursier</a>
     </div>
 
-    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+    <div class="collapse navbar-collapse" id="mainNavBar">
         <ul class="nav navbar-nav">
             <!--  class="active" -->
             <li><a href="#demo" data-toggle="tab">Demo</a></li>
@@ -122,21 +122,21 @@
 <script type="text/javascript" src="js/dracula_graph.js"></script>
 <script type="text/javascript" src="js/dracula_graffle.js"></script>
 
-<script type="text/javascript" src="js/routie.min.js"></script>
-
 <script>
-  // http://stackoverflow.com/a/13413044/3714539
-  routie({
-    demo: function() {
-        $('#accordionOne').collapse('show');
-    },
-    accordionTwo: function() {
-        $('#accordionTwo').collapse('show');
-    },
-    accordionThree: function() {
-        $('#accordionThree').collapse('show');
-    }
-  });
+// From http://www.bootply.com/VQqzOawoYc
+// Javascript to enable link to tab
+var hash = document.location.hash;
+console.log(hash);
+if (hash) {
+console.log('match');
+    // $('.nav-tabs a[href='+hash+']').tab('show');
+    $('a[href='+hash+']').trigger('click');
+}
+// Change hash for page-reload
+// Working?
+$('.nav-tabs a').on('shown.bs.tab', function (e) {
+    window.location.hash = e.target.hash;
+});
 </script>
 
 <script>
