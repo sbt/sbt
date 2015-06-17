@@ -23,20 +23,17 @@ function isMaster() {
   [ "$TRAVIS_BRANCH" = "master" ]
 }
 
+# web sub-project doesn't compile in 2.10 (no scalajs-react)
 if echo "$TRAVIS_SCALA_VERSION" | grep -q "^2\.10"; then
-  if isNotPr && isJdk7 && isMaster; then
-    EXTRA_SBT_ARGS="core-jvm/publish core-js/publish cli/publish"
-  else
-    EXTRA_SBT_ARGS=""
-  fi
-
-  sbt ++${TRAVIS_SCALA_VERSION} core-jvm/test core-js/test cli/test $EXTRA_SBT_ARGS
+  SBT_COMMANDS="cli/compile"
 else
-  if isNotPr && isJdk7 && isMaster; then
-    EXTRA_SBT_ARGS="publish"
-  else
-    EXTRA_SBT_ARGS=""
-  fi
-
-  sbt ++${TRAVIS_SCALA_VERSION} test $EXTRA_SBT_ARGS
+  SBT_COMMANDS="compile"
 fi
+
+SBT_COMMANDS="$SBT_COMMANDS core-jvm/test core-js/test"
+
+if isNotPr && isJdk7 && isMaster; then
+  SBT_COMMANDS="$SBT_COMMANDS core-jvm/publish core-js/publish cli/publish"
+fi
+
+sbt ++${TRAVIS_SCALA_VERSION} $SBT_COMMANDS

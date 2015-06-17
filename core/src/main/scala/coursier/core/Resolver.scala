@@ -10,6 +10,14 @@ object Resolver {
 
   /**
    * Try to find `module` among `repositories`.
+   *
+   * Look at `repositories` from the left, one-by-one, and stop at first success.
+   * Else, return all errors, in the same order.
+   *
+   * The `module` field of the returned `Project` in case of success may not be
+   * equal to `module`, in case the version of the latter is not a specific
+   * version (e.g. version interval). Which version get chosen depends on
+   * the repository implementation.
    */
   def find(repositories: Seq[Repository],
            module: Module): EitherT[Task, List[String], (Repository, Project)] = {
@@ -126,6 +134,7 @@ object Resolver {
         .map(v => v -> Parse.versionConstraint(v))
         .partition(_._2.isEmpty)
 
+    // FIXME Report this in return type, not this way
     if (nonParsedConstraints.nonEmpty)
       Console.err.println(s"Ignoring unparsed versions: ${nonParsedConstraints.map(_._1)}")
 
@@ -139,7 +148,7 @@ object Resolver {
 
   /**
    * Merge several dependencies, solving version constraints of duplicated modules.
-   * Returns the conflicted dependencies, and the (solved) others.
+   * Returns the conflicted dependencies, and the (merged) others.
    */
   def merge(dependencies: TraversableOnce[Dependency]): (Seq[Dependency], Seq[Dependency]) = {
     val m = dependencies
@@ -370,7 +379,7 @@ object Resolver {
   /**
    * State of a dependency resolution.
    *
-   * Done if `isDone` is `true`.
+   * Done if method `isDone` returns `true`.
    *
    * @param dependencies: current set of dependencies
    * @param conflicts: conflicting dependencies

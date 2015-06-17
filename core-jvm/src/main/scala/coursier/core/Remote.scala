@@ -4,8 +4,6 @@ package core
 import java.io._
 import java.net.URL
 
-import org.http4s.{EntityDecoder, Status, Uri}
-
 import scala.annotation.tailrec
 import scala.io.Codec
 import scalaz._, Scalaz._
@@ -18,7 +16,7 @@ trait ArtifactDownloaderLogger {
   def downloadedArtifact(url: String, success: Boolean): Unit
 }
 
-case class ArtifactDownloader(root: Uri, cache: File, logger: Option[ArtifactDownloaderLogger] = None) {
+case class ArtifactDownloader(root: String, cache: File, logger: Option[ArtifactDownloaderLogger] = None) {
   var bufferSize = 1024*1024
 
   def artifact(module: Module,
@@ -52,7 +50,7 @@ case class ArtifactDownloader(root: Uri, cache: File, logger: Option[ArtifactDow
       //  - what if someone is trying to write this file at the same time? (no locking of any kind yet)
       //  - ...
 
-      val urlStr = (root resolve Uri(path = relPath.mkString("./", "/", ""))).renderString
+      val urlStr = root + relPath.mkString("/")
 
       Task {
         try {
@@ -107,8 +105,39 @@ trait RemoteLogger {
   def puttingInCache(f: File): Unit
 }
 
-case class Remote(root: Uri, cache: Option[File] = None, logger: Option[RemoteLogger] = None) extends Repository {
-  lazy val client = org.http4s.client.blaze.defaultClient
+object Remote {
+
+  def readFullySync(is: InputStream) = {
+    val buffer = new ByteArrayOutputStream()
+    val data = Array.ofDim[Byte](16384)
+
+    var nRead = is.read(data, 0, data.length)
+    while (nRead != -1) {
+      buffer.write(data, 0, nRead)
+      nRead = is.read(data, 0, data.length)
+    }
+
+    buffer.flush()
+    buffer.toByteArray
+  }
+
+  def readFully(is: => InputStream) =
+    Task {
+      \/.fromTryCatchNonFatal {
+        val is0 = is
+        val b =
+          try readFullySync(is)
+          finally is0.close()
+
+        new String(b, "UTF-8")
+      } .leftMap(_.getMessage)
+    }
+
+}
+
+case class Remote(root: String,
+                  cache: Option[File] = None,
+                  logger: Option[RemoteLogger] = None) extends Repository {
 
   def find(module: Module,
            cachePolicy: CachePolicy): EitherT[Task, String, Project] = {
@@ -141,19 +170,13 @@ case class Remote(root: Uri, cache: Option[File] = None, logger: Option[RemoteLo
     }
 
     def remote = {
-      val uri = root resolve Uri(path = relPath.mkString("./", "/", ""))
-      val log = Task(logger.foreach(_.downloading(uri.renderString)))
-      val get = log.flatMap(_ => client(uri))
+      val urlStr = root + relPath.mkString("/")
+      val url = new URL(urlStr)
 
-      get.flatMap{ resp =>
-        val success = resp.status == Status.Ok
-        logger.foreach(_.downloaded(uri.renderString, success))
+      def log = Task(logger.foreach(_.downloading(urlStr)))
+      def get = Remote.readFully(url.openStream())
 
-        if (success)
-          EntityDecoder.text.decode(resp).run.map(_.leftMap(_.sanitized))
-        else
-          Task.now(-\/(s"Unhandled or bad status ${resp.status.code} from repository (${resp.status.code} ${resp.status.reason})"))
-      }
+      log.flatMap(_ => get)
     }
 
     def save(s: String) = {
@@ -199,14 +222,10 @@ case class Remote(root: Uri, cache: Option[File] = None, logger: Option[RemoteLo
     }
 
     def remote = {
-      val respTask = client(root resolve Uri(path = relPath.mkString("./", "/", "")))
+      val urlStr = root + relPath.mkString("/")
+      val url = new URL(urlStr)
 
-      respTask.flatMap{ resp =>
-        if (resp.status == Status.Ok)
-          EntityDecoder.text.decode(resp).run.map(_.leftMap(_.sanitized))
-        else
-          Task.now(-\/(s"Unhandled or bad status ${resp.status.code} from repository (${resp.status.code} ${resp.status.reason})"))
-      }
+      Remote.readFully(url.openStream())
     }
 
     def save(s: String) = {
