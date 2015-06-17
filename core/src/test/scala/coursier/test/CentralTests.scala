@@ -21,8 +21,7 @@ object CentralTests extends TestSuite {
             .runF)
 
         val res = res0.copy(
-          projectsCache = Map.empty, errors = Map.empty, // No validating these here
-          dependencies = res0.dependencies.filter(dep => dep.scope == Scope.Compile && !dep.optional)
+          projectsCache = Map.empty, errors = Map.empty // No validating these here
         )
 
         val expected = Resolution(
@@ -31,6 +30,29 @@ object CentralTests extends TestSuite {
             dep.withCompileScope,
             Dependency(Module("ch.qos.logback", "logback-core", "1.1.3")).withCompileScope,
             Dependency(Module("org.slf4j", "slf4j-api", "1.7.7")).withCompileScope
+          )
+        )
+
+        assert(res == expected)
+      }
+    }
+    'asm{
+      async {
+        val dep = Dependency(Module("org.ow2.asm", "asm-commons", "5.0.2"))
+        val res0 =
+          await(resolve(Set(dep), fetchFrom(repositories))
+            .runF)
+
+        val res = res0.copy(
+          projectsCache = Map.empty, errors = Map.empty // No validating these here
+        )
+
+        val expected = Resolution(
+          rootDependencies = Set(dep.withCompileScope),
+          dependencies = Set(
+            dep.withCompileScope,
+            Dependency(Module("org.ow2.asm", "asm-tree", "5.0.2")).withCompileScope,
+            Dependency(Module("org.ow2.asm", "asm", "5.0.2")).withCompileScope
           )
         )
 

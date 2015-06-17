@@ -91,7 +91,7 @@ case class Remote(base: String, logger: Option[Logger] = None) extends Repositor
         for {
           xml <- \/.fromEither(eitherXml)
           _ = logger.foreach(_.other(url, "is XML"))
-          _ <- if (xml.label == "project") \/-(()) else -\/("Project definition not found")
+          _ <- if (xml.label == "project") \/-(()) else -\/(s"Project definition not found (got '${xml.label}')")
           _ = logger.foreach(_.other(url, "project definition found"))
           proj <- Xml.project(xml)
           _ = logger.foreach(_.other(url, "project definition ok"))

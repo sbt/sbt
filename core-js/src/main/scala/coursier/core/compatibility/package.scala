@@ -30,6 +30,20 @@ package object compatibility {
     js.Dynamic.newInstance(defn)()
   }
 
+  lazy val XMLSerializer = {
+    import js.Dynamic.{global => g}
+    import js.DynamicImplicits._
+
+    val defn =
+      if (js.isUndefined(g.XMLSerializer)) g.require("xmldom").XMLSerializer
+      else g.XMLSerializer
+    js.Dynamic.newInstance(defn)()
+  }
+
+  // Can't find these from node
+  val ELEMENT_NODE = 1 // org.scalajs.dom.raw.Node.ELEMENT_NODE
+  val TEXT_NODE = 3 // org.scalajs.dom.raw.Node.TEXT_NODE
+
   def fromNode(node: org.scalajs.dom.raw.Node): Xml.Node = {
 
     val node0 = node.asInstanceOf[js.Dynamic]
@@ -43,15 +57,19 @@ package object compatibility {
           .map(l => List.tabulate(l.length)(l.item).map(fromNode))
           .getOrElse(Nil)
 
+      // `exists` instead of `contains`, for scala 2.10
       def isText =
         option[Int](node0.nodeType)
-          .exists(_ == 3) //org.scalajs.dom.raw.Node.TEXT_NODE
+          .exists(_ == TEXT_NODE)
       def textContent =
         option(node0.textContent)
           .getOrElse("")
       def isElement =
         option[Int](node0.nodeType)
-          .exists(_ == 1) // org.scalajs.dom.raw.Node.ELEMENT_NODE
+          .exists(_ == ELEMENT_NODE)
+
+      override def toString =
+        XMLSerializer.serializeToString(node).asInstanceOf[String]
     }
   }
 
@@ -59,10 +77,18 @@ package object compatibility {
   def xmlParse(s: String): Either[String, Xml.Node] = {
     val doc = {
       if (s.isEmpty) None
-      else
-        dynOption(DOMParser.parseFromString(s, "text/xml"))
-          .flatMap(t => dynOption(t.childNodes))
-          .flatMap(l => l.asInstanceOf[js.Array[js.Dynamic]].headOption.flatMap(option[org.scalajs.dom.raw.Node]))
+      else {
+        for {
+          xmlDoc <- dynOption(DOMParser.parseFromString(s, "text/xml"))
+          rootNodes <- dynOption(xmlDoc.childNodes)
+          // From node, rootNodes.head is sometimes just a comment instead of the main root node
+          // (tested with org.ow2.asm:asm-commons in CentralTests)
+          rootNode <- rootNodes.asInstanceOf[js.Array[js.Dynamic]]
+            .flatMap(option[org.scalajs.dom.raw.Node])
+            .dropWhile(_.nodeType != ELEMENT_NODE)
+            .headOption
+        } yield rootNode
+      }
     }
 
     Right(doc.fold(Xml.Node.empty)(fromNode))
