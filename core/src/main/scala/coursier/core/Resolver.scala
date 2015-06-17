@@ -350,21 +350,22 @@ object Resolver {
     // Here, we're substituting properties also in dependencies that come from parents
     // or dependency management. This may not be the right thing to do.
 
+    val properties = mergeProperties(
+      project.properties,
+      Map(
+        "project.groupId" -> project.module.organization,
+        "project.artifactId" -> project.module.name,
+        "project.version" -> project.module.version
+      )
+    )
+
     val deps =
       withExclusions(
-        withProperties(
-          depsWithDependencyManagement(
-            project.dependencies,
-            project.dependencyManagement
-          ),
-          mergeProperties(
-            project.properties,
-            Map(
-              "project.groupId" -> project.module.organization,
-              "project.artifactId" -> project.module.name,
-              "project.version" -> project.module.version
-            )
-          )
+        depsWithDependencyManagement(
+          // important: properties have to be applied to both, so that dep mgmt can be matched properly
+          // See the added test with org.ow2.asm:asm-commons:5.0.2
+          withProperties(project.dependencies, properties),
+          withProperties(project.dependencyManagement, properties)
         ),
         from.exclusions
       )
