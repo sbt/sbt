@@ -148,7 +148,7 @@ object Resolver {
 
   /**
    * Merge several dependencies, solving version constraints of duplicated modules.
-   * Returns the conflicted dependencies, and the (solved) others.
+   * Returns the conflicted dependencies, and the (merged) others.
    */
   def merge(dependencies: TraversableOnce[Dependency]): (Seq[Dependency], Seq[Dependency]) = {
     val m = dependencies
