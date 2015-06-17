@@ -91,9 +91,22 @@ case class Coursier(scope: List[String],
   def repr(dep: Dependency) =
     s"${dep.module.organization}:${dep.module.name}:${dep.`type`}:${Some(dep.classifier).filter(_.nonEmpty).map(_+":").mkString}${dep.module.version}"
 
-  val trDeps = res.dependencies.toList.map(repr).sorted
+  val trDeps = res.dependencies.toList.sortBy(repr)
 
-  println("\n" + trDeps.mkString("\n"))
+  println("\n" + trDeps.map(repr).mkString("\n"))
+
+  if (res.conflicts.nonEmpty) {
+    // Needs test
+    println(s"${res.conflicts.size} conflict(s):\n  ${res.conflicts.toList.map(repr).sorted.mkString("  \n")}")
+  }
+
+  val errDeps = trDeps.filter(dep => res.errors.contains(dep.module))
+  if (errDeps.nonEmpty) {
+    println(s"${errDeps.size} error(s):")
+    for (dep <- errDeps) {
+      println(s"  ${dep.module}:\n    ${res.errors(dep.module).mkString("\n").replace("\n", "    \n")}")
+    }
+  }
 
   if (fetch) {
     println()
