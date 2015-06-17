@@ -175,6 +175,10 @@ class Backend($: BackendScope[Unit, State]) {
     }
   }
 
+  def enablePopover(e: ReactEventI) = {
+    g.$("[data-toggle='popover']").popover()
+  }
+
   object options {
     def toggleOptional(e: ReactEventI) = {
       $.modState(s => s.copy(options = s.options.copy(followOptional = !s.options.followOptional)))
@@ -189,8 +193,22 @@ object App {
 
   lazy val arbor = g.arbor
 
-  val resultDependencies = ReactComponentB[Resolution]("Result")
-    .render{ res =>
+  val resultDependencies = ReactComponentB[(Resolution, Backend)]("Result")
+    .render{ T =>
+      val (res, backend) = T
+
+      def infoLabel(label: String) =
+        <.span(^.`class` := "label label-info", label)
+      def errorLabel(label: String, desc: String) =
+        <.button(^.`type` := "button", ^.`class` := "btn btn-xs btn-danger",
+          Attr("data-trigger") := "focus",
+          Attr("data-toggle") := "popover", Attr("data-placement") := "bottom",
+          Attr("data-content") := desc,
+          ^.onClick ==> backend.enablePopover,
+          ^.onMouseOver ==> backend.enablePopover,
+          label
+        )
+
       def depItem(dep: Dependency) =
         <.tr(
           ^.`class` := (if (res.errors.contains(dep.module)) "danger" else ""),
@@ -198,10 +216,11 @@ object App {
           <.td(dep.module.name),
           <.td(dep.module.version),
           <.td(Seq[Seq[TagMod]](
-            if (dep.scope == Scope.Compile) Seq() else Seq(<.span(^.`class` := "label label-info", dep.scope.name)),
-            if (dep.`type`.isEmpty || dep.`type` == "jar") Seq() else Seq(<.span(^.`class` := "label label-info", dep.`type`)),
-            if (dep.classifier.isEmpty) Seq() else Seq(<.span(^.`class` := "label label-info", dep.classifier)),
-            if (dep.optional) Seq(<.span(^.`class` := "label label-info", dep.classifier)) else Seq()
+            if (dep.scope == Scope.Compile) Seq() else Seq(infoLabel(dep.scope.name)),
+            if (dep.`type`.isEmpty || dep.`type` == "jar") Seq() else Seq(infoLabel(dep.`type`)),
+            if (dep.classifier.isEmpty) Seq() else Seq(infoLabel(dep.classifier)),
+            if (dep.optional) Seq(infoLabel("optional")) else Seq(),
+            res.errors.get(dep.module).map(errs => errorLabel("Error", errs.mkString("; "))).toSeq
           )),
          <.td(Seq[Seq[TagMod]](
            res.projectsCache.get(dep.module) match {
@@ -244,7 +263,6 @@ object App {
         <.tbody(
           sortedDeps.map(depItem)
         )
-//        <.div(dangerouslySetInnerHtml("<script>$(function () {  $('[data-toggle=\"popover\"]').popover() })</script>"))
       )
     }
     .build
@@ -406,21 +424,23 @@ object App {
     }
     .build
 
-  val resolution = ReactComponentB[Option[Resolution]]("Resolution")
-    .render(resOpt =>
+  val resolution = ReactComponentB[(Option[Resolution], Backend)]("Resolution")
+    .render{ T =>
+      val (resOpt, backend) = T
+
       resOpt match {
         case Some(res) =>
           <.div(
             <.div(^.`class` := "page-header",
               <.h1("Resolution")
             ),
-            resultDependencies(res)
+            resultDependencies((res, backend))
           )
 
         case None =>
           <.div()
       }
-    )
+    }
     .build
 
   val initialState = State(Nil, Seq(coursier.repository.mavenCentral), ResolutionOptions(), None, -1, resolving = false, reverseTree = false, log = Nil)
@@ -494,7 +514,7 @@ object App {
           ),
           <.div(^.`class` := "tab-content",
             <.div(^.role := "tabpanel", ^.`class` := "tab-pane", ^.id := "resolution",
-              resolution(S.resolutionOpt)
+              resolution((S.resolutionOpt, B))
             ),
             <.div(^.role := "tabpanel", ^.`class` := "tab-pane", ^.id := "log",
               <.button(^.`type` := "button", ^.`class` := "btn btn-default",

@@ -30,6 +30,16 @@ package object compatibility {
     js.Dynamic.newInstance(defn)()
   }
 
+  lazy val XMLSerializer = {
+    import js.Dynamic.{global => g}
+    import js.DynamicImplicits._
+
+    val defn =
+      if (js.isUndefined(g.XMLSerializer)) g.require("xmldom").XMLSerializer
+      else g.XMLSerializer
+    js.Dynamic.newInstance(defn)()
+  }
+
   def fromNode(node: org.scalajs.dom.raw.Node): Xml.Node = {
 
     val node0 = node.asInstanceOf[js.Dynamic]
@@ -52,6 +62,9 @@ package object compatibility {
       def isElement =
         option[Int](node0.nodeType)
           .exists(_ == 1) // org.scalajs.dom.raw.Node.ELEMENT_NODE
+
+      override def toString =
+        XMLSerializer.serializeToString(node).asInstanceOf[String]
     }
   }
 
