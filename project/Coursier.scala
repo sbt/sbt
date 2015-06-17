@@ -118,8 +118,13 @@ object CoursierBuild extends Build {
       libraryDependencies ++= Seq(
         "com.github.japgolly.scalajs-react" %%% "core" % "0.9.0"
       ),
-      jsDependencies +=
-        "org.webjars" % "react" % "0.12.2" / "react-with-addons.js" commonJSName "React"
+      resolvers += "Webjars Bintray" at "https://dl.bintray.com/webjars/maven/",
+      jsDependencies ++= Seq(
+        ("org.webjars.bower" % "bootstrap" % "3.3.4" intransitive()) / "bootstrap.min.js" commonJSName "Bootstrap",
+        ("org.webjars.bower" % "react" % "0.12.2" intransitive()) / "react-with-addons.js" commonJSName "React",
+        ("org.webjars.bower" % "bootstrap-treeview" % "1.2.0" intransitive()) / "bootstrap-treeview.min.js" commonJSName "Treeview",
+        ("org.webjars.bower" % "raphael" % "2.1.4" intransitive()) / "raphael-min.js" commonJSName "Raphael"
+      )
     )
     .enablePlugins(ScalaJSPlugin)
 
