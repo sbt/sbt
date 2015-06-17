@@ -138,6 +138,62 @@ object PomParsingTests extends TestSuite {
 
       assert(result == expected)
     }
+    'beFineWithCommentsInProperties{
+      import scalaz._, Scalaz._
+
+      val properties =
+        """
+          |  <properties>
+          |    <maven.compile.source>1.6</maven.compile.source>
+          |    <maven.compile.target>1.6</maven.compile.target>
+          |    <commons.componentid>io</commons.componentid>
+          |    <commons.rc.version>RC1</commons.rc.version>
+          |    <commons.release.version>2.4</commons.release.version>
+          |    <commons.release.desc>(requires JDK 1.6+)</commons.release.desc>
+          |    <commons.release.2.version>2.2</commons.release.2.version>
+          |    <commons.release.2.desc>(requires JDK 1.5+)</commons.release.2.desc>
+          |    <commons.jira.id>IO</commons.jira.id>
+          |    <commons.jira.pid>12310477</commons.jira.pid>
+          |    <commons.osgi.export>
+          |        <!-- Explicit list of packages from IO 1.4 -->
+          |        org.apache.commons.io;
+          |        org.apache.commons.io.comparator;
+          |        org.apache.commons.io.filefilter;
+          |        org.apache.commons.io.input;
+          |        org.apache.commons.io.output;version=1.4.9999;-noimport:=true,
+          |        <!-- Same list plus * for new packages -->
+          |        org.apache.commons.io;
+          |        org.apache.commons.io.comparator;
+          |        org.apache.commons.io.filefilter;
+          |        org.apache.commons.io.input;
+          |        org.apache.commons.io.output;
+          |        org.apache.commons.io.*;version=${project.version};-noimport:=true
+          |    </commons.osgi.export>
+          |  </properties>
+          |
+        """.stripMargin
+
+      val parsed = core.compatibility.xmlParse(properties)
+      assert(parsed.isRight)
+
+      val node = parsed.right.get
+      assert(node.label == "properties")
+
+      val children = node.child.collect{case elem if elem.isElement => elem}
+      val props0 = children.toList.traverseU(Xml.property)
+
+      assert(props0.isRight)
+
+      val props = props0.getOrElse(???).toMap
+
+      assert(props.contains("commons.release.2.desc"))
+      assert(props.contains("commons.osgi.export"))
+
+      assert(props("commons.rc.version") == "RC1")
+      assert(props("commons.release.2.desc") == "(requires JDK 1.5+)")
+      assert(props("commons.osgi.export").contains("org.apache.commons.io.filefilter;"))
+      assert(props("commons.osgi.export").contains("org.apache.commons.io.input;"))
+    }
   }
 
 }

@@ -41,12 +41,10 @@ object Xml {
       .toRightDisjunction(s"$description not found")
   }
 
-  private def property(elem: Node): String \/ (String, String) = {
-    elem.child match {
-      case Seq() => \/-(elem.label -> "")
-      case Seq(Text(t)) => \/-(elem.label -> t)
-      case _ => -\/(s"Can't parse property $elem")
-    }
+  def property(elem: Node): String \/ (String, String) = {
+    // Not matching with Text, which fails on scala-js if the property value has xml comments
+    if (elem.isElement) \/-(elem.label -> elem.textContent)
+    else -\/(s"Can't parse property $elem")
   }
 
   // TODO Allow no version in some contexts

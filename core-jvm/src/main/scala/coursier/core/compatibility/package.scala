@@ -17,10 +17,7 @@ package object compatibility {
         def label = node.label
         def child = node.child.map(fromNode)
         def isText = node match { case _: scala.xml.Text => true; case _ => false }
-        def textContent = node match {
-          case t: scala.xml.Text => t.data
-          case _ => throw new NoSuchElementException("text of non text node")
-        }
+        def textContent = node.text
         def isElement = node match { case _: scala.xml.Elem => true; case _ => false }
       }
 
