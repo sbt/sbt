@@ -2,9 +2,6 @@ package coursier.core
 
 package object compatibility {
 
-  type DateTime = org.http4s.DateTime
-  val DateTime: org.http4s.DateTime.type = org.http4s.DateTime
-
   implicit class RichChar(val c: Char) extends AnyVal {
     def letterOrDigit = c.isLetterOrDigit
     def letter = c.isLetter

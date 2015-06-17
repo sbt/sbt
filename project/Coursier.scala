@@ -72,7 +72,7 @@ object CoursierBuild extends Build {
     .settings(commonSettings ++ commonCoreSettings: _*)
     .settings(
       libraryDependencies ++= Seq(
-        "org.http4s" %% "http4s-blazeclient" % "0.7.0",
+        "org.scalaz" %% "scalaz-concurrent" % "7.1.2",
         "com.lihaoyi" %% "utest" % "0.3.0" % "test"
       ) ++ {
         if (scalaVersion.value.startsWith("2.10.")) Seq()
