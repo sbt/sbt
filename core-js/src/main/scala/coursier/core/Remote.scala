@@ -100,7 +100,7 @@ case class Remote(base: String, logger: Option[Logger] = None) extends Repositor
 
     EitherT(Task{ implicit ec =>
       logger.foreach(_.fetching(url))
-      Remote.get(url).map{ eitherXml =>
+      Remote.get(url).recover{case e: Exception => Left(e.getMessage)}.map{ eitherXml =>
         logger.foreach(_.fetched(url))
         for {
           xml <- \/.fromEither(eitherXml)
