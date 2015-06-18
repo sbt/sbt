@@ -1,12 +1,14 @@
 package coursier
 
+import coursier.core.Resolver.ModuleVersion
+
 import scalaz.EitherT
 import scalaz.concurrent.Task
 
 package object core {
 
   def resolution(dependencies: Set[Dependency],
-                 fetch: Module => EitherT[Task, List[String], (Repository, Project)],
+                 fetch: ModuleVersion => EitherT[Task, List[String], (Repository, Project)],
                  filter: Option[Dependency => Boolean],
                  profileActivation: Option[(String, Activation, Map[String, String]) => Boolean]): Stream[Resolution] = {
 

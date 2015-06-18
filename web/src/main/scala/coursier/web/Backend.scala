@@ -69,7 +69,7 @@ class Backend($: BackendScope[Unit, State]) {
 
   def updateTree(resolution: Resolution, target: String, reverse: Boolean) = {
     def depsOf(dep: Dependency) =
-      resolution.projectsCache.get(dep.module).toSeq.flatMap(t => Resolver.finalDependencies(dep, t._2).filter(resolution.filter getOrElse Resolver.defaultFilter))
+      resolution.projectsCache.get(dep.moduleVersion).toSeq.flatMap(t => Resolver.finalDependencies(dep, t._2).filter(resolution.filter getOrElse Resolver.defaultFilter))
 
     lazy val reverseDeps = {
       var m = Map.empty[Module, Seq[Dependency]]
@@ -169,7 +169,7 @@ class Backend($: BackendScope[Unit, State]) {
   def addModule(e: ReactEventI) = {
     e.preventDefault()
     $.modState{ state =>
-      val modules = state.modules :+ Dependency(Module("", "", ""))
+      val modules = state.modules :+ Dependency(Module("", ""), "")
       println(s"Modules:\n${modules.mkString("\n")}")
       state.copy(modules = modules, editModuleIdx = modules.length - 1)
     }
@@ -211,26 +211,26 @@ object App {
 
       def depItem(dep: Dependency) =
         <.tr(
-          ^.`class` := (if (res.errors.contains(dep.module)) "danger" else ""),
+          ^.`class` := (if (res.errors.contains(dep.moduleVersion)) "danger" else ""),
           <.td(dep.module.organization),
           <.td(dep.module.name),
-          <.td(dep.module.version),
+          <.td(dep.version),
           <.td(Seq[Seq[TagMod]](
             if (dep.scope == Scope.Compile) Seq() else Seq(infoLabel(dep.scope.name)),
             if (dep.`type`.isEmpty || dep.`type` == "jar") Seq() else Seq(infoLabel(dep.`type`)),
             if (dep.classifier.isEmpty) Seq() else Seq(infoLabel(dep.classifier)),
             if (dep.optional) Seq(infoLabel("optional")) else Seq(),
-            res.errors.get(dep.module).map(errs => errorLabel("Error", errs.mkString("; "))).toSeq
+            res.errors.get(dep.moduleVersion).map(errs => errorLabel("Error", errs.mkString("; "))).toSeq
           )),
          <.td(Seq[Seq[TagMod]](
-           res.projectsCache.get(dep.module) match {
+           res.projectsCache.get(dep.moduleVersion) match {
              case Some((repo: Remote, _)) =>
                // FIXME Maven specific, generalize if/when adding support for Ivy
                val relPath =
                  dep.module.organization.split('.').toSeq ++ Seq(
                    dep.module.name,
-                   dep.module.version,
-                   s"${dep.module.name}-${dep.module.version}"
+                   dep.version,
+                   s"${dep.module.name}-${dep.version}"
                  )
 
                Seq(
@@ -274,9 +274,9 @@ object App {
     def remove = apply("remove")
   }
 
-  val moduleEditModal = ReactComponentB[(Module, Int, Backend)]("EditModule")
+  val moduleEditModal = ReactComponentB[((Module, String), Int, Backend)]("EditModule")
     .render{ P =>
-      val (module, moduleIdx, backend) = P
+      val ((module, version), moduleIdx, backend) = P
       <.div(^.`class` := "modal fade", ^.id := "moduleEdit", ^.role := "dialog", ^.aria.labelledby := "moduleEditTitle",
         <.div(^.`class` := "modal-dialog", <.div(^.`class` := "modal-content",
           <.div(^.`class` := "modal-header",
@@ -304,8 +304,8 @@ object App {
               <.div(^.`class` := "form-group",
                 <.label(^.`for` := "inputVersion", "Version"),
                 <.input(^.`class` := "form-control", ^.id := "inputVersion", ^.placeholder := "Version",
-                  ^.onChange ==> backend.updateModule(moduleIdx, (dep, value) => dep.copy(module = dep.module.copy(version = value))),
-                  ^.value := module.version
+                  ^.onChange ==> backend.updateModule(moduleIdx, (dep, value) => dep.copy(version = value)),
+                  ^.value := version
                 )
               ),
               <.div(^.`class` := "modal-footer",
@@ -326,7 +326,7 @@ object App {
         <.tr(
           <.td(dep.module.organization),
           <.td(dep.module.name),
-          <.td(dep.module.version),
+          <.td(dep.version),
           <.td(
             <.a(Attr("data-toggle") := "modal", Attr("data-target") := "#moduleEdit", ^.`class` := "icon-action",
               ^.onClick ==> backend.editModule(idx),
@@ -363,7 +363,7 @@ object App {
             deps.zipWithIndex.map((depItem _).tupled)
           )
         ),
-        moduleEditModal((deps.lift(editModuleIdx).fold(Module("", "", ""))(_.module), editModuleIdx, backend))
+        moduleEditModal((deps.lift(editModuleIdx).fold((Module("", ""), ""))(_.moduleVersion), editModuleIdx, backend))
       )
     }
     .build

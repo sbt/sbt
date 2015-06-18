@@ -73,13 +73,14 @@ trait Logger {
 case class Remote(base: String, logger: Option[Logger] = None) extends Repository {
 
   def find(module: Module,
+           version: String,
            cachePolicy: CachePolicy): EitherT[Task, String, Project] = {
 
     val relPath =
       module.organization.split('.').toSeq ++ Seq(
         module.name,
-        module.version,
-        s"${module.name}-${module.version}.pom"
+        version,
+        s"${module.name}-$version.pom"
       )
 
     val url = base + relPath.mkString("/")

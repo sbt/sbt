@@ -56,9 +56,11 @@ object Xml {
         else e
       }
       name <- text(node, "artifactId", "Name")
-      version = text(node, "version", "Version").getOrElse("")
-    } yield Module(organization, name, version).trim
+    } yield Module(organization, name).trim
   }
+
+  private def readVersion(node: Node) =
+    text(node, "version", "Version").getOrElse("").trim
 
   private val defaultScope = Scope.Other("")
   private val defaultType = "jar"
@@ -67,6 +69,7 @@ object Xml {
   def dependency(node: Node): String \/ Dependency = {
     for {
       mod <- module(node)
+      version0 = readVersion(node)
       scopeOpt = text(node, "scope", "").toOption
         .map(Parse.scope)
       typeOpt = text(node, "type", "").toOption
@@ -82,6 +85,7 @@ object Xml {
       optional = text(node, "optional", "").toOption.toSeq.contains("true")
     } yield Dependency(
         mod,
+        version0,
         scopeOpt getOrElse defaultScope,
         typeOpt getOrElse defaultType,
         classifierOpt getOrElse defaultClassifier,
@@ -150,12 +154,15 @@ object Xml {
 
     for {
       projModule <- module(pom, groupIdIsOptional = true)
+      projVersion = readVersion(pom)
 
       parentOpt = pom.child
         .find(_.label == "parent")
       parentModuleOpt <- parentOpt
         .map(module(_).map(Some(_)))
         .getOrElse(\/-(None))
+      parentVersionOpt = parentOpt
+        .map(readVersion)
 
       xmlDeps = pom.child
         .find(_.label == "dependencies")
@@ -173,12 +180,12 @@ object Xml {
       groupId <- Some(projModule.organization).filter(_.nonEmpty)
         .orElse(parentModuleOpt.map(_.organization).filter(_.nonEmpty))
         .toRightDisjunction("No organization found")
-      version <- Some(projModule.version).filter(_.nonEmpty)
-        .orElse(parentModuleOpt.map(_.version).filter(_.nonEmpty))
+      version <- Some(projVersion).filter(_.nonEmpty)
+        .orElse(parentVersionOpt.filter(_.nonEmpty))
         .toRightDisjunction("No version found")
 
-      _ <- parentModuleOpt
-        .map(mod => if (mod.version.isEmpty) -\/("Parent version missing") else \/-(()))
+      _ <- parentVersionOpt
+        .map(v => if (v.isEmpty) -\/("Parent version missing") else \/-(()))
         .getOrElse(\/-(()))
       _ <- parentModuleOpt
         .map(mod => if (mod.organization.isEmpty) -\/("Parent organization missing") else \/-(()))
@@ -197,9 +204,10 @@ object Xml {
       profiles <- xmlProfiles.toList.traverseU(profile)
 
     } yield Project(
-      projModule.copy(organization = groupId, version = version),
+      projModule.copy(organization = groupId),
+      version,
       deps,
-      parentModuleOpt,
+      parentModuleOpt.map((_, parentVersionOpt.getOrElse(""))),
       depMgmts,
       properties.toMap,
       profiles

@@ -26,9 +26,9 @@ object JsTests extends TestSuite {
 
     'getProj{
       repository.mavenCentral
-        .find(Module("ch.qos.logback", "logback-classic", "1.1.3"))
+        .find(Module("ch.qos.logback", "logback-classic"), "1.1.3")
         .map{ proj =>
-          assert(proj.parent == Some(Module("ch.qos.logback", "logback-parent", "1.1.3")))
+          assert(proj.parent == Some(Module("ch.qos.logback", "logback-parent"), "1.1.3"))
         }
         .run
         .runF

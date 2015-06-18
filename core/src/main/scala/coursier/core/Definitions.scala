@@ -1,32 +1,36 @@
 package coursier.core
 
 case class Module(organization: String,
-                  name: String,
-                  version: String) {
+                  name: String) {
 
   def trim: Module = copy(
     organization = organization.trim,
-    name = name.trim,
-    version = version.trim
+    name = name.trim
   )
-  override def toString = s"$organization:$name:$version"
+  override def toString = s"$organization:$name"
 }
 
 sealed abstract class Scope(val name: String)
 
 case class Dependency(module: Module,
+                      version: String,
                       scope: Scope,
                       `type`: String,
                       classifier: String,
                       exclusions: Set[(String, String)],
-                      optional: Boolean)
+                      optional: Boolean) {
+  def moduleVersion = (module, version)
+}
 
 case class Project(module: Module,
+                   version: String,
                    dependencies: Seq[Dependency],
-                   parent: Option[Module],
+                   parent: Option[(Module, String)],
                    dependencyManagement: Seq[Dependency],
                    properties: Map[String, String],
-                   profiles: Seq[Profile])
+                   profiles: Seq[Profile]) {
+  def moduleVersion = (module, version)
+}
 
 object Scope {
   case object Compile extends Scope("compile")

@@ -4,7 +4,7 @@ import scalaz.{\/, EitherT}
 import scalaz.concurrent.Task
 
 trait Repository {
-  def find(module: Module, cachePolicy: CachePolicy = CachePolicy.Default): EitherT[Task, String, Project]
+  def find(module: Module, version: String, cachePolicy: CachePolicy = CachePolicy.Default): EitherT[Task, String, Project]
   def versions(organization: String, name: String, cachePolicy: CachePolicy = CachePolicy.Default): EitherT[Task, String, Versions]
 }
 
