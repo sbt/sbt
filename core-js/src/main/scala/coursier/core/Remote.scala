@@ -31,19 +31,13 @@ object Remote {
       }
     }
 
-  def proxiedJsonp(url: String)(implicit executionContext: ExecutionContext): Future[String] =
-    if (url.contains("{")) Future.successful("") // jsonp callback never gets executed in this case (empty response)
-    else {
-
-    // FIXME url is put between quotes in the YQL query, which should sometimes require some extra encoding
+  def proxiedJsonp(url: String)(implicit executionContext: ExecutionContext): Future[String] = {
     val url0 =
       "https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20xml%20where%20url%3D%22" +
         encodeURIComponent(url) +
         "%22&format=jsonp&diagnostics=true"
 
     val p = Promise[String]()
-
-    // FIXME Promise may not be always completed in case of failure
 
     g.jsonp(url0, (res: js.Dynamic) => if (!p.isCompleted) {
       val success = !js.isUndefined(res) && !js.isUndefined(res.results)
@@ -89,12 +83,13 @@ case class Remote(base: String, logger: Option[Logger] = None) extends Repositor
            version: String,
            cachePolicy: CachePolicy): EitherT[Task, String, Project] = {
 
-    val relPath =
+    val relPath = {
       module.organization.split('.').toSeq ++ Seq(
         module.name,
         version,
         s"${module.name}-$version.pom"
       )
+    } .map(Remote.encodeURIComponent)
 
     val url = base + relPath.mkString("/")
 
