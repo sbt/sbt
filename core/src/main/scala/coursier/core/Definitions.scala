@@ -1,5 +1,14 @@
 package coursier.core
 
+/**
+ * Identify a "module".
+ *
+ * During resolution, all dependencies having the same module
+ * will be given the same version, if there are no version conflicts
+ * between them.
+ *
+ * Ivy attributes would land here, if support for Ivy is added.
+ */
 case class Module(organization: String,
                   name: String) {
 
@@ -12,6 +21,12 @@ case class Module(organization: String,
 
 sealed abstract class Scope(val name: String)
 
+/**
+ * Dependencies with the same @module will typically see their @version-s merged.
+ *
+ * The remaining fields are left untouched, some being transitively
+ * propagated (exclusions, optional, in particular).
+ */
 case class Dependency(module: Module,
                       version: String,
                       scope: Scope,
