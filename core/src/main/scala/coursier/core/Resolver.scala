@@ -8,6 +8,8 @@ import scalaz.{EitherT, \/-, \/, -\/}
 
 object Resolver {
 
+  type ModuleVersion = (Module, String)
+
   /**
    * Try to find `module` among `repositories`.
    *
@@ -20,9 +22,10 @@ object Resolver {
    * the repository implementation.
    */
   def find(repositories: Seq[Repository],
-           module: Module): EitherT[Task, List[String], (Repository, Project)] = {
+           module: Module,
+           version: String): EitherT[Task, List[String], (Repository, Project)] = {
 
-    val lookups = repositories.map(repo => repo -> repo.find(module).run)
+    val lookups = repositories.map(repo => repo -> repo.find(module, version).run)
     val task = lookups.foldLeft(Task.now(-\/(Nil)): Task[List[String] \/ (Repository, Project)]) {
       case (acc, (repo, t)) =>
         acc.flatMap {
@@ -112,9 +115,9 @@ object Resolver {
       dep.copy(
         module = dep.module.copy(
           organization = substituteProps(dep.module.organization),
-          name = substituteProps(dep.module.name),
-          version = substituteProps(dep.module.version)
+          name = substituteProps(dep.module.name)
         ),
+        version = substituteProps(dep.version),
         `type` = substituteProps(dep.`type`),
         scope = Parse.scope(substituteProps(dep.scope.name)),
         exclusions = dep.exclusions
@@ -153,42 +156,22 @@ object Resolver {
   def merge(dependencies: TraversableOnce[Dependency]): (Seq[Dependency], Seq[Dependency]) = {
     val m = dependencies
       .toList
-      .groupBy(dep => (dep.module.organization, dep.module.name))
+      .groupBy(dep => dep.module)
       .mapValues{ deps =>
-        if (deps.lengthCompare(1) == 0) List(\/-(deps.head))
+        if (deps.lengthCompare(1) == 0) \/-(deps)
         else {
-          val scopeTypeClassifiers = (Set.empty[(Scope, String, String)] /: deps)((acc, dep) => acc + ((dep.scope, dep.`type`, dep.classifier)))
-
-          val versions = deps.map(_.module.version).distinct
+          val versions = deps.map(_.version).distinct
           val versionOpt = mergeVersions(versions)
 
-          scopeTypeClassifiers.toList.flatMap{case (scope, type0, classifier) =>
-            val scopeTypeClassifierDeps =
-              deps.filter(dep =>
-                dep.scope == scope && dep.`type` == type0 && dep.classifier == classifier
-              )
-
-            def dep(version: String) = {
-              Dependency(
-                deps.head.module.copy(version = version),
-                scope,
-                type0,
-                classifier,
-                scopeTypeClassifierDeps.map(_.exclusions.toSet).reduce(exclusionsIntersect),
-                scopeTypeClassifierDeps.forall(_.optional)
-              )
-            }
-
-            versionOpt match {
-              case Some(version) => List(\/-(dep(version)))
-              case None => versions.map(version => -\/(dep(version)))
-            }
+          versionOpt match {
+            case Some(version) => \/-(deps.map(dep => dep.copy(version = version)))
+            case None => -\/(deps)
           }
         }
       }
 
-    val l = m.values.toList.flatten
-    (l.collect{case -\/(dep) => dep}, l.collect{case \/-(dep) => dep})
+    val l = m.values.toList
+    (l.collect{case -\/(dep) => dep}.flatten, l.collect{case \/-(dep) => dep}.flatten)
   }
 
   /**
@@ -223,8 +206,8 @@ object Resolver {
       var dep = dep0
 
       for (mgmtDep <- m.get(dependencyManagementKey(dep0))) {
-        if (dep.module.version.isEmpty)
-          dep = dep.copy(module = dep.module.copy(version = mgmtDep.module.version))
+        if (dep.version.isEmpty)
+          dep = dep.copy(version = mgmtDep.version)
         if (dep.scope.name.isEmpty)
           dep = dep.copy(scope = mgmtDep.scope)
 
@@ -355,7 +338,7 @@ object Resolver {
       Map(
         "project.groupId" -> project.module.organization,
         "project.artifactId" -> project.module.name,
-        "project.version" -> project.module.version
+        "project.version" -> project.version
       )
     )
 
@@ -390,8 +373,8 @@ object Resolver {
   case class Resolution(rootDependencies: Set[Dependency],
                         dependencies: Set[Dependency],
                         conflicts: Set[Dependency],
-                        projectsCache: Map[Module, (Repository, Project)],
-                        errors: Map[Module, Seq[String]],
+                        projectsCache: Map[ModuleVersion, (Repository, Project)],
+                        errors: Map[ModuleVersion, Seq[String]],
                         filter: Option[Dependency => Boolean],
                         profileActivation: Option[(String, Activation, Map[String, String]) => Boolean]) {
 
@@ -402,7 +385,7 @@ object Resolver {
     def transitiveDependencies =
       for {
         dep <- (dependencies -- conflicts).toList
-        (_, proj) <- projectsCache.get(dep.module).toSeq
+        (_, proj) <- projectsCache.get((dep.moduleVersion)).toSeq
         trDep <- finalDependencies(dep, proj).filter(filter getOrElse defaultFilter)
       } yield trDep
 
@@ -419,9 +402,9 @@ object Resolver {
     /**
      * The modules we miss some info about.
      */
-    def missingFromCache: Set[Module] = {
-      val modules = dependencies.map(_.module)
-      val nextModules = nextDependenciesAndConflicts._2.map(_.module)
+    def missingFromCache: Set[ModuleVersion] = {
+      val modules = dependencies.map(dep => (dep.moduleVersion))
+      val nextModules = nextDependenciesAndConflicts._2.map(dep => (dep.moduleVersion))
 
       (modules ++ nextModules)
         .filterNot(mod => projectsCache.contains(mod) || errors.contains(mod))
@@ -453,7 +436,7 @@ object Resolver {
       val trDepsSeq =
         for {
           dep <- updatedDeps
-          (_, proj) <- projectsCache.get(dep.module).toList
+          (_, proj) <- projectsCache.get((dep.moduleVersion)).toList
           trDep <- finalDependencies(dep, proj).filter(filter getOrElse defaultFilter)
         } yield key(trDep) -> (key(dep), trDep.exclusions)
 
@@ -526,7 +509,7 @@ object Resolver {
     /**
      * Do a new iteration, fetching the missing modules along the way.
      */
-    def next(fetchModule: Module => EitherT[Task, List[String], (Repository, Project)]): Task[Resolution] = {
+    def next(fetchModule: ModuleVersion => EitherT[Task, List[String], (Repository, Project)]): Task[Resolution] = {
       val missing = missingFromCache
       if (missing.isEmpty) Task.now(nextNoMissingUnsafe())
       else fetch(missing.toList, fetchModule).map(_.nextIfNoMissing())
@@ -535,7 +518,7 @@ object Resolver {
     /**
      * Required modules for the dependency management of `project`.
      */
-    def dependencyManagementRequirements(project: Project): Set[Module] = {
+    def dependencyManagementRequirements(project: Project): Set[ModuleVersion] = {
       val approxProperties =
         project.parent
           .flatMap(projectsCache.get)
@@ -548,7 +531,7 @@ object Resolver {
 
       val modules =
         (project.dependencies ++ profileDependencies)
-          .collect{ case dep if dep.scope == Scope.Import => dep.module } ++
+          .collect{ case dep if dep.scope == Scope.Import => (dep.moduleVersion) } ++
         project.parent
 
       modules.toSet
@@ -562,12 +545,12 @@ object Resolver {
      * these modules should be added to the cache, and `dependencyManagementMissing` checked again
      * for new missing modules.
      */
-    def dependencyManagementMissing(project: Project): Set[Module] = {
+    def dependencyManagementMissing(project: Project): Set[ModuleVersion] = {
 
       @tailrec
-      def helper(toCheck: Set[Module],
-                 done: Set[Module],
-                 missing: Set[Module]): Set[Module] = {
+      def helper(toCheck: Set[ModuleVersion],
+                 done: Set[ModuleVersion],
+                 missing: Set[ModuleVersion]): Set[ModuleVersion] = {
 
         if (toCheck.isEmpty) missing
         else if (toCheck.exists(done)) helper(toCheck -- done, done, missing)
@@ -584,7 +567,7 @@ object Resolver {
           helper(Set.empty, done, missing ++ toCheck)
       }
 
-      helper(dependencyManagementRequirements(project), Set(project.module), Set.empty)
+      helper(dependencyManagementRequirements(project), Set(project.moduleVersion), Set.empty)
     }
 
     /**
@@ -607,7 +590,7 @@ object Resolver {
 
       val deps =
         dependencies0
-          .collect{ case dep if dep.scope == Scope.Import && projectsCache.contains(dep.module) => dep.module } ++
+          .collect{ case dep if dep.scope == Scope.Import && projectsCache.contains(dep.moduleVersion) => dep.moduleVersion } ++
           project.parent.filter(projectsCache.contains)
       val projs = deps.map(projectsCache(_)._2)
 
@@ -619,7 +602,7 @@ object Resolver {
 
       project.copy(
         dependencies = dependencies0
-          .filterNot(dep => dep.scope == Scope.Import && depsSet(dep.module)) ++
+          .filterNot(dep => dep.scope == Scope.Import && depsSet(dep.moduleVersion)) ++
           project.parent
             .filter(projectsCache.contains)
             .toSeq
@@ -635,8 +618,8 @@ object Resolver {
     /**
      * Fetch `modules` with `fetchModules`, and add the resulting errors and projects to the cache.
      */
-    def fetch(modules: Seq[Module],
-              fetchModule: Module => EitherT[Task, List[String], (Repository, Project)]): Task[Resolution] = {
+    def fetch(modules: Seq[ModuleVersion],
+              fetchModule: ModuleVersion => EitherT[Task, List[String], (Repository, Project)]): Task[Resolution] = {
 
       val lookups = modules.map(dep => fetchModule(dep).run.map(dep -> _))
       val gatheredLookups = Task.gatherUnordered(lookups, exceptionCancels = true)
@@ -654,7 +637,7 @@ object Resolver {
             current <- accTask
             updated <- current.fetch(current.dependencyManagementMissing(proj).toList, fetchModule)
             proj0 = updated.withDependencyManagement(proj)
-          } yield updated.copy(projectsCache = updated.projectsCache + (proj0.module -> (repo, proj0)))
+          } yield updated.copy(projectsCache = updated.projectsCache + (proj0.moduleVersion -> (repo, proj0)))
         }
       }
     }
@@ -700,7 +683,7 @@ object Resolver {
    *
    */
   def resolve(dependencies: Set[Dependency],
-              fetch: Module => EitherT[Task, List[String], (Repository, Project)],
+              fetch: ModuleVersion => EitherT[Task, List[String], (Repository, Project)],
               maxIterations: Option[Int],
               filter: Option[Dependency => Boolean],
               profileActivation: Option[(String, Activation, Map[String, String]) => Boolean]): Task[Resolution] = {

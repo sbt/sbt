@@ -6,23 +6,25 @@ package object coursier {
   type Dependency = core.Dependency
   object Dependency {
     def apply(module: Module,
+              version: String,
               scope: Scope = Scope.Other(""), // Subsituted by Resolver with its own default scope (compile)
               `type`: String = "jar",
               classifier: String = "",
               exclusions: Set[(String, String)] = Set.empty,
               optional: Boolean = false): Dependency =
-      core.Dependency(module, scope, `type`, classifier, exclusions, optional)
+      core.Dependency(module, version, scope, `type`, classifier, exclusions, optional)
   }
 
   type Project = core.Project
   object Project {
     def apply(module: Module,
+              version: String,
               dependencies: Seq[Dependency] = Seq.empty,
-              parent: Option[Module] = None,
+              parent: Option[ModuleVersion] = None,
               dependencyManagement: Seq[Dependency] = Seq.empty,
               properties: Map[String, String] = Map.empty,
               profiles: Seq[Profile] = Seq.empty): Project =
-      core.Project(module, dependencies, parent, dependencyManagement, properties, profiles)
+      core.Project(module, version, dependencies, parent, dependencyManagement, properties, profiles)
   }
 
   type Profile = core.Profile
@@ -44,17 +46,19 @@ package object coursier {
 
   type Module = core.Module
   object Module {
-    def apply(organization: String, name: String, version: String): Module =
-      core.Module(organization, name, version)
+    def apply(organization: String, name: String): Module =
+      core.Module(organization, name)
   }
+
+  type ModuleVersion = (core.Module, String)
 
   type Scope = core.Scope
   val Scope: core.Scope.type = core.Scope
 
   type Repository = core.Repository
 
-  def fetchFrom(repositories: Seq[Repository]): Module => EitherT[Task, List[String], (Repository, Project)] =
-    core.Resolver.find(repositories, _)
+  def fetchFrom(repositories: Seq[Repository]): ModuleVersion => EitherT[Task, List[String], (Repository, Project)] =
+    modVersion => core.Resolver.find(repositories, modVersion._1, modVersion._2)
 
   type Resolution = core.Resolver.Resolution
   object Resolution {
@@ -62,15 +66,15 @@ package object coursier {
     def apply(rootDependencies: Set[Dependency] = Set.empty,
               dependencies: Set[Dependency] = Set.empty,
               conflicts: Set[Dependency] = Set.empty,
-              projectsCache: Map[Module, (Repository, Project)] = Map.empty,
-              errors: Map[Module, Seq[String]] = Map.empty,
+              projectsCache: Map[ModuleVersion, (Repository, Project)] = Map.empty,
+              errors: Map[ModuleVersion, Seq[String]] = Map.empty,
               filter: Option[Dependency => Boolean] = None,
               profileActivation: Option[(String, Profile.Activation, Map[String, String]) => Boolean] = None): Resolution =
       core.Resolver.Resolution(rootDependencies, dependencies, conflicts, projectsCache, errors, filter, profileActivation)
   }
 
   def resolve(dependencies: Set[Dependency],
-              fetch: Module => EitherT[Task, List[String], (Repository, Project)],
+              fetch: ModuleVersion => EitherT[Task, List[String], (Repository, Project)],
               maxIterations: Option[Int] = Some(200),
               filter: Option[Dependency => Boolean] = None,
               profileActivation: Option[(String, Profile.Activation, Map[String, String]) => Boolean] = None): Task[Resolution] = {

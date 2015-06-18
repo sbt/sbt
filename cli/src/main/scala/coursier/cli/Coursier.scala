@@ -75,12 +75,12 @@ case class Coursier(scope: List[String],
 
   val modules = splitArtifacts.map{
     case Seq(org, name, version) =>
-      Module(org, name, version)
+      (Module(org, name), version)
   }
 
-  val deps = modules.map(mod =>
-    Dependency(mod, scope = Scope.Runtime)
-  )
+  val deps = modules.map{case (mod, ver) =>
+    Dependency(mod, ver, scope = Scope.Runtime)
+  }
 
   val res = resolve(
     deps.toSet,
@@ -89,7 +89,7 @@ case class Coursier(scope: List[String],
   ).run
 
   def repr(dep: Dependency) =
-    s"${dep.module.organization}:${dep.module.name}:${dep.`type`}:${Some(dep.classifier).filter(_.nonEmpty).map(_+":").mkString}${dep.module.version}"
+    s"${dep.module.organization}:${dep.module.name}:${dep.`type`}:${Some(dep.classifier).filter(_.nonEmpty).map(_+":").mkString}${dep.version}"
 
   val trDeps = res.dependencies.toList.sortBy(repr)
 
@@ -100,11 +100,11 @@ case class Coursier(scope: List[String],
     println(s"${res.conflicts.size} conflict(s):\n  ${res.conflicts.toList.map(repr).sorted.mkString("  \n")}")
   }
 
-  val errDeps = trDeps.filter(dep => res.errors.contains(dep.module))
+  val errDeps = trDeps.filter(dep => res.errors.contains(dep.moduleVersion))
   if (errDeps.nonEmpty) {
     println(s"${errDeps.size} error(s):")
     for (dep <- errDeps) {
-      println(s"  ${dep.module}:\n    ${res.errors(dep.module).mkString("\n").replace("\n", "    \n")}")
+      println(s"  ${dep.module}:\n    ${res.errors(dep.moduleVersion).mkString("\n").replace("\n", "    \n")}")
     }
   }
 
@@ -113,7 +113,7 @@ case class Coursier(scope: List[String],
 
     val cachePolicy: CachePolicy = CachePolicy.Default
 
-    val m = res.dependencies.groupBy(dep => res.projectsCache.get(dep.module).map(_._1))
+    val m = res.dependencies.groupBy(dep => res.projectsCache.get(dep.moduleVersion).map(_._1))
     val (notFound, remaining0) = m.partition(_._1.isEmpty)
     if (notFound.nonEmpty) {
       val notFound0 = notFound.values.flatten.toList.map(repr).sorted

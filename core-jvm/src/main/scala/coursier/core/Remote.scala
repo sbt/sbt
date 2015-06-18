@@ -20,6 +20,7 @@ case class ArtifactDownloader(root: String, cache: File, logger: Option[Artifact
   var bufferSize = 1024*1024
 
   def artifact(module: Module,
+               version: String,
                classifier: String,
                `type`: String,
                cachePolicy: CachePolicy): EitherT[Task, String, File] = {
@@ -27,8 +28,8 @@ case class ArtifactDownloader(root: String, cache: File, logger: Option[Artifact
     val relPath =
       module.organization.split('.').toSeq ++ Seq(
         module.name,
-        module.version,
-        s"${module.name}-${module.version}${Some(classifier).filter(_.nonEmpty).map("-"+_).mkString}.${`type`}"
+        version,
+        s"${module.name}-$version${Some(classifier).filter(_.nonEmpty).map("-"+_).mkString}.${`type`}"
       )
 
     val file = (cache /: relPath)(new File(_, _))
@@ -93,7 +94,7 @@ case class ArtifactDownloader(root: String, cache: File, logger: Option[Artifact
 
   def artifact(dependency: Dependency,
                cachePolicy: CachePolicy = CachePolicy.Default): EitherT[Task, String, File] =
-    artifact(dependency.module, dependency.classifier, dependency.`type`, cachePolicy = cachePolicy)
+    artifact(dependency.module, dependency.version, dependency.classifier, dependency.`type`, cachePolicy = cachePolicy)
 
 }
 
@@ -140,13 +141,14 @@ case class Remote(root: String,
                   logger: Option[RemoteLogger] = None) extends Repository {
 
   def find(module: Module,
+           version: String,
            cachePolicy: CachePolicy): EitherT[Task, String, Project] = {
 
     val relPath =
       module.organization.split('.').toSeq ++ Seq(
         module.name,
-        module.version,
-        s"${module.name}-${module.version}.pom"
+        version,
+        s"${module.name}-$version.pom"
       )
 
     def localFile = {

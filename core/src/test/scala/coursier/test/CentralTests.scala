@@ -15,7 +15,7 @@ object CentralTests extends TestSuite {
   val tests = TestSuite {
     'logback{
       async {
-        val dep = Dependency(Module("ch.qos.logback", "logback-classic", "1.1.3"))
+        val dep = Dependency(Module("ch.qos.logback", "logback-classic"), "1.1.3")
         val res0 =
           await(resolve(Set(dep), fetchFrom(repositories))
             .runF)
@@ -28,8 +28,8 @@ object CentralTests extends TestSuite {
           rootDependencies = Set(dep.withCompileScope),
           dependencies = Set(
             dep.withCompileScope,
-            Dependency(Module("ch.qos.logback", "logback-core", "1.1.3")).withCompileScope,
-            Dependency(Module("org.slf4j", "slf4j-api", "1.7.7")).withCompileScope
+            Dependency(Module("ch.qos.logback", "logback-core"), "1.1.3").withCompileScope,
+            Dependency(Module("org.slf4j", "slf4j-api"), "1.7.7").withCompileScope
           )
         )
 
@@ -38,7 +38,7 @@ object CentralTests extends TestSuite {
     }
     'asm{
       async {
-        val dep = Dependency(Module("org.ow2.asm", "asm-commons", "5.0.2"))
+        val dep = Dependency(Module("org.ow2.asm", "asm-commons"), "5.0.2")
         val res0 =
           await(resolve(Set(dep), fetchFrom(repositories))
             .runF)
@@ -51,8 +51,8 @@ object CentralTests extends TestSuite {
           rootDependencies = Set(dep.withCompileScope),
           dependencies = Set(
             dep.withCompileScope,
-            Dependency(Module("org.ow2.asm", "asm-tree", "5.0.2")).withCompileScope,
-            Dependency(Module("org.ow2.asm", "asm", "5.0.2")).withCompileScope
+            Dependency(Module("org.ow2.asm", "asm-tree"), "5.0.2").withCompileScope,
+            Dependency(Module("org.ow2.asm", "asm"), "5.0.2").withCompileScope
           )
         )
 
