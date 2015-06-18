@@ -25,7 +25,7 @@ object Remote {
     js.Dynamic.newInstance(xhr)().asInstanceOf[XMLHttpRequest]
 
   def fetchTimeout(target: String, p: Promise[_]) =
-    setTimeout(10000) {
+    setTimeout(5000) {
       if (!p.isCompleted) {
         p.failure(new Exception(s"Timeout when fetching $target"))
       }
