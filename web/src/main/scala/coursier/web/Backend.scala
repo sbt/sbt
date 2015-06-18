@@ -103,12 +103,12 @@ class Backend($: BackendScope[Unit, State]) {
 
     val logger: Logger = new Logger {
       def fetched(url: String) = {
-        println(s"Fetching $url")
-        $.modState(s => s.copy(log = s"Fetching $url" +: s.log))
-      }
-      def fetching(url: String) = {
         println(s"Fetched $url")
         $.modState(s => s.copy(log = s"Fetched $url" +: s.log))
+      }
+      def fetching(url: String) = {
+        println(s"Fetching $url")
+        $.modState(s => s.copy(log = s"Fetching $url" +: s.log))
       }
       def other(url: String, msg: String) = {
         println(s"$url: $msg")
