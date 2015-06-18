@@ -10,18 +10,32 @@ import scalaz.concurrent.Task
 import scala.scalajs.js
 import js.Dynamic.{global => g}
 
+import scala.scalajs.js.timers._
+
 object Remote {
 
   def encodeURIComponent(s: String): String =
     g.encodeURIComponent(s).asInstanceOf[String]
 
-  lazy val jsonpAvailable = js.isUndefined(g.jsonp)
+  lazy val jsonpAvailable = !js.isUndefined(g.jsonp)
+
+  /** Available if we're running on node, and package xhr2 is installed */
+  lazy val xhr = g.require("xhr2")
+  def xhrReq() =
+    js.Dynamic.newInstance(xhr)().asInstanceOf[XMLHttpRequest]
+
+  def fetchTimeout(target: String, p: Promise[_]) =
+    setTimeout(10000) {
+      if (!p.isCompleted) {
+        p.failure(new Exception(s"Timeout when fetching $target"))
+      }
+    }
 
   def proxiedJsonp(url: String)(implicit executionContext: ExecutionContext): Future[String] =
     if (url.contains("{")) Future.successful("") // jsonp callback never gets executed in this case (empty response)
     else {
 
-    // FIXME url is put between quotes in the YQL query, which could sometimes require some extra encoding
+    // FIXME url is put between quotes in the YQL query, which should sometimes require some extra encoding
     val url0 =
       "https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20xml%20where%20url%3D%22" +
         encodeURIComponent(url) +
@@ -31,7 +45,7 @@ object Remote {
 
     // FIXME Promise may not be always completed in case of failure
 
-    g.jsonp(url0, (res: js.Dynamic) => {
+    g.jsonp(url0, (res: js.Dynamic) => if (!p.isCompleted) {
       val success = !js.isUndefined(res) && !js.isUndefined(res.results)
       if (success)
         p.success(res.results.asInstanceOf[js.Array[String]].mkString("\n"))
@@ -39,27 +53,26 @@ object Remote {
         p.failure(new Exception(s"Fetching $url ($url0)"))
     })
 
+    fetchTimeout(s"$url ($url0)", p)
     p.future
   }
 
   def get(url: String)(implicit executionContext: ExecutionContext): Future[Either[String, Xml.Node]] =
-    if (jsonpAvailable) {
-      // Assume we're running on node, and that node package xhr2 is installed
-      val xhr = g.require("xhr2")
-
-      val p = Promise[Either[String, Xml.Node]]()
-      val req = js.Dynamic.newInstance(xhr)().asInstanceOf[XMLHttpRequest]
-      val f = { _: Event =>
-        p.success(compatibility.xmlParse(req.responseText))
-      }
-      req.onload = f
-
-      req.open("GET", url)
-      req.send()
-
-      p.future
-    } else {
+    if (jsonpAvailable)
       proxiedJsonp(url).map(compatibility.xmlParse)
+    else {
+      val p = Promise[Either[String, Xml.Node]]()
+      val xhrReq0 = xhrReq()
+      val f = { _: Event =>
+        p.success(compatibility.xmlParse(xhrReq0.responseText))
+      }
+      xhrReq0.onload = f
+
+      xhrReq0.open("GET", url)
+      xhrReq0.send()
+
+      fetchTimeout(url, p)
+      p.future
     }
 
 }
