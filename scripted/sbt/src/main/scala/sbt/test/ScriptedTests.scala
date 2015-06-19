@@ -13,7 +13,7 @@ import xsbt.test.{ CommentHandler, FileCommands, ScriptRunner, TestScriptParser 
 import IO.wrapNull
 
 final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launcher: File, launchOpts: Seq[String]) {
-  import ScriptedTests.emptyCallback
+  import ScriptedTests._
   private val testResources = new Resources(resourceBaseDirectory)
 
   val ScriptFilename = "test"
@@ -46,6 +46,7 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launc
       }
     }
   }
+
   private def scriptedTest(label: String, testDirectory: File, prescripted: File => Unit, log: Logger): Unit =
     {
       val buffered = new BufferedLogger(new FullLogger(log))
@@ -94,9 +95,9 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launc
       } finally { buffered.clear() }
     }
 }
-object ScriptedTests {
-  val emptyCallback: File => Unit = { _ => () }
 
+object ScriptedTests extends ScriptedRunner {
+  val emptyCallback: File => Unit = { _ => () }
   def main(args: Array[String]) {
     val directory = new File(args(0))
     val buffer = args(1).toBoolean
@@ -108,19 +109,27 @@ object ScriptedTests {
     val logger = ConsoleLogger()
     run(directory, buffer, tests, logger, bootProperties, Array(), emptyCallback)
   }
+}
+
+class ScriptedRunner {
+  import ScriptedTests._
+
   def run(resourceBaseDirectory: File, bufferLog: Boolean, tests: Array[String], bootProperties: File,
     launchOpts: Array[String]): Unit =
     run(resourceBaseDirectory, bufferLog, tests, ConsoleLogger(), bootProperties, launchOpts, emptyCallback) //new FullLogger(Logger.xlog2Log(log)))
 
+  // This is called by project/Scripted.scala
+  // Using java.util.List[File] to encode File => Unit
   def run(resourceBaseDirectory: File, bufferLog: Boolean, tests: Array[String], bootProperties: File,
-    launchOpts: Array[String], prescripted: File => Unit): Unit =
-    run(resourceBaseDirectory, bufferLog, tests, ConsoleLogger(), bootProperties, launchOpts, prescripted) //new FullLogger(Logger.xlog2Log(log)))
+    launchOpts: Array[String], prescripted: java.util.List[File]): Unit =
+    run(resourceBaseDirectory, bufferLog, tests, ConsoleLogger(), bootProperties, launchOpts,
+      { f: File => prescripted.add(f); () }) //new FullLogger(Logger.xlog2Log(log)))
 
-  def run(resourceBaseDirectory: File, bufferLog: Boolean, tests: Array[String], logger: AbstractLogger, bootProperties: File,
+  def run(resourceBaseDirectory: File, bufferLog: Boolean, tests: Array[String], logger: xsbti.Logger, bootProperties: File,
     launchOpts: Array[String]): Unit =
     run(resourceBaseDirectory, bufferLog, tests, logger, bootProperties, launchOpts, emptyCallback)
 
-  def run(resourceBaseDirectory: File, bufferLog: Boolean, tests: Array[String], logger: AbstractLogger, bootProperties: File,
+  def run(resourceBaseDirectory: File, bufferLog: Boolean, tests: Array[String], logger: xsbti.Logger, bootProperties: File,
     launchOpts: Array[String], prescripted: File => Unit) {
     val runner = new ScriptedTests(resourceBaseDirectory, bufferLog, bootProperties, launchOpts)
     val allTests = get(tests, resourceBaseDirectory, logger) flatMap {
