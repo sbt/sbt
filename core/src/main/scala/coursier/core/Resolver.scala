@@ -3,6 +3,7 @@ package coursier.core
 import java.util.regex.Pattern.quote
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 import scalaz.concurrent.Task
 import scalaz.{EitherT, \/-, \/, -\/}
 
@@ -378,6 +379,16 @@ object Resolver {
                         filter: Option[Dependency => Boolean],
                         profileActivation: Option[(String, Activation, Map[String, String]) => Boolean]) {
 
+    private val finalDependenciesCache = new mutable.HashMap[Dependency, Seq[Dependency]]()
+    private def finalDependencies0(dep: Dependency) = finalDependenciesCache.synchronized {
+      finalDependenciesCache.getOrElseUpdate(dep,
+        projectsCache.get(dep.moduleVersion) match {
+          case Some((_, proj)) => finalDependencies(dep, proj).filter(filter getOrElse defaultFilter)
+          case None => Nil
+        }
+      )
+    }
+
     /**
      * Transitive dependencies of the current dependencies, according to what there currently is in cache.
      * No attempt is made to solve version conflicts here.
@@ -385,8 +396,7 @@ object Resolver {
     def transitiveDependencies =
       for {
         dep <- (dependencies -- conflicts).toList
-        (_, proj) <- projectsCache.get((dep.moduleVersion)).toSeq
-        trDep <- finalDependencies(dep, proj).filter(filter getOrElse defaultFilter)
+        trDep <- finalDependencies0(dep)
       } yield trDep
 
     /**
@@ -436,8 +446,7 @@ object Resolver {
       val trDepsSeq =
         for {
           dep <- updatedDeps
-          (_, proj) <- projectsCache.get((dep.moduleVersion)).toList
-          trDep <- finalDependencies(dep, proj).filter(filter getOrElse defaultFilter)
+          trDep <- finalDependencies0(dep)
         } yield key(trDep) -> (key(dep), trDep.exclusions)
 
       val knownDeps = (updatedDeps ++ updatedConflicts).map(key).toSet
