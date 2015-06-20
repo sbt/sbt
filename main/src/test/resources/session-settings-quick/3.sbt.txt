@@ -2,7 +2,7 @@ import sbt._
 
 val scmpom = taskKey[xml.NodeBuffer]("Node buffer")
 
-scmpom := <xml:group><scm>
+scmpom := <scm>
     <url>git@github.com:mohiva/play-html-compressor.git</url>
     <connection>scm:git:git@github.com:mohiva/play-html-compressor.git</connection>
   </scm>
@@ -13,4 +13,4 @@ scmpom := <xml:group><scm>
       <url>http://mohiva.com</url>
     </developer>
   </developers>
-  <a></a></xml:group>
+  <a></a>

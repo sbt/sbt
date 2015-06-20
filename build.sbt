@@ -24,7 +24,7 @@ def buildLevelSettings: Seq[Setting[_]] = Seq(
 )
 
 def commonSettings: Seq[Setting[_]] = Seq(
-  scalaVersion := "2.10.4",
+  scalaVersion := scala210,
   publishArtifact in packageDoc := false,
   publishMavenStyle := false,
   componentID := None,
@@ -387,7 +387,7 @@ lazy val scriptedBaseProj = (project in scriptedPath / "base").
   )
 
 lazy val scriptedSbtProj = (project in scriptedPath / "sbt").
-  dependsOn (ioProj, logProj, processProj, scriptedBaseProj).
+  dependsOn (ioProj, logProj, processProj, scriptedBaseProj, interfaceProj).
   settings(
     baseSettings,
     name := "Scripted sbt",

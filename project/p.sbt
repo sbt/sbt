@@ -1,3 +1,5 @@
+scalaVersion := "2.10.5"
+
 libraryDependencies ++= Seq(
   "net.databinder" %% "dispatch-http" % "0.8.9",
   "org.jsoup" % "jsoup" % "1.7.1"
