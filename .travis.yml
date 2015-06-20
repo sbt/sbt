@@ -15,7 +15,8 @@ jdk:
 
 env:
   matrix:
-    - SCRIPTED_TEST="test"
+    - SCRIPTED_TEST="safeUnitTests"
+    - SCRIPTED_TEST="otherUnitTests"
     - SCRIPTED_TEST="scripted actions/*"
     - SCRIPTED_TEST="scripted api/*"
     - SCRIPTED_TEST="scripted compiler-project/*""
@@ -32,7 +33,6 @@ env:
     - SCRIPTED_TEST="scripted source-dependencies/*3of3"
     - SCRIPTED_TEST="scripted tests/*"
     - SCRIPTED_TEST="scripted project-load/*"
-    - SCRIPTED_TEST="safeUnitTests"
     - SCRIPTED_TEST="checkBuildScala211"
     # - SCRIPTED_TEST="mavenResolverPluginTest:scripted dependency-management/*1of2 project/transitive-plugins"
     # - SCRIPTED_TEST="mavenResolverPluginTest:scripted dependency-management/*2of2"
