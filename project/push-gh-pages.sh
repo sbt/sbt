@@ -19,6 +19,12 @@ cp "$DIR/web-"*.js* staging
 cp "$DIR/classes/index"*.html staging
 cp -R "$DIR/classes/css" staging
 
+for i in staging/*.html; do
+  mv "$i" "$i.0"
+  grep -v "src=\"\.\.\/web-" < "$i.0" > "$i"
+  rm -f "$i.0"
+done
+
 git config user.name "Travis-CI"
 git config user.email "invalid@travis-ci.com"
 git add staging
