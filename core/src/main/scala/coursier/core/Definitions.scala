@@ -1,13 +1,15 @@
 package coursier.core
 
 /**
- * Identify a "module".
+ * Identifies a "module".
  *
  * During resolution, all dependencies having the same module
  * will be given the same version, if there are no version conflicts
  * between them.
  *
- * Ivy attributes would land here, if support for Ivy is added.
+ * Using the same terminology as Ivy.
+ *
+ * Ivy attributes would land here, if support for it is added.
  */
 case class Module(organization: String,
                   name: String) {

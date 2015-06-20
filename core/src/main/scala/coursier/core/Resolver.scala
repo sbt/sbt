@@ -3,6 +3,7 @@ package coursier.core
 import java.util.regex.Pattern.quote
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 import scalaz.concurrent.Task
 import scalaz.{EitherT, \/-, \/, -\/}
 
@@ -16,8 +17,8 @@ object Resolver {
    * Look at `repositories` from the left, one-by-one, and stop at first success.
    * Else, return all errors, in the same order.
    *
-   * The `module` field of the returned `Project` in case of success may not be
-   * equal to `module`, in case the version of the latter is not a specific
+   * The `version` field of the returned `Project` in case of success may not be
+   * equal to the provided one, in case the latter is not a specific
    * version (e.g. version interval). Which version get chosen depends on
    * the repository implementation.
    */
@@ -296,7 +297,7 @@ object Resolver {
     else dep
 
   /**
-   * Filters `deps` with `exclusions`.
+   * Filters `dependencies` with `exclusions`.
    */
   def withExclusions(dependencies: Seq[Dependency],
                      exclusions: Set[(String, String)]): Seq[Dependency] = {
@@ -378,6 +379,16 @@ object Resolver {
                         filter: Option[Dependency => Boolean],
                         profileActivation: Option[(String, Activation, Map[String, String]) => Boolean]) {
 
+    private val finalDependenciesCache = new mutable.HashMap[Dependency, Seq[Dependency]]()
+    private def finalDependencies0(dep: Dependency) = finalDependenciesCache.synchronized {
+      finalDependenciesCache.getOrElseUpdate(dep,
+        projectsCache.get(dep.moduleVersion) match {
+          case Some((_, proj)) => finalDependencies(dep, proj).filter(filter getOrElse defaultFilter)
+          case None => Nil
+        }
+      )
+    }
+
     /**
      * Transitive dependencies of the current dependencies, according to what there currently is in cache.
      * No attempt is made to solve version conflicts here.
@@ -385,13 +396,15 @@ object Resolver {
     def transitiveDependencies =
       for {
         dep <- (dependencies -- conflicts).toList
-        (_, proj) <- projectsCache.get((dep.moduleVersion)).toSeq
-        trDep <- finalDependencies(dep, proj).filter(filter getOrElse defaultFilter)
+        trDep <- finalDependencies0(dep)
       } yield trDep
 
     /**
      * The "next" dependency set, made of the current dependencies and their transitive dependencies,
      * trying to solve version conflicts. Transitive dependencies are calculated with the current cache.
+     *
+     * May contain dependencies added in previous iterations, but no more required. These are filtered below, see
+     * @newDependencies.
      *
      * Returns a tuple made of the conflicting dependencies, and all the dependencies.
      */
@@ -403,8 +416,8 @@ object Resolver {
      * The modules we miss some info about.
      */
     def missingFromCache: Set[ModuleVersion] = {
-      val modules = dependencies.map(dep => (dep.moduleVersion))
-      val nextModules = nextDependenciesAndConflicts._2.map(dep => (dep.moduleVersion))
+      val modules = dependencies.map(_.moduleVersion)
+      val nextModules = nextDependenciesAndConflicts._2.map(_.moduleVersion)
 
       (modules ++ nextModules)
         .filterNot(mod => projectsCache.contains(mod) || errors.contains(mod))
@@ -416,8 +429,8 @@ object Resolver {
      */
     def isDone: Boolean = {
       def isFixPoint = {
-        val (nextConflicts, nextDependencies) = nextDependenciesAndConflicts
-        dependencies == (nextDependencies ++ nextConflicts).toSet && conflicts == nextConflicts.toSet
+        val (nextConflicts, _) = nextDependenciesAndConflicts
+        dependencies == (newDependencies ++ nextConflicts) && conflicts == nextConflicts.toSet
       }
 
       missingFromCache.isEmpty && isFixPoint
@@ -436,8 +449,7 @@ object Resolver {
       val trDepsSeq =
         for {
           dep <- updatedDeps
-          (_, proj) <- projectsCache.get((dep.moduleVersion)).toList
-          trDep <- finalDependencies(dep, proj).filter(filter getOrElse defaultFilter)
+          trDep <- finalDependencies0(dep)
         } yield key(trDep) -> (key(dep), trDep.exclusions)
 
       val knownDeps = (updatedDeps ++ updatedConflicts).map(key).toSet
@@ -531,7 +543,7 @@ object Resolver {
 
       val modules =
         (project.dependencies ++ profileDependencies)
-          .collect{ case dep if dep.scope == Scope.Import => (dep.moduleVersion) } ++
+          .collect{ case dep if dep.scope == Scope.Import => dep.moduleVersion } ++
         project.parent
 
       modules.toSet

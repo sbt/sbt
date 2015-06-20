@@ -4,10 +4,12 @@ package web
 import coursier.core.{Resolver, Logger, Remote}
 import japgolly.scalajs.react.vdom.{TagMod, Attr}
 import japgolly.scalajs.react.vdom.Attrs.dangerouslySetInnerHtml
-import japgolly.scalajs.react.{ReactKeyboardEventI, ReactEventI, ReactComponentB, BackendScope}
+import japgolly.scalajs.react.{ReactEventI, ReactComponentB, BackendScope}
 import japgolly.scalajs.react.vdom.prefix_<^._
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import org.scalajs.jquery.jQuery
+
+import scala.concurrent.Future
 
 import scala.scalajs.js
 import js.Dynamic.{global => g}
@@ -117,13 +119,15 @@ class Backend($: BackendScope[Unit, State]) {
     }
 
     val s = $.state
-    val task = coursier.resolve(
+    def task = coursier.resolve(
       s.modules.toSet,
       fetchFrom(s.repositories.map(_.copy(logger = Some(logger)))),
       filter = Some(dep => (s.options.followOptional || !dep.optional) && (s.options.keepTest || dep.scope != Scope.Test))
     )
 
-    task.runF.foreach { res: Resolution =>
+    // For reasons that are unclear to me, not delaying this when using the runNow execution context
+    // somehow discards the $.modState above. (Not a major problem as queue is used by default.)
+    Future(task)(scala.scalajs.concurrent.JSExecutionContext.Implicits.queue).flatMap(_.runF).foreach { res: Resolution =>
       $.modState{ s => updateDepGraph(res); updateTree(res, "#deptree", reverse = s.reverseTree); s.copy(resolutionOpt = Some(res), resolving = false)}
       g.$("#resResTab a:last").tab("show")
     }

@@ -12,7 +12,8 @@ import scalaz.{-\/, \/-}
 
 case class Coursier(scope: List[String],
                     keepOptional: Boolean,
-                    fetch: Boolean) extends App {
+                    fetch: Boolean,
+                    @ExtraName("N") maxIterations: Int) extends App {
 
   val scopes0 =
     if (scope.isEmpty) List(Scope.Compile, Scope.Runtime)
@@ -85,8 +86,14 @@ case class Coursier(scope: List[String],
   val res = resolve(
     deps.toSet,
     fetchFrom(repositories),
+    maxIterations = Some(maxIterations).filter(_ > 0),
     filter = Some(dep => (keepOptional || !dep.optional) && scopes(dep.scope))
   ).run
+
+  if (!res.isDone) {
+    println(s"Maximum number of iteration reached!")
+    sys exit 1
+  }
 
   def repr(dep: Dependency) =
     s"${dep.module.organization}:${dep.module.name}:${dep.`type`}:${Some(dep.classifier).filter(_.nonEmpty).map(_+":").mkString}${dep.version}"
