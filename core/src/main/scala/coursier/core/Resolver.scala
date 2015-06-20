@@ -17,8 +17,8 @@ object Resolver {
    * Look at `repositories` from the left, one-by-one, and stop at first success.
    * Else, return all errors, in the same order.
    *
-   * The `module` field of the returned `Project` in case of success may not be
-   * equal to `module`, in case the version of the latter is not a specific
+   * The `version` field of the returned `Project` in case of success may not be
+   * equal to the provided one, in case the latter is not a specific
    * version (e.g. version interval). Which version get chosen depends on
    * the repository implementation.
    */
@@ -297,7 +297,7 @@ object Resolver {
     else dep
 
   /**
-   * Filters `deps` with `exclusions`.
+   * Filters `dependencies` with `exclusions`.
    */
   def withExclusions(dependencies: Seq[Dependency],
                      exclusions: Set[(String, String)]): Seq[Dependency] = {
@@ -543,7 +543,7 @@ object Resolver {
 
       val modules =
         (project.dependencies ++ profileDependencies)
-          .collect{ case dep if dep.scope == Scope.Import => (dep.moduleVersion) } ++
+          .collect{ case dep if dep.scope == Scope.Import => dep.moduleVersion } ++
         project.parent
 
       modules.toSet
