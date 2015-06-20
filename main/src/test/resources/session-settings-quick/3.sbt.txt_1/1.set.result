@@ -2,4 +2,4 @@ import sbt._
 
 val scmpom = taskKey[xml.NodeBuffer]("Node buffer")
 
-scmpom := <xml:group><a/><b a="rt">OK</b></xml:group>
+scmpom := <a/><b a="rt">OK</b>

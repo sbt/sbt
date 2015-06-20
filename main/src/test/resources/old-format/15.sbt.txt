@@ -3,7 +3,7 @@ name := "play-html-compressor"
 
 scalaVersion := "2.11.1"
 
-val pom = <xml:group><scm>
+val pom = <scm>
     <url>git@github.com:mohiva/play-html-compressor.git</url>
     <connection>scm:git:git@github.com:mohiva/play-html-compressor.git</connection>
   </scm>
@@ -13,9 +13,6 @@ val pom = <xml:group><scm>
       <name>Christian Kaps</name>
       <url>http://mohiva.com</url>
     </developer>
-  </developers></xml:group>
+  </developers>
 
 publishMavenStyle := true
-
-
-

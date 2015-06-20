@@ -11,7 +11,7 @@
   [@PanAeon]: https://github.com/PanAeon
   [@asflierl]: http://github.com/asflierl
   [@matthewfarwell]: http://github.com/matthewfarwell
-
+  [SI9027]: https://issues.scala-lang.org/browse/SI-9027
   [1950]: https://github.com/sbt/sbt/pull/1950
   [1987]: https://github.com/sbt/sbt/pull/1987
   [1970]: https://github.com/sbt/sbt/pull/1970
@@ -40,11 +40,14 @@
   [2035]: https://github.com/sbt/sbt/pull/2035
   [2001]: https://github.com/sbt/sbt/issues/2001
   [2027]: https://github.com/sbt/sbt/pull/2027
+  [1666]: https://github.com/sbt/sbt/issues/1666
+  [2068]: https://github.com/sbt/sbt/pull/2068
 
 ### Fixes with compatibility implications
 
 - Starting 0.13.9, `crossScalaVersions` default value is fixed back to the older 0.12.x behavior. See below for details.
 - Starting 0.13.9, the generated POM files no longer include dependencies on source or javadoc jars obtained via `withSources()` or `withJavadoc()`. See below for details.
+- Scala version is bumped to 2.10.5. This brings in the fix for [SI-9027][SI9027]: XML node sequence literal bug. [#1666][1666]/[#2068][2068] by [@eed3si9n][@eed3si9n]
 
 ### Improvements
 
