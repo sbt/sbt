@@ -16,8 +16,8 @@ val repositories = Seq(
 )
 
 val dependencies = Set(
-  Dependency(Module("com.lihaoyi", "ammonite-pprint_2.11", "0.3.2")),
-  Dependency(Module("org.scala-lang", "scala-reflect", "2.11.6"))
+  Dependency(Module("com.lihaoyi", "ammonite-pprint_2.11"), "0.3.2"),
+  Dependency(Module("org.scala-lang", "scala-reflect"), "2.11.6")
 )
 
 
@@ -27,18 +27,18 @@ val resolution =
 assert(resolution.isDone) // Check that resolution converged
 
 // Printing the results
-for (dep <- resolution.dependencies if resolution.projectsCache.contains(dep.module))
-  println(resolution.projectsCache(dep.module))
-for (dep <- resolution.dependencies if resolution.errors.contains(dep.module))
-  println(resolution.errors(dep.module))
+for (dep <- resolution.dependencies if resolution.projectsCache.contains(dep.moduleVersion))
+  println(resolution.projectsCache(dep.moduleVersion))
+for (dep <- resolution.dependencies if resolution.errors.contains(dep.moduleVersion))
+  println(resolution.errors(dep.moduleVersion))
 
 // Downloading them
 import coursier.core.ArtifactDownloader
 
 val dl = ArtifactDownloader(repository.mavenCentral.root, new java.io.File("cache"))
-for (dep <- resolution.dependencies if resolution.projectsCache.contains(dep.module))
+for (dep <- resolution.dependencies if resolution.projectsCache.contains(dep.moduleVersion))
   dl.artifact(dep).run.run match {
-    case -\/(err) => println(s"Failed to download ${dep.module}: $err")
-    case \/-(file) => println(s"${dep.module}: $file")
+    case -\/(err) => println(s"Failed to download ${dep.moduleVersion}: $err")
+    case \/-(file) => println(s"${dep.moduleVersion}: $file")
   }
 ```
