@@ -403,6 +403,9 @@ object Resolver {
      * The "next" dependency set, made of the current dependencies and their transitive dependencies,
      * trying to solve version conflicts. Transitive dependencies are calculated with the current cache.
      *
+     * May contain dependencies added in previous iterations, but no more required. These are filtered below, see
+     * @newDependencies.
+     *
      * Returns a tuple made of the conflicting dependencies, and all the dependencies.
      */
     def nextDependenciesAndConflicts = {
@@ -426,8 +429,8 @@ object Resolver {
      */
     def isDone: Boolean = {
       def isFixPoint = {
-        val (nextConflicts, nextDependencies) = nextDependenciesAndConflicts
-        dependencies == (nextDependencies ++ nextConflicts).toSet && conflicts == nextConflicts.toSet
+        val (nextConflicts, _) = nextDependenciesAndConflicts
+        dependencies == (newDependencies ++ nextConflicts) && conflicts == nextConflicts.toSet
       }
 
       missingFromCache.isEmpty && isFixPoint
