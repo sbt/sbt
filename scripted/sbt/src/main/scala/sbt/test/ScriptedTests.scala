@@ -114,6 +114,7 @@ object ScriptedTests extends ScriptedRunner {
 class ScriptedRunner {
   import ScriptedTests._
 
+  @deprecated("No longer used", "0.13.9")
   def run(resourceBaseDirectory: File, bufferLog: Boolean, tests: Array[String], bootProperties: File,
     launchOpts: Array[String]): Unit =
     run(resourceBaseDirectory, bufferLog, tests, ConsoleLogger(), bootProperties, launchOpts, emptyCallback) //new FullLogger(Logger.xlog2Log(log)))
@@ -125,11 +126,17 @@ class ScriptedRunner {
     run(resourceBaseDirectory, bufferLog, tests, ConsoleLogger(), bootProperties, launchOpts,
       { f: File => prescripted.add(f); () }) //new FullLogger(Logger.xlog2Log(log)))
 
-  def run(resourceBaseDirectory: File, bufferLog: Boolean, tests: Array[String], logger: xsbti.Logger, bootProperties: File,
+  @deprecated("No longer used", "0.13.9")
+  def run(resourceBaseDirectory: File, bufferLog: Boolean, tests: Array[String], bootProperties: File,
+    launchOpts: Array[String], prescripted: File => Unit): Unit =
+    run(resourceBaseDirectory, bufferLog, tests, ConsoleLogger(), bootProperties, launchOpts, prescripted)
+
+  @deprecated("No longer used", "0.13.9")
+  def run(resourceBaseDirectory: File, bufferLog: Boolean, tests: Array[String], logger: AbstractLogger, bootProperties: File,
     launchOpts: Array[String]): Unit =
     run(resourceBaseDirectory, bufferLog, tests, logger, bootProperties, launchOpts, emptyCallback)
 
-  def run(resourceBaseDirectory: File, bufferLog: Boolean, tests: Array[String], logger: xsbti.Logger, bootProperties: File,
+  def run(resourceBaseDirectory: File, bufferLog: Boolean, tests: Array[String], logger: AbstractLogger, bootProperties: File,
     launchOpts: Array[String], prescripted: File => Unit) {
     val runner = new ScriptedTests(resourceBaseDirectory, bufferLog, bootProperties, launchOpts)
     val allTests = get(tests, resourceBaseDirectory, logger) flatMap {
