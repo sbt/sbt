@@ -416,8 +416,8 @@ object Resolver {
      * The modules we miss some info about.
      */
     def missingFromCache: Set[ModuleVersion] = {
-      val modules = dependencies.map(dep => (dep.moduleVersion))
-      val nextModules = nextDependenciesAndConflicts._2.map(dep => (dep.moduleVersion))
+      val modules = dependencies.map(_.moduleVersion)
+      val nextModules = nextDependenciesAndConflicts._2.map(_.moduleVersion)
 
       (modules ++ nextModules)
         .filterNot(mod => projectsCache.contains(mod) || errors.contains(mod))
