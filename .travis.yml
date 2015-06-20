@@ -15,6 +15,7 @@ jdk:
 
 env:
   matrix:
+    - SCRIPTED_TEST="test"
     - SCRIPTED_TEST="scripted actions/*"
     - SCRIPTED_TEST="scripted api/*"
     - SCRIPTED_TEST="scripted compiler-project/*""
