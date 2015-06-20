@@ -613,7 +613,7 @@ def customCommands: Seq[Setting[_]] = Seq(
   },
   otherUnitTests := {
     test.all(otherProjects)
-  }
+  },
   commands += Command.command("release-sbt-local") { state =>
     "clean" ::
     "allPrecompiled/clean" ::
