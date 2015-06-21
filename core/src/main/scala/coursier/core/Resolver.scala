@@ -436,8 +436,7 @@ object Resolver {
       missingFromCache.isEmpty && isFixPoint
     }
 
-    private def key(dep: Dependency) =
-      (dep.module.organization, dep.module.name, dep.scope)
+    private def key(dep: Dependency) = (dep.module, dep.scope)
 
     /**
      * Returns a map giving the dependency that brought each of the dependency of the "next" dependency set,
@@ -471,7 +470,7 @@ object Resolver {
         .map(dep => key(dep) -> dep.exclusions)
         .toMap
 
-      type D = (String, String, Scope)
+      type D = (Module, Scope)
 
       @tailrec
       def helper[T](reverseDeps: Map[D, Vector[(D, T)]]): Map[D, Vector[(D, T)]] = {
