@@ -1,11 +1,9 @@
 package coursier.core
 
-import coursier.core.compatibility._
-
 case class Versions(latest: String,
                     release: String,
                     available: List[String],
-                    lastUpdated: Option[DateTime])
+                    lastUpdated: Option[Version.DateTime])
 
 /** Used internally by Resolver */
 case class Version(repr: String) extends Ordered[Version] {
@@ -15,6 +13,12 @@ case class Version(repr: String) extends Ordered[Version] {
   def compare(other: Version): Int = {
     cmp.compare(other.cmp)
   }
+}
+
+object Version {
+
+  case class DateTime(year: Int, month: Int, day: Int, hour: Int, minute: Int, second: Int)
+
 }
 
 case class VersionInterval(from: Option[Version],
