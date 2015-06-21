@@ -7,7 +7,7 @@ package object coursier {
   object Dependency {
     def apply(module: Module,
               version: String,
-              scope: Scope = Scope.Other(""), // Subsituted by Resolver with its own default scope (compile)
+              scope: Scope = Scope.Other(""), // Substituted by Resolver with its own default scope (compile)
               `type`: String = "jar",
               classifier: String = "",
               exclusions: Set[(String, String)] = Set.empty,

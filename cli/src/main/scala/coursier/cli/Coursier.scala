@@ -27,6 +27,8 @@ case class Coursier(scope: List[String],
     base.relativize(f.toURI).getPath
 
   val logger: RemoteLogger with ArtifactDownloaderLogger = new RemoteLogger with ArtifactDownloaderLogger {
+    def println(s: String) = Console.err.println(s)
+
     def downloading(url: String) =
       println(s"Downloading $url")
     def downloaded(url: String, success: Boolean) =
@@ -91,7 +93,7 @@ case class Coursier(scope: List[String],
   ).run
 
   if (!res.isDone) {
-    println(s"Maximum number of iteration reached!")
+    Console.err.println(s"Maximum number of iteration reached!")
     sys exit 1
   }
 
@@ -100,7 +102,7 @@ case class Coursier(scope: List[String],
 
   val trDeps = res.dependencies.toList.sortBy(repr)
 
-  println("\n" + trDeps.map(repr).mkString("\n"))
+  println("\n" + trDeps.map(repr).distinct.mkString("\n"))
 
   if (res.conflicts.nonEmpty) {
     // Needs test
