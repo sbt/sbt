@@ -65,6 +65,8 @@ object CoursierBuild extends Build {
     libraryDependencies += "org.scala-lang.modules" %% "scala-async" % "0.9.1" % "provided",
     unmanagedSourceDirectories in Compile += (baseDirectory in LocalRootProject).value / "core" / "src" / "main" / "scala",
     unmanagedSourceDirectories in Test += (baseDirectory in LocalRootProject).value / "core" / "src" / "test" / "scala",
+    unmanagedResourceDirectories in Compile += (baseDirectory in LocalRootProject).value / "core" / "src" / "main" / "resources",
+    unmanagedResourceDirectories in Test += (baseDirectory in LocalRootProject).value / "core" / "src" / "test" / "resources",
     testFrameworks += new TestFramework("utest.runner.Framework")
   )
 

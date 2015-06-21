@@ -1,6 +1,8 @@
 package coursier.test
 
-import scala.concurrent.Future
+import coursier.core.Remote
+
+import scala.concurrent.{ExecutionContext, Future}
 import scalaz.concurrent.Task
 
 package object compatibility {
@@ -9,6 +11,13 @@ package object compatibility {
 
   implicit class TaskExtensions[T](val underlying: Task[T]) extends AnyVal {
     def runF: Future[T] = Future.successful(underlying.run)
+  }
+
+  def textResource(path: String)(implicit ec: ExecutionContext): Future[String] = Future {
+    def is = getClass.getClassLoader
+      .getResource(path).openStream()
+
+    new String(Remote.readFullySync(is), "UTF-8")
   }
 
 }

@@ -12,6 +12,10 @@ object CentralTests extends TestSuite {
     repository.mavenCentral
   )
 
+  def repr(dep: Dependency) =
+    s"${dep.module.organization}:${dep.module.name}:${dep.`type`}:${Some(dep.classifier).filter(_.nonEmpty).map(_+":").mkString}${dep.version}"
+
+
   val tests = TestSuite {
     'logback{
       async {
@@ -43,6 +47,21 @@ object CentralTests extends TestSuite {
             Dependency(Module("org.ow2.asm", "asm"), "5.0.2").withCompileScope))
 
         assert(res == expected)
+      }
+    }
+    'spark{
+      async {
+        val expected = await(textResource("resolutions/org.apache.spark:spark-core_2.11:1.3.1")).split('\n').toSeq
+
+        val dep = Dependency(Module("org.apache.spark", "spark-core_2.11"), "1.3.1")
+        val res = await(resolve(Set(dep), fetchFrom(repositories)).runF)
+
+        val result = res.dependencies.toVector.map(repr).sorted.distinct
+
+        for (((e, r), idx) <- expected.zip(result).zipWithIndex if e != r)
+          println(s"Line $idx:\n  expected: $e\n  got:$r")
+
+        assert(result == expected)
       }
     }
   }
