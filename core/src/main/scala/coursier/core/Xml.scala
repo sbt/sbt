@@ -236,7 +236,7 @@ object Xml {
       lastUpdatedOpt = text(xmlVersioning, "lastUpdated", "Last update date and time")
         .toOption
         .filter(s => s.length == 14 && s.forall(_.isDigit))
-        .map(s => Version.DateTime(
+        .map(s => Versions.DateTime(
           s.substring(0, 4).toInt,
           s.substring(4, 6).toInt,
           s.substring(6, 8).toInt,

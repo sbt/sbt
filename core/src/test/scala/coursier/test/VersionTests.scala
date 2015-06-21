@@ -1,14 +1,12 @@
 package coursier
 package test
 
-import java.util.Locale
-
 import utest._
 
-object ComparableVersionTests extends TestSuite {
-  import core.ComparableVersion.parse
+object VersionTests extends TestSuite {
+  import core.Version
 
-  def compare(first: String, second: String) = parse(first).compare(parse(second))
+  def compare(first: String, second: String) = Version(first).compare(Version(second))
 
   def increasing(versions: String*): Boolean =
     versions.iterator.sliding(2).withPartial(false).forall{case Seq(a, b) => compare(a, b) < 0 }
@@ -16,13 +14,13 @@ object ComparableVersionTests extends TestSuite {
   val tests = TestSuite {
     'stackOverflow{
       val s = "." * 100000
-      val v = parse(s)
+      val v = Version(s)
       assert(v.isEmpty)
     }
 
     'empty{
-      val v0 = parse("0")
-      val v = parse("")
+      val v0 = Version("0")
+      val v = Version("")
 
       assert(v0.isEmpty)
       assert(v.isEmpty)
@@ -328,6 +326,7 @@ object ComparableVersionTests extends TestSuite {
 
 //    'CaseInsensitiveOrderingOfQualifiersIsLocaleIndependent
 //    {
+//      import java.util.Locale
 //      val orig = Locale.getDefault
 //      try {
 //        for ( locale <- Seq(Locale.ENGLISH, new Locale( "tr" )) ) {
