@@ -15,6 +15,20 @@ object CentralTests extends TestSuite {
   def repr(dep: Dependency) =
     s"${dep.module.organization}:${dep.module.name}:${dep.`type`}:${Some(dep.classifier).filter(_.nonEmpty).map(_+":").mkString}${dep.version}"
 
+  def resolutionCheck(module: Module, version: String) =
+    async {
+      val expected = await(textResource(s"resolutions/${module.organization}:${module.name}:$version")).split('\n').toSeq
+
+      val dep = Dependency(module, version)
+      val res = await(resolve(Set(dep), fetchFrom(repositories)).runF)
+
+      val result = res.dependencies.toVector.map(repr).sorted.distinct
+
+      for (((e, r), idx) <- expected.zip(result).zipWithIndex if e != r)
+        println(s"Line $idx:\n  expected: $e\n  got:$r")
+
+      assert(result == expected)
+    }
 
   val tests = TestSuite {
     'logback{
@@ -50,19 +64,10 @@ object CentralTests extends TestSuite {
       }
     }
     'spark{
-      async {
-        val expected = await(textResource("resolutions/org.apache.spark:spark-core_2.11:1.3.1")).split('\n').toSeq
-
-        val dep = Dependency(Module("org.apache.spark", "spark-core_2.11"), "1.3.1")
-        val res = await(resolve(Set(dep), fetchFrom(repositories)).runF)
-
-        val result = res.dependencies.toVector.map(repr).sorted.distinct
-
-        for (((e, r), idx) <- expected.zip(result).zipWithIndex if e != r)
-          println(s"Line $idx:\n  expected: $e\n  got:$r")
-
-        assert(result == expected)
-      }
+      resolutionCheck(Module("org.apache.spark", "spark-core_2.11"), "1.3.1")
+    }
+    'argonautShapeless{
+      resolutionCheck(Module("com.github.alexarchambault", "argonaut-shapeless_6.1_2.11"), "0.2.0")
     }
   }
 
