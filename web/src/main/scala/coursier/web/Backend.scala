@@ -40,11 +40,11 @@ class Backend($: BackendScope[Unit, State]) {
       }
 
     for {
-      ((org, name, scope), par) <- resolution.reverseDependenciesAndExclusions.toList
-      from = s"$org:$name:${scope.name}"
+      (dep, parents) <- resolution.reverseDependencies.toList
+      from = s"${dep.module.organization}:${dep.module.name}:${dep.scope.name}"
       _ = addNode(from)
-      ((parOrg, parName, parScope), _) <- par
-      to = s"$parOrg:$parName:${parScope.name}"
+      parDep <- parents
+      to = s"${parDep.module.organization}:${parDep.module.name}:${parDep.scope.name}"
       _ = addNode(to)
     } {
       graph.addEdge(from, to)

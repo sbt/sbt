@@ -469,6 +469,32 @@ object ResolverTests extends TestSuite {
       }
     }
 
+    'exclusionsOfDependenciesFromDifferentPathsShouldNotCollide{
+      async {
+        val deps = Set(
+          Dependency(Module("an-org", "an-app"), "1.0"),
+          Dependency(Module("an-org", "a-lib"), "1.0", optional = true))
+        val trDeps = Seq(
+          Dependency(Module("an-org", "a-lib"), "1.0", exclusions = Set(("an-org", "a-name"))),
+          Dependency(Module("an-org", "another-lib"), "1.0", optional = true),
+          Dependency(Module("an-org", "a-name"), "1.0", optional = true))
+        val res = await(resolve(
+          deps,
+          fetchFrom(repositories),
+          filter = Some(_.scope == Scope.Compile)
+        ).runF).copy(filter = None, projectsCache = Map.empty, errors = Map.empty)
+
+        println(res.dependencies.map(_.toString).toList.sorted.mkString("\n"))
+
+        val expected = Resolution(
+          rootDependencies = deps.map(_.withCompileScope),
+          dependencies = (deps ++ trDeps).map(_.withCompileScope)
+        )
+
+        assert(res == expected)
+      }
+    }
+
     'parts{
       'propertySubstitution{
         val res =

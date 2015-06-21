@@ -249,49 +249,6 @@ object Resolver {
     }
   }
 
-  /**
-   * Intersection of exclusions. A module is excluded by the result if it is excluded
-   * by both `first` and `second`.
-   */
-  def exclusionsIntersect(first: Set[(String, String)],
-                          second: Set[(String, String)]): Set[(String, String)] = {
-
-    val (firstAll, firstNonAll) = first.partition{case ("*", "*") => true; case _ => false }
-    val (secondAll, secondNonAll) = second.partition{case ("*", "*") => true; case _ => false }
-
-    if (firstAll.nonEmpty && secondAll.nonEmpty) Set(("*", "*"))
-    else {
-      val firstOrgWildcards = firstNonAll.collect{ case ("*", name) => name }
-      val firstNameWildcards = firstNonAll.collect{ case (org, "*") => org }
-      val secondOrgWildcards = secondNonAll.collect{ case ("*", name) => name }
-      val secondNameWildcards = secondNonAll.collect{ case (org, "*") => org }
-
-      val orgWildcards =
-        (firstOrgWildcards intersect secondOrgWildcards) ++
-          (if (secondAll.nonEmpty) firstOrgWildcards else Set.empty) ++
-          (if (firstAll.nonEmpty) secondOrgWildcards else Set.empty)
-
-      val nameWildcards =
-        (firstNameWildcards intersect secondNameWildcards) ++
-          (if (secondAll.nonEmpty) firstNameWildcards else Set.empty) ++
-          (if (firstAll.nonEmpty) secondNameWildcards else Set.empty)
-
-      val firstRemaining = firstNonAll.filter{ case (org, name) => org != "*" && name != "*" }
-      val secondRemaining = secondNonAll.filter{ case (org, name) => org != "*" && name != "*" }
-
-      val remaining =
-        (firstRemaining intersect secondRemaining) ++
-          (if (secondAll.nonEmpty) firstRemaining else Set.empty) ++
-          (if (firstAll.nonEmpty) secondRemaining else Set.empty) ++
-          (if (secondOrgWildcards.nonEmpty) firstRemaining.filter(e => secondOrgWildcards(e._2)) else Set.empty) ++
-          (if (firstOrgWildcards.nonEmpty) secondRemaining.filter(e => firstOrgWildcards(e._2)) else Set.empty) ++
-          (if (secondNameWildcards.nonEmpty) firstRemaining.filter(e => secondNameWildcards(e._1)) else Set.empty) ++
-          (if (firstNameWildcards.nonEmpty) secondRemaining.filter(e => firstNameWildcards(e._1)) else Set.empty)
-
-      orgWildcards.map(name => ("*", name)) ++ nameWildcards.map(org => (org, "*")) ++ remaining
-    }
-  }
-
   def withDefaultScope(dep: Dependency): Dependency =
     if (dep.scope.name.isEmpty) dep.copy(scope = Scope.Compile)
     else dep
@@ -393,7 +350,7 @@ object Resolver {
      * Transitive dependencies of the current dependencies, according to what there currently is in cache.
      * No attempt is made to solve version conflicts here.
      */
-    def transitiveDependencies =
+    def transitiveDependencies: Seq[Dependency] =
       for {
         dep <- (dependencies -- conflicts).toList
         trDep <- finalDependencies0(dep)
@@ -404,11 +361,11 @@ object Resolver {
      * trying to solve version conflicts. Transitive dependencies are calculated with the current cache.
      *
      * May contain dependencies added in previous iterations, but no more required. These are filtered below, see
-     * @newDependencies.
+     * `newDependencies`.
      *
      * Returns a tuple made of the conflicting dependencies, and all the dependencies.
      */
-    def nextDependenciesAndConflicts = {
+    def nextDependenciesAndConflicts: (Seq[Dependency], Seq[Dependency]) = {
       merge(dependencies ++ transitiveDependencies)
     }
 
@@ -436,22 +393,23 @@ object Resolver {
       missingFromCache.isEmpty && isFixPoint
     }
 
-    private def key(dep: Dependency) = (dep.module, dep.scope)
+    private def eraseVersion(dep: Dependency) = dep.copy(version = "")
 
     /**
-     * Returns a map giving the dependency that brought each of the dependency of the "next" dependency set,
-     * along with the exclusions that the source dependency adds to it.
+     * Returns a map giving the dependencies that brought each of the dependency of the "next" dependency set.
+     *
+     * The versions of all the dependencies returned are erased (emptied).
      */
-    def reverseDependenciesAndExclusions = {
+    def reverseDependencies: Map[Dependency, Vector[Dependency]] = {
       val (updatedConflicts, updatedDeps) = nextDependenciesAndConflicts
 
       val trDepsSeq =
         for {
           dep <- updatedDeps
           trDep <- finalDependencies0(dep)
-        } yield key(trDep) -> (key(dep), trDep.exclusions)
+        } yield eraseVersion(trDep) -> eraseVersion(dep)
 
-      val knownDeps = (updatedDeps ++ updatedConflicts).map(key).toSet
+      val knownDeps = (updatedDeps ++ updatedConflicts).map(eraseVersion).toSet
 
       trDepsSeq
         .groupBy(_._1)
@@ -461,48 +419,38 @@ object Resolver {
     }
 
     /**
-     * Returns a map, whose keys are the dependencies from the "next" dependency set,
-     * filtering out those that are no more required, and whose values are the exclusions
-     * added to them by the dependencies that brought them here.
+     * Returns dependencies from the "next" dependency set, filtering out
+     * those that are no more required.
+     *
+     * The versions of all the dependencies returned are erased (emptied).
      */
-    def remainingDependenciesAndExclusions = {
-      val rootDependenciesExclusions = rootDependencies
-        .map(dep => key(dep) -> dep.exclusions)
-        .toMap
-
-      type D = (Module, Scope)
+    def remainingDependencies: Set[Dependency] = {
+      val rootDependencies0 = rootDependencies.map(eraseVersion)
 
       @tailrec
-      def helper[T](reverseDeps: Map[D, Vector[(D, T)]]): Map[D, Vector[(D, T)]] = {
-        val (toRemove, remaining) = reverseDeps.partition(kv => kv._2.isEmpty && !rootDependenciesExclusions.contains(kv._1))
+      def helper(reverseDeps: Map[Dependency, Vector[Dependency]]): Map[Dependency, Vector[Dependency]] = {
+        val (toRemove, remaining) = reverseDeps.partition(kv => kv._2.isEmpty && !rootDependencies0(kv._1))
 
         if (toRemove.isEmpty) reverseDeps
-        else helper(remaining.mapValues(_.filter(x => remaining.contains(x._1) || rootDependenciesExclusions.contains(x._1))).toList.toMap)
+        else helper(remaining.mapValues(_.filter(x => remaining.contains(x) || rootDependencies0(x))).toList.toMap)
       }
 
-      val filteredReverseDependenciesAndExclusions = helper(reverseDependenciesAndExclusions)
+      val filteredReverseDependencies = helper(reverseDependencies)
 
-      (rootDependenciesExclusions.keySet ++ filteredReverseDependenciesAndExclusions.keySet)
-        .toList
-        .map{case dep => dep ->
-          (filteredReverseDependenciesAndExclusions.get(dep).map(_.map(_._2)).getOrElse(Nil) ++ rootDependenciesExclusions.get(dep))
-            .reduce(exclusionsIntersect)
-        }
-        .toMap
+      rootDependencies0 ++ filteredReverseDependencies.keys
     }
 
     /**
      * The final next dependency set, stripped of no more required ones.
      */
-    def newDependencies = {
-      val remainingDeps0 = remainingDependenciesAndExclusions
+    def newDependencies: Set[Dependency] = {
+      val remainingDependencies0 = remainingDependencies
       nextDependenciesAndConflicts._2
-        .filter(dep => remainingDeps0.contains(key(dep)))
-        .map(dep => dep.copy(exclusions = remainingDeps0(key(dep))))
+        .filter(dep => remainingDependencies0(eraseVersion(dep)))
         .toSet
     }
 
-    private def nextNoMissingUnsafe(): Resolution = {
+    private def nextNoMissingUnsafe: Resolution = {
       val (newConflicts, _) = nextDependenciesAndConflicts
       copy(dependencies = newDependencies ++ newConflicts, conflicts = newConflicts.toSet)
     }
@@ -511,9 +459,9 @@ object Resolver {
      * If no module info is missing, the next state of the resolution, which can be immediately calculated.
      * Else, the current resolution itself.
      */
-    def nextIfNoMissing(): Resolution = {
+    def nextIfNoMissing: Resolution = {
       val missing = missingFromCache
-      if (missing.isEmpty) nextNoMissingUnsafe()
+      if (missing.isEmpty) nextNoMissingUnsafe
       else this
     }
 
@@ -522,8 +470,8 @@ object Resolver {
      */
     def next(fetchModule: ModuleVersion => EitherT[Task, List[String], (Repository, Project)]): Task[Resolution] = {
       val missing = missingFromCache
-      if (missing.isEmpty) Task.now(nextNoMissingUnsafe())
-      else fetch(missing.toList, fetchModule).map(_.nextIfNoMissing())
+      if (missing.isEmpty) Task.now(nextNoMissingUnsafe)
+      else fetch(missing.toList, fetchModule).map(_.nextIfNoMissing)
     }
 
     /**
