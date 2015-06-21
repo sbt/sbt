@@ -203,8 +203,12 @@ object App {
 
       def infoLabel(label: String) =
         <.span(^.`class` := "label label-info", label)
-      def errorLabel(label: String, desc: String) =
-        <.button(^.`type` := "button", ^.`class` := "btn btn-xs btn-danger",
+      def errorPopOver(label: String, desc: String) =
+        popOver("danger", label, desc)
+      def infoPopOver(label: String, desc: String) =
+        popOver("info", label, desc)
+      def popOver(`type`: String, label: String, desc: String) =
+        <.button(^.`type` := "button", ^.`class` := s"btn btn-xs btn-${`type`}",
           Attr("data-trigger") := "focus",
           Attr("data-toggle") := "popover", Attr("data-placement") := "bottom",
           Attr("data-content") := desc,
@@ -223,8 +227,9 @@ object App {
             if (dep.scope == Scope.Compile) Seq() else Seq(infoLabel(dep.scope.name)),
             if (dep.`type`.isEmpty || dep.`type` == "jar") Seq() else Seq(infoLabel(dep.`type`)),
             if (dep.classifier.isEmpty) Seq() else Seq(infoLabel(dep.classifier)),
+            Some(dep.exclusions).filter(_.nonEmpty).map(excls => infoPopOver("Exclusions", excls.toList.sorted.map{case (org, name) => s"$org:$name"}.mkString("; "))).toSeq,
             if (dep.optional) Seq(infoLabel("optional")) else Seq(),
-            res.errors.get(dep.moduleVersion).map(errs => errorLabel("Error", errs.mkString("; "))).toSeq
+            res.errors.get(dep.moduleVersion).map(errs => errorPopOver("Error", errs.mkString("; "))).toSeq
           )),
          <.td(Seq[Seq[TagMod]](
            res.projectsCache.get(dep.moduleVersion) match {
