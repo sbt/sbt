@@ -484,7 +484,7 @@ def allProjects = Seq(interfaceProj, apiProj,
   compileInterfaceProj, compileIncrementalProj, compilePersistProj, compilerProj,
   compilerIntegrationProj, compilerIvyProj,
   scriptedBaseProj, scriptedSbtProj, scriptedPluginProj,
-  actionsProj, commandProj, mainSettingsProj, mainProj, sbtProj, mavenResolverPluginProj)
+  actionsProj, commandProj, mainSettingsProj, mainProj, sbtProj, bundledLauncherProj, mavenResolverPluginProj)
 
 def projectsWithMyProvided = allProjects.map(p => p.copy(configurations = (p.configurations.filter(_ != Provided)) :+ myProvided))
 lazy val nonRoots = projectsWithMyProvided.map(p => LocalProject(p.id))
@@ -576,6 +576,23 @@ lazy val safeProjects: ScopeFilter = ScopeFilter(
     logProj, runProj, stdTaskProj),
   inConfigurations(Test)
 )
+lazy val otherUnitTests = taskKey[Unit]("Unit test other projects")
+lazy val otherProjects: ScopeFilter = ScopeFilter(
+  inProjects(interfaceProj, apiProj, controlProj, 
+    applyMacroProj,
+    // processProj, // this one is suspicious
+    ioProj,
+    relationProj, classfileProj, datatypeProj,
+    crossProj, logicProj, testingProj, testAgentProj, taskProj,
+    cacheProj, trackingProj,
+    compileIncrementalProj,
+    compilePersistProj, compilerProj,
+    compilerIntegrationProj, compilerIvyProj,
+    scriptedBaseProj, scriptedSbtProj, scriptedPluginProj,
+    commandProj, mainSettingsProj, mainProj,
+    sbtProj, mavenResolverPluginProj),
+  inConfigurations(Test)
+)
 
 def customCommands: Seq[Setting[_]] = Seq(
   commands += Command.command("setupBuildScala211") { state =>
@@ -593,6 +610,9 @@ def customCommands: Seq[Setting[_]] = Seq(
   },
   safeUnitTests := {
     test.all(safeProjects).value
+  },
+  otherUnitTests := {
+    test.all(otherProjects)
   },
   commands += Command.command("release-sbt-local") { state =>
     "clean" ::
