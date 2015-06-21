@@ -484,8 +484,6 @@ object ResolverTests extends TestSuite {
           filter = Some(_.scope == Scope.Compile)
         ).runF).copy(filter = None, projectsCache = Map.empty, errors = Map.empty)
 
-        println(res.dependencies.map(_.toString).toList.sorted.mkString("\n"))
-
         val expected = Resolution(
           rootDependencies = deps.map(_.withCompileScope),
           dependencies = (deps ++ trDeps).map(_.withCompileScope)
