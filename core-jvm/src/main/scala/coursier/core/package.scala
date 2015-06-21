@@ -1,7 +1,5 @@
 package coursier
 
-import coursier.core.Resolver.ModuleVersion
-
 import scalaz.EitherT
 import scalaz.concurrent.Task
 

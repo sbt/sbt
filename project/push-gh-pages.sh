@@ -21,7 +21,7 @@ cp -R "$DIR/classes/css" staging
 
 for i in staging/*.html; do
   mv "$i" "$i.0"
-  grep -v "src=\"\.\.\/web-" < "$i.0" > "$i"
+  sed "s/src=\"\.\.\/web-/src=\"web-/g" < "$i.0" > "$i"
   rm -f "$i.0"
 done
 
