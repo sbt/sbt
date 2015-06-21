@@ -21,15 +21,18 @@ case class ArtifactDownloader(root: String, cache: File, logger: Option[Artifact
 
   def artifact(module: Module,
                version: String,
-               classifier: String,
-               `type`: String,
+               artifacts: Artifacts,
                cachePolicy: CachePolicy): EitherT[Task, String, File] = {
+
+    val (type0, classifier) = artifacts match {
+      case maven: Artifacts.Maven => (maven.`type`, maven.classifier)
+    }
 
     val relPath =
       module.organization.split('.').toSeq ++ Seq(
         module.name,
         version,
-        s"${module.name}-$version${Some(classifier).filter(_.nonEmpty).map("-"+_).mkString}.${`type`}"
+        s"${module.name}-$version${Some(classifier).filter(_.nonEmpty).map("-"+_).mkString}.$type0"
       )
 
     val file = (cache /: relPath)(new File(_, _))
@@ -94,7 +97,7 @@ case class ArtifactDownloader(root: String, cache: File, logger: Option[Artifact
 
   def artifact(dependency: Dependency,
                cachePolicy: CachePolicy = CachePolicy.Default): EitherT[Task, String, File] =
-    artifact(dependency.module, dependency.version, dependency.classifier, dependency.`type`, cachePolicy = cachePolicy)
+    artifact(dependency.module, dependency.version, dependency.artifacts, cachePolicy = cachePolicy)
 
 }
 

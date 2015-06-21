@@ -217,7 +217,11 @@ object App {
           label
         )
 
-      def depItem(dep: Dependency) =
+      def depItem(dep: Dependency) = {
+        val (type0, classifier) = dep.artifacts match {
+          case maven: Artifacts.Maven => (maven.`type`, maven.classifier)
+        }
+
         <.tr(
           ^.`class` := (if (res.errors.contains(dep.moduleVersion)) "danger" else ""),
           <.td(dep.module.organization),
@@ -225,8 +229,8 @@ object App {
           <.td(dep.version),
           <.td(Seq[Seq[TagMod]](
             if (dep.scope == Scope.Compile) Seq() else Seq(infoLabel(dep.scope.name)),
-            if (dep.`type`.isEmpty || dep.`type` == "jar") Seq() else Seq(infoLabel(dep.`type`)),
-            if (dep.classifier.isEmpty) Seq() else Seq(infoLabel(dep.classifier)),
+            if (type0.isEmpty || type0 == "jar") Seq() else Seq(infoLabel(type0)),
+            if (classifier.isEmpty) Seq() else Seq(infoLabel(classifier)),
             Some(dep.exclusions).filter(_.nonEmpty).map(excls => infoPopOver("Exclusions", excls.toList.sorted.map{case (org, name) => s"$org:$name"}.mkString("; "))).toSeq,
             if (dep.optional) Seq(infoLabel("optional")) else Seq(),
             res.errors.get(dep.moduleVersion).map(errs => errorPopOver("Error", errs.mkString("; "))).toSeq
@@ -255,6 +259,7 @@ object App {
            }
          ))
         )
+      }
 
       val sortedDeps = res.dependencies.toList
         .sortBy(dep => coursier.core.Module.unapply(dep.module).get)

@@ -85,8 +85,7 @@ object Xml {
         mod,
         version0,
         scopeOpt getOrElse defaultScope,
-        typeOpt getOrElse defaultType,
-        classifierOpt getOrElse defaultClassifier,
+        Artifacts.Maven(typeOpt getOrElse defaultType, classifierOpt getOrElse defaultClassifier),
         exclusions.map(mod => (mod.organization, mod.name)).toSet,
         optional
       )

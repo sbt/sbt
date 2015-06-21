@@ -97,8 +97,12 @@ case class Coursier(scope: List[String],
     sys exit 1
   }
 
-  def repr(dep: Dependency) =
-    s"${dep.module.organization}:${dep.module.name}:${dep.`type`}:${Some(dep.classifier).filter(_.nonEmpty).map(_+":").mkString}${dep.version}"
+  def repr(dep: Dependency) = {
+    val (type0, classifier) = dep.artifacts match {
+      case maven: Artifacts.Maven => (maven.`type`, maven.classifier)
+    }
+    s"${dep.module.organization}:${dep.module.name}:$type0:${Some(classifier).filter(_.nonEmpty).map(_+":").mkString}${dep.version}"
+  }
 
   val trDeps = res.dependencies.toList.sortBy(repr)
 

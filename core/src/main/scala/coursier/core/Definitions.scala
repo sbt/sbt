@@ -32,11 +32,17 @@ sealed abstract class Scope(val name: String)
 case class Dependency(module: Module,
                       version: String,
                       scope: Scope,
-                      `type`: String,
-                      classifier: String,
+                      artifacts: Artifacts,
                       exclusions: Set[(String, String)],
                       optional: Boolean) {
   def moduleVersion = (module, version)
+}
+
+sealed trait Artifacts
+
+object Artifacts {
+  case class Maven(`type`: String,
+                   classifier: String) extends Artifacts
 }
 
 case class Project(module: Module,
