@@ -123,7 +123,21 @@ object ResolverTests extends TestSuite {
       properties = Map("special" -> "true"),
       profiles = Seq(
         Profile("default", activation = Profile.Activation(properties = Seq("special" -> Some("!false"))), dependencies = Seq(
-          Dependency(Module("org.escalier", "librairie-standard"), "2.11.6")))))
+          Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))))),
+
+    Project(Module("an-org", "a-name"), "1.0"),
+
+    Project(Module("an-org", "a-lib"), "1.0",
+      Seq(Dependency(Module("an-org", "a-name"), "1.0"))),
+
+    Project(Module("an-org", "another-lib"), "1.0",
+      Seq(Dependency(Module("an-org", "a-name"), "1.0"))),
+
+    // Must bring transitively an-org:a-name, as an optional dependency
+    Project(Module("an-org", "an-app"), "1.0",
+      Seq(
+        Dependency(Module("an-org", "a-lib"), "1.0", exclusions = Set(("an-org", "a-name"))),
+        Dependency(Module("an-org", "another-lib"), "1.0", optional = true)))
   )
 
   val projectsMap = projects.map(p => p.moduleVersion -> p).toMap
@@ -418,6 +432,28 @@ object ResolverTests extends TestSuite {
         val dep = Dependency(Module("com.github.dummy", "libb"), "0.4.2")
         val trDeps = Seq(
           Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))
+        val res = await(resolve(
+          Set(dep),
+          fetchFrom(repositories),
+          filter = Some(_.scope == Scope.Compile)
+        ).runF).copy(filter = None, projectsCache = Map.empty, errors = Map.empty)
+
+        val expected = Resolution(
+          rootDependencies = Set(dep.withCompileScope),
+          dependencies = Set(dep.withCompileScope) ++ trDeps.map(_.withCompileScope)
+        )
+
+        assert(res == expected)
+      }
+    }
+
+    'exclusionsAndOptionalShouldGoAlong{
+      async {
+        val dep = Dependency(Module("an-org", "an-app"), "1.0")
+        val trDeps = Seq(
+          Dependency(Module("an-org", "a-lib"), "1.0", exclusions = Set(("an-org", "a-name"))),
+          Dependency(Module("an-org", "another-lib"), "1.0", optional = true),
+          Dependency(Module("an-org", "a-name"), "1.0", optional = true))
         val res = await(resolve(
           Set(dep),
           fetchFrom(repositories),
