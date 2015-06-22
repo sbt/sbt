@@ -63,19 +63,19 @@ case class ArtifactDownloader(root: String, cache: File, logger: Option[Artifact
           val in = new BufferedInputStream(url.openStream(), bufferSize)
 
           try {
-            val w = new FileOutputStream(file)
+            val out = new FileOutputStream(file)
             try {
               @tailrec
               def helper(): Unit = {
                 val read = in.read(b)
                 if (read >= 0) {
-                  w.write(b, 0, read)
+                  out.write(b, 0, read)
                   helper()
                 }
               }
 
               helper()
-            } finally w.close()
+            } finally out.close()
           } finally in.close()
 
           logger.foreach(_.downloadedArtifact(urlStr, success = true))
