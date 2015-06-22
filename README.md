@@ -13,6 +13,10 @@ sbt is a build tool for Scala, Java, and more.
 
 For general documentation, see http://www.scala-sbt.org/.
 
+You can also join the chat at https://gitter.im/sbt/sbt.
+
+To chat about contributing to sbt, developing an OSS plugin or about sbt's documentation join the chat at https://gitter.im/sbt/sbt-dev.
+
 Issues and Pull Requests
 ------------------------
 
