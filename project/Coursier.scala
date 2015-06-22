@@ -8,6 +8,9 @@ import sbtrelease.ReleasePlugin.ReleaseKeys.{ publishArtifactsAction, versionBum
 import sbtrelease.Version.Bump
 import com.typesafe.sbt.pgp.PgpKeys
 
+import xerial.sbt.Pack._
+
+
 object CoursierBuild extends Build {
 
   lazy val publishingSettings = Seq[Setting[_]](
@@ -100,8 +103,14 @@ object CoursierBuild extends Build {
 
   lazy val cli = Project(id = "cli", base = file("cli"))
     .dependsOn(coreJvm)
-    .settings(commonSettings ++ xerial.sbt.Pack.packAutoSettings: _*)
+    .settings(commonSettings ++ packAutoSettings ++ publishPackTxzArchive ++ publishPackZipArchive: _*)
     .settings(
+      packArchivePrefix := s"coursier-cli_${scalaBinaryVersion.value}",
+      packArchiveTxzArtifact := Artifact("coursier-cli", "arch", "tar.xz"),
+      packArchiveZipArtifact := Artifact("coursier-cli", "arch", "zip")
+    )
+    .settings(
+      name := "coursier-cli",
       libraryDependencies ++= Seq(
         "com.github.alexarchambault" %% "case-app" % "0.2.2",
         "ch.qos.logback" % "logback-classic" % "1.1.3"
