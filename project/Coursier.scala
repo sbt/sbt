@@ -53,7 +53,7 @@ object CoursierBuild extends Build {
   ) ++ releaseSettings
 
   lazy val commonSettings = Seq[Setting[_]](
-    organization := "eu.frowning-lambda",
+    organization := "com.github.alexarchambault",
     version := "0.1.0-SNAPSHOT",
     scalaVersion := "2.11.6",
     crossScalaVersions := Seq("2.10.5", "2.11.6"),

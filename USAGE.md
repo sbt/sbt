@@ -5,7 +5,7 @@ Ensure you have a dependency on its artifact, e.g. add in `build.sbt`,
 resolvers += Resolver.sonatypeRepo("snapshots")
 
 libraryDependencies +=
-  "eu.frowning-lambda" %% "coursier" % "0.1.0-SNAPSHOT"
+  "com.github.alexarchambault" %% "coursier" % "0.1.0-SNAPSHOT"
 ```
 
 Then,
