@@ -114,17 +114,18 @@ object Xml {
   def profile(node: Node): String \/ Profile = {
     import Scalaz._
 
+    val id = text(node, "id", "Profile ID").getOrElse("")
+
+    val xmlActivationOpt = node.child
+      .find(_.label == "activation")
+    val (activeByDefault, activation) = xmlActivationOpt.fold((Option.empty[Boolean], Activation(Nil)))(profileActivation)
+
+    val xmlDeps = node.child
+      .find(_.label == "dependencies")
+      .map(_.child.filter(_.label == "dependency"))
+      .getOrElse(Seq.empty)
+
     for {
-      id <- text(node, "id", "Profile ID")
-
-      xmlActivationOpt = node.child
-        .find(_.label == "activation")
-      (activeByDefault, activation) = xmlActivationOpt.fold((Option.empty[Boolean], Activation(Nil)))(profileActivation)
-
-      xmlDeps = node.child
-        .find(_.label == "dependencies")
-        .map(_.child.filter(_.label == "dependency"))
-        .getOrElse(Seq.empty)
       deps <- xmlDeps.toList.traverseU(dependency)
 
       xmlDepMgmts = node.child
@@ -138,6 +139,7 @@ object Xml {
         .find(_.label == "properties")
         .map(_.child.collect{case elem if elem.isElement => elem})
         .getOrElse(Seq.empty)
+
       properties <- {
         import Scalaz._
         xmlProperties.toList.traverseU(property)

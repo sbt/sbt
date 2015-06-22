@@ -40,6 +40,21 @@ object PomParsingTests extends TestSuite {
 
       assert(result == expected)
     }
+    'beFineWithProfilesWithNoId{
+      val profileNode = """
+        <profile>
+          <activation>
+            <activeByDefault>true</activeByDefault>
+          </activation>
+        </profile>
+                       """
+
+      val expected = \/-(Profile("", Some(true), Activation(Nil), Nil, Nil, Map.empty))
+
+      val result = Xml.profile(xmlParse(profileNode).right.get)
+
+      assert(result == expected)
+    }
     'readProfileActivatedByDefault{
       val profileNode ="""
         <profile>
