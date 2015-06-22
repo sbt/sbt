@@ -32,10 +32,10 @@ package object concurrent {
         def runF(implicit ec: ExecutionContext) = Future.traverse(tasks)(_.runF)
       }
 
-    implicit val taskFunctor: Functor[Task] =
-      new Functor[Task] {
-        def map[A, B](fa: Task[A])(f: A => B): Task[B] =
-          fa.map(f)
+    implicit val taskMonad: Monad[Task] =
+      new Monad[Task] {
+        def point[A](a: => A): Task[A] = Task.now(a)
+        def bind[A,B](fa: Task[A])(f: A => Task[B]): Task[B] = fa.flatMap(f)
       }
   }
 

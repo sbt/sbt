@@ -8,6 +8,9 @@ import sbtrelease.ReleasePlugin.ReleaseKeys.{ publishArtifactsAction, versionBum
 import sbtrelease.Version.Bump
 import com.typesafe.sbt.pgp.PgpKeys
 
+import xerial.sbt.Pack._
+
+
 object CoursierBuild extends Build {
 
   lazy val publishingSettings = Seq[Setting[_]](
@@ -53,7 +56,7 @@ object CoursierBuild extends Build {
   ) ++ releaseSettings
 
   lazy val commonSettings = Seq[Setting[_]](
-    organization := "eu.frowning-lambda",
+    organization := "com.github.alexarchambault",
     version := "0.1.0-SNAPSHOT",
     scalaVersion := "2.11.6",
     crossScalaVersions := Seq("2.10.5", "2.11.6"),
@@ -65,6 +68,8 @@ object CoursierBuild extends Build {
     libraryDependencies += "org.scala-lang.modules" %% "scala-async" % "0.9.1" % "provided",
     unmanagedSourceDirectories in Compile += (baseDirectory in LocalRootProject).value / "core" / "src" / "main" / "scala",
     unmanagedSourceDirectories in Test += (baseDirectory in LocalRootProject).value / "core" / "src" / "test" / "scala",
+    unmanagedResourceDirectories in Compile += (baseDirectory in LocalRootProject).value / "core" / "src" / "main" / "resources",
+    unmanagedResourceDirectories in Test += (baseDirectory in LocalRootProject).value / "core" / "src" / "test" / "resources",
     testFrameworks += new TestFramework("utest.runner.Framework")
   )
 
@@ -98,8 +103,14 @@ object CoursierBuild extends Build {
 
   lazy val cli = Project(id = "cli", base = file("cli"))
     .dependsOn(coreJvm)
-    .settings(commonSettings ++ xerial.sbt.Pack.packAutoSettings: _*)
+    .settings(commonSettings ++ packAutoSettings ++ publishPackTxzArchive ++ publishPackZipArchive: _*)
     .settings(
+      packArchivePrefix := s"coursier-cli_${scalaBinaryVersion.value}",
+      packArchiveTxzArtifact := Artifact("coursier-cli", "arch", "tar.xz"),
+      packArchiveZipArtifact := Artifact("coursier-cli", "arch", "zip")
+    )
+    .settings(
+      name := "coursier-cli",
       libraryDependencies ++= Seq(
         "com.github.alexarchambault" %% "case-app" % "0.2.2",
         "ch.qos.logback" % "logback-classic" % "1.1.3"

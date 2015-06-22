@@ -1,6 +1,6 @@
 package coursier.core
 
-import scalaz.{\/, EitherT}
+import scalaz.{-\/, \/-, \/, EitherT}
 import scalaz.concurrent.Task
 
 trait Repository {
@@ -35,4 +35,39 @@ object CachePolicy {
     def apply[E,T](local: => Task[E \/ T])(remote: => Task[E \/ T]): Task[E \/ T] =
       remote
   }
+}
+
+trait MavenRepository extends Repository {
+
+  def find(module: Module,
+           version: String,
+           cachePolicy: CachePolicy): EitherT[Task, String, Project] = {
+
+    Parse.versionInterval(version).filter(_.isValid) match {
+      case None => findNoInterval(module, version, cachePolicy)
+      case Some(itv) =>
+        versions(module.organization, module.name, cachePolicy).flatMap { versions0 =>
+          val eitherVersion = {
+            val release = Version(versions0.release)
+            if (itv.contains(release)) \/-(versions0.release)
+            else {
+              val inInterval = versions0.available.map(Version(_)).filter(itv.contains)
+              if (inInterval.isEmpty) -\/(s"No version found for $version")
+              else \/-(inInterval.max.repr)
+            }
+          }
+
+          eitherVersion match {
+            case -\/(reason) => EitherT[Task, String, Project](Task.now(-\/(reason)))
+            case \/-(version0) => findNoInterval(module, version0, cachePolicy)
+              .map(_.copy(versions = Some(versions0)))
+          }
+        }
+    }
+  }
+
+  def findNoInterval(module: Module,
+                     version: String,
+                     cachePolicy: CachePolicy): EitherT[Task, String, Project]
+
 }

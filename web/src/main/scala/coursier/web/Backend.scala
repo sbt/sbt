@@ -40,11 +40,11 @@ class Backend($: BackendScope[Unit, State]) {
       }
 
     for {
-      ((org, name, scope), par) <- resolution.reverseDependenciesAndExclusions.toList
-      from = s"$org:$name:${scope.name}"
+      (dep, parents) <- resolution.reverseDependencies.toList
+      from = s"${dep.module.organization}:${dep.module.name}:${dep.scope.name}"
       _ = addNode(from)
-      ((parOrg, parName, parScope), _) <- par
-      to = s"$parOrg:$parName:${parScope.name}"
+      parDep <- parents
+      to = s"${parDep.module.organization}:${parDep.module.name}:${parDep.scope.name}"
       _ = addNode(to)
     } {
       graph.addEdge(from, to)
@@ -203,8 +203,12 @@ object App {
 
       def infoLabel(label: String) =
         <.span(^.`class` := "label label-info", label)
-      def errorLabel(label: String, desc: String) =
-        <.button(^.`type` := "button", ^.`class` := "btn btn-xs btn-danger",
+      def errorPopOver(label: String, desc: String) =
+        popOver("danger", label, desc)
+      def infoPopOver(label: String, desc: String) =
+        popOver("info", label, desc)
+      def popOver(`type`: String, label: String, desc: String) =
+        <.button(^.`type` := "button", ^.`class` := s"btn btn-xs btn-${`type`}",
           Attr("data-trigger") := "focus",
           Attr("data-toggle") := "popover", Attr("data-placement") := "bottom",
           Attr("data-content") := desc,
@@ -213,28 +217,34 @@ object App {
           label
         )
 
-      def depItem(dep: Dependency) =
+      def depItem(dep: Dependency, finalVersionOpt: Option[String]) = {
+        val (type0, classifier) = dep.artifacts match {
+          case maven: Artifacts.Maven => (maven.`type`, maven.classifier)
+        }
+
         <.tr(
           ^.`class` := (if (res.errors.contains(dep.moduleVersion)) "danger" else ""),
           <.td(dep.module.organization),
           <.td(dep.module.name),
-          <.td(dep.version),
+          <.td(finalVersionOpt.fold(dep.version)(finalVersion => s"$finalVersion (for ${dep.version})")),
           <.td(Seq[Seq[TagMod]](
             if (dep.scope == Scope.Compile) Seq() else Seq(infoLabel(dep.scope.name)),
-            if (dep.`type`.isEmpty || dep.`type` == "jar") Seq() else Seq(infoLabel(dep.`type`)),
-            if (dep.classifier.isEmpty) Seq() else Seq(infoLabel(dep.classifier)),
+            if (type0.isEmpty || type0 == "jar") Seq() else Seq(infoLabel(type0)),
+            if (classifier.isEmpty) Seq() else Seq(infoLabel(classifier)),
+            Some(dep.exclusions).filter(_.nonEmpty).map(excls => infoPopOver("Exclusions", excls.toList.sorted.map{case (org, name) => s"$org:$name"}.mkString("; "))).toSeq,
             if (dep.optional) Seq(infoLabel("optional")) else Seq(),
-            res.errors.get(dep.moduleVersion).map(errs => errorLabel("Error", errs.mkString("; "))).toSeq
+            res.errors.get(dep.moduleVersion).map(errs => errorPopOver("Error", errs.mkString("; "))).toSeq
           )),
          <.td(Seq[Seq[TagMod]](
            res.projectsCache.get(dep.moduleVersion) match {
              case Some((repo: Remote, _)) =>
                // FIXME Maven specific, generalize if/when adding support for Ivy
+               val version0 = finalVersionOpt getOrElse dep.version
                val relPath =
                  dep.module.organization.split('.').toSeq ++ Seq(
                    dep.module.name,
-                   dep.version,
-                   s"${dep.module.name}-${dep.version}"
+                   version0,
+                   s"${dep.module.name}-$version0"
                  )
 
                Seq(
@@ -250,6 +260,7 @@ object App {
            }
          ))
         )
+      }
 
       val sortedDeps = res.dependencies.toList
         .sortBy(dep => coursier.core.Module.unapply(dep.module).get)
@@ -265,7 +276,7 @@ object App {
           )
         ),
         <.tbody(
-          sortedDeps.map(depItem)
+          sortedDeps.map(dep => depItem(dep, res.projectsCache.get(dep.moduleVersion).map(_._2.version).filter(_ != dep.version)))
         )
       )
     }

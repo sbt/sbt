@@ -1,0 +1,10 @@
+com.chuusai:shapeless_2.11:jar:2.2.0
+com.github.alexarchambault:argonaut-shapeless_6.1_2.11:jar:0.2.0
+com.github.julien-truffaut:monocle-core_2.11:jar:1.1.0
+com.github.julien-truffaut:monocle-macro_2.11:jar:1.1.0
+io.argonaut:argonaut_2.11:jar:6.1
+org.scala-lang.modules:scala-parser-combinators_2.11:jar:1.0.2
+org.scala-lang.modules:scala-xml_2.11:jar:1.0.2
+org.scala-lang:scala-library:jar:2.11.6
+org.scala-lang:scala-reflect:jar:2.11.6
+org.scalaz:scalaz-core_2.11:jar:7.1.1

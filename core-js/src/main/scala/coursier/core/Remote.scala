@@ -77,13 +77,13 @@ trait Logger {
   def other(url: String, msg: String): Unit
 }
 
-case class Remote(base: String, logger: Option[Logger] = None) extends Repository {
+case class Remote(base: String, logger: Option[Logger] = None) extends MavenRepository {
 
-  def find(module: Module,
-           version: String,
-           cachePolicy: CachePolicy): EitherT[Task, String, Project] = {
+  def findNoInterval(module: Module,
+                     version: String,
+                     cachePolicy: CachePolicy): EitherT[Task, String, Project] = {
 
-    val relPath = {
+    val path = {
       module.organization.split('.').toSeq ++ Seq(
         module.name,
         version,
@@ -91,7 +91,7 @@ case class Remote(base: String, logger: Option[Logger] = None) extends Repositor
       )
     } .map(Remote.encodeURIComponent)
 
-    val url = base + relPath.mkString("/")
+    val url = base + path.mkString("/")
 
     EitherT(Task{ implicit ec =>
       logger.foreach(_.fetching(url))
@@ -111,6 +111,28 @@ case class Remote(base: String, logger: Option[Logger] = None) extends Repositor
 
   def versions(organization: String,
                name: String,
-               cachePolicy: CachePolicy): EitherT[Task, String, Versions] = ???
+               cachePolicy: CachePolicy): EitherT[Task, String, Versions] = {
+
+    val path = {
+      organization.split('.').toSeq ++ Seq(
+        name,
+        "maven-metadata.xml"
+      )
+    } .map(Remote.encodeURIComponent)
+
+    val url = base + path.mkString("/")
+
+    EitherT(Task{ implicit ec =>
+      logger.foreach(_.fetching(url))
+      Remote.get(url).recover{case e: Exception => Left(e.getMessage)}.map{ eitherXml =>
+        logger.foreach(_.fetched(url))
+        for {
+          xml <- \/.fromEither(eitherXml)
+          _ <- if (xml.label == "metadata") \/-(()) else -\/("Metadata not found")
+          versions <- Xml.versions(xml)
+        } yield versions
+      }
+    })
+  }
 
 }

@@ -21,7 +21,7 @@ object PomParsingTests extends TestSuite {
         </dependency>
                    """
 
-      val expected = \/-(Dependency(Module("comp", "lib"), "2.1", classifier = "extra"))
+      val expected = \/-(Dependency(Module("comp", "lib"), "2.1", artifacts = Artifacts.Maven(classifier = "extra")))
 
       val result = Xml.dependency(xmlParse(depNode).right.get)
 
@@ -35,6 +35,21 @@ object PomParsingTests extends TestSuite {
                        """
 
       val expected = \/-(Profile("profile1", None, Activation(Nil), Nil, Nil, Map.empty))
+
+      val result = Xml.profile(xmlParse(profileNode).right.get)
+
+      assert(result == expected)
+    }
+    'beFineWithProfilesWithNoId{
+      val profileNode = """
+        <profile>
+          <activation>
+            <activeByDefault>true</activeByDefault>
+          </activation>
+        </profile>
+                       """
+
+      val expected = \/-(Profile("", Some(true), Activation(Nil), Nil, Nil, Map.empty))
 
       val result = Xml.profile(xmlParse(profileNode).right.get)
 

@@ -6,8 +6,8 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
+    <!-- FIXME Get from WebJars -->
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
-  <!-- FIXME Get from WebJar -->
   <link rel="stylesheet" href="css/bootstrap-treeview.css">
 
   <style>
@@ -46,16 +46,8 @@
 
     <div class="collapse navbar-collapse" id="mainNavBar">
         <ul class="nav navbar-nav">
-            <!--  class="active" -->
             <li><a href="#demo" data-toggle="tab">Demo</a></li>
             <li><a href="https://github.com/alexarchambault/coursier/blob/master/USAGE.md">Usage</a></li>
-            <!-- <li class="dropdown">
-                <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Usage <span class="caret"></span></a>
-                <ul class="dropdown-menu">
-                    <li><a href="#usageCli" data-toggle="tab">Command-line</a></li>
-                    <li><a href="#usageApi" data-toggle="tab">API</a></li>
-                </ul>
-            </li> -->
         </ul>
 
         <ul class="nav navbar-nav navbar-right">
@@ -74,13 +66,10 @@
             <p>Pure Scala Artifact Fetching</p>
             <p><a href="https://github.com/alexarchambault/coursier">Project Page</a></p>
         </div>
-
     </div>
 
     <div class="tab-pane fade" id="demo">
-
         <div id="demoContent"></div>
-
     </div>
 
     <div class="tab-pane fade" id="usageCli">
@@ -113,15 +102,12 @@
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
 
-<!-- during dev -->
-<script type="text/javascript" src="../web-jsdeps.js"></script>
-<script type="text/javascript" src="../web-fastopt.js"></script>
-<!-- github pages -->
-<script type="text/javascript" src="web-jsdeps.js"></script>
-<script type="text/javascript" src="web-fastopt.js"></script>
+<!-- Paths changed by push-gh-pages.sh before pushing to gh-pages -->
+<script src="../web-jsdeps.js"></script>
+<script src="../web-fastopt.js"></script>
 
-<script type="text/javascript" src="https://cdn.rawgit.com/strathausen/dracula/26010eb3b0df037cf507886897e20c02c4ec041b/lib/dracula_graph.js"></script>
-<script type="text/javascript" src="https://cdn.rawgit.com/strathausen/dracula/26010eb3b0df037cf507886897e20c02c4ec041b/lib/dracula_graffle.js"></script>
+<script src="https://cdn.rawgit.com/strathausen/dracula/26010eb3b0df037cf507886897e20c02c4ec041b/lib/dracula_graph.js"></script>
+<script src="https://cdn.rawgit.com/strathausen/dracula/26010eb3b0df037cf507886897e20c02c4ec041b/lib/dracula_graffle.js"></script>
 
 <script>
 // From http://www.bootply.com/VQqzOawoYc

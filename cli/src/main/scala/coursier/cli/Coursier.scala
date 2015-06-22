@@ -27,6 +27,8 @@ case class Coursier(scope: List[String],
     base.relativize(f.toURI).getPath
 
   val logger: RemoteLogger with ArtifactDownloaderLogger = new RemoteLogger with ArtifactDownloaderLogger {
+    def println(s: String) = Console.err.println(s)
+
     def downloading(url: String) =
       println(s"Downloading $url")
     def downloaded(url: String, success: Boolean) =
@@ -91,16 +93,27 @@ case class Coursier(scope: List[String],
   ).run
 
   if (!res.isDone) {
-    println(s"Maximum number of iteration reached!")
+    Console.err.println(s"Maximum number of iteration reached!")
     sys exit 1
   }
 
-  def repr(dep: Dependency) =
-    s"${dep.module.organization}:${dep.module.name}:${dep.`type`}:${Some(dep.classifier).filter(_.nonEmpty).map(_+":").mkString}${dep.version}"
+  def repr(dep: Dependency) = {
+    val (type0, classifier) = dep.artifacts match {
+      case maven: Artifacts.Maven => (maven.`type`, maven.classifier)
+    }
+
+    // dep.version can be an interval, whereas the one from project can't
+    val version = res.projectsCache.get(dep.moduleVersion).map(_._2.version).getOrElse(dep.version)
+    val extra =
+      if (version == dep.version) ""
+      else s" ($version for ${dep.version})"
+
+    s"${dep.module.organization}:${dep.module.name}:$type0:${Some(classifier).filter(_.nonEmpty).map(_+":").mkString}$version$extra"
+  }
 
   val trDeps = res.dependencies.toList.sortBy(repr)
 
-  println("\n" + trDeps.map(repr).mkString("\n"))
+  println("\n" + trDeps.map(repr).distinct.mkString("\n"))
 
   if (res.conflicts.nonEmpty) {
     // Needs test
@@ -143,12 +156,12 @@ case class Coursier(scope: List[String],
         (repo, deps) <- sorted
         dl = downloaders(repo)
         dep <- deps
+        (_, proj) = res.projectsCache(dep.moduleVersion)
       } yield {
-        dl.artifact(dep, cachePolicy = cachePolicy).run.map {
-          case -\/(err) =>
-            println(s"Failed to get ${repr(dep)}: $err")
-          case \/-(f) =>
-            println(s"${repr(dep)}:\n  ${fileRepr(f)}")
+        dl.artifacts(dep, proj, cachePolicy = cachePolicy).map { results =>
+          val errorCount = results.count{case -\/(_) => true; case _ => false}
+          val resultsRepr = results.map(_.map(fileRepr).merge).map("  " + _).mkString("\n")
+          println(s"${repr(dep)} (${results.length} artifact(s)${if (errorCount > 0) s", $errorCount error(s)" else ""}):\n$resultsRepr")
         }
       }
 

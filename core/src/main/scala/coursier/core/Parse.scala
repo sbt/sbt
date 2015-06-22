@@ -29,7 +29,7 @@ object Parse {
       strTo = s0.drop(commaIdx + 1)
       from <- if (strFrom.isEmpty) Some(None) else version(strFrom).map(Some(_))
       to <- if (strTo.isEmpty) Some(None) else version(strTo).map(Some(_))
-    } yield VersionInterval(from.filterNot(_.cmp.isEmpty), to.filterNot(_.cmp.isEmpty), fromIncluded, toIncluded)
+    } yield VersionInterval(from.filterNot(_.isEmpty), to.filterNot(_.isEmpty), fromIncluded, toIncluded)
   }
 
   def versionConstraint(s: String): Option[VersionConstraint] = {

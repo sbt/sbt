@@ -1,7 +1,5 @@
 package coursier.core
 
-import coursier.core.compatibility.DateTime
-
 import scalaz._
 
 object Xml {
@@ -87,8 +85,7 @@ object Xml {
         mod,
         version0,
         scopeOpt getOrElse defaultScope,
-        typeOpt getOrElse defaultType,
-        classifierOpt getOrElse defaultClassifier,
+        Artifacts.Maven(typeOpt getOrElse defaultType, classifierOpt getOrElse defaultClassifier),
         exclusions.map(mod => (mod.organization, mod.name)).toSet,
         optional
       )
@@ -117,17 +114,18 @@ object Xml {
   def profile(node: Node): String \/ Profile = {
     import Scalaz._
 
+    val id = text(node, "id", "Profile ID").getOrElse("")
+
+    val xmlActivationOpt = node.child
+      .find(_.label == "activation")
+    val (activeByDefault, activation) = xmlActivationOpt.fold((Option.empty[Boolean], Activation(Nil)))(profileActivation)
+
+    val xmlDeps = node.child
+      .find(_.label == "dependencies")
+      .map(_.child.filter(_.label == "dependency"))
+      .getOrElse(Seq.empty)
+
     for {
-      id <- text(node, "id", "Profile ID")
-
-      xmlActivationOpt = node.child
-        .find(_.label == "activation")
-      (activeByDefault, activation) = xmlActivationOpt.fold((Option.empty[Boolean], Activation(Nil)))(profileActivation)
-
-      xmlDeps = node.child
-        .find(_.label == "dependencies")
-        .map(_.child.filter(_.label == "dependency"))
-        .getOrElse(Seq.empty)
       deps <- xmlDeps.toList.traverseU(dependency)
 
       xmlDepMgmts = node.child
@@ -141,6 +139,7 @@ object Xml {
         .find(_.label == "properties")
         .map(_.child.collect{case elem if elem.isElement => elem})
         .getOrElse(Seq.empty)
+
       properties <- {
         import Scalaz._
         xmlProperties.toList.traverseU(property)
@@ -210,7 +209,8 @@ object Xml {
       parentModuleOpt.map((_, parentVersionOpt.getOrElse(""))),
       depMgmts,
       properties.toMap,
-      profiles
+      profiles,
+      None
     )
   }
 
@@ -238,7 +238,7 @@ object Xml {
       lastUpdatedOpt = text(xmlVersioning, "lastUpdated", "Last update date and time")
         .toOption
         .filter(s => s.length == 14 && s.forall(_.isDigit))
-        .map(s => DateTime(
+        .map(s => Versions.DateTime(
           s.substring(0, 4).toInt,
           s.substring(4, 6).toInt,
           s.substring(6, 8).toInt,

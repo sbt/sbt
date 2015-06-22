@@ -32,11 +32,34 @@ sealed abstract class Scope(val name: String)
 case class Dependency(module: Module,
                       version: String,
                       scope: Scope,
-                      `type`: String,
-                      classifier: String,
+                      artifacts: Artifacts,
                       exclusions: Set[(String, String)],
                       optional: Boolean) {
   def moduleVersion = (module, version)
+}
+
+sealed trait Artifacts
+
+object Artifacts {
+  /**
+   * May become a bit more complicated with Ivy support,
+   * but should still point at one single artifact.
+   */
+  case class Artifact(`type`: String,
+                      classifier: String)
+
+  sealed trait WithProject extends Artifacts {
+    def artifacts(project: Project): Seq[Artifact]
+  }
+
+  sealed trait Sufficient extends Artifacts {
+    def artifacts: Seq[Artifact]
+  }
+
+  case class Maven(`type`: String,
+                   classifier: String) extends Sufficient {
+    def artifacts: Seq[Artifact] = Seq(Artifact(`type`, classifier))
+  }
 }
 
 case class Project(module: Module,
@@ -45,7 +68,8 @@ case class Project(module: Module,
                    parent: Option[(Module, String)],
                    dependencyManagement: Seq[Dependency],
                    properties: Map[String, String],
-                   profiles: Seq[Profile]) {
+                   profiles: Seq[Profile],
+                   versions: Option[Versions]) {
   def moduleVersion = (module, version)
 }
 
@@ -66,3 +90,12 @@ case class Profile(id: String,
                    dependencies: Seq[Dependency],
                    dependencyManagement: Seq[Dependency],
                    properties: Map[String, String])
+
+case class Versions(latest: String,
+                    release: String,
+                    available: List[String],
+                    lastUpdated: Option[Versions.DateTime])
+
+object Versions {
+  case class DateTime(year: Int, month: Int, day: Int, hour: Int, minute: Int, second: Int)
+}

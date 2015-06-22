@@ -7,12 +7,21 @@ package object coursier {
   object Dependency {
     def apply(module: Module,
               version: String,
-              scope: Scope = Scope.Other(""), // Subsituted by Resolver with its own default scope (compile)
-              `type`: String = "jar",
-              classifier: String = "",
+              scope: Scope = Scope.Other(""), // Substituted by Resolver with its own default scope (compile)
+              artifacts: Artifacts = Artifacts.Maven(),
               exclusions: Set[(String, String)] = Set.empty,
               optional: Boolean = false): Dependency =
-      core.Dependency(module, version, scope, `type`, classifier, exclusions, optional)
+      core.Dependency(module, version, scope, artifacts, exclusions, optional)
+  }
+
+  type Artifacts = core.Artifacts
+  object Artifacts {
+    type Maven = core.Artifacts.Maven
+    object Maven {
+      def apply(`type`: String = "jar",
+                classifier: String = ""): Maven =
+        core.Artifacts.Maven(`type`, classifier)
+    }
   }
 
   type Project = core.Project
@@ -23,8 +32,9 @@ package object coursier {
               parent: Option[ModuleVersion] = None,
               dependencyManagement: Seq[Dependency] = Seq.empty,
               properties: Map[String, String] = Map.empty,
-              profiles: Seq[Profile] = Seq.empty): Project =
-      core.Project(module, version, dependencies, parent, dependencyManagement, properties, profiles)
+              profiles: Seq[Profile] = Seq.empty,
+              versions: Option[core.Versions] = None): Project =
+      core.Project(module, version, dependencies, parent, dependencyManagement, properties, profiles, versions)
   }
 
   type Profile = core.Profile

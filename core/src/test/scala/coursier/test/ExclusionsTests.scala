@@ -2,7 +2,7 @@ package coursier
 package test
 
 import utest._
-import core.Resolver.{ exclusionsAdd, exclusionsIntersect }
+import core.Resolver.exclusionsAdd
 
 object ExclusionsTests extends TestSuite {
 
@@ -64,59 +64,6 @@ object ExclusionsTests extends TestSuite {
         assert(resultb1 == eb)
         assert(result2b == eb)
         assert(resultb2 == eb)
-      }
-    }
-
-    'intersect{
-      'basicZero{
-        val result1l = exclusionsIntersect(e1, Set.empty)
-        val result1r = exclusionsIntersect(Set.empty, e1)
-        val result2l = exclusionsIntersect(e2, Set.empty)
-        val result2r = exclusionsIntersect(Set.empty, e2)
-        assert(result1l == Set.empty)
-        assert(result1r == Set.empty)
-        assert(result2l == Set.empty)
-        assert(result2r == Set.empty)
-      }
-      'basic{
-        val expected = e1 ++ e2
-        val result12 = exclusionsIntersect(e1, e2)
-        val result21 = exclusionsIntersect(e2, e1)
-        assert(result12 == Set.empty)
-        assert(result21 == Set.empty)
-      }
-
-      'nameBlob{
-        val result1b = exclusionsIntersect(e1, enb)
-        val resultb1 = exclusionsIntersect(enb, e1)
-        val result2b = exclusionsIntersect(e2, enb)
-        val resultb2 = exclusionsIntersect(enb, e2)
-        assert(result1b == e1)
-        assert(resultb1 == e1)
-        assert(result2b == Set.empty)
-        assert(resultb2 == Set.empty)
-      }
-
-      'orgBlob{
-        val result1b = exclusionsIntersect(e1, eob)
-        val resultb1 = exclusionsIntersect(eob, e1)
-        val result2b = exclusionsIntersect(e2, eob)
-        val resultb2 = exclusionsIntersect(eob, e2)
-        assert(result1b == e1)
-        assert(resultb1 == e1)
-        assert(result2b == Set.empty)
-        assert(resultb2 == Set.empty)
-      }
-
-      'blob{
-        val result1b = exclusionsIntersect(e1, eb)
-        val resultb1 = exclusionsIntersect(eb, e1)
-        val result2b = exclusionsIntersect(e2, eb)
-        val resultb2 = exclusionsIntersect(eb, e2)
-        assert(result1b == e1)
-        assert(resultb1 == e1)
-        assert(result2b == e2)
-        assert(resultb2 == e2)
       }
     }
   }
