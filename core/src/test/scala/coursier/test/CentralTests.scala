@@ -67,6 +67,24 @@ object CentralTests extends TestSuite {
         assert(res == expected)
       }
     }
+    'jodaVersionInterval{
+      async {
+        val dep = Dependency(Module("joda-time", "joda-time"), "[2.2,2.8]")
+        val res0 = await(resolve(Set(dep), fetchFrom(repositories)).runF)
+        val res = res0.copy(projectsCache = Map.empty, errors = Map.empty)
+
+        val expected = Resolution(
+          rootDependencies = Set(dep.withCompileScope),
+          dependencies = Set(
+            dep.withCompileScope))
+
+        assert(res == expected)
+        assert(res0.projectsCache.contains(dep.moduleVersion))
+
+        val (_, proj) = res0.projectsCache(dep.moduleVersion)
+        assert(proj.version == "2.8")
+      }
+    }
     'spark{
       resolutionCheck(Module("org.apache.spark", "spark-core_2.11"), "1.3.1")
     }

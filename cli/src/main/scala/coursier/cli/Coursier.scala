@@ -101,7 +101,14 @@ case class Coursier(scope: List[String],
     val (type0, classifier) = dep.artifacts match {
       case maven: Artifacts.Maven => (maven.`type`, maven.classifier)
     }
-    s"${dep.module.organization}:${dep.module.name}:$type0:${Some(classifier).filter(_.nonEmpty).map(_+":").mkString}${dep.version}"
+
+    // dep.version can be an interval, whereas the one from project can't
+    val version = res.projectsCache.get(dep.moduleVersion).map(_._2.version).getOrElse(dep.version)
+    val extra =
+      if (version == dep.version) ""
+      else s" ($version for ${dep.version})"
+
+    s"${dep.module.organization}:${dep.module.name}:$type0:${Some(classifier).filter(_.nonEmpty).map(_+":").mkString}$version$extra"
   }
 
   val trDeps = res.dependencies.toList.sortBy(repr)

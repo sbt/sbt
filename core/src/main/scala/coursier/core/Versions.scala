@@ -1,16 +1,5 @@
 package coursier.core
 
-case class Versions(latest: String,
-                    release: String,
-                    available: List[String],
-                    lastUpdated: Option[Versions.DateTime])
-
-object Versions {
-
-  case class DateTime(year: Int, month: Int, day: Int, hour: Int, minute: Int, second: Int)
-
-}
-
 case class VersionInterval(from: Option[Version],
                            to: Option[Version],
                            fromIncluded: Boolean,
@@ -25,6 +14,21 @@ case class VersionInterval(from: Option[Version],
       } yield cmd < 0 || (cmd == 0 && fromIncluded && toIncluded)
 
     fromToOrder.forall(x => x) && (from.nonEmpty || !fromIncluded) && (to.nonEmpty || !toIncluded)
+  }
+
+  def contains(version: Version): Boolean = {
+    val fromCond =
+      from.forall { from0 =>
+        val cmp = from0.compare(version)
+        cmp < 0 || cmp == 0 && fromIncluded
+      }
+    lazy val toCond =
+      to.forall { to0 =>
+        val cmp = version.compare(to0)
+        cmp < 0 || cmp == 0 && toIncluded
+      }
+
+    fromCond && toCond
   }
 
   def merge(other: VersionInterval): Option[VersionInterval] = {

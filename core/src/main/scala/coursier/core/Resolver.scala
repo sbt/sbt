@@ -591,20 +591,20 @@ object Resolver {
       val lookups = modules.map(dep => fetchModule(dep).run.map(dep -> _))
       val gatheredLookups = Task.gatherUnordered(lookups, exceptionCancels = true)
       gatheredLookups.flatMap{ lookupResults =>
-        val errors0 = errors ++ lookupResults.collect{case (mod, -\/(repoErrors)) => mod -> repoErrors}
-        val newProjects = lookupResults.collect{case (mod, \/-(proj)) => mod -> proj}
+        val errors0 = errors ++ lookupResults.collect{case (modVer, -\/(repoErrors)) => modVer -> repoErrors}
+        val newProjects = lookupResults.collect{case (modVer, \/-(proj)) => modVer -> proj}
 
         /*
          * newProjects are project definitions, fresh from the repositories. We need to add
          * dependency management / inheritance-related bits to them.
          */
 
-        newProjects.foldLeft(Task.now(copy(errors = errors0))) { case (accTask, (mod, (repo, proj))) =>
+        newProjects.foldLeft(Task.now(copy(errors = errors0))) { case (accTask, (modVer, (repo, proj))) =>
           for {
             current <- accTask
             updated <- current.fetch(current.dependencyManagementMissing(proj).toList, fetchModule)
             proj0 = updated.withDependencyManagement(proj)
-          } yield updated.copy(projectsCache = updated.projectsCache + (proj0.moduleVersion -> (repo, proj0)))
+          } yield updated.copy(projectsCache = updated.projectsCache + (modVer -> (repo, proj0)))
         }
       }
     }

@@ -32,8 +32,9 @@ package object coursier {
               parent: Option[ModuleVersion] = None,
               dependencyManagement: Seq[Dependency] = Seq.empty,
               properties: Map[String, String] = Map.empty,
-              profiles: Seq[Profile] = Seq.empty): Project =
-      core.Project(module, version, dependencies, parent, dependencyManagement, properties, profiles)
+              profiles: Seq[Profile] = Seq.empty,
+              versions: Option[core.Versions] = None): Project =
+      core.Project(module, version, dependencies, parent, dependencyManagement, properties, profiles, versions)
   }
 
   type Profile = core.Profile

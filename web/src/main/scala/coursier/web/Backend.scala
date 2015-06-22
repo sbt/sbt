@@ -217,7 +217,7 @@ object App {
           label
         )
 
-      def depItem(dep: Dependency) = {
+      def depItem(dep: Dependency, finalVersionOpt: Option[String]) = {
         val (type0, classifier) = dep.artifacts match {
           case maven: Artifacts.Maven => (maven.`type`, maven.classifier)
         }
@@ -226,7 +226,7 @@ object App {
           ^.`class` := (if (res.errors.contains(dep.moduleVersion)) "danger" else ""),
           <.td(dep.module.organization),
           <.td(dep.module.name),
-          <.td(dep.version),
+          <.td(finalVersionOpt.fold(dep.version)(finalVersion => s"$finalVersion (for ${dep.version})")),
           <.td(Seq[Seq[TagMod]](
             if (dep.scope == Scope.Compile) Seq() else Seq(infoLabel(dep.scope.name)),
             if (type0.isEmpty || type0 == "jar") Seq() else Seq(infoLabel(type0)),
@@ -239,11 +239,12 @@ object App {
            res.projectsCache.get(dep.moduleVersion) match {
              case Some((repo: Remote, _)) =>
                // FIXME Maven specific, generalize if/when adding support for Ivy
+               val version0 = finalVersionOpt getOrElse dep.version
                val relPath =
                  dep.module.organization.split('.').toSeq ++ Seq(
                    dep.module.name,
-                   dep.version,
-                   s"${dep.module.name}-${dep.version}"
+                   version0,
+                   s"${dep.module.name}-$version0"
                  )
 
                Seq(
@@ -275,7 +276,7 @@ object App {
           )
         ),
         <.tbody(
-          sortedDeps.map(depItem)
+          sortedDeps.map(dep => depItem(dep, res.projectsCache.get(dep.moduleVersion).map(_._2.version).filter(_ != dep.version)))
         )
       )
     }

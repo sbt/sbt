@@ -103,7 +103,8 @@ case class ArtifactDownloader(root: String, cache: File, logger: Option[Artifact
 
     val tasks =
       artifacts0 .map { artifact0 =>
-        artifact(dependency.module, dependency.version, artifact0, cachePolicy = cachePolicy).run
+        // Important: using version from project, as the one from dependency can be an interval
+        artifact(dependency.module, project.version, artifact0, cachePolicy = cachePolicy).run
       }
 
     Task.gatherUnordered(tasks)
@@ -151,23 +152,15 @@ object Remote {
 
 case class Remote(root: String,
                   cache: Option[File] = None,
-                  logger: Option[RemoteLogger] = None) extends Repository {
+                  logger: Option[RemoteLogger] = None) extends MavenRepository {
 
-  def find(module: Module,
-           version: String,
-           cachePolicy: CachePolicy): EitherT[Task, String, Project] = {
+  private def get(path: Seq[String],
+                  cachePolicy: CachePolicy): EitherT[Task, String, String] = {
 
-    val relPath =
-      module.organization.split('.').toSeq ++ Seq(
-        module.name,
-        version,
-        s"${module.name}-$version.pom"
-      )
-
-    def localFile = {
+    lazy val localFile = {
       for {
         cache0 <- cache.toRightDisjunction("No cache")
-        f = (cache0 /: relPath)(new File(_, _))
+        f = (cache0 /: path)(new File(_, _))
       } yield f
     }
 
@@ -185,7 +178,7 @@ case class Remote(root: String,
     }
 
     def remote = {
-      val urlStr = root + relPath.mkString("/")
+      val urlStr = root + path.mkString("/")
       val url = new URL(urlStr)
 
       def log = Task(logger.foreach(_.downloading(urlStr)))
@@ -209,7 +202,21 @@ case class Remote(root: String,
       )
     }
 
-    val task = cachePolicy.saving(locally)(remote)(save)
+    EitherT(cachePolicy.saving(locally)(remote)(save))
+  }
+
+  def findNoInterval(module: Module,
+                     version: String,
+                     cachePolicy: CachePolicy): EitherT[Task, String, Project] = {
+
+    val path =
+      module.organization.split('.').toSeq ++ Seq(
+        module.name,
+        version,
+        s"${module.name}-$version.pom"
+      )
+
+    val task = get(path, cachePolicy).run
       .map(eitherStr =>
         for {
           str <- eitherStr
@@ -226,29 +233,13 @@ case class Remote(root: String,
                name: String,
                cachePolicy: CachePolicy): EitherT[Task, String, Versions] = {
 
-    val relPath =
+    val path =
       organization.split('.').toSeq ++ Seq(
         name,
         "maven-metadata.xml"
       )
 
-    def locally = {
-      ???
-    }
-
-    def remote = {
-      val urlStr = root + relPath.mkString("/")
-      val url = new URL(urlStr)
-
-      Remote.readFully(url.openStream())
-    }
-
-    def save(s: String) = {
-      // TODO
-      Task.now(())
-    }
-
-    val task = cachePolicy.saving(locally)(remote)(save)
+    val task = get(path, cachePolicy).run
       .map(eitherStr =>
         for {
           str <- eitherStr

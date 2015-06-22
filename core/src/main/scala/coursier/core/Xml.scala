@@ -209,7 +209,8 @@ object Xml {
       parentModuleOpt.map((_, parentVersionOpt.getOrElse(""))),
       depMgmts,
       properties.toMap,
-      profiles
+      profiles,
+      None
     )
   }
 

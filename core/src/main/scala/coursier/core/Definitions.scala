@@ -68,7 +68,8 @@ case class Project(module: Module,
                    parent: Option[(Module, String)],
                    dependencyManagement: Seq[Dependency],
                    properties: Map[String, String],
-                   profiles: Seq[Profile]) {
+                   profiles: Seq[Profile],
+                   versions: Option[Versions]) {
   def moduleVersion = (module, version)
 }
 
@@ -89,3 +90,12 @@ case class Profile(id: String,
                    dependencies: Seq[Dependency],
                    dependencyManagement: Seq[Dependency],
                    properties: Map[String, String])
+
+case class Versions(latest: String,
+                    release: String,
+                    available: List[String],
+                    lastUpdated: Option[Versions.DateTime])
+
+object Versions {
+  case class DateTime(year: Int, month: Int, day: Int, hour: Int, minute: Int, second: Int)
+}

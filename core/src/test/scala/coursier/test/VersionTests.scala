@@ -26,6 +26,19 @@ object VersionTests extends TestSuite {
       assert(v.isEmpty)
     }
 
+    'max{
+      val v21 = Version("2.1")
+      val v22 = Version("2.2")
+      val v23 = Version("2.3")
+      val v24 = Version("2.4")
+      val v241 = Version("2.4.1")
+
+      val l = Seq(v21, v22, v23, v24, v241)
+      val max = l.max
+
+      assert(max == v241)
+    }
+
     'numericOrdering{
       assert(compare("1.2", "1.10") < 0)
     }
