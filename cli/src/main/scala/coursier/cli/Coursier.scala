@@ -149,12 +149,12 @@ case class Coursier(scope: List[String],
         (repo, deps) <- sorted
         dl = downloaders(repo)
         dep <- deps
+        (_, proj) = res.projectsCache(dep.moduleVersion)
       } yield {
-        dl.artifact(dep, cachePolicy = cachePolicy).run.map {
-          case -\/(err) =>
-            println(s"Failed to get ${repr(dep)}: $err")
-          case \/-(f) =>
-            println(s"${repr(dep)}:\n  ${fileRepr(f)}")
+        dl.artifacts(dep, proj, cachePolicy = cachePolicy).map { results =>
+          val errorCount = results.count{case -\/(_) => true; case _ => false}
+          val resultsRepr = results.map(_.map(fileRepr).merge).map("  " + _).mkString("\n")
+          println(s"${repr(dep)} (${results.length} artifact(s)${if (errorCount > 0) s", $errorCount error(s)" else ""}):\n$resultsRepr")
         }
       }
 

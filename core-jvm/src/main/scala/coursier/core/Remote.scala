@@ -21,18 +21,14 @@ case class ArtifactDownloader(root: String, cache: File, logger: Option[Artifact
 
   def artifact(module: Module,
                version: String,
-               artifacts: Artifacts,
+               artifact: Artifacts.Artifact,
                cachePolicy: CachePolicy): EitherT[Task, String, File] = {
-
-    val (type0, classifier) = artifacts match {
-      case maven: Artifacts.Maven => (maven.`type`, maven.classifier)
-    }
 
     val relPath =
       module.organization.split('.').toSeq ++ Seq(
         module.name,
         version,
-        s"${module.name}-$version${Some(classifier).filter(_.nonEmpty).map("-"+_).mkString}.$type0"
+        s"${module.name}-$version${Some(artifact.classifier).filter(_.nonEmpty).map("-"+_).mkString}.${artifact.`type`}"
       )
 
     val file = (cache /: relPath)(new File(_, _))
@@ -95,9 +91,23 @@ case class ArtifactDownloader(root: String, cache: File, logger: Option[Artifact
     EitherT(cachePolicy(locally)(remote))
   }
 
-  def artifact(dependency: Dependency,
-               cachePolicy: CachePolicy = CachePolicy.Default): EitherT[Task, String, File] =
-    artifact(dependency.module, dependency.version, dependency.artifacts, cachePolicy = cachePolicy)
+  def artifacts(dependency: Dependency,
+                project: Project,
+                cachePolicy: CachePolicy = CachePolicy.Default): Task[Seq[String \/ File]] = {
+
+    val artifacts0 =
+      dependency.artifacts match {
+        case s: Artifacts.Sufficient => s.artifacts
+        case p: Artifacts.WithProject => p.artifacts(project)
+      }
+
+    val tasks =
+      artifacts0 .map { artifact0 =>
+        artifact(dependency.module, dependency.version, artifact0, cachePolicy = cachePolicy).run
+      }
+
+    Task.gatherUnordered(tasks)
+  }
 
 }
 
