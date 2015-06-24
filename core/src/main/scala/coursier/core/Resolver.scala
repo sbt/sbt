@@ -223,34 +223,6 @@ object Resolver {
     }
   }
 
-  /**
-   * Addition of exclusions. A module is excluded by the result if it is excluded
-   * by `first`, by `second`, or by both.
-   */
-  def exclusionsAdd(first: Set[(String, String)],
-                    second: Set[(String, String)]): Set[(String, String)] = {
-
-    val (firstAll, firstNonAll) = first.partition{case ("*", "*") => true; case _ => false }
-    val (secondAll, secondNonAll) = second.partition{case ("*", "*") => true; case _ => false }
-
-    if (firstAll.nonEmpty || secondAll.nonEmpty) Set(("*", "*"))
-    else {
-      val firstOrgWildcards = firstNonAll.collect{ case ("*", name) => name }
-      val firstNameWildcards = firstNonAll.collect{ case (org, "*") => org }
-      val secondOrgWildcards = secondNonAll.collect{ case ("*", name) => name }
-      val secondNameWildcards = secondNonAll.collect{ case (org, "*") => org }
-
-      val orgWildcards = firstOrgWildcards ++ secondOrgWildcards
-      val nameWildcards = firstNameWildcards ++ secondNameWildcards
-
-      val firstRemaining = firstNonAll.filter{ case (org, name) => org != "*" && name != "*" }
-      val secondRemaining = secondNonAll.filter{ case (org, name) => org != "*" && name != "*" }
-
-      val remaining = (firstRemaining ++ secondRemaining).filterNot{case (org, name) => orgWildcards(name) || nameWildcards(org) }
-
-      orgWildcards.map(name => ("*", name)) ++ nameWildcards.map(org => (org, "*")) ++ remaining
-    }
-  }
 
   def withDefaultScope(dep: Dependency): Dependency =
     if (dep.scope.name.isEmpty) dep.copy(scope = Scope.Compile)
@@ -262,22 +234,12 @@ object Resolver {
   def withExclusions(dependencies: Seq[Dependency],
                      exclusions: Set[(String, String)]): Seq[Dependency] = {
 
-    val (all, notAll) = exclusions.partition{case ("*", "*") => true; case _ => false}
-
-    val orgWildcards = notAll.collect{case ("*", name) => name }
-    val nameWildcards = notAll.collect{case (org, "*") => org }
-
-    val remaining = notAll.filterNot{case (org, name) => org == "*" || name == "*" }
+    val filter = Exclusions(exclusions)
 
     dependencies
-      .filter(dep =>
-        all.isEmpty &&
-          !orgWildcards(dep.module.name) &&
-          !nameWildcards(dep.module.organization) &&
-          !remaining((dep.module.organization, dep.module.name))
-      )
+      .filter(dep => filter(dep.module.organization, dep.module.name))
       .map(dep =>
-        dep.copy(exclusions = exclusionsAdd(dep.exclusions, exclusions))
+        dep.copy(exclusions = Exclusions.minimize(dep.exclusions ++ exclusions))
       )
   }
 
