@@ -13,7 +13,7 @@ object CentralTests extends TestSuite {
   )
 
   def repr(dep: Dependency) =
-    s"${dep.module.organization}:${dep.module.name}:${dep.artifact.`type`}:${Some(dep.artifact.classifier).filter(_.nonEmpty).map(_+":").mkString}${dep.version}"
+    s"${dep.module.organization}:${dep.module.name}:${dep.attributes.`type`}:${Some(dep.attributes.classifier).filter(_.nonEmpty).map(_+":").mkString}${dep.version}"
 
   def resolutionCheck(module: Module, version: String) =
     async {

@@ -21,14 +21,14 @@ case class ArtifactDownloader(root: String, cache: File, logger: Option[Artifact
 
   def artifact(module: Module,
                version: String,
-               artifact: Dependency.MavenArtifact,
+               attributes: Attributes,
                cachePolicy: CachePolicy): EitherT[Task, String, File] = {
 
     val relPath =
       module.organization.split('.').toSeq ++ Seq(
         module.name,
         version,
-        s"${module.name}-$version${Some(artifact.classifier).filter(_.nonEmpty).map("-"+_).mkString}.${artifact.`type`}"
+        s"${module.name}-$version${Some(attributes.classifier).filter(_.nonEmpty).map("-"+_).mkString}.${attributes.`type`}"
       )
 
     val file = (cache /: relPath)(new File(_, _))
@@ -96,7 +96,7 @@ case class ArtifactDownloader(root: String, cache: File, logger: Option[Artifact
                 cachePolicy: CachePolicy = CachePolicy.Default): Task[Seq[String \/ File]] = {
 
     // Important: using version from project, as the one from dependency can be an interval
-    artifact(dependency.module, project.version, dependency.artifact, cachePolicy = cachePolicy).run.map(Seq(_))
+    artifact(dependency.module, project.version, dependency.attributes, cachePolicy = cachePolicy).run.map(Seq(_))
   }
 
 }

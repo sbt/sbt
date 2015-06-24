@@ -104,7 +104,7 @@ case class Coursier(scope: List[String],
       if (version == dep.version) ""
       else s" ($version for ${dep.version})"
 
-    s"${dep.module.organization}:${dep.module.name}:${dep.artifact.`type`}:${Some(dep.artifact.classifier).filter(_.nonEmpty).map(_+":").mkString}$version$extra"
+    s"${dep.module.organization}:${dep.module.name}:${dep.attributes.`type`}:${Some(dep.attributes.classifier).filter(_.nonEmpty).map(_+":").mkString}$version$extra"
   }
 
   val trDeps = res.minDependencies.toList.sortBy(repr)

@@ -11,17 +11,17 @@ package object coursier {
     def apply(module: Module,
               version: String,
               scope: Scope = Scope.Other(""), // Substituted by Resolver with its own default scope (compile)
-              artifact: MavenArtifact = MavenArtifact(),
+              attributes: Attributes = Attributes(),
               exclusions: Set[(String, String)] = Set.empty,
               optional: Boolean = false): Dependency =
-      core.Dependency(module, version, scope, artifact, exclusions, optional)
+      core.Dependency(module, version, scope, attributes, exclusions, optional)
+  }
 
-    type MavenArtifact = core.Dependency.MavenArtifact
-    object MavenArtifact {
-      def apply(`type`: String = "jar",
-                classifier: String = ""): MavenArtifact =
-        core.Dependency.MavenArtifact(`type`, classifier)
-    }
+  type Attributes = core.Attributes
+  object Attributes {
+    def apply(`type`: String = "jar",
+              classifier: String = ""): Attributes =
+      core.Attributes(`type`, classifier)
   }
 
   type Project = core.Project

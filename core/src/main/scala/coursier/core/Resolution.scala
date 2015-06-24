@@ -70,7 +70,7 @@ object Resolution {
 
   type DepMgmtKey = (String, String, String)
   def dependencyManagementKey(dep: Dependency): DepMgmtKey =
-    (dep.module.organization, dep.module.name, dep.artifact.`type`)
+    (dep.module.organization, dep.module.name, dep.attributes.`type`)
   def dependencyManagementAdd(m: Map[DepMgmtKey, Dependency], dep: Dependency): Map[DepMgmtKey, Dependency] = {
     val key = dependencyManagementKey(dep)
     if (m.contains(key)) m else m + (key -> dep)
@@ -119,9 +119,9 @@ object Resolution {
           name = substituteProps(dep.module.name)
         ),
         version = substituteProps(dep.version),
-        artifact = dep.artifact.copy(
-          `type` = substituteProps(dep.artifact.`type`),
-          classifier = substituteProps(dep.artifact.classifier)
+        attributes = dep.attributes.copy(
+          `type` = substituteProps(dep.attributes.`type`),
+          classifier = substituteProps(dep.attributes.classifier)
         ),
         scope = Parse.scope(substituteProps(dep.scope.name)),
         exclusions = dep.exclusions

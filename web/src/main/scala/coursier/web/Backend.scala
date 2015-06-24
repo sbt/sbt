@@ -230,8 +230,8 @@ object App {
           <.td(finalVersionOpt.fold(dep.version)(finalVersion => s"$finalVersion (for ${dep.version})")),
           <.td(Seq[Seq[TagMod]](
             if (dep.scope == Scope.Compile) Seq() else Seq(infoLabel(dep.scope.name)),
-            if (dep.artifact.`type`.isEmpty || dep.artifact.`type` == "jar") Seq() else Seq(infoLabel(dep.artifact.`type`)),
-            if (dep.artifact.classifier.isEmpty) Seq() else Seq(infoLabel(dep.artifact.classifier)),
+            if (dep.attributes.`type`.isEmpty || dep.attributes.`type` == "jar") Seq() else Seq(infoLabel(dep.attributes.`type`)),
+            if (dep.attributes.classifier.isEmpty) Seq() else Seq(infoLabel(dep.attributes.classifier)),
             Some(dep.exclusions).filter(_.nonEmpty).map(excls => infoPopOver("Exclusions", excls.toList.sorted.map{case (org, name) => s"$org:$name"}.mkString("; "))).toSeq,
             if (dep.optional) Seq(infoLabel("optional")) else Seq(),
             res.errors.get(dep.moduleVersion).map(errs => errorPopOver("Error", errs.mkString("; "))).toSeq
