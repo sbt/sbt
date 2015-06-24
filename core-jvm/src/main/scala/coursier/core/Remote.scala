@@ -130,7 +130,7 @@ object Remote {
       \/.fromTryCatchNonFatal {
         val is0 = is
         val b =
-          try readFullySync(is)
+          try readFullySync(is0)
           finally is0.close()
 
         new String(b, "UTF-8")
