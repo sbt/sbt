@@ -1,0 +1,19 @@
+# Validate that a bad dependency fails the compile
+$ copy-file changes/BadCommon.scala common/src/main/scala/Common.scala
+$ copy-file changes/BadTest.scala common/src/test/scala/Test.scala
+> common/publish
+
+# Force dep resolution to be successful, then compilation to fail
+> dependent/update
+-> dependent/compile
+
+# Push new good change.
+$ copy-file changes/GoodCommon.scala common/src/main/scala/Common.scala
+$ copy-file changes/GoodTest.scala common/src/test/scala/Test.scala
+# Sleep to ensure timestamp change
+$ sleep 1000
+> common/publish
+
+# This should compile now.
+> dependent/update
+> dependent/compile
