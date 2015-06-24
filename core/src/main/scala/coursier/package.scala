@@ -1,6 +1,9 @@
 import scalaz.EitherT
 import scalaz.concurrent.Task
 
+/**
+ * Pulls definitions from coursier.core, with default arguments.
+ */
 package object coursier {
 
   type Dependency = core.Dependency
@@ -8,19 +11,16 @@ package object coursier {
     def apply(module: Module,
               version: String,
               scope: Scope = Scope.Other(""), // Substituted by Resolver with its own default scope (compile)
-              artifacts: Artifacts = Artifacts.Maven(),
+              artifact: MavenArtifact = MavenArtifact(),
               exclusions: Set[(String, String)] = Set.empty,
               optional: Boolean = false): Dependency =
-      core.Dependency(module, version, scope, artifacts, exclusions, optional)
-  }
+      core.Dependency(module, version, scope, artifact, exclusions, optional)
 
-  type Artifacts = core.Artifacts
-  object Artifacts {
-    type Maven = core.Artifacts.Maven
-    object Maven {
+    type MavenArtifact = core.Dependency.MavenArtifact
+    object MavenArtifact {
       def apply(`type`: String = "jar",
-                classifier: String = ""): Maven =
-        core.Artifacts.Maven(`type`, classifier)
+                classifier: String = ""): MavenArtifact =
+        core.Dependency.MavenArtifact(`type`, classifier)
     }
   }
 

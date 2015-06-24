@@ -21,7 +21,7 @@ case class ArtifactDownloader(root: String, cache: File, logger: Option[Artifact
 
   def artifact(module: Module,
                version: String,
-               artifact: Artifacts.Artifact,
+               artifact: Dependency.MavenArtifact,
                cachePolicy: CachePolicy): EitherT[Task, String, File] = {
 
     val relPath =
@@ -95,19 +95,8 @@ case class ArtifactDownloader(root: String, cache: File, logger: Option[Artifact
                 project: Project,
                 cachePolicy: CachePolicy = CachePolicy.Default): Task[Seq[String \/ File]] = {
 
-    val artifacts0 =
-      dependency.artifacts match {
-        case s: Artifacts.Sufficient => s.artifacts
-        case p: Artifacts.WithProject => p.artifacts(project)
-      }
-
-    val tasks =
-      artifacts0 .map { artifact0 =>
-        // Important: using version from project, as the one from dependency can be an interval
-        artifact(dependency.module, project.version, artifact0, cachePolicy = cachePolicy).run
-      }
-
-    Task.gatherUnordered(tasks)
+    // Important: using version from project, as the one from dependency can be an interval
+    artifact(dependency.module, project.version, dependency.artifact, cachePolicy = cachePolicy).run.map(Seq(_))
   }
 
 }

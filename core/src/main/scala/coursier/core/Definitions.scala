@@ -32,34 +32,15 @@ sealed abstract class Scope(val name: String)
 case class Dependency(module: Module,
                       version: String,
                       scope: Scope,
-                      artifacts: Artifacts,
+                      artifact: Dependency.MavenArtifact,
                       exclusions: Set[(String, String)],
                       optional: Boolean) {
   def moduleVersion = (module, version)
 }
 
-sealed trait Artifacts
-
-object Artifacts {
-  /**
-   * May become a bit more complicated with Ivy support,
-   * but should still point at one single artifact.
-   */
-  case class Artifact(`type`: String,
-                      classifier: String)
-
-  sealed trait WithProject extends Artifacts {
-    def artifacts(project: Project): Seq[Artifact]
-  }
-
-  sealed trait Sufficient extends Artifacts {
-    def artifacts: Seq[Artifact]
-  }
-
-  case class Maven(`type`: String,
-                   classifier: String) extends Sufficient {
-    def artifacts: Seq[Artifact] = Seq(Artifact(`type`, classifier))
-  }
+object Dependency {
+  case class MavenArtifact(`type`: String,
+                           classifier: String)
 }
 
 case class Project(module: Module,

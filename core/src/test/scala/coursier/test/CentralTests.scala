@@ -12,12 +12,8 @@ object CentralTests extends TestSuite {
     repository.mavenCentral
   )
 
-  def repr(dep: Dependency) = {
-    val (type0, classifier) = dep.artifacts match {
-      case maven: Artifacts.Maven => (maven.`type`, maven.classifier)
-    }
-    s"${dep.module.organization}:${dep.module.name}:$type0:${Some(classifier).filter(_.nonEmpty).map(_+":").mkString}${dep.version}"
-  }
+  def repr(dep: Dependency) =
+    s"${dep.module.organization}:${dep.module.name}:${dep.artifact.`type`}:${Some(dep.artifact.classifier).filter(_.nonEmpty).map(_+":").mkString}${dep.version}"
 
   def resolutionCheck(module: Module, version: String) =
     async {

@@ -70,9 +70,7 @@ object Resolver {
 
   type DepMgmtKey = (String, String, String)
   def dependencyManagementKey(dep: Dependency): DepMgmtKey =
-    dep.artifacts match {
-      case Artifacts.Maven(type0, _) => (dep.module.organization, dep.module.name, type0)
-    }
+    (dep.module.organization, dep.module.name, dep.artifact.`type`)
   def dependencyManagementAdd(m: Map[DepMgmtKey, Dependency], dep: Dependency): Map[DepMgmtKey, Dependency] = {
     val key = dependencyManagementKey(dep)
     if (m.contains(key)) m else m + (key -> dep)
@@ -121,13 +119,10 @@ object Resolver {
           name = substituteProps(dep.module.name)
         ),
         version = substituteProps(dep.version),
-        artifacts = dep.artifacts match {
-          case maven: Artifacts.Maven =>
-            maven.copy(
-              `type` = substituteProps(maven.`type`),
-              classifier = substituteProps(maven.classifier)
-            )
-        },
+        artifact = dep.artifact.copy(
+          `type` = substituteProps(dep.artifact.`type`),
+          classifier = substituteProps(dep.artifact.classifier)
+        ),
         scope = Parse.scope(substituteProps(dep.scope.name)),
         exclusions = dep.exclusions
           .map{case (org, name) => (substituteProps(org), substituteProps(name))}
