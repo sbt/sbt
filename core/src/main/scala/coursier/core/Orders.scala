@@ -107,6 +107,13 @@ object Orders {
       .groupBy(dep => (dep.optional, dep.scope))
       .toList
 
+    /*
+     * Iterates over all pairs (xDep, yDep) from `dependencies`.
+     * If xDep < yDep (all that yDep brings is already brought by xDep), remove yDep.
+     *
+     * The (partial) order on dependencies is made of the ones on scope, optional, and exclusions.
+     */
+
     val remove =
       for {
         List(((xOpt, xScope), xDeps), ((yOpt, yScope), yDeps)) <- groupedDependencies.combinations(2)
