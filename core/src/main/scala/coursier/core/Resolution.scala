@@ -606,6 +606,13 @@ case class Resolution(rootDependencies: Set[Dependency],
     }
   }
 
+  def stream(fetchModule: ModuleVersion => EitherT[Task, List[String], (Repository, Project)], run: Task[Resolution] => Resolution): Stream[Resolution] = {
+    this #:: {
+      if (isDone) Stream.empty
+      else run(next(fetchModule)).stream(fetchModule, run)
+    }
+  }
+
   def minDependencies: Set[Dependency] =
     Orders.minDependencies(dependencies)
 }
