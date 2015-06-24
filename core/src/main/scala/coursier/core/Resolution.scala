@@ -312,52 +312,19 @@ object Resolution {
   def defaultFilter(dep: Dependency): Boolean =
     !dep.optional && dep.scope == Scope.Compile
 
-  /**
-   * Get all the transitive dependencies of `dependencies`, solving any dependency version mismatch.
-   *
-   * Iteratively fetches the missing info of the current dependencies / add newly discovered dependencies
-   * to the current ones. The maximum number of such iterations can be bounded with `maxIterations`.
-   *
-   * ...
-   *
-   */
-  def resolve(dependencies: Set[Dependency],
-              fetch: ModuleVersion => EitherT[Task, List[String], (Repository, Project)],
-              maxIterations: Option[Int],
-              filter: Option[Dependency => Boolean],
-              profileActivation: Option[(String, Activation, Map[String, String]) => Boolean]): Task[Resolution] = {
-
-    val dependencies0 = dependencies.map(withDefaultScope)
-
-    val startResolution = Resolution(
-      dependencies0, Set.empty, Set.empty,
-      Map.empty, Map.empty,
-      filter,
-      profileActivation
-    )
-
-    def helper(resolution: Resolution, remainingIter: Option[Int]): Task[(Resolution, Option[Int])] = {
-      if (resolution.isDone || remainingIter.exists(_ <= 0))
-        Task.now((resolution, remainingIter))
-      else
-        resolution.next(fetch).flatMap(helper(_, remainingIter.map(_ - 1)))
-    }
-
-    helper(startResolution, maxIterations).map(_._1)
-  }
 }
 
 
-  /**
-   * State of a dependency resolution.
-   *
-   * Done if method `isDone` returns `true`.
-   *
-   * @param dependencies: current set of dependencies
-   * @param conflicts: conflicting dependencies
-   * @param projectsCache: cache of known projects
-   * @param errors: keeps track of the modules whose project definition could not be found
-   */
+/**
+ * State of a dependency resolution.
+ *
+ * Done if method `isDone` returns `true`.
+ *
+ * @param dependencies: current set of dependencies
+ * @param conflicts: conflicting dependencies
+ * @param projectsCache: cache of known projects
+ * @param errors: keeps track of the modules whose project definition could not be found
+ */
 case class Resolution(rootDependencies: Set[Dependency],
                       dependencies: Set[Dependency],
                       conflicts: Set[Dependency],
@@ -382,10 +349,9 @@ case class Resolution(rootDependencies: Set[Dependency],
    * No attempt is made to solve version conflicts here.
    */
   def transitiveDependencies: Seq[Dependency] =
-    for {
-      dep <- (dependencies -- conflicts).toList
-      trDep <- finalDependencies0(dep)
-    } yield trDep
+    (dependencies -- conflicts)
+      .toList
+      .flatMap(finalDependencies0)
 
   /**
    * The "next" dependency set, made of the current dependencies and their transitive dependencies,
@@ -397,7 +363,7 @@ case class Resolution(rootDependencies: Set[Dependency],
    * Returns a tuple made of the conflicting dependencies, and all the dependencies.
    */
   def nextDependenciesAndConflicts: (Seq[Dependency], Seq[Dependency]) = {
-    merge(rootDependencies ++ dependencies ++ transitiveDependencies)
+    merge(rootDependencies.map(withDefaultScope) ++ dependencies ++ transitiveDependencies)
   }
 
   /**
@@ -456,7 +422,7 @@ case class Resolution(rootDependencies: Set[Dependency],
    * The versions of all the dependencies returned are erased (emptied).
    */
   def remainingDependencies: Set[Dependency] = {
-    val rootDependencies0 = rootDependencies.map(eraseVersion)
+    val rootDependencies0 = rootDependencies.map(withDefaultScope).map(eraseVersion)
 
     @tailrec
     def helper(reverseDeps: Map[Dependency, Vector[Dependency]]): Map[Dependency, Vector[Dependency]] = {
@@ -632,4 +598,14 @@ case class Resolution(rootDependencies: Set[Dependency],
     }
   }
 
+  def last(fetchModule: ModuleVersion => EitherT[Task, List[String], (Repository, Project)], maxIterations: Int = -1): Task[Resolution] = {
+    if (maxIterations == 0 || isDone) Task.now(this)
+    else {
+      next(fetchModule)
+        .flatMap(_.last(fetchModule, if (maxIterations > 0) maxIterations - 1 else maxIterations))
+    }
+  }
+
+  def minDependencies: Set[Dependency] =
+    Orders.minDependencies(dependencies)
 }

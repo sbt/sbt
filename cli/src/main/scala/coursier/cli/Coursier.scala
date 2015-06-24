@@ -13,7 +13,7 @@ import scalaz.{-\/, \/-}
 case class Coursier(scope: List[String],
                     keepOptional: Boolean,
                     fetch: Boolean,
-                    @ExtraName("N") maxIterations: Int) extends App {
+                    @ExtraName("N") maxIterations: Int = 100) extends App {
 
   val scopes0 =
     if (scope.isEmpty) List(Scope.Compile, Scope.Runtime)
@@ -85,12 +85,12 @@ case class Coursier(scope: List[String],
     Dependency(mod, ver, scope = Scope.Runtime)
   }
 
-  val res = resolve(
+  val startRes = Resolution(
     deps.toSet,
-    fetchFrom(repositories),
-    maxIterations = Some(maxIterations).filter(_ > 0),
     filter = Some(dep => (keepOptional || !dep.optional) && scopes(dep.scope))
-  ).run
+  )
+
+  val res = startRes.last(fetchFrom(repositories), maxIterations).run
 
   if (!res.isDone) {
     Console.err.println(s"Maximum number of iteration reached!")
@@ -107,7 +107,7 @@ case class Coursier(scope: List[String],
     s"${dep.module.organization}:${dep.module.name}:${dep.artifact.`type`}:${Some(dep.artifact.classifier).filter(_.nonEmpty).map(_+":").mkString}$version$extra"
   }
 
-  val trDeps = res.dependencies.toList.sortBy(repr)
+  val trDeps = res.minDependencies.toList.sortBy(repr)
 
   println("\n" + trDeps.map(repr).distinct.mkString("\n"))
 
@@ -129,7 +129,7 @@ case class Coursier(scope: List[String],
 
     val cachePolicy: CachePolicy = CachePolicy.Default
 
-    val m = res.dependencies.groupBy(dep => res.projectsCache.get(dep.moduleVersion).map(_._1))
+    val m = res.minDependencies.groupBy(dep => res.projectsCache.get(dep.moduleVersion).map(_._1))
     val (notFound, remaining0) = m.partition(_._1.isEmpty)
     if (notFound.nonEmpty) {
       val notFound0 = notFound.values.flatten.toList.map(repr).sorted

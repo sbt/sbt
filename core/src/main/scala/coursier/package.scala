@@ -88,6 +88,14 @@ package object coursier {
               maxIterations: Option[Int] = Some(200),
               filter: Option[Dependency => Boolean] = None,
               profileActivation: Option[(String, Profile.Activation, Map[String, String]) => Boolean] = None): Task[Resolution] = {
-    core.Resolution.resolve(dependencies, fetch, maxIterations, filter, profileActivation)
+
+    val startResolution = Resolution(
+      dependencies, Set.empty, Set.empty,
+      Map.empty, Map.empty,
+      filter,
+      profileActivation
+    )
+
+    startResolution.last(fetch, maxIterations.getOrElse(-1))
   }
 }

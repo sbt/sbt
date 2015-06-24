@@ -1,7 +1,7 @@
 package coursier
 package web
 
-import coursier.core.{Resolver, Logger, Remote}
+import coursier.core.{Logger, Remote}
 import japgolly.scalajs.react.vdom.{TagMod, Attr}
 import japgolly.scalajs.react.vdom.Attrs.dangerouslySetInnerHtml
 import japgolly.scalajs.react.{ReactEventI, ReactComponentB, BackendScope}
@@ -71,13 +71,15 @@ class Backend($: BackendScope[Unit, State]) {
 
   def updateTree(resolution: Resolution, target: String, reverse: Boolean) = {
     def depsOf(dep: Dependency) =
-      resolution.projectsCache.get(dep.moduleVersion).toSeq.flatMap(t => Resolver.finalDependencies(dep, t._2).filter(resolution.filter getOrElse Resolver.defaultFilter))
+      resolution.projectsCache.get(dep.moduleVersion).toSeq.flatMap(t => core.Resolution.finalDependencies(dep, t._2).filter(resolution.filter getOrElse core.Resolution.defaultFilter))
+
+    val minDependencies = resolution.minDependencies
 
     lazy val reverseDeps = {
       var m = Map.empty[Module, Seq[Dependency]]
 
       for {
-        dep <- resolution.dependencies
+        dep <- minDependencies
         trDep <- depsOf(dep)
       } {
         m += trDep.module -> (m.getOrElse(trDep.module, Nil) :+ dep)
@@ -95,8 +97,8 @@ class Backend($: BackendScope[Unit, State]) {
         else Seq("nodes" -> js.Array(deps.map(tree): _*))
       }: _*)
 
-    println(resolution.dependencies.toList.map(tree).map(js.JSON.stringify(_)))
-    g.$(target).treeview(js.Dictionary("data" -> js.Array(resolution.dependencies.toList.map(tree): _*)))
+    println(minDependencies.toList.map(tree).map(js.JSON.stringify(_)))
+    g.$(target).treeview(js.Dictionary("data" -> js.Array(minDependencies.toList.map(tree): _*)))
   }
 
   def resolve(action: => Unit = ()) = {
@@ -119,11 +121,14 @@ class Backend($: BackendScope[Unit, State]) {
     }
 
     val s = $.state
-    def task = coursier.resolve(
-      s.modules.toSet,
-      fetchFrom(s.repositories.map(_.copy(logger = Some(logger)))),
-      filter = Some(dep => (s.options.followOptional || !dep.optional) && (s.options.keepTest || dep.scope != Scope.Test))
-    )
+    def task = {
+      val res = coursier.Resolution(
+        s.modules.toSet,
+        filter = Some(dep => (s.options.followOptional || !dep.optional) && (s.options.keepTest || dep.scope != Scope.Test))
+      )
+
+      res.last(fetchFrom(s.repositories.map(_.copy(logger = Some(logger)))), 100)
+    }
 
     // For reasons that are unclear to me, not delaying this when using the runNow execution context
     // somehow discards the $.modState above. (Not a major problem as queue is used by default.)
@@ -258,7 +263,7 @@ object App {
         )
       }
 
-      val sortedDeps = res.dependencies.toList
+      val sortedDeps = res.minDependencies.toList
         .sortBy(dep => coursier.core.Module.unapply(dep.module).get)
 
       <.table(^.`class` := "table",

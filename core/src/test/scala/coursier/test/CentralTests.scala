@@ -38,7 +38,7 @@ object CentralTests extends TestSuite {
           .copy(projectsCache = Map.empty, errors = Map.empty) // No validating these here
 
         val expected = Resolution(
-          rootDependencies = Set(dep.withCompileScope),
+          rootDependencies = Set(dep),
           dependencies = Set(
             dep.withCompileScope,
             Dependency(Module("ch.qos.logback", "logback-core"), "1.1.3").withCompileScope,
@@ -54,7 +54,7 @@ object CentralTests extends TestSuite {
           .copy(projectsCache = Map.empty, errors = Map.empty) // No validating these here
 
         val expected = Resolution(
-          rootDependencies = Set(dep.withCompileScope),
+          rootDependencies = Set(dep),
           dependencies = Set(
             dep.withCompileScope,
             Dependency(Module("org.ow2.asm", "asm-tree"), "5.0.2").withCompileScope,
@@ -70,7 +70,7 @@ object CentralTests extends TestSuite {
         val res = res0.copy(projectsCache = Map.empty, errors = Map.empty)
 
         val expected = Resolution(
-          rootDependencies = Set(dep.withCompileScope),
+          rootDependencies = Set(dep),
           dependencies = Set(
             dep.withCompileScope))
 
