@@ -2,9 +2,11 @@ package coursier
 package test
 
 import utest._
-import core.Resolver.exclusionsAdd
 
 object ExclusionsTests extends TestSuite {
+
+  def exclusionsAdd(e1: Set[(String, String)], e2: Set[(String, String)]) =
+    core.Exclusions.minimize(e1 ++ e2)
 
   val tests = TestSuite {
     val e1 = Set(("org1", "name1"))

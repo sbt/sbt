@@ -1,6 +1,7 @@
 package coursier.core
 
 import scala.scalajs.js
+import js.Dynamic.{global => g}
 import org.scalajs.dom.raw.NodeList
 
 package object compatibility {
@@ -93,5 +94,8 @@ package object compatibility {
 
     Right(doc.fold(Xml.Node.empty)(fromNode))
   }
+
+  def encodeURIComponent(s: String): String =
+    g.encodeURIComponent(s).asInstanceOf[String]
 
 }

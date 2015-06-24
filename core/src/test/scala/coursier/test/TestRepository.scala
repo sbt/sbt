@@ -12,8 +12,5 @@ class TestRepository(projects: Map[(Module, String), Project]) extends Repositor
     EitherT(Task.now(
       projects.get((module, version)).toRightDisjunction("Not found")
     ))
-  def versions(organization: String, name: String, cachePolicy: CachePolicy) =
-    EitherT(Task.now[String \/ Versions](
-      -\/("Not supported")
-    ))
+  def artifacts(dependency: Dependency, project: Project): Seq[Artifact] = ???
 }

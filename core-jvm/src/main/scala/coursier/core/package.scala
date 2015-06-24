@@ -11,7 +11,7 @@ package object core {
                  profileActivation: Option[(String, Activation, Map[String, String]) => Boolean]): Stream[Resolution] = {
 
     val startResolution = Resolution(
-      dependencies, dependencies, Set.empty,
+      dependencies, Set.empty, Set.empty,
       Map.empty, Map.empty,
       filter,
       profileActivation

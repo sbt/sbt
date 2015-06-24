@@ -1,7 +1,7 @@
 package coursier
 package test
 
-import coursier.core.Remote
+import coursier.core.DefaultFetchMetadata
 import coursier.test.compatibility._
 
 import utest._
@@ -18,7 +18,8 @@ object JsTests extends TestSuite {
     }
 
     'get{
-      Remote.get("http://repo1.maven.org/maven2/ch/qos/logback/logback-classic/1.1.3/logback-classic-1.1.3.pom")
+      DefaultFetchMetadata.get("http://repo1.maven.org/maven2/ch/qos/logback/logback-classic/1.1.3/logback-classic-1.1.3.pom")
+        .map(core.compatibility.xmlParse)
         .map{ xml =>
           assert(xml.right.toOption.exists(_.label == "project"))
         }

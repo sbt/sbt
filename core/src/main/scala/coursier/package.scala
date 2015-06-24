@@ -1,6 +1,9 @@
 import scalaz.EitherT
 import scalaz.concurrent.Task
 
+/**
+ * Pulls definitions from coursier.core, with default arguments.
+ */
 package object coursier {
 
   type Dependency = core.Dependency
@@ -8,20 +11,17 @@ package object coursier {
     def apply(module: Module,
               version: String,
               scope: Scope = Scope.Other(""), // Substituted by Resolver with its own default scope (compile)
-              artifacts: Artifacts = Artifacts.Maven(),
+              attributes: Attributes = Attributes(),
               exclusions: Set[(String, String)] = Set.empty,
               optional: Boolean = false): Dependency =
-      core.Dependency(module, version, scope, artifacts, exclusions, optional)
+      core.Dependency(module, version, scope, attributes, exclusions, optional)
   }
 
-  type Artifacts = core.Artifacts
-  object Artifacts {
-    type Maven = core.Artifacts.Maven
-    object Maven {
-      def apply(`type`: String = "jar",
-                classifier: String = ""): Maven =
-        core.Artifacts.Maven(`type`, classifier)
-    }
+  type Attributes = core.Attributes
+  object Attributes {
+    def apply(`type`: String = "jar",
+              classifier: String = ""): Attributes =
+      core.Attributes(`type`, classifier)
   }
 
   type Project = core.Project
@@ -68,19 +68,19 @@ package object coursier {
   type Repository = core.Repository
 
   def fetchFrom(repositories: Seq[Repository]): ModuleVersion => EitherT[Task, List[String], (Repository, Project)] =
-    modVersion => core.Resolver.find(repositories, modVersion._1, modVersion._2)
+    modVersion => core.Resolution.find(repositories, modVersion._1, modVersion._2)
 
-  type Resolution = core.Resolver.Resolution
+  type Resolution = core.Resolution
   object Resolution {
     val empty = apply()
     def apply(rootDependencies: Set[Dependency] = Set.empty,
               dependencies: Set[Dependency] = Set.empty,
               conflicts: Set[Dependency] = Set.empty,
-              projectsCache: Map[ModuleVersion, (Repository, Project)] = Map.empty,
-              errors: Map[ModuleVersion, Seq[String]] = Map.empty,
+              projectCache: Map[ModuleVersion, (Repository, Project)] = Map.empty,
+              errorCache: Map[ModuleVersion, Seq[String]] = Map.empty,
               filter: Option[Dependency => Boolean] = None,
               profileActivation: Option[(String, Profile.Activation, Map[String, String]) => Boolean] = None): Resolution =
-      core.Resolver.Resolution(rootDependencies, dependencies, conflicts, projectsCache, errors, filter, profileActivation)
+      core.Resolution(rootDependencies, dependencies, conflicts, projectCache, errorCache, filter, profileActivation)
   }
 
   def resolve(dependencies: Set[Dependency],
@@ -88,6 +88,26 @@ package object coursier {
               maxIterations: Option[Int] = Some(200),
               filter: Option[Dependency => Boolean] = None,
               profileActivation: Option[(String, Profile.Activation, Map[String, String]) => Boolean] = None): Task[Resolution] = {
-    core.Resolver.resolve(dependencies, fetch, maxIterations, filter, profileActivation)
+
+    val startResolution = Resolution(
+      dependencies, Set.empty, Set.empty,
+      Map.empty, Map.empty,
+      filter,
+      profileActivation
+    )
+
+    startResolution.last(fetch, maxIterations.getOrElse(-1))
   }
+
+  type Artifact = core.Artifact
+  object Artifact {
+    def apply(url: String,
+              extra: Map[String, String] = Map.empty,
+              attributes: Attributes = Attributes()): Artifact =
+      core.Artifact(url, extra, attributes)
+  }
+
+  type MavenRepository[G <: core.FetchMetadata] = core.MavenRepository[G]
+  val MavenRepository: core.MavenRepository.type = core.MavenRepository
+
 }

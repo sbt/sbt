@@ -32,35 +32,14 @@ sealed abstract class Scope(val name: String)
 case class Dependency(module: Module,
                       version: String,
                       scope: Scope,
-                      artifacts: Artifacts,
+                      attributes: Attributes,
                       exclusions: Set[(String, String)],
                       optional: Boolean) {
   def moduleVersion = (module, version)
 }
 
-sealed trait Artifacts
-
-object Artifacts {
-  /**
-   * May become a bit more complicated with Ivy support,
-   * but should still point at one single artifact.
-   */
-  case class Artifact(`type`: String,
+case class Attributes(`type`: String,
                       classifier: String)
-
-  sealed trait WithProject extends Artifacts {
-    def artifacts(project: Project): Seq[Artifact]
-  }
-
-  sealed trait Sufficient extends Artifacts {
-    def artifacts: Seq[Artifact]
-  }
-
-  case class Maven(`type`: String,
-                   classifier: String) extends Sufficient {
-    def artifacts: Seq[Artifact] = Seq(Artifact(`type`, classifier))
-  }
-}
 
 case class Project(module: Module,
                    version: String,
@@ -91,6 +70,7 @@ case class Profile(id: String,
                    dependencyManagement: Seq[Dependency],
                    properties: Map[String, String])
 
+// FIXME Move to MavenRepository?
 case class Versions(latest: String,
                     release: String,
                     available: List[String],
@@ -98,4 +78,28 @@ case class Versions(latest: String,
 
 object Versions {
   case class DateTime(year: Int, month: Int, day: Int, hour: Int, minute: Int, second: Int)
+}
+
+case class Artifact(url: String,
+                    extra: Map[String, String],
+                    attributes: Attributes)
+
+object Artifact {
+  val md5 = "md5"
+  val sha1 = "sha1"
+  val sig = "pgp"
+  val sigMd5 = "md5-pgp"
+  val sigSha1 = "sha1-pgp"
+  val sources = "src"
+  val sourcesMd5 = "md5-src"
+  val sourcesSha1 = "sha1-src"
+  val sourcesSig = "src-pgp"
+  val sourcesSigMd5 = "md5-src-pgp"
+  val sourcesSigSha1 = "sha1-src-pgp"
+  val javadoc = "javadoc"
+  val javadocMd5 = "md5-javadoc"
+  val javadocSha1 = "sha1-javadoc"
+  val javadocSig = "javadoc-pgp"
+  val javadocSigMd5 = "md5-javadoc-pgp"
+  val javadocSigSha1 = "sha1-javadoc-pgp"
 }

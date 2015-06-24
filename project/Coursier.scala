@@ -101,8 +101,20 @@ object CoursierBuild extends Build {
     )
     .enablePlugins(ScalaJSPlugin)
 
-  lazy val cli = Project(id = "cli", base = file("cli"))
+  lazy val files = Project(id = "files", base = file("files"))
     .dependsOn(coreJvm)
+    .settings(commonSettings: _*)
+    .settings(
+      name := "coursier-files",
+      libraryDependencies ++= Seq(
+        "org.http4s" %% "http4s-blazeclient" % "0.8.2",
+        "com.lihaoyi" %% "utest" % "0.3.0" % "test"
+      ),
+      testFrameworks += new TestFramework("utest.runner.Framework")
+    )
+
+  lazy val cli = Project(id = "cli", base = file("cli"))
+    .dependsOn(coreJvm, files)
     .settings(commonSettings ++ packAutoSettings ++ publishPackTxzArchive ++ publishPackZipArchive: _*)
     .settings(
       packArchivePrefix := s"coursier-cli_${scalaBinaryVersion.value}",

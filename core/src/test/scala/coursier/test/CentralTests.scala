@@ -12,12 +12,8 @@ object CentralTests extends TestSuite {
     repository.mavenCentral
   )
 
-  def repr(dep: Dependency) = {
-    val (type0, classifier) = dep.artifacts match {
-      case maven: Artifacts.Maven => (maven.`type`, maven.classifier)
-    }
-    s"${dep.module.organization}:${dep.module.name}:$type0:${Some(classifier).filter(_.nonEmpty).map(_+":").mkString}${dep.version}"
-  }
+  def repr(dep: Dependency) =
+    s"${dep.module.organization}:${dep.module.name}:${dep.attributes.`type`}:${Some(dep.attributes.classifier).filter(_.nonEmpty).map(_+":").mkString}${dep.version}"
 
   def resolutionCheck(module: Module, version: String) =
     async {
@@ -39,10 +35,10 @@ object CentralTests extends TestSuite {
       async {
         val dep = Dependency(Module("ch.qos.logback", "logback-classic"), "1.1.3")
         val res = await(resolve(Set(dep), fetchFrom(repositories)).runF)
-          .copy(projectsCache = Map.empty, errors = Map.empty) // No validating these here
+          .copy(projectCache = Map.empty, errorCache = Map.empty) // No validating these here
 
         val expected = Resolution(
-          rootDependencies = Set(dep.withCompileScope),
+          rootDependencies = Set(dep),
           dependencies = Set(
             dep.withCompileScope,
             Dependency(Module("ch.qos.logback", "logback-core"), "1.1.3").withCompileScope,
@@ -55,10 +51,10 @@ object CentralTests extends TestSuite {
       async {
         val dep = Dependency(Module("org.ow2.asm", "asm-commons"), "5.0.2")
         val res = await(resolve(Set(dep), fetchFrom(repositories)).runF)
-          .copy(projectsCache = Map.empty, errors = Map.empty) // No validating these here
+          .copy(projectCache = Map.empty, errorCache = Map.empty) // No validating these here
 
         val expected = Resolution(
-          rootDependencies = Set(dep.withCompileScope),
+          rootDependencies = Set(dep),
           dependencies = Set(
             dep.withCompileScope,
             Dependency(Module("org.ow2.asm", "asm-tree"), "5.0.2").withCompileScope,
@@ -71,17 +67,17 @@ object CentralTests extends TestSuite {
       async {
         val dep = Dependency(Module("joda-time", "joda-time"), "[2.2,2.8]")
         val res0 = await(resolve(Set(dep), fetchFrom(repositories)).runF)
-        val res = res0.copy(projectsCache = Map.empty, errors = Map.empty)
+        val res = res0.copy(projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
-          rootDependencies = Set(dep.withCompileScope),
+          rootDependencies = Set(dep),
           dependencies = Set(
             dep.withCompileScope))
 
         assert(res == expected)
-        assert(res0.projectsCache.contains(dep.moduleVersion))
+        assert(res0.projectCache.contains(dep.moduleVersion))
 
-        val (_, proj) = res0.projectsCache(dep.moduleVersion)
+        val (_, proj) = res0.projectCache(dep.moduleVersion)
         assert(proj.version == "2.8")
       }
     }

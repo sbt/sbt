@@ -21,7 +21,7 @@ object PomParsingTests extends TestSuite {
         </dependency>
                    """
 
-      val expected = \/-(Dependency(Module("comp", "lib"), "2.1", artifacts = Artifacts.Maven(classifier = "extra")))
+      val expected = \/-(Dependency(Module("comp", "lib"), "2.1", attributes = Attributes(classifier = "extra")))
 
       val result = Xml.dependency(xmlParse(depNode).right.get)
 
