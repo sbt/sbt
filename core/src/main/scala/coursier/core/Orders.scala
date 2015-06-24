@@ -105,23 +105,15 @@ object Orders {
   def minDependenciesUnsafe(dependencies: Set[Dependency]): Set[Dependency] = {
     val groupedDependencies = dependencies
       .groupBy(dep => (dep.optional, dep.scope))
+      .mapValues(deps => deps.head.copy(exclusions = deps.foldLeft(Exclusions.one)((acc, dep) => Exclusions.meet(acc, dep.exclusions))))
       .toList
-
-    /*
-     * Iterates over all pairs (xDep, yDep) from `dependencies`.
-     * If xDep < yDep (all that yDep brings is already brought by xDep), remove yDep.
-     *
-     * The (partial) order on dependencies is made of the ones on scope, optional, and exclusions.
-     */
 
     val remove =
       for {
-        List(((xOpt, xScope), xDeps), ((yOpt, yScope), yDeps)) <- groupedDependencies.combinations(2)
+        List(((xOpt, xScope), xDep), ((yOpt, yScope), yDep)) <- groupedDependencies.combinations(2)
         optCmp <- optionalPartialOrder.cmp(xOpt, yOpt).iterator
         scopeCmp <- mavenScopePartialOrder.cmp(xScope, yScope).iterator
         if optCmp*scopeCmp >= 0
-        xDep <- xDeps.iterator
-        yDep <- yDeps.iterator
         exclCmp <- exclusionsPartialOrder.cmp(xDep.exclusions, yDep.exclusions).iterator
         if optCmp*exclCmp >= 0
         if scopeCmp*exclCmp >= 0
@@ -130,7 +122,7 @@ object Orders {
         if xIsMin || yIsMin // should be always true, unless xDep == yDep, which shouldn't happen
       } yield if (xIsMin) yDep else xDep
 
-    dependencies -- remove
+    groupedDependencies.map(_._2).toSet -- remove
   }
 
   /**

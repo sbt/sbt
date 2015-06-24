@@ -8,7 +8,7 @@ object Exclusions {
       .partition{case (org, name) => org == "*" || name == "*" }
 
     val all = wildCards
-      .contains(("*", "*"))
+      .contains(one.head)
 
     val excludeByOrg = wildCards
       .collect{case (org, "*") if org != "*" => org }
@@ -35,7 +35,7 @@ object Exclusions {
 
     val (all, excludeByOrg, excludeByName, remaining) = partition(exclusions)
 
-    if (all) Set(("*", "*"))
+    if (all) one
     else {
       val filteredRemaining = remaining
         .filter{case (org, name) =>
@@ -49,5 +49,39 @@ object Exclusions {
     }
   }
 
+  val zero = Set.empty[(String, String)]
+  val one = Set(("*", "*"))
+
+  def join(x: Set[(String, String)], y: Set[(String, String)]): Set[(String, String)] =
+    minimize(x ++ y)
+
+  def meet(x: Set[(String, String)], y: Set[(String, String)]): Set[(String, String)] = {
+
+    val ((xAll, xExcludeByOrg, xExcludeByName, xRemaining), (yAll, yExcludeByOrg, yExcludeByName, yRemaining)) =
+      (partition(x), partition(y))
+
+    val all = xAll && yAll
+
+    if (all) one
+    else {
+      val excludeByOrg =
+        if (xAll) yExcludeByOrg
+        else if (yAll) xExcludeByOrg
+        else xExcludeByOrg intersect yExcludeByOrg
+      val excludeByName =
+        if (xAll) yExcludeByName
+        else if (yAll) xExcludeByName
+        else xExcludeByName intersect yExcludeByName
+
+      val remaining =
+        xRemaining.filter{case (org, name) => yAll || yExcludeByOrg(org) || yExcludeByName(name)} ++
+        yRemaining.filter{case (org, name) => xAll || xExcludeByOrg(org) || xExcludeByName(name)} ++
+          (xRemaining intersect yRemaining)
+
+      excludeByOrg.map((_, "*")) ++
+        excludeByName.map(("*", _)) ++
+        remaining
+    }
+  }
 
 }
