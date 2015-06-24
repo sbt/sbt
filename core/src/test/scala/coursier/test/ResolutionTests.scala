@@ -1,13 +1,12 @@
 package coursier
 package test
 
-import coursier.core.Resolver
 import utest._
 import scala.async.Async.{async, await}
 
 import coursier.test.compatibility._
 
-object ResolverTests extends TestSuite {
+object ResolutionTests extends TestSuite {
 
   implicit class ProjectOps(val p: Project) extends AnyVal {
     def kv: (ModuleVersion, (Repository, Project)) = p.moduleVersion -> (testRepository, p)
@@ -496,7 +495,7 @@ object ResolverTests extends TestSuite {
     'parts{
       'propertySubstitution{
         val res =
-          Resolver.withProperties(
+          core.Resolution.withProperties(
             Seq(Dependency(Module("a-company", "a-name"), "${a.property}")),
             Map("a.property" -> "a-version"))
         val expected = Seq(Dependency(Module("a-company", "a-name"), "a-version"))

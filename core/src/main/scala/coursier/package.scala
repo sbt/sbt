@@ -68,9 +68,9 @@ package object coursier {
   type Repository = core.Repository
 
   def fetchFrom(repositories: Seq[Repository]): ModuleVersion => EitherT[Task, List[String], (Repository, Project)] =
-    modVersion => core.Resolver.find(repositories, modVersion._1, modVersion._2)
+    modVersion => core.Resolution.find(repositories, modVersion._1, modVersion._2)
 
-  type Resolution = core.Resolver.Resolution
+  type Resolution = core.Resolution
   object Resolution {
     val empty = apply()
     def apply(rootDependencies: Set[Dependency] = Set.empty,
@@ -80,7 +80,7 @@ package object coursier {
               errors: Map[ModuleVersion, Seq[String]] = Map.empty,
               filter: Option[Dependency => Boolean] = None,
               profileActivation: Option[(String, Profile.Activation, Map[String, String]) => Boolean] = None): Resolution =
-      core.Resolver.Resolution(rootDependencies, dependencies, conflicts, projectsCache, errors, filter, profileActivation)
+      core.Resolution(rootDependencies, dependencies, conflicts, projectsCache, errors, filter, profileActivation)
   }
 
   def resolve(dependencies: Set[Dependency],
@@ -88,6 +88,6 @@ package object coursier {
               maxIterations: Option[Int] = Some(200),
               filter: Option[Dependency => Boolean] = None,
               profileActivation: Option[(String, Profile.Activation, Map[String, String]) => Boolean] = None): Task[Resolution] = {
-    core.Resolver.resolve(dependencies, fetch, maxIterations, filter, profileActivation)
+    core.Resolution.resolve(dependencies, fetch, maxIterations, filter, profileActivation)
   }
 }
