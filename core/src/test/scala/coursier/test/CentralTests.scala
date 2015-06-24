@@ -35,7 +35,7 @@ object CentralTests extends TestSuite {
       async {
         val dep = Dependency(Module("ch.qos.logback", "logback-classic"), "1.1.3")
         val res = await(resolve(Set(dep), fetchFrom(repositories)).runF)
-          .copy(projectsCache = Map.empty, errors = Map.empty) // No validating these here
+          .copy(projectCache = Map.empty, errorCache = Map.empty) // No validating these here
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -51,7 +51,7 @@ object CentralTests extends TestSuite {
       async {
         val dep = Dependency(Module("org.ow2.asm", "asm-commons"), "5.0.2")
         val res = await(resolve(Set(dep), fetchFrom(repositories)).runF)
-          .copy(projectsCache = Map.empty, errors = Map.empty) // No validating these here
+          .copy(projectCache = Map.empty, errorCache = Map.empty) // No validating these here
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -67,7 +67,7 @@ object CentralTests extends TestSuite {
       async {
         val dep = Dependency(Module("joda-time", "joda-time"), "[2.2,2.8]")
         val res0 = await(resolve(Set(dep), fetchFrom(repositories)).runF)
-        val res = res0.copy(projectsCache = Map.empty, errors = Map.empty)
+        val res = res0.copy(projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -75,9 +75,9 @@ object CentralTests extends TestSuite {
             dep.withCompileScope))
 
         assert(res == expected)
-        assert(res0.projectsCache.contains(dep.moduleVersion))
+        assert(res0.projectCache.contains(dep.moduleVersion))
 
-        val (_, proj) = res0.projectsCache(dep.moduleVersion)
+        val (_, proj) = res0.projectCache(dep.moduleVersion)
         assert(proj.version == "2.8")
       }
     }

@@ -76,11 +76,11 @@ package object coursier {
     def apply(rootDependencies: Set[Dependency] = Set.empty,
               dependencies: Set[Dependency] = Set.empty,
               conflicts: Set[Dependency] = Set.empty,
-              projectsCache: Map[ModuleVersion, (Repository, Project)] = Map.empty,
-              errors: Map[ModuleVersion, Seq[String]] = Map.empty,
+              projectCache: Map[ModuleVersion, (Repository, Project)] = Map.empty,
+              errorCache: Map[ModuleVersion, Seq[String]] = Map.empty,
               filter: Option[Dependency => Boolean] = None,
               profileActivation: Option[(String, Profile.Activation, Map[String, String]) => Boolean] = None): Resolution =
-      core.Resolution(rootDependencies, dependencies, conflicts, projectsCache, errors, filter, profileActivation)
+      core.Resolution(rootDependencies, dependencies, conflicts, projectCache, errorCache, filter, profileActivation)
   }
 
   def resolve(dependencies: Set[Dependency],
@@ -98,4 +98,16 @@ package object coursier {
 
     startResolution.last(fetch, maxIterations.getOrElse(-1))
   }
+
+  type Artifact = core.Artifact
+  object Artifact {
+    def apply(url: String,
+              extra: Map[String, String] = Map.empty,
+              attributes: Attributes = Attributes()): Artifact =
+      core.Artifact(url, extra, attributes)
+  }
+
+  type MavenRepository[G <: core.FetchMetadata] = core.MavenRepository[G]
+  val MavenRepository: core.MavenRepository.type = core.MavenRepository
+
 }

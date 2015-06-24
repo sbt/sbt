@@ -1,7 +1,7 @@
 package coursier
 package web
 
-import coursier.core.{Logger, Remote}
+import coursier.core.{DefaultFetchMetadata, Logger}
 import japgolly.scalajs.react.vdom.{TagMod, Attr}
 import japgolly.scalajs.react.vdom.Attrs.dangerouslySetInnerHtml
 import japgolly.scalajs.react.{ReactEventI, ReactComponentB, BackendScope}
@@ -18,7 +18,7 @@ case class ResolutionOptions(followOptional: Boolean = false,
                              keepTest: Boolean = false)
 
 case class State(modules: Seq[Dependency],
-                 repositories: Seq[Remote],
+                 repositories: Seq[MavenRepository[DefaultFetchMetadata]],
                  options: ResolutionOptions,
                  resolutionOpt: Option[Resolution],
                  editModuleIdx: Int,
@@ -71,7 +71,7 @@ class Backend($: BackendScope[Unit, State]) {
 
   def updateTree(resolution: Resolution, target: String, reverse: Boolean) = {
     def depsOf(dep: Dependency) =
-      resolution.projectsCache.get(dep.moduleVersion).toSeq.flatMap(t => core.Resolution.finalDependencies(dep, t._2).filter(resolution.filter getOrElse core.Resolution.defaultFilter))
+      resolution.projectCache.get(dep.moduleVersion).toSeq.flatMap(t => core.Resolution.finalDependencies(dep, t._2).filter(resolution.filter getOrElse core.Resolution.defaultFilter))
 
     val minDependencies = resolution.minDependencies
 
@@ -127,7 +127,7 @@ class Backend($: BackendScope[Unit, State]) {
         filter = Some(dep => (s.options.followOptional || !dep.optional) && (s.options.keepTest || dep.scope != Scope.Test))
       )
 
-      res.last(fetchFrom(s.repositories.map(_.copy(logger = Some(logger)))), 100)
+      res.last(fetchFrom(s.repositories.map(r => r.copy(fetchMetadata = r.fetchMetadata.copy(logger = Some(logger))))), 100)
     }
 
     // For reasons that are unclear to me, not delaying this when using the runNow execution context
@@ -224,7 +224,7 @@ object App {
 
       def depItem(dep: Dependency, finalVersionOpt: Option[String]) = {
         <.tr(
-          ^.`class` := (if (res.errors.contains(dep.moduleVersion)) "danger" else ""),
+          ^.`class` := (if (res.errorCache.contains(dep.moduleVersion)) "danger" else ""),
           <.td(dep.module.organization),
           <.td(dep.module.name),
           <.td(finalVersionOpt.fold(dep.version)(finalVersion => s"$finalVersion (for ${dep.version})")),
@@ -234,11 +234,11 @@ object App {
             if (dep.attributes.classifier.isEmpty) Seq() else Seq(infoLabel(dep.attributes.classifier)),
             Some(dep.exclusions).filter(_.nonEmpty).map(excls => infoPopOver("Exclusions", excls.toList.sorted.map{case (org, name) => s"$org:$name"}.mkString("; "))).toSeq,
             if (dep.optional) Seq(infoLabel("optional")) else Seq(),
-            res.errors.get(dep.moduleVersion).map(errs => errorPopOver("Error", errs.mkString("; "))).toSeq
+            res.errorCache.get(dep.moduleVersion).map(errs => errorPopOver("Error", errs.mkString("; "))).toSeq
           )),
          <.td(Seq[Seq[TagMod]](
-           res.projectsCache.get(dep.moduleVersion) match {
-             case Some((repo: Remote, _)) =>
+           res.projectCache.get(dep.moduleVersion) match {
+             case Some((MavenRepository(fetchMetadata, _), _)) =>
                // FIXME Maven specific, generalize if/when adding support for Ivy
                val version0 = finalVersionOpt getOrElse dep.version
                val relPath =
@@ -249,10 +249,10 @@ object App {
                  )
 
                Seq(
-                 <.a(^.href := s"${repo.base}${relPath.mkString("/")}.pom",
+                 <.a(^.href := s"${fetchMetadata.root}${relPath.mkString("/")}.pom",
                    <.span(^.`class` := "label label-info", "POM")
                  ),
-                 <.a(^.href := s"${repo.base}${relPath.mkString("/")}.jar",
+                 <.a(^.href := s"${fetchMetadata.root}${relPath.mkString("/")}.jar",
                    <.span(^.`class` := "label label-info", "JAR")
                  )
                )
@@ -277,7 +277,7 @@ object App {
           )
         ),
         <.tbody(
-          sortedDeps.map(dep => depItem(dep, res.projectsCache.get(dep.moduleVersion).map(_._2.version).filter(_ != dep.version)))
+          sortedDeps.map(dep => depItem(dep, res.projectCache.get(dep.moduleVersion).map(_._2.version).filter(_ != dep.version)))
         )
       )
     }
@@ -386,19 +386,19 @@ object App {
 
   val modules = dependenciesTable("Dependencies")
 
-  val repositories = ReactComponentB[Seq[Remote]]("Repositories")
+  val repositories = ReactComponentB[Seq[MavenRepository[DefaultFetchMetadata]]]("Repositories")
     .render{ repos =>
-      def repoItem(repo: Remote) =
+      def repoItem(repo: MavenRepository[DefaultFetchMetadata]) =
         <.tr(
           <.td(
-            <.a(^.href := repo.base,
-              repo.base
+            <.a(^.href := repo.fetchMetadata.root,
+              repo.fetchMetadata.root
             )
           )
         )
 
       val sortedRepos = repos
-        .sortBy(repo => repo.base)
+        .sortBy(repo => repo.fetchMetadata.root)
 
       <.table(^.`class` := "table",
         <.thead(

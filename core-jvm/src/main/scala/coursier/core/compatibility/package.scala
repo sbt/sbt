@@ -25,4 +25,6 @@ package object compatibility {
       .map(fromNode)
   }
 
+  def encodeURIComponent(s: String): String =
+    new java.net.URI(null, null, null, -1, s, null, null) .toASCIIString
 }

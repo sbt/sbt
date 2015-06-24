@@ -168,7 +168,7 @@ object ResolutionTests extends TestSuite {
         val expected = Resolution(
           rootDependencies = Set(dep),
           dependencies = Set(dep.withCompileScope),
-          errors = Map(dep.moduleVersion -> Seq("Not found"))
+          errorCache = Map(dep.moduleVersion -> Seq("Not found"))
         )
 
         assert(res == expected)
@@ -185,7 +185,7 @@ object ResolutionTests extends TestSuite {
         val expected = Resolution(
           rootDependencies = Set(dep),
           dependencies = Set(dep.withCompileScope),
-          projectsCache = Map(dep.moduleVersion -> (testRepository, projectsMap(dep.moduleVersion)))
+          projectCache = Map(dep.moduleVersion -> (testRepository, projectsMap(dep.moduleVersion)))
         )
 
         assert(res == expected)
@@ -203,7 +203,7 @@ object ResolutionTests extends TestSuite {
         val expected = Resolution(
           rootDependencies = Set(dep),
           dependencies = Set(dep.withCompileScope, trDep.withCompileScope),
-          projectsCache = Map(
+          projectCache = Map(
             projectsMap(dep.moduleVersion).kv,
             projectsMap(trDep.moduleVersion).kv
           )
@@ -227,7 +227,7 @@ object ResolutionTests extends TestSuite {
         val expected = Resolution(
           rootDependencies = Set(dep),
           dependencies = Set(dep.withCompileScope) ++ trDeps.map(_.withCompileScope),
-          projectsCache = Map(
+          projectCache = Map(
             projectsMap(dep.moduleVersion).kv
           ) ++ trDeps.map(trDep => projectsMap(trDep.moduleVersion).kv)
         )
@@ -252,7 +252,7 @@ object ResolutionTests extends TestSuite {
         val expected = Resolution(
           rootDependencies = Set(dep),
           dependencies = Set(dep.withCompileScope) ++ trDeps.map(_.withCompileScope),
-          projectsCache = Map(
+          projectCache = Map(
             projectsMap(dep.moduleVersion).kv
           ) ++ trDeps.map(trDep => projectsMap(trDep.moduleVersion).kv)
         )
@@ -277,7 +277,7 @@ object ResolutionTests extends TestSuite {
         val expected = Resolution(
           rootDependencies = Set(dep),
           dependencies = Set(dep.withCompileScope) ++ trDeps.map(_.withCompileScope),
-          projectsCache = Map(
+          projectCache = Map(
             projectsMap(dep.moduleVersion).kv
           ) ++ trDeps.map(trDep => projectsMap(trDep.moduleVersion).kv)
         )
@@ -297,7 +297,7 @@ object ResolutionTests extends TestSuite {
         val expected = Resolution(
           rootDependencies = Set(dep),
           dependencies = Set(dep.withCompileScope),
-          projectsCache = Map(
+          projectCache = Map(
             projectsMap(dep.moduleVersion).kv
           )
         )
@@ -316,7 +316,7 @@ object ResolutionTests extends TestSuite {
           Set(dep),
           fetchFrom(repositories),
           filter = Some(_.scope == Scope.Compile)
-        ).runF).copy(filter = None, projectsCache = Map.empty)
+        ).runF).copy(filter = None, projectCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -336,7 +336,7 @@ object ResolutionTests extends TestSuite {
           Set(dep),
           fetchFrom(repositories),
           filter = Some(_.scope == Scope.Compile)
-        ).runF).copy(filter = None, projectsCache = Map.empty, errors = Map.empty)
+        ).runF).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -355,7 +355,7 @@ object ResolutionTests extends TestSuite {
           Set(dep),
           fetchFrom(repositories),
           filter = Some(_.scope == Scope.Compile)
-        ).runF).copy(filter = None, projectsCache = Map.empty, errors = Map.empty)
+        ).runF).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -372,7 +372,7 @@ object ResolutionTests extends TestSuite {
           Set(dep),
           fetchFrom(repositories),
           filter = Some(_.scope == Scope.Compile)
-        ).runF).copy(filter = None, projectsCache = Map.empty, errors = Map.empty)
+        ).runF).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -391,7 +391,7 @@ object ResolutionTests extends TestSuite {
           Set(dep),
           fetchFrom(repositories),
           filter = Some(_.scope == Scope.Compile)
-        ).runF).copy(filter = None, projectsCache = Map.empty, errors = Map.empty)
+        ).runF).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -412,7 +412,7 @@ object ResolutionTests extends TestSuite {
               Set(dep),
               fetchFrom(repositories),
               filter = Some(_.scope == Scope.Compile)
-            ).runF).copy(filter = None, projectsCache = Map.empty, errors = Map.empty)
+            ).runF).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
             val expected = Resolution(
               rootDependencies = Set(dep),
@@ -435,7 +435,7 @@ object ResolutionTests extends TestSuite {
           Set(dep),
           fetchFrom(repositories),
           filter = Some(_.scope == Scope.Compile)
-        ).runF).copy(filter = None, projectsCache = Map.empty, errors = Map.empty)
+        ).runF).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -457,7 +457,7 @@ object ResolutionTests extends TestSuite {
           Set(dep),
           fetchFrom(repositories),
           filter = Some(_.scope == Scope.Compile)
-        ).runF).copy(filter = None, projectsCache = Map.empty, errors = Map.empty)
+        ).runF).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -481,7 +481,7 @@ object ResolutionTests extends TestSuite {
           deps,
           fetchFrom(repositories),
           filter = Some(_.scope == Scope.Compile)
-        ).runF).copy(filter = None, projectsCache = Map.empty, errors = Map.empty)
+        ).runF).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = deps,

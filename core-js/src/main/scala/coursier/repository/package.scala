@@ -1,13 +1,12 @@
 package coursier
 
+import coursier.core.DefaultFetchMetadata
+
 package object repository {
 
-  type Remote = core.Remote
-  val Remote: core.Remote.type = core.Remote
+  val mavenCentral = MavenRepository(DefaultFetchMetadata("https://repo1.maven.org/maven2/"))
 
-  val mavenCentral = Remote("https://repo1.maven.org/maven2/")
-
-  val sonatypeReleases = Remote("https://oss.sonatype.org/content/repositories/releases/")
-  val sonatypeSnapshots = Remote("https://oss.sonatype.org/content/repositories/snapshots/")
+  val sonatypeReleases = MavenRepository(DefaultFetchMetadata("https://oss.sonatype.org/content/repositories/releases/"))
+  val sonatypeSnapshots = MavenRepository(DefaultFetchMetadata("https://oss.sonatype.org/content/repositories/snapshots/"))
 
 }

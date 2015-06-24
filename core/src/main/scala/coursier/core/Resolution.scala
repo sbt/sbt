@@ -322,14 +322,14 @@ object Resolution {
  *
  * @param dependencies: current set of dependencies
  * @param conflicts: conflicting dependencies
- * @param projectsCache: cache of known projects
- * @param errors: keeps track of the modules whose project definition could not be found
+ * @param projectCache: cache of known projects
+ * @param errorCache: keeps track of the modules whose project definition could not be found
  */
 case class Resolution(rootDependencies: Set[Dependency],
                       dependencies: Set[Dependency],
                       conflicts: Set[Dependency],
-                      projectsCache: Map[Resolution.ModuleVersion, (Repository, Project)],
-                      errors: Map[Resolution.ModuleVersion, Seq[String]],
+                      projectCache: Map[Resolution.ModuleVersion, (Repository, Project)],
+                      errorCache: Map[Resolution.ModuleVersion, Seq[String]],
                       filter: Option[Dependency => Boolean],
                       profileActivation: Option[(String, Activation, Map[String, String]) => Boolean]) {
   import Resolution._
@@ -337,7 +337,7 @@ case class Resolution(rootDependencies: Set[Dependency],
   private val finalDependenciesCache = new mutable.HashMap[Dependency, Seq[Dependency]]()
   private def finalDependencies0(dep: Dependency) = finalDependenciesCache.synchronized {
     finalDependenciesCache.getOrElseUpdate(dep,
-      projectsCache.get(dep.moduleVersion) match {
+      projectCache.get(dep.moduleVersion) match {
         case Some((_, proj)) => finalDependencies(dep, proj).filter(filter getOrElse defaultFilter)
         case None => Nil
       }
@@ -374,7 +374,7 @@ case class Resolution(rootDependencies: Set[Dependency],
     val nextModules = nextDependenciesAndConflicts._2.map(_.moduleVersion)
 
     (modules ++ nextModules)
-      .filterNot(mod => projectsCache.contains(mod) || errors.contains(mod))
+      .filterNot(mod => projectCache.contains(mod) || errorCache.contains(mod))
   }
 
 
@@ -477,7 +477,7 @@ case class Resolution(rootDependencies: Set[Dependency],
   def dependencyManagementRequirements(project: Project): Set[ModuleVersion] = {
     val approxProperties =
       project.parent
-        .flatMap(projectsCache.get)
+        .flatMap(projectCache.get)
         .map(_._2.properties)
         .fold(project.properties)(mergeProperties(project.properties, _))
 
@@ -511,13 +511,13 @@ case class Resolution(rootDependencies: Set[Dependency],
       if (toCheck.isEmpty) missing
       else if (toCheck.exists(done)) helper(toCheck -- done, done, missing)
       else if (toCheck.exists(missing)) helper(toCheck -- missing, done, missing)
-      else if (toCheck.exists(projectsCache.contains)) {
-        val (checking, remaining) = toCheck.partition(projectsCache.contains)
-        val directRequirements = checking.flatMap(mod => dependencyManagementRequirements(projectsCache(mod)._2))
+      else if (toCheck.exists(projectCache.contains)) {
+        val (checking, remaining) = toCheck.partition(projectCache.contains)
+        val directRequirements = checking.flatMap(mod => dependencyManagementRequirements(projectCache(mod)._2))
 
         helper(remaining ++ directRequirements, done ++ checking, missing)
-      } else if (toCheck.exists(errors.contains)) {
-        val (errored, remaining) = toCheck.partition(errors.contains)
+      } else if (toCheck.exists(errorCache.contains)) {
+        val (errored, remaining) = toCheck.partition(errorCache.contains)
         helper(remaining, done ++ errored, missing)
       } else
         helper(Set.empty, done, missing ++ toCheck)
@@ -535,8 +535,8 @@ case class Resolution(rootDependencies: Set[Dependency],
 
     val approxProperties =
       project.parent
-        .filter(projectsCache.contains)
-        .map(projectsCache(_)._2.properties)
+        .filter(projectCache.contains)
+        .map(projectCache(_)._2.properties)
         .fold(project.properties)(mergeProperties(project.properties, _))
 
     val profiles0 = profiles(project, approxProperties, profileActivation getOrElse defaultProfileActivation)
@@ -546,9 +546,9 @@ case class Resolution(rootDependencies: Set[Dependency],
 
     val deps =
       dependencies0
-        .collect{ case dep if dep.scope == Scope.Import && projectsCache.contains(dep.moduleVersion) => dep.moduleVersion } ++
-        project.parent.filter(projectsCache.contains)
-    val projs = deps.map(projectsCache(_)._2)
+        .collect{ case dep if dep.scope == Scope.Import && projectCache.contains(dep.moduleVersion) => dep.moduleVersion } ++
+        project.parent.filter(projectCache.contains)
+    val projs = deps.map(projectCache(_)._2)
 
     val depMgmt =
       (project.dependencyManagement +: (profiles0.map(_.dependencyManagement) ++ projs.map(_.dependencyManagement)))
@@ -560,13 +560,13 @@ case class Resolution(rootDependencies: Set[Dependency],
       dependencies = dependencies0
         .filterNot(dep => dep.scope == Scope.Import && depsSet(dep.moduleVersion)) ++
         project.parent
-          .filter(projectsCache.contains)
+          .filter(projectCache.contains)
           .toSeq
-          .flatMap(projectsCache(_)._2.dependencies),
+          .flatMap(projectCache(_)._2.dependencies),
       dependencyManagement = depMgmt.values.toSeq,
       properties = project.parent
-        .filter(projectsCache.contains)
-        .map(projectsCache(_)._2.properties)
+        .filter(projectCache.contains)
+        .map(projectCache(_)._2.properties)
         .fold(properties0)(mergeProperties(properties0, _))
     )
   }
@@ -580,7 +580,7 @@ case class Resolution(rootDependencies: Set[Dependency],
     val lookups = modules.map(dep => fetchModule(dep).run.map(dep -> _))
     val gatheredLookups = Task.gatherUnordered(lookups, exceptionCancels = true)
     gatheredLookups.flatMap{ lookupResults =>
-      val errors0 = errors ++ lookupResults.collect{case (modVer, -\/(repoErrors)) => modVer -> repoErrors}
+      val errors0 = errorCache ++ lookupResults.collect{case (modVer, -\/(repoErrors)) => modVer -> repoErrors}
       val newProjects = lookupResults.collect{case (modVer, \/-(proj)) => modVer -> proj}
 
       /*
@@ -588,12 +588,12 @@ case class Resolution(rootDependencies: Set[Dependency],
        * dependency management / inheritance-related bits to them.
        */
 
-      newProjects.foldLeft(Task.now(copy(errors = errors0))) { case (accTask, (modVer, (repo, proj))) =>
+      newProjects.foldLeft(Task.now(copy(errorCache = errors0))) { case (accTask, (modVer, (repo, proj))) =>
         for {
           current <- accTask
           updated <- current.fetch(current.dependencyManagementMissing(proj).toList, fetchModule)
           proj0 = updated.withDependencyManagement(proj)
-        } yield updated.copy(projectsCache = updated.projectsCache + (modVer -> (repo, proj0)))
+        } yield updated.copy(projectCache = updated.projectCache + (modVer -> (repo, proj0)))
       }
     }
   }
@@ -615,4 +615,17 @@ case class Resolution(rootDependencies: Set[Dependency],
 
   def minDependencies: Set[Dependency] =
     Orders.minDependencies(dependencies)
+
+  def artifacts: Seq[Artifact] =
+    for {
+      dep <- minDependencies.toSeq
+      (repo, proj) <- projectCache.get(dep.moduleVersion).toSeq
+      artifact <- repo.artifacts(dep, proj)
+    } yield artifact
+
+  def errors: Seq[(Dependency, Seq[String])] =
+    for {
+      dep <- dependencies.toSeq
+      err <- errorCache.get(dep.moduleVersion).toSeq
+    } yield (dep, err)
 }

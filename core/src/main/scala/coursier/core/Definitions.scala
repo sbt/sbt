@@ -70,6 +70,7 @@ case class Profile(id: String,
                    dependencyManagement: Seq[Dependency],
                    properties: Map[String, String])
 
+// FIXME Move to MavenRepository?
 case class Versions(latest: String,
                     release: String,
                     available: List[String],
@@ -77,4 +78,28 @@ case class Versions(latest: String,
 
 object Versions {
   case class DateTime(year: Int, month: Int, day: Int, hour: Int, minute: Int, second: Int)
+}
+
+case class Artifact(url: String,
+                    extra: Map[String, String],
+                    attributes: Attributes)
+
+object Artifact {
+  val md5 = "md5"
+  val sha1 = "sha1"
+  val sig = "pgp"
+  val sigMd5 = "md5-pgp"
+  val sigSha1 = "sha1-pgp"
+  val sources = "src"
+  val sourcesMd5 = "md5-src"
+  val sourcesSha1 = "sha1-src"
+  val sourcesSig = "src-pgp"
+  val sourcesSigMd5 = "md5-src-pgp"
+  val sourcesSigSha1 = "sha1-src-pgp"
+  val javadoc = "javadoc"
+  val javadocMd5 = "md5-javadoc"
+  val javadocSha1 = "sha1-javadoc"
+  val javadocSig = "javadoc-pgp"
+  val javadocSigMd5 = "md5-javadoc-pgp"
+  val javadocSigSha1 = "sha1-javadoc-pgp"
 }

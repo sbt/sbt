@@ -5,10 +5,9 @@ import java.io.File
 
 import caseapp._
 import coursier.core.{CachePolicy, Parse}
-import coursier.core.{ArtifactDownloaderLogger, RemoteLogger, ArtifactDownloader}
+import coursier.core.MetadataFetchLogger
 
 import scalaz.concurrent.Task
-import scalaz.{-\/, \/-}
 
 case class Coursier(scope: List[String],
                     keepOptional: Boolean,
@@ -20,13 +19,14 @@ case class Coursier(scope: List[String],
     else scope.map(Parse.scope)
   val scopes = scopes0.toSet
 
-  val centralCacheDir = new File(sys.props("user.home") + "/.coursier/cache/central")
+  val centralCacheDir = new File(sys.props("user.home") + "/.coursier/cache/metadata/central")
+  val centralFilesCacheDir = new File(sys.props("user.home") + "/.coursier/cache/files/central")
 
   val base = centralCacheDir.toURI
   def fileRepr(f: File) =
     base.relativize(f.toURI).getPath
 
-  val logger: RemoteLogger with ArtifactDownloaderLogger = new RemoteLogger with ArtifactDownloaderLogger {
+  val logger: MetadataFetchLogger with FilesLogger = new MetadataFetchLogger with FilesLogger {
     def println(s: String) = Console.err.println(s)
 
     def downloading(url: String) =
@@ -53,35 +53,36 @@ case class Coursier(scope: List[String],
       )
   }
 
-  val cachedMavenCentral = repository.mavenCentral.copy(cache = Some(centralCacheDir), logger = Some(logger))
+  val cachedMavenCentral = repository.mavenCentral.copy(
+    fetchMetadata = repository.mavenCentral.fetchMetadata.copy(
+      cache = Some(centralCacheDir),
+      logger = Some(logger)
+    )
+  )
   val repositories = Seq[Repository](
     cachedMavenCentral
   )
 
-  lazy val downloaders = Map[Repository, ArtifactDownloader](
-    cachedMavenCentral -> ArtifactDownloader(repository.mavenCentral.root, centralCacheDir, logger = Some(logger))
-  )
-
-  val (splitArtifacts, malformed) = remainingArgs.toList
+  val (splitDependencies, malformed) = remainingArgs.toList
     .map(_.split(":", 3).toSeq)
     .partition(_.length == 3)
 
-  if (splitArtifacts.isEmpty) {
-    Console.err.println("Usage: coursier artifacts...")
+  if (splitDependencies.isEmpty) {
+    Console.err.println("Usage: coursier dependencies...")
     sys exit 1
   }
 
   if (malformed.nonEmpty) {
-    Console.err.println(s"Malformed artifacts:\n${malformed.map(_.mkString(":")).mkString("\n")}")
+    Console.err.println(s"Malformed dependencies:\n${malformed.map(_.mkString(":")).mkString("\n")}")
     sys exit 1
   }
 
-  val modules = splitArtifacts.map{
+  val moduleVersions = splitDependencies.map{
     case Seq(org, name, version) =>
       (Module(org, name), version)
   }
 
-  val deps = modules.map{case (mod, ver) =>
+  val deps = moduleVersions.map{case (mod, ver) =>
     Dependency(mod, ver, scope = Scope.Runtime)
   }
 
@@ -99,7 +100,7 @@ case class Coursier(scope: List[String],
 
   def repr(dep: Dependency) = {
     // dep.version can be an interval, whereas the one from project can't
-    val version = res.projectsCache.get(dep.moduleVersion).map(_._2.version).getOrElse(dep.version)
+    val version = res.projectCache.get(dep.moduleVersion).map(_._2.version).getOrElse(dep.version)
     val extra =
       if (version == dep.version) ""
       else s" ($version for ${dep.version})"
@@ -116,11 +117,11 @@ case class Coursier(scope: List[String],
     println(s"${res.conflicts.size} conflict(s):\n  ${res.conflicts.toList.map(repr).sorted.mkString("  \n")}")
   }
 
-  val errDeps = trDeps.filter(dep => res.errors.contains(dep.moduleVersion))
-  if (errDeps.nonEmpty) {
-    println(s"${errDeps.size} error(s):")
-    for (dep <- errDeps) {
-      println(s"  ${dep.module}:\n    ${res.errors(dep.moduleVersion).mkString("\n").replace("\n", "    \n")}")
+  val errors = res.errors
+  if (errors.nonEmpty) {
+    println(s"${errors.size} error(s):")
+    for ((dep, errs) <- errors) {
+      println(s"  ${dep.module}:\n    ${errs.map("    " + _.replace("\n", "    \n")).mkString("\n")}")
     }
   }
 
@@ -129,38 +130,11 @@ case class Coursier(scope: List[String],
 
     val cachePolicy: CachePolicy = CachePolicy.Default
 
-    val m = res.minDependencies.groupBy(dep => res.projectsCache.get(dep.moduleVersion).map(_._1))
-    val (notFound, remaining0) = m.partition(_._1.isEmpty)
-    if (notFound.nonEmpty) {
-      val notFound0 = notFound.values.flatten.toList.map(repr).sorted
-      println(s"Not found:${notFound0.mkString("\n")}")
-    }
+    val artifacts = res.artifacts
 
-    val (remaining, downloaderNotFound) = remaining0.partition(t => downloaders.contains(t._1.get))
-    if (downloaderNotFound.nonEmpty) {
-      val downloaderNotFound0 = downloaderNotFound.values.flatten.toList.map(repr).sorted
-      println(s"Don't know how to download:${downloaderNotFound0.mkString("\n")}")
-    }
+    val files = new Files(Seq(cachedMavenCentral.fetchMetadata.root -> centralFilesCacheDir), () => ???, Some(logger))
 
-    val sorted = remaining
-      .toList
-      .map{ case (Some(repo), deps) => repo -> deps.toList.sortBy(repr) }
-      .sortBy(_._1.toString) // ...
-
-    val tasks =
-      for {
-        (repo, deps) <- sorted
-        dl = downloaders(repo)
-        dep <- deps
-        (_, proj) = res.projectsCache(dep.moduleVersion)
-      } yield {
-        dl.artifacts(dep, proj, cachePolicy = cachePolicy).map { results =>
-          val errorCount = results.count{case -\/(_) => true; case _ => false}
-          val resultsRepr = results.map(_.map(fileRepr).merge).map("  " + _).mkString("\n")
-          println(s"${repr(dep)} (${results.length} artifact(s)${if (errorCount > 0) s", $errorCount error(s)" else ""}):\n$resultsRepr")
-        }
-      }
-
+    val tasks = artifacts.map(files.file(_, cachePolicy).run)
     val task = Task.gatherUnordered(tasks)
 
     task.run

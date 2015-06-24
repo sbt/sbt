@@ -1,6 +1,6 @@
 package coursier.test
 
-import coursier.core.Remote
+import coursier.core.DefaultFetchMetadata
 
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.concurrent.Task
@@ -17,7 +17,7 @@ package object compatibility {
     def is = getClass.getClassLoader
       .getResource(path).openStream()
 
-    new String(Remote.readFullySync(is), "UTF-8")
+    new String(DefaultFetchMetadata.readFullySync(is), "UTF-8")
   }
 
 }
