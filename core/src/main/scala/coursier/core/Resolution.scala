@@ -330,7 +330,7 @@ object Resolution {
     val dependencies0 = dependencies.map(withDefaultScope)
 
     val startResolution = Resolution(
-      dependencies0, dependencies0, Set.empty,
+      dependencies0, Set.empty, Set.empty,
       Map.empty, Map.empty,
       filter,
       profileActivation
@@ -397,7 +397,7 @@ case class Resolution(rootDependencies: Set[Dependency],
    * Returns a tuple made of the conflicting dependencies, and all the dependencies.
    */
   def nextDependenciesAndConflicts: (Seq[Dependency], Seq[Dependency]) = {
-    merge(dependencies ++ transitiveDependencies)
+    merge(rootDependencies ++ dependencies ++ transitiveDependencies)
   }
 
   /**
