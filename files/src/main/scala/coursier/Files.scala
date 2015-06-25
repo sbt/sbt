@@ -2,7 +2,7 @@ package coursier
 
 import java.net.{URI, URL}
 
-import coursier.core.CachePolicy
+import coursier.core.Repository.CachePolicy
 
 import scala.annotation.tailrec
 import scalaz.{-\/, \/-, \/, EitherT}

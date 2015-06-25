@@ -40,9 +40,9 @@ case class Missing(missing: Seq[(Module, String)],
 
     def cont0(res: Resolution) = {
       val res0 = 
-        successes.foldLeft(res){case (acc, (modVer, (repo, proj))) =>
+        successes.foldLeft(res){case (acc, (modVer, (source, proj))) =>
           acc.copy(projectCache = acc.projectCache + (
-            modVer -> (repo, acc.withDependencyManagement(proj))
+            modVer -> (source, acc.withDependencyManagement(proj))
           ))
         }
       Continue(res0, cont)
@@ -82,7 +82,7 @@ object ResolutionProcess {
     else Missing(resolution0.missingFromCache.toSeq, resolution0, apply)
   }
 
-  type FetchResult = Seq[((Module, String), Seq[String] \/ (Repository, Project))]
+  type FetchResult = Seq[((Module, String), Seq[String] \/ (Artifact.Source, Project))]
   type Fetch[F[_]] = Seq[(Module, String)] => F[FetchResult]
 }
 

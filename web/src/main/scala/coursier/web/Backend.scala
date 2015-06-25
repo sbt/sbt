@@ -1,7 +1,7 @@
 package coursier
 package web
 
-import coursier.core.{DefaultFetchMetadata, Logger}
+import coursier.core.{Repository, MavenRepository, Fetch}
 import japgolly.scalajs.react.vdom.{TagMod, Attr}
 import japgolly.scalajs.react.vdom.Attrs.dangerouslySetInnerHtml
 import japgolly.scalajs.react.{ReactEventI, ReactComponentB, BackendScope}
@@ -18,7 +18,7 @@ case class ResolutionOptions(followOptional: Boolean = false,
                              keepTest: Boolean = false)
 
 case class State(modules: Seq[Dependency],
-                 repositories: Seq[MavenRepository[DefaultFetchMetadata]],
+                 repositories: Seq[MavenRepository],
                  options: ResolutionOptions,
                  resolutionOpt: Option[Resolution],
                  editModuleIdx: Int,
@@ -71,7 +71,13 @@ class Backend($: BackendScope[Unit, State]) {
 
   def updateTree(resolution: Resolution, target: String, reverse: Boolean) = {
     def depsOf(dep: Dependency) =
-      resolution.projectCache.get(dep.moduleVersion).toSeq.flatMap(t => core.Resolution.finalDependencies(dep, t._2).filter(resolution.filter getOrElse core.Resolution.defaultFilter))
+      resolution.projectCache
+        .get(dep.moduleVersion)
+        .toSeq
+        .flatMap{case (_, proj) =>
+          core.Resolution.finalDependencies(dep, proj)
+            .filter(resolution.filter getOrElse core.Resolution.defaultFilter)
+        }
 
     val minDependencies = resolution.minDependencies
 
@@ -105,7 +111,7 @@ class Backend($: BackendScope[Unit, State]) {
     g.$("#resLogTab a:last").tab("show")
     $.modState(_.copy(resolving = true, log = Nil))
 
-    val logger: Logger = new Logger {
+    val logger: Fetch.Logger = new Fetch.Logger {
       def fetched(url: String) = {
         println(s"Fetched $url")
         $.modState(s => s.copy(log = s"Fetched $url" +: s.log))
@@ -128,7 +134,7 @@ class Backend($: BackendScope[Unit, State]) {
       )
 
       ResolutionProcess(res)
-        .run(fetchSeveralFrom(s.repositories.map(r => r.copy(fetchMetadata = r.fetchMetadata.copy(logger = Some(logger))))), 100)
+        .run(Repository.fetchSeveralFrom(s.repositories.map(r => r.copy(fetch = r.fetch.copy(logger = Some(logger))))), 100)
     }
 
     // For reasons that are unclear to me, not delaying this when using the runNow execution context
@@ -239,8 +245,8 @@ object App {
           )),
          <.td(Seq[Seq[TagMod]](
            res.projectCache.get(dep.moduleVersion) match {
-             case Some((MavenRepository(fetchMetadata, _), _)) =>
-               // FIXME Maven specific, generalize if/when adding support for Ivy
+             case Some((source: MavenRepository.Source, proj)) if !source.ivyLike =>
+               // FIXME Maven specific, generalize with source.artifacts
                val version0 = finalVersionOpt getOrElse dep.version
                val relPath =
                  dep.module.organization.split('.').toSeq ++ Seq(
@@ -249,11 +255,13 @@ object App {
                    s"${dep.module.name}-$version0"
                  )
 
+               val root = source.root
+
                Seq(
-                 <.a(^.href := s"${fetchMetadata.root}${relPath.mkString("/")}.pom",
+                 <.a(^.href := s"$root${relPath.mkString("/")}.pom",
                    <.span(^.`class` := "label label-info", "POM")
                  ),
-                 <.a(^.href := s"${fetchMetadata.root}${relPath.mkString("/")}.jar",
+                 <.a(^.href := s"$root${relPath.mkString("/")}.jar",
                    <.span(^.`class` := "label label-info", "JAR")
                  )
                )
@@ -387,19 +395,19 @@ object App {
 
   val modules = dependenciesTable("Dependencies")
 
-  val repositories = ReactComponentB[Seq[MavenRepository[DefaultFetchMetadata]]]("Repositories")
+  val repositories = ReactComponentB[Seq[MavenRepository]]("Repositories")
     .render{ repos =>
-      def repoItem(repo: MavenRepository[DefaultFetchMetadata]) =
+      def repoItem(repo: MavenRepository) =
         <.tr(
           <.td(
-            <.a(^.href := repo.fetchMetadata.root,
-              repo.fetchMetadata.root
+            <.a(^.href := repo.fetch.root,
+              repo.fetch.root
             )
           )
         )
 
       val sortedRepos = repos
-        .sortBy(repo => repo.fetchMetadata.root)
+        .sortBy(repo => repo.fetch.root)
 
       <.table(^.`class` := "table",
         <.thead(
@@ -460,7 +468,7 @@ object App {
     }
     .build
 
-  val initialState = State(Nil, Seq(coursier.repository.mavenCentral), ResolutionOptions(), None, -1, resolving = false, reverseTree = false, log = Nil)
+  val initialState = State(Nil, Seq(Repository.mavenCentral), ResolutionOptions(), None, -1, resolving = false, reverseTree = false, log = Nil)
 
   val app = ReactComponentB[Unit]("Coursier")
     .initialState(initialState)

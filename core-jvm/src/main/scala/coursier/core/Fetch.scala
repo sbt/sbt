@@ -8,20 +8,15 @@ import scala.io.Codec
 import scalaz._, Scalaz._
 import scalaz.concurrent.Task
 
-trait MetadataFetchLogger {
-  def downloading(url: String): Unit
-  def downloaded(url: String, success: Boolean): Unit
-  def readingFromCache(f: File): Unit
-  def puttingInCache(f: File): Unit
-}
-
-case class DefaultFetchMetadata(root: String,
-                                cache: Option[File] = None,
-                                logger: Option[MetadataFetchLogger] = None) extends FetchMetadata {
+case class Fetch(root: String,
+                 cache: Option[File] = None,
+                 logger: Option[Fetch.Logger] = None) {
 
   val isLocal = root.startsWith("file:///")
 
-  def apply(artifact: Artifact, cachePolicy: CachePolicy): EitherT[Task, String, String] = {
+  def apply(artifact: Artifact,
+            cachePolicy: Repository.CachePolicy): EitherT[Task, String, String] = {
+
     def locally(eitherFile: String \/ File) = {
       Task {
         for {
@@ -49,7 +44,7 @@ case class DefaultFetchMetadata(root: String,
         val url = new URL(urlStr)
 
         def log = Task(logger.foreach(_.downloading(urlStr)))
-        def get = DefaultFetchMetadata.readFully(url.openStream())
+        def get = Fetch.readFully(url.openStream())
 
         log.flatMap(_ => get)
       }
@@ -75,7 +70,14 @@ case class DefaultFetchMetadata(root: String,
 
 }
 
-object DefaultFetchMetadata {
+object Fetch {
+
+  trait Logger {
+    def downloading(url: String): Unit
+    def downloaded(url: String, success: Boolean): Unit
+    def readingFromCache(f: File): Unit
+    def puttingInCache(f: File): Unit
+  }
 
   def readFullySync(is: InputStream) = {
     val buffer = new ByteArrayOutputStream()

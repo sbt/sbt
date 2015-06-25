@@ -1,5 +1,3 @@
-import scalaz.{ EitherT, \/ }
-import scalaz.concurrent.Task
 
 /**
  * Pulls definitions from coursier.core, with default arguments.
@@ -65,44 +63,17 @@ package object coursier {
   type Scope = core.Scope
   val Scope: core.Scope.type = core.Scope
 
-  type Repository = core.Repository
-
-  def fetchFrom(repositories: Seq[Repository]): ModuleVersion => EitherT[Task, Seq[String], (Repository, Project)] =
-    modVersion => core.Resolution.find(repositories, modVersion._1, modVersion._2)
-
-  def fetchSeveralFrom(repositories: Seq[Repository]): Seq[ModuleVersion] => Task[Seq[(ModuleVersion, Seq[String] \/ (Repository, Project))]] = {
-    val fetchOne = fetchFrom(repositories)
-    modVers =>
-      Task.gatherUnordered(modVers.map(modVer => fetchOne(modVer).run.map(modVer -> _)))
-  }
-
   type Resolution = core.Resolution
   object Resolution {
     val empty = apply()
     def apply(rootDependencies: Set[Dependency] = Set.empty,
               dependencies: Set[Dependency] = Set.empty,
               conflicts: Set[Dependency] = Set.empty,
-              projectCache: Map[ModuleVersion, (Repository, Project)] = Map.empty,
+              projectCache: Map[ModuleVersion, (Artifact.Source, Project)] = Map.empty,
               errorCache: Map[ModuleVersion, Seq[String]] = Map.empty,
               filter: Option[Dependency => Boolean] = None,
               profileActivation: Option[(String, Profile.Activation, Map[String, String]) => Boolean] = None): Resolution =
       core.Resolution(rootDependencies, dependencies, conflicts, projectCache, errorCache, filter, profileActivation)
-  }
-
-  def resolve(dependencies: Set[Dependency],
-              fetch: ModuleVersion => EitherT[Task, Seq[String], (Repository, Project)],
-              maxIterations: Option[Int] = Some(200),
-              filter: Option[Dependency => Boolean] = None,
-              profileActivation: Option[(String, Profile.Activation, Map[String, String]) => Boolean] = None): Task[Resolution] = {
-
-    val startResolution = Resolution(
-      dependencies, Set.empty, Set.empty,
-      Map.empty, Map.empty,
-      filter,
-      profileActivation
-    )
-
-    startResolution.last(fetch, maxIterations.getOrElse(-1))
   }
 
   type Artifact = core.Artifact
@@ -111,10 +82,9 @@ package object coursier {
               extra: Map[String, String] = Map.empty,
               attributes: Attributes = Attributes()): Artifact =
       core.Artifact(url, extra, attributes)
-  }
 
-  type MavenRepository[G <: core.FetchMetadata] = core.MavenRepository[G]
-  val MavenRepository: core.MavenRepository.type = core.MavenRepository
+    type Source = core.Artifact.Source
+  }
 
   type ResolutionProcess = core.ResolutionProcess
   val ResolutionProcess: core.ResolutionProcess.type = core.ResolutionProcess

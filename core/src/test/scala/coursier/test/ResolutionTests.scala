@@ -1,6 +1,7 @@
 package coursier
 package test
 
+import coursier.core.Repository
 import utest._
 import scala.async.Async.{async, await}
 
@@ -10,12 +11,12 @@ object ResolutionTests extends TestSuite {
 
   def resolve0(deps: Set[Dependency], filter: Option[Dependency => Boolean] = None) = {
     ResolutionProcess(Resolution(deps, filter = filter))
-      .run(fetchSeveralFrom(repositories))
+      .run(Repository.fetchSeveralFrom(repositories))
       .runF
   }
 
   implicit class ProjectOps(val p: Project) extends AnyVal {
-    def kv: (ModuleVersion, (Repository, Project)) = p.moduleVersion -> (testRepository, p)
+    def kv: (ModuleVersion, (Artifact.Source, Project)) = p.moduleVersion -> (testRepository.source, p)
   }
 
   val projects = Seq(
@@ -146,7 +147,7 @@ object ResolutionTests extends TestSuite {
   )
 
   val projectsMap = projects.map(p => p.moduleVersion -> p).toMap
-  val testRepository: Repository = new TestRepository(projectsMap)
+  val testRepository = new TestRepository(projectsMap)
 
   val repositories = Seq[Repository](
     testRepository
@@ -188,7 +189,7 @@ object ResolutionTests extends TestSuite {
         val expected = Resolution(
           rootDependencies = Set(dep),
           dependencies = Set(dep.withCompileScope),
-          projectCache = Map(dep.moduleVersion -> (testRepository, projectsMap(dep.moduleVersion)))
+          projectCache = Map(dep.moduleVersion -> (testRepository.source, projectsMap(dep.moduleVersion)))
         )
 
         assert(res == expected)

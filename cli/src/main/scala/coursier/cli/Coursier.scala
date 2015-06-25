@@ -4,15 +4,14 @@ package cli
 import java.io.File
 
 import caseapp._
-import coursier.core.{CachePolicy, Parse}
-import coursier.core.MetadataFetchLogger
+import coursier.core.{Fetch, Parse, Repository}, Repository.CachePolicy
 
 import scalaz.concurrent.Task
 
 case class Coursier(scope: List[String],
                     keepOptional: Boolean,
                     fetch: Boolean,
-                    verbose: List[Unit],
+                    @ExtraName("v") verbose: List[Unit],
                     @ExtraName("N") maxIterations: Int = 100) extends App {
 
   val verbose0 = verbose.length
@@ -27,48 +26,45 @@ case class Coursier(scope: List[String],
 
   def fileRepr(f: File) = f.toString
 
-  val logger: Option[MetadataFetchLogger with FilesLogger] =
-    if (verbose0 <= 1) None
-    else Some(
-      new MetadataFetchLogger with FilesLogger {
-        def println(s: String) = Console.err.println(s)
+  val logger: Fetch.Logger with FilesLogger =
+    new Fetch.Logger with FilesLogger {
+      def println(s: String) = Console.err.println(s)
 
-        def downloading(url: String) =
-          println(s"Downloading $url")
-        def downloaded(url: String, success: Boolean) =
-          println(
-            if (success) s"Downloaded $url"
-            else s"Failed to download $url"
-          )
-        def readingFromCache(f: File) = {
-          println(s"Reading ${fileRepr(f)} from cache")
-        }
-        def puttingInCache(f: File) =
-          println(s"Writing ${fileRepr(f)} in cache")
-
-        def foundLocally(f: File) =
-          println(s"Found locally ${fileRepr(f)}")
-        def downloadingArtifact(url: String) =
-          println(s"Downloading $url")
-        def downloadedArtifact(url: String, success: Boolean) =
-          println(
-            if (success) s"Downloaded $url"
-            else s"Failed to download $url"
-          )
+      def downloading(url: String) =
+        println(s"Downloading $url")
+      def downloaded(url: String, success: Boolean) =
+        println(
+          if (success) s"Downloaded $url"
+          else s"Failed to download $url"
+        )
+      def readingFromCache(f: File) = {
+        println(s"Reading ${fileRepr(f)} from cache")
       }
-    )
+      def puttingInCache(f: File) =
+        println(s"Writing ${fileRepr(f)} in cache")
 
-  val cachedMavenCentral = repository.mavenCentral.copy(
-    fetchMetadata = repository.mavenCentral.fetchMetadata.copy(
+      def foundLocally(f: File) =
+        println(s"Found locally ${fileRepr(f)}")
+      def downloadingArtifact(url: String) =
+        println(s"Downloading $url")
+      def downloadedArtifact(url: String, success: Boolean) =
+        println(
+          if (success) s"Downloaded $url"
+          else s"Failed to download $url"
+        )
+    }
+
+  val cachedMavenCentral = Repository.mavenCentral.copy(
+    fetch = Repository.mavenCentral.fetch.copy(
       cache = Some(centralCacheDir),
-      logger = logger
+      logger = if (verbose0 <= 1) None else Some(logger)
     )
   )
   val repositories = Seq[Repository](
     cachedMavenCentral,
-    repository.ivy2Local.copy(
-      fetchMetadata = repository.ivy2Local.fetchMetadata.copy(
-        logger = logger
+    Repository.ivy2Local.copy(
+      fetch = Repository.ivy2Local.fetch.copy(
+        logger = if (verbose0 <= 1) None else Some(logger)
       )
     )
   )
@@ -101,9 +97,9 @@ case class Coursier(scope: List[String],
     filter = Some(dep => (keepOptional || !dep.optional) && scopes(dep.scope))
   )
 
-  val fetchQuiet = fetchSeveralFrom(repositories)
+  val fetchQuiet = Repository.fetchSeveralFrom(repositories)
   val fetch0 =
-    if (verbose == 0) fetchQuiet
+    if (verbose0 == 0) fetchQuiet
     else {
       modVers: Seq[(Module, String)] =>
         val print = Task{
@@ -158,10 +154,10 @@ case class Coursier(scope: List[String],
 
     val files = new Files(
       Seq(
-        cachedMavenCentral.fetchMetadata.root -> centralFilesCacheDir
+        cachedMavenCentral.fetch.root -> centralFilesCacheDir
       ),
       () => ???,
-      logger
+      if (verbose0 <= 0) None else Some(logger)
     )
 
     val tasks = artifacts.map(files.file(_, cachePolicy).run)

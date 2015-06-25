@@ -1,6 +1,7 @@
 package coursier
 package test
 
+import coursier.core.Repository
 import utest._
 import scala.async.Async.{async, await}
 
@@ -9,12 +10,12 @@ import coursier.test.compatibility._
 object CentralTests extends TestSuite {
 
   val repositories = Seq[Repository](
-    repository.mavenCentral
+    Repository.mavenCentral
   )
 
   def resolve(deps: Set[Dependency], filter: Option[Dependency => Boolean] = None) = {
     ResolutionProcess(Resolution(deps, filter = filter))
-      .run(fetchSeveralFrom(repositories))
+      .run(Repository.fetchSeveralFrom(repositories))
       .runF
   }
 
@@ -83,7 +84,7 @@ object CentralTests extends TestSuite {
         assert(res == expected)
         assert(res0.projectCache.contains(dep.moduleVersion))
 
-        val (_, proj) = res0.projectCache(dep.moduleVersion)
+        val proj = res0.projectCache(dep.moduleVersion)._2
         assert(proj.version == "2.8")
       }
     }

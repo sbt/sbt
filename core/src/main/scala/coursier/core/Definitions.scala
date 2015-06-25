@@ -102,4 +102,9 @@ object Artifact {
   val javadocSig = "javadoc-pgp"
   val javadocSigMd5 = "md5-javadoc-pgp"
   val javadocSigSha1 = "sha1-javadoc-pgp"
+
+  trait Source {
+    def artifacts(dependency: Dependency,
+                  project: Project): Seq[Artifact]
+  }
 }

@@ -4,51 +4,11 @@ import java.util.regex.Pattern.quote
 
 import scala.annotation.tailrec
 import scala.collection.mutable
-import scalaz.concurrent.Task
-import scalaz.{EitherT, \/-, \/, -\/}
+import scalaz.{\/-, -\/}
 
 object Resolution {
 
   type ModuleVersion = (Module, String)
-
-  /**
-   * Try to find `module` among `repositories`.
-   *
-   * Look at `repositories` from the left, one-by-one, and stop at first success.
-   * Else, return all errors, in the same order.
-   *
-   * The `version` field of the returned `Project` in case of success may not be
-   * equal to the provided one, in case the latter is not a specific
-   * version (e.g. version interval). Which version get chosen depends on
-   * the repository implementation.
-   */
-  def find(repositories: Seq[Repository],
-           module: Module,
-           version: String): EitherT[Task, Seq[String], (Repository, Project)] = {
-
-    val lookups = repositories.map(repo => repo -> repo.find(module, version).run)
-    val task = lookups.foldLeft(Task.now(-\/(Nil)): Task[Seq[String] \/ (Repository, Project)]) {
-      case (acc, (repo, t)) =>
-        acc.flatMap {
-          case -\/(errors) =>
-            t.map(res => res
-              .flatMap(project =>
-                if (project.module == module) \/-((repo, project))
-                else -\/(s"Wrong module returned (expected: $module, got: ${project.module})")
-              )
-              .leftMap(error => error +: errors)
-            )
-
-          case res @ \/-(_) =>
-            Task.now(res)
-        }
-    }
-
-    EitherT(task.map(_.leftMap(_.reverse))).map { case x @ (_, proj) =>
-      assert(proj.module == module)
-      x
-    }
-  }
 
   /**
    * Get the active profiles of `project`, using the current properties `properties`,
@@ -328,7 +288,7 @@ object Resolution {
 case class Resolution(rootDependencies: Set[Dependency],
                       dependencies: Set[Dependency],
                       conflicts: Set[Dependency],
-                      projectCache: Map[Resolution.ModuleVersion, (Repository, Project)],
+                      projectCache: Map[Resolution.ModuleVersion, (Artifact.Source, Project)],
                       errorCache: Map[Resolution.ModuleVersion, Seq[String]],
                       filter: Option[Dependency => Boolean],
                       profileActivation: Option[(String, Activation, Map[String, String]) => Boolean]) {
@@ -467,15 +427,6 @@ case class Resolution(rootDependencies: Set[Dependency],
   }
 
   /**
-   * Do a new iteration, fetching the missing modules along the way.
-   */
-  def next(fetchModule: ModuleVersion => EitherT[Task, Seq[String], (Repository, Project)]): Task[Resolution] = {
-    val missing = missingFromCache
-    if (missing.isEmpty) Task.now(nextNoMissingUnsafe)
-    else fetch(missing.toList, fetchModule).map(_.nextIfNoMissing)
-  }
-
-  /**
    * Required modules for the dependency management of `project`.
    */
   def dependencyManagementRequirements(project: Project): Set[ModuleVersion] = {
@@ -575,56 +526,14 @@ case class Resolution(rootDependencies: Set[Dependency],
     )
   }
 
-  /**
-   * Fetch `modules` with `fetchModules`, and add the resulting errors and projects to the cache.
-   */
-  def fetch(modules: Seq[ModuleVersion],
-            fetchModule: ModuleVersion => EitherT[Task, Seq[String], (Repository, Project)]): Task[Resolution] = {
-
-    val lookups = modules.map(dep => fetchModule(dep).run.map(dep -> _))
-    val gatheredLookups = Task.gatherUnordered(lookups, exceptionCancels = true)
-    gatheredLookups.flatMap{ lookupResults =>
-      val errors0 = errorCache ++ lookupResults.collect{case (modVer, -\/(repoErrors)) => modVer -> repoErrors}
-      val newProjects = lookupResults.collect{case (modVer, \/-(proj)) => modVer -> proj}
-
-      /*
-       * newProjects are project definitions, fresh from the repositories. We need to add
-       * dependency management / inheritance-related bits to them.
-       */
-
-      newProjects.foldLeft(Task.now(copy(errorCache = errors0))) { case (accTask, (modVer, (repo, proj))) =>
-        for {
-          current <- accTask
-          updated <- current.fetch(current.dependencyManagementMissing(proj).toList, fetchModule)
-          proj0 = updated.withDependencyManagement(proj)
-        } yield updated.copy(projectCache = updated.projectCache + (modVer -> (repo, proj0)))
-      }
-    }
-  }
-
-  def last(fetchModule: ModuleVersion => EitherT[Task, Seq[String], (Repository, Project)], maxIterations: Int = -1): Task[Resolution] = {
-    if (maxIterations == 0 || isDone) Task.now(this)
-    else {
-      next(fetchModule)
-        .flatMap(_.last(fetchModule, if (maxIterations > 0) maxIterations - 1 else maxIterations))
-    }
-  }
-
-  def stream(fetchModule: ModuleVersion => EitherT[Task, Seq[String], (Repository, Project)], run: Task[Resolution] => Resolution): Stream[Resolution] = {
-    this #:: {
-      if (isDone) Stream.empty
-      else run(next(fetchModule)).stream(fetchModule, run)
-    }
-  }
-
   def minDependencies: Set[Dependency] =
     Orders.minDependencies(dependencies)
 
   def artifacts: Seq[Artifact] =
     for {
       dep <- minDependencies.toSeq
-      (repo, proj) <- projectCache.get(dep.moduleVersion).toSeq
-      artifact <- repo.artifacts(dep, proj)
+      (source, proj) <- projectCache.get(dep.moduleVersion).toSeq
+      artifact <- source.artifacts(dep, proj)
     } yield artifact
 
   def errors: Seq[(Dependency, Seq[String])] =
