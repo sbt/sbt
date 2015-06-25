@@ -70,7 +70,6 @@ case class Profile(id: String,
                    dependencyManagement: Seq[Dependency],
                    properties: Map[String, String])
 
-// FIXME Move to MavenRepository?
 case class Versions(latest: String,
                     release: String,
                     available: List[String],
