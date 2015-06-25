@@ -66,7 +66,7 @@ package object coursier {
     def process: ResolutionProcess = ResolutionProcess(underlying)
   }
 
-  def fetch(repositories: Seq[core.Repository]): ResolutionProcess.Fetch[Task] = {
+  implicit def fetch(repositories: Seq[core.Repository]): ResolutionProcess.Fetch[Task] = {
     modVers =>
       Task.gatherUnordered(
         modVers
