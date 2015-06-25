@@ -13,21 +13,23 @@ object CentralTests extends TestSuite {
     Repository.mavenCentral
   )
 
-  def resolve(deps: Set[Dependency], filter: Option[Dependency => Boolean] = None) = {
+  def resolve(deps: Set[Dependency], filter: Option[Dependency => Boolean] = None, extraRepo: Option[Repository] = None) = {
+    val repositories0 = extraRepo.toSeq ++ repositories
+
     ResolutionProcess(Resolution(deps, filter = filter))
-      .run(Repository.fetchSeveralFrom(repositories))
+      .run(Repository.fetchSeveralFrom(repositories0))
       .runF
   }
 
   def repr(dep: Dependency) =
     s"${dep.module.organization}:${dep.module.name}:${dep.attributes.`type`}:${Some(dep.attributes.classifier).filter(_.nonEmpty).map(_+":").mkString}${dep.version}"
 
-  def resolutionCheck(module: Module, version: String) =
+  def resolutionCheck(module: Module, version: String, extraRepo: Option[Repository] = None) =
     async {
       val expected = await(textResource(s"resolutions/${module.organization}:${module.name}:$version")).split('\n').toSeq
 
       val dep = Dependency(module, version)
-      val res = await(resolve(Set(dep)))
+      val res = await(resolve(Set(dep), extraRepo = extraRepo))
 
       val result = res.dependencies.toVector.map(repr).sorted.distinct
 
