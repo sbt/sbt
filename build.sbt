@@ -499,7 +499,8 @@ def otherRootSettings = Seq(
   Scripted.scriptedSource <<= (sourceDirectory in sbtProj) / "sbt-test",
   publishAll := {
     val _ = (publishLocal).all(ScopeFilter(inAnyProject)).value
-  }
+  },
+  aggregate in bintrayRelease := false
 ) ++ inConfig(Scripted.MavenResolverPluginTest)(Seq(
   Scripted.scripted <<= scriptedTask,
   Scripted.scriptedUnpublished <<= scriptedUnpublishedTask,
