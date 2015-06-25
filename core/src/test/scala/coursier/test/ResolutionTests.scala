@@ -10,8 +10,9 @@ import coursier.test.compatibility._
 object ResolutionTests extends TestSuite {
 
   def resolve0(deps: Set[Dependency], filter: Option[Dependency => Boolean] = None) = {
-    ResolutionProcess(Resolution(deps, filter = filter))
-      .run(Repository.fetchSeveralFrom(repositories))
+    Resolution(deps, filter = filter)
+      .process
+      .run(fetch(repositories))
       .runF
   }
 

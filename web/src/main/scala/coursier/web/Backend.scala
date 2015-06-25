@@ -133,8 +133,9 @@ class Backend($: BackendScope[Unit, State]) {
         filter = Some(dep => (s.options.followOptional || !dep.optional) && (s.options.keepTest || dep.scope != Scope.Test))
       )
 
-      ResolutionProcess(res)
-        .run(Repository.fetchSeveralFrom(s.repositories.map(r => r.copy(fetch = r.fetch.copy(logger = Some(logger))))), 100)
+      res
+        .process
+        .run(fetch(s.repositories.map(r => r.copy(fetch = r.fetch.copy(logger = Some(logger))))), 100)
     }
 
     // For reasons that are unclear to me, not delaying this when using the runNow execution context

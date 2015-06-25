@@ -1,6 +1,7 @@
+import scalaz.concurrent.Task
 
 /**
- * Pulls definitions from coursier.core, with default arguments.
+ * Pulls definitions from coursier.core, sometimes with default arguments.
  */
 package object coursier {
 
@@ -23,34 +24,10 @@ package object coursier {
   }
 
   type Project = core.Project
-  object Project {
-    def apply(module: Module,
-              version: String,
-              dependencies: Seq[Dependency] = Seq.empty,
-              parent: Option[ModuleVersion] = None,
-              dependencyManagement: Seq[Dependency] = Seq.empty,
-              properties: Map[String, String] = Map.empty,
-              profiles: Seq[Profile] = Seq.empty,
-              versions: Option[core.Versions] = None): Project =
-      core.Project(module, version, dependencies, parent, dependencyManagement, properties, profiles, versions)
-  }
+  val Project: core.Project.type = core.Project
 
   type Profile = core.Profile
-  object Profile {
-    type Activation = core.Activation
-    object Activation {
-      def apply(properties: Seq[(String, Option[String])] = Nil): Activation =
-        core.Activation(properties)
-    }
-
-    def apply(id: String,
-              activeByDefault: Option[Boolean] = None,
-              activation: Activation = Activation(),
-              dependencies: Seq[Dependency] = Nil,
-              dependencyManagement: Seq[Dependency] = Nil,
-              properties: Map[String, String] = Map.empty) =
-      core.Profile(id, activeByDefault, activation, dependencies, dependencyManagement, properties)
-  }
+  val Profile: core.Profile.type = core.Profile
 
   type Module = core.Module
   object Module {
@@ -63,6 +40,9 @@ package object coursier {
   type Scope = core.Scope
   val Scope: core.Scope.type = core.Scope
 
+  type Repository = core.Repository
+  val Repository: core.Repository.type = core.Repository
+
   type Resolution = core.Resolution
   object Resolution {
     val empty = apply()
@@ -72,20 +52,30 @@ package object coursier {
               projectCache: Map[ModuleVersion, (Artifact.Source, Project)] = Map.empty,
               errorCache: Map[ModuleVersion, Seq[String]] = Map.empty,
               filter: Option[Dependency => Boolean] = None,
-              profileActivation: Option[(String, Profile.Activation, Map[String, String]) => Boolean] = None): Resolution =
+              profileActivation: Option[(String, core.Activation, Map[String, String]) => Boolean] = None): Resolution =
       core.Resolution(rootDependencies, dependencies, conflicts, projectCache, errorCache, filter, profileActivation)
   }
 
   type Artifact = core.Artifact
-  object Artifact {
-    def apply(url: String,
-              extra: Map[String, String] = Map.empty,
-              attributes: Attributes = Attributes()): Artifact =
-      core.Artifact(url, extra, attributes)
-
-    type Source = core.Artifact.Source
-  }
+  val Artifact: core.Artifact.type = core.Artifact
 
   type ResolutionProcess = core.ResolutionProcess
   val ResolutionProcess: core.ResolutionProcess.type = core.ResolutionProcess
+
+  implicit class ResolutionExtensions(val underlying: Resolution) extends AnyVal {
+    def process: ResolutionProcess = ResolutionProcess(underlying)
+  }
+
+  def fetch(repositories: Seq[core.Repository]): ResolutionProcess.Fetch[Task] = {
+    modVers =>
+      Task.gatherUnordered(
+        modVers
+          .map(modVer =>
+            Repository.find(repositories, modVer._1, modVer._2)
+              .run
+              .map(modVer -> _)
+          )
+      )
+  }
+
 }

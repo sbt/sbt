@@ -11,13 +11,27 @@ sealed trait ResolutionProcess {
                (implicit F: Monad[F]): F[Resolution] = {
 
     if (maxIterations == 0) F.point(current)
-    else
+    else {
+      val maxIterations0 = if (maxIterations > 0) maxIterations - 1 else maxIterations
+
       this match {
         case Done(res) => F.point(res)
         case missing0 @ Missing(missing, _, _) =>
-          F.bind(fetch(missing))(result => missing0.next(result).run(fetch, if (maxIterations > 0) maxIterations - 1 else maxIterations))
-        case cont @ Continue(_, _) => cont.nextNoCont.run(fetch)
+          F.bind(fetch(missing))(result => missing0.next(result).run(fetch, maxIterations0))
+        case cont @ Continue(_, _) => cont.nextNoCont.run(fetch, maxIterations0)
       }
+    }
+  }
+
+  def next[F[_]](fetch: ResolutionProcess.Fetch[F])
+                (implicit F: Monad[F]): F[ResolutionProcess] = {
+
+    this match {
+      case Done(res) => F.point(this)
+      case missing0 @ Missing(missing, _, _) =>
+        F.map(fetch(missing))(result => missing0.next(result))
+      case cont @ Continue(_, _) => cont.nextNoCont.next(fetch)
+    }
   }
 
   def current: Resolution

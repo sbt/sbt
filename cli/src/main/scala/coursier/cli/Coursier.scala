@@ -97,7 +97,7 @@ case class Coursier(scope: List[String],
     filter = Some(dep => (keepOptional || !dep.optional) && scopes(dep.scope))
   )
 
-  val fetchQuiet = Repository.fetchSeveralFrom(repositories)
+  val fetchQuiet = coursier.fetch(repositories)
   val fetch0 =
     if (verbose0 == 0) fetchQuiet
     else {
@@ -109,7 +109,8 @@ case class Coursier(scope: List[String],
         print.flatMap(_ => fetchQuiet(modVers))
     }
 
-  val res = ResolutionProcess(startRes)
+  val res = startRes
+    .process
     .run(fetch0, maxIterations)
     .run
 

@@ -62,15 +62,6 @@ object Repository {
     }
   }
 
-  def fetchFrom(repositories: Seq[Repository]): ModuleVersion => EitherT[Task, Seq[String], (Artifact.Source, Project)] =
-    modVersion => find(repositories, modVersion._1, modVersion._2)
-
-  def fetchSeveralFrom(repositories: Seq[Repository]): Seq[ModuleVersion] => Task[Seq[(ModuleVersion, Seq[String] \/ (Artifact.Source, Project))]] = {
-    val fetchOne = fetchFrom(repositories)
-    modVers =>
-      Task.gatherUnordered(modVers.map(modVer => fetchOne(modVer).run.map(modVer -> _)))
-  }
-
   sealed trait CachePolicy {
     def apply[E,T](local: => Task[E \/ T])
                   (remote: => Task[E \/ T]): Task[E \/ T]

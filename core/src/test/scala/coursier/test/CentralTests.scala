@@ -16,8 +16,9 @@ object CentralTests extends TestSuite {
   def resolve(deps: Set[Dependency], filter: Option[Dependency => Boolean] = None, extraRepo: Option[Repository] = None) = {
     val repositories0 = extraRepo.toSeq ++ repositories
 
-    ResolutionProcess(Resolution(deps, filter = filter))
-      .run(Repository.fetchSeveralFrom(repositories0))
+    Resolution(deps, filter = filter)
+      .process
+      .run(fetch(repositories0))
       .runF
   }
 
