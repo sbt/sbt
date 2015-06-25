@@ -1,4 +1,4 @@
-import scalaz.EitherT
+import scalaz.{ EitherT, \/ }
 import scalaz.concurrent.Task
 
 /**
@@ -67,8 +67,14 @@ package object coursier {
 
   type Repository = core.Repository
 
-  def fetchFrom(repositories: Seq[Repository]): ModuleVersion => EitherT[Task, List[String], (Repository, Project)] =
+  def fetchFrom(repositories: Seq[Repository]): ModuleVersion => EitherT[Task, Seq[String], (Repository, Project)] =
     modVersion => core.Resolution.find(repositories, modVersion._1, modVersion._2)
+
+  def fetchSeveralFrom(repositories: Seq[Repository]): Seq[ModuleVersion] => Task[Seq[(ModuleVersion, Seq[String] \/ (Repository, Project))]] = {
+    val fetchOne = fetchFrom(repositories)
+    modVers =>
+      Task.gatherUnordered(modVers.map(modVer => fetchOne(modVer).run.map(modVer -> _)))
+  }
 
   type Resolution = core.Resolution
   object Resolution {
@@ -84,7 +90,7 @@ package object coursier {
   }
 
   def resolve(dependencies: Set[Dependency],
-              fetch: ModuleVersion => EitherT[Task, List[String], (Repository, Project)],
+              fetch: ModuleVersion => EitherT[Task, Seq[String], (Repository, Project)],
               maxIterations: Option[Int] = Some(200),
               filter: Option[Dependency => Boolean] = None,
               profileActivation: Option[(String, Profile.Activation, Map[String, String]) => Boolean] = None): Task[Resolution] = {
@@ -110,4 +116,6 @@ package object coursier {
   type MavenRepository[G <: core.FetchMetadata] = core.MavenRepository[G]
   val MavenRepository: core.MavenRepository.type = core.MavenRepository
 
+  type ResolutionProcess = core.ResolutionProcess
+  val ResolutionProcess: core.ResolutionProcess.type = core.ResolutionProcess
 }

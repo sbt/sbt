@@ -24,10 +24,10 @@ object Resolution {
    */
   def find(repositories: Seq[Repository],
            module: Module,
-           version: String): EitherT[Task, List[String], (Repository, Project)] = {
+           version: String): EitherT[Task, Seq[String], (Repository, Project)] = {
 
     val lookups = repositories.map(repo => repo -> repo.find(module, version).run)
-    val task = lookups.foldLeft(Task.now(-\/(Nil)): Task[List[String] \/ (Repository, Project)]) {
+    val task = lookups.foldLeft(Task.now(-\/(Nil)): Task[Seq[String] \/ (Repository, Project)]) {
       case (acc, (repo, t)) =>
         acc.flatMap {
           case -\/(errors) =>
@@ -36,7 +36,7 @@ object Resolution {
                 if (project.module == module) \/-((repo, project))
                 else -\/(s"Wrong module returned (expected: $module, got: ${project.module})")
               )
-              .leftMap(error => error :: errors)
+              .leftMap(error => error +: errors)
             )
 
           case res @ \/-(_) =>
@@ -456,16 +456,20 @@ case class Resolution(rootDependencies: Set[Dependency],
    * If no module info is missing, the next state of the resolution, which can be immediately calculated.
    * Else, the current resolution itself.
    */
-  def nextIfNoMissing: Resolution = {
+  @tailrec
+  final def nextIfNoMissing: Resolution = {
     val missing = missingFromCache
-    if (missing.isEmpty) nextNoMissingUnsafe
-    else this
+    if (missing.isEmpty) {
+      val next0 = nextNoMissingUnsafe
+      if (next0 == this) this
+      else next0.nextIfNoMissing
+    } else this
   }
 
   /**
    * Do a new iteration, fetching the missing modules along the way.
    */
-  def next(fetchModule: ModuleVersion => EitherT[Task, List[String], (Repository, Project)]): Task[Resolution] = {
+  def next(fetchModule: ModuleVersion => EitherT[Task, Seq[String], (Repository, Project)]): Task[Resolution] = {
     val missing = missingFromCache
     if (missing.isEmpty) Task.now(nextNoMissingUnsafe)
     else fetch(missing.toList, fetchModule).map(_.nextIfNoMissing)
@@ -575,7 +579,7 @@ case class Resolution(rootDependencies: Set[Dependency],
    * Fetch `modules` with `fetchModules`, and add the resulting errors and projects to the cache.
    */
   def fetch(modules: Seq[ModuleVersion],
-            fetchModule: ModuleVersion => EitherT[Task, List[String], (Repository, Project)]): Task[Resolution] = {
+            fetchModule: ModuleVersion => EitherT[Task, Seq[String], (Repository, Project)]): Task[Resolution] = {
 
     val lookups = modules.map(dep => fetchModule(dep).run.map(dep -> _))
     val gatheredLookups = Task.gatherUnordered(lookups, exceptionCancels = true)
@@ -598,7 +602,7 @@ case class Resolution(rootDependencies: Set[Dependency],
     }
   }
 
-  def last(fetchModule: ModuleVersion => EitherT[Task, List[String], (Repository, Project)], maxIterations: Int = -1): Task[Resolution] = {
+  def last(fetchModule: ModuleVersion => EitherT[Task, Seq[String], (Repository, Project)], maxIterations: Int = -1): Task[Resolution] = {
     if (maxIterations == 0 || isDone) Task.now(this)
     else {
       next(fetchModule)
@@ -606,7 +610,7 @@ case class Resolution(rootDependencies: Set[Dependency],
     }
   }
 
-  def stream(fetchModule: ModuleVersion => EitherT[Task, List[String], (Repository, Project)], run: Task[Resolution] => Resolution): Stream[Resolution] = {
+  def stream(fetchModule: ModuleVersion => EitherT[Task, Seq[String], (Repository, Project)], run: Task[Resolution] => Resolution): Stream[Resolution] = {
     this #:: {
       if (isDone) Stream.empty
       else run(next(fetchModule)).stream(fetchModule, run)

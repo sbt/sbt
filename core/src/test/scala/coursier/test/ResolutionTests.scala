@@ -8,6 +8,12 @@ import coursier.test.compatibility._
 
 object ResolutionTests extends TestSuite {
 
+  def resolve0(deps: Set[Dependency], filter: Option[Dependency => Boolean] = None) = {
+    ResolutionProcess(Resolution(deps, filter = filter))
+      .run(fetchSeveralFrom(repositories))
+      .runF
+  }
+
   implicit class ProjectOps(val p: Project) extends AnyVal {
     def kv: (ModuleVersion, (Repository, Project)) = p.moduleVersion -> (testRepository, p)
   }
@@ -149,10 +155,9 @@ object ResolutionTests extends TestSuite {
   val tests = TestSuite {
     'empty{
       async{
-        val res = await(resolve(
-          Set.empty,
-          fetchFrom(repositories)
-        ).runF)
+        val res = await(resolve0(
+          Set.empty
+        ))
 
         assert(res == Resolution.empty)
       }
@@ -160,10 +165,9 @@ object ResolutionTests extends TestSuite {
     'notFound{
       async {
         val dep = Dependency(Module("acme", "playy"), "2.4.0")
-        val res = await(resolve(
-          Set(dep),
-          fetchFrom(repositories)
-        ).runF)
+        val res = await(resolve0(
+          Set(dep)
+        ))
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -177,10 +181,9 @@ object ResolutionTests extends TestSuite {
     'single{
       async {
         val dep = Dependency(Module("acme", "config"), "1.3.0")
-        val res = await(resolve(
-          Set(dep),
-          fetchFrom(repositories)
-        ).runF)
+        val res = await(resolve0(
+          Set(dep)
+        ))
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -195,10 +198,9 @@ object ResolutionTests extends TestSuite {
       async {
         val dep = Dependency(Module("acme", "play"), "2.4.0")
         val trDep = Dependency(Module("acme", "play-json"), "2.4.0")
-        val res = await(resolve(
-          Set(dep),
-          fetchFrom(repositories)
-        ).runF)
+        val res = await(resolve0(
+          Set(dep)
+        ))
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -219,10 +221,9 @@ object ResolutionTests extends TestSuite {
           Dependency(Module("acme", "play-json"), "2.4.0"),
           Dependency(Module("acme", "config"), "1.3.0")
         )
-        val res = await(resolve(
-          Set(dep),
-          fetchFrom(repositories)
-        ).runF)
+        val res = await(resolve0(
+          Set(dep)
+        ))
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -244,10 +245,9 @@ object ResolutionTests extends TestSuite {
           Dependency(Module("acme", "play-json"), "2.4.0",
             exclusions = Set(("acme", "config")))
         )
-        val res = await(resolve(
-          Set(dep),
-          fetchFrom(repositories)
-        ).runF)
+        val res = await(resolve0(
+          Set(dep)
+        ))
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -269,10 +269,9 @@ object ResolutionTests extends TestSuite {
           Dependency(Module("acme", "play-json"), "2.4.0",
             exclusions = Set(("*", "config")))
         )
-        val res = await(resolve(
-          Set(dep),
-          fetchFrom(repositories)
-        ).runF)
+        val res = await(resolve0(
+          Set(dep)
+        ))
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -288,11 +287,10 @@ object ResolutionTests extends TestSuite {
     'filter{
       async {
         val dep = Dependency(Module("hudsucker", "mail"), "10.0")
-        val res = await(resolve(
+        val res = await(resolve0(
           Set(dep),
-          fetchFrom(repositories),
           filter = Some(_.scope == Scope.Compile)
-        ).runF).copy(filter = None)
+        )).copy(filter = None)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -312,11 +310,10 @@ object ResolutionTests extends TestSuite {
           Dependency(Module("acme", "play"), "2.4.0",
             exclusions = Set(("acme", "play-json")))
         )
-        val res = await(resolve(
+        val res = await(resolve0(
           Set(dep),
-          fetchFrom(repositories),
           filter = Some(_.scope == Scope.Compile)
-        ).runF).copy(filter = None, projectCache = Map.empty)
+        )).copy(filter = None, projectCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -332,11 +329,10 @@ object ResolutionTests extends TestSuite {
         val trDeps = Seq(
           Dependency(Module("org.gnu", "glib"), "13.4"),
           Dependency(Module("org.gnome", "desktop"), "7.0"))
-        val res = await(resolve(
+        val res = await(resolve0(
           Set(dep),
-          fetchFrom(repositories),
           filter = Some(_.scope == Scope.Compile)
-        ).runF).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+        )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -351,11 +347,10 @@ object ResolutionTests extends TestSuite {
         val dep = Dependency(Module("com.mailapp", "mail-client"), "2.1")
         val trDeps = Seq(
           Dependency(Module("gov.nsa", "secure-pgp"), "10.0", exclusions = Set(("*", "crypto"))))
-        val res = await(resolve(
+        val res = await(resolve0(
           Set(dep),
-          fetchFrom(repositories),
           filter = Some(_.scope == Scope.Compile)
-        ).runF).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+        )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -368,11 +363,10 @@ object ResolutionTests extends TestSuite {
     'depMgmtInParentDeps{
       async {
         val dep = Dependency(Module("com.thoughtworks.paranamer", "paranamer"), "2.6")
-        val res = await(resolve(
+        val res = await(resolve0(
           Set(dep),
-          fetchFrom(repositories),
           filter = Some(_.scope == Scope.Compile)
-        ).runF).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+        )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -387,11 +381,10 @@ object ResolutionTests extends TestSuite {
         val dep = Dependency(Module("com.github.dummy", "libb"), "0.3.3")
         val trDeps = Seq(
           Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))
-        val res = await(resolve(
+        val res = await(resolve0(
           Set(dep),
-          fetchFrom(repositories),
           filter = Some(_.scope == Scope.Compile)
-        ).runF).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+        )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -408,11 +401,10 @@ object ResolutionTests extends TestSuite {
             val dep = Dependency(Module("com.github.dummy", "libb"), version)
             val trDeps = Seq(
               Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))
-            val res = await(resolve(
+            val res = await(resolve0(
               Set(dep),
-              fetchFrom(repositories),
               filter = Some(_.scope == Scope.Compile)
-            ).runF).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+            )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
             val expected = Resolution(
               rootDependencies = Set(dep),
@@ -431,11 +423,10 @@ object ResolutionTests extends TestSuite {
         val dep = Dependency(Module("com.github.dummy", "libb"), "0.4.2")
         val trDeps = Seq(
           Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))
-        val res = await(resolve(
+        val res = await(resolve0(
           Set(dep),
-          fetchFrom(repositories),
           filter = Some(_.scope == Scope.Compile)
-        ).runF).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+        )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -453,11 +444,10 @@ object ResolutionTests extends TestSuite {
           Dependency(Module("an-org", "a-lib"), "1.0", exclusions = Set(("an-org", "a-name"))),
           Dependency(Module("an-org", "another-lib"), "1.0", optional = true),
           Dependency(Module("an-org", "a-name"), "1.0", optional = true))
-        val res = await(resolve(
+        val res = await(resolve0(
           Set(dep),
-          fetchFrom(repositories),
           filter = Some(_.scope == Scope.Compile)
-        ).runF).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+        )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -477,11 +467,10 @@ object ResolutionTests extends TestSuite {
           Dependency(Module("an-org", "a-lib"), "1.0", exclusions = Set(("an-org", "a-name"))),
           Dependency(Module("an-org", "another-lib"), "1.0", optional = true),
           Dependency(Module("an-org", "a-name"), "1.0", optional = true))
-        val res = await(resolve(
+        val res = await(resolve0(
           deps,
-          fetchFrom(repositories),
           filter = Some(_.scope == Scope.Compile)
-        ).runF).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+        )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = deps,

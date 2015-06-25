@@ -10,7 +10,7 @@ package object test {
   }
 
   def resolve(dependencies: Set[Dependency],
-              fetch: ModuleVersion => EitherT[Task, List[String], (Repository, Project)],
+              fetch: ModuleVersion => EitherT[Task, Seq[String], (Repository, Project)],
               maxIterations: Option[Int] = Some(200),
               filter: Option[Dependency => Boolean] = None,
               profileActivation: Option[(String, Profile.Activation, Map[String, String]) => Boolean] = None): Task[Resolution] = {

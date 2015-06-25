@@ -12,6 +12,12 @@ object CentralTests extends TestSuite {
     repository.mavenCentral
   )
 
+  def resolve(deps: Set[Dependency], filter: Option[Dependency => Boolean] = None) = {
+    ResolutionProcess(Resolution(deps, filter = filter))
+      .run(fetchSeveralFrom(repositories))
+      .runF
+  }
+
   def repr(dep: Dependency) =
     s"${dep.module.organization}:${dep.module.name}:${dep.attributes.`type`}:${Some(dep.attributes.classifier).filter(_.nonEmpty).map(_+":").mkString}${dep.version}"
 
@@ -20,7 +26,7 @@ object CentralTests extends TestSuite {
       val expected = await(textResource(s"resolutions/${module.organization}:${module.name}:$version")).split('\n').toSeq
 
       val dep = Dependency(module, version)
-      val res = await(resolve(Set(dep), fetchFrom(repositories)).runF)
+      val res = await(resolve(Set(dep)))
 
       val result = res.dependencies.toVector.map(repr).sorted.distinct
 
@@ -34,7 +40,7 @@ object CentralTests extends TestSuite {
     'logback{
       async {
         val dep = Dependency(Module("ch.qos.logback", "logback-classic"), "1.1.3")
-        val res = await(resolve(Set(dep), fetchFrom(repositories)).runF)
+        val res = await(resolve(Set(dep)))
           .copy(projectCache = Map.empty, errorCache = Map.empty) // No validating these here
 
         val expected = Resolution(
@@ -50,7 +56,7 @@ object CentralTests extends TestSuite {
     'asm{
       async {
         val dep = Dependency(Module("org.ow2.asm", "asm-commons"), "5.0.2")
-        val res = await(resolve(Set(dep), fetchFrom(repositories)).runF)
+        val res = await(resolve(Set(dep)))
           .copy(projectCache = Map.empty, errorCache = Map.empty) // No validating these here
 
         val expected = Resolution(
@@ -66,7 +72,7 @@ object CentralTests extends TestSuite {
     'jodaVersionInterval{
       async {
         val dep = Dependency(Module("joda-time", "joda-time"), "[2.2,2.8]")
-        val res0 = await(resolve(Set(dep), fetchFrom(repositories)).runF)
+        val res0 = await(resolve(Set(dep)))
         val res = res0.copy(projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(

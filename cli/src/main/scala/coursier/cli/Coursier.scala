@@ -12,7 +12,10 @@ import scalaz.concurrent.Task
 case class Coursier(scope: List[String],
                     keepOptional: Boolean,
                     fetch: Boolean,
+                    verbose: List[Unit],
                     @ExtraName("N") maxIterations: Int = 100) extends App {
+
+  val verbose0 = verbose.length
 
   val scopes0 =
     if (scope.isEmpty) List(Scope.Compile, Scope.Runtime)
@@ -24,44 +27,48 @@ case class Coursier(scope: List[String],
 
   def fileRepr(f: File) = f.toString
 
-  val logger: MetadataFetchLogger with FilesLogger = new MetadataFetchLogger with FilesLogger {
-    def println(s: String) = Console.err.println(s)
+  val logger: Option[MetadataFetchLogger with FilesLogger] =
+    if (verbose0 <= 1) None
+    else Some(
+      new MetadataFetchLogger with FilesLogger {
+        def println(s: String) = Console.err.println(s)
 
-    def downloading(url: String) =
-      println(s"Downloading $url")
-    def downloaded(url: String, success: Boolean) =
-      println(
-        if (success) s"Downloaded $url"
-        else s"Failed to download $url"
-      )
-    def readingFromCache(f: File) = {
-      println(s"Reading ${fileRepr(f)} from cache")
-    }
-    def puttingInCache(f: File) =
-      println(s"Writing ${fileRepr(f)} in cache")
+        def downloading(url: String) =
+          println(s"Downloading $url")
+        def downloaded(url: String, success: Boolean) =
+          println(
+            if (success) s"Downloaded $url"
+            else s"Failed to download $url"
+          )
+        def readingFromCache(f: File) = {
+          println(s"Reading ${fileRepr(f)} from cache")
+        }
+        def puttingInCache(f: File) =
+          println(s"Writing ${fileRepr(f)} in cache")
 
-    def foundLocally(f: File) =
-      println(s"Found locally ${fileRepr(f)}")
-    def downloadingArtifact(url: String) =
-      println(s"Downloading $url")
-    def downloadedArtifact(url: String, success: Boolean) =
-      println(
-        if (success) s"Downloaded $url"
-        else s"Failed to download $url"
-      )
-  }
+        def foundLocally(f: File) =
+          println(s"Found locally ${fileRepr(f)}")
+        def downloadingArtifact(url: String) =
+          println(s"Downloading $url")
+        def downloadedArtifact(url: String, success: Boolean) =
+          println(
+            if (success) s"Downloaded $url"
+            else s"Failed to download $url"
+          )
+      }
+    )
 
   val cachedMavenCentral = repository.mavenCentral.copy(
     fetchMetadata = repository.mavenCentral.fetchMetadata.copy(
       cache = Some(centralCacheDir),
-      logger = Some(logger)
+      logger = logger
     )
   )
   val repositories = Seq[Repository](
     cachedMavenCentral,
     repository.ivy2Local.copy(
       fetchMetadata = repository.ivy2Local.fetchMetadata.copy(
-        logger = Some(logger)
+        logger = logger
       )
     )
   )
@@ -71,7 +78,7 @@ case class Coursier(scope: List[String],
     .partition(_.length == 3)
 
   if (splitDependencies.isEmpty) {
-    Console.err.println("Usage: coursier dependencies...")
+    CaseApp.printUsage[Coursier]()
     sys exit 1
   }
 
@@ -94,7 +101,21 @@ case class Coursier(scope: List[String],
     filter = Some(dep => (keepOptional || !dep.optional) && scopes(dep.scope))
   )
 
-  val res = startRes.last(fetchFrom(repositories), maxIterations).run
+  val fetchQuiet = fetchSeveralFrom(repositories)
+  val fetch0 =
+    if (verbose == 0) fetchQuiet
+    else {
+      modVers: Seq[(Module, String)] =>
+        val print = Task{
+          println(s"Getting ${modVers.length} project definition(s)")
+        }
+
+        print.flatMap(_ => fetchQuiet(modVers))
+    }
+
+  val res = ResolutionProcess(startRes)
+    .run(fetch0, maxIterations)
+    .run
 
   if (!res.isDone) {
     Console.err.println(s"Maximum number of iteration reached!")
@@ -140,7 +161,7 @@ case class Coursier(scope: List[String],
         cachedMavenCentral.fetchMetadata.root -> centralFilesCacheDir
       ),
       () => ???,
-      Some(logger)
+      logger
     )
 
     val tasks = artifacts.map(files.file(_, cachePolicy).run)
