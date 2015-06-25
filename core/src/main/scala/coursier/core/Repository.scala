@@ -66,7 +66,7 @@ object Repository {
         Artifact.javadoc -> (base + "-javadoc.jar"),
         Artifact.javadocSigMd5 -> (base + "-javadoc.jar.asc.md5"),
         Artifact.javadocSigSha1 -> (base + "-javadoc.jar.asc.sha1"),
-        Artifact.javadocSig -> (base + "-javadoc.asc.jar")
+        Artifact.javadocSig -> (base + "-javadoc.jar.asc")
       ))
     }
   }
@@ -83,27 +83,35 @@ case class MavenRepository[F <: FetchMetadata](fetchMetadata: F,
 
   import Repository._
 
+  def ivyLikePath(org: String, name: String, version: String, subDir: String, baseSuffix: String, ext: String) = Seq(
+    org,
+    name,
+    version,
+    subDir,
+    s"$name$baseSuffix.$ext"
+  )
+
   def projectArtifact(module: Module, version: String): Artifact = {
-    if (ivyLike) ???
-    else {
-      val path = (
+    val path = (
+      if (ivyLike)
+        ivyLikePath(module.organization, module.name, version, "poms", "", "pom")
+      else
         module.organization.split('.').toSeq ++ Seq(
           module.name,
           version,
           s"${module.name}-$version.pom"
         )
-      ) .map(encodeURIComponent)
+    ) .map(encodeURIComponent)
 
-      Artifact(
-        path.mkString("/"),
-        Map(
-          Artifact.md5 -> "",
-          Artifact.sha1 -> ""
-        ),
-        Attributes("pom", "")
-      )
-      .withDefaultSignature
-    }
+    Artifact(
+      path.mkString("/"),
+      Map(
+        Artifact.md5 -> "",
+        Artifact.sha1 -> ""
+      ),
+      Attributes("pom", "")
+    )
+    .withDefaultSignature
   }
 
   def versionsArtifact(module: Module): Option[Artifact] =
@@ -202,12 +210,18 @@ case class MavenRepository[F <: FetchMetadata](fetchMetadata: F,
   def artifacts(dependency: Dependency,
                 project: Project): Seq[Artifact] = {
 
+    def ivyLikePath0(subDir: String, baseSuffix: String, ext: String) =
+      ivyLikePath(dependency.module.organization, dependency.module.name, project.version, subDir, baseSuffix, ext)
+
     val path =
-      dependency.module.organization.split('.').toSeq ++ Seq(
-        dependency.module.name,
-        project.version,
-        s"${dependency.module.name}-${project.version}${Some(dependency.attributes.classifier).filter(_.nonEmpty).map("-"+_).mkString}.${dependency.attributes.`type`}"
-      )
+      if (ivyLike)
+        ivyLikePath0(dependency.attributes.`type` + "s", "", dependency.attributes.`type`)
+      else
+        dependency.module.organization.split('.').toSeq ++ Seq(
+          dependency.module.name,
+          project.version,
+          s"${dependency.module.name}-${project.version}${Some(dependency.attributes.classifier).filter(_.nonEmpty).map("-"+_).mkString}.${dependency.attributes.`type`}"
+        )
 
     var artifact =
       Artifact(
@@ -217,10 +231,31 @@ case class MavenRepository[F <: FetchMetadata](fetchMetadata: F,
       )
       .withDefaultChecksums
 
-    if (dependency.attributes.`type` == "jar")
-      artifact = artifact
-        .withDefaultSignature
-        .withJavadocSources
+    if (dependency.attributes.`type` == "jar") {
+      artifact = artifact.withDefaultSignature
+
+      artifact =
+        if (ivyLike) {
+          val srcPath = fetchMetadata.root + ivyLikePath0("srcs", "-sources", "jar").mkString("/")
+          val javadocPath = fetchMetadata.root + ivyLikePath0("docs", "-javadoc", "jar").mkString("/")
+
+          artifact
+            .copy(extra = artifact.extra ++ Map(
+              Artifact.sourcesMd5 -> (srcPath + ".md5"),
+              Artifact.sourcesSha1 -> (srcPath + ".sha1"),
+              Artifact.sources -> srcPath,
+              Artifact.sourcesSigMd5 -> (srcPath + ".asc.md5"),
+              Artifact.sourcesSigSha1 -> (srcPath + ".asc.sha1"),
+              Artifact.sourcesSig -> (srcPath + ".asc"),
+              Artifact.javadocMd5 -> (javadocPath + ".md5"),
+              Artifact.javadocSha1 -> (javadocPath + ".sha1"),
+              Artifact.javadoc -> javadocPath,
+              Artifact.javadocSigMd5 -> (javadocPath + ".asc.md5"),
+              Artifact.javadocSigSha1 -> (javadocPath + ".asc.sha1"),
+              Artifact.javadocSig -> (javadocPath + ".asc")
+            ))
+        } else artifact.withJavadocSources
+    }
 
     Seq(artifact)
   }

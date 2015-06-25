@@ -22,9 +22,7 @@ case class Coursier(scope: List[String],
   val centralCacheDir = new File(sys.props("user.home") + "/.coursier/cache/metadata/central")
   val centralFilesCacheDir = new File(sys.props("user.home") + "/.coursier/cache/files/central")
 
-  val base = centralCacheDir.toURI
-  def fileRepr(f: File) =
-    base.relativize(f.toURI).getPath
+  def fileRepr(f: File) = f.toString
 
   val logger: MetadataFetchLogger with FilesLogger = new MetadataFetchLogger with FilesLogger {
     def println(s: String) = Console.err.println(s)
@@ -60,7 +58,12 @@ case class Coursier(scope: List[String],
     )
   )
   val repositories = Seq[Repository](
-    cachedMavenCentral
+    cachedMavenCentral,
+    repository.ivy2Local.copy(
+      fetchMetadata = repository.ivy2Local.fetchMetadata.copy(
+        logger = Some(logger)
+      )
+    )
   )
 
   val (splitDependencies, malformed) = remainingArgs.toList
@@ -132,7 +135,13 @@ case class Coursier(scope: List[String],
 
     val artifacts = res.artifacts
 
-    val files = new Files(Seq(cachedMavenCentral.fetchMetadata.root -> centralFilesCacheDir), () => ???, Some(logger))
+    val files = new Files(
+      Seq(
+        cachedMavenCentral.fetchMetadata.root -> centralFilesCacheDir
+      ),
+      () => ???,
+      Some(logger)
+    )
 
     val tasks = artifacts.map(files.file(_, cachePolicy).run)
     val task = Task.gatherUnordered(tasks)

@@ -2,7 +2,7 @@ package coursier
 package core
 
 import java.io._
-import java.net.URL
+import java.net.{URI, URL}
 
 import scala.io.Codec
 import scalaz._, Scalaz._
@@ -19,18 +19,13 @@ case class DefaultFetchMetadata(root: String,
                                 cache: Option[File] = None,
                                 logger: Option[MetadataFetchLogger] = None) extends FetchMetadata {
 
-  def apply(artifact: Artifact, cachePolicy: CachePolicy): EitherT[Task, String, String] = {
-    lazy val localFile = {
-      for {
-        cache0 <- cache.toRightDisjunction("No cache")
-        f = new File(cache0, artifact.url)
-      } yield f
-    }
+  val isLocal = root.startsWith("file:///")
 
-    def locally = {
+  def apply(artifact: Artifact, cachePolicy: CachePolicy): EitherT[Task, String, String] = {
+    def locally(eitherFile: String \/ File) = {
       Task {
         for {
-          f0 <- localFile
+          f0 <- eitherFile
           f <- Some(f0).filter(_.exists()).toRightDisjunction("Not found in cache")
           content <- \/.fromTryCatchNonFatal{
             logger.foreach(_.readingFromCache(f))
@@ -40,32 +35,42 @@ case class DefaultFetchMetadata(root: String,
       }
     }
 
-    def remote = {
-      val urlStr = root + artifact.url
-      val url = new URL(urlStr)
+    if (isLocal) EitherT(locally(\/-(new File(new URI(root + artifact.url) .getPath))))
+    else {
+      lazy val localFile = {
+        for {
+          cache0 <- cache.toRightDisjunction("No cache")
+          f = new File(cache0, artifact.url)
+        } yield f
+      }
 
-      def log = Task(logger.foreach(_.downloading(urlStr)))
-      def get = DefaultFetchMetadata.readFully(url.openStream())
+      def remote = {
+        val urlStr = root + artifact.url
+        val url = new URL(urlStr)
 
-      log.flatMap(_ => get)
-    }
+        def log = Task(logger.foreach(_.downloading(urlStr)))
+        def get = DefaultFetchMetadata.readFully(url.openStream())
 
-    def save(s: String) = {
-      localFile.fold(_ => Task.now(()), f =>
-        Task {
-          if (!f.exists()) {
-            logger.foreach(_.puttingInCache(f))
-            f.getParentFile.mkdirs()
-            val w = new PrintWriter(f)
-            try w.write(s)
-            finally w.close()
-            ()
+        log.flatMap(_ => get)
+      }
+
+      def save(s: String) = {
+        localFile.fold(_ => Task.now(()), f =>
+          Task {
+            if (!f.exists()) {
+              logger.foreach(_.puttingInCache(f))
+              f.getParentFile.mkdirs()
+              val w = new PrintWriter(f)
+              try w.write(s)
+              finally w.close()
+              ()
+            }
           }
-        }
-      )
-    }
+        )
+      }
 
-    EitherT(cachePolicy.saving(locally)(remote)(save))
+      EitherT(cachePolicy.saving(locally(localFile))(remote)(save))
+    }
   }
 
 }
