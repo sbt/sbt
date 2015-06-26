@@ -11,8 +11,11 @@ libraryDependencies +=
 Then,
 ```scala
 import coursier._
+
+// Cache for metadata can be setup here, see cli/src/main/scala/coursier/Coursier.scala
 val repositories = Seq(
-  repository.mavenCentral
+  Repository.ivy2Local,
+  Repository.mavenCentral
 )
 
 val dependencies = Set(
@@ -22,23 +25,40 @@ val dependencies = Set(
 
 
 val resolution =
-  resolve(dependencies, fetchFrom(repositories)).run
+  Resolution(dependencies)
+    .process
+    .run(repositories)
+    .run
+
+// Note that only metadata are downloaded during resolution
 
 assert(resolution.isDone) // Check that resolution converged
 
-// Printing the results
-for (dep <- resolution.dependencies if resolution.projectsCache.contains(dep.moduleVersion))
-  println(resolution.projectsCache(dep.moduleVersion))
-for (dep <- resolution.dependencies if resolution.errors.contains(dep.moduleVersion))
-  println(resolution.errors(dep.moduleVersion))
+// Errors in
+resolution.errors // Seq[(Dependency, Seq[String])], the Seq[String] contains the errors returned by each repository
 
-// Downloading them
-import coursier.core.ArtifactDownloader
+// Artifact URLs in
+resolution.artifacts // Seq[Artifact]
+// Artifact has in particular a field  url: String
 
-val dl = ArtifactDownloader(repository.mavenCentral.root, new java.io.File("cache"))
-for (dep <- resolution.dependencies if resolution.projectsCache.contains(dep.moduleVersion))
-  dl.artifact(dep).run.run match {
-    case -\/(err) => println(s"Failed to download ${dep.moduleVersion}: $err")
-    case \/-(file) => println(s"${dep.moduleVersion}: $file")
+
+// Now if we want to download or cache the artifacts, add in build.sbt
+//   "com.github.alexarchambault" %% "coursier-files" % "0.1.0-SNAPSHOT"
+
+val files = Files(
+  Seq(),
+  () => ???, // TODO Tmp directory for URLs with no cache
+  Some(logger) // Optional,  logger: FilesLogger
+)
+
+val cachePolicy = Repository.CachePolicy.Default
+
+for (artifact <- artifacts)
+  files.file(artifact, cachePolicy).run match {
+    case -\/(err) => // Download failed,  err: String
+    case \/-(file) => // Success,  file: java.io.File
   }
+
+// Artifacts can be downloaded in parallel thanks to Task.gatherUnordered
+// See the example in cli/src/main/scala/coursier/Coursier.scala
 ```
