@@ -26,11 +26,13 @@ val dependencies = Set(
 
 val resolution =
   Resolution(dependencies)
-    .process
-    .run(repositories)
-    .run
+    .process           // Process ADT, allows to go from a Resolution to the next
+    .run(repositories) // Running the process, fetching metadata from these repositories
+    .run               // Run the Task[Resolution], and get the resulting Resolution
 
 // Note that only metadata are downloaded during resolution
+// Repositories use scalaz Task-s. Thus the line .run(repositories) implicitily
+//   runs the resolution process within Task-s. Alternative monads could run the process too.
 
 assert(resolution.isDone) // Check that resolution converged
 
@@ -46,7 +48,10 @@ resolution.artifacts // Seq[Artifact]
 //   "com.github.alexarchambault" %% "coursier-files" % "0.1.0-SNAPSHOT"
 
 val files = Files(
-  Seq(),
+  Seq(
+    Repository.mavenCentral.fetch.root -> // URL with this prefix cached in directory:
+      new java.io.File(sys.props("user.home") + "/.coursier/cache/central/files")
+  ),
   () => ???, // TODO Tmp directory for URLs with no cache
   Some(logger) // Optional,  logger: FilesLogger
 )

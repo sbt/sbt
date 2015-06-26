@@ -19,13 +19,19 @@ object Fetch {
 
   lazy val jsonpAvailable = !js.isUndefined(g.jsonp)
 
+  val timeout = 
+    if (jsonpAvailable)
+      10000 // Browser - better to have it > 5000 for complex resolutions
+    else
+      4000  // Node - tests crash if not < 5000
+
   /** Available if we're running on node, and package xhr2 is installed */
   lazy val xhr = g.require("xhr2")
   def xhrReq() =
     js.Dynamic.newInstance(xhr)().asInstanceOf[XMLHttpRequest]
 
   def fetchTimeout(target: String, p: Promise[_]) =
-    setTimeout(5000) {
+    setTimeout(timeout) {
       if (!p.isCompleted) {
         p.failure(new Exception(s"Timeout when fetching $target"))
       }
@@ -84,11 +90,17 @@ case class Fetch(root: String,
   def apply(artifact: Artifact,
             cachePolicy: Repository.CachePolicy): EitherT[Task, String, String] = {
 
+    val url0 = root + artifact.url
+
     EitherT(
       Task { implicit ec =>
-        Fetch.get(root + artifact.url)
-          .map(\/-(_))
-          .recover{case e: Exception => -\/(e.getMessage)}
+        Future(logger.foreach(_.fetching(url0)))
+          .flatMap(_ => Fetch.get(url0))
+          .map{ s => logger.foreach(_.fetched(url0)); \/-(s) }
+          .recover{case e: Exception =>
+            logger.foreach(_.other(url0, e.getMessage))
+            -\/(e.getMessage)
+          }
       }
     )
   }

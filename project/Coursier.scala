@@ -57,7 +57,6 @@ object CoursierBuild extends Build {
 
   lazy val commonSettings = Seq[Setting[_]](
     organization := "com.github.alexarchambault",
-    version := "0.1.0-SNAPSHOT",
     scalaVersion := "2.11.6",
     crossScalaVersions := Seq("2.10.5", "2.11.6"),
     resolvers += "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases"
