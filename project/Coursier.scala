@@ -151,4 +151,14 @@ object CoursierBuild extends Build {
     )
     .enablePlugins(ScalaJSPlugin)
 
+  lazy val root = Project(id = "root", base = file("."))
+    .aggregate(coreJvm, coreJs, files, cli, web)
+    .settings(commonSettings: _*)
+    .settings(
+      (unmanagedSourceDirectories in Compile) := Nil,
+      (unmanagedSourceDirectories in Test) := Nil,
+      publish := (),
+      publishLocal := ()
+    )
+
 }
