@@ -84,11 +84,17 @@ case class Fetch(root: String,
   def apply(artifact: Artifact,
             cachePolicy: Repository.CachePolicy): EitherT[Task, String, String] = {
 
+    val url0 = root + artifact.url
+
     EitherT(
       Task { implicit ec =>
-        Fetch.get(root + artifact.url)
-          .map(\/-(_))
-          .recover{case e: Exception => -\/(e.getMessage)}
+        Future(logger.foreach(_.fetching(url0)))
+          .flatMap(_ => Fetch.get(url0))
+          .map{ s => logger.foreach(_.fetched(url0)); \/-(s) }
+          .recover{case e: Exception =>
+            logger.foreach(_.other(url0, e.getMessage))
+            -\/(e.getMessage)
+          }
       }
     )
   }
