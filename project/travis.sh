@@ -39,7 +39,7 @@ SBT_COMMANDS="$SBT_COMMANDS core-jvm/test core-js/test"
 
 PUSH_GHPAGES=0
 if isNotPr && isJdk7 && isMaster; then
-  SBT_COMMANDS="$SBT_COMMANDS core-jvm/publish core-js/publish cli/publish"
+  SBT_COMMANDS="$SBT_COMMANDS core-jvm/publish core-js/publish files/publish cli/publish"
 fi
 
 if isNotPr && isJdk7 && isMasterOrDevelop; then
