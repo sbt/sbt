@@ -5,7 +5,6 @@ import utest._
 import scalaz._
 
 import coursier.core.Xml
-import coursier.Profile.Activation
 import coursier.core.compatibility._
 
 object PomParsingTests extends TestSuite {
@@ -34,7 +33,7 @@ object PomParsingTests extends TestSuite {
         </profile>
                        """
 
-      val expected = \/-(Profile("profile1", None, Activation(Nil), Nil, Nil, Map.empty))
+      val expected = \/-(Profile("profile1", None, Profile.Activation(Nil), Nil, Nil, Map.empty))
 
       val result = Xml.profile(xmlParse(profileNode).right.get)
 
@@ -49,7 +48,7 @@ object PomParsingTests extends TestSuite {
         </profile>
                        """
 
-      val expected = \/-(Profile("", Some(true), Activation(Nil), Nil, Nil, Map.empty))
+      val expected = \/-(Profile("", Some(true), Profile.Activation(Nil), Nil, Nil, Map.empty))
 
       val result = Xml.profile(xmlParse(profileNode).right.get)
 
@@ -65,7 +64,7 @@ object PomParsingTests extends TestSuite {
         </profile>
                        """
 
-      val expected = \/-(Profile("profile1", Some(true), Activation(Nil), Nil, Nil, Map.empty))
+      val expected = \/-(Profile("profile1", Some(true), Profile.Activation(Nil), Nil, Nil, Map.empty))
 
       val result = Xml.profile(xmlParse(profileNode).right.get)
 
@@ -88,7 +87,7 @@ object PomParsingTests extends TestSuite {
       val expected = \/-(Profile(
         "profile1",
         None,
-        Activation(Nil),
+        Profile.Activation(Nil),
         Seq(
           Dependency(Module("comp", "lib"), "0.2")),
         Nil,
@@ -119,7 +118,7 @@ object PomParsingTests extends TestSuite {
       val expected = \/-(Profile(
         "profile1",
         None,
-        Activation(Nil),
+        Profile.Activation(Nil),
         Nil,
         Seq(
           Dependency(Module("comp", "lib"), "0.2", scope = Scope.Test)),
@@ -143,7 +142,7 @@ object PomParsingTests extends TestSuite {
       val expected = \/-(Profile(
         "profile1",
         None,
-        Activation(Nil),
+        Profile.Activation(Nil),
         Nil,
         Nil,
         Map("first.prop" -> "value1")

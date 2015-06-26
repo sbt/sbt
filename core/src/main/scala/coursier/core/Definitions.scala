@@ -70,7 +70,6 @@ case class Profile(id: String,
                    dependencyManagement: Seq[Dependency],
                    properties: Map[String, String])
 
-// FIXME Move to MavenRepository?
 case class Versions(latest: String,
                     release: String,
                     available: List[String],
@@ -102,4 +101,9 @@ object Artifact {
   val javadocSig = "javadoc-pgp"
   val javadocSigMd5 = "md5-javadoc-pgp"
   val javadocSigSha1 = "sha1-javadoc-pgp"
+
+  trait Source {
+    def artifacts(dependency: Dependency,
+                  project: Project): Seq[Artifact]
+  }
 }

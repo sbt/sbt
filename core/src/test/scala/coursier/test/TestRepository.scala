@@ -1,16 +1,18 @@
 package coursier
 package test
 
-import coursier.core.{Versions, CachePolicy}
+import coursier.core._
 
-import scalaz.{-\/, \/, EitherT}
+import scalaz.EitherT
 import scalaz.concurrent.Task
 import scalaz.Scalaz._
 
 class TestRepository(projects: Map[(Module, String), Project]) extends Repository {
-  def find(module: Module, version: String, cachePolicy: CachePolicy) =
+  val source = new core.Artifact.Source {
+    def artifacts(dependency: Dependency, project: Project) = ???
+  }
+  def find(module: Module, version: String, cachePolicy: Repository.CachePolicy) =
     EitherT(Task.now(
-      projects.get((module, version)).toRightDisjunction("Not found")
+      projects.get((module, version)).map((source, _)).toRightDisjunction("Not found")
     ))
-  def artifacts(dependency: Dependency, project: Project): Seq[Artifact] = ???
 }

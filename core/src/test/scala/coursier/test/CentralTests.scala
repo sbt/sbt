@@ -1,6 +1,7 @@
 package coursier
 package test
 
+import coursier.core.Repository
 import utest._
 import scala.async.Async.{async, await}
 
@@ -9,18 +10,27 @@ import coursier.test.compatibility._
 object CentralTests extends TestSuite {
 
   val repositories = Seq[Repository](
-    repository.mavenCentral
+    Repository.mavenCentral
   )
+
+  def resolve(deps: Set[Dependency], filter: Option[Dependency => Boolean] = None, extraRepo: Option[Repository] = None) = {
+    val repositories0 = extraRepo.toSeq ++ repositories
+
+    Resolution(deps, filter = filter)
+      .process
+      .run(fetch(repositories0))
+      .runF
+  }
 
   def repr(dep: Dependency) =
     s"${dep.module.organization}:${dep.module.name}:${dep.attributes.`type`}:${Some(dep.attributes.classifier).filter(_.nonEmpty).map(_+":").mkString}${dep.version}"
 
-  def resolutionCheck(module: Module, version: String) =
+  def resolutionCheck(module: Module, version: String, extraRepo: Option[Repository] = None) =
     async {
       val expected = await(textResource(s"resolutions/${module.organization}:${module.name}:$version")).split('\n').toSeq
 
       val dep = Dependency(module, version)
-      val res = await(resolve(Set(dep), fetchFrom(repositories)).runF)
+      val res = await(resolve(Set(dep), extraRepo = extraRepo))
 
       val result = res.dependencies.toVector.map(repr).sorted.distinct
 
@@ -34,7 +44,7 @@ object CentralTests extends TestSuite {
     'logback{
       async {
         val dep = Dependency(Module("ch.qos.logback", "logback-classic"), "1.1.3")
-        val res = await(resolve(Set(dep), fetchFrom(repositories)).runF)
+        val res = await(resolve(Set(dep)))
           .copy(projectCache = Map.empty, errorCache = Map.empty) // No validating these here
 
         val expected = Resolution(
@@ -50,7 +60,7 @@ object CentralTests extends TestSuite {
     'asm{
       async {
         val dep = Dependency(Module("org.ow2.asm", "asm-commons"), "5.0.2")
-        val res = await(resolve(Set(dep), fetchFrom(repositories)).runF)
+        val res = await(resolve(Set(dep)))
           .copy(projectCache = Map.empty, errorCache = Map.empty) // No validating these here
 
         val expected = Resolution(
@@ -66,7 +76,7 @@ object CentralTests extends TestSuite {
     'jodaVersionInterval{
       async {
         val dep = Dependency(Module("joda-time", "joda-time"), "[2.2,2.8]")
-        val res0 = await(resolve(Set(dep), fetchFrom(repositories)).runF)
+        val res0 = await(resolve(Set(dep)))
         val res = res0.copy(projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
@@ -77,7 +87,7 @@ object CentralTests extends TestSuite {
         assert(res == expected)
         assert(res0.projectCache.contains(dep.moduleVersion))
 
-        val (_, proj) = res0.projectCache(dep.moduleVersion)
+        val proj = res0.projectCache(dep.moduleVersion)._2
         assert(proj.version == "2.8")
       }
     }

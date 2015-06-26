@@ -12,7 +12,7 @@ import js.Dynamic.{global => g}
 
 import scala.scalajs.js.timers._
 
-object DefaultFetchMetadata {
+object Fetch {
 
   def encodeURIComponent(s: String): String =
     g.encodeURIComponent(s).asInstanceOf[String]
@@ -70,25 +70,27 @@ object DefaultFetchMetadata {
       p.future
     }
 
+  trait Logger {
+    def fetching(url: String): Unit
+    def fetched(url: String): Unit
+    def other(url: String, msg: String): Unit
+  }
+
 }
 
-trait Logger {
-  def fetching(url: String): Unit
-  def fetched(url: String): Unit
-  def other(url: String, msg: String): Unit
-}
+case class Fetch(root: String,
+                 logger: Option[Fetch.Logger] = None) {
 
-case class DefaultFetchMetadata(root: String,
-                              logger: Option[Logger] = None) extends FetchMetadata {
   def apply(artifact: Artifact,
-            cachePolicy: CachePolicy): EitherT[Task, String, String] = {
+            cachePolicy: Repository.CachePolicy): EitherT[Task, String, String] = {
 
     EitherT(
       Task { implicit ec =>
-        DefaultFetchMetadata.get(root + artifact.url)
+        Fetch.get(root + artifact.url)
           .map(\/-(_))
           .recover{case e: Exception => -\/(e.getMessage)}
       }
     )
   }
+
 }
