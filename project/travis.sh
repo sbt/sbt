@@ -34,7 +34,7 @@ else
   SBT_COMMANDS="compile"
 fi
 
-SBT_COMMANDS="$SBT_COMMANDS publish-local" # Required for ~/.ivy2/local repo tests
+sbt ++2.11.6 core-jvm/publish-local # Required for ~/.ivy2/local repo tests
 SBT_COMMANDS="$SBT_COMMANDS core-jvm/test core-js/test"
 
 PUSH_GHPAGES=0
