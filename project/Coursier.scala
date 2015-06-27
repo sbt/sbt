@@ -106,7 +106,7 @@ object CoursierBuild extends Build {
     .settings(
       name := "coursier-files",
       libraryDependencies ++= Seq(
-        "org.http4s" %% "http4s-blazeclient" % "0.8.2",
+        // "org.http4s" %% "http4s-blazeclient" % "0.8.2",
         "com.lihaoyi" %% "utest" % "0.3.0" % "test"
       ),
       testFrameworks += new TestFramework("utest.runner.Framework")
