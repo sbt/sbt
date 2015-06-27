@@ -4,7 +4,7 @@ import java.util.regex.Pattern.quote
 
 import scala.annotation.tailrec
 import scala.collection.mutable
-import scalaz.{\/-, -\/}
+import scalaz.{ \/-, -\/ }
 
 object Resolution {
 
@@ -14,9 +14,11 @@ object Resolution {
    * Get the active profiles of `project`, using the current properties `properties`,
    * and `profileActivation` stating if a profile is active.
    */
-  def profiles(project: Project,
-               properties: Map[String, String],
-               profileActivation: (String, Activation, Map[String, String]) => Boolean): Seq[Profile] = {
+  def profiles(
+    project: Project,
+    properties: Map[String, String],
+    profileActivation: (String, Activation, Map[String, String]) => Boolean
+  ): Seq[Profile] = {
 
     val activated = project.profiles
       .filter(p => profileActivation(p.id, p.activation, properties))
@@ -28,26 +30,36 @@ object Resolution {
     else activated
   }
 
-  type DepMgmtKey = (String, String, String)
-  def dependencyManagementKey(dep: Dependency): DepMgmtKey =
-    (dep.module.organization, dep.module.name, dep.attributes.`type`)
-  def dependencyManagementAdd(m: Map[DepMgmtKey, Dependency], dep: Dependency): Map[DepMgmtKey, Dependency] = {
-    val key = dependencyManagementKey(dep)
-    if (m.contains(key)) m else m + (key -> dep)
-  }
-  def dependencyManagementAddSeq(m: Map[DepMgmtKey, Dependency], deps: Seq[Dependency]): Map[DepMgmtKey, Dependency] =
-    (m /: deps)(dependencyManagementAdd)
+  object DepMgmt {
+    type Key = (String, String, String)
 
-  def mergeProperties(m: Map[String, String], other: Map[String, String]): Map[String, String] = {
-    m ++ other.filterKeys(!m.contains(_))
+    def key(dep: Dependency): Key =
+      (dep.module.organization, dep.module.name, dep.attributes.`type`)
+
+    def add(dict: Map[Key, Dependency], dep: Dependency): Map[Key, Dependency] = {
+      val key0 = key(dep)
+      if (dict.contains(key0))
+        dict
+      else
+        dict + (key0 -> dep)
+    }
+
+    def addSeq(dict: Map[Key, Dependency], deps: Seq[Dependency]): Map[Key, Dependency] =
+      (dict /: deps)(add)
+  }
+
+  def mergeProperties(dict: Map[String, String], other: Map[String, String]): Map[String, String] = {
+    dict ++ other.filterKeys(!dict.contains(_))
   }
 
   def addDependencies(deps: Seq[Seq[Dependency]]): Seq[Dependency] = {
     val res =
-      deps.foldRight((Set.empty[DepMgmtKey], Seq.empty[Dependency])) {
+      deps.foldRight((Set.empty[DepMgmt.Key], Seq.empty[Dependency])) {
         case (deps0, (set, acc)) =>
-          val deps = deps0.filter(dep => !set(dependencyManagementKey(dep)))
-          (set ++ deps.map(dependencyManagementKey), acc ++ deps)
+          val deps = deps0
+            .filter(dep => !set(DepMgmt.key(dep)))
+
+          (set ++ deps.map(DepMgmt.key), acc ++ deps)
       }
 
     res._2
@@ -58,38 +70,49 @@ object Resolution {
   /**
    * Substitutes `properties` in `dependencies`.
    */
-  def withProperties(dependencies: Seq[Dependency],
-                     properties: Map[String, String]): Seq[Dependency] = {
+  def withProperties(
+    dependencies: Seq[Dependency],
+    properties: Map[String, String]
+  ): Seq[Dependency] = {
 
     def substituteProps(s: String) = {
-      val matches = propRegex.findAllMatchIn(s).toList.reverse
+      val matches = propRegex
+        .findAllMatchIn(s)
+        .toList
+        .reverse
+
       if (matches.isEmpty) s
       else {
-        val output = (new StringBuilder(s) /: matches) {
-          (b, m) => properties.get(m.group(1)).fold(b)(b.replace(m.start, m.end, _))
-        }
+        val output =
+          (new StringBuilder(s) /: matches) { (b, m) =>
+            properties
+              .get(m.group(1))
+              .fold(b)(b.replace(m.start, m.end, _))
+          }
+
         output.result()
       }
     }
 
-    dependencies.map{ dep =>
-      dep.copy(
-        module = dep.module.copy(
-          organization = substituteProps(dep.module.organization),
-          name = substituteProps(dep.module.name)
-        ),
-        version = substituteProps(dep.version),
-        attributes = dep.attributes.copy(
-          `type` = substituteProps(dep.attributes.`type`),
-          classifier = substituteProps(dep.attributes.classifier)
-        ),
-        scope = Parse.scope(substituteProps(dep.scope.name)),
-        exclusions = dep.exclusions
-          .map{case (org, name) => (substituteProps(org), substituteProps(name))}
-        // FIXME The content of the optional tag may also be a property in the original POM.
-        // Maybe not parse it that earlier?
-      )
-    }
+    dependencies
+      .map{ dep =>
+        dep.copy(
+          module = dep.module.copy(
+            organization = substituteProps(dep.module.organization),
+            name = substituteProps(dep.module.name)
+          ),
+          version = substituteProps(dep.version),
+          attributes = dep.attributes.copy(
+            `type` = substituteProps(dep.attributes.`type`),
+            classifier = substituteProps(dep.attributes.classifier)
+          ),
+          scope = Parse.scope(substituteProps(dep.scope.name)),
+          exclusions = dep.exclusions
+            .map{case (org, name) => (substituteProps(org), substituteProps(name))}
+          // FIXME The content of the optional tag may also be a property in the original POM.
+          // Maybe not parse it that earlier?
+        )
+      }
   }
 
   /**
@@ -117,25 +140,37 @@ object Resolution {
    * Merge several dependencies, solving version constraints of duplicated modules.
    * Returns the conflicted dependencies, and the (merged) others.
    */
-  def merge(dependencies: TraversableOnce[Dependency]): (Seq[Dependency], Seq[Dependency]) = {
-    val m = dependencies
+  def merge(
+    dependencies: TraversableOnce[Dependency]
+  ): (Seq[Dependency], Seq[Dependency]) = {
+    val mergedByModVer = dependencies
       .toList
       .groupBy(dep => dep.module)
-      .mapValues{ deps =>
+      .mapValues { deps =>
         if (deps.lengthCompare(1) == 0) \/-(deps)
         else {
           val versions = deps.map(_.version).distinct
           val versionOpt = mergeVersions(versions)
 
           versionOpt match {
-            case Some(version) => \/-(deps.map(dep => dep.copy(version = version)))
-            case None => -\/(deps)
+            case Some(version) =>
+              \/-(deps.map(dep => dep.copy(version = version)))
+            case None =>
+              -\/(deps)
           }
         }
       }
 
-    val l = m.values.toList
-    (l.collect{case -\/(dep) => dep}.flatten, l.collect{case \/-(dep) => dep}.flatten)
+    val merged = mergedByModVer.values.toList
+
+    (
+      merged
+        .collect{case -\/(dep) => dep}
+        .flatten,
+      merged
+        .collect{case \/-(dep) => dep}
+        .flatten
+    )
   }
 
   /**
@@ -145,8 +180,10 @@ object Resolution {
    *
    * See https://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html#Dependency_Scope.
    */
-  def resolveScope(base: Scope,
-                   transitive: Scope): Option[Scope] =
+  def resolveScope(
+    base: Scope,
+    transitive: Scope
+  ): Option[Scope] =
     (base, transitive) match {
       case (Scope.Compile, other) => Some(other)
       case (Scope.Runtime, Scope.Compile) => Some(Scope.Runtime)
@@ -159,40 +196,47 @@ object Resolution {
    *
    * Fill empty version / scope / exclusions, for dependencies found in `dependencyManagement`.
    */
-  def depsWithDependencyManagement(dependencies: Seq[Dependency],
-                                   dependencyManagement: Seq[Dependency]): Seq[Dependency] = {
+  def depsWithDependencyManagement(
+    dependencies: Seq[Dependency],
+    dependencyManagement: Seq[Dependency]
+  ): Seq[Dependency] = {
 
     // See http://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html#Dependency_Management
 
-    lazy val m = dependencyManagementAddSeq(Map.empty, dependencyManagement)
+    lazy val dict = DepMgmt.addSeq(Map.empty, dependencyManagement)
 
-    dependencies.map { dep0 =>
-      var dep = dep0
+    dependencies
+      .map { dep0 =>
+        var dep = dep0
 
-      for (mgmtDep <- m.get(dependencyManagementKey(dep0))) {
-        if (dep.version.isEmpty)
-          dep = dep.copy(version = mgmtDep.version)
-        if (dep.scope.name.isEmpty)
-          dep = dep.copy(scope = mgmtDep.scope)
+        for (mgmtDep <- dict.get(DepMgmt.key(dep0))) {
+          if (dep.version.isEmpty)
+            dep = dep.copy(version = mgmtDep.version)
+          if (dep.scope.name.isEmpty)
+            dep = dep.copy(scope = mgmtDep.scope)
 
-        if (dep.exclusions.isEmpty)
-          dep = dep.copy(exclusions = mgmtDep.exclusions)
+          if (dep.exclusions.isEmpty)
+            dep = dep.copy(exclusions = mgmtDep.exclusions)
+        }
+        
+        dep
       }
-      
-      dep
-    }
   }
 
 
   def withDefaultScope(dep: Dependency): Dependency =
-    if (dep.scope.name.isEmpty) dep.copy(scope = Scope.Compile)
-    else dep
+    if (dep.scope.name.isEmpty)
+      dep.copy(scope = Scope.Compile)
+    else
+      dep
 
   /**
    * Filters `dependencies` with `exclusions`.
    */
-  def withExclusions(dependencies: Seq[Dependency],
-                     exclusions: Set[(String, String)]): Seq[Dependency] = {
+  def withExclusions(
+    dependencies: Seq[Dependency],
+    exclusions: Set[(String, String)]
+  ): Seq[Dependency] = {
 
     val filter = Exclusions(exclusions)
 
@@ -210,8 +254,10 @@ object Resolution {
    * Substitute properties, update scopes, apply exclusions, and get extra parameters from
    * dependency management along the way.
    */
-  def finalDependencies(from: Dependency,
-                        project: Project): Seq[Dependency] = {
+  def finalDependencies(
+    from: Dependency,
+    project: Project
+  ): Seq[Dependency] = {
 
     // Here, we're substituting properties also in dependencies that come from parents
     // or dependency management. This may not be the right thing to do.
@@ -228,8 +274,9 @@ object Resolution {
     val deps =
       withExclusions(
         depsWithDependencyManagement(
-          // important: properties have to be applied to both, so that dep mgmt can be matched properly
-          // See the added test with org.ow2.asm:asm-commons:5.0.2
+          // Important: properties have to be applied to both,
+          //   so that dep mgmt can be matched properly
+          // Tested with org.ow2.asm:asm-commons:5.0.2 in CentralTests
           withProperties(project.dependencies, properties),
           withProperties(project.dependencyManagement, properties)
         ),
@@ -237,19 +284,22 @@ object Resolution {
       )
       .map(withDefaultScope)
 
-    deps.flatMap { trDep =>
-      resolveScope(from.scope, trDep.scope)
-        .map(scope => trDep.copy(scope = scope, optional = trDep.optional || from.optional))
-    }
+    deps
+      .flatMap { trDep =>
+        resolveScope(from.scope, trDep.scope)
+          .map(scope => trDep.copy(scope = scope, optional = trDep.optional || from.optional))
+      }
   }
 
   /**
    * Default function checking whether a profile is active, given its id, activation conditions,
    * and the properties of its project.
    */
-  def defaultProfileActivation(id: String,
-                               activation: Activation,
-                               props: Map[String, String]): Boolean = {
+  def defaultProfileActivation(
+    id: String,
+    activation: Activation,
+    props: Map[String, String]
+  ): Boolean = {
 
     if (activation.properties.isEmpty) false
     else {
@@ -285,24 +335,31 @@ object Resolution {
  * @param projectCache: cache of known projects
  * @param errorCache: keeps track of the modules whose project definition could not be found
  */
-case class Resolution(rootDependencies: Set[Dependency],
-                      dependencies: Set[Dependency],
-                      conflicts: Set[Dependency],
-                      projectCache: Map[Resolution.ModuleVersion, (Artifact.Source, Project)],
-                      errorCache: Map[Resolution.ModuleVersion, Seq[String]],
-                      filter: Option[Dependency => Boolean],
-                      profileActivation: Option[(String, Activation, Map[String, String]) => Boolean]) {
+case class Resolution(
+  rootDependencies: Set[Dependency],
+  dependencies: Set[Dependency],
+  conflicts: Set[Dependency],
+  projectCache: Map[Resolution.ModuleVersion, (Artifact.Source, Project)],
+  errorCache: Map[Resolution.ModuleVersion, Seq[String]],
+  filter: Option[Dependency => Boolean],
+  profileActivation: Option[(String, Activation, Map[String, String]) => Boolean]
+) {
+
   import Resolution._
 
-  private val finalDependenciesCache = new mutable.HashMap[Dependency, Seq[Dependency]]()
-  private def finalDependencies0(dep: Dependency) = finalDependenciesCache.synchronized {
-    finalDependenciesCache.getOrElseUpdate(dep,
-      projectCache.get(dep.moduleVersion) match {
-        case Some((_, proj)) => finalDependencies(dep, proj).filter(filter getOrElse defaultFilter)
-        case None => Nil
-      }
-    )
-  }
+  private val finalDependenciesCache =
+    new mutable.HashMap[Dependency, Seq[Dependency]]()
+  private def finalDependencies0(dep: Dependency) =
+    finalDependenciesCache.synchronized {
+      finalDependenciesCache.getOrElseUpdate(dep,
+        projectCache.get(dep.moduleVersion) match {
+          case Some((_, proj)) =>
+            finalDependencies(dep, proj)
+              .filter(filter getOrElse defaultFilter)
+          case None => Nil
+        }
+      )
+    }
 
   /**
    * Transitive dependencies of the current dependencies, according to what there currently is in cache.
@@ -322,9 +379,11 @@ case class Resolution(rootDependencies: Set[Dependency],
    *
    * Returns a tuple made of the conflicting dependencies, and all the dependencies.
    */
-  def nextDependenciesAndConflicts: (Seq[Dependency], Seq[Dependency]) = {
-    merge(rootDependencies.map(withDefaultScope) ++ dependencies ++ transitiveDependencies)
-  }
+  def nextDependenciesAndConflicts: (Seq[Dependency], Seq[Dependency]) =
+    merge(
+      rootDependencies.map(withDefaultScope) ++ dependencies ++
+      transitiveDependencies
+    )
 
   /**
    * The modules we miss some info about.
@@ -344,7 +403,9 @@ case class Resolution(rootDependencies: Set[Dependency],
   def isDone: Boolean = {
     def isFixPoint = {
       val (nextConflicts, _) = nextDependenciesAndConflicts
-      dependencies == (newDependencies ++ nextConflicts) && conflicts == nextConflicts.toSet
+
+      dependencies == (newDependencies ++ nextConflicts) &&
+        conflicts == nextConflicts.toSet
     }
 
     missingFromCache.isEmpty && isFixPoint
@@ -366,13 +427,15 @@ case class Resolution(rootDependencies: Set[Dependency],
         trDep <- finalDependencies0(dep)
       } yield eraseVersion(trDep) -> eraseVersion(dep)
 
-    val knownDeps = (updatedDeps ++ updatedConflicts).map(eraseVersion).toSet
+    val knownDeps = (updatedDeps ++ updatedConflicts)
+      .map(eraseVersion)
+      .toSet
 
     trDepsSeq
       .groupBy(_._1)
       .mapValues(_.map(_._2).toVector)
       .filterKeys(knownDeps)
-      .toList.toMap // Eagerly evaluate filterKeys/mapValues
+      .toVector.toMap // Eagerly evaluate filterKeys/mapValues
   }
 
   /**
@@ -382,14 +445,30 @@ case class Resolution(rootDependencies: Set[Dependency],
    * The versions of all the dependencies returned are erased (emptied).
    */
   def remainingDependencies: Set[Dependency] = {
-    val rootDependencies0 = rootDependencies.map(withDefaultScope).map(eraseVersion)
+    val rootDependencies0 = rootDependencies
+      .map(withDefaultScope)
+      .map(eraseVersion)
 
     @tailrec
-    def helper(reverseDeps: Map[Dependency, Vector[Dependency]]): Map[Dependency, Vector[Dependency]] = {
-      val (toRemove, remaining) = reverseDeps.partition(kv => kv._2.isEmpty && !rootDependencies0(kv._1))
+    def helper(
+      reverseDeps: Map[Dependency, Vector[Dependency]]
+    ): Map[Dependency, Vector[Dependency]] = {
 
-      if (toRemove.isEmpty) reverseDeps
-      else helper(remaining.mapValues(_.filter(x => remaining.contains(x) || rootDependencies0(x))).toList.toMap)
+      val (toRemove, remaining) = reverseDeps
+        .partition(kv => kv._2.isEmpty && !rootDependencies0(kv._1))
+
+      if (toRemove.isEmpty)
+        reverseDeps
+      else
+        helper(
+          remaining
+            .mapValues(broughtBy =>
+              broughtBy
+                .filter(x => remaining.contains(x) || rootDependencies0(x))
+            )
+            .toList
+            .toMap
+        )
     }
 
     val filteredReverseDependencies = helper(reverseDependencies)
@@ -409,7 +488,11 @@ case class Resolution(rootDependencies: Set[Dependency],
 
   private def nextNoMissingUnsafe: Resolution = {
     val (newConflicts, _) = nextDependenciesAndConflicts
-    copy(dependencies = newDependencies ++ newConflicts, conflicts = newConflicts.toSet)
+
+    copy(
+      dependencies = newDependencies ++ newConflicts,
+      conflicts = newConflicts.toSet
+    )
   }
 
   /**
@@ -419,17 +502,25 @@ case class Resolution(rootDependencies: Set[Dependency],
   @tailrec
   final def nextIfNoMissing: Resolution = {
     val missing = missingFromCache
+
     if (missing.isEmpty) {
       val next0 = nextNoMissingUnsafe
-      if (next0 == this) this
-      else next0.nextIfNoMissing
-    } else this
+
+      if (next0 == this)
+        this
+      else
+        next0.nextIfNoMissing
+    } else
+      this
   }
 
   /**
    * Required modules for the dependency management of `project`.
    */
-  def dependencyManagementRequirements(project: Project): Set[ModuleVersion] = {
+  def dependencyManagementRequirements(
+    project: Project
+  ): Set[ModuleVersion] = {
+
     val approxProperties =
       project.parent
         .flatMap(projectCache.get)
@@ -437,15 +528,19 @@ case class Resolution(rootDependencies: Set[Dependency],
         .fold(project.properties)(mergeProperties(project.properties, _))
 
     val profileDependencies =
-      profiles(project, approxProperties, profileActivation getOrElse defaultProfileActivation)
-        .flatMap(_.dependencies)
+      profiles(
+        project,
+        approxProperties,
+        profileActivation getOrElse defaultProfileActivation
+      ).flatMap(_.dependencies)
 
     val modules =
       (project.dependencies ++ profileDependencies)
-        .collect{ case dep if dep.scope == Scope.Import => dep.moduleVersion } ++
-      project.parent
+        .collect{
+          case dep if dep.scope == Scope.Import => dep.moduleVersion
+        }
 
-    modules.toSet
+    modules.toSet ++ project.parent
   }
 
   /**
@@ -459,16 +554,22 @@ case class Resolution(rootDependencies: Set[Dependency],
   def dependencyManagementMissing(project: Project): Set[ModuleVersion] = {
 
     @tailrec
-    def helper(toCheck: Set[ModuleVersion],
-               done: Set[ModuleVersion],
-               missing: Set[ModuleVersion]): Set[ModuleVersion] = {
+    def helper(
+      toCheck: Set[ModuleVersion],
+      done: Set[ModuleVersion],
+      missing: Set[ModuleVersion]
+    ): Set[ModuleVersion] = {
 
-      if (toCheck.isEmpty) missing
-      else if (toCheck.exists(done)) helper(toCheck -- done, done, missing)
-      else if (toCheck.exists(missing)) helper(toCheck -- missing, done, missing)
+      if (toCheck.isEmpty)
+        missing
+      else if (toCheck.exists(done))
+        helper(toCheck -- done, done, missing)
+      else if (toCheck.exists(missing))
+        helper(toCheck -- missing, done, missing)
       else if (toCheck.exists(projectCache.contains)) {
         val (checking, remaining) = toCheck.partition(projectCache.contains)
-        val directRequirements = checking.flatMap(mod => dependencyManagementRequirements(projectCache(mod)._2))
+        val directRequirements = checking
+          .flatMap(mod => dependencyManagementRequirements(projectCache(mod)._2))
 
         helper(remaining ++ directRequirements, done ++ checking, missing)
       } else if (toCheck.exists(errorCache.contains)) {
@@ -478,7 +579,11 @@ case class Resolution(rootDependencies: Set[Dependency],
         helper(Set.empty, done, missing ++ toCheck)
     }
 
-    helper(dependencyManagementRequirements(project), Set(project.moduleVersion), Set.empty)
+    helper(
+      dependencyManagementRequirements(project),
+      Set(project.moduleVersion),
+      Set.empty
+    )
   }
 
   /**
@@ -494,20 +599,33 @@ case class Resolution(rootDependencies: Set[Dependency],
         .map(projectCache(_)._2.properties)
         .fold(project.properties)(mergeProperties(project.properties, _))
 
-    val profiles0 = profiles(project, approxProperties, profileActivation getOrElse defaultProfileActivation)
+    val profiles0 = profiles(
+      project,
+      approxProperties,
+      profileActivation getOrElse defaultProfileActivation
+    )
 
-    val dependencies0 = addDependencies(project.dependencies +: profiles0.map(_.dependencies))
-    val properties0 = (project.properties /: profiles0)((acc, p) => mergeProperties(acc, p.properties))
+    val dependencies0 = addDependencies(
+      project.dependencies +: profiles0.map(_.dependencies)
+    )
+    val properties0 =
+      (project.properties /: profiles0) { (acc, p) =>
+        mergeProperties(acc, p.properties)
+      }
 
     val deps =
       dependencies0
         .collect{ case dep if dep.scope == Scope.Import && projectCache.contains(dep.moduleVersion) => dep.moduleVersion } ++
-        project.parent.filter(projectCache.contains)
+      project.parent.filter(projectCache.contains)
+
     val projs = deps.map(projectCache(_)._2)
 
-    val depMgmt =
-      (project.dependencyManagement +: (profiles0.map(_.dependencyManagement) ++ projs.map(_.dependencyManagement)))
-        .foldLeft(Map.empty[DepMgmtKey, Dependency])(dependencyManagementAddSeq)
+    val depMgmt = (
+      project.dependencyManagement +: (
+        profiles0.map(_.dependencyManagement) ++
+        projs.map(_.dependencyManagement)
+      )
+    ).foldLeft(Map.empty[DepMgmt.Key, Dependency])(DepMgmt.addSeq)
 
     val depsSet = deps.toSet
 
