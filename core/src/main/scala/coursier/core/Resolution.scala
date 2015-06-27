@@ -185,9 +185,9 @@ object Resolution {
     transitive: Scope
   ): Option[Scope] =
     (base, transitive) match {
-      case (Scope.Compile, other) => Some(other)
-      case (Scope.Runtime, Scope.Compile) => Some(Scope.Runtime)
-      case (Scope.Runtime, other) => Some(other)
+      case (other, Scope.Compile) => Some(other)
+      case (Scope.Compile, Scope.Runtime) => Some(Scope.Runtime)
+      case (other, Scope.Runtime) => Some(other)
       case _ => None
     }
 
