@@ -42,6 +42,8 @@
   [2027]: https://github.com/sbt/sbt/pull/2027
   [1666]: https://github.com/sbt/sbt/issues/1666
   [2068]: https://github.com/sbt/sbt/pull/2068
+  [2005]: https://github.com/sbt/sbt/issues/2005
+  [2075]: https://github.com/sbt/sbt/pull/2075
 
 ### Fixes with compatibility implications
 
@@ -65,7 +67,8 @@
 
 - Fixes memory/performance issue with cached resolution. See below.
 - Correct incremental compile debug message for invalidated products [#1961][1961] by [@jroper][@jroper]
-- Enables forced GC by default. See below. 
+- Enables forced GC by default. See below.
+- Fixes Maven compatibility to read `maven-metadata.xml`. See below.
 - Captures errors on `help` command. [#1900][1900]/[#1940][1940] by [@DavidPerezIngeniero][@DavidPerezIngeniero]
 - Prevents history command(s) from going into an infinite loop [#1562][1562] by [@PanAeon][@PanAeon]
 - Honors overwrite flag when publishing locally. [#1960][1960] by [@asflierl][@asflierl]
@@ -125,3 +128,16 @@ setting or `sbt.task.forcegc` flag.
 
 [#1773][1773] by [@eed3si9n][@eed3si9n]
 
+### Maven compatibility fix
+
+To resolve dynamic versions such as `SNAPSHOT` and version ranges, the dependency resolution engine
+queries for the list of available versions.
+For Maven repositories, it was supposed read `maven-metadata.xml` first, but
+because sbt customizes the repository layout for cross building, it has been falling back
+to screen scraping of the Apache directory listing.
+This problem surfaced as:
+
+- Version range not working for artifacts hosted on Bintray. [#2005][2005]
+- Potentially other `SNAPSHOT` related issues.
+
+sbt 0.13.9 fixes this by relaxing the Maven compatiblity check, so it will read `maven-metadata.xml`. [#2075][2075] by [@eed3si9n][@eed3si9n]
