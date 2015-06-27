@@ -6,45 +6,64 @@ import scala.annotation.tailrec
 
 
 sealed trait ResolutionProcess {
-  def run[F[_]](fetch: ResolutionProcess.Fetch[F],
-                maxIterations: Int = -1)
-               (implicit F: Monad[F]): F[Resolution] = {
+  def run[F[_]](
+    fetch: ResolutionProcess.Fetch[F],
+    maxIterations: Int = -1
+  )(implicit
+    F: Monad[F]
+  ): F[Resolution] = {
 
     if (maxIterations == 0) F.point(current)
     else {
-      val maxIterations0 = if (maxIterations > 0) maxIterations - 1 else maxIterations
+      val maxIterations0 =
+        if (maxIterations > 0) maxIterations - 1 else maxIterations
 
       this match {
-        case Done(res) => F.point(res)
+        case Done(res) =>
+          F.point(res)
         case missing0 @ Missing(missing, _, _) =>
-          F.bind(fetch(missing))(result => missing0.next(result).run(fetch, maxIterations0))
-        case cont @ Continue(_, _) => cont.nextNoCont.run(fetch, maxIterations0)
+          F.bind(fetch(missing))(result =>
+            missing0.next(result).run(fetch, maxIterations0)
+          )
+        case cont @ Continue(_, _) =>
+          cont
+            .nextNoCont
+            .run(fetch, maxIterations0)
       }
     }
   }
 
-  def next[F[_]](fetch: ResolutionProcess.Fetch[F])
-                (implicit F: Monad[F]): F[ResolutionProcess] = {
+  def next[F[_]](
+    fetch: ResolutionProcess.Fetch[F]
+  )(implicit
+    F: Monad[F]
+  ): F[ResolutionProcess] = {
 
     this match {
-      case Done(res) => F.point(this)
+      case Done(res) =>
+        F.point(this)
       case missing0 @ Missing(missing, _, _) =>
         F.map(fetch(missing))(result => missing0.next(result))
-      case cont @ Continue(_, _) => cont.nextNoCont.next(fetch)
+      case cont @ Continue(_, _) =>
+        cont.nextNoCont.next(fetch)
     }
   }
 
   def current: Resolution
 }
 
-case class Missing(missing: Seq[(Module, String)],
-                   current: Resolution,
-                   cont: Resolution => ResolutionProcess) extends ResolutionProcess {
+case class Missing(
+  missing: Seq[(Module, String)],
+  current: Resolution,
+  cont: Resolution => ResolutionProcess
+) extends ResolutionProcess {
 
   def next(results: ResolutionProcess.FetchResult): ResolutionProcess = {
 
-    val errors = results.collect{case (modVer, -\/(errs)) => modVer -> errs }
-    val successes = results.collect{case (modVer, \/-(repoProj)) => modVer -> repoProj }
+    val errors = results
+      .collect{case (modVer, -\/(errs)) => modVer -> errs }
+    val successes = results
+      .collect{case (modVer, \/-(repoProj)) => modVer -> repoProj }
 
     val depMgmtMissing0 = successes
       .map{case (_, (_, proj)) => current.dependencyManagementMissing(proj) }
@@ -59,20 +78,25 @@ case class Missing(missing: Seq[(Module, String)],
             modVer -> (source, acc.withDependencyManagement(proj))
           ))
         }
+
       Continue(res0, cont)
     }
 
     val current0 = current
       .copy(errorCache = current.errorCache ++ errors)
 
-    if (depMgmtMissing.isEmpty) cont0(current0)
-    else Missing(depMgmtMissing.toSeq, current0, cont0)
+    if (depMgmtMissing.isEmpty)
+      cont0(current0)
+    else
+      Missing(depMgmtMissing.toSeq, current0, cont0)
   }
 
 }
 
-case class Continue(current: Resolution,
-                    cont: Resolution => ResolutionProcess) extends ResolutionProcess {
+case class Continue(
+  current: Resolution,
+  cont: Resolution => ResolutionProcess
+) extends ResolutionProcess {
 
   def next: ResolutionProcess = cont(current)
 
@@ -92,8 +116,10 @@ object ResolutionProcess {
   def apply(resolution: Resolution): ResolutionProcess = {
     val resolution0 = resolution.nextIfNoMissing
 
-    if (resolution0.isDone) Done(resolution0)
-    else Missing(resolution0.missingFromCache.toSeq, resolution0, apply)
+    if (resolution0.isDone)
+      Done(resolution0)
+    else
+      Missing(resolution0.missingFromCache.toSeq, resolution0, apply)
   }
 
   type FetchResult = Seq[((Module, String), Seq[String] \/ (Artifact.Source, Project))]
