@@ -7,5 +7,6 @@
 ### Improvements
 
 - Renames `distinct` method on `PathFinder` to `distinctName`. [#1973][1973] by [@eed3si9n][@eed3si9n]
+- Adds `distinctPath` method on `PathFinder`. [#1973][1973] by [@eed3si9n][@eed3si9n]
 
 ### Bug fixes

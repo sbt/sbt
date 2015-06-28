@@ -181,6 +181,11 @@ sealed abstract class PathFinder {
   @deprecated("Use distinctName", "0.13.9")
   def distinct: PathFinder = distinctName
 
+  /**
+   * Create a PathFinder from this one where each path has a unique absolute path.
+   */
+  def distinctPath: PathFinder = PathFinder { get.map(p => (p.absolutePath, p)).toMap.values }
+
   /** Constructs a string by evaluating this finder, converting the resulting Paths to absolute path strings, and joining them with the platform path separator.*/
   final def absString = Path.makeString(get)
   /** Constructs a debugging string for this finder by evaluating it and separating paths by newlines.*/
