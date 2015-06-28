@@ -62,7 +62,7 @@ object CoursierBuild extends Build {
     resolvers += "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases"
   ) ++ publishingSettings
 
-  private lazy val commonCoreSettings = Seq[Setting[_]](
+  private lazy val commonCoreSettings = commonSettings ++ Seq[Setting[_]](
     name := "coursier",
     libraryDependencies += "org.scala-lang.modules" %% "scala-async" % "0.9.1" % "provided",
     unmanagedSourceDirectories in Compile += (baseDirectory in LocalRootProject).value / "core" / "src" / "main" / "scala",
@@ -73,7 +73,7 @@ object CoursierBuild extends Build {
   )
 
   lazy val coreJvm = Project(id = "core-jvm", base = file("core-jvm"))
-    .settings(commonSettings ++ commonCoreSettings: _*)
+    .settings(commonCoreSettings: _*)
     .settings(
       libraryDependencies ++= Seq(
         "org.scalaz" %% "scalaz-concurrent" % "7.1.2",
@@ -87,7 +87,7 @@ object CoursierBuild extends Build {
     )
 
   lazy val coreJs = Project(id = "core-js", base = file("core-js"))
-    .settings(commonSettings ++ commonCoreSettings: _*)
+    .settings(commonCoreSettings: _*)
     .settings(
       libraryDependencies ++= Seq(
         "org.scala-js" %%% "scalajs-dom" % "0.8.0",
