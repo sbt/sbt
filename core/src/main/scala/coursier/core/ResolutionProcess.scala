@@ -122,7 +122,11 @@ object ResolutionProcess {
       Missing(resolution0.missingFromCache.toSeq, resolution0, apply)
   }
 
-  type FetchResult = Seq[((Module, String), Seq[String] \/ (Artifact.Source, Project))]
+  type FetchResult = Seq[(
+    (Module, String),
+    Seq[String] \/ (Artifact.Source, Project)
+  )]
+
   type Fetch[F[_]] = Seq[(Module, String)] => F[FetchResult]
 }
 

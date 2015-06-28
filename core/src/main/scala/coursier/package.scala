@@ -7,19 +7,31 @@ package object coursier {
 
   type Dependency = core.Dependency
   object Dependency {
-    def apply(module: Module,
-              version: String,
-              scope: Scope = Scope.Other(""), // Substituted by Resolver with its own default scope (compile)
-              attributes: Attributes = Attributes(),
-              exclusions: Set[(String, String)] = Set.empty,
-              optional: Boolean = false): Dependency =
-      core.Dependency(module, version, scope, attributes, exclusions, optional)
+    def apply(
+      module: Module,
+      version: String,
+      // Substituted by Resolver with its own default scope (compile)
+      scope: Scope = Scope.Other(""),
+      attributes: Attributes = Attributes(),
+      exclusions: Set[(String, String)] = Set.empty,
+      optional: Boolean = false
+    ): Dependency =
+      core.Dependency(
+        module,
+        version,
+        scope,
+        attributes,
+        exclusions,
+        optional
+      )
   }
 
   type Attributes = core.Attributes
   object Attributes {
-    def apply(`type`: String = "jar",
-              classifier: String = ""): Attributes =
+    def apply(
+      `type`: String = "jar",
+      classifier: String = ""
+    ): Attributes =
       core.Attributes(`type`, classifier)
   }
 
@@ -46,14 +58,24 @@ package object coursier {
   type Resolution = core.Resolution
   object Resolution {
     val empty = apply()
-    def apply(rootDependencies: Set[Dependency] = Set.empty,
-              dependencies: Set[Dependency] = Set.empty,
-              conflicts: Set[Dependency] = Set.empty,
-              projectCache: Map[ModuleVersion, (Artifact.Source, Project)] = Map.empty,
-              errorCache: Map[ModuleVersion, Seq[String]] = Map.empty,
-              filter: Option[Dependency => Boolean] = None,
-              profileActivation: Option[(String, core.Activation, Map[String, String]) => Boolean] = None): Resolution =
-      core.Resolution(rootDependencies, dependencies, conflicts, projectCache, errorCache, filter, profileActivation)
+    def apply(
+      rootDependencies: Set[Dependency] = Set.empty,
+      dependencies: Set[Dependency] = Set.empty,
+      conflicts: Set[Dependency] = Set.empty,
+      projectCache: Map[ModuleVersion, (Artifact.Source, Project)] = Map.empty,
+      errorCache: Map[ModuleVersion, Seq[String]] = Map.empty,
+      filter: Option[Dependency => Boolean] = None,
+      profileActivation: Option[(String, core.Activation, Map[String, String]) => Boolean] = None
+    ): Resolution =
+      core.Resolution(
+        rootDependencies,
+        dependencies,
+        conflicts,
+        projectCache,
+        errorCache,
+        filter,
+        profileActivation
+      )
   }
 
   type Artifact = core.Artifact
@@ -63,18 +85,22 @@ package object coursier {
   val ResolutionProcess: core.ResolutionProcess.type = core.ResolutionProcess
 
   implicit class ResolutionExtensions(val underlying: Resolution) extends AnyVal {
+
     def process: ResolutionProcess = ResolutionProcess(underlying)
   }
 
-  implicit def fetch(repositories: Seq[core.Repository]): ResolutionProcess.Fetch[Task] = {
+  implicit def fetch(
+    repositories: Seq[core.Repository]
+  ): ResolutionProcess.Fetch[Task] = {
+
     modVers =>
       Task.gatherUnordered(
         modVers
-          .map(modVer =>
-            Repository.find(repositories, modVer._1, modVer._2)
+          .map {case (module, version) =>
+            Repository.find(repositories, module, version)
               .run
-              .map(modVer -> _)
-          )
+              .map((module, version) -> _)
+          }
       )
   }
 
