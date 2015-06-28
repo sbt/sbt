@@ -137,9 +137,22 @@ object CoursierBuild extends Build {
     .dependsOn(coreJs)
     .settings(commonSettings: _*)
     .settings(
-      libraryDependencies ++= Seq(
-        "com.github.japgolly.scalajs-react" %%% "core" % "0.9.0"
-      ),
+      libraryDependencies ++= {
+        if (scalaVersion.value startsWith "2.10.")
+          Seq()
+        else
+          Seq(
+            "com.github.japgolly.scalajs-react" %%% "core" % "0.9.0"
+          )
+      },
+      sourceDirectory := {
+        val dir = sourceDirectory.value
+
+        if (scalaVersion.value startsWith "2.10.")
+          dir / "dummy"
+        else
+          dir
+      },
       resolvers += "Webjars Bintray" at "https://dl.bintray.com/webjars/maven/",
       jsDependencies ++= Seq(
         ("org.webjars.bower" % "bootstrap" % "3.3.4" intransitive()) / "bootstrap.min.js" commonJSName "Bootstrap",
