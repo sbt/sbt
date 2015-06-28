@@ -153,6 +153,10 @@ object CoursierBuild extends Build {
         else
           dir
       },
+      publish := (),
+      publishLocal := (),
+      test in Test := (),
+      testOnly in Test := (),
       resolvers += "Webjars Bintray" at "https://dl.bintray.com/webjars/maven/",
       jsDependencies ++= Seq(
         ("org.webjars.bower" % "bootstrap" % "3.3.4" intransitive()) / "bootstrap.min.js" commonJSName "Bootstrap",
