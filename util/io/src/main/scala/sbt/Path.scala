@@ -173,7 +173,18 @@ sealed abstract class PathFinder {
    * Create a PathFinder from this one where each path has a unique name.
    * A single path is arbitrarily selected from the set of paths with the same name.
    */
-  def distinct: PathFinder = PathFinder { get.map(p => (p.asFile.getName, p)).toMap.values }
+  def distinctName: PathFinder = PathFinder { get.map(p => (p.asFile.getName, p)).toMap.values }
+
+  /**
+   * Same as <code>distinctName</code>.
+   */
+  @deprecated("Use distinctName", "0.13.9")
+  def distinct: PathFinder = distinctName
+
+  /**
+   * Create a PathFinder from this one where each path has a unique absolute path.
+   */
+  def distinctPath: PathFinder = PathFinder { get.map(p => (p.absolutePath, p)).toMap.values }
 
   /** Constructs a string by evaluating this finder, converting the resulting Paths to absolute path strings, and joining them with the platform path separator.*/
   final def absString = Path.makeString(get)
