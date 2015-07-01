@@ -271,7 +271,7 @@ object EvaluateTask {
    * If the task is not defined, None is returned.  The provided task key is resolved against the current project `ref`.
    * `config` configures concurrency and canceling of task execution.
    */
-  @deprecated("Use EvalauteTaskConfig option instead.", "0.13.5")
+  @deprecated("Use EvaluateTaskConfig option instead.", "0.13.5")
   def apply[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef, config: EvaluateConfig): Option[(State, Result[T])] =
     apply(structure, taskKey, state, ref, EvaluateTaskConfig(config))
   def apply[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef, config: EvaluateTaskConfig): Option[(State, Result[T])] = {
@@ -323,7 +323,7 @@ object EvaluateTask {
   def nodeView[HL <: HList](state: State, streams: Streams, roots: Seq[ScopedKey[_]], dummies: DummyTaskMap = DummyTaskMap(Nil)): NodeView[Task] =
     Transform((dummyRoots, roots) :: (dummyStreamsManager, streams) :: (dummyState, state) :: dummies)
 
-  @deprecated("Use new EvalauteTaskConfig option to runTask", "0.13.5")
+  @deprecated("Use new EvaluateTaskConfig option to runTask", "0.13.5")
   def runTask[T](root: Task[T], state: State, streams: Streams, triggers: Triggers[Task], config: EvaluateConfig)(implicit taskToNode: NodeView[Task]): (State, Result[T]) =
     {
       val newConfig = EvaluateTaskConfig(config)
