@@ -542,7 +542,7 @@ object Project extends ProjectExtra {
       val fgc = EvaluateTask.forcegc(extracted, extracted.structure)
       runTask(taskKey, state, EvaluateTaskConfig(r, checkCycles, p, ch, fgc))
     }
-  @deprecated("Use EvalauteTaskConfig option instead.", "0.13.5")
+  @deprecated("Use EvaluateTaskConfig option instead.", "0.13.5")
   def runTask[T](taskKey: ScopedKey[Task[T]], state: State, config: EvaluateConfig): Option[(State, Result[T])] =
     {
       val extracted = Project.extract(state)
