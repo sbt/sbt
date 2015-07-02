@@ -70,7 +70,7 @@ object ClassToAPI {
   def structure(c: Class[_], enclPkg: Option[String], cmap: ClassMap): (api.Structure, api.Structure) =
     {
       val methods = mergeMap(c, c.getDeclaredMethods, c.getMethods, methodToDef(enclPkg))
-      val fields = mergeMap(c, c.getDeclaredFields, c.getFields, fieldToDef(enclPkg))
+      val fields = mergeMap(c, c.getDeclaredFields, c.getFields, fieldToDef(c, enclPkg))
       val constructors = mergeMap(c, c.getDeclaredConstructors, c.getConstructors, constructorToDef(enclPkg))
       val classes = merge[Class[_]](c, c.getDeclaredClasses, c.getClasses, toDefinitions(cmap), (_: Seq[Class[_]]).partition(isStatic), _.getEnclosingClass != c)
       val all = methods ++ fields ++ constructors ++ classes
@@ -127,14 +127,53 @@ object ClassToAPI {
   def upperBounds(ts: Array[Type]): api.Type =
     new api.Structure(lzy(types(ts)), lzyEmptyDefArray, lzyEmptyDefArray)
 
-  def fieldToDef(enclPkg: Option[String])(f: Field): api.FieldLike =
+  private def constantPoolConstantValue(cf: classfile.ClassFile, ai: classfile.AttributeInfo): AnyRef = {
+    assert(ai.name.exists(_ == "ConstantValue"), s"Non-ConstantValue attribute not supported: ${ai}")
+    import classfile.Constants._
+    cf.constantPool(classfile.Parser.entryIndex(ai)) match {
+      case classfile.Constant(ConstantString, nextOffset, _, _) =>
+        // follow the indirection from ConstantString to ConstantUTF8
+        val nextConstant = cf.constantPool(nextOffset)
+        nextConstant.value.getOrElse {
+          throw new RuntimeException(s"Empty UTF8 value in constant pool: ${nextConstant}")
+        }
+      case constant @ classfile.Constant((ConstantFloat | ConstantLong | ConstantDouble | ConstantInteger), _, _, ref) =>
+        ref.getOrElse {
+          throw new RuntimeException(s"Empty primitive value in constant pool: ${constant}")
+        }
+    }
+  }
+
+  def fieldToDef(c: Class[_], enclPkg: Option[String])(f: Field): api.FieldLike =
     {
       val name = f.getName
       val accs = access(f.getModifiers, enclPkg)
       val mods = modifiers(f.getModifiers)
       val annots = annotations(f.getDeclaredAnnotations)
-      val tpe = reference(returnType(f))
-      if (mods.isFinal) new api.Val(tpe, name, accs, mods, annots) else new api.Var(tpe, name, accs, mods, annots)
+      val specificTpe: Option[api.Type] =
+        if (mods.isFinal) {
+          // TODO: need better way to get access to classfile-location/parsed-representation
+          // TODO: need to only bother for static fields
+          val file = new java.io.File(IO.classLocationFile(c), s"${c.getName.replace('.', '/')}.class")
+          val cf = classfile.Parser.apply(file)
+          val attributeInfos = cf.fields.find(_.name.exists(_ == name)).toSeq.flatMap(_.attributes)
+          // create a singleton type ending with the hash of the name-mangled ConstantValue of this field
+          attributeInfos.collectFirst {
+            case ai @ classfile.AttributeInfo(Some("ConstantValue"), _) =>
+              val constantValue = constantPoolConstantValue(cf, ai)
+              c.getName.split("\\.").toSeq :+ (name + "$" + constantValue)
+          }.map { constantComponents =>
+            new api.Singleton(pathFromStrings(constantComponents))
+          }
+        } else {
+          None
+        }
+      val tpe = specificTpe.getOrElse(reference(returnType(f)))
+      if (mods.isFinal) {
+        new api.Val(tpe, name, accs, mods, annots)
+      } else {
+        new api.Var(tpe, name, accs, mods, annots)
+      }
     }
 
   def methodToDef(enclPkg: Option[String])(m: Method): api.Def =
@@ -256,7 +295,9 @@ object ClassToAPI {
     }
 
   def pathFromString(s: String): api.Path =
-    new api.Path(s.split("\\.").map(new api.Id(_)) :+ ThisRef)
+    pathFromStrings(s.split("\\."))
+  def pathFromStrings(ss: Seq[String]): api.Path =
+    new api.Path((ss.map(new api.Id(_)) :+ ThisRef).toArray)
   def packageName(c: Class[_]) = packageAndName(c)._1
   def packageAndName(c: Class[_]): (Option[String], String) =
     packageAndName(c.getName)
