@@ -126,7 +126,8 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler] {
     reporter: Reporter,
     compileOrder: CompileOrder = Mixed,
     skip: Boolean = false,
-    incrementalCompilerOptions: IncOptions)(implicit log: Logger): Result = {
+    incrementalCompilerOptions: IncOptions,
+    compile: MixedAnalyzingCompiler => (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit = _.compile)(implicit log: Logger): Result = {
     val config = MixedAnalyzingCompiler.makeConfig(scalac, javac, sources, classpath, output, cache,
       progress, options, javacOptions, previousAnalysis, previousSetup, analysisMap, definesClass, reporter,
       compileOrder, skip, incrementalCompilerOptions
@@ -135,13 +136,13 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler] {
 
     if (skip) Result(previousAnalysis, setup, false)
     else {
-      val (analysis, changed) = compileInternal(MixedAnalyzingCompiler(config)(log))
+      val (analysis, changed) = compileInternal(MixedAnalyzingCompiler(config)(log), compile)
       Result(analysis, setup, changed)
     }
   }
 
   /** Actually runs the incremental compiler using the given mixed compiler.  This will prune the inputs based on the CompileSetup. */
-  private def compileInternal(mixedCompiler: MixedAnalyzingCompiler)(implicit log: Logger, equiv: Equiv[CompileSetup]): (Analysis, Boolean) = {
+  private def compileInternal(mixedCompiler: MixedAnalyzingCompiler, compile: MixedAnalyzingCompiler => (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit)(implicit log: Logger, equiv: Equiv[CompileSetup]): (Analysis, Boolean) = {
     val entry = MixedAnalyzingCompiler.classPathLookup(mixedCompiler.config)
     import mixedCompiler.config._
     import mixedCompiler.config.currentSetup.output
@@ -157,6 +158,6 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler] {
       case _ => Incremental.prune(sourcesSet, previousAnalysis)
     }
     // Run the incremental compiler using the mixed compiler we've defined.
-    IncrementalCompile(sourcesSet, entry, mixedCompiler.compile, analysis, getAnalysis, output, log, incOptions).swap
+    IncrementalCompile(sourcesSet, entry, compile(mixedCompiler), analysis, getAnalysis, output, log, incOptions).swap
   }
 }
