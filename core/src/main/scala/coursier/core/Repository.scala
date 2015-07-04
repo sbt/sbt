@@ -2,7 +2,7 @@ package coursier.core
 
 import coursier.core.Repository.CachePolicy
 
-import scalaz.{-\/, \/-, \/, EitherT}
+import scalaz.{ -\/, \/-, \/, EitherT }
 import scalaz.concurrent.Task
 
 import coursier.core.compatibility.encodeURIComponent
@@ -42,28 +42,34 @@ object Repository {
     version: String
   ): EitherT[Task, Seq[String], (Artifact.Source, Project)] = {
 
-    val lookups = repositories.map(repo => repo -> repo.find(module, version).run)
-    val task = lookups.foldLeft(Task.now(-\/(Nil)): Task[Seq[String] \/ (Artifact.Source, Project)]) {
-      case (acc, (repo, t)) =>
-        acc.flatMap {
-          case -\/(errors) =>
-            t.map(res => res
-              .flatMap{case (source, project) =>
-                if (project.module == module) \/-((source, project))
-                else -\/(s"Wrong module returned (expected: $module, got: ${project.module})")
-              }
-              .leftMap(error => error +: errors)
-            )
+    val lookups = repositories
+      .map(repo => repo -> repo.find(module, version).run)
 
-          case res @ \/-(_) =>
-            Task.now(res)
-        }
-    }
+    val task = lookups
+      .foldLeft(Task.now(-\/(Nil)): Task[Seq[String] \/ (Artifact.Source, Project)]) {
+        case (acc, (repo, eitherProjTask)) =>
+          acc
+            .flatMap {
+              case -\/(errors) =>
+                eitherProjTask
+                  .map(res => res
+                    .flatMap{case (source, project) =>
+                      if (project.module == module) \/-((source, project))
+                      else -\/(s"Wrong module returned (expected: $module, got: ${project.module})")
+                    }
+                    .leftMap(error => error +: errors)
+                  )
 
-    EitherT(task.map(_.leftMap(_.reverse))).map {case x @ (_, proj) =>
-      assert(proj.module == module)
-      x
-    }
+              case res @ \/-(_) =>
+                Task.now(res)
+            }
+      }
+
+    EitherT(task.map(_.leftMap(_.reverse)))
+      .map {case x @ (_, proj) =>
+        assert(proj.module == module)
+        x
+      }
   }
 
   sealed trait CachePolicy {
@@ -137,12 +143,14 @@ object Repository {
 
 object BaseMavenRepository {
 
-  def ivyLikePath(org: String,
-                  name: String,
-                  version: String,
-                  subDir: String,
-                  baseSuffix: String,
-                  ext: String) =
+  def ivyLikePath(
+    org: String,
+    name: String,
+    version: String,
+    subDir: String,
+    baseSuffix: String,
+    ext: String
+  ) =
     Seq(
       org,
       name,
@@ -154,11 +162,20 @@ object BaseMavenRepository {
   case class Source(root: String, ivyLike: Boolean) extends Artifact.Source {
     import Repository._
 
-    def artifacts(dependency: Dependency,
-                  project: Project): Seq[Artifact] = {
+    def artifacts(
+      dependency: Dependency,
+      project: Project
+    ): Seq[Artifact] = {
 
       def ivyLikePath0(subDir: String, baseSuffix: String, ext: String) =
-        BaseMavenRepository.ivyLikePath(dependency.module.organization, dependency.module.name, project.version, subDir, baseSuffix, ext)
+        BaseMavenRepository.ivyLikePath(
+          dependency.module.organization,
+          dependency.module.name,
+          project.version,
+          subDir,
+          baseSuffix,
+          ext
+        )
 
       val path =
         if (ivyLike)
@@ -176,7 +193,7 @@ object BaseMavenRepository {
           Map.empty,
           dependency.attributes
         )
-          .withDefaultChecksums
+        .withDefaultChecksums
 
       if (dependency.attributes.`type` == "jar") {
         artifact = artifact.withDefaultSignature
@@ -188,20 +205,22 @@ object BaseMavenRepository {
 
             artifact
               .copy(extra = artifact.extra ++ Map(
-              Artifact.sourcesMd5 -> (srcPath + ".md5"),
-              Artifact.sourcesSha1 -> (srcPath + ".sha1"),
-              Artifact.sources -> srcPath,
-              Artifact.sourcesSigMd5 -> (srcPath + ".asc.md5"),
-              Artifact.sourcesSigSha1 -> (srcPath + ".asc.sha1"),
-              Artifact.sourcesSig -> (srcPath + ".asc"),
-              Artifact.javadocMd5 -> (javadocPath + ".md5"),
-              Artifact.javadocSha1 -> (javadocPath + ".sha1"),
-              Artifact.javadoc -> javadocPath,
-              Artifact.javadocSigMd5 -> (javadocPath + ".asc.md5"),
-              Artifact.javadocSigSha1 -> (javadocPath + ".asc.sha1"),
-              Artifact.javadocSig -> (javadocPath + ".asc")
+                Artifact.sourcesMd5 -> (srcPath + ".md5"),
+                Artifact.sourcesSha1 -> (srcPath + ".sha1"),
+                Artifact.sources -> srcPath,
+                Artifact.sourcesSigMd5 -> (srcPath + ".asc.md5"),
+                Artifact.sourcesSigSha1 -> (srcPath + ".asc.sha1"),
+                Artifact.sourcesSig -> (srcPath + ".asc"),
+                Artifact.javadocMd5 -> (javadocPath + ".md5"),
+                Artifact.javadocSha1 -> (javadocPath + ".sha1"),
+                Artifact.javadoc -> javadocPath,
+                Artifact.javadocSigMd5 -> (javadocPath + ".asc.md5"),
+                Artifact.javadocSigSha1 -> (javadocPath + ".asc.sha1"),
+                Artifact.javadocSig -> (javadocPath + ".asc")
             ))
-          } else artifact.withJavadocSources
+          } else
+            artifact
+              .withJavadocSources
       }
 
       Seq(artifact)
@@ -226,6 +245,7 @@ abstract class BaseMavenRepository(
   val source = BaseMavenRepository.Source(root, ivyLike)
 
   def projectArtifact(module: Module, version: String): Artifact = {
+
     val path = (
       if (ivyLike)
         ivyLikePath(module.organization, module.name, version, "poms", "", "pom")
@@ -269,8 +289,10 @@ abstract class BaseMavenRepository(
       Some(artifact)
     }
 
-  def versions(module: Module,
-               cachePolicy: CachePolicy = CachePolicy.Default): EitherT[Task, String, Versions] = {
+  def versions(
+    module: Module,
+    cachePolicy: CachePolicy = CachePolicy.Default
+  ): EitherT[Task, String, Versions] = {
 
     EitherT(
       versionsArtifact(module) match {
@@ -290,9 +312,11 @@ abstract class BaseMavenRepository(
     )
   }
 
-  def findNoInterval(module: Module,
-                     version: String,
-                     cachePolicy: CachePolicy): EitherT[Task, String, Project] = {
+  def findNoInterval(
+    module: Module,
+    version: String,
+    cachePolicy: CachePolicy
+  ): EitherT[Task, String, Project] = {
 
     EitherT {
       fetch(projectArtifact(module, version), cachePolicy)
@@ -308,37 +332,41 @@ abstract class BaseMavenRepository(
     }
   }
 
-  def find(module: Module,
-           version: String,
-           cachePolicy: CachePolicy): EitherT[Task, String, (Artifact.Source, Project)] = {
+  def find(
+    module: Module,
+    version: String,
+    cachePolicy: CachePolicy
+  ): EitherT[Task, String, (Artifact.Source, Project)] = {
 
-    Parse.versionInterval(version).filter(_.isValid) match {
-      case None => findNoInterval(module, version, cachePolicy).map((source, _))
-      case Some(itv) =>
-        versions(module, cachePolicy)
-          .flatMap { versions0 =>
-            val eitherVersion = {
-              val release = Version(versions0.release)
+    Parse.versionInterval(version)
+      .filter(_.isValid) match {
+        case None =>
+          findNoInterval(module, version, cachePolicy).map((source, _))
+        case Some(itv) =>
+          versions(module, cachePolicy)
+            .flatMap { versions0 =>
+              val eitherVersion = {
+                val release = Version(versions0.release)
 
-              if (itv.contains(release)) \/-(versions0.release)
-              else {
-                val inInterval = versions0.available
-                  .map(Version(_))
-                  .filter(itv.contains)
+                if (itv.contains(release)) \/-(versions0.release)
+                else {
+                  val inInterval = versions0.available
+                    .map(Version(_))
+                    .filter(itv.contains)
 
-                if (inInterval.isEmpty) -\/(s"No version found for $version")
-                else \/-(inInterval.max.repr)
+                  if (inInterval.isEmpty) -\/(s"No version found for $version")
+                  else \/-(inInterval.max.repr)
+                }
+              }
+
+              eitherVersion match {
+                case -\/(reason) => EitherT[Task, String, (Artifact.Source, Project)](Task.now(-\/(reason)))
+                case \/-(version0) =>
+                  findNoInterval(module, version0, cachePolicy)
+                    .map(_.copy(versions = Some(versions0)))
+                    .map((source, _))
               }
             }
-
-            eitherVersion match {
-              case -\/(reason) => EitherT[Task, String, (Artifact.Source, Project)](Task.now(-\/(reason)))
-              case \/-(version0) =>
-                findNoInterval(module, version0, cachePolicy)
-                  .map(_.copy(versions = Some(versions0)))
-                  .map((source, _))
-            }
-          }
     }
   }
 

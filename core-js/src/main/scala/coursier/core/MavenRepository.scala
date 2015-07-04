@@ -1,14 +1,14 @@
 package coursier
 package core
 
-import org.scalajs.dom.raw.{Event, XMLHttpRequest}
+import org.scalajs.dom.raw.{ Event, XMLHttpRequest }
 
-import scala.concurrent.{ExecutionContext, Promise, Future}
-import scalaz.{-\/, \/-, EitherT}
+import scala.concurrent.{ ExecutionContext, Promise, Future }
+import scalaz.{ -\/, \/-, EitherT }
 import scalaz.concurrent.Task
 
 import scala.scalajs.js
-import js.Dynamic.{global => g}
+import js.Dynamic.{ global => g }
 
 import scala.scalajs.js.timers._
 

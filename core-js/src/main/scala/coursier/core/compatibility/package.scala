@@ -1,7 +1,7 @@
 package coursier.core
 
 import scala.scalajs.js
-import js.Dynamic.{global => g}
+import js.Dynamic.{ global => g }
 import org.scalajs.dom.raw.NodeList
 
 package object compatibility {
@@ -21,25 +21,16 @@ package object compatibility {
     def letter: Boolean = between(c, 'a', 'z') || between(c, 'A', 'Z')
   }
 
-  lazy val DOMParser = {
-    import js.Dynamic.{global => g}
-    import js.DynamicImplicits._
+  def newFromXmlDomOrGlobal(name: String) = {
+    var defn = g.selectDynamic(name)
+    if (js.isUndefined(defn))
+      defn = g.require("xmldom").selectDynamic(name)
 
-    val defn =
-      if (js.isUndefined(g.DOMParser)) g.require("xmldom").DOMParser
-      else g.DOMParser
     js.Dynamic.newInstance(defn)()
   }
 
-  lazy val XMLSerializer = {
-    import js.Dynamic.{global => g}
-    import js.DynamicImplicits._
-
-    val defn =
-      if (js.isUndefined(g.XMLSerializer)) g.require("xmldom").XMLSerializer
-      else g.XMLSerializer
-    js.Dynamic.newInstance(defn)()
-  }
+  lazy val DOMParser = newFromXmlDomOrGlobal("DOMParser")
+  lazy val XMLSerializer = newFromXmlDomOrGlobal("XMLSerializer")
 
   // Can't find these from node
   val ELEMENT_NODE = 1 // org.scalajs.dom.raw.Node.ELEMENT_NODE

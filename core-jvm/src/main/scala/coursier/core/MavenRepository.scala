@@ -2,7 +2,7 @@ package coursier
 package core
 
 import java.io._
-import java.net.{URI, URL}
+import java.net.{ URI, URL }
 
 import scala.io.Codec
 import scalaz._, Scalaz._
