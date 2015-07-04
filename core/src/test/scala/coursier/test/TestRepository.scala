@@ -11,7 +11,7 @@ class TestRepository(projects: Map[(Module, String), Project]) extends Repositor
   val source = new core.Artifact.Source {
     def artifacts(dependency: Dependency, project: Project) = ???
   }
-  def find(module: Module, version: String, cachePolicy: Repository.CachePolicy) =
+  def find(module: Module, version: String)(implicit cachePolicy: CachePolicy) =
     EitherT(Task.now(
       projects.get((module, version)).map((source, _)).toRightDisjunction("Not found")
     ))

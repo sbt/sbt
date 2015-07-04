@@ -2,20 +2,25 @@ package coursier
 package core
 
 import java.io._
-import java.net.{URI, URL}
+import java.net.{ URI, URL }
 
 import scala.io.Codec
 import scalaz._, Scalaz._
 import scalaz.concurrent.Task
 
-case class Fetch(root: String,
-                 cache: Option[File] = None,
-                 logger: Option[Fetch.Logger] = None) {
+case class MavenRepository(
+  root: String,
+  cache: Option[File] = None,
+  ivyLike: Boolean = false,
+  logger: Option[MavenRepository.Logger] = None
+) extends BaseMavenRepository(root, ivyLike) {
 
   val isLocal = root.startsWith("file:///")
 
-  def apply(artifact: Artifact,
-            cachePolicy: Repository.CachePolicy): EitherT[Task, String, String] = {
+  def fetch(
+    artifact: Artifact,
+    cachePolicy: CachePolicy
+  ): EitherT[Task, String, String] = {
 
     def locally(eitherFile: String \/ File) = {
       Task {
@@ -44,7 +49,7 @@ case class Fetch(root: String,
         val url = new URL(urlStr)
 
         def log = Task(logger.foreach(_.downloading(urlStr)))
-        def get = Fetch.readFully(url.openStream())
+        def get = MavenRepository.readFully(url.openStream())
 
         log.flatMap(_ => get)
       }
@@ -70,7 +75,7 @@ case class Fetch(root: String,
 
 }
 
-object Fetch {
+object MavenRepository {
 
   trait Logger {
     def downloading(url: String): Unit

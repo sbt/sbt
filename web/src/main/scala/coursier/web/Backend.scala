@@ -1,10 +1,10 @@
 package coursier
 package web
 
-import coursier.core.{Repository, MavenRepository, Fetch}
-import japgolly.scalajs.react.vdom.{TagMod, Attr}
+import coursier.core.{ Repository, MavenRepository, MavenSource }
+import japgolly.scalajs.react.vdom.{ TagMod, Attr }
 import japgolly.scalajs.react.vdom.Attrs.dangerouslySetInnerHtml
-import japgolly.scalajs.react.{ReactEventI, ReactComponentB, BackendScope}
+import japgolly.scalajs.react.{ ReactEventI, ReactComponentB, BackendScope }
 import japgolly.scalajs.react.vdom.prefix_<^._
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import org.scalajs.jquery.jQuery
@@ -12,7 +12,7 @@ import org.scalajs.jquery.jQuery
 import scala.concurrent.Future
 
 import scala.scalajs.js
-import js.Dynamic.{global => g}
+import js.Dynamic.{ global => g }
 
 case class ResolutionOptions(followOptional: Boolean = false,
                              keepTest: Boolean = false)
@@ -111,7 +111,7 @@ class Backend($: BackendScope[Unit, State]) {
     g.$("#resLogTab a:last").tab("show")
     $.modState(_.copy(resolving = true, log = Nil))
 
-    val logger: Fetch.Logger = new Fetch.Logger {
+    val logger: MavenRepository.Logger = new MavenRepository.Logger {
       def fetched(url: String) = {
         println(s"<- $url")
         $.modState(s => s.copy(log = s"<- $url" +: s.log))
@@ -133,9 +133,11 @@ class Backend($: BackendScope[Unit, State]) {
         filter = Some(dep => (s.options.followOptional || !dep.optional) && (s.options.keepTest || dep.scope != Scope.Test))
       )
 
+      implicit val cachePolicy = CachePolicy.Default
+
       res
         .process
-        .run(fetch(s.repositories.map(r => r.copy(fetch = r.fetch.copy(logger = Some(logger))))), 100)
+        .run(s.repositories.map(r => r.copy(logger = Some(logger))), 100)
     }
 
     // For reasons that are unclear to me, not delaying this when using the runNow execution context
@@ -246,7 +248,7 @@ object App {
           )),
          <.td(Seq[Seq[TagMod]](
            res.projectCache.get(dep.moduleVersion) match {
-             case Some((source: MavenRepository.Source, proj)) if !source.ivyLike =>
+             case Some((source: MavenSource, proj)) if !source.ivyLike =>
                // FIXME Maven specific, generalize with source.artifacts
                val version0 = finalVersionOpt getOrElse dep.version
                val relPath =
@@ -401,14 +403,14 @@ object App {
       def repoItem(repo: MavenRepository) =
         <.tr(
           <.td(
-            <.a(^.href := repo.fetch.root,
-              repo.fetch.root
+            <.a(^.href := repo.root,
+              repo.root
             )
           )
         )
 
       val sortedRepos = repos
-        .sortBy(repo => repo.fetch.root)
+        .sortBy(repo => repo.root)
 
       <.table(^.`class` := "table",
         <.thead(

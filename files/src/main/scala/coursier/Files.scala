@@ -1,28 +1,30 @@
 package coursier
 
-import java.net.{URI, URL}
-
-import coursier.core.Repository.CachePolicy
+import java.net.{ URI, URL }
+import java.util.concurrent.{ Executors, ExecutorService }
 
 import scala.annotation.tailrec
-import scalaz.{-\/, \/-, \/, EitherT}
-import scalaz.concurrent.Task
+import scalaz.{ -\/, \/-, \/, EitherT }
+import scalaz.concurrent.{ Task, Strategy }
 
 import java.io._
 
-// FIXME This kind of side-effecting API is lame, we should aim at a more functional one.
-trait FilesLogger {
-  def foundLocally(f: File): Unit
-  def downloadingArtifact(url: String): Unit
-  def downloadedArtifact(url: String, success: Boolean): Unit
-}
+case class Files(
+  cache: Seq[(String, File)],
+  tmp: () => File,
+  logger: Option[Files.Logger] = None,
+  concurrentDownloadCount: Int = Files.defaultConcurrentDownloadCount
+) {
 
-case class Files(cache: Seq[(String, File)],
-                 tmp: () => File,
-                 logger: Option[FilesLogger] = None) {
+  lazy val defaultPool =
+    Executors.newFixedThreadPool(concurrentDownloadCount, Strategy.DefaultDaemonThreadFactory)
 
-  def file(artifact: Artifact,
-           cachePolicy: CachePolicy): EitherT[Task, String, File] = {
+  def file(
+    artifact: Artifact,
+    cachePolicy: CachePolicy
+  )(implicit
+    pool: ExecutorService = defaultPool
+  ): EitherT[Task, String, File] = {
 
     if (artifact.url.startsWith("file:///")) {
       val f = new File(new URI(artifact.url) .getPath)
@@ -99,6 +101,15 @@ case class Files(cache: Seq[(String, File)],
 }
 
 object Files {
+  
+  val defaultConcurrentDownloadCount = 6
+
+  // FIXME This kind of side-effecting API is lame, we should aim at a more functional one.
+  trait Logger {
+    def foundLocally(f: File): Unit
+    def downloadingArtifact(url: String): Unit
+    def downloadedArtifact(url: String, success: Boolean): Unit
+  }
 
   var bufferSize = 1024*1024
 

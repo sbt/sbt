@@ -1,18 +1,18 @@
 package coursier
 package core
 
-import org.scalajs.dom.raw.{Event, XMLHttpRequest}
+import org.scalajs.dom.raw.{ Event, XMLHttpRequest }
 
-import scala.concurrent.{ExecutionContext, Promise, Future}
-import scalaz.{-\/, \/-, EitherT}
+import scala.concurrent.{ ExecutionContext, Promise, Future }
+import scalaz.{ -\/, \/-, EitherT }
 import scalaz.concurrent.Task
 
 import scala.scalajs.js
-import js.Dynamic.{global => g}
+import js.Dynamic.{ global => g }
 
 import scala.scalajs.js.timers._
 
-object Fetch {
+object MavenRepository {
 
   def encodeURIComponent(s: String): String =
     g.encodeURIComponent(s).asInstanceOf[String]
@@ -84,18 +84,24 @@ object Fetch {
 
 }
 
-case class Fetch(root: String,
-                 logger: Option[Fetch.Logger] = None) {
+case class MavenRepository(
+  root: String,
+  ivyLike: Boolean = false,
+  logger: Option[MavenRepository.Logger] = None
+) extends BaseMavenRepository(root, ivyLike) {
 
-  def apply(artifact: Artifact,
-            cachePolicy: Repository.CachePolicy): EitherT[Task, String, String] = {
+
+  def fetch(
+    artifact: Artifact,
+    cachePolicy: CachePolicy
+  ): EitherT[Task, String, String] = {
 
     val url0 = root + artifact.url
 
     EitherT(
       Task { implicit ec =>
         Future(logger.foreach(_.fetching(url0)))
-          .flatMap(_ => Fetch.get(url0))
+          .flatMap(_ => MavenRepository.get(url0))
           .map{ s => logger.foreach(_.fetched(url0)); \/-(s) }
           .recover{case e: Exception =>
             logger.foreach(_.other(url0, e.getMessage))

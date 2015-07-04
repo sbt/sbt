@@ -1,6 +1,6 @@
 package scalaz
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 
 /** Minimal Future-based Task */
 package object concurrent {

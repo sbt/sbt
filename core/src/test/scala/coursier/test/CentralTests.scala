@@ -13,6 +13,8 @@ object CentralTests extends TestSuite {
     Repository.mavenCentral
   )
 
+  implicit val cachePolicy = CachePolicy.Default
+
   def resolve(deps: Set[Dependency], filter: Option[Dependency => Boolean] = None, extraRepo: Option[Repository] = None) = {
     val repositories0 = extraRepo.toSeq ++ repositories
 

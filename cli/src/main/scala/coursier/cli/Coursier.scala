@@ -4,32 +4,69 @@ package cli
 import java.io.File
 
 import caseapp._
-import coursier.core.{Fetch, Parse, Repository}, Repository.CachePolicy
+import coursier.core.{ MavenRepository, Parse, CachePolicy }
 
+import scalaz.{ \/-, -\/ }
 import scalaz.concurrent.Task
 
-case class Coursier(scope: List[String],
-                    keepOptional: Boolean,
-                    fetch: Boolean,
-                    @ExtraName("v") verbose: List[Unit],
-                    @ExtraName("N") maxIterations: Int = 100) extends App {
+case class Coursier(
+  scope: List[String],
+  keepOptional: Boolean,
+  fetch: Boolean,
+  @ExtraName("J") default: Boolean,
+  @ExtraName("S") sources: Boolean,
+  @ExtraName("D") javadoc: Boolean,
+  @ExtraName("P") @ExtraName("cp") classpath: Boolean,
+  @ExtraName("c") offline: Boolean,
+  @ExtraName("f") force: Boolean,
+  @ExtraName("q") quiet: Boolean,
+  @ExtraName("v") verbose: List[Unit],
+  @ExtraName("N") maxIterations: Int = 100,
+  @ExtraName("r") repository: List[String],
+  @ExtraName("n") parallel: Option[Int]
+) extends App {
 
-  val verbose0 = verbose.length
+  val verbose0 = {
+    verbose.length +
+      (if (quiet) 1 else 0)
+  }
 
   val scopes0 =
     if (scope.isEmpty) List(Scope.Compile, Scope.Runtime)
     else scope.map(Parse.scope)
   val scopes = scopes0.toSet
 
-  val centralCacheDir = new File(sys.props("user.home") + "/.coursier/cache/metadata/central")
-  val centralFilesCacheDir = new File(sys.props("user.home") + "/.coursier/cache/files/central")
-
   def fileRepr(f: File) = f.toString
 
-  val logger: Fetch.Logger with FilesLogger =
-    new Fetch.Logger with FilesLogger {
-      def println(s: String) = Console.err.println(s)
+  def println(s: String) = Console.err.println(s)
 
+
+  if (force && offline) {
+    println("Error: --offline (-c) and --force (-f) options can't be specified at the same time.")
+    sys.exit(255)
+  }
+
+
+  def defaultLogger: MavenRepository.Logger with Files.Logger =
+    new MavenRepository.Logger with Files.Logger {
+      def downloading(url: String) =
+        println(s"Downloading $url")
+      def downloaded(url: String, success: Boolean) =
+        if (!success)
+          println(s"Failed to download $url")
+      def readingFromCache(f: File) = {}
+      def puttingInCache(f: File) = {}
+
+      def foundLocally(f: File) = {}
+      def downloadingArtifact(url: String) =
+        println(s"Downloading $url")
+      def downloadedArtifact(url: String, success: Boolean) =
+        if (!success)
+          println(s"Failed to download $url")
+    }
+
+  def verboseLogger: MavenRepository.Logger with Files.Logger =
+    new MavenRepository.Logger with Files.Logger {
       def downloading(url: String) =
         println(s"Downloading $url")
       def downloaded(url: String, success: Boolean) =
@@ -54,20 +91,62 @@ case class Coursier(scope: List[String],
         )
     }
 
-  val cachedMavenCentral = Repository.mavenCentral.copy(
-    fetch = Repository.mavenCentral.fetch.copy(
-      cache = Some(centralCacheDir),
-      logger = if (verbose0 <= 1) None else Some(logger)
+  val logger =
+    if (verbose0 < 0)
+      None
+    else if (verbose0 == 0)
+      Some(defaultLogger)
+    else
+      Some(verboseLogger)
+
+  implicit val cachePolicy =
+    if (offline)
+      CachePolicy.LocalOnly
+    else if (force)
+      CachePolicy.ForceDownload
+    else
+      CachePolicy.Default
+
+  val cache = Cache.default
+
+  val repositoryIds = {
+    val repository0 = repository
+      .flatMap(_.split(','))
+      .map(_.trim)
+      .filter(_.nonEmpty)
+
+    if (repository0.isEmpty)
+      cache.default()
+    else
+      repository0
+  }
+
+  val existingRepo = cache
+    .list()
+    .map(_._1)
+    .toSet
+  if (repositoryIds.exists(!existingRepo(_))) {
+    val notFound = repositoryIds
+      .filter(!existingRepo(_))
+
+    Console.err.println(
+      (if (notFound.lengthCompare(1) == 1) "Repository" else "Repositories") +
+      " not found: " +
+      notFound.mkString(", ")
     )
-  )
-  val repositories = Seq[Repository](
-    cachedMavenCentral,
-    Repository.ivy2Local.copy(
-      fetch = Repository.ivy2Local.fetch.copy(
-        logger = if (verbose0 <= 1) None else Some(logger)
-      )
-    )
-  )
+
+    sys.exit(1)
+  }
+
+
+  val (repositories0, fileCaches) = cache
+    .list()
+    .map{case (_, repo, cacheEntry) => (repo, cacheEntry)}
+    .unzip
+
+  val repositories = repositories0
+    .map(_.copy(logger = logger))
+
 
   val (splitDependencies, malformed) = remainingArgs.toList
     .map(_.split(":", 3).toSeq)
@@ -79,7 +158,7 @@ case class Coursier(scope: List[String],
   }
 
   if (malformed.nonEmpty) {
-    Console.err.println(s"Malformed dependencies:\n${malformed.map(_.mkString(":")).mkString("\n")}")
+    println(s"Malformed dependencies:\n${malformed.map(_.mkString(":")).mkString("\n")}")
     sys exit 1
   }
 
@@ -109,13 +188,16 @@ case class Coursier(scope: List[String],
         print.flatMap(_ => fetchQuiet(modVers))
     }
 
+  if (verbose0 >= 0)
+    println(s"Resolving\n" + moduleVersions.map{case (mod, ver) => s"  $mod:$ver"}.mkString("\n"))
+
   val res = startRes
     .process
     .run(fetch0, maxIterations)
     .run
 
   if (!res.isDone) {
-    Console.err.println(s"Maximum number of iteration reached!")
+    println(s"Maximum number of iteration reached!")
     sys exit 1
   }
 
@@ -131,7 +213,8 @@ case class Coursier(scope: List[String],
 
   val trDeps = res.minDependencies.toList.sortBy(repr)
 
-  println("\n" + trDeps.map(repr).distinct.mkString("\n"))
+  if (verbose0 >= 0)
+    println("\n" + trDeps.map(repr).distinct.mkString("\n"))
 
   if (res.conflicts.nonEmpty) {
     // Needs test
@@ -146,25 +229,56 @@ case class Coursier(scope: List[String],
     }
   }
 
-  if (fetch) {
-    println()
+  if (fetch || classpath) {
+    println("")
 
-    val cachePolicy: CachePolicy = CachePolicy.Default
+    val artifacts0 = res.artifacts
+    val default0 = default || (!sources && !javadoc)
+    val artifacts = artifacts0
+      .flatMap{ artifact =>
+        var l = List.empty[Artifact]
+        if (sources)
+          l = artifact.extra.get("sources").toList ::: l
+        if (javadoc)
+          l = artifact.extra.get("javadoc").toList ::: l
+        if (default0)
+          l = artifact :: l
 
-    val artifacts = res.artifacts
+        l
+      }
 
-    val files = new Files(
-      Seq(
-        cachedMavenCentral.fetch.root -> centralFilesCacheDir
-      ),
-      () => ???,
-      if (verbose0 <= 0) None else Some(logger)
+    val files = {
+      var files0 = cache
+        .files()
+        .copy(logger = logger)
+      for (n <- parallel)
+        files0 = files0.copy(concurrentDownloadCount = n)
+      files0
+    }
+
+    val tasks = artifacts.map(artifact => files.file(artifact, cachePolicy).run.map(artifact.->))
+    def printTask = Task{
+      if (verbose0 >= 0 && artifacts.nonEmpty)
+        println(s"Found ${artifacts.length} artifacts")
+    }
+    val task = printTask.flatMap(_ => Task.gatherUnordered(tasks))
+
+    val results = task.run
+    val errors = results.collect{case (artifact, -\/(err)) => artifact -> err }
+    val files0 = results.collect{case (artifact, \/-(f)) => f }
+
+    if (errors.nonEmpty) {
+      println(s"${errors.size} error(s):")
+      for ((artifact, error) <- errors) {
+        println(s"  ${artifact.url}: $error")
+      }
+    }
+
+    Console.out.println(
+      files0
+        .map(_.toString)
+        .mkString(if (classpath) File.pathSeparator else "\n")
     )
-
-    val tasks = artifacts.map(files.file(_, cachePolicy).run)
-    val task = Task.gatherUnordered(tasks)
-
-    task.run
   }
 }
 
