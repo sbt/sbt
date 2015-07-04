@@ -21,10 +21,11 @@ case class ResolutionOptions(
 
 case class State(
   modules: Seq[Dependency],
-  repositories: Seq[MavenRepository],
+  repositories: Seq[(String, MavenRepository)],
   options: ResolutionOptions,
   resolutionOpt: Option[Resolution],
   editModuleIdx: Int,
+  editRepoIdx: Int,
   resolving: Boolean,
   reverseTree: Boolean,
   log: Seq[String]
@@ -166,7 +167,7 @@ class Backend($: BackendScope[Unit, State]) {
 
       res
         .process
-        .run(s.repositories.map(r => r.copy(logger = Some(logger))), 100)
+        .run(s.repositories.map(item => item._2.copy(logger = Some(logger))), 100)
     }
 
     // For reasons that are unclear to me, not delaying this when using the runNow execution context
@@ -242,6 +243,67 @@ class Backend($: BackendScope[Unit, State]) {
       state.copy(
         modules = modules,
         editModuleIdx = modules.length - 1
+      )
+    }
+  }
+
+  def editRepo(idx: Int)(e: ReactEventI) = {
+    e.preventDefault()
+    $.modState(_.copy(editRepoIdx = idx))
+  }
+
+  def removeRepo(idx: Int)(e: ReactEventI) = {
+    e.preventDefault()
+    $.modState(s =>
+      s.copy(
+        repositories = s.repositories
+          .zipWithIndex
+          .filter(_._2 != idx)
+          .map(_._1)
+      )
+    )
+  }
+
+  def moveRepo(idx: Int, up: Boolean)(e: ReactEventI) = {
+    e.preventDefault()
+    $.modState { s =>
+      val idx0 = if (up) idx - 1 else idx + 1
+      val n = s.repositories.length
+
+      if (idx >= 0 && idx0 >= 0 && idx < n && idx0 < n) {
+        val a = s.repositories(idx)
+        val b = s.repositories(idx0)
+
+        s.copy(
+          repositories = s.repositories
+            .updated(idx, b)
+            .updated(idx0, a)
+        )
+      } else
+        s
+    }
+  }
+
+  def updateRepo(repoIdx: Int, update: ((String, MavenRepository), String) => (String, MavenRepository))(e: ReactEventI) = {
+    if (repoIdx >= 0) {
+      $.modState{ state =>
+        val repo = state.repositories(repoIdx)
+        state.copy(
+          repositories = state.repositories
+            .updated(repoIdx, update(repo, e.target.value))
+        )
+      }
+    }
+  }
+
+  def addRepo(e: ReactEventI) = {
+    e.preventDefault()
+    $.modState{ state =>
+      val repositories = state.repositories :+ ("" -> MavenRepository(""))
+      println(s"Repositories:\n${repositories.mkString("\n")}")
+      state.copy(
+        repositories = repositories,
+        editRepoIdx = repositories.length - 1
       )
     }
   }
@@ -372,6 +434,8 @@ object App {
     def ok = apply("ok")
     def edit = apply("pencil")
     def remove = apply("remove")
+    def up = apply("arrow-up")
+    def down = apply("arrow-down")
   }
 
   val moduleEditModal = ReactComponentB[((Module, String), Int, Backend)]("EditModule")
@@ -476,29 +540,116 @@ object App {
     }
     .build
 
-  val repositories = ReactComponentB[Seq[MavenRepository]]("Repositories")
-    .render{ repos =>
-      def repoItem(repo: MavenRepository) =
-        <.tr(
-          <.td(
-            <.a(^.href := repo.root,
-              repo.root
+  val repoEditModal = ReactComponentB[((String, MavenRepository), Int, Backend)]("EditRepo")
+    .render{ P =>
+      val ((name, repo), repoIdx, backend) = P
+      <.div(^.`class` := "modal fade", ^.id := "repoEdit", ^.role := "dialog", ^.aria.labelledby := "repoEditTitle",
+        <.div(^.`class` := "modal-dialog", <.div(^.`class` := "modal-content",
+          <.div(^.`class` := "modal-header",
+            <.button(^.`type` := "button", ^.`class` := "close", Attr("data-dismiss") := "modal", ^.aria.label := "Close",
+              <.span(^.aria.hidden := "true", dangerouslySetInnerHtml("&times;"))
+            ),
+            <.h4(^.`class` := "modal-title", ^.id := "repoEditTitle", "Repository")
+          ),
+          <.div(^.`class` := "modal-body",
+            <.form(
+              <.div(^.`class` := "form-group",
+                <.label(^.`for` := "inputName", "Name"),
+                <.input(^.`class` := "form-control", ^.id := "inputName", ^.placeholder := "Name",
+                  ^.onChange ==> backend.updateRepo(repoIdx, (item, value) => (value, item._2)),
+                  ^.value := name
+                )
+              ),
+              <.div(^.`class` := "form-group",
+                <.label(^.`for` := "inputVersion", "Root"),
+                <.input(^.`class` := "form-control", ^.id := "inputVersion", ^.placeholder := "Root",
+                  ^.onChange ==> backend.updateRepo(repoIdx, (item, value) => (item._1, item._2.copy(root = value))),
+                  ^.value := repo.root
+                )
+              ),
+              <.div(^.`class` := "modal-footer",
+                <.button(^.`type` := "submit", ^.`class` := "btn btn-primary", Attr("data-dismiss") := "modal", "Done")
+              )
             )
           )
+        ))
+      )
+    }
+    .build
+
+  val repositories = ReactComponentB[(Seq[(String, MavenRepository)], Int, Backend)]("Repositories")
+    .render{ P =>
+      val (repos, editRepoIdx, backend) = P
+
+      def repoItem(item: (String, MavenRepository), idx: Int, isLast: Boolean) =
+        <.tr(
+          <.td(item._1),
+          <.td(item._2.root),
+          <.td(
+            <.a(Attr("data-toggle") := "modal", Attr("data-target") := "#repoEdit", ^.`class` := "icon-action",
+              ^.onClick ==> backend.editRepo(idx),
+              icon.edit
+            )
+          ),
+          <.td(
+            <.a(Attr("data-toggle") := "modal", Attr("data-target") := "#repoRemove", ^.`class` := "icon-action",
+              ^.onClick ==> backend.removeRepo(idx),
+              icon.remove
+            )
+          ),
+          <.td(
+            if (idx > 0)
+              Seq(<.a(Attr("data-toggle") := "modal", Attr("data-target") := "#repoUp", ^.`class` := "icon-action",
+                ^.onClick ==> backend.moveRepo(idx, up = true),
+                icon.up
+              ))
+            else
+              Seq()
+          ),
+          <.td(
+            if (isLast)
+              Seq()
+            else
+              Seq(<.a(Attr("data-toggle") := "modal", Attr("data-target") := "#repoDown", ^.`class` := "icon-action",
+                ^.onClick ==> backend.moveRepo(idx, up = false),
+                icon.down
+              ))
+          )
         )
 
-      val sortedRepos = repos
-        .sortBy(repo => repo.root)
-
-      <.table(^.`class` := "table",
-        <.thead(
-          <.tr(
-            <.th("Base URL")
+      <.div(
+        <.p(
+          <.button(^.`type` := "button", ^.`class` := "btn btn-default customButton",
+            ^.onClick ==> backend.addRepo,
+            Attr("data-toggle") := "modal",
+            Attr("data-target") := "#repoEdit",
+            "Add"
           )
         ),
-        <.tbody(
-          sortedRepos.map(repoItem)
-        )
+        <.table(^.`class` := "table",
+          <.thead(
+            <.tr(
+              <.th("Name"),
+              <.th("Root"),
+              <.th(""),
+              <.th(""),
+              <.th(""),
+              <.th("")
+            )
+          ),
+          <.tbody(
+            repos.init.zipWithIndex
+              .map(t => repoItem(t._1, t._2, isLast = false)) ++
+            repos.lastOption.map(repoItem(_, repos.length - 1, isLast = true))
+          )
+        ),
+        repoEditModal((
+          repos
+            .lift(editRepoIdx)
+            .getOrElse("" -> MavenRepository("")),
+          editRepoIdx,
+          backend
+        ))
       )
     }
     .build
@@ -551,9 +702,10 @@ object App {
 
   val initialState = State(
     Nil,
-    Seq(Repository.mavenCentral),
+    Seq("central" -> Repository.mavenCentral),
     ResolutionOptions(),
     None,
+    -1,
     -1,
     resolving = false,
     reverseTree = false,
@@ -588,7 +740,7 @@ object App {
               modules((S.modules, S.editModuleIdx, B))
             ),
             <.div(^.role := "tabpanel", ^.`class` := "tab-pane", ^.id := "repositories",
-              repositories(S.repositories)
+              repositories((S.repositories, S.editRepoIdx, B))
             ),
             <.div(^.role := "tabpanel", ^.`class` := "tab-pane", ^.id := "options",
               options((S.options, B))
