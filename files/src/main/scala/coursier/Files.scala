@@ -1,28 +1,25 @@
 package coursier
 
-import java.net.{URI, URL}
+import java.net.{ URI, URL }
 
 import coursier.core.Repository.CachePolicy
 
 import scala.annotation.tailrec
-import scalaz.{-\/, \/-, \/, EitherT}
+import scalaz.{ -\/, \/-, \/, EitherT }
 import scalaz.concurrent.Task
 
 import java.io._
 
-// FIXME This kind of side-effecting API is lame, we should aim at a more functional one.
-trait FilesLogger {
-  def foundLocally(f: File): Unit
-  def downloadingArtifact(url: String): Unit
-  def downloadedArtifact(url: String, success: Boolean): Unit
-}
+case class Files(
+  cache: Seq[(String, File)],
+  tmp: () => File,
+  logger: Option[Files.Logger] = None
+) {
 
-case class Files(cache: Seq[(String, File)],
-                 tmp: () => File,
-                 logger: Option[FilesLogger] = None) {
-
-  def file(artifact: Artifact,
-           cachePolicy: CachePolicy): EitherT[Task, String, File] = {
+  def file(
+    artifact: Artifact,
+    cachePolicy: CachePolicy
+  ): EitherT[Task, String, File] = {
 
     if (artifact.url.startsWith("file:///")) {
       val f = new File(new URI(artifact.url) .getPath)
@@ -99,6 +96,13 @@ case class Files(cache: Seq[(String, File)],
 }
 
 object Files {
+
+  // FIXME This kind of side-effecting API is lame, we should aim at a more functional one.
+  trait Logger {
+    def foundLocally(f: File): Unit
+    def downloadingArtifact(url: String): Unit
+    def downloadedArtifact(url: String, success: Boolean): Unit
+  }
 
   var bufferSize = 1024*1024
 

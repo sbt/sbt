@@ -29,8 +29,8 @@ case class Coursier(
 
   def fileRepr(f: File) = f.toString
 
-  val logger: MavenRepository.Logger with FilesLogger =
-    new MavenRepository.Logger with FilesLogger {
+  val logger: MavenRepository.Logger with Files.Logger =
+    new MavenRepository.Logger with Files.Logger {
       def println(s: String) = Console.err.println(s)
 
       def downloading(url: String) =
