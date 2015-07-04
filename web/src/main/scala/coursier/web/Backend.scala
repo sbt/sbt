@@ -14,17 +14,21 @@ import scala.concurrent.Future
 import scala.scalajs.js
 import js.Dynamic.{ global => g }
 
-case class ResolutionOptions(followOptional: Boolean = false,
-                             keepTest: Boolean = false)
+case class ResolutionOptions(
+  followOptional: Boolean = false,
+  keepTest: Boolean = false
+)
 
-case class State(modules: Seq[Dependency],
-                 repositories: Seq[MavenRepository],
-                 options: ResolutionOptions,
-                 resolutionOpt: Option[Resolution],
-                 editModuleIdx: Int,
-                 resolving: Boolean,
-                 reverseTree: Boolean,
-                 log: Seq[String])
+case class State(
+  modules: Seq[Dependency],
+  repositories: Seq[MavenRepository],
+  options: ResolutionOptions,
+  resolutionOpt: Option[Resolution],
+  editModuleIdx: Int,
+  resolving: Boolean,
+  reverseTree: Boolean,
+  log: Seq[String]
+)
 
 class Backend($: BackendScope[Unit, State]) {
   def updateDepGraph(resolution: Resolution) = {
@@ -39,12 +43,21 @@ class Backend($: BackendScope[Unit, State]) {
         nodes += name
       }
 
+    def repr(dep: Dependency) =
+      Seq(
+        dep.module.organization,
+        dep.module.name,
+        dep.scope.name
+      ).mkString(":")
+
     for {
-      (dep, parents) <- resolution.reverseDependencies.toList
-      from = s"${dep.module.organization}:${dep.module.name}:${dep.scope.name}"
+      (dep, parents) <- resolution
+        .reverseDependencies
+        .toList
+      from = repr(dep)
       _ = addNode(from)
       parDep <- parents
-      to = s"${parDep.module.organization}:${parDep.module.name}:${parDep.scope.name}"
+      to = repr(parDep)
       _ = addNode(to)
     } {
       graph.addEdge(from, to)
@@ -53,14 +66,21 @@ class Backend($: BackendScope[Unit, State]) {
     val layouter = js.Dynamic.newInstance(g.Graph.Layout.Spring)(graph)
     layouter.layout()
 
-    val width = jQuery("#dependencies").width()
-    val height = math.max(jQuery("#dependencies").height().asInstanceOf[Int], 400)
+    val width = jQuery("#dependencies")
+      .width()
+    val height = jQuery("#dependencies")
+      .height()
+      .asInstanceOf[Int]
+      .max(400)
 
     println(s"width: $width, height: $height")
 
-    jQuery("#depgraphcanvas").html("") //empty()
+    jQuery("#depgraphcanvas")
+      .html("") // empty()
 
-    val renderer = js.Dynamic.newInstance(g.Graph.Renderer.Raphael)("depgraphcanvas", graph, width, height)
+    val renderer = js.Dynamic.newInstance(g.Graph.Renderer.Raphael)(
+      "depgraphcanvas", graph, width, height
+    )
     renderer.draw()
     println("Rendered canvas")
   }
@@ -103,8 +123,14 @@ class Backend($: BackendScope[Unit, State]) {
         else Seq("nodes" -> js.Array(deps.map(tree): _*))
       }: _*)
 
-    println(minDependencies.toList.map(tree).map(js.JSON.stringify(_)))
-    g.$(target).treeview(js.Dictionary("data" -> js.Array(minDependencies.toList.map(tree): _*)))
+    println(
+      minDependencies
+        .toList
+        .map(tree)
+        .map(js.JSON.stringify(_))
+    )
+    g.$(target)
+      .treeview(js.Dictionary("data" -> js.Array(minDependencies.toList.map(tree): _*)))
   }
 
   def resolve(action: => Unit = ()) = {
@@ -130,7 +156,10 @@ class Backend($: BackendScope[Unit, State]) {
     def task = {
       val res = coursier.Resolution(
         s.modules.toSet,
-        filter = Some(dep => (s.options.followOptional || !dep.optional) && (s.options.keepTest || dep.scope != Scope.Test))
+        filter = Some(dep =>
+          (s.options.followOptional || !dep.optional) &&
+            (s.options.keepTest || dep.scope != Scope.Test)
+        )
       )
 
       implicit val cachePolicy = CachePolicy.Default
@@ -143,8 +172,18 @@ class Backend($: BackendScope[Unit, State]) {
     // For reasons that are unclear to me, not delaying this when using the runNow execution context
     // somehow discards the $.modState above. (Not a major problem as queue is used by default.)
     Future(task)(scala.scalajs.concurrent.JSExecutionContext.Implicits.queue).flatMap(_.runF).foreach { res: Resolution =>
-      $.modState{ s => updateDepGraph(res); updateTree(res, "#deptree", reverse = s.reverseTree); s.copy(resolutionOpt = Some(res), resolving = false)}
-      g.$("#resResTab a:last").tab("show")
+      $.modState{ s =>
+        updateDepGraph(res)
+        updateTree(res, "#deptree", reverse = s.reverseTree)
+
+        s.copy(
+          resolutionOpt = Some(res),
+          resolving = false
+        )
+      }
+
+      g.$("#resResTab a:last")
+        .tab("show")
     }
   }
   def handleResolve(e: ReactEventI) = {
@@ -173,14 +212,24 @@ class Backend($: BackendScope[Unit, State]) {
 
   def removeModule(idx: Int)(e: ReactEventI) = {
     e.preventDefault()
-    $.modState(s => s.copy(modules = s.modules.zipWithIndex.filter(_._2 != idx).map(_._1)))
+    $.modState(s =>
+      s.copy(
+        modules = s.modules
+          .zipWithIndex
+          .filter(_._2 != idx)
+          .map(_._1)
+      )
+    )
   }
 
   def updateModule(moduleIdx: Int, update: (Dependency, String) => Dependency)(e: ReactEventI) = {
     if (moduleIdx >= 0) {
       $.modState{ state =>
         val dep = state.modules(moduleIdx)
-        state.copy(modules = state.modules.updated(moduleIdx, update(dep, e.target.value)))
+        state.copy(
+          modules = state.modules
+            .updated(moduleIdx, update(dep, e.target.value))
+        )
       }
     }
   }
@@ -190,20 +239,34 @@ class Backend($: BackendScope[Unit, State]) {
     $.modState{ state =>
       val modules = state.modules :+ Dependency(Module("", ""), "")
       println(s"Modules:\n${modules.mkString("\n")}")
-      state.copy(modules = modules, editModuleIdx = modules.length - 1)
+      state.copy(
+        modules = modules,
+        editModuleIdx = modules.length - 1
+      )
     }
   }
 
   def enablePopover(e: ReactEventI) = {
-    g.$("[data-toggle='popover']").popover()
+    g.$("[data-toggle='popover']")
+      .popover()
   }
 
   object options {
     def toggleOptional(e: ReactEventI) = {
-      $.modState(s => s.copy(options = s.options.copy(followOptional = !s.options.followOptional)))
+      $.modState(s =>
+        s.copy(
+          options = s.options
+            .copy(followOptional = !s.options.followOptional)
+        )
+      )
     }
     def toggleTest(e: ReactEventI) = {
-      $.modState(s => s.copy(options = s.options.copy(keepTest = !s.options.keepTest)))
+      $.modState(s =>
+        s.copy(
+          options = s.options
+            .copy(keepTest = !s.options.keepTest)
+        )
+      )
     }
   }
 }
@@ -289,7 +352,16 @@ object App {
           )
         ),
         <.tbody(
-          sortedDeps.map(dep => depItem(dep, res.projectCache.get(dep.moduleVersion).map(_._2.version).filter(_ != dep.version)))
+          sortedDeps.map(dep =>
+            depItem(
+              dep,
+              res
+                .projectCache
+                .get(dep.moduleVersion)
+                .map(_._2.version)
+                .filter(_ != dep.version)
+            )
+          )
         )
       )
     }
@@ -346,7 +418,7 @@ object App {
     }
     .build
 
-  def dependenciesTable(name: String) = ReactComponentB[(Seq[Dependency], Int, Backend)](name)
+  val modules = ReactComponentB[(Seq[Dependency], Int, Backend)]("Dependencies")
     .render{ P =>
       val (deps, editModuleIdx, backend) = P
 
@@ -373,7 +445,8 @@ object App {
         <.p(
           <.button(^.`type` := "button", ^.`class` := "btn btn-default customButton",
             ^.onClick ==> backend.addModule,
-            Attr("data-toggle") := "modal", Attr("data-target") := "#moduleEdit",
+            Attr("data-toggle") := "modal",
+            Attr("data-target") := "#moduleEdit",
             "Add"
           )
         ),
@@ -388,15 +461,20 @@ object App {
             )
           ),
           <.tbody(
-            deps.zipWithIndex.map((depItem _).tupled)
+            deps.zipWithIndex
+              .map((depItem _).tupled)
           )
         ),
-        moduleEditModal((deps.lift(editModuleIdx).fold((Module("", ""), ""))(_.moduleVersion), editModuleIdx, backend))
+        moduleEditModal((
+          deps
+            .lift(editModuleIdx)
+            .fold(Module("", "") -> "")(_.moduleVersion),
+          editModuleIdx,
+          backend
+        ))
       )
     }
     .build
-
-  val modules = dependenciesTable("Dependencies")
 
   val repositories = ReactComponentB[Seq[MavenRepository]]("Repositories")
     .render{ repos =>
@@ -471,7 +549,16 @@ object App {
     }
     .build
 
-  val initialState = State(Nil, Seq(Repository.mavenCentral), ResolutionOptions(), None, -1, resolving = false, reverseTree = false, log = Nil)
+  val initialState = State(
+    Nil,
+    Seq(Repository.mavenCentral),
+    ResolutionOptions(),
+    None,
+    -1,
+    resolving = false,
+    reverseTree = false,
+    log = Nil
+  )
 
   val app = ReactComponentB[Unit]("Coursier")
     .initialState(initialState)
