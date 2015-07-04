@@ -9,6 +9,8 @@ import coursier.test.compatibility._
 
 object ResolutionTests extends TestSuite {
 
+  implicit val cachePolicy = CachePolicy.Default
+
   def resolve0(deps: Set[Dependency], filter: Option[Dependency => Boolean] = None) = {
     Resolution(deps, filter = filter)
       .process

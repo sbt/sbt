@@ -8,8 +8,9 @@ import coursier.core.compatibility.encodeURIComponent
 trait Repository {
   def find(
     module: Module,
-    version: String,
-    cachePolicy: CachePolicy = CachePolicy.Default
+    version: String
+  )(implicit
+    cachePolicy: CachePolicy
   ): EitherT[Task, String, (Artifact.Source, Project)]
 }
 
@@ -38,6 +39,8 @@ object Repository {
     repositories: Seq[Repository],
     module: Module,
     version: String
+  )(implicit
+    cachePolicy: CachePolicy
   ): EitherT[Task, Seq[String], (Artifact.Source, Project)] = {
 
     val lookups = repositories
@@ -295,7 +298,8 @@ abstract class BaseMavenRepository(
 
   def find(
     module: Module,
-    version: String,
+    version: String
+  )(implicit
     cachePolicy: CachePolicy
   ): EitherT[Task, String, (Artifact.Source, Project)] = {
 

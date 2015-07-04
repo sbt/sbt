@@ -94,6 +94,8 @@ package object coursier {
 
   implicit def fetch(
     repositories: Seq[core.Repository]
+  )(implicit
+    cachePolicy: CachePolicy
   ): ResolutionProcess.Fetch[Task] = {
 
     modVers =>

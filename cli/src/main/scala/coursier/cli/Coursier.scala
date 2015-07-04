@@ -6,12 +6,14 @@ import java.io.File
 import caseapp._
 import coursier.core.{ MavenRepository, Parse, Repository, CachePolicy }
 
+import scalaz.{\/-, -\/}
 import scalaz.concurrent.Task
 
 case class Coursier(
   scope: List[String],
   keepOptional: Boolean,
   fetch: Boolean,
+  @ExtraName("P") @ExtraName("cp") classpath: Boolean,
   @ExtraName("c") offline: Boolean,
   @ExtraName("v") verbose: List[Unit],
   @ExtraName("N") maxIterations: Int = 100
@@ -29,10 +31,11 @@ case class Coursier(
 
   def fileRepr(f: File) = f.toString
 
+  def println(s: String) = Console.err.println(s)
+
+
   val logger: MavenRepository.Logger with Files.Logger =
     new MavenRepository.Logger with Files.Logger {
-      def println(s: String) = Console.err.println(s)
-
       def downloading(url: String) =
         println(s"Downloading $url")
       def downloaded(url: String, success: Boolean) =
@@ -57,6 +60,12 @@ case class Coursier(
         )
     }
 
+  implicit val cachePolicy =
+    if (offline)
+      CachePolicy.LocalOnly
+    else
+      CachePolicy.Default
+
   val cachedMavenCentral = Repository.mavenCentral.copy(
     cache = Some(centralCacheDir),
     logger = if (verbose0 <= 1) None else Some(logger)
@@ -78,7 +87,7 @@ case class Coursier(
   }
 
   if (malformed.nonEmpty) {
-    Console.err.println(s"Malformed dependencies:\n${malformed.map(_.mkString(":")).mkString("\n")}")
+    println(s"Malformed dependencies:\n${malformed.map(_.mkString(":")).mkString("\n")}")
     sys exit 1
   }
 
@@ -114,7 +123,7 @@ case class Coursier(
     .run
 
   if (!res.isDone) {
-    Console.err.println(s"Maximum number of iteration reached!")
+    println(s"Maximum number of iteration reached!")
     sys exit 1
   }
 
@@ -145,14 +154,8 @@ case class Coursier(
     }
   }
 
-  if (fetch) {
-    println()
-
-    val cachePolicy: CachePolicy =
-      if (offline)
-        CachePolicy.LocalOnly
-      else
-        CachePolicy.Default
+  if (fetch || classpath) {
+    println("")
 
     val artifacts = res.artifacts
 
@@ -164,10 +167,25 @@ case class Coursier(
       if (verbose0 <= 0) None else Some(logger)
     )
 
-    val tasks = artifacts.map(files.file(_, cachePolicy).run)
+    val tasks = artifacts.map(artifact => files.file(artifact, cachePolicy).run.map(artifact.->))
     val task = Task.gatherUnordered(tasks)
 
-    task.run
+    val results = task.run
+    val errors = results.collect{case (artifact, -\/(err)) => artifact -> err }
+    val files0 = results.collect{case (artifact, \/-(f)) => f }
+
+    if (errors.nonEmpty) {
+      println(s"${errors.size} error(s):")
+      for ((artifact, error) <- errors) {
+        println(s"  ${artifact.url}: $error")
+      }
+    }
+
+    Console.out.println(
+      files0
+        .map(_.toString)
+        .mkString(File.pathSeparator)
+    )
   }
 }
 

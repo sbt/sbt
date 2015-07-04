@@ -26,6 +26,8 @@ object JsTests extends TestSuite {
     }
 
     'getProj{
+      implicit val cachePolicy = CachePolicy.Default
+
       Repository.mavenCentral
         .find(Module("ch.qos.logback", "logback-classic"), "1.1.3")
         .map{case (_, proj) =>

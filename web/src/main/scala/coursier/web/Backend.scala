@@ -133,9 +133,11 @@ class Backend($: BackendScope[Unit, State]) {
         filter = Some(dep => (s.options.followOptional || !dep.optional) && (s.options.keepTest || dep.scope != Scope.Test))
       )
 
+      implicit val cachePolicy = CachePolicy.Default
+
       res
         .process
-        .run(fetch(s.repositories.map(r => r.copy(logger = Some(logger)))), 100)
+        .run(s.repositories.map(r => r.copy(logger = Some(logger))), 100)
     }
 
     // For reasons that are unclear to me, not delaying this when using the runNow execution context
