@@ -59,8 +59,10 @@ object CoursierBuild extends Build {
     organization := "com.github.alexarchambault",
     scalaVersion := "2.11.6",
     crossScalaVersions := Seq("2.10.5", "2.11.6"),
-    resolvers += "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
-    resolvers += Resolver.sonatypeRepo("snapshots")
+    resolvers ++= Seq(
+      "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
+      Resolver.sonatypeRepo("releases")
+    )
   ) ++ publishingSettings
 
   private lazy val commonCoreSettings = commonSettings ++ Seq[Setting[_]](
@@ -124,7 +126,7 @@ object CoursierBuild extends Build {
     .settings(
       name := "coursier-cli",
       libraryDependencies ++= Seq(
-        "com.github.alexarchambault" %% "case-app" % "0.3.0-SNAPSHOT",
+        "com.github.alexarchambault" %% "case-app" % "0.3.0",
         "ch.qos.logback" % "logback-classic" % "1.1.3"
       ) ++ {
         if (scalaVersion.value startsWith "2.10.")
