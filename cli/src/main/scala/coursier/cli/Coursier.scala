@@ -4,15 +4,18 @@ package cli
 import java.io.File
 
 import caseapp._
-import coursier.core.{Fetch, Parse, Repository}, Repository.CachePolicy
+import coursier.core.{MavenRepository, Parse, Repository}, Repository.CachePolicy
 
 import scalaz.concurrent.Task
 
-case class Coursier(scope: List[String],
-                    keepOptional: Boolean,
-                    fetch: Boolean,
-                    @ExtraName("v") verbose: List[Unit],
-                    @ExtraName("N") maxIterations: Int = 100) extends App {
+case class Coursier(
+  scope: List[String],
+  keepOptional: Boolean,
+  fetch: Boolean,
+  @ExtraName("c") offline: Boolean,
+  @ExtraName("v") verbose: List[Unit],
+  @ExtraName("N") maxIterations: Int = 100
+) extends App {
 
   val verbose0 = verbose.length
 
@@ -26,8 +29,8 @@ case class Coursier(scope: List[String],
 
   def fileRepr(f: File) = f.toString
 
-  val logger: Fetch.Logger with FilesLogger =
-    new Fetch.Logger with FilesLogger {
+  val logger: MavenRepository.Logger with FilesLogger =
+    new MavenRepository.Logger with FilesLogger {
       def println(s: String) = Console.err.println(s)
 
       def downloading(url: String) =
@@ -55,17 +58,13 @@ case class Coursier(scope: List[String],
     }
 
   val cachedMavenCentral = Repository.mavenCentral.copy(
-    fetch = Repository.mavenCentral.fetch.copy(
-      cache = Some(centralCacheDir),
-      logger = if (verbose0 <= 1) None else Some(logger)
-    )
+    cache = Some(centralCacheDir),
+    logger = if (verbose0 <= 1) None else Some(logger)
   )
   val repositories = Seq[Repository](
     cachedMavenCentral,
     Repository.ivy2Local.copy(
-      fetch = Repository.ivy2Local.fetch.copy(
-        logger = if (verbose0 <= 1) None else Some(logger)
-      )
+      logger = if (verbose0 <= 1) None else Some(logger)
     )
   )
 
@@ -149,13 +148,17 @@ case class Coursier(scope: List[String],
   if (fetch) {
     println()
 
-    val cachePolicy: CachePolicy = CachePolicy.Default
+    val cachePolicy: CachePolicy =
+      if (offline)
+        CachePolicy.LocalOnly
+      else
+        CachePolicy.Default
 
     val artifacts = res.artifacts
 
     val files = new Files(
       Seq(
-        cachedMavenCentral.fetch.root -> centralFilesCacheDir
+        cachedMavenCentral.root -> centralFilesCacheDir
       ),
       () => ???,
       if (verbose0 <= 0) None else Some(logger)

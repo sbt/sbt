@@ -1,7 +1,7 @@
 package coursier
 package test
 
-import coursier.core.{Fetch, Repository}
+import coursier.core.{Repository, MavenRepository}
 import coursier.test.compatibility._
 
 import utest._
@@ -18,7 +18,7 @@ object JsTests extends TestSuite {
     }
 
     'get{
-      Fetch.get("http://repo1.maven.org/maven2/ch/qos/logback/logback-classic/1.1.3/logback-classic-1.1.3.pom")
+      MavenRepository.get("http://repo1.maven.org/maven2/ch/qos/logback/logback-classic/1.1.3/logback-classic-1.1.3.pom")
         .map(core.compatibility.xmlParse)
         .map{ xml =>
           assert(xml.right.toOption.exists(_.label == "project"))

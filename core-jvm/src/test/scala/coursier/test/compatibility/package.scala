@@ -1,6 +1,6 @@
 package coursier.test
 
-import coursier.core.Fetch
+import coursier.core.MavenRepository
 
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.concurrent.Task
@@ -14,10 +14,12 @@ package object compatibility {
   }
 
   def textResource(path: String)(implicit ec: ExecutionContext): Future[String] = Future {
-    def is = getClass.getClassLoader
-      .getResource(path).openStream()
+    def is = getClass
+      .getClassLoader
+      .getResource(path)
+      .openStream()
 
-    new String(Fetch.readFullySync(is), "UTF-8")
+    new String(MavenRepository.readFullySync(is), "UTF-8")
   }
 
 }

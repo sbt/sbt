@@ -1,6 +1,6 @@
 package coursier.core
 
-import coursier.core.Resolution.ModuleVersion
+import coursier.core.Repository.CachePolicy
 
 import scalaz.{-\/, \/-, \/, EitherT}
 import scalaz.concurrent.Task
@@ -8,19 +8,21 @@ import scalaz.concurrent.Task
 import coursier.core.compatibility.encodeURIComponent
 
 trait Repository {
-  def find(module: Module,
-           version: String,
-           cachePolicy: Repository.CachePolicy = Repository.CachePolicy.Default): EitherT[Task, String, (Artifact.Source, Project)]
+  def find(
+    module: Module,
+    version: String,
+    cachePolicy: Repository.CachePolicy = Repository.CachePolicy.Default
+  ): EitherT[Task, String, (Artifact.Source, Project)]
 }
 
 object Repository {
 
-  val mavenCentral = MavenRepository(Fetch("https://repo1.maven.org/maven2/"))
+  val mavenCentral = MavenRepository("https://repo1.maven.org/maven2/")
 
-  val sonatypeReleases = MavenRepository(Fetch("https://oss.sonatype.org/content/repositories/releases/"))
-  val sonatypeSnapshots = MavenRepository(Fetch("https://oss.sonatype.org/content/repositories/snapshots/"))
+  val sonatypeReleases = MavenRepository("https://oss.sonatype.org/content/repositories/releases/")
+  val sonatypeSnapshots = MavenRepository("https://oss.sonatype.org/content/repositories/snapshots/")
 
-  lazy val ivy2Local = MavenRepository(Fetch("file://" + sys.props("user.home") + "/.ivy2/local/"), ivyLike = true)
+  lazy val ivy2Local = MavenRepository("file://" + sys.props("user.home") + "/.ivy2/local/", ivyLike = true)
 
 
   /**
@@ -34,9 +36,11 @@ object Repository {
    * version (e.g. version interval). Which version get chosen depends on
    * the repository implementation.
    */
-  def find(repositories: Seq[Repository],
-           module: Module,
-           version: String): EitherT[Task, Seq[String], (Artifact.Source, Project)] = {
+  def find(
+    repositories: Seq[Repository],
+    module: Module,
+    version: String
+  ): EitherT[Task, Seq[String], (Artifact.Source, Project)] = {
 
     val lookups = repositories.map(repo => repo -> repo.find(module, version).run)
     val task = lookups.foldLeft(Task.now(-\/(Nil)): Task[Seq[String] \/ (Artifact.Source, Project)]) {
@@ -131,7 +135,7 @@ object Repository {
   }
 }
 
-object MavenRepository {
+object BaseMavenRepository {
 
   def ivyLikePath(org: String,
                   name: String,
@@ -154,7 +158,7 @@ object MavenRepository {
                   project: Project): Seq[Artifact] = {
 
       def ivyLikePath0(subDir: String, baseSuffix: String, ext: String) =
-        MavenRepository.ivyLikePath(dependency.module.organization, dependency.module.name, project.version, subDir, baseSuffix, ext)
+        BaseMavenRepository.ivyLikePath(dependency.module.organization, dependency.module.name, project.version, subDir, baseSuffix, ext)
 
       val path =
         if (ivyLike)
@@ -206,13 +210,20 @@ object MavenRepository {
 
 }
 
-case class MavenRepository(fetch: Fetch,
-                           ivyLike: Boolean = false) extends Repository {
+abstract class BaseMavenRepository(
+  root: String,
+  ivyLike: Boolean
+) extends Repository {
+
+  def fetch(
+    artifact: Artifact,
+    cachePolicy: CachePolicy
+  ): EitherT[Task, String, String]
 
   import Repository._
-  import MavenRepository._
+  import BaseMavenRepository._
 
-  val source = MavenRepository.Source(fetch.root, ivyLike)
+  val source = BaseMavenRepository.Source(root, ivyLike)
 
   def projectArtifact(module: Module, version: String): Artifact = {
     val path = (
