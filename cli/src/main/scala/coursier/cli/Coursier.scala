@@ -4,9 +4,9 @@ package cli
 import java.io.File
 
 import caseapp._
-import coursier.core.{ MavenRepository, Parse, Repository, CachePolicy }
+import coursier.core.{ MavenRepository, Parse, CachePolicy }
 
-import scalaz.{\/-, -\/}
+import scalaz.{ \/-, -\/ }
 import scalaz.concurrent.Task
 
 case class Coursier(
@@ -16,7 +16,8 @@ case class Coursier(
   @ExtraName("P") @ExtraName("cp") classpath: Boolean,
   @ExtraName("c") offline: Boolean,
   @ExtraName("v") verbose: List[Unit],
-  @ExtraName("N") maxIterations: Int = 100
+  @ExtraName("N") maxIterations: Int = 100,
+  @ExtraName("r") repository: List[String]
 ) extends App {
 
   val verbose0 = verbose.length
@@ -26,15 +27,30 @@ case class Coursier(
     else scope.map(Parse.scope)
   val scopes = scopes0.toSet
 
-  val centralCacheDir = new File(sys.props("user.home") + "/.coursier/cache/metadata/central")
-  val centralFilesCacheDir = new File(sys.props("user.home") + "/.coursier/cache/files/central")
-
   def fileRepr(f: File) = f.toString
 
   def println(s: String) = Console.err.println(s)
 
 
-  val logger: MavenRepository.Logger with Files.Logger =
+  def defaultLogger: MavenRepository.Logger with Files.Logger =
+    new MavenRepository.Logger with Files.Logger {
+      def downloading(url: String) =
+        println(s"Downloading $url")
+      def downloaded(url: String, success: Boolean) =
+        if (!success)
+          println(s"Failed to download $url")
+      def readingFromCache(f: File) = {}
+      def puttingInCache(f: File) = {}
+
+      def foundLocally(f: File) = {}
+      def downloadingArtifact(url: String) =
+        println(s"Downloading $url")
+      def downloadedArtifact(url: String, success: Boolean) =
+        if (!success)
+          println(s"Failed to download $url")
+    }
+
+  def verboseLogger: MavenRepository.Logger with Files.Logger =
     new MavenRepository.Logger with Files.Logger {
       def downloading(url: String) =
         println(s"Downloading $url")
@@ -60,22 +76,54 @@ case class Coursier(
         )
     }
 
+  val logger = if (verbose0 <= 0) defaultLogger else verboseLogger
+
   implicit val cachePolicy =
     if (offline)
       CachePolicy.LocalOnly
     else
       CachePolicy.Default
 
-  val cachedMavenCentral = Repository.mavenCentral.copy(
-    cache = Some(centralCacheDir),
-    logger = if (verbose0 <= 1) None else Some(logger)
-  )
-  val repositories = Seq[Repository](
-    cachedMavenCentral,
-    Repository.ivy2Local.copy(
-      logger = if (verbose0 <= 1) None else Some(logger)
+  val cache = Cache.default
+
+  val repositoryIds = {
+    val repository0 = repository
+      .flatMap(_.split(','))
+      .map(_.trim)
+      .filter(_.nonEmpty)
+
+    if (repository0.isEmpty)
+      cache.default()
+    else
+      repository0
+  }
+
+  val existingRepo = cache
+    .list()
+    .map(_._1)
+    .toSet
+  if (repositoryIds.exists(!existingRepo(_))) {
+    val notFound = repositoryIds
+      .filter(!existingRepo(_))
+
+    Console.err.println(
+      (if (notFound.lengthCompare(1) == 1) "Repository" else "Repositories") +
+      " not found: " +
+      notFound.mkString(", ")
     )
-  )
+
+    sys.exit(1)
+  }
+
+
+  val (repositories0, fileCaches) = cache
+    .list()
+    .map{case (_, repo, cacheEntry) => (repo, cacheEntry)}
+    .unzip
+
+  val repositories = repositories0
+    .map(_.copy(logger = Some(logger)))
+
 
   val (splitDependencies, malformed) = remainingArgs.toList
     .map(_.split(":", 3).toSeq)
@@ -159,13 +207,9 @@ case class Coursier(
 
     val artifacts = res.artifacts
 
-    val files = new Files(
-      Seq(
-        cachedMavenCentral.root -> centralFilesCacheDir
-      ),
-      () => ???,
-      if (verbose0 <= 0) None else Some(logger)
-    )
+    val files = cache
+      .files()
+      .copy(logger = Some(logger))
 
     val tasks = artifacts.map(artifact => files.file(artifact, cachePolicy).run.map(artifact.->))
     val task = Task.gatherUnordered(tasks)
@@ -181,11 +225,18 @@ case class Coursier(
       }
     }
 
-    Console.out.println(
-      files0
-        .map(_.toString)
-        .mkString(File.pathSeparator)
-    )
+    if (classpath)
+      Console.out.println(
+        files0
+          .map(_.toString)
+          .mkString(File.pathSeparator)
+      )
+    else
+      println(
+        files0
+          .map(_.toString)
+          .mkString("\n")
+      )
   }
 }
 
