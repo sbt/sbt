@@ -101,29 +101,12 @@ object Versions {
 
 case class Artifact(
   url: String,
-  extra: Map[String, String],
+  checksumUrls: Map[String, String],
+  extra: Map[String, Artifact],
   attributes: Attributes
 )
 
 object Artifact {
-  val md5 = "md5"
-  val sha1 = "sha1"
-  val sig = "pgp"
-  val sigMd5 = "md5-pgp"
-  val sigSha1 = "sha1-pgp"
-  val sources = "src"
-  val sourcesMd5 = "md5-src"
-  val sourcesSha1 = "sha1-src"
-  val sourcesSig = "src-pgp"
-  val sourcesSigMd5 = "md5-src-pgp"
-  val sourcesSigSha1 = "sha1-src-pgp"
-  val javadoc = "javadoc"
-  val javadocMd5 = "md5-javadoc"
-  val javadocSha1 = "sha1-javadoc"
-  val javadocSig = "javadoc-pgp"
-  val javadocSigMd5 = "md5-javadoc-pgp"
-  val javadocSigSha1 = "sha1-javadoc-pgp"
-
   trait Source {
     def artifacts(dependency: Dependency, project: Project): Seq[Artifact]
   }

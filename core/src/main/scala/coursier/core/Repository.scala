@@ -75,31 +75,25 @@ object Repository {
 
   implicit class ArtifactExtensions(val underlying: Artifact) extends AnyVal {
     def withDefaultChecksums: Artifact =
-      underlying.copy(extra = underlying.extra ++ Seq(
-        Artifact.md5 -> (underlying.url + ".md5"),
-        Artifact.sha1 -> (underlying.url + ".sha1")
+      underlying.copy(checksumUrls = underlying.checksumUrls ++ Seq(
+        "md5" -> (underlying.url + ".md5"),
+        "sha1" -> (underlying.url + ".sha1")
       ))
     def withDefaultSignature: Artifact =
       underlying.copy(extra = underlying.extra ++ Seq(
-        Artifact.sigMd5 -> (underlying.url + ".asc.md5"),
-        Artifact.sigSha1 -> (underlying.url + ".asc.sha1"),
-        Artifact.sig -> (underlying.url + ".asc")
+        "sig" ->
+          Artifact(underlying.url + ".asc", Map.empty, Map.empty, Attributes("asc", ""))
+            .withDefaultChecksums
       ))
     def withJavadocSources: Artifact = {
       val base = underlying.url.stripSuffix(".jar")
       underlying.copy(extra = underlying.extra ++ Seq(
-        Artifact.sourcesMd5 -> (base + "-sources.jar.md5"),
-        Artifact.sourcesSha1 -> (base + "-sources.jar.sha1"),
-        Artifact.sources -> (base + "-sources.jar"),
-        Artifact.sourcesSigMd5 -> (base + "-sources.jar.asc.md5"),
-        Artifact.sourcesSigSha1 -> (base + "-sources.jar.asc.sha1"),
-        Artifact.sourcesSig -> (base + "-sources.jar.asc"),
-        Artifact.javadocMd5 -> (base + "-javadoc.jar.md5"),
-        Artifact.javadocSha1 -> (base + "-javadoc.jar.sha1"),
-        Artifact.javadoc -> (base + "-javadoc.jar"),
-        Artifact.javadocSigMd5 -> (base + "-javadoc.jar.asc.md5"),
-        Artifact.javadocSigSha1 -> (base + "-javadoc.jar.asc.sha1"),
-        Artifact.javadocSig -> (base + "-javadoc.jar.asc")
+        "sources" -> Artifact(base + "-sources.jar", Map.empty, Map.empty, Attributes("jar", "src")) // Are these the right attributes?
+          .withDefaultChecksums
+          .withDefaultSignature,
+        "javadoc" -> Artifact(base + "-javadoc.jar", Map.empty, Map.empty, Attributes("jar", "javadoc")) // Same comment as above
+          .withDefaultChecksums
+          .withDefaultSignature
       ))
     }
   }
@@ -137,6 +131,7 @@ case class MavenSource(root: String, ivyLike: Boolean) extends Artifact.Source {
       Artifact(
         root + path.mkString("/"),
         Map.empty,
+        Map.empty,
         dependency.attributes
       )
       .withDefaultChecksums
@@ -150,19 +145,14 @@ case class MavenSource(root: String, ivyLike: Boolean) extends Artifact.Source {
           val javadocPath = root + ivyLikePath0("docs", "-javadoc", "jar").mkString("/")
 
           artifact
-            .copy(extra = artifact.extra ++ Map(
-              Artifact.sourcesMd5 -> (srcPath + ".md5"),
-              Artifact.sourcesSha1 -> (srcPath + ".sha1"),
-              Artifact.sources -> srcPath,
-              Artifact.sourcesSigMd5 -> (srcPath + ".asc.md5"),
-              Artifact.sourcesSigSha1 -> (srcPath + ".asc.sha1"),
-              Artifact.sourcesSig -> (srcPath + ".asc"),
-              Artifact.javadocMd5 -> (javadocPath + ".md5"),
-              Artifact.javadocSha1 -> (javadocPath + ".sha1"),
-              Artifact.javadoc -> javadocPath,
-              Artifact.javadocSigMd5 -> (javadocPath + ".asc.md5"),
-              Artifact.javadocSigSha1 -> (javadocPath + ".asc.sha1"),
-              Artifact.javadocSig -> (javadocPath + ".asc")
+            .copy(
+              extra = artifact.extra ++ Map(
+                "sources" -> Artifact(srcPath, Map.empty, Map.empty, Attributes("jar", "src")) // Are these the right attributes?
+                  .withDefaultChecksums
+                  .withDefaultSignature,
+                "javadoc" -> Artifact(javadocPath, Map.empty, Map.empty, Attributes("jar", "javadoc")) // Same comment as above
+                  .withDefaultChecksums
+                  .withDefaultSignature
             ))
         } else
           artifact
@@ -223,10 +213,8 @@ abstract class BaseMavenRepository(
 
     Artifact(
       path.mkString("/"),
-      Map(
-        Artifact.md5 -> "",
-        Artifact.sha1 -> ""
-      ),
+      Map.empty,
+      Map.empty,
       Attributes("pom", "")
     )
     .withDefaultSignature
@@ -245,6 +233,7 @@ abstract class BaseMavenRepository(
       val artifact =
         Artifact(
           path.mkString("/"),
+          Map.empty,
           Map.empty,
           Attributes("pom", "")
         )
