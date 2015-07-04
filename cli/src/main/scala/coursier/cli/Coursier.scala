@@ -19,13 +19,17 @@ case class Coursier(
   @ExtraName("P") @ExtraName("cp") classpath: Boolean,
   @ExtraName("c") offline: Boolean,
   @ExtraName("f") force: Boolean,
+  @ExtraName("q") quiet: Boolean,
   @ExtraName("v") verbose: List[Unit],
   @ExtraName("N") maxIterations: Int = 100,
   @ExtraName("r") repository: List[String],
   @ExtraName("n") parallel: Option[Int]
 ) extends App {
 
-  val verbose0 = verbose.length
+  val verbose0 = {
+    verbose.length +
+      (if (quiet) 1 else 0)
+  }
 
   val scopes0 =
     if (scope.isEmpty) List(Scope.Compile, Scope.Runtime)
@@ -87,7 +91,13 @@ case class Coursier(
         )
     }
 
-  val logger = if (verbose0 <= 0) defaultLogger else verboseLogger
+  val logger =
+    if (verbose0 < 0)
+      None
+    else if (verbose0 == 0)
+      Some(defaultLogger)
+    else
+      Some(verboseLogger)
 
   implicit val cachePolicy =
     if (offline)
@@ -135,7 +145,7 @@ case class Coursier(
     .unzip
 
   val repositories = repositories0
-    .map(_.copy(logger = Some(logger)))
+    .map(_.copy(logger = logger))
 
 
   val (splitDependencies, malformed) = remainingArgs.toList
@@ -178,7 +188,8 @@ case class Coursier(
         print.flatMap(_ => fetchQuiet(modVers))
     }
 
-  println(s"Resolving\n" + moduleVersions.map{case (mod, ver) => s"  $mod:$ver"}.mkString("\n"))
+  if (verbose0 >= 0)
+    println(s"Resolving\n" + moduleVersions.map{case (mod, ver) => s"  $mod:$ver"}.mkString("\n"))
 
   val res = startRes
     .process
@@ -202,7 +213,8 @@ case class Coursier(
 
   val trDeps = res.minDependencies.toList.sortBy(repr)
 
-  println("\n" + trDeps.map(repr).distinct.mkString("\n"))
+  if (verbose0 >= 0)
+    println("\n" + trDeps.map(repr).distinct.mkString("\n"))
 
   if (res.conflicts.nonEmpty) {
     // Needs test
@@ -238,7 +250,7 @@ case class Coursier(
     val files = {
       var files0 = cache
         .files()
-        .copy(logger = Some(logger))
+        .copy(logger = logger)
       for (n <- parallel)
         files0 = files0.copy(concurrentDownloadCount = n)
       files0
