@@ -257,7 +257,11 @@ case class Coursier(
     }
 
     val tasks = artifacts.map(artifact => files.file(artifact, cachePolicy).run.map(artifact.->))
-    val task = Task.gatherUnordered(tasks)
+    def printTask = Task{
+      if (verbose0 >= 0 && artifacts.nonEmpty)
+        println(s"Found ${artifacts.length} artifacts")
+    }
+    val task = printTask.flatMap(_ => Task.gatherUnordered(tasks))
 
     val results = task.run
     val errors = results.collect{case (artifact, -\/(err)) => artifact -> err }
