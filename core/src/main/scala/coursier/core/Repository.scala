@@ -1,7 +1,5 @@
 package coursier.core
 
-import coursier.core.Repository.CachePolicy
-
 import scalaz.{ -\/, \/-, \/, EitherT }
 import scalaz.concurrent.Task
 
@@ -11,7 +9,7 @@ trait Repository {
   def find(
     module: Module,
     version: String,
-    cachePolicy: Repository.CachePolicy = Repository.CachePolicy.Default
+    cachePolicy: CachePolicy = CachePolicy.Default
   ): EitherT[Task, String, (Artifact.Source, Project)]
 }
 
@@ -70,43 +68,6 @@ object Repository {
         assert(proj.module == module)
         x
       }
-  }
-
-  sealed trait CachePolicy {
-    def apply[E,T](local: => Task[E \/ T])
-                  (remote: => Task[E \/ T]): Task[E \/ T]
-
-    def saving[E,T](local: => Task[E \/ T])
-                   (remote: => Task[E \/ T])
-                   (save: => T => Task[Unit]): Task[E \/ T] =
-      apply(local)(CachePolicy.saving(remote)(save))
-  }
-
-  object CachePolicy {
-    def saving[E,T](remote: => Task[E \/ T])
-                   (save: T => Task[Unit]): Task[E \/ T] = {
-      for {
-        res <- remote
-        _ <- res.fold(_ => Task.now(()), t => save(t))
-      } yield res
-    }
-
-    case object Default extends CachePolicy {
-      def apply[E,T](local: => Task[E \/ T])
-                    (remote: => Task[E \/ T]): Task[E \/ T] =
-        local
-          .flatMap(res => if (res.isLeft) remote else Task.now(res))
-    }
-    case object LocalOnly extends CachePolicy {
-      def apply[E,T](local: => Task[E \/ T])
-                    (remote: => Task[E \/ T]): Task[E \/ T] =
-        local
-    }
-    case object ForceDownload extends CachePolicy {
-      def apply[E,T](local: => Task[E \/ T])
-                    (remote: => Task[E \/ T]): Task[E \/ T] =
-        remote
-    }
   }
 
   implicit class ArtifactExtensions(val underlying: Artifact) extends AnyVal {
@@ -370,4 +331,41 @@ abstract class BaseMavenRepository(
     }
   }
 
+}
+
+sealed trait CachePolicy {
+  def apply[E,T](local: => Task[E \/ T])
+                (remote: => Task[E \/ T]): Task[E \/ T]
+
+  def saving[E,T](local: => Task[E \/ T])
+                 (remote: => Task[E \/ T])
+                 (save: => T => Task[Unit]): Task[E \/ T] =
+    apply(local)(CachePolicy.saving(remote)(save))
+}
+
+object CachePolicy {
+  def saving[E,T](remote: => Task[E \/ T])
+                 (save: T => Task[Unit]): Task[E \/ T] = {
+    for {
+      res <- remote
+      _ <- res.fold(_ => Task.now(()), t => save(t))
+    } yield res
+  }
+
+  case object Default extends CachePolicy {
+    def apply[E,T](local: => Task[E \/ T])
+                  (remote: => Task[E \/ T]): Task[E \/ T] =
+      local
+        .flatMap(res => if (res.isLeft) remote else Task.now(res))
+  }
+  case object LocalOnly extends CachePolicy {
+    def apply[E,T](local: => Task[E \/ T])
+                  (remote: => Task[E \/ T]): Task[E \/ T] =
+      local
+  }
+  case object ForceDownload extends CachePolicy {
+    def apply[E,T](local: => Task[E \/ T])
+                  (remote: => Task[E \/ T]): Task[E \/ T] =
+      remote
+  }
 }

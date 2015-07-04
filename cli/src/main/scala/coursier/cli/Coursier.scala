@@ -4,7 +4,7 @@ package cli
 import java.io.File
 
 import caseapp._
-import coursier.core.{MavenRepository, Parse, Repository}, Repository.CachePolicy
+import coursier.core.{ MavenRepository, Parse, Repository, CachePolicy }
 
 import scalaz.concurrent.Task
 

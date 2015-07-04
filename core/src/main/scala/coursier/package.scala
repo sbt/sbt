@@ -52,6 +52,9 @@ package object coursier {
   type Scope = core.Scope
   val Scope: core.Scope.type = core.Scope
 
+  type CachePolicy = core.CachePolicy
+  val CachePolicy: core.CachePolicy.type = core.CachePolicy
+
   type Repository = core.Repository
   val Repository: core.Repository.type = core.Repository
 

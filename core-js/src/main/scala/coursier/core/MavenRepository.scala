@@ -93,7 +93,7 @@ case class MavenRepository(
 
   def fetch(
     artifact: Artifact,
-    cachePolicy: Repository.CachePolicy
+    cachePolicy: CachePolicy
   ): EitherT[Task, String, String] = {
 
     val url0 = root + artifact.url
