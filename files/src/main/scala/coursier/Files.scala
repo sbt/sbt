@@ -1,22 +1,29 @@
 package coursier
 
 import java.net.{ URI, URL }
+import java.util.concurrent.{ Executors, ExecutorService }
 
 import scala.annotation.tailrec
 import scalaz.{ -\/, \/-, \/, EitherT }
-import scalaz.concurrent.Task
+import scalaz.concurrent.{ Task, Strategy }
 
 import java.io._
 
 case class Files(
   cache: Seq[(String, File)],
   tmp: () => File,
-  logger: Option[Files.Logger] = None
+  logger: Option[Files.Logger] = None,
+  concurrentDownloadCount: Int = Files.defaultConcurrentDownloadCount
 ) {
+
+  lazy val defaultPool =
+    Executors.newFixedThreadPool(concurrentDownloadCount, Strategy.DefaultDaemonThreadFactory)
 
   def file(
     artifact: Artifact,
     cachePolicy: CachePolicy
+  )(implicit
+    pool: ExecutorService = defaultPool
   ): EitherT[Task, String, File] = {
 
     if (artifact.url.startsWith("file:///")) {
@@ -94,6 +101,8 @@ case class Files(
 }
 
 object Files {
+  
+  val defaultConcurrentDownloadCount = 6
 
   // FIXME This kind of side-effecting API is lame, we should aim at a more functional one.
   trait Logger {

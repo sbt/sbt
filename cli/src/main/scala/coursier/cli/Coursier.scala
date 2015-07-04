@@ -13,11 +13,15 @@ case class Coursier(
   scope: List[String],
   keepOptional: Boolean,
   fetch: Boolean,
+  @ExtraName("J") default: Boolean,
+  @ExtraName("S") sources: Boolean,
+  @ExtraName("D") javadoc: Boolean,
   @ExtraName("P") @ExtraName("cp") classpath: Boolean,
   @ExtraName("c") offline: Boolean,
   @ExtraName("v") verbose: List[Unit],
   @ExtraName("N") maxIterations: Int = 100,
-  @ExtraName("r") repository: List[String]
+  @ExtraName("r") repository: List[String],
+  @ExtraName("n") parallel: Option[Int]
 ) extends App {
 
   val verbose0 = verbose.length
@@ -165,6 +169,8 @@ case class Coursier(
         print.flatMap(_ => fetchQuiet(modVers))
     }
 
+  println(s"Resolving\n" + moduleVersions.map{case (mod, ver) => s"  $mod:$ver"}.mkString("\n"))
+
   val res = startRes
     .process
     .run(fetch0, maxIterations)
@@ -205,11 +211,29 @@ case class Coursier(
   if (fetch || classpath) {
     println("")
 
-    val artifacts = res.artifacts
+    val artifacts0 = res.artifacts
+    val default0 = default || (!sources && !javadoc)
+    val artifacts = artifacts0
+      .flatMap{ artifact =>
+        var l = List.empty[Artifact]
+        if (sources)
+          l = artifact.extra.get("sources").toList ::: l
+        if (javadoc)
+          l = artifact.extra.get("javadoc").toList ::: l
+        if (default0)
+          l = artifact :: l
 
-    val files = cache
-      .files()
-      .copy(logger = Some(logger))
+        l
+      }
+
+    val files = {
+      var files0 = cache
+        .files()
+        .copy(logger = Some(logger))
+      for (n <- parallel)
+        files0 = files0.copy(concurrentDownloadCount = n)
+      files0
+    }
 
     val tasks = artifacts.map(artifact => files.file(artifact, cachePolicy).run.map(artifact.->))
     val task = Task.gatherUnordered(tasks)
@@ -225,18 +249,11 @@ case class Coursier(
       }
     }
 
-    if (classpath)
-      Console.out.println(
-        files0
-          .map(_.toString)
-          .mkString(File.pathSeparator)
-      )
-    else
-      println(
-        files0
-          .map(_.toString)
-          .mkString("\n")
-      )
+    Console.out.println(
+      files0
+        .map(_.toString)
+        .mkString(if (classpath) File.pathSeparator else "\n")
+    )
   }
 }
 
