@@ -1,10 +1,10 @@
 package coursier
 package web
 
-import coursier.core.{Repository, BaseMavenRepository, MavenRepository}
-import japgolly.scalajs.react.vdom.{TagMod, Attr}
+import coursier.core.{ Repository, MavenRepository, MavenSource }
+import japgolly.scalajs.react.vdom.{ TagMod, Attr }
 import japgolly.scalajs.react.vdom.Attrs.dangerouslySetInnerHtml
-import japgolly.scalajs.react.{ReactEventI, ReactComponentB, BackendScope}
+import japgolly.scalajs.react.{ ReactEventI, ReactComponentB, BackendScope }
 import japgolly.scalajs.react.vdom.prefix_<^._
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import org.scalajs.jquery.jQuery
@@ -12,7 +12,7 @@ import org.scalajs.jquery.jQuery
 import scala.concurrent.Future
 
 import scala.scalajs.js
-import js.Dynamic.{global => g}
+import js.Dynamic.{ global => g }
 
 case class ResolutionOptions(followOptional: Boolean = false,
                              keepTest: Boolean = false)
@@ -248,7 +248,7 @@ object App {
           )),
          <.td(Seq[Seq[TagMod]](
            res.projectCache.get(dep.moduleVersion) match {
-             case Some((source: BaseMavenRepository.Source, proj)) if !source.ivyLike =>
+             case Some((source: MavenSource, proj)) if !source.ivyLike =>
                // FIXME Maven specific, generalize with source.artifacts
                val version0 = finalVersionOpt getOrElse dep.version
                val relPath =

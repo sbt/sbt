@@ -105,6 +105,74 @@ object Repository {
   }
 }
 
+case class MavenSource(root: String, ivyLike: Boolean) extends Artifact.Source {
+  import Repository._
+
+  def artifacts(
+    dependency: Dependency,
+    project: Project
+  ): Seq[Artifact] = {
+
+    def ivyLikePath0(subDir: String, baseSuffix: String, ext: String) =
+      BaseMavenRepository.ivyLikePath(
+        dependency.module.organization,
+        dependency.module.name,
+        project.version,
+        subDir,
+        baseSuffix,
+        ext
+      )
+
+    val path =
+      if (ivyLike)
+        ivyLikePath0(dependency.attributes.`type` + "s", "", dependency.attributes.`type`)
+      else
+        dependency.module.organization.split('.').toSeq ++ Seq(
+          dependency.module.name,
+          project.version,
+          s"${dependency.module.name}-${project.version}${Some(dependency.attributes.classifier).filter(_.nonEmpty).map("-"+_).mkString}.${dependency.attributes.`type`}"
+        )
+
+    var artifact =
+      Artifact(
+        root + path.mkString("/"),
+        Map.empty,
+        dependency.attributes
+      )
+      .withDefaultChecksums
+
+    if (dependency.attributes.`type` == "jar") {
+      artifact = artifact.withDefaultSignature
+
+      artifact =
+        if (ivyLike) {
+          val srcPath = root + ivyLikePath0("srcs", "-sources", "jar").mkString("/")
+          val javadocPath = root + ivyLikePath0("docs", "-javadoc", "jar").mkString("/")
+
+          artifact
+            .copy(extra = artifact.extra ++ Map(
+              Artifact.sourcesMd5 -> (srcPath + ".md5"),
+              Artifact.sourcesSha1 -> (srcPath + ".sha1"),
+              Artifact.sources -> srcPath,
+              Artifact.sourcesSigMd5 -> (srcPath + ".asc.md5"),
+              Artifact.sourcesSigSha1 -> (srcPath + ".asc.sha1"),
+              Artifact.sourcesSig -> (srcPath + ".asc"),
+              Artifact.javadocMd5 -> (javadocPath + ".md5"),
+              Artifact.javadocSha1 -> (javadocPath + ".sha1"),
+              Artifact.javadoc -> javadocPath,
+              Artifact.javadocSigMd5 -> (javadocPath + ".asc.md5"),
+              Artifact.javadocSigSha1 -> (javadocPath + ".asc.sha1"),
+              Artifact.javadocSig -> (javadocPath + ".asc")
+            ))
+        } else
+          artifact
+            .withJavadocSources
+    }
+
+    Seq(artifact)
+  }
+}
+
 object BaseMavenRepository {
 
   def ivyLikePath(
@@ -123,74 +191,6 @@ object BaseMavenRepository {
       s"$name$baseSuffix.$ext"
     )
 
-  case class Source(root: String, ivyLike: Boolean) extends Artifact.Source {
-    import Repository._
-
-    def artifacts(
-      dependency: Dependency,
-      project: Project
-    ): Seq[Artifact] = {
-
-      def ivyLikePath0(subDir: String, baseSuffix: String, ext: String) =
-        BaseMavenRepository.ivyLikePath(
-          dependency.module.organization,
-          dependency.module.name,
-          project.version,
-          subDir,
-          baseSuffix,
-          ext
-        )
-
-      val path =
-        if (ivyLike)
-          ivyLikePath0(dependency.attributes.`type` + "s", "", dependency.attributes.`type`)
-        else
-          dependency.module.organization.split('.').toSeq ++ Seq(
-            dependency.module.name,
-            project.version,
-            s"${dependency.module.name}-${project.version}${Some(dependency.attributes.classifier).filter(_.nonEmpty).map("-"+_).mkString}.${dependency.attributes.`type`}"
-          )
-
-      var artifact =
-        Artifact(
-          root + path.mkString("/"),
-          Map.empty,
-          dependency.attributes
-        )
-        .withDefaultChecksums
-
-      if (dependency.attributes.`type` == "jar") {
-        artifact = artifact.withDefaultSignature
-
-        artifact =
-          if (ivyLike) {
-            val srcPath = root + ivyLikePath0("srcs", "-sources", "jar").mkString("/")
-            val javadocPath = root + ivyLikePath0("docs", "-javadoc", "jar").mkString("/")
-
-            artifact
-              .copy(extra = artifact.extra ++ Map(
-                Artifact.sourcesMd5 -> (srcPath + ".md5"),
-                Artifact.sourcesSha1 -> (srcPath + ".sha1"),
-                Artifact.sources -> srcPath,
-                Artifact.sourcesSigMd5 -> (srcPath + ".asc.md5"),
-                Artifact.sourcesSigSha1 -> (srcPath + ".asc.sha1"),
-                Artifact.sourcesSig -> (srcPath + ".asc"),
-                Artifact.javadocMd5 -> (javadocPath + ".md5"),
-                Artifact.javadocSha1 -> (javadocPath + ".sha1"),
-                Artifact.javadoc -> javadocPath,
-                Artifact.javadocSigMd5 -> (javadocPath + ".asc.md5"),
-                Artifact.javadocSigSha1 -> (javadocPath + ".asc.sha1"),
-                Artifact.javadocSig -> (javadocPath + ".asc")
-            ))
-          } else
-            artifact
-              .withJavadocSources
-      }
-
-      Seq(artifact)
-    }
-  }
-
 }
 
 abstract class BaseMavenRepository(
@@ -206,7 +206,7 @@ abstract class BaseMavenRepository(
   import Repository._
   import BaseMavenRepository._
 
-  val source = BaseMavenRepository.Source(root, ivyLike)
+  val source = MavenSource(root, ivyLike)
 
   def projectArtifact(module: Module, version: String): Artifact = {
 
