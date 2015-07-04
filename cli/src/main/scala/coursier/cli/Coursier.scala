@@ -18,6 +18,7 @@ case class Coursier(
   @ExtraName("D") javadoc: Boolean,
   @ExtraName("P") @ExtraName("cp") classpath: Boolean,
   @ExtraName("c") offline: Boolean,
+  @ExtraName("f") force: Boolean,
   @ExtraName("v") verbose: List[Unit],
   @ExtraName("N") maxIterations: Int = 100,
   @ExtraName("r") repository: List[String],
@@ -34,6 +35,12 @@ case class Coursier(
   def fileRepr(f: File) = f.toString
 
   def println(s: String) = Console.err.println(s)
+
+
+  if (force && offline) {
+    println("Error: --offline (-c) and --force (-f) options can't be specified at the same time.")
+    sys.exit(255)
+  }
 
 
   def defaultLogger: MavenRepository.Logger with Files.Logger =
@@ -85,6 +92,8 @@ case class Coursier(
   implicit val cachePolicy =
     if (offline)
       CachePolicy.LocalOnly
+    else if (force)
+      CachePolicy.ForceDownload
     else
       CachePolicy.Default
 
