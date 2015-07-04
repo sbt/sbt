@@ -13,12 +13,14 @@ object Cache {
       lines
         .find(_.startsWith("maven:"))
         .map(_.stripPrefix("maven:").trim)
+        .toSeq
         .contains("true")
 
     def ivyLike =
       lines
         .find(_.startsWith("ivy-like:"))
         .map(_.stripPrefix("ivy-like:").trim)
+        .toSeq
         .contains("true")
 
     def base =
