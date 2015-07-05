@@ -76,8 +76,8 @@ object Repository {
   implicit class ArtifactExtensions(val underlying: Artifact) extends AnyVal {
     def withDefaultChecksums: Artifact =
       underlying.copy(checksumUrls = underlying.checksumUrls ++ Seq(
-        "md5" -> (underlying.url + ".md5"),
-        "sha1" -> (underlying.url + ".sha1")
+        "MD5" -> (underlying.url + ".md5"),
+        "SHA-1" -> (underlying.url + ".sha1")
       ))
     def withDefaultSignature: Artifact =
       underlying.copy(extra = underlying.extra ++ Seq(

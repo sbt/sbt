@@ -251,12 +251,12 @@ case class Coursier(
       var files0 = cache
         .files()
         .copy(logger = logger)
-      for (n <- parallel)
+      for (n <- parallel if n > 0)
         files0 = files0.copy(concurrentDownloadCount = n)
       files0
     }
 
-    val tasks = artifacts.map(artifact => files.file(artifact, cachePolicy).run.map(artifact.->))
+    val tasks = artifacts.map(artifact => files.file(artifact).run.map(artifact.->))
     def printTask = Task{
       if (verbose0 >= 0 && artifacts.nonEmpty)
         println(s"Found ${artifacts.length} artifacts")
