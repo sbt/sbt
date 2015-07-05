@@ -256,7 +256,7 @@ case class Coursier(
       files0
     }
 
-    val tasks = artifacts.map(artifact => files.file(artifact, cachePolicy).run.map(artifact.->))
+    val tasks = artifacts.map(artifact => files.file(artifact).run.map(artifact.->))
     def printTask = Task{
       if (verbose0 >= 0 && artifacts.nonEmpty)
         println(s"Found ${artifacts.length} artifacts")
