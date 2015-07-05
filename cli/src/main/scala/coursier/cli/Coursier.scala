@@ -251,7 +251,7 @@ case class Coursier(
       var files0 = cache
         .files()
         .copy(logger = logger)
-      for (n <- parallel)
+      for (n <- parallel if n > 0)
         files0 = files0.copy(concurrentDownloadCount = n)
       files0
     }
