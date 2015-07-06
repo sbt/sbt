@@ -1,6 +1,7 @@
 package coursier
 
 import java.net.URL
+import java.nio.channels.{ OverlappingFileLockException, FileLock }
 import java.security.MessageDigest
 import java.util.concurrent.{ Executors, ExecutorService }
 
@@ -92,27 +93,43 @@ case class Files(
           logger.foreach(_.downloadingArtifact(url))
 
           val url0 = new URL(url)
-          val b = Array.fill[Byte](Files.bufferSize)(0)
           val in = new BufferedInputStream(url0.openStream(), Files.bufferSize)
 
-          try {
-            val out = new FileOutputStream(file)
+          val result =
             try {
-              @tailrec
-              def helper(): Unit = {
-                val read = in.read(b)
-                if (read >= 0) {
-                  out.write(b, 0, read)
-                  helper()
-                }
-              }
+              val out = new FileOutputStream(file)
+              try {
+                var lock: FileLock = null
+                try {
+                  lock = out.getChannel.tryLock()
+                  if (lock == null)
+                    -\/(FileError.Locked(file.toString))
+                  else {
+                    val b = Array.fill[Byte](Files.bufferSize)(0)
 
-              helper()
-            } finally out.close()
-          } finally in.close()
+                    @tailrec
+                    def helper(): Unit = {
+                      val read = in.read(b)
+                      if (read >= 0) {
+                        out.write(b, 0, read)
+                        helper()
+                      }
+                    }
+
+                    helper()
+                    \/-(file)
+                  }
+                }
+                catch {
+                  case e: OverlappingFileLockException =>
+                    -\/(FileError.Locked(file.toString))
+                }
+                finally if (lock != null) lock.release()
+              } finally out.close()
+            } finally in.close()
 
           logger.foreach(_.downloadedArtifact(url, success = true))
-          \/-(file)
+          result
         }
         catch { case e: Exception =>
           logger.foreach(_.downloadedArtifact(url, success = false))
@@ -167,7 +184,7 @@ case class Files(
         }
 
       case None =>
-        Task.now(-\/(FileError.ChecksumNoFound(sumType, artifact0.url)))
+        Task.now(-\/(FileError.ChecksumNotFound(sumType, artifact0.url)))
     }
   }
 
@@ -188,11 +205,11 @@ case class Files(
       checksum.fold(res) { sumType =>
         res
           .flatMap{
-          case err @ -\/(_) => Task.now(err)
-          case \/-(f) =>
-            validateChecksum(artifact, sumType)
-              .map(_.map(_ => f))
-        }
+            case err @ -\/(_) => Task.now(err)
+            case \/-(f) =>
+              validateChecksum(artifact, sumType)
+                .map(_.map(_ => f))
+          }
       }
     }
 
@@ -256,7 +273,7 @@ object FileError {
   case class DownloadError(message: String) extends FileError
   case class NotFound(file: String) extends FileError
   case class Locked(file: String) extends FileError
-  case class ChecksumNoFound(sumType: String, file: String) extends FileError
+  case class ChecksumNotFound(sumType: String, file: String) extends FileError
   case class WrongChecksum(sumType: String, got: String, expected: String, file: String, sumFile: String) extends FileError
 
 }
