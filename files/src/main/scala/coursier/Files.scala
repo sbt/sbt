@@ -188,11 +188,11 @@ case class Files(
       checksum.fold(res) { sumType =>
         res
           .flatMap{
-          case err @ -\/(_) => Task.now(err)
-          case \/-(f) =>
-            validateChecksum(artifact, sumType)
-              .map(_.map(_ => f))
-        }
+            case err @ -\/(_) => Task.now(err)
+            case \/-(f) =>
+              validateChecksum(artifact, sumType)
+                .map(_.map(_ => f))
+          }
       }
     }
 
