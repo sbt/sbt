@@ -167,7 +167,7 @@ case class Files(
         }
 
       case None =>
-        Task.now(-\/(FileError.ChecksumNoFound(sumType, artifact0.url)))
+        Task.now(-\/(FileError.ChecksumNotFound(sumType, artifact0.url)))
     }
   }
 
@@ -256,7 +256,7 @@ object FileError {
   case class DownloadError(message: String) extends FileError
   case class NotFound(file: String) extends FileError
   case class Locked(file: String) extends FileError
-  case class ChecksumNoFound(sumType: String, file: String) extends FileError
+  case class ChecksumNotFound(sumType: String, file: String) extends FileError
   case class WrongChecksum(sumType: String, got: String, expected: String, file: String, sumFile: String) extends FileError
 
 }
