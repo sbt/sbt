@@ -51,7 +51,7 @@ object CentralTests extends TestSuite {
     async {
       val expected =
         await(
-          textResource(s"resolutions/${module.organization}:${module.name}:$version")
+          textResource(s"resolutions/${module.organization}/${module.name}/$version")
         )
         .split('\n')
         .toSeq

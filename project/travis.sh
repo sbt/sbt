@@ -35,7 +35,7 @@ else
 fi
 
 # Required for ~/.ivy2/local repo tests
-sbt ++2.11.6 core-jvm/publish-local
+sbt core-jvm/publish-local
 
 SBT_COMMANDS="$SBT_COMMANDS test"
 
