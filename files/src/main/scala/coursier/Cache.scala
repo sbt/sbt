@@ -61,7 +61,7 @@ case class Cache(cache: File) {
     add("central", "https://repo1.maven.org/maven2/", ivyLike = false)
 
   def addIvy2Local(): Unit =
-    add("ivy2local", "file://" + sys.props("user.home") + "/.ivy2/local/", ivyLike = true)
+    add("ivy2local", new File(sys.props("user.home") + "/.ivy2/local/").toURI.toString, ivyLike = true)
 
   def init(ifEmpty: Boolean = true): Unit =
     if (!ifEmpty || !cache.exists()) {

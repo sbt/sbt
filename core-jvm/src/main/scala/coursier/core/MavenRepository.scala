@@ -15,7 +15,7 @@ case class MavenRepository(
   logger: Option[MavenRepository.Logger] = None
 ) extends BaseMavenRepository(root, ivyLike) {
 
-  val isLocal = root.startsWith("file:///")
+  val isLocal = root.startsWith("file:/")
 
   def fetch(
     artifact: Artifact,

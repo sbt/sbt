@@ -23,12 +23,14 @@ case class Files(
 
   def withLocal(artifact: Artifact): Artifact = {
     val isLocal =
-      artifact.url.startsWith("file://") &&
-        artifact.checksumUrls.values.forall(_.startsWith("file://"))
+      artifact.url.startsWith("file:/") &&
+        artifact.checksumUrls.values.forall(_.startsWith("file:/"))
 
     def local(url: String) =
-      if (url.startsWith("file://"))
+      if (url.startsWith("file:///"))
         url.stripPrefix("file://")
+      else if (url.startsWith("file:/"))
+        url.stripPrefix("file:")
       else
         cache.find{case (base, _) => url.startsWith(base)} match {
           case None => ???
@@ -139,7 +141,7 @@ case class Files(
 
 
     val tasks =
-      for ((f, url) <- pairs if url != ("file://" + f)) yield {
+      for ((f, url) <- pairs if url != ("file:" + f) && url != ("file://" + f)) yield {
         val file = new File(f)
         cachePolicy(locally(file))(remote(file, url))
           .map(e => (file, url) -> e.map(_ => ()))

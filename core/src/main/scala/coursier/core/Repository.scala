@@ -3,6 +3,8 @@ package coursier.core
 import scalaz.{ -\/, \/-, \/, EitherT }
 import scalaz.concurrent.Task
 
+import java.io.File
+
 import coursier.core.compatibility.encodeURIComponent
 
 trait Repository {
@@ -21,7 +23,7 @@ object Repository {
   val sonatypeReleases = MavenRepository("https://oss.sonatype.org/content/repositories/releases/")
   val sonatypeSnapshots = MavenRepository("https://oss.sonatype.org/content/repositories/snapshots/")
 
-  lazy val ivy2Local = MavenRepository("file://" + sys.props("user.home") + "/.ivy2/local/", ivyLike = true)
+  lazy val ivy2Local = MavenRepository(new File(sys.props("user.home") + "/.ivy2/local/").toURI.toString, ivyLike = true)
 
 
   /**
