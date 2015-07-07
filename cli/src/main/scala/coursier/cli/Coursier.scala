@@ -10,31 +10,48 @@ import scalaz.{ \/-, -\/ }
 import scalaz.concurrent.Task
 
 case class Coursier(
-  scope: List[String],
-  keepOptional: Boolean,
-  fetch: Boolean,
-  @ExtraName("J") default: Boolean,
-  @ExtraName("S") sources: Boolean,
-  @ExtraName("D") javadoc: Boolean,
-  @ExtraName("P") @ExtraName("cp") classpath: Boolean,
-  @ExtraName("c") offline: Boolean,
-  @ExtraName("f") force: Boolean,
-  @ExtraName("q") quiet: Boolean,
-  @ExtraName("v") verbose: List[Unit],
-  @ExtraName("N") maxIterations: Int = 100,
-  @ExtraName("r") repository: List[String],
-  @ExtraName("n") parallel: Option[Int]
+  @HelpMessage("Keep optional dependencies (Maven)")
+    keepOptional: Boolean,
+  @HelpMessage("Fetch main artifacts (default: true if --classpath is specified and sources and javadoc are not fetched, else false)")
+    @ExtraName("J")
+    default: Boolean,
+  @HelpMessage("Fetch source artifacts")
+    @ExtraName("S")
+    sources: Boolean,
+  @HelpMessage("Fetch javadoc artifacts")
+    @ExtraName("D")
+    javadoc: Boolean,
+  @HelpMessage("Print  java -cp  compatible classpath (use like  java -cp $(coursier -P ..dependencies..) )")
+    @ExtraName("P")
+    @ExtraName("cp")
+    classpath: Boolean,
+  @HelpMessage("Off-line mode: only use cache and local repositories")
+    @ExtraName("c")
+    offline: Boolean,
+  @HelpMessage("Force download: for remote repositories only: re-download items, that is, don't use cache directly")
+    @ExtraName("f")
+    force: Boolean,
+  @HelpMessage("Quiet output")
+    @ExtraName("q")
+    quiet: Boolean,
+  @HelpMessage("Increase verbosity (specify several times to increase more)")
+    @ExtraName("v")
+    verbose: List[Unit],
+  @HelpMessage("Maximum number of resolution iterations (specify a negative value for unlimited, default: 100)")
+    @ExtraName("N")
+    maxIterations: Int = 100,
+  @HelpMessage("Repositories - for multiple repositories, separate with comma and/or repeat this option (e.g. -r central,ivy2local -r sonatype-snapshots, or equivalently -r central,ivy2local,sonatype-snapshots)")
+    @ExtraName("r")
+    repository: List[String],
+  @HelpMessage("Maximim number of parallel downloads (default: 6)")
+    @ExtraName("n")
+    parallel: Int = 6
 ) extends App {
 
   val verbose0 = {
     verbose.length +
       (if (quiet) 1 else 0)
   }
-
-  val scopes0 =
-    if (scope.isEmpty) List(Scope.Compile, Scope.Runtime)
-    else scope.map(Parse.scope)
-  val scopes = scopes0.toSet
 
   def fileRepr(f: File) = f.toString
 
@@ -44,6 +61,10 @@ case class Coursier(
   if (force && offline) {
     println("Error: --offline (-c) and --force (-f) options can't be specified at the same time.")
     sys.exit(255)
+  }
+
+  if (parallel <= 0) {
+    println(s"Error: invalid --parallel (-n) value: $parallel")
   }
 
 
@@ -170,7 +191,7 @@ case class Coursier(
 
   val startRes = Resolution(
     deps.toSet,
-    filter = Some(dep => (keepOptional || !dep.optional) && scopes(dep.scope))
+    filter = Some(dep => keepOptional || !dep.optional)
   )
 
   val fetchQuiet = coursier.fetch(repositories)
@@ -200,18 +221,44 @@ case class Coursier(
 
   def repr(dep: Dependency) = {
     // dep.version can be an interval, whereas the one from project can't
-    val version = res.projectCache.get(dep.moduleVersion).map(_._2.version).getOrElse(dep.version)
+    val version = res
+      .projectCache
+      .get(dep.moduleVersion)
+      .map(_._2.version)
+      .getOrElse(dep.version)
     val extra =
       if (version == dep.version) ""
       else s" ($version for ${dep.version})"
 
-    s"${dep.module.organization}:${dep.module.name}:${dep.attributes.`type`}:${Some(dep.attributes.classifier).filter(_.nonEmpty).map(_+":").mkString}$version$extra"
+    (
+      Seq(
+        dep.module.organization,
+        dep.module.name,
+        dep.attributes.`type`
+      ) ++
+      Some(dep.attributes.classifier)
+        .filter(_.nonEmpty)
+        .toSeq ++
+      Seq(
+        version
+      )
+    ).mkString(":") + extra
   }
 
-  val trDeps = res.minDependencies.toList.sortBy(repr)
+  val trDeps = res
+    .minDependencies
+    .toList
+    .sortBy(repr)
 
-  if (verbose0 >= 0)
-    println("\n" + trDeps.map(repr).distinct.mkString("\n"))
+  if (verbose0 >= 0) {
+    println("")
+    println(
+      trDeps
+        .map(repr)
+        .distinct
+        .mkString("\n")
+    )
+  }
 
   if (res.conflicts.nonEmpty) {
     // Needs test
@@ -226,7 +273,7 @@ case class Coursier(
     }
   }
 
-  if (fetch || classpath) {
+  if (classpath || default || sources || javadoc) {
     println("")
 
     val artifacts0 = res.artifacts
@@ -248,8 +295,7 @@ case class Coursier(
       var files0 = cache
         .files()
         .copy(logger = logger)
-      for (n <- parallel if n > 0)
-        files0 = files0.copy(concurrentDownloadCount = n)
+      files0 = files0.copy(concurrentDownloadCount = parallel)
       files0
     }
 

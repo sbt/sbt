@@ -1,9 +1,9 @@
 package coursier
 package test
 
-import coursier.core.Repository
+import coursier.core.{ Repository, MavenRepository }
 import utest._
-import scala.async.Async.{async, await}
+import scala.async.Async.{ async, await }
 
 import coursier.test.compatibility._
 
@@ -15,26 +15,56 @@ object CentralTests extends TestSuite {
 
   implicit val cachePolicy = CachePolicy.Default
 
-  def resolve(deps: Set[Dependency], filter: Option[Dependency => Boolean] = None, extraRepo: Option[Repository] = None) = {
+  def resolve(
+    deps: Set[Dependency],
+    filter: Option[Dependency => Boolean] = None,
+    extraRepo: Option[Repository] = None
+  ) = {
     val repositories0 = extraRepo.toSeq ++ repositories
 
     Resolution(deps, filter = filter)
       .process
-      .run(fetch(repositories0))
+      .run(repositories0)
       .runF
   }
 
   def repr(dep: Dependency) =
-    s"${dep.module.organization}:${dep.module.name}:${dep.attributes.`type`}:${Some(dep.attributes.classifier).filter(_.nonEmpty).map(_+":").mkString}${dep.version}"
+    (
+      Seq(
+        dep.module.organization,
+        dep.module.name,
+        dep.attributes.`type`
+      ) ++
+      Some(dep.attributes.classifier)
+        .filter(_.nonEmpty)
+        .toSeq ++
+      Seq(
+        dep.version
+      )
+    ).mkString(":")
 
-  def resolutionCheck(module: Module, version: String, extraRepo: Option[Repository] = None) =
+  def resolutionCheck(
+    module: Module,
+    version: String,
+    extraRepo: Option[Repository] = None
+  ) =
     async {
-      val expected = await(textResource(s"resolutions/${module.organization}:${module.name}:$version")).split('\n').toSeq
+      val expected =
+        await(
+          textResource(s"resolutions/${module.organization}:${module.name}:$version")
+        )
+        .split('\n')
+        .toSeq
 
       val dep = Dependency(module, version)
       val res = await(resolve(Set(dep), extraRepo = extraRepo))
 
-      val result = res.dependencies.toVector.map(repr).sorted.distinct
+      val result = res
+        .dependencies
+        .toVector
+        .map(repr)
+        .sorted
+        .distinct
 
       for (((e, r), idx) <- expected.zip(result).zipWithIndex if e != r)
         println(s"Line $idx:\n  expected: $e\n  got:$r")
@@ -94,10 +124,24 @@ object CentralTests extends TestSuite {
       }
     }
     'spark{
-      resolutionCheck(Module("org.apache.spark", "spark-core_2.11"), "1.3.1")
+      resolutionCheck(
+        Module("org.apache.spark", "spark-core_2.11"),
+        "1.3.1"
+      )
     }
     'argonautShapeless{
-      resolutionCheck(Module("com.github.alexarchambault", "argonaut-shapeless_6.1_2.11"), "0.2.0")
+      resolutionCheck(
+        Module("com.github.alexarchambault", "argonaut-shapeless_6.1_2.11"),
+        "0.2.0"
+      )
+    }
+    'snapshotMetadata{
+      // Let's hope this one won't change too much
+      resolutionCheck(
+        Module("com.github.fommil", "java-logging"),
+        "1.2-SNAPSHOT",
+        extraRepo = Some(MavenRepository("https://oss.sonatype.org/content/repositories/public/"))
+      )
     }
   }
 
