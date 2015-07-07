@@ -47,7 +47,14 @@ object IncrementalCompile {
     output: Output, log: Logger,
     options: IncOptions): (Boolean, Analysis) =
     {
-      val current = Stamps.initial(Stamp.lastModified, Stamp.hash, Stamp.lastModified)
+      val current = {
+        val init = Stamps.initial(Stamp.lastModified, Stamp.hash, Stamp.lastModified, Stamp.hash)
+        // We need to register the previous stamps for auxiliary dependencies to the new stamps, because we may not hear
+        // from these files during a compilation unit, and thus declare them as removed. This is because there's no directory
+        // that we can scan for auxiliary files: they are just advertised by some files during their compilation.
+        previous.relations.allAuxiliaryDeps foreach (init.auxiliary(_))
+        init
+      }
       val internalMap = (f: File) => previous.relations.produced(f).headOption
       val externalAPI = getExternalAPI(entry, forEntry)
       try {
@@ -107,6 +114,8 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
   private[this] val intSrcDeps = new HashMap[File, Set[InternalDependency]]
   // external source dependencies
   private[this] val extSrcDeps = new HashMap[File, Set[ExternalDependency]]
+  // auxiliary dependencies
+  private[this] val auxDeps = new HashMap[File, Set[File]]
   private[this] val binaryClassName = new HashMap[File, String]
   // source files containing a macro def.
   private[this] val macroSources = Set[File]()
@@ -121,6 +130,10 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
         map.getOrElseUpdate(source, ListBuffer.empty) += Logger.problem(category, pos, msg, severity)
       }
     }
+
+  def auxiliaryDependency(dependsOn: File, source: File) = {
+    add(auxDeps, source, dependsOn)
+  }
 
   def sourceDependency(dependsOn: File, source: File, context: DependencyContext) = {
     add(intSrcDeps, source, InternalDependency(source, dependsOn, context))
@@ -222,13 +235,15 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
         val info = SourceInfos.makeInfo(getOrNil(reporteds, src), getOrNil(unreporteds, src))
         val binaries = binaryDeps.getOrElse(src, Nil: Iterable[File])
         val prods = classes.getOrElse(src, Nil: Iterable[(File, String)])
+        val auxiliaries = auxDeps.getOrElse(src, Set.empty)
 
         val products = prods.map { case (prod, name) => (prod, name, current product prod) }
         val internalDeps = intSrcDeps.getOrElse(src, Set.empty)
         val externalDeps = extSrcDeps.getOrElse(src, Set.empty)
         val binDeps = binaries.map(d => (d, binaryClassName(d), current binary d))
+        val auxiliaryDeps = auxiliaries.map(d => (d, current auxiliary d))
 
-        a.addSource(src, s, stamp, info, products, internalDeps, externalDeps, binDeps)
+        a.addSource(src, s, stamp, info, products, internalDeps, externalDeps, binDeps, auxiliaryDeps)
 
     }
 }

@@ -26,16 +26,18 @@ object AnalysisTest extends Properties("Analysis") {
     val aInternal = Nil
     val aExternal = ExternalDependency(aScala, "C", cSource, DependencyByMemberRef) :: Nil
     val aBinary = (f("x.jar"), "x", exists) :: Nil
+    val aAuxiliary = Nil
 
-    val a = Analysis.empty(false).addSource(aScala, aSource, exists, sourceInfos, aProducts, aInternal, aExternal, aBinary)
+    val a = Analysis.empty(false).addSource(aScala, aSource, exists, sourceInfos, aProducts, aInternal, aExternal, aBinary, aAuxiliary)
 
     // b
     val bProducts = (f("B.class"), "B", exists) :: (f("B$.class"), "B$", exists) :: Nil
     val bInternal = Nil
     val bExternal = ExternalDependency(bScala, "A", aSource, DependencyByInheritance) :: Nil
     val bBinary = (f("x.jar"), "x", exists) :: (f("y.jar"), "y", exists) :: Nil
+    val bAuxiliary = Nil
 
-    val b = Analysis.empty(false).addSource(bScala, bSource, exists, sourceInfos, bProducts, bInternal, bExternal, bBinary)
+    val b = Analysis.empty(false).addSource(bScala, bSource, exists, sourceInfos, bProducts, bInternal, bExternal, bBinary, bAuxiliary)
 
     // ab
     // `b` has an external dependency on `a` that will be internalized
@@ -43,14 +45,16 @@ object AnalysisTest extends Properties("Analysis") {
     val abAInternal = Nil
     val abAExternal = ExternalDependency(aScala, "C", cSource, DependencyByMemberRef) :: Nil
     val abABinary = (f("x.jar"), "x", exists) :: Nil
+    val abAAuxiliary = Nil
 
     val abBProducts = (f("B.class"), "B", exists) :: (f("B$.class"), "B$", exists) :: Nil
     val abBInternal = InternalDependency(bScala, aScala, DependencyByMemberRef) :: InternalDependency(bScala, aScala, DependencyByInheritance) :: Nil
     val abBExternal = Nil
     val abBBinary = (f("x.jar"), "x", exists) :: (f("y.jar"), "y", exists) :: Nil
+    val abBAuxiliary = Nil
 
-    val ab = Analysis.empty(false).addSource(aScala, aSource, exists, sourceInfos, abAProducts, abAInternal, abAExternal, abABinary)
-      .addSource(bScala, bSource, exists, sourceInfos, abBProducts, abBInternal, abBExternal, abBBinary)
+    val ab = Analysis.empty(false).addSource(aScala, aSource, exists, sourceInfos, abAProducts, abAInternal, abAExternal, abABinary, abAAuxiliary)
+      .addSource(bScala, bSource, exists, sourceInfos, abBProducts, abBInternal, abBExternal, abBBinary, abBAuxiliary)
 
     val split: Map[String, Analysis] = ab.groupBy({ f: File => f.getName.substring(0, 1) })
 

@@ -48,6 +48,10 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile {
           val dependenciesByInheritance = extractDependenciesByInheritance(unit)
           for (on <- dependenciesByInheritance)
             processDependency(on, context = DependencyByInheritance)
+
+          val auxiliaryDependencies = extractAuxiliaryDependencies(unit)
+          for (aux <- auxiliaryDependencies)
+            callback.auxiliaryDependency(aux, sourceFile)
         } else {
           for (on <- unit.depends) processDependency(on, context = DependencyByMemberRef)
           for (on <- inheritedDependencies.getOrElse(sourceFile, Nil: Iterable[Symbol])) processDependency(on, context = DependencyByInheritance)
@@ -189,6 +193,26 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile {
     traverser.traverse(unit.body)
     val dependencies = traverser.dependencies
     dependencies.map(enclosingTopLevelClass)
+  }
+
+  private class ExtractAuxiliaryFilesTraverser extends Traverser {
+    protected val depBuf = collection.mutable.ArrayBuffer.empty[File]
+    protected def addDependency(dep: File): Unit = depBuf += dep
+    def dependencies: collection.immutable.Set[File] = {
+      // convert to immutable set
+      depBuf.toSet
+    }
+
+    override def traverse(tree: Tree): Unit = {
+      extractAuxiliaryFiles(tree) foreach addDependency
+      super.traverse(tree)
+    }
+  }
+
+  private def extractAuxiliaryDependencies(unit: CompilationUnit): collection.immutable.Set[File] = {
+    val traverser = new ExtractAuxiliaryFilesTraverser
+    traverser.traverse(unit.body)
+    traverser.dependencies
   }
 
   /**

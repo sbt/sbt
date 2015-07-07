@@ -92,8 +92,8 @@ object AnalysisFormats {
     )(fileFormat)
   implicit val outputFormat: Format[APIOutput] = asUnion(singleOutputFormat, multipleOutputFormat)
 
-  implicit def stampsFormat(implicit prodF: Format[Map[File, Stamp]], srcF: Format[Map[File, Stamp]], binF: Format[Map[File, Stamp]], nameF: Format[Map[File, String]]): Format[Stamps] =
-    asProduct4(Stamps.apply _)(s => (s.products, s.sources, s.binaries, s.classNames))(prodF, srcF, binF, nameF)
+  implicit def stampsFormat(implicit prodF: Format[Map[File, Stamp]], srcF: Format[Map[File, Stamp]], binF: Format[Map[File, Stamp]], auxF: Format[Map[File, Stamp]], nameF: Format[Map[File, String]]): Format[Stamps] =
+    asProduct5(Stamps.apply _)(s => (s.products, s.sources, s.binaries, s.auxiliaries, s.classNames))(prodF, srcF, binF, auxF, nameF)
 
   implicit def stampFormat(implicit hashF: Format[Hash], modF: Format[LastModified], existsF: Format[Exists]): Format[Stamp] =
     asUnion(hashF, modF, existsF)
@@ -103,7 +103,7 @@ object AnalysisFormats {
 
   implicit def relationsFormat(implicit prodF: Format[RFF], binF: Format[RFF], directF: Format[RSource], inheritedF: Format[RSource], memberRefF: Format[SourceDependencies], inheritanceF: Format[SourceDependencies], csF: Format[RFS], namesF: Format[RFS]): Format[Relations] =
     {
-      def makeRelation(srcProd: RFF, binaryDep: RFF, direct: RSource, publicInherited: RSource,
+      def makeRelation(srcProd: RFF, binaryDep: RFF, auxiliaryDep: RFF, direct: RSource, publicInherited: RSource,
         memberRef: SourceDependencies, inheritance: SourceDependencies, classes: RFS,
         nameHashing: Boolean, names: RFS): Relations = if (nameHashing) {
         def isEmpty(sourceDependencies: RSource): Boolean =
@@ -112,15 +112,16 @@ object AnalysisFormats {
         assert(isEmpty(direct), "Direct dependencies are not empty but `nameHashing` flag is enabled.")
         val internalDependencies = InternalDependencies(Map(DependencyByMemberRef -> memberRef.internal, DependencyByInheritance -> inheritance.internal))
         val externalDependencies = ExternalDependencies(Map(DependencyByMemberRef -> memberRef.external, DependencyByInheritance -> inheritance.external))
-        Relations.make(srcProd, binaryDep, internalDependencies, externalDependencies, classes, names)
+        Relations.make(srcProd, binaryDep, auxiliaryDep, internalDependencies, externalDependencies, classes, names)
       } else {
         def isEmpty(sourceDependencies: SourceDependencies): Boolean =
           sourceDependencies.internal.all.isEmpty && sourceDependencies.external.all.isEmpty
         // we check memberRef dependencies only because inheritance dependencies are subset of memberRef
         assert(isEmpty(memberRef), "Direct dependencies are not empty but `nameHashing` flag is enabled.")
-        Relations.make(srcProd, binaryDep, direct, publicInherited, classes)
+        Relations.make(srcProd, binaryDep, auxiliaryDep, direct, publicInherited, classes)
       }
-      asProduct9[Relations, RFF, RFF, RSource, RSource, SourceDependencies, SourceDependencies, RFS, Boolean, RFS]((a, b, c, d, e, f, g, h, i) => makeRelation(a, b, c, d, e, f, g, h, i))(
+      // Since asProduct10 does not exist, we cannot add auxiliary dependencies here. AnalysisFormats doesn't support it, but TextanalysisFormat does.
+      asProduct9[Relations, RFF, RFF, RSource, RSource, SourceDependencies, SourceDependencies, RFS, Boolean, RFS]((a, b, c, d, e, f, g, h, i) => makeRelation(a, b, Relation.empty, c, d, e, f, g, h, i))(
         rs => (rs.srcProd, rs.binaryDep, rs.direct, rs.publicInherited, rs.memberRef, rs.inheritance, rs.classes, rs.nameHashing, rs.names))(
           prodF, binF, directF, inheritedF, memberRefF, inheritanceF, csF, implicitly[Format[Boolean]], namesF)
     }

@@ -35,6 +35,9 @@ public interface AnalysisCallback
 	* <code>context</code> gives information about the context in which this dependency has been extracted.
 	* See xsbti.DependencyContext for the list of existing dependency contexts. */
 	public void binaryDependency(File binary, String name, File source, DependencyContext context);
+	/** Called to indicate that the source file <code>source</code> depends on the auxiliary
+	 * file <code>auxiliary</code>. */
+	public void auxiliaryDependency(File auxiliary, File source);
 	/** Called to indicate that the source file <code>source</code> produces a class file at
 	* <code>module</code> contain class <code>name</code>.*/
 	public void generatedClass(File source, File module, String name);

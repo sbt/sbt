@@ -23,6 +23,7 @@ object TestCaseGenerators {
   val maxRelatives = 10 // Max number of things that a source x can relate to in a single Relation.
   val maxPathSegmentLen = 10 // Max number of characters in a path segment.
   val maxPathLen = 6 // Max number of path segments in a path.
+  val maxAuxiliary = 3 // Max number of auxiliary dependencies.
 
   // Ensure that we generate unique class names and file paths every time.
   // Using repeated strings may lead to all sorts of undesirable interactions.
@@ -64,12 +65,14 @@ object TestCaseGenerators {
     val prod = rel.allProducts.toList
     val src = rel.allSources.toList
     val bin = rel.allBinaryDeps.toList
+    val aux = rel.allAuxiliaryDeps.toList
     for {
       prodStamps <- listOfN(prod.length, genStamp)
       srcStamps <- listOfN(src.length, genStamp)
       binStamps <- listOfN(bin.length, genStamp)
       binClassNames <- listOfN(bin.length, unique(identifier))
-    } yield Stamps(zipMap(prod, prodStamps), zipMap(src, srcStamps), zipMap(bin, binStamps), zipMap(bin, binClassNames))
+      auxStamps <- listOfN(aux.length, genStamp)
+    } yield Stamps(zipMap(prod, prodStamps), zipMap(src, srcStamps), zipMap(bin, binStamps), zipMap(aux, auxStamps), zipMap(bin, binClassNames))
   }
 
   // We need "proper" definitions with specific class names, as groupBy use these to pick a representative top-level class when splitting.
@@ -159,26 +162,32 @@ object TestCaseGenerators {
   def genRelations: Gen[Relations] = for {
     numSrcs <- choose(0, maxSources)
     srcs <- listOfN(numSrcs, genFile)
+    numAux <- choose(0, maxAuxiliary)
+    auxiliary <- listOfN(numAux, genFile)
     srcProd <- genFileRelation(srcs)
     binaryDep <- genFileRelation(srcs)
+    auxiliaryDep <- genFileRelation(auxiliary)
     direct <- genRSource(srcs)
     publicInherited <- genSubRSource(direct)
     classes <- genStringRelation(srcs)
 
-  } yield Relations.make(srcProd, binaryDep, direct, publicInherited, classes)
+  } yield Relations.make(srcProd, binaryDep, auxiliaryDep, direct, publicInherited, classes)
 
   def genRelationsNameHashing: Gen[Relations] = for {
     numSrcs <- choose(0, maxSources)
     srcs <- listOfN(numSrcs, genFile)
+    numAux <- choose(0, maxAuxiliary)
+    auxiliary <- listOfN(numAux, genFile)
     srcProd <- genFileRelation(srcs)
     binaryDep <- genFileRelation(srcs)
+    auxiliaryDep <- genFileRelation(auxiliary)
     memberRef <- genRSourceDependencies(srcs)
     inheritance <- genSubRSourceDependencies(memberRef)
     classes <- genStringRelation(srcs)
     names <- genStringRelation(srcs)
     internal <- InternalDependencies(Map(DependencyByMemberRef -> memberRef.internal, DependencyByInheritance -> inheritance.internal))
     external <- ExternalDependencies(Map(DependencyByMemberRef -> memberRef.external, DependencyByInheritance -> inheritance.external))
-  } yield Relations.make(srcProd, binaryDep, internal, external, classes, names)
+  } yield Relations.make(srcProd, binaryDep, auxiliaryDep, internal, external, classes, names)
 
   def genAnalysis(nameHashing: Boolean): Gen[Analysis] = for {
     rels <- if (nameHashing) genRelationsNameHashing else genRelations

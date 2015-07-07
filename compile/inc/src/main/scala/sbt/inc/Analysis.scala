@@ -56,7 +56,8 @@ trait Analysis {
     products: Iterable[(File, String, Stamp)],
     internalDeps: Iterable[InternalDependency],
     externalDeps: Iterable[ExternalDependency],
-    binaryDeps: Iterable[(File, String, Stamp)]): Analysis
+    binaryDeps: Iterable[(File, String, Stamp)],
+    auxiliaryDeps: Iterable[(File, Stamp)]): Analysis
 
   @deprecated("Register all products and dependencies in addSource.", "0.13.8")
   def addSource(src: File, api: Source, stamp: Stamp, directInternal: Iterable[File], inheritedInternal: Iterable[File], info: SourceInfo): Analysis
@@ -87,6 +88,7 @@ object Analysis {
     // Merge the Relations, internalizing deps as needed.
     val mergedSrcProd = Relation.merge(analyses map { _.relations.srcProd })
     val mergedBinaryDep = Relation.merge(analyses map { _.relations.binaryDep })
+    val mergedAuxiliaryDep = Relation.merge(analyses map { _.relations.auxiliaryDep })
     val mergedClasses = Relation.merge(analyses map { _.relations.classes })
 
     val stillInternal = Relation.merge(analyses map { _.relations.direct.internal })
@@ -102,6 +104,7 @@ object Analysis {
     val mergedRelations = Relations.make(
       mergedSrcProd,
       mergedBinaryDep,
+      mergedAuxiliaryDep,
       Relations.makeSource(mergedInternal, stillExternal),
       Relations.makeSource(mergedInternalPI, stillExternalPI),
       mergedClasses
@@ -158,7 +161,7 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
       def keep[T](f: (Relations, T) => Set[_]): T => Boolean = f(newRelations, _).nonEmpty
 
       val newAPIs = apis.removeInternal(sources).filterExt(keep(_ usesExternal _))
-      val newStamps = stamps.filter(keep(_ produced _), sources, keep(_ usesBinary _))
+      val newStamps = stamps.filter(keep(_ produced _), sources, keep(_ usesBinary _), keep(_ usesAuxiliary _))
       val newInfos = infos -- sources
       new MAnalysis(newStamps, newAPIs, newRelations, newInfos, compilations)
     }
@@ -170,15 +173,20 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
     products: Iterable[(File, String, Stamp)],
     internalDeps: Iterable[InternalDependency],
     externalDeps: Iterable[ExternalDependency],
-    binaryDeps: Iterable[(File, String, Stamp)]): Analysis = {
+    binaryDeps: Iterable[(File, String, Stamp)],
+    auxiliaryDeps: Iterable[(File, Stamp)]): Analysis = {
 
     val newStamps = {
       val productStamps = products.foldLeft(stamps.markInternalSource(src, stamp)) {
         case (tmpStamps, (toProduct, _, prodStamp)) => tmpStamps.markProduct(toProduct, prodStamp)
       }
 
-      binaryDeps.foldLeft(productStamps) {
+      val binaryStamps = binaryDeps.foldLeft(productStamps) {
         case (tmpStamps, (toBinary, className, binStamp)) => tmpStamps.markBinary(toBinary, className, binStamp)
+      }
+
+      auxiliaryDeps.foldLeft(binaryStamps) {
+        case (tmpStamps, (toAuxiliary, auxStamp)) => tmpStamps.markAuxiliary(toAuxiliary, auxStamp)
       }
     }
 
@@ -186,7 +194,7 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
       case (tmpApis, ExternalDependency(_, toClassName, classApi, _)) => tmpApis.markExternalAPI(toClassName, classApi)
     }
 
-    val newRelations = relations.addSource(src, products map (p => (p._1, p._2)), internalDeps, externalDeps, binaryDeps)
+    val newRelations = relations.addSource(src, products map (p => (p._1, p._2)), internalDeps, externalDeps, binaryDeps, auxiliaryDeps)
 
     copy(newStamps, newAPIs, newRelations, infos.add(src, info))
   }
@@ -196,7 +204,7 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
     val directDeps = directInternal.map(InternalDependency(src, _, DependencyByMemberRef))
     val inheritedDeps = inheritedInternal.map(InternalDependency(src, _, DependencyByInheritance))
 
-    addSource(src, api, stamp, info, products = Nil, directDeps ++ inheritedDeps, Nil, Nil)
+    addSource(src, api, stamp, info, products = Nil, directDeps ++ inheritedDeps, Nil, Nil, Nil)
   }
 
   def addBinaryDep(src: File, dep: File, className: String, stamp: Stamp): Analysis =
@@ -219,6 +227,7 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
 
     val kSrcProd = relations.srcProd.groupBy(discriminator1)
     val kBinaryDep = relations.binaryDep.groupBy(discriminator1)
+    val kAuxiliaryDep = relations.auxiliaryDep.groupBy(discriminator1)
     val kClasses = relations.classes.groupBy(discriminator1)
     val kSourceInfos = infos.allInfos.groupBy(discriminator1)
 
@@ -228,7 +237,7 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
     val kStillExternal = relations.direct.external.groupBy(discriminator1)
 
     // Find all possible groups.
-    val allMaps = kSrcProd :: kBinaryDep :: kStillInternal :: kExternalized :: kStillExternal :: kClasses :: kSourceInfos :: Nil
+    val allMaps = kSrcProd :: kBinaryDep :: kAuxiliaryDep :: kStillInternal :: kExternalized :: kStillExternal :: kClasses :: kSourceInfos :: Nil
     val allKeys: Set[K] = (Set.empty[K] /: (allMaps map { _.keySet }))(_ ++ _)
 
     // Map from file to a single representative class defined in that file.
@@ -242,9 +251,10 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
     (for (k <- allKeys) yield {
       def getFrom[A, B](m: Map[K, Relation[A, B]]): Relation[A, B] = m.getOrElse(k, Relation.empty)
 
-      // Products and binary deps.
+      // Products, binary deps and auxiliary deps.
       val srcProd = getFrom(kSrcProd)
       val binaryDep = getFrom(kBinaryDep)
+      val auxiliaryDep = getFrom(kAuxiliaryDep)
 
       // Direct Sources.
       val stillInternal = getFrom(kStillInternal)
@@ -267,6 +277,7 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
       val newRelations = Relations.make(
         srcProd,
         binaryDep,
+        auxiliaryDep,
         Relations.makeSource(stillInternal, newExternal),
         Relations.makeSource(stillInternalPI, newExternalPI),
         classes
@@ -288,6 +299,7 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
         stamps.products.filterKeys(srcProd._2s.contains),
         stamps.sources.filterKeys({ discriminator(_) == k }),
         stamps.binaries.filterKeys(binaryDep._2s.contains),
+        stamps.auxiliaries.filterKeys(auxiliaryDep._2s.contains),
         stamps.classNames.filterKeys(binaryDep._2s.contains))
 
       // New infos.

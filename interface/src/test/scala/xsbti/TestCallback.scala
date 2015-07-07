@@ -9,6 +9,7 @@ class TestCallback(override val nameHashing: Boolean = false) extends AnalysisCa
 {
 	val sourceDependencies = new ArrayBuffer[(File, File, DependencyContext)]
 	val binaryDependencies = new ArrayBuffer[(File, String, File, DependencyContext)]
+	val auxiliaryDependencies = new ArrayBuffer[(File, File)]
 	val products = new ArrayBuffer[(File, File, String)]
 	val usedNames = scala.collection.mutable.Map.empty[File, Set[String]].withDefaultValue(Set.empty)
 	val apis: scala.collection.mutable.Map[File, SourceAPI] = scala.collection.mutable.Map.empty
@@ -23,6 +24,7 @@ class TestCallback(override val nameHashing: Boolean = false) extends AnalysisCa
 		binaryDependency(binary, name, source, context)
 	}
 	def binaryDependency(binary: File, name: String, source: File, context: DependencyContext) { binaryDependencies += ((binary, name, source, context)) }
+	def auxiliaryDependency(auxiliary: File, source: File) { auxiliaryDependencies += ((auxiliary, source)) }
 	def generatedClass(source: File, module: File, name: String) { products += ((source, module, name)) }
 
 	def usedName(source: File, name: String) { usedNames(source) += name }
