@@ -359,10 +359,10 @@ object Resolution {
   /**
    * Default dependency filter used during resolution.
    *
-   * Only follows compile scope / non-optional dependencies.
+   * Does not follow optional dependencies.
    */
   def defaultFilter(dep: Dependency): Boolean =
-    !dep.optional && dep.scope == Scope.Compile
+    !dep.optional
 
 }
 
