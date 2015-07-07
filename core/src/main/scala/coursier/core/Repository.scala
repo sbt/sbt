@@ -3,6 +3,8 @@ package coursier.core
 import scalaz.{ -\/, \/-, \/, EitherT }
 import scalaz.concurrent.Task
 
+import java.io.File
+
 import coursier.core.compatibility.encodeURIComponent
 
 trait Repository {
@@ -21,7 +23,7 @@ object Repository {
   val sonatypeReleases = MavenRepository("https://oss.sonatype.org/content/repositories/releases/")
   val sonatypeSnapshots = MavenRepository("https://oss.sonatype.org/content/repositories/snapshots/")
 
-  lazy val ivy2Local = MavenRepository("file://" + sys.props("user.home") + "/.ivy2/local/", ivyLike = true)
+  lazy val ivy2Local = MavenRepository(new File(sys.props("user.home") + "/.ivy2/local/").toURI.toString, ivyLike = true)
 
 
   /**
@@ -101,6 +103,7 @@ object Repository {
 
 case class MavenSource(root: String, ivyLike: Boolean) extends Artifact.Source {
   import Repository._
+  import BaseMavenRepository._
 
   def artifacts(
     dependency: Dependency,
@@ -108,7 +111,7 @@ case class MavenSource(root: String, ivyLike: Boolean) extends Artifact.Source {
   ): Seq[Artifact] = {
 
     def ivyLikePath0(subDir: String, baseSuffix: String, ext: String) =
-      BaseMavenRepository.ivyLikePath(
+      ivyLikePath(
         dependency.module.organization,
         dependency.module.name,
         project.version,
@@ -120,12 +123,20 @@ case class MavenSource(root: String, ivyLike: Boolean) extends Artifact.Source {
     val path =
       if (ivyLike)
         ivyLikePath0(dependency.attributes.`type` + "s", "", dependency.attributes.`type`)
-      else
+      else {
+        val versioning =
+          project
+            .snapshotVersioning
+            .flatMap(versioning =>
+              mavenVersioning(versioning, dependency.attributes.classifier, dependency.attributes.`type`)
+            )
+
         dependency.module.organization.split('.').toSeq ++ Seq(
           dependency.module.name,
           project.version,
-          s"${dependency.module.name}-${project.version}${Some(dependency.attributes.classifier).filter(_.nonEmpty).map("-"+_).mkString}.${dependency.attributes.`type`}"
+          s"${dependency.module.name}-${versioning getOrElse project.version}${Some(dependency.attributes.classifier).filter(_.nonEmpty).map("-"+_).mkString}.${dependency.attributes.`type`}"
         )
+      }
 
     var artifact =
       Artifact(
@@ -138,6 +149,9 @@ case class MavenSource(root: String, ivyLike: Boolean) extends Artifact.Source {
 
     if (dependency.attributes.`type` == "jar") {
       artifact = artifact.withDefaultSignature
+
+      // FIXME Snapshot versioning of sources and javadoc is not taken into account here.
+      // Will be ok if it's the same as the main JAR though.
 
       artifact =
         if (ivyLike) {
@@ -181,6 +195,17 @@ object BaseMavenRepository {
       s"$name$baseSuffix.$ext"
     )
 
+  def mavenVersioning(
+    snapshotVersioning: SnapshotVersioning,
+    classifier: String,
+    extension: String
+  ): Option[String] =
+    snapshotVersioning
+      .snapshotVersions
+      .find(v => v.classifier == classifier && v.extension == extension)
+      .map(_.value)
+      .filter(_.nonEmpty)
+
 }
 
 abstract class BaseMavenRepository(
@@ -198,16 +223,27 @@ abstract class BaseMavenRepository(
 
   val source = MavenSource(root, ivyLike)
 
-  def projectArtifact(module: Module, version: String): Artifact = {
+  def projectArtifact(
+    module: Module,
+    version: String,
+    versioningValue: Option[String]
+  ): Artifact = {
 
     val path = (
       if (ivyLike)
-        ivyLikePath(module.organization, module.name, version, "poms", "", "pom")
+        ivyLikePath(
+          module.organization,
+          module.name,
+          versioningValue getOrElse version,
+          "poms",
+          "",
+          "pom"
+        )
       else
         module.organization.split('.').toSeq ++ Seq(
           module.name,
           version,
-          s"${module.name}-$version.pom"
+          s"${module.name}-${versioningValue getOrElse version}.pom"
         )
     ) .map(encodeURIComponent)
 
@@ -226,6 +262,32 @@ abstract class BaseMavenRepository(
       val path = (
         module.organization.split('.').toSeq ++ Seq(
           module.name,
+          "maven-metadata.xml"
+        )
+      ) .map(encodeURIComponent)
+
+      val artifact =
+        Artifact(
+          path.mkString("/"),
+          Map.empty,
+          Map.empty,
+          Attributes("pom", "")
+        )
+        .withDefaultChecksums
+
+      Some(artifact)
+    }
+
+  def snapshotVersioningArtifact(
+    module: Module,
+    version: String
+  ): Option[Artifact] =
+    if (ivyLike) None
+    else {
+      val path = (
+        module.organization.split('.').toSeq ++ Seq(
+          module.name,
+          version,
           "maven-metadata.xml"
         )
       ) .map(encodeURIComponent)
@@ -265,14 +327,80 @@ abstract class BaseMavenRepository(
     )
   }
 
+  def snapshotVersioning(
+    module: Module,
+    version: String,
+    cachePolicy: CachePolicy = CachePolicy.Default
+  ): EitherT[Task, String, SnapshotVersioning] = {
+
+    EitherT(
+      snapshotVersioningArtifact(module, version) match {
+        case None => Task.now(-\/("Not supported"))
+        case Some(artifact) =>
+          fetch(artifact, cachePolicy)
+            .run
+            .map(eitherStr =>
+              for {
+                str <- eitherStr
+                xml <- \/.fromEither(compatibility.xmlParse(str))
+                _ <- if (xml.label == "metadata") \/-(()) else -\/("Metadata not found")
+                snapshotVersioning <- Xml.snapshotVersioning(xml)
+              } yield snapshotVersioning
+            )
+      }
+    )
+  }
+
   def findNoInterval(
     module: Module,
     version: String,
     cachePolicy: CachePolicy
+  ): EitherT[Task, String, Project] =
+    EitherT{
+      def withSnapshotVersioning =
+        snapshotVersioning(module, version, cachePolicy)
+          .flatMap { snapshotVersioning =>
+            val versioningOption =
+              mavenVersioning(snapshotVersioning, "", "jar")
+                .orElse(mavenVersioning(snapshotVersioning, "", ""))
+
+            versioningOption match {
+              case None =>
+                EitherT[Task, String, Project](
+                  Task.now(-\/("No snapshot versioning value found"))
+                )
+              case versioning @ Some(_) =>
+                findVersioning(module, version, versioning, cachePolicy)
+                  .map(_.copy(snapshotVersioning = Some(snapshotVersioning)))
+            }
+          }
+
+      findVersioning(module, version, None, cachePolicy)
+        .run
+        .flatMap{ eitherProj =>
+          if (eitherProj.isLeft)
+            withSnapshotVersioning
+              .run
+              .map(eitherProj0 =>
+                if (eitherProj0.isLeft)
+                  eitherProj
+                else
+                  eitherProj0
+              )
+          else
+            Task.now(eitherProj)
+        }
+    }
+
+  def findVersioning(
+    module: Module,
+    version: String,
+    versioningValue: Option[String],
+    cachePolicy: CachePolicy
   ): EitherT[Task, String, Project] = {
 
     EitherT {
-      fetch(projectArtifact(module, version), cachePolicy)
+      fetch(projectArtifact(module, version, versioningValue), cachePolicy)
         .run
         .map(eitherStr =>
           for {

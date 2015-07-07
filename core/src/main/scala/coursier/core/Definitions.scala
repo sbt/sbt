@@ -56,7 +56,8 @@ case class Project(
   dependencyManagement: Seq[Dependency],
   properties: Map[String, String],
   profiles: Seq[Profile],
-  versions: Option[Versions]
+  versions: Option[Versions],
+  snapshotVersioning: Option[SnapshotVersioning]
 ) {
   def moduleVersion = (module, version)
 }
@@ -98,6 +99,25 @@ object Versions {
     second: Int
   )
 }
+
+case class SnapshotVersion(
+  classifier: String,
+  extension: String,
+  value: String,
+  updated: Option[Versions.DateTime]
+)
+
+case class SnapshotVersioning(
+  module: Module,
+  version: String,
+  latest: String,
+  release: String,
+  timestamp: String,
+  buildNumber: Option[Int],
+  localCopy: Option[Boolean],
+  lastUpdated: Option[Versions.DateTime],
+  snapshotVersions: Seq[SnapshotVersion]
+)
 
 case class Artifact(
   url: String,

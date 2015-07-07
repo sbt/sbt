@@ -53,7 +53,7 @@ case class Coursier(
         println(s"Downloading $url")
       def downloaded(url: String, success: Boolean) =
         if (!success)
-          println(s"Failed to download $url")
+          println(s"Failed: $url")
       def readingFromCache(f: File) = {}
       def puttingInCache(f: File) = {}
 
@@ -62,7 +62,7 @@ case class Coursier(
         println(s"Downloading $url")
       def downloadedArtifact(url: String, success: Boolean) =
         if (!success)
-          println(s"Failed to download $url")
+          println(s"Failed: $url")
     }
 
   def verboseLogger: MavenRepository.Logger with Files.Logger =
@@ -72,7 +72,7 @@ case class Coursier(
       def downloaded(url: String, success: Boolean) =
         println(
           if (success) s"Downloaded $url"
-          else s"Failed to download $url"
+          else s"Failed: $url"
         )
       def readingFromCache(f: File) = {
         println(s"Reading ${fileRepr(f)} from cache")
@@ -87,7 +87,7 @@ case class Coursier(
       def downloadedArtifact(url: String, success: Boolean) =
         println(
           if (success) s"Downloaded $url"
-          else s"Failed to download $url"
+          else s"Failed: $url"
         )
     }
 
@@ -108,6 +108,7 @@ case class Coursier(
       CachePolicy.Default
 
   val cache = Cache.default
+  cache.init(verbose = verbose0 >= 0)
 
   val repositoryIds = {
     val repository0 = repository
@@ -121,13 +122,11 @@ case class Coursier(
       repository0
   }
 
-  val existingRepo = cache
-    .list()
-    .map(_._1)
-    .toSet
-  if (repositoryIds.exists(!existingRepo(_))) {
+  val repoMap = cache.map()
+
+  if (repositoryIds.exists(!repoMap.contains(_))) {
     val notFound = repositoryIds
-      .filter(!existingRepo(_))
+      .filter(!repoMap.contains(_))
 
     Console.err.println(
       (if (notFound.lengthCompare(1) == 1) "Repository" else "Repositories") +
@@ -138,10 +137,8 @@ case class Coursier(
     sys.exit(1)
   }
 
-
-  val (repositories0, fileCaches) = cache
-    .list()
-    .map{case (_, repo, cacheEntry) => (repo, cacheEntry)}
+  val (repositories0, fileCaches) = repositoryIds
+    .map(repoMap)
     .unzip
 
   val repositories = repositories0
@@ -223,9 +220,9 @@ case class Coursier(
 
   val errors = res.errors
   if (errors.nonEmpty) {
-    println(s"${errors.size} error(s):")
+    println(s"\n${errors.size} error(s):")
     for ((dep, errs) <- errors) {
-      println(s"  ${dep.module}:\n    ${errs.map("    " + _.replace("\n", "    \n")).mkString("\n")}")
+      println(s"  ${dep.module}:${dep.version}:\n${errs.map("    " + _.replace("\n", "    \n")).mkString("\n")}")
     }
   }
 
