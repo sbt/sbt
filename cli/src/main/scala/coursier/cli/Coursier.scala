@@ -53,7 +53,7 @@ case class Coursier(
         println(s"Downloading $url")
       def downloaded(url: String, success: Boolean) =
         if (!success)
-          println(s"Failed to download $url")
+          println(s"Failed: $url")
       def readingFromCache(f: File) = {}
       def puttingInCache(f: File) = {}
 
@@ -62,7 +62,7 @@ case class Coursier(
         println(s"Downloading $url")
       def downloadedArtifact(url: String, success: Boolean) =
         if (!success)
-          println(s"Failed to download $url")
+          println(s"Failed: $url")
     }
 
   def verboseLogger: MavenRepository.Logger with Files.Logger =
@@ -72,7 +72,7 @@ case class Coursier(
       def downloaded(url: String, success: Boolean) =
         println(
           if (success) s"Downloaded $url"
-          else s"Failed to download $url"
+          else s"Failed: $url"
         )
       def readingFromCache(f: File) = {
         println(s"Reading ${fileRepr(f)} from cache")
@@ -87,7 +87,7 @@ case class Coursier(
       def downloadedArtifact(url: String, success: Boolean) =
         println(
           if (success) s"Downloaded $url"
-          else s"Failed to download $url"
+          else s"Failed: $url"
         )
     }
 
@@ -220,9 +220,9 @@ case class Coursier(
 
   val errors = res.errors
   if (errors.nonEmpty) {
-    println(s"${errors.size} error(s):")
+    println(s"\n${errors.size} error(s):")
     for ((dep, errs) <- errors) {
-      println(s"  ${dep.module}:\n    ${errs.map("    " + _.replace("\n", "    \n")).mkString("\n")}")
+      println(s"  ${dep.module}:${dep.version}:\n${errs.map("    " + _.replace("\n", "    \n")).mkString("\n")}")
     }
   }
 

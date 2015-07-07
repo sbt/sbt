@@ -58,8 +58,11 @@ case class MavenRepository(
           conn.setRequestProperty("User-Agent", "")
           MavenRepository.readFully(conn.getInputStream())
         }
+        def logEnd(success: Boolean) = logger.foreach(_.downloaded(urlStr, success))
 
-        log.flatMap(_ => get)
+        log
+          .flatMap(_ => get)
+          .map{ res => logEnd(res.isRight); res }
       }
 
       def save(s: String) = {
@@ -115,7 +118,12 @@ object MavenRepository {
           finally is0.close()
 
         new String(b, "UTF-8")
-      } .leftMap(_.getMessage)
+      } .leftMap{
+        case e: java.io.FileNotFoundException =>
+          s"Not found: ${e.getMessage}"
+        case e =>
+          s"$e: ${e.getMessage}"
+      }
     }
 
 }
