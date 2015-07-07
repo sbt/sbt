@@ -210,9 +210,23 @@ object Xml {
       depMgmts,
       properties.toMap,
       profiles,
+      None,
       None
     )
   }
+
+  def parseDateTime(s: String): Option[Versions.DateTime] =
+    if (s.length == 14 && s.forall(_.isDigit))
+      Some(Versions.DateTime(
+        s.substring(0, 4).toInt,
+        s.substring(4, 6).toInt,
+        s.substring(6, 8).toInt,
+        s.substring(8, 10).toInt,
+        s.substring(10, 12).toInt,
+        s.substring(12, 14).toInt
+      ))
+    else
+      None
 
   def versions(node: Node): String \/ Versions = {
     import Scalaz._
@@ -230,24 +244,111 @@ object Xml {
       release = text(xmlVersioning, "release", "Release version")
         .getOrElse("")
 
-      versions <- xmlVersioning.child
+      versionsOpt = xmlVersioning.child
         .find(_.label == "versions")
         .map(_.child.filter(_.label == "version").flatMap(_.child.collectFirst{case Text(t) => t}))
-        .toRightDisjunction("Version list not found in metadata")
 
       lastUpdatedOpt = text(xmlVersioning, "lastUpdated", "Last update date and time")
         .toOption
-        .filter(s => s.length == 14 && s.forall(_.isDigit))
-        .map(s => Versions.DateTime(
-          s.substring(0, 4).toInt,
-          s.substring(4, 6).toInt,
-          s.substring(6, 8).toInt,
-          s.substring(8, 10).toInt,
-          s.substring(10, 12).toInt,
-          s.substring(12, 14).toInt
-        ))
+        .flatMap(parseDateTime)
 
-    } yield Versions(latest, release, versions.toList, lastUpdatedOpt)
+    } yield Versions(latest, release, versionsOpt.map(_.toList).getOrElse(Nil), lastUpdatedOpt)
+  }
+
+  def snapshotVersion(node: Node): String \/ SnapshotVersion = {
+    def textOrEmpty(name: String, desc: String) =
+      text(node, name, desc)
+        .toOption
+        .getOrElse("")
+
+    val classifier = textOrEmpty("classifier", "Classifier")
+    val ext = textOrEmpty("extension", "Extensions")
+    val value = textOrEmpty("value", "Value")
+
+    val updatedOpt = text(node, "updated", "Updated")
+      .toOption
+      .flatMap(parseDateTime)
+
+    \/-(SnapshotVersion(
+      classifier,
+      ext,
+      value,
+      updatedOpt
+    ))
+  }
+
+  def snapshotVersioning(node: Node): String \/ SnapshotVersioning = {
+    import Scalaz._
+
+    // FIXME Quite similar to Versions above
+    for {
+      organization <- text(node, "groupId", "Organization")
+      name <- text(node, "artifactId", "Name")
+      version = readVersion(node)
+
+      xmlVersioning <- node.child
+        .find(_.label == "versioning")
+        .toRightDisjunction("Versioning info not found in metadata")
+
+      latest = text(xmlVersioning, "latest", "Latest version")
+        .getOrElse("")
+      release = text(xmlVersioning, "release", "Release version")
+        .getOrElse("")
+
+      versionsOpt = xmlVersioning.child
+        .find(_.label == "versions")
+        .map(_.child.filter(_.label == "version").flatMap(_.child.collectFirst{case Text(t) => t}))
+
+      lastUpdatedOpt = text(xmlVersioning, "lastUpdated", "Last update date and time")
+        .toOption
+        .flatMap(parseDateTime)
+
+      xmlSnapshotOpt = xmlVersioning.child
+        .find(_.label == "snapshot")
+
+      timestamp = xmlSnapshotOpt
+        .flatMap(
+          text(_, "timestamp", "Snapshot timestamp")
+            .toOption
+        )
+        .getOrElse("")
+
+      buildNumber = xmlSnapshotOpt
+        .flatMap(
+          text(_, "buildNumber", "Snapshot build number")
+            .toOption
+        )
+        .filter(s => s.nonEmpty && s.forall(_.isDigit))
+        .map(_.toInt)
+
+      localCopy = xmlSnapshotOpt
+        .flatMap(
+          text(_, "localCopy", "Snapshot local copy")
+            .toOption
+        )
+        .collect{
+          case "true" => true
+          case "false" => false
+        }
+
+      xmlSnapshotVersions = xmlVersioning.child
+        .find(_.label == "snapshotVersions")
+        .map(_.child.filter(_.label == "snapshotVersion"))
+        .getOrElse(Seq.empty)
+      snapshotVersions <- xmlSnapshotVersions
+        .toList
+        .traverseU(snapshotVersion)
+    } yield SnapshotVersioning(
+      Module(organization, name),
+      version, 
+      latest,
+      release,
+      timestamp,
+      buildNumber,
+      localCopy,
+      lastUpdatedOpt,
+      snapshotVersions
+    )
   }
 
 }

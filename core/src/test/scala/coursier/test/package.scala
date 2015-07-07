@@ -30,7 +30,8 @@ package object test {
               dependencyManagement: Seq[Dependency] = Seq.empty,
               properties: Map[String, String] = Map.empty,
               profiles: Seq[Profile] = Seq.empty,
-              versions: Option[core.Versions] = None): Project =
-      core.Project(module, version, dependencies, parent, dependencyManagement, properties, profiles, versions)
+              versions: Option[core.Versions] = None,
+              snapshotVersioning: Option[core.SnapshotVersioning] = None): Project =
+      core.Project(module, version, dependencies, parent, dependencyManagement, properties, profiles, versions, snapshotVersioning)
   }
 }

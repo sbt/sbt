@@ -49,7 +49,15 @@ case class MavenRepository(
         val url = new URL(urlStr)
 
         def log = Task(logger.foreach(_.downloading(urlStr)))
-        def get = MavenRepository.readFully(url.openStream())
+        def get = {
+          val conn = url.openConnection()
+          // Dummy user-agent instead of the default "Java/...",
+          // so that we are not returned incomplete/erroneous metadata
+          // (Maven 2 compatibility? - happens for snapshot versioning metadata,
+          // this is SO FUCKING CRAZY)
+          conn.setRequestProperty("User-Agent", "")
+          MavenRepository.readFully(conn.getInputStream())
+        }
 
         log.flatMap(_ => get)
       }
