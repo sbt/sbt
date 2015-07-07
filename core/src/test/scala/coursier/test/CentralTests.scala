@@ -1,7 +1,7 @@
 package coursier
 package test
 
-import coursier.core.Repository
+import coursier.core.{ Repository, MavenRepository }
 import utest._
 import scala.async.Async.{ async, await }
 
@@ -133,6 +133,14 @@ object CentralTests extends TestSuite {
       resolutionCheck(
         Module("com.github.alexarchambault", "argonaut-shapeless_6.1_2.11"),
         "0.2.0"
+      )
+    }
+    'snapshotMetadata{
+      // Let's hope this one won't change too much
+      resolutionCheck(
+        Module("com.github.fommil", "java-logging"),
+        "1.2-SNAPSHOT",
+        extraRepo = Some(MavenRepository("https://oss.sonatype.org/content/repositories/public/"))
       )
     }
   }
