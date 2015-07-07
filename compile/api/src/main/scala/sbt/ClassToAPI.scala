@@ -133,6 +133,7 @@ object ClassToAPI {
   def upperBounds(ts: Array[Type]): api.Type =
     new api.Structure(lzy(types(ts)), lzyEmptyDefArray, lzyEmptyDefArray)
 
+  /** Parses the constant value represented by the given ConstantValue AttributeInfo. */
   private def constantPoolConstantValue(cf: ClassFile, ai: classfile.AttributeInfo): AnyRef = {
     assert(ai.name.exists(_ == "ConstantValue"), s"Non-ConstantValue attribute not supported: ${ai}")
     import classfile.Constants._
@@ -158,11 +159,12 @@ object ClassToAPI {
       val accs = access(f.getModifiers, enclPkg)
       val mods = modifiers(f.getModifiers)
       val annots = annotations(f.getDeclaredAnnotations)
-      // if possible, generate a more specific type for constant fields
+      // generate a more specific type for constant fields
       val specificTpe: Option[api.Type] =
         if (mods.isFinal) {
           val attributeInfos = cf.fields.find(_.name.exists(_ == name)).toSeq.flatMap(_.attributes)
-          // create a singleton type ending with the hash of the name-mangled ConstantValue of this field
+          // create a singleton type ending with the ConstantValue of this field. because this type
+          // is purely synthetic, it's fine that the name might contain filename-banned characters.
           attributeInfos.collectFirst {
             case ai @ classfile.AttributeInfo(Some("ConstantValue"), _) =>
               val constantValue = constantPoolConstantValue(cf, ai)
