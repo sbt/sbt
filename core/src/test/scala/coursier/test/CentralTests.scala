@@ -3,7 +3,7 @@ package test
 
 import coursier.core.Repository
 import utest._
-import scala.async.Async.{async, await}
+import scala.async.Async.{ async, await }
 
 import coursier.test.compatibility._
 
@@ -24,7 +24,7 @@ object CentralTests extends TestSuite {
 
     Resolution(deps, filter = filter)
       .process
-      .run(fetch(repositories0))
+      .run(repositories0)
       .runF
   }
 
