@@ -34,8 +34,12 @@ else
   SBT_COMMANDS="compile"
 fi
 
-sbt ++2.11.6 core-jvm/publish-local # Required for ~/.ivy2/local repo tests
-SBT_COMMANDS="$SBT_COMMANDS core-jvm/test core-js/test"
+# Required for ~/.ivy2/local repo tests
+sbt ++2.11.6 core-jvm/publish-local
+
+SBT_COMMANDS="$SBT_COMMANDS test"
+
+# TODO Add coverage once https://github.com/scoverage/sbt-scoverage/issues/111 is fixed
 
 PUSH_GHPAGES=0
 if isNotPr && isJdk7 && isMaster; then
