@@ -10,7 +10,6 @@ import scalaz.{ \/-, -\/ }
 import scalaz.concurrent.Task
 
 case class Coursier(
-  scope: List[String],
   keepOptional: Boolean,
   fetch: Boolean,
   @ExtraName("J") default: Boolean,
@@ -30,11 +29,6 @@ case class Coursier(
     verbose.length +
       (if (quiet) 1 else 0)
   }
-
-  val scopes0 =
-    if (scope.isEmpty) List(Scope.Compile, Scope.Runtime)
-    else scope.map(Parse.scope)
-  val scopes = scopes0.toSet
 
   def fileRepr(f: File) = f.toString
 
@@ -170,7 +164,7 @@ case class Coursier(
 
   val startRes = Resolution(
     deps.toSet,
-    filter = Some(dep => (keepOptional || !dep.optional) && scopes(dep.scope))
+    filter = Some(dep => keepOptional || !dep.optional)
   )
 
   val fetchQuiet = coursier.fetch(repositories)
