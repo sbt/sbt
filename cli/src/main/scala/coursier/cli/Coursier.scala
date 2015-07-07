@@ -121,13 +121,11 @@ case class Coursier(
       repository0
   }
 
-  val existingRepo = cache
-    .list()
-    .map(_._1)
-    .toSet
-  if (repositoryIds.exists(!existingRepo(_))) {
+  val repoMap = cache.map()
+
+  if (repositoryIds.exists(!repoMap.contains(_))) {
     val notFound = repositoryIds
-      .filter(!existingRepo(_))
+      .filter(!repoMap.contains(_))
 
     Console.err.println(
       (if (notFound.lengthCompare(1) == 1) "Repository" else "Repositories") +
@@ -138,10 +136,8 @@ case class Coursier(
     sys.exit(1)
   }
 
-
-  val (repositories0, fileCaches) = cache
-    .list()
-    .map{case (_, repo, cacheEntry) => (repo, cacheEntry)}
+  val (repositories0, fileCaches) = repositoryIds
+    .map(repoMap)
     .unzip
 
   val repositories = repositories0

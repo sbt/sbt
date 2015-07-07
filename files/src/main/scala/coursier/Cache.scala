@@ -129,11 +129,7 @@ case class Cache(cache: File) {
     } else
       Nil
 
-  def files(): Files = {
-    val map0 = map()
-    val default0 = default()
-
-    new Files(default0.map(map0(_)._2), () => ???)
-  }
+  def files(): Files =
+    new Files(list().map{case (_, _, matching) => matching }, () => ???)
 
 }
