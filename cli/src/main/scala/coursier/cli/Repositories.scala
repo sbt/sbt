@@ -40,7 +40,7 @@ case class Repositories(
   }
 
   if (!cache.cache.exists())
-    cache.init()
+    cache.init(verbose = true)
 
   val current = cache.list().map(_._1).toSet
 

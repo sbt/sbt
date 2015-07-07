@@ -108,6 +108,7 @@ case class Coursier(
       CachePolicy.Default
 
   val cache = Cache.default
+  cache.init(verbose = verbose0 >= 0)
 
   val repositoryIds = {
     val repository0 = repository

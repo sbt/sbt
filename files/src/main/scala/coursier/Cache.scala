@@ -63,8 +63,13 @@ case class Cache(cache: File) {
   def addIvy2Local(): Unit =
     add("ivy2local", new File(sys.props("user.home") + "/.ivy2/local/").toURI.toString, ivyLike = true)
 
-  def init(ifEmpty: Boolean = true): Unit =
+  def init(
+    ifEmpty: Boolean = true,
+    verbose: Boolean = false
+  ): Unit =
     if (!ifEmpty || !cache.exists()) {
+      if (verbose)
+        Console.err.println(s"Initializing $cache")
       repoDir.mkdirs()
       metadataBase.mkdirs()
       fileBase.mkdirs()
