@@ -3,6 +3,7 @@ package sbt
 import java.lang.reflect.{ Array => _, _ }
 import java.lang.annotation.Annotation
 import annotation.tailrec
+import sbt.classfile.ClassFile
 import xsbti.api
 import xsbti.SafeLazy
 import SafeLazy.strict
@@ -67,21 +68,26 @@ object ClassToAPI {
     }
 
   /** Returns the (static structure, instance structure, inherited classes) for `c`. */
-  def structure(c: Class[_], enclPkg: Option[String], cmap: ClassMap): (api.Structure, api.Structure) =
-    {
-      val methods = mergeMap(c, c.getDeclaredMethods, c.getMethods, methodToDef(enclPkg))
-      val fields = mergeMap(c, c.getDeclaredFields, c.getFields, fieldToDef(c, enclPkg))
-      val constructors = mergeMap(c, c.getDeclaredConstructors, c.getConstructors, constructorToDef(enclPkg))
-      val classes = merge[Class[_]](c, c.getDeclaredClasses, c.getClasses, toDefinitions(cmap), (_: Seq[Class[_]]).partition(isStatic), _.getEnclosingClass != c)
-      val all = methods ++ fields ++ constructors ++ classes
-      val parentJavaTypes = allSuperTypes(c)
-      if (!Modifier.isPrivate(c.getModifiers))
-        cmap.inherited ++= parentJavaTypes.collect { case c: Class[_] => c }
-      val parentTypes = types(parentJavaTypes)
-      val instanceStructure = new api.Structure(lzyS(parentTypes.toArray), lzyS(all.declared.toArray), lzyS(all.inherited.toArray))
-      val staticStructure = new api.Structure(lzyEmptyTpeArray, lzyS(all.staticDeclared.toArray), lzyS(all.staticInherited.toArray))
-      (staticStructure, instanceStructure)
+  def structure(c: Class[_], enclPkg: Option[String], cmap: ClassMap): (api.Structure, api.Structure) = {
+    lazy val cf = {
+      // TODO: need better way to get access to classfile-location
+      val file = new java.io.File(IO.classLocationFile(c), s"${c.getName.replace('.', '/')}.class")
+      classfile.Parser.apply(file)
     }
+    val methods = mergeMap(c, c.getDeclaredMethods, c.getMethods, methodToDef(enclPkg))
+    val fields = mergeMap(c, c.getDeclaredFields, c.getFields, fieldToDef(c, cf, enclPkg))
+    val constructors = mergeMap(c, c.getDeclaredConstructors, c.getConstructors, constructorToDef(enclPkg))
+    val classes = merge[Class[_]](c, c.getDeclaredClasses, c.getClasses, toDefinitions(cmap), (_: Seq[Class[_]]).partition(isStatic), _.getEnclosingClass != c)
+    val all = methods ++ fields ++ constructors ++ classes
+    val parentJavaTypes = allSuperTypes(c)
+    if (!Modifier.isPrivate(c.getModifiers))
+      cmap.inherited ++= parentJavaTypes.collect { case c: Class[_] => c }
+    val parentTypes = types(parentJavaTypes)
+    val instanceStructure = new api.Structure(lzyS(parentTypes.toArray), lzyS(all.declared.toArray), lzyS(all.inherited.toArray))
+    val staticStructure = new api.Structure(lzyEmptyTpeArray, lzyS(all.staticDeclared.toArray), lzyS(all.staticInherited.toArray))
+    (staticStructure, instanceStructure)
+  }
+
   private[this] def lzyS[T <: AnyRef](t: T): xsbti.api.Lazy[T] = lzy(t)
   def lzy[T <: AnyRef](t: => T): xsbti.api.Lazy[T] = xsbti.SafeLazy(t)
   private[this] def lzy[T <: AnyRef](t: => T, cmap: ClassMap): xsbti.api.Lazy[T] = {
@@ -127,7 +133,7 @@ object ClassToAPI {
   def upperBounds(ts: Array[Type]): api.Type =
     new api.Structure(lzy(types(ts)), lzyEmptyDefArray, lzyEmptyDefArray)
 
-  private def constantPoolConstantValue(cf: classfile.ClassFile, ai: classfile.AttributeInfo): AnyRef = {
+  private def constantPoolConstantValue(cf: ClassFile, ai: classfile.AttributeInfo): AnyRef = {
     assert(ai.name.exists(_ == "ConstantValue"), s"Non-ConstantValue attribute not supported: ${ai}")
     import classfile.Constants._
     cf.constantPool(classfile.Parser.entryIndex(ai)) match {
@@ -135,27 +141,26 @@ object ClassToAPI {
         // follow the indirection from ConstantString to ConstantUTF8
         val nextConstant = cf.constantPool(nextOffset)
         nextConstant.value.getOrElse {
-          throw new RuntimeException(s"Empty UTF8 value in constant pool: ${nextConstant}")
+          throw new RuntimeException(s"Empty UTF8 value in constant pool: $nextConstant")
         }
       case constant @ classfile.Constant((ConstantFloat | ConstantLong | ConstantDouble | ConstantInteger), _, _, ref) =>
         ref.getOrElse {
-          throw new RuntimeException(s"Empty primitive value in constant pool: ${constant}")
+          throw new RuntimeException(s"Empty primitive value in constant pool: $constant")
         }
+      case constant =>
+        throw new IllegalStateException(s"Unsupported ConstantValue type: $constant")
     }
   }
 
-  def fieldToDef(c: Class[_], enclPkg: Option[String])(f: Field): api.FieldLike =
+  def fieldToDef(c: Class[_], cf: => ClassFile, enclPkg: Option[String])(f: Field): api.FieldLike =
     {
       val name = f.getName
       val accs = access(f.getModifiers, enclPkg)
       val mods = modifiers(f.getModifiers)
       val annots = annotations(f.getDeclaredAnnotations)
+      // if possible, generate a more specific type for constant fields
       val specificTpe: Option[api.Type] =
         if (mods.isFinal) {
-          // TODO: need better way to get access to classfile-location/parsed-representation
-          // TODO: need to only bother for static fields
-          val file = new java.io.File(IO.classLocationFile(c), s"${c.getName.replace('.', '/')}.class")
-          val cf = classfile.Parser.apply(file)
           val attributeInfos = cf.fields.find(_.name.exists(_ == name)).toSeq.flatMap(_.attributes)
           // create a singleton type ending with the hash of the name-mangled ConstantValue of this field
           attributeInfos.collectFirst {
