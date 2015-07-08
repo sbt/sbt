@@ -80,7 +80,13 @@ case class MavenRepository(
         )
       }
 
-      EitherT(cachePolicy.saving(locally(localFile))(remote)(save))
+      EitherT(
+        cachePolicy[String \/ String](
+          _.isLeft )(
+          locally(localFile) )(
+          _ => CachePolicy.saving(remote)(save)
+        )
+      )
     }
   }
 
