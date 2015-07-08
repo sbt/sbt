@@ -478,7 +478,17 @@ object BuiltinCommands {
       val (s1, base) = Project.loadAction(SessionVar.clear(s0), action)
       IO.createDirectory(base)
       val s = if (s1 has Keys.stateCompilerCache) s1 else registerCompilerCache(s1)
-      val (eval, structure) = Load.defaultLoad(s, base, s.log, Project.inPluginProject(s), Project.extraBuilds(s))
+
+      val (eval, structure) =
+        try Load.defaultLoad(s, base, s.log, Project.inPluginProject(s), Project.extraBuilds(s))
+        catch {
+          case ex: compiler.EvalException =>
+            s0.log.debug(ex.getMessage)
+            ex.getStackTrace map (ste => s"\tat $ste") foreach (s0.log.debug(_))
+            ex.setStackTrace(Array.empty)
+            throw ex
+        }
+
       val session = Load.initialSession(structure, eval, s0)
       SessionSettings.checkSession(session, s)
       Project.setProject(session, structure, s)
