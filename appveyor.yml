@@ -21,3 +21,4 @@ cache:
   - C:\sbt\
   - C:\Users\appveyor\.m2
   - C:\Users\appveyor\.ivy2
+  - C:\Users\appveyor\.sbt
