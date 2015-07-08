@@ -5,6 +5,7 @@
 A pure Scala substitute for [Aether](http://www.eclipse.org/aether/)
 
 [![Build Status](https://travis-ci.org/alexarchambault/coursier.svg?branch=master)](https://travis-ci.org/alexarchambault/coursier)
+[![Build status (Windows)](https://ci.appveyor.com/api/projects/status/trtum5b7washfbj9?svg=true)](https://ci.appveyor.com/project/alexarchambault/coursier)
 [![Join the chat at https://gitter.im/alexarchambault/coursier](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/alexarchambault/coursier?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 See [Scala JS demo](https://alexarchambault.github.io/coursier/index.html#demo) and [usage](https://github.com/alexarchambault/coursier/blob/master/USAGE.md).
