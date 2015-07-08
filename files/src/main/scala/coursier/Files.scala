@@ -143,8 +143,11 @@ case class Files(
     val tasks =
       for ((f, url) <- pairs if url != ("file:" + f) && url != ("file://" + f)) yield {
         val file = new File(f)
-        cachePolicy(locally(file))(remote(file, url))
-          .map(e => (file, url) -> e.map(_ => ()))
+        cachePolicy[FileError \/ File](
+          _.isLeft )(
+          locally(file) )(
+          _ => remote(file, url)
+        ).map(e => (file, url) -> e.map(_ => ()))
       }
 
     Nondeterminism[Task].gather(tasks)
