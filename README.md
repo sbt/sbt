@@ -14,15 +14,13 @@ this, add the plugin dependency to `~/.sbt/0.13/plugins/plugins.sbt`:
 addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.7.5")
 ```
 
-Then, apply the plugin's settings in `~/.sbt/0.13/global.sbt`, the [global build configuration]:
+Then, apply the plugin's settings in `~/.sbt/0.13/global.sbt`, the [global build configuration], by adding the following line:
 
 ```scala
 net.virtualvoid.sbt.graph.Plugin.graphSettings
 ```
 
-For both of the above, be sure to use the version directory matching your version of SBT (e.g. 0.12 or 0.13). Be aware that
-different projects using SBT may declare particular versions for their builds, so you may need to set up the plugin for an older
-version if you encounter a project using one.
+Note, that sbt-dependency-graph is not an [AutoPlugin](http://www.scala-sbt.org/0.13/docs/Plugins.html#Creating+an+auto+plugin) yet (until [#51](https://github.com/jrudolph/sbt-dependency-graph/issues/51) is fixed), so adding the above line to your global or project configuration is mandatory.
 
 Tasks
 -----
