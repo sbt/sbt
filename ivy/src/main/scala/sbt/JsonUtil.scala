@@ -5,8 +5,11 @@ import java.net.URL
 import org.apache.ivy.core
 import core.module.descriptor.ModuleDescriptor
 import sbt.serialization._
+import java.net.{ URLEncoder, URLDecoder }
 
 private[sbt] object JsonUtil {
+  val fakeCallerOrganization = "org.scala-sbt.temp-callers"
+
   def parseUpdateReport(md: ModuleDescriptor, path: File, cachedDescriptor: File, log: Logger): UpdateReport =
     {
       try {
@@ -44,13 +47,44 @@ private[sbt] object JsonUtil {
     else {
       // Use the first element to represent all callers
       val head = callers.head
+      val name =
+        URLEncoder.encode(
+          (for {
+            caller <- callers
+            m = caller.caller
+          } yield s"${m.organization}:${m.name}:${m.revision}").mkString(";"), "UTF-8")
+      val version = head.caller.revision
+      val fakeCaller = ModuleID(fakeCallerOrganization, name, version)
       val caller = new Caller(
-        head.caller, head.callerConfigurations, head.callerExtraAttributes,
+        fakeCaller, head.callerConfigurations, head.callerExtraAttributes,
         callers exists { _.isForceDependency },
         callers exists { _.isChangingDependency },
         callers exists { _.isTransitiveDependency },
         callers exists { _.isDirectlyForceDependency })
       Seq(caller)
+    }
+  def unsummarizeCallers(callers: Seq[Caller]): Seq[Caller] =
+    if (callers.isEmpty) callers
+    else {
+      val head = callers.head
+      val m = head.caller
+      if (m.organization != fakeCallerOrganization) callers
+      else {
+        // likely the caller is generated using the above summarizeCallers
+        val s = URLDecoder.decode(m.name, "UTF-8")
+        s.split(";").toList map { x =>
+          x.split(":").toList match {
+            case List(organization, name, revision) =>
+              val caller = ModuleID(organization, name, revision)
+              new Caller(
+                caller, head.callerConfigurations, head.callerExtraAttributes,
+                head.isForceDependency, head.isChangingDependency,
+                head.isTransitiveDependency, head.isDirectlyForceDependency
+              )
+            case xs => sys.error(s"Unexpected caller $xs")
+          }
+        }
+      }
     }
 
   def fromLite(lite: UpdateReportLite, cachedDescriptor: File): UpdateReport =
