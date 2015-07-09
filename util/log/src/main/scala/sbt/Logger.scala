@@ -41,8 +41,7 @@ object Logger {
     newLog.setTrace(oldLog.getTrace)
   }
 
-  // make public in 0.13
-  private[sbt] val Null: AbstractLogger = new AbstractLogger {
+  val Null: AbstractLogger = new AbstractLogger {
     def getLevel: Level.Value = Level.Error
     def setLevel(newLevel: Level.Value) {}
     def getTrace = 0
