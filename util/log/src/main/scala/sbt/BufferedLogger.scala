@@ -39,7 +39,7 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
    * Flushes the buffer to the delegate logger.  This method calls logAll on the delegate
    * so that the messages are written consecutively. The buffer is cleared in the process.
    */
-  def play(): Unit = synchronized { delegate.logAll(buffer.readOnly); buffer.clear() }
+  def play(): Unit = synchronized { delegate.logAll(buffer.toList); buffer.clear() }
   /** Clears buffered events and disables buffering. */
   def clear(): Unit = synchronized { buffer.clear(); recording = false }
   /** Plays buffered events and disables buffering. */
