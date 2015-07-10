@@ -454,7 +454,14 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
     OrganizationArtifactReport(
       report0.organization,
       report0.name,
-      report0.modules map { mr => mr.copy(callers = JsonUtil.unsummarizeCallers(mr.callers)) })
+      report0.modules map { mr =>
+        val original = JsonUtil.unsummarizeCallers(mr.callers)
+        // https://github.com/sbt/sbt/issues/1763
+        mr.copy(callers = original filter { c =>
+          (c.caller.organization != sbtOrgTemp) &&
+            (c.caller.organization != JsonUtil.fakeCallerOrganization)
+        })
+      })
   def summarizeCallers(report0: OrganizationArtifactReport): OrganizationArtifactReport =
     OrganizationArtifactReport(
       report0.organization,
