@@ -26,7 +26,7 @@ import scala.concurrent.duration._
 private[sbt] object CachedResolutionResolveCache {
   def createID(organization: String, name: String, revision: String) =
     ModuleRevisionId.newInstance(organization, name, revision)
-  def sbtOrgTemp = "org.scala-sbt.temp"
+  def sbtOrgTemp = JsonUtil.sbtOrgTemp
   def graphVersion = "0.13.9B"
   val buildStartup: Long = System.currentTimeMillis
   lazy val todayStr: String = toYyyymmdd(buildStartup)
@@ -398,7 +398,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       // group by takes up too much memory. trading space with time.
       val orgNamePairs = (reports0 map { oar => (oar.organization, oar.name) }).distinct
       // this might take up some memory, but it's limited to a single
-      val reports1 = reports0 map { recoverCallers }
+      val reports1 = reports0 map { filterOutCallers }
       val allModules: ListMap[(String, String), Vector[OrganizationArtifactReport]] =
         ListMap(orgNamePairs map {
           case (organization, name) =>
@@ -447,26 +447,17 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
             })
         }
       val sorted = sortModules(allModules, 0)
-      val result = resolveConflicts(sorted.toList) map { summarizeCallers }
+      val result = resolveConflicts(sorted.toList)
       result.toVector
     }
-  def recoverCallers(report0: OrganizationArtifactReport): OrganizationArtifactReport =
+  def filterOutCallers(report0: OrganizationArtifactReport): OrganizationArtifactReport =
     OrganizationArtifactReport(
       report0.organization,
       report0.name,
       report0.modules map { mr =>
-        val original = JsonUtil.unsummarizeCallers(mr.callers)
         // https://github.com/sbt/sbt/issues/1763
-        mr.copy(callers = original filter { c =>
-          (c.caller.organization != sbtOrgTemp) &&
-            (c.caller.organization != JsonUtil.fakeCallerOrganization)
-        })
+        mr.copy(callers = JsonUtil.filterOutArtificialCallers(mr.callers))
       })
-  def summarizeCallers(report0: OrganizationArtifactReport): OrganizationArtifactReport =
-    OrganizationArtifactReport(
-      report0.organization,
-      report0.name,
-      report0.modules map { mr => mr.copy(callers = JsonUtil.summarizeCallers(mr.callers)) })
   /**
    * Merges ModuleReports, which represents orgnization, name, and version.
    * Returns a touple of (surviving modules ++ non-conflicting modules, newly evicted modules).
