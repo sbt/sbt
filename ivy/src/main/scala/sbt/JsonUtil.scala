@@ -8,7 +8,8 @@ import sbt.serialization._
 import java.net.{ URLEncoder, URLDecoder }
 
 private[sbt] object JsonUtil {
-  val fakeCallerOrganization = "org.scala-sbt.temp-callers"
+  def sbtOrgTemp = "org.scala-sbt.temp"
+  def fakeCallerOrganization = "org.scala-sbt.temp-callers"
 
   def parseUpdateReport(md: ModuleDescriptor, path: File, cachedDescriptor: File, log: Logger): UpdateReport =
     {
@@ -36,55 +37,23 @@ private[sbt] object JsonUtil {
             mr.evicted, mr.evictedData, mr.evictedReason,
             mr.problem, mr.homepage, mr.extraAttributes,
             mr.isDefault, mr.branch, mr.configurations, mr.licenses,
-            summarizeCallers(mr.callers))
+            filterOutArtificialCallers(mr.callers))
         })
       })
     })
   // #1763/#2030. Caller takes up 97% of space, so we need to shrink it down,
   // but there are semantics associated with some of them.
-  def summarizeCallers(callers: Seq[Caller]): Seq[Caller] =
+  def filterOutArtificialCallers(callers: Seq[Caller]): Seq[Caller] =
     if (callers.isEmpty) callers
     else {
-      // Use the first element to represent all callers
-      val head = callers.head
-      val name =
-        URLEncoder.encode(
-          (for {
-            caller <- callers
-            m = caller.caller
-          } yield s"${m.organization}:${m.name}:${m.revision}").mkString(";"), "UTF-8")
-      val version = head.caller.revision
-      val fakeCaller = ModuleID(fakeCallerOrganization, name, version)
-      val caller = new Caller(
-        fakeCaller, head.callerConfigurations, head.callerExtraAttributes,
-        callers exists { _.isForceDependency },
-        callers exists { _.isChangingDependency },
-        callers exists { _.isTransitiveDependency },
-        callers exists { _.isDirectlyForceDependency })
-      Seq(caller)
-    }
-  def unsummarizeCallers(callers: Seq[Caller]): Seq[Caller] =
-    if (callers.isEmpty) callers
-    else {
-      val head = callers.head
-      val m = head.caller
-      if (m.organization != fakeCallerOrganization) callers
-      else {
-        // likely the caller is generated using the above summarizeCallers
-        val s = URLDecoder.decode(m.name, "UTF-8")
-        s.split(";").toList map { x =>
-          x.split(":").toList match {
-            case List(organization, name, revision) =>
-              val caller = ModuleID(organization, name, revision)
-              new Caller(
-                caller, head.callerConfigurations, head.callerExtraAttributes,
-                head.isForceDependency, head.isChangingDependency,
-                head.isTransitiveDependency, head.isDirectlyForceDependency
-              )
-            case xs => sys.error(s"Unexpected caller $xs")
-          }
-        }
+      val nonArtificial = callers filter { c =>
+        (c.caller.organization != sbtOrgTemp) &&
+          (c.caller.organization != fakeCallerOrganization)
       }
+      val interProj = (callers filter { c =>
+        (c.caller.organization == sbtOrgTemp)
+      }).headOption.toList
+      interProj ::: nonArtificial.toList
     }
 
   def fromLite(lite: UpdateReportLite, cachedDescriptor: File): UpdateReport =
