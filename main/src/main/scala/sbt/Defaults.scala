@@ -1411,13 +1411,13 @@ object Classpaths {
 
       val outCacheFile = cacheFile / "output"
       def skipWork: In => UpdateReport =
-        Tracked.lastOutput[In, UpdateReport](outCacheFile) {
+        Tracked.lastOutputWithJson[In, UpdateReport](outCacheFile) {
           case (_, Some(out)) => out
           case _              => sys.error("Skipping update requested, but update has not previously run successfully.")
         }
       def doWork: In => UpdateReport =
         Tracked.inputChanged(cacheFile / "inputs") { (inChanged: Boolean, in: In) =>
-          val outCache = Tracked.lastOutput[In, UpdateReport](outCacheFile) {
+          val outCache = Tracked.lastOutputWithJson[In, UpdateReport](outCacheFile) {
             case (_, Some(out)) if uptodate(inChanged, out) => out
             case _ => work(in)
           }
