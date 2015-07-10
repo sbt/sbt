@@ -108,8 +108,7 @@ lazy val interfaceProj = (project in file("interface")).
     watchSources <++= apiDefinitions,
     resourceGenerators in Compile <+= (version, resourceManaged, streams, compile in Compile) map generateVersionFile,
     apiDefinitions <<= baseDirectory map { base => (base / "definition") :: (base / "other") :: (base / "type") :: Nil },
-    sourceGenerators in Compile <+= (cacheDirectory,
-      apiDefinitions,
+    sourceGenerators in Compile <+= (apiDefinitions,
       fullClasspath in Compile in datatypeProj,
       sourceManaged in Compile,
       mainClass in datatypeProj in Compile,
@@ -459,14 +458,14 @@ lazy val mavenResolverPluginProj = (project in file("sbt-maven-resolver")).
     sbtPlugin := true
   )
 
-def scriptedTask: Initialize[InputTask[Unit]] = Def.inputTask {
+def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => scriptedParser(dir)).parsed
   publishAll.value
   doScripted((sbtLaunchJar in bundledLauncherProj).value, (fullClasspath in scriptedSbtProj in Test).value,
     (scalaInstance in scriptedSbtProj).value, scriptedSource.value, result, scriptedPrescripted.value)
 }
 
-def scriptedUnpublishedTask: Initialize[InputTask[Unit]] = Def.inputTask {
+def scriptedUnpublishedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => scriptedParser(dir)).parsed
   doScripted((sbtLaunchJar in bundledLauncherProj).value, (fullClasspath in scriptedSbtProj in Test).value,
     (scalaInstance in scriptedSbtProj).value, scriptedSource.value, result, scriptedPrescripted.value)
@@ -496,7 +495,7 @@ def otherRootSettings = Seq(
   Scripted.scriptedPrescripted := { _ => },
   Scripted.scripted <<= scriptedTask,
   Scripted.scriptedUnpublished <<= scriptedUnpublishedTask,
-  Scripted.scriptedSource <<= (sourceDirectory in sbtProj) / "sbt-test",
+  Scripted.scriptedSource := (sourceDirectory in sbtProj).value / "sbt-test",
   publishAll := {
     val _ = (publishLocal).all(ScopeFilter(inAnyProject)).value
   },
