@@ -250,7 +250,7 @@ lazy val ivyProj = (project in file("ivy")).
   settings(
     baseSettings,
     name := "Ivy",
-    libraryDependencies ++= Seq(ivy, jsch, sbtSerialization, launcherInterface),
+    libraryDependencies ++= Seq(ivy, jsch, sbtSerialization, scalaReflect.value, launcherInterface),
     testExclusive)
 
 // Runner for uniform test interface
@@ -293,7 +293,7 @@ lazy val cacheProj = (project in cachePath).
   settings(
     baseSettings,
     name := "Cache",
-    libraryDependencies ++= Seq(sbinary, sbtSerialization) ++ scalaXml.value
+    libraryDependencies ++= Seq(sbinary, sbtSerialization, scalaReflect.value) ++ scalaXml.value
   )
 
 // Builds on cache to provide caching for filesystem-related operations
