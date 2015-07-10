@@ -3,7 +3,7 @@ import Keys._
 import Scope.ThisScope
 
 object Sxr {
-  val sxrConf = config("sxr") hide
+  val sxrConf = config("sxr").hide
   val sxr = TaskKey[File]("sxr")
   val sourceDirectories = TaskKey[Seq[File]]("sxr-source-directories")
 

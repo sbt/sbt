@@ -37,10 +37,10 @@ object Util {
 
   lazy val apiDefinitions = TaskKey[Seq[File]]("api-definitions")
 
-  def generateAPICached(cache: File, defs: Seq[File], cp: Classpath, out: File, main: Option[String], run: ScalaRun, s: TaskStreams): Seq[File] =
+  def generateAPICached(defs: Seq[File], cp: Classpath, out: File, main: Option[String], run: ScalaRun, s: TaskStreams): Seq[File] =
     {
       def gen() = generateAPI(defs, cp, out, main, run, s)
-      val f = FileFunction.cached(cache / "gen-api", FilesInfo.hash) { _ => gen().toSet } // TODO: check if output directory changed
+      val f = FileFunction.cached(s.cacheDirectory / "gen-api", FilesInfo.hash) { _ => gen().toSet } // TODO: check if output directory changed
       f(defs.toSet).toSeq
     }
   def generateAPI(defs: Seq[File], cp: Classpath, out: File, main: Option[String], run: ScalaRun, s: TaskStreams): Seq[File] =
@@ -91,7 +91,8 @@ object Util {
         case Elem(prefix, "classifier", attributes, scope, children @ _*) =>
           NodeSeq.Empty
         case Elem(prefix, label, attributes, scope, children @ _*) =>
-          Elem(prefix, label, attributes, scope, cleanNodes(children): _*).theSeq
+          val cleanedNodes = cleanNodes(children)
+          Elem(prefix, label, attributes, scope, cleanedNodes.isEmpty, cleanedNodes: _*).theSeq
         case other => other
       }
       cleanNodes(pomNode.theSeq)(0)
