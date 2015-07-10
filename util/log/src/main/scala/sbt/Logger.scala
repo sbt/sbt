@@ -10,19 +10,19 @@ import java.io.File
 
 abstract class AbstractLogger extends Logger {
   def getLevel: Level.Value
-  def setLevel(newLevel: Level.Value)
-  def setTrace(flag: Int)
+  def setLevel(newLevel: Level.Value): Unit
+  def setTrace(flag: Int): Unit
   def getTrace: Int
-  final def traceEnabled = getTrace >= 0
+  final def traceEnabled: Boolean = getTrace >= 0
   def successEnabled: Boolean
   def setSuccessEnabled(flag: Boolean): Unit
 
-  def atLevel(level: Level.Value) = level.id >= getLevel.id
+  def atLevel(level: Level.Value): Boolean = level.id >= getLevel.id
   def control(event: ControlEvent.Value, message: => String): Unit
 
   def logAll(events: Seq[LogEvent]): Unit
   /** Defined in terms of other methods in Logger and should not be called from them. */
-  final def log(event: LogEvent) {
+  final def log(event: LogEvent): Unit = {
     event match {
       case s: Success       => success(s.msg)
       case l: Log           => log(l.level, l.msg)
@@ -36,24 +36,23 @@ abstract class AbstractLogger extends Logger {
 }
 
 object Logger {
-  def transferLevels(oldLog: AbstractLogger, newLog: AbstractLogger) {
+  def transferLevels(oldLog: AbstractLogger, newLog: AbstractLogger): Unit = {
     newLog.setLevel(oldLog.getLevel)
     newLog.setTrace(oldLog.getTrace)
   }
 
-  // make public in 0.13
-  private[sbt] val Null: AbstractLogger = new AbstractLogger {
+  val Null: AbstractLogger = new AbstractLogger {
     def getLevel: Level.Value = Level.Error
-    def setLevel(newLevel: Level.Value) {}
-    def getTrace = 0
-    def setTrace(flag: Int) {}
-    def successEnabled = false
-    def setSuccessEnabled(flag: Boolean) {}
-    def control(event: ControlEvent.Value, message: => String) {}
-    def logAll(events: Seq[LogEvent]) {}
-    def trace(t: => Throwable) {}
-    def success(message: => String) {}
-    def log(level: Level.Value, message: => String) {}
+    def setLevel(newLevel: Level.Value): Unit = ()
+    def getTrace: Int = 0
+    def setTrace(flag: Int): Unit = ()
+    def successEnabled: Boolean = false
+    def setSuccessEnabled(flag: Boolean): Unit = ()
+    def control(event: ControlEvent.Value, message: => String): Unit = ()
+    def logAll(events: Seq[LogEvent]): Unit = ()
+    def trace(t: => Throwable): Unit = ()
+    def success(message: => String): Unit = ()
+    def log(level: Level.Value, message: => String): Unit = ()
   }
 
   implicit def absLog2PLog(log: AbstractLogger): ProcessLogger = new BufferedLogger(log) with ProcessLogger
@@ -67,11 +66,11 @@ object Logger {
     override def warn(msg: F0[String]): Unit = lg.warn(msg)
     override def info(msg: F0[String]): Unit = lg.info(msg)
     override def error(msg: F0[String]): Unit = lg.error(msg)
-    override def trace(msg: F0[Throwable]) = lg.trace(msg)
-    override def log(level: Level.Value, msg: F0[String]) = lg.log(level, msg)
-    def trace(t: => Throwable) = trace(f0(t))
-    def success(s: => String) = info(f0(s))
-    def log(level: Level.Value, msg: => String) =
+    override def trace(msg: F0[Throwable]): Unit = lg.trace(msg)
+    override def log(level: Level.Value, msg: F0[String]): Unit = lg.log(level, msg)
+    def trace(t: => Throwable): Unit = trace(f0(t))
+    def success(s: => String): Unit = info(f0(s))
+    def log(level: Level.Value, msg: => String): Unit =
       {
         val fmsg = f0(msg)
         level match {
@@ -119,7 +118,7 @@ trait Logger extends xLogger {
   final def warn(message: => String): Unit = log(Level.Warn, message)
   final def error(message: => String): Unit = log(Level.Error, message)
 
-  def ansiCodesSupported = false
+  def ansiCodesSupported: Boolean = false
 
   def trace(t: => Throwable): Unit
   def success(message: => String): Unit
@@ -129,6 +128,6 @@ trait Logger extends xLogger {
   def warn(msg: F0[String]): Unit = log(Level.Warn, msg)
   def info(msg: F0[String]): Unit = log(Level.Info, msg)
   def error(msg: F0[String]): Unit = log(Level.Error, msg)
-  def trace(msg: F0[Throwable]) = trace(msg.apply)
+  def trace(msg: F0[Throwable]): Unit = trace(msg.apply)
   def log(level: Level.Value, msg: F0[String]): Unit = log(level, msg.apply)
 }
