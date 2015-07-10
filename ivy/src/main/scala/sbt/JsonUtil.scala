@@ -5,8 +5,12 @@ import java.net.URL
 import org.apache.ivy.core
 import core.module.descriptor.ModuleDescriptor
 import sbt.serialization._
+import java.net.{ URLEncoder, URLDecoder }
 
 private[sbt] object JsonUtil {
+  def sbtOrgTemp = "org.scala-sbt.temp"
+  def fakeCallerOrganization = "org.scala-sbt.temp-callers"
+
   def parseUpdateReport(md: ModuleDescriptor, path: File, cachedDescriptor: File, log: Logger): UpdateReport =
     {
       try {
@@ -33,24 +37,23 @@ private[sbt] object JsonUtil {
             mr.evicted, mr.evictedData, mr.evictedReason,
             mr.problem, mr.homepage, mr.extraAttributes,
             mr.isDefault, mr.branch, mr.configurations, mr.licenses,
-            summarizeCallers(mr.callers))
+            filterOutArtificialCallers(mr.callers))
         })
       })
     })
   // #1763/#2030. Caller takes up 97% of space, so we need to shrink it down,
   // but there are semantics associated with some of them.
-  def summarizeCallers(callers: Seq[Caller]): Seq[Caller] =
+  def filterOutArtificialCallers(callers: Seq[Caller]): Seq[Caller] =
     if (callers.isEmpty) callers
     else {
-      // Use the first element to represent all callers
-      val head = callers.head
-      val caller = new Caller(
-        head.caller, head.callerConfigurations, head.callerExtraAttributes,
-        callers exists { _.isForceDependency },
-        callers exists { _.isChangingDependency },
-        callers exists { _.isTransitiveDependency },
-        callers exists { _.isDirectlyForceDependency })
-      Seq(caller)
+      val nonArtificial = callers filter { c =>
+        (c.caller.organization != sbtOrgTemp) &&
+          (c.caller.organization != fakeCallerOrganization)
+      }
+      val interProj = (callers filter { c =>
+        (c.caller.organization == sbtOrgTemp)
+      }).headOption.toList
+      interProj ::: nonArtificial.toList
     }
 
   def fromLite(lite: UpdateReportLite, cachedDescriptor: File): UpdateReport =
