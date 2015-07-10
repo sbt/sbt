@@ -44,6 +44,12 @@
   [2068]: https://github.com/sbt/sbt/pull/2068
   [2005]: https://github.com/sbt/sbt/issues/2005
   [2075]: https://github.com/sbt/sbt/pull/2075
+  [1973]: https://github.com/sbt/sbt/issues/1973
+  [2006]: https://github.com/sbt/sbt/pull/2006
+  [2008]: https://github.com/sbt/sbt/issues/2008
+  [2009]: https://github.com/sbt/sbt/pull/2009
+  [2046]: https://github.com/sbt/sbt/issues/2046
+  [2097]: https://github.com/sbt/sbt/pull/2097
 
 ### Fixes with compatibility implications
 
@@ -62,10 +68,15 @@
 - Adds help message for `inspect actual`. [#1651][1651]/[#1990][1990] by [@dwijnand][@dwijnand]
 - Supports excluding tests in `testOnly`/`testQuick` with `-`, for example `-MySpec`.
   [#1970][1970] by [@matthewfarwell][@matthewfarwell]
+- Adds more diagnostic info for underfined settings.
+  [#2008][2008]/[#2009][2009] by [@DavidPerezIngeniero][@DavidPerezIngeniero]
+- Adds an `Extracted.runInputTask` helper to assist with imperatively executing input tasks. [#2006][2006] by [@jroper][@jroper]
+- Renames `distinct` method on `PathFinder` to `distinctName`. [#1973][1973] by [@eed3si9n][@eed3si9n]
+- Adds `distinctPath` method on `PathFinder`. [#1973][1973] by [@eed3si9n][@eed3si9n]
 
 ### Bug fixes
 
-- Fixes memory/performance issue with cached resolution. See below.
+- Fixes memory/performance/correctness issue with cached resolution. See below.
 - Correct incremental compile debug message for invalidated products [#1961][1961] by [@jroper][@jroper]
 - Enables forced GC by default. See below.
 - Fixes Maven compatibility to read `maven-metadata.xml`. See below.
@@ -106,16 +117,20 @@ It also adds `configurationsToRetrieve` key, that takes values of `Option[Set[Co
 
 On a larger dependency graph, the JSON file growing to be 100MB+
 with 97% of taken up by *caller* information.
-The caller information is not useful once the graph is successfully resolved.
 To make the matter worse, these large JSON files were never cleaned up.
 
-sbt 0.13.9 creates a single caller to represent all callers,
+sbt 0.13.9 filters out artificial callers,
 which fixes `OutOfMemoryException` seen on some builds.
 This generally shrinks the size of JSON, so it should make the IO operations faster.
 Dynamic graphs will be rotated with directories named after `yyyy-mm-dd`,
 and stale JSON files will be cleaned up after few days.
 
-[#2030][2030]/[#1721][1721]/[#2014][2014] by [@eed3si9n][@eed3si9n]
+sbt 0.13.9 also fixes a correctness issue that was found in the earlier releases.
+Under some circumstances, libraries that shouldn't have been evicted was being evicted.
+This occured when library `A1` depended on `B2`, but a newer `A2` dropped the dependency,
+and `A2` and `B1` are also is in the graph. This is fixed by sorting the graph prior to eviction.
+
+[#2030][2030]/[#1721][1721]/[#2014][2014]/[#2046][2046]/[#2097][2097] by [@eed3si9n][@eed3si9n]
 
 ### Force GC
 
