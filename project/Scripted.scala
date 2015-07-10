@@ -2,6 +2,8 @@ import sbt._
 import Keys._
 import Def.Initialize
 
+import scala.language.reflectiveCalls
+
 object Scripted {
   def scriptedPath = file("scripted")
   lazy val scripted = InputKey[Unit]("scripted")
