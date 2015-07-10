@@ -59,6 +59,11 @@ trait BaseIvySpecification extends Specification {
     IvyActions.updateEither(module, config, UnresolvedWarningConfiguration(), LogicalClock.unknown, Some(currentDependency), log)
   }
 
+  def cleanCachedResolutionCache(module: IvySbt#Module): Unit =
+    {
+      IvyActions.cleanCachedResolutionCache(module, log)
+    }
+
   def ivyUpdate(module: IvySbt#Module) =
     ivyUpdateEither(module) match {
       case Right(r) => r

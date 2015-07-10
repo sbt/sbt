@@ -26,8 +26,8 @@ import scala.concurrent.duration._
 private[sbt] object CachedResolutionResolveCache {
   def createID(organization: String, name: String, revision: String) =
     ModuleRevisionId.newInstance(organization, name, revision)
-  def sbtOrgTemp = "org.scala-sbt.temp"
-  def graphVersion = "0.13.9"
+  def sbtOrgTemp = JsonUtil.sbtOrgTemp
+  def graphVersion = "0.13.9B"
   val buildStartup: Long = System.currentTimeMillis
   lazy val todayStr: String = toYyyymmdd(buildStartup)
   lazy val tomorrowStr: String = toYyyymmdd(buildStartup + (1 day).toMillis)
@@ -367,6 +367,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       val cachedReports = reports filter { !_.stats.cached }
       val stats = new UpdateStats(resolveTime, (cachedReports map { _.stats.downloadTime }).sum, (cachedReports map { _.stats.downloadSize }).sum, false)
       val configReports = rootModuleConfigs map { conf =>
+        log.debug("::: -----------")
         val crs = reports flatMap { _.configurations filter { _.configuration == conf.getName } }
         mergeConfigurationReports(conf.getName, crs, os, log)
       }
@@ -392,70 +393,84 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
   /**
    * Returns a tuple of (merged org + name combo, newly evicted modules)
    */
-  def mergeOrganizationArtifactReports(rootModuleConf: String, reports0: Seq[OrganizationArtifactReport], os: Vector[IvyOverride], log: Logger): Vector[OrganizationArtifactReport] =
+  def mergeOrganizationArtifactReports(rootModuleConf: String, reports0: Vector[OrganizationArtifactReport], os: Vector[IvyOverride], log: Logger): Vector[OrganizationArtifactReport] =
     {
-      val evicteds: mutable.ListBuffer[ModuleReport] = mutable.ListBuffer()
-      val results: mutable.ListBuffer[OrganizationArtifactReport] = mutable.ListBuffer()
       // group by takes up too much memory. trading space with time.
       val orgNamePairs = (reports0 map { oar => (oar.organization, oar.name) }).distinct
-      orgNamePairs foreach {
-        case (organization, name) =>
-          // hand rolling groupBy to avoid memory allocation
-          val xs = reports0 filter { oar => oar.organization == organization && oar.name == name }
-          if (xs.size == 0) () // do nothing
-          else if (xs.size == 1) results += xs.head
-          else
-            results += (mergeModuleReports(rootModuleConf, xs flatMap { _.modules }, os, log) match {
-              case (survivor, newlyEvicted) =>
-                evicteds ++= newlyEvicted
-                new OrganizationArtifactReport(organization, name, survivor ++ newlyEvicted)
-            })
-      }
-      transitivelyEvict(rootModuleConf, results.toList.toVector, evicteds.toList, log)
-    }
-  /**
-   * This transitively evicts any non-evicted modules whose only callers are newly evicted.
-   */
-  @tailrec
-  private final def transitivelyEvict(rootModuleConf: String, reports0: Vector[OrganizationArtifactReport],
-    evicted0: List[ModuleReport], log: Logger): Vector[OrganizationArtifactReport] =
-    {
-      val em = evicted0 map { _.module }
-      def isTransitivelyEvicted(mr: ModuleReport): Boolean =
-        mr.callers forall { c => em contains { c.caller } }
-      val evicteds: mutable.ListBuffer[ModuleReport] = mutable.ListBuffer()
-      // Ordering of the OrganizationArtifactReport matters
-      val reports: Vector[OrganizationArtifactReport] = reports0 map { oar =>
-        val organization = oar.organization
-        val name = oar.name
-        val (affected, unaffected) = oar.modules partition { mr =>
-          val x = !mr.evicted && mr.problem.isEmpty && isTransitivelyEvicted(mr)
-          if (x) {
-            log.debug(s""":::: transitively evicted $rootModuleConf: $organization:$name""")
+      // this might take up some memory, but it's limited to a single
+      val reports1 = reports0 map { filterOutCallers }
+      val allModules: ListMap[(String, String), Vector[OrganizationArtifactReport]] =
+        ListMap(orgNamePairs map {
+          case (organization, name) =>
+            val xs = reports1 filter { oar => oar.organization == organization && oar.name == name }
+            ((organization, name), xs)
+        }: _*)
+      val stackGuard = reports0.size * reports0.size * 2
+      // sort the all modules such that less called modules comes earlier
+      def sortModules(cs: ListMap[(String, String), Vector[OrganizationArtifactReport]],
+        n: Int): ListMap[(String, String), Vector[OrganizationArtifactReport]] =
+        {
+          val keys = cs.keySet
+          val (called, notCalled) = cs partition {
+            case (k, oas) =>
+              oas exists {
+                _.modules.exists {
+                  _.callers exists { caller =>
+                    val m = caller.caller
+                    keys((m.organization, m.name))
+                  }
+                }
+              }
           }
-          x
+          notCalled ++
+            (if (called.isEmpty || n > stackGuard) called
+            else sortModules(called, n + 1))
         }
-        val newlyEvicted = affected map { _.copy(evicted = true, evictedReason = Some("transitive-evict")) }
-        if (affected.isEmpty) oar
-        else {
-          evicteds ++= newlyEvicted
-          new OrganizationArtifactReport(organization, name, unaffected ++ newlyEvicted)
+      def resolveConflicts(cs: List[((String, String), Vector[OrganizationArtifactReport])]): List[OrganizationArtifactReport] =
+        cs match {
+          case Nil => Nil
+          case (k, Vector()) :: rest => resolveConflicts(rest)
+          case (k, Vector(oa)) :: rest if (oa.modules.size == 0) => resolveConflicts(rest)
+          case (k, Vector(oa)) :: rest if (oa.modules.size == 1 && !oa.modules.head.evicted) =>
+            log.debug(s":: no conflict $rootModuleConf: ${oa.organization}:${oa.name}")
+            oa :: resolveConflicts(rest)
+          case ((organization, name), oas) :: rest =>
+            (mergeModuleReports(rootModuleConf, oas flatMap { _.modules }, os, log) match {
+              case (survivor, newlyEvicted) =>
+                val evicted = (survivor ++ newlyEvicted) filter { m => m.evicted }
+                val notEvicted = (survivor ++ newlyEvicted) filter { m => !m.evicted }
+                log.debug("::: adds " + (notEvicted map { _.module }).mkString(", "))
+                log.debug("::: evicted " + (evicted map { _.module }).mkString(", "))
+                val x = new OrganizationArtifactReport(organization, name, survivor ++ newlyEvicted)
+                val next = transitivelyEvict(rootModuleConf, rest, evicted, log)
+                x :: resolveConflicts(next)
+            })
         }
-      }
-      if (evicteds.isEmpty) reports
-      else transitivelyEvict(rootModuleConf, reports, evicteds.toList, log)
+      val sorted = sortModules(allModules, 0)
+      val result = resolveConflicts(sorted.toList)
+      result.toVector
     }
+  def filterOutCallers(report0: OrganizationArtifactReport): OrganizationArtifactReport =
+    OrganizationArtifactReport(
+      report0.organization,
+      report0.name,
+      report0.modules map { mr =>
+        // https://github.com/sbt/sbt/issues/1763
+        mr.copy(callers = JsonUtil.filterOutArtificialCallers(mr.callers))
+      })
   /**
    * Merges ModuleReports, which represents orgnization, name, and version.
    * Returns a touple of (surviving modules ++ non-conflicting modules, newly evicted modules).
    */
   def mergeModuleReports(rootModuleConf: String, modules: Seq[ModuleReport], os: Vector[IvyOverride], log: Logger): (Vector[ModuleReport], Vector[ModuleReport]) =
     {
+      if (modules.nonEmpty) {
+        log.debug(s":: merging module reports for $rootModuleConf: ${modules.head.module.organization}:${modules.head.module.name}")
+      }
       def mergeModuleReports(org: String, name: String, version: String, xs: Seq[ModuleReport]): ModuleReport = {
         val completelyEvicted = xs forall { _.evicted }
         val allCallers = xs flatMap { _.callers }
         val allArtifacts = (xs flatMap { _.artifacts }).distinct
-        log.debug(s":: merging module report for $org:$name:$version - $allArtifacts")
         xs.head.copy(artifacts = allArtifacts, evicted = completelyEvicted, callers = allCallers)
       }
       val merged = (modules groupBy { m => (m.module.organization, m.module.name, m.module.revision) }).toSeq.toVector flatMap {
@@ -469,6 +484,33 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
         case (survivor, evicted) =>
           (survivor ++ (merged filter { m => m.evicted || m.problem.isDefined }), evicted)
       }
+    }
+  /**
+   * This transitively evicts any non-evicted modules whose only callers are newly evicted.
+   */
+  def transitivelyEvict(rootModuleConf: String, reports0: List[((String, String), Vector[OrganizationArtifactReport])],
+    evicted0: Vector[ModuleReport], log: Logger): List[((String, String), Vector[OrganizationArtifactReport])] =
+    {
+      val em = (evicted0 map { _.module }).toSet
+      def isTransitivelyEvicted(mr: ModuleReport): Boolean =
+        mr.callers forall { c => em(c.caller) }
+      val reports: List[((String, String), Vector[OrganizationArtifactReport])] = reports0 map {
+        case ((organization, name), oars0) =>
+          val oars = oars0 map { oar =>
+            val (affected, unaffected) = oar.modules partition { mr =>
+              val x = !mr.evicted && mr.problem.isEmpty && isTransitivelyEvicted(mr)
+              if (x) {
+                log.debug(s""":::: transitively evicted $rootModuleConf: ${mr.module}""")
+              }
+              x
+            }
+            val newlyEvicted = affected map { _.copy(evicted = true, evictedReason = Some("transitive-evict")) }
+            if (affected.isEmpty) oar
+            else new OrganizationArtifactReport(organization, name, unaffected ++ newlyEvicted)
+          }
+          ((organization, name), oars)
+      }
+      reports
     }
   /**
    * resolves dependency resolution conflicts in which multiple candidates are found for organization+name combos.
@@ -487,7 +529,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       val head = conflicts.head
       val organization = head.module.organization
       val name = head.module.name
-      log.debug(s"- conflict in $rootModuleConf:$organization:$name " + (conflicts map { _.module }).mkString("(", ", ", ")"))
+      log.debug(s"::: resolving conflict in $rootModuleConf:$organization:$name " + (conflicts map { _.module }).mkString("(", ", ", ")"))
       def useLatest(lcm: LatestConflictManager): (Vector[ModuleReport], Vector[ModuleReport], String) =
         (conflicts find { m =>
           m.callers.exists { _.isDirectlyForceDependency }
@@ -536,7 +578,8 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       if (conflicts.size == 2 && os.isEmpty) {
         val (cf0, cf1) = (conflicts(0).module, conflicts(1).module)
         val cache = cachedResolutionResolveCache
-        cache.getOrElseUpdateConflict(cf0, cf1, conflicts) { doResolveConflict }
+        val (surviving, evicted) = cache.getOrElseUpdateConflict(cf0, cf1, conflicts) { doResolveConflict }
+        (surviving, evicted)
       } else {
         val (surviving, evicted, mgr) = doResolveConflict
         (surviving, evicted)
