@@ -5,5 +5,5 @@ package xsbti;
 
 public interface F0<T>
 {
-	public T apply();
+	T apply();
 }
