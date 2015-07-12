@@ -6,17 +6,17 @@ package xsbti;
 public interface Reporter
 {
 	/** Resets logging, including any accumulated errors, warnings, messages, and counts.*/
-	public void reset();
+	void reset();
 	/** Returns true if this logger has seen any errors since the last call to reset.*/
-	public boolean hasErrors();
+	boolean hasErrors();
 	/** Returns true if this logger has seen any warnings since the last call to reset.*/
-	public boolean hasWarnings();
+	boolean hasWarnings();
 	/** Logs a summary of logging since the last reset.*/
-	public void printSummary();
+	void printSummary();
 	/** Returns a list of warnings and errors since the last reset.*/
-	public Problem[] problems();
+	Problem[] problems();
 	/** Logs a message.*/
-	public void log(Position pos, String msg, Severity sev);
+	void log(Position pos, String msg, Severity sev);
 	/** Reports a comment. */
-	public void comment(Position pos, String msg);
+	void comment(Position pos, String msg);
 }
