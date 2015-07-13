@@ -113,18 +113,30 @@ private[compiler] class NewComponentCompiler(compiler: RawCompiler, manager: Com
 
   private def compileAndInstall(id: String, binID: String): Unit = {
     val srcID = id + srcExtension
-    def interfaceSources(moduleVersions: Seq[String]): File =
+    def interfaceSources(moduleVersions: Seq[String]): Iterable[File] =
       moduleVersions match {
         case Seq() =>
-          log.debug(s"Fetching default sources: $id")
           val jarName = s"$srcID-$sbtVersion.jar"
-          update(getModule(id))(_.getName == jarName) getOrElse (throw new InvalidComponent(s"Couldn't retrieve default sources: file '$jarName' in module '$id'"))
+          def getAndDefineDefaultSources() =
+            update(getModule(id))(_.getName == jarName) map { sourcesJar =>
+              manager.define(id, sourcesJar)
+              sourcesJar
+            } getOrElse (throw new InvalidComponent(s"Couldn't retrieve default sources: file '$jarName' in module '$id'"))
+
+          log.debug(s"Fetching default sources: file '$jarName' in module '$id'")
+          manager.files(id)(new IfMissing.Fallback(getAndDefineDefaultSources()))
 
         case version +: rest =>
           val moduleName = s"${id}_$version"
           val jarName = s"${srcID}_$version-$sbtVersion.jar"
+          def getAndDefineVersionSpecificSources() =
+            update(getModule(moduleName))(_.getName == jarName) map { sourcesJar =>
+              manager.define(moduleName, sourcesJar)
+              sourcesJar
+            } getOrElse interfaceSources(rest)
+
           log.debug(s"Fetching version-specific sources: file '$jarName' in module '$moduleName'")
-          update(getModule(moduleName))(_.getName == jarName) getOrElse interfaceSources(rest)
+          manager.files(moduleName)(new IfMissing.Fallback(getAndDefineVersionSpecificSources()))
       }
     IO.withTemporaryDirectory { binaryDirectory =>
 
@@ -132,7 +144,7 @@ private[compiler] class NewComponentCompiler(compiler: RawCompiler, manager: Com
       val xsbtiJars = manager.files(xsbtiID)(IfMissing.Fail)
 
       val sourceModuleVersions = cascadingSourceModuleVersions(compiler.scalaInstance.actualVersion)
-      AnalyzingCompiler.compileSources(Seq(interfaceSources(sourceModuleVersions)), targetJar, xsbtiJars, id, compiler, log)
+      AnalyzingCompiler.compileSources(interfaceSources(sourceModuleVersions), targetJar, xsbtiJars, id, compiler, log)
 
       manager.define(binID, Seq(targetJar))
 
@@ -173,7 +185,7 @@ private[compiler] class NewComponentCompiler(compiler: RawCompiler, manager: Com
       s"unknown"
   }
 
-  private def update(module: ivySbt.Module)(predicate: File => Boolean): Option[File] = {
+  private def update(module: ivySbt.Module)(predicate: File => Boolean): Option[Seq[File]] = {
 
     val retrieveDirectory = new File(ivyConfiguration.baseDirectory, "component")
     val retrieveConfiguration = new RetrieveConfiguration(retrieveDirectory, Resolver.defaultRetrievePattern, false)
@@ -192,7 +204,8 @@ private[compiler] class NewComponentCompiler(compiler: RawCompiler, manager: Com
             (_, f) <- m.artifacts
             if predicate(f)
           } yield f
-        files.headOption
+        if (files.isEmpty) None
+        else Some(files)
 
     }
   }
