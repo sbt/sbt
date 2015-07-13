@@ -413,7 +413,7 @@ object Defaults extends BuildCommon {
     definedTests <<= detectTests,
     definedTestNames <<= definedTests map (_.map(_.name).distinct) storeAs definedTestNames triggeredBy compile,
     testFilter in testQuick <<= testQuickFilter,
-    executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, testForkedParallel) flatMap allTestGroupsTask,
+    executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, testForkedParallel, javaOptions in test) flatMap allTestGroupsTask,
     testResultLogger in (Test, test) :== TestResultLogger.SilentWhenNoTests, // https://github.com/sbt/sbt/issues/1185
     test := {
       val trl = (testResultLogger in (Test, test)).value
@@ -519,7 +519,7 @@ object Defaults extends BuildCommon {
         implicit val display = Project.showContextKey(state.value)
         val modifiedOpts = Tests.Filters(filter(selected)) +: Tests.Argument(frameworkOptions: _*) +: config.options
         val newConfig = config.copy(options = modifiedOpts)
-        val output = allTestGroupsTask(s, loadedTestFrameworks.value, testLoader.value, testGrouping.value, newConfig, fullClasspath.value, javaHome.value, testForkedParallel.value)
+        val output = allTestGroupsTask(s, loadedTestFrameworks.value, testLoader.value, testGrouping.value, newConfig, fullClasspath.value, javaHome.value, testForkedParallel.value, javaOptions.value)
         val taskName = display(resolvedScoped.value)
         val trl = testResultLogger.value
         val processed = output.map(out => trl.run(s.log, out, taskName))
@@ -542,19 +542,27 @@ object Defaults extends BuildCommon {
   }
 
   def allTestGroupsTask(s: TaskStreams, frameworks: Map[TestFramework, Framework], loader: ClassLoader, groups: Seq[Tests.Group], config: Tests.Execution, cp: Classpath, javaHome: Option[File]): Task[Tests.Output] = {
-    allTestGroupsTask(s, frameworks, loader, groups, config, cp, javaHome, forkedParallelExecution = false)
+    allTestGroupsTask(s, frameworks, loader, groups, config, cp, javaHome, forkedParallelExecution = false, javaOptions = Nil)
   }
 
   def allTestGroupsTask(s: TaskStreams, frameworks: Map[TestFramework, Framework], loader: ClassLoader, groups: Seq[Tests.Group], config: Tests.Execution, cp: Classpath, javaHome: Option[File], forkedParallelExecution: Boolean): Task[Tests.Output] = {
+    allTestGroupsTask(s, frameworks, loader, groups, config, cp, javaHome, forkedParallelExecution, javaOptions = Nil)
+  }
+
+  def allTestGroupsTask(s: TaskStreams, frameworks: Map[TestFramework, Framework], loader: ClassLoader, groups: Seq[Tests.Group], config: Tests.Execution, cp: Classpath, javaHome: Option[File], forkedParallelExecution: Boolean, javaOptions: Seq[String]): Task[Tests.Output] = {
     val runners = createTestRunners(frameworks, loader, config)
     val groupTasks = groups map {
       case Tests.Group(name, tests, runPolicy) =>
         runPolicy match {
           case Tests.SubProcess(opts) =>
+            s.log.debug(s"javaOptions: ${opts.runJVMOptions}")
             val forkedConfig = config.copy(parallel = config.parallel && forkedParallelExecution)
             s.log.debug(s"Forking tests - parallelism = ${forkedConfig.parallel}")
             ForkTests(runners, tests.toList, forkedConfig, cp.files, opts, s.log) tag Tags.ForkedTestGroup
           case Tests.InProcess =>
+            if (javaOptions.nonEmpty) {
+              s.log.warn("javaOptions will be ignored, fork is set to false")
+            }
             Tests(frameworks, loader, runners, tests, config, s.log)
         }
     }
@@ -738,8 +746,23 @@ object Defaults extends BuildCommon {
   def runnerTask = runner <<= runnerInit
   def runnerInit: Initialize[Task[ScalaRun]] = Def.task {
     val tmp = taskTemporaryDirectory.value
+    val resolvedScope = resolvedScoped.value.scope
+    val structure = buildStructure.value
     val si = scalaInstance.value
-    if (fork.value) new ForkRun(forkOptions.value) else new Run(si, trapExit.value, tmp)
+    val s = streams.value
+    val options = javaOptions.value
+    if (fork.value) {
+      s.log.debug(s"javaOptions: $options")
+      new ForkRun(forkOptions.value)
+    } else {
+      if (options.nonEmpty) {
+        val mask = ScopeMask(project = false)
+        val showJavaOptions = Scope.displayMasked((javaOptions in resolvedScope).scopedKey.scope, (javaOptions in resolvedScope).key.label, mask)
+        val showFork = Scope.displayMasked((fork in resolvedScope).scopedKey.scope, (fork in resolvedScope).key.label, mask)
+        s.log.warn(s"$showJavaOptions will be ignored, $showFork is set to false")
+      }
+      new Run(si, trapExit.value, tmp)
+    }
   }
 
   @deprecated("Use `docTaskSettings` instead", "0.12.0")
@@ -980,6 +1003,7 @@ object Defaults extends BuildCommon {
     )
   @deprecated("Default settings split into coreDefaultSettings and IvyModule/JvmModule plugins.", "0.13.2")
   lazy val defaultSettings: Seq[Setting[_]] = projectBaseSettings ++ defaultConfigs
+
 }
 object Classpaths {
   import Path._
