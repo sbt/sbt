@@ -121,9 +121,9 @@ private[compiler] class NewComponentCompiler(compiler: RawCompiler, manager: Com
           update(getModule(id))(_.getName == jarName) getOrElse (throw new InvalidComponent(s"Couldn't retrieve default sources: file '$jarName' in module '$id'"))
 
         case version +: rest =>
-          log.debug(s"Fetching version-specific sources: ${id}_$version")
           val moduleName = s"${id}_$version"
           val jarName = s"${srcID}_$version-$sbtVersion.jar"
+          log.debug(s"Fetching version-specific sources: file '$jarName' in module '$moduleName'")
           update(getModule(moduleName))(_.getName == jarName) getOrElse interfaceSources(rest)
       }
     IO.withTemporaryDirectory { binaryDirectory =>

@@ -37,10 +37,10 @@ env:
     # - SCRIPTED_TEST="mavenResolverPluginTest:scripted dependency-management/*1of2 project/transitive-plugins"
     # - SCRIPTED_TEST="mavenResolverPluginTest:scripted dependency-management/*2of2"
 
-notifications:
-  email:
-    - eugene.yokota@typesafe.com
-    - joshua.suereth@typesafe.com
+# notifications:
+#   email:
+#     - eugene.yokota@typesafe.com
+#     - joshua.suereth@typesafe.com
 
 script:
   - sbt -J-XX:ReservedCodeCacheSize=128m "$SCRIPTED_TEST"
