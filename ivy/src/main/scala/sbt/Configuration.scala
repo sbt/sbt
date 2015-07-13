@@ -44,6 +44,7 @@ object Configurations {
 
   lazy val ScalaTool = config("scala-tool") hide
   lazy val CompilerPlugin = config("plugin") hide
+  lazy val Component = config("component") hide
 
   private[sbt] val DefaultMavenConfiguration = defaultConfiguration(true)
   private[sbt] val DefaultIvyConfiguration = defaultConfiguration(false)
