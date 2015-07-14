@@ -157,8 +157,9 @@ private[sbt] object Parser {
     }
 
   private def toInt(v: Byte) = if (v < 0) v + 256 else v.toInt
-  private def entryIndex(a: AttributeInfo) =
+  def entryIndex(a: AttributeInfo) =
     {
+      require(a.value.length == 2, s"Expected two bytes for unsigned value; got: ${a.value.length}")
       val Array(v0, v1) = a.value
       toInt(v0) * 256 + toInt(v1)
     }

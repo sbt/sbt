@@ -22,6 +22,29 @@ private[sbt] trait ClassFile {
   val sourceFile: Option[String]
   def types: Set[String]
   def stringValue(a: AttributeInfo): String
+
+  /**
+   * If the given fieldName represents a ConstantValue field, parses its representation from
+   * the constant pool and returns it.
+   */
+  def constantValue(fieldName: String): Option[AnyRef] =
+    this.fields.find(_.name.exists(_ == fieldName)).toSeq.flatMap(_.attributes).collectFirst {
+      case ai @ classfile.AttributeInfo(Some("ConstantValue"), _) =>
+        constantPool(Parser.entryIndex(ai))
+    }.map {
+      case Constant(ConstantString, nextOffset, _, _) =>
+        // follow the indirection from ConstantString to ConstantUTF8
+        val nextConstant = constantPool(nextOffset)
+        nextConstant.value.getOrElse {
+          throw new IllegalStateException(s"Empty UTF8 value in constant pool: $nextConstant")
+        }
+      case constant @ Constant((ConstantFloat | ConstantLong | ConstantDouble | ConstantInteger), _, _, ref) =>
+        ref.getOrElse {
+          throw new IllegalStateException(s"Empty primitive value in constant pool: $constant")
+        }
+      case constant =>
+        throw new IllegalStateException(s"Unsupported ConstantValue type: $constant")
+    }
 }
 
 private[sbt] final case class Constant(tag: Byte, nameIndex: Int, typeIndex: Int, value: Option[AnyRef]) extends NotNull {
