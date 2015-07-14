@@ -112,30 +112,29 @@ private[compiler] class NewComponentCompiler(compiler: RawCompiler, manager: Com
   }
 
   private def compileAndInstall(id: String, binID: String): Unit = {
-    val srcID = id + srcExtension
     def interfaceSources(moduleVersions: Seq[String]): Iterable[File] =
       moduleVersions match {
         case Seq() =>
-          val jarName = s"$srcID-$sbtVersion.jar"
+          //val jarName = s"$srcID-$sbtVersion.jar"
           def getAndDefineDefaultSources() =
-            update(getModule(id))(_.getName == jarName) map { sourcesJar =>
+            update(getModule(id))(_.getName endsWith "-sources.jar") map { sourcesJar =>
               manager.define(id, sourcesJar)
               sourcesJar
-            } getOrElse (throw new InvalidComponent(s"Couldn't retrieve default sources: file '$jarName' in module '$id'"))
+            } getOrElse (throw new InvalidComponent(s"Couldn't retrieve default sources: file '$id-sources.jar' in module '$id'"))
 
-          log.debug(s"Fetching default sources: file '$jarName' in module '$id'")
+          log.debug(s"Fetching default sources: file '$id-sources.jar' in module '$id'")
           manager.files(id)(new IfMissing.Fallback(getAndDefineDefaultSources()))
 
         case version +: rest =>
           val moduleName = s"${id}_$version"
-          val jarName = s"${srcID}_$version-$sbtVersion.jar"
+          //val jarName = s"${srcID}_$version-$sbtVersion.jar"
           def getAndDefineVersionSpecificSources() =
-            update(getModule(moduleName))(_.getName == jarName) map { sourcesJar =>
+            update(getModule(moduleName))(_.getName endsWith "-sources.jar") map { sourcesJar =>
               manager.define(moduleName, sourcesJar)
               sourcesJar
             } getOrElse interfaceSources(rest)
 
-          log.debug(s"Fetching version-specific sources: file '$jarName' in module '$moduleName'")
+          log.debug(s"Fetching version-specific sources: file '$id-sources.jar' in module '$moduleName'")
           manager.files(moduleName)(new IfMissing.Fallback(getAndDefineVersionSpecificSources()))
       }
     IO.withTemporaryDirectory { binaryDirectory =>
@@ -158,7 +157,7 @@ private[compiler] class NewComponentCompiler(compiler: RawCompiler, manager: Com
    */
   private def getModule(id: String): ivySbt.Module = {
     val dummyID = ModuleID(xsbti.ArtifactInfo.SbtOrganization, scala.util.Random.alphanumeric take 20 mkString "", sbtVersion, Some("component"))
-    val moduleID = ModuleID(xsbti.ArtifactInfo.SbtOrganization, id, sbtVersion, Some("component"))
+    val moduleID = ModuleID(xsbti.ArtifactInfo.SbtOrganization, id, sbtVersion, Some("component")).sources()
     getModule(dummyID, Seq(moduleID))
   }
 
