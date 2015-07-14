@@ -141,43 +141,52 @@ object ClassToAPI {
     fieldToDef(c, classFileForClass(c), enclPkg)(f)
   }
 
-  def fieldToDef(c: Class[_], _cf: => ClassFile, enclPkg: Option[String])(f: Field): api.FieldLike =
+  def fieldToDef(c: Class[_], cf: => ClassFile, enclPkg: Option[String])(f: Field): api.FieldLike =
     {
       val name = f.getName
       val accs = access(f.getModifiers, enclPkg)
       val mods = modifiers(f.getModifiers)
       val annots = annotations(f.getDeclaredAnnotations)
+      val fieldTpe = reference(returnType(f))
       // generate a more specific type for constant fields
       val specificTpe: Option[api.Type] =
         if (mods.isFinal) {
-          val cf = _cf
-          val attributeInfos = cf.fields.find(_.name.exists(_ == name)).toSeq.flatMap(_.attributes)
-          // create a singleton type ending with the ConstantValue of this field. because this type
-          // is purely synthetic, it's fine that the name might contain filename-banned characters.
-          attributeInfos.collectFirst {
-            case ai @ classfile.AttributeInfo(Some("ConstantValue"), _) =>
-              try {
-                c.getName.split("\\.").toSeq :+ (name + "$" + cf.constantValue(ai))
-              } catch {
-                case e: Throwable =>
-                  throw new IllegalStateException(
-                    s"Failed to parse class $c: this may mean your classfiles are corrupted. Please clean and try again.",
-                    e
-                  )
-              }
-          }.map { constantComponents =>
-            new api.Singleton(pathFromStrings(constantComponents))
+          try {
+            cf.constantValue(name).map(singletonForConstantField(c, f, _))
+          } catch {
+            case e: Throwable =>
+              throw new IllegalStateException(
+                s"Failed to parse class $c: this may mean your classfiles are corrupted. Please clean and try again.",
+                e
+              )
           }
         } else {
           None
         }
-      val tpe = specificTpe.getOrElse(reference(returnType(f)))
+      val tpe = specificTpe.getOrElse(fieldTpe)
       if (mods.isFinal) {
         new api.Val(tpe, name, accs, mods, annots)
       } else {
         new api.Var(tpe, name, accs, mods, annots)
       }
     }
+
+  /**
+   * Creates a Singleton type that includes both the type and ConstantValue for the given Field.
+   *
+   * Since java compilers are allowed to inline constant (static final primitive) fields in
+   * downstream classfiles, we generate a type that will cause APIs to match only when both
+   * the type and value of the field match. We include the classname mostly for readability.
+   *
+   * Because this type is purely synthetic, it's fine that the name might contain filename-
+   * banned characters.
+   */
+  private def singletonForConstantField(c: Class[_], field: Field, constantValue: AnyRef) =
+    new api.Singleton(
+      pathFromStrings(
+        c.getName.split("\\.").toSeq :+ (field.getName + "$" + returnType(field) + "$" + constantValue)
+      )
+    )
 
   def methodToDef(enclPkg: Option[String])(m: Method): api.Def =
     defLike(m.getName, m.getModifiers, m.getDeclaredAnnotations, typeParameterTypes(m), m.getParameterAnnotations, parameterTypes(m), Option(returnType(m)), exceptionTypes(m), m.isVarArgs, enclPkg)

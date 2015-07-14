@@ -23,13 +23,15 @@ private[sbt] trait ClassFile {
   def types: Set[String]
   def stringValue(a: AttributeInfo): String
 
-  /** Parses the constant value represented by the given ConstantValue AttributeInfo. */
-  def constantValue(ai: AttributeInfo): AnyRef = {
-    assert(
-      ai.name.exists(_ == "ConstantValue"),
-      s"Non-ConstantValue attribute not supported: ${ai}"
-    )
-    constantPool(Parser.entryIndex(ai)) match {
+  /**
+   * If the given fieldName represents a ConstantValue field, parses its representation from
+   * the constant pool and returns it.
+   */
+  def constantValue(fieldName: String): Option[AnyRef] =
+    this.fields.find(_.name.exists(_ == fieldName)).toSeq.flatMap(_.attributes).collectFirst {
+      case ai @ classfile.AttributeInfo(Some("ConstantValue"), _) =>
+        constantPool(Parser.entryIndex(ai))
+    }.map {
       case Constant(ConstantString, nextOffset, _, _) =>
         // follow the indirection from ConstantString to ConstantUTF8
         val nextConstant = constantPool(nextOffset)
@@ -43,7 +45,6 @@ private[sbt] trait ClassFile {
       case constant =>
         throw new IllegalStateException(s"Unsupported ConstantValue type: $constant")
     }
-  }
 }
 
 private[sbt] final case class Constant(tag: Byte, nameIndex: Int, typeIndex: Int, value: Option[AnyRef]) extends NotNull {
