@@ -54,6 +54,7 @@ object Compiler {
   def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions)(implicit app: AppConfiguration, log: Logger): Compilers =
     compilers(instance, cpOptions, None)
 
+  @deprecated("Use `compilers(ScalaInstance, ClasspathOptions, Option[File], IvyConfiguration)`.")
   def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File])(implicit app: AppConfiguration, log: Logger): Compilers =
     {
       val javac =
@@ -68,6 +69,21 @@ object Compiler {
       }
       compilers(instance, cpOptions, CheaterJavaTool(javac2, javac))
     }
+  def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File], ivyConfiguration: IvyConfiguration)(implicit app: AppConfiguration, log: Logger): Compilers =
+    {
+      val javac =
+        AggressiveCompile.directOrFork(instance, cpOptions, javaHome)
+      val javac2 =
+        JavaTools.directOrFork(instance, cpOptions, javaHome)
+      // Hackery to enable both the new and deprecated APIs to coexist peacefully.
+      case class CheaterJavaTool(newJavac: IncrementalCompilerJavaTools, delegate: JavaTool) extends JavaTool with JavaToolWithNewInterface {
+        def compile(contract: JavacContract, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger): Unit =
+          javac.compile(contract, sources, classpath, outputDirectory, options)(log)
+        def onArgs(f: Seq[String] => Unit): JavaTool = CheaterJavaTool(newJavac, delegate.onArgs(f))
+      }
+      val scalac = scalaCompiler(instance, cpOptions, ivyConfiguration)
+      new Compilers(scalac, javac)
+    }
   @deprecated("Deprecated in favor of new sbt.compiler.javac package.", "0.13.8")
   def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javac: sbt.compiler.JavaCompiler.Fork)(implicit app: AppConfiguration, log: Logger): Compilers =
     {
@@ -80,11 +96,19 @@ object Compiler {
       val scalac = scalaCompiler(instance, cpOptions)
       new Compilers(scalac, javac)
     }
+  @deprecated("Use `scalaCompiler(ScalaInstance, ClasspathOptions, IvyConfiguration)`.", "0.13.10")
   def scalaCompiler(instance: ScalaInstance, cpOptions: ClasspathOptions)(implicit app: AppConfiguration, log: Logger): AnalyzingCompiler =
     {
       val launcher = app.provider.scalaProvider.launcher
       val componentManager = new ComponentManager(launcher.globalLock, app.provider.components, Option(launcher.ivyHome), log)
       val provider = ComponentCompiler.interfaceProvider(componentManager)
+      new AnalyzingCompiler(instance, provider, cpOptions)
+    }
+  def scalaCompiler(instance: ScalaInstance, cpOptions: ClasspathOptions, ivyConfiguration: IvyConfiguration)(implicit app: AppConfiguration, log: Logger): AnalyzingCompiler =
+    {
+      val launcher = app.provider.scalaProvider.launcher
+      val componentManager = new ComponentManager(launcher.globalLock, app.provider.components, Option(launcher.ivyHome), log)
+      val provider = ComponentCompiler.interfaceProvider(componentManager, ivyConfiguration)
       new AnalyzingCompiler(instance, provider, cpOptions)
     }
 

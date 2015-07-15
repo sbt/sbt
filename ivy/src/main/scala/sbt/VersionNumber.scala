@@ -13,6 +13,11 @@ final class VersionNumber private[sbt] (
     else Some(numbers(idx))
   def size: Int = numbers.size
 
+  /** The vector of version numbers from more to less specific from this version number. */
+  lazy val cascadingVersions: Vector[VersionNumber] =
+    (Vector(this) ++
+      (numbers.inits filter (_.length >= 2) map (VersionNumber(_, Nil, Nil)))).distinct
+
   private[this] val versionStr: String =
     numbers.mkString(".") +
       (tags match {

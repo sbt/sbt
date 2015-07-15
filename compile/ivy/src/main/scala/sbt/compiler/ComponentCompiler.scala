@@ -5,6 +5,7 @@ package sbt
 package compiler
 
 import java.io.File
+import scala.util.Try
 
 object ComponentCompiler {
   val xsbtiID = "xsbti"
@@ -14,11 +15,22 @@ object ComponentCompiler {
   val compilerInterfaceSrcID = compilerInterfaceID + srcExtension
   val javaVersion = System.getProperty("java.class.version")
 
+  @deprecated("Use `interfaceProvider(ComponentManager, IvyConfiguration)`.", "0.13.10")
   def interfaceProvider(manager: ComponentManager): CompilerInterfaceProvider = new CompilerInterfaceProvider {
     def apply(scalaInstance: xsbti.compile.ScalaInstance, log: Logger): File =
       {
         // this is the instance used to compile the interface component
         val componentCompiler = new ComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptions.auto, log), manager)
+        log.debug("Getting " + compilerInterfaceID + " from component compiler for Scala " + scalaInstance.version)
+        componentCompiler(compilerInterfaceID)
+      }
+  }
+
+  def interfaceProvider(manager: ComponentManager, ivyConfiguration: IvyConfiguration): CompilerInterfaceProvider = new CompilerInterfaceProvider {
+    def apply(scalaInstance: xsbti.compile.ScalaInstance, log: Logger): File =
+      {
+        // this is the instance used to compile the interface component
+        val componentCompiler = new IvyComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptions.auto, log), manager, ivyConfiguration, log)
         log.debug("Getting " + compilerInterfaceID + " from component compiler for Scala " + scalaInstance.version)
         componentCompiler(compilerInterfaceID)
       }
@@ -29,6 +41,7 @@ object ComponentCompiler {
  * The compiled classes are cached using the provided component manager according
  * to the actualVersion field of the RawCompiler.
  */
+@deprecated("Replaced by IvyComponentCompiler.", "0.13.10")
 class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager) {
   import ComponentCompiler._
   def apply(id: String): File =
@@ -62,6 +75,134 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager) {
       val xsbtiJars = manager.files(xsbtiID)(IfMissing.Fail)
       AnalyzingCompiler.compileSources(manager.files(srcID)(IfMissing.Fail), targetJar, xsbtiJars, id, compiler, manager.log)
       manager.define(binID, Seq(targetJar))
+    }
+  }
+}
+
+/**
+ * Component compiler which is able to find the most specific version available of
+ * the compiler interface sources using Ivy.
+ * The compiled classes are cached using the provided component manager according
+ * to the actualVersion field of the RawCompiler.
+ */
+private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: ComponentManager, ivyConfiguration: IvyConfiguration, log: Logger) {
+  import ComponentCompiler._
+
+  private val sbtOrgTemp = JsonUtil.sbtOrgTemp
+  private val modulePrefixTemp = "temp-module-"
+  private val ivySbt: IvySbt = new IvySbt(ivyConfiguration)
+  private val sbtVersion = ComponentManager.version
+
+  def apply(id: String): File = {
+    val binID = binaryID(id)
+    manager.file(binID)(new IfMissing.Define(true, compileAndInstall(id, binID)))
+  }
+
+  private def binaryID(id: String): String = {
+    val base = id + binSeparator + compiler.scalaInstance.actualVersion
+    base + "__" + javaVersion
+  }
+
+  private def compileAndInstall(id: String, binID: String): Unit = {
+    def interfaceSources(moduleVersions: Vector[VersionNumber]): Iterable[File] =
+      moduleVersions match {
+        case Vector() =>
+          def getAndDefineDefaultSources() =
+            update(getModule(id))(_.getName endsWith "-sources.jar") map { sourcesJar =>
+              manager.define(id, sourcesJar)
+              sourcesJar
+            } getOrElse (throw new InvalidComponent(s"Couldn't retrieve default sources: module '$id'"))
+
+          log.debug(s"Fetching default sources: module '$id'")
+          manager.files(id)(new IfMissing.Fallback(getAndDefineDefaultSources()))
+
+        case version +: rest =>
+          val moduleName = s"${id}_$version"
+          def getAndDefineVersionSpecificSources() =
+            update(getModule(moduleName))(_.getName endsWith "-sources.jar") map { sourcesJar =>
+              manager.define(moduleName, sourcesJar)
+              sourcesJar
+            } getOrElse interfaceSources(rest)
+
+          log.debug(s"Fetching version-specific sources: module '$moduleName'")
+          manager.files(moduleName)(new IfMissing.Fallback(getAndDefineVersionSpecificSources()))
+      }
+    IO.withTemporaryDirectory { binaryDirectory =>
+
+      val targetJar = new File(binaryDirectory, s"$binID.jar")
+      val xsbtiJars = manager.files(xsbtiID)(IfMissing.Fail)
+
+      val sourceModuleVersions = VersionNumber(compiler.scalaInstance.actualVersion).cascadingVersions
+      AnalyzingCompiler.compileSources(interfaceSources(sourceModuleVersions), targetJar, xsbtiJars, id, compiler, log)
+
+      manager.define(binID, Seq(targetJar))
+
+    }
+  }
+
+  /**
+   * Returns a dummy module that depends on "org.scala-sbt" % `id` % `sbtVersion`.
+   * Note: Sbt's implementation of Ivy requires us to do this, because only the dependencies
+   *       of the specified module will be downloaded.
+   */
+  private def getModule(id: String): ivySbt.Module = {
+    val sha1 = Hash.toHex(Hash(id))
+    val dummyID = ModuleID(sbtOrgTemp, modulePrefixTemp + sha1, sbtVersion, Some("component"))
+    val moduleID = ModuleID(xsbti.ArtifactInfo.SbtOrganization, id, sbtVersion, Some("component")).sources()
+    getModule(dummyID, Seq(moduleID))
+  }
+
+  private def getModule(moduleID: ModuleID, deps: Seq[ModuleID], uo: UpdateOptions = UpdateOptions()): ivySbt.Module = {
+    val moduleSetting = InlineConfiguration(
+      module = moduleID,
+      moduleInfo = ModuleInfo(moduleID.name),
+      dependencies = deps,
+      configurations = Seq(Configurations.Component),
+      ivyScala = None)
+
+    new ivySbt.Module(moduleSetting)
+  }
+
+  private def dependenciesNames(module: ivySbt.Module): String = module.moduleSettings match {
+    // `module` is a dummy module, we will only fetch its dependencies.
+    case ic: InlineConfiguration =>
+      ic.dependencies map {
+        case mID: ModuleID =>
+          import mID._
+          s"$organization % $name % $revision"
+      } mkString ", "
+    case _ =>
+      s"unknown"
+  }
+
+  private def update(module: ivySbt.Module)(predicate: File => Boolean): Option[Seq[File]] = {
+
+    val retrieveDirectory = new File(ivyConfiguration.baseDirectory, "component")
+    val retrieveConfiguration = new RetrieveConfiguration(retrieveDirectory, Resolver.defaultRetrievePattern, false)
+    val updateConfiguration = new UpdateConfiguration(Some(retrieveConfiguration), true, UpdateLogging.DownloadOnly)
+
+    log.info(s"Attempting to fetch ${dependenciesNames(module)}. This operation may fail.")
+    IvyActions.updateEither(module, updateConfiguration, UnresolvedWarningConfiguration(), LogicalClock.unknown, None, log) match {
+      case Left(unresolvedWarning) =>
+        log.debug("Couldn't retrieve module ${dependenciesNames(module)}.")
+        None
+
+      case Right(updateReport) =>
+        val allFiles =
+          for {
+            conf <- updateReport.configurations
+            m <- conf.modules
+            (_, f) <- m.artifacts
+          } yield f
+
+        log.debug(s"Files retrieved for ${dependenciesNames(module)}:")
+        log.debug(allFiles mkString ", ")
+
+        allFiles filter predicate match {
+          case Seq() => None
+          case files => Some(files)
+        }
+
     }
   }
 }
