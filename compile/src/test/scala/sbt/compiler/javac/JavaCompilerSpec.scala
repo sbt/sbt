@@ -114,7 +114,7 @@ object JavaCompilerSpec extends Specification {
         case Some(content) => content.equalsIgnoreCase(p.position.lineContent())
         case _             => true
       }
-    def lineNumberCheck = p.position.line.exists(_ == lineno)
+    def lineNumberCheck = p.position.line.isDefined && (p.position.line.get == lineno)
     lineNumberCheck && lineContentCheck
   }
 
