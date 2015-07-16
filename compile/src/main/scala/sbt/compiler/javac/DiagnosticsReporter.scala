@@ -84,6 +84,7 @@ final class DiagnosticsReporter(reporter: Reporter) extends DiagnosticListener[J
                 case _ => None
               }
             } catch {
+              // TODO - catch ReflectiveOperationException once sbt is migrated to JDK7
               case ignored: Throwable => None
             }
 
