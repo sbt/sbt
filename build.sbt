@@ -577,6 +577,16 @@ def customCommands: Seq[Setting[_]] = Seq(
     "reload" ::
     state
   },
+  /** There are several complications with sbt's build.
+   * First is the fact that interface project is a Java-only project
+   * that uses source generator from datatype subproject in Scala 2.10.5.
+   *
+   * Second is the fact that all subprojects are released with crossPaths
+   * turned off for the sbt's Scala version 2.10.5, but some of them are also
+   * cross published against 2.11.1 with crossPaths turned on.
+   *
+   * `so compile` handles 2.10.x/2.11.x cross building.
+   */
   commands += Command.command("release-sbt") { state =>
     // TODO - Any sort of validation
     "clean" ::
