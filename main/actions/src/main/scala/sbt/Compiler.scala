@@ -54,7 +54,7 @@ object Compiler {
   def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions)(implicit app: AppConfiguration, log: Logger): Compilers =
     compilers(instance, cpOptions, None)
 
-  @deprecated("Use `compilers(ScalaInstance, ClasspathOptions, Option[File], IvyConfiguration)`.")
+  @deprecated("Use `compilers(ScalaInstance, ClasspathOptions, Option[File], IvyConfiguration)`.", "0.13.10")
   def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File])(implicit app: AppConfiguration, log: Logger): Compilers =
     {
       val javac =
@@ -82,7 +82,7 @@ object Compiler {
         def onArgs(f: Seq[String] => Unit): JavaTool = CheaterJavaTool(newJavac, delegate.onArgs(f))
       }
       val scalac = scalaCompiler(instance, cpOptions, ivyConfiguration)
-      new Compilers(scalac, javac)
+      new Compilers(scalac, CheaterJavaTool(javac2, javac))
     }
   @deprecated("Deprecated in favor of new sbt.compiler.javac package.", "0.13.8")
   def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javac: sbt.compiler.JavaCompiler.Fork)(implicit app: AppConfiguration, log: Logger): Compilers =
