@@ -316,8 +316,7 @@ lazy val compileInterfaceProj = (project in compilePath / "interface").
     // needed because we fork tests and tests are ran in parallel so we have multiple Scala
     // compiler instances that are memory hungry
     javaOptions in Test += "-Xmx1G",
-    publishArtifact in (Compile, packageSrc) := true,
-    publishMavenStyle := true
+    publishArtifact in (Compile, packageSrc) := true
   )
 
 // Implements the core functionality of detecting and propagating changes incrementally.
