@@ -84,8 +84,7 @@ final class DiagnosticsReporter(reporter: Reporter) extends DiagnosticListener[J
                 case _ => None
               }
             } catch {
-              case ignored: NoSuchMethodException => None
-              case ignored: NoSuchFieldException  => None
+              case ignored: ReflectiveOperationException => None
             }
 
           def getExpression: String =
