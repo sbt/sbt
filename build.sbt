@@ -573,7 +573,7 @@ lazy val safeUnitTests = taskKey[Unit]("Known working tests (for both 2.10 and 2
 lazy val safeProjects: ScopeFilter = ScopeFilter(
   inProjects(mainSettingsProj, mainProj, ivyProj, completeProj,
     actionsProj, classpathProj, collectionProj, compileIncrementalProj,
-    logProj, runProj, stdTaskProj),
+    logProj, runProj, stdTaskProj, compilerProj),
   inConfigurations(Test)
 )
 lazy val otherUnitTests = taskKey[Unit]("Unit test other projects")
