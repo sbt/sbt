@@ -26,7 +26,7 @@ object ClassToAPI {
     }
 
   // Avoiding implicit allocation.
-  private def arrayMap[T <: AnyRef, U <: AnyRef: ClassManifest](xs: Array[T])(f: T => U): Array[U] = {
+  private def arrayMap[T <: AnyRef, U <: AnyRef: reflect.ClassTag](xs: Array[T])(f: T => U): Array[U] = {
     val len = xs.length
     var i = 0
     val res = new Array[U](len)

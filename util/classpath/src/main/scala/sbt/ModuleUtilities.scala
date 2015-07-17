@@ -17,7 +17,7 @@ object ModuleUtilities {
     }
 
   def getCheckedObject[T](className: String, loader: ClassLoader)(implicit mf: reflect.ClassManifest[T]): T =
-    mf.erasure.cast(getObject(className, loader)).asInstanceOf[T]
+    mf.runtimeClass.cast(getObject(className, loader)).asInstanceOf[T]
 
   def getCheckedObjects[T](classNames: Seq[String], loader: ClassLoader)(implicit mf: reflect.ClassManifest[T]): Seq[(String, T)] =
     classNames.map(name => (name, getCheckedObject(name, loader)))

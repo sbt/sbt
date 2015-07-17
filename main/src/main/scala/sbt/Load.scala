@@ -133,7 +133,7 @@ object Load {
       val settings = finalTransforms(buildConfigurations(loaded, getRootProject(projects), config.injectSettings))
       val delegates = config.delegates(loaded)
       val data = Def.make(settings)(delegates, config.scopeLocal, Project.showLoadingKey(loaded))
-      Project.checkTargets(data) foreach error
+      Project.checkTargets(data) foreach sys.error
       val index = structureIndex(data, settings, loaded.extra(data), projects)
       val streams = mkStreams(projects, loaded.root, data)
       (rootEval, new sbt.BuildStructure(projects, loaded.root, settings, data, index, streams, delegates, config.scopeLocal))

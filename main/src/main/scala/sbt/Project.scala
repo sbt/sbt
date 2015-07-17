@@ -141,7 +141,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
   def aggregate(refs: ProjectReference*): Project = copy(aggregate = (aggregate: Seq[ProjectReference]) ++ refs)
 
   /** Appends settings to the current settings sequence for this project. */
-  def settings(ss: SettingsDefinition*): Project = copy(settings = (settings: Seq[Setting[_]]) ++ ss.flatMap(_.settings))
+  def settings(ss: SettingsDefinition*): Project = copy(settings = (settings: Seq[Def.Setting[_]]) ++ ss.flatMap(_.settings))
 
   @deprecated("Use settingSets method.", "0.13.5")
   def autoSettings(select: AddSettings*): Project = settingSets(select.toSeq: _*)

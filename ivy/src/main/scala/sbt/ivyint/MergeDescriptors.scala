@@ -109,7 +109,7 @@ private final class MergedDescriptors(a: DependencyDescriptor, b: DependencyDesc
   private[this] def addConfigurations(dd: DefaultDependencyArtifactDescriptor, confs: Seq[String]): Unit =
     confs foreach dd.addConfiguration
 
-  private[this] def concat[T: ClassManifest](a: Array[T], b: Array[T]): Array[T] = (a ++ b).distinct.toArray
+  private[this] def concat[T: reflect.ClassTag](a: Array[T], b: Array[T]): Array[T] = (a ++ b).distinct.toArray
 
   def getAllExcludeRules = concat(a.getAllExcludeRules, b.getAllExcludeRules)
 

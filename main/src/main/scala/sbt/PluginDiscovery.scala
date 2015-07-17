@@ -24,7 +24,7 @@ object PluginDiscovery {
   /** Discovers and loads the sbt-plugin-related top-level modules from the classpath and source analysis in `data` and using the provided class `loader`. */
   def discoverAll(data: PluginData, loader: ClassLoader): DetectedPlugins =
     {
-      def discover[T](resource: String)(implicit mf: reflect.ClassManifest[T]) =
+      def discover[T](resource: String)(implicit classTag: reflect.ClassTag[T]) =
         binarySourceModules[T](data, loader, resource)
       import Paths._
       // TODO - Fix this once we can autodetect AutoPlugins defined by sbt itself.
@@ -45,8 +45,8 @@ object PluginDiscovery {
   /** Discovers the sbt-plugin-related top-level modules from the provided source `analysis`. */
   def discoverSourceAll(analysis: inc.Analysis): DiscoveredNames =
     {
-      def discover[T](implicit mf: reflect.ClassManifest[T]): Seq[String] =
-        sourceModuleNames(analysis, mf.erasure.getName)
+      def discover[T](implicit classTag: reflect.ClassTag[T]): Seq[String] =
+        sourceModuleNames(analysis, classTag.runtimeClass.getName)
       new DiscoveredNames(discover[Plugin], discover[AutoPlugin], discover[Build])
     }
 
@@ -115,17 +115,17 @@ object PluginDiscovery {
   def onClasspath(classpath: Seq[File])(url: URL): Boolean =
     IO.urlAsFile(url) exists (classpath.contains _)
 
-  private[sbt] def binarySourceModules[T](data: PluginData, loader: ClassLoader, resourceName: String)(implicit mf: reflect.ClassManifest[T]): DetectedModules[T] =
+  private[sbt] def binarySourceModules[T](data: PluginData, loader: ClassLoader, resourceName: String)(implicit classTag: reflect.ClassTag[T]): DetectedModules[T] =
     {
       val classpath = data.classpath
       val namesAndValues = if (classpath.isEmpty) Nil else {
-        val names = binarySourceModuleNames(classpath, loader, resourceName, mf.erasure.getName)
+        val names = binarySourceModuleNames(classpath, loader, resourceName, classTag.runtimeClass.getName)
         loadModules[T](data, names, loader)
       }
       new DetectedModules(namesAndValues)
     }
 
-  private[this] def loadModules[T: ClassManifest](data: PluginData, names: Seq[String], loader: ClassLoader): Seq[(String, T)] =
+  private[this] def loadModules[T: reflect.ClassTag](data: PluginData, names: Seq[String], loader: ClassLoader): Seq[(String, T)] =
     try ModuleUtilities.getCheckedObjects[T](names, loader)
     catch {
       case e: ExceptionInInitializerError =>
