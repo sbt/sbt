@@ -126,7 +126,7 @@ final class AnalyzingCompiler private (val scalaInstance: xsbti.compile.ScalaIns
 object AnalyzingCompiler {
   import sbt.IO.{ copy, createDirectory, zip, jars, unzip, withTemporaryDirectory }
 
-  // Note: The Scala build now depends on some details of this method: 
+  // Note: The Scala build now depends on some details of this method:
   //   https://github.com/jsuereth/scala/commit/3431860048df8d2a381fb85a526097e00154eae0
   /**
    * Extract sources from source jars, compile them with the xsbti interfaces on the classpath, and package the compiled classes and
@@ -147,7 +147,7 @@ object AnalyzingCompiler {
           log.info("  Compilation completed in " + (System.currentTimeMillis - start) / 1000.0 + " s")
         } catch { case e: xsbti.CompileFailed => throw new CompileFailed(e.arguments, "Error compiling sbt component '" + id + "'", e.problems) }
         import sbt.Path._
-        copy(resources x rebase(dir, outputDirectory))
+        copy(resources pair rebase(dir, outputDirectory))
         zip((outputDirectory ***) x_! relativeTo(outputDirectory), targetJar)
       }
     }
