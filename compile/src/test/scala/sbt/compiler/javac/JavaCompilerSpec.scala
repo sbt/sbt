@@ -60,7 +60,8 @@ object JavaCompilerSpec extends Specification {
     val (result, problems) = compile(compiler, Seq(knownSampleErrorFile), Seq("-deprecation"))
     val errored = result must beFalse
     val foundErrorAndWarning = problems must haveSize(5)
-    val hasKnownErrors = problems.toSeq must contain(errorOnLine(1), warnOnLine(7))
+    val importWarn = warnOnLine(lineno = 1, lineContent = Some("import java.rmi.RMISecurityException;"))
+    val hasKnownErrors = problems.toSeq must contain(importWarn, errorOnLine(3), warnOnLine(7))
     errored and foundErrorAndWarning and hasKnownErrors
   }
 
@@ -107,20 +108,28 @@ object JavaCompilerSpec extends Specification {
     leftCompiled and rightCompiled and apisExpectedMatch
   }
 
-  def lineMatches(p: Problem, lineno: Int): Boolean =
-    p.position.line.isDefined && (p.position.line.get == lineno)
+  def lineMatches(p: Problem, lineno: Int, lineContent: Option[String] = None): Boolean = {
+    def lineContentCheck =
+      lineContent match {
+        case Some(content) => content.equalsIgnoreCase(p.position.lineContent())
+        case _             => true
+      }
+    def lineNumberCheck = p.position.line.isDefined && (p.position.line.get == lineno)
+    lineNumberCheck && lineContentCheck
+  }
+
   def isError(p: Problem): Boolean = p.severity == Severity.Error
   def isWarn(p: Problem): Boolean = p.severity == Severity.Warn
 
-  def errorOnLine(lineno: Int) =
+  def errorOnLine(lineno: Int, lineContent: Option[String] = None) =
     beLike[Problem]({
-      case p if lineMatches(p, lineno) && isError(p) => ok
-      case _                                         => ko
+      case p if lineMatches(p, lineno, lineContent) && isError(p) => ok
+      case _ => ko
     })
-  def warnOnLine(lineno: Int) =
+  def warnOnLine(lineno: Int, lineContent: Option[String] = None) =
     beLike[Problem]({
-      case p if lineMatches(p, lineno) && isWarn(p) => ok
-      case _                                        => ko
+      case p if lineMatches(p, lineno, lineContent) && isWarn(p) => ok
+      case _ => ko
     })
 
   def forkSameAsLocal = {
