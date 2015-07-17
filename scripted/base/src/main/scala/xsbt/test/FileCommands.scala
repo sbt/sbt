@@ -112,7 +112,7 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
         case paths =>
           val mapped = fromStrings(paths)
           val map = mapper(mapped.last)
-          IO.copy(mapped.init x map)
+          IO.copy(mapped.init pair map)
       }
     def wrongArguments(args: List[String]): Some[String] =
       scriptError("Command '" + commandName + "' does not accept arguments (found '" + spaced(args) + "').")

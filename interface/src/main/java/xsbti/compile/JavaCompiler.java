@@ -4,7 +4,7 @@ import java.io.File;
 import xsbti.Logger;
 import xsbti.Reporter;
 
-/** 
+/**
 * Interface to a Java compiler.
 */
 public interface JavaCompiler
@@ -14,6 +14,7 @@ public interface JavaCompiler
      *
      * @deprecated 0.13.8 - Use compileWithReporter instead
      */
+	@Deprecated
 	void compile(File[] sources, File[] classpath, Output output, String[] options, Logger log);
 
     /**
