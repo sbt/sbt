@@ -4,7 +4,8 @@ def commonSettings: Seq[Def.Setting[_]] =
     dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",
     scalaVersion := "2.10.4",
     organization in ThisBuild := "org.example",
-    version in ThisBuild := "1.0-SNAPSHOT"
+    version in ThisBuild := "1.0-SNAPSHOT",
+    resolvers += Resolver.file("old-local", file(sys.props("user.home") + "/.ivy2/local"))(Resolver.ivyStylePatterns)
   )
 
 lazy val main = project.
