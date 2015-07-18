@@ -59,6 +59,11 @@ trait BaseIvySpecification extends Specification {
     IvyActions.updateEither(module, config, UnresolvedWarningConfiguration(), LogicalClock.unknown, Some(currentDependency), log)
   }
 
+  def cleanIvyCache: Unit =
+    {
+      IO.delete(currentTarget / "cache")
+    }
+
   def cleanCachedResolutionCache(module: IvySbt#Module): Unit =
     {
       IvyActions.cleanCachedResolutionCache(module, log)
