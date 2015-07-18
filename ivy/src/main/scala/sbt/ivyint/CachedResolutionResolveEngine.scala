@@ -27,7 +27,7 @@ private[sbt] object CachedResolutionResolveCache {
   def createID(organization: String, name: String, revision: String) =
     ModuleRevisionId.newInstance(organization, name, revision)
   def sbtOrgTemp = JsonUtil.sbtOrgTemp
-  def graphVersion = "0.13.9B"
+  def graphVersion = "0.13.9C"
   val buildStartup: Long = System.currentTimeMillis
   lazy val todayStr: String = toYyyymmdd(buildStartup)
   lazy val tomorrowStr: String = toYyyymmdd(buildStartup + (1 day).toMillis)
@@ -470,8 +470,10 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       def mergeModuleReports(org: String, name: String, version: String, xs: Seq[ModuleReport]): ModuleReport = {
         val completelyEvicted = xs forall { _.evicted }
         val allCallers = xs flatMap { _.callers }
+        // Caller info is often repeated across the subprojects. We only need ModuleID info for later, so xs.head is ok.
+        val distinctByModuleId = allCallers.groupBy({ _.caller }).toList map { case (k, xs) => xs.head }
         val allArtifacts = (xs flatMap { _.artifacts }).distinct
-        xs.head.copy(artifacts = allArtifacts, evicted = completelyEvicted, callers = allCallers)
+        xs.head.copy(artifacts = allArtifacts, evicted = completelyEvicted, callers = distinctByModuleId)
       }
       val merged = (modules groupBy { m => (m.module.organization, m.module.name, m.module.revision) }).toSeq.toVector flatMap {
         case ((org, name, version), xs) =>
