@@ -13,7 +13,7 @@ import complete.{ DefaultParsers, Parsers }
 	val x = task { set.value }
 	val y = task { true }
 	val z = task { if(y.value) x.value else plain.value }
-	val a = taskDyn { 
+	val a = taskDyn {
 		if(y.value) z else x
 	}
 }*/
@@ -38,6 +38,8 @@ object Assign {
   val dummy3 = settingKey[complete.Parser[(String, Int)]]("dummy3")
   val tsk: complete.Parser[Task[String]] = ???
   val itsk: Initialize[InputTask[Int]] = ???
+  val seqSetting = settingKey[Seq[String]]("seqSetting")
+  val listSetting = settingKey[List[String]]("listSetting")
 
   /*	def azy = sk.value
 
@@ -100,4 +102,14 @@ object Assign {
   def forallIn[T](key: Initialize[T]): Initialize[Seq[T]] = Def.setting {
     key.value :: Nil
   }
+
+  // Test that Append.Sequence instances for Seq/List work and don't mess up with each other
+  seqSetting := Seq("test1")
+  seqSetting ++= Seq("test2")
+  seqSetting ++= List("test3")
+  seqSetting += "test4"
+
+  listSetting := List("test1")
+  listSetting ++= List("test2")
+  listSetting += "test4"
 }
