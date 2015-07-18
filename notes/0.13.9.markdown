@@ -119,7 +119,7 @@ On a larger dependency graph, the JSON file growing to be 100MB+
 with 97% of taken up by *caller* information.
 To make the matter worse, these large JSON files were never cleaned up.
 
-sbt 0.13.9 filters out artificial callers,
+sbt 0.13.9 filters out artificial or duplicate callers,
 which fixes `OutOfMemoryException` seen on some builds.
 This generally shrinks the size of JSON, so it should make the IO operations faster.
 Dynamic graphs will be rotated with directories named after `yyyy-mm-dd`,
