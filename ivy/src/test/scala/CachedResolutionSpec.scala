@@ -28,6 +28,7 @@ class CachedResolutionSpec extends BaseIvySpecification {
   import ShowLines._
 
   def e1 = {
+    cleanIvyCache
     val m = module(ModuleID("com.example", "foo", "0.1.0", Some("compile")),
       Seq(commonsIo13), Some("2.10.2"), UpdateOptions().withCachedResolution(true))
     val report = ivyUpdate(m)
@@ -65,7 +66,8 @@ class CachedResolutionSpec extends BaseIvySpecification {
   // avro:1.4.0 will be evicted by avro:1.7.7.
   // #2046 says that netty:3.2.0.Final is incorrectly evicted by netty:3.2.1.Final
   def e3 = {
-    log.setLevel(Level.Debug)
+    // log.setLevel(Level.Debug)
+    cleanIvyCache
     val m = module(ModuleID("com.example", "foo", "0.3.0", Some("compile")),
       Seq(avro177, dataAvro1940, netty320),
       Some("2.10.2"), UpdateOptions().withCachedResolution(true))
