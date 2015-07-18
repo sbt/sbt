@@ -12,7 +12,7 @@ object Dependencies {
   lazy val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-c5d1b95fdcc1e1007740ffbecf4eb07abc51ec93"
   lazy val jsch = "com.jcraft" % "jsch" % "0.1.46" intransitive ()
   lazy val sbinary = "org.scala-tools.sbinary" %% "sbinary" % "0.4.2"
-  lazy val sbtSerialization = "org.scala-sbt" %% "serialization" % "0.1.1"
+  lazy val sbtSerialization = "org.scala-sbt" %% "serialization" % "0.1.2"
   lazy val scalaCompiler = Def.setting { "org.scala-lang" % "scala-compiler" % scalaVersion.value }
   lazy val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
   lazy val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
