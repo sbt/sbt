@@ -6,11 +6,11 @@ import java.util.Date
 import org.apache.ivy.core.IvyContext
 import org.apache.ivy.core.cache.{ ArtifactOrigin, ModuleDescriptorWriter }
 import org.apache.ivy.core.module.descriptor._
-import org.apache.ivy.core.module.id.{ ModuleId, ModuleRevisionId }
+import org.apache.ivy.core.module.id.{ ArtifactId, ModuleId, ModuleRevisionId }
 import org.apache.ivy.core.report.{ ArtifactDownloadReport, DownloadReport, DownloadStatus, MetadataArtifactDownloadReport }
 import org.apache.ivy.core.resolve.{ DownloadOptions, ResolveData, ResolvedModuleRevision }
 import org.apache.ivy.core.settings.IvySettings
-import org.apache.ivy.plugins.matcher.ExactPatternMatcher
+import org.apache.ivy.plugins.matcher.{ PatternMatcher, ExactPatternMatcher }
 import org.apache.ivy.plugins.parser.m2.{ PomModuleDescriptorBuilder, ReplaceMavenConfigurationMappings }
 import org.apache.ivy.plugins.parser.xml.XmlModuleDescriptorWriter
 import org.apache.ivy.plugins.resolver.AbstractResolver
@@ -172,7 +172,6 @@ abstract class MavenRepositoryResolver(settings: IvySettings) extends AbstractRe
         addDependenciesFromAether(result, md)
         // Here we use pom.xml Dependency management section to create Ivy dependency mediators.
         addManagedDependenciesFromAether(result, md)
-        // TODO - Add excludes?
 
         // Here we rip out license info.
         addLicenseInfo(md, result.getProperties)
@@ -319,8 +318,9 @@ abstract class MavenRepositoryResolver(settings: IvySettings) extends AbstractRe
   }
 
   /** Adds the dependency mediators required based on the managed dependency instances from this pom. */
-  def addManagedDependenciesFromAether(result: AetherDescriptorResult, md: DefaultModuleDescriptor) {
+  def addManagedDependenciesFromAether(result: AetherDescriptorResult, md: DefaultModuleDescriptor): Unit = {
     for (d <- result.getManagedDependencies.asScala) {
+      // TODO - Figure out what to do about exclusions on managed dependencies.
       md.addDependencyDescriptorMediator(
         ModuleId.newInstance(d.getArtifact.getGroupId, d.getArtifact.getArtifactId),
         ExactPatternMatcher.INSTANCE,
@@ -334,7 +334,7 @@ abstract class MavenRepositoryResolver(settings: IvySettings) extends AbstractRe
   }
 
   /** Adds the list of dependencies this artifact has on other artifacts. */
-  def addDependenciesFromAether(result: AetherDescriptorResult, md: DefaultModuleDescriptor) {
+  def addDependenciesFromAether(result: AetherDescriptorResult, md: DefaultModuleDescriptor): Unit = {
     // First we construct a map of any extra attributes we must append to dependencies.
     // This is necessary for transitive maven-based sbt plugin dependencies, where we need to
     // attach the sbtVersion/scalaVersion to the dependency id otherwise we'll fail to resolve the
@@ -366,7 +366,6 @@ abstract class MavenRepositoryResolver(settings: IvySettings) extends AbstractRe
       // TODO - Configuration mappings (are we grabbing scope correctly, or should the default not always be compile?)
       val scope = Option(d.getScope).filterNot(_.isEmpty).getOrElse("compile")
       val mapping = ReplaceMavenConfigurationMappings.addMappings(dd, scope, d.isOptional)
-      // TODO - include rules and exclude rules.
       Message.debug(s"Adding maven transitive dependency ${md.getModuleRevisionId} -> ${dd}")
       // TODO - Unify this borrowed Java code into something a bit friendlier.
       // Now we add the artifact....
@@ -389,6 +388,18 @@ abstract class MavenRepositoryResolver(settings: IvySettings) extends AbstractRe
         val optionalizedScope: String = if (d.isOptional) "optional" else scope
         // TOOD - We may need to fix the configuration mappings here.
         dd.addDependencyArtifact(optionalizedScope, depArtifact)
+      }
+      // Include rules and exclude rules.
+      for (e <- d.getExclusions.asScala) {
+        val excludedModule = new ModuleId(e.getGroupId, e.getArtifactId)
+        for (conf <- dd.getModuleConfigurations) {
+          // TODO - Do we need extra attributes for this?
+          dd.addExcludeRule(conf, new DefaultExcludeRule(new ArtifactId(
+            excludedModule, PatternMatcher.ANY_EXPRESSION,
+            PatternMatcher.ANY_EXPRESSION,
+            PatternMatcher.ANY_EXPRESSION),
+            ExactPatternMatcher.INSTANCE, null))
+        }
       }
       md.addDependency(dd)
     }
