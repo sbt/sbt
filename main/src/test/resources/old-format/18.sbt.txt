@@ -79,8 +79,8 @@ resolvers ++= Seq(
   "sbt-osgi-mananger-digimead-maven" at "http://storage.googleapis.com/maven.repository.digimead.org/",
   Resolver.url("sbt-osgi-manager-typesafe-ivy-releases", url("http://repo.typesafe.com/typesafe/ivy-releases/"))(Resolver.defaultIvyPatterns),
   Resolver.url("sbt-osgi-manager-typesafe-ivy-snapshots", url("http://repo.typesafe.com/typesafe/ivy-snapshots/"))(Resolver.defaultIvyPatterns),
-  Resolver.url("sbt-osgi-manager-typesafe-repository", url("http://typesafe.artifactoryonline.com/typesafe/ivy-releases/"))(Resolver.defaultIvyPatterns),
-  Resolver.url("sbt-osgi-manager-typesafe-shapshots", url("http://typesafe.artifactoryonline.com/typesafe/ivy-snapshots/"))(Resolver.defaultIvyPatterns))
+  Resolver.url("sbt-osgi-manager-typesafe-repository", url("http://repo.typesafe.com/typesafe/ivy-releases/"))(Resolver.defaultIvyPatterns),
+  Resolver.url("sbt-osgi-manager-typesafe-shapshots", url("http://repo.typesafe.com/typesafe/ivy-snapshots/"))(Resolver.defaultIvyPatterns))
 
 sourceGenerators in Compile <+= (sbtVersion, sourceDirectory in Compile, sourceManaged in Compile) map { (v, sourceDirectory, sourceManaged) =>
   val interface = v.split("""\.""").take(2).mkString(".")
