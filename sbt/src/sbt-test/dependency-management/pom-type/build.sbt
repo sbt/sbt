@@ -13,7 +13,6 @@ checkPom := {
 		sys.error("Expected no <type> sections, got: " + tpe + " in \n\n" + pom)
 	}
 	val dir = (streams in makePom).value.cacheDirectory / "out"
-	System.out.println(dir.getAbsolutePath)
 	val lines = IO.readLines(dir)
 	val hasError = lines exists { line => line contains "Translating intransitive dependency "}
 	assert(hasError, s"Failed to detect intransitive dependencies, got: ${lines.mkString("\n")}")
