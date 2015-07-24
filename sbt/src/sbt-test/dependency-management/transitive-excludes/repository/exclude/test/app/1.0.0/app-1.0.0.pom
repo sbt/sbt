@@ -12,6 +12,12 @@
             <groupId>exclude.test</groupId>
             <artifactId>top</artifactId>
             <version>1.0.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>exclude.test</groupId>
+                    <artifactId>middle</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 </project>
