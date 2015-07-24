@@ -25,6 +25,8 @@ cleanExampleCache := {
 
 val checkIvyXml = taskKey[Unit]("Checks the ivy.xml transform was correct")
 
+
+
 checkIvyXml := {
   ivySbt.value.withIvy(streams.value.log) { ivy =>
     val cacheDir = ivy.getSettings.getDefaultRepositoryCacheBasedir
@@ -34,6 +36,9 @@ checkIvyXml := {
       //cacheDir / "com.example" / "example-child" / "ivy-1.0-SNAPSHOT.xml"
     val lines = IO.read(xmlFile)
     if(lines.isEmpty) sys.error(s"Unable to read $xmlFile, could not resolve geronimo...")
-    assert(lines contains "xmlns:e", s"Failed to appropriately modify ivy.xml file for sbt extra attributes!\n$lines")
+    // Note: We do not do this if the maven plguin is enabled, because there is no rewrite of ivy.xml, extra attribtues
+    // are handled in a different mechanism.  This is a hacky mechanism to detect that.
+    val isMavenResolver = updateOptions.value.resolverConverter != PartialFunction.empty
+    if(!isMavenResolver) assert(lines contains "xmlns:e", s"Failed to appropriately modify ivy.xml file for sbt extra attributes!\n$lines")
   }
 }
