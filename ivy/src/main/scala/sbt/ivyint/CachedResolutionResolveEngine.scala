@@ -407,9 +407,11 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
         }: _*)
       val stackGuard = reports0.size * reports0.size * 2
       // sort the all modules such that less called modules comes earlier
-      def sortModules(cs: ListMap[(String, String), Vector[OrganizationArtifactReport]],
+      @tailrec def sortModules(cs: ListMap[(String, String), Vector[OrganizationArtifactReport]],
+        acc: ListMap[(String, String), Vector[OrganizationArtifactReport]],
         n: Int): ListMap[(String, String), Vector[OrganizationArtifactReport]] =
         {
+          println(s"sortModules: $n / $stackGuard")
           val keys = cs.keySet
           val (called, notCalled) = cs partition {
             case (k, oas) =>
@@ -422,9 +424,8 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
                 }
               }
           }
-          notCalled ++
-            (if (called.isEmpty || n > stackGuard) called
-            else sortModules(called, n + 1))
+          (if (called.isEmpty || n > stackGuard) acc ++ notCalled ++ called
+          else sortModules(called, acc ++ notCalled, n + 1))
         }
       def resolveConflicts(cs: List[((String, String), Vector[OrganizationArtifactReport])]): List[OrganizationArtifactReport] =
         cs match {
@@ -446,7 +447,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
                 x :: resolveConflicts(next)
             })
         }
-      val sorted = sortModules(allModules, 0)
+      val sorted = sortModules(allModules, ListMap(), 0)
       val result = resolveConflicts(sorted.toList)
       result.toVector
     }
