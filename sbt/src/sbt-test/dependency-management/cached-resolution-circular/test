@@ -10,4 +10,4 @@ $ copy-file changes/multi.sbt multi.sbt
 
 > b/publishLocal
 
-> a/update
+> check

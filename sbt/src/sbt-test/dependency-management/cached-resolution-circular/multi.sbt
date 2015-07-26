@@ -20,7 +20,10 @@ lazy val a = project.
     name := "a",
     libraryDependencies := Seq(
       "commons-io" % "commons-io" % "1.3",
-      "org.apache.spark" %% "spark-core" % "0.9.0-incubating"
+      "org.apache.spark" %% "spark-core" % "0.9.0-incubating",
+      "org.apache.avro" % "avro" % "1.7.7",
+      "com.linkedin.pegasus" % "data-avro" % "1.9.40",
+      "org.jboss.netty" % "netty" % "3.2.0.Final"
     )
   )
 

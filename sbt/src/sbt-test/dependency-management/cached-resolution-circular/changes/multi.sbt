@@ -21,7 +21,10 @@ lazy val a = project.
     libraryDependencies := Seq(
       organization.value %% "c" % version.value,
       "commons-io" % "commons-io" % "1.3",
-      "org.apache.spark" %% "spark-core" % "0.9.0-incubating"
+      "org.apache.spark" %% "spark-core" % "0.9.0-incubating",
+      "org.apache.avro" % "avro" % "1.7.7",
+      "com.linkedin.pegasus" % "data-avro" % "1.9.40",
+      "org.jboss.netty" % "netty" % "3.2.0.Final"
     )
   )
 
@@ -44,5 +47,11 @@ lazy val root = (project in file(".")).
   settings(commonSettings: _*).
   settings(
     organization in ThisBuild := "org.example",
-    version in ThisBuild := "1.0-SNAPSHOT"
+    version in ThisBuild := "1.0-SNAPSHOT",
+    check := {
+      val acp = (externalDependencyClasspath in Compile in a).value.map {_.data.getName}.sorted
+      if (!(acp contains "netty-3.2.0.Final.jar")) {
+        sys.error("netty-3.2.0.Final not found when it should be included: " + acp.toString)
+      }
+    }
   )
