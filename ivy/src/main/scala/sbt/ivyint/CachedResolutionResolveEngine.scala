@@ -407,7 +407,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
         }: _*)
       // sort the all modules such that less called modules comes earlier
       @tailrec def sortModules(cs: Vector[(String, String)],
-        acc: Vector[(String, String)],
+        acc: Vector[(String, String)], extra: Vector[(String, String)],
         n: Int, guard: Int): Vector[(String, String)] =
         {
           // println(s"sortModules: $n / $guard")
@@ -423,12 +423,18 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
               }
             }
           }
-          lazy val result0 = acc ++ notCalled ++ called
+          lazy val result0 = acc ++ notCalled ++ called ++ extra
+          def warnCircular(): Unit = {
+            log.warn(s"""avoid circular dependency while using cached resolution: ${cs.mkString(",")}""")
+          }
           (if (n > guard) {
-            log.warn(s"""cached resolution detected circular dependencies: ${cs.mkString(",")}""")
+            warnCircular
             result0
-          } else if (called.isEmpty || notCalled.isEmpty) result0
-          else sortModules(called, acc ++ notCalled, 0, called.size * called.size + 1))
+          } else if (called.isEmpty) result0
+          else if (notCalled.isEmpty) {
+            warnCircular
+            sortModules(cs.tail, acc, extra :+ cs.head, n + 1, guard)
+          } else sortModules(called, acc ++ notCalled, extra, 0, called.size * called.size + 1))
         }
       def resolveConflicts(cs: List[(String, String)],
         allModules: Map[(String, String), Vector[OrganizationArtifactReport]]): List[OrganizationArtifactReport] =
@@ -456,7 +462,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
             }
         }
       val guard0 = (orgNamePairs.size * orgNamePairs.size) + 1
-      val sorted: Vector[(String, String)] = sortModules(orgNamePairs, Vector(), 0, guard0)
+      val sorted: Vector[(String, String)] = sortModules(orgNamePairs, Vector(), Vector(), 0, guard0)
       val result = resolveConflicts(sorted.toList, allModules0)
       result.toVector
     }
