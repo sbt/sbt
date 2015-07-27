@@ -396,58 +396,74 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
   def mergeOrganizationArtifactReports(rootModuleConf: String, reports0: Vector[OrganizationArtifactReport], os: Vector[IvyOverride], log: Logger): Vector[OrganizationArtifactReport] =
     {
       // group by takes up too much memory. trading space with time.
-      val orgNamePairs = (reports0 map { oar => (oar.organization, oar.name) }).distinct
+      val orgNamePairs: Vector[(String, String)] = (reports0 map { oar => (oar.organization, oar.name) }).distinct
       // this might take up some memory, but it's limited to a single
       val reports1 = reports0 map { filterOutCallers }
-      val allModules: ListMap[(String, String), Vector[OrganizationArtifactReport]] =
-        ListMap(orgNamePairs map {
+      val allModules0: Map[(String, String), Vector[OrganizationArtifactReport]] =
+        Map(orgNamePairs map {
           case (organization, name) =>
             val xs = reports1 filter { oar => oar.organization == organization && oar.name == name }
             ((organization, name), xs)
         }: _*)
-      val stackGuard = reports0.size * reports0.size * 2
       // sort the all modules such that less called modules comes earlier
-      def sortModules(cs: ListMap[(String, String), Vector[OrganizationArtifactReport]],
-        n: Int): ListMap[(String, String), Vector[OrganizationArtifactReport]] =
+      @tailrec def sortModules(cs: Vector[(String, String)],
+        acc: Vector[(String, String)], extra: Vector[(String, String)],
+        n: Int, guard: Int): Vector[(String, String)] =
         {
-          val keys = cs.keySet
-          val (called, notCalled) = cs partition {
-            case (k, oas) =>
-              oas exists {
-                _.modules.exists {
-                  _.callers exists { caller =>
-                    val m = caller.caller
-                    keys((m.organization, m.name))
-                  }
+          // println(s"sortModules: $n / $guard")
+          val keys = cs.toSet
+          val (called, notCalled) = cs partition { k =>
+            val reports = allModules0(k)
+            reports exists {
+              _.modules.exists {
+                _.callers exists { caller =>
+                  val m = caller.caller
+                  keys((m.organization, m.name))
                 }
               }
+            }
           }
-          notCalled ++
-            (if (called.isEmpty || n > stackGuard) called
-            else sortModules(called, n + 1))
+          lazy val result0 = acc ++ notCalled ++ called ++ extra
+          def warnCircular(): Unit = {
+            log.warn(s"""avoid circular dependency while using cached resolution: ${cs.mkString(",")}""")
+          }
+          (if (n > guard) {
+            warnCircular
+            result0
+          } else if (called.isEmpty) result0
+          else if (notCalled.isEmpty) {
+            warnCircular
+            sortModules(cs.tail, acc, extra :+ cs.head, n + 1, guard)
+          } else sortModules(called, acc ++ notCalled, extra, 0, called.size * called.size + 1))
         }
-      def resolveConflicts(cs: List[((String, String), Vector[OrganizationArtifactReport])]): List[OrganizationArtifactReport] =
+      def resolveConflicts(cs: List[(String, String)],
+        allModules: Map[(String, String), Vector[OrganizationArtifactReport]]): List[OrganizationArtifactReport] =
         cs match {
           case Nil => Nil
-          case (k, Vector()) :: rest => resolveConflicts(rest)
-          case (k, Vector(oa)) :: rest if (oa.modules.size == 0) => resolveConflicts(rest)
-          case (k, Vector(oa)) :: rest if (oa.modules.size == 1 && !oa.modules.head.evicted) =>
-            log.debug(s":: no conflict $rootModuleConf: ${oa.organization}:${oa.name}")
-            oa :: resolveConflicts(rest)
-          case ((organization, name), oas) :: rest =>
-            (mergeModuleReports(rootModuleConf, oas flatMap { _.modules }, os, log) match {
-              case (survivor, newlyEvicted) =>
-                val evicted = (survivor ++ newlyEvicted) filter { m => m.evicted }
-                val notEvicted = (survivor ++ newlyEvicted) filter { m => !m.evicted }
-                log.debug("::: adds " + (notEvicted map { _.module }).mkString(", "))
-                log.debug("::: evicted " + (evicted map { _.module }).mkString(", "))
-                val x = new OrganizationArtifactReport(organization, name, survivor ++ newlyEvicted)
-                val next = transitivelyEvict(rootModuleConf, rest, evicted, log)
-                x :: resolveConflicts(next)
-            })
+          case (organization, name) :: rest =>
+            val reports = allModules((organization, name))
+            reports match {
+              case Vector()                             => resolveConflicts(rest, allModules)
+              case Vector(oa) if (oa.modules.size == 0) => resolveConflicts(rest, allModules)
+              case Vector(oa) if (oa.modules.size == 1 && !oa.modules.head.evicted) =>
+                log.debug(s":: no conflict $rootModuleConf: ${oa.organization}:${oa.name}")
+                oa :: resolveConflicts(rest, allModules)
+              case oas =>
+                (mergeModuleReports(rootModuleConf, oas flatMap { _.modules }, os, log) match {
+                  case (survivor, newlyEvicted) =>
+                    val evicted = (survivor ++ newlyEvicted) filter { m => m.evicted }
+                    val notEvicted = (survivor ++ newlyEvicted) filter { m => !m.evicted }
+                    log.debug("::: adds " + (notEvicted map { _.module }).mkString(", "))
+                    log.debug("::: evicted " + (evicted map { _.module }).mkString(", "))
+                    val x = new OrganizationArtifactReport(organization, name, survivor ++ newlyEvicted)
+                    val nextModules = transitivelyEvict(rootModuleConf, rest, allModules, evicted, log)
+                    x :: resolveConflicts(rest, nextModules)
+                })
+            }
         }
-      val sorted = sortModules(allModules, 0)
-      val result = resolveConflicts(sorted.toList)
+      val guard0 = (orgNamePairs.size * orgNamePairs.size) + 1
+      val sorted: Vector[(String, String)] = sortModules(orgNamePairs, Vector(), Vector(), 0, guard0)
+      val result = resolveConflicts(sorted.toList, allModules0)
       result.toVector
     }
   def filterOutCallers(report0: OrganizationArtifactReport): OrganizationArtifactReport =
@@ -490,13 +506,15 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
   /**
    * This transitively evicts any non-evicted modules whose only callers are newly evicted.
    */
-  def transitivelyEvict(rootModuleConf: String, reports0: List[((String, String), Vector[OrganizationArtifactReport])],
-    evicted0: Vector[ModuleReport], log: Logger): List[((String, String), Vector[OrganizationArtifactReport])] =
+  def transitivelyEvict(rootModuleConf: String, pairs: List[(String, String)],
+    reports0: Map[(String, String), Vector[OrganizationArtifactReport]],
+    evicted0: Vector[ModuleReport], log: Logger): Map[(String, String), Vector[OrganizationArtifactReport]] =
     {
       val em = (evicted0 map { _.module }).toSet
       def isTransitivelyEvicted(mr: ModuleReport): Boolean =
         mr.callers forall { c => em(c.caller) }
-      val reports: List[((String, String), Vector[OrganizationArtifactReport])] = reports0 map {
+      val reports: Seq[((String, String), Vector[OrganizationArtifactReport])] = reports0.toSeq flatMap {
+        case (k, v) if !(pairs contains k) => Seq()
         case ((organization, name), oars0) =>
           val oars = oars0 map { oar =>
             val (affected, unaffected) = oar.modules partition { mr =>
@@ -510,9 +528,9 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
             if (affected.isEmpty) oar
             else new OrganizationArtifactReport(organization, name, unaffected ++ newlyEvicted)
           }
-          ((organization, name), oars)
+          Seq(((organization, name), oars))
       }
-      reports
+      Map(reports: _*)
     }
   /**
    * resolves dependency resolution conflicts in which multiple candidates are found for organization+name combos.
