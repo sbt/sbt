@@ -8,7 +8,7 @@ import java.net.URL
 import sbt.mavenint.SbtPomExtraProperties
 import sbt.serialization._
 
-final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String] = None, isChanging: Boolean = false, isTransitive: Boolean = true, isForce: Boolean = false, explicitArtifacts: Seq[Artifact] = Nil, exclusions: Seq[ExclusionRule] = Nil, extraAttributes: Map[String, String] = Map.empty, crossVersion: CrossVersion = CrossVersion.Disabled) {
+sealed case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String] = None, isChanging: Boolean = false, isTransitive: Boolean = true, isForce: Boolean = false, explicitArtifacts: Seq[Artifact] = Nil, exclusions: Seq[ExclusionRule] = Nil, extraAttributes: Map[String, String] = Map.empty, crossVersion: CrossVersion = CrossVersion.Disabled) extends ModuleIDSetBranch {
   override def toString: String =
     organization + ":" + name + ":" + revision +
       (configurations match { case Some(s) => ":" + s; case None => "" }) +
@@ -118,11 +118,45 @@ final case class ModuleID(organization: String, name: String, revision: String, 
    * as when adding a dependency on an artifact with a classifier.
    */
   def jar() = artifacts(Artifact(name))
+
+  override val branchName: Option[String] = None
 }
+
 object ModuleID {
   implicit val pickler: Pickler[ModuleID] with Unpickler[ModuleID] = PicklerUnpickler.generate[ModuleID]
 
   /** Prefixes all keys with `e:` if they are not already so prefixed. */
   def checkE(attributes: Seq[(String, String)]) =
     for ((key, value) <- attributes) yield if (key.startsWith("e:")) (key, value) else ("e:" + key, value)
+}
+
+/**
+ * Trait to mix in which allows querying and changing the branch of a ModuleID.
+ * This will be removed in 1.0 when the `branch` parameter can be added directly to ModuleID, breaking binary compatibility.
+ */
+private[sbt] trait ModuleIDSetBranch { self: ModuleID =>
+  val branchName: Option[String]
+
+  /**
+   * Sets the Ivy branch of this module.
+   */
+  def branch(branchName: String) = new ModuleIDWithBranch(self, Some(branchName))
+
+  def branch(branchName: Option[String]) = new ModuleIDWithBranch(self, branchName)
+}
+
+/** This will be removed in 1.0 when the `branch` parameter can be added directly to ModuleID, breaking binary compatibility. */
+final class ModuleIDWithBranch(m: ModuleID, override val branchName: Option[String]) extends ModuleID(m.organization, m.name, m.revision, m.configurations, m.isChanging, m.isTransitive, m.isForce, m.explicitArtifacts, m.exclusions, m.extraAttributes, m.crossVersion) with ModuleIDSetBranch {
+  override def copy(organization: String,
+    name: String,
+    revision: String,
+    configurations: Option[String],
+    isChanging: Boolean,
+    isTransitive: Boolean,
+    isForce: Boolean,
+    explicitArtifacts: Seq[Artifact],
+    exclusions: Seq[ExclusionRule],
+    extraAttributes: Map[String, String],
+    crossVersion: CrossVersion) =
+    m.copy(organization, name, revision, configurations, isChanging, isTransitive, isForce, explicitArtifacts, exclusions, extraAttributes, crossVersion).branch(branchName)
 }
