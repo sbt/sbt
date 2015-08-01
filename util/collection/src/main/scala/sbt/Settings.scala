@@ -17,9 +17,9 @@ sealed trait Settings[Scope] {
 }
 
 private final class Settings0[Scope](val data: Map[Scope, AttributeMap], val delegates: Scope => Seq[Scope]) extends Settings[Scope] {
-  def scopes: Set[Scope] = data.keySet.toSet
+  def scopes: Set[Scope] = data.keySet
   def keys(scope: Scope) = data(scope).keys.toSet
-  def allKeys[T](f: (Scope, AttributeKey[_]) => T): Seq[T] = data.flatMap { case (scope, map) => map.keys.map(k => f(scope, k)) } toSeq;
+  def allKeys[T](f: (Scope, AttributeKey[_]) => T): Seq[T] = data.flatMap { case (scope, map) => map.keys.map(k => f(scope, k)) } toSeq
 
   def get[T](scope: Scope, key: AttributeKey[T]): Option[T] =
     delegates(scope).toStream.flatMap(sc => getDirect(sc, key)).headOption
