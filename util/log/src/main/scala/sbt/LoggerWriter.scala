@@ -17,7 +17,7 @@ class LoggerWriter(delegate: Logger, unbufferedLevel: Option[Level.Value], nl: S
   override def close() = flush()
   override def flush(): Unit =
     synchronized {
-      if (buffer.length > 0) {
+      if (buffer.nonEmpty) {
         log(buffer.toString)
         buffer.clear()
       }

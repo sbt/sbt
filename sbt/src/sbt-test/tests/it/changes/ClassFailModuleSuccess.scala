@@ -3,7 +3,7 @@ import org.specs2.mutable._
 class B extends Specification
 {	
   "'hello world' has 11 characters" in {
-     "hello world".size must be equalTo(122)
+     "hello world".length must be equalTo(122)
   }
 }
 

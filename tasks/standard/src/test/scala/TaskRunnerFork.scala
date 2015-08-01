@@ -28,7 +28,7 @@ object TaskRunnerForkTest extends Properties("TaskRunner Fork") {
   }
   property("fork and reduce") = forAll(TaskListGen, MaxWorkersGen) { (m: List[Int], workers: Int) =>
     m.nonEmpty ==> {
-      val expected = m.reduceLeft(_ + _)
+      val expected = m.sum
       checkResult(tryRun(m.tasks.reduced(_ + _), false, workers), expected)
     }
   }

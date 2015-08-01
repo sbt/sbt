@@ -142,9 +142,9 @@ object Tests {
         }
       }
 
-      if (excludeTestsSet.size > 0)
+      if (excludeTestsSet.nonEmpty)
         log.debug(excludeTestsSet.mkString("Excluding tests: \n\t", "\n\t", ""))
-      if (undefinedFrameworks.size > 0)
+      if (undefinedFrameworks.nonEmpty)
         log.warn("Arguments defined for test frameworks that are not present:\n\t" + undefinedFrameworks.mkString("\n\t"))
 
       def includeTest(test: TestDefinition) = !excludeTestsSet.contains(test.name) && testFilters.forall(filter => filter(test.name))

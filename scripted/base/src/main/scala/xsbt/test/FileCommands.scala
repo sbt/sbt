@@ -60,12 +60,12 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
     }
   def exists(paths: List[String]) {
     val notPresent = fromStrings(paths).filter(!_.exists)
-    if (notPresent.length > 0)
+    if (notPresent.nonEmpty)
       scriptError("File(s) did not exist: " + notPresent.mkString("[ ", " , ", " ]"))
   }
   def absent(paths: List[String]) {
     val present = fromStrings(paths).filter(_.exists)
-    if (present.length > 0)
+    if (present.nonEmpty)
       scriptError("File(s) existed: " + present.mkString("[ ", " , ", " ]"))
   }
   def execute(command: List[String]): Unit = execute0(command.head, command.tail)
