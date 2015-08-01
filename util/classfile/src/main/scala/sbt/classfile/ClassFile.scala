@@ -56,10 +56,10 @@ private[sbt] final case class Constant(tag: Byte, nameIndex: Int, typeIndex: Int
 private[sbt] final case class FieldOrMethodInfo(accessFlags: Int, name: Option[String], descriptor: Option[String], attributes: IndexedSeq[AttributeInfo]) extends NotNull {
   def isStatic = (accessFlags & ACC_STATIC) == ACC_STATIC
   def isPublic = (accessFlags & ACC_PUBLIC) == ACC_PUBLIC
-  def isMain = isPublic && isStatic && descriptor.filter(_ == "([Ljava/lang/String;)V").isDefined
+  def isMain = isPublic && isStatic && descriptor.exists(_ == "([Ljava/lang/String;)V")
 }
 private[sbt] final case class AttributeInfo(name: Option[String], value: Array[Byte]) extends NotNull {
-  def isNamed(s: String) = name.filter(s == _).isDefined
+  def isNamed(s: String) = name.exists(s == _)
   def isSignature = isNamed("Signature")
   def isSourceFile = isNamed("SourceFile")
 }

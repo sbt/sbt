@@ -293,7 +293,7 @@ object ClassToAPI {
   def referenceP(t: ParameterizedType): api.Parameterized =
     {
       val targs = t.getActualTypeArguments
-      val args = if (targs.length == 0) emptyTypeArray else arrayMap(targs)(t => reference(t): api.Type)
+      val args = if (targs.isEmpty) emptyTypeArray else arrayMap(targs)(t => reference(t): api.Type)
       val base = reference(t.getRawType)
       new api.Parameterized(base, args.toArray[api.Type])
     }

@@ -62,7 +62,7 @@ object ClassfileManager {
         logger.debug("Rolling back changes to class files.")
         logger.debug(s"Removing generated classes:\n${showFiles(generatedClasses)}")
         IO.deleteFilesEmptyDirs(generatedClasses)
-        logger.debug(s"Restoring class files: \n${showFiles(movedClasses.map(_._1))}")
+        logger.debug(s"Restoring class files: \n${showFiles(movedClasses.keys)}")
         for ((orig, tmp) <- movedClasses) IO.move(tmp, orig)
       }
       logger.debug(s"Removing the temporary directory used for backing up class files: $tempDir")
