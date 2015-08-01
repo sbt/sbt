@@ -296,7 +296,7 @@ trait Init[Scope] {
   def definedAtString(settings: Seq[Setting[_]]): String =
     {
       val posDefined = settings.flatMap(_.positionString.toList)
-      if (posDefined.size > 0) {
+      if (posDefined.nonEmpty) {
         val header = if (posDefined.size == settings.size) "defined at:" else
           "some of the defining occurrences:"
         header + (posDefined.distinct mkString ("\n\t", "\n\t", "\n"))
