@@ -430,7 +430,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
         cs match {
           case Nil => Nil
           case (k, Vector()) :: rest => resolveConflicts(rest)
-          case (k, Vector(oa)) :: rest if (oa.modules.size == 0) => resolveConflicts(rest)
+          case (k, Vector(oa)) :: rest if (oa.modules.isEmpty) => resolveConflicts(rest)
           case (k, Vector(oa)) :: rest if (oa.modules.size == 1 && !oa.modules.head.evicted) =>
             log.debug(s":: no conflict $rootModuleConf: ${oa.organization}:${oa.name}")
             oa :: resolveConflicts(rest)

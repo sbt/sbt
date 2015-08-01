@@ -50,9 +50,9 @@ private[sbt] object JsonUtil {
         (c.caller.organization != sbtOrgTemp) &&
           (c.caller.organization != fakeCallerOrganization)
       }
-      val interProj = (callers filter { c =>
-        (c.caller.organization == sbtOrgTemp)
-      }).headOption.toList
+      val interProj = (callers find { c =>
+        c.caller.organization == sbtOrgTemp
+      }).toList
       interProj ::: nonArtificial.toList
     }
 
