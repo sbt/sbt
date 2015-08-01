@@ -68,7 +68,7 @@ object Package {
     }
 
     val map = conf.sources.toMap
-    val inputs = map :+: lastModified(map.keySet.toSet) :+: manifest :+: HNil
+    val inputs = map :+: lastModified(map.keySet) :+: manifest :+: HNil
     cachedMakeJar(inputs)(() => exists(conf.jar))
   }
   def setVersion(main: Attributes) {

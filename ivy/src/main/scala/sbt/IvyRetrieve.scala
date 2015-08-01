@@ -74,7 +74,7 @@ object IvyRetrieve {
       }: _*)
     def toCaller(caller: IvyCaller): Caller = {
       val m = toModuleID(caller.getModuleRevisionId)
-      val callerConfigurations = caller.getCallerConfigurations.toArray.toVector collect {
+      val callerConfigurations = caller.getCallerConfigurations.toVector collect {
         case x if nonEmptyString(x).isDefined => x
       }
       val ddOpt = Option(caller.getDependencyDescriptor)
@@ -128,16 +128,16 @@ object IvyRetrieve {
       case _        => dep.getResolvedId.getExtraAttributes
     })
     val isDefault = Option(dep.getDescriptor) map { _.isDefault }
-    val configurations = dep.getConfigurations(confReport.getConfiguration).toArray.toList
+    val configurations = dep.getConfigurations(confReport.getConfiguration).toList
     val licenses: Seq[(String, Option[String])] = mdOpt match {
-      case Some(md) => md.getLicenses.toArray.toVector collect {
+      case Some(md) => md.getLicenses.toVector collect {
         case lic: IvyLicense if Option(lic.getName).isDefined =>
           val temporaryURL = "http://localhost"
           (lic.getName, nonEmptyString(lic.getUrl) orElse { Some(temporaryURL) })
       }
       case _ => Nil
     }
-    val callers = dep.getCallers(confReport.getConfiguration).toArray.toVector map { toCaller }
+    val callers = dep.getCallers(confReport.getConfiguration).toVector map { toCaller }
     val (resolved, missing) = artifacts(moduleId, confReport getDownloadReports revId)
 
     new ModuleReport(moduleId, resolved, missing, status, publicationDate, resolver, artifactResolver,

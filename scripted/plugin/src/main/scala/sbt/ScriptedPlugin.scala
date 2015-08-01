@@ -48,7 +48,7 @@ object ScriptedPlugin extends Plugin {
       val pairMap = pairs.groupBy(_._1).mapValues(_.map(_._2).toSet)
 
       val id = charClass(c => !c.isWhitespace && c != '/').+.string
-      val groupP = token(id.examples(pairMap.keySet.toSet)) <~ token('/')
+      val groupP = token(id.examples(pairMap.keySet)) <~ token('/')
       def nameP(group: String) = token("*".id | id.examples(pairMap(group)))
       val testID = for (group <- groupP; name <- nameP(group)) yield (group, name)
       (token(Space) ~> matched(testID)).*

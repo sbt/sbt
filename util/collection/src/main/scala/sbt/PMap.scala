@@ -52,7 +52,7 @@ object IMap {
       put(k, f(this get k getOrElse init))
 
     def mapValues[V2[_]](f: V ~> V2) =
-      new IMap0[K, V2](backing.mapValues(x => f(x)).toMap)
+      new IMap0[K, V2](backing.mapValues(x => f(x)))
 
     def mapSeparate[VL[_], VR[_]](f: V ~> ({ type l[T] = Either[VL[T], VR[T]] })#l) =
       {

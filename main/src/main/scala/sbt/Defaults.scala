@@ -635,12 +635,12 @@ object Defaults extends BuildCommon {
 
   // drop base directories, since there are no valid mappings for these
   def sourceMappings = (unmanagedSources, unmanagedSourceDirectories, baseDirectory) map { (srcs, sdirs, base) =>
-    ((srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)) toSeq
+    (srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)
   }
   def resourceMappings = relativeMappings(unmanagedResources, unmanagedResourceDirectories)
   def relativeMappings(files: ScopedTaskable[Seq[File]], dirs: ScopedTaskable[Seq[File]]): Initialize[Task[Seq[(File, String)]]] =
     (files, dirs) map { (rs, rdirs) =>
-      (rs --- rdirs) pair (relativeTo(rdirs) | flat) toSeq
+      (rs --- rdirs) pair (relativeTo(rdirs) | flat)
     }
 
   def collectFiles(dirs: ScopedTaskable[Seq[File]], filter: ScopedTaskable[FileFilter], excludes: ScopedTaskable[FileFilter]): Initialize[Task[Seq[File]]] =

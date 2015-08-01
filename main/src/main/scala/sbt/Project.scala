@@ -510,7 +510,7 @@ object Project extends ProjectExtra {
 
   val ProjectReturn = AttributeKey[List[File]]("project-return", "Maintains a stack of builds visited using reload.")
   def projectReturn(s: State): List[File] = getOrNil(s, ProjectReturn)
-  def inPluginProject(s: State): Boolean = projectReturn(s).toList.length > 1
+  def inPluginProject(s: State): Boolean = projectReturn(s).length > 1
   def setProjectReturn(s: State, pr: List[File]): State = s.copy(attributes = s.attributes.put(ProjectReturn, pr))
   def loadAction(s: State, action: LoadAction.Value) = action match {
     case Return =>
