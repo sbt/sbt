@@ -123,7 +123,7 @@ private final class MRelation[A, B](fwd: Map[A, Set[B]], rev: Map[B, Set[A]]) ex
   def _1s = fwd.keySet
   def _2s = rev.keySet
 
-  def size = (fwd.valuesIterator map { _.size }).foldLeft(0)(_ + _)
+  def size = (fwd.valuesIterator map (_.size)).sum
 
   def all: Traversable[(A, B)] = fwd.iterator.flatMap { case (a, bs) => bs.iterator.map(b => (a, b)) }.toTraversable
 
