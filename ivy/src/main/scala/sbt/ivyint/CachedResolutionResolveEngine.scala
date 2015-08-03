@@ -463,7 +463,10 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
                         val callers0 = mr.callers
                         val callers = callers0 filterNot { c => (c.caller.organization, c.caller.name) == moduleWithMostCallers }
                         if (callers.size == callers0.size) mr
-                        else mr.copy(callers = callers)
+                        else {
+                          log.debug(s":: $rootModuleConf: removing caller $moduleWithMostCallers -> $next for sorting")
+                          mr.copy(callers = callers)
+                        }
                       }
                       OrganizationArtifactReport(oar.organization, oar.name, mrs)
                     }
@@ -534,6 +537,8 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
         }
       val guard0 = (orgNamePairs.size * orgNamePairs.size) + 1
       val sorted: Vector[(String, String)] = sortModules(orgNamePairs, Vector(), Vector(), 0, guard0)
+      val sortedStr = (sorted map { case (o, n) => s"$o:$n" }).mkString(", ")
+      log.debug(s":: sort result: $sortedStr")
       val result = resolveConflicts(sorted.toList, allModules0)
       result.toVector
     }
