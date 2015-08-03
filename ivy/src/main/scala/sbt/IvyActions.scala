@@ -61,7 +61,7 @@ object UpdateLogging extends Enumeration {
 
 object IvyActions {
   /** Installs the dependencies of the given 'module' from the resolver named 'from' to the resolver named 'to'.*/
-  def install(module: IvySbt#Module, from: String, to: String, log: Logger) {
+  def install(module: IvySbt#Module, from: String, to: String, log: Logger): Unit = {
     module.withModule(log) { (ivy, md, default) =>
       for (dependency <- md.getDependencies) {
         log.info("Installing " + dependency)
@@ -89,7 +89,7 @@ object IvyActions {
     }
 
   /** Creates a Maven pom from the given Ivy configuration*/
-  def makePom(module: IvySbt#Module, configuration: MakePomConfiguration, log: Logger) {
+  def makePom(module: IvySbt#Module, configuration: MakePomConfiguration, log: Logger): Unit = {
     import configuration.{ allRepositories, moduleInfo, configurations, extra, file, filterRepositories, process, includeTypes }
     module.withModule(log) { (ivy, md, default) =>
       (new MakePom(log)).write(ivy, md, moduleInfo, configurations, includeTypes, extra, process, filterRepositories, allRepositories, file)
@@ -112,7 +112,7 @@ object IvyActions {
   def deliveredFile(ivy: Ivy, pattern: String, md: ModuleDescriptor): File =
     ivy.getSettings.resolveFile(IvyPatternHelper.substitute(pattern, md.getResolvedModuleRevisionId))
 
-  def publish(module: IvySbt#Module, configuration: PublishConfiguration, log: Logger) {
+  def publish(module: IvySbt#Module, configuration: PublishConfiguration, log: Logger): Unit = {
     import configuration._
     module.withModule(log) {
       case (ivy, md, default) =>
@@ -368,7 +368,7 @@ object IvyActions {
         }
       }
     }
-  private[this] def checkFilesPresent(artifacts: Seq[(IArtifact, File)]) {
+  private[this] def checkFilesPresent(artifacts: Seq[(IArtifact, File)]): Unit = {
     val missing = artifacts filter { case (a, file) => !file.exists }
     if (missing.nonEmpty)
       sys.error("Missing files for publishing:\n\t" + missing.map(_._2.getAbsolutePath).mkString("\n\t"))

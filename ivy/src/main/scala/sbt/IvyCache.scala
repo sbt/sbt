@@ -28,7 +28,7 @@ private object NotInCache {
 class IvyCache(val ivyHome: Option[File]) {
   def lockFile = new File(ivyHome getOrElse Path.userHome, ".sbt.cache.lock")
   /** Caches the given 'file' with the given ID.  It may be retrieved or cleared using this ID.*/
-  def cacheJar(moduleID: ModuleID, file: File, lock: Option[xsbti.GlobalLock], log: Logger) {
+  def cacheJar(moduleID: ModuleID, file: File, lock: Option[xsbti.GlobalLock], log: Logger): Unit = {
     val artifact = defaultArtifact(moduleID)
     val resolved = new ResolvedResource(new FileResource(new IvyFileRepository, file), moduleID.revision)
     withDefaultCache(lock, log) { cache =>
@@ -37,7 +37,7 @@ class IvyCache(val ivyHome: Option[File]) {
     }
   }
   /** Clears the cache of the jar for the given ID.*/
-  def clearCachedJar(id: ModuleID, lock: Option[xsbti.GlobalLock], log: Logger) {
+  def clearCachedJar(id: ModuleID, lock: Option[xsbti.GlobalLock], log: Logger): Unit = {
     try { withCachedJar(id, lock, log)(_.delete) }
     catch { case e: Exception => log.debug("Error cleaning cached jar: " + e.toString) }
   }
@@ -87,7 +87,7 @@ class IvyCache(val ivyHome: Option[File]) {
 }
 /** Required by Ivy for copying to the cache.*/
 private class FileDownloader extends ResourceDownloader with NotNull {
-  def download(artifact: IvyArtifact, resource: Resource, dest: File) {
+  def download(artifact: IvyArtifact, resource: Resource, dest: File): Unit = {
     if (dest.exists()) dest.delete()
     val part = new File(dest.getAbsolutePath + ".part")
     FileUtil.copy(resource.openStream, part, null)

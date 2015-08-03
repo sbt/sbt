@@ -54,7 +54,7 @@ object ErrorMessageAuthenticator {
   }
 
   /** Installs the error message authenticator so we have nicer error messages when using java's URL for downloading. */
-  def install() {
+  def install(): Unit = {
     // Actually installs the error message authenticator.
     def doInstall(original: Option[Authenticator]): Unit =
       try Authenticator.setDefault(new ErrorMessageAuthenticator(original))

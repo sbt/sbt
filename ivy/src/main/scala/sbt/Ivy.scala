@@ -231,7 +231,7 @@ final class IvySbt(val configuration: IvyConfiguration) {
           addScalaToolDependencies(dmd, parser, is)
         (dmd, parser.getDefaultConf)
       }
-    private def addScalaToolDependencies(dmd: DefaultModuleDescriptor, parser: CustomXmlParser.CustomParser, is: IvyScala) {
+    private def addScalaToolDependencies(dmd: DefaultModuleDescriptor, parser: CustomXmlParser.CustomParser, is: IvyScala): Unit = {
       IvySbt.addConfigurations(dmd, Configurations.ScalaTool :: Nil)
       IvySbt.addDependencies(dmd, ScalaArtifacts.toolDependencies(is.scalaOrganization, is.scalaFullVersion), parser)
     }
@@ -257,7 +257,7 @@ private[sbt] object IvySbt {
   def defaultIvyConfiguration(project: File) = new File(project, DefaultIvyConfigFilename)
   def defaultPOM(project: File) = new File(project, DefaultMavenFilename)
 
-  def loadURI(is: IvySettings, uri: URI) {
+  def loadURI(is: IvySettings, uri: URI): Unit = {
     if (uri.getScheme == "file")
       is.load(new File(uri)) // IVY-1114
     else
@@ -268,7 +268,7 @@ private[sbt] object IvySbt {
    * Sets the resolvers for 'settings' to 'resolvers'.  This is done by creating a new chain and making it the default.
    * 'other' is for resolvers that should be in a different chain.  These are typically used for publishing or other actions.
    */
-  private def setResolvers(settings: IvySettings, resolvers: Seq[Resolver], other: Seq[Resolver], localOnly: Boolean, updateOptions: UpdateOptions, log: Logger) {
+  private def setResolvers(settings: IvySettings, resolvers: Seq[Resolver], other: Seq[Resolver], localOnly: Boolean, updateOptions: UpdateOptions, log: Logger): Unit = {
     def makeChain(label: String, name: String, rs: Seq[Resolver]) = {
       log.debug(label + " repositories:")
       val chain = resolverChain(name, rs, localOnly, settings, updateOptions, log)
@@ -304,7 +304,7 @@ private[sbt] object IvySbt {
 
     }
   }
-  def addResolvers(resolvers: Seq[Resolver], settings: IvySettings, log: Logger) {
+  def addResolvers(resolvers: Seq[Resolver], settings: IvySettings, log: Logger): Unit = {
     for (r <- resolvers) {
       log.debug("\t" + r)
       settings.addResolver(ConvertResolver(r, settings, log))
@@ -320,7 +320,7 @@ private[sbt] object IvySbt {
       import collection.JavaConversions._
       artifact.getQualifiedExtraAttributes.keys.exists(_.asInstanceOf[String] startsWith "m:")
     }
-  private def setModuleConfigurations(settings: IvySettings, moduleConfigurations: Seq[ModuleConfiguration], log: Logger) {
+  private def setModuleConfigurations(settings: IvySettings, moduleConfigurations: Seq[ModuleConfiguration], log: Logger): Unit = {
     val existing = settings.getResolverNames
     for (moduleConf <- moduleConfigurations) {
       import moduleConf._
@@ -332,11 +332,11 @@ private[sbt] object IvySbt {
       settings.addModuleConfiguration(attributes, settings.getMatcher(EXACT_OR_REGEXP), resolver.name, null, null, null)
     }
   }
-  private def configureCache(settings: IvySettings, localOnly: Boolean, resCacheDir: Option[File]) {
+  private def configureCache(settings: IvySettings, localOnly: Boolean, resCacheDir: Option[File]): Unit = {
     configureResolutionCache(settings, localOnly, resCacheDir)
     configureRepositoryCache(settings, localOnly)
   }
-  private[this] def configureResolutionCache(settings: IvySettings, localOnly: Boolean, resCacheDir: Option[File]) {
+  private[this] def configureResolutionCache(settings: IvySettings, localOnly: Boolean, resCacheDir: Option[File]): Unit = {
     val base = resCacheDir getOrElse settings.getDefaultResolutionCacheBasedir
     settings.setResolutionCacheManager(new ResolutionCache(base, settings))
   }
@@ -385,7 +385,7 @@ private[sbt] object IvySbt {
         case _                   => false
       }
       // ignore the original resolver wherever possible to avoid issues like #704
-      override def saveResolvers(descriptor: ModuleDescriptor, metadataResolverName: String, artifactResolverName: String) {}
+      override def saveResolvers(descriptor: ModuleDescriptor, metadataResolverName: String, artifactResolverName: String): Unit = ()
     }
     manager.setArtifactPattern(PluginPattern + manager.getArtifactPattern)
     manager.setDataFilePattern(PluginPattern + manager.getDataFilePattern)
@@ -411,12 +411,12 @@ private[sbt] object IvySbt {
     dmd.addExtraAttributeNamespace("e", "http://ant.apache.org/ivy/extra")
 
   /** Adds the ivy.xml main artifact. */
-  private def addMainArtifact(moduleID: DefaultModuleDescriptor) {
+  private def addMainArtifact(moduleID: DefaultModuleDescriptor): Unit = {
     val artifact = DefaultArtifact.newIvyArtifact(moduleID.getResolvedModuleRevisionId, moduleID.getPublicationDate)
     moduleID.setModuleArtifact(artifact)
     moduleID.check()
   }
-  private def setConflictManager(moduleID: DefaultModuleDescriptor, conflict: ConflictManager, is: IvySettings) {
+  private def setConflictManager(moduleID: DefaultModuleDescriptor, conflict: ConflictManager, is: IvySettings): Unit = {
     val mid = ModuleId.newInstance(conflict.organization, conflict.module)
     val matcher = is.getMatcher(PatternMatcher.EXACT_OR_REGEXP)
     val manager = is.getConflictManager(conflict.name)
@@ -555,7 +555,7 @@ private[sbt] object IvySbt {
     }
 
   /** This method is used to add inline dependencies to the provided module. */
-  def addDependencies(moduleID: DefaultModuleDescriptor, dependencies: Seq[ModuleID], parser: CustomXmlParser.CustomParser) {
+  def addDependencies(moduleID: DefaultModuleDescriptor, dependencies: Seq[ModuleID], parser: CustomXmlParser.CustomParser): Unit = {
     val converted = dependencies map { dependency => convertDependency(moduleID, dependency, parser) }
     val unique = if (hasDuplicateDependencies(converted)) mergeDuplicateDefinitions(converted) else converted
     unique foreach moduleID.addDependency
@@ -579,7 +579,7 @@ private[sbt] object IvySbt {
    */
   def mergeDuplicateDefinitions(dependencies: Seq[DependencyDescriptor]): Seq[DependencyDescriptor] =
     {
-      // need to preserve basic order of dependencies: can't use dependencies.groupBy 
+      // need to preserve basic order of dependencies: can't use dependencies.groupBy
       val deps = new java.util.LinkedHashMap[ModuleRevisionId, List[DependencyDescriptor]]
       for (dd <- dependencies) {
         val id = dd.getDependencyRevisionId
