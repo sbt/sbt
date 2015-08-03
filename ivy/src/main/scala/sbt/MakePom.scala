@@ -248,7 +248,7 @@ class MakePom(val log: Logger) {
     val includeArtifacts = artifacts.filter(d => includeTypes(d.getType))
     if (artifacts.isEmpty) {
       val configs = dependency.getModuleConfigurations
-      if (configs.filterNot(Set("sources", "docs")).nonEmpty) {
+      if (!configs.forall(Set("sources", "docs"))) {
         warnIntransitve()
         val (scope, optional) = getScopeAndOptional(dependency.getModuleConfigurations)
         makeDependencyElem(dependency, scope, optional, None, None, excludes)
@@ -271,7 +271,7 @@ class MakePom(val log: Logger) {
         case Nil | "*" :: Nil => dependency.getModuleConfigurations
         case x                => x.toArray
       }
-      if (configs.filterNot(Set("sources", "docs")).nonEmpty) {
+      if (!configs.forall(Set("sources", "docs"))) {
         val (scope, optional) = getScopeAndOptional(configs)
         val classifier = artifactClassifier(artifact)
         val baseType = artifactType(artifact)

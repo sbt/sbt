@@ -57,7 +57,7 @@ private[sbt] class CachedResolutionResolveCache() {
     {
       log.debug(s":: building artificial module descriptors from ${md0.getModuleRevisionId}")
       // val expanded = expandInternalDependencies(md0, data, prOpt, log)
-      val rootModuleConfigs = md0.getConfigurations.toArray.toVector
+      val rootModuleConfigs = md0.getConfigurations.toVector
       directDependencies(md0) map { dd =>
         val arts = dd.getAllDependencyArtifacts.toVector map { x => s"""${x.getName}:${x.getType}:${x.getExt}:${x.getExtraAttributes}""" }
         log.debug(s"::: dd: $dd (artifacts: ${arts.mkString(",")})")
@@ -430,7 +430,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
         cs match {
           case Nil => Nil
           case (k, Vector()) :: rest => resolveConflicts(rest)
-          case (k, Vector(oa)) :: rest if (oa.modules.size == 0) => resolveConflicts(rest)
+          case (k, Vector(oa)) :: rest if (oa.modules.isEmpty) => resolveConflicts(rest)
           case (k, Vector(oa)) :: rest if (oa.modules.size == 1 && !oa.modules.head.evicted) =>
             log.debug(s":: no conflict $rootModuleConf: ${oa.organization}:${oa.name}")
             oa :: resolveConflicts(rest)
@@ -599,7 +599,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
           case None => Vector()
         }
       // These are the configurations from the original project we want to resolve.
-      val rootModuleConfs = md0.getConfigurations.toArray.toVector
+      val rootModuleConfs = md0.getConfigurations.toVector
       val configurations0 = ur.configurations.toVector
       // This is how md looks from md0 via dd's mapping.
       val remappedConfigs0: Map[String, Vector[String]] = Map(rootModuleConfs map { conf0 =>
