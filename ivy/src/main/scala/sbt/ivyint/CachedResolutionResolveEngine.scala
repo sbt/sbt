@@ -405,6 +405,80 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
             val xs = reports1 filter { oar => oar.organization == organization && oar.name == name }
             ((organization, name), xs)
         }: _*)
+      // this returns a List of Lists of (org, name). should be deterministic
+      def detectLoops(allModules: Map[(String, String), Vector[OrganizationArtifactReport]]): List[List[(String, String)]] =
+        {
+          val loopSets: mutable.Set[Set[(String, String)]] = mutable.Set.empty
+          val loopLists: mutable.ListBuffer[List[(String, String)]] = mutable.ListBuffer.empty
+          def testLoop(m: (String, String), current: (String, String), history: List[(String, String)]): Unit =
+            {
+              val callers =
+                (for {
+                  oar <- allModules.getOrElse(current, Vector())
+                  mr <- oar.modules
+                  c <- mr.callers
+                } yield (c.caller.organization, c.caller.name)).distinct
+              callers foreach { c =>
+                if (history contains c) {
+                  val loop = (c :: history.takeWhile(_ != c)) ::: List(c)
+                  if (!loopSets(loop.toSet)) {
+                    loopSets += loop.toSet
+                    loopLists += loop
+                    val loopStr = (loop map { case (o, n) => s"$o:$n" }).mkString("->")
+                    log.warn(s"""avoid circular dependency while using cached resolution: $loopStr""")
+                  }
+                } else testLoop(m, c, c :: history)
+              }
+            }
+          orgNamePairs map { orgname =>
+            testLoop(orgname, orgname, List(orgname))
+          }
+          loopLists.toList
+        }
+      @tailrec def breakLoops(loops: List[List[(String, String)]],
+        allModules1: Map[(String, String), Vector[OrganizationArtifactReport]]): Map[(String, String), Vector[OrganizationArtifactReport]] =
+        loops match {
+          case Nil =>
+            allModules1
+          case loop :: rest =>
+            loop match {
+              case Nil =>
+                breakLoops(rest, allModules1)
+              case loop =>
+                val sortedLoop = loop sortBy { x =>
+                  (for {
+                    oar <- allModules0(x)
+                    mr <- oar.modules
+                    c <- mr.callers
+                  } yield c).size
+                }
+                val moduleWithMostCallers = sortedLoop.reverse.head
+                val next: (String, String) = loop(loop.indexOf(moduleWithMostCallers) + 1)
+                // remove the module with most callers as the caller of next.
+                // so, A -> C, B -> C, and C -> A. C has the most callers, and C -> A will be removed.
+                val nextMap = allModules1 map {
+                  case (k: (String, String), oars0) if k == next =>
+                    val oars: Vector[OrganizationArtifactReport] = oars0 map { oar =>
+                      val mrs = oar.modules map { mr =>
+                        val callers0 = mr.callers
+                        val callers = callers0 filterNot { c => (c.caller.organization, c.caller.name) == moduleWithMostCallers }
+                        if (callers.size == callers0.size) mr
+                        else {
+                          log.debug(s":: $rootModuleConf: removing caller $moduleWithMostCallers -> $next for sorting")
+                          mr.copy(callers = callers)
+                        }
+                      }
+                      OrganizationArtifactReport(oar.organization, oar.name, mrs)
+                    }
+                    (k, oars)
+                  case (k, v) => (k, v)
+                }
+                breakLoops(rest, nextMap)
+            }
+        }
+      val loop = detectLoops(allModules0)
+      log.debug(s":: $rootModuleConf: loop: $loop")
+      val allModules2 = breakLoops(loop, allModules0)
       // sort the all modules such that less called modules comes earlier
       @tailrec def sortModules(cs: Vector[(String, String)],
         acc: Vector[(String, String)], extra: Vector[(String, String)],
@@ -413,7 +487,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
           // println(s"sortModules: $n / $guard")
           val keys = cs.toSet
           val (called, notCalled) = cs partition { k =>
-            val reports = allModules0(k)
+            val reports = allModules2(k)
             reports exists {
               _.modules.exists {
                 _.callers exists { caller =>
@@ -425,7 +499,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
           }
           lazy val result0 = acc ++ notCalled ++ called ++ extra
           def warnCircular(): Unit = {
-            log.warn(s"""avoid circular dependency while using cached resolution: ${cs.mkString(",")}""")
+            log.warn(s"""unexpected circular dependency while using cached resolution: ${cs.mkString(",")}""")
           }
           (if (n > guard) {
             warnCircular
@@ -463,6 +537,8 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
         }
       val guard0 = (orgNamePairs.size * orgNamePairs.size) + 1
       val sorted: Vector[(String, String)] = sortModules(orgNamePairs, Vector(), Vector(), 0, guard0)
+      val sortedStr = (sorted map { case (o, n) => s"$o:$n" }).mkString(", ")
+      log.debug(s":: sort result: $sortedStr")
       val result = resolveConflicts(sorted.toList, allModules0)
       result.toVector
     }
