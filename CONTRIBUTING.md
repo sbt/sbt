@@ -131,7 +131,7 @@ Build from source
 
 	If using the 0.13 development branch, the launcher is at:
 
-		<sbt>/target/sbt-launch-0.13.9-SNAPSHOT.jar
+		<sbt>/target/sbt-launch-0.13.10-SNAPSHOT.jar
 		
 	Directory `target` is removed by clean command. Second solution is using artifact stored in local ivy repository.
 		
@@ -141,7 +141,7 @@ Build from source
                 
 	 for v0.13.8 tag, or in:
                 
-              $HOME/.ivy2/local/org.scala-sbt/sbt-launch/0.13.9-SNAPSHOT/jars/sbt-launch.jar
+              $HOME/.ivy2/local/org.scala-sbt/sbt-launch/0.13.10-SNAPSHOT/jars/sbt-launch.jar
                 
 	 for development branch.
 
@@ -153,7 +153,7 @@ Build from source
 
 3. After each `publishLocal`, clean the `~/.sbt/boot/` directory.  Alternatively, if sbt is running and the launcher hasn't changed, run `reboot full` to have sbt do this for you.
 
-4. If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `0.13.9-SNAPSHOT`.
+4. If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `0.13.10-SNAPSHOT`.
 
 Building Documentation
 ----------------------
