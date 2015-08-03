@@ -49,7 +49,7 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
   private[this] val visitedStructures = visitedMap[Structure]
   private[this] val visitedClassLike = visitedMap[ClassLike]
   private[this] def visitedMap[T] = new mutable.HashMap[T, List[Hash]]
-  private[this] def visit[T](map: mutable.Map[T, List[Hash]], t: T)(hashF: T => Unit) {
+  private[this] def visit[T](map: mutable.Map[T, List[Hash]], t: T)(hashF: T => Unit): Unit = {
     map.put(t, hash :: map.getOrElse(t, Nil)) match {
       case Some(x :: _) => extend(x)
       case _ =>
@@ -102,11 +102,11 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
 
   @inline final def hashString(s: String): Unit = extend(stringHash(s))
   @inline final def hashBoolean(b: Boolean): Unit = extend(if (b) TrueHash else FalseHash)
-  @inline final def hashSeq[T](s: Seq[T], hashF: T => Unit) {
+  @inline final def hashSeq[T](s: Seq[T], hashF: T => Unit): Unit = {
     extend(s.length)
     s foreach hashF
   }
-  final def hashSymmetric[T](ts: TraversableOnce[T], hashF: T => Unit) {
+  final def hashSymmetric[T](ts: TraversableOnce[T], hashF: T => Unit): Unit = {
     val current = hash
     val mA = magicA
     val mB = magicB
@@ -123,7 +123,7 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
     extend(symmetricHash(hashes, 0xb592f7ae)) // constant from MurmurHash3
   }
 
-  @inline final def extend(a: Hash) {
+  @inline final def extend(a: Hash): Unit = {
     hash = extendHash(hash, a, magicA, magicB)
     magicA = nextMagicA(magicA)
     magicB = nextMagicB(magicB)
@@ -166,7 +166,7 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
       }
       hashSymmetric(ds, (hashDefinitionCombined _).tupled)
     }
-  def hashDefinition(d: Definition) {
+  def hashDefinition(d: Definition): Unit = {
     hashString(d.name)
     hashAnnotations(d.annotations)
     hashModifiers(d.modifiers)
@@ -180,20 +180,20 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
     }
   }
   final def hashClass(c: ClassLike): Unit = visit(visitedClassLike, c)(hashClass0)
-  def hashClass0(c: ClassLike) {
+  def hashClass0(c: ClassLike): Unit = {
     extend(ClassHash)
     hashParameterizedDefinition(c)
     hashType(c.selfType)
     hashStructure(c.structure, includeDefinitions)
   }
-  def hashField(f: FieldLike) {
+  def hashField(f: FieldLike): Unit = {
     f match {
       case v: Var => extend(VarHash)
       case v: Val => extend(ValHash)
     }
     hashType(f.tpe)
   }
-  def hashDef(d: Def) {
+  def hashDef(d: Def): Unit = {
     extend(DefHash)
     hashParameterizedDefinition(d)
     hashValueParameters(d.valueParameters)
@@ -236,23 +236,23 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
       hashBoolean(parameter.hasDefault)
     }
 
-  def hashParameterizedDefinition[T <: ParameterizedDefinition](d: T) {
+  def hashParameterizedDefinition[T <: ParameterizedDefinition](d: T): Unit = {
     hashTypeParameters(d.typeParameters)
   }
-  def hashTypeDeclaration(d: TypeDeclaration) {
+  def hashTypeDeclaration(d: TypeDeclaration): Unit = {
     extend(TypeDeclHash)
     hashParameterizedDefinition(d)
     hashType(d.lowerBound)
     hashType(d.upperBound)
   }
-  def hashTypeAlias(d: TypeAlias) {
+  def hashTypeAlias(d: TypeAlias): Unit = {
     extend(TypeAliasHash)
     hashParameterizedDefinition(d)
     hashType(d.tpe)
   }
 
   def hashTypeParameters(parameters: Seq[TypeParameter]) = hashSeq(parameters, hashTypeParameter)
-  def hashTypeParameter(parameter: TypeParameter) {
+  def hashTypeParameter(parameter: TypeParameter): Unit = {
     hashString(parameter.id)
     extend(parameter.variance.ordinal)
     hashTypeParameters(parameter.typeParameters)
@@ -267,7 +267,7 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
       hashAnnotationArguments(annotation.arguments)
     }
   def hashAnnotationArguments(args: Seq[AnnotationArgument]) = hashSeq(args, hashAnnotationArgument)
-  def hashAnnotationArgument(arg: AnnotationArgument) {
+  def hashAnnotationArgument(arg: AnnotationArgument): Unit = {
     hashString(arg.name)
     hashString(arg.value)
   }
@@ -288,11 +288,11 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
       case pr: ParameterRef => hashParameterRef(pr)
     }
 
-  def hashParameterRef(p: ParameterRef) {
+  def hashParameterRef(p: ParameterRef): Unit = {
     extend(ParameterRefHash)
     hashString(p.id)
   }
-  def hashSingleton(s: Singleton) {
+  def hashSingleton(s: Singleton): Unit = {
     extend(SingletonHash)
     hashPath(s.path)
   }
@@ -302,11 +302,11 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
     case s: Super => hashSuperPath(s)
     case id: Id   => hashIdPath(id)
   }
-  def hashSuperPath(s: Super) {
+  def hashSuperPath(s: Super): Unit = {
     extend(SuperHash)
     hashPath(s.qualifier)
   }
-  def hashIdPath(id: Id) {
+  def hashIdPath(id: Id): Unit = {
     extend(IdPathHash)
     hashString(id.id)
   }
@@ -333,19 +333,19 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
       hashString(p.id)
       hashType(p.prefix)
     }
-  def hashParameterized(p: Parameterized) {
+  def hashParameterized(p: Parameterized): Unit = {
     extend(ParameterizedHash)
     hashType(p.baseType)
     hashTypes(p.typeArguments)
   }
-  def hashAnnotated(a: Annotated) {
+  def hashAnnotated(a: Annotated): Unit = {
     extend(AnnotatedHash)
     hashType(a.baseType)
     hashAnnotations(a.annotations)
   }
   final def hashStructure(structure: Structure, includeDefinitions: Boolean) =
     visit(visitedStructures, structure)(structure => hashStructure0(structure, includeDefinitions))
-  def hashStructure0(structure: Structure, includeDefinitions: Boolean) {
+  def hashStructure0(structure: Structure, includeDefinitions: Boolean): Unit = {
     extend(StructureHash)
     hashTypes(structure.parents, includeDefinitions)
     if (includeDefinitions) {
@@ -359,4 +359,3 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
       hashType(base)
     }
 }
-

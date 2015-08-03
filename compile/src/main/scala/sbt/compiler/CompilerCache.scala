@@ -42,7 +42,7 @@ object CompilerCache {
   def apply(maxInstances: Int): GlobalsCache = new CompilerCache(maxInstances)
 
   val fresh: GlobalsCache = new GlobalsCache {
-    def clear() {}
+    def clear(): Unit = ()
     def apply(args: Array[String], output: Output, forceNew: Boolean, c: CachedCompilerProvider, log: xLogger, reporter: Reporter): CachedCompiler =
       c.newCachedCompiler(args, output, log, reporter, /*resident = */ false)
   }

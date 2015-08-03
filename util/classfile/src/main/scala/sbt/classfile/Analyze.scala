@@ -43,7 +43,7 @@ private[sbt] object Analyze {
     for ((source, classFiles) <- sourceToClassFiles) {
       val publicInherited = readAPI(source, classFiles.toSeq.flatMap(c => load(c.className, Some("Error reading API from class file"))))
 
-      def processDependency(tpe: String, context: DependencyContext) {
+      def processDependency(tpe: String, context: DependencyContext): Unit = {
         trapAndLog(log) {
           for (url <- Option(loader.getResource(tpe.replace('.', '/') + ClassExt)); file <- urlAsFile(url, log)) {
             if (url.getProtocol == "jar")
@@ -76,7 +76,7 @@ private[sbt] object Analyze {
         log.warn("Could not convert URL '" + url.toExternalForm + "' to File: " + e.toString)
         None
     }
-  private def trapAndLog(log: Logger)(execute: => Unit) {
+  private def trapAndLog(log: Logger)(execute: => Unit): Unit = {
     try { execute }
     catch { case e: Throwable => log.trace(e); log.error(e.toString) }
   }

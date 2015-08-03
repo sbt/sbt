@@ -29,12 +29,12 @@ object APIUtil {
 
     // Don't visit inherited definitions since we consider that a class
     // that inherits a macro does not have a macro.
-    override def visitStructure0(structure: Structure) {
+    override def visitStructure0(structure: Structure): Unit = {
       visitTypes(structure.parents)
       visitDefinitions(structure.declared)
     }
 
-    override def visitModifiers(m: Modifiers) {
+    override def visitModifiers(m: Modifiers): Unit = {
       hasMacro ||= m.isMacro
       super.visitModifiers(m)
     }

@@ -13,7 +13,7 @@ import java.util.Locale
 abstract class GeneratorBase(val basePkgName: String, val baseDirectory: File) {
   def writeDefinitions(ds: Iterable[Definition]) = Generator.writeDefinitions(ds)(writeDefinition)
   def writeDefinition(d: Definition) = d match { case e: EnumDef => writeEnum(e); case c: ClassDef => writeClass(c) }
-  def writeEnum(e: EnumDef) {
+  def writeEnum(e: EnumDef): Unit = {
     val content =
       "public enum " + e.name + " {" +
         e.members.mkString("\n\t", ",\n\t", "\n") +
@@ -22,7 +22,7 @@ abstract class GeneratorBase(val basePkgName: String, val baseDirectory: File) {
   }
   def writeClass(c: ClassDef): Unit
 
-  def writeSource(name: String, pkgName: String, content: String) {
+  def writeSource(name: String, pkgName: String, content: String): Unit = {
     val file = new File(new File(baseDirectory, packagePath(pkgName)), name + ".java")
     file.getParentFile.mkdirs()
     write(file, "package " + pkgName + ";\n\n" + content)
@@ -153,7 +153,7 @@ object Generator {
       method("public", "String", "toString", "", content)
     }
 
-  def writeDefinitions(ds: Iterable[Definition])(writeDefinition: Definition => Unit) {
+  def writeDefinitions(ds: Iterable[Definition])(writeDefinition: Definition => Unit): Unit = {
     val (_, duplicates) =
       ((Set[String](), Set[String]()) /: ds.map(_.name)) {
         case ((nameSet, duplicates), name) =>

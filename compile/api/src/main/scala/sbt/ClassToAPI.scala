@@ -44,7 +44,11 @@ object ClassToAPI {
     c.getEnclosingClass eq null
 
   final class ClassMap private[sbt] (private[sbt] val memo: mutable.Map[String, Seq[api.ClassLike]], private[sbt] val inherited: mutable.Set[Class[_]], private[sbt] val lz: mutable.Buffer[xsbti.api.Lazy[_]]) {
-    def clear() { memo.clear(); inherited.clear(); lz.clear() }
+    def clear(): Unit = {
+      memo.clear()
+      inherited.clear()
+      lz.clear()
+    }
   }
   def emptyClassMap: ClassMap = new ClassMap(new mutable.HashMap, new mutable.HashSet, new mutable.ListBuffer)
 

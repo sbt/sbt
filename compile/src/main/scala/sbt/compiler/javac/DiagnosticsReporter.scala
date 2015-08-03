@@ -46,7 +46,7 @@ final class DiagnosticsReporter(reporter: Reporter) extends DiagnosticListener[J
         Option(source).map(_.toUri.toString)
     }
   }
-  override def report(d: Diagnostic[_ <: JavaFileObject]) {
+  override def report(d: Diagnostic[_ <: JavaFileObject]): Unit = {
     val severity =
       d.getKind match {
         case Diagnostic.Kind.ERROR => Severity.Error
