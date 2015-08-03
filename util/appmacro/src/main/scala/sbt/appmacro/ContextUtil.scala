@@ -190,7 +190,7 @@ final class ContextUtil[C <: Context](val ctx: C) {
 
   // Workaround copied from scala/async:can be removed once https://github.com/scala/scala/pull/3179 is merged.
   private[this] class ChangeOwnerAndModuleClassTraverser(oldowner: global.Symbol, newowner: global.Symbol) extends global.ChangeOwnerTraverser(oldowner, newowner) {
-    override def traverse(tree: global.Tree) {
+    override def traverse(tree: global.Tree): Unit = {
       tree match {
         case _: global.DefTree => change(tree.symbol.moduleClass)
         case _                 =>
