@@ -138,8 +138,8 @@ final object Aggregation {
         //  tasks, and input tasks in the same call.  The code below allows settings and tasks to be mixed, but not input tasks.
         // One problem with input tasks in `all` is that many input tasks consume all input and would need syntactic delimiters.
         // Once that is addressed, the tasks constructed by the input tasks would need to be combined with the explicit tasks.
-        if (inputTasks.size > 0) {
-          if (other.size > 0) {
+        if (inputTasks.nonEmpty) {
+          if (other.nonEmpty) {
             val inputStrings = inputTasks.map(_.key).mkString("Input task(s):\n\t", "\n\t", "\n")
             val otherStrings = other.map(_.key).mkString("Task(s)/setting(s):\n\t", "\n\t", "\n")
             failure(s"Cannot mix input tasks with plain tasks/settings.  $inputStrings $otherStrings")

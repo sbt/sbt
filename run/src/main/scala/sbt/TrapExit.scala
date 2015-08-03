@@ -478,7 +478,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
 
   private def disposeAllFrames(log: Logger) {
     val allFrames = java.awt.Frame.getFrames
-    if (allFrames.length > 0) {
+    if (allFrames.nonEmpty) {
       log.debug(s"Disposing ${allFrames.length} top-level windows...")
       allFrames.foreach(_.dispose) // dispose all top-level windows, which will cause the AWT-EventQueue-* threads to exit
       val waitSeconds = 2

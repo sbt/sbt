@@ -185,7 +185,7 @@ class AggressiveCompile(cacheFile: File) {
   def javaOnly(f: File) = f.getName.endsWith(".java")
 
   private[this] def explicitBootClasspath(options: Seq[String]): Seq[File] =
-    options.dropWhile(_ != CompilerArguments.BootClasspathOption).drop(1).take(1).headOption.toList.flatMap(IO.parseClasspath)
+    options.dropWhile(_ != CompilerArguments.BootClasspathOption).slice(1, 2).headOption.toList.flatMap(IO.parseClasspath)
 
   val store = MixedAnalyzingCompiler.staticCachedStore(cacheFile)
 

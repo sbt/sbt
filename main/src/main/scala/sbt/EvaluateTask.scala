@@ -415,7 +415,7 @@ object EvaluateTask {
 
   def liftAnonymous: Incomplete => Incomplete = {
     case i @ Incomplete(node, tpe, None, causes, None) =>
-      causes.find(inc => !inc.node.isDefined && (inc.message.isDefined || inc.directCause.isDefined)) match {
+      causes.find(inc => inc.node.isEmpty && (inc.message.isDefined || inc.directCause.isDefined)) match {
         case Some(lift) => i.copy(directCause = lift.directCause, message = lift.message)
         case None       => i
       }

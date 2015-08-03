@@ -36,7 +36,7 @@ final class AnalyzingJavaCompiler private[sbt] (
    * @param progressOpt An optional compilation progress reporter.  Where we can report back what files we're currently compiling.
    */
   def compile(sources: Seq[File], options: Seq[String], output: Output, callback: AnalysisCallback, reporter: Reporter, log: Logger, progressOpt: Option[CompileProgress]): Unit = {
-    if (!sources.isEmpty) {
+    if (sources.nonEmpty) {
       val absClasspath = classpath.map(_.getAbsoluteFile)
       @annotation.tailrec def ancestor(f1: File, f2: File): Boolean =
         if (f2 eq null) false else if (f1 == f2) true else ancestor(f1, f2.getParentFile)

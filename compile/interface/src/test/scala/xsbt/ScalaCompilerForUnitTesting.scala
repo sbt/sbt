@@ -33,7 +33,7 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean = false) {
 
   def extractUsedNamesFromSrc(src: String): Set[String] = {
     val (Seq(tempSrcFile), analysisCallback) = compileSrcs(src)
-    analysisCallback.usedNames(tempSrcFile).toSet
+    analysisCallback.usedNames(tempSrcFile)
   }
 
   /**
@@ -46,7 +46,7 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean = false) {
   def extractUsedNamesFromSrc(definitionSrc: String, actualSrc: String): Set[String] = {
     // we drop temp src file corresponding to the definition src file
     val (Seq(_, tempSrcFile), analysisCallback) = compileSrcs(definitionSrc, actualSrc)
-    analysisCallback.usedNames(tempSrcFile).toSet
+    analysisCallback.usedNames(tempSrcFile)
   }
 
   /**
@@ -62,8 +62,8 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean = false) {
    * file system-independent way of testing dependencies between source code "files".
    */
   def extractDependenciesFromSrcs(srcs: List[Map[Symbol, String]]): ExtractedSourceDependencies = {
-    val rawGroupedSrcs = srcs.map(_.values.toList).toList
-    val symbols = srcs.map(_.keys).flatten
+    val rawGroupedSrcs = srcs.map(_.values.toList)
+    val symbols = srcs.flatMap(_.keys)
     val (tempSrcFiles, testCallback) = compileSrcs(rawGroupedSrcs)
     val fileToSymbol = (tempSrcFiles zip symbols).toMap
 

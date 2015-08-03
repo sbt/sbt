@@ -174,7 +174,7 @@ object Load {
       val keys = Index.allKeys(settings)
       val attributeKeys = Index.attributeKeys(data) ++ keys.map(_.key)
       val scopedKeys = keys ++ data.allKeys((s, k) => ScopedKey(s, k))
-      val projectsMap = projects.mapValues(_.defined.keySet).toMap
+      val projectsMap = projects.mapValues(_.defined.keySet)
       val keyIndex = KeyIndex(scopedKeys, projectsMap)
       val aggIndex = KeyIndex.aggregate(scopedKeys, extra(keyIndex), projectsMap)
       new sbt.StructureIndex(Index.stringToKeyMap(attributeKeys), Index.taskToKeyMap(data), Index.triggers(data), keyIndex, aggIndex)
@@ -358,7 +358,7 @@ object Load {
       builds map {
         case (uri, unit) =>
           (uri, unit.resolveRefs(ref => Scope.resolveProjectRef(uri, rootProject, ref)))
-      } toMap;
+      }
     }
   def checkAll(referenced: Map[URI, List[ProjectReference]], builds: Map[URI, sbt.PartBuildUnit]) {
     val rootProject = getRootProject(builds)
@@ -396,7 +396,7 @@ object Load {
     {
       IO.assertAbsolute(uri)
       val resolve = (_: Project).resolve(ref => Scope.resolveProjectRef(uri, rootProject, ref))
-      new sbt.LoadedBuildUnit(unit.unit, unit.defined mapValues resolve toMap, unit.rootProjects, unit.buildSettings)
+      new sbt.LoadedBuildUnit(unit.unit, unit.defined mapValues resolve, unit.rootProjects, unit.buildSettings)
     }
   def projects(unit: sbt.BuildUnit): Seq[Project] =
     {

@@ -27,7 +27,7 @@ private[sbt] object SettingCompletions {
     {
       import extracted._
       val r = relation(extracted.structure, true)
-      val allDefs = Def.flattenLocals(Def.compiled(extracted.structure.settings, true)(structure.delegates, structure.scopeLocal, implicitly[Show[ScopedKey[_]]])).map(_._1)
+      val allDefs = Def.flattenLocals(Def.compiled(extracted.structure.settings, true)(structure.delegates, structure.scopeLocal, implicitly[Show[ScopedKey[_]]])).keys
       val projectScope = Load.projectScope(currentRef)
       def resolve(s: Setting[_]): Seq[Setting[_]] = Load.transformSettings(projectScope, currentRef.build, rootProject, s :: Nil)
       def rescope[T](setting: Setting[T]): Seq[Setting[_]] =

@@ -635,12 +635,12 @@ object Defaults extends BuildCommon {
 
   // drop base directories, since there are no valid mappings for these
   def sourceMappings = (unmanagedSources, unmanagedSourceDirectories, baseDirectory) map { (srcs, sdirs, base) =>
-    ((srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)) toSeq
+    (srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)
   }
   def resourceMappings = relativeMappings(unmanagedResources, unmanagedResourceDirectories)
   def relativeMappings(files: ScopedTaskable[Seq[File]], dirs: ScopedTaskable[Seq[File]]): Initialize[Task[Seq[(File, String)]]] =
     (files, dirs) map { (rs, rdirs) =>
-      (rs --- rdirs) pair (relativeTo(rdirs) | flat) toSeq
+      (rs --- rdirs) pair (relativeTo(rdirs) | flat)
     }
 
   def collectFiles(dirs: ScopedTaskable[Seq[File]], filter: ScopedTaskable[FileFilter], excludes: ScopedTaskable[FileFilter]): Initialize[Task[Seq[File]]] =
@@ -1181,7 +1181,7 @@ object Classpaths {
       (confs ++ confs.map(internalConfigurationMap.value) ++ (if (autoCompilerPlugins.value) CompilerPlugin :: Nil else Nil)).distinct
     },
     ivyConfigurations ++= Configurations.auxiliary,
-    ivyConfigurations ++= { if (managedScalaInstance.value && !scalaHome.value.isDefined) Configurations.ScalaTool :: Nil else Nil },
+    ivyConfigurations ++= { if (managedScalaInstance.value && scalaHome.value.isEmpty) Configurations.ScalaTool :: Nil else Nil },
     moduleSettings <<= moduleSettings0,
     makePomConfiguration := new MakePomConfiguration(artifactPath in makePom value, projectInfo.value, None, pomExtra.value, pomPostProcess.value, pomIncludeRepository.value, pomAllRepositories.value),
     deliverLocalConfiguration := deliverConfig(crossTarget.value, status = if (isSnapshot.value) "integration" else "release", logging = ivyLoggingLevel.value),
@@ -1239,7 +1239,7 @@ object Classpaths {
   )
 
   val jvmBaseSettings: Seq[Setting[_]] = Seq(
-    libraryDependencies ++= autoLibraryDependency(autoScalaLibrary.value && !scalaHome.value.isDefined && managedScalaInstance.value, sbtPlugin.value, scalaOrganization.value, scalaVersion.value),
+    libraryDependencies ++= autoLibraryDependency(autoScalaLibrary.value && scalaHome.value.isEmpty && managedScalaInstance.value, sbtPlugin.value, scalaOrganization.value, scalaVersion.value),
     // Override the default to handle mixing in the sbtPlugin + scala dependencies.
     allDependencies := {
       val base = projectDependencies.value ++ libraryDependencies.value
