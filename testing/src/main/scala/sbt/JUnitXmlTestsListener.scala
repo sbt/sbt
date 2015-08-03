@@ -110,7 +110,7 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
   /**
    * Starts a new, initially empty Suite with the given name.
    */
-  override def startGroup(name: String) { testSuite.value_=(new TestSuite(name)) }
+  override def startGroup(name: String): Unit = testSuite.value_=(new TestSuite(name))
 
   /**
    * Adds all details for the given even to the current suite.

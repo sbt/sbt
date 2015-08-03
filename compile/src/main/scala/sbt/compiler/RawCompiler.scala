@@ -13,7 +13,7 @@ import java.io.File
  * the scala-library.jar from `scalaInstance` is put on bootclasspath and the scala-compiler jar goes on the classpath.
  */
 class RawCompiler(val scalaInstance: xsbti.compile.ScalaInstance, cp: ClasspathOptions, log: Logger) {
-  def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String]) {
+  def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String]): Unit = {
     // reflection is required for binary compatibility
     // The following import ensures there is a compile error if the identifiers change,
     //   but should not be otherwise directly referenced
@@ -27,7 +27,7 @@ class RawCompiler(val scalaInstance: xsbti.compile.ScalaInstance, cp: ClasspathO
     checkForFailure(mainClass, arguments.toArray)
   }
   def compilerArguments = new CompilerArguments(scalaInstance, cp)
-  protected def checkForFailure(mainClass: Class[_], args: Array[String]) {
+  protected def checkForFailure(mainClass: Class[_], args: Array[String]): Unit = {
     val reporter = mainClass.getMethod("reporter").invoke(null)
     val failed = reporter.getClass.getMethod("hasErrors").invoke(reporter).asInstanceOf[Boolean]
     if (failed) throw new CompileFailed(args, "Plain compile failed", Array())

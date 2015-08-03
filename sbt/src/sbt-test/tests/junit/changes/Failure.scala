@@ -4,5 +4,5 @@ import org.junit._
 
 class Failure
 {
-	@Test def fail() { sys.error("Fail!") }
+	@Test def fail(): Unit = sys.error("Fail!")
 }

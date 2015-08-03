@@ -38,7 +38,7 @@ object ReplaceMavenConfigurationMappings {
     // NOTE - This code is copied from org.apache.ivy.plugins.parser.m2.PomModuleDescriptorBuilder
     // except with altered default configurations...
     REPLACEMENT_MAPPINGS.put("compile", new PomModuleDescriptorBuilder.ConfMapper {
-      def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean) {
+      def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean): Unit = {
         if (isOptional) {
           dd.addDependencyConfiguration("optional", "compile(*)")
           // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
@@ -52,7 +52,7 @@ object ReplaceMavenConfigurationMappings {
       }
     })
     REPLACEMENT_MAPPINGS.put("provided", new PomModuleDescriptorBuilder.ConfMapper {
-      def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean) {
+      def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean): Unit = {
         if (isOptional) {
           dd.addDependencyConfiguration("optional", "compile(*)")
           dd.addDependencyConfiguration("optional", "provided(*)")
@@ -70,7 +70,7 @@ object ReplaceMavenConfigurationMappings {
     })
 
     REPLACEMENT_MAPPINGS.put("runtime", new PomModuleDescriptorBuilder.ConfMapper {
-      def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean) {
+      def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean): Unit = {
         if (isOptional) {
           dd.addDependencyConfiguration("optional", "compile(*)")
           dd.addDependencyConfiguration("optional", "provided(*)")
@@ -86,7 +86,7 @@ object ReplaceMavenConfigurationMappings {
     })
 
     REPLACEMENT_MAPPINGS.put("test", new PomModuleDescriptorBuilder.ConfMapper {
-      def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean) {
+      def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean): Unit = {
         dd.addDependencyConfiguration("test", "runtime(*)")
         // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
         dd.addDependencyConfiguration("test", "master(compile)")
@@ -94,7 +94,7 @@ object ReplaceMavenConfigurationMappings {
     })
 
     REPLACEMENT_MAPPINGS.put("system", new PomModuleDescriptorBuilder.ConfMapper {
-      def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean) {
+      def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean): Unit = {
         // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
         dd.addDependencyConfiguration("system", "master(compile)")
       }

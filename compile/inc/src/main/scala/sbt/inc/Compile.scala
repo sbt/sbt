@@ -184,7 +184,7 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
   // empty value used when name hashing algorithm is disabled
   private val emptyNameHashes = new xsbti.api._internalOnly_NameHashes(Array.empty, Array.empty)
 
-  def api(sourceFile: File, source: SourceAPI) {
+  def api(sourceFile: File, source: SourceAPI): Unit = {
     import xsbt.api.{ APIUtil, HashAPI }
     if (APIUtil.isScalaSourceName(sourceFile.getName) && APIUtil.hasMacro(source)) macroSources += sourceFile
     publicNameHashes(sourceFile) = {

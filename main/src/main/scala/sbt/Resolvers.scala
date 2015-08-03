@@ -58,11 +58,11 @@ object Resolvers {
   val mercurial: Resolver = new DistributedVCS {
     override val scheme = "hg"
 
-    override def clone(from: String, to: File) {
+    override def clone(from: String, to: File): Unit = {
       run("hg", "clone", "-q", from, to.getAbsolutePath)
     }
 
-    override def checkout(branch: String, in: File) {
+    override def checkout(branch: String, in: File): Unit = {
       run(Some(in), "hg", "checkout", "-q", branch)
     }
   }.toResolver
@@ -121,11 +121,10 @@ object Resolvers {
     isWindows && !isCygwin
   }
 
-  def run(command: String*) {
+  def run(command: String*): Unit =
     run(None, command: _*)
-  }
 
-  def run(cwd: Option[File], command: String*) {
+  def run(cwd: Option[File], command: String*): Unit = {
     val result = Process(
       if (onWindows) "cmd" +: "/c" +: command
       else command,

@@ -124,7 +124,7 @@ object SessionSettings {
   def pluralize(size: Int, of: String) = size.toString + (if (size == 1) of else (of + "s"))
 
   /** Checks to see if any session settings are being discarded and issues a warning. */
-  def checkSession(newSession: SessionSettings, oldState: State) {
+  def checkSession(newSession: SessionSettings, oldState: State): Unit = {
     val oldSettings = (oldState get Keys.sessionSettings).toList.flatMap(_.append).flatMap(_._2)
     if (newSession.append.isEmpty && oldSettings.nonEmpty)
       oldState.log.warn("Discarding " + pluralize(oldSettings.size, " session setting") + ".  Use 'session save' to persist session settings.")

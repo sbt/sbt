@@ -22,7 +22,7 @@ object Transform {
   def dummyMap(dummyMap: DummyTaskMap): Task ~>| Task =
     {
       val pmap = new DelegatingPMap[Task, Task](new collection.mutable.ListMap)
-      def add[T](dummy: TaskAndValue[T]) { pmap(dummy.task) = fromDummyStrict(dummy.task, dummy.value) }
+      def add[T](dummy: TaskAndValue[T]): Unit = { pmap(dummy.task) = fromDummyStrict(dummy.task, dummy.value) }
       dummyMap.mappings.foreach(x => add(x))
       pmap
     }

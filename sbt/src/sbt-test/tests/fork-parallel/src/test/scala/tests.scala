@@ -19,7 +19,7 @@ object ParallelTest {
 	}
 
 	@tailrec
-	def execute(f : => Unit) {
+	def execute(f : => Unit): Unit = {
 		val nb = nbConcurrentTests.incrementAndGet()
 		val max = maxConcurrentTests.get()
 		if( nb <= max || updateMaxConcurrentTests(max, nb)) {
@@ -34,20 +34,20 @@ object ParallelTest {
 
 class Test1 {
 	@Test
-	def slow() { ParallelTest.execute { Thread.sleep(1000) } }
+	def slow(): Unit = ParallelTest.execute { Thread.sleep(1000) }
 }
 
 class Test2 {
 	@Test
-	def slow() { ParallelTest.execute { Thread.sleep(1000) } }
+	def slow(): Unit = ParallelTest.execute { Thread.sleep(1000) }
 }
 
 class Test3 {
 	@Test
-	def slow() { ParallelTest.execute { Thread.sleep(1000) } }
+	def slow(): Unit = ParallelTest.execute { Thread.sleep(1000) }
 }
 
 class Test4 {
 	@Test
-	def slow() { ParallelTest.execute { Thread.sleep(1000) } }
+	def slow(): Unit = ParallelTest.execute { Thread.sleep(1000) }
 }

@@ -104,7 +104,7 @@ object JLineCompletion {
       !(common.isEmpty && display.isEmpty)
     }
 
-  def appendCompletion(common: String, reader: ConsoleReader) {
+  def appendCompletion(common: String, reader: ConsoleReader): Unit = {
     reader.getCursorBuffer.write(common)
     reader.redrawLine()
   }
@@ -113,16 +113,16 @@ object JLineCompletion {
    * `display` is assumed to be the exact strings requested to be displayed.
    * In particular, duplicates should have been removed already.
    */
-  def showCompletions(display: Seq[String], reader: ConsoleReader) {
+  def showCompletions(display: Seq[String], reader: ConsoleReader): Unit = {
     printCompletions(display, reader)
     reader.drawLine()
   }
-  def printCompletions(cs: Seq[String], reader: ConsoleReader) {
+  def printCompletions(cs: Seq[String], reader: ConsoleReader): Unit = {
     val print = shouldPrint(cs, reader)
     reader.println()
     if (print) printLinesAndColumns(cs, reader)
   }
-  def printLinesAndColumns(cs: Seq[String], reader: ConsoleReader) {
+  def printLinesAndColumns(cs: Seq[String], reader: ConsoleReader): Unit = {
     val (lines, columns) = cs partition hasNewline
     for (line <- lines) {
       reader.print(line)

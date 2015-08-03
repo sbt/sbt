@@ -34,11 +34,11 @@ object CopySpec extends Properties("Copy") {
     }
   }
 
-  def generate(seed: Long, size: Long, file: File) {
+  def generate(seed: Long, size: Long, file: File): Unit = {
     val rnd = new java.util.Random(seed)
 
     val buffer = new Array[Byte](BufferSize)
-    def loop(offset: Long) {
+    def loop(offset: Long): Unit = {
       val len = math.min(size - offset, BufferSize)
       if (len > 0) {
         rnd.nextBytes(buffer)
@@ -48,7 +48,7 @@ object CopySpec extends Properties("Copy") {
     }
     if (size == 0L) IO.touch(file) else loop(0)
   }
-  def checkContentsSame(f1: File, f2: File) {
+  def checkContentsSame(f1: File, f2: File): Unit = {
     val len = f1.length
     assert(len == f2.length, "File lengths differ: " + (len, f2.length).toString + " for " + (f1, f2).toString)
     Using.fileInputStream(f1) { in1 =>

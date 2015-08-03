@@ -50,7 +50,7 @@ class LoggerReporter(maximumErrors: Int, log: Logger, sourcePositionMapper: Posi
 
   reset()
 
-  def reset() {
+  def reset(): Unit = {
     count.put(Warn, 0)
     count.put(SInfo, 0)
     count.put(Error, 0)
@@ -60,9 +60,9 @@ class LoggerReporter(maximumErrors: Int, log: Logger, sourcePositionMapper: Posi
   def hasWarnings = count.get(Warn) > 0
   def hasErrors = count.get(Error) > 0
   def problems: Array[Problem] = allProblems.toArray
-  def comment(pos: Position, msg: String) {}
+  def comment(pos: Position, msg: String): Unit = ()
 
-  def printSummary() {
+  def printSummary(): Unit = {
     val warnings = count.get(Severity.Warn)
     if (warnings > 0)
       log.warn(countElementsAsString(warnings, "warning") + " found")
@@ -73,7 +73,7 @@ class LoggerReporter(maximumErrors: Int, log: Logger, sourcePositionMapper: Posi
 
   def inc(sev: Severity) = count.put(sev, count.get(sev) + 1)
 
-  def display(pos: Position, msg: String, severity: Severity) {
+  def display(pos: Position, msg: String, severity: Severity): Unit = {
     inc(severity)
     if (severity != Error || maximumErrors <= 0 || count.get(severity) <= maximumErrors)
       print(severityLogger(severity), pos, msg)
@@ -88,7 +88,7 @@ class LoggerReporter(maximumErrors: Int, log: Logger, sourcePositionMapper: Posi
         })
       }
 
-  def print(log: (=> String) => Unit, pos: Position, msg: String) {
+  def print(log: (=> String) => Unit, pos: Position, msg: String): Unit = {
     if (pos.sourcePath.isEmpty && pos.line.isEmpty)
       log(msg)
     else {

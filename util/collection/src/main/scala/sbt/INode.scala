@@ -111,7 +111,7 @@ abstract class EvaluateSettings[Scope] {
     final def isNew: Boolean = synchronized { state == New }
     final def isCalling: Boolean = synchronized { state == Calling }
     final def registerIfNew(): Unit = synchronized { if (state == New) register() }
-    private[this] def register() {
+    private[this] def register(): Unit = {
       assert(state == New, "Already registered and: " + toString)
       val deps = dependsOn
       blockedOn = deps.size - deps.count(_.doneOrBlock(this))
@@ -133,12 +133,12 @@ abstract class EvaluateSettings[Scope] {
       if (blockedOn == 0) schedule()
     }
     final def evaluate(): Unit = synchronized { evaluate0() }
-    protected final def makeCall(source: BindNode[_, T], target: INode[T]) {
+    protected final def makeCall(source: BindNode[_, T], target: INode[T]): Unit = {
       assert(state == Ready, "Invalid state for call to makeCall: " + toString)
       state = Calling
       target.call(source)
     }
-    protected final def setValue(v: T) {
+    protected final def setValue(v: T): Unit = {
       assert(state != Evaluated, "Already evaluated (trying to set value to " + v + "): " + toString)
       if (v == null) sys.error("Setting value cannot be null: " + keyString)
       value = v

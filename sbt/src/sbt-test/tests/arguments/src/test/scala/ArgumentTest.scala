@@ -4,7 +4,7 @@ import org.scalatest.Tag
 
 class ArgumentTest extends FixtureFunSuite{
   type FixtureParam = Map[String,Any]
-  override def withFixture(test: OneArgTest) {
+  override def withFixture(test: OneArgTest): Unit = {
     test(test.configMap)
   }
   test("1", Tag("test1")){ conf => sys.error("error #1") }

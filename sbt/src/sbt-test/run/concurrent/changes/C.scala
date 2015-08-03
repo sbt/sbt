@@ -1,7 +1,7 @@
 import java.io.File
 
 object C {
-	def main(args: Array[String]) {
+	def main(args: Array[String]): Unit = {
 		val base = new File(args(0))
 		create(new File(base, "started"))
 		val bFin = new File(base, "../b/finished")
@@ -9,13 +9,13 @@ object C {
 		create(new File(base, "finished"))
 	}
 
-	def create(f: File) {
+	def create(f: File): Unit = {
 		val fabs = f.getAbsoluteFile
 		fabs.getParentFile.mkdirs
 		fabs.createNewFile
 	}
 
-	def waitFor(f: File) {
+	def waitFor(f: File): Unit = {
 		if(!f.exists) {
 			Thread.sleep(300)
 			waitFor(f)

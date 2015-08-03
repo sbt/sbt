@@ -58,7 +58,7 @@ object BuildUtil {
       BuildDependencies(cp.toMap, agg.toMap)
     }
 
-  def checkCycles(units: Map[URI, LoadedBuildUnit]) {
+  def checkCycles(units: Map[URI, LoadedBuildUnit]): Unit = {
     def getRef(pref: ProjectRef) = units(pref.build).defined(pref.project)
     def deps(proj: ResolvedProject)(base: ResolvedProject => Seq[ProjectRef]): Seq[ResolvedProject] = Dag.topologicalSort(proj)(p => base(p) map getRef)
     // check for cycles

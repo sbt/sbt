@@ -9,7 +9,7 @@ import java.util.Locale
 /** Generates a datatype hierarchy from a definition file.*/
 object GenerateDatatypes {
   /** Arguments: <base package name> <base directory> <input file>+*/
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     if (args.length < 3) {
       System.err.println("Invalid number of arguments, expected package, base directory, and files to process")
       System.exit(1)

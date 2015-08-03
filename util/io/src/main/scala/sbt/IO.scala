@@ -105,8 +105,10 @@ object IO {
       }
     }
 
-  def assertDirectory(file: File) { assert(file.isDirectory, (if (file.exists) "Not a directory: " else "Directory not found: ") + file) }
-  def assertDirectories(file: File*) { file.foreach(assertDirectory) }
+  def assertDirectory(file: File): Unit =
+    assert(file.isDirectory, (if (file.exists) "Not a directory: " else "Directory not found: ") + file)
+
+  def assertDirectories(file: File*): Unit = file.foreach(assertDirectory)
 
   // "base.extension" -> (base, extension)
   /**
@@ -137,7 +139,7 @@ object IO {
    * Creates a file at the given location if it doesn't exist.
    * If the file already exists and `setModified` is true, this method sets the last modified time to the current time.
    */
-  def touch(file: File, setModified: Boolean = true) {
+  def touch(file: File, setModified: Boolean = true): Unit = {
     val absFile = file.getAbsoluteFile
     createDirectory(absFile.getParentFile)
     val created = translate("Could not create file " + absFile) { absFile.createNewFile() }
@@ -167,7 +169,7 @@ object IO {
     }
 
   /** Gzips the file 'in' and writes it to 'out'.  'in' cannot be the same file as 'out'. */
-  def gzip(in: File, out: File) {
+  def gzip(in: File, out: File): Unit = {
     require(in != out, "Input file cannot be the same as the output file.")
     Using.fileInputStream(in) { inputStream =>
       Using.fileOutputStream()(out) { outputStream =>
@@ -180,7 +182,7 @@ object IO {
     gzipOutputStream(output) { gzStream => transfer(input, gzStream) }
 
   /** Gunzips the file 'in' and writes it to 'out'.  'in' cannot be the same file as 'out'. */
-  def gunzip(in: File, out: File) {
+  def gunzip(in: File, out: File): Unit = {
     require(in != out, "Input file cannot be the same as the output file.")
     Using.fileInputStream(in) { inputStream =>
       Using.fileOutputStream()(out) { outputStream =>
@@ -204,7 +206,7 @@ object IO {
   private def extract(from: ZipInputStream, toDirectory: File, filter: NameFilter, preserveLastModified: Boolean) =
     {
       val set = new HashSet[File]
-      def next() {
+      def next(): Unit = {
         val entry = from.getNextEntry
         if (entry == null)
           ()
@@ -267,10 +269,10 @@ object IO {
    * input stream is closed after the method completes.
    */
   def transferAndClose(in: InputStream, out: OutputStream): Unit = transferImpl(in, out, true)
-  private def transferImpl(in: InputStream, out: OutputStream, close: Boolean) {
+  private def transferImpl(in: InputStream, out: OutputStream, close: Boolean): Unit = {
     try {
       val buffer = new Array[Byte](BufferSize)
-      def read() {
+      def read(): Unit = {
         val byteCount = in.read(buffer)
         if (byteCount >= 0) {
           out.write(buffer, 0, byteCount)
@@ -343,7 +345,7 @@ object IO {
     {
       def isEmptyDirectory(dir: File) = dir.isDirectory && listFiles(dir).isEmpty
       def parents(fs: Set[File]) = fs flatMap { f => Option(f.getParentFile) }
-      def deleteEmpty(dirs: Set[File]) {
+      def deleteEmpty(dirs: Set[File]): Unit = {
         val empty = dirs filter isEmptyDirectory
         if (empty.nonEmpty) // looks funny, but this is true if at least one of `dirs` is an empty directory
         {
@@ -357,7 +359,7 @@ object IO {
     }
 
   /** Deletes `file`, recursively if it is a directory. */
-  def delete(file: File) {
+  def delete(file: File): Unit = {
     translate("Error deleting file " + file + ": ") {
       val deleted = file.delete()
       if (!deleted && file.isDirectory) {
@@ -399,7 +401,7 @@ object IO {
   def zip(sources: Traversable[(File, String)], outputZip: File): Unit =
     archive(sources.toSeq, outputZip, None)
 
-  private def archive(sources: Seq[(File, String)], outputFile: File, manifest: Option[Manifest]) {
+  private def archive(sources: Seq[(File, String)], outputFile: File, manifest: Option[Manifest]): Unit = {
     if (outputFile.isDirectory)
       sys.error("Specified output file " + outputFile + " is a directory.")
     else {
@@ -411,14 +413,14 @@ object IO {
       }
     }
   }
-  private def writeZip(sources: Seq[(File, String)], output: ZipOutputStream)(createEntry: String => ZipEntry) {
+  private def writeZip(sources: Seq[(File, String)], output: ZipOutputStream)(createEntry: String => ZipEntry): Unit = {
     val files = sources.flatMap { case (file, name) => if (file.isFile) (file, normalizeName(name)) :: Nil else Nil }
 
     val now = System.currentTimeMillis
     // The CRC32 for an empty value, needed to store directories in zip files
     val emptyCRC = new CRC32().getValue()
 
-    def addDirectoryEntry(name: String) {
+    def addDirectoryEntry(name: String): Unit = {
       output putNextEntry makeDirectoryEntry(name)
       output.closeEntry()
     }
@@ -441,7 +443,7 @@ object IO {
         e setTime file.lastModified
         e
       }
-    def addFileEntry(file: File, name: String) {
+    def addFileEntry(file: File, name: String): Unit = {
       output putNextEntry makeFileEntry(file, name)
       transfer(file, output)
       output.closeEntry()
@@ -481,7 +483,7 @@ object IO {
       if (sep == '/') name else name.replace(sep, '/')
     }
 
-  private def withZipOutput(file: File, manifest: Option[Manifest])(f: ZipOutputStream => Unit) {
+  private def withZipOutput(file: File, manifest: Option[Manifest])(f: ZipOutputStream => Unit): Unit = {
     fileOutputStream(false)(file) { fileOut =>
       val (zipOut, ext) =
         manifest match {
@@ -577,7 +579,7 @@ object IO {
    * Copies the contents of `sourceFile` to the location of `targetFile`, overwriting any existing content.
    * If `preserveLastModified` is `true`, the last modified time is transferred as well.
    */
-  def copyFile(sourceFile: File, targetFile: File, preserveLastModified: Boolean = false) {
+  def copyFile(sourceFile: File, targetFile: File, preserveLastModified: Boolean = false): Unit = {
     // NOTE: when modifying this code, test with larger values of CopySpec.MaxFileSizeBits than default
 
     require(sourceFile.exists, "Source file '" + sourceFile.getAbsolutePath + "' does not exist.")
@@ -863,10 +865,9 @@ object IO {
    * See also [[https://github.com/sbt/sbt/issues/136 issue 136]].
    */
   def objectInputStream(wrapped: InputStream, loader: ClassLoader): ObjectInputStream = new ObjectInputStream(wrapped) {
-    override def resolveClass(osc: ObjectStreamClass): Class[_] =
-      {
-        val c = Class.forName(osc.getName, false, loader)
-        if (c eq null) super.resolveClass(osc) else c
-      }
+    override def resolveClass(osc: ObjectStreamClass): Class[_] = {
+      val c = Class.forName(osc.getName, false, loader)
+      if (c eq null) super.resolveClass(osc) else c
+    }
   }
 }

@@ -37,7 +37,7 @@ final case class IvyScala(scalaFullVersion: String, scalaBinaryVersion: String, 
 
 private object IvyScala {
   /** Performs checks/adds filters on Scala dependencies (if enabled in IvyScala). */
-  def checkModule(module: DefaultModuleDescriptor, conf: String, log: Logger)(check: IvyScala) {
+  def checkModule(module: DefaultModuleDescriptor, conf: String, log: Logger)(check: IvyScala): Unit = {
     if (check.checkExplicit)
       checkDependencies(module, check.scalaBinaryVersion, check.configurations, log)
     if (check.filterImplicit)
@@ -45,12 +45,12 @@ private object IvyScala {
     if (check.overrideScalaVersion)
       overrideScalaVersion(module, check.scalaFullVersion)
   }
-  def overrideScalaVersion(module: DefaultModuleDescriptor, version: String) {
+  def overrideScalaVersion(module: DefaultModuleDescriptor, version: String): Unit = {
     overrideVersion(module, Organization, LibraryID, version)
     overrideVersion(module, Organization, CompilerID, version)
     overrideVersion(module, Organization, ReflectID, version)
   }
-  def overrideVersion(module: DefaultModuleDescriptor, org: String, name: String, version: String) {
+  def overrideVersion(module: DefaultModuleDescriptor, org: String, name: String, version: String): Unit = {
     val id = new ModuleId(org, name)
     val over = new OverrideDependencyDescriptorMediator(null, version)
     module.addDependencyDescriptorMediator(id, ExactPatternMatcher.INSTANCE, over)
@@ -60,7 +60,7 @@ private object IvyScala {
    * Checks the immediate dependencies of module for dependencies on scala jars and verifies that the version on the
    * dependencies matches scalaVersion.
    */
-  private def checkDependencies(module: ModuleDescriptor, scalaBinaryVersion: String, configurations: Iterable[Configuration], log: Logger) {
+  private def checkDependencies(module: ModuleDescriptor, scalaBinaryVersion: String, configurations: Iterable[Configuration], log: Logger): Unit = {
     val configSet = if (configurations.isEmpty) (c: String) => true else configurationSet(configurations)
     def binaryScalaWarning(dep: DependencyDescriptor): Option[String] =
       {
@@ -88,7 +88,7 @@ private object IvyScala {
    * done because these jars are provided by the ScalaInstance of the project.  The version of Scala to use
    * is done by setting scalaVersion in the project definition.
    */
-  private def excludeScalaJars(module: DefaultModuleDescriptor, configurations: Iterable[Configuration]) {
+  private def excludeScalaJars(module: DefaultModuleDescriptor, configurations: Iterable[Configuration]): Unit = {
     val configurationNames =
       {
         val names = module.getConfigurationsNames

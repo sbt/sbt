@@ -13,7 +13,7 @@ object Ticket543Test extends Build {
 		scalaVersion := "2.9.2",
 		fork := true,
 		testListeners += new TestReportListener {
-		  def testEvent(event: TestEvent) {
+		  def testEvent(event: TestEvent): Unit = {
 				for (e <- event.detail.filter(_.status == sbt.testing.Status.Failure)) {
 					if (e.throwable != null && e.throwable.isDefined) {
 						val caw = new CharArrayWriter
@@ -23,9 +23,9 @@ object Ticket543Test extends Build {
 					}
 				}
 		  }
-		  def startGroup(name: String) {}
-		  def endGroup(name: String, t: Throwable) {}
-		  def endGroup(name: String, result: TestResult.Value) {}
+		  def startGroup(name: String): Unit = ()
+		  def endGroup(name: String, t: Throwable): Unit = ()
+		  def endGroup(name: String, result: TestResult.Value): Unit = ()
 		},
 		check := {
 			val exists = marker.exists

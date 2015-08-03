@@ -22,7 +22,7 @@ object TaskRunnerForkTest extends Properties("TaskRunner Fork") {
     runDoubleJoin(abs(a), abs(b), workers)
     true
   }
-  def runDoubleJoin(a: Int, b: Int, workers: Int) {
+  def runDoubleJoin(a: Int, b: Int, workers: Int): Unit = {
     def inner(i: Int) = List.range(0, b).map(j => task(j).named(j.toString)).join
     tryRun(List.range(0, a).map(inner).join, false, workers)
   }

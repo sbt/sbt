@@ -31,6 +31,6 @@ verifyDeps := {
 	same(inheritedDeps("J"), JDeps)
 }
 
-def same[T](x: T, y: T) {
+def same[T](x: T, y: T): Unit = {
 	assert(x == y, s"\nActual: $x, \nExpected: $y")
 }

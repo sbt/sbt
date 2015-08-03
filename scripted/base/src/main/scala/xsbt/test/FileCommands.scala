@@ -58,18 +58,18 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
         scriptError(s"$pathA is not newer than $pathB")
       }
     }
-  def exists(paths: List[String]) {
+  def exists(paths: List[String]): Unit = {
     val notPresent = fromStrings(paths).filter(!_.exists)
     if (notPresent.nonEmpty)
       scriptError("File(s) did not exist: " + notPresent.mkString("[ ", " , ", " ]"))
   }
-  def absent(paths: List[String]) {
+  def absent(paths: List[String]): Unit = {
     val present = fromStrings(paths).filter(_.exists)
     if (present.nonEmpty)
       scriptError("File(s) existed: " + present.mkString("[ ", " , ", " ]"))
   }
   def execute(command: List[String]): Unit = execute0(command.head, command.tail)
-  def execute0(command: String, args: List[String]) {
+  def execute0(command: String, args: List[String]): Unit = {
     if (command.trim.isEmpty)
       scriptError("Command was empty.")
     else {

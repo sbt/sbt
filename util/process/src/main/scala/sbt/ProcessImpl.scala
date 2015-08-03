@@ -58,8 +58,8 @@ object BasicIO {
         processLinesFully(processLine)(reader.readLine)
         reader.close()
       }
-  def processLinesFully(processLine: String => Unit)(readLine: () => String) {
-    def readFully() {
+  def processLinesFully(processLine: String => Unit)(readLine: () => String): Unit = {
+    def readFully(): Unit = {
       val line = readLine()
       if (line != null) {
         processLine(line)
@@ -68,7 +68,7 @@ object BasicIO {
     }
     readFully()
   }
-  def connectToIn(o: OutputStream) { transferFully(Uncloseable protect System.in, o) }
+  def connectToIn(o: OutputStream): Unit = transferFully(Uncloseable protect System.in, o)
   def input(connect: Boolean): OutputStream => Unit = if (connect) connectToIn else closeOut
   def standard(connectInput: Boolean): ProcessIO = standard(input(connectInput), inheritInput(connectInput))
   def standard(in: OutputStream => Unit, inheritIn: JProcessBuilder => Boolean): ProcessIO = new ProcessIO(in, toStdOut, toStdErr, inheritIn)
@@ -87,10 +87,10 @@ object BasicIO {
         buffer.append(Newline)
       }
 
-  private[this] def transferFullyImpl(in: InputStream, out: OutputStream) {
+  private[this] def transferFullyImpl(in: InputStream, out: OutputStream): Unit = {
     val continueCount = 1 //if(in.isInstanceOf[PipedInputStream]) 1 else 0
     val buffer = new Array[Byte](BufferSize)
-    def read() {
+    def read(): Unit = {
       val byteCount = in.read(buffer)
       if (byteCount >= continueCount) {
         out.write(buffer, 0, byteCount)
@@ -189,7 +189,7 @@ private abstract class BasicProcess extends Process {
 }
 
 private abstract class CompoundProcess extends BasicProcess {
-  def destroy() { destroyer() }
+  def destroy(): Unit = destroyer()
   def exitValue() = getExitValue().getOrElse(sys.error("No exit code: process destroyed."))
 
   def start() = getExitValue
@@ -294,7 +294,7 @@ private class PipedProcesses(a: ProcessBuilder, b: ProcessBuilder, defaultIO: Pr
     }
 }
 private class PipeSource(currentSource: SyncVar[Option[InputStream]], pipe: PipedOutputStream, label: => String) extends Thread {
-  final override def run() {
+  final override def run(): Unit = {
     currentSource.get match {
       case Some(source) =>
         try { BasicIO.transferFully(source, pipe) }
@@ -311,7 +311,7 @@ private class PipeSource(currentSource: SyncVar[Option[InputStream]], pipe: Pipe
   }
 }
 private class PipeSink(pipe: PipedInputStream, currentSink: SyncVar[Option[OutputStream]], label: => String) extends Thread {
-  final override def run() {
+  final override def run(): Unit = {
     currentSink.get match {
       case Some(sink) =>
         try { BasicIO.transferFully(pipe, sink) }
@@ -338,7 +338,7 @@ private[sbt] class DummyProcessBuilder(override val toString: String, exitValue:
 private class DummyProcess(action: => Int) extends Process {
   private[this] val exitCode = Future(action)
   override def exitValue() = exitCode()
-  override def destroy() {}
+  override def destroy(): Unit = ()
 }
 /** Represents a simple command without any redirection or combination. */
 private[sbt] class SimpleProcessBuilder(p: JProcessBuilder) extends AbstractProcessBuilder {
@@ -410,12 +410,12 @@ private final class ThreadProcess(thread: Thread, success: SyncVar[Boolean]) ext
       thread.join()
       if (success.get) 0 else 1
     }
-  override def destroy() { thread.interrupt() }
+  override def destroy(): Unit = thread.interrupt()
 }
 
 object Uncloseable {
-  def apply(in: InputStream): InputStream = new FilterInputStream(in) { override def close() {} }
-  def apply(out: OutputStream): OutputStream = new FilterOutputStream(out) { override def close() {} }
+  def apply(in: InputStream): InputStream = new FilterInputStream(in) { override def close(): Unit = () }
+  def apply(out: OutputStream): OutputStream = new FilterOutputStream(out) { override def close(): Unit = () }
   def protect(in: InputStream): InputStream = if (in eq System.in) Uncloseable(in) else in
   def protect(out: OutputStream): OutputStream = if ((out eq System.out) || (out eq System.err)) Uncloseable(out) else out
 }

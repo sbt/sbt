@@ -9,6 +9,6 @@ check := {
 	same(bv, "2.10")
 }
 
-def same(actual: String, expected: String) {
+def same(actual: String, expected: String): Unit = {
   assert(actual == expected, s"Expected binary version to be $expected, was $actual")
 }

@@ -40,7 +40,7 @@ object LogWriterTest extends Properties("Log Writer") {
    * represented as separately written segments (ToLog instances).  ToLog.`byCharacter`
    * indicates whether to write the segment by character (true) or all at once (false)
    */
-  def logLines(writer: Writer, lines: List[List[ToLog]], newLine: String) {
+  def logLines(writer: Writer, lines: List[List[ToLog]], newLine: String): Unit = {
     for (line <- lines; section <- line) {
       val content = section.content
       val normalized = Escape.newline(content, newLine)
@@ -141,10 +141,10 @@ final class RecordingLogger extends BasicLogger {
   def getEvents = events.reverse
 
   override def ansiCodesSupported = true
-  def trace(t: => Throwable) { events ::= new Trace(t) }
-  def log(level: Level.Value, message: => String) { events ::= new Log(level, message) }
-  def success(message: => String) { events ::= new Success(message) }
-  def logAll(es: Seq[LogEvent]) { events :::= es.toList }
-  def control(event: ControlEvent.Value, message: => String) { events ::= new ControlEvent(event, message) }
+  def trace(t: => Throwable): Unit = { events ::= new Trace(t) }
+  def log(level: Level.Value, message: => String): Unit = { events ::= new Log(level, message) }
+  def success(message: => String): Unit = { events ::= new Success(message) }
+  def logAll(es: Seq[LogEvent]): Unit = { events :::= es.toList }
+  def control(event: ControlEvent.Value, message: => String): Unit = { events ::= new ControlEvent(event, message) }
 
 }

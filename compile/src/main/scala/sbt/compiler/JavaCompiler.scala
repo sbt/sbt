@@ -89,7 +89,7 @@ object JavaCompiler {
         val javaCp = ClasspathOptions.javac(cp.compiler)
         (new CompilerArguments(scalaInstance, javaCp))(sources, augmentedClasspath, Some(outputDirectory), options)
       }
-    def compile(contract: JavacContract, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger) {
+    def compile(contract: JavacContract, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger): Unit = {
       val arguments = commandArguments(sources, classpath, outputDirectory, options, log)
       onArgsF(arguments)
       val code: Int = f(contract, arguments, log)

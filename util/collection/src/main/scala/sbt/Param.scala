@@ -20,7 +20,7 @@ object Param {
         type T = s
         def in = a
         private var r: B[T] = _
-        def ret(b: B[T]) { r = b }
+        def ret(b: B[T]): Unit = { r = b }
         def ret: B[T] = r
       }
       p(v)

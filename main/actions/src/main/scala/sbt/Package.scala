@@ -32,7 +32,7 @@ object Package {
 
   def mergeAttributes(a1: Attributes, a2: Attributes) = a1 ++= a2
   // merges `mergeManifest` into `manifest` (mutating `manifest` in the process)
-  def mergeManifests(manifest: Manifest, mergeManifest: Manifest) {
+  def mergeManifests(manifest: Manifest, mergeManifest: Manifest): Unit = {
     mergeAttributes(manifest.getMainAttributes, mergeManifest.getMainAttributes)
     val entryMap = mapAsScalaMap(manifest.getEntries)
     for ((key, value) <- mergeManifest.getEntries) {
@@ -44,7 +44,7 @@ object Package {
   }
 
   final class Configuration(val sources: Seq[(File, String)], val jar: File, val options: Seq[PackageOption])
-  def apply(conf: Configuration, cacheFile: File, log: Logger) {
+  def apply(conf: Configuration, cacheFile: File, log: Logger): Unit = {
     val manifest = new Manifest
     val main = manifest.getMainAttributes
     for (option <- conf.options) {
@@ -71,7 +71,7 @@ object Package {
     val inputs = map :+: lastModified(map.keySet) :+: manifest :+: HNil
     cachedMakeJar(inputs)(() => exists(conf.jar))
   }
-  def setVersion(main: Attributes) {
+  def setVersion(main: Attributes): Unit = {
     val version = Attributes.Name.MANIFEST_VERSION
     if (main.getValue(version) eq null)
       main.put(version, "1.0")
@@ -90,7 +90,7 @@ object Package {
       val attribVals = Seq(name, version, orgName, org)
       ManifestAttributes((attribKeys zip attribVals) ++ { homepage map (h => (IMPLEMENTATION_URL, h.toString)) }: _*)
     }
-  def makeJar(sources: Seq[(File, String)], jar: File, manifest: Manifest, log: Logger) {
+  def makeJar(sources: Seq[(File, String)], jar: File, manifest: Manifest, log: Logger): Unit = {
     log.info("Packaging " + jar.getAbsolutePath + " ...")
     IO.delete(jar)
     log.debug(sourcesDebugString(sources))

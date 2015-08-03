@@ -8,9 +8,9 @@ final class TestException(statement: Statement, msg: String, exception: Throwabl
 
 class ScriptRunner {
   import scala.collection.mutable.HashMap
-  def apply(statements: List[(StatementHandler, Statement)]) {
+  def apply(statements: List[(StatementHandler, Statement)]): Unit = {
     val states = new HashMap[StatementHandler, Any]
-    def processStatement(handler: StatementHandler, statement: Statement) {
+    def processStatement(handler: StatementHandler, statement: Statement): Unit = {
       val state = states(handler).asInstanceOf[handler.State]
       val nextState =
         try { Right(handler(statement.command, statement.arguments, state)) }

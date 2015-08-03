@@ -72,7 +72,7 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launc
           val parser = createParser()
           run(parser.parse(file))
         }
-      def testFailed() {
+      def testFailed(): Unit = {
         if (pending) buffered.clear() else buffered.stop()
         buffered.error("x " + label + pendingString)
       }
@@ -98,7 +98,7 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launc
 
 object ScriptedTests extends ScriptedRunner {
   val emptyCallback: File => Unit = { _ => () }
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     val directory = new File(args(0))
     val buffer = args(1).toBoolean
     val sbtVersion = args(2)
@@ -145,7 +145,7 @@ class ScriptedRunner {
     }
     runAll(allTests)
   }
-  def runAll(tests: Seq[() => Option[String]]) {
+  def runAll(tests: Seq[() => Option[String]]): Unit = {
     val errors = for (test <- tests; err <- test()) yield err
     if (errors.nonEmpty)
       sys.error(errors.mkString("Failed tests:\n\t", "\n\t", "\n"))

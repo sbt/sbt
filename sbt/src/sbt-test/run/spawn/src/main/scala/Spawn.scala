@@ -5,31 +5,25 @@
 
 object Spawn
 {
-	def main(args: Array[String])
-	{
+	def main(args: Array[String]): Unit =	{
 		(new ThreadA).start
 	}
-	class ThreadA extends Thread
-	{
-		override def run()
-		{
+
+	class ThreadA extends Thread {
+		override def run(): Unit = {
 			sleep()
 			(new ThreadB).start()
 		}
 	}
-	class ThreadB extends Thread
-	{
-		override def run() { sleep() }
+	class ThreadB extends Thread {
+		override def run(): Unit = sleep()
 	}
-	private def sleep()
-	{
+	private def sleep(): Unit = {
 		try { Thread.sleep(1000) }
-		catch
-		{
-			case e: InterruptedException =>
-				val msg = "TrapExit improperly interrupted non-daemon thread"
-				System.err.println(msg)
-				error(msg)
+		catch	{ case e: InterruptedException =>
+			val msg = "TrapExit improperly interrupted non-daemon thread"
+			System.err.println(msg)
+			error(msg)
 		}
 	}
 }

@@ -21,7 +21,7 @@ object BuildPaths {
     def getDefault = { checkTransition(state, default); default }
     getFileSetting(globalBaseDirectory, GlobalBaseProperty, getDefault)(state)
   }
-  private[this] def checkTransition(state: State, versioned: File) {
+  private[this] def checkTransition(state: State, versioned: File): Unit = {
     val unversioned = defaultGlobalBase
     def globalDefined(base: File): Boolean =
       getGlobalPluginsDirectory(state, base).exists ||

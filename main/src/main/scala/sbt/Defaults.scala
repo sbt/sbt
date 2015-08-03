@@ -1253,7 +1253,7 @@ object Classpaths {
   @deprecated("Split into ivyBaseSettings and jvmBaseSettings.", "0.13.2")
   val baseSettings: Seq[Setting[_]] = ivyBaseSettings ++ jvmBaseSettings
 
-  def warnResolversConflict(ress: Seq[Resolver], log: Logger) {
+  def warnResolversConflict(ress: Seq[Resolver], log: Logger): Unit = {
     val resset = ress.toSet
     for ((name, r) <- resset groupBy (_.name) if r.size > 1) {
       log.warn("Multiple resolvers having different access mechanism configured with same name '" + name + "'. To avoid conflict, Remove duplicate project resolvers (`resolvers`) or rename publishing resolver (`publishTo`).")
@@ -1588,7 +1588,7 @@ object Classpaths {
   def interSort(projectRef: ProjectRef, conf: Configuration, data: Settings[Scope], deps: BuildDependencies): Seq[(ProjectRef, String)] =
     {
       val visited = asScalaSet(new LinkedHashSet[(ProjectRef, String)])
-      def visit(p: ProjectRef, c: Configuration) {
+      def visit(p: ProjectRef, c: Configuration): Unit = {
         val applicableConfigs = allConfigs(c)
         for (ac <- applicableConfigs) // add all configurations in this project
           visited add (p -> ac.name)

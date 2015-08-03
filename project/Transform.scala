@@ -37,7 +37,7 @@ object Transform {
         file
       }
     }
-  def copyPropertiesFile(source: File, newMain: String, target: File) {
+  def copyPropertiesFile(source: File, newMain: String, target: File): Unit = {
     def subMain(line: String): String = if (line.trim.startsWith("class:")) "  class: " + newMain else line
     IO.writeLines(target, IO.readLines(source) map subMain)
   }

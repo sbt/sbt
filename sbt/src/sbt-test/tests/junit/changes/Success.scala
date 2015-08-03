@@ -4,5 +4,5 @@ import org.junit._
 
 class Success
 {
-	@Test def succeed() { }
+	@Test def succeed(): Unit = ()
 }

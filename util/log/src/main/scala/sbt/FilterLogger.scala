@@ -9,23 +9,23 @@ package sbt
  */
 class FilterLogger(delegate: AbstractLogger) extends BasicLogger {
   override lazy val ansiCodesSupported = delegate.ansiCodesSupported
-  def trace(t: => Throwable) {
+  def trace(t: => Throwable): Unit = {
     if (traceEnabled)
       delegate.trace(t)
   }
-  override def setSuccessEnabled(flag: Boolean) { delegate.setSuccessEnabled(flag) }
+  override def setSuccessEnabled(flag: Boolean): Unit = delegate.setSuccessEnabled(flag)
   override def successEnabled = delegate.successEnabled
-  override def setTrace(level: Int) { delegate.setTrace(level) }
+  override def setTrace(level: Int): Unit = delegate.setTrace(level)
   override def getTrace = delegate.getTrace
-  def log(level: Level.Value, message: => String) {
+  def log(level: Level.Value, message: => String): Unit = {
     if (atLevel(level))
       delegate.log(level, message)
   }
-  def success(message: => String) {
+  def success(message: => String): Unit = {
     if (successEnabled)
       delegate.success(message)
   }
-  def control(event: ControlEvent.Value, message: => String) {
+  def control(event: ControlEvent.Value, message: => String): Unit = {
     if (atLevel(Level.Info))
       delegate.control(event, message)
   }

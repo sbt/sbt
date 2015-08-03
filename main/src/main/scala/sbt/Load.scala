@@ -340,12 +340,12 @@ object Load {
         }
       case Nil => (references, builds, loaders)
     }
-  def checkProjectBase(buildBase: File, projectBase: File) {
+  def checkProjectBase(buildBase: File, projectBase: File): Unit = {
     checkDirectory(projectBase)
     assert(buildBase == projectBase || IO.relativize(buildBase, projectBase).isDefined, "Directory " + projectBase + " is not contained in build root " + buildBase)
   }
   def checkBuildBase(base: File) = checkDirectory(base)
-  def checkDirectory(base: File) {
+  def checkDirectory(base: File): Unit = {
     assert(base.isAbsolute, "Not absolute: " + base)
     if (base.isFile)
       sys.error("Not a directory: " + base)
@@ -360,7 +360,7 @@ object Load {
           (uri, unit.resolveRefs(ref => Scope.resolveProjectRef(uri, rootProject, ref)))
       }
     }
-  def checkAll(referenced: Map[URI, List[ProjectReference]], builds: Map[URI, sbt.PartBuildUnit]) {
+  def checkAll(referenced: Map[URI, List[ProjectReference]], builds: Map[URI, sbt.PartBuildUnit]): Unit = {
     val rootProject = getRootProject(builds)
     for ((uri, refs) <- referenced; ref <- refs) {
       val ProjectRef(refURI, refID) = Scope.resolveProjectRef(uri, rootProject, ref)

@@ -14,9 +14,7 @@ object MainLoop {
     // the jline terminal in finally blocks, but hitting ctrl+c prevents finally blocks from being executed, in that
     // case the only way to restore the terminal is in a shutdown hook.
     val shutdownHook = new Thread(new Runnable {
-      def run() {
-        TerminalFactory.get().restore()
-      }
+      def run(): Unit = TerminalFactory.get().restore()
     })
 
     try {
@@ -71,7 +69,7 @@ object MainLoop {
     }
 
   /** Transfers logging and trace levels from the old global loggers to the new ones. */
-  private[this] def transferLevels(state: State, logging: GlobalLogging) {
+  private[this] def transferLevels(state: State, logging: GlobalLogging): Unit = {
     val old = state.globalLogging
     Logger.transferLevels(old.backed, logging.backed)
     (old.full, logging.full) match { // well, this is a hack
