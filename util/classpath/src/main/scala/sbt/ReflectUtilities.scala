@@ -40,7 +40,7 @@ object ReflectUtilities {
       var mappings = new immutable.TreeMap[String, T]
       val correspondingFields = fields(self.getClass)
       for (method <- self.getClass.getMethods) {
-        if (method.getParameterTypes.length == 0 && clazz.isAssignableFrom(method.getReturnType)) {
+        if (method.getParameterTypes.isEmpty && clazz.isAssignableFrom(method.getReturnType)) {
           for (field <- correspondingFields.get(method.getName) if field.getType == method.getReturnType) {
             val value = method.invoke(self).asInstanceOf[T]
             if (value == null) throw new UninitializedVal(method.getName, method.getDeclaringClass.getName)
