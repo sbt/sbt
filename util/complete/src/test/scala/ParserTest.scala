@@ -15,7 +15,7 @@ object JLineTest {
   }
 
   val parsers = Map("1" -> one, "2" -> two, "3" -> three, "4" -> four, "5" -> five)
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     import jline.TerminalFactory
     import jline.console.ConsoleReader
     val reader = new ConsoleReader()
@@ -23,7 +23,7 @@ object JLineTest {
 
     val parser = parsers(args(0))
     JLineCompletion.installCustomCompletor(reader, parser)
-    def loop() {
+    def loop(): Unit = {
       val line = reader.readLine("> ")
       if (line ne null) {
         println("Result: " + apply(parser)(line).resultEmpty)
@@ -130,7 +130,7 @@ object ParserExample {
   println(apply(t)("test w").resultEmpty)
   println(apply(t)("test was were").resultEmpty)
 
-  def run(n: Int) {
+  def run(n: Int): Unit = {
     val a = 'a'.id
     val aq = a.?
     val aqn = repeat(aq, min = n, max = n)
@@ -140,7 +140,7 @@ object ParserExample {
     def r = apply(ann)("a" * (n * 2)).resultEmpty
     println(r.isValid)
   }
-  def run2(n: Int) {
+  def run2(n: Int): Unit = {
     val ab = "ab".?.*
     val r = apply(ab)("a" * n).resultEmpty
     println(r)

@@ -40,7 +40,7 @@ object Cache extends CacheImplicits {
           println(label + ".read: " + v)
           v
         }
-      def write(to: Out, v: Internal) {
+      def write(to: Out, v: Internal): Unit = {
         println(label + ".write: " + v)
         c.write(to, v)
       }
@@ -119,7 +119,7 @@ trait BasicCacheImplicits {
             if (left <= 0) acc.reverse else next(left - 1, t.read(from) :: acc)
           next(size, Nil)
         }
-      def write(to: Out, vs: Internal) {
+      def write(to: Out, vs: Internal): Unit = {
         val size = vs.length
         IntFormat.writes(to, size)
         for (v <- vs) t.write(to, v)
@@ -165,7 +165,7 @@ trait HListCacheImplicits {
           val t = tail.read(from)
           (h, t)
         }
-      def write(to: Out, j: Internal) {
+      def write(to: Out, j: Internal): Unit = {
         head.write(to, j._1)
         tail.write(to, j._2)
       }
@@ -185,7 +185,7 @@ trait HListCacheImplicits {
         val t = tail.reads(from)
         HCons(h, t)
       }
-    def writes(to: Out, hc: H :+: T) {
+    def writes(to: Out, hc: H :+: T): Unit = {
       head.writes(to, hc.head)
       tail.writes(to, hc.tail)
     }
@@ -205,8 +205,8 @@ trait UnionImplicits {
           val value = cache.read(in)
           new Found[cache.Internal](cache, clazz, value, index)
         }
-      def write(to: Out, i: Internal) {
-        def write0[I](f: Found[I]) {
+      def write(to: Out, i: Internal): Unit = {
+        def write0[I](f: Found[I]): Unit = {
           ByteFormat.writes(to, f.index.toByte)
           f.cache.write(to, f.value)
         }
