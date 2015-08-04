@@ -81,7 +81,7 @@ object ConsoleLogger {
       nextESC(s, 0, sb)
       sb.toString
     }
-  private[this] def nextESC(s: String, start: Int, sb: java.lang.StringBuilder) {
+  private[this] def nextESC(s: String, start: Int, sb: java.lang.StringBuilder): Unit = {
     val escIndex = s.indexOf(ESC, start)
     if (escIndex < 0)
       sb.append(s, start, s.length)
@@ -167,7 +167,7 @@ class ConsoleLogger private[ConsoleLogger] (val out: ConsoleOut, override val an
     }
   def successLabelColor = GREEN
   def successMessageColor = RESET
-  override def success(message: => String) {
+  override def success(message: => String): Unit = {
     if (successEnabled)
       log(successLabelColor, Level.SuccessLabel, successMessageColor, message)
   }
@@ -180,13 +180,13 @@ class ConsoleLogger private[ConsoleLogger] (val out: ConsoleOut, override val an
         for (msg <- suppressedMessage(new SuppressedTraceContext(traceLevel, ansiCodesSupported && useColor)))
           printLabeledLine(labelColor(Level.Error), "trace", messageColor(Level.Error), msg)
     }
-  def log(level: Level.Value, message: => String) {
+  def log(level: Level.Value, message: => String): Unit = {
     if (atLevel(level))
       log(labelColor(level), level.toString, messageColor(level), message)
   }
   private def reset(): Unit = setColor(RESET)
 
-  private def setColor(color: String) {
+  private def setColor(color: String): Unit = {
     if (ansiCodesSupported && useColor)
       out.lockObject.synchronized { out.print(color) }
   }
@@ -210,6 +210,6 @@ class ConsoleLogger private[ConsoleLogger] (val out: ConsoleOut, override val an
     }
 
   def logAll(events: Seq[LogEvent]) = out.lockObject.synchronized { events.foreach(log) }
-  def control(event: ControlEvent.Value, message: => String) { log(labelColor(Level.Info), Level.Info.toString, BLUE, message) }
+  def control(event: ControlEvent.Value, message: => String): Unit = log(labelColor(Level.Info), Level.Info.toString, BLUE, message)
 }
 final class SuppressedTraceContext(val traceLevel: Int, val useColor: Boolean)

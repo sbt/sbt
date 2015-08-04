@@ -354,7 +354,7 @@ trait Init[Scope] {
 
       // set of defined scoped keys, used to ensure a derived setting is only added if all dependencies are present
       val defined = new mutable.HashSet[ScopedKey[_]]
-      def addDefs(ss: Seq[Setting[_]]) { for (s <- ss) defined += s.key }
+      def addDefs(ss: Seq[Setting[_]]): Unit = { for (s <- ss) defined += s.key }
       addDefs(defs)
 
       // true iff the scoped key is in `defined`, taking delegation into account

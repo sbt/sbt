@@ -185,7 +185,7 @@ object Parser extends ParserMain {
   def mkFailure(error: => String, definitive: Boolean = false): Failure = new Failure(error :: Nil, definitive)
 
   @deprecated("This method is deprecated and will be removed in the next major version. Use the parser directly to check for invalid completions.", since = "0.13.2")
-  def checkMatches(a: Parser[_], completions: Seq[String]) {
+  def checkMatches(a: Parser[_], completions: Seq[String]): Unit = {
     val bad = completions.filter(apply(a)(_).resultEmpty.isFailure)
     if (bad.nonEmpty) sys.error("Invalid example completions: " + bad.mkString("'", "', '", "'"))
   }
