@@ -33,7 +33,7 @@ object RawURL {
     override protected def openConnection(url: URL): URLConnection =
       new URLConnection(url) {
         private lazy val in = value
-        def connect() { in }
+        def connect(): Unit = in
         override def getInputStream = in
       }
   }

@@ -37,7 +37,7 @@ object AnalysisFormats {
         time(label + ".read.end")
         r
       }
-    def writes(out: Output, t: T) {
+    def writes(out: Output, t: T): Unit = {
       time(label + ".write.start")
       f.writes(out, t)
       time(label + ".write.end")
