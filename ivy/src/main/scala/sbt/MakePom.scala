@@ -83,9 +83,8 @@ class MakePom(val log: Logger) {
     write(process(toPom(ivy, module, moduleInfo, configurations, includeTypes, extra, filterRepositories, allRepositories)), output)
   // use \n as newline because toString uses PrettyPrinter, which hard codes line endings to be \n
   def write(node: XNode, output: File): Unit = write(toString(node), output, "\n")
-  def write(xmlString: String, output: File, newline: String) {
+  def write(xmlString: String, output: File, newline: String): Unit =
     IO.write(output, "<?xml version='1.0' encoding='" + IO.utf8.name + "'?>" + newline + xmlString)
-  }
 
   def toString(node: XNode): String = new PrettyPrinter(1000, 4).format(node)
   @deprecated("Use `toPom(Ivy, ModuleDescriptor, ModuleInfo, Option[Iterable[Configuration]], Set[String], NodeSeq, MavenRepository => Boolean, Boolean)` instead", "0.11.2")

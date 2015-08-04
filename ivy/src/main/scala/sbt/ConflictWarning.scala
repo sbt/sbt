@@ -28,10 +28,10 @@ object ConflictWarning {
   @deprecated("Warning on evicted modules is no longer done, so this is the same as `default`.  Use a standard Ivy conflict manager.", "0.13.0")
   def strict(label: String): ConflictWarning = ConflictWarning(label, Level.Error, true)
 
-  def apply(config: ConflictWarning, report: UpdateReport, log: Logger) {
+  def apply(config: ConflictWarning, report: UpdateReport, log: Logger): Unit = {
     processCrossVersioned(config, report, log)
   }
-  private[this] def processCrossVersioned(config: ConflictWarning, report: UpdateReport, log: Logger) {
+  private[this] def processCrossVersioned(config: ConflictWarning, report: UpdateReport, log: Logger): Unit = {
     val crossMismatches = crossVersionMismatches(report)
     if (crossMismatches.nonEmpty) {
       val pre = s"Modules were resolved with conflicting cross-version suffixes in ${config.label}:\n   "

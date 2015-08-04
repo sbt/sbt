@@ -113,7 +113,7 @@ private[sbt] object ConvertResolver {
           {
             val pattern = Collections.singletonList(Resolver.resolvePattern(repo.root, Resolver.mavenStyleBasePattern))
             final class PluginCapableResolver extends IBiblioResolver with ChecksumFriendlyURLResolver with DescriptorRequired {
-              def setPatterns() {
+              def setPatterns(): Unit = {
                 // done this way for access to protected methods.
                 setArtifactPatterns(pattern)
                 setIvyPatterns(pattern)
@@ -189,18 +189,18 @@ private[sbt] object ConvertResolver {
     def hasExplicitURL(dd: DependencyDescriptor): Boolean =
       dd.getAllDependencyArtifacts.exists(_.getUrl != null)
   }
-  private def initializeMavenStyle(resolver: IBiblioResolver, name: String, root: String) {
+  private def initializeMavenStyle(resolver: IBiblioResolver, name: String, root: String): Unit = {
     resolver.setName(name)
     resolver.setM2compatible(true)
     resolver.setRoot(root)
   }
-  private def initializeSSHResolver(resolver: AbstractSshBasedResolver, repo: SshBasedRepository, settings: IvySettings) {
+  private def initializeSSHResolver(resolver: AbstractSshBasedResolver, repo: SshBasedRepository, settings: IvySettings): Unit = {
     resolver.setName(repo.name)
     resolver.setPassfile(null)
     initializePatterns(resolver, repo.patterns, settings)
     initializeConnection(resolver, repo.connection)
   }
-  private def initializeConnection(resolver: AbstractSshBasedResolver, connection: RepositoryHelpers.SshConnection) {
+  private def initializeConnection(resolver: AbstractSshBasedResolver, connection: RepositoryHelpers.SshConnection): Unit = {
     import resolver._
     import connection._
     hostname.foreach(setHost)
@@ -216,7 +216,7 @@ private[sbt] object ConvertResolver {
           setUser(user)
       }
   }
-  private def initializePatterns(resolver: AbstractPatternsBasedResolver, patterns: Patterns, settings: IvySettings) {
+  private def initializePatterns(resolver: AbstractPatternsBasedResolver, patterns: Patterns, settings: IvySettings): Unit = {
     resolver.setM2compatible(patterns.isMavenCompatible)
     resolver.setDescriptor(if (patterns.descriptorOptional) BasicResolver.DESCRIPTOR_OPTIONAL else BasicResolver.DESCRIPTOR_REQUIRED)
     resolver.setCheckconsistency(!patterns.skipConsistencyCheck)

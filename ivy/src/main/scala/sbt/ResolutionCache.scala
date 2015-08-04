@@ -28,7 +28,7 @@ private[sbt] final class ResolutionCache(base: File, settings: IvySettings) exte
   private[this] val reportBase: File = new File(base, ReportDirectory)
 
   def getResolutionCacheRoot: File = base
-  def clean() { IO.delete(base) }
+  def clean(): Unit = IO.delete(base)
   override def toString = Name
 
   def getResolvedIvyFileInCache(mrid: ModuleRevisionId): File =
@@ -66,7 +66,7 @@ private[sbt] object ResolutionCache {
    * Removes cached files from the resolution cache for the module with ID `mrid`
    * and the resolveId (as set on `ResolveOptions`).
    */
-  private[sbt] def cleanModule(mrid: ModuleRevisionId, resolveId: String, manager: ResolutionCacheManager) {
+  private[sbt] def cleanModule(mrid: ModuleRevisionId, resolveId: String, manager: ResolutionCacheManager): Unit = {
     val files =
       Option(manager.getResolvedIvyFileInCache(mrid)).toList :::
         Option(manager.getResolvedIvyPropertiesInCache(mrid)).toList :::

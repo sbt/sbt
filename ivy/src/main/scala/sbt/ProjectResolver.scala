@@ -70,12 +70,12 @@ class ProjectResolver(name: String, map: Map[ModuleRevisionId, ModuleDescriptor]
 
   // doesn't support publishing
   def publish(artifact: IArtifact, src: File, overwrite: Boolean) = sys.error("Publish not supported by ProjectResolver")
-  def beginPublishTransaction(module: ModuleRevisionId, overwrite: Boolean) {}
-  def abortPublishTransaction() {}
-  def commitPublishTransaction() {}
+  def beginPublishTransaction(module: ModuleRevisionId, overwrite: Boolean): Unit = ()
+  def abortPublishTransaction(): Unit = ()
+  def commitPublishTransaction(): Unit = ()
 
-  def reportFailure() {}
-  def reportFailure(art: IArtifact) {}
+  def reportFailure(): Unit = ()
+  def reportFailure(art: IArtifact): Unit = ()
 
   def listOrganisations() = new Array[OrganisationEntry](0)
   def listModules(org: OrganisationEntry) = new Array[ModuleEntry](0)
@@ -85,8 +85,8 @@ class ProjectResolver(name: String, map: Map[ModuleRevisionId, ModuleDescriptor]
 
   private[this] var settings: Option[ResolverSettings] = None
 
-  def dumpSettings() {}
-  def setSettings(settings: ResolverSettings) { this.settings = Some(settings) }
+  def dumpSettings(): Unit = ()
+  def setSettings(settings: ResolverSettings): Unit = { this.settings = Some(settings) }
   def getRepositoryCacheManager = settings match { case Some(s) => s.getDefaultRepositoryCacheManager; case None => sys.error("No settings defined for ProjectResolver") }
 }
 

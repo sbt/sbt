@@ -21,9 +21,9 @@ private[sbt] object CustomXmlParser extends XmlModuleDescriptorParser {
         super.setResource(new URLResource(url))
         super.setInput(url)
       }
-    def setInput(bytes: Array[Byte]) { setInput(new ByteArrayInputStream(bytes)) }
+    def setInput(bytes: Array[Byte]): Unit = setInput(new ByteArrayInputStream(bytes))
     /** Overridden because the super implementation overwrites the module descriptor.*/
-    override def setResource(res: Resource) {}
+    override def setResource(res: Resource): Unit = ()
     override def setMd(md: DefaultModuleDescriptor) =
       {
         super.setMd(md)
