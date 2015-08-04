@@ -6,9 +6,9 @@ import events._
 
 class CustomReporter extends ResourcefulReporter {
 
-	private def writeFile(filePath: String, content: String) {
+	private def writeFile(filePath: String, content: String): Unit = {
 		val file = new File(filePath)
-		val writer = 
+		val writer =
 			if (!file.exists)
 				new FileWriter(new File(filePath))
 			else
@@ -18,16 +18,16 @@ class CustomReporter extends ResourcefulReporter {
 		writer.close()
 	}
 
-	def apply(event: Event) {
+	def apply(event: Event): Unit = {
 		event match {
 			case runCompleted: RunCompleted => writeFile("target/RunCompleted", "RunCompleted")
 			case _ =>
 		}
 	}
-	
-	def dispose() {
+
+	def dispose(): Unit = {
 		val file = new File("target/dispose")
-		val filePath = 
+		val filePath =
 			if (file.exists)
 				"target/dispose2"
 			else

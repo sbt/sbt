@@ -29,7 +29,7 @@ final class MultiHandler[S, T](builtIn: S => Option[T], root: Option[S => Option
   def applyNonRoots(info: S): List[(URI, T)] =
     nonRoots flatMap { case (definingURI, loader) => loader(info) map { unit => (definingURI, unit) } }
 
-  private[this] def warn(baseMessage: String, log: Logger, matching: Seq[(URI, T)]) {
+  private[this] def warn(baseMessage: String, log: Logger, matching: Seq[(URI, T)]): Unit = {
     log.warn(baseMessage)
     log.debug("Non-root build resolvers defined in:")
     log.debug(matching.map(_._1).mkString("\n\t"))

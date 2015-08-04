@@ -120,15 +120,15 @@ final class ContentLogger(val log: TLogger, val flush: () => Unit)
 class TestLogger(val logging: TestLogging) extends TestsListener {
   import logging.{ global => log, logTest }
 
-  def startGroup(name: String) {}
-  def testEvent(event: TestEvent): Unit = {}
-  def endGroup(name: String, t: Throwable) {
+  def startGroup(name: String): Unit = ()
+  def testEvent(event: TestEvent): Unit = ()
+  def endGroup(name: String, t: Throwable): Unit = {
     log.trace(t)
     log.error("Could not run test " + name + ": " + t.toString)
   }
-  def endGroup(name: String, result: TestResult.Value) {}
-  def doInit {}
+  def endGroup(name: String, result: TestResult.Value): Unit = ()
+  def doInit: Unit = ()
   /** called once, at end of test group. */
-  def doComplete(finalResult: TestResult.Value): Unit = {}
+  def doComplete(finalResult: TestResult.Value): Unit = ()
   override def contentLogger(test: TestDefinition): Option[ContentLogger] = Some(logTest(test))
 }

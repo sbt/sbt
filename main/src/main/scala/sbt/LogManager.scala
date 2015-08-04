@@ -73,7 +73,7 @@ object LogManager {
     else {
       val logging = s.globalLogging
       def get[T](key: SettingKey[T]) = key in GlobalScope get data
-      def transfer(l: AbstractLogger, traceKey: SettingKey[Int], levelKey: SettingKey[Level.Value]) {
+      def transfer(l: AbstractLogger, traceKey: SettingKey[Int], levelKey: SettingKey[Level.Value]): Unit = {
         get(traceKey).foreach(l.setTrace)
         get(levelKey).foreach(l.setLevel)
       }

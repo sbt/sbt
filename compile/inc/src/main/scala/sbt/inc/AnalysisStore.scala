@@ -12,7 +12,7 @@ trait AnalysisStore {
 object AnalysisStore {
   def cached(backing: AnalysisStore): AnalysisStore = new AnalysisStore {
     private var last: Option[(Analysis, CompileSetup)] = None
-    def set(analysis: Analysis, setup: CompileSetup) {
+    def set(analysis: Analysis, setup: CompileSetup): Unit = {
       backing.set(analysis, setup)
       last = Some((analysis, setup))
     }

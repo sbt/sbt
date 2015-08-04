@@ -82,7 +82,7 @@ object SiteMap {
   private[this] def writeXML(output: File, node: xml.Node): Unit =
     write(output, new xml.PrettyPrinter(1000, 4).format(node))
 
-  private[this] def write(output: File, xmlString: String) {
+  private[this] def write(output: File, xmlString: String): Unit = {
     // use \n as newline because toString uses PrettyPrinter, which hard codes line endings to be \n
     IO.write(output, s"<?xml version='1.0' encoding='${IO.utf8.name}'?>\n")
     IO.append(output, xmlString)

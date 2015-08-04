@@ -451,12 +451,12 @@ object Project extends ProjectExtra {
     }
   def settingGraph(structure: BuildStructure, basedir: File, scoped: ScopedKey[_])(implicit display: Show[ScopedKey[_]]): SettingGraph =
     SettingGraph(structure, basedir, scoped, 0)
-  def graphSettings(structure: BuildStructure, basedir: File)(implicit display: Show[ScopedKey[_]]) {
+  def graphSettings(structure: BuildStructure, basedir: File)(implicit display: Show[ScopedKey[_]]): Unit = {
     def graph(actual: Boolean, name: String) = graphSettings(structure, actual, name, new File(basedir, name + ".dot"))
     graph(true, "actual_dependencies")
     graph(false, "declared_dependencies")
   }
-  def graphSettings(structure: BuildStructure, actual: Boolean, graphName: String, file: File)(implicit display: Show[ScopedKey[_]]) {
+  def graphSettings(structure: BuildStructure, actual: Boolean, graphName: String, file: File)(implicit display: Show[ScopedKey[_]]): Unit = {
     val rel = relation(structure, actual)
     val keyToString = display.apply _
     DotGraph.generateGraph(file, graphName, rel, keyToString, keyToString)

@@ -7,8 +7,8 @@ import org.apache.ivy.util.{ Message, MessageLogger, MessageLoggerEngine }
 
 /** Interface to Ivy logging. */
 private final class IvyLoggerInterface(logger: Logger) extends MessageLogger {
-  def rawlog(msg: String, level: Int) = log(msg, level)
-  def log(msg: String, level: Int) {
+  def rawlog(msg: String, level: Int): Unit = log(msg, level)
+  def log(msg: String, level: Int): Unit = {
     import Message.{ MSG_DEBUG, MSG_VERBOSE, MSG_INFO, MSG_WARN, MSG_ERR }
     level match {
       case MSG_DEBUG   => debug(msg)
@@ -20,32 +20,32 @@ private final class IvyLoggerInterface(logger: Logger) extends MessageLogger {
   }
   //DEBUG level messages are very verbose and rarely useful to users.
   // TODO: provide access to this information some other way
-  def debug(msg: String) {}
-  def verbose(msg: String) = logger.verbose(msg)
-  def deprecated(msg: String) = warn(msg)
-  def info(msg: String) = logger.info(msg)
-  def rawinfo(msg: String) = info(msg)
-  def warn(msg: String) = logger.warn(msg)
-  def error(msg: String) = if (SbtIvyLogger.acceptError(msg)) logger.error(msg)
+  def debug(msg: String): Unit = ()
+  def verbose(msg: String): Unit = logger.verbose(msg)
+  def deprecated(msg: String): Unit = warn(msg)
+  def info(msg: String): Unit = logger.info(msg)
+  def rawinfo(msg: String): Unit = info(msg)
+  def warn(msg: String): Unit = logger.warn(msg)
+  def error(msg: String): Unit = if (SbtIvyLogger.acceptError(msg)) logger.error(msg)
 
   private def emptyList = java.util.Collections.emptyList[String]
   def getProblems = emptyList
   def getWarns = emptyList
   def getErrors = emptyList
 
-  def clearProblems = ()
-  def sumupProblems = clearProblems()
-  def progress = ()
-  def endProgress = ()
+  def clearProblems(): Unit = ()
+  def sumupProblems(): Unit = clearProblems()
+  def progress(): Unit = ()
+  def endProgress(): Unit = ()
 
-  def endProgress(msg: String) = info(msg)
+  def endProgress(msg: String): Unit = info(msg)
   def isShowProgress = false
-  def setShowProgress(progress: Boolean) {}
+  def setShowProgress(progress: Boolean): Unit = ()
 }
 private final class SbtMessageLoggerEngine extends MessageLoggerEngine {
   /** This is a hack to filter error messages about 'unknown resolver ...'. */
-  override def error(msg: String) = if (SbtIvyLogger.acceptError(msg)) super.error(msg)
-  override def sumupProblems = clearProblems()
+  override def error(msg: String): Unit = if (SbtIvyLogger.acceptError(msg)) super.error(msg)
+  override def sumupProblems(): Unit = clearProblems()
 }
 private object SbtIvyLogger {
   val UnknownResolver = "unknown resolver"

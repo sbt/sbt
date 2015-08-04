@@ -8,7 +8,7 @@ import java.io.File
 
 object FileBasedStore {
   def apply(file: File): AnalysisStore = new AnalysisStore {
-    def set(analysis: Analysis, setup: CompileSetup) {
+    def set(analysis: Analysis, setup: CompileSetup): Unit = {
       Using.fileWriter(IO.utf8)(file) { writer => TextAnalysisFormat.write(writer, analysis, setup) }
     }
 

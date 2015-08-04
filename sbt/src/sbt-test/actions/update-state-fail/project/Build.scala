@@ -14,7 +14,7 @@ object TestBuild extends Build
 
   lazy val b = Project("b", file("b")).settings(t <<= Def.task("").updateState(updater))
 
-  def checkState(runs: Int, s: State) {
+  def checkState(runs: Int, s: State): Unit = {
     val stored = s.get(akey).getOrElse(0)
     assert(stored == runs, "Expected " + runs + ", got " + stored)
   }

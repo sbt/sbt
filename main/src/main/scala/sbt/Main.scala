@@ -211,13 +211,13 @@ object BuiltinCommands {
     if (Project.isProjectLoaded(s)) loadedEval(s, arg) else rawEval(s, arg)
     s
   }
-  private[this] def loadedEval(s: State, arg: String) {
+  private[this] def loadedEval(s: State, arg: String): Unit = {
     val extracted = Project extract s
     import extracted._
     val result = session.currentEval().eval(arg, srcName = "<eval>", imports = autoImports(extracted))
     s.log.info(s"ans: ${result.tpe} = ${result.getValue(currentLoader)}")
   }
-  private[this] def rawEval(s: State, arg: String) {
+  private[this] def rawEval(s: State, arg: String): Unit = {
     val app = s.configuration.provider
     val classpath = app.mainClasspath ++ app.scalaProvider.jars
     val result = Load.mkEval(classpath, s.baseDir, Nil).eval(arg, srcName = "<eval>", imports = new EvalImports(Nil, ""))
@@ -405,7 +405,7 @@ object BuiltinCommands {
     case (s, Some(modifyBuilds)) => transformExtraBuilds(s, modifyBuilds)
     case (s, None)               => showProjects(s); s
   }
-  def showProjects(s: State) {
+  def showProjects(s: State): Unit = {
     val extracted = Project extract s
     import extracted._
     import currentRef.{ build => curi, project => cid }

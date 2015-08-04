@@ -1,4 +1,4 @@
 object Spawn
 {
-	def main(args: Array[String]) { System.exit(0); }
+	def main(args: Array[String]): Unit = System.exit(0)
 }

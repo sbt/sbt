@@ -41,7 +41,7 @@ object Test extends std.TaskExtra {
 
   def d4(i: Int): Task[Int] = nop flatMap { _ => val x = math.random; if (x < 0.01) task(i); else d4(i + 1) }
 
-  def go() {
+  def go(): Unit = {
     def run[T](root: Task[T]) =
       println("Result : " + TaskGen.run(root, true, 2))
 

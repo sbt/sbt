@@ -68,7 +68,7 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager) {
       val base = id + binSeparator + compiler.scalaInstance.actualVersion
       if (withJavaVersion) base + "__" + javaVersion else base
     }
-  protected def compileAndInstall(id: String, binID: String) {
+  protected def compileAndInstall(id: String, binID: String): Unit = {
     val srcID = id + srcExtension
     IO.withTemporaryDirectory { binaryDirectory =>
       val targetJar = new File(binaryDirectory, id + ".jar")

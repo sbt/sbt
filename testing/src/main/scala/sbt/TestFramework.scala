@@ -70,7 +70,7 @@ final class TestRunner(delegate: Runner, listeners: Seq[TestReportListener], log
         {
           // here we get the results! here is where we'd pass in the event listener
           val results = new scala.collection.mutable.ListBuffer[Event]
-          val handler = new EventHandler { def handle(e: Event) { results += e } }
+          val handler = new EventHandler { def handle(e: Event): Unit = { results += e } }
           val loggers = listeners.flatMap(_.contentLogger(testDefinition))
           val nestedTasks =
             try testTask.execute(handler, loggers.map(_.log).toArray)
@@ -145,7 +145,7 @@ object TestFramework {
     {
       import scala.collection.mutable.{ HashMap, HashSet, Set }
       val map = new HashMap[Framework, Set[TestDefinition]]
-      def assignTest(test: TestDefinition) {
+      def assignTest(test: TestDefinition): Unit = {
         def isTestForFramework(framework: Framework) = getFingerprints(framework).exists { t => matches(t, test.fingerprint) }
         for (framework <- frameworks.find(isTestForFramework))
           map.getOrElseUpdate(framework, new HashSet[TestDefinition]) += test

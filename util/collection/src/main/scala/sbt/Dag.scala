@@ -21,18 +21,18 @@ object Dag {
       val finished = (new java.util.LinkedHashSet[T]).asScala
 
       def visitAll(nodes: Iterable[T]) = nodes foreach visit
-      def visit(node: T) {
+      def visit(node: T): Unit = {
         if (!discovered(node)) {
           discovered(node) = true;
           try { visitAll(dependencies(node)); } catch { case c: Cyclic => throw node :: c }
-          finished += node;
+          finished += node
         } else if (!finished(node))
           throw new Cyclic(node)
       }
 
-      visitAll(nodes);
+      visitAll(nodes)
 
-      finished.toList;
+      finished.toList
     }
   // doesn't check for cycles
   def topologicalSortUnchecked[T](node: T)(dependencies: T => Iterable[T]): List[T] = topologicalSortUnchecked(node :: Nil)(dependencies)
@@ -43,11 +43,11 @@ object Dag {
       var finished: List[T] = Nil
 
       def visitAll(nodes: Iterable[T]) = nodes foreach visit
-      def visit(node: T) {
+      def visit(node: T): Unit = {
         if (!discovered(node)) {
-          discovered(node) = true;
+          discovered(node) = true
           visitAll(dependencies(node))
-          finished ::= node;
+          finished ::= node
         }
       }
 

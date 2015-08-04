@@ -17,12 +17,12 @@ class Visit {
       s.definitions foreach visitDefinition
     }
 
-  def visitPackage(p: Package) {
+  def visitPackage(p: Package): Unit = {
     visitString(p.name)
   }
 
   def visitDefinitions(ds: Seq[Definition]) = ds foreach visitDefinition
-  def visitDefinition(d: Definition) {
+  def visitDefinition(d: Definition): Unit = {
     visitString(d.name)
     visitAnnotations(d.annotations)
     visitModifiers(d.modifiers)
@@ -36,21 +36,21 @@ class Visit {
     }
   }
   final def visitClass(c: ClassLike): Unit = if (visitedClassLike add c) visitClass0(c)
-  def visitClass0(c: ClassLike) {
+  def visitClass0(c: ClassLike): Unit = {
     visitParameterizedDefinition(c)
     visitType(c.selfType)
     visitStructure(c.structure)
   }
-  def visitField(f: FieldLike) {
+  def visitField(f: FieldLike): Unit = {
     visitType(f.tpe)
     f match {
       case v: Var => visitVar(v)
       case v: Val => visitVal(v)
     }
   }
-  def visitVar(v: Var) {}
-  def visitVal(v: Val) {}
-  def visitDef(d: Def) {
+  def visitVar(v: Var): Unit = ()
+  def visitVal(v: Val): Unit = ()
+  def visitDef(d: Def): Unit = {
     visitParameterizedDefinition(d)
     visitValueParameters(d.valueParameters)
     visitType(d.returnType)
@@ -71,15 +71,15 @@ class Visit {
       case thisq: ThisQualifier => visitThisQualifier(thisq)
       case id: IdQualifier      => visitIdQualifier(id)
     }
-  def visitIdQualifier(id: IdQualifier) {
+  def visitIdQualifier(id: IdQualifier): Unit = {
     visitString(id.value)
   }
-  def visitUnqualified(unq: Unqualified) {}
-  def visitThisQualifier(thisq: ThisQualifier) {}
-  def visitPublic(pub: Public) {}
-  def visitPrivate(p: Private) { visitQualifier(p.qualifier) }
-  def visitProtected(p: Protected) { visitQualifier(p.qualifier) }
-  def visitModifiers(m: Modifiers) {}
+  def visitUnqualified(unq: Unqualified): Unit = ()
+  def visitThisQualifier(thisq: ThisQualifier): Unit = ()
+  def visitPublic(pub: Public): Unit = ()
+  def visitPrivate(p: Private): Unit = visitQualifier(p.qualifier)
+  def visitProtected(p: Protected): Unit = visitQualifier(p.qualifier)
+  def visitModifiers(m: Modifiers): Unit = ()
 
   def visitValueParameters(valueParameters: Seq[ParameterList]) = valueParameters foreach visitValueParameterList
   def visitValueParameterList(list: ParameterList) = list.parameters foreach visitValueParameter
@@ -89,21 +89,20 @@ class Visit {
       visitType(parameter.tpe)
     }
 
-  def visitParameterizedDefinition[T <: ParameterizedDefinition](d: T) {
-    visitTypeParameters(d.typeParameters)
-  }
-  def visitTypeDeclaration(d: TypeDeclaration) {
+  def visitParameterizedDefinition[T <: ParameterizedDefinition](d: T): Unit = visitTypeParameters(d.typeParameters)
+
+  def visitTypeDeclaration(d: TypeDeclaration): Unit = {
     visitParameterizedDefinition(d)
     visitType(d.lowerBound)
     visitType(d.upperBound)
   }
-  def visitTypeAlias(d: TypeAlias) {
+  def visitTypeAlias(d: TypeAlias): Unit = {
     visitParameterizedDefinition(d)
     visitType(d.tpe)
   }
 
   def visitTypeParameters(parameters: Seq[TypeParameter]) = parameters foreach visitTypeParameter
-  def visitTypeParameter(parameter: TypeParameter) {
+  def visitTypeParameter(parameter: TypeParameter): Unit = {
     visitTypeParameters(parameter.typeParameters)
     visitType(parameter.lowerBound)
     visitType(parameter.upperBound)
@@ -116,13 +115,13 @@ class Visit {
       visitAnnotationArguments(annotation.arguments)
     }
   def visitAnnotationArguments(args: Seq[AnnotationArgument]) = args foreach visitAnnotationArgument
-  def visitAnnotationArgument(arg: AnnotationArgument) {
+  def visitAnnotationArgument(arg: AnnotationArgument): Unit = {
     visitString(arg.name)
     visitString(arg.value)
   }
 
   def visitTypes(ts: Seq[Type]) = ts.foreach(visitType)
-  def visitType(t: Type) {
+  def visitType(t: Type): Unit = {
     t match {
       case s: Structure     => visitStructure(s)
       case e: Existential   => visitExistential(e)
@@ -137,18 +136,18 @@ class Visit {
     }
   }
 
-  def visitEmptyType() {}
-  def visitParameterRef(p: ParameterRef) {}
-  def visitSingleton(s: Singleton) { visitPath(s.path) }
+  def visitEmptyType(): Unit = ()
+  def visitParameterRef(p: ParameterRef): Unit = ()
+  def visitSingleton(s: Singleton): Unit = visitPath(s.path)
   def visitPath(path: Path) = path.components foreach visitPathComponent
   def visitPathComponent(pc: PathComponent) = pc match {
     case t: This  => visitThisPath(t)
     case s: Super => visitSuperPath(s)
     case id: Id   => visitIdPath(id)
   }
-  def visitThisPath(t: This) {}
-  def visitSuperPath(s: Super) { visitPath(s.qualifier) }
-  def visitIdPath(id: Id) { visitString(id.id) }
+  def visitThisPath(t: This): Unit = ()
+  def visitSuperPath(s: Super): Unit = visitPath(s.qualifier)
+  def visitIdPath(id: Id): Unit = visitString(id.id)
 
   def visitConstant(c: Constant) =
     {
@@ -162,16 +161,16 @@ class Visit {
       visitString(p.id)
       visitType(p.prefix)
     }
-  def visitParameterized(p: Parameterized) {
+  def visitParameterized(p: Parameterized): Unit = {
     visitType(p.baseType)
     visitTypes(p.typeArguments)
   }
-  def visitAnnotated(a: Annotated) {
+  def visitAnnotated(a: Annotated): Unit = {
     visitType(a.baseType)
     visitAnnotations(a.annotations)
   }
   final def visitStructure(structure: Structure) = if (visitedStructures add structure) visitStructure0(structure)
-  def visitStructure0(structure: Structure) {
+  def visitStructure0(structure: Structure): Unit = {
     visitTypes(structure.parents)
     visitDefinitions(structure.declared)
     visitDefinitions(structure.inherited)
@@ -181,5 +180,5 @@ class Visit {
       visitTypeParameters(parameters)
       visitType(base)
     }
-  def visitString(s: String) {}
+  def visitString(s: String): Unit = ()
 }

@@ -9,7 +9,7 @@ import IO._
 
 object Pack {
   def pack(jarPath: File, out: File): Unit = pack(jarPath, out, defaultPackerOptions)
-  def pack(jarPath: File, out: File, options: Iterable[(String, String)]) {
+  def pack(jarPath: File, out: File, options: Iterable[(String, String)]): Unit = {
     val packer = Pack200.newPacker
     import collection.JavaConversions._
     packer.properties ++= options
@@ -20,7 +20,7 @@ object Pack {
       }
     }
   }
-  def unpack(packedPath: File, toJarPath: File) {
+  def unpack(packedPath: File, toJarPath: File): Unit = {
     val unpacker = Pack200.newUnpacker
     Using.fileOutputStream()(toJarPath) { fileStream =>
       Using.jarOutputStream(fileStream) { jarOut =>
@@ -53,17 +53,17 @@ object SignJar {
   private def VerifyOption = "-verify"
 
   /** Uses jarsigner to sign the given jar.  */
-  def sign(jarPath: File, alias: String, options: Seq[SignOption])(fork: (String, List[String]) => Int) {
+  def sign(jarPath: File, alias: String, options: Seq[SignOption])(fork: (String, List[String]) => Int): Unit = {
     require(!alias.trim.isEmpty, "Alias cannot be empty")
     val arguments = options.toList.flatMap(_.toList) ::: jarPath.getAbsolutePath :: alias :: Nil
     execute("signing", arguments)(fork)
   }
   /** Uses jarsigner to verify the given jar.*/
-  def verify(jarPath: File, options: Seq[SignOption])(fork: (String, List[String]) => Int) {
+  def verify(jarPath: File, options: Seq[SignOption])(fork: (String, List[String]) => Int): Unit = {
     val arguments = options.filter(!_.signOnly).toList.flatMap(_.toList) ::: VerifyOption :: jarPath.getAbsolutePath :: Nil
     execute("verifying", arguments)(fork)
   }
-  private def execute(action: String, arguments: List[String])(fork: (String, List[String]) => Int) {
+  private def execute(action: String, arguments: List[String])(fork: (String, List[String]) => Int): Unit = {
     val exitCode = fork(CommandName, arguments)
     if (exitCode != 0)
       sys.error("Error " + action + " jar (exit code was " + exitCode + ".)")

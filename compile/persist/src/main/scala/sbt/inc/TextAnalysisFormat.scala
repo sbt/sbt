@@ -27,7 +27,7 @@ private[inc] object FormatTimer {
     ret
   }
 
-  def close(key: String) {
+  def close(key: String): Unit = {
     if (printTimings) {
       println("[%s] %dms".format(key, timers.getOrElse(key, 0L) / 1000000))
     }
@@ -52,7 +52,7 @@ object TextAnalysisFormat {
   import AnalysisFormats._
   implicit val compilationF = xsbt.api.CompilationFormat
 
-  def write(out: Writer, analysis: Analysis, setup: CompileSetup) {
+  def write(out: Writer, analysis: Analysis, setup: CompileSetup): Unit = {
     VersionF.write(out)
     // We start with writing compile setup which contains value of the `nameHashing`
     // flag that is needed to properly deserialize relations
@@ -82,12 +82,12 @@ object TextAnalysisFormat {
   private[this] object VersionF {
     val currentVersion = "5"
 
-    def write(out: Writer) {
+    def write(out: Writer): Unit = {
       out.write("format version: %s\n".format(currentVersion))
     }
 
     private val versionPattern = """format version: (\w+)""".r
-    def read(in: BufferedReader) {
+    def read(in: BufferedReader): Unit = {
       in.readLine() match {
         case versionPattern(version) => validateVersion(version)
         case s: String               => throw new ReadException("\"format version: <version>\"", s)
@@ -95,7 +95,7 @@ object TextAnalysisFormat {
       }
     }
 
-    def validateVersion(version: String) {
+    def validateVersion(version: String): Unit = {
       // TODO: Support backwards compatibility?
       if (version != currentVersion) {
         throw new ReadException("File uses format version %s, but we are compatible with version %s only.".format(version, currentVersion))
@@ -121,14 +121,14 @@ object TextAnalysisFormat {
       val usedNames = "used names"
     }
 
-    def write(out: Writer, relations: Relations) {
+    def write(out: Writer, relations: Relations): Unit = {
       // This ordering is used to persist all values in order. Since all values will be
       // persisted using their string representation, it makes sense to sort them using
       // their string representation.
       val toStringOrd = new Ordering[Any] {
         def compare(a: Any, b: Any) = a.toString compare b.toString
       }
-      def writeRelation[T](header: String, rel: Relation[File, T]) {
+      def writeRelation[T](header: String, rel: Relation[File, T]): Unit = {
         writeHeader(out, header)
         writeSize(out, rel.size)
         // We sort for ease of debugging and for more efficient reconstruction when reading.
@@ -156,7 +156,7 @@ object TextAnalysisFormat {
         var currentItem: (File, T) = null
         var currentFile: File = null
         var currentVals: List[T] = Nil
-        def closeEntry() {
+        def closeEntry(): Unit = {
           if (currentFile != null) forward = (currentFile, currentVals.toSet) :: forward
           currentFile = currentItem._1
           currentVals = currentItem._2 :: Nil
@@ -183,7 +183,7 @@ object TextAnalysisFormat {
       val classNames = "class names"
     }
 
-    def write(out: Writer, stamps: Stamps) {
+    def write(out: Writer, stamps: Stamps): Unit = {
       def doWriteMap[V](header: String, m: Map[File, V]) = writeMap(out)(header, m, { v: V => v.toString })
 
       doWriteMap(Headers.products, stamps.products)
@@ -212,7 +212,7 @@ object TextAnalysisFormat {
     val stringToSource = ObjectStringifier.stringToObj[Source] _
     val sourceToString = ObjectStringifier.objToString[Source] _
 
-    def write(out: Writer, apis: APIs) {
+    def write(out: Writer, apis: APIs): Unit = {
       writeMap(out)(Headers.internal, apis.internal, sourceToString, inlineVals = false)
       writeMap(out)(Headers.external, apis.external, sourceToString, inlineVals = false)
       FormatTimer.close("bytes -> base64")
@@ -237,7 +237,7 @@ object TextAnalysisFormat {
     val stringToSourceInfo = ObjectStringifier.stringToObj[SourceInfo] _
     val sourceInfoToString = ObjectStringifier.objToString[SourceInfo] _
 
-    def write(out: Writer, infos: SourceInfos) { writeMap(out)(Headers.infos, infos.allInfos, sourceInfoToString, inlineVals = false) }
+    def write(out: Writer, infos: SourceInfos): Unit = writeMap(out)(Headers.infos, infos.allInfos, sourceInfoToString, inlineVals = false)
     def read(in: BufferedReader): SourceInfos = SourceInfos.make(readMap(in)(Headers.infos, new File(_), stringToSourceInfo))
   }
 
@@ -249,9 +249,8 @@ object TextAnalysisFormat {
     val stringToCompilation = ObjectStringifier.stringToObj[Compilation] _
     val compilationToString = ObjectStringifier.objToString[Compilation] _
 
-    def write(out: Writer, compilations: Compilations) {
+    def write(out: Writer, compilations: Compilations): Unit =
       writeSeq(out)(Headers.compilations, compilations.allCompilations, compilationToString)
-    }
 
     def read(in: BufferedReader): Compilations = Compilations.make(
       readSeq[Compilation](in)(Headers.compilations, stringToCompilation))
@@ -272,7 +271,7 @@ object TextAnalysisFormat {
     private[this] val multipleOutputMode = "multiple"
     private[this] val singleOutputKey = new File("output dir")
 
-    def write(out: Writer, setup: CompileSetup) {
+    def write(out: Writer, setup: CompileSetup): Unit = {
       val (mode, outputAsMap) = setup.output match {
         case s: SingleOutput   => (singleOutputMode, Map(singleOutputKey -> s.outputDirectory))
         case m: MultipleOutput => (multipleOutputMode, m.outputGroups.map(x => x.sourceDirectory -> x.outputDirectory).toMap)
@@ -341,18 +340,14 @@ object TextAnalysisFormat {
 
   // Various helper functions.
 
-  private[this] def writeHeader(out: Writer, header: String) {
-    out.write(header + ":\n")
-  }
+  private[this] def writeHeader(out: Writer, header: String): Unit = out.write(header + ":\n")
 
-  private[this] def expectHeader(in: BufferedReader, expectedHeader: String) {
+  private[this] def expectHeader(in: BufferedReader, expectedHeader: String): Unit = {
     val header = in.readLine()
     if (header != expectedHeader + ":") throw new ReadException(expectedHeader, if (header == null) "EOF" else header)
   }
 
-  private[this] def writeSize(out: Writer, n: Int) {
-    out.write("%d items\n".format(n))
-  }
+  private[this] def writeSize(out: Writer, n: Int): Unit = out.write("%d items\n".format(n))
 
   private val itemsPattern = """(\d+) items""".r
   private[this] def readSize(in: BufferedReader): Int = {
@@ -363,7 +358,7 @@ object TextAnalysisFormat {
     }
   }
 
-  private[this] def writeSeq[T](out: Writer)(header: String, s: Seq[T], t2s: T => String) {
+  private[this] def writeSeq[T](out: Writer)(header: String, s: Seq[T], t2s: T => String): Unit = {
     // We write sequences as idx -> element maps, for uniformity with maps/relations.
     def n = s.length
     val numDigits = if (n < 2) 1 else math.log10(n - 1).toInt + 1
@@ -376,7 +371,7 @@ object TextAnalysisFormat {
   private[this] def readSeq[T](in: BufferedReader)(expectedHeader: String, s2t: String => T): Seq[T] =
     (readPairs(in)(expectedHeader, identity[String], s2t).toSeq.sortBy(_._1) map (_._2))
 
-  private[this] def writeMap[K, V](out: Writer)(header: String, m: Map[K, V], v2s: V => String, inlineVals: Boolean = true)(implicit ord: Ordering[K]) {
+  private[this] def writeMap[K, V](out: Writer)(header: String, m: Map[K, V], v2s: V => String, inlineVals: Boolean = true)(implicit ord: Ordering[K]): Unit = {
     writeHeader(out, header)
     writeSize(out, m.size)
     m.keys.toSeq.sorted foreach { k =>

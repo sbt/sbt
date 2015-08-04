@@ -246,7 +246,7 @@ object State {
       }
       s.fail
     }
-  private[sbt] def logFullException(e: Throwable, log: Logger) {
+  private[sbt] def logFullException(e: Throwable, log: Logger): Unit = {
     log.trace(e)
     log.error(ErrorHandling reducedToString e)
     log.error("Use 'last' for the full log.")

@@ -84,14 +84,14 @@ object TrapExit {
     s"${hex(System.identityHashCode(t))}"
 
   /** Waits for the given `thread` to terminate.  However, if the thread state is NEW, this method returns immediately. */
-  private def waitOnThread(thread: Thread, log: Logger) {
+  private def waitOnThread(thread: Thread, log: Logger): Unit = {
     log.debug("Waiting for thread " + thread.getName + " to terminate.")
     thread.join
     log.debug("\tThread " + thread.getName + " exited.")
   }
 
   // interrupts the given thread, but first replaces the exception handler so that the InterruptedException is not printed
-  private def safeInterrupt(thread: Thread, log: Logger) {
+  private def safeInterrupt(thread: Thread, log: Logger): Unit = {
     val name = thread.getName
     log.debug("Interrupting thread " + thread.getName)
     thread.setUncaughtExceptionHandler(new TrapInterrupt(thread.getUncaughtExceptionHandler))
@@ -100,7 +100,7 @@ object TrapExit {
   }
   // an uncaught exception handler that swallows InterruptedExceptions and otherwise defers to originalHandler
   private final class TrapInterrupt(originalHandler: Thread.UncaughtExceptionHandler) extends Thread.UncaughtExceptionHandler {
-    def uncaughtException(thread: Thread, e: Throwable) {
+    def uncaughtException(thread: Thread, e: Throwable): Unit = {
       withCause[InterruptedException, Unit](e) { interrupted => () } { other => originalHandler.uncaughtException(thread, e) }
       thread.setUncaughtExceptionHandler(originalHandler)
     }
@@ -187,7 +187,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
     }
 
   // wait for all non-daemon threads to terminate
-  private[this] def waitForExit(app: App) {
+  private[this] def waitForExit(app: App): Unit = {
     var daemonsOnly = true
     app.processThreads { thread =>
       // check isAlive because calling `join` on a thread that hasn't started returns immediately
@@ -244,7 +244,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
 
     val exitCode = new ExitCode
 
-    def run() {
+    def run(): Unit = {
       try execute()
       catch {
         case x: Throwable =>
@@ -282,7 +282,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
       }
 
     /** Registers the logging exception handler on `t`, delegating to the existing handler if it isn't the default. */
-    private[this] def setExceptionHandler(t: Thread) {
+    private[this] def setExceptionHandler(t: Thread): Unit = {
       val group = t.getThreadGroup
       val previousHandler = t.getUncaughtExceptionHandler match {
         case null | `group` | (_: LoggingExceptionHandler) => None
@@ -302,7 +302,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
       cleanup(threads)
       cleanup(groups)
     }
-    private[this] def cleanup(resources: TrieMap[ThreadID, _]) {
+    private[this] def cleanup(resources: TrieMap[ThreadID, _]): Unit = {
       val snap = resources.readOnlySnapshot
       resources.clear()
       for ((id, _) <- snap)
@@ -312,7 +312,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
     // only want to operate on unterminated threads
     // want to drop terminated threads, including those that have been gc'd
     /** Evaluates `f` on each `Thread` started by this [[App]] at single instant shortly after this method is called. */
-    def processThreads(f: Thread => Unit) {
+    def processThreads(f: Thread => Unit): Unit = {
       // pulls in threads that weren't recorded by checkAccess(Thread) (which is jvm-dependent)
       //  but can be reached via the Threads in the ThreadGroups recorded by checkAccess(ThreadGroup) (not jvm-dependent)
       addUntrackedThreads()
@@ -372,7 +372,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
       }
   }
 
-  private[this] def stopAllThreads(app: App) {
+  private[this] def stopAllThreads(app: App): Unit = {
     // only try to dispose frames if we think the App used AWT
     // otherwise, we initialize AWT as a side effect of asking for the frames
     // also, we only assume one AWT application at a time
@@ -419,17 +419,17 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
   // These are overridden to do nothing because there is a substantial filesystem performance penalty
   // when there is a SecurityManager defined.  The default implementations of these construct a
   // FilePermission, and its initialization involves canonicalization, which is expensive.
-  override def checkRead(file: String) {}
-  override def checkRead(file: String, context: AnyRef) {}
-  override def checkWrite(file: String) {}
-  override def checkDelete(file: String) {}
-  override def checkExec(cmd: String) {}
+  override def checkRead(file: String): Unit = ()
+  override def checkRead(file: String, context: AnyRef): Unit = ()
+  override def checkWrite(file: String): Unit = ()
+  override def checkDelete(file: String): Unit = ()
+  override def checkExec(cmd: String): Unit = ()
 
-  override def checkPermission(perm: Permission) {
+  override def checkPermission(perm: Permission): Unit = {
     if (delegateManager ne null)
       delegateManager.checkPermission(perm)
   }
-  override def checkPermission(perm: Permission, context: AnyRef) {
+  override def checkPermission(perm: Permission, context: AnyRef): Unit = {
     if (delegateManager ne null)
       delegateManager.checkPermission(perm, context)
   }
@@ -439,7 +439,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
    * This is not reliably called on different jvm implementations.  On openjdk and similar jvms, the Thread constructor
    * calls setPriority, which triggers this SecurityManager check.  For Java 6 on OSX, this is not called, however.
    */
-  override def checkAccess(t: Thread) {
+  override def checkAccess(t: Thread): Unit = {
     if (active) {
       val group = t.getThreadGroup
       noteAccess(group) { app =>
@@ -455,7 +455,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
    * This is specified to be called in every Thread's constructor and every time a ThreadGroup is created.
    * This allows us to reliably track every ThreadGroup that is created and map it back to the constructing application.
    */
-  override def checkAccess(tg: ThreadGroup) {
+  override def checkAccess(tg: ThreadGroup): Unit = {
     if (active && !isSystemGroup(tg)) {
       noteAccess(tg) { app =>
         app.register(tg)
@@ -476,7 +476,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
   /** `true` if there is at least one application currently being managed. */
   private[this] def active = running.get > 0
 
-  private def disposeAllFrames(log: Logger) {
+  private def disposeAllFrames(log: Logger): Unit = {
     val allFrames = java.awt.Frame.getFrames
     if (allFrames.nonEmpty) {
       log.debug(s"Disposing ${allFrames.length} top-level windows...")
@@ -512,7 +512,7 @@ private final class ExitCode {
  * It logs the thread and the exception.
  */
 private final class LoggingExceptionHandler(log: Logger, delegate: Option[Thread.UncaughtExceptionHandler]) extends Thread.UncaughtExceptionHandler {
-  def uncaughtException(t: Thread, e: Throwable) {
+  def uncaughtException(t: Thread, e: Throwable): Unit = {
     log.error("(" + t.getName + ") " + e.toString)
     log.trace(e)
     delegate.foreach(_.uncaughtException(t, e))

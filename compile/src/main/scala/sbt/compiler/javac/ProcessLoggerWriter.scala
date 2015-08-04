@@ -19,7 +19,7 @@ private class ProcessLoggerWriter(delegate: ProcessLogger, level: Level.Value, n
       process()
     }
 
-  private[this] def process() {
+  private[this] def process(): Unit = {
     val i = buffer.indexOf(nl)
     if (i >= 0) {
       log(buffer.substring(0, i))

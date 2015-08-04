@@ -70,7 +70,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
   import global._
   import definitions._
 
-  private[sbt] def unlinkDeferred() {
+  private[sbt] def unlinkDeferred(): Unit = {
     toUnlinkLater foreach unlink
     toUnlinkLater = Nil
   }

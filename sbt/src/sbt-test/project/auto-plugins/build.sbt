@@ -47,7 +47,7 @@ check := {
 	val adel = (del in projA).?.value // should be None
 	same(adel, None, "del in projA")
 	val bdel = (del in projB).?.value // should be None
-	same(bdel, None, "del in projB")	
+	same(bdel, None, "del in projB")
 	val ddel = (del in projD).?.value // should be None
 	same(ddel, None, "del in projD")
 //
@@ -78,6 +78,6 @@ keyTest := "foo"
 
 topLevelKeyTest := "bar"
 
-def same[T](actual: T, expected: T, label: String) {
+def same[T](actual: T, expected: T, label: String): Unit = {
 	assert(actual == expected, s"Expected '$expected' for `$label`, got '$actual'")
 }

@@ -54,13 +54,13 @@ class Run(instance: ScalaInstance, trapExit: Boolean, nativeTmp: File) extends S
 
       if (trapExit) Run.executeTrapExit(execute(), log) else directExecute()
     }
-  private def run0(mainClassName: String, classpath: Seq[File], options: Seq[String], log: Logger) {
+  private def run0(mainClassName: String, classpath: Seq[File], options: Seq[String], log: Logger): Unit = {
     log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
     val loader = ClasspathUtilities.makeLoader(classpath, instance, nativeTmp)
     val main = getMainMethod(mainClassName, loader)
     invokeMain(loader, main, options)
   }
-  private def invokeMain(loader: ClassLoader, main: Method, options: Seq[String]) {
+  private def invokeMain(loader: ClassLoader, main: Method, options: Seq[String]): Unit = {
     val currentThread = Thread.currentThread
     val oldLoader = Thread.currentThread.getContextClassLoader
     currentThread.setContextClassLoader(loader)

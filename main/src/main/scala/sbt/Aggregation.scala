@@ -39,7 +39,7 @@ final object Aggregation {
       showRun(complete, show)
       (complete.state, complete.results)
     }
-  def showRun[T](complete: Complete[T], show: ShowConfig)(implicit display: Show[ScopedKey[_]]) {
+  def showRun[T](complete: Complete[T], show: ShowConfig)(implicit display: Show[ScopedKey[_]]): Unit = {
     import complete._
     val log = state.log
     val extracted = Project extract state
@@ -76,7 +76,7 @@ final object Aggregation {
     }
   }
 
-  def printSuccess(start: Long, stop: Long, extracted: Extracted, success: Boolean, log: Logger) {
+  def printSuccess(start: Long, stop: Long, extracted: Extracted, success: Boolean, log: Logger): Unit = {
     import extracted._
     def get(key: SettingKey[Boolean]): Boolean = key in currentRef get structure.data getOrElse true
     if (get(showSuccess)) {

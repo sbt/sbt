@@ -15,7 +15,7 @@ private[sbt] object Execute {
   def idMap[A, B]: Map[A, B] = JavaConversions.mapAsScalaMap(new java.util.IdentityHashMap[A, B])
   def pMap[A[_], B[_]]: PMap[A, B] = new DelegatingPMap[A, B](idMap)
   private[sbt] def completed(p: => Unit): Completed = new Completed {
-    def process() { p }
+    def process(): Unit = p
   }
   def noTriggers[A[_]] = new Triggers[A](Map.empty, Map.empty, idFun)
 
@@ -70,8 +70,8 @@ private[sbt] final class Execute[A[_] <: AnyRef](config: Config, triggers: Trigg
       finalResults
     }
 
-  def processAll()(implicit strategy: Strategy) {
-    @tailrec def next() {
+  def processAll()(implicit strategy: Strategy): Unit = {
+    @tailrec def next(): Unit = {
       pre {
         assert(reverse.nonEmpty, "Nothing to process.")
         if (!state.values.exists(_ == Running)) {
@@ -92,7 +92,7 @@ private[sbt] final class Execute[A[_] <: AnyRef](config: Config, triggers: Trigg
   }
   def dumpCalling: String = state.filter(_._2 == Calling).mkString("\n\t")
 
-  def call[T](node: A[T], target: A[T])(implicit strategy: Strategy) {
+  def call[T](node: A[T], target: A[T])(implicit strategy: Strategy): Unit = {
     if (config.checkCycles) cycleCheck(node, target)
     pre {
       assert(running(node))
@@ -118,7 +118,7 @@ private[sbt] final class Execute[A[_] <: AnyRef](config: Config, triggers: Trigg
     }
   }
 
-  def retire[T](node: A[T], result: Result[T])(implicit strategy: Strategy) {
+  def retire[T](node: A[T], result: Result[T])(implicit strategy: Strategy): Unit = {
     pre {
       assert(running(node) | calling(node))
       readyInv(node)
@@ -146,7 +146,7 @@ private[sbt] final class Execute[A[_] <: AnyRef](config: Config, triggers: Trigg
       case Inc(i)      => Inc(Incomplete(Some(node), tpe = i.tpe, causes = i :: Nil))
     }
 
-  def notifyDone(node: A[_], dependent: A[_])(implicit strategy: Strategy) {
+  def notifyDone(node: A[_], dependent: A[_])(implicit strategy: Strategy): Unit = {
     val f = forward(dependent)
     f -= node
     if (f.isEmpty) {
@@ -159,7 +159,7 @@ private[sbt] final class Execute[A[_] <: AnyRef](config: Config, triggers: Trigg
    * Once added, a node is pending until its inputs and dependencies have completed.
    * Its computation is then evaluated and made available for nodes that have it as an input.
    */
-  def addChecked[T](node: A[T])(implicit strategy: Strategy) {
+  def addChecked[T](node: A[T])(implicit strategy: Strategy): Unit = {
     if (!added(node)) addNew(node)
 
     post { addedInv(node) }
@@ -169,7 +169,7 @@ private[sbt] final class Execute[A[_] <: AnyRef](config: Config, triggers: Trigg
    * If all of the node's dependencies have finished, the node's computation is scheduled to run.
    * The node's dependencies will be added (transitively) if they are not already registered.
    */
-  def addNew[T](node: A[T])(implicit strategy: Strategy) {
+  def addNew[T](node: A[T])(implicit strategy: Strategy): Unit = {
     pre { newPre(node) }
 
     val v = register(node)
@@ -195,7 +195,7 @@ private[sbt] final class Execute[A[_] <: AnyRef](config: Config, triggers: Trigg
     }
   }
   /** Called when a pending 'node' becomes runnable.  All of its dependencies must be done.  This schedules the node's computation with 'strategy'.*/
-  def ready[T](node: A[T])(implicit strategy: Strategy) {
+  def ready[T](node: A[T])(implicit strategy: Strategy): Unit = {
     pre {
       assert(pending(node))
       readyInv(node)
@@ -220,7 +220,7 @@ private[sbt] final class Execute[A[_] <: AnyRef](config: Config, triggers: Trigg
       viewCache.getOrUpdate(node, view(node))
     }
   /** Send the work for this node to the provided Strategy. */
-  def submit[T](node: A[T])(implicit strategy: Strategy) {
+  def submit[T](node: A[T])(implicit strategy: Strategy): Unit = {
     val v = viewCache(node)
     val rs = v.alist.transform(v.in, getResult)
     strategy.submit(node, () => work(node, v.work(rs)))
@@ -267,12 +267,12 @@ private[sbt] final class Execute[A[_] <: AnyRef](config: Config, triggers: Trigg
   // Contracts
 
   def addedInv(node: A[_]): Unit = topologicalSort(node) foreach addedCheck
-  def addedCheck(node: A[_]) {
+  def addedCheck(node: A[_]): Unit = {
     assert(added(node), "Not added: " + node)
     assert(viewCache contains node, "Not in view cache: " + node)
     dependencyCheck(node)
   }
-  def dependencyCheck(node: A[_]) {
+  def dependencyCheck(node: A[_]): Unit = {
     dependencies(node) foreach { dep =>
       def onOpt[T](o: Option[T])(f: T => Boolean) = o match { case None => false; case Some(x) => f(x) }
       def checkForward = onOpt(forward.get(node)) { _ contains dep }
@@ -280,15 +280,15 @@ private[sbt] final class Execute[A[_] <: AnyRef](config: Config, triggers: Trigg
       assert(done(dep) ^ (checkForward && checkReverse))
     }
   }
-  def pendingInv(node: A[_]) {
+  def pendingInv(node: A[_]): Unit = {
     assert(atState(node, Pending))
     assert((dependencies(node) ++ runBefore(node)) exists notDone)
   }
-  def runningInv(node: A[_]) {
+  def runningInv(node: A[_]): Unit = {
     assert(dependencies(node) forall done)
     assert(!(forward contains node))
   }
-  def newPre(node: A[_]) {
+  def newPre(node: A[_]): Unit = {
     isNew(node)
     assert(!(reverse contains node))
     assert(!(forward contains node))
@@ -308,7 +308,7 @@ private[sbt] final class Execute[A[_] <: AnyRef](config: Config, triggers: Trigg
       visit(node).reverse
     }
 
-  def readyInv(node: A[_]) {
+  def readyInv(node: A[_]): Unit = {
     assert(dependencies(node) forall done)
     assert(!(forward contains node))
   }
@@ -319,7 +319,7 @@ private[sbt] final class Execute[A[_] <: AnyRef](config: Config, triggers: Trigg
     for ((called: A[c], callers) <- callers.toSeq; caller <- callers)
       cycleCheck(caller.asInstanceOf[A[c]], called)
 
-  def cycleCheck[T](node: A[T], target: A[T]) {
+  def cycleCheck[T](node: A[T], target: A[T]): Unit = {
     if (node eq target) cyclic(node, target, "Cannot call self")
     val all = IDSet.create[A[T]]
     def allCallers(n: A[T]): Unit = (all process n)(()) { callers.get(n).toList.flatten.foreach(allCallers) }

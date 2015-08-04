@@ -11,24 +11,24 @@ class MultiLogger(delegates: List[AbstractLogger]) extends BasicLogger {
   private[this] lazy val allSupportCodes = delegates forall supported
   private[this] def supported = (_: AbstractLogger).ansiCodesSupported
 
-  override def setLevel(newLevel: Level.Value) {
+  override def setLevel(newLevel: Level.Value): Unit = {
     super.setLevel(newLevel)
     dispatch(new SetLevel(newLevel))
   }
-  override def setTrace(level: Int) {
+  override def setTrace(level: Int): Unit = {
     super.setTrace(level)
     dispatch(new SetTrace(level))
   }
-  override def setSuccessEnabled(flag: Boolean) {
+  override def setSuccessEnabled(flag: Boolean): Unit = {
     super.setSuccessEnabled(flag)
     dispatch(new SetSuccess(flag))
   }
-  def trace(t: => Throwable) { dispatch(new Trace(t)) }
-  def log(level: Level.Value, message: => String) { dispatch(new Log(level, message)) }
-  def success(message: => String) { dispatch(new Success(message)) }
-  def logAll(events: Seq[LogEvent]) { delegates.foreach(_.logAll(events)) }
-  def control(event: ControlEvent.Value, message: => String) { delegates.foreach(_.control(event, message)) }
-  private[this] def dispatch(event: LogEvent) {
+  def trace(t: => Throwable): Unit = dispatch(new Trace(t))
+  def log(level: Level.Value, message: => String): Unit = dispatch(new Log(level, message))
+  def success(message: => String): Unit = dispatch(new Success(message))
+  def logAll(events: Seq[LogEvent]): Unit = delegates.foreach(_.logAll(events))
+  def control(event: ControlEvent.Value, message: => String): Unit = delegates.foreach(_.control(event, message))
+  private[this] def dispatch(event: LogEvent): Unit = {
     val plainEvent = if (allSupportCodes) event else removeEscapes(event)
     for (d <- delegates)
       if (d.ansiCodesSupported)

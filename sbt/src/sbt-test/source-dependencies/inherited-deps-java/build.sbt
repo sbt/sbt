@@ -25,6 +25,6 @@ lazy val pairs =
 lazy val expectedDeps = (Relation.empty[File,File] /: pairs) { case (r, (x,ys)) => r + (x,ys) }
 def toFile(s: String) = file(s + ".java").getAbsoluteFile
 
-def same[T](x: T, y: T) {
+def same[T](x: T, y: T): Unit = {
 	assert(x == y, s"\nActual: $x, \nExpected: $y")
 }

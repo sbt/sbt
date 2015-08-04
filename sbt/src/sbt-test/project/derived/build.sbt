@@ -56,7 +56,7 @@ lazy val b = project.settings(
 
 // ---------------- Verification
 
-def same[T](x: T, y: T) {
+def same[T](x: T, y: T): Unit = {
   assert(x == y, s"Actual: '$x', Expected: '$y'")
 }
 

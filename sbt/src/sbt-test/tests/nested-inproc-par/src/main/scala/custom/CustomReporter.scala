@@ -6,9 +6,9 @@ import events._
 
 class CustomReporter extends Reporter {
 
-	private def writeFile(filePath: String, content: String) {
+	private def writeFile(filePath: String, content: String): Unit = {
 		val file = new File(filePath)
-		val writer = 
+		val writer =
 			if (!file.exists)
 				new FileWriter(new File(filePath))
 			else
@@ -18,7 +18,7 @@ class CustomReporter extends Reporter {
 		writer.close()
 	}
 
-	def apply(event: Event) {
+	def apply(event: Event): Unit = {
 		event match {
 			case SuiteStarting(_, suiteName, _, _, _, _, _, _, _, _) => writeFile("target/SuiteStarting-" + suiteName, suiteName)
 			case SuiteCompleted(_, suiteName, _, _, _, _, _, _, _, _, _) => writeFile("target/SuiteCompleted-" + suiteName, suiteName)

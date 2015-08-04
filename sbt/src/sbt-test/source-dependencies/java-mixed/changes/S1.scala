@@ -1,3 +1,3 @@
 class S {
-	def foo(s:String) { println("I am foo") } 
+	def foo(s:String): Unit = println("I am foo")
 }

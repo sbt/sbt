@@ -9,11 +9,11 @@ import inc.Relations
 object DotGraph {
   private def fToString(roots: Iterable[File]): (File => String) =
     (x: File) => sourceToString(roots, x)
-  def sources(relations: Relations, outputDirectory: File, sourceRoots: Iterable[File]) {
+  def sources(relations: Relations, outputDirectory: File, sourceRoots: Iterable[File]): Unit = {
     val toString = fToString(sourceRoots)
     apply(relations, outputDirectory, toString, toString)
   }
-  def packages(relations: Relations, outputDirectory: File, sourceRoots: Iterable[File]) {
+  def packages(relations: Relations, outputDirectory: File, sourceRoots: Iterable[File]): Unit = {
     val packageOnly = (path: String) =>
       {
         val last = path.lastIndexOf(File.separatorChar)
@@ -23,7 +23,7 @@ object DotGraph {
     val toString = packageOnly compose fToString(sourceRoots)
     apply(relations, outputDirectory, toString, toString)
   }
-  def apply(relations: Relations, outputDir: File, sourceToString: File => String, externalToString: File => String) {
+  def apply(relations: Relations, outputDir: File, sourceToString: File => String, externalToString: File => String): Unit = {
     def file(name: String) = new File(outputDir, name)
     IO.createDirectory(outputDir)
     generateGraph(file("int-source-deps"), "dependencies", relations.internalSrcDep, sourceToString, sourceToString)

@@ -1,4 +1,4 @@
 object First
 {
-	def main(args: Array[String]) {}
+	def main(args: Array[String]): Unit = ()
 }

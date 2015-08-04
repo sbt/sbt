@@ -27,12 +27,12 @@ concurrentRestrictions in Global := Seq(
 	Tags.limitAll(math.max(EvaluateTask.SystemProcessors, 2) )
 )
 
-def waitForCStart = 
+def waitForCStart =
 	Def.task {
 		waitFor( (baseDirectory in c).value / "started" )
 	}
 
-def waitFor(f: File) {
+def waitFor(f: File): Unit = {
 	if(!f.exists) {
 		Thread.sleep(300)
 		waitFor(f)

@@ -207,7 +207,7 @@ object Plugins extends PluginsFunctions {
   private[this] def literalsString(lits: Seq[Literal]): String =
     lits map { case Atom(l) => l; case Negated(Atom(l)) => l } mkString(", ")
 
-  private[this] def duplicateProvidesError(byAtom: Seq[(Atom, AutoPlugin)]) {
+  private[this] def duplicateProvidesError(byAtom: Seq[(Atom, AutoPlugin)]): Unit = {
     val dupsByAtom = byAtom.groupBy(_._1).mapValues(_.map(_._2))
     val dupStrings = for( (atom, dups) <- dupsByAtom if dups.size > 1 ) yield
       s"${atom.label} by ${dups.mkString(", ")}"
@@ -215,7 +215,7 @@ object Plugins extends PluginsFunctions {
     val message = s"Plugin$ns provided by multiple AutoPlugins:$nl${dupStrings.mkString(nl)}"
     throw AutoPluginException(message)
   }
-  private[this] def exlusionConflictError(requested: Plugins, selected: Seq[AutoPlugin], conflicting: Seq[AutoPlugin]) {
+  private[this] def exlusionConflictError(requested: Plugins, selected: Seq[AutoPlugin], conflicting: Seq[AutoPlugin]): Unit = {
     def listConflicts(ns: Seq[AutoPlugin]) = (ns map { c =>
       val reasons = (if (flatten(requested) contains c) List("requested")
               else Nil) ++

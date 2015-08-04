@@ -65,7 +65,7 @@ object Scripted {
       launchOpts: Array[String], prescripted: java.util.List[File]): Unit
   }
 
-  def doScripted(launcher: File, scriptedSbtClasspath: Seq[Attributed[File]], scriptedSbtInstance: ScalaInstance, sourcePath: File, args: Seq[String], prescripted: File => Unit) {
+  def doScripted(launcher: File, scriptedSbtClasspath: Seq[Attributed[File]], scriptedSbtInstance: ScalaInstance, sourcePath: File, args: Seq[String], prescripted: File => Unit): Unit = {
     System.err.println(s"About to run tests: ${args.mkString("\n * ", "\n * ", "\n")}")
     val noJLine = new classpath.FilteredLoader(scriptedSbtInstance.loader, "jline." :: Nil)
     val loader = classpath.ClasspathUtilities.toLoader(scriptedSbtClasspath.files, noJLine)

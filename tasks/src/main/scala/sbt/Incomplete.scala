@@ -35,7 +35,7 @@ object Incomplete extends Enumeration {
 
       visit(i)
     }
-  def visitAll(i: Incomplete)(f: Incomplete => Unit) {
+  def visitAll(i: Incomplete)(f: Incomplete => Unit): Unit = {
     val visited = IDSet.create[Incomplete]
     def visit(inc: Incomplete): Unit =
       visited.process(inc)(()) {
