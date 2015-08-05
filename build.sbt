@@ -98,7 +98,7 @@ lazy val interfaceProj = (project in file("interface")).
 // defines operations on the API of a source, including determining whether it has changed and converting it to a string
 //   and discovery of Projclasses and annotations
 lazy val apiProj = (project in internalPath / "apiinfo").
-  dependsOn(interfaceProj).
+  dependsOn(interfaceProj, classfileProj).
   settings(
     testedBaseSettings,
     name := "API"
@@ -143,6 +143,7 @@ lazy val compileInterfaceProj = (project in internalPath / "compile-bridge").
   dependsOn(interfaceProj % "compile;test->test", /*launchProj % "test->test",*/ apiProj % "test->test").
   settings(
     baseSettings,
+    libraryDependencies += scalaCompiler.value % "provided",
     // precompiledSettings,
     name := "Compiler Interface",
     exportJars := true,

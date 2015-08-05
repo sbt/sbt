@@ -7,7 +7,7 @@ object Dependencies {
   lazy val collectionProj = "org.scala-sbt" % "collection" % bootstrapSbtVersion
   lazy val processProj = "org.scala-sbt" % "process" % bootstrapSbtVersion
   lazy val logProj = "org.scala-sbt" % "logging" % bootstrapSbtVersion
-  lazy val ivyProj = "org.scala-sbt" % "ivy" % bootstrapSbtVersion
+  lazy val ivyProj = "org.scala-sbt" % "ivy" %  "0.13.10-SNAPSHOT"
 
   lazy val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0-M1"
 
