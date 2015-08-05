@@ -6,7 +6,7 @@ object Dependencies {
   lazy val scala292 = "2.9.2"
   lazy val scala293 = "2.9.3"
   lazy val scala210 = "2.10.5"
-  lazy val scala211 = "2.11.6"
+  lazy val scala211 = "2.11.7"
 
   lazy val jline = "jline" % "jline" % "2.11"
   lazy val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-927bc9ded7f8fba63297cddd0d5a3d01d6ad5d8d"
