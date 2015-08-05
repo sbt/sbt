@@ -395,6 +395,18 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
    */
   def mergeOrganizationArtifactReports(rootModuleConf: String, reports0: Vector[OrganizationArtifactReport], os: Vector[IvyOverride], log: Logger): Vector[OrganizationArtifactReport] =
     {
+      // filter out evicted modules from further logic
+      def filterReports(report0: OrganizationArtifactReport): Option[OrganizationArtifactReport] =
+        report0.modules.toVector flatMap { mr =>
+          if (mr.evicted || mr.problem.nonEmpty) None
+          else
+            // https://github.com/sbt/sbt/issues/1763
+            Some(mr.copy(callers = JsonUtil.filterOutArtificialCallers(mr.callers)))
+        } match {
+          case Vector() => None
+          case ms       => Some(OrganizationArtifactReport(report0.organization, report0.name, ms))
+        }
+
       // group by takes up too much memory. trading space with time.
       val orgNamePairs: Vector[(String, String)] = (reports0 map { oar => (oar.organization, oar.name) }).distinct
       // this might take up some memory, but it's limited to a single
