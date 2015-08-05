@@ -410,7 +410,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       // group by takes up too much memory. trading space with time.
       val orgNamePairs: Vector[(String, String)] = (reports0 map { oar => (oar.organization, oar.name) }).distinct
       // this might take up some memory, but it's limited to a single
-      val reports1 = reports0 map { filterOutCallers }
+      val reports1 = reports0 flatMap { filterReports }
       val allModules0: Map[(String, String), Vector[OrganizationArtifactReport]] =
         Map(orgNamePairs map {
           case (organization, name) =>
@@ -447,15 +447,15 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
           }
           loopLists.toList
         }
-      @tailrec def breakLoops(loops: List[List[(String, String)]],
-        allModules1: Map[(String, String), Vector[OrganizationArtifactReport]]): Map[(String, String), Vector[OrganizationArtifactReport]] =
+      val allModules2: mutable.Map[(String, String), Vector[OrganizationArtifactReport]] =
+        mutable.Map(allModules0.toSeq: _*)
+      @tailrec def breakLoops(loops: List[List[(String, String)]]): Unit =
         loops match {
-          case Nil =>
-            allModules1
+          case Nil => ()
           case loop :: rest =>
             loop match {
               case Nil =>
-                breakLoops(rest, allModules1)
+                breakLoops(rest)
               case loop =>
                 val sortedLoop = loop sortBy { x =>
                   (for {
@@ -468,7 +468,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
                 val next: (String, String) = loop(loop.indexOf(moduleWithMostCallers) + 1)
                 // remove the module with most callers as the caller of next.
                 // so, A -> C, B -> C, and C -> A. C has the most callers, and C -> A will be removed.
-                val nextMap = allModules1 map {
+                allModules2 foreach {
                   case (k: (String, String), oars0) if k == next =>
                     val oars: Vector[OrganizationArtifactReport] = oars0 map { oar =>
                       val mrs = oar.modules map { mr =>
@@ -482,15 +482,17 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
                       }
                       OrganizationArtifactReport(oar.organization, oar.name, mrs)
                     }
-                    (k, oars)
-                  case (k, v) => (k, v)
+                    allModules2(k) = oars
+                  case (k, v) => // do nothing
                 }
-                breakLoops(rest, nextMap)
+
+                breakLoops(rest)
             }
         }
       val loop = detectLoops(allModules0)
       log.debug(s":: $rootModuleConf: loop: $loop")
-      val allModules2 = breakLoops(loop, allModules0)
+      breakLoops(loop)
+
       // sort the all modules such that less called modules comes earlier
       @tailrec def sortModules(cs: Vector[(String, String)],
         acc: Vector[(String, String)], extra: Vector[(String, String)],
@@ -554,14 +556,6 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       val result = resolveConflicts(sorted.toList, allModules0)
       result.toVector
     }
-  def filterOutCallers(report0: OrganizationArtifactReport): OrganizationArtifactReport =
-    OrganizationArtifactReport(
-      report0.organization,
-      report0.name,
-      report0.modules map { mr =>
-        // https://github.com/sbt/sbt/issues/1763
-        mr.copy(callers = JsonUtil.filterOutArtificialCallers(mr.callers))
-      })
   /**
    * Merges ModuleReports, which represents orgnization, name, and version.
    * Returns a touple of (surviving modules ++ non-conflicting modules, newly evicted modules).
