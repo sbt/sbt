@@ -96,7 +96,7 @@ object MainLoop {
     ErrorHandling.wideConvert { state.process(Command.process) } match {
       case Right(s)                  => s
       case Left(t: xsbti.FullReload) => throw t
-      case Left(t)                   => handleException(t, state)
+      case Left(t)                   => state.handleError(t)
     }
 
   @deprecated("Use State.handleError", "0.13.0")

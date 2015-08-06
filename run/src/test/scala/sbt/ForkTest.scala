@@ -2,7 +2,7 @@ package sbt
 
 import org.scalacheck._
 import Prop.{ Exception => _, _ }
-import Gen.{ alphaNumChar, frequency, listOf1, oneOf }
+import Gen.{ alphaNumChar, frequency, nonEmptyListOf }
 import java.io.File
 
 object ForkTest extends Properties("Fork") {
@@ -14,9 +14,9 @@ object ForkTest extends Properties("Fork") {
   final val MaximumClasspathLength = 100000
 
   lazy val genOptionName = frequency((9, Some("-cp")), (9, Some("-classpath")), (1, None))
-  lazy val pathElement = listOf1(alphaNumChar).map(_.mkString)
-  lazy val path = listOf1(pathElement).map(_.mkString(File.separator))
-  lazy val genRelClasspath = listOf1(path)
+  lazy val pathElement = nonEmptyListOf(alphaNumChar).map(_.mkString)
+  lazy val path = nonEmptyListOf(pathElement).map(_.mkString(File.separator))
+  lazy val genRelClasspath = nonEmptyListOf(path)
 
   lazy val requiredEntries =
     IO.classLocationFile[scala.Option[_]] ::
