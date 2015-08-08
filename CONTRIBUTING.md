@@ -91,7 +91,7 @@ directory:
       notes/
         <target release>/
            <your-change-name>.md
-           
+
 Notes files should have the following contents:
 
 * Bullet item description under one of the following sections:
@@ -125,24 +125,26 @@ Build from source
 		$ sbt
 		> publishLocal
 
-5. To use this locally built version of sbt, copy your stable `~/bin/sbt` script to `~/bin/xsbt` and change it to use the launcher jar in `<sbt>/target/`.  For the v0.13.8 tag, the full location is:
+5. To use this locally built version of sbt, copy your stable `~/bin/sbt` script to `~/bin/xsbt` and change it to use the launcher jar in `<sbt>/launch/target/`.
+
+  For the v0.13.8 tag, the full location is:
 
 		<sbt>/target/sbt-launch-0.13.8.jar
 
 	If using the 0.13 development branch, the launcher is at:
 
-		<sbt>/target/sbt-launch-0.13.10-SNAPSHOT.jar
-		
-	Directory `target` is removed by clean command. Second solution is using artifact stored in local ivy repository.
-		
+               <sbt>/launch/target/sbt-launch.jar
+
+	Directory `target` is removed by `clean` command. Second solution is using the artifact stored in the local ivy repository.
+
 	 The launcher is located in:
-		
+
               $HOME/.ivy2/local/org.scala-sbt/sbt-launch/0.13.8/jars/sbt-launch.jar
-                
+
 	 for v0.13.8 tag, or in:
-                
+
               $HOME/.ivy2/local/org.scala-sbt/sbt-launch/0.13.10-SNAPSHOT/jars/sbt-launch.jar
-                
+
 	 for development branch.
 
 ## Modifying sbt
