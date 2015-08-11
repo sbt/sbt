@@ -1,6 +1,8 @@
 import com.typesafe.sbt.packager.Keys._
 import com.typesafe.sbt.SbtNativePackager._
 import util.control.Exception.catching
+import _root_.bintray.InternalBintrayKeys._
+import _root_.bintray.{BintrayRepo, Bintray}
 
 val sbtLaunchJarUrl = SettingKey[String]("sbt-launch-jar-url")
 val sbtLaunchJarLocation = SettingKey[File]("sbt-launch-jar-location")  
@@ -12,7 +14,7 @@ val bintrayGenericPattern = "[module]/[revision]/[module]/[revision]/[module]-[r
 val bintrayDebianUrl = "https://api.bintray.com/content/sbt/debian/"
 val bintrayRpmUrl = "https://api.bintray.com/content/sbt/rpm/"
 val bintrayGenericPackagesUrl = "https://api.bintray.com/content/sbt/native-packages/"
-val bintrayPublishAllStaged = TaskKey[Unit]("bintray-publish-all-staged", "Publish all staged artifacts on bintray.")
+val bintrayReleaseAllStaged = TaskKey[Unit]("bintray-release-all-staged", "Release all staged artifacts on bintray.")
 
 // This build creates a SBT plugin with handy features *and* bundles the SBT script for distribution.
 val root = (project in file(".")).
@@ -111,13 +113,6 @@ def downloadUrlForVersion(v: String) = (v split "[^\\d]" flatMap (i => catching(
   case Array(0, y, _*) if y >= 12    => "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
   case _                             => "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch/"+v+"/sbt-launch.jar"
 }
-/** Returns an id, url and pattern for publishing based on the given configuration. */
-def getPublishSettings(config: Configuration): (String, String, String) = 
-  config.name match {
-    case Debian.name => ("debian", bintrayDebianUrl, bintrayLinuxPattern)
-    case Rpm.name => ("rpm", bintrayRpmUrl, bintrayLinuxPattern)
-    case _ => ("native-packages", bintrayGenericPackagesUrl, bintrayGenericPattern)
-  }
 
 def makePublishTo(id: String, url: String, pattern: String): Setting[_] = {
   publishTo := {
@@ -127,22 +122,29 @@ def makePublishTo(id: String, url: String, pattern: String): Setting[_] = {
 }
 
 def makePublishToForConfig(config: Configuration) = {
-  val (id, url, pattern) = getPublishSettings(config)
-
-
+  val (id, url, pattern) =
+    config.name match {
+      case Debian.name => ("debian", bintrayDebianUrl, bintrayLinuxPattern)
+      case Rpm.name => ("rpm", bintrayRpmUrl, bintrayLinuxPattern)
+      case _ => ("native-packages", bintrayGenericPackagesUrl, bintrayGenericPattern)
+    }
   // Add the publish to and ensure global resolvers has the resolver we just configured.
   inConfig(config)(Seq(
-     makePublishTo(id, url, pattern),
-     bintrayPublishAllStaged <<= (credentials, version) map { (creds, version) =>
-       publishContent(id, version, creds)
-     },
-     // TODO - This is a little funky...
-     publish <<= (publish, credentials, version) apply { (publish, creds, version) =>
-       for {
-         pub <- publish
-         creds <- creds
-       } yield publishContent(id, version, creds)
-     }
+    bintrayOrganization := Some("sbt"),
+    bintrayRepository := id,
+    bintrayRepo := Bintray.cachedRepo(bintrayEnsureCredentials.value,
+      bintrayOrganization.value,
+      bintrayRepository.value),
+    bintrayPackage := "sbt",
+    makePublishTo(id, url, pattern),
+    bintrayReleaseAllStaged := bintrayRelease(bintrayRepo.value, bintrayPackage.value, version.value, sLog.value)
+    // Uncomment to release right after publishing
+    // publish <<= (publish, bintrayRepo, bintrayPackage, version, sLog) apply { (publish, bintrayRepo, bintrayPackage, version, sLog) =>
+    //   for {
+    //     pub <- publish
+    //     repo <- bintrayRepo
+    //   } yield bintrayRelease(repo, bintrayPackage, version, sLog)
+    // }
   )) ++ Seq(
      resolvers <++= (publishTo in config) apply (_.toSeq)
   )
@@ -151,26 +153,6 @@ def makePublishToForConfig(config: Configuration) = {
 def publishToSettings: Seq[Setting[_]] = 
   Seq[Configuration](Debian, Universal, Windows, Rpm) flatMap makePublishToForConfig
 
-def bintrayCreds(creds: Seq[sbt.Credentials]): (String, String) = {
-  val matching = 
-    for {
-      c <- creds
-      if c.isInstanceOf[sbt.DirectCredentials]
-      val cred = c.asInstanceOf[sbt.DirectCredentials]
-      if cred.host == "api.bintray.com"
-    } yield cred.userName -> cred.passwd
-
-  matching.headOption getOrElse sys.error("Unable to find bintray credentials (api.bintray.com)")
-}
-
-def publishContent(repo: String, version: String, creds: Seq[sbt.Credentials]): Unit = {
-  val subject = "sbt" // Sbt org
-  val pkg = "sbt" // Sbt package
-  val uri = s"https://bintray.com/api/v1/content/$subject/$repo/$pkg/$version/publish"
-
-  val (u,p) = bintrayCreds(creds)
-  import dispatch.classic._
-  // TODO - Log the output
-  Http(url(uri).POST.as(u,p).>|)
-}
+def bintrayRelease(repo: BintrayRepo, pkg: String, version: String, log: Logger): Unit =
+  repo.release(pkg, version, log)
 
