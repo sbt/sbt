@@ -77,6 +77,7 @@ class CachedResolutionSpec extends BaseIvySpecification {
     // second resolution reads from the minigraph
     val report = ivyUpdate(m)
     val modules = report.configurations.head.modules
-    modules must containMatch("""org\.jboss\.netty:netty:3\.2\.0.Final""")
+    (modules must containMatch("""org\.jboss\.netty:netty:3\.2\.0.Final""")) and
+      (modules must not containMatch ("""org\.jboss\.netty:netty:3\.2\.1.Final"""))
   }
 }

@@ -1,0 +1,13 @@
+> a/publishLocal
+
+> b/publishLocal
+
+> c/publishLocal
+
+$ copy-file changes/multi.sbt multi.sbt
+
+> reload
+
+> b/publishLocal
+
+> check

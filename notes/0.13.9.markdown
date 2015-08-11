@@ -50,6 +50,7 @@
   [2009]: https://github.com/sbt/sbt/pull/2009
   [2046]: https://github.com/sbt/sbt/issues/2046
   [2097]: https://github.com/sbt/sbt/pull/2097
+  [2129]: https://github.com/sbt/sbt/pull/2129
 
 ### Fixes with compatibility implications
 
@@ -130,7 +131,7 @@ Under some circumstances, libraries that shouldn't have been evicted was being e
 This occured when library `A1` depended on `B2`, but a newer `A2` dropped the dependency,
 and `A2` and `B1` are also is in the graph. This is fixed by sorting the graph prior to eviction.
 
-[#2030][2030]/[#1721][1721]/[#2014][2014]/[#2046][2046]/[#2097][2097] by [@eed3si9n][@eed3si9n]
+[#2030][2030]/[#1721][1721]/[#2014][2014]/[#2046][2046]/[#2097][2097]/[#2129][2129] by [@eed3si9n][@eed3si9n]
 
 ### Force GC
 
@@ -156,3 +157,7 @@ This problem surfaced as:
 - Potentially other `SNAPSHOT` related issues.
 
 sbt 0.13.9 fixes this by relaxing the Maven compatiblity check, so it will read `maven-metadata.xml`. [#2075][2075] by [@eed3si9n][@eed3si9n]
+
+### Contributors
+
+Special thanks to the contributors for making this release a success. Compared to 0.13.8, there were 127 (non-merge) commits, by 14 contributors: Eugene Yokota, Dale Wijnand, Josh Suereth, Andrew Johnson, David Perez, Matthew Farwell, Antonio Cunei, Andrzej Jozwik, James Roper, Vitalii Voloshyn, Benjy, Kamil Kloch, Max Worgan, Andreas Flierl. Thank you!
