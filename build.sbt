@@ -46,10 +46,10 @@ val root = (project in file(".")).
       file
     },
     // GENERAL LINUX PACKAGING STUFFS
-    maintainer := "Josh Suereth <joshua.suereth@typesafe.com>",
-    packageSummary := "Simple Build Tool for Scala-driven builds",
-    packageDescription := """This script provides a native way to run the Simple Build Tool,
-  a build tool for Scala software, also called SBT.""",
+    maintainer := "Eugene Yokota <eugene.yokota@typesafe.com>",
+    packageSummary := "sbt, the interactive build tool",
+    packageDescription := """This script provides a native way to run sbt,
+  a build tool for Scala and more.""",
     // Here we remove the jar file and launch lib from the symlinks:
     linuxPackageSymlinks <<= linuxPackageSymlinks map { links =>
       for { 
@@ -58,7 +58,7 @@ val root = (project in file(".")).
         if !(link.destination endsWith "sbt-launch.jar")
       } yield link
     },
-    // DEBIAN SPECIFIC    
+    // DEBIAN SPECIFIC
     name in Debian := "sbt",
     version in Debian <<= sbtVersion,
     debianPackageDependencies in Debian ++= Seq("java6-runtime-headless", "bash (>= 2.05a-11)"),
@@ -74,7 +74,7 @@ val root = (project in file(".")).
     version in Rpm <<= sbtVersion apply { sv => (sv split "[^\\d]" filterNot (_.isEmpty) mkString ".") },
     rpmRelease := "1",
     rpmVendor := "typesafe",
-    rpmUrl := Some("http://github.com/paulp/sbt-extras"),
+    rpmUrl := Some("http://github.com/sbt/sbt-launcher-package"),
     rpmLicense := Some("BSD"),
     rpmRequirements :=Seq("java","java-devel","jpackage-utils"),
     rpmProvides := Seq("sbt"),
@@ -89,8 +89,8 @@ val root = (project in file(".")).
       }
     },
     maintainer in Windows := "Typesafe, Inc.",
-    packageSummary in Windows := "Simple Build Tool",
-    packageDescription in Windows := "THE reactive build tool.",
+    packageSummary in Windows := "sbt",
+    packageDescription in Windows := "The interactive build tool.",
     wixProductId := "ce07be71-510d-414a-92d4-dff47631848a",
     wixProductUpgradeId := "4552fb0e-e257-4dbd-9ecb-dba9dbacf424",
     javacOptions := Seq("-source", "1.5", "-target", "1.5"),
