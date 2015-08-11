@@ -157,3 +157,7 @@ This problem surfaced as:
 - Potentially other `SNAPSHOT` related issues.
 
 sbt 0.13.9 fixes this by relaxing the Maven compatiblity check, so it will read `maven-metadata.xml`. [#2075][2075] by [@eed3si9n][@eed3si9n]
+
+### Contributors
+
+Special thanks to the contributors for making this release a success. Compared to 0.13.8, there were 127 (non-merge) commits, by 14 contributors: Eugene Yokota, Dale Wijnand, Josh Suereth, Andrew Johnson, David Perez, Matthew Farwell, Antonio Cunei, Andrzej Jozwik, James Roper, Vitalii Voloshyn, Benjy, Kamil Kloch, Max Worgan, Andreas Flierl. Thank you!
