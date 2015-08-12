@@ -10,6 +10,8 @@ import KeyRanks.{ DTask, Invisible }
 object Def extends Init[Scope] with TaskMacroExtra {
   type Classpath = Seq[Attributed[File]]
 
+  def settings(ss: SettingsDefinition*): Seq[Setting[_]] = ss.flatMap(_.settings)
+
   val triggeredBy = AttributeKey[Seq[Task[_]]]("triggered-by")
   val runBefore = AttributeKey[Seq[Task[_]]]("run-before")
   val resolvedScoped = SettingKey[ScopedKey[_]]("resolved-scoped", "The ScopedKey for the referencing setting or task.", KeyRanks.DSetting)
