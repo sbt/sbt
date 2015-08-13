@@ -178,10 +178,17 @@ lazy val compileInterfaceOldProj = (project in internalPath / "compile-bridge-2.
 // Implements the core functionality of detecting and propagating changes incrementally.
 //   Defines the data structures for representing file fingerprints and relationships and the overall source analysis
 lazy val compileIncrementalProj = (project in internalPath / "compile-inc").
-  dependsOn (apiProj, classpathProj).
+  dependsOn (apiProj, classpathProj, compileInterfaceProj % "test->test").
   settings(
     testedBaseSettings,
     libraryDependencies ++= Seq(sbtIO, utilLogging, utilRelation),
+    // we need to fork because in unit tests we set usejavacp = true which means
+    // we are expecting all of our dependencies to be on classpath so Scala compiler
+    // can use them while constructing its own classpath for compilation
+    fork in Test := true,
+    // needed because we fork tests and tests are ran in parallel so we have multiple Scala
+    // compiler instances that are memory hungry
+    javaOptions in Test += "-Xmx1G",
     name := "Incremental Compiler"
   )
 
