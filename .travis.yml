@@ -42,10 +42,6 @@ notifications:
     - eugene.yokota@typesafe.com
     - joshua.suereth@typesafe.com
 
-before_script:
-  - mkdir -p $HOME/.sbt/launchers/0.13.8/
-  - curl -L -o $HOME/.sbt/launchers/0.13.8/sbt-launch.jar https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/0.13.8/sbt-launch.jar
-
 script:
   - sbt -J-XX:ReservedCodeCacheSize=128m "$SCRIPTED_TEST"
 
