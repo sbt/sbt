@@ -148,7 +148,7 @@ object AnalyzingCompiler {
         } catch { case e: xsbti.CompileFailed => throw new CompileFailed(e.arguments, "Error compiling sbt component '" + id + "'", e.problems) }
         import sbt.Path._
         copy(resources pair rebase(dir, outputDirectory))
-        zip((outputDirectory ***) x_! relativeTo(outputDirectory), targetJar)
+        zip((outputDirectory ***) pair (relativeTo(outputDirectory), false), targetJar)
       }
     }
   }

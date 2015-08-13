@@ -12,7 +12,7 @@ object CacheTest // extends Properties("Cache test")
   import FileInfo.hash._
   import Ordering._
   import sbinary.DefaultProtocol.FileFormat
-  def test {
+  def test(): Unit = {
     lazy val create = new File("test")
 
     val length = cached(lengthCache) {

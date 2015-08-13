@@ -184,7 +184,7 @@ object Load {
   def reapply(newSettings: Seq[Setting[_]], structure: sbt.BuildStructure)(implicit display: Show[ScopedKey[_]]): sbt.BuildStructure =
     {
       val transformed = finalTransforms(newSettings)
-      val newData = makeSettings(transformed, structure.delegates, structure.scopeLocal)
+      val newData = Def.make(transformed)(structure.delegates, structure.scopeLocal, display)
       val newIndex = structureIndex(newData, transformed, index => BuildUtil(structure.root, structure.units, index, newData), structure.units)
       val newStreams = mkStreams(structure.units, structure.root, newData)
       new sbt.BuildStructure(units = structure.units, root = structure.root, settings = transformed, data = newData, index = newIndex, streams = newStreams, delegates = structure.delegates, scopeLocal = structure.scopeLocal)

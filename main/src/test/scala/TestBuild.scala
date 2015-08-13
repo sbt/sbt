@@ -214,7 +214,7 @@ object TestBuild {
 
   def genAcyclicDirect[A, T](maxDeps: Gen[Int], keyGen: Gen[T], max: Gen[Int])(make: (T, Seq[A]) => A): Gen[Seq[A]] =
     genAcyclic[A, T](maxDeps, keyGen, max) { t =>
-      Gen.value { deps =>
+      Gen.const { deps =>
         make(t, deps)
       }
     }

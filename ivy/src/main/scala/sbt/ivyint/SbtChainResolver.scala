@@ -7,14 +7,14 @@ import java.util.Date
 
 import org.apache.ivy.core.settings.IvySettings
 import org.apache.ivy.core.{ IvyContext, LogOptions }
-import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact, DefaultModuleDescriptor, DefaultDependencyDescriptor, ModuleDescriptor, DependencyDescriptor }
+import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact, DefaultModuleDescriptor, ModuleDescriptor, DependencyDescriptor }
 import org.apache.ivy.core.resolve.{ ResolvedModuleRevision, ResolveData }
 import org.apache.ivy.plugins.latest.LatestStrategy
 import org.apache.ivy.plugins.repository.file.{ FileRepository => IFileRepository, FileResource }
 import org.apache.ivy.plugins.repository.url.URLResource
 import org.apache.ivy.plugins.resolver._
 import org.apache.ivy.plugins.resolver.util.{ HasLatestStrategy, ResolvedResource }
-import org.apache.ivy.util.{ Message, MessageLogger, StringUtils => IvyStringUtils }
+import org.apache.ivy.util.{ Message, StringUtils => IvyStringUtils }
 
 private[sbt] case class SbtChainResolver(
     name: String,
@@ -88,9 +88,9 @@ private[sbt] case class SbtChainResolver(
       // - If `isReturnFirst` is true, you return the first value found
       // - If not, we will ATTEMPT to look at the publish date, which is not correctly discovered for Maven modules and
       //   leads to undefined behavior.
-      val useLatest = (dd.isChanging || (IvySbt.isChanging(dd.getDependencyRevisionId))) && updateOptions.latestSnapshots
+      val useLatest = (dd.isChanging || IvySbt.isChanging(dd.getDependencyRevisionId)) && updateOptions.latestSnapshots
       if (useLatest) {
-        Message.verbose(s"${getName} is changing. Checking all resolvers on the chain")
+        Message.verbose(s"$getName is changing. Checking all resolvers on the chain")
       }
       val data = new ResolveData(data0, doValidate(data0))
       // Returns the value if we've already been resolved from some other branch of the resolution tree.
@@ -146,7 +146,7 @@ private[sbt] case class SbtChainResolver(
               Left(ex)
           } finally {
             oldLatest map { _ => doSetLatestStrategy(resolver, oldLatest) }
-            checkInterrupted
+            checkInterrupted()
           }
         }
       }
@@ -179,7 +179,7 @@ private[sbt] case class SbtChainResolver(
             }
         }).reverse.headOption map {
           case (rmr, resolver) =>
-            Message.warn(s"Choosing ${resolver} for ${rmr.getId}")
+            Message.warn(s"Choosing $resolver for ${rmr.getId}")
             // Now that we know the real latest revision, let's force Ivy to use it
             val artifactOpt = findFirstArtifactRef(rmr.getDescriptor, dd, data, resolver)
             artifactOpt match {
@@ -191,7 +191,7 @@ private[sbt] case class SbtChainResolver(
               case Some(artifactRef) =>
                 val systemMd = toSystem(rmr.getDescriptor)
                 getRepositoryCacheManager.cacheModuleDescriptor(resolver, artifactRef,
-                  toSystem(dd), systemMd.getAllArtifacts().head, None.orNull, getCacheOptions(data))
+                  toSystem(dd), systemMd.getAllArtifacts.head, None.orNull, getCacheOptions(data))
             }
             rmr
         }
@@ -223,7 +223,7 @@ private[sbt] case class SbtChainResolver(
         case r: FileResource =>
           try {
             val parser = rmr.getDescriptor.getParser
-            val md = parser.parseDescriptor(settings, r.getFile.toURL, r, false)
+            val md = parser.parseDescriptor(settings, r.getFile.toURI.toURL, r, false)
             Some(new ResolvedModuleRevision(resolver, resolver, md, rmr.getReport, true))
           } catch {
             case _: ParseException => None
@@ -246,7 +246,7 @@ private[sbt] case class SbtChainResolver(
                 Option(artifact.getUrl) map { url =>
                   Message.verbose("\tusing url for " + artifact + ": " + url)
                   val resource =
-                    if ("file" == url.getProtocol) new FileResource(new IFileRepository(), new File(url.getPath()))
+                    if ("file" == url.getProtocol) new FileResource(new IFileRepository(), new File(url.getPath))
                     else new URLResource(url)
                   new ResolvedResource(resource, artifact.getModuleRevisionId.getRevision)
                 }
@@ -262,7 +262,7 @@ private[sbt] case class SbtChainResolver(
           artifactRef(af, data.getDate).toIterator
         }
       }
-      if (artifactRefs.hasNext) Some(artifactRefs.next)
+      if (artifactRefs.hasNext) Some(artifactRefs.next())
       else None
     }
   /** Ported from ChainResolver#forcedRevision. */

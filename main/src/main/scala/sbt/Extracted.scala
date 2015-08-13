@@ -40,8 +40,8 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
     {
       import EvaluateTask._
       val rkey = resolve(key.scopedKey)
-      val config = extractedConfig(this, structure)
-      val value: Option[(State, Result[T])] = apply(structure, key.task.scopedKey, state, currentRef, config)
+      val config = extractedTaskConfig(this, structure, state)
+      val value: Option[(State, Result[T])] = apply(structure, key.scopedKey, state, currentRef, config)
       val (newS, result) = getOrError(rkey.scope, rkey.key, value)
       (newS, processResult(result, newS.log))
     }

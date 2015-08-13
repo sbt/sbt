@@ -141,7 +141,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
   def aggregate(refs: ProjectReference*): Project = copy(aggregate = (aggregate: Seq[ProjectReference]) ++ refs)
 
   /** Appends settings to the current settings sequence for this project. */
-  def settings(ss: SettingsDefinition*): Project = copy(settings = (settings: Seq[Def.Setting[_]]) ++ ss.flatMap(_.settings))
+  def settings(ss: Def.SettingsDefinition*): Project = copy(settings = (settings: Seq[Def.Setting[_]]) ++ ss.flatMap(_.settings))
 
   @deprecated("Use settingSets method.", "0.13.5")
   def autoSettings(select: AddSettings*): Project = settingSets(select.toSeq: _*)
@@ -464,7 +464,7 @@ object Project extends ProjectExtra {
   def relation(structure: BuildStructure, actual: Boolean)(implicit display: Show[ScopedKey[_]]): Relation[ScopedKey[_], ScopedKey[_]] =
     relation(structure.settings, actual)(structure.delegates, structure.scopeLocal, display)
 
-  private[sbt] def relation(settings: Seq[Setting[_]], actual: Boolean)(implicit delegates: Scope => Seq[Scope], scopeLocal: Def.ScopeLocal, display: Show[ScopedKey[_]]): Relation[ScopedKey[_], ScopedKey[_]] =
+  private[sbt] def relation(settings: Seq[Def.Setting[_]], actual: Boolean)(implicit delegates: Scope => Seq[Scope], scopeLocal: Def.ScopeLocal, display: Show[ScopedKey[_]]): Relation[ScopedKey[_], ScopedKey[_]] =
     {
       type Rel = Relation[ScopedKey[_], ScopedKey[_]]
       val cMap = Def.flattenLocals(Def.compiled(settings, actual))

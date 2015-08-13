@@ -16,8 +16,8 @@ object checkResult {
           case i: Incomplete =>
             println(i)
             "One or more tasks failed" |: false
-          case e =>
-            e.printStackTrace
+          case e: Throwable =>
+            e.printStackTrace()
             "Error in framework" |: false
         })
     }
