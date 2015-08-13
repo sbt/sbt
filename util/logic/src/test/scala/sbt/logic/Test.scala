@@ -104,7 +104,7 @@ object TestClauses {
     Logic.reduceAll(cs, Set(A, B))
   }
 
-  def all {
+  def all(): Unit = {
     println(s"Cycles: $cycles")
     println(s"xNeg: $excludedNeg")
     println(s"xPos: $excludedPos")

@@ -44,7 +44,7 @@ object ParserTest extends Properties("Completing Parser") {
   val nested = (token("a1") ~ token("b2")) ~ "c3"
   val nestedDisplay = (token("a1", "<a1>") ~ token("b2", "<b2>")) ~ "c3"
 
-  val spacePort = (token(Space) ~> Port)
+  val spacePort = token(Space) ~> Port
 
   def p[T](f: T): T = { println(f); f }
 
@@ -58,7 +58,7 @@ object ParserTest extends Properties("Completing Parser") {
   def checkAll(in: String, parser: Parser[_], expect: Completions): Prop =
     {
       val cs = completions(parser, in, 1)
-      ("completions: " + cs) |: ("Expected: " + expect) |: ((cs == expect): Prop)
+      ("completions: " + cs) |: ("Expected: " + expect) |: (cs == expect: Prop)
     }
 
   def checkInvalid(in: String) =
@@ -68,31 +68,31 @@ object ParserTest extends Properties("Completing Parser") {
   def checkInv(in: String, parser: Parser[_]): Prop =
     {
       val cs = completions(parser, in, 1)
-      ("completions: " + cs) |: ((cs == Completions.nil): Prop)
+      ("completions: " + cs) |: (cs == Completions.nil: Prop)
     }
 
-  property("nested tokens a") = checkSingle("", Completion.tokenStrict("", "a1"))(Completion.displayStrict("<a1>"))
-  property("nested tokens a1") = checkSingle("a", Completion.tokenStrict("a", "1"))(Completion.displayStrict("<a1>"))
+  property("nested tokens a") = checkSingle("", Completion.token("", "a1"))(Completion.displayOnly("<a1>"))
+  property("nested tokens a1") = checkSingle("a", Completion.token("a", "1"))(Completion.displayOnly("<a1>"))
   property("nested tokens a inv") = checkInvalid("b")
-  property("nested tokens b") = checkSingle("a1", Completion.tokenStrict("", "b2"))(Completion.displayStrict("<b2>"))
-  property("nested tokens b2") = checkSingle("a1b", Completion.tokenStrict("b", "2"))(Completion.displayStrict("<b2>"))
+  property("nested tokens b") = checkSingle("a1", Completion.token("", "b2"))(Completion.displayOnly("<b2>"))
+  property("nested tokens b2") = checkSingle("a1b", Completion.token("b", "2"))(Completion.displayOnly("<b2>"))
   property("nested tokens b inv") = checkInvalid("a1a")
-  property("nested tokens c") = checkSingle("a1b2", Completion.suggestStrict("c3"))()
-  property("nested tokens c3") = checkSingle("a1b2c", Completion.suggestStrict("3"))()
+  property("nested tokens c") = checkSingle("a1b2", Completion.suggestion("c3"))()
+  property("nested tokens c3") = checkSingle("a1b2c", Completion.suggestion("3"))()
   property("nested tokens c inv") = checkInvalid("a1b2a")
 
-  property("suggest space") = checkOne("", spacePort, Completion.tokenStrict("", " "))
-  property("suggest port") = checkOne(" ", spacePort, Completion.displayStrict("<port>"))
-  property("no suggest at end") = checkOne("asdf", "asdf", Completion.suggestStrict(""))
-  property("no suggest at token end") = checkOne("asdf", token("asdf"), Completion.suggestStrict(""))
-  property("empty suggest for examples") = checkOne("asdf", any.+.examples("asdf", "qwer"), Completion.suggestStrict(""))
-  property("empty suggest for examples token") = checkOne("asdf", token(any.+.examples("asdf", "qwer")), Completion.suggestStrict(""))
+  property("suggest space") = checkOne("", spacePort, Completion.token("", " "))
+  property("suggest port") = checkOne(" ", spacePort, Completion.displayOnly("<port>"))
+  property("no suggest at end") = checkOne("asdf", "asdf", Completion.suggestion(""))
+  property("no suggest at token end") = checkOne("asdf", token("asdf"), Completion.suggestion(""))
+  property("empty suggest for examples") = checkOne("asdf", any.+.examples("asdf", "qwer"), Completion.suggestion(""))
+  property("empty suggest for examples token") = checkOne("asdf", token(any.+.examples("asdf", "qwer")), Completion.suggestion(""))
 
   val colors = Set("blue", "green", "red")
   val base = (seen: Seq[String]) => token(ID examples (colors -- seen))
   val sep = token(Space)
   val repeat = repeatDep(base, sep)
-  def completionStrings(ss: Set[String]): Completions = Completions(ss.map { s => Completion.tokenStrict("", s) })
+  def completionStrings(ss: Set[String]): Completions = Completions(ss.map { s => Completion.token("", s) })
 
   property("repeatDep no suggestions for bad input") = checkInv(".", repeat)
   property("repeatDep suggest all") = checkAll("", repeat, completionStrings(colors))
