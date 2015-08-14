@@ -53,7 +53,7 @@ class TestAnalyzingCompiler(incOptions: IncOptions) {
 
     analyses = analyses match {
       case Nil     => analysisCallback.get :: Nil
-      case x :: xs => (analysisCallback.get.merge(x, deletedFiles)) :: xs
+      case x :: xs => (analysisCallback.get.merge(x, deletedFiles)) :: x :: xs
     }
 
     computeInvalidations(state)
@@ -73,7 +73,7 @@ class TestAnalyzingCompiler(incOptions: IncOptions) {
 
     val apiChanges = incremental.changedIncremental(freshlyRecompiled, apiFrom(analyses lift 1), apiFrom(analyses.headOption))
 
-    incremental.invalidateIncremental(analyses.head.relations, analyses.head.apis, apiChanges, freshlyRecompiled, true)
+    incremental.invalidateIncremental(analyses.head.relations, analyses.head.apis, apiChanges, freshlyRecompiled, false)
 
   }
 

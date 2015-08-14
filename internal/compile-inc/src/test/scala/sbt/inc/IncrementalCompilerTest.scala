@@ -102,8 +102,11 @@ object IncrementalCompilerTest {
     def execute(compiler: TestAnalyzingCompiler): Boolean =
       IO.withTemporaryDirectory { dir =>
         val initial = ScenarioState(compiler, dir, Map.empty)
-        step.execute(initial)
-        true
+        try { step.execute(initial); true }
+        catch {
+          case e: FailedStepException =>
+            throw new Exception(e.getMessage)
+        }
       }
   }
   object Scenario {
@@ -238,6 +241,14 @@ object IncrementalCompilerTest {
         throw new FailedStepException(state, this, "Compilation succeeded, but failure was expected.")
       }
 
+    }
+  }
+
+  /** A step that can be used to perform logging. */
+  case class LoggingStep(op: ScenarioState => Unit) extends Step("Logging step") {
+    override def execute(state: ScenarioState): ScenarioState = {
+      op(state)
+      state
     }
   }
 

@@ -2,24 +2,20 @@ package sbt.inc
 
 import xsbt.TestAnalyzingCompiler
 
-import org.specs2.Specification
+import org.scalatest.FlatSpec
 
-class IncrementalTest extends Specification {
+class IncrementalTest extends FlatSpec {
   import IncrementalCompilerTest._
 
-  def is = s2"""
+  behavior of "The incremental compiler"
 
-  This is a specification for the incremental compiler.
-
-  The incremental compiler should
-    execute the first scenario                                                   $firstScenario
-    execute the second scenario                                                  $secondScenario
-    execute the third scenario                                                   $thirdScenario
-    execute the fourth scenario                                                  $fourthScenario
-    execute the fifth scenario                                                   $fifthScenario
-    execute the sixth scenario                                                   $sixthScenario
-
-  """
+  it should "execute the first scenario" in firstScenario
+  it should "execute the second scenario" in secondScenario
+  it should "execute the third scenario" in thirdScenario
+  it should "execute the fourth scenario" in fourthScenario
+  it should "execute the fifth scenario" in fifthScenario
+  it should "execute the sixth scenario" in sixthScenario
+  it should "consider private members of traits in invalidation" in traitPrivateMembers
 
   def compiler = new TestAnalyzingCompiler(sbt.inc.IncOptions.Default)
 
@@ -128,4 +124,19 @@ class IncrementalTest extends Specification {
       FailedCompile(
         "B.scala" -> delete))
 
+  def traitPrivateMembers =
+    compiler execute Scenario(
+      FullCompilation(
+        expectedSteps = 1,
+        "Bar.scala" -> """trait Bar {
+                         |  private val x = new A
+                         |}""".stripMargin,
+        "Classes.scala" -> """class A
+                             |class B""".stripMargin,
+        "Foo.scala" -> "class Foo extends Bar"),
+
+      IncrementalStep(
+        "Bar.scala" -> """trait Bar {
+                         |  private val x = new B
+                         |}""".stripMargin) invalidates ("Foo.scala"))
 }

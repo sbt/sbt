@@ -3,9 +3,9 @@ package sbt.inc
 import java.io.File
 import scala.collection.mutable.ArrayBuffer
 import xsbti.api.{ Compilation, Source, SourceAPI }
-import xsbt.api.{ HashAPI, SameAPI }
 import xsbti._
 import xsbti.DependencyContext._
+import xsbt.api.HashAPI
 import sbt.Relation
 
 case class TestAnalysis(
@@ -18,12 +18,12 @@ case class TestAnalysis(
 
   def merge(o: TestAnalysis, deletedFiles: Seq[File]): TestAnalysis = {
     TestAnalysis(
-      relations ++ o.relations -- deletedFiles,
-      sourceDependencies ++ o.sourceDependencies filterNot (f => deletedFiles contains f._2),
-      binaryDependencies ++ o.binaryDependencies filterNot (f => deletedFiles contains f._3),
-      products ++ o.products filterNot (f => deletedFiles contains f._1),
-      usedNames ++ o.usedNames filterKeys (k => !(deletedFiles contains k)),
-      apis ++ o.apis removeInternal deletedFiles)
+      o.relations ++ relations -- deletedFiles,
+      o.sourceDependencies ++ sourceDependencies filterNot (f => deletedFiles contains f._2),
+      o.binaryDependencies ++ binaryDependencies filterNot (f => deletedFiles contains f._3),
+      o.products ++ products filterNot (f => deletedFiles contains f._1),
+      o.usedNames ++ usedNames filterKeys (k => !(deletedFiles contains k)),
+      o.apis ++ apis removeInternal deletedFiles)
   }
 }
 object TestAnalysis {
@@ -93,7 +93,7 @@ class TestAnalysisCallback(override val nameHashing: Boolean = false) extends xs
     assert(!apis.contains(source), s"The `api` method should be called once per source file: $source")
     val nameHashes = new xsbt.api.NameHashing().nameHashes(sourceAPI)
     val sourceHash = hashFile(source)
-    val src = new Source(new Compilation(0L, Array.empty), sourceHash, sourceAPI, sourceAPI.hashCode, nameHashes, false)
+    val src = new Source(new Compilation(System.currentTimeMillis, Array.empty), sourceHash, sourceAPI, HashAPI(sourceAPI), nameHashes, false)
     apis(source) = src
   }
   def problem(category: String, pos: xsbti.Position, message: String, severity: xsbti.Severity, reported: Boolean): Unit = ()
