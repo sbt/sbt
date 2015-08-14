@@ -178,7 +178,7 @@ lazy val compileInterfaceOldProj = (project in internalPath / "compile-bridge-2.
 // Implements the core functionality of detecting and propagating changes incrementally.
 //   Defines the data structures for representing file fingerprints and relationships and the overall source analysis
 lazy val compileIncrementalProj = (project in internalPath / "compile-inc").
-  dependsOn (apiProj, classpathProj, compileInterfaceProj % "test->test").
+  dependsOn (apiProj, classpathProj, compileInterfaceProj % "test->compile").
   settings(
     testedBaseSettings,
     libraryDependencies ++= Seq(sbtIO, utilLogging, utilRelation),
