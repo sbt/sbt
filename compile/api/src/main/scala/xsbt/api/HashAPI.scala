@@ -60,6 +60,8 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
     }
   }
 
+  private[this] def isTrait(cl: ClassLike) = cl.definitionType == DefinitionType.Trait
+
   private[this] final val ValHash = 1
   private[this] final val VarHash = 2
   private[this] final val DefHash = 3
@@ -184,7 +186,7 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
     extend(ClassHash)
     hashParameterizedDefinition(c)
     hashType(c.selfType)
-    hashStructure(c.structure, includeDefinitions)
+    hashStructure(c.structure, includeDefinitions, isTrait(c))
   }
   def hashField(f: FieldLike): Unit = {
     f match {
@@ -343,14 +345,14 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
     hashType(a.baseType)
     hashAnnotations(a.annotations)
   }
-  final def hashStructure(structure: Structure, includeDefinitions: Boolean) =
-    visit(visitedStructures, structure)(structure => hashStructure0(structure, includeDefinitions))
-  def hashStructure0(structure: Structure, includeDefinitions: Boolean): Unit = {
+  final def hashStructure(structure: Structure, includeDefinitions: Boolean, isTrait: Boolean = false) =
+    visit(visitedStructures, structure)(structure => hashStructure0(structure, includeDefinitions, isTrait))
+  def hashStructure0(structure: Structure, includeDefinitions: Boolean, isTrait: Boolean = false): Unit = {
     extend(StructureHash)
     hashTypes(structure.parents, includeDefinitions)
-    if (includeDefinitions) {
-      hashDefinitions(structure.declared, false)
-      hashDefinitions(structure.inherited, false)
+    if (includeDefinitions || isTrait) {
+      hashDefinitions(structure.declared, isTrait)
+      hashDefinitions(structure.inherited, isTrait)
     }
   }
   def hashParameters(parameters: Seq[TypeParameter], base: Type): Unit =
