@@ -640,10 +640,10 @@ private class MRelationsNameHashing(srcProd: Relation[File, File], binaryDep: Re
     val names: Relation[File, String]) extends MRelationsCommon(srcProd, binaryDep, classes) {
   def direct: Source =
     throw new UnsupportedOperationException("The `direct` source dependencies relation is not supported " +
-      "when `nameHashing` flag is disabled.")
+      "when `nameHashing` flag is enabled.")
   def publicInherited: Source =
     throw new UnsupportedOperationException("The `publicInherited` source dependencies relation is not supported " +
-      "when `nameHashing` flag is disabled.")
+      "when `nameHashing` flag is enabled.")
 
   val nameHashing: Boolean = true
 
