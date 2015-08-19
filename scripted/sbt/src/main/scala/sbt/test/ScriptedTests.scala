@@ -40,7 +40,7 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launc
             None
           } else {
             try { scriptedTest(str, testDirectory, prescripted, log); None }
-            catch { case e: xsbt.test.TestException => Some(str) }
+            catch { case _: xsbt.test.TestException | _: PendingTestSuccessException => Some(str) }
           }
         }
       }
@@ -92,6 +92,7 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launc
           if (!pending) throw e
         case e: PendingTestSuccessException =>
           testFailed()
+          buffered.error("  Mark as passing to remove this failure.")
           throw e
         case e: Exception =>
           testFailed()
