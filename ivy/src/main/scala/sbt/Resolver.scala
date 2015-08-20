@@ -33,7 +33,7 @@ sealed case class ChainedResolver(name: String, resolvers: Seq[Resolver]) extend
 
 /** An instance of a remote maven repository.  Note:  This will use Aether/Maven to resolve artifacts. */
 sealed case class MavenRepository(name: String, root: String) extends Resolver {
-  override def toString = name + ": " + root
+  override def toString = s"$name: $root"
   def isCache: Boolean = false
 }
 
@@ -42,7 +42,7 @@ sealed case class MavenRepository(name: String, root: String) extends Resolver {
  * the metadata is different (see Aether ML discussion).
  */
 final class MavenCache(name: String, val rootFile: File) extends MavenRepository(name, rootFile.toURI.toURL.toString) {
-  override val toString = "cache:" + name + ": " + rootFile.getAbsolutePath
+  override val toString = s"cache:$name: ${rootFile.getAbsolutePath}"
   override def isCache: Boolean = true
 }
 object MavenCache {
