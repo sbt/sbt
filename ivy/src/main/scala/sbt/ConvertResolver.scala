@@ -120,7 +120,7 @@ private[sbt] object ConvertResolver {
               }
             }
             val resolver = new PluginCapableResolver
-            resolver.setRepository(new LocalIfFileRepo)
+            if (repo.localIfFile) resolver.setRepository(new LocalIfFileRepo)
             initializeMavenStyle(resolver, repo.name, repo.root)
             resolver.setPatterns() // has to be done after initializeMavenStyle, which calls methods that overwrite the patterns
             resolver
