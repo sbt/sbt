@@ -1,0 +1,12 @@
+> bippy/publish
+> myapp/updateClassifiers
+
+# Sanity check before real test
+> check 1
+
+$ copy-file changes/Bippy2.scala bippy/Bippy.scala
+
+> bippy/publish
+> myapp/updateClassifiers
+
+> check 2
