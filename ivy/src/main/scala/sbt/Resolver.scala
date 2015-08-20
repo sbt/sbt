@@ -35,6 +35,8 @@ sealed case class ChainedResolver(name: String, resolvers: Seq[Resolver]) extend
 sealed case class MavenRepository(name: String, root: String) extends Resolver {
   override def toString = s"$name: $root"
   def isCache: Boolean = false
+  def localIfFile: Boolean = true
+  def withLocalIfFile(value: Boolean) = new MavenRepository(name, root) { override def localIfFile = value }
 }
 
 /**
