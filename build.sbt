@@ -1,27 +1,18 @@
-import Project.Initialize
 import Util._
 import Dependencies._
-import Licensed._
-import Scope.ThisScope
 import Scripted._
-import StringUtilities.normalize
 import Sxr.sxr
 
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
-def buildLevelSettings: Seq[Setting[_]] = Seq(
-  organization in ThisBuild := "org.scala-sbt",
-  version in ThisBuild := "0.13.10-SNAPSHOT",
-  // bintrayOrganization in ThisBuild := None,
-  // bintrayRepository in ThisBuild := "test-test-test",
-  bintrayOrganization in ThisBuild :=  {
-    if ((publishStatus in ThisBuild).value == "releases") Some("typesafe")
-    else Some("sbt")
-  },
-  bintrayRepository in ThisBuild := s"ivy-${(publishStatus in ThisBuild).value}",
-  bintrayPackage in ThisBuild := "sbt",
-  bintrayReleaseOnPublish in ThisBuild := false
-)
+def buildLevelSettings: Seq[Setting[_]] = inThisBuild(Seq(
+  organization := "org.scala-sbt",
+  version := "0.13.10-SNAPSHOT",
+  bintrayOrganization := Some(if (publishStatus.value == "releases") "typesafe" else "sbt"),
+  bintrayRepository := s"ivy-${publishStatus.value}",
+  bintrayPackage := "sbt",
+  bintrayReleaseOnPublish := false
+))
 
 def commonSettings: Seq[Setting[_]] = Seq(
   scalaVersion := scala210,

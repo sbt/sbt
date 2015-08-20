@@ -118,7 +118,7 @@ Build from source
 
 		$ git checkout v0.13.9
 
-	Note that sbt is always built with the previous stable release.  For example, the [0.13](https://github.com/sbt/sbt/tree/0.13) branch is built with 0.13.8 and the [v0.13.8](https://github.com/sbt/sbt/tree/v0.13.8) tag is built with 0.13.8.
+	Note that sbt is always built with the previous stable release.  For example, the [0.13](https://github.com/sbt/sbt/tree/0.13) branch is built with 0.13.9 and the [v0.13.9](https://github.com/sbt/sbt/tree/v0.13.9) tag is built with 0.13.8.
 
 4. To build the launcher and publish all components locally,
 
