@@ -109,7 +109,7 @@ lazy val utilComplete = (project in utilPath / "complete").
 
 // logging
 lazy val utilLogging = (project in utilPath / "log").
-  dependsOn(utilInterface/*, processProj*/).
+  dependsOn(utilInterface).
   settings(
     testedBaseSettings,
     name := "Util Logging",
@@ -118,7 +118,6 @@ lazy val utilLogging = (project in utilPath / "log").
 
 // Relation
 lazy val utilRelation = (project in utilPath / "relation").
-  dependsOn(utilInterface/*, processProj*/).
   settings(
     testedBaseSettings,
     name := "Util Relation"

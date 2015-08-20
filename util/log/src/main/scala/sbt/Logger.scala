@@ -5,6 +5,7 @@ package sbt
 
 import xsbti.{ Logger => xLogger, F0 }
 import xsbti.{ Maybe, Position, Problem, Severity }
+import sys.process.ProcessLogger
 
 import java.io.File
 
@@ -117,6 +118,10 @@ trait Logger extends xLogger {
   final def info(message: => String): Unit = log(Level.Info, message)
   final def warn(message: => String): Unit = log(Level.Warn, message)
   final def error(message: => String): Unit = log(Level.Error, message)
+  // Added by sys.process.ProcessLogger
+  final def err(message: => String): Unit = log(Level.Error, message)
+  // sys.process.ProcessLogger
+  final def out(message: => String): Unit = log(Level.Info, message)
 
   def ansiCodesSupported: Boolean = false
 
