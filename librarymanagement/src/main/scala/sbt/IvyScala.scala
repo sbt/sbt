@@ -12,10 +12,9 @@ import org.apache.ivy.core.module.id.{ ArtifactId, ModuleId, ModuleRevisionId }
 import org.apache.ivy.plugins.matcher.ExactPatternMatcher
 
 object ScalaArtifacts {
-  import xsbti.ArtifactInfo._
-  val Organization = ScalaOrganization
-  val LibraryID = ScalaLibraryID
-  val CompilerID = ScalaCompilerID
+  val Organization = "org.scala-lang"
+  val LibraryID = "scala-library"
+  val CompilerID = "scala-compiler"
   val ReflectID = "scala-reflect"
   def libraryDependency(version: String): ModuleID = ModuleID(Organization, LibraryID, version)
 
@@ -27,8 +26,7 @@ object ScalaArtifacts {
     ModuleID(org, id, version, Some(Configurations.ScalaTool.name + "->default,optional(default)"))
 }
 object SbtArtifacts {
-  import xsbti.ArtifactInfo._
-  val Organization = SbtOrganization
+  val Organization = "org.scala-sbt"
 }
 
 import ScalaArtifacts._

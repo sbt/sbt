@@ -40,7 +40,7 @@ lazy val root = (project in file(".")).
 lazy val lm = (project in file("librarymanagement")).
   settings(
     commonSettings,
-    libraryDependencies ++= Seq(interfaceProj, logProj % "compile;test->test", ioProj % "compile;test->test", collectionProj),
+    libraryDependencies ++= Seq(utilLogging % "compile;test->test", ioProj % "compile;test->test", utilCollection),
     libraryDependencies ++= Seq(ivy, jsch, sbtSerialization, scalaReflect.value, launcherInterface),
     name := "librarymanagement"
   )

@@ -2,12 +2,11 @@ import sbt._
 import Keys._
 
 object Dependencies {
+  val utilVersion = "1.0.0-SNAPSHOT"
   val bootstrapSbtVersion = "0.13.8"
-  lazy val interfaceProj = "org.scala-sbt" % "interface" % bootstrapSbtVersion
   lazy val ioProj = "org.scala-sbt" % "io" % bootstrapSbtVersion
-  lazy val collectionProj = "org.scala-sbt" % "collections" % bootstrapSbtVersion
-  lazy val logProj = "org.scala-sbt" % "logging" % bootstrapSbtVersion
-  // lazy val crossProj = "org.scala-sbt" % "cross" % bootstrapSbtVersion
+  lazy val utilCollection = "org.scala-sbt.util" %% "util-collection" % utilVersion
+  lazy val utilLogging = "org.scala-sbt.util" %% "util-logging" % utilVersion
 
   lazy val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0-M1"
   lazy val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-927bc9ded7f8fba63297cddd0d5a3d01d6ad5d8d"
