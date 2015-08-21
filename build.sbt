@@ -43,7 +43,7 @@ def testedBaseSettings: Seq[Setting[_]] =
 
 
 val altLocalRepoName = "alternative-local"
-val altLocalRepoPath = sys.props("user.home" + "/.ivy2/sbt-alternative")
+val altLocalRepoPath = sys.props("user.home") + "/.ivy2/sbt-alternative"
 lazy val altLocalResolver = Resolver.file(altLocalRepoName, file(sys.props("user.home") + "/.ivy2/sbt-alternative"))(Resolver.ivyStylePatterns)
 lazy val altLocalPublish = TaskKey[Unit]("alt-local-publish", "Publishes an artifact locally to an alternative location.")
 def altPublishSettings: Seq[Setting[_]] = Seq(
@@ -523,9 +523,19 @@ def otherRootSettings = Seq(
 ))
 
 def addSbtAlternateResolver(scriptedRoot: File) = {
-  val resolver = scriptedRoot / "project" / "sbt-local-repo.sbt"
+  val resolver = scriptedRoot / "project" / "AddResolverPlugin.scala"
   if (!resolver.exists) {
-    IO.write(resolver, s"""resolvers += Resolver.file("$altLocalRepoName", file("$altLocalRepoPath"))(Resolver.ivyStylePatterns)""")
+    IO.write(resolver, s"""import sbt._
+                          |import Keys._
+                          |
+                          |object AddResolverPlugin extends AutoPlugin {
+                          |  override def requires = sbt.plugins.JvmPlugin
+                          |  override def trigger = allRequirements
+                          |
+                          |  override lazy val projectSettings = Seq(resolvers += alternativeLocalResolver)
+                          |  lazy val alternativeLocalResolver = Resolver.file("$altLocalRepoName", file("$altLocalRepoPath"))(Resolver.ivyStylePatterns)
+                          |}
+                          |""".stripMargin)
   }
 }
 
