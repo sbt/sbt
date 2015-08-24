@@ -137,6 +137,7 @@ object Keys {
   val sbtPlugin = SettingKey[Boolean]("sbt-plugin", "If true, enables adding sbt as a dependency and auto-generation of the plugin descriptor file.", BMinusSetting)
   val printWarnings = TaskKey[Unit]("print-warnings", "Shows warnings from compilation, including ones that weren't printed initially.", BPlusTask)
   val fileInputOptions = SettingKey[Seq[String]]("file-input-options", "Options that take file input, which may invalidate the cache.", CSetting)
+  val compilerInterfaceCascadingVersions = SettingKey[Boolean]("compiler-interface-cascading-versions", "If true, selects the most specific version of the compiler interface sources.")
 
   val clean = TaskKey[Unit]("clean", "Deletes files produced by the build, such as generated sources, compiled classes, and task caches.", APlusTask)
   val console = TaskKey[Unit]("console", "Starts the Scala interpreter with the project classes on the classpath.", APlusTask)

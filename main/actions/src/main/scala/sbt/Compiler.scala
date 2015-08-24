@@ -54,7 +54,7 @@ object Compiler {
   def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions)(implicit app: AppConfiguration, log: Logger): Compilers =
     compilers(instance, cpOptions, None)
 
-  @deprecated("Use `compilers(ScalaInstance, ClasspathOptions, Option[File], IvyConfiguration)`.", "0.13.10")
+  @deprecated("Use `compilers(ScalaInstance, ClasspathOptions, Option[File], IvyConfiguration, Boolean)`.", "0.13.10")
   def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File])(implicit app: AppConfiguration, log: Logger): Compilers =
     {
       val javac =
@@ -69,7 +69,7 @@ object Compiler {
       }
       compilers(instance, cpOptions, CheaterJavaTool(javac2, javac))
     }
-  def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File], ivyConfiguration: IvyConfiguration)(implicit app: AppConfiguration, log: Logger): Compilers =
+  def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File], ivyConfiguration: IvyConfiguration, cascadingVersions: Boolean)(implicit app: AppConfiguration, log: Logger): Compilers =
     {
       val javac =
         AggressiveCompile.directOrFork(instance, cpOptions, javaHome)
@@ -81,7 +81,7 @@ object Compiler {
           javac.compile(contract, sources, classpath, outputDirectory, options)(log)
         def onArgs(f: Seq[String] => Unit): JavaTool = CheaterJavaTool(newJavac, delegate.onArgs(f))
       }
-      val scalac = scalaCompiler(instance, cpOptions, ivyConfiguration)
+      val scalac = scalaCompiler(instance, cpOptions, ivyConfiguration, cascadingVersions)
       new Compilers(scalac, CheaterJavaTool(javac2, javac))
     }
   @deprecated("Deprecated in favor of new sbt.compiler.javac package.", "0.13.8")
@@ -96,7 +96,7 @@ object Compiler {
       val scalac = scalaCompiler(instance, cpOptions)
       new Compilers(scalac, javac)
     }
-  @deprecated("Use `scalaCompiler(ScalaInstance, ClasspathOptions, IvyConfiguration)`.", "0.13.10")
+  @deprecated("Use `scalaCompiler(ScalaInstance, ClasspathOptions, IvyConfiguration, Boolean)`.", "0.13.10")
   def scalaCompiler(instance: ScalaInstance, cpOptions: ClasspathOptions)(implicit app: AppConfiguration, log: Logger): AnalyzingCompiler =
     {
       val launcher = app.provider.scalaProvider.launcher
@@ -104,11 +104,11 @@ object Compiler {
       val provider = ComponentCompiler.interfaceProvider(componentManager)
       new AnalyzingCompiler(instance, provider, cpOptions)
     }
-  def scalaCompiler(instance: ScalaInstance, cpOptions: ClasspathOptions, ivyConfiguration: IvyConfiguration)(implicit app: AppConfiguration, log: Logger): AnalyzingCompiler =
+  def scalaCompiler(instance: ScalaInstance, cpOptions: ClasspathOptions, ivyConfiguration: IvyConfiguration, cascadingVersions: Boolean)(implicit app: AppConfiguration, log: Logger): AnalyzingCompiler =
     {
       val launcher = app.provider.scalaProvider.launcher
       val componentManager = new ComponentManager(launcher.globalLock, app.provider.components, Option(launcher.ivyHome), log)
-      val provider = ComponentCompiler.interfaceProvider(componentManager, ivyConfiguration)
+      val provider = ComponentCompiler.interfaceProvider(componentManager, ivyConfiguration, cascadingVersions)
       new AnalyzingCompiler(instance, provider, cpOptions)
     }
 
