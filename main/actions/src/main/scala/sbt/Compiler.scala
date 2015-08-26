@@ -108,7 +108,8 @@ object Compiler {
     {
       val launcher = app.provider.scalaProvider.launcher
       val componentManager = new ComponentManager(launcher.globalLock, app.provider.components, Option(launcher.ivyHome), log)
-      val provider = ComponentCompiler.interfaceProvider(componentManager, ivyConfiguration)
+      val bootDirectory = launcher.bootDirectory
+      val provider = ComponentCompiler.interfaceProvider(componentManager, ivyConfiguration, bootDirectory)
       new AnalyzingCompiler(instance, provider, cpOptions)
     }
 
