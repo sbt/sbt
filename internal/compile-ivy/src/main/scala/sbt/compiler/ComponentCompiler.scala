@@ -16,7 +16,7 @@ object ComponentCompiler {
   val compilerInterfaceSrcID = compilerInterfaceID + srcExtension
   val javaVersion = System.getProperty("java.class.version")
 
-  @deprecated("Use `interfaceProvider(ComponentManager, IvyConfiguration)`.", "0.13.10")
+  @deprecated("Use `interfaceProvider(ComponentManager, IvyConfiguration, File)`.", "0.13.10")
   def interfaceProvider(manager: ComponentManager): CompilerInterfaceProvider = new CompilerInterfaceProvider {
     def apply(scalaInstance: xsbti.compile.ScalaInstance, log: Logger): File =
       {
@@ -27,11 +27,11 @@ object ComponentCompiler {
       }
   }
 
-  def interfaceProvider(manager: ComponentManager, ivyConfiguration: IvyConfiguration): CompilerInterfaceProvider = new CompilerInterfaceProvider {
+  def interfaceProvider(manager: ComponentManager, ivyConfiguration: IvyConfiguration, bootDirectory: File): CompilerInterfaceProvider = new CompilerInterfaceProvider {
     def apply(scalaInstance: xsbti.compile.ScalaInstance, log: Logger): File =
       {
         // this is the instance used to compile the interface component
-        val componentCompiler = new IvyComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptions.auto, log), manager, ivyConfiguration, log)
+        val componentCompiler = new IvyComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptions.auto, log), manager, ivyConfiguration, bootDirectory, log)
         log.debug("Getting " + compilerInterfaceID + " from component compiler for Scala " + scalaInstance.version)
         componentCompiler(compilerInterfaceID)
       }
@@ -86,15 +86,17 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager) {
  * The compiled classes are cached using the provided component manager according
  * to the actualVersion field of the RawCompiler.
  */
-private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: ComponentManager, ivyConfiguration: IvyConfiguration, log: Logger) {
+private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: ComponentManager, ivyConfiguration: IvyConfiguration, bootDirectory: File, log: Logger) {
   import ComponentCompiler._
 
+  private val incrementalCompilerOrg = xsbti.ArtifactInfo.SbtOrganization + ".incrementalcompiler"
   private val sbtOrgTemp = JsonUtil.sbtOrgTemp
   private val modulePrefixTemp = "temp-module-"
   private val ivySbt: IvySbt = new IvySbt(ivyConfiguration)
   // TODO: The actual sbt version may be different from the component manager's version
   private val sbtVersion = ComponentManager.version
   private val buffered = new BufferedLogger(FullLogger(log))
+  private val retrieveDirectory = new File(s"$bootDirectory/scala-${compiler.scalaInstance.version}/$incrementalCompilerOrg/sbt/$sbtVersion/compiler-interface-srcs")
 
   def apply(id: String): File = {
     val binID = binaryID(id)
@@ -181,7 +183,6 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
 
   private def update(module: ivySbt.Module)(predicate: File => Boolean): Option[Seq[File]] = {
 
-    val retrieveDirectory = new File(ivyConfiguration.baseDirectory, "component")
     val retrieveConfiguration = new RetrieveConfiguration(retrieveDirectory, Resolver.defaultRetrievePattern, false)
     val updateConfiguration = new UpdateConfiguration(Some(retrieveConfiguration), true, UpdateLogging.DownloadOnly)
 
