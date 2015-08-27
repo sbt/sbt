@@ -1824,6 +1824,11 @@ trait BuildExtra extends BuildCommon with DefExtra {
   import Defaults._
 
   /**
+   * The list of all projects that have been loaded.
+   */
+  def projects: Seq[Project] = BuildExtra.knownProjects.values.toSeq.flatten
+
+  /**
    * Defines an alias given by `name` that expands to `value`.
    * This alias is defined globally after projects are loaded.
    * The alias is undefined when projects are unloaded.
@@ -1956,6 +1961,11 @@ trait BuildExtra extends BuildCommon with DefExtra {
   def filterKeys(ss: Seq[Setting[_]], transitive: Boolean = false)(f: ScopedKey[_] => Boolean): Seq[Setting[_]] =
     ss filter (s => f(s.key) && (!transitive || s.dependencies.forall(f)))
 }
+object BuildExtra {
+  import scala.collection.mutable.Map
+  private[sbt] val knownProjects: Map[String, Seq[Project]] = Map.empty
+}
+
 trait DefExtra {
   private[this] val ts: TaskSequential = new TaskSequential {}
   implicit def toTaskSequential(d: Def.type): TaskSequential = ts
