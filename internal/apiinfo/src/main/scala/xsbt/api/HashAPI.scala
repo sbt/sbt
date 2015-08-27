@@ -278,7 +278,7 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
     hashSeq(ts, (t: Type) => hashType(t, includeDefinitions))
   def hashType(t: Type, includeDefinitions: Boolean = true): Unit =
     t match {
-      case s: Structure     => hashStructure(s, includeDefinitions)
+      case s: Structure     => hashStructure(s, includeDefinitions, isTrait = false)
       case e: Existential   => hashExistential(e)
       case c: Constant      => hashConstant(c)
       case p: Polymorphic   => hashPolymorphic(p)
@@ -345,8 +345,14 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
     hashType(a.baseType)
     hashAnnotations(a.annotations)
   }
-  final def hashStructure(structure: Structure, includeDefinitions: Boolean, isTrait: Boolean = false) =
+  @deprecated("Use the overload that indicates if the definition is a trait.", "0.14")
+  final def hashStructure(structure: Structure, includeDefinitions: Boolean): Unit =
+    hashStructure(structure, includeDefinitions, isTrait = false)
+  final def hashStructure(structure: Structure, includeDefinitions: Boolean, isTrait: Boolean = false): Unit =
     visit(visitedStructures, structure)(structure => hashStructure0(structure, includeDefinitions, isTrait))
+  @deprecated("Use the overload that indicates if the definition is a trait.", "0.14")
+  def hashStructure0(structure: Structure, includeDefinitions: Boolean): Unit =
+    hashStructure0(structure, includeDefinitions, isTrait = false)
   def hashStructure0(structure: Structure, includeDefinitions: Boolean, isTrait: Boolean = false): Unit = {
     extend(StructureHash)
     hashTypes(structure.parents, includeDefinitions)
