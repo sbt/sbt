@@ -40,7 +40,7 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launc
             None
           } else {
             try { scriptedTest(str, testDirectory, prescripted, log); None }
-            catch { case e: xsbt.test.TestException => Some(str) }
+            catch { case _: xsbt.test.TestException | _: PendingTestSuccessException => Some(str) }
           }
         }
       }
@@ -81,6 +81,7 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launc
         prescripted(testDirectory)
         runTest()
         buffered.info("+ " + label + pendingString)
+        if (pending) throw new PendingTestSuccessException(label)
       } catch {
         case e: xsbt.test.TestException =>
           testFailed()
@@ -89,6 +90,10 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launc
             case _                                  => e.printStackTrace
           }
           if (!pending) throw e
+        case e: PendingTestSuccessException =>
+          testFailed()
+          buffered.error("  Mark as passing to remove this failure.")
+          throw e
         case e: Exception =>
           testFailed()
           if (!pending) throw e
@@ -208,4 +213,8 @@ object CompatibilityLevel extends Enumeration {
       case Minimal27 => "2.7.7"
       case Minimal28 => "2.8.1"
     }
+}
+class PendingTestSuccessException(label: String) extends Exception {
+  override def getMessage: String =
+    s"The pending test $label succeeded. Mark this test as passing to remove this failure."
 }

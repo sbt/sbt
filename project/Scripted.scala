@@ -19,10 +19,11 @@ object Scripted {
   case class ScriptedTestPage(page: Int, total: Int)
   def scriptedParser(scriptedBase: File): Parser[Seq[String]] =
     {
-      val pairs = (scriptedBase * AllPassFilter * AllPassFilter * "test").get map { (f: File) =>
+      val scriptedFiles: NameFilter = ("test": NameFilter) | "pending"
+      val pairs = (scriptedBase * AllPassFilter * AllPassFilter * scriptedFiles).get map { (f: File) =>
         val p = f.getParentFile
         (p.getParentFile.getName, p.getName)
-      };
+      }
       val pairMap = pairs.groupBy(_._1).mapValues(_.map(_._2).toSet);
 
       val id = charClass(c => !c.isWhitespace && c != '/').+.string
