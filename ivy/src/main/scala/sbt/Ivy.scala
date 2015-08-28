@@ -73,6 +73,7 @@ final class IvySbt(val configuration: IvyConfiguration) {
       is.setBaseDir(baseDirectory)
       is.setCircularDependencyStrategy(configuration.updateOptions.circularDependencyLevel.ivyStrategy)
       CustomPomParser.registerDefault
+      is.setVariable("alwaysDeleteSourcesAndJavadocJarsOnChangedModuleDescriptor", "true")
 
       configuration match {
         case e: ExternalIvyConfiguration =>
