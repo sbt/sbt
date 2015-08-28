@@ -1,1 +1,1 @@
-lazy val p0 = project
+lazy val p0 = project in file(".")

@@ -470,11 +470,6 @@ object Load {
         prev.zip(sbtFile.definitions)
       }
       val loadedDefs = new sbt.LoadedDefinitions(defDir, Nil, plugs.loader, defs, loadedProjects, plugs.detected.builds.names, valDefinitions)
-      // Register the loaded projects so that we can use `projects` in .sbt files
-      // to get the list of all `Project`s that have been loaded.
-      memoSettings foreach {
-        case (f, loaded) => BuildExtra.knownProjects(f.getPath) = (loaded.projects collect { case p if p.loaded => p.project })
-      }
       new sbt.BuildUnit(uri, normBase, loadedDefs, plugs)
     }
 
@@ -720,7 +715,7 @@ object Load {
     // Loads a given file, or pulls from the cache.
     def memoLoadSettingsFile(src: File): LoadedSbtFile = memoSettings.getOrElse(src, {
       val lf = loadSettingsFile(src)
-      memoSettings.put(src, lf.markAllProjectsLoaded) // don't load projects twice
+      memoSettings.put(src, lf.clearProjects) // don't load projects twice
       lf
     })
     // Loads a set of sbt files, sorted by their lexical name (current behavior of sbt).
@@ -737,7 +732,7 @@ object Load {
     }
     val rawFiles = associatedFiles(auto)
     val loadedFiles = loadFiles(rawFiles)
-    val rawProjects = loadedFiles.projects collect { case p if !p.loaded => p.project }
+    val rawProjects = loadedFiles.projects
     val (root, nonRoot) = rawProjects.partition(_.base == projectBase)
     // TODO - good error message if more than one root project
     DiscoveredProjects(root.headOption, nonRoot, rawFiles, loadedFiles.generatedFiles)

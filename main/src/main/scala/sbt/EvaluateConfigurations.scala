@@ -122,7 +122,7 @@ object EvaluateConfigurations {
       loader => {
         val projects =
           definitions.values(loader).collect {
-            case p: Project => new ProjectVal(loaded = false, resolveBase(file.getParentFile, p))
+            case p: Project => resolveBase(file.getParentFile, p)
           }
         val (settingsRaw, manipulationsRaw) =
           dslEntries map (_.result apply loader) partition {

@@ -9,7 +9,7 @@ import java.io.File
  */
 private[sbt] final class LoadedSbtFile(
     val settings: Seq[Setting[_]],
-    val projects: Seq[ProjectVal],
+    val projects: Seq[Project],
     val importedDefs: Seq[String],
     val manipulations: Seq[Project => Project],
     // TODO - we may want to expose a simpler interface on top of here for the set command,
@@ -26,19 +26,7 @@ private[sbt] final class LoadedSbtFile(
       definitions zip o.definitions,
       generatedFiles ++ o.generatedFiles)
 
-  def markAllProjectsLoaded =
-    new LoadedSbtFile(settings, projects map (_.setLoaded), importedDefs, manipulations, definitions, generatedFiles)
-}
-
-/**
- * Represents a project value definition in a .sbt file. This class exists so that we're able to
- * distinguish between project values that have already been loaded and others.
- */
-private[sbt] final class ProjectVal(
-    val loaded: Boolean,
-    val project: Project) {
-
-  def setLoaded = new ProjectVal(true, project)
+  def clearProjects = new LoadedSbtFile(settings, Nil, importedDefs, manipulations, definitions, generatedFiles)
 }
 
 /**
