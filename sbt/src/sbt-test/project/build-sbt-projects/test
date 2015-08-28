@@ -1,0 +1,17 @@
+# First, check without any projects.
+> count-projects 0
+
+# Add a build.sbt file with 1 project defined
+$ copy-file changes/build-1.sbt build.sbt
+> reload
+> count-projects 1
+
+# Add a build.sbt file with 2 projects defined
+$ copy-file changes/build-2.sbt build.sbt
+> reload
+> count-projects 2
+
+# Add another .sbt file with a third project defined
+$ copy-file changes/build-3.sbt other.sbt
+> reload
+> count-projects 3
