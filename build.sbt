@@ -25,15 +25,14 @@ def commonSettings: Seq[Setting[_]] = Seq(
   // concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
-  incOptions := incOptions.value.withNameHashing(true)
-  // crossScalaVersions := Seq(scala210)
+  incOptions := incOptions.value.withNameHashing(true),
+  crossScalaVersions := Seq(scala210, scala211)
   // bintrayPackage := (bintrayPackage in ThisBuild).value,
   // bintrayRepository := (bintrayRepository in ThisBuild).value
 )
 
-// def testedBaseSettings: Seq[Setting[_]] =
-//   baseSettings ++ testDependencies
-def testedBaseSettings: Seq[Setting[_]] = commonSettings
+def testedBaseSettings: Seq[Setting[_]] =
+  commonSettings ++ testDependencies
 
 lazy val utilRoot: Project = (project in file(".")).
   // configs(Sxr.sxrConf).
