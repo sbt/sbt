@@ -5,6 +5,7 @@ package sbt
 package complete
 
 import java.io.File
+import sbt.io.IO
 
 object HistoryCommands {
   val Start = "!"

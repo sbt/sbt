@@ -2,9 +2,8 @@ package sbt.complete
 
 import org.specs2.mutable.Specification
 import org.specs2.specification.Scope
-import sbt.IO.withTemporaryDirectory
 import java.io.File
-import sbt.IO._
+import sbt.io.IO._
 
 class FileExamplesTest extends Specification {
 
