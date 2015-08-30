@@ -6,6 +6,7 @@ package sbt
 import java.io.{ File, FileNotFoundException }
 import sbinary.{ DefaultProtocol, Format, Operations }
 import scala.reflect.Manifest
+import sbt.io.IO
 
 object CacheIO {
   def toBytes[T](format: Format[T])(value: T)(implicit mf: Manifest[Format[T]]): Array[Byte] =

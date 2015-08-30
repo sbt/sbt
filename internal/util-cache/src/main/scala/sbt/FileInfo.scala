@@ -7,6 +7,7 @@ import java.io.{ File, IOException }
 import sbinary.{ DefaultProtocol, Format }
 import DefaultProtocol._
 import scala.reflect.Manifest
+import sbt.io.Hash
 
 sealed trait FileInfo extends NotNull {
   val file: File

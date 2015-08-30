@@ -100,7 +100,7 @@ lazy val utilComplete = (project in internalPath / "util-complete").
     testedBaseSettings,
     // Util.crossBuild,
     name := "Util Completion",
-    libraryDependencies ++= Seq(jline, ioProj),
+    libraryDependencies ++= Seq(jline, sbtIO),
     crossScalaVersions := Seq(scala210, scala211)
   )
 
@@ -135,7 +135,7 @@ lazy val utilCache = (project in internalPath / "util-cache").
   settings(
     commonSettings,
     name := "Util Cache",
-    libraryDependencies ++= Seq(sbinary, sbtSerialization, scalaReflect.value, ioProj) ++ scalaXml.value
+    libraryDependencies ++= Seq(sbinary, sbtSerialization, scalaReflect.value, sbtIO) ++ scalaXml.value
   )
 
 // Builds on cache to provide caching for filesystem-related operations
@@ -144,5 +144,5 @@ lazy val utilTracking = (project in internalPath / "util-tracking").
   settings(
     commonSettings,
     name := "Util Tracking",
-    libraryDependencies ++= Seq(ioProj)
+    libraryDependencies ++= Seq(sbtIO)
   )
