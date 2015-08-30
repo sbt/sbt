@@ -109,6 +109,7 @@ lazy val utilLogging = (project in internalPath / "util-logging").
   dependsOn(utilInterface).
   settings(
     testedBaseSettings,
+    publishArtifact in (Test, packageBin) := true,
     name := "Util Logging",
     libraryDependencies += jline
   )
