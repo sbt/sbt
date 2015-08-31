@@ -73,7 +73,7 @@ class ComponentManager(globalLock: xsbti.GlobalLock, provider: xsbti.ComponentPr
 class InvalidComponent(msg: String, cause: Throwable) extends RuntimeException(msg, cause) {
   def this(msg: String) = this(msg, null)
 }
-sealed trait IfMissing extends NotNull
+sealed trait IfMissing
 object IfMissing {
   object Fail extends IfMissing
   final class Define(val cache: Boolean, define: => Unit) extends IfMissing { def apply() = define }

@@ -83,7 +83,7 @@ object RepositoryHelpers {
     def nontransactional() = FileConfiguration(isLocal, Some(false))
     def nonlocal() = FileConfiguration(false, isTransactional)
   }
-  sealed trait SshAuthentication extends NotNull
+  sealed trait SshAuthentication
   final case class PasswordAuthentication(user: String, password: Option[String]) extends SshAuthentication
   final case class KeyFileAuthentication(user: String, keyfile: File, password: Option[String]) extends SshAuthentication
 }
@@ -216,7 +216,7 @@ object Resolver {
   private def single[T](value: T, nonEmpty: Boolean): Seq[T] = if (nonEmpty) Seq(value) else Nil
 
   /** A base class for defining factories for interfaces to Ivy repositories that require a hostname , port, and patterns.  */
-  sealed abstract class Define[RepositoryType <: SshBasedRepository] extends NotNull {
+  sealed abstract class Define[RepositoryType <: SshBasedRepository] {
     /** Subclasses should implement this method to */
     protected def construct(name: String, connection: SshConnection, patterns: Patterns): RepositoryType
     /**
@@ -347,7 +347,7 @@ object Resolver {
   def defaultShared = defaultUserFileRepository("shared")
   def defaultUserFileRepository(id: String) =
     {
-      val pList = ("${ivy.home}/" + id + "/" + localBasePattern) :: Nil
+      val pList = s"$${ivy.home}/$id/$localBasePattern" :: Nil
       FileRepository(id, defaultFileConfiguration, Patterns(pList, pList, false))
     }
   def defaultIvyPatterns =

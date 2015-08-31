@@ -98,7 +98,7 @@ object VersionNumber {
     private[this] def doIsCompat(v1: VersionNumber, v2: VersionNumber): Boolean =
       (v1, v2) match {
         case (v1, v2) if (v1.size >= 2) && (v2.size >= 2) => // A normal version number MUST take the form X.Y.Z
-          (v1._1.get, v1._2.get, v1._3.getOrElse(0), v1.tags, v2._1.get, v2._2.get, v2._3.getOrElse(0), v2.tags) match {
+          (v1._1.get, v1._2.get, v1._3.getOrElse(0L), v1.tags, v2._1.get, v2._2.get, v2._3.getOrElse(0L), v2.tags) match {
             case (0L, _, _, _, 0L, _, _, _) =>
               // Major version zero (0.y.z) is for initial development. Anything may change at any time. The public API should not be considered stable.
               equalsIgnoreExtra(v1, v2)

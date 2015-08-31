@@ -123,7 +123,7 @@ class ComponentManagerTest extends UnitSpec {
         }
         // A stubbed locking API.
         object locks extends xsbti.GlobalLock {
-          override def apply[T](lockFile: File, run: Callable[T]): T = {
+          override def apply[U](lockFile: File, run: Callable[U]): U = {
             // TODO - do we need to lock?
             run.call()
           }

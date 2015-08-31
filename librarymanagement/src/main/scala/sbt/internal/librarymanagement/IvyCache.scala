@@ -90,7 +90,7 @@ class IvyCache(val ivyHome: Option[File]) {
     new DefaultArtifact(IvySbt.toID(moduleID), null, moduleID.name, "jar", "jar")
 }
 /** Required by Ivy for copying to the cache.*/
-private class FileDownloader extends ResourceDownloader with NotNull {
+private class FileDownloader extends ResourceDownloader {
   def download(artifact: IvyArtifact, resource: Resource, dest: File): Unit = {
     if (dest.exists()) dest.delete()
     val part = new File(dest.getAbsolutePath + ".part")

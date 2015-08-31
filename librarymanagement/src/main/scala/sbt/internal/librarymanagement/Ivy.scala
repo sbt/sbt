@@ -349,8 +349,7 @@ private[sbt] object IvySbt {
       new ResolvedModuleRevision(resolved.getResolver, resolved.getResolver, updatedDescriptor, resolved.getReport, resolved.isForce)
     }
 
-  private[this] def configureRepositoryCache(settings: IvySettings, localOnly: Boolean) //, artifactResolver: DependencyResolver)
-  {
+  private[this] def configureRepositoryCache(settings: IvySettings, localOnly: Boolean): Unit = {
     val cacheDir = settings.getDefaultRepositoryCacheBasedir()
     val manager = new DefaultRepositoryCacheManager("default-cache", settings, cacheDir) {
       override def findModuleInCache(dd: DependencyDescriptor, revId: ModuleRevisionId, options: CacheMetadataOptions, r: String) = {
