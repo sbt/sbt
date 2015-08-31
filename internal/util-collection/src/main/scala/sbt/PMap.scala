@@ -15,7 +15,7 @@ trait RMap[K[_], V[_]] {
   def values: Iterable[V[_]]
   def isEmpty: Boolean
 
-  final case class TPair[T](key: K[T], value: V[T])
+  sealed case class TPair[T](key: K[T], value: V[T])
 }
 
 trait IMap[K[_], V[_]] extends (K ~> V) with RMap[K, V] {

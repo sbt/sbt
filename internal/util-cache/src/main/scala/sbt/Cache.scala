@@ -9,6 +9,7 @@ import java.net.{ URI, URL }
 import Types.:+:
 import DefaultProtocol.{ asProduct2, asSingleton, BooleanFormat, ByteFormat, IntFormat, wrap }
 import scala.xml.NodeSeq
+import scala.language.existentials
 
 trait Cache[I, O] {
   def apply(file: File)(i: I): Either[O, O => Unit]
@@ -200,7 +201,7 @@ trait UnionImplicits {
       def convert(in: UB) = uc.find(in)
       def read(in: Input) =
         {
-          val index = ByteFormat.reads(in)
+          val index = ByteFormat.reads(in).toInt
           val (cache, clazz) = uc.at(index)
           val value = cache.read(in)
           new Found[cache.Internal](cache, clazz, value, index)

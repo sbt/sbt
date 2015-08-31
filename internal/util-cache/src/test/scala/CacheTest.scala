@@ -27,5 +27,6 @@ object CacheTest // extends Properties("Cache test")
       (len + 1) :+: file :+: HNil
     }
     c(create :+: fileLength :+: HNil)
+    ()
   }
 }

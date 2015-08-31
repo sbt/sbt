@@ -25,8 +25,22 @@ def commonSettings: Seq[Setting[_]] = Seq(
   // concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
-  incOptions := incOptions.value.withNameHashing(true),
-  crossScalaVersions := Seq(scala210, scala211)
+  crossScalaVersions := Seq(scala210, scala211),
+  scalacOptions ++= Seq(
+    "-encoding", "utf8",
+    "-deprecation",
+    "-feature",
+    "-unchecked",
+    "-Xlint",
+    "-language:higherKinds",
+    "-language:implicitConversions",
+    // "-Xfuture",
+    "-Yinline-warnings",
+    // "-Yfatal-warnings",
+    "-Yno-adapted-args",
+    "-Ywarn-dead-code",
+    "-Ywarn-numeric-widen",
+    "-Ywarn-value-discard")
   // bintrayPackage := (bintrayPackage in ThisBuild).value,
   // bintrayRepository := (bintrayRepository in ThisBuild).value
 )
@@ -56,33 +70,20 @@ lazy val utilInterface = (project in internalPath / "util-interface").
     commonSettings,
     javaOnlySettings,
     name := "Util Interface",
-    // projectComponent,
     exportJars := true
-    // resourceGenerators in Compile <+= (version, resourceManaged, streams, compile in Compile) map generateVersionFile,
-    // apiDefinitions <<= baseDirectory map { base => (base / "definition") :: (base / "other") :: (base / "type") :: Nil },
-    // sourceGenerators in Compile <+= (apiDefinitions,
-    //   fullClasspath in Compile in datatypeProj,
-    //   sourceManaged in Compile,
-    //   mainClass in datatypeProj in Compile,
-    //   runner,
-    //   streams) map generateAPICached
   )
 
 lazy val utilControl = (project in internalPath / "util-control").
   settings(
     commonSettings,
-    // Util.crossBuild,
-    name := "Util Control",
-    crossScalaVersions := Seq(scala210, scala211)
+    name := "Util Control"
   )
 
 lazy val utilCollection = (project in internalPath / "util-collection").
   settings(
     testedBaseSettings,
     Util.keywordsSettings,
-    // Util.crossBuild,
-    name := "Util Collection",
-    crossScalaVersions := Seq(scala210, scala211)
+    name := "Util Collection"
   )
 
 lazy val utilApplyMacro = (project in internalPath / "util-appmacro").
@@ -98,7 +99,6 @@ lazy val utilComplete = (project in internalPath / "util-complete").
   dependsOn(utilCollection, utilControl).
   settings(
     testedBaseSettings,
-    // Util.crossBuild,
     name := "Util Completion",
     libraryDependencies ++= Seq(jline, sbtIO),
     crossScalaVersions := Seq(scala210, scala211)
@@ -144,5 +144,5 @@ lazy val utilTracking = (project in internalPath / "util-tracking").
   settings(
     commonSettings,
     name := "Util Tracking",
-    libraryDependencies ++= Seq(sbtIO)
+    libraryDependencies += sbtIO
   )

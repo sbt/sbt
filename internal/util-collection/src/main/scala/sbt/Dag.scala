@@ -26,6 +26,7 @@ object Dag {
           discovered(node) = true;
           try { visitAll(dependencies(node)); } catch { case c: Cyclic => throw node :: c }
           finished += node
+          ()
         } else if (!finished(node))
           throw new Cyclic(node)
       }

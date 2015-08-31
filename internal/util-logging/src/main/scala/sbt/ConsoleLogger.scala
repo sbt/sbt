@@ -34,8 +34,7 @@ object ConsoleLogger {
    *
    * cf. http://en.wikipedia.org/wiki/ANSI_escape_code#CSI_codes
    */
-  @deprecated("No longer public.", "0.13.8")
-  def isEscapeTerminator(c: Char): Boolean =
+  private[sbt] def isEscapeTerminator(c: Char): Boolean =
     c >= '@' && c <= '~'
 
   /**
@@ -83,9 +82,10 @@ object ConsoleLogger {
     }
   private[this] def nextESC(s: String, start: Int, sb: java.lang.StringBuilder): Unit = {
     val escIndex = s.indexOf(ESC, start)
-    if (escIndex < 0)
+    if (escIndex < 0) {
       sb.append(s, start, s.length)
-    else {
+      ()
+    } else {
       sb.append(s, start, escIndex)
       val next: Int =
         // If it's a CSI we skip past it and then look for a terminator.

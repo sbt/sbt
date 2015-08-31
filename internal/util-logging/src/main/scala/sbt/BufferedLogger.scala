@@ -52,6 +52,7 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
       buffer += new SetLevel(newLevel)
     else
       delegate.setLevel(newLevel)
+    ()
   }
   override def setSuccessEnabled(flag: Boolean): Unit = synchronized {
     super.setSuccessEnabled(flag)
@@ -59,6 +60,7 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
       buffer += new SetSuccess(flag)
     else
       delegate.setSuccessEnabled(flag)
+    ()
   }
   override def setTrace(level: Int): Unit = synchronized {
     super.setTrace(level)
@@ -66,6 +68,7 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
       buffer += new SetTrace(level)
     else
       delegate.setTrace(level)
+    ()
   }
 
   def trace(t: => Throwable): Unit =
@@ -79,6 +82,7 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
       buffer ++= events
     else
       delegate.logAll(events)
+    ()
   }
   def control(event: ControlEvent.Value, message: => String): Unit =
     doBufferable(Level.Info, new ControlEvent(event, message), _.control(event, message))
@@ -91,5 +95,6 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
       else
         doUnbuffered(delegate)
     }
+    ()
   }
 }

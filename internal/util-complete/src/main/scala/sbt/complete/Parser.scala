@@ -300,9 +300,9 @@ trait ParserMain {
     def !!!(msg: String): Parser[A] = onFailure(a, msg)
     def failOnException: Parser[A] = trapAndFail(a)
 
-    def unary_- = not(a)
+    def unary_- = not(a, "Unexpected: " + a)
     def &(o: Parser[_]) = and(a, o)
-    def -(o: Parser[_]) = sub(a, o)
+    def -(o: Parser[_]) = and(a, not(o, "Unexpected: " + o))
     def examples(s: String*): Parser[A] = examples(s.toSet)
     def examples(s: Set[String], check: Boolean = false): Parser[A] = examples(new FixedSetExamples(s), s.size, check)
     def examples(s: ExampleSource, maxNumberOfExamples: Int, removeInvalidExamples: Boolean): Parser[A] = Parser.examples(a, s, maxNumberOfExamples, removeInvalidExamples)
@@ -366,7 +366,7 @@ trait ParserMain {
     def result = None
     def resultEmpty = mkFailure("Expected '" + ch + "'")
     def derive(c: Char) = if (c == ch) success(ch) else new Invalid(resultEmpty)
-    def completions(level: Int) = Completions.single(Completion.suggestStrict(ch.toString))
+    def completions(level: Int) = Completions.single(Completion.suggestion(ch.toString))
     override def toString = "'" + ch + "'"
   }
   /** Presents a literal String `s` as a Parser that only parses that exact text and provides it as the result.*/
@@ -812,7 +812,7 @@ private final class Repeat[T](partial: Option[Parser[T]], repeated: Parser[T], m
       case None => repeatDerive(c, accumulatedReverse)
     }
 
-  def repeatDerive(c: Char, accRev: List[T]): Parser[Seq[T]] = repeat(Some(repeated derive c), repeated, (min - 1) max 0, max.decrement, accRev)
+  def repeatDerive(c: Char, accRev: List[T]): Parser[Seq[T]] = repeat(Some(repeated derive c), repeated, scala.math.max(0, min - 1), max.decrement, accRev)
 
   def completions(level: Int) =
     {

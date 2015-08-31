@@ -120,7 +120,8 @@ object Escape {
     {
       val builder = new StringBuilder(s.length)
       for (c <- s) {
-        def escaped = pad(c.toInt.toHexString.toUpperCase, 4, '0')
+        val char = c.toInt
+        def escaped = pad(char.toHexString.toUpperCase, 4, '0')
         if (c < 20) builder.append("\\u").append(escaped) else builder.append(c)
       }
       builder.toString

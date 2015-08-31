@@ -38,7 +38,7 @@ final case class Finite(value: Int) extends UpperBound {
   def >=(min: Int) = value >= min
   def isOne = value == 1
   def isZero = value == 0
-  def decrement = Finite((value - 1) max 0)
+  def decrement = Finite(scala.math.max(0, value - 1))
   def isInfinite = false
   override def toString = value.toString
 }
