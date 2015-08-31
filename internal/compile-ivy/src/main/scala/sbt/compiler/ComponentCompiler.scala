@@ -6,6 +6,7 @@ package compiler
 
 import java.io.File
 import scala.util.Try
+import sbt.io.{ Hash, IO }
 
 object ComponentCompiler {
   val xsbtiID = "xsbti"
