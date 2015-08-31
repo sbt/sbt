@@ -37,6 +37,7 @@ object Signals {
       object unregisterNewHandler extends Registration {
         override def remove(): Unit = {
           Signal.handle(intSignal, oldHandler)
+          ()
         }
       }
       unregisterNewHandler
@@ -80,6 +81,6 @@ private final class Signals0 {
 
       try Right(action())
       catch { case e: LinkageError => Left(e) }
-      finally Signal.handle(intSignal, oldHandler)
+      finally { Signal.handle(intSignal, oldHandler); () }
     }
 }
