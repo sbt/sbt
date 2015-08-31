@@ -128,10 +128,9 @@ class JavaErrorParser(relativeDir: File = new File(new File(".").getAbsolutePath
             findFileSource(file),
             line,
             contents + '^' // TODO - Actually parse charat position out of here.
-          ),
+            ),
           Severity.Error,
-          msg
-        )
+          msg)
     }
   }
 
@@ -146,11 +145,9 @@ class JavaErrorParser(relativeDir: File = new File(new File(".").getAbsolutePath
           new JavaPosition(
             findFileSource(file),
             line,
-            contents + "^"
-          ),
+            contents + "^"),
           Severity.Warn,
-          msg
-        )
+          msg)
     }
   }
   val noteMessage: Parser[Problem] =
@@ -158,8 +155,7 @@ class JavaErrorParser(relativeDir: File = new File(new File(".").getAbsolutePath
       new JavaProblem(
         JavaNoPosition,
         Severity.Info,
-        msg
-      )
+        msg)
     }
 
   val potentialProblem: Parser[Problem] = warningMessage | errorMessage | noteMessage

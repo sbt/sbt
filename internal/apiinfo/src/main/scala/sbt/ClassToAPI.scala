@@ -162,8 +162,7 @@ object ClassToAPI {
             case e: Throwable =>
               throw new IllegalStateException(
                 s"Failed to parse class $c: this may mean your classfiles are corrupted. Please clean and try again.",
-                e
-              )
+                e)
           }
         } else {
           None
@@ -189,9 +188,7 @@ object ClassToAPI {
   private def singletonForConstantField(c: Class[_], field: Field, constantValue: AnyRef) =
     new api.Singleton(
       pathFromStrings(
-        c.getName.split("\\.").toSeq :+ (field.getName + "$" + returnType(field) + "$" + constantValue)
-      )
-    )
+        c.getName.split("\\.").toSeq :+ (field.getName + "$" + returnType(field) + "$" + constantValue)))
 
   def methodToDef(enclPkg: Option[String])(m: Method): api.Def =
     defLike(m.getName, m.getModifiers, m.getDeclaredAnnotations, typeParameterTypes(m), m.getParameterAnnotations, parameterTypes(m), Option(returnType(m)), exceptionTypes(m), m.isVarArgs, enclPkg)
@@ -218,8 +215,7 @@ object ClassToAPI {
 
   def annotated(t: api.SimpleType, annots: Array[Annotation]): api.Type = (
     if (annots.length == 0) t
-    else new api.Annotated(t, annotations(annots))
-  )
+    else new api.Annotated(t, annotations(annots)))
 
   case class Defs(declared: Seq[api.Definition], inherited: Seq[api.Definition], staticDeclared: Seq[api.Definition], staticInherited: Seq[api.Definition]) {
     def ++(o: Defs) = Defs(declared ++ o.declared, inherited ++ o.inherited, staticDeclared ++ o.staticDeclared, staticInherited ++ o.staticInherited)

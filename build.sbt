@@ -21,6 +21,8 @@ def commonSettings: Seq[Setting[_]] = Seq(
   // publishArtifact in packageDoc := false,
   resolvers += Resolver.typesafeIvyRepo("releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
+  resolvers += Resolver.bintrayRepo("sbt", "maven-releases"),
+  resolvers += Resolver.url("bintray-sbt-ivy-snapshots", new URL("https://dl.bintray.com/sbt/ivy-snapshots/"))(Resolver.ivyStylePatterns),
   // concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
@@ -139,7 +141,7 @@ lazy val compileInterfaceProj = (project in internalPath / "compile-bridge").
     // needed because we fork tests and tests are ran in parallel so we have multiple Scala
     // compiler instances that are memory hungry
     javaOptions in Test += "-Xmx1G",
-    libraryDependencies ++= Seq(sbtIO, utilLogging % "test->test")
+    libraryDependencies ++= Seq(sbtIO, utilLogging % "test" classifier "tests")
     // artifact in (Compile, packageSrc) := Artifact(srcID).copy(configurations = Compile :: Nil).extra("e:component" -> srcID)
   )
 
@@ -169,7 +171,7 @@ lazy val compilerProj = (project in file("compile")).
     testedBaseSettings,
     name := "Compile",
     libraryDependencies ++= Seq(scalaCompiler.value % Test, launcherInterface,
-      utilLogging, sbtIO, utilLogging % "test->test", utilControl),
+      utilLogging, sbtIO, utilLogging % "test" classifier "tests", utilControl),
     unmanagedJars in Test <<= (packageSrc in compileInterfaceProj in Compile).map(x => Seq(x).classpath)
   )
 

@@ -32,7 +32,7 @@ class DifferentLoaders(message: String, val loaderA: ClassLoader, val loaderB: C
  * If neither are `true` for a resource path and either `parentA` or `parentB` return a valid URL, that valid URL is returned.
  */
 class DualLoader(parentA: ClassLoader, aOnlyClasses: String => Boolean, aOnlyResources: String => Boolean,
-    parentB: ClassLoader, bOnlyClasses: String => Boolean, bOnlyResources: String => Boolean) extends ClassLoader(new NullLoader) {
+  parentB: ClassLoader, bOnlyClasses: String => Boolean, bOnlyResources: String => Boolean) extends ClassLoader(new NullLoader) {
   def this(parentA: ClassLoader, aOnly: String => Boolean, parentB: ClassLoader, bOnly: String => Boolean) =
     this(parentA, aOnly, aOnly, parentB, bOnly, bOnly)
   override final def loadClass(className: String, resolve: Boolean): Class[_] =

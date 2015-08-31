@@ -156,8 +156,7 @@ private class MStamps(val products: Map[File, Stamp], val sources: Map[File, Sta
         products.filterKeys(prod.getOrElse(k, constFalse)),
         sourcesMap.getOrElse(k, Map.empty[File, Stamp]),
         binaries.filterKeys(bin.getOrElse(k, constFalse)),
-        classNames.filterKeys(bin.getOrElse(k, constFalse))
-      )
+        classNames.filterKeys(bin.getOrElse(k, constFalse)))
 
       (for (k <- prod.keySet ++ sourcesMap.keySet ++ bin.keySet) yield (k, kStamps(k))).toMap
     }

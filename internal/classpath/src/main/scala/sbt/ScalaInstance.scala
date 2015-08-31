@@ -17,9 +17,9 @@ import sbt.io.IO
  * This should be constructed via the ScalaInstance.apply methods.  The primary constructor is deprecated.
  */
 final class ScalaInstance(val version: String, val loader: ClassLoader, val libraryJar: File,
-    @deprecated("Only `allJars` and `jars` can be reliably provided for modularized Scala.", "0.13.0") val compilerJar: File,
-    @deprecated("Only `allJars` and `jars` can be reliably provided for modularized Scala.", "0.13.0") val extraJars: Seq[File],
-    val explicitActual: Option[String]) extends xsbti.compile.ScalaInstance {
+  @deprecated("Only `allJars` and `jars` can be reliably provided for modularized Scala.", "0.13.0") val compilerJar: File,
+  @deprecated("Only `allJars` and `jars` can be reliably provided for modularized Scala.", "0.13.0") val extraJars: Seq[File],
+  val explicitActual: Option[String]) extends xsbti.compile.ScalaInstance {
   /**
    * This tells us if the scalaInstance is from a managed (i.e. ivy-resolved) scala *or*
    * if it's a free-floating ScalaInstance, in which case we need to do tricks to the classpaths we find

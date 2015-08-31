@@ -131,8 +131,7 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler] {
     incrementalCompilerOptions: IncOptions)(implicit log: Logger): Result = {
     val config = MixedAnalyzingCompiler.makeConfig(scalac, javac, sources, classpath, output, cache,
       progress, options, javacOptions, previousAnalysis, previousSetup, analysisMap, definesClass, reporter,
-      compileOrder, skip, incrementalCompilerOptions
-    )
+      compileOrder, skip, incrementalCompilerOptions)
     import config.{ currentSetup => setup }
 
     if (skip) Result(previousAnalysis, setup, false)

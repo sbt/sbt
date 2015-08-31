@@ -18,10 +18,10 @@ import sbt.io.IO
 
 /** An instance of an analyzing compiler that can run both javac + scalac. */
 final class MixedAnalyzingCompiler(
-    val scalac: AnalyzingCompiler,
-    val javac: AnalyzingJavaCompiler,
-    val config: CompileConfiguration,
-    val log: Logger) {
+  val scalac: AnalyzingCompiler,
+  val javac: AnalyzingJavaCompiler,
+  val config: CompileConfiguration,
+  val log: Logger) {
   import config._
   import currentSetup._
 
@@ -181,8 +181,7 @@ object MixedAnalyzingCompiler {
       // TODO - Construction of analyzing Java compiler MAYBE should be earlier...
       new AnalyzingJavaCompiler(javac, classpath, compiler.scalaInstance, entry, searchClasspath),
       config,
-      log
-    )
+      log)
   }
 
   def withBootclasspath(args: CompilerArguments, classpath: Seq[File]): Seq[File] =

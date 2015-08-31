@@ -434,7 +434,7 @@ private case class ExternalDependencies(dependencies: Map[DependencyContext, Rel
  * `classes` is a relation between a source file and its generated fully-qualified class names.
  */
 private abstract class MRelationsCommon(val srcProd: Relation[File, File], val binaryDep: Relation[File, File],
-    val classes: Relation[File, String]) extends Relations {
+  val classes: Relation[File, String]) extends Relations {
   def allSources: collection.Set[File] = srcProd._1s
 
   def allProducts: collection.Set[File] = srcProd._2s
@@ -465,8 +465,7 @@ private abstract class MRelationsCommon(val srcProd: Relation[File, File], val b
   private def line_s(kv: (Any, Any)) = "    " + nocwd("" + kv._1) + " -> " + nocwd("" + kv._2) + "\n"
   protected def relation_s(r: Relation[_, _]) = (
     if (r.forwardMap.isEmpty) "Relation [ ]"
-    else (r.all.toSeq map line_s sorted) mkString ("Relation [\n", "", "]")
-  )
+    else (r.all.toSeq map line_s sorted) mkString ("Relation [\n", "", "]"))
 }
 
 /**
@@ -482,9 +481,9 @@ private abstract class MRelationsCommon(val srcProd: Relation[File, File], val b
  *
  */
 private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Relation[File, File],
-    // direct should include everything in inherited
-    val direct: Source, val publicInherited: Source,
-    classes: Relation[File, String]) extends MRelationsCommon(srcProd, binaryDep, classes) {
+  // direct should include everything in inherited
+  val direct: Source, val publicInherited: Source,
+  classes: Relation[File, String]) extends MRelationsCommon(srcProd, binaryDep, classes) {
   def internalSrcDep: Relation[File, File] = direct.internal
   def externalDep: Relation[File, String] = direct.external
 
@@ -624,8 +623,7 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
 	  |  src deps: %s
 	  |  ext deps: %s
 	  |  class names: %s
-	  """.trim.stripMargin.format(List(srcProd, binaryDep, internalSrcDep, externalDep, classes) map relation_s: _*)
-  )
+	  """.trim.stripMargin.format(List(srcProd, binaryDep, internalSrcDep, externalDep, classes) map relation_s: _*))
 }
 
 /**
@@ -634,10 +632,10 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
  * needed by the name hashing invalidation algorithm.
  */
 private class MRelationsNameHashing(srcProd: Relation[File, File], binaryDep: Relation[File, File],
-    val internalDependencies: InternalDependencies,
-    val externalDependencies: ExternalDependencies,
-    classes: Relation[File, String],
-    val names: Relation[File, String]) extends MRelationsCommon(srcProd, binaryDep, classes) {
+  val internalDependencies: InternalDependencies,
+  val externalDependencies: ExternalDependencies,
+  classes: Relation[File, String],
+  val names: Relation[File, String]) extends MRelationsCommon(srcProd, binaryDep, classes) {
   def direct: Source =
     throw new UnsupportedOperationException("The `direct` source dependencies relation is not supported " +
       "when `nameHashing` flag is disabled.")
@@ -746,7 +744,6 @@ private class MRelationsNameHashing(srcProd: Relation[File, File], binaryDep: Re
 	  |  ext deps: %s
 	  |  class names: %s
 	  |  used names: %s
-	  """.trim.stripMargin.format(List(srcProd, binaryDep, internalSrcDep, externalDep, classes, names) map relation_s: _*)
-  )
+	  """.trim.stripMargin.format(List(srcProd, binaryDep, internalSrcDep, externalDep, classes, names) map relation_s: _*))
 
 }
