@@ -83,13 +83,11 @@ object AnalysisFormats {
             def outputGroups = groups
             override def toString = s"MultipleOutput($outputGroups)"
           }
-      }
-    )
+      })
   implicit val singleOutputFormat: Format[SingleOutput] =
     wrap[SingleOutput, File](
       (_.outputDirectory),
-      { out => new SingleOutput { def outputDirectory = out } }
-    )(fileFormat)
+      { out => new SingleOutput { def outputDirectory = out } })(fileFormat)
   implicit val outputFormat: Format[APIOutput] = asUnion(singleOutputFormat, multipleOutputFormat)
 
   implicit def stampsFormat(implicit prodF: Format[Map[File, Stamp]], srcF: Format[Map[File, Stamp]], binF: Format[Map[File, Stamp]], nameF: Format[Map[File, String]]): Format[Stamps] =
