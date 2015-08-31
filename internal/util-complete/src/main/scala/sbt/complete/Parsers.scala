@@ -11,7 +11,7 @@ import java.lang.Character.{ getType, MATH_SYMBOL, OTHER_SYMBOL, DASH_PUNCTUATIO
 /** Provides standard implementations of commonly useful [[Parser]]s. */
 trait Parsers {
   /** Matches the end of input, providing no useful result on success. */
-  lazy val EOF = not(any)
+  lazy val EOF = not(any, "Expected EOF")
 
   /** Parses any single character and provides that character as the result. */
   lazy val any: Parser[Char] = charClass(_ => true, "any character")

@@ -26,7 +26,10 @@ object LogicTest extends Properties("Logic") {
     case Left(err) => false
     case Right(res) =>
       val actual = res.provenSet
-      (actual == expected) || sys.error(s"Expected to prove $expected, but actually proved $actual")
+      if (actual != expected)
+        sys.error(s"Expected to prove $expected, but actually proved $actual")
+      else
+        true
   }
 }
 

@@ -109,13 +109,13 @@ object ParserTest extends Properties("Completing Parser") {
   property("repeatDep accepts two tokens") = matches(repeat, colors.toSeq.take(2).mkString(" "))
 }
 object ParserExample {
-  val ws = charClass(_.isWhitespace)+
-  val notws = charClass(!_.isWhitespace)+
+  val ws = charClass(_.isWhitespace).+
+  val notws = charClass(!_.isWhitespace).+
 
   val name = token("test")
-  val options = (ws ~> token("quick" | "failed" | "new"))*
+  val options = (ws ~> token("quick" | "failed" | "new")).*
   val exampleSet = Set("am", "is", "are", "was", "were")
-  val include = (ws ~> token(examples(notws.string, new FixedSetExamples(exampleSet), exampleSet.size, false)))*
+  val include = (ws ~> token(examples(notws.string, new FixedSetExamples(exampleSet), exampleSet.size, false))).*
 
   val t = name ~ options ~ include
 

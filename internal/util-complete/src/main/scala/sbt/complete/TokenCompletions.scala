@@ -1,6 +1,6 @@
 package sbt.complete
 
-import Completion.{ displayStrict, token => ctoken, tokenDisplay }
+import Completion.{ token => ctoken, tokenDisplay }
 
 sealed trait TokenCompletions {
   def hideWhen(f: Int => Boolean): TokenCompletions
@@ -24,7 +24,7 @@ object TokenCompletions {
   val default: TokenCompletions = mapDelegateCompletions((seen, level, c) => ctoken(seen, c.append))
 
   def displayOnly(msg: String): TokenCompletions = new Fixed {
-    def completions(seen: String, level: Int) = Completions.single(displayStrict(msg))
+    def completions(seen: String, level: Int) = Completions.single(Completion.displayOnly(msg))
   }
   def overrideDisplay(msg: String): TokenCompletions = mapDelegateCompletions((seen, level, c) => tokenDisplay(display = msg, append = c.append))
 
