@@ -50,7 +50,6 @@ lazy val compileRoot: Project = (project in file(".")).
   aggregate(interfaceProj,
     apiProj,
     classpathProj,
-    relationProj,
     classfileProj,
     compileInterfaceProj,
     compileIncrementalProj,
@@ -105,14 +104,6 @@ lazy val classpathProj = (project in internalPath / "classpath").
       sbtIO)
   )
 
-// Relation
-lazy val relationProj = (project in internalPath / "relation").
-  dependsOn(interfaceProj).
-  settings(
-    testedBaseSettings,
-    name := "Relation"
-  )
-
 // class file reader and analyzer
 lazy val classfileProj = (project in internalPath / "classfile").
   dependsOn(interfaceProj).
@@ -148,10 +139,10 @@ lazy val compileInterfaceProj = (project in internalPath / "compile-bridge").
 // Implements the core functionality of detecting and propagating changes incrementally.
 //   Defines the data structures for representing file fingerprints and relationships and the overall source analysis
 lazy val compileIncrementalProj = (project in internalPath / "compile-inc").
-  dependsOn (apiProj, classpathProj, relationProj).
+  dependsOn (apiProj, classpathProj).
   settings(
     testedBaseSettings,
-    libraryDependencies ++= Seq(sbtIO, utilLogging),
+    libraryDependencies ++= Seq(sbtIO, utilLogging, utilRelation),
     name := "Incremental Compiler"
   )
 
