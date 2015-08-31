@@ -9,7 +9,9 @@ import sbinary.Format
 import scala.pickling.PicklingException
 import scala.reflect.Manifest
 import scala.collection.mutable
-import IO.{ delete, read, write }
+import sbt.io.IO.{ delete, read, write }
+import sbt.io.{ IO, Path }
+import sbt.internal.io.Using
 import sbt.serialization._
 
 object Tracked {

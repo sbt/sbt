@@ -1,7 +1,7 @@
 package sbt.complete
 
 import java.io.File
-import sbt.IO
+import sbt.io.IO
 
 /**
  * These sources of examples are used in parsers for user input completion. An example of such a source is the
