@@ -124,7 +124,7 @@ final class AnalyzingCompiler private (val scalaInstance: xsbti.compile.ScalaIns
   override def toString = "Analyzing compiler (Scala " + scalaInstance.actualVersion + ")"
 }
 object AnalyzingCompiler {
-  import sbt.IO.{ copy, createDirectory, zip, jars, unzip, withTemporaryDirectory }
+  import sbt.io.IO.{ copy, createDirectory, zip, jars, unzip, withTemporaryDirectory }
 
   // Note: The Scala build now depends on some details of this method:
   //   https://github.com/jsuereth/scala/commit/3431860048df8d2a381fb85a526097e00154eae0
@@ -146,9 +146,9 @@ object AnalyzingCompiler {
           compiler(sourceFiles.toSeq, compiler.scalaInstance.libraryJar +: (xsbtiJars.toSeq ++ sourceJars), outputDirectory, "-nowarn" :: Nil)
           log.info("  Compilation completed in " + (System.currentTimeMillis - start) / 1000.0 + " s")
         } catch { case e: xsbti.CompileFailed => throw new CompileFailed(e.arguments, "Error compiling sbt component '" + id + "'", e.problems) }
-        import sbt.Path._
+        import sbt.io.Path._
         copy(resources pair rebase(dir, outputDirectory))
-        zip((outputDirectory ***) x_! relativeTo(outputDirectory), targetJar)
+        zip((outputDirectory.allPaths) pair relativeTo(outputDirectory), targetJar)
       }
     }
   }

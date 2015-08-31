@@ -6,6 +6,7 @@ package classfile
 
 import java.io.{ DataInputStream, File, InputStream }
 import scala.annotation.switch
+import sbt.internal.io.Using
 
 // Translation of jdepend.framework.ClassFileParser by Mike Clark, Clarkware Consulting, Inc.
 // BSD Licensed

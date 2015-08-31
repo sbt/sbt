@@ -24,8 +24,8 @@ def commonSettings: Seq[Setting[_]] = Seq(
   // concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
-  incOptions := incOptions.value.withNameHashing(true)
-  // crossScalaVersions := Seq(scala210)
+  incOptions := incOptions.value.withNameHashing(true),
+  crossScalaVersions := Seq(scala210, scala211)
   // bintrayPackage := (bintrayPackage in ThisBuild).value,
   // bintrayRepository := (bintrayRepository in ThisBuild).value
 )
@@ -42,13 +42,6 @@ def baseSettings: Seq[Setting[_]] =
 
 def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
-
-def testDependencies = Seq(libraryDependencies :=
-  Seq(
-    scalaCheck % Test,
-    specs2 % Test,
-    junit % Test
-  ))
 
 lazy val compileRoot: Project = (project in file(".")).
   // configs(Sxr.sxrConf).
@@ -107,7 +100,7 @@ lazy val classpathProj = (project in internalPath / "classpath").
     name := "Classpath",
     libraryDependencies ++= Seq(scalaCompiler.value,
       Dependencies.launcherInterface,
-      ioProj)
+      sbtIO)
   )
 
 // Relation
@@ -115,7 +108,6 @@ lazy val relationProj = (project in internalPath / "relation").
   dependsOn(interfaceProj).
   settings(
     testedBaseSettings,
-    libraryDependencies ++= Seq(processProj),
     name := "Relation"
   )
 
@@ -124,7 +116,7 @@ lazy val classfileProj = (project in internalPath / "classfile").
   dependsOn(interfaceProj).
   settings(
     testedBaseSettings,
-    libraryDependencies ++= Seq(ioProj, logProj),
+    libraryDependencies ++= Seq(sbtIO, utilLogging),
     name := "Classfile"
   )
 
@@ -136,7 +128,7 @@ lazy val compileInterfaceProj = (project in internalPath / "compile-bridge").
   dependsOn(interfaceProj % "compile;test->test", /*launchProj % "test->test",*/ apiProj % "test->test").
   settings(
     baseSettings,
-    libraryDependencies += scalaCompiler.value % "provided",
+    libraryDependencies += scalaCompiler.value,
     // precompiledSettings,
     name := "Compiler Interface",
     exportJars := true,
@@ -147,7 +139,7 @@ lazy val compileInterfaceProj = (project in internalPath / "compile-bridge").
     // needed because we fork tests and tests are ran in parallel so we have multiple Scala
     // compiler instances that are memory hungry
     javaOptions in Test += "-Xmx1G",
-    libraryDependencies ++= Seq(ioProj % "test->test", logProj % "test->test")
+    libraryDependencies ++= Seq(sbtIO, utilLogging % "test->test")
     // artifact in (Compile, packageSrc) := Artifact(srcID).copy(configurations = Compile :: Nil).extra("e:component" -> srcID)
   )
 
@@ -157,7 +149,7 @@ lazy val compileIncrementalProj = (project in internalPath / "compile-inc").
   dependsOn (apiProj, classpathProj, relationProj).
   settings(
     testedBaseSettings,
-    libraryDependencies ++= Seq(ioProj, logProj),
+    libraryDependencies ++= Seq(sbtIO, utilLogging),
     name := "Incremental Compiler"
   )
 
@@ -177,7 +169,7 @@ lazy val compilerProj = (project in file("compile")).
     testedBaseSettings,
     name := "Compile",
     libraryDependencies ++= Seq(scalaCompiler.value % Test, launcherInterface,
-      logProj, ioProj, logProj % "test->test"),
+      utilLogging, sbtIO, utilLogging % "test->test", utilControl, processProj),
     unmanagedJars in Test <<= (packageSrc in compileInterfaceProj in Compile).map(x => Seq(x).classpath)
   )
 

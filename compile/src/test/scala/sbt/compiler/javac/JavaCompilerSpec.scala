@@ -9,6 +9,7 @@ import org.specs2.matcher.MatchResult
 import xsbt.api.{ SameAPI, DefaultShowAPI }
 import xsbti.api.SourceAPI
 import xsbti.{ Severity, Problem }
+import sbt.io.IO
 
 object JavaCompilerSpec extends Specification {
   def is = s2"""

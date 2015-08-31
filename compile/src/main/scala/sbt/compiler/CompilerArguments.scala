@@ -8,6 +8,7 @@ import xsbti.ArtifactInfo
 import scala.util
 import java.io.File
 import CompilerArguments.{ abs, absString, BootClasspathOption }
+import sbt.io.IO
 
 /**
  * Forms the list of options that is passed to the compiler from the required inputs and other options.
@@ -58,7 +59,7 @@ final class CompilerArguments(scalaInstance: xsbti.compile.ScalaInstance, cp: xs
   def bootClasspath(addLibrary: Boolean) = if (cp.autoBoot) IO.parseClasspath(createBootClasspath(addLibrary)) else Nil
   def bootClasspathFor(classpath: Seq[File]) = bootClasspath(hasLibrary(classpath))
 
-  import Path._
+  import sbt.io.Path._
   def extClasspath: Seq[File] = (IO.parseClasspath(System.getProperty("java.ext.dirs")) * "*.jar").get
 }
 object CompilerArguments {

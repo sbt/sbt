@@ -19,6 +19,7 @@ import xsbti.{ Reporter, AnalysisCallback }
 import xsbti.api.Source
 import xsbti.compile.{ CompileOrder, DependencyChanges, GlobalsCache, Output, SingleOutput, MultipleOutput, CompileProgress }
 import CompileOrder.{ JavaThenScala, Mixed, ScalaThenJava }
+import sbt.io.{ IO, Path, PathFinder }
 
 @deprecated("Use MixedAnalyzingCompiler or IC instead.", "0.13.8")
 class AggressiveCompile(cacheFile: File) {

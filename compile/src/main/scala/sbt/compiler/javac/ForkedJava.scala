@@ -2,8 +2,9 @@ package sbt.compiler.javac
 
 import java.io.File
 
-import sbt.IO._
-import sbt.{ IO, Process, Logger }
+import sbt.io.IO._
+import sbt.io.IO
+import sbt.{ Process, Logger }
 import xsbti.Reporter
 import xsbti.compile.{ ClasspathOptions, ScalaInstance }
 
@@ -51,7 +52,7 @@ object ForkedJava {
   private def escapeSpaces(s: String): String = '\"' + normalizeSlash(s) + '\"'
   private def normalizeSlash(s: String) = s.replace(File.separatorChar, '/')
 
-  import sbt.Path._
+  import sbt.io.Path._
   /** create the executable name for java */
   private[javac] def getJavaExecutable(javaHome: Option[File], name: String): String =
     javaHome match {

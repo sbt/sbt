@@ -1,6 +1,6 @@
 package sbt.inc
 
-import sbt.IO
+import sbt.io.IO
 import java.io.File
 import collection.mutable
 

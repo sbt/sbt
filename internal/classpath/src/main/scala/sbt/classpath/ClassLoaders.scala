@@ -7,6 +7,7 @@ package classpath
 import java.io.File
 import java.net.{ URL, URLClassLoader }
 import annotation.tailrec
+import sbt.io.IO
 
 /**
  * This is a starting point for defining a custom ClassLoader.  Override 'doLoadClass' to define

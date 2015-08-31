@@ -5,6 +5,7 @@ package sbt
 
 import java.io.File
 import xsbti.ArtifactInfo.{ ScalaCompilerID, ScalaLibraryID, ScalaOrganization }
+import sbt.io.IO
 
 /**
  * Represents the source for Scala classes for a given version.  The reason both a ClassLoader and the jars are required

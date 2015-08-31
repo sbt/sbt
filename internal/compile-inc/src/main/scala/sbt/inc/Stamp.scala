@@ -7,6 +7,7 @@ package inc
 import java.io.{ File, IOException }
 import Stamp.getStamp
 import scala.util.matching.Regex
+import sbt.io.Hash
 
 trait ReadStamps {
   /** The Stamp for the given product at the time represented by this Stamps instance.*/

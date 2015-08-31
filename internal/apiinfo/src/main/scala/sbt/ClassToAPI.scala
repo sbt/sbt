@@ -8,6 +8,7 @@ import xsbti.api
 import xsbti.SafeLazy
 import SafeLazy.strict
 import collection.mutable
+import sbt.io.IO
 
 object ClassToAPI {
   def apply(c: Seq[Class[_]]): api.SourceAPI = process(c)._1

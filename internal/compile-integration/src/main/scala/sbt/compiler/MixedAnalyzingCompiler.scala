@@ -14,6 +14,7 @@ import xsbti.{ AnalysisCallback, Reporter }
 import xsbti.api.Source
 import xsbti.compile.CompileOrder._
 import xsbti.compile._
+import sbt.io.IO
 
 /** An instance of an analyzing compiler that can run both javac + scalac. */
 final class MixedAnalyzingCompiler(

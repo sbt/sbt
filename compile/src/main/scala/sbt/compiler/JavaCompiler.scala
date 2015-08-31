@@ -9,6 +9,8 @@ import java.io.{ File, PrintWriter }
 import xsbti.{ Severity, Reporter }
 import xsbti.compile.Output
 
+import sbt.io.IO
+
 @deprecated("Please use the new set of compilers in sbt.compilers.javac", "0.13.8")
 abstract class JavacContract(val name: String, val clazz: String) {
   def exec(args: Array[String], writer: PrintWriter): Int

@@ -13,6 +13,8 @@ import xsbti.compile.DefinesClass
 import xsbti.compile.ScalaInstance
 import xsbti.{ Reporter, Logger, Maybe }
 import xsbti.compile._
+import sbt.io.IO
+import sbt.internal.io.Using
 
 // TODO -
 //  1. Move analyzingCompile from MixedAnalyzingCompiler into here
