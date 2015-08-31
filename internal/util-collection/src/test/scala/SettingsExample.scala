@@ -49,8 +49,7 @@ object SettingsUsage {
   val mySettings: Seq[Setting[_]] = Seq(
     setting(a3, value(3)),
     setting(b4, map(a4)(_ * 3)),
-    update(a5)(_ + 1)
-  )
+    update(a5)(_ + 1))
 
   // "compiles" and applies the settings.
   //  This can be split into multiple steps to access intermediate results if desired.
