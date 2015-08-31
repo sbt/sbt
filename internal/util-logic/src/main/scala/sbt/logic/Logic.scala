@@ -103,8 +103,7 @@ object Logic {
           checkAcyclic(clauses)
 
       problem.toLeft(
-        reduce0(clauses, initialFacts, Matched.empty)
-      )
+        reduce0(clauses, initialFacts, Matched.empty))
     }
 
   /**

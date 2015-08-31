@@ -61,8 +61,7 @@ private[sbt] object TypeString {
   val TypeMap = Map(
     "java.io.File" -> "File",
     "java.net.URL" -> "URL",
-    "java.net.URI" -> "URI"
-  )
+    "java.net.URI" -> "URI")
 
   /**
    * A Parser that extracts basic structure from the string representation of a type from Manifest.toString.
