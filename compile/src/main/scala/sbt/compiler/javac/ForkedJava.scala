@@ -4,9 +4,10 @@ import java.io.File
 
 import sbt.io.IO._
 import sbt.io.IO
-import sbt.{ Process, Logger }
+import sbt.Logger
 import xsbti.Reporter
 import xsbti.compile.{ ClasspathOptions, ScalaInstance }
+import scala.sys.process.Process
 
 /** Helper methods for running the java toolchain by forking. */
 object ForkedJava {

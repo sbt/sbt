@@ -20,6 +20,7 @@ import xsbti.api.Source
 import xsbti.compile.{ CompileOrder, DependencyChanges, GlobalsCache, Output, SingleOutput, MultipleOutput, CompileProgress }
 import CompileOrder.{ JavaThenScala, Mixed, ScalaThenJava }
 import sbt.io.{ IO, Path, PathFinder }
+import scala.sys.process.{ Process, ProcessLogger }
 
 @deprecated("Use MixedAnalyzingCompiler or IC instead.", "0.13.8")
 class AggressiveCompile(cacheFile: File) {
@@ -229,10 +230,10 @@ private[sbt] class JavacLogger(log: Logger) extends ProcessLogger {
 
   private val msgs: ListBuffer[(LogLevel, String)] = new ListBuffer()
 
-  def info(s: => String): Unit =
+  def out(s: => String): Unit =
     synchronized { msgs += ((Info, s)) }
 
-  def error(s: => String): Unit =
+  def err(s: => String): Unit =
     synchronized { msgs += ((Error, s)) }
 
   def buffer[T](f: => T): T = f

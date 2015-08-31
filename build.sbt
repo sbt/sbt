@@ -169,7 +169,7 @@ lazy val compilerProj = (project in file("compile")).
     testedBaseSettings,
     name := "Compile",
     libraryDependencies ++= Seq(scalaCompiler.value % Test, launcherInterface,
-      utilLogging, sbtIO, utilLogging % "test->test", utilControl, processProj),
+      utilLogging, sbtIO, utilLogging % "test->test", utilControl),
     unmanagedJars in Test <<= (packageSrc in compileInterfaceProj in Compile).map(x => Seq(x).classpath)
   )
 
