@@ -33,8 +33,8 @@ private[sbt] object CachedResolutionResolveCache {
   def graphVersion = "0.13.9C"
   val buildStartup: Long = System.currentTimeMillis
   lazy val todayStr: String = toYyyymmdd(buildStartup)
-  lazy val tomorrowStr: String = toYyyymmdd(buildStartup + (1 day).toMillis)
-  lazy val yesterdayStr: String = toYyyymmdd(buildStartup - (1 day).toMillis)
+  lazy val tomorrowStr: String = toYyyymmdd(buildStartup + 1.day.toMillis)
+  lazy val yesterdayStr: String = toYyyymmdd(buildStartup - 1.day.toMillis)
   def toYyyymmdd(timeSinceEpoch: Long): String = yyyymmdd.format(new Date(timeSinceEpoch))
   lazy val yyyymmdd: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd")
 }
@@ -386,12 +386,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
           !mr.evicted && mr.problem.isEmpty
         }
       }
-      val evicted = details flatMap {
-        _.modules filter { mr =>
-          mr.evicted
-        }
-      } map { _.module }
-      new ConfigurationReport(rootModuleConf, modules, details, evicted)
+      new ConfigurationReport(rootModuleConf, modules, details)
     }
   /**
    * Returns a tuple of (merged org + name combo, newly evicted modules)

@@ -52,6 +52,7 @@ object CrossVersion {
       builder.beginEntry(a)
       builder.endEntry()
       builder.popHints()
+      ()
     }
   }
   implicit val unpickler: Unpickler[CrossVersion] = new Unpickler[CrossVersion] {
@@ -93,8 +94,7 @@ object CrossVersion {
 
   private[this] def idFun[T]: T => T = x => x
 
-  @deprecated("Will be made private.", "0.13.1")
-  def append(s: String): Option[String => String] = Some(x => crossName(x, s))
+  private[sbt] def append(s: String): Option[String => String] = Some(x => crossName(x, s))
 
   /**
    * Construct a cross-versioning function given cross-versioning configuration `cross`,
@@ -123,15 +123,13 @@ object CrossVersion {
       case Some(is) => substituteCrossA(artifacts, cross)
     }
 
-  @deprecated("Will be made private.", "0.13.1")
-  def applyCross(s: String, fopt: Option[String => String]): String =
+  private[sbt] def applyCross(s: String, fopt: Option[String => String]): String =
     fopt match {
       case None       => s
       case Some(fopt) => fopt(s)
     }
 
-  @deprecated("Will be made private.", "0.13.1")
-  def crossName(name: String, cross: String): String =
+  private[sbt] def crossName(name: String, cross: String): String =
     name + "_" + cross
 
   /** Cross-versions `exclude` according to its `crossVersion`. */
@@ -145,8 +143,7 @@ object CrossVersion {
   def substituteCross(a: Artifact, cross: Option[String => String]): Artifact =
     a.copy(name = applyCross(a.name, cross))
 
-  @deprecated("Will be made private.", "0.13.1")
-  def substituteCrossA(as: Seq[Artifact], cross: Option[String => String]): Seq[Artifact] =
+  private[sbt] def substituteCrossA(as: Seq[Artifact], cross: Option[String => String]): Seq[Artifact] =
     as.map(art => substituteCross(art, cross))
 
   /**

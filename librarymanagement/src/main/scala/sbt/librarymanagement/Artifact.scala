@@ -120,6 +120,7 @@ object Artifact {
       })
       builder.endEntry()
       builder.popHints()
+      ()
     }
   }
   implicit val unpickler: Unpickler[Artifact] = new Unpickler[Artifact] {

@@ -5,38 +5,38 @@ import sbt.internal.librarymanagement.BaseIvySpecification
 class EvictionWarningSpec extends BaseIvySpecification {
   // This is a specification to check the eviction warnings
 
-  "Eviction of scala-library whose scalaVersion" should "be detected" in scalaVersionWarn1
-  it should "not be detected if it's diabled" in scalaVersionWarn2
-  it should "print out message about the eviction" in scalaVersionWarn3
-  it should "print out message about the eviction with callers" in scalaVersionWarn4
+  "Eviction of scala-library whose scalaVersion" should "be detected" in scalaVersionWarn1()
+  it should "not be detected if it's diabled" in scalaVersionWarn2()
+  it should "print out message about the eviction" in scalaVersionWarn3()
+  it should "print out message about the eviction with callers" in scalaVersionWarn4()
 
   """Including two (suspect) binary incompatible Java libraries to
-    direct dependencies""" should "be detected as eviction" in javaLibWarn1
-  it should "not be detected if it's disabled" in javaLibWarn2
-  it should "print out message about the eviction" in javaLibWarn3
-  it should "print out message about the eviction with callers" in javaLibWarn4
+    direct dependencies""" should "be detected as eviction" in javaLibWarn1()
+  it should "not be detected if it's disabled" in javaLibWarn2()
+  it should "print out message about the eviction" in javaLibWarn3()
+  it should "print out message about the eviction with callers" in javaLibWarn4()
 
   """Including two (suspect) binary compatible Java libraries to
-  direct dependencies""" should "not be detected as eviction" in javaLibNoWarn1
-  it should "print out message about the eviction" in javaLibNoWarn2
+  direct dependencies""" should "not be detected as eviction" in javaLibNoWarn1()
+  it should "print out message about the eviction" in javaLibNoWarn2()
 
   """Including two (suspect) transitively binary incompatible Java libraries to
-  direct dependencies""" should "be not detected as eviction" in javaLibTransitiveWarn1
-  it should "be detected if it's enabled" in javaLibTransitiveWarn2
-  it should "print out message about the eviction if it's enabled" in javaLibTransitiveWarn3
+  direct dependencies""" should "be not detected as eviction" in javaLibTransitiveWarn1()
+  it should "be detected if it's enabled" in javaLibTransitiveWarn2()
+  it should "print out message about the eviction if it's enabled" in javaLibTransitiveWarn3()
 
   """Including two (suspect) binary incompatible Scala libraries to
-  direct dependencies""" should "be detected as eviction" in scalaLibWarn1
-  it should "print out message about the eviction" in scalaLibWarn2
+  direct dependencies""" should "be detected as eviction" in scalaLibWarn1()
+  it should "print out message about the eviction" in scalaLibWarn2()
 
   """Including two (suspect) binary compatible Scala libraries to
-  direct dependencies""" should "not be detected as eviction" in scalaLibNoWarn1
-  it should "print out message about the eviction" in scalaLibNoWarn2
+  direct dependencies""" should "not be detected as eviction" in scalaLibNoWarn1()
+  it should "print out message about the eviction" in scalaLibNoWarn2()
 
   """Including two (suspect) transitively binary incompatible Scala libraries to
-  direct dependencies""" should "be not detected as eviction" in scalaLibTransitiveWarn1
-  it should "be detected if it's enabled" in scalaLibTransitiveWarn2
-  it should "print out message about the eviction if it's enabled" in scalaLibTransitiveWarn3
+  direct dependencies""" should "be not detected as eviction" in scalaLibTransitiveWarn1()
+  it should "be detected if it's enabled" in scalaLibTransitiveWarn2()
+  it should "print out message about the eviction if it's enabled" in scalaLibTransitiveWarn3()
 
   def akkaActor214 = ModuleID("com.typesafe.akka", "akka-actor", "2.1.4", Some("compile")) cross CrossVersion.binary
   def akkaActor230 = ModuleID("com.typesafe.akka", "akka-actor", "2.3.0", Some("compile")) cross CrossVersion.binary
@@ -58,19 +58,19 @@ class EvictionWarningSpec extends BaseIvySpecification {
 
   def scalaVersionDeps = Seq(scala2102, akkaActor230)
 
-  def scalaVersionWarn1 = {
+  def scalaVersionWarn1() = {
     val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"))
     val report = ivyUpdate(m)
-    EvictionWarning(m, defaultOptions, report, log).scalaEvictions should have size(1)
+    EvictionWarning(m, defaultOptions, report, log).scalaEvictions should have size (1)
   }
 
-  def scalaVersionWarn2 = {
+  def scalaVersionWarn2() = {
     val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"))
     val report = ivyUpdate(m)
-    EvictionWarning(m, defaultOptions.withWarnScalaVersionEviction(false), report, log).scalaEvictions should have size(0)
+    EvictionWarning(m, defaultOptions.withWarnScalaVersionEviction(false), report, log).scalaEvictions should have size (0)
   }
 
-  def scalaVersionWarn3 = {
+  def scalaVersionWarn3() = {
     val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"))
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions, report, log).lines shouldBe
@@ -81,7 +81,7 @@ class EvictionWarningSpec extends BaseIvySpecification {
         "Run 'evicted' to see detailed eviction warnings")
   }
 
-  def scalaVersionWarn4 = {
+  def scalaVersionWarn4() = {
     val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"))
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions.withShowCallers(true), report, log).lines shouldBe
@@ -93,19 +93,19 @@ class EvictionWarningSpec extends BaseIvySpecification {
 
   def javaLibDirectDeps = Seq(commonsIo14, commonsIo24)
 
-  def javaLibWarn1 = {
+  def javaLibWarn1() = {
     val m = module(defaultModuleId, javaLibDirectDeps, Some("2.10.3"))
     val report = ivyUpdate(m)
-    EvictionWarning(m, defaultOptions, report, log).reportedEvictions should have size(1)
+    EvictionWarning(m, defaultOptions, report, log).reportedEvictions should have size (1)
   }
 
-  def javaLibWarn2 = {
+  def javaLibWarn2() = {
     val m = module(defaultModuleId, javaLibDirectDeps, Some("2.10.3"))
     val report = ivyUpdate(m)
-    EvictionWarning(m, defaultOptions.withWarnDirectEvictions(false), report, log).reportedEvictions should have size(0)
+    EvictionWarning(m, defaultOptions.withWarnDirectEvictions(false), report, log).reportedEvictions should have size (0)
   }
 
-  def javaLibWarn3 = {
+  def javaLibWarn3() = {
     val m = module(defaultModuleId, javaLibDirectDeps, Some("2.10.3"))
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions, report, log).lines shouldBe
@@ -115,7 +115,7 @@ class EvictionWarningSpec extends BaseIvySpecification {
         "Run 'evicted' to see detailed eviction warnings")
   }
 
-  def javaLibWarn4 = {
+  def javaLibWarn4() = {
     val m = module(defaultModuleId, javaLibDirectDeps, Some("2.10.3"))
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions.withShowCallers(true), report, log).lines shouldBe
@@ -124,14 +124,14 @@ class EvictionWarningSpec extends BaseIvySpecification {
         "\t* commons-io:commons-io:1.4 -> 2.4 (caller: com.example:foo:0.1.0)")
   }
 
-  def javaLibNoWarn1 = {
+  def javaLibNoWarn1() = {
     val deps = Seq(commonsIo14, commonsIo13)
     val m = module(defaultModuleId, deps, Some("2.10.3"))
     val report = ivyUpdate(m)
-    EvictionWarning(m, defaultOptions, report, log).reportedEvictions should have size(0)
+    EvictionWarning(m, defaultOptions, report, log).reportedEvictions should have size (0)
   }
 
-  def javaLibNoWarn2 = {
+  def javaLibNoWarn2() = {
     val deps = Seq(commonsIo14, commonsIo13)
     val m = module(defaultModuleId, deps, Some("2.10.3"))
     val report = ivyUpdate(m)
@@ -140,19 +140,19 @@ class EvictionWarningSpec extends BaseIvySpecification {
 
   def javaLibTransitiveDeps = Seq(unfilteredUploads080, bnfparser10)
 
-  def javaLibTransitiveWarn1 = {
+  def javaLibTransitiveWarn1() = {
     val m = module(defaultModuleId, javaLibTransitiveDeps, Some("2.10.3"))
     val report = ivyUpdate(m)
-    EvictionWarning(m, defaultOptions, report, log).reportedEvictions should have size(0)
+    EvictionWarning(m, defaultOptions, report, log).reportedEvictions should have size (0)
   }
 
-  def javaLibTransitiveWarn2 = {
+  def javaLibTransitiveWarn2() = {
     val m = module(defaultModuleId, javaLibTransitiveDeps, Some("2.10.3"))
     val report = ivyUpdate(m)
-    EvictionWarning(m, defaultOptions.withWarnTransitiveEvictions(true), report, log).reportedEvictions should have size(1)
+    EvictionWarning(m, defaultOptions.withWarnTransitiveEvictions(true), report, log).reportedEvictions should have size (1)
   }
 
-  def javaLibTransitiveWarn3 = {
+  def javaLibTransitiveWarn3() = {
     val m = module(defaultModuleId, javaLibTransitiveDeps, Some("2.10.3"))
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions.withWarnTransitiveEvictions(true).withShowCallers(true), report, log).lines shouldBe
@@ -161,14 +161,14 @@ class EvictionWarningSpec extends BaseIvySpecification {
         "\t* commons-io:commons-io:1.4 -> 2.4 (caller: ca.gobits.bnf:bnfparser:1.0, net.databinder:unfiltered-uploads_2.10:0.8.0)")
   }
 
-  def scalaLibWarn1 = {
+  def scalaLibWarn1() = {
     val deps = Seq(scala2104, akkaActor214, akkaActor234)
     val m = module(defaultModuleId, deps, Some("2.10.4"))
     val report = ivyUpdate(m)
-    EvictionWarning(m, defaultOptions, report, log).reportedEvictions should have size(1)
+    EvictionWarning(m, defaultOptions, report, log).reportedEvictions should have size (1)
   }
 
-  def scalaLibWarn2 = {
+  def scalaLibWarn2() = {
     val deps = Seq(scala2104, akkaActor214, akkaActor234)
     val m = module(defaultModuleId, deps, Some("2.10.4"))
     val report = ivyUpdate(m)
@@ -179,14 +179,14 @@ class EvictionWarningSpec extends BaseIvySpecification {
         "Run 'evicted' to see detailed eviction warnings")
   }
 
-  def scalaLibNoWarn1 = {
+  def scalaLibNoWarn1() = {
     val deps = Seq(scala2104, akkaActor230, akkaActor234)
     val m = module(defaultModuleId, deps, Some("2.10.4"))
     val report = ivyUpdate(m)
-    EvictionWarning(m, defaultOptions, report, log).reportedEvictions should have size(0)
+    EvictionWarning(m, defaultOptions, report, log).reportedEvictions should have size (0)
   }
 
-  def scalaLibNoWarn2 = {
+  def scalaLibNoWarn2() = {
     val deps = Seq(scala2104, akkaActor230, akkaActor234)
     val m = module(defaultModuleId, deps, Some("2.10.4"))
     val report = ivyUpdate(m)
@@ -195,19 +195,19 @@ class EvictionWarningSpec extends BaseIvySpecification {
 
   def scalaLibTransitiveDeps = Seq(scala2104, bananaSesame04, akkaRemote234)
 
-  def scalaLibTransitiveWarn1 = {
+  def scalaLibTransitiveWarn1() = {
     val m = module(defaultModuleId, scalaLibTransitiveDeps, Some("2.10.4"))
     val report = ivyUpdate(m)
-    EvictionWarning(m, defaultOptions, report, log).reportedEvictions should have size(0)
+    EvictionWarning(m, defaultOptions, report, log).reportedEvictions should have size (0)
   }
 
-  def scalaLibTransitiveWarn2 = {
+  def scalaLibTransitiveWarn2() = {
     val m = module(defaultModuleId, scalaLibTransitiveDeps, Some("2.10.4"))
     val report = ivyUpdate(m)
-    EvictionWarning(m, defaultOptions.withWarnTransitiveEvictions(true), report, log).reportedEvictions should have size(1)
+    EvictionWarning(m, defaultOptions.withWarnTransitiveEvictions(true), report, log).reportedEvictions should have size (1)
   }
 
-  def scalaLibTransitiveWarn3 = {
+  def scalaLibTransitiveWarn3() = {
     val m = module(defaultModuleId, scalaLibTransitiveDeps, Some("2.10.4"))
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions.withWarnTransitiveEvictions(true).withShowCallers(true), report, log).lines shouldBe

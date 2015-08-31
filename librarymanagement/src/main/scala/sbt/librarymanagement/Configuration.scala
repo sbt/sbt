@@ -26,7 +26,7 @@ object Configurations {
     case _               => c
   }
 
-  def internal(base: Configuration, ext: Configuration*) = config(base.name + "-internal") extend (ext: _*) hide
+  def internal(base: Configuration, ext: Configuration*) = config(base.name + "-internal").extend(ext: _*).hide
   def fullInternal(base: Configuration): Configuration = internal(base, base, Optional, Provided)
   def optionalInternal(base: Configuration): Configuration = internal(base, base, Optional)
 
@@ -42,9 +42,9 @@ object Configurations {
   lazy val Optional = config("optional")
   lazy val Pom = config("pom")
 
-  lazy val ScalaTool = config("scala-tool") hide
-  lazy val CompilerPlugin = config("plugin") hide
-  lazy val Component = config("component") hide
+  lazy val ScalaTool = config("scala-tool").hide
+  lazy val CompilerPlugin = config("plugin").hide
+  lazy val Component = config("component").hide
 
   private[sbt] val DefaultMavenConfiguration = defaultConfiguration(true)
   private[sbt] val DefaultIvyConfiguration = defaultConfiguration(false)

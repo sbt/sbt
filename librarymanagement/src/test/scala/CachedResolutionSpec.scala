@@ -32,7 +32,7 @@ class CachedResolutionSpec extends BaseIvySpecification {
     ivyUpdateEither(m) match {
       case Right(_) => sys.error("this should've failed 2")
       case Left(uw) =>
-        uw.lines should contain allOf("\n\tNote: Unresolved dependencies path:",
+        uw.lines should contain allOf ("\n\tNote: Unresolved dependencies path:",
           "\t\tfoundrylogic.vpp:vpp:2.2.1",
           "\t\t  +- org.apache.cayenne:cayenne-tools:3.0.2",
           "\t\t  +- org.apache.cayenne.plugins:maven-cayenne-plugin:3.0.2",
@@ -55,9 +55,9 @@ class CachedResolutionSpec extends BaseIvySpecification {
     cleanCachedResolutionCache(m)
     // second resolution reads from the minigraph
     val report = ivyUpdate(m)
-    val modules: Seq[String] = report.configurations.head.modules map {_.toString}
-    assert(modules exists { x: String => x contains """org.jboss.netty:netty:3.2.0.Final"""})
-    assert(!(modules exists { x: String => x contains """org.jboss.netty:netty:3.2.1.Final"""}))
+    val modules: Seq[String] = report.configurations.head.modules map { _.toString }
+    assert(modules exists { x: String => x contains """org.jboss.netty:netty:3.2.0.Final""" })
+    assert(!(modules exists { x: String => x contains """org.jboss.netty:netty:3.2.1.Final""" }))
   }
 
   def commonsIo13 = ModuleID("commons-io", "commons-io", "1.3", Some("compile"))

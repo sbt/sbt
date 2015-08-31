@@ -52,12 +52,8 @@ object PomExtraDependencyAttributes {
    * TODO - maybe we can just parse this directly here.  Note the `readFromAether` method uses
    *        whatever we set here.
    */
-  def transferDependencyExtraAttributes(from: Properties, to: java.util.Map[String, AnyRef]): Unit = {
-    Option(from.getProperty(ExtraAttributesKey, null)) match {
-      case Some(str) => to.put(ExtraAttributesKey, str)
-      case None      =>
-    }
-  }
+  def transferDependencyExtraAttributes(from: Properties, to: java.util.Map[String, AnyRef]): Unit =
+    Option(from.getProperty(ExtraAttributesKey, null)) foreach (to.put(ExtraAttributesKey, _))
 
   /**
    * Reads the extra dependency information out of Ivy's notion of POM properties and returns

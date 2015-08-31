@@ -19,12 +19,14 @@ class ComponentManagerTest extends UnitSpec {
   "Component manager" should "throw an exception if 'file' is called for a non-existing component" in {
     withManager { manager =>
       intercept[InvalidComponent] { manager.file(TestID)(Fail) }
+      ()
     }
   }
   it should "throw an exception if 'file' is called for an empty component" in {
     withManager { manager =>
       manager.define(TestID, Nil)
       intercept[InvalidComponent] { manager.file(TestID)(Fail) }
+      ()
     }
   }
   it should "return the file for a single-file component" in {
@@ -37,6 +39,7 @@ class ComponentManagerTest extends UnitSpec {
     withManager { manager =>
       defineFiles(manager, TestID, "a", "b")
       intercept[InvalidComponent] { manager.file(TestID)(Fail) }
+      ()
     }
   }
   it should "return the files for a multi-file component" in {
@@ -54,6 +57,7 @@ class ComponentManagerTest extends UnitSpec {
   it should "throw an exception if 'files' is called for a non-existing component" in {
     withManager { manager =>
       intercept[InvalidComponent] { manager.files(TestID)(Fail) }
+      ()
     }
   }
   it should "properly cache a file and then retrieve it to an unresolved component" in {
@@ -104,8 +108,10 @@ class ComponentManagerTest extends UnitSpec {
             val location = componentLocation(id)
             if (location.exists)
               throw new RuntimeException(s"Cannot redefine component.  ID: $id, files: ${files.mkString(",")}")
-            else
+            else {
               IO.copy(files.map { f => f -> new java.io.File(location, f.getName) })
+              ()
+            }
           }
           override def addToComponent(id: String, files: Array[File]): Boolean = {
             val location = componentLocation(id)

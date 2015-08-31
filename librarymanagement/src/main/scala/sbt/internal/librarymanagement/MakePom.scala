@@ -412,7 +412,7 @@ class MakePom(val log: Logger) {
       <id>{ id }</id>
       <name>{ name }</name>
       <url>{ root }</url>
-      <layout>{ if (name == JavaNet1Repository.name) "legacy" else "default" }</layout>
+      <layout>{ "default" }</layout>
     </repository>
 
   /**

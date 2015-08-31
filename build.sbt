@@ -17,7 +17,22 @@ def commonSettings: Seq[Setting[_]] = Seq(
   bintrayRepository := (bintrayRepository in ThisBuild).value,
   resolvers += Resolver.sonatypeRepo("public"),
   publishArtifact in Compile := true,
-  publishArtifact in Test := true
+  publishArtifact in Test := true,
+  scalacOptions ++= Seq(
+    "-encoding", "utf8",
+    "-deprecation",
+    "-feature",
+    "-unchecked",
+    "-Xlint",
+    "-language:higherKinds",
+    "-language:implicitConversions",
+    "-Xfuture",
+    "-Yinline-warnings",
+    "-Xfatal-warnings",
+    "-Yno-adapted-args",
+    "-Ywarn-dead-code",
+    "-Ywarn-numeric-widen",
+    "-Ywarn-value-discard")
 )
 
 lazy val root = (project in file(".")).

@@ -19,13 +19,13 @@ import sbt.internal.librarymanagement.{ DependencyFilter, ConfigurationFilter, M
 final class ConfigurationReport(
   val configuration: String,
   val modules: Seq[ModuleReport],
-  val details: Seq[OrganizationArtifactReport],
-  @deprecated("Use details instead to get better eviction info.", "0.13.6") val evicted: Seq[ModuleID]) {
-  def this(configuration: String, modules: Seq[ModuleReport], evicted: Seq[ModuleID]) =
-    this(configuration, modules, Nil, evicted)
+  val details: Seq[OrganizationArtifactReport]) {
+
+  def evicted: Seq[ModuleID] =
+    details flatMap (_.modules) filter (_.evicted) map (_.module)
 
   override def toString = s"\t$configuration:\n" +
-    (if (details.isEmpty) modules.mkString + evicted.map("\t\t(EVICTED) " + _ + "\n").mkString
+    (if (details.isEmpty) modules.mkString + details.flatMap(_.modules).filter(_.evicted).map("\t\t(EVICTED) " + _ + "\n").mkString
     else details.mkString)
 
   /**
@@ -36,7 +36,7 @@ final class ConfigurationReport(
   private[this] def addConfiguration(mod: ModuleID): ModuleID = if (mod.configurations.isEmpty) mod.copy(configurations = Some(configuration)) else mod
 
   def retrieve(f: (String, ModuleID, Artifact, File) => File): ConfigurationReport =
-    new ConfigurationReport(configuration, modules map { _.retrieve((mid, art, file) => f(configuration, mid, art, file)) }, details, evicted)
+    new ConfigurationReport(configuration, modules map { _.retrieve((mid, art, file) => f(configuration, mid, art, file)) }, details)
 }
 object ConfigurationReport {
   implicit val pickler: Pickler[ConfigurationReport] with Unpickler[ConfigurationReport] = PicklerUnpickler.generate[ConfigurationReport]
@@ -275,7 +275,7 @@ object UpdateReport {
         val newConfigurations = report.configurations.map { confReport =>
           import confReport._
           val newModules = modules map { modReport => f(configuration, modReport) }
-          new ConfigurationReport(configuration, newModules, details, evicted)
+          new ConfigurationReport(configuration, newModules, details)
         }
         new UpdateReport(report.cachedDescriptor, newConfigurations, report.stats, report.stamps)
       }
@@ -316,6 +316,7 @@ object UpdateReport {
       })
       builder.endEntry()
       builder.popHints()
+      ()
     }
 
     def unpickle(tpe: String, reader: PReader): Any = {

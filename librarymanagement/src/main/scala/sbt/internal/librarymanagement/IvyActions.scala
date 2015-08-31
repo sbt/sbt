@@ -141,7 +141,6 @@ object IvyActions {
     moduleSettings match {
       case i: InlineConfiguration             => CrossVersion(i.module, i.ivyScala)
       case i: InlineConfigurationWithExcludes => CrossVersion(i.module, i.ivyScala)
-      case e: EmptyConfiguration              => CrossVersion(e.module, e.ivyScala)
       case _                                  => None
     }
   def mapArtifacts(module: ModuleDescriptor, cross: Option[String => String], artifacts: Map[Artifact, File]): Seq[(IArtifact, File)] =
@@ -213,7 +212,7 @@ object IvyActions {
       val evictedSet = evicted.map(m => (m.organization, m.name)).toSet
       val conflicted = confReport.allModules.filter(mod => evictedSet((mod.organization, mod.name)))
       grouped(grouping)(conflicted ++ evicted)
-    } toMap;
+    }.toMap
 
   def grouped[T](grouping: ModuleID => T)(mods: Seq[ModuleID]): Map[T, Set[String]] =
     mods groupBy (grouping) mapValues (_.map(_.revision).toSet)

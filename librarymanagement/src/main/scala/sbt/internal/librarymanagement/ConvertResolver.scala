@@ -93,7 +93,7 @@ private[sbt] object ConvertResolver {
       if (signerName != null) {
         putSignatureMethod match {
           case None         => ()
-          case Some(method) => method.invoke(artifact, src, dest, true: java.lang.Boolean)
+          case Some(method) => method.invoke(artifact, src, dest, true: java.lang.Boolean) ; ()
         }
       }
     }
@@ -126,17 +126,6 @@ private[sbt] object ConvertResolver {
             resolver.setRepository(new LocalIfFileRepo)
             initializeMavenStyle(resolver, repo.name, repo.root)
             resolver.setPatterns() // has to be done after initializeMavenStyle, which calls methods that overwrite the patterns
-            resolver
-          }
-        // TODO: HTTP repository is no longer recommended. #1541
-        // Remove `JavaNet1Repository` when we bump up the API.
-        case r: JavaNet1Repository =>
-          {
-            // Thanks to Matthias Pfau for posting how to use the Maven 1 repository on java.net with Ivy:
-            // http://www.nabble.com/Using-gradle-Ivy-with-special-maven-repositories-td23775489.html
-            val resolver = new IBiblioResolver with DescriptorRequired { override def convertM2IdForResourceSearch(mrid: ModuleRevisionId) = mrid }
-            initializeMavenStyle(resolver, JavaNet1Repository.name, "http://download.java.net/maven/1/")
-            resolver.setPattern("[organisation]/[ext]s/[module]-[revision](-[classifier]).[ext]")
             resolver
           }
         case repo: SshRepository =>
@@ -257,6 +246,7 @@ private[sbt] object ConvertResolver {
             progress.setTotalLength(totalLength);
           }
           FileUtil.copy(source, new java.io.File(url.toURI), progress, overwrite)
+          ()
         } catch {
           case ex: IOException =>
             fireTransferError(ex)
