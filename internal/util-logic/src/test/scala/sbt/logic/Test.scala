@@ -20,8 +20,7 @@ object LogicTest extends Properties("Logic") {
       case Right(res)                      => false
       case Left(err: Logic.CyclicNegation) => true
       case Left(err)                       => sys.error(s"Expected cyclic error, got: $err")
-    }
-  )
+    })
 
   def expect(result: Either[LogicException, Matched], expected: Set[Atom]) = result match {
     case Left(err) => false
