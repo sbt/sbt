@@ -48,7 +48,8 @@ lazy val utilRoot: Project = (project in file(".")).
     commonSettings,
     name := "Util Root",
     publish := {},
-    publishLocal := {}
+    publishLocal := {},
+    publishArtifact := false
   )
 
 // defines Java structures used across Scala versions, such as the API structures and relationships extracted by
