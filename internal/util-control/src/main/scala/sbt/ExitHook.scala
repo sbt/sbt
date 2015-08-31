@@ -16,6 +16,5 @@ object ExitHooks {
   /** Calls each registered exit hook, trapping any exceptions so that each hook is given a chance to run. */
   def runExitHooks(exitHooks: Seq[ExitHook]): Seq[Throwable] =
     exitHooks.flatMap(hook =>
-      ErrorHandling.wideConvert(hook.runBeforeExiting()).left.toOption
-    )
+      ErrorHandling.wideConvert(hook.runBeforeExiting()).left.toOption)
 }
