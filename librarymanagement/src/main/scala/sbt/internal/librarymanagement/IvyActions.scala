@@ -23,7 +23,7 @@ import sbt.librarymanagement._
 
 final class DeliverConfiguration(val deliverIvyPattern: String, val status: String, val configurations: Option[Seq[Configuration]], val logging: UpdateLogging.Value)
 final class PublishConfiguration(val ivyFile: Option[File], val resolverName: String, val artifacts: Map[Artifact, File], val checksums: Seq[String], val logging: UpdateLogging.Value,
-    val overwrite: Boolean) {
+  val overwrite: Boolean) {
   def this(ivyFile: Option[File], resolverName: String, artifacts: Map[Artifact, File], checksums: Seq[String], logging: UpdateLogging.Value) =
     this(ivyFile, resolverName, artifacts, checksums, logging, false)
 }
@@ -379,9 +379,9 @@ object IvyActions {
   }
 }
 final class ResolveException(
-    val messages: Seq[String],
-    val failed: Seq[ModuleID],
-    val failedPaths: Map[ModuleID, Seq[ModuleID]]) extends RuntimeException(messages.mkString("\n")) {
+  val messages: Seq[String],
+  val failed: Seq[ModuleID],
+  val failedPaths: Map[ModuleID, Seq[ModuleID]]) extends RuntimeException(messages.mkString("\n")) {
   def this(messages: Seq[String], failed: Seq[ModuleID]) =
     this(messages, failed, Map(failed map { m => m -> Nil }: _*))
 }

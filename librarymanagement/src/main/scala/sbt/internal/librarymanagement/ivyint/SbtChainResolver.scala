@@ -19,11 +19,11 @@ import sbt.util.Logger
 import sbt.librarymanagement._
 
 private[sbt] case class SbtChainResolver(
-    name: String,
-    resolvers: Seq[DependencyResolver],
-    settings: IvySettings,
-    updateOptions: UpdateOptions,
-    log: Logger) extends ChainResolver {
+  name: String,
+  resolvers: Seq[DependencyResolver],
+  settings: IvySettings,
+  updateOptions: UpdateOptions,
+  log: Logger) extends ChainResolver {
 
   override def equals(o: Any): Boolean = o match {
     case o: SbtChainResolver =>
@@ -139,8 +139,7 @@ private[sbt] case class SbtChainResolver(
               else if (useLatest) temp map { x =>
                 (reparseModuleDescriptor(dd, data, resolver, x), resolver)
               }
-              else temp map { x => (forcedRevision(x), resolver) }
-            )
+              else temp map { x => (forcedRevision(x), resolver) })
           } catch {
             case ex: Exception =>
               Message.verbose("problem occurred while resolving " + dd + " with " + resolver

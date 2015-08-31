@@ -17,10 +17,10 @@ import sbt.internal.librarymanagement.{ DependencyFilter, ConfigurationFilter, M
  * @param evicted a sequence of evicted modules
  */
 final class ConfigurationReport(
-    val configuration: String,
-    val modules: Seq[ModuleReport],
-    val details: Seq[OrganizationArtifactReport],
-    @deprecated("Use details instead to get better eviction info.", "0.13.6") val evicted: Seq[ModuleID]) {
+  val configuration: String,
+  val modules: Seq[ModuleReport],
+  val details: Seq[OrganizationArtifactReport],
+  @deprecated("Use details instead to get better eviction info.", "0.13.6") val evicted: Seq[ModuleID]) {
   def this(configuration: String, modules: Seq[ModuleReport], evicted: Seq[ModuleID]) =
     this(configuration, modules, Nil, evicted)
 
@@ -54,9 +54,9 @@ object ConfigurationReport {
  * which can be used to calculate detailed evction warning etc.
  */
 final class OrganizationArtifactReport private[sbt] (
-    val organization: String,
-    val name: String,
-    val modules: Seq[ModuleReport]) {
+  val organization: String,
+  val name: String,
+  val modules: Seq[ModuleReport]) {
   override def toString: String = {
     val details = modules map { _.detailReport }
     s"\t$organization:$name\n${details.mkString}\n"
@@ -77,24 +77,24 @@ object OrganizationArtifactReport {
  * @param missingArtifacts the missing artifacts for this module.
  */
 final class ModuleReport(
-    val module: ModuleID,
-    val artifacts: Seq[(Artifact, File)],
-    val missingArtifacts: Seq[Artifact],
-    val status: Option[String],
-    val publicationDate: Option[ju.Date],
-    val resolver: Option[String],
-    val artifactResolver: Option[String],
-    val evicted: Boolean,
-    val evictedData: Option[String],
-    val evictedReason: Option[String],
-    val problem: Option[String],
-    val homepage: Option[String],
-    val extraAttributes: Map[String, String],
-    val isDefault: Option[Boolean],
-    val branch: Option[String],
-    val configurations: Seq[String],
-    val licenses: Seq[(String, Option[String])],
-    val callers: Seq[Caller]) {
+  val module: ModuleID,
+  val artifacts: Seq[(Artifact, File)],
+  val missingArtifacts: Seq[Artifact],
+  val status: Option[String],
+  val publicationDate: Option[ju.Date],
+  val resolver: Option[String],
+  val artifactResolver: Option[String],
+  val evicted: Boolean,
+  val evictedData: Option[String],
+  val evictedReason: Option[String],
+  val problem: Option[String],
+  val homepage: Option[String],
+  val extraAttributes: Map[String, String],
+  val isDefault: Option[Boolean],
+  val branch: Option[String],
+  val configurations: Seq[String],
+  val licenses: Seq[(String, Option[String])],
+  val callers: Seq[Caller]) {
 
   private[this] lazy val arts: Seq[String] = artifacts.map(_.toString) ++ missingArtifacts.map(art => "(MISSING) " + art)
   override def toString: String = {
@@ -164,13 +164,13 @@ object ModuleReport {
 }
 
 final class Caller(
-    val caller: ModuleID,
-    val callerConfigurations: Seq[String],
-    val callerExtraAttributes: Map[String, String],
-    val isForceDependency: Boolean,
-    val isChangingDependency: Boolean,
-    val isTransitiveDependency: Boolean,
-    val isDirectlyForceDependency: Boolean) {
+  val caller: ModuleID,
+  val callerConfigurations: Seq[String],
+  val callerExtraAttributes: Map[String, String],
+  val isForceDependency: Boolean,
+  val isChangingDependency: Boolean,
+  val isTransitiveDependency: Boolean,
+  val isDirectlyForceDependency: Boolean) {
   override def toString: String =
     s"$caller"
 }
@@ -248,16 +248,14 @@ object UpdateReport {
       moduleReportMap { (configuration, modReport) =>
         modReport.copy(
           artifacts = modReport.artifacts filter { case (art, file) => f(configuration, modReport.module, art) },
-          missingArtifacts = modReport.missingArtifacts filter { art => f(configuration, modReport.module, art) }
-        )
+          missingArtifacts = modReport.missingArtifacts filter { art => f(configuration, modReport.module, art) })
       }
     def substitute(f: (String, ModuleID, Seq[(Artifact, File)]) => Seq[(Artifact, File)]): UpdateReport =
       moduleReportMap { (configuration, modReport) =>
         val newArtifacts = f(configuration, modReport.module, modReport.artifacts)
         modReport.copy(
           artifacts = f(configuration, modReport.module, modReport.artifacts),
-          missingArtifacts = Nil
-        )
+          missingArtifacts = Nil)
       }
 
     def toSeq: Seq[(String, ModuleID, Artifact, File)] =
@@ -269,8 +267,7 @@ object UpdateReport {
     def addMissing(f: ModuleID => Seq[Artifact]): UpdateReport =
       moduleReportMap { (configuration, modReport) =>
         modReport.copy(
-          missingArtifacts = (modReport.missingArtifacts ++ f(modReport.module)).distinct
-        )
+          missingArtifacts = (modReport.missingArtifacts ++ f(modReport.module)).distinct)
       }
 
     def moduleReportMap(f: (String, ModuleReport) => ModuleReport): UpdateReport =

@@ -13,16 +13,16 @@ import sbt.util.Logger
  * See also UpdateConfiguration in IvyActions.scala.
  */
 final class UpdateOptions private[sbt] (
-    /** If set to CircularDependencyLevel.Error, halt the dependency resolution. */
-    val circularDependencyLevel: CircularDependencyLevel,
-    /** If set to true, check all resolvers for snapshots. */
-    val latestSnapshots: Boolean,
-    /** If set to true, use consolidated resolution. */
-    val consolidatedResolution: Boolean,
-    /** If set to true, use cached resolution. */
-    val cachedResolution: Boolean,
-    /** Extention point for an alternative resolver converter. */
-    val resolverConverter: UpdateOptions.ResolverConverter) {
+  /** If set to CircularDependencyLevel.Error, halt the dependency resolution. */
+  val circularDependencyLevel: CircularDependencyLevel,
+  /** If set to true, check all resolvers for snapshots. */
+  val latestSnapshots: Boolean,
+  /** If set to true, use consolidated resolution. */
+  val consolidatedResolution: Boolean,
+  /** If set to true, use cached resolution. */
+  val cachedResolution: Boolean,
+  /** Extention point for an alternative resolver converter. */
+  val resolverConverter: UpdateOptions.ResolverConverter) {
   def withCircularDependencyLevel(circularDependencyLevel: CircularDependencyLevel): UpdateOptions =
     copy(circularDependencyLevel = circularDependencyLevel)
   def withLatestSnapshots(latestSnapshots: Boolean): UpdateOptions =

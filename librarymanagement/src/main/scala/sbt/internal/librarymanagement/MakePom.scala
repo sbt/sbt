@@ -372,8 +372,7 @@ class MakePom(val log: Logger) {
           <exclusion>
             <groupId>{ g }</groupId>
             <artifactId>{ a }</artifactId>
-          </exclusion>
-        )
+          </exclusion>)
     }
 
   def makeRepositories(settings: IvySettings, includeAll: Boolean, filterRepositories: MavenRepository => Boolean) =
