@@ -16,6 +16,7 @@ import StandardMain._
 import java.io.File
 import java.net.URI
 import java.util.Locale
+import scala.util.control.NonFatal
 
 /** This class is the entry point for sbt.*/
 final class xMain extends xsbti.AppMain {
@@ -177,7 +178,15 @@ object BuiltinCommands {
       val extracted = Project.extract(s)
       import extracted._
       val index = structure.index
-      index.keyIndex.keys(Some(currentRef)).toSeq.map(index.keyMap).distinct
+      index.keyIndex.keys(Some(currentRef)).toSeq.map { key =>
+        try
+          Some(index.keyMap(key))
+        catch {
+          case NonFatal(ex) =>
+            s.log error ex.getMessage
+            None
+        }
+      }.collect { case Some(s) => s }.distinct
     }
 
   def sortByLabel(keys: Seq[AttributeKey[_]]): Seq[AttributeKey[_]] = keys.sortBy(_.label)
