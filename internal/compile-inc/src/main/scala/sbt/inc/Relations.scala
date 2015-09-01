@@ -465,7 +465,7 @@ private abstract class MRelationsCommon(val srcProd: Relation[File, File], val b
   private def line_s(kv: (Any, Any)) = "    " + nocwd("" + kv._1) + " -> " + nocwd("" + kv._2) + "\n"
   protected def relation_s(r: Relation[_, _]) = (
     if (r.forwardMap.isEmpty) "Relation [ ]"
-    else (r.all.toSeq map line_s sorted) mkString ("Relation [\n", "", "]"))
+    else (r.all.toSeq.map(line_s).sorted) mkString ("Relation [\n", "", "]"))
 }
 
 /**

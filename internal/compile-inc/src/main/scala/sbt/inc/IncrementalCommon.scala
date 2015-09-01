@@ -170,7 +170,7 @@ private[inc] abstract class IncrementalCommon(log: Logger, options: IncOptions) 
     merged.srcProd.reverseMap.flatMap {
       case (classFile, sources) =>
         if (sources.size > 1) sources else Nil
-    } toSet;
+    }.toSet
 
   /**
    * Returns the transitive source dependencies of `initial`.

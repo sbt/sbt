@@ -7,7 +7,7 @@ package inc
 import java.io.{ File, IOException }
 import Stamp.getStamp
 import scala.util.matching.Regex
-import sbt.io.Hash
+import sbt.io.{ Hash => IOHash }
 
 trait ReadStamps {
   /** The Stamp for the given product at the time represented by this Stamps instance.*/
@@ -74,7 +74,7 @@ object Stamp {
 
   def toString(s: Stamp): String = s match {
     case e: Exists        => if (e.value) "exists" else "absent"
-    case h: Hash          => "hash(" + Hash.toHex(h.value) + ")"
+    case h: Hash          => "hash(" + IOHash.toHex(h.value) + ")"
     case lm: LastModified => "lastModified(" + lm.value + ")"
   }
 
@@ -84,18 +84,18 @@ object Stamp {
   def fromString(s: String): Stamp = s match {
     case "exists"                   => new Exists(true)
     case "absent"                   => new Exists(false)
-    case hashPattern(value)         => new Hash(Hash.fromHex(value))
+    case hashPattern(value)         => new Hash(IOHash.fromHex(value))
     case lastModifiedPattern(value) => new LastModified(java.lang.Long.parseLong(value))
     case _                          => throw new IllegalArgumentException("Unrecognized Stamp string representation: " + s)
   }
 
   def show(s: Stamp): String = s match {
-    case h: Hash          => "hash(" + Hash.toHex(h.value) + ")"
+    case h: Hash          => "hash(" + IOHash.toHex(h.value) + ")"
     case e: Exists        => if (e.value) "exists" else "does not exist"
     case lm: LastModified => "last modified(" + lm.value + ")"
   }
 
-  val hash = (f: File) => tryStamp(new Hash(Hash(f)))
+  val hash = (f: File) => tryStamp(new Hash(IOHash(f)))
   val lastModified = (f: File) => tryStamp(new LastModified(f.lastModified))
   val exists = (f: File) => tryStamp(if (f.exists) present else notPresent)
 

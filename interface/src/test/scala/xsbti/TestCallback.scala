@@ -16,13 +16,22 @@ class TestCallback(override val nameHashing: Boolean = false) extends AnalysisCa
     val context = if (inherited) DependencyByInheritance else DependencyByMemberRef
     sourceDependency(dependsOn, source, context)
   }
-  def sourceDependency(dependsOn: File, source: File, context: DependencyContext): Unit = { sourceDependencies += ((dependsOn, source, context)) }
+  def sourceDependency(dependsOn: File, source: File, context: DependencyContext): Unit = {
+    sourceDependencies += ((dependsOn, source, context))
+    ()
+  }
   def binaryDependency(binary: File, name: String, source: File, inherited: Boolean): Unit = {
     val context = if (inherited) DependencyByInheritance else DependencyByMemberRef
     binaryDependency(binary, name, source, context)
   }
-  def binaryDependency(binary: File, name: String, source: File, context: DependencyContext): Unit = { binaryDependencies += ((binary, name, source, context)) }
-  def generatedClass(source: File, module: File, name: String): Unit = { products += ((source, module, name)) }
+  def binaryDependency(binary: File, name: String, source: File, context: DependencyContext): Unit = {
+    binaryDependencies += ((binary, name, source, context))
+    ()
+  }
+  def generatedClass(source: File, module: File, name: String): Unit = {
+    products += ((source, module, name))
+    ()
+  }
 
   def usedName(source: File, name: String): Unit = { usedNames(source) += name }
   def api(source: File, sourceAPI: SourceAPI): Unit = {

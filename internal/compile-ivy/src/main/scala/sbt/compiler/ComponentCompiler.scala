@@ -185,7 +185,7 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
     log.info(s"Attempting to fetch ${dependenciesNames(module)}. This operation may fail.")
     IvyActions.updateEither(module, updateConfiguration, UnresolvedWarningConfiguration(), LogicalClock.unknown, None, log) match {
       case Left(unresolvedWarning) =>
-        log.debug("Couldn't retrieve module ${dependenciesNames(module)}.")
+        log.debug(s"Couldn't retrieve module ${dependenciesNames(module)}.")
         None
 
       case Right(updateReport) =>

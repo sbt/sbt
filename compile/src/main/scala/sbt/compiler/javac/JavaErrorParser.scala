@@ -179,17 +179,11 @@ class JavaErrorParser(relativeDir: File = new File(new File(".").getAbsolutePath
     parse(javacOutput, in) match {
       case Success(result, _) => result
       case Failure(msg, n) =>
-        logger.warn("Unexpected javac output at:${n.pos.longString}.  Please report to sbt-dev@googlegroups.com.")
+        logger.warn(s"Unexpected javac output at:${n.pos.longString}.  Please report to sbt-dev@googlegroups.com.")
         Seq.empty
       case Error(msg, n) =>
-        logger.warn("Unexpected javac output at:${n.pos.longString}.  Please report to sbt-dev@googlegroups.com.")
+        logger.warn(s"Unexpected javac output at:${n.pos.longString}.  Please report to sbt-dev@googlegroups.com.")
         Seq.empty
     }
 
-}
-
-object JavaErrorParser {
-  def main(args: Array[String]): Unit = {
-
-  }
 }

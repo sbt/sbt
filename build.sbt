@@ -27,7 +27,22 @@ def commonSettings: Seq[Setting[_]] = Seq(
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
   incOptions := incOptions.value.withNameHashing(true),
-  crossScalaVersions := Seq(scala210, scala211)
+  crossScalaVersions := Seq(scala210, scala211),
+  scalacOptions ++= Seq(
+    "-encoding", "utf8",
+    "-deprecation",
+    "-feature",
+    "-unchecked",
+    "-Xlint",
+    "-language:higherKinds",
+    "-language:implicitConversions",
+    "-Xfuture",
+    "-Yinline-warnings",
+    // "-Xfatal-warnings",
+    "-Yno-adapted-args",
+    "-Ywarn-dead-code",
+    "-Ywarn-numeric-widen",
+    "-Ywarn-value-discard")
   // bintrayPackage := (bintrayPackage in ThisBuild).value,
   // bintrayRepository := (bintrayRepository in ThisBuild).value
 )

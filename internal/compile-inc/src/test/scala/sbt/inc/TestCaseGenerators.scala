@@ -81,7 +81,7 @@ object TestCaseGenerators {
   private[this] def lzy[T <: AnyRef](x: T) = SafeLazy.strict(x)
 
   def genNameHash(defn: String): Gen[xsbti.api._internalOnly_NameHash] =
-    value(new xsbti.api._internalOnly_NameHash(defn, defn.hashCode()))
+    const(new xsbti.api._internalOnly_NameHash(defn, defn.hashCode()))
 
   def genNameHashes(defns: Seq[String]): Gen[xsbti.api._internalOnly_NameHashes] = {
     def partitionAccordingToMask[T](mask: List[Boolean], xs: List[T]): (List[T], List[T]) = {

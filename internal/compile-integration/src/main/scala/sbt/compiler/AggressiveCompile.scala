@@ -231,10 +231,10 @@ private[sbt] class JavacLogger(log: Logger) extends ProcessLogger {
   private val msgs: ListBuffer[(LogLevel, String)] = new ListBuffer()
 
   def out(s: => String): Unit =
-    synchronized { msgs += ((Info, s)) }
+    synchronized { msgs += ((Info, s)); () }
 
   def err(s: => String): Unit =
-    synchronized { msgs += ((Error, s)) }
+    synchronized { msgs += ((Error, s)); () }
 
   def buffer[T](f: => T): T = f
 

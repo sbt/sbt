@@ -47,18 +47,23 @@ private[sbt] trait ClassFile {
     }
 }
 
-private[sbt] final case class Constant(tag: Byte, nameIndex: Int, typeIndex: Int, value: Option[AnyRef]) extends NotNull {
+private[sbt] final case class Constant(tag: Byte, nameIndex: Int, typeIndex: Int, value: Option[AnyRef]) {
   def this(tag: Byte, nameIndex: Int, typeIndex: Int) = this(tag, nameIndex, typeIndex, None)
   def this(tag: Byte, nameIndex: Int) = this(tag, nameIndex, -1)
   def this(tag: Byte, value: AnyRef) = this(tag, -1, -1, Some(value))
   def wide = tag == ConstantLong || tag == ConstantDouble
+
+  // Override hashCode to prevent warning with -Ywarn-numeric-widen in Scala 2.10
+  // See https://issues.scala-lang.org/browse/SI-8340
+  override def hashCode: Int =
+    37 * (37 * (37 * (37 * (17 + tag.##) + nameIndex.##) + typeIndex.##) + value.##)
 }
-private[sbt] final case class FieldOrMethodInfo(accessFlags: Int, name: Option[String], descriptor: Option[String], attributes: IndexedSeq[AttributeInfo]) extends NotNull {
+private[sbt] final case class FieldOrMethodInfo(accessFlags: Int, name: Option[String], descriptor: Option[String], attributes: IndexedSeq[AttributeInfo]) {
   def isStatic = (accessFlags & ACC_STATIC) == ACC_STATIC
   def isPublic = (accessFlags & ACC_PUBLIC) == ACC_PUBLIC
   def isMain = isPublic && isStatic && descriptor.exists(_ == "([Ljava/lang/String;)V")
 }
-private[sbt] final case class AttributeInfo(name: Option[String], value: Array[Byte]) extends NotNull {
+private[sbt] final case class AttributeInfo(name: Option[String], value: Array[Byte]) {
   def isNamed(s: String) = name.exists(s == _)
   def isSignature = isNamed("Signature")
   def isSourceFile = isNamed("SourceFile")

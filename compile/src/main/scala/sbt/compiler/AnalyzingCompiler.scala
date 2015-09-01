@@ -28,7 +28,7 @@ final class AnalyzingCompiler private (val scalaInstance: xsbti.compile.ScalaIns
 
   def onArgs(f: Seq[String] => Unit): AnalyzingCompiler = new AnalyzingCompiler(scalaInstance, provider, cp, f)
 
-  def apply(sources: Seq[File], changes: DependencyChanges, classpath: Seq[File], singleOutput: File, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, cache: GlobalsCache, log: Logger) {
+  def apply(sources: Seq[File], changes: DependencyChanges, classpath: Seq[File], singleOutput: File, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, cache: GlobalsCache, log: Logger): Unit = {
     val arguments = (new CompilerArguments(scalaInstance, cp))(Nil, classpath, None, options)
     val output = CompileOutput(singleOutput)
     compile(sources, changes, arguments, output, callback, new LoggerReporter(maximumErrors, log, p => p), cache, log, None)
@@ -41,11 +41,12 @@ final class AnalyzingCompiler private (val scalaInstance: xsbti.compile.ScalaIns
       compile(sources, changes, callback, log, reporter, progress, cached)
     }
 
-  def compile(sources: Seq[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, reporter: Reporter, progress: CompileProgress, compiler: CachedCompiler) {
+  def compile(sources: Seq[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, reporter: Reporter, progress: CompileProgress, compiler: CachedCompiler): Unit = {
     onArgsF(compiler.commandArguments(sources.toArray))
     call("xsbt.CompilerInterface", "run", log)(
       classOf[Array[File]], classOf[DependencyChanges], classOf[AnalysisCallback], classOf[xLogger], classOf[Reporter], classOf[CompileProgress], classOf[CachedCompiler])(
         sources.toArray, changes, callback, log, reporter, progress, compiler)
+    ()
   }
   def newCachedCompiler(arguments: Array[String], output: Output, log: xLogger, reporter: Reporter, resident: Boolean): CachedCompiler =
     newCachedCompiler(arguments: Seq[String], output, log, reporter, resident)
@@ -66,6 +67,7 @@ final class AnalyzingCompiler private (val scalaInstance: xsbti.compile.ScalaIns
       onArgsF(arguments)
       call("xsbt.ScaladocInterface", "run", log)(classOf[Array[String]], classOf[xLogger], classOf[Reporter])(
         arguments.toArray[String]: Array[String], log, reporter)
+      ()
     }
   def console(classpath: Seq[File], options: Seq[String], initialCommands: String, cleanupCommands: String, log: Logger)(loader: Option[ClassLoader] = None, bindings: Seq[(String, Any)] = Nil): Unit =
     {
@@ -75,6 +77,7 @@ final class AnalyzingCompiler private (val scalaInstance: xsbti.compile.ScalaIns
       call("xsbt.ConsoleInterface", "run", log)(
         classOf[Array[String]], classOf[String], classOf[String], classOf[String], classOf[String], classOf[ClassLoader], classOf[Array[String]], classOf[Array[Any]], classOf[xLogger])(
           options.toArray[String]: Array[String], bootClasspath, classpathString, initialCommands, cleanupCommands, loader.orNull, names.toArray[String], values.toArray[Any], log)
+      ()
     }
 
   private[this] def consoleClasspaths(classpath: Seq[File]): (String, String) =
@@ -92,7 +95,7 @@ final class AnalyzingCompiler private (val scalaInstance: xsbti.compile.ScalaIns
           options.toArray[String]: Array[String], bootClasspath, classpathString, log)
       argsObj.asInstanceOf[Array[String]].toSeq
     }
-  def force(log: Logger): Unit = provider(scalaInstance, log)
+  def force(log: Logger): Unit = { provider(scalaInstance, log); () }
   private def call(interfaceClassName: String, methodName: String, log: Logger)(argTypes: Class[_]*)(args: AnyRef*): AnyRef =
     {
       val interfaceClass = getInterfaceClass(interfaceClassName, log)
@@ -132,7 +135,7 @@ object AnalyzingCompiler {
    * Extract sources from source jars, compile them with the xsbti interfaces on the classpath, and package the compiled classes and
    * any resources from the source jars into a final jar.
    */
-  def compileSources(sourceJars: Iterable[File], targetJar: File, xsbtiJars: Iterable[File], id: String, compiler: RawCompiler, log: Logger) {
+  def compileSources(sourceJars: Iterable[File], targetJar: File, xsbtiJars: Iterable[File], id: String, compiler: RawCompiler, log: Logger): Unit = {
     val isSource = (f: File) => isSourceName(f.getName)
     def keepIfSource(files: Set[File]): Set[File] = if (files.exists(isSource)) files else Set()
 
@@ -156,6 +159,6 @@ object AnalyzingCompiler {
 }
 
 private[this] object IgnoreProgress extends CompileProgress {
-  def startUnit(phase: String, unitPath: String) {}
+  def startUnit(phase: String, unitPath: String): Unit = ()
   def advance(current: Int, total: Int) = true
 }

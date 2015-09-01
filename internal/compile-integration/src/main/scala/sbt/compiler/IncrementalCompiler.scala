@@ -55,7 +55,7 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler] {
   override def newScalaCompiler(instance: ScalaInstance, interfaceJar: File, options: ClasspathOptions): AnalyzingCompiler =
     new AnalyzingCompiler(instance, CompilerInterfaceProvider.constant(interfaceJar), options)
 
-  def compileInterfaceJar(label: String, sourceJar: File, targetJar: File, interfaceJar: File, instance: ScalaInstance, log: Logger) {
+  def compileInterfaceJar(label: String, sourceJar: File, targetJar: File, interfaceJar: File, instance: ScalaInstance, log: Logger): Unit = {
     val raw = new RawCompiler(instance, sbt.ClasspathOptions.auto, log)
     AnalyzingCompiler.compileSources(sourceJar :: Nil, targetJar, interfaceJar :: Nil, label, raw, log)
   }

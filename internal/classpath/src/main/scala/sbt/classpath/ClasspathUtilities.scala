@@ -56,7 +56,7 @@ object ClasspathUtilities {
   final val BootClassPath = "boot.class.path"
 
   def createClasspathResources(classpath: Seq[File], instance: ScalaInstance): Map[String, String] =
-    createClasspathResources(classpath, instance.jars)
+    createClasspathResources(classpath, instance.allJars)
 
   def createClasspathResources(appPaths: Seq[File], bootPaths: Seq[File]): Map[String, String] =
     {
