@@ -28,7 +28,7 @@ lazy val utilRoot: Project = (project in file(".")).
   ).
   settings(
     inThisBuild(Seq(
-      organization := "org.scala-sbt.util",
+      organization := "org.scala-sbt",
       version := "0.1.0-SNAPSHOT",
       homepage := Some(url("https://github.com/sbt/util")),
       description := "Util module for sbt",
