@@ -192,6 +192,6 @@ lazy val compilerIvyProj = (project in internalPath / "compile-ivy").
   dependsOn (compilerProj).
   settings(
     baseSettings,
-    libraryDependencies += ivyProj,
+    libraryDependencies += libraryManagement,
     name := "Compiler Ivy Integration"
   )

@@ -10,10 +10,10 @@ object Dependencies {
   val utilVersion = "0.1.0-M1"
 
   lazy val sbtIO = "org.scala-sbt" %% "io" % "1.0.0-M1"
-  lazy val utilLogging = "org.scala-sbt.util" %% "util-logging" % utilVersion
-  lazy val utilControl = "org.scala-sbt.util" %% "util-control" % utilVersion
-  lazy val utilRelation = "org.scala-sbt.util" %% "util-relation" % utilVersion
-  lazy val ivyProj = "org.scala-sbt" % "ivy" % "0.13.10-20150818-062019" exclude("org.scala-sbt", "io")
+  lazy val utilLogging = "org.scala-sbt" %% "util-logging" % utilVersion
+  lazy val utilControl = "org.scala-sbt" %% "util-control" % utilVersion
+  lazy val utilRelation = "org.scala-sbt" %% "util-relation" % utilVersion
+  lazy val libraryManagement = "org.scala-sbt" %% "librarymanagement" % "0.1.0-M1"
 
   lazy val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0-M1"
 
