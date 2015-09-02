@@ -9,7 +9,7 @@ object Dependencies {
   val bootstrapSbtVersion = "0.13.8"
   val utilVersion = "0.1.0-M1"
 
-  lazy val sbtIO = "org.scala-sbt" %% "io" % "1.0.0-M2"
+  lazy val sbtIO = "org.scala-sbt" %% "io" % "1.0.0-M3"
   lazy val utilLogging = "org.scala-sbt" %% "util-logging" % utilVersion
   lazy val utilControl = "org.scala-sbt" %% "util-control" % utilVersion
   lazy val utilRelation = "org.scala-sbt" %% "util-relation" % utilVersion
