@@ -13,8 +13,8 @@ def commonSettings: Seq[Setting[_]] = Seq(
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
   incOptions := incOptions.value.withNameHashing(true),
   crossScalaVersions := Seq(scala210, scala211),
-  // bintrayPackage := (bintrayPackage in ThisBuild).value,
-  // bintrayRepository := (bintrayRepository in ThisBuild).value,
+  bintrayPackage := (bintrayPackage in ThisBuild).value,
+  bintrayRepository := (bintrayRepository in ThisBuild).value,
   resolvers += Resolver.sonatypeRepo("public")
 )
 
@@ -42,7 +42,8 @@ lazy val root = (project in file(".")).
     commonSettings,
     // rootSettings,
     publish := {},
-    publishLocal := {}
+    publishLocal := {},
+    publishArtifact := false
   )
 
 lazy val lm = (project in file("librarymanagement")).
