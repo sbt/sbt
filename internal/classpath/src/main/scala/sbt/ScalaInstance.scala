@@ -71,10 +71,17 @@ object ScalaInstance {
     new ScalaInstance(version, loader, library, compilerJar(scalaHome), all.toArray, None)
   }
 
-  def apply(version: String, scalaHome: File, launcher: xsbti.Launcher): ScalaInstance = {
-    ???
-    //apply(version, libraryJar(scalaHome), compilerJar(scalaHome), launcher, allJars(scalaHome): _*)
-  }
+  def apply(version: String, scalaHome: File, launcher: xsbti.Launcher): ScalaInstance =
+    apply(version, libraryJar(scalaHome), compilerJar(scalaHome), allJars(scalaHome): _*)(scalaLoader(launcher))
+
+  // TODO: These two overloads are deprecated, but they are used by a non-deprecated overload.
+  @deprecated("Does not handle modularized Scala.  Use a variant that only accepts all jars.", "0.13.0")
+  def apply(version: String, libraryJar: File, compilerJar: File, extraJars: File*)(classLoader: List[File] => ClassLoader): ScalaInstance =
+    apply(version, None, libraryJar, compilerJar, extraJars: _*)(classLoader)
+
+  @deprecated("Does not handle modularized Scala.  Use a variant that only accepts all jars.", "0.13.0")
+  def apply(version: String, explicitActual: Option[String], libraryJar: File, compilerJar: File, extraJars: File*)(classLoader: List[File] => ClassLoader): ScalaInstance =
+    new ScalaInstance(version, classLoader(libraryJar :: compilerJar :: extraJars.toList), libraryJar, compilerJar, extraJars.toArray, explicitActual)
 
   def allJars(scalaHome: File): Seq[File] = IO.listFiles(scalaLib(scalaHome)).filter(f => !blacklist(f.getName))
   private[this] def scalaLib(scalaHome: File): File = new File(scalaHome, "lib")
