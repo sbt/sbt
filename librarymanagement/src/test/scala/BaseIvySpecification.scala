@@ -1,6 +1,7 @@
 package sbt
 
-import Path._, Configurations._
+import sbt.io.Path._, Configurations._
+import sbt.io.IO
 import java.io.File
 import org.specs2._
 import cross.CrossVersionUtil

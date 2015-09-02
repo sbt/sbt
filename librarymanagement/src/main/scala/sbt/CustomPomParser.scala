@@ -13,6 +13,7 @@ import java.io.{ File, InputStream }
 import java.net.URL
 import java.util.regex.Pattern
 import sbt.mavenint.{ PomExtraDependencyAttributes, SbtPomExtraProperties }
+import sbt.io.Hash
 
 @deprecated("We now use an Aether-based pom parser.", "0.13.8")
 final class CustomPomParser(delegate: ModuleDescriptorParser, transform: (ModuleDescriptorParser, ModuleDescriptor) => ModuleDescriptor) extends ModuleDescriptorParser {

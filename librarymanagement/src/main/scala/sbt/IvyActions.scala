@@ -16,6 +16,7 @@ import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact, MDArtifact
 import org.apache.ivy.core.report.ResolveReport
 import org.apache.ivy.core.resolve.ResolveOptions
 import org.apache.ivy.plugins.resolver.{ BasicResolver, DependencyResolver }
+import sbt.io.{ IO, PathFinder }
 
 final class DeliverConfiguration(val deliverIvyPattern: String, val status: String, val configurations: Option[Seq[Configuration]], val logging: UpdateLogging.Value)
 final class PublishConfiguration(val ivyFile: Option[File], val resolverName: String, val artifacts: Map[Artifact, File], val checksums: Seq[String], val logging: UpdateLogging.Value,
@@ -304,7 +305,7 @@ object IvyActions {
         case None          => None
         case Some(configs) => Some(configs.map(_.name))
       }
-      val existingFiles = PathFinder(base).***.get filterNot { _.isDirectory }
+      val existingFiles = PathFinder(base).allPaths.get filterNot { _.isDirectory }
       val toCopy = new collection.mutable.HashSet[(File, File)]
       val retReport = report retrieve { (conf, mid, art, cached) =>
         configurationNames match {

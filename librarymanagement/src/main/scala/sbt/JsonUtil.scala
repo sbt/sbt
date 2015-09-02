@@ -24,7 +24,7 @@ private[sbt] object JsonUtil {
     }
   def writeUpdateReport(ur: UpdateReport, graphPath: File): Unit =
     {
-      IO.createDirectory(graphPath.getParentFile)
+      sbt.io.IO.createDirectory(graphPath.getParentFile)
       toJsonFile(toLite(ur), graphPath)
     }
   def toLite(ur: UpdateReport): UpdateReportLite =

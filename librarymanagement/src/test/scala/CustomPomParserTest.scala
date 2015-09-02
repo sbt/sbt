@@ -4,7 +4,7 @@ import org.apache.ivy.core.module.id.ModuleRevisionId
 import org.apache.ivy.core.resolve.ResolveOptions
 import org.specs2.mutable.Specification
 import sbt._
-import IO.withTemporaryDirectory
+import sbt.io.IO.withTemporaryDirectory
 
 object CustomPomParserTest extends Specification {
 

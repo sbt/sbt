@@ -12,6 +12,7 @@ import org.apache.ivy.plugins.repository.file.{ FileRepository => IvyFileReposit
 import org.apache.ivy.plugins.repository.{ ArtifactResourceResolver, Resource, ResourceDownloader }
 import org.apache.ivy.plugins.resolver.util.ResolvedResource
 import org.apache.ivy.util.FileUtil
+import sbt.io.Path
 
 class NotInCache(val id: ModuleID, cause: Throwable)
     extends RuntimeException(NotInCache(id, cause), cause) {

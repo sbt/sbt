@@ -3,6 +3,8 @@
  */
 package sbt
 
+import sbt.io.{ AllPassFilter, NameFilter }
+
 trait DependencyFilterExtra {
   def moduleFilter(organization: NameFilter = AllPassFilter, name: NameFilter = AllPassFilter, revision: NameFilter = AllPassFilter): ModuleFilter =
     new ModuleFilter {

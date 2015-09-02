@@ -345,9 +345,9 @@ object Resolver {
         case _: IOException          => None
         case e: SAXParseException    => System.err.println(s"WARNING: Problem parsing ${f().getAbsolutePath}, ${e.getMessage}"); None
       }
-    loadHomeFromSettings(() => new File(Path.userHome, ".m2/settings.xml")) orElse
+    loadHomeFromSettings(() => new File(sbt.io.Path.userHome, ".m2/settings.xml")) orElse
       loadHomeFromSettings(() => new File(new File(System.getenv("M2_HOME")), "conf/settings.xml")) getOrElse
-      new File(Path.userHome, ".m2/repository")
+      new File(sbt.io.Path.userHome, ".m2/repository")
   }
   // TODO - should this just be the *exact* same as mavenLocal?  probably...
   def publishMavenLocal: MavenCache = new MavenCache("publish-m2-local", mavenLocalDir)

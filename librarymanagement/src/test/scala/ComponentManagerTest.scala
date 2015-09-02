@@ -4,7 +4,8 @@ import java.io.File
 import java.util.concurrent.Callable
 import org.specs2._
 import mutable.Specification
-import IO.{ createDirectory, delete, touch, withTemporaryDirectory }
+import sbt.io.IO.{ createDirectory, delete, touch, withTemporaryDirectory }
+import sbt.io.IO
 import org.apache.ivy.util.ChecksumHelper
 import IfMissing.Fail
 import xsbti.ComponentProvider

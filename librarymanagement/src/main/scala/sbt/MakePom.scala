@@ -21,6 +21,7 @@ import org.apache.ivy.core.settings.IvySettings
 import org.apache.ivy.core.module.descriptor.{ DependencyArtifactDescriptor, DependencyDescriptor, License, ModuleDescriptor, ExcludeRule }
 import org.apache.ivy.plugins.resolver.{ ChainResolver, DependencyResolver, IBiblioResolver }
 import ivyint.CustomRemoteMavenResolver
+import sbt.io.IO
 object MakePom {
   /** True if the revision is an ivy-range, not a complete revision. */
   def isDependencyVersionRange(revision: String): Boolean = {
