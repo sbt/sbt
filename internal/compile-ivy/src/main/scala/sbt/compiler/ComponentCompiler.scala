@@ -92,6 +92,7 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
   private val sbtOrgTemp = JsonUtil.sbtOrgTemp
   private val modulePrefixTemp = "temp-module-"
   private val ivySbt: IvySbt = new IvySbt(ivyConfiguration)
+  // TODO: The actual sbt version may be different from the component manager's version
   private val sbtVersion = ComponentManager.version
 
   def apply(id: String): File = {
@@ -149,7 +150,7 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
   private def getModule(id: String): ivySbt.Module = {
     val sha1 = Hash.toHex(Hash(id))
     val dummyID = ModuleID(sbtOrgTemp, modulePrefixTemp + sha1, sbtVersion, Some("component"))
-    val moduleID = ModuleID(xsbti.ArtifactInfo.SbtOrganization, id, sbtVersion, Some("component")).sources()
+    val moduleID = ModuleID(xsbti.ArtifactInfo.SbtOrganization + ".incrementalcompiler", id, sbtVersion, Some("component")).sources()
     getModule(dummyID, Seq(moduleID))
   }
 
