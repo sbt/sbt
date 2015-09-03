@@ -3,6 +3,8 @@ import Keys._
 
 object Dependencies {
 
+  val scala282 = "2.8.2"
+  val scala293 = "2.9.3"
   val scala210 = "2.10.5"
   val scala211 = "2.11.7"
 

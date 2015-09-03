@@ -4,15 +4,15 @@
 package sbt
 package inc
 
-import xsbti.api.{ Source, SourceAPI, Compilation, OutputSetting, _internalOnly_NameHashes }
+import xsbti.api.{ InternalDependency, ExternalDependency, Source, SourceAPI, Compilation, OutputSetting, _internalOnly_NameHashes }
 import xsbti.compile.{ DependencyChanges, Output, SingleOutput, MultipleOutput }
 import xsbti.{ Position, Problem, Severity }
 import sbt.util.Logger
 import sbt.util.Logger.{ m2o, problem }
 import java.io.File
 import xsbti.api.Definition
-import xsbti.DependencyContext
-import xsbti.DependencyContext.{ DependencyByInheritance, DependencyByMemberRef }
+import xsbti.api.DependencyContext
+import xsbti.api.DependencyContext.{ DependencyByInheritance, DependencyByMemberRef }
 
 /**
  * Helper methods for running incremental compilation.  All this is responsible for is
@@ -126,7 +126,7 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
     }
 
   def sourceDependency(dependsOn: File, source: File, context: DependencyContext) = {
-    add(intSrcDeps, source, InternalDependency(source, dependsOn, context))
+    add(intSrcDeps, source, new InternalDependency(source, dependsOn, context))
   }
 
   @deprecated("Use `sourceDependency(File, File, DependencyContext)`.", "0.13.8")
@@ -142,7 +142,7 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
   }
 
   private[this] def externalSourceDependency(sourceFile: File, dependsOn: String, source: Source, context: DependencyContext) = {
-    val dependency = ExternalDependency(sourceFile, dependsOn, source, context)
+    val dependency = new ExternalDependency(sourceFile, dependsOn, source, context)
     add(extSrcDeps, sourceFile, dependency)
   }
 

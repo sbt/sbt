@@ -17,16 +17,16 @@ public interface ScalaInstance
 	/** A class loader providing access to the classes and resources in the library and compiler jars. */
 	ClassLoader loader();
 
-	/**@deprecated Only `jars` can be reliably provided for modularized Scala. (Since 0.13.0) */
-	@Deprecated
+	/**deprecated Only `jars` can be reliably provided for modularized Scala. (Since 0.13.0) */
+	// Deprecated
 	File libraryJar();
 
-	/**@deprecated Only `jars` can be reliably provided for modularized Scala. (Since 0.13.0) */
-	@Deprecated
+	/**deprecated Only `jars` can be reliably provided for modularized Scala. (Since 0.13.0) */
+	//Deprecated
 	File compilerJar();
 
-	/**@deprecated Only `jars` can be reliably provided for modularized Scala. (Since 0.13.0) */
-	@Deprecated
+	/**deprecated Only `jars` can be reliably provided for modularized Scala. (Since 0.13.0) */
+	//Deprecated
 	File[] otherJars();
 
 	/** All jar files provided by this Scala instance.*/

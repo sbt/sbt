@@ -386,6 +386,60 @@
 					]
 				}
 			]
+		},
+		{
+			"name": "DependencyContext",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "enumeration",
+			"types": [
+				"DependencyByMemberRef",
+				"DependencyByInheritance"
+			]
+		},
+		{
+			"name": "InternalDependency",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "record",
+			"fields": [
+				{
+					"name": "sourceFile",
+					"type": "java.io.File"
+				},
+				{
+					"name": "targetFile",
+					"type": "java.io.File"
+				},
+				{
+					"name": "context",
+					"type": "xsbti.api.DependencyContext"
+				}
+			]
+		},
+		{
+			"name": "ExternalDependency",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "record",
+			"fields": [
+				{
+					"name": "sourceFile",
+					"type": "java.io.File"
+				},
+				{
+					"name": "targetClassName",
+					"type": "String"
+				},
+				{
+					"name": "targetSource",
+					"type": "xsbti.api.Source"
+				},
+				{
+					"name": "context",
+					"type": "xsbti.api.DependencyContext"
+				}
+			]
 		}
 	]
 }

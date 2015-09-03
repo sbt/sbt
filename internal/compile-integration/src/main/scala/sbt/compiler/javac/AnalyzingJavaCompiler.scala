@@ -64,12 +64,7 @@ final class AnalyzingJavaCompiler private[sbt] (
       val loader = ClasspathUtilities.toLoader(searchClasspath)
       // TODO - Perhaps we just record task 0/2 here
       timed("Java compilation", log) {
-        try javac.compileWithReporter(sources.toArray, absClasspath.toArray, output, options.toArray, reporter, log)
-        catch {
-          // Handle older APIs
-          case _: NoSuchMethodError =>
-            javac.compile(sources.toArray, absClasspath.toArray, output, options.toArray, log)
-        }
+        javac.compileWithReporter(sources.toArray, absClasspath.toArray, output, options.toArray, reporter, log)
       }
       // TODO - Perhaps we just record task 1/2 here
 

@@ -7,7 +7,8 @@ import sbt.inc.TestCaseGenerators._
 import org.scalacheck._
 import Gen._
 import Prop._
-import xsbti.DependencyContext._
+import xsbti.api.{ ExternalDependency, InternalDependency }
+import xsbti.api.DependencyContext._
 
 object AnalysisTest extends Properties("Analysis") {
   // Merge and split a hard-coded trivial example.
@@ -24,7 +25,7 @@ object AnalysisTest extends Properties("Analysis") {
     // a
     val aProducts = (f("A.class"), "A", exists) :: (f("A$.class"), "A$", exists) :: Nil
     val aInternal = Nil
-    val aExternal = ExternalDependency(aScala, "C", cSource, DependencyByMemberRef) :: Nil
+    val aExternal = new ExternalDependency(aScala, "C", cSource, DependencyByMemberRef) :: Nil
     val aBinary = (f("x.jar"), "x", exists) :: Nil
 
     val a = Analysis.empty(false).addSource(aScala, aSource, exists, sourceInfos, aProducts, aInternal, aExternal, aBinary)
@@ -32,7 +33,7 @@ object AnalysisTest extends Properties("Analysis") {
     // b
     val bProducts = (f("B.class"), "B", exists) :: (f("B$.class"), "B$", exists) :: Nil
     val bInternal = Nil
-    val bExternal = ExternalDependency(bScala, "A", aSource, DependencyByInheritance) :: Nil
+    val bExternal = new ExternalDependency(bScala, "A", aSource, DependencyByInheritance) :: Nil
     val bBinary = (f("x.jar"), "x", exists) :: (f("y.jar"), "y", exists) :: Nil
 
     val b = Analysis.empty(false).addSource(bScala, bSource, exists, sourceInfos, bProducts, bInternal, bExternal, bBinary)
@@ -41,11 +42,11 @@ object AnalysisTest extends Properties("Analysis") {
     // `b` has an external dependency on `a` that will be internalized
     val abAProducts = (f("A.class"), "A", exists) :: (f("A$.class"), "A$", exists) :: Nil
     val abAInternal = Nil
-    val abAExternal = ExternalDependency(aScala, "C", cSource, DependencyByMemberRef) :: Nil
+    val abAExternal = new ExternalDependency(aScala, "C", cSource, DependencyByMemberRef) :: Nil
     val abABinary = (f("x.jar"), "x", exists) :: Nil
 
     val abBProducts = (f("B.class"), "B", exists) :: (f("B$.class"), "B$", exists) :: Nil
-    val abBInternal = InternalDependency(bScala, aScala, DependencyByMemberRef) :: InternalDependency(bScala, aScala, DependencyByInheritance) :: Nil
+    val abBInternal = new InternalDependency(bScala, aScala, DependencyByMemberRef) :: new InternalDependency(bScala, aScala, DependencyByInheritance) :: Nil
     val abBExternal = Nil
     val abBBinary = (f("x.jar"), "x", exists) :: (f("y.jar"), "y", exists) :: Nil
 

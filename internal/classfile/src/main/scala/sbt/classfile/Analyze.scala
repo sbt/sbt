@@ -12,8 +12,8 @@ import java.lang.annotation.Annotation
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier.{ STATIC, PUBLIC, ABSTRACT }
 import java.net.URL
-import xsbti.DependencyContext
-import xsbti.DependencyContext._
+import xsbti.api.DependencyContext
+import xsbti.api.DependencyContext._
 import sbt.io.IO
 import sbt.util.Logger
 

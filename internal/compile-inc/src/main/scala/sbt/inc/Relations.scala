@@ -7,10 +7,9 @@ package inc
 import java.io.File
 import Relations.Source
 import Relations.SourceDependencies
-import xsbti.api.{ Source => APISource }
-import xsbti.DependencyContext
-import xsbti.DependencyContext._
 import sbt.internal.util.Relation
+import xsbti.api.{ InternalDependency, ExternalDependency, DependencyContext, Source => APISource }
+import xsbti.api.DependencyContext._
 
 /**
  * Provides mappings between source files, generated classes (products), and binaries.
@@ -506,7 +505,7 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
       publicInherited = publicInherited, classes ++ products.map(p => (src, p._2)))
 
   def addInternalSrcDeps(src: File, deps: Iterable[InternalDependency]) = {
-    val depsByInheritance = deps.collect { case InternalDependency(_, targetFile, DependencyByInheritance) => targetFile }
+    val depsByInheritance = deps.collect { case i: InternalDependency if i.context == DependencyByInheritance => i.targetFile }
 
     val newD = direct.addInternal(src, deps.map(_.targetFile))
     val newI = publicInherited.addInternal(src, depsByInheritance)
@@ -515,13 +514,13 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
   }
 
   def addInternalSrcDeps(src: File, directDependsOn: Iterable[File], inheritedDependsOn: Iterable[File]): Relations = {
-    val directDeps = directDependsOn.map(d => InternalDependency(src, d, DependencyByMemberRef))
-    val inheritedDeps = inheritedDependsOn.map(d => InternalDependency(src, d, DependencyByInheritance))
+    val directDeps = directDependsOn.map(d => new InternalDependency(src, d, DependencyByMemberRef))
+    val inheritedDeps = inheritedDependsOn.map(d => new InternalDependency(src, d, DependencyByInheritance))
     addInternalSrcDeps(src, directDeps ++ inheritedDeps)
   }
 
   def addExternalDeps(src: File, deps: Iterable[ExternalDependency]) = {
-    val depsByInheritance = deps.collect { case ExternalDependency(_, targetClassName, _, DependencyByInheritance) => targetClassName }
+    val depsByInheritance = deps.collect { case e: ExternalDependency if e.context == DependencyByInheritance => e.targetClassName }
 
     val newD = direct.addExternal(src, deps.map(_.targetClassName))
     val newI = publicInherited.addExternal(src, depsByInheritance)
@@ -663,8 +662,8 @@ private class MRelationsNameHashing(srcProd: Relation[File, File], binaryDep: Re
       externalDependencies = externalDependencies, classes, names)
 
   def addInternalSrcDeps(src: File, dependsOn: Iterable[File], inherited: Iterable[File]): Relations = {
-    val memberRefDeps = dependsOn.map(InternalDependency(src, _, DependencyByMemberRef))
-    val inheritedDeps = inherited.map(InternalDependency(src, _, DependencyByInheritance))
+    val memberRefDeps = dependsOn.map(new InternalDependency(src, _, DependencyByMemberRef))
+    val inheritedDeps = inherited.map(new InternalDependency(src, _, DependencyByInheritance))
     addInternalSrcDeps(src, memberRefDeps ++ inheritedDeps)
   }
 

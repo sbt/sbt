@@ -4,8 +4,8 @@
 package sbt
 package inc
 
-import xsbti.api.Source
-import xsbti.DependencyContext._
+import xsbti.api.{ ExternalDependency, InternalDependency, Source }
+import xsbti.api.DependencyContext._
 import java.io.File
 import sbt.internal.util.Relation
 
@@ -183,7 +183,7 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
     }
 
     val newAPIs = externalDeps.foldLeft(apis.markInternalSource(src, api)) {
-      case (tmpApis, ExternalDependency(_, toClassName, classApi, _)) => tmpApis.markExternalAPI(toClassName, classApi)
+      case (tmpApis, e: ExternalDependency) => tmpApis.markExternalAPI(e.targetClassName, e.targetSource)
     }
 
     val newRelations = relations.addSource(src, products map (p => (p._1, p._2)), internalDeps, externalDeps, binaryDeps)
@@ -193,8 +193,8 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
 
   def addSource(src: File, api: Source, stamp: Stamp, directInternal: Iterable[File], inheritedInternal: Iterable[File], info: SourceInfo): Analysis = {
 
-    val directDeps = directInternal.map(InternalDependency(src, _, DependencyByMemberRef))
-    val inheritedDeps = inheritedInternal.map(InternalDependency(src, _, DependencyByInheritance))
+    val directDeps = directInternal.map(new InternalDependency(src, _, DependencyByMemberRef))
+    val inheritedDeps = inheritedInternal.map(new InternalDependency(src, _, DependencyByInheritance))
 
     addSource(src, api, stamp, info, products = Nil, directDeps ++ inheritedDeps, Nil, Nil)
   }
@@ -204,7 +204,7 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
 
   def addExternalDep(src: File, dep: String, depAPI: Source, inherited: Boolean): Analysis = {
     val context = if (inherited) DependencyByInheritance else DependencyByMemberRef
-    copy(stamps, apis.markExternalAPI(dep, depAPI), relations.addExternalDeps(src, ExternalDependency(src, dep, depAPI, context) :: Nil), infos)
+    copy(stamps, apis.markExternalAPI(dep, depAPI), relations.addExternalDeps(src, new ExternalDependency(src, dep, depAPI, context) :: Nil), infos)
   }
 
   def addProduct(src: File, product: File, stamp: Stamp, name: String): Analysis =
