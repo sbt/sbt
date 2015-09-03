@@ -30,5 +30,5 @@ object Dependencies {
   lazy val testDependencies = libraryDependencies ++= Seq(
     scalaCheck,
     specs2
-  )
+  ).map(_ % "test")
 }
