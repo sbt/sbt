@@ -3,9 +3,8 @@
  */
 package xsbt.api
 
-import scala.util
 import xsbti.api._
-import util.MurmurHash
+import scala.util.hashing.MurmurHash3
 import HashAPI.Hash
 
 object HashAPI {
@@ -44,7 +43,7 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
   }
 
   import scala.collection.mutable
-  import MurmurHash.{ extendHash, nextMagicA, nextMagicB, startHash, startMagicA, startMagicB, stringHash, symmetricHash }
+  import MurmurHash3.{ mix, stringHash, unorderedHash }
 
   private[this] val visitedStructures = visitedMap[Structure]
   private[this] val visitedClassLike = visitedMap[ClassLike]
@@ -57,6 +56,7 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
         for (hs <- map(t))
           extend(hs)
         map.put(t, hash :: Nil)
+        ()
     }
   }
 
@@ -96,9 +96,7 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
   private[this] final val TrueHash = 97
   private[this] final val FalseHash = 98
 
-  private[this] var hash: Hash = startHash(0)
-  private[this] var magicA: Hash = startMagicA
-  private[this] var magicB: Hash = startMagicB
+  private[this] var hash: Hash = 0
 
   @inline final def hashString(s: String): Unit = extend(stringHash(s))
   @inline final def hashBoolean(b: Boolean): Unit = extend(if (b) TrueHash else FalseHash)
@@ -108,34 +106,27 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
   }
   final def hashSymmetric[T](ts: TraversableOnce[T], hashF: T => Unit): Unit = {
     val current = hash
-    val mA = magicA
-    val mB = magicB
-    val (hashes, mAs, mBs) = ts.toList.map { t =>
-      hash = startHash(1)
-      magicA = startMagicA
-      magicB = startMagicB
+    val hashes = ts.toList.map { t =>
+      hash = 1
       hashF(t)
-      (finalizeHash, magicA, magicB)
-    } unzip3;
+      finalizeHash
+    }
     hash = current
-    magicA = mA
-    magicB = mB
-    extend(symmetricHash(hashes, 0xb592f7ae)) // constant from MurmurHash3
+    extend(unorderedHash(hashes))
   }
 
   @inline final def extend(a: Hash): Unit = {
-    hash = extendHash(hash, a, magicA, magicB)
-    magicA = nextMagicA(magicA)
-    magicB = nextMagicB(magicB)
+    hash = mix(hash, a)
   }
 
-  def finalizeHash: Hash = MurmurHash.finalizeHash(hash)
+  // TODO: Figure out what should be the length
+  def finalizeHash: Hash = MurmurHash3.finalizeHash(hash, 1)
 
-  def hashModifiers(m: Modifiers) = extend(m.raw)
+  def hashModifiers(m: Modifiers) = extend(m.raw.toInt)
 
   def hashAPI(s: SourceAPI): Hash =
     {
-      hash = startHash(0)
+      hash = 1
       hashSymmetric(s.packages, hashPackage)
       hashDefinitions(s.definitions, true)
       finalizeHash

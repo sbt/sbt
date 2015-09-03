@@ -6,6 +6,7 @@ package classfile
 
 import java.io.{ DataInputStream, File, InputStream }
 import scala.annotation.switch
+import sbt.internal.io.Using
 
 // Translation of jdepend.framework.ClassFileParser by Mike Clark, Clarkware Consulting, Inc.
 // BSD Licensed
@@ -131,7 +132,7 @@ private[sbt] object Parser {
       val tag = in.readByte()
 
       // No switch for byte scrutinees! Stupid compiler.
-      ((tag: Int): @switch) match {
+      ((tag.toInt): @switch) match {
         case ConstantClass | ConstantString => new Constant(tag, in.readUnsignedShort())
         case ConstantField | ConstantMethod | ConstantInterfaceMethod | ConstantNameAndType =>
           new Constant(tag, in.readUnsignedShort(), in.readUnsignedShort())

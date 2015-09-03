@@ -131,7 +131,7 @@ object NameHashing {
    */
   private case class Location(selectors: Selector*)
   private object Location {
-    val Empty = Location(Seq.empty: _*)
+    val Empty = Location()
   }
   private case class Selector(name: String, nameType: NameType)
   private sealed trait NameType

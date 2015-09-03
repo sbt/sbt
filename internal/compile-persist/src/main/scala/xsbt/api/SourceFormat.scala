@@ -5,7 +5,7 @@ package xsbt.api
 
 import xsbti.SafeLazy
 import xsbti.api._
-import sbt.Using
+import sbt.internal.io.Using
 import sbinary._
 import DefaultProtocol._
 import Operations.{ read, write }

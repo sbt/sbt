@@ -14,9 +14,10 @@ import java.lang.reflect.Modifier.{ STATIC, PUBLIC, ABSTRACT }
 import java.net.URL
 import xsbti.DependencyContext
 import xsbti.DependencyContext._
+import sbt.io.IO
 
 private[sbt] object Analyze {
-  def apply[T](newClasses: Seq[File], sources: Seq[File], log: Logger)(analysis: xsbti.AnalysisCallback, loader: ClassLoader, readAPI: (File, Seq[Class[_]]) => Set[String]) {
+  def apply[T](newClasses: Seq[File], sources: Seq[File], log: Logger)(analysis: xsbti.AnalysisCallback, loader: ClassLoader, readAPI: (File, Seq[Class[_]]) => Set[String]): Unit = {
     val sourceMap = sources.toSet[File].groupBy(_.getName)
 
     def load(tpe: String, errMsg: => Option[String]): Option[Class[_]] =

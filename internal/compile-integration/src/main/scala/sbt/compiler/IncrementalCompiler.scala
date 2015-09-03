@@ -13,6 +13,8 @@ import xsbti.compile.DefinesClass
 import xsbti.compile.ScalaInstance
 import xsbti.{ Reporter, Logger, Maybe }
 import xsbti.compile._
+import sbt.io.IO
+import sbt.internal.io.Using
 
 // TODO -
 //  1. Move analyzingCompile from MixedAnalyzingCompiler into here
@@ -53,7 +55,7 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler] {
   override def newScalaCompiler(instance: ScalaInstance, interfaceJar: File, options: ClasspathOptions): AnalyzingCompiler =
     new AnalyzingCompiler(instance, CompilerInterfaceProvider.constant(interfaceJar), options)
 
-  def compileInterfaceJar(label: String, sourceJar: File, targetJar: File, interfaceJar: File, instance: ScalaInstance, log: Logger) {
+  def compileInterfaceJar(label: String, sourceJar: File, targetJar: File, interfaceJar: File, instance: ScalaInstance, log: Logger): Unit = {
     val raw = new RawCompiler(instance, sbt.ClasspathOptions.auto, log)
     AnalyzingCompiler.compileSources(sourceJar :: Nil, targetJar, interfaceJar :: Nil, label, raw, log)
   }
@@ -129,8 +131,7 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler] {
     incrementalCompilerOptions: IncOptions)(implicit log: Logger): Result = {
     val config = MixedAnalyzingCompiler.makeConfig(scalac, javac, sources, classpath, output, cache,
       progress, options, javacOptions, previousAnalysis, previousSetup, analysisMap, definesClass, reporter,
-      compileOrder, skip, incrementalCompilerOptions
-    )
+      compileOrder, skip, incrementalCompilerOptions)
     import config.{ currentSetup => setup }
 
     if (skip) Result(previousAnalysis, setup, false)

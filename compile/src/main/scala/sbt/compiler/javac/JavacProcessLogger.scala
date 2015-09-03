@@ -6,6 +6,7 @@ import java.util.StringTokenizer
 
 import xsbti._
 import java.io.File
+import scala.sys.process.ProcessLogger
 
 /**
  * An adapted process logger which can feed semantic error events from Javac as well as just
@@ -22,11 +23,11 @@ final class JavacLogger(log: sbt.Logger, reporter: Reporter, cwd: File) extends 
 
   private val msgs: ListBuffer[(LogLevel, String)] = new ListBuffer()
 
-  def info(s: => String): Unit =
-    synchronized { msgs += ((Info, s)) }
+  def out(s: => String): Unit =
+    synchronized { msgs += ((Info, s)); () }
 
-  def error(s: => String): Unit =
-    synchronized { msgs += ((Error, s)) }
+  def err(s: => String): Unit =
+    synchronized { msgs += ((Error, s)); () }
 
   def buffer[T](f: => T): T = f
 

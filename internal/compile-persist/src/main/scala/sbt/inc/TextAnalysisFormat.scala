@@ -32,6 +32,7 @@ private[inc] object FormatTimer {
       println("[%s] %dms".format(key, timers.getOrElse(key, 0L) / 1000000))
     }
     timers.remove(key)
+    ()
   }
 }
 
@@ -361,7 +362,7 @@ object TextAnalysisFormat {
   private[this] def writeSeq[T](out: Writer)(header: String, s: Seq[T], t2s: T => String): Unit = {
     // We write sequences as idx -> element maps, for uniformity with maps/relations.
     def n = s.length
-    val numDigits = if (n < 2) 1 else math.log10(n - 1).toInt + 1
+    val numDigits = if (n < 2) 1 else math.log10(n.toDouble - 1).toInt + 1
     val fmtStr = "%%0%dd".format(numDigits)
     // We only use this for relatively short seqs, so creating this extra map won't be a performance hit.
     val m: Map[String, T] = s.zipWithIndex.map(x => fmtStr.format(x._2) -> x._1).toMap

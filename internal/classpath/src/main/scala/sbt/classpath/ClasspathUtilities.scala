@@ -10,7 +10,9 @@ import java.net.{ URI, URL, URLClassLoader }
 import java.util.Collections
 import scala.collection.{ mutable, JavaConversions, Set }
 import mutable.{ HashSet, ListBuffer }
-import IO.{ createTemporaryDirectory, write }
+import sbt.io.IO.{ createTemporaryDirectory, write }
+import sbt.io.{ IO, Path, PathFinder }
+import sbt.internal.io.Using
 
 object ClasspathUtilities {
   def toLoader(finder: PathFinder): ClassLoader = toLoader(finder, rootLoader)
@@ -54,7 +56,7 @@ object ClasspathUtilities {
   final val BootClassPath = "boot.class.path"
 
   def createClasspathResources(classpath: Seq[File], instance: ScalaInstance): Map[String, String] =
-    createClasspathResources(classpath, instance.jars)
+    createClasspathResources(classpath, instance.allJars)
 
   def createClasspathResources(appPaths: Seq[File], bootPaths: Seq[File]): Map[String, String] =
     {

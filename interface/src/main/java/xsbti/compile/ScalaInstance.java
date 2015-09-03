@@ -24,7 +24,7 @@ public interface ScalaInstance
 	/**@deprecated Only `jars` can be reliably provided for modularized Scala. (Since 0.13.0) */
 	@Deprecated
 	File compilerJar();
-	
+
 	/**@deprecated Only `jars` can be reliably provided for modularized Scala. (Since 0.13.0) */
 	@Deprecated
 	File[] otherJars();
@@ -33,5 +33,5 @@ public interface ScalaInstance
 	File[] allJars();
 
 	/** The unique identifier for this Scala instance.  An implementation should usually obtain this from the compiler.properties file in the compiler jar. */
-	String actualVersion(); 
+	String actualVersion();
 }

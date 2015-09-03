@@ -9,6 +9,7 @@ import org.specs2.matcher.MatchResult
 import xsbt.api.{ SameAPI, DefaultShowAPI }
 import xsbti.api.SourceAPI
 import xsbti.{ Severity, Problem }
+import sbt.io.IO
 
 object JavaCompilerSpec extends Specification {
   def is = s2"""
@@ -89,8 +90,7 @@ object JavaCompilerSpec extends Specification {
           input,
           IO.readLines(hasStaticFinalFile).map { line =>
             line.replace("TYPE", templateType).replace("VALUE", templateValue)
-          }
-        )
+          })
 
         // then compile it
         val (result, problems) = compile(local, Seq(input), Seq("-d", out.getAbsolutePath))
@@ -172,8 +172,7 @@ object JavaCompilerSpec extends Specification {
   def local =
     JavaTools(
       JavaCompiler.local.getOrElse(sys.error("This test cannot be run on a JRE, but only a JDK.")),
-      Javadoc.local.getOrElse(Javadoc.fork())
-    )
+      Javadoc.local.getOrElse(Javadoc.fork()))
 
   def cwd =
     (new File(new File(".").getAbsolutePath)).getCanonicalFile

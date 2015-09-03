@@ -20,7 +20,7 @@ private final class CompilerCache(val maxInstances: Int) extends GlobalsCache {
         log.debug(f0("Compiler cache miss.  " + key.toString))
         put(key, c.newCachedCompiler(args, output, log, reporter, /* resident = */ !forceNew))
       case cc =>
-        log.debug(f0("Compiler cache hit (" + cc.hashCode.toHexString + ").  " + key.toString))
+        log.debug(f0("Compiler cache hit (" + cc.hashCode.toLong.toHexString + ").  " + key.toString))
         cc
     }
   }

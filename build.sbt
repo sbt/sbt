@@ -21,11 +21,28 @@ def commonSettings: Seq[Setting[_]] = Seq(
   // publishArtifact in packageDoc := false,
   resolvers += Resolver.typesafeIvyRepo("releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
+  resolvers += Resolver.bintrayRepo("sbt", "maven-releases"),
+  resolvers += Resolver.url("bintray-sbt-ivy-snapshots", new URL("https://dl.bintray.com/sbt/ivy-snapshots/"))(Resolver.ivyStylePatterns),
   // concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
-  incOptions := incOptions.value.withNameHashing(true)
-  // crossScalaVersions := Seq(scala210)
+  incOptions := incOptions.value.withNameHashing(true),
+  crossScalaVersions := Seq(scala210, scala211),
+  scalacOptions ++= Seq(
+    "-encoding", "utf8",
+    "-deprecation",
+    "-feature",
+    "-unchecked",
+    "-Xlint",
+    "-language:higherKinds",
+    "-language:implicitConversions",
+    "-Xfuture",
+    "-Yinline-warnings",
+    // "-Xfatal-warnings",
+    "-Yno-adapted-args",
+    "-Ywarn-dead-code",
+    "-Ywarn-numeric-widen",
+    "-Ywarn-value-discard")
   // bintrayPackage := (bintrayPackage in ThisBuild).value,
   // bintrayRepository := (bintrayRepository in ThisBuild).value
 )
@@ -43,19 +60,11 @@ def baseSettings: Seq[Setting[_]] =
 def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
 
-def testDependencies = Seq(libraryDependencies :=
-  Seq(
-    scalaCheck % Test,
-    specs2 % Test,
-    junit % Test
-  ))
-
 lazy val compileRoot: Project = (project in file(".")).
   // configs(Sxr.sxrConf).
   aggregate(interfaceProj,
     apiProj,
     classpathProj,
-    relationProj,
     classfileProj,
     compileInterfaceProj,
     compileIncrementalProj,
@@ -107,16 +116,7 @@ lazy val classpathProj = (project in internalPath / "classpath").
     name := "Classpath",
     libraryDependencies ++= Seq(scalaCompiler.value,
       Dependencies.launcherInterface,
-      ioProj)
-  )
-
-// Relation
-lazy val relationProj = (project in internalPath / "relation").
-  dependsOn(interfaceProj).
-  settings(
-    testedBaseSettings,
-    libraryDependencies ++= Seq(processProj),
-    name := "Relation"
+      sbtIO)
   )
 
 // class file reader and analyzer
@@ -124,7 +124,7 @@ lazy val classfileProj = (project in internalPath / "classfile").
   dependsOn(interfaceProj).
   settings(
     testedBaseSettings,
-    libraryDependencies ++= Seq(ioProj, logProj),
+    libraryDependencies ++= Seq(sbtIO, utilLogging),
     name := "Classfile"
   )
 
@@ -136,7 +136,7 @@ lazy val compileInterfaceProj = (project in internalPath / "compile-bridge").
   dependsOn(interfaceProj % "compile;test->test", /*launchProj % "test->test",*/ apiProj % "test->test").
   settings(
     baseSettings,
-    libraryDependencies += scalaCompiler.value % "provided",
+    libraryDependencies += scalaCompiler.value,
     // precompiledSettings,
     name := "Compiler Interface",
     exportJars := true,
@@ -147,17 +147,17 @@ lazy val compileInterfaceProj = (project in internalPath / "compile-bridge").
     // needed because we fork tests and tests are ran in parallel so we have multiple Scala
     // compiler instances that are memory hungry
     javaOptions in Test += "-Xmx1G",
-    libraryDependencies ++= Seq(ioProj % "test->test", logProj % "test->test")
+    libraryDependencies ++= Seq(sbtIO, utilLogging)
     // artifact in (Compile, packageSrc) := Artifact(srcID).copy(configurations = Compile :: Nil).extra("e:component" -> srcID)
   )
 
 // Implements the core functionality of detecting and propagating changes incrementally.
 //   Defines the data structures for representing file fingerprints and relationships and the overall source analysis
 lazy val compileIncrementalProj = (project in internalPath / "compile-inc").
-  dependsOn (apiProj, classpathProj, relationProj).
+  dependsOn (apiProj, classpathProj).
   settings(
     testedBaseSettings,
-    libraryDependencies ++= Seq(ioProj, logProj),
+    libraryDependencies ++= Seq(sbtIO, utilLogging, utilRelation),
     name := "Incremental Compiler"
   )
 
@@ -177,7 +177,7 @@ lazy val compilerProj = (project in file("compile")).
     testedBaseSettings,
     name := "Compile",
     libraryDependencies ++= Seq(scalaCompiler.value % Test, launcherInterface,
-      logProj, ioProj, logProj % "test->test"),
+      utilLogging, sbtIO, utilLogging % "test" classifier "tests", utilControl),
     unmanagedJars in Test <<= (packageSrc in compileInterfaceProj in Compile).map(x => Seq(x).classpath)
   )
 
@@ -192,6 +192,6 @@ lazy val compilerIvyProj = (project in internalPath / "compile-ivy").
   dependsOn (compilerProj).
   settings(
     baseSettings,
-    libraryDependencies += ivyProj,
+    libraryDependencies += libraryManagement,
     name := "Compiler Ivy Integration"
   )

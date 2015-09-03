@@ -208,8 +208,10 @@ class SameAPI(includePrivate: Boolean, includeParamNames: Boolean) {
       setIf(bs, isMacro, 6)
       bs.toImmutable
     }
-  def setIf(bs: mutable.BitSet, flag: Boolean, i: Int): Unit =
+  def setIf(bs: mutable.BitSet, flag: Boolean, i: Int): Unit = {
     if (flag) bs += i
+    ()
+  }
 
   def sameAnnotations(a: Seq[Annotation], b: Seq[Annotation]): Boolean =
     sameSeq(a, b)(sameAnnotation)

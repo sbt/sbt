@@ -1,6 +1,6 @@
 package sbt.inc
 
-import sbt.IO
+import sbt.io.IO
 import java.io.File
 import collection.mutable
 
@@ -56,6 +56,7 @@ object ClassfileManager {
     def generated(classes: Iterable[File]): Unit = {
       logger.debug(s"Registering generated classes:\n${showFiles(classes)}")
       generatedClasses ++= classes
+      ()
     }
     def complete(success: Boolean): Unit = {
       if (!success) {

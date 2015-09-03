@@ -6,6 +6,7 @@ package compiler
 
 import java.io.File
 import scala.util.Try
+import sbt.io.{ Hash, IO }
 
 object ComponentCompiler {
   val xsbtiID = "xsbti"
@@ -91,6 +92,7 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
   private val sbtOrgTemp = JsonUtil.sbtOrgTemp
   private val modulePrefixTemp = "temp-module-"
   private val ivySbt: IvySbt = new IvySbt(ivyConfiguration)
+  // TODO: The actual sbt version may be different from the component manager's version
   private val sbtVersion = ComponentManager.version
 
   def apply(id: String): File = {
@@ -148,7 +150,7 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
   private def getModule(id: String): ivySbt.Module = {
     val sha1 = Hash.toHex(Hash(id))
     val dummyID = ModuleID(sbtOrgTemp, modulePrefixTemp + sha1, sbtVersion, Some("component"))
-    val moduleID = ModuleID(xsbti.ArtifactInfo.SbtOrganization, id, sbtVersion, Some("component")).sources()
+    val moduleID = ModuleID(xsbti.ArtifactInfo.SbtOrganization + ".incrementalcompiler", id, sbtVersion, Some("component")).sources()
     getModule(dummyID, Seq(moduleID))
   }
 
@@ -184,7 +186,7 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
     log.info(s"Attempting to fetch ${dependenciesNames(module)}. This operation may fail.")
     IvyActions.updateEither(module, updateConfiguration, UnresolvedWarningConfiguration(), LogicalClock.unknown, None, log) match {
       case Left(unresolvedWarning) =>
-        log.debug("Couldn't retrieve module ${dependenciesNames(module)}.")
+        log.debug(s"Couldn't retrieve module ${dependenciesNames(module)}.")
         None
 
       case Right(updateReport) =>

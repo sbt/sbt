@@ -111,8 +111,10 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
   // source files containing a macro def.
   private[this] val macroSources = Set[File]()
 
-  private def add[A, B](map: Map[A, Set[B]], a: A, b: B): Unit =
+  private def add[A, B](map: Map[A, Set[B]], a: A, b: B): Unit = {
     map.getOrElseUpdate(a, new HashSet[B]) += b
+    ()
+  }
 
   def problem(category: String, pos: Position, msg: String, severity: Severity, reported: Boolean): Unit =
     {
@@ -179,6 +181,7 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
     {
       add(classes, source, (module, name))
       classToSource.put(module, source)
+      ()
     }
 
   // empty value used when name hashing algorithm is disabled

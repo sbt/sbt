@@ -7,6 +7,7 @@ package classpath
 import java.io.File
 import java.net.{ URL, URLClassLoader }
 import annotation.tailrec
+import sbt.io.IO
 
 /**
  * This is a starting point for defining a custom ClassLoader.  Override 'doLoadClass' to define
@@ -73,8 +74,7 @@ final class ClasspathFilter(parent: ClassLoader, root: ClassLoader, classpath: S
       IO.urlAsFile(src) match {
         case Some(f) => classpath(f) || directories.exists(dir => IO.relativize(dir, f).isDefined)
         case None    => false
-      }
-    )
+      })
 
   override def getResource(name: String): URL = {
     val u = super.getResource(name)
@@ -91,8 +91,7 @@ final class ClasspathFilter(parent: ClassLoader, root: ClassLoader, classpath: S
 
   @tailrec private[this] def includeLoader(c: ClassLoader, base: ClassLoader): Boolean =
     (base ne null) && (
-      (c eq base) || includeLoader(c, base.getParent)
-    )
+      (c eq base) || includeLoader(c, base.getParent))
 }
 
 /**

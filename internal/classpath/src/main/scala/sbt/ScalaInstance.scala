@@ -5,6 +5,7 @@ package sbt
 
 import java.io.File
 import xsbti.ArtifactInfo.{ ScalaCompilerID, ScalaLibraryID, ScalaOrganization }
+import sbt.io.IO
 
 /**
  * Represents the source for Scala classes for a given version.  The reason both a ClassLoader and the jars are required
@@ -15,23 +16,21 @@ import xsbti.ArtifactInfo.{ ScalaCompilerID, ScalaLibraryID, ScalaOrganization }
  *
  * This should be constructed via the ScalaInstance.apply methods.  The primary constructor is deprecated.
  */
-final class ScalaInstance(val version: String, val loader: ClassLoader, val libraryJar: File,
-    @deprecated("Only `allJars` and `jars` can be reliably provided for modularized Scala.", "0.13.0") val compilerJar: File,
-    @deprecated("Only `allJars` and `jars` can be reliably provided for modularized Scala.", "0.13.0") val extraJars: Seq[File],
-    val explicitActual: Option[String]) extends xsbti.compile.ScalaInstance {
+final class ScalaInstance(val version: String, val loader: ClassLoader,
+  val libraryJar: File,
+  val compilerJar: File,
+  val allJars: Array[File],
+  val explicitActual: Option[String]) extends xsbti.compile.ScalaInstance {
   /**
    * This tells us if the scalaInstance is from a managed (i.e. ivy-resolved) scala *or*
    * if it's a free-floating ScalaInstance, in which case we need to do tricks to the classpaths we find
    * because it won't be on them.
    */
   final def isManagedVersion = explicitActual.isDefined
-  // These are to implement xsbti.ScalaInstance
-  @deprecated("Only `allJars` and `jars` can be reliably provided for modularized Scala.", "0.13.0")
-  def otherJars: Array[File] = extraJars.toArray
-  def allJars: Array[File] = jars.toArray
+
+  def otherJars = (allJars.toSet - libraryJar - compilerJar).toArray
 
   require(version.indexOf(' ') < 0, "Version cannot contain spaces (was '" + version + "')")
-  def jars = libraryJar :: compilerJar :: extraJars.toList
   /** Gets the version of Scala in the compiler.properties file from the loader.  This version may be different than that given by 'version'*/
   lazy val actualVersion = explicitActual getOrElse ScalaInstance.actualVersion(loader)("\n    version " + version + ", " + jarStrings)
   def jarStrings = "library jar: " + libraryJar + ", compiler jar: " + compilerJar
@@ -54,51 +53,35 @@ object ScalaInstance {
   /** Creates a ScalaInstance using the given provider to obtain the jars and loader.*/
   def apply(version: String, launcher: xsbti.Launcher): ScalaInstance =
     apply(version, launcher.getScala(version))
-  def apply(version: String, provider: xsbti.ScalaProvider): ScalaInstance =
-    new ScalaInstance(version, provider.loader, provider.libraryJar, provider.compilerJar, (provider.jars.toSet - provider.libraryJar - provider.compilerJar).toSeq, None)
+
+  def apply(version: String, provider: xsbti.ScalaProvider): ScalaInstance = {
+    val libraryJar = provider.jars find (_.getName == "scala-library.jar") getOrElse (throw new InvalidScalaProvider("Couldn't find 'scala-library.jar'"))
+    val compilerJar = provider.jars find (_.getName == "scala-compiler.jar") getOrElse (throw new InvalidScalaProvider("Couldn't find 'scala-compiler.jar'"))
+    new ScalaInstance(version, provider.loader, libraryJar, compilerJar, provider.jars.toArray, None)
+  }
 
   def apply(scalaHome: File, launcher: xsbti.Launcher): ScalaInstance =
-    apply(libraryJar(scalaHome), compilerJar(scalaHome), launcher, allJars(scalaHome): _*)
+    apply(scalaHome)(scalaLoader(launcher))
 
-  def apply(scalaHome: File)(classLoader: List[File] => ClassLoader): ScalaInstance =
-    apply(libraryJar(scalaHome), compilerJar(scalaHome), allJars(scalaHome): _*)(classLoader)
+  def apply(scalaHome: File)(classLoader: List[File] => ClassLoader): ScalaInstance = {
+    val all = allJars(scalaHome)
+    val loader = classLoader(all.toList)
+    val library = libraryJar(scalaHome)
+    val version = actualVersion(loader)(" (library jar  " + library.getAbsolutePath + ")")
+    new ScalaInstance(version, loader, library, compilerJar(scalaHome), all.toArray, None)
+  }
 
   def apply(version: String, scalaHome: File, launcher: xsbti.Launcher): ScalaInstance =
-    apply(version, libraryJar(scalaHome), compilerJar(scalaHome), launcher, allJars(scalaHome): _*)
+    apply(version, libraryJar(scalaHome), compilerJar(scalaHome), allJars(scalaHome): _*)(scalaLoader(launcher))
 
-  @deprecated("Does not handle modularized Scala.  Use a variant that only accepts all jars.", "0.13.0")
-  def apply(libraryJar: File, compilerJar: File, launcher: xsbti.Launcher, extraJars: File*): ScalaInstance =
-    apply(libraryJar, compilerJar, extraJars: _*)(scalaLoader(launcher))
-
-  @deprecated("Does not handle modularized Scala.  Use a variant that only accepts all jars.", "0.13.0")
-  def apply(libraryJar: File, compilerJar: File, extraJars: File*)(classLoader: List[File] => ClassLoader): ScalaInstance =
-    {
-      val loader = classLoader(libraryJar :: compilerJar :: extraJars.toList)
-      val version = actualVersion(loader)(" (library jar  " + libraryJar.getAbsolutePath + ")")
-      new ScalaInstance(version, loader, libraryJar, compilerJar, extraJars, None)
-    }
-
-  @deprecated("Does not handle modularized Scala.  Use a variant that only accepts all jars.", "0.13.0")
-  def apply(version: String, libraryJar: File, compilerJar: File, launcher: xsbti.Launcher, extraJars: File*): ScalaInstance =
-    apply(version, None, libraryJar, compilerJar, launcher, extraJars: _*)
-
+  // TODO: These two overloads are deprecated, but they are used by a non-deprecated overload.
   @deprecated("Does not handle modularized Scala.  Use a variant that only accepts all jars.", "0.13.0")
   def apply(version: String, libraryJar: File, compilerJar: File, extraJars: File*)(classLoader: List[File] => ClassLoader): ScalaInstance =
     apply(version, None, libraryJar, compilerJar, extraJars: _*)(classLoader)
 
   @deprecated("Does not handle modularized Scala.  Use a variant that only accepts all jars.", "0.13.0")
-  def apply(version: String, explicitActual: Option[String], libraryJar: File, compilerJar: File, launcher: xsbti.Launcher, extraJars: File*): ScalaInstance =
-    apply(version, explicitActual, libraryJar, compilerJar, extraJars: _*)(scalaLoader(launcher))
-
-  @deprecated("Does not handle modularized Scala.  Use a variant that only accepts all jars.", "0.13.0")
   def apply(version: String, explicitActual: Option[String], libraryJar: File, compilerJar: File, extraJars: File*)(classLoader: List[File] => ClassLoader): ScalaInstance =
-    new ScalaInstance(version, classLoader(libraryJar :: compilerJar :: extraJars.toList), libraryJar, compilerJar, extraJars, explicitActual)
-
-  @deprecated("Cannot be reliably provided for modularized Scala.", "0.13.0")
-  def extraJars(scalaHome: File): Seq[File] =
-    optScalaJar(scalaHome, "jline.jar") ++
-      optScalaJar(scalaHome, "fjbg.jar") ++
-      optScalaJar(scalaHome, "scala-reflect.jar")
+    new ScalaInstance(version, classLoader(libraryJar :: compilerJar :: extraJars.toList), libraryJar, compilerJar, extraJars.toArray, explicitActual)
 
   def allJars(scalaHome: File): Seq[File] = IO.listFiles(scalaLib(scalaHome)).filter(f => !blacklist(f.getName))
   private[this] def scalaLib(scalaHome: File): File = new File(scalaHome, "lib")
@@ -108,13 +91,6 @@ object ScalaInstance {
   private def libraryJar(scalaHome: File) = scalaJar(scalaHome, "scala-library.jar")
 
   def scalaJar(scalaHome: File, name: String) = new File(scalaLib(scalaHome), name)
-
-  @deprecated("No longer used.", "0.13.0")
-  def optScalaJar(scalaHome: File, name: String): List[File] =
-    {
-      val jar = scalaJar(scalaHome, name)
-      if (jar.isFile) jar :: Nil else Nil
-    }
 
   /** Gets the version of Scala in the compiler.properties file from the loader.*/
   private def actualVersion(scalaLoader: ClassLoader)(label: String) =
@@ -140,3 +116,4 @@ object ScalaInstance {
     new URLClassLoader(jars.map(_.toURI.toURL).toArray[URL], launcher.topLoader)
 }
 class InvalidScalaInstance(message: String, cause: Throwable) extends RuntimeException(message, cause)
+class InvalidScalaProvider(message: String) extends RuntimeException(message)

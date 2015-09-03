@@ -12,75 +12,75 @@ import java.io.File
  * defined explicitly.
  */
 final class IncOptions(
-    /** After which step include whole transitive closure of invalidated source files. */
-    val transitiveStep: Int,
-    /**
-     * What's the fraction of invalidated source files when we switch to recompiling
-     * all files and giving up incremental compilation altogether. That's useful in
-     * cases when probability that we end up recompiling most of source files but
-     * in multiple steps is high. Multi-step incremental recompilation is slower
-     * than recompiling everything in one step.
-     */
-    val recompileAllFraction: Double,
-    /** Print very detailed information about relations, such as dependencies between source files. */
-    val relationsDebug: Boolean,
-    /**
-     * Enable tools for debugging API changes. At the moment this option is unused but in the
-     * future it will enable for example:
-     *   - disabling API hashing and API minimization (potentially very memory consuming)
-     *   - diffing textual API representation which helps understanding what kind of changes
-     *     to APIs are visible to the incremental compiler
-     */
-    val apiDebug: Boolean,
-    /**
-     * Controls context size (in lines) displayed when diffs are produced for textual API
-     * representation.
-     *
-     * This option is used only when `apiDebug == true`.
-     */
-    val apiDiffContextSize: Int,
-    /**
-     * The directory where we dump textual representation of APIs. This method might be called
-     * only if apiDebug returns true. This is unused option at the moment as the needed functionality
-     * is not implemented yet.
-     */
-    val apiDumpDirectory: Option[java.io.File],
-    /** Creates a new ClassfileManager that will handle class file deletion and addition during a single incremental compilation run. */
-    val newClassfileManager: () => ClassfileManager,
-    /**
-     * Determines whether incremental compiler should recompile all dependencies of a file
-     * that contains a macro definition.
-     */
-    val recompileOnMacroDef: Boolean,
-    /**
-     * Determines whether incremental compiler uses the new algorithm known as name hashing.
-     *
-     * This flag is disabled by default so incremental compiler's behavior is the same as in sbt 0.13.0.
-     *
-     * IMPLEMENTATION NOTE:
-     * Enabling this flag enables a few additional functionalities that are needed by the name hashing algorithm:
-     *
-     *   1. New dependency source tracking is used. See `sbt.inc.Relations` for details.
-     *   2. Used names extraction and tracking is enabled. See `sbt.inc.Relations` for details as well.
-     *   3. Hashing of public names is enabled. See `sbt.inc.AnalysisCallback` for details.
-     *
-     */
-    val nameHashing: Boolean,
-    /**
-     * THE `antStyle` OPTION IS UNSUPPORTED, MAY GO AWAY AT ANY POINT.
-     *
-     * Enables "ant-style" mode of incremental compilation. This mode emulates what Ant's scalac command does.
-     * The idea is to recompile just changed source files and not perform any invalidation of dependencies. This
-     * is a very naive mode of incremental compilation that very often leads to broken binaries.
-     *
-     * The Ant-style mode has been introduced because Scala team needs it for migration of Scala compiler to sbt.
-     * The name hashing algorithm doesn't work well with Scala compiler sources due to deep inheritance chains.
-     * There's a plan to refactor compiler's code to use more composition instead of inheritance.
-     *
-     * Once Scala compiler sources are refactored to work well with name hashing algorithm this option will be
-     * deleted immediately.
-     */
-    val antStyle: Boolean) extends Product with Serializable {
+  /** After which step include whole transitive closure of invalidated source files. */
+  val transitiveStep: Int,
+  /**
+   * What's the fraction of invalidated source files when we switch to recompiling
+   * all files and giving up incremental compilation altogether. That's useful in
+   * cases when probability that we end up recompiling most of source files but
+   * in multiple steps is high. Multi-step incremental recompilation is slower
+   * than recompiling everything in one step.
+   */
+  val recompileAllFraction: Double,
+  /** Print very detailed information about relations, such as dependencies between source files. */
+  val relationsDebug: Boolean,
+  /**
+   * Enable tools for debugging API changes. At the moment this option is unused but in the
+   * future it will enable for example:
+   *   - disabling API hashing and API minimization (potentially very memory consuming)
+   *   - diffing textual API representation which helps understanding what kind of changes
+   *     to APIs are visible to the incremental compiler
+   */
+  val apiDebug: Boolean,
+  /**
+   * Controls context size (in lines) displayed when diffs are produced for textual API
+   * representation.
+   *
+   * This option is used only when `apiDebug == true`.
+   */
+  val apiDiffContextSize: Int,
+  /**
+   * The directory where we dump textual representation of APIs. This method might be called
+   * only if apiDebug returns true. This is unused option at the moment as the needed functionality
+   * is not implemented yet.
+   */
+  val apiDumpDirectory: Option[java.io.File],
+  /** Creates a new ClassfileManager that will handle class file deletion and addition during a single incremental compilation run. */
+  val newClassfileManager: () => ClassfileManager,
+  /**
+   * Determines whether incremental compiler should recompile all dependencies of a file
+   * that contains a macro definition.
+   */
+  val recompileOnMacroDef: Boolean,
+  /**
+   * Determines whether incremental compiler uses the new algorithm known as name hashing.
+   *
+   * This flag is disabled by default so incremental compiler's behavior is the same as in sbt 0.13.0.
+   *
+   * IMPLEMENTATION NOTE:
+   * Enabling this flag enables a few additional functionalities that are needed by the name hashing algorithm:
+   *
+   *   1. New dependency source tracking is used. See `sbt.inc.Relations` for details.
+   *   2. Used names extraction and tracking is enabled. See `sbt.inc.Relations` for details as well.
+   *   3. Hashing of public names is enabled. See `sbt.inc.AnalysisCallback` for details.
+   *
+   */
+  val nameHashing: Boolean,
+  /**
+   * THE `antStyle` OPTION IS UNSUPPORTED, MAY GO AWAY AT ANY POINT.
+   *
+   * Enables "ant-style" mode of incremental compilation. This mode emulates what Ant's scalac command does.
+   * The idea is to recompile just changed source files and not perform any invalidation of dependencies. This
+   * is a very naive mode of incremental compilation that very often leads to broken binaries.
+   *
+   * The Ant-style mode has been introduced because Scala team needs it for migration of Scala compiler to sbt.
+   * The name hashing algorithm doesn't work well with Scala compiler sources due to deep inheritance chains.
+   * There's a plan to refactor compiler's code to use more composition instead of inheritance.
+   *
+   * Once Scala compiler sources are refactored to work well with name hashing algorithm this option will be
+   * deleted immediately.
+   */
+  val antStyle: Boolean) extends Product with Serializable {
 
   /**
    * Secondary constructor introduced to make IncOptions to be binary compatible with version that didn't have
@@ -231,8 +231,7 @@ object IncOptions extends Serializable {
     apiDumpDirectory = None,
     newClassfileManager = ClassfileManager.deleteImmediately,
     recompileOnMacroDef = recompileOnMacroDefDefault,
-    nameHashing = nameHashingDefault
-  )
+    nameHashing = nameHashingDefault)
   //- EXPANDED CASE CLASS METHOD BEGIN -//
   final override def toString(): String = "IncOptions"
   @deprecated("Use overloaded variant of `apply` with complete list of arguments instead.", "0.13.2")

@@ -9,6 +9,8 @@ import java.io.{ File, PrintWriter }
 import xsbti.{ Severity, Reporter }
 import xsbti.compile.Output
 
+import sbt.io.IO
+
 @deprecated("Please use the new set of compilers in sbt.compilers.javac", "0.13.8")
 abstract class JavacContract(val name: String, val clazz: String) {
   def exec(args: Array[String], writer: PrintWriter): Int
@@ -44,7 +46,7 @@ trait JavaCompiler extends xsbti.compile.JavaCompiler {
 }
 @deprecated("Please use the new set of compilers in sbt.compilers.javac", "0.13.8")
 trait Javadoc {
-  def doc(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], maximumErrors: Int, log: Logger)
+  def doc(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], maximumErrors: Int, log: Logger): Unit
 
   def onArgs(f: Seq[String] => Unit): Javadoc
 }

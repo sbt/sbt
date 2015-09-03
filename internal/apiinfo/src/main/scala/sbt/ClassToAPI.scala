@@ -8,6 +8,7 @@ import xsbti.api
 import xsbti.SafeLazy
 import SafeLazy.strict
 import collection.mutable
+import sbt.io.IO
 
 object ClassToAPI {
   def apply(c: Seq[Class[_]]): api.SourceAPI = process(c)._1
@@ -135,7 +136,7 @@ object ClassToAPI {
 
   @deprecated("No longer used", "0.13.0")
   def parents(c: Class[_]): Seq[api.Type] = types(allSuperTypes(c))
-  def types(ts: Seq[Type]): Array[api.Type] = ts filter (_ ne null) map reference toArray;
+  def types(ts: Seq[Type]): Array[api.Type] = (ts filter (_ ne null) map reference).toArray
   def upperBounds(ts: Array[Type]): api.Type =
     new api.Structure(lzy(types(ts)), lzyEmptyDefArray, lzyEmptyDefArray)
 
@@ -161,8 +162,7 @@ object ClassToAPI {
             case e: Throwable =>
               throw new IllegalStateException(
                 s"Failed to parse class $c: this may mean your classfiles are corrupted. Please clean and try again.",
-                e
-              )
+                e)
           }
         } else {
           None
@@ -188,9 +188,7 @@ object ClassToAPI {
   private def singletonForConstantField(c: Class[_], field: Field, constantValue: AnyRef) =
     new api.Singleton(
       pathFromStrings(
-        c.getName.split("\\.").toSeq :+ (field.getName + "$" + returnType(field) + "$" + constantValue)
-      )
-    )
+        c.getName.split("\\.").toSeq :+ (field.getName + "$" + returnType(field) + "$" + constantValue)))
 
   def methodToDef(enclPkg: Option[String])(m: Method): api.Def =
     defLike(m.getName, m.getModifiers, m.getDeclaredAnnotations, typeParameterTypes(m), m.getParameterAnnotations, parameterTypes(m), Option(returnType(m)), exceptionTypes(m), m.isVarArgs, enclPkg)
@@ -217,8 +215,7 @@ object ClassToAPI {
 
   def annotated(t: api.SimpleType, annots: Array[Annotation]): api.Type = (
     if (annots.length == 0) t
-    else new api.Annotated(t, annotations(annots))
-  )
+    else new api.Annotated(t, annotations(annots)))
 
   case class Defs(declared: Seq[api.Definition], inherited: Seq[api.Definition], staticDeclared: Seq[api.Definition], staticInherited: Seq[api.Definition]) {
     def ++(o: Defs) = Defs(declared ++ o.declared, inherited ++ o.inherited, staticDeclared ++ o.staticDeclared, staticInherited ++ o.staticInherited)

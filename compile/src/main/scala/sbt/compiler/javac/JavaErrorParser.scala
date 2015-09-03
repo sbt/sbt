@@ -128,10 +128,9 @@ class JavaErrorParser(relativeDir: File = new File(new File(".").getAbsolutePath
             findFileSource(file),
             line,
             contents + '^' // TODO - Actually parse charat position out of here.
-          ),
+            ),
           Severity.Error,
-          msg
-        )
+          msg)
     }
   }
 
@@ -146,11 +145,9 @@ class JavaErrorParser(relativeDir: File = new File(new File(".").getAbsolutePath
           new JavaPosition(
             findFileSource(file),
             line,
-            contents + "^"
-          ),
+            contents + "^"),
           Severity.Warn,
-          msg
-        )
+          msg)
     }
   }
   val noteMessage: Parser[Problem] =
@@ -158,8 +155,7 @@ class JavaErrorParser(relativeDir: File = new File(new File(".").getAbsolutePath
       new JavaProblem(
         JavaNoPosition,
         Severity.Info,
-        msg
-      )
+        msg)
     }
 
   val potentialProblem: Parser[Problem] = warningMessage | errorMessage | noteMessage
@@ -183,17 +179,11 @@ class JavaErrorParser(relativeDir: File = new File(new File(".").getAbsolutePath
     parse(javacOutput, in) match {
       case Success(result, _) => result
       case Failure(msg, n) =>
-        logger.warn("Unexpected javac output at:${n.pos.longString}.  Please report to sbt-dev@googlegroups.com.")
+        logger.warn(s"Unexpected javac output at:${n.pos.longString}.  Please report to sbt-dev@googlegroups.com.")
         Seq.empty
       case Error(msg, n) =>
-        logger.warn("Unexpected javac output at:${n.pos.longString}.  Please report to sbt-dev@googlegroups.com.")
+        logger.warn(s"Unexpected javac output at:${n.pos.longString}.  Please report to sbt-dev@googlegroups.com.")
         Seq.empty
     }
 
-}
-
-object JavaErrorParser {
-  def main(args: Array[String]): Unit = {
-
-  }
 }
