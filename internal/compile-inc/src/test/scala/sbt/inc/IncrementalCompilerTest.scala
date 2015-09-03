@@ -4,12 +4,16 @@ import java.io.File
 import scala.compat.Platform.EOL
 
 import sbt.io.{ IO, Path }
-
 import xsbt.{ CompilationFailedException, TestAnalyzingCompiler }
+
+import org.scalatest.exceptions.TestPendingException
 
 object IncrementalCompilerTest {
   implicit class FileOP(val content: String)
   case object delete extends FileOP("")
+
+  object PassingPendingScenarioException extends Exception("""This scenario is marked as pending but has been successfully executed.
+                                                             |Mark this scenario as passing to clear this failure.""".stripMargin)
 
   /** Exception thrown when a step has failed. */
   case class FailedStepException(state: ScenarioState, step: Step, cause: String) extends Exception {
@@ -98,15 +102,26 @@ object IncrementalCompilerTest {
    */
   class Scenario(step: Step) {
 
+    /**
+     * Marks this scenario as pending. If the scenario succeeds, this will be
+     * reported as a failure.
+     */
+    def pending: Scenario = new Scenario(step) {
+      override def execute(compiler: TestAnalyzingCompiler): Boolean =
+        try {
+          super.execute(compiler)
+          throw PassingPendingScenarioException
+        } catch {
+          case _: FailedStepException => throw new TestPendingException
+        }
+    }
+
     /** Executes all the steps of this scenario using `compiler`. */
     def execute(compiler: TestAnalyzingCompiler): Boolean =
       IO.withTemporaryDirectory { dir =>
         val initial = ScenarioState(compiler, dir, Map.empty)
-        try { step.execute(initial); true }
-        catch {
-          case e: FailedStepException =>
-            throw new Exception(e.getMessage)
-        }
+        step.execute(initial);
+        true
       }
   }
   object Scenario {

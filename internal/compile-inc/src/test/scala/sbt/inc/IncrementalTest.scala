@@ -138,5 +138,5 @@ class IncrementalTest extends FlatSpec {
       IncrementalStep(
         "Bar.scala" -> """trait Bar {
                          |  private val x = new B
-                         |}""".stripMargin) invalidates ("Foo.scala"))
+                         |}""".stripMargin) invalidates ("Foo.scala")).pending
 }
