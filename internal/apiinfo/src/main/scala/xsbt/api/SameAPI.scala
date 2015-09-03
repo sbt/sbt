@@ -198,15 +198,8 @@ class SameAPI(includePrivate: Boolean, includeParamNames: Boolean) {
   def bitSet(m: Modifiers): immutable.BitSet =
     {
       import m._
-      val bs = new mutable.BitSet
-      setIf(bs, isAbstract, 0)
-      setIf(bs, isOverride, 1)
-      setIf(bs, isFinal, 2)
-      setIf(bs, isSealed, 3)
-      setIf(bs, isImplicit, 4)
-      setIf(bs, isLazy, 5)
-      setIf(bs, isMacro, 6)
-      bs.toImmutable
+      val modifiers = List(isAbstract, isOverride, isFinal, isSealed, isImplicit, isLazy, isMacro).zipWithIndex
+      (modifiers foldLeft immutable.BitSet.empty) { case (bs, (mod, i)) => if (mod) bs + i else bs }
     }
   def setIf(bs: mutable.BitSet, flag: Boolean, i: Int): Unit = {
     if (flag) bs += i
