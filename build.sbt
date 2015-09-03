@@ -69,6 +69,7 @@ lazy val compileRoot: Project = (project in file(".")).
     compileInterfaceProj,
     compileInterfaceOldProj,
     compileIncrementalProj,
+    compilePersistProj,
     compilerProj,
     compilerIntegrationProj,
     compilerIvyProj).
