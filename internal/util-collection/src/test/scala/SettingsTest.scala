@@ -1,4 +1,4 @@
-package sbt
+package sbt.util.internal
 
 import org.scalacheck._
 import Prop._
