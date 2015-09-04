@@ -20,7 +20,7 @@ object Util {
     {
       val init = keywords.map(tn => '"' + tn + '"').mkString("Set(", ", ", ")")
       val ObjectName = "ScalaKeywords"
-      val PackageName = "sbt"
+      val PackageName = "sbt.util.internal"
       val keywordsSrc =
         """package %s
 object %s {

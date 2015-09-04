@@ -1,4 +1,4 @@
-package sbt
+package sbt.util.internal
 
 import java.io.File
 import Types.:+:
