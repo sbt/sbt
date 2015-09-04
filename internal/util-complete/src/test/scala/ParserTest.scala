@@ -1,4 +1,5 @@
-package sbt.complete
+package sbt.util.internal
+package complete
 
 object JLineTest {
   import DefaultParsers._
