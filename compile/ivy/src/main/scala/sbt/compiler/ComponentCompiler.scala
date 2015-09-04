@@ -15,7 +15,7 @@ object ComponentCompiler {
   val compilerInterfaceSrcID = compilerInterfaceID + srcExtension
   val javaVersion = System.getProperty("java.class.version")
 
-  @deprecated("Use `interfaceProvider(ComponentManager, IvyConfiguration, File)`.", "0.13.10")
+  @deprecated("Use `interfaceProvider(ComponentManager, IvyConfiguration, ModuleID)`.", "0.13.10")
   def interfaceProvider(manager: ComponentManager): CompilerInterfaceProvider = new CompilerInterfaceProvider {
     def apply(scalaInstance: xsbti.compile.ScalaInstance, log: Logger): File =
       {

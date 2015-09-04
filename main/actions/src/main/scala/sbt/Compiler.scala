@@ -54,7 +54,7 @@ object Compiler {
   def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions)(implicit app: AppConfiguration, log: Logger): Compilers =
     compilers(instance, cpOptions, None)
 
-  @deprecated("Use `compilers(ScalaInstance, ClasspathOptions, Option[File], IvyConfiguration)`.", "0.13.10")
+  @deprecated("Use `compilers(ScalaInstance, ClasspathOptions, Option[File], IvyConfiguration, ModuleID)`.", "0.13.10")
   def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File])(implicit app: AppConfiguration, log: Logger): Compilers =
     {
       val javac =
@@ -96,7 +96,7 @@ object Compiler {
       val scalac = scalaCompiler(instance, cpOptions)
       new Compilers(scalac, javac)
     }
-  @deprecated("Use `scalaCompiler(ScalaInstance, ClasspathOptions, IvyConfiguration)`.", "0.13.10")
+  @deprecated("Use `scalaCompiler(ScalaInstance, ClasspathOptions, IvyConfiguration, ModuleID)`.", "0.13.10")
   def scalaCompiler(instance: ScalaInstance, cpOptions: ClasspathOptions)(implicit app: AppConfiguration, log: Logger): AnalyzingCompiler =
     {
       val launcher = app.provider.scalaProvider.launcher
