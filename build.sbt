@@ -33,9 +33,6 @@ def commonSettings: Seq[Setting[_]] = Seq(
   publishArtifact in Test := true
 )
 
-def testedBaseSettings: Seq[Setting[_]] =
-  commonSettings ++ testDependencies
-
 lazy val utilRoot: Project = (project in file(".")).
   // configs(Sxr.sxrConf).
   aggregate(
@@ -86,8 +83,9 @@ lazy val utilControl = (project in internalPath / "util-control").
   )
 
 lazy val utilCollection = (project in internalPath / "util-collection").
+  dependsOn(utilTesting % Test).
   settings(
-    testedBaseSettings,
+    commonSettings,
     Util.keywordsSettings,
     name := "Util Collection"
   )
@@ -95,16 +93,16 @@ lazy val utilCollection = (project in internalPath / "util-collection").
 lazy val utilApplyMacro = (project in internalPath / "util-appmacro").
   dependsOn(utilCollection).
   settings(
-    testedBaseSettings,
+    commonSettings,
     name := "Util Apply Macro",
     libraryDependencies += scalaCompiler.value
   )
 
 // Command line-related utilities.
 lazy val utilComplete = (project in internalPath / "util-complete").
-  dependsOn(utilCollection, utilControl).
+  dependsOn(utilCollection, utilControl, utilTesting % Test).
   settings(
-    testedBaseSettings,
+    commonSettings,
     name := "Util Completion",
     libraryDependencies ++= Seq(jline, sbtIO),
     crossScalaVersions := Seq(scala210, scala211)
@@ -112,9 +110,9 @@ lazy val utilComplete = (project in internalPath / "util-complete").
 
 // logging
 lazy val utilLogging = (project in internalPath / "util-logging").
-  dependsOn(utilInterface).
+  dependsOn(utilInterface, utilTesting % Test).
   settings(
-    testedBaseSettings,
+    commonSettings,
     publishArtifact in (Test, packageBin) := true,
     name := "Util Logging",
     libraryDependencies += jline
@@ -122,16 +120,17 @@ lazy val utilLogging = (project in internalPath / "util-logging").
 
 // Relation
 lazy val utilRelation = (project in internalPath / "util-relation").
+  dependsOn(utilTesting % Test).
   settings(
-    testedBaseSettings,
+    commonSettings,
     name := "Util Relation"
   )
 
 // A logic with restricted negation as failure for a unique, stable model
 lazy val utilLogic = (project in internalPath / "util-logic").
-  dependsOn(utilCollection, utilRelation).
+  dependsOn(utilCollection, utilRelation, utilTesting % Test).
   settings(
-    testedBaseSettings,
+    commonSettings,
     name := "Util Logic"
   )
 
@@ -151,4 +150,12 @@ lazy val utilTracking = (project in internalPath / "util-tracking").
     commonSettings,
     name := "Util Tracking",
     libraryDependencies += sbtIO
+  )
+
+// Internal utility for testing
+lazy val utilTesting = (project in internalPath / "util-testing").
+  settings(
+    commonSettings,
+    name := "Util Testing",
+    libraryDependencies ++= Seq(scalaCheck, scalatest)
   )

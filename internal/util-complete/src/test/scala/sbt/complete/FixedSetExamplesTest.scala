@@ -1,26 +1,23 @@
 package sbt.util.internal
 package complete
 
-import org.specs2.mutable.Specification
-import org.specs2.specification.Scope
+class FixedSetExamplesTest extends UnitSpec {
 
-class FixedSetExamplesTest extends Specification {
-
-  "adding a prefix" should {
-    "produce a smaller set of examples with the prefix removed" in new examples {
-      fixedSetExamples.withAddedPrefix("f")() must containTheSameElementsAs(List("oo", "ool", "u"))
-      fixedSetExamples.withAddedPrefix("fo")() must containTheSameElementsAs(List("o", "ol"))
-      fixedSetExamples.withAddedPrefix("b")() must containTheSameElementsAs(List("ar"))
+  "adding a prefix" should "produce a smaller set of examples with the prefix removed" in {
+    val _ = new Examples {
+      fixedSetExamples.withAddedPrefix("f")() should contain theSameElementsAs (List("oo", "ool", "u"))
+      fixedSetExamples.withAddedPrefix("fo")() should contain theSameElementsAs (List("o", "ol"))
+      fixedSetExamples.withAddedPrefix("b")() should contain theSameElementsAs (List("ar"))
     }
   }
 
-  "without a prefix" should {
-    "produce the original set" in new examples {
-      fixedSetExamples() mustEqual exampleSet
+  "without a prefix" should "produce the original set" in {
+    val _ = new Examples {
+      fixedSetExamples() shouldBe exampleSet
     }
   }
 
-  trait examples extends Scope {
+  trait Examples {
     val exampleSet = List("foo", "bar", "fool", "fu")
     val fixedSetExamples = FixedSetExamples(exampleSet)
   }

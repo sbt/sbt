@@ -23,10 +23,6 @@ object Dependencies {
 
   lazy val scalaXml = scala211Module("scala-xml", "1.0.1")
 
-  lazy val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.11.4"
-  lazy val specs2 = "org.specs2" %% "specs2" % "2.3.11"
-  lazy val testDependencies = libraryDependencies ++= Seq(
-    scalaCheck,
-    specs2
-  ).map(_ % "test")
+  lazy val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.12.4"
+  lazy val scalatest = "org.scalatest" %% "scalatest" % "2.2.4"
 }
