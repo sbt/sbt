@@ -4,13 +4,13 @@
 package sbt
 
 object ChangeReport {
-  def modified[T](files: Set[T]) =
+  def modified[T](files: Set[T]): ChangeReport[T] =
     new EmptyChangeReport[T] {
       override def checked = files
       override def modified = files
       override def markAllModified = this
     }
-  def unmodified[T](files: Set[T]) =
+  def unmodified[T](files: Set[T]): ChangeReport[T] =
     new EmptyChangeReport[T] {
       override def checked = files
       override def unmodified = files
