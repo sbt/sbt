@@ -1,4 +1,4 @@
-package sbt
+package sbt.util.internal
 
 /** Define our settings system */
 

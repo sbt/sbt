@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2010 Mark Harrah */
 
-package sbt
+package sbt.util.internal
 
 import org.scalacheck._
 import Arbitrary.{ arbitrary => arb, _ }

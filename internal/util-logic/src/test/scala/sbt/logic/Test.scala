@@ -1,4 +1,4 @@
-package sbt
+package sbt.util.internal
 package logic
 
 import org.scalacheck._

@@ -1,4 +1,4 @@
-package sbt
+package sbt.util.internal
 
 object TestLogger {
   def apply[T](f: Logger => T): T =
