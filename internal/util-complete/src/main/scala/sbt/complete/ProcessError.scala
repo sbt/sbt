@@ -25,5 +25,5 @@ object ProcessError {
           s.substring(i + 1)
       loop(s.length - 1)
     }
-  def pointerSpace(s: String, i: Int): String = (s take i) map { case '\t' => '\t'; case _ => ' ' } mkString;
+  def pointerSpace(s: String, i: Int): String = (s take i) map { case '\t' => '\t'; case _ => ' ' } mkString ""
 }
