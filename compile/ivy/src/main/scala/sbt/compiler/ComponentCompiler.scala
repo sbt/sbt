@@ -96,7 +96,8 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
   private val buffered = new BufferedLogger(FullLogger(log))
 
   def apply(): File = {
-    val binID = binaryID(sourcesModule.name)
+    // binID is of the form "org.example-compilerbridge-1.0.0-bin_2.11.7__50.0"
+    val binID = binaryID(s"${sourcesModule.organization}-${sourcesModule.name}-${sourcesModule.revision}")
     manager.file(binID)(new IfMissing.Define(true, compileAndInstall(binID)))
   }
 
