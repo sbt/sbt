@@ -1,4 +1,5 @@
-package sbt.complete
+package sbt.util.internal
+package complete
 
 import org.specs2.mutable.Specification
 import org.specs2.specification.Scope
