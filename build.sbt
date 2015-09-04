@@ -14,7 +14,9 @@ def commonSettings: Seq[Setting[_]] = Seq(
   incOptions := incOptions.value.withNameHashing(true),
   crossScalaVersions := Seq(scala210, scala211),
   bintrayPackage := (bintrayPackage in ThisBuild).value,
-  bintrayRepository := (bintrayRepository in ThisBuild).value
+  bintrayRepository := (bintrayRepository in ThisBuild).value,
+  publishArtifact in Compile := true,
+  publishArtifact in Test := true
 )
 
 def testedBaseSettings: Seq[Setting[_]] =
