@@ -33,7 +33,7 @@ object IDSet {
     def apply(t: T) = contains(t)
     def contains(t: T) = backing.containsKey(t)
     def foreach(f: T => Unit) = all foreach f
-    def +=(t: T) = backing.put(t, Dummy)
+    def +=(t: T) = { backing.put(t, Dummy); () }
     def ++=(t: Iterable[T]) = t foreach +=
     def -=(t: T) = if (backing.remove(t) eq null) false else true
     def all = collection.JavaConversions.collectionAsScalaIterable(backing.keySet)

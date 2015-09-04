@@ -65,7 +65,7 @@ private object JLine {
 
   // translate explicit class names to type in order to support
   //  older Scala, since it shaded classes but not the system property
-  private[sbt] def fixTerminalProperty() {
+  private[sbt] def fixTerminalProperty(): Unit = {
     val newValue = System.getProperty(TerminalProperty) match {
       case "jline.UnixTerminal" => "unix"
       case null if System.getProperty("sbt.cygwin") != null => "unix"
@@ -75,6 +75,7 @@ private object JLine {
       case x => x
     }
     if (newValue != null) System.setProperty(TerminalProperty, newValue)
+    ()
   }
 
   // When calling this, ensure that enableEcho has been or will be called.
