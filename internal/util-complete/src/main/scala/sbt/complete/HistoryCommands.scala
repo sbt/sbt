@@ -45,7 +45,7 @@ object HistoryCommands {
 
   val MaxLines = 500
   lazy val num = token(NatBasic, "<integer>")
-  lazy val last = Last ^^^ { execute(_ !!) }
+  lazy val last = Last ^^^ { execute(_.!!) }
   lazy val list = ListCommands ~> (num ?? Int.MaxValue) map { show =>
     (h: History) => { printHistory(h, MaxLines, show); Some(Nil) }
   }

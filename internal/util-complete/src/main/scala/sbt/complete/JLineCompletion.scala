@@ -149,7 +149,7 @@ object JLineCompletion {
   def commonPrefix(s: Seq[String]): String = if (s.isEmpty) "" else s reduceLeft commonPrefix
   def commonPrefix(a: String, b: String): String =
     {
-      val len = a.length min b.length
+      val len = scala.math.min(a.length, b.length)
       @tailrec def loop(i: Int): Int = if (i >= len) len else if (a(i) != b(i)) i else loop(i + 1)
       a.substring(0, loop(0))
     }

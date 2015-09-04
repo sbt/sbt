@@ -34,6 +34,7 @@ object StackTrace {
         b.append("\tat ")
         b.append(e)
         b.append('\n')
+        ()
       }
 
       if (!first)

@@ -19,7 +19,7 @@ sealed trait Settings[Scope] {
 private final class Settings0[Scope](val data: Map[Scope, AttributeMap], val delegates: Scope => Seq[Scope]) extends Settings[Scope] {
   def scopes: Set[Scope] = data.keySet
   def keys(scope: Scope) = data(scope).keys.toSet
-  def allKeys[T](f: (Scope, AttributeKey[_]) => T): Seq[T] = data.flatMap { case (scope, map) => map.keys.map(k => f(scope, k)) } toSeq
+  def allKeys[T](f: (Scope, AttributeKey[_]) => T): Seq[T] = data.flatMap { case (scope, map) => map.keys.map(k => f(scope, k)) }.toSeq
 
   def get[T](scope: Scope, key: AttributeKey[T]): Option[T] =
     delegates(scope).toStream.flatMap(sc => getDirect(sc, key)).headOption
@@ -42,7 +42,7 @@ trait Init[Scope] {
   /** The Show instance used when a detailed String needs to be generated.  It is typically used when no context is available.*/
   def showFullKey: Show[ScopedKey[_]]
 
-  final case class ScopedKey[T](scope: Scope, key: AttributeKey[T]) extends KeyedInitialize[T] {
+  sealed case class ScopedKey[T](scope: Scope, key: AttributeKey[T]) extends KeyedInitialize[T] {
     def scopedKey = this
   }
 
@@ -154,9 +154,9 @@ trait Init[Scope] {
   def compile(sMap: ScopedMap): CompiledMap =
     sMap.toTypedSeq.map {
       case sMap.TPair(k, ss) =>
-        val deps = ss flatMap { _.dependencies } toSet;
+        val deps = ss.flatMap(_.dependencies).toSet
         (k, new Compiled(k, deps, ss))
-    } toMap;
+    }.toMap
 
   def grouped(init: Seq[Setting[_]]): ScopedMap =
     ((IMap.empty: ScopedMap) /: init)((m, s) => add(m, s))
@@ -445,7 +445,7 @@ trait Init[Scope] {
       def join: Initialize[Seq[T]] = uniform(s)(idFun)
     }
     def join[T](inits: Seq[Initialize[T]]): Initialize[Seq[T]] = uniform(inits)(idFun)
-    def joinAny[M[_]](inits: Seq[Initialize[M[T]] forSome { type T }]): Initialize[Seq[M[_]]] =
+    def joinAny[M[_], T](inits: Seq[Initialize[M[T]]]): Initialize[Seq[M[_]]] =
       join(inits.asInstanceOf[Seq[Initialize[M[Any]]]]).asInstanceOf[Initialize[Seq[M[T] forSome { type T }]]]
   }
   object SettingsDefinition {

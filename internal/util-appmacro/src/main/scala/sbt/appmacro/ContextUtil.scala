@@ -36,7 +36,7 @@ object ContextUtil {
 }
 
 // TODO 2.11 Remove this after dropping 2.10.x support.
-private object HasCompat { val compat = ??? }; import HasCompat._
+private object HasCompat { val compat = this }; import HasCompat._
 
 /**
  * Utility methods for macros.  Several methods assume that the context's universe is a full compiler (`scala.tools.nsc.Global`).
@@ -134,10 +134,14 @@ final class ContextUtil[C <: Context](val ctx: C) {
   def mkTuple(args: List[Tree]): Tree =
     global.gen.mkTuple(args.asInstanceOf[List[global.Tree]]).asInstanceOf[ctx.universe.Tree]
 
-  def setSymbol[Tree](t: Tree, sym: Symbol): Unit =
+  def setSymbol[Tree](t: Tree, sym: Symbol): Unit = {
     t.asInstanceOf[global.Tree].setSymbol(sym.asInstanceOf[global.Symbol])
-  def setInfo[Tree](sym: Symbol, tpe: Type): Unit =
+    ()
+  }
+  def setInfo[Tree](sym: Symbol, tpe: Type): Unit = {
     sym.asInstanceOf[global.Symbol].setInfo(tpe.asInstanceOf[global.Type])
+    ()
+  }
 
   /** Creates a new, synthetic type variable with the specified `owner`. */
   def newTypeVariable(owner: Symbol, prefix: String = "T0"): TypeSymbol =

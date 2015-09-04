@@ -16,7 +16,7 @@ object TupleNBuilder extends TupleBuilder {
   final val TupleMethodName = "tuple"
 
   // TODO 2.11 Remove this after dropping 2.10.x support.
-  private object HasCompat { val compat = ??? }; import HasCompat._
+  private object HasCompat { val compat = this }; import HasCompat._
 
   def make(c: Context)(mt: c.Type, inputs: Inputs[c.universe.type]): BuilderResult[c.type] = new BuilderResult[c.type] {
     val util = ContextUtil[c.type](c)

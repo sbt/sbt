@@ -43,7 +43,8 @@ class LoggerWriter(delegate: Logger, unbufferedLevel: Option[Level.Value], nl: S
     }
   }
   private[this] def log(s: String): Unit = unbufferedLevel match {
-    case None        => lines += s
+    case None =>
+      lines += s; ()
     case Some(level) => delegate.log(level, s)
   }
 }

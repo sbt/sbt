@@ -79,7 +79,7 @@ abstract class EvaluateSettings[Scope] {
       workComplete()
     }
 
-  private[this] def startWork(): Unit = running.incrementAndGet()
+  private[this] def startWork(): Unit = { running.incrementAndGet(); () }
   private[this] def workComplete(): Unit =
     if (running.decrementAndGet() == 0)
       complete.put(None)
@@ -154,6 +154,7 @@ abstract class EvaluateSettings[Scope] {
         case Evaluated => submitCallComplete(by, value)
         case _         => calledBy += by
       }
+      ()
     }
     protected def dependsOn: Seq[INode[_]]
     protected def evaluate0(): Unit

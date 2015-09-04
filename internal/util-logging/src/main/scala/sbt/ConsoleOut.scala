@@ -29,7 +29,7 @@ object ConsoleOut {
     val lockObject = System.out
     private[this] var last: Option[String] = None
     private[this] var current = new java.lang.StringBuffer
-    def print(s: String): Unit = synchronized { current.append(s) }
+    def print(s: String): Unit = synchronized { current.append(s); () }
     def println(s: String): Unit = synchronized { current.append(s); println() }
     def println(): Unit = synchronized {
       val s = current.toString
