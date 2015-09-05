@@ -39,6 +39,8 @@ import org.apache.ivy.util.extendable.ExtendableItem
 import scala.xml.{ NodeSeq, Text }
 import scala.collection.mutable
 
+import sbt.internal.util.Logger
+
 final class IvySbt(val configuration: IvyConfiguration) {
   import configuration.baseDirectory
 

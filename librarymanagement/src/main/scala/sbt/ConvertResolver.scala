@@ -18,6 +18,7 @@ import java.io.{ IOException, File }
 import org.apache.ivy.util.{ FileUtil, ChecksumHelper }
 import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact }
 import sbt.io.IO
+import sbt.internal.util.Logger
 
 private[sbt] object ConvertResolver {
   import UpdateOptions.ResolverConverter

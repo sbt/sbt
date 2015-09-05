@@ -40,7 +40,7 @@ lazy val root = (project in file(".")).
       bintrayPackage := "librarymanagement"
     )),
     commonSettings,
-    // rootSettings,
+    name := "LM Root",
     publish := {},
     publishLocal := {},
     publishArtifact := false
@@ -49,8 +49,11 @@ lazy val root = (project in file(".")).
 lazy val lm = (project in file("librarymanagement")).
   settings(
     commonSettings,
-    libraryDependencies ++= Seq(utilLogging, utilLogging),
-    libraryDependencies ++= Seq(sbtIO, utilCollection, ivy, jsch, sbtSerialization, scalaReflect.value, launcherInterface),
+    libraryDependencies ++= Seq(
+      utilLogging, (utilLogging % Test).classifier("tests"),
+      sbtIO, (sbtIO % Test).classifier("tests"),
+      utilTesting % Test,
+      utilCollection, ivy, jsch, sbtSerialization, scalaReflect.value, launcherInterface),
     resourceGenerators in Compile <+= (version, resourceManaged, streams, compile in Compile) map Util.generateVersionFile,
     name := "librarymanagement"
   )

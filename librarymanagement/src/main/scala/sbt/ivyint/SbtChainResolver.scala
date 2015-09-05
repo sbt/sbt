@@ -15,6 +15,7 @@ import org.apache.ivy.plugins.repository.url.URLResource
 import org.apache.ivy.plugins.resolver._
 import org.apache.ivy.plugins.resolver.util.{ HasLatestStrategy, ResolvedResource }
 import org.apache.ivy.util.{ Message, StringUtils => IvyStringUtils }
+import sbt.internal.util.Logger
 
 private[sbt] case class SbtChainResolver(
     name: String,

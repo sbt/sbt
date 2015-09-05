@@ -1,6 +1,7 @@
 package sbt
 
 import DependencyFilter._
+import sbt.internal.util.{ Logger, Level }
 
 /**
  * Provide warnings for cross version conflicts.

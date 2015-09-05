@@ -3,6 +3,7 @@ package sbt
 import java.io.File
 import org.apache.ivy.plugins.resolver.DependencyResolver
 import org.apache.ivy.core.settings.IvySettings
+import sbt.internal.util.Logger
 
 /**
  * Represents configurable options for update task.

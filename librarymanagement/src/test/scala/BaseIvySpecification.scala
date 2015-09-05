@@ -3,11 +3,12 @@ package sbt
 import sbt.io.Path._, Configurations._
 import sbt.io.IO
 import java.io.File
-import org.specs2._
 import cross.CrossVersionUtil
 import sbt.ivyint.SbtChainResolver
+import sbt.internal.util.{ Logger, ConsoleLogger }
+import sbt.internal.util.UnitSpec
 
-trait BaseIvySpecification extends Specification {
+trait BaseIvySpecification extends UnitSpec {
   def currentBase: File = new File(".")
   def currentTarget: File = currentBase / "target" / "ivyhome"
   def currentManaged: File = currentBase / "target" / "lib_managed"
