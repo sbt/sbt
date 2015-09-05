@@ -37,7 +37,7 @@ lazy val utilRoot: Project = (project in file(".")).
   // configs(Sxr.sxrConf).
   aggregate(
     utilInterface, utilControl, utilCollection, utilApplyMacro, utilComplete,
-    utilLogging, utilRelation, utilLogic, utilCache, utilTracking
+    utilLogging, utilRelation, utilLogic, utilCache, utilTracking, utilTesting
   ).
   settings(
     inThisBuild(Seq(
