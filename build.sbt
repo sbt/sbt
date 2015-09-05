@@ -34,7 +34,6 @@ def commonSettings: Seq[Setting[_]] = Seq(
 )
 
 lazy val utilRoot: Project = (project in file(".")).
-  // configs(Sxr.sxrConf).
   aggregate(
     utilInterface, utilControl, utilCollection, utilApplyMacro, utilComplete,
     utilLogging, utilRelation, utilLogic, utilCache, utilTracking, utilTesting
@@ -62,7 +61,10 @@ lazy val utilRoot: Project = (project in file(".")).
     name := "Util Root",
     publish := {},
     publishLocal := {},
-    publishArtifact := false
+    publishArtifact in Compile := false,
+    publishArtifact in Test := false,
+    publishArtifact := false,
+    customCommands
   )
 
 // defines Java structures used across Scala versions, such as the API structures and relationships extracted by
@@ -104,8 +106,7 @@ lazy val utilComplete = (project in internalPath / "util-complete").
   settings(
     commonSettings,
     name := "Util Completion",
-    libraryDependencies ++= Seq(jline, sbtIO),
-    crossScalaVersions := Seq(scala210, scala211)
+    libraryDependencies ++= Seq(jline, sbtIO)
   )
 
 // logging
@@ -159,3 +160,13 @@ lazy val utilTesting = (project in internalPath / "util-testing").
     name := "Util Testing",
     libraryDependencies ++= Seq(scalaCheck, scalatest)
   )
+
+def customCommands: Seq[Setting[_]] = Seq(
+  commands += Command.command("release") { state =>
+    // "clean" ::
+    "so compile" ::
+    "so publishSigned" ::
+    "reload" ::
+    state
+  }
+)
