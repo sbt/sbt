@@ -55,8 +55,8 @@ class CachedResolutionSpec extends BaseIvySpecification {
     // second resolution reads from the minigraph
     val report = ivyUpdate(m)
     val modules: Seq[String] = report.configurations.head.modules map {_.toString}
-    modules should contain("""org.jboss.netty:netty:3.2.0.Final""")
-    modules should not contain("""org.jboss.netty:netty:3.2.1.Final""")
+    assert(modules exists { x: String => x contains """org.jboss.netty:netty:3.2.0.Final"""})
+    assert(!(modules exists { x: String => x contains """org.jboss.netty:netty:3.2.1.Final"""}))
   }
 
   def commonsIo13 = ModuleID("commons-io", "commons-io", "1.3", Some("compile"))
