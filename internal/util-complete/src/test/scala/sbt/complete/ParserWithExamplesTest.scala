@@ -1,4 +1,4 @@
-package sbt.util.internal
+package sbt.internal.util
 package complete
 
 import Completion._
