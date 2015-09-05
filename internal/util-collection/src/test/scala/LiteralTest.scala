@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2010 Mark Harrah
  */
-package sbt.util.internal
+package sbt.internal.util
 
 import Types._
 
