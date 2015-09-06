@@ -76,14 +76,19 @@ object IncrementalCompilerTest {
             files + (fileName -> content.content)
         }
 
-      this.copy(files = newFiles, lastChanges = fileChanges)
+      if (fileChanges.nonEmpty)
+        this.copy(files = newFiles, lastChanges = fileChanges)
+      else this
     }
 
     /** Marks the files `fs` as changed. */
-    def markChanged(fs: String*) = {
+    def markChanged(fs: String*): ScenarioState = {
       val changes = fs map (f => (f, new FileOP(files(f))))
       this performFileChanges (changes: _*)
     }
+
+    /** The same state with no file marked as changed. */
+    def noChanges: ScenarioState = copy(lastChanges = Nil)
 
     private[this] def copy(compiler: TestAnalyzingCompiler = compiler,
       directory: File = directory,
@@ -171,7 +176,9 @@ object IncrementalCompilerTest {
       val newState = state.performFileChanges(fileChanges: _*)
 
       def compileUntilFinished(state: ScenarioState, stepsCount: Int): Unit = {
-        val invalidated = state.compiler.incrementalStep(state)
+        val invalidated =
+          try state.compiler.incrementalStep(state)
+          catch { case e: CompilationFailedException => throw FailedStepException(state, this, "Compilation failed: " + e) }
         if (invalidated.nonEmpty && stepsCount > 0)
           compileUntilFinished(state.markChanged((invalidated.toSeq map (_.getName)): _*), stepsCount - 1)
         else {
@@ -251,9 +258,9 @@ object IncrementalCompilerTest {
         catch { case e: CompilationFailedException => true }
 
       if (compilationFailed) {
-        newState
+        newState.noChanges
       } else {
-        throw new FailedStepException(state, this, "Compilation succeeded, but failure was expected.")
+        throw new FailedStepException(newState, this, "Compilation succeeded, but failure was expected.")
       }
 
     }
@@ -273,7 +280,7 @@ object IncrementalCompilerTest {
   object Clean extends Step("Cleaning step") {
     override def execute(state: ScenarioState): ScenarioState = {
       state.compiler.clean(state)
-      state
+      state.markChanged(state.files.keys.toSeq: _*)
     }
   }
 }

@@ -5,7 +5,7 @@ import scala.collection.mutable.ArrayBuffer
 import xsbti.api.{ Compilation, Source, SourceAPI }
 import xsbti._
 import xsbti.DependencyContext._
-import xsbt.api.HashAPI
+import xsbt.api.{ APIUtil, HashAPI }
 import sbt.Relation
 
 case class TestAnalysis(
@@ -30,7 +30,7 @@ object TestAnalysis {
   val Empty = TestAnalysis(Relations.empty, Set.empty, Set.empty, Set.empty, Map.empty, APIs.empty)
 }
 
-class TestAnalysisCallback(override val nameHashing: Boolean = false) extends xsbti.AnalysisCallback {
+class TestAnalysisCallback(internalMap: Map[File, File], override val nameHashing: Boolean = false) extends xsbti.AnalysisCallback {
   val sourceDependencies = new ArrayBuffer[(File, File, DependencyContext)]
   val binaryDependencies = new ArrayBuffer[(File, String, File, DependencyContext)]
   val products = new ArrayBuffer[(File, File, String)]
@@ -85,15 +85,21 @@ class TestAnalysisCallback(override val nameHashing: Boolean = false) extends xs
     val context = if (inherited) DependencyByInheritance else DependencyByMemberRef
     binaryDependency(binary, name, source, context)
   }
-  def binaryDependency(binary: File, name: String, source: File, context: DependencyContext): Unit = { binaryDependencies += ((binary, name, source, context)); () }
+  def binaryDependency(binary: File, name: String, source: File, context: DependencyContext): Unit = {
+    internalMap get binary match {
+      case Some(internal) => sourceDependency(internal, source, context)
+      case None           => binaryDependencies += ((binary, name, source, context)); ()
+    }
+  }
   def generatedClass(source: File, module: File, name: String): Unit = { products += ((source, module, name)); () }
 
   def usedName(source: File, name: String): Unit = { usedNames(source) += name }
   def api(source: File, sourceAPI: SourceAPI): Unit = {
     assert(!apis.contains(source), s"The `api` method should be called once per source file: $source")
+    val hasMacro = APIUtil.hasMacro(sourceAPI)
     val nameHashes = new xsbt.api.NameHashing().nameHashes(sourceAPI)
     val sourceHash = hashFile(source)
-    val src = new Source(new Compilation(System.currentTimeMillis, Array.empty), sourceHash, sourceAPI, HashAPI(sourceAPI), nameHashes, false)
+    val src = new Source(new Compilation(System.currentTimeMillis, Array.empty), sourceHash, sourceAPI, HashAPI(sourceAPI), nameHashes, hasMacro)
     apis(source) = src
   }
   def problem(category: String, pos: xsbti.Position, message: String, severity: xsbti.Severity, reported: Boolean): Unit = ()

@@ -34,7 +34,8 @@ class TestAnalyzingCompiler(incOptions: IncOptions) {
 
     changedFiles foreach deleteProducts
 
-    val analysisCallback = new TestAnalysisCallback(incOptions.nameHashing)
+    val internalMap = analyses.headOption map (_.products.map(p => (p._2, p._1)).toMap) getOrElse Map.empty
+    val analysisCallback = new TestAnalysisCallback(internalMap, incOptions.nameHashing)
     val classesDir = state.directory / "classes"
     classesDir.mkdir()
 
