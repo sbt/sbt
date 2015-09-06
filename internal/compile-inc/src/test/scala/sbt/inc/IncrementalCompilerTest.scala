@@ -9,6 +9,15 @@ import xsbt.{ CompilationFailedException, TestAnalyzingCompiler }
 import org.scalatest.exceptions.TestPendingException
 
 object IncrementalCompilerTest {
+  implicit class withPending(result: => Boolean) {
+    def pending: Boolean =
+      try {
+        result
+        throw PassingPendingScenarioException
+      } catch {
+        case _: FailedStepException => throw new TestPendingException
+      }
+  }
   implicit class FileOP(val content: String)
   case object delete extends FileOP("")
 
