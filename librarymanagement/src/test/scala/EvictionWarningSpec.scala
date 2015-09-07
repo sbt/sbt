@@ -1,4 +1,6 @@
-package sbt
+package sbt.librarymanagement
+
+import sbt.internal.librarymanagement.BaseIvySpecification
 
 class EvictionWarningSpec extends BaseIvySpecification {
   // This is a specification to check the eviction warnings

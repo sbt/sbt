@@ -1,13 +1,15 @@
-package sbt
+package sbt.internal.librarymanagement
 
-import sbt.io.Path._, Configurations._
+import sbt.io.Path._
 import sbt.io.IO
 import java.io.File
 import cross.CrossVersionUtil
-import sbt.ivyint.SbtChainResolver
 import sbt.util.Logger
 import sbt.internal.util.ConsoleLogger
 import sbt.internal.util.UnitSpec
+import sbt.librarymanagement._
+import ivyint.SbtChainResolver
+import Configurations._
 
 trait BaseIvySpecification extends UnitSpec {
   def currentBase: File = new File(".")

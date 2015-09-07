@@ -1,4 +1,4 @@
-package sbt
+package sbt.internal.librarymanagement
 
 import java.io.File
 import java.util.concurrent.Callable

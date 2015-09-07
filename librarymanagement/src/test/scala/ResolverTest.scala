@@ -1,3 +1,5 @@
+package sbt.librarymanagement
+
 import java.net.URL
 
 import sbt._

@@ -1,6 +1,7 @@
-package sbt
+package sbt.internal.librarymanagement
 
 import sbt.internal.util.ShowLines
+import sbt.librarymanagement._
 
 class CachedResolutionSpec extends BaseIvySpecification {
   import ShowLines._

@@ -1,4 +1,4 @@
-package sbt
+package sbt.librarymanagement
 
 import java.net.URL
 import java.io.File
@@ -7,13 +7,13 @@ import sbt.internal.util.UnitSpec
 
 class DMSerializationSpec extends UnitSpec {
   "CrossVersion.full" should "roundtrip" in {
-    roundtripStr(CrossVersion.full: sbt.CrossVersion)
+    roundtripStr(CrossVersion.full: CrossVersion)
   }
   "CrossVersion.binary" should "roundtrip" in {
-    roundtripStr(CrossVersion.binary: sbt.CrossVersion)
+    roundtripStr(CrossVersion.binary: CrossVersion)
   }
   "CrossVersion.Disabled" should "roundtrip" in {
-    roundtrip(CrossVersion.Disabled: sbt.CrossVersion)
+    roundtrip(CrossVersion.Disabled: CrossVersion)
   }
   """Artifact("foo")""" should "roundtrip" in {
     roundtrip(Artifact("foo"))

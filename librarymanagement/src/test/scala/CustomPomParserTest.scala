@@ -1,8 +1,10 @@
+package sbt.internal.librarymanagement
+
 import java.io.File
 import org.apache.ivy.core.module.descriptor.{ Artifact => IvyArtifact }
 import org.apache.ivy.core.module.id.ModuleRevisionId
 import org.apache.ivy.core.resolve.ResolveOptions
-import sbt._
+import sbt.librarymanagement._
 import sbt.io.IO.withTemporaryDirectory
 import sbt.util.Logger
 import sbt.internal.util.ConsoleLogger

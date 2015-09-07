@@ -1,4 +1,4 @@
-package sbt
+package sbt.internal.librarymanagement
 
 import java.io.File
 import sbt.util.Logger

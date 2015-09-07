@@ -1,4 +1,4 @@
-package sbt
+package sbt.librarymanagement
 
 import java.io.File
 import sbt.internal.util.UnitSpec
