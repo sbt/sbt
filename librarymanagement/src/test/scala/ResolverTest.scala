@@ -1,24 +1,21 @@
+package sbt.librarymanagement
+
 import java.net.URL
 
-import org.specs2.mutable.Specification
 import sbt._
+import sbt.internal.util.UnitSpec
 
-object ResolverTest extends Specification {
+object ResolverTest extends UnitSpec {
 
-  "Resolver" should {
-    "url" should {
-      "propagate pattern descriptorOptional and skipConsistencyCheck." in {
-        val pats = Seq("[orgPath]")
-        val patsExpected = Seq("http://foo.com/test/[orgPath]")
-        val patterns = Resolver.url("test", new URL("http://foo.com/test"))(Patterns(pats, pats, isMavenCompatible = false, descriptorOptional = true, skipConsistencyCheck = true)).patterns
+  "Resolver url" should "propagate pattern descriptorOptional and skipConsistencyCheck." in {
+    val pats = Seq("[orgPath]")
+    val patsExpected = Seq("http://foo.com/test/[orgPath]")
+    val patterns = Resolver.url("test", new URL("http://foo.com/test"))(Patterns(pats, pats, isMavenCompatible = false, descriptorOptional = true, skipConsistencyCheck = true)).patterns
 
-        patterns.ivyPatterns must equalTo(patsExpected)
-        patterns.artifactPatterns must equalTo(patsExpected)
-        patterns.isMavenCompatible must beFalse
-        patterns.skipConsistencyCheck must beTrue
-        patterns.descriptorOptional must beTrue
-      }
-    }
+    patterns.ivyPatterns shouldBe patsExpected
+    patterns.artifactPatterns shouldBe patsExpected
+    patterns.isMavenCompatible shouldBe false
+    assert(patterns.skipConsistencyCheck)
+    assert(patterns.descriptorOptional)
   }
-
 }

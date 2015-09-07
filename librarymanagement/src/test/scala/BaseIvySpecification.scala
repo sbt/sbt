@@ -1,12 +1,17 @@
-package sbt
+package sbt.internal.librarymanagement
 
-import Path._, Configurations._
+import sbt.io.Path._
+import sbt.io.IO
 import java.io.File
-import org.specs2._
 import cross.CrossVersionUtil
-import sbt.ivyint.SbtChainResolver
+import sbt.util.Logger
+import sbt.internal.util.ConsoleLogger
+import sbt.internal.util.UnitSpec
+import sbt.librarymanagement._
+import ivyint.SbtChainResolver
+import Configurations._
 
-trait BaseIvySpecification extends Specification {
+trait BaseIvySpecification extends UnitSpec {
   def currentBase: File = new File(".")
   def currentTarget: File = currentBase / "target" / "ivyhome"
   def currentManaged: File = currentBase / "target" / "lib_managed"
