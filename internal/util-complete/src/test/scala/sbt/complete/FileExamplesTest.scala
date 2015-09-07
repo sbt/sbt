@@ -1,54 +1,60 @@
-package sbt.util.internal
+package sbt.internal.util
 package complete
 
-import org.specs2.mutable.Specification
-import org.specs2.specification.Scope
 import java.io.File
 import sbt.io.IO._
 
-class FileExamplesTest extends Specification {
+class FileExamplesTest extends UnitSpec {
 
-  "listing all files in an absolute base directory" should {
-    "produce the entire base directory's contents" in new directoryStructure {
-      fileExamples().toList should containTheSameElementsAs(allRelativizedPaths)
+  "listing all files in an absolute base directory" should
+    "produce the entire base directory's contents" in {
+      val _ = new DirectoryStructure {
+        fileExamples().toList should contain theSameElementsAs (allRelativizedPaths)
+      }
+    }
+
+  "listing files with a prefix that matches none" should
+    "produce an empty list" in {
+      val _ = new DirectoryStructure(withCompletionPrefix = "z") {
+        fileExamples().toList shouldBe empty
+      }
+    }
+
+  "listing single-character prefixed files" should
+    "produce matching paths only" in {
+      val _ = new DirectoryStructure(withCompletionPrefix = "f") {
+        fileExamples().toList should contain theSameElementsAs (prefixedPathsOnly)
+      }
+    }
+
+  "listing directory-prefixed files" should
+    "produce matching paths only" in {
+      val _ = new DirectoryStructure(withCompletionPrefix = "far") {
+        fileExamples().toList should contain theSameElementsAs (prefixedPathsOnly)
+      }
+    }
+
+  it should "produce sub-dir contents only when appending a file separator to the directory" in {
+    val _ = new DirectoryStructure(withCompletionPrefix = "far" + File.separator) {
+      fileExamples().toList should contain theSameElementsAs (prefixedPathsOnly)
     }
   }
 
-  "listing files with a prefix that matches none" should {
-    "produce an empty list" in new directoryStructure(withCompletionPrefix = "z") {
-      fileExamples().toList should beEmpty
-    }
-  }
-
-  "listing single-character prefixed files" should {
-    "produce matching paths only" in new directoryStructure(withCompletionPrefix = "f") {
-      fileExamples().toList should containTheSameElementsAs(prefixedPathsOnly)
-    }
-  }
-
-  "listing directory-prefixed files" should {
-    "produce matching paths only" in new directoryStructure(withCompletionPrefix = "far") {
-      fileExamples().toList should containTheSameElementsAs(prefixedPathsOnly)
+  "listing files with a sub-path prefix" should
+    "produce matching paths only" in {
+      val _ = new DirectoryStructure(withCompletionPrefix = "far" + File.separator + "ba") {
+        fileExamples().toList should contain theSameElementsAs (prefixedPathsOnly)
+      }
     }
 
-    "produce sub-dir contents only when appending a file separator to the directory" in new directoryStructure(withCompletionPrefix = "far" + File.separator) {
-      fileExamples().toList should containTheSameElementsAs(prefixedPathsOnly)
+  "completing a full path" should
+    "produce a list with an empty string" in {
+      val _ = new DirectoryStructure(withCompletionPrefix = "bazaar") {
+        fileExamples().toList shouldEqual List("")
+      }
     }
-  }
 
-  "listing files with a sub-path prefix" should {
-    "produce matching paths only" in new directoryStructure(withCompletionPrefix = "far" + File.separator + "ba") {
-      fileExamples().toList should containTheSameElementsAs(prefixedPathsOnly)
-    }
-  }
-
-  "completing a full path" should {
-    "produce a list with an empty string" in new directoryStructure(withCompletionPrefix = "bazaar") {
-      fileExamples().toList shouldEqual List("")
-    }
-  }
-
-  class directoryStructure(withCompletionPrefix: String = "") extends Scope with DelayedInit {
+  class DirectoryStructure(withCompletionPrefix: String = "") extends DelayedInit {
     var fileExamples: FileExamples = _
     var baseDir: File = _
     var childFiles: List[File] = _
