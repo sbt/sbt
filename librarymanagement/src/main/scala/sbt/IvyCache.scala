@@ -13,7 +13,7 @@ import org.apache.ivy.plugins.repository.{ ArtifactResourceResolver, Resource, R
 import org.apache.ivy.plugins.resolver.util.ResolvedResource
 import org.apache.ivy.util.FileUtil
 import sbt.io.Path
-import sbt.internal.util.Logger
+import sbt.util.Logger
 
 class NotInCache(val id: ModuleID, cause: Throwable)
     extends RuntimeException(NotInCache(id, cause), cause) {

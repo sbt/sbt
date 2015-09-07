@@ -17,7 +17,8 @@ import org.apache.ivy.core.report.ResolveReport
 import org.apache.ivy.core.resolve.ResolveOptions
 import org.apache.ivy.plugins.resolver.{ BasicResolver, DependencyResolver }
 import sbt.io.{ IO, PathFinder }
-import sbt.internal.util.{ Logger, ShowLines, SourcePosition, LinePosition, RangePosition, LineRange }
+import sbt.util.Logger
+import sbt.internal.util.{ ShowLines, SourcePosition, LinePosition, RangePosition, LineRange }
 
 final class DeliverConfiguration(val deliverIvyPattern: String, val status: String, val configurations: Option[Seq[Configuration]], val logging: UpdateLogging.Value)
 final class PublishConfiguration(val ivyFile: Option[File], val resolverName: String, val artifacts: Map[Artifact, File], val checksums: Seq[String], val logging: UpdateLogging.Value,

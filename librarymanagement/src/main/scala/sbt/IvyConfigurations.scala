@@ -6,7 +6,7 @@ package sbt
 import java.io.File
 import java.net.{ URI, URL }
 import scala.xml.NodeSeq
-import sbt.internal.util.Logger
+import sbt.util.Logger
 
 final class IvyPaths(val baseDirectory: File, val ivyHome: Option[File]) {
   def withBase(newBaseDirectory: File) = new IvyPaths(newBaseDirectory, ivyHome)

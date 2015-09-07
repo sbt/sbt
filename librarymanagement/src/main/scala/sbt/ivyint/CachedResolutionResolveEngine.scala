@@ -23,7 +23,7 @@ import Configurations.{ System => _, _ }
 import annotation.tailrec
 import scala.concurrent.duration._
 import sbt.io.{ DirectoryFilter, Hash, IO, Path }
-import sbt.internal.util.Logger
+import sbt.util.Logger
 
 private[sbt] object CachedResolutionResolveCache {
   def createID(organization: String, name: String, revision: String) =

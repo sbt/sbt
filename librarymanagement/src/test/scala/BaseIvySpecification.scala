@@ -5,7 +5,8 @@ import sbt.io.IO
 import java.io.File
 import cross.CrossVersionUtil
 import sbt.ivyint.SbtChainResolver
-import sbt.internal.util.{ Logger, ConsoleLogger }
+import sbt.util.Logger
+import sbt.internal.util.ConsoleLogger
 import sbt.internal.util.UnitSpec
 
 trait BaseIvySpecification extends UnitSpec {

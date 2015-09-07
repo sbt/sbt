@@ -8,7 +8,7 @@
 package sbt
 
 import java.io.File
-import sbt.internal.util.Logger
+import sbt.util.Logger
 
 import sbt.mavenint.PomExtraDependencyAttributes
 

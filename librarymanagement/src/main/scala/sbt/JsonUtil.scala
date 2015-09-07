@@ -6,7 +6,7 @@ import org.apache.ivy.core
 import core.module.descriptor.ModuleDescriptor
 import sbt.serialization._
 import java.net.{ URLEncoder, URLDecoder }
-import sbt.internal.util.Logger
+import sbt.util.Logger
 
 private[sbt] object JsonUtil {
   def sbtOrgTemp = "org.scala-sbt.temp"

@@ -3,7 +3,8 @@ package sbt
 import collection.mutable
 import Configurations.Compile
 import ScalaArtifacts.{ LibraryID, CompilerID }
-import sbt.internal.util.{ Logger, ShowLines }
+import sbt.util.Logger
+import sbt.internal.util.ShowLines
 
 final class EvictionWarningOptions private[sbt] (
     val configurations: Seq[Configuration],

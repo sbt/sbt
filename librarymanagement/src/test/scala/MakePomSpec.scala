@@ -1,7 +1,8 @@
 package sbt
 
 import java.io.File
-import sbt.internal.util.{ Logger, ConsoleLogger }
+import sbt.util.Logger
+import sbt.internal.util.ConsoleLogger
 import sbt.internal.util.UnitSpec
 
 // http://ant.apache.org/ivy/history/2.3.0/ivyfile/dependency.html

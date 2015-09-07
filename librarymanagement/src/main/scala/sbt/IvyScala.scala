@@ -11,7 +11,7 @@ import org.apache.ivy.core.module.descriptor.{ DependencyDescriptor, DefaultModu
 import org.apache.ivy.core.module.id.{ ArtifactId, ModuleId, ModuleRevisionId }
 import org.apache.ivy.plugins.matcher.ExactPatternMatcher
 
-import sbt.internal.util.Logger
+import sbt.util.Logger
 
 object ScalaArtifacts {
   val Organization = "org.scala-lang"

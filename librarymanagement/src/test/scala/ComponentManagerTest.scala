@@ -7,7 +7,7 @@ import sbt.io.IO
 import org.apache.ivy.util.ChecksumHelper
 import IfMissing.Fail
 import xsbti.ComponentProvider
-import sbt.internal.util.Logger
+import sbt.util.Logger
 import sbt.internal.util.{ UnitSpec, TestLogger }
 
 // TODO - We need to re-enable this test.  Right now, we dont' have a "stub" launcher for this.
