@@ -15,7 +15,9 @@ def commonSettings: Seq[Setting[_]] = Seq(
   crossScalaVersions := Seq(scala210, scala211),
   bintrayPackage := (bintrayPackage in ThisBuild).value,
   bintrayRepository := (bintrayRepository in ThisBuild).value,
-  resolvers += Resolver.sonatypeRepo("public")
+  resolvers += Resolver.sonatypeRepo("public"),
+  publishArtifact in Compile := true,
+  publishArtifact in Test := true
 )
 
 lazy val root = (project in file(".")).
@@ -43,6 +45,8 @@ lazy val root = (project in file(".")).
     name := "LM Root",
     publish := {},
     publishLocal := {},
+    publishArtifact in Compile := false,
+    publishArtifact in Test := false,
     publishArtifact := false
   )
 
