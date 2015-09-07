@@ -146,4 +146,5 @@ class TestReporter extends xsbti.Reporter {
 
 case class CompilationFailedException(errors: List[String]) extends Exception {
   def this(errors: Array[String]) = this(errors.toList)
+  override def toString: String = errors mkString "\n"
 }
