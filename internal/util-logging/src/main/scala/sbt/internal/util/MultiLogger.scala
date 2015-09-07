@@ -4,6 +4,8 @@
  */
 package sbt.internal.util
 
+import sbt.util._
+
 // note that setting the logging level on this logger has no effect on its behavior, only
 //   on the behavior of the delegates.
 class MultiLogger(delegates: List[AbstractLogger]) extends BasicLogger {

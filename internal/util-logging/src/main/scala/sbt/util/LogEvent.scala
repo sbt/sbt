@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2008, 2009 Mark Harrah
  */
-package sbt.internal.util
+package sbt.util
 
 sealed trait LogEvent extends NotNull
 final class Success(val msg: String) extends LogEvent

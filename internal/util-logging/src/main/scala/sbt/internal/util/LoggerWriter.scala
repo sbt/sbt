@@ -3,6 +3,8 @@
  */
 package sbt.internal.util
 
+import sbt.util._
+
 /**
  * Provides a `java.io.Writer` interface to a `Logger`.  Content is line-buffered and logged at `level`.
  * A line is delimited by `nl`, which is by default the platform line separator.

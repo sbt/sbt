@@ -1,39 +1,42 @@
 /* sbt -- Simple Build Tool
  * Copyright 2008, 2009, 2010  Mark Harrah
  */
-package sbt.internal.util
+package sbt.util
 
 import xsbti.{ Logger => xLogger, F0 }
 import xsbti.{ Maybe, Position, Problem, Severity }
 import sys.process.ProcessLogger
+import sbt.internal.util.{ BufferedLogger, FullLogger }
 
 import java.io.File
 
-abstract class AbstractLogger extends Logger {
-  def getLevel: Level.Value
-  def setLevel(newLevel: Level.Value): Unit
-  def setTrace(flag: Int): Unit
-  def getTrace: Int
-  final def traceEnabled: Boolean = getTrace >= 0
-  def successEnabled: Boolean
-  def setSuccessEnabled(flag: Boolean): Unit
+/**
+ * This is intended to be the simplest logging interface for use by code that wants to log.
+ * It does not include configuring the logger.
+ */
+abstract class Logger extends xLogger {
+  final def verbose(message: => String): Unit = debug(message)
+  final def debug(message: => String): Unit = log(Level.Debug, message)
+  final def info(message: => String): Unit = log(Level.Info, message)
+  final def warn(message: => String): Unit = log(Level.Warn, message)
+  final def error(message: => String): Unit = log(Level.Error, message)
+  // Added by sys.process.ProcessLogger
+  final def err(message: => String): Unit = log(Level.Error, message)
+  // sys.process.ProcessLogger
+  final def out(message: => String): Unit = log(Level.Info, message)
 
-  def atLevel(level: Level.Value): Boolean = level.id >= getLevel.id
-  def control(event: ControlEvent.Value, message: => String): Unit
+  def ansiCodesSupported: Boolean = false
 
-  def logAll(events: Seq[LogEvent]): Unit
-  /** Defined in terms of other methods in Logger and should not be called from them. */
-  final def log(event: LogEvent): Unit = {
-    event match {
-      case s: Success       => success(s.msg)
-      case l: Log           => log(l.level, l.msg)
-      case t: Trace         => trace(t.exception)
-      case setL: SetLevel   => setLevel(setL.newLevel)
-      case setT: SetTrace   => setTrace(setT.level)
-      case setS: SetSuccess => setSuccessEnabled(setS.enabled)
-      case c: ControlEvent  => control(c.event, c.msg)
-    }
-  }
+  def trace(t: => Throwable): Unit
+  def success(message: => String): Unit
+  def log(level: Level.Value, message: => String): Unit
+
+  def debug(msg: F0[String]): Unit = log(Level.Debug, msg)
+  def warn(msg: F0[String]): Unit = log(Level.Warn, msg)
+  def info(msg: F0[String]): Unit = log(Level.Info, msg)
+  def error(msg: F0[String]): Unit = log(Level.Error, msg)
+  def trace(msg: F0[Throwable]): Unit = trace(msg.apply)
+  def log(level: Level.Value, msg: F0[String]): Unit = log(level, msg.apply)
 }
 
 object Logger {
@@ -106,33 +109,4 @@ object Logger {
       val severity = sev
       override def toString = s"[$severity] $pos: $message"
     }
-}
-
-/**
- * This is intended to be the simplest logging interface for use by code that wants to log.
- * It does not include configuring the logger.
- */
-trait Logger extends xLogger {
-  final def verbose(message: => String): Unit = debug(message)
-  final def debug(message: => String): Unit = log(Level.Debug, message)
-  final def info(message: => String): Unit = log(Level.Info, message)
-  final def warn(message: => String): Unit = log(Level.Warn, message)
-  final def error(message: => String): Unit = log(Level.Error, message)
-  // Added by sys.process.ProcessLogger
-  final def err(message: => String): Unit = log(Level.Error, message)
-  // sys.process.ProcessLogger
-  final def out(message: => String): Unit = log(Level.Info, message)
-
-  def ansiCodesSupported: Boolean = false
-
-  def trace(t: => Throwable): Unit
-  def success(message: => String): Unit
-  def log(level: Level.Value, message: => String): Unit
-
-  def debug(msg: F0[String]): Unit = log(Level.Debug, msg)
-  def warn(msg: F0[String]): Unit = log(Level.Warn, msg)
-  def info(msg: F0[String]): Unit = log(Level.Info, msg)
-  def error(msg: F0[String]): Unit = log(Level.Error, msg)
-  def trace(msg: F0[Throwable]): Unit = trace(msg.apply)
-  def log(level: Level.Value, msg: F0[String]): Unit = log(level, msg.apply)
 }

@@ -3,6 +3,7 @@
  */
 package sbt.internal.util
 
+import sbt.util._
 import scala.collection.mutable.ListBuffer
 
 /**

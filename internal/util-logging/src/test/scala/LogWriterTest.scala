@@ -3,6 +3,7 @@
 
 package sbt.internal.util
 
+import sbt.util._
 import org.scalacheck._
 import Arbitrary.{ arbitrary => arb, _ }
 import Gen.{ listOfN, oneOf }

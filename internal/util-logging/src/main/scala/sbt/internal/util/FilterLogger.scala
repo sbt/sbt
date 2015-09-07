@@ -3,6 +3,8 @@
  */
 package sbt.internal.util
 
+import sbt.util._
+
 /**
  * A filter logger is used to delegate messages but not the logging level to another logger.  This means
  * that messages are logged at the higher of the two levels set by this logger and its delegate.

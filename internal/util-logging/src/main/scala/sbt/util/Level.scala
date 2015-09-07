@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2008, 2009 Mark Harrah
  */
-package sbt.internal.util
+package sbt.util
 
 /**
  * An enumeration defining the levels available for logging.  A level includes all of the levels
