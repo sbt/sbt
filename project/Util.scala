@@ -7,8 +7,10 @@ object Util {
   lazy val generateKeywords = TaskKey[File]("generateKeywords")
 
   lazy val javaOnlySettings = Seq[Setting[_]](
+    crossPaths := false,
     compileOrder := CompileOrder.JavaThenScala,
-    unmanagedSourceDirectories in Compile <<= Seq(javaSource in Compile).join
+    unmanagedSourceDirectories in Compile <<= Seq(javaSource in Compile).join,
+    crossScalaVersions := Seq(Dependencies.scala211)
   )
 
   def getScalaKeywords: Set[String] =
@@ -20,7 +22,7 @@ object Util {
     {
       val init = keywords.map(tn => '"' + tn + '"').mkString("Set(", ", ", ")")
       val ObjectName = "ScalaKeywords"
-      val PackageName = "sbt.util.internal"
+      val PackageName = "sbt.internal.util"
       val keywordsSrc =
         """package %s
 object %s {

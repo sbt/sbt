@@ -1,4 +1,4 @@
-package sbt.util.internal
+package sbt.internal.util
 
 import org.scalacheck._
 import Prop._
@@ -61,6 +61,7 @@ object Escapes extends Properties("Escapes") {
   final case class EscapeAndNot(escape: EscapeSequence, notEscape: String) {
     override def toString = s"EscapeAntNot(escape = [$escape], notEscape = [${notEscape.map(_.toInt)}])"
   }
+  // 2.10.5 warns on "implicit numeric widening" but it looks like a bug: https://issues.scala-lang.org/browse/SI-8450
   final case class EscapeSequence(content: String, terminator: Char) {
     if (!content.isEmpty) {
       assert(content.tail.forall(c => !isEscapeTerminator(c)), "Escape sequence content contains an escape terminator: '" + content + "'")

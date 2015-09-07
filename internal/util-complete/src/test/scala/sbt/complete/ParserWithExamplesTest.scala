@@ -1,61 +1,64 @@
-package sbt.util.internal
+package sbt.internal.util
 package complete
 
-import org.specs2.mutable.Specification
-import org.specs2.specification.Scope
 import Completion._
 
-class ParserWithExamplesTest extends Specification {
+class ParserWithExamplesTest extends UnitSpec {
 
-  "listing a limited number of completions" should {
-    "grab only the needed number of elements from the iterable source of examples" in new parserWithLazyExamples {
-      parserWithExamples.completions(0)
-      examples.size shouldEqual maxNumberOfExamples
+  "listing a limited number of completions" should
+    "grab only the needed number of elements from the iterable source of examples" in {
+      val _ = new ParserWithLazyExamples {
+        parserWithExamples.completions(0)
+        examples.size shouldEqual maxNumberOfExamples
+      }
     }
-  }
 
-  "listing only valid completions" should {
-    "use the delegate parser to remove invalid examples" in new parserWithValidExamples {
-      val validCompletions = Completions(Set(
-        suggestion("blue"),
-        suggestion("red")))
-      parserWithExamples.completions(0) shouldEqual validCompletions
+  "listing only valid completions" should
+    "use the delegate parser to remove invalid examples" in {
+      val _ = new ParserWithValidExamples {
+        val validCompletions = Completions(Set(
+          suggestion("blue"),
+          suggestion("red")))
+        parserWithExamples.completions(0) shouldEqual validCompletions
+      }
     }
-  }
 
-  "listing valid completions in a derived parser" should {
-    "produce only valid examples that start with the character of the derivation" in new parserWithValidExamples {
-      val derivedCompletions = Completions(Set(
-        suggestion("lue")))
-      parserWithExamples.derive('b').completions(0) shouldEqual derivedCompletions
+  "listing valid completions in a derived parser" should
+    "produce only valid examples that start with the character of the derivation" in {
+      val _ = new ParserWithValidExamples {
+        val derivedCompletions = Completions(Set(
+          suggestion("lue")))
+        parserWithExamples.derive('b').completions(0) shouldEqual derivedCompletions
+      }
     }
-  }
 
-  "listing valid and invalid completions" should {
-    "produce the entire source of examples" in new parserWithAllExamples {
-      val completions = Completions(examples.map(suggestion(_)).toSet)
-      parserWithExamples.completions(0) shouldEqual completions
+  "listing valid and invalid completions" should
+    "produce the entire source of examples" in {
+      val _ = new parserWithAllExamples {
+        val completions = Completions(examples.map(suggestion(_)).toSet)
+        parserWithExamples.completions(0) shouldEqual completions
+      }
     }
-  }
 
-  "listing valid and invalid completions in a derived parser" should {
-    "produce only examples that start with the character of the derivation" in new parserWithAllExamples {
-      val derivedCompletions = Completions(Set(
-        suggestion("lue"),
-        suggestion("lock")))
-      parserWithExamples.derive('b').completions(0) shouldEqual derivedCompletions
+  "listing valid and invalid completions in a derived parser" should
+    "produce only examples that start with the character of the derivation" in {
+      val _ = new parserWithAllExamples {
+        val derivedCompletions = Completions(Set(
+          suggestion("lue"),
+          suggestion("lock")))
+        parserWithExamples.derive('b').completions(0) shouldEqual derivedCompletions
+      }
     }
-  }
 
-  class parserWithLazyExamples extends parser(GrowableSourceOfExamples(), maxNumberOfExamples = 5, removeInvalidExamples = false)
+  class ParserWithLazyExamples extends ParserExample(GrowableSourceOfExamples(), maxNumberOfExamples = 5, removeInvalidExamples = false)
 
-  class parserWithValidExamples extends parser(removeInvalidExamples = true)
+  class ParserWithValidExamples extends ParserExample(removeInvalidExamples = true)
 
-  class parserWithAllExamples extends parser(removeInvalidExamples = false)
+  class parserWithAllExamples extends ParserExample(removeInvalidExamples = false)
 
-  case class parser(examples: Iterable[String] = Set("blue", "yellow", "greeen", "block", "red"),
+  case class ParserExample(examples: Iterable[String] = Set("blue", "yellow", "greeen", "block", "red"),
     maxNumberOfExamples: Int = 25,
-    removeInvalidExamples: Boolean) extends Scope {
+    removeInvalidExamples: Boolean) {
 
     import DefaultParsers._
 
