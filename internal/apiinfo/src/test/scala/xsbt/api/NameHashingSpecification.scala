@@ -44,8 +44,8 @@ class NameHashingSpecification extends UnitSpec {
     val nameHashes2 = nameHashing.nameHashes(api2)
     val def1Hash = HashAPI(def1)
     val def2Hash = HashAPI(def2)
-    def1Hash !== def2Hash
-    nameHashes1 === nameHashes2
+    assert(def1Hash !== def2Hash)
+    assert(nameHashes1 === nameHashes2)
     ()
   }
 
@@ -82,7 +82,7 @@ class NameHashingSpecification extends UnitSpec {
     val api2 = new SourceAPI(Array.empty, Array(classB))
     val nameHashes1 = nameHashing.nameHashes(api1)
     val nameHashes2 = nameHashing.nameHashes(api2)
-    nameHashes1 !== nameHashes2
+    assert(nameHashes1 !== nameHashes2)
     ()
   }
 
@@ -179,7 +179,7 @@ class NameHashingSpecification extends UnitSpec {
    * we get abstract method errors at runtime, because the types expected by the setter (for instance) does not
    * match.
    */
-  "private members in traits" in {
+  it should "private members in traits" in {
     /* trait Foo { private val x } */
     val fooTrait1 =
       simpleTrait("Foo",
@@ -195,14 +195,13 @@ class NameHashingSpecification extends UnitSpec {
     val api1 = new SourceAPI(Array.empty, Array(fooTrait1))
     val api2 = new SourceAPI(Array.empty, Array(fooTrait2))
 
-    HashAPI(api1) !== HashAPI(api2)
-
+    assert(HashAPI(api1) !== HashAPI(api2))
   }
 
   /**
    * Checks that private members in non-top-level traits are included as well.
    */
-  "private members in nested traits" in {
+  it should "private members in nested traits" in {
     /* class A { trait Foo { private val x } } */
     val classA1 =
       simpleClass("A",
@@ -220,14 +219,13 @@ class NameHashingSpecification extends UnitSpec {
     val api1 = new SourceAPI(Array.empty, Array(classA1))
     val api2 = new SourceAPI(Array.empty, Array(classA2))
 
-    HashAPI(api1) !== HashAPI(api2)
-
+    assert(HashAPI(api1) !== HashAPI(api2))
   }
 
   /**
    * Checks that private traits are NOT included in the hash.
    */
-  "private traits" in {
+  it should "private traits" in {
     /* class Foo { private trait T { private val x } } */
     val classFoo1 =
       simpleClass("Foo",
@@ -250,13 +248,13 @@ class NameHashingSpecification extends UnitSpec {
     val api2 = new SourceAPI(Array.empty, Array(classFoo2))
     val api3 = new SourceAPI(Array.empty, Array(classFoo3))
 
-    HashAPI(api1) === HashAPI(api2) && HashAPI(api2) === HashAPI(api3)
+    assert(HashAPI(api1) === HashAPI(api2) && HashAPI(api2) === HashAPI(api3))
   }
 
   /**
    * Checks that private members are NOT included in the hash of the public API of classes.
    */
-  "private members in classes" in {
+  it should "private members in classes" in {
     /* class Foo { private val x } */
     val classFoo1 =
       simpleClass("Foo",
@@ -270,23 +268,21 @@ class NameHashingSpecification extends UnitSpec {
     val api1 = new SourceAPI(Array.empty, Array(classFoo1))
     val api2 = new SourceAPI(Array.empty, Array(classFoo2))
 
-    HashAPI(api1) === HashAPI(api2)
-
+    assert(HashAPI(api1) === HashAPI(api2))
   }
 
   private def assertNameHashEqualForRegularName(name: String, nameHashes1: _internalOnly_NameHashes,
-    nameHashes2: _internalOnly_NameHashes) = {
+    nameHashes2: _internalOnly_NameHashes): Unit = {
     val nameHash1 = nameHashForRegularName(nameHashes1, name)
     val nameHash2 = nameHashForRegularName(nameHashes1, name)
-    nameHash1 === nameHash2
+    assert(nameHash1 === nameHash2)
   }
 
   private def assertNameHashNotEqualForRegularName(name: String, nameHashes1: _internalOnly_NameHashes,
-    nameHashes2: _internalOnly_NameHashes) = {
+    nameHashes2: _internalOnly_NameHashes): Unit = {
     val nameHash1 = nameHashForRegularName(nameHashes1, name)
     val nameHash2 = nameHashForRegularName(nameHashes2, name)
-    nameHash1 !== nameHash2
-    ()
+    assert(nameHash1 !== nameHash2)
   }
 
   private def nameHashForRegularName(nameHashes: _internalOnly_NameHashes, name: String): _internalOnly_NameHash =
