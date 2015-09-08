@@ -117,9 +117,9 @@ class NameHashingSpecification extends UnitSpec {
     }
     val parentANameHashes = nameHashesForClass(parentA)
     val parentBNameHashes = nameHashesForClass(parentB)
-    Seq("Parent") === parentANameHashes.regularMembers.map(_.name).toSeq
-    Seq("Parent", "bar") === parentBNameHashes.regularMembers.map(_.name).toSeq
-    parentANameHashes !== parentBNameHashes
+    assert(Seq("Parent") === parentANameHashes.regularMembers.map(_.name).toSeq)
+    assert(Seq("Parent", "bar") === parentBNameHashes.regularMembers.map(_.name).toSeq)
+    assert(parentANameHashes !== parentBNameHashes)
     val childANameHashes = nameHashesForClass(childA)
     val childBNameHashes = nameHashesForClass(childB)
     assertNameHashEqualForRegularName("Child", childANameHashes, childBNameHashes)
@@ -158,8 +158,8 @@ class NameHashingSpecification extends UnitSpec {
     val nameHashes1 = nameHashesForClass(aClass1)
     val nameHashes2 = nameHashesForClass(aClass2)
     // note that `bar` does appear here
-    Seq("A", "foo", "bar") === nameHashes1.regularMembers.map(_.name).toSeq
-    Seq("A", "foo", "bar") === nameHashes2.regularMembers.map(_.name).toSeq
+    assert(Seq("A", "foo", "bar") === nameHashes1.regularMembers.map(_.name).toSeq)
+    assert(Seq("A", "foo", "bar") === nameHashes2.regularMembers.map(_.name).toSeq)
     assertNameHashEqualForRegularName("A", nameHashes1, nameHashes2)
     assertNameHashNotEqualForRegularName("foo", nameHashes1, nameHashes2)
     assertNameHashNotEqualForRegularName("bar", nameHashes1, nameHashes2)
