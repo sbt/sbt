@@ -53,7 +53,7 @@ object TextAnalysisFormat {
   import sbinary.DefaultProtocol._
   import sbinary.Format
   import xsbti.{ Position, Problem, Severity }
-  import Logger.{ m2o, position, problem }
+  import sbt.util.Logger.{ m2o, position, problem }
 
   private implicit val sourceFormat: Format[Source] = xsbt.api.SourceFormat
   private implicit val compilationF: Format[Compilation] = xsbt.api.CompilationFormat
