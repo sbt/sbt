@@ -87,7 +87,7 @@ object IncrementalCompilerTest {
         }
 
       val previousChanges =
-        if (previousIsFailing) previous map (_.lastChanges) getOrElse Nil
+        if (previousIsFailing) previous map (_.lastChanges) getOrElse Nil filterNot (f => fileChanges exists (c => c._1 == f._1))
         else Nil
 
       if (fileChanges.nonEmpty || previousIsFailing)
