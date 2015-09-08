@@ -10,6 +10,7 @@ import sbt.io.{ Hash, IO }
 import sbt.internal.librarymanagement._
 import sbt.librarymanagement.{ Configurations, ModuleID, ModuleInfo, Resolver, UpdateOptions, VersionNumber }
 import sbt.util.Logger
+import sbt.internal.util.{ BufferedLogger, FullLogger }
 
 object ComponentCompiler {
   val xsbtiID = "xsbti"
