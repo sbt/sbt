@@ -5,7 +5,7 @@ import xsbti.api.Source
 import xsbt.api.SameAPI
 import java.io.File
 
-private final class IncrementalDefaultImpl(log: Logger, options: IncOptions) extends IncrementalCommon(log, options) {
+private final class IncrementalDefaultImpl(log: sbt.util.Logger, options: IncOptions) extends IncrementalCommon(log, options) {
 
   // Package objects are fragile: if they inherit from an invalidated source, get "class file needed by package is missing" error
   //  This might be too conservative: we probably only need package objects for packages of invalidated sources.

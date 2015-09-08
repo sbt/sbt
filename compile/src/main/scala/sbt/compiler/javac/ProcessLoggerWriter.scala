@@ -1,6 +1,6 @@
 package sbt.compiler.javac
 
-import sbt.Level
+import sbt.util.Level
 import scala.sys.process.ProcessLogger
 
 /** Delegates a stream into a process logger. Mimics LoggerWriter, but for the ProcessLogger interface which differs. */

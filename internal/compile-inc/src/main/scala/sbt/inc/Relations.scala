@@ -10,6 +10,7 @@ import Relations.SourceDependencies
 import xsbti.api.{ Source => APISource }
 import xsbti.DependencyContext
 import xsbti.DependencyContext._
+import sbt.internal.util.Relation
 
 /**
  * Provides mappings between source files, generated classes (products), and binaries.

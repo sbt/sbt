@@ -1,18 +1,16 @@
 package xsbt.api
 
-import org.junit.runner.RunWith
 import xsbti.api._
-import org.specs2.mutable.Specification
-import org.specs2.runner.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
-class NameHashingSpecification extends Specification {
+import sbt.internal.util.UnitSpec
+
+class NameHashingSpecification extends UnitSpec {
 
   /**
    * Very basic test which checks whether a name hash is insensitive to
    * definition order (across the whole compilation unit).
    */
-  "new member" in {
+  "NameHashing" should "generate hashes that are insensitive to the definition order when adding a new member" in {
     val nameHashing = new NameHashing
     val def1 = new Def(Array.empty, strTpe, Array.empty, "foo", publicAccess, defaultModifiers, Array.empty)
     val def2 = new Def(Array.empty, intTpe, Array.empty, "bar", publicAccess, defaultModifiers, Array.empty)
@@ -24,15 +22,15 @@ class NameHashingSpecification extends Specification {
     val nameHashes2 = nameHashing.nameHashes(api2)
     assertNameHashEqualForRegularName("Bar", nameHashes1, nameHashes2)
     assertNameHashEqualForRegularName("foo", nameHashes1, nameHashes2)
-    nameHashes1.regularMembers.map(_.name).toSeq must not contain ("bar")
-    nameHashes2.regularMembers.map(_.name).toSeq must contain("bar")
+    nameHashes1.regularMembers.map(_.name).toSeq should not contain ("bar")
+    nameHashes2.regularMembers.map(_.name).toSeq should contain("bar")
   }
 
   /**
    * Very basic test which checks whether a name hash is insensitive to
    * definition order (across the whole compilation unit).
    */
-  "definition order" in {
+  it should "generates hashes that are insensitive to the definition order" in {
     val nameHashing = new NameHashing
     val def1 = new Def(Array.empty, intTpe, Array.empty, "bar", publicAccess, defaultModifiers, Array.empty)
     val def2 = new Def(Array.empty, strTpe, Array.empty, "bar", publicAccess, defaultModifiers, Array.empty)
@@ -46,8 +44,9 @@ class NameHashingSpecification extends Specification {
     val nameHashes2 = nameHashing.nameHashes(api2)
     val def1Hash = HashAPI(def1)
     val def2Hash = HashAPI(def2)
-    def1Hash !=== def2Hash
+    def1Hash !== def2Hash
     nameHashes1 === nameHashes2
+    ()
   }
 
   /**
@@ -66,7 +65,7 @@ class NameHashingSpecification extends Specification {
    * then hash for `xyz` name should differ in those two cases
    * because method `xyz` was moved from class to an object.
    */
-  "definition location" in {
+  it should "generate hashes that are sensitive to the definition location" in {
     val nameHashing = new NameHashing
     val deff = new Def(Array.empty, intTpe, Array.empty, "bar", publicAccess, defaultModifiers, Array.empty)
     val classA = {
@@ -83,7 +82,8 @@ class NameHashingSpecification extends Specification {
     val api2 = new SourceAPI(Array.empty, Array(classB))
     val nameHashes1 = nameHashing.nameHashes(api1)
     val nameHashes2 = nameHashing.nameHashes(api2)
-    nameHashes1 !=== nameHashes2
+    nameHashes1 !== nameHashes2
+    ()
   }
 
   /**
@@ -103,7 +103,7 @@ class NameHashingSpecification extends Specification {
    * then hash for `Child` name should be the same in both
    * cases.
    */
-  "definition in parent class" in {
+  it should "generates hashes that account for definitions in parent class" in {
     val parentA = simpleClass("Parent")
     val barMethod = new Def(Array.empty, intTpe, Array.empty, "bar", publicAccess, defaultModifiers, Array.empty)
     val parentB = simpleClass("Parent", barMethod)
@@ -119,10 +119,11 @@ class NameHashingSpecification extends Specification {
     val parentBNameHashes = nameHashesForClass(parentB)
     Seq("Parent") === parentANameHashes.regularMembers.map(_.name).toSeq
     Seq("Parent", "bar") === parentBNameHashes.regularMembers.map(_.name).toSeq
-    parentANameHashes !=== parentBNameHashes
+    parentANameHashes !== parentBNameHashes
     val childANameHashes = nameHashesForClass(childA)
     val childBNameHashes = nameHashesForClass(childB)
     assertNameHashEqualForRegularName("Child", childANameHashes, childBNameHashes)
+    ()
   }
 
   /**
@@ -141,7 +142,7 @@ class NameHashingSpecification extends Specification {
    *
    * then name hash for "foo" should be different in those two cases.
    */
-  "structural type in definition" in {
+  it should "generates hashes that account for structural types in definition" in {
     /** def foo: { bar: Int } */
     val fooMethod1 = {
       val barMethod1 = new Def(Array.empty, intTpe, Array.empty, "bar", publicAccess, defaultModifiers, Array.empty)
@@ -175,7 +176,8 @@ class NameHashingSpecification extends Specification {
     nameHashes2: _internalOnly_NameHashes) = {
     val nameHash1 = nameHashForRegularName(nameHashes1, name)
     val nameHash2 = nameHashForRegularName(nameHashes2, name)
-    nameHash1 !=== nameHash2
+    nameHash1 !== nameHash2
+    ()
   }
 
   private def nameHashForRegularName(nameHashes: _internalOnly_NameHashes, name: String): _internalOnly_NameHash =

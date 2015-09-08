@@ -6,7 +6,7 @@ import xsbti.compile.DependencyChanges
 import xsbti.api.{ Compilation, Source }
 import java.io.File
 
-private[inc] abstract class IncrementalCommon(log: Logger, options: IncOptions) {
+private[inc] abstract class IncrementalCommon(log: sbt.util.Logger, options: IncOptions) {
 
   private def incDebug(options: IncOptions): Boolean = options.relationsDebug || java.lang.Boolean.getBoolean(Incremental.incDebugProp)
 

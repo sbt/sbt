@@ -7,6 +7,7 @@ package inc
 import xsbti.api.Source
 import xsbti.DependencyContext._
 import java.io.File
+import sbt.internal.util.Relation
 
 /**
  * The merge/groupBy functionality requires understanding of the concepts of internalizing/externalizing dependencies:

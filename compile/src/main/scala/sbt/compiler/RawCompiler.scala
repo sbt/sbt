@@ -5,6 +5,7 @@ package sbt
 package compiler
 
 import java.io.File
+import sbt.internal.util.FeedbackProvidedException
 
 /**
  * A basic interface to the compiler.  It is called in the same virtual machine, but no dependency analysis is done.  This
@@ -12,7 +13,7 @@ import java.io.File
  * If `explicitClasspath` is true, the bootclasspath and classpath are not augmented.  If it is false,
  * the scala-library.jar from `scalaInstance` is put on bootclasspath and the scala-compiler jar goes on the classpath.
  */
-class RawCompiler(val scalaInstance: xsbti.compile.ScalaInstance, cp: ClasspathOptions, log: Logger) {
+class RawCompiler(val scalaInstance: xsbti.compile.ScalaInstance, cp: ClasspathOptions, log: sbt.util.Logger) {
   def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String]): Unit = {
     // reflection is required for binary compatibility
     // The following import ensures there is a compile error if the identifiers change,

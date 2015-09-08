@@ -13,7 +13,8 @@ import java.io.File
 import sbinary._
 import DefaultProtocol._
 import DefaultProtocol.tuple2Format
-import Logger.{ m2o, position, problem }
+import sbt.util.Logger.{ m2o, position, problem }
+import sbt.internal.util.Relation
 import Relations.{ Source => RSource, SourceDependencies }
 
 @deprecated("Replaced by TextAnalysisFormat. OK to remove in 0.14.", since = "0.13.1")

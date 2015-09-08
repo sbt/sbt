@@ -2,7 +2,8 @@ package sbt
 package inc
 
 import java.io._
-import sbt.{ CompileSetup, Relation }
+import sbt.CompileSetup
+import sbt.internal.util.Relation
 import xsbti.api.{ Compilation, Source }
 import xsbti.compile.{ MultipleOutput, SingleOutput }
 import javax.xml.bind.DatatypeConverter

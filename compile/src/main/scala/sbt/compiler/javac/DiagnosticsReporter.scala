@@ -3,7 +3,7 @@ package sbt.compiler.javac
 import java.io.File
 import javax.tools.{ Diagnostic, JavaFileObject, DiagnosticListener }
 
-import sbt.Logger
+import sbt.util.Logger
 import xsbti.{ Severity, Reporter, Maybe }
 import javax.tools.Diagnostic.NOPOS
 

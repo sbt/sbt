@@ -2,46 +2,41 @@ package sbt.compiler.javac
 
 import java.io.File
 
-import org.specs2.matcher.MatchResult
-import sbt.Logger
-import org.specs2.Specification
+import sbt.util.Logger
+import sbt.internal.util.UnitSpec
 
-object JavaErrorParserSpec extends Specification {
-  def is = s2"""
+class JavaErrorParserSpec extends UnitSpec {
 
-  This is a specification for parsing of java error messages.
+  "The JavaErrorParser" should "be able to parse linux errors" in parseSampleLinux()
+  it should "be able to parse windows file names" in parseWindowsFile()
+  it should "be able to parse windows errors" in parseSampleWindows()
 
-  The JavaErrorParser should
-     be able to parse linux errors    $parseSampleLinux
-     be able to parse windows file names $parseWindowsFile
-     be able to parse windows errors  $parseSampleWindows
-  """
-
-  def parseSampleLinux = {
+  def parseSampleLinux() = {
     val parser = new JavaErrorParser()
     val logger = Logger.Null
     val problems = parser.parseProblems(sampleLinuxMessage, logger)
-    def rightSize = problems must haveSize(1)
-    def rightFile = problems(0).position.sourcePath.get must beEqualTo("/home/me/projects/sample/src/main/Test.java")
-    rightSize and rightFile
+
+    problems should have size (1)
+    problems(0).position.sourcePath.get shouldBe ("/home/me/projects/sample/src/main/Test.java")
+
   }
 
-  def parseSampleWindows = {
+  def parseSampleWindows() = {
     val parser = new JavaErrorParser()
     val logger = Logger.Null
     val problems = parser.parseProblems(sampleWindowsMessage, logger)
-    def rightSize = problems must haveSize(1)
-    def rightFile = problems(0).position.sourcePath.get must beEqualTo(windowsFile)
-    rightSize and rightFile
+
+    problems should have size (1)
+    problems(0).position.sourcePath.get shouldBe (windowsFile)
+
   }
 
-  def parseWindowsFile: MatchResult[_] = {
+  def parseWindowsFile() = {
     val parser = new JavaErrorParser()
-    def failure = false must beTrue
     parser.parse(parser.fileAndLineNo, sampleWindowsMessage) match {
-      case parser.Success((file, line), rest) => file must beEqualTo(windowsFile)
-      case parser.Error(msg, next)            => failure.setMessage(s"Error to parse: $msg, ${next.pos.longString}")
-      case parser.Failure(msg, next)          => failure.setMessage(s"Failed to parse: $msg, ${next.pos.longString}")
+      case parser.Success((file, line), rest) => file shouldBe (windowsFile)
+      case parser.Error(msg, next)            => assert(false, s"Error to parse: $msg, ${next.pos.longString}")
+      case parser.Failure(msg, next)          => assert(false, s"Failed to parse: $msg, ${next.pos.longString}")
     }
   }
 

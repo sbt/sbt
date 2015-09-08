@@ -3,7 +3,8 @@ package sbt.compiler.javac
 import java.io.File
 
 import sbt.compiler.{ CompileFailed, CompilerArguments }
-import sbt.{ ClasspathOptions, Logger, LoggerReporter }
+import sbt.util.Logger
+import sbt.{ ClasspathOptions, LoggerReporter }
 import xsbti.Reporter
 import xsbti.compile.{ MultipleOutput, SingleOutput, Output }
 

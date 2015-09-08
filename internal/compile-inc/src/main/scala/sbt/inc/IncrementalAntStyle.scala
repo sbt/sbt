@@ -4,7 +4,7 @@ package inc
 import java.io.File
 import xsbti.api.Source
 
-private final class IncrementalAntStyle(log: Logger, options: IncOptions) extends IncrementalCommon(log, options) {
+private final class IncrementalAntStyle(log: sbt.util.Logger, options: IncOptions) extends IncrementalCommon(log, options) {
 
   /** Ant-style mode doesn't do anything special with package objects */
   override protected def invalidatedPackageObjects(invalidated: Set[File], relations: Relations): Set[File] = Set.empty

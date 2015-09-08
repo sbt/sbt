@@ -2,7 +2,7 @@ package sbt.compiler.javac
 
 import java.io.File
 
-import sbt.Logger.o2m
+import sbt.util.Logger.o2m
 import xsbti.{ Problem, Severity, Maybe, Position }
 
 /** A wrapper around xsbti.Position so we can pass in Java input. */
@@ -175,7 +175,7 @@ class JavaErrorParser(relativeDir: File = new File(new File(".").getAbsolutePath
    * ^
    */
 
-  final def parseProblems(in: String, logger: sbt.Logger): Seq[Problem] =
+  final def parseProblems(in: String, logger: sbt.util.Logger): Seq[Problem] =
     parse(javacOutput, in) match {
       case Success(result, _) => result
       case Failure(msg, n) =>

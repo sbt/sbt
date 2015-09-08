@@ -1,8 +1,8 @@
 package sbt.inc
 
-import sbt.Relation
+import sbt.internal.util.Relation
 import java.io.File
-import sbt.Logger
+import sbt.util.Logger
 import xsbt.api.APIUtil
 
 /**

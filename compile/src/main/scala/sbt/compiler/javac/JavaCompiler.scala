@@ -3,6 +3,7 @@ package sbt.compiler.javac
 import sbt.ClasspathOptions
 import sbt.{ ClasspathOptions => _, _ }
 import sbt.compiler._
+import sbt.util.Logger
 import java.io.{ PrintWriter, File }
 
 import javax.tools.{ DiagnosticListener, Diagnostic, JavaFileObject, DiagnosticCollector }

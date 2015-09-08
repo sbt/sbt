@@ -2,6 +2,7 @@ package sbt
 package compiler
 
 import java.io.File
+import sbt.util.Logger
 
 trait CompilerInterfaceProvider {
   def apply(scalaInstance: xsbti.compile.ScalaInstance, log: Logger): File

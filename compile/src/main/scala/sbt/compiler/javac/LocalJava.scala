@@ -2,7 +2,8 @@ package sbt.compiler.javac
 
 import java.io.{ File, PrintWriter }
 
-import sbt.{ LoggerWriter, Level, Logger }
+import sbt.internal.util.LoggerWriter
+import sbt.util.{ Level, Logger }
 import xsbti.Reporter
 import xsbti.compile.{ ScalaInstance, ClasspathOptions }
 
