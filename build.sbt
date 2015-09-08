@@ -171,7 +171,8 @@ lazy val compileInterfaceOldProj = (project in internalPath / "compile-bridge-2.
     javaOptions in Test += "-Xmx1G",
     libraryDependencies ++= Seq(sbtIO, utilLogging),
     crossScalaVersions := Seq(scala210, scala293, scala282),
-    scalacOptions := { scalacOptions.value filterNot (Set("-Xfatal-warnings", "-deprecation") contains _) }
+    scalacOptions := { scalacOptions.value filterNot (Set("-Xfatal-warnings", "-deprecation") contains _) },
+    scalaSource in Test := (scalaSource in compileInterfaceProj in Test).value
   )
 
 // Implements the core functionality of detecting and propagating changes incrementally.
