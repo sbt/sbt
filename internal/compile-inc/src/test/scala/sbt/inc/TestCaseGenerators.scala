@@ -7,7 +7,7 @@ import org.scalacheck._
 import Arbitrary._
 import Gen._
 
-import sbt.Relation
+import sbt.internal.util.Relation
 import xsbti.api._
 import xsbti.SafeLazy
 import xsbti.DependencyContext._
@@ -94,7 +94,7 @@ object TestCaseGenerators {
         nameHash <- genNameHash(defn)
       } yield (isRegularMember, nameHash)
     }
-    val genNameHashesList = Gen.sequence[List, xsbti.api._internalOnly_NameHash](defns.map(genNameHash))
+    val genNameHashesList = Gen.sequence[List[xsbti.api._internalOnly_NameHash], xsbti.api._internalOnly_NameHash](defns.map(genNameHash))
     val genTwoListOfNameHashes = for {
       nameHashesList <- genNameHashesList
       isRegularMemberList <- listOfN(nameHashesList.length, arbitrary[Boolean])
@@ -113,7 +113,7 @@ object TestCaseGenerators {
     nameHashes <- genNameHashes(defns)
   } yield new Source(new Compilation(startTime, Array()), hash, new SourceAPI(Array(), Array(defns map makeDefinition: _*)), apiHash, nameHashes, hasMacro)
 
-  def genSources(all_defns: Seq[Seq[String]]): Gen[Seq[Source]] = Gen.sequence[List, Source](all_defns.map(genSource))
+  def genSources(all_defns: Seq[Seq[String]]): Gen[Seq[Source]] = Gen.sequence[List[Source], Source](all_defns.map(genSource))
 
   def genAPIs(rel: Relations): Gen[APIs] = {
     val internal = rel.allInternalSrcDeps.toList.sorted

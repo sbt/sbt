@@ -11,6 +11,7 @@ import xsbti.api.Source
 import xsbti.compile._
 import xsbti.{ AnalysisCallback, Reporter }
 import sbt.io.PathFinder
+import sbt.util.Logger
 
 /**
  * This is a java compiler which will also report any discovered source dependencies/apis out via

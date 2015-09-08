@@ -264,7 +264,7 @@ object IncOptions extends Serializable {
     setTransactional(Default, tempDir)
   @deprecated("Use opts.withNewClassfileManager(ClassfileManager.transactional(tempDir)), instead.", "0.13.5")
   def setTransactional(opts: IncOptions, tempDir: File): IncOptions =
-    opts.withNewClassfileManager(ClassfileManager.transactional(tempDir, sbt.Logger.Null))
+    opts.withNewClassfileManager(ClassfileManager.transactional(tempDir, sbt.util.Logger.Null))
 
   private val transitiveStepKey = "transitiveStep"
   private val recompileAllFractionKey = "recompileAllFraction"

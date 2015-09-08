@@ -7,7 +7,8 @@ package inc
 import xsbti.api.{ Source, SourceAPI, Compilation, OutputSetting, _internalOnly_NameHashes }
 import xsbti.compile.{ DependencyChanges, Output, SingleOutput, MultipleOutput }
 import xsbti.{ Position, Problem, Severity }
-import Logger.{ m2o, problem }
+import sbt.util.Logger
+import sbt.util.Logger.{ m2o, problem }
 import java.io.File
 import xsbti.api.Definition
 import xsbti.DependencyContext

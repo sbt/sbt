@@ -32,9 +32,9 @@ object ClassfileManager {
   }
   @deprecated("Use overloaded variant that takes additional logger argument, instead.", "0.13.5")
   def transactional(tempDir0: File): () => ClassfileManager =
-    transactional(tempDir0, sbt.Logger.Null)
+    transactional(tempDir0, sbt.util.Logger.Null)
   /** When compilation fails, this ClassfileManager restores class files to the way they were before compilation.*/
-  def transactional(tempDir0: File, logger: sbt.Logger): () => ClassfileManager = () => new ClassfileManager {
+  def transactional(tempDir0: File, logger: sbt.util.Logger): () => ClassfileManager = () => new ClassfileManager {
     val tempDir = tempDir0.getCanonicalFile
     IO.delete(tempDir)
     IO.createDirectory(tempDir)

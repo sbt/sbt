@@ -10,6 +10,8 @@ import xsbti.{ Severity, Reporter }
 import xsbti.compile.Output
 
 import sbt.io.IO
+import sbt.util.{ Level, Logger }
+import sbt.internal.util.LoggerWriter
 
 @deprecated("Please use the new set of compilers in sbt.compilers.javac", "0.13.8")
 abstract class JavacContract(val name: String, val clazz: String) {

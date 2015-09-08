@@ -3,7 +3,7 @@ package compiler
 
 import xsbti.{ Logger => xLogger, Reporter }
 import xsbti.compile.{ CachedCompiler, CachedCompilerProvider, GlobalsCache, Output }
-import Logger.f0
+import sbt.util.Logger.f0
 import java.io.File
 import java.util.{ LinkedHashMap, Map }
 

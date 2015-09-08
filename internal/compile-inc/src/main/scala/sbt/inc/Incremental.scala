@@ -40,7 +40,7 @@ object Incremental {
     current: ReadStamps,
     forEntry: File => Option[Analysis],
     doCompile: (Set[File], DependencyChanges) => Analysis,
-    log: Logger,
+    log: sbt.util.Logger,
     options: IncOptions)(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
     {
       val incremental: IncrementalCommon =

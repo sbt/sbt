@@ -11,7 +11,7 @@ import java.io.File
  *
  * See MemberReferenceInvalidationStrategy for some more information.
  */
-private final class IncrementalNameHashing(log: Logger, options: IncOptions) extends IncrementalCommon(log, options) {
+private final class IncrementalNameHashing(log: sbt.util.Logger, options: IncOptions) extends IncrementalCommon(log, options) {
 
   private val memberRefInvalidator = new MemberRefInvalidator(log)
 

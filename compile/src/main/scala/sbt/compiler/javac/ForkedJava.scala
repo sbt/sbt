@@ -4,7 +4,7 @@ import java.io.File
 
 import sbt.io.IO._
 import sbt.io.IO
-import sbt.Logger
+import sbt.util.Logger
 import xsbti.Reporter
 import xsbti.compile.{ ClasspathOptions, ScalaInstance }
 import scala.sys.process.Process
