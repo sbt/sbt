@@ -7,6 +7,9 @@ package compiler
 import java.io.File
 import scala.util.Try
 import sbt.io.{ Hash, IO }
+import sbt.internal.librarymanagement._
+import sbt.librarymanagement.{ Configurations, ModuleID, ModuleInfo, Resolver, UpdateOptions, VersionNumber }
+import sbt.util.Logger
 
 object ComponentCompiler {
   val xsbtiID = "xsbti"
