@@ -19,7 +19,7 @@ object ComponentCompiler {
   val compilerInterfaceSrcID = compilerInterfaceID + srcExtension
   val javaVersion = System.getProperty("java.class.version")
 
-  @deprecated("Use `interfaceProvider(ComponentManager, IvyConfiguration)`.", "0.13.10")
+  @deprecated("Use `interfaceProvider(ComponentManager, IvyConfiguration, File)`.", "0.13.10")
   def interfaceProvider(manager: ComponentManager): CompilerInterfaceProvider = new CompilerInterfaceProvider {
     def apply(scalaInstance: xsbti.compile.ScalaInstance, log: Logger): File =
       {
@@ -30,11 +30,11 @@ object ComponentCompiler {
       }
   }
 
-  def interfaceProvider(manager: ComponentManager, ivyConfiguration: IvyConfiguration): CompilerInterfaceProvider = new CompilerInterfaceProvider {
+  def interfaceProvider(manager: ComponentManager, ivyConfiguration: IvyConfiguration, bootDirectory: File): CompilerInterfaceProvider = new CompilerInterfaceProvider {
     def apply(scalaInstance: xsbti.compile.ScalaInstance, log: Logger): File =
       {
         // this is the instance used to compile the interface component
-        val componentCompiler = new IvyComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptions.auto, log), manager, ivyConfiguration, log)
+        val componentCompiler = new IvyComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptions.auto, log), manager, ivyConfiguration, bootDirectory, log)
         log.debug("Getting " + compilerInterfaceID + " from component compiler for Scala " + scalaInstance.version)
         componentCompiler(compilerInterfaceID)
       }
@@ -89,14 +89,17 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager) {
  * The compiled classes are cached using the provided component manager according
  * to the actualVersion field of the RawCompiler.
  */
-private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: ComponentManager, ivyConfiguration: IvyConfiguration, log: Logger) {
+private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: ComponentManager, ivyConfiguration: IvyConfiguration, bootDirectory: File, log: Logger) {
   import ComponentCompiler._
 
+  private val incrementalCompilerOrg = xsbti.ArtifactInfo.SbtOrganization + ".incrementalcompiler"
   private val sbtOrgTemp = JsonUtil.sbtOrgTemp
   private val modulePrefixTemp = "temp-module-"
   private val ivySbt: IvySbt = new IvySbt(ivyConfiguration)
   // TODO: The actual sbt version may be different from the component manager's version
   private val sbtVersion = ComponentManager.version
+  private val buffered = new BufferedLogger(FullLogger(log))
+  private val retrieveDirectory = new File(s"$bootDirectory/scala-${compiler.scalaInstance.version}/$incrementalCompilerOrg/sbt/$sbtVersion/compiler-interface-srcs")
 
   def apply(id: String): File = {
     val binID = binaryID(id)
@@ -118,7 +121,7 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
               sourcesJar
             } getOrElse (throw new InvalidComponent(s"Couldn't retrieve default sources: module '$id'"))
 
-          log.debug(s"Fetching default sources: module '$id'")
+          buffered.debug(s"Fetching default sources: module '$id'")
           manager.files(id)(new IfMissing.Fallback(getAndDefineDefaultSources()))
 
         case version +: rest =>
@@ -129,7 +132,7 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
               sourcesJar
             } getOrElse interfaceSources(rest)
 
-          log.debug(s"Fetching version-specific sources: module '$moduleName'")
+          buffered.debug(s"Fetching version-specific sources: module '$moduleName'")
           manager.files(moduleName)(new IfMissing.Fallback(getAndDefineVersionSpecificSources()))
       }
     IO.withTemporaryDirectory { binaryDirectory =>
@@ -138,7 +141,8 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
       val xsbtiJars = manager.files(xsbtiID)(IfMissing.Fail)
 
       val sourceModuleVersions = VersionNumber(compiler.scalaInstance.actualVersion).cascadingVersions
-      AnalyzingCompiler.compileSources(interfaceSources(sourceModuleVersions), targetJar, xsbtiJars, id, compiler, log)
+      val sources = buffered bufferQuietly interfaceSources(sourceModuleVersions)
+      AnalyzingCompiler.compileSources(sources, targetJar, xsbtiJars, id, compiler, log)
 
       manager.define(binID, Seq(targetJar))
 
@@ -182,14 +186,13 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
 
   private def update(module: ivySbt.Module)(predicate: File => Boolean): Option[Seq[File]] = {
 
-    val retrieveDirectory = new File(ivyConfiguration.baseDirectory, "component")
     val retrieveConfiguration = new RetrieveConfiguration(retrieveDirectory, Resolver.defaultRetrievePattern, false)
     val updateConfiguration = new UpdateConfiguration(Some(retrieveConfiguration), true, UpdateLogging.DownloadOnly)
 
-    log.info(s"Attempting to fetch ${dependenciesNames(module)}. This operation may fail.")
-    IvyActions.updateEither(module, updateConfiguration, UnresolvedWarningConfiguration(), LogicalClock.unknown, None, log) match {
+    buffered.info(s"Attempting to fetch ${dependenciesNames(module)}. This operation may fail.")
+    IvyActions.updateEither(module, updateConfiguration, UnresolvedWarningConfiguration(), LogicalClock.unknown, None, buffered) match {
       case Left(unresolvedWarning) =>
-        log.debug(s"Couldn't retrieve module ${dependenciesNames(module)}.")
+        buffered.debug(s"Couldn't retrieve module ${dependenciesNames(module)}.")
         None
 
       case Right(updateReport) =>
@@ -200,8 +203,8 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
             (_, f) <- m.artifacts
           } yield f
 
-        log.debug(s"Files retrieved for ${dependenciesNames(module)}:")
-        log.debug(allFiles mkString ", ")
+        buffered.debug(s"Files retrieved for ${dependenciesNames(module)}:")
+        buffered.debug(allFiles mkString ", ")
 
         allFiles filter predicate match {
           case Seq() => None
