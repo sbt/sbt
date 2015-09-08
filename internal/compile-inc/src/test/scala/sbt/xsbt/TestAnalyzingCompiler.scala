@@ -87,6 +87,11 @@ class TestAnalyzingCompiler(incOptions: IncOptions) {
     analyses = Nil
   }
 
+  /**
+   * Returns the analyses produces by all compilation steps so far.
+   */
+  def getAnalyses: List[TestAnalysis] = analyses
+
   private val reporter = new TestReporter
   private val incremental = new TestIncremental(ConsoleLogger(), incOptions)
   private var analyses: List[TestAnalysis] = Nil

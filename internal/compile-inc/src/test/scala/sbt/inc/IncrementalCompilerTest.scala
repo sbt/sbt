@@ -68,7 +68,8 @@ object IncrementalCompilerTest {
     directory: File,
     files: Map[String, String],
     lastChanges: Seq[(String, FileOP)],
-    previous: Option[ScenarioState]) {
+    previous: Option[ScenarioState],
+    previousIsFailing: Boolean) {
 
     /**
      * Modifies the current state by applying the different file changes described
@@ -85,8 +86,12 @@ object IncrementalCompilerTest {
             files + (fileName -> content.content)
         }
 
-      if (fileChanges.nonEmpty)
-        this.copy(files = newFiles, lastChanges = fileChanges)
+      val previousChanges =
+        if (previousIsFailing) previous map (_.lastChanges) getOrElse Nil
+        else Nil
+
+      if (fileChanges.nonEmpty || previousIsFailing)
+        this.copy(files = newFiles, lastChanges = fileChanges ++ previousChanges)
       else this
     }
 
@@ -99,16 +104,19 @@ object IncrementalCompilerTest {
     /** The same state with no file marked as changed. */
     def noChanges: ScenarioState = copy(lastChanges = Nil)
 
+    def markFailing: ScenarioState = copy(previousIsFailing = true)
+
     private[this] def copy(compiler: TestAnalyzingCompiler = compiler,
       directory: File = directory,
       files: Map[String, String] = files,
-      lastChanges: Seq[(String, FileOP)] = lastChanges): ScenarioState =
-      new ScenarioState(compiler, directory, files, lastChanges, Some(this))
+      lastChanges: Seq[(String, FileOP)] = lastChanges,
+      previousIsFailing: Boolean = false): ScenarioState =
+      new ScenarioState(compiler, directory, files, lastChanges, Some(this), previousIsFailing)
   }
   object ScenarioState {
     /** Creates an initial state. */
     def apply(compiler: TestAnalyzingCompiler, directory: File, files: Map[String, String]): ScenarioState =
-      new ScenarioState(compiler, directory, files, Nil, None)
+      new ScenarioState(compiler, directory, files, Nil, None, false)
   }
 
   /**
@@ -194,7 +202,7 @@ object IncrementalCompilerTest {
           if (stepsCount != 1) {
             val message =
               if (stepsCount == 0) s"Compilation didn't finish after the expected number of steps ($expectedSteps)."
-              else "Compilation finished before expected number of steps (took ${expectedSteps - $stepsCount} instead of $expectedSteps)."
+              else s"Compilation finished before expected number of steps (took ${expectedSteps - stepsCount} instead of $expectedSteps)."
             throw FailedStepException(state, this, message)
           }
         }
@@ -267,7 +275,7 @@ object IncrementalCompilerTest {
         catch { case e: CompilationFailedException => true }
 
       if (compilationFailed) {
-        newState.noChanges
+        newState.markFailing
       } else {
         throw new FailedStepException(newState, this, "Compilation succeeded, but failure was expected.")
       }
