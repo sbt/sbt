@@ -39,8 +39,6 @@ class ComponentManager(globalLock: xsbti.GlobalLock, provider: xsbti.ComponentPr
             d()
             if (d.cache) cache(id)
             getOrElse(notFound)
-          case f: IfMissing.Fallback =>
-            f()
         }
 
       lockLocalCache { getOrElse(fromGlobal) }
@@ -75,7 +73,6 @@ sealed trait IfMissing extends NotNull
 object IfMissing {
   object Fail extends IfMissing
   final class Define(val cache: Boolean, define: => Unit) extends IfMissing { def apply() = define }
-  final class Fallback(f: => Iterable[File]) extends IfMissing { def apply() = f }
 }
 object ComponentManager {
   lazy val (version, timestamp) =

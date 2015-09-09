@@ -232,7 +232,8 @@ object Defaults extends BuildCommon {
     clean := {
       val _ = clean.value
       IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log)
-    }
+    },
+    scalaCompilerBridgeSource := ModuleID(xsbti.ArtifactInfo.SbtOrganization, "compiler-interface", sbtVersion.value, Some("component")).sources()
   )
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(Seq(
@@ -261,7 +262,7 @@ object Defaults extends BuildCommon {
       if (plugin) scalaBase / ("sbt-" + sbtv) else scalaBase
     }
 
-  def compilersSetting = compilers := Compiler.compilers(scalaInstance.value, classpathOptions.value, javaHome.value, ivyConfiguration.value)(appConfiguration.value, streams.value.log)
+  def compilersSetting = compilers := Compiler.compilers(scalaInstance.value, classpathOptions.value, javaHome.value, ivyConfiguration.value, scalaCompilerBridgeSource.value)(appConfiguration.value, streams.value.log)
 
   lazy val configTasks = docTaskSettings(doc) ++ inTask(compile)(compileInputsSettings) ++ configGlobal ++ compileAnalysisSettings ++ Seq(
     compile <<= compileTask,
