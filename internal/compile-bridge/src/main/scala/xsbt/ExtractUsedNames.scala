@@ -38,7 +38,7 @@ import scala.tools.nsc._
  * The tree walking algorithm walks into TypeTree.original explicitly.
  *
  */
-class ExtractUsedNames[GlobalType <: CallbackGlobal](val global: GlobalType) {
+class ExtractUsedNames[GlobalType <: CallbackGlobal](val global: GlobalType) extends GlobalHelpers {
   import global._
 
   def extract(unit: CompilationUnit): Set[String] = {
