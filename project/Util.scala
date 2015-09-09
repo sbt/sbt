@@ -16,7 +16,7 @@ object Util {
       formatter.setTimeZone(TimeZone.getTimeZone("GMT"))
       val timestamp = formatter.format(new Date)
       val content = versionLine(version) + "\ntimestamp=" + timestamp
-      val f = dir / "xsbt.version.properties"
+      val f = dir / "incrementalcompiler.version.properties"
       if (!f.exists || f.lastModified < lastCompilationTime(analysis) || !containsVersion(f, version)) {
         s.log.info("Writing version information to " + f + " :\n" + content)
         IO.write(f, content)

@@ -40,6 +40,13 @@ object ComponentCompiler {
         componentCompiler(compilerInterfaceID)
       }
   }
+
+  lazy val incrementalVersion = {
+    val properties = new java.util.Properties
+    val propertiesStream = getClass.getResource("/incrementalcompiler.version.properties").openStream
+    try { properties.load(propertiesStream) } finally { propertiesStream.close() }
+    properties.getProperty("version")
+  }
 }
 /**
  * This class provides source components compiled with the provided RawCompiler.
@@ -97,10 +104,8 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
   private val sbtOrgTemp = JsonUtil.sbtOrgTemp
   private val modulePrefixTemp = "temp-module-"
   private val ivySbt: IvySbt = new IvySbt(ivyConfiguration)
-  // TODO: The actual sbt version may be different from the component manager's version
-  private val sbtVersion = ComponentManager.version
   private val buffered = new BufferedLogger(FullLogger(log))
-  private val retrieveDirectory = new File(s"$bootDirectory/scala-${compiler.scalaInstance.version}/$incrementalCompilerOrg/sbt/$sbtVersion/compiler-interface-srcs")
+  private val retrieveDirectory = new File(s"$bootDirectory/scala-${compiler.scalaInstance.version}/$incrementalCompilerOrg/sbt/$incrementalVersion/compiler-interface-srcs")
 
   def apply(id: String): File = {
     val binID = binaryID(id)
@@ -151,14 +156,14 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
   }
 
   /**
-   * Returns a dummy module that depends on "org.scala-sbt" % `id` % `sbtVersion`.
+   * Returns a dummy module that depends on "org.scala-sbt" % `id` % `incrementalVersion`.
    * Note: Sbt's implementation of Ivy requires us to do this, because only the dependencies
    *       of the specified module will be downloaded.
    */
   private def getModule(id: String): ivySbt.Module = {
     val sha1 = Hash.toHex(Hash(id))
-    val dummyID = ModuleID(sbtOrgTemp, modulePrefixTemp + sha1, sbtVersion, Some("component"))
-    val moduleID = ModuleID(xsbti.ArtifactInfo.SbtOrganization + ".incrementalcompiler", id, sbtVersion, Some("component")).sources()
+    val dummyID = ModuleID(sbtOrgTemp, modulePrefixTemp + sha1, incrementalVersion, Some("component"))
+    val moduleID = ModuleID(xsbti.ArtifactInfo.SbtOrganization + ".incrementalcompiler", id, incrementalVersion, Some("component")).sources()
     getModule(dummyID, Seq(moduleID))
   }
 
