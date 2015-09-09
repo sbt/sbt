@@ -9,7 +9,8 @@ def internalPath   = file("internal")
 // but can be shared across the multi projects.
 def buildLevelSettings: Seq[Setting[_]] = Seq(
   organization in ThisBuild := "org.scala-sbt.incrementalcompiler",
-  version in ThisBuild := "1.0.0-SNAPSHOT"
+  version in ThisBuild := "1.0.0-SNAPSHOT",
+  maxErrors := 15
   // bintrayOrganization in ThisBuild := Some("sbt"),
   // // bintrayRepository in ThisBuild := s"ivy-${(publishStatus in ThisBuild).value}",
   // bintrayPackage in ThisBuild := "sbt",
@@ -67,7 +68,6 @@ lazy val compileRoot: Project = (project in file(".")).
     classpathProj,
     classfileProj,
     compileInterfaceProj,
-    compileInterfaceOldProj,
     compileIncrementalProj,
     compilePersistProj,
     compilerProj,
@@ -150,35 +150,25 @@ lazy val compileInterfaceProj = (project in internalPath / "compile-bridge").
     // compiler instances that are memory hungry
     javaOptions in Test += "-Xmx1G",
     libraryDependencies ++= Seq(sbtIO, utilLogging),
-    scalaVersion := scala211,
-    crossScalaVersions := Nil
+    scalaSource in Compile := {
+      scalaVersion.value match {
+        case v if v startsWith "2.11" => baseDirectory.value / "src" / "main" / "scala"
+        case _                        => baseDirectory.value / "src-2.10" / "main" / "scala"
+      }
+    },
+    scalacOptions := {
+      scalaVersion.value match {
+        case v if v startsWith "2.11" => scalacOptions.value
+        case _                        => scalacOptions.value filterNot (Set("-Xfatal-warnings", "-deprecation") contains _)
+      }
+    }
     // artifact in (Compile, packageSrc) := Artifact(srcID).copy(configurations = Compile :: Nil).extra("e:component" -> srcID)
-  )
-
-lazy val compileInterfaceOldProj = (project in internalPath / "compile-bridge-2.10").
-  dependsOn(interfaceProj % "compile;test->test", apiProj % "test->test").
-  settings(
-    baseSettings,
-    libraryDependencies += scalaCompiler.value,
-    name := "Compiler Interface for pre 2.11 Scala",
-    exportJars := true,
-    // we need to fork because in unit tests we set usejavacp = true which means
-    // we are expecting all of our dependencies to be on classpath so Scala compiler
-    // can use them while constructing its own classpath for compilation
-    fork in Test := true,
-    // needed because we fork tests and tests are ran in parallel so we have multiple Scala
-    // compiler instances that are memory hungry
-    javaOptions in Test += "-Xmx1G",
-    libraryDependencies ++= Seq(sbtIO, utilLogging),
-    crossScalaVersions := Seq(scala210, scala293, scala282),
-    scalacOptions := { scalacOptions.value filterNot (Set("-Xfatal-warnings", "-deprecation") contains _) },
-    scalaSource in Test := (scalaSource in compileInterfaceProj in Test).value
   )
 
 // Implements the core functionality of detecting and propagating changes incrementally.
 //   Defines the data structures for representing file fingerprints and relationships and the overall source analysis
 lazy val compileIncrementalProj = (project in internalPath / "compile-inc").
-  dependsOn (apiProj, classpathProj, compileInterfaceProj % "test->compile").
+  dependsOn (apiProj, classpathProj, compileInterfaceProj % Test).
   settings(
     testedBaseSettings,
     libraryDependencies ++= Seq(sbtIO, utilLogging, utilRelation),

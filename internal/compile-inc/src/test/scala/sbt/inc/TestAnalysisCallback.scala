@@ -2,11 +2,11 @@ package sbt.inc
 
 import java.io.File
 import scala.collection.mutable.ArrayBuffer
-import xsbti.api.{ Compilation, Source, SourceAPI }
+import xsbti.api.{ Compilation, DependencyContext, Source, SourceAPI }
 import xsbti._
-import xsbti.DependencyContext._
+import xsbti.api.DependencyContext._
 import xsbt.api.{ APIUtil, HashAPI }
-import sbt.Relation
+import sbt.internal.util.Relation
 
 case class TestAnalysis(
   relations: sbt.inc.Relations,

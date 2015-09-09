@@ -9,61 +9,61 @@ class IncrementalTest extends FlatSpec {
 
   behavior of "The incremental compiler"
 
-  it should "handle abstract override members correctly" in abstractOverride
-  it should "handle abstract types correctly" in abstractType
-  it should "abstract type override" in abstractTypeOverride
-  it should "record dependencies on files not included in partial recompilation" in added
-  it should "support backtick quoted names" in backtickQuotedNames
-  it should "support by name parameters" in byNameParameters
-  it should "support default parameters" in defaultParams
-  it should "detect classfile collisions" in dupClasses
-  it should "support empty source files" in empty
-  it should "support empty packages" in emptyPackage
-  it should "account for erasure" in erasure
-  it should "behave correctly when there's a dependency on a JAR in <java.home>lib/ext/" in ext
-  it should "handle mutually dependent sources" in cyclicDependency
-  it should "handle implicit members" in implicitMembers
-  it should "handle implicit parameters" in implicitParameters
-  it should "account for implicit search" in implicitSearch
-  it should "track dependencies on implicit scope properly" in implicitSearchCompanionScope
-  it should "track dependencies introduced by imports" in importClass
-  it should "track dependencies on imports for full packages" in importPackage
-  it should "consider files that inherit from a macro as NOT defining a macro" in inheritedMacro
-  it should "remember dependencies in case of intermediate errors" in intermediateError
-  it should "consider lazyness as part of the public API" in lazyVal
-  it should "invalidate clients of a macro that has been modified" in macroChangeProvider
-  it should "track dependencies on macro arguments" in macroArgDeps
-  it should "track dependencies of macro arguments in nested macro calls" in macroArgDepsNested
-  it should "consider argument names as part of the public API" in named
-  it should "detect the introduction of new cyclic dependencies" in newCyclic.pending
-  it should "consider `override` flag as part of the public API" in overrideMember
-  it should "invalidate classes whose parents' APIs have changed" in parentChange
-  it should "invalidate classes when a method in its parent has a different signature" in parentMemberChange
-  it should "detect qualified access changes" in qualifiedAccess
-  it should "support source deletion" in deleteSourceA
-  it should "support source deletion and commenting" in deleteSourceB
-  it should "support repeated parameters" in repeatedParameters
-  it should "support resident package objects" in residentPackageObject
-  it should "detect changes to the used names" in sameFileUsedNames
-  it should "detect changes to sealed hierarchies" in sealedClasses
-  it should "support specialization" in specialized
-  it should "account for stability of names" in stabilityChanges
-  it should "support structural types" in structuralTypes.pending
-  it should "support usage of structural types" in structUsage
-  it should "consider private members of traits in invalidation" in traitPrivateMembers
-  it should "recompile classes that implement a trait when adding/removing calls to super" in traitSuper
-  it should "consider transitive member references dependencies" in transitiveMemberRef
-  it should "consider transitive inheritance dependencies" in transitiveInheritance
-  it should "consider changes to type alias as changes to the public API" in typeAlias
-  it should "consider changes the type parameters as members of the public API" in typeParameters
-  it should "register dependencies on types that are only referenced" in typerefOnly
-  it should "register dependencies on types that only appear as return types" in typerefReturn
-  it should "consider the kind of a member as part of the public API" in replaceVar
-  it should "consider the variance of type parameters as part of the public API" in variance
+  it should "handle abstract override members correctly" in abstractOverride()
+  it should "handle abstract types correctly" in abstractType()
+  it should "abstract type override" in abstractTypeOverride()
+  it should "record dependencies on files not included in partial recompilation" in added()
+  it should "support backtick quoted names" in backtickQuotedNames()
+  it should "support by name parameters" in byNameParameters()
+  it should "support default parameters" in defaultParams()
+  it should "detect classfile collisions" in dupClasses()
+  it should "support empty source files" in empty()
+  it should "support empty packages" in emptyPackage()
+  it should "account for erasure" in erasure()
+  it should "behave correctly when there's a dependency on a JAR in <java.home>lib/ext/" in ext()
+  it should "handle mutually dependent sources" in cyclicDependency()
+  it should "handle implicit members" in implicitMembers()
+  it should "handle implicit parameters" in implicitParameters()
+  it should "account for implicit search" in implicitSearch()
+  it should "track dependencies on implicit scope properly" in implicitSearchCompanionScope()
+  it should "track dependencies introduced by imports" in importClass()
+  it should "track dependencies on imports for full packages" in importPackage()
+  it should "consider files that inherit from a macro as NOT defining a macro" in inheritedMacro()
+  it should "remember dependencies in case of intermediate errors" in intermediateError()
+  it should "consider lazyness as part of the public API" in lazyVal()
+  it should "invalidate clients of a macro that has been modified" in macroChangeProvider()
+  it should "track dependencies on macro arguments" in macroArgDeps()
+  it should "track dependencies of macro arguments in nested macro calls" in macroArgDepsNested()
+  it should "consider argument names as part of the public API" in named()
+  it should "detect the introduction of new cyclic dependencies" in newCyclic.pending()
+  it should "consider `override` flag as part of the public API" in overrideMember()
+  it should "invalidate classes whose parents' APIs have changed" in parentChange()
+  it should "invalidate classes when a method in its parent has a different signature" in parentMemberChange()
+  it should "detect qualified access changes" in qualifiedAccess()
+  it should "support source deletion" in deleteSourceA()
+  it should "support source deletion and commenting" in deleteSourceB()
+  it should "support repeated parameters" in repeatedParameters()
+  it should "support resident package objects" in residentPackageObject()
+  it should "detect changes to the used names" in sameFileUsedNames()
+  it should "detect changes to sealed hierarchies" in sealedClasses()
+  it should "support specialization" in specialized()
+  it should "account for stability of names" in stabilityChanges()
+  it should "support structural types" in structuralTypes.pending()
+  it should "support usage of structural types" in structUsage()
+  it should "consider private members of traits in invalidation" in traitPrivateMembers()
+  it should "recompile classes that implement a trait when adding/removing calls to super" in traitSuper()
+  it should "consider transitive member references dependencies" in transitiveMemberRef()
+  it should "consider transitive inheritance dependencies" in transitiveInheritance()
+  it should "consider changes to type alias as changes to the public API" in typeAlias()
+  it should "consider changes the type parameters as members of the public API" in typeParameters()
+  it should "register dependencies on types that are only referenced" in typerefOnly()
+  it should "register dependencies on types that only appear as return types" in typerefReturn()
+  it should "consider the kind of a member as part of the public API" in replaceVar()
+  it should "consider the variance of type parameters as part of the public API" in variance()
 
   def compiler = new TestAnalyzingCompiler(sbt.inc.IncOptions.Default)
 
-  def abstractOverride =
+  def abstractOverride()() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -83,7 +83,7 @@ class IncrementalTest extends FlatSpec {
                        |  abstract override def x = super.x + 5
                        |}""".stripMargin))
 
-  def abstractType =
+  def abstractType() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -99,7 +99,7 @@ class IncrementalTest extends FlatSpec {
                        |  type S
                        |}""".stripMargin))
 
-  def abstractTypeOverride =
+  def abstractTypeOverride() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -120,7 +120,7 @@ class IncrementalTest extends FlatSpec {
                          |  // comment to trigger recompilation
                          |}""".stripMargin) invalidates ())
 
-  def added =
+  def added() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -156,7 +156,7 @@ class IncrementalTest extends FlatSpec {
 
       FailedCompile())
 
-  def backtickQuotedNames =
+  def backtickQuotedNames() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -172,7 +172,7 @@ class IncrementalTest extends FlatSpec {
                        |   def asdf = 3
                        |}""".stripMargin) invalidates "B.scala")
 
-  def byNameParameters =
+  def byNameParameters() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -188,7 +188,7 @@ class IncrementalTest extends FlatSpec {
                        |  def x(i: Function0[String]) = ()
                        |}""".stripMargin) invalidates "B.scala")
 
-  def defaultParams =
+  def defaultParams() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -206,7 +206,7 @@ class IncrementalTest extends FlatSpec {
                        |  def x(f: Int, g: Int): Int = g
                        |}""".stripMargin) invalidates "B.scala")
 
-  def dupClasses =
+  def dupClasses() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -221,7 +221,7 @@ class IncrementalTest extends FlatSpec {
         "B.scala" -> """package clear
                        |object B""".stripMargin) invalidates ("A.scala", "B.scala"))
 
-  def empty =
+  def empty() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -269,7 +269,7 @@ class IncrementalTest extends FlatSpec {
                        |  def x = A.x
                        |}""".stripMargin))
 
-  def emptyPackage =
+  def emptyPackage() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -295,7 +295,7 @@ class IncrementalTest extends FlatSpec {
         "Define.scala" -> """package a.pkgName
                             |object Test""".stripMargin))
 
-  def erasure =
+  def erasure() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -311,7 +311,7 @@ class IncrementalTest extends FlatSpec {
                        |  def x: List[String] = List("3")
                        |}""".stripMargin) invalidates "B.scala")
 
-  def ext =
+  def ext() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -322,7 +322,7 @@ class IncrementalTest extends FlatSpec {
 
       IncrementalStep() invalidates ())
 
-  def cyclicDependency =
+  def cyclicDependency() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -341,7 +341,7 @@ class IncrementalTest extends FlatSpec {
                        |  val z: String = B.y
                        |}""".stripMargin)).pending
 
-  def implicitMembers =
+  def implicitMembers() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -357,7 +357,7 @@ class IncrementalTest extends FlatSpec {
                        |  def x(i: Int): String = i.toString
                        |}""".stripMargin) invalidates "B.scala")
 
-  def implicitParameters =
+  def implicitParameters() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -377,7 +377,7 @@ class IncrementalTest extends FlatSpec {
                        |}
                        |class E""".stripMargin) invalidates "B.scala")
 
-  def implicitSearch =
+  def implicitSearch() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -395,7 +395,7 @@ class IncrementalTest extends FlatSpec {
                        |  val x = 1
                        |}""".stripMargin) invalidates "C.scala")
 
-  def implicitSearchCompanionScope =
+  def implicitSearchCompanionScope() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -416,7 +416,7 @@ class IncrementalTest extends FlatSpec {
                        |  implicit def m[A]: M[A] = ???
                        |}""".stripMargin) invalidates ("B.scala", "C.scala"))
 
-  def importClass =
+  def importClass() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -427,7 +427,7 @@ class IncrementalTest extends FlatSpec {
       IncrementalStep(
         "A.scala" -> "package a") invalidates "B.scala")
 
-  def importPackage =
+  def importPackage() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -437,7 +437,7 @@ class IncrementalTest extends FlatSpec {
       IncrementalStep(
         "A.scala" -> "package a") invalidates "B.scala").pending
 
-  def inheritedMacro =
+  def inheritedMacro() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -460,7 +460,7 @@ class IncrementalTest extends FlatSpec {
                             |  object RealClient extends Provider
                             |}""".stripMargin) invalidates ())
 
-  def intermediateError =
+  def intermediateError() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -481,7 +481,7 @@ class IncrementalTest extends FlatSpec {
                        |  def x: String = "3"
                        |}""".stripMargin))
 
-  def lazyVal =
+  def lazyVal() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -497,7 +497,7 @@ class IncrementalTest extends FlatSpec {
                        |  lazy val x = 3
                        |}""".stripMargin) invalidates "B.scala")
 
-  def macroChangeProvider =
+  def macroChangeProvider() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -524,7 +524,7 @@ class IncrementalTest extends FlatSpec {
                               |  def treeImpl(c: Context)(args: c.Expr[Any]) = sys.error("no macro for you!")
                               |}""".stripMargin) invalidates "Client.scala")
 
-  def macroArgDeps =
+  def macroArgDeps() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -552,7 +552,7 @@ class IncrementalTest extends FlatSpec {
       IncrementalStep(
         "Foo.scala" -> "object Foo") invalidates "Client.scala")
 
-  def macroArgDepsNested =
+  def macroArgDepsNested() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -580,7 +580,7 @@ class IncrementalTest extends FlatSpec {
       IncrementalStep(
         "Foo.scala" -> "object Foo") invalidates "Client.scala")
 
-  def named =
+  def named() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -596,7 +596,7 @@ class IncrementalTest extends FlatSpec {
                        |  def x(yy: Int, zz: Int) = yy - zz
                        |}""".stripMargin) invalidates "B.scala")
 
-  def newCyclic =
+  def newCyclic() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -606,7 +606,7 @@ class IncrementalTest extends FlatSpec {
       FailedCompile(
         "A.scala" -> """trait A { val x = (new B).y }"""))
 
-  def overrideMember =
+  def overrideMember() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -626,7 +626,7 @@ class IncrementalTest extends FlatSpec {
                        |  def x = 2
                        |}""".stripMargin) invalidates "D.scala")
 
-  def parentChange =
+  def parentChange() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -646,7 +646,7 @@ class IncrementalTest extends FlatSpec {
                        |}
                        |class V""".stripMargin) invalidates ("Y.scala", "Z.scala"))
 
-  def parentMemberChange =
+  def parentMemberChange() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -663,7 +663,7 @@ class IncrementalTest extends FlatSpec {
                        |  def x(i: String) = i+"3"
                        |}""".stripMargin) invalidates ("B.scala", "C.scala"))
 
-  def qualifiedAccess =
+  def qualifiedAccess() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -685,7 +685,7 @@ class IncrementalTest extends FlatSpec {
                        |  private[b] def x = 3
                        |}""".stripMargin) invalidates "B.scala")
 
-  def deleteSourceA =
+  def deleteSourceA() =
     compiler execute Scenario(
       FailedCompile(
         "A.scala" -> """package test
@@ -697,7 +697,7 @@ class IncrementalTest extends FlatSpec {
         expectedSteps = 1,
         "A.scala" -> delete))
 
-  def deleteSourceB =
+  def deleteSourceB() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -751,7 +751,7 @@ class IncrementalTest extends FlatSpec {
                        |  def length: Int = 5
                        |}""".stripMargin))
 
-  def repeatedParameters =
+  def repeatedParameters() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -767,7 +767,7 @@ class IncrementalTest extends FlatSpec {
                        |  def x(i: Seq[String]) = ()
                        |}""".stripMargin) invalidates "B.scala")
 
-  def residentPackageObject =
+  def residentPackageObject() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -791,7 +791,7 @@ class IncrementalTest extends FlatSpec {
                              |  val green = 3
                              |}""".stripMargin))
 
-  def sameFileUsedNames =
+  def sameFileUsedNames() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -810,7 +810,7 @@ class IncrementalTest extends FlatSpec {
                        |  def x = 3
                        |}""".stripMargin) invalidates "A.scala")
 
-  def sealedClasses =
+  def sealedClasses() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -831,7 +831,7 @@ class IncrementalTest extends FlatSpec {
                        |class C extends A
                        |class E extends A""".stripMargin) invalidates "D.scala")
 
-  def specialized =
+  def specialized() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -848,7 +848,7 @@ class IncrementalTest extends FlatSpec {
                        |  def x[@specialized T](t: T) = t
                        |}""".stripMargin) invalidates "B.scala")
 
-  def stabilityChanges =
+  def stabilityChanges() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -868,7 +868,7 @@ class IncrementalTest extends FlatSpec {
                        |  def x = new C
                        |}""".stripMargin) invalidates "B.scala")
 
-  def structuralTypes =
+  def structuralTypes() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -888,7 +888,7 @@ class IncrementalTest extends FlatSpec {
                        |  def x: Byte = 3
                        |}""".stripMargin) invalidates "C.scala")
 
-  def structUsage =
+  def structUsage() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -904,7 +904,7 @@ class IncrementalTest extends FlatSpec {
                        |  def x: { def q: String } = sys.error("not important")
                        |}""".stripMargin) invalidates "B.scala")
 
-  def traitPrivateMembers =
+  def traitPrivateMembers() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -918,9 +918,9 @@ class IncrementalTest extends FlatSpec {
       IncrementalStep(
         "Bar.scala" -> """trait Bar {
                          |  private val x = new B
-                         |}""".stripMargin) invalidates ("Foo.scala")).pending
+                         |}""".stripMargin) invalidates ("Foo.scala"))
 
-  def traitSuper =
+  def traitSuper() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -954,9 +954,9 @@ class IncrementalTest extends FlatSpec {
                        |}
                        |trait C extends A {
                        |  abstract override def x = super.x
-                       |}""".stripMargin)).pending
+                       |}""".stripMargin))
 
-  def transitiveMemberRef =
+  def transitiveMemberRef() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -975,7 +975,7 @@ class IncrementalTest extends FlatSpec {
                        |  val x = 5
                        |}""".stripMargin) invalidates "B.scala")
 
-  def transitiveInheritance =
+  def transitiveInheritance() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -992,7 +992,7 @@ class IncrementalTest extends FlatSpec {
                        |  val x = 5
                        |}""".stripMargin) invalidates ("B.scala", "C.scala"))
 
-  def typeAlias =
+  def typeAlias() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -1008,7 +1008,7 @@ class IncrementalTest extends FlatSpec {
                        |  type X = Int
                        |}""".stripMargin) invalidates "B.scala")
 
-  def typeParameters =
+  def typeParameters() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -1024,7 +1024,7 @@ class IncrementalTest extends FlatSpec {
       IncrementalStep(
         "A.scala" -> """trait A""") invalidates ("B.scala", "C.scala", "D.scala"))
 
-  def typerefOnly =
+  def typerefOnly() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -1037,7 +1037,7 @@ class IncrementalTest extends FlatSpec {
       IncrementalStep(
         "B.scala" -> delete) invalidates "A.scala")
 
-  def typerefReturn =
+  def typerefReturn() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -1055,7 +1055,7 @@ class IncrementalTest extends FlatSpec {
                        |  def x: I = sys.error("Not important")
                        |}""".stripMargin) invalidates "B.scala")
 
-  def replaceVar =
+  def replaceVar() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,
@@ -1072,7 +1072,7 @@ class IncrementalTest extends FlatSpec {
                        |  var x = 3
                        |}""".stripMargin) invalidates "B.scala")
 
-  def variance =
+  def variance() =
     compiler execute Scenario(
       FullCompilation(
         expectedSteps = 1,

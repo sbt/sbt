@@ -9,8 +9,8 @@ import xsbt.{ CompilationFailedException, TestAnalyzingCompiler }
 import org.scalatest.exceptions.TestPendingException
 
 object IncrementalCompilerTest {
-  implicit class withPending(result: => Boolean) {
-    def pending: Boolean =
+  implicit class withPending(result: => Unit) {
+    def pending(): Unit =
       try {
         result
         throw PassingPendingScenarioException
@@ -129,7 +129,7 @@ object IncrementalCompilerTest {
      * reported as a failure.
      */
     def pending: Scenario = new Scenario(step) {
-      override def execute(compiler: TestAnalyzingCompiler): Boolean =
+      override def execute(compiler: TestAnalyzingCompiler): Unit =
         try {
           super.execute(compiler)
           throw PassingPendingScenarioException
@@ -139,11 +139,11 @@ object IncrementalCompilerTest {
     }
 
     /** Executes all the steps of this scenario using `compiler`. */
-    def execute(compiler: TestAnalyzingCompiler): Boolean =
+    def execute(compiler: TestAnalyzingCompiler): Unit =
       IO.withTemporaryDirectory { dir =>
         val initial = ScenarioState(compiler, dir, Map.empty)
-        step.execute(initial);
-        true
+        step.execute(initial)
+        ()
       }
   }
   object Scenario {
@@ -270,14 +270,11 @@ object IncrementalCompilerTest {
           compileUntilFinished(state.markChanged((invalidated.toSeq map (_.getName)): _*))
       }
 
-      val compilationFailed =
-        try { compileUntilFinished(newState); false }
-        catch { case e: CompilationFailedException => true }
-
-      if (compilationFailed) {
-        newState.markFailing
-      } else {
+      try {
+        compileUntilFinished(newState)
         throw new FailedStepException(newState, this, "Compilation succeeded, but failure was expected.")
+      } catch {
+        case _: CompilationFailedException => newState.markFailing
       }
 
     }

@@ -8,7 +8,7 @@ import xsbti.api.Source
 import sbt.inc.IncrementalCompilerTest
 import sbt.inc.IncrementalCompilerTest._
 import sbt.inc.{ TestIncremental, TestAnalysis, TestAnalysisCallback, APIs, IncOptions }
-import sbt.ConsoleLogger
+import sbt.internal.util.ConsoleLogger
 import sbt.io.IO
 import sbt.io.Path._
 
@@ -21,7 +21,7 @@ import scala.tools.nsc.reporters.ConsoleReporter
 class TestAnalyzingCompiler(incOptions: IncOptions) {
 
   /** Executes the given scenario using this compiler */
-  def execute(s: Scenario): Boolean = s execute this
+  def execute(s: Scenario): Unit = s execute this
 
   /**
    * Perform one step of incremental compilation, and return the set of files

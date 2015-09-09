@@ -193,7 +193,7 @@ class ExtractAPI[GlobalType <: CallbackGlobal](val global: GlobalType,
               build(base, typeParameters(in, typeParams0), Nil)
             case MethodType(params, resultType) =>
               build(resultType, typeParams, parameterList(params) :: valueParameters)
-            case Nullary(resultType) => // 2.9 and later
+            case NullaryMethodType(resultType) =>
               build(resultType, typeParams, valueParameters)
             case returnType =>
               val t2 = processType(in, dropConst(returnType))
@@ -231,8 +231,8 @@ class ExtractAPI[GlobalType <: CallbackGlobal](val global: GlobalType,
     case _                      => t
   }
   private def dropNullary(t: Type): Type = t match {
-    case Nullary(un) => un
-    case _           => t
+    case NullaryMethodType(un) => un
+    case _                     => t
   }
 
   private def typeDef(in: Symbol, s: Symbol): xsbti.api.TypeMember =
@@ -309,7 +309,7 @@ class ExtractAPI[GlobalType <: CallbackGlobal](val global: GlobalType,
         None
     }
   private def ignoreClass(sym: Symbol): Boolean =
-    sym.isLocalClass || sym.isAnonymousClass || sym.fullName.endsWith(LocalChild.toString)
+    sym.isLocalClass || sym.isAnonymousClass || sym.fullName.endsWith(tpnme.LOCAL_CHILD.toString)
 
   // This filters private[this] vals/vars that were not in the original source.
   //  The getter will be used for processing instead.
@@ -326,7 +326,7 @@ class ExtractAPI[GlobalType <: CallbackGlobal](val global: GlobalType,
       val absOver = s.hasFlag(ABSOVERRIDE)
       val abs = s.hasFlag(ABSTRACT) || s.hasFlag(DEFERRED) || absOver
       val over = s.hasFlag(OVERRIDE) || absOver
-      new xsbti.api.Modifiers(abs, over, s.isFinal, s.hasFlag(SEALED), isImplicit(s), s.hasFlag(LAZY), hasMacro(s))
+      new xsbti.api.Modifiers(abs, over, s.isFinal, s.hasFlag(SEALED), isImplicit(s), s.hasFlag(LAZY), s.hasFlag(MACRO))
     }
 
   private def isImplicit(s: Symbol) = s.hasFlag(Flags.IMPLICIT)
@@ -412,7 +412,7 @@ class ExtractAPI[GlobalType <: CallbackGlobal](val global: GlobalType,
         case t: ExistentialType               => makeExistentialType(in, t)
         case NoType                           => Constants.emptyType // this can happen when there is an error that will be reported by a later phase
         case PolyType(typeParams, resultType) => new xsbti.api.Polymorphic(processType(in, resultType), typeParameters(in, typeParams))
-        case Nullary(resultType) =>
+        case NullaryMethodType(resultType) =>
           warning("sbt-api: Unexpected nullary method type " + in + " in " + in.owner); Constants.emptyType
         case _ => warning("sbt-api: Unhandled type " + t.getClass + " : " + t); Constants.emptyType
       }
