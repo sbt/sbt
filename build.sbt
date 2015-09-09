@@ -9,8 +9,7 @@ def internalPath   = file("internal")
 // but can be shared across the multi projects.
 def buildLevelSettings: Seq[Setting[_]] = Seq(
   organization in ThisBuild := "org.scala-sbt.incrementalcompiler",
-  version in ThisBuild := "1.0.0-SNAPSHOT",
-  maxErrors := 15
+  version in ThisBuild := "1.0.0-SNAPSHOT"
   // bintrayOrganization in ThisBuild := Some("sbt"),
   // // bintrayRepository in ThisBuild := s"ivy-${(publishStatus in ThisBuild).value}",
   // bintrayPackage in ThisBuild := "sbt",
