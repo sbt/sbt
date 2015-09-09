@@ -9,14 +9,6 @@ import xsbti.Reporter;
 */
 public interface JavaCompiler
 {
-	/** Compiles Java sources using the provided classpath, output directory, and additional options.
-	 * Output should be sent to the provided logger.
-     *
-     * @deprecated 0.13.8 - Use compileWithReporter instead
-     */
-	@Deprecated
-	void compile(File[] sources, File[] classpath, Output output, String[] options, Logger log);
-
     /**
      * Compiles java sources using the provided classpath, output directory and additional options.
      *

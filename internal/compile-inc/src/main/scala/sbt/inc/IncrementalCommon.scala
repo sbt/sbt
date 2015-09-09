@@ -8,8 +8,6 @@ import java.io.File
 
 private[inc] abstract class IncrementalCommon(log: sbt.util.Logger, options: IncOptions) {
 
-  private def incDebug(options: IncOptions): Boolean = options.relationsDebug || java.lang.Boolean.getBoolean(Incremental.incDebugProp)
-
   // setting the related system property to true will skip checking that the class name
   // still comes from the same classpath entry.  This can workaround bugs in classpath construction,
   // such as the currently problematic -javabootclasspath.  This is subject to removal at any time.
@@ -22,7 +20,7 @@ private[inc] abstract class IncrementalCommon(log: sbt.util.Logger, options: Inc
     if (invalidatedRaw.isEmpty)
       previous
     else {
-      def debug(s: => String) = if (incDebug(options)) log.debug(s) else ()
+      def debug(s: => String) = if (options.relationsDebug) log.debug(s) else ()
       val withPackageObjects = invalidatedRaw ++ invalidatedPackageObjects(invalidatedRaw, previous.relations)
       val invalidated = expand(withPackageObjects, allSources)
       val pruned = Incremental.prune(invalidated, previous, classfileManager)

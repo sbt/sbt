@@ -50,9 +50,22 @@ object TextAnalysisFormat {
   // Some types are not required for external inspection/manipulation of the analysis file,
   // and are complex to serialize as text. So we serialize them as base64-encoded sbinary-serialized blobs.
   // TODO: This is a big performance hit. Figure out a more efficient way to serialize API objects?
-  import sbinary.DefaultProtocol.{ immutableMapFormat, immutableSetFormat, StringFormat, tuple2Format }
-  import AnalysisFormats._
-  implicit val compilationF = xsbt.api.CompilationFormat
+  import sbinary.DefaultProtocol._
+  import sbinary.Format
+  import xsbti.{ Position, Problem, Severity }
+  import sbt.util.Logger.{ m2o, position, problem }
+
+  private implicit val sourceFormat: Format[Source] = xsbt.api.SourceFormat
+  private implicit val compilationF: Format[Compilation] = xsbt.api.CompilationFormat
+  private implicit def problemFormat: Format[Problem] = asProduct4(problem _)(p => (p.category, p.position, p.message, p.severity))
+  private implicit def positionFormat: Format[Position] =
+    asProduct7(position _)(p => (m2o(p.line), p.lineContent, m2o(p.offset), m2o(p.pointer), m2o(p.pointerSpace), m2o(p.sourcePath), m2o(p.sourceFile)))
+  private implicit val severityFormat: Format[Severity] =
+    wrap[Severity, Byte](_.ordinal.toByte, b => Severity.values.apply(b.toInt))
+  private implicit val integerFormat: Format[Integer] = wrap[Integer, Int](_.toInt, Integer.valueOf)
+  private implicit def infoFormat: Format[SourceInfo] =
+    wrap[SourceInfo, (Seq[Problem], Seq[Problem])](si => (si.reportedProblems, si.unreportedProblems), { case (a, b) => SourceInfos.makeInfo(a, b) })
+  private implicit def seqFormat[T](implicit optionFormat: Format[T]): Format[Seq[T]] = viaSeq[Seq[T], T](x => x)
 
   def write(out: Writer, analysis: Analysis, setup: CompileSetup): Unit = {
     VersionF.write(out)

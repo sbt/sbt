@@ -1,6 +1,8 @@
 package sbt
 package inc
 
+import xsbti.api.DependencyContext.DependencyByMemberRef
+import xsbti.api.ExternalDependency
 import java.io.{ BufferedReader, File, StringReader, StringWriter }
 import scala.math.abs
 import org.scalacheck._
@@ -64,11 +66,11 @@ object TextAnalysisFormatTest extends Properties("TextAnalysisFormat") {
     val sourceInfos = SourceInfos.makeInfo(Nil, Nil)
 
     var analysis = Analysis.empty(nameHashing)
-    analysis = analysis.addProduct(aScala, f("A.class"), exists, "A")
-    analysis = analysis.addProduct(aScala, f("A$.class"), exists, "A$")
-    analysis = analysis.addSource(aScala, aSource, exists, Nil, Nil, sourceInfos)
-    analysis = analysis.addBinaryDep(aScala, f("x.jar"), "x", exists)
-    analysis = analysis.addExternalDep(aScala, "C", cSource, inherited = false)
+    analysis = analysis.addSource(aScala, aSource, exists, sourceInfos,
+      products = List((f("A.class"), "A", exists), (f("A$.class"), "A$", exists)),
+      internalDeps = Nil,
+      externalDeps = List(new ExternalDependency(aScala, "C", cSource, DependencyByMemberRef)),
+      binaryDeps = List((f("x.jar"), "x", exists)))
 
     val writer = new StringWriter
 

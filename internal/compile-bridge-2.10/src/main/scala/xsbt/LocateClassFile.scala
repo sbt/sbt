@@ -11,7 +11,7 @@ import java.io.File
 /**
  * Contains utility methods for looking up class files corresponding to Symbols.
  */
-abstract class LocateClassFile {
+abstract class LocateClassFile extends Compat {
   val global: CallbackGlobal
   import global._
 
@@ -34,10 +34,10 @@ abstract class LocateClassFile {
       }
     }
   private def flatname(s: Symbol, separator: Char) =
-    enteringPhase(currentRun.flattenPhase.next) { s fullName separator }
+    atPhase(currentRun.flattenPhase.next) { s fullName separator }
 
   protected def isTopLevelModule(sym: Symbol): Boolean =
-    enteringPhase(currentRun.picklerPhase.next) {
+    atPhase(currentRun.picklerPhase.next) {
       sym.isModuleClass && !sym.isImplClass && !sym.isNestedClass
     }
   protected def className(s: Symbol, sep: Char, dollarRequired: Boolean): String =

@@ -10,7 +10,7 @@ import Gen._
 import sbt.internal.util.Relation
 import xsbti.api._
 import xsbti.SafeLazy
-import xsbti.DependencyContext._
+import xsbti.api.DependencyContext._
 
 /**
  * Scalacheck generators for Analysis objects and their substructures.

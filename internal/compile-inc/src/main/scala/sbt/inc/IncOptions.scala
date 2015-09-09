@@ -80,7 +80,7 @@ final class IncOptions(
    * Once Scala compiler sources are refactored to work well with name hashing algorithm this option will be
    * deleted immediately.
    */
-  val antStyle: Boolean) extends Product with Serializable {
+  val antStyle: Boolean) extends Serializable {
 
   /**
    * Secondary constructor introduced to make IncOptions to be binary compatible with version that didn't have
@@ -145,44 +145,6 @@ final class IncOptions(
       apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing, antStyle)
   }
 
-  //- EXPANDED CASE CLASS METHOD BEGIN -//
-  @deprecated("Use `with$nameOfTheField` copying methods instead.", "0.13.2")
-  def copy(transitiveStep: Int = this.transitiveStep, recompileAllFraction: Double = this.recompileAllFraction,
-    relationsDebug: Boolean = this.relationsDebug, apiDebug: Boolean = this.apiDebug,
-    apiDiffContextSize: Int = this.apiDiffContextSize,
-    apiDumpDirectory: Option[java.io.File] = this.apiDumpDirectory,
-    newClassfileManager: () => ClassfileManager = this.newClassfileManager): IncOptions = {
-    new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-      apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing, antStyle)
-  }
-
-  @deprecated("Methods generated for case class will be removed in the future.", "0.13.2")
-  override def productPrefix: String = "IncOptions"
-
-  @deprecated("Methods generated for case class will be removed in the future.", "0.13.2")
-  def productArity: Int = 10
-
-  @deprecated("Methods generated for case class will be removed in the future.", "0.13.2")
-  def productElement(x$1: Int): Any = x$1 match {
-    case 0 => IncOptions.this.transitiveStep
-    case 1 => IncOptions.this.recompileAllFraction
-    case 2 => IncOptions.this.relationsDebug
-    case 3 => IncOptions.this.apiDebug
-    case 4 => IncOptions.this.apiDiffContextSize
-    case 5 => IncOptions.this.apiDumpDirectory
-    case 6 => IncOptions.this.newClassfileManager
-    case 7 => IncOptions.this.recompileOnMacroDef
-    case 8 => IncOptions.this.nameHashing
-    case 9 => IncOptions.this.antStyle
-    case _ => throw new IndexOutOfBoundsException(x$1.toString())
-  }
-
-  @deprecated("Methods generated for case class will be removed in the future.", "0.13.2")
-  override def productIterator: Iterator[Any] = scala.runtime.ScalaRunTime.typedProductIterator[Any](IncOptions.this)
-
-  @deprecated("Methods generated for case class will be removed in the future.", "0.13.2")
-  def canEqual(x$1: Any): Boolean = x$1.isInstanceOf[IncOptions]
-
   override def hashCode(): Int = {
     import scala.runtime.Statics
     var acc: Int = -889275714
@@ -199,7 +161,19 @@ final class IncOptions(
     Statics.finalizeHash(acc, 9)
   }
 
-  override def toString(): String = scala.runtime.ScalaRunTime._toString(IncOptions.this)
+  override def toString(): String =
+    s"""IncOptions(
+       |  transitiveStep = $transitiveStep,
+       |  recompileAllFraction = $recompileAllFraction,
+       |  relationsDebug = $relationsDebug,
+       |  apiDebug = $apiDebug,
+       |  apiDiffContextSize = $apiDiffContextSize,
+       |  apiDumpDirectory = $apiDumpDirectory,
+       |  newClassfileManager = $newClassfileManager,
+       |  recompileOnMacroDef = $recompileOnMacroDef,
+       |  nameHashing = $nameHashing,
+       |  antStyle = $antStyle
+       |)""".stripMargin
 
   override def equals(x$1: Any): Boolean = {
     this.eq(x$1.asInstanceOf[Object]) || (x$1.isInstanceOf[IncOptions] && ({
@@ -234,13 +208,7 @@ object IncOptions extends Serializable {
     nameHashing = nameHashingDefault)
   //- EXPANDED CASE CLASS METHOD BEGIN -//
   final override def toString(): String = "IncOptions"
-  @deprecated("Use overloaded variant of `apply` with complete list of arguments instead.", "0.13.2")
-  def apply(transitiveStep: Int, recompileAllFraction: Double, relationsDebug: Boolean, apiDebug: Boolean,
-    apiDiffContextSize: Int, apiDumpDirectory: Option[java.io.File],
-    newClassfileManager: () => ClassfileManager): IncOptions = {
-    new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-      apiDumpDirectory, newClassfileManager)
-  }
+
   def apply(transitiveStep: Int, recompileAllFraction: Double, relationsDebug: Boolean, apiDebug: Boolean,
     apiDiffContextSize: Int, apiDumpDirectory: Option[java.io.File],
     newClassfileManager: () => ClassfileManager, recompileOnMacroDef: Boolean,
@@ -248,23 +216,9 @@ object IncOptions extends Serializable {
     new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
       apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing, antStyleDefault)
   }
-  @deprecated("Methods generated for case class will be removed in the future.", "0.13.2")
-  def unapply(x$0: IncOptions): Option[(Int, Double, Boolean, Boolean, Int, Option[java.io.File], () => AnyRef)] = {
-    if (x$0 == null) None
-    else Some.apply[(Int, Double, Boolean, Boolean, Int, Option[java.io.File], () => AnyRef)](
-      Tuple7.apply[Int, Double, Boolean, Boolean, Int, Option[java.io.File], () => AnyRef](
-        x$0.transitiveStep, x$0.recompileAllFraction, x$0.relationsDebug, x$0.apiDebug, x$0.apiDiffContextSize,
-        x$0.apiDumpDirectory, x$0.newClassfileManager))
-  }
+
   private def readResolve(): Object = IncOptions
   //- EXPANDED CASE CLASS METHOD END -//
-
-  @deprecated("Use IncOptions.Default.withNewClassfileManager(ClassfileManager.transactional(tempDir)), instead.", "0.13.5")
-  def defaultTransactional(tempDir: File): IncOptions =
-    setTransactional(Default, tempDir)
-  @deprecated("Use opts.withNewClassfileManager(ClassfileManager.transactional(tempDir)), instead.", "0.13.5")
-  def setTransactional(opts: IncOptions, tempDir: File): IncOptions =
-    opts.withNewClassfileManager(ClassfileManager.transactional(tempDir, sbt.util.Logger.Null))
 
   private val transitiveStepKey = "transitiveStep"
   private val recompileAllFractionKey = "recompileAllFraction"

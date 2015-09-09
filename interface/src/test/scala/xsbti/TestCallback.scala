@@ -3,7 +3,8 @@ package xsbti
 import java.io.File
 import scala.collection.mutable.ArrayBuffer
 import xsbti.api.SourceAPI
-import xsbti.DependencyContext._
+import xsbti.api.DependencyContext
+import xsbti.api.DependencyContext._
 
 class TestCallback(override val nameHashing: Boolean = false) extends AnalysisCallback {
   val sourceDependencies = new ArrayBuffer[(File, File, DependencyContext)]
