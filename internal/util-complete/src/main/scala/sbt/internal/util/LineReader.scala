@@ -58,7 +58,7 @@ abstract class JLine extends LineReader {
     reader.flush()
   }
 }
-private object JLine {
+private[sbt] object JLine {
   private[this] val TerminalProperty = "jline.terminal"
 
   fixTerminalProperty()
