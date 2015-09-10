@@ -4,11 +4,11 @@ import impl.{ GroupID, GroupArtifactID }
 import sbt.librarymanagement._
 
 final class SbtExclusionRule(
-    val organization: String,
-    val name: String,
-    val artifact: String,
-    val configurations: Seq[String],
-    val crossVersion: CrossVersion) {
+  val organization: String,
+  val name: String,
+  val artifact: String,
+  val configurations: Seq[String],
+  val crossVersion: CrossVersion) {
 
   def copy(organization: String = this.organization,
     name: String = this.name,

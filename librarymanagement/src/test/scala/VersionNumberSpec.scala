@@ -56,7 +56,6 @@ class VersionNumberSpec extends UnitSpec {
   "0.1.0-MSERVER-1" should "be parsed" in beParsedAs("0.1.0-MSERVER-1", Seq(0, 1, 0), Seq("MSERVER", "1"), Seq())
   it should "cascade" in generateCorrectCascadingNumbers("0.1.0-MSERVER-1", Seq("0.1.0-MSERVER-1", "0.1.0", "0.1"))
 
-
   "2.10.4-20140115-000117-b3a-sources" should "be parsed" in {
     beParsedAs("2.10.4-20140115-000117-b3a-sources", Seq(2, 10, 4), Seq("20140115", "000117", "b3a", "sources"), Seq())
   }
@@ -81,7 +80,6 @@ class VersionNumberSpec extends UnitSpec {
 
   "space !?string" should "be parsed as an error" in beParsedAsError("space !?string")
   "blank string" should "be parsed as an error" in beParsedAsError("")
-
 
   def beParsedAs(s: String, ns: Seq[Long], ts: Seq[String], es: Seq[String]) =
     s match {

@@ -51,7 +51,7 @@ class DMSerializationSpec extends UnitSpec {
       new UpdateStats(0, 0, 0, false), Map(new File("./foo") -> 0))
   lazy val configurationReportExample =
     new ConfigurationReport("compile", Vector(moduleReportExample),
-      Vector(organizationArtifactReportExample), Nil)
+      Vector(organizationArtifactReportExample))
   lazy val organizationArtifactReportExample =
     new OrganizationArtifactReport("org", "name", Vector(moduleReportExample))
   lazy val moduleReportExample =

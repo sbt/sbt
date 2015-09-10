@@ -163,7 +163,7 @@ object IvyRetrieve {
   def updateStats(report: ResolveReport): UpdateStats =
     new UpdateStats(report.getResolveTime, report.getDownloadTime, report.getDownloadSize, false)
   def configurationReport(confReport: ConfigurationResolveReport): ConfigurationReport =
-    new ConfigurationReport(confReport.getConfiguration, moduleReports(confReport), organizationArtifactReports(confReport), evicted(confReport))
+    new ConfigurationReport(confReport.getConfiguration, moduleReports(confReport), organizationArtifactReports(confReport))
 
   /**
    * Tries to find Ivy graph path the from node to target.

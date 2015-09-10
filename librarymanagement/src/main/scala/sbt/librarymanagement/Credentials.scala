@@ -63,7 +63,7 @@ object Credentials {
     {
       val properties = new java.util.Properties
       IO.load(properties, from)
-      properties map { case (k, v) => (k.toString, v.toString.trim) } toMap;
+      properties.map { case (k, v) => (k.toString, v.toString.trim) }.toMap
     }
 }
 

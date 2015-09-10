@@ -68,14 +68,9 @@ private[sbt] object JsonUtil {
             !mr.evicted && mr.problem.isEmpty
           }
         }
-        val evicted = details flatMap {
-          _.modules filter { mr =>
-            mr.evicted
-          }
-        } map { _.module }
-        new ConfigurationReport(cr.configuration, modules, details, evicted)
+        new ConfigurationReport(cr.configuration, modules, details)
       }
-      new UpdateReport(cachedDescriptor, configReports, stats)
+      new UpdateReport(cachedDescriptor, configReports, stats, Map.empty)
     }
 }
 

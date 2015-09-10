@@ -23,7 +23,7 @@ import sbt.librarymanagement._
 
 final class DeliverConfiguration(val deliverIvyPattern: String, val status: String, val configurations: Option[Seq[Configuration]], val logging: UpdateLogging.Value)
 final class PublishConfiguration(val ivyFile: Option[File], val resolverName: String, val artifacts: Map[Artifact, File], val checksums: Seq[String], val logging: UpdateLogging.Value,
-    val overwrite: Boolean) {
+  val overwrite: Boolean) {
   def this(ivyFile: Option[File], resolverName: String, artifacts: Map[Artifact, File], checksums: Seq[String], logging: UpdateLogging.Value) =
     this(ivyFile, resolverName, artifacts, checksums, logging, false)
 }
@@ -141,7 +141,6 @@ object IvyActions {
     moduleSettings match {
       case i: InlineConfiguration             => CrossVersion(i.module, i.ivyScala)
       case i: InlineConfigurationWithExcludes => CrossVersion(i.module, i.ivyScala)
-      case e: EmptyConfiguration              => CrossVersion(e.module, e.ivyScala)
       case _                                  => None
     }
   def mapArtifacts(module: ModuleDescriptor, cross: Option[String => String], artifacts: Map[Artifact, File]): Seq[(IArtifact, File)] =
@@ -213,7 +212,7 @@ object IvyActions {
       val evictedSet = evicted.map(m => (m.organization, m.name)).toSet
       val conflicted = confReport.allModules.filter(mod => evictedSet((mod.organization, mod.name)))
       grouped(grouping)(conflicted ++ evicted)
-    } toMap;
+    }.toMap
 
   def grouped[T](grouping: ModuleID => T)(mods: Seq[ModuleID]): Map[T, Set[String]] =
     mods groupBy (grouping) mapValues (_.map(_.revision).toSet)
@@ -379,9 +378,9 @@ object IvyActions {
   }
 }
 final class ResolveException(
-    val messages: Seq[String],
-    val failed: Seq[ModuleID],
-    val failedPaths: Map[ModuleID, Seq[ModuleID]]) extends RuntimeException(messages.mkString("\n")) {
+  val messages: Seq[String],
+  val failed: Seq[ModuleID],
+  val failedPaths: Map[ModuleID, Seq[ModuleID]]) extends RuntimeException(messages.mkString("\n")) {
   def this(messages: Seq[String], failed: Seq[ModuleID]) =
     this(messages, failed, Map(failed map { m => m -> Nil }: _*))
 }

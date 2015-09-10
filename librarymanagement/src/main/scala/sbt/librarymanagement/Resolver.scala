@@ -64,9 +64,6 @@ final class Patterns(val ivyPatterns: Seq[String], val artifactPatterns: Seq[Str
     }
   }
   override def hashCode: Int = (ivyPatterns, artifactPatterns, isMavenCompatible, descriptorOptional, skipConsistencyCheck).hashCode
-
-  @deprecated
-  def this(ivyPatterns: Seq[String], artifactPatterns: Seq[String], isMavenCompatible: Boolean) = this(ivyPatterns, artifactPatterns, isMavenCompatible, false, false)
 }
 object Patterns {
   implicit def defaultPatterns: Patterns = Resolver.defaultPatterns
@@ -86,7 +83,7 @@ object RepositoryHelpers {
     def nontransactional() = FileConfiguration(isLocal, Some(false))
     def nonlocal() = FileConfiguration(false, isTransactional)
   }
-  sealed trait SshAuthentication extends NotNull
+  sealed trait SshAuthentication
   final case class PasswordAuthentication(user: String, password: Option[String]) extends SshAuthentication
   final case class KeyFileAuthentication(user: String, keyfile: File, password: Option[String]) extends SshAuthentication
 }
@@ -167,12 +164,6 @@ import Resolver._
 object DefaultMavenRepository extends MavenRepository("public", centralRepositoryRoot(useSecureResolvers))
 object JavaNet2Repository extends MavenRepository(JavaNet2RepositoryName, JavaNet2RepositoryRoot)
 object JCenterRepository extends MavenRepository(JCenterRepositoryName, JCenterRepositoryRoot)
-@deprecated("HTTP repository is no longer recommended.", "0.13.6")
-object JavaNet1Repository extends JavaNet1Repository
-@deprecated("HTTP repository is no longer recommended.", "0.13.6")
-sealed trait JavaNet1Repository extends Resolver {
-  def name = "java.net Maven1 Repository"
-}
 
 object Resolver {
   private[sbt] def useSecureResolvers = sys.props.get("sbt.repository.secure") map { _.toLowerCase == "true" } getOrElse true
@@ -225,7 +216,7 @@ object Resolver {
   private def single[T](value: T, nonEmpty: Boolean): Seq[T] = if (nonEmpty) Seq(value) else Nil
 
   /** A base class for defining factories for interfaces to Ivy repositories that require a hostname , port, and patterns.  */
-  sealed abstract class Define[RepositoryType <: SshBasedRepository] extends NotNull {
+  sealed abstract class Define[RepositoryType <: SshBasedRepository] {
     /** Subclasses should implement this method to */
     protected def construct(name: String, connection: SshConnection, patterns: Patterns): RepositoryType
     /**
@@ -285,7 +276,7 @@ object Resolver {
     def apply(name: String): FileRepository = FileRepository(name, defaultFileConfiguration, Patterns(false))
     /** Constructs a file resolver with the given name and base directory. */
     def apply(name: String, baseDirectory: File)(implicit basePatterns: Patterns): FileRepository =
-      baseRepository(new File(baseDirectory.toURI.normalize) getAbsolutePath)(FileRepository(name, defaultFileConfiguration, _))
+      baseRepository(new File(baseDirectory.toURI.normalize).getAbsolutePath)(FileRepository(name, defaultFileConfiguration, _))
   }
   object url {
     /**
@@ -356,7 +347,7 @@ object Resolver {
   def defaultShared = defaultUserFileRepository("shared")
   def defaultUserFileRepository(id: String) =
     {
-      val pList = ("${ivy.home}/" + id + "/" + localBasePattern) :: Nil
+      val pList = s"$${ivy.home}/$id/$localBasePattern" :: Nil
       FileRepository(id, defaultFileConfiguration, Patterns(pList, pList, false))
     }
   def defaultIvyPatterns =

@@ -17,7 +17,7 @@ import sbt.util.Logger
 import sbt.librarymanagement._
 
 class NotInCache(val id: ModuleID, cause: Throwable)
-    extends RuntimeException(NotInCache(id, cause), cause) {
+  extends RuntimeException(NotInCache(id, cause), cause) {
   def this(id: ModuleID) = this(id, null)
 }
 private object NotInCache {
@@ -37,11 +37,12 @@ class IvyCache(val ivyHome: Option[File]) {
     withDefaultCache(lock, log) { cache =>
       val resolver = new ArtifactResourceResolver { def resolve(artifact: IvyArtifact) = resolved }
       cache.download(artifact, resolver, new FileDownloader, new CacheDownloadOptions)
+      ()
     }
   }
   /** Clears the cache of the jar for the given ID.*/
   def clearCachedJar(id: ModuleID, lock: Option[xsbti.GlobalLock], log: Logger): Unit = {
-    try { withCachedJar(id, lock, log)(_.delete) }
+    try { withCachedJar(id, lock, log)(_.delete); () }
     catch { case e: Exception => log.debug("Error cleaning cached jar: " + e.toString) }
   }
   /** Copies the cached jar for the given ID to the directory 'toDirectory'.  If the jar is not in the cache, NotInCache is thrown.*/
@@ -81,7 +82,7 @@ class IvyCache(val ivyHome: Option[File]) {
     {
       val local = Resolver.defaultLocal
       val paths = new IvyPaths(new File("."), ivyHome)
-      val conf = new InlineIvyConfiguration(paths, Seq(local), Nil, Nil, false, lock, IvySbt.DefaultChecksums, None, log)
+      val conf = new InlineIvyConfiguration(paths, Seq(local), Nil, Nil, false, lock, IvySbt.DefaultChecksums, None, UpdateOptions(), log)
       (new IvySbt(conf), local)
     }
   /** Creates a default jar artifact based on the given ID.*/
@@ -89,7 +90,7 @@ class IvyCache(val ivyHome: Option[File]) {
     new DefaultArtifact(IvySbt.toID(moduleID), null, moduleID.name, "jar", "jar")
 }
 /** Required by Ivy for copying to the cache.*/
-private class FileDownloader extends ResourceDownloader with NotNull {
+private class FileDownloader extends ResourceDownloader {
   def download(artifact: IvyArtifact, resource: Resource, dest: File): Unit = {
     if (dest.exists()) dest.delete()
     val part = new File(dest.getAbsolutePath + ".part")

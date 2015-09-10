@@ -16,7 +16,7 @@ import sbt.internal.librarymanagement.mavenint.{ PomExtraDependencyAttributes, S
 import sbt.io.Hash
 import sbt.librarymanagement._
 
-@deprecated("We now use an Aether-based pom parser.", "0.13.8")
+// @deprecated("We now use an Aether-based pom parser.", "0.13.8")
 final class CustomPomParser(delegate: ModuleDescriptorParser, transform: (ModuleDescriptorParser, ModuleDescriptor) => ModuleDescriptor) extends ModuleDescriptorParser {
   override def parseDescriptor(ivySettings: ParserSettings, descriptorURL: URL, validate: Boolean) =
     transform(this, delegate.parseDescriptor(ivySettings, descriptorURL, validate))
@@ -30,7 +30,7 @@ final class CustomPomParser(delegate: ModuleDescriptorParser, transform: (Module
   override def getType() = delegate.getType()
   override def getMetadataArtifact(mrid: ModuleRevisionId, res: Resource) = delegate.getMetadataArtifact(mrid, res)
 }
-@deprecated("We now use an Aether-based pom parser.", "0.13.8")
+// @deprecated("We now use an Aether-based pom parser.", "0.13.8")
 object CustomPomParser {
 
   // Evil hackery to override the default maven pom mappings.

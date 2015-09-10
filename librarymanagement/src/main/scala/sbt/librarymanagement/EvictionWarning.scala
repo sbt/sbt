@@ -8,13 +8,13 @@ import sbt.internal.util.ShowLines
 import sbt.internal.librarymanagement.{ IvySbt, InlineConfiguration, InlineConfigurationWithExcludes }
 
 final class EvictionWarningOptions private[sbt] (
-    val configurations: Seq[Configuration],
-    val warnScalaVersionEviction: Boolean,
-    val warnDirectEvictions: Boolean,
-    val warnTransitiveEvictions: Boolean,
-    val infoAllEvictions: Boolean,
-    val showCallers: Boolean,
-    val guessCompatible: Function1[(ModuleID, Option[ModuleID], Option[IvyScala]), Boolean]) {
+  val configurations: Seq[Configuration],
+  val warnScalaVersionEviction: Boolean,
+  val warnDirectEvictions: Boolean,
+  val warnTransitiveEvictions: Boolean,
+  val infoAllEvictions: Boolean,
+  val showCallers: Boolean,
+  val guessCompatible: Function1[(ModuleID, Option[ModuleID], Option[IvyScala]), Boolean]) {
   private[sbt] def configStrings = configurations map { _.name }
 
   def withConfigurations(configurations: Seq[Configuration]): EvictionWarningOptions =
@@ -80,12 +80,12 @@ object EvictionWarningOptions {
 }
 
 final class EvictionPair private[sbt] (
-    val organization: String,
-    val name: String,
-    val winner: Option[ModuleReport],
-    val evicteds: Seq[ModuleReport],
-    val includesDirect: Boolean,
-    val showCallers: Boolean) {
+  val organization: String,
+  val name: String,
+  val winner: Option[ModuleReport],
+  val evicteds: Seq[ModuleReport],
+  val includesDirect: Boolean,
+  val showCallers: Boolean) {
   override def toString: String =
     EvictionPair.evictionPairLines.showLines(this).mkString
   override def equals(o: Any): Boolean = o match {
@@ -121,11 +121,11 @@ object EvictionPair {
 }
 
 final class EvictionWarning private[sbt] (
-    val options: EvictionWarningOptions,
-    val scalaEvictions: Seq[EvictionPair],
-    val directEvictions: Seq[EvictionPair],
-    val transitiveEvictions: Seq[EvictionPair],
-    val allEvictions: Seq[EvictionPair]) {
+  val options: EvictionWarningOptions,
+  val scalaEvictions: Seq[EvictionPair],
+  val directEvictions: Seq[EvictionPair],
+  val transitiveEvictions: Seq[EvictionPair],
+  val allEvictions: Seq[EvictionPair]) {
   def reportedEvictions: Seq[EvictionPair] = scalaEvictions ++ directEvictions ++ transitiveEvictions
   private[sbt] def infoAllTheThings: List[String] = EvictionWarning.infoAllTheThings(this)
 }

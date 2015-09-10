@@ -171,7 +171,6 @@ final class IvySbt(val configuration: IvyConfiguration) {
           moduleSettings match {
             case ic: InlineConfiguration             => configureInline(ic.withExcludes, configuration.log)
             case ic: InlineConfigurationWithExcludes => configureInline(ic, configuration.log)
-            case ec: EmptyConfiguration              => configureEmpty(ec)
             case pc: PomConfiguration                => configurePom(pc)
             case ifc: IvyFileConfiguration           => configureIvyFile(ifc)
           }
@@ -238,13 +237,6 @@ final class IvySbt(val configuration: IvyConfiguration) {
       IvySbt.addDependencies(dmd, ScalaArtifacts.toolDependencies(is.scalaOrganization, is.scalaFullVersion), parser)
     }
     private def toURL(file: File) = file.toURI.toURL
-    private def configureEmpty(ec: EmptyConfiguration) =
-      {
-        val defaultConf = ModuleDescriptor.DEFAULT_CONFIGURATION
-        val mod = newConfiguredModuleID(ec.module, ec.moduleInfo, Seq(Configurations.Default))
-        IvySbt.addMainArtifact(mod)
-        (mod, defaultConf)
-      }
   }
 }
 
@@ -309,7 +301,7 @@ private[sbt] object IvySbt {
   def addResolvers(resolvers: Seq[Resolver], settings: IvySettings, log: Logger): Unit = {
     for (r <- resolvers) {
       log.debug("\t" + r)
-      settings.addResolver(ConvertResolver(r, settings, log))
+      settings.addResolver(ConvertResolver(r, settings, UpdateOptions(), log))
     }
   }
   /**
@@ -329,7 +321,7 @@ private[sbt] object IvySbt {
       import IvyPatternHelper._
       import PatternMatcher._
       if (!existing.contains(resolver.name))
-        settings.addResolver(ConvertResolver(resolver, settings, log))
+        settings.addResolver(ConvertResolver(resolver, settings, UpdateOptions(), log))
       val attributes = javaMap(Map(MODULE_KEY -> name, ORGANISATION_KEY -> organization, REVISION_KEY -> revision))
       settings.addModuleConfiguration(attributes, settings.getMatcher(EXACT_OR_REGEXP), resolver.name, null, null, null)
     }
@@ -357,8 +349,7 @@ private[sbt] object IvySbt {
       new ResolvedModuleRevision(resolved.getResolver, resolved.getResolver, updatedDescriptor, resolved.getReport, resolved.isForce)
     }
 
-  private[this] def configureRepositoryCache(settings: IvySettings, localOnly: Boolean) //, artifactResolver: DependencyResolver)
-  {
+  private[this] def configureRepositoryCache(settings: IvySettings, localOnly: Boolean): Unit = {
     val cacheDir = settings.getDefaultRepositoryCacheBasedir()
     val manager = new DefaultRepositoryCacheManager("default-cache", settings, cacheDir) {
       override def findModuleInCache(dd: DependencyDescriptor, revId: ModuleRevisionId, options: CacheMetadataOptions, r: String) = {
@@ -441,7 +432,6 @@ private[sbt] object IvySbt {
     {
       val sub = CrossVersion(scalaFullVersion, scalaBinaryVersion)
       m match {
-        case ec: EmptyConfiguration              => ec.copy(module = sub(ec.module))
         case ic: InlineConfiguration             => ic.copy(module = sub(ic.module), dependencies = ic.dependencies map sub, overrides = ic.overrides map sub)
         case ic: InlineConfigurationWithExcludes => ic.copy(module = sub(ic.module), dependencies = ic.dependencies map sub, overrides = ic.overrides map sub)
         case _                                   => m
@@ -492,7 +482,7 @@ private[sbt] object IvySbt {
         { dependencies }
         {
           // this is because Ivy adds a default artifact if none are specified.
-          if (dependencies \\ "publications" isEmpty) <publications/> else NodeSeq.Empty
+          if ((dependencies \\ "publications").isEmpty) <publications/> else NodeSeq.Empty
         }
       </ivy-module>
     }

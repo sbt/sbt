@@ -80,7 +80,7 @@ final class ExternalIvyConfiguration(val baseDirectory: File, val uri: URI, val 
     this(baseDirectory, uri, lock, extraResolvers, UpdateOptions(), log)
 
   type This = ExternalIvyConfiguration
-  def withBase(newBase: File) = new ExternalIvyConfiguration(newBase, uri, lock, extraResolvers, log)
+  def withBase(newBase: File) = new ExternalIvyConfiguration(newBase, uri, lock, extraResolvers, UpdateOptions(), log)
 }
 object ExternalIvyConfiguration {
   def apply(baseDirectory: File, file: File, lock: Option[xsbti.GlobalLock], log: Logger) = new ExternalIvyConfiguration(baseDirectory, file.toURI, lock, Nil, UpdateOptions(), log)
@@ -229,29 +229,4 @@ object InlineConfigurationWithExcludes {
       }
     } else
       explicitConfigurations
-}
-
-@deprecated("Define a module using inline Scala (InlineConfiguration), a pom.xml (PomConfiguration), or an ivy.xml (IvyFileConfiguration).", "0.13.0")
-final case class EmptyConfiguration(module: ModuleID, moduleInfo: ModuleInfo, ivyScala: Option[IvyScala], validate: Boolean) extends ModuleSettings {
-  def noScala = copy(ivyScala = None)
-}
-
-object ModuleSettings {
-  @deprecated("Explicitly select configuration from pom.xml, ivy.xml, or inline Scala.", "0.13.0")
-  def apply(ivyScala: Option[IvyScala], validate: Boolean, module: => ModuleID, moduleInfo: => ModuleInfo)(baseDirectory: File, log: Logger): ModuleSettings =
-    {
-      log.debug("Autodetecting dependencies.")
-      val defaultPOMFile = IvySbt.defaultPOM(baseDirectory)
-      if (defaultPOMFile.canRead)
-        new PomConfiguration(defaultPOMFile, ivyScala, validate, true)
-      else {
-        val defaultIvy = IvySbt.defaultIvyFile(baseDirectory)
-        if (defaultIvy.canRead)
-          new IvyFileConfiguration(defaultIvy, ivyScala, validate, true)
-        else {
-          log.warn("No dependency configuration found, using defaults.")
-          new EmptyConfiguration(module, moduleInfo, ivyScala, validate)
-        }
-      }
-    }
 }
