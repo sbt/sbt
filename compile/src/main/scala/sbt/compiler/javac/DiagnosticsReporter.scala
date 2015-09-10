@@ -76,11 +76,12 @@ final class DiagnosticsReporter(reporter: Reporter) extends DiagnosticListener[J
               val diagnostic = d.getClass.getField("d").get(d)
               // See com.sun.tools.javac.util.JCDiagnostic#getDiagnosticSource
               val getDiagnosticSourceMethod = diagnostic.getClass.getDeclaredMethod("getDiagnosticSource")
-              Option(getDiagnosticSourceMethod.invoke(diagnostic)) match {
-                case Some(diagnosticSource) =>
+              val getPositionMethod = diagnostic.getClass.getDeclaredMethod("getPosition")
+              (Option(getDiagnosticSourceMethod.invoke(diagnostic)), Option(getPositionMethod.invoke(diagnostic))) match {
+                case (Some(diagnosticSource), Some(position: java.lang.Long)) =>
                   // See com.sun.tools.javac.util.DiagnosticSource
                   val getLineMethod = diagnosticSource.getClass.getMethod("getLine", Integer.TYPE)
-                  Option(getLineMethod.invoke(diagnosticSource, line.get())).map(_.toString)
+                  Option(getLineMethod.invoke(diagnosticSource, new Integer(position.intValue()))).map(_.toString)
                 case _ => None
               }
             } catch {
