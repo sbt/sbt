@@ -1,6 +1,7 @@
 package sbt
 
 import sbt.Tests.{ Output, Summary }
+import sbt.util.{ Level, Logger }
 
 /**
  * Logs information about tests after they finish.

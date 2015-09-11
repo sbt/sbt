@@ -3,7 +3,8 @@
  */
 package sbt
 
-import Types._
+import sbt.internal.util.Types._
+import sbt.internal.util.AList
 import Task._
 import Execute._
 

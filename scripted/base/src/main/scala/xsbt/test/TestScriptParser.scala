@@ -7,7 +7,7 @@ import java.io.{ BufferedReader, File, InputStreamReader }
 import scala.util.parsing.combinator._
 import scala.util.parsing.input.Positional
 import Character.isWhitespace
-import sbt.IO
+import sbt.io.IO
 
 /*
 statement*

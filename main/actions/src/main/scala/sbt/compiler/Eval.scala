@@ -14,6 +14,8 @@ import java.nio.ByteBuffer
 import java.net.URLClassLoader
 import Eval.{ getModule, getValue, WrapValName }
 
+import sbt.io.{ DirectoryFilter, FileFilter, GlobFilter, Hash, IO, Path }
+
 // TODO: provide a way to cleanup backing directory
 
 final class EvalImports(val strings: Seq[(String, Int)], val srcName: String)

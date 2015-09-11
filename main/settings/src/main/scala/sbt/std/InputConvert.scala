@@ -6,8 +6,8 @@ import scala.reflect._
 import reflect.macros._
 
 import Def.Initialize
-import complete.Parser
-import appmacro.{ Convert, Converted }
+import sbt.internal.util.complete.Parser
+import sbt.internal.util.appmacro.{ Convert, Converted }
 
 object InputInitConvert extends Convert {
   def apply[T: c.WeakTypeTag](c: Context)(nme: String, in: c.Tree): Converted[c.type] =

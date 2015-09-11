@@ -4,22 +4,30 @@
 package sbt
 
 import scala.concurrent.duration.{ FiniteDuration, Duration }
-import Attributed.data
+import sbt.internal.util.Attributed
+import sbt.internal.util.Attributed.data
 import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
 import sbt.Compiler.InputsWithPrevious
-import sbt.mavenint.{ PomExtraDependencyAttributes, SbtPomExtraProperties }
+import sbt.internal.librarymanagement.mavenint.{ PomExtraDependencyAttributes, SbtPomExtraProperties }
 import xsbt.api.Discovery
 import xsbti.compile.CompileOrder
 import Project.{ inConfig, inScope, inTask, richInitialize, richInitializeTask, richTaskSessionVar }
 import Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
-import Artifact.{ DocClassifier, SourceClassifier }
-import Configurations.{ Compile, CompilerPlugin, IntegrationTest, names, Provided, Runtime, Test }
-import CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
-import complete._
+import sbt.internal.librarymanagement.{ CustomPomParser, DependencyFilter }
+import sbt.librarymanagement.Artifact.{ DocClassifier, SourceClassifier }
+import sbt.librarymanagement.{ Configuration, Configurations, ConflictManager, CrossVersion, MavenRepository, Resolver, ScalaArtifacts, UpdateOptions }
+import sbt.librarymanagement.Configurations.{ Compile, CompilerPlugin, IntegrationTest, names, Provided, Runtime, Test }
+import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
+import sbt.internal.util.complete._
 import std.TaskExtra._
 import sbt.inc.{ Analysis, FileValueCache, IncOptions, Locate }
-import sbt.compiler.{ MixedAnalyzingCompiler, AggressiveCompile }
+import sbt.compiler.MixedAnalyzingCompiler
 import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
+
+import sbt.librarymanagement._
+import sbt.internal.librarymanagement._
+import sbt.internal.util._
+import sbt.util.Level
 
 import sys.error
 import scala.xml.NodeSeq
@@ -29,10 +37,15 @@ import java.io.{ File, PrintWriter }
 import java.net.{ URI, URL, MalformedURLException }
 import java.util.concurrent.{ TimeUnit, Callable }
 import sbinary.DefaultProtocol.StringFormat
-import Cache.seqFormat
+import sbt.internal.util.Cache.seqFormat
+import sbt.util.Logger
 import CommandStrings.ExportStream
 
-import Types._
+import sbt.internal.util.Types._
+
+import sbt.internal.io.WatchState
+import sbt.io.{ AllPassFilter, FileFilter, GlobFilter, HiddenFileFilter, IO, NameFilter, NothingFilter, Path, PathFinder }
+
 import Path._
 import Keys._
 
@@ -225,7 +238,7 @@ object Defaults extends BuildCommon {
 
   def compileBase = inTask(console)(compilersSetting :: Nil) ++ compileBaseGlobal ++ Seq(
     incOptions := incOptions.value.withNewClassfileManager(
-      sbt.inc.ClassfileManager.transactional(crossTarget.value / "classes.bak", sbt.Logger.Null)),
+      sbt.inc.ClassfileManager.transactional(crossTarget.value / "classes.bak", sbt.util.Logger.Null)),
     scalaInstance <<= scalaInstanceTask,
     crossVersion := (if (crossPaths.value) CrossVersion.binary else CrossVersion.Disabled),
     crossTarget := makeCrossTarget(target.value, scalaBinaryVersion.value, sbtBinaryVersion.value, sbtPlugin.value, crossPaths.value),
@@ -261,7 +274,8 @@ object Defaults extends BuildCommon {
       if (plugin) scalaBase / ("sbt-" + sbtv) else scalaBase
     }
 
-  def compilersSetting = compilers := Compiler.compilers(scalaInstance.value, classpathOptions.value, javaHome.value, ivyConfiguration.value)(appConfiguration.value, streams.value.log)
+  // TODO: Fix source module
+  def compilersSetting = compilers := Compiler.compilers(scalaInstance.value, classpathOptions.value, javaHome.value, ivyConfiguration.value, ???)(appConfiguration.value, streams.value.log)
 
   lazy val configTasks = docTaskSettings(doc) ++ inTask(compile)(compileInputsSettings) ++ configGlobal ++ compileAnalysisSettings ++ Seq(
     compile <<= compileTask,
@@ -279,7 +293,7 @@ object Defaults extends BuildCommon {
     compileIncSetup <<= compileIncSetupTask,
     console <<= consoleTask,
     consoleQuick <<= consoleQuickTask,
-    discoveredMainClasses <<= compile map discoverMainClasses storeAs discoveredMainClasses triggeredBy compile,
+    discoveredMainClasses <<= compile map discoverMainClasses storeAs discoveredMainClasses xtriggeredBy compile,
     definedSbtPlugins <<= discoverPlugins,
     discoveredSbtPlugins <<= discoverSbtPluginNames,
     inTask(run)(runnerTask :: Nil).head,
@@ -390,7 +404,7 @@ object Defaults extends BuildCommon {
     val libraryJar = file(ScalaArtifacts.LibraryID)
     val compilerJar = file(ScalaArtifacts.CompilerID)
     val otherJars = allFiles.filterNot(x => x == libraryJar || x == compilerJar)
-    ScalaInstance(scalaVersion.value, libraryJar, compilerJar, otherJars: _*)(makeClassLoader(state.value))
+    new ScalaInstance(scalaVersion.value, makeClassLoader(state.value)(libraryJar :: compilerJar :: otherJars.toList), libraryJar, compilerJar, otherJars.toArray, None)
   }
   def scalaInstanceFromHome(dir: File): Initialize[Task[ScalaInstance]] = Def.task {
     ScalaInstance(dir)(makeClassLoader(state.value))
@@ -716,7 +730,7 @@ object Defaults extends BuildCommon {
 
   def doClean(clean: Seq[File], preserve: Seq[File]): Unit =
     IO.withTemporaryDirectory { temp =>
-      val (dirs, files) = preserve.filter(_.exists).flatMap(_.***.get).partition(_.isDirectory)
+      val (dirs, files) = preserve.filter(_.exists).flatMap(_.allPaths.get).partition(_.isDirectory)
       val mappings = files.zipWithIndex map { case (f, i) => (f, new File(temp, i.toHexString)) }
       IO.move(mappings)
       IO.delete(clean)
@@ -810,7 +824,7 @@ object Defaults extends BuildCommon {
     (compilers in task, classpath in task, scalacOptions in task, initialCommands in task, cleanupCommands in task, taskTemporaryDirectory in task, scalaInstance in task, streams) map {
       (cs, cp, options, initCommands, cleanup, temp, si, s) =>
         val cpFiles = data(cp)
-        val fullcp = (cpFiles ++ si.jars).distinct
+        val fullcp = (cpFiles ++ si.allJars).distinct
         val loader = sbt.classpath.ClasspathUtilities.makeLoader(fullcp, si, IO.createUniqueDirectory(temp))
         val compiler = cs.scalac.onArgs(exported(s, "scala"))
         (new Console(compiler))(cpFiles, options, loader, initCommands, cleanup)()(s.log).foreach(msg => sys.error(msg))
@@ -1370,7 +1384,7 @@ object Classpaths {
         case _                                         => Nil
       }
     val subScalaJars: String => Seq[File] = Defaults.unmanagedScalaInstanceOnly.value match {
-      case Some(si) => subUnmanaged(si.version, si.jars)
+      case Some(si) => subUnmanaged(si.version, si.allJars)
       case None     => sv => if (scalaProvider.version == sv) scalaProvider.jars else Nil
     }
     val transform: UpdateReport => UpdateReport = r => substituteScalaFiles(scalaOrganization.value, r)(subScalaJars)
@@ -1746,7 +1760,7 @@ object Classpaths {
 
   @deprecated("Directly provide the jar files per Scala version.", "0.13.0")
   def substituteScalaFiles(scalaInstance: ScalaInstance, scalaOrg: String, report: UpdateReport): UpdateReport =
-    substituteScalaFiles(scalaOrg, report)(const(scalaInstance.jars))
+    substituteScalaFiles(scalaOrg, report)(const(scalaInstance.allJars))
 
   def substituteScalaFiles(scalaOrg: String, report: UpdateReport)(scalaJars: String => Seq[File]): UpdateReport =
     report.substitute { (configuration, module, arts) =>

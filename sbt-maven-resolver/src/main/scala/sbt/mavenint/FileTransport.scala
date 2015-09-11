@@ -5,6 +5,8 @@ import org.apache.ivy.plugins.repository.url.URLResource
 import org.eclipse.aether.repository.RemoteRepository
 import org.eclipse.aether.spi.connector.transport._
 
+import sbt.io.IO
+
 /**
  * A bridge file transportation protocol which uses some Ivy/sbt mechanisms.
  */
@@ -25,17 +27,17 @@ class FileTransport(repository: RemoteRepository) extends AbstractTransporter {
   override def implGet(out: GetTask): Unit = {
     val from = toFile(out)
     if (!from.exists()) throw new NotFoundException(s"Could not find ${out.getLocation}")
-    sbt.IO.copyFile(from, out.getDataFile, true)
+    IO.copyFile(from, out.getDataFile, true)
   }
   override def implPut(put: PutTask): Unit = {
     val to = toFile(put)
     Option(put.getDataFile) match {
       case Some(from) =>
-        sbt.IO.copyFile(from, to, true)
+        IO.copyFile(from, to, true)
       case None =>
         // Here it's most likely a SHA or somethign where we read from memory.
         val in = put.newInputStream
-        try sbt.IO.transfer(in, to)
+        try IO.transfer(in, to)
         finally in.close()
     }
   }

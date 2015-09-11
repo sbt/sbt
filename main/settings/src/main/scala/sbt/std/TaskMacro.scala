@@ -2,11 +2,12 @@ package sbt
 package std
 
 import Def.{ Initialize, Setting }
-import Types.{ const, idFun, Id }
+import sbt.internal.util.Types.{ const, idFun, Id }
 import TaskExtra.allM
-import appmacro.{ ContextUtil, Convert, Converted, Instance, MixedBuilder, MonadInstance }
+import sbt.internal.util.appmacro.{ ContextUtil, Convert, Converted, Instance, MixedBuilder, MonadInstance }
 import Instance.Transform
-import complete.{ DefaultParsers, Parser }
+import sbt.internal.util.complete.{ DefaultParsers, Parser }
+import sbt.internal.util.{ AList, LinePosition, NoPosition, SourcePosition }
 
 import language.experimental.macros
 import scala.reflect._
@@ -24,7 +25,7 @@ object TaskInstance extends MonadInstance {
   def pure[T](t: () => T): Task[T] = toTask(t)
 }
 object ParserInstance extends Instance {
-  import sbt.Classes.Applicative
+  import sbt.internal.util.Classes.Applicative
   private[this] implicit val parserApplicative: Applicative[M] = new Applicative[M] {
     def apply[S, T](f: M[S => T], v: M[S]): M[T] = s => (f(s) ~ v(s)) map { case (a, b) => a(b) }
     def pure[S](s: => S) = const(Parser.success(s))
@@ -39,7 +40,7 @@ object ParserInstance extends Instance {
 
 /** Composes the Task and Initialize Instances to provide an Instance for [T] Initialize[Task[T]].*/
 object FullInstance extends Instance.Composed[Initialize, Task](InitializeInstance, TaskInstance) with MonadInstance {
-  type SS = sbt.Settings[Scope]
+  type SS = sbt.internal.util.Settings[Scope]
   val settingsData = TaskKey[SS]("settings-data", "Provides access to the project data for the build.", KeyRanks.DTask)
 
   def flatten[T](in: Initialize[Task[Initialize[Task[T]]]]): Initialize[Task[T]] =
@@ -222,15 +223,15 @@ object TaskMacro {
     }
   private[this] def sourcePosition(c: Context): c.Expr[SourcePosition] =
     {
-      import c.universe._
+      import c.universe.reify
       val pos = c.enclosingPosition
       if (pos.isDefined && pos.line >= 0 && pos.source != null) {
         val f = pos.source.file
         val name = constant[String](c, settingSource(c, f.path, f.name))
         val line = constant[Int](c, pos.line)
-        reify { sbt.LinePosition(name.splice, line.splice) }
+        reify { LinePosition(name.splice, line.splice) }
       } else
-        reify { sbt.NoPosition }
+        reify { NoPosition }
     }
   private[this] def settingSource(c: Context, path: String, name: String): String =
     {

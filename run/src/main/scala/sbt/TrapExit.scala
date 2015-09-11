@@ -18,6 +18,8 @@ import java.util.concurrent.{ ConcurrentHashMap => CMap }
 import java.lang.Integer.{ toHexString => hex }
 import java.lang.Long.{ toHexString => hexL }
 
+import sbt.util.Logger
+
 import TrapExit._
 
 /**

@@ -3,6 +3,8 @@
  */
 package sbt
 
+import sbt.internal.util.complete
+
 import ProjectNavigation._
 import Project.updateCurrent
 import Keys.sessionSettings

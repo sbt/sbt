@@ -4,9 +4,13 @@
 package sbt
 package std
 
-import Types._
+import scala.sys.process.{ BasicIO, ProcessIO, ProcessBuilder }
+
+import sbt.internal.util.AList
+import sbt.internal.util.Types._
 import Task._
 import java.io.{ BufferedInputStream, BufferedReader, File, InputStream }
+import sbt.io.IO
 
 sealed trait MultiInTask[K[L[x]]] {
   def flatMap[T](f: K[Id] => Task[T]): Task[T]
@@ -184,7 +188,7 @@ object TaskExtra extends TaskExtra {
   def processIO(s: TaskStreams[_]): ProcessIO =
     {
       def transfer(id: String) = (in: InputStream) => BasicIO.transferFully(in, s.binary(id))
-      new ProcessIO(BasicIO.closeOut, transfer(s.outID), transfer(s.errorID), inheritInput = { _ => false })
+      new ProcessIO(_.close(), transfer(s.outID), transfer(s.errorID))
     }
   def reduced[S](i: IndexedSeq[Task[S]], f: (S, S) => S): Task[S] =
     i match {

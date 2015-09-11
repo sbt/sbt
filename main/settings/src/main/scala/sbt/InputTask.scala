@@ -1,10 +1,11 @@
 package sbt
 
-import complete.Parser
+import sbt.internal.util.complete.Parser
 import Def.{ Initialize, ScopedKey }
 import std.TaskExtra.{ task => mktask, _ }
 import Task._
-import Types._
+import sbt.internal.util.{ ~>, AttributeKey, Types }
+import sbt.internal.util.Types._
 
 /** Parses input and produces a task to run.  Constructed using the companion object. */
 final class InputTask[T] private (val parser: State => Parser[Task[T]]) {
@@ -76,7 +77,7 @@ object InputTask {
     separate(p)(std.FullInstance.flattenFun[I, T](action))
 
   /** A dummy parser that consumes no input and produces nothing useful (unit).*/
-  def emptyParser: State => Parser[Unit] = Types.const(complete.DefaultParsers.success(()))
+  def emptyParser: State => Parser[Unit] = Types.const(sbt.internal.util.complete.DefaultParsers.success(()))
 
   /** Implementation detail that is public because it is used by a macro.*/
   def parserAsInput[T](p: Parser[T]): Initialize[State => Parser[T]] = Def.valueStrict(Types.const(p))

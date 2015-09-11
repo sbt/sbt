@@ -3,11 +3,12 @@
  */
 package sbt
 
-import complete.HistoryCommands
+import sbt.util.Level
+import sbt.internal.util.complete.HistoryCommands
 import scala.annotation.tailrec
 
 import java.io.File
-import Path._
+import sbt.io.Path._
 
 object BasicCommandStrings {
   val HelpCommand = "help"

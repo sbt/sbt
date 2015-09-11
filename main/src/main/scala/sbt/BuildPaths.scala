@@ -7,6 +7,10 @@ import java.io.File
 import java.net.URI
 import KeyRanks.DSetting
 
+import sbt.io.{ GlobFilter, Path }
+import sbt.internal.util.AttributeKey
+import sbt.util.Logger
+
 object BuildPaths {
   val globalBaseDirectory = AttributeKey[File]("global-base-directory", "The base directory for global sbt configuration and staging.", DSetting)
   val globalPluginsDirectory = AttributeKey[File]("global-plugins-directory", "The base directory for global sbt plugins.", DSetting)
@@ -57,7 +61,7 @@ object BuildPaths {
   def defaultGlobalBase = Path.userHome / ConfigDirectoryName
 
   private[this] def binarySbtVersion(state: State): String =
-    sbt.cross.CrossVersionUtil.binarySbtVersion(state.configuration.provider.id.version)
+    sbt.internal.librarymanagement.cross.CrossVersionUtil.binarySbtVersion(state.configuration.provider.id.version)
   private[this] def defaultStaging(globalBase: File) = globalBase / "staging"
   private[this] def defaultGlobalPlugins(globalBase: File) = globalBase / PluginsDirectoryName
   private[this] def defaultDependencyBase(globalBase: File) = globalBase / "dependency"

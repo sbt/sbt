@@ -13,9 +13,13 @@ import org.eclipse.aether.resolution.{
   VersionRequest => AetherVersionRequest,
   VersionRangeRequest => AetherVersionRangeRequest
 }
-import sbt.ivyint.CustomMavenResolver
+
+import sbt.internal.librarymanagement.ivyint.CustomMavenResolver
+import sbt.librarymanagement.MavenCache
 
 import scala.collection.JavaConverters._
+
+import sbt.io.IO
 
 /**
  * A resolver instance which can resolve from a maven CACHE.
@@ -26,7 +30,7 @@ class MavenCacheRepositoryResolver(val repo: MavenCache, settings: IvySettings)
     extends MavenRepositoryResolver(settings) with CustomMavenResolver {
   setName(repo.name)
   protected val system = MavenRepositorySystemFactory.newRepositorySystemImpl
-  sbt.IO.createDirectory(repo.rootFile)
+  IO.createDirectory(repo.rootFile)
   protected val session = MavenRepositorySystemFactory.newSessionImpl(system, repo.rootFile)
   protected def setRepository(request: AetherMetadataRequest): AetherMetadataRequest = request
   protected def addRepositories(request: AetherDescriptorRequest): AetherDescriptorRequest = request

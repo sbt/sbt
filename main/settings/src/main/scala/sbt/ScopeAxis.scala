@@ -1,6 +1,6 @@
 package sbt
 
-import Types.some
+import sbt.internal.util.Types.some
 
 sealed trait ScopeAxis[+S] {
   def foldStrict[T](f: S => T, ifGlobal: T, ifThis: T): T = fold(f, ifGlobal, ifThis)

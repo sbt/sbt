@@ -7,7 +7,11 @@ import BasicCommandStrings.ClearOnFailure
 import State.FailureWall
 import annotation.tailrec
 import java.io.File
-import Types.const
+
+import sbt.io.PathFinder
+import sbt.internal.io.{ SourceModificationWatch, WatchState }
+import sbt.internal.util.AttributeKey
+import sbt.internal.util.Types.const
 
 trait Watched {
   /** The files watched when an action is run with a preceeding ~ */

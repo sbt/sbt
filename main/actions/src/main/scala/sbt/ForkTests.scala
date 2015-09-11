@@ -4,11 +4,13 @@
 package sbt
 
 import scala.collection.mutable
-import testing._
+import testing.{ Logger => _, _ }
 import java.net.ServerSocket
 import java.io._
 import Tests.{ Output => TestOutput, _ }
 import ForkMain._
+import sbt.io.IO
+import sbt.util.Logger
 
 private[sbt] object ForkTests {
   def apply(runners: Map[TestFramework, Runner], tests: List[TestDefinition], config: Execution, classpath: Seq[File], fork: ForkOptions, log: Logger): Task[TestOutput] = {

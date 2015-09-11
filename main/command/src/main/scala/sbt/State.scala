@@ -5,6 +5,9 @@ package sbt
 
 import java.io.File
 import java.util.concurrent.Callable
+import sbt.util.Logger
+import sbt.internal.util.{ AttributeKey, AttributeMap, ErrorHandling, ExitHook, ExitHooks, GlobalLogging }
+import sbt.internal.util.complete.HistoryCommands
 
 /**
  * Data structure representing all command execution information.
@@ -166,7 +169,7 @@ object State {
     def previous: Option[String] = executed.drop(1).headOption
   }
   /** Constructs an empty command History with a default, finite command limit.*/
-  def newHistory = new History(Vector.empty, complete.HistoryCommands.MaxLines)
+  def newHistory = new History(Vector.empty, HistoryCommands.MaxLines)
 
   def defaultReload(state: State): Reboot =
     {

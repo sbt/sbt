@@ -1,6 +1,10 @@
 package sbt
 package internals
 
+import sbt.internal.util.RangePosition
+
+import sbt.librarymanagement.Configuration
+
 import Def._
 
 /** This reprsents a `Setting` expression configured by the sbt DSL. */

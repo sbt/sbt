@@ -4,12 +4,18 @@
 
 package sbt
 
+import sbt.internal.librarymanagement.StringUtilities
+
+import sbt.io.{ Hash, IO }
+
 import java.io.File
 import java.net.URI
 
 import BuildLoader.ResolveInfo
 import RichURI.fromURI
 import java.util.Locale
+
+import scala.sys.process.Process
 
 object Resolvers {
   type Resolver = BuildLoader.Resolver

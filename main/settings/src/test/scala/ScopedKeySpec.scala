@@ -3,6 +3,7 @@ package sbt
 import org.specs2._
 import Scope.{ ThisScope, GlobalScope, parseScopedKey }
 import java.net.URI
+import sbt.internal.util.AttributeKey
 
 /**
  * http://www.scala-sbt.org/0.13/tutorial/Scopes.html

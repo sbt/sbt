@@ -3,6 +3,8 @@ package sbt
 import java.util.regex.Pattern
 import scala.Console.{ BOLD, RESET }
 
+import sbt.internal.util.ConsoleLogger
+
 object Highlight {
   final val NormalIntensity = "\033[22m"
   final val NormalTextColor = "\033[39m"

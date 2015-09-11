@@ -1,5 +1,7 @@
 package sbt
 
+import sbt.internal.util.{ AttributeKey, complete, Types }
+
 import complete.{ DefaultParsers, Parser }
 import DefaultParsers._
 import Def.ScopedKey

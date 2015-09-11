@@ -6,6 +6,8 @@ package sbt
 import java.io.File
 import java.net.URI
 
+import sbt.io.IO
+
 // in all of these, the URI must be resolved and normalized before it is definitive
 
 /** Identifies a project or build. */

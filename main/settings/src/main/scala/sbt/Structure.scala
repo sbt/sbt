@@ -10,10 +10,12 @@ import java.net.URI
 
 import ConcurrentRestrictions.Tag
 import Def.{ Initialize, KeyedInitialize, ScopedKey, Setting, setting }
+import sbt.io.{ FileFilter, Path, PathFinder }
 import Path._
 import std.TaskExtra.{ task => mktask, _ }
 import Task._
-import Types._
+import sbt.internal.util.Types._
+import sbt.internal.util.{ ~>, AList, AttributeKey, Settings, SourcePosition }
 
 import language.experimental.macros
 import reflect.internal.annotations.compileTimeOnly
@@ -214,19 +216,20 @@ object Scoped {
   final class RichInitializeTask[S](i: Initialize[Task[S]]) extends RichInitTaskBase[S, Task] {
     protected def onTask[T](f: Task[S] => Task[T]): Initialize[Task[T]] = i apply f
 
-    def dependsOn(tasks: AnyInitTask*): Initialize[Task[S]] = (i, Initialize.joinAny[Task](tasks)) { (thisTask, deps) => thisTask.dependsOn(deps: _*) }
+    def dependsOn(tasks: AnyInitTask*): Initialize[Task[S]] = (i, Initialize.joinAny[Task, Any](tasks)) { (thisTask, deps) => thisTask.dependsOn(deps: _*) }
 
     def failure: Initialize[Task[Incomplete]] = i(_.failure)
     def result: Initialize[Task[Result[S]]] = i(_.result)
 
-    def triggeredBy(tasks: AnyInitTask*): Initialize[Task[S]] = nonLocal(tasks, Def.triggeredBy)
-    def runBefore(tasks: AnyInitTask*): Initialize[Task[S]] = nonLocal(tasks, Def.runBefore)
-    private[this] def nonLocal(tasks: Seq[AnyInitTask], key: AttributeKey[Seq[Task[_]]]): Initialize[Task[S]] =
-      (Initialize.joinAny[Task](tasks), i) { (ts, i) => i.copy(info = i.info.set(key, ts)) }
+    def xtriggeredBy[T](tasks: Initialize[Task[T]]*): Initialize[Task[S]] = nonLocal(tasks, Def.triggeredBy)
+    def triggeredBy[T](tasks: Initialize[Task[T]]*): Initialize[Task[S]] = nonLocal(tasks, Def.triggeredBy)
+    def runBefore[T](tasks: Initialize[Task[T]]*): Initialize[Task[S]] = nonLocal(tasks, Def.runBefore)
+    private[this] def nonLocal[T](tasks: Seq[Initialize[Task[T]]], key: AttributeKey[Seq[Task[_]]]): Initialize[Task[S]] =
+      (Initialize.joinAny[Task, T](tasks), i) { (ts, i) => i.copy(info = i.info.set(key, ts)) }
   }
   final class RichInitializeInputTask[S](i: Initialize[InputTask[S]]) extends RichInitTaskBase[S, InputTask] {
     protected def onTask[T](f: Task[S] => Task[T]): Initialize[InputTask[T]] = i(_ mapTask f)
-    def dependsOn(tasks: AnyInitTask*): Initialize[InputTask[S]] = (i, Initialize.joinAny[Task](tasks)) { (thisTask, deps) => thisTask.mapTask(_.dependsOn(deps: _*)) }
+    def dependsOn(tasks: AnyInitTask*): Initialize[InputTask[S]] = (i, Initialize.joinAny[Task, Any](tasks)) { (thisTask, deps) => thisTask.mapTask(_.dependsOn(deps: _*)) }
   }
 
   sealed abstract class RichInitTaskBase[S, R[_]] {
@@ -256,7 +259,7 @@ object Scoped {
     def mapFailure[T](f: Incomplete => T): Initialize[R[T]] = mapR(f compose failM)
   }
 
-  type AnyInitTask = Initialize[Task[T]] forSome { type T }
+  type AnyInitTask = Initialize[Task[Any]] // forSome { type T }
 
   implicit def richTaskSeq[T](in: Seq[Initialize[Task[T]]]): RichTaskSeq[T] = new RichTaskSeq(in)
   final class RichTaskSeq[T](keys: Seq[Initialize[Task[T]]]) {
@@ -265,7 +268,7 @@ object Scoped {
   }
   implicit def richAnyTaskSeq(in: Seq[AnyInitTask]): RichAnyTaskSeq = new RichAnyTaskSeq(in)
   final class RichAnyTaskSeq(keys: Seq[AnyInitTask]) {
-    def dependOn: Initialize[Task[Unit]] = Initialize.joinAny[Task](keys).apply(deps => nop.dependsOn(deps: _*))
+    def dependOn: Initialize[Task[Unit]] = Initialize.joinAny[Task, Any](keys).apply(deps => nop.dependsOn(deps: _*))
   }
 
   implicit def richFileSetting(s: SettingKey[File]): RichFileSetting = new RichFileSetting(s)

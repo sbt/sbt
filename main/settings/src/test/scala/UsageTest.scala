@@ -1,7 +1,8 @@
 package sbt
 package std
 
-import complete.{ DefaultParsers, Parsers }
+import sbt.internal.util.complete
+import sbt.internal.util.complete.{ DefaultParsers, Parsers }
 
 /*object UseTask
 {

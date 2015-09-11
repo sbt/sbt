@@ -1,6 +1,8 @@
 package sbt
 package plugins
 
+import sbt.librarymanagement.Configurations
+
 import Def.Setting
 import Keys._
 import Project.inConfig

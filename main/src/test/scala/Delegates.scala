@@ -1,7 +1,7 @@
 package sbt
 
 import Project._
-import Types.{ idFun, some }
+import sbt.internal.util.Types.{ idFun, some }
 import TestBuild._
 
 import java.io.File

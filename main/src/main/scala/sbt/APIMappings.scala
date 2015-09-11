@@ -3,7 +3,11 @@ package sbt
 import java.io.File
 import java.net.{ MalformedURLException, URL }
 
-import sbt.mavenint.SbtPomExtraProperties
+import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
+import sbt.librarymanagement.ModuleID
+
+import sbt.internal.util.Attributed
+import sbt.util.Logger
 
 private[sbt] object APIMappings {
   def extract(cp: Seq[Attributed[File]], log: Logger): Seq[(File, URL)] =

@@ -2,6 +2,8 @@ package sbt
 package internals
 package parser
 
+import sbt.internal.util.{ LineRange, MessageOnlyException }
+
 import java.io.File
 
 import sbt.internals.parser.SbtParser._
@@ -130,8 +132,8 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
      * @return originalStatement or originalStatement with missing bracket
      */
     def parseStatementAgain(t: Tree, originalStatement: String): String = {
-      val statement = util.Try(toolbox.parse(originalStatement)) match {
-        case util.Failure(th) =>
+      val statement = scala.util.Try(toolbox.parse(originalStatement)) match {
+        case scala.util.Failure(th) =>
           val missingText = findMissingText(content, t.pos.end, t.pos.line, fileName, th)
           originalStatement + missingText
         case _ =>
@@ -215,10 +217,10 @@ private[sbt] object MissingBracketHandler {
       case Some(index) =>
         val text = content.substring(positionEnd, index + 1)
         val textWithoutBracket = text.substring(0, text.length - 1)
-        util.Try(SbtParser(FAKE_FILE, textWithoutBracket.lines.toSeq)) match {
-          case util.Success(_) =>
+        scala.util.Try(SbtParser(FAKE_FILE, textWithoutBracket.lines.toSeq)) match {
+          case scala.util.Success(_) =>
             text
-          case util.Failure(th) =>
+          case scala.util.Failure(th) =>
             findMissingText(content, index + 1, positionLine, fileName, originalException)
         }
       case _ =>

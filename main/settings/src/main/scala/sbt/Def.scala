@@ -1,7 +1,8 @@
 package sbt
 
-import Types.const
-import complete.Parser
+import sbt.internal.util.Types.const
+import sbt.internal.util.{ Attributed, AttributeKey, Init, Show }
+import sbt.internal.util.complete.Parser
 import java.io.File
 import Scope.{ ThisScope, GlobalScope }
 import KeyRanks.{ DTask, Invisible }
@@ -59,7 +60,7 @@ object Def extends Init[Scope] with TaskMacroExtra {
    * A default Parser for splitting input into space-separated arguments.
    * `argLabel` is an optional, fixed label shown for an argument during tab completion.
    */
-  def spaceDelimited(argLabel: String = "<arg>"): Parser[Seq[String]] = complete.Parsers.spaceDelimited(argLabel)
+  def spaceDelimited(argLabel: String = "<arg>"): Parser[Seq[String]] = sbt.internal.util.complete.Parsers.spaceDelimited(argLabel)
 
   /** Lifts the result of a setting initialization into a Task. */
   def toITask[T](i: Initialize[T]): Initialize[Task[T]] = map(i)(std.TaskExtra.inlineTask)

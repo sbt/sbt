@@ -6,6 +6,8 @@ import org.scalacheck._
 import Prop._
 import scala.tools.nsc.reporters.StoreReporter
 
+import sbt.io.IO
+
 object EvalTest extends Properties("eval") {
   private[this] val reporter = new StoreReporter
   import reporter.{ ERROR, Info, Severity }

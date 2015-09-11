@@ -1,10 +1,14 @@
 package sbt
 
+import sbt.internal.util.Attributed
+
 import java.io.File
 import java.net.URL
 import Attributed.data
 import Build.analyzed
 import xsbt.api.{ Discovered, Discovery }
+
+import sbt.io.IO
 
 object PluginDiscovery {
   /**

@@ -5,10 +5,14 @@ package sbt
 
 import Def.Initialize
 import Keys._
-import complete.{ Parser, DefaultParsers }
+import sbt.internal.util.complete.{ Parser, DefaultParsers }
 import classpath.ClasspathUtilities
 import java.lang.reflect.{ InvocationTargetException, Method }
 import java.util.Properties
+
+import sbt.librarymanagement.Configuration
+
+import sbt.io.{ AllPassFilter, PathFinder }
 
 object ScriptedPlugin extends Plugin {
   def scriptedConf = config("scripted-sbt") hide

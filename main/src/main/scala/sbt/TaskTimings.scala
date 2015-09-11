@@ -1,5 +1,7 @@
 package sbt
 
+import sbt.internal.util.RMap
+
 import java.util.concurrent.ConcurrentHashMap
 import TaskName._
 

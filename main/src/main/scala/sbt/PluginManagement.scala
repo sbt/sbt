@@ -3,6 +3,7 @@ package sbt
 import Keys.Classpath
 import Def.Setting
 import PluginManagement._
+import sbt.librarymanagement.ModuleID
 
 import java.net.{ URI, URL, URLClassLoader }
 

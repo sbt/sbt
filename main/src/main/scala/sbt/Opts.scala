@@ -3,8 +3,12 @@
  */
 package sbt
 
+import sbt.librarymanagement.{ Credentials, MavenRepository, Resolver }
+
 import java.io.File
 import java.net.URL
+
+import sbt.io.Path
 
 /** Options for well-known tasks. */
 object Opts {

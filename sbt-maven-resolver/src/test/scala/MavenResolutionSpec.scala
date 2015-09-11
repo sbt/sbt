@@ -1,30 +1,29 @@
 package sbt
 
 import java.io.FileInputStream
-import org.specs2._
-import sbt.mavenint.PomExtraDependencyAttributes
+
+import sbt.internal.librarymanagement.BaseIvySpecification
+import sbt.internal.librarymanagement.mavenint.PomExtraDependencyAttributes
+import sbt.librarymanagement.{ Artifact, Configurations, CrossVersion, DefaultMavenRepository, MavenRepository, ModuleID, Resolver, UpdateOptions }
+
+import sbt.internal.util.ShowLines
 
 class MavenResolutionSpec extends BaseIvySpecification {
-  def is = args(sequential = true) ^ s2""".stripMargin
 
-  This is a specification to check the maven resolution
+  "the maven resolution" should "handle sbt plugins" in resolveSbtPlugins
 
-  Resolving a maven dependency should
-     handle sbt plugins                                           $resolveSbtPlugins
-     use ivy for conflict resolution                              $resolveMajorConflicts
-     handle cross configuration deps                              $resolveCrossConfigurations
-     publish with maven-metadata                                  $publishMavenMetadata
-     resolve transitive maven dependencies                        $resolveTransitiveMavenDependency
-     resolve intransitive maven dependencies                      $resolveIntransitiveMavenDependency
-     handle transitive configuration shifts                       $resolveTransitiveConfigurationMavenDependency
-     resolve source and doc                                       $resolveSourceAndJavadoc
-     resolve nonstandard (jdk5) classifier                        $resolveNonstandardClassifier
-     Resolve pom artifact dependencies                            $resolvePomArtifactAndDependencies
-     Fail if JAR artifact is not found w/ POM                     $failIfMainArtifactMissing
-     Fail if POM.xml is not found                                 $failIfPomMissing
-     resolve publication date for -SNAPSHOT                       $resolveSnapshotPubDate
-
-                                                                """ // */
+  it should "use ivy for conflict resolution" in resolveMajorConflicts
+  it should "handle cross configuration deps" in resolveCrossConfigurations
+  it should "publish with maven-metadata" in publishMavenMetadata
+  it should "resolve transitive maven dependencies" in resolveTransitiveMavenDependency
+  it should "resolve intransitive maven dependencies" in resolveIntransitiveMavenDependency
+  it should "handle transitive configuration shifts" in resolveTransitiveConfigurationMavenDependency
+  it should "resolve source and doc" in resolveSourceAndJavadoc
+  it should "resolve nonstandard (jdk5) classifier" in resolveNonstandardClassifier
+  it should "Resolve pom artifact dependencies" in resolvePomArtifactAndDependencies
+  it should "Fail if JAR artifact is not found w/ POM" in failIfMainArtifactMissing
+  it should "Fail if POM.xml is not found" in failIfPomMissing
+  it should "resolve publication date for -SNAPSHOT" in resolveSnapshotPubDate
 
   // TODO - test latest.integration and .+
 
@@ -59,7 +58,7 @@ class MavenResolutionSpec extends BaseIvySpecification {
   def resolveMajorConflicts = {
     val m = module(ModuleID("com.example", "foo", "0.1.0", Some("compile")),
       Seq(majorConflictLib), None, defaultUpdateOptions)
-    val report = ivyUpdate(m) // must not(throwAn[IllegalStateException])
+    val report = ivyUpdate(m) // should not(throwAn[IllegalStateException])
     val jars =
       for {
         conf <- report.configurations
@@ -69,7 +68,7 @@ class MavenResolutionSpec extends BaseIvySpecification {
         (a, f) <- m.artifacts
         if a.extension == "jar"
       } yield f
-    jars must haveSize(1)
+    jars should have size 1
   }
 
   def resolveCrossConfigurations = {
@@ -85,12 +84,12 @@ class MavenResolutionSpec extends BaseIvySpecification {
         (a, f) <- m.artifacts
         if a.extension == "jar"
       } yield f
-    jars must haveSize(1)
+    jars should have size 1
   }
 
   def resolveSbtPlugins = {
 
-    def sha(f: java.io.File): String = sbt.Hash.toHex(sbt.Hash(f))
+    def sha(f: java.io.File): String = sbt.io.Hash.toHex(sbt.io.Hash(f))
     def findSbtIdeaJars(dep: ModuleID, name: String) = {
       val m = module(ModuleID("com.example", name, "0.1.0", Some("compile")), Seq(dep), None, defaultUpdateOptions)
       val report = ivyUpdate(m)
@@ -108,7 +107,9 @@ class MavenResolutionSpec extends BaseIvySpecification {
     System.err.println(s"${oldJars.mkString("\n")}")
     val newJars = findSbtIdeaJars(sbtPlugin, "new")
     System.err.println(s"${newJars.mkString("\n")}")
-    (newJars must haveSize(1)) and (oldJars must haveSize(1)) and (oldJars.map(_._2) must not(containTheSameElementsAs(newJars.map(_._2))))
+    (newJars should have size 1)
+    (oldJars should have size 1)
+    (oldJars.map(_._2) should not(contain theSameElementsAs (newJars.map(_._2))))
   }
 
   def resolveSnapshotPubDate = {
@@ -122,7 +123,7 @@ class MavenResolutionSpec extends BaseIvySpecification {
         if m.module.revision endsWith "-SNAPSHOT"
         date <- m.publicationDate
       } yield date
-    (pubTime must haveSize(1))
+    (pubTime should have size 1)
   }
 
   def resolvePomArtifactAndDependencies = {
@@ -137,18 +138,18 @@ class MavenResolutionSpec extends BaseIvySpecification {
         (a, f) <- m.artifacts
         if a.extension == "jar"
       } yield f
-    jars must haveSize(2)
+    jars should have size 2
   }
 
   def failIfPomMissing = {
     // TODO - we need the jar to not exist too.
     val m = module(ModuleID("com.example", "foo", "0.1.0", Some("compile")), Seq(ModuleID("org.scala-sbt", "does-not-exist", "1.0", Some("compile"))), Some("2.10.2"), defaultUpdateOptions)
-    ivyUpdate(m) must throwAn[Exception]
+    an[Exception] should be thrownBy ivyUpdate(m)
   }
 
   def failIfMainArtifactMissing = {
     val m = module(ModuleID("com.example", "foo", "0.1.0", Some("compile")), Seq(jmxri), Some("2.10.2"), defaultUpdateOptions)
-    ivyUpdate(m) must throwAn[Exception]
+    an[Exception] should be thrownBy ivyUpdate(m)
   }
 
   def resolveNonstandardClassifier = {
@@ -163,9 +164,9 @@ class MavenResolutionSpec extends BaseIvySpecification {
         (a, f) <- m.artifacts
         if a.extension == "jar"
       } yield f
-    (report.configurations must haveSize(configurations.size)) and
-      (jars must haveSize(1))
-    (jars.forall(_.exists) must beTrue)
+    (report.configurations should have size configurations.size)
+    (jars should have size 1)
+    (jars.forall(_.exists) shouldBe true)
 
   }
 
@@ -181,9 +182,9 @@ class MavenResolutionSpec extends BaseIvySpecification {
         (a, f) <- m.artifacts
         if a.extension == "jar"
       } yield f
-    (report.configurations must haveSize(configurations.size)) and
-      (jars must not(beEmpty)) and
-      (jars.forall(_.exists) must beTrue)
+    (report.configurations should have size configurations.size)
+    (jars should not be empty)
+    (jars.forall(_.exists) shouldBe true)
 
   }
 
@@ -208,8 +209,9 @@ class MavenResolutionSpec extends BaseIvySpecification {
         (a, f) <- m.artifacts
         if a.extension == "jar"
       } yield f
-    (report.configurations must haveSize(configurations.size)) and
-      (transitiveJars must beEmpty) and (directJars.forall(_.exists) must beTrue)
+    (report.configurations should have size configurations.size)
+    (transitiveJars shouldBe empty)
+    (directJars.forall(_.exists) shouldBe true)
   }
 
   def resolveTransitiveConfigurationMavenDependency = {
@@ -224,9 +226,9 @@ class MavenResolutionSpec extends BaseIvySpecification {
         (a, f) <- m.artifacts
         if a.extension == "jar"
       } yield f
-    (report.configurations must haveSize(configurations.size)) and
-      (jars must not(beEmpty)) and
-      (jars.forall(_.exists) must beTrue)
+    (report.configurations should have size configurations.size)
+    (jars should not be empty)
+    (jars.forall(_.exists) shouldBe true)
 
   }
 
@@ -248,8 +250,8 @@ class MavenResolutionSpec extends BaseIvySpecification {
         (a, f) <- m.artifacts
         if (f.getName contains "sources") || (f.getName contains "javadoc")
       } yield f
-    (report.configurations must haveSize(configurations.size)) and
-      (jars must haveSize(2))
+    (report.configurations should have size configurations.size)
+    (jars should have size 2)
   }
 
   def publishMavenMetadata = {
@@ -259,9 +261,9 @@ class MavenResolutionSpec extends BaseIvySpecification {
       None,
       defaultUpdateOptions.withLatestSnapshots(true)
     )
-    sbt.IO.withTemporaryDirectory { dir =>
+    sbt.io.IO.withTemporaryDirectory { dir =>
       val pomFile = new java.io.File(dir, "pom.xml")
-      sbt.IO.write(pomFile,
+      sbt.io.IO.write(pomFile,
         """
           |<project>
           |   <groupId>com.example</groupId>
@@ -270,7 +272,7 @@ class MavenResolutionSpec extends BaseIvySpecification {
           |</project>
         """.stripMargin)
       val jarFile = new java.io.File(dir, "test-it-1.0-SNAPSHOT.jar")
-      sbt.IO.touch(jarFile)
+      sbt.io.IO.touch(jarFile)
       System.err.println(s"DEBUGME - Publishing $m to ${Resolver.publishMavenLocal}")
       ivyPublish(m, mkPublishConfiguration(
         Resolver.publishMavenLocal,
@@ -280,11 +282,11 @@ class MavenResolutionSpec extends BaseIvySpecification {
         )))
     }
     val baseLocalMavenDir: java.io.File = Resolver.publishMavenLocal.rootFile
-    val allFiles: Seq[java.io.File] = sbt.PathFinder(new java.io.File(baseLocalMavenDir, "com/example/test-it")).***.get
+    val allFiles: Seq[java.io.File] = sbt.io.PathFinder(new java.io.File(baseLocalMavenDir, "com/example/test-it")).allPaths.get
     val metadataFiles = allFiles.filter(_.getName contains "maven-metadata-local")
     // TODO - maybe we check INSIDE the metadata, or make sure we can get a publication date on resolve...
     // We end up with 4 files, two mavne-metadata files, and 2 maven-metadata-local files.
-    metadataFiles must haveSize(2)
+    metadataFiles should have size 2
   }
 
 }

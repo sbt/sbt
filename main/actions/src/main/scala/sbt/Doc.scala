@@ -7,13 +7,17 @@ import java.io.{ File, PrintWriter }
 import compiler.{ AnalyzingCompiler, JavaCompiler }
 
 import Predef.{ conforms => _, _ }
-import Types.:+:
-import Path._
+import sbt.internal.util.Types.:+:
+import sbt.io.Path._
+import sbt.io.IO
 
 import sbinary.DefaultProtocol.FileFormat
-import Cache.{ defaultEquiv, hConsCache, hNilCache, seqCache, seqFormat, streamFormat, StringFormat, UnitFormat, wrapIn }
-import Tracked.{ inputChanged, outputChanged }
-import FilesInfo.{ exists, hash, lastModified }
+import sbt.internal.util.Cache.{ defaultEquiv, hConsCache, hNilCache, seqCache, seqFormat, streamFormat, StringFormat, UnitFormat, wrapIn }
+import sbt.internal.util.Tracked.{ inputChanged, outputChanged }
+import sbt.internal.util.{ FilesInfo, HashFileInfo, HNil, ModifiedFileInfo, PlainFileInfo }
+import sbt.internal.util.FilesInfo.{ exists, hash, lastModified }
+
+import sbt.util.Logger
 
 object Doc {
   import RawCompileLike._
@@ -66,7 +70,7 @@ sealed trait Doc {
           log.debug("Doc uptodate: " + outputDirectory.getAbsolutePath)
       }
     }
-    cachedDoc(inputs)(() => exists(outputDirectory.***.get.toSet))
+    cachedDoc(inputs)(() => exists(outputDirectory.allPaths.get.toSet))
   }
 }
 @deprecated("No longer used.  See `Doc.scaladoc`", "0.13.0")

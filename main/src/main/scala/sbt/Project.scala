@@ -10,8 +10,11 @@ import Project.{ Initialize => _, Setting => _, _ }
 import Keys.{ appConfiguration, stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, shellPrompt, thisProject, thisProjectRef, watch }
 import Scope.{ GlobalScope, ThisScope }
 import Def.{ Flattened, Initialize, ScopedKey, Setting }
-import Types.{ const, idFun }
-import complete.DefaultParsers
+import sbt.internal.util.Types.{ const, idFun }
+import sbt.internal.util.complete.DefaultParsers
+import sbt.librarymanagement.Configuration
+
+import sbt.internal.util.{ AttributeKey, AttributeMap, Dag, Relation, Settings, Show, ~> }
 
 import language.experimental.macros
 

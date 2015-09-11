@@ -9,6 +9,10 @@ import java.lang.reflect.{ Method, Modifier }
 import Modifier.{ isPublic, isStatic }
 import classpath.ClasspathUtilities
 
+import sbt.io.Path
+
+import sbt.util.Logger
+
 trait ScalaRun {
   def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String]
 }

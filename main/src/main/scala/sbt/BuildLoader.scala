@@ -6,8 +6,10 @@ package sbt
 import java.io.File
 import java.net.URI
 import BuildLoader._
-import Alternatives._
-import Types.{ const, idFun }
+import sbt.internal.io.Alternatives._
+import sbt.internal.util.Types.{ const, idFun }
+import sbt.util.Logger
+import sbt.librarymanagement.ModuleID
 
 final class MultiHandler[S, T](builtIn: S => Option[T], root: Option[S => Option[T]], nonRoots: List[(URI, S => Option[T])], getURI: S => URI, log: S => Logger) {
   def applyFun: S => Option[T] = apply

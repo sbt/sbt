@@ -5,6 +5,10 @@ package sbt
 
 import java.io.File
 
+import sbt.internal.util.{ FileInfo, Relation }
+
+import sbt.io.IO
+
 /**
  * Maintains a set of mappings so that they are uptodate.
  * Specifically, 'apply' applies the mappings by creating target directories and copying source files to their destination.
@@ -71,7 +75,10 @@ object Sync {
   import sbinary._
   import Operations.{ read, write }
   import DefaultProtocol.{ FileFormat => _, _ }
-  import sbt.inc.AnalysisFormats.{ fileFormat, relationFormat }
+  //import sbt.inc.AnalysisFormats.{ fileFormat, relationFormat }
+  implicit def fileFormat: Format[File] = wrap[File, String](_.getAbsolutePath, s => new File(s))
+  implicit def relationFormat[A, B](implicit af: Format[Map[A, Set[B]]], bf: Format[Map[B, Set[A]]]): Format[Relation[A, B]] =
+    asProduct2[Relation[A, B], Map[A, Set[B]], Map[B, Set[A]]](Relation.make _)(r => (r.forwardMap, r.reverseMap))(af, bf)
 
   def writeInfo[F <: FileInfo](file: File, relation: Relation[File, File], info: Map[File, F])(implicit infoFormat: Format[F]): Unit =
     IO.gzipFileOut(file) { out =>

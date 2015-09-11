@@ -5,6 +5,8 @@
 package sbt
 
 import testing.{ Logger => TLogger, Event => TEvent, Status => TStatus }
+import sbt.internal.util.{ BufferedLogger, FullLogger }
+import sbt.util.{ Level, Logger }
 
 trait TestReportListener {
   /** called for each class or equivalent grouping */
@@ -78,20 +80,20 @@ object TestEvent {
 
 object TestLogger {
   @deprecated("Doesn't provide for underlying resources to be released.", "0.13.1")
-  def apply(logger: sbt.Logger, logTest: TestDefinition => sbt.Logger, buffered: Boolean): TestLogger =
+  def apply(logger: sbt.util.Logger, logTest: TestDefinition => sbt.util.Logger, buffered: Boolean): TestLogger =
     new TestLogger(new TestLogging(wrap(logger), tdef => contentLogger(logTest(tdef), buffered)))
 
   @deprecated("Doesn't provide for underlying resources to be released.", "0.13.1")
-  def contentLogger(log: sbt.Logger, buffered: Boolean): ContentLogger =
+  def contentLogger(log: sbt.util.Logger, buffered: Boolean): ContentLogger =
     {
       val blog = new BufferedLogger(FullLogger(log))
       if (buffered) blog.record()
       new ContentLogger(wrap(blog), () => blog.stopQuietly())
     }
 
-  final class PerTest private[sbt] (val log: sbt.Logger, val flush: () => Unit, val buffered: Boolean)
+  final class PerTest private[sbt] (val log: sbt.util.Logger, val flush: () => Unit, val buffered: Boolean)
 
-  def make(global: sbt.Logger, perTest: TestDefinition => PerTest): TestLogger =
+  def make(global: sbt.util.Logger, perTest: TestDefinition => PerTest): TestLogger =
     {
       def makePerTest(tdef: TestDefinition): ContentLogger =
         {
@@ -104,7 +106,7 @@ object TestLogger {
       new TestLogger(config)
     }
 
-  def wrap(logger: sbt.Logger): TLogger =
+  def wrap(logger: sbt.util.Logger): TLogger =
     new TLogger {
       def error(s: String) = log(Level.Error, s)
       def warn(s: String) = log(Level.Warn, s)

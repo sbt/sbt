@@ -4,6 +4,8 @@ import java.io._
 
 import org.specs2.mutable.Specification
 
+import sbt.internal.util.{ AttributeEntry, AttributeMap, ConsoleOut, GlobalLogging, MainLogging, Settings }
+
 object PluginCommandTestPlugin0 extends AutoPlugin
 
 package subpackage {

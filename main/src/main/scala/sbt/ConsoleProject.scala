@@ -3,6 +3,7 @@
  */
 package sbt
 
+import sbt.util.Logger
 import java.io.File
 
 object ConsoleProject {
@@ -11,7 +12,8 @@ object ConsoleProject {
     val cpImports = new Imports(extracted, state)
     val bindings = ("currentState" -> state) :: ("extracted" -> extracted) :: ("cpHelpers" -> cpImports) :: Nil
     val unit = extracted.currentUnit
-    val compiler = Compiler.compilers(ClasspathOptions.repl)(state.configuration, log).scalac
+    // TODO: Fix this
+    val compiler: sbt.compiler.AnalyzingCompiler = ??? //Compiler.compilers(ClasspathOptions.repl)(state.configuration, log).scalac
     val imports = BuildUtil.getImports(unit.unit) ++ BuildUtil.importAll(bindings.map(_._1))
     val importString = imports.mkString("", ";\n", ";\n\n")
     val initCommands = importString + extra

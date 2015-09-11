@@ -7,7 +7,7 @@ import java.io.File
 import java.net.URL
 import scala.concurrent.duration.{ FiniteDuration, Duration }
 import Def.ScopedKey
-import complete._
+import sbt.internal.util.complete._
 import inc.Analysis
 import inc.Locate.DefinesClass
 import sbt.compiler.MixedAnalyzingCompiler
@@ -17,9 +17,52 @@ import scala.xml.{ Node => XNode, NodeSeq }
 import org.apache.ivy.core.module.{ descriptor, id }
 import descriptor.ModuleDescriptor, id.ModuleRevisionId
 import testing.Framework
-import Configurations.CompilerPlugin
-import Types.Id
+import sbt.internal.util.Types.Id
 import KeyRanks._
+
+import sbt.io.FileFilter
+import sbt.internal.io.WatchState
+import sbt.internal.util.AttributeKey
+
+import sbt.librarymanagement.Configurations.CompilerPlugin
+import sbt.librarymanagement.{
+  Artifact,
+  Configuration,
+  ConflictManager,
+  ConflictWarning,
+  Credentials,
+  CrossVersion,
+  Developer,
+  EvictionWarning,
+  EvictionWarningOptions,
+  IvyScala,
+  MavenRepository,
+  ModuleConfiguration,
+  ModuleID,
+  ModuleInfo,
+  Resolver,
+  ScalaVersion,
+  ScmInfo,
+  UpdateOptions,
+  UpdateReport
+}
+import sbt.internal.librarymanagement.{
+  DeliverConfiguration,
+  GetClassifiersModule,
+  IvyConfiguration,
+  IvyPaths,
+  IvySbt,
+  MakePomConfiguration,
+  ModuleSettings,
+  PublishConfiguration,
+  RetrieveConfiguration,
+  SbtExclusionRule,
+  UnresolvedWarningConfiguration,
+  UpdateConfiguration,
+  UpdateLogging
+}
+import sbt.util.{ AbstractLogger, Level, Logger }
+import sbt.internal.util.SourcePosition
 
 object Keys {
   val TraceValues = "-1 to disable, 0 for up to the first sbt frame, or a positive number to set the maximum number of frames shown."

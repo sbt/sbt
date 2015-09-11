@@ -6,6 +6,9 @@ package sbt
 import java.io.{ File, OutputStream }
 import java.util.Locale
 
+import sbt.util.Logger
+import scala.sys.process.{ Process, ProcessBuilder }
+
 @deprecated("Use ForkOptions", "0.13.0")
 trait ForkJava {
   def javaHome: Option[File]
@@ -102,7 +105,7 @@ sealed class Fork(val commandName: String, val runnerClass: Option[String]) {
         environment.put(Fork.ClasspathEnvKey, cpenv)
       outputStrategy.getOrElse(StdoutOutput) match {
         case StdoutOutput           => Process(builder).run(connectInput)
-        case BufferedOutput(logger) => Process(builder).runBuffered(logger, connectInput)
+        case BufferedOutput(logger) => logger.buffer { Process(builder).run(logger, connectInput) }
         case LoggedOutput(logger)   => Process(builder).run(logger, connectInput)
         case CustomOutput(output)   => (Process(builder) #> output).run(connectInput)
       }
@@ -188,7 +191,7 @@ object Fork {
           environment.put(key, value)
         outputStrategy match {
           case StdoutOutput           => Process(builder).run(connectInput)
-          case BufferedOutput(logger) => Process(builder).runBuffered(logger, connectInput)
+          case BufferedOutput(logger) => logger.buffer { Process(builder).run(logger, connectInput) }
           case LoggedOutput(logger)   => Process(builder).run(logger, connectInput)
           case CustomOutput(output)   => (Process(builder) #> output).run(connectInput)
         }

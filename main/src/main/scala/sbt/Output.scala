@@ -3,6 +3,8 @@
  */
 package sbt
 
+import sbt.internal.util.{ Show, Types }
+
 import java.util.regex.Pattern
 import java.io.File
 import Keys.{ Streams, TaskStreams }
@@ -11,6 +13,8 @@ import Aggregation.{ KeyValue, Values }
 import Types.idFun
 import Highlight.{ bold, showMatches }
 import annotation.tailrec
+
+import sbt.io.IO
 
 object Output {
   final val DefaultTail = "> "

@@ -5,6 +5,8 @@ package sbt
 
 import java.io.File
 import compiler.AnalyzingCompiler
+import sbt.internal.util.JLine
+import sbt.util.Logger
 
 final class Console(compiler: AnalyzingCompiler) {
   /** Starts an interactive scala interpreter session with the given classpath.*/
@@ -20,7 +22,9 @@ final class Console(compiler: AnalyzingCompiler) {
   def apply(classpath: Seq[File], options: Seq[String], initialCommands: String, cleanupCommands: String)(loader: Option[ClassLoader], bindings: Seq[(String, Any)])(implicit log: Logger): Option[String] =
     {
       def console0() = compiler.console(classpath, options, initialCommands, cleanupCommands, log)(loader, bindings)
-      JLine.withJLine(Run.executeTrapExit(console0, log))
+      // TODO: Fix JLine
+      //JLine.withJLine(Run.executeTrapExit(console0, log))
+      Run.executeTrapExit(console0, log)
     }
 }
 object Console {

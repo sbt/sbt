@@ -8,7 +8,10 @@ import java.io.{ File, IOException }
 import xsbt.IPC
 import xsbt.test.{ StatementHandler, TestFailed }
 
-import Logger._
+import sbt.util.Logger
+import sbt.util.Logger._
+
+import scala.sys.process.{ BasicIO, Process }
 
 final case class SbtInstance(process: Process, server: IPC.Server)
 
@@ -64,9 +67,10 @@ final class SbtHandler(directory: File, launcher: File, log: Logger, launchOpts:
       val launcherJar = launcher.getAbsolutePath
       val globalBase = "-Dsbt.global.base=" + (new File(directory, "global")).getAbsolutePath
       val args = "java" :: (launchOpts.toList ++ (globalBase :: "-jar" :: launcherJar :: ("<" + server.port) :: Nil))
-      val io = BasicIO(log, false).withInput(_.close())
+      val io = BasicIO(false, log).withInput(_.close())
       val p = Process(args, directory) run (io)
-      Spawn { p.exitValue(); server.close() }
+      val thread = new Thread() { override def run() = { p.exitValue(); server.close() } }
+      thread.start()
       try { receive("Remote sbt initialization failed", server) }
       catch { case e: java.net.SocketException => throw new TestFailed("Remote sbt initialization failed") }
       p

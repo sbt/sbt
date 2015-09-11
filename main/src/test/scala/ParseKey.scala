@@ -3,7 +3,7 @@ package sbt
 import Def.{ displayFull, displayMasked, ScopedKey }
 import java.net.URI
 import TestBuild._
-import complete._
+import sbt.internal.util.complete._
 
 import org.scalacheck._
 import Gen._

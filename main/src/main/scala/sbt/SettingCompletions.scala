@@ -1,5 +1,9 @@
 package sbt
 
+import sbt.internal.util.{ AttributeKey, complete, Relation, Settings, Show, Types, Util }
+
+import sbt.librarymanagement.Configuration
+
 import java.io.File
 import java.net.URI
 import Project._

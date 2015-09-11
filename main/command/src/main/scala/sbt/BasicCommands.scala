@@ -1,9 +1,10 @@
 package sbt
 
-import complete.{ Completion, Completions, DefaultParsers, HistoryCommands, Parser, TokenCompletions }
+import sbt.internal.util.{ AttributeKey, FullReader }
+import sbt.internal.util.complete.{ Completion, Completions, DefaultParsers, History => CHistory, HistoryCommands, Parser, TokenCompletions }
+import sbt.internal.util.Types.{ const, idFun }
 import classpath.ClasspathUtilities.toLoader
 import DefaultParsers._
-import Types.{ const, idFun }
 import Function.tupled
 import Command.applyEffect
 import HistoryCommands.{ Start => HistoryPrefix }
@@ -12,6 +13,7 @@ import CommandUtil._
 import BasicKeys._
 
 import java.io.File
+import sbt.io.IO
 
 import scala.util.control.NonFatal
 
@@ -159,7 +161,7 @@ object BasicCommands {
       val logError = (msg: String) => s.log.error(msg)
       val hp = s get historyPath getOrElse None
       val lines = hp.toList.flatMap(p => IO.readLines(p)).toIndexedSeq
-      histFun(complete.History(lines, hp, logError)) match {
+      histFun(CHistory(lines, hp, logError)) match {
         case Some(commands) =>
           commands foreach println //printing is more appropriate than logging
           (commands ::: s).continue

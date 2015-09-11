@@ -1,6 +1,7 @@
 package sbt
 
 import java.io.File
+import sbt.internal.util.AttributeKey
 
 object BasicKeys {
   val historyPath = AttributeKey[Option[File]]("history", "The location where command line history is persisted.", 40)

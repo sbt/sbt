@@ -3,8 +3,9 @@
  */
 package sbt
 
-import ErrorHandling.wideConvert
-import Types._
+import sbt.internal.util.ErrorHandling.wideConvert
+import sbt.internal.util.{ DelegatingPMap, PMap, RMap, IDSet, ~> }
+import sbt.internal.util.Types._
 import Execute._
 
 import scala.annotation.tailrec

@@ -6,6 +6,10 @@ package sbt
 import java.io.File
 import java.net.URI
 
+import sbt.internal.util.{ AttributeKey, AttributeMap, Dag }
+
+import sbt.io.IO
+
 final case class Scope(project: ScopeAxis[Reference], config: ScopeAxis[ConfigKey], task: ScopeAxis[AttributeKey[_]], extra: ScopeAxis[AttributeMap]) {
   def in(project: Reference, config: ConfigKey): Scope = copy(project = Select(project), config = Select(config))
   def in(config: ConfigKey, task: AttributeKey[_]): Scope = copy(config = Select(config), task = Select(task))

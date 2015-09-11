@@ -1,5 +1,7 @@
 package sbt
 
+import sbt.librarymanagement.Configuration
+
 import internals.{
   DslEntry,
   DslConfigs,
