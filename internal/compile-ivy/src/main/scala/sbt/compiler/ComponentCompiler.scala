@@ -31,11 +31,11 @@ object ComponentCompiler {
       }
   }
 
-  def interfaceProvider(manager: ComponentManager, ivyConfiguration: IvyConfiguration, sourcesModule: ModuleID, bootDirectory: File): CompilerInterfaceProvider = new CompilerInterfaceProvider {
+  def interfaceProvider(manager: ComponentManager, ivyConfiguration: IvyConfiguration, sourcesModule: ModuleID): CompilerInterfaceProvider = new CompilerInterfaceProvider {
     def apply(scalaInstance: xsbti.compile.ScalaInstance, log: Logger): File =
       {
         // this is the instance used to compile the interface component
-        val componentCompiler = new IvyComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptions.auto, log), manager, ivyConfiguration, sourcesModule, bootDirectory, log)
+        val componentCompiler = new IvyComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptions.auto, log), manager, ivyConfiguration, sourcesModule, log)
         log.debug("Getting " + sourcesModule + " from component compiler for Scala " + scalaInstance.version)
         componentCompiler()
       }
@@ -97,7 +97,7 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager) {
  * The compiled classes are cached using the provided component manager according
  * to the actualVersion field of the RawCompiler.
  */
-private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: ComponentManager, ivyConfiguration: IvyConfiguration, sourcesModule: ModuleID, bootDirectory: File, log: Logger) {
+private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: ComponentManager, ivyConfiguration: IvyConfiguration, sourcesModule: ModuleID, log: Logger) {
   import ComponentCompiler._
 
   private val incrementalCompilerOrg = xsbti.ArtifactInfo.SbtOrganization + ".incrementalcompiler"
@@ -105,7 +105,6 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
   private val modulePrefixTemp = "temp-module-"
   private val ivySbt: IvySbt = new IvySbt(ivyConfiguration)
   private val buffered = new BufferedLogger(FullLogger(log))
-  private val retrieveDirectory = new File(s"$bootDirectory/scala-${compiler.scalaInstance.version}/$incrementalCompilerOrg/sbt/$incrementalVersion/compiler-interface-srcs/${sourcesModule.name}/${sourcesModule.revision}")
 
   def apply(): File = {
     val binID = binaryID(sourcesModule.name)
@@ -124,14 +123,18 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
       val xsbtiJars = manager.files(xsbtiID)(IfMissing.Fail)
 
       buffered bufferQuietly {
-        (update(getModule(sourcesModule))(_.getName endsWith "-sources.jar")) match {
-          case Some(sources) =>
-            AnalyzingCompiler.compileSources(sources, targetJar, xsbtiJars, sourcesModule.name, compiler, log)
-            manager.define(binID, Seq(targetJar))
 
-          case None =>
-            throw new InvalidComponent(s"Couldn't retrieve source module: $sourcesModule")
+        IO.withTemporaryDirectory { retrieveDirectory =>
+          (update(getModule(sourcesModule), retrieveDirectory)(_.getName endsWith "-sources.jar")) match {
+            case Some(sources) =>
+              AnalyzingCompiler.compileSources(sources, targetJar, xsbtiJars, sourcesModule.name, compiler, log)
+              manager.define(binID, Seq(targetJar))
+
+            case None =>
+              throw new InvalidComponent(s"Couldn't retrieve source module: $sourcesModule")
+          }
         }
+
       }
     }
 
@@ -169,7 +172,7 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
       s"unknown"
   }
 
-  private def update(module: ivySbt.Module)(predicate: File => Boolean): Option[Seq[File]] = {
+  private def update(module: ivySbt.Module, retrieveDirectory: File)(predicate: File => Boolean): Option[Seq[File]] = {
 
     val retrieveConfiguration = new RetrieveConfiguration(retrieveDirectory, Resolver.defaultRetrievePattern, false)
     val updateConfiguration = new UpdateConfiguration(Some(retrieveConfiguration), true, UpdateLogging.DownloadOnly)
