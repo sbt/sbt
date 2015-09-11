@@ -55,7 +55,7 @@ def minimalSettings: Seq[Setting[_]] = commonSettings
 
 def baseSettings: Seq[Setting[_]] =
   minimalSettings
-//   minimalSettings ++ Seq(projectComponent) ++ baseScalacOptions ++ Licensed.settings ++ Formatting.settings
+//   minimalSettings ++ baseScalacOptions ++ Licensed.settings ++ Formatting.settings
 
 def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
@@ -90,12 +90,11 @@ lazy val interfaceProj = (project in file("interface")).
     minimalSettings,
     // javaOnlySettings,
     name := "Interface",
-    // projectComponent,
     exportJars := true,
-    // componentID := Some("xsbti"),
     watchSources <++= apiDefinitions,
     resourceGenerators in Compile <+= (version, resourceManaged, streams, compile in Compile) map generateVersionFile,
-    apiDefinitions <<= baseDirectory map { base => (base / "definition") :: (base / "other") :: (base / "type") :: Nil }
+    apiDefinitions <<= baseDirectory map { base => (base / "definition") :: (base / "other") :: (base / "type") :: Nil },
+    crossPaths := false
   )
 
 // defines operations on the API of a source, including determining whether it has changed and converting it to a string
@@ -161,7 +160,6 @@ lazy val compileInterfaceProj = (project in internalPath / "compile-bridge").
         case _                        => scalacOptions.value filterNot (Set("-Xfatal-warnings", "-deprecation") contains _)
       }
     }
-    // artifact in (Compile, packageSrc) := Artifact(srcID).copy(configurations = Compile :: Nil).extra("e:component" -> srcID)
   )
 
 // Implements the core functionality of detecting and propagating changes incrementally.

@@ -101,6 +101,8 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
   import ComponentCompiler._
 
   private val incrementalCompilerOrg = xsbti.ArtifactInfo.SbtOrganization + ".incrementalcompiler"
+  private val xsbtiInterfaceModuleName = "interface"
+  private val xsbtiInterfaceID = s"interface-$incrementalVersion"
   private val sbtOrgTemp = JsonUtil.sbtOrgTemp
   private val modulePrefixTemp = "temp-module-"
   private val ivySbt: IvySbt = new IvySbt(ivyConfiguration)
@@ -121,7 +123,7 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
     IO.withTemporaryDirectory { binaryDirectory =>
 
       val targetJar = new File(binaryDirectory, s"$binID.jar")
-      val xsbtiJars = manager.files(xsbtiID)(IfMissing.Fail)
+      val xsbtiJars = manager.files(xsbtiInterfaceID)(new IfMissing.Define(true, getXsbtiInterface()))
 
       buffered bufferQuietly {
 
@@ -137,6 +139,23 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
         }
 
       }
+    }
+
+  private def getXsbtiInterface(): Unit =
+    buffered bufferQuietly {
+
+      IO withTemporaryDirectory { retrieveDirectory =>
+        val module = ModuleID(incrementalCompilerOrg, xsbtiInterfaceModuleName, incrementalVersion, Some("component"))
+        val jarName = s"$xsbtiInterfaceModuleName-$incrementalVersion.jar"
+        (update(getModule(module), retrieveDirectory)(_.getName == jarName)) match {
+          case Some(interface) =>
+            manager.define(xsbtiInterfaceID, interface)
+
+          case None =>
+            throw new InvalidComponent(s"Couldn't retrieve xsbti interface module: $xsbtiInterfaceModuleName")
+        }
+      }
+
     }
 
   /**
