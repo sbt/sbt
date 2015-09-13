@@ -63,14 +63,15 @@ def testedBaseSettings: Seq[Setting[_]] =
 lazy val compileRoot: Project = (project in file(".")).
   // configs(Sxr.sxrConf).
   aggregate(
-    compilerIntegrationProj,
-    compileIncrementalProj,
+    incrementalcompilerProj,
+    incrementalcompilerPersistProj,
+    incrementalcompilerCoreProj,
     compilerInterfaceProj,
-    apiProj,
+    compilerBridgeProj,
+    compilerApiInfoProj,
     classpathProj,
     classfileProj,
     compilerInterfaceProj,
-    compilerPersistProj,
     compileProj,
     compilerIvyProj).
   settings(
@@ -81,17 +82,26 @@ lazy val compileRoot: Project = (project in file(".")).
     publishLocal := {}
   )
 
-lazy val compilerIntegrationProj = (project in file("incrementalcompiler")).
-  dependsOn(compileIncrementalProj, compileProj, compilerPersistProj, apiProj, classfileProj).
+lazy val incrementalcompilerProj = (project in file("incrementalcompiler")).
+  dependsOn(incrementalcompilerCoreProj, incrementalcompilerPersistProj, compileProj, classfileProj).
   settings(
     baseSettings,
     name := "incrementalcompiler"
   )
 
+// Persists the incremental data structures using SBinary
+lazy val incrementalcompilerPersistProj = (project in internalPath / "incrementalcompiler-persist").
+  dependsOn(incrementalcompilerCoreProj, incrementalcompilerCoreProj % "test->test").
+  settings(
+    testedBaseSettings,
+    name := "Incrementalcompiler Persist",
+    libraryDependencies += sbinary
+  )
+
 // Implements the core functionality of detecting and propagating changes incrementally.
 //   Defines the data structures for representing file fingerprints and relationships and the overall source analysis
-lazy val compileIncrementalProj = (project in file("incrementalcompiler-core")).
-  dependsOn (apiProj, classpathProj, compilerBridgeProj % Test).
+lazy val incrementalcompilerCoreProj = (project in file("incrementalcompiler-core")).
+  dependsOn(compilerApiInfoProj, classpathProj, compilerBridgeProj % Test).
   settings(
     testedBaseSettings,
     libraryDependencies ++= Seq(sbtIO, utilLogging, utilRelation),
@@ -103,6 +113,14 @@ lazy val compileIncrementalProj = (project in file("incrementalcompiler-core")).
     // compiler instances that are memory hungry
     javaOptions in Test += "-Xmx1G",
     name := "Incrementalcompiler Core"
+  )
+
+lazy val compilerIvyProj = (project in internalPath / "compiler-ivy-integration").
+  dependsOn(compileProj).
+  settings(
+    baseSettings,
+    libraryDependencies += libraryManagement,
+    name := "Compiler Ivy Integration"
   )
 
 // defines Java structures used across Scala versions, such as the API structures and relationships extracted by
@@ -122,7 +140,7 @@ lazy val compilerInterfaceProj = (project in file("compiler-interface")).
 
 // sbt-side interface to compiler.  Calls compiler-side interface reflectively
 lazy val compileProj = (project in file("compiler-compile")).
-  dependsOn(compilerInterfaceProj % "compile;test->test", classpathProj, apiProj, classfileProj).
+  dependsOn(compilerInterfaceProj % "compile;test->test", classpathProj, compilerApiInfoProj, classfileProj).
   settings(
     testedBaseSettings,
     name := "Compiler Compile",
@@ -134,7 +152,7 @@ lazy val compileProj = (project in file("compiler-compile")).
 // Compiler-side interface to compiler that is compiled against the compiler being used either in advance or on the fly.
 //   Includes API and Analyzer phases that extract source API and relationships.
 lazy val compilerBridgeProj = (project in internalPath / "compiler-bridge").
-  dependsOn(compilerInterfaceProj % "compile;test->test", /*launchProj % "test->test",*/ apiProj % "test->test").
+  dependsOn(compilerInterfaceProj % "compile;test->test", /*launchProj % "test->test",*/ compilerApiInfoProj % "test->test").
   settings(
     baseSettings,
     libraryDependencies += scalaCompiler.value,
@@ -165,7 +183,7 @@ lazy val compilerBridgeProj = (project in internalPath / "compiler-bridge").
 
 // defines operations on the API of a source, including determining whether it has changed and converting it to a string
 //   and discovery of Projclasses and annotations
-lazy val apiProj = (project in internalPath / "compiler-apiinfo").
+lazy val compilerApiInfoProj = (project in internalPath / "compiler-apiinfo").
   dependsOn(compilerInterfaceProj, classfileProj).
   settings(
     testedBaseSettings,
@@ -190,21 +208,4 @@ lazy val classfileProj = (project in internalPath / "compiler-classfile").
     testedBaseSettings,
     libraryDependencies ++= Seq(sbtIO, utilLogging),
     name := "Compiler Classfile"
-  )
-
-// Persists the incremental data structures using SBinary
-lazy val compilerPersistProj = (project in internalPath / "compiler-persist").
-  dependsOn(compileIncrementalProj, apiProj, compileIncrementalProj % "test->test").
-  settings(
-    testedBaseSettings,
-    name := "Compiler Persist",
-    libraryDependencies += sbinary
-  )
-
-lazy val compilerIvyProj = (project in internalPath / "compiler-ivy-integration").
-  dependsOn(compileProj).
-  settings(
-    baseSettings,
-    libraryDependencies += libraryManagement,
-    name := "Compiler Ivy Integration"
   )
