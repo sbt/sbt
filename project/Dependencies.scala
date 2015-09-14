@@ -8,6 +8,33 @@ object Dependencies {
   lazy val scala210 = "2.10.5"
   lazy val scala211 = "2.11.7"
 
+  // sbt modules
+  val utilVersion = "0.1.0-M3"
+  val ioVersion = "1.0.0-M3"
+  val incremenalcompilerVersion = "0.1.0-M1-746894baddb6d986a876160a656d72d2203e7613"
+  val librarymanagementVersion = "0.1.0-M2"
+  lazy val sbtIO = "org.scala-sbt" %% "io" % ioVersion
+  lazy val utilCollection = "org.scala-sbt" %% "util-collection" % utilVersion
+  lazy val utilLogging = "org.scala-sbt" %% "util-logging" % utilVersion
+  lazy val utilTesting = "org.scala-sbt" %% "util-testing" % utilVersion
+  lazy val utilControl = "org.scala-sbt" %% "util-control" % utilVersion
+  lazy val utilCompletion = "org.scala-sbt" %% "util-completion" % utilVersion
+  lazy val utilApplyMacro = "org.scala-sbt" %% "util-apply-macro" % utilVersion
+  lazy val utilRelation = "org.scala-sbt" %% "util-relation" % utilVersion
+  lazy val utilLogic = "org.scala-sbt" %% "util-logic" % utilVersion
+  lazy val utilTracking = "org.scala-sbt" %% "util-tracking" % utilVersion
+  lazy val libraryManagement = "org.scala-sbt" %% "librarymanagement" % librarymanagementVersion
+  lazy val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0-M1"
+  lazy val rawLauncher = "org.scala-sbt" % "launcher" % "1.0.0-M1"
+  lazy val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
+
+  lazy val incrementalcompiler = "org.scala-sbt" %% "incrementalcompiler" % incremenalcompilerVersion
+  lazy val compilerInterface = "org.scala-sbt" % "compiler-interface" % incremenalcompilerVersion
+  lazy val compilerBrdige = "org.scala-sbt" %% "compiler-bridge" % incremenalcompilerVersion
+  lazy val compilerClasspath = "org.scala-sbt" %% "compiler-classpath" % incremenalcompilerVersion
+  lazy val compilerApiInfo = "org.scala-sbt" %% "compiler-apiinfo" % incremenalcompilerVersion
+  lazy val compilerIvyIntegration = "org.scala-sbt" %% "compiler-ivy-integration" % incremenalcompilerVersion
+
   lazy val jline = "jline" % "jline" % "2.11"
   lazy val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-d592b1b0f77cf706e882b1b8e0162dee28165fb2"
   lazy val jsch = "com.jcraft" % "jsch" % "0.1.46" intransitive ()
@@ -15,12 +42,9 @@ object Dependencies {
   lazy val sbtSerialization = "org.scala-sbt" %% "serialization" % "0.1.2"
   lazy val scalaCompiler = Def.setting { "org.scala-lang" % "scala-compiler" % scalaVersion.value }
   lazy val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
-  lazy val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
   lazy val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.11.4"
   lazy val specs2 = "org.specs2" %% "specs2" % "2.3.11"
   lazy val junit = "junit" % "junit" % "4.11"
-  lazy val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0-M1"
-  lazy val rawLauncher = "org.scala-sbt" % "launcher" % "1.0.0-M1"
 
   private def scala211Module(name: String, moduleVersion: String) =
     Def.setting {
