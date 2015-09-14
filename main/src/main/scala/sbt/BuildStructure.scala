@@ -6,11 +6,13 @@ package sbt
 import java.io.File
 import java.net.URI
 import Def.{ displayFull, ScopedKey, ScopeLocal, Setting }
-import Attributed.data
 import BuildPaths.outputDirectory
 import Scope.GlobalScope
 import BuildStreams.Streams
-import Path._
+import sbt.io.Path._
+import sbt.internal.util.{ Attributed, AttributeEntry, AttributeKey, AttributeMap, Settings }
+import sbt.internal.util.Attributed.data
+import sbt.util.Logger
 
 final class BuildStructure(val units: Map[URI, LoadedBuildUnit], val root: URI, val settings: Seq[Setting[_]], val data: Settings[Scope], val index: StructureIndex, val streams: State => Streams, val delegates: Scope => Seq[Scope], val scopeLocal: ScopeLocal) {
   val rootProject: URI => String = Load getRootProject units

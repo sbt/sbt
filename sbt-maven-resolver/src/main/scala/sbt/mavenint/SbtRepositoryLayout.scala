@@ -10,6 +10,8 @@ import org.eclipse.aether.spi.connector.layout.RepositoryLayout.Checksum
 import org.eclipse.aether.spi.connector.layout.{ RepositoryLayout, RepositoryLayoutFactory }
 import org.eclipse.aether.transfer.NoRepositoryLayoutException
 
+import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
+
 import scala.util.matching.Regex
 
 /** A factory which knows how to create repository layouts which can find sbt plugins. */

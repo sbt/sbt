@@ -1,6 +1,7 @@
 package sbt
 
-import Types.idFun
+import sbt.internal.util.Types.idFun
+import sbt.internal.util.Dag
 import BuildDependencies._
 
 final class BuildDependencies private (val classpath: DependencyMap[ClasspathDep[ProjectRef]], val aggregate: DependencyMap[ProjectRef]) {

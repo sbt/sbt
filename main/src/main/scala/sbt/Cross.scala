@@ -4,12 +4,15 @@
 package sbt
 
 import Keys._
-import complete.{ DefaultParsers, Parser }
+import sbt.internal.util.complete.{ DefaultParsers, Parser }
+import sbt.internal.util.AttributeKey
 import DefaultParsers._
 import Def.{ ScopedKey, Setting }
 import Scope.GlobalScope
 import CommandStrings.{ CrossCommand, crossHelp, SwitchCommand, switchHelp }
 import java.io.File
+
+import sbt.io.IO
 
 object Cross {
   @deprecated("Moved to CommandStrings.Switch", "0.13.0")

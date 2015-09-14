@@ -7,15 +7,19 @@ import Predef.{ conforms => _, _ }
 import java.io.File
 import java.util.jar.{ Attributes, Manifest }
 import collection.JavaConversions._
-import Types.:+:
-import Path._
+import sbt.internal.util.Types.:+:
+import sbt.io.Path._
+import sbt.io.IO
 
 import sbinary.{ DefaultProtocol, Format }
 import DefaultProtocol.{ FileFormat, immutableMapFormat, StringFormat, UnitFormat }
+import sbt.internal.util.{ Cache, FileInfo, FilesInfo, HNil, ModifiedFileInfo, PlainFileInfo, Tracked }
 import Cache.{ defaultEquiv, hConsCache, hNilCache, streamFormat, wrapIn }
 import Tracked.{ inputChanged, outputChanged }
 import FileInfo.exists
 import FilesInfo.lastModified
+
+import sbt.util.Logger
 
 sealed trait PackageOption
 object Package {

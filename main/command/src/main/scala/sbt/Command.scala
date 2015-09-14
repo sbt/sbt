@@ -4,8 +4,9 @@
 package sbt
 
 import java.io.File
-import complete.{ DefaultParsers, EditDistance, Parser }
-import Types.const
+import sbt.internal.util.complete.{ DefaultParsers, EditDistance, Parser }
+import sbt.internal.util.Types.const
+import sbt.internal.util.{ AttributeKey, AttributeMap, Util }
 
 sealed trait Command {
   def help: State => Help

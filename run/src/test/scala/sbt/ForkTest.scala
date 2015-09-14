@@ -5,6 +5,9 @@ import Prop.{ Exception => _, _ }
 import Gen.{ alphaNumChar, frequency, nonEmptyListOf }
 import java.io.File
 
+import sbt.internal.util.TestLogger
+import sbt.io.{ IO, Path }
+
 object ForkTest extends Properties("Fork") {
   /**
    * Heuristic for limiting the length of the classpath string.
@@ -55,4 +58,11 @@ object ForkTest extends Properties("Fork") {
         cp
     } else
       cp
+}
+
+// Object used in the tests
+object exit {
+  def main(args: Array[String]): Unit = {
+    System.exit(java.lang.Integer.parseInt(args(0)))
+  }
 }

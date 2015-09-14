@@ -3,10 +3,16 @@
  */
 package sbt
 
+import sbt.librarymanagement.Configurations
+
+import sbt.util.Level
+
 import java.io.File
 import Keys._
 import EvaluateConfigurations.{ evaluateConfiguration => evaluate }
 import Configurations.Compile
+
+import sbt.io.{ Hash, IO }
 
 object Script {
   final val Name = "script"

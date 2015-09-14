@@ -1,5 +1,7 @@
 package sbt
 
+import sbt.librarymanagement.{ MavenCache, MavenRepository, UpdateOptions }
+
 import UpdateOptions.ResolverConverter
 import sbt.mavenint.{ MavenCacheRepositoryResolver, MavenRemoteRepositoryResolver }
 

@@ -3,10 +3,13 @@
  */
 package sbt
 
+import sbt.internal.util.Relation
+
 import java.net.URI
 import Def.ScopedKey
-import complete.DefaultParsers.validID
-import Types.{ idFun, some }
+import sbt.internal.util.complete.DefaultParsers.validID
+import sbt.internal.util.Types.{ idFun, some }
+import sbt.internal.util.AttributeKey
 
 object KeyIndex {
   def empty: ExtendableKeyIndex = new KeyIndex0(emptyBuildIndex)

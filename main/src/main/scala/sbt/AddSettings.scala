@@ -1,6 +1,6 @@
 package sbt
 
-import Types.const
+import sbt.internal.util.Types.const
 import java.io.File
 
 /**

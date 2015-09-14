@@ -3,6 +3,8 @@
  */
 package sbt
 
+import sbt.internal.util.~>
+
 // used instead of Either[Incomplete, T] for type inference
 
 /** Result of completely evaluating a task.*/

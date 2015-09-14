@@ -11,7 +11,8 @@ def buildLevelSettings: Seq[Setting[_]] = inThisBuild(Seq(
   bintrayOrganization := Some(if (publishStatus.value == "releases") "typesafe" else "sbt"),
   bintrayRepository := s"ivy-${publishStatus.value}",
   bintrayPackage := "sbt",
-  bintrayReleaseOnPublish := false
+  bintrayReleaseOnPublish := false,
+  resolvers += Resolver.mavenLocal
 ))
 
 def commonSettings: Seq[Setting[_]] = Seq(
@@ -129,7 +130,7 @@ lazy val scriptedBaseProj = (project in scriptedPath / "base").
   )
 
 lazy val scriptedSbtProj = (project in scriptedPath / "sbt").
-  dependsOn(scriptedBaseProj).
+  dependsOn(scriptedBaseProj, commandProj).
   settings(
     baseSettings,
     name := "Scripted sbt",
@@ -202,7 +203,7 @@ lazy val mavenResolverPluginProj = (project in file("sbt-maven-resolver")).
   settings(
     baseSettings,
     name := "sbt-maven-resolver",
-    libraryDependencies ++= aetherLibs ++ Seq((libraryManagement % Test).classifier("tests")),
+    libraryDependencies ++= aetherLibs ++ Seq(utilTesting % Test, (libraryManagement % Test).classifier("tests"), libraryManagement % Test),
     sbtPlugin := true
   )
 

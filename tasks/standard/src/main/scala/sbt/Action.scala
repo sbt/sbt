@@ -3,7 +3,8 @@
  */
 package sbt
 
-import Types._
+import sbt.internal.util.Types._
+import sbt.internal.util.{ ~>, AList, AttributeKey, AttributeMap }
 import Task._
 import ConcurrentRestrictions.{ Tag, TagMap, tagsKey }
 

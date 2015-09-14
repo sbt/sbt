@@ -30,9 +30,9 @@ class HttpTransport(repository: RemoteRepository) extends AbstractTransporter {
       case None =>
         // TODO - Ivy does not support uploading not from a file.  This isn't very efficient in ANY way,
         //        so if we rewrite the URL handler for Ivy we should fix this as well.
-        sbt.IO.withTemporaryFile("tmp", "upload") { file =>
+        sbt.io.IO.withTemporaryFile("tmp", "upload") { file =>
           val in = put.newInputStream()
-          try sbt.IO.transfer(in, file)
+          try sbt.io.IO.transfer(in, file)
           finally in.close()
           URLHandlerRegistry.getDefault.upload(file, to, null)
         }

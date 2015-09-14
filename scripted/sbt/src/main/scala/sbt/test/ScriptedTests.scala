@@ -10,7 +10,12 @@ import java.nio.charset.Charset
 
 import xsbt.IPC
 import xsbt.test.{ CommentHandler, FileCommands, ScriptRunner, TestScriptParser }
-import IO.wrapNull
+import sbt.io.{ DirectoryFilter, GlobFilter, HiddenFileFilter, Path }
+import sbt.io.IO.wrapNull
+import sbt.internal.io.Resources
+
+import sbt.internal.util.{ BufferedLogger, ConsoleLogger, FullLogger }
+import sbt.util.{ AbstractLogger, Logger }
 
 final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launcher: File, launchOpts: Seq[String]) {
   import ScriptedTests._

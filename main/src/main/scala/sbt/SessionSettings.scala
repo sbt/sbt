@@ -3,6 +3,8 @@
  */
 package sbt
 
+import sbt.internal.util.{ complete, LineRange, RangePosition, Types }
+
 import java.io.File
 import java.net.URI
 import Def.{ ScopedKey, Setting }
@@ -11,6 +13,8 @@ import compiler.Eval
 
 import SessionSettings._
 import sbt.internals.parser.SbtRefactorings
+
+import sbt.io.IO
 
 /**
  * Represents (potentially) transient settings added into a build via commands/user.

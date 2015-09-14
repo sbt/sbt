@@ -1,5 +1,7 @@
 package sbt
 
+import sbt.internal.util.AttributeKey
+
 import java.net.URI
 
 object Resolve {

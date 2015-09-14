@@ -7,7 +7,7 @@ import org.scalacheck._
 import Prop._
 import TaskGen._
 import Task._
-import Types._
+import sbt.internal.util.Types._
 
 object TaskRunnerSortTest extends Properties("TaskRunnerSort") {
   property("sort") = forAll(TaskListGen, MaxWorkersGen) { (list: List[Int], workers: Int) =>

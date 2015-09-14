@@ -1,7 +1,7 @@
 package sbt
 package std
 
-import Types._
+import sbt.internal.util.Types._
 import TaskExtra._
 import TaskTest.tryRun
 import TaskGen.{ MaxWorkers, MaxWorkersGen }

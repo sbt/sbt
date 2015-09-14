@@ -12,6 +12,10 @@ import inc._
 import Locate.DefinesClass
 import java.io.File
 
+import sbt.internal.librarymanagement.{ ComponentManager, IvyConfiguration }
+import sbt.librarymanagement.ModuleID
+import sbt.util.Logger
+
 object Compiler {
   val DefaultMaxErrors = 100
 
@@ -45,94 +49,100 @@ object Compiler {
       incSetup
     )
 
-  def compilers(cpOptions: ClasspathOptions)(implicit app: AppConfiguration, log: Logger): Compilers =
-    {
-      val scalaProvider = app.provider.scalaProvider
-      compilers(ScalaInstance(scalaProvider.version, scalaProvider.launcher), cpOptions)
-    }
+  // def compilers(cpOptions: ClasspathOptions)(implicit app: AppConfiguration, log: Logger): Compilers =
+  //   {
+  //     val scalaProvider = app.provider.scalaProvider
+  //     compilers(ScalaInstance(scalaProvider.version, scalaProvider.launcher), cpOptions)
+  //   }
 
-  def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions)(implicit app: AppConfiguration, log: Logger): Compilers =
-    compilers(instance, cpOptions, None)
+  // def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions)(implicit app: AppConfiguration, log: Logger): Compilers =
+  //   compilers(instance, cpOptions, None)
 
-  @deprecated("Use `compilers(ScalaInstance, ClasspathOptions, Option[File], IvyConfiguration)`.", "0.13.10")
-  def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File])(implicit app: AppConfiguration, log: Logger): Compilers =
-    {
-      val javac =
-        AggressiveCompile.directOrFork(instance, cpOptions, javaHome)
-      val javac2 =
-        JavaTools.directOrFork(instance, cpOptions, javaHome)
-      // Hackery to enable both the new and deprecated APIs to coexist peacefully.
-      case class CheaterJavaTool(newJavac: IncrementalCompilerJavaTools, delegate: JavaTool) extends JavaTool with JavaToolWithNewInterface {
-        def compile(contract: JavacContract, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger): Unit =
-          javac.compile(contract, sources, classpath, outputDirectory, options)(log)
-        def onArgs(f: Seq[String] => Unit): JavaTool = CheaterJavaTool(newJavac, delegate.onArgs(f))
-      }
-      compilers(instance, cpOptions, CheaterJavaTool(javac2, javac))
-    }
-  def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File], ivyConfiguration: IvyConfiguration)(implicit app: AppConfiguration, log: Logger): Compilers =
-    {
-      val javac =
-        AggressiveCompile.directOrFork(instance, cpOptions, javaHome)
-      val javac2 =
-        JavaTools.directOrFork(instance, cpOptions, javaHome)
-      // Hackery to enable both the new and deprecated APIs to coexist peacefully.
-      case class CheaterJavaTool(newJavac: IncrementalCompilerJavaTools, delegate: JavaTool) extends JavaTool with JavaToolWithNewInterface {
-        def compile(contract: JavacContract, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger): Unit =
-          javac.compile(contract, sources, classpath, outputDirectory, options)(log)
-        def onArgs(f: Seq[String] => Unit): JavaTool = CheaterJavaTool(newJavac, delegate.onArgs(f))
-      }
-      val scalac = scalaCompiler(instance, cpOptions, ivyConfiguration)
-      new Compilers(scalac, CheaterJavaTool(javac2, javac))
-    }
-  @deprecated("Deprecated in favor of new sbt.compiler.javac package.", "0.13.8")
-  def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javac: sbt.compiler.JavaCompiler.Fork)(implicit app: AppConfiguration, log: Logger): Compilers =
-    {
-      val javaCompiler = sbt.compiler.JavaCompiler.fork(cpOptions, instance)(javac)
-      compilers(instance, cpOptions, javaCompiler)
-    }
-  @deprecated("Deprecated in favor of new sbt.compiler.javac package.", "0.13.8")
-  def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javac: JavaTool)(implicit app: AppConfiguration, log: Logger): Compilers =
-    {
-      val scalac = scalaCompiler(instance, cpOptions)
-      new Compilers(scalac, javac)
-    }
-  @deprecated("Use `scalaCompiler(ScalaInstance, ClasspathOptions, IvyConfiguration)`.", "0.13.10")
-  def scalaCompiler(instance: ScalaInstance, cpOptions: ClasspathOptions)(implicit app: AppConfiguration, log: Logger): AnalyzingCompiler =
+  // @deprecated("Use `compilers(ScalaInstance, ClasspathOptions, Option[File], IvyConfiguration)`.", "0.13.10")
+  // def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File])(implicit app: AppConfiguration, log: Logger): Compilers =
+  //   {
+  //     val javac =
+  //       AggressiveCompile.directOrFork(instance, cpOptions, javaHome)
+  //     val javac2 =
+  //       JavaTools.directOrFork(instance, cpOptions, javaHome)
+  //     // Hackery to enable both the new and deprecated APIs to coexist peacefully.
+  //     case class CheaterJavaTool(newJavac: IncrementalCompilerJavaTools, delegate: JavaTool) extends JavaTool with JavaToolWithNewInterface {
+  //       def compile(contract: JavacContract, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger): Unit =
+  //         javac.compile(contract, sources, classpath, outputDirectory, options)(log)
+  //       def onArgs(f: Seq[String] => Unit): JavaTool = CheaterJavaTool(newJavac, delegate.onArgs(f))
+  //     }
+  //     compilers(instance, cpOptions, CheaterJavaTool(javac2, javac))
+  //   }
+  // def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File], ivyConfiguration: IvyConfiguration)(implicit app: AppConfiguration, log: Logger): Compilers =
+  //   {
+  //     val javac =
+  //       AggressiveCompile.directOrFork(instance, cpOptions, javaHome)
+  //     val javac2 =
+  //       JavaTools.directOrFork(instance, cpOptions, javaHome)
+  //     // Hackery to enable both the new and deprecated APIs to coexist peacefully.
+  //     case class CheaterJavaTool(newJavac: IncrementalCompilerJavaTools, delegate: JavaTool) extends JavaTool with JavaToolWithNewInterface {
+  //       def compile(contract: JavacContract, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger): Unit =
+  //         javac.compile(contract, sources, classpath, outputDirectory, options)(log)
+  //       def onArgs(f: Seq[String] => Unit): JavaTool = CheaterJavaTool(newJavac, delegate.onArgs(f))
+  //     }
+  //     val scalac = scalaCompiler(instance, cpOptions, ivyConfiguration)
+  //     new Compilers(scalac, CheaterJavaTool(javac2, javac))
+  //   }
+  // @deprecated("Deprecated in favor of new sbt.compiler.javac package.", "0.13.8")
+  // def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javac: sbt.compiler.JavaCompiler.Fork)(implicit app: AppConfiguration, log: Logger): Compilers =
+  //   {
+  //     val javaCompiler = sbt.compiler.JavaCompiler.fork(cpOptions, instance)(javac)
+  //     compilers(instance, cpOptions, javaCompiler)
+  //   }
+  // @deprecated("Deprecated in favor of new sbt.compiler.javac package.", "0.13.8")
+  // def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javac: JavaTool)(implicit app: AppConfiguration, log: Logger): Compilers =
+  //   {
+  //     val scalac = scalaCompiler(instance, cpOptions)
+  //     new Compilers(scalac, javac)
+  //   }
+  // @deprecated("Use `scalaCompiler(ScalaInstance, ClasspathOptions, IvyConfiguration)`.", "0.13.10")
+  // def scalaCompiler(instance: ScalaInstance, cpOptions: ClasspathOptions)(implicit app: AppConfiguration, log: Logger): AnalyzingCompiler =
+  //   {
+  //     val launcher = app.provider.scalaProvider.launcher
+  //     val componentManager = new ComponentManager(launcher.globalLock, app.provider.components, Option(launcher.ivyHome), log)
+  //     val provider = ComponentCompiler.interfaceProvider(componentManager)
+  //     new AnalyzingCompiler(instance, provider, cpOptions)
+  //   }
+
+  // TODO: Get java compiler
+  def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File], ivyConfiguration: IvyConfiguration, sourcesModule: ModuleID)(implicit app: AppConfiguration, log: Logger): Compilers = {
+    val scalac = scalaCompiler(instance, cpOptions, javaHome, ivyConfiguration, sourcesModule)
+    val javac = ???
+    new Compilers(scalac, javac)
+  }
+  def scalaCompiler(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File], ivyConfiguration: IvyConfiguration, sourcesModule: ModuleID)(implicit app: AppConfiguration, log: Logger): AnalyzingCompiler =
     {
       val launcher = app.provider.scalaProvider.launcher
       val componentManager = new ComponentManager(launcher.globalLock, app.provider.components, Option(launcher.ivyHome), log)
-      val provider = ComponentCompiler.interfaceProvider(componentManager)
-      new AnalyzingCompiler(instance, provider, cpOptions)
-    }
-  def scalaCompiler(instance: ScalaInstance, cpOptions: ClasspathOptions, ivyConfiguration: IvyConfiguration)(implicit app: AppConfiguration, log: Logger): AnalyzingCompiler =
-    {
-      val launcher = app.provider.scalaProvider.launcher
-      val componentManager = new ComponentManager(launcher.globalLock, app.provider.components, Option(launcher.ivyHome), log)
-      val bootDirectory = launcher.bootDirectory
-      val provider = ComponentCompiler.interfaceProvider(componentManager, ivyConfiguration, bootDirectory)
+      val provider = ComponentCompiler.interfaceProvider(componentManager, ivyConfiguration, sourcesModule)
       new AnalyzingCompiler(instance, provider, cpOptions)
     }
 
-  @deprecated("Use the `compile` method instead.", "0.13.8")
-  def apply(in: Inputs, log: Logger): Analysis = {
-    import in.config._
-    apply(in, log, new LoggerReporter(maxErrors, log, sourcePositionMapper))
-  }
-  @deprecated("Use the `compile` method instead.", "0.13.8")
-  def apply(in: Inputs, log: Logger, reporter: xsbti.Reporter): Analysis = {
-    import in.compilers._
-    import in.config._
-    import in.incSetup._
-    // Here we load the previous analysis since the new paths don't.
-    val (previousAnalysis, previousSetup) = {
-      MixedAnalyzingCompiler.staticCachedStore(cacheFile).get().map {
-        case (a, s) => (a, Some(s))
-      } getOrElse {
-        (Analysis.empty(nameHashing = incOptions.nameHashing), None)
-      }
-    }
-    compile(InputsWithPrevious(in, PreviousAnalysis(previousAnalysis, previousSetup)), log, reporter).analysis
-  }
+  // @deprecated("Use the `compile` method instead.", "0.13.8")
+  // def apply(in: Inputs, log: Logger): Analysis = {
+  //   import in.config._
+  //   apply(in, log, new LoggerReporter(maxErrors, log, sourcePositionMapper))
+  // }
+  // @deprecated("Use the `compile` method instead.", "0.13.8")
+  // def apply(in: Inputs, log: Logger, reporter: xsbti.Reporter): Analysis = {
+  //   import in.compilers._
+  //   import in.config._
+  //   import in.incSetup._
+  //   // Here we load the previous analysis since the new paths don't.
+  //   val (previousAnalysis, previousSetup) = {
+  //     MixedAnalyzingCompiler.staticCachedStore(cacheFile).get().map {
+  //       case (a, s) => (a, Some(s))
+  //     } getOrElse {
+  //       (Analysis.empty(nameHashing = incOptions.nameHashing), None)
+  //     }
+  //   }
+  //   compile(InputsWithPrevious(in, PreviousAnalysis(previousAnalysis, previousSetup)), log, reporter).analysis
+  // }
   def compile(in: InputsWithPrevious, log: Logger): CompileResult =
     {
       import in.inputs.config._

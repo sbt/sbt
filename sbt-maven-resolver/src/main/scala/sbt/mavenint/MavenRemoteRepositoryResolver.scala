@@ -15,7 +15,10 @@ import org.eclipse.aether.resolution.{
   VersionRequest => AetherVersionRequest,
   VersionRangeRequest => AetherVersionRangeRequest
 }
-import sbt.ivyint.CustomRemoteMavenResolver
+
+import sbt.internal.librarymanagement.ivyint.CustomRemoteMavenResolver
+import sbt.librarymanagement.MavenRepository
+
 import scala.collection.JavaConverters._
 
 /**
@@ -33,7 +36,7 @@ class MavenRemoteRepositoryResolver(val repo: MavenRepository, settings: IvySett
   //        We're not sure if we care whether or not this means that the wrong resolver may report finding an artifact.
   //        The key is not to duplicate files repeatedly across many caches.
   private val localRepo = new java.io.File(settings.getDefaultIvyUserDir, s"maven-cache")
-  sbt.IO.createDirectory(localRepo)
+  sbt.io.IO.createDirectory(localRepo)
   protected val session = MavenRepositorySystemFactory.newSessionImpl(system, localRepo)
   private val aetherRepository = {
     new org.eclipse.aether.repository.RemoteRepository.Builder(repo.name, SbtRepositoryLayout.LAYOUT_NAME, repo.root).build()

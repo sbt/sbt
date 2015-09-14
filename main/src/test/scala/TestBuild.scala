@@ -1,8 +1,9 @@
 package sbt
 
 import Def.{ ScopedKey, Setting }
-import Types.{ const, idFun, some }
-import complete.Parser
+import sbt.internal.util.{ AttributeKey, AttributeMap, Relation, Settings }
+import sbt.internal.util.Types.{ const, idFun, some }
+import sbt.internal.util.complete.Parser
 
 import java.io.File
 import java.net.URI

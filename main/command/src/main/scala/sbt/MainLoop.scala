@@ -7,6 +7,10 @@ import scala.annotation.tailrec
 import java.io.{ File, PrintWriter }
 import jline.TerminalFactory
 
+import sbt.internal.io.Using
+import sbt.internal.util.{ ErrorHandling, GlobalLogBacking, GlobalLogging }
+import sbt.util.{ AbstractLogger, Logger }
+
 object MainLoop {
   /** Entry point to run the remaining commands in State with managed global logging.*/
   def runLogged(state: State): xsbti.MainResult = {

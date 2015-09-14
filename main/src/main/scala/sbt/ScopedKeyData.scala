@@ -3,7 +3,7 @@ package sbt
 import Def.ScopedKey
 
 final case class ScopedKeyData[A](scoped: ScopedKey[A], value: Any) {
-  import Types.const
+  import sbt.internal.util.Types.const
   val key = scoped.key
   val scope = scoped.scope
   def typeName: String = fold(fmtMf("Task[%s]"), fmtMf("InputTask[%s]"), key.manifest.toString)

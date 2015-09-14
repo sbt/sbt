@@ -3,7 +3,8 @@
  */
 package sbt
 
-import Types._
+import sbt.internal.util.AList
+import sbt.internal.util.Types._
 
 /**
  * Represents a task node in a format understood by the task evaluation engine Execute.

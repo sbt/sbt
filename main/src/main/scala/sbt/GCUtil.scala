@@ -3,6 +3,7 @@ package sbt
 import java.util.concurrent.atomic.AtomicLong
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
+import sbt.util.Logger
 
 private[sbt] object GCUtil {
   // Returns the default force garbage collection flag,

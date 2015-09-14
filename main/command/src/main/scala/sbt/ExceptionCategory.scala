@@ -3,6 +3,8 @@ package sbt
 import java.lang.reflect.InvocationTargetException
 import scala.annotation.tailrec
 
+import sbt.internal.util.{ AlreadyHandledException, MessageOnlyException, UnprintableException }
+
 private[sbt] sealed abstract class ExceptionCategory {
   def isFull: Boolean = false
 }

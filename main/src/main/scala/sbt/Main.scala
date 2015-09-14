@@ -3,6 +3,9 @@
  */
 package sbt
 
+import sbt.internal.util.{ AttributeKey, AttributeMap, complete, ConsoleOut, GlobalLogging, LineRange, MainLogging, SimpleReader, Types }
+import sbt.util.{ Level, Logger }
+
 import complete.{ DefaultParsers, Parser }
 import compiler.{ CompilerCache, EvalImports }
 import Types.{ const, idFun }
@@ -10,7 +13,8 @@ import Aggregation.AnyKeys
 import Project.LoadAction
 
 import scala.annotation.tailrec
-import Path._
+import sbt.io.IO
+import sbt.io.Path._
 import StandardMain._
 
 import java.io.File

@@ -4,7 +4,8 @@
 package sbt
 package std
 
-import Types._
+import sbt.internal.util.Types._
+import sbt.internal.util.{ ~>, AList, DelegatingPMap, RMap }
 import Task._
 import TaskExtra.{ all, existToAny }
 import Execute._

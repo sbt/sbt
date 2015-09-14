@@ -1,6 +1,8 @@
 package sbt
 package plugins
 
+import sbt.librarymanagement.{ Configuration, Configurations }
+
 import Def.Setting
 
 /** A plugin representing the ability to build a JVM project.

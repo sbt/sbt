@@ -3,7 +3,8 @@ package sbt
 import Project._
 import Scope.GlobalScope
 import Def.{ ScopedKey, Setting }
-import sbt.complete.Parser
+import sbt.internal.util.complete.Parser
+import sbt.internal.util.{ AttributeKey, Show }
 import std.Transform.DummyTaskMap
 
 final case class Extracted(structure: BuildStructure, session: SessionSettings, currentRef: ProjectRef)(implicit val showKey: Show[ScopedKey[_]]) {

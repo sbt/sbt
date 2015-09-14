@@ -3,6 +3,10 @@
  */
 package sbt
 
+import sbt.internal.util.{ ErrorHandling, RMap, Show, Signals, Types }
+import sbt.util.Logger
+import sbt.librarymanagement.{ Resolver, UpdateReport }
+
 import scala.concurrent.duration.Duration
 import java.io.File
 import Def.{ displayFull, dummyState, ScopedKey, Setting }
@@ -10,7 +14,8 @@ import Keys.{ streams, Streams, TaskStreams }
 import Keys.{ dummyRoots, dummyStreamsManager, executionRoots, pluginData, streamsManager, taskDefinitionKey, transformState }
 import Project.richInitializeTask
 import Scope.{ GlobalScope, ThisScope }
-import Types.const
+import sbt.internal.util.Types.const
+import sbt.internal.util.{ Attributed, HList }
 import scala.Console.RED
 import std.Transform.{ DummyTaskMap, TaskAndValue }
 import TaskName._

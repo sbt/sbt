@@ -9,6 +9,7 @@ import org.specs2.mutable.Specification
 import scala.annotation.tailrec
 import scala.io.Source
 import scala.tools.reflect.ToolBoxError
+import sbt.internal.util.LineRange
 
 class SplitExpressionsFilesTest extends AbstractSplitExpressionsFilesTest("/old-format/")
 
@@ -16,7 +17,7 @@ class SplitExpressionsFilesTest extends AbstractSplitExpressionsFilesTest("/old-
 
 abstract class AbstractSplitExpressionsFilesTest(pathName: String) extends Specification {
 
-  case class SplitterComparison(oldSplitterResult: util.Try[(Seq[(String, Int)], Seq[LineRange])], newSplitterResult: util.Try[(Seq[(String, Int)], Seq[LineRange])])
+  case class SplitterComparison(oldSplitterResult: scala.util.Try[(Seq[(String, Int)], Seq[LineRange])], newSplitterResult: scala.util.Try[(Seq[(String, Int)], Seq[LineRange])])
 
   val oldSplitter: SplitExpressions.SplitExpression = EvaluateConfigurationsOriginal.splitExpressions
   val newSplitter: SplitExpressions.SplitExpression = EvaluateConfigurations.splitExpressions
@@ -40,7 +41,7 @@ abstract class AbstractSplitExpressionsFilesTest(pathName: String) extends Speci
       printResults(results)
 
       val validResults = results.collect {
-        case (path, SplitterComparison(util.Success(oldRes), util.Success(newRes))) if oldRes == newRes => path
+        case (path, SplitterComparison(scala.util.Success(oldRes), scala.util.Success(newRes))) if oldRes == newRes => path
       }
 
       validResults.length must be_==(results.length)
@@ -112,19 +113,19 @@ abstract class AbstractSplitExpressionsFilesTest(pathName: String) extends Speci
     removeDoubleSlashReversed(statements.reverse, lineRange).map(t => (t._1.reverse, t._2))
   }
 
-  def splitLines(file: File, splitter: SplitExpressions.SplitExpression, lines: List[String]): util.Try[(Seq[(String, Int)], Seq[LineRange])] = {
+  def splitLines(file: File, splitter: SplitExpressions.SplitExpression, lines: List[String]): scala.util.Try[(Seq[(String, Int)], Seq[LineRange])] = {
     try {
       val (imports, settingsAndDefs) = splitter(file, lines)
 
       //TODO: Return actual contents (after making both splitter...
       //TODO: ...implementations return CharRanges instead of LineRanges)
       val settingsAndDefWithoutComments = settingsAndDefs.flatMap(t => removeCommentFromStatement(t._1, t._2))
-      util.Success((imports.map(imp => (imp._1.trim, imp._2)), settingsAndDefWithoutComments))
+      scala.util.Success((imports.map(imp => (imp._1.trim, imp._2)), settingsAndDefWithoutComments))
     } catch {
       case e: ToolBoxError =>
-        util.Failure(e)
+        scala.util.Failure(e)
       case e: Throwable =>
-        util.Failure(e)
+        scala.util.Failure(e)
     }
   }
 
@@ -132,12 +133,12 @@ abstract class AbstractSplitExpressionsFilesTest(pathName: String) extends Speci
     for ((file, comparison) <- results) {
       val fileName = file.getName
       comparison match {
-        case SplitterComparison(util.Failure(ex), _) =>
+        case SplitterComparison(scala.util.Failure(ex), _) =>
           println(s"In file: $fileName, old splitter failed. ${ex.toString}")
-        case SplitterComparison(_, util.Failure(ex)) =>
+        case SplitterComparison(_, scala.util.Failure(ex)) =>
           println(s"In file: $fileName, new splitter failed. ${ex.toString}")
           ex.printStackTrace()
-        case SplitterComparison(util.Success(resultOld), util.Success(resultNew)) =>
+        case SplitterComparison(scala.util.Success(resultOld), scala.util.Success(resultNew)) =>
           if (resultOld != resultNew) {
             println(
               s"""In file: $fileName, results differ:

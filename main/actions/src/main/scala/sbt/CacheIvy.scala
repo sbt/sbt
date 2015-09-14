@@ -5,15 +5,22 @@ package sbt
 
 import Predef.{ Map, Set, implicitly } // excludes *both 2.10.x conforms and 2.11.x $conforms in source compatible manner.
 
-import FileInfo.{ exists, hash }
+import sbt.internal.util.{ Cache, HList, HNil, InputCache, LinePosition, LineRange, NoPosition, RangePosition, SourcePosition }
+import sbt.internal.util.FileInfo.{ exists, hash }
+import sbt.internal.util.Types.{ :+:, idFun }
 import java.io.File
 import java.{ util => ju }
 import java.net.URL
-import Types.{ :+:, idFun }
 import scala.xml.NodeSeq
 import sbinary.{ DefaultProtocol, Format }
-import RepositoryHelpers._
+// import sbt.internal.librarymanagement.{ ExternalIvyConfiguration, IvyConfiguration, IvyPaths, IvyScala, ModuleSettings, RetrieveConfiguration, SbtExclusionRule, UpdateConfiguration, UpdateReport }
+// import sbt.librarymanagement.{ Configuration, ExclusionRule, CrossVersion, ModuleID, Patterns }
+import sbt.internal.librarymanagement._
+import sbt.librarymanagement._
+import sbt.librarymanagement.RepositoryHelpers._
 import Ordering._
+
+import sbt.io.Hash
 
 /**
  * InputCaches for IvyConfiguration, ModuleSettings, and UpdateConfiguration

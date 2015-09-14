@@ -6,12 +6,13 @@ package sbt
 import Def.{ showRelativeKey, ScopedKey }
 import Project.showContextKey
 import Keys.{ sessionSettings, thisProject }
-import complete.{ DefaultParsers, Parser }
+import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import Aggregation.{ KeyValue, Values }
 import DefaultParsers._
-import Types.idFun
+import sbt.internal.util.Types.idFun
 import java.net.URI
 import CommandStrings.{ MultiTaskCommand, ShowCommand }
+import sbt.internal.util.{ AttributeEntry, AttributeKey, AttributeMap, IMap, Settings, Show, Util }
 
 final class ParsedKey(val key: ScopedKey[_], val mask: ScopeMask)
 

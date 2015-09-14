@@ -5,11 +5,14 @@ TODO:
 - error message when a task doesn't exist that it would be provided by plugin x, enabled by natures y,z, blocked by a, b
 */
 
-import logic.{Atom, Clause, Clauses, Formula, Literal, Logic, Negated}
+import sbt.librarymanagement.Configuration
+
+import sbt.internal.util.logic.{Atom, Clause, Clauses, Formula, Literal, Logic, Negated}
 import Logic.{CyclicNegation, InitialContradictions, InitialOverlap, LogicException}
 import Def.Setting
 import Plugins._
 import annotation.tailrec
+import sbt.util.Logger
 
 /**
  * An AutoPlugin defines a group of settings and the conditions where the settings are automatically added to a build (called "activation").
@@ -334,7 +337,7 @@ ${listConflicts(conflicting)}""")
 
   private[sbt] def hasAutoImportGetter(ap: AutoPlugin, loader: ClassLoader): Boolean = {
     import reflect.runtime.{universe => ru}
-    import util.control.Exception.catching
+    import scala.util.control.Exception.catching
     val m = ru.runtimeMirror(loader)
     val im = m.reflect(ap)
     val hasGetterOpt = catching(classOf[ScalaReflectionException]) opt {

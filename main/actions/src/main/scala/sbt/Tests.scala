@@ -7,7 +7,8 @@ import std._
 import xsbt.api.{ Discovered, Discovery }
 import inc.Analysis
 import TaskExtra._
-import Types._
+import sbt.internal.util.FeedbackProvidedException
+import sbt.internal.util.Types._
 import xsbti.api.Definition
 import ConcurrentRestrictions.Tag
 
@@ -15,6 +16,8 @@ import testing.{ AnnotatedFingerprint, Fingerprint, Framework, SubclassFingerpri
 import scala.annotation.tailrec
 
 import java.io.File
+
+import sbt.util.Logger
 
 sealed trait TestOption
 object Tests {

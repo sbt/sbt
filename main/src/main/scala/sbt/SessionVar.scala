@@ -1,5 +1,7 @@
 package sbt
 
+import sbt.internal.util.{ AttributeMap, IMap, Types }
+
 import Def.ScopedKey
 import Types.Id
 import Keys.sessionVars

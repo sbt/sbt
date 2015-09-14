@@ -8,7 +8,11 @@ import java.io.{ InputStream, IOException, OutputStream, Reader, Writer }
 import java.io.{ BufferedInputStream, BufferedOutputStream, BufferedReader, BufferedWriter, PrintWriter }
 import java.io.{ Closeable, File, FileInputStream, FileOutputStream, InputStreamReader, OutputStreamWriter }
 
-import Path._
+import sbt.internal.io.DeferredWriter
+import sbt.io.IO
+import sbt.io.Path._
+
+import sbt.util.Logger
 
 // no longer specific to Tasks, so 'TaskStreams' should be renamed
 /**

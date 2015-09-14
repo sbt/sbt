@@ -3,8 +3,9 @@
  */
 package xsbt.test
 
+import scala.sys.process.Process
 import java.io.File
-import sbt.{ IO, Path }
+import sbt.io.{ IO, Path }
 import Path._
 
 class FileCommands(baseDirectory: File) extends BasicStatementHandler {
@@ -73,7 +74,7 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
     if (command.trim.isEmpty)
       scriptError("Command was empty.")
     else {
-      val exitValue = sbt.Process(command :: args, baseDirectory) !;
+      val exitValue = Process(command :: args, baseDirectory) !;
       if (exitValue != 0)
         sys.error("Nonzero exit value (" + exitValue + ")")
     }

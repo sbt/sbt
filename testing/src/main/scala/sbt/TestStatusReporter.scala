@@ -4,6 +4,7 @@
 package sbt
 
 import java.io.File
+import sbt.io.IO
 
 import scala.collection.mutable.Map
 

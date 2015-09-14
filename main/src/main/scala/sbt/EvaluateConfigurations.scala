@@ -3,6 +3,8 @@
  */
 package sbt
 
+import sbt.internal.util.{ complete, AttributeEntry, AttributeKey, LineRange, MessageOnlyException, RangePosition, Settings }
+
 import java.io.File
 import compiler.{ Eval, EvalImports }
 import complete.DefaultParsers.validID
@@ -11,6 +13,8 @@ import Scope.GlobalScope
 import sbt.internals.parser.SbtParser
 
 import scala.annotation.tailrec
+
+import sbt.io.IO
 
 /**
  *  This file is responsible for compiling the .sbt files used to configure sbt builds.

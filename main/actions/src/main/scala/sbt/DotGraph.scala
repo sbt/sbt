@@ -6,6 +6,10 @@ package sbt
 import java.io.{ File, Writer }
 import inc.Relations
 
+import sbt.internal.util.Relation
+
+import sbt.io.IO
+
 object DotGraph {
   private def fToString(roots: Iterable[File]): (File => String) =
     (x: File) => sourceToString(roots, x)

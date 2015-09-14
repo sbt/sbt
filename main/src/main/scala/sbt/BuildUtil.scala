@@ -1,5 +1,7 @@
 package sbt
 
+import sbt.internal.util.{ Relation, Settings, Dag }
+
 import java.net.URI
 
 final class BuildUtil[Proj](

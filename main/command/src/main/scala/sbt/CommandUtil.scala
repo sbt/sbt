@@ -3,8 +3,11 @@ package sbt
 import java.io.File
 import java.util.regex.{ Pattern, PatternSyntaxException }
 
-import complete.Parser
-import complete.DefaultParsers._
+import sbt.internal.util.AttributeKey
+import sbt.internal.util.complete.Parser
+import sbt.internal.util.complete.DefaultParsers._
+
+import sbt.io.IO
 
 object CommandUtil {
   def readLines(files: Seq[File]): Seq[String] = files flatMap (line => IO.readLines(line)) flatMap processLine

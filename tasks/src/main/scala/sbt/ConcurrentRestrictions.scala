@@ -1,5 +1,7 @@
 package sbt
 
+import sbt.internal.util.AttributeKey
+
 /**
  * Describes restrictions on concurrent execution for a set of tasks.
  *

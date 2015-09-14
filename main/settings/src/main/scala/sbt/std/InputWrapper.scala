@@ -7,8 +7,8 @@ import reflect.macros._
 import reflect.internal.annotations.compileTimeOnly
 
 import Def.{ Initialize, ScopedKey }
-import appmacro.ContextUtil
-import complete.Parser
+import sbt.internal.util.appmacro.ContextUtil
+import sbt.internal.util.complete.Parser
 
 /** Implementation detail.  The wrap methods temporarily hold inputs (as a Tree, at compile time) until a task or setting macro processes it. */
 object InputWrapper {

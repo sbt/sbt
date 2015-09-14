@@ -5,7 +5,9 @@ package sbt
 
 import Def.ScopedKey
 import Keys.{ aggregate, showSuccess, showTiming, timingFormat }
-import sbt.complete.Parser
+import sbt.internal.util.complete.Parser
+import sbt.internal.util.{ Dag, HList, Relation, Settings, Show, Util }
+import sbt.util.Logger
 import java.net.URI
 import Parser._
 import collection.mutable

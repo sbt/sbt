@@ -3,6 +3,7 @@ package sbt
 import java.io.File
 import Def.Classpath
 import scala.annotation.implicitNotFound
+import sbt.internal.util.Attributed
 
 object Append {
   @implicitNotFound(msg = "No implicit for Append.Value[${A}, ${B}] found,\n  so ${B} cannot be appended to ${A}")

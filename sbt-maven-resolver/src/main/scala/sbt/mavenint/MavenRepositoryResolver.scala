@@ -30,9 +30,12 @@ import org.eclipse.aether.resolution.{
   VersionRangeRequest => AetherVersionRangeRequest
 }
 import org.eclipse.aether.{ RepositorySystem, RepositorySystemSession }
-import sbt.ivyint.{ CustomMavenResolver, CustomRemoteMavenResolver }
+
+import sbt.internal.librarymanagement.ivyint.{ CustomMavenResolver, CustomRemoteMavenResolver }
+import sbt.internal.librarymanagement.mavenint.{ PomExtraDependencyAttributes, SbtPomExtraProperties }
+import sbt.internal.librarymanagement.MakePom
+
 import sbt.mavenint.MavenRepositoryResolver.JarPackaging
-import sbt.{ MavenCache, MavenRepository }
 
 import scala.collection.JavaConverters._
 
@@ -116,9 +119,9 @@ abstract class MavenRepositoryResolver(settings: IvySettings) extends AbstractRe
     val context = IvyContext.pushNewCopyContext
     try {
       val drid: ModuleRevisionId =
-        if (sbt.MakePom.isDependencyVersionRange(dd.getDependencyRevisionId.getRevision)) {
+        if (MakePom.isDependencyVersionRange(dd.getDependencyRevisionId.getRevision)) {
           Message.debug(s"Got a dynamic revision, attempting to convert to real revision: ${dd.getDependencyRevisionId}")
-          val revision = sbt.MakePom.makeDependencyVersion(dd.getDependencyRevisionId.getRevision)
+          val revision = MakePom.makeDependencyVersion(dd.getDependencyRevisionId.getRevision)
           // TODO - Alter revision id to be maven-friendly first.
           val coords =
             s"${dd.getDependencyRevisionId.getOrganisation}:${aetherArtifactIdFromMrid(dd.getDependencyRevisionId)}:${revision}"

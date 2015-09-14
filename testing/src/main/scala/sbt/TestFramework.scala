@@ -9,6 +9,8 @@ import testing.{ Logger => TLogger, Task => TestTask, _ }
 import org.scalatools.testing.{ Framework => OldFramework }
 import classpath.{ ClasspathUtilities, DualLoader, FilteredLoader }
 import scala.annotation.tailrec
+import sbt.util.Logger
+import sbt.io.IO
 
 object TestResult extends Enumeration {
   val Passed, Failed, Error = Value

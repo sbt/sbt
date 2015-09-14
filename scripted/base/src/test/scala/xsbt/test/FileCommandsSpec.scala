@@ -4,7 +4,8 @@ import java.io.File
 import org.specs2.mutable.Specification
 import org.specs2.matcher.FileMatchers
 import sbt._
-import sbt.Path._
+import sbt.io.IO
+import sbt.io.Path._
 
 object FileCommandsSpec extends Specification with FileMatchers {
 

@@ -1,5 +1,7 @@
 package sbt
 
+import sbt.internal.util.RMap
+
 /**
  * Processes progress events during task execution.
  * All methods are called from the same thread except `started` and `finished`,

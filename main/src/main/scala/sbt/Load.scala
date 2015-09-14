@@ -3,6 +3,9 @@
  */
 package sbt
 
+import sbt.internal.util.{ Settings, Show, ~> }
+import sbt.librarymanagement.{ Configuration, Configurations }
+
 import java.io.File
 import java.net.{ URI, URL }
 import compiler.{ Eval, EvalImports }
@@ -16,12 +19,16 @@ import Def.{ isDummy, ScopedKey, ScopeLocal, Setting }
 import Keys.{ appConfiguration, baseDirectory, configuration, fullResolvers, fullClasspath, pluginData, streams, thisProject, thisProjectRef, update }
 import Keys.{ exportedProducts, loadedBuild, onLoadMessage, resolvedScoped, sbtPlugin, scalacOptions, taskDefinitionKey }
 import tools.nsc.reporters.ConsoleReporter
-import Attributed.data
+import sbt.internal.util.Attributed
+import sbt.internal.util.Attributed.data
 import Scope.{ GlobalScope, ThisScope }
-import Types.const
+import sbt.internal.util.Types.const
 import BuildPaths._
 import BuildStreams._
 import Locate.DefinesClass
+import sbt.io.{ GlobFilter, IO, Path }
+import sbt.internal.io.Alternatives
+import sbt.util.Logger
 
 object Load {
   // note that there is State passed in but not pulled out
@@ -44,7 +51,8 @@ object Load {
       val stagingDirectory = getStagingDirectory(state, globalBase).getCanonicalFile
       val loader = getClass.getClassLoader
       val classpath = Attributed.blankSeq(provider.mainClasspath ++ scalaProvider.jars)
-      val compilers = Compiler.compilers(ClasspathOptions.boot)(state.configuration, log)
+      // TODO: Fix this
+      val compilers = ??? //Compiler.compilers(ClasspathOptions.boot)(state.configuration, log)
       val evalPluginDef = EvaluateTask.evalPluginDef(log) _
       val delegates = defaultDelegates
       val initialID = baseDirectory.getName
@@ -259,7 +267,7 @@ object Load {
     if (keepSet.nonEmpty) {
       def keepFile(f: File) = keepSet(f.getCanonicalPath)
       import Path._
-      val existing = (baseTarget.***.get).filterNot(_.isDirectory)
+      val existing = (baseTarget.allPaths.get).filterNot(_.isDirectory)
       val toDelete = existing.filterNot(keepFile)
       if (toDelete.nonEmpty) {
         IO.delete(toDelete)
