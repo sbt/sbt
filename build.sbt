@@ -72,9 +72,12 @@ lazy val compileRoot: Project = (project in file(".")).
       description := "Incremental compiler of Scala"
     )),
     minimalSettings,
-    // rootSettings,
+    name := "Incrementalcompiler Root",
     publish := {},
-    publishLocal := {}
+    publishLocal := {},
+    publishArtifact in Compile := false,
+    publishArtifact in Test := false,
+    publishArtifact := false
   )
 
 lazy val incrementalcompilerProj = (project in file("incrementalcompiler")).
