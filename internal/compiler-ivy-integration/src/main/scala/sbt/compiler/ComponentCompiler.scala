@@ -120,7 +120,8 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
       moduleInfo = ModuleInfo(moduleID.name),
       dependencies = deps,
       configurations = Seq(Configurations.Component),
-      ivyScala = None)
+      ivyScala = None
+    )
 
     new ivySbt.Module(moduleSetting)
   }
