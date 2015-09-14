@@ -3,18 +3,8 @@ import Util._
 import Dependencies._
 // import StringUtilities.normalize
 
+def baseVersion = "0.1.0"
 def internalPath   = file("internal")
-
-// ThisBuild settings take lower precedence,
-// but can be shared across the multi projects.
-def buildLevelSettings: Seq[Setting[_]] = Seq(
-  organization in ThisBuild := "org.scala-sbt",
-  version in ThisBuild := "0.1.0-SNAPSHOT"
-  // bintrayOrganization in ThisBuild := Some("sbt"),
-  // // bintrayRepository in ThisBuild := s"ivy-${(publishStatus in ThisBuild).value}",
-  // bintrayPackage in ThisBuild := "sbt",
-  // bintrayReleaseOnPublish in ThisBuild := false
-)
 
 def commonSettings: Seq[Setting[_]] = Seq(
   scalaVersion := "2.10.5",
@@ -75,7 +65,12 @@ lazy val compileRoot: Project = (project in file(".")).
     compileProj,
     compilerIvyProj).
   settings(
-    buildLevelSettings,
+    inThisBuild(Seq(
+      git.baseVersion := baseVersion,
+      bintrayPackage := "incrementalcompiler",
+      scmInfo := Some(ScmInfo(url("https://github.com/sbt/incrementalcompiler"), "git@github.com:sbt/incrementalcompiler.git")),
+      description := "Incremental compiler of Scala"
+    )),
     minimalSettings,
     // rootSettings,
     publish := {},
