@@ -44,7 +44,7 @@ final class MixedAnalyzingCompiler(
     val incSrc = sources.filter(include)
     val (javaSrcs, scalaSrcs) = incSrc partition javaOnly
     logInputs(log, javaSrcs.size, scalaSrcs.size, outputDirs)
-    /** compiles the scala code necessary using the analyzing compiler. */
+    // compiles the scala code necessary using the analyzing compiler.
     def compileScala(): Unit =
       if (scalaSrcs.nonEmpty) {
         val sources = if (order == Mixed) incSrc else scalaSrcs
@@ -53,9 +53,7 @@ final class MixedAnalyzingCompiler(
           compiler.compile(sources, changes, arguments, output, callback, reporter, config.cache, log, progress)
         }
       }
-    /**
-     * Compiles the Java code necessary.  All analysis code is included in this method.
-     */
+    // Compiles the Java code necessary.  All analysis code is included in this method.
     def compileJava(): Unit =
       if (javaSrcs.nonEmpty) {
         // Runs the analysis portion of Javac.
@@ -71,7 +69,7 @@ final class MixedAnalyzingCompiler(
     case single: SingleOutput => List(single.outputDirectory)
     case mult: MultipleOutput => mult.outputGroups map (_.outputDirectory)
   }
-  /** Debugging method to time how long it takes to run various compilation tasks. */
+  // Debugging method to time how long it takes to run various compilation tasks.
   private[this] def timed[T](label: String, log: Logger)(t: => T): T = {
     val start = System.nanoTime
     val result = t
