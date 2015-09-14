@@ -276,11 +276,8 @@ def fullDocSettings = Util.baseScalacOptions ++ Docs.settings ++ Sxr.settings ++
 
 /* Nested Projproject paths */
 def sbtPath    = file("sbt")
-def cachePath  = file("cache")
 def tasksPath  = file("tasks")
 def launchPath = file("launch")
-def utilPath   = file("util")
-def compilePath = file("compile")
 def mainPath   = file("main")
 
 lazy val safeUnitTests = taskKey[Unit]("Known working tests (for both 2.10 and 2.11)")
