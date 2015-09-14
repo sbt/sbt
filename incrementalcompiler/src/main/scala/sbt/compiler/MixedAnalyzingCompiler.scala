@@ -22,7 +22,8 @@ final class MixedAnalyzingCompiler(
   val scalac: AnalyzingCompiler,
   val javac: AnalyzingJavaCompiler,
   val config: CompileConfiguration,
-  val log: Logger) {
+  val log: Logger
+) {
   import config._
   import currentSetup._
 
@@ -101,7 +102,8 @@ final class MixedAnalyzingCompiler(
  */
 object MixedAnalyzingCompiler {
 
-  def makeConfig(scalac: AnalyzingCompiler,
+  def makeConfig(
+    scalac: AnalyzingCompiler,
     javac: xsbti.compile.JavaCompiler,
     sources: Seq[File],
     classpath: Seq[File],
@@ -117,7 +119,8 @@ object MixedAnalyzingCompiler {
     reporter: Reporter,
     compileOrder: CompileOrder = Mixed,
     skip: Boolean = false,
-    incrementalCompilerOptions: IncOptions): CompileConfiguration =
+    incrementalCompilerOptions: IncOptions
+  ): CompileConfiguration =
     {
       val compileSetup = new CompileSetup(output, new CompileOptions(options, javacOptions),
         scalac.scalaInstance.actualVersion, compileOrder, incrementalCompilerOptions.nameHashing)
@@ -135,7 +138,8 @@ object MixedAnalyzingCompiler {
         reporter,
         skip,
         cache,
-        incrementalCompilerOptions)
+        incrementalCompilerOptions
+      )
     }
 
   def config(
@@ -152,7 +156,8 @@ object MixedAnalyzingCompiler {
     reporter: Reporter,
     skip: Boolean,
     cache: GlobalsCache,
-    incrementalCompilerOptions: IncOptions): CompileConfiguration = {
+    incrementalCompilerOptions: IncOptions
+  ): CompileConfiguration = {
     import CompileSetup._
     new CompileConfiguration(sources, classpath, previousAnalysis, previousSetup, setup,
       progress, analysis, definesClass, reporter, compiler, javac, cache, incrementalCompilerOptions)
@@ -182,7 +187,8 @@ object MixedAnalyzingCompiler {
       // TODO - Construction of analyzing Java compiler MAYBE should be earlier...
       new AnalyzingJavaCompiler(javac, classpath, compiler.scalaInstance, entry, searchClasspath),
       config,
-      log)
+      log
+    )
   }
 
   def withBootclasspath(args: CompilerArguments, classpath: Seq[File]): Seq[File] =

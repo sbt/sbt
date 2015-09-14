@@ -45,8 +45,10 @@ final class AnalyzingCompiler private (val scalaInstance: xsbti.compile.ScalaIns
   def compile(sources: Seq[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, reporter: Reporter, progress: CompileProgress, compiler: CachedCompiler): Unit = {
     onArgsF(compiler.commandArguments(sources.toArray))
     call("xsbt.CompilerInterface", "run", log)(
-      classOf[Array[File]], classOf[DependencyChanges], classOf[AnalysisCallback], classOf[xLogger], classOf[Reporter], classOf[CompileProgress], classOf[CachedCompiler])(
-        sources.toArray, changes, callback, log, reporter, progress, compiler)
+      classOf[Array[File]], classOf[DependencyChanges], classOf[AnalysisCallback], classOf[xLogger], classOf[Reporter], classOf[CompileProgress], classOf[CachedCompiler]
+    )(
+      sources.toArray, changes, callback, log, reporter, progress, compiler
+    )
     ()
   }
   def newCachedCompiler(arguments: Array[String], output: Output, log: xLogger, reporter: Reporter, resident: Boolean): CachedCompiler =
@@ -55,9 +57,11 @@ final class AnalyzingCompiler private (val scalaInstance: xsbti.compile.ScalaIns
   def newCachedCompiler(arguments: Seq[String], output: Output, log: xLogger, reporter: Reporter, resident: Boolean): CachedCompiler =
     {
       call("xsbt.CompilerInterface", "newCompiler", log)(
-        classOf[Array[String]], classOf[Output], classOf[xLogger], classOf[Reporter], classOf[Boolean])(
-          arguments.toArray[String]: Array[String], output, log, reporter, resident: java.lang.Boolean).
-          asInstanceOf[CachedCompiler]
+        classOf[Array[String]], classOf[Output], classOf[xLogger], classOf[Reporter], classOf[Boolean]
+      )(
+        arguments.toArray[String]: Array[String], output, log, reporter, resident: java.lang.Boolean
+      ).
+        asInstanceOf[CachedCompiler]
     }
 
   def doc(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], maximumErrors: Int, log: Logger): Unit =
@@ -67,7 +71,8 @@ final class AnalyzingCompiler private (val scalaInstance: xsbti.compile.ScalaIns
       val arguments = (new CompilerArguments(scalaInstance, cp))(sources, classpath, Some(outputDirectory), options)
       onArgsF(arguments)
       call("xsbt.ScaladocInterface", "run", log)(classOf[Array[String]], classOf[xLogger], classOf[Reporter])(
-        arguments.toArray[String]: Array[String], log, reporter)
+        arguments.toArray[String]: Array[String], log, reporter
+      )
       ()
     }
   def console(classpath: Seq[File], options: Seq[String], initialCommands: String, cleanupCommands: String, log: Logger)(loader: Option[ClassLoader] = None, bindings: Seq[(String, Any)] = Nil): Unit =
@@ -76,8 +81,10 @@ final class AnalyzingCompiler private (val scalaInstance: xsbti.compile.ScalaIns
       val (classpathString, bootClasspath) = consoleClasspaths(classpath)
       val (names, values) = bindings.unzip
       call("xsbt.ConsoleInterface", "run", log)(
-        classOf[Array[String]], classOf[String], classOf[String], classOf[String], classOf[String], classOf[ClassLoader], classOf[Array[String]], classOf[Array[Any]], classOf[xLogger])(
-          options.toArray[String]: Array[String], bootClasspath, classpathString, initialCommands, cleanupCommands, loader.orNull, names.toArray[String], values.toArray[Any], log)
+        classOf[Array[String]], classOf[String], classOf[String], classOf[String], classOf[String], classOf[ClassLoader], classOf[Array[String]], classOf[Array[Any]], classOf[xLogger]
+      )(
+        options.toArray[String]: Array[String], bootClasspath, classpathString, initialCommands, cleanupCommands, loader.orNull, names.toArray[String], values.toArray[Any], log
+      )
       ()
     }
 
@@ -92,8 +99,10 @@ final class AnalyzingCompiler private (val scalaInstance: xsbti.compile.ScalaIns
     {
       val (classpathString, bootClasspath) = consoleClasspaths(classpath)
       val argsObj = call("xsbt.ConsoleInterface", "commandArguments", log)(
-        classOf[Array[String]], classOf[String], classOf[String], classOf[xLogger])(
-          options.toArray[String]: Array[String], bootClasspath, classpathString, log)
+        classOf[Array[String]], classOf[String], classOf[String], classOf[xLogger]
+      )(
+        options.toArray[String]: Array[String], bootClasspath, classpathString, log
+      )
       argsObj.asInstanceOf[Array[String]].toSeq
     }
   def force(log: Logger): Unit = { provider(scalaInstance, log); () }

@@ -25,7 +25,8 @@ final class AnalyzingJavaCompiler private[sbt] (
   val classpath: Seq[File],
   val scalaInstance: xsbti.compile.ScalaInstance,
   val classLookup: (String => Option[File]),
-  val searchClasspath: Seq[File]) {
+  val searchClasspath: Seq[File]
+) {
   /**
    * Compile some java code using the current configured compiler.
    *

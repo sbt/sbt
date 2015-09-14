@@ -96,7 +96,8 @@ private[inc] class MemberRefInvalidator(log: Logger) {
   private class NameHashFilteredInvalidator[T](
     usedNames: Relation[File, String],
     memberRef: Relation[File, T],
-    modifiedNames: Set[String]) extends (T => Set[File]) {
+    modifiedNames: Set[String]
+  ) extends (T => Set[File]) {
 
     def apply(to: T): Set[File] = {
       val dependent = memberRef.reverse(to)

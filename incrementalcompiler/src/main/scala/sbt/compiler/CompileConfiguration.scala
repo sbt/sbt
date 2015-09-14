@@ -38,4 +38,5 @@ final class CompileConfiguration(
   val compiler: AnalyzingCompiler,
   val javac: xsbti.compile.JavaCompiler,
   val cache: GlobalsCache,
-  val incOptions: IncOptions)
+  val incOptions: IncOptions
+)

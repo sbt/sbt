@@ -112,7 +112,8 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler] {
    * @return  The full configuration used to instantiate this mixed-analyzing compiler, the set of extracted dependencies and
    *          whether or not any file were modified.
    */
-  def incrementalCompile(scalac: AnalyzingCompiler,
+  def incrementalCompile(
+    scalac: AnalyzingCompiler,
     javac: xsbti.compile.JavaCompiler,
     sources: Seq[File],
     classpath: Seq[File],
@@ -128,7 +129,8 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler] {
     reporter: Reporter,
     compileOrder: CompileOrder = Mixed,
     skip: Boolean = false,
-    incrementalCompilerOptions: IncOptions)(implicit log: Logger): Result = {
+    incrementalCompilerOptions: IncOptions
+  )(implicit log: Logger): Result = {
     val config = MixedAnalyzingCompiler.makeConfig(scalac, javac, sources, classpath, output, cache,
       progress, options, javacOptions, previousAnalysis, previousSetup, analysisMap, definesClass, reporter,
       compileOrder, skip, incrementalCompilerOptions)

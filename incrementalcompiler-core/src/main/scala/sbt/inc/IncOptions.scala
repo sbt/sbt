@@ -80,7 +80,8 @@ final class IncOptions(
    * Once Scala compiler sources are refactored to work well with name hashing algorithm this option will be
    * deleted immediately.
    */
-  val antStyle: Boolean) extends Serializable {
+  val antStyle: Boolean
+) extends Serializable {
 
   /**
    * Secondary constructor introduced to make IncOptions to be binary compatible with version that didn't have
@@ -205,7 +206,8 @@ object IncOptions extends Serializable {
     apiDumpDirectory = None,
     newClassfileManager = ClassfileManager.deleteImmediately,
     recompileOnMacroDef = recompileOnMacroDefDefault,
-    nameHashing = nameHashingDefault)
+    nameHashing = nameHashingDefault
+  )
   //- EXPANDED CASE CLASS METHOD BEGIN -//
   final override def toString(): String = "IncOptions"
 

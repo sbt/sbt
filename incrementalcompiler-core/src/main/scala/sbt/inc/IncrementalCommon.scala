@@ -201,7 +201,8 @@ private[inc] abstract class IncrementalCommon(log: sbt.util.Logger, options: Inc
           "\n\nSources indirectly invalidated by:" +
           "\n\tproduct: " + byProduct +
           "\n\tbinary dep: " + byBinaryDep +
-          "\n\texternal source: " + byExtSrcDep)
+          "\n\texternal source: " + byExtSrcDep
+      )
 
       srcDirect ++ byProduct ++ byBinaryDep ++ byExtSrcDep
     }
@@ -309,7 +310,8 @@ private[inc] abstract class IncrementalCommon(log: sbt.util.Logger, options: Inc
           e <- entry(className)
           analysis <- forEntry(e)
           src <- analysis.relations.definesClass(className).headOption
-        } yield analysis.apis.internalAPI(src))
+        } yield analysis.apis.internalAPI(src)
+      )
 
   def orEmpty(o: Option[Source]): Source = o getOrElse APIs.emptySource
   def orTrue(o: Option[Boolean]): Boolean = o getOrElse true

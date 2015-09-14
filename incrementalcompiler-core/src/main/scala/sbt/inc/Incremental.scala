@@ -34,14 +34,16 @@ object Incremental {
    * @return
    *         A flag of whether or not compilation completed succesfully, and the resulting dependency analysis object.
    */
-  def compile(sources: Set[File],
+  def compile(
+    sources: Set[File],
     entry: String => Option[File],
     previous: Analysis,
     current: ReadStamps,
     forEntry: File => Option[Analysis],
     doCompile: (Set[File], DependencyChanges) => Analysis,
     log: sbt.util.Logger,
-    options: IncOptions)(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
+    options: IncOptions
+  )(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
     {
       val incremental: IncrementalCommon =
         if (options.nameHashing)

@@ -91,11 +91,13 @@ trait Relations {
    * Records that the file `src` generates products `products`, has internal dependencies `internalDeps`,
    * has external dependencies `externalDeps` and binary dependencies `binaryDeps`.
    */
-  def addSource(src: File,
+  def addSource(
+    src: File,
     products: Iterable[(File, String)],
     internalDeps: Iterable[InternalDependency],
     externalDeps: Iterable[ExternalDependency],
-    binaryDeps: Iterable[(File, String, Stamp)]): Relations =
+    binaryDeps: Iterable[(File, String, Stamp)]
+  ): Relations =
     addProducts(src, products).addInternalSrcDeps(src, internalDeps).addExternalDeps(src, externalDeps).addBinaryDeps(src, binaryDeps)
 
   /**
@@ -248,7 +250,8 @@ object Relations {
       ("inheritance internal dependencies", string2File),
       ("inheritance external dependencies", identity[String] _),
       ("class names", identity[String] _),
-      ("used names", identity[String] _))
+      ("used names", identity[String] _)
+    )
   }
   /**
    * Reconstructs a Relations from a list of Relation
@@ -465,7 +468,8 @@ private abstract class MRelationsCommon(val srcProd: Relation[File, File], val b
   private def line_s(kv: (Any, Any)) = "    " + nocwd("" + kv._1) + " -> " + nocwd("" + kv._2) + "\n"
   protected def relation_s(r: Relation[_, _]) = (
     if (r.forwardMap.isEmpty) "Relation [ ]"
-    else (r.all.toSeq.map(line_s).sorted) mkString ("Relation [\n", "", "]"))
+    else (r.all.toSeq.map(line_s).sorted) mkString ("Relation [\n", "", "]")
+  )
 }
 
 /**
@@ -609,7 +613,8 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
       Relations.emptySourceDependencies.internal, // Default implementation doesn't provide inheritance source deps
       Relations.emptySourceDependencies.external, // Default implementation doesn't provide inheritance source deps
       classes,
-      Relation.empty[File, String]) // Default implementation doesn't provide used names relation
+      Relation.empty[File, String]
+    ) // Default implementation doesn't provide used names relation
     Relations.existingRelations map (_._1) zip rels
   }
 
@@ -623,7 +628,8 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
 	  |  src deps: %s
 	  |  ext deps: %s
 	  |  class names: %s
-	  """.trim.stripMargin.format(List(srcProd, binaryDep, internalSrcDep, externalDep, classes) map relation_s: _*))
+	  """.trim.stripMargin.format(List(srcProd, binaryDep, internalSrcDep, externalDep, classes) map relation_s: _*)
+  )
 }
 
 /**
@@ -729,7 +735,8 @@ private class MRelationsNameHashing(srcProd: Relation[File, File], binaryDep: Re
       inheritance.internal,
       inheritance.external,
       classes,
-      names)
+      names
+    )
     Relations.existingRelations map (_._1) zip rels
   }
 
@@ -744,6 +751,7 @@ private class MRelationsNameHashing(srcProd: Relation[File, File], binaryDep: Re
 	  |  ext deps: %s
 	  |  class names: %s
 	  |  used names: %s
-	  """.trim.stripMargin.format(List(srcProd, binaryDep, internalSrcDep, externalDep, classes, names) map relation_s: _*))
+	  """.trim.stripMargin.format(List(srcProd, binaryDep, internalSrcDep, externalDep, classes, names) map relation_s: _*)
+  )
 
 }

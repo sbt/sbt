@@ -45,10 +45,14 @@ private final class IncrementalNameHashing(log: sbt.util.Logger, options: IncOpt
     val transitiveInheritance = byExternalInheritance flatMap { file =>
       invalidateByInheritance(relations, file)
     }
-    val memberRefInvalidationInternal = memberRefInvalidator.get(relations.memberRef.internal,
-      relations.names, externalAPIChange)
-    val memberRefInvalidationExternal = memberRefInvalidator.get(relations.memberRef.external,
-      relations.names, externalAPIChange)
+    val memberRefInvalidationInternal = memberRefInvalidator.get(
+      relations.memberRef.internal,
+      relations.names, externalAPIChange
+    )
+    val memberRefInvalidationExternal = memberRefInvalidator.get(
+      relations.memberRef.external,
+      relations.names, externalAPIChange
+    )
 
     // Get the member reference dependencies of all sources transitively invalidated by inheritance
     log.debug("Getting direct dependencies of all sources transitively invalidated by inheritance.")
@@ -73,8 +77,10 @@ private final class IncrementalNameHashing(log: sbt.util.Logger, options: IncOpt
     val transitiveInheritance = invalidateByInheritance(relations, change.modified)
     val reasonForInvalidation = memberRefInvalidator.invalidationReason(change)
     log.debug(s"$reasonForInvalidation\nAll member reference dependencies will be considered within this context.")
-    val memberRefInvalidation = memberRefInvalidator.get(relations.memberRef.internal,
-      relations.names, change)
+    val memberRefInvalidation = memberRefInvalidator.get(
+      relations.memberRef.internal,
+      relations.names, change
+    )
     val memberRef = transitiveInheritance flatMap memberRefInvalidation
     val all = transitiveInheritance ++ memberRef
     all

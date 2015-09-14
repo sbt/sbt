@@ -268,7 +268,8 @@ object TextAnalysisFormat {
       writeSeq(out)(Headers.compilations, compilations.allCompilations, compilationToString)
 
     def read(in: BufferedReader): Compilations = Compilations.make(
-      readSeq[Compilation](in)(Headers.compilations, stringToCompilation))
+      readSeq[Compilation](in)(Headers.compilations, stringToCompilation)
+    )
   }
 
   private[this] object CompileSetupF {

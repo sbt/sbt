@@ -105,7 +105,8 @@ object Analysis {
       mergedBinaryDep,
       Relations.makeSource(mergedInternal, stillExternal),
       Relations.makeSource(mergedInternalPI, stillExternalPI),
-      mergedClasses)
+      mergedClasses
+    )
 
     // Merge the APIs, internalizing APIs for targets of dependencies we internalized above.
     val concatenatedAPIs = (APIs.empty /: (analyses map { _.apis }))(_ ++ _)
@@ -269,7 +270,8 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
         binaryDep,
         Relations.makeSource(stillInternal, newExternal),
         Relations.makeSource(stillInternalPI, newExternalPI),
-        classes)
+        classes
+      )
 
       // Compute new API mappings.
       def apisFor[T](m: Map[T, Source], x: Traversable[T]): Map[T, Source] =
@@ -287,7 +289,8 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
         stamps.products.filterKeys(srcProd._2s.contains),
         stamps.sources.filterKeys({ discriminator(_) == k }),
         stamps.binaries.filterKeys(binaryDep._2s.contains),
-        stamps.classNames.filterKeys(binaryDep._2s.contains))
+        stamps.classNames.filterKeys(binaryDep._2s.contains)
+      )
 
       // New infos.
       val newSourceInfos = SourceInfos.make(kSourceInfos.getOrElse(k, Map.empty))
