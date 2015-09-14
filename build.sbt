@@ -61,7 +61,6 @@ lazy val compileRoot: Project = (project in file(".")).
     compilerApiInfoProj,
     classpathProj,
     classfileProj,
-    compilerInterfaceProj,
     compileProj,
     compilerIvyProj).
   settings(
