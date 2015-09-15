@@ -246,7 +246,7 @@ object Defaults extends BuildCommon {
       val _ = clean.value
       IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log)
     },
-    scalaCompilerBridgeSource := Compiler.scalaCompilerBridgeSource(sbtVersion.value)
+    scalaCompilerBridgeSource := Compiler.scalaCompilerBridgeSource
   )
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(Seq(

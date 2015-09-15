@@ -19,8 +19,9 @@ import sbt.util.Logger
 object Compiler {
   val DefaultMaxErrors = 100
 
-  private[sbt] def scalaCompilerBridgeSource(sbtver: String): ModuleID =
-    ModuleID(xsbti.ArtifactInfo.SbtOrganization, "compiler-bridge", sbtver, Some("component")).cross(CrossVersion.binary).sources()
+  private[sbt] def scalaCompilerBridgeSource: ModuleID =
+    ModuleID(xsbti.ArtifactInfo.SbtOrganization, "compiler-bridge",
+      ComponentCompiler.incrementalVersion, Some("component")).cross(CrossVersion.binary).sources()
 
   /** Inputs necessary to run the incremental compiler. */
   final case class Inputs(compilers: Compilers, config: Options, incSetup: IncSetup)
@@ -102,7 +103,7 @@ object Compiler {
     {
       val scalaProvider = app.provider.scalaProvider
       val instance = ScalaInstance(scalaProvider.version, scalaProvider.launcher)
-      val sourceModule = scalaCompilerBridgeSource(app.provider.id.version)
+      val sourceModule = scalaCompilerBridgeSource
       compilers(instance, cpOptions, None, ivyConfiguration, sourceModule)
     }
 
