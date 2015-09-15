@@ -5,6 +5,8 @@ package sbt
 
 import sbt.util.Logger
 import java.io.File
+import sbt.librarymanagement.Resolver
+import sbt.internal.librarymanagement.{ InlineIvyConfiguration, IvyPaths }
 
 object ConsoleProject {
   def apply(state: State, extra: String, cleanupCommands: String = "", options: Seq[String] = Nil)(implicit log: Logger): Unit = {
@@ -12,8 +14,13 @@ object ConsoleProject {
     val cpImports = new Imports(extracted, state)
     val bindings = ("currentState" -> state) :: ("extracted" -> extracted) :: ("cpHelpers" -> cpImports) :: Nil
     val unit = extracted.currentUnit
-    // TODO: Fix this
-    val compiler: sbt.compiler.AnalyzingCompiler = ??? //Compiler.compilers(ClasspathOptions.repl)(state.configuration, log).scalac
+    val localOnly = false
+    val lock = None
+    val checksums = Nil
+    val ivyPaths = new IvyPaths(unit.unit.localBase, bootIvyHome(state.configuration))
+    val ivyConfiguration = new InlineIvyConfiguration(ivyPaths, Resolver.withDefaultResolvers(Nil),
+      Nil, Nil, localOnly, lock, checksums, None, log)
+    val compiler: sbt.compiler.AnalyzingCompiler = Compiler.compilers(ClasspathOptions.repl, ivyConfiguration)(state.configuration, log).scalac
     val imports = BuildUtil.getImports(unit.unit) ++ BuildUtil.importAll(bindings.map(_._1))
     val importString = imports.mkString("", ";\n", ";\n\n")
     val initCommands = importString + extra
@@ -29,4 +36,7 @@ object ConsoleProject {
     implicit def settingKeyEvaluate[T](s: SettingKey[T]): Evaluate[T] = new Evaluate(get(s))
   }
   final class Evaluate[T] private[sbt] (val eval: T)
+  private def bootIvyHome(app: xsbti.AppConfiguration): Option[File] =
+    try { Option(app.provider.scalaProvider.launcher.ivyHome) }
+    catch { case _: NoSuchMethodError => None }
 }

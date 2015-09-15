@@ -246,7 +246,7 @@ object Defaults extends BuildCommon {
       val _ = clean.value
       IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log)
     },
-    scalaCompilerBridgeSource := ModuleID(xsbti.ArtifactInfo.SbtOrganization, "compiler-interface", sbtVersion.value, Some("component")).sources()
+    scalaCompilerBridgeSource := Compiler.scalaCompilerBridgeSource(sbtVersion.value)
   )
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(Seq(
@@ -797,13 +797,21 @@ object Defaults extends BuildCommon {
       val cp = data(dependencyClasspath.value).toList
       val label = nameForSrc(configuration.value.name)
       val fiOpts = fileInputOptions.value
+      val logger: Logger = s.log
+      val maxer = maxErrors.value
+      val spms = sourcePositionMappers.value
+      val reporter: xsbti.Reporter =
+        (compilerReporter in compile).value match {
+          case Some(r) => r
+          case _       => new LoggerReporter(maxer, logger, Compiler.foldMappers(spms))
+        }
       val (options, runDoc) =
         if (hasScala)
           (sOpts ++ Opts.doc.externalAPI(xapis), // can't put the .value calls directly here until 2.10.2
             Doc.scaladoc(label, s.cacheDirectory / "scala", cs.scalac.onArgs(exported(s, "scaladoc")), fiOpts))
         else if (hasJava)
           (jOpts,
-            Doc.javadoc(label, s.cacheDirectory / "java", cs.javac.onArgs(exported(s, "javadoc")), fiOpts))
+            Doc.javadoc(label, s.cacheDirectory / "java", cs.javac, logger, reporter, fiOpts))
         else
           (Nil, RawCompileLike.nop)
       runDoc(srcs, cp, out, options, maxErrors.value, s.log)
@@ -859,7 +867,7 @@ object Defaults extends BuildCommon {
   private[this] def compileIncrementalTaskImpl(s: TaskStreams, ci: Compiler.Inputs, previous: Compiler.PreviousAnalysis, reporter: Option[xsbti.Reporter]): Compiler.CompileResult =
     {
       lazy val x = s.text(ExportStream)
-      def onArgs(cs: Compiler.Compilers) = cs.copy(scalac = cs.scalac.onArgs(exported(x, "scalac")), javac = cs.javac.onArgs(exported(x, "javac")))
+      def onArgs(cs: Compiler.Compilers) = cs.copy(scalac = cs.scalac.onArgs(exported(x, "scalac")), javac = cs.javac /*.onArgs(exported(x, "javac"))*/ )
       val i = InputsWithPrevious(ci.copy(compilers = onArgs(ci.compilers)), previous)
       try reporter match {
         case Some(reporter) => Compiler.compile(i, s.log, reporter)

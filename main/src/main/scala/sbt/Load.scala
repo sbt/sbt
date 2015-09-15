@@ -4,7 +4,8 @@
 package sbt
 
 import sbt.internal.util.{ Settings, Show, ~> }
-import sbt.librarymanagement.{ Configuration, Configurations }
+import sbt.librarymanagement.{ Configuration, Configurations, Resolver }
+import sbt.internal.librarymanagement.{ InlineIvyConfiguration, IvyPaths }
 
 import java.io.File
 import java.net.{ URI, URL }
@@ -51,8 +52,13 @@ object Load {
       val stagingDirectory = getStagingDirectory(state, globalBase).getCanonicalFile
       val loader = getClass.getClassLoader
       val classpath = Attributed.blankSeq(provider.mainClasspath ++ scalaProvider.jars)
-      // TODO: Fix this
-      val compilers = ??? //Compiler.compilers(ClasspathOptions.boot)(state.configuration, log)
+      val localOnly = false
+      val lock = None
+      val checksums = Nil
+      val ivyPaths = new IvyPaths(baseDirectory, bootIvyHome(state.configuration))
+      val ivyConfiguration = new InlineIvyConfiguration(ivyPaths, Resolver.withDefaultResolvers(Nil),
+        Nil, Nil, localOnly, lock, checksums, None, log)
+      val compilers = Compiler.compilers(ClasspathOptions.boot, ivyConfiguration)(state.configuration, log)
       val evalPluginDef = EvaluateTask.evalPluginDef(log) _
       val delegates = defaultDelegates
       val initialID = baseDirectory.getName
@@ -61,6 +67,9 @@ object Load {
       new sbt.LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, definesClass, delegates,
         EvaluateTask.injectStreams, pluginMgmt, inject, None, Nil, log)
     }
+  private def bootIvyHome(app: xsbti.AppConfiguration): Option[File] =
+    try { Option(app.provider.scalaProvider.launcher.ivyHome) }
+    catch { case _: NoSuchMethodError => None }
   def injectGlobal(state: State): Seq[Setting[_]] =
     (appConfiguration in GlobalScope :== state.configuration) +:
       LogManager.settingsLogger(state) +:
