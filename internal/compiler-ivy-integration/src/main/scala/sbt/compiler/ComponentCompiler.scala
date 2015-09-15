@@ -45,8 +45,8 @@ private[sbt] object ComponentCompiler {
 private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: ComponentManager, ivyConfiguration: IvyConfiguration, sourcesModule: ModuleID, log: Logger) {
   import ComponentCompiler._
 
-  private val incrementalCompilerOrg = xsbti.ArtifactInfo.SbtOrganization + ".incrementalcompiler"
-  private val xsbtiInterfaceModuleName = "interface"
+  private val sbtOrg = xsbti.ArtifactInfo.SbtOrganization
+  private val xsbtiInterfaceModuleName = "compiler-interface"
   private val xsbtiInterfaceID = s"interface-$incrementalVersion"
   private val sbtOrgTemp = JsonUtil.sbtOrgTemp
   private val modulePrefixTemp = "temp-module-"
@@ -90,7 +90,7 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
     buffered bufferQuietly {
 
       IO withTemporaryDirectory { retrieveDirectory =>
-        val module = ModuleID(incrementalCompilerOrg, xsbtiInterfaceModuleName, incrementalVersion, Some("component"))
+        val module = ModuleID(sbtOrg, xsbtiInterfaceModuleName, incrementalVersion, Some("component"))
         val jarName = s"$xsbtiInterfaceModuleName-$incrementalVersion.jar"
         (update(getModule(module), retrieveDirectory)(_.getName == jarName)) match {
           case Some(interface) =>
