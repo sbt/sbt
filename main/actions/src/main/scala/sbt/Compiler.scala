@@ -13,15 +13,22 @@ import Locate.DefinesClass
 import java.io.File
 
 import sbt.internal.librarymanagement.{ ComponentManager, IvyConfiguration }
-import sbt.librarymanagement.{ ModuleID, CrossVersion }
+import sbt.librarymanagement.{ ModuleID, CrossVersion, VersionNumber }
 import sbt.util.Logger
 
 object Compiler {
   val DefaultMaxErrors = 100
-
-  private[sbt] def scalaCompilerBridgeSource: ModuleID =
-    ModuleID(xsbti.ArtifactInfo.SbtOrganization, "compiler-bridge",
-      ComponentCompiler.incrementalVersion, Some("component")).cross(CrossVersion.binary).sources()
+  private[sbt] def defaultCompilerBridgeSource(sv: String): ModuleID =
+    VersionNumber(sv) match {
+      case VersionNumber(ns, _, _) if (ns.size == 3) && (ns(0) == 2) && (ns(1) <= 10) => scalaCompilerBridgeSource2_10
+      case _ => scalaCompilerBridgeSource2_11
+    }
+  private[sbt] def scalaCompilerBridgeSource2_10: ModuleID =
+    ModuleID(xsbti.ArtifactInfo.SbtOrganization, "compiler-bridge_2.10",
+      ComponentCompiler.incrementalVersion, Some("component")).sources()
+  private[sbt] def scalaCompilerBridgeSource2_11: ModuleID =
+    ModuleID(xsbti.ArtifactInfo.SbtOrganization, "compiler-bridge_2.11",
+      ComponentCompiler.incrementalVersion, Some("component")).sources()
 
   /** Inputs necessary to run the incremental compiler. */
   final case class Inputs(compilers: Compilers, config: Options, incSetup: IncSetup)
@@ -103,7 +110,7 @@ object Compiler {
     {
       val scalaProvider = app.provider.scalaProvider
       val instance = ScalaInstance(scalaProvider.version, scalaProvider.launcher)
-      val sourceModule = scalaCompilerBridgeSource
+      val sourceModule = scalaCompilerBridgeSource2_11
       compilers(instance, cpOptions, None, ivyConfiguration, sourceModule)
     }
 
