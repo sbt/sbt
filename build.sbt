@@ -1,5 +1,6 @@
 import Dependencies._
 
+def baseVersion = "0.1.0"
 def internalPath   = file("internal")
 
 def commonSettings: Seq[Setting[_]] = Seq(
@@ -40,7 +41,6 @@ lazy val root = (project in file(".")).
   settings(
     inThisBuild(Seq(
       organization := "org.scala-sbt",
-      version := "0.1.0-SNAPSHOT",
       homepage := Some(url("https://github.com/sbt/librarymanagement")),
       description := "Library management module for sbt",
       licenses := List("BSD New" -> url("https://github.com/sbt/sbt/blob/0.13/LICENSE")),
@@ -54,7 +54,8 @@ lazy val root = (project in file(".")).
       bintrayReleaseOnPublish := false,
       bintrayOrganization := Some("sbt"),
       bintrayRepository := "maven-releases",
-      bintrayPackage := "librarymanagement"
+      bintrayPackage := "librarymanagement",
+      git.baseVersion := baseVersion
     )),
     commonSettings,
     name := "LM Root",

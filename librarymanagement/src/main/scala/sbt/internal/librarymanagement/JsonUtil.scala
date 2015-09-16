@@ -39,7 +39,8 @@ private[sbt] object JsonUtil {
             mr.evicted, mr.evictedData, mr.evictedReason,
             mr.problem, mr.homepage, mr.extraAttributes,
             mr.isDefault, mr.branch, mr.configurations, mr.licenses,
-            filterOutArtificialCallers(mr.callers))
+            filterOutArtificialCallers(mr.callers)
+          )
         })
       })
     })

@@ -290,11 +290,13 @@ private[sbt] object IvySbt {
       val delegate = new ivyint.SbtChainResolver(name + "-delegate", mapResolvers(rest), settings, updateOptions, log)
       val prs = mapResolvers(projectResolvers)
       // Here we construct a chain resolver which will FORCE looking at the project resolver first.
-      new ivyint.SbtChainResolver(name,
+      new ivyint.SbtChainResolver(
+        name,
         prs :+ delegate,
         settings,
         UpdateOptions().withLatestSnapshots(false),
-        log)
+        log
+      )
 
     }
   }

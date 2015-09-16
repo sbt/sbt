@@ -22,18 +22,23 @@ final class UpdateOptions private[sbt] (
   /** If set to true, use cached resolution. */
   val cachedResolution: Boolean,
   /** Extention point for an alternative resolver converter. */
-  val resolverConverter: UpdateOptions.ResolverConverter) {
+  val resolverConverter: UpdateOptions.ResolverConverter
+) {
   def withCircularDependencyLevel(circularDependencyLevel: CircularDependencyLevel): UpdateOptions =
     copy(circularDependencyLevel = circularDependencyLevel)
   def withLatestSnapshots(latestSnapshots: Boolean): UpdateOptions =
     copy(latestSnapshots = latestSnapshots)
   @deprecated("Use withCachedResolution instead.", "0.13.7")
   def withConsolidatedResolution(consolidatedResolution: Boolean): UpdateOptions =
-    copy(consolidatedResolution = consolidatedResolution,
-      cachedResolution = consolidatedResolution)
+    copy(
+      consolidatedResolution = consolidatedResolution,
+      cachedResolution = consolidatedResolution
+    )
   def withCachedResolution(cachedResoluton: Boolean): UpdateOptions =
-    copy(cachedResolution = cachedResoluton,
-      consolidatedResolution = cachedResolution)
+    copy(
+      cachedResolution = cachedResoluton,
+      consolidatedResolution = cachedResolution
+    )
   /** Extention point for an alternative resolver converter. */
   def withResolverConverter(resolverConverter: UpdateOptions.ResolverConverter): UpdateOptions =
     copy(resolverConverter = resolverConverter)
@@ -43,12 +48,15 @@ final class UpdateOptions private[sbt] (
     latestSnapshots: Boolean = this.latestSnapshots,
     consolidatedResolution: Boolean = this.consolidatedResolution,
     cachedResolution: Boolean = this.cachedResolution,
-    resolverConverter: UpdateOptions.ResolverConverter = this.resolverConverter): UpdateOptions =
-    new UpdateOptions(circularDependencyLevel,
+    resolverConverter: UpdateOptions.ResolverConverter = this.resolverConverter
+  ): UpdateOptions =
+    new UpdateOptions(
+      circularDependencyLevel,
       latestSnapshots,
       consolidatedResolution,
       cachedResolution,
-      resolverConverter)
+      resolverConverter
+    )
 
   override def equals(o: Any): Boolean = o match {
     case o: UpdateOptions =>
@@ -79,5 +87,6 @@ object UpdateOptions {
       latestSnapshots = false,
       consolidatedResolution = false,
       cachedResolution = false,
-      resolverConverter = PartialFunction.empty)
+      resolverConverter = PartialFunction.empty
+    )
 }

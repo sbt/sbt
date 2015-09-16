@@ -21,9 +21,9 @@ sealed trait IvyConfiguration {
   def updateOptions: UpdateOptions
 }
 final class InlineIvyConfiguration(val paths: IvyPaths, val resolvers: Seq[Resolver], val otherResolvers: Seq[Resolver],
-    val moduleConfigurations: Seq[ModuleConfiguration], val localOnly: Boolean, val lock: Option[xsbti.GlobalLock],
-    val checksums: Seq[String], val resolutionCacheDir: Option[File], val updateOptions: UpdateOptions,
-    val log: Logger) extends IvyConfiguration {
+  val moduleConfigurations: Seq[ModuleConfiguration], val localOnly: Boolean, val lock: Option[xsbti.GlobalLock],
+  val checksums: Seq[String], val resolutionCacheDir: Option[File], val updateOptions: UpdateOptions,
+  val log: Logger) extends IvyConfiguration {
   @deprecated("Use the variant that accepts resolutionCacheDir and updateOptions.", "0.13.0")
   def this(paths: IvyPaths, resolvers: Seq[Resolver], otherResolvers: Seq[Resolver],
     moduleConfigurations: Seq[ModuleConfiguration], localOnly: Boolean, lock: Option[xsbti.GlobalLock],
@@ -74,7 +74,7 @@ final class InlineIvyConfiguration(val paths: IvyPaths, val resolvers: Seq[Resol
     }
 }
 final class ExternalIvyConfiguration(val baseDirectory: File, val uri: URI, val lock: Option[xsbti.GlobalLock],
-    val extraResolvers: Seq[Resolver], val updateOptions: UpdateOptions, val log: Logger) extends IvyConfiguration {
+  val extraResolvers: Seq[Resolver], val updateOptions: UpdateOptions, val log: Logger) extends IvyConfiguration {
   @deprecated("Use the variant that accepts updateOptions.", "0.13.6")
   def this(baseDirectory: File, uri: URI, lock: Option[xsbti.GlobalLock], extraResolvers: Seq[Resolver], log: Logger) =
     this(baseDirectory, uri, lock, extraResolvers, UpdateOptions(), log)
@@ -139,23 +139,26 @@ object InlineConfiguration {
       explicitConfigurations
 }
 
-final class InlineConfigurationWithExcludes private[sbt] (val module: ModuleID,
-    val moduleInfo: ModuleInfo,
-    val dependencies: Seq[ModuleID],
-    val overrides: Set[ModuleID],
-    val excludes: Seq[SbtExclusionRule],
-    val ivyXML: NodeSeq,
-    val configurations: Seq[Configuration],
-    val defaultConfiguration: Option[Configuration],
-    val ivyScala: Option[IvyScala],
-    val validate: Boolean,
-    val conflictManager: ConflictManager) extends ModuleSettings {
+final class InlineConfigurationWithExcludes private[sbt] (
+  val module: ModuleID,
+  val moduleInfo: ModuleInfo,
+  val dependencies: Seq[ModuleID],
+  val overrides: Set[ModuleID],
+  val excludes: Seq[SbtExclusionRule],
+  val ivyXML: NodeSeq,
+  val configurations: Seq[Configuration],
+  val defaultConfiguration: Option[Configuration],
+  val ivyScala: Option[IvyScala],
+  val validate: Boolean,
+  val conflictManager: ConflictManager
+) extends ModuleSettings {
   def withConfigurations(configurations: Seq[Configuration]) = copy(configurations = configurations)
   def noScala = copy(ivyScala = None)
   def withOverrides(overrides: Set[ModuleID]): ModuleSettings =
     copy(overrides = overrides)
 
-  private[sbt] def copy(module: ModuleID = this.module,
+  private[sbt] def copy(
+    module: ModuleID = this.module,
     moduleInfo: ModuleInfo = this.moduleInfo,
     dependencies: Seq[ModuleID] = this.dependencies,
     overrides: Set[ModuleID] = this.overrides,
@@ -165,7 +168,8 @@ final class InlineConfigurationWithExcludes private[sbt] (val module: ModuleID,
     defaultConfiguration: Option[Configuration] = this.defaultConfiguration,
     ivyScala: Option[IvyScala] = this.ivyScala,
     validate: Boolean = this.validate,
-    conflictManager: ConflictManager = this.conflictManager): InlineConfigurationWithExcludes =
+    conflictManager: ConflictManager = this.conflictManager
+  ): InlineConfigurationWithExcludes =
     InlineConfigurationWithExcludes(module, moduleInfo, dependencies, overrides, excludes, ivyXML,
       configurations, defaultConfiguration, ivyScala, validate, conflictManager)
 
@@ -206,7 +210,8 @@ final class InlineConfigurationWithExcludes private[sbt] (val module: ModuleID,
     }
 }
 object InlineConfigurationWithExcludes {
-  def apply(module: ModuleID,
+  def apply(
+    module: ModuleID,
     moduleInfo: ModuleInfo,
     dependencies: Seq[ModuleID],
     overrides: Set[ModuleID] = Set.empty,
@@ -216,7 +221,8 @@ object InlineConfigurationWithExcludes {
     defaultConfiguration: Option[Configuration] = None,
     ivyScala: Option[IvyScala] = None,
     validate: Boolean = false,
-    conflictManager: ConflictManager = ConflictManager.default): InlineConfigurationWithExcludes =
+    conflictManager: ConflictManager = ConflictManager.default
+  ): InlineConfigurationWithExcludes =
     new InlineConfigurationWithExcludes(module, moduleInfo, dependencies, overrides, excludes, ivyXML,
       configurations, defaultConfiguration, ivyScala, validate, conflictManager)
 

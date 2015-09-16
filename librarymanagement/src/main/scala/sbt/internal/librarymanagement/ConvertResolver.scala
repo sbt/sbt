@@ -49,13 +49,17 @@ private[sbt] object ConvertResolver {
     private val signerNameField: Option[java.lang.reflect.Field] =
       reflectiveLookup(_.getDeclaredField("signerName"))
     private val putChecksumMethod: Option[java.lang.reflect.Method] =
-      reflectiveLookup(_.getDeclaredMethod("putChecksum",
+      reflectiveLookup(_.getDeclaredMethod(
+        "putChecksum",
         classOf[IArtifact], classOf[File], classOf[String],
-        classOf[Boolean], classOf[String]))
+        classOf[Boolean], classOf[String]
+      ))
     private val putSignatureMethod: Option[java.lang.reflect.Method] =
-      reflectiveLookup(_.getDeclaredMethod("putSignature",
+      reflectiveLookup(_.getDeclaredMethod(
+        "putSignature",
         classOf[IArtifact], classOf[File], classOf[String],
-        classOf[Boolean]))
+        classOf[Boolean]
+      ))
   }
   /**
    * The default behavior of ivy's overwrite flags ignores the fact that a lot of repositories
@@ -93,7 +97,7 @@ private[sbt] object ConvertResolver {
       if (signerName != null) {
         putSignatureMethod match {
           case None         => ()
-          case Some(method) => method.invoke(artifact, src, dest, true: java.lang.Boolean) ; ()
+          case Some(method) => method.invoke(artifact, src, dest, true: java.lang.Boolean); ()
         }
       }
     }

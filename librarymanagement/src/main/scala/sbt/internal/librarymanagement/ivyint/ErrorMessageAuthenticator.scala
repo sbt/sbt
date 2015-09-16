@@ -114,7 +114,8 @@ private[sbt] final class ErrorMessageAuthenticator(original: Option[Authenticato
         getRequestingPort,
         getRequestingProtocol,
         getRequestingPrompt,
-        getRequestingScheme))
+        getRequestingScheme
+      ))
       finally Authenticator.setDefault(this)
     }
     originalAuthentication.orNull

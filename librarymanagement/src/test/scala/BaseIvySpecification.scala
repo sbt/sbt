@@ -29,7 +29,8 @@ trait BaseIvySpecification extends UnitSpec {
         configurations = Nil,
         checkExplicit = true,
         filterImplicit = false,
-        overrideScalaVersion = false)
+        overrideScalaVersion = false
+      )
     }
 
     val moduleSetting: ModuleSettings = InlineConfiguration(
@@ -37,7 +38,8 @@ trait BaseIvySpecification extends UnitSpec {
       moduleInfo = ModuleInfo("foo"),
       dependencies = deps,
       configurations = configurations,
-      ivyScala = ivyScala)
+      ivyScala = ivyScala
+    )
     val ivySbt = new IvySbt(mkIvyConfiguration(uo))
     new ivySbt.Module(moduleSetting)
   }
@@ -81,7 +83,8 @@ trait BaseIvySpecification extends UnitSpec {
       artifacts = artifacts,
       checksums = Seq(),
       logging = UpdateLogging.Full,
-      overwrite = true)
+      overwrite = true
+    )
   }
 
   def ivyPublish(module: IvySbt#Module, config: PublishConfiguration) = {

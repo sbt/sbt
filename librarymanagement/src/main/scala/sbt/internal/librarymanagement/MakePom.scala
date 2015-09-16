@@ -244,7 +244,8 @@ class MakePom(val log: Logger) {
         log.warn(
           s"""Translating intransitive dependency (${dependency.getDependencyId}) into pom.xml, but maven does not support intransitive dependencies.
              |  Please use exclusions instead so transitive dependencies will be correctly excluded in dependent projects.
-           """.stripMargin)
+           """.stripMargin
+        )
       else ()
     val artifacts = dependency.getAllDependencyArtifacts
     val includeArtifacts = artifacts.filter(d => includeTypes(d.getType))
@@ -372,7 +373,8 @@ class MakePom(val log: Logger) {
           <exclusion>
             <groupId>{ g }</groupId>
             <artifactId>{ a }</artifactId>
-          </exclusion>)
+          </exclusion>
+        )
     }
 
   def makeRepositories(settings: IvySettings, includeAll: Boolean, filterRepositories: MavenRepository => Boolean) =

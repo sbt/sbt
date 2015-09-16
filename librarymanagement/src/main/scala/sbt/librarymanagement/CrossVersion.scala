@@ -79,7 +79,7 @@ object CrossVersion {
 
   /**
    * Cross-versions a module with the result of applying `remapVersion` to the full version
-   * (typically the full Scala version).  See also [[sbt.CrossVersion.Full]].
+   * (typically the full Scala version).  See also [[sbt.librarymanagement.CrossVersion.Full]].
    */
   def fullMapped(remapVersion: String => String): CrossVersion = new Full(remapVersion)
 
@@ -88,7 +88,7 @@ object CrossVersion {
 
   /**
    * Cross-versions a module with the result of applying `remapVersion` to the binary version
-   * (typically the binary Scala version).  See also [[sbt.CrossVersion.Binary]].
+   * (typically the binary Scala version).  See also [[sbt.librarymanagement.CrossVersion.Binary]].
    */
   def binaryMapped(remapVersion: String => String): CrossVersion = new Binary(remapVersion)
 
@@ -99,7 +99,7 @@ object CrossVersion {
   /**
    * Construct a cross-versioning function given cross-versioning configuration `cross`,
    * full version `fullVersion` and binary version `binaryVersion`.  The behavior of the
-   * constructed function is as documented for the [[sbt.CrossVersion]] datatypes.
+   * constructed function is as documented for the [[sbt.librarymanagement.CrossVersion]] datatypes.
    */
   def apply(cross: CrossVersion, fullVersion: String, binaryVersion: String): Option[String => String] =
     cross match {
@@ -191,13 +191,13 @@ object CrossVersion {
 
   /**
    * Computes the binary Scala version from the `full` version.
-   * Full Scala versions earlier than [[sbt.CrossVersion.TransitionScalaVersion]] are returned as is.
+   * Full Scala versions earlier than [[sbt.librarymanagement.CrossVersion.TransitionScalaVersion]] are returned as is.
    */
   def binaryScalaVersion(full: String): String = CrossVersionUtil.binaryScalaVersion(full)
 
   /**
    * Computes the binary sbt version from the `full` version.
-   * Full sbt versions earlier than [[sbt.CrossVersion.TransitionSbtVersion]] are returned as is.
+   * Full sbt versions earlier than [[sbt.librarymanagement.CrossVersion.TransitionSbtVersion]] are returned as is.
    */
   def binarySbtVersion(full: String): String = CrossVersionUtil.binarySbtVersion(full)
 

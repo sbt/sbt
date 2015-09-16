@@ -21,7 +21,8 @@ object ScalaArtifacts {
 
   private[sbt] def toolDependencies(org: String, version: String): Seq[ModuleID] = Seq(
     scalaToolDependency(org, ScalaArtifacts.CompilerID, version),
-    scalaToolDependency(org, ScalaArtifacts.LibraryID, version))
+    scalaToolDependency(org, ScalaArtifacts.LibraryID, version)
+  )
   private[this] def scalaToolDependency(org: String, id: String, version: String): ModuleID =
     ModuleID(org, id, version, Some(Configurations.ScalaTool.name + "->default,optional(default)"))
 }
