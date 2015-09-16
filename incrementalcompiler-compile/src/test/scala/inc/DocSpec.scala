@@ -8,6 +8,7 @@ import sbt.util.Logger
 import sbt.internal.util.UnitSpec
 import sbt.internal.inc.javac.{ JavaTools, JavaCompiler, Javadoc }
 import sbt.internal.inc.javac.JavaCompilerSpec
+import sbt.internal.inc.LoggerReporter
 // import org.scalatest.matchers._
 
 class DocSpec extends UnitSpec {

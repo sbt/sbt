@@ -6,8 +6,8 @@ package javac
 import java.io.File
 
 import sbt._
-import sbt.classfile.Analyze
-import sbt.classpath.ClasspathUtilities
+import sbt.internal.inc.classfile.Analyze
+import sbt.internal.inc.classpath.ClasspathUtilities
 import xsbti.api.Source
 import xsbti.compile._
 import xsbti.{ AnalysisCallback, Reporter }
