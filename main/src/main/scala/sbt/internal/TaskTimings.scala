@@ -64,11 +64,17 @@ private[sbt] final class TaskTimings(shutdown: Boolean) extends ExecuteProgress[
     import collection.JavaConverters._
     def sumTimes(in: Seq[(Task[_], Long)]) = in.map(_._2).sum
     val timingsByName = timings.asScala.toSeq.groupBy { case (t, time) => mappedName(t) } mapValues (sumTimes)
-    for (
-      (taskName, time) <- timingsByName.toSeq.sortBy(_._2).reverse
-        .map { case (name, time) => (name, divide(time)) }
-        .filter { _._2 > threshold }
-    ) println(s"  $taskName: $time $unit")
+    val times = timingsByName.toSeq.sortBy(_._2).reverse
+      .map { case (name, time) => (name, divide(time)) }
+      .filter { _._2 > threshold }
+    if (times.size > 0) {
+      val maxTaskNameLength = times.map { _._1.length }.max
+      val maxTime = times.map { _._2 }.max.toString.length
+      times.foreach {
+        case (taskName, time) =>
+          println(s"  ${taskName.padTo(maxTaskNameLength, ' ')}: ${"".padTo(maxTime - time.toString.length, ' ')}$time $unit")
+      }
+    }
   }
   private[this] def inferredName(t: Task[_]): Option[String] = nameDelegate(t) map mappedName
   private[this] def nameDelegate(t: Task[_]): Option[Task[_]] = Option(anonOwners.get(t)) orElse Option(calledBy.get(t))
