@@ -65,8 +65,8 @@ final class CompilerArguments(scalaInstance: xsbti.compile.ScalaInstance, cp: xs
 }
 object CompilerArguments {
   val BootClasspathOption = "-bootclasspath"
-  def abs(files: Seq[File]): Seq[String] = files.map(_.getAbsolutePath)
-  def abs(files: Set[File]): Seq[String] = abs(files.toSeq)
+  def abs(files: Seq[File]): List[String] = files.toList.map(_.getAbsolutePath)
+  def abs(files: Set[File]): List[String] = abs(files.toList)
   def absString(files: Seq[File]): String = abs(files).mkString(File.pathSeparator)
   def absString(files: Set[File]): String = absString(files.toSeq)
 }

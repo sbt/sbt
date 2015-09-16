@@ -6,7 +6,7 @@ import sbt.io.Path._
 import sbt.io.IO
 import sbt.util.Logger
 import xsbti.Reporter
-import sbt.internal.inc.javac.JavaTools
+import sbt.internal.inc.javac.{ JavaTools, JavaCompilerArguments }
 
 object Doc {
   // sources, classpath, outputDirectory, options, log, reporter
@@ -19,8 +19,7 @@ object Doc {
   def cachedJavadoc(label: String, cache: File, doc: JavaTools): JavaDoc =
     new JavaDoc {
       def run(sources: List[File], classpath: List[File], outputDirectory: File, options: List[String], log: Logger, reporter: Reporter): Unit = {
-        val opts = List("-d", outputDirectory.getAbsolutePath)
-        doc.doc(sources, opts ::: options)(log, reporter)
+        doc.doc(sources, JavaCompilerArguments(sources, classpath, Some(outputDirectory), options))(log, reporter)
         ()
       }
     }
