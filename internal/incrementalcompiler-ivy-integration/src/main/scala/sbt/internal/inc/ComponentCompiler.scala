@@ -2,7 +2,8 @@
  * Copyright 2009, 2010  Mark Harrah
  */
 package sbt
-package compiler
+package internal
+package inc
 
 import java.io.File
 import scala.util.Try
@@ -42,7 +43,7 @@ private[sbt] object ComponentCompiler {
  * The compiled classes are cached using the provided component manager according
  * to the actualVersion field of the RawCompiler.
  */
-private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: ComponentManager, ivyConfiguration: IvyConfiguration, sourcesModule: ModuleID, log: Logger) {
+private[inc] class IvyComponentCompiler(compiler: RawCompiler, manager: ComponentManager, ivyConfiguration: IvyConfiguration, sourcesModule: ModuleID, log: Logger) {
   import ComponentCompiler._
 
   private val sbtOrg = xsbti.ArtifactInfo.SbtOrganization
