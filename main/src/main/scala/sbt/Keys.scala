@@ -8,9 +8,8 @@ import java.net.URL
 import scala.concurrent.duration.{ FiniteDuration, Duration }
 import Def.ScopedKey
 import sbt.internal.util.complete._
-import inc.Analysis
-import inc.Locate.DefinesClass
-import sbt.compiler.MixedAnalyzingCompiler
+import sbt.internal.inc.Locate.DefinesClass
+import sbt.internal.inc.{ Analysis, ClasspathOptions, IncOptions, MixedAnalyzingCompiler, ScalaInstance }
 import std.TaskExtra._
 import xsbti.compile.{ CompileOrder, GlobalsCache }
 import scala.xml.{ Node => XNode, NodeSeq }
@@ -104,7 +103,7 @@ object Keys {
   // Command keys
   val historyPath = SettingKey(BasicKeys.historyPath)
   val shellPrompt = SettingKey(BasicKeys.shellPrompt)
-  val analysis = AttributeKey[inc.Analysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.", DSetting)
+  val analysis = AttributeKey[Analysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.", DSetting)
   val watch = SettingKey(BasicKeys.watch)
   val pollInterval = SettingKey[Int]("poll-interval", "Interval between checks for modified sources by the continuous execution command.", BMinusSetting)
   val watchSources = TaskKey[Seq[File]]("watch-sources", "Defines the sources in this project for continuous execution to watch for changes.", BMinusSetting)
@@ -162,7 +161,7 @@ object Keys {
   val maxErrors = SettingKey[Int]("max-errors", "The maximum number of errors, such as compile errors, to list.", ASetting)
   val scalacOptions = TaskKey[Seq[String]]("scalac-options", "Options for the Scala compiler.", BPlusTask)
   val javacOptions = TaskKey[Seq[String]]("javac-options", "Options for the Java compiler.", BPlusTask)
-  val incOptions = TaskKey[sbt.inc.IncOptions]("inc-options", "Options for the incremental compiler.", BTask)
+  val incOptions = TaskKey[IncOptions]("inc-options", "Options for the incremental compiler.", BTask)
   val compileOrder = SettingKey[CompileOrder]("compile-order", "Configures the order in which Java and sources within a single compilation are compiled.  Valid values are: JavaThenScala, ScalaThenJava, or Mixed.", BPlusSetting)
   val initialCommands = SettingKey[String]("initial-commands", "Initial commands to execute when starting up the Scala interpreter.", AMinusSetting)
   val cleanupCommands = SettingKey[String]("cleanup-commands", "Commands to execute before the Scala interpreter exits.", BMinusSetting)

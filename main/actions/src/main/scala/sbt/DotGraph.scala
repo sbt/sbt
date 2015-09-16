@@ -4,7 +4,7 @@
 package sbt
 
 import java.io.{ File, Writer }
-import inc.Relations
+import sbt.internal.inc.Relations
 
 import sbt.internal.util.Relation
 
