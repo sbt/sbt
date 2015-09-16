@@ -7,7 +7,7 @@ def baseVersion = "0.1.0-M1"
 def internalPath   = file("internal")
 
 def commonSettings: Seq[Setting[_]] = Seq(
-  scalaVersion := "2.10.5",
+  scalaVersion := "2.11.7",
   // publishArtifact in packageDoc := false,
   resolvers += Resolver.typesafeIvyRepo("releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
@@ -48,13 +48,14 @@ def baseSettings: Seq[Setting[_]] =
 def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
 
-lazy val compileRoot: Project = (project in file(".")).
+lazy val incrementalcompilerRoot: Project = (project in file(".")).
   // configs(Sxr.sxrConf).
   aggregate(
     incrementalcompiler,
     incrementalcompilerPersist,
     incrementalcompilerCore,
     incrementalcompilerIvyIntegration,
+    incrementalcompilerCompile,
     incrementalcompilerCompileCore,
     compilerInterface,
     compilerBridge,
@@ -82,6 +83,13 @@ lazy val incrementalcompiler = (project in file("incrementalcompiler")).
   settings(
     baseSettings,
     name := "incrementalcompiler"
+  )
+
+lazy val incrementalcompilerCompile = (project in file("incrementalcompiler-compile")).
+  dependsOn(incrementalcompilerCompileCore, incrementalcompilerCompileCore % "test->test").
+  settings(
+    testedBaseSettings,
+    name := "Incrementalcompiler Compile"
   )
 
 // Persists the incremental data structures using SBinary
