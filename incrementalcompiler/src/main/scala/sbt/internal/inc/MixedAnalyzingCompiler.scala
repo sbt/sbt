@@ -5,8 +5,8 @@ package inc
 import java.io.File
 import java.lang.ref.{ SoftReference, Reference }
 
-import sbt.classfile.Analyze
-import sbt.classpath.ClasspathUtilities
+import sbt.internal.inc.classfile.Analyze
+import sbt.internal.inc.classpath.ClasspathUtilities
 import inc.javac.AnalyzingJavaCompiler
 import Locate.DefinesClass
 import xsbti.{ AnalysisCallback => XAnalysisCallback, Reporter }
