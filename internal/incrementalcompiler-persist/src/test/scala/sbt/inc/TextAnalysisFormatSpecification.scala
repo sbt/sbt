@@ -3,6 +3,9 @@ package inc
 
 import xsbti.api.DependencyContext.DependencyByMemberRef
 import xsbti.api.ExternalDependency
+
+import sbt.internal.inc.{ Analysis, CompileSetup, CompileOptions, Exists, SourceInfos, TestCaseGenerators, TextAnalysisFormat }
+
 import java.io.{ BufferedReader, File, StringReader, StringWriter }
 import scala.math.abs
 import org.scalacheck._
