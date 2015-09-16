@@ -17,7 +17,7 @@ import xsbti.api.DependencyContext.{ DependencyByInheritance, DependencyByMember
 
 /**
  * Helper methods for running incremental compilation.  All this is responsible for is
- * adapting any xsbti.AnalysisCallback into one compatible with the [[sbt.inc.Incremental]] class.
+ * adapting any xsbti.AnalysisCallback into one compatible with the [[sbt.internal.inc.Incremental]] class.
  */
 object IncrementalCompile {
   /**
