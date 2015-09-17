@@ -4,7 +4,7 @@ import Util._
 def internalPath   = file("internal")
 
 def commonSettings: Seq[Setting[_]] = Seq(
-  scalaVersion := "2.10.5",
+  scalaVersion := scala211,
   // publishArtifact in packageDoc := false,
   resolvers += Resolver.typesafeIvyRepo("releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
