@@ -11,7 +11,7 @@ object Dependencies {
   // sbt modules
   val utilVersion = "0.1.0-M3"
   val ioVersion = "1.0.0-M3"
-  val incremenalcompilerVersion = "0.1.0-M1-7dabef5752ce69ffa240e1851401942d8b558347"
+  val incremenalcompilerVersion = "0.1.0-M1-d83279f021a4eb66528455d23974571665d9508a"
   val librarymanagementVersion = "0.1.0-M2"
   lazy val sbtIO = "org.scala-sbt" %% "io" % ioVersion
   lazy val utilCollection = "org.scala-sbt" %% "util-collection" % utilVersion
@@ -31,9 +31,9 @@ object Dependencies {
   lazy val incrementalcompiler = "org.scala-sbt" %% "incrementalcompiler" % incremenalcompilerVersion
   lazy val compilerInterface = "org.scala-sbt" % "compiler-interface" % incremenalcompilerVersion
   lazy val compilerBrdige = "org.scala-sbt" %% "compiler-bridge" % incremenalcompilerVersion
-  lazy val compilerClasspath = "org.scala-sbt" %% "compiler-classpath" % incremenalcompilerVersion
-  lazy val compilerApiInfo = "org.scala-sbt" %% "compiler-apiinfo" % incremenalcompilerVersion
-  lazy val compilerIvyIntegration = "org.scala-sbt" %% "compiler-ivy-integration" % incremenalcompilerVersion
+  lazy val compilerClasspath = "org.scala-sbt" %% "incrementalcompiler-classpath" % incremenalcompilerVersion
+  lazy val compilerApiInfo = "org.scala-sbt" %% "incrementalcompiler-apiinfo" % incremenalcompilerVersion
+  lazy val compilerIvyIntegration = "org.scala-sbt" %% "incrementalcompiler-ivy-integration" % incremenalcompilerVersion
 
   lazy val jline = "jline" % "jline" % "2.11"
   lazy val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-d592b1b0f77cf706e882b1b8e0162dee28165fb2"
