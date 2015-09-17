@@ -10,8 +10,8 @@ import TaskName._
  * Measure the time elapsed for running tasks.
  * This class is activated by adding -Dsbt.task.timing=true to the JVM options.
  * Formatting options:
- * - -Dsbt.task.timings.shutdown=true|false
- * - -Dsbt.task.timings.decimals=number
+ * - -Dsbt.task.timings.on.shutdown=true|false
+ * - -Dsbt.task.timings.unit=number
  * - -Dsbt.task.timings.threshold=number
  * @param shutdown    Should the report be given when exiting the JVM (true) or immediatelly (false)?
  */
@@ -20,14 +20,15 @@ private[sbt] final class TaskTimings(shutdown: Boolean) extends ExecuteProgress[
   private[this] val anonOwners = new ConcurrentHashMap[Task[_], Task[_]]
   private[this] val timings = new ConcurrentHashMap[Task[_], Long]
   private[this] var start = 0L
-  private[this] val divider = java.lang.Integer.getInteger("sbt.task.timings.divider", 6).toInt
   private[this] val threshold = java.lang.Long.getLong("sbt.task.timings.threshold", 0L)
-  private[this] val unit = divider match {
-    case 0 => "ns"
-    case 3 => "µs"
-    case 6 => "ms"
-    case 9 => "sec"
-    case _ => ""
+  private[this] val (unit, divider) = System.getProperty("sbt.task.timings.unit", "ms") match {
+    case "ns" => ("ns", 0)
+    case "us" => ("µs", 3)
+    case "ms" => ("ms", 6)
+    case "s"  => ("sec", 9)
+    case x =>
+      System.err.println(s"Unknown sbt.task.timings.unit: $x.\nUsing milliseconds.")
+      ("ms", 6)
   }
 
   type S = Unit
