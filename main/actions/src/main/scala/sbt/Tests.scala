@@ -5,7 +5,7 @@ package sbt
 
 import std._
 import xsbt.api.{ Discovered, Discovery }
-import inc.Analysis
+import sbt.internal.inc.Analysis
 import TaskExtra._
 import sbt.internal.util.FeedbackProvidedException
 import sbt.internal.util.Types._

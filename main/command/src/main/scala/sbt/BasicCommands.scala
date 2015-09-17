@@ -3,7 +3,8 @@ package sbt
 import sbt.internal.util.{ AttributeKey, FullReader }
 import sbt.internal.util.complete.{ Completion, Completions, DefaultParsers, History => CHistory, HistoryCommands, Parser, TokenCompletions }
 import sbt.internal.util.Types.{ const, idFun }
-import classpath.ClasspathUtilities.toLoader
+import sbt.internal.inc.classpath.ClasspathUtilities.toLoader
+import sbt.internal.inc.ModuleUtilities
 import DefaultParsers._
 import Function.tupled
 import Command.applyEffect
