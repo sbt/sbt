@@ -426,11 +426,10 @@ trait ParserMain {
           case _ =>
             val ci = i + 1
             if (ci >= s.length)
-              a.resultEmpty.toEither.left.map { msgs0 =>
-                () =>
-                  val msgs = msgs0()
-                  val nonEmpty = if (msgs.isEmpty) "Unexpected end of input" :: Nil else msgs
-                  (nonEmpty, ci)
+              a.resultEmpty.toEither.left.map { msgs0 => () =>
+                val msgs = msgs0()
+                val nonEmpty = if (msgs.isEmpty) "Unexpected end of input" :: Nil else msgs
+                (nonEmpty, ci)
               }
             else
               loop(ci, a derive s(ci))
