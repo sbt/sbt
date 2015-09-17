@@ -77,7 +77,9 @@ object Instance {
    *  this should be the argument wrapped in Right.
    */
   def contImpl[T, N[_]](c: Context, i: Instance with Singleton, convert: Convert, builder: TupleBuilder)(t: Either[c.Expr[T], c.Expr[i.M[T]]], inner: Transform[c.type, N])(
-    implicit tt: c.WeakTypeTag[T], nt: c.WeakTypeTag[N[T]], it: c.TypeTag[i.type]): c.Expr[i.M[N[T]]] =
+    implicit
+    tt: c.WeakTypeTag[T], nt: c.WeakTypeTag[N[T]], it: c.TypeTag[i.type]
+  ): c.Expr[i.M[N[T]]] =
     {
       import c.universe.{ Apply => ApplyTree, _ }
 
