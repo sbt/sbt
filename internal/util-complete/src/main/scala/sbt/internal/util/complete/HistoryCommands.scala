@@ -34,7 +34,8 @@ object HistoryCommands {
     Nth -> ("Execute the command with index n, as shown by the " + ListFull + " command"),
     Previous -> "Execute the nth command before this one",
     StartsWithString -> "Execute the most recent command starting with 'string'",
-    ContainsString -> "Execute the most recent command containing 'string'")
+    ContainsString -> "Execute the most recent command containing 'string'"
+  )
   def helpString = "History commands:\n   " + (descriptions.map { case (c, d) => c + "    " + d }).mkString("\n   ")
   def printHelp(): Unit =
     println(helpString)
@@ -46,8 +47,7 @@ object HistoryCommands {
   val MaxLines = 500
   lazy val num = token(NatBasic, "<integer>")
   lazy val last = Last ^^^ { execute(_.!!) }
-  lazy val list = ListCommands ~> (num ?? Int.MaxValue) map { show =>
-    (h: History) => { printHistory(h, MaxLines, show); Some(Nil) }
+  lazy val list = ListCommands ~> (num ?? Int.MaxValue) map { show => (h: History) => { printHistory(h, MaxLines, show); Some(Nil) }
   }
   lazy val execStr = flag('?') ~ token(any.+.string, "<string>") map {
     case (contains, str) =>
