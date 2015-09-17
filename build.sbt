@@ -14,8 +14,6 @@ def commonSettings: Seq[Setting[_]] = Seq(
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
   incOptions := incOptions.value.withNameHashing(true),
   crossScalaVersions := Seq(scala210, scala211),
-  bintrayPackage := (bintrayPackage in ThisBuild).value,
-  bintrayRepository := (bintrayRepository in ThisBuild).value,
   resolvers += Resolver.sonatypeRepo("public"),
   publishArtifact in Compile := true,
   publishArtifact in Test := true,
@@ -51,9 +49,6 @@ lazy val root = (project in file(".")).
         Developer("jsuereth", "Josh Suereth", "@jsuereth", url("https://github.com/jsuereth")),
         Developer("dwijnand", "Dale Wijnand", "@dwijnand", url("https://github.com/dwijnand"))
       ),
-      bintrayReleaseOnPublish := false,
-      bintrayOrganization := Some("sbt"),
-      bintrayRepository := "maven-releases",
       bintrayPackage := "librarymanagement",
       git.baseVersion := baseVersion
     )),
