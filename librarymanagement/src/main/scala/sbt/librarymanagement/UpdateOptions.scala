@@ -1,6 +1,5 @@
 package sbt.librarymanagement
 
-import java.io.File
 import org.apache.ivy.plugins.resolver.DependencyResolver
 import org.apache.ivy.core.settings.IvySettings
 import sbt.util.Logger
@@ -49,6 +48,14 @@ final class UpdateOptions private[sbt] (
       consolidatedResolution,
       cachedResolution,
       resolverConverter)
+
+  override def toString(): String =
+    s"""UpdateOptions(
+        |  circularDependencyLevel = $circularDependencyLevel,
+        |  latestSnapshots = $latestSnapshots,
+        |  consolidatedResolution = $consolidatedResolution,
+        |  cachedResolution = $cachedResolution
+        |)""".stripMargin
 
   override def equals(o: Any): Boolean = o match {
     case o: UpdateOptions =>
