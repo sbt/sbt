@@ -13,11 +13,22 @@ import sbt.internal.inc.LoggerReporter
 
 class DocSpec extends UnitSpec {
   "Doc.cachedJavadoc" should "generate Java Doc" in {
-    IO.withTemporaryDirectory { out =>
-      val javadoc = Doc.cachedJavadoc("Foo", out, local)
-      javadoc.run(List(knownSampleGoodFile), Nil, out, Nil, log, reporter)
-      assert((new File(out, "index.html")).exists)
-      assert((new File(out, "good.html")).exists)
+    IO.withTemporaryDirectory { cacheDir =>
+      IO.withTemporaryDirectory { out =>
+        val javadoc = Doc.cachedJavadoc("Foo", cacheDir, local)
+        javadoc.run(List(knownSampleGoodFile), Nil, out, Nil, log, reporter)
+        assert((new File(out, "index.html")).exists)
+        assert((new File(out, "good.html")).exists)
+      }
+    }
+  }
+  it should "generate cache input" in {
+    IO.withTemporaryDirectory { cacheDir =>
+      IO.withTemporaryDirectory { out =>
+        val javadoc = Doc.cachedJavadoc("Foo", cacheDir, local)
+        javadoc.run(List(knownSampleGoodFile), Nil, out, Nil, log, reporter)
+        assert((new File(cacheDir, "inputs")).exists)
+      }
     }
   }
 

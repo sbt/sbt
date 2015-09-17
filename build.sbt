@@ -89,7 +89,8 @@ lazy val incrementalcompilerCompile = (project in file("incrementalcompiler-comp
   dependsOn(incrementalcompilerCompileCore, incrementalcompilerCompileCore % "test->test").
   settings(
     testedBaseSettings,
-    name := "Incrementalcompiler Compile"
+    name := "Incrementalcompiler Compile",
+    libraryDependencies ++= Seq(utilTracking)
   )
 
 // Persists the incremental data structures using SBinary
