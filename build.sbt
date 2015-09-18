@@ -38,17 +38,9 @@ lazy val root = (project in file(".")).
   aggregate(lm).
   settings(
     inThisBuild(Seq(
-      organization := "org.scala-sbt",
       homepage := Some(url("https://github.com/sbt/librarymanagement")),
       description := "Library management module for sbt",
-      licenses := List("BSD New" -> url("https://github.com/sbt/sbt/blob/0.13/LICENSE")),
       scmInfo := Some(ScmInfo(url("https://github.com/sbt/librarymanagement"), "git@github.com:sbt/librarymanagement.git")),
-      developers := List(
-        Developer("harrah", "Mark Harrah", "@harrah", url("https://github.com/harrah")),
-        Developer("eed3si9n", "Eugene Yokota", "@eed3si9n", url("https://github.com/eed3si9n")),
-        Developer("jsuereth", "Josh Suereth", "@jsuereth", url("https://github.com/jsuereth")),
-        Developer("dwijnand", "Dale Wijnand", "@dwijnand", url("https://github.com/dwijnand"))
-      ),
       bintrayPackage := "librarymanagement",
       git.baseVersion := baseVersion
     )),
