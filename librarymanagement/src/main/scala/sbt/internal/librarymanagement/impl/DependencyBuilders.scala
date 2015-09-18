@@ -44,7 +44,8 @@ final class GroupID private[sbt] (private[sbt] val groupID: String) {
 final class GroupArtifactID private[sbt] (
   private[sbt] val groupID: String,
   private[sbt] val artifactID: String,
-  private[sbt] val crossVersion: CrossVersion) {
+  private[sbt] val crossVersion: CrossVersion
+) {
   def %(revision: String): ModuleID =
     {
       nonEmpty(revision, "Revision")

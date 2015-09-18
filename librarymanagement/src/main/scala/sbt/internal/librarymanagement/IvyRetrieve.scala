@@ -93,10 +93,12 @@ object IvyRetrieve {
     val branch = nonEmptyString(revId.getBranch)
     val (status, publicationDate, resolver, artifactResolver) = dep.isLoaded match {
       case true =>
-        (nonEmptyString(dep.getDescriptor.getStatus),
+        (
+          nonEmptyString(dep.getDescriptor.getStatus),
           Some(new ju.Date(dep.getPublication)),
           nonEmptyString(dep.getModuleRevision.getResolver.getName),
-          nonEmptyString(dep.getModuleRevision.getArtifactResolver.getName))
+          nonEmptyString(dep.getModuleRevision.getArtifactResolver.getName)
+        )
       case _ => (None, None, None, None)
     }
     val (evicted, evictedData, evictedReason) = dep.isEvicted(confReport.getConfiguration) match {

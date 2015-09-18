@@ -19,7 +19,8 @@ import sbt.internal.librarymanagement.{ DependencyFilter, ConfigurationFilter, M
 final class ConfigurationReport(
   val configuration: String,
   val modules: Seq[ModuleReport],
-  val details: Seq[OrganizationArtifactReport]) {
+  val details: Seq[OrganizationArtifactReport]
+) {
 
   def evicted: Seq[ModuleID] =
     details flatMap (_.modules) filter (_.evicted) map (_.module)
@@ -56,7 +57,8 @@ object ConfigurationReport {
 final class OrganizationArtifactReport private[sbt] (
   val organization: String,
   val name: String,
-  val modules: Seq[ModuleReport]) {
+  val modules: Seq[ModuleReport]
+) {
   override def toString: String = {
     val details = modules map { _.detailReport }
     s"\t$organization:$name\n${details.mkString}\n"
@@ -94,7 +96,8 @@ final class ModuleReport(
   val branch: Option[String],
   val configurations: Seq[String],
   val licenses: Seq[(String, Option[String])],
-  val callers: Seq[Caller]) {
+  val callers: Seq[Caller]
+) {
 
   private[this] lazy val arts: Seq[String] = artifacts.map(_.toString) ++ missingArtifacts.map(art => "(MISSING) " + art)
   override def toString: String = {
@@ -113,20 +116,28 @@ final class ModuleReport(
       reportStr("evictedReason", evictedReason) +
       reportStr("problem", problem) +
       reportStr("homepage", homepage) +
-      reportStr("textraAttributes",
+      reportStr(
+        "textraAttributes",
         if (extraAttributes.isEmpty) None
-        else { Some(extraAttributes.toString) }) +
+        else { Some(extraAttributes.toString) }
+      ) +
         reportStr("isDefault", isDefault map { _.toString }) +
         reportStr("branch", branch) +
-        reportStr("configurations",
+        reportStr(
+          "configurations",
           if (configurations.isEmpty) None
-          else { Some(configurations.mkString(", ")) }) +
-          reportStr("licenses",
+          else { Some(configurations.mkString(", ")) }
+        ) +
+          reportStr(
+            "licenses",
             if (licenses.isEmpty) None
-            else { Some(licenses.mkString(", ")) }) +
-            reportStr("callers",
+            else { Some(licenses.mkString(", ")) }
+          ) +
+            reportStr(
+              "callers",
               if (callers.isEmpty) None
-              else { Some(callers.mkString(", ")) })
+              else { Some(callers.mkString(", ")) }
+            )
   private[sbt] def reportStr(key: String, value: Option[String]): String =
     value map { x => s"\t\t\t$key: $x\n" } getOrElse ""
 
@@ -151,7 +162,8 @@ final class ModuleReport(
     branch: Option[String] = branch,
     configurations: Seq[String] = configurations,
     licenses: Seq[(String, Option[String])] = licenses,
-    callers: Seq[Caller] = callers): ModuleReport =
+    callers: Seq[Caller] = callers
+  ): ModuleReport =
     new ModuleReport(module, artifacts, missingArtifacts, status, publicationDate, resolver, artifactResolver,
       evicted, evictedData, evictedReason, problem, homepage, extraAttributes, isDefault, branch, configurations, licenses, callers)
 }
@@ -170,7 +182,8 @@ final class Caller(
   val isForceDependency: Boolean,
   val isChangingDependency: Boolean,
   val isTransitiveDependency: Boolean,
-  val isDirectlyForceDependency: Boolean) {
+  val isDirectlyForceDependency: Boolean
+) {
   override def toString: String =
     s"$caller"
 }
@@ -207,10 +220,12 @@ final class UpdateReport(val cachedDescriptor: File, val configurations: Seq[Con
   def allConfigurations: Seq[String] = configurations.map(_.configuration)
 
   private[sbt] def withStats(us: UpdateStats): UpdateReport =
-    new UpdateReport(this.cachedDescriptor,
+    new UpdateReport(
+      this.cachedDescriptor,
       this.configurations,
       us,
-      this.stamps)
+      this.stamps
+    )
 }
 
 object UpdateReport {
@@ -248,14 +263,16 @@ object UpdateReport {
       moduleReportMap { (configuration, modReport) =>
         modReport.copy(
           artifacts = modReport.artifacts filter { case (art, file) => f(configuration, modReport.module, art) },
-          missingArtifacts = modReport.missingArtifacts filter { art => f(configuration, modReport.module, art) })
+          missingArtifacts = modReport.missingArtifacts filter { art => f(configuration, modReport.module, art) }
+        )
       }
     def substitute(f: (String, ModuleID, Seq[(Artifact, File)]) => Seq[(Artifact, File)]): UpdateReport =
       moduleReportMap { (configuration, modReport) =>
         val newArtifacts = f(configuration, modReport.module, modReport.artifacts)
         modReport.copy(
           artifacts = f(configuration, modReport.module, modReport.artifacts),
-          missingArtifacts = Nil)
+          missingArtifacts = Nil
+        )
       }
 
     def toSeq: Seq[(String, ModuleID, Artifact, File)] =
@@ -267,7 +284,8 @@ object UpdateReport {
     def addMissing(f: ModuleID => Seq[Artifact]): UpdateReport =
       moduleReportMap { (configuration, modReport) =>
         modReport.copy(
-          missingArtifacts = (modReport.missingArtifacts ++ f(modReport.module)).distinct)
+          missingArtifacts = (modReport.missingArtifacts ++ f(modReport.module)).distinct
+        )
       }
 
     def moduleReportMap(f: (String, ModuleReport) => ModuleReport): UpdateReport =
@@ -338,10 +356,12 @@ object UpdateReport {
 final class UpdateStats(val resolveTime: Long, val downloadTime: Long, val downloadSize: Long, val cached: Boolean) {
   override def toString = Seq("Resolve time: " + resolveTime + " ms", "Download time: " + downloadTime + " ms", "Download size: " + downloadSize + " bytes").mkString(", ")
   private[sbt] def withCached(c: Boolean): UpdateStats =
-    new UpdateStats(resolveTime = this.resolveTime,
+    new UpdateStats(
+      resolveTime = this.resolveTime,
       downloadTime = this.downloadTime,
       downloadSize = this.downloadSize,
-      cached = c)
+      cached = c
+    )
 }
 object UpdateStats {
   implicit val pickler: Pickler[UpdateStats] with Unpickler[UpdateStats] = PicklerUnpickler.generate[UpdateStats]

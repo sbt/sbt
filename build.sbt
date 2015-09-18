@@ -1,5 +1,6 @@
 import Dependencies._
 
+def baseVersion = "0.1.0"
 def internalPath   = file("internal")
 
 def commonSettings: Seq[Setting[_]] = Seq(
@@ -13,8 +14,6 @@ def commonSettings: Seq[Setting[_]] = Seq(
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
   incOptions := incOptions.value.withNameHashing(true),
   crossScalaVersions := Seq(scala210, scala211),
-  bintrayPackage := (bintrayPackage in ThisBuild).value,
-  bintrayRepository := (bintrayRepository in ThisBuild).value,
   resolvers += Resolver.sonatypeRepo("public"),
   publishArtifact in Compile := true,
   publishArtifact in Test := true,
@@ -39,22 +38,11 @@ lazy val root = (project in file(".")).
   aggregate(lm).
   settings(
     inThisBuild(Seq(
-      organization := "org.scala-sbt",
-      version := "0.1.0-SNAPSHOT",
       homepage := Some(url("https://github.com/sbt/librarymanagement")),
       description := "Library management module for sbt",
-      licenses := List("BSD New" -> url("https://github.com/sbt/sbt/blob/0.13/LICENSE")),
       scmInfo := Some(ScmInfo(url("https://github.com/sbt/librarymanagement"), "git@github.com:sbt/librarymanagement.git")),
-      developers := List(
-        Developer("harrah", "Mark Harrah", "@harrah", url("https://github.com/harrah")),
-        Developer("eed3si9n", "Eugene Yokota", "@eed3si9n", url("https://github.com/eed3si9n")),
-        Developer("jsuereth", "Josh Suereth", "@jsuereth", url("https://github.com/jsuereth")),
-        Developer("dwijnand", "Dale Wijnand", "@dwijnand", url("https://github.com/dwijnand"))
-      ),
-      bintrayReleaseOnPublish := false,
-      bintrayOrganization := Some("sbt"),
-      bintrayRepository := "maven-releases",
-      bintrayPackage := "librarymanagement"
+      bintrayPackage := "librarymanagement",
+      git.baseVersion := baseVersion
     )),
     commonSettings,
     name := "LM Root",

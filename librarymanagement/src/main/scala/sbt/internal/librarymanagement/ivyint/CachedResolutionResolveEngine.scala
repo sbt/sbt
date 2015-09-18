@@ -492,9 +492,11 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       breakLoops(loop)
 
       // sort the all modules such that less called modules comes earlier
-      @tailrec def sortModules(cs: Vector[(String, String)],
+      @tailrec def sortModules(
+        cs: Vector[(String, String)],
         acc: Vector[(String, String)], extra: Vector[(String, String)],
-        n: Int, guard: Int): Vector[(String, String)] =
+        n: Int, guard: Int
+      ): Vector[(String, String)] =
         {
           // println(s"sortModules: $n / $guard")
           val keys = cs.toSet
@@ -522,8 +524,10 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
             sortModules(cs.tail, acc, extra :+ cs.head, n + 1, guard)
           } else sortModules(called, acc ++ notCalled, extra, 0, called.size * called.size + 1))
         }
-      def resolveConflicts(cs: List[(String, String)],
-        allModules: Map[(String, String), Vector[OrganizationArtifactReport]]): List[OrganizationArtifactReport] =
+      def resolveConflicts(
+        cs: List[(String, String)],
+        allModules: Map[(String, String), Vector[OrganizationArtifactReport]]
+      ): List[OrganizationArtifactReport] =
         cs match {
           case Nil => Nil
           case (organization, name) :: rest =>
