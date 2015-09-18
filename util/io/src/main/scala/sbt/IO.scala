@@ -38,14 +38,22 @@ object IO {
   /**
    * Returns a URL for the directory or jar containing the the class file `cl`.
    * If the location cannot be determined, an error is generated.
-   * Note that Java standard library classes typically do not have a location associated with them.
    */
-  def classLocation(cl: Class[_]): URL =
-    {
-      val codeSource = cl.getProtectionDomain.getCodeSource
-      if (codeSource == null) sys.error("No class location for " + cl)
-      else codeSource.getLocation
+  def classLocation(cl: Class[_]): URL = {
+    val codeSource = cl.getProtectionDomain.getCodeSource
+    if (codeSource ne null) {
+      codeSource.getLocation
+    } else {
+      Option(ClassLoader.getSystemClassLoader.getResource(classfilePathForClassname(cl.getName)))
+        .flatMap {
+          // TODO: assuming that System-class-loaded classes are located in jars, which
+          // will cause this method to truncate to the jar
+          urlAsFile
+        }.getOrElse {
+          sys.error("No class location for " + cl)
+        }.toURI.toURL
     }
+  }
 
   /**
    * Returns the directory or jar file containing the the class file `cl`.
@@ -88,6 +96,12 @@ object IO {
       case _ => None
     }
 
+  /**
+   * @return The path for the given classname.
+   *
+   * TODO: crossplatform
+   */
+  def classfilePathForClassname(clsname: String): String = s"${clsname.replace('.', '/')}.class"
   private[this] def uriToFile(uriString: String): File =
     {
       val uri = new URI(uriString)
