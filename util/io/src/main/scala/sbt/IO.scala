@@ -44,10 +44,11 @@ object IO {
     if (codeSource ne null) {
       codeSource.getLocation
     } else {
-      Option(ClassLoader.getSystemClassLoader.getResource(classfilePathForClassname(cl.getName)))
+      // NB: this assumes that System-class-loaded classes are located in jars, and thus relies on
+      // uses forward-slash-separated paths and `urlAsFile`'s truncation to the containing jar file
+      val clsfile = s"${cl.getName.replace('.', '/')}.class"
+      Option(ClassLoader.getSystemClassLoader.getResource(clsfile))
         .flatMap {
-          // TODO: assuming that System-class-loaded classes are located in jars, which
-          // will cause this method to truncate to the jar
           urlAsFile
         }.getOrElse {
           sys.error("No class location for " + cl)
@@ -96,12 +97,6 @@ object IO {
       case _ => None
     }
 
-  /**
-   * @return The path for the given classname.
-   *
-   * TODO: crossplatform
-   */
-  def classfilePathForClassname(clsname: String): String = s"${clsname.replace('.', '/')}.class"
   private[this] def uriToFile(uriString: String): File =
     {
       val uri = new URI(uriString)
