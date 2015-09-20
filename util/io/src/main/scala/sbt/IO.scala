@@ -46,7 +46,8 @@ object IO {
     } else {
       // NB: This assumes that classes without code sources are System classes, and thus located in
       // jars. It assumes that `urlAsFile` will truncate to the containing jar file.
-      Option(cl.getResource(cl.getSimpleName + ".class"))
+      val clsfile = s"${cl.getName.replace('.', '/')}.class"
+      Option(ClassLoader.getSystemClassLoader.getResource(clsfile))
         .flatMap {
           urlAsFile
         }.getOrElse {
