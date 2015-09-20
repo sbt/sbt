@@ -44,10 +44,9 @@ object IO {
     if (codeSource ne null) {
       codeSource.getLocation
     } else {
-      // NB: this assumes that System-class-loaded classes are located in jars, and thus relies on
-      // uses forward-slash-separated paths and `urlAsFile`'s truncation to the containing jar file
-      val clsfile = s"${cl.getName.replace('.', '/')}.class"
-      Option(ClassLoader.getSystemClassLoader.getResource(clsfile))
+      // NB: This assumes that classes without code sources are System classes, and thus located in
+      // jars. It assumes that `urlAsFile` will truncate to the containing jar file.
+      Option(cl.getResource(cl.getSimpleName + ".class"))
         .flatMap {
           urlAsFile
         }.getOrElse {

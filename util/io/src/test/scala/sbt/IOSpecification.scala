@@ -1,6 +1,3 @@
-/* sbt -- Simple Build Tool
- * Copyright 2008 Mark Harrah */
-
 package sbt
 
 import util.Try
