@@ -18,7 +18,8 @@ class ParserWithExamplesTest extends UnitSpec {
       val _ = new ParserWithValidExamples {
         val validCompletions = Completions(Set(
           suggestion("blue"),
-          suggestion("red")))
+          suggestion("red")
+        ))
         parserWithExamples.completions(0) shouldEqual validCompletions
       }
     }
@@ -27,7 +28,8 @@ class ParserWithExamplesTest extends UnitSpec {
     "produce only valid examples that start with the character of the derivation" in {
       val _ = new ParserWithValidExamples {
         val derivedCompletions = Completions(Set(
-          suggestion("lue")))
+          suggestion("lue")
+        ))
         parserWithExamples.derive('b').completions(0) shouldEqual derivedCompletions
       }
     }
@@ -45,7 +47,8 @@ class ParserWithExamplesTest extends UnitSpec {
       val _ = new parserWithAllExamples {
         val derivedCompletions = Completions(Set(
           suggestion("lue"),
-          suggestion("lock")))
+          suggestion("lock")
+        ))
         parserWithExamples.derive('b').completions(0) shouldEqual derivedCompletions
       }
     }
@@ -56,9 +59,11 @@ class ParserWithExamplesTest extends UnitSpec {
 
   class parserWithAllExamples extends ParserExample(removeInvalidExamples = false)
 
-  case class ParserExample(examples: Iterable[String] = Set("blue", "yellow", "greeen", "block", "red"),
+  case class ParserExample(
+    examples: Iterable[String] = Set("blue", "yellow", "greeen", "block", "red"),
     maxNumberOfExamples: Int = 25,
-    removeInvalidExamples: Boolean) {
+    removeInvalidExamples: Boolean
+  ) {
 
     import DefaultParsers._
 
@@ -67,7 +72,8 @@ class ParserWithExamplesTest extends UnitSpec {
       colorParser,
       FixedSetExamples(examples),
       maxNumberOfExamples,
-      removeInvalidExamples)
+      removeInvalidExamples
+    )
   }
 
   case class GrowableSourceOfExamples() extends Iterable[String] {

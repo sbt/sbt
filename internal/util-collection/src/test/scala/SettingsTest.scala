@@ -55,7 +55,8 @@ object SettingsTest extends Properties("settings") {
               List(scoped0, scoped1) <- chk :: scopedKeys sliding 2
               nextInit = if (scoped0 == chk) chk
               else (scoped0 zipWith chk) { (p, _) => p + 1 }
-            } yield derive(setting(scoped1, nextInit))).toSeq
+            } yield derive(setting(scoped1, nextInit))
+          ).toSeq
 
           {
             // Note: This causes a cycle refernec error, quite frequently.
@@ -95,7 +96,8 @@ object SettingsTest extends Properties("settings") {
           setting(b, value(6)),
           derive(setting(b, a)),
           setting(a, value(5)),
-          setting(b, value(8)))
+          setting(b, value(8))
+        )
         val ev = evaluate(settings)
         checkKey(a, Some(5), ev) && checkKey(b, Some(8), ev)
       }
@@ -104,7 +106,8 @@ object SettingsTest extends Properties("settings") {
           setting(a, value(3)),
           setting(b, value(6)),
           derive(setting(b, a)),
-          setting(a, value(5)))
+          setting(a, value(5))
+        )
         val ev = evaluate(settings)
         checkKey(a, Some(5), ev) && checkKey(b, Some(5), ev)
       }
