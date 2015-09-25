@@ -1,10 +1,11 @@
 import Dependencies._
 import Util._
 
+def baseVersion: String = "0.1.0-M4"
 def internalPath   = file("internal")
 
 def commonSettings: Seq[Setting[_]] = Seq(
-  scalaVersion := "2.10.5",
+  scalaVersion := scala211,
   // publishArtifact in packageDoc := false,
   resolvers += Resolver.typesafeIvyRepo("releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
@@ -27,8 +28,6 @@ def commonSettings: Seq[Setting[_]] = Seq(
     "-Ywarn-dead-code",
     "-Ywarn-numeric-widen",
     "-Ywarn-value-discard"),
-  bintrayPackage := (bintrayPackage in ThisBuild).value,
-  bintrayRepository := (bintrayRepository in ThisBuild).value,
   publishArtifact in Compile := true,
   publishArtifact in Test := true
 )
@@ -40,22 +39,11 @@ lazy val utilRoot: Project = (project in file(".")).
   ).
   settings(
     inThisBuild(Seq(
-      organization := "org.scala-sbt",
-      version := "0.1.0-SNAPSHOT",
+      git.baseVersion := baseVersion,
+      bintrayPackage := "util",
       homepage := Some(url("https://github.com/sbt/util")),
       description := "Util module for sbt",
-      licenses := List("BSD New" -> url("https://github.com/sbt/sbt/blob/0.13/LICENSE")),
-      scmInfo := Some(ScmInfo(url("https://github.com/sbt/util"), "git@github.com:sbt/util.git")),
-      developers := List(
-        Developer("harrah", "Mark Harrah", "@harrah", url("https://github.com/harrah")),
-        Developer("eed3si9n", "Eugene Yokota", "@eed3si9n", url("https://github.com/eed3si9n")),
-        Developer("jsuereth", "Josh Suereth", "@jsuereth", url("https://github.com/jsuereth")),
-        Developer("dwijnand", "Dale Wijnand", "@dwijnand", url("https://github.com/dwijnand"))
-      ),
-      bintrayReleaseOnPublish := false,
-      bintrayOrganization := Some("sbt"),
-      bintrayRepository := "maven-releases",
-      bintrayPackage := "util"
+      scmInfo := Some(ScmInfo(url("https://github.com/sbt/util"), "git@github.com:sbt/util.git"))
     )),
     commonSettings,
     name := "Util Root",
