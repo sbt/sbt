@@ -56,9 +56,8 @@ object Dag {
       finished;
     }
   final class Cyclic(val value: Any, val all: List[Any], val complete: Boolean)
-      extends Exception("Cyclic reference involving " +
-        (if (complete) all.mkString("\n   ", "\n   ", "") else value)
-      ) {
+    extends Exception("Cyclic reference involving " +
+      (if (complete) all.mkString("\n   ", "\n   ", "") else value)) {
     def this(value: Any) = this(value, value :: Nil, false)
     override def toString = getMessage
     def ::(a: Any): Cyclic =
