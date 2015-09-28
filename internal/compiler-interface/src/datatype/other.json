@@ -1,0 +1,445 @@
+{
+	"types": [
+		{
+			"name": "Source",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "record",
+			"fields": [
+				{
+					"name": "compilation",
+					"type": "Compilation"
+				},
+				{
+					"name": "hash",
+					"type": "byte*"
+				},
+				{
+					"name": "api",
+					"type": "SourceAPI"
+				},
+				{
+					"name": "apiHash",
+					"type": "int"
+				},
+				{
+					"name": "_internalOnly_nameHashes",
+					"type": "_internalOnly_NameHashes"
+				},
+				{
+					"name": "hasMacro",
+					"type": "boolean"
+				}
+			]
+		},
+		{
+			"name": "_internalOnly_NameHashes",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "record",
+			"fields": [
+				{
+					"name": "regularMembers",
+					"type": "_internalOnly_NameHash*"
+				},
+				{
+					"name": "implicitMembers",
+					"type": "_internalOnly_NameHash*"
+				}
+			]
+		},
+		{
+			"name": "_internalOnly_NameHash",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "record",
+			"fields": [
+				{
+					"name": "name",
+					"type": "String"
+				},
+				{
+					"name": "hash",
+					"type": "int"
+				}
+			]
+		},
+		{
+			"name": "SourceAPI",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "record",
+			"fields": [
+				{
+					"name": "packages",
+					"type": "Package*"
+				},
+				{
+					"name": "definitions",
+					"type": "Definition*"
+				}
+			]
+		},
+		{
+			"name": "OutputSetting",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "record",
+			"fields": [
+				{
+					"name": "sourceDirectory",
+					"type": "String"
+				},
+				{
+					"name": "outputDirectory",
+					"type": "String"
+				}
+			]
+		},
+		{
+			"name": "Compilation",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "record",
+			"fields": [
+				{
+					"name": "startTime",
+					"type": "long"
+				},
+				{
+					"name": "outputs",
+					"type": "OutputSetting*"
+				}
+			]
+		},
+		{
+			"name": "Package",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "record",
+			"fields": [
+				{
+					"name": "name",
+					"type": "String"
+				}
+			]
+		},
+		{
+			"name": "Access",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "protocol",
+
+			"types": [
+				{
+					"name": "Public",
+					"namespace": "xsbti.api",
+					"target": "Java",
+					"type": "record"
+				},
+				{
+					"name": "Qualified",
+					"namespace": "xsbti.api",
+					"target": "Java",
+					"type": "protocol",
+					"fields": [
+						{
+							"name": "qualifier",
+							"type": "Qualifier"
+						}
+					],
+
+					"types": [
+						{
+							"name": "Protected",
+							"namespace": "xsbti.api",
+							"target": "Java",
+							"type": "record"
+						},
+						{
+							"name": "Private",
+							"namespace": "xsbti.api",
+							"target": "Java",
+							"type": "record"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Qualifier",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "protocol",
+			"types": [
+				{
+					"name": "Unqualified",
+					"namespace": "xsbti.api",
+					"target": "Java",
+					"type": "record"
+				},
+				{
+					"name": "ThisQualifier",
+					"namespace": "xsbti.api",
+					"target": "Java",
+					"type": "record"
+				},
+				{
+					"name": "IdQualifier",
+					"namespace": "xsbti.api",
+					"target": "Java",
+					"type": "record",
+					"fields": [
+						{
+							"name": "value",
+							"type": "String"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "ParameterList",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "record",
+			"fields": [
+				{
+					"name": "parameters",
+					"type": "MethodParameter*"
+				},
+				{
+					"name": "isImplicit",
+					"type": "boolean"
+				}
+			]
+		},
+		{
+			"name": "MethodParameter",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "record",
+			"fields": [
+				{
+					"name": "name",
+					"type": "String"
+				},
+				{
+					"name": "tpe",
+					"type": "Type"
+				},
+				{
+					"name": "hasDefault",
+					"type": "boolean"
+				},
+				{
+					"name": "modifier",
+					"type": "ParameterModifier"
+				}
+			]
+		},
+		{
+			"name": "TypeParameter",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "record",
+			"fields": [
+				{
+					"name": "id",
+					"type": "String"
+				},
+				{
+					"name": "annotations",
+					"type": "Annotation*"
+				},
+				{
+					"name": "typeParameters",
+					"type": "TypeParameter*"
+				},
+				{
+					"name": "variance",
+					"type": "Variance"
+				},
+				{
+					"name": "lowerBound",
+					"type": "Type"
+				},
+				{
+					"name": "upperBound",
+					"type": "Type"
+				}
+			]
+		},
+		{
+			"name": "Annotation",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "record",
+			"fields": [
+				{
+					"name": "base",
+					"type": "Type"
+				},
+				{
+					"name": "arguments",
+					"type": "AnnotationArgument*"
+				}
+			]
+		},
+		{
+			"name": "AnnotationArgument",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "record",
+			"fields": [
+				{
+					"name": "name",
+					"type": "String"
+				},
+				{
+					"name": "value",
+					"type": "String"
+				}
+			]
+		},
+		{
+			"name": "Variance",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "enumeration",
+			"types": [
+				"Contravariant",
+				"Covariant",
+				"Invariant"
+			]
+		},
+		{
+			"name": "ParameterModifier",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "enumeration",
+			"types": [
+				"Repeated",
+				"Plain",
+				"ByName"
+			]
+		},
+		{
+			"name": "DefinitionType",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "enumeration",
+			"types": [
+				"Trait",
+				"ClassDef",
+				"Module",
+				"PackageModule"
+			]
+		},
+		{
+			"name": "Path",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "record",
+			"fields": [
+				{
+					"name": "components",
+					"type": "PathComponent*"
+				}
+			]
+		},
+		{
+			"name": "PathComponent",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "protocol",
+
+			"types": [
+				{
+					"name": "Super",
+					"namespace": "xsbti.api",
+					"target": "Java",
+					"type": "record",
+					"fields": [
+						{
+							"name": "qualifier",
+							"type": "Path"
+						}
+					]
+				},
+				{
+					"name": "This",
+					"namespace": "xsbti.api",
+					"target": "Java",
+					"type": "record"
+				},
+				{
+					"name": "Id",
+					"namespace": "xsbti.api",
+					"target": "Java",
+					"type": "record",
+					"fields": [
+						{
+							"name": "id",
+							"type": "String"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "DependencyContext",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "enumeration",
+			"types": [
+				"DependencyByMemberRef",
+				"DependencyByInheritance"
+			]
+		},
+		{
+			"name": "InternalDependency",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "record",
+			"fields": [
+				{
+					"name": "sourceFile",
+					"type": "java.io.File"
+				},
+				{
+					"name": "targetFile",
+					"type": "java.io.File"
+				},
+				{
+					"name": "context",
+					"type": "xsbti.api.DependencyContext"
+				}
+			]
+		},
+		{
+			"name": "ExternalDependency",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "record",
+			"fields": [
+				{
+					"name": "sourceFile",
+					"type": "java.io.File"
+				},
+				{
+					"name": "targetClassName",
+					"type": "String"
+				},
+				{
+					"name": "targetSource",
+					"type": "xsbti.api.Source"
+				},
+				{
+					"name": "context",
+					"type": "xsbti.api.DependencyContext"
+				}
+			]
+		}
+	]
+}

@@ -7,7 +7,7 @@ def baseVersion = "0.1.0-M1"
 def internalPath   = file("internal")
 
 def commonSettings: Seq[Setting[_]] = Seq(
-  scalaVersion := "2.10.5",
+  scalaVersion := "2.11.7",
   // publishArtifact in packageDoc := false,
   resolvers += Resolver.typesafeIvyRepo("releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
@@ -33,8 +33,6 @@ def commonSettings: Seq[Setting[_]] = Seq(
     "-Ywarn-dead-code",
     "-Ywarn-numeric-widen",
     "-Ywarn-value-discard")
-  // bintrayPackage := (bintrayPackage in ThisBuild).value,
-  // bintrayRepository := (bintrayRepository in ThisBuild).value
 )
 
 def minimalSettings: Seq[Setting[_]] = commonSettings
@@ -50,19 +48,20 @@ def baseSettings: Seq[Setting[_]] =
 def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
 
-lazy val compileRoot: Project = (project in file(".")).
+lazy val incrementalcompilerRoot: Project = (project in file(".")).
   // configs(Sxr.sxrConf).
   aggregate(
-    incrementalcompilerProj,
-    incrementalcompilerPersistProj,
-    incrementalcompilerCoreProj,
-    compilerInterfaceProj,
-    compilerBridgeProj,
-    compilerApiInfoProj,
-    classpathProj,
-    classfileProj,
-    compileProj,
-    compilerIvyProj).
+    incrementalcompiler,
+    incrementalcompilerPersist,
+    incrementalcompilerCore,
+    incrementalcompilerIvyIntegration,
+    incrementalcompilerCompile,
+    incrementalcompilerCompileCore,
+    compilerInterface,
+    compilerBridge,
+    incrementalcompilerApiInfo,
+    incrementalcompilerClasspath,
+    incrementalcompilerClassfile).
   settings(
     inThisBuild(Seq(
       git.baseVersion := baseVersion,
@@ -79,16 +78,24 @@ lazy val compileRoot: Project = (project in file(".")).
     publishArtifact := false
   )
 
-lazy val incrementalcompilerProj = (project in file("incrementalcompiler")).
-  dependsOn(incrementalcompilerCoreProj, incrementalcompilerPersistProj, compileProj, classfileProj).
+lazy val incrementalcompiler = (project in file("incrementalcompiler")).
+  dependsOn(incrementalcompilerCore, incrementalcompilerPersist, incrementalcompilerCompileCore, incrementalcompilerClassfile).
   settings(
     baseSettings,
     name := "incrementalcompiler"
   )
 
+lazy val incrementalcompilerCompile = (project in file("incrementalcompiler-compile")).
+  dependsOn(incrementalcompilerCompileCore, incrementalcompilerCompileCore % "test->test").
+  settings(
+    testedBaseSettings,
+    name := "Incrementalcompiler Compile",
+    libraryDependencies ++= Seq(utilTracking)
+  )
+
 // Persists the incremental data structures using SBinary
-lazy val incrementalcompilerPersistProj = (project in internalPath / "incrementalcompiler-persist").
-  dependsOn(incrementalcompilerCoreProj, incrementalcompilerCoreProj % "test->test").
+lazy val incrementalcompilerPersist = (project in internalPath / "incrementalcompiler-persist").
+  dependsOn(incrementalcompilerCore, incrementalcompilerCore % "test->test").
   settings(
     testedBaseSettings,
     name := "Incrementalcompiler Persist",
@@ -97,8 +104,8 @@ lazy val incrementalcompilerPersistProj = (project in internalPath / "incrementa
 
 // Implements the core functionality of detecting and propagating changes incrementally.
 //   Defines the data structures for representing file fingerprints and relationships and the overall source analysis
-lazy val incrementalcompilerCoreProj = (project in file("incrementalcompiler-core")).
-  dependsOn(compilerApiInfoProj, classpathProj, compilerBridgeProj % Test).
+lazy val incrementalcompilerCore = (project in internalPath / "incrementalcompiler-core").
+  dependsOn(incrementalcompilerApiInfo, incrementalcompilerClasspath, compilerBridge % Test).
   settings(
     testedBaseSettings,
     libraryDependencies ++= Seq(sbtIO, utilLogging, utilRelation),
@@ -112,18 +119,29 @@ lazy val incrementalcompilerCoreProj = (project in file("incrementalcompiler-cor
     name := "Incrementalcompiler Core"
   )
 
-lazy val compilerIvyProj = (project in internalPath / "compiler-ivy-integration").
-  dependsOn(compileProj).
+lazy val incrementalcompilerIvyIntegration = (project in internalPath / "incrementalcompiler-ivy-integration").
+  dependsOn(incrementalcompilerCompileCore).
   settings(
     baseSettings,
     libraryDependencies += libraryManagement,
-    name := "Compiler Ivy Integration"
+    name := "Incrementalcompiler Ivy Integration"
+  )
+
+// sbt-side interface to compiler.  Calls compiler-side interface reflectively
+lazy val incrementalcompilerCompileCore = (project in internalPath / "incrementalcompiler-compile-core").
+  dependsOn(compilerInterface % "compile;test->test", incrementalcompilerClasspath, incrementalcompilerApiInfo, incrementalcompilerClassfile).
+  settings(
+    testedBaseSettings,
+    name := "Incrementalcompiler Compile Core",
+    libraryDependencies ++= Seq(scalaCompiler.value % Test, launcherInterface,
+      utilLogging, sbtIO, utilLogging % "test" classifier "tests", utilControl),
+    unmanagedJars in Test <<= (packageSrc in compilerBridge in Compile).map(x => Seq(x).classpath)
   )
 
 // defines Java structures used across Scala versions, such as the API structures and relationships extracted by
 //   the analysis compiler phases and passed back to sbt.  The API structures are defined in a simple
 //   format from which Java sources are generated by the sbt-datatype plugin.
-lazy val compilerInterfaceProj = (project in file("compiler-interface")).
+lazy val compilerInterface = (project in internalPath / "compiler-interface").
   settings(
     minimalSettings,
     // javaOnlySettings,
@@ -135,21 +153,10 @@ lazy val compilerInterfaceProj = (project in file("compiler-interface")).
     crossPaths := false
   )
 
-// sbt-side interface to compiler.  Calls compiler-side interface reflectively
-lazy val compileProj = (project in file("compiler-compile")).
-  dependsOn(compilerInterfaceProj % "compile;test->test", classpathProj, compilerApiInfoProj, classfileProj).
-  settings(
-    testedBaseSettings,
-    name := "Compiler Compile",
-    libraryDependencies ++= Seq(scalaCompiler.value % Test, launcherInterface,
-      utilLogging, sbtIO, utilLogging % "test" classifier "tests", utilControl),
-    unmanagedJars in Test <<= (packageSrc in compilerBridgeProj in Compile).map(x => Seq(x).classpath)
-  )
-
 // Compiler-side interface to compiler that is compiled against the compiler being used either in advance or on the fly.
 //   Includes API and Analyzer phases that extract source API and relationships.
-lazy val compilerBridgeProj = (project in internalPath / "compiler-bridge").
-  dependsOn(compilerInterfaceProj % "compile;test->test", /*launchProj % "test->test",*/ compilerApiInfoProj % "test->test").
+lazy val compilerBridge = (project in internalPath / "compiler-bridge").
+  dependsOn(compilerInterface % "compile;test->test", /*launchProj % "test->test",*/ incrementalcompilerApiInfo % "test->test").
   settings(
     baseSettings,
     libraryDependencies += scalaCompiler.value,
@@ -180,29 +187,29 @@ lazy val compilerBridgeProj = (project in internalPath / "compiler-bridge").
 
 // defines operations on the API of a source, including determining whether it has changed and converting it to a string
 //   and discovery of Projclasses and annotations
-lazy val compilerApiInfoProj = (project in internalPath / "compiler-apiinfo").
-  dependsOn(compilerInterfaceProj, classfileProj).
+lazy val incrementalcompilerApiInfo = (project in internalPath / "incrementalcompiler-apiinfo").
+  dependsOn(compilerInterface, incrementalcompilerClassfile).
   settings(
     testedBaseSettings,
-    name := "Compiler ApiInfo"
+    name := "Incrementalcompiler ApiInfo"
   )
 
 // Utilities related to reflection, managing Scala versions, and custom class loaders
-lazy val classpathProj = (project in internalPath / "compiler-classpath").
-  dependsOn(compilerInterfaceProj).
+lazy val incrementalcompilerClasspath = (project in internalPath / "incrementalcompiler-classpath").
+  dependsOn(compilerInterface).
   settings(
     testedBaseSettings,
-    name := "Compiler Classpath",
+    name := "Incrementalcompiler Classpath",
     libraryDependencies ++= Seq(scalaCompiler.value,
       Dependencies.launcherInterface,
       sbtIO)
   )
 
 // class file reader and analyzer
-lazy val classfileProj = (project in internalPath / "compiler-classfile").
-  dependsOn(compilerInterfaceProj).
+lazy val incrementalcompilerClassfile = (project in internalPath / "incrementalcompiler-classfile").
+  dependsOn(compilerInterface).
   settings(
     testedBaseSettings,
     libraryDependencies ++= Seq(sbtIO, utilLogging),
-    name := "Compiler Classfile"
+    name := "Incrementalcompiler Classfile"
   )

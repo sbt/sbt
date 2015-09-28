@@ -1,0 +1,170 @@
+
+
+{
+	"types": [
+		{
+			"name": "Type",
+			"namespace": "xsbti.api",
+			"target": "Java",
+			"type": "protocol",
+
+			"types": [
+				{
+					"name": "SimpleType",
+					"namespace": "xsbti.api",
+					"target": "Java",
+					"type": "protocol",
+
+					"types": [
+						{
+							"name": "Projection",
+							"namespace": "xsbti.api",
+							"target": "Java",
+							"type": "record",
+							"fields": [
+								{
+									"name": "prefix",
+									"type": "SimpleType"
+								},
+								{
+									"name": "id",
+									"type": "String"
+								}
+							]
+						},
+						{
+							"name": "ParameterRef",
+							"namespace": "xsbti.api",
+							"target": "Java",
+							"type": "record",
+							"fields": [
+								{
+									"name": "id",
+									"type": "String"
+								}
+							]
+						},
+						{
+							"name": "Singleton",
+							"namespace": "xsbti.api",
+							"target": "Java",
+							"type": "record",
+							"fields": [
+								{
+									"name": "path",
+									"type": "Path"
+								}
+							]
+						},
+						{
+							"name": "EmptyType",
+							"namespace": "xsbti.api",
+							"target": "Java",
+							"type": "record"
+						},
+						{
+							"name": "Parameterized",
+							"namespace": "xsbti.api",
+							"target": "Java",
+							"type": "record",
+							"fields": [
+								{
+									"name": "baseType",
+									"type": "SimpleType"
+								},
+								{
+									"name": "typeArguments",
+									"type": "Type*"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "Constant",
+					"namespace": "xsbti.api",
+					"target": "Java",
+					"type": "record",
+					"fields": [
+						{
+							"name": "baseType",
+							"type": "Type"
+						},
+						{
+							"name": "value",
+							"type": "String"
+						}
+					]
+				},
+				{
+					"name": "Annotated",
+					"namespace": "xsbti.api",
+					"target": "Java",
+					"type": "record",
+					"fields": [
+						{
+							"name": "baseType",
+							"type": "Type"
+						},
+						{
+							"name": "annotations",
+							"type": "Annotation*"
+						}
+					]
+				},
+				{
+					"name": "Structure",
+					"namespace": "xsbti.api",
+					"target": "Java",
+					"type": "record",
+					"fields": [
+						{
+							"name": "parents",
+							"type": "lazy Type*"
+						},
+						{
+							"name": "declared",
+							"type": "lazy Definition*"
+						},
+						{
+							"name": "inherited",
+							"type": "lazy Definition*"
+						}
+					]
+				},
+				{
+					"name": "Existential",
+					"namespace": "xsbti.api",
+					"target": "Java",
+					"type": "record",
+					"fields": [
+						{
+							"name": "baseType",
+							"type": "Type"
+						},
+						{
+							"name": "clause",
+							"type": "TypeParameter*"
+						}
+					]
+				},
+				{
+					"name": "Polymorphic",
+					"namespace": "xsbti.api",
+					"target": "Java",
+					"type": "record",
+					"fields": [
+						{
+							"name": "baseType",
+							"type": "Type"
+						},
+						{
+							"name": "parameters",
+							"type": "TypeParameter*"
+						}
+					]
+				}
+			]
+		}
+	]
+}
