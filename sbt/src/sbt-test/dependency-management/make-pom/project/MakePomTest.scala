@@ -1,4 +1,5 @@
 	import sbt.{Node =>_,_}
+	import Import._
 	import Keys._
 	import scala.xml._
 

@@ -1,4 +1,5 @@
 import sbt._
+import Import._
 import complete.DefaultParsers._
 import Keys._
 

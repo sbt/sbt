@@ -19,7 +19,7 @@ configClassCountFile := (target.value / "config-count")
 
 numConfigClasses := {
   val cdir = (baseDirectory in ThisBuild).value / "project/target/config-classes"
-  (cdir.*** --- cdir).get.length
+  (cdir.allPaths --- cdir).get.length
 }
 
 saveNumConfigClasses := {

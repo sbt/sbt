@@ -1,4 +1,5 @@
 import sbt._
+import Import._
 import sbt.Keys._
 
 object MyBuild extends Build {
