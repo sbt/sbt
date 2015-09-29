@@ -160,7 +160,7 @@ object ClassToAPI {
           } catch {
             case e: Throwable =>
               throw new IllegalStateException(
-                s"Failed to parse class $c: this may mean your classfiles are corrupted. Please clean and try again.",
+                s"Failed to parse $c: this may mean your classfiles are corrupted. Please clean and try again.",
                 e
               )
           }
