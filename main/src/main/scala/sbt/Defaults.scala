@@ -789,7 +789,6 @@ object Defaults extends BuildCommon {
       val srcs = sources.value
       val out = target.value
       val sOpts = scalacOptions.value
-      val jOpts = javacOptions.value
       val xapis = apiMappings.value
       val hasScala = srcs.exists(_.name.endsWith(".scala"))
       val hasJava = srcs.exists(_.name.endsWith(".java"))
@@ -804,16 +803,16 @@ object Defaults extends BuildCommon {
           case Some(r) => r
           case _       => new LoggerReporter(maxer, logger, Compiler.foldMappers(spms))
         }
-      val (options, runDoc) =
-        if (hasScala)
-          (sOpts ++ Opts.doc.externalAPI(xapis), // can't put the .value calls directly here until 2.10.2
-            Doc.scaladoc(label, s.cacheDirectory / "scala", cs.scalac.onArgs(exported(s, "scaladoc")), fiOpts))
-        else if (hasJava)
-          (jOpts,
-            Doc.javadoc(label, s.cacheDirectory / "java", cs.javac, logger, reporter, fiOpts))
-        else
-          (Nil, RawCompileLike.nop)
-      runDoc(srcs, cp, out, options, maxErrors.value, s.log)
+      (hasScala, hasJava) match {
+        case (true, _) =>
+          val options = sOpts ++ Opts.doc.externalAPI(xapis)
+          val runDoc = Doc.scaladoc(label, s.cacheDirectory / "scala", cs.scalac.onArgs(exported(s, "scaladoc")), fiOpts)
+          runDoc(srcs, cp, out, options, maxErrors.value, s.log)
+        case (_, true) =>
+          val javadoc = sbt.inc.Doc.cachedJavadoc(label, s.cacheDirectory / "java", cs.javac)
+          javadoc.run(srcs.toList, cp, out, javacOptions.value.toList, s.log, reporter)
+        case _ => () // do nothing
+      }
       out
     }
   ))
