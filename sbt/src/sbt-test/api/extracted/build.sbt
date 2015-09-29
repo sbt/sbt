@@ -28,7 +28,7 @@ myTask in (sub, Compile) := "sub compile"
 testTask("testRunTaskSubCompile", "sub compile", myTask in (sub, Compile))
 
 def argFunction(f: String => String) = Def.inputTask {
-  import sbt.complete.Parsers._
+  import complete.Parsers._
   f((OptSpace ~> StringBasic).parsed)
 }
 
