@@ -11,6 +11,7 @@ import Def.{ ScopedKey, Setting }
 import Scope.GlobalScope
 import CommandStrings.{ CrossCommand, crossHelp, SwitchCommand, switchHelp }
 import java.io.File
+import sbt.internal.inc.ScalaInstance
 
 import sbt.io.IO
 

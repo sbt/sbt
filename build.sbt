@@ -183,7 +183,7 @@ lazy val mainProj = (project in mainPath).
     testedBaseSettings,
     name := "Main",
     libraryDependencies ++= scalaXml.value ++ Seq(launcherInterface, compilerInterface,
-      sbtIO, utilLogging, utilLogic, libraryManagement)
+      sbtIO, utilLogging, utilLogic, libraryManagement, incrementalcompilerCompile)
   )
 
 // Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object

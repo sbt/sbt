@@ -7,7 +7,8 @@ import java.io.File
 import java.net.URLClassLoader
 import testing.{ Logger => TLogger, Task => TestTask, _ }
 import org.scalatools.testing.{ Framework => OldFramework }
-import classpath.{ ClasspathUtilities, DualLoader, FilteredLoader }
+import sbt.internal.inc.classpath.{ ClasspathUtilities, DualLoader, FilteredLoader }
+import sbt.internal.inc.ScalaInstance
 import scala.annotation.tailrec
 import sbt.util.Logger
 import sbt.io.IO

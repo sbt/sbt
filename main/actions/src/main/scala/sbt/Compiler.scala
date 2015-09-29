@@ -3,12 +3,12 @@
  */
 package sbt
 
-import sbt.compiler.javac.{ IncrementalCompilerJavaTools, JavaTools }
+import sbt.internal.inc.javac.{ IncrementalCompilerJavaTools, JavaTools }
+import sbt.internal.inc.{ AnalyzingCompiler, ClasspathOptions, CompileSetup, CompileOutput, IC, JavaTool, LoggerReporter, ScalaInstance }
 import xsbti.{ Logger => _, _ }
 import xsbti.compile.{ CompileOrder, GlobalsCache }
 import CompileOrder.{ JavaThenScala, Mixed, ScalaThenJava }
-import compiler._
-import inc._
+import sbt.internal.inc.{ Analysis, ComponentCompiler, IncOptions, Locate }
 import Locate.DefinesClass
 import java.io.File
 

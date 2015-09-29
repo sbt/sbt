@@ -4,7 +4,7 @@
 package sbt
 
 import java.io.File
-import compiler.AnalyzingCompiler
+import sbt.internal.inc.AnalyzingCompiler
 import sbt.internal.util.JLine
 import sbt.util.Logger
 
