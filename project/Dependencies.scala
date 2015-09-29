@@ -11,7 +11,7 @@ object Dependencies {
   // sbt modules
   val utilVersion = "0.1.0-M3"
   val ioVersion = "1.0.0-M3"
-  val incremenalcompilerVersion = "0.1.0-M1-d83279f021a4eb66528455d23974571665d9508a"
+  val incremenalcompilerVersion = "0.1.0-M1-168cb7a4877917e01917e35b9b82a62afe5c2a01"
   val librarymanagementVersion = "0.1.0-M2"
   lazy val sbtIO = "org.scala-sbt" %% "io" % ioVersion
   lazy val utilCollection = "org.scala-sbt" %% "util-collection" % utilVersion
@@ -29,6 +29,7 @@ object Dependencies {
   lazy val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
 
   lazy val incrementalcompiler = "org.scala-sbt" %% "incrementalcompiler" % incremenalcompilerVersion
+  lazy val incrementalcompilerCompile = "org.scala-sbt" %% "incrementalcompiler-compile" % incremenalcompilerVersion
   lazy val compilerInterface = "org.scala-sbt" % "compiler-interface" % incremenalcompilerVersion
   lazy val compilerBrdige = "org.scala-sbt" %% "compiler-bridge" % incremenalcompilerVersion
   lazy val compilerClasspath = "org.scala-sbt" %% "incrementalcompiler-classpath" % incremenalcompilerVersion
