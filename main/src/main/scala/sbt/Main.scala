@@ -7,7 +7,8 @@ import sbt.internal.util.{ AttributeKey, AttributeMap, complete, ConsoleOut, Glo
 import sbt.util.{ Level, Logger }
 
 import complete.{ DefaultParsers, Parser }
-import compiler.{ CompilerCache, EvalImports }
+import sbt.internal.inc.{ CompilerCache, ScalaInstance }
+import sbt.compiler.EvalImports
 import Types.{ const, idFun }
 import Aggregation.AnyKeys
 import Project.LoadAction

@@ -8,6 +8,7 @@ import java.util.concurrent.Callable
 import sbt.util.Logger
 import sbt.internal.util.{ AttributeKey, AttributeMap, ErrorHandling, ExitHook, ExitHooks, GlobalLogging }
 import sbt.internal.util.complete.HistoryCommands
+import sbt.internal.inc.classpath.ClassLoaderCache
 
 /**
  * Data structure representing all command execution information.
@@ -129,7 +130,7 @@ trait StateOps {
   def setInteractive(flag: Boolean): State
 
   /** Get the class loader cache for the application.*/
-  def classLoaderCache: classpath.ClassLoaderCache
+  def classLoaderCache: ClassLoaderCache
 
   /** Create and register a class loader cache.  This should be called once at the application entry-point.*/
   def initializeClassLoaderCache: State
@@ -233,9 +234,9 @@ object State {
     def interactive = getBoolean(s, BasicKeys.interactive, false)
     def setInteractive(i: Boolean) = s.put(BasicKeys.interactive, i)
 
-    def classLoaderCache: classpath.ClassLoaderCache = s get BasicKeys.classLoaderCache getOrElse newClassLoaderCache
+    def classLoaderCache: ClassLoaderCache = s get BasicKeys.classLoaderCache getOrElse newClassLoaderCache
     def initializeClassLoaderCache = s.put(BasicKeys.classLoaderCache, newClassLoaderCache)
-    private[this] def newClassLoaderCache = new classpath.ClassLoaderCache(s.configuration.provider.scalaProvider.launcher.topLoader)
+    private[this] def newClassLoaderCache = new ClassLoaderCache(s.configuration.provider.scalaProvider.launcher.topLoader)
   }
 
   import ExceptionCategory._

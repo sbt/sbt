@@ -20,8 +20,7 @@ import sbt.librarymanagement.Configurations.{ Compile, CompilerPlugin, Integrati
 import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
 import sbt.internal.util.complete._
 import std.TaskExtra._
-import sbt.inc.{ Analysis, FileValueCache, IncOptions, Locate }
-import sbt.compiler.MixedAnalyzingCompiler
+import sbt.internal.inc.{ Analysis, ClassfileManager, ClasspathOptions, CompilerCache, FileValueCache, IncOptions, Locate, LoggerReporter, MixedAnalyzingCompiler, ScalaInstance }
 import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
 
 import sbt.librarymanagement._
@@ -58,10 +57,10 @@ object Defaults extends BuildCommon {
 
   def lock(app: xsbti.AppConfiguration): xsbti.GlobalLock = app.provider.scalaProvider.launcher.globalLock
 
-  def extractAnalysis[T](a: Attributed[T]): (T, inc.Analysis) =
-    (a.data, a.metadata get Keys.analysis getOrElse inc.Analysis.Empty)
+  def extractAnalysis[T](a: Attributed[T]): (T, Analysis) =
+    (a.data, a.metadata get Keys.analysis getOrElse Analysis.Empty)
 
-  def analysisMap[T](cp: Seq[Attributed[T]]): T => Option[inc.Analysis] =
+  def analysisMap[T](cp: Seq[Attributed[T]]): T => Option[Analysis] =
     {
       val m = (for (a <- cp; an <- a.metadata get Keys.analysis) yield (a.data, an)).toMap
       m.get _
@@ -79,7 +78,7 @@ object Defaults extends BuildCommon {
 
   private[sbt] lazy val globalJvmCore: Seq[Setting[_]] =
     Seq(
-      compilerCache := state.value get Keys.stateCompilerCache getOrElse compiler.CompilerCache.fresh,
+      compilerCache := state.value get Keys.stateCompilerCache getOrElse CompilerCache.fresh,
       sourcesInBase :== true,
       autoAPIMappings := false,
       apiMappings := Map.empty,
@@ -238,7 +237,7 @@ object Defaults extends BuildCommon {
 
   def compileBase = inTask(console)(compilersSetting :: Nil) ++ compileBaseGlobal ++ Seq(
     incOptions := incOptions.value.withNewClassfileManager(
-      sbt.inc.ClassfileManager.transactional(crossTarget.value / "classes.bak", sbt.util.Logger.Null)),
+      ClassfileManager.transactional(crossTarget.value / "classes.bak", sbt.util.Logger.Null)),
     scalaInstance <<= scalaInstanceTask,
     crossVersion := (if (crossPaths.value) CrossVersion.binary else CrossVersion.Disabled),
     crossTarget := makeCrossTarget(target.value, scalaBinaryVersion.value, sbtBinaryVersion.value, sbtPlugin.value, crossPaths.value),
@@ -502,7 +501,7 @@ object Defaults extends BuildCommon {
           val stamps = for (a <- ans; f <- a.relations.definesClass(dep)) yield intlStamp(f, a, Set.empty)
           if (stamps.isEmpty) Long.MinValue else stamps.max
         }
-        def intlStamp(f: File, analysis: inc.Analysis, s: Set[File]): Long = {
+        def intlStamp(f: File, analysis: Analysis, s: Set[File]): Long = {
           if (s contains f) Long.MinValue else
             stamps.getOrElseUpdate(f, {
               import analysis.{ relations => rel, apis }
@@ -790,7 +789,6 @@ object Defaults extends BuildCommon {
       val srcs = sources.value
       val out = target.value
       val sOpts = scalacOptions.value
-      val jOpts = javacOptions.value
       val xapis = apiMappings.value
       val hasScala = srcs.exists(_.name.endsWith(".scala"))
       val hasJava = srcs.exists(_.name.endsWith(".java"))
@@ -805,16 +803,16 @@ object Defaults extends BuildCommon {
           case Some(r) => r
           case _       => new LoggerReporter(maxer, logger, Compiler.foldMappers(spms))
         }
-      val (options, runDoc) =
-        if (hasScala)
-          (sOpts ++ Opts.doc.externalAPI(xapis), // can't put the .value calls directly here until 2.10.2
-            Doc.scaladoc(label, s.cacheDirectory / "scala", cs.scalac.onArgs(exported(s, "scaladoc")), fiOpts))
-        else if (hasJava)
-          (jOpts,
-            Doc.javadoc(label, s.cacheDirectory / "java", cs.javac, logger, reporter, fiOpts))
-        else
-          (Nil, RawCompileLike.nop)
-      runDoc(srcs, cp, out, options, maxErrors.value, s.log)
+      (hasScala, hasJava) match {
+        case (true, _) =>
+          val options = sOpts ++ Opts.doc.externalAPI(xapis)
+          val runDoc = Doc.scaladoc(label, s.cacheDirectory / "scala", cs.scalac.onArgs(exported(s, "scaladoc")), fiOpts)
+          runDoc(srcs, cp, out, options, maxErrors.value, s.log)
+        case (_, true) =>
+          val javadoc = sbt.inc.Doc.cachedJavadoc(label, s.cacheDirectory / "java", cs.javac)
+          javadoc.run(srcs.toList, cp, out, javacOptions.value.toList, s.log, reporter)
+        case _ => () // do nothing
+      }
       out
     }
   ))
@@ -822,7 +820,7 @@ object Defaults extends BuildCommon {
   def mainRunTask = run <<= runTask(fullClasspath in Runtime, mainClass in run, runner in run)
   def mainRunMainTask = runMain <<= runMainTask(fullClasspath in Runtime, runner in run)
 
-  def discoverMainClasses(analysis: inc.Analysis): Seq[String] =
+  def discoverMainClasses(analysis: Analysis): Seq[String] =
     Discovery.applications(Tests.allDefs(analysis)).collect({ case (definition, discovered) if discovered.hasMain => definition.name }).sorted
 
   def consoleProjectTask = (state, streams, initialCommands in consoleProject) map { (state, s, extra) => ConsoleProject(state, extra)(s.log); println() }
@@ -833,7 +831,7 @@ object Defaults extends BuildCommon {
       (cs, cp, options, initCommands, cleanup, temp, si, s) =>
         val cpFiles = data(cp)
         val fullcp = (cpFiles ++ si.allJars).distinct
-        val loader = sbt.classpath.ClasspathUtilities.makeLoader(fullcp, si, IO.createUniqueDirectory(temp))
+        val loader = sbt.internal.inc.classpath.ClasspathUtilities.makeLoader(fullcp, si, IO.createUniqueDirectory(temp))
         val compiler = cs.scalac.onArgs(exported(s, "scala"))
         (new Console(compiler))(cpFiles, options, loader, initCommands, cleanup)()(s.log).foreach(msg => sys.error(msg))
         println()
@@ -850,7 +848,7 @@ object Defaults extends BuildCommon {
   @deprecated("Use inTask(compile)(compileInputsSettings)", "0.13.0")
   def compileTaskSettings: Seq[Setting[_]] = inTask(compile)(compileInputsSettings)
 
-  def compileTask: Initialize[Task[inc.Analysis]] = Def.task {
+  def compileTask: Initialize[Task[Analysis]] = Def.task {
     val setup: Compiler.IncSetup = compileIncSetup.value
     // TODO - expose bytecode manipulation phase.
     val analysisResult: Compiler.CompileResult = manipulateBytecode.value
@@ -925,7 +923,7 @@ object Defaults extends BuildCommon {
   def discoverPlugins: Initialize[Task[Set[String]]] = (compile, sbtPlugin, streams) map { (analysis, isPlugin, s) => if (isPlugin) discoverSbtPlugins(analysis, s.log) else Set.empty }
 
   @deprecated("Use PluginDiscovery.sourceModuleNames[Plugin].", "0.13.2")
-  def discoverSbtPlugins(analysis: inc.Analysis, log: Logger): Set[String] =
+  def discoverSbtPlugins(analysis: Analysis, log: Logger): Set[String] =
     PluginDiscovery.sourceModuleNames(analysis, classOf[Plugin].getName).toSet
 
   def copyResourcesTask =
@@ -1572,7 +1570,7 @@ object Classpaths {
       new RawRepository(new ProjectResolver(ProjectResolver.InterProject, m))
     }
 
-  def analyzed[T](data: T, analysis: inc.Analysis) = Attributed.blank(data).put(Keys.analysis, analysis)
+  def analyzed[T](data: T, analysis: Analysis) = Attributed.blank(data).put(Keys.analysis, analysis)
   def makeProducts: Initialize[Task[Seq[File]]] = Def.task {
     val x1 = compile.value
     val x2 = copyResources.value
@@ -1744,7 +1742,7 @@ object Classpaths {
   def autoPlugins(report: UpdateReport, internalPluginClasspath: Seq[File]): Seq[String] =
     {
       val pluginClasspath = report.matching(configurationFilter(CompilerPlugin.name)) ++ internalPluginClasspath
-      val plugins = classpath.ClasspathUtilities.compilerPlugins(pluginClasspath)
+      val plugins = sbt.internal.inc.classpath.ClasspathUtilities.compilerPlugins(pluginClasspath)
       plugins.map("-Xplugin:" + _.getAbsolutePath).toSeq
     }
 

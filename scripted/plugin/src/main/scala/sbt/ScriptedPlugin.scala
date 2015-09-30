@@ -6,7 +6,8 @@ package sbt
 import Def.Initialize
 import Keys._
 import sbt.internal.util.complete.{ Parser, DefaultParsers }
-import classpath.ClasspathUtilities
+import sbt.internal.inc.classpath.ClasspathUtilities
+import sbt.internal.inc.ModuleUtilities
 import java.lang.reflect.{ InvocationTargetException, Method }
 import java.util.Properties
 

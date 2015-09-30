@@ -7,7 +7,8 @@ import java.io.File
 import java.net.{ URL, URLClassLoader }
 import java.lang.reflect.{ Method, Modifier }
 import Modifier.{ isPublic, isStatic }
-import classpath.ClasspathUtilities
+import sbt.internal.inc.classpath.ClasspathUtilities
+import sbt.internal.inc.ScalaInstance
 
 import sbt.io.Path
 

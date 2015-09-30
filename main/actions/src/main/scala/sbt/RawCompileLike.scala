@@ -4,7 +4,7 @@
 package sbt
 
 import java.io.File
-import compiler.{ AnalyzingCompiler, JavaCompiler }
+import sbt.internal.inc.{ AnalyzingCompiler, ClasspathOptions, JavaCompiler, RawCompiler, ScalaInstance }
 
 import Predef.{ conforms => _, _ }
 import sbt.io.Path._
@@ -74,7 +74,7 @@ object RawCompileLike {
 
   def rawCompile(instance: ScalaInstance, cpOptions: ClasspathOptions): Gen = (sources, classpath, outputDirectory, options, maxErrors, log) =>
     {
-      val compiler = new sbt.compiler.RawCompiler(instance, cpOptions, log)
+      val compiler = new RawCompiler(instance, cpOptions, log)
       compiler(sources, classpath, outputDirectory, options)
     }
   def compile(label: String, cache: File, instance: ScalaInstance, cpOptions: ClasspathOptions): Gen =

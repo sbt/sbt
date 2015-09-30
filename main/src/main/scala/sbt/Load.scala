@@ -10,11 +10,11 @@ import sbt.internal.librarymanagement.{ InlineIvyConfiguration, IvyPaths }
 import java.io.File
 import java.net.{ URI, URL }
 import compiler.{ Eval, EvalImports }
-import classpath.ClasspathUtilities
 import scala.annotation.tailrec
 import collection.mutable
 import Compiler.Compilers
-import inc.{ FileValueCache, Locate }
+import sbt.internal.inc.{ Analysis, ClasspathOptions, FileValueCache, Locate, ModuleUtilities }
+import sbt.internal.inc.classpath.ClasspathUtilities
 import Project.{ inScope, makeSettings }
 import Def.{ isDummy, ScopedKey, ScopeLocal, Setting }
 import Keys.{ appConfiguration, baseDirectory, configuration, fullResolvers, fullClasspath, pluginData, streams, thisProject, thisProjectRef, update }
@@ -872,13 +872,13 @@ object Load {
     ModuleUtilities.getCheckedObject[Plugin](pluginName, loader)
 
   @deprecated("No longer used.", "0.13.2")
-  def findPlugins(analysis: inc.Analysis): Seq[String] = discover(analysis, "sbt.Plugin")
+  def findPlugins(analysis: Analysis): Seq[String] = discover(analysis, "sbt.Plugin")
 
   @deprecated("No longer used.", "0.13.2")
-  def findDefinitions(analysis: inc.Analysis): Seq[String] = discover(analysis, "sbt.Build")
+  def findDefinitions(analysis: Analysis): Seq[String] = discover(analysis, "sbt.Build")
 
   @deprecated("Use PluginDiscovery.sourceModuleNames", "0.13.2")
-  def discover(analysis: inc.Analysis, subclasses: String*): Seq[String] =
+  def discover(analysis: Analysis, subclasses: String*): Seq[String] =
     PluginDiscovery.sourceModuleNames(analysis, subclasses: _*)
 
   def initialSession(structure: sbt.BuildStructure, rootEval: () => Eval, s: State): SessionSettings = {
