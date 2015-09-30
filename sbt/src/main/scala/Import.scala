@@ -415,4 +415,28 @@ object Import {
   val UpdateLogging = sbt.internal.librarymanagement.UpdateLogging
   val UpdateReportLite = sbt.internal.librarymanagement.UpdateReportLite
   type UpdateReportLite = sbt.internal.librarymanagement.UpdateReportLite
+
+  // sbt.internal.inc.classpath
+  object classpath {
+    type CachedClassLoader = sbt.internal.inc.classpath.CachedClassLoader
+    type ClassFilter = sbt.internal.inc.classpath.ClassFilter
+    type ClassLoaderCache = sbt.internal.inc.classpath.ClassLoaderCache
+    type ClasspathFilter = sbt.internal.inc.classpath.ClasspathFilter
+    val ClasspathUtilities = sbt.internal.inc.classpath.ClasspathUtilities
+    type DifferentLoaders = sbt.internal.inc.classpath.DifferentLoaders
+    type DualEnumeration[T] = sbt.internal.inc.classpath.DualEnumeration[T]
+    type DualLoader = sbt.internal.inc.classpath.DualLoader
+    type ExcludePackagesFilter = sbt.internal.inc.classpath.ExcludePackagesFilter
+    type FilteredLoader = sbt.internal.inc.classpath.FilteredLoader
+    type FixedResources = sbt.internal.inc.classpath.FixedResources
+    type IncludePackagesFilter = sbt.internal.inc.classpath.IncludePackagesFilter
+    type LoaderBase = sbt.internal.inc.classpath.LoaderBase
+    type NativeCopyConfig = sbt.internal.inc.classpath.NativeCopyConfig
+    type NativeCopyLoader = sbt.internal.inc.classpath.NativeCopyLoader
+    type NullLoader = sbt.internal.inc.classpath.NullLoader
+    type PackageFilter = sbt.internal.inc.classpath.PackageFilter
+    type RawResources = sbt.internal.inc.classpath.RawResources
+    val RawURL = sbt.internal.inc.classpath.RawURL
+    type SelfFirstLoader = sbt.internal.inc.classpath.SelfFirstLoader
+  }
 }
