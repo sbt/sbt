@@ -137,9 +137,7 @@ object Import {
   type MultiLogger = sbt.internal.util.MultiLogger
   val MultiLoggerConfig = sbt.internal.util.MultiLoggerConfig
   type MultiLoggerConfig = sbt.internal.util.MultiLoggerConfig
-  type NewLine = sbt.internal.util.NewLine
   val NoPosition = sbt.internal.util.NoPosition
-  type Output = sbt.internal.util.Output
   val PMap = sbt.internal.util.PMap
   type PMap[K[_], V[_]] = sbt.internal.util.PMap[K, V]
   val Param = sbt.internal.util.Param
@@ -148,7 +146,6 @@ object Import {
   type RMap[K[_], V[_]] = sbt.internal.util.RMap[K, V]
   val RangePosition = sbt.internal.util.RangePosition
   type RangePosition = sbt.internal.util.RangePosition
-  type RecordingLogger = sbt.internal.util.RecordingLogger
   val Relation = sbt.internal.util.Relation
   type Relation[A, B] = sbt.internal.util.Relation[A, B]
   type SBinaryFormats = sbt.internal.util.SBinaryFormats
@@ -166,7 +163,6 @@ object Import {
   val StackTrace = sbt.internal.util.StackTrace
   type SuppressedTraceContext = sbt.internal.util.SuppressedTraceContext
   type Timestamp = sbt.internal.util.Timestamp
-  type ToLog = sbt.internal.util.ToLog
   val Tracked = sbt.internal.util.Tracked
   type Tracked = sbt.internal.util.Tracked
   type TranslatedException = sbt.internal.util.TranslatedException
