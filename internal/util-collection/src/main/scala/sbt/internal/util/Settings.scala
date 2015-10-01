@@ -3,6 +3,8 @@
  */
 package sbt.internal.util
 
+import scala.language.existentials
+
 import Types._
 
 sealed trait Settings[Scope] {
@@ -445,7 +447,7 @@ trait Init[Scope] {
       def join: Initialize[Seq[T]] = uniform(s)(idFun)
     }
     def join[T](inits: Seq[Initialize[T]]): Initialize[Seq[T]] = uniform(inits)(idFun)
-    def joinAny[M[_], T](inits: Seq[Initialize[M[T]]]): Initialize[Seq[M[_]]] =
+    def joinAny[M[_]](inits: Seq[Initialize[M[T]] forSome { type T }]): Initialize[Seq[M[_]]] =
       join(inits.asInstanceOf[Seq[Initialize[M[Any]]]]).asInstanceOf[Initialize[Seq[M[T] forSome { type T }]]]
   }
   object SettingsDefinition {
