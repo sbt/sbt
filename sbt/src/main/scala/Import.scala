@@ -440,4 +440,6 @@ object Import {
   type Analysis = sbt.internal.inc.Analysis
   val Analysis = sbt.internal.inc.Analysis
   val ClassfileManager = sbt.internal.inc.ClassfileManager
+  type ScalaInstance = sbt.internal.inc.ScalaInstance
+  val ScalaInstance = sbt.internal.inc.ScalaInstance
 }
