@@ -1,5 +1,6 @@
 import sbt._
 import Keys.name
+import Import._
 
 object TestBuild extends MakeBuild
 {
