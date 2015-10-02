@@ -1,5 +1,5 @@
 {
-		import sbt.complete.DefaultParsers._
+		import complete.DefaultParsers._
 	val parser = token(Space ~> ( ("exists" ^^^ true) | ("absent" ^^^ false) ) )
 	InputKey[Unit]("check-output") := {
 		val shouldExist = parser.parsed

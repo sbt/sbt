@@ -1,4 +1,5 @@
 import sbt._
+import Import._
 
 object TestBuild extends Build {
 	val k1 = TaskKey[Unit]("k1")

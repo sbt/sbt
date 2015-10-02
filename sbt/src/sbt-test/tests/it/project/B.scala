@@ -1,5 +1,6 @@
 	import sbt._
 	import Keys._
+  import Import._
 
 object B extends Build
 {

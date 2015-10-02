@@ -2,6 +2,6 @@ val makeHome = taskKey[Unit]("Populates the 'home/lib' directory with Scala jars
 
 makeHome := {
 	val lib = baseDirectory.value / "home" / "lib"
-	for(jar <- scalaInstance.value.jars)
+	for(jar <- scalaInstance.value.allJars)
 		IO.copyFile(jar, lib / jar.getName)
 }

@@ -1,3 +1,5 @@
+import sbt.internal.librarymanagement.syntax._
+
 libraryDependencies += "org.scalacheck" % "scalacheck" % "1.5"
 
 ivyPaths <<= baseDirectory( dir => new IvyPaths(dir, Some(dir / "ivy-home")))

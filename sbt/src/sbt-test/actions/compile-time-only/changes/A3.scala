@@ -1,4 +1,5 @@
 import sbt._
+import Import._
 import Def.Initialize
 import complete.{DefaultParsers, Parser}
 

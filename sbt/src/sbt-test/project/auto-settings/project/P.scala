@@ -2,6 +2,7 @@
 	import Keys._
 
 	import AddSettings._
+  import Import._
 
 object B extends Build
 {

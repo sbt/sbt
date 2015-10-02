@@ -1,6 +1,7 @@
 import sbt._
 import Keys.name
 import AddSettings._
+import Import._
 
 object TestBuild extends Build
 {

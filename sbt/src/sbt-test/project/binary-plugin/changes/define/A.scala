@@ -2,6 +2,7 @@ package sbttest // you need package http://stackoverflow.com/questions/9822008/
 
 import sbt._
 import Keys._
+import Import._
 
 object C extends AutoPlugin {
 	object autoImport {

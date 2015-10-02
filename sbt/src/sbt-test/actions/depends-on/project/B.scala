@@ -1,5 +1,6 @@
 import sbt._
 import Keys._
+import Import._
 
 // tests that errors are properly propagated for dependsOn, map, and flatMap
 object B extends Build

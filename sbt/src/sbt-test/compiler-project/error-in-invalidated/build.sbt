@@ -1,1 +1,1 @@
-incOptions := sbt.inc.IncOptions.Default
+incOptions := IncOptions.Default

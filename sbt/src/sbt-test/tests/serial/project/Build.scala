@@ -1,5 +1,6 @@
 import sbt._
 import Keys._
+import Import._
 
 object SomeBuild extends Build {
   val buildSettings = Seq(
