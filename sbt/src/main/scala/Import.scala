@@ -290,8 +290,6 @@ object Import {
   val IvyScala = sbt.librarymanagement.IvyScala
   type IvyScala = sbt.librarymanagement.IvyScala
   val JCenterRepository = sbt.librarymanagement.JCenterRepository
-  val JavaNet1Repository = sbt.librarymanagement.JavaNet1Repository
-  type JavaNet1Repository = sbt.librarymanagement.JavaNet1Repository
   val JavaNet2Repository = sbt.librarymanagement.JavaNet2Repository
   val MavenCache = sbt.librarymanagement.MavenCache
   type MavenCache = sbt.librarymanagement.MavenCache
@@ -352,8 +350,6 @@ object Import {
   val DependencyFilter = sbt.internal.librarymanagement.DependencyFilter
   type DependencyFilter = sbt.internal.librarymanagement.DependencyFilter
   type DependencyFilterExtra = sbt.internal.librarymanagement.DependencyFilterExtra
-  val EmptyConfiguration = sbt.internal.librarymanagement.EmptyConfiguration
-  type EmptyConfiguration = sbt.internal.librarymanagement.EmptyConfiguration
   val ExternalIvyConfiguration = sbt.internal.librarymanagement.ExternalIvyConfiguration
   type ExternalIvyConfiguration = sbt.internal.librarymanagement.ExternalIvyConfiguration
   val GetClassifiersConfiguration = sbt.internal.librarymanagement.GetClassifiersConfiguration
@@ -387,8 +383,6 @@ object Import {
   val MakePomConfiguration = sbt.internal.librarymanagement.MakePomConfiguration
   type MakePomConfiguration = sbt.internal.librarymanagement.MakePomConfiguration
   type ModuleFilter = sbt.internal.librarymanagement.ModuleFilter
-  val ModuleSettings = sbt.internal.librarymanagement.ModuleSettings
-  type ModuleSettings = sbt.internal.librarymanagement.ModuleSettings
   type NotInCache = sbt.internal.librarymanagement.NotInCache
   val PomConfiguration = sbt.internal.librarymanagement.PomConfiguration
   type PomConfiguration = sbt.internal.librarymanagement.PomConfiguration
