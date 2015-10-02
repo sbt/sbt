@@ -1,3 +1,5 @@
+import sbt.internal.librarymanagement.syntax._
+
 seq(externalIvySettings(), externalIvyFile())
 
 TaskKey[Unit]("check") := {

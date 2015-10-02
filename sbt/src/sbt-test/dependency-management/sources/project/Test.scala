@@ -1,6 +1,7 @@
 import sbt._
 import Import._
 import Keys._
+import sbt.internal.librarymanagement.syntax._
 
 object Test extends Build
 {
