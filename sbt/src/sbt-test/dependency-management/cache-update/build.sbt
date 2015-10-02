@@ -15,7 +15,7 @@ lazy val root = (project in file(".")).
     check := {
       import Cache._, CacheIvy.updateIC
       implicit val updateCache = updateIC
-      type In = IvyConfiguration :+: UpdateConfiguration :+: HNil
+      type In = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
       val s = (streams in update).value
       val cacheFile = s.cacheDirectory / updateCacheName.value
       val module = ivyModule.value

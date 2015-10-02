@@ -358,6 +358,7 @@ object Import {
   type GetClassifiersModule = sbt.internal.librarymanagement.GetClassifiersModule
   val IfMissing = sbt.internal.librarymanagement.IfMissing
   type IfMissing = sbt.internal.librarymanagement.IfMissing
+  type ModuleSettings = sbt.internal.librarymanagement.ModuleSettings
   val InlineConfiguration = sbt.internal.librarymanagement.InlineConfiguration
   type InlineConfiguration = sbt.internal.librarymanagement.InlineConfiguration
   val InlineConfigurationWithExcludes = sbt.internal.librarymanagement.InlineConfigurationWithExcludes
