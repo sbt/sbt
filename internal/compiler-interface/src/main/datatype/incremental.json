@@ -1,6 +1,38 @@
 {
   "types": [
     {
+      "name": "ClassfileManagerType",
+      "namespace": "xsbti.compile",
+      "target": "Java",
+      "type": "protocol",
+      "types": [
+        {
+          "name": "DeleteImmediatelyManagerType",
+          "namespace": "xsbti.compile",
+          "target": "Java",
+          "type": "record",
+          "doc": "Constructs a minimal ClassfileManager that immediately deletes class files when requested."
+        },
+        {
+          "name": "TransactionalMangerType",
+          "namespace": "xsbti.compile",
+          "target": "Java",
+          "type": "record",
+          "fields": [
+            {
+              "name": "backupDirectory",
+              "type": "java.io.File"
+            },
+            {
+              "name": "logger",
+              "type": "xsbti.Logger"
+            }
+          ]
+        }
+
+      ]
+    },
+    {
       "name": "IncOptions",
       "namespace": "xsbti.compile",
       "target": "Java",
@@ -59,7 +91,7 @@
         },
         {
           "name": "classfileManagerType",
-          "type": "xsbti.Maybe<String>",
+          "type": "xsbti.Maybe<ClassfileManagerType>",
           "doc": "ClassfileManager that will handle class file deletion and addition during a single incremental compilation run."
         },
         {

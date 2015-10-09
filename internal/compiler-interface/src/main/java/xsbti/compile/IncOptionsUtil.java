@@ -39,8 +39,8 @@ public class IncOptionsUtil {
     return Maybe.<File>nothing();
   }
 
-  public static Maybe<String> defaultClassfileManagerType() {
-    return Maybe.<String>nothing();
+  public static Maybe<ClassfileManagerType> defaultClassfileManagerType() {
+    return Maybe.<ClassfileManagerType>nothing();
   }
 
   public static Maybe<Boolean> defaultRecompileOnMacroDef() {
