@@ -3,7 +3,7 @@ package internal
 package inc
 
 import scala.annotation.tailrec
-import xsbti.compile.DependencyChanges
+import xsbti.compile.{ DependencyChanges, IncOptions, IncOptionsUtil }
 import xsbti.api.{ Compilation, Source }
 import java.io.File
 
@@ -110,7 +110,7 @@ private[inc] abstract class IncrementalCommon(log: sbt.util.Logger, options: Inc
     if (shortcutSameSource(a, b)) {
       None
     } else {
-      if (hasMacro && options.recompileOnMacroDef) {
+      if (hasMacro && IncOptionsUtil.getRecompileOnMacroDef(options)) {
         Some(APIChangeDueToMacroDefinition(src))
       } else sameAPI(src, a, b)
     }

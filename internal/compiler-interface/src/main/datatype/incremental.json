@@ -1,0 +1,111 @@
+{
+  "types": [
+    {
+      "name": "IncOptions",
+      "namespace": "xsbti.compile",
+      "target": "Java",
+      "type": "record",
+      "doc": [
+        "Represents all configuration options for the incremental compiler itself and",
+        "not the underlying Java/Scala compiler."
+      ],
+      "fields": [
+        {
+          "name": "transitiveStep",
+          "type": "int",
+          "doc": "After which step include whole transitive closure of invalidated source files."
+        },
+        {
+          "name": "recompileAllFraction",
+          "type": "double",
+          "doc": [
+            "What's the fraction of invalidated source files when we switch to recompiling",
+            "all files and giving up incremental compilation altogether. That's useful in",
+            "cases when probability that we end up recompiling most of source files but",
+            "in multiple steps is high. Multi-step incremental recompilation is slower",
+            "than recompiling everything in one step."
+          ]
+        },
+        {
+          "name": "relationsDebug",
+          "type": "boolean",
+          "doc": "Print very detailed information about relations, such as dependencies between source files."
+        },
+        {
+          "name": "apiDebug",
+          "type": "boolean",
+          "doc": [
+            "Enable tools for debugging API changes."
+          ]
+        },
+        {
+          "name": "apiDiffContextSize",
+          "type": "int",
+          "doc": [
+            "Controls context size (in lines) displayed when diffs are produced for textual API",
+            "representation.",
+            "",
+            "This option is used only when `apiDebug == true`."
+          ]
+        },
+        {
+          "name": "apiDumpDirectory",
+          "type": "xsbti.Maybe<java.io.File>",
+          "doc": [
+            "The directory where we dump textual representation of APIs. This method might be called",
+            "only if apiDebug returns true. This is unused option at the moment as the needed functionality",
+            "is not implemented yet."
+          ]
+        },
+        {
+          "name": "classfileManagerType",
+          "type": "xsbti.Maybe<String>",
+          "doc": "ClassfileManager that will handle class file deletion and addition during a single incremental compilation run."
+        },
+        {
+          "name": "recompileOnMacroDef",
+          "type": "xsbti.Maybe<Boolean>",
+          "doc": [
+            "Determines whether incremental compiler should recompile all dependencies of a file",
+            "that contains a macro definition."
+          ]
+        },
+        {
+          "name": "nameHashing",
+          "type": "boolean",
+          "doc": [
+            "Determines whether incremental compiler uses the new algorithm known as name hashing."
+          ]
+        },
+        {
+          "name": "antStyle",
+          "type": "boolean",
+          "doc": [
+            "THE `antStyle` OPTION IS UNSUPPORTED, MAY GO AWAY AT ANY POINT.",
+            "",
+            "Enables \"ant-style\" mode of incremental compilation. This mode emulates what Ant's scalac command does.",
+            "The idea is to recompile just changed source files and not perform any invalidation of dependencies. This",
+            "is a very naive mode of incremental compilation that very often leads to broken binaries.",
+            "",
+            "The Ant-style mode has been introduced because Scala team might need it for migration of Scala compiler to sbt.",
+            "It was added as a defensive measure so that the SBT build would be at least no worse than Ant wrt",
+            "recompilation. When working on changes that are pathological for the normal inc compiler mode, one ",
+            "could switch in to this mode and use our old tricks of touching files we know need recompilation.",
+            "",
+            "The name hashing algorithm doesn't work well with Scala compiler sources due to deep inheritance chains.",
+            "There's a plan to refactor compiler's code to use more composition instead of inheritance.",
+            "",
+            "Once Scala compiler sources are refactored to work well with name hashing algorithm this option will be",
+            "deleted immediately.",
+            "See also https://github.com/sbt/incrementalcompiler/issues/22"
+          ]
+        },
+        {
+          "name": "extra",
+          "type": "java.util.Map<String,String>",
+          "doc": "Extra options"
+        }
+      ]
+    }
+  ]
+}
