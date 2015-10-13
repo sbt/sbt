@@ -77,7 +77,7 @@ trait Analysis {
 
 object Analysis {
   lazy val Empty: Analysis = new MAnalysis(Stamps.empty, APIs.empty, Relations.empty, SourceInfos.empty, Compilations.empty)
-  private[sbt] def empty(nameHashing: Boolean): Analysis = new MAnalysis(Stamps.empty, APIs.empty,
+  def empty(nameHashing: Boolean): Analysis = new MAnalysis(Stamps.empty, APIs.empty,
     Relations.empty(nameHashing = nameHashing), SourceInfos.empty, Compilations.empty)
 
   /** Merge multiple analysis objects into one. Deps will be internalized as needed. */
