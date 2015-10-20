@@ -3,11 +3,11 @@ package xsbt
 import java.io.File
 
 import xsbti._
-import xsbti.compile.SingleOutput
+import xsbti.compile.{ IncOptions, SingleOutput }
 import xsbti.api.Source
 import sbt.internal.inc.IncrementalCompilerTest
 import sbt.internal.inc.IncrementalCompilerTest._
-import sbt.internal.inc.{ TestIncremental, TestAnalysis, TestAnalysisCallback, APIs, IncOptions }
+import sbt.internal.inc.{ TestIncremental, TestAnalysis, TestAnalysisCallback, APIs }
 import sbt.internal.util.ConsoleLogger
 import sbt.io.IO
 import sbt.io.Path._

@@ -6,6 +6,7 @@ import java.io.File
 
 import xsbti.Logger
 import xsbti.api.Source
+import xsbti.compile.IncOptions
 import xsbt.TestAnalyzingCompiler
 
 final class TestIncremental(log: Logger, options: IncOptions) {
