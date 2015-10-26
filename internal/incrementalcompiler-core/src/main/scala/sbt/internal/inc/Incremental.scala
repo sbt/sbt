@@ -8,7 +8,7 @@ package inc
 import xsbt.api.{ NameChanges, SameAPI, TopLevel }
 import annotation.tailrec
 import xsbti.api.{ Compilation, Source }
-import xsbti.compile.DependencyChanges
+import xsbti.compile.{ DependencyChanges, IncOptions }
 import java.io.File
 
 /**
@@ -88,7 +88,7 @@ object Incremental {
 
   private[this] def manageClassfiles[T](options: IncOptions)(run: ClassfileManager => T): T =
     {
-      val classfileManager = options.newClassfileManager()
+      val classfileManager = ClassfileManager.getClassfileManager(options)
       val result = try run(classfileManager) catch {
         case e: Exception =>
           classfileManager.complete(success = false)

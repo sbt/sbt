@@ -63,7 +63,7 @@ class IncrementalTest extends FlatSpec {
   it should "consider the kind of a member as part of the public API" in replaceVar()
   it should "consider the variance of type parameters as part of the public API" in variance()
 
-  def compiler = new TestAnalyzingCompiler(inc.IncOptions.Default)
+  def compiler = new TestAnalyzingCompiler(xsbti.compile.IncOptionsUtil.defaultIncOptions)
 
   def abstractOverride()() =
     compiler execute Scenario(

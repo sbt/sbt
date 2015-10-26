@@ -6,7 +6,7 @@ package internal
 package inc
 
 import xsbti.api.{ InternalDependency, ExternalDependency, Source, SourceAPI, Compilation, OutputSetting, _internalOnly_NameHashes }
-import xsbti.compile.{ DependencyChanges, Output, SingleOutput, MultipleOutput }
+import xsbti.compile.{ DependencyChanges, Output, SingleOutput, MultipleOutput, IncOptions }
 import xsbti.{ Position, Problem, Severity }
 import sbt.util.Logger
 import sbt.util.Logger.{ m2o, problem }

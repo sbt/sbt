@@ -11,6 +11,7 @@ import Relations.SourceDependencies
 import sbt.internal.util.Relation
 import xsbti.api.{ InternalDependency, ExternalDependency, DependencyContext, Source => APISource }
 import xsbti.api.DependencyContext._
+import xsbti.compile.IncOptionsUtil
 
 /**
  * Provides mappings between source files, generated classes (products), and binaries.
@@ -339,7 +340,7 @@ object Relations {
 
   def emptySource: Source = es
   private[inc] lazy val emptySourceDependencies: SourceDependencies = new SourceDependencies(e, estr)
-  def empty: Relations = empty(nameHashing = IncOptions.nameHashingDefault)
+  def empty: Relations = empty(nameHashing = IncOptionsUtil.defaultNameHashing)
   private[inc] def empty(nameHashing: Boolean): Relations =
     if (nameHashing)
       new MRelationsNameHashing(e, e, InternalDependencies.empty, ExternalDependencies.empty, estr, estr)

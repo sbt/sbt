@@ -2,6 +2,7 @@ package sbt
 package internal
 package inc
 
+import xsbti.compile.IncOptions
 import java.io.File
 import xsbti.api.Source
 

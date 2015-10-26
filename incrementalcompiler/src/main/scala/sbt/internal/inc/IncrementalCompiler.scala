@@ -33,16 +33,15 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler] {
       val compilers = in.compilers; import compilers._
       val aMap = (f: File) => m2o(analysisMap(f))
       val defClass = (f: File) => { val dc = definesClass(f); (name: String) => dc.apply(name) }
-      val incOptions = IncOptions.fromStringMap(incrementalCompilerOptions)
       val (previousAnalysis, previousSetup) = {
         MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile()).get().map {
           case (a, s) => (a, Some(s))
         } getOrElse {
-          (Analysis.empty(nameHashing = incOptions.nameHashing), None)
+          (Analysis.empty(nameHashing = incrementalCompilerOptions.nameHashing), None)
         }
       }
       incrementalCompile(scalac, javac, sources, classpath, output, cache, m2o(progress), scalacOptions, javacOptions, previousAnalysis,
-        previousSetup, aMap, defClass, reporter, order, skip, incOptions)(log).analysis
+        previousSetup, aMap, defClass, reporter, order, skip, incrementalCompilerOptions)(log).analysis
     }
 
   private[this] def m2o[S](opt: Maybe[S]): Option[S] = if (opt.isEmpty) None else Some(opt.get)

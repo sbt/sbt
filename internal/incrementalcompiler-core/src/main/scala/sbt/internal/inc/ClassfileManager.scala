@@ -5,6 +5,7 @@ package inc
 import sbt.io.IO
 import java.io.File
 import collection.mutable
+import xsbti.compile.{ IncOptions, DeleteImmediatelyManagerType, TransactionalMangerType }
 
 /**
  * During an incremental compilation run, a ClassfileManager deletes class files and is notified of generated class files.
@@ -26,6 +27,14 @@ trait ClassfileManager {
 }
 
 object ClassfileManager {
+  def getClassfileManager(options: IncOptions): ClassfileManager =
+    if (options.classfileManagerType.isDefined)
+      options.classfileManagerType.get match {
+        case _: DeleteImmediatelyManagerType => deleteImmediately()
+        case m: TransactionalMangerType      => transactional(m.backupDirectory, m.logger)()
+      }
+    else deleteImmediately()
+
   /** Constructs a minimal ClassfileManager implementation that immediately deletes class files when requested. */
   val deleteImmediately: () => ClassfileManager = () => new ClassfileManager {
     def delete(classes: Iterable[File]): Unit = IO.deleteFilesEmptyDirs(classes)

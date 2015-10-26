@@ -6,7 +6,7 @@ import java.io.File
 
 import inc.Locate._
 import xsbti.Reporter
-import xsbti.compile.{ GlobalsCache, CompileProgress }
+import xsbti.compile.{ GlobalsCache, CompileProgress, IncOptions }
 
 /**
  * Configuration used for running an analyzing compiler (a compiler which can extract dependencies between source files and JARs).
