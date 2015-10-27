@@ -5,7 +5,7 @@ package inc
 import sbt.io.IO
 import java.io.File
 import collection.mutable
-import xsbti.compile.{ IncOptions, DeleteImmediatelyManagerType, TransactionalMangerType }
+import xsbti.compile.{ IncOptions, DeleteImmediatelyManagerType, TransactionalManagerType }
 
 /**
  * During an incremental compilation run, a ClassfileManager deletes class files and is notified of generated class files.
@@ -31,7 +31,7 @@ object ClassfileManager {
     if (options.classfileManagerType.isDefined)
       options.classfileManagerType.get match {
         case _: DeleteImmediatelyManagerType => deleteImmediately()
-        case m: TransactionalMangerType      => transactional(m.backupDirectory, m.logger)()
+        case m: TransactionalManagerType     => transactional(m.backupDirectory, m.logger)()
       }
     else deleteImmediately()
 
