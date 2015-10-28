@@ -14,7 +14,7 @@
           "doc": "Constructs a minimal ClassfileManager that immediately deletes class files when requested."
         },
         {
-          "name": "TransactionalMangerType",
+          "name": "TransactionalManagerType",
           "namespace": "xsbti.compile",
           "target": "Java",
           "type": "record",
