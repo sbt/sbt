@@ -15,6 +15,7 @@ object JavaErrorParserSpec extends Specification {
      be able to parse linux errors    $parseSampleLinux
      be able to parse windows file names $parseWindowsFile
      be able to parse windows errors  $parseSampleWindows
+     be able to parse javac errors $parseSampleJavac
   """
 
   def parseSampleLinux = {
@@ -45,6 +46,15 @@ object JavaErrorParserSpec extends Specification {
     }
   }
 
+  def parseSampleJavac = {
+    val parser = new JavaErrorParser()
+    val logger = Logger.Null
+    val problems = parser.parseProblems(sampleJavacMessage, logger)
+    def rightSize = problems must haveSize(1)
+    def rightError = problems(0).message must beEqualTo(sampleJavacMessage)
+    rightSize and rightError
+  }
+
   def sampleLinuxMessage =
     """
       |/home/me/projects/sample/src/main/Test.java:4: cannot find symbol
@@ -63,4 +73,6 @@ object JavaErrorParserSpec extends Specification {
 
   def windowsFile = """C:\Projects\sample\src\main\java\Test.java"""
   def windowsFileAndLine = s"""$windowsFile:4"""
+
+  def sampleJavacMessage = "javac: invalid flag: -foobar"
 }
