@@ -9,6 +9,7 @@ class InconsistentDuplicateSpec extends Specification {
 
   Duplicate with different version should
     be warned                                                   $warn1
+    not be warned if in different configurations                $nodupe2
 
   Duplicate with same version should
     not be warned                                               $nodupe1
@@ -25,4 +26,8 @@ class InconsistentDuplicateSpec extends Specification {
 
   def nodupe1 =
     IvySbt.inconsistentDuplicateWarning(Seq(akkaActor230Test, akkaActor230)) must_== Nil
+
+  def nodupe2 =
+    IvySbt.inconsistentDuplicateWarning(Seq(akkaActor214, akkaActor230Test)) must_== Nil
+
 }
