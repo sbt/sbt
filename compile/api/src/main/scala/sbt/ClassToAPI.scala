@@ -89,10 +89,8 @@ object ClassToAPI {
   }
 
   /** TODO: over time, ClassToAPI should switch the majority of access to the classfile parser */
-  private[this] def classFileForClass(c: Class[_]): ClassFile = {
-    val file = new java.io.File(IO.classLocationFile(c), s"${c.getName.replace('.', '/')}.class")
-    classfile.Parser.apply(file)
-  }
+  private[this] def classFileForClass(c: Class[_]): ClassFile =
+    classfile.Parser.apply(IO.classfileLocation(c))
 
   private[this] def lzyS[T <: AnyRef](t: T): xsbti.api.Lazy[T] = lzy(t)
   def lzy[T <: AnyRef](t: => T): xsbti.api.Lazy[T] = xsbti.SafeLazy(t)

@@ -1,17 +1,15 @@
 package sbt
+package classfile
 
 import util.Try
 
 import org.scalacheck._
 import Prop._
 
-object IOSpecification extends Properties("IO") {
-  property("classLocation able to determine containing directories") =
+object ParserSpecification extends Properties("Parser") {
+  property("able to parse all relevant classes") =
     Prop.forAll(classes) { (c: Class[_]) =>
-      Try(IO.classLocationFile(c)).toOption.exists {
-        case jar if jar.getName.endsWith(".jar") => jar.isFile
-        case dir                                 => dir.isDirectory
-      }
+      Parser(IO.classfileLocation(c)) ne null
     }
 
   implicit def classes: Gen[Class[_]] =

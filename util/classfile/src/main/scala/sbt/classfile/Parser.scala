@@ -4,6 +4,7 @@
 package sbt
 package classfile
 
+import java.net.URL
 import java.io.{ DataInputStream, File, InputStream }
 import scala.annotation.switch
 
@@ -15,15 +16,19 @@ import scala.annotation.switch
 import Constants._
 
 private[sbt] object Parser {
-  def apply(file: File): ClassFile = Using.fileInputStream(file)(parse(file.getAbsolutePath)).right.get
-  private def parse(fileName: String)(is: InputStream): Either[String, ClassFile] = Right(parseImpl(fileName, is))
-  private def parseImpl(filename: String, is: InputStream): ClassFile =
+  def apply(file: File): ClassFile =
+    Using.fileInputStream(file)(parse(file.toString)).right.get
+
+  def apply(url: URL): ClassFile =
+    Using.urlInputStream(url)(parse(url.toString)).right.get
+
+  private def parse(readableName: String)(is: InputStream): Either[String, ClassFile] = Right(parseImpl(readableName, is))
+  private def parseImpl(readableName: String, is: InputStream): ClassFile =
     {
       val in = new DataInputStream(is)
-      new ClassFile {
-        assume(in.readInt() == JavaMagic, "Invalid class file: " + fileName)
+      assume(in.readInt() == JavaMagic, "Invalid class file: " + readableName)
 
-        val fileName = filename
+      new ClassFile {
         val minorVersion: Int = in.readUnsignedShort()
         val majorVersion: Int = in.readUnsignedShort()
 
