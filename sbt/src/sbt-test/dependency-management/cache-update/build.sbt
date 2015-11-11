@@ -13,7 +13,7 @@ lazy val root = (project in file(".")).
     dependencyOverrides in ThisBuild += "com.github.nscala-time" %% "nscala-time" % "1.0.0",
     libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "1.0.0",
     check := {
-      import sbt.Cache._, sbt.CacheIvy.updateIC
+      import Cache._, CacheIvy.updateIC
       implicit val updateCache = updateIC
       type In = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
       val s = (streams in update).value

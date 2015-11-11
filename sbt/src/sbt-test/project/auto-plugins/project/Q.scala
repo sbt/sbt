@@ -1,6 +1,7 @@
 package sbttest // you need package http://stackoverflow.com/questions/9822008/
 
 	import sbt._
+	import Import._
 	import sbt.Keys.{name, resolvedScoped, organization	}
 	import java.util.concurrent.atomic.{AtomicInteger => AInt}
 

@@ -72,8 +72,8 @@ object CacheIvy {
     }
   implicit def updateStatsFormat: Format[UpdateStats] =
     wrap[UpdateStats, (Long, Long, Long)](us => (us.resolveTime, us.downloadTime, us.downloadSize), { case (rt, dt, ds) => new UpdateStats(rt, dt, ds, true) })
-  implicit def confReportFormat(implicit m: Format[String], mr: Format[Seq[ModuleReport]], oar: Format[Seq[OrganizationArtifactReport]], mi: Format[Seq[ModuleID]]): Format[ConfigurationReport] =
-    wrap[ConfigurationReport, (String, Seq[ModuleReport], Seq[OrganizationArtifactReport], Seq[ModuleID])](r => (r.configuration, r.modules, r.details, r.evicted), { case (c, m, d, v) => new ConfigurationReport(c, m, d, v) })
+  implicit def confReportFormat(implicit m: Format[String], mr: Format[Seq[ModuleReport]], oar: Format[Seq[OrganizationArtifactReport]]): Format[ConfigurationReport] =
+    wrap[ConfigurationReport, (String, Seq[ModuleReport], Seq[OrganizationArtifactReport])](r => (r.configuration, r.modules, r.details), { case (c, m, d) => new ConfigurationReport(c, m, d) })
   implicit def moduleReportFormat(implicit cf: Format[Seq[Caller]], ff: Format[File]): Format[ModuleReport] = {
     wrap[ModuleReport, (ModuleID, Seq[(Artifact, File)], Seq[Artifact], Option[String], Option[Long], Option[String], Option[String], Boolean, Option[String], Option[String], Option[String], Option[String], Map[String, String], Option[Boolean], Option[String], Seq[String], Seq[(String, Option[String])], Seq[Caller])](
       m => (m.module, m.artifacts, m.missingArtifacts, m.status, m.publicationDate map { _.getTime }, m.resolver, m.artifactResolver, m.evicted, m.evictedData, m.evictedReason, m.problem, m.homepage, m.extraAttributes, m.isDefault, m.branch, m.configurations, m.licenses, m.callers),
@@ -142,7 +142,7 @@ object CacheIvy {
 
   implicit def inlineIvyIC: InputCache[InlineIvyConfiguration] = wrapIn
   implicit def moduleSettingsIC: InputCache[ModuleSettings] =
-    unionInputCache[ModuleSettings, PomConfiguration :+: InlineConfiguration :+: InlineConfigurationWithExcludes :+: EmptyConfiguration :+: IvyFileConfiguration :+: HNil]
+    unionInputCache[ModuleSettings, PomConfiguration :+: InlineConfiguration :+: InlineConfigurationWithExcludes :+: IvyFileConfiguration :+: HNil]
 
   implicit def ivyConfigurationIC: InputCache[IvyConfiguration] =
     unionInputCache[IvyConfiguration, InlineIvyConfiguration :+: ExternalIvyConfiguration :+: HNil]
@@ -152,13 +152,11 @@ object CacheIvy {
       c.module :+: c.dependencies :+: c.ivyXML :+: c.configurations :+: c.defaultConfiguration.map(_.name) :+:
         c.ivyScala :+: c.validate :+: c.overrides :+: c.excludes :+: HNil
     implicit def moduleConfToHL = (m: ModuleConfiguration) => m.organization :+: m.name :+: m.revision :+: m.resolver :+: HNil
-    implicit def emptyToHL = (e: EmptyConfiguration) => e.module :+: e.ivyScala :+: e.validate :+: HNil
     implicit def inlineToHL = (c: InlineConfiguration) => c.module :+: c.dependencies :+: c.ivyXML :+: c.configurations :+: c.defaultConfiguration.map(_.name) :+: c.ivyScala :+: c.validate :+: c.overrides :+: HNil
   }
   import L4._
 
   implicit def inlineWithExcludesIC: InputCache[InlineConfigurationWithExcludes] = wrapIn
-  implicit def emptyIC: InputCache[EmptyConfiguration] = wrapIn
   implicit def inlineIC: InputCache[InlineConfiguration] = wrapIn
   implicit def moduleConfIC: InputCache[ModuleConfiguration] = wrapIn
 
@@ -177,7 +175,7 @@ object CacheIvy {
 
   implicit lazy val chainedIC: InputCache[ChainedResolver] = InputCache.lzy(wrapIn)
   implicit lazy val resolverIC: InputCache[Resolver] =
-    unionInputCache[Resolver, ChainedResolver :+: JavaNet1Repository :+: MavenRepository :+: MavenCache :+: FileRepository :+: URLRepository :+: SshRepository :+: SftpRepository :+: RawRepository :+: HNil]
+    unionInputCache[Resolver, ChainedResolver :+: MavenRepository :+: MavenCache :+: FileRepository :+: URLRepository :+: SshRepository :+: SftpRepository :+: RawRepository :+: HNil]
   implicit def moduleIC: InputCache[ModuleID] = wrapIn
   implicitly[InputCache[Seq[Configuration]]]
 
@@ -235,6 +233,4 @@ object CacheIvy {
 
   implicit def authIC: InputCache[SshAuthentication] =
     unionInputCache[SshAuthentication, PasswordAuthentication :+: KeyFileAuthentication :+: HNil]
-
-  implicit def javaNet1IC: InputCache[JavaNet1Repository] = singleton(JavaNet1Repository)
 }

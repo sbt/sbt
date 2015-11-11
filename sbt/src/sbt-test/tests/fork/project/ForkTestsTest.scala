@@ -2,6 +2,7 @@ import sbt._
 import Keys._
 import Tests._
 import Defaults._
+import Import._
 
 object ForkTestsTest extends Build {
 	val groupSize = 3

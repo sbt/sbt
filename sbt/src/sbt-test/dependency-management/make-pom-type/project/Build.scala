@@ -1,5 +1,6 @@
 import sbt._
 import Keys._
+import Import._
 
 object build extends Build {
 	override def settings = super.settings ++ Seq(

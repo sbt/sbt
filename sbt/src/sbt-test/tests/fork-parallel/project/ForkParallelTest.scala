@@ -2,6 +2,7 @@ import sbt._
 import Keys._
 import Tests._
 import Defaults._
+import Import._
 
 object ForkParallelTest extends Build {
 	val check = taskKey[Unit]("Check that tests are executed in parallel")

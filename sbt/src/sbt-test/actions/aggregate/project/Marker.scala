@@ -1,5 +1,6 @@
 import sbt._
 import Keys._
+import Import._
 import Project.Initialize
 
 trait Marker

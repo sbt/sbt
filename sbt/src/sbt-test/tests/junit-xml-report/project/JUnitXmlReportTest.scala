@@ -3,6 +3,7 @@ import Keys._
 import scala.xml.XML
 import Tests._
 import Defaults._
+import Import._
 
 object JUnitXmlReportTest extends Build {
 	val checkReport = taskKey[Unit]("Check the test reports")

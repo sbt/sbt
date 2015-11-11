@@ -3,6 +3,7 @@ import Keys._
 import Tests._
 import Defaults._
 import java.io.{ CharArrayWriter, PrintWriter }
+import Import._
 
 object Ticket543Test extends Build {
 	val marker = new File("marker")

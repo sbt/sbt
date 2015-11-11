@@ -25,6 +25,7 @@ import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
 
 import sbt.librarymanagement._
 import sbt.internal.librarymanagement._
+import sbt.internal.librarymanagement.syntax._
 import sbt.internal.util._
 import sbt.util.Level
 

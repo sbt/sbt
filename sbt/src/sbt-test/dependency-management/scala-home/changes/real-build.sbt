@@ -1,3 +1,5 @@
+import sbt.internal.librarymanagement.syntax._
+
 scalaHome := Some(baseDirectory.value / "home")
 
 val checkUpdate = taskKey[Unit]("Ensures that resolved Scala artifacts are replaced with ones from the configured Scala home directory")
