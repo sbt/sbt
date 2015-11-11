@@ -13,6 +13,10 @@ class InconsistentDuplicateSpec extends UnitSpec {
       )
   }
 
+  it should "not be warned if in different configurations" in {
+    IvySbt.inconsistentDuplicateWarning(Seq(akkaActor214, akkaActor230Test)) shouldBe Nil
+  }
+
   "Duplicate with same version" should "not be warned" in {
     IvySbt.inconsistentDuplicateWarning(Seq(akkaActor230Test, akkaActor230)) shouldBe Nil
   }
