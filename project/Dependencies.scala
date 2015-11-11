@@ -9,7 +9,7 @@ object Dependencies {
   lazy val scala211 = "2.11.7"
 
   lazy val jline = "jline" % "jline" % "2.13"
-  lazy val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-927bc9ded7f8fba63297cddd0d5a3d01d6ad5d8d"
+  lazy val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-d592b1b0f77cf706e882b1b8e0162dee28165fb2"
   lazy val jsch = "com.jcraft" % "jsch" % "0.1.46" intransitive ()
   lazy val sbinary = "org.scala-tools.sbinary" %% "sbinary" % "0.4.2"
   lazy val sbtSerialization = "org.scala-sbt" %% "serialization" % "0.1.2"
