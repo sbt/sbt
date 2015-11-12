@@ -74,6 +74,11 @@ final class LocalJavaCompiler(compiler: javax.tools.JavaCompiler) extends JavaCo
       log.warn("Javac is running in 'local' mode. These flags have been removed:")
       log.warn(invalidOptions.mkString("\t", ", ", ""))
     }
-    compiler.getTask(logWriter, fileManager, diagnostics, cleanedOptions.asJava, null, jfiles).call()
+    val success = compiler.getTask(logWriter, fileManager, diagnostics, cleanedOptions.asJava, null, jfiles).call()
+
+    // The local compiler may report a successful compilation even though there are errors (e.g. encoding problems in the
+    // source files). In a similar situation, command line javac reports a failed compilation. To have the local java compiler
+    // stick to javac's behavior, we report a failed compilation if there have been errors.
+    success && !diagnostics.hasErrors
   }
 }

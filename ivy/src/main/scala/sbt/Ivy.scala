@@ -536,14 +536,18 @@ private[sbt] object IvySbt {
     {
       import IvyRetrieve.toModuleID
       val dds = moduleID.getDependencies
-      inconsistentDuplicateWarning(dds map { dd => toModuleID(dd.getDependencyRevisionId) })
+      val deps = dds flatMap { dd =>
+        val module = toModuleID(dd.getDependencyRevisionId)
+        dd.getModuleConfigurations map (c => module.copy(configurations = Some(c)))
+      }
+      inconsistentDuplicateWarning(deps)
     }
 
   def inconsistentDuplicateWarning(dependencies: Seq[ModuleID]): List[String] =
     {
       val warningHeader = "Multiple dependencies with the same organization/name but different versions. To avoid conflict, pick one version:"
       val out: mutable.ListBuffer[String] = mutable.ListBuffer()
-      (dependencies groupBy { dep => (dep.organization, dep.name) }) foreach {
+      (dependencies groupBy { dep => (dep.organization, dep.name, dep.configurations) }) foreach {
         case (k, vs) if vs.size > 1 =>
           val v0 = vs.head
           (vs find { _.revision != v0.revision }) foreach { v =>

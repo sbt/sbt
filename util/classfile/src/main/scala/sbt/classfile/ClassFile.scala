@@ -10,7 +10,6 @@ import java.io.File
 private[sbt] trait ClassFile {
   val majorVersion: Int
   val minorVersion: Int
-  val fileName: String
   val className: String
   val superClassName: String
   val interfaceNames: Array[String]
