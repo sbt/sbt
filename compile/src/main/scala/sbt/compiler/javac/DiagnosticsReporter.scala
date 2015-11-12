@@ -14,6 +14,10 @@ import javax.tools.Diagnostic.NOPOS
 final class DiagnosticsReporter(reporter: Reporter) extends DiagnosticListener[JavaFileObject] {
   val END_OF_LINE_MATCHER = "(\r\n)|[\r]|[\n]"
   val EOL = System.getProperty("line.separator")
+
+  private[this] var errorEncountered = false
+  def hasErrors: Boolean = errorEncountered
+
   private def fixedDiagnosticMessage(d: Diagnostic[_ <: JavaFileObject]): String = {
     def getRawMessage = d.getMessage(null)
     def fixWarnOrErrorMessage = {
@@ -110,6 +114,7 @@ final class DiagnosticsReporter(reporter: Reporter) extends DiagnosticListener[J
           if (sourceUri.isDefined) s"${sourceUri.get}:${if (line.isDefined) line.get else -1}"
           else ""
       }
+    if (severity == Severity.Error) errorEncountered = true
     reporter.log(pos, msg, severity)
   }
 }
