@@ -5,6 +5,6 @@
 
 ### Improvements
 
-- The setting `apiURL` used to be ignored if `autoAPIMappings` was `false`. It will now be inserted into the built POM file regardless of the value of `autoAPIMappings`.  [#2262] by [@jkinkead]
+- The setting `apiURL` used to be ignored if `autoAPIMappings` was `false`. It will now be inserted into the built POM file regardless of the value of `autoAPIMappings`.  [#2262][2262] by [@jkinkead][@jkinkead]
 
 ### Bug fixes
