@@ -3,8 +3,8 @@ package inc
 
 import xsbti.api.DependencyContext.DependencyByMemberRef
 import xsbti.api.ExternalDependency
-
-import sbt.internal.inc.{ Analysis, CompileSetup, CompileOptions, Exists, SourceInfos, TestCaseGenerators, TextAnalysisFormat }
+import xsbti.compile.{ MiniSetup, MiniOptions }
+import sbt.internal.inc.{ Analysis, Exists, SourceInfos, TestCaseGenerators, TextAnalysisFormat }
 
 import java.io.{ BufferedReader, File, StringReader, StringWriter }
 import scala.math.abs
@@ -16,7 +16,7 @@ object TextAnalysisFormatTest extends Properties("TextAnalysisFormat") {
 
   val nameHashing = true
   val dummyOutput = new xsbti.compile.SingleOutput { def outputDirectory: java.io.File = new java.io.File("dummy") }
-  val commonSetup = new CompileSetup(dummyOutput, new CompileOptions(Nil, Nil), "2.10.4", xsbti.compile.CompileOrder.Mixed, nameHashing)
+  val commonSetup = new MiniSetup(dummyOutput, new MiniOptions(Array(), Array()), "2.10.4", xsbti.compile.CompileOrder.Mixed, nameHashing)
   val commonHeader = """format version: 5
                     |output mode:
                     |1 items

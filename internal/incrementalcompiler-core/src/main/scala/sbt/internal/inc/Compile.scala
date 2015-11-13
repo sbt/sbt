@@ -6,7 +6,7 @@ package internal
 package inc
 
 import xsbti.api.{ InternalDependency, ExternalDependency, Source, SourceAPI, Compilation, OutputSetting, _internalOnly_NameHashes }
-import xsbti.compile.{ DependencyChanges, Output, SingleOutput, MultipleOutput, IncOptions }
+import xsbti.compile.{ DependencyChanges, Output, SingleOutput, MultipleOutput, IncOptions, CompileAnalysis }
 import xsbti.{ Position, Problem, Severity }
 import sbt.util.Logger
 import sbt.util.Logger.{ m2o, problem }
@@ -44,11 +44,12 @@ object IncrementalCompile {
    */
   def apply(sources: Set[File], entry: String => Option[File],
     compile: (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit,
-    previous: Analysis,
-    forEntry: File => Option[Analysis],
+    previous0: CompileAnalysis,
+    forEntry: File => Option[CompileAnalysis],
     output: Output, log: Logger,
     options: IncOptions): (Boolean, Analysis) =
     {
+      val previous = previous0 match { case a: Analysis => a }
       val current = Stamps.initial(Stamp.lastModified, Stamp.hash, Stamp.lastModified)
       val internalMap = (f: File) => previous.relations.produced(f).headOption
       val externalAPI = getExternalAPI(entry, forEntry)
@@ -68,16 +69,17 @@ object IncrementalCompile {
       compile(srcs, changes, callback)
       callback.get
     }
-  def getExternalAPI(entry: String => Option[File], forEntry: File => Option[Analysis]): (File, String) => Option[Source] =
+  def getExternalAPI(entry: String => Option[File], forEntry: File => Option[CompileAnalysis]): (File, String) => Option[Source] =
     (file: File, className: String) =>
       entry(className) flatMap { defines =>
         if (file != Locate.resolve(defines, className))
           None
         else
-          forEntry(defines) flatMap { analysis =>
-            analysis.relations.definesClass(className).headOption flatMap { src =>
-              analysis.apis.internal get src
-            }
+          forEntry(defines) flatMap {
+            case analysis: Analysis =>
+              analysis.relations.definesClass(className).headOption flatMap { src =>
+                analysis.apis.internal get src
+              }
           }
       }
 }

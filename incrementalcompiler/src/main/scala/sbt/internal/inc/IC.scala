@@ -7,7 +7,6 @@ import sbt.internal.inc.javac.AnalyzingJavaCompiler
 import Locate._
 import xsbti.Logger
 import xsbti.api.Source
-import xsbti.compile.{ ClasspathOptions => XClasspathOptions, ScalaInstance => XScalaInstance }
 import xsbti.compile.CompileOrder._
 import xsbti.compile.DefinesClass
 import xsbti.{ Reporter, Logger, Maybe }
@@ -24,64 +23,7 @@ import sbt.internal.io.Using
 /**
  * An implementation of the incremental compiler that can compile inputs and dump out source dependency analysis.
  */
-object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler] {
-
-  override def compile(in: Inputs[Analysis, AnalyzingCompiler], log: Logger): Analysis =
-    {
-      val setup = in.setup; import setup._
-      val options = in.options; import options.{ options => scalacOptions, _ }
-      val compilers = in.compilers; import compilers._
-      val aMap = (f: File) => m2o(analysisMap(f))
-      val defClass = (f: File) => { val dc = definesClass(f); (name: String) => dc.apply(name) }
-      val (previousAnalysis, previousSetup) = {
-        MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile()).get().map {
-          case (a, s) => (a, Some(s))
-        } getOrElse {
-          (Analysis.empty(nameHashing = incrementalCompilerOptions.nameHashing), None)
-        }
-      }
-      incrementalCompile(scalac, javac, sources, classpath, output, cache, m2o(progress), scalacOptions, javacOptions, previousAnalysis,
-        previousSetup, aMap, defClass, reporter, order, skip, incrementalCompilerOptions)(log).analysis
-    }
-
-  private[this] def m2o[S](opt: Maybe[S]): Option[S] = if (opt.isEmpty) None else Some(opt.get)
-
-  @deprecated("A logger is no longer needed.", "0.13.8")
-  override def newScalaCompiler(instance: XScalaInstance, interfaceJar: File, options: XClasspathOptions, log: Logger): AnalyzingCompiler =
-    new AnalyzingCompiler(instance, CompilerInterfaceProvider.constant(interfaceJar), options)
-
-  override def newScalaCompiler(instance: XScalaInstance, interfaceJar: File, options: XClasspathOptions): AnalyzingCompiler =
-    new AnalyzingCompiler(instance, CompilerInterfaceProvider.constant(interfaceJar), options)
-
-  def compileInterfaceJar(label: String, sourceJar: File, targetJar: File, interfaceJar: File, instance: XScalaInstance, log: Logger): Unit = {
-    val raw = new RawCompiler(instance, ClasspathOptions.auto, log)
-    AnalyzingCompiler.compileSources(sourceJar :: Nil, targetJar, interfaceJar :: Nil, label, raw, log)
-  }
-
-  def readCache(file: File): Maybe[(Analysis, CompileSetup)] =
-    try { Maybe.just(readCacheUncaught(file)) } catch { case _: Exception => Maybe.nothing() }
-
-  @deprecated("Use overloaded variant which takes `IncOptions` as parameter.", "0.13.2")
-  def readAnalysis(file: File): Analysis =
-    try { readCacheUncaught(file)._1 } catch { case _: Exception => Analysis.Empty }
-
-  def readAnalysis(file: File, incOptions: IncOptions): Analysis =
-    try { readCacheUncaught(file)._1 } catch {
-      case _: Exception => Analysis.empty(nameHashing = incOptions.nameHashing)
-    }
-
-  def readCacheUncaught(file: File): (Analysis, CompileSetup) =
-    Using.fileReader(IO.utf8)(file) { reader =>
-      try {
-        TextAnalysisFormat.read(reader)
-      } catch {
-        case ex: ReadException =>
-          throw new java.io.IOException(s"Error while reading $file", ex)
-      }
-    }
-
-  /** The result of running the compilation. */
-  final case class Result(analysis: Analysis, setup: CompileSetup, hasModified: Boolean)
+private[sbt] object IC {
 
   /**
    * This will run a mixed-compilation of Java/Scala sources
@@ -120,29 +62,33 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler] {
     progress: Option[CompileProgress] = None,
     options: Seq[String] = Nil,
     javacOptions: Seq[String] = Nil,
-    previousAnalysis: Analysis,
-    previousSetup: Option[CompileSetup],
-    analysisMap: File => Option[Analysis] = { _ => None },
+    previousAnalysis: Option[CompileAnalysis],
+    previousSetup: Option[MiniSetup],
+    analysisMap: File => Option[CompileAnalysis] = { _ => None },
     definesClass: Locate.DefinesClass = Locate.definesClass _,
     reporter: Reporter,
     compileOrder: CompileOrder = Mixed,
     skip: Boolean = false,
     incrementalCompilerOptions: IncOptions
-  )(implicit log: Logger): Result = {
+  )(implicit log: Logger): CompileResult = {
+    val prev = previousAnalysis match {
+      case Some(previous) => previous
+      case None           => Analysis.empty(incrementalCompilerOptions.nameHashing)
+    }
     val config = MixedAnalyzingCompiler.makeConfig(scalac, javac, sources, classpath, output, cache,
-      progress, options, javacOptions, previousAnalysis, previousSetup, analysisMap, definesClass, reporter,
+      progress, options, javacOptions, prev, previousSetup, analysisMap, definesClass, reporter,
       compileOrder, skip, incrementalCompilerOptions)
     import config.{ currentSetup => setup }
 
-    if (skip) Result(previousAnalysis, setup, false)
+    if (skip) new CompileResult(prev, setup, false)
     else {
       val (analysis, changed) = compileInternal(MixedAnalyzingCompiler(config)(log))
-      Result(analysis, setup, changed)
+      new CompileResult(analysis, setup, changed)
     }
   }
 
-  /** Actually runs the incremental compiler using the given mixed compiler.  This will prune the inputs based on the CompileSetup. */
-  private def compileInternal(mixedCompiler: MixedAnalyzingCompiler)(implicit log: Logger, equiv: Equiv[CompileSetup]): (Analysis, Boolean) = {
+  /** Actually runs the incremental compiler using the given mixed compiler.  This will prune the inputs based on the MiniSetup. */
+  private def compileInternal(mixedCompiler: MixedAnalyzingCompiler)(implicit log: Logger, equiv: Equiv[MiniSetup]): (Analysis, Boolean) = {
     val entry = MixedAnalyzingCompiler.classPathLookup(mixedCompiler.config)
     import mixedCompiler.config._
     import mixedCompiler.config.currentSetup.output

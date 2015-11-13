@@ -30,34 +30,24 @@ import java.io.File;
 *    ii. Arrays are treated as immutable.
 *    iii. No value is ever null.
 */
-public interface IncrementalCompiler<Analysis, ScalaCompiler>
+public interface IncrementalCompiler
 {
 	/**
 	* Performs an incremental compilation as configured by `in`.
 	* The returned Analysis should be provided to compilations depending on the classes from this compilation.
 	*/
-	Analysis compile(Inputs<Analysis, ScalaCompiler> in, Logger log);
+	CompileResult compile(Inputs in, Logger log);
 
-	/**
-	* Creates a compiler instance that can be used by the `compile` method.
-	*
-	* @param instance The Scala version to use
-	* @param interfaceJar The compiler interface jar compiled for the Scala version being used
-	* @param options Configures how arguments to the underlying Scala compiler will be built.
-    *
-	*/
-    @Deprecated
-	ScalaCompiler newScalaCompiler(ScalaInstance instance, File interfaceJar, ClasspathOptions options, Logger log);
-    /**
-     * Creates a compiler instance that can be used by the `compile` method.
-     *
-     * @param instance The Scala version to use
-     * @param interfaceJar The compiler interface jar compiled for the Scala version being used
-     * @param options Configures how arguments to the underlying Scala compiler will be built.
-     */
-    ScalaCompiler newScalaCompiler(ScalaInstance instance, File interfaceJar, ClasspathOptions options);
+  /**
+   * Creates a compiler instance that can be used by the `compile` method.
+   *
+   * @param instance The Scala version to use
+   * @param interfaceJar The compiler interface jar compiled for the Scala version being used
+   * @param options Configures how arguments to the underlying Scala compiler will be built.
+   */
+  // ScalaCompiler newScalaCompiler(ScalaInstance instance, File interfaceJar, ClasspathOptions options);
 
-	/** 
+ /**
 	* Compiles the source interface for a Scala version.  The resulting jar can then be used by the `newScalaCompiler` method
 	* to create a ScalaCompiler for incremental compilation.  It is the client's responsibility to manage compiled jars for
 	* different Scala versions.
@@ -67,5 +57,5 @@ public interface IncrementalCompiler<Analysis, ScalaCompiler>
 	* @param targetJar Where to create the output jar file containing the compiled classes.
 	* @param instance The ScalaInstance to compile the compiler interface for.
 	* @param log The logger to use during compilation. */
-	void compileInterfaceJar(String label, File sourceJar, File targetJar, File interfaceJar, ScalaInstance instance, Logger log);
+	// void compileInterfaceJar(String label, File sourceJar, File targetJar, File interfaceJar, ScalaInstance instance, Logger log);
 }

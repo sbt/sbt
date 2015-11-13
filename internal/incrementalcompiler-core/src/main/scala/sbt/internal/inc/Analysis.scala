@@ -7,6 +7,7 @@ package inc
 
 import xsbti.api.{ ExternalDependency, InternalDependency, Source }
 import xsbti.api.DependencyContext._
+import xsbti.compile.CompileAnalysis
 import java.io.File
 import sbt.internal.util.Relation
 
@@ -25,7 +26,7 @@ import sbt.internal.util.Relation
  * These transformations are complicated by the fact that internal dependencies are expressed as source file -> source file,
  * but external dependencies are expressed as source file -> fully-qualified class name.
  */
-trait Analysis {
+trait Analysis extends CompileAnalysis {
   val stamps: Stamps
   val apis: APIs
   /** Mappings between sources, classes, and binaries. */
@@ -59,15 +60,6 @@ trait Analysis {
     internalDeps: Iterable[InternalDependency],
     externalDeps: Iterable[ExternalDependency],
     binaryDeps: Iterable[(File, String, Stamp)]): Analysis
-
-  @deprecated("Register all products and dependencies in addSource.", "0.13.8")
-  def addSource(src: File, api: Source, stamp: Stamp, directInternal: Iterable[File], inheritedInternal: Iterable[File], info: SourceInfo): Analysis
-  @deprecated("Register all products and dependencies in addSource.", "0.13.8")
-  def addBinaryDep(src: File, dep: File, className: String, stamp: Stamp): Analysis
-  @deprecated("Register all products and dependencies in addSource.", "0.13.8")
-  def addExternalDep(src: File, dep: String, api: Source, inherited: Boolean): Analysis
-  @deprecated("Register all products and dependencies in addSource.", "0.13.8")
-  def addProduct(src: File, product: File, stamp: Stamp, name: String): Analysis
 
   /** Partitions this Analysis using the discriminator function. Externalizes internal deps that cross partitions. */
   def groupBy[K](discriminator: (File => K)): Map[K, Analysis]
@@ -192,25 +184,6 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
 
     copy(newStamps, newAPIs, newRelations, infos.add(src, info))
   }
-
-  def addSource(src: File, api: Source, stamp: Stamp, directInternal: Iterable[File], inheritedInternal: Iterable[File], info: SourceInfo): Analysis = {
-
-    val directDeps = directInternal.map(new InternalDependency(src, _, DependencyByMemberRef))
-    val inheritedDeps = inheritedInternal.map(new InternalDependency(src, _, DependencyByInheritance))
-
-    addSource(src, api, stamp, info, products = Nil, directDeps ++ inheritedDeps, Nil, Nil)
-  }
-
-  def addBinaryDep(src: File, dep: File, className: String, stamp: Stamp): Analysis =
-    copy(stamps.markBinary(dep, className, stamp), apis, relations.addBinaryDeps(src, (dep, className, stamp) :: Nil), infos)
-
-  def addExternalDep(src: File, dep: String, depAPI: Source, inherited: Boolean): Analysis = {
-    val context = if (inherited) DependencyByInheritance else DependencyByMemberRef
-    copy(stamps, apis.markExternalAPI(dep, depAPI), relations.addExternalDeps(src, new ExternalDependency(src, dep, depAPI, context) :: Nil), infos)
-  }
-
-  def addProduct(src: File, product: File, stamp: Stamp, name: String): Analysis =
-    copy(stamps.markProduct(product, stamp), apis, relations.addProducts(src, (product, name) :: Nil), infos)
 
   def groupBy[K](discriminator: File => K): Map[K, Analysis] = {
     if (relations.nameHashing)
