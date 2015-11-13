@@ -10,7 +10,8 @@ object Util {
     crossPaths := false,
     compileOrder := CompileOrder.JavaThenScala,
     unmanagedSourceDirectories in Compile <<= Seq(javaSource in Compile).join,
-    crossScalaVersions := Seq(Dependencies.scala211)
+    crossScalaVersions := Seq(Dependencies.scala211),
+    autoScalaLibrary := false
   )
 
   def getScalaKeywords: Set[String] =
