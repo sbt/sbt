@@ -8,7 +8,7 @@ package inc
 import xsbt.api.{ NameChanges, SameAPI, TopLevel }
 import annotation.tailrec
 import xsbti.api.{ Compilation, Source }
-import xsbti.compile.{ DependencyChanges, IncOptions }
+import xsbti.compile.{ DependencyChanges, IncOptions, CompileAnalysis }
 import java.io.File
 
 /**
@@ -38,14 +38,15 @@ object Incremental {
   def compile(
     sources: Set[File],
     entry: String => Option[File],
-    previous: Analysis,
+    previous0: CompileAnalysis,
     current: ReadStamps,
-    forEntry: File => Option[Analysis],
+    forEntry: File => Option[CompileAnalysis],
     doCompile: (Set[File], DependencyChanges) => Analysis,
     log: sbt.util.Logger,
     options: IncOptions
   )(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
     {
+      val previous = previous0 match { case a: Analysis => a }
       val incremental: IncrementalCommon =
         if (options.nameHashing)
           new IncrementalNameHashing(log, options)
@@ -77,11 +78,12 @@ object Incremental {
   private[inc] val apiDebugProp = "xsbt.api.debug"
   private[inc] def apiDebug(options: IncOptions): Boolean = options.apiDebug || java.lang.Boolean.getBoolean(apiDebugProp)
 
-  private[sbt] def prune(invalidatedSrcs: Set[File], previous: Analysis): Analysis =
+  private[sbt] def prune(invalidatedSrcs: Set[File], previous: CompileAnalysis): Analysis =
     prune(invalidatedSrcs, previous, ClassfileManager.deleteImmediately())
 
-  private[sbt] def prune(invalidatedSrcs: Set[File], previous: Analysis, classfileManager: ClassfileManager): Analysis =
+  private[sbt] def prune(invalidatedSrcs: Set[File], previous0: CompileAnalysis, classfileManager: ClassfileManager): Analysis =
     {
+      val previous = previous0 match { case a: Analysis => a }
       classfileManager.delete(invalidatedSrcs.flatMap(previous.relations.products))
       previous -- invalidatedSrcs
     }

@@ -3,7 +3,7 @@ package internal
 package inc
 
 import scala.annotation.tailrec
-import xsbti.compile.{ DependencyChanges, IncOptions, IncOptionsUtil }
+import xsbti.compile.{ DependencyChanges, IncOptions, IncOptionsUtil, CompileAnalysis }
 import xsbti.api.{ Compilation, Source }
 import java.io.File
 
@@ -123,9 +123,10 @@ private[inc] abstract class IncrementalCommon(log: sbt.util.Logger, options: Inc
     case (co1, co2) => co1.sourceDirectory == co2.sourceDirectory && co1.outputDirectory == co2.outputDirectory
   }
 
-  def changedInitial(entry: String => Option[File], sources: Set[File], previousAnalysis: Analysis, current: ReadStamps,
-    forEntry: File => Option[Analysis])(implicit equivS: Equiv[Stamp]): InitialChanges =
+  def changedInitial(entry: String => Option[File], sources: Set[File], previousAnalysis0: CompileAnalysis, current: ReadStamps,
+    forEntry: File => Option[CompileAnalysis])(implicit equivS: Equiv[Stamp]): InitialChanges =
     {
+      val previousAnalysis = previousAnalysis0 match { case a: Analysis => a }
       val previous = previousAnalysis.stamps
       val previousAPIs = previousAnalysis.apis
 
@@ -266,7 +267,7 @@ private[inc] abstract class IncrementalCommon(log: sbt.util.Logger, options: Inc
       newInv ++ initialDependsOnNew
     }
 
-  def externalBinaryModified(entry: String => Option[File], analysis: File => Option[Analysis], previous: Stamps, current: ReadStamps)(implicit equivS: Equiv[Stamp]): File => Boolean =
+  def externalBinaryModified(entry: String => Option[File], analysis: File => Option[CompileAnalysis], previous: Stamps, current: ReadStamps)(implicit equivS: Equiv[Stamp]): File => Boolean =
     dependsOn =>
       {
         def inv(reason: String): Boolean = {
@@ -304,12 +305,13 @@ private[inc] abstract class IncrementalCommon(log: sbt.util.Logger, options: Inc
 
       }
 
-  def currentExternalAPI(entry: String => Option[File], forEntry: File => Option[Analysis]): String => Source =
+  def currentExternalAPI(entry: String => Option[File], forEntry: File => Option[CompileAnalysis]): String => Source =
     className =>
       orEmpty(
         for {
           e <- entry(className)
-          analysis <- forEntry(e)
+          analysis0 <- forEntry(e)
+          analysis = analysis0 match { case a: Analysis => a }
           src <- analysis.relations.definesClass(className).headOption
         } yield analysis.apis.internalAPI(src)
       )

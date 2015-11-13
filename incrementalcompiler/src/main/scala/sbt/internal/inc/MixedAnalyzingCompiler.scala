@@ -47,7 +47,7 @@ final class MixedAnalyzingCompiler(
     def compileScala(): Unit =
       if (scalaSrcs.nonEmpty) {
         val sources = if (order == Mixed) incSrc else scalaSrcs
-        val arguments = cArgs(Nil, absClasspath, None, options.options)
+        val arguments = cArgs(Nil, absClasspath, None, options.scalacOptions)
         timed("Scala compilation", log) {
           compiler.compile(sources, changes, arguments, output, callback, reporter, config.cache, log, progress)
         }
@@ -109,9 +109,9 @@ object MixedAnalyzingCompiler {
     progress: Option[CompileProgress] = None,
     options: Seq[String] = Nil,
     javacOptions: Seq[String] = Nil,
-    previousAnalysis: Analysis,
-    previousSetup: Option[CompileSetup],
-    analysisMap: File => Option[Analysis] = { _ => None },
+    previousAnalysis: CompileAnalysis,
+    previousSetup: Option[MiniSetup],
+    analysisMap: File => Option[CompileAnalysis] = { _ => None },
     definesClass: DefinesClass = Locate.definesClass _,
     reporter: Reporter,
     compileOrder: CompileOrder = Mixed,
@@ -119,7 +119,7 @@ object MixedAnalyzingCompiler {
     incrementalCompilerOptions: IncOptions
   ): CompileConfiguration =
     {
-      val compileSetup = new CompileSetup(output, new CompileOptions(options, javacOptions),
+      val compileSetup = new MiniSetup(output, new MiniOptions(options.toArray, javacOptions.toArray),
         scalac.scalaInstance.actualVersion, compileOrder, incrementalCompilerOptions.nameHashing)
       config(
         sources,
@@ -142,11 +142,11 @@ object MixedAnalyzingCompiler {
   def config(
     sources: Seq[File],
     classpath: Seq[File],
-    setup: CompileSetup,
+    setup: MiniSetup,
     progress: Option[CompileProgress],
-    previousAnalysis: Analysis,
-    previousSetup: Option[CompileSetup],
-    analysis: File => Option[Analysis],
+    previousAnalysis: CompileAnalysis,
+    previousSetup: Option[MiniSetup],
+    analysis: File => Option[CompileAnalysis],
     definesClass: DefinesClass,
     compiler: AnalyzingCompiler,
     javac: xsbti.compile.JavaCompiler,
@@ -155,7 +155,7 @@ object MixedAnalyzingCompiler {
     cache: GlobalsCache,
     incrementalCompilerOptions: IncOptions
   ): CompileConfiguration = {
-    import CompileSetup._
+    import MiniSetupUtil._
     new CompileConfiguration(sources, classpath, previousAnalysis, previousSetup, setup,
       progress, analysis, definesClass, reporter, compiler, javac, cache, incrementalCompilerOptions)
   }
@@ -167,7 +167,7 @@ object MixedAnalyzingCompiler {
     val absClasspath = classpath.map(_.getAbsoluteFile)
     val apiOption = (api: Either[Boolean, Source]) => api.right.toOption
     val cArgs = new CompilerArguments(compiler.scalaInstance, compiler.cp)
-    val searchClasspath = explicitBootClasspath(options.options) ++ withBootclasspath(cArgs, absClasspath)
+    val searchClasspath = explicitBootClasspath(options.scalacOptions) ++ withBootclasspath(cArgs, absClasspath)
     (searchClasspath, Locate.entry(searchClasspath, definesClass))
   }
 

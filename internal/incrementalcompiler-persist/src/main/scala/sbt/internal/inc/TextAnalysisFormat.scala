@@ -5,7 +5,7 @@ package inc
 import java.io._
 import sbt.internal.util.Relation
 import xsbti.api.{ Compilation, Source }
-import xsbti.compile.{ MultipleOutput, SingleOutput }
+import xsbti.compile.{ MultipleOutput, SingleOutput, MiniOptions, MiniSetup }
 import javax.xml.bind.DatatypeConverter
 
 // Very simple timer for timing repeated code sections.
@@ -67,11 +67,11 @@ object TextAnalysisFormat {
     wrap[SourceInfo, (Seq[Problem], Seq[Problem])](si => (si.reportedProblems, si.unreportedProblems), { case (a, b) => SourceInfos.makeInfo(a, b) })
   private implicit def seqFormat[T](implicit optionFormat: Format[T]): Format[Seq[T]] = viaSeq[Seq[T], T](x => x)
 
-  def write(out: Writer, analysis: Analysis, setup: CompileSetup): Unit = {
+  def write(out: Writer, analysis: Analysis, setup: MiniSetup): Unit = {
     VersionF.write(out)
     // We start with writing compile setup which contains value of the `nameHashing`
     // flag that is needed to properly deserialize relations
-    FormatTimer.time("write setup") { CompileSetupF.write(out, setup) }
+    FormatTimer.time("write setup") { MiniSetupF.write(out, setup) }
     // Next we write relations because that's the part of greatest interest to external readers,
     // who can abort reading early once they're read them.
     FormatTimer.time("write relations") { RelationsF.write(out, analysis.relations) }
@@ -82,9 +82,9 @@ object TextAnalysisFormat {
     out.flush()
   }
 
-  def read(in: BufferedReader): (Analysis, CompileSetup) = {
+  def read(in: BufferedReader): (Analysis, MiniSetup) = {
     VersionF.read(in)
-    val setup = FormatTimer.time("read setup") { CompileSetupF.read(in) }
+    val setup = FormatTimer.time("read setup") { MiniSetupF.read(in) }
     val relations = FormatTimer.time("read relations") { RelationsF.read(in, setup.nameHashing) }
     val stamps = FormatTimer.time("read stamps") { StampsF.read(in) }
     val apis = FormatTimer.time("read apis") { APIsF.read(in) }
@@ -272,7 +272,7 @@ object TextAnalysisFormat {
     )
   }
 
-  private[this] object CompileSetupF {
+  private[this] object MiniSetupF {
     object Headers {
       val outputMode = "output mode"
       val outputDir = "output directories"
@@ -287,7 +287,7 @@ object TextAnalysisFormat {
     private[this] val multipleOutputMode = "multiple"
     private[this] val singleOutputKey = new File("output dir")
 
-    def write(out: Writer, setup: CompileSetup): Unit = {
+    def write(out: Writer, setup: MiniSetup): Unit = {
       val (mode, outputAsMap) = setup.output match {
         case s: SingleOutput   => (singleOutputMode, Map(singleOutputKey -> s.outputDirectory))
         case m: MultipleOutput => (multipleOutputMode, m.outputGroups.map(x => x.sourceDirectory -> x.outputDirectory).toMap)
@@ -295,14 +295,14 @@ object TextAnalysisFormat {
 
       writeSeq(out)(Headers.outputMode, mode :: Nil, identity[String])
       writeMap(out)(Headers.outputDir, outputAsMap, { f: File => f.getPath })
-      writeSeq(out)(Headers.compileOptions, setup.options.options, identity[String])
+      writeSeq(out)(Headers.compileOptions, setup.options.scalacOptions, identity[String])
       writeSeq(out)(Headers.javacOptions, setup.options.javacOptions, identity[String])
       writeSeq(out)(Headers.compilerVersion, setup.compilerVersion :: Nil, identity[String])
       writeSeq(out)(Headers.compileOrder, setup.order.name :: Nil, identity[String])
       writeSeq(out)(Headers.nameHashing, setup.nameHashing :: Nil, (b: Boolean) => b.toString)
     }
 
-    def read(in: BufferedReader): CompileSetup = {
+    def read(in: BufferedReader): MiniSetup = {
       def s2f(s: String) = new File(s)
       def s2b(s: String): Boolean = s.toBoolean
       val outputDirMode = readSeq(in)(Headers.outputMode, identity[String]).headOption
@@ -333,7 +333,7 @@ object TextAnalysisFormat {
         case None => throw new ReadException("No output mode specified")
       }
 
-      new CompileSetup(output, new CompileOptions(compileOptions, javacOptions), compilerVersion,
+      new MiniSetup(output, new MiniOptions(compileOptions.toArray, javacOptions.toArray), compilerVersion,
         xsbti.compile.CompileOrder.valueOf(compileOrder), nameHashing)
     }
   }
