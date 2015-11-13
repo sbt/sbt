@@ -150,7 +150,7 @@
       "fields": [
         {
           "name": "classpath",
-          "type": "java.io.File []",
+          "type": "java.io.File*",
           "doc": [
             "The classpath to use for compilation.",
             "This will be modified according to the ClasspathOptions used to configure the ScalaCompiler."
@@ -158,7 +158,7 @@
         },
         {
           "name": "sources",
-          "type": "java.io.File []",
+          "type": "java.io.File*",
           "doc": [
             "All sources that should be recompiled.",
             "This should include Scala and Java sources, which are identified by their extension."
@@ -170,14 +170,14 @@
         },
         {
           "name": "scalacOptions",
-          "type": "String []",
+          "type": "String*",
           "doc": [
             "The options to pass to the Scala compiler other than the sources and classpath to use."
           ]
         },
         {
           "name": "javacOptions",
-          "type": "String []",
+          "type": "String*",
           "doc": [
             "The options to pass to the Java compiler other than the sources and classpath to use."
           ]
@@ -210,14 +210,14 @@
       "fields": [
         {
           "name": "scalacOptions",
-          "type": "String []",
+          "type": "String*",
           "doc": [
             "The options to pass to the Scala compiler other than the sources and classpath to use."
           ]
         },
         {
           "name": "javacOptions",
-          "type": "String []",
+          "type": "String*",
           "doc": [
             "The options to pass to the Java compiler other than the sources and classpath to use."
           ]
