@@ -67,7 +67,8 @@ lazy val incrementalcompilerRoot: Project = (project in file(".")).
       git.baseVersion := baseVersion,
       bintrayPackage := "incrementalcompiler",
       scmInfo := Some(ScmInfo(url("https://github.com/sbt/incrementalcompiler"), "git@github.com:sbt/incrementalcompiler.git")),
-      description := "Incremental compiler of Scala"
+      description := "Incremental compiler of Scala",
+      homepage := Some(url("https://github.com/sbt/incrementalcompiler"))
     )),
     minimalSettings,
     name := "Incrementalcompiler Root",
