@@ -3,10 +3,9 @@
  *
  * Copied from sbt 0.12 source code
  */
-package net.virtualvoid.sbt.graph
+package net.virtualvoid.sbt.graph.util
 
-object Graph
-{
+object AsciiTreeLayout {
 	// [info] foo
 	// [info]   +-bar
 	// [info]   | +-baz

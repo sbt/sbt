@@ -145,7 +145,7 @@ object IvyGraphMLDependencies extends App {
     // there should only be one root node (the project itself)
     val roots = graph.nodes.filter(n => !graph.edges.exists(_._2 == n.id)).sortBy(_.id.idString)
     roots.map { root =>
-      Graph.toAscii[Module](root, node => deps.getOrElse(node.id, Seq.empty[Module]), displayModule)
+      util.AsciiTreeLayout.toAscii[Module](root, node => deps.getOrElse(node.id, Seq.empty[Module]), displayModule)
     }.mkString("\n")
   }
 
