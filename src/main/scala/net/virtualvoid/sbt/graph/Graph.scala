@@ -5,8 +5,6 @@
  */
 package net.virtualvoid.sbt.graph
 
-import sbt.SbtDependencyGraphCompat
-
 object Graph
 {
 	// [info] foo
@@ -48,7 +46,7 @@ object Graph
 	}
 
   def defaultColumnSize: Int = {
-    val termWidth = SbtDependencyGraphCompat.getTerminalWidth
+    val termWidth = sbt.SbtAccess.getTerminalWidth
     if (termWidth > 20) termWidth - 8
     else 80 // ignore termWidth
   }

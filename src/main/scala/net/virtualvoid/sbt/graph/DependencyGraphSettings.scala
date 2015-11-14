@@ -1,5 +1,5 @@
 /*
- * Copyright 2011, 2012 Johannes Rudolph
+ * Copyright 2015 Johannes Rudolph
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -18,53 +18,21 @@ package net.virtualvoid.sbt.graph
 
 import sbt._
 import Keys._
-import complete.Parser
+
+import CrossVersion._
+
+import sbt.complete.DefaultParsers._
+import sbt.complete.Parser
 
 import org.apache.ivy.core.resolve.ResolveOptions
-import net.virtualvoid.sbt.graph.IvyGraphMLDependencies.ModuleGraph
 
-object Plugin extends sbt.Plugin {
-  val dependencyGraphMLFile = SettingKey[File]("dependency-graph-ml-file",
-    "The location the graphml file should be generated at")
-  val dependencyGraphML = TaskKey[File]("dependency-graph-ml",
-    "Creates a graphml file containing the dependency-graph for a project")
-  val dependencyDotFile = SettingKey[File]("dependency-dot-file",
-    "The location the dot file should be generated at")
-  val dependencyDotNodeLabel = SettingKey[(String,String,String) => String]("dependency-dot-node-label",
-    "Returns a formated string of a dependency. Takes organisation, name and version as parameters")
-  val dependencyDotHeader = SettingKey[String]("dependency-dot-header",
-    "The header of the dot file. (e.g. to set your preferred node shapes)")
-  val dependencyDot = TaskKey[File]("dependency-dot",
-    "Creates a dot file containing the dpendency-graph for a project")
-  val moduleGraph = TaskKey[IvyGraphMLDependencies.ModuleGraph]("module-graph",
-    "The dependency graph for a project")
-  val asciiGraph = TaskKey[String]("dependency-graph-string",
-    "Returns a string containing the ascii representation of the dependency graph for a project")
-  val dependencyGraph = InputKey[Unit]("dependency-graph",
-    "Prints the ascii graph to the console")
-  val asciiTree = TaskKey[String]("dependency-tree-string",
-    "Returns a string containing an ascii tree representation of the dependency graph for a project")
-  val dependencyTree = TaskKey[Unit]("dependency-tree",
-    "Prints the ascii tree to the console")
-  val ivyReportFunction = TaskKey[String => File]("ivy-report-function",
-    "A function which returns the file containing the ivy report from the ivy cache for a given configuration")
-  val ivyReport = TaskKey[File]("ivy-report",
-    "A task which returns the location of the ivy report file for a given configuration (default `compile`).")
-  val ignoreMissingUpdate = update in ivyReport
-  val filterScalaLibrary = SettingKey[Boolean]("filter-scala-library",
-    "Specifies if scala dependency should be filtered in dependency-* output"
-  )
+import IvyGraphMLDependencies.ModuleGraph
 
-  val licenseInfo = TaskKey[Unit]("dependency-license-info",
-    "Aggregates and shows information about the licenses of dependencies")
-
-  // internal
+object DependencyGraphSettings {
+  import DependencyGraphKeys._
   import ModuleGraphProtocol._
-  val moduleGraphStore = TaskKey[IvyGraphMLDependencies.ModuleGraph]("module-graph-store", "The stored module-graph from the last run")
 
-  val whatDependsOn = InputKey[Unit]("what-depends-on", "Shows information about what depends on the given module")
-
-  def graphSettings = seq(
+  def graphSettings = Seq(
     ivyReportFunction <<= (sbtVersion, target, projectID, ivyModule, appConfiguration, streams) map { (sbtV, target, projectID, ivyModule, config, streams) =>
       sbtV match {
         case Version(0, min, fix, _) if min > 12 || (min == 12 && fix >= 3) =>
@@ -80,11 +48,11 @@ object Plugin extends sbt.Plugin {
       }
     },
     updateConfiguration in ignoreMissingUpdate <<= updateConfiguration(config => new UpdateConfiguration(config.retrieve, true, config.logging)),
-    SbtDependencyGraphCompat.ignoreMissingUpdateT,
+    ignoreMissingUpdateT,
     filterScalaLibrary in Global := true
   ) ++ Seq(Compile, Test, Runtime, Provided, Optional).flatMap(ivyReportForConfig)
 
-  def ivyReportForConfig(config: Configuration) = inConfig(config)(seq(
+  def ivyReportForConfig(config: Configuration) = inConfig(config)(Seq(
     ivyReport <<= ivyReportFunction map (_(config.toString)) dependsOn(ignoreMissingUpdate),
     moduleGraph <<= ivyReport map (absoluteReportPath.andThen(IvyGraphMLDependencies.graph)),
     moduleGraph <<= (scalaVersion, moduleGraph, filterScalaLibrary) map { (scalaV, graph, filter) =>
@@ -118,15 +86,15 @@ object Plugin extends sbt.Plugin {
     dependencyDotFile <<= target / "dependencies-%s.dot".format(config.toString),
     dependencyDot <<= dependencyDotTask,
     dependencyDotHeader := """digraph "dependency-graph" {
-          |    graph[rankdir="LR"]
-          |    node [
-          |        shape="record"
-          |    ]
-          |    edge [
-          |        arrowtail="none"
-          |    ]""".stripMargin,
+                             |    graph[rankdir="LR"]
+                             |    node [
+                             |        shape="record"
+                             |    ]
+                             |    edge [
+                             |        arrowtail="none"
+                             |    ]""".stripMargin,
     dependencyDotNodeLabel := { (organisation: String, name: String, version: String) =>
-         """<%s<BR/><B>%s</B><BR/>%s>""".format(organisation, name, version)
+      """<%s<BR/><B>%s</B><BR/>%s>""".format(organisation, name, version)
     },
     whatDependsOn <<= InputTask(artifactIdParser) { module =>
       (module, streams, moduleGraph) map { (module, streams, graph) =>
@@ -149,9 +117,9 @@ object Plugin extends sbt.Plugin {
     (moduleGraph, dependencyDotHeader, dependencyDotNodeLabel, dependencyDotFile, streams).map {
       (graph, dotHead, nodeLabel, outFile, streams) =>
 
-      val resultFile = IvyGraphMLDependencies.saveAsDot(graph, dotHead, nodeLabel, outFile)
-      streams.log.info("Wrote dependency graph to '%s'" format resultFile)
-      resultFile
+        val resultFile = IvyGraphMLDependencies.saveAsDot(graph, dotHead, nodeLabel, outFile)
+        streams.log.info("Wrote dependency graph to '%s'" format resultFile)
+        resultFile
     }
   def absoluteReportPath = (file: File) => file.getAbsolutePath
 
@@ -163,14 +131,14 @@ object Plugin extends sbt.Plugin {
       graph.nodes.filter(_.isUsed).groupBy(_.license).toSeq.sortBy(_._1).map {
         case (license, modules) =>
           license.getOrElse("No license specified")+"\n"+
-          modules.map(_.id.idString formatted "\t %s").mkString("\n")
+            modules.map(_.id.idString formatted "\t %s").mkString("\n")
       }.mkString("\n\n")
     streams.log.info(output)
   }
 
   import Project._
   val shouldForceParser: State => Parser[Boolean] = { (state: State) =>
-    import complete.DefaultParsers._
+    import sbt.complete.DefaultParsers._
 
     (Space ~> token("--force")).?.map(_.isDefined)
   }
@@ -181,9 +149,7 @@ object Plugin extends sbt.Plugin {
     resolvedScoped { ctx => (state: State) =>
       val graph =  loadFromContext(moduleGraphStore, ctx, state) getOrElse ModuleGraph(Nil, Nil)
 
-      import complete.DefaultParsers._
-      import SbtDependencyGraphCompat._
-
+      import sbt.complete.DefaultParsers._
       def moduleFrom(modules: Seq[ModuleId]) =
         modules.map { m =>
           (token(m.name) ~ Space ~ token(m.version)).map(_ => m)
@@ -218,4 +184,34 @@ object Plugin extends sbt.Plugin {
       case _ => None
     }
   }
+
+  /**
+   * This is copied directly from sbt/main/Defaults.java and then changed to update the UpdateConfiguration
+   * to ignore missing artifacts.
+   */
+  def ignoreMissingUpdateT =
+    ignoreMissingUpdate <<= Def.task {
+      val depsUpdated = transitiveUpdate.value.exists(!_.stats.cached)
+      val isRoot = executionRoots.value contains resolvedScoped.value
+      val s = streams.value
+      val scalaProvider = appConfiguration.value.provider.scalaProvider
+
+      // Only substitute unmanaged jars for managed jars when the major.minor parts of the versions the same for:
+      //   the resolved Scala version and the scalaHome version: compatible (weakly- no qualifier checked)
+      //   the resolved Scala version and the declared scalaVersion: assume the user intended scalaHome to override anything with scalaVersion
+      def subUnmanaged(subVersion: String, jars: Seq[File])  =  (sv: String) =>
+        (partialVersion(sv), partialVersion(subVersion), partialVersion(scalaVersion.value)) match {
+          case (Some(res), Some(sh), _) if res == sh => jars
+          case (Some(res), _, Some(decl)) if res == decl => jars
+          case _ => Nil
+        }
+      val subScalaJars: String => Seq[File] = SbtAccess.unmanagedScalaInstanceOnly.value match {
+        case Some(si) => subUnmanaged(si.version, si.jars)
+        case None => sv => if(scalaProvider.version == sv) scalaProvider.jars else Nil
+      }
+      val transform: UpdateReport => UpdateReport = r => Classpaths.substituteScalaFiles(scalaOrganization.value, r)(subScalaJars)
+
+      val show = Reference.display(thisProjectRef.value)
+      Classpaths.cachedUpdate(s.cacheDirectory, show, ivyModule.value, (updateConfiguration in ignoreMissingUpdate).value, transform, skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated, log = s.log)
+    }
 }

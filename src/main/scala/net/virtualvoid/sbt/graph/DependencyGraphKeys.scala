@@ -1,0 +1,61 @@
+/*
+ * Copyright 2014 Johannes Rudolph
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
+package net.virtualvoid.sbt.graph
+
+import sbt._
+
+trait DependencyGraphKeys {
+  val dependencyGraphMLFile = SettingKey[File]("dependency-graph-ml-file",
+    "The location the graphml file should be generated at")
+  val dependencyGraphML = TaskKey[File]("dependency-graph-ml",
+    "Creates a graphml file containing the dependency-graph for a project")
+  val dependencyDotFile = SettingKey[File]("dependency-dot-file",
+    "The location the dot file should be generated at")
+  val dependencyDotNodeLabel = SettingKey[(String,String,String) => String]("dependency-dot-node-label",
+    "Returns a formated string of a dependency. Takes organisation, name and version as parameters")
+  val dependencyDotHeader = SettingKey[String]("dependency-dot-header",
+    "The header of the dot file. (e.g. to set your preferred node shapes)")
+  val dependencyDot = TaskKey[File]("dependency-dot",
+    "Creates a dot file containing the dpendency-graph for a project")
+  val moduleGraph = TaskKey[IvyGraphMLDependencies.ModuleGraph]("module-graph",
+    "The dependency graph for a project")
+  val asciiGraph = TaskKey[String]("dependency-graph-string",
+    "Returns a string containing the ascii representation of the dependency graph for a project")
+  val dependencyGraph = InputKey[Unit]("dependency-graph",
+    "Prints the ascii graph to the console")
+  val asciiTree = TaskKey[String]("dependency-tree-string",
+    "Returns a string containing an ascii tree representation of the dependency graph for a project")
+  val dependencyTree = TaskKey[Unit]("dependency-tree",
+    "Prints the ascii tree to the console")
+  val ivyReportFunction = TaskKey[String => File]("ivy-report-function",
+    "A function which returns the file containing the ivy report from the ivy cache for a given configuration")
+  val ivyReport = TaskKey[File]("ivy-report",
+    "A task which returns the location of the ivy report file for a given configuration (default `compile`).")
+  val ignoreMissingUpdate = Keys.update in ivyReport
+  val filterScalaLibrary = SettingKey[Boolean]("filter-scala-library",
+    "Specifies if scala dependency should be filtered in dependency-* output"
+  )
+
+  val licenseInfo = TaskKey[Unit]("dependency-license-info",
+    "Aggregates and shows information about the licenses of dependencies")
+
+  // internal
+  private[graph] val moduleGraphStore = TaskKey[IvyGraphMLDependencies.ModuleGraph]("module-graph-store", "The stored module-graph from the last run")
+  private[graph] val whatDependsOn = InputKey[Unit]("what-depends-on", "Shows information about what depends on the given module")
+}
+
+object DependencyGraphKeys extends DependencyGraphKeys
