@@ -1,6 +1,6 @@
 crossBuildingSettings
 
-CrossBuilding.crossSbtVersions := Seq("0.11.1", "0.11.2", "0.11.3", "0.12", "0.13")
+CrossBuilding.crossSbtVersions := Seq("0.13")
 
 CrossBuilding.scriptedSettings
 
@@ -17,3 +17,10 @@ libraryDependencies <+= scalaVersion { version =>
 }
 
 scalacOptions ++= Seq("-deprecation", "-unchecked")
+
+sbt.CrossBuilding.latestCompatibleVersionMapper ~= {
+  original => {
+    case "0.13" => "0.13.8"
+    case x => original(x)
+  }
+}
