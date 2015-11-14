@@ -26,8 +26,6 @@ import sbt.complete.Parser
 
 import org.apache.ivy.core.resolve.ResolveOptions
 
-import IvyGraphMLDependencies.ModuleGraph
-
 object DependencyGraphSettings {
   import DependencyGraphKeys._
   import ModuleGraphProtocol._
@@ -54,23 +52,23 @@ object DependencyGraphSettings {
 
   def ivyReportForConfig(config: Configuration) = inConfig(config)(Seq(
     ivyReport <<= ivyReportFunction map (_(config.toString)) dependsOn(ignoreMissingUpdate),
-    moduleGraph <<= ivyReport map (absoluteReportPath.andThen(IvyGraphMLDependencies.graph)),
+    moduleGraph <<= ivyReport map (absoluteReportPath.andThen(frontend.IvyReport.fromReportFile)),
     moduleGraph <<= (scalaVersion, moduleGraph, filterScalaLibrary) map { (scalaV, graph, filter) =>
       if (filter)
-        IvyGraphMLDependencies.ignoreScalaLibrary(scalaV, graph)
+        GraphTransformations.ignoreScalaLibrary(scalaV, graph)
       else
         graph
     },
     moduleGraphStore <<= moduleGraph storeAs moduleGraphStore triggeredBy moduleGraph,
-    asciiGraph <<= moduleGraph map IvyGraphMLDependencies.asciiGraph,
+    asciiGraph <<= moduleGraph map rendering.AsciiGraph.asciiGraph,
     dependencyGraph <<= InputTask(shouldForceParser) { force =>
       (force, moduleGraph, streams) map  { (force, graph, streams) =>
         if (force || graph.nodes.size < 15) {
-          streams.log.info(IvyGraphMLDependencies.asciiGraph(graph))
+          streams.log.info(rendering.AsciiGraph.asciiGraph(graph))
           streams.log.info("\n\n")
           streams.log.info("Note: The old tree layout is still available by using `dependency-tree`")
         } else {
-          streams.log.info(IvyGraphMLDependencies.asciiTree(graph))
+          streams.log.info(rendering.AsciiTree.asciiTree(graph))
 
           if (!force) {
             streams.log.info("\n")
@@ -79,7 +77,7 @@ object DependencyGraphSettings {
         }
       }
     },
-    asciiTree <<= moduleGraph map IvyGraphMLDependencies.asciiTree,
+    asciiTree <<= moduleGraph map rendering.AsciiTree.asciiTree,
     dependencyTree <<= print(asciiTree),
     dependencyGraphMLFile <<= target / "dependencies-%s.graphml".format(config.toString),
     dependencyGraphML <<= dependencyGraphMLTask,
@@ -98,7 +96,7 @@ object DependencyGraphSettings {
     },
     whatDependsOn <<= InputTask(artifactIdParser) { module =>
       (module, streams, moduleGraph) map { (module, streams, graph) =>
-        streams.log.info(IvyGraphMLDependencies.asciiTree(IvyGraphMLDependencies.reverseGraphStartingAt(graph, module)))
+        streams.log.info(rendering.AsciiTree.asciiTree(GraphTransformations.reverseGraphStartingAt(graph, module)))
       }
     },
     licenseInfo <<= (moduleGraph, streams) map showLicenseInfo
@@ -109,7 +107,7 @@ object DependencyGraphSettings {
 
   def dependencyGraphMLTask =
     (moduleGraph, dependencyGraphMLFile, streams) map { (graph, resultFile, streams) =>
-      IvyGraphMLDependencies.saveAsGraphML(graph, resultFile.getAbsolutePath)
+      rendering.GraphML.saveAsGraphML(graph, resultFile.getAbsolutePath)
       streams.log.info("Wrote dependency graph to '%s'" format resultFile)
       resultFile
     }
@@ -117,7 +115,7 @@ object DependencyGraphSettings {
     (moduleGraph, dependencyDotHeader, dependencyDotNodeLabel, dependencyDotFile, streams).map {
       (graph, dotHead, nodeLabel, outFile, streams) =>
 
-        val resultFile = IvyGraphMLDependencies.saveAsDot(graph, dotHead, nodeLabel, outFile)
+        val resultFile = rendering.DOT.saveAsDot(graph, dotHead, nodeLabel, outFile)
         streams.log.info("Wrote dependency graph to '%s'" format resultFile)
         resultFile
     }
@@ -142,8 +140,6 @@ object DependencyGraphSettings {
 
     (Space ~> token("--force")).?.map(_.isDefined)
   }
-
-  import IvyGraphMLDependencies.ModuleId
 
   val artifactIdParser: Initialize[State => Parser[ModuleId]] =
     resolvedScoped { ctx => (state: State) =>

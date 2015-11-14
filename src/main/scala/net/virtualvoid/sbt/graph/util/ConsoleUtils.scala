@@ -14,11 +14,14 @@
  *    limitations under the License.
  */
 
-package sbt
+package net.virtualvoid.sbt.graph.util
 
-/** Accessors to private[sbt] symbols. */
-object SbtAccess {
-  val unmanagedScalaInstanceOnly = Defaults.unmanagedScalaInstanceOnly
+import sbt.ConsoleLogger
 
-  def getTerminalWidth: Int = JLine.usingTerminal(_.getWidth)
+object ConsoleUtils {
+  def red(str: String, doRed: Boolean): String =
+    if (ConsoleLogger.formatEnabled && doRed)
+      Console.RED + str + Console.RESET
+    else
+      str
 }

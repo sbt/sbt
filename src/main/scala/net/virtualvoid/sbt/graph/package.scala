@@ -14,11 +14,8 @@
  *    limitations under the License.
  */
 
-package sbt
+package net.virtualvoid.sbt
 
-/** Accessors to private[sbt] symbols. */
-object SbtAccess {
-  val unmanagedScalaInstanceOnly = Defaults.unmanagedScalaInstanceOnly
-
-  def getTerminalWidth: Int = JLine.usingTerminal(_.getWidth)
+package object graph {
+  type Edge = (ModuleId, ModuleId)
 }

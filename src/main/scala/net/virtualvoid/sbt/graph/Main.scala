@@ -14,11 +14,20 @@
  *    limitations under the License.
  */
 
-package sbt
+package net.virtualvoid.sbt.graph
 
-/** Accessors to private[sbt] symbols. */
-object SbtAccess {
-  val unmanagedScalaInstanceOnly = Defaults.unmanagedScalaInstanceOnly
+import java.io.File
 
-  def getTerminalWidth: Int = JLine.usingTerminal(_.getWidth)
+object Main extends App {
+  def die(msg: String): Nothing = {
+    println(msg)
+    sys.exit(1)
+  }
+  def usage: String =
+    "Usage: <ivy-report-file> <output-file>"
+
+  val reportFile = args.lift(0).filter(f => new File(f).exists).getOrElse(die(usage))
+  val outputFile = args.lift(1).getOrElse(die(usage))
+  val graph = frontend.IvyReport.fromReportFile(reportFile)
+  rendering.GraphML.saveAsGraphML(graph, outputFile)
 }

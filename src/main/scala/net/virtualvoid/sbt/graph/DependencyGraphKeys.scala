@@ -31,7 +31,7 @@ trait DependencyGraphKeys {
     "The header of the dot file. (e.g. to set your preferred node shapes)")
   val dependencyDot = TaskKey[File]("dependency-dot",
     "Creates a dot file containing the dpendency-graph for a project")
-  val moduleGraph = TaskKey[IvyGraphMLDependencies.ModuleGraph]("module-graph",
+  val moduleGraph = TaskKey[ModuleGraph]("module-graph",
     "The dependency graph for a project")
   val asciiGraph = TaskKey[String]("dependency-graph-string",
     "Returns a string containing the ascii representation of the dependency graph for a project")
@@ -54,7 +54,7 @@ trait DependencyGraphKeys {
     "Aggregates and shows information about the licenses of dependencies")
 
   // internal
-  private[graph] val moduleGraphStore = TaskKey[IvyGraphMLDependencies.ModuleGraph]("module-graph-store", "The stored module-graph from the last run")
+  private[graph] val moduleGraphStore = TaskKey[ModuleGraph]("module-graph-store", "The stored module-graph from the last run")
   private[graph] val whatDependsOn = InputKey[Unit]("what-depends-on", "Shows information about what depends on the given module")
 }
 
