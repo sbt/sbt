@@ -81,7 +81,7 @@ lazy val incrementalcompilerRoot: Project = (project in file(".")).
 
 lazy val incrementalcompiler = (project in file("incrementalcompiler")).
   dependsOn(incrementalcompilerCore, incrementalcompilerPersist, incrementalcompilerCompileCore,
-    incrementalcompilerClassfile, incrementalcompilerIvyIntegration).
+    incrementalcompilerClassfile, incrementalcompilerIvyIntegration % "compile->compile;test->test").
   settings(
     testedBaseSettings,
     name := "incrementalcompiler",
@@ -127,7 +127,7 @@ lazy val incrementalcompilerIvyIntegration = (project in internalPath / "increme
   dependsOn(incrementalcompilerCompileCore).
   settings(
     baseSettings,
-    libraryDependencies += libraryManagement,
+    libraryDependencies ++= Seq(libraryManagement, libraryManagement % Test classifier "tests", utilTesting % Test),
     name := "Incrementalcompiler Ivy Integration"
   )
 
