@@ -82,6 +82,7 @@ private[sbt] object IC {
 
     if (skip) new CompileResult(prev, setup, false)
     else {
+      import MiniSetupUtil.equivCompileSetup
       val (analysis, changed) = compileInternal(MixedAnalyzingCompiler(config)(log))
       new CompileResult(analysis, setup, changed)
     }
