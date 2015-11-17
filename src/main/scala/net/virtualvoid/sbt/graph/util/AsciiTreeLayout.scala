@@ -30,7 +30,7 @@ object AsciiTreeLayout {
       else s
     def toAsciiLines(node: A, level: Int, parents: Set[A]): Vector[String] =
       if (parents contains node) // cycle
-        Vector(limitLine((twoSpaces * level) + "#-" + display(node)))
+        Vector(limitLine((twoSpaces * level) + "#-" + display(node) + " (cycle)"))
       else {
         val line = limitLine((twoSpaces * level) + (if (level == 0) "" else "+-") + display(node))
         val cs = Vector(children(node): _*)

@@ -79,7 +79,7 @@ class AsciiTreeLayoutSpecs extends Specification {
           |  | | +-3
           |  | |\u0020
           |  | +-5
-          |  |   #-1
+          |  |   #-1 (cycle)
           |  |   +-4
           |  |   | +-3
           |  |   |\u0020
