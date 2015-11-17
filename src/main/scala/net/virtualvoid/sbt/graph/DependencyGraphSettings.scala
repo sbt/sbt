@@ -16,6 +16,7 @@
 
 package net.virtualvoid.sbt.graph
 
+import net.virtualvoid.sbt.graph.frontend.SbtUpdateReport
 import sbt._
 import Keys._
 
@@ -51,12 +52,11 @@ object DependencyGraphSettings {
 
   def ivyReportForConfig(config: Configuration) = inConfig(config)(Seq(
     ivyReport <<= ivyReportFunction map (_(config.toString)) dependsOn (ignoreMissingUpdate),
-    moduleGraph <<= ivyReport map (absoluteReportPath.andThen(frontend.IvyReport.fromReportFile)),
+    crossProjectId <<= (scalaVersion, scalaBinaryVersion, projectID)((sV, sBV, id) ⇒ CrossVersion(sV, sBV)(id)),
+    moduleGraph <<= sbtUpdateReportGraph,
     moduleGraph <<= (scalaVersion, moduleGraph, filterScalaLibrary) map { (scalaV, graph, filter) ⇒
-      if (filter)
-        GraphTransformations.ignoreScalaLibrary(scalaV, graph)
-      else
-        graph
+      if (filter) GraphTransformations.ignoreScalaLibrary(scalaV, graph)
+      else graph
     },
     moduleGraphStore <<= moduleGraph storeAs moduleGraphStore triggeredBy moduleGraph,
     asciiGraph <<= moduleGraph map rendering.AsciiGraph.asciiGraph,
@@ -99,6 +99,12 @@ object DependencyGraphSettings {
       }
     },
     licenseInfo <<= (moduleGraph, streams) map showLicenseInfo))
+
+  def ivyReportGraph = ivyReport map (absoluteReportPath.andThen(frontend.IvyReport.fromReportFile))
+  def sbtUpdateReportGraph =
+    (ignoreMissingUpdate, crossProjectId, configuration) map { (update, root, config) ⇒
+      SbtUpdateReport.fromConfigurationReport(update.configuration(config.name).get, root)
+    }
 
   def printAsciiGraphTask =
     (streams, asciiGraph) map (_.log.info(_))
