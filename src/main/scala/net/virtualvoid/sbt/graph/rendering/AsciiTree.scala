@@ -25,15 +25,15 @@ object AsciiTree {
     val deps = graph.dependencyMap
 
     // there should only be one root node (the project itself)
-    val roots = graph.nodes.filter(n => !graph.edges.exists(_._2 == n.id)).sortBy(_.id.idString)
-    roots.map { root =>
-      AsciiTreeLayout.toAscii[Module](root, node => deps.getOrElse(node.id, Seq.empty[Module]), displayModule)
+    val roots = graph.nodes.filter(n ⇒ !graph.edges.exists(_._2 == n.id)).sortBy(_.id.idString)
+    roots.map { root ⇒
+      AsciiTreeLayout.toAscii[Module](root, node ⇒ deps.getOrElse(node.id, Seq.empty[Module]), displayModule)
     }.mkString("\n")
   }
 
   def displayModule(module: Module): String =
     red(module.id.idString +
       module.extraInfo +
-      module.error.map(" (error: "+_+")").getOrElse("") +
+      module.error.map(" (error: " + _ + ")").getOrElse("") +
       module.evictedByVersion.map(_ formatted " (evicted by: %s)").getOrElse(""), module.hadError)
 }

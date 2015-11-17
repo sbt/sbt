@@ -8,12 +8,12 @@ class AsciiTreeLayoutSpecs extends Specification {
   case class Leaf(i: Int) extends Tree
 
   def children(t: Tree): Seq[Tree] = t match {
-    case Branch(left, right) => Seq(left, right)
-    case _: Leaf => Nil
+    case Branch(left, right) ⇒ Seq(left, right)
+    case _: Leaf             ⇒ Nil
   }
   def display(t: Tree): String = t match {
-    case Branch(left, right) => "Branch"
-    case Leaf(value) => value.toString * value
+    case Branch(left, right) ⇒ "Branch"
+    case Leaf(value)         ⇒ value.toString * value
   }
 
   "Graph" should {
@@ -66,29 +66,29 @@ class AsciiTreeLayoutSpecs extends Specification {
     }
     "cut off cycles" in {
       AsciiTreeLayout.toAscii[Int](1, Map(
-        1 -> Seq(2,3,4),
-        2 -> Seq(4,5),
+        1 -> Seq(2, 3, 4),
+        2 -> Seq(4, 5),
         3 -> Seq(),
         4 -> Seq(3),
-        5 -> Seq(1,4,6,7),
+        5 -> Seq(1, 4, 6, 7),
         6 -> Seq(),
         7 -> Seq()), _.toString).trim ===
-          """1
-            |  +-2
-            |  | +-4
-            |  | | +-3
-            |  | |\u0020
-            |  | +-5
-            |  |   #-1
-            |  |   +-4
-            |  |   | +-3
-            |  |   |\u0020
-            |  |   +-6
-            |  |   +-7
-            |  |\u0020\u0020\u0020
-            |  +-3
-            |  +-4
-            |    +-3""".stripMargin.trim
+        """1
+          |  +-2
+          |  | +-4
+          |  | | +-3
+          |  | |\u0020
+          |  | +-5
+          |  |   #-1
+          |  |   +-4
+          |  |   | +-3
+          |  |   |\u0020
+          |  |   +-6
+          |  |   +-7
+          |  |\u0020\u0020\u0020
+          |  +-3
+          |  +-4
+          |    +-3""".stripMargin.trim
     }
   }
 }

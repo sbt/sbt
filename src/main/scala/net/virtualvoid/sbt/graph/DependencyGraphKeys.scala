@@ -25,7 +25,7 @@ trait DependencyGraphKeys {
     "Creates a graphml file containing the dependency-graph for a project")
   val dependencyDotFile = SettingKey[File]("dependency-dot-file",
     "The location the dot file should be generated at")
-  val dependencyDotNodeLabel = SettingKey[(String,String,String) => String]("dependency-dot-node-label",
+  val dependencyDotNodeLabel = SettingKey[(String, String, String) ⇒ String]("dependency-dot-node-label",
     "Returns a formated string of a dependency. Takes organisation, name and version as parameters")
   val dependencyDotHeader = SettingKey[String]("dependency-dot-header",
     "The header of the dot file. (e.g. to set your preferred node shapes)")
@@ -41,14 +41,13 @@ trait DependencyGraphKeys {
     "Returns a string containing an ascii tree representation of the dependency graph for a project")
   val dependencyTree = TaskKey[Unit]("dependency-tree",
     "Prints the ascii tree to the console")
-  val ivyReportFunction = TaskKey[String => File]("ivy-report-function",
+  val ivyReportFunction = TaskKey[String ⇒ File]("ivy-report-function",
     "A function which returns the file containing the ivy report from the ivy cache for a given configuration")
   val ivyReport = TaskKey[File]("ivy-report",
     "A task which returns the location of the ivy report file for a given configuration (default `compile`).")
   val ignoreMissingUpdate = Keys.update in ivyReport
   val filterScalaLibrary = SettingKey[Boolean]("filter-scala-library",
-    "Specifies if scala dependency should be filtered in dependency-* output"
-  )
+    "Specifies if scala dependency should be filtered in dependency-* output")
 
   val licenseInfo = TaskKey[Unit]("dependency-license-info",
     "Aggregates and shows information about the licenses of dependencies")

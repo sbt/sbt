@@ -28,7 +28,7 @@ object AsciiGraph {
       module.id.name + module.extraInfo + "\n" +
         module.id.organisation + "\n" +
         module.id.version +
-        module.error.map("\nerror: "+_).getOrElse("") +
+        module.error.map("\nerror: " + _).getOrElse("") +
         module.evictedByVersion.map(_ formatted "\nevicted by: %s").getOrElse("")
 
     val vertices = moduleGraph.nodes.map(renderVertex).toList

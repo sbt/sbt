@@ -25,15 +25,15 @@ object GraphTransformations {
         Nil
       else
         deps.get(module) match {
-          case Some(deps) =>
-            deps.flatMap { to =>
+          case Some(deps) ⇒
+            deps.flatMap { to ⇒
               (module, to.id) +: visit(to.id, visited + module)
             }
-          case None => Nil
+          case None ⇒ Nil
         }
 
     val edges = visit(root, Set.empty)
-    val nodes = edges.foldLeft(Set.empty[ModuleId])((set, edge) => set + edge._1 + edge._2).map(graph.module)
+    val nodes = edges.foldLeft(Set.empty[ModuleId])((set, edge) ⇒ set + edge._1 + edge._2).map(graph.module)
     ModuleGraph(nodes.toSeq, edges)
   }
 
@@ -52,7 +52,7 @@ object GraphTransformations {
     }
 
     val newNodes = graph.nodes.map(addScalaLibraryAnnotation).filterNot(isScalaLibrary)
-    val newEdges = graph.edges.filterNot(e => isScalaLibraryId(e._2))
+    val newEdges = graph.edges.filterNot(e ⇒ isScalaLibraryId(e._2))
     ModuleGraph(newNodes, newEdges)
   }
 }

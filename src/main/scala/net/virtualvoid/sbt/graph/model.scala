@@ -16,12 +16,12 @@
 
 package net.virtualvoid.sbt.graph
 
-import scala.collection.mutable.{MultiMap, HashMap, Set}
+import scala.collection.mutable.{ MultiMap, HashMap, Set }
 
 case class ModuleId(organisation: String,
                     name: String,
                     version: String) {
-  def idString: String = organisation+":"+name+":"+version
+  def idString: String = organisation + ":" + name + ":" + version
 }
 case class Module(id: ModuleId,
                   license: Option[String] = None,
@@ -34,7 +34,7 @@ case class Module(id: ModuleId,
 
 case class ModuleGraph(nodes: Seq[Module], edges: Seq[Edge]) {
   lazy val modules: Map[ModuleId, Module] =
-    nodes.map(n => (n.id, n)).toMap
+    nodes.map(n ⇒ (n.id, n)).toMap
 
   def module(id: ModuleId): Module = modules(id)
 
@@ -42,11 +42,11 @@ case class ModuleGraph(nodes: Seq[Module], edges: Seq[Edge]) {
     createMap(identity)
 
   lazy val reverseDependencyMap: Map[ModuleId, Seq[Module]] =
-    createMap { case (a, b) => (b, a) }
+    createMap { case (a, b) ⇒ (b, a) }
 
-  def createMap(bindingFor: ((ModuleId, ModuleId)) => (ModuleId, ModuleId)): Map[ModuleId, Seq[Module]] = {
+  def createMap(bindingFor: ((ModuleId, ModuleId)) ⇒ (ModuleId, ModuleId)): Map[ModuleId, Seq[Module]] = {
     val m = new HashMap[ModuleId, Set[Module]] with MultiMap[ModuleId, Module]
-    edges.foreach { entry =>
+    edges.foreach { entry ⇒
       val (f, t) = bindingFor(entry)
       m.addBinding(f, module(t))
     }
@@ -54,7 +54,7 @@ case class ModuleGraph(nodes: Seq[Module], edges: Seq[Edge]) {
   }
 }
 
-import sbinary.{Format, DefaultProtocol}
+import sbinary.{ Format, DefaultProtocol }
 object ModuleGraphProtocol extends DefaultProtocol {
   implicit def seqFormat[T: Format]: Format[Seq[T]] = wrap[Seq[T], List[T]](_.toList, _.toSeq)
   implicit val ModuleIdFormat: Format[ModuleId] = asProduct3(ModuleId)(ModuleId.unapply(_).get)

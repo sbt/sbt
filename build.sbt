@@ -24,3 +24,5 @@ sbt.CrossBuilding.latestCompatibleVersionMapper ~= {
     case x => original(x)
   }
 }
+
+ScalariformSupport.formatSettings
