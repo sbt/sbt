@@ -16,7 +16,7 @@
 
 package net.virtualvoid.sbt.graph
 
-import net.virtualvoid.sbt.graph.frontend.SbtUpdateReport
+import net.virtualvoid.sbt.graph.backend.{ IvyReport, SbtUpdateReport }
 import sbt._
 import Keys._
 
@@ -100,7 +100,7 @@ object DependencyGraphSettings {
     },
     licenseInfo <<= (moduleGraph, streams) map showLicenseInfo))
 
-  def ivyReportGraph = ivyReport map (absoluteReportPath.andThen(frontend.IvyReport.fromReportFile))
+  def ivyReportGraph = ivyReport map (absoluteReportPath.andThen(IvyReport.fromReportFile))
   def sbtUpdateReportGraph =
     (ignoreMissingUpdate, crossProjectId, configuration) map { (update, root, config) ⇒
       SbtUpdateReport.fromConfigurationReport(update.configuration(config.name).get, root)

@@ -15,7 +15,7 @@
  */
 
 package net.virtualvoid.sbt.graph
-package frontend
+package backend
 
 import sbt._
 

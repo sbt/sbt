@@ -18,6 +18,8 @@ package net.virtualvoid.sbt.graph
 
 import java.io.File
 
+import net.virtualvoid.sbt.graph.backend.IvyReport
+
 object Main extends App {
   def die(msg: String): Nothing = {
     println(msg)
@@ -28,6 +30,6 @@ object Main extends App {
 
   val reportFile = args.lift(0).filter(f ⇒ new File(f).exists).getOrElse(die(usage))
   val outputFile = args.lift(1).getOrElse(die(usage))
-  val graph = frontend.IvyReport.fromReportFile(reportFile)
+  val graph = IvyReport.fromReportFile(reportFile)
   rendering.GraphML.saveAsGraphML(graph, outputFile)
 }

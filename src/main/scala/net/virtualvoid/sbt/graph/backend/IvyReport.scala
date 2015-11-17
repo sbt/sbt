@@ -14,9 +14,8 @@
  *    limitations under the License.
  */
 
-package net.virtualvoid.sbt.graph.frontend
-
-import net.virtualvoid.sbt.graph._
+package net.virtualvoid.sbt.graph
+package backend
 
 import scala.xml.{ NodeSeq, Document, Node }
 import scala.xml.parsing.ConstructingParser
