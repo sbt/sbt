@@ -28,6 +28,19 @@ class AsciiTreeLayoutSpecs extends Specification {
           |  +-333
           |  """.stripMargin
     }
+    "add separator lines where applicable" in {
+      val simple = Branch(Branch(Leaf(1), Branch(Leaf(2), Leaf(3))), Leaf(4))
+      AsciiTreeLayout.toAscii(simple, children, display, 20) ===
+        """Branch
+          |  +-Branch
+          |  | +-1
+          |  | +-Branch
+          |  |   +-22
+          |  |   +-333
+          |  |\u0020\u0020\u0020
+          |  +-4444
+          |  """.stripMargin
+    }
     "layout deep graphs" in {
       val simple = Branch(Branch(Branch(Branch(Branch(Branch(Leaf(1), Leaf(1)), Leaf(1)), Leaf(1)), Leaf(2)), Leaf(3)), Leaf(4))
       AsciiTreeLayout.toAscii(simple, children, display, 10) ===
@@ -50,6 +63,29 @@ class AsciiTreeLayoutSpecs extends Specification {
           |  |\u0020
           |  +-4444
           |  """.stripMargin
+    }
+    "cut off cycles" in {
+      AsciiTreeLayout.toAscii[Int](1, Map(
+        1 -> Seq(2,3,4),
+        2 -> Seq(4,5),
+        3 -> Seq(),
+        4 -> Seq(3),
+        5 -> Seq(1,4,6,7),
+        6 -> Seq(),
+        7 -> Seq()), _.toString).trim ===
+          """1
+            |  +-2
+            |  | +-4
+            |  | | +-3
+            |  | |
+            |  | +-5
+            |  |   #-1
+            |  |   #-4
+            |  |   +-6
+            |  |   +-7
+            |  |
+            |  #-3
+            |  #-4""".stripMargin.trim
     }
   }
 }
