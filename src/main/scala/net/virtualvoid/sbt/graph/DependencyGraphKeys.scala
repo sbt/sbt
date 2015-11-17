@@ -30,7 +30,7 @@ trait DependencyGraphKeys {
   val dependencyDotHeader = SettingKey[String]("dependency-dot-header",
     "The header of the dot file. (e.g. to set your preferred node shapes)")
   val dependencyDot = TaskKey[File]("dependency-dot",
-    "Creates a dot file containing the dpendency-graph for a project")
+    "Creates a dot file containing the dependency-graph for a project")
   val moduleGraph = TaskKey[ModuleGraph]("module-graph",
     "The dependency graph for a project")
   val asciiGraph = TaskKey[String]("dependency-graph-string",
