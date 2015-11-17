@@ -77,15 +77,18 @@ class AsciiTreeLayoutSpecs extends Specification {
             |  +-2
             |  | +-4
             |  | | +-3
-            |  | |
+            |  | |\u0020
             |  | +-5
             |  |   #-1
-            |  |   #-4
+            |  |   +-4
+            |  |   | +-3
+            |  |   |\u0020
             |  |   +-6
             |  |   +-7
-            |  |
-            |  #-3
-            |  #-4""".stripMargin.trim
+            |  |\u0020\u0020\u0020
+            |  +-3
+            |  +-4
+            |    +-3""".stripMargin.trim
     }
   }
 }

@@ -28,20 +28,27 @@ object AsciiTreeLayout {
         }) +
         s.slice(at + 1, s.length)
       else s
-		def toAsciiLines(node: A, level: Int): Vector[String] = {
-			val line = limitLine((twoSpaces * level) + (if (level == 0) "" else "+-") + display(node))
-			val cs = Vector(children(node): _*)
-			val childLines = cs map {toAsciiLines(_, level + 1)}
-			val withBar = childLines.zipWithIndex flatMap {
-				case (lines, pos) if pos < (cs.size - 1) => lines map {insertBar(_, 2 * (level + 1))}
-				case (lines, pos) =>
-					if (lines.last.trim != "") lines ++ Vector(twoSpaces * (level + 1))
-					else lines
+		def toAsciiLines(node: A, level: Int, parents: Set[A]): Vector[String] =
+			if (parents contains node) // cycle
+				Vector(limitLine((twoSpaces * level) + "#-" + display(node)))
+			else {
+				val line = limitLine((twoSpaces * level) + (if (level == 0) "" else "+-") + display(node))
+				val cs = Vector(children(node): _*)
+				val childLines = cs map {
+					toAsciiLines(_, level + 1, parents + node)
+				}
+				val withBar = childLines.zipWithIndex flatMap {
+					case (lines, pos) if pos < (cs.size - 1) => lines map {
+						insertBar(_, 2 * (level + 1))
+					}
+					case (lines, pos) =>
+						if (lines.last.trim != "") lines ++ Vector(twoSpaces * (level + 1))
+						else lines
+				}
+				line +: withBar
 			}
-			line +: withBar
-		}
 
-		toAsciiLines(top, 0).mkString("\n")
+		toAsciiLines(top, 0, Set.empty).mkString("\n")
 	}
 
   def defaultColumnSize: Int = {
