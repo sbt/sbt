@@ -3,6 +3,8 @@ sbt-dependency-graph
 
 Visualize your project's dependencies.
 
+**Note: A more recent (currently experimental) version lives in the [0.8 branch](https://github.com/jrudolph/sbt-dependency-graph/tree/0.8).**
+
 How To Use
 ----------
 
