@@ -17,12 +17,12 @@
 package net.virtualvoid.sbt.graph
 
 import net.virtualvoid.sbt.graph.backend.{ IvyReport, SbtUpdateReport }
+import net.virtualvoid.sbt.graph.util.IOUtil
 import sbt._
 import Keys._
 
 import CrossVersion._
 
-import sbt.complete.DefaultParsers._
 import sbt.complete.Parser
 
 import org.apache.ivy.core.resolve.ResolveOptions
@@ -81,17 +81,15 @@ object DependencyGraphSettings {
     dependencyGraphMLFile <<= target / "dependencies-%s.graphml".format(config.toString),
     dependencyGraphML <<= dependencyGraphMLTask,
     dependencyDotFile <<= target / "dependencies-%s.dot".format(config.toString),
-    dependencyDot <<= dependencyDotTask,
+    dependencyDotString <<= dependencyDotStringTask,
+    dependencyDot <<= writeToFile(dependencyDotString, dependencyDotFile),
     dependencyDotHeader := """digraph "dependency-graph" {
                              |    graph[rankdir="LR"]
-                             |    node [
-                             |        shape="record"
-                             |    ]
                              |    edge [
                              |        arrowtail="none"
                              |    ]""".stripMargin,
     dependencyDotNodeLabel := { (organisation: String, name: String, version: String) ⇒
-      """<%s<BR/><B>%s</B><BR/>%s>""".format(organisation, name, version)
+      """%s<BR/><B>%s</B><BR/>%s""".format(organisation, name, version)
     },
     whatDependsOn <<= InputTask(artifactIdParser) { module ⇒
       (module, streams, moduleGraph) map { (module, streams, graph) ⇒
@@ -115,14 +113,19 @@ object DependencyGraphSettings {
       streams.log.info("Wrote dependency graph to '%s'" format resultFile)
       resultFile
     }
-  def dependencyDotTask =
-    (moduleGraph, dependencyDotHeader, dependencyDotNodeLabel, dependencyDotFile, streams).map {
-      (graph, dotHead, nodeLabel, outFile, streams) ⇒
-
-        val resultFile = rendering.DOT.saveAsDot(graph, dotHead, nodeLabel, outFile)
-        streams.log.info("Wrote dependency graph to '%s'" format resultFile)
-        resultFile
+  def dependencyDotStringTask =
+    (moduleGraph, dependencyDotHeader, dependencyDotNodeLabel).map {
+      (graph, dotHead, nodeLabel) ⇒ rendering.DOT.dotGraph(graph, dotHead, nodeLabel)
     }
+
+  def writeToFile(dataTask: TaskKey[String], fileTask: SettingKey[File]) =
+    (dataTask, fileTask, streams).map { (data, outFile, streams) ⇒
+      IOUtil.writeToFile(data, outFile)
+
+      streams.log.info("Wrote dependency graph to '%s'" format outFile)
+      outFile
+    }
+
   def absoluteReportPath = (file: File) ⇒ file.getAbsolutePath
 
   def print(key: TaskKey[String]) =

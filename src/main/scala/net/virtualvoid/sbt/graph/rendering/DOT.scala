@@ -14,31 +14,50 @@
  *    limitations under the License.
  */
 
-package net.virtualvoid.sbt.graph.rendering
-
-import java.io.File
-
-import net.virtualvoid.sbt.graph.ModuleGraph
+package net.virtualvoid.sbt.graph
+package rendering
 
 object DOT {
-  def saveAsDot(graph: ModuleGraph,
-                dotHead: String,
-                nodeFormation: (String, String, String) ⇒ String,
-                outputFile: File): File = {
+  val EvictedStyle = "stroke-dasharray: 5,5"
+
+  def dotGraph(graph: ModuleGraph,
+               dotHead: String,
+               nodeFormation: (String, String, String) ⇒ String): String = {
     val nodes = {
-      for (n ← graph.nodes)
-        yield """    "%s"[label=%s]""".format(n.id.idString,
-        nodeFormation(n.id.organisation, n.id.name, n.id.version))
+      for (n ← graph.nodes) yield {
+        val style = if (n.isEvicted) EvictedStyle else ""
+        """    "%s"[labelType="html" label="%s" style="%s"]""".format(n.id.idString,
+          nodeFormation(n.id.organisation, n.id.name, n.id.version),
+          style)
+      }
     }.mkString("\n")
+
+    def originWasEvicted(edge: Edge): Boolean = graph.module(edge._1).isEvicted
+    def targetWasEvicted(edge: Edge): Boolean = graph.module(edge._2).isEvicted
+
+    // add extra edges from evicted to evicted-by module
+    val evictedByEdges: Seq[Edge] =
+      graph.nodes.filter(_.isEvicted).map(m ⇒ Edge(m.id, m.id.copy(version = m.evictedByVersion.get)))
+
+    // remove edges to new evicted-by module which is now replaced by a chain
+    // dependend -> [evicted] -> dependee
+    val evictionTargetEdges =
+      graph.edges.filter(targetWasEvicted).map {
+        case (from, evicted) ⇒ (from, evicted.copy(version = graph.module(evicted).evictedByVersion.get))
+      }.toSet
+
+    val filteredEdges =
+      graph.edges
+        .filterNot(e ⇒ originWasEvicted(e) || evictionTargetEdges(e)) ++ evictedByEdges
 
     val edges = {
-      for (e ← graph.edges)
-        yield """    "%s" -> "%s"""".format(e._1.idString, e._2.idString)
+      for (e ← filteredEdges) yield {
+        val extra = if (graph.module(e._1).isEvicted)
+          s""" [label="Evicted By" style="$EvictedStyle"]""" else ""
+        """    "%s" -> "%s"%s""".format(e._1.idString, e._2.idString, extra)
+      }
     }.mkString("\n")
 
-    val dot = "%s\n%s\n%s\n}".format(dotHead, nodes, edges)
-
-    sbt.IO.write(outputFile, dot)
-    outputFile
+    "%s\n%s\n%s\n}".format(dotHead, nodes, edges)
   }
 }
