@@ -33,6 +33,12 @@ trait DependencyGraphKeys {
     "Creates a dot file containing the dependency-graph for a project")
   val dependencyDotString = TaskKey[String]("dependency-dot-string",
     "Creates a String containing the dependency-graph for a project in dot format")
+  val dependencyBrowseGraphTarget = SettingKey[File]("dependency-browse-graph-target",
+    "The location dependency browse graph files should be put.")
+  val dependencyBrowseGraphHTML = TaskKey[URI]("dependency-browse-graph-html",
+    "Creates an HTML page that can be used to view the graph.")
+  val dependencyBrowseGraph = TaskKey[URI]("dependency-browse-graph",
+    "Opens an HTML page that can be used to view the graph.")
   val moduleGraph = TaskKey[ModuleGraph]("module-graph",
     "The dependency graph for a project")
   val asciiGraph = TaskKey[String]("dependency-graph-string",

@@ -29,7 +29,8 @@ case class Module(id: ModuleId,
                   evictedByVersion: Option[String] = None,
                   error: Option[String] = None) {
   def hadError: Boolean = error.isDefined
-  def isUsed: Boolean = !evictedByVersion.isDefined
+  def isUsed: Boolean = !isEvicted
+  def isEvicted: Boolean = evictedByVersion.isDefined
 }
 
 case class ModuleGraph(nodes: Seq[Module], edges: Seq[Edge]) {

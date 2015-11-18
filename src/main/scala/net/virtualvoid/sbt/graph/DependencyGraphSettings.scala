@@ -16,8 +16,6 @@
 
 package net.virtualvoid.sbt.graph
 
-import net.virtualvoid.sbt.graph.backend.{ IvyReport, SbtUpdateReport }
-import net.virtualvoid.sbt.graph.util.IOUtil
 import sbt._
 import Keys._
 
@@ -26,6 +24,10 @@ import CrossVersion._
 import sbt.complete.Parser
 
 import org.apache.ivy.core.resolve.ResolveOptions
+
+import net.virtualvoid.sbt.graph.backend.{ IvyReport, SbtUpdateReport }
+import net.virtualvoid.sbt.graph.rendering.DagreHTML
+import net.virtualvoid.sbt.graph.util.IOUtil
 
 object DependencyGraphSettings {
   import DependencyGraphKeys._
@@ -83,6 +85,13 @@ object DependencyGraphSettings {
     dependencyDotFile <<= target / "dependencies-%s.dot".format(config.toString),
     dependencyDotString <<= dependencyDotStringTask,
     dependencyDot <<= writeToFile(dependencyDotString, dependencyDotFile),
+    dependencyBrowseGraphTarget <<= target / "browse-dependency-graph",
+    dependencyBrowseGraphHTML <<= browseGraphHTMLTask,
+    dependencyBrowseGraph <<= (dependencyBrowseGraphHTML, streams).map { (uri, streams) ⇒
+      streams.log.info("Opening in browser...")
+      java.awt.Desktop.getDesktop.browse(uri)
+      uri
+    },
     dependencyDotHeader := """digraph "dependency-graph" {
                              |    graph[rankdir="LR"]
                              |    edge [
@@ -116,6 +125,13 @@ object DependencyGraphSettings {
   def dependencyDotStringTask =
     (moduleGraph, dependencyDotHeader, dependencyDotNodeLabel).map {
       (graph, dotHead, nodeLabel) ⇒ rendering.DOT.dotGraph(graph, dotHead, nodeLabel)
+    }
+
+  def browseGraphHTMLTask =
+    (dependencyDotString, dependencyBrowseGraphTarget, streams).map { (graph, target, streams) ⇒
+      val link = DagreHTML.createLink(graph, target)
+      streams.log.info(s"HTML graph written to $link")
+      link
     }
 
   def writeToFile(dataTask: TaskKey[String], fileTask: SettingKey[File]) =
