@@ -49,7 +49,8 @@ lazy val commonSettings = Seq(
   crossScalaVersions := Seq("2.10.6", "2.11.7"),
   resolvers ++= Seq(
     "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
-    Resolver.sonatypeRepo("releases")
+    Resolver.sonatypeRepo("releases"),
+    Resolver.sonatypeRepo("snapshots")
   )
 )
 
@@ -113,7 +114,7 @@ lazy val cli = project
   .settings(
     name := "coursier-cli",
     libraryDependencies ++= Seq(
-      "com.github.alexarchambault" %% "case-app" % "0.3.0",
+      "com.github.alexarchambault" %% "case-app" % "1.0.0-SNAPSHOT",
       "ch.qos.logback" % "logback-classic" % "1.1.3"
     ) ++ {
       if (scalaVersion.value startsWith "2.10.")
