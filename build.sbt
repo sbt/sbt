@@ -34,6 +34,12 @@ lazy val publishingSettings = Seq(
   publishArtifactsAction := PgpKeys.publishSigned.value
 ) ++ releaseSettings
 
+lazy val noPublishSettings = Seq(
+  publish := (),
+  publishLocal := (),
+  publishArtifact := false
+)
+
 lazy val commonSettings = Seq(
   organization := "com.github.alexarchambault",
   scalaVersion := "2.11.7",
@@ -42,7 +48,13 @@ lazy val commonSettings = Seq(
     "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
     Resolver.sonatypeRepo("releases"),
     Resolver.sonatypeRepo("snapshots")
-  )
+  ),
+  libraryDependencies ++= {
+    if (scalaVersion.value startsWith "2.10.")
+      Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.0.1" cross CrossVersion.full))
+    else
+      Seq()
+  }
 )
 
 lazy val core = crossProject
@@ -107,18 +119,17 @@ lazy val cli = project
     libraryDependencies ++= Seq(
       "com.github.alexarchambault" %% "case-app" % "1.0.0-SNAPSHOT",
       "ch.qos.logback" % "logback-classic" % "1.1.3"
-    ) ++ {
-      if (scalaVersion.value startsWith "2.10.")
-        Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.0.1" cross CrossVersion.full))
-      else
-        Seq()
-    }
+    ),
+    resourceGenerators in Compile += assembly.in(bootstrap).in(assembly).map { jar =>
+      Seq(jar)
+    }.taskValue
   )
 
 lazy val web = project
   .enablePlugins(ScalaJSPlugin)
   .dependsOn(coreJs)
   .settings(commonSettings)
+  .settings(noPublishSettings)
   .settings(
     libraryDependencies ++= {
       if (scalaVersion.value startsWith "2.10.")
@@ -134,8 +145,6 @@ lazy val web = project
       else
         dir
     },
-    publish := (),
-    publishLocal := (),
     test in Test := (),
     testOnly in Test := (),
     resolvers += "Webjars Bintray" at "https://dl.bintray.com/webjars/maven/",
@@ -147,12 +156,19 @@ lazy val web = project
     )
   )
 
-lazy val `coursier` = project.in(file("."))
-  .aggregate(coreJvm, coreJs, files, cli, web)
+lazy val bootstrap = project
   .settings(commonSettings)
+  .settings(noPublishSettings)
+  .settings(
+    name := "coursier-bootstrap",
+    assemblyJarName in assembly := s"bootstrap.jar"
+  )
+
+lazy val `coursier` = project.in(file("."))
+  .aggregate(coreJvm, coreJs, files, cli, web, bootstrap)
+  .settings(commonSettings)
+  .settings(noPublishSettings)
   .settings(
     (unmanagedSourceDirectories in Compile) := Nil,
-    (unmanagedSourceDirectories in Test) := Nil,
-    publish := (),
-    publishLocal := ()
+    (unmanagedSourceDirectories in Test) := Nil
   )

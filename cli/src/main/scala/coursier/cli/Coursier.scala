@@ -1,8 +1,9 @@
 package coursier
 package cli
 
-import java.io.File
+import java.io.{ File, IOException }
 import java.net.URLClassLoader
+import java.nio.file.{ Files => NIOFiles }
 
 import caseapp._
 
@@ -34,6 +35,8 @@ case class CommonOptions(
   val verbose0 = verbose.length + (if (quiet) 1 else 0)
 }
 
+@AppName("Coursier")
+@ProgName("coursier")
 sealed trait CoursierCommand extends Command
 
 case class Fetch(
@@ -60,7 +63,6 @@ case class Fetch(
 }
 
 case class Launch(
-  @HelpMessage("If -L or --launch is specified, the main class to launch")
   @ExtraName("M")
   @ExtraName("main")
     mainClass: String,
@@ -95,7 +97,10 @@ case class Launch(
   import scala.collection.JavaConverters._
   val cl = new URLClassLoader(
     files0.map(_.toURI.toURL).toArray,
-    Thread.currentThread().getContextClassLoader // setting this to null provokes strange things (wrt terminal, ...)
+    // setting this to null provokes strange things (wrt terminal, ...)
+    // but this is far from perfect: this puts all our dependencies along with the user's,
+    // and with a higher priority
+    Thread.currentThread().getContextClassLoader
   )
 
   val mainClass0 =
@@ -235,6 +240,81 @@ case class Repository(
     for ((id, repo, _) <- cache.list().sortBy(_._1)) {
       println(s"$id: ${repo.root}" + (if (repo.ivyLike) " (Ivy-like)" else ""))
     }
+
+}
+
+case class Bootstrap(
+  @ExtraName("M")
+  @ExtraName("main")
+    mainClass: String,
+  @ExtraName("o")
+    output: String,
+  @ExtraName("D")
+    downloadDir: String,
+  @ExtraName("f")
+    force: Boolean,
+  @Recurse
+    common: CommonOptions
+) extends CoursierCommand {
+
+  if (mainClass.isEmpty) {
+    Console.err.println(s"Error: no main class specified. Specify one with -M or --main")
+    sys.exit(255)
+  }
+
+  if (downloadDir.isEmpty) {
+    Console.err.println(s"Error: no download dir specified. Specify one with -D or --download-dir")
+    Console.err.println("E.g. -D \"\\$HOME/.app-name/jars\"")
+    sys.exit(255)
+  }
+
+  val downloadDir0 =
+    if (downloadDir.isEmpty)
+      "$HOME/"
+    else
+      downloadDir
+
+  val bootstrapJar =
+    Option(Thread.currentThread().getContextClassLoader.getResourceAsStream("bootstrap.jar")) match {
+      case Some(is) => Files.readFullySync(is)
+      case None =>
+        Console.err.println(s"Error: bootstrap JAR not found")
+        sys.exit(1)
+    }
+
+  // scala-library version in the resulting JARs has to match the one in the bootstrap JAR
+  // This should be enforced more strictly (possibly by having one bootstrap JAR per scala version).
+
+  val helper = new Helper(
+    common,
+    remainingArgs :+ s"org.scala-lang:scala-library:${scala.util.Properties.versionNumberString}"
+  )
+
+  val artifacts = helper.res.artifacts
+
+  val urls = artifacts.map(_.url)
+
+  val unrecognized = urls.filter(s => !s.startsWith("http://") && !s.startsWith("https://"))
+  if (unrecognized.nonEmpty)
+    Console.err.println(s"Warning: non HTTP URLs:\n${unrecognized.mkString("\n")}")
+
+  val output0 = new File(output)
+  if (!force && output0.exists()) {
+    Console.err.println(s"Error: $output already exists, use -f option to force erasing it.")
+    sys.exit(1)
+  }
+
+  val shellPreamble = Seq(
+    "#!/usr/bin/env sh",
+    "exec java -jar \"$0\" \"" + mainClass + "\" \"" + downloadDir + "\" " + urls.map("\"" + _ + "\"").mkString(" ") + " -- \"$@\"",
+    ""
+  ).mkString("\n")
+
+  try NIOFiles.write(output0.toPath, shellPreamble.getBytes("UTF-8") ++ bootstrapJar)
+  catch { case e: IOException =>
+    Console.err.println(s"Error while writing $output0: ${e.getMessage}")
+    sys.exit(1)
+  }
 
 }
 
