@@ -16,7 +16,7 @@ install:
 build_script:
   - sbt clean compile publish-local
 test_script:
-  - sbt core-jvm/test # Would node be around for core-js/test?
+  - sbt coreJVM/test # Would node be around for coreJS/test?
 cache:
   - C:\sbt\
   - C:\Users\appveyor\.m2
