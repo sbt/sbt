@@ -34,7 +34,7 @@ case class CommonOptions(
   val verbose0 = verbose.length + (if (quiet) 1 else 0)
 }
 
-sealed trait Command extends App
+sealed trait CoursierCommand extends Command
 
 case class Fetch(
   @HelpMessage("Fetch source artifacts")
@@ -45,7 +45,7 @@ case class Fetch(
     javadoc: Boolean,
   @Recurse
     common: CommonOptions
-) extends Command {
+) extends CoursierCommand {
 
   val helper = new Helper(common, remainingArgs)
 
@@ -66,7 +66,7 @@ case class Launch(
     mainClass: String,
   @Recurse
     common: CommonOptions
-) extends Command {
+) extends CoursierCommand {
 
   val (rawDependencies, extraArgs) = {
     val idxOpt = Some(remainingArgs.indexOf("--")).filter(_ >= 0)
@@ -141,7 +141,7 @@ case class Launch(
 case class Classpath(
   @Recurse
     common: CommonOptions
-) extends Command {
+) extends CoursierCommand {
 
   val helper = new Helper(common, remainingArgs)
 
@@ -165,7 +165,7 @@ case class Repository(
   @ExtraName("l")
     defaultList: Boolean,
   ivyLike: Boolean
-) extends Command {
+) extends CoursierCommand {
 
   if (add.exists(!_.contains(":"))) {
     CaseApp.printUsage[Repository](err = true)
@@ -238,4 +238,4 @@ case class Repository(
 
 }
 
-object CoursierApp extends CommandAppOf[Command]
+object Coursier extends CommandAppOf[CoursierCommand]
