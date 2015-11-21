@@ -46,7 +46,7 @@ lazy val publishingSettings = Seq(
 lazy val commonSettings = Seq(
   organization := "com.github.alexarchambault",
   scalaVersion := "2.11.7",
-  crossScalaVersions := Seq("2.10.5", "2.11.7"),
+  crossScalaVersions := Seq("2.10.6", "2.11.7"),
   resolvers ++= Seq(
     "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
     Resolver.sonatypeRepo("releases")
