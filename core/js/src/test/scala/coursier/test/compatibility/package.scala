@@ -13,7 +13,7 @@ package object compatibility {
   def textResource(path: String)(implicit ec: ExecutionContext): Future[String] = {
     val p = Promise[String]()
 
-    fs.readFile("core/src/test/resources/" + path, "utf-8", {
+    fs.readFile("core/shared/src/test/resources/" + path, "utf-8", {
       (err: js.Dynamic, data: js.Dynamic) =>
         if (err == null) p.success(data.asInstanceOf[String])
         else p.failure(new Exception(err.toString))

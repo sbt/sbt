@@ -35,7 +35,7 @@ else
 fi
 
 # Required for ~/.ivy2/local repo tests
-sbt core-jvm/publish-local
+sbt coreJVM/publish-local
 
 SBT_COMMANDS="$SBT_COMMANDS test"
 
@@ -43,7 +43,7 @@ SBT_COMMANDS="$SBT_COMMANDS test"
 
 PUSH_GHPAGES=0
 if isNotPr && isJdk7 && isMaster; then
-  SBT_COMMANDS="$SBT_COMMANDS core-jvm/publish core-js/publish files/publish cli/publish"
+  SBT_COMMANDS="$SBT_COMMANDS coreJVM/publish coreJS/publish files/publish cli/publish"
 fi
 
 if isNotPr && isJdk7 && isMasterOrDevelop; then

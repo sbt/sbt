@@ -1,330 +1,321 @@
 package coursier
 package cli
 
-import java.io.File
+import java.io.{ File, IOException }
+import java.net.URLClassLoader
+import java.nio.file.{ Files => NIOFiles }
 
 import caseapp._
-import coursier.core.{ MavenRepository, Parse, CachePolicy }
 
-import scalaz.{ \/-, -\/ }
-import scalaz.concurrent.Task
-
-case class Coursier(
+case class CommonOptions(
   @HelpMessage("Keep optional dependencies (Maven)")
     keepOptional: Boolean,
-  @HelpMessage("Fetch main artifacts (default: true if --classpath is specified and sources and javadoc are not fetched, else false)")
-    @ExtraName("J")
-    default: Boolean,
-  @HelpMessage("Fetch source artifacts")
-    @ExtraName("S")
-    sources: Boolean,
-  @HelpMessage("Fetch javadoc artifacts")
-    @ExtraName("D")
-    javadoc: Boolean,
-  @HelpMessage("Print  java -cp  compatible classpath (use like  java -cp $(coursier -P ..dependencies..) )")
-    @ExtraName("P")
-    @ExtraName("cp")
-    classpath: Boolean,
   @HelpMessage("Off-line mode: only use cache and local repositories")
-    @ExtraName("c")
+  @ExtraName("c")
     offline: Boolean,
   @HelpMessage("Force download: for remote repositories only: re-download items, that is, don't use cache directly")
-    @ExtraName("f")
+  @ExtraName("f")
     force: Boolean,
   @HelpMessage("Quiet output")
-    @ExtraName("q")
+  @ExtraName("q")
     quiet: Boolean,
   @HelpMessage("Increase verbosity (specify several times to increase more)")
-    @ExtraName("v")
+  @ExtraName("v")
     verbose: List[Unit],
   @HelpMessage("Maximum number of resolution iterations (specify a negative value for unlimited, default: 100)")
-    @ExtraName("N")
+  @ExtraName("N")
     maxIterations: Int = 100,
   @HelpMessage("Repositories - for multiple repositories, separate with comma and/or repeat this option (e.g. -r central,ivy2local -r sonatype-snapshots, or equivalently -r central,ivy2local,sonatype-snapshots)")
-    @ExtraName("r")
+  @ExtraName("r")
     repository: List[String],
-  @HelpMessage("Maximim number of parallel downloads (default: 6)")
-    @ExtraName("n")
+  @HelpMessage("Maximum number of parallel downloads (default: 6)")
+  @ExtraName("n")
     parallel: Int = 6
-) extends App {
+) {
+  val verbose0 = verbose.length + (if (quiet) 1 else 0)
+}
 
-  val verbose0 = {
-    verbose.length +
-      (if (quiet) 1 else 0)
+@AppName("Coursier")
+@ProgName("coursier")
+sealed trait CoursierCommand extends Command
+
+case class Fetch(
+  @HelpMessage("Fetch source artifacts")
+  @ExtraName("S")
+    sources: Boolean,
+  @HelpMessage("Fetch javadoc artifacts")
+  @ExtraName("D")
+    javadoc: Boolean,
+  @Recurse
+    common: CommonOptions
+) extends CoursierCommand {
+
+  val helper = new Helper(common, remainingArgs)
+
+  val files0 = helper.fetch(main = true, sources = false, javadoc = false)
+
+  Console.out.println(
+    files0
+      .map(_.toString)
+      .mkString("\n")
+  )
+
+}
+
+case class Launch(
+  @ExtraName("M")
+  @ExtraName("main")
+    mainClass: String,
+  @Recurse
+    common: CommonOptions
+) extends CoursierCommand {
+
+  val (rawDependencies, extraArgs) = {
+    val idxOpt = Some(remainingArgs.indexOf("--")).filter(_ >= 0)
+    idxOpt.fold((remainingArgs, Seq.empty[String])) { idx =>
+      val (l, r) = remainingArgs.splitAt(idx)
+      assert(r.nonEmpty)
+      (l, r.tail)
+    }
   }
 
-  def fileRepr(f: File) = f.toString
+  val helper = new Helper(common, rawDependencies)
 
-  def println(s: String) = Console.err.println(s)
+  val files0 = helper.fetch(main = true, sources = false, javadoc = false)
 
 
-  if (force && offline) {
-    println("Error: --offline (-c) and --force (-f) options can't be specified at the same time.")
+  def printParents(cl: ClassLoader): Unit =
+    Option(cl.getParent) match {
+      case None =>
+      case Some(cl0) =>
+        println(cl0.toString)
+        printParents(cl0)
+    }
+
+  printParents(Thread.currentThread().getContextClassLoader)
+
+  import scala.collection.JavaConverters._
+  val cl = new URLClassLoader(
+    files0.map(_.toURI.toURL).toArray,
+    // setting this to null provokes strange things (wrt terminal, ...)
+    // but this is far from perfect: this puts all our dependencies along with the user's,
+    // and with a higher priority
+    Thread.currentThread().getContextClassLoader
+  )
+
+  val mainClass0 =
+    if (mainClass.nonEmpty)
+      mainClass
+    else {
+      val metaInfs = cl.findResources("META-INF/MANIFEST.MF").asScala.toVector
+      val mainClasses = metaInfs.flatMap { url =>
+        Option(new java.util.jar.Manifest(url.openStream()).getMainAttributes.getValue("Main-Class"))
+      }
+
+      if (mainClasses.isEmpty) {
+        println(s"No main class found. Specify one with -M or --main.")
+        sys.exit(255)
+      }
+
+      if (common.verbose0 >= 0)
+        println(s"Found ${mainClasses.length} main class(es):\n${mainClasses.map("  " + _).mkString("\n")}")
+
+      mainClasses.head
+    }
+
+  val cls =
+    try cl.loadClass(mainClass0)
+    catch { case e: ClassNotFoundException =>
+      println(s"Error: class $mainClass0 not found")
+      sys.exit(255)
+    }
+  val method =
+    try cls.getMethod("main", classOf[Array[String]])
+    catch { case e: NoSuchMethodError =>
+      println(s"Error: method main not found in $mainClass0")
+      sys.exit(255)
+    }
+
+  if (common.verbose0 >= 1)
+    println(s"Calling $mainClass0 ${extraArgs.mkString(" ")}")
+
+  Thread.currentThread().setContextClassLoader(cl)
+  method.invoke(null, extraArgs.toArray)
+}
+
+case class Classpath(
+  @Recurse
+    common: CommonOptions
+) extends CoursierCommand {
+
+  val helper = new Helper(common, remainingArgs)
+
+  val files0 = helper.fetch(main = true, sources = false, javadoc = false)
+
+  Console.out.println(
+    files0
+      .map(_.toString)
+      .mkString(File.pathSeparator)
+  )
+
+}
+
+// TODO: allow removing a repository (with confirmations, etc.)
+case class Repository(
+  @ValueDescription("id:baseUrl")
+  @ExtraName("a")
+    add: List[String],
+  @ExtraName("L")
+    list: Boolean,
+  @ExtraName("l")
+    defaultList: Boolean,
+  ivyLike: Boolean
+) extends CoursierCommand {
+
+  if (add.exists(!_.contains(":"))) {
+    CaseApp.printUsage[Repository](err = true)
     sys.exit(255)
   }
 
-  if (parallel <= 0) {
-    println(s"Error: invalid --parallel (-n) value: $parallel")
+  val add0 = add
+    .map{ s =>
+      val Seq(id, baseUrl) = s.split(":", 2).toSeq
+      id -> baseUrl
+    }
+
+  if (
+    add0.exists(_._1.contains("/")) ||
+      add0.exists(_._1.startsWith(".")) ||
+      add0.exists(_._1.isEmpty)
+  ) {
+    CaseApp.printUsage[Repository](err = true)
+    sys.exit(255)
   }
 
-
-  def defaultLogger: MavenRepository.Logger with Files.Logger =
-    new MavenRepository.Logger with Files.Logger {
-      def downloading(url: String) =
-        println(s"Downloading $url")
-      def downloaded(url: String, success: Boolean) =
-        if (!success)
-          println(s"Failed: $url")
-      def readingFromCache(f: File) = {}
-      def puttingInCache(f: File) = {}
-
-      def foundLocally(f: File) = {}
-      def downloadingArtifact(url: String) =
-        println(s"Downloading $url")
-      def downloadedArtifact(url: String, success: Boolean) =
-        if (!success)
-          println(s"Failed: $url")
-    }
-
-  def verboseLogger: MavenRepository.Logger with Files.Logger =
-    new MavenRepository.Logger with Files.Logger {
-      def downloading(url: String) =
-        println(s"Downloading $url")
-      def downloaded(url: String, success: Boolean) =
-        println(
-          if (success) s"Downloaded $url"
-          else s"Failed: $url"
-        )
-      def readingFromCache(f: File) = {
-        println(s"Reading ${fileRepr(f)} from cache")
-      }
-      def puttingInCache(f: File) =
-        println(s"Writing ${fileRepr(f)} in cache")
-
-      def foundLocally(f: File) =
-        println(s"Found locally ${fileRepr(f)}")
-      def downloadingArtifact(url: String) =
-        println(s"Downloading $url")
-      def downloadedArtifact(url: String, success: Boolean) =
-        println(
-          if (success) s"Downloaded $url"
-          else s"Failed: $url"
-        )
-    }
-
-  val logger =
-    if (verbose0 < 0)
-      None
-    else if (verbose0 == 0)
-      Some(defaultLogger)
-    else
-      Some(verboseLogger)
-
-  implicit val cachePolicy =
-    if (offline)
-      CachePolicy.LocalOnly
-    else if (force)
-      CachePolicy.ForceDownload
-    else
-      CachePolicy.Default
 
   val cache = Cache.default
-  cache.init(verbose = verbose0 >= 0)
 
-  val repositoryIds = {
-    val repository0 = repository
-      .flatMap(_.split(','))
-      .map(_.trim)
-      .filter(_.nonEmpty)
-
-    if (repository0.isEmpty)
-      cache.default()
-    else
-      repository0
-  }
-
-  val repoMap = cache.map()
-
-  if (repositoryIds.exists(!repoMap.contains(_))) {
-    val notFound = repositoryIds
-      .filter(!repoMap.contains(_))
-
-    Console.err.println(
-      (if (notFound.lengthCompare(1) == 1) "Repository" else "Repositories") +
-      " not found: " +
-      notFound.mkString(", ")
-    )
-
+  if (cache.cache.exists() && !cache.cache.isDirectory) {
+    Console.err.println(s"Error: ${cache.cache} not a directory")
     sys.exit(1)
   }
 
-  val (repositories0, fileCaches) = repositoryIds
-    .map(repoMap)
-    .unzip
+  if (!cache.cache.exists())
+    cache.init(verbose = true)
 
-  val repositories = repositories0
-    .map(_.copy(logger = logger))
+  val current = cache.list().map(_._1).toSet
 
+  val alreadyAdded = add0
+    .map(_._1)
+    .filter(current)
 
-  val (splitDependencies, malformed) = remainingArgs.toList
-    .map(_.split(":", 3).toSeq)
-    .partition(_.length == 3)
-
-  if (splitDependencies.isEmpty) {
-    CaseApp.printUsage[Coursier]()
-    sys exit 1
+  if (alreadyAdded.nonEmpty) {
+    Console.err.println(s"Error: already added: ${alreadyAdded.mkString(", ")}")
+    sys.exit(1)
   }
 
-  if (malformed.nonEmpty) {
-    println(s"Malformed dependencies:\n${malformed.map(_.mkString(":")).mkString("\n")}")
-    sys exit 1
+  for ((id, baseUrl0) <- add0) {
+    val baseUrl =
+      if (baseUrl0.endsWith("/"))
+        baseUrl0
+      else
+        baseUrl0 + "/"
+
+    cache.add(id, baseUrl, ivyLike = ivyLike)
   }
 
-  val moduleVersions = splitDependencies.map{
-    case Seq(org, name, version) =>
-      (Module(org, name), version)
+  if (defaultList) {
+    val map = cache.repositoryMap()
+
+    for (id <- cache.default(withNotFound = true))
+      map.get(id) match {
+        case Some(repo) =>
+          println(s"$id: ${repo.root}" + (if (repo.ivyLike) " (Ivy-like)" else ""))
+        case None =>
+          println(s"$id (not found)")
+      }
   }
 
-  val deps = moduleVersions.map{case (mod, ver) =>
-    Dependency(mod, ver, scope = Scope.Runtime)
+  if (list)
+    for ((id, repo, _) <- cache.list().sortBy(_._1)) {
+      println(s"$id: ${repo.root}" + (if (repo.ivyLike) " (Ivy-like)" else ""))
+    }
+
+}
+
+case class Bootstrap(
+  @ExtraName("M")
+  @ExtraName("main")
+    mainClass: String,
+  @ExtraName("o")
+    output: String,
+  @ExtraName("D")
+    downloadDir: String,
+  @ExtraName("f")
+    force: Boolean,
+  @Recurse
+    common: CommonOptions
+) extends CoursierCommand {
+
+  if (mainClass.isEmpty) {
+    Console.err.println(s"Error: no main class specified. Specify one with -M or --main")
+    sys.exit(255)
   }
 
-  val startRes = Resolution(
-    deps.toSet,
-    filter = Some(dep => keepOptional || !dep.optional)
+  if (downloadDir.isEmpty) {
+    Console.err.println(s"Error: no download dir specified. Specify one with -D or --download-dir")
+    Console.err.println("E.g. -D \"\\$HOME/.app-name/jars\"")
+    sys.exit(255)
+  }
+
+  val downloadDir0 =
+    if (downloadDir.isEmpty)
+      "$HOME/"
+    else
+      downloadDir
+
+  val bootstrapJar =
+    Option(Thread.currentThread().getContextClassLoader.getResourceAsStream("bootstrap.jar")) match {
+      case Some(is) => Files.readFullySync(is)
+      case None =>
+        Console.err.println(s"Error: bootstrap JAR not found")
+        sys.exit(1)
+    }
+
+  // scala-library version in the resulting JARs has to match the one in the bootstrap JAR
+  // This should be enforced more strictly (possibly by having one bootstrap JAR per scala version).
+
+  val helper = new Helper(
+    common,
+    remainingArgs :+ s"org.scala-lang:scala-library:${scala.util.Properties.versionNumberString}"
   )
 
-  val fetchQuiet = coursier.fetch(repositories)
-  val fetch0 =
-    if (verbose0 == 0) fetchQuiet
-    else {
-      modVers: Seq[(Module, String)] =>
-        val print = Task{
-          println(s"Getting ${modVers.length} project definition(s)")
-        }
+  val artifacts = helper.res.artifacts
 
-        print.flatMap(_ => fetchQuiet(modVers))
-    }
+  val urls = artifacts.map(_.url)
 
-  if (verbose0 >= 0)
-    println(s"Resolving\n" + moduleVersions.map{case (mod, ver) => s"  $mod:$ver"}.mkString("\n"))
+  val unrecognized = urls.filter(s => !s.startsWith("http://") && !s.startsWith("https://"))
+  if (unrecognized.nonEmpty)
+    Console.err.println(s"Warning: non HTTP URLs:\n${unrecognized.mkString("\n")}")
 
-  val res = startRes
-    .process
-    .run(fetch0, maxIterations)
-    .run
-
-  if (!res.isDone) {
-    println(s"Maximum number of iteration reached!")
-    sys exit 1
+  val output0 = new File(output)
+  if (!force && output0.exists()) {
+    Console.err.println(s"Error: $output already exists, use -f option to force erasing it.")
+    sys.exit(1)
   }
 
-  def repr(dep: Dependency) = {
-    // dep.version can be an interval, whereas the one from project can't
-    val version = res
-      .projectCache
-      .get(dep.moduleVersion)
-      .map(_._2.version)
-      .getOrElse(dep.version)
-    val extra =
-      if (version == dep.version) ""
-      else s" ($version for ${dep.version})"
+  val shellPreamble = Seq(
+    "#!/usr/bin/env sh",
+    "exec java -jar \"$0\" \"" + mainClass + "\" \"" + downloadDir + "\" " + urls.map("\"" + _ + "\"").mkString(" ") + " -- \"$@\"",
+    ""
+  ).mkString("\n")
 
-    (
-      Seq(
-        dep.module.organization,
-        dep.module.name,
-        dep.attributes.`type`
-      ) ++
-      Some(dep.attributes.classifier)
-        .filter(_.nonEmpty)
-        .toSeq ++
-      Seq(
-        version
-      )
-    ).mkString(":") + extra
+  try NIOFiles.write(output0.toPath, shellPreamble.getBytes("UTF-8") ++ bootstrapJar)
+  catch { case e: IOException =>
+    Console.err.println(s"Error while writing $output0: ${e.getMessage}")
+    sys.exit(1)
   }
 
-  val trDeps = res
-    .minDependencies
-    .toList
-    .sortBy(repr)
-
-  if (verbose0 >= 0) {
-    println("")
-    println(
-      trDeps
-        .map(repr)
-        .distinct
-        .mkString("\n")
-    )
-  }
-
-  if (res.conflicts.nonEmpty) {
-    // Needs test
-    println(s"${res.conflicts.size} conflict(s):\n  ${res.conflicts.toList.map(repr).sorted.mkString("  \n")}")
-  }
-
-  val errors = res.errors
-  if (errors.nonEmpty) {
-    println(s"\n${errors.size} error(s):")
-    for ((dep, errs) <- errors) {
-      println(s"  ${dep.module}:${dep.version}:\n${errs.map("    " + _.replace("\n", "    \n")).mkString("\n")}")
-    }
-  }
-
-  if (classpath || default || sources || javadoc) {
-    println("")
-
-    val artifacts0 = res.artifacts
-    val default0 = default || (!sources && !javadoc)
-    val artifacts = artifacts0
-      .flatMap{ artifact =>
-        var l = List.empty[Artifact]
-        if (sources)
-          l = artifact.extra.get("sources").toList ::: l
-        if (javadoc)
-          l = artifact.extra.get("javadoc").toList ::: l
-        if (default0)
-          l = artifact :: l
-
-        l
-      }
-
-    val files = {
-      var files0 = cache
-        .files()
-        .copy(logger = logger)
-      files0 = files0.copy(concurrentDownloadCount = parallel)
-      files0
-    }
-
-    val tasks = artifacts.map(artifact => files.file(artifact).run.map(artifact.->))
-    def printTask = Task{
-      if (verbose0 >= 0 && artifacts.nonEmpty)
-        println(s"Found ${artifacts.length} artifacts")
-    }
-    val task = printTask.flatMap(_ => Task.gatherUnordered(tasks))
-
-    val results = task.run
-    val errors = results.collect{case (artifact, -\/(err)) => artifact -> err }
-    val files0 = results.collect{case (artifact, \/-(f)) => f }
-
-    if (errors.nonEmpty) {
-      println(s"${errors.size} error(s):")
-      for ((artifact, error) <- errors) {
-        println(s"  ${artifact.url}: $error")
-      }
-    }
-
-    Console.out.println(
-      files0
-        .map(_.toString)
-        .mkString(if (classpath) File.pathSeparator else "\n")
-    )
-  }
 }
 
-object Coursier extends AppOf[Coursier] {
-  val parser = default
-}
+object Coursier extends CommandAppOf[CoursierCommand]
