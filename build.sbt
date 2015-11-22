@@ -161,7 +161,10 @@ lazy val bootstrap = project
   .settings(noPublishSettings)
   .settings(
     name := "coursier-bootstrap",
-    assemblyJarName in assembly := s"bootstrap.jar"
+    assemblyJarName in assembly := s"bootstrap.jar",
+    assemblyShadeRules in assembly := Seq(
+      ShadeRule.rename("scala.**" -> "shadedscala.@1").inAll
+    )
   )
 
 lazy val `coursier` = project.in(file("."))

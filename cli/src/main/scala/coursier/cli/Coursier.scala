@@ -4,8 +4,10 @@ package cli
 import java.io.{ File, IOException }
 import java.net.URLClassLoader
 import java.nio.file.{ Files => NIOFiles }
+import java.nio.file.attribute.PosixFilePermission
 
 import caseapp._
+import coursier.util.ClasspathFilter
 
 case class CommonOptions(
   @HelpMessage("Keep optional dependencies (Maven)")
@@ -83,44 +85,49 @@ case class Launch(
 
   val files0 = helper.fetch(main = true, sources = false, javadoc = false)
 
-
-  def printParents(cl: ClassLoader): Unit =
-    Option(cl.getParent) match {
-      case None =>
-      case Some(cl0) =>
-        println(cl0.toString)
-        printParents(cl0)
-    }
-
-  printParents(Thread.currentThread().getContextClassLoader)
-
-  import scala.collection.JavaConverters._
   val cl = new URLClassLoader(
     files0.map(_.toURI.toURL).toArray,
-    // setting this to null provokes strange things (wrt terminal, ...)
-    // but this is far from perfect: this puts all our dependencies along with the user's,
-    // and with a higher priority
-    Thread.currentThread().getContextClassLoader
+    new ClasspathFilter(
+      Thread.currentThread().getContextClassLoader,
+      Coursier.baseCp.map(new File(_)).toSet,
+      exclude = true
+    )
   )
 
   val mainClass0 =
-    if (mainClass.nonEmpty)
-      mainClass
+    if (mainClass.nonEmpty) mainClass
     else {
-      val metaInfs = cl.findResources("META-INF/MANIFEST.MF").asScala.toVector
-      val mainClasses = metaInfs.flatMap { url =>
-        Option(new java.util.jar.Manifest(url.openStream()).getMainAttributes.getValue("Main-Class"))
-      }
+      val mainClasses = Helper.mainClasses(cl)
 
-      if (mainClasses.isEmpty) {
-        println(s"No main class found. Specify one with -M or --main.")
-        sys.exit(255)
-      }
+      val mainClass =
+        if (mainClasses.isEmpty) {
+          Console.err.println(s"No main class found. Specify one with -M or --main.")
+          sys.exit(255)
+        } else if (mainClasses.size == 1) {
+          val (_, mainClass) = mainClasses.head
+          mainClass
+        } else {
+          // Trying to get the main class of the first artifact
+          val mainClassOpt = for {
+            (module, _) <- helper.moduleVersions.headOption
+            mainClass <- mainClasses.collectFirst {
+              case ((org, name), mainClass)
+                if org == module.organization && (
+                  module.name == name ||
+                    module.name.startsWith(name + "_") // Ignore cross version suffix
+                ) =>
+                mainClass
+            }
+          } yield mainClass
 
-      if (common.verbose0 >= 0)
-        println(s"Found ${mainClasses.length} main class(es):\n${mainClasses.map("  " + _).mkString("\n")}")
+          mainClassOpt.getOrElse {
+            println(mainClasses)
+            Console.err.println(s"Cannot find default main class. Specify one with -M or --main.")
+            sys.exit(255)
+          }
+        }
 
-      mainClasses.head
+      mainClass
     }
 
   val cls =
@@ -248,14 +255,19 @@ case class Bootstrap(
   @ExtraName("main")
     mainClass: String,
   @ExtraName("o")
-    output: String,
+    output: String = "bootstrap",
   @ExtraName("D")
     downloadDir: String,
   @ExtraName("f")
     force: Boolean,
+  @HelpMessage(s"Internal use - prepend base classpath options to arguments")
+  @ExtraName("b")
+    prependClasspath: Boolean,
   @Recurse
     common: CommonOptions
 ) extends CoursierCommand {
+
+  import scala.collection.JavaConverters._
 
   if (mainClass.isEmpty) {
     Console.err.println(s"Error: no main class specified. Specify one with -M or --main")
@@ -306,7 +318,7 @@ case class Bootstrap(
 
   val shellPreamble = Seq(
     "#!/usr/bin/env sh",
-    "exec java -jar \"$0\" \"" + mainClass + "\" \"" + downloadDir + "\" " + urls.map("\"" + _ + "\"").mkString(" ") + " -- \"$@\"",
+    "exec java -jar \"$0\" " + (if (prependClasspath) "-B " else "") + "\"" + mainClass + "\" \"" + downloadDir + "\" " + urls.map("\"" + _ + "\"").mkString(" ") + " -- \"$@\"",
     ""
   ).mkString("\n")
 
@@ -316,6 +328,51 @@ case class Bootstrap(
     sys.exit(1)
   }
 
+  try {
+    val perms = NIOFiles.getPosixFilePermissions(output0.toPath).asScala.toSet
+
+    var newPerms = perms
+    if (perms(PosixFilePermission.OWNER_READ))
+      newPerms += PosixFilePermission.OWNER_EXECUTE
+    if (perms(PosixFilePermission.GROUP_READ))
+      newPerms += PosixFilePermission.GROUP_EXECUTE
+    if (perms(PosixFilePermission.OTHERS_READ))
+      newPerms += PosixFilePermission.OTHERS_EXECUTE
+
+    if (newPerms != perms)
+      NIOFiles.setPosixFilePermissions(
+        output0.toPath,
+        newPerms.asJava
+      )
+  } catch {
+    case e: UnsupportedOperationException =>
+      // Ignored
+    case e: IOException =>
+      Console.err.println(s"Error while making $output0 executable: ${e.getMessage}")
+      sys.exit(1)
+  }
+
 }
 
-object Coursier extends CommandAppOf[CoursierCommand]
+case class BaseCommand(
+  // FIXME Need a @NoHelp annotation in case-app to hide an option from help message
+  @HelpMessage("For internal use only - class path used to launch coursier")
+  @ExtraName("B")
+    baseCp: List[String]
+) extends Command {
+  Coursier.baseCp = baseCp
+
+  // FIXME Should be in a trait in case-app
+  override def setCommand(cmd: Option[Either[String, String]]): Unit = {
+    if (cmd.isEmpty) {
+      // FIXME Print available commands too?
+      Console.err.println("Error: no command specified")
+      sys.exit(255)
+    }
+    super.setCommand(cmd)
+  }
+}
+
+object Coursier extends CommandAppOfWithBase[BaseCommand, CoursierCommand] {
+  private[coursier] var baseCp = Seq.empty[String]
+}
