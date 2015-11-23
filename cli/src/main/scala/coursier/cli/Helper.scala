@@ -117,7 +117,7 @@ class Helper(
     else
       CachePolicy.Default
 
-  val cache = Cache.default
+  val cache = Cache(new File(cacheOptions.cache))
   cache.init(verbose = verbose0 >= 0)
 
   val repositoryIds = {

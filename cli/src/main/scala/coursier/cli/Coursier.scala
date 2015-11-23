@@ -32,10 +32,26 @@ case class CommonOptions(
     repository: List[String],
   @HelpMessage("Maximum number of parallel downloads (default: 6)")
   @ExtraName("n")
-    parallel: Int = 6
+    parallel: Int = 6,
+  @Recurse
+    cacheOptions: CacheOptions
 ) {
   val verbose0 = verbose.length + (if (quiet) 1 else 0)
 }
+
+object CacheOptions {
+  def default =
+    sys.env.getOrElse(
+      "COURSIER_CACHE",
+      sys.props("user.home") + "/.coursier/cache"
+    )
+}
+
+case class CacheOptions(
+  @HelpMessage("Cache directory (defaults to environment variable COURSIER_CACHE or ~/.coursier/cache)")
+  @ExtraName("C")
+    cache: String = CacheOptions.default
+)
 
 @AppName("Coursier")
 @ProgName("coursier")
@@ -176,7 +192,9 @@ case class Repository(
     list: Boolean,
   @ExtraName("l")
     defaultList: Boolean,
-  ivyLike: Boolean
+  ivyLike: Boolean,
+  @Recurse
+    cacheOptions: CacheOptions
 ) extends CoursierCommand {
 
   if (add.exists(!_.contains(":"))) {
@@ -200,7 +218,7 @@ case class Repository(
   }
 
 
-  val cache = Cache.default
+  val cache = Cache(new File(cacheOptions.cache))
 
   if (cache.cache.exists() && !cache.cache.isDirectory) {
     Console.err.println(s"Error: ${cache.cache} not a directory")
@@ -263,6 +281,10 @@ case class Bootstrap(
   @HelpMessage(s"Internal use - prepend base classpath options to arguments")
   @ExtraName("b")
     prependClasspath: Boolean,
+  @HelpMessage("Set environment variables in the generated launcher. No escaping is done. Value is simply put between quotes in the launcher preamble.")
+  @ValueDescription("NAME=VALUE")
+  @ExtraName("e")
+    env: List[String],
   @Recurse
     common: CommonOptions
 ) extends CoursierCommand {
@@ -278,6 +300,18 @@ case class Bootstrap(
     Console.err.println(s"Error: no download dir specified. Specify one with -D or --download-dir")
     Console.err.println("E.g. -D \"\\$HOME/.app-name/jars\"")
     sys.exit(255)
+  }
+
+  val (validEnv, wrongEnv) = env.partition(_.contains("="))
+  if (wrongEnv.nonEmpty) {
+    Console.err.println(s"Wrong -e / --env option(s):\n${wrongEnv.mkString("\n")}")
+    sys.exit(255)
+  }
+
+  val env0 = validEnv.map { s =>
+    val idx = s.indexOf('=')
+    assert(idx >= 0)
+    (s.take(idx), s.drop(idx + 1))
   }
 
   val downloadDir0 =
@@ -316,11 +350,16 @@ case class Bootstrap(
     sys.exit(1)
   }
 
-  val shellPreamble = Seq(
-    "#!/usr/bin/env sh",
-    "exec java -jar \"$0\" " + (if (prependClasspath) "-B " else "") + "\"" + mainClass + "\" \"" + downloadDir + "\" " + urls.map("\"" + _ + "\"").mkString(" ") + " -- \"$@\"",
-    ""
-  ).mkString("\n")
+  val shellPreamble = {
+    Seq(
+      "#!/usr/bin/env sh"
+    ) ++
+    env0.map { case (k, v) => "export " + k + "=\"" + v + "\"" } ++
+    Seq(
+      "exec java -jar \"$0\" " + (if (prependClasspath) "-B " else "") + "\"" + mainClass + "\" \"" + downloadDir + "\" " + urls.map("\"" + _ + "\"").mkString(" ") + " -- \"$@\"",
+      ""
+    )
+  }.mkString("\n")
 
   try NIOFiles.write(output0.toPath, shellPreamble.getBytes("UTF-8") ++ bootstrapJar)
   catch { case e: IOException =>
