@@ -1,7 +1,7 @@
 package sbt.internal.inc
 
 import sbt.io.IO
-import sbt.util.Logger
+import sbt.util.{ Level, Logger }
 
 class IvyComponentCompilerSpec extends BridgeProviderSpecification {
 
@@ -10,19 +10,19 @@ class IvyComponentCompilerSpec extends BridgeProviderSpecification {
   val scala210 = "2.10.5"
   val scala211 = "2.11.7"
 
-  "IvyComponentCompiler" should "compile the bridge for Scala 2.8" in pendingUntilFixed {
+  "IvyComponentCompiler" should "compile the bridge for Scala 2.8" in {
     IO.withTemporaryDirectory { tempDir =>
       getCompilerBridge(tempDir, Logger.Null, scala282) should exist
     }
   }
 
-  it should "compile the bridge for Scala 2.9" in pendingUntilFixed {
+  it should "compile the bridge for Scala 2.9" in {
     IO.withTemporaryDirectory { tempDir =>
       getCompilerBridge(tempDir, Logger.Null, scala292) should exist
     }
   }
 
-  it should "compile the bridge for Scala 2.10" in pendingUntilFixed {
+  it should "compile the bridge for Scala 2.10" in {
     IO.withTemporaryDirectory { tempDir =>
       getCompilerBridge(tempDir, Logger.Null, scala210) should exist
     }

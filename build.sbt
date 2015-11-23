@@ -6,6 +6,8 @@ import Dependencies._
 def baseVersion = "0.1.0-M1"
 def internalPath   = file("internal")
 
+lazy val scalaVersions = Seq(scala210, scala211)
+
 def commonSettings: Seq[Setting[_]] = Seq(
   scalaVersion := "2.11.7",
   // publishArtifact in packageDoc := false,
@@ -17,7 +19,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
   incOptions := incOptions.value.withNameHashing(true),
-  crossScalaVersions := Seq(scala210, scala211),
+  crossScalaVersions := scalaVersions,
   scalacOptions ++= Seq(
     "-encoding", "utf8",
     "-deprecation",
@@ -32,7 +34,8 @@ def commonSettings: Seq[Setting[_]] = Seq(
     "-Yno-adapted-args",
     "-Ywarn-dead-code",
     "-Ywarn-numeric-widen",
-    "-Ywarn-value-discard")
+    "-Ywarn-value-discard"),
+  commands += publishBridgesAndTest
 )
 
 def minimalSettings: Seq[Setting[_]] = commonSettings
@@ -85,8 +88,7 @@ lazy val incrementalcompiler = (project in file("incrementalcompiler")).
   settings(
     testedBaseSettings,
     name := "incrementalcompiler",
-    libraryDependencies ++= Seq(utilLogging % "test" classifier "tests", libraryManagement % "test", libraryManagement % "test" classifier "tests"),
-    test <<= (test in Test) dependsOn (publishM2 in compilerBridge) dependsOn (publishM2 in compilerInterface)
+    libraryDependencies ++= Seq(utilLogging % "test" classifier "tests", libraryManagement % "test", libraryManagement % "test" classifier "tests")
   )
 
 lazy val incrementalcompilerCompile = (project in file("incrementalcompiler-compile")).
@@ -162,11 +164,11 @@ lazy val compilerInterface = (project in internalPath / "compiler-interface").
 
 // Compiler-side interface to compiler that is compiled against the compiler being used either in advance or on the fly.
 //   Includes API and Analyzer phases that extract source API and relationships.
-lazy val compilerBridge = (project in internalPath / "compiler-bridge").
+lazy val compilerBridge: Project = (project in internalPath / "compiler-bridge").
   dependsOn(compilerInterface % "compile;test->test", /*launchProj % "test->test",*/ incrementalcompilerApiInfo % "test->test").
   settings(
     baseSettings,
-    libraryDependencies += scalaCompiler.value,
+    autoScalaLibrary := false,
     // precompiledSettings,
     name := "Compiler Bridge",
     exportJars := true,
@@ -220,3 +222,9 @@ lazy val incrementalcompilerClassfile = (project in internalPath / "incrementalc
     libraryDependencies ++= Seq(sbtIO, utilLogging),
     name := "Incrementalcompiler Classfile"
   )
+
+lazy val publishBridgesAndTest = Command.command("publishBridgesAndTest") { state =>
+  val test = "test" :: state
+  val compilerBridgeID = compilerBridge.id
+  (scalaVersions map (v => s"plz $v $compilerBridgeID/publishM2") foldRight test) { _ :: _ }
+}
