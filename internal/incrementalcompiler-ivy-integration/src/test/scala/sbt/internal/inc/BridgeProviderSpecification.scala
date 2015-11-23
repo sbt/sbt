@@ -6,43 +6,61 @@ import java.util.Properties
 import java.util.concurrent.Callable
 
 import sbt.internal.inc.classpath.ClasspathUtilities
-import sbt.internal.librarymanagement.{ ComponentManager, IvySbt, BaseIvySpecification }
+import sbt.internal.librarymanagement.{ JsonUtil, ComponentManager, BaseIvySpecification }
 import sbt.io.IO
 import sbt.io.Path._
 import sbt.librarymanagement.{ ModuleID, UpdateOptions, Resolver }
 import sbt.util.Logger
 import xsbti.{ ComponentProvider, GlobalLock }
 
+/**
+ * Base class for test suites that must be able to fetch and compile the compiler bridge.
+ */
 abstract class BridgeProviderSpecification extends BaseIvySpecification {
 
-  override def resolvers: Seq[Resolver] = Seq(Resolver.mavenLocal, Resolver.jcenterRepo)
-  val ivyConfiguration = mkIvyConfiguration(UpdateOptions())
-  val ivySbt = new IvySbt(ivyConfiguration)
+  override def resolvers: Seq[Resolver] = super.resolvers ++ Seq(Resolver.mavenLocal, Resolver.jcenterRepo)
+  private val ivyConfiguration = mkIvyConfiguration(UpdateOptions())
 
-  val home = new File(sys.props("user.home"))
-  val ivyCache = home / ".ivy2" / "cache"
-
-  def getCompilerBridge(tempDir: File, log: Logger, scalaVersion: String): File = {
-    val instance = scalaInstanceFromFile(scalaVersion)
+  def getCompilerBridge(targetDir: File, log: Logger, scalaVersion: String): File = {
+    val instance = scalaInstance(scalaVersion)
     val bridgeId = compilerBridgeId(scalaVersion)
     val sourceModule = ModuleID(xsbti.ArtifactInfo.SbtOrganization, bridgeId, ComponentCompiler.incrementalVersion, Some("component")).sources()
 
     val raw = new RawCompiler(instance, ClasspathOptions.auto, log)
-    val manager = new ComponentManager(lock, provider(tempDir), None, log)
+    val manager = new ComponentManager(lock, provider(targetDir), None, log)
     val componentCompiler = new IvyComponentCompiler(raw, manager, ivyConfiguration, sourceModule, log)
 
     val bridge = componentCompiler.apply()
-    val target = tempDir / s"target-bridge-$scalaVersion.jar"
+    val target = targetDir / s"target-bridge-$scalaVersion.jar"
     IO.copyFile(bridge, target)
     target
   }
 
-  def scalaInstanceFromFile(scalaVersion: String): ScalaInstance =
-    scalaInstance(
-      ivyCache / "org.scala-lang" / "scala-compiler" / "jars" / s"scala-compiler-$scalaVersion.jar",
-      ivyCache / "org.scala-lang" / "scala-library" / "jars" / s"scala-library-$scalaVersion.jar",
-      Seq(ivyCache / "org.scala-lang" / "scala-reflect" / "jars" / s"scala-reflect-$scalaVersion.jar")
-    )
+  def scalaInstance(scalaVersion: String): ScalaInstance = {
+    val scalaModule = {
+      val dummyModule = ModuleID(JsonUtil.sbtOrgTemp, "tmp-scala-" + scalaVersion, scalaVersion, Some("compile"))
+      val scalaLibrary = ModuleID(xsbti.ArtifactInfo.ScalaOrganization, xsbti.ArtifactInfo.ScalaLibraryID, scalaVersion, Some("compile"))
+      val scalaCompiler = ModuleID(xsbti.ArtifactInfo.ScalaOrganization, xsbti.ArtifactInfo.ScalaCompilerID, scalaVersion, Some("compile"))
+
+      module(dummyModule, Seq(scalaLibrary, scalaCompiler), None)
+    }
+
+    val allArtifacts =
+      for {
+        conf <- ivyUpdate(scalaModule).configurations
+        m <- conf.modules
+        (_, f) <- m.artifacts
+      } yield f
+
+    def isCompiler(f: File) = f.getName startsWith "scala-compiler-"
+    def isLibrary(f: File) = f.getName startsWith "scala-library-"
+
+    val scalaCompilerJar = allArtifacts find isCompiler getOrElse (throw new RuntimeException("Not found: scala-compiler"))
+    val scalaLibraryJar = allArtifacts find isLibrary getOrElse (throw new RuntimeException("Not found: scala-library"))
+    val others = allArtifacts filterNot (a => isCompiler(a) || isLibrary(a))
+
+    scalaInstance(scalaCompilerJar, scalaLibraryJar, others)
+  }
 
   def scalaInstance(scalaCompiler: File, scalaLibrary: File, scalaExtra: Seq[File]): ScalaInstance = {
     val loader = scalaLoader(scalaLibrary +: scalaCompiler +: scalaExtra)
