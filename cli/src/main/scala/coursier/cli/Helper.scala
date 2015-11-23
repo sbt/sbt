@@ -192,7 +192,7 @@ class Helper(
     filter = Some(dep => keepOptional || !dep.optional)
   )
 
-  val fetchQuiet = coursier.fetch(repositories)
+  val fetchQuiet = coursier.fetchLocalFirst(repositories)
   val fetch0 =
     if (verbose0 == 0) fetchQuiet
     else {

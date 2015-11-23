@@ -38,7 +38,7 @@ case class Files(
             cacheDir + "/" + url.stripPrefix(base)
         }
 
-    if (artifact.extra.contains("local") || isLocal)
+    if (artifact.extra.contains("local"))
       artifact
     else
       artifact.copy(extra = artifact.extra + ("local" ->
@@ -141,14 +141,19 @@ case class Files(
 
 
     val tasks =
-      for ((f, url) <- pairs if url != ("file:" + f) && url != ("file://" + f)) yield {
-        val file = new File(f)
-        cachePolicy[FileError \/ File](
-          _.isLeft )(
-          locally(file) )(
-          _ => remote(file, url)
-        ).map(e => (file, url) -> e.map(_ => ()))
-      }
+      for ((f, url) <- pairs) yield
+        if (url != ("file:" + f) && url != ("file://" + f)) {
+          assert(!f.startsWith("file:/"), s"Wrong file detection: $f, $url")
+          val file = new File(f)
+          cachePolicy[FileError \/ File](
+            _.isLeft)(
+            locally(file))(
+            _ => remote(file, url)
+          ).map(e => (file, url) -> e.map(_ => ()))
+        } else {
+          val file = new File(f)
+          Task.now(((file, url), \/-(())))
+        }
 
     Nondeterminism[Task].gather(tasks)
   }

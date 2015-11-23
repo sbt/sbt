@@ -1,3 +1,4 @@
+import scalaz.{ -\/, \/- }
 import scalaz.concurrent.Task
 
 /**
@@ -105,6 +106,29 @@ package object coursier {
             Repository.find(repositories, module, version)
               .run
               .map((module, version) -> _)
+          }
+      )
+  }
+
+  def fetchLocalFirst(
+    repositories: Seq[core.Repository]
+  )(implicit
+    cachePolicy: CachePolicy
+  ): ResolutionProcess.Fetch[Task] = {
+
+    modVers =>
+      Task.gatherUnordered(
+        modVers
+          .map {case (module, version) =>
+            def attempt(cachePolicy: CachePolicy) =
+              Repository.find(repositories, module, version)(cachePolicy)
+                .run
+                .map((module, version) -> _)
+
+            attempt(CachePolicy.LocalOnly).flatMap {
+              case v @ (_, \/-(_)) => Task.now(v)
+              case (_, -\/(_)) => attempt(cachePolicy)
+            }
           }
       )
   }
