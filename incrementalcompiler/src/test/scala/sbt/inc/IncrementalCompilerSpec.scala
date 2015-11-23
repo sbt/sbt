@@ -21,7 +21,7 @@ class IncrementalCompilerSpec extends BridgeProviderSpecification {
   "incremental compiler" should "compile" in {
     IO.withTemporaryDirectory { tempDir =>
       val compilerBridge = getCompilerBridge(tempDir, Logger.Null, scalaVersion)
-      val si = scalaInstanceFromFile(scalaVersion)
+      val si = scalaInstance(scalaVersion)
       val sc = scalaCompiler(si, compilerBridge)
       val cs = compiler.compilers(si, ClasspathOptions.boot, None, sc)
       val analysisMap = f1((f: File) => Maybe.nothing[CompileAnalysis])

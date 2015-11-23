@@ -1,7 +1,7 @@
 package sbt.internal.inc
 
 import sbt.io.IO
-import sbt.util.{ Level, Logger }
+import sbt.util.Logger
 
 class IvyComponentCompilerSpec extends BridgeProviderSpecification {
 

@@ -168,6 +168,7 @@ lazy val compilerBridge: Project = (project in internalPath / "compiler-bridge")
   dependsOn(compilerInterface % "compile;test->test", /*launchProj % "test->test",*/ incrementalcompilerApiInfo % "test->test").
   settings(
     baseSettings,
+    libraryDependencies += scalaCompiler.value % "provided",
     autoScalaLibrary := false,
     // precompiledSettings,
     name := "Compiler Bridge",
@@ -223,8 +224,10 @@ lazy val incrementalcompilerClassfile = (project in internalPath / "incrementalc
     name := "Incrementalcompiler Classfile"
   )
 
-lazy val publishBridgesAndTest = Command.command("publishBridgesAndTest") { state =>
-  val test = "test" :: state
+lazy val publishBridgesAndTest = Command.args("publishBridgesAndTest", "<version>") { (state, args) =>
+  val version = args mkString ""
+  val compilerInterfaceID = compilerInterface.id
   val compilerBridgeID = compilerBridge.id
+  val test = s"$compilerInterfaceID/publishM2" :: s"plz $version test" :: state
   (scalaVersions map (v => s"plz $v $compilerBridgeID/publishM2") foldRight test) { _ :: _ }
 }
