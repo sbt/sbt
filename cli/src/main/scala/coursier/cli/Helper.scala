@@ -74,6 +74,23 @@ object Helper {
         )
     }
 
+  def mainClasses(cl: ClassLoader): Map[(String, String), String] = {
+    import scala.collection.JavaConverters._
+
+    val metaInfs = cl.getResources("META-INF/MANIFEST.MF").asScala.toVector
+
+    val mainClasses = metaInfs.flatMap { url =>
+      val attributes = new java.util.jar.Manifest(url.openStream()).getMainAttributes
+
+      val vendor = Option(attributes.getValue("Specification-Vendor")).getOrElse("")
+      val title = Option(attributes.getValue("Specification-Title")).getOrElse("")
+      val mainClass = Option(attributes.getValue("Main-Class"))
+
+      mainClass.map((vendor, title) -> _)
+    }
+
+    mainClasses.toMap
+  }
 }
 
 class Helper(
@@ -100,7 +117,7 @@ class Helper(
     else
       CachePolicy.Default
 
-  val cache = Cache.default
+  val cache = Cache(new File(cacheOptions.cache))
   cache.init(verbose = verbose0 >= 0)
 
   val repositoryIds = {
@@ -151,7 +168,7 @@ class Helper(
     .partition(_.length == 3)
 
   if (splitDependencies.isEmpty) {
-    ???
+    Console.err.println(s"Error: no dependencies specified.")
     // CaseApp.printUsage[Coursier]()
     sys exit 1
   }

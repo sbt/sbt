@@ -4,8 +4,10 @@ package cli
 import java.io.{ File, IOException }
 import java.net.URLClassLoader
 import java.nio.file.{ Files => NIOFiles }
+import java.nio.file.attribute.PosixFilePermission
 
 import caseapp._
+import coursier.util.ClasspathFilter
 
 case class CommonOptions(
   @HelpMessage("Keep optional dependencies (Maven)")
@@ -30,10 +32,26 @@ case class CommonOptions(
     repository: List[String],
   @HelpMessage("Maximum number of parallel downloads (default: 6)")
   @ExtraName("n")
-    parallel: Int = 6
+    parallel: Int = 6,
+  @Recurse
+    cacheOptions: CacheOptions
 ) {
   val verbose0 = verbose.length + (if (quiet) 1 else 0)
 }
+
+object CacheOptions {
+  def default =
+    sys.env.getOrElse(
+      "COURSIER_CACHE",
+      sys.props("user.home") + "/.coursier/cache"
+    )
+}
+
+case class CacheOptions(
+  @HelpMessage("Cache directory (defaults to environment variable COURSIER_CACHE or ~/.coursier/cache)")
+  @ExtraName("C")
+    cache: String = CacheOptions.default
+)
 
 @AppName("Coursier")
 @ProgName("coursier")
@@ -83,44 +101,49 @@ case class Launch(
 
   val files0 = helper.fetch(main = true, sources = false, javadoc = false)
 
-
-  def printParents(cl: ClassLoader): Unit =
-    Option(cl.getParent) match {
-      case None =>
-      case Some(cl0) =>
-        println(cl0.toString)
-        printParents(cl0)
-    }
-
-  printParents(Thread.currentThread().getContextClassLoader)
-
-  import scala.collection.JavaConverters._
   val cl = new URLClassLoader(
     files0.map(_.toURI.toURL).toArray,
-    // setting this to null provokes strange things (wrt terminal, ...)
-    // but this is far from perfect: this puts all our dependencies along with the user's,
-    // and with a higher priority
-    Thread.currentThread().getContextClassLoader
+    new ClasspathFilter(
+      Thread.currentThread().getContextClassLoader,
+      Coursier.baseCp.map(new File(_)).toSet,
+      exclude = true
+    )
   )
 
   val mainClass0 =
-    if (mainClass.nonEmpty)
-      mainClass
+    if (mainClass.nonEmpty) mainClass
     else {
-      val metaInfs = cl.findResources("META-INF/MANIFEST.MF").asScala.toVector
-      val mainClasses = metaInfs.flatMap { url =>
-        Option(new java.util.jar.Manifest(url.openStream()).getMainAttributes.getValue("Main-Class"))
-      }
+      val mainClasses = Helper.mainClasses(cl)
 
-      if (mainClasses.isEmpty) {
-        println(s"No main class found. Specify one with -M or --main.")
-        sys.exit(255)
-      }
+      val mainClass =
+        if (mainClasses.isEmpty) {
+          Console.err.println(s"No main class found. Specify one with -M or --main.")
+          sys.exit(255)
+        } else if (mainClasses.size == 1) {
+          val (_, mainClass) = mainClasses.head
+          mainClass
+        } else {
+          // Trying to get the main class of the first artifact
+          val mainClassOpt = for {
+            (module, _) <- helper.moduleVersions.headOption
+            mainClass <- mainClasses.collectFirst {
+              case ((org, name), mainClass)
+                if org == module.organization && (
+                  module.name == name ||
+                    module.name.startsWith(name + "_") // Ignore cross version suffix
+                ) =>
+                mainClass
+            }
+          } yield mainClass
 
-      if (common.verbose0 >= 0)
-        println(s"Found ${mainClasses.length} main class(es):\n${mainClasses.map("  " + _).mkString("\n")}")
+          mainClassOpt.getOrElse {
+            println(mainClasses)
+            Console.err.println(s"Cannot find default main class. Specify one with -M or --main.")
+            sys.exit(255)
+          }
+        }
 
-      mainClasses.head
+      mainClass
     }
 
   val cls =
@@ -169,7 +192,9 @@ case class Repository(
     list: Boolean,
   @ExtraName("l")
     defaultList: Boolean,
-  ivyLike: Boolean
+  ivyLike: Boolean,
+  @Recurse
+    cacheOptions: CacheOptions
 ) extends CoursierCommand {
 
   if (add.exists(!_.contains(":"))) {
@@ -193,7 +218,7 @@ case class Repository(
   }
 
 
-  val cache = Cache.default
+  val cache = Cache(new File(cacheOptions.cache))
 
   if (cache.cache.exists() && !cache.cache.isDirectory) {
     Console.err.println(s"Error: ${cache.cache} not a directory")
@@ -248,14 +273,23 @@ case class Bootstrap(
   @ExtraName("main")
     mainClass: String,
   @ExtraName("o")
-    output: String,
+    output: String = "bootstrap",
   @ExtraName("D")
     downloadDir: String,
   @ExtraName("f")
     force: Boolean,
+  @HelpMessage(s"Internal use - prepend base classpath options to arguments")
+  @ExtraName("b")
+    prependClasspath: Boolean,
+  @HelpMessage("Set environment variables in the generated launcher. No escaping is done. Value is simply put between quotes in the launcher preamble.")
+  @ValueDescription("NAME=VALUE")
+  @ExtraName("e")
+    env: List[String],
   @Recurse
     common: CommonOptions
 ) extends CoursierCommand {
+
+  import scala.collection.JavaConverters._
 
   if (mainClass.isEmpty) {
     Console.err.println(s"Error: no main class specified. Specify one with -M or --main")
@@ -266,6 +300,18 @@ case class Bootstrap(
     Console.err.println(s"Error: no download dir specified. Specify one with -D or --download-dir")
     Console.err.println("E.g. -D \"\\$HOME/.app-name/jars\"")
     sys.exit(255)
+  }
+
+  val (validEnv, wrongEnv) = env.partition(_.contains("="))
+  if (wrongEnv.nonEmpty) {
+    Console.err.println(s"Wrong -e / --env option(s):\n${wrongEnv.mkString("\n")}")
+    sys.exit(255)
+  }
+
+  val env0 = validEnv.map { s =>
+    val idx = s.indexOf('=')
+    assert(idx >= 0)
+    (s.take(idx), s.drop(idx + 1))
   }
 
   val downloadDir0 =
@@ -304,11 +350,16 @@ case class Bootstrap(
     sys.exit(1)
   }
 
-  val shellPreamble = Seq(
-    "#!/usr/bin/env sh",
-    "exec java -jar \"$0\" \"" + mainClass + "\" \"" + downloadDir + "\" " + urls.map("\"" + _ + "\"").mkString(" ") + " -- \"$@\"",
-    ""
-  ).mkString("\n")
+  val shellPreamble = {
+    Seq(
+      "#!/usr/bin/env sh"
+    ) ++
+    env0.map { case (k, v) => "export " + k + "=\"" + v + "\"" } ++
+    Seq(
+      "exec java -jar \"$0\" " + (if (prependClasspath) "-B " else "") + "\"" + mainClass + "\" \"" + downloadDir + "\" " + urls.map("\"" + _ + "\"").mkString(" ") + " -- \"$@\"",
+      ""
+    )
+  }.mkString("\n")
 
   try NIOFiles.write(output0.toPath, shellPreamble.getBytes("UTF-8") ++ bootstrapJar)
   catch { case e: IOException =>
@@ -316,6 +367,51 @@ case class Bootstrap(
     sys.exit(1)
   }
 
+  try {
+    val perms = NIOFiles.getPosixFilePermissions(output0.toPath).asScala.toSet
+
+    var newPerms = perms
+    if (perms(PosixFilePermission.OWNER_READ))
+      newPerms += PosixFilePermission.OWNER_EXECUTE
+    if (perms(PosixFilePermission.GROUP_READ))
+      newPerms += PosixFilePermission.GROUP_EXECUTE
+    if (perms(PosixFilePermission.OTHERS_READ))
+      newPerms += PosixFilePermission.OTHERS_EXECUTE
+
+    if (newPerms != perms)
+      NIOFiles.setPosixFilePermissions(
+        output0.toPath,
+        newPerms.asJava
+      )
+  } catch {
+    case e: UnsupportedOperationException =>
+      // Ignored
+    case e: IOException =>
+      Console.err.println(s"Error while making $output0 executable: ${e.getMessage}")
+      sys.exit(1)
+  }
+
 }
 
-object Coursier extends CommandAppOf[CoursierCommand]
+case class BaseCommand(
+  // FIXME Need a @NoHelp annotation in case-app to hide an option from help message
+  @HelpMessage("For internal use only - class path used to launch coursier")
+  @ExtraName("B")
+    baseCp: List[String]
+) extends Command {
+  Coursier.baseCp = baseCp
+
+  // FIXME Should be in a trait in case-app
+  override def setCommand(cmd: Option[Either[String, String]]): Unit = {
+    if (cmd.isEmpty) {
+      // FIXME Print available commands too?
+      Console.err.println("Error: no command specified")
+      sys.exit(255)
+    }
+    super.setCommand(cmd)
+  }
+}
+
+object Coursier extends CommandAppOfWithBase[BaseCommand, CoursierCommand] {
+  private[coursier] var baseCp = Seq.empty[String]
+}
