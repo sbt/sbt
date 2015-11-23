@@ -53,8 +53,6 @@ case class CacheOptions(
     cache: String = CacheOptions.default
 )
 
-@AppName("Coursier")
-@ProgName("coursier")
 sealed trait CoursierCommand extends Command
 
 case class Fetch(
@@ -413,5 +411,8 @@ case class BaseCommand(
 }
 
 object Coursier extends CommandAppOfWithBase[BaseCommand, CoursierCommand] {
+  override def appName = "Coursier"
+  override def progName = "coursier"
+
   private[coursier] var baseCp = Seq.empty[String]
 }
