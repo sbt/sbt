@@ -93,7 +93,7 @@ package object coursier {
     def process: ResolutionProcess = ResolutionProcess(underlying)
   }
 
-  implicit def fetch(
+  def fetch(
     repositories: Seq[core.Repository]
   )(implicit
     cachePolicy: CachePolicy
@@ -110,7 +110,7 @@ package object coursier {
       )
   }
 
-  def fetchLocalFirst(
+  implicit def fetchLocalFirst(
     repositories: Seq[core.Repository]
   )(implicit
     cachePolicy: CachePolicy
