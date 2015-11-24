@@ -1,6 +1,7 @@
 package coursier.cli
 
 import java.io.File
+import java.util.UUID
 
 import caseapp.CaseApp
 import coursier._
@@ -133,22 +134,50 @@ class Helper(
   }
 
   val repoMap = cache.map()
+  val repoByBase = repoMap.map { case (_, v @ (m, _)) =>
+    m.root -> v
+  }
 
-  if (repositoryIds.exists(!repoMap.contains(_))) {
-    val notFound = repositoryIds
-      .filter(!repoMap.contains(_))
+  val repositoryIdsOpt0 = repositoryIds.map { id =>
+    repoMap.get(id) match {
+      case Some(v) => Right(v)
+      case None =>
+        if (id.contains("://")) {
+          val root0 = if (id.endsWith("/")) id else id + "/"
+          Right(
+            repoByBase.getOrElse(root0, {
+              val id0 = UUID.randomUUID().toString
+              if (verbose0 >= 1)
+                Console.err.println(s"Addding repository $id0 ($root0)")
 
+              // FIXME This could be done more cleanly
+              cache.add(id0, root0, ivyLike = false)
+              cache.map().getOrElse(id0,
+                sys.error(s"Adding repository $id0 ($root0)")
+              )
+            })
+          )
+        } else
+          Left(id)
+    }
+  }
+
+  val notFoundRepositoryIds = repositoryIdsOpt0.collect {
+    case Left(id) => id
+  }
+
+  if (notFoundRepositoryIds.nonEmpty) {
     errPrintln(
-      (if (notFound.lengthCompare(1) == 1) "Repository" else "Repositories") +
+      (if (notFoundRepositoryIds.lengthCompare(1) == 0) "Repository" else "Repositories") +
         " not found: " +
-        notFound.mkString(", ")
+        notFoundRepositoryIds.mkString(", ")
     )
 
     sys.exit(1)
   }
 
-  val (repositories0, fileCaches) = repositoryIds
-    .map(repoMap)
+  val (repositories0, fileCaches) = repositoryIdsOpt0
+    .collect { case Right(v) => v }
     .unzip
 
   val repositories = repositories0
@@ -192,7 +221,7 @@ class Helper(
     filter = Some(dep => keepOptional || !dep.optional)
   )
 
-  val fetchQuiet = coursier.fetch(repositories)
+  val fetchQuiet = coursier.fetchLocalFirst(repositories)
   val fetch0 =
     if (verbose0 == 0) fetchQuiet
     else {

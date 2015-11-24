@@ -53,8 +53,6 @@ case class CacheOptions(
     cache: String = CacheOptions.default
 )
 
-@AppName("Coursier")
-@ProgName("coursier")
 sealed trait CoursierCommand extends Command
 
 case class Fetch(
@@ -278,7 +276,7 @@ case class Bootstrap(
     downloadDir: String,
   @ExtraName("f")
     force: Boolean,
-  @HelpMessage(s"Internal use - prepend base classpath options to arguments")
+  @HelpMessage(s"Internal use - prepend base classpath options to arguments (like -B jar1 -B jar2 etc.)")
   @ExtraName("b")
     prependClasspath: Boolean,
   @HelpMessage("Set environment variables in the generated launcher. No escaping is done. Value is simply put between quotes in the launcher preamble.")
@@ -394,8 +392,7 @@ case class Bootstrap(
 }
 
 case class BaseCommand(
-  // FIXME Need a @NoHelp annotation in case-app to hide an option from help message
-  @HelpMessage("For internal use only - class path used to launch coursier")
+  @Hidden
   @ExtraName("B")
     baseCp: List[String]
 ) extends Command {
@@ -413,5 +410,8 @@ case class BaseCommand(
 }
 
 object Coursier extends CommandAppOfWithBase[BaseCommand, CoursierCommand] {
+  override def appName = "Coursier"
+  override def progName = "coursier"
+
   private[coursier] var baseCp = Seq.empty[String]
 }
