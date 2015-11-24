@@ -24,7 +24,7 @@ import xsbti.compile._
  * An implementation of the incremental compiler that can compile inputs and dump out source dependency analysis.
  */
 object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler] {
-
+  type AnalysisAndSetup = (Analysis, Option[CompileSetup])
   override def compile(in: Inputs[Analysis, AnalyzingCompiler], log: Logger): Analysis =
     {
       val setup = in.setup; import setup._
@@ -33,18 +33,19 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler] {
       val aMap = (f: File) => m2o(analysisMap(f))
       val defClass = (f: File) => { val dc = definesClass(f); (name: String) => dc.apply(name) }
       val incOptions = IncOptions.fromStringMap(incrementalCompilerOptions)
-      val (previousAnalysis, previousSetup) = {
-        MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile()).get().map {
-          case (a, s) => (a, Some(s))
-        } getOrElse {
-          (Analysis.empty(nameHashing = incOptions.nameHashing), None)
-        }
-      }
+      val (previousAnalysis, previousSetup) = previousAnalysisFromStore(setup.cacheFile(), incOptions.nameHashing)
       incrementalCompile(scalac, javac, sources, classpath, output, cache, m2o(progress), scalacOptions, javacOptions, previousAnalysis,
         previousSetup, aMap, defClass, reporter, order, skip, incOptions)(log).analysis
     }
 
-  private[this] def m2o[S](opt: Maybe[S]): Option[S] = if (opt.isEmpty) None else Some(opt.get)
+  private[compiler] def m2o[S](opt: Maybe[S]): Option[S] = if (opt.isEmpty) None else Some(opt.get)
+
+  private[compiler] def previousAnalysisFromStore(cacheFile: File, nameHashing: Boolean): AnalysisAndSetup =
+    MixedAnalyzingCompiler.staticCachedStore(cacheFile).get().map {
+      case (a, s) => (a, Some(s))
+    } getOrElse {
+      (Analysis.empty(nameHashing), None)
+    }
 
   @deprecated("A logger is no longer needed.", "0.13.8")
   override def newScalaCompiler(instance: ScalaInstance, interfaceJar: File, options: ClasspathOptions, log: Logger): AnalyzingCompiler =
