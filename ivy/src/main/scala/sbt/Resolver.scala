@@ -211,6 +211,7 @@ object Resolver {
   def sbtPluginRepo(status: String) = url("sbt-plugin-" + status, new URL(SbtPluginRepositoryRoot + "/sbt-plugin-" + status + "/"))(ivyStylePatterns)
   def sonatypeRepo(status: String) = new MavenRepository("sonatype-" + status, SonatypeRepositoryRoot + "/" + status)
   def bintrayRepo(owner: String, repo: String) = new MavenRepository(s"bintray-$owner-$repo", s"https://dl.bintray.com/$owner/$repo/")
+  def bintrayIvyRepo(owner: String, repo: String) = url(s"bintray-$owner-$repo", new URL(s"https://dl.bintray.com/$owner/$repo/"))(Resolver.ivyStylePatterns)
   def jcenterRepo = JCenterRepository
 
   /** Add the local and Maven Central repositories to the user repositories.  */
