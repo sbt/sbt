@@ -82,7 +82,7 @@ object InputTask {
   /** Implementation detail that is public because it is used by a macro.*/
   def parserAsInput[T](p: Parser[T]): Initialize[State => Parser[T]] = Def.valueStrict(Types.const(p))
 
-  /** Implementation detail that is public because it is used y a macro.*/
+  /** Implementation detail that is public because it is used by a macro.*/
   def initParserAsInput[T](i: Initialize[Parser[T]]): Initialize[State => Parser[T]] = i(Types.const)
 
   @deprecated("Use another InputTask constructor or the `Def.inputTask` macro.", "0.13.0")
