@@ -21,7 +21,7 @@ addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.8.0")
 To add the plugin only to a single project, put this line into `project/plugins.sbt` of your project, instead.
 
 This plugin is an auto-plugin which will be automatically enabled starting from sbt 0.13.5. See the
-[compatibility notes](#Compatibility notes) when using this plugin with sbt < 0.13.6.
+[compatibility notes](#Compatibility-notes) when using this plugin with sbt < 0.13.6.
 
 ## Main Tasks
 
@@ -63,7 +63,7 @@ dependencyDotFile := file("dependencies.dot") //render dot file to `./dependenci
 
 ## Known issues
 
- * #19: There's an unfixed bug with graph generation for particular layouts. Workaround:
+ * [#19]: There's an unfixed bug with graph generation for particular layouts. Workaround:
    Use `dependency-tree` instead of `dependency-graph`.
  * [#39]: When using sbt-dependency-graph with sbt < 0.13.6.
 
@@ -84,4 +84,5 @@ Published under the [Apache License 2.0](http://en.wikipedia.org/wiki/Apache_lic
 
 [global plugin]: http://www.scala-sbt.org/0.13/tutorial/Using-Plugins.html#Global+plugins
 [global build configuration]: http://www.scala-sbt.org/0.13/docs/Global-Settings.html
+[#19]: https://github.com/jrudolph/sbt-dependency-graph/issues/19
 [#39]: https://github.com/jrudolph/sbt-dependency-graph/issues/39
