@@ -41,6 +41,10 @@ trait DependencyGraphKeys {
     "Opens an HTML page that can be used to view the graph.")
   val moduleGraph = TaskKey[ModuleGraph]("module-graph",
     "The dependency graph for a project")
+  val moduleGraphIvyReport = TaskKey[ModuleGraph]("module-graph-ivy-report",
+    "The dependency graph for a project as generated from an Ivy Report XML")
+  val moduleGraphSbt = TaskKey[ModuleGraph]("module-graph-sbt",
+    "The dependency graph for a project as generated from SBT data structures.")
   val asciiGraph = TaskKey[String]("dependency-graph-string",
     "Returns a string containing the ascii representation of the dependency graph for a project")
   val dependencyGraph = InputKey[Unit]("dependency-graph",

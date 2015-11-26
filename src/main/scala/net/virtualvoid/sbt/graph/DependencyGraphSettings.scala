@@ -42,7 +42,14 @@ object DependencyGraphSettings {
   def ivyReportForConfig(config: Configuration) = inConfig(config)(Seq(
     ivyReport <<= ivyReportFunction map (_(config.toString)) dependsOn (ignoreMissingUpdate),
     crossProjectId <<= (scalaVersion, scalaBinaryVersion, projectID)((sV, sBV, id) ⇒ CrossVersion(sV, sBV)(id)),
-    moduleGraph <<= sbtUpdateReportGraph,
+    moduleGraphSbt <<= moduleGraphSbtTask,
+    moduleGraphIvyReport <<= moduleGraphIvyReportTask,
+    moduleGraph <<= (sbtVersion, moduleGraphSbt, moduleGraphIvyReport) { (version, graphSbt, graphIvy) ⇒
+      version match {
+        case Version(0, 13, x, _) if x >= 6 ⇒ graphSbt
+        case _                              ⇒ graphIvy
+      }
+    },
     moduleGraph <<= (scalaVersion, moduleGraph, filterScalaLibrary) map { (scalaV, graph, filter) ⇒
       if (filter) GraphTransformations.ignoreScalaLibrary(scalaV, graph)
       else graph
@@ -110,8 +117,8 @@ object DependencyGraphSettings {
       }
     }
 
-  def ivyReportGraph = ivyReport map (absoluteReportPath.andThen(IvyReport.fromReportFile))
-  def sbtUpdateReportGraph =
+  def moduleGraphIvyReportTask = ivyReport map (absoluteReportPath.andThen(IvyReport.fromReportFile))
+  def moduleGraphSbtTask =
     (ignoreMissingUpdate, crossProjectId, configuration) map { (update, root, config) ⇒
       SbtUpdateReport.fromConfigurationReport(update.configuration(config.name).get, root)
     }
