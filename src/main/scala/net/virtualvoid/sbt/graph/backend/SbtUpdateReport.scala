@@ -20,6 +20,10 @@ package backend
 import sbt._
 
 object SbtUpdateReport {
+  type OrganizationArtifactReport = {
+    def modules: Seq[ModuleReport]
+  }
+
   def fromConfigurationReport(report: ConfigurationReport, rootInfo: sbt.ModuleID): ModuleGraph = {
     implicit def id(sbtId: sbt.ModuleID): ModuleId = ModuleId(sbtId.organization, sbtId.name, sbtId.revision)
 

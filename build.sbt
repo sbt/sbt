@@ -20,7 +20,7 @@ scalacOptions ++= Seq("-deprecation", "-unchecked")
 
 sbt.CrossBuilding.latestCompatibleVersionMapper ~= {
   original => {
-    case "0.13" => "0.13.8"
+    case "0.13" => "0.13.6"
     case x => original(x)
   }
 }
