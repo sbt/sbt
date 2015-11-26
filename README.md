@@ -1,16 +1,14 @@
-sbt-dependency-graph
-====================
+# sbt-dependency-graph
 
 Visualize your project's dependencies.
 
-Preliminaries
--------------
+## Preliminaries
 
-Starting with version 0.8.0, the plugin will only work for sbt-projects that use sbt >= 0.13.8. See
-the [0.7 branch](https://github.com/jrudolph/sbt-dependency-graph/tree/0.7) for older versions that still work with sbt < 0.13.8.
+Starting with version 0.8.0, the plugin will only work for projects that use sbt 0.13.x. See
+the [0.7 branch](https://github.com/jrudolph/sbt-dependency-graph/tree/0.7) for older versions that still work with
+sbt < 0.13.
 
-How To Use
-----------
+## How To Use
 
 Since sbt-dependency-graph is an informational tool rather than one that changes your build, you will more than likely wish to
 install it as a [global plugin] so that you can use it in any SBT project without the need to explicitly add it to each one. To do
@@ -20,12 +18,12 @@ this, add the plugin dependency to `~/.sbt/0.13/plugins/plugins.sbt`:
 addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.8.0")
 ```
 
-This plugin is an auto-plugin which will be automatically enabled.
-
 To add the plugin only to a single project, put this line into `project/plugins.sbt` of your project, instead.
 
-Main Tasks
-----------
+This plugin is an auto-plugin which will be automatically enabled starting from sbt 0.13.5. See the
+[compatibility notes](#Compatibility notes) when using this plugin with sbt < 0.13.6.
+
+## Main Tasks
 
  * `dependencyTree`: Shows an ASCII tree representation of the project's dependencies
  * `dependencyBrowseGraph`: Opens a browser window with a visualization of the dependency graph (courtesy of graphlib-dot + dagre-d3).
@@ -44,10 +42,8 @@ All tasks can be scoped to a configuration to get the report for a specific conf
 for example, prints the dependencies in the `test` configuration. If you don't specify any configuration, `compile` is
 assumed as usual.
 
+## Configuration settings
 
-Configuration settings
-----------------------
- 
  * `filterScalaLibrary`: Defines if the scala library should be excluded from the output of the dependency-* functions.
    If `true`, instead of showing the dependency `"[S]"` is appended to the artifact name. Set to `false` if
    you want the scala-library dependency to appear in the output. (default: true)
@@ -65,33 +61,27 @@ filterScalaLibrary := false // include scala library in output
 dependencyDotFile := file("dependencies.dot") //render dot file to `./dependencies.dot`
 ```
 
-Standalone usage
-----------------
-
-You can use the project without sbt as well by either depending on the library and calling
-`IvyGraphMLDependencies.saveAsGraphML(IvyGraphMLDependencies.graph(reportFile), outputFile)` or by just getting the binary
-and calling it like `scala sbt-dependency-graph-0.7.5.jar <ivy-report-xml-path> <target-path>`.
-
-Inner Workings
---------------
-
-sbt/Ivy's `update` task create ivy-report xml-files inside `.ivy2/cache` (in sbt 0.12.1:
-`<project-dir>/target/resolution-cache/reports/<project-id>`). You can
-just open them with your browser to look at the dependency report for your project.
-This project takes the report xml of your project and creates a graphml file out of it. (BTW,
-ivy can create graphml files itself, but since I didn't want to spend to much time getting
-sbt to call into Ivy to create graphs, I went with the easy way here)
-
-Known issues
-------------
+## Known issues
 
  * #19: There's an unfixed bug with graph generation for particular layouts. Workaround:
    Use `dependency-tree` instead of `dependency-graph`.
+ * [#39]: When using sbt-dependency-graph with sbt < 0.13.6.
 
-License
--------
+## Compatibility notes
+
+ * sbt < 0.13.6: fallback on the old ivy report XML backend which suffers from [#39]
+ * sbt < 0.13.5: no autoplugin support, you need to add
+
+ ```scala
+ net.virtualvoid.sbt.graph.DependencyGraphSettings.graphSettings
+ ```
+
+ to your `build.sbt` or (`~/.sbt/0.13/user.sbt` for global configuration) to enable the plugin.
+
+## License
 
 Published under the [Apache License 2.0](http://en.wikipedia.org/wiki/Apache_license).
 
 [global plugin]: http://www.scala-sbt.org/0.13/tutorial/Using-Plugins.html#Global+plugins
 [global build configuration]: http://www.scala-sbt.org/0.13/docs/Global-Settings.html
+[#39]: https://github.com/jrudolph/sbt-dependency-graph/issues/39
