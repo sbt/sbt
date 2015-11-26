@@ -1,52 +1,47 @@
-sbt-dependency-graph
-====================
+# sbt-dependency-graph
 
 Visualize your project's dependencies.
 
-**Note: A more recent (currently experimental) version lives in the [0.8 branch](https://github.com/jrudolph/sbt-dependency-graph/tree/0.8).**
+## Preliminaries
 
-How To Use
-----------
+Starting with version 0.8.0, the plugin will work best with sbt >= 0.13.6. See the
+[compatibility notes](#Compatibility-notes) when using this plugin with sbt < 0.13.6.
+
+## Usage Instructions
 
 Since sbt-dependency-graph is an informational tool rather than one that changes your build, you will more than likely wish to
 install it as a [global plugin] so that you can use it in any SBT project without the need to explicitly add it to each one. To do
 this, add the plugin dependency to `~/.sbt/0.13/plugins/plugins.sbt`:
 
 ```scala
-addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.7.5")
+addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.8.0")
 ```
 
-Then, apply the plugin's settings in `~/.sbt/0.13/global.sbt`, the [global build configuration], by adding the following line:
+To add the plugin only to a single project, put this line into `project/plugins.sbt` of your project, instead.
 
-```scala
-net.virtualvoid.sbt.graph.Plugin.graphSettings
-```
+This plugin is an auto-plugin which will be automatically enabled starting from sbt 0.13.5.
 
-Note, that sbt-dependency-graph is not an [AutoPlugin](http://www.scala-sbt.org/0.13/docs/Plugins.html#Creating+an+auto+plugin) yet (until [#51](https://github.com/jrudolph/sbt-dependency-graph/issues/51) is fixed), so adding the above line to your global or project configuration is mandatory.
+## Main Tasks
 
-Tasks
------
-
- * `dependency-graph`: Shows an ASCII graph of the project's dependencies on the sbt console
- * `dependency-graph-ml`: Generates a .graphml file with the project's dependencies to `target/dependencies-<config>.graphml`.
-   Use e.g. [yEd](http://www.yworks.com/en/products_yed_about.html) to format the graph to your needs.
- * `dependency-dot`: Generates a .dot file with the project's dependencies to `target/dependencies-<config>.dot`.
-    Use [graphviz](http://www.graphviz.org/) to render it to your preferred graphic format.
- * `dependency-tree`: Shows an ASCII tree representation of the project's dependencies
- * `what-depends-on <organization> <module> <revision>`: Find out what depends on an artifact. Shows a reverse dependency
+ * `dependencyTree`: Shows an ASCII tree representation of the project's dependencies
+ * `dependencyBrowseGraph`: Opens a browser window with a visualization of the dependency graph (courtesy of graphlib-dot + dagre-d3).
+ * `dependencyGraph`: Shows an ASCII graph of the project's dependencies on the sbt console
+ * `whatDependsOn <organization> <module> <revision>`: Find out what depends on an artifact. Shows a reverse dependency
    tree for the selected module.
- * `dependency-license-info`: show dependencies grouped by declared license
- * `ivy-report`: let's ivy generate the resolution report for you project. Use
-   `show ivy-report` for the filename of the generated report
+ * `dependencyLicenseInfo`: show dependencies grouped by declared license
+ * `dependencyGraphMl`: Generates a `.graphml` file with the project's dependencies to `target/dependencies-<config>.graphml`.
+   Use e.g. [yEd](http://www.yworks.com/en/products_yed_about.html) to format the graph to your needs.
+ * `dependencyDot`: Generates a .dot file with the project's dependencies to `target/dependencies-<config>.dot`.
+    Use [graphviz](http://www.graphviz.org/) to render it to your preferred graphic format.
+ * `ivyReport`: let's ivy generate the resolution report for you project. Use
+   `show ivyReport` for the filename of the generated report
 
-All tasks can be scoped to a configuration to get the report for a specific configuration. `test:dependency-graph`,
+All tasks can be scoped to a configuration to get the report for a specific configuration. `test:dependencyGraph`,
 for example, prints the dependencies in the `test` configuration. If you don't specify any configuration, `compile` is
 assumed as usual.
 
+## Configuration settings
 
-Configuration settings
-----------------------
- 
  * `filterScalaLibrary`: Defines if the scala library should be excluded from the output of the dependency-* functions.
    If `true`, instead of showing the dependency `"[S]"` is appended to the artifact name. Set to `false` if
    you want the scala-library dependency to appear in the output. (default: true)
@@ -64,42 +59,29 @@ filterScalaLibrary := false // include scala library in output
 dependencyDotFile := file("dependencies.dot") //render dot file to `./dependencies.dot`
 ```
 
-Standalone usage
-----------------
+## Known issues
 
-You can use the project without sbt as well by either depending on the library and calling
-`IvyGraphMLDependencies.saveAsGraphML(IvyGraphMLDependencies.graph(reportFile), outputFile)` or by just getting the binary
-and calling it like `scala sbt-dependency-graph-0.7.5.jar <ivy-report-xml-path> <target-path>`.
-
-Inner Workings
---------------
-
-sbt/Ivy's `update` task create ivy-report xml-files inside `.ivy2/cache` (in sbt 0.12.1:
-`<project-dir>/target/resolution-cache/reports/<project-id>`). You can
-just open them with your browser to look at the dependency report for your project.
-This project takes the report xml of your project and creates a graphml file out of it. (BTW,
-ivy can create graphml files itself, but since I didn't want to spend to much time getting
-sbt to call into Ivy to create graphs, I went with the easy way here)
-
-Known issues
-------------
-
- * #19: There's an unfixed bug with graph generation for particular layouts. Workaround:
+ * [#19]: There's an unfixed bug with graph generation for particular layouts. Workaround:
    Use `dependency-tree` instead of `dependency-graph`.
- * #12: Excluded dependencies will be shown in the graph in sbt < 0.12, works with later versions
+ * [#39]: When using sbt-dependency-graph with sbt < 0.13.6.
 
-Credits
--------
+## Compatibility notes
 
- * Matt Russell (@mdr) for contributing the ASCII graph layout.
- * berleon (@berleon) for contributing rendering to dot.
+ * sbt < 0.13.6: fallback on the old ivy report XML backend which suffers from [#39]
+ * sbt < 0.13.5: no autoplugin support, you need to add
 
-License
--------
+ ```scala
+ net.virtualvoid.sbt.graph.DependencyGraphSettings.graphSettings
+ ```
 
-Copyright (c) 2011, 2012 Johannes Rudolph
+ to your `build.sbt` or (`~/.sbt/0.13/user.sbt` for global configuration) to enable the plugin.
+ * sbt <= 0.12.x: please use the old version from the [0.7 branch](https://github.com/jrudolph/sbt-dependency-graph/tree/0.7)
+
+## License
 
 Published under the [Apache License 2.0](http://en.wikipedia.org/wiki/Apache_license).
 
 [global plugin]: http://www.scala-sbt.org/0.13/tutorial/Using-Plugins.html#Global+plugins
 [global build configuration]: http://www.scala-sbt.org/0.13/docs/Global-Settings.html
+[#19]: https://github.com/jrudolph/sbt-dependency-graph/issues/19
+[#39]: https://github.com/jrudolph/sbt-dependency-graph/issues/39

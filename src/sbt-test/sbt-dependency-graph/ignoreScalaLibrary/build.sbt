@@ -1,7 +1,3 @@
-import net.virtualvoid.sbt.graph.Plugin._
-
-graphSettings
-
 scalaVersion := "2.9.2"
 
 libraryDependencies ++= Seq(
