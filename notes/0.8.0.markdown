@@ -1,4 +1,4 @@
-sbt-dependency-graph is finally an AutoPlugin and learned to render graph in the browser.
+sbt-dependency-graph is finally an AutoPlugin and can now show the dependency graph in the browser directly.
 
 ## New features
 
@@ -8,7 +8,7 @@ sbt-dependency-graph is finally an AutoPlugin and learned to render graph in the
  - this plugin is finally an sbt AutoPlugin and it is automatically enabled
    ([#51](https://github.com/jrudolph/sbt-dependency-graph/issues/51))
 
-**Note: To update remove the `net.virtualvoid.sbt.graph.Plugin.graphSettings` line from your configurations.**
+**Note: To update from 0.7.x remove the `net.virtualvoid.sbt.graph.Plugin.graphSettings` line from your configurations.**
 
 ## Other changes
 
