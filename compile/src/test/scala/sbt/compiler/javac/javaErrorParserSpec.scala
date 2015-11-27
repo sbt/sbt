@@ -15,9 +15,10 @@ object JavaErrorParserSpec extends Specification {
      be able to parse linux errors    $parseSampleLinux
      be able to parse windows file names $parseWindowsFile
      be able to parse windows errors  $parseSampleWindows
+     be able to parse javac errors $parseSampleJavac
   """
 
-  def parseSampleLinux = {
+  def parseSampleLinux: MatchResult[_] = {
     val parser = new JavaErrorParser()
     val logger = Logger.Null
     val problems = parser.parseProblems(sampleLinuxMessage, logger)
@@ -26,7 +27,7 @@ object JavaErrorParserSpec extends Specification {
     rightSize and rightFile
   }
 
-  def parseSampleWindows = {
+  def parseSampleWindows: MatchResult[_] = {
     val parser = new JavaErrorParser()
     val logger = Logger.Null
     val problems = parser.parseProblems(sampleWindowsMessage, logger)
@@ -45,7 +46,16 @@ object JavaErrorParserSpec extends Specification {
     }
   }
 
-  def sampleLinuxMessage =
+  def parseSampleJavac: MatchResult[_] = {
+    val parser = new JavaErrorParser()
+    val logger = Logger.Null
+    val problems = parser.parseProblems(sampleJavacMessage, logger)
+    def rightSize = problems must haveSize(1)
+    def rightError = problems(0).message must beEqualTo(sampleJavacMessage)
+    rightSize and rightError
+  }
+
+  def sampleLinuxMessage: String =
     """
       |/home/me/projects/sample/src/main/Test.java:4: cannot find symbol
       |symbol  : method baz()
@@ -53,7 +63,7 @@ object JavaErrorParserSpec extends Specification {
       |return baz();
     """.stripMargin
 
-  def sampleWindowsMessage =
+  def sampleWindowsMessage: String =
     s"""
       |$windowsFile:4: cannot find symbol
       |symbol  : method baz()
@@ -61,6 +71,8 @@ object JavaErrorParserSpec extends Specification {
       |return baz();
     """.stripMargin
 
-  def windowsFile = """C:\Projects\sample\src\main\java\Test.java"""
-  def windowsFileAndLine = s"""$windowsFile:4"""
+  def windowsFile: String = """C:\Projects\sample\src\main\java\Test.java"""
+  def windowsFileAndLine: String = s"""$windowsFile:4"""
+
+  def sampleJavacMessage = "javac: invalid flag: -foobar"
 }
