@@ -135,7 +135,7 @@ Welcome to the Ammonite Repl 0.5.0
 
 ## API
 
-This [gist](ammonite.repl.Repl) by [Lars Hupel](https://github.com/larsrh/)
+This [gist](https://gist.github.com/larsrh/42da43aa74dc4e78aa59) by [Lars Hupel](https://github.com/larsrh/)
 illustrates how the API of coursier can be used to get transitives dependencies
 and fetch the corresponding artefacts.
 
