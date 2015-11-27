@@ -13,6 +13,7 @@ class JavaErrorParserSpec extends UnitSpec {
   "The JavaErrorParser" should "be able to parse linux errors" in parseSampleLinux()
   it should "be able to parse windows file names" in parseWindowsFile()
   it should "be able to parse windows errors" in parseSampleWindows()
+  it should "be able to parse javac errors" in parseSampleJavac()
 
   def parseSampleLinux() = {
     val parser = new JavaErrorParser()
@@ -43,6 +44,14 @@ class JavaErrorParserSpec extends UnitSpec {
     }
   }
 
+  def parseSampleJavac() = {
+    val parser = new JavaErrorParser()
+    val logger = Logger.Null
+    val problems = parser.parseProblems(sampleJavacMessage, logger)
+    problems should have size (1)
+    problems(0).message shouldBe (sampleJavacMessage)
+  }
+
   def sampleLinuxMessage =
     """
       |/home/me/projects/sample/src/main/Test.java:4: cannot find symbol
@@ -61,4 +70,6 @@ class JavaErrorParserSpec extends UnitSpec {
 
   def windowsFile = """C:\Projects\sample\src\main\java\Test.java"""
   def windowsFileAndLine = s"""$windowsFile:4"""
+
+  def sampleJavacMessage = "javac: invalid flag: -foobar"
 }
