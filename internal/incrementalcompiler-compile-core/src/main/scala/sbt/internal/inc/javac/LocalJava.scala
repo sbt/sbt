@@ -71,7 +71,16 @@ final class LocalJavaCompiler(compiler: javax.tools.JavaCompiler) extends JavaCo
     val diagnostics = new DiagnosticsReporter(reporter)
     val fileManager = compiler.getStandardFileManager(diagnostics, null, null)
     val jfiles = fileManager.getJavaFileObjectsFromFiles(sources.asJava)
-    val success = compiler.getTask(logWriter, fileManager, diagnostics, options.asJava, null, jfiles).call()
+
+    // Local Java compiler doesn't accept `-J<flag>` options. We emit a warning if we find
+    // such options and don't pass them to the compiler.
+    val (invalidOptions, cleanedOptions) = options partition (_ startsWith "-J")
+    if (invalidOptions.nonEmpty) {
+      log.warn("Javac is running in 'local' mode. These flags have been removed:")
+      log.warn(invalidOptions.mkString("\t", ", ", ""))
+    }
+    val success = compiler.getTask(logWriter, fileManager, diagnostics, cleanedOptions.asJava, null, jfiles).call()
+
     // The local compiler may report a successful compilation even though there are errors (e.g. encoding problems in the
     // source files). In a similar situation, command line javac reports a failed compilation. To have the local java compiler
     // stick to javac's behavior, we report a failed compilation if there have been errors.
