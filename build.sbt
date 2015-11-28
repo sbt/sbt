@@ -46,6 +46,11 @@ lazy val baseCommonSettings = Seq(
     "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
     Resolver.sonatypeRepo("releases"),
     Resolver.sonatypeRepo("snapshots")
+  ),
+  scalacOptions += "-target:jvm-1.7",
+  javacOptions ++= Seq(
+    "-source", "1.7",
+    "-target", "1.7"
   )
 )
 
@@ -173,7 +178,8 @@ lazy val bootstrap = project
           artifactName0(sv, m, artifact)
     },
     crossPaths := false,
-    autoScalaLibrary := false
+    autoScalaLibrary := false,
+    javacOptions in doc := Seq()
   )
 
 lazy val `coursier` = project.in(file("."))

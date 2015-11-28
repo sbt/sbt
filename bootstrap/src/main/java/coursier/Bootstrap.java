@@ -74,7 +74,7 @@ public class Bootstrap {
         for (int i = offset + 2; i < args.length; i++)
             remainingArgs.add(args[i]);
 
-        File jarDir = new File(jarDir0);
+        final File jarDir = new File(jarDir0);
 
         if (jarDir.exists()) {
             if (!jarDir.isDirectory())
@@ -123,26 +123,28 @@ public class Bootstrap {
 
         for (URL url : urls) {
             if (!url.getProtocol().equals("file")) {
+                final URL url0 = url;
+
                 completionService.submit(new Callable<URL>() {
                     @Override
                     public URL call() throws Exception {
-                        String path = url.getPath();
+                        String path = url0.getPath();
                         int idx = path.lastIndexOf('/');
                         // FIXME Add other components in path to prevent conflicts?
                         String fileName = path.substring(idx + 1);
                         File dest = new File(jarDir, fileName);
 
                         if (!dest.exists()) {
-                            System.err.println("Downloading " + url);
+                            System.err.println("Downloading " + url0);
                             try {
-                                URLConnection conn = url.openConnection();
+                                URLConnection conn = url0.openConnection();
                                 long lastModified = conn.getLastModified();
                                 InputStream s = conn.getInputStream();
                                 byte[] b = readFullySync(s);
                                 Files.write(dest.toPath(), b);
                                 dest.setLastModified(lastModified);
                             } catch (Exception e) {
-                                System.err.println("Error while downloading " + url + ": " + e.getMessage() + ", ignoring it");
+                                System.err.println("Error while downloading " + url0 + ": " + e.getMessage() + ", ignoring it");
                                 throw e;
                             }
                         }
