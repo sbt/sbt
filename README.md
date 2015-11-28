@@ -11,7 +11,7 @@ A pure Scala substitute for [Aether](http://www.eclipse.org/aether/)
 *coursier* is a dependency resolver / fetcher *à la* Maven / Ivy, entirely
 rewritten from scratch in Scala. It aims at being fast and easy to embed
 in other contexts. Its very core (`core` module) aims at being
-extremely pure, and should be approached with a mathsy / algebraic mindset.
+extremely pure, and should be approached thinking algebraically.
 
 The `files` module handles caching of the metadata and artifacts themselves,
 and is less so pure than the `core` module, in the sense that it happily
@@ -30,15 +30,24 @@ make a heavy use of these.
 
 It can be used either from the command-line, via its API, or from the browser.
 
+It downloads the metadata or the artifacts in parallel (usually, 6 parallel
+downloads).
+
 ## Command-line
 
-Download and run it with
+Download and run its laucher with
 ```
-$ curl -L -o coursier https://git.io/vBkT9; chmod +x coursier; ./coursier --help
+$ curl -L -o coursier https://git.io/vBP7T; chmod +x coursier; ./coursier --help
 ```
 
+Note that the launcher itself weights only 8 kB and can be easily
+embedded as is in other projects.
 The first time it is run, it will download the artifacts required to launch
 coursier. You'll be fine the next times :-).
+
+The cache of this default launcher defaults to a directory named `.coursier`,
+in the same directory as the launcher. This can be changed by manually adjusting
+the `COURSIER_CACHE` variable in the first lines of the launcher.
 
 ```
 $ ./coursier --help
