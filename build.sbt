@@ -40,15 +40,23 @@ lazy val noPublishSettings = Seq(
   publishArtifact := false
 )
 
-lazy val commonSettings = Seq(
+lazy val baseCommonSettings = Seq(
   organization := "com.github.alexarchambault",
-  scalaVersion := "2.11.7",
-  crossScalaVersions := Seq("2.10.6", "2.11.7"),
   resolvers ++= Seq(
     "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
     Resolver.sonatypeRepo("releases"),
     Resolver.sonatypeRepo("snapshots")
   ),
+  scalacOptions += "-target:jvm-1.7",
+  javacOptions ++= Seq(
+    "-source", "1.7",
+    "-target", "1.7"
+  )
+)
+
+lazy val commonSettings = baseCommonSettings ++ Seq(
+  scalaVersion := "2.11.7",
+  crossScalaVersions := Seq("2.10.6", "2.11.7"),
   libraryDependencies ++= {
     if (scalaVersion.value startsWith "2.10.")
       Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.0.1" cross CrossVersion.full))
@@ -120,7 +128,7 @@ lazy val cli = project
       "com.github.alexarchambault" %% "case-app" % "1.0.0-SNAPSHOT",
       "ch.qos.logback" % "logback-classic" % "1.1.3"
     ),
-    resourceGenerators in Compile += assembly.in(bootstrap).in(assembly).map { jar =>
+    resourceGenerators in Compile += packageBin.in(bootstrap).in(Compile).map { jar =>
       Seq(jar)
     }.taskValue
   )
@@ -157,14 +165,21 @@ lazy val web = project
   )
 
 lazy val bootstrap = project
-  .settings(commonSettings)
-  .settings(noPublishSettings)
+  .settings(baseCommonSettings)
+  .settings(publishingSettings)
   .settings(
     name := "coursier-bootstrap",
-    assemblyJarName in assembly := s"bootstrap.jar",
-    assemblyShadeRules in assembly := Seq(
-      ShadeRule.rename("scala.**" -> "shadedscala.@1").inAll
-    )
+    artifactName := {
+      val artifactName0 = artifactName.value
+      (sv, m, artifact) =>
+        if (artifact.`type` == "jar" && artifact.extension == "jar")
+          "bootstrap.jar"
+        else
+          artifactName0(sv, m, artifact)
+    },
+    crossPaths := false,
+    autoScalaLibrary := false,
+    javacOptions in doc := Seq()
   )
 
 lazy val `coursier` = project.in(file("."))
