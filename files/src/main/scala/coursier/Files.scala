@@ -269,11 +269,11 @@ object Files {
   val defaultConcurrentDownloadCount = 6
 
   trait Logger {
-    def foundLocally(url: String, f: File): Unit
-    def downloadingArtifact(url: String): Unit
-    def downloadLength(url: String, length: Long): Unit
-    def downloadProgress(url: String, downloaded: Long): Unit
-    def downloadedArtifact(url: String, success: Boolean): Unit
+    def foundLocally(url: String, f: File): Unit = {}
+    def downloadingArtifact(url: String): Unit = {}
+    def downloadLength(url: String, length: Long): Unit = {}
+    def downloadProgress(url: String, downloaded: Long): Unit = {}
+    def downloadedArtifact(url: String, success: Boolean): Unit = {}
   }
 
   var bufferSize = 1024*1024

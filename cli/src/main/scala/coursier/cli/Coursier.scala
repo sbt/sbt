@@ -36,7 +36,7 @@ case class CommonOptions(
   @Recurse
     cacheOptions: CacheOptions
 ) {
-  val verbose0 = verbose.length + (if (quiet) 1 else 0)
+  val verbose0 = verbose.length - (if (quiet) 1 else 0)
 }
 
 object CacheOptions {
@@ -70,7 +70,7 @@ case class Fetch(
 
   val files0 = helper.fetch(main = true, sources = false, javadoc = false)
 
-  Console.out.println(
+  println(
     files0
       .map(_.toString)
       .mkString("\n")
@@ -115,7 +115,7 @@ case class Launch(
 
       val mainClass =
         if (mainClasses.isEmpty) {
-          Console.err.println(s"No main class found. Specify one with -M or --main.")
+          Helper.errPrintln("No main class found. Specify one with -M or --main.")
           sys.exit(255)
         } else if (mainClasses.size == 1) {
           val (_, mainClass) = mainClasses.head
@@ -135,8 +135,7 @@ case class Launch(
           } yield mainClass
 
           mainClassOpt.getOrElse {
-            println(mainClasses)
-            Console.err.println(s"Cannot find default main class. Specify one with -M or --main.")
+            Helper.errPrintln(s"Cannot find default main class. Specify one with -M or --main.")
             sys.exit(255)
           }
         }
@@ -147,18 +146,20 @@ case class Launch(
   val cls =
     try cl.loadClass(mainClass0)
     catch { case e: ClassNotFoundException =>
-      println(s"Error: class $mainClass0 not found")
+      Helper.errPrintln(s"Error: class $mainClass0 not found")
       sys.exit(255)
     }
   val method =
     try cls.getMethod("main", classOf[Array[String]])
     catch { case e: NoSuchMethodError =>
-      println(s"Error: method main not found in $mainClass0")
+      Helper.errPrintln(s"Error: method main not found in $mainClass0")
       sys.exit(255)
     }
 
   if (common.verbose0 >= 1)
-    println(s"Calling $mainClass0 ${extraArgs.mkString(" ")}")
+    Helper.errPrintln(s"Launching $mainClass0 ${extraArgs.mkString(" ")}")
+  else if (common.verbose0 == 0)
+    Helper.errPrintln(s"Launching")
 
   Thread.currentThread().setContextClassLoader(cl)
   method.invoke(null, extraArgs.toArray)

@@ -162,6 +162,7 @@ lazy val cli = project
     name := "coursier-cli",
     libraryDependencies ++= Seq(
       "com.github.alexarchambault" %% "case-app" % "1.0.0-SNAPSHOT",
+      "com.lihaoyi" %% "ammonite-terminal" % "0.5.0",
       "ch.qos.logback" % "logback-classic" % "1.1.3"
     ),
     resourceGenerators in Compile += packageBin.in(bootstrap).in(Compile).map { jar =>
