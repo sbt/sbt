@@ -201,7 +201,11 @@ class Helper(
     else
       None
   logger.foreach(_.init())
-  val fetchQuiet = coursier.Fetch(repositories, files.fetch(logger = logger))
+  val fetchQuiet = coursier.Fetch(
+    repositories,
+    files.fetch(logger = logger)(cachePolicy = CachePolicy.LocalOnly), // local files get the priority
+    files.fetch(logger = logger)
+  )
   val fetch0 =
     if (verbose0 <= 0) fetchQuiet
     else {
