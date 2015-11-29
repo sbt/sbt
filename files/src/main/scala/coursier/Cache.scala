@@ -41,8 +41,7 @@ case class Cache(cache: File) {
   import Cache._
 
   lazy val repoDir = new File(cache, "repositories")
-  lazy val metadataBase = new File(cache, "metadata")
-  lazy val fileBase = new File(cache, "files")
+  lazy val fileBase = new File(cache, "cache")
 
   lazy val defaultFile = new File(repoDir, ".default")
 
@@ -64,11 +63,10 @@ case class Cache(cache: File) {
     ifEmpty: Boolean = true,
     verbose: Boolean = false
   ): Unit =
-    if (!ifEmpty || !cache.exists()) {
+    if (!ifEmpty || !repoDir.exists() || !fileBase.exists()) {
       if (verbose)
         Console.err.println(s"Initializing $cache")
       repoDir.mkdirs()
-      metadataBase.mkdirs()
       fileBase.mkdirs()
       addCentral()
       addIvy2Local()
