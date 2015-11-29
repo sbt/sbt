@@ -1,5 +1,7 @@
 package coursier.core
 
+import coursier.util.Xml
+
 package object compatibility {
 
   implicit class RichChar(val c: Char) extends AnyVal {
@@ -27,4 +29,5 @@ package object compatibility {
 
   def encodeURIComponent(s: String): String =
     new java.net.URI(null, null, null, -1, s, null, null) .toASCIIString
+
 }

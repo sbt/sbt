@@ -1,9 +1,6 @@
 package coursier
 
-import java.io.{PrintWriter, File}
-
-import coursier.core.MavenRepository
-
+import java.io.{ File, PrintWriter }
 import scala.io.Source
 
 object Cache {
@@ -93,10 +90,9 @@ case class Cache(cache: File) {
       .flatMap { f =>
         val name = f.getName
         val lines = Source.fromFile(f).getLines().toList
-        mavenRepository(lines)
-          .map(repo =>
-            (name, repo.copy(cache = Some(new File(metadataBase, name))), (repo.root, new File(fileBase, name)))
-          )
+        mavenRepository(lines).map(repo =>
+          (name, repo, (repo.root, new File(fileBase, name)))
+        )
       }
 
   def map(): Map[String, (MavenRepository, (String, File))] =

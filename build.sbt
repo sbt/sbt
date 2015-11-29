@@ -65,40 +65,64 @@ lazy val commonSettings = baseCommonSettings ++ Seq(
   }
 )
 
+
 lazy val core = crossProject
   .settings(commonSettings: _*)
   .settings(publishingSettings: _*)
   .settings(
-    name := "coursier",
-    libraryDependencies += "org.scala-lang.modules" %% "scala-async" % "0.9.1" % "provided",
-    unmanagedResourceDirectories in Compile += (baseDirectory in LocalRootProject).value / "core" / "shared" / "src" / "main" / "resources",
-    unmanagedResourceDirectories in Test += (baseDirectory in LocalRootProject).value / "core" / "shared" / "src" / "test" / "resources",
-    testFrameworks += new TestFramework("utest.runner.Framework")
+    name := "coursier"
   )
   .jvmSettings(
-    libraryDependencies ++= Seq(
-      "org.scalaz" %% "scalaz-concurrent" % "7.1.2",
-      "com.lihaoyi" %% "utest" % "0.3.0" % "test"
-    ) ++ {
-      if (scalaVersion.value.startsWith("2.10.")) Seq()
-      else Seq(
-        "org.scala-lang.modules" %% "scala-xml" % "1.0.3"
-      )
-    }
+    libraryDependencies ++=
+      Seq(
+        "org.scalaz" %% "scalaz-core" % "7.1.2"
+      ) ++ {
+        if (scalaVersion.value.startsWith("2.10.")) Seq()
+        else Seq(
+          "org.scala-lang.modules" %% "scala-xml" % "1.0.3"
+        )
+      }
   )
   .jsSettings(
     libraryDependencies ++= Seq(
-      "org.scala-js" %%% "scalajs-dom" % "0.8.0",
       "com.github.japgolly.fork.scalaz" %%% "scalaz-core" % (if (scalaVersion.value.startsWith("2.10.")) "7.1.1" else "7.1.2"),
-      "be.doeraene" %%% "scalajs-jquery" % "0.8.0",
-      "com.lihaoyi" %%% "utest" % "0.3.0" % "test"
-    ),
-    postLinkJSEnv := NodeJSEnv().value,
-    scalaJSStage in Global := FastOptStage
+      "org.scala-js" %%% "scalajs-dom" % "0.8.0",
+      "be.doeraene" %%% "scalajs-jquery" % "0.8.0"
+    )
   )
 
 lazy val coreJvm = core.jvm
 lazy val coreJs = core.js
+
+lazy val `fetch-js` = project
+  .enablePlugins(ScalaJSPlugin)
+  .dependsOn(coreJs)
+  .settings(commonSettings)
+  .settings(noPublishSettings)
+  .settings(
+    name := "coursier-fetch-js"
+  )
+
+lazy val tests = crossProject
+  .dependsOn(core)
+  .settings(commonSettings: _*)
+  .settings(noPublishSettings: _*)
+  .settings(
+    name := "coursier-tests",
+    libraryDependencies ++= Seq(
+      "org.scala-lang.modules" %% "scala-async" % "0.9.1" % "provided",
+      "com.lihaoyi" %%% "utest" % "0.3.0" % "test"
+    ),
+    unmanagedResourceDirectories in Test += (baseDirectory in LocalRootProject).value / "tests" / "shared" / "src" / "test" / "resources",
+    testFrameworks += new TestFramework("utest.runner.Framework")
+  )
+  .jsSettings(
+    postLinkJSEnv := NodeJSEnv().value,
+    scalaJSStage in Global := FastOptStage
+  )
+
+lazy val testsJvm = tests.jvm.dependsOn(files % "test")
+lazy val testsJs = tests.js.dependsOn(`fetch-js` % "test")
 
 lazy val files = project
   .dependsOn(coreJvm)
@@ -107,21 +131,33 @@ lazy val files = project
   .settings(
     name := "coursier-files",
     libraryDependencies ++= Seq(
-      "com.lihaoyi" %% "utest" % "0.3.0" % "test"
-    ),
-    testFrameworks += new TestFramework("utest.runner.Framework")
+      "org.scalaz" %% "scalaz-concurrent" % "7.1.2"
+    )
+  )
+
+lazy val bootstrap = project
+  .settings(baseCommonSettings)
+  .settings(publishingSettings)
+  .settings(
+    name := "coursier-bootstrap",
+    artifactName := {
+      val artifactName0 = artifactName.value
+      (sv, m, artifact) =>
+        if (artifact.`type` == "jar" && artifact.extension == "jar")
+          "bootstrap.jar"
+        else
+          artifactName0(sv, m, artifact)
+    },
+    crossPaths := false,
+    autoScalaLibrary := false,
+    javacOptions in doc := Seq()
   )
 
 lazy val cli = project
   .dependsOn(coreJvm, files)
   .settings(commonSettings)
   .settings(publishingSettings)
-  .settings(packAutoSettings ++ publishPackTxzArchive ++ publishPackZipArchive)
-  .settings(
-    packArchivePrefix := s"coursier-cli_${scalaBinaryVersion.value}",
-    packArchiveTxzArtifact := Artifact("coursier-cli", "arch", "tar.xz"),
-    packArchiveZipArtifact := Artifact("coursier-cli", "arch", "zip")
-  )
+  .settings(packAutoSettings)
   .settings(
     name := "coursier-cli",
     libraryDependencies ++= Seq(
@@ -135,7 +171,7 @@ lazy val cli = project
 
 lazy val web = project
   .enablePlugins(ScalaJSPlugin)
-  .dependsOn(coreJs)
+  .dependsOn(coreJs, `fetch-js`)
   .settings(commonSettings)
   .settings(noPublishSettings)
   .settings(
@@ -164,29 +200,7 @@ lazy val web = project
     )
   )
 
-lazy val bootstrap = project
-  .settings(baseCommonSettings)
-  .settings(publishingSettings)
-  .settings(
-    name := "coursier-bootstrap",
-    artifactName := {
-      val artifactName0 = artifactName.value
-      (sv, m, artifact) =>
-        if (artifact.`type` == "jar" && artifact.extension == "jar")
-          "bootstrap.jar"
-        else
-          artifactName0(sv, m, artifact)
-    },
-    crossPaths := false,
-    autoScalaLibrary := false,
-    javacOptions in doc := Seq()
-  )
-
 lazy val `coursier` = project.in(file("."))
-  .aggregate(coreJvm, coreJs, files, cli, web, bootstrap)
+  .aggregate(coreJvm, coreJs, `fetch-js`, testsJvm, testsJs, files, bootstrap, cli, web)
   .settings(commonSettings)
   .settings(noPublishSettings)
-  .settings(
-    (unmanagedSourceDirectories in Compile) := Nil,
-    (unmanagedSourceDirectories in Test) := Nil
-  )

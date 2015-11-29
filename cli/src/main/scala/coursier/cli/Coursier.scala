@@ -326,13 +326,7 @@ case class Bootstrap(
         sys.exit(1)
     }
 
-  // scala-library version in the resulting JARs has to match the one in the bootstrap JAR
-  // This should be enforced more strictly (possibly by having one bootstrap JAR per scala version).
-
-  val helper = new Helper(
-    common,
-    remainingArgs :+ s"org.scala-lang:scala-library:${scala.util.Properties.versionNumberString}"
-  )
+  val helper = new Helper(common, remainingArgs)
 
   val artifacts = helper.res.artifacts
 

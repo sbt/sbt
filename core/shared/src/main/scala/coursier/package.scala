@@ -1,8 +1,6 @@
-import scalaz.{ -\/, \/- }
-import scalaz.concurrent.Task
 
 /**
- * Pulls definitions from coursier.core, sometimes with default arguments.
+ * Mainly pulls definitions from coursier.core, sometimes with default arguments.
  */
 package object coursier {
 
@@ -37,10 +35,10 @@ package object coursier {
   }
 
   type Project = core.Project
-  val Project: core.Project.type = core.Project
+  val Project = core.Project
 
   type Profile = core.Profile
-  val Profile: core.Profile.type = core.Profile
+  val Profile = core.Profile
 
   type Module = core.Module
   object Module {
@@ -51,13 +49,13 @@ package object coursier {
   type ModuleVersion = (core.Module, String)
 
   type Scope = core.Scope
-  val Scope: core.Scope.type = core.Scope
-
-  type CachePolicy = core.CachePolicy
-  val CachePolicy: core.CachePolicy.type = core.CachePolicy
+  val Scope = core.Scope
 
   type Repository = core.Repository
-  val Repository: core.Repository.type = core.Repository
+  val Repository = core.Repository
+
+  type MavenRepository = maven.MavenRepository
+  val MavenRepository = maven.MavenRepository
 
   type Resolution = core.Resolution
   object Resolution {
@@ -83,54 +81,14 @@ package object coursier {
   }
 
   type Artifact = core.Artifact
-  val Artifact: core.Artifact.type = core.Artifact
+  val Artifact = core.Artifact
 
   type ResolutionProcess = core.ResolutionProcess
-  val ResolutionProcess: core.ResolutionProcess.type = core.ResolutionProcess
+  val ResolutionProcess = core.ResolutionProcess
 
   implicit class ResolutionExtensions(val underlying: Resolution) extends AnyVal {
 
     def process: ResolutionProcess = ResolutionProcess(underlying)
-  }
-
-  def fetch(
-    repositories: Seq[core.Repository]
-  )(implicit
-    cachePolicy: CachePolicy
-  ): ResolutionProcess.Fetch[Task] = {
-
-    modVers =>
-      Task.gatherUnordered(
-        modVers
-          .map {case (module, version) =>
-            Repository.find(repositories, module, version)
-              .run
-              .map((module, version) -> _)
-          }
-      )
-  }
-
-  implicit def fetchLocalFirst(
-    repositories: Seq[core.Repository]
-  )(implicit
-    cachePolicy: CachePolicy
-  ): ResolutionProcess.Fetch[Task] = {
-
-    modVers =>
-      Task.gatherUnordered(
-        modVers
-          .map {case (module, version) =>
-            def attempt(cachePolicy: CachePolicy) =
-              Repository.find(repositories, module, version)(cachePolicy)
-                .run
-                .map((module, version) -> _)
-
-            attempt(CachePolicy.LocalOnly).flatMap {
-              case v @ (_, \/-(_)) => Task.now(v)
-              case (_, -\/(_)) => attempt(cachePolicy)
-            }
-          }
-      )
   }
 
 }

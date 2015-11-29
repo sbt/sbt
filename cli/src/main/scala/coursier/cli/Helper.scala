@@ -1,11 +1,8 @@
-package coursier.cli
+package coursier
+package cli
 
 import java.io.File
 import java.util.UUID
-
-import caseapp.CaseApp
-import coursier._
-import coursier.core.{ CachePolicy, MavenRepository }
 
 import scalaz.{ \/-, -\/ }
 import scalaz.concurrent.Task
@@ -31,16 +28,8 @@ object Helper {
 
   def errPrintln(s: String) = Console.err.println(s)
 
-  def defaultLogger: MavenRepository.Logger with Files.Logger =
-    new MavenRepository.Logger with Files.Logger {
-      def downloading(url: String) =
-        errPrintln(s"Downloading $url")
-      def downloaded(url: String, success: Boolean) =
-        if (!success)
-          errPrintln(s"Failed: $url")
-      def readingFromCache(f: File) = {}
-      def puttingInCache(f: File) = {}
-
+  def defaultLogger: Files.Logger =
+    new Files.Logger {
       def foundLocally(f: File) = {}
       def downloadingArtifact(url: String) =
         errPrintln(s"Downloading $url")
@@ -49,21 +38,8 @@ object Helper {
           errPrintln(s"Failed: $url")
     }
 
-  def verboseLogger: MavenRepository.Logger with Files.Logger =
-    new MavenRepository.Logger with Files.Logger {
-      def downloading(url: String) =
-        errPrintln(s"Downloading $url")
-      def downloaded(url: String, success: Boolean) =
-        errPrintln(
-          if (success) s"Downloaded $url"
-          else s"Failed: $url"
-        )
-      def readingFromCache(f: File) = {
-        errPrintln(s"Reading ${fileRepr(f)} from cache")
-      }
-      def puttingInCache(f: File) =
-        errPrintln(s"Writing ${fileRepr(f)} in cache")
-
+  def verboseLogger: Files.Logger =
+    new Files.Logger {
       def foundLocally(f: File) =
         errPrintln(s"Found locally ${fileRepr(f)}")
       def downloadingArtifact(url: String) =
@@ -176,12 +152,17 @@ class Helper(
     sys.exit(1)
   }
 
-  val (repositories0, fileCaches) = repositoryIdsOpt0
+  val files = {
+    var files0 = cache
+      .files()
+      .copy(logger = logger)
+    files0 = files0.copy(concurrentDownloadCount = parallel)
+    files0
+  }
+
+  val (repositories, fileCaches) = repositoryIdsOpt0
     .collect { case Right(v) => v }
     .unzip
-
-  val repositories = repositories0
-    .map(_.copy(logger = logger))
 
   val (rawDependencies, extraArgs) = {
     val idxOpt = Some(remainingArgs.indexOf("--")).filter(_ >= 0)
@@ -221,7 +202,7 @@ class Helper(
     filter = Some(dep => keepOptional || !dep.optional)
   )
 
-  val fetchQuiet = coursier.fetchLocalFirst(repositories)
+  val fetchQuiet = coursier.Fetch(repositories, files.fetch)
   val fetch0 =
     if (verbose0 == 0) fetchQuiet
     else {
@@ -315,14 +296,6 @@ class Helper(
         l = artifact :: l
 
       l
-    }
-
-    val files = {
-      var files0 = cache
-        .files()
-        .copy(logger = logger)
-      files0 = files0.copy(concurrentDownloadCount = parallel)
-      files0
     }
 
     val tasks = artifacts.map(artifact => files.file(artifact).run.map(artifact.->))
