@@ -117,7 +117,7 @@ class Helper(
         notFoundRepositoryIds.mkString(", ")
     )
 
-    sys.exit(1)
+    sys.exit(255)
   }
 
   val files = cache.files().copy(concurrentDownloadCount = parallel)
@@ -139,15 +139,30 @@ class Helper(
     .map(_.split(":", 3).toSeq)
     .partition(_.length == 3)
 
+  val (splitForceVersions, malformedForceVersions) = forceVersion
+    .map(_.split(":", 3).toSeq)
+    .partition(_.length == 3)
+
   if (splitDependencies.isEmpty) {
     Console.err.println(s"Error: no dependencies specified.")
     // CaseApp.printUsage[Coursier]()
     sys exit 1
   }
 
-  if (malformed.nonEmpty) {
-    errPrintln(s"Malformed dependencies:\n${malformed.map(_.mkString(":")).mkString("\n")}")
-    sys exit 1
+  if (malformed.nonEmpty || malformedForceVersions.nonEmpty) {
+    if (malformed.nonEmpty) {
+      errPrintln("Malformed dependency(ies), should be like org:name:version")
+      for (s <- malformed)
+        errPrintln(s" ${s.mkString(":")}")
+    }
+
+    if (malformedForceVersions.nonEmpty) {
+      errPrintln("Malformed force version(s), should be like org:name:forcedVersion")
+      for (s <- malformedForceVersions)
+        errPrintln(s" ${s.mkString(":")}")
+    }
+
+    sys.exit(1)
   }
 
   val moduleVersions = splitDependencies.map{
@@ -159,8 +174,24 @@ class Helper(
     Dependency(mod, ver, scope = Scope.Runtime)
   }
 
+  val forceVersions = {
+    val forceVersions0 = splitForceVersions.map {
+      case Seq(org, name, version) => (Module(org, name), version)
+    }
+
+    val grouped = forceVersions0
+      .groupBy { case (mod, _) => mod }
+      .map { case (mod, l) => mod -> l.map { case (_, version) => version } }
+
+    for ((mod, forcedVersions) <- grouped if forcedVersions.distinct.lengthCompare(1) > 0)
+      errPrintln(s"Warning: version of $mod forced several times, using only the last one (${forcedVersions.last})")
+
+    grouped.map { case (mod, versions) => mod -> versions.last }
+  }
+
   val startRes = Resolution(
     deps.toSet,
+    forceVersions = forceVersions,
     filter = Some(dep => keepOptional || !dep.optional)
   )
 
@@ -182,8 +213,18 @@ class Helper(
         print.flatMap(_ => fetchQuiet(modVers))
     }
 
-  if (verbose0 >= 0)
-    errPrintln(s"Resolving\n" + moduleVersions.map{case (mod, ver) => s"  $mod:$ver"}.mkString("\n"))
+  if (verbose0 >= 0) {
+    errPrintln("Dependencies:")
+    for ((mod, ver) <- moduleVersions)
+      errPrintln(s"  $mod:$ver")
+
+    if (forceVersions.nonEmpty) {
+      errPrintln("Force versions:")
+      for ((mod, ver) <- forceVersions.toVector.sortBy { case (mod, _) => mod.toString })
+        errPrintln(s"  $mod:$ver")
+    }
+  }
+
 
   val res = startRes
     .process
