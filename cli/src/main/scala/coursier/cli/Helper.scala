@@ -30,18 +30,18 @@ object Helper {
 
   def defaultLogger: Files.Logger =
     new Files.Logger {
-      def foundLocally(f: File) = {}
+      def foundLocally(url: String, f: File) = {}
       def downloadingArtifact(url: String) =
         errPrintln(s"Downloading $url")
-      def downloadedArtifact(url: String, success: Boolean) =
-        if (!success)
-          errPrintln(s"Failed: $url")
+      def downloadedArtifact(url: String, success: Boolean) = {}
+      def downloadLength(url: String, length: Long) = {}
+      def downloadProgress(url: String, downloaded: Long) = {}
     }
 
   def verboseLogger: Files.Logger =
     new Files.Logger {
-      def foundLocally(f: File) =
-        errPrintln(s"Found locally ${fileRepr(f)}")
+      def foundLocally(url: String, f: File) =
+        errPrintln(s"Found $url locally (${fileRepr(f)})")
       def downloadingArtifact(url: String) =
         errPrintln(s"Downloading $url")
       def downloadedArtifact(url: String, success: Boolean) =
@@ -49,6 +49,8 @@ object Helper {
           if (success) s"Downloaded $url"
           else s"Failed: $url"
         )
+      def downloadLength(url: String, length: Long) = {}
+      def downloadProgress(url: String, downloaded: Long) = {}
     }
 
   def mainClasses(cl: ClassLoader): Map[(String, String), String] = {
@@ -152,13 +154,7 @@ class Helper(
     sys.exit(1)
   }
 
-  val files = {
-    var files0 = cache
-      .files()
-      .copy(logger = logger)
-    files0 = files0.copy(concurrentDownloadCount = parallel)
-    files0
-  }
+  val files = cache.files().copy(concurrentDownloadCount = parallel)
 
   val (repositories, fileCaches) = repositoryIdsOpt0
     .collect { case Right(v) => v }
@@ -202,7 +198,7 @@ class Helper(
     filter = Some(dep => keepOptional || !dep.optional)
   )
 
-  val fetchQuiet = coursier.Fetch(repositories, files.fetch)
+  val fetchQuiet = coursier.Fetch(repositories, files.fetch(logger = logger))
   val fetch0 =
     if (verbose0 == 0) fetchQuiet
     else {
@@ -298,7 +294,7 @@ class Helper(
       l
     }
 
-    val tasks = artifacts.map(artifact => files.file(artifact).run.map(artifact.->))
+    val tasks = artifacts.map(artifact => files.file(artifact, logger = logger).run.map(artifact.->))
     def printTask = Task{
       if (verbose0 >= 0 && artifacts.nonEmpty)
         println(s"Found ${artifacts.length} artifacts")

@@ -14,7 +14,6 @@ import java.io._
 case class Files(
   cache: Seq[(String, File)],
   tmp: () => File,
-  logger: Option[Files.Logger] = None,
   concurrentDownloadCount: Int = Files.defaultConcurrentDownloadCount
 ) {
 
@@ -55,7 +54,8 @@ case class Files(
 
   def download(
     artifact: Artifact,
-    withChecksums: Boolean = true
+    withChecksums: Boolean = true,
+    logger: Option[Files.Logger] = None
   )(implicit
     cachePolicy: CachePolicy,
     pool: ExecutorService = defaultPool
@@ -75,10 +75,10 @@ case class Files(
       }
 
 
-    def locally(file: File) =
+    def locally(file: File, url: String) =
       Task {
         if (file.exists()) {
-          logger.foreach(_.foundLocally(file))
+          logger.foreach(_.foundLocally(url, file))
           \/-(file)
         } else
           -\/(FileError.NotFound(file.toString): FileError)
@@ -94,14 +94,17 @@ case class Files(
 
           logger.foreach(_.downloadingArtifact(url))
 
-          val url0 = new URL(url)
-          val conn = url0.openConnection() // FIXME Should this be closed?
+          val conn = new URL(url).openConnection() // FIXME Should this be closed?
           // Dummy user-agent instead of the default "Java/...",
           // so that we are not returned incomplete/erroneous metadata
           // (Maven 2 compatibility? - happens for snapshot versioning metadata,
           // this is SO FUCKING CRAZY)
           conn.setRequestProperty("User-Agent", "")
-          val in = new BufferedInputStream(conn.getInputStream(), Files.bufferSize)
+
+          for (len <- Option(conn.getContentLengthLong).filter(_ >= 0L))
+            logger.foreach(_.downloadLength(url, len))
+
+          val in = new BufferedInputStream(conn.getInputStream, Files.bufferSize)
 
           val result =
             try {
@@ -116,15 +119,16 @@ case class Files(
                     val b = Array.fill[Byte](Files.bufferSize)(0)
 
                     @tailrec
-                    def helper(): Unit = {
+                    def helper(count: Long): Unit = {
                       val read = in.read(b)
                       if (read >= 0) {
                         out.write(b, 0, read)
-                        helper()
+                        logger.foreach(_.downloadProgress(url, count + read))
+                        helper(count + read)
                       }
                     }
 
-                    helper()
+                    helper(0L)
                     \/-(file)
                   }
                 }
@@ -135,6 +139,9 @@ case class Files(
                 finally if (lock != null) lock.release()
               } finally out.close()
             } finally in.close()
+
+          for (lastModified <- Option(conn.getLastModified).filter(_ > 0L))
+            file.setLastModified(lastModified)
 
           logger.foreach(_.downloadedArtifact(url, success = true))
           result
@@ -153,8 +160,8 @@ case class Files(
         if (url != ("file:" + f) && url != ("file://" + f)) {
           assert(!f.startsWith("file:/"), s"Wrong file detection: $f, $url")
           cachePolicy[FileError \/ File](
-            _.isLeft)(
-            locally(file))(
+            _.isLeft )(
+            locally(file, url) )(
             _ => remote(file, url)
           ).map(e => (file, url) -> e.map(_ => ()))
         } else
@@ -213,15 +220,17 @@ case class Files(
 
   def file(
     artifact: Artifact,
-    checksum: Option[String] = Some("SHA-1")
+    checksum: Option[String] = Some("SHA-1"),
+    logger: Option[Files.Logger] = None
   )(implicit
     cachePolicy: CachePolicy,
     pool: ExecutorService = defaultPool
   ): EitherT[Task, FileError, File] =
     EitherT {
-      val res = download(artifact).map { results =>
-        val ((f, _), res) = results.head
-        res.map(_ => f)
+      val res = download(artifact, withChecksums = checksum.nonEmpty, logger = logger).map {
+        results =>
+          val ((f, _), res) = results.head
+          res.map(_ => f)
       }
 
       checksum.fold(res) { sumType =>
@@ -234,12 +243,15 @@ case class Files(
       }
     }
 
-  def fetch(implicit
+  def fetch(
+    checksum: Option[String] = Some("SHA-1"),
+    logger: Option[Files.Logger] = None
+  )(implicit
     cachePolicy: CachePolicy,
     pool: ExecutorService = defaultPool
   ): Repository.Fetch[Task] = {
     artifact =>
-      file(artifact)(cachePolicy).leftMap(_.message).map { f =>
+      file(artifact, checksum = checksum, logger = logger)(cachePolicy).leftMap(_.message).map { f =>
         // FIXME Catch error here?
         scala.io.Source.fromFile(f)("UTF-8").mkString
       }
@@ -256,10 +268,11 @@ object Files {
 
   val defaultConcurrentDownloadCount = 6
 
-  // FIXME This kind of side-effecting API is lame, we should aim at a more functional one.
   trait Logger {
-    def foundLocally(f: File): Unit
+    def foundLocally(url: String, f: File): Unit
     def downloadingArtifact(url: String): Unit
+    def downloadLength(url: String, length: Long): Unit
+    def downloadProgress(url: String, downloaded: Long): Unit
     def downloadedArtifact(url: String, success: Boolean): Unit
   }
 
