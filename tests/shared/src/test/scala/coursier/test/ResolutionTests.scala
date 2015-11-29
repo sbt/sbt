@@ -9,12 +9,15 @@ import coursier.test.compatibility._
 
 object ResolutionTests extends TestSuite {
 
-  def resolve0(deps: Set[Dependency], filter: Option[Dependency => Boolean] = None) = {
-    Resolution(deps, filter = filter)
+  def resolve0(
+    deps: Set[Dependency],
+    filter: Option[Dependency => Boolean] = None,
+    forceVersions: Map[Module, String] = Map.empty
+  ) =
+    Resolution(deps, filter = filter, forceVersions = forceVersions)
       .process
       .run(Fetch.default(repositories))
       .runF
-  }
 
   implicit class ProjectOps(val p: Project) extends AnyVal {
     def kv: (ModuleVersion, (Artifact.Source, Project)) = p.moduleVersion -> (testRepository.source, p)
@@ -134,8 +137,15 @@ object ResolutionTests extends TestSuite {
 
     Project(Module("an-org", "a-name"), "1.0"),
 
+    Project(Module("an-org", "a-name"), "1.2"),
+
     Project(Module("an-org", "a-lib"), "1.0",
       Seq(Dependency(Module("an-org", "a-name"), "1.0"))),
+
+    Project(Module("an-org", "a-lib"), "1.1"),
+
+    Project(Module("an-org", "a-lib"), "1.2",
+      Seq(Dependency(Module("an-org", "a-name"), "1.2"))),
 
     Project(Module("an-org", "another-lib"), "1.0",
       Seq(Dependency(Module("an-org", "a-name"), "1.0"))),
@@ -144,7 +154,15 @@ object ResolutionTests extends TestSuite {
     Project(Module("an-org", "an-app"), "1.0",
       Seq(
         Dependency(Module("an-org", "a-lib"), "1.0", exclusions = Set(("an-org", "a-name"))),
-        Dependency(Module("an-org", "another-lib"), "1.0", optional = true)))
+        Dependency(Module("an-org", "another-lib"), "1.0", optional = true))),
+
+    Project(Module("an-org", "an-app"), "1.1",
+      Seq(
+        Dependency(Module("an-org", "a-lib"), "1.1"))),
+
+    Project(Module("an-org", "an-app"), "1.2",
+      Seq(
+        Dependency(Module("an-org", "a-lib"), "1.2")))
   )
 
   val projectsMap = projects.map(p => p.moduleVersion -> p).toMap
@@ -480,6 +498,86 @@ object ResolutionTests extends TestSuite {
         )
 
         assert(res == expected)
+      }
+    }
+
+    'dependencyOverrides - {
+      * - {
+        async {
+          val deps = Set(
+            Dependency(Module("an-org", "a-name"), "1.1"))
+          val depOverrides = Map(
+            Module("an-org", "a-name") -> "1.0")
+
+          val res = await(resolve0(
+            deps,
+            forceVersions = depOverrides,
+            filter = Some(_.scope == Scope.Compile)
+          )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+
+          val expected = Resolution(
+            rootDependencies = deps,
+            dependencies = Set(
+              Dependency(Module("an-org", "a-name"), "1.0")
+            ).map(_.withCompileScope),
+            forceVersions = depOverrides
+          )
+
+          assert(res == expected)
+        }
+      }
+
+      * - {
+        async {
+          val deps = Set(
+            Dependency(Module("an-org", "an-app"), "1.1"))
+          val depOverrides = Map(
+            Module("an-org", "a-lib") -> "1.0")
+
+          val res = await(resolve0(
+            deps,
+            forceVersions = depOverrides,
+            filter = Some(_.scope == Scope.Compile)
+          )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+
+          val expected = Resolution(
+            rootDependencies = deps,
+            dependencies = Set(
+              Dependency(Module("an-org", "an-app"), "1.1"),
+              Dependency(Module("an-org", "a-lib"), "1.0"),
+              Dependency(Module("an-org", "a-name"), "1.0")
+            ).map(_.withCompileScope),
+            forceVersions = depOverrides
+          )
+
+          assert(res == expected)
+        }
+      }
+
+      * - {
+        async {
+          val deps = Set(
+            Dependency(Module("an-org", "an-app"), "1.2"))
+          val depOverrides = Map(
+            Module("an-org", "a-lib") -> "1.1")
+
+          val res = await(resolve0(
+            deps,
+            forceVersions = depOverrides,
+            filter = Some(_.scope == Scope.Compile)
+          )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+
+          val expected = Resolution(
+            rootDependencies = deps,
+            dependencies = Set(
+              Dependency(Module("an-org", "an-app"), "1.2"),
+              Dependency(Module("an-org", "a-lib"), "1.1")
+            ).map(_.withCompileScope),
+            forceVersions = depOverrides
+          )
+
+          assert(res == expected)
+        }
       }
     }
 

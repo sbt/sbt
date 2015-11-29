@@ -163,25 +163,34 @@ object Resolution {
    * Returns the conflicted dependencies, and the merged others.
    */
   def merge(
-    dependencies: TraversableOnce[Dependency]
+    dependencies: TraversableOnce[Dependency],
+    forceVersions: Map[Module, String]
   ): (Seq[Dependency], Seq[Dependency]) = {
 
     val mergedByModVer = dependencies
       .toList
       .groupBy(dep => dep.module)
-      .mapValues { deps =>
-        if (deps.lengthCompare(1) == 0) \/-(deps)
-        else {
-          val versions = deps
-            .map(_.version)
-            .distinct
-          val versionOpt = mergeVersions(versions)
-
-          versionOpt match {
-            case Some(version) =>
-              \/-(deps.map(dep => dep.copy(version = version)))
+      .map { case (module, deps) =>
+        module -> {
+          forceVersions.get(module) match {
             case None =>
-              -\/(deps)
+              if (deps.lengthCompare(1) == 0) \/-(deps)
+              else {
+                val versions = deps
+                  .map(_.version)
+                  .distinct
+                val versionOpt = mergeVersions(versions)
+
+                versionOpt match {
+                  case Some(version) =>
+                    \/-(deps.map(dep => dep.copy(version = version)))
+                  case None =>
+                    -\/(deps)
+                }
+              }
+
+            case Some(forcedVersion) =>
+              \/-(deps.map(dep => dep.copy(version = forcedVersion)))
           }
         }
       }
@@ -380,6 +389,7 @@ object Resolution {
 case class Resolution(
   rootDependencies: Set[Dependency],
   dependencies: Set[Dependency],
+  forceVersions: Map[Module, String],
   conflicts: Set[Dependency],
   projectCache: Map[Resolution.ModuleVersion, (Artifact.Source, Project)],
   errorCache: Map[Resolution.ModuleVersion, Seq[String]],
@@ -426,9 +436,10 @@ case class Resolution(
    * the dependencies.
    */
   def nextDependenciesAndConflicts: (Seq[Dependency], Seq[Dependency]) =
+    // TODO Provide the modules whose version was forced by dependency overrides too
     merge(
-      rootDependencies.map(withDefaultScope) ++ dependencies ++
-      transitiveDependencies
+      rootDependencies.map(withDefaultScope) ++ dependencies ++ transitiveDependencies,
+      forceVersions
     )
 
   /**
