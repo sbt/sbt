@@ -63,6 +63,7 @@ package object coursier {
     def apply(
       rootDependencies: Set[Dependency] = Set.empty,
       dependencies: Set[Dependency] = Set.empty,
+      forceVersions: Map[Module, String] = Map.empty,
       conflicts: Set[Dependency] = Set.empty,
       projectCache: Map[ModuleVersion, (Artifact.Source, Project)] = Map.empty,
       errorCache: Map[ModuleVersion, Seq[String]] = Map.empty,
@@ -72,6 +73,7 @@ package object coursier {
       core.Resolution(
         rootDependencies,
         dependencies,
+        forceVersions,
         conflicts,
         projectCache,
         errorCache,
