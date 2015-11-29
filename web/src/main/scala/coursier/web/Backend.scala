@@ -1,7 +1,8 @@
 package coursier
 package web
 
-import coursier.core.{ Repository, MavenRepository, MavenSource }
+import coursier.maven.MavenSource
+
 import japgolly.scalajs.react.vdom.{ TagMod, Attr }
 import japgolly.scalajs.react.vdom.Attrs.dangerouslySetInnerHtml
 import japgolly.scalajs.react.{ ReactEventI, ReactComponentB, BackendScope }
@@ -10,6 +11,7 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import org.scalajs.jquery.jQuery
 
 import scala.concurrent.Future
+import scalaz.concurrent.Task
 
 import scala.scalajs.js
 import js.Dynamic.{ global => g }
@@ -32,6 +34,22 @@ case class State(
 )
 
 class Backend($: BackendScope[Unit, State]) {
+
+  def fetch(
+    repositories: Seq[core.Repository],
+    fetch: Repository.Fetch[Task]
+  ): ResolutionProcess.Fetch[Task] = {
+
+    modVers => Task.gatherUnordered(
+      modVers.map { case (module, version) =>
+        Repository.find(repositories, module, version, fetch)
+          .run
+          .map((module, version) -> _)
+      }
+    )
+  }
+
+
   def updateDepGraph(resolution: Resolution) = {
     println("Rendering canvas")
 
@@ -138,7 +156,7 @@ class Backend($: BackendScope[Unit, State]) {
     g.$("#resLogTab a:last").tab("show")
     $.modState(_.copy(resolving = true, log = Nil))
 
-    val logger: MavenRepository.Logger = new MavenRepository.Logger {
+    val logger: Platform.Logger = new Platform.Logger {
       def fetched(url: String) = {
         println(s"<- $url")
         $.modState(s => s.copy(log = s"<- $url" +: s.log))
@@ -163,11 +181,9 @@ class Backend($: BackendScope[Unit, State]) {
         )
       )
 
-      implicit val cachePolicy = CachePolicy.Default
-
       res
         .process
-        .run(s.repositories.map(item => item._2.copy(logger = Some(logger))), 100)
+        .run(fetch(s.repositories.map { case (_, repo) => repo }, Platform.artifactWithLogger(logger)), 100)
     }
 
     // For reasons that are unclear to me, not delaying this when using the runNow execution context
@@ -702,7 +718,7 @@ object App {
 
   val initialState = State(
     Nil,
-    Seq("central" -> Repository.mavenCentral),
+    Seq("central" -> MavenRepository("https://repo1.maven.org/maven2/")),
     ResolutionOptions(),
     None,
     -1,

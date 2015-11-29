@@ -1,7 +1,0 @@
-com.github.alexarchambault:coursier_2.11:jar:0.1.0-SNAPSHOT
-org.scala-lang.modules:scala-parser-combinators_2.11:jar:1.0.4
-org.scala-lang.modules:scala-xml_2.11:jar:1.0.4
-org.scala-lang:scala-library:jar:2.11.7
-org.scalaz:scalaz-concurrent_2.11:jar:7.1.2
-org.scalaz:scalaz-core_2.11:jar:7.1.2
-org.scalaz:scalaz-effect_2.11:jar:7.1.2

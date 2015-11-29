@@ -1,11 +1,8 @@
-package coursier.cli
+package coursier
+package cli
 
-import java.io.File
+import java.io.{ OutputStreamWriter, File }
 import java.util.UUID
-
-import caseapp.CaseApp
-import coursier._
-import coursier.core.{ CachePolicy, MavenRepository }
 
 import scalaz.{ \/-, -\/ }
 import scalaz.concurrent.Task
@@ -30,50 +27,6 @@ object Helper {
   def fileRepr(f: File) = f.toString
 
   def errPrintln(s: String) = Console.err.println(s)
-
-  def defaultLogger: MavenRepository.Logger with Files.Logger =
-    new MavenRepository.Logger with Files.Logger {
-      def downloading(url: String) =
-        errPrintln(s"Downloading $url")
-      def downloaded(url: String, success: Boolean) =
-        if (!success)
-          errPrintln(s"Failed: $url")
-      def readingFromCache(f: File) = {}
-      def puttingInCache(f: File) = {}
-
-      def foundLocally(f: File) = {}
-      def downloadingArtifact(url: String) =
-        errPrintln(s"Downloading $url")
-      def downloadedArtifact(url: String, success: Boolean) =
-        if (!success)
-          errPrintln(s"Failed: $url")
-    }
-
-  def verboseLogger: MavenRepository.Logger with Files.Logger =
-    new MavenRepository.Logger with Files.Logger {
-      def downloading(url: String) =
-        errPrintln(s"Downloading $url")
-      def downloaded(url: String, success: Boolean) =
-        errPrintln(
-          if (success) s"Downloaded $url"
-          else s"Failed: $url"
-        )
-      def readingFromCache(f: File) = {
-        errPrintln(s"Reading ${fileRepr(f)} from cache")
-      }
-      def puttingInCache(f: File) =
-        errPrintln(s"Writing ${fileRepr(f)} in cache")
-
-      def foundLocally(f: File) =
-        errPrintln(s"Found locally ${fileRepr(f)}")
-      def downloadingArtifact(url: String) =
-        errPrintln(s"Downloading $url")
-      def downloadedArtifact(url: String, success: Boolean) =
-        errPrintln(
-          if (success) s"Downloaded $url"
-          else s"Failed: $url"
-        )
-    }
 
   def mainClasses(cl: ClassLoader): Map[(String, String), String] = {
     import scala.collection.JavaConverters._
@@ -100,15 +53,6 @@ class Helper(
 ) {
   import common._
   import Helper.errPrintln
-
-
-  val logger =
-    if (verbose0 < 0)
-      None
-    else if (verbose0 == 0)
-      Some(Helper.defaultLogger)
-    else
-      Some(Helper.verboseLogger)
 
   implicit val cachePolicy =
     if (offline)
@@ -176,12 +120,11 @@ class Helper(
     sys.exit(1)
   }
 
-  val (repositories0, fileCaches) = repositoryIdsOpt0
+  val files = cache.files().copy(concurrentDownloadCount = parallel)
+
+  val (repositories, fileCaches) = repositoryIdsOpt0
     .collect { case Right(v) => v }
     .unzip
-
-  val repositories = repositories0
-    .map(_.copy(logger = logger))
 
   val (rawDependencies, extraArgs) = {
     val idxOpt = Some(remainingArgs.indexOf("--")).filter(_ >= 0)
@@ -221,9 +164,15 @@ class Helper(
     filter = Some(dep => keepOptional || !dep.optional)
   )
 
-  val fetchQuiet = coursier.fetchLocalFirst(repositories)
+  val logger =
+    if (verbose0 >= 0)
+      Some(new TermDisplay(new OutputStreamWriter(System.err)))
+    else
+      None
+  logger.foreach(_.init())
+  val fetchQuiet = coursier.Fetch(repositories, files.fetch(logger = logger))
   val fetch0 =
-    if (verbose0 == 0) fetchQuiet
+    if (verbose0 <= 0) fetchQuiet
     else {
       modVers: Seq[(Module, String)] =>
         val print = Task{
@@ -240,6 +189,8 @@ class Helper(
     .process
     .run(fetch0, maxIterations)
     .run
+
+  logger.foreach(_.stop())
 
   if (!res.isDone) {
     errPrintln(s"Maximum number of iteration reached!")
@@ -277,7 +228,7 @@ class Helper(
     .toList
     .sortBy(repr)
 
-  if (verbose0 >= 0) {
+  if (verbose0 >= 1) {
     println("")
     println(
       trDeps
@@ -301,8 +252,8 @@ class Helper(
   }
 
   def fetch(main: Boolean, sources: Boolean, javadoc: Boolean): Seq[File] = {
-    println("")
-
+    if (verbose0 >= 0)
+      errPrintln("Fetching artifacts")
     val artifacts0 = res.artifacts
     val main0 = main || (!sources && !javadoc)
     val artifacts = artifacts0.flatMap{ artifact =>
@@ -317,17 +268,15 @@ class Helper(
       l
     }
 
-    val files = {
-      var files0 = cache
-        .files()
-        .copy(logger = logger)
-      files0 = files0.copy(concurrentDownloadCount = parallel)
-      files0
-    }
-
-    val tasks = artifacts.map(artifact => files.file(artifact).run.map(artifact.->))
-    def printTask = Task{
-      if (verbose0 >= 0 && artifacts.nonEmpty)
+    val logger =
+      if (verbose0 >= 0)
+        Some(new TermDisplay(new OutputStreamWriter(System.err)))
+      else
+        None
+    logger.foreach(_.init())
+    val tasks = artifacts.map(artifact => files.file(artifact, logger = logger).run.map(artifact.->))
+    def printTask = Task {
+      if (verbose0 >= 1 && artifacts.nonEmpty)
         println(s"Found ${artifacts.length} artifacts")
     }
     val task = printTask.flatMap(_ => Task.gatherUnordered(tasks))
@@ -335,6 +284,8 @@ class Helper(
     val results = task.run
     val errors = results.collect{case (artifact, -\/(err)) => artifact -> err }
     val files0 = results.collect{case (artifact, \/-(f)) => f }
+
+    logger.foreach(_.stop())
 
     if (errors.nonEmpty) {
       println(s"${errors.size} error(s):")

@@ -4,6 +4,8 @@ import scala.scalajs.js
 import js.Dynamic.{ global => g }
 import org.scalajs.dom.raw.NodeList
 
+import coursier.util.Xml
+
 package object compatibility {
   def option[A](a: js.Dynamic): Option[A] =
     if (js.isUndefined(a)) None

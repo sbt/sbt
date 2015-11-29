@@ -14,7 +14,6 @@ import java.io._
 case class Files(
   cache: Seq[(String, File)],
   tmp: () => File,
-  logger: Option[Files.Logger] = None,
   concurrentDownloadCount: Int = Files.defaultConcurrentDownloadCount
 ) {
 
@@ -22,18 +21,18 @@ case class Files(
     Executors.newFixedThreadPool(concurrentDownloadCount, Strategy.DefaultDaemonThreadFactory)
 
   def withLocal(artifact: Artifact): Artifact = {
-    val isLocal =
-      artifact.url.startsWith("file:/") &&
-        artifact.checksumUrls.values.forall(_.startsWith("file:/"))
-
     def local(url: String) =
       if (url.startsWith("file:///"))
         url.stripPrefix("file://")
       else if (url.startsWith("file:/"))
         url.stripPrefix("file:")
       else
-        cache.find{case (base, _) => url.startsWith(base)} match {
-          case None => ???
+        cache.find { case (base, _) => url.startsWith(base) } match {
+          case None =>
+            // FIXME Means we were handed an artifact from repositories other than the known ones
+            println(cache.mkString("\n"))
+            println(url)
+            ???
           case Some((base, cacheDir)) =>
             cacheDir + "/" + url.stripPrefix(base)
         }
@@ -55,7 +54,8 @@ case class Files(
 
   def download(
     artifact: Artifact,
-    withChecksums: Boolean = true
+    withChecksums: Boolean = true,
+    logger: Option[Files.Logger] = None
   )(implicit
     cachePolicy: CachePolicy,
     pool: ExecutorService = defaultPool
@@ -75,10 +75,10 @@ case class Files(
       }
 
 
-    def locally(file: File) =
+    def locally(file: File, url: String) =
       Task {
         if (file.exists()) {
-          logger.foreach(_.foundLocally(file))
+          logger.foreach(_.foundLocally(url, file))
           \/-(file)
         } else
           -\/(FileError.NotFound(file.toString): FileError)
@@ -94,8 +94,17 @@ case class Files(
 
           logger.foreach(_.downloadingArtifact(url))
 
-          val url0 = new URL(url)
-          val in = new BufferedInputStream(url0.openStream(), Files.bufferSize)
+          val conn = new URL(url).openConnection() // FIXME Should this be closed?
+          // Dummy user-agent instead of the default "Java/...",
+          // so that we are not returned incomplete/erroneous metadata
+          // (Maven 2 compatibility? - happens for snapshot versioning metadata,
+          // this is SO FUCKING CRAZY)
+          conn.setRequestProperty("User-Agent", "")
+
+          for (len <- Option(conn.getContentLengthLong).filter(_ >= 0L))
+            logger.foreach(_.downloadLength(url, len))
+
+          val in = new BufferedInputStream(conn.getInputStream, Files.bufferSize)
 
           val result =
             try {
@@ -110,15 +119,16 @@ case class Files(
                     val b = Array.fill[Byte](Files.bufferSize)(0)
 
                     @tailrec
-                    def helper(): Unit = {
+                    def helper(count: Long): Unit = {
                       val read = in.read(b)
                       if (read >= 0) {
                         out.write(b, 0, read)
-                        helper()
+                        logger.foreach(_.downloadProgress(url, count + read))
+                        helper(count + read)
                       }
                     }
 
-                    helper()
+                    helper(0L)
                     \/-(file)
                   }
                 }
@@ -129,6 +139,9 @@ case class Files(
                 finally if (lock != null) lock.release()
               } finally out.close()
             } finally in.close()
+
+          for (lastModified <- Option(conn.getLastModified).filter(_ > 0L))
+            file.setLastModified(lastModified)
 
           logger.foreach(_.downloadedArtifact(url, success = true))
           result
@@ -141,19 +154,26 @@ case class Files(
 
 
     val tasks =
-      for ((f, url) <- pairs) yield
+      for ((f, url) <- pairs) yield {
+        val file = new File(f)
+
         if (url != ("file:" + f) && url != ("file://" + f)) {
           assert(!f.startsWith("file:/"), s"Wrong file detection: $f, $url")
-          val file = new File(f)
           cachePolicy[FileError \/ File](
-            _.isLeft)(
-            locally(file))(
+            _.isLeft )(
+            locally(file, url) )(
             _ => remote(file, url)
           ).map(e => (file, url) -> e.map(_ => ()))
-        } else {
-          val file = new File(f)
-          Task.now(((file, url), \/-(())))
-        }
+        } else
+          Task {
+            (file, url) -> {
+              if (file.exists())
+                \/-(())
+              else
+                -\/(FileError.NotFound(file.toString))
+            }
+          }
+      }
 
     Nondeterminism[Task].gather(tasks)
   }
@@ -200,40 +220,60 @@ case class Files(
 
   def file(
     artifact: Artifact,
-    checksum: Option[String] = Some("SHA-1")
+    checksum: Option[String] = Some("SHA-1"),
+    logger: Option[Files.Logger] = None
   )(implicit
     cachePolicy: CachePolicy,
     pool: ExecutorService = defaultPool
   ): EitherT[Task, FileError, File] =
-    EitherT{
-      val res =
-        download(artifact)
-          .map(results =>
-            results.head._2.map(_ => results.head._1._1)
-          )
+    EitherT {
+      val res = download(artifact, withChecksums = checksum.nonEmpty, logger = logger).map {
+        results =>
+          val ((f, _), res) = results.head
+          res.map(_ => f)
+      }
 
       checksum.fold(res) { sumType =>
-        res
-          .flatMap{
-            case err @ -\/(_) => Task.now(err)
-            case \/-(f) =>
-              validateChecksum(artifact, sumType)
-                .map(_.map(_ => f))
-          }
+        res.flatMap {
+          case err @ -\/(_) => Task.now(err)
+          case \/-(f) =>
+            validateChecksum(artifact, sumType)
+              .map(_.map(_ => f))
+        }
       }
     }
+
+  def fetch(
+    checksum: Option[String] = Some("SHA-1"),
+    logger: Option[Files.Logger] = None
+  )(implicit
+    cachePolicy: CachePolicy,
+    pool: ExecutorService = defaultPool
+  ): Repository.Fetch[Task] = {
+    artifact =>
+      file(artifact, checksum = checksum, logger = logger)(cachePolicy).leftMap(_.message).map { f =>
+        // FIXME Catch error here?
+        scala.io.Source.fromFile(f)("UTF-8").mkString
+      }
+  }
 
 }
 
 object Files {
-  
+
+  lazy val ivy2Local = MavenRepository(
+    new File(sys.props("user.home") + "/.ivy2/local/").toURI.toString,
+    ivyLike = true
+  )
+
   val defaultConcurrentDownloadCount = 6
 
-  // FIXME This kind of side-effecting API is lame, we should aim at a more functional one.
   trait Logger {
-    def foundLocally(f: File): Unit
-    def downloadingArtifact(url: String): Unit
-    def downloadedArtifact(url: String, success: Boolean): Unit
+    def foundLocally(url: String, f: File): Unit = {}
+    def downloadingArtifact(url: String): Unit = {}
+    def downloadLength(url: String, length: Long): Unit = {}
+    def downloadProgress(url: String, downloaded: Long): Unit = {}
+    def downloadedArtifact(url: String, success: Boolean): Unit = {}
   }
 
   var bufferSize = 1024*1024
@@ -276,14 +316,26 @@ object Files {
 
 }
 
-sealed trait FileError
+sealed trait FileError {
+  def message: String
+}
 
 object FileError {
 
-  case class DownloadError(message: String) extends FileError
-  case class NotFound(file: String) extends FileError
-  case class Locked(file: String) extends FileError
-  case class ChecksumNotFound(sumType: String, file: String) extends FileError
-  case class WrongChecksum(sumType: String, got: String, expected: String, file: String, sumFile: String) extends FileError
+  case class DownloadError(message0: String) extends FileError {
+    def message = s"Download error: $message0"
+  }
+  case class NotFound(file: String) extends FileError {
+    def message = s"$file: not found"
+  }
+  case class Locked(file: String) extends FileError {
+    def message = s"$file: locked"
+  }
+  case class ChecksumNotFound(sumType: String, file: String) extends FileError {
+    def message = s"$file: $sumType checksum not found"
+  }
+  case class WrongChecksum(sumType: String, got: String, expected: String, file: String, sumFile: String) extends FileError {
+    def message = s"$file: $sumType checksum validation failed"
+  }
 
 }
