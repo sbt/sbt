@@ -37,7 +37,7 @@ downloads).
 
 Download and run its laucher with
 ```
-$ curl -L -o coursier https://git.io/vByjF; chmod +x coursier; ./coursier --help
+$ curl -L -o coursier https://git.io/vByjF && chmod +x coursier && ./coursier --help
 ```
 
 Note that the launcher itself weights only 8 kB and can be easily
