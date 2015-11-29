@@ -41,7 +41,11 @@ class TermDisplay(out: Writer) extends Logger {
             for ((url, info) <- downloads0) {
               assert(info != null, s"Incoherent state ($url)")
               val pctOpt = info.pct.map(100.0 * _)
-              val extra = s"(${pctOpt.map(pct => f"$pct%.2f %%, ").mkString}${info.downloaded}${info.length.map(" / " + _).mkString})"
+              val extra =
+                if (info.length.isEmpty && info.downloaded == 0L)
+                  ""
+                else
+                  s"(${pctOpt.map(pct => f"$pct%.2f %%, ").mkString}${info.downloaded}${info.length.map(" / " + _).mkString})"
 
               val total = url.length + 1 + extra.length
               val (url0, extra0) =
