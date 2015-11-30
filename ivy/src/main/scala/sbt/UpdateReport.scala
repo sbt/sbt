@@ -35,7 +35,7 @@ final class ConfigurationReport(
   private[this] def addConfiguration(mr: ModuleReport): ModuleID = {
     val module = mr.module
     if (module.configurations.isEmpty) {
-      val conf = mr.configurations map (c => s"$configuration->$c") mkString ","
+      val conf = mr.configurations map (c => s"$configuration->$c") mkString ";"
       module.copy(configurations = Some(conf))
     } else module
   }
