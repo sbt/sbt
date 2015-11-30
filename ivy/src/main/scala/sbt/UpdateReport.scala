@@ -31,8 +31,14 @@ final class ConfigurationReport(
    * All resolved modules for this configuration.
    * For a given organization and module name, there is only one revision/`ModuleID` in this sequence.
    */
-  def allModules: Seq[ModuleID] = modules.map(mr => addConfiguration(mr.module))
-  private[this] def addConfiguration(mod: ModuleID): ModuleID = if (mod.configurations.isEmpty) mod.copy(configurations = Some(configuration)) else mod
+  def allModules: Seq[ModuleID] = modules map addConfiguration
+  private[this] def addConfiguration(mr: ModuleReport): ModuleID = {
+    val module = mr.module
+    if (module.configurations.isEmpty) {
+      val conf = mr.configurations map (c => s"$configuration->$c") mkString ","
+      module.copy(configurations = Some(conf))
+    } else module
+  }
 
   def retrieve(f: (String, ModuleID, Artifact, File) => File): ConfigurationReport =
     new ConfigurationReport(configuration, modules map { _.retrieve((mid, art, file) => f(configuration, mid, art, file)) }, details, evicted)
