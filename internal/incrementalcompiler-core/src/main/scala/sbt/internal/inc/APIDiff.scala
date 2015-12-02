@@ -3,8 +3,7 @@ package internal
 package inc
 
 import xsbti.api.SourceAPI
-import xsbt.api.ShowAPI
-import xsbt.api.DefaultShowAPI._
+import xsbt.api.DefaultShowAPI
 import java.lang.reflect.Method
 import java.util.{ List => JList }
 
@@ -41,8 +40,8 @@ private[inc] class APIDiff {
    * Generates an unified diff between textual representations of `api1` and `api2`.
    */
   def generateApiDiff(fileName: String, api1: SourceAPI, api2: SourceAPI, contextSize: Int): String = {
-    val api1Str = ShowAPI.show(api1)
-    val api2Str = ShowAPI.show(api2)
+    val api1Str = DefaultShowAPI(api1)
+    val api2Str = DefaultShowAPI(api2)
     generateApiDiff(fileName, api1Str, api2Str, contextSize)
   }
 
