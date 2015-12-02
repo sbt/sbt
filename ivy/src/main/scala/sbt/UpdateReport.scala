@@ -200,7 +200,21 @@ final class UpdateReport(val cachedDescriptor: File, val configurations: Seq[Con
   override def toString = "Update report:\n\t" + stats + "\n" + configurations.mkString
 
   /** All resolved modules in all configurations. */
-  def allModules: Seq[ModuleID] = configurations.flatMap(_.allModules).distinct
+  def allModules: Seq[ModuleID] =
+    {
+      val key = (m: ModuleID) => (m.organization, m.name, m.revision)
+      configurations.flatMap(_.allModules).groupBy(key).toSeq map {
+        case (k, v) =>
+          v reduceLeft { (agg, x) =>
+            agg.copy(
+              configurations = (agg.configurations, x.configurations) match {
+                case (None, _)            => x.configurations
+                case (Some(ac), None)     => Some(ac)
+                case (Some(ac), Some(xc)) => Some(s"$ac;$xc")
+              })
+          }
+      }
+    }
 
   def retrieve(f: (String, ModuleID, Artifact, File) => File): UpdateReport =
     new UpdateReport(cachedDescriptor, configurations map { _ retrieve f }, stats, stamps)
