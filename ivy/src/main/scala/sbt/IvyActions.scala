@@ -231,20 +231,20 @@ object IvyActions {
           throw w.resolveException
       }
       val newConfig = config.copy(module = mod.copy(modules = report.allModules))
-      updateClassifiers(ivySbt, newConfig, uwconfig, logicalClock, depDir, log)
+      updateClassifiers(ivySbt, newConfig, uwconfig, logicalClock, depDir, log, ???)
     }
   @deprecated("This is no longer public.", "0.13.6")
   def updateClassifiers(ivySbt: IvySbt, config: GetClassifiersConfiguration, log: Logger): UpdateReport =
-    updateClassifiers(ivySbt, config, UnresolvedWarningConfiguration(), LogicalClock.unknown, None, log)
+    updateClassifiers(ivySbt, config, UnresolvedWarningConfiguration(), LogicalClock.unknown, None, log, ???)
 
   private[sbt] def updateClassifiers(ivySbt: IvySbt, config: GetClassifiersConfiguration,
-    uwconfig: UnresolvedWarningConfiguration, logicalClock: LogicalClock, depDir: Option[File], log: Logger): UpdateReport =
+    uwconfig: UnresolvedWarningConfiguration, logicalClock: LogicalClock, depDir: Option[File], log: Logger, upd: UpdateReport): UpdateReport =
     {
       import config.{ configuration => c, module => mod, _ }
       import mod.{ configurations => confs, _ }
       assert(classifiers.nonEmpty, "classifiers cannot be empty")
       val baseModules = modules map { m => restrictedCopy(m, true) }
-      val deps = baseModules.distinct flatMap classifiedArtifacts(classifiers, exclude)
+      val deps = baseModules.distinct flatMap classifiedArtifacts(upd, exclude) //classifiedArtifacts(classifiers, exclude)
       val base = restrictedCopy(id, true).copy(name = id.name + classifiers.mkString("$", "_", ""))
       val module = new ivySbt.Module(InlineConfigurationWithExcludes(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala, configurations = confs))
       val upConf = new UpdateConfiguration(c.retrieve, true, c.logging)
@@ -254,6 +254,14 @@ object IvyActions {
           throw w.resolveException
       }
     }
+  def classifiedArtifacts(updateReport: UpdateReport, exclude: Map[ModuleID, Set[String]])(m: ModuleID): Option[ModuleID] = {
+    def sameModule(m1: ModuleID, m2: ModuleID): Boolean = m1.organization == m2.organization && m1.name == m2.name && m1.revision == m2.revision
+    updateReport.toSeq.groupBy(_._2) collectFirst {
+      case (k, v) if sameModule(k, m) =>
+        val arts = v.collect { case (_, _, art, _) if art.classifier.isDefined => art }.distinct
+        m.copy(isTransitive = false, explicitArtifacts = arts)
+    }
+  }
   def classifiedArtifacts(classifiers: Seq[String], exclude: Map[ModuleID, Set[String]])(m: ModuleID): Option[ModuleID] =
     {
       val excluded = exclude getOrElse (restrictedCopy(m, false), Set.empty)

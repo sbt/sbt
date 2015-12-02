@@ -1234,7 +1234,7 @@ object Classpaths {
         val uwConfig = (unresolvedWarningConfiguration in update).value
         val logicalClock = LogicalClock(state.value.hashCode)
         val depDir = dependencyCacheDirectory.value
-        IvyActions.updateClassifiers(is, GetClassifiersConfiguration(mod, excludes, c, ivyScala.value), uwConfig, LogicalClock(state.value.hashCode), Some(depDir), s.log)
+        IvyActions.updateClassifiers(is, GetClassifiersConfiguration(mod, excludes, c, ivyScala.value), uwConfig, LogicalClock(state.value.hashCode), Some(depDir), s.log, update.value)
       }
     } tag (Tags.Update, Tags.Network)
   )
