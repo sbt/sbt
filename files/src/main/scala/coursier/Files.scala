@@ -90,8 +90,6 @@ case class Files(
     def remote(file: File, url: String) =
       Task {
         try {
-          file.getParentFile.mkdirs()
-
           logger.foreach(_.downloadingArtifact(url))
 
           val conn = new URL(url).openConnection() // FIXME Should this be closed?
@@ -108,6 +106,7 @@ case class Files(
 
           val result =
             try {
+              file.getParentFile.mkdirs()
               val out = new FileOutputStream(file)
               try {
                 var lock: FileLock = null
