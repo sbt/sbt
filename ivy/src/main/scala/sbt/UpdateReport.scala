@@ -31,8 +31,14 @@ final class ConfigurationReport(
    * All resolved modules for this configuration.
    * For a given organization and module name, there is only one revision/`ModuleID` in this sequence.
    */
-  def allModules: Seq[ModuleID] = modules.map(mr => addConfiguration(mr.module))
-  private[this] def addConfiguration(mod: ModuleID): ModuleID = if (mod.configurations.isEmpty) mod.copy(configurations = Some(configuration)) else mod
+  def allModules: Seq[ModuleID] = modules map addConfiguration
+  private[this] def addConfiguration(mr: ModuleReport): ModuleID = {
+    val module = mr.module
+    if (module.configurations.isEmpty) {
+      val conf = mr.configurations map (c => s"$configuration->$c") mkString ";"
+      module.copy(configurations = Some(conf))
+    } else module
+  }
 
   def retrieve(f: (String, ModuleID, Artifact, File) => File): ConfigurationReport =
     new ConfigurationReport(configuration, modules map { _.retrieve((mid, art, file) => f(configuration, mid, art, file)) }, details, evicted)
@@ -194,7 +200,21 @@ final class UpdateReport(val cachedDescriptor: File, val configurations: Seq[Con
   override def toString = "Update report:\n\t" + stats + "\n" + configurations.mkString
 
   /** All resolved modules in all configurations. */
-  def allModules: Seq[ModuleID] = configurations.flatMap(_.allModules).distinct
+  def allModules: Seq[ModuleID] =
+    {
+      val key = (m: ModuleID) => (m.organization, m.name, m.revision)
+      configurations.flatMap(_.allModules).groupBy(key).toSeq map {
+        case (k, v) =>
+          v reduceLeft { (agg, x) =>
+            agg.copy(
+              configurations = (agg.configurations, x.configurations) match {
+                case (None, _)            => x.configurations
+                case (Some(ac), None)     => Some(ac)
+                case (Some(ac), Some(xc)) => Some(s"$ac;$xc")
+              })
+          }
+      }
+    }
 
   def retrieve(f: (String, ModuleID, Artifact, File) => File): UpdateReport =
     new UpdateReport(cachedDescriptor, configurations map { _ retrieve f }, stats, stamps)

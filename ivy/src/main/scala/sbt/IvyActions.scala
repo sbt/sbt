@@ -231,20 +231,24 @@ object IvyActions {
           throw w.resolveException
       }
       val newConfig = config.copy(module = mod.copy(modules = report.allModules))
-      updateClassifiers(ivySbt, newConfig, uwconfig, logicalClock, depDir, log)
+      updateClassifiers(ivySbt, newConfig, uwconfig, logicalClock, depDir, Vector(), log)
     }
   @deprecated("This is no longer public.", "0.13.6")
   def updateClassifiers(ivySbt: IvySbt, config: GetClassifiersConfiguration, log: Logger): UpdateReport =
-    updateClassifiers(ivySbt, config, UnresolvedWarningConfiguration(), LogicalClock.unknown, None, log)
+    updateClassifiers(ivySbt, config, UnresolvedWarningConfiguration(), LogicalClock.unknown, None, Vector(), log)
 
+  // artifacts can be obtained from calling toSeq on UpdateReport
   private[sbt] def updateClassifiers(ivySbt: IvySbt, config: GetClassifiersConfiguration,
-    uwconfig: UnresolvedWarningConfiguration, logicalClock: LogicalClock, depDir: Option[File], log: Logger): UpdateReport =
+    uwconfig: UnresolvedWarningConfiguration, logicalClock: LogicalClock, depDir: Option[File],
+    artifacts: Vector[(String, ModuleID, Artifact, File)],
+    log: Logger): UpdateReport =
     {
       import config.{ configuration => c, module => mod, _ }
       import mod.{ configurations => confs, _ }
       assert(classifiers.nonEmpty, "classifiers cannot be empty")
       val baseModules = modules map { m => restrictedCopy(m, true) }
-      val deps = baseModules.distinct flatMap classifiedArtifacts(classifiers, exclude)
+      // Adding list of explicit artifacts here.
+      val deps = baseModules.distinct flatMap classifiedArtifacts(classifiers, exclude, artifacts)
       val base = restrictedCopy(id, true).copy(name = id.name + classifiers.mkString("$", "_", ""))
       val module = new ivySbt.Module(InlineConfigurationWithExcludes(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala, configurations = confs))
       val upConf = new UpdateConfiguration(c.retrieve, true, c.logging)
@@ -254,6 +258,21 @@ object IvyActions {
           throw w.resolveException
       }
     }
+  // This version adds explicit artifact
+  private[sbt] def classifiedArtifacts(classifiers: Seq[String],
+    exclude: Map[ModuleID, Set[String]],
+    artifacts: Vector[(String, ModuleID, Artifact, File)])(m: ModuleID): Option[ModuleID] = {
+    def sameModule(m1: ModuleID, m2: ModuleID): Boolean = m1.organization == m2.organization && m1.name == m2.name && m1.revision == m2.revision
+    def explicitArtifacts =
+      {
+        val arts = (artifacts collect { case (_, x, art, _) if sameModule(m, x) && art.classifier.isDefined => art }).distinct
+        if (arts.isEmpty) None
+        else Some(m.copy(isTransitive = false, explicitArtifacts = arts))
+      }
+    def hardcodedArtifacts = classifiedArtifacts(classifiers, exclude)(m)
+    explicitArtifacts orElse hardcodedArtifacts
+  }
+  @deprecated("This is no longer public.", "0.13.10")
   def classifiedArtifacts(classifiers: Seq[String], exclude: Map[ModuleID, Set[String]])(m: ModuleID): Option[ModuleID] =
     {
       val excluded = exclude getOrElse (restrictedCopy(m, false), Set.empty)
