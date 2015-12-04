@@ -124,18 +124,53 @@ private[inc] abstract class IncrementalCommon(log: Logger, options: IncOptions) 
     case (co1, co2) => co1.sourceDirectory == co2.sourceDirectory && co1.outputDirectory == co2.outputDirectory
   }
 
+  /**
+   * Determines whether any of the internal or external transitive dependencies of `file` have been recompiled
+   * since the last compilation of `file`.
+   */
+  private def hasRecompiledDependency(analysis: Analysis, file: File, resolver: CompilationTimeResolver): Boolean = {
+    val fileCompilationTime = analysis.apis.internalAPI(file).compilation.startTime
+    val dependencyCompilationTime = resolver(analysis, fileCompilationTime, file)
+
+    dependencyCompilationTime > fileCompilationTime
+  }
+
   def changedInitial(entry: String => Option[File], sources: Set[File], previousAnalysis: Analysis, current: ReadStamps,
     forEntry: File => Option[Analysis])(implicit equivS: Equiv[Stamp]): InitialChanges =
     {
       val previous = previousAnalysis.stamps
       val previousAPIs = previousAnalysis.apis
+      val previousRelations = previousAnalysis.relations
 
       val srcChanges = changes(previous.allInternalSources.toSet, sources, f => !equivS.equiv(previous.internalSource(f), current.internalSource(f)))
       val removedProducts = previous.allProducts.filter(p => !equivS.equiv(previous.product(p), current.product(p))).toSet
       val binaryDepChanges = previous.allBinaries.filter(externalBinaryModified(entry, forEntry, previous, current)).toSet
       val extChanges = changedIncremental(previousAPIs.allExternals, previousAPIs.externalAPI _, currentExternalAPI(entry, forEntry))
 
-      InitialChanges(srcChanges, removedProducts, binaryDepChanges, extChanges)
+      // We have to check for all changes that could affect macro providers, but we cannot rely only on API changes
+      // like we usually do, because (for instance) a change to the implementation of a method could affect the result
+      // of a macro expansion in a way that we cannot predict. Therefore we stay on the safe side and recompile all macro
+      // providers that have one of their transitive dependencies modified.
+      val invalidatedMacroProviders =
+        if (options.macroTransitiveDeps) {
+          val macroRelation = previousRelations.fromMacroImpl
+          val macroProviders = macroRelation.internal._1s union macroRelation.external._1s
+          val resolver = new CompilationTimeResolver(analysisForClass(entry, forEntry))
+          macroProviders filter (hasRecompiledDependency(previousAnalysis, _, resolver))
+        } else Set.empty
+
+      if (invalidatedMacroProviders.nonEmpty)
+        log.debug("The following macro providers have recompiled dependencies: " + invalidatedMacroProviders.mkString(", "))
+
+      // Create a new `Changes` taking into account the invalidated macro providers.
+      val completeSrcChange = new Changes[File] {
+        val removed = srcChanges.removed
+        val added = srcChanges.added
+        val changed = srcChanges.changed ++ invalidatedMacroProviders
+        val unmodified = srcChanges.unmodified -- invalidatedMacroProviders
+      }
+
+      InitialChanges(completeSrcChange, removedProducts, binaryDepChanges, extChanges)
     }
 
   def changes(previous: Set[File], current: Set[File], existingModified: File => Boolean): Changes[File] =
@@ -315,7 +350,21 @@ private[inc] abstract class IncrementalCommon(log: Logger, options: IncOptions) 
         } yield analysis.apis.internalAPI(src)
       )
 
+  /**
+   * Returns a function that, given a fully qualified class name, returns the Analysis that holds information
+   * about that class.
+   */
+  private def analysisForClass(entry: String => Option[File], forEntry: File => Option[Analysis]): String => Analysis =
+    className =>
+      orEmpty(
+        for {
+          e <- entry(className)
+          analysis <- forEntry(e)
+        } yield analysis
+      )
+
   def orEmpty(o: Option[Source]): Source = o getOrElse APIs.emptySource
+  def orEmpty(o: Option[Analysis]): Analysis = o getOrElse Analysis.empty(options.nameHashing)
   def orTrue(o: Option[Boolean]): Boolean = o getOrElse true
 
   protected def transitiveDeps[T](nodes: Iterable[T])(dependencies: T => Iterable[T]): Set[T] =

@@ -48,6 +48,11 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile {
           val dependenciesByInheritance = extractDependenciesByInheritance(unit)
           for (on <- dependenciesByInheritance)
             processDependency(on, context = DependencyByInheritance)
+
+          val dependenciesFromMacroImpl = extractDependenciesFromMacroImpl(unit)
+          for (on <- dependenciesFromMacroImpl)
+            processDependency(on, context = DependencyFromMacroImpl)
+
         } else {
           for (on <- unit.depends) processDependency(on, context = DependencyByMemberRef)
           for (on <- inheritedDependencies.getOrElse(sourceFile, Nil: Iterable[Symbol])) processDependency(on, context = DependencyByInheritance)
@@ -186,6 +191,46 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile {
 
   private def extractDependenciesByInheritance(unit: CompilationUnit): collection.immutable.Set[Symbol] = {
     val traverser = new ExtractDependenciesByInheritanceTraverser
+    traverser.traverse(unit.body)
+    val dependencies = traverser.dependencies
+    dependencies.map(enclosingTopLevelClass)
+  }
+
+  private final class ExtractDependenciesFromMacroImplTraverser extends ExtractDependenciesTraverser {
+    import DetectMacroImpls._
+
+    private def hasContextAsParameter(node: DefDef): Boolean =
+      node.vparamss.flatten exists (p => isContextCompatible(p.tpt.symbol))
+
+    /**
+     * Determines whether a `ClassDef` looks like a macro bundle by checking whether its constructor
+     * accepts an argument that may be used as a `Context`.
+     */
+    private def looksLikeMacroBundle(cl: ClassDef): Boolean = {
+      val ctor = cl.symbol.asType.primaryConstructor
+      ctor.paramss.flatten exists (p => isContextCompatible(p.tpe.typeSymbol))
+    }
+
+    /** Collects all the symbols that are accessed by member reference in this node */
+    private def collectSymbols(node: Tree): Unit = {
+      val traverser = new ExtractDependenciesByMemberRefTraverser
+      traverser.traverse(node)
+      traverser.dependencies foreach addDependency
+    }
+
+    override def traverse(tree: Tree): Unit = tree match {
+      case node: DefDef if hasContextAsParameter(node) =>
+        collectSymbols(node)
+
+      case node: ClassDef if looksLikeMacroBundle(node) =>
+        collectSymbols(node)
+
+      case tree => super.traverse(tree)
+    }
+  }
+
+  private def extractDependenciesFromMacroImpl(unit: CompilationUnit): collection.immutable.Set[Symbol] = {
+    val traverser = new ExtractDependenciesFromMacroImplTraverser
     traverser.traverse(unit.body)
     val dependencies = traverser.dependencies
     dependencies.map(enclosingTopLevelClass)

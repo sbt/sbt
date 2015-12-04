@@ -189,6 +189,23 @@ trait Relations {
    */
   private[inc] def inheritance: SourceDependencies
 
+  /**
+   * The source dependency relation between source files introduced by the body of a macro implementation.
+   * This kind of dependency is introduced whenever a macro implementation refers to another symbol :
+   *
+   * def something = macro impl
+   * def impl(c: Context): c.Tree = { import c.universe._
+   *   val result = Foo.bar
+   *   q"$result"
+   * }
+   *
+   * This very simple examples show how dependencies may be introduced from a macro implementation.
+   * These dependencies need special handling because, for instance here, any change to Foo.bar should
+   * invalidate all the clients of this macro.
+   *
+   */
+  private[inc] def fromMacroImpl: SourceDependencies
+
   /** The dependency relations between sources.  These include both direct and inherited dependencies.*/
   def direct: Source
 
@@ -247,6 +264,8 @@ object Relations {
       ("member reference external dependencies", identity[String] _),
       ("inheritance internal dependencies", string2File),
       ("inheritance external dependencies", identity[String] _),
+      ("from macro internal dependencies", string2File),
+      ("from macro external dependencies", identity[String] _),
       ("class names", identity[String] _),
       ("used names", identity[String] _))
   }
@@ -256,13 +275,14 @@ object Relations {
    */
   def construct(nameHashing: Boolean, relations: List[Relation[_, _]]) =
     relations match {
-      case p :: bin :: di :: de :: pii :: pie :: mri :: mre :: ii :: ie :: cn :: un :: Nil =>
+      case p :: bin :: di :: de :: pii :: pie :: mri :: mre :: ii :: ie :: mi :: me :: cn :: un :: Nil =>
         val srcProd = p.asInstanceOf[Relation[File, File]]
         val binaryDep = bin.asInstanceOf[Relation[File, File]]
         val directSrcDeps = makeSource(di.asInstanceOf[Relation[File, File]], de.asInstanceOf[Relation[File, String]])
         val publicInheritedSrcDeps = makeSource(pii.asInstanceOf[Relation[File, File]], pie.asInstanceOf[Relation[File, String]])
         val memberRefSrcDeps = makeSourceDependencies(mri.asInstanceOf[Relation[File, File]], mre.asInstanceOf[Relation[File, String]])
         val inheritanceSrcDeps = makeSourceDependencies(ii.asInstanceOf[Relation[File, File]], ie.asInstanceOf[Relation[File, String]])
+        val fromMacroSrcDeps = makeSourceDependencies(mi.asInstanceOf[Relation[File, File]], me.asInstanceOf[Relation[File, String]])
         val classes = cn.asInstanceOf[Relation[File, String]]
         val names = un.asInstanceOf[Relation[File, String]]
 
@@ -272,8 +292,8 @@ object Relations {
         assert(!nameHashing || (directSrcDeps == emptySource), "When name hashing is enabled the `direct` relation should be empty.")
 
         if (nameHashing) {
-          val internal = InternalDependencies(Map(DependencyByMemberRef -> mri.asInstanceOf[Relation[File, File]], DependencyByInheritance -> ii.asInstanceOf[Relation[File, File]]))
-          val external = ExternalDependencies(Map(DependencyByMemberRef -> mre.asInstanceOf[Relation[File, String]], DependencyByInheritance -> ie.asInstanceOf[Relation[File, String]]))
+          val internal = InternalDependencies(Map(DependencyByMemberRef -> mri.asInstanceOf[Relation[File, File]], DependencyByInheritance -> ii.asInstanceOf[Relation[File, File]], DependencyFromMacroImpl -> mi.asInstanceOf[Relation[File, File]]))
+          val external = ExternalDependencies(Map(DependencyByMemberRef -> mre.asInstanceOf[Relation[File, String]], DependencyByInheritance -> ie.asInstanceOf[Relation[File, String]], DependencyFromMacroImpl -> me.asInstanceOf[Relation[File, String]]))
           Relations.make(srcProd, binaryDep, internal, external, classes, names)
         } else {
           assert(names.all.isEmpty, s"When `nameHashing` is disabled `names` relation should be empty: $names")
@@ -496,6 +516,9 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
   def inheritance: SourceDependencies =
     throw new UnsupportedOperationException("The `memberRef` source dependencies relation is not supported " +
       "when `nameHashing` flag is disabled.")
+  // The default implementation doesn't support dependencies from macro implementation. However, we may need to
+  // access them even if `nameHashing` is not activated, so we cannot afford to throw an exception.
+  def fromMacroImpl: SourceDependencies = Relations.emptySourceDependencies
 
   def addProduct(src: File, prod: File, name: String): Relations =
     new MRelationsDefaultImpl(srcProd + (src, prod), binaryDep, direct = direct,
@@ -609,6 +632,8 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
       Relations.emptySourceDependencies.external, // Default implementation doesn't provide memberRef source deps
       Relations.emptySourceDependencies.internal, // Default implementation doesn't provide inheritance source deps
       Relations.emptySourceDependencies.external, // Default implementation doesn't provide inheritance source deps
+      Relations.emptySourceDependencies.internal, // Default implementation doesn't provide fromMacroImpl source deps
+      Relations.emptySourceDependencies.external, // Default implementation doesn't provide fromMacroImpl source deps
       classes,
       Relation.empty[File, String]) // Default implementation doesn't provide used names relation
     Relations.existingRelations map (_._1) zip rels
@@ -692,6 +717,8 @@ private class MRelationsNameHashing(srcProd: Relation[File, File], binaryDep: Re
     new SourceDependencies(internalDependencies.dependencies.getOrElse(DependencyByInheritance, Relation.empty), externalDependencies.dependencies.getOrElse(DependencyByInheritance, Relation.empty))
   override def memberRef: SourceDependencies =
     new SourceDependencies(internalDependencies.dependencies.getOrElse(DependencyByMemberRef, Relation.empty), externalDependencies.dependencies.getOrElse(DependencyByMemberRef, Relation.empty))
+  override def fromMacroImpl: SourceDependencies =
+    new SourceDependencies(internalDependencies.dependencies.getOrElse(DependencyFromMacroImpl, Relation.empty), externalDependencies.dependencies.getOrElse(DependencyFromMacroImpl, Relation.empty))
 
   def ++(o: Relations): Relations = {
     if (!o.nameHashing)
@@ -730,12 +757,14 @@ private class MRelationsNameHashing(srcProd: Relation[File, File], binaryDep: Re
       memberRef.external,
       inheritance.internal,
       inheritance.external,
+      fromMacroImpl.internal,
+      fromMacroImpl.external,
       classes,
       names)
     Relations.existingRelations map (_._1) zip rels
   }
 
-  override def hashCode = (srcProd :: binaryDep :: memberRef :: inheritance :: classes :: Nil).hashCode
+  override def hashCode = (srcProd :: binaryDep :: memberRef :: inheritance :: fromMacroImpl :: classes :: Nil).hashCode
 
   override def toString = (
     """
