@@ -318,7 +318,7 @@ object Relations {
   private[inc] def makeSourceDependencies(internal: Relation[File, File], external: Relation[File, String]): SourceDependencies = new SourceDependencies(internal, external)
 }
 
-private object DependencyCollection {
+private[inc] object DependencyCollection {
   /**
    * Combine `m1` and `m2` such that the result contains all the dependencies they represent.
    * `m1` is expected to be smaller than `m2`.
@@ -327,14 +327,14 @@ private object DependencyCollection {
     m1.foldLeft(m2) { case (tmp, (key, values)) => tmp.updated(key, tmp.getOrElse(key, Relation.empty) ++ values) }
 }
 
-private object InternalDependencies {
+private[inc] object InternalDependencies {
   /**
    * Constructs an empty `InteralDependencies`
    */
   def empty = InternalDependencies(Map.empty)
 }
 
-private case class InternalDependencies(dependencies: Map[DependencyContext, Relation[File, File]]) {
+private[inc] case class InternalDependencies(dependencies: Map[DependencyContext, Relation[File, File]]) {
   /**
    * Adds `dep` to the dependencies
    */
@@ -353,14 +353,14 @@ private case class InternalDependencies(dependencies: Map[DependencyContext, Rel
   def --(sources: Iterable[File]): InternalDependencies = InternalDependencies(dependencies.mapValues(_ -- sources).filter(_._2.size > 0))
 }
 
-private object ExternalDependencies {
+private[inc] object ExternalDependencies {
   /**
    * Constructs an empty `ExternalDependencies`
    */
   def empty = ExternalDependencies(Map.empty)
 }
 
-private case class ExternalDependencies(dependencies: Map[DependencyContext, Relation[File, String]]) {
+private[inc] case class ExternalDependencies(dependencies: Map[DependencyContext, Relation[File, String]]) {
   /**
    * Adds `dep` to the dependencies
    */
@@ -398,7 +398,7 @@ private case class ExternalDependencies(dependencies: Map[DependencyContext, Rel
  *
  * `classes` is a relation between a source file and its generated fully-qualified class names.
  */
-private abstract class MRelationsCommon(val srcProd: Relation[File, File], val binaryDep: Relation[File, File],
+private[inc] abstract class MRelationsCommon(val srcProd: Relation[File, File], val binaryDep: Relation[File, File],
   val classes: Relation[File, String]) extends Relations {
   def allSources: collection.Set[File] = srcProd._1s
 
@@ -446,7 +446,7 @@ private abstract class MRelationsCommon(val srcProd: Relation[File, File], val b
  *    introduced by inheritance.
  *
  */
-private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Relation[File, File],
+private[inc] class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Relation[File, File],
   // direct should include everything in inherited
   val direct: Source, val publicInherited: Source,
   classes: Relation[File, String]) extends MRelationsCommon(srcProd, binaryDep, classes) {
@@ -553,7 +553,7 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
  * dependencies. Therefore this class implements the new (compared to sbt 0.13.0) dependency tracking logic
  * needed by the name hashing invalidation algorithm.
  */
-private class MRelationsNameHashing(srcProd: Relation[File, File], binaryDep: Relation[File, File],
+private[inc] class MRelationsNameHashing(srcProd: Relation[File, File], binaryDep: Relation[File, File],
   val internalDependencies: InternalDependencies,
   val externalDependencies: ExternalDependencies,
   classes: Relation[File, String],
