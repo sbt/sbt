@@ -47,8 +47,8 @@ private[inc] class IvyComponentCompiler(compiler: RawCompiler, manager: Componen
   import ComponentCompiler._
 
   private val sbtOrg = xsbti.ArtifactInfo.SbtOrganization
-  private val xsbtiInterfaceModuleName = "compiler-interface"
-  private val xsbtiInterfaceID = s"interface-$incrementalVersion"
+  // private val xsbtiInterfaceModuleName = "compiler-interface"
+  // private val xsbtiInterfaceID = s"interface-$incrementalVersion"
   private val sbtOrgTemp = JsonUtil.sbtOrgTemp
   private val modulePrefixTemp = "temp-module-"
   private val ivySbt: IvySbt = new IvySbt(ivyConfiguration)
@@ -69,39 +69,24 @@ private[inc] class IvyComponentCompiler(compiler: RawCompiler, manager: Componen
     IO.withTemporaryDirectory { binaryDirectory =>
 
       val targetJar = new File(binaryDirectory, s"$binID.jar")
-      val xsbtiJars = manager.files(xsbtiInterfaceID)(new IfMissing.Define(true, getXsbtiInterface()))
 
       buffered bufferQuietly {
 
         IO.withTemporaryDirectory { retrieveDirectory =>
-          (update(getModule(sourcesModule), retrieveDirectory)(_.getName endsWith "-sources.jar")) match {
-            case Some(sources) =>
+
+          update(getModule(sourcesModule), retrieveDirectory) match {
+            case Seq() =>
+              throw new InvalidComponent(s"Couldn't retrieve source module: $sourcesModule")
+
+            case allArtifacts =>
+              val (sources, xsbtiJars) = allArtifacts partition (_.getName endsWith "-sources.jar")
               AnalyzingCompiler.compileSources(sources, targetJar, xsbtiJars, sourcesModule.name, compiler, log)
               manager.define(binID, Seq(targetJar))
 
-            case None =>
-              throw new InvalidComponent(s"Couldn't retrieve source module: $sourcesModule")
           }
         }
 
       }
-    }
-
-  private def getXsbtiInterface(): Unit =
-    buffered bufferQuietly {
-
-      IO withTemporaryDirectory { retrieveDirectory =>
-        val module = ModuleID(sbtOrg, xsbtiInterfaceModuleName, incrementalVersion, Some("component"))
-        val jarName = s"$xsbtiInterfaceModuleName-$incrementalVersion.jar"
-        (update(getModule(module), retrieveDirectory)(_.getName == jarName)) match {
-          case Some(interface) =>
-            manager.define(xsbtiInterfaceID, interface)
-
-          case None =>
-            throw new InvalidComponent(s"Couldn't retrieve xsbti interface module: $xsbtiInterfaceModuleName")
-        }
-      }
-
     }
 
   /**
@@ -139,7 +124,7 @@ private[inc] class IvyComponentCompiler(compiler: RawCompiler, manager: Componen
       s"unknown"
   }
 
-  private def update(module: ivySbt.Module, retrieveDirectory: File)(predicate: File => Boolean): Option[Seq[File]] = {
+  private def update(module: ivySbt.Module, retrieveDirectory: File): Seq[File] = {
 
     val retrieveConfiguration = new RetrieveConfiguration(retrieveDirectory, Resolver.defaultRetrievePattern, false)
     val updateConfiguration = new UpdateConfiguration(Some(retrieveConfiguration), true, UpdateLogging.DownloadOnly)
@@ -148,7 +133,7 @@ private[inc] class IvyComponentCompiler(compiler: RawCompiler, manager: Componen
     IvyActions.updateEither(module, updateConfiguration, UnresolvedWarningConfiguration(), LogicalClock.unknown, None, buffered) match {
       case Left(unresolvedWarning) =>
         buffered.debug(s"Couldn't retrieve module ${dependenciesNames(module)}.")
-        None
+        Nil
 
       case Right(updateReport) =>
         val allFiles =
@@ -161,10 +146,7 @@ private[inc] class IvyComponentCompiler(compiler: RawCompiler, manager: Componen
         buffered.debug(s"Files retrieved for ${dependenciesNames(module)}:")
         buffered.debug(allFiles mkString ", ")
 
-        allFiles filter predicate match {
-          case Seq() => None
-          case files => Some(files)
-        }
+        allFiles
 
     }
   }

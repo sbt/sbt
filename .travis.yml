@@ -6,4 +6,4 @@ scala:
    - 2.11.7
 
 script:
-   - sbt "plz $TRAVIS_SCALA_VERSION test"
+   - sbt "publishBridgesAndTest $TRAVIS_SCALA_VERSION"
