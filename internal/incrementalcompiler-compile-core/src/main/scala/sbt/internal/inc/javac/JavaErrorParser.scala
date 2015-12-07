@@ -48,6 +48,7 @@ class JavaErrorParser(relativeDir: File = new File(new File(".").getAbsolutePath
 
   override val skipWhitespace = false
 
+  val JAVAC: Parser[String] = literal("javac")
   val CHARAT: Parser[String] = literal("^")
   val SEMICOLON: Parser[String] = literal(":") | literal("\uff1a")
   val SYMBOL: Parser[String] = allUntilChar(':') // We ignore whether it actually says "symbol" for i18n
@@ -165,8 +166,17 @@ class JavaErrorParser(relativeDir: File = new File(new File(".").getAbsolutePath
         msg
       )
     }
+  val javacError: Parser[Problem] =
+    JAVAC ~ SEMICOLON ~ restOfLine ^^ {
+      case _ ~ _ ~ error =>
+        new JavaProblem(
+          JavaNoPosition,
+          Severity.Error,
+          s"javac:$error"
+        )
+    }
 
-  val potentialProblem: Parser[Problem] = warningMessage | errorMessage | noteMessage
+  val potentialProblem: Parser[Problem] = warningMessage | errorMessage | noteMessage | javacError
 
   val javacOutput: Parser[Seq[Problem]] = rep(potentialProblem)
   /**
