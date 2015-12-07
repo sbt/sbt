@@ -53,7 +53,7 @@ object TestCaseGenerators {
   def genFile: Gen[File] = for {
     n <- choose(2, maxPathLen) // Paths have at least 2 segments.
     path <- listOfN(n, genFilePathSegment)
-  } yield new File(path.mkString("/"))
+  } yield new File("/temp/" + path.mkString("/"))
 
   def genStamp: Gen[Stamp] = for {
     b <- oneOf(true, false)

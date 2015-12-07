@@ -6,6 +6,7 @@ package internal
 package inc
 
 import java.io.File
+import java.net.URI
 import Relations.Source
 import Relations.SourceDependencies
 import sbt.internal.util.Relation
@@ -206,26 +207,24 @@ trait Relations {
 }
 
 object Relations {
-
   /**
    * Represents all the relations that sbt knows of along with a way to recreate each
    * of their elements from their string representation.
    */
   private[inc] val existingRelations = {
-    val string2File: String => File = new File(_)
     List(
-      ("products", string2File),
-      ("binary dependencies", string2File),
-      ("direct source dependencies", string2File),
-      ("direct external dependencies", identity[String] _),
-      ("public inherited source dependencies", string2File),
-      ("public inherited external dependencies", identity[String] _),
-      ("member reference internal dependencies", string2File),
-      ("member reference external dependencies", identity[String] _),
-      ("inheritance internal dependencies", string2File),
-      ("inheritance external dependencies", identity[String] _),
-      ("class names", identity[String] _),
-      ("used names", identity[String] _)
+      ("products", "File:File"),
+      ("binary dependencies", "File:File"),
+      ("direct source dependencies", "File:File"),
+      ("direct external dependencies", "File:String"),
+      ("public inherited source dependencies", "File:File"),
+      ("public inherited external dependencies", "File:String"),
+      ("member reference internal dependencies", "File:File"),
+      ("member reference external dependencies", "File:String"),
+      ("inheritance internal dependencies", "File:File"),
+      ("inheritance external dependencies", "File:String"),
+      ("class names", "File:String"),
+      ("used names", "File:String")
     )
   }
   /**
