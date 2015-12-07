@@ -20,6 +20,7 @@ import sbt.io.{ IO, PathFinder }
 import sbt.util.Logger
 import sbt.internal.util.{ ShowLines, SourcePosition, LinePosition, RangePosition, LineRange }
 import sbt.librarymanagement._
+import sbt.internal.librarymanagement.syntax._
 
 final class DeliverConfiguration(val deliverIvyPattern: String, val status: String, val configurations: Option[Seq[Configuration]], val logging: UpdateLogging.Value)
 final class PublishConfiguration(val ivyFile: Option[File], val resolverName: String, val artifacts: Map[Artifact, File], val checksums: Seq[String], val logging: UpdateLogging.Value,

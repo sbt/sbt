@@ -25,6 +25,7 @@ import sbt.io.{ DirectoryFilter, Hash, IO, Path }
 import sbt.util.Logger
 import sbt.librarymanagement._
 import Configurations.{ System => _, _ }
+import sbt.internal.librarymanagement.syntax._
 
 private[sbt] object CachedResolutionResolveCache {
   def createID(organization: String, name: String, revision: String) =
