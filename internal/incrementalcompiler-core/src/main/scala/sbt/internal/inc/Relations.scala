@@ -6,6 +6,7 @@ package internal
 package inc
 
 import java.io.File
+import java.net.URI
 import Relations.Source
 import Relations.SourceDependencies
 import sbt.internal.util.Relation
@@ -65,30 +66,6 @@ trait Relations {
 
   private[inc] def usedNames(src: File): Set[String]
 
-  /** Records internal source file `src` as generating class file `prod` with top-level class `name`. */
-  @deprecated("Record all products using `addProducts`.", "0.13.8")
-  def addProduct(src: File, prod: File, name: String): Relations
-
-  /**
-   * Records internal source file `src` as dependending on `dependsOn`. If this dependency is introduced
-   * by an inheritance relation, `inherited` is set to true. Note that in this case, the dependency is
-   * also registered as a direct dependency.
-   */
-  @deprecated("Record all external dependencies using `addExternalDeps`.", "0.13.8")
-  def addExternalDep(src: File, dependsOn: String, inherited: Boolean): Relations
-
-  /** Records internal source file `src` depending on a dependency binary dependency `dependsOn`.*/
-  @deprecated("Record all binary dependencies using `addBinaryDeps`.", "0.13.8")
-  def addBinaryDep(src: File, dependsOn: File): Relations
-
-  /**
-   * Records internal source file `src` as having direct dependencies on internal source files `directDependsOn`
-   * and inheritance dependencies on `inheritedDependsOn`.  Everything in `inheritedDependsOn` must be included in `directDependsOn`;
-   * this method does not automatically record direct dependencies like `addExternalDep` does.
-   */
-  @deprecated("Record all internal dependencies using `addInternalSrcDeps(File, Iterable[InternalDependencies])`.", "0.13.8")
-  def addInternalSrcDeps(src: File, directDependsOn: Iterable[File], inheritedDependsOn: Iterable[File]): Relations
-
   /**
    * Records that the file `src` generates products `products`, has internal dependencies `internalDeps`,
    * has external dependencies `externalDeps` and binary dependencies `binaryDeps`.
@@ -129,9 +106,6 @@ trait Relations {
 
   /** Drops all dependency mappings a->b where a is in `sources`. Acts naively, i.e., doesn't externalize internal deps on removed files. */
   def --(sources: Iterable[File]): Relations
-
-  @deprecated("OK to remove in 0.14", "0.13.1")
-  def groupBy[K](f: (File => K)): Map[K, Relations]
 
   /** The relation between internal sources and generated class files. */
   def srcProd: Relation[File, File]
@@ -233,26 +207,24 @@ trait Relations {
 }
 
 object Relations {
-
   /**
    * Represents all the relations that sbt knows of along with a way to recreate each
    * of their elements from their string representation.
    */
   private[inc] val existingRelations = {
-    val string2File: String => File = new File(_)
     List(
-      ("products", string2File),
-      ("binary dependencies", string2File),
-      ("direct source dependencies", string2File),
-      ("direct external dependencies", identity[String] _),
-      ("public inherited source dependencies", string2File),
-      ("public inherited external dependencies", identity[String] _),
-      ("member reference internal dependencies", string2File),
-      ("member reference external dependencies", identity[String] _),
-      ("inheritance internal dependencies", string2File),
-      ("inheritance external dependencies", identity[String] _),
-      ("class names", identity[String] _),
-      ("used names", identity[String] _)
+      ("products", "File:File"),
+      ("binary dependencies", "File:File"),
+      ("direct source dependencies", "File:File"),
+      ("direct external dependencies", "File:String"),
+      ("public inherited source dependencies", "File:File"),
+      ("public inherited external dependencies", "File:String"),
+      ("member reference internal dependencies", "File:File"),
+      ("member reference external dependencies", "File:String"),
+      ("inheritance internal dependencies", "File:File"),
+      ("inheritance external dependencies", "File:String"),
+      ("class names", "File:String"),
+      ("used names", "File:String")
     )
   }
   /**
@@ -290,21 +262,10 @@ object Relations {
   /** Tracks internal and external source dependencies for a specific dependency type, such as direct or inherited.*/
   final class Source private[sbt] (val internal: Relation[File, File], val external: Relation[File, String]) {
     def addInternal(source: File, dependsOn: Iterable[File]): Source = new Source(internal + (source, dependsOn), external)
-    @deprecated("Use addExternal(File, Iterable[String])", "0.13.8")
-    def addExternal(source: File, dependsOn: String): Source = new Source(internal, external + (source, dependsOn))
     def addExternal(source: File, dependsOn: Iterable[String]): Source = new Source(internal, external + (source, dependsOn))
     /** Drops all dependency mappings from `sources`. Acts naively, i.e., doesn't externalize internal deps on removed files.*/
     def --(sources: Iterable[File]): Source = new Source(internal -- sources, external -- sources)
     def ++(o: Source): Source = new Source(internal ++ o.internal, external ++ o.external)
-
-    @deprecated("Broken implementation. OK to remove in 0.14", "0.13.1")
-    def groupBySource[K](f: File => K): Map[K, Source] = {
-
-      val i = internal.groupBy { case (a, b) => f(a) }
-      val e = external.groupBy { case (a, b) => f(a) }
-      val pairs = for (k <- i.keySet ++ e.keySet) yield (k, new Source(getOrEmpty(i, k), getOrEmpty(e, k)))
-      pairs.toMap
-    }
 
     override def equals(other: Any) = other match {
       case o: Source => internal == o.internal && external == o.external
@@ -317,8 +278,6 @@ object Relations {
   /** Tracks internal and external source dependencies for a specific dependency type, such as direct or inherited.*/
   private[inc] final class SourceDependencies(val internal: Relation[File, File], val external: Relation[File, String]) {
     def addInternal(source: File, dependsOn: Iterable[File]): SourceDependencies = new SourceDependencies(internal + (source, dependsOn), external)
-    @deprecated("Use addExternal(File, Iterable[String])", "0.13.8")
-    def addExternal(source: File, dependsOn: String): SourceDependencies = new SourceDependencies(internal, external + (source, dependsOn))
     def addExternal(source: File, dependsOn: Iterable[String]): SourceDependencies = new SourceDependencies(internal, external + (source, dependsOn))
     /** Drops all dependency mappings from `sources`. Acts naively, i.e., doesn't externalize internal deps on removed files.*/
     def --(sources: Iterable[File]): SourceDependencies = new SourceDependencies(internal -- sources, external -- sources)
@@ -358,7 +317,7 @@ object Relations {
   private[inc] def makeSourceDependencies(internal: Relation[File, File], external: Relation[File, String]): SourceDependencies = new SourceDependencies(internal, external)
 }
 
-private object DependencyCollection {
+private[inc] object DependencyCollection {
   /**
    * Combine `m1` and `m2` such that the result contains all the dependencies they represent.
    * `m1` is expected to be smaller than `m2`.
@@ -367,14 +326,14 @@ private object DependencyCollection {
     m1.foldLeft(m2) { case (tmp, (key, values)) => tmp.updated(key, tmp.getOrElse(key, Relation.empty) ++ values) }
 }
 
-private object InternalDependencies {
+private[inc] object InternalDependencies {
   /**
    * Constructs an empty `InteralDependencies`
    */
   def empty = InternalDependencies(Map.empty)
 }
 
-private case class InternalDependencies(dependencies: Map[DependencyContext, Relation[File, File]]) {
+private[inc] case class InternalDependencies(dependencies: Map[DependencyContext, Relation[File, File]]) {
   /**
    * Adds `dep` to the dependencies
    */
@@ -393,14 +352,14 @@ private case class InternalDependencies(dependencies: Map[DependencyContext, Rel
   def --(sources: Iterable[File]): InternalDependencies = InternalDependencies(dependencies.mapValues(_ -- sources).filter(_._2.size > 0))
 }
 
-private object ExternalDependencies {
+private[inc] object ExternalDependencies {
   /**
    * Constructs an empty `ExternalDependencies`
    */
   def empty = ExternalDependencies(Map.empty)
 }
 
-private case class ExternalDependencies(dependencies: Map[DependencyContext, Relation[File, String]]) {
+private[inc] case class ExternalDependencies(dependencies: Map[DependencyContext, Relation[File, String]]) {
   /**
    * Adds `dep` to the dependencies
    */
@@ -438,7 +397,7 @@ private case class ExternalDependencies(dependencies: Map[DependencyContext, Rel
  *
  * `classes` is a relation between a source file and its generated fully-qualified class names.
  */
-private abstract class MRelationsCommon(val srcProd: Relation[File, File], val binaryDep: Relation[File, File],
+private[inc] abstract class MRelationsCommon(val srcProd: Relation[File, File], val binaryDep: Relation[File, File],
   val classes: Relation[File, String]) extends Relations {
   def allSources: collection.Set[File] = srcProd._1s
 
@@ -486,7 +445,7 @@ private abstract class MRelationsCommon(val srcProd: Relation[File, File], val b
  *    introduced by inheritance.
  *
  */
-private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Relation[File, File],
+private[inc] class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Relation[File, File],
   // direct should include everything in inherited
   val direct: Source, val publicInherited: Source,
   classes: Relation[File, String]) extends MRelationsCommon(srcProd, binaryDep, classes) {
@@ -502,10 +461,6 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
     throw new UnsupportedOperationException("The `memberRef` source dependencies relation is not supported " +
       "when `nameHashing` flag is disabled.")
 
-  def addProduct(src: File, prod: File, name: String): Relations =
-    new MRelationsDefaultImpl(srcProd + (src, prod), binaryDep, direct = direct,
-      publicInherited = publicInherited, classes + (src, name))
-
   def addProducts(src: File, products: Iterable[(File, String)]): Relations =
     new MRelationsDefaultImpl(srcProd ++ products.map(p => (src, p._1)), binaryDep, direct = direct,
       publicInherited = publicInherited, classes ++ products.map(p => (src, p._2)))
@@ -519,12 +474,6 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
     new MRelationsDefaultImpl(srcProd, binaryDep, direct = newD, publicInherited = newI, classes)
   }
 
-  def addInternalSrcDeps(src: File, directDependsOn: Iterable[File], inheritedDependsOn: Iterable[File]): Relations = {
-    val directDeps = directDependsOn.map(d => new InternalDependency(src, d, DependencyByMemberRef))
-    val inheritedDeps = inheritedDependsOn.map(d => new InternalDependency(src, d, DependencyByInheritance))
-    addInternalSrcDeps(src, directDeps ++ inheritedDeps)
-  }
-
   def addExternalDeps(src: File, deps: Iterable[ExternalDependency]) = {
     val depsByInheritance = deps.collect { case e: ExternalDependency if e.context == DependencyByInheritance => e.targetClassName }
 
@@ -534,18 +483,8 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
     new MRelationsDefaultImpl(srcProd, binaryDep, direct = newD, publicInherited = newI, classes)
   }
 
-  def addExternalDep(src: File, dependsOn: String, inherited: Boolean): Relations = {
-    val newI = if (inherited) publicInherited.addExternal(src, dependsOn :: Nil) else publicInherited
-    val newD = direct.addExternal(src, dependsOn :: Nil)
-    new MRelationsDefaultImpl(srcProd, binaryDep, direct = newD, publicInherited = newI, classes)
-  }
-
   def addBinaryDeps(src: File, deps: Iterable[(File, String, Stamp)]) =
     new MRelationsDefaultImpl(srcProd, binaryDep + (src, deps.map(_._1)), direct, publicInherited, classes)
-
-  def addBinaryDep(src: File, dependsOn: File): Relations =
-    new MRelationsDefaultImpl(srcProd, binaryDep + (src, dependsOn), direct = direct,
-      publicInherited = publicInherited, classes)
 
   def names: Relation[File, String] =
     throw new UnsupportedOperationException("Tracking of used names is not supported " +
@@ -568,32 +507,6 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
   def --(sources: Iterable[File]) =
     new MRelationsDefaultImpl(srcProd -- sources, binaryDep -- sources, direct = direct -- sources,
       publicInherited = publicInherited -- sources, classes -- sources)
-
-  @deprecated("Broken implementation. OK to remove in 0.14", "0.13.1")
-  def groupBy[K](f: File => K): Map[K, Relations] =
-    {
-      type MapRel[T] = Map[K, Relation[File, T]]
-      def outerJoin(srcProdMap: MapRel[File], binaryDepMap: MapRel[File], direct: Map[K, Source],
-        inherited: Map[K, Source], classesMap: MapRel[String],
-        namesMap: MapRel[String]): Map[K, Relations] =
-        {
-          def kRelations(k: K): Relations = {
-            def get[T](m: Map[K, Relation[File, T]]) = Relations.getOrEmpty(m, k)
-            def getSrc(m: Map[K, Source]): Source = m.getOrElse(k, Relations.emptySource)
-            def getSrcDeps(m: Map[K, SourceDependencies]): SourceDependencies =
-              m.getOrElse(k, Relations.emptySourceDependencies)
-            new MRelationsDefaultImpl(get(srcProdMap), get(binaryDepMap), getSrc(direct), getSrc(inherited),
-              get(classesMap))
-          }
-          val keys = (srcProdMap.keySet ++ binaryDepMap.keySet ++ direct.keySet ++ inherited.keySet ++ classesMap.keySet).toList
-          Map(keys.map((k: K) => (k, kRelations(k))): _*)
-        }
-
-      def f1[B](item: (File, B)): K = f(item._1)
-
-      outerJoin(srcProd.groupBy(f1), binaryDep.groupBy(f1), direct.groupBySource(f),
-        publicInherited.groupBySource(f), classes.groupBy(f1), names.groupBy(f1))
-    }
 
   override def equals(other: Any) = other match {
     case o: MRelationsDefaultImpl =>
@@ -639,7 +552,7 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
  * dependencies. Therefore this class implements the new (compared to sbt 0.13.0) dependency tracking logic
  * needed by the name hashing invalidation algorithm.
  */
-private class MRelationsNameHashing(srcProd: Relation[File, File], binaryDep: Relation[File, File],
+private[inc] class MRelationsNameHashing(srcProd: Relation[File, File], binaryDep: Relation[File, File],
   val internalDependencies: InternalDependencies,
   val externalDependencies: ExternalDependencies,
   classes: Relation[File, String],
@@ -656,10 +569,6 @@ private class MRelationsNameHashing(srcProd: Relation[File, File], binaryDep: Re
   def internalSrcDep: Relation[File, File] = memberRef.internal
   def externalDep: Relation[File, String] = memberRef.external
 
-  def addProduct(src: File, prod: File, name: String): Relations =
-    new MRelationsNameHashing(srcProd + (src, prod), binaryDep, internalDependencies = internalDependencies,
-      externalDependencies = externalDependencies, classes + (src, name), names = names)
-
   def addProducts(src: File, products: Iterable[(File, String)]): Relations =
     new MRelationsNameHashing(srcProd ++ products.map(p => (src, p._1)), binaryDep,
       internalDependencies = internalDependencies, externalDependencies = externalDependencies,
@@ -669,26 +578,13 @@ private class MRelationsNameHashing(srcProd: Relation[File, File], binaryDep: Re
     new MRelationsNameHashing(srcProd, binaryDep, internalDependencies = internalDependencies ++ deps,
       externalDependencies = externalDependencies, classes, names)
 
-  def addInternalSrcDeps(src: File, dependsOn: Iterable[File], inherited: Iterable[File]): Relations = {
-    val memberRefDeps = dependsOn.map(new InternalDependency(src, _, DependencyByMemberRef))
-    val inheritedDeps = inherited.map(new InternalDependency(src, _, DependencyByInheritance))
-    addInternalSrcDeps(src, memberRefDeps ++ inheritedDeps)
-  }
-
   def addExternalDeps(src: File, deps: Iterable[ExternalDependency]) =
     new MRelationsNameHashing(srcProd, binaryDep, internalDependencies = internalDependencies,
       externalDependencies = externalDependencies ++ deps, classes, names)
 
-  def addExternalDep(src: File, dependsOn: String, inherited: Boolean): Relations =
-    throw new UnsupportedOperationException("This method is not supported when `nameHashing` flag is enabled.")
-
   def addBinaryDeps(src: File, deps: Iterable[(File, String, Stamp)]) =
     new MRelationsNameHashing(srcProd, binaryDep + (src, deps.map(_._1)), internalDependencies = internalDependencies,
       externalDependencies = externalDependencies, classes, names)
-
-  def addBinaryDep(src: File, dependsOn: File): Relations =
-    new MRelationsNameHashing(srcProd, binaryDep + (src, dependsOn), internalDependencies = internalDependencies,
-      externalDependencies = externalDependencies, classes, names = names)
 
   def addUsedName(src: File, name: String): Relations =
     new MRelationsNameHashing(srcProd, binaryDep, internalDependencies = internalDependencies,

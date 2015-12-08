@@ -45,6 +45,7 @@ object TextAnalysisFormatTest extends Properties("TextAnalysisFormat") {
     TextAnalysisFormat.write(writer, analysis, commonSetup)
 
     val result = writer.toString
+    // println(result)
 
     result.startsWith(commonHeader)
     val reader = new BufferedReader(new StringReader(result))
@@ -59,7 +60,7 @@ object TextAnalysisFormatTest extends Properties("TextAnalysisFormat") {
 
     import TestCaseGenerators._
 
-    def f(s: String) = new File(s)
+    def f(s: String) = new File("/temp/" + s)
     val aScala = f("A.scala")
     val bScala = f("B.scala")
     val aSource = genSource("A" :: "A$" :: Nil).sample.get
@@ -80,14 +81,14 @@ object TextAnalysisFormatTest extends Properties("TextAnalysisFormat") {
     TextAnalysisFormat.write(writer, analysis, commonSetup)
 
     val result = writer.toString
-
     result.startsWith(commonHeader)
+    // println(result)
+
     val reader = new BufferedReader(new StringReader(result))
 
     val (readAnalysis, readSetup) = TextAnalysisFormat.read(reader)
 
     compare(analysis, readAnalysis)
-
   }
 
   property("Write and read complex Analysis") = forAllNoShrink(TestCaseGenerators.genAnalysis(nameHashing)) { analysis: Analysis =>

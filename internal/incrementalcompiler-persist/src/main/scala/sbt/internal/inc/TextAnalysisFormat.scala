@@ -7,6 +7,7 @@ import sbt.internal.util.Relation
 import xsbti.api.{ Compilation, Source }
 import xsbti.compile.{ MultipleOutput, SingleOutput, MiniOptions, MiniSetup }
 import javax.xml.bind.DatatypeConverter
+import java.net.URI
 
 // Very simple timer for timing repeated code sections.
 // TODO: Temporary. Remove once we've milked all available performance gains.
@@ -95,7 +96,7 @@ object TextAnalysisFormat {
   }
 
   private[this] object VersionF {
-    val currentVersion = "5"
+    val currentVersion = "6"
 
     def write(out: Writer): Unit = {
       out.write("format version: %s\n".format(currentVersion))
@@ -118,6 +119,16 @@ object TextAnalysisFormat {
     }
   }
 
+  private[sbt] val fileToString: File => String =
+    { f: File => f.toURI.toString }
+  private[sbt] val stringToFile: String => File =
+    { s: String =>
+      try {
+        new File(new URI(s))
+      } catch {
+        case e: Exception => sys.error(e.getMessage + ": " + s)
+      }
+    }
   private[this] object RelationsF {
     object Headers {
       val srcProd = "products"
@@ -137,13 +148,8 @@ object TextAnalysisFormat {
     }
 
     def write(out: Writer, relations: Relations): Unit = {
-      // This ordering is used to persist all values in order. Since all values will be
-      // persisted using their string representation, it makes sense to sort them using
-      // their string representation.
-      val toStringOrd = new Ordering[Any] {
-        def compare(a: Any, b: Any) = a.toString compare b.toString
-      }
-      def writeRelation[T](header: String, rel: Relation[File, T]): Unit = {
+
+      def writeRelation[T](header: String, rel: Relation[File, T], t2s: T => String): Unit = {
         writeHeader(out, header)
         writeSize(out, rel.size)
         // We sort for ease of debugging and for more efficient reconstruction when reading.
@@ -151,21 +157,32 @@ object TextAnalysisFormat {
         // than the shared code would be, and the difference is measurable on large analyses.
         rel.forwardMap.toSeq.sortBy(_._1).foreach {
           case (k, vs) =>
-            val kStr = k.toString
-            vs.toSeq.sorted(toStringOrd) foreach { v =>
-              out.write(kStr); out.write(" -> "); out.write(v.toString); out.write("\n")
+            val kStr = fileToString(k)
+            // This ordering is used to persist all values in order. Since all values will be
+            // persisted using their string representation, it makes sense to sort them using
+            // their string representation.
+            vs.toSeq.sorted(new Ordering[T] {
+              def compare(a: T, b: T) = t2s(a) compare t2s(b)
+            }) foreach { v =>
+              out.write(kStr)
+              out.write(" -> ")
+              out.write(t2s(v))
+              out.write("\n")
             }
         }
       }
 
-      relations.allRelations.foreach {
-        case (header, rel) => writeRelation(header, rel)
+      ((relations.allRelations: List[(String, Relation[File, _])]) zip (Relations.existingRelations: List[(String, String)])) foreach {
+        case ((header, rel), (x, "File:File")) =>
+          writeRelation[File](header, rel.asInstanceOf[Relation[File, File]], fileToString)
+        case ((header, rel), (x, "File:String")) =>
+          writeRelation[String](header, rel.asInstanceOf[Relation[File, String]], identity[String] _)
       }
     }
 
     def read(in: BufferedReader, nameHashing: Boolean): Relations = {
       def readRelation[T](expectedHeader: String, s2t: String => T): Relation[File, T] = {
-        val items = readPairs(in)(expectedHeader, new File(_), s2t).toIterator
+        val items = readPairs(in)(expectedHeader, stringToFile, s2t).toIterator
         // Reconstruct the forward map. This is more efficient than Relation.empty ++ items.
         var forward: List[(File, Set[T])] = Nil
         var currentItem: (File, T) = null
@@ -184,7 +201,10 @@ object TextAnalysisFormat {
         Relation.reconstruct(forward.toMap)
       }
 
-      val relations = Relations.existingRelations map { case (header, fun) => readRelation(header, fun) }
+      val relations = Relations.existingRelations map {
+        case (header, "File:File")   => readRelation[File](header, stringToFile)
+        case (header, "File:String") => readRelation[String](header, identity[String] _)
+      }
 
       Relations.construct(nameHashing, relations)
     }
@@ -199,7 +219,7 @@ object TextAnalysisFormat {
     }
 
     def write(out: Writer, stamps: Stamps): Unit = {
-      def doWriteMap[V](header: String, m: Map[File, V]) = writeMap(out)(header, m, { v: V => v.toString })
+      def doWriteMap[V](header: String, m: Map[File, V]) = writeMap(out)(header, m, fileToString, { v: V => v.toString })
 
       doWriteMap(Headers.products, stamps.products)
       doWriteMap(Headers.sources, stamps.sources)
@@ -208,7 +228,7 @@ object TextAnalysisFormat {
     }
 
     def read(in: BufferedReader): Stamps = {
-      def doReadMap[V](expectedHeader: String, s2v: String => V) = readMap(in)(expectedHeader, new File(_), s2v)
+      def doReadMap[V](expectedHeader: String, s2v: String => V) = readMap(in)(expectedHeader, stringToFile, s2v)
       val products = doReadMap(Headers.products, Stamp.fromString)
       val sources = doReadMap(Headers.sources, Stamp.fromString)
       val binaries = doReadMap(Headers.binaries, Stamp.fromString)
@@ -228,15 +248,15 @@ object TextAnalysisFormat {
     val sourceToString = ObjectStringifier.objToString[Source] _
 
     def write(out: Writer, apis: APIs): Unit = {
-      writeMap(out)(Headers.internal, apis.internal, sourceToString, inlineVals = false)
-      writeMap(out)(Headers.external, apis.external, sourceToString, inlineVals = false)
+      writeMap(out)(Headers.internal, apis.internal, fileToString, sourceToString, inlineVals = false)
+      writeMap(out)(Headers.external, apis.external, identity[String] _, sourceToString, inlineVals = false)
       FormatTimer.close("bytes -> base64")
       FormatTimer.close("byte copy")
       FormatTimer.close("sbinary write")
     }
 
     def read(in: BufferedReader): APIs = {
-      val internal = readMap(in)(Headers.internal, new File(_), stringToSource)
+      val internal = readMap(in)(Headers.internal, stringToFile, stringToSource)
       val external = readMap(in)(Headers.external, identity[String], stringToSource)
       FormatTimer.close("base64 -> bytes")
       FormatTimer.close("sbinary read")
@@ -252,8 +272,8 @@ object TextAnalysisFormat {
     val stringToSourceInfo = ObjectStringifier.stringToObj[SourceInfo] _
     val sourceInfoToString = ObjectStringifier.objToString[SourceInfo] _
 
-    def write(out: Writer, infos: SourceInfos): Unit = writeMap(out)(Headers.infos, infos.allInfos, sourceInfoToString, inlineVals = false)
-    def read(in: BufferedReader): SourceInfos = SourceInfos.make(readMap(in)(Headers.infos, new File(_), stringToSourceInfo))
+    def write(out: Writer, infos: SourceInfos): Unit = writeMap(out)(Headers.infos, infos.allInfos, fileToString, sourceInfoToString, inlineVals = false)
+    def read(in: BufferedReader): SourceInfos = SourceInfos.make(readMap(in)(Headers.infos, stringToFile, stringToSourceInfo))
   }
 
   private[this] object CompilationsF {
@@ -285,7 +305,7 @@ object TextAnalysisFormat {
 
     private[this] val singleOutputMode = "single"
     private[this] val multipleOutputMode = "multiple"
-    private[this] val singleOutputKey = new File("output dir")
+    private[this] val singleOutputKey = new File("/output_dir")
 
     def write(out: Writer, setup: MiniSetup): Unit = {
       val (mode, outputAsMap) = setup.output match {
@@ -294,7 +314,7 @@ object TextAnalysisFormat {
       }
 
       writeSeq(out)(Headers.outputMode, mode :: Nil, identity[String])
-      writeMap(out)(Headers.outputDir, outputAsMap, { f: File => f.getPath })
+      writeMap(out)(Headers.outputDir, outputAsMap, fileToString, fileToString)
       writeSeq(out)(Headers.compileOptions, setup.options.scalacOptions, identity[String])
       writeSeq(out)(Headers.javacOptions, setup.options.javacOptions, identity[String])
       writeSeq(out)(Headers.compilerVersion, setup.compilerVersion :: Nil, identity[String])
@@ -303,10 +323,9 @@ object TextAnalysisFormat {
     }
 
     def read(in: BufferedReader): MiniSetup = {
-      def s2f(s: String) = new File(s)
       def s2b(s: String): Boolean = s.toBoolean
       val outputDirMode = readSeq(in)(Headers.outputMode, identity[String]).headOption
-      val outputAsMap = readMap(in)(Headers.outputDir, s2f, s2f)
+      val outputAsMap = readMap(in)(Headers.outputDir, stringToFile, stringToFile)
       val compileOptions = readSeq(in)(Headers.compileOptions, identity[String])
       val javacOptions = readSeq(in)(Headers.javacOptions, identity[String])
       val compilerVersion = readSeq(in)(Headers.compilerVersion, identity[String]).head
@@ -381,17 +400,17 @@ object TextAnalysisFormat {
     val fmtStr = "%%0%dd".format(numDigits)
     // We only use this for relatively short seqs, so creating this extra map won't be a performance hit.
     val m: Map[String, T] = s.zipWithIndex.map(x => fmtStr.format(x._2) -> x._1).toMap
-    writeMap(out)(header, m, t2s)
+    writeMap(out)(header, m, identity[String] _, t2s)
   }
 
   private[this] def readSeq[T](in: BufferedReader)(expectedHeader: String, s2t: String => T): Seq[T] =
     (readPairs(in)(expectedHeader, identity[String], s2t).toSeq.sortBy(_._1) map (_._2))
 
-  private[this] def writeMap[K, V](out: Writer)(header: String, m: Map[K, V], v2s: V => String, inlineVals: Boolean = true)(implicit ord: Ordering[K]): Unit = {
+  private[this] def writeMap[K, V](out: Writer)(header: String, m: Map[K, V], k2s: K => String, v2s: V => String, inlineVals: Boolean = true)(implicit ord: Ordering[K]): Unit = {
     writeHeader(out, header)
     writeSize(out, m.size)
     m.keys.toSeq.sorted foreach { k =>
-      out.write(k.toString)
+      out.write(k2s(k))
       out.write(" -> ")
       if (!inlineVals) out.write("\n") // Put large vals on their own line, to save string munging on read.
       out.write(v2s(m(k)))
