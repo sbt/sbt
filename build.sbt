@@ -5,15 +5,19 @@ lazy val publishingSettings = Seq(
   publishMavenStyle := true,
   licenses := Seq("Apache 2.0" -> url("http://opensource.org/licenses/Apache-2.0")),
   homepage := Some(url("https://github.com/alexarchambault/coursier")),
-  developers := List(
-    Developer("alexarchambault", "Alexandre Archambault", "", url("https://github.com/alexarchambault"))
-  ),
   pomExtra := {
     <scm>
       <connection>scm:git:github.com/alexarchambault/coursier.git</connection>
       <developerConnection>scm:git:git@github.com:alexarchambault/coursier.git</developerConnection>
       <url>github.com/alexarchambault/coursier.git</url>
     </scm>
+    <developers>
+      <developer>
+        <id>alexarchambault</id>
+        <name>Alexandre Archambault</name>
+        <url>https://github.com/alexarchambault</url>
+      </developer>
+    </developers>
   }
 ) ++ releaseSettings
 
