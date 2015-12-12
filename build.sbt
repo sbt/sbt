@@ -159,7 +159,7 @@ lazy val bootstrap = project
 lazy val cli = project
   .dependsOn(coreJvm, files)
   .settings(commonSettings)
-  .settings(publishingSettings)
+  .settings(noPublishSettings)
   .settings(packAutoSettings)
   .settings(
     name := "coursier-cli",
