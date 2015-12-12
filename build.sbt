@@ -3,13 +3,6 @@ import sbtrelease.Version.Bump
 
 lazy val publishingSettings = Seq(
   publishMavenStyle := true,
-  publishTo := {
-    val nexus = "https://oss.sonatype.org/"
-    if (isSnapshot.value)
-      Some("snapshots" at nexus + "content/repositories/snapshots")
-    else
-      Some("releases"  at nexus + "service/local/staging/deploy/maven2")
-  },
   licenses := Seq("Apache 2.0" -> url("http://opensource.org/licenses/Apache-2.0")),
   homepage := Some(url("https://github.com/alexarchambault/coursier")),
   developers := List(
@@ -21,7 +14,19 @@ lazy val publishingSettings = Seq(
       <developerConnection>scm:git:git@github.com:alexarchambault/coursier.git</developerConnection>
       <url>github.com/alexarchambault/coursier.git</url>
     </scm>
+  }
+) ++ releaseSettings
+
+lazy val releaseSettings = sbtrelease.ReleasePlugin.releaseSettings ++ Seq(
+  publishTo := {
+    val nexus = "https://oss.sonatype.org/"
+    if (isSnapshot.value)
+      Some("snapshots" at nexus + "content/repositories/snapshots")
+    else
+      Some("releases"  at nexus + "service/local/staging/deploy/maven2")
   },
+  versionBump := Bump.Bugfix,
+  publishArtifactsAction := PgpKeys.publishSigned.value,
   credentials += {
     Seq("SONATYPE_USER", "SONATYPE_PASS").map(sys.env.get) match {
       case Seq(Some(user), Some(pass)) =>
@@ -29,10 +34,8 @@ lazy val publishingSettings = Seq(
       case _ =>
         Credentials(Path.userHome / ".ivy2" / ".credentials")
     }
-  },
-  versionBump := Bump.Bugfix,
-  publishArtifactsAction := PgpKeys.publishSigned.value
-) ++ releaseSettings
+  }
+)
 
 lazy val noPublishSettings = Seq(
   publish := (),
@@ -205,3 +208,4 @@ lazy val `coursier` = project.in(file("."))
   .aggregate(coreJvm, coreJs, `fetch-js`, testsJvm, testsJs, files, bootstrap, cli, web)
   .settings(commonSettings)
   .settings(noPublishSettings)
+  .settings(releaseSettings)
