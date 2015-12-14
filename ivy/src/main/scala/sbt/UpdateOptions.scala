@@ -75,7 +75,7 @@ object UpdateOptions {
   def apply(): UpdateOptions =
     new UpdateOptions(
       circularDependencyLevel = CircularDependencyLevel.Warn,
-      latestSnapshots = false,
+      latestSnapshots = true,
       consolidatedResolution = false,
       cachedResolution = false,
       resolverConverter = PartialFunction.empty)
