@@ -21,6 +21,8 @@ private[sbt] object Execute {
 
   def config(checkCycles: Boolean, overwriteNode: Incomplete => Boolean = const(false)): Config = new Config(checkCycles, overwriteNode)
   final class Config private[sbt] (val checkCycles: Boolean, val overwriteNode: Incomplete => Boolean)
+
+  final val checkPreAndPostConditions = sys.props.get("sbt.execute.extrachecks").exists(java.lang.Boolean.parseBoolean)
 }
 sealed trait Completed {
   def process(): Unit
@@ -341,8 +343,6 @@ private[sbt] final class Execute[A[_] <: AnyRef](config: Config, triggers: Trigg
   def added(d: A[_]) = state contains d
   def complete = state.values.forall(_ == Done)
 
-  import scala.annotation.elidable
-  import elidable._
-  @elidable(ASSERTION) def pre(f: => Unit) = f
-  @elidable(ASSERTION) def post(f: => Unit) = f
+  def pre(f: => Unit) = if (checkPreAndPostConditions) f
+  def post(f: => Unit) = if (checkPreAndPostConditions) f
 }
