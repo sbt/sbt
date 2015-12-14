@@ -1,0 +1,19 @@
+
+  [@eed3si9n]: https://github.com/eed3si9n
+  [@gkossakowski]: https://github.com/gkossakowski
+  [@jsuereth]: https://github.com/jsuereth
+  [@dwijnand]: http://github.com/dwijnand
+  [@jrudolph]: https://github.com/jrudolph
+  [2302]: https://github.com/sbt/sbt/issues/2302
+  [2303]: https://github.com/sbt/sbt/pull/2303
+
+### Fixes with compatibility implications
+
+
+
+### Improvements
+
+
+### Bug fixes
+
+- Fixes task scheduling performance on large builds by skipping checks in `sbt.Execute`. [#2302][2302]/[#2303][2303] by [@jrudolph][@jrudolph]
