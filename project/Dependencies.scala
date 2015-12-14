@@ -5,7 +5,7 @@ object Dependencies {
   lazy val scala282 = "2.8.2"
   lazy val scala292 = "2.9.2"
   lazy val scala293 = "2.9.3"
-  lazy val scala210 = "2.10.5"
+  lazy val scala210 = "2.10.6"
   lazy val scala211 = "2.11.7"
 
   lazy val jline = "jline" % "jline" % "2.13"
