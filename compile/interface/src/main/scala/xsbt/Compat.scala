@@ -89,23 +89,34 @@ abstract class Compat {
 
   private[this] final implicit def miscCompat(n: AnyRef): MiscCompat = new MiscCompat
 
+  object TreeAttachmentsCompat {
+    // Trees have no attachments in 2.8.x and 2.9.x
+    implicit def withAttachments(tree: Tree): WithAttachments = new WithAttachments(tree)
+    class WithAttachments(val tree: Tree) {
+      object EmptyAttachments {
+        def all = Set.empty[Any]
+      }
+      val attachments = EmptyAttachments
+    }
+  }
+
+  def extractTouchedSymbols(tree: Tree): Set[Symbol] = {
+    import TreeAttachmentsCompat._
+    tree.attachments.all.collect {
+      case syms: Map[String, Any] =>
+        syms.get("touchedSymbols").getOrElse(Nil).asInstanceOf[List[Symbol]]
+    }.flatten.toSet
+  }
+
   object MacroExpansionOf {
     def unapply(tree: Tree): Option[Tree] = {
 
       // MacroExpansionAttachment (MEA) compatibility for 2.8.x and 2.9.x
-      object Compat {
+      object MacroExpansionAttachmentCompat {
         class MacroExpansionAttachment(val original: Tree)
-
-        // Trees have no attachments in 2.8.x and 2.9.x
-        implicit def withAttachments(tree: Tree): WithAttachments = new WithAttachments(tree)
-        class WithAttachments(val tree: Tree) {
-          object EmptyAttachments {
-            def all = Set.empty[Any]
-          }
-          val attachments = EmptyAttachments
-        }
       }
-      import Compat._
+      import TreeAttachmentsCompat._
+      import MacroExpansionAttachmentCompat._
 
       locally {
         // Wildcard imports are necessary since 2.8.x and 2.9.x don't have `MacroExpansionAttachment` at all

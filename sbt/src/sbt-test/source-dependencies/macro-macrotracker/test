@@ -1,0 +1,25 @@
+> compile
+
+# Add a new method to Foo, we should therefore recompile
+# Client.scala which lists members of Foo.
+$ copy-file changes/Foo-1.scala macro-provider/src/main/scala/Foo.scala
+
+> compile
+
+> macro-client/check-recompiled Client.scala
+
+# Remove a method from Foo, we should therefore recompile
+# Client.scala which lists members of Foo.
+$ copy-file changes/Foo-2.scala macro-provider/src/main/scala/Foo.scala
+
+> compile
+
+> macro-client/check-recompiled Client.scala
+
+# Rename the argument of Foo.fizz. We should therefore recompile
+# Client.scala because it inspected this method.
+$ copy-file changes/Foo-3.scala macro-provider/src/main/scala/Foo.scala
+
+> compile
+
+> macro-client/check-recompiled Client.scala

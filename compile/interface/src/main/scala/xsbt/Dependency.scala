@@ -48,6 +48,11 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile {
           val dependenciesByInheritance = extractDependenciesByInheritance(unit)
           for (on <- dependenciesByInheritance)
             processDependency(on, context = DependencyByInheritance)
+
+          val dependenciesByMacroExpansion = extractDependenciesByMacroExpansion(unit)
+          for (on <- dependenciesByMacroExpansion)
+            processDependency(on, context = DependencyByMacroExpansion)
+
         } else {
           for (on <- unit.depends) processDependency(on, context = DependencyByMemberRef)
           for (on <- inheritedDependencies.getOrElse(sourceFile, Nil: Iterable[Symbol])) processDependency(on, context = DependencyByInheritance)
@@ -186,6 +191,21 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile {
 
   private def extractDependenciesByInheritance(unit: CompilationUnit): collection.immutable.Set[Symbol] = {
     val traverser = new ExtractDependenciesByInheritanceTraverser
+    traverser.traverse(unit.body)
+    val dependencies = traverser.dependencies
+    dependencies.map(enclosingTopLevelClass)
+  }
+
+  private class ExtractDependenciesByMacroExpansion extends ExtractDependenciesTraverser {
+
+    override def traverse(tree: Tree): Unit = {
+      extractTouchedSymbols(tree) foreach addDependency
+      super.traverse(tree)
+    }
+  }
+
+  private def extractDependenciesByMacroExpansion(unit: CompilationUnit): collection.immutable.Set[Symbol] = {
+    val traverser = new ExtractDependenciesByMacroExpansion
     traverser.traverse(unit.body)
     val dependencies = traverser.dependencies
     dependencies.map(enclosingTopLevelClass)

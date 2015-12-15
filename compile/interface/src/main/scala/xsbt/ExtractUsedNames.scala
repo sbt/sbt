@@ -94,6 +94,8 @@ class ExtractUsedNames[GlobalType <: CallbackGlobal](val global: GlobalType) ext
         case _ => ()
       }
 
+      extractTouchedSymbols(node) foreach addSymbol
+
       node match {
         case MacroExpansionOf(original) if inspectedOriginalTrees.add(original) =>
           handleClassicTreeNode(node)

@@ -18,5 +18,10 @@ public enum DependencyContext {
 	 * class A
 	 * class B extends A
 	 */
-	DependencyByInheritance
+	DependencyByInheritance,
+
+	/**
+	 * Dependencies coming from the expansion of a macro
+	 */
+	DependencyByMacroExpansion
 }
