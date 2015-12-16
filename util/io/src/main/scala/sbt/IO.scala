@@ -39,7 +39,7 @@ object IO {
    * Returns a URL for the classfile containing the given class
    * If the location cannot be determined, an error is generated.
    */
-  def classfileLocation(cl: Class[_]): URL = {
+  def classLocation(cl: Class[_]): URL = {
     val clsfile = s"${cl.getName.replace('.', '/')}.class"
     try {
       Stream(Option(cl.getClassLoader), Some(ClassLoader.getSystemClassLoader)).flatten.flatMap { classLoader =>
@@ -72,7 +72,7 @@ object IO {
    * If the location cannot be determined, an error is generated.
    * Note that Java standard library classes typically do not have a location associated with them.
    */
-  def classfileLocation[T](implicit mf: SManifest[T]): URL = classfileLocation(mf.runtimeClass)
+  def classLocation[T](implicit mf: SManifest[T]): URL = classLocation(mf.runtimeClass)
 
   /**
    * Returns the directory or jar file containing the the class file for type `T` (as determined by an implicit Manifest).
