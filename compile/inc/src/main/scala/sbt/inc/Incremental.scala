@@ -20,6 +20,12 @@ import java.io.File
  * - IncrementalAnyStyle
  */
 object Incremental {
+  class PrefixingLogger(val prefix: String)(orig: Logger) extends Logger {
+    def trace(t: => Throwable): Unit = orig.trace(t)
+    def success(message: => String): Unit = orig.success(message)
+    def log(level: sbt.Level.Value, message: => String): Unit = orig.log(level, message.replaceAll("(?m)^", prefix))
+  }
+
   /**
    * Runs the incremental compiler algorithm.
    *
@@ -45,7 +51,7 @@ object Incremental {
     {
       val incremental: IncrementalCommon =
         if (options.nameHashing)
-          new IncrementalNameHashing(log, options)
+          new IncrementalNameHashing(new PrefixingLogger("[naha] ")(log), options)
         else if (options.antStyle)
           new IncrementalAntStyle(log, options)
         else

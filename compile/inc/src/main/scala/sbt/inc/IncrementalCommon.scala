@@ -22,7 +22,8 @@ private[inc] abstract class IncrementalCommon(log: Logger, options: IncOptions) 
     if (invalidatedRaw.isEmpty)
       previous
     else {
-      def debug(s: => String) = if (incDebug(options)) log.debug(s) else ()
+      val wrappedLog = new Incremental.PrefixingLogger("[inv] ")(log)
+      def debug(s: => String) = if (incDebug(options)) wrappedLog.debug(s) else ()
       val withPackageObjects = invalidatedRaw ++ invalidatedPackageObjects(invalidatedRaw, previous.relations)
       val invalidated = expand(withPackageObjects, allSources)
       val pruned = Incremental.prune(invalidated, previous, classfileManager)
@@ -64,23 +65,23 @@ private[inc] abstract class IncrementalCommon(log: Logger, options: IncOptions) 
     newAPIMapping: T => Source): Unit = {
     val contextSize = options.apiDiffContextSize
     try {
+      val wrappedLog = new Incremental.PrefixingLogger("[diff] ")(log)
       val apiDiff = new APIDiff
       apiChanges foreach {
         case APIChangeDueToMacroDefinition(src) =>
-          log.debug(s"Public API is considered to be changed because $src contains a macro definition.")
+          wrappedLog.debug(s"Public API is considered to be changed because $src contains a macro definition.")
         case apiChange @ (_: SourceAPIChange[T] | _: NamesChange[T]) =>
           val src = apiChange.modified
           val oldApi = oldAPIMapping(src)
           val newApi = newAPIMapping(src)
           val apiUnifiedPatch = apiDiff.generateApiDiff(src.toString, oldApi.api, newApi.api, contextSize)
-          log.debug(s"Detected a change in a public API (${src.toString}):\n"
-            + apiUnifiedPatch)
+          wrappedLog.debug(s"Detected a change in a public API ($src):\n$apiUnifiedPatch")
       }
     } catch {
       case e: ClassNotFoundException =>
         log.error("You have api debugging enabled but DiffUtils library cannot be found on sbt's classpath")
       case e: LinkageError =>
-        log.error("Encoutared linkage error while trying to load DiffUtils library.")
+        log.error("Encountered linkage error while trying to load DiffUtils library.")
         log.trace(e)
       case e: Exception =>
         log.error("An exception has been thrown while trying to dump an api diff.")
