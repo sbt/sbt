@@ -85,28 +85,12 @@ object Logger {
         }
       }
   }
-  def f0[T](t: => T): F0[T] = new F0[T] { def apply = t }
-
-  def m2o[S](m: Maybe[S]): Option[S] = if (m.isDefined) Some(m.get) else None
-  def o2m[S](o: Option[S]): Maybe[S] = o match { case Some(v) => Maybe.just(v); case None => Maybe.nothing() }
-
-  def position(line0: Option[Integer], content: String, offset0: Option[Integer], pointer0: Option[Integer], pointerSpace0: Option[String], sourcePath0: Option[String], sourceFile0: Option[File]): Position =
-    new Position {
-      val line = o2m(line0)
-      val lineContent = content
-      val offset = o2m(offset0)
-      val pointer = o2m(pointer0)
-      val pointerSpace = o2m(pointerSpace0)
-      val sourcePath = o2m(sourcePath0)
-      val sourceFile = o2m(sourceFile0)
-    }
-
+  def f0[A](a: => A): F0[A] = InterfaceUtil.f0[A](a)
+  def m2o[A](m: Maybe[A]): Option[A] = InterfaceUtil.m2o(m)
+  def o2m[A](o: Option[A]): Maybe[A] = InterfaceUtil.o2m(o)
+  def position(line0: Option[Integer], content: String, offset0: Option[Integer], pointer0: Option[Integer],
+    pointerSpace0: Option[String], sourcePath0: Option[String], sourceFile0: Option[File]): Position =
+    InterfaceUtil.position(line0, content, offset0, pointer0, pointerSpace0, sourcePath0, sourceFile0)
   def problem(cat: String, pos: Position, msg: String, sev: Severity): Problem =
-    new Problem {
-      val category = cat
-      val position = pos
-      val message = msg
-      val severity = sev
-      override def toString = s"[$severity] $pos: $message"
-    }
+    InterfaceUtil.problem(cat, pos, msg, sev)
 }
