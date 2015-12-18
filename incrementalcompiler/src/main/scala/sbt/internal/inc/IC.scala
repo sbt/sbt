@@ -69,7 +69,8 @@ private[sbt] object IC {
     reporter: Reporter,
     compileOrder: CompileOrder = Mixed,
     skip: Boolean = false,
-    incrementalCompilerOptions: IncOptions
+    incrementalCompilerOptions: IncOptions,
+    extra: List[(String, String)]
   )(implicit log: Logger): CompileResult = {
     val prev = previousAnalysis match {
       case Some(previous) => previous
@@ -77,7 +78,7 @@ private[sbt] object IC {
     }
     val config = MixedAnalyzingCompiler.makeConfig(scalac, javac, sources, classpath, output, cache,
       progress, options, javacOptions, prev, previousSetup, analysisMap, definesClass, reporter,
-      compileOrder, skip, incrementalCompilerOptions)
+      compileOrder, skip, incrementalCompilerOptions, extra)
     import config.{ currentSetup => setup }
 
     if (skip) new CompileResult(prev, setup, false)

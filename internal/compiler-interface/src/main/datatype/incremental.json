@@ -188,7 +188,7 @@
         },
         {
           "name": "sourcePositionMapper",
-          "type": "xsbti.compile.F1<xsbti.Position, xsbti.Position>"
+          "type": "xsbti.F1<xsbti.Position, xsbti.Position>"
         },
         {
           "name": "order",
@@ -252,6 +252,10 @@
         {
           "name": "nameHashing",
           "type": "boolean"
+        },
+        {
+          "name": "extra",
+          "type": "xsbti.T2<String, String>*"
         }
       ]
     },
@@ -317,14 +321,14 @@
       "fields": [
         {
           "name": "analysisMap",
-          "type": "xsbti.compile.F1<java.io.File,xsbti.Maybe<xsbti.compile.CompileAnalysis>>",
+          "type": "xsbti.F1<java.io.File,xsbti.Maybe<xsbti.compile.CompileAnalysis>>",
           "doc": [
             "Provides the Analysis for the given classpath entry."
           ]
         },
         {
           "name": "definesClass",
-          "type": "xsbti.compile.F1<java.io.File,xsbti.compile.DefinesClass>",
+          "type": "xsbti.F1<java.io.File,xsbti.compile.DefinesClass>",
           "doc": [
             "Provides a function to determine if classpath entry `file` contains a given class.",
             "The returned function should generally cache information about `file`, such as the list of entries in a jar."
@@ -360,6 +364,10 @@
           "doc": [
             "The reporter that should be used to report scala compilation to."
           ]
+        },
+        {
+          "name": "extra",
+          "type": "xsbti.T2<String, String>*"
         }
       ]
     },

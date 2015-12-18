@@ -5,6 +5,7 @@ import xsbti.api.DependencyContext.DependencyByMemberRef
 import xsbti.api.ExternalDependency
 import xsbti.compile.{ MiniSetup, MiniOptions }
 import sbt.internal.inc.{ Analysis, Exists, SourceInfos, TestCaseGenerators, TextAnalysisFormat }
+import sbt.util.InterfaceUtil._
 
 import java.io.{ BufferedReader, File, StringReader, StringWriter }
 import scala.math.abs
@@ -16,8 +17,9 @@ object TextAnalysisFormatTest extends Properties("TextAnalysisFormat") {
 
   val nameHashing = true
   val dummyOutput = new xsbti.compile.SingleOutput { def outputDirectory: java.io.File = new java.io.File("dummy") }
-  val commonSetup = new MiniSetup(dummyOutput, new MiniOptions(Array(), Array()), "2.10.4", xsbti.compile.CompileOrder.Mixed, nameHashing)
-  val commonHeader = """format version: 5
+  val commonSetup = new MiniSetup(dummyOutput, new MiniOptions(Array(), Array()), "2.10.4", xsbti.compile.CompileOrder.Mixed, nameHashing,
+    Array(t2(("key", "value"))))
+  val commonHeader = """format version: 6
                     |output mode:
                     |1 items
                     |0 -> single
@@ -36,7 +38,10 @@ object TextAnalysisFormatTest extends Properties("TextAnalysisFormat") {
                     |0 -> Mixed
                     |name hashing:
                     |1 items
-                    |0 -> true""".stripMargin
+                    |0 -> true
+                    |extra:
+                    |1 items
+                    |key -> value""".stripMargin
 
   property("Write and read empty Analysis") = {
 
@@ -47,13 +52,11 @@ object TextAnalysisFormatTest extends Properties("TextAnalysisFormat") {
     val result = writer.toString
     // println(result)
 
-    result.startsWith(commonHeader)
     val reader = new BufferedReader(new StringReader(result))
 
     val (readAnalysis, readSetup) = TextAnalysisFormat.read(reader)
 
-    analysis == readAnalysis
-
+    (analysis == readAnalysis) && result.startsWith(commonHeader)
   }
 
   property("Write and read simple Analysis") = {
@@ -81,14 +84,13 @@ object TextAnalysisFormatTest extends Properties("TextAnalysisFormat") {
     TextAnalysisFormat.write(writer, analysis, commonSetup)
 
     val result = writer.toString
-    result.startsWith(commonHeader)
     // println(result)
 
     val reader = new BufferedReader(new StringReader(result))
 
     val (readAnalysis, readSetup) = TextAnalysisFormat.read(reader)
 
-    compare(analysis, readAnalysis)
+    compare(analysis, readAnalysis) && result.startsWith(commonHeader)
   }
 
   property("Write and read complex Analysis") = forAllNoShrink(TestCaseGenerators.genAnalysis(nameHashing)) { analysis: Analysis =>
@@ -98,12 +100,11 @@ object TextAnalysisFormatTest extends Properties("TextAnalysisFormat") {
 
     val result = writer.toString
 
-    result.startsWith(commonHeader)
     val reader = new BufferedReader(new StringReader(result))
 
     val (readAnalysis, readSetup) = TextAnalysisFormat.read(reader)
 
-    compare(analysis, readAnalysis)
+    compare(analysis, readAnalysis) && result.startsWith(commonHeader)
   }
 
   // Compare two analyses with useful labelling when they aren't equal.

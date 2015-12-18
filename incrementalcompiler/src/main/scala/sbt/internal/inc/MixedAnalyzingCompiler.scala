@@ -14,7 +14,7 @@ import xsbti.api.Source
 import xsbti.compile.CompileOrder._
 import xsbti.compile._
 import sbt.io.IO
-import sbt.util.Logger
+import sbt.util.{ Logger, InterfaceUtil }
 
 /** An instance of an analyzing compiler that can run both javac + scalac. */
 final class MixedAnalyzingCompiler(
@@ -116,11 +116,13 @@ object MixedAnalyzingCompiler {
     reporter: Reporter,
     compileOrder: CompileOrder = Mixed,
     skip: Boolean = false,
-    incrementalCompilerOptions: IncOptions
+    incrementalCompilerOptions: IncOptions,
+    extra: List[(String, String)]
   ): CompileConfiguration =
     {
       val compileSetup = new MiniSetup(output, new MiniOptions(options.toArray, javacOptions.toArray),
-        scalac.scalaInstance.actualVersion, compileOrder, incrementalCompilerOptions.nameHashing)
+        scalac.scalaInstance.actualVersion, compileOrder, incrementalCompilerOptions.nameHashing,
+        (extra map InterfaceUtil.t2).toArray)
       config(
         sources,
         classpath,

@@ -6,9 +6,9 @@ import java.io.File
 import sbt.internal.inc._
 import sbt.io.IO
 import sbt.io.Path._
-import sbt.util.Logger
-import xsbti.Maybe
-import xsbti.compile.{ CompileAnalysis, CompileOrder, DefinesClass, F1, IncOptionsUtil }
+import sbt.util.{ Logger, InterfaceUtil }
+import xsbti.{ F1, Maybe }
+import xsbti.compile.{ CompileAnalysis, CompileOrder, DefinesClass, IncOptionsUtil }
 
 class IncrementalCompilerSpec extends BridgeProviderSpecification {
 
@@ -30,7 +30,8 @@ class IncrementalCompilerSpec extends BridgeProviderSpecification {
       })
       val incOptions = IncOptionsUtil.defaultIncOptions()
       val reporter = new LoggerReporter(maxErrors, log, identity)
-      val setup = compiler.setup(analysisMap, dc, skip = false, tempDir / "inc_compile", CompilerCache.fresh, incOptions, reporter)
+      val extra = Array(InterfaceUtil.t2(("key", "value")))
+      val setup = compiler.setup(analysisMap, dc, skip = false, tempDir / "inc_compile", CompilerCache.fresh, incOptions, reporter, extra)
       val prev = compiler.emptyPreviousResult
       val classesDir = tempDir / "classes"
       val in = compiler.inputs(si.allJars, Array(knownSampleGoodFile), classesDir, Array(), Array(), maxErrors, Array(),

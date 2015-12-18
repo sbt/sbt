@@ -4,6 +4,7 @@ package inc
 
 import java.io._
 import sbt.internal.util.Relation
+import xsbti.T2
 import xsbti.api.{ Compilation, Source }
 import xsbti.compile.{ MultipleOutput, SingleOutput, MiniOptions, MiniSetup }
 import javax.xml.bind.DatatypeConverter
@@ -67,6 +68,11 @@ object TextAnalysisFormat {
   private implicit def infoFormat: Format[SourceInfo] =
     wrap[SourceInfo, (Seq[Problem], Seq[Problem])](si => (si.reportedProblems, si.unreportedProblems), { case (a, b) => SourceInfos.makeInfo(a, b) })
   private implicit def seqFormat[T](implicit optionFormat: Format[T]): Format[Seq[T]] = viaSeq[Seq[T], T](x => x)
+  private def t2[A1, A2](a1: A1, a2: A2): T2[A1, A2] =
+    new T2[A1, A2] {
+      val get1: A1 = a1
+      val get2: A2 = a2
+    }
 
   def write(out: Writer, analysis: Analysis, setup: MiniSetup): Unit = {
     VersionF.write(out)
@@ -301,6 +307,7 @@ object TextAnalysisFormat {
       val compilerVersion = "compiler version"
       val compileOrder = "compile order"
       val nameHashing = "name hashing"
+      val extra = "extra"
     }
 
     private[this] val singleOutputMode = "single"
@@ -320,6 +327,7 @@ object TextAnalysisFormat {
       writeSeq(out)(Headers.compilerVersion, setup.compilerVersion :: Nil, identity[String])
       writeSeq(out)(Headers.compileOrder, setup.order.name :: Nil, identity[String])
       writeSeq(out)(Headers.nameHashing, setup.nameHashing :: Nil, (b: Boolean) => b.toString)
+      writePairs[String, String](out)(Headers.extra, setup.extra.toList map { x => (x.get1, x.get2) }, identity[String], identity[String])
     }
 
     def read(in: BufferedReader): MiniSetup = {
@@ -331,6 +339,7 @@ object TextAnalysisFormat {
       val compilerVersion = readSeq(in)(Headers.compilerVersion, identity[String]).head
       val compileOrder = readSeq(in)(Headers.compileOrder, identity[String]).head
       val nameHashing = readSeq(in)(Headers.nameHashing, s2b).head
+      val extra = readPairs(in)(Headers.extra, identity[String], identity[String]) map { case (a, b) => t2[String, String](a, b) }
 
       val output = outputDirMode match {
         case Some(s) => s match {
@@ -353,7 +362,7 @@ object TextAnalysisFormat {
       }
 
       new MiniSetup(output, new MiniOptions(compileOptions.toArray, javacOptions.toArray), compilerVersion,
-        xsbti.compile.CompileOrder.valueOf(compileOrder), nameHashing)
+        xsbti.compile.CompileOrder.valueOf(compileOrder), nameHashing, extra.toArray)
     }
   }
 
@@ -406,15 +415,23 @@ object TextAnalysisFormat {
   private[this] def readSeq[T](in: BufferedReader)(expectedHeader: String, s2t: String => T): Seq[T] =
     (readPairs(in)(expectedHeader, identity[String], s2t).toSeq.sortBy(_._1) map (_._2))
 
-  private[this] def writeMap[K, V](out: Writer)(header: String, m: Map[K, V], k2s: K => String, v2s: V => String, inlineVals: Boolean = true)(implicit ord: Ordering[K]): Unit = {
+  private[this] def writeMap[K, V](out: Writer)(header: String, m: Map[K, V], k2s: K => String, v2s: V => String, inlineVals: Boolean = true)(implicit ord: Ordering[K]): Unit =
+    writePairs(out)(header, m.keys.toSeq.sorted map { k => (k, (m(k))) }, k2s, v2s, inlineVals)
+
+  private[this] def readMap[K, V](in: BufferedReader)(expectedHeader: String, s2k: String => K, s2v: String => V): Map[K, V] = {
+    readPairs(in)(expectedHeader, s2k, s2v).toMap
+  }
+
+  private[this] def writePairs[K, V](out: Writer)(header: String, s: Seq[(K, V)], k2s: K => String, v2s: V => String, inlineVals: Boolean = true): Unit = {
     writeHeader(out, header)
-    writeSize(out, m.size)
-    m.keys.toSeq.sorted foreach { k =>
-      out.write(k2s(k))
-      out.write(" -> ")
-      if (!inlineVals) out.write("\n") // Put large vals on their own line, to save string munging on read.
-      out.write(v2s(m(k)))
-      out.write("\n")
+    writeSize(out, s.size)
+    s foreach {
+      case (k, v) =>
+        out.write(k2s(k))
+        out.write(" -> ")
+        if (!inlineVals) out.write("\n") // Put large vals on their own line, to save string munging on read.
+        out.write(v2s(v))
+        out.write("\n")
     }
   }
 
@@ -430,9 +447,5 @@ object TextAnalysisFormat {
     expectHeader(in, expectedHeader)
     val n = readSize(in)
     for (i <- 0 until n) yield toPair(in.readLine())
-  }
-
-  private[this] def readMap[K, V](in: BufferedReader)(expectedHeader: String, s2k: String => K, s2v: String => V): Map[K, V] = {
-    readPairs(in)(expectedHeader, s2k, s2v).toMap
   }
 }
