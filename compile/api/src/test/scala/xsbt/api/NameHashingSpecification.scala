@@ -285,7 +285,7 @@ class NameHashingSpecification extends Specification {
     val nameHashes = nameHashesForClass(classFoo)
     // make sure there's no name hash for the private member "x"
     Seq("Foo") === nameHashes.regularMembers.map(_.name).toSeq
-  }.pendingUntilFixed("The NameHashing calculates name hashes of all members")
+  }
 
   private def assertNameHashEqualForRegularName(name: String, nameHashes1: _internalOnly_NameHashes,
     nameHashes2: _internalOnly_NameHashes) = {

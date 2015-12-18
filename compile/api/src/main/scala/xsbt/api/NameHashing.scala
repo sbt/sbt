@@ -78,7 +78,9 @@ class NameHashing {
           visitDefinition(topLevelDef)
       }
     }
-    override def visitDefinition(d: Definition): Unit = {
+    // if the definition is private, we do not visit because we do
+    // not want to include any private members or its children
+    override def visitDefinition(d: Definition): Unit = if (APIUtil.isNonPrivate(d)) {
       val locatedDef = LocatedDefinition(currentLocation, d)
       locatedDefs += locatedDef
       d match {
