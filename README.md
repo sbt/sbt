@@ -7,6 +7,7 @@ A pure Scala substitute for [Aether](http://www.eclipse.org/aether/)
 [![Build Status](https://travis-ci.org/alexarchambault/coursier.svg?branch=master)](https://travis-ci.org/alexarchambault/coursier)
 [![Build status (Windows)](https://ci.appveyor.com/api/projects/status/trtum5b7washfbj9?svg=true)](https://ci.appveyor.com/project/alexarchambault/coursier)
 [![Join the chat at https://gitter.im/alexarchambault/coursier](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/alexarchambault/coursier?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Maven Central](https://img.shields.io/maven-central/v/com.github.alexarchambault/coursier_2.11.svg)](https://maven-badges.herokuapp.com/maven-central/com.github.alexarchambault/coursier_2.11)
 
 *coursier* is a dependency resolver / fetcher *à la* Maven / Ivy, entirely
 rewritten from scratch in Scala. It aims at being fast and easy to embed
