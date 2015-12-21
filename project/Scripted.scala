@@ -11,8 +11,6 @@ object Scripted {
   lazy val scriptedSource = SettingKey[File]("scripted-source")
   lazy val scriptedPrescripted = TaskKey[File => Unit]("scripted-prescripted")
 
-  lazy val MavenResolverPluginTest = config("mavenResolverPluginTest") extend Compile
-
   import sbt.complete._
   import DefaultParsers._
   // Paging, 1-index based.
@@ -61,29 +59,19 @@ object Scripted {
     }
 
   // Interface to cross class loader
-  type SbtScriptedRunner = {
-    def run(resourceBaseDirectory: File, bufferLog: Boolean, tests: Array[String], bootProperties: File,
-      launchOpts: Array[String], prescripted: java.util.List[File]): Unit
+  type IncScriptedRunner = {
+    def run(resourceBaseDirectory: File, bufferLog: Boolean, tests: Array[String]): Unit
   }
 
-  def doScripted(launcher: File, scriptedSbtClasspath: Seq[Attributed[File]], scriptedSbtInstance: ScalaInstance, sourcePath: File, args: Seq[String], prescripted: File => Unit): Unit = {
+  def doScripted(scriptedSbtClasspath: Seq[Attributed[File]], scriptedSbtInstance: ScalaInstance, sourcePath: File, args: Seq[String], prescripted: File => Unit): Unit = {
     System.err.println(s"About to run tests: ${args.mkString("\n * ", "\n * ", "\n")}")
     val noJLine = new classpath.FilteredLoader(scriptedSbtInstance.loader, "jline." :: Nil)
     val loader = classpath.ClasspathUtilities.toLoader(scriptedSbtClasspath.files, noJLine)
-    val bridgeClass = Class.forName("sbt.test.ScriptedRunner", true, loader)
-    val bridge = bridgeClass.newInstance.asInstanceOf[SbtScriptedRunner]
-    val launcherVmOptions = Array("-XX:MaxPermSize=256M") // increased after a failure in scripted source-dependencies/macro
+    val bridgeClass = Class.forName("sbt.internal.inc.ScriptedRunner", true, loader)
+    val bridge = bridgeClass.newInstance.asInstanceOf[IncScriptedRunner]
+    // val launcherVmOptions = Array("-XX:MaxPermSize=256M") // increased after a failure in scripted source-dependencies/macro
     try {
-      // Using java.util.List to encode File => Unit.
-      val callback = new java.util.AbstractList[File] {
-        override def add(x: File): Boolean = {
-          prescripted(x)
-          false
-        }
-        def get(x: Int): sbt.File = ???
-        def size(): Int = 0
-      }
-      bridge.run(sourcePath, true, args.toArray, launcher, launcherVmOptions, callback)
+      bridge.run(sourcePath, true, args.toArray)
     } catch { case ite: java.lang.reflect.InvocationTargetException => throw ite.getCause }
   }
 }

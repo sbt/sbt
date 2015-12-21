@@ -1,6 +1,7 @@
 // import Project.Initialize
 import Util._
 import Dependencies._
+import Scripted._
 // import StringUtilities.normalize
 
 def baseVersion = "0.1.0-M2"
@@ -64,7 +65,8 @@ lazy val incrementalcompilerRoot: Project = (project in file(".")).
     compilerBridge,
     incrementalcompilerApiInfo,
     incrementalcompilerClasspath,
-    incrementalcompilerClassfile).
+    incrementalcompilerClassfile,
+    incrementalcompilerScripted).
   settings(
     inThisBuild(Seq(
       git.baseVersion := baseVersion,
@@ -74,6 +76,7 @@ lazy val incrementalcompilerRoot: Project = (project in file(".")).
       homepage := Some(url("https://github.com/sbt/incrementalcompiler"))
     )),
     minimalSettings,
+    otherRootSettings,
     name := "Incrementalcompiler Root",
     publish := {},
     publishLocal := {},
@@ -224,6 +227,16 @@ lazy val incrementalcompilerClassfile = (project in internalPath / "incrementalc
     name := "Incrementalcompiler Classfile"
   )
 
+// re-implementation of scripted engine
+lazy val incrementalcompilerScripted = (project in internalPath / "incrementalcompiler-scripted").
+  dependsOn(incrementalcompiler).
+  settings(
+    minimalSettings,
+    name := "Incrementalcompiler Scripted",
+    publish := (),
+    publishLocal := ()
+  )
+
 lazy val publishBridgesAndTest = Command.args("publishBridgesAndTest", "<version>") { (state, args) =>
   val version = args mkString ""
   val compilerInterfaceID = compilerInterface.id
@@ -231,3 +244,29 @@ lazy val publishBridgesAndTest = Command.args("publishBridgesAndTest", "<version
   val test = s"$compilerInterfaceID/publishM2" :: s"plz $version test" :: state
   (scalaVersions map (v => s"plz $v $compilerBridgeID/publishM2") foldRight test) { _ :: _ }
 }
+
+lazy val otherRootSettings = Seq(
+  Scripted.scriptedPrescripted := { _ => },
+  Scripted.scripted <<= scriptedTask,
+  Scripted.scriptedUnpublished <<= scriptedUnpublishedTask,
+  Scripted.scriptedSource := (sourceDirectory in incrementalcompiler).value / "sbt-test",
+  publishAll := {
+    val _ = (publishLocal).all(ScopeFilter(inAnyProject)).value
+  }
+)
+
+def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
+  val result = scriptedSource(dir => (s: State) => scriptedParser(dir)).parsed
+  publishAll.value
+  doScripted((fullClasspath in incrementalcompilerScripted in Compile).value,
+    (scalaInstance in incrementalcompilerScripted).value, scriptedSource.value, result, scriptedPrescripted.value)
+}
+
+def scriptedUnpublishedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
+  val result = scriptedSource(dir => (s: State) => scriptedParser(dir)).parsed
+  doScripted((fullClasspath in incrementalcompilerScripted in Compile).value,
+    (scalaInstance in incrementalcompilerScripted).value, scriptedSource.value, result, scriptedPrescripted.value)
+}
+
+lazy val publishAll = TaskKey[Unit]("publish-all")
+lazy val publishLauncher = TaskKey[Unit]("publish-launcher")
