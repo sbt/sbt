@@ -1,0 +1,5 @@
+# We only want to make sure we can compile this without stack overflow
+> compile
+
+# The following command is added to fail this test intentionally since this scripted doesn't handle subprojects
+> x

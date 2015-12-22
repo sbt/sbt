@@ -1,0 +1,3 @@
+package macros
+object Foo {
+}
