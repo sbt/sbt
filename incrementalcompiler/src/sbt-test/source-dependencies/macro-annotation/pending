@@ -2,3 +2,5 @@
 # not crash when it encounters a macro annotation
 # See #1655 and #1593
 > compile
+# The following command is added to fail this test intentionally since this scripted doesn't handle subprojects
+> x
