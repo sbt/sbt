@@ -10,13 +10,14 @@ import sbt.internal.librarymanagement.{ JsonUtil, ComponentManager, BaseIvySpeci
 import sbt.io.IO
 import sbt.io.Path._
 import sbt.librarymanagement.{ ModuleID, UpdateOptions, Resolver }
-import sbt.util.Logger
+import sbt.util.{ Logger, Level }
 import xsbti.{ ComponentProvider, GlobalLock }
 
 /**
  * Base class for test suites that must be able to fetch and compile the compiler bridge.
  */
 abstract class BridgeProviderSpecification extends BaseIvySpecification {
+  log.setLevel(Level.Warn)
 
   override def resolvers: Seq[Resolver] = super.resolvers ++ Seq(Resolver.mavenLocal, Resolver.jcenterRepo)
   private val ivyConfiguration = mkIvyConfiguration(UpdateOptions())
