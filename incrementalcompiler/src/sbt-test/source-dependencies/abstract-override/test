@@ -1,1 +1,3 @@
-$ touch C.scala
+> compile
+$ copy-file changes/C2.scala C.scala
+-> compile

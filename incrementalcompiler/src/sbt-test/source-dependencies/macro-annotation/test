@@ -1,0 +1,4 @@
+# The goal of this test is just to make sure that sbt does
+# not crash when it encounters a macro annotation
+# See #1655 and #1593
+> compile
