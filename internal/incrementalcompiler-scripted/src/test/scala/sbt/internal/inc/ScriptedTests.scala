@@ -80,8 +80,9 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean) {
       def createParser() =
         {
           val fileHandler = new FileCommands(testDirectory)
+          val incHandler = new IncHandler(testDirectory, buffered)
           // val sbtHandler = new SbtHandler(testDirectory, launcher, buffered, launchOpts)
-          new TestScriptParser(Map('$' -> fileHandler, /* '>' -> sbtHandler, */ '#' -> CommentHandler))
+          new TestScriptParser(Map('$' -> fileHandler, '>' -> incHandler, '#' -> CommentHandler))
         }
       val (file, pending) = {
         val normal = new File(testDirectory, ScriptFilename)

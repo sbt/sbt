@@ -229,7 +229,7 @@ lazy val incrementalcompilerClassfile = (project in internalPath / "incrementalc
 
 // re-implementation of scripted engine
 lazy val incrementalcompilerScripted = (project in internalPath / "incrementalcompiler-scripted").
-  dependsOn(incrementalcompiler).
+  dependsOn(incrementalcompiler, incrementalcompilerIvyIntegration % "test->test").
   settings(
     minimalSettings,
     name := "Incrementalcompiler Scripted",
@@ -258,13 +258,13 @@ lazy val otherRootSettings = Seq(
 def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => scriptedParser(dir)).parsed
   publishAll.value
-  doScripted((fullClasspath in incrementalcompilerScripted in Compile).value,
+  doScripted((fullClasspath in incrementalcompilerScripted in Test).value,
     (scalaInstance in incrementalcompilerScripted).value, scriptedSource.value, result, scriptedPrescripted.value)
 }
 
 def scriptedUnpublishedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => scriptedParser(dir)).parsed
-  doScripted((fullClasspath in incrementalcompilerScripted in Compile).value,
+  doScripted((fullClasspath in incrementalcompilerScripted in Test).value,
     (scalaInstance in incrementalcompilerScripted).value, scriptedSource.value, result, scriptedPrescripted.value)
 }
 
