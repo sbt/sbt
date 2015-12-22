@@ -8,3 +8,6 @@ $ copy-file changes/Def1.scala Def.scala
 $ delete Def.scala
 $ copy-file changes/Def2.scala Def.scala
 -> compile
+
+# The following command is added to fail this test intentionally since this scripted doesn't handle compiler plugins
+> x
