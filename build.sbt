@@ -241,7 +241,7 @@ lazy val publishBridgesAndTest = Command.args("publishBridgesAndTest", "<version
   val version = args mkString ""
   val compilerInterfaceID = compilerInterface.id
   val compilerBridgeID = compilerBridge.id
-  val test = s"$compilerInterfaceID/publishM2" :: s"plz $version test" :: s"plz $version scripted" :: state
+  val test = s"$compilerInterfaceID/publishM2" :: s"plz $version incremetantalcompilerRoot/test" :: s"plz $version incremetantalcompilerRoot/scripted" :: state
   (scalaVersions map (v => s"plz $v $compilerBridgeID/publishM2") foldRight test) { _ :: _ }
 }
 
