@@ -35,7 +35,8 @@ def commonSettings: Seq[Setting[_]] = Seq(
 lazy val utilRoot: Project = (project in file(".")).
   aggregate(
     utilInterface, utilControl, utilCollection, utilApplyMacro, utilComplete,
-    utilLogging, utilRelation, utilLogic, utilCache, utilTracking, utilTesting
+    utilLogging, utilRelation, utilLogic, utilCache, utilTracking, utilTesting,
+    utilScripted
   ).
   settings(
     inThisBuild(Seq(
@@ -147,6 +148,18 @@ lazy val utilTesting = (project in internalPath / "util-testing").
     commonSettings,
     name := "Util Testing",
     libraryDependencies ++= Seq(scalaCheck, scalatest)
+  )
+
+lazy val utilScripted = (project in internalPath / "util-scripted").
+  dependsOn(utilLogging).
+  settings(
+    commonSettings,
+    name := "Util Scripted",
+    libraryDependencies += sbtIO,
+    libraryDependencies ++= {
+      if (scalaVersion.value startsWith "2.11") Seq(parserCombinator211)
+      else Seq()
+    }
   )
 
 def customCommands: Seq[Setting[_]] = Seq(
