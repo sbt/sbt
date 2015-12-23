@@ -234,7 +234,8 @@ lazy val incrementalcompilerScripted = (project in internalPath / "incrementalco
     minimalSettings,
     name := "Incrementalcompiler Scripted",
     publish := (),
-    publishLocal := ()
+    publishLocal := (),
+    libraryDependencies += utilScripted % "test"
   )
 
 lazy val publishBridgesAndTest = Command.args("publishBridgesAndTest", "<version>") { (state, args) =>

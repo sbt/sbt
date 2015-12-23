@@ -11,6 +11,8 @@ import xsbti.compile.{ CompileAnalysis, CompileOrder, DefinesClass, IncOptionsUt
 import sbt.io.IO
 import sbt.io.Path._
 
+import sbt.internal.scripted.StatementHandler
+
 final case class IncInstance(si: ScalaInstance, cs: XCompilers)
 
 final class IncHandler(directory: File, scriptedLog: Logger) extends BridgeProviderSpecification with StatementHandler {
