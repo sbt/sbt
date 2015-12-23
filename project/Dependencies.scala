@@ -2,7 +2,7 @@ import sbt._
 import Keys._
 
 object Dependencies {
-  lazy val scala210 = "2.10.5"
+  lazy val scala210 = "2.10.6"
   lazy val scala211 = "2.11.7"
 
   lazy val sbtIO = "org.scala-sbt" %% "io" % "1.0.0-M3"
