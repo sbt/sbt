@@ -1,0 +1,9 @@
+# Test for https://github.com/sbt/sbt/issues/2324
+# introduces first compile iteration
+> compile
+# change signature of a private `A.foo` method
+$ copy-file changes/A1.scala src/main/scala/A.scala
+# it should recompile just A.scala because changes to `A.foo` can't affect B
+> compile
+# check if there are only two compile iterations performed
+> check-compilations
