@@ -6,12 +6,15 @@ import java.io.File
 import sbt.util.Logger
 import sbt.internal.scripted.StatementHandler
 import sbt.util.InterfaceUtil._
+import xsbt.api.Discovery
 import xsbti.{ F1, Maybe }
 import xsbti.compile.{ CompileAnalysis, CompileOrder, DefinesClass, IncOptionsUtil, PreviousResult, Compilers => XCompilers }
 import sbt.io.IO
 import sbt.io.Path._
 
-import sbt.internal.scripted.StatementHandler
+import scala.sys.process._
+
+import sbt.internal.scripted.{ StatementHandler, TestFailed }
 
 final case class IncInstance(si: ScalaInstance, cs: XCompilers)
 
@@ -59,6 +62,21 @@ final class IncHandler(directory: File, scriptedLog: Logger) extends BridgeProvi
         checkSame(i)
         ()
       case (xs, _) => wrongArguments("checkSame", xs)
+    },
+    "run" -> {
+      case (params, i) =>
+        val analysis = compile(i)
+        discoverMainClasses(analysis) match {
+          case Seq(main) =>
+            val classpath = i.si.allJars :+ classesDir mkString ":"
+            val java = List(sys.props("java.home"), "bin", "java") mkString sys.props("file.separator")
+            val returnCode = Seq(java, "-cp", classpath, main) ++ params ! scriptedLog
+
+            if (returnCode != 0) throw new TestFailed("Run failed.")
+
+          case _ =>
+            throw new TestFailed("Found more than one main class.")
+        }
     }
   )
 
@@ -143,4 +161,10 @@ final class IncHandler(directory: File, scriptedLog: Logger) extends BridgeProvi
   def spaced[T](l: Seq[T]): String = l.mkString(" ")
 
   def scriptError(message: String): Unit = sys.error("Test script error: " + message)
+
+  // Taken from Defaults.scala in sbt/sbt
+  private def discoverMainClasses(analysis: inc.Analysis): Seq[String] = {
+    val allDefs = analysis.apis.internal.values.flatMap(_.api.definitions).toSeq
+    Discovery.applications(allDefs).collect({ case (definition, discovered) if discovered.hasMain => definition.name }).sorted
+  }
 }
