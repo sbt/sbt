@@ -12,7 +12,9 @@ import xsbti.compile.{ CompileAnalysis, CompileOrder, DefinesClass, IncOptionsUt
 import sbt.io.IO
 import sbt.io.Path._
 
-import scala.sys.process._
+import java.lang.reflect.Method
+import java.lang.reflect.Modifier.{ isPublic, isStatic }
+import sbt.internal.inc.classpath.ClasspathUtilities
 
 import sbt.internal.scripted.{ StatementHandler, TestFailed }
 
@@ -67,13 +69,11 @@ final class IncHandler(directory: File, scriptedLog: Logger) extends BridgeProvi
       case (params, i) =>
         val analysis = compile(i)
         discoverMainClasses(analysis) match {
-          case Seq(main) =>
-            val classpath = i.si.allJars :+ classesDir mkString ":"
-            val java = List(sys.props("java.home"), "bin", "java") mkString sys.props("file.separator")
-            val returnCode = Seq(java, "-cp", classpath, main) ++ params ! scriptedLog
-
-            if (returnCode != 0) throw new TestFailed("Run failed.")
-
+          case Seq(mainClassName) =>
+            val classpath = i.si.allJars :+ classesDir
+            val loader = ClasspathUtilities.makeLoader(classpath, i.si, directory)
+            val main = getMainMethod(mainClassName, loader)
+            invokeMain(loader, main, params)
           case _ =>
             throw new TestFailed("Found more than one main class.")
         }
@@ -166,5 +166,27 @@ final class IncHandler(directory: File, scriptedLog: Logger) extends BridgeProvi
   private def discoverMainClasses(analysis: inc.Analysis): Seq[String] = {
     val allDefs = analysis.apis.internal.values.flatMap(_.api.definitions).toSeq
     Discovery.applications(allDefs).collect({ case (definition, discovered) if discovered.hasMain => definition.name }).sorted
+  }
+
+  // Taken from Run.scala in sbt/sbt
+  private def getMainMethod(mainClassName: String, loader: ClassLoader) =
+    {
+      val mainClass = Class.forName(mainClassName, true, loader)
+      val method = mainClass.getMethod("main", classOf[Array[String]])
+      // jvm allows the actual main class to be non-public and to run a method in the non-public class,
+      //  we need to make it accessible
+      method.setAccessible(true)
+      val modifiers = method.getModifiers
+      if (!isPublic(modifiers)) throw new NoSuchMethodException(mainClassName + ".main is not public")
+      if (!isStatic(modifiers)) throw new NoSuchMethodException(mainClassName + ".main is not static")
+      method
+    }
+
+  private def invokeMain(loader: ClassLoader, main: Method, options: Seq[String]): Unit = {
+    val currentThread = Thread.currentThread
+    val oldLoader = Thread.currentThread.getContextClassLoader
+    currentThread.setContextClassLoader(loader)
+    try { main.invoke(null, options.toArray[String]); () }
+    finally { currentThread.setContextClassLoader(oldLoader) }
   }
 }
