@@ -4,7 +4,7 @@ def baseVersion = "0.1.0"
 def internalPath   = file("internal")
 
 def commonSettings: Seq[Setting[_]] = Seq(
-  scalaVersion := "2.10.5",
+  scalaVersion := scala210,
   // publishArtifact in packageDoc := false,
   resolvers += Resolver.typesafeIvyRepo("releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
