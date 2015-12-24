@@ -241,8 +241,8 @@ lazy val publishBridgesAndTest = Command.args("publishBridgesAndTest", "<version
   val version = args mkString ""
   val compilerInterfaceID = compilerInterface.id
   val compilerBridgeID = compilerBridge.id
-  val test = s"$compilerInterfaceID/publishM2" :: s"plz $version incrementalcompilerRoot/test" :: s"plz $version incrementalcompilerRoot/scripted" :: state
-  (scalaVersions map (v => s"plz $v $compilerBridgeID/publishM2") foldRight test) { _ :: _ }
+  val test = s"$compilerInterfaceID/publishLocal" :: s"plz $version incrementalcompilerRoot/test" :: s"plz $version incrementalcompilerRoot/scripted" :: state
+  (scalaVersions map (v => s"plz $v $compilerBridgeID/publishLocal") foldRight test) { _ :: _ }
 }
 
 lazy val otherRootSettings = Seq(
