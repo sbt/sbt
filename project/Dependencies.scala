@@ -2,11 +2,11 @@ import sbt._
 import Keys._
 
 object Dependencies {
-  lazy val scala210 = "2.10.5"
+  lazy val scala210 = "2.10.6"
   lazy val scala211 = "2.11.7"
 
-  val utilVersion = "0.1.0-M5"
   val ioVersion = "1.0.0-M3"
+  val utilVersion = "0.1.0-M8"
   lazy val sbtIO = "org.scala-sbt" %% "io" % ioVersion
   lazy val utilCollection = "org.scala-sbt" %% "util-collection" % utilVersion
   lazy val utilLogging = "org.scala-sbt" %% "util-logging" % utilVersion
