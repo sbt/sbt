@@ -1148,6 +1148,7 @@ object Classpaths {
     moduleConfigurations :== Nil,
     publishTo :== None,
     resolvers :== Nil,
+    useJCenter :== false,
     retrievePattern :== Resolver.defaultRetrievePattern,
     transitiveClassifiers :== Seq(SourceClassifier, DocClassifier),
     sourceArtifactTypes :== Artifact.DefaultSourceTypes,
@@ -1174,10 +1175,10 @@ object Classpaths {
     organizationHomepage <<= organizationHomepage or homepage,
     projectInfo <<= (name, description, homepage, startYear, licenses, organizationName, organizationHomepage, scmInfo, developers) apply ModuleInfo,
     overrideBuildResolvers <<= appConfiguration(isOverrideRepositories),
-    externalResolvers <<= (externalResolvers.task.?, resolvers, appResolvers) {
-      case (Some(delegated), Seq(), _) => delegated
-      case (_, rs, Some(ars))          => task { ars ++ rs } // TODO - Do we need to filter out duplicates?
-      case (_, rs, _)                  => task { Resolver.withDefaultResolvers(rs) }
+    externalResolvers <<= (externalResolvers.task.?, resolvers, appResolvers, useJCenter) {
+      case (Some(delegated), Seq(), _, _) => delegated
+      case (_, rs, Some(ars), uj)         => task { ars ++ Resolver.reorganizeAppResolvers(rs, uj, true) }
+      case (_, rs, _, uj)                 => task { Resolver.withDefaultResolvers(rs, uj) }
     },
     appResolvers <<= appConfiguration apply appRepositories,
     bootResolvers <<= appConfiguration map bootRepositories,
