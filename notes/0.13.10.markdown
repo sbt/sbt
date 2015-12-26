@@ -62,9 +62,11 @@
   [1968]: https://github.com/sbt/sbt/issues/1968
   [2264]: https://github.com/sbt/sbt/issues/2264
   [2172]: https://github.com/sbt/sbt/pull/2172
+  [2217]: https://github.com/sbt/sbt/issues/2217
 
 ### Fixes with compatibility implications
 
+- sbt 0.13.10 adds a new setting `useJCenter`, which is set to `false` by default. When set to `true`, JCenter will be placed as the first external resolver to find library dependencies. [#2217][2217] by [@eed3si9n][@eed3si9n]
 - sbt will no longer pass `-J<flag>` options to the local Java compiler. [#1968][1968]/[#2272][2272] by [@Duhemm][@Duhemm]
 
 ### Improvements
