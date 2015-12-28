@@ -9,7 +9,7 @@ import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.internal.librarymanagement.{ JsonUtil, ComponentManager, BaseIvySpecification }
 import sbt.io.IO
 import sbt.io.Path._
-import sbt.librarymanagement.{ ModuleID, UpdateOptions, Resolver }
+import sbt.librarymanagement.{ ModuleID, UpdateOptions, Resolver, Patterns, FileRepository, DefaultMavenRepository }
 import sbt.util.{ Logger, Level }
 import xsbti.{ ComponentProvider, GlobalLock }
 
@@ -19,7 +19,12 @@ import xsbti.{ ComponentProvider, GlobalLock }
 abstract class BridgeProviderSpecification extends BaseIvySpecification {
   log.setLevel(Level.Warn)
 
-  override def resolvers: Seq[Resolver] = super.resolvers ++ Seq(Resolver.mavenLocal, Resolver.jcenterRepo)
+  def realLocal: Resolver =
+    {
+      val pList = s"$${user.home}/.ivy2/local/${Resolver.localBasePattern}" :: Nil
+      FileRepository("local", Resolver.defaultFileConfiguration, Patterns(pList, pList, false))
+    }
+  override def resolvers: Seq[Resolver] = Seq(realLocal, DefaultMavenRepository)
   private val ivyConfiguration = mkIvyConfiguration(UpdateOptions())
 
   def getCompilerBridge(targetDir: File, log: Logger, scalaVersion: String): File = {
