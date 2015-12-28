@@ -262,7 +262,8 @@ object Defaults extends BuildCommon {
       if (plugin) scalaBase / ("sbt-" + sbtv) else scalaBase
     }
 
-  def compilersSetting = compilers := Compiler.compilers(scalaInstance.value, classpathOptions.value, javaHome.value, ivyConfiguration.value, scalaCompilerBridgeSource.value)(appConfiguration.value, streams.value.log)
+  def compilersSetting = compilers := Compiler.compilers(scalaInstance.value, classpathOptions.value, javaHome.value,
+    bootIvyConfiguration.value, scalaCompilerBridgeSource.value)(appConfiguration.value, streams.value.log)
 
   lazy val configTasks = docTaskSettings(doc) ++ inTask(compile)(compileInputsSettings) ++ configGlobal ++ compileAnalysisSettings ++ Seq(
     compile <<= compileTask,
@@ -1316,7 +1317,7 @@ object Classpaths {
         IvyActions.transitiveScratch(is, "sbt", GetClassifiersConfiguration(mod, excludes, c, noExplicitCheck), uwConfig, LogicalClock(state.value.hashCode), Some(depDir), s.log)
       }
     } tag (Tags.Update, Tags.Network)
-  ))
+  )) ++ Seq(bootIvyConfiguration := (ivyConfiguration in updateSbtClassifiers).value)
 
   def deliverTask(config: TaskKey[DeliverConfiguration]): Initialize[Task[File]] =
     (ivyModule, config, update, streams) map { (module, config, _, s) => IvyActions.deliver(module, config, s.log) }

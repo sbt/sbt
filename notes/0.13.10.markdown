@@ -63,6 +63,7 @@
   [2264]: https://github.com/sbt/sbt/issues/2264
   [2172]: https://github.com/sbt/sbt/pull/2172
   [2217]: https://github.com/sbt/sbt/issues/2217
+  [2336]: https://github.com/sbt/sbt/issues/2336
 
 ### Fixes with compatibility implications
 
@@ -74,6 +75,7 @@
 - Scala version used by the build is updated to 2.10.6. [#2311][2311] by [@eed3si9n][@eed3si9n]
 - `makePom` warns when it sees intransitive dependencies, which do not translate to Maven. [#2127][2127] by [@jsuereth][@jsuereth]
 - Adds `Def.settings`, which facilitates mixing settings with seq of settings. See below.
+- Adds configurable compiler bridge. See below.
 - sbt Serialization is updated to 0.1.2. [2117][#2117] by [@dwijnand][@dwijnand]
 - Hides the stack trace on compilation error in build definition. [#2071][2071]/[#2091][2091] by [@Duhemm][@Duhemm]
 - Makes the dummy `Logger.Null` public. [#2094][2094] by [@pdalpra][@pdalpra]
@@ -82,7 +84,6 @@
 - Warns when javaOptions are defined but fork is set to false. [#2041][2041]/[#2103][2103] by [@pdalpra][@pdalpra]
 - Adds an `Append.Sequence` instance for `List` to allow `+=`/`++=` on `developers` setting. [#2107][2107]/[#2114][2114] by [@pdalpra][@pdalpra]
 - Fixes warnings, and other clean ups. [#2112][2112]/[#2137][2137]/[#2139][2139]/[#2142][2142] by [@pdalpra][@pdalpra]
-- Adds `scalaCompilerBridgeSource` setting to specify the compiler brigde, and uses Ivy to retrieve it. [#2106][2106]/[#2197][2197] by [@Duhemm][@Duhemm]
 - Adds `localIfFile` to `MavenRepository`, to force artifacts to be copied to the cache. [#2172][2172] by [@dwijnand][@dwijnand]
 - Adds `Resolver.bintrayIvyRepo(owner, repo)`. [#2285][2285] by [@dwijnand][@dwijnand]
 
@@ -121,4 +122,10 @@ Using `Def.settings` it is now possible to nicely define settings as such:
       libraryDependencies += foo
     )
 
-[#2151][2151] by [@dwijnand][@dwijnand].
+[#2151][2151] by [@dwijnand][@dwijnand]
+
+### Configurable Scala compiler bridge
+
+sbt 0.13.10 adds `scalaCompilerBridgeSource` setting to specify the compiler brigde source. This allows different implementation of the bridge for Scala versions, and also allows future versions of Scala compiler implementation to diverge. The source module will be retrieved using library management configured by `bootIvyConfiguration` task.
+
+[#2106][2106]/[#2197][2197]/[#2336][2336] by [@Duhemm][@Duhemm]
