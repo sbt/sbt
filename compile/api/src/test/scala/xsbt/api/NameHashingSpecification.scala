@@ -255,7 +255,7 @@ class NameHashingSpecification extends Specification {
   /**
    * Checks that private members are NOT included in the hash of the public API of classes.
    */
-  "private members in classes" in {
+  "private members in classes are not included in the api hash" in {
     /* class Foo { private val x } */
     val classFoo1 =
       simpleClass("Foo",
@@ -271,6 +271,20 @@ class NameHashingSpecification extends Specification {
 
     HashAPI(api1) === HashAPI(api2)
 
+  }
+
+  /**
+    * Checks that private members do NOT contribute to name hashes.
+    * Test for https://github.com/sbt/sbt/issues/2324
+    */
+  "private members in classes do not contribute to name hashes" in {
+    /* class Foo { private val x } */
+    val classFoo =
+      simpleClass("Foo",
+        simpleStructure(new Val(emptyType, "x", privateAccess, defaultModifiers, Array.empty)))
+    val nameHashes = nameHashesForClass(classFoo)
+    // make sure there's no name hash for the private member "x"
+    Seq("Foo") === nameHashes.regularMembers.map(_.name).toSeq
   }
 
   private def assertNameHashEqualForRegularName(name: String, nameHashes1: _internalOnly_NameHashes,
