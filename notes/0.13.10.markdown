@@ -63,6 +63,8 @@
   [2264]: https://github.com/sbt/sbt/issues/2264
   [2172]: https://github.com/sbt/sbt/pull/2172
   [2217]: https://github.com/sbt/sbt/issues/2217
+  [2324]: https://github.com/sbt/sbt/issues/2324
+  [2325]: https://github.com/sbt/sbt/pull/2325
   [2336]: https://github.com/sbt/sbt/issues/2336
 
 ### Fixes with compatibility implications
@@ -105,7 +107,9 @@
 - Fixes a few typos in keys descriptions. [#2092][2092] by [@pdalpra][@pdalpra]
 - Avoids the use of `ListBuffer#readOnly`. [#2095][2095] by [@adriaanm][@adriaanm]
 - Expands transitive dependency exclusions when using sbt-maven-resolver-plugin [#2109][2109] by [@jsuereth][@jsuereth]
-- Fixes incremental compilation of traits by including private members into the API hash. [#2155][2155]/[#2160][2160]
+- Fixes incremental compilation of traits by including private members into the API hash. [#2155][2155]/[#2160][2160] by
+  [@Duhemm][@Duhemm]
+- Fixes name hashing by removing class private members from the hash. [#2324][2324]/[#2325][2325] by [@gkossakowski][@gkossakowski]
 - Fixes name hashing error messages. [#2158][2158] by [@stuhood][@stuhood]
 - Adds more robustness to `tasks` and `settings` command. [#2192][2192] by [@DavidPerezIngeniero][@DavidPerezIngeniero]
 - Fixes Java compilation inconsistencies between sbt and `javac` by always failing if the local Java compiler reported errors. [#2228][2228]/[#2271][2271] by [@Duhemm][@Duhemm]
