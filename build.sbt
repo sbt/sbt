@@ -128,15 +128,15 @@ lazy val tests = crossProject
     scalaJSStage in Global := FastOptStage
   )
 
-lazy val testsJvm = tests.jvm.dependsOn(files % "test")
+lazy val testsJvm = tests.jvm.dependsOn(cache % "test")
 lazy val testsJs = tests.js.dependsOn(`fetch-js` % "test")
 
-lazy val files = project
+lazy val cache = project
   .dependsOn(coreJvm)
   .settings(commonSettings)
   .settings(publishingSettings)
   .settings(
-    name := "coursier-files",
+    name := "coursier-cache",
     libraryDependencies ++= Seq(
       "org.scalaz" %% "scalaz-concurrent" % "7.1.2"
     )
@@ -160,7 +160,7 @@ lazy val bootstrap = project
   )
 
 lazy val cli = project
-  .dependsOn(coreJvm, files)
+  .dependsOn(coreJvm, cache)
   .settings(commonSettings)
   .settings(publishingSettings)
   .settings(packAutoSettings)
@@ -205,7 +205,7 @@ lazy val web = project
   )
 
 lazy val doc = project
-  .dependsOn(coreJvm, files)
+  .dependsOn(coreJvm, cache)
   .settings(commonSettings)
   .settings(noPublishSettings)
   .settings(tutSettings)
@@ -216,7 +216,7 @@ lazy val doc = project
 
 // Don't try to compile that if you're not in 2.10
 lazy val plugin = project
-  .dependsOn(coreJvm, files, cli)
+  .dependsOn(coreJvm, cache, cli)
   .settings(baseCommonSettings)
   .settings(
     name := "coursier-sbt-plugin",
@@ -224,7 +224,7 @@ lazy val plugin = project
   )
 
 lazy val `coursier` = project.in(file("."))
-  .aggregate(coreJvm, coreJs, `fetch-js`, testsJvm, testsJs, files, bootstrap, cli, web, doc)
+  .aggregate(coreJvm, coreJs, `fetch-js`, testsJvm, testsJs, cache, bootstrap, cli, web, doc)
   .settings(commonSettings)
   .settings(noPublishSettings)
   .settings(releaseSettings)
