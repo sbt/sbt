@@ -42,8 +42,8 @@ package object coursier {
 
   type Module = core.Module
   object Module {
-    def apply(organization: String, name: String): Module =
-      core.Module(organization, name)
+    def apply(organization: String, name: String, attributes: Map[String, String] = Map.empty): Module =
+      core.Module(organization, name, attributes)
   }
 
   type ModuleVersion = (core.Module, String)

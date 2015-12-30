@@ -145,23 +145,22 @@ case class IvyRepository(
   // list of variables that should be supported.
   // Some are missing (branch, conf, originalName).
   private def variables(
-    org: String,
-    name: String,
+    module: Module,
     version: String,
     `type`: String,
     artifact: String,
     ext: String
   ) =
     Map(
-      "organization" -> org,
-      "organisation" -> org,
-      "orgPath" -> org.replace('.', '/'),
-      "module" -> name,
+      "organization" -> module.organization,
+      "organisation" -> module.organization,
+      "orgPath" -> module.organization.replace('.', '/'),
+      "module" -> module.name,
       "revision" -> version,
       "type" -> `type`,
       "artifact" -> artifact,
       "ext" -> ext
-    )
+    ) ++ module.attributes
 
 
   val source: Artifact.Source = new Artifact.Source {
@@ -191,8 +190,7 @@ case class IvyRepository(
 
       val retainedWithUrl = retained.flatMap { p =>
         substitute(variables(
-          dependency.module.organization,
-          dependency.module.name,
+          dependency.module,
           dependency.version,
           p.`type`,
           p.name,
@@ -225,7 +223,9 @@ case class IvyRepository(
 
     val eitherArtifact: String \/ Artifact =
       for {
-        url <- substitute(variables(module.organization, module.name, version, "ivy", "ivy", "xml"))
+        url <- substitute(
+          variables(module, version, "ivy", "ivy", "xml")
+        )
       } yield
         Artifact(
           url,

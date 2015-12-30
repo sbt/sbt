@@ -22,7 +22,7 @@ object Pom {
         else e
       }
       name <- text(node, "artifactId", "Name")
-    } yield Module(organization, name).trim
+    } yield Module(organization, name, Map.empty).trim
   }
 
   private def readVersion(node: Node) =
@@ -307,7 +307,7 @@ object Pom {
         .toList
         .traverseU(snapshotVersion)
     } yield SnapshotVersioning(
-      Module(organization, name),
+      Module(organization, name, Map.empty),
       version,
       latest,
       release,

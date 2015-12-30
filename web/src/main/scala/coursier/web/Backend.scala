@@ -406,7 +406,10 @@ object App {
       }
 
       val sortedDeps = res.minDependencies.toList
-        .sortBy(dep => coursier.core.Module.unapply(dep.module).get)
+        .sortBy { dep =>
+          val (org, name, _) = coursier.core.Module.unapply(dep.module).get
+          (org, name)
+        }
 
       <.table(^.`class` := "table",
         <.thead(

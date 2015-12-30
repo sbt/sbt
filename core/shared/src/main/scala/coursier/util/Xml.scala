@@ -7,13 +7,20 @@ object Xml {
   /** A representation of an XML node/document, with different implementations on JVM and JS */
   trait Node {
     def label: String
-    def attributes: Seq[(String, String)]
+    /** Namespace / key / value */
+    def attributes: Seq[(String, String, String)]
     def children: Seq[Node]
     def isText: Boolean
     def textContent: String
     def isElement: Boolean
 
-    lazy val attributesMap = attributes.toMap
+    def attributesFromNamespace(namespace: String): Seq[(String, String)] =
+      attributes.collect {
+        case (`namespace`, k, v) =>
+          k -> v
+      }
+
+    lazy val attributesMap = attributes.map { case (_, k, v) => k -> v }.toMap
     def attribute(name: String): String \/ String =
       attributesMap.get(name) match {
         case None => -\/(s"Missing attribute $name")

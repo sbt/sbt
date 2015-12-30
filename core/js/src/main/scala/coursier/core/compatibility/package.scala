@@ -51,7 +51,7 @@ package object compatibility {
           .map(l => List.tabulate(l.length)(l.item).map(fromNode))
           .getOrElse(Nil)
 
-      def attributes: Seq[(String, String)] = ???
+      def attributes = ???
 
       // `exists` instead of `contains`, for scala 2.10
       def isText =

@@ -158,8 +158,22 @@ class Helper(
   }
 
   val moduleVersions = splitDependencies.map{
-    case Seq(org, name, version) =>
-      (Module(org, name), version)
+    case Seq(org, namePart, version) =>
+      val p = namePart.split(';')
+      val name = p.head
+      val splitAttributes = p.tail.map(_.split("=", 2).toSeq).toSeq
+      val malformedAttributes = splitAttributes.filter(_.length != 2)
+      if (malformedAttributes.nonEmpty) {
+        // FIXME Get these for all dependencies at once
+        Console.err.println(s"Malformed attributes in ${splitDependencies.mkString(":")}")
+        // :(
+        sys.exit(255)
+      }
+      val attributes = splitAttributes.collect {
+        case Seq(k, v) => k -> v
+      }
+      println(s"-> $org:$name:$attributes")
+      (Module(org, name, attributes.toMap), version)
   }
 
   val deps = moduleVersions.map{case (mod, ver) =>

@@ -8,12 +8,11 @@ package coursier.core
  * between them.
  *
  * Using the same terminology as Ivy.
- *
- * Ivy attributes would land here, if support for it is added.
  */
 case class Module(
   organization: String,
-  name: String
+  name: String,
+  attributes: Map[String, String]
 ) {
 
   def trim: Module = copy(
@@ -21,7 +20,14 @@ case class Module(
     name = name.trim
   )
 
-  override def toString = s"$organization:$name"
+  private def attributesStr = attributes.toSeq
+    .sortBy { case (k, _) => k }
+    .map { case (k, v) => s"$k=$v" }
+    .mkString(";")
+
+  override def toString =
+    s"$organization:$name" +
+    (if (attributes.nonEmpty) s";$attributesStr" else "")
 }
 
 /**

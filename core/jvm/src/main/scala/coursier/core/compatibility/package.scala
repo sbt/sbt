@@ -2,7 +2,7 @@ package coursier.core
 
 import coursier.util.Xml
 
-import scala.xml.{ MetaData, Null }
+import scala.xml.{ Attribute, MetaData, Null }
 
 package object compatibility {
 
@@ -19,14 +19,20 @@ package object compatibility {
     def fromNode(node: scala.xml.Node): Xml.Node =
       new Xml.Node {
         lazy val attributes = {
-          def helper(m: MetaData): Stream[(String, String)] =
+          def helper(m: MetaData): Stream[(String, String, String)] =
             m match {
               case Null => Stream.empty
               case attr =>
+                val pre = attr match {
+                  case a: Attribute => Option(node.getNamespace(a.pre)).getOrElse("")
+                  case _ => ""
+                }
+
                 val value = attr.value.collect {
                   case scala.xml.Text(t) => t
                 }.mkString("")
-                (attr.key -> value) #:: helper(m.next)
+
+                (pre, attr.key, value) #:: helper(m.next)
             }
 
           helper(node.attributes).toVector

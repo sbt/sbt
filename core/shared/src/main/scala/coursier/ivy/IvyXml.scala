@@ -7,12 +7,15 @@ import scalaz.{ Node => _, _ }, Scalaz._
 
 object IvyXml {
 
+  val attributesNamespace = "http://ant.apache.org/ivy/extra"
+
   private def info(node: Node): String \/ (Module, String) =
     for {
       org <- node.attribute("organisation")
       name <- node.attribute("module")
       version <- node.attribute("revision")
-    } yield (Module(org, name), version)
+      attr = node.attributesFromNamespace(attributesNamespace)
+    } yield (Module(org, name, attr.toMap), version)
 
   // FIXME Errors are ignored here
   private def configurations(node: Node): Seq[(String, Seq[String])] =
@@ -53,8 +56,9 @@ object IvyXml {
           (fromConf, toConf) <- rawConf.split(',').toSeq.map(_.split("->", 2)).collect {
             case Array(from, to) => from -> to
           }
+          attr = node.attributesFromNamespace(attributesNamespace)
         } yield fromConf -> Dependency(
-          Module(org, name),
+          Module(org, name, attr.toMap),
           version,
           toConf,
           allConfsExcludes ++ excludes.getOrElse(fromConf, Set.empty),
