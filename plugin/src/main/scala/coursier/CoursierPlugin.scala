@@ -12,6 +12,12 @@ import scalaz.concurrent.Task
 
 object CoursierPlugin extends AutoPlugin {
 
+  private def grouped[K, V](map: Seq[(K, V)]): Map[K, Seq[V]] =
+    map.groupBy { case (k, _) => k }.map {
+      case (k, l) =>
+        k -> l.map { case (_, v) => v }
+    }
+
   override def trigger = allRequirements
 
   override def requires = sbt.plugins.IvyPlugin
@@ -28,6 +34,7 @@ object CoursierPlugin extends AutoPlugin {
     val coursierCache = Keys.coursierCache
     val coursierProject = Keys.coursierProject
     val coursierProjects = Keys.coursierProjects
+    val coursierSbtClassifiersModule = Keys.coursierSbtClassifiersModule
   }
 
   import autoImport._
@@ -45,13 +52,28 @@ object CoursierPlugin extends AutoPlugin {
   }
 
 
-  private def updateTask(withClassifiers: Boolean) = Def.task {
+  private def updateTask(withClassifiers: Boolean, sbtClassifiers: Boolean = false) = Def.task {
 
     // let's update only one module at once, for a better output
     // Downloads are already parallel, no need to parallelize further anyway
     synchronized {
 
-      val (currentProject, _) = coursierProject.value
+      lazy val cm = coursierSbtClassifiersModule.value
+
+      val currentProject =
+        if (sbtClassifiers) {
+          FromSbt.project(
+            cm.id,
+            cm.modules,
+            cm.configurations.map(cfg => cfg.name -> cfg.extendsConfigs.map(_.name)).toMap,
+            scalaVersion.value,
+            scalaBinaryVersion.value
+          )
+        } else {
+          val (p, _) = coursierProject.value
+          p
+        }
+
       val projects = coursierProjects.value
 
       val parallelDownloads = coursierParallelDownloads.value
@@ -157,6 +179,7 @@ object CoursierPlugin extends AutoPlugin {
       }
 
       val errors = res.errors
+
       if (errors.nonEmpty) {
         println(s"\n${errors.size} error(s):")
         for ((dep, errs) <- errors) {
@@ -166,7 +189,12 @@ object CoursierPlugin extends AutoPlugin {
 
       val classifiers =
         if (withClassifiers)
-          Some(transitiveClassifiers.value)
+          Some {
+            if (sbtClassifiers)
+              cm.classifiers
+            else
+              transitiveClassifiers.value
+          }
         else
           None
 
@@ -176,102 +204,69 @@ object CoursierPlugin extends AutoPlugin {
           case Some(cl) => res.classifiersArtifacts(cl)
         }
 
-      val trDepsWithArtifactsTasks = allArtifacts
-        .toVector
-        .map { a =>
-          files.file(a, checksums = checksums, logger = logger)(cachePolicy = cachePolicy).run.map((a, _))
-        }
+      val artifactFileOrErrorTasks = allArtifacts.toVector.map { a =>
+        files.file(a, checksums = checksums, logger = logger)(cachePolicy = cachePolicy).run.map((a, _))
+      }
 
       if (verbosity >= 0)
         errPrintln(s"Fetching artifacts")
-      // rename
-      val trDepsWithArtifacts = Task.gatherUnordered(trDepsWithArtifactsTasks).attemptRun match {
+
+      val artifactFilesOrErrors = Task.gatherUnordered(artifactFileOrErrorTasks).attemptRun match {
         case -\/(ex) =>
           throw new Exception(s"Error while downloading / verifying artifacts", ex)
-        case \/-(l) => l.toMap
+        case \/-(l) =>
+          l.toMap
       }
+
       if (verbosity >= 0)
         errPrintln(s"Fetching artifacts: done")
 
-      val configs = ivyConfigurations.value.map(c => c.name -> c.extendsConfigs.map(_.name)).toMap
-      def allExtends(c: String) = {
-        // possibly bad complexity
-        def helper(current: Set[String]): Set[String] = {
-          val newSet = current ++ current.flatMap(configs.getOrElse(_, Nil))
-          if ((newSet -- current).nonEmpty)
-            helper(newSet)
-          else
-            newSet
+      val configs = {
+        val configs0 = ivyConfigurations.value.map { config =>
+          config.name -> config.extendsConfigs.map(_.name)
+        }.toMap
+
+        def allExtends(c: String) = {
+          // possibly bad complexity
+          def helper(current: Set[String]): Set[String] = {
+            val newSet = current ++ current.flatMap(configs0.getOrElse(_, Nil))
+            if ((newSet -- current).nonEmpty)
+              helper(newSet)
+            else
+              newSet
+          }
+
+          helper(Set(c))
         }
 
-        helper(Set(c))
+        configs0.map {
+          case (config, _) =>
+            config -> allExtends(config)
+        }
       }
 
-      val depsByConfig = currentProject
-        .dependencies
-        .groupBy { case (c, _) => c }
-        .map { case (c, l) =>
-          c -> l.map { case (_, d) => d }
+      def artifactFileOpt(artifact: Artifact) = {
+        val fileOrError = artifactFilesOrErrors.getOrElse(artifact, -\/("Not downloaded"))
+
+        fileOrError match {
+          case \/-(file) =>
+            if (file.toString.contains("file:/"))
+              throw new Exception(s"Wrong path: $file")
+            Some(file)
+          case -\/(err) =>
+            errPrintln(s"${artifact.url}: $err")
+            None
         }
+      }
 
-      val sbtModuleReportsPerScope = configs.map { case (c, _) => c -> {
-        val a = allExtends(c).flatMap(depsByConfig.getOrElse(_, Nil))
-        val partialRes = res.part(a)
-        val depArtifacts =
-          classifiers match {
-            case None => partialRes.dependencyArtifacts
-            case Some(cl) => partialRes.dependencyClassifiersArtifacts(cl)
-          }
+      val depsByConfig = grouped(currentProject.dependencies)
 
-        depArtifacts
-          .groupBy { case (dep, _) => dep }
-          .map { case (dep, l) => dep -> l.map { case (_, a) => a } }
-          .map { case (dep, artifacts) =>
-            val fe = artifacts.map { a =>
-              a -> trDepsWithArtifacts.getOrElse(a, -\/("Not downloaded"))
-            }
-            new ModuleReport(
-              ModuleID(dep.module.organization, dep.module.name, dep.version, configurations = Some(dep.configuration)),
-              fe.collect { case (artifact, \/-(file)) =>
-                if (file.toString.contains("file:/"))
-                  throw new Exception(s"Wrong path: $file")
-                ToSbt.artifact(dep.module, artifact) -> file
-              },
-              fe.collect { case (artifact, -\/(e)) =>
-                errPrintln(s"${artifact.url}: $e")
-                ToSbt.artifact(dep.module, artifact)
-              },
-              None,
-              None,
-              None,
-              None,
-              false,
-              None,
-              None,
-              None,
-              None,
-              Map.empty,
-              None,
-              None,
-              Nil,
-              Nil,
-              Nil
-            )
-          }
-      }}
-
-      new UpdateReport(
-        null,
-        sbtModuleReportsPerScope.toVector.map { case (c, r) =>
-          new ConfigurationReport(
-            c,
-            r.toVector,
-            Nil,
-            Nil
-          )
-        },
-        new UpdateStats(-1L, -1L, -1L, cached = false),
-        Map.empty
+      ToSbt.updateReport(
+        depsByConfig,
+        res,
+        configs,
+        classifiers,
+        artifactFileOpt
       )
     }
   }
@@ -286,8 +281,10 @@ object CoursierPlugin extends AutoPlugin {
     coursierCache := new File(sys.props("user.home") + "/.coursier/sbt"),
     update <<= updateTask(withClassifiers = false),
     updateClassifiers <<= updateTask(withClassifiers = true),
+    updateSbtClassifiers in Defaults.TaskGlobal <<= updateTask(withClassifiers = true, sbtClassifiers = true),
     coursierProject <<= Tasks.coursierProjectTask,
-    coursierProjects <<= Tasks.coursierProjectsTask
+    coursierProjects <<= Tasks.coursierProjectsTask,
+    coursierSbtClassifiersModule <<= classifiersModule in updateSbtClassifiers
   )
 
 }
