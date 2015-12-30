@@ -195,8 +195,8 @@ object Pom {
         .flatMap(_.children)
         .filter(_.label == "license")
         .flatMap { n =>
-          n.attribute("name").toOption.map { name =>
-            (name, n.attribute("url").toOption)
+          text(n, "name", "License name").toOption.map { name =>
+            (name, text(n, "url", "License URL").toOption)
           }.toSeq
         }
 
@@ -207,9 +207,9 @@ object Pom {
         .filter(_.label == "developer")
         .map { n =>
           for {
-            id <- n.attribute("id")
-            name <- n.attribute("name")
-            url <- n.attribute("url")
+            id <- text(n, "id", "Developer ID")
+            name <- text(n, "name", "Developer name")
+            url <- text(n, "url", "Developer URL")
           } yield Info.Developer(id, name, url)
         }
         .collect {
