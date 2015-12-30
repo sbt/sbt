@@ -19,6 +19,7 @@ class TermDisplay(
   private val fallbackRefreshInterval = 1000
 
   private val lock = new AnyRef
+  private var currentHeight = 0
   private val t = new Thread("TermDisplay") {
     override def run() = lock.synchronized {
 
@@ -60,7 +61,9 @@ class TermDisplay(
       }
 
 
-      @tailrec def helper(lineCount: Int): Unit =
+      @tailrec def helper(lineCount: Int): Unit = {
+        currentHeight = lineCount
+
         Option(q.poll(100L, TimeUnit.MILLISECONDS)) match {
           case None => helper(lineCount)
           case Some(Left(())) => // poison pill
@@ -100,6 +103,7 @@ class TermDisplay(
             Thread.sleep(refreshInterval)
             helper(downloads0.length)
         }
+      }
 
 
       @tailrec def fallbackHelper(previous: Set[String]): Unit =
@@ -153,6 +157,13 @@ class TermDisplay(
   }
 
   def stop(): Unit = {
+    for (_ <- 0 until currentHeight) {
+      ansi.clearLine(2)
+      ansi.down(1)
+    }
+    for (_ <- 0 until currentHeight) {
+      ansi.up(1)
+    }
     q.put(Left(()))
     lock.synchronized(())
   }

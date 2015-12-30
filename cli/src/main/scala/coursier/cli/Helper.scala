@@ -213,7 +213,6 @@ class Helper(
       Some(new TermDisplay(new OutputStreamWriter(System.err)))
     else
       None
-  logger.foreach(_.init())
 
   val fetchs = cachePolicies.map(p =>
     Cache.fetch(caches, p, logger = logger, pool = pool)
@@ -246,6 +245,7 @@ class Helper(
     }
   }
 
+  logger.foreach(_.init())
 
   val res = startRes
     .process
@@ -341,23 +341,25 @@ class Helper(
         Some(new TermDisplay(new OutputStreamWriter(System.err)))
       else
         None
-    logger.foreach(_.init())
+
+    if (verbose0 >= 1 && artifacts.nonEmpty)
+      println(s"Found ${artifacts.length} artifacts")
+
     val tasks = artifacts.map(artifact =>
       (Cache.file(artifact, caches, cachePolicies.head, logger = logger, pool = pool) /: cachePolicies.tail)(
         _ orElse Cache.file(artifact, caches, _, logger = logger, pool = pool)
       ).run.map(artifact.->)
     )
-    def printTask = Task {
-      if (verbose0 >= 1 && artifacts.nonEmpty)
-        println(s"Found ${artifacts.length} artifacts")
-    }
-    val task = printTask.flatMap(_ => Task.gatherUnordered(tasks))
+
+    logger.foreach(_.init())
+
+    val task = Task.gatherUnordered(tasks)
+
+    logger.foreach(_.stop())
 
     val results = task.run
     val errors = results.collect{case (artifact, -\/(err)) => artifact -> err }
     val files0 = results.collect{case (artifact, \/-(f)) => f }
-
-    logger.foreach(_.stop())
 
     if (errors.nonEmpty) {
       println(s"${errors.size} error(s):")

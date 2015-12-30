@@ -251,16 +251,17 @@ object Tasks {
 
         val pool = Executors.newFixedThreadPool(parallelDownloads, Strategy.DefaultDaemonThreadFactory)
 
-        val logger = new TermDisplay(
+        def createLogger() = new TermDisplay(
           new OutputStreamWriter(System.err),
           fallbackMode = sys.env.get("COURSIER_NO_TERM").nonEmpty
         )
-        logger.init()
+
+        val resLogger = createLogger()
 
         val fetch = coursier.Fetch(
           repositories,
-          Cache.fetch(caches, CachePolicy.LocalOnly, checksums = checksums, logger = Some(logger), pool = pool),
-          Cache.fetch(caches, cachePolicy, checksums = checksums, logger = Some(logger), pool = pool)
+          Cache.fetch(caches, CachePolicy.LocalOnly, checksums = checksums, logger = Some(resLogger), pool = pool),
+          Cache.fetch(caches, cachePolicy, checksums = checksums, logger = Some(resLogger), pool = pool)
         )
 
         def depsRepr(deps: Seq[(String, Dependency)]) =
@@ -290,6 +291,8 @@ object Tasks {
           for (depRepr <- depsRepr(currentProject.dependencies))
             errPrintln(s"  $depRepr")
 
+        resLogger.init()
+
         val res = startRes
           .process
           .run(fetch, maxIterations)
@@ -297,6 +300,7 @@ object Tasks {
           .leftMap(ex => throw new Exception(s"Exception during resolution", ex))
           .merge
 
+        resLogger.stop()
 
 
         if (!res.isDone)
@@ -366,12 +370,16 @@ object Tasks {
             case Some(cl) => res.classifiersArtifacts(cl)
           }
 
+        val artifactsLogger = createLogger()
+
         val artifactFileOrErrorTasks = allArtifacts.toVector.map { a =>
-          Cache.file(a, caches, cachePolicy, checksums = artifactsChecksums, logger = Some(logger), pool = pool).run.map((a, _))
+          Cache.file(a, caches, cachePolicy, checksums = artifactsChecksums, logger = Some(artifactsLogger), pool = pool).run.map((a, _))
         }
 
         if (verbosity >= 0)
           errPrintln(s"Fetching artifacts")
+
+        artifactsLogger.init()
 
         val artifactFilesOrErrors = Task.gatherUnordered(artifactFileOrErrorTasks).attemptRun match {
           case -\/(ex) =>
@@ -379,6 +387,8 @@ object Tasks {
           case \/-(l) =>
             l.toMap
         }
+
+        artifactsLogger.stop()
 
         if (verbosity >= 0)
           errPrintln(s"Fetching artifacts: done")
