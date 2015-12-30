@@ -44,7 +44,8 @@ object CoursierPlugin extends AutoPlugin {
   }
 
 
-  private def task = Def.task {
+  private def updateTask(withClassifiers: Boolean) = Def.task {
+
     // let's update only one module at once, for a better output
     // Downloads are already parallel, no need to parallelize further anyway
     synchronized {
@@ -148,7 +149,19 @@ object CoursierPlugin extends AutoPlugin {
         }
       }
 
-      val trDepsWithArtifactsTasks = res.artifacts
+      val classifiers =
+        if (withClassifiers)
+          Some(transitiveClassifiers.value)
+        else
+          None
+
+      val allArtifacts =
+        classifiers match {
+          case None => res.artifacts
+          case Some(cl) => res.classifiersArtifacts(cl)
+        }
+
+      val trDepsWithArtifactsTasks = allArtifacts
         .toVector
         .map { a =>
           files.file(a, checksums = checksums, logger = logger)(cachePolicy = cachePolicy).run.map((a, _))
@@ -188,8 +201,14 @@ object CoursierPlugin extends AutoPlugin {
 
       val sbtModuleReportsPerScope = configs.map { case (c, _) => c -> {
         val a = allExtends(c).flatMap(depsByConfig.getOrElse(_, Nil))
-        res.part(a)
-          .dependencyArtifacts
+        val partialRes = res.part(a)
+        val depArtifacts =
+          classifiers match {
+            case None => partialRes.dependencyArtifacts
+            case Some(cl) => partialRes.dependencyClassifiersArtifacts(cl)
+          }
+
+        depArtifacts
           .groupBy { case (dep, _) => dep }
           .map { case (dep, l) => dep -> l.map { case (_, a) => a } }
           .map { case (dep, artifacts) =>
@@ -250,7 +269,8 @@ object CoursierPlugin extends AutoPlugin {
     coursierVerbosity := 0,
     coursierResolvers <<= Tasks.coursierResolversTask,
     coursierCache := new File(sys.props("user.home") + "/.coursier/sbt"),
-    update <<= task,
+    update <<= updateTask(withClassifiers = false),
+    updateClassifiers <<= updateTask(withClassifiers = true),
     coursierProject <<= Tasks.coursierProjectTask,
     coursierProjects <<= Tasks.coursierProjectsTask
   )

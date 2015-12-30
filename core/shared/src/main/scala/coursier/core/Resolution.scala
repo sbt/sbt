@@ -762,15 +762,21 @@ case class Resolution(
   def artifacts: Seq[Artifact] =
     artifacts0(None)
 
-  def dependencyArtifacts: Seq[(Dependency, Artifact)] =
+  private def dependencyArtifacts0(overrideClassifiers: Option[Seq[String]]): Seq[(Dependency, Artifact)] =
     for {
       dep <- minDependencies.toSeq
       (source, proj) <- projectCache
         .get(dep.moduleVersion)
         .toSeq
       artifact <- source
-        .artifacts(dep, proj, None)
+        .artifacts(dep, proj, overrideClassifiers)
     } yield dep -> artifact
+
+  def dependencyArtifacts: Seq[(Dependency, Artifact)] =
+    dependencyArtifacts0(None)
+
+  def dependencyClassifiersArtifacts(classifiers: Seq[String]): Seq[(Dependency, Artifact)] =
+    dependencyArtifacts0(Some(classifiers))
 
   def errors: Seq[(Dependency, Seq[String])] =
     for {
