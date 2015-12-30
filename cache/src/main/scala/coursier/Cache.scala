@@ -226,11 +226,11 @@ object Cache {
 
         val res =
           if (url.startsWith("file:/")) {
+            def filtered(s: String) =
+              s.stripPrefix("file:/").stripPrefix("//").stripSuffix("/")
             assert(
-              url.stripPrefix("file:/").stripPrefix("//") ==
-                file.toURI.toString.stripPrefix("file:/").stripPrefix("//"),
-              s"URL: ${url.stripPrefix("file:/").stripPrefix("//")}, " +
-                s"file: ${file.toURI.toString.stripPrefix("file:/").stripPrefix("//")}"
+              filtered(url) == filtered(file.toURI.toString),
+              s"URL: ${filtered(url)}, file: ${filtered(file.toURI.toString)}"
             )
             checkFileExists(file, url)
           } else
