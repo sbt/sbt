@@ -73,7 +73,7 @@
 ### Improvements
 
 - Scala version used by the build is updated to 2.10.6. [#2311][2311] by [@eed3si9n][@eed3si9n]
-- `makePom` warns when it sees intransitive dependencies, which do not translate to Maven. [#2127][2127] by [@jsuereth][@jsuereth]
+- If `publishMavenStyle` is `true`, `update` task warns when it sees intransitive dependencies, which do not translate to Maven. [#2127][2127] by [@jsuereth][@jsuereth]
 - Adds `Def.settings`, which facilitates mixing settings with seq of settings. See below.
 - sbt Serialization is updated to 0.1.2. [2117][#2117] by [@dwijnand][@dwijnand]
 - Hides the stack trace on compilation error in build definition. [#2071][2071]/[#2091][2091] by [@Duhemm][@Duhemm]
