@@ -9,8 +9,8 @@ package object coursier {
     def apply(
       module: Module,
       version: String,
-      // Substituted by Resolver with its own default scope (compile)
-      scope: Scope = Scope.Other(""),
+      // Substituted by Resolver with its own default configuration (compile)
+      configuration: String = "",
       attributes: Attributes = Attributes(),
       exclusions: Set[(String, String)] = Set.empty,
       optional: Boolean = false
@@ -18,7 +18,7 @@ package object coursier {
       core.Dependency(
         module,
         version,
-        scope,
+        configuration,
         attributes,
         exclusions,
         optional
@@ -48,8 +48,6 @@ package object coursier {
 
   type ModuleVersion = (core.Module, String)
 
-  type Scope = core.Scope
-  val Scope = core.Scope
 
   type Repository = core.Repository
   val Repository = core.Repository

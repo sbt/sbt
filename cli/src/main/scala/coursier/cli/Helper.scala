@@ -171,7 +171,7 @@ class Helper(
   }
 
   val deps = moduleVersions.map{case (mod, ver) =>
-    Dependency(mod, ver, scope = Scope.Runtime)
+    Dependency(mod, ver, configuration = "runtime")
   }
 
   val forceVersions = {

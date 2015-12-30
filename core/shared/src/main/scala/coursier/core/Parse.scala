@@ -4,15 +4,6 @@ import coursier.core.compatibility._
 
 object Parse {
 
-  def scope(s: String): Scope = s match {
-    case "compile" => Scope.Compile
-    case "runtime" => Scope.Runtime
-    case "test" => Scope.Test
-    case "provided" => Scope.Provided
-    case "import" => Scope.Import
-    case other => Scope.Other(other)
-  }
-
   def version(s: String): Option[Version] = {
     if (s.isEmpty || s.exists(c => c != '.' && c != '-' && c != '_' && !c.letterOrDigit)) None
     else Some(Version(s))

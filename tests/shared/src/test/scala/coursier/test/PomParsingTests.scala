@@ -21,7 +21,7 @@ object PomParsingTests extends TestSuite {
         </dependency>
                    """
 
-      val expected = \/-(Dependency(Module("comp", "lib"), "2.1", attributes = Attributes(classifier = "extra")))
+      val expected = \/-("" -> Dependency(Module("comp", "lib"), "2.1", attributes = Attributes(classifier = "extra")))
 
       val result = Pom.dependency(xmlParse(depNode).right.get)
 
@@ -90,7 +90,7 @@ object PomParsingTests extends TestSuite {
         None,
         Profile.Activation(Nil),
         Seq(
-          Dependency(Module("comp", "lib"), "0.2")),
+          "" -> Dependency(Module("comp", "lib"), "0.2")),
         Nil,
         Map.empty
       ))
@@ -122,7 +122,7 @@ object PomParsingTests extends TestSuite {
         Profile.Activation(Nil),
         Nil,
         Seq(
-          Dependency(Module("comp", "lib"), "0.2", scope = Scope.Test)),
+          "test" -> Dependency(Module("comp", "lib"), "0.2")),
         Map.empty
       ))
 

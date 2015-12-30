@@ -24,8 +24,6 @@ case class Module(
   override def toString = s"$organization:$name"
 }
 
-sealed abstract class Scope(val name: String)
-
 /**
  * Dependencies with the same @module will typically see their @version-s merged.
  *
@@ -35,7 +33,7 @@ sealed abstract class Scope(val name: String)
 case class Dependency(
   module: Module,
   version: String,
-  scope: Scope,
+  configuration: String,
   attributes: Attributes,
   exclusions: Set[(String, String)],
   optional: Boolean
@@ -51,9 +49,10 @@ case class Attributes(
 case class Project(
   module: Module,
   version: String,
-  dependencies: Seq[Dependency],
+  dependencies: Seq[(String, Dependency)],
   parent: Option[(Module, String)],
-  dependencyManagement: Seq[Dependency],
+  dependencyManagement: Seq[(String, Dependency)],
+  configurations: Map[String, Seq[String]],
   properties: Map[String, String],
   profiles: Seq[Profile],
   versions: Option[Versions],
@@ -62,23 +61,14 @@ case class Project(
   def moduleVersion = (module, version)
 }
 
-object Scope {
-  case object Compile extends Scope("compile")
-  case object Runtime extends Scope("runtime")
-  case object Test extends Scope("test")
-  case object Provided extends Scope("provided")
-  case object Import extends Scope("import")
-  case class Other(override val name: String) extends Scope(name)
-}
-
 case class Activation(properties: Seq[(String, Option[String])])
 
 case class Profile(
   id: String,
   activeByDefault: Option[Boolean],
   activation: Activation,
-  dependencies: Seq[Dependency],
-  dependencyManagement: Seq[Dependency],
+  dependencies: Seq[(String, Dependency)],
+  dependencyManagement: Seq[(String, Dependency)],
   properties: Map[String, String]
 )
 

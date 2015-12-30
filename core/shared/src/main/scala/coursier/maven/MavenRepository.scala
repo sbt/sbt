@@ -35,6 +35,12 @@ object MavenRepository {
       .map(_.value)
       .filter(_.nonEmpty)
 
+
+  val defaultConfigurations = Map(
+    "runtime" -> Seq("compile"),
+    "test" -> Seq("runtime")
+  )
+
 }
 
 case class MavenRepository(
@@ -231,7 +237,7 @@ case class MavenRepository(
             xml <- \/.fromEither(compatibility.xmlParse(str))
             _ <- if (xml.label == "project") \/-(()) else -\/("Project definition not found")
             proj <- Pom.project(xml)
-          } yield proj): (String \/ Project)
+          } yield proj.copy(configurations = defaultConfigurations)): (String \/ Project)
         }
       }
     }

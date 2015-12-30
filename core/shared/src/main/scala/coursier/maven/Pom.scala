@@ -43,16 +43,14 @@ object Pom {
   private def readVersion(node: Node) =
     text(node, "version", "Version").getOrElse("").trim
 
-  private val defaultScope = Scope.Other("")
   private val defaultType = "jar"
   private val defaultClassifier = ""
 
-  def dependency(node: Node): String \/ Dependency = {
+  def dependency(node: Node): String \/ (String, Dependency) = {
     for {
       mod <- module(node)
       version0 = readVersion(node)
       scopeOpt = text(node, "scope", "").toOption
-        .map(Parse.scope)
       typeOpt = text(node, "type", "").toOption
       classifierOpt = text(node, "classifier", "").toOption
       xmlExclusions = node.child
@@ -64,10 +62,10 @@ object Pom {
         xmlExclusions.toList.traverseU(module(_))
       }
       optional = text(node, "optional", "").toOption.toSeq.contains("true")
-    } yield Dependency(
+    } yield scopeOpt.getOrElse("") -> Dependency(
         mod,
         version0,
-        scopeOpt getOrElse defaultScope,
+        "",
         Attributes(typeOpt getOrElse defaultType, classifierOpt getOrElse defaultClassifier),
         exclusions.map(mod => (mod.organization, mod.name)).toSet,
         optional
@@ -191,6 +189,7 @@ object Pom {
       deps,
       parentModuleOpt.map((_, parentVersionOpt.getOrElse(""))),
       depMgmts,
+      Map.empty,
       properties.toMap,
       profiles,
       None,
