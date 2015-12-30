@@ -11,6 +11,7 @@ object MavenRepository {
 
   def ivyLikePath(
     org: String,
+    dirName: String,
     name: String,
     version: String,
     subDir: String,
@@ -19,7 +20,7 @@ object MavenRepository {
   ) =
     Seq(
       org,
-      name,
+      dirName,
       version,
       subDir,
       s"$name$baseSuffix.$ext"
@@ -44,6 +45,17 @@ object MavenRepository {
     "test" -> Seq("runtime")
   )
 
+  def dirModuleName(module: Module, sbtAttrStub: Boolean): String =
+    if (sbtAttrStub) {
+      var name = module.name
+      for (scalaVersion <- module.attributes.get("scalaVersion"))
+        name = name + "_" + scalaVersion
+      for (sbtVersion <- module.attributes.get("sbtVersion"))
+        name = name + "_" + sbtVersion
+      name
+    } else
+      module.name
+
 }
 
 case class MavenRepository(
@@ -58,18 +70,7 @@ case class MavenRepository(
   import MavenRepository._
 
   val root0 = if (root.endsWith("/")) root else root + "/"
-  val source = MavenSource(root0, ivyLike)
-
-  private def dirModuleName(module: Module): String =
-    if (sbtAttrStub) {
-      var name = module.name
-      for (scalaVersion <- module.attributes.get("scalaVersion"))
-        name = name + "_" + scalaVersion
-      for (sbtVersion <- module.attributes.get("sbtVersion"))
-        name = name + "_" + sbtVersion
-      name
-    } else
-      module.name
+  val source = MavenSource(root0, ivyLike, changing, sbtAttrStub)
 
   def projectArtifact(
     module: Module,
@@ -81,7 +82,8 @@ case class MavenRepository(
       if (ivyLike)
         ivyLikePath(
           module.organization,
-          dirModuleName(module), // maybe not what we should do here, don't know
+          dirModuleName(module, sbtAttrStub), // maybe not what we should do here, don't know
+          module.name,
           versioningValue getOrElse version,
           "poms",
           "",
@@ -89,7 +91,7 @@ case class MavenRepository(
         )
       else
         module.organization.split('.').toSeq ++ Seq(
-          dirModuleName(module),
+          dirModuleName(module, sbtAttrStub),
           version,
           s"${module.name}-${versioningValue getOrElse version}.pom"
         )
@@ -111,7 +113,7 @@ case class MavenRepository(
     else {
       val path = (
         module.organization.split('.').toSeq ++ Seq(
-          dirModuleName(module),
+          dirModuleName(module, sbtAttrStub),
           "maven-metadata.xml"
         )
       ) .map(encodeURIComponent)
@@ -138,7 +140,7 @@ case class MavenRepository(
     else {
       val path = (
         module.organization.split('.').toSeq ++ Seq(
-          dirModuleName(module),
+          dirModuleName(module, sbtAttrStub),
           version,
           "maven-metadata.xml"
         )

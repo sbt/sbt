@@ -5,7 +5,9 @@ import coursier.core._
 case class MavenSource(
   root: String,
   ivyLike: Boolean,
-  changing: Option[Boolean] = None
+  changing: Option[Boolean] = None,
+  /** See doc on MavenRepository */
+  sbtAttrStub: Boolean
 ) extends Artifact.Source {
 
   import Repository._
@@ -47,6 +49,7 @@ case class MavenSource(
       def ivyLikePath0(subDir: String, baseSuffix: String, ext: String) =
         ivyLikePath(
           module.organization,
+          MavenRepository.dirModuleName(module, sbtAttrStub),
           module.name,
           project.version,
           subDir,
@@ -66,7 +69,7 @@ case class MavenSource(
               )
 
           module.organization.split('.').toSeq ++ Seq(
-            module.name,
+            MavenRepository.dirModuleName(module, sbtAttrStub),
             project.version,
             s"${module.name}-${versioning getOrElse project.version}${Some(publication.classifier).filter(_.nonEmpty).map("-" + _).mkString}.${publication.ext}"
           )
