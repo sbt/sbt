@@ -60,7 +60,7 @@ object Transform {
   }
   def configSettings = transResourceSettings ++ Seq(
     resourceProperties <<= (organization, version, scalaVersion, isSnapshot) map { (org, v, sv, isSnapshot) =>
-      Map("org" -> org, "sbt.version" -> v, "scala.version" -> sv, "repositories" -> repositories(isSnapshot).mkString(IO.Newline))
+      Map("org" -> org, "sbt.version" -> v, "scala.version" -> sv)
     }
   )
   def transResourceSettings = Seq(
@@ -87,13 +87,4 @@ object Transform {
     }
   def read(file: File): Option[String] = try { Some(IO.read(file)) } catch { case _: java.io.IOException => None }
   lazy val Property = """\$\{\{([\w.-]+)\}\}""".r
-
-  def repositories(isSnapshot: Boolean) = Releases :: (if (isSnapshot) Snapshots :: SonatypeSnapshots :: Nil else Nil)
-  lazy val Releases = typesafeRepository("releases")
-  lazy val Snapshots = typesafeRepository("snapshots")
-  lazy val SonatypeSnapshots = sonatypeRepsoitory("snapshots")
-  def sonatypeRepsoitory(status: String) =
-    s"""  sonatype-$status: https://oss.sonatype.org/content/repositories/$status"""
-  def typesafeRepository(status: String) =
-    """  typesafe-ivy-%s: https://repo.typesafe.com/typesafe/ivy-%<s/, [organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext], bootOnly""" format status
 }

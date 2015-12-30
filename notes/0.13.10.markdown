@@ -114,8 +114,8 @@
 - Adds more robustness to `tasks` and `settings` command. [#2192][2192] by [@DavidPerezIngeniero][@DavidPerezIngeniero]
 - Fixes Java compilation inconsistencies between sbt and `javac` by always failing if the local Java compiler reported errors. [#2228][2228]/[#2271][2271] by [@Duhemm][@Duhemm]
 - Fixes `JavaErrorParser` to parse non-compile-errors [#2256][2256]/[#2272][2272] by [@Duhemm][@Duhemm]
-
 - Fixes task scheduling performance on large builds by skipping checks in `sbt.Execute`. [#2302][2302]/[#2303][2303] by [@jrudolph][@jrudolph]
+- Fixes launcher configuration to add `sbt-ivy-snapshots` repository to resolve nightly builds. [@eed3si9n][@eed3si9n]
 
 ### Def.settings
 
