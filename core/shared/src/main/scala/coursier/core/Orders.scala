@@ -122,8 +122,16 @@ object Orders {
 
   private def fallbackConfigIfNecessary(dep: Dependency, configs: Set[String]): Dependency =
     Parse.withFallbackConfig(dep.configuration) match {
-      case Some((main, fallback)) if !configs(main) && configs(fallback) =>
-        dep.copy(configuration = fallback)
+      case Some((main, fallback)) =>
+        val config0 =
+          if (configs(main))
+            main
+          else if (configs(fallback))
+            fallback
+          else
+            dep.configuration
+
+        dep.copy(configuration = config0)
       case _ =>
         dep
     }
