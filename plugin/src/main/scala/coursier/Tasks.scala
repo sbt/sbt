@@ -1,16 +1,21 @@
 package coursier
 
 import java.io.{ OutputStreamWriter, File }
+import java.nio.file.Files
 import java.util.concurrent.Executors
 
+import coursier.core.Publication
 import coursier.ivy.IvyRepository
 import coursier.Keys._
 import coursier.Structure._
+import org.apache.ivy.core.module.id.ModuleRevisionId
 
 import sbt.{ UpdateReport, Classpaths, Resolver, Def }
+import sbt.Configurations.{ Compile, Test }
 import sbt.Keys._
 
 import scala.collection.mutable
+import scala.collection.JavaConverters._
 
 import scalaz.{ \/-, -\/ }
 import scalaz.concurrent.{ Task, Strategy }
@@ -76,6 +81,51 @@ object Tasks {
       coursierProject.forAllProjects(state, projects).map(_.values.toVector)
     }
 
+  def coursierPublicationsTask: Def.Initialize[sbt.Task[Seq[(String, Publication)]]] =
+    (
+      sbt.Keys.state,
+      sbt.Keys.thisProjectRef,
+      sbt.Keys.projectID,
+      sbt.Keys.scalaVersion,
+      sbt.Keys.scalaBinaryVersion
+    ).map { (state, projectRef, projId, sv, sbv) =>
+
+      val packageTasks = Seq(packageBin, packageSrc, packageDoc)
+      val configs = Seq(Compile, Test)
+
+      val sbtArtifacts =
+        for {
+          pkgTask <- packageTasks
+          config <- configs
+        } yield {
+          val publish = publishArtifact.in(projectRef).in(pkgTask).in(config).getOrElse(state, false)
+          if (publish)
+            Option(artifact.in(projectRef).in(pkgTask).in(config).getOrElse(state, null))
+              .map(config.name -> _)
+          else
+            None
+        }
+
+      sbtArtifacts.collect {
+        case Some((config, artifact)) =>
+          val name = FromSbt.sbtCrossVersionName(
+            artifact.name,
+            projId.crossVersion,
+            sv,
+            sbv
+          )
+
+          val publication = Publication(
+            name,
+            artifact.`type`,
+            artifact.extension,
+            artifact.classifier.getOrElse("")
+          )
+
+          config -> publication
+      }
+    }
+
   // FIXME More things should possibly be put here too (resolvers, etc.)
   private case class CacheKey(
     resolution: Resolution,
@@ -112,9 +162,24 @@ object Tasks {
             scalaBinaryVersion.value
           )
         else {
-          val (p, _) = coursierProject.value
-          p
+          val (proj, _) = coursierProject.value
+          val publications = coursierPublications.value
+          proj.copy(publications = publications)
         }
+
+      val ivySbt0 = ivySbt.value
+      val ivyCacheManager = ivySbt0.withIvy(streams.value.log)(ivy =>
+        ivy.getResolutionCacheManager
+      )
+
+      val ivyModule = ModuleRevisionId.newInstance(
+        currentProject.module.organization,
+        currentProject.module.name,
+        currentProject.version,
+        currentProject.module.attributes.asJava
+      )
+      val cacheIvyFile = ivyCacheManager.getResolvedIvyFileInCache(ivyModule)
+      val cacheIvyPropertiesFile = ivyCacheManager.getResolvedIvyPropertiesInCache(ivyModule)
 
       val projects = coursierProjects.value
 
@@ -139,6 +204,22 @@ object Tasks {
         filter = Some(dep => !dep.optional),
         forceVersions = projects.map { case (proj, _) => proj.moduleVersion }.toMap
       )
+
+      // required for publish to be fine, later on
+      def writeIvyFiles() = {
+        val printer = new scala.xml.PrettyPrinter(80, 2)
+
+        val b = new StringBuilder
+        b ++= """<?xml version="1.0" encoding="UTF-8"?>"""
+        b += '\n'
+        b ++= printer.format(MakeIvyXml(currentProject))
+        cacheIvyFile.getParentFile.mkdirs()
+        Files.write(cacheIvyFile.toPath, b.result().getBytes("UTF-8"))
+
+        // Just writing an empty file here... Are these only used?
+        cacheIvyPropertiesFile.getParentFile.mkdirs()
+        Files.write(cacheIvyPropertiesFile.toPath, "".getBytes("UTF-8"))
+      }
 
       def report = {
         if (verbosity >= 1) {
@@ -319,6 +400,8 @@ object Tasks {
         }
 
         val depsByConfig = grouped(currentProject.dependencies)
+
+        writeIvyFiles()
 
         ToSbt.updateReport(
           depsByConfig,

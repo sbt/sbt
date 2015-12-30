@@ -23,6 +23,7 @@ object CoursierPlugin extends AutoPlugin {
     val coursierCache = Keys.coursierCache
     val coursierProject = Keys.coursierProject
     val coursierProjects = Keys.coursierProjects
+    val coursierPublications = Keys.coursierPublications
     val coursierSbtClassifiersModule = Keys.coursierSbtClassifiersModule
   }
 
@@ -44,6 +45,7 @@ object CoursierPlugin extends AutoPlugin {
     updateSbtClassifiers in Defaults.TaskGlobal <<= Tasks.updateTask(withClassifiers = true, sbtClassifiers = true),
     coursierProject <<= Tasks.coursierProjectTask,
     coursierProjects <<= Tasks.coursierProjectsTask,
+    coursierPublications <<= Tasks.coursierPublicationsTask,
     coursierSbtClassifiersModule <<= classifiersModule in updateSbtClassifiers
   )
 

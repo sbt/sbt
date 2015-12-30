@@ -1,6 +1,7 @@
 package coursier
 
 import java.io.File
+import coursier.core.Publication
 import sbt.{ GetClassifiersModule, Resolver, SettingKey, TaskKey }
 
 object Keys {
@@ -19,6 +20,7 @@ object Keys {
 
   val coursierProject = TaskKey[(Project, Seq[(String, Seq[Artifact])])]("coursier-project", "")
   val coursierProjects = TaskKey[Seq[(Project, Seq[(String, Seq[Artifact])])]]("coursier-projects", "")
+  val coursierPublications = TaskKey[Seq[(String, Publication)]]("coursier-publications", "")
 
   val coursierSbtClassifiersModule = TaskKey[GetClassifiersModule]("coursier-sbt-classifiers-module", "")
 }

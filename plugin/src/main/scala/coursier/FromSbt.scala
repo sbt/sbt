@@ -10,10 +10,18 @@ object FromSbt {
     moduleId: ModuleID,
     scalaVersion: => String,
     scalaBinaryVersion: => String
-  ): String = moduleId.crossVersion match {
-    case CrossVersion.Disabled => moduleId.name
-    case f: CrossVersion.Full => moduleId.name + "_" + f.remapVersion(scalaVersion)
-    case f: CrossVersion.Binary => moduleId.name + "_" + f.remapVersion(scalaBinaryVersion)
+  ): String =
+    sbtCrossVersionName(moduleId.name, moduleId.crossVersion, scalaVersion, scalaBinaryVersion)
+
+  def sbtCrossVersionName(
+    name: String,
+    crossVersion: CrossVersion,
+    scalaVersion: => String,
+    scalaBinaryVersion: => String
+  ): String = crossVersion match {
+    case CrossVersion.Disabled => name
+    case f: CrossVersion.Full => name + "_" + f.remapVersion(scalaVersion)
+    case f: CrossVersion.Binary => name + "_" + f.remapVersion(scalaBinaryVersion)
   }
 
   def mappings(mapping: String): Seq[(String, String)] =
