@@ -355,11 +355,11 @@ class Helper(
 
     val task = Task.gatherUnordered(tasks)
 
-    logger.foreach(_.stop())
-
     val results = task.run
     val errors = results.collect{case (artifact, -\/(err)) => artifact -> err }
     val files0 = results.collect{case (artifact, \/-(f)) => f }
+
+    logger.foreach(_.stop())
 
     if (errors.nonEmpty) {
       println(s"${errors.size} error(s):")
