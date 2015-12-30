@@ -3,7 +3,6 @@ package coursier
 import java.io.{ OutputStreamWriter, File }
 import java.util.concurrent.Executors
 
-import coursier.cli.TermDisplay
 import coursier.ivy.IvyRepository
 import coursier.Keys._
 import coursier.Structure._

@@ -138,7 +138,8 @@ lazy val cache = project
   .settings(
     name := "coursier-cache",
     libraryDependencies ++= Seq(
-      "org.scalaz" %% "scalaz-concurrent" % "7.1.2"
+      "org.scalaz" %% "scalaz-concurrent" % "7.1.2",
+      "com.lihaoyi" %% "ammonite-terminal" % "0.5.0"
     )
   )
 
@@ -168,7 +169,6 @@ lazy val cli = project
     name := "coursier-cli",
     libraryDependencies ++= Seq(
       "com.github.alexarchambault" %% "case-app" % "1.0.0-SNAPSHOT",
-      "com.lihaoyi" %% "ammonite-terminal" % "0.5.0",
       "ch.qos.logback" % "logback-classic" % "1.1.3"
     )
   )
@@ -216,7 +216,7 @@ lazy val doc = project
 
 // Don't try to compile that if you're not in 2.10
 lazy val plugin = project
-  .dependsOn(coreJvm, cache, cli)
+  .dependsOn(coreJvm, cache)
   .settings(baseCommonSettings)
   .settings(
     name := "coursier-sbt-plugin",

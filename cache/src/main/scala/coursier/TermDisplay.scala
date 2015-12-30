@@ -1,11 +1,9 @@
-package coursier.cli
+package coursier
 
 import java.io.{File, Writer}
 import java.util.concurrent._
 
 import ammonite.terminal.{ TTY, Ansi }
-
-import coursier.Cache
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
