@@ -1,6 +1,7 @@
 package coursier
 
 import coursier.ivy.IvyRepository
+import sbt.mavenint.SbtPomExtraProperties
 import sbt.{ Resolver, CrossVersion, ModuleID }
 
 object FromSbt {
@@ -31,6 +32,8 @@ object FromSbt {
   def attributes(attr: Map[String, String]): Map[String, String] =
     attr.map { case (k, v) =>
       k.stripPrefix("e:") -> v
+    }.filter { case (k, _) =>
+      !k.startsWith(SbtPomExtraProperties.POM_INFO_KEY_PREFIX)
     }
 
   def dependencies(
