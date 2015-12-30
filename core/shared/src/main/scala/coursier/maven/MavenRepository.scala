@@ -45,24 +45,16 @@ object MavenRepository {
     "test" -> Seq("runtime")
   )
 
-  def dirModuleName(module: Module, sbtAttrStub: Option[String]): String =
-    sbtAttrStub.fold(module.name) { prefix =>
-      def attr(name: String) = {
-        val base = module.attributes.get(name)
-
-        if (prefix.isEmpty)
-          base
-        else
-          base.orElse(module.attributes.get(s"$prefix:$name"))
-      }
-
+  def dirModuleName(module: Module, sbtAttrStub: Boolean): String =
+    if (sbtAttrStub) {
       var name = module.name
-      for (scalaVersion <- attr("scalaVersion"))
+      for (scalaVersion <- module.attributes.get("scalaVersion"))
         name = name + "_" + scalaVersion
-      for (sbtVersion <- attr("sbtVersion"))
+      for (sbtVersion <- module.attributes.get("sbtVersion"))
         name = name + "_" + sbtVersion
       name
-    }
+    } else
+      module.name
 
 }
 
@@ -71,7 +63,7 @@ case class MavenRepository(
   ivyLike: Boolean = false,
   changing: Option[Boolean] = None,
   /** Hackish hack for sbt plugins mainly - what this does really sucks */
-  sbtAttrStub: Option[String] = None
+  sbtAttrStub: Boolean = false
 ) extends Repository {
 
   import Repository._

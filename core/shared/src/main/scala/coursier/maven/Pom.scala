@@ -382,6 +382,8 @@ object Pom {
     "branch"
   )
 
+  val extraAttributeDropPrefix = "e:"
+
   def extraAttribute(s: String): String \/ (Module, String) = {
     // vaguely does the same as:
     // https://github.com/apache/ant-ivy/blob/2.2.0/src/java/org/apache/ivy/core/module/id/ModuleRevisionId.java#L291
@@ -410,7 +412,7 @@ object Pom {
       parts <- partsOrError
       attrs = parts.grouped(2).collect {
         case Seq(k, v) if v != "NULL" =>
-          k -> v
+          k.stripPrefix(extraAttributeDropPrefix) -> v
       }.toMap
       org <- attrFrom(attrs, extraAttributeOrg)
       name <- attrFrom(attrs, extraAttributeName)

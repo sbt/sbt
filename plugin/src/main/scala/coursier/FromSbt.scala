@@ -119,7 +119,7 @@ object FromSbt {
       case sbt.MavenRepository(_, root) =>
         if (root.startsWith("http://") || root.startsWith("https://")) {
           val root0 = if (root.endsWith("/")) root else root + "/"
-          Some(MavenRepository(root0, sbtAttrStub = Some("e")))
+          Some(MavenRepository(root0, sbtAttrStub = true))
         } else {
           Console.err.println(s"Warning: unrecognized Maven repository protocol in $root, ignoring it")
           None

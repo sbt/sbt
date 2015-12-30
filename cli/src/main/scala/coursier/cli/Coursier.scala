@@ -31,8 +31,7 @@ case class CommonOptions(
   @HelpMessage("Do not add default repositories (~/.ivy2/local, and Central)")
     noDefault: Boolean = false,
   @HelpMessage("Modify names in Maven repository paths for SBT plugins")
-  @ValueDescription("Attribute prefix (typically \"e\")")
-    sbtPluginHack: String = "",
+    sbtPluginHack: Boolean = false,
   @HelpMessage("Force module version")
   @ValueDescription("organization:name:forcedVersion")
   @ExtraName("V")

@@ -7,7 +7,7 @@ case class MavenSource(
   ivyLike: Boolean,
   changing: Option[Boolean] = None,
   /** See doc on MavenRepository */
-  sbtAttrStub: Option[String] = None
+  sbtAttrStub: Boolean
 ) extends Artifact.Source {
 
   import Repository._
