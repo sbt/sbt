@@ -84,9 +84,23 @@ class ClasspathFilter(parent: ClassLoader, classpath: Set[File], exclude: Boolea
 
 
   override def loadClass(className: String, resolve: Boolean): Class[_] = {
-    val c = super.loadClass(className, resolve)
-    if (fromClasspath(c)) c
-    else throw new ClassNotFoundException(className)
+    val c =
+      try super.loadClass(className, resolve)
+      catch {
+        case e: LinkageError =>
+          // Happens when trying to derive a  shapeless.Generic
+          // from an Ammonite session launched like
+          //   ./coursier launch com.lihaoyi:ammonite-repl_2.11.7:0.5.2
+          // For  className == "shapeless.GenericMacros",
+          // the  super.loadClass  above - which would be filtered out below anyway,
+          // raises a  NoClassDefFoundError.
+          null
+      }
+
+    if (c != null && fromClasspath(c))
+      c
+    else
+      throw new ClassNotFoundException(className)
   }
 
   override def getResource(name: String): URL = {
