@@ -1,7 +1,7 @@
 import sbtrelease.ReleasePlugin.ReleaseKeys.{ publishArtifactsAction, versionBump }
 import sbtrelease.Version.Bump
 
-lazy val publishingSettings = Seq(
+lazy val releaseSettings = sbtrelease.ReleasePlugin.releaseSettings ++ Seq(
   publishMavenStyle := true,
   licenses := Seq("Apache 2.0" -> url("http://opensource.org/licenses/Apache-2.0")),
   homepage := Some(url("https://github.com/alexarchambault/coursier")),
@@ -18,10 +18,7 @@ lazy val publishingSettings = Seq(
         <url>https://github.com/alexarchambault</url>
       </developer>
     </developers>
-  }
-) ++ releaseSettings
-
-lazy val releaseSettings = sbtrelease.ReleasePlugin.releaseSettings ++ Seq(
+  },
   publishTo := {
     val nexus = "https://oss.sonatype.org/"
     if (isSnapshot.value)
@@ -47,6 +44,27 @@ lazy val noPublishSettings = Seq(
   publishArtifact := false
 )
 
+lazy val noPublish210Settings = Seq(
+  publish := {
+    if (scalaVersion.value startsWith "2.10.")
+      ()
+    else
+      publish.value
+  },
+  publishLocal := {
+    if (scalaVersion.value startsWith "2.10.")
+      ()
+    else
+      publishLocal.value
+  },
+  publishArtifact := {
+    if (scalaVersion.value startsWith "2.10.")
+      false
+    else
+      publishArtifact.value
+  }
+)
+
 lazy val baseCommonSettings = Seq(
   organization := "com.github.alexarchambault",
   resolvers ++= Seq(
@@ -61,7 +79,7 @@ lazy val baseCommonSettings = Seq(
   javacOptions in Keys.doc := Seq()
 )
 
-lazy val commonSettings = baseCommonSettings ++ Seq(
+lazy val commonSettings = baseCommonSettings ++ releaseSettings ++ Seq(
   scalaVersion := "2.11.7",
   libraryDependencies ++= {
     if (scalaVersion.value startsWith "2.10.")
@@ -73,7 +91,6 @@ lazy val commonSettings = baseCommonSettings ++ Seq(
 
 lazy val core = crossProject
   .settings(commonSettings: _*)
-  .settings(publishingSettings: _*)
   .settings(
     name := "coursier"
   )
@@ -132,7 +149,6 @@ lazy val testsJs = tests.js.dependsOn(`fetch-js` % "test")
 lazy val cache = project
   .dependsOn(coreJvm)
   .settings(commonSettings)
-  .settings(publishingSettings)
   .settings(
     name := "coursier-cache",
     libraryDependencies ++= Seq(
@@ -143,7 +159,7 @@ lazy val cache = project
 
 lazy val bootstrap = project
   .settings(baseCommonSettings)
-  .settings(publishingSettings)
+  .settings(noPublishSettings)
   .settings(
     name := "coursier-bootstrap",
     artifactName := {
@@ -161,13 +177,17 @@ lazy val bootstrap = project
 lazy val cli = project
   .dependsOn(coreJvm, cache)
   .settings(commonSettings)
-  .settings(publishingSettings)
+  .settings(noPublish210Settings)
   .settings(packAutoSettings)
   .settings(
     name := "coursier-cli",
+    libraryDependencies ++= {
+      if (scalaVersion.value startsWith "2.10.")
+        Seq()
+      else
+        Seq("com.github.alexarchambault" %% "case-app" % "1.0.0-M1")
+    },
     libraryDependencies ++= Seq(
-      // beware - available only in 2.11
-      "com.github.alexarchambault" %% "case-app" % "1.0.0-M1",
       "ch.qos.logback" % "logback-classic" % "1.1.3"
     ),
     resourceGenerators in Compile += packageBin.in(bootstrap).in(Compile).map { jar =>
