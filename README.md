@@ -14,7 +14,7 @@ rewritten from scratch in Scala. It aims at being fast and easy to embed
 in other contexts. Its very core (`core` module) aims at being
 extremely pure, and should be approached thinking algebraically.
 
-The `files` module handles caching of the metadata and artifacts themselves,
+The `cache` module handles caching of the metadata and artifacts themselves,
 and is less so pure than the `core` module, in the sense that it happily
 does IO as a side-effect (although it naturally favors immutability for all
 that's kept in memory).
