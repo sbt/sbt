@@ -36,18 +36,10 @@ object CoursierPlugin extends AutoPlugin {
   ) ++ sys.props
 
   private def createLogger() = Some {
-    if (sys.env.get("COURSIER_NO_TERM").nonEmpty)
-      new coursier.Files.Logger {
-        override def downloadingArtifact(url: String, file: File): Unit = {
-          println(s"$url\n -> $file")
-        }
-        override def downloadedArtifact(url: String, success: Boolean): Unit = {
-          println(s"$url: ${if (success) "Success" else "Failed"}")
-        }
-        def init() = {}
-      }
-    else
-      new TermDisplay(new OutputStreamWriter(System.err))
+    new TermDisplay(
+      new OutputStreamWriter(System.err),
+      fallbackMode = sys.env.get("COURSIER_NO_TERM").nonEmpty
+    )
   }
 
 
