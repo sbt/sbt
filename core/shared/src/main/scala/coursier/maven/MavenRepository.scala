@@ -246,7 +246,11 @@ case class MavenRepository(
             proj <- Pom.project(xml)
           } yield proj.copy(
             configurations = defaultConfigurations,
-            publications = ???
+            publications = Seq(
+              "compile" -> Publication(module.name, "jar", "jar", ""),
+              "docs" -> Publication(module.name, "doc", "jar", "javadoc"),
+              "sources" -> Publication(module.name, "src", "jar", "sources")
+            )
           )): (String \/ Project)
         }
       }
