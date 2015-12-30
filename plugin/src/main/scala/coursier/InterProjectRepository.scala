@@ -22,10 +22,6 @@ case class InterProjectSource(artifacts: Map[(Module, String), Map[String, Seq[A
 
 case class InterProjectRepository(projects: Seq[(Project, Seq[(String, Seq[Artifact])])]) extends Repository {
 
-  Console.err.println("InterProjectRepository")
-  for ((p, _) <- projects)
-    Console.err.println(s"  ${p.module}:${p.version}")
-
   private val map = projects
     .map { case (proj, a) => proj.moduleVersion -> proj }
     .toMap

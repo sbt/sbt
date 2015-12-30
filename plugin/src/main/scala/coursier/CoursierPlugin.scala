@@ -70,6 +70,12 @@ object CoursierPlugin extends AutoPlugin {
         forceVersions = projects.map { case (proj, _) => proj.moduleVersion }.toMap
       )
 
+      if (verbosity >= 1) {
+        println("InterProjectRepository")
+        for ((p, _) <- projects)
+          println(s"  ${p.module}:${p.version}")
+      }
+
       val interProjectRepo = InterProjectRepository(projects)
       val repositories = interProjectRepo +: resolvers.flatMap(FromSbt.repository(_, ivyProperties))
 
