@@ -58,7 +58,8 @@ lazy val baseCommonSettings = Seq(
   javacOptions ++= Seq(
     "-source", "1.7",
     "-target", "1.7"
-  )
+  ),
+  javacOptions in Keys.doc := Seq()
 )
 
 lazy val commonSettings = baseCommonSettings ++ Seq(
@@ -155,8 +156,7 @@ lazy val bootstrap = project
           artifactName0(sv, m, artifact)
     },
     crossPaths := false,
-    autoScalaLibrary := false,
-    javacOptions in doc := Seq()
+    autoScalaLibrary := false
   )
 
 lazy val cli = project
