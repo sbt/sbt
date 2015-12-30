@@ -38,29 +38,6 @@ object Repository {
           )
             .withDefaultChecksums
       ))
-    def withJavadocSources: Artifact = {
-      val base = underlying.url.stripSuffix(".jar")
-      underlying.copy(extra = underlying.extra ++ Seq(
-        "sources" -> Artifact(
-          base + "-sources.jar",
-          Map.empty,
-          Map.empty,
-          Attributes("jar", "src"),  // Are these the right attributes?
-          changing = underlying.changing
-        )
-          .withDefaultChecksums
-          .withDefaultSignature,
-        "javadoc" -> Artifact(
-          base + "-javadoc.jar",
-          Map.empty,
-          Map.empty,
-          Attributes("jar", "javadoc"), // Same comment as above
-          changing = underlying.changing
-        )
-          .withDefaultChecksums
-          .withDefaultSignature
-      ))
-    }
   }
 }
 
