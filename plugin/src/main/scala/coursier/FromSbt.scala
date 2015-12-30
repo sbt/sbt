@@ -26,7 +26,7 @@ object FromSbt {
       for {
         from <- froms.split(',')
         to <- tos.split(',')
-      } yield (from, to)
+      } yield (from.trim, to.trim)
     }
 
   def attributes(attr: Map[String, String]): Map[String, String] =
