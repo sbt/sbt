@@ -37,6 +37,9 @@ package object coursier {
   type Project = core.Project
   val Project = core.Project
 
+  type Info = core.Info
+  val Info = core.Info
+
   type Profile = core.Profile
   val Profile = core.Profile
 

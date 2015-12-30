@@ -1,5 +1,7 @@
 package coursier.util
 
+import coursier.core.Versions
+
 import scalaz.{\/-, -\/, \/, Scalaz}
 
 object Xml {
@@ -54,5 +56,18 @@ object Xml {
       .flatMap(_.children.collectFirst{case Text(t) => t})
       .toRightDisjunction(s"$description not found")
   }
+
+  def parseDateTime(s: String): Option[Versions.DateTime] =
+    if (s.length == 14 && s.forall(_.isDigit))
+      Some(Versions.DateTime(
+        s.substring(0, 4).toInt,
+        s.substring(4, 6).toInt,
+        s.substring(6, 8).toInt,
+        s.substring(8, 10).toInt,
+        s.substring(10, 12).toInt,
+        s.substring(12, 14).toInt
+      ))
+    else
+      None
 
 }

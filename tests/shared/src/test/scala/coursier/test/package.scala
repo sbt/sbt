@@ -56,7 +56,8 @@ package object test {
         profiles,
         versions,
         snapshotVersioning,
-        publications
+        publications,
+        Info.empty
       )
   }
 }

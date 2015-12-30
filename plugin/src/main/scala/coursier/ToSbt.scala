@@ -1,5 +1,7 @@
 package coursier
 
+import java.util.GregorianCalendar
+
 import sbt._
 
 object ToSbt {
@@ -24,33 +26,61 @@ object ToSbt {
       Map.empty
     )
 
-  def moduleReport(dependency: Dependency, artifacts: Seq[(Artifact, Option[File])]): sbt.ModuleReport =
+  def moduleReport(
+    dependency: Dependency,
+    dependees: Seq[(Dependency, Project)],
+    project: Project,
+    artifacts: Seq[(Artifact, Option[File])]
+  ): sbt.ModuleReport = {
+
+    val sbtArtifacts = artifacts.collect {
+      case (artifact, Some(file)) =>
+        (ToSbt.artifact(dependency.module, artifact), file)
+    }
+    val sbtMissingArtifacts = artifacts.collect {
+      case (artifact, None) =>
+        ToSbt.artifact(dependency.module, artifact)
+    }
+
+    val publicationDate = project.info.publication.map { dt =>
+      new GregorianCalendar(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second).getTime
+    }
+
+    val callers = dependees.map {
+      case (dependee, dependeeProj) =>
+        new Caller(
+          ToSbt.moduleId(dependee),
+          dependeeProj.configurations.keys.toVector,
+          dependee.module.attributes ++ dependeeProj.properties,
+          // FIXME Set better values here
+          isForceDependency = false,
+          isChangingDependency = false,
+          isTransitiveDependency = false,
+          isDirectlyForceDependency = false
+        )
+    }
+
     new sbt.ModuleReport(
-      ToSbt.moduleId(dependency),
-      artifacts.collect {
-        case (artifact, Some(file)) =>
-          (ToSbt.artifact(dependency.module, artifact), file)
-      },
-      artifacts.collect {
-        case (artifact, None) =>
-          ToSbt.artifact(dependency.module, artifact)
-      },
-      None,
-      None,
-      None,
-      None,
-      false,
-      None,
-      None,
-      None,
-      None,
-      Map.empty,
-      None,
-      None,
-      Nil,
-      Nil,
-      Nil
+      module = ToSbt.moduleId(dependency),
+      artifacts = sbtArtifacts,
+      missingArtifacts = sbtMissingArtifacts,
+      status = None,
+      publicationDate = publicationDate,
+      resolver = None,
+      artifactResolver = None,
+      evicted = false,
+      evictedData = None,
+      evictedReason = None,
+      problem = None,
+      homepage = Some(project.info.homePage).filter(_.nonEmpty),
+      extraAttributes = dependency.module.attributes ++ project.properties,
+      isDefault = None,
+      branch = None,
+      configurations = project.configurations.keys.toVector,
+      licenses = project.info.licenses,
+      callers = callers
     )
+  }
 
   private def grouped[K, V](map: Seq[(K, V)]): Map[K, Seq[V]] =
     map.groupBy { case (k, _) => k }.map {
@@ -71,9 +101,47 @@ object ToSbt {
 
     val groupedDepArtifacts = grouped(depArtifacts)
 
+    val versions = res.dependencies.toVector.map { dep =>
+      dep.module -> dep.version
+    }.toMap
+
+    def clean(dep: Dependency): Dependency =
+      dep.copy(configuration = "", exclusions = Set.empty, optional = false)
+
+    val reverseDependencies = res.reverseDependencies
+      .toVector
+      .map { case (k, v) =>
+        clean(k) -> v.map(clean)
+      }
+      .groupBy { case (k, v) => k }
+      .mapValues { v =>
+        v.flatMap {
+          case (_, l) => l
+        }
+      }
+      .toVector
+      .toMap
+
     groupedDepArtifacts.map {
       case (dep, artifacts) =>
-        ToSbt.moduleReport(dep, artifacts.map(a => a -> artifactFileOpt(a)))
+        val (_, proj) = res.projectCache(dep.moduleVersion)
+
+        // FIXME Likely flaky...
+        val dependees = reverseDependencies
+          .getOrElse(clean(dep.copy(version = "")), Vector.empty)
+          .map { dependee0 =>
+            val version = versions(dependee0.module)
+            val dependee = dependee0.copy(version = version)
+            val (_, dependeeProj) = res.projectCache(dependee.moduleVersion)
+            (dependee, dependeeProj)
+          }
+
+        ToSbt.moduleReport(
+          dep,
+          dependees,
+          proj,
+          artifacts.map(a => a -> artifactFileOpt(a))
+        )
     }
   }
 

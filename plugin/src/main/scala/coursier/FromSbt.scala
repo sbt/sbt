@@ -101,7 +101,8 @@ object FromSbt {
       Nil,
       None,
       None,
-      Nil
+      Nil,
+      Info.empty
     )
   }
 

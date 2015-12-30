@@ -76,13 +76,35 @@ case class Project(
 
   // Ivy-specific
   // First String is configuration
-  publications: Seq[(String, Publication)]
+  publications: Seq[(String, Publication)],
+
+  // Extra infos, not used during resolution
+  info: Info
 ) {
   def moduleVersion = (module, version)
 
   /** All configurations that each configuration extends, including the ones it extends transitively */
   lazy val allConfigurations: Map[String, Set[String]] =
     Orders.allConfigurations(configurations)
+}
+
+/** Extra project info, not used during resolution */
+case class Info(
+  description: String,
+  homePage: String,
+  licenses: Seq[(String, Option[String])],
+  developers: Seq[Info.Developer],
+  publication: Option[Versions.DateTime]
+)
+
+object Info {
+  case class Developer(
+    id: String,
+    name: String,
+    url: String
+  )
+
+  val empty = Info("", "", Nil, Nil, None)
 }
 
 // Maven-specific

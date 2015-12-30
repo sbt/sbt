@@ -177,39 +177,73 @@ object Pom {
           (mod.copy(attributes = Map.empty), ver) -> mod.attributes
       }.toMap
 
-    } yield Project(
-      projModule.copy(organization = groupId),
-      version,
-      deps.map {
-        case (config, dep0) =>
-          val dep = extraAttrsMap.get(dep0.moduleVersion).fold(dep0)(attrs =>
-            dep0.copy(module = dep0.module.copy(attributes = attrs))
-          )
-          config -> dep
-      },
-      Map.empty,
-      parentModuleOpt.map((_, parentVersionOpt.getOrElse(""))),
-      depMgmts,
-      properties.toMap,
-      profiles,
-      None,
-      None,
-      Nil
-    )
-  }
+    } yield {
 
-  def parseDateTime(s: String): Option[Versions.DateTime] =
-    if (s.length == 14 && s.forall(_.isDigit))
-      Some(Versions.DateTime(
-        s.substring(0, 4).toInt,
-        s.substring(4, 6).toInt,
-        s.substring(6, 8).toInt,
-        s.substring(8, 10).toInt,
-        s.substring(10, 12).toInt,
-        s.substring(12, 14).toInt
-      ))
-    else
-      None
+      val description = pom.children
+        .find(_.label == "description")
+        .map(_.textContent)
+        .getOrElse("")
+
+      val homePage = pom.children
+        .find(_.label == "url")
+        .map(_.textContent)
+        .getOrElse("")
+
+      val licenses = pom.children
+        .find(_.label == "licenses")
+        .toSeq
+        .flatMap(_.children)
+        .filter(_.label == "license")
+        .flatMap { n =>
+          n.attribute("name").toOption.map { name =>
+            (name, n.attribute("url").toOption)
+          }.toSeq
+        }
+
+      val developers = pom.children
+        .find(_.label == "developers")
+        .toSeq
+        .flatMap(_.children)
+        .filter(_.label == "developer")
+        .map { n =>
+          for {
+            id <- n.attribute("id")
+            name <- n.attribute("name")
+            url <- n.attribute("url")
+          } yield Info.Developer(id, name, url)
+        }
+        .collect {
+          case \/-(d) => d
+        }
+
+      Project(
+        projModule.copy(organization = groupId),
+        version,
+        deps.map {
+          case (config, dep0) =>
+            val dep = extraAttrsMap.get(dep0.moduleVersion).fold(dep0)(attrs =>
+              dep0.copy(module = dep0.module.copy(attributes = attrs))
+            )
+            config -> dep
+        },
+        Map.empty,
+        parentModuleOpt.map((_, parentVersionOpt.getOrElse(""))),
+        depMgmts,
+        properties.toMap,
+        profiles,
+        None,
+        None,
+        Nil,
+        Info(
+          description,
+          homePage,
+          licenses,
+          developers,
+          None
+        )
+      )
+    }
+  }
 
   def versions(node: Node): String \/ Versions = {
     import Scalaz._

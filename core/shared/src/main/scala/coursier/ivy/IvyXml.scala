@@ -106,7 +106,25 @@ object IvyXml {
 
       publicationsOpt = publicationsNodeOpt.map(publications)
 
-    } yield
+    } yield {
+
+      val description = infoNode.children
+        .find(_.label == "description")
+        .map(_.textContent.trim)
+        .getOrElse("")
+
+      val licenses = infoNode.children
+        .filter(_.label == "license")
+        .flatMap { n =>
+          n.attribute("name").toOption.map { name =>
+            (name, n.attribute("url").toOption)
+          }.toSeq
+        }
+
+      val publicationDate = infoNode.attribute("publication")
+        .toOption
+        .flatMap(parseDateTime)
+
       Project(
         module,
         version,
@@ -128,7 +146,15 @@ object IvyXml {
           configurations0.flatMap { case (conf, _) =>
             (publicationsOpt.flatMap(_.get(conf)).getOrElse(Nil) ++ inAllConfs).map(conf -> _)
           }
-        }
+        },
+        Info(
+          description,
+          "",
+          licenses,
+          Nil,
+          publicationDate
+        )
       )
+    }
 
 }
