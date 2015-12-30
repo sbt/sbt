@@ -15,7 +15,7 @@ case class CommonOptions(
   @HelpMessage("Download mode (default: missing, that is fetch things missing from cache)")
   @ValueDescription("offline|update-changing|update|missing|force")
   @ExtraName("m")
-    mode: String,
+    mode: String = "missing",
   @HelpMessage("Quiet output")
   @ExtraName("q")
     quiet: Boolean,
