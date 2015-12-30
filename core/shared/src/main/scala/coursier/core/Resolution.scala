@@ -324,7 +324,14 @@ object Resolution {
     // come from parents or dependency management. This may not be
     // the right thing to do.
 
-    val properties0 = project.properties ++ Seq(
+    // FIXME The extra properties should only be added for Maven projects, not Ivy ones
+    val properties0 = Seq(
+      // some artifacts seem to require these (e.g. org.jmock:jmock-legacy:2.5.1)
+      // although I can find no mention of them in any manual / spec
+      "pom.groupId"         -> project.module.organization,
+      "pom.artifactId"      -> project.module.name,
+      "pom.version"         -> project.version
+    ) ++ project.properties ++ Seq(
       "project.groupId"     -> project.module.organization,
       "project.artifactId"  -> project.module.name,
       "project.version"     -> project.version
