@@ -2,11 +2,12 @@ package coursier
 package cli
 
 import java.io.{ OutputStreamWriter, File }
+import java.util.concurrent.Executors
 
 import coursier.ivy.IvyRepository
 
 import scalaz.{ \/-, -\/ }
-import scalaz.concurrent.Task
+import scalaz.concurrent.{ Task, Strategy }
 
 object Helper {
   def fileRepr(f: File) = f.toString
@@ -57,15 +58,13 @@ class Helper(
       sys.exit(255)
   }
 
-  val files =
-    Files(
-      Seq(
-        "http://" -> new File(new File(cacheOptions.cache), "http"),
-        "https://" -> new File(new File(cacheOptions.cache), "https")
-      ),
-      () => ???,
-      concurrentDownloadCount = parallel
+  val caches =
+    Seq(
+      "http://" -> new File(new File(cacheOptions.cache), "http"),
+      "https://" -> new File(new File(cacheOptions.cache), "https")
     )
+
+  val pool = Executors.newFixedThreadPool(parallel, Strategy.DefaultDaemonThreadFactory)
 
   val central = MavenRepository("https://repo1.maven.org/maven2/")
   val ivy2Local = MavenRepository(
@@ -218,7 +217,7 @@ class Helper(
   logger.foreach(_.init())
 
   val fetchs = cachePolicies.map(p =>
-    files.fetch(logger = logger)(cachePolicy = p)
+    Files.fetch(caches, p, logger = logger, pool = pool)
   )
   val fetchQuiet = coursier.Fetch(
     repositories,
@@ -345,8 +344,8 @@ class Helper(
         None
     logger.foreach(_.init())
     val tasks = artifacts.map(artifact =>
-      (files.file(artifact, logger = logger)(cachePolicy = cachePolicies.head) /: cachePolicies.tail)(
-        _ orElse files.file(artifact, logger = logger)(_)
+      (Files.file(artifact, caches, cachePolicies.head, logger = logger, pool = pool) /: cachePolicies.tail)(
+        _ orElse Files.file(artifact, caches, _, logger = logger, pool = pool)
       ).run.map(artifact.->)
     )
     def printTask = Task {

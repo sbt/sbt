@@ -11,33 +11,27 @@ import scalaz.concurrent.{ Task, Strategy }
 
 import java.io.{ Serializable => _, _ }
 
-case class Files(
-  cache: Seq[(String, File)],
-  tmp: () => File,
-  concurrentDownloadCount: Int = Files.defaultConcurrentDownloadCount
-) {
+object Files {
 
-  import Files.urlLocks
-
-  lazy val defaultPool =
-    Executors.newFixedThreadPool(concurrentDownloadCount, Strategy.DefaultDaemonThreadFactory)
-
-  def withLocal(artifact: Artifact): Artifact = {
+  def withLocal(artifact: Artifact, cache: Seq[(String, File)]): Artifact = {
     def local(url: String) =
       if (url.startsWith("file:///"))
         url.stripPrefix("file://")
       else if (url.startsWith("file:/"))
         url.stripPrefix("file:")
-      else
-        cache.find { case (base, _) => url.startsWith(base) } match {
-          case None =>
-            // FIXME Means we were handed an artifact from repositories other than the known ones
-            println(cache.mkString("\n"))
-            println(url)
-            ???
-          case Some((base, cacheDir)) =>
+      else {
+        val localPathOpt = cache.collectFirst {
+          case (base, cacheDir) if url.startsWith(base) =>
             cacheDir + "/" + url.stripPrefix(base)
         }
+
+        localPathOpt.getOrElse {
+          // FIXME Means we were handed an artifact from repositories other than the known ones
+          println(cache.mkString("\n"))
+          println(url)
+          ???
+        }
+      }
 
     if (artifact.extra.contains("local"))
       artifact
@@ -56,13 +50,16 @@ case class Files(
 
   def download(
     artifact: Artifact,
+    cache: Seq[(String, File)],
     checksums: Set[String],
-    logger: Option[Files.Logger] = None
-  )(implicit
     cachePolicy: CachePolicy,
-    pool: ExecutorService = defaultPool
+    pool: ExecutorService,
+    logger: Option[Files.Logger] = None
   ): Task[Seq[((File, String), FileError \/ Unit)]] = {
-    val artifact0 = withLocal(artifact)
+
+    implicit val pool0 = pool
+
+    val artifact0 = withLocal(artifact, cache)
       .extra
       .getOrElse("local", artifact)
 
@@ -271,11 +268,14 @@ case class Files(
 
   def validateChecksum(
     artifact: Artifact,
-    sumType: String
-  )(implicit
-    pool: ExecutorService = defaultPool
+    sumType: String,
+    cache: Seq[(String, File)],
+    pool: ExecutorService
   ): EitherT[Task, FileError, Unit] = {
-    val artifact0 = withLocal(artifact)
+
+    implicit val pool0 = pool
+
+    val artifact0 = withLocal(artifact, cache)
       .extra
       .getOrElse("local", artifact)
 
@@ -330,18 +330,24 @@ case class Files(
 
   def file(
     artifact: Artifact,
-    checksums: Seq[Option[String]] = Seq(Some("SHA-1")),
-    logger: Option[Files.Logger] = None
-  )(implicit
+    cache: Seq[(String, File)],
     cachePolicy: CachePolicy,
-    pool: ExecutorService = defaultPool
+    checksums: Seq[Option[String]] = Seq(Some("SHA-1")),
+    logger: Option[Files.Logger] = None,
+    pool: ExecutorService = Files.defaultPool
   ): EitherT[Task, FileError, File] = {
+
+    implicit val pool0 = pool
+
     val checksums0 = if (checksums.isEmpty) Seq(None) else checksums
 
     val res = EitherT {
       download(
         artifact,
+        cache,
         checksums = checksums0.collect { case Some(c) => c }.toSet,
+        cachePolicy,
+        pool,
         logger = logger
       ).map { results =>
         val checksum = checksums0.find {
@@ -370,27 +376,30 @@ case class Files(
     res.flatMap {
       case (f, None) => EitherT(Task.now[FileError \/ File](\/-(f)))
       case (f, Some(c)) =>
-        validateChecksum(artifact, c).map(_ => f)
+        validateChecksum(artifact, c, cache, pool).map(_ => f)
     }
   }
 
   def fetch(
-    checksums: Seq[Option[String]] = Seq(Some("SHA-1")),
-    logger: Option[Files.Logger] = None
-  )(implicit
+    cache: Seq[(String, File)],
     cachePolicy: CachePolicy,
-    pool: ExecutorService = defaultPool
+    checksums: Seq[Option[String]] = Seq(Some("SHA-1")),
+    logger: Option[Files.Logger] = None,
+    pool: ExecutorService = Files.defaultPool
   ): Fetch.Content[Task] = {
     artifact =>
-      file(artifact, checksums = checksums, logger = logger)(cachePolicy).leftMap(_.message).map { f =>
+      file(
+        artifact,
+        cache,
+        cachePolicy,
+        checksums = checksums,
+        logger = logger,
+        pool = pool
+      ).leftMap(_.message).map { f =>
         // FIXME Catch error here?
         scala.io.Source.fromFile(f)("UTF-8").mkString
       }
   }
-
-}
-
-object Files {
 
   lazy val ivy2Local = MavenRepository(
     new File(sys.props("user.home") + "/.ivy2/local/").toURI.toString,
@@ -398,6 +407,10 @@ object Files {
   )
 
   val defaultConcurrentDownloadCount = 6
+
+  lazy val defaultPool =
+    Executors.newFixedThreadPool(defaultConcurrentDownloadCount, Strategy.DefaultDaemonThreadFactory)
+
 
   private val urlLocks = new ConcurrentHashMap[String, Object]
 

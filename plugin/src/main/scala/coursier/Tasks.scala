@@ -1,6 +1,7 @@
 package coursier
 
 import java.io.{OutputStreamWriter, File}
+import java.util.concurrent.Executors
 
 import coursier.cli.TermDisplay
 import coursier.ivy.IvyRepository
@@ -10,7 +11,7 @@ import Keys._
 import sbt.Keys._
 
 import scalaz.{\/-, -\/}
-import scalaz.concurrent.Task
+import scalaz.concurrent.{ Task, Strategy }
 
 object Tasks {
 
@@ -150,18 +151,19 @@ object Tasks {
       val interProjectRepo = InterProjectRepository(projects)
       val repositories = Seq(globalPluginsRepo, interProjectRepo) ++ resolvers.flatMap(FromSbt.repository(_, ivyProperties))
 
-      val files = Files(
-        Seq("http://" -> new File(cacheDir, "http"), "https://" -> new File(cacheDir, "https")),
-        () => ???,
-        concurrentDownloadCount = parallelDownloads
+      val caches = Seq(
+        "http://" -> new File(cacheDir, "http"),
+        "https://" -> new File(cacheDir, "https")
       )
+
+      val pool = Executors.newFixedThreadPool(parallelDownloads, Strategy.DefaultDaemonThreadFactory)
 
       val logger = createLogger()
       logger.foreach(_.init())
       val fetch = coursier.Fetch(
         repositories,
-        files.fetch(checksums = checksums, logger = logger)(cachePolicy = CachePolicy.LocalOnly),
-        files.fetch(checksums = checksums, logger = logger)(cachePolicy = cachePolicy)
+        Files.fetch(caches, CachePolicy.LocalOnly, checksums = checksums, logger = logger, pool = pool),
+        Files.fetch(caches, cachePolicy, checksums = checksums, logger = logger, pool = pool)
       )
 
       def depsRepr = currentProject.dependencies.map { case (config, dep) =>
@@ -225,6 +227,7 @@ object Tasks {
         for ((dep, errs) <- errors) {
           println(s"  ${dep.module}:${dep.version}:\n${errs.map("    " + _.replace("\n", "    \n")).mkString("\n")}")
         }
+        throw new Exception(s"Encountered ${errors.length} error(s)")
       }
 
       val classifiers =
@@ -245,7 +248,7 @@ object Tasks {
         }
 
       val artifactFileOrErrorTasks = allArtifacts.toVector.map { a =>
-        files.file(a, checksums = checksums, logger = logger)(cachePolicy = cachePolicy).run.map((a, _))
+        Files.file(a, caches, cachePolicy, checksums = checksums, logger = logger, pool = pool).run.map((a, _))
       }
 
       if (verbosity >= 0)
