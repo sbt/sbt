@@ -15,6 +15,7 @@ object CoursierPlugin extends AutoPlugin {
     val coursierParallelDownloads = Keys.coursierParallelDownloads
     val coursierMaxIterations = Keys.coursierMaxIterations
     val coursierChecksums = Keys.coursierChecksums
+    val coursierArtifactsChecksums = Keys.coursierArtifactsChecksums
     val coursierCachePolicy = Keys.coursierCachePolicy
     val coursierVerbosity = Keys.coursierVerbosity
     val coursierResolvers = Keys.coursierResolvers
@@ -32,6 +33,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierParallelDownloads := 6,
     coursierMaxIterations := 50,
     coursierChecksums := Seq(Some("SHA-1"), None),
+    coursierArtifactsChecksums := Seq(None),
     coursierCachePolicy := CachePolicy.FetchMissing,
     coursierVerbosity := 1,
     coursierResolvers <<= Tasks.coursierResolversTask,

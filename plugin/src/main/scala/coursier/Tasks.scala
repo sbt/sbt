@@ -119,6 +119,7 @@ object Tasks {
 
       val parallelDownloads = coursierParallelDownloads.value
       val checksums = coursierChecksums.value
+      val artifactsChecksums = coursierArtifactsChecksums.value
       val maxIterations = coursierMaxIterations.value
       val cachePolicy = coursierCachePolicy.value
       val cacheDir = coursierCache.value
@@ -252,7 +253,7 @@ object Tasks {
         }
 
       val artifactFileOrErrorTasks = allArtifacts.toVector.map { a =>
-        Cache.file(a, caches, cachePolicy, checksums = checksums, logger = logger, pool = pool).run.map((a, _))
+        Cache.file(a, caches, cachePolicy, checksums = artifactsChecksums, logger = logger, pool = pool).run.map((a, _))
       }
 
       if (verbosity >= 0)

@@ -7,6 +7,7 @@ object Keys {
   val coursierParallelDownloads = SettingKey[Int]("coursier-parallel-downloads", "")
   val coursierMaxIterations = SettingKey[Int]("coursier-max-iterations", "")
   val coursierChecksums = SettingKey[Seq[Option[String]]]("coursier-checksums", "")
+  val coursierArtifactsChecksums = SettingKey[Seq[Option[String]]]("coursier-artifacts-checksums", "")
   val coursierCachePolicy = SettingKey[CachePolicy]("coursier-cache-policy", "")
 
   val coursierVerbosity = SettingKey[Int]("coursier-verbosity", "")
