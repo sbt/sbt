@@ -44,7 +44,7 @@ object FromSbt {
     val fullName = sbtModuleIdName(module, scalaVersion, scalaBinaryVersion)
 
     val dep = Dependency(
-      Module(module.organization, fullName, FromSbt.attributes(module.extraAttributes)),
+      Module(module.organization, fullName, FromSbt.attributes(module.extraDependencyAttributes)),
       module.revision,
       exclusions = module.exclusions.map { rule =>
         // FIXME Other `rule` fields are ignored here
@@ -87,7 +87,7 @@ object FromSbt {
       Module(
         projectID.organization,
         sbtModuleIdName(projectID, scalaVersion, scalaBinaryVersion),
-        FromSbt.attributes(projectID.extraAttributes)
+        FromSbt.attributes(projectID.extraDependencyAttributes)
       ),
       projectID.revision,
       deps,
