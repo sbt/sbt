@@ -17,6 +17,33 @@ object CoursierPlugin extends AutoPlugin {
 
   private def errPrintln(s: String): Unit = scala.Console.err.println(s)
 
+  // org.scala-sbt:global-plugins;sbtVersion=0.13;scalaVersion=2.10:0.0
+  private val globalPluginsProject = Project(
+    Module("org.scala-sbt", "global-plugins", Map("sbtVersion" -> "0.13", "scalaVersion" -> "2.10")),
+    "0.0",
+    Nil,
+    Map.empty,
+    None,
+    Nil,
+    Map.empty,
+    Nil,
+    None,
+    None,
+    Nil
+  )
+
+  private val globalPluginsArtifacts = Seq(
+    "" -> Seq(
+      Artifact(
+        new File(sys.props("user.home") + "/.sbt/0.13/plugins/target") .toURI.toString,
+        Map.empty,
+        Map.empty,
+        Attributes(),
+        changing = true
+      )
+    )
+  )
+
   object autoImport {
     val coursierParallelDownloads = Keys.coursierParallelDownloads
     val coursierMaxIterations = Keys.coursierMaxIterations
@@ -64,19 +91,21 @@ object CoursierPlugin extends AutoPlugin {
       val verbosity = coursierVerbosity.value
 
 
+      val projects0 = projects :+ (globalPluginsProject -> globalPluginsArtifacts)
+
       val startRes = Resolution(
         currentProject.dependencies.map { case (_, dep) => dep }.toSet,
         filter = Some(dep => !dep.optional),
-        forceVersions = projects.map { case (proj, _) => proj.moduleVersion }.toMap
+        forceVersions = projects0.map { case (proj, _) => proj.moduleVersion }.toMap
       )
 
       if (verbosity >= 1) {
         println("InterProjectRepository")
-        for ((p, _) <- projects)
+        for ((p, _) <- projects0)
           println(s"  ${p.module}:${p.version}")
       }
 
-      val interProjectRepo = InterProjectRepository(projects)
+      val interProjectRepo = InterProjectRepository(projects0)
       val repositories = interProjectRepo +: resolvers.flatMap(FromSbt.repository(_, ivyProperties))
 
       val files = Files(
@@ -272,7 +301,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierMaxIterations := 50,
     coursierChecksums := Seq(Some("SHA-1"), Some("MD5")),
     coursierCachePolicy := CachePolicy.FetchMissing,
-    coursierVerbosity := 0,
+    coursierVerbosity := 1,
     coursierResolvers <<= Tasks.coursierResolversTask,
     coursierCache := new File(sys.props("user.home") + "/.coursier/sbt"),
     update <<= updateTask(withClassifiers = false),
