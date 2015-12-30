@@ -82,7 +82,8 @@ case class IvyRepository(
   changing: Option[Boolean] = None,
   properties: Map[String, String] = Map.empty,
   withChecksums: Boolean = true,
-  withSignatures: Boolean = true
+  withSignatures: Boolean = true,
+  withArtifacts: Boolean = true
 ) extends Repository {
 
   import Repository._
@@ -165,59 +166,63 @@ case class IvyRepository(
     ) ++ module.attributes
 
 
-  val source: Artifact.Source = new Artifact.Source {
-    def artifacts(
-      dependency: Dependency,
-      project: Project,
-      overrideClassifiers: Option[Seq[String]]
-    ) = {
+  val source: Artifact.Source =
+    if (withArtifacts)
+      new Artifact.Source {
+        def artifacts(
+          dependency: Dependency,
+          project: Project,
+          overrideClassifiers: Option[Seq[String]]
+        ) = {
 
-      val retained =
-        overrideClassifiers match {
-          case None =>
-            project.publications.collect {
-              case (conf, p)
-                if conf == "*" ||
-                   conf == dependency.configuration ||
-                   project.allConfigurations.getOrElse(dependency.configuration, Set.empty).contains(conf) =>
-                p
+          val retained =
+            overrideClassifiers match {
+              case None =>
+                project.publications.collect {
+                  case (conf, p)
+                    if conf == "*" ||
+                       conf == dependency.configuration ||
+                       project.allConfigurations.getOrElse(dependency.configuration, Set.empty).contains(conf) =>
+                    p
+                }
+              case Some(classifiers) =>
+                val classifiersSet = classifiers.toSet
+                project.publications.collect {
+                  case (_, p) if classifiersSet(p.classifier) =>
+                    p
+                }
             }
-          case Some(classifiers) =>
-            val classifiersSet = classifiers.toSet
-            project.publications.collect {
-              case (_, p) if classifiersSet(p.classifier) =>
-                p
-            }
+
+          val retainedWithUrl = retained.flatMap { p =>
+            substitute(variables(
+              dependency.module,
+              dependency.version,
+              p.`type`,
+              p.name,
+              p.ext
+            )).toList.map(p -> _)
+          }
+
+          retainedWithUrl.map { case (p, url) =>
+            var artifact = Artifact(
+              url,
+              Map.empty,
+              Map.empty,
+              p.attributes,
+              changing = changing.getOrElse(project.version.contains("-SNAPSHOT")) // could be more reliable
+            )
+
+            if (withChecksums)
+              artifact = artifact.withDefaultChecksums
+            if (withSignatures)
+              artifact = artifact.withDefaultSignature
+
+            artifact
+          }
         }
-
-      val retainedWithUrl = retained.flatMap { p =>
-        substitute(variables(
-          dependency.module,
-          dependency.version,
-          p.`type`,
-          p.name,
-          p.ext
-        )).toList.map(p -> _)
       }
-
-      retainedWithUrl.map { case (p, url) =>
-        var artifact = Artifact(
-          url,
-          Map.empty,
-          Map.empty,
-          p.attributes,
-          changing = changing.getOrElse(project.version.contains("-SNAPSHOT")) // could be more reliable
-        )
-
-        if (withChecksums)
-          artifact = artifact.withDefaultChecksums
-        if (withSignatures)
-          artifact = artifact.withDefaultSignature
-
-        artifact
-      }
-    }
-  }
+    else
+      Artifact.Source.empty
 
 
   def find[F[_]](

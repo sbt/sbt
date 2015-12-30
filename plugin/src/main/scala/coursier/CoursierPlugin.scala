@@ -81,7 +81,8 @@ object CoursierPlugin extends AutoPlugin {
         new File(sys.props("user.home") + "/.sbt/0.13/plugins/target/resolution-cache/").toURI.toString +
         "[organization]/[module](/scala_[scalaVersion])(/sbt_[sbtVersion])/[revision]/resolved.xml.[ext]",
         withChecksums = false,
-        withSignatures = false
+        withSignatures = false,
+        withArtifacts = false
       )
 
       val interProjectRepo = InterProjectRepository(projects)

@@ -164,4 +164,14 @@ object Artifact {
       overrideClassifiers: Option[Seq[String]]
     ): Seq[Artifact]
   }
+
+  object Source {
+    val empty: Source = new Source {
+      def artifacts(
+        dependency: Dependency,
+        project: Project,
+        overrideClassifiers: Option[Seq[String]]
+      ): Seq[Artifact] = Nil
+    }
+  }
 }
