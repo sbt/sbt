@@ -30,7 +30,7 @@ case class InterProjectRepository(projects: Seq[(Project, Seq[(String, Seq[Artif
     projects.map { case (proj, artifactsByConfig) =>
       val artifacts = artifactsByConfig.toMap
       val allArtifacts = proj.allConfigurations.map { case (config, extends0) =>
-        config -> extends0.toSeq.flatMap(artifacts.getOrElse(_, Nil))
+        config -> (extends0 + config).toSeq.flatMap(artifacts.getOrElse(_, Nil))
       }
       proj.moduleVersion -> allArtifacts
     }.toMap
