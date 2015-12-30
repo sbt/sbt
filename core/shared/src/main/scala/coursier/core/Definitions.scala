@@ -34,13 +34,16 @@ case class Dependency(
   module: Module,
   version: String,
   configuration: String,
-  attributes: Attributes,
   exclusions: Set[(String, String)],
+
+  // Maven-specific
+  attributes: Attributes,
   optional: Boolean
 ) {
   def moduleVersion = (module, version)
 }
 
+// Maven-specific
 case class Attributes(
   `type`: String,
   classifier: String
@@ -49,20 +52,30 @@ case class Attributes(
 case class Project(
   module: Module,
   version: String,
+  // First String is configuration (scope for Maven)
   dependencies: Seq[(String, Dependency)],
+  // For Maven, this is the standard scopes as an Ivy configuration
+  configurations: Map[String, Seq[String]],
+
+  // Maven-specific
   parent: Option[(Module, String)],
   dependencyManagement: Seq[(String, Dependency)],
-  configurations: Map[String, Seq[String]],
   properties: Map[String, String],
   profiles: Seq[Profile],
   versions: Option[Versions],
-  snapshotVersioning: Option[SnapshotVersioning]
+  snapshotVersioning: Option[SnapshotVersioning],
+
+  // Ivy-specific
+  // First String is configuration
+  publications: Seq[(String, Publication)]
 ) {
   def moduleVersion = (module, version)
 }
 
+// Maven-specific
 case class Activation(properties: Seq[(String, Option[String])])
 
+// Maven-specific
 case class Profile(
   id: String,
   activeByDefault: Option[Boolean],
@@ -72,6 +85,7 @@ case class Profile(
   properties: Map[String, String]
 )
 
+// Maven-specific
 case class Versions(
   latest: String,
   release: String,
@@ -90,6 +104,7 @@ object Versions {
   )
 }
 
+// Maven-specific
 case class SnapshotVersion(
   classifier: String,
   extension: String,
@@ -97,6 +112,7 @@ case class SnapshotVersion(
   updated: Option[Versions.DateTime]
 )
 
+// Maven-specific
 case class SnapshotVersioning(
   module: Module,
   version: String,
@@ -107,6 +123,13 @@ case class SnapshotVersioning(
   localCopy: Option[Boolean],
   lastUpdated: Option[Versions.DateTime],
   snapshotVersions: Seq[SnapshotVersion]
+)
+
+// Ivy-specific
+case class Publication(
+  name: String,
+  `type`: String,
+  ext: String
 )
 
 case class Artifact(

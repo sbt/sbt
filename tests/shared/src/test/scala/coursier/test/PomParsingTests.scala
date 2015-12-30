@@ -194,7 +194,7 @@ object PomParsingTests extends TestSuite {
       val node = parsed.right.get
       assert(node.label == "properties")
 
-      val children = node.child.collect{case elem if elem.isElement => elem}
+      val children = node.children.collect{case elem if elem.isElement => elem}
       val props0 = children.toList.traverseU(Pom.property)
 
       assert(props0.isRight)

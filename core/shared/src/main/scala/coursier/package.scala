@@ -19,8 +19,8 @@ package object coursier {
         module,
         version,
         configuration,
-        attributes,
         exclusions,
+        attributes,
         optional
       )
   }

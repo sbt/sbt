@@ -286,7 +286,18 @@ object Resolution {
         helper(extraConfigs, acc ++ configs)
       }
 
-    helper(Set(config), Set.empty)
+    val config0 = Parse.withFallbackConfig(config) match {
+      case Some((main, fallback)) =>
+        if (configurations.contains(main))
+          main
+        else if (configurations.contains(fallback))
+          fallback
+        else
+          main
+      case None => config
+    }
+
+    helper(Set(config0), Set.empty)
   }
 
   /**
@@ -740,6 +751,16 @@ case class Resolution(
       artifact <- source
         .artifacts(dep, proj)
     } yield artifact
+
+  def artifactsByDep: Seq[(Dependency, Artifact)] =
+    for {
+      dep <- minDependencies.toSeq
+      (source, proj) <- projectCache
+        .get(dep.moduleVersion)
+        .toSeq
+      artifact <- source
+        .artifacts(dep, proj)
+    } yield dep -> artifact
 
   def errors: Seq[(Dependency, Seq[String])] =
     for {

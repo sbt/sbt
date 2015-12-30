@@ -37,6 +37,7 @@ object MavenRepository {
 
 
   val defaultConfigurations = Map(
+    "compile" -> Seq.empty,
     "runtime" -> Seq("compile"),
     "test" -> Seq("runtime")
   )
@@ -106,7 +107,7 @@ case class MavenRepository(
           Attributes("pom", "")
         )
         .withDefaultChecksums
-        .withDefaultChecksums
+        .withDefaultSignature
 
       Some(artifact)
     }

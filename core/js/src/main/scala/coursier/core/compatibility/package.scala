@@ -46,10 +46,12 @@ package object compatibility {
       def label =
         option[String](node0.nodeName)
           .getOrElse("")
-      def child =
+      def children =
         option[NodeList](node0.childNodes)
           .map(l => List.tabulate(l.length)(l.item).map(fromNode))
           .getOrElse(Nil)
+
+      def attributes: Seq[(String, String)] = ???
 
       // `exists` instead of `contains`, for scala 2.10
       def isText =

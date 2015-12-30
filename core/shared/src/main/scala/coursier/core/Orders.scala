@@ -115,15 +115,25 @@ object Orders {
       }
     }
 
+  private def fallbackConfigIfNecessary(dep: Dependency, configs: Set[String]): Dependency =
+    Parse.withFallbackConfig(dep.configuration) match {
+      case Some((main, fallback)) if !configs(main) && configs(fallback) =>
+        dep.copy(configuration = fallback)
+      case _ =>
+        dep
+    }
+
   /**
    * Assume all dependencies have same `module`, `version`, and `artifact`; see `minDependencies`
    * if they don't.
    */
   def minDependenciesUnsafe(
     dependencies: Set[Dependency],
-    configs: ((Module, String)) => Map[String, Seq[String]]
+    configs: Map[String, Seq[String]]
   ): Set[Dependency] = {
+    val availableConfigs = configs.keySet
     val groupedDependencies = dependencies
+      .map(fallbackConfigIfNecessary(_, availableConfigs))
       .groupBy(dep => (dep.optional, dep.configuration))
       .mapValues(deps => deps.head.copy(exclusions = deps.foldLeft(Exclusions.one)((acc, dep) => Exclusions.meet(acc, dep.exclusions))))
       .toList
@@ -132,7 +142,7 @@ object Orders {
       for {
         List(((xOpt, xScope), xDep), ((yOpt, yScope), yDep)) <- groupedDependencies.combinations(2)
         optCmp <- optionalPartialOrder.tryCompare(xOpt, yOpt).iterator
-        scopeCmp <- configurationPartialOrder(configs(xDep.moduleVersion)).tryCompare(xScope, yScope).iterator
+        scopeCmp <- configurationPartialOrder(configs).tryCompare(xScope, yScope).iterator
         if optCmp*scopeCmp >= 0
         exclCmp <- exclusionsPartialOrder.tryCompare(xDep.exclusions, yDep.exclusions).iterator
         if optCmp*exclCmp >= 0
@@ -156,7 +166,7 @@ object Orders {
   ): Set[Dependency] = {
     dependencies
       .groupBy(_.copy(configuration = "", exclusions = Set.empty, optional = false))
-      .mapValues(minDependenciesUnsafe(_, configs))
+      .mapValues(deps => minDependenciesUnsafe(deps, configs(deps.head.moduleVersion)))
       .valuesIterator
       .fold(Set.empty)(_ ++ _)
   }

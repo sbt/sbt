@@ -30,6 +30,8 @@ case class CommonOptions(
   @HelpMessage("Repositories - for multiple repositories, separate with comma and/or repeat this option (e.g. -r central,ivy2local -r sonatype-snapshots, or equivalently -r central,ivy2local,sonatype-snapshots)")
   @ExtraName("r")
     repository: List[String],
+  @HelpMessage("Do not add default repositories (~/.ivy2/local, and Central)")
+    noDefault: Boolean = false,
   @HelpMessage("Force module version")
   @ValueDescription("organization:name:forcedVersion")
   @ExtraName("V")

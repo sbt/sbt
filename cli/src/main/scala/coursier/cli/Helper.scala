@@ -4,6 +4,8 @@ package cli
 import java.io.{ OutputStreamWriter, File }
 import java.util.UUID
 
+import coursier.ivy.IvyRepository
+
 import scalaz.{ \/-, -\/ }
 import scalaz.concurrent.Task
 
@@ -62,69 +64,66 @@ class Helper(
     else
       CachePolicy.Default
 
-  val cache = Cache(new File(cacheOptions.cache))
-  cache.init(verbose = verbose0 >= 0)
+  val files =
+    Files(
+      Seq(
+        "http://" -> new File(new File(cacheOptions.cache), "http"),
+        "https://" -> new File(new File(cacheOptions.cache), "https")
+      ),
+      () => ???,
+      concurrentDownloadCount = parallel
+    )
 
-  val repositoryIds = {
-    val repositoryIds0 = repository
-      .flatMap(_.split(','))
-      .map(_.trim)
-      .filter(_.nonEmpty)
+  val central = MavenRepository("https://repo1.maven.org/maven2/")
+  val ivy2Local = MavenRepository(
+    new File(sys.props("user.home") + "/.ivy2/local/").toURI.toString,
+    ivyLike = true
+  )
+  val defaultRepositories = Seq(
+    ivy2Local,
+    central
+  )
 
-    if (repositoryIds0.isEmpty)
-      cache.default()
-    else
-      repositoryIds0
-  }
+  val repositories0 = common.repository.map { repo =>
+    val repo0 = repo.toLowerCase
+    if (repo0 == "central")
+      Right(central)
+    else if (repo0 == "ivy2local")
+      Right(ivy2Local)
+    else if (repo0.startsWith("sonatype:"))
+      Right(
+        MavenRepository(s"https://oss.sonatype.org/content/repositories/${repo.drop("sonatype:".length)}")
+      )
+    else {
+      val (url, r) =
+        if (repo.startsWith("ivy:")) {
+          val url = repo.drop("ivy:".length)
+          (url, IvyRepository(url))
+        } else if (repo.startsWith("ivy-like:")) {
+          val url = repo.drop("ivy-like:".length)
+          (url, MavenRepository(url, ivyLike = true))
+        } else {
+          (repo, MavenRepository(repo))
+        }
 
-  val repoMap = cache.map()
-  val repoByBase = repoMap.map { case (_, v @ (m, _)) =>
-    m.root -> v
-  }
-
-  val repositoryIdsOpt0 = repositoryIds.map { id =>
-    repoMap.get(id) match {
-      case Some(v) => Right(v)
-      case None =>
-        if (id.contains("://")) {
-          val root0 = if (id.endsWith("/")) id else id + "/"
-          Right(
-            repoByBase.getOrElse(root0, {
-              val id0 = UUID.randomUUID().toString
-              if (verbose0 >= 1)
-                Console.err.println(s"Addding repository $id0 ($root0)")
-
-              // FIXME This could be done more cleanly
-              cache.add(id0, root0, ivyLike = false)
-              cache.map().getOrElse(id0,
-                sys.error(s"Adding repository $id0 ($root0)")
-              )
-            })
-          )
-        } else
-          Left(id)
+      if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file:/"))
+        Right(r)
+      else
+        Left(repo -> s"Unrecognized protocol or repository: $url")
     }
   }
 
-  val notFoundRepositoryIds = repositoryIdsOpt0.collect {
-    case Left(id) => id
-  }
-
-  if (notFoundRepositoryIds.nonEmpty) {
-    errPrintln(
-      (if (notFoundRepositoryIds.lengthCompare(1) == 0) "Repository" else "Repositories") +
-        " not found: " +
-        notFoundRepositoryIds.mkString(", ")
-    )
-
+  val unrecognizedRepos = repositories0.collect { case Left(e) => e }
+  if (unrecognizedRepos.nonEmpty) {
+    errPrintln(s"${unrecognizedRepos.length} error(s) parsing repositories:")
+    for ((repo, err) <- unrecognizedRepos)
+      errPrintln(s"$repo: $err")
     sys.exit(255)
   }
 
-  val files = cache.files().copy(concurrentDownloadCount = parallel)
-
-  val (repositories, fileCaches) = repositoryIdsOpt0
-    .collect { case Right(v) => v }
-    .unzip
+  val repositories =
+    (if (common.noDefault) Nil else defaultRepositories) ++
+      repositories0.collect { case Right(r) => r }
 
   val (rawDependencies, extraArgs) = {
     val idxOpt = Some(remainingArgs.indexOf("--")).filter(_ >= 0)
