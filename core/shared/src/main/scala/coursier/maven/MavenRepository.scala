@@ -244,7 +244,10 @@ case class MavenRepository(
             xml <- \/.fromEither(compatibility.xmlParse(str))
             _ <- if (xml.label == "project") \/-(()) else -\/("Project definition not found")
             proj <- Pom.project(xml)
-          } yield proj.copy(configurations = defaultConfigurations)): (String \/ Project)
+          } yield proj.copy(
+            configurations = defaultConfigurations,
+            publications = ???
+          )): (String \/ Project)
         }
       }
     }

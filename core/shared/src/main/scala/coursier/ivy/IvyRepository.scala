@@ -165,37 +165,53 @@ case class IvyRepository(
 
 
   val source: Artifact.Source = new Artifact.Source {
-    def artifacts(dependency: Dependency, project: Project) =
-      project
-        .publications
-        .collect {
-          case (conf, p)
-            if conf == "*" ||
-               conf == dependency.configuration ||
-               project.allConfigurations.getOrElse(dependency.configuration, Set.empty).contains(conf) =>
-            p
+    def artifacts(
+      dependency: Dependency,
+      project: Project,
+      overrideClassifiers: Option[Seq[String]]
+    ) = {
+
+      val retained =
+        overrideClassifiers match {
+          case None =>
+            project.publications.collect {
+              case (conf, p)
+                if conf == "*" ||
+                   conf == dependency.configuration ||
+                   project.allConfigurations.getOrElse(dependency.configuration, Set.empty).contains(conf) =>
+                p
+            }
+          case Some(classifiers) =>
+            val classifiersSet = classifiers.toSet
+            project.publications.collect {
+              case (_, p) if classifiersSet(p.classifier) =>
+                p
+            }
         }
-        .flatMap { p =>
-          substitute(variables(
-            dependency.module.organization,
-            dependency.module.name,
-            dependency.version,
-            p.`type`,
-            p.name,
-            p.ext
-          )).toList.map(p -> _)
-        }
-        .map { case (p, url) =>
-          Artifact(
-            url,
-            Map.empty,
-            Map.empty,
-            Attributes(p.`type`, p.ext),
-            changing = changing.getOrElse(project.version.contains("-SNAPSHOT")) // could be more reliable
-          )
-            .withDefaultChecksums
-            .withDefaultSignature
-        }
+
+      val retainedWithUrl = retained.flatMap { p =>
+        substitute(variables(
+          dependency.module.organization,
+          dependency.module.name,
+          dependency.version,
+          p.`type`,
+          p.name,
+          p.ext
+        )).toList.map(p -> _)
+      }
+
+      retainedWithUrl.map { case (p, url) =>
+        Artifact(
+          url,
+          Map.empty,
+          Map.empty,
+          p.attributes,
+          changing = changing.getOrElse(project.version.contains("-SNAPSHOT")) // could be more reliable
+        )
+          .withDefaultChecksums
+          .withDefaultSignature
+      }
+    }
   }
 
 

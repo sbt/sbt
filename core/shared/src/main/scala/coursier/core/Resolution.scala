@@ -746,15 +746,21 @@ case class Resolution(
           .getOrElse(Map.empty)
     )
 
-  def artifacts: Seq[Artifact] =
+  private def artifacts0(overrideClassifiers: Option[Seq[String]]): Seq[Artifact] =
     for {
       dep <- minDependencies.toSeq
       (source, proj) <- projectCache
         .get(dep.moduleVersion)
         .toSeq
       artifact <- source
-        .artifacts(dep, proj)
+        .artifacts(dep, proj, overrideClassifiers)
     } yield artifact
+
+  def classifiersArtifacts(classifiers: Seq[String]): Seq[Artifact] =
+    artifacts0(Some(classifiers))
+
+  def artifacts: Seq[Artifact] =
+    artifacts0(None)
 
   def dependencyArtifacts: Seq[(Dependency, Artifact)] =
     for {
@@ -763,7 +769,7 @@ case class Resolution(
         .get(dep.moduleVersion)
         .toSeq
       artifact <- source
-        .artifacts(dep, proj)
+        .artifacts(dep, proj, None)
     } yield dep -> artifact
 
   def errors: Seq[(Dependency, Seq[String])] =

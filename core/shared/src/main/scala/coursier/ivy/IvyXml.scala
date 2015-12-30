@@ -71,7 +71,8 @@ object IvyXml {
         val type0 = node.attribute("type").getOrElse("jar")
         val ext = node.attribute("ext").getOrElse(type0)
         val confs = node.attribute("conf").toOption.fold(Seq("*"))(_.split(','))
-        confs.map(_ -> Publication(name, type0, ext))
+        val classifier = node.attribute("classifier").toOption.getOrElse("")
+        confs.map(_ -> Publication(name, type0, ext, classifier))
       }
       .groupBy { case (conf, _) => conf }
       .map { case (conf, l) => conf -> l.map { case (_, p) => p } }
@@ -115,7 +116,7 @@ object IvyXml {
         None,
         if (publicationsOpt.isEmpty)
           // no publications node -> default JAR artifact
-          Seq("*" -> Publication(module.name, "jar", "jar"))
+          Seq("*" -> Publication(module.name, "jar", "jar", ""))
         else {
           // publications node is there -> only its content (if it is empty, no artifacts,
           // as per the Ivy manual)

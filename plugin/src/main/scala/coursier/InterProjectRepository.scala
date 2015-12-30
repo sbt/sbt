@@ -3,12 +3,21 @@ package coursier
 import scalaz.{ -\/, \/-, Monad, EitherT }
 
 case class InterProjectSource(artifacts: Map[(Module, String), Map[String, Seq[Artifact]]]) extends Artifact.Source {
-  def artifacts(dependency: Dependency, project: Project): Seq[Artifact] =
-    artifacts
-      .get(dependency.moduleVersion)
-      .toSeq
-      .flatMap(_.get(dependency.configuration))
-      .flatten
+  def artifacts(
+    dependency: Dependency,
+    project: Project,
+    overrideClassifiers: Option[Seq[String]]
+  ): Seq[Artifact] =
+    overrideClassifiers match {
+      case None =>
+        artifacts
+          .get(dependency.moduleVersion)
+          .toSeq
+          .flatMap(_.get(dependency.configuration))
+          .flatten
+      case Some(_) =>
+        Nil
+    }
 }
 
 case class InterProjectRepository(projects: Seq[(Project, Seq[(String, Seq[Artifact])])]) extends Repository {

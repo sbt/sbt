@@ -47,7 +47,10 @@ case class Dependency(
 case class Attributes(
   `type`: String,
   classifier: String
-)
+) {
+  def publication(name: String, ext: String): Publication =
+    Publication(name, `type`, ext, classifier)
+}
 
 case class Project(
   module: Module,
@@ -133,8 +136,11 @@ case class SnapshotVersioning(
 case class Publication(
   name: String,
   `type`: String,
-  ext: String
-)
+  ext: String,
+  classifier: String
+) {
+  def attributes: Attributes = Attributes(`type`, classifier)
+}
 
 case class Artifact(
   url: String,
@@ -146,6 +152,10 @@ case class Artifact(
 
 object Artifact {
   trait Source {
-    def artifacts(dependency: Dependency, project: Project): Seq[Artifact]
+    def artifacts(
+      dependency: Dependency,
+      project: Project,
+      overrideClassifiers: Option[Seq[String]]
+    ): Seq[Artifact]
   }
 }
