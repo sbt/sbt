@@ -22,6 +22,7 @@ object CoursierPlugin extends AutoPlugin {
     val coursierMaxIterations = Keys.coursierMaxIterations
     val coursierChecksums = Keys.coursierChecksums
     val coursierCachePolicy = Keys.coursierCachePolicy
+    val coursierVerbosity = Keys.coursierVerbosity
     val coursierResolvers = Keys.coursierResolvers
     val coursierCache = Keys.coursierCache
     val coursierProject = Keys.coursierProject
@@ -59,6 +60,8 @@ object CoursierPlugin extends AutoPlugin {
 
       val resolvers = coursierResolvers.value
 
+      val verbosity = coursierVerbosity.value
+
 
       val startRes = Resolution(
         currentProject.dependencies.map { case (_, dep) => dep }.toSet,
@@ -87,9 +90,11 @@ object CoursierPlugin extends AutoPlugin {
         s"${dep.module}:${dep.version}:$config->${dep.configuration}"
       }.sorted
 
-      errPrintln(s"Resolving ${currentProject.module.organization}:${currentProject.module.name}:${currentProject.version}")
-      for (depRepr <- depsRepr)
-        errPrintln(s"  $depRepr")
+      if (verbosity >= 0)
+        errPrintln(s"Resolving ${currentProject.module.organization}:${currentProject.module.name}:${currentProject.version}")
+      if (verbosity >= 1)
+        for (depRepr <- depsRepr)
+          errPrintln(s"  $depRepr")
 
       val res = startRes
         .process
@@ -101,7 +106,8 @@ object CoursierPlugin extends AutoPlugin {
       if (!res.isDone)
         throw new Exception(s"Maximum number of iteration reached!")
 
-      errPrintln("Resolution done")
+      if (verbosity >= 0)
+        errPrintln("Resolution done")
 
       def repr(dep: Dependency) = {
         // dep.version can be an interval, whereas the one from project can't
@@ -148,14 +154,16 @@ object CoursierPlugin extends AutoPlugin {
           files.file(a, checksums = checksums, logger = logger)(cachePolicy = cachePolicy).run.map((a, _))
         }
 
-      errPrintln(s"Fetching artifacts")
+      if (verbosity >= 0)
+        errPrintln(s"Fetching artifacts")
       // rename
       val trDepsWithArtifacts = Task.gatherUnordered(trDepsWithArtifactsTasks).attemptRun match {
         case -\/(ex) =>
           throw new Exception(s"Error while downloading / verifying artifacts", ex)
         case \/-(l) => l.toMap
       }
-      errPrintln(s"Fetching artifacts: done")
+      if (verbosity >= 0)
+        errPrintln(s"Fetching artifacts: done")
 
       val configs = ivyConfigurations.value.map(c => c.name -> c.extendsConfigs.map(_.name)).toMap
       def allExtends(c: String) = {
@@ -239,6 +247,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierMaxIterations := 50,
     coursierChecksums := Seq(Some("SHA-1"), Some("MD5")),
     coursierCachePolicy := CachePolicy.FetchMissing,
+    coursierVerbosity := 0,
     coursierResolvers <<= Tasks.coursierResolversTask,
     coursierCache := new File(sys.props("user.home") + "/.coursier/sbt"),
     update <<= task,
