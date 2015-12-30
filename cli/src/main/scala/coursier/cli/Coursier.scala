@@ -234,7 +234,7 @@ case class Bootstrap(
 
   val bootstrapJar =
     Option(Thread.currentThread().getContextClassLoader.getResourceAsStream("bootstrap.jar")) match {
-      case Some(is) => Files.readFullySync(is)
+      case Some(is) => Cache.readFullySync(is)
       case None =>
         Console.err.println(s"Error: bootstrap JAR not found")
         sys.exit(1)

@@ -162,8 +162,8 @@ object Tasks {
       logger.foreach(_.init())
       val fetch = coursier.Fetch(
         repositories,
-        Files.fetch(caches, CachePolicy.LocalOnly, checksums = checksums, logger = logger, pool = pool),
-        Files.fetch(caches, cachePolicy, checksums = checksums, logger = logger, pool = pool)
+        Cache.fetch(caches, CachePolicy.LocalOnly, checksums = checksums, logger = logger, pool = pool),
+        Cache.fetch(caches, cachePolicy, checksums = checksums, logger = logger, pool = pool)
       )
 
       def depsRepr = currentProject.dependencies.map { case (config, dep) =>
@@ -248,7 +248,7 @@ object Tasks {
         }
 
       val artifactFileOrErrorTasks = allArtifacts.toVector.map { a =>
-        Files.file(a, caches, cachePolicy, checksums = checksums, logger = logger, pool = pool).run.map((a, _))
+        Cache.file(a, caches, cachePolicy, checksums = checksums, logger = logger, pool = pool).run.map((a, _))
       }
 
       if (verbosity >= 0)

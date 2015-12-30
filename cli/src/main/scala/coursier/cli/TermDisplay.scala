@@ -5,7 +5,7 @@ import java.util.concurrent._
 
 import ammonite.terminal.{ TTY, Ansi }
 
-import coursier.Files.Logger
+import coursier.Cache
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
@@ -13,7 +13,7 @@ import scala.collection.mutable.ArrayBuffer
 class TermDisplay(
   out: Writer,
   var fallbackMode: Boolean = false
-) extends Logger {
+) extends Cache.Logger {
 
   private val ansi = new Ansi(out)
   private var width = 80

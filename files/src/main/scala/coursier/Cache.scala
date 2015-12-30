@@ -11,7 +11,7 @@ import scalaz.concurrent.{ Task, Strategy }
 
 import java.io.{ Serializable => _, _ }
 
-object Files {
+object Cache {
 
   def withLocal(artifact: Artifact, cache: Seq[(String, File)]): Artifact = {
     def local(url: String) =
@@ -54,7 +54,7 @@ object Files {
     checksums: Set[String],
     cachePolicy: CachePolicy,
     pool: ExecutorService,
-    logger: Option[Files.Logger] = None
+    logger: Option[Logger] = None
   ): Task[Seq[((File, String), FileError \/ Unit)]] = {
 
     implicit val pool0 = pool
@@ -159,7 +159,7 @@ object Files {
                 for (len <- Option(conn.getContentLengthLong).filter(_ >= 0L))
                   logger.foreach(_.downloadLength(url, len))
 
-                val in = new BufferedInputStream(conn.getInputStream, Files.bufferSize)
+                val in = new BufferedInputStream(conn.getInputStream, bufferSize)
 
                 val result =
                   try {
@@ -172,7 +172,7 @@ object Files {
                         if (lock == null)
                           -\/(FileError.Locked(file))
                         else {
-                          val b = Array.fill[Byte](Files.bufferSize)(0)
+                          val b = Array.fill[Byte](bufferSize)(0)
 
                           @tailrec
                           def helper(count: Long): Unit = {
@@ -300,7 +300,7 @@ object Files {
                 if (lock == null)
                   -\/(FileError.Locked(f))
                 else {
-                  Files.withContent(is, md.update(_, 0, _))
+                  withContent(is, md.update(_, 0, _))
                   \/-(())
                 }
               }
@@ -333,8 +333,8 @@ object Files {
     cache: Seq[(String, File)],
     cachePolicy: CachePolicy,
     checksums: Seq[Option[String]] = Seq(Some("SHA-1")),
-    logger: Option[Files.Logger] = None,
-    pool: ExecutorService = Files.defaultPool
+    logger: Option[Logger] = None,
+    pool: ExecutorService = defaultPool
   ): EitherT[Task, FileError, File] = {
 
     implicit val pool0 = pool
@@ -384,8 +384,8 @@ object Files {
     cache: Seq[(String, File)],
     cachePolicy: CachePolicy,
     checksums: Seq[Option[String]] = Seq(Some("SHA-1")),
-    logger: Option[Files.Logger] = None,
-    pool: ExecutorService = Files.defaultPool
+    logger: Option[Logger] = None,
+    pool: ExecutorService = defaultPool
   ): Fetch.Content[Task] = {
     artifact =>
       file(

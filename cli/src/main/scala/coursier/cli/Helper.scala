@@ -217,7 +217,7 @@ class Helper(
   logger.foreach(_.init())
 
   val fetchs = cachePolicies.map(p =>
-    Files.fetch(caches, p, logger = logger, pool = pool)
+    Cache.fetch(caches, p, logger = logger, pool = pool)
   )
   val fetchQuiet = coursier.Fetch(
     repositories,
@@ -344,8 +344,8 @@ class Helper(
         None
     logger.foreach(_.init())
     val tasks = artifacts.map(artifact =>
-      (Files.file(artifact, caches, cachePolicies.head, logger = logger, pool = pool) /: cachePolicies.tail)(
-        _ orElse Files.file(artifact, caches, _, logger = logger, pool = pool)
+      (Cache.file(artifact, caches, cachePolicies.head, logger = logger, pool = pool) /: cachePolicies.tail)(
+        _ orElse Cache.file(artifact, caches, _, logger = logger, pool = pool)
       ).run.map(artifact.->)
     )
     def printTask = Task {
