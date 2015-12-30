@@ -1,6 +1,6 @@
 package coursier
 
-import java.net.URL
+import java.net.{HttpURLConnection, URL}
 import java.nio.channels.{ OverlappingFileLockException, FileLock }
 import java.security.MessageDigest
 import java.util.concurrent.{ConcurrentHashMap, Executors, ExecutorService}
@@ -66,13 +66,24 @@ case class Files(
       .extra
       .getOrElse("local", artifact)
 
-    val checksumPairs = checksums
-      .intersect(artifact0.checksumUrls.keySet)
-      .intersect(artifact.checksumUrls.keySet)
-      .toSeq
-      .map(sumType => artifact0.checksumUrls(sumType) -> artifact.checksumUrls(sumType))
+    val pairs =
+      Seq(artifact0.url -> artifact.url) ++ {
+        checksums
+          .intersect(artifact0.checksumUrls.keySet)
+          .intersect(artifact.checksumUrls.keySet)
+          .toSeq
+          .map(sumType => artifact0.checksumUrls(sumType) -> artifact.checksumUrls(sumType))
+      }
 
-    val pairs = (artifact0.url -> artifact.url) +: checksumPairs
+    def urlConn(url: String) = {
+      val conn = new URL(url).openConnection() // FIXME Should this be closed?
+      // Dummy user-agent instead of the default "Java/...",
+      // so that we are not returned incomplete/erroneous metadata
+      // (Maven 2 compatibility? - happens for snapshot versioning metadata,
+      // this is SO FUCKING CRAZY)
+      conn.setRequestProperty("User-Agent", "")
+      conn
+    }
 
 
     def locally(file: File, url: String): EitherT[Task, FileError, File] =
@@ -86,32 +97,57 @@ case class Files(
         }
       }
 
-    def downloadIfDifferent(file: File, url: String): EitherT[Task, FileError, Boolean] = {
-      ???
-    }
-
-    def test = {
-      val t: Task[List[((File, String), FileError \/ Boolean)]] = Nondeterminism[Task].gather(checksumPairs.map { case (file, url) =>
-        val f = new File(file)
-        downloadIfDifferent(f, url).run.map((f, url) -> _)
-      })
-
-      t.map { l =>
-        val noChange = l.nonEmpty && l.forall { case (_, e) => e.exists(x => x) }
-
-        val anyChange = l.exists { case (_, e) => e.exists(x => !x) }
-        val anyRecoverableError = l.exists {
-          case (_, -\/(err: FileError.Recoverable)) => true
-          case _ => false
+    def fileLastModified(file: File): EitherT[Task, FileError, Option[Long]] =
+      EitherT {
+        Task {
+          \/- {
+            val lastModified = file.lastModified()
+            if (lastModified > 0L)
+              Some(lastModified)
+            else
+              None
+          } : FileError \/ Option[Long]
         }
       }
 
-    }
+    def urlLastModified(url: String): EitherT[Task, FileError, Option[Long]] =
+      EitherT {
+        Task {
+          urlConn(url) match {
+            case c: HttpURLConnection =>
+              c.setRequestMethod("HEAD")
+              val remoteLastModified = c.getLastModified
 
-    // FIXME Things can go wrong here and are possibly not properly handled,
+              \/- {
+                if (remoteLastModified > 0L)
+                  Some(remoteLastModified)
+                else
+                  None
+              }
+
+            case other =>
+              -\/(FileError.DownloadError(s"Cannot do HEAD request with connection $other ($url)"))
+          }
+        }
+      }
+
+    def shouldDownload(file: File, url: String): EitherT[Task, FileError, Boolean] =
+      for {
+        fileLastModOpt <- fileLastModified(file)
+        urlLastModOpt <- urlLastModified(url)
+      } yield {
+        val fromDatesOpt = for {
+          fileLastMod <- fileLastModOpt
+          urlLastMod <- urlLastModOpt
+        } yield fileLastMod < urlLastMod
+
+        fromDatesOpt.getOrElse(true)
+      }
+
+    // FIXME Things can go wrong here and are not properly handled,
     // e.g. what if the connection gets closed during the transfer?
     // (partial file on disk?)
-    def remote(file: File, url: String): EitherT[Task, FileError, File] =
+    def remote(file: File, url: String): EitherT[Task, FileError, Unit] =
       EitherT {
         Task {
           try {
@@ -121,91 +157,113 @@ case class Files(
               logger.foreach(_.downloadingArtifact(url, file))
 
               val r = try {
-                val conn = new URL(url).openConnection() // FIXME Should this be closed?
-                // Dummy user-agent instead of the default "Java/...",
-                // so that we are not returned incomplete/erroneous metadata
-                // (Maven 2 compatibility? - happens for snapshot versioning metadata,
-                // this is SO FUCKING CRAZY)
-                conn.setRequestProperty("User-Agent", "")
+                val conn = urlConn(url)
 
                 for (len <- Option(conn.getContentLengthLong).filter(_ >= 0L))
                   logger.foreach(_.downloadLength(url, len))
 
                 val in = new BufferedInputStream(conn.getInputStream, Files.bufferSize)
 
-                val result = try {
-                  file.getParentFile.mkdirs()
-                  val out = new FileOutputStream(file)
+                val result =
                   try {
-                    var lock: FileLock = null
+                    file.getParentFile.mkdirs()
+                    val out = new FileOutputStream(file)
                     try {
-                      lock = out.getChannel.tryLock()
-                      if (lock == null)
-                        -\/(FileError.Locked(file))
-                      else {
-                        val b = Array.fill[Byte](Files.bufferSize)(0)
+                      var lock: FileLock = null
+                      try {
+                        lock = out.getChannel.tryLock()
+                        if (lock == null)
+                          -\/(FileError.Locked(file))
+                        else {
+                          val b = Array.fill[Byte](Files.bufferSize)(0)
 
-                        @tailrec
-                        def helper(count: Long): Unit = {
-                          val read = in.read(b)
-                          if (read >= 0) {
-                            out.write(b, 0, read)
-                            out.flush()
-                            logger.foreach(_.downloadProgress(url, count + read))
-                            helper(count + read)
+                          @tailrec
+                          def helper(count: Long): Unit = {
+                            val read = in.read(b)
+                            if (read >= 0) {
+                              out.write(b, 0, read)
+                              out.flush()
+                              logger.foreach(_.downloadProgress(url, count + read))
+                              helper(count + read)
+                            }
                           }
-                        }
 
-                        helper(0L)
-                        \/-(file)
+                          helper(0L)
+                          \/-(())
+                        }
                       }
-                    } catch { case e: OverlappingFileLockException =>
-                      -\/(FileError.Locked(file))
-                    } finally if (lock != null) lock.release()
-                  } finally out.close()
-                } finally in.close()
+                      catch {
+                        case e: OverlappingFileLockException =>
+                          -\/(FileError.Locked(file))
+                      }
+                      finally if (lock != null) lock.release()
+                    } finally out.close()
+                  } finally in.close()
 
                 for (lastModified <- Option(conn.getLastModified).filter(_ > 0L))
                   file.setLastModified(lastModified)
 
                 result
-              } catch { case e: Exception =>
+              }
+              catch { case e: Exception =>
                 logger.foreach(_.downloadedArtifact(url, success = false))
                 throw e
-              } finally {
+              }
+              finally {
                 urlLocks.remove(url)
               }
               logger.foreach(_.downloadedArtifact(url, success = true))
               r
             } else
               -\/(FileError.ConcurrentDownload(url))
-          } catch { case e: Exception =>
+          }
+          catch { case e: Exception =>
             -\/(FileError.DownloadError(e.getMessage))
           }
         }
       }
 
+    def checkFileExists(file: File, url: String): EitherT[Task, FileError, Unit] =
+      EitherT {
+        Task {
+          if (file.exists()) {
+            logger.foreach(_.foundLocally(url, file))
+            \/-(())
+          } else
+            -\/(FileError.NotFound(file.toString))
+        }
+      }
 
     val tasks =
       for ((f, url) <- pairs) yield {
         val file = new File(f)
 
-        if (url != ("file:" + f) && url != ("file://" + f)) {
-          assert(!f.startsWith("file:/"), s"Wrong file detection: $f, $url")
-          cachePolicy[FileError \/ File](
-            _.isLeft )(
-            locally(file, url).run )(
-            _ => remote(file, url).run
-          ).map(e => (file, url) -> e.map(_ => ()))
-        } else
-          Task {
-            (file, url) -> {
-              if (file.exists())
-                \/-(())
-              else
-                -\/(FileError.NotFound(file.toString))
+        val isRemote = url != ("file:" + f) && url != ("file://" + f)
+        val cachePolicy0 =
+          if (!isRemote)
+            CachePolicy.LocalOnly
+          else if (cachePolicy == CachePolicy.UpdateChanging && !artifact.changing)
+            CachePolicy.FetchMissing
+          else
+            cachePolicy
+
+        val res = cachePolicy match {
+          case CachePolicy.LocalOnly =>
+            checkFileExists(file, url)
+          case CachePolicy.UpdateChanging | CachePolicy.Update =>
+            shouldDownload(file, url).flatMap {
+              case true =>
+                remote(file, url)
+              case false =>
+                EitherT(Task.now(\/-(()) : FileError \/ Unit))
             }
-          }
+          case CachePolicy.FetchMissing =>
+            checkFileExists(file, url) orElse remote(file, url)
+          case CachePolicy.ForceDownload =>
+            remote(file, url)
+        }
+
+        res.run.map((file, url) -> _)
       }
 
     Nondeterminism[Task].gather(tasks)

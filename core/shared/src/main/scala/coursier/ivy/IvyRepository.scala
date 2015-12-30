@@ -69,7 +69,7 @@ object IvyRepository {
 
 }
 
-case class IvyRepository(pattern: String) extends Repository {
+case class IvyRepository(pattern: String, changing: Option[Boolean] = None) extends Repository {
 
   import Repository._
   import IvyRepository._
@@ -170,7 +170,8 @@ case class IvyRepository(pattern: String) extends Repository {
             url,
             Map.empty,
             Map.empty,
-            Attributes(p.`type`, p.ext)
+            Attributes(p.`type`, p.ext),
+            changing = changing.getOrElse(project.version.contains("-SNAPSHOT")) // could be more reliable
           )
             .withDefaultChecksums
             .withDefaultSignature
@@ -194,7 +195,8 @@ case class IvyRepository(pattern: String) extends Repository {
           url,
           Map.empty,
           Map.empty,
-          Attributes("ivy", "")
+          Attributes("ivy", ""),
+          changing = changing.getOrElse(version.contains("-SNAPSHOT"))
         )
           .withDefaultChecksums
           .withDefaultSignature

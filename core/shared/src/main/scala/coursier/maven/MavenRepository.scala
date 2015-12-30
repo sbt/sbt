@@ -48,7 +48,8 @@ object MavenRepository {
 
 case class MavenRepository(
   root: String,
-  ivyLike: Boolean = false
+  ivyLike: Boolean = false,
+  changing: Option[Boolean] = None
 ) extends Repository {
 
   import Repository._
@@ -85,7 +86,8 @@ case class MavenRepository(
       root0 + path.mkString("/"),
       Map.empty,
       Map.empty,
-      Attributes("pom", "")
+      Attributes("pom", ""),
+      changing = changing.getOrElse(version.contains("-SNAPSHOT"))
     )
     .withDefaultChecksums
     .withDefaultSignature
@@ -106,7 +108,8 @@ case class MavenRepository(
           root0 + path.mkString("/"),
           Map.empty,
           Map.empty,
-          Attributes("pom", "")
+          Attributes("pom", ""),
+          changing = true
         )
         .withDefaultChecksums
         .withDefaultSignature
@@ -133,7 +136,8 @@ case class MavenRepository(
           root0 + path.mkString("/"),
           Map.empty,
           Map.empty,
-          Attributes("pom", "")
+          Attributes("pom", ""),
+          changing = true
         )
         .withDefaultChecksums
         .withDefaultSignature

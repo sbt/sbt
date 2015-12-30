@@ -136,7 +136,8 @@ case class Artifact(
   url: String,
   checksumUrls: Map[String, String],
   extra: Map[String, Artifact],
-  attributes: Attributes
+  attributes: Attributes,
+  changing: Boolean
 )
 
 object Artifact {

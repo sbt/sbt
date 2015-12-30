@@ -12,12 +12,10 @@ import coursier.util.ClasspathFilter
 case class CommonOptions(
   @HelpMessage("Keep optional dependencies (Maven)")
     keepOptional: Boolean,
-  @HelpMessage("Off-line mode: only use cache and local repositories")
-  @ExtraName("c")
-    offline: Boolean,
-  @HelpMessage("Force download: for remote repositories only: re-download items, that is, don't use cache directly")
-  @ExtraName("f")
-    force: Boolean,
+  @HelpMessage("Download mode (default: missing, that is fetch things missing from cache)")
+  @ValueDescription("offline|update-changing|update|missing|force")
+  @ExtraName("m")
+    mode: String,
   @HelpMessage("Quiet output")
   @ExtraName("q")
     quiet: Boolean,

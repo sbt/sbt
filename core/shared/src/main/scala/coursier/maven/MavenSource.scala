@@ -2,7 +2,12 @@ package coursier.maven
 
 import coursier.core._
 
-case class MavenSource(root: String, ivyLike: Boolean) extends Artifact.Source {
+case class MavenSource(
+  root: String,
+  ivyLike: Boolean,
+  changing: Option[Boolean] = None
+) extends Artifact.Source {
+
   import Repository._
   import MavenRepository._
 
@@ -39,12 +44,14 @@ case class MavenSource(root: String, ivyLike: Boolean) extends Artifact.Source {
         )
       }
 
+    val changing0 = changing.getOrElse(project.version.contains("-SNAPSHOT"))
     var artifact =
       Artifact(
         root + path.mkString("/"),
         Map.empty,
         Map.empty,
-        dependency.attributes
+        dependency.attributes,
+        changing = changing0
       )
       .withDefaultChecksums
 
@@ -62,10 +69,22 @@ case class MavenSource(root: String, ivyLike: Boolean) extends Artifact.Source {
           artifact
             .copy(
               extra = artifact.extra ++ Map(
-                "sources" -> Artifact(srcPath, Map.empty, Map.empty, Attributes("jar", "src")) // Are these the right attributes?
+                "sources" -> Artifact(
+                  srcPath,
+                  Map.empty,
+                  Map.empty,
+                  Attributes("jar", "src"), // Are these the right attributes?
+                  changing = changing0
+                )
                   .withDefaultChecksums
                   .withDefaultSignature,
-                "javadoc" -> Artifact(javadocPath, Map.empty, Map.empty, Attributes("jar", "javadoc")) // Same comment as above
+                "javadoc" -> Artifact(
+                  javadocPath,
+                  Map.empty,
+                  Map.empty,
+                  Attributes("jar", "javadoc"), // Same comment as above
+                  changing = changing0
+                )
                   .withDefaultChecksums
                   .withDefaultSignature
             ))

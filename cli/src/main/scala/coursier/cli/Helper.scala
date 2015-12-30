@@ -2,7 +2,6 @@ package coursier
 package cli
 
 import java.io.{ OutputStreamWriter, File }
-import java.util.UUID
 
 import coursier.ivy.IvyRepository
 
@@ -10,22 +9,6 @@ import scalaz.{ \/-, -\/ }
 import scalaz.concurrent.Task
 
 object Helper {
-  def validate(common: CommonOptions) = {
-    import common._
-
-    if (force && offline) {
-      Console.err.println("Error: --offline (-c) and --force (-f) options can't be specified at the same time.")
-      sys.exit(255)
-    }
-
-    if (parallel <= 0) {
-      Console.err.println(s"Error: invalid --parallel (-n) value: $parallel")
-      sys.exit(255)
-    }
-
-    ???
-  }
-
   def fileRepr(f: File) = f.toString
 
   def errPrintln(s: String) = Console.err.println(s)
@@ -56,13 +39,23 @@ class Helper(
   import common._
   import Helper.errPrintln
 
-  implicit val cachePolicy =
-    if (offline)
-      CachePolicy.LocalOnly
-    else if (force)
-      CachePolicy.ForceDownload
-    else
-      CachePolicy.Default
+  val cachePolicies = mode match {
+    case "offline" =>
+      Seq(CachePolicy.LocalOnly)
+    case "update-changing" =>
+      Seq(CachePolicy.UpdateChanging)
+    case "update" =>
+      Seq(CachePolicy.Update)
+    case "missing" =>
+      Seq(CachePolicy.FetchMissing)
+    case "force" =>
+      Seq(CachePolicy.ForceDownload)
+    case "default" =>
+      Seq(CachePolicy.LocalOnly, CachePolicy.FetchMissing)
+    case other =>
+      errPrintln(s"Unrecognized mode: $other")
+      sys.exit(255)
+  }
 
   val files =
     Files(
@@ -200,10 +193,14 @@ class Helper(
     else
       None
   logger.foreach(_.init())
+
+  val fetchs = cachePolicies.map(p =>
+    files.fetch(logger = logger)(cachePolicy = p)
+  )
   val fetchQuiet = coursier.Fetch(
     repositories,
-    files.fetch(logger = logger)(cachePolicy = CachePolicy.LocalOnly), // local files get the priority
-    files.fetch(logger = logger)
+    fetchs.head,
+    fetchs.tail: _*
   )
   val fetch0 =
     if (verbose0 <= 0) fetchQuiet
@@ -296,8 +293,16 @@ class Helper(
   }
 
   def fetch(main: Boolean, sources: Boolean, javadoc: Boolean): Seq[File] = {
-    if (verbose0 >= 0)
-      errPrintln("Fetching artifacts")
+    if (verbose0 >= 0) {
+      val msg = cachePolicies match {
+        case Seq(CachePolicy.LocalOnly) =>
+          "Checking artifacts"
+        case _ =>
+          "Fetching artifacts"
+      }
+
+      errPrintln(msg)
+    }
     val artifacts0 = res.artifacts
     val main0 = main || (!sources && !javadoc)
     val artifacts = artifacts0.flatMap{ artifact =>
@@ -318,7 +323,11 @@ class Helper(
       else
         None
     logger.foreach(_.init())
-    val tasks = artifacts.map(artifact => files.file(artifact, logger = logger).run.map(artifact.->))
+    val tasks = artifacts.map(artifact =>
+      (files.file(artifact, logger = logger)(cachePolicy = cachePolicies.head) /: cachePolicies.tail)(
+        _ orElse files.file(artifact, logger = logger)(_)
+      ).run.map(artifact.->)
+    )
     def printTask = Task {
       if (verbose0 >= 1 && artifacts.nonEmpty)
         println(s"Found ${artifacts.length} artifacts")
