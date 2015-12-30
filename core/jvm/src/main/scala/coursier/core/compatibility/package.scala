@@ -2,6 +2,8 @@ package coursier.core
 
 import coursier.util.Xml
 
+import scala.xml.{ Attribute, MetaData, Null }
+
 package object compatibility {
 
   implicit class RichChar(val c: Char) extends AnyVal {
@@ -16,11 +18,32 @@ package object compatibility {
 
     def fromNode(node: scala.xml.Node): Xml.Node =
       new Xml.Node {
+        lazy val attributes = {
+          def helper(m: MetaData): Stream[(String, String, String)] =
+            m match {
+              case Null => Stream.empty
+              case attr =>
+                val pre = attr match {
+                  case a: Attribute => Option(node.getNamespace(a.pre)).getOrElse("")
+                  case _ => ""
+                }
+
+                val value = attr.value.collect {
+                  case scala.xml.Text(t) => t
+                }.mkString("")
+
+                (pre, attr.key, value) #:: helper(m.next)
+            }
+
+          helper(node.attributes).toVector
+        }
         def label = node.label
-        def child = node.child.map(fromNode)
+        def children = node.child.map(fromNode)
         def isText = node match { case _: scala.xml.Text => true; case _ => false }
         def textContent = node.text
         def isElement = node match { case _: scala.xml.Elem => true; case _ => false }
+
+        override def toString = node.toString
       }
 
     parse.right

@@ -29,21 +29,26 @@ function isMasterOrDevelop() {
 
 # web sub-project doesn't compile in 2.10 (no scalajs-react)
 if echo "$TRAVIS_SCALA_VERSION" | grep -q "^2\.10"; then
-  SBT_COMMANDS="cli/compile"
+  IS_210=1
+  SBT_COMMANDS="bootstrap/compile coreJVM/compile coreJS/compile cache/compile web/compile testsJVM/test testsJS/test"
 else
-  SBT_COMMANDS="compile"
+  IS_210=0
+  SBT_COMMANDS="compile test"
 fi
 
 # Required for ~/.ivy2/local repo tests
 ~/sbt coreJVM/publish-local
 
-SBT_COMMANDS="$SBT_COMMANDS test"
-
 # TODO Add coverage once https://github.com/scoverage/sbt-scoverage/issues/111 is fixed
 
 PUSH_GHPAGES=0
 if isNotPr && publish && isMaster; then
-  SBT_COMMANDS="$SBT_COMMANDS coreJVM/publish coreJS/publish files/publish cli/publish"
+  SBT_COMMANDS="$SBT_COMMANDS coreJVM/publish coreJS/publish cache/publish"
+  if [ "$IS_210" = 1 ]; then
+    SBT_COMMANDS="$SBT_COMMANDS plugin/publish"
+  else
+    SBT_COMMANDS="$SBT_COMMANDS cli/publish"
+  fi
 fi
 
 if isNotPr && publish && isMasterOrDevelop; then

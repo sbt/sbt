@@ -11,14 +11,12 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import org.scalajs.jquery.jQuery
 
 import scala.concurrent.Future
-import scalaz.concurrent.Task
 
 import scala.scalajs.js
 import js.Dynamic.{ global => g }
 
 case class ResolutionOptions(
-  followOptional: Boolean = false,
-  keepTest: Boolean = false
+  followOptional: Boolean = false
 )
 
 case class State(
@@ -37,12 +35,12 @@ class Backend($: BackendScope[Unit, State]) {
 
   def fetch(
     repositories: Seq[core.Repository],
-    fetch: Repository.Fetch[Task]
-  ): ResolutionProcess.Fetch[Task] = {
+    fetch: Fetch.Content[Task]
+  ): Fetch.Metadata[Task] = {
 
     modVers => Task.gatherUnordered(
       modVers.map { case (module, version) =>
-        Repository.find(repositories, module, version, fetch)
+        Fetch.find(repositories, module, version, fetch)
           .run
           .map((module, version) -> _)
       }
@@ -66,7 +64,7 @@ class Backend($: BackendScope[Unit, State]) {
       Seq(
         dep.module.organization,
         dep.module.name,
-        dep.scope.name
+        dep.configuration
       ).mkString(":")
 
     for {
@@ -176,8 +174,7 @@ class Backend($: BackendScope[Unit, State]) {
       val res = coursier.Resolution(
         s.modules.toSet,
         filter = Some(dep =>
-          (s.options.followOptional || !dep.optional) &&
-            (s.options.keepTest || dep.scope != Scope.Test)
+          s.options.followOptional || !dep.optional
         )
       )
 
@@ -338,14 +335,6 @@ class Backend($: BackendScope[Unit, State]) {
         )
       )
     }
-    def toggleTest(e: ReactEventI) = {
-      $.modState(s =>
-        s.copy(
-          options = s.options
-            .copy(keepTest = !s.options.keepTest)
-        )
-      )
-    }
   }
 }
 
@@ -380,7 +369,7 @@ object App {
           <.td(dep.module.name),
           <.td(finalVersionOpt.fold(dep.version)(finalVersion => s"$finalVersion (for ${dep.version})")),
           <.td(Seq[Seq[TagMod]](
-            if (dep.scope == Scope.Compile) Seq() else Seq(infoLabel(dep.scope.name)),
+            if (dep.configuration == "compile") Seq() else Seq(infoLabel(dep.configuration)),
             if (dep.attributes.`type`.isEmpty || dep.attributes.`type` == "jar") Seq() else Seq(infoLabel(dep.attributes.`type`)),
             if (dep.attributes.classifier.isEmpty) Seq() else Seq(infoLabel(dep.attributes.classifier)),
             Some(dep.exclusions).filter(_.nonEmpty).map(excls => infoPopOver("Exclusions", excls.toList.sorted.map{case (org, name) => s"$org:$name"}.mkString("; "))).toSeq,
@@ -417,7 +406,10 @@ object App {
       }
 
       val sortedDeps = res.minDependencies.toList
-        .sortBy(dep => coursier.core.Module.unapply(dep.module).get)
+        .sortBy { dep =>
+          val (org, name, _) = coursier.core.Module.unapply(dep.module).get
+          (org, name)
+        }
 
       <.table(^.`class` := "table",
         <.thead(
@@ -681,15 +673,6 @@ object App {
               ^.onChange ==> backend.options.toggleOptional,
               if (options.followOptional) Seq(^.checked := "checked") else Seq(),
               "Follow optional dependencies"
-            )
-          )
-        ),
-        <.div(^.`class` := "checkbox",
-          <.label(
-            <.input(^.`type` := "checkbox",
-              ^.onChange ==> backend.options.toggleTest,
-              if (options.keepTest) Seq(^.checked := "checked") else Seq(),
-              "Keep test dependencies"
             )
           )
         )

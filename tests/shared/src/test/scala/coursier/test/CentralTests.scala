@@ -4,7 +4,7 @@ package test
 import utest._
 import scala.async.Async.{ async, await }
 
-import coursier.Fetch.default
+import coursier.Platform.fetch
 import coursier.test.compatibility._
 
 object CentralTests extends TestSuite {
@@ -44,7 +44,8 @@ object CentralTests extends TestSuite {
   def resolutionCheck(
     module: Module,
     version: String,
-    extraRepo: Option[Repository] = None
+    extraRepo: Option[Repository] = None,
+    configuration: String = ""
   ) =
     async {
       val expected =
@@ -54,7 +55,7 @@ object CentralTests extends TestSuite {
         .split('\n')
         .toSeq
 
-      val dep = Dependency(module, version)
+      val dep = Dependency(module, version, configuration = configuration)
       val res = await(resolve(Set(dep), extraRepo = extraRepo))
 
       val result = res
@@ -138,6 +139,7 @@ object CentralTests extends TestSuite {
       resolutionCheck(
         Module("com.github.fommil", "java-logging"),
         "1.2-SNAPSHOT",
+        configuration = "runtime",
         extraRepo = Some(MavenRepository("https://oss.sonatype.org/content/repositories/public/"))
       )
     }

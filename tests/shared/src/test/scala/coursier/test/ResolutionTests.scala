@@ -2,6 +2,7 @@ package coursier
 package test
 
 import coursier.core.Repository
+import coursier.maven.MavenRepository
 import utest._
 import scala.async.Async.{ async, await }
 
@@ -16,7 +17,7 @@ object ResolutionTests extends TestSuite {
   ) =
     Resolution(deps, filter = filter, forceVersions = forceVersions)
       .process
-      .run(Fetch.default(repositories))
+      .run(Platform.fetch(repositories))
       .runF
 
   implicit class ProjectOps(val p: Project) extends AnyVal {
@@ -27,69 +28,68 @@ object ResolutionTests extends TestSuite {
     Project(Module("acme", "config"), "1.3.0"),
   
     Project(Module("acme", "play"), "2.4.0", Seq(
-      Dependency(Module("acme", "play-json"), "2.4.0"))),
+      "" -> Dependency(Module("acme", "play-json"), "2.4.0"))),
   
     Project(Module("acme", "play-json"), "2.4.0"),
   
     Project(Module("acme", "play"), "2.4.1",
       dependencies = Seq(
-        Dependency(Module("acme", "play-json"), "${playJsonVersion}"),
-        Dependency(Module("${project.groupId}", "${configName}"), "1.3.0")),
-      properties = Map(
+        "" -> Dependency(Module("acme", "play-json"), "${playJsonVersion}"),
+        "" -> Dependency(Module("${project.groupId}", "${configName}"), "1.3.0")),
+      properties = Seq(
         "playJsonVersion" -> "2.4.0",
         "configName" -> "config")),
   
     Project(Module("acme", "play-extra-no-config"), "2.4.1",
       Seq(
-        Dependency(Module("acme", "play"), "2.4.1",
+        "" -> Dependency(Module("acme", "play"), "2.4.1",
           exclusions = Set(("acme", "config"))))),
 
     Project(Module("acme", "play-extra-no-config-no"), "2.4.1",
       Seq(
-        Dependency(Module("acme", "play"), "2.4.1",
+        "" -> Dependency(Module("acme", "play"), "2.4.1",
           exclusions = Set(("*", "config"))))),
 
     Project(Module("hudsucker", "mail"), "10.0",
       Seq(
-        Dependency(Module("${project.groupId}", "test-util"), "${project.version}",
-          scope = Scope.Test))),
+        "test" -> Dependency(Module("${project.groupId}", "test-util"), "${project.version}"))),
 
     Project(Module("hudsucker", "test-util"), "10.0"),
 
     Project(Module("se.ikea", "parent"), "18.0",
       dependencyManagement = Seq(
-        Dependency(Module("acme", "play"), "2.4.0",
+        "" -> Dependency(Module("acme", "play"), "2.4.0",
           exclusions = Set(("acme", "play-json"))))),
 
     Project(Module("se.ikea", "billy"), "18.0",
       dependencies = Seq(
-        Dependency(Module("acme", "play"), "")),
+        "" -> Dependency(Module("acme", "play"), "")),
       parent = Some(Module("se.ikea", "parent"), "18.0")),
 
     Project(Module("org.gnome", "parent"), "7.0",
       Seq(
-        Dependency(Module("org.gnu", "glib"), "13.4"))),
+        "" -> Dependency(Module("org.gnu", "glib"), "13.4"))),
 
     Project(Module("org.gnome", "panel-legacy"), "7.0",
       dependencies = Seq(
-        Dependency(Module("org.gnome", "desktop"), "${project.version}")),
+        "" -> Dependency(Module("org.gnome", "desktop"), "${project.version}")),
       parent = Some(Module("org.gnome", "parent"), "7.0")),
 
     Project(Module("gov.nsa", "secure-pgp"), "10.0",
       Seq(
-        Dependency(Module("gov.nsa", "crypto"), "536.89"))),
+        "" -> Dependency(Module("gov.nsa", "crypto"), "536.89"))),
 
     Project(Module("com.mailapp", "mail-client"), "2.1",
       dependencies = Seq(
-        Dependency(Module("gov.nsa", "secure-pgp"), "10.0",
+        "" -> Dependency(Module("gov.nsa", "secure-pgp"), "10.0",
           exclusions = Set(("*", "${crypto.name}")))),
-      properties = Map("crypto.name" -> "crypto", "dummy" -> "2")),
+      properties = Seq("crypto.name" -> "crypto", "dummy" -> "2")),
 
     Project(Module("com.thoughtworks.paranamer", "paranamer-parent"), "2.6",
       dependencies = Seq(
-        Dependency(Module("junit", "junit"), "")),
+        "" -> Dependency(Module("junit", "junit"), "")),
       dependencyManagement = Seq(
-        Dependency(Module("junit", "junit"), "4.11", scope = Scope.Test))),
+        "test" -> Dependency(Module("junit", "junit"), "4.11"))),
 
     Project(Module("com.thoughtworks.paranamer", "paranamer"), "2.6",
       parent = Some(Module("com.thoughtworks.paranamer", "paranamer-parent"), "2.6")),
@@ -97,75 +97,75 @@ object ResolutionTests extends TestSuite {
     Project(Module("com.github.dummy", "libb"), "0.3.3",
       profiles = Seq(
         Profile("default", activeByDefault = Some(true), dependencies = Seq(
-          Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))))),
+          "" -> Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))))),
 
     Project(Module("com.github.dummy", "libb"), "0.4.2",
       dependencies = Seq(
-        Dependency(Module("org.scalaverification", "scala-verification"), "1.12.4")),
+        "" -> Dependency(Module("org.scalaverification", "scala-verification"), "1.12.4")),
       profiles = Seq(
         Profile("default", activeByDefault = Some(true), dependencies = Seq(
-          Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"),
-          Dependency(Module("org.scalaverification", "scala-verification"), "1.12.4", scope = Scope.Test))))),
+          "" -> Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"),
+          "test" -> Dependency(Module("org.scalaverification", "scala-verification"), "1.12.4"))))),
 
     Project(Module("com.github.dummy", "libb"), "0.5.3",
-      properties = Map("special" -> "true"),
+      properties = Seq("special" -> "true"),
       profiles = Seq(
         Profile("default", activation = Profile.Activation(properties = Seq("special" -> None)), dependencies = Seq(
-          Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))))),
+          "" -> Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))))),
 
     Project(Module("com.github.dummy", "libb"), "0.5.4",
-      properties = Map("special" -> "true"),
+      properties = Seq("special" -> "true"),
       profiles = Seq(
         Profile("default", activation = Profile.Activation(properties = Seq("special" -> Some("true"))), dependencies = Seq(
-          Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))))),
+          "" -> Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))))),
 
     Project(Module("com.github.dummy", "libb"), "0.5.5",
-      properties = Map("special" -> "true"),
+      properties = Seq("special" -> "true"),
       profiles = Seq(
         Profile("default", activation = Profile.Activation(properties = Seq("special" -> Some("!false"))), dependencies = Seq(
-          Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))))),
+          "" -> Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))))),
 
     Project(Module("com.github.dummy", "libb-parent"), "0.5.6",
-      properties = Map("special" -> "true")),
+      properties = Seq("special" -> "true")),
 
     Project(Module("com.github.dummy", "libb"), "0.5.6",
       parent = Some(Module("com.github.dummy", "libb-parent"), "0.5.6"),
-      properties = Map("special" -> "true"),
+      properties = Seq("special" -> "true"),
       profiles = Seq(
         Profile("default", activation = Profile.Activation(properties = Seq("special" -> Some("!false"))), dependencies = Seq(
-          Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))))),
+          "" -> Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))))),
 
     Project(Module("an-org", "a-name"), "1.0"),
 
     Project(Module("an-org", "a-name"), "1.2"),
 
     Project(Module("an-org", "a-lib"), "1.0",
-      Seq(Dependency(Module("an-org", "a-name"), "1.0"))),
+      Seq("" -> Dependency(Module("an-org", "a-name"), "1.0"))),
 
     Project(Module("an-org", "a-lib"), "1.1"),
 
     Project(Module("an-org", "a-lib"), "1.2",
-      Seq(Dependency(Module("an-org", "a-name"), "1.2"))),
+      Seq("" -> Dependency(Module("an-org", "a-name"), "1.2"))),
 
     Project(Module("an-org", "another-lib"), "1.0",
-      Seq(Dependency(Module("an-org", "a-name"), "1.0"))),
+      Seq("" -> Dependency(Module("an-org", "a-name"), "1.0"))),
 
     // Must bring transitively an-org:a-name, as an optional dependency
     Project(Module("an-org", "an-app"), "1.0",
       Seq(
-        Dependency(Module("an-org", "a-lib"), "1.0", exclusions = Set(("an-org", "a-name"))),
-        Dependency(Module("an-org", "another-lib"), "1.0", optional = true))),
+        "" -> Dependency(Module("an-org", "a-lib"), "1.0", exclusions = Set(("an-org", "a-name"))),
+        "" -> Dependency(Module("an-org", "another-lib"), "1.0", optional = true))),
 
     Project(Module("an-org", "an-app"), "1.1",
       Seq(
-        Dependency(Module("an-org", "a-lib"), "1.1"))),
+        "" -> Dependency(Module("an-org", "a-lib"), "1.1"))),
 
     Project(Module("an-org", "an-app"), "1.2",
       Seq(
-        Dependency(Module("an-org", "a-lib"), "1.2")))
+        "" -> Dependency(Module("an-org", "a-lib"), "1.2")))
   )
 
-  val projectsMap = projects.map(p => p.moduleVersion -> p).toMap
+  val projectsMap = projects.map(p => p.moduleVersion -> p.copy(configurations = MavenRepository.defaultConfigurations)).toMap
   val testRepository = new TestRepository(projectsMap)
 
   val repositories = Seq[Repository](
@@ -243,14 +243,11 @@ object ResolutionTests extends TestSuite {
         )
         val res = await(resolve0(
           Set(dep)
-        ))
+        )).copy(filter = None, projectCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
-          dependencies = Set(dep.withCompileScope) ++ trDeps.map(_.withCompileScope),
-          projectCache = Map(
-            projectsMap(dep.moduleVersion).kv
-          ) ++ trDeps.map(trDep => projectsMap(trDep.moduleVersion).kv)
+          dependencies = Set(dep.withCompileScope) ++ trDeps.map(_.withCompileScope)
         )
 
         assert(res == expected)
@@ -267,14 +264,11 @@ object ResolutionTests extends TestSuite {
         )
         val res = await(resolve0(
           Set(dep)
-        ))
+        )).copy(filter = None, projectCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
-          dependencies = Set(dep.withCompileScope) ++ trDeps.map(_.withCompileScope),
-          projectCache = Map(
-            projectsMap(dep.moduleVersion).kv
-          ) ++ trDeps.map(trDep => projectsMap(trDep.moduleVersion).kv)
+          dependencies = Set(dep.withCompileScope) ++ trDeps.map(_.withCompileScope)
         )
 
         assert(res == expected)
@@ -291,14 +285,11 @@ object ResolutionTests extends TestSuite {
         )
         val res = await(resolve0(
           Set(dep)
-        ))
+        )).copy(filter = None, projectCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
-          dependencies = Set(dep.withCompileScope) ++ trDeps.map(_.withCompileScope),
-          projectCache = Map(
-            projectsMap(dep.moduleVersion).kv
-          ) ++ trDeps.map(trDep => projectsMap(trDep.moduleVersion).kv)
+          dependencies = Set(dep.withCompileScope) ++ trDeps.map(_.withCompileScope)
         )
 
         assert(res == expected)
@@ -308,16 +299,12 @@ object ResolutionTests extends TestSuite {
       async {
         val dep = Dependency(Module("hudsucker", "mail"), "10.0")
         val res = await(resolve0(
-          Set(dep),
-          filter = Some(_.scope == Scope.Compile)
-        )).copy(filter = None)
+          Set(dep)
+        )).copy(filter = None, projectCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
-          dependencies = Set(dep.withCompileScope),
-          projectCache = Map(
-            projectsMap(dep.moduleVersion).kv
-          )
+          dependencies = Set(dep.withCompileScope)
         )
 
         assert(res == expected)
@@ -331,8 +318,7 @@ object ResolutionTests extends TestSuite {
             exclusions = Set(("acme", "play-json")))
         )
         val res = await(resolve0(
-          Set(dep),
-          filter = Some(_.scope == Scope.Compile)
+          Set(dep)
         )).copy(filter = None, projectCache = Map.empty)
 
         val expected = Resolution(
@@ -350,8 +336,7 @@ object ResolutionTests extends TestSuite {
           Dependency(Module("org.gnu", "glib"), "13.4"),
           Dependency(Module("org.gnome", "desktop"), "7.0"))
         val res = await(resolve0(
-          Set(dep),
-          filter = Some(_.scope == Scope.Compile)
+          Set(dep)
         )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
@@ -368,8 +353,7 @@ object ResolutionTests extends TestSuite {
         val trDeps = Seq(
           Dependency(Module("gov.nsa", "secure-pgp"), "10.0", exclusions = Set(("*", "crypto"))))
         val res = await(resolve0(
-          Set(dep),
-          filter = Some(_.scope == Scope.Compile)
+          Set(dep)
         )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
@@ -384,8 +368,7 @@ object ResolutionTests extends TestSuite {
       async {
         val dep = Dependency(Module("com.thoughtworks.paranamer", "paranamer"), "2.6")
         val res = await(resolve0(
-          Set(dep),
-          filter = Some(_.scope == Scope.Compile)
+          Set(dep)
         )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
@@ -402,8 +385,7 @@ object ResolutionTests extends TestSuite {
         val trDeps = Seq(
           Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))
         val res = await(resolve0(
-          Set(dep),
-          filter = Some(_.scope == Scope.Compile)
+          Set(dep)
         )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
@@ -422,8 +404,7 @@ object ResolutionTests extends TestSuite {
             val trDeps = Seq(
               Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))
             val res = await(resolve0(
-              Set(dep),
-              filter = Some(_.scope == Scope.Compile)
+              Set(dep)
             )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
             val expected = Resolution(
@@ -444,8 +425,7 @@ object ResolutionTests extends TestSuite {
         val trDeps = Seq(
           Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))
         val res = await(resolve0(
-          Set(dep),
-          filter = Some(_.scope == Scope.Compile)
+          Set(dep)
         )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
@@ -466,7 +446,7 @@ object ResolutionTests extends TestSuite {
           Dependency(Module("an-org", "a-name"), "1.0", optional = true))
         val res = await(resolve0(
           Set(dep),
-          filter = Some(_.scope == Scope.Compile)
+          filter = Some(_ => true)
         )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
@@ -489,7 +469,7 @@ object ResolutionTests extends TestSuite {
           Dependency(Module("an-org", "a-name"), "1.0", optional = true))
         val res = await(resolve0(
           deps,
-          filter = Some(_.scope == Scope.Compile)
+          filter = Some(_ => true)
         )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
         val expected = Resolution(
@@ -511,8 +491,7 @@ object ResolutionTests extends TestSuite {
 
           val res = await(resolve0(
             deps,
-            forceVersions = depOverrides,
-            filter = Some(_.scope == Scope.Compile)
+            forceVersions = depOverrides
           )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
           val expected = Resolution(
@@ -536,8 +515,7 @@ object ResolutionTests extends TestSuite {
 
           val res = await(resolve0(
             deps,
-            forceVersions = depOverrides,
-            filter = Some(_.scope == Scope.Compile)
+            forceVersions = depOverrides
           )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
           val expected = Resolution(
@@ -563,8 +541,7 @@ object ResolutionTests extends TestSuite {
 
           val res = await(resolve0(
             deps,
-            forceVersions = depOverrides,
-            filter = Some(_.scope == Scope.Compile)
+            forceVersions = depOverrides
           )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
 
           val expected = Resolution(
@@ -585,9 +562,9 @@ object ResolutionTests extends TestSuite {
       'propertySubstitution{
         val res =
           core.Resolution.withProperties(
-            Seq(Dependency(Module("a-company", "a-name"), "${a.property}")),
+            Seq("" -> Dependency(Module("a-company", "a-name"), "${a.property}")),
             Map("a.property" -> "a-version"))
-        val expected = Seq(Dependency(Module("a-company", "a-name"), "a-version"))
+        val expected = Seq("" -> Dependency(Module("a-company", "a-name"), "a-version"))
 
         assert(res == expected)
       }

@@ -51,19 +51,18 @@ lazy val baseCommonSettings = Seq(
   organization := "com.github.alexarchambault",
   resolvers ++= Seq(
     "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
-    Resolver.sonatypeRepo("releases"),
-    Resolver.sonatypeRepo("snapshots")
+    Resolver.sonatypeRepo("releases")
   ),
   scalacOptions += "-target:jvm-1.7",
   javacOptions ++= Seq(
     "-source", "1.7",
     "-target", "1.7"
-  )
+  ),
+  javacOptions in Keys.doc := Seq()
 )
 
 lazy val commonSettings = baseCommonSettings ++ Seq(
   scalaVersion := "2.11.7",
-  crossScalaVersions := Seq("2.10.6", "2.11.7"),
   libraryDependencies ++= {
     if (scalaVersion.value startsWith "2.10.")
       Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.0.1" cross CrossVersion.full))
@@ -71,7 +70,6 @@ lazy val commonSettings = baseCommonSettings ++ Seq(
       Seq()
   }
 )
-
 
 lazy val core = crossProject
   .settings(commonSettings: _*)
@@ -128,17 +126,18 @@ lazy val tests = crossProject
     scalaJSStage in Global := FastOptStage
   )
 
-lazy val testsJvm = tests.jvm.dependsOn(files % "test")
+lazy val testsJvm = tests.jvm.dependsOn(cache % "test")
 lazy val testsJs = tests.js.dependsOn(`fetch-js` % "test")
 
-lazy val files = project
+lazy val cache = project
   .dependsOn(coreJvm)
   .settings(commonSettings)
   .settings(publishingSettings)
   .settings(
-    name := "coursier-files",
+    name := "coursier-cache",
     libraryDependencies ++= Seq(
-      "org.scalaz" %% "scalaz-concurrent" % "7.1.2"
+      "org.scalaz" %% "scalaz-concurrent" % "7.1.2",
+      "com.lihaoyi" %% "ammonite-terminal" % "0.5.0"
     )
   )
 
@@ -156,20 +155,19 @@ lazy val bootstrap = project
           artifactName0(sv, m, artifact)
     },
     crossPaths := false,
-    autoScalaLibrary := false,
-    javacOptions in doc := Seq()
+    autoScalaLibrary := false
   )
 
 lazy val cli = project
-  .dependsOn(coreJvm, files)
+  .dependsOn(coreJvm, cache)
   .settings(commonSettings)
-  .settings(noPublishSettings)
+  .settings(publishingSettings)
   .settings(packAutoSettings)
   .settings(
     name := "coursier-cli",
     libraryDependencies ++= Seq(
-      "com.github.alexarchambault" %% "case-app" % "1.0.0-SNAPSHOT",
-      "com.lihaoyi" %% "ammonite-terminal" % "0.5.0",
+      // beware - available only in 2.11
+      "com.github.alexarchambault" %% "case-app" % "1.0.0-M1",
       "ch.qos.logback" % "logback-classic" % "1.1.3"
     ),
     resourceGenerators in Compile += packageBin.in(bootstrap).in(Compile).map { jar =>
@@ -208,8 +206,27 @@ lazy val web = project
     )
   )
 
+lazy val doc = project
+  .dependsOn(coreJvm, cache)
+  .settings(commonSettings)
+  .settings(noPublishSettings)
+  .settings(tutSettings)
+  .settings(
+    tutSourceDirectory := baseDirectory.value,
+    tutTargetDirectory := baseDirectory.value / ".."
+  )
+
+// Don't try to compile that if you're not in 2.10
+lazy val plugin = project
+  .dependsOn(coreJvm, cache)
+  .settings(baseCommonSettings)
+  .settings(
+    name := "coursier-sbt-plugin",
+    sbtPlugin := true
+  )
+
 lazy val `coursier` = project.in(file("."))
-  .aggregate(coreJvm, coreJs, `fetch-js`, testsJvm, testsJs, files, bootstrap, cli, web)
+  .aggregate(coreJvm, coreJs, `fetch-js`, testsJvm, testsJs, cache, bootstrap, cli, web, doc)
   .settings(commonSettings)
   .settings(noPublishSettings)
   .settings(releaseSettings)

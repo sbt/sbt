@@ -1,0 +1,436 @@
+package coursier
+
+import java.io.{ OutputStreamWriter, File }
+import java.nio.file.Files
+import java.util.concurrent.Executors
+
+import coursier.core.Publication
+import coursier.ivy.IvyRepository
+import coursier.Keys._
+import coursier.Structure._
+import org.apache.ivy.core.module.id.ModuleRevisionId
+
+import sbt.{ UpdateReport, Classpaths, Resolver, Def }
+import sbt.Configurations.{ Compile, Test }
+import sbt.Keys._
+
+import scala.collection.mutable
+import scala.collection.JavaConverters._
+
+import scalaz.{ \/-, -\/ }
+import scalaz.concurrent.{ Task, Strategy }
+
+object Tasks {
+
+  def coursierResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] = Def.task {
+    var resolvers = externalResolvers.value
+    if (sbtPlugin.value)
+      resolvers = Seq(
+        sbtResolver.value,
+        Classpaths.sbtPluginReleases
+      ) ++ resolvers
+    resolvers
+  }
+
+  def coursierProjectTask: Def.Initialize[sbt.Task[Project]] =
+    (
+      sbt.Keys.state,
+      sbt.Keys.thisProjectRef
+    ).flatMap { (state, projectRef) =>
+
+      // should projectID.configurations be used instead?
+      val configurations = ivyConfigurations.in(projectRef).get(state)
+
+      val allDependenciesTask = allDependencies.in(projectRef).get(state)
+
+      for {
+        allDependencies <- allDependenciesTask
+      } yield {
+
+        FromSbt.project(
+          projectID.in(projectRef).get(state),
+          allDependencies,
+          configurations.map { cfg => cfg.name -> cfg.extendsConfigs.map(_.name) }.toMap,
+          scalaVersion.in(projectRef).get(state),
+          scalaBinaryVersion.in(projectRef).get(state)
+        )
+      }
+    }
+
+  def coursierProjectsTask: Def.Initialize[sbt.Task[Seq[Project]]] =
+    sbt.Keys.state.flatMap { state =>
+      val projects = structure(state).allProjectRefs
+      coursierProject.forAllProjects(state, projects).map(_.values.toVector)
+    }
+
+  def coursierPublicationsTask: Def.Initialize[sbt.Task[Seq[(String, Publication)]]] =
+    (
+      sbt.Keys.state,
+      sbt.Keys.thisProjectRef,
+      sbt.Keys.projectID,
+      sbt.Keys.scalaVersion,
+      sbt.Keys.scalaBinaryVersion
+    ).map { (state, projectRef, projId, sv, sbv) =>
+
+      val packageTasks = Seq(packageBin, packageSrc, packageDoc)
+      val configs = Seq(Compile, Test)
+
+      val sbtArtifacts =
+        for {
+          pkgTask <- packageTasks
+          config <- configs
+        } yield {
+          val publish = publishArtifact.in(projectRef).in(pkgTask).in(config).getOrElse(state, false)
+          if (publish)
+            Option(artifact.in(projectRef).in(pkgTask).in(config).getOrElse(state, null))
+              .map(config.name -> _)
+          else
+            None
+        }
+
+      sbtArtifacts.collect {
+        case Some((config, artifact)) =>
+          val name = FromSbt.sbtCrossVersionName(
+            artifact.name,
+            projId.crossVersion,
+            sv,
+            sbv
+          )
+
+          val publication = Publication(
+            name,
+            artifact.`type`,
+            artifact.extension,
+            artifact.classifier.getOrElse("")
+          )
+
+          config -> publication
+      }
+    }
+
+  // FIXME More things should possibly be put here too (resolvers, etc.)
+  private case class CacheKey(
+    resolution: Resolution,
+    withClassifiers: Boolean,
+    sbtClassifiers: Boolean
+  )
+
+  private val resolutionsCache = new mutable.HashMap[CacheKey, UpdateReport]
+
+  def updateTask(withClassifiers: Boolean, sbtClassifiers: Boolean = false) = Def.task {
+
+    // SBT logging should be better than that most of the time...
+    def errPrintln(s: String): Unit = scala.Console.err.println(s)
+
+    def grouped[K, V](map: Seq[(K, V)]): Map[K, Seq[V]] =
+      map.groupBy { case (k, _) => k }.map {
+        case (k, l) =>
+          k -> l.map { case (_, v) => v }
+      }
+
+    // let's update only one module at once, for a better output
+    // Downloads are already parallel, no need to parallelize further anyway
+    synchronized {
+
+      lazy val cm = coursierSbtClassifiersModule.value
+
+      val currentProject =
+        if (sbtClassifiers)
+          FromSbt.project(
+            cm.id,
+            cm.modules,
+            cm.configurations.map(cfg => cfg.name -> cfg.extendsConfigs.map(_.name)).toMap,
+            scalaVersion.value,
+            scalaBinaryVersion.value
+          )
+        else {
+          val proj = coursierProject.value
+          val publications = coursierPublications.value
+          proj.copy(publications = publications)
+        }
+
+      val ivySbt0 = ivySbt.value
+      val ivyCacheManager = ivySbt0.withIvy(streams.value.log)(ivy =>
+        ivy.getResolutionCacheManager
+      )
+
+      val ivyModule = ModuleRevisionId.newInstance(
+        currentProject.module.organization,
+        currentProject.module.name,
+        currentProject.version,
+        currentProject.module.attributes.asJava
+      )
+      val cacheIvyFile = ivyCacheManager.getResolvedIvyFileInCache(ivyModule)
+      val cacheIvyPropertiesFile = ivyCacheManager.getResolvedIvyPropertiesInCache(ivyModule)
+
+      val projects = coursierProjects.value
+
+      val parallelDownloads = coursierParallelDownloads.value
+      val checksums = coursierChecksums.value
+      val artifactsChecksums = coursierArtifactsChecksums.value
+      val maxIterations = coursierMaxIterations.value
+      val cachePolicy = coursierCachePolicy.value
+      val cacheDir = coursierCache.value
+
+      val resolvers =
+        if (sbtClassifiers)
+          coursierSbtResolvers.value
+        else
+          coursierResolvers.value
+
+      val verbosity = coursierVerbosity.value
+
+
+      val startRes = Resolution(
+        currentProject.dependencies.map { case (_, dep) => dep }.toSet,
+        filter = Some(dep => !dep.optional),
+        forceVersions = projects.map(_.moduleVersion).toMap
+      )
+
+      // required for publish to be fine, later on
+      def writeIvyFiles() = {
+        val printer = new scala.xml.PrettyPrinter(80, 2)
+
+        val b = new StringBuilder
+        b ++= """<?xml version="1.0" encoding="UTF-8"?>"""
+        b += '\n'
+        b ++= printer.format(MakeIvyXml(currentProject))
+        cacheIvyFile.getParentFile.mkdirs()
+        Files.write(cacheIvyFile.toPath, b.result().getBytes("UTF-8"))
+
+        // Just writing an empty file here... Are these only used?
+        cacheIvyPropertiesFile.getParentFile.mkdirs()
+        Files.write(cacheIvyPropertiesFile.toPath, "".getBytes("UTF-8"))
+      }
+
+      def report = {
+        if (verbosity >= 1) {
+          println("InterProjectRepository")
+          for (p <- projects)
+            println(s"  ${p.module}:${p.version}")
+        }
+
+        val globalPluginsRepo = IvyRepository(
+          new File(sys.props("user.home") + "/.sbt/0.13/plugins/target/resolution-cache/").toURI.toString +
+            "[organization]/[module](/scala_[scalaVersion])(/sbt_[sbtVersion])/[revision]/resolved.xml.[ext]",
+          withChecksums = false,
+          withSignatures = false,
+          withArtifacts = false
+        )
+
+        val interProjectRepo = InterProjectRepository(projects)
+
+        val ivyProperties = Map(
+          "ivy.home" -> s"${sys.props("user.home")}/.ivy2"
+        ) ++ sys.props
+
+        val repositories = Seq(globalPluginsRepo, interProjectRepo) ++ resolvers.flatMap(FromSbt.repository(_, ivyProperties))
+
+        val caches = Seq(
+          "http://" -> new File(cacheDir, "http"),
+          "https://" -> new File(cacheDir, "https")
+        )
+
+        val pool = Executors.newFixedThreadPool(parallelDownloads, Strategy.DefaultDaemonThreadFactory)
+
+        def createLogger() = new TermDisplay(
+          new OutputStreamWriter(System.err),
+          fallbackMode = sys.env.get("COURSIER_NO_TERM").nonEmpty
+        )
+
+        val resLogger = createLogger()
+
+        val fetch = coursier.Fetch(
+          repositories,
+          Cache.fetch(caches, CachePolicy.LocalOnly, checksums = checksums, logger = Some(resLogger), pool = pool),
+          Cache.fetch(caches, cachePolicy, checksums = checksums, logger = Some(resLogger), pool = pool)
+        )
+
+        def depsRepr(deps: Seq[(String, Dependency)]) =
+          deps.map { case (config, dep) =>
+            s"${dep.module}:${dep.version}:$config->${dep.configuration}"
+          }.sorted.distinct
+
+        def depsRepr0(deps: Seq[Dependency]) =
+          deps.map { dep =>
+            s"${dep.module}:${dep.version}:${dep.configuration}"
+          }.sorted.distinct
+
+        if (verbosity >= 1) {
+          errPrintln(s"Repositories:")
+          val repositories0 = repositories.map {
+            case r: IvyRepository => r.copy(properties = Map.empty)
+            case r: InterProjectRepository => r.copy(projects = Nil)
+            case r => r
+          }
+          for (repo <- repositories0)
+            errPrintln(s"  $repo")
+        }
+
+        if (verbosity >= 0)
+          errPrintln(s"Resolving ${currentProject.module.organization}:${currentProject.module.name}:${currentProject.version}")
+        if (verbosity >= 1)
+          for (depRepr <- depsRepr(currentProject.dependencies))
+            errPrintln(s"  $depRepr")
+
+        resLogger.init()
+
+        val res = startRes
+          .process
+          .run(fetch, maxIterations)
+          .attemptRun
+          .leftMap(ex => throw new Exception(s"Exception during resolution", ex))
+          .merge
+
+        resLogger.stop()
+
+
+        if (!res.isDone)
+          throw new Exception(s"Maximum number of iteration reached!")
+
+        if (verbosity >= 0)
+          errPrintln("Resolution done")
+        if (verbosity >= 1)
+          for (depRepr <- depsRepr0(res.minDependencies.toSeq))
+            errPrintln(s"  $depRepr")
+
+        def repr(dep: Dependency) = {
+          // dep.version can be an interval, whereas the one from project can't
+          val version = res
+            .projectCache
+            .get(dep.moduleVersion)
+            .map(_._2.version)
+            .getOrElse(dep.version)
+          val extra =
+            if (version == dep.version) ""
+            else s" ($version for ${dep.version})"
+
+          (
+            Seq(
+              dep.module.organization,
+              dep.module.name,
+              dep.attributes.`type`
+            ) ++
+              Some(dep.attributes.classifier)
+                .filter(_.nonEmpty)
+                .toSeq ++
+              Seq(
+                version
+              )
+            ).mkString(":") + extra
+        }
+
+        if (res.conflicts.nonEmpty) {
+          // Needs test
+          println(s"${res.conflicts.size} conflict(s):\n  ${res.conflicts.toList.map(repr).sorted.mkString("  \n")}")
+        }
+
+        val errors = res.errors
+
+        if (errors.nonEmpty) {
+          println(s"\n${errors.size} error(s):")
+          for ((dep, errs) <- errors) {
+            println(s"  ${dep.module}:${dep.version}:\n${errs.map("    " + _.replace("\n", "    \n")).mkString("\n")}")
+          }
+          throw new Exception(s"Encountered ${errors.length} error(s)")
+        }
+
+        val classifiers =
+          if (withClassifiers)
+            Some {
+              if (sbtClassifiers)
+                cm.classifiers
+              else
+                transitiveClassifiers.value
+            }
+          else
+            None
+
+        val allArtifacts =
+          classifiers match {
+            case None => res.artifacts
+            case Some(cl) => res.classifiersArtifacts(cl)
+          }
+
+        val artifactsLogger = createLogger()
+
+        val artifactFileOrErrorTasks = allArtifacts.toVector.map { a =>
+          Cache.file(a, caches, cachePolicy, checksums = artifactsChecksums, logger = Some(artifactsLogger), pool = pool).run.map((a, _))
+        }
+
+        if (verbosity >= 0)
+          errPrintln(s"Fetching artifacts")
+
+        artifactsLogger.init()
+
+        val artifactFilesOrErrors = Task.gatherUnordered(artifactFileOrErrorTasks).attemptRun match {
+          case -\/(ex) =>
+            throw new Exception(s"Error while downloading / verifying artifacts", ex)
+          case \/-(l) =>
+            l.toMap
+        }
+
+        artifactsLogger.stop()
+
+        if (verbosity >= 0)
+          errPrintln(s"Fetching artifacts: done")
+
+        val configs = {
+          val configs0 = ivyConfigurations.value.map { config =>
+            config.name -> config.extendsConfigs.map(_.name)
+          }.toMap
+
+          def allExtends(c: String) = {
+            // possibly bad complexity
+            def helper(current: Set[String]): Set[String] = {
+              val newSet = current ++ current.flatMap(configs0.getOrElse(_, Nil))
+              if ((newSet -- current).nonEmpty)
+                helper(newSet)
+              else
+                newSet
+            }
+
+            helper(Set(c))
+          }
+
+          configs0.map {
+            case (config, _) =>
+              config -> allExtends(config)
+          }
+        }
+
+        def artifactFileOpt(artifact: Artifact) = {
+          val fileOrError = artifactFilesOrErrors.getOrElse(artifact, -\/("Not downloaded"))
+
+          fileOrError match {
+            case \/-(file) =>
+              if (file.toString.contains("file:/"))
+                throw new Exception(s"Wrong path: $file")
+              Some(file)
+            case -\/(err) =>
+              errPrintln(s"${artifact.url}: $err")
+              None
+          }
+        }
+
+        val depsByConfig = grouped(currentProject.dependencies)
+
+        writeIvyFiles()
+
+        ToSbt.updateReport(
+          depsByConfig,
+          res,
+          configs,
+          classifiers,
+          artifactFileOpt
+        )
+      }
+
+      resolutionsCache.getOrElseUpdate(
+        CacheKey(startRes.copy(filter = None), withClassifiers, sbtClassifiers),
+        report
+      )
+    }
+  }
+
+}

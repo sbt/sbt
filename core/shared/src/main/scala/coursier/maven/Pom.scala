@@ -7,21 +7,6 @@ import scalaz._
 object Pom {
   import coursier.util.Xml._
 
-  object Text {
-    def unapply(n: Node): Option[String] =
-      if (n.isText) Some(n.textContent)
-      else None
-  }
-
-  private def text(elem: Node, label: String, description: String) = {
-    import Scalaz.ToOptionOpsFromOption
-
-    elem.child
-      .find(_.label == label)
-      .flatMap(_.child.collectFirst{case Text(t) => t})
-      .toRightDisjunction(s"$description not found")
-  }
-
   def property(elem: Node): String \/ (String, String) = {
     // Not matching with Text, which fails on scala-js if the property value has xml comments
     if (elem.isElement) \/-(elem.label -> elem.textContent)
@@ -37,39 +22,37 @@ object Pom {
         else e
       }
       name <- text(node, "artifactId", "Name")
-    } yield Module(organization, name).trim
+    } yield Module(organization, name, Map.empty).trim
   }
 
   private def readVersion(node: Node) =
     text(node, "version", "Version").getOrElse("").trim
 
-  private val defaultScope = Scope.Other("")
   private val defaultType = "jar"
   private val defaultClassifier = ""
 
-  def dependency(node: Node): String \/ Dependency = {
+  def dependency(node: Node): String \/ (String, Dependency) = {
     for {
       mod <- module(node)
       version0 = readVersion(node)
       scopeOpt = text(node, "scope", "").toOption
-        .map(Parse.scope)
       typeOpt = text(node, "type", "").toOption
       classifierOpt = text(node, "classifier", "").toOption
-      xmlExclusions = node.child
+      xmlExclusions = node.children
         .find(_.label == "exclusions")
-        .map(_.child.filter(_.label == "exclusion"))
+        .map(_.children.filter(_.label == "exclusion"))
         .getOrElse(Seq.empty)
       exclusions <- {
         import Scalaz._
         xmlExclusions.toList.traverseU(module(_))
       }
       optional = text(node, "optional", "").toOption.toSeq.contains("true")
-    } yield Dependency(
+    } yield scopeOpt.getOrElse("") -> Dependency(
         mod,
         version0,
-        scopeOpt getOrElse defaultScope,
-        Attributes(typeOpt getOrElse defaultType, classifierOpt getOrElse defaultClassifier),
+        "",
         exclusions.map(mod => (mod.organization, mod.name)).toSet,
+        Attributes(typeOpt getOrElse defaultType, classifierOpt getOrElse defaultClassifier),
         optional
       )
   }
@@ -82,7 +65,7 @@ object Pom {
         case _ => None
       }
 
-    val properties = node.child
+    val properties = node.children
       .filter(_.label == "property")
       .flatMap{ p =>
         for{
@@ -99,28 +82,28 @@ object Pom {
 
     val id = text(node, "id", "Profile ID").getOrElse("")
 
-    val xmlActivationOpt = node.child
+    val xmlActivationOpt = node.children
       .find(_.label == "activation")
     val (activeByDefault, activation) = xmlActivationOpt.fold((Option.empty[Boolean], Activation(Nil)))(profileActivation)
 
-    val xmlDeps = node.child
+    val xmlDeps = node.children
       .find(_.label == "dependencies")
-      .map(_.child.filter(_.label == "dependency"))
+      .map(_.children.filter(_.label == "dependency"))
       .getOrElse(Seq.empty)
 
     for {
       deps <- xmlDeps.toList.traverseU(dependency)
 
-      xmlDepMgmts = node.child
+      xmlDepMgmts = node.children
         .find(_.label == "dependencyManagement")
-        .flatMap(_.child.find(_.label == "dependencies"))
-        .map(_.child.filter(_.label == "dependency"))
+        .flatMap(_.children.find(_.label == "dependencies"))
+        .map(_.children.filter(_.label == "dependency"))
         .getOrElse(Seq.empty)
       depMgmts <- xmlDepMgmts.toList.traverseU(dependency)
 
-      xmlProperties = node.child
+      xmlProperties = node.children
         .find(_.label == "properties")
-        .map(_.child.collect{case elem if elem.isElement => elem})
+        .map(_.children.collect{case elem if elem.isElement => elem})
         .getOrElse(Seq.empty)
 
       properties <- {
@@ -138,7 +121,7 @@ object Pom {
       projModule <- module(pom, groupIdIsOptional = true)
       projVersion = readVersion(pom)
 
-      parentOpt = pom.child
+      parentOpt = pom.children
         .find(_.label == "parent")
       parentModuleOpt <- parentOpt
         .map(module(_).map(Some(_)))
@@ -146,16 +129,16 @@ object Pom {
       parentVersionOpt = parentOpt
         .map(readVersion)
 
-      xmlDeps = pom.child
+      xmlDeps = pom.children
         .find(_.label == "dependencies")
-        .map(_.child.filter(_.label == "dependency"))
+        .map(_.children.filter(_.label == "dependency"))
         .getOrElse(Seq.empty)
       deps <- xmlDeps.toList.traverseU(dependency)
 
-      xmlDepMgmts = pom.child
+      xmlDepMgmts = pom.children
         .find(_.label == "dependencyManagement")
-        .flatMap(_.child.find(_.label == "dependencies"))
-        .map(_.child.filter(_.label == "dependency"))
+        .flatMap(_.children.find(_.label == "dependencies"))
+        .map(_.children.filter(_.label == "dependency"))
         .getOrElse(Seq.empty)
       depMgmts <- xmlDepMgmts.toList.traverseU(dependency)
 
@@ -173,43 +156,94 @@ object Pom {
         .map(mod => if (mod.organization.isEmpty) -\/("Parent organization missing") else \/-(()))
         .getOrElse(\/-(()))
 
-      xmlProperties = pom.child
+      xmlProperties = pom.children
         .find(_.label == "properties")
-        .map(_.child.collect{case elem if elem.isElement => elem})
+        .map(_.children.collect{case elem if elem.isElement => elem})
         .getOrElse(Seq.empty)
       properties <- xmlProperties.toList.traverseU(property)
 
-      xmlProfiles = pom.child
+      xmlProfiles = pom.children
         .find(_.label == "profiles")
-        .map(_.child.filter(_.label == "profile"))
+        .map(_.children.filter(_.label == "profile"))
         .getOrElse(Seq.empty)
       profiles <- xmlProfiles.toList.traverseU(profile)
 
-    } yield Project(
-      projModule.copy(organization = groupId),
-      version,
-      deps,
-      parentModuleOpt.map((_, parentVersionOpt.getOrElse(""))),
-      depMgmts,
-      properties.toMap,
-      profiles,
-      None,
-      None
-    )
-  }
+      extraAttrs <- properties
+        .collectFirst { case ("extraDependencyAttributes", s) => extraAttributes(s) }
+        .getOrElse(\/-(Map.empty))
 
-  def parseDateTime(s: String): Option[Versions.DateTime] =
-    if (s.length == 14 && s.forall(_.isDigit))
-      Some(Versions.DateTime(
-        s.substring(0, 4).toInt,
-        s.substring(4, 6).toInt,
-        s.substring(6, 8).toInt,
-        s.substring(8, 10).toInt,
-        s.substring(10, 12).toInt,
-        s.substring(12, 14).toInt
-      ))
-    else
-      None
+      extraAttrsMap = extraAttrs.map {
+        case (mod, ver) =>
+          (mod.copy(attributes = Map.empty), ver) -> mod.attributes
+      }.toMap
+
+    } yield {
+
+      val description = pom.children
+        .find(_.label == "description")
+        .map(_.textContent)
+        .getOrElse("")
+
+      val homePage = pom.children
+        .find(_.label == "url")
+        .map(_.textContent)
+        .getOrElse("")
+
+      val licenses = pom.children
+        .find(_.label == "licenses")
+        .toSeq
+        .flatMap(_.children)
+        .filter(_.label == "license")
+        .flatMap { n =>
+          text(n, "name", "License name").toOption.map { name =>
+            (name, text(n, "url", "License URL").toOption)
+          }.toSeq
+        }
+
+      val developers = pom.children
+        .find(_.label == "developers")
+        .toSeq
+        .flatMap(_.children)
+        .filter(_.label == "developer")
+        .map { n =>
+          for {
+            id <- text(n, "id", "Developer ID")
+            name <- text(n, "name", "Developer name")
+            url <- text(n, "url", "Developer URL")
+          } yield Info.Developer(id, name, url)
+        }
+        .collect {
+          case \/-(d) => d
+        }
+
+      Project(
+        projModule.copy(organization = groupId),
+        version,
+        deps.map {
+          case (config, dep0) =>
+            val dep = extraAttrsMap.get(dep0.moduleVersion).fold(dep0)(attrs =>
+              dep0.copy(module = dep0.module.copy(attributes = attrs))
+            )
+            config -> dep
+        },
+        Map.empty,
+        parentModuleOpt.map((_, parentVersionOpt.getOrElse(""))),
+        depMgmts,
+        properties,
+        profiles,
+        None,
+        None,
+        Nil,
+        Info(
+          description,
+          homePage,
+          licenses,
+          developers,
+          None
+        )
+      )
+    }
+  }
 
   def versions(node: Node): String \/ Versions = {
     import Scalaz._
@@ -218,7 +252,7 @@ object Pom {
       organization <- text(node, "groupId", "Organization") // Ignored
       name <- text(node, "artifactId", "Name") // Ignored
 
-      xmlVersioning <- node.child
+      xmlVersioning <- node.children
         .find(_.label == "versioning")
         .toRightDisjunction("Versioning info not found in metadata")
 
@@ -227,9 +261,9 @@ object Pom {
       release = text(xmlVersioning, "release", "Release version")
         .getOrElse("")
 
-      versionsOpt = xmlVersioning.child
+      versionsOpt = xmlVersioning.children
         .find(_.label == "versions")
-        .map(_.child.filter(_.label == "version").flatMap(_.child.collectFirst{case Text(t) => t}))
+        .map(_.children.filter(_.label == "version").flatMap(_.children.collectFirst{case Text(t) => t}))
 
       lastUpdatedOpt = text(xmlVersioning, "lastUpdated", "Last update date and time")
         .toOption
@@ -269,7 +303,7 @@ object Pom {
       name <- text(node, "artifactId", "Name")
       version = readVersion(node)
 
-      xmlVersioning <- node.child
+      xmlVersioning <- node.children
         .find(_.label == "versioning")
         .toRightDisjunction("Versioning info not found in metadata")
 
@@ -278,15 +312,15 @@ object Pom {
       release = text(xmlVersioning, "release", "Release version")
         .getOrElse("")
 
-      versionsOpt = xmlVersioning.child
+      versionsOpt = xmlVersioning.children
         .find(_.label == "versions")
-        .map(_.child.filter(_.label == "version").flatMap(_.child.collectFirst{case Text(t) => t}))
+        .map(_.children.filter(_.label == "version").flatMap(_.children.collectFirst{case Text(t) => t}))
 
       lastUpdatedOpt = text(xmlVersioning, "lastUpdated", "Last update date and time")
         .toOption
         .flatMap(parseDateTime)
 
-      xmlSnapshotOpt = xmlVersioning.child
+      xmlSnapshotOpt = xmlVersioning.children
         .find(_.label == "snapshot")
 
       timestamp = xmlSnapshotOpt
@@ -314,15 +348,15 @@ object Pom {
           case "false" => false
         }
 
-      xmlSnapshotVersions = xmlVersioning.child
+      xmlSnapshotVersions = xmlVersioning.children
         .find(_.label == "snapshotVersions")
-        .map(_.child.filter(_.label == "snapshotVersion"))
+        .map(_.children.filter(_.label == "snapshotVersion"))
         .getOrElse(Seq.empty)
       snapshotVersions <- xmlSnapshotVersions
         .toList
         .traverseU(snapshotVersion)
     } yield SnapshotVersioning(
-      Module(organization, name),
+      Module(organization, name, Map.empty),
       version,
       latest,
       release,
@@ -332,5 +366,70 @@ object Pom {
       lastUpdatedOpt,
       snapshotVersions
     )
+  }
+
+  val extraAttributeSeparator = ":#@#:"
+  val extraAttributePrefix = "+"
+
+  val extraAttributeOrg = "organisation"
+  val extraAttributeName = "module"
+  val extraAttributeVersion = "revision"
+
+  val extraAttributeBase = Set(
+    extraAttributeOrg,
+    extraAttributeName,
+    extraAttributeVersion,
+    "branch"
+  )
+
+  val extraAttributeDropPrefix = "e:"
+
+  def extraAttribute(s: String): String \/ (Module, String) = {
+    // vaguely does the same as:
+    // https://github.com/apache/ant-ivy/blob/2.2.0/src/java/org/apache/ivy/core/module/id/ModuleRevisionId.java#L291
+
+    // dropping the attributes with a value of NULL here...
+
+    val rawParts = s.split(extraAttributeSeparator).toSeq
+
+    val partsOrError =
+      if (rawParts.length % 2 == 0) {
+        val malformed = rawParts.filter(!_.startsWith(extraAttributePrefix))
+        if (malformed.isEmpty)
+          \/-(rawParts.map(_.drop(extraAttributePrefix.length)))
+        else
+          -\/(s"Malformed attributes ${malformed.map("'"+_+"'").mkString(", ")} in extra attributes '$s'")
+      } else
+        -\/(s"Malformed extra attributes '$s'")
+
+    def attrFrom(attrs: Map[String, String], name: String): String \/ String =
+      \/.fromEither(
+        attrs.get(name)
+          .toRight(s"$name not found in extra attributes '$s'")
+      )
+
+    for {
+      parts <- partsOrError
+      attrs = parts.grouped(2).collect {
+        case Seq(k, v) if v != "NULL" =>
+          k.stripPrefix(extraAttributeDropPrefix) -> v
+      }.toMap
+      org <- attrFrom(attrs, extraAttributeOrg)
+      name <- attrFrom(attrs, extraAttributeName)
+      version <- attrFrom(attrs, extraAttributeVersion)
+      remainingAttrs = attrs.filterKeys(!extraAttributeBase(_))
+    } yield (Module(org, name, remainingAttrs.toVector.toMap), version)
+  }
+
+  def extraAttributes(s: String): String \/ Seq[(Module, String)] = {
+    val lines = s.split('\n').toSeq.map(_.trim).filter(_.nonEmpty)
+
+    lines.foldLeft[String \/ Seq[(Module, String)]](\/-(Vector.empty)) {
+      case (acc, line) =>
+        for {
+          modVers <- acc
+          modVer <- extraAttribute(line)
+        } yield modVers :+ modVer
+    }
   }
 }

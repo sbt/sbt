@@ -7,7 +7,7 @@ import scala.annotation.tailrec
 
 sealed trait ResolutionProcess {
   def run[F[_]](
-    fetch: ResolutionProcess.Fetch[F],
+    fetch: Fetch.Metadata[F],
     maxIterations: Int = -1
   )(implicit
     F: Monad[F]
@@ -34,7 +34,7 @@ sealed trait ResolutionProcess {
   }
 
   def next[F[_]](
-    fetch: ResolutionProcess.Fetch[F]
+    fetch: Fetch.Metadata[F]
   )(implicit
     F: Monad[F]
   ): F[ResolutionProcess] = {
@@ -58,7 +58,7 @@ case class Missing(
   cont: Resolution => ResolutionProcess
 ) extends ResolutionProcess {
 
-  def next(results: ResolutionProcess.FetchResult): ResolutionProcess = {
+  def next(results: Fetch.MD): ResolutionProcess = {
 
     val errors = results
       .collect{case (modVer, -\/(errs)) => modVer -> errs }
@@ -72,7 +72,7 @@ case class Missing(
     val depMgmtMissing = depMgmtMissing0 -- results.map(_._1)
 
     def cont0(res: Resolution) = {
-      val res0 = 
+      val res0 =
         successes.foldLeft(res){case (acc, (modVer, (source, proj))) =>
           acc.copy(projectCache = acc.projectCache + (
             modVer -> (source, acc.withDependencyManagement(proj))
@@ -121,12 +121,5 @@ object ResolutionProcess {
     else
       Missing(resolution0.missingFromCache.toSeq, resolution0, apply)
   }
-
-  type FetchResult = Seq[(
-    (Module, String),
-    Seq[String] \/ (Artifact.Source, Project)
-  )]
-
-  type Fetch[F[_]] = Seq[(Module, String)] => F[FetchResult]
 }
 

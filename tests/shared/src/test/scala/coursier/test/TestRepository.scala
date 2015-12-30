@@ -8,12 +8,16 @@ import scalaz.Scalaz._
 
 class TestRepository(projects: Map[(Module, String), Project]) extends Repository {
   val source = new core.Artifact.Source {
-    def artifacts(dependency: Dependency, project: Project) = ???
+    def artifacts(
+      dependency: Dependency,
+      project: Project,
+      overrideClassifiers: Option[Seq[String]]
+    ) = ???
   }
   def find[F[_]](
     module: Module,
     version: String,
-    fetch: Repository.Fetch[F]
+    fetch: Fetch.Content[F]
   )(implicit
     F: Monad[F]
   ) =

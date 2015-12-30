@@ -2,39 +2,61 @@ package coursier.core
 
 object Orders {
 
-  /** Minimal ad-hoc partial order */
-  trait PartialOrder[A] {
-    /** 
-     * x <  y: Some(neg. integer)
-     * x == y: Some(0)
-     * x >  y: Some(pos. integer)
-     * x, y not related: None
-     */
-    def cmp(x: A, y: A): Option[Int]
+  trait PartialOrdering[T] extends scala.math.PartialOrdering[T] {
+    def lteq(x: T, y: T): Boolean =
+      tryCompare(x, y)
+        .exists(_ <= 0)
+  }
+
+  /** All configurations that each configuration extends, including the ones it extends transitively */
+  def allConfigurations(configurations: Map[String, Seq[String]]): Map[String, Set[String]] = {
+    def allParents(config: String): Set[String] = {
+      def helper(configs: Set[String], acc: Set[String]): Set[String] =
+        if (configs.isEmpty)
+          acc
+        else if (configs.exists(acc))
+          helper(configs -- acc, acc)
+        else if (configs.exists(!configurations.contains(_))) {
+          val (remaining, notFound) = configs.partition(configurations.contains)
+          helper(remaining, acc ++ notFound)
+        } else {
+          val extraConfigs = configs.flatMap(configurations)
+          helper(extraConfigs, acc ++ configs)
+        }
+
+      helper(Set(config), Set.empty)
+    }
+
+    configurations
+      .keys
+      .toList
+      .map(config => config -> (allParents(config) - config))
+      .toMap
   }
 
   /**
    * Only relations:
    *   Compile < Runtime < Test
    */
-  implicit val mavenScopePartialOrder: PartialOrder[Scope] =
-    new PartialOrder[Scope] {
-      val higher = Map[Scope, Set[Scope]](
-        Scope.Compile -> Set(Scope.Runtime, Scope.Test),
-        Scope.Runtime -> Set(Scope.Test)
-      )
+  def configurationPartialOrder(configurations: Map[String, Seq[String]]): PartialOrdering[String] =
+    new PartialOrdering[String] {
+      val allParentsMap = allConfigurations(configurations)
 
-      def cmp(x: Scope, y: Scope) =
-        if (x == y) Some(0)
-        else if (higher.get(x).exists(_(y))) Some(-1)
-        else if (higher.get(y).exists(_(x))) Some(1)
-        else None
+      def tryCompare(x: String, y: String) =
+        if (x == y)
+          Some(0)
+        else if (allParentsMap.get(x).exists(_(y)))
+          Some(-1)
+        else if (allParentsMap.get(y).exists(_(x)))
+          Some(1)
+        else
+          None
     }
 
   /** Non-optional < optional */
-  implicit val optionalPartialOrder: PartialOrder[Boolean] =
-    new PartialOrder[Boolean] {
-      def cmp(x: Boolean, y: Boolean) =
+  val optionalPartialOrder: PartialOrdering[Boolean] =
+    new PartialOrdering[Boolean] {
+      def tryCompare(x: Boolean, y: Boolean) =
         Some(
           if (x == y) 0
           else if (x) 1
@@ -51,8 +73,8 @@ object Orders {
    *
    * In particular, no exclusions <= anything <= Set(("*", "*"))
    */
-  implicit val exclusionsPartialOrder: PartialOrder[Set[(String, String)]] =
-    new PartialOrder[Set[(String, String)]] {
+  val exclusionsPartialOrder: PartialOrdering[Set[(String, String)]] =
+    new PartialOrdering[Set[(String, String)]] {
       def boolCmp(a: Boolean, b: Boolean) = (a, b) match {
         case (true, true) => Some(0)
         case (true, false) => Some(1)
@@ -60,7 +82,7 @@ object Orders {
         case (false, false) => None
       }
 
-      def cmp(x: Set[(String, String)], y: Set[(String, String)]) = {
+      def tryCompare(x: Set[(String, String)], y: Set[(String, String)]) = {
         val (xAll, xExcludeByOrg1, xExcludeByName1, xRemaining0) = Exclusions.partition(x)
         val (yAll, yExcludeByOrg1, yExcludeByName1, yRemaining0) = Exclusions.partition(y)
 
@@ -98,23 +120,44 @@ object Orders {
       }
     }
 
+  private def fallbackConfigIfNecessary(dep: Dependency, configs: Set[String]): Dependency =
+    Parse.withFallbackConfig(dep.configuration) match {
+      case Some((main, fallback)) =>
+        val config0 =
+          if (configs(main))
+            main
+          else if (configs(fallback))
+            fallback
+          else
+            dep.configuration
+
+        dep.copy(configuration = config0)
+      case _ =>
+        dep
+    }
+
   /**
    * Assume all dependencies have same `module`, `version`, and `artifact`; see `minDependencies`
    * if they don't.
    */
-  def minDependenciesUnsafe(dependencies: Set[Dependency]): Set[Dependency] = {
+  def minDependenciesUnsafe(
+    dependencies: Set[Dependency],
+    configs: Map[String, Seq[String]]
+  ): Set[Dependency] = {
+    val availableConfigs = configs.keySet
     val groupedDependencies = dependencies
-      .groupBy(dep => (dep.optional, dep.scope))
+      .map(fallbackConfigIfNecessary(_, availableConfigs))
+      .groupBy(dep => (dep.optional, dep.configuration))
       .mapValues(deps => deps.head.copy(exclusions = deps.foldLeft(Exclusions.one)((acc, dep) => Exclusions.meet(acc, dep.exclusions))))
       .toList
 
     val remove =
       for {
         List(((xOpt, xScope), xDep), ((yOpt, yScope), yDep)) <- groupedDependencies.combinations(2)
-        optCmp <- optionalPartialOrder.cmp(xOpt, yOpt).iterator
-        scopeCmp <- mavenScopePartialOrder.cmp(xScope, yScope).iterator
+        optCmp <- optionalPartialOrder.tryCompare(xOpt, yOpt).iterator
+        scopeCmp <- configurationPartialOrder(configs).tryCompare(xScope, yScope).iterator
         if optCmp*scopeCmp >= 0
-        exclCmp <- exclusionsPartialOrder.cmp(xDep.exclusions, yDep.exclusions).iterator
+        exclCmp <- exclusionsPartialOrder.tryCompare(xDep.exclusions, yDep.exclusions).iterator
         if optCmp*exclCmp >= 0
         if scopeCmp*exclCmp >= 0
         xIsMin = optCmp < 0 || scopeCmp < 0 || exclCmp < 0
@@ -130,10 +173,13 @@ object Orders {
    *
    * The returned set brings exactly the same things as `dependencies`, with no redundancy.
    */
-  def minDependencies(dependencies: Set[Dependency]): Set[Dependency] = {
+  def minDependencies(
+    dependencies: Set[Dependency],
+    configs: ((Module, String)) => Map[String, Seq[String]]
+  ): Set[Dependency] = {
     dependencies
-      .groupBy(_.copy(scope = Scope.Other(""), exclusions = Set.empty, optional = false))
-      .mapValues(minDependenciesUnsafe)
+      .groupBy(_.copy(configuration = "", exclusions = Set.empty, optional = false))
+      .mapValues(deps => minDependenciesUnsafe(deps, configs(deps.head.moduleVersion)))
       .valuesIterator
       .fold(Set.empty)(_ ++ _)
   }

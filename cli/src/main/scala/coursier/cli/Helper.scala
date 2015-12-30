@@ -2,28 +2,14 @@ package coursier
 package cli
 
 import java.io.{ OutputStreamWriter, File }
-import java.util.UUID
+import java.util.concurrent.Executors
+
+import coursier.ivy.IvyRepository
 
 import scalaz.{ \/-, -\/ }
-import scalaz.concurrent.Task
+import scalaz.concurrent.{ Task, Strategy }
 
 object Helper {
-  def validate(common: CommonOptions) = {
-    import common._
-
-    if (force && offline) {
-      Console.err.println("Error: --offline (-c) and --force (-f) options can't be specified at the same time.")
-      sys.exit(255)
-    }
-
-    if (parallel <= 0) {
-      Console.err.println(s"Error: invalid --parallel (-n) value: $parallel")
-      sys.exit(255)
-    }
-
-    ???
-  }
-
   def fileRepr(f: File) = f.toString
 
   def errPrintln(s: String) = Console.err.println(s)
@@ -54,77 +40,91 @@ class Helper(
   import common._
   import Helper.errPrintln
 
-  implicit val cachePolicy =
-    if (offline)
-      CachePolicy.LocalOnly
-    else if (force)
-      CachePolicy.ForceDownload
-    else
-      CachePolicy.Default
-
-  val cache = Cache(new File(cacheOptions.cache))
-  cache.init(verbose = verbose0 >= 0)
-
-  val repositoryIds = {
-    val repositoryIds0 = repository
-      .flatMap(_.split(','))
-      .map(_.trim)
-      .filter(_.nonEmpty)
-
-    if (repositoryIds0.isEmpty)
-      cache.default()
-    else
-      repositoryIds0
+  val cachePolicies = mode match {
+    case "offline" =>
+      Seq(CachePolicy.LocalOnly)
+    case "update-changing" =>
+      Seq(CachePolicy.UpdateChanging)
+    case "update" =>
+      Seq(CachePolicy.Update)
+    case "missing" =>
+      Seq(CachePolicy.FetchMissing)
+    case "force" =>
+      Seq(CachePolicy.ForceDownload)
+    case "default" =>
+      Seq(CachePolicy.LocalOnly, CachePolicy.FetchMissing)
+    case other =>
+      errPrintln(s"Unrecognized mode: $other")
+      sys.exit(255)
   }
 
-  val repoMap = cache.map()
-  val repoByBase = repoMap.map { case (_, v @ (m, _)) =>
-    m.root -> v
-  }
+  val caches =
+    Seq(
+      "http://" -> new File(new File(cacheOptions.cache), "http"),
+      "https://" -> new File(new File(cacheOptions.cache), "https")
+    )
 
-  val repositoryIdsOpt0 = repositoryIds.map { id =>
-    repoMap.get(id) match {
-      case Some(v) => Right(v)
-      case None =>
-        if (id.contains("://")) {
-          val root0 = if (id.endsWith("/")) id else id + "/"
-          Right(
-            repoByBase.getOrElse(root0, {
-              val id0 = UUID.randomUUID().toString
-              if (verbose0 >= 1)
-                Console.err.println(s"Addding repository $id0 ($root0)")
+  val pool = Executors.newFixedThreadPool(parallel, Strategy.DefaultDaemonThreadFactory)
 
-              // FIXME This could be done more cleanly
-              cache.add(id0, root0, ivyLike = false)
-              cache.map().getOrElse(id0,
-                sys.error(s"Adding repository $id0 ($root0)")
-              )
-            })
-          )
-        } else
-          Left(id)
+  val central = MavenRepository("https://repo1.maven.org/maven2/")
+  val ivy2Local = MavenRepository(
+    new File(sys.props("user.home") + "/.ivy2/local/").toURI.toString,
+    ivyLike = true
+  )
+  val defaultRepositories = Seq(
+    ivy2Local,
+    central
+  )
+
+  val repositories0 = common.repository.map { repo =>
+    val repo0 = repo.toLowerCase
+    if (repo0 == "central")
+      Right(central)
+    else if (repo0 == "ivy2local")
+      Right(ivy2Local)
+    else if (repo0.startsWith("sonatype:"))
+      Right(
+        MavenRepository(s"https://oss.sonatype.org/content/repositories/${repo.drop("sonatype:".length)}")
+      )
+    else {
+      val (url, r) =
+        if (repo.startsWith("ivy:")) {
+          val url = repo.drop("ivy:".length)
+          (url, IvyRepository(url))
+        } else if (repo.startsWith("ivy-like:")) {
+          val url = repo.drop("ivy-like:".length)
+          (url, MavenRepository(url, ivyLike = true))
+        } else {
+          (repo, MavenRepository(repo))
+        }
+
+      if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file:/"))
+        Right(r)
+      else
+        Left(repo -> s"Unrecognized protocol or repository: $url")
     }
   }
 
-  val notFoundRepositoryIds = repositoryIdsOpt0.collect {
-    case Left(id) => id
-  }
-
-  if (notFoundRepositoryIds.nonEmpty) {
-    errPrintln(
-      (if (notFoundRepositoryIds.lengthCompare(1) == 0) "Repository" else "Repositories") +
-        " not found: " +
-        notFoundRepositoryIds.mkString(", ")
-    )
-
+  val unrecognizedRepos = repositories0.collect { case Left(e) => e }
+  if (unrecognizedRepos.nonEmpty) {
+    errPrintln(s"${unrecognizedRepos.length} error(s) parsing repositories:")
+    for ((repo, err) <- unrecognizedRepos)
+      errPrintln(s"$repo: $err")
     sys.exit(255)
   }
 
-  val files = cache.files().copy(concurrentDownloadCount = parallel)
+  val repositories1 =
+    (if (common.noDefault) Nil else defaultRepositories) ++
+      repositories0.collect { case Right(r) => r }
 
-  val (repositories, fileCaches) = repositoryIdsOpt0
-    .collect { case Right(v) => v }
-    .unzip
+  val repositories =
+    if (common.sbtPluginHack)
+      repositories1.map {
+        case m: MavenRepository => m.copy(sbtAttrStub = true)
+        case other => other
+      }
+    else
+      repositories1
 
   val (rawDependencies, extraArgs) = {
     val idxOpt = Some(remainingArgs.indexOf("--")).filter(_ >= 0)
@@ -166,12 +166,25 @@ class Helper(
   }
 
   val moduleVersions = splitDependencies.map{
-    case Seq(org, name, version) =>
-      (Module(org, name), version)
+    case Seq(org, namePart, version) =>
+      val p = namePart.split(';')
+      val name = p.head
+      val splitAttributes = p.tail.map(_.split("=", 2).toSeq).toSeq
+      val malformedAttributes = splitAttributes.filter(_.length != 2)
+      if (malformedAttributes.nonEmpty) {
+        // FIXME Get these for all dependencies at once
+        Console.err.println(s"Malformed attributes in ${splitDependencies.mkString(":")}")
+        // :(
+        sys.exit(255)
+      }
+      val attributes = splitAttributes.collect {
+        case Seq(k, v) => k -> v
+      }
+      (Module(org, name, attributes.toMap), version)
   }
 
   val deps = moduleVersions.map{case (mod, ver) =>
-    Dependency(mod, ver, scope = Scope.Runtime)
+    Dependency(mod, ver, configuration = "runtime")
   }
 
   val forceVersions = {
@@ -200,11 +213,14 @@ class Helper(
       Some(new TermDisplay(new OutputStreamWriter(System.err)))
     else
       None
-  logger.foreach(_.init())
+
+  val fetchs = cachePolicies.map(p =>
+    Cache.fetch(caches, p, logger = logger, pool = pool)
+  )
   val fetchQuiet = coursier.Fetch(
     repositories,
-    files.fetch(logger = logger)(cachePolicy = CachePolicy.LocalOnly), // local files get the priority
-    files.fetch(logger = logger)
+    fetchs.head,
+    fetchs.tail: _*
   )
   val fetch0 =
     if (verbose0 <= 0) fetchQuiet
@@ -229,6 +245,7 @@ class Helper(
     }
   }
 
+  logger.foreach(_.init())
 
   val res = startRes
     .process
@@ -296,35 +313,47 @@ class Helper(
     }
   }
 
-  def fetch(main: Boolean, sources: Boolean, javadoc: Boolean): Seq[File] = {
-    if (verbose0 >= 0)
-      errPrintln("Fetching artifacts")
-    val artifacts0 = res.artifacts
-    val main0 = main || (!sources && !javadoc)
-    val artifacts = artifacts0.flatMap{ artifact =>
-      var l = List.empty[Artifact]
-      if (sources)
-        l = artifact.extra.get("sources").toList ::: l
-      if (javadoc)
-        l = artifact.extra.get("javadoc").toList ::: l
-      if (main0)
-        l = artifact :: l
+  def fetch(sources: Boolean, javadoc: Boolean): Seq[File] = {
+    if (verbose0 >= 0) {
+      val msg = cachePolicies match {
+        case Seq(CachePolicy.LocalOnly) =>
+          "Checking artifacts"
+        case _ =>
+          "Fetching artifacts"
+      }
 
-      l
+      errPrintln(msg)
     }
+    val artifacts =
+      if (sources || javadoc) {
+        var classifiers = Seq.empty[String]
+        if (sources)
+          classifiers = classifiers :+ "sources"
+        if (javadoc)
+          classifiers = classifiers :+ "javadoc"
+
+        res.classifiersArtifacts(classifiers)
+      } else
+        res.artifacts
 
     val logger =
       if (verbose0 >= 0)
         Some(new TermDisplay(new OutputStreamWriter(System.err)))
       else
         None
+
+    if (verbose0 >= 1 && artifacts.nonEmpty)
+      println(s"Found ${artifacts.length} artifacts")
+
+    val tasks = artifacts.map(artifact =>
+      (Cache.file(artifact, caches, cachePolicies.head, logger = logger, pool = pool) /: cachePolicies.tail)(
+        _ orElse Cache.file(artifact, caches, _, logger = logger, pool = pool)
+      ).run.map(artifact.->)
+    )
+
     logger.foreach(_.init())
-    val tasks = artifacts.map(artifact => files.file(artifact, logger = logger).run.map(artifact.->))
-    def printTask = Task {
-      if (verbose0 >= 1 && artifacts.nonEmpty)
-        println(s"Found ${artifacts.length} artifacts")
-    }
-    val task = printTask.flatMap(_ => Task.gatherUnordered(tasks))
+
+    val task = Task.gatherUnordered(tasks)
 
     val results = task.run
     val errors = results.collect{case (artifact, -\/(err)) => artifact -> err }

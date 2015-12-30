@@ -1,5 +1,6 @@
 package coursier.maven
 
+import coursier.Fetch
 import coursier.core._
 import coursier.core.compatibility.encodeURIComponent
 
@@ -10,6 +11,7 @@ object MavenRepository {
 
   def ivyLikePath(
     org: String,
+    dirName: String,
     name: String,
     version: String,
     subDir: String,
@@ -18,7 +20,7 @@ object MavenRepository {
   ) =
     Seq(
       org,
-      name,
+      dirName,
       version,
       subDir,
       s"$name$baseSuffix.$ext"
@@ -35,18 +37,40 @@ object MavenRepository {
       .map(_.value)
       .filter(_.nonEmpty)
 
+
+  val defaultConfigurations = Map(
+    "compile" -> Seq.empty,
+    "runtime" -> Seq("compile"),
+    "default" -> Seq("runtime"),
+    "test" -> Seq("runtime")
+  )
+
+  def dirModuleName(module: Module, sbtAttrStub: Boolean): String =
+    if (sbtAttrStub) {
+      var name = module.name
+      for (scalaVersion <- module.attributes.get("scalaVersion"))
+        name = name + "_" + scalaVersion
+      for (sbtVersion <- module.attributes.get("sbtVersion"))
+        name = name + "_" + sbtVersion
+      name
+    } else
+      module.name
+
 }
 
 case class MavenRepository(
   root: String,
-  ivyLike: Boolean = false
+  ivyLike: Boolean = false,
+  changing: Option[Boolean] = None,
+  /** Hackish hack for sbt plugins mainly - what this does really sucks */
+  sbtAttrStub: Boolean = false
 ) extends Repository {
 
   import Repository._
   import MavenRepository._
 
   val root0 = if (root.endsWith("/")) root else root + "/"
-  val source = MavenSource(root0, ivyLike)
+  val source = MavenSource(root0, ivyLike, changing, sbtAttrStub)
 
   def projectArtifact(
     module: Module,
@@ -58,6 +82,7 @@ case class MavenRepository(
       if (ivyLike)
         ivyLikePath(
           module.organization,
+          dirModuleName(module, sbtAttrStub), // maybe not what we should do here, don't know
           module.name,
           versioningValue getOrElse version,
           "poms",
@@ -66,7 +91,7 @@ case class MavenRepository(
         )
       else
         module.organization.split('.').toSeq ++ Seq(
-          module.name,
+          dirModuleName(module, sbtAttrStub),
           version,
           s"${module.name}-${versioningValue getOrElse version}.pom"
         )
@@ -76,7 +101,8 @@ case class MavenRepository(
       root0 + path.mkString("/"),
       Map.empty,
       Map.empty,
-      Attributes("pom", "")
+      Attributes("pom", ""),
+      changing = changing.getOrElse(version.contains("-SNAPSHOT"))
     )
     .withDefaultChecksums
     .withDefaultSignature
@@ -87,7 +113,7 @@ case class MavenRepository(
     else {
       val path = (
         module.organization.split('.').toSeq ++ Seq(
-          module.name,
+          dirModuleName(module, sbtAttrStub),
           "maven-metadata.xml"
         )
       ) .map(encodeURIComponent)
@@ -97,10 +123,11 @@ case class MavenRepository(
           root0 + path.mkString("/"),
           Map.empty,
           Map.empty,
-          Attributes("pom", "")
+          Attributes("pom", ""),
+          changing = true
         )
         .withDefaultChecksums
-        .withDefaultChecksums
+        .withDefaultSignature
 
       Some(artifact)
     }
@@ -113,7 +140,7 @@ case class MavenRepository(
     else {
       val path = (
         module.organization.split('.').toSeq ++ Seq(
-          module.name,
+          dirModuleName(module, sbtAttrStub),
           version,
           "maven-metadata.xml"
         )
@@ -124,7 +151,8 @@ case class MavenRepository(
           root0 + path.mkString("/"),
           Map.empty,
           Map.empty,
-          Attributes("pom", "")
+          Attributes("pom", ""),
+          changing = true
         )
         .withDefaultChecksums
         .withDefaultSignature
@@ -134,7 +162,7 @@ case class MavenRepository(
 
   def versions[F[_]](
     module: Module,
-    fetch: Repository.Fetch[F]
+    fetch: Fetch.Content[F]
   )(implicit
     F: Monad[F]
   ): EitherT[F, String, Versions] =
@@ -156,7 +184,7 @@ case class MavenRepository(
   def snapshotVersioning[F[_]](
     module: Module,
     version: String,
-    fetch: Repository.Fetch[F]
+    fetch: Fetch.Content[F]
   )(implicit
     F: Monad[F]
   ): EitherT[F, String, SnapshotVersioning] = {
@@ -180,7 +208,7 @@ case class MavenRepository(
   def findNoInterval[F[_]](
     module: Module,
     version: String,
-    fetch: Repository.Fetch[F]
+    fetch: Fetch.Content[F]
   )(implicit
     F: Monad[F]
   ): EitherT[F, String, Project] =
@@ -219,7 +247,7 @@ case class MavenRepository(
     module: Module,
     version: String,
     versioningValue: Option[String],
-    fetch: Repository.Fetch[F]
+    fetch: Fetch.Content[F]
   )(implicit
     F: Monad[F]
   ): EitherT[F, String, Project] = {
@@ -231,7 +259,14 @@ case class MavenRepository(
             xml <- \/.fromEither(compatibility.xmlParse(str))
             _ <- if (xml.label == "project") \/-(()) else -\/("Project definition not found")
             proj <- Pom.project(xml)
-          } yield proj): (String \/ Project)
+          } yield proj.copy(
+            configurations = defaultConfigurations,
+            publications = Seq(
+              "compile" -> Publication(module.name, "jar", "jar", ""),
+              "docs" -> Publication(module.name, "doc", "jar", "javadoc"),
+              "sources" -> Publication(module.name, "src", "jar", "sources")
+            )
+          )): (String \/ Project)
         }
       }
     }
@@ -240,7 +275,7 @@ case class MavenRepository(
   def find[F[_]](
     module: Module,
     version: String,
-    fetch: Repository.Fetch[F]
+    fetch: Fetch.Content[F]
   )(implicit
     F: Monad[F]
   ): EitherT[F, String, (Artifact.Source, Project)] = {

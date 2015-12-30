@@ -1,17 +1,9 @@
 package coursier.core
 
+import java.util.regex.Pattern.quote
 import coursier.core.compatibility._
 
 object Parse {
-
-  def scope(s: String): Scope = s match {
-    case "compile" => Scope.Compile
-    case "runtime" => Scope.Runtime
-    case "test" => Scope.Test
-    case "provided" => Scope.Provided
-    case "import" => Scope.Import
-    case other => Scope.Other(other)
-  }
 
   def version(s: String): Option[Version] = {
     if (s.isEmpty || s.exists(c => c != '.' && c != '-' && c != '_' && !c.letterOrDigit)) None
@@ -39,5 +31,21 @@ object Parse {
       .orElse(version(s).map(VersionConstraint.Preferred))
       .orElse(versionInterval(s).map(VersionConstraint.Interval))
   }
+
+  val fallbackConfigRegex = {
+    val noPar = "([^" + quote("()") + "]*)"
+    "^" + noPar + quote("(") + noPar + quote(")") + "$"
+  }.r
+
+  def withFallbackConfig(config: String): Option[(String, String)] =
+    Parse.fallbackConfigRegex.findAllMatchIn(config).toSeq match {
+      case Seq(m) =>
+        assert(m.groupCount == 2)
+        val main = config.substring(m.start(1), m.end(1))
+        val fallback = config.substring(m.start(2), m.end(2))
+        Some((main, fallback))
+      case _ =>
+        None
+    }
 
 }
