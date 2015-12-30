@@ -178,7 +178,7 @@ object Tasks {
       if (verbosity >= 0)
         errPrintln(s"Resolving ${currentProject.module.organization}:${currentProject.module.name}:${currentProject.version}")
       if (verbosity >= 1)
-        for (depRepr <- depsRepr)
+        for (depRepr <- depsRepr.distinct)
           errPrintln(s"  $depRepr")
 
       val res = startRes
