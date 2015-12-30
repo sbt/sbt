@@ -13,7 +13,7 @@ class TestRepository(projects: Map[(Module, String), Project]) extends Repositor
   def find[F[_]](
     module: Module,
     version: String,
-    fetch: Repository.Fetch[F]
+    fetch: Fetch.Content[F]
   )(implicit
     F: Monad[F]
   ) =

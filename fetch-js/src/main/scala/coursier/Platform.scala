@@ -75,7 +75,7 @@ object Platform {
       p.future
     }
 
-  val artifact: Repository.Fetch[Task] = { artifact =>
+  val artifact: Fetch.Content[Task] = { artifact =>
     EitherT(
       Task { implicit ec =>
         get(artifact.url)
@@ -87,13 +87,18 @@ object Platform {
     )
   }
 
+  implicit def fetch(
+    repositories: Seq[core.Repository]
+  ): Fetch.Metadata[Task] =
+    Fetch(repositories, Platform.artifact)
+
   trait Logger {
     def fetching(url: String): Unit
     def fetched(url: String): Unit
     def other(url: String, msg: String): Unit
   }
 
-  def artifactWithLogger(logger: Logger): Repository.Fetch[Task] = { artifact =>
+  def artifactWithLogger(logger: Logger): Fetch.Content[Task] = { artifact =>
     EitherT(
       Task { implicit ec =>
         Future(logger.fetching(artifact.url))

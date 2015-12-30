@@ -39,7 +39,7 @@ object Platform {
       }
     }
 
-  val artifact: Repository.Fetch[Task] = { artifact =>
+  val artifact: Fetch.Content[Task] = { artifact =>
     EitherT {
       val url = new URL(artifact.url)
 
@@ -52,5 +52,10 @@ object Platform {
       readFully(conn.getInputStream())
     }
   }
+
+  implicit def fetch(
+    repositories: Seq[core.Repository]
+  ): Fetch.Metadata[Task] =
+    Fetch(repositories, Platform.artifact)
 
 }

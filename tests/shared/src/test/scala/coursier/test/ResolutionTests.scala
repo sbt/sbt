@@ -17,7 +17,7 @@ object ResolutionTests extends TestSuite {
   ) =
     Resolution(deps, filter = filter, forceVersions = forceVersions)
       .process
-      .run(Fetch.default(repositories))
+      .run(Platform.fetch(repositories))
       .runF
 
   implicit class ProjectOps(val p: Project) extends AnyVal {

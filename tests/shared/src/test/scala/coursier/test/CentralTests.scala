@@ -4,7 +4,7 @@ package test
 import utest._
 import scala.async.Async.{ async, await }
 
-import coursier.Fetch.default
+import coursier.Platform.fetch
 import coursier.test.compatibility._
 
 object CentralTests extends TestSuite {

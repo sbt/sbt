@@ -1,5 +1,6 @@
 package coursier.ivy
 
+import coursier.Fetch
 import coursier.core._
 import scala.annotation.tailrec
 import scala.util.matching.Regex
@@ -180,7 +181,7 @@ case class IvyRepository(pattern: String) extends Repository {
   def find[F[_]](
     module: Module,
     version: String,
-    fetch: Repository.Fetch[F]
+    fetch: Fetch.Content[F]
   )(implicit
     F: Monad[F]
   ): EitherT[F, String, (Artifact.Source, Project)] = {

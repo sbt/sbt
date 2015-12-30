@@ -1,5 +1,6 @@
 package coursier.maven
 
+import coursier.Fetch
 import coursier.core._
 import coursier.core.compatibility.encodeURIComponent
 
@@ -39,6 +40,7 @@ object MavenRepository {
   val defaultConfigurations = Map(
     "compile" -> Seq.empty,
     "runtime" -> Seq("compile"),
+    "default" -> Seq("runtime"),
     "test" -> Seq("runtime")
   )
 
@@ -141,7 +143,7 @@ case class MavenRepository(
 
   def versions[F[_]](
     module: Module,
-    fetch: Repository.Fetch[F]
+    fetch: Fetch.Content[F]
   )(implicit
     F: Monad[F]
   ): EitherT[F, String, Versions] =
@@ -163,7 +165,7 @@ case class MavenRepository(
   def snapshotVersioning[F[_]](
     module: Module,
     version: String,
-    fetch: Repository.Fetch[F]
+    fetch: Fetch.Content[F]
   )(implicit
     F: Monad[F]
   ): EitherT[F, String, SnapshotVersioning] = {
@@ -187,7 +189,7 @@ case class MavenRepository(
   def findNoInterval[F[_]](
     module: Module,
     version: String,
-    fetch: Repository.Fetch[F]
+    fetch: Fetch.Content[F]
   )(implicit
     F: Monad[F]
   ): EitherT[F, String, Project] =
@@ -226,7 +228,7 @@ case class MavenRepository(
     module: Module,
     version: String,
     versioningValue: Option[String],
-    fetch: Repository.Fetch[F]
+    fetch: Fetch.Content[F]
   )(implicit
     F: Monad[F]
   ): EitherT[F, String, Project] = {
@@ -247,7 +249,7 @@ case class MavenRepository(
   def find[F[_]](
     module: Module,
     version: String,
-    fetch: Repository.Fetch[F]
+    fetch: Fetch.Content[F]
   )(implicit
     F: Monad[F]
   ): EitherT[F, String, (Artifact.Source, Project)] = {

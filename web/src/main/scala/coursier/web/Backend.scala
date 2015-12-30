@@ -36,12 +36,12 @@ class Backend($: BackendScope[Unit, State]) {
 
   def fetch(
     repositories: Seq[core.Repository],
-    fetch: Repository.Fetch[Task]
-  ): ResolutionProcess.Fetch[Task] = {
+    fetch: Fetch.Content[Task]
+  ): Fetch.Metadata[Task] = {
 
     modVers => Task.gatherUnordered(
       modVers.map { case (module, version) =>
-        Repository.find(repositories, module, version, fetch)
+        Fetch.find(repositories, module, version, fetch)
           .run
           .map((module, version) -> _)
       }

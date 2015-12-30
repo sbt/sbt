@@ -1,6 +1,6 @@
 package coursier.cli
 
-import java.io.Writer
+import java.io.{File, Writer}
 import java.util.concurrent._
 
 import ammonite.terminal.{ TTY, Ansi }
@@ -109,7 +109,7 @@ class TermDisplay(out: Writer) extends Logger {
       q.put(Right(()))
   }
 
-  override def downloadingArtifact(url: String): Unit = {
+  override def downloadingArtifact(url: String, file: File): Unit = {
     assert(!infos.containsKey(url))
     val prev = infos.putIfAbsent(url, Info(0L, None))
     assert(prev == null)

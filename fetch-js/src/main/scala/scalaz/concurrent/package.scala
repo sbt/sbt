@@ -2,7 +2,11 @@ package scalaz
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-/** Minimal Future-based Task */
+/**
+ * Minimal Future-based Task.
+ *
+ * Likely to be flawed, but does the job.
+ */
 package object concurrent {
 
   trait Task[T] { self =>
@@ -32,10 +36,19 @@ package object concurrent {
         def runF(implicit ec: ExecutionContext) = Future.traverse(tasks)(_.runF)
       }
 
-    implicit val taskMonad: Monad[Task] =
-      new Monad[Task] {
+    implicit val taskMonad: Nondeterminism[Task] =
+      new Nondeterminism[Task] {
         def point[A](a: => A): Task[A] = Task.now(a)
         def bind[A,B](fa: Task[A])(f: A => Task[B]): Task[B] = fa.flatMap(f)
+        override def reduceUnordered[A, M](fs: Seq[Task[A]])(implicit R: Reducer[A, M]): Task[M] =
+          Task { implicit ec =>
+            val f = Future.sequence(fs.map(_.runF))
+            f.map { l =>
+              (R.zero /: l)(R.snoc)
+            }
+          }
+        def chooseAny[A](head: Task[A], tail: Seq[Task[A]]): Task[(A, Seq[Task[A]])] =
+          ???
       }
   }
 

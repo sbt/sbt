@@ -165,33 +165,35 @@ object Resolution {
   def merge(
     dependencies: TraversableOnce[Dependency],
     forceVersions: Map[Module, String]
-  ): (Seq[Dependency], Seq[Dependency]) = {
+  ): (Seq[Dependency], Seq[Dependency], Map[Module, String]) = {
 
     val mergedByModVer = dependencies
       .toList
       .groupBy(dep => dep.module)
       .map { case (module, deps) =>
         module -> {
-          forceVersions.get(module) match {
+          val (versionOpt, updatedDeps) = forceVersions.get(module) match {
             case None =>
-              if (deps.lengthCompare(1) == 0) \/-(deps)
+              if (deps.lengthCompare(1) == 0) (Some(deps.head.version), \/-(deps))
               else {
                 val versions = deps
                   .map(_.version)
                   .distinct
                 val versionOpt = mergeVersions(versions)
 
-                versionOpt match {
+                (versionOpt, versionOpt match {
                   case Some(version) =>
                     \/-(deps.map(dep => dep.copy(version = version)))
                   case None =>
                     -\/(deps)
-                }
+                })
               }
 
             case Some(forcedVersion) =>
-              \/-(deps.map(dep => dep.copy(version = forcedVersion)))
+              (Some(forcedVersion), \/-(deps.map(dep => dep.copy(version = forcedVersion))))
           }
+
+          (updatedDeps, versionOpt)
         }
       }
 
@@ -201,11 +203,13 @@ object Resolution {
 
     (
       merged
-        .collect{case -\/(dep) => dep}
+        .collect { case (-\/(dep), _) => dep }
         .flatten,
       merged
-        .collect{case \/-(dep) => dep}
-        .flatten
+        .collect { case (\/-(dep), _) => dep }
+        .flatten,
+      mergedByModVer
+        .collect { case (mod, (_, Some(ver))) => mod -> ver }
     )
   }
 
@@ -449,10 +453,10 @@ case class Resolution(
    * May contain dependencies added in previous iterations, but no more
    * required. These are filtered below, see `newDependencies`.
    *
-   * Returns a tuple made of the conflicting dependencies, and all
-   * the dependencies.
+   * Returns a tuple made of the conflicting dependencies, all
+   * the dependencies, and the retained version of each module.
    */
-  def nextDependenciesAndConflicts: (Seq[Dependency], Seq[Dependency]) =
+  def nextDependenciesAndConflicts: (Seq[Dependency], Seq[Dependency], Map[Module, String]) =
     // TODO Provide the modules whose version was forced by dependency overrides too
     merge(
       rootDependencies.map(withDefaultConfig) ++ dependencies ++ transitiveDependencies,
@@ -478,7 +482,7 @@ case class Resolution(
    */
   def isDone: Boolean = {
     def isFixPoint = {
-      val (nextConflicts, _) = nextDependenciesAndConflicts
+      val (nextConflicts, _, _) = nextDependenciesAndConflicts
 
       dependencies == (newDependencies ++ nextConflicts) &&
         conflicts == nextConflicts.toSet
@@ -497,7 +501,7 @@ case class Resolution(
    * The versions of all the dependencies returned are erased (emptied).
    */
   def reverseDependencies: Map[Dependency, Vector[Dependency]] = {
-    val (updatedConflicts, updatedDeps) = nextDependenciesAndConflicts
+    val (updatedConflicts, updatedDeps, _) = nextDependenciesAndConflicts
 
     val trDepsSeq =
       for {
@@ -566,7 +570,7 @@ case class Resolution(
   }
 
   private def nextNoMissingUnsafe: Resolution = {
-    val (newConflicts, _) = nextDependenciesAndConflicts
+    val (newConflicts, _, _) = nextDependenciesAndConflicts
 
     copy(
       dependencies = newDependencies ++ newConflicts,
@@ -752,7 +756,7 @@ case class Resolution(
         .artifacts(dep, proj)
     } yield artifact
 
-  def artifactsByDep: Seq[(Dependency, Artifact)] =
+  def dependencyArtifacts: Seq[(Dependency, Artifact)] =
     for {
       dep <- minDependencies.toSeq
       (source, proj) <- projectCache
@@ -769,4 +773,27 @@ case class Resolution(
         .get(dep.moduleVersion)
         .toSeq
     } yield (dep, err)
+
+  def part(dependencies: Set[Dependency]): Resolution = {
+    val (_, _, finalVersions) = nextDependenciesAndConflicts
+
+    @tailrec def helper(current: Set[Dependency]): Set[Dependency] = {
+      val newDeps = current ++ current
+        .flatMap(finalDependencies0)
+        .map(dep => dep.copy(version = finalVersions.getOrElse(dep.module, dep.version)))
+
+      val anyNewDep = (newDeps -- current).nonEmpty
+
+      if (anyNewDep)
+        helper(newDeps)
+      else
+        newDeps
+    }
+
+    copy(
+      rootDependencies = dependencies,
+      dependencies = helper(dependencies)
+      // don't know if something should be done about conflicts
+    )
+  }
 }
