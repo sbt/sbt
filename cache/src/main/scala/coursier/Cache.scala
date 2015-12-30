@@ -83,17 +83,6 @@ object Cache {
     }
 
 
-    def locally(file: File, url: String): EitherT[Task, FileError, File] =
-      EitherT {
-        Task {
-          if (file.exists()) {
-            logger.foreach(_.foundLocally(url, file))
-            \/-(file)
-          } else
-            -\/(FileError.NotFound(file.toString): FileError)
-        }
-      }
-
     def fileLastModified(file: File): EitherT[Task, FileError, Option[Long]] =
       EitherT {
         Task {
@@ -234,15 +223,6 @@ object Cache {
     val tasks =
       for ((f, url) <- pairs) yield {
         val file = new File(f)
-
-        val isRemote = url != ("file:" + f) && url != ("file://" + f)
-        val cachePolicy0 =
-          if (!isRemote)
-            CachePolicy.LocalOnly
-          else if (cachePolicy == CachePolicy.UpdateChanging && !artifact.changing)
-            CachePolicy.FetchMissing
-          else
-            cachePolicy
 
         val res = cachePolicy match {
           case CachePolicy.LocalOnly =>
