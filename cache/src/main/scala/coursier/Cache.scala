@@ -13,7 +13,7 @@ import java.io.{ Serializable => _, _ }
 
 object Cache {
 
-  def withLocal(artifact: Artifact, cache: Seq[(String, File)]): Artifact = {
+  private def withLocal(artifact: Artifact, cache: Seq[(String, File)]): Artifact = {
     def local(url: String) =
       if (url.startsWith("file:///"))
         url.stripPrefix("file://")
@@ -48,7 +48,7 @@ object Cache {
       ))
   }
 
-  def download(
+  private def download(
     artifact: Artifact,
     cache: Seq[(String, File)],
     checksums: Set[String],
