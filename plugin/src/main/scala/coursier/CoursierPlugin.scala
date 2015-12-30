@@ -279,7 +279,7 @@ object CoursierPlugin extends AutoPlugin {
   override lazy val projectSettings = Seq(
     coursierParallelDownloads := 6,
     coursierMaxIterations := 50,
-    coursierChecksums := Seq(Some("SHA-1"), Some("MD5"), None),
+    coursierChecksums := Seq(Some("SHA-1"), None),
     coursierCachePolicy := CachePolicy.FetchMissing,
     coursierVerbosity := 1,
     coursierResolvers <<= Tasks.coursierResolversTask,
