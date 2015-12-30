@@ -39,7 +39,7 @@ object FromSbt {
     val fullName = sbtModuleIdName(module, scalaVersion, scalaBinaryVersion)
 
     val dep = Dependency(
-      Module(module.organization, fullName),
+      Module(module.organization, fullName, module.extraAttributes),
       module.revision,
       exclusions = module.exclusions.map { rule =>
         // FIXME Other `rule` fields are ignored here
@@ -79,7 +79,11 @@ object FromSbt {
     val deps = allDependencies.flatMap(dependencies(_, scalaVersion, scalaBinaryVersion))
 
     Project(
-      Module(projectID.organization, sbtModuleIdName(projectID, scalaVersion, scalaBinaryVersion)),
+      Module(
+        projectID.organization,
+        sbtModuleIdName(projectID, scalaVersion, scalaBinaryVersion),
+        projectID.extraAttributes
+      ),
       projectID.revision,
       deps,
       ivyConfigurations,
