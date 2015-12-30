@@ -118,9 +118,9 @@ class Helper(
       repositories0.collect { case Right(r) => r }
 
   val repositories =
-    if (common.sbtPluginHack)
+    if (common.sbtPluginHack.nonEmpty)
       repositories1.map {
-        case m: MavenRepository => m.copy(sbtAttrStub = true)
+        case m: MavenRepository => m.copy(sbtAttrStub = Some(common.sbtPluginHack))
         case other => other
       }
     else

@@ -42,7 +42,7 @@ object Fetch {
     val task = lookups.foldLeft[F[Seq[String] \/ (Artifact.Source, Project)]](F.point(-\/(Nil))) {
       case (acc, (repo, eitherProjTask)) =>
         val looseModuleValidation = repo match {
-          case m: MavenRepository => m.sbtAttrStub // that sucks so much
+          case m: MavenRepository => m.sbtAttrStub.nonEmpty // that sucks so much
           case _ => false
         }
         val moduleCmp = if (looseModuleValidation) module.copy(attributes = Map.empty) else module
@@ -66,7 +66,7 @@ object Fetch {
     EitherT(F.map(task)(_.leftMap(_.reverse)))
       .map {case x @ (source, proj) =>
         val looseModuleValidation = source match {
-          case m: MavenSource => m.sbtAttrStub // omfg
+          case m: MavenSource => m.sbtAttrStub.nonEmpty // omfg
           case _ => false
         }
         val projModule =
