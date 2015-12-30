@@ -133,7 +133,7 @@ object Cache {
         -\/(FileError.ConcurrentDownload(url))
     }
     catch { case e: Exception =>
-      -\/(FileError.DownloadError(e.getMessage))
+      -\/(FileError.DownloadError(s"Caught $e (${e.getMessage})"))
     }
 
   private def temporaryFile(file: File): File = {
