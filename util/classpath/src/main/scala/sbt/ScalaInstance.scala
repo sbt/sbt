@@ -41,6 +41,11 @@ object ScalaInstance {
   val ScalaOrg = ScalaOrganization
   val VersionPrefix = "version "
 
+  def isDotty(version: String): Boolean =
+    // We rely on the fact that the first public version of Scala was 1.0 and
+    // that Dotty will keep being version 0.x for a long time.
+    version.startsWith("0.")
+
   def apply(org: String, version: String, launcher: xsbti.Launcher): ScalaInstance =
     // Due to incompatibility with previous launchers if scalaOrg has default value revert to an existing method
     if (org == ScalaOrg)
