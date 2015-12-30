@@ -36,6 +36,71 @@ object IO {
   val utf8 = Charset.forName("UTF-8")
 
   /**
+   * Returns a URL for the directory or jar containing the class file for type `T` (as determined by an implicit Manifest).
+   * If the location cannot be determined, an error is generated.
+   * Note that Java standard library classes typically do not have a location associated with them.
+   */
+  @deprecated("Use classfileLocation or classLocationFile", "0.13.10")
+  def classLocation[T](implicit mf: SManifest[T]): URL = classLocation(mf.runtimeClass)
+
+  /**
+   * Returns a URL for the directory or jar containing the the class file `cl`.
+   * If the location cannot be determined, an error is generated.
+   */
+  @deprecated("Use classfileLocation or classLocationFile", "0.13.10")
+  def classLocation(cl: Class[_]): URL = {
+    val codeSource = cl.getProtectionDomain.getCodeSource
+    if (codeSource ne null) {
+      codeSource.getLocation
+    } else {
+      // NB: This assumes that classes without code sources are System classes, and thus located in
+      // jars. It assumes that `urlAsFile` will truncate to the containing jar file.
+      val clsfile = s"${cl.getName.replace('.', '/')}.class"
+      Option(ClassLoader.getSystemClassLoader.getResource(clsfile))
+        .flatMap {
+          urlAsFile
+        }.getOrElse {
+          sys.error("No class location for " + cl)
+        }.toURI.toURL
+    }
+  }
+
+  /**
+   * Returns the directory or jar file containing the the class file for type `T` (as determined by an implicit Manifest).
+   * If the location cannot be determined, an error is generated.
+   * Note that Java standard library classes typically do not have a location associated with them.
+   */
+  def classLocationFile[T](implicit mf: SManifest[T]): File = classLocationFile(mf.runtimeClass)
+
+  /**
+   * Returns the directory or jar file containing the class file `cl`.
+   * If the location cannot be determined or if it is not a file, an error is generated.
+   * Note that Java standard library classes typically do not have a location associated with them.
+   */
+  def classLocationFile(cl: Class[_]): File =
+    Option(cl.getProtectionDomain.getCodeSource) match {
+      case Some(codeSource) =>
+        val classURL = codeSource.getLocation
+        toFile(classURL)
+      case None =>
+        // NB: This assumes that classes without code sources are System classes, and thus located in
+        // jars. It assumes that `urlAsFile` will truncate to the containing jar file.
+        val clsfile = s"${cl.getName.replace('.', '/')}.class"
+        Option(ClassLoader.getSystemClassLoader.getResource(clsfile))
+          .flatMap {
+            urlAsFile
+          }.getOrElse {
+            sys.error("No class location for " + cl)
+          }
+    }
+
+  /**
+   * Returns a URL for the classfile containing the given class file for type `T` (as determined by an implicit Manifest).
+   * If the location cannot be determined, an error is generated.
+   */
+  def classfileLocation[T](implicit mf: SManifest[T]): URL = classfileLocation(mf.runtimeClass)
+
+  /**
    * Returns a URL for the classfile containing the given class
    * If the location cannot be determined, an error is generated.
    */
@@ -48,38 +113,11 @@ object IO {
         sys.error("No class location for " + cl)
       }
     } catch {
-      case e =>
+      case e: Throwable =>
         e.printStackTrace()
         throw e
     }
   }
-
-  /**
-   * Returns the directory or jar file containing the class file `cl`.
-   * If the location cannot be determined or if it is not a file, an error is generated.
-   * Note that Java standard library classes typically do not have a location associated with them.
-   */
-  def classLocationFile(cl: Class[_]): File = {
-    val classURL =
-      Option(cl.getProtectionDomain.getCodeSource).getOrElse {
-        sys.error("No class location for " + cl)
-      }.getLocation
-    toFile(classURL)
-  }
-
-  /**
-   * Returns a URL for the directory or jar containing the class file for type `T` (as determined by an implicit Manifest).
-   * If the location cannot be determined, an error is generated.
-   * Note that Java standard library classes typically do not have a location associated with them.
-   */
-  def classfileLocation[T](implicit mf: SManifest[T]): URL = classfileLocation(mf.runtimeClass)
-
-  /**
-   * Returns the directory or jar file containing the the class file for type `T` (as determined by an implicit Manifest).
-   * If the location cannot be determined, an error is generated.
-   * Note that Java standard library classes typically do not have a location associated with them.
-   */
-  def classLocationFile[T](implicit mf: SManifest[T]): File = classLocationFile(mf.runtimeClass)
 
   /**
    * Constructs a File corresponding to `url`, which must have a scheme of `file`.
