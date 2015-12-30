@@ -70,6 +70,16 @@ class TermDisplay(out: Writer) extends Logger {
               out.write(s"$url0 $extra0\n")
             }
 
+            if (downloads0.length < lineCount) {
+              for (_ <- downloads0.length until lineCount) {
+                ansi.clearLine(2)
+                ansi.down(1)
+              }
+
+              for (_ <- downloads0.length until lineCount)
+                ansi.up(1)
+            }
+
             for (_ <- downloads0.indices)
               ansi.up(1)
 
