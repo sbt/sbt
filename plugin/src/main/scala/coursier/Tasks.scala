@@ -263,14 +263,31 @@ object Tasks {
           Cache.fetch(caches, cachePolicy, checksums = checksums, logger = Some(logger), pool = pool)
         )
 
-        def depsRepr = currentProject.dependencies.map { case (config, dep) =>
-          s"${dep.module}:${dep.version}:$config->${dep.configuration}"
-        }.sorted
+        def depsRepr(deps: Seq[(String, Dependency)]) =
+          deps.map { case (config, dep) =>
+            s"${dep.module}:${dep.version}:$config->${dep.configuration}"
+          }.sorted.distinct
+
+        def depsRepr0(deps: Seq[Dependency]) =
+          deps.map { dep =>
+            s"${dep.module}:${dep.version}:${dep.configuration}"
+          }.sorted.distinct
+
+        if (verbosity >= 1) {
+          errPrintln(s"Repositories:")
+          val repositories0 = repositories.map {
+            case r: IvyRepository => r.copy(properties = Map.empty)
+            case r: InterProjectRepository => r.copy(projects = Nil)
+            case r => r
+          }
+          for (repo <- repositories0)
+            errPrintln(s"  $repo")
+        }
 
         if (verbosity >= 0)
           errPrintln(s"Resolving ${currentProject.module.organization}:${currentProject.module.name}:${currentProject.version}")
         if (verbosity >= 1)
-          for (depRepr <- depsRepr.distinct)
+          for (depRepr <- depsRepr(currentProject.dependencies))
             errPrintln(s"  $depRepr")
 
         val res = startRes
@@ -280,11 +297,16 @@ object Tasks {
           .leftMap(ex => throw new Exception(s"Exception during resolution", ex))
           .merge
 
+
+
         if (!res.isDone)
           throw new Exception(s"Maximum number of iteration reached!")
 
         if (verbosity >= 0)
           errPrintln("Resolution done")
+        if (verbosity >= 1)
+          for (depRepr <- depsRepr0(res.dependencies.toSeq))
+            errPrintln(s"  $depRepr")
 
         def repr(dep: Dependency) = {
           // dep.version can be an interval, whereas the one from project can't
