@@ -28,6 +28,11 @@ object FromSbt {
       } yield (from, to)
     }
 
+  def attributes(attr: Map[String, String]): Map[String, String] =
+    attr.map { case (k, v) =>
+      k.stripPrefix("e:") -> v
+    }
+
   def dependencies(
     module: ModuleID,
     scalaVersion: String,
@@ -39,7 +44,7 @@ object FromSbt {
     val fullName = sbtModuleIdName(module, scalaVersion, scalaBinaryVersion)
 
     val dep = Dependency(
-      Module(module.organization, fullName, module.extraAttributes),
+      Module(module.organization, fullName, FromSbt.attributes(module.extraAttributes)),
       module.revision,
       exclusions = module.exclusions.map { rule =>
         // FIXME Other `rule` fields are ignored here
@@ -82,7 +87,7 @@ object FromSbt {
       Module(
         projectID.organization,
         sbtModuleIdName(projectID, scalaVersion, scalaBinaryVersion),
-        projectID.extraAttributes
+        FromSbt.attributes(projectID.extraAttributes)
       ),
       projectID.revision,
       deps,
@@ -102,7 +107,7 @@ object FromSbt {
       case sbt.MavenRepository(_, root) =>
         if (root.startsWith("http://") || root.startsWith("https://")) {
           val root0 = if (root.endsWith("/")) root else root + "/"
-          Some(MavenRepository(root0))
+          Some(MavenRepository(root0, sbtAttrStub = true))
         } else {
           Console.err.println(s"Warning: unrecognized Maven repository protocol in $root, ignoring it")
           None

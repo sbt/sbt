@@ -114,9 +114,18 @@ class Helper(
     sys.exit(255)
   }
 
-  val repositories =
+  val repositories1 =
     (if (common.noDefault) Nil else defaultRepositories) ++
       repositories0.collect { case Right(r) => r }
+
+  val repositories =
+    if (common.sbtPluginHack)
+      repositories1.map {
+        case m: MavenRepository => m.copy(sbtAttrStub = true)
+        case other => other
+      }
+    else
+      repositories1
 
   val (rawDependencies, extraArgs) = {
     val idxOpt = Some(remainingArgs.indexOf("--")).filter(_ >= 0)

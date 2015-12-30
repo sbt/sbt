@@ -49,7 +49,9 @@ object MavenRepository {
 case class MavenRepository(
   root: String,
   ivyLike: Boolean = false,
-  changing: Option[Boolean] = None
+  changing: Option[Boolean] = None,
+  /** Hackish hack for sbt plugins mainly - what this does really sucks */
+  sbtAttrStub: Boolean = false
 ) extends Repository {
 
   import Repository._
@@ -57,6 +59,17 @@ case class MavenRepository(
 
   val root0 = if (root.endsWith("/")) root else root + "/"
   val source = MavenSource(root0, ivyLike)
+
+  private def dirModuleName(module: Module): String =
+    if (sbtAttrStub) {
+      var name = module.name
+      for (scalaVersion <- module.attributes.get("scalaVersion"))
+        name = name + "_" + scalaVersion
+      for (sbtVersion <- module.attributes.get("sbtVersion"))
+        name = name + "_" + sbtVersion
+      name
+    } else
+      module.name
 
   def projectArtifact(
     module: Module,
@@ -68,7 +81,7 @@ case class MavenRepository(
       if (ivyLike)
         ivyLikePath(
           module.organization,
-          module.name,
+          dirModuleName(module), // maybe not what we should do here, don't know
           versioningValue getOrElse version,
           "poms",
           "",
@@ -76,7 +89,7 @@ case class MavenRepository(
         )
       else
         module.organization.split('.').toSeq ++ Seq(
-          module.name,
+          dirModuleName(module),
           version,
           s"${module.name}-${versioningValue getOrElse version}.pom"
         )
@@ -98,7 +111,7 @@ case class MavenRepository(
     else {
       val path = (
         module.organization.split('.').toSeq ++ Seq(
-          module.name,
+          dirModuleName(module),
           "maven-metadata.xml"
         )
       ) .map(encodeURIComponent)
@@ -125,7 +138,7 @@ case class MavenRepository(
     else {
       val path = (
         module.organization.split('.').toSeq ++ Seq(
-          module.name,
+          dirModuleName(module),
           version,
           "maven-metadata.xml"
         )
