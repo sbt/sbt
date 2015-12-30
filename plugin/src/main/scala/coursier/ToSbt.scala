@@ -6,10 +6,10 @@ object ToSbt {
 
   def artifact(module: Module, artifact: Artifact): sbt.Artifact =
     sbt.Artifact(
-      s"${module.organization}:${module.name}",
+      module.name,
       artifact.attributes.`type`,
       "jar",
-      Some(artifact.attributes.classifier),
+      Some(artifact.attributes.classifier).filter(_.nonEmpty),
       Nil,
       Some(url(artifact.url)),
       Map.empty
