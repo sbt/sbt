@@ -53,7 +53,8 @@ object Cache {
     in: InputStream,
     out: OutputStream,
     logger: Option[Logger],
-    url: String
+    url: String,
+    alreadyDownloaded: Long
   ): Unit = {
 
     val b = Array.fill[Byte](bufferSize)(0)
@@ -69,7 +70,7 @@ object Cache {
       }
     }
 
-    helper(0L)
+    helper(alreadyDownloaded)
   }
 
   private def withLockFor[T](file: File)(f: => FileError \/ T): FileError \/ T = {
@@ -140,6 +141,8 @@ object Cache {
     val name = file.getName
     new File(dir, s"$name.part")
   }
+
+  private val partialContentResponseCode = 206
 
   private def download(
     artifact: Artifact,
@@ -228,20 +231,42 @@ object Cache {
         Task {
           withLockFor(file) {
             downloading(url, file, logger) {
-              val conn = urlConn(url)
+              val tmp = temporaryFile(file)
 
-              for (len <- Option(conn.getContentLengthLong) if len >= 0L)
+              val alreadyDownloaded = tmp.length()
+
+              val conn0 = urlConn(url)
+
+              val (partialDownload, conn) = conn0 match {
+                case conn0: HttpURLConnection if alreadyDownloaded > 0L =>
+                  conn0.setRequestProperty("Range", s"bytes=$alreadyDownloaded-")
+
+                  if (conn0.getResponseCode == partialContentResponseCode) {
+                    val ackRange = Option(conn0.getHeaderField("Content-Range")).getOrElse("")
+
+                    if (ackRange.startsWith(s"bytes $alreadyDownloaded-"))
+                      (true, conn0)
+                    else
+                      // unrecognized Content-Range header -> start a new connection with no resume
+                      (false, urlConn(url))
+                  } else
+                    (false, conn0)
+
+                case _ => (false, conn0)
+              }
+
+              for (len0 <- Option(conn.getContentLengthLong) if len0 >= 0L) {
+                val len = len0 + (if (partialDownload) alreadyDownloaded else 0L)
                 logger.foreach(_.downloadLength(url, len))
+              }
 
               val in = new BufferedInputStream(conn.getInputStream, bufferSize)
-
-              val tmp = temporaryFile(file)
 
               val result =
                 try {
                   tmp.getParentFile.mkdirs()
-                  val out = new FileOutputStream(tmp)
-                  try \/-(readFullyTo(in, out, logger, url))
+                  val out = new FileOutputStream(tmp, partialDownload)
+                  try \/-(readFullyTo(in, out, logger, url, if (partialDownload) alreadyDownloaded else 0L))
                   finally out.close()
                 } finally in.close()
 
