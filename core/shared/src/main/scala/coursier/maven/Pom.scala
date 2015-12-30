@@ -168,10 +168,25 @@ object Pom {
         .getOrElse(Seq.empty)
       profiles <- xmlProfiles.toList.traverseU(profile)
 
+      extraAttrs <- properties
+        .collectFirst { case ("extraDependencyAttributes", s) => extraAttributes(s) }
+        .getOrElse(\/-(Map.empty))
+
+      extraAttrsMap = extraAttrs.map {
+        case (mod, ver) =>
+          (mod.copy(attributes = Map.empty), ver) -> mod.attributes
+      }.toMap
+
     } yield Project(
       projModule.copy(organization = groupId),
       version,
-      deps,
+      deps.map {
+        case (config, dep0) =>
+          val dep = extraAttrsMap.get(dep0.moduleVersion).fold(dep0)(attrs =>
+            dep0.copy(module = dep0.module.copy(attributes = attrs))
+          )
+          config -> dep
+      },
       Map.empty,
       parentModuleOpt.map((_, parentVersionOpt.getOrElse(""))),
       depMgmts,
@@ -317,5 +332,68 @@ object Pom {
       lastUpdatedOpt,
       snapshotVersions
     )
+  }
+
+  val extraAttributeSeparator = ":#@#:"
+  val extraAttributePrefix = "+"
+
+  val extraAttributeOrg = "organisation"
+  val extraAttributeName = "module"
+  val extraAttributeVersion = "revision"
+
+  val extraAttributeBase = Set(
+    extraAttributeOrg,
+    extraAttributeName,
+    extraAttributeVersion,
+    "branch"
+  )
+
+  def extraAttribute(s: String): String \/ (Module, String) = {
+    // vaguely does the same as:
+    // https://github.com/apache/ant-ivy/blob/2.2.0/src/java/org/apache/ivy/core/module/id/ModuleRevisionId.java#L291
+
+    // dropping the attributes with a value of NULL here...
+
+    val rawParts = s.split(extraAttributeSeparator).toSeq
+
+    val partsOrError =
+      if (rawParts.length % 2 == 0) {
+        val malformed = rawParts.filter(!_.startsWith(extraAttributePrefix))
+        if (malformed.isEmpty)
+          \/-(rawParts.map(_.drop(extraAttributePrefix.length)))
+        else
+          -\/(s"Malformed attributes ${malformed.map("'"+_+"'").mkString(", ")} in extra attributes '$s'")
+      } else
+        -\/(s"Malformed extra attributes '$s'")
+
+    def attrFrom(attrs: Map[String, String], name: String): String \/ String =
+      \/.fromEither(
+        attrs.get(name)
+          .toRight(s"$name not found in extra attributes '$s'")
+      )
+
+    for {
+      parts <- partsOrError
+      attrs = parts.grouped(2).collect {
+        case Seq(k, v) if v != "NULL" =>
+          k -> v
+      }.toMap
+      org <- attrFrom(attrs, extraAttributeOrg)
+      name <- attrFrom(attrs, extraAttributeName)
+      version <- attrFrom(attrs, extraAttributeVersion)
+      remainingAttrs = attrs.filterKeys(!extraAttributeBase(_))
+    } yield (Module(org, name, remainingAttrs.toVector.toMap), version)
+  }
+
+  def extraAttributes(s: String): String \/ Seq[(Module, String)] = {
+    val lines = s.split('\n').toSeq.map(_.trim).filter(_.nonEmpty)
+
+    lines.foldLeft[String \/ Seq[(Module, String)]](\/-(Vector.empty)) {
+      case (acc, line) =>
+        for {
+          modVers <- acc
+          modVer <- extraAttribute(line)
+        } yield modVers :+ modVer
+    }
   }
 }
