@@ -143,7 +143,6 @@ case class IvyRepository(
         } yield acc + s
     }
 
-  // If attributes are added to `Module`, they should be added here
   // See http://ant.apache.org/ivy/history/latest-milestone/concept.html for a
   // list of variables that should be supported.
   // Some are missing (branch, conf, originalName).
