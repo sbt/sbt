@@ -36,7 +36,7 @@ object ResolutionTests extends TestSuite {
       dependencies = Seq(
         "" -> Dependency(Module("acme", "play-json"), "${playJsonVersion}"),
         "" -> Dependency(Module("${project.groupId}", "${configName}"), "1.3.0")),
-      properties = Map(
+      properties = Seq(
         "playJsonVersion" -> "2.4.0",
         "configName" -> "config")),
   
@@ -83,7 +83,7 @@ object ResolutionTests extends TestSuite {
       dependencies = Seq(
         "" -> Dependency(Module("gov.nsa", "secure-pgp"), "10.0",
           exclusions = Set(("*", "${crypto.name}")))),
-      properties = Map("crypto.name" -> "crypto", "dummy" -> "2")),
+      properties = Seq("crypto.name" -> "crypto", "dummy" -> "2")),
 
     Project(Module("com.thoughtworks.paranamer", "paranamer-parent"), "2.6",
       dependencies = Seq(
@@ -108,29 +108,29 @@ object ResolutionTests extends TestSuite {
           "test" -> Dependency(Module("org.scalaverification", "scala-verification"), "1.12.4"))))),
 
     Project(Module("com.github.dummy", "libb"), "0.5.3",
-      properties = Map("special" -> "true"),
+      properties = Seq("special" -> "true"),
       profiles = Seq(
         Profile("default", activation = Profile.Activation(properties = Seq("special" -> None)), dependencies = Seq(
           "" -> Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))))),
 
     Project(Module("com.github.dummy", "libb"), "0.5.4",
-      properties = Map("special" -> "true"),
+      properties = Seq("special" -> "true"),
       profiles = Seq(
         Profile("default", activation = Profile.Activation(properties = Seq("special" -> Some("true"))), dependencies = Seq(
           "" -> Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))))),
 
     Project(Module("com.github.dummy", "libb"), "0.5.5",
-      properties = Map("special" -> "true"),
+      properties = Seq("special" -> "true"),
       profiles = Seq(
         Profile("default", activation = Profile.Activation(properties = Seq("special" -> Some("!false"))), dependencies = Seq(
           "" -> Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))))),
 
     Project(Module("com.github.dummy", "libb-parent"), "0.5.6",
-      properties = Map("special" -> "true")),
+      properties = Seq("special" -> "true")),
 
     Project(Module("com.github.dummy", "libb"), "0.5.6",
       parent = Some(Module("com.github.dummy", "libb-parent"), "0.5.6"),
-      properties = Map("special" -> "true"),
+      properties = Seq("special" -> "true"),
       profiles = Seq(
         Profile("default", activation = Profile.Activation(properties = Seq("special" -> Some("!false"))), dependencies = Seq(
           "" -> Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))))),
@@ -243,14 +243,11 @@ object ResolutionTests extends TestSuite {
         )
         val res = await(resolve0(
           Set(dep)
-        ))
+        )).copy(filter = None, projectCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
-          dependencies = Set(dep.withCompileScope) ++ trDeps.map(_.withCompileScope),
-          projectCache = Map(
-            projectsMap(dep.moduleVersion).kv
-          ) ++ trDeps.map(trDep => projectsMap(trDep.moduleVersion).kv)
+          dependencies = Set(dep.withCompileScope) ++ trDeps.map(_.withCompileScope)
         )
 
         assert(res == expected)
@@ -267,14 +264,11 @@ object ResolutionTests extends TestSuite {
         )
         val res = await(resolve0(
           Set(dep)
-        ))
+        )).copy(filter = None, projectCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
-          dependencies = Set(dep.withCompileScope) ++ trDeps.map(_.withCompileScope),
-          projectCache = Map(
-            projectsMap(dep.moduleVersion).kv
-          ) ++ trDeps.map(trDep => projectsMap(trDep.moduleVersion).kv)
+          dependencies = Set(dep.withCompileScope) ++ trDeps.map(_.withCompileScope)
         )
 
         assert(res == expected)
@@ -291,14 +285,11 @@ object ResolutionTests extends TestSuite {
         )
         val res = await(resolve0(
           Set(dep)
-        ))
+        )).copy(filter = None, projectCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
-          dependencies = Set(dep.withCompileScope) ++ trDeps.map(_.withCompileScope),
-          projectCache = Map(
-            projectsMap(dep.moduleVersion).kv
-          ) ++ trDeps.map(trDep => projectsMap(trDep.moduleVersion).kv)
+          dependencies = Set(dep.withCompileScope) ++ trDeps.map(_.withCompileScope)
         )
 
         assert(res == expected)
@@ -309,14 +300,11 @@ object ResolutionTests extends TestSuite {
         val dep = Dependency(Module("hudsucker", "mail"), "10.0")
         val res = await(resolve0(
           Set(dep)
-        )).copy(filter = None)
+        )).copy(filter = None, projectCache = Map.empty)
 
         val expected = Resolution(
           rootDependencies = Set(dep),
-          dependencies = Set(dep.withCompileScope),
-          projectCache = Map(
-            projectsMap(dep.moduleVersion).kv
-          )
+          dependencies = Set(dep.withCompileScope)
         )
 
         assert(res == expected)

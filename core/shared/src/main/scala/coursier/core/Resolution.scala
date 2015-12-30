@@ -613,20 +613,25 @@ case class Resolution(
         .map(_._2.properties)
         .fold(project.properties)(project.properties ++ _)
 
-    val approxProperties = propertiesMap(approxProperties0)
+    val approxProperties = propertiesMap(approxProperties0) ++ Seq(
+      "project.groupId"     -> project.module.organization,
+      "project.artifactId"  -> project.module.name,
+      "project.version"     -> project.version
+    )
 
     val profileDependencies =
       profiles(
         project,
         approxProperties,
         profileActivation getOrElse defaultProfileActivation
-      ).flatMap(_.dependencies)
+      ).flatMap(p => p.dependencies ++ p.dependencyManagement)
 
-    val modules =
-      (project.dependencies ++ profileDependencies)
-        .collect{
-          case ("import", dep) => dep.moduleVersion
-        }
+    val modules = withProperties(
+      project.dependencies ++ project.dependencyManagement ++ profileDependencies,
+      approxProperties
+    ).collect {
+      case ("import", dep) => dep.moduleVersion
+    }
 
     modules.toSet ++ project.parent
   }
@@ -683,13 +688,21 @@ case class Resolution(
    */
   def withDependencyManagement(project: Project): Project = {
 
+    // A bit fragile, but seems to work
+    // TODO Add non regression test for the touchy  org.glassfish.jersey.core:jersey-client:2.19
+    //      (for the way it uses  org.glassfish.hk2:hk2-bom,2.4.0-b25)
+
     val approxProperties0 =
       project.parent
         .filter(projectCache.contains)
         .map(projectCache(_)._2.properties.toMap)
         .fold(project.properties)(project.properties ++ _)
 
-    val approxProperties = propertiesMap(approxProperties0)
+    val approxProperties = propertiesMap(approxProperties0) ++ Seq(
+      "project.groupId"     -> project.module.organization,
+      "project.artifactId"  -> project.module.name,
+      "project.version"     -> project.version
+    )
 
     val profiles0 = profiles(
       project,
@@ -698,20 +711,29 @@ case class Resolution(
     )
 
     val dependencies0 = addDependencies(
-      project.dependencies +: profiles0.map(_.dependencies)
+      (project.dependencies +: profiles0.map(_.dependencies)).map(withProperties(_, approxProperties))
+    )
+    val dependenciesMgmt0 = addDependencies(
+      (project.dependencyManagement +: profiles0.map(_.dependencyManagement)).map(withProperties(_, approxProperties))
     )
     val properties0 =
       (project.properties /: profiles0) { (acc, p) =>
         acc ++ p.properties
       }
 
-    val deps = (
+    val deps0 = (
       dependencies0
         .collect { case ("import", dep) =>
           dep.moduleVersion
         } ++
+      dependenciesMgmt0
+        .collect { case ("import", dep) =>
+          dep.moduleVersion
+        } ++
       project.parent
-    ).filter(projectCache.contains)
+    )
+
+      val deps = deps0.filter(projectCache.contains)
 
     val projs = deps
       .map(projectCache(_)._2)
@@ -721,7 +743,9 @@ case class Resolution(
         profiles0.map(_.dependencyManagement) ++
         projs.map(_.dependencyManagement)
       )
-    ).foldLeft(Map.empty[DepMgmt.Key, (String, Dependency)])(DepMgmt.addSeq)
+    )
+      .map(withProperties(_, approxProperties))
+      .foldLeft(Map.empty[DepMgmt.Key, (String, Dependency)])(DepMgmt.addSeq)
 
     val depsSet = deps.toSet
 
@@ -735,7 +759,10 @@ case class Resolution(
           .filter(projectCache.contains)
           .toSeq
           .flatMap(projectCache(_)._2.dependencies),
-      dependencyManagement = depMgmt.values.toSeq,
+      dependencyManagement = depMgmt.values.toSeq
+        .filterNot{case (config, dep) =>
+          config == "import" && depsSet(dep.moduleVersion)
+        },
       properties = project.parent
         .filter(projectCache.contains)
         .map(projectCache(_)._2.properties)

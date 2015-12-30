@@ -39,7 +39,7 @@ package object test {
       parent: Option[ModuleVersion] = None,
       dependencyManagement: Seq[(String, Dependency)] = Seq.empty,
       configurations: Map[String, Seq[String]] = Map.empty,
-      properties: Map[String, String] = Map.empty,
+      properties: Seq[(String, String)] = Seq.empty,
       profiles: Seq[Profile] = Seq.empty,
       versions: Option[core.Versions] = None,
       snapshotVersioning: Option[core.SnapshotVersioning] = None,

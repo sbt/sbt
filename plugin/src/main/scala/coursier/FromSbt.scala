@@ -105,7 +105,7 @@ object FromSbt {
       ivyConfigurations,
       None,
       Nil,
-      Map.empty,
+      Nil,
       Nil,
       None,
       None,
