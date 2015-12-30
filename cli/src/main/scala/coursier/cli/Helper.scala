@@ -180,7 +180,6 @@ class Helper(
       val attributes = splitAttributes.collect {
         case Seq(k, v) => k -> v
       }
-      println(s"-> $org:$name:$attributes")
       (Module(org, name, attributes.toMap), version)
   }
 
