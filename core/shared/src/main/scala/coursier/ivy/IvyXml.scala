@@ -28,6 +28,20 @@ object IvyXml {
         name -> node.attribute("extends").toOption.toSeq.flatMap(_.split(','))
       }
 
+  // FIXME "default(compile)" likely not to be always the default
+  def mappings(mapping: String): Seq[(String, String)] =
+    mapping.split(';').flatMap { m =>
+      val (froms, tos) = m.split("->", 2) match {
+        case Array(from) => (from, "default(compile)")
+        case Array(from, to) => (from, to)
+      }
+
+      for {
+        from <- froms.split(',')
+        to <- tos.split(',')
+      } yield (from.trim, to.trim)
+    }
+
   // FIXME Errors ignored as above - warnings should be reported at least for anything suspicious
   private def dependencies(node: Node): Seq[(String, Dependency)] =
     node.children
@@ -53,9 +67,7 @@ object IvyXml {
           name <- node.attribute("name").toOption.toSeq
           version <- node.attribute("rev").toOption.toSeq
           rawConf <- node.attribute("conf").toOption.toSeq
-          (fromConf, toConf) <- rawConf.split(',').toSeq.map(_.split("->", 2)).collect {
-            case Array(from, to) => from -> to
-          }
+          (fromConf, toConf) <- mappings(rawConf)
           attr = node.attributesFromNamespace(attributesNamespace)
         } yield fromConf -> Dependency(
           Module(org, name, attr.toMap),

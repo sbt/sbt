@@ -1,6 +1,6 @@
 package coursier
 
-import coursier.ivy.IvyRepository
+import coursier.ivy.{ IvyXml, IvyRepository }
 import sbt.mavenint.SbtPomExtraProperties
 import sbt.{ Resolver, CrossVersion, ModuleID }
 
@@ -23,19 +23,6 @@ object FromSbt {
     case f: CrossVersion.Full => name + "_" + f.remapVersion(scalaVersion)
     case f: CrossVersion.Binary => name + "_" + f.remapVersion(scalaBinaryVersion)
   }
-
-  def mappings(mapping: String): Seq[(String, String)] =
-    mapping.split(';').flatMap { m =>
-      val (froms, tos) = m.split("->", 2) match {
-        case Array(from) => (from, "default(compile)")
-        case Array(from, to) => (from, to)
-      }
-
-      for {
-        from <- froms.split(',')
-        to <- tos.split(',')
-      } yield (from.trim, to.trim)
-    }
 
   def attributes(attr: Map[String, String]): Map[String, String] =
     attr.map { case (k, v) =>
@@ -64,7 +51,7 @@ object FromSbt {
     )
 
     val mapping = module.configurations.getOrElse("compile")
-    val allMappings = mappings(mapping)
+    val allMappings = IvyXml.mappings(mapping)
 
     val attributes =
       if (module.explicitArtifacts.isEmpty)
