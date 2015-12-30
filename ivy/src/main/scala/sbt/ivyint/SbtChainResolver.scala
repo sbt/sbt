@@ -183,15 +183,11 @@ private[sbt] case class SbtChainResolver(
             // Now that we know the real latest revision, let's force Ivy to use it
             val artifactOpt = findFirstArtifactRef(rmr.getDescriptor, dd, data, resolver)
             artifactOpt match {
-              case None if resolver.getName == "inter-project" => // do nothing
-              case None if resolver.isInstanceOf[CustomMavenResolver] =>
-              // do nothing for now....
-              // We want to see if the maven caching is sufficient and we do not need to duplicate within the ivy cache...
-              case None => throw new RuntimeException(s"\t${resolver.getName}: no ivy file nor artifact found for $rmr")
               case Some(artifactRef) =>
                 val systemMd = toSystem(rmr.getDescriptor)
                 getRepositoryCacheManager.cacheModuleDescriptor(resolver, artifactRef,
                   toSystem(dd), systemMd.getAllArtifacts.head, None.orNull, getCacheOptions(data))
+              case None => // do nothing. There are modules without artifacts
             }
             rmr
         }
