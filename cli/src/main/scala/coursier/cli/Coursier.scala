@@ -66,19 +66,28 @@ case class Fetch(
   @HelpMessage("Fetch javadoc artifacts")
   @ExtraName("D")
     javadoc: Boolean,
+  @HelpMessage("Print java -cp compatible output")
+  @ExtraName("p")
+    classpath: Boolean,
   @Recurse
     common: CommonOptions
 ) extends CoursierCommand {
 
   val helper = new Helper(common, remainingArgs)
 
-  val files0 = helper.fetch(main = true, sources = false, javadoc = false)
+  val files0 = helper.fetch(sources = false, javadoc = false)
 
-  println(
-    files0
-      .map(_.toString)
-      .mkString("\n")
-  )
+  val out =
+    if (classpath)
+      files0
+        .map(_.toString)
+        .mkString(File.pathSeparator)
+    else
+      files0
+        .map(_.toString)
+        .mkString("\n")
+
+  println(out)
 
 }
 
@@ -101,7 +110,7 @@ case class Launch(
 
   val helper = new Helper(common, rawDependencies)
 
-  val files0 = helper.fetch(main = true, sources = false, javadoc = false)
+  val files0 = helper.fetch(sources = false, javadoc = false)
 
   val cl = new URLClassLoader(
     files0.map(_.toURI.toURL).toArray,
@@ -167,23 +176,6 @@ case class Launch(
 
   Thread.currentThread().setContextClassLoader(cl)
   method.invoke(null, extraArgs.toArray)
-}
-
-case class Classpath(
-  @Recurse
-    common: CommonOptions
-) extends CoursierCommand {
-
-  val helper = new Helper(common, remainingArgs)
-
-  val files0 = helper.fetch(main = true, sources = false, javadoc = false)
-
-  Console.out.println(
-    files0
-      .map(_.toString)
-      .mkString(File.pathSeparator)
-  )
-
 }
 
 case class Bootstrap(

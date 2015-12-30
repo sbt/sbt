@@ -292,7 +292,7 @@ class Helper(
     }
   }
 
-  def fetch(main: Boolean, sources: Boolean, javadoc: Boolean): Seq[File] = {
+  def fetch(sources: Boolean, javadoc: Boolean): Seq[File] = {
     if (verbose0 >= 0) {
       val msg = cachePolicies match {
         case Seq(CachePolicy.LocalOnly) =>
@@ -303,8 +303,18 @@ class Helper(
 
       errPrintln(msg)
     }
-    val artifacts0 = res.artifacts
-    val main0 = main || (!sources && !javadoc)
+    val artifacts0 =
+      if (sources || javadoc) {
+        var classifiers = Seq.empty[String]
+        if (sources)
+          classifiers = classifiers :+ "sources"
+        if (javadoc)
+          classifiers = classifiers :+ "javadoc"
+
+        res.classifiersArtifacts(classifiers)
+      } else
+        res.artifacts
+    val main0 = !sources && !javadoc
     val artifacts = artifacts0.flatMap{ artifact =>
       var l = List.empty[Artifact]
       if (sources)
