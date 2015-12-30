@@ -12,6 +12,7 @@ object Keys {
   val coursierVerbosity = SettingKey[Int]("coursier-verbosity", "")
 
   val coursierResolvers = TaskKey[Seq[Resolver]]("coursier-resolvers", "")
+  val coursierSbtResolvers = TaskKey[Seq[Resolver]]("coursier-sbt-resolvers", "")
 
   val coursierCache = SettingKey[File]("coursier-cache", "")
 

@@ -123,7 +123,11 @@ object Tasks {
       val cachePolicy = coursierCachePolicy.value
       val cacheDir = coursierCache.value
 
-      val resolvers = coursierResolvers.value
+      val resolvers =
+        if (sbtClassifiers)
+          coursierSbtResolvers.value
+        else
+          coursierResolvers.value
 
       val verbosity = coursierVerbosity.value
 

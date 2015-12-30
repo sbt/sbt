@@ -18,6 +18,7 @@ object CoursierPlugin extends AutoPlugin {
     val coursierCachePolicy = Keys.coursierCachePolicy
     val coursierVerbosity = Keys.coursierVerbosity
     val coursierResolvers = Keys.coursierResolvers
+    val coursierSbtResolvers = Keys.coursierSbtResolvers
     val coursierCache = Keys.coursierCache
     val coursierProject = Keys.coursierProject
     val coursierProjects = Keys.coursierProjects
@@ -34,6 +35,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierCachePolicy := CachePolicy.FetchMissing,
     coursierVerbosity := 1,
     coursierResolvers <<= Tasks.coursierResolversTask,
+    coursierSbtResolvers <<= externalResolvers in updateSbtClassifiers,
     coursierCache := new File(sys.props("user.home") + "/.coursier/sbt"),
     update <<= Tasks.updateTask(withClassifiers = false),
     updateClassifiers <<= Tasks.updateTask(withClassifiers = true),
