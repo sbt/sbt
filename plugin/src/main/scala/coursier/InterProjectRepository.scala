@@ -23,14 +23,14 @@ case class InterProjectSource(artifacts: Map[(Module, String), Map[String, Seq[A
 case class InterProjectRepository(projects: Seq[(Project, Seq[(String, Seq[Artifact])])]) extends Repository {
 
   private val map = projects
-    .map { case (proj, a) => proj.moduleVersion -> proj }
+    .map { case (proj, _) => proj.moduleVersion -> proj }
     .toMap
 
   val source = InterProjectSource(
-    projects.map { case (proj, a) =>
-      val artifacts = a.toMap
-      val allArtifacts = proj.allConfigurations.map { case (c, ext) =>
-        c -> ext.toSeq.flatMap(artifacts.getOrElse(_, Nil))
+    projects.map { case (proj, artifactsByConfig) =>
+      val artifacts = artifactsByConfig.toMap
+      val allArtifacts = proj.allConfigurations.map { case (config, extends0) =>
+        config -> extends0.toSeq.flatMap(artifacts.getOrElse(_, Nil))
       }
       proj.moduleVersion -> allArtifacts
     }.toMap
@@ -47,7 +47,7 @@ case class InterProjectRepository(projects: Seq[(Project, Seq[(String, Seq[Artif
       case Some(proj) =>
         \/-((source, proj))
       case None =>
-        -\/(s"Project not found: $module:$version")
+        -\/("Not found")
     }
 
     EitherT(F.point(res))

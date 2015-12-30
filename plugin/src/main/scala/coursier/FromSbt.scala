@@ -80,7 +80,7 @@ object FromSbt {
     scalaBinaryVersion: String
   ): Project = {
 
-    // FIXME Ignored for now
+    // FIXME Ignored for now - easy to support though
     // val sbtDepOverrides = dependencyOverrides.value
     // val sbtExclusions = excludeDependencies.value
 

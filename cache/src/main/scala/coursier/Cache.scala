@@ -77,7 +77,7 @@ object Cache {
       // Dummy user-agent instead of the default "Java/...",
       // so that we are not returned incomplete/erroneous metadata
       // (Maven 2 compatibility? - happens for snapshot versioning metadata,
-      // this is SO FUCKING CRAZY)
+      // this is SO FSCKING CRAZY)
       conn.setRequestProperty("User-Agent", "")
       conn
     }

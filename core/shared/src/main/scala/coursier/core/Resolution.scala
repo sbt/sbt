@@ -786,7 +786,7 @@ case class Resolution(
         .toSeq
     } yield (dep, err)
 
-  def part(dependencies: Set[Dependency]): Resolution = {
+  def subset(dependencies: Set[Dependency]): Resolution = {
     val (_, _, finalVersions) = nextDependenciesAndConflicts
 
     def updateVersion(dep: Dependency): Dependency =

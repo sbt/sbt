@@ -16,13 +16,13 @@ import scalaz.concurrent.{ Task, Strategy }
 object Tasks {
 
   def coursierResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] = Def.task {
-    var l = externalResolvers.value
+    var resolvers = externalResolvers.value
     if (sbtPlugin.value)
-      l = Seq(
+      resolvers = Seq(
         sbtResolver.value,
         Classpaths.sbtPluginReleases
-      ) ++ l
-    l
+      ) ++ resolvers
+    resolvers
   }
 
   def coursierProjectTask: Def.Initialize[sbt.Task[(Project, Seq[(String, Seq[Artifact])])]] =
@@ -76,6 +76,7 @@ object Tasks {
 
   def updateTask(withClassifiers: Boolean, sbtClassifiers: Boolean = false) = Def.task {
 
+    // SBT logging should be better than that most of the time...
     def errPrintln(s: String): Unit = scala.Console.err.println(s)
 
     def grouped[K, V](map: Seq[(K, V)]): Map[K, Seq[V]] =
@@ -83,17 +84,6 @@ object Tasks {
         case (k, l) =>
           k -> l.map { case (_, v) => v }
       }
-
-    val ivyProperties = Map(
-      "ivy.home" -> s"${sys.props("user.home")}/.ivy2"
-    ) ++ sys.props
-
-    def createLogger() = Some {
-      new TermDisplay(
-        new OutputStreamWriter(System.err),
-        fallbackMode = sys.env.get("COURSIER_NO_TERM").nonEmpty
-      )
-    }
 
     // let's update only one module at once, for a better output
     // Downloads are already parallel, no need to parallelize further anyway
@@ -154,6 +144,11 @@ object Tasks {
       )
 
       val interProjectRepo = InterProjectRepository(projects)
+
+      val ivyProperties = Map(
+        "ivy.home" -> s"${sys.props("user.home")}/.ivy2"
+      ) ++ sys.props
+
       val repositories = Seq(globalPluginsRepo, interProjectRepo) ++ resolvers.flatMap(FromSbt.repository(_, ivyProperties))
 
       val caches = Seq(
@@ -163,12 +158,16 @@ object Tasks {
 
       val pool = Executors.newFixedThreadPool(parallelDownloads, Strategy.DefaultDaemonThreadFactory)
 
-      val logger = createLogger()
-      logger.foreach(_.init())
+      val logger = new TermDisplay(
+        new OutputStreamWriter(System.err),
+        fallbackMode = sys.env.get("COURSIER_NO_TERM").nonEmpty
+      )
+      logger.init()
+
       val fetch = coursier.Fetch(
         repositories,
-        Cache.fetch(caches, CachePolicy.LocalOnly, checksums = checksums, logger = logger, pool = pool),
-        Cache.fetch(caches, cachePolicy, checksums = checksums, logger = logger, pool = pool)
+        Cache.fetch(caches, CachePolicy.LocalOnly, checksums = checksums, logger = Some(logger), pool = pool),
+        Cache.fetch(caches, cachePolicy, checksums = checksums, logger = Some(logger), pool = pool)
       )
 
       def depsRepr = currentProject.dependencies.map { case (config, dep) =>
@@ -253,7 +252,7 @@ object Tasks {
         }
 
       val artifactFileOrErrorTasks = allArtifacts.toVector.map { a =>
-        Cache.file(a, caches, cachePolicy, checksums = artifactsChecksums, logger = logger, pool = pool).run.map((a, _))
+        Cache.file(a, caches, cachePolicy, checksums = artifactsChecksums, logger = Some(logger), pool = pool).run.map((a, _))
       }
 
       if (verbosity >= 0)

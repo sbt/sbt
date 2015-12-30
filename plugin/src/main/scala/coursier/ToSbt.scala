@@ -88,9 +88,9 @@ object ToSbt {
     val configReports = configs.map {
       case (config, extends0) =>
         val configDeps = extends0.flatMap(configDependencies.getOrElse(_, Nil))
-        val partialRes = resolution.part(configDeps)
+        val subRes = resolution.subset(configDeps)
 
-        val reports = ToSbt.moduleReports(partialRes, classifiersOpt, artifactFileOpt)
+        val reports = ToSbt.moduleReports(subRes, classifiersOpt, artifactFileOpt)
 
         new ConfigurationReport(
           config,
