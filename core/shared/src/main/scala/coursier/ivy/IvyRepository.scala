@@ -151,7 +151,8 @@ case class IvyRepository(
     version: String,
     `type`: String,
     artifact: String,
-    ext: String
+    ext: String,
+    classifierOpt: Option[String]
   ) =
     Map(
       "organization" -> module.organization,
@@ -162,7 +163,7 @@ case class IvyRepository(
       "type" -> `type`,
       "artifact" -> artifact,
       "ext" -> ext
-    ) ++ module.attributes
+    ) ++ module.attributes ++ classifierOpt.map("classifier" -> _).toSeq
 
 
   val source: Artifact.Source =
@@ -198,7 +199,8 @@ case class IvyRepository(
               dependency.version,
               p.`type`,
               p.name,
-              p.ext
+              p.ext,
+              Some(p.classifier).filter(_.nonEmpty)
             )).toList.map(p -> _)
           }
 
@@ -235,7 +237,7 @@ case class IvyRepository(
     val eitherArtifact: String \/ Artifact =
       for {
         url <- substitute(
-          variables(module, version, "ivy", "ivy", "xml")
+          variables(module, version, "ivy", "ivy", "xml", None)
         )
       } yield {
         var artifact = Artifact(
