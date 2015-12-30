@@ -3,6 +3,7 @@ package coursier
 import java.io.{ File, OutputStreamWriter }
 
 import coursier.cli.TermDisplay
+import coursier.ivy.IvyRepository
 import sbt.{ MavenRepository => _, _ }
 import sbt.Keys._
 
@@ -16,33 +17,6 @@ object CoursierPlugin extends AutoPlugin {
   override def requires = sbt.plugins.IvyPlugin
 
   private def errPrintln(s: String): Unit = scala.Console.err.println(s)
-
-  // org.scala-sbt:global-plugins;sbtVersion=0.13;scalaVersion=2.10:0.0
-  private val globalPluginsProject = Project(
-    Module("org.scala-sbt", "global-plugins", Map("sbtVersion" -> "0.13", "scalaVersion" -> "2.10")),
-    "0.0",
-    Nil,
-    Map.empty,
-    None,
-    Nil,
-    Map.empty,
-    Nil,
-    None,
-    None,
-    Nil
-  )
-
-  private val globalPluginsArtifacts = Seq(
-    "" -> Seq(
-      Artifact(
-        new File(sys.props("user.home") + "/.sbt/0.13/plugins/target") .toURI.toString,
-        Map.empty,
-        Map.empty,
-        Attributes(),
-        changing = true
-      )
-    )
-  )
 
   object autoImport {
     val coursierParallelDownloads = Keys.coursierParallelDownloads
@@ -91,22 +65,27 @@ object CoursierPlugin extends AutoPlugin {
       val verbosity = coursierVerbosity.value
 
 
-      val projects0 = projects :+ (globalPluginsProject -> globalPluginsArtifacts)
-
       val startRes = Resolution(
         currentProject.dependencies.map { case (_, dep) => dep }.toSet,
         filter = Some(dep => !dep.optional),
-        forceVersions = projects0.map { case (proj, _) => proj.moduleVersion }.toMap
+        forceVersions = projects.map { case (proj, _) => proj.moduleVersion }.toMap
       )
 
       if (verbosity >= 1) {
         println("InterProjectRepository")
-        for ((p, _) <- projects0)
+        for ((p, _) <- projects)
           println(s"  ${p.module}:${p.version}")
       }
 
-      val interProjectRepo = InterProjectRepository(projects0)
-      val repositories = interProjectRepo +: resolvers.flatMap(FromSbt.repository(_, ivyProperties))
+      val globalPluginsRepo = IvyRepository(
+        new File(sys.props("user.home") + "/.sbt/0.13/plugins/target/resolution-cache/").toURI.toString +
+        "[organization]/[module](/scala_[scalaVersion])(/sbt_[sbtVersion])/[revision]/resolved.xml.[ext]",
+        withChecksums = false,
+        withSignatures = false
+      )
+
+      val interProjectRepo = InterProjectRepository(projects)
+      val repositories = Seq(globalPluginsRepo, interProjectRepo) ++ resolvers.flatMap(FromSbt.repository(_, ivyProperties))
 
       val files = Files(
         Seq("http://" -> new File(cacheDir, "http"), "https://" -> new File(cacheDir, "https")),
@@ -299,7 +278,7 @@ object CoursierPlugin extends AutoPlugin {
   override lazy val projectSettings = Seq(
     coursierParallelDownloads := 6,
     coursierMaxIterations := 50,
-    coursierChecksums := Seq(Some("SHA-1"), Some("MD5")),
+    coursierChecksums := Seq(Some("SHA-1"), Some("MD5"), None),
     coursierCachePolicy := CachePolicy.FetchMissing,
     coursierVerbosity := 1,
     coursierResolvers <<= Tasks.coursierResolversTask,

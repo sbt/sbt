@@ -80,7 +80,9 @@ object IvyRepository {
 case class IvyRepository(
   pattern: String,
   changing: Option[Boolean] = None,
-  properties: Map[String, String] = Map.empty
+  properties: Map[String, String] = Map.empty,
+  withChecksums: Boolean = true,
+  withSignatures: Boolean = true
 ) extends Repository {
 
   import Repository._
@@ -199,15 +201,20 @@ case class IvyRepository(
       }
 
       retainedWithUrl.map { case (p, url) =>
-        Artifact(
+        var artifact = Artifact(
           url,
           Map.empty,
           Map.empty,
           p.attributes,
           changing = changing.getOrElse(project.version.contains("-SNAPSHOT")) // could be more reliable
         )
-          .withDefaultChecksums
-          .withDefaultSignature
+
+        if (withChecksums)
+          artifact = artifact.withDefaultChecksums
+        if (withSignatures)
+          artifact = artifact.withDefaultSignature
+
+        artifact
       }
     }
   }
@@ -226,16 +233,22 @@ case class IvyRepository(
         url <- substitute(
           variables(module, version, "ivy", "ivy", "xml")
         )
-      } yield
-        Artifact(
+      } yield {
+        var artifact = Artifact(
           url,
           Map.empty,
           Map.empty,
           Attributes("ivy", ""),
           changing = changing.getOrElse(version.contains("-SNAPSHOT"))
         )
-          .withDefaultChecksums
-          .withDefaultSignature
+
+        if (withChecksums)
+          artifact = artifact.withDefaultChecksums
+        if (withSignatures)
+          artifact = artifact.withDefaultSignature
+
+        artifact
+      }
 
     for {
       artifact <- EitherT(F.point(eitherArtifact))
