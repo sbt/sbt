@@ -69,7 +69,7 @@ case class Project(
   // Maven-specific
   parent: Option[(Module, String)],
   dependencyManagement: Seq[(String, Dependency)],
-  properties: Map[String, String],
+  properties: Seq[(String, String)],
   profiles: Seq[Profile],
   versions: Option[Versions],
   snapshotVersioning: Option[SnapshotVersioning],

@@ -229,7 +229,7 @@ object Pom {
         Map.empty,
         parentModuleOpt.map((_, parentVersionOpt.getOrElse(""))),
         depMgmts,
-        properties.toMap,
+        properties,
         profiles,
         None,
         None,

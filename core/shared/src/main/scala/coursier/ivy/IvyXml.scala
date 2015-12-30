@@ -132,7 +132,7 @@ object IvyXml {
         configurations0.toMap,
         None,
         Nil,
-        Map.empty,
+        Nil,
         Nil,
         None,
         None,

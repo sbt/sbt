@@ -56,12 +56,6 @@ object Resolution {
       (dict /: deps)(add)
   }
 
-  def mergeProperties(
-    dict: Map[String, String],
-    other: Map[String, String]
-  ): Map[String, String] =
-    dict ++ other.filterKeys(!dict.contains(_))
-
   def addDependencies(deps: Seq[Seq[(String, Dependency)]]): Seq[(String, Dependency)] = {
     val res =
       (deps :\ (Set.empty[DepMgmt.Key], Seq.empty[(String, Dependency)])) {
@@ -79,6 +73,32 @@ object Resolution {
     quote("${") + "([a-zA-Z0-9-.]*)" + quote("}")
   ).r
 
+  def substituteProps(s: String, properties: Map[String, String]) = {
+    val matches = propRegex
+      .findAllMatchIn(s)
+      .toList
+      .reverse
+
+    if (matches.isEmpty) s
+    else {
+      val output =
+        (new StringBuilder(s) /: matches) { (b, m) =>
+          properties
+            .get(m.group(1))
+            .fold(b)(b.replace(m.start, m.end, _))
+        }
+
+      output.result()
+    }
+  }
+
+  def propertiesMap(props: Seq[(String, String)]): Map[String, String] =
+    props.foldLeft(Map.empty[String, String]) {
+      case (acc, (k, v0)) =>
+        val v = substituteProps(v0, acc)
+        acc + (k -> v)
+    }
+
   /**
    * Substitutes `properties` in `dependencies`.
    */
@@ -87,41 +107,25 @@ object Resolution {
     properties: Map[String, String]
   ): Seq[(String, Dependency)] = {
 
-    def substituteProps(s: String) = {
-      val matches = propRegex
-        .findAllMatchIn(s)
-        .toList
-        .reverse
-
-      if (matches.isEmpty) s
-      else {
-        val output =
-          (new StringBuilder(s) /: matches) { (b, m) =>
-            properties
-              .get(m.group(1))
-              .fold(b)(b.replace(m.start, m.end, _))
-          }
-
-        output.result()
-      }
-    }
+    def substituteProps0(s: String) =
+      substituteProps(s, properties)
 
     dependencies
       .map {case (config, dep) =>
-        substituteProps(config) -> dep.copy(
+        substituteProps0(config) -> dep.copy(
           module = dep.module.copy(
-            organization = substituteProps(dep.module.organization),
-            name = substituteProps(dep.module.name)
+            organization = substituteProps0(dep.module.organization),
+            name = substituteProps0(dep.module.name)
           ),
-          version = substituteProps(dep.version),
+          version = substituteProps0(dep.version),
           attributes = dep.attributes.copy(
-            `type` = substituteProps(dep.attributes.`type`),
-            classifier = substituteProps(dep.attributes.classifier)
+            `type` = substituteProps0(dep.attributes.`type`),
+            classifier = substituteProps0(dep.attributes.classifier)
           ),
-          configuration = substituteProps(dep.configuration),
+          configuration = substituteProps0(dep.configuration),
           exclusions = dep.exclusions
             .map{case (org, name) =>
-              (substituteProps(org), substituteProps(name))
+              (substituteProps0(org), substituteProps0(name))
             }
           // FIXME The content of the optional tag may also be a property in
           // the original POM. Maybe not parse it that earlier?
@@ -320,14 +324,13 @@ object Resolution {
     // come from parents or dependency management. This may not be
     // the right thing to do.
 
-    val properties = mergeProperties(
-      project.properties,
-      Map(
-        "project.groupId"     -> project.module.organization,
-        "project.artifactId"  -> project.module.name,
-        "project.version"     -> project.version
-      )
+    val properties0 = project.properties ++ Seq(
+      "project.groupId"     -> project.module.organization,
+      "project.artifactId"  -> project.module.name,
+      "project.version"     -> project.version
     )
+
+    val properties = propertiesMap(properties0)
 
     val configurations = withParentConfigurations(from.configuration, project.configurations)
 
@@ -604,11 +607,13 @@ case class Resolution(
     project: Project
   ): Set[ModuleVersion] = {
 
-    val approxProperties =
+    val approxProperties0 =
       project.parent
         .flatMap(projectCache.get)
         .map(_._2.properties)
-        .fold(project.properties)(mergeProperties(project.properties, _))
+        .fold(project.properties)(project.properties ++ _)
+
+    val approxProperties = propertiesMap(approxProperties0)
 
     val profileDependencies =
       profiles(
@@ -678,11 +683,13 @@ case class Resolution(
    */
   def withDependencyManagement(project: Project): Project = {
 
-    val approxProperties =
+    val approxProperties0 =
       project.parent
         .filter(projectCache.contains)
-        .map(projectCache(_)._2.properties)
-        .fold(project.properties)(mergeProperties(project.properties, _))
+        .map(projectCache(_)._2.properties.toMap)
+        .fold(project.properties)(project.properties ++ _)
+
+    val approxProperties = propertiesMap(approxProperties0)
 
     val profiles0 = profiles(
       project,
@@ -695,7 +702,7 @@ case class Resolution(
     )
     val properties0 =
       (project.properties /: profiles0) { (acc, p) =>
-        mergeProperties(acc, p.properties)
+        acc ++ p.properties
       }
 
     val deps = (
@@ -732,7 +739,7 @@ case class Resolution(
       properties = project.parent
         .filter(projectCache.contains)
         .map(projectCache(_)._2.properties)
-        .fold(properties0)(mergeProperties(properties0, _))
+        .fold(properties0)(properties0 ++ _)
     )
   }
 
