@@ -51,8 +51,7 @@ lazy val baseCommonSettings = Seq(
   organization := "com.github.alexarchambault",
   resolvers ++= Seq(
     "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
-    Resolver.sonatypeRepo("releases"),
-    Resolver.sonatypeRepo("snapshots")
+    Resolver.sonatypeRepo("releases")
   ),
   scalacOptions += "-target:jvm-1.7",
   javacOptions ++= Seq(
@@ -168,7 +167,7 @@ lazy val cli = project
     name := "coursier-cli",
     libraryDependencies ++= Seq(
       // beware - available only in 2.11
-      "com.github.alexarchambault" %% "case-app" % "1.0.0-M1-SNAPSHOT",
+      "com.github.alexarchambault" %% "case-app" % "1.0.0-M1",
       "ch.qos.logback" % "logback-classic" % "1.1.3"
     ),
     resourceGenerators in Compile += packageBin.in(bootstrap).in(Compile).map { jar =>
