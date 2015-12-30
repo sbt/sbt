@@ -75,7 +75,7 @@ case class Fetch(
 
   val helper = new Helper(common, remainingArgs)
 
-  val files0 = helper.fetch(sources = false, javadoc = false)
+  val files0 = helper.fetch(sources = sources, javadoc = javadoc)
 
   val out =
     if (classpath)

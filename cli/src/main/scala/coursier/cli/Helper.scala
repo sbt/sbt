@@ -303,7 +303,7 @@ class Helper(
 
       errPrintln(msg)
     }
-    val artifacts0 =
+    val artifacts =
       if (sources || javadoc) {
         var classifiers = Seq.empty[String]
         if (sources)
@@ -314,18 +314,6 @@ class Helper(
         res.classifiersArtifacts(classifiers)
       } else
         res.artifacts
-    val main0 = !sources && !javadoc
-    val artifacts = artifacts0.flatMap{ artifact =>
-      var l = List.empty[Artifact]
-      if (sources)
-        l = artifact.extra.get("sources").toList ::: l
-      if (javadoc)
-        l = artifact.extra.get("javadoc").toList ::: l
-      if (main0)
-        l = artifact :: l
-
-      l
-    }
 
     val logger =
       if (verbose0 >= 0)
