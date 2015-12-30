@@ -204,6 +204,16 @@ lazy val web = project
     )
   )
 
+lazy val doc = project
+  .dependsOn(coreJvm, files)
+  .settings(commonSettings)
+  .settings(noPublishSettings)
+  .settings(tutSettings)
+  .settings(
+    tutSourceDirectory := baseDirectory.value,
+    tutTargetDirectory := baseDirectory.value / ".."
+  )
+
 // Don't try to compile that if you're not in 2.10
 lazy val plugin = project
   .dependsOn(coreJvm, files, cli)
@@ -214,7 +224,7 @@ lazy val plugin = project
   )
 
 lazy val `coursier` = project.in(file("."))
-  .aggregate(coreJvm, coreJs, `fetch-js`, testsJvm, testsJs, files, bootstrap, cli, web)
+  .aggregate(coreJvm, coreJs, `fetch-js`, testsJvm, testsJs, files, bootstrap, cli, web, doc)
   .settings(commonSettings)
   .settings(noPublishSettings)
   .settings(releaseSettings)
