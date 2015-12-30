@@ -224,21 +224,31 @@ object Cache {
       for ((f, url) <- pairs) yield {
         val file = new File(f)
 
-        val res = cachePolicy match {
-          case CachePolicy.LocalOnly =>
+        val res =
+          if (url.startsWith("file:/")) {
+            assert(
+              url.stripPrefix("file:/").stripPrefix("//") ==
+                file.toURI.toString.stripPrefix("file:/").stripPrefix("//"),
+              s"URL: ${url.stripPrefix("file:/").stripPrefix("//")}, " +
+                s"file: ${file.toURI.toString.stripPrefix("file:/").stripPrefix("//")}"
+            )
             checkFileExists(file, url)
-          case CachePolicy.UpdateChanging | CachePolicy.Update =>
-            shouldDownload(file, url).flatMap {
-              case true =>
+          } else
+            cachePolicy match {
+              case CachePolicy.LocalOnly =>
+                checkFileExists(file, url)
+              case CachePolicy.UpdateChanging | CachePolicy.Update =>
+                shouldDownload(file, url).flatMap {
+                  case true =>
+                    remote(file, url)
+                  case false =>
+                    EitherT(Task.now(\/-(()) : FileError \/ Unit))
+                }
+              case CachePolicy.FetchMissing =>
+                checkFileExists(file, url) orElse remote(file, url)
+              case CachePolicy.ForceDownload =>
                 remote(file, url)
-              case false =>
-                EitherT(Task.now(\/-(()) : FileError \/ Unit))
             }
-          case CachePolicy.FetchMissing =>
-            checkFileExists(file, url) orElse remote(file, url)
-          case CachePolicy.ForceDownload =>
-            remote(file, url)
-        }
 
         res.run.map((file, url) -> _)
       }
