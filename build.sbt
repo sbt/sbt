@@ -64,7 +64,6 @@ lazy val baseCommonSettings = Seq(
 
 lazy val commonSettings = baseCommonSettings ++ Seq(
   scalaVersion := "2.11.7",
-  crossScalaVersions := Seq("2.10.6", "2.11.7"),
   libraryDependencies ++= {
     if (scalaVersion.value startsWith "2.10.")
       Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.0.1" cross CrossVersion.full))
@@ -168,7 +167,8 @@ lazy val cli = project
   .settings(
     name := "coursier-cli",
     libraryDependencies ++= Seq(
-      "com.github.alexarchambault" %% "case-app" % "1.0.0-SNAPSHOT",
+      // beware - available only in 2.11
+      "com.github.alexarchambault" %% "case-app" % "1.0.0-M1-SNAPSHOT",
       "ch.qos.logback" % "logback-classic" % "1.1.3"
     ),
     resourceGenerators in Compile += packageBin.in(bootstrap).in(Compile).map { jar =>
