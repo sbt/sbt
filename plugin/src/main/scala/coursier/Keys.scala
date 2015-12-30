@@ -18,8 +18,8 @@ object Keys {
 
   val coursierCache = SettingKey[File]("coursier-cache", "")
 
-  val coursierProject = TaskKey[(Project, Seq[(String, Seq[Artifact])])]("coursier-project", "")
-  val coursierProjects = TaskKey[Seq[(Project, Seq[(String, Seq[Artifact])])]]("coursier-projects", "")
+  val coursierProject = TaskKey[Project]("coursier-project", "")
+  val coursierProjects = TaskKey[Seq[Project]]("coursier-projects", "")
   val coursierPublications = TaskKey[Seq[(String, Publication)]]("coursier-publications", "")
 
   val coursierSbtClassifiersModule = TaskKey[GetClassifiersModule]("coursier-sbt-classifiers-module", "")

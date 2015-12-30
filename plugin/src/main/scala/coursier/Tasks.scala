@@ -32,7 +32,7 @@ object Tasks {
     resolvers
   }
 
-  def coursierProjectTask: Def.Initialize[sbt.Task[(Project, Seq[(String, Seq[Artifact])])]] =
+  def coursierProjectTask: Def.Initialize[sbt.Task[Project]] =
     (
       sbt.Keys.state,
       sbt.Keys.thisProjectRef
@@ -41,41 +41,23 @@ object Tasks {
       // should projectID.configurations be used instead?
       val configurations = ivyConfigurations.in(projectRef).get(state)
 
-      // exportedProducts looks like what we want, but depends on the update task, which
-      // make the whole thing run into cycles...
-      val artifacts = configurations.map { cfg =>
-        cfg.name -> Option(classDirectory.in(projectRef).in(cfg).getOrElse(state, null))
-      }.collect { case (name, Some(classDir)) =>
-        name -> Seq(
-          Artifact(
-            classDir.toURI.toString,
-            Map.empty,
-            Map.empty,
-            Attributes(),
-            changing = true
-          )
-        )
-      }
-
       val allDependenciesTask = allDependencies.in(projectRef).get(state)
 
       for {
         allDependencies <- allDependenciesTask
       } yield {
 
-        val proj = FromSbt.project(
+        FromSbt.project(
           projectID.in(projectRef).get(state),
           allDependencies,
           configurations.map { cfg => cfg.name -> cfg.extendsConfigs.map(_.name) }.toMap,
           scalaVersion.in(projectRef).get(state),
           scalaBinaryVersion.in(projectRef).get(state)
         )
-
-        (proj, artifacts)
       }
     }
 
-  def coursierProjectsTask: Def.Initialize[sbt.Task[Seq[(Project, Seq[(String, Seq[Artifact])])]]] =
+  def coursierProjectsTask: Def.Initialize[sbt.Task[Seq[Project]]] =
     sbt.Keys.state.flatMap { state =>
       val projects = structure(state).allProjectRefs
       coursierProject.forAllProjects(state, projects).map(_.values.toVector)
@@ -162,7 +144,7 @@ object Tasks {
             scalaBinaryVersion.value
           )
         else {
-          val (proj, _) = coursierProject.value
+          val proj = coursierProject.value
           val publications = coursierPublications.value
           proj.copy(publications = publications)
         }
@@ -202,7 +184,7 @@ object Tasks {
       val startRes = Resolution(
         currentProject.dependencies.map { case (_, dep) => dep }.toSet,
         filter = Some(dep => !dep.optional),
-        forceVersions = projects.map { case (proj, _) => proj.moduleVersion }.toMap
+        forceVersions = projects.map(_.moduleVersion).toMap
       )
 
       // required for publish to be fine, later on
@@ -224,7 +206,7 @@ object Tasks {
       def report = {
         if (verbosity >= 1) {
           println("InterProjectRepository")
-          for ((p, _) <- projects)
+          for (p <- projects)
             println(s"  ${p.module}:${p.version}")
         }
 
