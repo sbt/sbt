@@ -11,7 +11,6 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import org.scalajs.jquery.jQuery
 
 import scala.concurrent.Future
-import scalaz.concurrent.Task
 
 import scala.scalajs.js
 import js.Dynamic.{ global => g }

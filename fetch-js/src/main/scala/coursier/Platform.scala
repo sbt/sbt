@@ -8,7 +8,6 @@ import scala.scalajs.js
 import js.Dynamic.{ global => g }
 
 import scala.scalajs.js.timers._
-import scalaz.concurrent.Task
 import scalaz.{ -\/, \/-, EitherT }
 
 object Platform {
