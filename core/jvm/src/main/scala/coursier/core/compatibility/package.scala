@@ -36,6 +36,8 @@ package object compatibility {
         def isText = node match { case _: scala.xml.Text => true; case _ => false }
         def textContent = node.text
         def isElement = node match { case _: scala.xml.Elem => true; case _ => false }
+
+        override def toString = node.toString
       }
 
     parse.right

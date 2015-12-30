@@ -70,6 +70,10 @@ case class Project(
   publications: Seq[(String, Publication)]
 ) {
   def moduleVersion = (module, version)
+
+  /** All configurations that each configuration extends, including the ones it extends transitively */
+  lazy val allConfigurations: Map[String, Set[String]] =
+    Orders.allConfigurations(configurations)
 }
 
 // Maven-specific

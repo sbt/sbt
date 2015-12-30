@@ -8,34 +8,39 @@ object Orders {
         .exists(_ <= 0)
   }
 
+  /** All configurations that each configuration extends, including the ones it extends transitively */
+  def allConfigurations(configurations: Map[String, Seq[String]]): Map[String, Set[String]] = {
+    def allParents(config: String): Set[String] = {
+      def helper(configs: Set[String], acc: Set[String]): Set[String] =
+        if (configs.isEmpty)
+          acc
+        else if (configs.exists(acc))
+          helper(configs -- acc, acc)
+        else if (configs.exists(!configurations.contains(_))) {
+          val (remaining, notFound) = configs.partition(configurations.contains)
+          helper(remaining, acc ++ notFound)
+        } else {
+          val extraConfigs = configs.flatMap(configurations)
+          helper(extraConfigs, acc ++ configs)
+        }
+
+      helper(Set(config), Set.empty)
+    }
+
+    configurations
+      .keys
+      .toList
+      .map(config => config -> (allParents(config) - config))
+      .toMap
+  }
+
   /**
    * Only relations:
    *   Compile < Runtime < Test
    */
   def configurationPartialOrder(configurations: Map[String, Seq[String]]): PartialOrdering[String] =
     new PartialOrdering[String] {
-      def allParents(config: String): Set[String] = {
-        def helper(configs: Set[String], acc: Set[String]): Set[String] =
-          if (configs.isEmpty)
-            acc
-          else if (configs.exists(acc))
-            helper(configs -- acc, acc)
-          else if (configs.exists(!configurations.contains(_))) {
-            val (remaining, notFound) = configs.partition(configurations.contains)
-            helper(remaining, acc ++ notFound)
-          } else {
-            val extraConfigs = configs.flatMap(configurations)
-            helper(extraConfigs, acc ++ configs)
-          }
-
-        helper(Set(config), Set.empty)
-      }
-
-      val allParentsMap = configurations
-        .keys
-        .toList
-        .map(config => config -> (allParents(config) - config))
-        .toMap
+      val allParentsMap = allConfigurations(configurations)
 
       def tryCompare(x: String, y: String) =
         if (x == y)

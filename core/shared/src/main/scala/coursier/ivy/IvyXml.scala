@@ -66,7 +66,7 @@ object IvyXml {
   private def publications(node: Node): Map[String, Seq[Publication]] =
     node.children
       .filter(_.label == "artifact")
-      .flatMap { node0 =>
+      .flatMap { node =>
         val name = node.attribute("name").getOrElse("")
         val type0 = node.attribute("type").getOrElse("jar")
         val ext = node.attribute("ext").getOrElse(type0)
@@ -116,12 +116,14 @@ object IvyXml {
         if (publicationsOpt.isEmpty)
           // no publications node -> default JAR artifact
           Seq("*" -> Publication(module.name, "jar", "jar"))
-        else
+        else {
           // publications node is there -> only its content (if it is empty, no artifacts,
           // as per the Ivy manual)
+          val inAllConfs = publicationsOpt.flatMap(_.get("*")).getOrElse(Nil)
           configurations0.flatMap { case (conf, _) =>
-            publicationsOpt.flatMap(_.get(conf)).getOrElse(Nil).map(conf -> _)
+            (publicationsOpt.flatMap(_.get(conf)).getOrElse(Nil) ++ inAllConfs).map(conf -> _)
           }
+        }
       )
 
 }

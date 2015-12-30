@@ -777,10 +777,13 @@ case class Resolution(
   def part(dependencies: Set[Dependency]): Resolution = {
     val (_, _, finalVersions) = nextDependenciesAndConflicts
 
+    def updateVersion(dep: Dependency): Dependency =
+      dep.copy(version = finalVersions.getOrElse(dep.module, dep.version))
+
     @tailrec def helper(current: Set[Dependency]): Set[Dependency] = {
       val newDeps = current ++ current
         .flatMap(finalDependencies0)
-        .map(dep => dep.copy(version = finalVersions.getOrElse(dep.module, dep.version)))
+        .map(updateVersion)
 
       val anyNewDep = (newDeps -- current).nonEmpty
 
@@ -792,7 +795,7 @@ case class Resolution(
 
     copy(
       rootDependencies = dependencies,
-      dependencies = helper(dependencies)
+      dependencies = helper(dependencies.map(updateVersion))
       // don't know if something should be done about conflicts
     )
   }

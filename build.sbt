@@ -72,7 +72,6 @@ lazy val commonSettings = baseCommonSettings ++ Seq(
   }
 )
 
-
 lazy val core = crossProject
   .settings(commonSettings: _*)
   .settings(publishingSettings: _*)
@@ -163,7 +162,7 @@ lazy val bootstrap = project
 lazy val cli = project
   .dependsOn(coreJvm, files)
   .settings(commonSettings)
-  .settings(noPublishSettings)
+  .settings(publishingSettings)
   .settings(packAutoSettings)
   .settings(
     name := "coursier-cli",
@@ -171,10 +170,7 @@ lazy val cli = project
       "com.github.alexarchambault" %% "case-app" % "1.0.0-SNAPSHOT",
       "com.lihaoyi" %% "ammonite-terminal" % "0.5.0",
       "ch.qos.logback" % "logback-classic" % "1.1.3"
-    ),
-    resourceGenerators in Compile += packageBin.in(bootstrap).in(Compile).map { jar =>
-      Seq(jar)
-    }.taskValue
+    )
   )
 
 lazy val web = project
@@ -206,6 +202,15 @@ lazy val web = project
       ("org.webjars.bower" % "bootstrap-treeview" % "1.2.0" intransitive()) / "bootstrap-treeview.min.js" commonJSName "Treeview",
       ("org.webjars.bower" % "raphael" % "2.1.4" intransitive()) / "raphael-min.js" commonJSName "Raphael"
     )
+  )
+
+// Don't try to compile that if you're not in 2.10
+lazy val plugin = project
+  .dependsOn(coreJvm, files, cli)
+  .settings(baseCommonSettings)
+  .settings(
+    name := "coursier-sbt-plugin",
+    sbtPlugin := true
   )
 
 lazy val `coursier` = project.in(file("."))

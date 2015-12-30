@@ -9,8 +9,9 @@ import java.util.regex.Pattern.quote
 
 object IvyRepository {
 
-  val optionalPartRegex = (quote("(") + "[^" + quote("()") + "]*" + quote(")")).r
-  val variableRegex = (quote("[") + "[^" + quote("[()]") + "]*" + quote("]")).r
+  val optionalPartRegex = (quote("(") + "[^" + quote("{()}") + "]*" + quote(")")).r
+  val variableRegex = (quote("[") + "[^" + quote("{[()]}") + "]*" + quote("]")).r
+  val propertyRegex = (quote("${") + "[^" + quote("{[()]}") + "]*" + quote("}")).r
 
   sealed abstract class PatternPart(val effectiveStart: Int, val effectiveEnd: Int) extends Product with Serializable {
     require(effectiveStart <= effectiveEnd)
@@ -67,19 +68,32 @@ object IvyRepository {
     }
   }
 
+  def substituteProperties(s: String, properties: Map[String, String]): String =
+    propertyRegex.findAllMatchIn(s).toVector.foldRight(s) { case (m, s0) =>
+      val key = s0.substring(m.start + "${".length, m.end - "}".length)
+      val value = properties.getOrElse(key, "")
+      s0.take(m.start) + value + s0.drop(m.end)
+    }
+
 }
 
-case class IvyRepository(pattern: String, changing: Option[Boolean] = None) extends Repository {
+case class IvyRepository(
+  pattern: String,
+  changing: Option[Boolean] = None,
+  properties: Map[String, String] = Map.empty
+) extends Repository {
 
   import Repository._
   import IvyRepository._
 
+  private val pattern0 = substituteProperties(pattern, properties)
+
   val parts = {
-    val optionalParts = optionalPartRegex.findAllMatchIn(pattern).toList.map { m =>
+    val optionalParts = optionalPartRegex.findAllMatchIn(pattern0).toList.map { m =>
       PatternPart.Optional(m.start, m.end)
     }
 
-    val len = pattern.length
+    val len = pattern0.length
 
     @tailrec
     def helper(
@@ -105,16 +119,16 @@ case class IvyRepository(pattern: String, changing: Option[Boolean] = None) exte
     helper(0, optionalParts, Nil)
   }
 
-  assert(pattern.isEmpty == parts.isEmpty)
-  if (pattern.nonEmpty) {
+  assert(pattern0.isEmpty == parts.isEmpty)
+  if (pattern0.nonEmpty) {
     for ((a, b) <- parts.zip(parts.tail))
       assert(a.end == b.start)
     assert(parts.head.start == 0)
-    assert(parts.last.end == pattern.length)
+    assert(parts.last.end == pattern0.length)
   }
 
   private val substituteHelpers = parts.map { part =>
-    part(pattern.substring(part.effectiveStart, part.effectiveEnd))
+    part(pattern0.substring(part.effectiveStart, part.effectiveEnd))
   }
 
   def substitute(variables: Map[String, String]): String \/ String =
@@ -154,7 +168,13 @@ case class IvyRepository(pattern: String, changing: Option[Boolean] = None) exte
     def artifacts(dependency: Dependency, project: Project) =
       project
         .publications
-        .collect { case (conf, p) if conf == "*" || conf == dependency.configuration => p }
+        .collect {
+          case (conf, p)
+            if conf == "*" ||
+               conf == dependency.configuration ||
+               project.allConfigurations.getOrElse(dependency.configuration, Set.empty).contains(conf) =>
+            p
+        }
         .flatMap { p =>
           substitute(variables(
             dependency.module.organization,

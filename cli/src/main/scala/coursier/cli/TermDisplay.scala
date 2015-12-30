@@ -26,11 +26,6 @@ class TermDisplay(out: Writer) extends Logger {
           case Some(Right(())) =>
             // update display
 
-            for (_ <- 0 until lineCount) {
-              ansi.up(1)
-              ansi.clearLine(2)
-            }
-
             val downloads0 = downloads.synchronized {
               downloads
                 .toVector
@@ -71,8 +66,12 @@ class TermDisplay(out: Writer) extends Logger {
                 } else
                   (url, extra)
 
+              ansi.clearLine(2)
               out.write(s"$url0 $extra0\n")
             }
+
+            for (_ <- downloads0.indices)
+              ansi.up(1)
 
             out.flush()
             Thread.sleep(refreshInterval)
