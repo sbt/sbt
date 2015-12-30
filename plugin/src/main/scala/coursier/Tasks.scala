@@ -305,7 +305,7 @@ object Tasks {
         if (verbosity >= 0)
           errPrintln("Resolution done")
         if (verbosity >= 1)
-          for (depRepr <- depsRepr0(res.dependencies.toSeq))
+          for (depRepr <- depsRepr0(res.minDependencies.toSeq))
             errPrintln(s"  $depRepr")
 
         def repr(dep: Dependency) = {
