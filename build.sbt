@@ -90,7 +90,8 @@ lazy val baseCommonSettings = Seq(
   organization := "com.github.alexarchambault",
   resolvers ++= Seq(
     "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
-    Resolver.sonatypeRepo("releases")
+    Resolver.sonatypeRepo("releases"),
+    Resolver.sonatypeRepo("snapshots")
   ),
   scalacOptions += "-target:jvm-1.7",
   javacOptions ++= Seq(
