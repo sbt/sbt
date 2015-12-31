@@ -16,7 +16,7 @@ private[sbt] object CompatibilityWarning {
     directDependencies foreach { m =>
       if (!m.isTransitive) {
         log.warn(
-          s"""Found intransitive dependency ($m), but maven does not support intransitive dependencies.
+          s"""Found intransitive dependency ($m), but Maven repositories do not support intransitive dependencies.
              |  Use exclusions instead so transitive dependencies will be correctly excluded in dependent projects.
            """.stripMargin)
       } else ()
