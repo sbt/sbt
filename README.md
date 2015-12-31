@@ -38,7 +38,7 @@ downloads).
 
 Download and run its laucher with
 ```
-$ curl -L -o coursier https://git.io/vBSmI && chmod +x coursier && ./coursier --help
+$ curl -L -o coursier https://git.io/vEpQR && chmod +x coursier && ./coursier --help
 ```
 
 Note that the launcher itself weights only 8 kB and can be easily
@@ -54,7 +54,7 @@ the `COURSIER_CACHE` variable in the first lines of the launcher.
 $ ./coursier --help
 ```
 lists the available coursier commands. The most notable ones are `launch`,
-`fetch`, and `classpath`. Type
+and `fetch`. Type
 ```
 $ ./coursier command --help
 ```
@@ -72,7 +72,7 @@ For example, it can launch:
 
 * [Ammonite](https://github.com/lihaoyi/Ammonite) (enhanced Scala REPL),
 ```
-$ ./coursier launch com.lihaoyi:ammonite-repl_2.11.7:0.5.0
+$ ./coursier launch com.lihaoyi:ammonite-repl_2.11.7:0.5.2
 ```
 
 along with the REPLs of various JVM languages like
@@ -130,24 +130,17 @@ $ ./coursier fetch org.apache.spark:spark-sql_2.11:1.5.2
 ...
 ```
 
-### classpath
-
-The `classpath` command transitively fetches a set of dependencies like
-`fetch` does, then prints a classpath that can be handed over directly
-to `java`, like
+By adding the `-p` option, these paths can be handed over directly to
+`java -cp`, like
 ```
-$ java -cp "$(./coursier classpath com.lihaoyi:ammonite-repl_2.11.7:0.5.0 | tail -n1)" ammonite.repl.Repl
+$ java -cp "$(./coursier fetch -p com.lihaoyi:ammonite-repl_2.11.7:0.5.2)" ammonite.repl.Main
 Loading...
-Welcome to the Ammonite Repl 0.5.0
-(Scala 2.11.7 Java 1.8.0_60)
+Welcome to the Ammonite Repl 0.5.2
+(Scala 2.11.7 Java 1.8.0_51)
 @
 ```
 
 ## API
-
-This [gist](https://gist.github.com/larsrh/42da43aa74dc4e78aa59) by [Lars Hupel](https://github.com/larsrh/)
-illustrates how the API of coursier can be used to get transitives dependencies
-and fetch the corresponding artefacts.
 
 More explanations to come :-)
 
@@ -155,18 +148,6 @@ More explanations to come :-)
 
 *coursier* is also compiled to Scala JS, and can be tested in the browser via its
 [demo](http://alexarchambault.github.io/coursier/#demo).
-
-# To do / missing
-
-- Snapshots metadata / artifacts, once in cache, are not automatically
-updated for now. [#41](https://github.com/alexarchambault/coursier/issues/41)
-- File locking could be better (none for metadata, no re-attempt if file locked elsewhere for artifacts) [#71](https://github.com/alexarchambault/coursier/issues/71)
-- Handle "configurations" like Ivy does, instead of just the standard
-(hard-coded) Maven "scopes" [#8](https://github.com/alexarchambault/coursier/issues/8)
-- SBT plugin [#52](https://github.com/alexarchambault/coursier/issues/52),
-requires Ivy-like configurations [#8](https://github.com/alexarchambault/coursier/issues/8)
-
-See the list of [issues](https://github.com/alexarchambault/coursier/issues).
 
 # Contributors
 
