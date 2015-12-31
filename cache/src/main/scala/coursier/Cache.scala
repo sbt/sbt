@@ -6,6 +6,8 @@ import java.nio.file.{ StandardCopyOption, Files => NioFiles }
 import java.security.MessageDigest
 import java.util.concurrent.{ConcurrentHashMap, Executors, ExecutorService}
 
+import coursier.ivy.IvyRepository
+
 import scala.annotation.tailrec
 import scalaz._
 import scalaz.concurrent.{ Task, Strategy }
@@ -464,9 +466,11 @@ object Cache {
       }
   }
 
-  lazy val ivy2Local = MavenRepository(
-    new File(sys.props("user.home") + "/.ivy2/local/").toURI.toString,
-    ivyLike = true
+  lazy val ivy2Local = IvyRepository(
+    // a bit touchy on Windows... - don't try to get the URI manually like s"file://..."
+    new File(sys.props("user.home") + "/.ivy2/local/").toURI.toString +
+      "[organisation]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/" +
+      "[artifact](-[classifier]).[ext]"
   )
 
   val defaultConcurrentDownloadCount = 6
