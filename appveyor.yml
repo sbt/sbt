@@ -13,6 +13,7 @@ install:
       }
   - cmd: SET PATH=C:\sbt\sbt\bin;%JAVA_HOME%\bin;%PATH%
   - cmd: SET SBT_OPTS=-XX:MaxPermSize=2g -Xmx4g
+  - cmd: SET COURSIER_NO_TERM=1
 build_script:
   - sbt ++2.11.7 clean compile coreJVM/publishLocal
   - sbt ++2.10.6 clean compile
