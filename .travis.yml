@@ -16,7 +16,7 @@ matrix:
     - env: TRAVIS_SCALA_VERSION=2.11.7 PUBLISH=1
       os: linux
       jdk: openjdk7
-    - env: TRAVIS_SCALA_VERSION=2.10.6
+    - env: TRAVIS_SCALA_VERSION=2.10.6 PUBLISH=1
       os: linux
       jdk: openjdk7
     - env: TRAVIS_SCALA_VERSION=2.11.7
