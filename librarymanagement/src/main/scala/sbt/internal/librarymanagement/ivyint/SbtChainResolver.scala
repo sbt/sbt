@@ -115,6 +115,7 @@ private[sbt] case class SbtChainResolver(
         else resolvedOrCached
       // Cast resolvers to something useful. TODO - we dropping anything here?
       val resolvers = getResolvers.toArray.toVector collect { case x: DependencyResolver => x }
+      val interProjResolver = resolvers find { x => x.getName == ProjectResolver.InterProject }
 
       // Here we do an attempt to resolve the artifact from each of the resolvers in the chain.
       // -  If we have a return value already, AND isReturnFirst is true AND useLatest is false, we DO NOT resolve anything
@@ -122,7 +123,7 @@ private[sbt] case class SbtChainResolver(
       // RETURNS:   Left -> Error
       //            Right -> Some(resolved module)  // Found in this resolver, can use this result.
       //            Right -> None                   // Do not use this resolver
-      val results = resolvers map { x =>
+      lazy val results = resolvers map { x =>
         // if the revision is cached and isReturnFirst is set, don't bother hitting any resolvers, just return None for this guy.
         if (isReturnFirst && temp.isDefined && !useLatest) Right(None)
         else {
@@ -153,54 +154,61 @@ private[sbt] case class SbtChainResolver(
           }
         }
       }
-      val errors = results collect { case Left(e) => e }
-      val foundRevisions: Vector[(ResolvedModuleRevision, DependencyResolver)] = results collect { case Right(Some(x)) => x }
-      val sorted =
-        if (useLatest) (foundRevisions.sortBy {
-          case (rmr, resolver) =>
-            Message.warn(s"Sorrting results from $rmr, using ${rmr.getPublicationDate} and ${rmr.getDescriptor.getPublicationDate}")
-            // Just issue warning about issues with publication date, and fake one on it for now.
-            Option(rmr.getPublicationDate) orElse Option(rmr.getDescriptor.getPublicationDate) match {
-              case None =>
-                (resolver.findIvyFileRef(dd, data), rmr.getDescriptor) match {
-                  case (null, _) =>
-                    // In this instance, the dependency is specified by a direct URL or some other sort of "non-ivy" file
-                    if (dd.isChanging)
-                      Message.warn(s"Resolving a changing dependency (${rmr.getId}) with no ivy/pom file!, resolution order is undefined!")
-                    0L
-                  case (ivf, dmd: DefaultModuleDescriptor) =>
-                    val lmd = new java.util.Date(ivf.getLastModified)
-                    Message.debug(s"Getting no publication date from resolver: ${resolver} for ${rmr.getId}, setting to: ${lmd}")
-                    dmd.setPublicationDate(lmd)
-                    ivf.getLastModified
-                  case _ =>
-                    Message.warn(s"Getting null publication date from resolver: ${resolver} for ${rmr.getId}, resolution order is undefined!")
-                    0L
-                }
-              case Some(date) => // All other cases ok
-                date.getTime
-            }
-        }).reverse.headOption map {
-          case (rmr, resolver) =>
-            Message.warn(s"Choosing $resolver for ${rmr.getId}")
-            // Now that we know the real latest revision, let's force Ivy to use it
-            val artifactOpt = findFirstArtifactRef(rmr.getDescriptor, dd, data, resolver)
-            artifactOpt match {
-              case None if resolver.getName == "inter-project" => // do nothing
-              case None if resolver.isInstanceOf[CustomMavenResolver] =>
-              // do nothing for now....
-              // We want to see if the maven caching is sufficient and we do not need to duplicate within the ivy cache...
-              case None => throw new RuntimeException(s"\t${resolver.getName}: no ivy file nor artifact found for $rmr")
-              case Some(artifactRef) =>
-                val systemMd = toSystem(rmr.getDescriptor)
-                getRepositoryCacheManager.cacheModuleDescriptor(resolver, artifactRef,
-                  toSystem(dd), systemMd.getAllArtifacts.head, None.orNull, getCacheOptions(data))
-            }
-            rmr
-        }
-        else foundRevisions.reverse.headOption map { _._1 } // we have to reverse because resolvers are hit in reverse order.
+      lazy val errors = results collect { case Left(e) => e }
+
       // If the value is arleady in cache, SORTED will be a Seq(None, None, ...) which means we'll fall over to the prevously cached or resolved version.
-      val mrOpt: Option[ResolvedModuleRevision] = sorted orElse resolvedOrCached
+      val mrOpt: Option[ResolvedModuleRevision] = {
+        val interProj: Option[ResolvedModuleRevision] =
+          if (updateOptions.interProjectFirst) interProjResolver flatMap { x => Option(x.getDependency(dd, data)) }
+          else None
+        def foundRevisions: Vector[(ResolvedModuleRevision, DependencyResolver)] = results collect { case Right(Some(x)) => x }
+        def sorted =
+          if (useLatest) (foundRevisions.sortBy {
+            case (rmr, resolver) =>
+              Message.warn(s"Sorrting results from $rmr, using ${rmr.getPublicationDate} and ${rmr.getDescriptor.getPublicationDate}")
+              // Just issue warning about issues with publication date, and fake one on it for now.
+              Option(rmr.getPublicationDate) orElse Option(rmr.getDescriptor.getPublicationDate) match {
+                case None =>
+                  (resolver.findIvyFileRef(dd, data), rmr.getDescriptor) match {
+                    case (null, _) =>
+                      // In this instance, the dependency is specified by a direct URL or some other sort of "non-ivy" file
+                      if (dd.isChanging)
+                        Message.warn(s"Resolving a changing dependency (${rmr.getId}) with no ivy/pom file!, resolution order is undefined!")
+                      0L
+                    case (ivf, dmd: DefaultModuleDescriptor) =>
+                      val lmd = new java.util.Date(ivf.getLastModified)
+                      Message.debug(s"Getting no publication date from resolver: ${resolver} for ${rmr.getId}, setting to: ${lmd}")
+                      dmd.setPublicationDate(lmd)
+                      ivf.getLastModified
+                    case _ =>
+                      Message.warn(s"Getting null publication date from resolver: ${resolver} for ${rmr.getId}, resolution order is undefined!")
+                      0L
+                  }
+                case Some(date) => // All other cases ok
+                  date.getTime
+              }
+          }).reverse.headOption map {
+            case (rmr, resolver) =>
+              Message.warn(s"Choosing $resolver for ${rmr.getId}")
+              // Now that we know the real latest revision, let's force Ivy to use it
+              val artifactOpt = findFirstArtifactRef(rmr.getDescriptor, dd, data, resolver)
+              artifactOpt match {
+                case None if resolver.getName == "inter-project" => // do nothing
+                case None if resolver.isInstanceOf[CustomMavenResolver] =>
+                // do nothing for now....
+                // We want to see if the maven caching is sufficient and we do not need to duplicate within the ivy cache...
+                case None => throw new RuntimeException(s"\t${resolver.getName}: no ivy file nor artifact found for $rmr")
+                case Some(artifactRef) =>
+                  val systemMd = toSystem(rmr.getDescriptor)
+                  getRepositoryCacheManager.cacheModuleDescriptor(resolver, artifactRef,
+                    toSystem(dd), systemMd.getAllArtifacts.head, None.orNull, getCacheOptions(data))
+              }
+              rmr
+          }
+          else foundRevisions.reverse.headOption map { _._1 } // we have to reverse because resolvers are hit in reverse order.
+
+        interProj orElse sorted orElse resolvedOrCached
+      }
       mrOpt match {
         case None if errors.size == 1 =>
           errors.head match {
