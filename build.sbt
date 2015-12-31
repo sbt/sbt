@@ -44,6 +44,27 @@ lazy val noPublishSettings = Seq(
   publishArtifact := false
 )
 
+lazy val noPublish211Settings = Seq(
+  publish := {
+    if (scalaVersion.value startsWith "2.10.")
+      publish.value
+    else
+      ()
+  },
+  publishLocal := {
+    if (scalaVersion.value startsWith "2.10.")
+      publishLocal.value
+    else
+      ()
+  },
+  publishArtifact := {
+    if (scalaVersion.value startsWith "2.10.")
+      publishArtifact.value
+    else
+      false
+  }
+)
+
 lazy val noPublish210Settings = Seq(
   publish := {
     if (scalaVersion.value startsWith "2.10.")
@@ -77,9 +98,9 @@ lazy val baseCommonSettings = Seq(
     "-target", "1.7"
   ),
   javacOptions in Keys.doc := Seq()
-)
+) ++ releaseSettings
 
-lazy val commonSettings = baseCommonSettings ++ releaseSettings ++ Seq(
+lazy val commonSettings = baseCommonSettings ++ Seq(
   scalaVersion := "2.11.7",
   crossScalaVersions := Seq("2.11.7", "2.10.6"),
   libraryDependencies ++= {
@@ -241,13 +262,16 @@ lazy val doc = project
 lazy val plugin = project
   .dependsOn(coreJvm, cache)
   .settings(baseCommonSettings)
+  .settings(noPublish211Settings)
   .settings(
     name := "coursier-sbt-plugin",
-    sbtPlugin := true
+    sbtPlugin := {
+      scalaVersion.value.startsWith("2.10.")
+    }
   )
 
 lazy val `coursier` = project.in(file("."))
-  .aggregate(coreJvm, coreJs, `fetch-js`, testsJvm, testsJs, cache, bootstrap, cli, web, doc)
+  .aggregate(coreJvm, coreJs, `fetch-js`, testsJvm, testsJs, cache, bootstrap, cli, plugin, web, doc)
   .settings(commonSettings)
   .settings(noPublishSettings)
   .settings(releaseSettings)
