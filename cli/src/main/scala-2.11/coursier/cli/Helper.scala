@@ -67,12 +67,9 @@ class Helper(
   val pool = Executors.newFixedThreadPool(parallel, Strategy.DefaultDaemonThreadFactory)
 
   val central = MavenRepository("https://repo1.maven.org/maven2/")
-  val ivy2Local = MavenRepository(
-    new File(sys.props("user.home") + "/.ivy2/local/").toURI.toString,
-    ivyLike = true
-  )
+
   val defaultRepositories = Seq(
-    ivy2Local,
+    Cache.ivy2Local,
     central
   )
 
@@ -81,7 +78,7 @@ class Helper(
     if (repo0 == "central")
       Right(central)
     else if (repo0 == "ivy2local")
-      Right(ivy2Local)
+      Right(Cache.ivy2Local)
     else if (repo0.startsWith("sonatype:"))
       Right(
         MavenRepository(s"https://oss.sonatype.org/content/repositories/${repo.drop("sonatype:".length)}")
@@ -91,12 +88,8 @@ class Helper(
         if (repo.startsWith("ivy:")) {
           val url = repo.drop("ivy:".length)
           (url, IvyRepository(url))
-        } else if (repo.startsWith("ivy-like:")) {
-          val url = repo.drop("ivy-like:".length)
-          (url, MavenRepository(url, ivyLike = true))
-        } else {
+        } else
           (repo, MavenRepository(repo))
-        }
 
       if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file:/"))
         Right(r)
