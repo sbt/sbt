@@ -14,6 +14,8 @@ import org.apache.ivy.core.settings.IvySettings
 final class UpdateOptions private[sbt] (
     /** If set to CircularDependencyLevel.Error, halt the dependency resolution. */
     val circularDependencyLevel: CircularDependencyLevel,
+    // If set to true, prioritize inter-project resolver
+    val interProjectFirst: Boolean,
     /** If set to true, check all resolvers for snapshots. */
     val latestSnapshots: Boolean,
     /** If set to true, use consolidated resolution. */
@@ -24,6 +26,8 @@ final class UpdateOptions private[sbt] (
     val resolverConverter: UpdateOptions.ResolverConverter) {
   def withCircularDependencyLevel(circularDependencyLevel: CircularDependencyLevel): UpdateOptions =
     copy(circularDependencyLevel = circularDependencyLevel)
+  def withInterProjectFirst(interProjectFirst: Boolean): UpdateOptions =
+    copy(interProjectFirst = interProjectFirst)
   def withLatestSnapshots(latestSnapshots: Boolean): UpdateOptions =
     copy(latestSnapshots = latestSnapshots)
   @deprecated("Use withCachedResolution instead.", "0.13.7")
@@ -39,11 +43,13 @@ final class UpdateOptions private[sbt] (
 
   private[sbt] def copy(
     circularDependencyLevel: CircularDependencyLevel = this.circularDependencyLevel,
+    interProjectFirst: Boolean = this.interProjectFirst,
     latestSnapshots: Boolean = this.latestSnapshots,
     consolidatedResolution: Boolean = this.consolidatedResolution,
     cachedResolution: Boolean = this.cachedResolution,
     resolverConverter: UpdateOptions.ResolverConverter = this.resolverConverter): UpdateOptions =
     new UpdateOptions(circularDependencyLevel,
+      interProjectFirst,
       latestSnapshots,
       consolidatedResolution,
       cachedResolution,
@@ -52,6 +58,7 @@ final class UpdateOptions private[sbt] (
   override def equals(o: Any): Boolean = o match {
     case o: UpdateOptions =>
       this.circularDependencyLevel == o.circularDependencyLevel &&
+        this.interProjectFirst == o.interProjectFirst &&
         this.latestSnapshots == o.latestSnapshots &&
         this.cachedResolution == o.cachedResolution &&
         this.resolverConverter == o.resolverConverter
@@ -62,6 +69,7 @@ final class UpdateOptions private[sbt] (
     {
       var hash = 1
       hash = hash * 31 + this.circularDependencyLevel.##
+      hash = hash * 31 + this.interProjectFirst.##
       hash = hash * 31 + this.latestSnapshots.##
       hash = hash * 31 + this.cachedResolution.##
       hash = hash * 31 + this.resolverConverter.##
@@ -75,6 +83,7 @@ object UpdateOptions {
   def apply(): UpdateOptions =
     new UpdateOptions(
       circularDependencyLevel = CircularDependencyLevel.Warn,
+      interProjectFirst = true,
       latestSnapshots = true,
       consolidatedResolution = false,
       cachedResolution = false,
