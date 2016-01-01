@@ -235,30 +235,21 @@ class MakePom(val log: Logger) {
   def makeDependency(dependency: DependencyDescriptor, includeTypes: Set[String]): NodeSeq =
     makeDependency(dependency, includeTypes, Nil)
 
-  def makeDependency(dependency: DependencyDescriptor, includeTypes: Set[String], excludes: Seq[ExcludeRule]): NodeSeq = {
-    def warnIntransitve(): Unit =
-      if (!dependency.isTransitive)
-        log.warn(
-          s"""Translating intransitive dependency (${dependency.getDependencyId}) into pom.xml, but maven does not support intransitive dependencies.
-             |  Please use exclusions instead so transitive dependencies will be correctly excluded in dependent projects.
-           """.stripMargin)
-      else ()
-    val artifacts = dependency.getAllDependencyArtifacts
-    val includeArtifacts = artifacts.filter(d => includeTypes(d.getType))
-    if (artifacts.isEmpty) {
-      val configs = dependency.getModuleConfigurations
-      if (!configs.forall(Set("sources", "docs"))) {
-        warnIntransitve()
-        val (scope, optional) = getScopeAndOptional(dependency.getModuleConfigurations)
-        makeDependencyElem(dependency, scope, optional, None, None, excludes)
-      } else NodeSeq.Empty
-    } else if (includeArtifacts.isEmpty) {
-      NodeSeq.Empty
-    } else {
-      warnIntransitve()
-      NodeSeq.fromSeq(artifacts.flatMap(a => makeDependencyElem(dependency, a, excludes)))
+  def makeDependency(dependency: DependencyDescriptor, includeTypes: Set[String], excludes: Seq[ExcludeRule]): NodeSeq =
+    {
+      val artifacts = dependency.getAllDependencyArtifacts
+      val includeArtifacts = artifacts.filter(d => includeTypes(d.getType))
+      if (artifacts.isEmpty) {
+        val configs = dependency.getModuleConfigurations
+        if (configs.filterNot(Set("sources", "docs")).nonEmpty) {
+          val (scope, optional) = getScopeAndOptional(dependency.getModuleConfigurations)
+          makeDependencyElem(dependency, scope, optional, None, None, excludes)
+        } else NodeSeq.Empty
+      } else if (includeArtifacts.isEmpty)
+        NodeSeq.Empty
+      else
+        NodeSeq.fromSeq(artifacts.flatMap(a => makeDependencyElem(dependency, a, excludes)))
     }
-  }
 
   @deprecated("Use `makeDependencyElem` variant which takes excludes", "0.13.9")
   def makeDependencyElem(dependency: DependencyDescriptor, artifact: DependencyArtifactDescriptor): Option[Elem] =

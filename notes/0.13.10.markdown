@@ -66,16 +66,22 @@
   [2324]: https://github.com/sbt/sbt/issues/2324
   [2325]: https://github.com/sbt/sbt/pull/2325
   [2336]: https://github.com/sbt/sbt/issues/2336
+  [1514]: https://github.com/sbt/sbt/issues/1514
+  [1616]: https://github.com/sbt/sbt/issues/1616
+  [2313]: https://github.com/sbt/sbt/pull/2313
 
 ### Fixes with compatibility implications
 
 - sbt 0.13.10 adds a new setting `useJCenter`, which is set to `false` by default. When set to `true`, JCenter will be placed as the first external resolver to find library dependencies. [#2217][2217] by [@eed3si9n][@eed3si9n]
+- Adds `withInterProjectFirst` to the update option, which is enabled by default. When set to `true`, `inter-project` resolver will be prioritized above all resolvers and Ivy cache. [#1827][1827] by [@eed3si9n][@eed3si9n]
+- Fixes update option's `withLatestSnapshots` so it handles modules without an artifact. This flag will be enabled by default.
+  [#1514][1514]/[#1616][1616]/[#2313][2313] by [@eed3si9n][@eed3si9n]
 - sbt will no longer pass `-J<flag>` options to the local Java compiler. [#1968][1968]/[#2272][2272] by [@Duhemm][@Duhemm]
 
 ### Improvements
 
 - Scala version used by the build is updated to 2.10.6. [#2311][2311] by [@eed3si9n][@eed3si9n]
-- `makePom` warns when it sees intransitive dependencies, which do not translate to Maven. [#2127][2127] by [@jsuereth][@jsuereth]
+- If `publishMavenStyle` is `true`, `update` task warns when it sees intransitive dependencies, which do not translate to Maven. [#2127][2127] by [@jsuereth][@jsuereth]
 - Adds `Def.settings`, which facilitates mixing settings with seq of settings. See below.
 - Adds configurable compiler bridge. See below.
 - sbt Serialization is updated to 0.1.2. [2117][#2117] by [@dwijnand][@dwijnand]
