@@ -221,7 +221,7 @@ object Tasks {
         val interProjectRepo = InterProjectRepository(projects)
 
         val ivyProperties = Map(
-          "ivy.home" -> (new File(sys.props("user.home")).toURI.getPath + "/.ivy2")
+          "ivy.home" -> (new File(sys.props("user.home")).toURI.getPath + ".ivy2")
         ) ++ sys.props
 
         val repositories = Seq(globalPluginsRepo, interProjectRepo) ++ resolvers.flatMap(FromSbt.repository(_, ivyProperties))
