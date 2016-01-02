@@ -4,7 +4,6 @@ import coursier.core._
 
 case class MavenSource(
   root: String,
-  ivyLike: Boolean,
   changing: Option[Boolean] = None,
   /** See doc on MavenRepository */
   sbtAttrStub: Boolean
@@ -46,34 +45,18 @@ case class MavenSource(
   ): Seq[Artifact] = {
 
     def artifactOf(module: Module, publication: Publication) = {
-      def ivyLikePath0(subDir: String, baseSuffix: String, ext: String) =
-        ivyLikePath(
-          module.organization,
-          MavenRepository.dirModuleName(module, sbtAttrStub),
-          module.name,
-          project.version,
-          subDir,
-          baseSuffix,
-          ext
+
+      val versioning = project
+        .snapshotVersioning
+        .flatMap(versioning =>
+          mavenVersioning(versioning, publication.classifier, publication.`type`)
         )
 
-      val path =
-        if (ivyLike)
-          ivyLikePath0(publication.`type` + "s", "", publication.ext)
-        else {
-          val versioning =
-            project
-              .snapshotVersioning
-              .flatMap(versioning =>
-                mavenVersioning(versioning, publication.classifier, publication.`type`)
-              )
-
-          module.organization.split('.').toSeq ++ Seq(
-            MavenRepository.dirModuleName(module, sbtAttrStub),
-            project.version,
-            s"${module.name}-${versioning getOrElse project.version}${Some(publication.classifier).filter(_.nonEmpty).map("-" + _).mkString}.${publication.ext}"
-          )
-        }
+      val path = module.organization.split('.').toSeq ++ Seq(
+        MavenRepository.dirModuleName(module, sbtAttrStub),
+        project.version,
+        s"${module.name}-${versioning getOrElse project.version}${Some(publication.classifier).filter(_.nonEmpty).map("-" + _).mkString}.${publication.ext}"
+      )
 
       val changing0 = changing.getOrElse(project.version.contains("-SNAPSHOT"))
       var artifact =

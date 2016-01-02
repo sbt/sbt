@@ -378,7 +378,7 @@ object App {
           )),
          <.td(Seq[Seq[TagMod]](
            res.projectCache.get(dep.moduleVersion) match {
-             case Some((source: MavenSource, proj)) if !source.ivyLike =>
+             case Some((source: MavenSource, proj)) =>
                // FIXME Maven specific, generalize with source.artifacts
                val version0 = finalVersionOpt getOrElse dep.version
                val relPath =

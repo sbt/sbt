@@ -60,7 +60,6 @@ object MavenRepository {
 
 case class MavenRepository(
   root: String,
-  ivyLike: Boolean = false,
   changing: Option[Boolean] = None,
   /** Hackish hack for sbt plugins mainly - what this does really sucks */
   sbtAttrStub: Boolean = false
@@ -70,7 +69,7 @@ case class MavenRepository(
   import MavenRepository._
 
   val root0 = if (root.endsWith("/")) root else root + "/"
-  val source = MavenSource(root0, ivyLike, changing, sbtAttrStub)
+  val source = MavenSource(root0, changing, sbtAttrStub)
 
   def projectArtifact(
     module: Module,
@@ -78,27 +77,14 @@ case class MavenRepository(
     versioningValue: Option[String]
   ): Artifact = {
 
-    val path = (
-      if (ivyLike)
-        ivyLikePath(
-          module.organization,
-          dirModuleName(module, sbtAttrStub), // maybe not what we should do here, don't know
-          module.name,
-          versioningValue getOrElse version,
-          "poms",
-          "",
-          "pom"
-        )
-      else
-        module.organization.split('.').toSeq ++ Seq(
-          dirModuleName(module, sbtAttrStub),
-          version,
-          s"${module.name}-${versioningValue getOrElse version}.pom"
-        )
-    ) .map(encodeURIComponent)
+    val path = module.organization.split('.').toSeq ++ Seq(
+      dirModuleName(module, sbtAttrStub),
+      version,
+      s"${module.name}-${versioningValue getOrElse version}.pom"
+    )
 
     Artifact(
-      root0 + path.mkString("/"),
+      root0 + path.map(encodeURIComponent).mkString("/"),
       Map.empty,
       Map.empty,
       Attributes("pom", ""),
@@ -108,57 +94,51 @@ case class MavenRepository(
     .withDefaultSignature
   }
 
-  def versionsArtifact(module: Module): Option[Artifact] =
-    if (ivyLike) None
-    else {
-      val path = (
-        module.organization.split('.').toSeq ++ Seq(
-          dirModuleName(module, sbtAttrStub),
-          "maven-metadata.xml"
-        )
-      ) .map(encodeURIComponent)
+  def versionsArtifact(module: Module): Option[Artifact] = {
 
-      val artifact =
-        Artifact(
-          root0 + path.mkString("/"),
-          Map.empty,
-          Map.empty,
-          Attributes("pom", ""),
-          changing = true
-        )
-        .withDefaultChecksums
-        .withDefaultSignature
+    val path = module.organization.split('.').toSeq ++ Seq(
+      dirModuleName(module, sbtAttrStub),
+      "maven-metadata.xml"
+    )
 
-      Some(artifact)
-    }
+    val artifact =
+      Artifact(
+        root0 + path.map(encodeURIComponent).mkString("/"),
+        Map.empty,
+        Map.empty,
+        Attributes("pom", ""),
+        changing = true
+      )
+      .withDefaultChecksums
+      .withDefaultSignature
+
+    Some(artifact)
+  }
 
   def snapshotVersioningArtifact(
     module: Module,
     version: String
-  ): Option[Artifact] =
-    if (ivyLike) None
-    else {
-      val path = (
-        module.organization.split('.').toSeq ++ Seq(
-          dirModuleName(module, sbtAttrStub),
-          version,
-          "maven-metadata.xml"
-        )
-      ) .map(encodeURIComponent)
+  ): Option[Artifact] = {
 
-      val artifact =
-        Artifact(
-          root0 + path.mkString("/"),
-          Map.empty,
-          Map.empty,
-          Attributes("pom", ""),
-          changing = true
-        )
-        .withDefaultChecksums
-        .withDefaultSignature
+    val path = module.organization.split('.').toSeq ++ Seq(
+      dirModuleName(module, sbtAttrStub),
+      version,
+      "maven-metadata.xml"
+    )
 
-      Some(artifact)
-    }
+    val artifact =
+      Artifact(
+        root0 + path.map(encodeURIComponent).mkString("/"),
+        Map.empty,
+        Map.empty,
+        Attributes("pom", ""),
+        changing = true
+      )
+      .withDefaultChecksums
+      .withDefaultSignature
+
+    Some(artifact)
+  }
 
   def versions[F[_]](
     module: Module,
