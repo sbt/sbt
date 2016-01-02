@@ -14,11 +14,12 @@ install:
   - cmd: SET PATH=C:\sbt\sbt\bin;%JAVA_HOME%\bin;%PATH%
   - cmd: SET SBT_OPTS=-XX:MaxPermSize=2g -Xmx4g
 build_script:
-  - sbt clean compile publish-local
+  - sbt ++2.11.7 clean compile coreJVM/publishLocal
+  - sbt ++2.10.6 clean compile
 test_script:
-  - sbt testsJVM/test # Would node be around for testsJS/test?
+  - sbt ++2.11.7 testsJVM/test # Would node be around for testsJS/test?
+  - sbt ++2.10.6 testsJVM/test
 cache:
   - C:\sbt\
-  - C:\Users\appveyor\.m2
   - C:\Users\appveyor\.ivy2
   - C:\Users\appveyor\.sbt
