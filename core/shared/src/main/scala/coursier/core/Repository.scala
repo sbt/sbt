@@ -8,7 +8,7 @@ import scalaz._
 
 import coursier.core.compatibility.encodeURIComponent
 
-trait Repository {
+trait Repository extends Product with Serializable {
   def find[F[_]](
     module: Module,
     version: String,

@@ -210,7 +210,7 @@ class Helper(
   val fetchs = cachePolicies.map(p =>
     Cache.fetch(caches, p, logger = logger, pool = pool)
   )
-  val fetchQuiet = coursier.Fetch(
+  val fetchQuiet = coursier.Fetch.from(
     repositories,
     fetchs.head,
     fetchs.tail: _*

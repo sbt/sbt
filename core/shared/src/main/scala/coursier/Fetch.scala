@@ -80,7 +80,7 @@ object Fetch {
       }
   }
 
-  def apply[F[_]](
+  def from[F[_]](
     repositories: Seq[core.Repository],
     fetch: Content[F],
     extra: Content[F]*

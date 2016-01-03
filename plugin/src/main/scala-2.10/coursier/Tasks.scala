@@ -240,7 +240,7 @@ object Tasks {
 
         val resLogger = createLogger()
 
-        val fetch = coursier.Fetch(
+        val fetch = Fetch.from(
           repositories,
           Cache.fetch(caches, CachePolicy.LocalOnly, checksums = checksums, logger = Some(resLogger), pool = pool),
           Cache.fetch(caches, cachePolicy, checksums = checksums, logger = Some(resLogger), pool = pool)

@@ -45,18 +45,10 @@ case class CommonOptions(
   val verbose0 = verbose.length - (if (quiet) 1 else 0)
 }
 
-object CacheOptions {
-  def default =
-    sys.env.getOrElse(
-      "COURSIER_CACHE",
-      sys.props("user.home") + "/.coursier/cache"
-    )
-}
-
 case class CacheOptions(
-  @HelpMessage("Cache directory (defaults to environment variable COURSIER_CACHE or ~/.coursier/cache)")
+  @HelpMessage("Cache directory (defaults to environment variable COURSIER_CACHE or ~/.coursier/cache/v1)")
   @ExtraName("C")
-    cache: String = CacheOptions.default
+    cache: String = Cache.defaultBase.toString
 )
 
 sealed trait CoursierCommand extends Command
