@@ -395,8 +395,8 @@ object Cache {
 
   def file(
     artifact: Artifact,
-    cache: Seq[(String, File)],
-    cachePolicy: CachePolicy,
+    cache: Seq[(String, File)] = default,
+    cachePolicy: CachePolicy = CachePolicy.FetchMissing,
     checksums: Seq[Option[String]] = Seq(Some("SHA-1")),
     logger: Option[Logger] = None,
     pool: ExecutorService = defaultPool
@@ -446,8 +446,8 @@ object Cache {
   }
 
   def fetch(
-    cache: Seq[(String, File)],
-    cachePolicy: CachePolicy,
+    cache: Seq[(String, File)] = default,
+    cachePolicy: CachePolicy = CachePolicy.FetchMissing,
     checksums: Seq[Option[String]] = Seq(Some("SHA-1")),
     logger: Option[Logger] = None,
     pool: ExecutorService = defaultPool
@@ -478,6 +478,11 @@ object Cache {
       "COURSIER_CACHE",
       sys.props("user.home") + "/.coursier/cache/v1"
     )
+  )
+
+  lazy val default = Seq(
+    "http://" -> new File(defaultBase, "http"),
+    "https://" -> new File(defaultBase, "https")
   )
 
   val defaultConcurrentDownloadCount = 6
