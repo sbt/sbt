@@ -44,7 +44,9 @@ case class Dependency(
 
   // Maven-specific
   attributes: Attributes,
-  optional: Boolean
+  optional: Boolean,
+
+  transitive: Boolean
 ) {
   def moduleVersion = (module, version)
 }

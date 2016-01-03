@@ -47,7 +47,8 @@ object FromSbt {
       exclusions = module.exclusions.map { rule =>
         // FIXME Other `rule` fields are ignored here
         (rule.organization, rule.name)
-      }.toSet
+      }.toSet,
+      transitive = module.isTransitive
     )
 
     val mapping = module.configurations.getOrElse("compile")

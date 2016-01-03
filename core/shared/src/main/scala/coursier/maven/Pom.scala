@@ -53,7 +53,8 @@ object Pom {
         "",
         exclusions.map(mod => (mod.organization, mod.name)).toSet,
         Attributes(typeOpt getOrElse defaultType, classifierOpt getOrElse defaultClassifier),
-        optional
+        optional,
+        transitive = true
       )
   }
 
