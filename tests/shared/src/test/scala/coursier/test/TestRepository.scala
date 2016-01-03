@@ -6,7 +6,7 @@ import coursier.core._
 import scalaz.{ Monad, EitherT }
 import scalaz.Scalaz._
 
-class TestRepository(projects: Map[(Module, String), Project]) extends Repository {
+case class TestRepository(projects: Map[(Module, String), Project]) extends Repository {
   val source = new core.Artifact.Source {
     def artifacts(
       dependency: Dependency,

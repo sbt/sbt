@@ -166,7 +166,7 @@ object ResolutionTests extends TestSuite {
   )
 
   val projectsMap = projects.map(p => p.moduleVersion -> p.copy(configurations = MavenRepository.defaultConfigurations)).toMap
-  val testRepository = new TestRepository(projectsMap)
+  val testRepository = TestRepository(projectsMap)
 
   val repositories = Seq[Repository](
     testRepository
