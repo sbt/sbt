@@ -46,4 +46,4 @@ fi
 
 ~/sbt ++${TRAVIS_SCALA_VERSION} $SBT_COMMANDS
 
-[ "$PUSH_GHPAGES" = 0 ] || "$(dirname "$0")/push-gh-pages.sh" "$TRAVIS_SCALA_VERSION"
+# [ "$PUSH_GHPAGES" = 0 ] || "$(dirname "$0")/push-gh-pages.sh" "$TRAVIS_SCALA_VERSION"
