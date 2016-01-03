@@ -300,21 +300,18 @@ case class Bootstrap(
     outputZip.closeEntry()
   }
 
-  val time = FileTime.fromMillis(System.currentTimeMillis())
+
+  val time = System.currentTimeMillis()
 
   val jarListEntry = new ZipEntry("bootstrap-jar-urls")
-  jarListEntry.setCreationTime(time)
-  jarListEntry.setLastAccessTime(time)
-  jarListEntry.setLastModifiedTime(time)
+  jarListEntry.setTime(time)
 
   outputZip.putNextEntry(jarListEntry)
   outputZip.write(urls.mkString("\n").getBytes("UTF-8"))
   outputZip.closeEntry()
 
   val propsEntry = new ZipEntry("bootstrap.properties")
-  propsEntry.setCreationTime(time)
-  propsEntry.setLastAccessTime(time)
-  propsEntry.setLastModifiedTime(time)
+  propsEntry.setTime(time)
 
   val properties = new Properties()
   properties.setProperty("bootstrap.mainClass", mainClass)
