@@ -52,9 +52,9 @@ object IvyXml {
         val excludes = node.children
           .filter(_.label == "exclude")
           .flatMap { node0 =>
-            val org = node.attribute("org").getOrElse("*")
-            val name = node.attribute("module").orElse(node.attribute("name")).getOrElse("*")
-            val confs = node.attribute("conf").toOption.fold(Seq("*"))(_.split(','))
+            val org = node0.attribute("org").getOrElse("*")
+            val name = node0.attribute("module").orElse(node0.attribute("name")).getOrElse("*")
+            val confs = node0.attribute("conf").toOption.filter(_.nonEmpty).fold(Seq("*"))(_.split(','))
             confs.map(_ -> (org, name))
           }
           .groupBy { case (conf, _) => conf }
