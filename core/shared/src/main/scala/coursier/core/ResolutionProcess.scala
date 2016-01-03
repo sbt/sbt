@@ -8,7 +8,7 @@ import scala.annotation.tailrec
 sealed trait ResolutionProcess {
   def run[F[_]](
     fetch: Fetch.Metadata[F],
-    maxIterations: Int = -1
+    maxIterations: Int = 50
   )(implicit
     F: Monad[F]
   ): F[Resolution] = {
