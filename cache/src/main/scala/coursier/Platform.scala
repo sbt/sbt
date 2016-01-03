@@ -56,6 +56,6 @@ object Platform {
   implicit def fetch(
     repositories: Seq[core.Repository]
   ): Fetch.Metadata[Task] =
-    Fetch(repositories, Platform.artifact)
+    Fetch.from(repositories, Platform.artifact)
 
 }
