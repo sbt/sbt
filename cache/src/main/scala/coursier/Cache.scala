@@ -473,6 +473,13 @@ object Cache {
       "[artifact](-[classifier]).[ext]"
   )
 
+  lazy val defaultBase = new File(
+    sys.env.getOrElse(
+      "COURSIER_CACHE",
+      sys.props("user.home") + "/.coursier/cache/v1"
+    )
+  )
+
   val defaultConcurrentDownloadCount = 6
 
   lazy val defaultPool =
