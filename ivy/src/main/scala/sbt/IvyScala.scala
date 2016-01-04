@@ -17,12 +17,20 @@ object ScalaArtifacts {
   val LibraryID = ScalaLibraryID
   val CompilerID = ScalaCompilerID
   val ReflectID = "scala-reflect"
+  val DottyIDPrefix = "dotty"
+
+  def dottyID(binaryVersion: String): String = s"${DottyIDPrefix}_${binaryVersion}"
+
   def libraryDependency(version: String): ModuleID = ModuleID(Organization, LibraryID, version)
 
-  private[sbt] def toolDependencies(org: String, version: String): Seq[ModuleID] = Seq(
-    scalaToolDependency(org, ScalaArtifacts.CompilerID, version),
-    scalaToolDependency(org, ScalaArtifacts.LibraryID, version)
-  )
+  private[sbt] def toolDependencies(org: String, version: String, isDotty: Boolean = false): Seq[ModuleID] =
+    if (isDotty)
+      Seq(ModuleID(org, DottyIDPrefix, version, Some(Configurations.ScalaTool.name + "->compile"),
+        crossVersion = CrossVersion.binary))
+    else
+      Seq(scalaToolDependency(org, ScalaArtifacts.CompilerID, version),
+        scalaToolDependency(org, ScalaArtifacts.LibraryID, version))
+
   private[this] def scalaToolDependency(org: String, id: String, version: String): ModuleID =
     ModuleID(org, id, version, Some(Configurations.ScalaTool.name + "->default,optional(default)"))
 }

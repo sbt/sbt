@@ -30,7 +30,11 @@ final class CompilerArguments(scalaInstance: xsbti.compile.ScalaInstance, cp: xs
     }
   def finishClasspath(classpath: Seq[File]): Seq[File] =
     filterLibrary(classpath) ++ include(cp.compiler, scalaInstance.compilerJar) ++ include(cp.extra, scalaInstance.otherJars: _*)
-  private[this] def include(flag: Boolean, jars: File*) = if (flag) jars else Nil
+  private[this] def include(flag: Boolean, jars: File*) =
+    if (flag || ScalaInstance.isDotty(scalaInstance.version))
+      jars
+    else
+      Nil
   private[this] def abs(files: Seq[File]) = files.map(_.getAbsolutePath).sortWith(_ < _)
   private[this] def checkScalaHomeUnset(): Unit = {
     val scalaHome = System.getProperty("scala.home")
