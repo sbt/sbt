@@ -22,5 +22,3 @@ mappings in (Compile, packageSrc) <++=
 // This can be omitted if the classes in src/macro/ aren't used at runtime
 mappings in (Compile, packageBin) <++=
   mappings in (config("macro"), packageBin)
-
-scalaVersion := "2.10.0-M7"
