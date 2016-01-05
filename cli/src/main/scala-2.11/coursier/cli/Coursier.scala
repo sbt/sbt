@@ -1,10 +1,12 @@
 package coursier
 package cli
 
-import java.io.{ File, IOException }
+import java.io.{ByteArrayOutputStream, FileOutputStream, File, IOException}
 import java.net.URLClassLoader
 import java.nio.file.{ Files => NIOFiles }
-import java.nio.file.attribute.PosixFilePermission
+import java.nio.file.attribute.{FileTime, PosixFilePermission}
+import java.util.Properties
+import java.util.zip.{ZipEntry, ZipOutputStream, ZipInputStream, ZipFile}
 
 import caseapp._
 import coursier.util.ClasspathFilter
@@ -211,9 +213,9 @@ case class Bootstrap(
   @ExtraName("b")
     prependClasspath: Boolean,
   @HelpMessage("Set environment variables in the generated launcher. No escaping is done. Value is simply put between quotes in the launcher preamble.")
-  @ValueDescription("NAME=VALUE")
-  @ExtraName("e")
-    env: List[String],
+  @ValueDescription("key=value")
+  @ExtraName("P")
+    property: List[String],
   @Recurse
     common: CommonOptions
 ) extends CoursierCommand {
@@ -231,23 +233,17 @@ case class Bootstrap(
     sys.exit(255)
   }
 
-  val (validEnv, wrongEnv) = env.partition(_.contains("="))
-  if (wrongEnv.nonEmpty) {
-    Console.err.println(s"Wrong -e / --env option(s):\n${wrongEnv.mkString("\n")}")
+  val (validProperties, wrongProperties) = property.partition(_.contains("="))
+  if (wrongProperties.nonEmpty) {
+    Console.err.println(s"Wrong -P / --property option(s):\n${wrongProperties.mkString("\n")}")
     sys.exit(255)
   }
 
-  val env0 = validEnv.map { s =>
+  val properties0 = validProperties.map { s =>
     val idx = s.indexOf('=')
     assert(idx >= 0)
     (s.take(idx), s.drop(idx + 1))
   }
-
-  val downloadDir0 =
-    if (downloadDir.isEmpty)
-      "$HOME/"
-    else
-      downloadDir
 
   val bootstrapJar =
     Option(Thread.currentThread().getContextClassLoader.getResourceAsStream("bootstrap.jar")) match {
@@ -256,6 +252,32 @@ case class Bootstrap(
         Console.err.println(s"Error: bootstrap JAR not found")
         sys.exit(1)
     }
+
+  val output0 = new File(output)
+  if (!force && output0.exists()) {
+    Console.err.println(s"Error: $output already exists, use -f option to force erasing it.")
+    sys.exit(1)
+  }
+
+  def zipEntries(zipStream: ZipInputStream): Iterator[(ZipEntry, Array[Byte])] =
+    new Iterator[(ZipEntry, Array[Byte])] {
+      var nextEntry = Option.empty[ZipEntry]
+      def update() =
+        nextEntry = Option(zipStream.getNextEntry)
+
+      update()
+
+      def hasNext = nextEntry.nonEmpty
+      def next() = {
+        val ent = nextEntry.get
+        val data = Platform.readFullySync(zipStream)
+
+        update()
+
+        (ent, data)
+      }
+    }
+
 
   val helper = new Helper(common, remainingArgs)
 
@@ -267,28 +289,53 @@ case class Bootstrap(
   if (unrecognized.nonEmpty)
     Console.err.println(s"Warning: non HTTP URLs:\n${unrecognized.mkString("\n")}")
 
-  val output0 = new File(output)
-  if (!force && output0.exists()) {
-    Console.err.println(s"Error: $output already exists, use -f option to force erasing it.")
-    sys.exit(1)
+  val buffer = new ByteArrayOutputStream()
+
+  val bootstrapZip = new ZipInputStream(Thread.currentThread().getContextClassLoader.getResourceAsStream("bootstrap.jar"))
+  val outputZip = new ZipOutputStream(buffer)
+
+  for ((ent, data) <- zipEntries(bootstrapZip)) {
+    outputZip.putNextEntry(ent)
+    outputZip.write(data)
+    outputZip.closeEntry()
   }
 
-  val shellPreamble = {
-    Seq(
-      "#!/usr/bin/env sh"
-    ) ++
-    env0.map { case (k, v) => "export " + k + "=\"" + v + "\"" } ++
-    Seq(
-      "exec java -jar \"$0\" " + (if (prependClasspath) "-B " else "") + "\"" + mainClass + "\" \"" + downloadDir + "\" " + urls.map("\"" + _ + "\"").mkString(" ") + " -- \"$@\"",
-      ""
-    )
-  }.mkString("\n")
 
-  try NIOFiles.write(output0.toPath, shellPreamble.getBytes("UTF-8") ++ bootstrapJar)
+  val time = System.currentTimeMillis()
+
+  val jarListEntry = new ZipEntry("bootstrap-jar-urls")
+  jarListEntry.setTime(time)
+
+  outputZip.putNextEntry(jarListEntry)
+  outputZip.write(urls.mkString("\n").getBytes("UTF-8"))
+  outputZip.closeEntry()
+
+  val propsEntry = new ZipEntry("bootstrap.properties")
+  propsEntry.setTime(time)
+
+  val properties = new Properties()
+  properties.setProperty("bootstrap.mainClass", mainClass)
+  properties.setProperty("bootstrap.jarDir", downloadDir)
+  properties.setProperty("bootstrap.prependClasspath", prependClasspath.toString)
+
+  outputZip.putNextEntry(propsEntry)
+  properties.store(outputZip, "")
+  outputZip.closeEntry()
+
+  outputZip.close()
+
+
+  val shellPreamble = Seq(
+    "#!/usr/bin/env sh",
+    "exec java -jar \"$0\" \"$@\""
+  ).mkString("", "\n", "\n")
+
+  try NIOFiles.write(output0.toPath, shellPreamble.getBytes("UTF-8") ++ buffer.toByteArray)
   catch { case e: IOException =>
     Console.err.println(s"Error while writing $output0: ${e.getMessage}")
     sys.exit(1)
   }
+
 
   try {
     val perms = NIOFiles.getPosixFilePermissions(output0.toPath).asScala.toSet

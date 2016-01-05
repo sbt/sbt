@@ -11,9 +11,10 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.net.URLConnection;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Bootstrap {
 
@@ -36,9 +37,54 @@ public class Bootstrap {
         return buffer.toByteArray();
     }
 
-    final static String usage = "Usage: bootstrap main-class JAR-directory JAR-URLs...";
+    static String[] readJarUrls() throws IOException {
+        ClassLoader loader = Thread.currentThread().getContextClassLoader();
+        InputStream is = loader.getResourceAsStream("bootstrap-jar-urls");
+        byte[] rawContent = readFullySync(is);
+        String content = new String(rawContent, "UTF-8");
+        return content.split("\n");
+    }
 
     final static int concurrentDownloadCount = 6;
+
+    // http://stackoverflow.com/questions/872272/how-to-reference-another-property-in-java-util-properties/27724276#27724276
+    public static Map<String,String> loadPropertiesMap(InputStream s) throws IOException {
+        final Map<String, String> ordered = new LinkedHashMap<>();
+        //Hack to use properties class to parse but our map for preserved order
+        Properties bp = new Properties() {
+            @Override
+            public synchronized Object put(Object key, Object value) {
+                ordered.put((String)key, (String)value);
+                return super.put(key, value);
+            }
+        };
+        bp.load(s);
+
+
+        final Pattern propertyRegex = Pattern.compile(Pattern.quote("${") + "[^" + Pattern.quote("{[()]}") + "]*" + Pattern.quote("}"));
+
+        final Map<String,String> resolved = new LinkedHashMap<>(ordered.size());
+
+        for (String k : ordered.keySet()) {
+            String value = ordered.get(k);
+
+            Matcher matcher = propertyRegex.matcher(value);
+
+            // cycles would loop indefinitely here :-|
+            while (matcher.find()) {
+                int start = matcher.start(0);
+                int end = matcher.end(0);
+                String subKey = value.substring(start + 2, end - 1);
+                String subValue = resolved.get(subKey);
+                if (subValue == null)
+                    subValue = System.getProperty(subKey);
+                value = value.substring(0, start) + subValue + value.substring(end);
+            }
+
+            resolved.put(k, value);
+        }
+        return resolved;
+    }
 
     public static void main(String[] args) throws Throwable {
 
@@ -54,25 +100,15 @@ public class Bootstrap {
 
         ExecutorService pool = Executors.newFixedThreadPool(concurrentDownloadCount, threadFactory);
 
-        boolean prependClasspath = false;
-
-        if (args.length > 0 && args[0].equals("-B"))
-            prependClasspath = true;
-
-        if (args.length < 2 || (prependClasspath && args.length < 3)) {
-            exit(usage);
+        Map<String,String> properties = loadPropertiesMap(Thread.currentThread().getContextClassLoader().getResourceAsStream("bootstrap.properties"));
+        for (Map.Entry<String, String> ent : properties.entrySet()) {
+            System.setProperty(ent.getKey(), ent.getValue());
         }
 
-        int offset = 0;
-        if (prependClasspath)
-            offset += 1;
+        String mainClass0 = System.getProperty("bootstrap.mainClass");
+        String jarDir0 = System.getProperty("bootstrap.jarDir");
 
-        String mainClass0 = args[offset];
-        String jarDir0 = args[offset + 1];
-
-        List<String> remainingArgs = new ArrayList<>();
-        for (int i = offset + 2; i < args.length; i++)
-            remainingArgs.add(args[i]);
+        boolean prependClasspath = Boolean.parseBoolean(System.getProperty("bootstrap.prependClasspath", "false"));
 
         final File jarDir = new File(jarDir0);
 
@@ -82,17 +118,7 @@ public class Bootstrap {
         } else if (!jarDir.mkdirs())
             System.err.println("Warning: cannot create " + jarDir0 + ", continuing anyway.");
 
-        int splitIdx = remainingArgs.indexOf("--");
-        List<String> jarStrUrls;
-        List<String> userArgs;
-
-        if (splitIdx < 0) {
-            jarStrUrls = remainingArgs;
-            userArgs = new ArrayList<>();
-        } else {
-            jarStrUrls = remainingArgs.subList(0, splitIdx);
-            userArgs = remainingArgs.subList(splitIdx + 1, remainingArgs.size());
-        }
+        String[] jarStrUrls = readJarUrls();
 
         List<String> errors = new ArrayList<>();
         List<URL> urls = new ArrayList<>();
@@ -204,7 +230,8 @@ public class Bootstrap {
             }
         }
 
-        userArgs0.addAll(userArgs);
+        for (int i = 0; i < args.length; i++)
+            userArgs0.add(args[i]);
 
         thread.setContextClassLoader(classLoader);
         try {
