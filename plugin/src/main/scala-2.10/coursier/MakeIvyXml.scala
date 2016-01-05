@@ -50,7 +50,14 @@ object MakeIvyXml {
 
     val dependencyElems = project.dependencies.toVector.map {
       case (conf, dep) =>
-        <dependency org={dep.module.organization} name={dep.module.name} rev={dep.version} conf={s"$conf->${dep.configuration}"} />
+        val excludes = dep.exclusions.toSeq.map {
+          case (org, name) =>
+            <exclude org={org} module={name} name="*" type="*" ext="*" conf="" matcher="exact"/>
+        }
+
+        <dependency org={dep.module.organization} name={dep.module.name} rev={dep.version} conf={s"$conf->${dep.configuration}"}>
+          {excludes}
+        </dependency>
     }
 
     <ivy-module version="2.0" xmlns:e="http://ant.apache.org/ivy/extra">
