@@ -69,14 +69,22 @@ object IvyXml {
           rawConf <- node.attribute("conf").toOption.toSeq
           (fromConf, toConf) <- mappings(rawConf)
           attr = node.attributesFromNamespace(attributesNamespace)
-        } yield fromConf -> Dependency(
-          Module(org, name, attr.toMap),
-          version,
-          toConf,
-          allConfsExcludes ++ excludes.getOrElse(fromConf, Set.empty),
-          Attributes("jar", ""), // should come from possible artifact nodes
-          optional = false
-        )
+        } yield {
+          val transitive = node.attribute("transitive").toOption match {
+            case Some("false") => false
+            case _ => true
+          }
+
+          fromConf -> Dependency(
+            Module(org, name, attr.toMap),
+            version,
+            toConf,
+            allConfsExcludes ++ excludes.getOrElse(fromConf, Set.empty),
+            Attributes("jar", ""), // should come from possible artifact nodes
+            optional = false,
+            transitive = transitive
+          )
+        }
       }
 
   private def publications(node: Node): Map[String, Seq[Publication]] =

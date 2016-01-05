@@ -434,14 +434,17 @@ case class Resolution(
     new mutable.HashMap[Dependency, Seq[Dependency]]()
   private def finalDependencies0(dep: Dependency) =
     finalDependenciesCache.synchronized {
-      finalDependenciesCache.getOrElseUpdate(dep,
-        projectCache.get(dep.moduleVersion) match {
-          case Some((_, proj)) =>
-            finalDependencies(dep, proj)
-              .filter(filter getOrElse defaultFilter)
-          case None => Nil
-        }
-      )
+      finalDependenciesCache.getOrElseUpdate(dep, {
+        if (dep.transitive)
+          projectCache.get(dep.moduleVersion) match {
+            case Some((_, proj)) =>
+              finalDependencies(dep, proj)
+                .filter(filter getOrElse defaultFilter)
+            case None => Nil
+          }
+        else
+          Nil
+      })
     }
 
   /**

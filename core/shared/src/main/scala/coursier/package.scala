@@ -13,7 +13,8 @@ package object coursier {
       configuration: String = "",
       attributes: Attributes = Attributes(),
       exclusions: Set[(String, String)] = Set.empty,
-      optional: Boolean = false
+      optional: Boolean = false,
+      transitive: Boolean = true
     ): Dependency =
       core.Dependency(
         module,
@@ -21,7 +22,8 @@ package object coursier {
         configuration,
         exclusions,
         attributes,
-        optional
+        optional,
+        transitive
       )
   }
 
