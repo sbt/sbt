@@ -11,6 +11,7 @@
   [@fkorotkov]: http://github.com/fkorotkov
   [@hgiddens]: https://github.com/hgiddens
   [@DavidPerezIngeniero]: https://github.com/DavidPerezIngeniero
+  [@romanowski]: https://github.com/romanowski
   [2302]: https://github.com/sbt/sbt/issues/2302
   [2303]: https://github.com/sbt/sbt/pull/2303
   [1967]: https://github.com/sbt/sbt/issues/1967
@@ -62,6 +63,7 @@
   [1968]: https://github.com/sbt/sbt/issues/1968
   [2264]: https://github.com/sbt/sbt/issues/2264
   [2172]: https://github.com/sbt/sbt/pull/2172
+  [2343]: https://github.com/sbt/sbt/pull/2343
 
 ### Fixes with compatibility implications
 
@@ -83,6 +85,8 @@
 - Adds `scalaCompilerBridgeSource` setting to specify the compiler brigde, and uses Ivy to retrieve it. [#2106][2106]/[#2197][2197] by [@Duhemm][@Duhemm]
 - Adds `localIfFile` to `MavenRepository`, to force artifacts to be copied to the cache. [#2172][2172] by [@dwijnand][@dwijnand]
 - Adds `Resolver.bintrayIvyRepo(owner, repo)`. [#2285][2285] by [@dwijnand][@dwijnand]
+- Non-static annotation changes are no longer tracked by the incremental compiler. [#2343][2343] by [@romanowski][@romanowski]
+- Reduces the memory usage of API info extraction in the incremental compiler. [#2343][2343] by [@adriaanm][@adriaanm]
 
 ### Bug fixes
 
@@ -109,6 +113,8 @@
 - Fixes `JavaErrorParser` to parse non-compile-errors [#2256][2256]/[#2272][2272] by [@Duhemm][@Duhemm]
 
 - Fixes task scheduling performance on large builds by skipping checks in `sbt.Execute`. [#2302][2302]/[#2303][2303] by [@jrudolph][@jrudolph]
+- Fixes performance issues during tree traversal in the incremental compiler. [#2343][2343] by [@adriaanm][@adriaanm]
+- Fixes the tracking of self types and F-bounded existential types in the incremental compiler. [#2343][2343] by [@adriaanm][@adriaanm]
 
 ### Def.settings
 
