@@ -5,7 +5,8 @@ CACHE_VERSION=v1
 
 "$(dirname "$0")/../cli/target/pack/bin/coursier" bootstrap \
   com.github.alexarchambault:coursier-cli_2.11:$VERSION \
-  -r https://oss.sonatype.org/content/repositories/staging \
+  --no-default \
+  -r central \
   -D "\${user.home}/.coursier/bootstrap/$VERSION" \
   -b \
   -f -o coursier \
