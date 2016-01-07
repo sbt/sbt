@@ -126,8 +126,8 @@
 - Fixes `JavaErrorParser` to parse non-compile-errors [#2256][2256]/[#2272][2272] by [@Duhemm][@Duhemm]
 - Fixes task scheduling performance on large builds by skipping checks in `sbt.Execute`. [#2302][2302]/[#2303][2303] by [@jrudolph][@jrudolph]
 - Fixes launcher configuration to add `sbt-ivy-snapshots` repository to resolve nightly builds. [@eed3si9n][@eed3si9n]
-- Fixes the tracking of self types in the incremental compiler. [#2343][2343] by [@adriaanm][@adriaanm]
-- Fixes the tracking of F-bounded existential types in the incremental compiler. [#2343][2343] by [@adriaanm][@adriaanm]
+- Fixes performance issues during tree traversal in the incremental compiler. [#2343][2343] by [@adriaanm][@adriaanm]
+- Fixes the tracking of self types and F-bounded existential types in the incremental compiler. [#2343][2343] by [@adriaanm][@adriaanm]
 
 ### Def.settings
 
