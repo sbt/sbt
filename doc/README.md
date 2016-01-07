@@ -53,14 +53,6 @@ Lastly, it can be used programmatically via its [API](#api) and has a Scala JS [
 
 ## Quick start
 
-The default global cache used by coursier is `~/.coursier/cache/v1`. E.g. the artifact at
-`https://repo1.maven.org/maven2/org/scala-lang/scala-library/2.11.7/scala-library-2.11.7.jar`
-will land in `~/.coursier/cache/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.11.7/scala-library-2.11.7.jar`.
-
-From the SBT plugin, the default repositories are the ones provided by SBT (typically Central or JFrog, and `~/.ivy2/local`).
-From the CLI tools, these are Central (`https://repo1.maven.org/maven2`) and `~/.ivy2/local`.
-From the API, these are specified manually - you are encouraged to use those too.
-
 * SBT plugin
 
 Enable the SBT plugin by adding
@@ -160,6 +152,15 @@ val localArtifacts: Seq[FileError \/ File] = Task.gatherUnordered(
 ```
 
 
+The default global cache used by coursier is `~/.coursier/cache/v1`. E.g. the artifact at
+`https://repo1.maven.org/maven2/org/scala-lang/scala-library/2.11.7/scala-library-2.11.7.jar`
+will land in `~/.coursier/cache/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.11.7/scala-library-2.11.7.jar`.
+
+From the SBT plugin, the default repositories are the ones provided by SBT (typically Central or JFrog, and `~/.ivy2/local`).
+From the CLI tools, these are Central (`https://repo1.maven.org/maven2`) and `~/.ivy2/local`.
+From the API, these are specified manually - you are encouraged to use those too.
+
+
 ## Why
 
 The current state of dependency management in Scala suffers several flaws, that prevent applications to fully
@@ -234,12 +235,10 @@ Both command belows can be given repositories with the `-r` or `--repository` op
 ```
 
 `central` and `ivy2local` correspond to Maven Central and `~/.ivy2/local`. These are used by default
-if no `-r` or `--repository` option is specified.
-As soon as a `-r` or `--repository` option is specified, these default are not used any more - only the
-specified repositories are used.
+unless the `--no-default` option is specified.
 
-Repositories starting with `ivy:` are assumed to be Ivy repositories, specified with an Ivy pattern. Else,
-a Maven repository is assumed.
+Repositories starting with `ivy:` are assumed to be Ivy repositories, specified with an Ivy pattern, like `ivy:https://repo.typesafe.com/typesafe/ivy-releases/[organisation]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext]`.
+Else, a Maven repository is assumed.
 
 #### launch
 
