@@ -1,10 +1,11 @@
 #!/bin/bash
 
-VERSION=1.0.0-M2
+VERSION=1.0.0-M3
 CACHE_VERSION=v1
 
 "$(dirname "$0")/../cli/target/pack/bin/coursier" bootstrap \
   com.github.alexarchambault:coursier-cli_2.11:$VERSION \
+  -r https://oss.sonatype.org/content/repositories/staging \
   -D "\${user.home}/.coursier/bootstrap/$VERSION" \
   -b \
   -f -o coursier \
