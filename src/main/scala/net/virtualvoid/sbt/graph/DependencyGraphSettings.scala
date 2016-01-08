@@ -86,7 +86,8 @@ object DependencyGraphSettings {
       java.awt.Desktop.getDesktop.browse(uri)
       uri
     },
-    dependencyList <<= (moduleGraph, streams).map((graph, streams) ⇒ streams.log.info(rendering.FlatList.render(graph, _.id.idString))),
+    dependencyList <<= printFromGraph(rendering.FlatList.render(_, _.id.idString)),
+    dependencyStats <<= printFromGraph(rendering.Statistics.renderModuleStatsList),
     dependencyDotHeader := """digraph "dependency-graph" {
                              |    graph[rankdir="LR"]
                              |    edge [
@@ -158,6 +159,9 @@ object DependencyGraphSettings {
 
   def print(key: TaskKey[String]) =
     (streams, key) map (_.log.info(_))
+
+  def printFromGraph(f: ModuleGraph ⇒ String) =
+    (streams, moduleGraph) map ((streams, graph) ⇒ streams.log.info(f(graph)))
 
   def showLicenseInfo(graph: ModuleGraph, streams: TaskStreams) {
     val output =

@@ -55,6 +55,8 @@ trait DependencyGraphKeys {
     "Prints an ascii tree of all the dependencies to the console")
   val dependencyList = TaskKey[Unit]("dependency-list",
     "Prints a list of all dependencies to the console")
+  val dependencyStats = TaskKey[Unit]("dependency-stats",
+    "Prints statistics for all dependencies to the console")
   val ivyReportFunction = TaskKey[String ⇒ File]("ivy-report-function",
     "A function which returns the file containing the ivy report from the ivy cache for a given configuration")
   val ivyReport = TaskKey[File]("ivy-report",

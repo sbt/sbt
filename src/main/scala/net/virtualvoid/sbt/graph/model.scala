@@ -16,6 +16,8 @@
 
 package net.virtualvoid.sbt.graph
 
+import java.io.File
+
 import scala.collection.mutable.{ MultiMap, HashMap, Set }
 
 case class ModuleId(organisation: String,
@@ -27,6 +29,7 @@ case class Module(id: ModuleId,
                   license: Option[String] = None,
                   extraInfo: String = "",
                   evictedByVersion: Option[String] = None,
+                  jarFile: Option[File] = None,
                   error: Option[String] = None) {
   def hadError: Boolean = error.isDefined
   def isUsed: Boolean = !isEvicted
@@ -53,12 +56,15 @@ case class ModuleGraph(nodes: Seq[Module], edges: Seq[Edge]) {
     }
     m.toMap.mapValues(_.toSeq.sortBy(_.id.idString)).withDefaultValue(Nil)
   }
+
+  def roots: Seq[Module] =
+    nodes.filter(n ⇒ !edges.exists(_._2 == n.id)).sortBy(_.id.idString)
 }
 
 import sbinary.{ Format, DefaultProtocol }
 object ModuleGraphProtocol extends DefaultProtocol {
   implicit def seqFormat[T: Format]: Format[Seq[T]] = wrap[Seq[T], List[T]](_.toList, _.toSeq)
   implicit val ModuleIdFormat: Format[ModuleId] = asProduct3(ModuleId)(ModuleId.unapply(_).get)
-  implicit val ModuleFormat: Format[Module] = asProduct5(Module)(Module.unapply(_).get)
+  implicit val ModuleFormat: Format[Module] = asProduct6(Module)(Module.unapply(_).get)
   implicit val ModuleGraphFormat: Format[ModuleGraph] = asProduct2(ModuleGraph.apply _)(ModuleGraph.unapply(_).get)
 }

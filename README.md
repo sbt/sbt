@@ -29,6 +29,7 @@ This plugin is an auto-plugin which will be automatically enabled starting from 
  * `whatDependsOn <organization> <module> <revision>`: Find out what depends on an artifact. Shows a reverse dependency
    tree for the selected module.
  * `dependencyLicenseInfo`: show dependencies grouped by declared license
+ * `dependencyStats`: Shows a table with each module a row with (transitive) Jar sizes and number of dependencies
  * `dependencyGraphMl`: Generates a `.graphml` file with the project's dependencies to `target/dependencies-<config>.graphml`.
    Use e.g. [yEd](http://www.yworks.com/en/products_yed_about.html) to format the graph to your needs.
  * `dependencyDot`: Generates a .dot file with the project's dependencies to `target/dependencies-<config>.dot`.
