@@ -134,12 +134,13 @@ object DependencyGraphSettings {
     }
   def dependencyDotStringTask =
     (moduleGraph, dependencyDotHeader, dependencyDotNodeLabel).map {
-      (graph, dotHead, nodeLabel) ⇒ rendering.DOT.dotGraph(graph, dotHead, nodeLabel)
+      (graph, dotHead, nodeLabel) ⇒ rendering.DOT.dotGraph(graph, dotHead, nodeLabel, rendering.DOT.AngleBrackets)
     }
 
   def browseGraphHTMLTask =
-    (dependencyDotString, dependencyBrowseGraphTarget, streams).map { (graph, target, streams) ⇒
-      val link = DagreHTML.createLink(graph, target)
+    (moduleGraph, dependencyDotHeader, dependencyDotNodeLabel, dependencyBrowseGraphTarget, streams).map { (graph, dotHead, nodeLabel, target, streams) ⇒
+      val dotGraph = rendering.DOT.dotGraph(graph, dotHead, nodeLabel, rendering.DOT.LabelTypeHtml)
+      val link = DagreHTML.createLink(dotGraph, target)
       streams.log.info(s"HTML graph written to $link")
       link
     }

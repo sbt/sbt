@@ -22,12 +22,14 @@ object DOT {
 
   def dotGraph(graph: ModuleGraph,
                dotHead: String,
-               nodeFormation: (String, String, String) ⇒ String): String = {
+               nodeFormation: (String, String, String) ⇒ String,
+               labelRendering: HTMLLabelRendering): String = {
     val nodes = {
       for (n ← graph.nodes) yield {
         val style = if (n.isEvicted) EvictedStyle else ""
-        """    "%s"[labelType="html" label="%s" style="%s"]""".format(n.id.idString,
-          nodeFormation(n.id.organisation, n.id.name, n.id.version),
+        val label = nodeFormation(n.id.organisation, n.id.name, n.id.version)
+        """    "%s"[%s style="%s"]""".format(n.id.idString,
+          labelRendering.renderLabel(label),
           style)
       }
     }.mkString("\n")
@@ -59,5 +61,23 @@ object DOT {
     }.mkString("\n")
 
     "%s\n%s\n%s\n}".format(dotHead, nodes, edges)
+  }
+
+  sealed trait HTMLLabelRendering {
+    def renderLabel(labelText: String): String
+  }
+  /**
+   *  Render HTML labels in Angle brackets as defined at http://graphviz.org/content/node-shapes#html
+   */
+  case object AngleBrackets extends HTMLLabelRendering {
+    def renderLabel(labelText: String): String = s"label=<$labelText>"
+  }
+
+  /**
+   * Render HTML labels with `labelType="html"` and label content in double quotes as supported by
+   * dagre-d3
+   */
+  case object LabelTypeHtml extends HTMLLabelRendering {
+    def renderLabel(labelText: String): String = s"""labelType="html" label="$labelText""""
   }
 }
