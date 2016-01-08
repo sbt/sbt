@@ -86,6 +86,7 @@ object DependencyGraphSettings {
       java.awt.Desktop.getDesktop.browse(uri)
       uri
     },
+    dependencyList <<= (moduleGraph, streams).map((graph, streams) ⇒ streams.log.info(rendering.FlatList.render(graph, _.id.idString))),
     dependencyDotHeader := """digraph "dependency-graph" {
                              |    graph[rankdir="LR"]
                              |    edge [

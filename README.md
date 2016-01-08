@@ -25,6 +25,7 @@ This plugin is an auto-plugin which will be automatically enabled starting from 
  * `dependencyTree`: Shows an ASCII tree representation of the project's dependencies
  * `dependencyBrowseGraph`: Opens a browser window with a visualization of the dependency graph (courtesy of graphlib-dot + dagre-d3).
  * `dependencyGraph`: Shows an ASCII graph of the project's dependencies on the sbt console
+ * `dependencyList`: Shows a flat list of all transitive dependencies on the sbt console (sorted by organization and name)
  * `whatDependsOn <organization> <module> <revision>`: Find out what depends on an artifact. Shows a reverse dependency
    tree for the selected module.
  * `dependencyLicenseInfo`: show dependencies grouped by declared license
