@@ -15,28 +15,28 @@ jdk:
 
 env:
   matrix:
-    - SCRIPTED_TEST="safeUnitTests"
-    - SCRIPTED_TEST="otherUnitTests"
-    - SCRIPTED_TEST="scripted actions/*"
-    - SCRIPTED_TEST="scripted api/*"
-    - SCRIPTED_TEST="scripted compiler-project/*"
-    - SCRIPTED_TEST="scripted dependency-management/*1of2"
-    - SCRIPTED_TEST="scripted dependency-management/*2of2"
-    - SCRIPTED_TEST="scripted ivy-deps-management/*"
-    - SCRIPTED_TEST="scripted java/*"
-    - SCRIPTED_TEST="scripted package/*"
-    - SCRIPTED_TEST="scripted project/*1of2"
-    - SCRIPTED_TEST="scripted project/*2of2"
-    - SCRIPTED_TEST="scripted reporter/*"
-    - SCRIPTED_TEST="scripted run/*"
-    - SCRIPTED_TEST="scripted source-dependencies/*1of3"
-    - SCRIPTED_TEST="scripted source-dependencies/*2of3"
-    - SCRIPTED_TEST="scripted source-dependencies/*3of3"
-    - SCRIPTED_TEST="scripted tests/*"
-    - SCRIPTED_TEST="scripted project-load/*"
-    - SCRIPTED_TEST="checkBuildScala211"
-    - SCRIPTED_TEST="mavenResolverPluginTest:scripted dependency-management/*1of2 project/transitive-plugins"
-    - SCRIPTED_TEST="mavenResolverPluginTest:scripted dependency-management/*2of2"
+    - SBT_CMD="safeUnitTests"
+    - SBT_CMD="otherUnitTests"
+    - SBT_CMD="scripted actions/*"
+    - SBT_CMD="scripted api/*"
+    - SBT_CMD="scripted compiler-project/*"
+    - SBT_CMD="scripted dependency-management/*1of2"
+    - SBT_CMD="scripted dependency-management/*2of2"
+    - SBT_CMD="scripted ivy-deps-management/*"
+    - SBT_CMD="scripted java/*"
+    - SBT_CMD="scripted package/*"
+    - SBT_CMD="scripted project/*1of2"
+    - SBT_CMD="scripted project/*2of2"
+    - SBT_CMD="scripted reporter/*"
+    - SBT_CMD="scripted run/*"
+    - SBT_CMD="scripted source-dependencies/*1of3"
+    - SBT_CMD="scripted source-dependencies/*2of3"
+    - SBT_CMD="scripted source-dependencies/*3of3"
+    - SBT_CMD="scripted tests/*"
+    - SBT_CMD="scripted project-load/*"
+    - SBT_CMD="checkBuildScala211"
+    - SBT_CMD="mavenResolverPluginTest:scripted dependency-management/*1of2 project/transitive-plugins"
+    - SBT_CMD="mavenResolverPluginTest:scripted dependency-management/*2of2"
 
 notifications:
   email:
@@ -44,7 +44,7 @@ notifications:
     - joshua.suereth@typesafe.com
 
 script:
-  - sbt -J-XX:ReservedCodeCacheSize=128m "$SCRIPTED_TEST"
+  - sbt -J-XX:ReservedCodeCacheSize=128m "$SBT_CMD"
 
   # Tricks to avoid unnecessary cache updates
   - find $HOME/.sbt -name "*.lock" | xargs rm
