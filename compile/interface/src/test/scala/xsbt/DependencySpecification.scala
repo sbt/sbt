@@ -26,7 +26,7 @@ class DependencySpecification extends Specification {
     inheritance('D) === Set.empty
     memberRef('E) === Set.empty
     inheritance('E) === Set.empty
-    memberRef('F) === Set('A, 'B, 'C, 'D, 'E, 'G)
+    memberRef('F) === Set('A, 'B, 'D, 'E, 'G)
     inheritance('F) === Set('A, 'E)
     memberRef('H) === Set('B, 'E, 'G)
     // aliases and applied type constructors are expanded so we have inheritance dependency on B
