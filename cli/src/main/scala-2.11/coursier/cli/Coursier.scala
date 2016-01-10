@@ -101,9 +101,6 @@ case class Launch(
   @Short("M")
   @Short("main")
     mainClass: String,
-  @Short("c")
-  @Help("Assume coursier is a dependency of the launched app, and share the coursier dependency of the launcher with it - allows the launched app to get the resolution that launched it via ResolutionClassLoader")
-    addCoursier: Boolean,
   @Recurse
     common: CommonOptions
 ) extends CoursierCommand {
@@ -117,27 +114,8 @@ case class Launch(
     }
   }
 
-  val extraForceVersions =
-    if (addCoursier)
-      ???
-    else
-      Seq.empty[String]
-
-  val dontFilterOut =
-    if (addCoursier) {
-      val url = classOf[coursier.core.Resolution].getProtectionDomain.getCodeSource.getLocation
-
-      if (url.getProtocol == "file")
-        Seq(new File(url.getPath))
-      else {
-        Console.err.println(s"Cannot get the location of the JAR of coursier ($url not a file URL)")
-        sys.exit(255)
-      }
-    } else
-      Seq.empty[File]
-
   val helper = new Helper(
-    common.copy(forceVersion = common.forceVersion ++ extraForceVersions),
+    common.copy(forceVersion = common.forceVersion),
     rawDependencies
   )
 
@@ -147,7 +125,7 @@ case class Launch(
     files0.map(_.toURI.toURL).toArray,
     new ClasspathFilter(
       Thread.currentThread().getContextClassLoader,
-      Coursier.baseCp.map(new File(_)).toSet -- dontFilterOut,
+      Coursier.baseCp.map(new File(_)).toSet,
       exclude = true
     )
   )

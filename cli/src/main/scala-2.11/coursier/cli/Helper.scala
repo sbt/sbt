@@ -58,7 +58,7 @@ object Util {
 
 class Helper(
   common: CommonOptions,
-  remainingArgs: Seq[String]
+  rawDependencies: Seq[String]
 ) {
   import common._
   import Helper.errPrintln
