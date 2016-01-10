@@ -226,7 +226,12 @@ class Helper(
   if (verbose0 >= 0)
     errPrintln(s"Result:\n${indent(Print.dependenciesUnknownConfigs(trDeps))}")
 
-  def fetch(sources: Boolean, javadoc: Boolean): Seq[File] = {
+  def fetch(
+    sources: Boolean,
+    javadoc: Boolean,
+    subset: Set[Dependency] = null
+  ): Seq[File] = {
+
     if (verbose0 >= 0) {
       val msg = cachePolicies match {
         case Seq(CachePolicy.LocalOnly) =>
@@ -237,6 +242,9 @@ class Helper(
 
       errPrintln(msg)
     }
+
+    val res0 = Option(subset).fold(res)(res.subset)
+
     val artifacts =
       if (sources || javadoc) {
         var classifiers = Seq.empty[String]
@@ -245,9 +253,9 @@ class Helper(
         if (javadoc)
           classifiers = classifiers :+ "javadoc"
 
-        res.classifiersArtifacts(classifiers)
+        res0.classifiersArtifacts(classifiers)
       } else
-        res.artifacts
+        res0.artifacts
 
     val logger =
       if (verbose0 >= 0)

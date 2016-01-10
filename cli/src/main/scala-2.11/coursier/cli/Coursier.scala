@@ -101,6 +101,10 @@ case class Launch(
   @Short("M")
   @Short("main")
     mainClass: String,
+  @ExtraName("I")
+    isolated: List[String],
+  @ExtraName("i")
+    isolateTarget: List[String],
   @Recurse
     common: CommonOptions
 ) extends CoursierCommand {
@@ -116,24 +120,102 @@ case class Launch(
 
   val helper = new Helper(
     common.copy(forceVersion = common.forceVersion),
-    rawDependencies
+    rawDependencies ++ isolated
   )
+
+
+  // FIXME Some duplication with similar things in Helper
+  val (splitIsolated, malformedIsolated) = isolated
+    .toVector
+    .map(_.split(":", 3).toSeq)
+    .partition(_.length == 3)
+
+  if (malformedIsolated.nonEmpty) {
+    if (malformedIsolated.nonEmpty) {
+      Console.err.println("Malformed dependency(ies), should be like org:name:version")
+      for (s <- malformedIsolated)
+        Console.err.println(s" ${s.mkString(":")}")
+    }
+
+    sys.exit(1)
+  }
+
+  val isolatedModuleVersions = splitIsolated.map{
+    case Seq(org, namePart, version) =>
+      val p = namePart.split(';')
+      val name = p.head
+      val splitAttributes = p.tail.map(_.split("=", 2).toSeq).toSeq
+      val malformedAttributes = splitAttributes.filter(_.length != 2)
+      if (malformedAttributes.nonEmpty) {
+        Console.err.println(s"Malformed attributes in ${splitIsolated.mkString(":")}")
+        // :(
+        sys.exit(255)
+      }
+      val attributes = splitAttributes.collect {
+        case Seq(k, v) => k -> v
+      }
+      (Module(org, name, attributes.toMap), version)
+  }
+
+  val isolatedDeps = isolatedModuleVersions.map{case (mod, ver) =>
+    Dependency(mod, ver, configuration = "runtime")
+  }
+
+
+  val isolateTargets = {
+    val l = isolateTarget.flatMap(_.split(',')).filter(_.nonEmpty)
+    if (l.isEmpty)
+      Array("default")
+    else
+      l.toArray
+  }
 
   val files0 = helper.fetch(sources = false, javadoc = false)
 
-  val cl = new URLClassLoader(
-    files0.map(_.toURI.toURL).toArray,
-    new ClasspathFilter(
-      Thread.currentThread().getContextClassLoader,
-      Coursier.baseCp.map(new File(_)).toSet,
-      exclude = true
-    )
+
+  val parentLoader0 = new ClasspathFilter(
+    Thread.currentThread().getContextClassLoader,
+    Coursier.baseCp.map(new File(_)).toSet,
+    exclude = true
+  )
+
+  val (parentLoader, filteredFiles) =
+    if (isolated.isEmpty)
+      (parentLoader0, files0)
+    else {
+      // FIXME These were already fetched above
+      val isolatedFiles =
+        helper.fetch(sources = false, javadoc = false, subset = isolatedDeps.toSet)
+
+      val isolatedLoader = new IsolatedClassLoader(
+        isolatedFiles.map(_.toURI.toURL).toArray,
+        parentLoader0,
+        isolateTargets
+      )
+
+      val filteredFiles0 = files0.filterNot(isolatedFiles.toSet)
+
+      if (common.verbose0 >= 1) {
+        Console.err.println(s"Isolated loader files:")
+        for (f <- isolatedFiles.map(_.toString).sorted)
+          Console.err.println(s"  $f")
+        Console.err.println(s"Remaining files:")
+        for (f <- filteredFiles0.map(_.toString).sorted)
+          Console.err.println(s"  $f")
+      }
+
+      (isolatedLoader, filteredFiles0)
+    }
+
+  val loader = new URLClassLoader(
+    filteredFiles.map(_.toURI.toURL).toArray,
+    parentLoader
   )
 
   val mainClass0 =
     if (mainClass.nonEmpty) mainClass
     else {
-      val mainClasses = Helper.mainClasses(cl)
+      val mainClasses = Helper.mainClasses(loader)
 
       val mainClass =
         if (mainClasses.isEmpty) {
@@ -166,7 +248,7 @@ case class Launch(
     }
 
   val cls =
-    try cl.loadClass(mainClass0)
+    try loader.loadClass(mainClass0)
     catch { case e: ClassNotFoundException =>
       Helper.errPrintln(s"Error: class $mainClass0 not found")
       sys.exit(255)
@@ -183,7 +265,7 @@ case class Launch(
   else if (common.verbose0 == 0)
     Helper.errPrintln(s"Launching")
 
-  Thread.currentThread().setContextClassLoader(cl)
+  Thread.currentThread().setContextClassLoader(loader)
   method.invoke(null, extraArgs.toArray)
 }
 
