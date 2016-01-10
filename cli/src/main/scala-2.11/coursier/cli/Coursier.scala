@@ -1,45 +1,45 @@
 package coursier
 package cli
 
-import java.io.{ByteArrayOutputStream, FileOutputStream, File, IOException}
+import java.io.{ ByteArrayOutputStream, File, IOException }
 import java.net.URLClassLoader
 import java.nio.file.{ Files => NIOFiles }
-import java.nio.file.attribute.{FileTime, PosixFilePermission}
+import java.nio.file.attribute.PosixFilePermission
 import java.util.Properties
-import java.util.zip.{ZipEntry, ZipOutputStream, ZipInputStream, ZipFile}
+import java.util.zip.{ ZipEntry, ZipOutputStream, ZipInputStream }
 
-import caseapp._
-import coursier.util.ClasspathFilter
+import caseapp.{ HelpMessage => Help, ValueDescription => Value, ExtraName => Short, _ }
+import coursier.util.{ Parse, ClasspathFilter }
 
 case class CommonOptions(
-  @HelpMessage("Keep optional dependencies (Maven)")
+  @Help("Keep optional dependencies (Maven)")
     keepOptional: Boolean,
-  @HelpMessage("Download mode (default: missing, that is fetch things missing from cache)")
-  @ValueDescription("offline|update-changing|update|missing|force")
-  @ExtraName("m")
-    mode: String = "missing",
-  @HelpMessage("Quiet output")
-  @ExtraName("q")
+  @Help("Download mode (default: missing, that is fetch things missing from cache)")
+  @Value("offline|update-changing|update|missing|force")
+  @Short("m")
+    mode: String = "default",
+  @Help("Quiet output")
+  @Short("q")
     quiet: Boolean,
-  @HelpMessage("Increase verbosity (specify several times to increase more)")
-  @ExtraName("v")
+  @Help("Increase verbosity (specify several times to increase more)")
+  @Short("v")
     verbose: List[Unit],
-  @HelpMessage("Maximum number of resolution iterations (specify a negative value for unlimited, default: 100)")
-  @ExtraName("N")
+  @Help("Maximum number of resolution iterations (specify a negative value for unlimited, default: 100)")
+  @Short("N")
     maxIterations: Int = 100,
-  @HelpMessage("Repositories - for multiple repositories, separate with comma and/or repeat this option (e.g. -r central,ivy2local -r sonatype-snapshots, or equivalently -r central,ivy2local,sonatype-snapshots)")
-  @ExtraName("r")
+  @Help("Repositories - for multiple repositories, separate with comma and/or repeat this option (e.g. -r central,ivy2local -r sonatype-snapshots, or equivalently -r central,ivy2local,sonatype-snapshots)")
+  @Short("r")
     repository: List[String],
-  @HelpMessage("Do not add default repositories (~/.ivy2/local, and Central)")
+  @Help("Do not add default repositories (~/.ivy2/local, and Central)")
     noDefault: Boolean = false,
-  @HelpMessage("Modify names in Maven repository paths for SBT plugins")
+  @Help("Modify names in Maven repository paths for SBT plugins")
     sbtPluginHack: Boolean = false,
-  @HelpMessage("Force module version")
-  @ValueDescription("organization:name:forcedVersion")
-  @ExtraName("V")
+  @Help("Force module version")
+  @Value("organization:name:forcedVersion")
+  @Short("V")
     forceVersion: List[String],
-  @HelpMessage("Maximum number of parallel downloads (default: 6)")
-  @ExtraName("n")
+  @Help("Maximum number of parallel downloads (default: 6)")
+  @Short("n")
     parallel: Int = 6,
   @Recurse
     cacheOptions: CacheOptions
@@ -48,22 +48,32 @@ case class CommonOptions(
 }
 
 case class CacheOptions(
-  @HelpMessage("Cache directory (defaults to environment variable COURSIER_CACHE or ~/.coursier/cache/v1)")
-  @ExtraName("C")
+  @Help("Cache directory (defaults to environment variable COURSIER_CACHE or ~/.coursier/cache/v1)")
+  @Short("C")
     cache: String = Cache.defaultBase.toString
 )
 
 sealed trait CoursierCommand extends Command
 
+case class Resolve(
+  @Recurse
+    common: CommonOptions
+) extends CoursierCommand {
+
+  // the `val helper = ` part is needed because of DelayedInit it seems
+  val helper = new Helper(common, remainingArgs)
+
+}
+
 case class Fetch(
-  @HelpMessage("Fetch source artifacts")
-  @ExtraName("S")
+  @Help("Fetch source artifacts")
+  @Short("S")
     sources: Boolean,
-  @HelpMessage("Fetch javadoc artifacts")
-  @ExtraName("D")
+  @Help("Fetch javadoc artifacts")
+  @Short("D")
     javadoc: Boolean,
-  @HelpMessage("Print java -cp compatible output")
-  @ExtraName("p")
+  @Help("Print java -cp compatible output")
+  @Short("p")
     classpath: Boolean,
   @Recurse
     common: CommonOptions
@@ -88,12 +98,15 @@ case class Fetch(
 }
 
 case class Launch(
-  @ExtraName("M")
-  @ExtraName("main")
+  @Short("M")
+  @Short("main")
     mainClass: String,
-  @ExtraName("c")
-  @HelpMessage("Assume coursier is a dependency of the launched app, and share the coursier dependency of the launcher with it - allows the launched app to get the resolution that launched it via ResolutionClassLoader")
-    addCoursier: Boolean,
+  @Value("target:dependency")
+  @Short("I")
+    isolated: List[String],
+  @Help("Comma-separated isolation targets")
+  @Short("i")
+    isolateTarget: List[String],
   @Recurse
     common: CommonOptions
 ) extends CoursierCommand {
@@ -107,45 +120,119 @@ case class Launch(
     }
   }
 
-  val extraForceVersions =
-    if (addCoursier)
-      ???
+  val isolateTargets = {
+    val l = isolateTarget.flatMap(_.split(',')).filter(_.nonEmpty)
+    val (invalid, valid) = l.partition(_.contains(":"))
+    if (invalid.nonEmpty) {
+      Console.err.println(s"Invalid target IDs:")
+      for (t <- invalid)
+        Console.err.println(s"  $t")
+      sys.exit(255)
+    }
+    if (valid.isEmpty)
+      Array("default")
     else
-      Seq.empty[String]
+      valid.toArray
+  }
 
-  val dontFilterOut =
-    if (addCoursier) {
-      val url = classOf[coursier.core.Resolution].getProtectionDomain.getCodeSource.getLocation
+  val (validIsolated, unrecognizedIsolated) = isolated.partition(s => isolateTargets.exists(t => s.startsWith(t + ":")))
 
-      if (url.getProtocol == "file")
-        Seq(new File(url.getPath))
-      else {
-        Console.err.println(s"Cannot get the location of the JAR of coursier ($url not a file URL)")
+  if (unrecognizedIsolated.nonEmpty) {
+    Console.err.println(s"Unrecognized isolation targets in:")
+    for (i <- unrecognizedIsolated)
+      Console.err.println(s"  $i")
+    sys.exit(255)
+  }
+
+  val rawIsolated = validIsolated.map { s =>
+    val Array(target, dep) = s.split(":", 2)
+    target -> dep
+  }
+
+  val isolatedModuleVersions = rawIsolated.groupBy { case (t, _) => t }.map {
+    case (t, l) =>
+      val (errors, modVers) = Parse.moduleVersions(l.map { case (_, d) => d })
+
+      if (errors.nonEmpty) {
+        errors.foreach(Console.err.println)
         sys.exit(255)
       }
-    } else
-      Seq.empty[File]
+
+      t -> modVers
+  }
+
+  val isolatedDeps = isolatedModuleVersions.map {
+    case (t, l) =>
+      t -> l.map {
+        case (mod, ver) =>
+          Dependency(mod, ver, configuration = "runtime")
+      }
+  }
 
   val helper = new Helper(
-    common.copy(forceVersion = common.forceVersion ++ extraForceVersions),
-    rawDependencies
+    common.copy(forceVersion = common.forceVersion),
+    rawDependencies ++ rawIsolated.map { case (_, dep) => dep }
   )
+
 
   val files0 = helper.fetch(sources = false, javadoc = false)
 
-  val cl = new URLClassLoader(
-    files0.map(_.toURI.toURL).toArray,
-    new ClasspathFilter(
-      Thread.currentThread().getContextClassLoader,
-      Coursier.baseCp.map(new File(_)).toSet -- dontFilterOut,
-      exclude = true
-    )
+
+  val parentLoader0: ClassLoader = new ClasspathFilter(
+    Thread.currentThread().getContextClassLoader,
+    Coursier.baseCp.map(new File(_)).toSet,
+    exclude = true
+  )
+
+  val (parentLoader, filteredFiles) =
+    if (isolated.isEmpty)
+      (parentLoader0, files0)
+    else {
+      val (isolatedLoader, filteredFiles0) = isolateTargets.foldLeft((parentLoader0, files0)) {
+        case ((parent, files0), target) =>
+
+          // FIXME These were already fetched above
+          val isolatedFiles = helper.fetch(
+            sources = false,
+            javadoc = false,
+            subset = isolatedDeps.getOrElse(target, Seq.empty).toSet
+          )
+
+          if (common.verbose0 >= 1) {
+            Console.err.println(s"Isolated loader files:")
+            for (f <- isolatedFiles.map(_.toString).sorted)
+              Console.err.println(s"  $f")
+          }
+
+          val isolatedLoader = new IsolatedClassLoader(
+            isolatedFiles.map(_.toURI.toURL).toArray,
+            parent,
+            Array(target)
+          )
+
+          val filteredFiles0 = files0.filterNot(isolatedFiles.toSet)
+
+          (isolatedLoader, filteredFiles0)
+      }
+
+      if (common.verbose0 >= 1) {
+        Console.err.println(s"Remaining files:")
+        for (f <- filteredFiles0.map(_.toString).sorted)
+          Console.err.println(s"  $f")
+      }
+
+      (isolatedLoader, filteredFiles0)
+    }
+
+  val loader = new URLClassLoader(
+    filteredFiles.map(_.toURI.toURL).toArray,
+    parentLoader
   )
 
   val mainClass0 =
     if (mainClass.nonEmpty) mainClass
     else {
-      val mainClasses = Helper.mainClasses(cl)
+      val mainClasses = Helper.mainClasses(loader)
 
       val mainClass =
         if (mainClasses.isEmpty) {
@@ -178,7 +265,7 @@ case class Launch(
     }
 
   val cls =
-    try cl.loadClass(mainClass0)
+    try loader.loadClass(mainClass0)
     catch { case e: ClassNotFoundException =>
       Helper.errPrintln(s"Error: class $mainClass0 not found")
       sys.exit(255)
@@ -195,26 +282,26 @@ case class Launch(
   else if (common.verbose0 == 0)
     Helper.errPrintln(s"Launching")
 
-  Thread.currentThread().setContextClassLoader(cl)
+  Thread.currentThread().setContextClassLoader(loader)
   method.invoke(null, extraArgs.toArray)
 }
 
 case class Bootstrap(
-  @ExtraName("M")
-  @ExtraName("main")
+  @Short("M")
+  @Short("main")
     mainClass: String,
-  @ExtraName("o")
+  @Short("o")
     output: String = "bootstrap",
-  @ExtraName("D")
+  @Short("D")
     downloadDir: String,
-  @ExtraName("f")
+  @Short("f")
     force: Boolean,
-  @HelpMessage(s"Internal use - prepend base classpath options to arguments (like -B jar1 -B jar2 etc.)")
-  @ExtraName("b")
+  @Help(s"Internal use - prepend base classpath options to arguments (like -B jar1 -B jar2 etc.)")
+  @Short("b")
     prependClasspath: Boolean,
-  @HelpMessage("Set environment variables in the generated launcher. No escaping is done. Value is simply put between quotes in the launcher preamble.")
-  @ValueDescription("key=value")
-  @ExtraName("P")
+  @Help("Set environment variables in the generated launcher. No escaping is done. Value is simply put between quotes in the launcher preamble.")
+  @Value("key=value")
+  @Short("P")
     property: List[String],
   @Recurse
     common: CommonOptions
@@ -365,7 +452,7 @@ case class Bootstrap(
 
 case class BaseCommand(
   @Hidden
-  @ExtraName("B")
+  @Short("B")
     baseCp: List[String]
 ) extends Command {
   Coursier.baseCp = baseCp

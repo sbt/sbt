@@ -8,6 +8,7 @@ import coursier.core.Publication
 import coursier.ivy.IvyRepository
 import coursier.Keys._
 import coursier.Structure._
+import coursier.util.{ Config, Print }
 import org.apache.ivy.core.module.id.ModuleRevisionId
 
 import sbt.{ UpdateReport, Classpaths, Resolver, Def }
@@ -204,7 +205,7 @@ object Tasks {
       }
 
       def report = {
-        if (verbosity >= 1) {
+        if (verbosity >= 2) {
           println("InterProjectRepository")
           for (p <- projects)
             println(s"  ${p.module}:${p.version}")
@@ -257,14 +258,19 @@ object Tasks {
           }.sorted.distinct
 
         if (verbosity >= 1) {
-          errPrintln(s"Repositories:")
-          val repositories0 = repositories.map {
-            case r: IvyRepository => r.copy(properties = Map.empty)
-            case r: InterProjectRepository => r.copy(projects = Nil)
-            case r => r
+          val repoReprs = repositories.map {
+            case r: IvyRepository =>
+              s"ivy:${r.pattern}"
+            case r: InterProjectRepository =>
+              "inter-project"
+            case r: MavenRepository =>
+              r.root
+            case r =>
+              // should not happen
+              r.toString
           }
-          for (repo <- repositories0)
-            errPrintln(s"  $repo")
+
+          errPrintln(s"Repositories:\n${repoReprs.map("  "+_).mkString("\n")}")
         }
 
         if (verbosity >= 0)
@@ -286,53 +292,58 @@ object Tasks {
 
 
         if (!res.isDone)
-          throw new Exception(s"Maximum number of iteration reached!")
+          throw new Exception(s"Maximum number of iteration of dependency resolution reached")
+
+        if (res.conflicts.nonEmpty) {
+          println(s"${res.conflicts.size} conflict(s):\n  ${Print.dependenciesUnknownConfigs(res.conflicts.toVector)}")
+          throw new Exception(s"Conflict(s) in dependency resolution")
+        }
+
+        if (res.errors.nonEmpty) {
+          println(s"\n${res.errors.size} error(s):")
+          for ((dep, errs) <- res.errors) {
+            println(s"  ${dep.module}:${dep.version}:\n${errs.map("    " + _.replace("\n", "    \n")).mkString("\n")}")
+          }
+          throw new Exception(s"Encountered ${res.errors.length} error(s) in dependency resolution")
+        }
+
+        val depsByConfig = grouped(currentProject.dependencies)
+
+        val configs = {
+          val configs0 = ivyConfigurations.value.map { config =>
+            config.name -> config.extendsConfigs.map(_.name)
+          }.toMap
+
+          def allExtends(c: String) = {
+            // possibly bad complexity
+            def helper(current: Set[String]): Set[String] = {
+              val newSet = current ++ current.flatMap(configs0.getOrElse(_, Nil))
+              if ((newSet -- current).nonEmpty)
+                helper(newSet)
+              else
+                newSet
+            }
+
+            helper(Set(c))
+          }
+
+          configs0.map {
+            case (config, _) =>
+              config -> allExtends(config)
+          }
+        }
 
         if (verbosity >= 0)
           errPrintln("Resolution done")
-        if (verbosity >= 1)
-          for (depRepr <- depsRepr0(res.minDependencies.toSeq))
-            errPrintln(s"  $depRepr")
+        if (verbosity >= 1) {
+          val finalDeps = Config.dependenciesWithConfig(
+            res,
+            depsByConfig.map { case (k, l) => k -> l.toSet },
+            configs
+          )
 
-        def repr(dep: Dependency) = {
-          // dep.version can be an interval, whereas the one from project can't
-          val version = res
-            .projectCache
-            .get(dep.moduleVersion)
-            .map(_._2.version)
-            .getOrElse(dep.version)
-          val extra =
-            if (version == dep.version) ""
-            else s" ($version for ${dep.version})"
-
-          (
-            Seq(
-              dep.module.organization,
-              dep.module.name,
-              dep.attributes.`type`
-            ) ++
-              Some(dep.attributes.classifier)
-                .filter(_.nonEmpty)
-                .toSeq ++
-              Seq(
-                version
-              )
-            ).mkString(":") + extra
-        }
-
-        if (res.conflicts.nonEmpty) {
-          // Needs test
-          println(s"${res.conflicts.size} conflict(s):\n  ${res.conflicts.toList.map(repr).sorted.mkString("  \n")}")
-        }
-
-        val errors = res.errors
-
-        if (errors.nonEmpty) {
-          println(s"\n${errors.size} error(s):")
-          for ((dep, errs) <- errors) {
-            println(s"  ${dep.module}:${dep.version}:\n${errs.map("    " + _.replace("\n", "    \n")).mkString("\n")}")
-          }
-          throw new Exception(s"Encountered ${errors.length} error(s)")
+          val repr = Print.dependenciesUnknownConfigs(finalDeps.toVector)
+          repr.split('\n').map("  "+_).mkString("\n")
         }
 
         val classifiers =
@@ -375,30 +386,6 @@ object Tasks {
         if (verbosity >= 0)
           errPrintln(s"Fetching artifacts: done")
 
-        val configs = {
-          val configs0 = ivyConfigurations.value.map { config =>
-            config.name -> config.extendsConfigs.map(_.name)
-          }.toMap
-
-          def allExtends(c: String) = {
-            // possibly bad complexity
-            def helper(current: Set[String]): Set[String] = {
-              val newSet = current ++ current.flatMap(configs0.getOrElse(_, Nil))
-              if ((newSet -- current).nonEmpty)
-                helper(newSet)
-              else
-                newSet
-            }
-
-            helper(Set(c))
-          }
-
-          configs0.map {
-            case (config, _) =>
-              config -> allExtends(config)
-          }
-        }
-
         def artifactFileOpt(artifact: Artifact) = {
           val fileOrError = artifactFilesOrErrors.getOrElse(artifact, -\/("Not downloaded"))
 
@@ -412,8 +399,6 @@ object Tasks {
               None
           }
         }
-
-        val depsByConfig = grouped(currentProject.dependencies)
 
         writeIvyFiles()
 
