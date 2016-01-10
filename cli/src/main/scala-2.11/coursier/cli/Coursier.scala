@@ -9,7 +9,7 @@ import java.util.Properties
 import java.util.zip.{ ZipEntry, ZipOutputStream, ZipInputStream }
 
 import caseapp.{ HelpMessage => Help, ValueDescription => Value, ExtraName => Short, _ }
-import coursier.util.ClasspathFilter
+import coursier.util.{ Parse, ClasspathFilter }
 
 case class CommonOptions(
   @Help("Keep optional dependencies (Maven)")
@@ -101,9 +101,11 @@ case class Launch(
   @Short("M")
   @Short("main")
     mainClass: String,
-  @ExtraName("I")
+  @Value("target:dependency")
+  @Short("I")
     isolated: List[String],
-  @ExtraName("i")
+  @Help("Comma-separated isolation targets")
+  @Short("i")
     isolateTarget: List[String],
   @Recurse
     common: CommonOptions
@@ -118,62 +120,65 @@ case class Launch(
     }
   }
 
-  val helper = new Helper(
-    common.copy(forceVersion = common.forceVersion),
-    rawDependencies ++ isolated
-  )
-
-
-  // FIXME Some duplication with similar things in Helper
-  val (splitIsolated, malformedIsolated) = isolated
-    .toVector
-    .map(_.split(":", 3).toSeq)
-    .partition(_.length == 3)
-
-  if (malformedIsolated.nonEmpty) {
-    if (malformedIsolated.nonEmpty) {
-      Console.err.println("Malformed dependency(ies), should be like org:name:version")
-      for (s <- malformedIsolated)
-        Console.err.println(s" ${s.mkString(":")}")
-    }
-
-    sys.exit(1)
-  }
-
-  val isolatedModuleVersions = splitIsolated.map{
-    case Seq(org, namePart, version) =>
-      val p = namePart.split(';')
-      val name = p.head
-      val splitAttributes = p.tail.map(_.split("=", 2).toSeq).toSeq
-      val malformedAttributes = splitAttributes.filter(_.length != 2)
-      if (malformedAttributes.nonEmpty) {
-        Console.err.println(s"Malformed attributes in ${splitIsolated.mkString(":")}")
-        // :(
-        sys.exit(255)
-      }
-      val attributes = splitAttributes.collect {
-        case Seq(k, v) => k -> v
-      }
-      (Module(org, name, attributes.toMap), version)
-  }
-
-  val isolatedDeps = isolatedModuleVersions.map{case (mod, ver) =>
-    Dependency(mod, ver, configuration = "runtime")
-  }
-
-
   val isolateTargets = {
     val l = isolateTarget.flatMap(_.split(',')).filter(_.nonEmpty)
-    if (l.isEmpty)
+    val (invalid, valid) = l.partition(_.contains(":"))
+    if (invalid.nonEmpty) {
+      Console.err.println(s"Invalid target IDs:")
+      for (t <- invalid)
+        Console.err.println(s"  $t")
+      sys.exit(255)
+    }
+    if (valid.isEmpty)
       Array("default")
     else
-      l.toArray
+      valid.toArray
   }
+
+  val (validIsolated, unrecognizedIsolated) = isolated.partition(s => isolateTargets.exists(t => s.startsWith(t + ":")))
+
+  if (unrecognizedIsolated.nonEmpty) {
+    Console.err.println(s"Unrecognized isolation targets in:")
+    for (i <- unrecognizedIsolated)
+      Console.err.println(s"  $i")
+    sys.exit(255)
+  }
+
+  val rawIsolated = validIsolated.map { s =>
+    val Array(target, dep) = s.split(":", 2)
+    target -> dep
+  }
+
+  val isolatedModuleVersions = rawIsolated.groupBy { case (t, _) => t }.map {
+    case (t, l) =>
+      val (errors, modVers) = Parse.moduleVersions(l.map { case (_, d) => d })
+
+      if (errors.nonEmpty) {
+        errors.foreach(Console.err.println)
+        sys.exit(255)
+      }
+
+      t -> modVers
+  }
+
+  val isolatedDeps = isolatedModuleVersions.map {
+    case (t, l) =>
+      t -> l.map {
+        case (mod, ver) =>
+          Dependency(mod, ver, configuration = "runtime")
+      }
+  }
+
+  val helper = new Helper(
+    common.copy(forceVersion = common.forceVersion),
+    rawDependencies ++ rawIsolated.map { case (_, dep) => dep }
+  )
+
 
   val files0 = helper.fetch(sources = false, javadoc = false)
 
 
-  val parentLoader0 = new ClasspathFilter(
+  val parentLoader0: ClassLoader = new ClasspathFilter(
     Thread.currentThread().getContextClassLoader,
     Coursier.baseCp.map(new File(_)).toSet,
     exclude = true
@@ -183,22 +188,34 @@ case class Launch(
     if (isolated.isEmpty)
       (parentLoader0, files0)
     else {
-      // FIXME These were already fetched above
-      val isolatedFiles =
-        helper.fetch(sources = false, javadoc = false, subset = isolatedDeps.toSet)
+      val (isolatedLoader, filteredFiles0) = isolateTargets.foldLeft((parentLoader0, files0)) {
+        case ((parent, files0), target) =>
 
-      val isolatedLoader = new IsolatedClassLoader(
-        isolatedFiles.map(_.toURI.toURL).toArray,
-        parentLoader0,
-        isolateTargets
-      )
+          // FIXME These were already fetched above
+          val isolatedFiles = helper.fetch(
+            sources = false,
+            javadoc = false,
+            subset = isolatedDeps.getOrElse(target, Seq.empty).toSet
+          )
 
-      val filteredFiles0 = files0.filterNot(isolatedFiles.toSet)
+          if (common.verbose0 >= 1) {
+            Console.err.println(s"Isolated loader files:")
+            for (f <- isolatedFiles.map(_.toString).sorted)
+              Console.err.println(s"  $f")
+          }
+
+          val isolatedLoader = new IsolatedClassLoader(
+            isolatedFiles.map(_.toURI.toURL).toArray,
+            parent,
+            Array(target)
+          )
+
+          val filteredFiles0 = files0.filterNot(isolatedFiles.toSet)
+
+          (isolatedLoader, filteredFiles0)
+      }
 
       if (common.verbose0 >= 1) {
-        Console.err.println(s"Isolated loader files:")
-        for (f <- isolatedFiles.map(_.toString).sorted)
-          Console.err.println(s"  $f")
         Console.err.println(s"Remaining files:")
         for (f <- filteredFiles0.map(_.toString).sorted)
           Console.err.println(s"  $f")

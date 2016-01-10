@@ -108,16 +108,7 @@ class Helper(
   }
 
 
-  val (rawDependencies, extraArgs) = {
-    val idxOpt = Some(remainingArgs.indexOf("--")).filter(_ >= 0)
-    idxOpt.fold((remainingArgs, Seq.empty[String])) { idx =>
-      val (l, r) = remainingArgs.splitAt(idx)
-      assert(r.nonEmpty)
-      (l, r.tail)
-    }
-  }
-
-  val (modVerErrors, moduleVersions) = Parse.moduleVersions(remainingArgs)
+  val (modVerErrors, moduleVersions) = Parse.moduleVersions(rawDependencies)
 
   prematureExitIf(modVerErrors.nonEmpty) {
     s"Cannot parse dependencies:\n" + modVerErrors.map("  "+_).mkString("\n")
