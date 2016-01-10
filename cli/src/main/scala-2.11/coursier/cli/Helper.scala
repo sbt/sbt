@@ -5,8 +5,9 @@ import java.io.{ OutputStreamWriter, File }
 import java.util.concurrent.Executors
 
 import coursier.ivy.IvyRepository
+import coursier.util.{Print, Parse}
 
-import scalaz.{ \/-, -\/ }
+import scalaz.{Failure, Success, \/-, -\/}
 import scalaz.concurrent.{ Task, Strategy }
 
 object Helper {
@@ -33,6 +34,28 @@ object Helper {
   }
 }
 
+object Util {
+
+  def prematureExit(msg: String): Nothing = {
+    Console.err.println(msg)
+    sys.exit(255)
+  }
+
+  def prematureExitIf(cond: Boolean)(msg: => String): Unit =
+    if (cond)
+      prematureExit(msg)
+
+  def exit(msg: String): Nothing = {
+    Console.err.println(msg)
+    sys.exit(1)
+  }
+
+  def exitIf(cond: Boolean)(msg: => String): Unit =
+    if (cond)
+      exit(msg)
+
+}
+
 class Helper(
   common: CommonOptions,
   remainingArgs: Seq[String]
@@ -40,22 +63,16 @@ class Helper(
   import common._
   import Helper.errPrintln
 
-  val cachePolicies = mode match {
-    case "offline" =>
-      Seq(CachePolicy.LocalOnly)
-    case "update-changing" =>
-      Seq(CachePolicy.UpdateChanging)
-    case "update" =>
-      Seq(CachePolicy.Update)
-    case "missing" =>
-      Seq(CachePolicy.FetchMissing)
-    case "force" =>
-      Seq(CachePolicy.ForceDownload)
-    case "default" =>
-      Seq(CachePolicy.LocalOnly, CachePolicy.FetchMissing)
-    case other =>
-      errPrintln(s"Unrecognized mode: $other")
-      sys.exit(255)
+  import Util._
+
+  val cachePoliciesValidation = CacheParse.cachePolicies(common.mode)
+
+  val cachePolicies = cachePoliciesValidation match {
+    case Success(cp) => cp
+    case Failure(errors) =>
+      prematureExit(
+        s"Error parsing modes:\n${errors.list.map("  "+_).mkString("\n")}"
+      )
   }
 
   val caches =
@@ -66,58 +83,30 @@ class Helper(
 
   val pool = Executors.newFixedThreadPool(parallel, Strategy.DefaultDaemonThreadFactory)
 
-  val central = MavenRepository("https://repo1.maven.org/maven2/")
-
   val defaultRepositories = Seq(
     Cache.ivy2Local,
-    central
+    MavenRepository("https://repo1.maven.org/maven2")
   )
 
-  val repositories0 = common.repository.map { repo =>
-    val repo0 = repo.toLowerCase
-    if (repo0 == "central")
-      Right(central)
-    else if (repo0 == "ivy2local")
-      Right(Cache.ivy2Local)
-    else if (repo0.startsWith("sonatype:"))
-      Right(
-        MavenRepository(s"https://oss.sonatype.org/content/repositories/${repo.drop("sonatype:".length)}")
-      )
-    else {
-      val (url, r) =
-        if (repo.startsWith("ivy:")) {
-          val url = repo.drop("ivy:".length)
-          (url, IvyRepository(url))
-        } else
-          (repo, MavenRepository(repo))
-
-      if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file:/"))
-        Right(r)
-      else
-        Left(repo -> s"Unrecognized protocol or repository: $url")
-    }
-  }
-
-  val unrecognizedRepos = repositories0.collect { case Left(e) => e }
-  if (unrecognizedRepos.nonEmpty) {
-    errPrintln(s"${unrecognizedRepos.length} error(s) parsing repositories:")
-    for ((repo, err) <- unrecognizedRepos)
-      errPrintln(s"$repo: $err")
-    sys.exit(255)
-  }
-
-  val repositories1 =
-    (if (common.noDefault) Nil else defaultRepositories) ++
-      repositories0.collect { case Right(r) => r }
-
-  val repositories =
+  val repositoriesValidation = CacheParse.repositories(common.repository).map { repos0 =>
+    val repos = (if (common.noDefault) Nil else defaultRepositories) ++ repos0
     if (common.sbtPluginHack)
-      repositories1.map {
+      repos.map {
         case m: MavenRepository => m.copy(sbtAttrStub = true)
         case other => other
       }
     else
-      repositories1
+      repos
+  }
+
+  val repositories = repositoriesValidation match {
+    case Success(repos) => repos
+    case Failure(errors) =>
+      prematureExit(
+        s"Error parsing repositories:\n${errors.list.map("  "+_).mkString("\n")}"
+      )
+  }
+
 
   val (rawDependencies, extraArgs) = {
     val idxOpt = Some(remainingArgs.indexOf("--")).filter(_ >= 0)
@@ -128,63 +117,25 @@ class Helper(
     }
   }
 
-  val (splitDependencies, malformed) = rawDependencies.toList
-    .map(_.split(":", 3).toSeq)
-    .partition(_.length == 3)
+  val (modVerErrors, moduleVersions) = Parse.moduleVersions(remainingArgs)
 
-  val (splitForceVersions, malformedForceVersions) = forceVersion
-    .map(_.split(":", 3).toSeq)
-    .partition(_.length == 3)
-
-  if (splitDependencies.isEmpty) {
-    Console.err.println(s"Error: no dependencies specified.")
-    // CaseApp.printUsage[Coursier]()
-    sys exit 1
+  prematureExitIf(modVerErrors.nonEmpty) {
+    s"Cannot parse dependencies:\n" + modVerErrors.map("  "+_).mkString("\n")
   }
 
-  if (malformed.nonEmpty || malformedForceVersions.nonEmpty) {
-    if (malformed.nonEmpty) {
-      errPrintln("Malformed dependency(ies), should be like org:name:version")
-      for (s <- malformed)
-        errPrintln(s" ${s.mkString(":")}")
-    }
-
-    if (malformedForceVersions.nonEmpty) {
-      errPrintln("Malformed force version(s), should be like org:name:forcedVersion")
-      for (s <- malformedForceVersions)
-        errPrintln(s" ${s.mkString(":")}")
-    }
-
-    sys.exit(1)
+  val dependencies = moduleVersions.map {
+    case (module, version) =>
+      Dependency(module, version, configuration = "default(compile)")
   }
 
-  val moduleVersions = splitDependencies.map{
-    case Seq(org, namePart, version) =>
-      val p = namePart.split(';')
-      val name = p.head
-      val splitAttributes = p.tail.map(_.split("=", 2).toSeq).toSeq
-      val malformedAttributes = splitAttributes.filter(_.length != 2)
-      if (malformedAttributes.nonEmpty) {
-        // FIXME Get these for all dependencies at once
-        Console.err.println(s"Malformed attributes in ${splitDependencies.mkString(":")}")
-        // :(
-        sys.exit(255)
-      }
-      val attributes = splitAttributes.collect {
-        case Seq(k, v) => k -> v
-      }
-      (Module(org, name, attributes.toMap), version)
-  }
 
-  val deps = moduleVersions.map{case (mod, ver) =>
-    Dependency(mod, ver, configuration = "runtime")
+  val (forceVersionErrors, forceVersions0) = Parse.moduleVersions(forceVersion)
+
+  prematureExitIf(forceVersionErrors.nonEmpty) {
+    s"Cannot parse forced versions:\n" + forceVersionErrors.map("  "+_).mkString("\n")
   }
 
   val forceVersions = {
-    val forceVersions0 = splitForceVersions.map {
-      case Seq(org, name, version) => (Module(org, name), version)
-    }
-
     val grouped = forceVersions0
       .groupBy { case (mod, _) => mod }
       .map { case (mod, l) => mod -> l.map { case (_, version) => version } }
@@ -196,7 +147,7 @@ class Helper(
   }
 
   val startRes = Resolution(
-    deps.toSet,
+    dependencies.toSet,
     forceVersions = forceVersions,
     filter = Some(dep => keepOptional || !dep.optional)
   )
@@ -219,17 +170,21 @@ class Helper(
     if (verbose0 <= 0) fetchQuiet
     else {
       modVers: Seq[(Module, String)] =>
-        val print = Task{
+        val print = Task {
           errPrintln(s"Getting ${modVers.length} project definition(s)")
         }
 
         print.flatMap(_ => fetchQuiet(modVers))
     }
 
+  def indent(s: String): String =
+    if (s.isEmpty)
+      s
+    else
+      s.split('\n').map("  "+_).mkString("\n")
+
   if (verbose0 >= 0) {
-    errPrintln("Dependencies:")
-    for ((mod, ver) <- moduleVersions)
-      errPrintln(s"  $mod:$ver")
+    errPrintln(s"Dependencies:\n${indent(Print.dependenciesUnknownConfigs(dependencies))}")
 
     if (forceVersions.nonEmpty) {
       errPrintln("Force versions:")
@@ -247,64 +202,29 @@ class Helper(
 
   logger.foreach(_.stop())
 
-  if (!res.isDone) {
+  // FIXME Better to print all the messages related to the exit conditions below, then exit
+  //       rather than exit at the first one
+
+  exitIf(!res.isDone) {
     errPrintln(s"Maximum number of iteration reached!")
     sys.exit(1)
   }
 
-  def repr(dep: Dependency) = {
-    // dep.version can be an interval, whereas the one from project can't
-    val version = res
-      .projectCache
-      .get(dep.moduleVersion)
-      .map(_._2.version)
-      .getOrElse(dep.version)
-    val extra =
-      if (version == dep.version) ""
-      else s" ($version for ${dep.version})"
-
-    (
-      Seq(
-        dep.module.organization,
-        dep.module.name,
-        dep.attributes.`type`
-      ) ++
-        Some(dep.attributes.classifier)
-          .filter(_.nonEmpty)
-          .toSeq ++
-        Seq(
-          version
-        )
-      ).mkString(":") + extra
+  exitIf(res.errors.nonEmpty) {
+    s"\n${res.errors.size} error(s):\n" +
+    res.errors.map { case (dep, errs) =>
+      s"  ${dep.module}:${dep.version}:\n${errs.map("    " + _.replace("\n", "    \n")).mkString("\n")}"
+    }.mkString("\n")
   }
 
-  val trDeps = res
-    .minDependencies
-    .toList
-    .sortBy(repr)
-
-  if (verbose0 >= 1) {
-    println("")
-    println(
-      trDeps
-        .map(repr)
-        .distinct
-        .mkString("\n")
-    )
+  exitIf(res.conflicts.nonEmpty) {
+    s"${res.conflicts.size} conflict(s):\n${Print.dependenciesUnknownConfigs(res.conflicts.toVector)}"
   }
 
-  if (res.conflicts.nonEmpty) {
-    // Needs test
-    println(s"${res.conflicts.size} conflict(s):\n  ${res.conflicts.toList.map(repr).sorted.mkString("  \n")}")
-  }
+  val trDeps = res.minDependencies.toVector
 
-  val errors = res.errors
-  if (errors.nonEmpty) {
-    println(s"\n${errors.size} error(s):")
-    for ((dep, errs) <- errors) {
-      println(s"  ${dep.module}:${dep.version}:\n${errs.map("    " + _.replace("\n", "    \n")).mkString("\n")}")
-    }
-  }
+  if (verbose0 >= 0)
+    errPrintln(s"Result:\n${indent(Print.dependenciesUnknownConfigs(trDeps))}")
 
   def fetch(sources: Boolean, javadoc: Boolean): Seq[File] = {
     if (verbose0 >= 0) {
@@ -354,11 +274,11 @@ class Helper(
 
     logger.foreach(_.stop())
 
-    if (errors.nonEmpty) {
-      println(s"${errors.size} error(s):")
-      for ((artifact, error) <- errors) {
-        println(s"  ${artifact.url}: $error")
-      }
+    exitIf(errors.nonEmpty) {
+      s"${errors.size} error(s):\n" +
+      errors.map { case (artifact, error) =>
+        s"  ${artifact.url}: $error"
+      }.mkString("\n")
     }
 
     files0
