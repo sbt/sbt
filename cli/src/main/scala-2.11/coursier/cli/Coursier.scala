@@ -97,30 +97,18 @@ case class Fetch(
 
 }
 
-case class Launch(
-  @Short("M")
-  @Short("main")
-    mainClass: String,
+case class IsolatedLoaderOptions(
   @Value("target:dependency")
   @Short("I")
     isolated: List[String],
   @Help("Comma-separated isolation targets")
   @Short("i")
-    isolateTarget: List[String],
-  @Recurse
-    common: CommonOptions
-) extends CoursierCommand {
+    isolateTarget: List[String]
+) {
 
-  val (rawDependencies, extraArgs) = {
-    val idxOpt = Some(remainingArgs.indexOf("--")).filter(_ >= 0)
-    idxOpt.fold((remainingArgs, Seq.empty[String])) { idx =>
-      val (l, r) = remainingArgs.splitAt(idx)
-      assert(r.nonEmpty)
-      (l, r.tail)
-    }
-  }
+  def anyIsolatedDep = isolateTarget.nonEmpty || isolated.nonEmpty
 
-  val isolateTargets = {
+  lazy val targets = {
     val l = isolateTarget.flatMap(_.split(',')).filter(_.nonEmpty)
     val (invalid, valid) = l.partition(_.contains(":"))
     if (invalid.nonEmpty) {
@@ -135,21 +123,23 @@ case class Launch(
       valid.toArray
   }
 
-  val (validIsolated, unrecognizedIsolated) = isolated.partition(s => isolateTargets.exists(t => s.startsWith(t + ":")))
+  lazy val (validIsolated, unrecognizedIsolated) = isolated.partition(s => targets.exists(t => s.startsWith(t + ":")))
 
-  if (unrecognizedIsolated.nonEmpty) {
-    Console.err.println(s"Unrecognized isolation targets in:")
-    for (i <- unrecognizedIsolated)
-      Console.err.println(s"  $i")
-    sys.exit(255)
+  def check() = {
+    if (unrecognizedIsolated.nonEmpty) {
+      Console.err.println(s"Unrecognized isolation targets in:")
+      for (i <- unrecognizedIsolated)
+        Console.err.println(s"  $i")
+      sys.exit(255)
+    }
   }
 
-  val rawIsolated = validIsolated.map { s =>
+  lazy val rawIsolated = validIsolated.map { s =>
     val Array(target, dep) = s.split(":", 2)
     target -> dep
   }
 
-  val isolatedModuleVersions = rawIsolated.groupBy { case (t, _) => t }.map {
+  lazy val isolatedModuleVersions = rawIsolated.groupBy { case (t, _) => t }.map {
     case (t, l) =>
       val (errors, modVers) = Parse.moduleVersions(l.map { case (_, d) => d })
 
@@ -161,7 +151,7 @@ case class Launch(
       t -> modVers
   }
 
-  val isolatedDeps = isolatedModuleVersions.map {
+  lazy val isolatedDeps = isolatedModuleVersions.map {
     case (t, l) =>
       t -> l.map {
         case (mod, ver) =>
@@ -169,9 +159,30 @@ case class Launch(
       }
   }
 
+}
+
+case class Launch(
+  @Short("M")
+  @Short("main")
+    mainClass: String,
+  @Recurse
+    isolated: IsolatedLoaderOptions,
+  @Recurse
+    common: CommonOptions
+) extends CoursierCommand {
+
+  val (rawDependencies, extraArgs) = {
+    val idxOpt = Some(remainingArgs.indexOf("--")).filter(_ >= 0)
+    idxOpt.fold((remainingArgs, Seq.empty[String])) { idx =>
+      val (l, r) = remainingArgs.splitAt(idx)
+      assert(r.nonEmpty)
+      (l, r.tail)
+    }
+  }
+
   val helper = new Helper(
     common.copy(forceVersion = common.forceVersion),
-    rawDependencies ++ rawIsolated.map { case (_, dep) => dep }
+    rawDependencies ++ isolated.rawIsolated.map { case (_, dep) => dep }
   )
 
 
@@ -185,17 +196,17 @@ case class Launch(
   )
 
   val (parentLoader, filteredFiles) =
-    if (isolated.isEmpty)
+    if (isolated.isolated.isEmpty)
       (parentLoader0, files0)
     else {
-      val (isolatedLoader, filteredFiles0) = isolateTargets.foldLeft((parentLoader0, files0)) {
+      val (isolatedLoader, filteredFiles0) = isolated.targets.foldLeft((parentLoader0, files0)) {
         case ((parent, files0), target) =>
 
           // FIXME These were already fetched above
           val isolatedFiles = helper.fetch(
             sources = false,
             javadoc = false,
-            subset = isolatedDeps.getOrElse(target, Seq.empty).toSet
+            subset = isolated.isolatedDeps.getOrElse(target, Seq.empty).toSet
           )
 
           if (common.verbose0 >= 1) {
@@ -304,6 +315,8 @@ case class Bootstrap(
   @Short("P")
     property: List[String],
   @Recurse
+    isolated: IsolatedLoaderOptions,
+  @Recurse
     common: CommonOptions
 ) extends CoursierCommand {
 
@@ -368,9 +381,20 @@ case class Bootstrap(
 
   val helper = new Helper(common, remainingArgs)
 
-  val artifacts = helper.res.artifacts
+  val urls = helper.res.artifacts.map(_.url)
 
-  val urls = artifacts.map(_.url)
+  val (_, isolatedUrls) =
+    isolated.targets.foldLeft((Vector.empty[String], Map.empty[String, Seq[String]])) {
+      case ((done, acc), target) =>
+        val subRes = helper.res.subset(isolated.isolatedDeps.getOrElse(target, Nil).toSet)
+        val subUrls = subRes.artifacts.map(_.url)
+
+        val filteredSubUrls = subUrls.diff(done)
+
+        val updatedAcc = acc + (target -> filteredSubUrls)
+
+        (done ++ filteredSubUrls, updatedAcc)
+    }
 
   val unrecognized = urls.filter(s => !s.startsWith("http://") && !s.startsWith("https://"))
   if (unrecognized.nonEmpty)
@@ -390,12 +414,25 @@ case class Bootstrap(
 
   val time = System.currentTimeMillis()
 
-  val jarListEntry = new ZipEntry("bootstrap-jar-urls")
-  jarListEntry.setTime(time)
+  def putStringEntry(name: String, content: String): Unit = {
+    val entry = new ZipEntry(name)
+    entry.setTime(time)
 
-  outputZip.putNextEntry(jarListEntry)
-  outputZip.write(urls.mkString("\n").getBytes("UTF-8"))
-  outputZip.closeEntry()
+    outputZip.putNextEntry(entry)
+    outputZip.write(content.getBytes("UTF-8"))
+    outputZip.closeEntry()
+  }
+
+  putStringEntry("bootstrap-jar-urls", urls.mkString("\n"))
+
+  if (isolated.anyIsolatedDep) {
+    putStringEntry("bootstrap-isolation-ids", isolated.targets.mkString("\n"))
+
+    for (target <- isolated.targets) {
+      val urls = isolatedUrls.getOrElse(target, Nil)
+      putStringEntry(s"bootstrap-isolation-$target-jar-urls", urls.mkString("\n"))
+    }
+  }
 
   val propsEntry = new ZipEntry("bootstrap.properties")
   propsEntry.setTime(time)
