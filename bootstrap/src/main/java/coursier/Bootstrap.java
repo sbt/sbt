@@ -11,6 +11,8 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.net.URLConnection;
 import java.nio.file.Files;
+import java.security.CodeSource;
+import java.security.ProtectionDomain;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.regex.Matcher;
@@ -37,12 +39,39 @@ public class Bootstrap {
         return buffer.toByteArray();
     }
 
-    static String[] readJarUrls() throws IOException {
+    final static String defaultURLResource = "bootstrap-jar-urls";
+    final static String isolationIDsResource = "bootstrap-isolation-ids";
+
+    static String[] readStringSequence(String resource) throws IOException {
         ClassLoader loader = Thread.currentThread().getContextClassLoader();
-        InputStream is = loader.getResourceAsStream("bootstrap-jar-urls");
+        InputStream is = loader.getResourceAsStream(resource);
+        if (is == null)
+            return new String[] {};
         byte[] rawContent = readFullySync(is);
         String content = new String(rawContent, "UTF-8");
+        if (content.length() == 0)
+            return new String[] {};
         return content.split("\n");
+    }
+
+    static Map<String, URL[]> readIsolationContexts(File jarDir, String[] isolationIDs) throws IOException {
+        final Map<String, URL[]> perContextURLs = new LinkedHashMap<>();
+
+        for (String isolationID: isolationIDs) {
+            String[] contextURLs = readStringSequence("bootstrap-isolation-" + isolationID + "-jar-urls");
+            List<URL> urls = new ArrayList<>();
+            for (String strURL : contextURLs) {
+                URL url = new URL(strURL);
+                File local = localFile(jarDir, url);
+                if (local.exists())
+                    urls.add(local.toURI().toURL());
+                else
+                    System.err.println("Warning: " + local + " not found.");
+            }
+            perContextURLs.put(isolationID, urls.toArray(new URL[urls.size()]));
+        }
+
+        return perContextURLs;
     }
 
     final static int concurrentDownloadCount = 6;
@@ -86,6 +115,33 @@ public class Bootstrap {
         return resolved;
     }
 
+    static String mainJarPath() {
+        ProtectionDomain protectionDomain = Bootstrap.class.getProtectionDomain();
+        if (protectionDomain != null) {
+            CodeSource source = protectionDomain.getCodeSource();
+            if (source != null) {
+                URL location = source.getLocation();
+                if (location != null && location.getProtocol().equals("file")) {
+                    return location.getPath();
+                }
+            }
+        }
+
+        return "";
+    }
+
+    static File localFile(File jarDir, URL url) {
+        if (url.getProtocol().equals("file"))
+            return new File(url.getPath());
+
+        String path = url.getPath();
+        int idx = path.lastIndexOf('/');
+        // FIXME Add other components in path to prevent conflicts?
+        String fileName = path.substring(idx + 1);
+        return new File(jarDir, fileName);
+    }
+
+
     public static void main(String[] args) throws Throwable {
 
         ThreadFactory threadFactory = new ThreadFactory() {
@@ -99,6 +155,12 @@ public class Bootstrap {
         };
 
         ExecutorService pool = Executors.newFixedThreadPool(concurrentDownloadCount, threadFactory);
+
+        System.setProperty("coursier.mainJar", mainJarPath());
+
+        for (int i = 0; i < args.length; i++) {
+            System.setProperty("coursier.main.arg-" + i, args[i]);
+        }
 
         Map<String,String> properties = loadPropertiesMap(Thread.currentThread().getContextClassLoader().getResourceAsStream("bootstrap.properties"));
         for (Map.Entry<String, String> ent : properties.entrySet()) {
@@ -118,7 +180,7 @@ public class Bootstrap {
         } else if (!jarDir.mkdirs())
             System.err.println("Warning: cannot create " + jarDir0 + ", continuing anyway.");
 
-        String[] jarStrUrls = readJarUrls();
+        String[] jarStrUrls = readStringSequence(defaultURLResource);
 
         List<String> errors = new ArrayList<>();
         List<URL> urls = new ArrayList<>();
@@ -154,11 +216,7 @@ public class Bootstrap {
                 completionService.submit(new Callable<URL>() {
                     @Override
                     public URL call() throws Exception {
-                        String path = url0.getPath();
-                        int idx = path.lastIndexOf('/');
-                        // FIXME Add other components in path to prevent conflicts?
-                        String fileName = path.substring(idx + 1);
-                        File dest = new File(jarDir, fileName);
+                        File dest = localFile(jarDir, url0);
 
                         if (!dest.exists()) {
                             System.err.println("Downloading " + url0);
@@ -198,8 +256,16 @@ public class Bootstrap {
             exit("Interrupted");
         }
 
+        final String[] isolationIDs = readStringSequence(isolationIDsResource);
+        final Map<String, URL[]> perIsolationContextURLs = readIsolationContexts(jarDir, isolationIDs);
+
         Thread thread = Thread.currentThread();
         ClassLoader parentClassLoader = thread.getContextClassLoader();
+
+        for (String isolationID: isolationIDs) {
+            URL[] contextURLs = perIsolationContextURLs.get(isolationID);
+            parentClassLoader = new IsolatedClassLoader(contextURLs, parentClassLoader, new String[]{ isolationID });
+        }
 
         URLClassLoader classLoader = new URLClassLoader(localURLs.toArray(new URL[localURLs.size()]), parentClassLoader);
 

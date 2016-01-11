@@ -301,12 +301,13 @@ object Cache {
 
         val res =
           if (url.startsWith("file:/")) {
-            def filtered(s: String) =
-              s.stripPrefix("file:/").stripPrefix("//").stripSuffix("/")
-            assert(
-              filtered(url) == filtered(file.toURI.toString),
-              s"URL: ${filtered(url)}, file: ${filtered(file.toURI.toString)}"
-            )
+            // for debug purposes, flaky with URL-encoded chars anyway
+            // def filtered(s: String) =
+            //   s.stripPrefix("file:/").stripPrefix("//").stripSuffix("/")
+            // assert(
+            //   filtered(url) == filtered(file.toURI.toString),
+            //   s"URL: ${filtered(url)}, file: ${filtered(file.toURI.toString)}"
+            // )
             checkFileExists(file, url)
           } else
             cachePolicy match {
