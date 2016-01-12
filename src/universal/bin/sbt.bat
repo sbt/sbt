@@ -37,11 +37,33 @@ rem We use the value of the JAVA_OPTS environment variable if defined, rather th
 set _JAVA_OPTS=%JAVA_OPTS%
 if "%_JAVA_OPTS%"=="" set _JAVA_OPTS=%CFG_OPTS%
 
+FOR %%a IN (%*) DO (
+  if "%%a" == "-jvm-debug" (
+    set JVM_DEBUG=true
+    set /a JVM_DEBUG_PORT=5005 2>nul >nul
+  ) else if "!JVM_DEBUG!" == "true" (
+    set /a JVM_DEBUG_PORT=%%a 2>nul >nul
+    if not "%%a" == "!JVM_DEBUG_PORT!" (
+      set SBT_ARGS=!SBT_ARGS! %%a
+    )
+  ) else (
+    set SBT_ARGS=!SBT_ARGS! %%a
+  )
+)
+
+if defined JVM_DEBUG_PORT (
+  set _JAVA_OPTS=!_JAVA_OPTS! -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=!JVM_DEBUG_PORT!
+)
+
+call :run %SBT_ARGS%
+
+if ERRORLEVEL 1 goto error
+goto end
+
 :run
 
 "%_JAVACMD%" %_JAVA_OPTS% %SBT_OPTS% -cp "%SBT_HOME%sbt-launch.jar" xsbt.boot.Boot %*
-if ERRORLEVEL 1 goto error
-goto end
+goto :eof
 
 :error
 @endlocal
