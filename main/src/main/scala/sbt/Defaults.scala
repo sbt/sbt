@@ -46,7 +46,7 @@ import sbt.util.InterfaceUtil.{ f1, o2m }
 import sbt.internal.util.Types._
 
 import sbt.internal.io.WatchState
-import sbt.io.{ AllPassFilter, FileFilter, GlobFilter, HiddenFileFilter, IO, NameFilter, NothingFilter, Path, PathFinder }
+import sbt.io.{ AllPassFilter, DirectoryFilter, FileFilter, GlobFilter, HiddenFileFilter, IO, NameFilter, NothingFilter, Path, PathFinder }
 
 import Path._
 import Keys._
@@ -114,6 +114,8 @@ object Defaults extends BuildCommon {
       internalConfigurationMap :== Configurations.internalMap _,
       credentials :== Nil,
       exportJars :== false,
+      trackInternalDependencies :== TrackLevel.TrackAlways,
+      exportToInternal :== TrackLevel.TrackAlways,
       retrieveManaged :== false,
       retrieveManagedSync :== false,
       configurationsToRetrieve :== None,
@@ -1072,6 +1074,9 @@ object Classpaths {
     unmanagedClasspath <<= unmanagedDependencies,
     managedClasspath := managedJars(classpathConfiguration.value, classpathTypes.value, update.value),
     exportedProducts <<= exportProductsTask,
+    exportedProductsAlways <<= trackedExportedProducts(TrackLevel.TrackAlways),
+    exportedProductsIfMissing <<= trackedExportedProducts(TrackLevel.TrackIfMissing),
+    exportedProductsNoTracking <<= trackedExportedProducts(TrackLevel.NoTracking),
     unmanagedJars := findUnmanagedJars(configuration.value, unmanagedBase.value, includeFilter in unmanagedJars value, excludeFilter in unmanagedJars value)
   ).map(exportClasspath)
 
@@ -1623,6 +1628,52 @@ object Classpaths {
     val x2 = copyResources.value
     classDirectory.value :: Nil
   }
+  // This is a variant of exportProductsTask with tracking
+  private[sbt] def trackedExportedProducts(track: TrackLevel): Initialize[Task[Classpath]] = Def.task {
+    val art = (artifact in packageBin).value
+    val module = projectID.value
+    val config = configuration.value
+    for { (f, analysis) <- trackedProductsImplTask(track).value } yield APIMappings.store(analyzed(f, analysis), apiURL.value).put(artifact.key, art).put(moduleID.key, module).put(configuration.key, config)
+  }
+  private[this] def trackedProductsImplTask(track: TrackLevel): Initialize[Task[Seq[(File, Analysis)]]] =
+    Def.taskDyn {
+      val useJars = exportJars.value
+      val jar = (artifactPath in packageBin).value
+      val dirs = productDirectories.value
+      def containsClassFile(fs: List[File]): Boolean =
+        (fs exists { dir =>
+          (dir ** DirectoryFilter).get exists { d =>
+            (d * "*.class").get.nonEmpty
+          }
+        })
+      TrackLevel.intersection(track, exportToInternal.value) match {
+        case TrackLevel.TrackAlways if (useJars) =>
+          Def.task {
+            Seq((packageBin.value, compile.value))
+          }
+        case TrackLevel.TrackAlways =>
+          Def.task {
+            products.value map { (_, compile.value) }
+          }
+        case TrackLevel.TrackIfMissing if (useJars && !jar.exists) =>
+          Def.task {
+            Seq((packageBin.value, compile.value))
+          }
+        case TrackLevel.TrackIfMissing if (!useJars && !containsClassFile(dirs.toList)) =>
+          Def.task {
+            products.value map { (_, compile.value) }
+          }
+        case _ =>
+          Def.task {
+            val analysis = previousCompile.value.analysis
+            (if (useJars) Seq(jar)
+            else dirs) map {
+              (_, analysis)
+            }
+          }
+      }
+    }
+
   def exportProductsTask: Initialize[Task[Classpath]] = Def.task {
     val art = (artifact in packageBin).value
     val module = projectID.value
@@ -1638,7 +1689,7 @@ object Classpaths {
   def constructBuildDependencies: Initialize[BuildDependencies] = loadedBuild(lb => BuildUtil.dependencies(lb.units))
 
   def internalDependencies: Initialize[Task[Classpath]] =
-    (thisProjectRef, classpathConfiguration, configuration, settingsData, buildDependencies) flatMap internalDependencies0
+    (thisProjectRef, classpathConfiguration, configuration, settingsData, buildDependencies, trackInternalDependencies) flatMap internalDependencies0
   def unmanagedDependencies: Initialize[Task[Classpath]] =
     (thisProjectRef, configuration, settingsData, buildDependencies) flatMap unmanagedDependencies0
   def mkIvyConfiguration: Initialize[Task[IvyConfiguration]] =
@@ -1676,17 +1727,25 @@ object Classpaths {
       visited.toSeq
     }
   def unmanagedDependencies0(projectRef: ProjectRef, conf: Configuration, data: Settings[Scope], deps: BuildDependencies): Task[Classpath] =
-    interDependencies(projectRef, deps, conf, conf, data, true, unmanagedLibs)
+    interDependencies(projectRef, deps, conf, conf, data, TrackLevel.TrackAlways, true, unmanagedLibs0)
+  @deprecated("This is no longer public.", "0.13.10")
   def internalDependencies0(projectRef: ProjectRef, conf: Configuration, self: Configuration, data: Settings[Scope], deps: BuildDependencies): Task[Classpath] =
     interDependencies(projectRef, deps, conf, self, data, false, productsTask)
+  private[sbt] def internalDependencies0(projectRef: ProjectRef, conf: Configuration, self: Configuration, data: Settings[Scope], deps: BuildDependencies, track: TrackLevel): Task[Classpath] =
+    interDependencies(projectRef, deps, conf, self, data, track, false, productsTask0)
+  @deprecated("This is no longer public.", "0.13.10")
   def interDependencies(projectRef: ProjectRef, deps: BuildDependencies, conf: Configuration, self: Configuration, data: Settings[Scope], includeSelf: Boolean,
     f: (ProjectRef, String, Settings[Scope]) => Task[Classpath]): Task[Classpath] =
+    interDependencies(projectRef, deps, conf, self, data, TrackLevel.TrackAlways, includeSelf,
+      { (pr: ProjectRef, s: String, sc: Settings[Scope], tl: TrackLevel) => f(pr, s, sc) })
+  private[sbt] def interDependencies(projectRef: ProjectRef, deps: BuildDependencies, conf: Configuration, self: Configuration, data: Settings[Scope],
+    track: TrackLevel, includeSelf: Boolean, f: (ProjectRef, String, Settings[Scope], TrackLevel) => Task[Classpath]): Task[Classpath] =
     {
       val visited = interSort(projectRef, conf, data, deps)
       val tasks = asScalaSet(new LinkedHashSet[Task[Classpath]])
       for ((dep, c) <- visited)
         if (includeSelf || (dep != projectRef) || (conf.name != c && self.name != c))
-          tasks += f(dep, c, data)
+          tasks += f(dep, c, data, track)
 
       (tasks.toSeq.join).map(_.flatten.distinct)
     }
@@ -1730,6 +1789,14 @@ object Classpaths {
     configurations.find(_.name == conf)
   def productsTask(dep: ResolvedReference, conf: String, data: Settings[Scope]): Task[Classpath] =
     getClasspath(exportedProducts, dep, conf, data)
+  def productsTask0(dep: ResolvedReference, conf: String, data: Settings[Scope], track: TrackLevel): Task[Classpath] =
+    track match {
+      case TrackLevel.NoTracking     => getClasspath(exportedProductsNoTracking, dep, conf, data)
+      case TrackLevel.TrackIfMissing => getClasspath(exportedProductsIfMissing, dep, conf, data)
+      case TrackLevel.TrackAlways    => getClasspath(exportedProductsAlways, dep, conf, data)
+    }
+  private[sbt] def unmanagedLibs0(dep: ResolvedReference, conf: String, data: Settings[Scope], track: TrackLevel): Task[Classpath] =
+    unmanagedLibs(dep, conf, data)
   def unmanagedLibs(dep: ResolvedReference, conf: String, data: Settings[Scope]): Task[Classpath] =
     getClasspath(unmanagedJars, dep, conf, data)
   def getClasspath(key: TaskKey[Classpath], dep: ResolvedReference, conf: String, data: Settings[Scope]): Task[Classpath] =
@@ -1795,7 +1862,7 @@ object Classpaths {
 
   private[this] lazy val internalCompilerPluginClasspath: Initialize[Task[Classpath]] =
     (thisProjectRef, settingsData, buildDependencies) flatMap { (ref, data, deps) =>
-      internalDependencies0(ref, CompilerPlugin, CompilerPlugin, data, deps)
+      internalDependencies0(ref, CompilerPlugin, CompilerPlugin, data, deps, TrackLevel.TrackAlways)
     }
 
   lazy val compilerPluginConfig = Seq(

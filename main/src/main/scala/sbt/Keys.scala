@@ -278,6 +278,9 @@ object Keys {
   val productDirectories = TaskKey[Seq[File]]("product-directories", "Base directories of build products.", CTask)
   val exportJars = SettingKey[Boolean]("export-jars", "Determines whether the exported classpath for this project contains classes (false) or a packaged jar (true).", BSetting)
   val exportedProducts = TaskKey[Classpath]("exported-products", "Build products that go on the exported classpath.", CTask)
+  val exportedProductsAlways = TaskKey[Classpath]("exported-products-always", "Build products that go on the exported classpath for other projects.", CTask)
+  val exportedProductsIfMissing = TaskKey[Classpath]("exported-products-if-missing", "Build products that go on the exported classpath if missing.", CTask)
+  val exportedProductsNoTracking = TaskKey[Classpath]("exported-products-no-tracking", "Just the exported classpath without triggering the compilation.", CTask)
   val unmanagedClasspath = TaskKey[Classpath]("unmanaged-classpath", "Classpath entries (deep) that are manually managed.", BPlusTask)
   val unmanagedJars = TaskKey[Classpath]("unmanaged-jars", "Classpath entries for the current project (shallow) that are manually managed.", BPlusTask)
   val managedClasspath = TaskKey[Classpath]("managed-classpath", "The classpath consisting of external, managed library dependencies.", BMinusTask)
@@ -285,6 +288,8 @@ object Keys {
   val externalDependencyClasspath = TaskKey[Classpath]("external-dependency-classpath", "The classpath consisting of library dependencies, both managed and unmanaged.", BMinusTask)
   val dependencyClasspath = TaskKey[Classpath]("dependency-classpath", "The classpath consisting of internal and external, managed and unmanaged dependencies.", BPlusTask)
   val fullClasspath = TaskKey[Classpath]("full-classpath", "The exported classpath, consisting of build products and unmanaged and managed, internal and external dependencies.", BPlusTask)
+  val trackInternalDependencies = SettingKey[TrackLevel]("track-internal-dependencies", "The level of tracking for the internal (inter-project) dependency.", BSetting)
+  val exportToInternal = SettingKey[TrackLevel]("export-to-internal", "The level of tracking for this project by the internal callers.", BSetting)
 
   val internalConfigurationMap = SettingKey[Configuration => Configuration]("internal-configuration-map", "Maps configurations to the actual configuration used to define the classpath.", CSetting)
   val classpathConfiguration = TaskKey[Configuration]("classpath-configuration", "The configuration used to define the classpath.", CTask)

@@ -1,0 +1,3 @@
+package c
+
+object C {}
