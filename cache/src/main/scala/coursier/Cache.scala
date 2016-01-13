@@ -467,11 +467,31 @@ object Cache {
       }
   }
 
+  private lazy val ivy2HomeUri = {
+    // a bit touchy on Windows... - don't try to manually write down the URI with s"file://..."
+    val str = new File(sys.props("user.home") + "/.ivy2/").toURI.toString
+    if (str.endsWith("/"))
+      str
+    else
+      str + "/"
+  }
+
   lazy val ivy2Local = IvyRepository(
-    // a bit touchy on Windows... - don't try to get the URI manually like s"file://..."
-    new File(sys.props("user.home") + "/.ivy2/local/").toURI.toString +
+    ivy2HomeUri + "local/" +
       "[organisation]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/" +
       "[artifact](-[classifier]).[ext]"
+  )
+
+  lazy val ivy2Cache = IvyRepository(
+    ivy2HomeUri + "cache/" +
+      "(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[organisation]/[module]/[type]s/[artifact]-[revision](-[classifier]).[ext]",
+    metadataPatternOpt = Some(
+      ivy2HomeUri + "cache/" +
+        "(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[organisation]/[module]/[type]-[revision](-[classifier]).[ext]"
+    ),
+    withChecksums = false,
+    withSignatures = false,
+    dropInfoAttributes = true
   )
 
   lazy val defaultBase = new File(

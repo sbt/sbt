@@ -12,7 +12,9 @@ case class IvyRepository(
   properties: Map[String, String] = Map.empty,
   withChecksums: Boolean = true,
   withSignatures: Boolean = true,
-  withArtifacts: Boolean = true
+  withArtifacts: Boolean = true,
+  // hack for SBT putting infos in properties
+  dropInfoAttributes: Boolean = false
 ) extends Repository {
 
   def metadataPattern: String = metadataPatternOpt.getOrElse(pattern)
@@ -138,14 +140,28 @@ case class IvyRepository(
     for {
       artifact <- EitherT(F.point(eitherArtifact))
       ivy <- fetch(artifact)
-      proj <- EitherT(F.point {
+      proj0 <- EitherT(F.point {
         for {
           xml <- \/.fromEither(compatibility.xmlParse(ivy))
           _ <- if (xml.label == "ivy-module") \/-(()) else -\/("Module definition not found")
           proj <- IvyXml.project(xml)
         } yield proj
       })
-    } yield (source, proj)
+    } yield {
+      val proj =
+        if (dropInfoAttributes)
+          proj0.copy(
+            module = proj0.module.copy(
+              attributes = proj0.module.attributes.filter {
+                case (k, _) => !k.startsWith("info.")
+              }
+            )
+          )
+        else
+          proj0
+
+      (source, proj)
+    }
   }
 
 }
