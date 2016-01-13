@@ -115,20 +115,22 @@ object FromSbt {
 
       case sbt.FileRepository(_, _, patterns)
         if patterns.ivyPatterns.lengthCompare(1) == 0 &&
-          patterns.ivyPatterns == patterns.artifactPatterns =>
+          patterns.artifactPatterns.lengthCompare(1) == 0 =>
 
         Some(IvyRepository(
-          "file://" + patterns.ivyPatterns.head,
+          "file://" + patterns.artifactPatterns.head,
+          metadataPatternOpt = Some("file://" + patterns.ivyPatterns.head),
           changing = Some(true),
           properties = ivyProperties
         ))
 
       case sbt.URLRepository(_, patterns)
         if patterns.ivyPatterns.lengthCompare(1) == 0 &&
-          patterns.ivyPatterns == patterns.artifactPatterns =>
+          patterns.artifactPatterns.lengthCompare(1) == 0 =>
 
         Some(IvyRepository(
-          patterns.ivyPatterns.head,
+          patterns.artifactPatterns.head,
+          metadataPatternOpt = Some(patterns.ivyPatterns.head),
           changing = None,
           properties = ivyProperties
         ))
