@@ -343,7 +343,7 @@ object Tasks {
           )
 
           val repr = Print.dependenciesUnknownConfigs(finalDeps.toVector)
-          repr.split('\n').map("  "+_).mkString("\n")
+          println(repr.split('\n').map("  "+_).mkString("\n"))
         }
 
         val classifiers =
