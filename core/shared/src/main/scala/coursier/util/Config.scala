@@ -17,10 +17,10 @@ object Config {
         config -> res.subset(deps).minDependencies
     }
 
-    val filteredAllDepsByConfig = depsByConfig.map {
+    val filteredAllDepsByConfig = allDepsByConfig.map {
       case (config, allDeps) =>
-        val inherited = configs
-          .getOrElse(config, Set.empty)
+        val allExtendedConfigs = configs.getOrElse(config, Set.empty) - config
+        val inherited = allExtendedConfigs
           .flatMap(allDepsByConfig.getOrElse(_, Set.empty))
 
         config -> (allDeps -- inherited)
