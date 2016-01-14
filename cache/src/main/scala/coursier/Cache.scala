@@ -479,7 +479,7 @@ object Cache {
       "COURSIER_CACHE",
       sys.props("user.home") + "/.coursier/cache/v1"
     )
-  )
+  ).getAbsoluteFile
 
   lazy val default = Seq(
     "http://" -> new File(defaultBase, "http"),
