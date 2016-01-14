@@ -16,6 +16,9 @@ import java.io.{ Serializable => _, _ }
 
 object Cache {
 
+  // Check SHA-1 if available, else be fine with no checksum
+  val defaultChecksums = Seq(Some("SHA-1"), None)
+
   private def withLocal(artifact: Artifact, cache: Seq[(String, File)]): Artifact = {
     def local(url: String) =
       if (url.startsWith("file:///"))
@@ -398,7 +401,7 @@ object Cache {
     artifact: Artifact,
     cache: Seq[(String, File)] = default,
     cachePolicy: CachePolicy = CachePolicy.FetchMissing,
-    checksums: Seq[Option[String]] = Seq(Some("SHA-1")),
+    checksums: Seq[Option[String]] = defaultChecksums,
     logger: Option[Logger] = None,
     pool: ExecutorService = defaultPool
   ): EitherT[Task, FileError, File] = {
@@ -449,7 +452,7 @@ object Cache {
   def fetch(
     cache: Seq[(String, File)] = default,
     cachePolicy: CachePolicy = CachePolicy.FetchMissing,
-    checksums: Seq[Option[String]] = Seq(Some("SHA-1")),
+    checksums: Seq[Option[String]] = defaultChecksums,
     logger: Option[Logger] = None,
     pool: ExecutorService = defaultPool
   ): Fetch.Content[Task] = {
@@ -467,11 +470,31 @@ object Cache {
       }
   }
 
+  private lazy val ivy2HomeUri = {
+    // a bit touchy on Windows... - don't try to manually write down the URI with s"file://..."
+    val str = new File(sys.props("user.home") + "/.ivy2/").toURI.toString
+    if (str.endsWith("/"))
+      str
+    else
+      str + "/"
+  }
+
   lazy val ivy2Local = IvyRepository(
-    // a bit touchy on Windows... - don't try to get the URI manually like s"file://..."
-    new File(sys.props("user.home") + "/.ivy2/local/").toURI.toString +
+    ivy2HomeUri + "local/" +
       "[organisation]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/" +
       "[artifact](-[classifier]).[ext]"
+  )
+
+  lazy val ivy2Cache = IvyRepository(
+    ivy2HomeUri + "cache/" +
+      "(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[organisation]/[module]/[type]s/[artifact]-[revision](-[classifier]).[ext]",
+    metadataPatternOpt = Some(
+      ivy2HomeUri + "cache/" +
+        "(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[organisation]/[module]/[type]-[revision](-[classifier]).[ext]"
+    ),
+    withChecksums = false,
+    withSignatures = false,
+    dropInfoAttributes = true
   )
 
   lazy val defaultBase = new File(

@@ -10,6 +10,8 @@ object CacheParse {
   def repository(s: String): Validation[String, Repository] =
     if (s == "ivy2local" || s == "ivy2Local")
       Cache.ivy2Local.success
+    else if (s == "ivy2cache" || s == "ivy2Cache")
+      Cache.ivy2Cache.success
     else {
       val repo = Parse.repository(s)
 
