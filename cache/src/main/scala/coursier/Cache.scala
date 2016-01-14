@@ -16,6 +16,9 @@ import java.io.{ Serializable => _, _ }
 
 object Cache {
 
+  // Check SHA-1 if available, else be fine with no checksum
+  val defaultChecksums = Seq(Some("SHA-1"), None)
+
   private def withLocal(artifact: Artifact, cache: Seq[(String, File)]): Artifact = {
     def local(url: String) =
       if (url.startsWith("file:///"))
@@ -398,7 +401,7 @@ object Cache {
     artifact: Artifact,
     cache: Seq[(String, File)] = default,
     cachePolicy: CachePolicy = CachePolicy.FetchMissing,
-    checksums: Seq[Option[String]] = Seq(Some("SHA-1")),
+    checksums: Seq[Option[String]] = defaultChecksums,
     logger: Option[Logger] = None,
     pool: ExecutorService = defaultPool
   ): EitherT[Task, FileError, File] = {
@@ -449,7 +452,7 @@ object Cache {
   def fetch(
     cache: Seq[(String, File)] = default,
     cachePolicy: CachePolicy = CachePolicy.FetchMissing,
-    checksums: Seq[Option[String]] = Seq(Some("SHA-1")),
+    checksums: Seq[Option[String]] = defaultChecksums,
     logger: Option[Logger] = None,
     pool: ExecutorService = defaultPool
   ): Fetch.Content[Task] = {
