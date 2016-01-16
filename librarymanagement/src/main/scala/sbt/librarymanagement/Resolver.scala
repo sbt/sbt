@@ -206,15 +206,45 @@ object Resolver {
 
   /** Add the local and Maven Central repositories to the user repositories.  */
   def withDefaultResolvers(userResolvers: Seq[Resolver]): Seq[Resolver] =
-    withDefaultResolvers(userResolvers, true)
+    withDefaultResolvers(userResolvers, mavenCentral = true)
+
   /**
    * Add the local Ivy repository to the user repositories.
    * If `mavenCentral` is true, add the Maven Central repository.
    */
   def withDefaultResolvers(userResolvers: Seq[Resolver], mavenCentral: Boolean): Seq[Resolver] =
+    withDefaultResolvers(userResolvers, jcenter = false, mavenCentral)
+
+  /**
+   * Add the local Ivy repository to the user repositories.
+   * If `jcenter` is true, add the JCenter.
+   * If `mavenCentral` is true, add the Maven Central repository.
+   */
+  def withDefaultResolvers(userResolvers: Seq[Resolver], jcenter: Boolean, mavenCentral: Boolean): Seq[Resolver] =
     Seq(Resolver.defaultLocal) ++
       userResolvers ++
+      single(JCenterRepository, jcenter) ++
       single(DefaultMavenRepository, mavenCentral)
+
+  /**
+   * Reorganize the built-in resolvers that is configured for this application by the sbt launcher.
+   * If `jcenter` is true, add the JCenter.
+   * If `mavenCentral` is true, add the Maven Central repository.
+   */
+  private[sbt] def reorganizeAppResolvers(appResolvers: Seq[Resolver], jcenter: Boolean, mavenCentral: Boolean): Seq[Resolver] =
+    appResolvers.partition(_ == Resolver.defaultLocal) match {
+      case (locals, xs) =>
+        locals ++
+          (xs.partition(_ == JCenterRepository) match {
+            case (jc, xs) =>
+              single(JCenterRepository, jcenter) ++
+                (xs.partition(_ == DefaultMavenRepository) match {
+                  case (m, xs) =>
+                    single(DefaultMavenRepository, mavenCentral) ++ xs // TODO - Do we need to filter out duplicates?
+                })
+          })
+    }
+
   private def single[T](value: T, nonEmpty: Boolean): Seq[T] = if (nonEmpty) Seq(value) else Nil
 
   /** A base class for defining factories for interfaces to Ivy repositories that require a hostname , port, and patterns.  */
