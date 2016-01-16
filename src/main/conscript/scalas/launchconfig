@@ -12,10 +12,8 @@
 
 [repositories]
   local
-  jcenter: https://jcenter.bintray.com/
-  typesafe-ivy-releases: https://repo.typesafe.com/typesafe/ivy-releases/, [organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext], bootOnly
   maven-central
-
+  typesafe-ivy-releases: https://repo.typesafe.com/typesafe/ivy-releases/, [organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext], bootOnly
 
 [boot]
   directory: ${sbt.boot.directory-${sbt.global.base-${user.home}/.sbt}/boot/}
