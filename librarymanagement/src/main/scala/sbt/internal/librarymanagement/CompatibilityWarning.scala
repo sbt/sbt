@@ -1,4 +1,4 @@
-package sbt
+package sbt.internal.librarymanagement
 
 private[sbt] object CompatibilityWarning {
   def apply(module: IvySbt#Module, mavenStyle: Boolean, log: Logger): Unit = {
