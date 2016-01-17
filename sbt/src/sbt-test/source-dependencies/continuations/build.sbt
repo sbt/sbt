@@ -1,7 +1,5 @@
 autoCompilerPlugins := true
 
-addCompilerPlugin("org.scala-lang.plugins" % "continuations" % "2.9.2")
-
-scalaVersion := "2.9.2"
+libraryDependencies += compilerPlugin("org.scala-lang.plugins" % "continuations" % scalaVersion.value)
 
 scalacOptions += "-P:continuations:enable"
