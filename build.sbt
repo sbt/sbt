@@ -3,6 +3,10 @@ import Dependencies._
 import Scripted._
 import Sxr.sxr
 
+import com.typesafe.tools.mima.core._, ProblemFilters._
+import com.typesafe.tools.mima.plugin.MimaKeys.{ binaryIssueFilters, previousArtifact}
+import com.typesafe.tools.mima.plugin.MimaPlugin.mimaDefaultSettings
+
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 def buildLevelSettings: Seq[Setting[_]] = inThisBuild(Seq(
@@ -15,7 +19,7 @@ def buildLevelSettings: Seq[Setting[_]] = inThisBuild(Seq(
   resolvers += Resolver.mavenLocal
 ))
 
-def commonSettings: Seq[Setting[_]] = Seq(
+def commonSettings: Seq[Setting[_]] = Seq[SettingsDefinition](
   scalaVersion := scala210,
   publishArtifact in packageDoc := false,
   publishMavenStyle := false,
@@ -30,8 +34,12 @@ def commonSettings: Seq[Setting[_]] = Seq(
   incOptions := incOptions.value.withNameHashing(true),
   crossScalaVersions := Seq(scala210),
   bintrayPackage := (bintrayPackage in ThisBuild).value,
-  bintrayRepository := (bintrayRepository in ThisBuild).value
-)
+  bintrayRepository := (bintrayRepository in ThisBuild).value,
+  mimaDefaultSettings,
+  previousArtifact := None, // Some(organization.value % moduleName.value % "1.0.0"),
+  binaryIssueFilters ++= Seq(
+  )
+) flatMap (_.settings)
 
 def minimalSettings: Seq[Setting[_]] =
   commonSettings ++ customCommands ++
