@@ -49,8 +49,10 @@ Lastly, it can be used programmatically via its [API](#api) and has a Scala JS [
   2. [Command-line](#command-line)
   3. [API](#api)
   4. [Scala JS demo](#scala-js-demo)
-4. [Contributors](#contributors)
-5. [Projects using coursier](#projects-using-coursier)
+4. [Limitations](#limitations)
+5. [Roadmap](#roadmap)
+6. [Contributors](#contributors)
+7. [Projects using coursier](#projects-using-coursier)
 
 ## Quick start
 
@@ -488,6 +490,76 @@ We're using the `Cache.file` method, that can also be given a `Logger` (for more
 
 *coursier* is also compiled to Scala JS, and can be tested in the browser via its
 [demo](http://alexarchambault.github.io/coursier/#demo).
+
+## Limitations
+
+#### Inter-project repository in the SBT plugin is a bit naive
+
+The inter-project repository is the pseudo-repository, nesting the metadata
+of sub-projects. It gets confused in at least these two cases:
+
+- two sub-projects have the same organization and module name,
+- a sub-project depends on a released version of another sub-project, possibly transitively.
+
+The problem with it is that it doesn't look at the real sub-projects graph. It
+just trusts SBT to put dependencies between projects in the library
+dependencies.
+
+So if a link appears transitively, with a sub-project depending on
+a released version of a sub-project (second point above), the coursier SBT plugin will
+think there's a dependency between the sub-projects. Thus it will trust
+SBT to put the second project build products on the classpath.
+But SBT knows there's no such link, so it just doesn't put them.
+
+The second point happens for the `readme` sub-project of Ammonite, for example,
+which transitively depends on a released version of `ammonite-ops`, itself also
+built by the `ops` sub-project.
+
+#### Ivy support is poorly tested
+
+The minimum was made for SBT plugins to be resolved fine (including dependencies
+between plugins, the possibility that some of them come from Maven repositories,
+with a pecularities, classifiers - sources, javadoc - should be fine too).
+So it is likely that projects relying more heavily
+on Ivy features could run into the limitations of the current implementation.
+
+Any issue report related to that, illustrated with public Ivy repositories
+if possible, would be greatly appreciated.
+
+#### *Important*: SBT plugin might mess with published artifacts
+
+SBT seems to require the `update` command to generate a few metadata files
+later used by `publish`. If ever there's an issue with these, this might
+add discrepencies in the artifacts published with `publish` or `publishLocal`.
+Should you want to use the coursier SBT plugin while publishing artifacts at the
+same time, I'd recommend an extreme caution at first, like manually inspecting
+the metadata files and compare with previous ones, to ensure everything's fine.
+
+coursier publishes its artifacts with its own plugin enabled since version
+`1.0.0-M2` though, without any apparent problem.
+
+#### No wait on locked file
+
+If ever resolution or artifact downloading stumbles upon a locked metadata or
+artifact in the cache, it will just fail, instead of waiting for the lock to be freed.
+
+#### Also
+
+Plus the inherent amount of bugs arising in a young project :-)
+
+## Roadmap
+
+The first releases were milestones like `0.1.0-M?`. As a launcher, basic Ivy
+repositories support, and an SBT plugin, were added in the mean time,
+coursier is now aiming directly at `1.0.0`.
+
+The last features I'd like to add until a feature freeze are mainly a
+better / nicer output, for both the command-line tools and the SBT plugin.
+These are tracked via Github [issues](https://github.com/alexarchambault/coursier/issues?q=is%3Aopen+is%3Aissue+milestone%3A1.0.0), along with other points.
+Milestones will keep being released until then.
+Then coursier should undergo `RC` releases, with no new features added, and
+only fixes and minor refactorings between them.
+Once RCs will be considered stable enough, `1.0.0` should be released.
 
 ## Contributors
 
