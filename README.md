@@ -20,10 +20,10 @@ Please read [CONTRIBUTING] carefully before opening a GitHub Issue.
 
 The short version: try [StackOverflow] and [sbt-dev]. Don't open an Issue.
 
-sbt 0.13
+sbt 1.0.x
 --------
 
-This is the 0.13.x series of sbt.
+This is the 1.0.x series of sbt.
 
  * [Setup]: Describes getting started with the latest binary release.
  * [FAQ]: Explains how to get help and more.
