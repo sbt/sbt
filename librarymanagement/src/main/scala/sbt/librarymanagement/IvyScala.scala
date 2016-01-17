@@ -28,8 +28,10 @@ object ScalaArtifacts {
       Seq(ModuleID(org, DottyIDPrefix, version, Some(Configurations.ScalaTool.name + "->compile"),
         crossVersion = CrossVersion.binary))
     else
-      Seq(scalaToolDependency(org, ScalaArtifacts.CompilerID, version),
-        scalaToolDependency(org, ScalaArtifacts.LibraryID, version))
+      Seq(
+        scalaToolDependency(org, ScalaArtifacts.CompilerID, version),
+        scalaToolDependency(org, ScalaArtifacts.LibraryID, version)
+      )
 
   private[this] def scalaToolDependency(org: String, id: String, version: String): ModuleID =
     ModuleID(org, id, version, Some(Configurations.ScalaTool.name + "->default,optional(default)"))
