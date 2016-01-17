@@ -93,7 +93,7 @@ object UpdateOptions {
     new UpdateOptions(
       circularDependencyLevel = CircularDependencyLevel.Warn,
       interProjectFirst = true,
-      latestSnapshots = false,
+      latestSnapshots = true,
       consolidatedResolution = false,
       cachedResolution = false,
       resolverConverter = PartialFunction.empty
