@@ -5,11 +5,12 @@ package sbt
 package internal
 package inc
 
+import java.io.File
+import sbt.util.Logger
+import scala.annotation.tailrec
 import xsbt.api.{ NameChanges, SameAPI, TopLevel }
-import annotation.tailrec
 import xsbti.api.{ Compilation, Source }
 import xsbti.compile.{ DependencyChanges, IncOptions, CompileAnalysis }
-import java.io.File
 
 /**
  * Helper class to run incremental compilation algorithm.
@@ -24,7 +25,7 @@ object Incremental {
   class PrefixingLogger(val prefix: String)(orig: Logger) extends Logger {
     def trace(t: => Throwable): Unit = orig.trace(t)
     def success(message: => String): Unit = orig.success(message)
-    def log(level: sbt.Level.Value, message: => String): Unit = orig.log(level, message.replaceAll("(?m)^", prefix))
+    def log(level: sbt.util.Level.Value, message: => String): Unit = orig.log(level, message.replaceAll("(?m)^", prefix))
   }
 
   /**

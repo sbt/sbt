@@ -2,10 +2,11 @@ package sbt
 package internal
 package inc
 
-import scala.annotation.tailrec
-import xsbti.compile.{ DependencyChanges, IncOptions, IncOptionsUtil, CompileAnalysis }
-import xsbti.api.{ Compilation, Source }
 import java.io.File
+import sbt.util.Logger
+import scala.annotation.tailrec
+import xsbti.api.{ Compilation, Source }
+import xsbti.compile.{ DependencyChanges, IncOptions, IncOptionsUtil, CompileAnalysis }
 
 private[inc] abstract class IncrementalCommon(log: sbt.util.Logger, options: IncOptions) {
 
