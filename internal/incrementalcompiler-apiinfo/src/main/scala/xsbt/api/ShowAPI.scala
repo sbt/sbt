@@ -55,14 +55,17 @@ object ShowAPI {
     case s: Structure =>
       s.parents.map(showType).mkString(" with ") + (
         if (nesting <= 0) "{ <nesting level reached> }"
-        else truncateDecls(s.declared).map(showNestedDefinition).mkString(" {", "\n", "}"))
+        else truncateDecls(s.declared).map(showNestedDefinition).mkString(" {", "\n", "}")
+      )
     case e: Existential =>
       showType(e.baseType) + (
         if (nesting <= 0) " forSome { <nesting level reached> }"
-        else e.clause.map(t => "type " + showNestedTypeParameter(t)).mkString(" forSome { ", "; ", " }"))
+        else e.clause.map(t => "type " + showNestedTypeParameter(t)).mkString(" forSome { ", "; ", " }")
+      )
     case p: Polymorphic => showType(p.baseType) + (
       if (nesting <= 0) " [ <nesting level reached> ]"
-      else showNestedTypeParameters(p.parameters))
+      else showNestedTypeParameters(p.parameters)
+    )
   }
 
   private def showPath(p: Path): String = p.components.map(showPathComponent).mkString(".")
@@ -98,9 +101,7 @@ object ShowAPI {
   private def showValueParams(ps: Seq[ParameterList])(implicit nesting: Int): String =
     ps.map(pl =>
       pl.parameters.map(mp =>
-        mp.name + ": " + showParameterModifier(showType(mp.tpe), mp.modifier) + (if (mp.hasDefault) "= ..." else "")
-      ).mkString(if (pl.isImplicit) "(implicit " else "(", ", ", ")")
-    ).mkString("")
+        mp.name + ": " + showParameterModifier(showType(mp.tpe), mp.modifier) + (if (mp.hasDefault) "= ..." else "")).mkString(if (pl.isImplicit) "(implicit " else "(", ", ", ")")).mkString("")
 
   private def showParameterModifier(base: String, pm: ParameterModifier): String = pm match {
     case ParameterModifier.Plain    => base
