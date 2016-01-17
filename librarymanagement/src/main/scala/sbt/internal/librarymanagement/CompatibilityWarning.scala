@@ -1,5 +1,8 @@
 package sbt.internal.librarymanagement
 
+import sbt.librarymanagement._
+import sbt.util.Logger
+
 private[sbt] object CompatibilityWarning {
   def apply(module: IvySbt#Module, mavenStyle: Boolean, log: Logger): Unit = {
     if (mavenStyle) {
