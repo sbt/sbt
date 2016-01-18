@@ -153,7 +153,39 @@ Build from source
 
 Globally included plugins can interfere building `sbt`; if you are getting errors building sbt, try disabling all globally included plugins and try again.
 
+Running Tests
+=============
+
+sbt has an extensive test suite of Unit tests and Integration tests!
+
+Unit / Functional tests
+-----------------------
+
+Various functional and unit tests are defined throughout the
+project. To run all of them, run `sbt test`. You can run a single test
+suite with `sbt testOnly`
+
+Integration tests
+-----------------
+
+Scripted integration tests reside in `sbt/src/sbt-test` and are
+written using the same testing infrastructure sbt plugin authors can
+use to test their own plugins with sbt. You can read more about this
+style of tests [here](http://eed3si9n.com/testing-sbt-plugins).
+
+You can run the integration tests with the `sbt scripted` sbt
+command. To run a single test, such as the test in
+`sbt/src/sbt-test/project/global-plugin`, simply run:
+
+    sbt scripted project/global-plugin
+
+Please note that these tests run PAINFULLY slow if the version set in
+`build.sbt` is set to SNAPSHOT, as every time the scripted test boots
+up a test instance of sbt, remote mirrors are scanned for possible
+updates. It is recommended that you set the version suffix to
+`-devel`, as in `0.13.10-devel`.
+
 Building Documentation
-----------------------
+======================
 
 The scala-sbt.org site documentation is a separate project [website](https://github.com/sbt/website). Follow [the steps in the README](https://github.com/sbt/website#scala-sbtorg) to generate the documentation.
