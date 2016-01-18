@@ -403,7 +403,11 @@ object Defaults extends BuildCommon {
     def file(id: String) = files(id).headOption getOrElse sys.error(s"Missing ${id}.jar")
     val allFiles = toolReport.modules.flatMap(_.artifacts.map(_._2))
     val libraryJar = file(ScalaArtifacts.LibraryID)
-    val compilerJar = file(ScalaArtifacts.CompilerID)
+    val compilerJar =
+      if (ScalaInstance.isDotty(scalaVersion.value))
+        file(ScalaArtifacts.dottyID(scalaBinaryVersion.value))
+      else
+        file(ScalaArtifacts.CompilerID)
     val otherJars = allFiles.filterNot(x => x == libraryJar || x == compilerJar)
     new ScalaInstance(scalaVersion.value, makeClassLoader(state.value)(libraryJar :: compilerJar :: otherJars.toList), libraryJar, compilerJar, otherJars.toArray, None)
   }
@@ -1268,8 +1272,11 @@ object Classpaths {
       val pluginAdjust = if (sbtPlugin.value) sbtDependency.value.copy(configurations = Some(Provided.name)) +: base else base
       if (scalaHome.value.isDefined || ivyScala.value.isEmpty || !managedScalaInstance.value)
         pluginAdjust
-      else
-        ScalaArtifacts.toolDependencies(scalaOrganization.value, scalaVersion.value) ++ pluginAdjust
+      else {
+        val version = scalaVersion.value
+        val isDotty = ScalaInstance.isDotty(version)
+        ScalaArtifacts.toolDependencies(scalaOrganization.value, version, isDotty) ++ pluginAdjust
+      }
     }
   )
   @deprecated("Split into ivyBaseSettings and jvmBaseSettings.", "0.13.2")
@@ -1402,6 +1409,7 @@ object Classpaths {
     val logicalClock = LogicalClock(st.hashCode)
     val depDir = dependencyCacheDirectory.value
     val uc0 = updateConfiguration.value
+    val ms = publishMavenStyle.value
     // Normally, log would capture log messages at all levels.
     // Ivy logs are treated specially using sbt.UpdateConfiguration.logging.
     // This code bumps up the sbt.UpdateConfiguration.logging to Full when logLevel is Debug.
@@ -1417,17 +1425,17 @@ object Classpaths {
     cachedUpdate(s.cacheDirectory / updateCacheName.value, show, ivyModule.value, uc, transform,
       skip = (skip in update).value, force = isRoot || forceUpdateByTime, depsUpdated = depsUpdated,
       uwConfig = uwConfig, logicalClock = logicalClock, depDir = Some(depDir),
-      ewo = ewo, log = s.log)
+      ewo = ewo, mavenStyle = ms, log = s.log)
   }
   @deprecated("Use cachedUpdate with the variant that takes unresolvedHandler instead.", "0.13.6")
   def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration,
     transform: UpdateReport => UpdateReport, skip: Boolean, force: Boolean, depsUpdated: Boolean, log: Logger): UpdateReport =
     cachedUpdate(cacheFile, label, module, config, transform, skip, force, depsUpdated,
-      UnresolvedWarningConfiguration(), LogicalClock.unknown, None, EvictionWarningOptions.empty, log)
+      UnresolvedWarningConfiguration(), LogicalClock.unknown, None, EvictionWarningOptions.empty, true, log)
   private[sbt] def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration,
     transform: UpdateReport => UpdateReport, skip: Boolean, force: Boolean, depsUpdated: Boolean,
     uwConfig: UnresolvedWarningConfiguration, logicalClock: LogicalClock, depDir: Option[File],
-    ewo: EvictionWarningOptions, log: Logger): UpdateReport =
+    ewo: EvictionWarningOptions, mavenStyle: Boolean, log: Logger): UpdateReport =
     {
       implicit val updateCache = updateIC
       type In = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
@@ -1446,6 +1454,7 @@ object Classpaths {
           val ew = EvictionWarning(module, ewo, result, log)
           ew.lines foreach { log.warn(_) }
           ew.infoAllTheThings foreach { log.info(_) }
+          val cw = CompatibilityWarning(module, mavenStyle, log)
           result
       }
       def uptodate(inChanged: Boolean, out: UpdateReport): Boolean =

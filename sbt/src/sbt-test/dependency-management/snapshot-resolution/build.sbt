@@ -25,8 +25,8 @@ lazy val common = project.
           case _ => false  // TODO - Handle chain repository?
         }
       case _ => true
-    }),
-    updateOptions := updateOptions.value.withLatestSnapshots(true)
+    })
+    // updateOptions := updateOptions.value.withLatestSnapshots(true)
   )
 
 lazy val dependent = project.
@@ -37,9 +37,9 @@ lazy val dependent = project.
     // Ignore the inter-project resolver, so we force to look remotely.
     resolvers += sharedResolver,
     fullResolvers := fullResolvers.value.filterNot(_==projectResolver.value),
-    libraryDependencies += "com.badexample" % "badexample" % "1.0-SNAPSHOT",
+    libraryDependencies += "com.badexample" % "badexample" % "1.0-SNAPSHOT"
     // Setting this to false fails the test
-    updateOptions := updateOptions.value.withLatestSnapshots(true)
+    // updateOptions := updateOptions.value.withLatestSnapshots(true)
   )
 
 TaskKey[Unit]("dumpResolvers") := {
