@@ -12,6 +12,7 @@
   [@hgiddens]: https://github.com/hgiddens
   [@DavidPerezIngeniero]: https://github.com/DavidPerezIngeniero
   [@romanowski]: https://github.com/romanowski
+  [@timcharper]: https://github.com/timcharper
   [2302]: https://github.com/sbt/sbt/issues/2302
   [2303]: https://github.com/sbt/sbt/pull/2303
   [1967]: https://github.com/sbt/sbt/issues/1967
@@ -71,6 +72,8 @@
   [1616]: https://github.com/sbt/sbt/issues/1616
   [2313]: https://github.com/sbt/sbt/pull/2313
   [2343]: https://github.com/sbt/sbt/pull/2343
+  [2120]: https://github.com/sbt/sbt/issues/2120
+  [2399]: https://github.com/sbt/sbt/pull/2399
 
 ### Fixes with compatibility implications
 
@@ -128,6 +131,7 @@
 - Fixes launcher configuration to add `sbt-ivy-snapshots` repository to resolve nightly builds. [@eed3si9n][@eed3si9n]
 - Fixes performance issues during tree traversal in the incremental compiler. [#2343][2343] by [@adriaanm][@adriaanm]
 - Fixes the tracking of self types and F-bounded existential types in the incremental compiler. [#2343][2343] by [@adriaanm][@adriaanm]
+- Fixes autoImports for AutoPlugins for global configuration files. [#2120][2120]/[#2399][2399] by [@timcharper][@timcharper]
 
 ### Def.settings
 

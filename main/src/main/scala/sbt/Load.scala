@@ -74,7 +74,10 @@ object Load {
   def buildGlobalSettings(base: File, files: Seq[File], config: sbt.LoadBuildConfiguration): ClassLoader => Seq[Setting[_]] =
     {
       val eval = mkEval(data(config.globalPluginClasspath), base, defaultEvalOptions)
-      val imports = BuildUtil.baseImports ++ BuildUtil.importAllRoot(config.globalPluginNames)
+
+      val imports = BuildUtil.baseImports ++
+        config.detectedGlobalPlugins.imports
+
       loader => {
         val loaded = EvaluateConfigurations(eval, files, imports)(loader)
         // TODO - We have a potential leak of config-classes in the global directory right now.
@@ -701,10 +704,13 @@ object Load {
     loadedPlugins: sbt.LoadedPlugins,
     eval: () => Eval,
     memoSettings: mutable.Map[File, LoadedSbtFile]): DiscoveredProjects = {
+
     // Default sbt files to read, if needed
     lazy val defaultSbtFiles = configurationSources(projectBase)
+
     // Classloader of the build
     val loader = loadedPlugins.loader
+
     // How to load an individual file for use later.
     // TODO - We should import vals defined in other sbt files here, if we wish to
     // share.  For now, build.sbt files have their own unique namespace.
@@ -713,11 +719,13 @@ object Load {
     // How to merge SbtFiles we read into one thing
     def merge(ls: Seq[LoadedSbtFile]): LoadedSbtFile = (LoadedSbtFile.empty /: ls) { _ merge _ }
     // Loads a given file, or pulls from the cache.
+
     def memoLoadSettingsFile(src: File): LoadedSbtFile = memoSettings.getOrElse(src, {
       val lf = loadSettingsFile(src)
       memoSettings.put(src, lf.clearProjects) // don't load projects twice
       lf
     })
+
     // Loads a set of sbt files, sorted by their lexical name (current behavior of sbt).
     def loadFiles(fs: Seq[File]): LoadedSbtFile =
       merge(fs.sortBy(_.getName).map(memoLoadSettingsFile))
@@ -954,6 +962,19 @@ final case class LoadBuildConfiguration(
     log: Logger) {
   lazy val (globalPluginClasspath, globalPluginLoader) = Load.pluginDefinitionLoader(this, Load.globalPluginClasspath(globalPlugin))
   lazy val globalPluginNames = if (globalPluginClasspath.isEmpty) Nil else Load.getPluginNames(globalPluginClasspath, globalPluginLoader)
+
+  private[sbt] lazy val globalPluginDefs = {
+    val pluginData = globalPlugin match {
+      case Some(x) => PluginData(x.data.fullClasspath, x.data.internalClasspath, Some(x.data.resolvers), Some(x.data.updateReport), Nil)
+      case None    => PluginData(globalPluginClasspath, Nil, None, None, Nil)
+    }
+    val baseDir = globalPlugin match {
+      case Some(x) => x.base
+      case _       => stagingDirectory
+    }
+    Load.loadPluginDefinition(baseDir, this, pluginData)
+  }
+  lazy val detectedGlobalPlugins = globalPluginDefs.detected
 }
 
 final class IncompatiblePluginsException(msg: String, cause: Throwable) extends Exception(msg, cause)
