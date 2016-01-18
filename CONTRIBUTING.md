@@ -149,6 +149,10 @@ Build from source
 
 4. If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `0.13.10-SNAPSHOT`.
 
+## Diagnosing build failures
+
+Globally included plugins can interfere building `sbt`; if you are getting errors building sbt, try disabling all globally included plugins and try again.
+
 Building Documentation
 ----------------------
 
