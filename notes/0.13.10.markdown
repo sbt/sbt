@@ -11,6 +11,7 @@
   [@fkorotkov]: http://github.com/fkorotkov
   [@hgiddens]: https://github.com/hgiddens
   [@DavidPerezIngeniero]: https://github.com/DavidPerezIngeniero
+  [@timcharper]: https://github.com/timcharper
   [2302]: https://github.com/sbt/sbt/issues/2302
   [2303]: https://github.com/sbt/sbt/pull/2303
   [1967]: https://github.com/sbt/sbt/issues/1967
@@ -62,6 +63,8 @@
   [1968]: https://github.com/sbt/sbt/issues/1968
   [2264]: https://github.com/sbt/sbt/issues/2264
   [2172]: https://github.com/sbt/sbt/pull/2172
+  [2120]: https://github.com/sbt/sbt/issues/2120
+  [2399]: https://github.com/sbt/sbt/pull/2399
 
 ### Fixes with compatibility implications
 
@@ -109,6 +112,7 @@
 - Fixes `JavaErrorParser` to parse non-compile-errors [#2256][2256]/[#2272][2272] by [@Duhemm][@Duhemm]
 
 - Fixes task scheduling performance on large builds by skipping checks in `sbt.Execute`. [#2302][2302]/[#2303][2303] by [@jrudolph][@jrudolph]
+- Fixes autoImports for AutoPlugins for global configuration files. [#2120][2120]/[#2399][2399] by [@timcharper][@timcharper]
 
 ### Def.settings
 
