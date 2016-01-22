@@ -9,5 +9,9 @@ notifications:
   email:
     - qbranch@typesafe.com
 before_install:
- - sudo apt-get update -qq
- - sudo apt-get install -qq rpm 
+  - cat /etc/hosts # optionally check the content *before*
+  - sudo hostname "$(hostname | cut -c1-63)"
+  - sed -e "s/^\\(127\\.0\\.0\\.1.*\\)/\\1 $(hostname | cut -c1-63)/" /etc/hosts | sudo tee /etc/hosts
+  - cat /etc/hosts # optionally check the content *after*
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq rpm
