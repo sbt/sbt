@@ -90,17 +90,17 @@
 
 ### Fixes with compatibility implications
 
-- sbt 0.13.10 adds a new setting `useJCenter`, which is set to `false` by default. When set to `true`, JCenter will be placed as the first external resolver to find library dependencies. [#2217][2217] by [@eed3si9n][@eed3si9n]
+- JCenter is now opt-in. A new setting `useJCenter` can be set to `true` to re-include it, as the first external resolver to find library dependencies. [#2217][2217] by [@eed3si9n][@eed3si9n]
 - Adds `withInterProjectFirst` to the update option, which is enabled by default. When set to `true`, `inter-project` resolver will be prioritized above all resolvers and Ivy cache. [#1827][1827] by [@eed3si9n][@eed3si9n]
 - Fixes update option's `withLatestSnapshots` so it handles modules without an artifact. This flag will be enabled by default.
   [#1514][1514]/[#1616][1616]/[#2313][2313] by [@eed3si9n][@eed3si9n]
-- sbt will no longer pass `-J<flag>` options to the local Java compiler. [#1968][1968]/[#2272][2272] by [@Duhemm][@Duhemm]
+- No longer passes `-J<flag>` options to the local Java compiler. [#1968][1968]/[#2272][2272] by [@Duhemm][@Duhemm]
 
 ### Improvements
 
 - Adds configurable compiler bridge. See below.
-- sbt is now aware of [Dotty][Dotty]. See below
-- Inter-project dependency tracking. See below.
+- Adds initial support for [Dotty][Dotty]. See below
+- Adds settings for granular inter-project dependency tracking. See below.
 - Scala version used by the build is updated to 2.10.6. [#2311][2311] by [@eed3si9n][@eed3si9n]
 - If `publishMavenStyle` is `true`, `update` task warns when it sees intransitive dependencies, which do not translate to Maven. [#2127][2127] by [@jsuereth][@jsuereth]
 - Adds `Def.settings`, which facilitates mixing settings with seq of settings. See below.
@@ -108,7 +108,7 @@
 - Hides the stack trace on compilation error in build definition. [#2071][2071]/[#2091][2091] by [@Duhemm][@Duhemm]
 - Makes the dummy `Logger.Null` public. [#2094][2094] by [@pdalpra][@pdalpra]
 - Uses diagnostic classes to get lines contents in local Java compiler. [#2108][2108]/[#2201][2201] by [@fkorotkov][@fkorotkov]
-- Logs javaOptions used when forking. [#2087][2087]/[#2103][2103] by [@pdalpra][@pdalpra]
+- Adds logging of javaOptions. [#2087][2087]/[#2103][2103] by [@pdalpra][@pdalpra]
 - Warns when javaOptions are defined but fork is set to false. [#2041][2041]/[#2103][2103] by [@pdalpra][@pdalpra]
 - Adds an `Append.Sequence` instance for `List` to allow `+=`/`++=` on `developers` setting. [#2107][2107]/[#2114][2114] by [@pdalpra][@pdalpra]
 - Drops `sealed` from the typeclasses in `Append`. [#2322][2322] by [@dwijnand][@dwijnand]
@@ -124,7 +124,7 @@
 - Fixes the false positive of inconsistent duplicate warnings. [#1933][1933]/[#2258][2258] by
   [@Duhemm][@Duhemm]
 - Fixes task scheduling performance on large builds by skipping checks in `sbt.Execute`. [#2302][2302]/[#2303][2303] by [@jrudolph][@jrudolph]
-- Incremental compiler misses change to value class, and results to NoSuchMethodError at runtime [#1171][1171]
+- Fixes changes in value classes by registering signatures of method before and after erasure. [#1171][1171]
 - Updated Ivy to merge IVY-1526 fix. [sbt/ivy#14][14]/[#2118][2118] by [@jsuereth][@jsuereth]
 - Fixes `updateClassifiers` downloading updated snapshot sources and docs.
   [#1750][1750]/[sbt/ivy#17][17]/[#2163][2163]/[sbt/ivy#18][18]/[#2186][2186] by [@dwijnand][@dwijnand]
