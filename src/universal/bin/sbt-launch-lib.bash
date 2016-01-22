@@ -76,7 +76,9 @@ get_mem_opts () {
   # if we detect any of these settings in ${JAVA_OPTS} we need to NOT output our settings.
   # The reason is the Xms/Xmx, if they don't line up, cause errors.
   if [[ "${JAVA_OPTS}" == *-Xmx* ]] || [[ "${JAVA_OPTS}" == *-Xms* ]] || [[ "${JAVA_OPTS}" == *-XX:MaxPermSize* ]] || [[ "${JAVA_OPTS}" == *-XX:MaxMetaspaceSize* ]] || [[ "${JAVA_OPTS}" == *-XX:ReservedCodeCacheSize* ]]; then
-     echo ""
+    echo ""
+  elif [[ "${SBT_OPTS}" == *-Xmx* ]] || [[ "${SBT_OPTS}" == *-Xms* ]] || [[ "${SBT_OPTS}" == *-XX:MaxPermSize* ]] || [[ "${SBT_OPTS}" == *-XX:MaxMetaspaceSize* ]] || [[ "${SBT_OPTS}" == *-XX:ReservedCodeCacheSize* ]]; then
+    echo ""
   else
     # a ham-fisted attempt to move some memory settings in concert
     # so they need not be messed around with individually.
