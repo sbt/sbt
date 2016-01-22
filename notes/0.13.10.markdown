@@ -117,14 +117,13 @@
 - Adds `Resolver.bintrayIvyRepo(owner, repo)`. [#2285][2285] by [@dwijnand][@dwijnand]
 - Non-static annotation changes are no longer tracked by the incremental compiler. [#2343][2343] by [@romanowski][@romanowski]
 - Reduces the memory usage of API info extraction in the incremental compiler. [#2343][2343] by [@adriaanm][@adriaanm]
-- Register signatures of method before and after erasure if they involve value classes [#2261][2261] by [@Duhemm][@Duhemm]
 
 ### Bug fixes
 
 - Fixes the false positive of inconsistent duplicate warnings. [#1933][1933]/[#2258][2258] by
   [@Duhemm][@Duhemm]
 - Fixes task scheduling performance on large builds by skipping checks in `sbt.Execute`. [#2302][2302]/[#2303][2303] by [@jrudolph][@jrudolph]
-- Fixes changes in value classes by registering signatures of method before and after erasure. [#1171][1171]
+- Fixes changes in value classes by registering signatures of method before and after erasure. [#1171][1171]/[#2261][2261] by [@Duhemm][@Duhemm]
 - Updated Ivy to merge IVY-1526 fix. [sbt/ivy#14][14]/[#2118][2118] by [@jsuereth][@jsuereth]
 - Fixes `updateClassifiers` downloading updated snapshot sources and docs.
   [#1750][1750]/[sbt/ivy#17][17]/[#2163][2163]/[sbt/ivy#18][18]/[#2186][2186] by [@dwijnand][@dwijnand]
