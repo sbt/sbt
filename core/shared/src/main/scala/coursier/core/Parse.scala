@@ -10,6 +10,21 @@ object Parse {
     else Some(Version(s))
   }
 
+  def ivyLatestSubRevisionInterval(s: String): Option[VersionInterval] =
+    if (s.endsWith(".+")) {
+      for {
+        from <- version(s.stripSuffix(".+"))
+        if from.rawItems.nonEmpty
+        last <- Some(from.rawItems.last).collect { case n: Version.Numeric => n }
+        // a bit loose, but should do the job
+        if from.repr.endsWith(last.repr)
+        to <- version(from.repr.stripSuffix(last.repr) + last.next.repr)
+        // the contrary would mean something went wrong in the loose substitution above
+        if from.rawItems.init == to.rawItems.init
+      } yield VersionInterval(Some(from), Some(to), fromIncluded = true, toIncluded = false)
+    } else
+      None
+
   def versionInterval(s: String): Option[VersionInterval] = {
     for {
       fromIncluded <- if (s.startsWith("[")) Some(true) else if (s.startsWith("(")) Some(false) else None
@@ -28,6 +43,7 @@ object Parse {
     def noConstraint = if (s.isEmpty) Some(VersionConstraint.None) else None
 
     noConstraint
+      .orElse(ivyLatestSubRevisionInterval(s).map(VersionConstraint.Interval))
       .orElse(version(s).map(VersionConstraint.Preferred))
       .orElse(versionInterval(s).map(VersionConstraint.Interval))
   }
