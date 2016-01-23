@@ -188,7 +188,7 @@ You can run the integration tests with the `sbt scripted` sbt
 command. To run a single test, such as the test in
 `sbt/src/sbt-test/project/global-plugin`, simply run:
 
-    sbt scripted project/global-plugin
+    sbt "scripted project/global-plugin"
 
 Please note that these tests run PAINFULLY slow if the version set in
 `build.sbt` is set to SNAPSHOT, as every time the scripted test boots
