@@ -66,7 +66,7 @@ object CentralTests extends TestSuite {
         .distinct
 
       for (((e, r), idx) <- expected.zip(result).zipWithIndex if e != r)
-        println(s"Line $idx:\n  expected: $e\n  got:$r")
+        println(s"Line $idx:\n  expected: $e\n  got:      $r")
 
       assert(result == expected)
     }
