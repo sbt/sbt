@@ -122,18 +122,23 @@ object Cache {
         logger.foreach(_.downloadingArtifact(url, file))
 
         val res =
-          try f
-          catch { case e: Exception =>
-            logger.foreach(_.downloadedArtifact(url, success = false))
-            throw e
+          try \/-(f)
+          catch {
+            case nfe: FileNotFoundException if nfe.getMessage != null =>
+              logger.foreach(_.downloadedArtifact(url, success = false))
+              -\/(-\/(FileError.NotFound(nfe.getMessage)))
+            case e: Exception =>
+              logger.foreach(_.downloadedArtifact(url, success = false))
+              throw e
           }
           finally {
             urlLocks.remove(url)
           }
 
-        logger.foreach(_.downloadedArtifact(url, success = true))
+        for (res0 <- res)
+          logger.foreach(_.downloadedArtifact(url, success = res0.isRight))
 
-        res
+        res.merge
       } else
         -\/(FileError.ConcurrentDownload(url))
     }
