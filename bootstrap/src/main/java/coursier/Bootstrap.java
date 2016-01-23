@@ -8,7 +8,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.net.URLConnection;
 import java.nio.file.Files;
 import java.security.CodeSource;
@@ -170,8 +169,6 @@ public class Bootstrap {
         String mainClass0 = System.getProperty("bootstrap.mainClass");
         String jarDir0 = System.getProperty("bootstrap.jarDir");
 
-        boolean prependClasspath = Boolean.parseBoolean(System.getProperty("bootstrap.prependClasspath", "false"));
-
         final File jarDir = new File(jarDir0);
 
         if (jarDir.exists()) {
@@ -267,7 +264,7 @@ public class Bootstrap {
             parentClassLoader = new IsolatedClassLoader(contextURLs, parentClassLoader, new String[]{ isolationID });
         }
 
-        URLClassLoader classLoader = new URLClassLoader(localURLs.toArray(new URL[localURLs.size()]), parentClassLoader);
+        ClassLoader classLoader = new BootstrapClassLoader(localURLs.toArray(new URL[localURLs.size()]), parentClassLoader);
 
         Class<?> mainClass = null;
         Method mainMethod = null;
@@ -287,14 +284,6 @@ public class Bootstrap {
         }
 
         List<String> userArgs0 = new ArrayList<>();
-
-        if (prependClasspath) {
-            for (URL url : localURLs) {
-                assert url.getProtocol().equals("file");
-                userArgs0.add("-B");
-                userArgs0.add(url.getPath());
-            }
-        }
 
         for (int i = 0; i < args.length; i++)
             userArgs0.add(args[i]);
