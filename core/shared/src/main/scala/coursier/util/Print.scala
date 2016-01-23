@@ -1,20 +1,28 @@
 package coursier.util
 
-import coursier.core.{ Orders, Dependency }
+import coursier.core.{Module, Project, Orders, Dependency}
 
 object Print {
 
   def dependency(dep: Dependency): String =
     s"${dep.module}:${dep.version}:${dep.configuration}"
 
-  def dependenciesUnknownConfigs(deps: Seq[Dependency]): String = {
+  def dependenciesUnknownConfigs(deps: Seq[Dependency], projects: Map[(Module, String), Project]): String = {
+
+    val deps0 = deps.map { dep =>
+      dep.copy(
+        version = projects
+          .get(dep.moduleVersion)
+          .fold(dep.version)(_.version)
+      )
+    }
 
     val minDeps = Orders.minDependencies(
-      deps.toSet,
+      deps0.toSet,
       _ => Map.empty
     )
 
-    val deps0 = minDeps
+    val deps1 = minDeps
       .groupBy(_.copy(configuration = ""))
       .toVector
       .map { case (k, l) =>
@@ -24,7 +32,7 @@ object Print {
         (dep.module.organization, dep.module.name, dep.module.toString, dep.version)
       }
 
-    deps0.map(dependency).mkString("\n")
+    deps1.map(dependency).mkString("\n")
   }
 
 }
