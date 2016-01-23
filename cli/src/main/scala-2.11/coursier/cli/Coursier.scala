@@ -64,7 +64,7 @@ case class Resolve(
 ) extends CoursierCommand {
 
   // the `val helper = ` part is needed because of DelayedInit it seems
-  val helper = new Helper(common, remainingArgs)
+  val helper = new Helper(common, remainingArgs, printResultStdout = true)
 
 }
 

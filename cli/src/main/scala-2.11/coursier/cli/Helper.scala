@@ -58,7 +58,8 @@ object Util {
 
 class Helper(
   common: CommonOptions,
-  rawDependencies: Seq[String]
+  rawDependencies: Seq[String],
+  printResultStdout: Boolean = false
 ) {
   import common._
   import Helper.errPrintln
@@ -214,7 +215,10 @@ class Helper(
 
   val trDeps = res.minDependencies.toVector
 
-  if (verbose0 >= 0)
+  if (printResultStdout) {
+    errPrintln(s"Result:")
+    println(Print.dependenciesUnknownConfigs(trDeps))
+  } else if (verbose0 >= 0)
     errPrintln(s"Result:\n${indent(Print.dependenciesUnknownConfigs(trDeps))}")
 
   def fetch(
