@@ -143,6 +143,12 @@ object CentralTests extends TestSuite {
         extraRepo = Some(MavenRepository("https://oss.sonatype.org/content/repositories/public/"))
       )
     }
+    'parentProjectProperties - {
+      resolutionCheck(
+        Module("com.github.fommil.netlib", "all"),
+        "1.1.2"
+      )
+    }
   }
 
 }

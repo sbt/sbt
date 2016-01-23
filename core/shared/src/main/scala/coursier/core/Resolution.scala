@@ -335,7 +335,14 @@ object Resolution {
       "project.groupId"     -> project.module.organization,
       "project.artifactId"  -> project.module.name,
       "project.version"     -> project.version
-    )
+    ) ++ project.parent.toSeq.flatMap {
+      case (parModule, parVersion) =>
+        Seq(
+          "project.parent.groupId"     -> parModule.organization,
+          "project.parent.artifactId"  -> parModule.name,
+          "project.parent.version"     -> parVersion
+        )
+    }
 
     val properties = propertiesMap(properties0)
 
