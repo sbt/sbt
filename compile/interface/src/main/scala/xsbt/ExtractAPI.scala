@@ -205,14 +205,14 @@ class ExtractAPI[GlobalType <: CallbackGlobal](val global: GlobalType,
 
       val hasValueClassAsParameter: Boolean = {
         import MirrorHelper._
-        s.asMethod.paramss.flatten map (_.info) exists (t => isAnyValSubtype(t.typeSymbol))
+        s.asMethod.paramss.flatten map (_.info) exists (t => isDerivedValueClass(t.typeSymbol))
       }
 
       def hasValueClassAsReturnType(tpe: Type): Boolean = tpe match {
         case PolyType(_, base) => hasValueClassAsReturnType(base)
         case MethodType(_, resultType) => hasValueClassAsReturnType(resultType)
         case Nullary(resultType) => hasValueClassAsReturnType(resultType)
-        case resultType => isAnyValSubtype(resultType.typeSymbol)
+        case resultType => isDerivedValueClass(resultType.typeSymbol)
       }
 
       val inspectPostErasure = hasValueClassAsParameter || hasValueClassAsReturnType(viewer(in).memberInfo(s))
