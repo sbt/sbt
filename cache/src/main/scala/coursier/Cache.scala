@@ -580,21 +580,21 @@ object FileError {
     def message = s"Download error: $message0"
   }
   case class NotFound(file: String) extends FileError {
-    def message = s"$file: not found"
+    def message = s"Not found: $file"
   }
   case class ChecksumNotFound(sumType: String, file: String) extends FileError {
-    def message = s"$file: $sumType checksum not found"
+    def message = s"$sumType checksum not found: $file"
   }
   case class WrongChecksum(sumType: String, got: String, expected: String, file: String, sumFile: String) extends FileError {
-    def message = s"$file: $sumType checksum validation failed"
+    def message = s"$sumType checksum validation failed: $file"
   }
 
   sealed trait Recoverable extends FileError
   case class Locked(file: File) extends Recoverable {
-    def message = s"$file: locked"
+    def message = s"Locked: $file"
   }
   case class ConcurrentDownload(url: String) extends Recoverable {
-    def message = s"$url: concurrent download"
+    def message = s"Concurrent download: $url"
   }
 
 }

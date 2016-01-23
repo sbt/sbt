@@ -197,14 +197,14 @@ class Helper(
   }
 
   exitIf(res.errors.nonEmpty) {
-    s"\n${res.errors.size} error(s):\n" +
+    s"\nError:\n" +
     res.errors.map { case (dep, errs) =>
       s"  ${dep.module}:${dep.version}:\n${errs.map("    " + _.replace("\n", "    \n")).mkString("\n")}"
     }.mkString("\n")
   }
 
   exitIf(res.conflicts.nonEmpty) {
-    s"${res.conflicts.size} conflict(s):\n${Print.dependenciesUnknownConfigs(res.conflicts.toVector, projCache)}"
+    s"\nConflict:\n${Print.dependenciesUnknownConfigs(res.conflicts.toVector, projCache)}"
   }
 
   val trDeps = res.minDependencies.toVector
@@ -277,7 +277,7 @@ class Helper(
     logger.foreach(_.stop())
 
     exitIf(errors.nonEmpty) {
-      s"  ${errors.size} error(s):\n" +
+      s"  Error:\n" +
       errors.map { case (artifact, error) =>
         s"${artifact.url}: $error"
       }.mkString("\n")
