@@ -4,8 +4,14 @@ import coursier.core.{Module, Project, Orders, Dependency}
 
 object Print {
 
-  def dependency(dep: Dependency): String =
-    s"${dep.module}:${dep.version}:${dep.configuration}"
+  def dependency(dep: Dependency): String = {
+    val exclusionsStr = dep.exclusions.toVector.sorted.map {
+      case (org, name) =>
+        s"\n  exclude($org, $name)"
+    }.mkString
+
+    s"${dep.module}:${dep.version}:${dep.configuration}$exclusionsStr"
+  }
 
   def dependenciesUnknownConfigs(deps: Seq[Dependency], projects: Map[(Module, String), Project]): String = {
 
