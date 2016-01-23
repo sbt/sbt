@@ -320,7 +320,7 @@ case class Launch(
     }
   val method =
     try cls.getMethod("main", classOf[Array[String]])
-    catch { case e: NoSuchMethodError =>
+    catch { case e: NoSuchMethodException =>
       Helper.errPrintln(s"Error: method main not found in $mainClass0")
       sys.exit(255)
     }
