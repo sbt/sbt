@@ -344,7 +344,7 @@ case class Bootstrap(
     downloadDir: String,
   @Short("f")
     force: Boolean,
-  @Help("Set environment variables in the generated launcher. No escaping is done. Value is simply put between quotes in the launcher preamble.")
+  @Help("Set Java properties in the generated launcher.")
   @Value("key=value")
   @Short("P")
     property: List[String],
