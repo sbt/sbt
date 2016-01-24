@@ -45,17 +45,6 @@ abstract class Compat {
   val Nullary = global.NullaryMethodType
   val ScalaObjectClass = definitions.ScalaObjectClass
 
-  // `afterPostErasure` doesn't exist in Scala < 2.10
-  implicit def withAfterPostErasure(global: Global): WithAfterPostErasure = new WithAfterPostErasure(global)
-  class WithAfterPostErasure(global: Global) {
-    def afterPostErasure[T](op: => T): T = op
-  }
-  // `exitingPostErasure` was called `afterPostErasure` in 2.10
-  implicit def withExitingPostErasure(global: Global): WithExitingPostErasure = new WithExitingPostErasure(global)
-  class WithExitingPostErasure(global: Global) {
-    def exitingPostErasure[T](op: => T): T = global afterPostErasure op
-  }
-
   private[this] final class MiscCompat {
     // in 2.9, nme.LOCALCHILD was renamed to tpnme.LOCAL_CHILD
     def tpnme = nme
