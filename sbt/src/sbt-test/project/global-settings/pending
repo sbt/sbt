@@ -1,0 +1,3 @@
+# This test is marked pending because sbt.globalsettingfix flag is off by default
+# See https://github.com/sbt/sbt/issues/2415
+> name

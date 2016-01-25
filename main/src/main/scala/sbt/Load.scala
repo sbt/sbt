@@ -71,12 +71,19 @@ object Load {
         if (files.isEmpty || base == globalBase) const(Nil) else buildGlobalSettings(globalBase, files, config)
       config.copy(injectSettings = config.injectSettings.copy(projectLoaded = compiled))
     }
+  // We are hiding a bug fix on global setting that was not importing auto imports.
+  // Because fixing this via https://github.com/sbt/sbt/pull/2399
+  // breaks the source compatibility: https://github.com/sbt/sbt/issues/2415
+  @deprecated("Remove this when we can break source compatibility.", "0.13.10")
+  private[sbt] def useAutoImportInGlobal = sys.props.get("sbt.global.autoimport") map { _.toLowerCase == "true" } getOrElse false
   def buildGlobalSettings(base: File, files: Seq[File], config: sbt.LoadBuildConfiguration): ClassLoader => Seq[Setting[_]] =
     {
       val eval = mkEval(data(config.globalPluginClasspath), base, defaultEvalOptions)
 
       val imports = BuildUtil.baseImports ++
-        config.detectedGlobalPlugins.imports
+        (// when we can beak the source compat, remove this if and use config.detectedGlobalPlugins.imports
+        if (useAutoImportInGlobal) config.detectedGlobalPlugins.imports
+        else BuildUtil.importAllRoot(config.globalPluginNames))
 
       loader => {
         val loaded = EvaluateConfigurations(eval, files, imports)(loader)

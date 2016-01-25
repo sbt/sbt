@@ -95,6 +95,7 @@
 - Fixes update option's `withLatestSnapshots` so it handles modules without an artifact. This flag will be enabled by default.
   [#1514][1514]/[#1616][1616]/[#2313][2313] by [@eed3si9n][@eed3si9n]
 - No longer passes `-J<flag>` options to the local Java compiler. [#1968][1968]/[#2272][2272] by [@Duhemm][@Duhemm]
+- Fixes auto imports for auto plugins in global configuration files. Because this is *not* source compatible with 0.13.x, the fix is enabled only when `sbt.global.autoimport` flag is `true`. [#2120][2120]/[#2399][2399] by [@timcharper][@timcharper]
 
 ### Improvements
 
@@ -148,7 +149,6 @@
 - Fixes launcher configuration to add `sbt-ivy-snapshots` repository to resolve nightly builds. [@eed3si9n][@eed3si9n]
 - Fixes performance issues during tree traversal in the incremental compiler. [#2343][2343] by [@adriaanm][@adriaanm]
 - Fixes the tracking of self types and F-bounded existential types in the incremental compiler. [#2343][2343] by [@adriaanm][@adriaanm]
-- Fixes autoImports for AutoPlugins for global configuration files. [#2120][2120]/[#2399][2399] by [@timcharper][@timcharper]
 
 ### Configurable Scala compiler bridge
 
