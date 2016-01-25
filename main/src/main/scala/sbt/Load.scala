@@ -75,7 +75,7 @@ object Load {
   // Because fixing this via https://github.com/sbt/sbt/pull/2399
   // breaks the source compatibility: https://github.com/sbt/sbt/issues/2415
   @deprecated("Remove this when we can break source compatibility.", "0.13.10")
-  private[sbt] def useAutoImportInGlobal = sys.props.get("sbt.globalsettingfix") map { _.toLowerCase == "true" } getOrElse false
+  private[sbt] def useAutoImportInGlobal = sys.props.get("sbt.global.autoimport") map { _.toLowerCase == "true" } getOrElse false
   def buildGlobalSettings(base: File, files: Seq[File], config: sbt.LoadBuildConfiguration): ClassLoader => Seq[Setting[_]] =
     {
       val eval = mkEval(data(config.globalPluginClasspath), base, defaultEvalOptions)
