@@ -112,7 +112,7 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, handl
           testFailed()
           e.getCause match {
             case null | _: java.net.SocketException => buffered.error("   " + e.getMessage)
-            case _                                  => e.printStackTrace
+            case _                                  => if (!pending) e.printStackTrace
           }
           if (!pending) throw e
         case e: PendingTestSuccessException =>
