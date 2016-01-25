@@ -25,6 +25,7 @@ final class IncHandler(directory: File, scriptedLog: Logger) extends BridgeProvi
   type IncCommand = (List[String], IncInstance) => Unit
   val compiler = new IncrementalCompilerImpl
   val scalaVersion = scala.util.Properties.versionNumberString
+  val si = scalaInstance(scalaVersion)
   val maxErrors = 100
   val dc = f1[File, DefinesClass] { f =>
     val x = Locate.definesClass(f)
@@ -114,7 +115,7 @@ final class IncHandler(directory: File, scriptedLog: Logger) extends BridgeProvi
       val reporter = new LoggerReporter(maxErrors, scriptedLog, identity)
       val extra = Array(t2(("key", "value")))
       val setup = compiler.setup(analysisMap, dc, skip = false, cacheFile, CompilerCache.fresh, incOptions, reporter, extra)
-      val classpath = (si.allJars.toList ++ unmanagedJars :+ classesDir).toArray
+      val classpath = (i.si.allJars.toList ++ unmanagedJars :+ classesDir).toArray
       val in = compiler.inputs(classpath, scalaSources.toArray, classesDir, Array(), Array(), maxErrors, Array(),
         CompileOrder.Mixed, cs, setup, prev)
       val result = compiler.compile(in, log)
@@ -142,7 +143,6 @@ final class IncHandler(directory: File, scriptedLog: Logger) extends BridgeProvi
   private[this] def onNewIncInstance(f: IncInstance => Unit): Option[IncInstance] =
     {
       val compilerBridge = getCompilerBridge(directory, Logger.Null, scalaVersion)
-      val si = scalaInstance(scalaVersion)
       val sc = scalaCompiler(si, compilerBridge)
       val cs = compiler.compilers(si, ClasspathOptions.boot, None, sc)
       val i = IncInstance(si, cs)
