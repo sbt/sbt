@@ -207,7 +207,7 @@ lazy val cli = project
       if (scalaVersion.value startsWith "2.10.")
         Seq()
       else
-        Seq("com.github.alexarchambault" %% "case-app" % "1.0.0-M1")
+        Seq("com.github.alexarchambault" %% "case-app" % "1.0.0-M2")
     },
     libraryDependencies ++= Seq(
       "ch.qos.logback" % "logback-classic" % "1.1.3"
