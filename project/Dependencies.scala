@@ -9,7 +9,7 @@ object Dependencies {
   lazy val scala211 = "2.11.7"
 
   // sbt modules
-  val utilVersion = "0.1.0-M5"
+  val utilVersion = "0.1.0-M8"
   val ioVersion = "1.0.0-M3"
   val incremenalcompilerVersion = "0.1.0-M1-168cb7a4877917e01917e35b9b82a62afe5c2a01"
   val librarymanagementVersion = "0.1.0-M4"
@@ -23,6 +23,7 @@ object Dependencies {
   lazy val utilRelation = "org.scala-sbt" %% "util-relation" % utilVersion
   lazy val utilLogic = "org.scala-sbt" %% "util-logic" % utilVersion
   lazy val utilTracking = "org.scala-sbt" %% "util-tracking" % utilVersion
+  lazy val utilScripted = "org.scala-sbt" %% "util-scripted" % utilVersion
   lazy val libraryManagement = "org.scala-sbt" %% "librarymanagement" % librarymanagementVersion
   lazy val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0-M1"
   lazy val rawLauncher = "org.scala-sbt" % "launcher" % "1.0.0-M1"

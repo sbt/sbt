@@ -6,7 +6,8 @@ package test
 
 import java.io.{ File, IOException }
 import xsbt.IPC
-import xsbt.test.{ StatementHandler, TestFailed }
+
+import sbt.internal.scripted.{ StatementHandler, TestFailed }
 
 import sbt.util.Logger
 import sbt.util.Logger._
