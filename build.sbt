@@ -1,7 +1,5 @@
-import sbtrelease.ReleasePlugin.ReleaseKeys.{ publishArtifactsAction, versionBump }
-import sbtrelease.Version.Bump
 
-lazy val releaseSettings = sbtrelease.ReleasePlugin.releaseSettings ++ Seq(
+lazy val releaseSettings = Seq(
   publishMavenStyle := true,
   licenses := Seq("Apache 2.0" -> url("http://opensource.org/licenses/Apache-2.0")),
   homepage := Some(url("https://github.com/alexarchambault/coursier")),
@@ -26,8 +24,6 @@ lazy val releaseSettings = sbtrelease.ReleasePlugin.releaseSettings ++ Seq(
     else
       Some("releases"  at nexus + "service/local/staging/deploy/maven2")
   },
-  versionBump := Bump.Bugfix,
-  publishArtifactsAction := PgpKeys.publishSigned.value,
   credentials += {
     Seq("SONATYPE_USER", "SONATYPE_PASS").map(sys.env.get) match {
       case Seq(Some(user), Some(pass)) =>
