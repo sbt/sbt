@@ -41,6 +41,10 @@ case class CommonOptions(
   @Value("organization:name:forcedVersion")
   @Short("V")
     forceVersion: List[String],
+  @Help("Exclude module")
+  @Value("organization:name")
+  @Short("E")
+    exclude: List[String],
   @Help("Maximum number of parallel downloads (default: 6)")
   @Short("n")
     parallel: Int = 6,

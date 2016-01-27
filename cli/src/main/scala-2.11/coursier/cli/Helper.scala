@@ -115,11 +115,6 @@ class Helper(
     s"Cannot parse dependencies:\n" + modVerErrors.map("  "+_).mkString("\n")
   }
 
-  val dependencies = moduleVersions.map {
-    case (module, version) =>
-      Dependency(module, version, configuration = "default(compile)")
-  }
-
 
   val (forceVersionErrors, forceVersions0) = Parse.moduleVersions(forceVersion)
 
@@ -136,6 +131,38 @@ class Helper(
       errPrintln(s"Warning: version of $mod forced several times, using only the last one (${forcedVersions.last})")
 
     grouped.map { case (mod, versions) => mod -> versions.last }
+  }
+
+  val (excludeErrors, excludes0) = Parse.modules(exclude)
+
+  prematureExitIf(excludeErrors.nonEmpty) {
+    s"Cannot parse excluded modules:\n" +
+    excludeErrors
+      .map("  " + _)
+      .mkString("\n")
+  }
+
+  val (excludesNoAttr, excludesWithAttr) = excludes0.partition(_.attributes.isEmpty)
+
+  prematureExitIf(excludesWithAttr.nonEmpty) {
+    s"Excluded modules with attributes not supported:\n" +
+    excludesWithAttr
+      .map("  " + _)
+      .mkString("\n")
+  }
+
+  val excludes = excludesNoAttr.map { mod =>
+    (mod.organization, mod.name)
+  }.toSet
+
+  val dependencies = moduleVersions.map {
+    case (module, version) =>
+      Dependency(
+        module,
+        version,
+        configuration = "default(compile)",
+        exclusions = excludes
+      )
   }
 
   val startRes = Resolution(
