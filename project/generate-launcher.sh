@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION=1.0.0-M4
+VERSION=1.0.0-M5
 CACHE_VERSION=v1
 
 "$(dirname "$0")/../cli/target/pack/bin/coursier" bootstrap \
