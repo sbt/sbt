@@ -210,7 +210,7 @@ case class Launch(
   }
 
   val helper = new Helper(
-    common.copy(forceVersion = common.forceVersion),
+    common,
     rawDependencies ++ isolated.rawIsolated.map { case (_, dep) => dep }
   )
 
