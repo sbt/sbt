@@ -61,12 +61,20 @@ object CentralTests extends TestSuite {
       val result = res
         .dependencies
         .toVector
-        .map(repr)
+        .map { dep =>
+          val projOpt = res.projectCache
+            .get(dep.moduleVersion)
+            .map { case (_, proj) => proj }
+          val dep0 = dep.copy(
+            version = projOpt.fold(dep.version)(_.version)
+          )
+          repr(dep0)
+        }
         .sorted
         .distinct
 
       for (((e, r), idx) <- expected.zip(result).zipWithIndex if e != r)
-        println(s"Line $idx:\n  expected: $e\n  got:$r")
+        println(s"Line $idx:\n  expected: $e\n  got:      $r")
 
       assert(result == expected)
     }
@@ -141,6 +149,33 @@ object CentralTests extends TestSuite {
         "1.2-SNAPSHOT",
         configuration = "runtime",
         extraRepo = Some(MavenRepository("https://oss.sonatype.org/content/repositories/public/"))
+      )
+    }
+    'parentProjectProperties - {
+      resolutionCheck(
+        Module("com.github.fommil.netlib", "all"),
+        "1.1.2"
+      )
+    }
+    'latestRevision - {
+      resolutionCheck(
+        Module("com.chuusai", "shapeless_2.11"),
+        "[2.2.0,2.3.0)"
+      )
+
+      resolutionCheck(
+        Module("com.chuusai", "shapeless_2.11"),
+        "2.2.+"
+      )
+
+      resolutionCheck(
+        Module("com.googlecode.libphonenumber", "libphonenumber"),
+        "[7.0,7.1)"
+      )
+
+      resolutionCheck(
+        Module("com.googlecode.libphonenumber", "libphonenumber"),
+        "7.0.+"
       )
     }
   }

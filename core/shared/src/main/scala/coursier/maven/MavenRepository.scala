@@ -261,6 +261,7 @@ case class MavenRepository(
   ): EitherT[F, String, (Artifact.Source, Project)] = {
 
     Parse.versionInterval(version)
+      .orElse(Parse.ivyLatestSubRevisionInterval(version))
       .filter(_.isValid) match {
         case None =>
           findNoInterval(module, version, fetch).map((source, _))

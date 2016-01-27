@@ -10,6 +10,10 @@ import coursier.core.compatibility._
  */
 case class Version(repr: String) extends Ordered[Version] {
   lazy val items = Version.items(repr)
+  lazy val rawItems: Seq[Version.Item] = {
+    val (first, tokens) = Version.Tokenizer(repr)
+    first +: tokens.toVector.map { case (_, item) => item }
+  }
   def compare(other: Version) = Version.listCompare(items, other.items)
   def isEmpty = items.forall(_.isEmpty)
 }
@@ -39,13 +43,20 @@ object Version {
     def compareToEmpty: Int = 1
   }
 
-  sealed trait Numeric extends Item
+  sealed trait Numeric extends Item {
+    def repr: String
+    def next: Numeric
+  }
   case class Number(value: Int) extends Numeric {
     val order = 0
+    def next: Number = Number(value + 1)
+    def repr: String = value.toString
     override def compareToEmpty = value.compare(0)
   }
   case class BigNumber(value: BigInt) extends Numeric {
     val order = 0
+    def next: BigNumber = BigNumber(value + 1)
+    def repr: String = value.toString
     override def compareToEmpty = value.compare(0)
   }
   case class Qualifier(value: String, level: Int) extends Item {

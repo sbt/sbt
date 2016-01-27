@@ -58,7 +58,8 @@ object Util {
 
 class Helper(
   common: CommonOptions,
-  rawDependencies: Seq[String]
+  rawDependencies: Seq[String],
+  printResultStdout: Boolean = false
 ) {
   import common._
   import Helper.errPrintln
@@ -168,19 +169,13 @@ class Helper(
         print.flatMap(_ => fetchQuiet(modVers))
     }
 
-  def indent(s: String): String =
-    if (s.isEmpty)
-      s
-    else
-      s.split('\n').map("  "+_).mkString("\n")
-
   if (verbose0 >= 0) {
-    errPrintln(s"Dependencies:\n${indent(Print.dependenciesUnknownConfigs(dependencies))}")
+    errPrintln(s"  Dependencies:\n${Print.dependenciesUnknownConfigs(dependencies, Map.empty)}")
 
     if (forceVersions.nonEmpty) {
-      errPrintln("Force versions:")
+      errPrintln("  Force versions:")
       for ((mod, ver) <- forceVersions.toVector.sortBy { case (mod, _) => mod.toString })
-        errPrintln(s"  $mod:$ver")
+        errPrintln(s"$mod:$ver")
     }
   }
 
@@ -202,20 +197,28 @@ class Helper(
   }
 
   exitIf(res.errors.nonEmpty) {
-    s"\n${res.errors.size} error(s):\n" +
+    s"\nError:\n" +
     res.errors.map { case (dep, errs) =>
       s"  ${dep.module}:${dep.version}:\n${errs.map("    " + _.replace("\n", "    \n")).mkString("\n")}"
     }.mkString("\n")
   }
 
   exitIf(res.conflicts.nonEmpty) {
-    s"${res.conflicts.size} conflict(s):\n${Print.dependenciesUnknownConfigs(res.conflicts.toVector)}"
+    s"\nConflict:\n${Print.dependenciesUnknownConfigs(res.conflicts.toVector, projCache)}"
   }
 
   val trDeps = res.minDependencies.toVector
 
-  if (verbose0 >= 0)
-    errPrintln(s"Result:\n${indent(Print.dependenciesUnknownConfigs(trDeps))}")
+  lazy val projCache = res.projectCache.mapValues { case (_, p) => p }
+
+  if (printResultStdout || verbose0 >= 0) {
+    errPrintln(s"  Result:")
+    val depsStr = Print.dependenciesUnknownConfigs(trDeps, projCache)
+    if (printResultStdout)
+      println(depsStr)
+    else
+      errPrintln(depsStr)
+  }
 
   def fetch(
     sources: Boolean,
@@ -226,9 +229,9 @@ class Helper(
     if (verbose0 >= 0) {
       val msg = cachePolicies match {
         case Seq(CachePolicy.LocalOnly) =>
-          "Checking artifacts"
+          "  Checking artifacts"
         case _ =>
-          "Fetching artifacts"
+          "  Fetching artifacts"
       }
 
       errPrintln(msg)
@@ -255,7 +258,7 @@ class Helper(
         None
 
     if (verbose0 >= 1 && artifacts.nonEmpty)
-      println(s"Found ${artifacts.length} artifacts")
+      println(s"  Found ${artifacts.length} artifacts")
 
     val tasks = artifacts.map(artifact =>
       (Cache.file(artifact, caches, cachePolicies.head, logger = logger, pool = pool) /: cachePolicies.tail)(
@@ -274,9 +277,9 @@ class Helper(
     logger.foreach(_.stop())
 
     exitIf(errors.nonEmpty) {
-      s"${errors.size} error(s):\n" +
+      s"  Error:\n" +
       errors.map { case (artifact, error) =>
-        s"  ${artifact.url}: $error"
+        s"${artifact.url}: $error"
       }.mkString("\n")
     }
 

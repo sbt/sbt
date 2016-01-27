@@ -8,7 +8,6 @@ CACHE_VERSION=v1
   --no-default \
   -r central \
   -D "\${user.home}/.coursier/bootstrap/$VERSION" \
-  -b \
   -f -o coursier \
   -M coursier.cli.Coursier \
   -P coursier.cache="\${user.home}/.coursier/cache/$CACHE_VERSION"

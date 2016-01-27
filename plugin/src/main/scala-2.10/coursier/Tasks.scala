@@ -295,7 +295,8 @@ object Tasks {
           throw new Exception(s"Maximum number of iteration of dependency resolution reached")
 
         if (res.conflicts.nonEmpty) {
-          println(s"${res.conflicts.size} conflict(s):\n  ${Print.dependenciesUnknownConfigs(res.conflicts.toVector)}")
+          val projCache = res.projectCache.mapValues { case (_, p) => p }
+          println(s"${res.conflicts.size} conflict(s):\n  ${Print.dependenciesUnknownConfigs(res.conflicts.toVector, projCache)}")
           throw new Exception(s"Conflict(s) in dependency resolution")
         }
 
@@ -342,7 +343,8 @@ object Tasks {
             configs
           )
 
-          val repr = Print.dependenciesUnknownConfigs(finalDeps.toVector)
+          val projCache = res.projectCache.mapValues { case (_, p) => p }
+          val repr = Print.dependenciesUnknownConfigs(finalDeps.toVector, projCache)
           println(repr.split('\n').map("  "+_).mkString("\n"))
         }
 

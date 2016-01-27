@@ -1,7 +1,7 @@
 package coursier
 package cli
 
-import java.io.{ ByteArrayOutputStream, File, IOException }
+import java.io.{ FileInputStream, ByteArrayOutputStream, File, IOException }
 import java.net.URLClassLoader
 import java.nio.file.{ Files => NIOFiles }
 import java.nio.file.attribute.PosixFilePermission
@@ -9,7 +9,10 @@ import java.util.Properties
 import java.util.zip.{ ZipEntry, ZipOutputStream, ZipInputStream }
 
 import caseapp.{ HelpMessage => Help, ValueDescription => Value, ExtraName => Short, _ }
-import coursier.util.{ Parse, ClasspathFilter }
+import coursier.util.Parse
+
+import scala.annotation.tailrec
+import scala.language.reflectiveCalls
 
 case class CommonOptions(
   @Help("Keep optional dependencies (Maven)")
@@ -61,7 +64,7 @@ case class Resolve(
 ) extends CoursierCommand {
 
   // the `val helper = ` part is needed because of DelayedInit it seems
-  val helper = new Helper(common, remainingArgs)
+  val helper = new Helper(common, remainingArgs, printResultStdout = true)
 
 }
 
@@ -161,6 +164,32 @@ case class IsolatedLoaderOptions(
 
 }
 
+object Launch {
+
+  @tailrec
+  def mainClassLoader(cl: ClassLoader): Option[ClassLoader] =
+    if (cl == null)
+      None
+    else {
+      val isMainLoader = try {
+        val cl0 = cl.asInstanceOf[Object {
+          def isBootstrapLoader: Boolean
+        }]
+
+        cl0.isBootstrapLoader
+      } catch {
+        case e: Exception =>
+          false
+      }
+
+      if (isMainLoader)
+        Some(cl)
+      else
+        mainClassLoader(cl.getParent)
+    }
+
+}
+
 case class Launch(
   @Short("M")
   @Short("main")
@@ -188,12 +217,20 @@ case class Launch(
 
   val files0 = helper.fetch(sources = false, javadoc = false)
 
+  val contextLoader = Thread.currentThread().getContextClassLoader
 
-  val parentLoader0: ClassLoader = new ClasspathFilter(
-    Thread.currentThread().getContextClassLoader,
-    Coursier.baseCp.map(new File(_)).toSet,
-    exclude = true
-  )
+  val parentLoader0: ClassLoader = Launch.mainClassLoader(contextLoader)
+    .flatMap(cl => Option(cl.getParent))
+    .getOrElse {
+      if (common.verbose0 >= 0)
+        Console.err.println(
+          "Warning: cannot find the main ClassLoader that launched coursier. " +
+          "Was coursier launched by its main launcher? " +
+          "The ClassLoader of the application that is about to be launched will be intertwined " +
+          "with the one of coursier, which may be a problem if their dependencies conflict."
+        )
+      contextLoader
+    }
 
   val (parentLoader, filteredFiles) =
     if (isolated.isolated.isEmpty)
@@ -283,7 +320,7 @@ case class Launch(
     }
   val method =
     try cls.getMethod("main", classOf[Array[String]])
-    catch { case e: NoSuchMethodError =>
+    catch { case e: NoSuchMethodException =>
       Helper.errPrintln(s"Error: method main not found in $mainClass0")
       sys.exit(255)
     }
@@ -307,10 +344,10 @@ case class Bootstrap(
     downloadDir: String,
   @Short("f")
     force: Boolean,
-  @Help(s"Internal use - prepend base classpath options to arguments (like -B jar1 -B jar2 etc.)")
-  @Short("b")
-    prependClasspath: Boolean,
-  @Help("Set environment variables in the generated launcher. No escaping is done. Value is simply put between quotes in the launcher preamble.")
+  @Help("Generate a standalone launcher, with all JARs included, instead of one downloading its dependencies on startup.")
+  @Short("s")
+    standalone: Boolean,
+  @Help("Set Java properties in the generated launcher.")
   @Value("key=value")
   @Short("P")
     property: List[String],
@@ -327,7 +364,7 @@ case class Bootstrap(
     sys.exit(255)
   }
 
-  if (downloadDir.isEmpty) {
+  if (!standalone && downloadDir.isEmpty) {
     Console.err.println(s"Error: no download dir specified. Specify one with -D or --download-dir")
     Console.err.println("E.g. -D \"\\$HOME/.app-name/jars\"")
     sys.exit(255)
@@ -381,20 +418,45 @@ case class Bootstrap(
 
   val helper = new Helper(common, remainingArgs)
 
-  val urls = helper.res.artifacts.map(_.url)
-
-  val (_, isolatedUrls) =
-    isolated.targets.foldLeft((Vector.empty[String], Map.empty[String, Seq[String]])) {
+  val (_, isolatedArtifactFiles) =
+    isolated.targets.foldLeft((Vector.empty[String], Map.empty[String, (Seq[String], Seq[File])])) {
       case ((done, acc), target) =>
         val subRes = helper.res.subset(isolated.isolatedDeps.getOrElse(target, Nil).toSet)
-        val subUrls = subRes.artifacts.map(_.url)
+        val subArtifacts = subRes.artifacts.map(_.url)
 
-        val filteredSubUrls = subUrls.diff(done)
+        val filteredSubArtifacts = subArtifacts.diff(done)
 
-        val updatedAcc = acc + (target -> filteredSubUrls)
+        def subFiles0 = helper.fetch(
+          sources = false,
+          javadoc = false,
+          subset = isolated.isolatedDeps.getOrElse(target, Seq.empty).toSet
+        )
 
-        (done ++ filteredSubUrls, updatedAcc)
+        val (subUrls, subFiles) =
+          if (standalone)
+            (Nil, subFiles0)
+          else
+            (filteredSubArtifacts, Nil)
+
+        val updatedAcc = acc + (target -> (subUrls, subFiles))
+
+        (done ++ filteredSubArtifacts, updatedAcc)
     }
+
+  val (urls, files) =
+    if (standalone)
+      (
+        Seq.empty[String],
+        helper.fetch(sources = false, javadoc = false)
+      )
+    else
+      (
+        helper.res.artifacts.map(_.url),
+        Seq.empty[File]
+      )
+
+  val isolatedUrls = isolatedArtifactFiles.map { case (k, (v, _)) => k -> v }
+  val isolatedFiles = isolatedArtifactFiles.map { case (k, (_, v)) => k -> v }
 
   val unrecognized = urls.filter(s => !s.startsWith("http://") && !s.startsWith("https://"))
   if (unrecognized.nonEmpty)
@@ -423,6 +485,15 @@ case class Bootstrap(
     outputZip.closeEntry()
   }
 
+  def putEntryFromFile(name: String, f: File): Unit = {
+    val entry = new ZipEntry(name)
+    entry.setTime(f.lastModified())
+
+    outputZip.putNextEntry(entry)
+    outputZip.write(Cache.readFullySync(new FileInputStream(f)))
+    outputZip.closeEntry()
+  }
+
   putStringEntry("bootstrap-jar-urls", urls.mkString("\n"))
 
   if (isolated.anyIsolatedDep) {
@@ -430,17 +501,26 @@ case class Bootstrap(
 
     for (target <- isolated.targets) {
       val urls = isolatedUrls.getOrElse(target, Nil)
+      val files = isolatedFiles.getOrElse(target, Nil)
       putStringEntry(s"bootstrap-isolation-$target-jar-urls", urls.mkString("\n"))
+      putStringEntry(s"bootstrap-isolation-$target-jar-resources", files.map(pathFor).mkString("\n"))
     }
   }
+
+  def pathFor(f: File) = s"jars/${f.getName}"
+
+  for (f <- files)
+    putEntryFromFile(pathFor(f), f)
+
+  putStringEntry("bootstrap-jar-resources", files.map(pathFor).mkString("\n"))
 
   val propsEntry = new ZipEntry("bootstrap.properties")
   propsEntry.setTime(time)
 
   val properties = new Properties()
   properties.setProperty("bootstrap.mainClass", mainClass)
-  properties.setProperty("bootstrap.jarDir", downloadDir)
-  properties.setProperty("bootstrap.prependClasspath", prependClasspath.toString)
+  if (!standalone)
+    properties.setProperty("bootstrap.jarDir", downloadDir)
 
   outputZip.putNextEntry(propsEntry)
   properties.store(outputZip, "")
@@ -487,27 +567,7 @@ case class Bootstrap(
 
 }
 
-case class BaseCommand(
-  @Hidden
-  @Short("B")
-    baseCp: List[String]
-) extends Command {
-  Coursier.baseCp = baseCp
-
-  // FIXME Should be in a trait in case-app
-  override def setCommand(cmd: Option[Either[String, String]]): Unit = {
-    if (cmd.isEmpty) {
-      // FIXME Print available commands too?
-      Console.err.println("Error: no command specified")
-      sys.exit(255)
-    }
-    super.setCommand(cmd)
-  }
-}
-
-object Coursier extends CommandAppOfWithBase[BaseCommand, CoursierCommand] {
+object Coursier extends CommandAppOf[CoursierCommand] {
   override def appName = "Coursier"
   override def progName = "coursier"
-
-  private[coursier] var baseCp = Seq.empty[String]
 }
