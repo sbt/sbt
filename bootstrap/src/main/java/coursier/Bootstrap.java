@@ -5,6 +5,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.*;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.util.*;
@@ -131,7 +132,7 @@ public class Bootstrap {
         return new File(jarDir, fileName);
     }
 
-    static List<URL> getLocalURLs(List<URL> urls, final File jarDir, String bootstrapProtocol) {
+    static List<URL> getLocalURLs(List<URL> urls, final File jarDir, String bootstrapProtocol) throws MalformedURLException {
 
         ThreadFactory threadFactory = new ThreadFactory() {
             // from scalaz Strategy.DefaultDaemonThreadFactory
@@ -149,6 +150,7 @@ public class Bootstrap {
                 new ExecutorCompletionService<>(pool);
 
         List<URL> localURLs = new ArrayList<>();
+        List<URL> missingURLs = new ArrayList<>();
 
         for (URL url : urls) {
 
@@ -157,32 +159,43 @@ public class Bootstrap {
             if (protocol.equals("file") || protocol.equals(bootstrapProtocol)) {
                 localURLs.add(url);
             } else {
-                final URL url0 = url;
+                File dest = localFile(jarDir, url);
 
-                completionService.submit(new Callable<URL>() {
-                    @Override
-                    public URL call() throws Exception {
-                        File dest = localFile(jarDir, url0);
-
-                        if (!dest.exists()) {
-                            System.err.println("Downloading " + url0);
-                            try {
-                                URLConnection conn = url0.openConnection();
-                                long lastModified = conn.getLastModified();
-                                InputStream s = conn.getInputStream();
-                                byte[] b = readFullySync(s);
-                                Files.write(dest.toPath(), b);
-                                dest.setLastModified(lastModified);
-                            } catch (Exception e) {
-                                System.err.println("Error while downloading " + url0 + ": " + e.getMessage() + ", ignoring it");
-                                throw e;
-                            }
-                        }
-
-                        return dest.toURI().toURL();
-                    }
-                });
+                if (dest.exists()) {
+                    localURLs.add(dest.toURI().toURL());
+                } else {
+                    missingURLs.add(url);
+                }
             }
+        }
+
+        final Random random = new Random();
+        for (final URL url : missingURLs) {
+            completionService.submit(new Callable<URL>() {
+                @Override
+                public URL call() throws Exception {
+                    File dest = localFile(jarDir, url);
+
+                    if (!dest.exists()) {
+                        try {
+                            URLConnection conn = url.openConnection();
+                            long lastModified = conn.getLastModified();
+                            InputStream s = conn.getInputStream();
+                            byte[] b = readFullySync(s);
+                            File tmpDest = new File(dest.getParentFile(), dest.getName() + "-" + random.nextInt());
+                            tmpDest.deleteOnExit();
+                            Files.write(tmpDest.toPath(), b);
+                            Files.move(tmpDest.toPath(), dest.toPath(), StandardCopyOption.ATOMIC_MOVE);
+                            dest.setLastModified(lastModified);
+                        } catch (Exception e) {
+                            System.err.println("Error while downloading " + url + ": " + e.getMessage() + ", ignoring it");
+                            throw e;
+                        }
+                    }
+
+                    return dest.toURI().toURL();
+                }
+            });
         }
 
         try {
@@ -191,6 +204,10 @@ public class Bootstrap {
                 try {
                     URL url = future.get();
                     localURLs.add(url);
+                    int nowMissing = urls.size() - localURLs.size();
+                    String clearLine = "\033[2K";
+                    String up = "\033[1A";
+                    System.err.print(clearLine + "Downloaded " + (missingURLs.size() - nowMissing) + " missing file(s) / " + missingURLs.size() + "\n" + up);
                 } catch (ExecutionException ex) {
                     // Error message already printed from the Callable above
                     System.exit(255);
