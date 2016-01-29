@@ -5,6 +5,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.*;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.util.*;
@@ -168,6 +169,7 @@ public class Bootstrap {
             }
         }
 
+        final Random random = new Random();
         for (final URL url : missingURLs) {
             completionService.submit(new Callable<URL>() {
                 @Override
@@ -180,7 +182,10 @@ public class Bootstrap {
                             long lastModified = conn.getLastModified();
                             InputStream s = conn.getInputStream();
                             byte[] b = readFullySync(s);
-                            Files.write(dest.toPath(), b);
+                            File tmpDest = new File(dest.getParentFile(), dest.getName() + "-" + random.nextInt());
+                            tmpDest.deleteOnExit();
+                            Files.write(tmpDest.toPath(), b);
+                            Files.move(tmpDest.toPath(), dest.toPath(), StandardCopyOption.ATOMIC_MOVE);
                             dest.setLastModified(lastModified);
                         } catch (Exception e) {
                             System.err.println("Error while downloading " + url + ": " + e.getMessage() + ", ignoring it");
