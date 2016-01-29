@@ -205,9 +205,6 @@ lazy val cli = project
       else
         Seq("com.github.alexarchambault" %% "case-app" % "1.0.0-M2")
     },
-    libraryDependencies ++= Seq(
-      "ch.qos.logback" % "logback-classic" % "1.1.3"
-    ),
     resourceGenerators in Compile += packageBin.in(bootstrap).in(Compile).map { jar =>
       Seq(jar)
     }.taskValue
