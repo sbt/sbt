@@ -70,6 +70,7 @@ package object coursier {
       conflicts: Set[Dependency] = Set.empty,
       projectCache: Map[ModuleVersion, (Artifact.Source, Project)] = Map.empty,
       errorCache: Map[ModuleVersion, Seq[String]] = Map.empty,
+      finalDependencies: Map[Dependency, Seq[Dependency]] = Map.empty,
       filter: Option[Dependency => Boolean] = None,
       profileActivation: Option[(String, core.Activation, Map[String, String]) => Boolean] = None
     ): Resolution =
@@ -80,6 +81,7 @@ package object coursier {
         conflicts,
         projectCache,
         errorCache,
+        finalDependencies,
         filter,
         profileActivation
       )

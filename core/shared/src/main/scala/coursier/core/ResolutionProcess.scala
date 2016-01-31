@@ -74,7 +74,7 @@ final case class Missing(
     def cont0(res: Resolution) = {
       val res0 =
         successes.foldLeft(res){case (acc, (modVer, (source, proj))) =>
-          acc.copy(projectCache = acc.projectCache + (
+          acc.copyWithCache(projectCache = acc.projectCache + (
             modVer -> (source, acc.withDependencyManagement(proj))
           ))
         }
@@ -83,7 +83,7 @@ final case class Missing(
     }
 
     val current0 = current
-      .copy(errorCache = current.errorCache ++ errors)
+      .copyWithCache(errorCache = current.errorCache ++ errors)
 
     if (depMgmtMissing.isEmpty)
       cont0(current0)

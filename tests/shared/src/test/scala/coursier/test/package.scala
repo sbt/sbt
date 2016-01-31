@@ -6,6 +6,24 @@ package object test {
     def withCompileScope: Dependency = underlying.copy(configuration = "compile")
   }
 
+  implicit class ResolutionOps(val underlying: Resolution) extends AnyVal {
+
+    // The content of these fields is typically not validated in the tests.
+    // It can be cleared with these method to it easier to compare `underlying`
+    // to an expected value.
+
+    def clearFinalDependenciesCache: Resolution =
+      underlying.copy(finalDependenciesCache = Map.empty)
+    def clearCaches: Resolution =
+      underlying.copy(
+        projectCache = Map.empty,
+        errorCache = Map.empty,
+        finalDependenciesCache = Map.empty
+      )
+    def clearFilter: Resolution =
+      underlying.copy(filter = None)
+  }
+
   object Profile {
     type Activation = core.Activation
     object Activation {

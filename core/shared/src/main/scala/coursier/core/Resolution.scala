@@ -1,9 +1,10 @@
 package coursier.core
 
+import java.util.concurrent.ConcurrentHashMap
 import java.util.regex.Pattern.quote
 
 import scala.annotation.tailrec
-import scala.collection.mutable
+import scala.collection.JavaConverters._
 import scalaz.{ \/-, -\/ }
 
 object Resolution {
@@ -431,28 +432,53 @@ final case class Resolution(
   conflicts: Set[Dependency],
   projectCache: Map[Resolution.ModuleVersion, (Artifact.Source, Project)],
   errorCache: Map[Resolution.ModuleVersion, Seq[String]],
+  finalDependenciesCache: Map[Dependency, Seq[Dependency]],
   filter: Option[Dependency => Boolean],
   profileActivation: Option[(String, Activation, Map[String, String]) => Boolean]
 ) {
 
+  def copyWithCache(
+    rootDependencies: Set[Dependency] = rootDependencies,
+    dependencies: Set[Dependency] = dependencies,
+    forceVersions: Map[Module, String] = forceVersions,
+    conflicts: Set[Dependency] = conflicts,
+    projectCache: Map[Resolution.ModuleVersion, (Artifact.Source, Project)] = projectCache,
+    errorCache: Map[Resolution.ModuleVersion, Seq[String]] = errorCache,
+    filter: Option[Dependency => Boolean] = filter,
+    profileActivation: Option[(String, Activation, Map[String, String]) => Boolean] = profileActivation
+  ): Resolution =
+    copy(
+      rootDependencies,
+      dependencies,
+      forceVersions,
+      conflicts,
+      projectCache,
+      errorCache,
+      finalDependenciesCache ++ finalDependenciesCache0.asScala,
+      filter,
+      profileActivation
+    )
+
   import Resolution._
 
-  private val finalDependenciesCache =
-    new mutable.HashMap[Dependency, Seq[Dependency]]()
-  private def finalDependencies0(dep: Dependency) =
-    finalDependenciesCache.synchronized {
-      finalDependenciesCache.getOrElseUpdate(dep, {
-        if (dep.transitive)
-          projectCache.get(dep.moduleVersion) match {
-            case Some((_, proj)) =>
-              finalDependencies(dep, proj)
-                .filter(filter getOrElse defaultFilter)
-            case None => Nil
-          }
-        else
-          Nil
-      })
-    }
+  private[core] val finalDependenciesCache0 = new ConcurrentHashMap[Dependency, Seq[Dependency]]
+
+  private def finalDependencies0(dep: Dependency): Seq[Dependency] =
+    if (dep.transitive) {
+      val deps = finalDependenciesCache.getOrElse(dep, finalDependenciesCache0.get(dep))
+
+      if (deps == null)
+        projectCache.get(dep.moduleVersion) match {
+          case Some((_, proj)) =>
+            val res = finalDependencies(dep, proj).filter(filter getOrElse defaultFilter)
+            finalDependenciesCache0.put(dep, res)
+            res
+          case None => Nil
+        }
+      else
+        deps
+    } else
+      Nil
 
   /**
    * Transitive dependencies of the current dependencies, according to
@@ -592,7 +618,7 @@ final case class Resolution(
   private def nextNoMissingUnsafe: Resolution = {
     val (newConflicts, _, _) = nextDependenciesAndConflicts
 
-    copy(
+    copyWithCache(
       dependencies = newDependencies ++ newConflicts,
       conflicts = newConflicts.toSet
     )
@@ -856,7 +882,7 @@ final case class Resolution(
         newDeps
     }
 
-    copy(
+    copyWithCache(
       rootDependencies = dependencies,
       dependencies = helper(dependencies.map(updateVersion))
       // don't know if something should be done about conflicts
