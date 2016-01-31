@@ -357,8 +357,8 @@ object Cache {
       artifact0.checksumUrls.get(sumType) match {
         case Some(sumFile) =>
           Task {
-            val sum = scala.io.Source.fromFile(sumFile)
-              .getLines()
+            val sum = new String(NioFiles.readAllBytes(new File(sumFile).toPath), "UTF-8")
+              .linesIterator
               .toStream
               .headOption
               .mkString
@@ -471,7 +471,7 @@ object Cache {
         pool = pool
       ).leftMap(_.message).map { f =>
         // FIXME Catch error here?
-        scala.io.Source.fromFile(f)("UTF-8").mkString
+        new String(NioFiles.readAllBytes(f.toPath), "UTF-8")
       }
   }
 
