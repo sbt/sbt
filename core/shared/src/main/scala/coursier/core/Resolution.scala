@@ -77,7 +77,7 @@ object Resolution {
   def substituteProps(s: String, properties: Map[String, String]) = {
     val matches = propRegex
       .findAllMatchIn(s)
-      .toList
+      .toVector
       .reverse
 
     if (matches.isEmpty) s
@@ -173,7 +173,7 @@ object Resolution {
   ): (Seq[Dependency], Seq[Dependency], Map[Module, String]) = {
 
     val mergedByModVer = dependencies
-      .toList
+      .toVector
       .groupBy(dep => dep.module)
       .map { case (module, deps) =>
         module -> {
@@ -204,7 +204,7 @@ object Resolution {
 
     val merged = mergedByModVer
       .values
-      .toList
+      .toVector
 
     (
       merged
@@ -488,7 +488,7 @@ final case class Resolution(
    */
   def transitiveDependencies: Seq[Dependency] =
     (dependencies -- conflicts)
-      .toList
+      .toVector
       .flatMap(finalDependencies0)
 
   /**
@@ -594,7 +594,7 @@ final case class Resolution(
               broughtBy
                 .filter(x => remaining.contains(x) || rootDependencies0(x))
             )
-            .toList
+            .toVector
             .toMap
         )
     }
