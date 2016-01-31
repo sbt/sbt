@@ -219,6 +219,7 @@ lazy val cli = project
   .settings(commonSettings)
   .settings(noPublish210Settings)
   .settings(packAutoSettings)
+  .settings(proguardSettings)
   .settings(
     name := "coursier-cli",
     libraryDependencies ++= {
@@ -229,7 +230,15 @@ lazy val cli = project
     },
     resourceGenerators in Compile += packageBin.in(bootstrap).in(Compile).map { jar =>
       Seq(jar)
-    }.taskValue
+    }.taskValue,
+    ProguardKeys.proguardVersion in Proguard := "5.2.1",
+    ProguardKeys.options in Proguard ++= Seq(
+      "-dontwarn",
+      "-keep class coursier.cli.Coursier {\n  public static void main(java.lang.String[]);\n}",
+      "-keep class coursier.cli.IsolatedClassLoader {\n  public java.lang.String[] getIsolationTargets();\n}"
+    ),
+    javaOptions in (Proguard, ProguardKeys.proguard) := Seq("-Xmx3172M"),
+    artifactPath in Proguard := (ProguardKeys.proguardDirectory in Proguard).value / "coursier-standalone.jar"
   )
 
 lazy val web = project
