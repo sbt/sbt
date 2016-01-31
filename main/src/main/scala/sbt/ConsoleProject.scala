@@ -7,7 +7,7 @@ import sbt.util.Logger
 import java.io.File
 import sbt.librarymanagement.Resolver
 import sbt.internal.librarymanagement.{ InlineIvyConfiguration, IvyPaths }
-import sbt.internal.inc.{ AnalyzingCompiler, ClasspathOptions, IncrementalCompilerImpl }
+import sbt.internal.inc.{ AnalyzingCompiler, ClasspathOptions, IncrementalCompilerImpl, ScalaInstance }
 
 object ConsoleProject {
   def apply(state: State, extra: String, cleanupCommands: String = "", options: Seq[String] = Nil)(implicit log: Logger): Unit = {
@@ -15,13 +15,13 @@ object ConsoleProject {
     val cpImports = new Imports(extracted, state)
     val bindings = ("currentState" -> state) :: ("extracted" -> extracted) :: ("cpHelpers" -> cpImports) :: Nil
     val unit = extracted.currentUnit
-    val localOnly = false
-    val lock = None
-    val checksums = Nil
-    val ivyPaths = new IvyPaths(unit.unit.localBase, bootIvyHome(state.configuration))
-    val ivyConfiguration = new InlineIvyConfiguration(ivyPaths, Resolver.withDefaultResolvers(Nil),
-      Nil, Nil, localOnly, lock, checksums, None, log)
-    val compiler: AnalyzingCompiler = Compiler.compilers(ClasspathOptions.repl, ivyConfiguration)(state.configuration, log) match { case IncrementalCompilerImpl.Compilers(scalac, _) => scalac }
+    val (_, ivyConf) = extracted.runTask(Keys.ivyConfiguration, state)
+    val scalaInstance = {
+      val scalaProvider = state.configuration.provider.scalaProvider
+      ScalaInstance(scalaProvider.version, scalaProvider.launcher)
+    }
+    val sourcesModule = extracted.get(Keys.scalaCompilerBridgeSource)
+    val compiler = Compiler.scalaCompiler(scalaInstance, ClasspathOptions.repl, None, ivyConf, sourcesModule)(state.configuration, log)
     val imports = BuildUtil.getImports(unit.unit) ++ BuildUtil.importAll(bindings.map(_._1))
     val importString = imports.mkString("", ";\n", ";\n\n")
     val initCommands = importString + extra
