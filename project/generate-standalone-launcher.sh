@@ -23,6 +23,10 @@ cat >> coursier.pro << EOF
 -keep class coursier.cli.Coursier {
   public static void main(java.lang.String[]);
 }
+
+-keep class coursier.cli.IsolatedClassLoader {
+  public java.lang.String[] getIsolationTargets();
+}
 EOF
 
 # -noverify added in launcher below because of errors like
