@@ -1,3 +1,4 @@
+import java.io.FileOutputStream
 
 lazy val releaseSettings = Seq(
   publishMavenStyle := true,
@@ -110,7 +111,28 @@ lazy val commonSettings = baseCommonSettings ++ Seq(
 lazy val core = crossProject
   .settings(commonSettings: _*)
   .settings(
-    name := "coursier"
+    name := "coursier",
+    resourceGenerators.in(Compile) += {
+      (target, version).map { (dir, ver) =>
+        import sys.process._
+
+        val f = dir / "coursier.properties"
+        dir.mkdirs()
+
+        val p = new java.util.Properties()
+
+        p.setProperty("version", ver)
+        p.setProperty("commit-hash", Seq("git", "rev-parse", "HEAD").!!.trim)
+
+        val w = new FileOutputStream(f)
+        p.store(w, "Coursier properties")
+        w.close()
+
+        println(s"Wrote $f")
+
+        Seq(f)
+      }.taskValue
+    }
   )
   .jvmSettings(
     libraryDependencies ++=
