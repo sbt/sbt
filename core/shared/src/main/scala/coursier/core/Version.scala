@@ -47,23 +47,23 @@ object Version {
     def repr: String
     def next: Numeric
   }
-  case class Number(value: Int) extends Numeric {
+  final case class Number(value: Int) extends Numeric {
     val order = 0
     def next: Number = Number(value + 1)
     def repr: String = value.toString
     override def compareToEmpty = value.compare(0)
   }
-  case class BigNumber(value: BigInt) extends Numeric {
+  final case class BigNumber(value: BigInt) extends Numeric {
     val order = 0
     def next: BigNumber = BigNumber(value + 1)
     def repr: String = value.toString
     override def compareToEmpty = value.compare(0)
   }
-  case class Qualifier(value: String, level: Int) extends Item {
+  final case class Qualifier(value: String, level: Int) extends Item {
     val order = -2
     override def compareToEmpty = level.compare(0)
   }
-  case class Literal(value: String) extends Item {
+  final case class Literal(value: String) extends Item {
     val order = -1
     override def compareToEmpty = if (value.isEmpty) 0 else 1
   }

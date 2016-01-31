@@ -424,7 +424,7 @@ object Resolution {
  * @param projectCache: cache of known projects
  * @param errorCache: keeps track of the modules whose project definition could not be found
  */
-case class Resolution(
+final case class Resolution(
   rootDependencies: Set[Dependency],
   dependencies: Set[Dependency],
   forceVersions: Map[Module, String],

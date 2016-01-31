@@ -52,7 +52,7 @@ sealed trait ResolutionProcess {
   def current: Resolution
 }
 
-case class Missing(
+final case class Missing(
   missing: Seq[(Module, String)],
   current: Resolution,
   cont: Resolution => ResolutionProcess
@@ -93,7 +93,7 @@ case class Missing(
 
 }
 
-case class Continue(
+final case class Continue(
   current: Resolution,
   cont: Resolution => ResolutionProcess
 ) extends ResolutionProcess {
@@ -108,7 +108,7 @@ case class Continue(
 
 }
 
-case class Done(resolution: Resolution) extends ResolutionProcess {
+final case class Done(resolution: Resolution) extends ResolutionProcess {
   def current: Resolution = resolution
 }
 

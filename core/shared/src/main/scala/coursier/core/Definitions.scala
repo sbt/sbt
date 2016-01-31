@@ -9,7 +9,7 @@ package coursier.core
  *
  * Using the same terminology as Ivy.
  */
-case class Module(
+final case class Module(
   organization: String,
   name: String,
   attributes: Map[String, String]
@@ -36,7 +36,7 @@ case class Module(
  * The remaining fields are left untouched, some being transitively
  * propagated (exclusions, optional, in particular).
  */
-case class Dependency(
+final case class Dependency(
   module: Module,
   version: String,
   configuration: String,
@@ -52,7 +52,7 @@ case class Dependency(
 }
 
 // Maven-specific
-case class Attributes(
+final case class Attributes(
   `type`: String,
   classifier: String
 ) {
@@ -60,7 +60,7 @@ case class Attributes(
     Publication(name, `type`, ext, classifier)
 }
 
-case class Project(
+final case class Project(
   module: Module,
   version: String,
   // First String is configuration (scope for Maven)
@@ -91,7 +91,7 @@ case class Project(
 }
 
 /** Extra project info, not used during resolution */
-case class Info(
+final case class Info(
   description: String,
   homePage: String,
   licenses: Seq[(String, Option[String])],
@@ -100,7 +100,7 @@ case class Info(
 )
 
 object Info {
-  case class Developer(
+  final case class Developer(
     id: String,
     name: String,
     url: String
@@ -110,10 +110,10 @@ object Info {
 }
 
 // Maven-specific
-case class Activation(properties: Seq[(String, Option[String])])
+final case class Activation(properties: Seq[(String, Option[String])])
 
 // Maven-specific
-case class Profile(
+final case class Profile(
   id: String,
   activeByDefault: Option[Boolean],
   activation: Activation,
@@ -123,7 +123,7 @@ case class Profile(
 )
 
 // Maven-specific
-case class Versions(
+final case class Versions(
   latest: String,
   release: String,
   available: List[String],
@@ -131,7 +131,7 @@ case class Versions(
 )
 
 object Versions {
-  case class DateTime(
+  final case class DateTime(
     year: Int,
     month: Int,
     day: Int,
@@ -142,7 +142,7 @@ object Versions {
 }
 
 // Maven-specific
-case class SnapshotVersion(
+final case class SnapshotVersion(
   classifier: String,
   extension: String,
   value: String,
@@ -150,7 +150,7 @@ case class SnapshotVersion(
 )
 
 // Maven-specific
-case class SnapshotVersioning(
+final case class SnapshotVersioning(
   module: Module,
   version: String,
   latest: String,
@@ -163,7 +163,7 @@ case class SnapshotVersioning(
 )
 
 // Ivy-specific
-case class Publication(
+final case class Publication(
   name: String,
   `type`: String,
   ext: String,
@@ -172,7 +172,7 @@ case class Publication(
   def attributes: Attributes = Attributes(`type`, classifier)
 }
 
-case class Artifact(
+final case class Artifact(
   url: String,
   checksumUrls: Map[String, String],
   extra: Map[String, Artifact],

@@ -88,11 +88,11 @@ sealed trait VersionConstraint {
 }
 object VersionConstraint {
   /** Currently treated as minimum... */
-  case class Preferred(version: Version) extends VersionConstraint {
+  final case class Preferred(version: Version) extends VersionConstraint {
     def interval: VersionInterval = VersionInterval(Some(version), Option.empty, fromIncluded = true, toIncluded = false)
     def repr: String = version.repr
   }
-  case class Interval(interval: VersionInterval) extends VersionConstraint {
+  final case class Interval(interval: VersionInterval) extends VersionConstraint {
     def repr: String = interval.repr
   }
   case object None extends VersionConstraint {
