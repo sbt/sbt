@@ -486,7 +486,7 @@ final case class Resolution(
    *
    * No attempt is made to solve version conflicts here.
    */
-  def transitiveDependencies: Seq[Dependency] =
+  lazy val transitiveDependencies: Seq[Dependency] =
     (dependencies -- conflicts)
       .toVector
       .flatMap(finalDependencies0)
@@ -502,7 +502,7 @@ final case class Resolution(
    * Returns a tuple made of the conflicting dependencies, all
    * the dependencies, and the retained version of each module.
    */
-  def nextDependenciesAndConflicts: (Seq[Dependency], Seq[Dependency], Map[Module, String]) =
+  lazy val nextDependenciesAndConflicts: (Seq[Dependency], Seq[Dependency], Map[Module, String]) =
     // TODO Provide the modules whose version was forced by dependency overrides too
     merge(
       rootDependencies.map(withDefaultConfig) ++ dependencies ++ transitiveDependencies,
@@ -512,7 +512,7 @@ final case class Resolution(
   /**
    * The modules we miss some info about.
    */
-  def missingFromCache: Set[ModuleVersion] = {
+  lazy val missingFromCache: Set[ModuleVersion] = {
     val modules = dependencies
       .map(_.moduleVersion)
     val nextModules = nextDependenciesAndConflicts._2
@@ -526,7 +526,7 @@ final case class Resolution(
   /**
    * Whether the resolution is done.
    */
-  def isDone: Boolean = {
+  lazy val isDone: Boolean = {
     def isFixPoint = {
       val (nextConflicts, _, _) = nextDependenciesAndConflicts
 
@@ -546,7 +546,7 @@ final case class Resolution(
    *
    * The versions of all the dependencies returned are erased (emptied).
    */
-  def reverseDependencies: Map[Dependency, Vector[Dependency]] = {
+  lazy val reverseDependencies: Map[Dependency, Vector[Dependency]] = {
     val (updatedConflicts, updatedDeps, _) = nextDependenciesAndConflicts
 
     val trDepsSeq =
@@ -572,7 +572,7 @@ final case class Resolution(
    *
    * The versions of all the dependencies returned are erased (emptied).
    */
-  def remainingDependencies: Set[Dependency] = {
+  lazy val remainingDependencies: Set[Dependency] = {
     val rootDependencies0 = rootDependencies
       .map(withDefaultConfig)
       .map(eraseVersion)
@@ -607,7 +607,7 @@ final case class Resolution(
   /**
    * The final next dependency set, stripped of no more required ones.
    */
-  def newDependencies: Set[Dependency] = {
+  lazy val newDependencies: Set[Dependency] = {
     val remainingDependencies0 = remainingDependencies
 
     nextDependenciesAndConflicts._2
@@ -615,7 +615,7 @@ final case class Resolution(
       .toSet
   }
 
-  private def nextNoMissingUnsafe: Resolution = {
+  private lazy val nextNoMissingUnsafe: Resolution = {
     val (newConflicts, _, _) = nextDependenciesAndConflicts
 
     copyWithCache(
