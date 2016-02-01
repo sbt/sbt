@@ -70,7 +70,7 @@ of a SBT project. Tested with SBT 0.13.8 / 0.13.9.
 
 Download and run its laucher with
 ```
-$ curl -L -o coursier https://git.io/vEpQR && chmod +x coursier && ./coursier --help
+$ curl -L -o coursier https://git.io/vgvpD && chmod +x coursier && ./coursier --help
 ```
 
 Run an application distributed via artifacts with
@@ -214,7 +214,7 @@ provide more output about what's going on than their default implementations do.
 
 Download and run its laucher with
 ```
-$ curl -L -o coursier https://git.io/vEpQR && chmod +x coursier && ./coursier --help
+$ curl -L -o coursier https://git.io/vgvpD && chmod +x coursier && ./coursier --help
 ```
 
 The launcher itself weights only 8 kB and can be easily embedded as is in other projects.
