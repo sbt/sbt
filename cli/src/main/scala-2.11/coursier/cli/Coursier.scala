@@ -574,4 +574,5 @@ case class Bootstrap(
 object Coursier extends CommandAppOf[CoursierCommand] {
   override def appName = "Coursier"
   override def progName = "coursier"
+  override def appVersion = coursier.util.Properties.version
 }
