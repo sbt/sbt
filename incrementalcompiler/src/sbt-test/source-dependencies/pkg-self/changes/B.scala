@@ -1,5 +1,3 @@
-package demo
+package demo.sub
 
-object B {
-   3.y
-}
+class B extends A
