@@ -1,0 +1,2 @@
+This is a maintenance release [fixing](https://github.com/jrudolph/sbt-dependency-graph/issues/89) `dependencyBrowseGraph`
+in the latest Chrome versions. Thanks [@chtefi](https://github.com/chtefi)!

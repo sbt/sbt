@@ -13,7 +13,7 @@ install it as a [global plugin] so that you can use it in any SBT project withou
 this, add the plugin dependency to `~/.sbt/0.13/plugins/plugins.sbt`:
 
 ```scala
-addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.8.1")
+addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.8.2")
 ```
 
 To add the plugin only to a single project, put this line into `project/plugins.sbt` of your project, instead.
