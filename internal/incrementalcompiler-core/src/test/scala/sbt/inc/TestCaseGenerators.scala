@@ -111,8 +111,9 @@ object TestCaseGenerators {
     hash <- Gen.containerOfN[Array, Byte](hashLen, arbitrary[Byte])
     apiHash <- arbitrary[Int]
     hasMacro <- arbitrary[Boolean]
+    hasPackageObject <- arbitrary[Boolean]
     nameHashes <- genNameHashes(defns)
-  } yield new Source(new Compilation(startTime, Array()), hash, new SourceAPI(Array(), Array(defns map makeDefinition: _*)), apiHash, nameHashes, hasMacro)
+  } yield new Source(new Compilation(startTime, Array()), hash, new SourceAPI(Array(), Array(defns map makeDefinition: _*)), apiHash, nameHashes, hasMacro, hasPackageObject)
 
   def genSources(all_defns: Seq[Seq[String]]): Gen[Seq[Source]] = Gen.sequence[List[Source], Source](all_defns.map(genSource))
 

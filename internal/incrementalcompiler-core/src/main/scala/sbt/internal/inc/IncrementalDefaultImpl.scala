@@ -11,8 +11,8 @@ private final class IncrementalDefaultImpl(log: sbt.util.Logger, options: IncOpt
 
   // Package objects are fragile: if they inherit from an invalidated source, get "class file needed by package is missing" error
   //  This might be too conservative: we probably only need package objects for packages of invalidated sources.
-  override protected def invalidatedPackageObjects(invalidated: Set[File], relations: Relations): Set[File] =
-    invalidated flatMap relations.publicInherited.internal.reverse filter { _.getName == "package.scala" }
+  override protected def invalidatedPackageObjects(invalidated: Set[File], relations: Relations, apis: APIs): Set[File] =
+    invalidated flatMap relations.publicInherited.internal.reverse filter apis.hasPackageObject
 
   override protected def sameAPI[T](src: T, a: Source, b: Source): Option[SourceAPIChange[T]] = {
     if (SameAPI(a, b))

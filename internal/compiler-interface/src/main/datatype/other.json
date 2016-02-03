@@ -29,6 +29,10 @@
 				{
 					"name": "hasMacro",
 					"type": "boolean"
+				},
+				{
+					"name": "hasPackageObject",
+					"type": "boolean"
 				}
 			]
 		},
