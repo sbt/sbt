@@ -356,7 +356,12 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
   def hashStructure0(structure: Structure, includeDefinitions: Boolean, isTrait: Boolean = false): Unit = {
     extend(StructureHash)
     hashTypes(structure.parents, includeDefinitions)
-    if (includeDefinitions || isTrait) {
+    if (isTrait && !includeDefinitions) {
+      def public(d: Definition): Boolean = d.access match { case _: xsbti.api.Public => true; case _ => false }
+      hashDefinitions(structure.declared.filterNot(public), isTrait)
+      hashDefinitions(structure.inherited.filterNot(public), isTrait)
+    }
+    if (includeDefinitions) {
       hashDefinitions(structure.declared, isTrait)
       hashDefinitions(structure.inherited, isTrait)
     }
