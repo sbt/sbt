@@ -24,7 +24,7 @@ private[inc] abstract class IncrementalCommon(log: Logger, options: IncOptions) 
     else {
       val wrappedLog = new Incremental.PrefixingLogger("[inv] ")(log)
       def debug(s: => String) = if (incDebug(options)) wrappedLog.debug(s) else ()
-      val withPackageObjects = invalidatedRaw ++ invalidatedPackageObjects(invalidatedRaw, previous.relations)
+      val withPackageObjects = invalidatedRaw ++ invalidatedPackageObjects(invalidatedRaw, previous.relations, previous.apis)
       val invalidated = expand(withPackageObjects, allSources)
       val pruned = Incremental.prune(invalidated, previous, classfileManager)
       debug("********* Pruned: \n" + pruned.relations + "\n*********")
@@ -54,7 +54,7 @@ private[inc] abstract class IncrementalCommon(log: Logger, options: IncOptions) 
     } else invalidated
   }
 
-  protected def invalidatedPackageObjects(invalidated: Set[File], relations: Relations): Set[File]
+  protected def invalidatedPackageObjects(invalidated: Set[File], relations: Relations, apis: APIs): Set[File]
 
   /**
    * Logs API changes using debug-level logging. The API are obtained using the APIDiff class.

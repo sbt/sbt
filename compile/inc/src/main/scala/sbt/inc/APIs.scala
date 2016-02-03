@@ -38,6 +38,8 @@ trait APIs {
 
   def internal: Map[File, Source]
   def external: Map[String, Source]
+
+  def hasPackageObject(src: File): Boolean
 }
 object APIs {
   def apply(internal: Map[File, Source], external: Map[String, Source]): APIs = new MAPIs(internal, external)
@@ -46,7 +48,7 @@ object APIs {
   val emptyAPI = new xsbti.api.SourceAPI(Array(), Array())
   val emptyCompilation = new xsbti.api.Compilation(-1, Array())
   val emptyNameHashes = new xsbti.api._internalOnly_NameHashes(Array.empty, Array.empty)
-  val emptySource = new xsbti.api.Source(emptyCompilation, Array(), emptyAPI, 0, emptyNameHashes, false)
+  val emptySource = new xsbti.api.Source(emptyCompilation, Array(), emptyAPI, 0, emptyNameHashes, false, false)
   def getAPI[T](map: Map[T, Source], src: T): Source = map.getOrElse(src, emptySource)
 }
 
@@ -70,6 +72,8 @@ private class MAPIs(val internal: Map[File, Source], val external: Map[String, S
 
   def internalAPI(src: File) = getAPI(internal, src)
   def externalAPI(ext: String) = getAPI(external, ext)
+
+  override def hasPackageObject(src: File): Boolean = internalAPI(src).hasPackageObject
 
   override def equals(other: Any): Boolean = other match {
     case o: MAPIs => {
