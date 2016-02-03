@@ -90,14 +90,22 @@ class Helper(
   )
 
   val repositoriesValidation = CacheParse.repositories(common.repository).map { repos0 =>
-    val repos = (if (common.noDefault) Nil else defaultRepositories) ++ repos0
+
+    var repos = (if (common.noDefault) Nil else defaultRepositories) ++ repos0
+
     if (common.sbtPluginHack)
-      repos.map {
+      repos = repos.map {
         case m: MavenRepository => m.copy(sbtAttrStub = true)
         case other => other
       }
-    else
-      repos
+
+    if (common.dropInfoAttr)
+      repos = repos.map {
+        case m: IvyRepository => m.copy(dropInfoAttributes = true)
+        case other => other
+      }
+
+    repos
   }
 
   val repositories = repositoriesValidation match {

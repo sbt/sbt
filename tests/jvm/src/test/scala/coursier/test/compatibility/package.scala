@@ -14,10 +14,10 @@ package object compatibility {
   }
 
   def textResource(path: String)(implicit ec: ExecutionContext): Future[String] = Future {
-    def is = getClass
-      .getClassLoader
-      .getResource(path)
-      .openStream()
+    val res = Option(getClass.getClassLoader.getResource(path)).getOrElse {
+      throw new Exception(s"Not found: resource $path")
+    }
+    val is = res.openStream()
 
     new String(Platform.readFullySync(is), "UTF-8")
   }

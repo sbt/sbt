@@ -29,8 +29,7 @@ object CentralTests extends TestSuite {
   def repr(dep: Dependency) =
     (
       Seq(
-        dep.module.organization,
-        dep.module.name,
+        dep.module,
         dep.attributes.`type`
       ) ++
       Some(dep.attributes.classifier)
@@ -48,9 +47,17 @@ object CentralTests extends TestSuite {
     configuration: String = ""
   ) =
     async {
+      val attrPathPart =
+        if (module.attributes.isEmpty)
+          ""
+        else
+          "/" + module.attributes.toVector.sorted.map {
+            case (k, v) => k + "_" + v
+          }.mkString("_")
+
       val expected =
         await(
-          textResource(s"resolutions/${module.organization}/${module.name}/$version")
+          textResource(s"resolutions/${module.organization}/${module.name}$attrPathPart/$version")
         )
         .split('\n')
         .toSeq

@@ -487,7 +487,8 @@ object Cache {
   lazy val ivy2Local = IvyRepository(
     ivy2HomeUri + "local/" +
       "[organisation]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/" +
-      "[artifact](-[classifier]).[ext]"
+      "[artifact](-[classifier]).[ext]",
+    dropInfoAttributes = true
   )
 
   lazy val ivy2Cache = IvyRepository(
