@@ -25,7 +25,9 @@ object APIUtil {
     }
 
   private[this] class HasPackageObject extends Visit {
-    var hasPackageObject = false
+    private var _hasPackageObject = false
+
+    def hasPackageObject = _hasPackageObject
 
     private def isPackageObject(c: ClassLike): Boolean = {
       import xsbti.api.DefinitionType.{ Module, PackageModule }
@@ -33,7 +35,7 @@ object APIUtil {
     }
 
     override def visitClass0(c: ClassLike): Unit = {
-      hasPackageObject ||= isPackageObject(c)
+      _hasPackageObject ||= isPackageObject(c)
     }
   }
 
@@ -45,7 +47,9 @@ object APIUtil {
     }
 
   private[this] class HasMacro extends Visit {
-    var hasMacro = false
+    private var _hasMacro = false
+
+    def hasMacro = _hasMacro
 
     // Don't visit inherited definitions since we consider that a class
     // that inherits a macro does not have a macro.
@@ -55,7 +59,7 @@ object APIUtil {
     }
 
     override def visitModifiers(m: Modifiers): Unit = {
-      hasMacro ||= m.isMacro
+      _hasMacro ||= m.isMacro
       super.visitModifiers(m)
     }
   }

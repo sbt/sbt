@@ -221,10 +221,11 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
       case (a, (src, api)) =>
         val stamp = current.internalSource(src)
         val hash = stamp match { case h: Hash => h.value; case _ => new Array[Byte](0) }
+        val nameHashes = publicNameHashes(src)
         // TODO store this in Relations, rather than Source.
         val hasMacro: Boolean = macroSources.contains(src)
         val hasPackageObject = packageObjectSources.contains(src)
-        val s = new xsbti.api.Source(compilation, hash, api._2, api._1, publicNameHashes(src), hasMacro, hasPackageObject)
+        val s = new xsbti.api.Source(compilation, hash, api._2, api._1, nameHashes, hasMacro, hasPackageObject)
         val info = SourceInfos.makeInfo(getOrNil(reporteds, src), getOrNil(unreporteds, src))
         val binaries = binaryDeps.getOrElse(src, Nil: Iterable[File])
         val prods = classes.getOrElse(src, Nil: Iterable[(File, String)])
