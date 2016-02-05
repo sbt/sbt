@@ -1068,8 +1068,7 @@ object Classpaths {
     internalDependencyClasspath <<= internalDependencies,
     unmanagedClasspath <<= unmanagedDependencies,
     managedClasspath := managedJars(classpathConfiguration.value, classpathTypes.value, update.value),
-    exportedProducts <<= exportProductsTask,
-    exportedProductsAlways <<= trackedExportedProducts(TrackLevel.TrackAlways),
+    exportedProducts <<= trackedExportedProducts(TrackLevel.TrackAlways),
     exportedProductsIfMissing <<= trackedExportedProducts(TrackLevel.TrackIfMissing),
     exportedProductsNoTracking <<= trackedExportedProducts(TrackLevel.NoTracking),
     unmanagedJars := findUnmanagedJars(configuration.value, unmanagedBase.value, includeFilter in unmanagedJars value, excludeFilter in unmanagedJars value)
@@ -1669,6 +1668,7 @@ object Classpaths {
       }
     }
 
+  @deprecated("This is no longer used.", "0.13.10")
   def exportProductsTask: Initialize[Task[Classpath]] = Def.task {
     val art = (artifact in packageBin).value
     val module = projectID.value
@@ -1788,7 +1788,7 @@ object Classpaths {
     track match {
       case TrackLevel.NoTracking     => getClasspath(exportedProductsNoTracking, dep, conf, data)
       case TrackLevel.TrackIfMissing => getClasspath(exportedProductsIfMissing, dep, conf, data)
-      case TrackLevel.TrackAlways    => getClasspath(exportedProductsAlways, dep, conf, data)
+      case TrackLevel.TrackAlways    => getClasspath(exportedProducts, dep, conf, data)
     }
   private[sbt] def unmanagedLibs0(dep: ResolvedReference, conf: String, data: Settings[Scope], track: TrackLevel): Task[Classpath] =
     unmanagedLibs(dep, conf, data)
