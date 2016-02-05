@@ -5,6 +5,7 @@ Source
 	apiHash: Int
 	_internalOnly_nameHashes: _internalOnly_NameHashes
 	hasMacro: Boolean
+	hasPackageObject: Boolean
 
 _internalOnly_NameHashes
 	regularMembers: _internalOnly_NameHash*

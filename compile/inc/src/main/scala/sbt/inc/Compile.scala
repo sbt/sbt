@@ -110,6 +110,8 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
   private[this] val binaryClassName = new HashMap[File, String]
   // source files containing a macro def.
   private[this] val macroSources = Set[File]()
+  // source files defining a package object
+  private[this] val packageObjectSources = Set[File]()
 
   private def add[A, B](map: Map[A, Set[B]], a: A, b: B): Unit =
     map.getOrElseUpdate(a, new HashSet[B]) += b
@@ -186,7 +188,10 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 
   def api(sourceFile: File, source: SourceAPI): Unit = {
     import xsbt.api.{ APIUtil, HashAPI }
-    if (APIUtil.isScalaSourceName(sourceFile.getName) && APIUtil.hasMacro(source)) macroSources += sourceFile
+    if (APIUtil.isScalaSourceName(sourceFile.getName)) {
+      if (APIUtil.hasMacro(source)) macroSources += sourceFile
+      if (APIUtil.hasPackageObject(source)) packageObjectSources += sourceFile
+    }
     publicNameHashes(sourceFile) = {
       if (nameHashing)
         (new xsbt.api.NameHashing).nameHashes(source)
@@ -216,9 +221,11 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
       case (a, (src, api)) =>
         val stamp = current.internalSource(src)
         val hash = stamp match { case h: Hash => h.value; case _ => new Array[Byte](0) }
+        val nameHashes = publicNameHashes(src)
         // TODO store this in Relations, rather than Source.
         val hasMacro: Boolean = macroSources.contains(src)
-        val s = new xsbti.api.Source(compilation, hash, api._2, api._1, publicNameHashes(src), hasMacro)
+        val hasPackageObject = packageObjectSources.contains(src)
+        val s = new xsbti.api.Source(compilation, hash, api._2, api._1, nameHashes, hasMacro, hasPackageObject)
         val info = SourceInfos.makeInfo(getOrNil(reporteds, src), getOrNil(unreporteds, src))
         val binaries = binaryDeps.getOrElse(src, Nil: Iterable[File])
         val prods = classes.getOrElse(src, Nil: Iterable[(File, String)])

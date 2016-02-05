@@ -17,6 +17,28 @@ object APIUtil {
 
   def isScalaSourceName(name: String): Boolean = name.endsWith(".scala")
 
+  def hasPackageObject(s: SourceAPI): Boolean =
+    {
+      val check = new HasPackageObject
+      check.visitAPI(s)
+      check.hasPackageObject
+    }
+
+  private[this] class HasPackageObject extends Visit {
+    private var _hasPackageObject = false
+
+    def hasPackageObject = _hasPackageObject
+
+    private def isPackageObject(c: ClassLike): Boolean = {
+      import xsbti.api.DefinitionType.{ Module, PackageModule }
+      c.definitionType == PackageModule || (c.definitionType == Module && c.name.endsWith(".package"))
+    }
+
+    override def visitClass0(c: ClassLike): Unit = {
+      _hasPackageObject ||= isPackageObject(c)
+    }
+  }
+
   def hasMacro(s: SourceAPI): Boolean =
     {
       val check = new HasMacro
@@ -25,7 +47,9 @@ object APIUtil {
     }
 
   private[this] class HasMacro extends Visit {
-    var hasMacro = false
+    private var _hasMacro = false
+
+    def hasMacro = _hasMacro
 
     // Don't visit inherited definitions since we consider that a class
     // that inherits a macro does not have a macro.
@@ -35,7 +59,7 @@ object APIUtil {
     }
 
     override def visitModifiers(m: Modifiers): Unit = {
-      hasMacro ||= m.isMacro
+      _hasMacro ||= m.isMacro
       super.visitModifiers(m)
     }
   }
