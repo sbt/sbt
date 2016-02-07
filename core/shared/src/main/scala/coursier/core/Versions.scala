@@ -82,21 +82,23 @@ object VersionInterval {
   val zero = VersionInterval(None, None, fromIncluded = false, toIncluded = false)
 }
 
-sealed trait VersionConstraint {
-  def interval: VersionInterval
-  def repr: String
-}
+sealed abstract class VersionConstraint(
+  val interval: VersionInterval,
+  val repr: String
+)
+
 object VersionConstraint {
   /** Currently treated as minimum... */
-  final case class Preferred(version: Version) extends VersionConstraint {
-    def interval: VersionInterval = VersionInterval(Some(version), Option.empty, fromIncluded = true, toIncluded = false)
-    def repr: String = version.repr
-  }
-  final case class Interval(interval: VersionInterval) extends VersionConstraint {
-    def repr: String = interval.repr
-  }
-  case object None extends VersionConstraint {
-    val interval = VersionInterval.zero
-    def repr: String = "" // Once parsed, "(,)" becomes "" because of this
-  }
+  final case class Preferred(version: Version) extends VersionConstraint(
+    VersionInterval(Some(version), Option.empty, fromIncluded = true, toIncluded = false),
+    version.repr
+  )
+  final case class Interval(interval0: VersionInterval) extends VersionConstraint(
+    interval0,
+    interval0.repr
+  )
+  case object None extends VersionConstraint(
+    VersionInterval.zero,
+    "" // Once parsed, "(,)" becomes "" because of this
+  )
 }

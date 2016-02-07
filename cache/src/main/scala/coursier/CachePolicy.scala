@@ -1,6 +1,6 @@
 package coursier
 
-sealed trait CachePolicy extends Product with Serializable
+sealed abstract class CachePolicy extends Product with Serializable
 
 object CachePolicy {
   case object LocalOnly extends CachePolicy

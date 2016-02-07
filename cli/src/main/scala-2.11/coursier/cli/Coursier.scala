@@ -62,7 +62,7 @@ case class CacheOptions(
     cache: String = Cache.defaultBase.toString
 )
 
-sealed trait CoursierCommand extends Command
+sealed abstract class CoursierCommand extends Command
 
 case class Resolve(
   @Recurse

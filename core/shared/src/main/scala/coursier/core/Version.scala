@@ -20,7 +20,7 @@ case class Version(repr: String) extends Ordered[Version] {
 
 object Version {
 
-  sealed trait Item extends Ordered[Item] {
+  sealed abstract class Item extends Ordered[Item] {
     def compare(other: Item): Int =
       (this, other) match {
         case (Number(a), Number(b)) => a.compare(b)
@@ -43,7 +43,7 @@ object Version {
     def compareToEmpty: Int = 1
   }
 
-  sealed trait Numeric extends Item {
+  sealed abstract class Numeric extends Item {
     def repr: String
     def next: Numeric
   }
@@ -93,7 +93,7 @@ object Version {
   val qualifiersMap = qualifiers.map(q => q.value -> q).toMap
 
   object Tokenizer {
-    sealed trait Separator
+    sealed abstract class Separator
     case object Dot extends Separator
     case object Hyphen extends Separator
     case object Underscore extends Separator

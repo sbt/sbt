@@ -5,7 +5,7 @@ import scalaz._
 import scala.annotation.tailrec
 
 
-sealed trait ResolutionProcess {
+sealed abstract class ResolutionProcess {
   def run[F[_]](
     fetch: Fetch.Metadata[F],
     maxIterations: Int = 50
