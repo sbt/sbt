@@ -1,11 +1,11 @@
 package coursier.util
 
-import java.util.Properties
+import java.util.{ Properties => JProperties }
 
 object Properties {
 
   private lazy val props = {
-    val p = new Properties()
+    val p = new JProperties()
     p.load(
       getClass
         .getClassLoader
