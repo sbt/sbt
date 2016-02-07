@@ -156,7 +156,19 @@ case class IvyRepository(
               attributes = proj0.module.attributes.filter {
                 case (k, _) => !k.startsWith("info.")
               }
-            )
+            ),
+            dependencies = proj0.dependencies.map {
+              case (config, dep0) =>
+                val dep = dep0.copy(
+                  module = dep0.module.copy(
+                    attributes = dep0.module.attributes.filter {
+                      case (k, _) => !k.startsWith("info.")
+                    }
+                  )
+                )
+
+                config -> dep
+            }
           )
         else
           proj0

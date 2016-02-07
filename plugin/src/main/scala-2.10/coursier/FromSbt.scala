@@ -121,7 +121,8 @@ object FromSbt {
           "file://" + patterns.artifactPatterns.head,
           metadataPatternOpt = Some("file://" + patterns.ivyPatterns.head),
           changing = Some(true),
-          properties = ivyProperties
+          properties = ivyProperties,
+          dropInfoAttributes = true
         ))
 
       case sbt.URLRepository(_, patterns)
@@ -132,7 +133,8 @@ object FromSbt {
           patterns.artifactPatterns.head,
           metadataPatternOpt = Some(patterns.ivyPatterns.head),
           changing = None,
-          properties = ivyProperties
+          properties = ivyProperties,
+          dropInfoAttributes = true
         ))
 
       case other =>

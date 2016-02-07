@@ -37,6 +37,8 @@ case class CommonOptions(
     noDefault: Boolean = false,
   @Help("Modify names in Maven repository paths for SBT plugins")
     sbtPluginHack: Boolean = false,
+  @Help("Drop module attributes starting with 'info.' - these are sometimes used by projects built with SBT")
+    dropInfoAttr: Boolean = false,
   @Help("Force module version")
   @Value("organization:name:forcedVersion")
   @Short("V")
