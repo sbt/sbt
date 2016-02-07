@@ -1,9 +1,10 @@
 package coursier.core
 
+import java.util.concurrent.ConcurrentHashMap
 import java.util.regex.Pattern.quote
 
 import scala.annotation.tailrec
-import scala.collection.mutable
+import scala.collection.JavaConverters._
 import scalaz.{ \/-, -\/ }
 
 object Resolution {
@@ -76,7 +77,7 @@ object Resolution {
   def substituteProps(s: String, properties: Map[String, String]) = {
     val matches = propRegex
       .findAllMatchIn(s)
-      .toList
+      .toVector
       .reverse
 
     if (matches.isEmpty) s
@@ -172,7 +173,7 @@ object Resolution {
   ): (Seq[Dependency], Seq[Dependency], Map[Module, String]) = {
 
     val mergedByModVer = dependencies
-      .toList
+      .toVector
       .groupBy(dep => dep.module)
       .map { case (module, deps) =>
         module -> {
@@ -203,7 +204,7 @@ object Resolution {
 
     val merged = mergedByModVer
       .values
-      .toList
+      .toVector
 
     (
       merged
@@ -424,35 +425,60 @@ object Resolution {
  * @param projectCache: cache of known projects
  * @param errorCache: keeps track of the modules whose project definition could not be found
  */
-case class Resolution(
+final case class Resolution(
   rootDependencies: Set[Dependency],
   dependencies: Set[Dependency],
   forceVersions: Map[Module, String],
   conflicts: Set[Dependency],
   projectCache: Map[Resolution.ModuleVersion, (Artifact.Source, Project)],
   errorCache: Map[Resolution.ModuleVersion, Seq[String]],
+  finalDependenciesCache: Map[Dependency, Seq[Dependency]],
   filter: Option[Dependency => Boolean],
   profileActivation: Option[(String, Activation, Map[String, String]) => Boolean]
 ) {
 
+  def copyWithCache(
+    rootDependencies: Set[Dependency] = rootDependencies,
+    dependencies: Set[Dependency] = dependencies,
+    forceVersions: Map[Module, String] = forceVersions,
+    conflicts: Set[Dependency] = conflicts,
+    projectCache: Map[Resolution.ModuleVersion, (Artifact.Source, Project)] = projectCache,
+    errorCache: Map[Resolution.ModuleVersion, Seq[String]] = errorCache,
+    filter: Option[Dependency => Boolean] = filter,
+    profileActivation: Option[(String, Activation, Map[String, String]) => Boolean] = profileActivation
+  ): Resolution =
+    copy(
+      rootDependencies,
+      dependencies,
+      forceVersions,
+      conflicts,
+      projectCache,
+      errorCache,
+      finalDependenciesCache ++ finalDependenciesCache0.asScala,
+      filter,
+      profileActivation
+    )
+
   import Resolution._
 
-  private val finalDependenciesCache =
-    new mutable.HashMap[Dependency, Seq[Dependency]]()
-  private def finalDependencies0(dep: Dependency) =
-    finalDependenciesCache.synchronized {
-      finalDependenciesCache.getOrElseUpdate(dep, {
-        if (dep.transitive)
-          projectCache.get(dep.moduleVersion) match {
-            case Some((_, proj)) =>
-              finalDependencies(dep, proj)
-                .filter(filter getOrElse defaultFilter)
-            case None => Nil
-          }
-        else
-          Nil
-      })
-    }
+  private[core] val finalDependenciesCache0 = new ConcurrentHashMap[Dependency, Seq[Dependency]]
+
+  private def finalDependencies0(dep: Dependency): Seq[Dependency] =
+    if (dep.transitive) {
+      val deps = finalDependenciesCache.getOrElse(dep, finalDependenciesCache0.get(dep))
+
+      if (deps == null)
+        projectCache.get(dep.moduleVersion) match {
+          case Some((_, proj)) =>
+            val res = finalDependencies(dep, proj).filter(filter getOrElse defaultFilter)
+            finalDependenciesCache0.put(dep, res)
+            res
+          case None => Nil
+        }
+      else
+        deps
+    } else
+      Nil
 
   /**
    * Transitive dependencies of the current dependencies, according to
@@ -460,9 +486,9 @@ case class Resolution(
    *
    * No attempt is made to solve version conflicts here.
    */
-  def transitiveDependencies: Seq[Dependency] =
+  lazy val transitiveDependencies: Seq[Dependency] =
     (dependencies -- conflicts)
-      .toList
+      .toVector
       .flatMap(finalDependencies0)
 
   /**
@@ -476,7 +502,7 @@ case class Resolution(
    * Returns a tuple made of the conflicting dependencies, all
    * the dependencies, and the retained version of each module.
    */
-  def nextDependenciesAndConflicts: (Seq[Dependency], Seq[Dependency], Map[Module, String]) =
+  lazy val nextDependenciesAndConflicts: (Seq[Dependency], Seq[Dependency], Map[Module, String]) =
     // TODO Provide the modules whose version was forced by dependency overrides too
     merge(
       rootDependencies.map(withDefaultConfig) ++ dependencies ++ transitiveDependencies,
@@ -486,7 +512,7 @@ case class Resolution(
   /**
    * The modules we miss some info about.
    */
-  def missingFromCache: Set[ModuleVersion] = {
+  lazy val missingFromCache: Set[ModuleVersion] = {
     val modules = dependencies
       .map(_.moduleVersion)
     val nextModules = nextDependenciesAndConflicts._2
@@ -500,7 +526,7 @@ case class Resolution(
   /**
    * Whether the resolution is done.
    */
-  def isDone: Boolean = {
+  lazy val isDone: Boolean = {
     def isFixPoint = {
       val (nextConflicts, _, _) = nextDependenciesAndConflicts
 
@@ -520,7 +546,7 @@ case class Resolution(
    *
    * The versions of all the dependencies returned are erased (emptied).
    */
-  def reverseDependencies: Map[Dependency, Vector[Dependency]] = {
+  lazy val reverseDependencies: Map[Dependency, Vector[Dependency]] = {
     val (updatedConflicts, updatedDeps, _) = nextDependenciesAndConflicts
 
     val trDepsSeq =
@@ -546,7 +572,7 @@ case class Resolution(
    *
    * The versions of all the dependencies returned are erased (emptied).
    */
-  def remainingDependencies: Set[Dependency] = {
+  lazy val remainingDependencies: Set[Dependency] = {
     val rootDependencies0 = rootDependencies
       .map(withDefaultConfig)
       .map(eraseVersion)
@@ -568,7 +594,7 @@ case class Resolution(
               broughtBy
                 .filter(x => remaining.contains(x) || rootDependencies0(x))
             )
-            .toList
+            .toVector
             .toMap
         )
     }
@@ -581,7 +607,7 @@ case class Resolution(
   /**
    * The final next dependency set, stripped of no more required ones.
    */
-  def newDependencies: Set[Dependency] = {
+  lazy val newDependencies: Set[Dependency] = {
     val remainingDependencies0 = remainingDependencies
 
     nextDependenciesAndConflicts._2
@@ -589,10 +615,10 @@ case class Resolution(
       .toSet
   }
 
-  private def nextNoMissingUnsafe: Resolution = {
+  private lazy val nextNoMissingUnsafe: Resolution = {
     val (newConflicts, _, _) = nextDependenciesAndConflicts
 
-    copy(
+    copyWithCache(
       dependencies = newDependencies ++ newConflicts,
       conflicts = newConflicts.toSet
     )
@@ -856,7 +882,7 @@ case class Resolution(
         newDeps
     }
 
-    copy(
+    copyWithCache(
       rootDependencies = dependencies,
       dependencies = helper(dependencies.map(updateVersion))
       // don't know if something should be done about conflicts

@@ -90,8 +90,7 @@ object CentralTests extends TestSuite {
     'logback{
       async {
         val dep = Dependency(Module("ch.qos.logback", "logback-classic"), "1.1.3")
-        val res = await(resolve(Set(dep)))
-          .copy(projectCache = Map.empty, errorCache = Map.empty) // No validating these here
+        val res = await(resolve(Set(dep))).clearCaches
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -106,8 +105,7 @@ object CentralTests extends TestSuite {
     'asm{
       async {
         val dep = Dependency(Module("org.ow2.asm", "asm-commons"), "5.0.2")
-        val res = await(resolve(Set(dep)))
-          .copy(projectCache = Map.empty, errorCache = Map.empty) // No validating these here
+        val res = await(resolve(Set(dep))).clearCaches
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -123,7 +121,7 @@ object CentralTests extends TestSuite {
       async {
         val dep = Dependency(Module("joda-time", "joda-time"), "[2.2,2.8]")
         val res0 = await(resolve(Set(dep)))
-        val res = res0.copy(projectCache = Map.empty, errorCache = Map.empty)
+        val res = res0.clearCaches
 
         val expected = Resolution(
           rootDependencies = Set(dep),

@@ -357,8 +357,8 @@ object Cache {
       artifact0.checksumUrls.get(sumType) match {
         case Some(sumFile) =>
           Task {
-            val sum = scala.io.Source.fromFile(sumFile)
-              .getLines()
+            val sum = new String(NioFiles.readAllBytes(new File(sumFile).toPath), "UTF-8")
+              .linesIterator
               .toStream
               .headOption
               .mkString
@@ -471,7 +471,7 @@ object Cache {
         pool = pool
       ).leftMap(_.message).map { f =>
         // FIXME Catch error here?
-        scala.io.Source.fromFile(f)("UTF-8").mkString
+        new String(NioFiles.readAllBytes(f.toPath), "UTF-8")
       }
   }
 
@@ -571,31 +571,29 @@ object Cache {
 
 }
 
-sealed trait FileError extends Product with Serializable {
-  def message: String
-}
+sealed abstract class FileError(val message: String) extends Product with Serializable
 
 object FileError {
 
-  case class DownloadError(message0: String) extends FileError {
-    def message = s"Download error: $message0"
-  }
-  case class NotFound(file: String) extends FileError {
-    def message = s"Not found: $file"
-  }
-  case class ChecksumNotFound(sumType: String, file: String) extends FileError {
-    def message = s"$sumType checksum not found: $file"
-  }
-  case class WrongChecksum(sumType: String, got: String, expected: String, file: String, sumFile: String) extends FileError {
-    def message = s"$sumType checksum validation failed: $file"
-  }
+  final case class DownloadError(reason: String) extends FileError(s"Download error: $reason")
 
-  sealed trait Recoverable extends FileError
-  case class Locked(file: File) extends Recoverable {
-    def message = s"Locked: $file"
-  }
-  case class ConcurrentDownload(url: String) extends Recoverable {
-    def message = s"Concurrent download: $url"
-  }
+  final case class NotFound(file: String) extends FileError(s"Not found: $file")
+
+  final case class ChecksumNotFound(
+    sumType: String,
+    file: String
+  ) extends FileError(s"$sumType checksum not found: $file")
+
+  final case class WrongChecksum(
+    sumType: String,
+    got: String,
+    expected: String,
+    file: String,
+    sumFile: String
+  ) extends FileError(s"$sumType checksum validation failed: $file")
+
+  sealed abstract class Recoverable(message: String) extends FileError(message)
+  final case class Locked(file: File) extends Recoverable(s"Locked: $file")
+  final case class ConcurrentDownload(url: String) extends Recoverable(s"Concurrent download: $url")
 
 }

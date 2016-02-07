@@ -203,7 +203,7 @@ object ResolutionTests extends TestSuite {
         val dep = Dependency(Module("acme", "config"), "1.3.0")
         val res = await(resolve0(
           Set(dep)
-        ))
+        )).clearFinalDependenciesCache
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -220,7 +220,7 @@ object ResolutionTests extends TestSuite {
         val trDep = Dependency(Module("acme", "play-json"), "2.4.0")
         val res = await(resolve0(
           Set(dep)
-        ))
+        )).clearFinalDependenciesCache
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -243,7 +243,7 @@ object ResolutionTests extends TestSuite {
         )
         val res = await(resolve0(
           Set(dep)
-        )).copy(filter = None, projectCache = Map.empty)
+        )).clearCaches
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -264,7 +264,7 @@ object ResolutionTests extends TestSuite {
         )
         val res = await(resolve0(
           Set(dep)
-        )).copy(filter = None, projectCache = Map.empty)
+        )).clearCaches
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -285,7 +285,7 @@ object ResolutionTests extends TestSuite {
         )
         val res = await(resolve0(
           Set(dep)
-        )).copy(filter = None, projectCache = Map.empty)
+        )).clearCaches
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -300,7 +300,7 @@ object ResolutionTests extends TestSuite {
         val dep = Dependency(Module("hudsucker", "mail"), "10.0")
         val res = await(resolve0(
           Set(dep)
-        )).copy(filter = None, projectCache = Map.empty)
+        )).clearCaches
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -319,7 +319,7 @@ object ResolutionTests extends TestSuite {
         )
         val res = await(resolve0(
           Set(dep)
-        )).copy(filter = None, projectCache = Map.empty)
+        )).clearCaches
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -337,7 +337,7 @@ object ResolutionTests extends TestSuite {
           Dependency(Module("org.gnome", "desktop"), "7.0"))
         val res = await(resolve0(
           Set(dep)
-        )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+        )).clearCaches
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -354,7 +354,7 @@ object ResolutionTests extends TestSuite {
           Dependency(Module("gov.nsa", "secure-pgp"), "10.0", exclusions = Set(("*", "crypto"))))
         val res = await(resolve0(
           Set(dep)
-        )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+        )).clearCaches
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -369,7 +369,7 @@ object ResolutionTests extends TestSuite {
         val dep = Dependency(Module("com.thoughtworks.paranamer", "paranamer"), "2.6")
         val res = await(resolve0(
           Set(dep)
-        )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+        )).clearCaches
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -386,7 +386,7 @@ object ResolutionTests extends TestSuite {
           Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))
         val res = await(resolve0(
           Set(dep)
-        )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+        )).clearCaches
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -405,7 +405,7 @@ object ResolutionTests extends TestSuite {
               Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))
             val res = await(resolve0(
               Set(dep)
-            )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+            )).clearCaches
 
             val expected = Resolution(
               rootDependencies = Set(dep),
@@ -426,7 +426,7 @@ object ResolutionTests extends TestSuite {
           Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))
         val res = await(resolve0(
           Set(dep)
-        )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+        )).clearCaches
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -447,7 +447,7 @@ object ResolutionTests extends TestSuite {
         val res = await(resolve0(
           Set(dep),
           filter = Some(_ => true)
-        )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+        )).clearCaches.clearFilter
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -470,7 +470,7 @@ object ResolutionTests extends TestSuite {
         val res = await(resolve0(
           deps,
           filter = Some(_ => true)
-        )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+        )).clearCaches.clearFilter
 
         val expected = Resolution(
           rootDependencies = deps,
@@ -492,7 +492,7 @@ object ResolutionTests extends TestSuite {
           val res = await(resolve0(
             deps,
             forceVersions = depOverrides
-          )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+          )).clearCaches
 
           val expected = Resolution(
             rootDependencies = deps,
@@ -516,7 +516,7 @@ object ResolutionTests extends TestSuite {
           val res = await(resolve0(
             deps,
             forceVersions = depOverrides
-          )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+          )).clearCaches
 
           val expected = Resolution(
             rootDependencies = deps,
@@ -542,7 +542,7 @@ object ResolutionTests extends TestSuite {
           val res = await(resolve0(
             deps,
             forceVersions = depOverrides
-          )).copy(filter = None, projectCache = Map.empty, errorCache = Map.empty)
+          )).clearCaches
 
           val expected = Resolution(
             rootDependencies = deps,

@@ -20,7 +20,7 @@ case class Version(repr: String) extends Ordered[Version] {
 
 object Version {
 
-  sealed trait Item extends Ordered[Item] {
+  sealed abstract class Item extends Ordered[Item] {
     def compare(other: Item): Int =
       (this, other) match {
         case (Number(a), Number(b)) => a.compare(b)
@@ -43,27 +43,27 @@ object Version {
     def compareToEmpty: Int = 1
   }
 
-  sealed trait Numeric extends Item {
+  sealed abstract class Numeric extends Item {
     def repr: String
     def next: Numeric
   }
-  case class Number(value: Int) extends Numeric {
+  final case class Number(value: Int) extends Numeric {
     val order = 0
     def next: Number = Number(value + 1)
     def repr: String = value.toString
     override def compareToEmpty = value.compare(0)
   }
-  case class BigNumber(value: BigInt) extends Numeric {
+  final case class BigNumber(value: BigInt) extends Numeric {
     val order = 0
     def next: BigNumber = BigNumber(value + 1)
     def repr: String = value.toString
     override def compareToEmpty = value.compare(0)
   }
-  case class Qualifier(value: String, level: Int) extends Item {
+  final case class Qualifier(value: String, level: Int) extends Item {
     val order = -2
     override def compareToEmpty = level.compare(0)
   }
-  case class Literal(value: String) extends Item {
+  final case class Literal(value: String) extends Item {
     val order = -1
     override def compareToEmpty = if (value.isEmpty) 0 else 1
   }
@@ -93,7 +93,7 @@ object Version {
   val qualifiersMap = qualifiers.map(q => q.value -> q).toMap
 
   object Tokenizer {
-    sealed trait Separator
+    sealed abstract class Separator
     case object Dot extends Separator
     case object Hyphen extends Separator
     case object Underscore extends Separator

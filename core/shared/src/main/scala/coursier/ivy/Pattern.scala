@@ -23,7 +23,7 @@ object Pattern {
     def apply(content: String): Map[String, String] => String \/ String
   }
   object PatternPart {
-    case class Literal(override val effectiveStart: Int, override val effectiveEnd: Int) extends PatternPart(effectiveStart, effectiveEnd) {
+    final case class Literal(override val effectiveStart: Int, override val effectiveEnd: Int) extends PatternPart(effectiveStart, effectiveEnd) {
       def apply(content: String): Map[String, String] => String \/ String = {
         assert(content.length == effectiveEnd - effectiveStart)
         val matches = variableRegex.findAllMatchIn(content).toList
@@ -54,7 +54,7 @@ object Pattern {
           helper(0, matches, new StringBuilder)
       }
     }
-    case class Optional(start0: Int, end0: Int) extends PatternPart(start0 + 1, end0 - 1) {
+    final case class Optional(start0: Int, end0: Int) extends PatternPart(start0 + 1, end0 - 1) {
       override def start = start0
       override def end = end0
 
@@ -78,7 +78,7 @@ object Pattern {
 
 }
 
-case class Pattern(
+final case class Pattern(
   pattern: String,
   properties: Map[String, String]
 ) {

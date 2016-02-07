@@ -5,7 +5,7 @@ import scalaz._
 import scala.annotation.tailrec
 
 
-sealed trait ResolutionProcess {
+sealed abstract class ResolutionProcess {
   def run[F[_]](
     fetch: Fetch.Metadata[F],
     maxIterations: Int = 50
@@ -52,7 +52,7 @@ sealed trait ResolutionProcess {
   def current: Resolution
 }
 
-case class Missing(
+final case class Missing(
   missing: Seq[(Module, String)],
   current: Resolution,
   cont: Resolution => ResolutionProcess
@@ -74,7 +74,7 @@ case class Missing(
     def cont0(res: Resolution) = {
       val res0 =
         successes.foldLeft(res){case (acc, (modVer, (source, proj))) =>
-          acc.copy(projectCache = acc.projectCache + (
+          acc.copyWithCache(projectCache = acc.projectCache + (
             modVer -> (source, acc.withDependencyManagement(proj))
           ))
         }
@@ -83,7 +83,7 @@ case class Missing(
     }
 
     val current0 = current
-      .copy(errorCache = current.errorCache ++ errors)
+      .copyWithCache(errorCache = current.errorCache ++ errors)
 
     if (depMgmtMissing.isEmpty)
       cont0(current0)
@@ -93,7 +93,7 @@ case class Missing(
 
 }
 
-case class Continue(
+final case class Continue(
   current: Resolution,
   cont: Resolution => ResolutionProcess
 ) extends ResolutionProcess {
@@ -108,7 +108,7 @@ case class Continue(
 
 }
 
-case class Done(resolution: Resolution) extends ResolutionProcess {
+final case class Done(resolution: Resolution) extends ResolutionProcess {
   def current: Resolution = resolution
 }
 
