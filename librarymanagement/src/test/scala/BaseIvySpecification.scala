@@ -61,7 +61,7 @@ trait BaseIvySpecification extends UnitSpec {
   def ivyUpdateEither(module: IvySbt#Module): Either[UnresolvedWarning, UpdateReport] = {
     // IO.delete(currentTarget)
     val retrieveConfig = new RetrieveConfiguration(currentManaged, Resolver.defaultRetrievePattern, false)
-    val config = new UpdateConfiguration(Some(retrieveConfig), false, UpdateLogging.Full)
+    val config = new UpdateConfiguration(Some(retrieveConfig), false, UpdateLogging.Full, ArtifactTypeFilter.forbid(Set("src", "doc")))
     IvyActions.updateEither(module, config, UnresolvedWarningConfiguration(), LogicalClock.unknown, Some(currentDependency), log)
   }
 
