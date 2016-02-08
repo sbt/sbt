@@ -130,10 +130,10 @@ private[sbt] object IvyScala {
    * the given configurations.
    */
   private[sbt] def includeRule(organization: String, name: String, configurationNames: Iterable[String], includeTypePattern: String): IncludeRule =
-  {
-    val artifact = new ArtifactId(ModuleId.newInstance(organization, name), "*", includeTypePattern, "*")
-    val rule = new DefaultIncludeRule(artifact, ExactPatternMatcher.INSTANCE, emptyMap[AnyRef, AnyRef])
-    configurationNames.foreach(rule.addConfiguration)
-    rule
-  }
+    {
+      val artifact = new ArtifactId(ModuleId.newInstance(organization, name), "*", includeTypePattern, "*")
+      val rule = new DefaultIncludeRule(artifact, ExactPatternMatcher.INSTANCE, emptyMap[AnyRef, AnyRef])
+      configurationNames.foreach(rule.addConfiguration)
+      rule
+    }
 }

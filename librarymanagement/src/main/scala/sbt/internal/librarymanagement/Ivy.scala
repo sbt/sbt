@@ -140,8 +140,8 @@ final class IvySbt(val configuration: IvyConfiguration) {
 
   /**
    * Cleans cached resolution cache.
-    *
-    * @param md - module descriptor of the original Ivy graph.
+   *
+   * @param md - module descriptor of the original Ivy graph.
    */
   private[sbt] def cleanCachedResolutionCache(md: ModuleDescriptor, log: Logger): Unit =
     withIvy(log) { i =>

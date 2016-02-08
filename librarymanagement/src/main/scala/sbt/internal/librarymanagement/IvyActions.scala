@@ -251,14 +251,14 @@ object IvyActions {
     updateClassifiers(ivySbt, config, UnresolvedWarningConfiguration(), LogicalClock.unknown, None, Vector(), log)
 
   /**
-	 * Creates explicit artifacts for each classifier in `config.module`, and then attempts to resolve them directly. This
-	 * is for Maven compatibility, where these artifacts are not "published" in the POM, so they don't end up in the Ivy
-	 * that sbt generates for them either.<br>
-  * Artifacts can be obtained from calling toSeq on UpdateReport.<br>
-	 * In addition, retrieves specific Ivy artifacts if they have one of the requested `config.configuration.types`.
-	 * @param config important to set `config.configuration.types` to only allow artifact types that can correspond to
-	 *               "classified" artifacts (sources and javadocs).
-	 */
+   * Creates explicit artifacts for each classifier in `config.module`, and then attempts to resolve them directly. This
+   * is for Maven compatibility, where these artifacts are not "published" in the POM, so they don't end up in the Ivy
+   * that sbt generates for them either.<br>
+   * Artifacts can be obtained from calling toSeq on UpdateReport.<br>
+   * In addition, retrieves specific Ivy artifacts if they have one of the requested `config.configuration.types`.
+   * @param config important to set `config.configuration.types` to only allow artifact types that can correspond to
+   *               "classified" artifacts (sources and javadocs).
+   */
   private[sbt] def updateClassifiers(ivySbt: IvySbt, config: GetClassifiersConfiguration,
     uwconfig: UnresolvedWarningConfiguration, logicalClock: LogicalClock, depDir: Option[File],
     artifacts: Vector[(String, ModuleID, Artifact, File)],
@@ -283,9 +283,10 @@ object IvyActions {
             ((sourceArtifactTypes.toIterable map (_ -> Artifact.SourceClassifier))
               :: (docArtifactTypes.toIterable map (_ -> Artifact.DocClassifier)) :: Nil).flatten.toMap
           r.substitute { (conf, mid, artFileSeq) =>
-            artFileSeq map { case (art, f) =>
-              // Deduce the classifier from the type if no classifier is present already
-              art.copy(classifier = art.classifier orElse typeClassifierMap.get(art.`type`)) -> f
+            artFileSeq map {
+              case (art, f) =>
+                // Deduce the classifier from the type if no classifier is present already
+                art.copy(classifier = art.classifier orElse typeClassifierMap.get(art.`type`)) -> f
             }
           }
         case Left(w) =>
@@ -318,18 +319,18 @@ object IvyActions {
     }
 
   /**
-    * Explicitly set an "include all" rule (the default) because otherwise, if we declare ANY explicitArtifacts,
-    * [[org.apache.ivy.core.resolve.IvyNode#getArtifacts]] (in Ivy 2.3.0-rc1) will not merge in the descriptor's
-    * artifacts and will only keep the explicitArtifacts.
-    * <br>
-    * Look for the comment saying {{{
-    *   // and now we filter according to include rules
-    * }}}
-    * in `IvyNode`, which iterates on `includes`, which will ordinarily be empty because higher up, in {{{
-    *   addAllIfNotNull(includes, usage.getDependencyIncludesSet(rootModuleConf));
-    * }}}
-    * `usage.getDependencyIncludesSet` returns null if there are no (explicit) include rules.
-    */
+   * Explicitly set an "include all" rule (the default) because otherwise, if we declare ANY explicitArtifacts,
+   * [[org.apache.ivy.core.resolve.IvyNode#getArtifacts]] (in Ivy 2.3.0-rc1) will not merge in the descriptor's
+   * artifacts and will only keep the explicitArtifacts.
+   * <br>
+   * Look for the comment saying {{{
+   *   // and now we filter according to include rules
+   * }}}
+   * in `IvyNode`, which iterates on `includes`, which will ordinarily be empty because higher up, in {{{
+   *   addAllIfNotNull(includes, usage.getDependencyIncludesSet(rootModuleConf));
+   * }}}
+   * `usage.getDependencyIncludesSet` returns null if there are no (explicit) include rules.
+   */
   private def intransitiveModuleWithExplicitArts(module: ModuleID, arts: Seq[Artifact]): ModuleID =
     module.copy(isTransitive = false, explicitArtifacts = arts, inclusions = InclExclRule.everything :: Nil)
 
