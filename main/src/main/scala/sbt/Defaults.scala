@@ -23,7 +23,7 @@ import std.TaskExtra._
 import sbt.internal.inc.{ Analysis, ClassfileManager, ClasspathOptions, CompilerCache, FileValueCache, IncOptions, Locate, LoggerReporter, MixedAnalyzingCompiler, ScalaInstance }
 import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
 
-import sbt.librarymanagement._
+import sbt.librarymanagement.{ `package` => _, _ }
 import sbt.internal.librarymanagement._
 import sbt.internal.librarymanagement.syntax._
 import sbt.internal.util._
