@@ -130,16 +130,29 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
     {
       hash = 1
       hashSymmetric(s.packages, hashPackage)
-      hashDefinitions(s.definitions, true)
+      hashDefinitions(s.definitions, topLevel = true, isTrait = false)
       finalizeHash
     }
 
   def hashPackage(p: Package) = hashString(p.name)
 
+  @deprecated("Use the overload that indicates if the enclosing definition is a trait.", "0.14")
   def hashDefinitions(ds: Seq[Definition], topLevel: Boolean): Unit =
+    hashDefinitions(ds, topLevel, isTrait = false)
+
+  def hashDefinitions(ds: Seq[Definition], topLevel: Boolean, isTrait: Boolean): Unit =
     {
+      // If the enclosing definition is a trait, then we must include private vars in the API hash
+      // of the trait, because scalac will generate setters and getters for these vars in the traits
+      // implementors.
+      val traitPrivateVars =
+        if (!includePrivate && !topLevel && isTrait) {
+          def isPublic(d: Definition): Boolean = d.access match { case _: xsbti.api.Public => true; case _ => false }
+          ds.collect { case v: Var if !isPublic(v) => v }
+        } else Seq.empty
+
       val defs = SameAPI.filterDefinitions(ds, topLevel, includePrivate)
-      hashSymmetric(defs, hashDefinition)
+      hashSymmetric(traitPrivateVars ++ defs, hashDefinition)
     }
 
   /**
@@ -347,14 +360,9 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
   def hashStructure0(structure: Structure, includeDefinitions: Boolean, isTrait: Boolean = false): Unit = {
     extend(StructureHash)
     hashTypes(structure.parents, includeDefinitions)
-    if (isTrait && !includeDefinitions) {
-      def public(d: Definition): Boolean = d.access match { case _: xsbti.api.Public => true; case _ => false }
-      hashDefinitions(structure.declared.filterNot(public), isTrait)
-      hashDefinitions(structure.inherited.filterNot(public), isTrait)
-    }
     if (includeDefinitions) {
-      hashDefinitions(structure.declared, isTrait)
-      hashDefinitions(structure.inherited, isTrait)
+      hashDefinitions(structure.declared, topLevel = false, isTrait)
+      hashDefinitions(structure.inherited, topLevel = false, isTrait)
     }
   }
   def hashParameters(parameters: Seq[TypeParameter], base: Type): Unit =
