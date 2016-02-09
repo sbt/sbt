@@ -178,7 +178,7 @@ class NameHashingSpecification extends UnitSpec {
    * we get abstract method errors at runtime, because the types expected by the setter (for instance) does not
    * match.
    *
-   * NOTE: This logic is important for vars only. No other private member needs to be included.
+   * NOTE: This logic is important for vars and vals only. No other private member needs to be included.
    */
   it should "include private vars in traits in API hash" in {
     /* trait Foo { private var x } */
@@ -204,7 +204,7 @@ class NameHashingSpecification extends UnitSpec {
 
   }
 
-  it should "NOT include private vals in traits in API hash" in {
+  it should "include private vals in traits in API hash" in {
     /* trait Foo { private val x } */
     val fooTrait1 =
       simpleTrait(
@@ -224,7 +224,7 @@ class NameHashingSpecification extends UnitSpec {
     val api1 = new SourceAPI(Array.empty, Array(fooTrait1))
     val api2 = new SourceAPI(Array.empty, Array(fooTrait2))
 
-    assert(HashAPI(api1) === HashAPI(api2))
+    assert(HashAPI(api1) !== HashAPI(api2))
 
   }
 
