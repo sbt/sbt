@@ -165,24 +165,25 @@ class NameHashingSpecification extends Specification {
   }
 
   /**
-   * Checks that private members are included in the hash of the public API of traits.
-   * Including the private members of traits is required because classes that implement a trait
-   * have to define the private members of the trait. Therefore, if a private member of a trait is added,
-   * modified or removed we need to recompile the classes that implement this trait.
+   * Checks that private vars are included in the hash of the public API of traits.
+   * Including the private vars of traits is required because classes that implement a trait
+   * have to define getters and setters for these vars.
    * For instance, if trait Foo is initially defined as:
-   *     trait Foo { private val x = new A }
+   *     trait Foo { private var x = new A }
    * changing it to
-   *     trait Foo { private val x = new B }
+   *     trait Foo { private var x = new B }
    * requires us to recompile all implementors of trait Foo, because scalac generates setters and getters
-   * for the private fields of trait Foo in its implementor. If the clients of trait Foo are not recompiled,
+   * for the private vars of trait Foo in its implementor. If the clients of trait Foo are not recompiled,
    * we get abstract method errors at runtime, because the types expected by the setter (for instance) does not
    * match.
+   *
+   * NOTE: This logic is important for vars only. No other private member needs to be included.
    */
-  "private members in traits" in {
-    /* trait Foo { private val x } */
+  "private var in traits are included in API hash" in {
+    /* trait Foo { private var x } */
     val fooTrait1 =
       simpleTrait("Foo",
-        simpleStructure(new Val(emptyType, "x", privateAccess, defaultModifiers, Array.empty)),
+        simpleStructure(new Var(emptyType, "x", privateAccess, defaultModifiers, Array.empty)),
         publicAccess)
 
     /* trait Foo */
@@ -198,15 +199,75 @@ class NameHashingSpecification extends Specification {
 
   }
 
+  "private vals in traits are NOT included in API hash" in {
+    /* trait Foo { private val x } */
+    val fooTrait1 =
+      simpleTrait("Foo",
+        simpleStructure(new Val(emptyType, "x", privateAccess, defaultModifiers, Array.empty)),
+        publicAccess)
+
+    /* trait Foo */
+    val fooTrait2 =
+      simpleTrait("Foo",
+        simpleStructure(),
+        publicAccess)
+
+    val api1 = new SourceAPI(Array.empty, Array(fooTrait1))
+    val api2 = new SourceAPI(Array.empty, Array(fooTrait2))
+
+    HashAPI(api1) === HashAPI(api2)
+
+  }
+
+  "private def in traits are not included in API hash" in {
+    /* trait Foo { private def x } */
+    val fooTrait1 =
+      simpleTrait("Foo",
+        simpleStructure(new Def(Array.empty, emptyType, Array.empty, "x", privateAccess, defaultModifiers, Array.empty)),
+        publicAccess)
+
+    /* trait Foo */
+    val fooTrait2 =
+      simpleTrait("Foo",
+        simpleStructure(),
+        publicAccess)
+
+    val api1 = new SourceAPI(Array.empty, Array(fooTrait1))
+    val api2 = new SourceAPI(Array.empty, Array(fooTrait2))
+
+    HashAPI(api1) === HashAPI(api2)
+
+  }
+
+  "private types in traits are included not in API hash" in {
+    /* trait Foo { private type x } */
+    val fooTrait1 =
+      simpleTrait("Foo",
+        simpleStructure(new TypeAlias(emptyType, Array.empty, "x", privateAccess, defaultModifiers, Array.empty)),
+        publicAccess)
+
+    /* trait Foo */
+    val fooTrait2 =
+      simpleTrait("Foo",
+        simpleStructure(),
+        publicAccess)
+
+    val api1 = new SourceAPI(Array.empty, Array(fooTrait1))
+    val api2 = new SourceAPI(Array.empty, Array(fooTrait2))
+
+    HashAPI(api1) === HashAPI(api2)
+
+  }
+
   /**
-   * Checks that private members in non-top-level traits are included as well.
+   * Checks that private vars in non-top-level traits are included as well.
    */
   "private members in nested traits" in {
-    /* class A { trait Foo { private val x } } */
+    /* class A { trait Foo { private var x } } */
     val classA1 =
       simpleClass("A",
         simpleTrait("Foo",
-          simpleStructure(new Val(emptyType, "x", privateAccess, defaultModifiers, Array.empty)),
+          simpleStructure(new Var(emptyType, "x", privateAccess, defaultModifiers, Array.empty)),
           publicAccess))
 
     /* class A { trait Foo } */
@@ -227,11 +288,11 @@ class NameHashingSpecification extends Specification {
    * Checks that private traits are NOT included in the hash.
    */
   "private traits" in {
-    /* class Foo { private trait T { private val x } } */
+    /* class Foo { private trait T { private var x } } */
     val classFoo1 =
       simpleClass("Foo",
         simpleTrait("T",
-          simpleStructure(new Val(emptyType, "x", privateAccess, defaultModifiers, Array.empty)),
+          simpleStructure(new Var(emptyType, "x", privateAccess, defaultModifiers, Array.empty)),
           privateAccess))
 
     /** class Foo { private trait T } */
@@ -256,10 +317,10 @@ class NameHashingSpecification extends Specification {
    * Checks that private members are NOT included in the hash of the public API of classes.
    */
   "private members in classes are not included in the api hash" in {
-    /* class Foo { private val x } */
+    /* class Foo { private var x } */
     val classFoo1 =
       simpleClass("Foo",
-        simpleStructure(new Val(emptyType, "x", privateAccess, defaultModifiers, Array.empty)))
+        simpleStructure(new Var(emptyType, "x", privateAccess, defaultModifiers, Array.empty)))
 
     /* class Foo */
     val classFoo2 =
@@ -274,9 +335,9 @@ class NameHashingSpecification extends Specification {
   }
 
   /**
-    * Checks that private members do NOT contribute to name hashes.
-    * Test for https://github.com/sbt/sbt/issues/2324
-    */
+   * Checks that private members do NOT contribute to name hashes.
+   * Test for https://github.com/sbt/sbt/issues/2324
+   */
   "private members in classes do not contribute to name hashes" in {
     /* class Foo { private val x } */
     val classFoo =
