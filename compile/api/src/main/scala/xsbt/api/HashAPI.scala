@@ -151,17 +151,17 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
 
   def hashDefinitions(ds: Seq[Definition], topLevel: Boolean, isTrait: Boolean): Unit =
     {
-      // If the enclosing definition is a trait, then we must include private vars in the API hash
-      // of the trait, because scalac will generate setters and getters for these vars in the traits
+      // If the enclosing definition is a trait, then we must include private vars and vals in the API hash
+      // of the trait, because scalac will generate setters, getters and fields for them in the traits
       // implementors.
-      val traitPrivateVars =
+      val traitPrivateFields =
         if (!includePrivate && !topLevel && isTrait) {
           def isPublic(d: Definition): Boolean = d.access match { case _: xsbti.api.Public => true; case _ => false }
-          ds.collect { case v: Var if !isPublic(v) => v }
+          ds.collect { case fl: FieldLike if !isPublic(fl) => fl }
         } else Seq.empty
 
       val defs = SameAPI.filterDefinitions(ds, topLevel, includePrivate)
-      hashSymmetric(traitPrivateVars ++ defs, hashDefinition)
+      hashSymmetric(traitPrivateFields ++ defs, hashDefinition)
     }
 
   /**

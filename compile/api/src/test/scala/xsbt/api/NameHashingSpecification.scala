@@ -177,7 +177,7 @@ class NameHashingSpecification extends Specification {
    * we get abstract method errors at runtime, because the types expected by the setter (for instance) does not
    * match.
    *
-   * NOTE: This logic is important for vars only. No other private member needs to be included.
+   * NOTE: This logic is important for vars and vals only. No other private member needs to be included.
    */
   "private var in traits are included in API hash" in {
     /* trait Foo { private var x } */
@@ -199,7 +199,7 @@ class NameHashingSpecification extends Specification {
 
   }
 
-  "private vals in traits are NOT included in API hash" in {
+  "private vals in traits are included in API hash" in {
     /* trait Foo { private val x } */
     val fooTrait1 =
       simpleTrait("Foo",
@@ -215,7 +215,7 @@ class NameHashingSpecification extends Specification {
     val api1 = new SourceAPI(Array.empty, Array(fooTrait1))
     val api2 = new SourceAPI(Array.empty, Array(fooTrait2))
 
-    HashAPI(api1) === HashAPI(api2)
+    HashAPI(api1) !== HashAPI(api2)
 
   }
 
