@@ -186,14 +186,9 @@ object DependencyGraphSettings {
         val graph = loadFromContext(moduleGraphStore, ctx, state) getOrElse ModuleGraph(Nil, Nil)
 
         import sbt.complete.DefaultParsers._
-        def moduleFrom(modules: Seq[ModuleId]) =
-          modules.map { m ⇒
-            (token(m.name) ~ Space ~ token(m.version)).map(_ ⇒ m)
-          }.reduce(_ | _)
-
-        graph.nodes.map(_.id).groupBy(_.organisation).map {
-          case (org, modules) ⇒
-            Space ~ token(org) ~ Space ~> moduleFrom(modules)
+        graph.nodes.map(_.id).map {
+          case id @ ModuleId(org, name, version) ⇒
+            (Space ~ token(org) ~ token(Space ~ name) ~ token(Space ~ version)).map(_ ⇒ id)
         }.reduceOption(_ | _).getOrElse {
           (Space ~> token(StringBasic, "organization") ~ Space ~ token(StringBasic, "module") ~ Space ~ token(StringBasic, "version")).map {
             case ((((org, _), mod), _), version) ⇒
