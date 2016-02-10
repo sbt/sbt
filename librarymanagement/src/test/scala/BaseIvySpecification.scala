@@ -58,10 +58,14 @@ trait BaseIvySpecification extends UnitSpec {
     new InlineIvyConfiguration(paths, resolvers, other, moduleConfs, off, None, check, Some(resCacheDir), uo, log)
   }
 
+  def makeUpdateConfiguration: UpdateConfiguration = {
+    val retrieveConfig = new RetrieveConfiguration(currentManaged, Resolver.defaultRetrievePattern, false)
+    new UpdateConfiguration(Some(retrieveConfig), false, UpdateLogging.Full, ArtifactTypeFilter.forbid(Set("src", "doc")))
+  }
+
   def ivyUpdateEither(module: IvySbt#Module): Either[UnresolvedWarning, UpdateReport] = {
     // IO.delete(currentTarget)
-    val retrieveConfig = new RetrieveConfiguration(currentManaged, Resolver.defaultRetrievePattern, false)
-    val config = new UpdateConfiguration(Some(retrieveConfig), false, UpdateLogging.Full, ArtifactTypeFilter.forbid(Set("src", "doc")))
+    val config = makeUpdateConfiguration
     IvyActions.updateEither(module, config, UnresolvedWarningConfiguration(), LogicalClock.unknown, Some(currentDependency), log)
   }
 
