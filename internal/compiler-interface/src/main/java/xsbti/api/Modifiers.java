@@ -9,13 +9,14 @@ public final class Modifiers implements java.io.Serializable
 	private static final int ImplicitBit = 4;
 	private static final int LazyBit = 5;
 	private static final int MacroBit = 6;
+	private static final int SuperAccessorBit = 7;
 
 	private static int flag(boolean set, int bit)
 	{
 		return set ? (1 << bit) : 0;
 	}
 
-	public Modifiers(boolean isAbstract, boolean isOverride, boolean isFinal, boolean isSealed, boolean isImplicit, boolean isLazy, boolean isMacro)
+	public Modifiers(boolean isAbstract, boolean isOverride, boolean isFinal, boolean isSealed, boolean isImplicit, boolean isLazy, boolean isMacro, boolean isSuperAccessor)
 	{
 		this.flags = (byte)(
 			flag(isAbstract, AbstractBit) |
@@ -24,7 +25,8 @@ public final class Modifiers implements java.io.Serializable
 			flag(isSealed, SealedBit) |
 			flag(isImplicit, ImplicitBit) |
 			flag(isLazy, LazyBit) |
-			flag(isMacro, MacroBit)
+			flag(isMacro, MacroBit) |
+			flag(isSuperAccessor, SuperAccessorBit)
 		);
 	}
 
@@ -68,6 +70,10 @@ public final class Modifiers implements java.io.Serializable
 	{
 		return flag(MacroBit);
 	}
+	public final boolean isSuperAccessor()
+	{
+		return flag(SuperAccessorBit);
+	}
 	public boolean equals(Object o)
 	{
 		return (o instanceof Modifiers) && flags == ((Modifiers)o).flags;
@@ -78,6 +84,6 @@ public final class Modifiers implements java.io.Serializable
 	}
 	public String toString()
 	{
-		return "Modifiers(" + "isAbstract: " + isAbstract() + ", " + "isOverride: " + isOverride() + ", " + "isFinal: " + isFinal() + ", " + "isSealed: " + isSealed() + ", " + "isImplicit: " + isImplicit() + ", " + "isLazy: " + isLazy() + ", " + "isMacro: " + isMacro()+ ")";
+		return "Modifiers(" + "isAbstract: " + isAbstract() + ", " + "isOverride: " + isOverride() + ", " + "isFinal: " + isFinal() + ", " + "isSealed: " + isSealed() + ", " + "isImplicit: " + isImplicit() + ", " + "isLazy: " + isLazy() + ", " + "isMacro: " + isMacro()+ ", isSuperAccessor:" + isSuperAccessor() + ")";
 	}
 }

@@ -142,17 +142,25 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
 
   def hashDefinitions(ds: Seq[Definition], topLevel: Boolean, isTrait: Boolean): Unit =
     {
-      // If the enclosing definition is a trait, then we must include private vars and vals in the API hash
-      // of the trait, because scalac will generate setters, getters and fields for them in the traits
-      // implementors.
-      val traitPrivateFields =
+      def isPublic(d: Definition): Boolean = d.access match { case _: xsbti.api.Public => true; case _ => false }
+      def isTraitBreaker(d: Definition): Boolean = d match {
+        // Vars and vals in traits introduce getters, setters and fields in the implementing classes.
+        // See test `source-dependencies/trait-private-var
+        case _: FieldLike  => true
+        // Objects in traits introduce fields in the implementing classes.
+        // See test `source-dependencies/trait-private-object`
+        case cl: ClassLike => cl.definitionType == DefinitionType.Module
+        // super calls introduce accessors that are not part of the public API
+        case d: Def        => d.modifiers.isSuperAccessor
+        case _             => false
+      }
+      val includedPrivateDefinitions =
         if (!includePrivate && !topLevel && isTrait) {
-          def isPublic(d: Definition): Boolean = d.access match { case _: xsbti.api.Public => true; case _ => false }
-          ds.collect { case fl: FieldLike if !isPublic(fl) => fl }
+          ds filter (x => isTraitBreaker(x) && !isPublic(x))
         } else Seq.empty
 
       val defs = SameAPI.filterDefinitions(ds, topLevel, includePrivate)
-      hashSymmetric(traitPrivateFields ++ defs, hashDefinition)
+      hashSymmetric(includedPrivateDefinitions ++ defs, hashDefinition)
     }
 
   /**
