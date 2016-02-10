@@ -148,8 +148,8 @@ object IvyActions {
     }
   private def crossVersionMap(moduleSettings: ModuleSettings): Option[String => String] =
     moduleSettings match {
-      case i: InlineConfigurationWithExcludes => CrossVersion(i.module, i.ivyScala)
-      case _                                  => None
+      case i: InlineConfiguration => CrossVersion(i.module, i.ivyScala)
+      case _                      => None
     }
   def mapArtifacts(module: ModuleDescriptor, cross: Option[String => String], artifacts: Map[Artifact, File]): Seq[(IArtifact, File)] =
     {
@@ -236,7 +236,7 @@ object IvyActions {
       import config.{ configuration => c, ivyScala, module => mod }
       import mod.{ id, modules => deps }
       val base = restrictedCopy(id, true).copy(name = id.name + "$" + label)
-      val module = new ivySbt.Module(InlineConfigurationWithExcludes(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala))
+      val module = new ivySbt.Module(InlineConfiguration(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala))
       val report = updateEither(module, c, uwconfig, logicalClock, depDir, log) match {
         case Right(r) => r
         case Left(w) =>
@@ -271,7 +271,7 @@ object IvyActions {
       // Adding list of explicit artifacts here.
       val deps = baseModules.distinct flatMap classifiedArtifacts(classifiers, exclude, artifacts)
       val base = restrictedCopy(id, true).copy(name = id.name + classifiers.mkString("$", "_", ""))
-      val module = new ivySbt.Module(InlineConfigurationWithExcludes(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala, configurations = confs))
+      val module = new ivySbt.Module(InlineConfiguration(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala, configurations = confs))
       // c.copy ensures c.types is preserved too
       val upConf = c.copy(missingOk = true)
       updateEither(module, upConf, uwconfig, logicalClock, depDir, log) match {

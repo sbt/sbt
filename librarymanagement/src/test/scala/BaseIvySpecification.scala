@@ -33,7 +33,7 @@ trait BaseIvySpecification extends UnitSpec {
       )
     }
 
-    val moduleSetting: ModuleSettings = InlineConfigurationWithExcludes(
+    val moduleSetting: ModuleSettings = InlineConfiguration(
       module = moduleId,
       moduleInfo = ModuleInfo("foo"),
       dependencies = deps,

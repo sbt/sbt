@@ -115,8 +115,7 @@ final case class PomConfiguration(file: File, ivyScala: Option[IvyScala], valida
   def noScala = copy(ivyScala = None)
 }
 
-
-final class InlineConfigurationWithExcludes private[sbt] (
+final class InlineConfiguration private[sbt] (
   val module: ModuleID,
   val moduleInfo: ModuleInfo,
   val dependencies: Seq[ModuleID],
@@ -146,16 +145,16 @@ final class InlineConfigurationWithExcludes private[sbt] (
     ivyScala: Option[IvyScala] = this.ivyScala,
     validate: Boolean = this.validate,
     conflictManager: ConflictManager = this.conflictManager
-  ): InlineConfigurationWithExcludes =
-    InlineConfigurationWithExcludes(module, moduleInfo, dependencies, overrides, excludes, ivyXML,
+  ): InlineConfiguration =
+    InlineConfiguration(module, moduleInfo, dependencies, overrides, excludes, ivyXML,
       configurations, defaultConfiguration, ivyScala, validate, conflictManager)
 
   override def toString: String =
-    s"InlineConfigurationWithExcludes($module, $moduleInfo, $dependencies, $overrides, $excludes, " +
+    s"InlineConfiguration($module, $moduleInfo, $dependencies, $overrides, $excludes, " +
       s"$ivyXML, $configurations, $defaultConfiguration, $ivyScala, $validate, $conflictManager)"
 
   override def equals(o: Any): Boolean = o match {
-    case o: InlineConfigurationWithExcludes =>
+    case o: InlineConfiguration =>
       this.module == o.module &&
         this.moduleInfo == o.moduleInfo &&
         this.dependencies == o.dependencies &&
@@ -186,7 +185,7 @@ final class InlineConfigurationWithExcludes private[sbt] (
       hash
     }
 }
-object InlineConfigurationWithExcludes {
+object InlineConfiguration {
   def apply(
     module: ModuleID,
     moduleInfo: ModuleInfo,
@@ -199,8 +198,8 @@ object InlineConfigurationWithExcludes {
     ivyScala: Option[IvyScala] = None,
     validate: Boolean = false,
     conflictManager: ConflictManager = ConflictManager.default
-  ): InlineConfigurationWithExcludes =
-    new InlineConfigurationWithExcludes(module, moduleInfo, dependencies, overrides, excludes, ivyXML,
+  ): InlineConfiguration =
+    new InlineConfiguration(module, moduleInfo, dependencies, overrides, excludes, ivyXML,
       configurations, defaultConfiguration, ivyScala, validate, conflictManager)
 
   def configurations(explicitConfigurations: Iterable[Configuration], defaultConfiguration: Option[Configuration]) =
