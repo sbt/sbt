@@ -176,8 +176,6 @@ class NameHashingSpecification extends Specification {
    * for the private vars of trait Foo in its implementor. If the clients of trait Foo are not recompiled,
    * we get abstract method errors at runtime, because the types expected by the setter (for instance) does not
    * match.
-   *
-   * NOTE: This logic is important for vars and vals only. No other private member needs to be included.
    */
   "private var in traits are included in API hash" in {
     /* trait Foo { private var x } */
@@ -219,7 +217,28 @@ class NameHashingSpecification extends Specification {
 
   }
 
-  "private def in traits are not included in API hash" in {
+  "private objects in traits are included in API hash" in {
+    /* trait Foo { private object x } */
+    val fooTrait1 =
+      simpleTrait("Foo",
+        simpleStructure(
+          new ClassLike(DefinitionType.Module, lzy(emptyType), lzy(simpleStructure()), Array.empty, Array.empty, "x", privateAccess, defaultModifiers, Array.empty)),
+        publicAccess)
+
+    /* trait Foo */
+    val fooTrait2 =
+      simpleTrait("Foo",
+        simpleStructure(),
+        publicAccess)
+
+    val api1 = new SourceAPI(Array.empty, Array(fooTrait1))
+    val api2 = new SourceAPI(Array.empty, Array(fooTrait2))
+
+    HashAPI(api1) !== HashAPI(api2)
+
+  }
+
+  "private non-synthetic def in traits are not included in API hash" in {
     /* trait Foo { private def x } */
     val fooTrait1 =
       simpleTrait("Foo",
@@ -236,6 +255,27 @@ class NameHashingSpecification extends Specification {
     val api2 = new SourceAPI(Array.empty, Array(fooTrait2))
 
     HashAPI(api1) === HashAPI(api2)
+
+  }
+
+  "private synthetic def in traits are included in API hash" in {
+    /* trait Foo { private <superaccessor> def x } */
+    val modifiers = new xsbti.api.Modifiers(false, false, false, false, false, false, false, true)
+    val fooTrait1 =
+      simpleTrait("Foo",
+        simpleStructure(new Def(Array.empty, emptyType, Array.empty, "x", privateAccess, modifiers, Array.empty)),
+        publicAccess)
+
+    /* trait Foo */
+    val fooTrait2 =
+      simpleTrait("Foo",
+        simpleStructure(),
+        publicAccess)
+
+    val api1 = new SourceAPI(Array.empty, Array(fooTrait1))
+    val api2 = new SourceAPI(Array.empty, Array(fooTrait2))
+
+    HashAPI(api1) !== HashAPI(api2)
 
   }
 
@@ -262,7 +302,7 @@ class NameHashingSpecification extends Specification {
   /**
    * Checks that private vars in non-top-level traits are included as well.
    */
-  "private members in nested traits" in {
+  "private variables in nested traits are include in the API hash" in {
     /* class A { trait Foo { private var x } } */
     val classA1 =
       simpleClass("A",
@@ -287,7 +327,7 @@ class NameHashingSpecification extends Specification {
   /**
    * Checks that private traits are NOT included in the hash.
    */
-  "private traits" in {
+  "private inner traits are not included in the API hash" in {
     /* class Foo { private trait T { private var x } } */
     val classFoo1 =
       simpleClass("Foo",
@@ -397,6 +437,6 @@ class NameHashingSpecification extends Specification {
   private val strTpe = new Projection(emptyType, "String")
   private val publicAccess = new Public
   private val privateAccess = new Private(new Unqualified)
-  private val defaultModifiers = new Modifiers(false, false, false, false, false, false, false)
+  private val defaultModifiers = new Modifiers(false, false, false, false, false, false, false, false)
 
 }

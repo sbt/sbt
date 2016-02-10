@@ -76,7 +76,7 @@ object TestCaseGenerators {
   private[this] def makeDefinition(name: String): Definition =
     new ClassLike(DefinitionType.ClassDef, lzy(new EmptyType()),
       lzy(new Structure(lzy(Array()), lzy(Array()), lzy(Array()))), Array(), Array(),
-      name, new Public(), new Modifiers(false, false, false, false, false, false, false), Array())
+      name, new Public(), new Modifiers(false, false, false, false, false, false, false, false), Array())
 
   private[this] def lzy[T <: AnyRef](x: T) = SafeLazy.strict(x)
 
