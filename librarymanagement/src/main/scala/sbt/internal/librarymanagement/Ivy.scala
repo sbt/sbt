@@ -170,7 +170,6 @@ final class IvySbt(val configuration: IvyConfiguration) {
       {
         val (baseModule, baseConfiguration) =
           moduleSettings match {
-            case ic: InlineConfiguration             => configureInline(ic.withExcludes, configuration.log)
             case ic: InlineConfigurationWithExcludes => configureInline(ic, configuration.log)
             case pc: PomConfiguration                => configurePom(pc)
             case ifc: IvyFileConfiguration           => configureIvyFile(ifc)
@@ -435,7 +434,6 @@ private[sbt] object IvySbt {
     {
       val sub = CrossVersion(scalaFullVersion, scalaBinaryVersion)
       m match {
-        case ic: InlineConfiguration             => ic.copy(module = sub(ic.module), dependencies = ic.dependencies map sub, overrides = ic.overrides map sub)
         case ic: InlineConfigurationWithExcludes => ic.copy(module = sub(ic.module), dependencies = ic.dependencies map sub, overrides = ic.overrides map sub)
         case _                                   => m
       }

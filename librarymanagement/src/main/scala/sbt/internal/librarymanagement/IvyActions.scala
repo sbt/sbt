@@ -148,7 +148,6 @@ object IvyActions {
     }
   private def crossVersionMap(moduleSettings: ModuleSettings): Option[String => String] =
     moduleSettings match {
-      case i: InlineConfiguration             => CrossVersion(i.module, i.ivyScala)
       case i: InlineConfigurationWithExcludes => CrossVersion(i.module, i.ivyScala)
       case _                                  => None
     }

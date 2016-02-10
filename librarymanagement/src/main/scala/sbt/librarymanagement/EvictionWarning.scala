@@ -5,7 +5,7 @@ import Configurations.Compile
 import ScalaArtifacts.{ LibraryID, CompilerID }
 import sbt.util.Logger
 import sbt.internal.util.ShowLines
-import sbt.internal.librarymanagement.{ IvySbt, InlineConfiguration, InlineConfigurationWithExcludes }
+import sbt.internal.librarymanagement.{ IvySbt, InlineConfigurationWithExcludes }
 
 final class EvictionWarningOptions private[sbt] (
   val configurations: Seq[Configuration],
@@ -167,7 +167,6 @@ object EvictionWarning {
 
   private[sbt] def processEvictions(module: IvySbt#Module, options: EvictionWarningOptions, reports: Seq[OrganizationArtifactReport]): EvictionWarning = {
     val directDependencies = module.moduleSettings match {
-      case x: InlineConfiguration             => x.dependencies
       case x: InlineConfigurationWithExcludes => x.dependencies
       case _                                  => Seq()
     }

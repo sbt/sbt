@@ -115,29 +115,6 @@ final case class PomConfiguration(file: File, ivyScala: Option[IvyScala], valida
   def noScala = copy(ivyScala = None)
 }
 
-// TODO: When we go sbt 1.0 we should rename InlineConfigurationWithExcludes to InlineConfiguration.
-@deprecated("Use InlineConfigurationWithExcludes.", "0.13.8")
-final case class InlineConfiguration(module: ModuleID, moduleInfo: ModuleInfo, dependencies: Seq[ModuleID], overrides: Set[ModuleID] = Set.empty, ivyXML: NodeSeq = NodeSeq.Empty, configurations: Seq[Configuration] = Nil, defaultConfiguration: Option[Configuration] = None, ivyScala: Option[IvyScala] = None, validate: Boolean = false, conflictManager: ConflictManager = ConflictManager.default) extends ModuleSettings {
-  def withConfigurations(configurations: Seq[Configuration]) = copy(configurations = configurations)
-  def noScala = copy(ivyScala = None)
-  def withExcludes: InlineConfigurationWithExcludes =
-    InlineConfigurationWithExcludes(this.module, this.moduleInfo, this.dependencies, this.overrides, Nil, this.ivyXML,
-      this.configurations, this.defaultConfiguration, this.ivyScala, this.validate, this.conflictManager)
-  def withOverrides(overrides: Set[ModuleID]): ModuleSettings =
-    copy(overrides = overrides)
-}
-object InlineConfiguration {
-  @deprecated("Use InlineConfigurationWithExcludes.explicitConfigurations.", "0.13.8")
-  def configurations(explicitConfigurations: Iterable[Configuration], defaultConfiguration: Option[Configuration]) =
-    if (explicitConfigurations.isEmpty) {
-      defaultConfiguration match {
-        case Some(Configurations.DefaultIvyConfiguration) => Configurations.Default :: Nil
-        case Some(Configurations.DefaultMavenConfiguration) => Configurations.defaultMavenConfigurations
-        case _ => Nil
-      }
-    } else
-      explicitConfigurations
-}
 
 final class InlineConfigurationWithExcludes private[sbt] (
   val module: ModuleID,
