@@ -273,7 +273,7 @@ class Helper(
     subset: Set[Dependency] = null
   ): Seq[File] = {
 
-    if (verbose0 >= 0) {
+    if (subset == null && verbose0 >= 0) {
       val msg = cachePolicies match {
         case Seq(CachePolicy.LocalOnly) =>
           "  Checking artifacts"
