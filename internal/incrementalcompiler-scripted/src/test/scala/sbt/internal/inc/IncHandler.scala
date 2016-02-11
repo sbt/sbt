@@ -116,7 +116,7 @@ final class IncHandler(directory: File, scriptedLog: Logger) extends BridgeProvi
       val extra = Array(t2(("key", "value")))
       val setup = compiler.setup(analysisMap, dc, skip = false, cacheFile, CompilerCache.fresh, incOptions, reporter, extra)
       val classpath = (i.si.allJars.toList ++ unmanagedJars :+ classesDir).toArray
-      val in = compiler.inputs(classpath, scalaSources.toArray, classesDir, Array(), Array(), maxErrors, Array(),
+      val in = compiler.inputs(classpath, sources.toArray, classesDir, Array(), Array(), maxErrors, Array(),
         CompileOrder.Mixed, cs, setup, prev)
       val result = compiler.compile(in, log)
       val analysis = result.analysis match { case a: Analysis => a }
