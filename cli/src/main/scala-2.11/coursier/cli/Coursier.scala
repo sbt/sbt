@@ -13,6 +13,7 @@ import coursier.util.Parse
 
 import scala.annotation.tailrec
 import scala.language.reflectiveCalls
+import scala.util.Try
 
 case class CommonOptions(
   @Help("Keep optional dependencies (Maven)")
@@ -50,6 +51,9 @@ case class CommonOptions(
   @Help("Maximum number of parallel downloads (default: 6)")
   @Short("n")
     parallel: Int = 6,
+  @Help("Checksums")
+  @Value("checksum1,checksum2,... - end with none to allow for no checksum validation if none are available")
+    checksum: List[String],
   @Recurse
     cacheOptions: CacheOptions
 ) {
@@ -225,18 +229,23 @@ case class Launch(
 
   val contextLoader = Thread.currentThread().getContextClassLoader
 
-  val parentLoader0: ClassLoader = Launch.mainClassLoader(contextLoader)
-    .flatMap(cl => Option(cl.getParent))
-    .getOrElse {
-      if (common.verbose0 >= 0)
-        Console.err.println(
-          "Warning: cannot find the main ClassLoader that launched coursier. " +
-          "Was coursier launched by its main launcher? " +
-          "The ClassLoader of the application that is about to be launched will be intertwined " +
-          "with the one of coursier, which may be a problem if their dependencies conflict."
-        )
+  val parentLoader0: ClassLoader =
+    if (Try(contextLoader.loadClass("coursier.Launch")).isSuccess)
+      Launch.mainClassLoader(contextLoader)
+        .flatMap(cl => Option(cl.getParent))
+        .getOrElse {
+          if (common.verbose0 >= 0)
+            Console.err.println(
+              "Warning: cannot find the main ClassLoader that launched coursier. " +
+              "Was coursier launched by its main launcher? " +
+              "The ClassLoader of the application that is about to be launched will be intertwined " +
+              "with the one of coursier, which may be a problem if their dependencies conflict."
+            )
+          contextLoader
+        }
+    else
+      // proguarded -> no risk of conflicts, no need to find a specific ClassLoader
       contextLoader
-    }
 
   val (parentLoader, filteredFiles) =
     if (isolated.isolated.isEmpty)
