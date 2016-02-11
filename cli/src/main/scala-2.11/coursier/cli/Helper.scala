@@ -173,6 +173,18 @@ class Helper(
       )
   }
 
+  val checksums = {
+    val splitChecksumArgs = checksum.flatMap(_.split(',')).filter(_.nonEmpty)
+    if (splitChecksumArgs.isEmpty)
+      Cache.defaultChecksums
+    else
+      splitChecksumArgs.map {
+        case none if none.toLowerCase == "none" => None
+        case sumType => Some(sumType)
+      }
+  }
+
+
   val startRes = Resolution(
     dependencies.toSet,
     forceVersions = forceVersions,
@@ -186,7 +198,7 @@ class Helper(
       None
 
   val fetchs = cachePolicies.map(p =>
-    Cache.fetch(caches, p, logger = logger, pool = pool)
+    Cache.fetch(caches, p, checksums = checksums, logger = logger, pool = pool)
   )
   val fetchQuiet = coursier.Fetch.from(
     repositories,
@@ -296,8 +308,8 @@ class Helper(
       println(s"  Found ${artifacts.length} artifacts")
 
     val tasks = artifacts.map(artifact =>
-      (Cache.file(artifact, caches, cachePolicies.head, logger = logger, pool = pool) /: cachePolicies.tail)(
-        _ orElse Cache.file(artifact, caches, _, logger = logger, pool = pool)
+      (Cache.file(artifact, caches, cachePolicies.head, checksums = checksums, logger = logger, pool = pool) /: cachePolicies.tail)(
+        _ orElse Cache.file(artifact, caches, _, checksums = checksums, logger = logger, pool = pool)
       ).run.map(artifact.->)
     )
 

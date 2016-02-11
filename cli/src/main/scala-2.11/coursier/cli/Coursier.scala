@@ -50,6 +50,9 @@ case class CommonOptions(
   @Help("Maximum number of parallel downloads (default: 6)")
   @Short("n")
     parallel: Int = 6,
+  @Help("Checksums")
+  @Value("checksum1,checksum2,... - end with none to allow for no checksum validation if none are available")
+    checksum: List[String],
   @Recurse
     cacheOptions: CacheOptions
 ) {
