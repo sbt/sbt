@@ -14,6 +14,7 @@
   [@romanowski]: https://github.com/romanowski
   [@timcharper]: https://github.com/timcharper
   [@smarter]: https://github.com/smarter
+  [@retronym]: https://github.com/retronym
 
   [Dotty]: https://github.com/lampepfl/dotty
   [JLine2]: https://github.com/jline/jline2
@@ -87,6 +88,7 @@
   [2344]: https://github.com/sbt/sbt/pull/2344
   [2354]: https://github.com/sbt/sbt/pull/2354
   [2399]: https://github.com/sbt/sbt/pull/2399
+  [2453]: https://github.com/sbt/sbt/pull/2453
 
 ### Fixes with compatibility implications
 
@@ -149,6 +151,7 @@
 - Fixes launcher configuration to add `sbt-ivy-snapshots` repository to resolve nightly builds. [@eed3si9n][@eed3si9n]
 - Fixes performance issues during tree traversal in the incremental compiler. [#2343][2343] by [@adriaanm][@adriaanm]
 - Fixes the tracking of self types and F-bounded existential types in the incremental compiler. [#2343][2343] by [@adriaanm][@adriaanm]
+- Avoid CCE when scalac internally uses `compileLate`. [#2453][2453] by [@retronym][@retronym]
 
 ### Configurable Scala compiler bridge
 
