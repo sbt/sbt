@@ -1,5 +1,6 @@
 import Dependencies._
 import Util._
+import com.typesafe.tools.mima.core._, ProblemFilters._
 
 def baseVersion: String = "0.1.0-M8"
 def internalPath   = file("internal")
@@ -28,6 +29,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
     "-Ywarn-dead-code",
     "-Ywarn-numeric-widen",
     "-Ywarn-value-discard"),
+  previousArtifact := None, // Some(organization.value %% moduleName.value % "1.0.0"),
   publishArtifact in Compile := true,
   publishArtifact in Test := true
 )
