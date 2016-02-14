@@ -80,7 +80,9 @@ lazy val utilCollection = (project in internalPath / "util-collection").
   settings(
     commonSettings,
     Util.keywordsSettings,
-    name := "Util Collection"
+    name := "Util Collection",
+    scalacOptions --= // scalac 2.10 rejects some HK types under -Xfuture it seems..
+      (CrossVersion partialVersion scalaVersion.value collect { case (2, 10) => "-Xfuture" }).toList
   )
 
 lazy val utilApplyMacro = (project in internalPath / "util-appmacro").
