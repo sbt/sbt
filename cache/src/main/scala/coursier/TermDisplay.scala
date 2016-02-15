@@ -274,7 +274,8 @@ class TermDisplay(
   override def downloadedArtifact(url: String, success: Boolean): Unit = {
     downloads.synchronized {
       downloads -= url
-      doneQueue += (url -> infos.get(url))
+      if (success)
+        doneQueue += (url -> infos.get(url))
     }
 
     if (fallbackMode) {
