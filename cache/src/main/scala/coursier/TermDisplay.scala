@@ -26,7 +26,7 @@ class TermDisplay(
       val baseExtraWidth = width / 5
 
       def reflowed(url: String, info: Info) = {
-        val pctOpt = info.pct.map(100.0 * _)
+        val pctOpt = info.fraction.map(100.0 * _)
         val extra =
           if (info.length.isEmpty && info.downloaded == 0L)
             ""
@@ -60,6 +60,15 @@ class TermDisplay(
         (url0, extra0)
       }
 
+      def truncatedPrintln(s: String): Unit = {
+
+        ansi.clearLine(2)
+
+        if (s.length <= width)
+          out.write(s + "\n")
+        else
+          out.write(s.take(width - 1) + "…\n")
+      }
 
       @tailrec def helper(lineCount: Int): Unit = {
         currentHeight = lineCount
@@ -70,34 +79,49 @@ class TermDisplay(
           case Some(Right(())) =>
             // update display
 
-            val downloads0 = downloads.synchronized {
-              downloads
+            val (done0, downloads0) = downloads.synchronized {
+              val q = doneQueue
+                .toVector
+                .filter {
+                  case (url, _) =>
+                    !url.endsWith(".sha1") && !url.endsWith(".md5")
+                }
+                .sortBy { case (url, _) => url }
+
+              doneQueue.clear()
+
+              val dw = downloads
                 .toVector
                 .map { url => url -> infos.get(url) }
-                .sortBy { case (_, info) => - info.pct.sum }
+                .sortBy { case (_, info) => - info.fraction.sum }
+
+              (q, dw)
             }
 
-            for ((url, info) <- downloads0) {
+            for ((url, info) <- done0 ++ downloads0) {
               assert(info != null, s"Incoherent state ($url)")
 
-              val (url0, extra0) = reflowed(url, info)
-
+              truncatedPrintln(url)
               ansi.clearLine(2)
-              out.write(s"$url0 $extra0\n")
+              out.write(s"  ${info.display()}\n")
             }
 
-            if (downloads0.length < lineCount) {
-              for (_ <- downloads0.length until lineCount) {
+            val displayedCount = (done0 ++ downloads0).length
+
+            if (displayedCount < lineCount) {
+              for (_ <- 1 to 2; _ <- displayedCount until lineCount) {
                 ansi.clearLine(2)
                 ansi.down(1)
               }
 
-              for (_ <- downloads0.length until lineCount)
-                ansi.up(1)
+              for (_ <- displayedCount until lineCount)
+                ansi.up(2)
             }
 
             for (_ <- downloads0.indices)
-              ansi.up(1)
+              ansi.up(2)
+
+            ansi.left(10000)
 
             out.flush()
             Thread.sleep(refreshInterval)
@@ -115,7 +139,7 @@ class TermDisplay(
               downloads
                 .toVector
                 .map { url => url -> infos.get(url) }
-                .sortBy { case (_, info) => - info.pct.sum }
+                .sortBy { case (_, info) => - info.fraction.sum }
             }
 
             var displayedSomething = false
@@ -157,22 +181,55 @@ class TermDisplay(
   }
 
   def stop(): Unit = {
-    for (_ <- 0 until currentHeight) {
+    for (_ <- 1 to 2; _ <- 0 until currentHeight) {
       ansi.clearLine(2)
       ansi.down(1)
     }
     for (_ <- 0 until currentHeight) {
-      ansi.up(1)
+      ansi.up(2)
     }
     q.put(Left(()))
     lock.synchronized(())
   }
 
-  private case class Info(downloaded: Long, length: Option[Long]) {
-    def pct: Option[Double] = length.map(downloaded.toDouble / _)
+  private case class Info(downloaded: Long, length: Option[Long], startTime: Long) {
+    /** 0.0 to 1.0 */
+    def fraction: Option[Double] = length.map(downloaded.toDouble / _)
+    /** Byte / s */
+    def rate(): Option[Double] = {
+      val currentTime = System.currentTimeMillis()
+      if (currentTime > startTime)
+        Some(downloaded.toDouble / (System.currentTimeMillis() - startTime) * 1000.0)
+      else
+        None
+    }
+
+    // Scala version of http://stackoverflow.com/questions/3758606/how-to-convert-byte-size-into-human-readable-format-in-java/3758880#3758880
+    private def byteCount(bytes: Long, si: Boolean = false) = {
+      val unit = if (si) 1000 else 1024
+      if (bytes < unit)
+        bytes + " B"
+      else {
+        val exp = (math.log(bytes) / math.log(unit)).toInt
+        val pre = (if (si) "kMGTPE" else "KMGTPE").charAt(exp - 1) + (if (si) "" else "i")
+        f"${bytes / math.pow(unit, exp)}%.1f ${pre}B"
+      }
+    }
+
+    def display(): String = {
+      val decile = (10.0 * fraction.getOrElse(0.0)).toInt
+      assert(decile >= 0)
+      assert(decile <= 10)
+
+      fraction.fold(" " * 6)(p => f"${100.0 * p}%5.1f%%") +
+        " [" + ("#" * decile) + (" " * (10 - decile)) + "] " +
+        byteCount(downloaded) +
+        rate().fold("")(r => s" (${byteCount(r.toLong)} / s)")
+    }
   }
 
   private val downloads = new ArrayBuffer[String]
+  private val doneQueue = new ArrayBuffer[(String, Info)]
   private val infos = new ConcurrentHashMap[String, Info]
 
   private val q = new LinkedBlockingDeque[Either[Unit, Unit]]
@@ -183,7 +240,7 @@ class TermDisplay(
 
   override def downloadingArtifact(url: String, file: File): Unit = {
     assert(!infos.containsKey(url))
-    val prev = infos.putIfAbsent(url, Info(0L, None))
+    val prev = infos.putIfAbsent(url, Info(0L, None, System.currentTimeMillis()))
     assert(prev == null)
 
     if (fallbackMode) {
@@ -217,6 +274,7 @@ class TermDisplay(
   override def downloadedArtifact(url: String, success: Boolean): Unit = {
     downloads.synchronized {
       downloads -= url
+      doneQueue += (url -> infos.get(url))
     }
 
     if (fallbackMode) {
