@@ -1,4 +1,5 @@
 import Dependencies._
+import com.typesafe.tools.mima.core._, ProblemFilters._
 
 def baseVersion = "0.1.0"
 def internalPath   = file("internal")
@@ -15,8 +16,6 @@ def commonSettings: Seq[Setting[_]] = Seq(
   incOptions := incOptions.value.withNameHashing(true),
   crossScalaVersions := Seq(scala210, scala211),
   resolvers += Resolver.sonatypeRepo("public"),
-  publishArtifact in Compile := true,
-  publishArtifact in Test := true,
   scalacOptions ++= Seq(
     "-encoding", "utf8",
     "-deprecation",
@@ -31,7 +30,10 @@ def commonSettings: Seq[Setting[_]] = Seq(
     "-Yno-adapted-args",
     "-Ywarn-dead-code",
     "-Ywarn-numeric-widen",
-    "-Ywarn-value-discard")
+    "-Ywarn-value-discard"),
+  previousArtifact := None, // Some(organization.value %% moduleName.value % "1.0.0"),
+  publishArtifact in Compile := true,
+  publishArtifact in Test := true
 )
 
 lazy val root = (project in file(".")).
@@ -62,5 +64,7 @@ lazy val lm = (project in file("librarymanagement")).
       utilTesting % Test,
       utilCollection, ivy, jsch, sbtSerialization, scalaReflect.value, launcherInterface),
     resourceGenerators in Compile <+= (version, resourceManaged, streams, compile in Compile) map Util.generateVersionFile,
-    name := "librarymanagement"
+    name := "librarymanagement",
+    binaryIssueFilters ++= Seq(
+    )
   )
