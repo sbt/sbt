@@ -1,5 +1,6 @@
 import Dependencies._
 import Util._
+import com.typesafe.tools.mima.core._, ProblemFilters._
 
 def baseVersion: String = "0.1.0-M8"
 def internalPath   = file("internal")
@@ -28,6 +29,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
     "-Ywarn-dead-code",
     "-Ywarn-numeric-widen",
     "-Ywarn-value-discard"),
+  previousArtifact := None, // Some(organization.value %% moduleName.value % "1.0.0"),
   publishArtifact in Compile := true,
   publishArtifact in Test := true
 )
@@ -78,7 +80,9 @@ lazy val utilCollection = (project in internalPath / "util-collection").
   settings(
     commonSettings,
     Util.keywordsSettings,
-    name := "Util Collection"
+    name := "Util Collection",
+    scalacOptions --= // scalac 2.10 rejects some HK types under -Xfuture it seems..
+      (CrossVersion partialVersion scalaVersion.value collect { case (2, 10) => "-Xfuture" }).toList
   )
 
 lazy val utilApplyMacro = (project in internalPath / "util-appmacro").
