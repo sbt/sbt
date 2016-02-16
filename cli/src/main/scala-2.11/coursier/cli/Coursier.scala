@@ -230,7 +230,7 @@ case class Launch(
   val contextLoader = Thread.currentThread().getContextClassLoader
 
   val parentLoader0: ClassLoader =
-    if (Try(contextLoader.loadClass("coursier.Launch")).isSuccess)
+    if (Try(contextLoader.loadClass("coursier.cli.Launch")).isSuccess)
       Launch.mainClassLoader(contextLoader)
         .flatMap(cl => Option(cl.getParent))
         .getOrElse {
