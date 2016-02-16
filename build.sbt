@@ -319,7 +319,10 @@ lazy val plugin = project
     name := "coursier-sbt-plugin",
     sbtPlugin := {
       scalaVersion.value.startsWith("2.10.")
-    }
+    },
+    // added so that 2.10 artifacts of the other modules can be found by
+    // the too-naive-for-now inter-project resolver of the coursier SBT plugin
+    resolvers += Resolver.sonatypeRepo("snapshots")
   )
 
 lazy val `coursier` = project.in(file("."))
