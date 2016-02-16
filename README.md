@@ -4,7 +4,7 @@ Visualize your project's dependencies.
 
 ## Preliminaries
 
-The plugin works best with sbt >= 0.13.6. See the [compatibility notes](#Compatibility-notes) to use this plugin with an older version of sbt.
+The plugin works best with sbt >= 0.13.6. See the [compatibility notes](#compatibility-notes) to use this plugin with an older version of sbt.
 
 ## Usage Instructions
 
