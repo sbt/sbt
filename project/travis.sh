@@ -32,7 +32,7 @@ function isMasterOrDevelop() {
 
 # TODO Add coverage once https://github.com/scoverage/sbt-scoverage/issues/111 is fixed
 
-SBT_COMMANDS="compile test"
+SBT_COMMANDS="compile test coreJVM/mimaReportBinaryIssues cache/mimaReportBinaryIssues"
 if isNotPr && publish && isMaster; then
   SBT_COMMANDS="$SBT_COMMANDS publish"
 fi

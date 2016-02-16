@@ -1,5 +1,11 @@
 import java.io.FileOutputStream
 
+import com.typesafe.tools.mima.plugin.MimaPlugin.mimaDefaultSettings
+import com.typesafe.tools.mima.plugin.MimaKeys
+import MimaKeys.{ previousArtifacts, binaryIssueFilters }
+
+val binaryCompatibilityVersion = "1.0.0-M7"
+
 lazy val releaseSettings = Seq(
   publishMavenStyle := true,
   licenses := Seq("Apache 2.0" -> url("http://opensource.org/licenses/Apache-2.0")),
@@ -110,6 +116,7 @@ lazy val commonSettings = baseCommonSettings ++ Seq(
 
 lazy val core = crossProject
   .settings(commonSettings: _*)
+  .settings(mimaDefaultSettings: _*)
   .settings(
     name := "coursier",
     resourceGenerators.in(Compile) += {
@@ -132,6 +139,13 @@ lazy val core = crossProject
 
         Seq(f)
       }.taskValue
+    },
+    previousArtifacts := Set(organization.value %% moduleName.value % binaryCompatibilityVersion),
+    binaryIssueFilters ++= {
+      import com.typesafe.tools.mima.core._
+      import com.typesafe.tools.mima.core.ProblemFilters._
+      
+      Seq()
     }
   )
   .jvmSettings(
@@ -189,12 +203,26 @@ lazy val testsJs = tests.js.dependsOn(`fetch-js` % "test")
 lazy val cache = project
   .dependsOn(coreJvm)
   .settings(commonSettings)
+  .settings(mimaDefaultSettings)
   .settings(
     name := "coursier-cache",
     libraryDependencies ++= Seq(
       "org.scalaz" %% "scalaz-concurrent" % "7.1.2",
       "com.lihaoyi" %% "ammonite-terminal" % "0.5.0"
-    )
+    ),
+    previousArtifacts := Set(organization.value %% moduleName.value % binaryCompatibilityVersion),
+    binaryIssueFilters ++= {
+      import com.typesafe.tools.mima.core._
+      import com.typesafe.tools.mima.core.ProblemFilters._
+      
+      Seq(
+        ProblemFilters.exclude[MissingTypesProblem]("coursier.TermDisplay$Info$"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.apply"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.copy"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.pct"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.this")
+      )
+    }
   )
 
 lazy val bootstrap = project
