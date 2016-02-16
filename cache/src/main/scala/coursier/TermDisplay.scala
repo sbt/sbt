@@ -274,10 +274,11 @@ class TermDisplay(
   override def downloadedArtifact(url: String, success: Boolean): Unit = {
     downloads.synchronized {
       downloads -= url
-      doneQueue += (url -> infos.get(url))
+      if (success)
+        doneQueue += (url -> infos.get(url))
     }
 
-    if (fallbackMode) {
+    if (fallbackMode && success) {
       // FIXME What about concurrent accesses to out from the thread above?
       out.write(s"Downloaded $url\n")
       out.flush()
