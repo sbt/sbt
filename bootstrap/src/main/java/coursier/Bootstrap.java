@@ -51,7 +51,7 @@ public class Bootstrap {
     }
 
     static Map<String, URL[]> readIsolationContexts(File jarDir, String[] isolationIDs, String bootstrapProtocol, ClassLoader loader) throws IOException {
-        final Map<String, URL[]> perContextURLs = new LinkedHashMap<>();
+        final Map<String, URL[]> perContextURLs = new LinkedHashMap<String, URL[]>();
 
         for (String isolationID: isolationIDs) {
             String[] strUrls = readStringSequence("bootstrap-isolation-" + isolationID + "-jar-urls");
@@ -69,7 +69,7 @@ public class Bootstrap {
 
     // http://stackoverflow.com/questions/872272/how-to-reference-another-property-in-java-util-properties/27724276#27724276
     public static Map<String,String> loadPropertiesMap(InputStream s) throws IOException {
-        final Map<String, String> ordered = new LinkedHashMap<>();
+        final Map<String, String> ordered = new LinkedHashMap<String, String>();
         //Hack to use properties class to parse but our map for preserved order
         Properties bp = new Properties() {
             @Override
@@ -83,7 +83,7 @@ public class Bootstrap {
 
         final Pattern propertyRegex = Pattern.compile(Pattern.quote("${") + "[^" + Pattern.quote("{[()]}") + "]*" + Pattern.quote("}"));
 
-        final Map<String,String> resolved = new LinkedHashMap<>(ordered.size());
+        final Map<String, String> resolved = new LinkedHashMap<String, String>(ordered.size());
 
         for (String k : ordered.keySet()) {
             String value = ordered.get(k);
@@ -132,6 +132,25 @@ public class Bootstrap {
         return new File(jarDir, fileName);
     }
 
+    // from http://www.java2s.com/Code/Java/File-Input-Output/Readfiletobytearrayandsavebytearraytofile.htm
+    static void writeBytesToFile(File file, byte[] bytes) throws IOException {
+        BufferedOutputStream bos = null;
+
+        try {
+            FileOutputStream fos = new FileOutputStream(file);
+            bos = new BufferedOutputStream(fos);
+            bos.write(bytes);
+        } finally {
+            if (bos != null) {
+                try  {
+                    // flush and close the BufferedOutputStream
+                    bos.flush();
+                    bos.close();
+                } catch (Exception e) {}
+            }
+        }
+    }
+
     static List<URL> getLocalURLs(List<URL> urls, final File jarDir, String bootstrapProtocol) throws MalformedURLException {
 
         ThreadFactory threadFactory = new ThreadFactory() {
@@ -147,10 +166,10 @@ public class Bootstrap {
         ExecutorService pool = Executors.newFixedThreadPool(concurrentDownloadCount, threadFactory);
 
         CompletionService<URL> completionService =
-                new ExecutorCompletionService<>(pool);
+                new ExecutorCompletionService<URL>(pool);
 
-        List<URL> localURLs = new ArrayList<>();
-        List<URL> missingURLs = new ArrayList<>();
+        List<URL> localURLs = new ArrayList<URL>();
+        List<URL> missingURLs = new ArrayList<URL>();
 
         for (URL url : urls) {
 
@@ -184,7 +203,7 @@ public class Bootstrap {
                             byte[] b = readFullySync(s);
                             File tmpDest = new File(dest.getParentFile(), dest.getName() + "-" + random.nextInt());
                             tmpDest.deleteOnExit();
-                            Files.write(tmpDest.toPath(), b);
+                            writeBytesToFile(tmpDest, b);
                             Files.move(tmpDest.toPath(), dest.toPath(), StandardCopyOption.ATOMIC_MOVE);
                             dest.setLastModified(lastModified);
                         } catch (Exception e) {
@@ -239,8 +258,8 @@ public class Bootstrap {
 
     static List<URL> getURLs(String[] rawURLs, String[] resources, String bootstrapProtocol, ClassLoader loader) throws MalformedURLException {
 
-        List<String> errors = new ArrayList<>();
-        List<URL> urls = new ArrayList<>();
+        List<String> errors = new ArrayList<String>();
+        List<URL> urls = new ArrayList<URL>();
 
         for (String urlStr : rawURLs) {
             try {
@@ -354,7 +373,7 @@ public class Bootstrap {
             exit("Error: main method not found in class " + mainClass0);
         }
 
-        List<String> userArgs0 = new ArrayList<>();
+        List<String> userArgs0 = new ArrayList<String>();
 
         for (int i = 0; i < args.length; i++)
             userArgs0.add(args[i]);
