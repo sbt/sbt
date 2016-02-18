@@ -80,9 +80,12 @@ Finally, thank you for taking the time to report a problem.
 Pull Requests
 -------------
 
+### Branch to work against
+
 Whether implementing a new feature, fixing a bug, or modifying documentation, please work against the latest development branch (currently, 0.13).
-Binary compatible changes will be backported to a previous series (currently, 0.12.x) at the time of the next stable release.
 See below for instructions on building sbt from source.
+
+### Adding notes
 
 All pull requests are required to include a "Notes" file which documents the change.  This file should reside in the
 directory:
@@ -99,6 +102,13 @@ Notes files should have the following contents:
   - `### Improvements`
   - `### Fixes with compatibility implications`
 * Complete section describing new features.
+
+### Clean history
+
+Make sure you document each commit and squash them appropriately. You can use the following guides as a reference:
+
+* Scala's documentation on [Git Hygiene](https://github.com/scala/scala/tree/v2.12.0-M3#git-hygiene)
+* Play's documentation on [Working with Git](https://www.playframework.com/documentation/2.4.4/WorkingWithGit#Squashing-commits)
 
 Documentation
 -------------

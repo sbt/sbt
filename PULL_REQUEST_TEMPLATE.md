@@ -1,1 +1,1 @@
-(Strongly consider adding notes for this change)
+(See the guidelines for contributing, linked above)

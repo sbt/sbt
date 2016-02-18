@@ -1,4 +1,4 @@
-(For more details see the guidelines for contributing linked above)
+(See the guidelines for contributing, linked above)
 
 ## steps
 
