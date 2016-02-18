@@ -254,7 +254,7 @@ lazy val cli = project
       if (scalaVersion.value startsWith "2.10.")
         Seq()
       else
-        Seq("com.github.alexarchambault" %% "case-app" % "1.0.0-M2")
+        Seq("com.github.alexarchambault" %% "case-app" % "1.0.0-M4")
     },
     resourceGenerators in Compile += packageBin.in(bootstrap).in(Compile).map { jar =>
       Seq(jar)
