@@ -91,7 +91,12 @@ get_mem_opts () {
     local class_metadata_size=$(( $codecache * 2 ))
     local class_metadata_opt=$([[ "$java_version" < "1.8" ]] && echo "MaxPermSize" || echo "MaxMetaspaceSize")
 
-    echo "-Xms${mem}m -Xmx${mem}m -XX:ReservedCodeCacheSize=${codecache}m -XX:${class_metadata_opt}=${class_metadata_size}m"
+    local arg_xms=$([[ "${java_args[@]}" == *-Xms* ]] && echo "" || echo "-Xms${mem}m")
+    local arg_xmx=$([[ "${java_args[@]}" == *-Xmx* ]] && echo "" || echo "-Xmx${mem}m")
+    local arg_rccs=$([[ "${java_args[@]}" == *-XX:ReservedCodeCacheSize* ]] && echo "" || echo "-XX:ReservedCodeCacheSize=${codecache}m")
+    local arg_meta=$([[ "${java_args[@]}" == *-XX:${class_metadata_opt}* ]] && echo "" || echo "-XX:${class_metadata_opt}=${class_metadata_size}m")
+
+    echo "${arg_xms} ${arg_xmx} ${arg_rccs} ${arg_meta}"
   fi
 }
 
@@ -187,12 +192,12 @@ run() {
     addJava "-Djline.terminal=jline.UnixTerminal"
     addJava "-Dsbt.cygwin=true"
   fi
-  
+
   # run sbt
   execRunner "$java_cmd" \
-    ${SBT_OPTS:-$default_sbt_opts} \
     $(get_mem_opts $sbt_mem) \
-  	  ${JAVA_OPTS} \
+    ${JAVA_OPTS} \
+    ${SBT_OPTS:-$default_sbt_opts} \
     ${java_args[@]} \
     -jar "$sbt_jar" \
     "${sbt_commands[@]}" \
