@@ -233,6 +233,24 @@ class Difference(val cache: File, val style: FilesInfo.Style, val defineClean: B
 object FileFunction {
   type UpdateFunction = (ChangeReport[File], ChangeReport[File]) => Set[File]
 
+  /**
+    Generic change-detection helper used to help build / artifact generation /
+    etc. steps detect whether or not they need to run. Returns a function whose
+    input is a Set of input files, and subsequently executes the action function
+    (which does the actual work: compiles, generates resources, etc.), returning
+    a Set of output files that it generated.
+
+    The input file and resulting output file state is cached in
+    cacheBaseDirectory. On each invocation, the state of the input and output
+    files from the previous run is compared against the cache, as is the set of
+    input files. If a change in file state / input files set is detected, the
+    action function is re-executed.
+
+    @param cacheBaseDirectory The folder in which to store
+    @param inStyle The strategy by which to detect state change in the input files from the previous run
+    @param outStyle The strategy by which to detect state change in the output files from the previous run
+    @param action The work function, which receives a list of input files and returns a list of output files
+    */
   def cached(cacheBaseDirectory: File, inStyle: FilesInfo.Style = FilesInfo.lastModified, outStyle: FilesInfo.Style = FilesInfo.exists)(action: Set[File] => Set[File]): Set[File] => Set[File] =
     cached(cacheBaseDirectory)(inStyle, outStyle)((in, out) => action(in.checked))
 
