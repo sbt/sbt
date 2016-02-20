@@ -60,7 +60,7 @@ Lastly, it can be used programmatically via its [API](#api) and has a Scala JS [
 
 Enable the SBT plugin by adding
 ```scala
-addSbtPlugin("com.github.alexarchambault" % "coursier-sbt-plugin" % "1.0.0-M7")
+addSbtPlugin("com.github.alexarchambault" % "coursier-sbt-plugin" % "1.0.0-M8")
 ```
 to `~/.sbt/0.13/plugins/build.sbt` (enables it globally), or to the `project/plugins.sbt` file
 of a SBT project. Tested with SBT 0.13.8 / 0.13.9.
@@ -97,8 +97,8 @@ Fetching artifacts
 Add to your `build.sbt`
 ```scala
 libraryDependencies ++= Seq(
-  "com.github.alexarchambault" %% "coursier" % "1.0.0-M7",
-  "com.github.alexarchambault" %% "coursier-cache" % "1.0.0-M7"
+  "com.github.alexarchambault" %% "coursier" % "1.0.0-M8",
+  "com.github.alexarchambault" %% "coursier-cache" % "1.0.0-M8"
 )
 ```
 
@@ -195,7 +195,7 @@ of the cache used by a particular project, in case you have any doubt about what
 
 Enable the SBT plugin globally by adding
 ```scala
-addSbtPlugin("com.github.alexarchambault" % "coursier-sbt-plugin" % "1.0.0-M7")
+addSbtPlugin("com.github.alexarchambault" % "coursier-sbt-plugin" % "1.0.0-M8")
 ```
 to `~/.sbt/0.13/plugins/build.sbt`
 
@@ -333,7 +333,7 @@ The `bootstrap` generates tiny bootstrap launchers, able to pull their dependenc
 repositories on first launch. For example, the launcher of coursier is [generated](https://github.com/alexarchambault/coursier/blob/master/project/generate-launcher.sh) with a command like
 ```
 $ ./coursier bootstrap \
-    com.github.alexarchambault:coursier-cli_2.11:1.0.0-M7 \
+    com.github.alexarchambault:coursier-cli_2.11:1.0.0-M8 \
     -b -f -o coursier \
     -M coursier.cli.Coursier
 ```
@@ -345,12 +345,12 @@ See `./coursier bootstrap --help` for a list of the available options.
 Add to your `build.sbt`
 ```scala
 libraryDependencies ++= Seq(
-  "com.github.alexarchambault" %% "coursier" % "1.0.0-M7",
-  "com.github.alexarchambault" %% "coursier-cache" % "1.0.0-M7"
+  "com.github.alexarchambault" %% "coursier" % "1.0.0-M8",
+  "com.github.alexarchambault" %% "coursier-cache" % "1.0.0-M8"
 )
 ```
 
-The first module, `"com.github.alexarchambault" %% "coursier" % "1.0.0-M7"`, mainly depends on
+The first module, `"com.github.alexarchambault" %% "coursier" % "1.0.0-M8"`, mainly depends on
 `scalaz-core` (and only it, *not* `scalaz-concurrent` for example). It contains among others,
 definitions,
 mainly in [`Definitions.scala`](https://github.com/alexarchambault/coursier/blob/master/core/shared/src/main/scala/coursier/core/Definitions.scala),
@@ -360,7 +360,7 @@ that expects to be given metadata, wrapped in any `Monad`, then feeds these to `
 you the final `Resolution`, wrapped in the same `Monad` it was given input. This final `Resolution` has all the dependencies,
 including the transitive ones.
 
-The second module, `"com.github.alexarchambault" %% "coursier-cache" % "1.0.0-M7"`, is precisely in charge of fetching
+The second module, `"com.github.alexarchambault" %% "coursier-cache" % "1.0.0-M8"`, is precisely in charge of fetching
 these input metadata. It uses `scalaz.concurrent.Task` as a `Monad` to wrap them. It also fetches artifacts (JARs, etc.).
 It caches all of these (metadata and artifacts) on disk, and validates checksums too.
 
