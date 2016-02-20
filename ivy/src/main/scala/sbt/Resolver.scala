@@ -243,19 +243,16 @@ object Resolver {
    * If `jcenter` is true, add the JCenter.
    * If `mavenCentral` is true, add the Maven Central repository.
    */
-  private[sbt] def reorganizeAppResolvers(appResolvers: Seq[Resolver], jcenter: Boolean, mavenCentral: Boolean): Seq[Resolver] =
-    appResolvers.partition(_ == Resolver.defaultLocal) match {
-      case (locals, xs) =>
-        locals ++
-        (xs.partition(_ == JCenterRepository) match {
-          case (jc, xs) =>
-            single(JCenterRepository, jcenter) ++
-            (xs.partition(_ == DefaultMavenRepository) match {
-              case (m, xs) =>
-                single(DefaultMavenRepository, mavenCentral) ++ xs // TODO - Do we need to filter out duplicates?
-            })
-        })
-    }
+  private[sbt] def reorganizeAppResolvers(resolvers: Seq[Resolver], jcenter: Boolean, mavenCentral: Boolean): Seq[Resolver] = {
+    val (locals, tail1) = resolvers.partition(_ == Resolver.defaultLocal)
+    val (jc, tail2) = tail1.partition(_ == JCenterRepository)
+    val (m, tail3) = tail2.partition(_ == DefaultMavenRepository)
+    locals ++
+      single(JCenterRepository, jcenter) ++
+      single(DefaultMavenRepository, mavenCentral) ++
+      tail3
+    // TODO - Do we need to filter out duplicates?
+  }
 
   /** A base class for defining factories for interfaces to Ivy repositories that require a hostname , port, and patterns.  */
   sealed abstract class Define[RepositoryType <: SshBasedRepository] extends NotNull {
