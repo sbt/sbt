@@ -70,8 +70,9 @@ object Tasks {
       sbt.Keys.thisProjectRef,
       sbt.Keys.projectID,
       sbt.Keys.scalaVersion,
-      sbt.Keys.scalaBinaryVersion
-    ).map { (state, projectRef, projId, sv, sbv) =>
+      sbt.Keys.scalaBinaryVersion,
+      sbt.Keys.ivyConfigurations
+    ).map { (state, projectRef, projId, sv, sbv, ivyConfs) =>
 
       val packageTasks = Seq(packageBin, packageSrc, packageDoc)
       val configs = Seq(Compile, Test)
@@ -89,24 +90,50 @@ object Tasks {
             None
         }
 
-      sbtArtifacts.collect {
-        case Some((config, artifact)) =>
-          val name = FromSbt.sbtCrossVersionName(
-            artifact.name,
-            projId.crossVersion,
-            sv,
-            sbv
-          )
+      def artifactPublication(artifact: sbt.Artifact) = {
 
-          val publication = Publication(
-            name,
-            artifact.`type`,
-            artifact.extension,
-            artifact.classifier.getOrElse("")
-          )
+        val name = FromSbt.sbtCrossVersionName(
+          artifact.name,
+          projId.crossVersion,
+          sv,
+          sbv
+        )
 
-          config -> publication
+        Publication(
+          name,
+          artifact.`type`,
+          artifact.extension,
+          artifact.classifier.getOrElse("")
+        )
       }
+
+      val sbtArtifactsPublication = sbtArtifacts.collect {
+        case Some((config, artifact)) =>
+          config -> artifactPublication(artifact)
+      }
+
+      val stdArtifactsSet = sbtArtifacts.flatMap(_.map { case (_, a) => a }.toSeq).toSet
+
+      // Second-way of getting artifacts from SBT
+      // No obvious way of getting the corresponding  publishArtifact  value for the ones
+      // only here, it seems.
+      val extraSbtArtifacts = Option(artifacts.in(projectRef).getOrElse(state, null))
+        .toSeq
+        .flatten
+        .filterNot(stdArtifactsSet)
+
+      // Seems that SBT does that - if an artifact has no configs,
+      // it puts it in all of them. See for example what happens to
+      // the standalone JAR artifact of the coursier cli module.
+      def allConfigsIfEmpty(configs: Iterable[sbt.Configuration]): Iterable[sbt.Configuration] =
+        if (configs.isEmpty) ivyConfs else configs
+
+      val extraSbtArtifactsPublication = for {
+        artifact <- extraSbtArtifacts
+        config <- allConfigsIfEmpty(artifact.configurations) if config.isPublic
+      } yield config.name -> artifactPublication(artifact)
+
+      sbtArtifactsPublication ++ extraSbtArtifactsPublication
     }
 
   // FIXME More things should possibly be put here too (resolvers, etc.)
