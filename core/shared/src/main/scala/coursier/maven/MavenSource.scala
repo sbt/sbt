@@ -79,10 +79,23 @@ case class MavenSource(
     overrideClassifiers match {
       case Some(classifiers) =>
         val classifiersSet = classifiers.toSet
-        project.publications.collect {
+        val publications = project.publications.collect {
           case (_, p) if classifiersSet(p.classifier) =>
-            artifactOf(dependency.module, p)
+            p
         }
+
+        val publications0 =
+          if (publications.isEmpty)
+            classifiers.map { classifier =>
+              Publication(dependency.module.name, "jar", "jar", classifier)
+            }
+          else
+            publications
+
+        publications0.map { p =>
+          artifactOf(dependency.module, p)
+        }
+
       case None =>
         Seq(
           artifactOf(

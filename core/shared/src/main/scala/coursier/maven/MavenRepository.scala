@@ -45,6 +45,12 @@ object MavenRepository {
     "test" -> Seq("runtime")
   )
 
+  def defaultPublications(moduleName: String) = Seq(
+    "compile" -> Publication(moduleName, "jar", "jar", ""),
+    "docs" -> Publication(moduleName, "doc", "jar", "javadoc"),
+    "sources" -> Publication(moduleName, "src", "jar", "sources")
+  )
+
   def dirModuleName(module: Module, sbtAttrStub: Boolean): String =
     if (sbtAttrStub) {
       var name = module.name
@@ -241,11 +247,7 @@ case class MavenRepository(
             proj <- Pom.project(xml)
           } yield proj.copy(
             configurations = defaultConfigurations,
-            publications = Seq(
-              "compile" -> Publication(module.name, "jar", "jar", ""),
-              "docs" -> Publication(module.name, "doc", "jar", "javadoc"),
-              "sources" -> Publication(module.name, "src", "jar", "sources")
-            )
+            publications = defaultPublications(module.name)
           )): (String \/ Project)
         }
       }

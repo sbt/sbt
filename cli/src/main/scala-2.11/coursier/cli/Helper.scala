@@ -169,7 +169,8 @@ class Helper(
         module,
         version,
         configuration = "default(compile)",
-        exclusions = excludes
+        exclusions = excludes,
+        transitive = !intransitive
       )
   }
 
@@ -287,14 +288,14 @@ class Helper(
     val res0 = Option(subset).fold(res)(res.subset)
 
     val artifacts =
-      if (sources || javadoc) {
-        var classifiers = Seq.empty[String]
+      if (classifier0.nonEmpty || sources || javadoc) {
+        var classifiers = classifier0
         if (sources)
           classifiers = classifiers :+ "sources"
         if (javadoc)
           classifiers = classifiers :+ "javadoc"
 
-        res0.classifiersArtifacts(classifiers)
+        res0.classifiersArtifacts(classifiers.distinct)
       } else
         res0.artifacts
 

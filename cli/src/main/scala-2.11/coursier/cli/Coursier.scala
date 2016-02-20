@@ -48,6 +48,12 @@ case class CommonOptions(
   @Value("organization:name")
   @Short("E")
     exclude: List[String],
+  @Help("Consider provided dependencies to be intransitive. Applies to all the provided dependencies.")
+    intransitive: Boolean,
+  @Help("Classifiers that should be fetched")
+  @Value("classifier1,classifier2,...")
+  @Short("C")
+    classifier: List[String],
   @Help("Maximum number of parallel downloads (default: 6)")
   @Short("n")
     parallel: Int = 6,
@@ -58,6 +64,7 @@ case class CommonOptions(
     cacheOptions: CacheOptions
 ) {
   val verbose0 = verbose.length - (if (quiet) 1 else 0)
+  lazy val classifier0 = classifier.flatMap(_.split(',')).filter(_.nonEmpty)
 }
 
 case class CacheOptions(
