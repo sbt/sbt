@@ -40,9 +40,14 @@ object MakeIvyXml {
         n
     }
 
-    val publicationElems = project.publications.map {
-      case (conf, pub) =>
-        var n = <artifact name={pub.name} type={pub.`type`} ext={pub.ext} conf={conf} />
+    val publications = project
+      .publications
+      .groupBy { case (_, p) => p }
+      .mapValues { _.map { case (cfg, _) => cfg } }
+
+    val publicationElems = publications.map {
+      case (pub, configs) =>
+        var n = <artifact name={pub.name} type={pub.`type`} ext={pub.ext} conf={configs.mkString(",")} />
         if (pub.classifier.nonEmpty)
           n = n % <x e:classifier={pub.classifier} />.attributes
         n
