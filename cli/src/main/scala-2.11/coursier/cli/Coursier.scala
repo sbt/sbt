@@ -48,6 +48,8 @@ case class CommonOptions(
   @Value("organization:name")
   @Short("E")
     exclude: List[String],
+  @Help("Consider provided dependencies to be intransitive. Applies to all the provided dependencies.")
+    intransitive: Boolean,
   @Help("Maximum number of parallel downloads (default: 6)")
   @Short("n")
     parallel: Int = 6,

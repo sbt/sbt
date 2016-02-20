@@ -169,7 +169,8 @@ class Helper(
         module,
         version,
         configuration = "default(compile)",
-        exclusions = excludes
+        exclusions = excludes,
+        transitive = !intransitive
       )
   }
 
