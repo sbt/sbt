@@ -217,12 +217,14 @@ object Resolver {
   /** Add the local and Maven Central repositories to the user repositories.  */
   def withDefaultResolvers(userResolvers: Seq[Resolver]): Seq[Resolver] =
     withDefaultResolvers(userResolvers, false, true)
+
   /**
    * Add the local Ivy repository to the user repositories.
    * If `mavenCentral` is true, add the Maven Central repository.
    */
   def withDefaultResolvers(userResolvers: Seq[Resolver], mavenCentral: Boolean): Seq[Resolver] =
     withDefaultResolvers(userResolvers, false, mavenCentral)
+
   /**
    * Add the local Ivy repository to the user repositories.
    * If `jcenter` is true, add the JCenter.
@@ -233,6 +235,7 @@ object Resolver {
       userResolvers ++
       single(JCenterRepository, jcenter) ++
       single(DefaultMavenRepository, mavenCentral)
+
   private def single[T](value: T, nonEmpty: Boolean): Seq[T] = if (nonEmpty) Seq(value) else Nil
 
   /**
@@ -240,19 +243,19 @@ object Resolver {
    * If `jcenter` is true, add the JCenter.
    * If `mavenCentral` is true, add the Maven Central repository.
    */
-  private[sbt] def reorganizeAppResolvers(appResolvers: Seq[Resolver], jcenter: Boolean, mavenCentral: Boolean): Seq[Resolver] =
-    appResolvers.partition(_ == Resolver.defaultLocal) match {
-      case (locals, xs) =>
-        locals ++
-        (xs.partition(_ == JCenterRepository) match {
-          case (jc, xs) =>
-            single(JCenterRepository, jcenter) ++
-            (xs.partition(_ == DefaultMavenRepository) match {
-              case (m, xs) =>
-                single(DefaultMavenRepository, mavenCentral) ++ xs // TODO - Do we need to filter out duplicates?
-            })
-        })
-    }
+  private[sbt] def reorganizeAppResolvers(resolvers: Seq[Resolver], jcenter: Boolean, mavenCentral: Boolean): Seq[Resolver] = {
+    def keepOrSingle[T](xs: Seq[T], value: T, add: Boolean): Seq[T] =
+      if (xs.nonEmpty) xs else single(value, add)
+
+    val (locals, tail1) = resolvers.partition(_ == Resolver.defaultLocal)
+    val (jc, tail2) = tail1.partition(_ == JCenterRepository)
+    val (m, tail3) = tail2.partition(_ == DefaultMavenRepository)
+    locals ++
+      keepOrSingle(jc, JCenterRepository, jcenter) ++
+      keepOrSingle(m, DefaultMavenRepository, mavenCentral) ++
+      tail3
+    // TODO - Do we need to filter out duplicates?
+  }
 
   /** A base class for defining factories for interfaces to Ivy repositories that require a hostname , port, and patterns.  */
   sealed abstract class Define[RepositoryType <: SshBasedRepository] extends NotNull {

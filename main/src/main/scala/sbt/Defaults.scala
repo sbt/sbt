@@ -1148,7 +1148,7 @@ object Classpaths {
     externalResolvers <<= (externalResolvers.task.?, resolvers, appResolvers, useJCenter) {
       case (Some(delegated), Seq(), _, _) => delegated
       case (_, rs, Some(ars), uj)         => task { ars ++ Resolver.reorganizeAppResolvers(rs, uj, true) }
-      case (_, rs, _, uj)                 => task { Resolver.withDefaultResolvers(rs, uj) }
+      case (_, rs, _, uj)                 => task { Resolver.withDefaultResolvers(rs, uj, true) }
     },
     appResolvers <<= appConfiguration apply appRepositories,
     bootResolvers <<= appConfiguration map bootRepositories,
