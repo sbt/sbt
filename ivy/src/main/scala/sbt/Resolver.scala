@@ -244,12 +244,15 @@ object Resolver {
    * If `mavenCentral` is true, add the Maven Central repository.
    */
   private[sbt] def reorganizeAppResolvers(resolvers: Seq[Resolver], jcenter: Boolean, mavenCentral: Boolean): Seq[Resolver] = {
+    def keepOrSingle[T](xs: Seq[T], value: T, add: Boolean): Seq[T] =
+      if (xs.nonEmpty) xs else single(value, add)
+
     val (locals, tail1) = resolvers.partition(_ == Resolver.defaultLocal)
     val (jc, tail2) = tail1.partition(_ == JCenterRepository)
     val (m, tail3) = tail2.partition(_ == DefaultMavenRepository)
     locals ++
-      single(JCenterRepository, jcenter) ++
-      single(DefaultMavenRepository, mavenCentral) ++
+      keepOrSingle(jc, JCenterRepository, jcenter) ++
+      keepOrSingle(m, DefaultMavenRepository, mavenCentral) ++
       tail3
     // TODO - Do we need to filter out duplicates?
   }
