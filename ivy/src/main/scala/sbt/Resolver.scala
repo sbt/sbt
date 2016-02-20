@@ -217,12 +217,14 @@ object Resolver {
   /** Add the local and Maven Central repositories to the user repositories.  */
   def withDefaultResolvers(userResolvers: Seq[Resolver]): Seq[Resolver] =
     withDefaultResolvers(userResolvers, false, true)
+
   /**
    * Add the local Ivy repository to the user repositories.
    * If `mavenCentral` is true, add the Maven Central repository.
    */
   def withDefaultResolvers(userResolvers: Seq[Resolver], mavenCentral: Boolean): Seq[Resolver] =
     withDefaultResolvers(userResolvers, false, mavenCentral)
+
   /**
    * Add the local Ivy repository to the user repositories.
    * If `jcenter` is true, add the JCenter.
@@ -233,6 +235,7 @@ object Resolver {
       userResolvers ++
       single(JCenterRepository, jcenter) ++
       single(DefaultMavenRepository, mavenCentral)
+
   private def single[T](value: T, nonEmpty: Boolean): Seq[T] = if (nonEmpty) Seq(value) else Nil
 
   /**
