@@ -266,7 +266,49 @@ lazy val cli = project
       "-keep class coursier.cli.IsolatedClassLoader {\n  public java.lang.String[] getIsolationTargets();\n}"
     ),
     javaOptions in (Proguard, ProguardKeys.proguard) := Seq("-Xmx3172M"),
-    artifactPath in Proguard := (ProguardKeys.proguardDirectory in Proguard).value / "coursier-standalone.jar"
+    artifactPath in Proguard := (ProguardKeys.proguardDirectory in Proguard).value / "coursier-standalone.jar",
+    artifacts ++= {
+      if (scalaBinaryVersion.value == "2.10")
+        Nil
+      else Seq(
+        Artifact(
+          moduleName.value,
+          "jar",
+          "jar",
+          "standalone"
+        )
+      )
+    },
+    packagedArtifacts <++= {
+      (
+        moduleName,
+        scalaBinaryVersion,
+        ProguardKeys.proguard in Proguard
+      ).map {
+        (mod, sbv, files) =>
+          if (sbv == "2.10")
+            Map.empty[Artifact, File]
+          else {
+            val f = files match {
+              case Seq(f) => f
+              case Seq() =>
+                throw new Exception("Found no proguarded files. Expected one.")
+              case _ =>
+                throw new Exception("Found several proguarded files. Don't know how to publish all of them.")
+            }
+
+            Map(
+              // FIXME Same Artifact as above
+              Artifact(
+                mod,
+                "jar",
+                "jar",
+                "standalone"
+              ) -> f
+            )
+          }
+      }
+    }
   )
 
 lazy val web = project
