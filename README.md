@@ -574,6 +574,8 @@ some of its requirements via coursier,
 - [jupyter-scala](https://github.com/alexarchambault/jupyter-scala) is launched
 and allows to add dependencies in its sessions with coursier (initial motivation
 for writing coursier),
+- [Apache Toree](https://github.com/apache/incubator-toree) - formerly known as [spark-kernel](https://github.com/ibm-et/spark-kernel), is now using coursier to
+add dependencies on-the-fly ([#4](https://github.com/apache/incubator-toree/pull/4)),
 - Your project here :-)
 
 
