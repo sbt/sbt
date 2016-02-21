@@ -30,7 +30,7 @@ and is able to fetch metadata and artifacts from both Maven and Ivy repositories
 
 Compared to the default dependency resolution of SBT, it adds:
 * downloading of artifacts in parallel,
-* better offline mode - one can safely work with snapshot dependencies if these are in cache (SBT tends to try to fail if it cannot check for updates),
+* better offline mode - one can safely work with snapshot dependencies if these are in cache (SBT tends to try and fail if it cannot check for updates),
 * non obfuscated cache (cache structure just mimicks the URL it caches),
 * no global lock (no "Waiting for ~/.ivy2/.sbt.ivy.lock to be available").
 
@@ -104,8 +104,36 @@ libraryDependencies ++= Seq(
 ```
 
 Add an import for coursier,
-```tut:silent
+```scala
 import coursier._
+```
+
+```tut:invisible
+import coursier.{ Cache => _, _ }
+```
+
+```tut:invisible
+object Cache {
+  val ivy2LocalIsIvy = coursier.Cache.ivy2Local match {
+    case _: coursier.ivy.IvyRepository => true
+    case _ => false
+  }
+
+  assert(ivy2LocalIsIvy)
+
+  // The goal of this is to make the printed ivy2Local below more anonymous,
+  // with literally ${user.home} in it rather than the current home dir.
+  // ${user.home} could have been used in the definition of ivy2Local itself,
+  // but it would then have required properties, which would have cluttered
+  // output here.
+
+  val ivy2Local = coursier.Cache.ivy2Local.copy(
+    pattern = coursier.Cache.ivy2Local.pattern.replace("file:" + sys.props("user.home"), "file://${user.home}")
+  )
+
+  def fetch() = coursier.Cache.fetch()
+  def file(artifact: Artifact) = coursier.Cache.file(artifact)
+}
 ```
 
 To resolve dependencies, first create a `Resolution` case class with your dependencies in it,
@@ -366,9 +394,14 @@ these input metadata. It uses `scalaz.concurrent.Task` as a `Monad` to wrap them
 It caches all of these (metadata and artifacts) on disk, and validates checksums too.
 
 In the code below, we'll assume some imports are around,
-```tut:silent
+```scala
 import coursier._
 ```
+
+```tut:invisible
+import coursier.{ Cache => _, _ }
+```
+
 
 Resolving dependencies involves create an initial resolution state, with all the initial dependencies in it, like
 ```tut:silent
@@ -616,8 +649,11 @@ on the [Gitter channel](https://gitter.im/alexarchambault/coursier).
 
 - [Lars Hupel](https://github.com/larsrh/)'s [libisabelle](https://github.com/larsrh/libisabelle) fetches
 some of its requirements via coursier,
-- [jupyter-scala](https://github.com/alexarchambault/jupyter-scala) should soon allow
-to add dependencies in its sessions with coursier (initial motivation for writing coursier),
+- [jupyter-scala](https://github.com/alexarchambault/jupyter-scala) is launched
+and allows to add dependencies in its sessions with coursier (initial motivation
+for writing coursier),
+- [Apache Toree](https://github.com/apache/incubator-toree) - formerly known as [spark-kernel](https://github.com/ibm-et/spark-kernel), is now using coursier to
+add dependencies on-the-fly ([#4](https://github.com/apache/incubator-toree/pull/4)),
 - Your project here :-)
 
 

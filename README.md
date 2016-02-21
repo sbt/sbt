@@ -30,7 +30,7 @@ and is able to fetch metadata and artifacts from both Maven and Ivy repositories
 
 Compared to the default dependency resolution of SBT, it adds:
 * downloading of artifacts in parallel,
-* better offline mode - one can safely work with snapshot dependencies if these are in cache (SBT tends to try to fail if it cannot check for updates),
+* better offline mode - one can safely work with snapshot dependencies if these are in cache (SBT tends to try and fail if it cannot check for updates),
 * non obfuscated cache (cache structure just mimicks the URL it caches),
 * no global lock (no "Waiting for ~/.ivy2/.sbt.ivy.lock to be available").
 
@@ -107,6 +107,12 @@ Add an import for coursier,
 ```scala
 import coursier._
 ```
+
+
+
+
+
+
 
 To resolve dependencies, first create a `Resolution` case class with your dependencies in it,
 ```scala
@@ -368,6 +374,10 @@ In the code below, we'll assume some imports are around,
 import coursier._
 ```
 
+
+
+
+
 Resolving dependencies involves create an initial resolution state, with all the initial dependencies in it, like
 ```scala
 val start = Resolution(
@@ -400,7 +410,7 @@ scala> val repositories = Seq(
      |   Cache.ivy2Local,
      |   MavenRepository("https://repo1.maven.org/maven2")
      | )
-repositories: Seq[coursier.core.Repository] = List(IvyRepository(file:/Users/alexandre/.ivy2/local/[organisation]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext],None,None,Map(),true,true,true,true), MavenRepository(https://repo1.maven.org/maven2,None,false))
+repositories: Seq[coursier.core.Repository] = List(IvyRepository(file://${user.home}/.ivy2/local/[organisation]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext],None,None,Map(),true,true,true,true), MavenRepository(https://repo1.maven.org/maven2,None,false))
 ```
 The first one, `Cache.ivy2Local`, is defined in `coursier.Cache`, itself from the `coursier-cache` module that
 we added above. As we can see, it is an `IvyRepository`, picking things under `~/.ivy2/local`. An `IvyRepository`
@@ -615,8 +625,11 @@ on the [Gitter channel](https://gitter.im/alexarchambault/coursier).
 
 - [Lars Hupel](https://github.com/larsrh/)'s [libisabelle](https://github.com/larsrh/libisabelle) fetches
 some of its requirements via coursier,
-- [jupyter-scala](https://github.com/alexarchambault/jupyter-scala) should soon allow
-to add dependencies in its sessions with coursier (initial motivation for writing coursier),
+- [jupyter-scala](https://github.com/alexarchambault/jupyter-scala) is launched
+and allows to add dependencies in its sessions with coursier (initial motivation
+for writing coursier),
+- [Apache Toree](https://github.com/apache/incubator-toree) - formerly known as [spark-kernel](https://github.com/ibm-et/spark-kernel), is now using coursier to
+add dependencies on-the-fly ([#4](https://github.com/apache/incubator-toree/pull/4)),
 - Your project here :-)
 
 
