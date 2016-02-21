@@ -155,13 +155,13 @@
 
 ### Configurable Scala compiler bridge
 
-sbt 0.13.10 adds `scalaCompilerBridgeSource` setting to specify the compiler brigde source. This allows different implementation of the bridge for Scala versions, and also allows future versions of Scala compiler implementation to diverge. The source module will be retrieved using library management configured by `bootIvyConfiguration` task.
+sbt 0.13.11 adds `scalaCompilerBridgeSource` setting to specify the compiler brigde source. This allows different implementation of the bridge for Scala versions, and also allows future versions of Scala compiler implementation to diverge. The source module will be retrieved using library management configured by `bootIvyConfiguration` task.
 
 [#2106][2106]/[#2197][2197]/[#2336][2336] by [@Duhemm][@Duhemm]
 
 ### Dotty awareness
 
-sbt 0.13.10 will assume that Dotty is used when `scalaVersion` starts with `0.`.
+sbt 0.13.11 will assume that Dotty is used when `scalaVersion` starts with `0.`.
 The built-in compiler bridge in sbt does not support Dotty,
 but a separate compiler bridge is being developed at [smarter/dotty-bridge](https://github.com/smarter/dotty-bridge) and
 an example project that uses it is available at [smarter/dotty-example-project](https://github.com/smarter/dotty-example-project).
@@ -170,7 +170,7 @@ an example project that uses it is available at [smarter/dotty-example-project](
 
 ### Inter-project dependency tracking
 
-sbt 0.13.10 adds `trackInternalDependencies` and `exportToInternal` settings. These can be used to control whether to trigger compilation of a dependent subprojects when you call `compile`. Both keys will take one of three values: `TrackLevel.NoTracking`, `TrackLevel.TrackIfMissing`, and `TrackLevel.TrackAlways`. By default they are both set to `TrackLevel.TrackAlways`.
+sbt 0.13.11 adds `trackInternalDependencies` and `exportToInternal` settings. These can be used to control whether to trigger compilation of a dependent subprojects when you call `compile`. Both keys will take one of three values: `TrackLevel.NoTracking`, `TrackLevel.TrackIfMissing`, and `TrackLevel.TrackAlways`. By default they are both set to `TrackLevel.TrackAlways`.
 
 When `trackInternalDependencies` is set to `TrackLevel.TrackIfMissing`, sbt will no longer try to compile internal (inter-project) dependencies automatically, unless there are no `*.class` files (or JAR file when `exportJars` is `true`) in the output directory. When the setting is set to `TrackLevel.NoTracking`, the compilation of internal dependencies will be skipped. Note that the classpath will still be appended, and dependency graph will still show them as dependencies. The motivation is to save the I/O overhead of checking for the changes on a build with many subprojects during development. Here's how to set all subprojects to `TrackIfMissing`.
 
