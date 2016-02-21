@@ -571,8 +571,9 @@ on the [Gitter channel](https://gitter.im/alexarchambault/coursier).
 
 - [Lars Hupel](https://github.com/larsrh/)'s [libisabelle](https://github.com/larsrh/libisabelle) fetches
 some of its requirements via coursier,
-- [jupyter-scala](https://github.com/alexarchambault/jupyter-scala) should soon allow
-to add dependencies in its sessions with coursier (initial motivation for writing coursier),
+- [jupyter-scala](https://github.com/alexarchambault/jupyter-scala) is launched
+and allows to add dependencies in its sessions with coursier (initial motivation
+for writing coursier),
 - Your project here :-)
 
 
