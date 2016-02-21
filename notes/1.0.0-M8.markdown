@@ -1,0 +1,18 @@
+### Changes
+
+* A Java 6 compatible branch was created ([java-6] - as remarked by @fommil,
+  Java 6 is still the official Java version of Scala)
+* Fix a regression in class loader isolation of the `launch` command ([#142])
+* MIMA SBT plugin is added to the `core` and `cache` modules, aiming at backward
+  binary compatibility as of 1.0.0-M8 ([#140])
+* Nicer progress bars in the CLI and SBT plugin output ([#136])
+* Proguarded standalone JAR of the CLI app is now automatically pushed to
+  Sonatype, ([standalone] JAR, [#148]). Should be used as the only dependency of
+  the default launcher in the future.
+
+[java-6]: https://github.com/alexarchambault/coursier/tree/topic/java-6
+[#142]: https://github.com/alexarchambault/coursier/pull/142
+[#140]: https://github.com/alexarchambault/coursier/pull/140
+[#136]: https://github.com/alexarchambault/coursier/pull/136
+[#148]: https://github.com/alexarchambault/coursier/pull/148
+[standalone]: https://oss.sonatype.org/content/repositories/releases/com/github/alexarchambault/coursier-cli_2.11/1.0.0-M8/coursier-cli_2.11-1.0.0-M8-standalone.jar
