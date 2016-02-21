@@ -1147,10 +1147,14 @@ object Classpaths {
     overrideBuildResolvers <<= appConfiguration(isOverrideRepositories),
     externalResolvers <<= (externalResolvers.task.?, resolvers, appResolvers, useJCenter) {
       case (Some(delegated), Seq(), _, _) => delegated
-      case (_, rs, Some(ars), uj)         => task { ars ++ Resolver.reorganizeAppResolvers(rs, uj, true) }
-      case (_, rs, _, uj)                 => task { Resolver.withDefaultResolvers(rs, uj) }
+      case (_, rs, Some(ars), uj)         => task { ars ++ rs }
+      case (_, rs, _, uj)                 => task { Resolver.withDefaultResolvers(rs, uj, true) }
     },
-    appResolvers <<= appConfiguration apply appRepositories,
+    appResolvers := {
+      val ac = appConfiguration.value
+      val uj = useJCenter.value
+      appRepositories(ac) map { ars => Resolver.reorganizeAppResolvers(ars, uj, true) }
+    },
     bootResolvers <<= appConfiguration map bootRepositories,
     fullResolvers <<= (projectResolver, externalResolvers, sbtPlugin, sbtResolver, bootResolvers, overrideBuildResolvers) map { (proj, rs, isPlugin, sbtr, boot, overrideFlag) =>
       boot match {
