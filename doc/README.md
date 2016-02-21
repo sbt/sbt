@@ -50,9 +50,10 @@ Lastly, it can be used programmatically via its [API](#api) and has a Scala JS [
   3. [API](#api)
   4. [Scala JS demo](#scala-js-demo)
 4. [Limitations](#limitations)
-5. [Roadmap](#roadmap)
-6. [Contributors](#contributors)
-7. [Projects using coursier](#projects-using-coursier)
+5. [FAQ](#faq)
+6. [Roadmap](#roadmap)
+7. [Contributors](#contributors)
+8. [Projects using coursier](#projects-using-coursier)
 
 ## Quick start
 
@@ -546,6 +547,49 @@ artifact in the cache, it will just fail, instead of waiting for the lock to be 
 #### Also
 
 Plus the inherent amount of bugs arising in a young project :-)
+
+## FAQ
+
+#### Why does coursier seem not to find some artifacts, whereas SBT does?
+
+Check that the necessary repositories ("resolvers" in SBT parlance) are added to all
+the sub-projects that need them.
+
+By default in SBT, all the caches of the various repositories
+are blended together. Which means that if the required repoitories are added at just one place,
+some dependencies may be put in cache from there, then become accessible from other places via
+the cache, even though the required repositories were not added to them.
+Coursier, on the other hand, keeps the caches of the various repositories separate, so that
+they don't interfere with each other in such undesirable ways.
+
+#### Even though the coursier SBT plugin is enabled and some `coursier*` keys can be found from the SBT prompt, dependency resolution seems still to be handled by SBT itself. Why?
+
+Check that the default SBT settings (`sbt.Defaults.defaultSettings`) are not manually added to your project.
+These define commands that the coursier SBT plugin overrides. Adding them again erases these overrides,
+effectively disabling coursier.
+
+#### With spark >= 1.5, I get some `NoVerifyError` exceptions related to jboss/netty. Why?
+
+This error originates from the `org.jboss.netty:netty:3.2.2.Final` dependency to be put in the classpath.
+Exclude it from your spark dependencies with the exclusion `org.jboss.netty:netty`.
+
+Coursier tries to follow the Maven documentation to build the full dependency set, in particular
+some [points about dependency exclusion](https://maven.apache.org/guides/introduction/introduction-to-optional-and-excludes-dependencies.html#Dependency_Exclusions).
+Inspecting the `org.apache.spark:spark-core_2.11:1.5.2` dependency graph shows that spark-core
+depends on `org.jboss.netty:netty:3.2.2.Final` via the following path: `org.apache.spark:spark-core_2.11:1.5.2` ->
+`org.tachyonproject:tachyon-client:0.7.1` -> `org.apache.curator:curator-framework:2.4.0` ->
+`org.apache.zookeeper:zookeeper:3.4.5` -> `org.jboss.netty:netty:3.2.2.Final`. Even though
+spark-core tries to exclude `org.jboss.netty:netty` to land in its classpath via some other dependencies
+(e.g. it excludes it via its dependencies towards `org.apache.hadoop:hadoop-client` and `org.apache.curator:curator-recipes`),
+it does not via the former path. So it depends on it according to the
+[Maven documentation](https://maven.apache.org/guides/introduction/introduction-to-optional-and-excludes-dependencies.html#Dependency_Exclusions).
+
+This likely unintended, as it leads to exceptions like
+```
+java.lang.VerifyError: (class: org/jboss/netty/channel/socket/nio/NioWorkerPool, method: createWorker signature: (Ljava/util/concurrent/Executor;)Lorg/jboss/netty/channel/socket/nio/AbstractNioWorker;) Wrong return type in function
+```
+Excluding `org.jboss.netty:netty` from the spark dependencies fixes it.
+
 
 ## Roadmap
 
