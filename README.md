@@ -107,6 +107,12 @@ Add an import for coursier,
 import coursier._
 ```
 
+
+
+
+
+
+
 To resolve dependencies, first create a `Resolution` case class with your dependencies in it,
 ```scala
 val start = Resolution(
@@ -367,6 +373,10 @@ In the code below, we'll assume some imports are around,
 import coursier._
 ```
 
+
+
+
+
 Resolving dependencies involves create an initial resolution state, with all the initial dependencies in it, like
 ```scala
 val start = Resolution(
@@ -399,7 +409,7 @@ scala> val repositories = Seq(
      |   Cache.ivy2Local,
      |   MavenRepository("https://repo1.maven.org/maven2")
      | )
-repositories: Seq[coursier.core.Repository] = List(IvyRepository(file:/Users/alexandre/.ivy2/local/[organisation]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext],None,None,Map(),true,true,true,true), MavenRepository(https://repo1.maven.org/maven2,None,false))
+repositories: Seq[coursier.core.Repository] = List(IvyRepository(file://${user.home}/.ivy2/local/[organisation]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext],None,None,Map(),true,true,true,true), MavenRepository(https://repo1.maven.org/maven2,None,false))
 ```
 The first one, `Cache.ivy2Local`, is defined in `coursier.Cache`, itself from the `coursier-cache` module that
 we added above. As we can see, it is an `IvyRepository`, picking things under `~/.ivy2/local`. An `IvyRepository`

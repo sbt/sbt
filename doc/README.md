@@ -103,8 +103,36 @@ libraryDependencies ++= Seq(
 ```
 
 Add an import for coursier,
-```tut:silent
+```scala
 import coursier._
+```
+
+```tut:invisible
+import coursier.{ Cache => _, _ }
+```
+
+```tut:invisible
+object Cache {
+  val ivy2LocalIsIvy = coursier.Cache.ivy2Local match {
+    case _: coursier.ivy.IvyRepository => true
+    case _ => false
+  }
+
+  assert(ivy2LocalIsIvy)
+
+  // The goal of this is to make the printed ivy2Local below more anonymous,
+  // with literally ${user.home} in it rather than the current home dir.
+  // ${user.home} could have been used in the definition of ivy2Local itself,
+  // but it would then have required properties, which would have cluttered
+  // output here.
+
+  val ivy2Local = coursier.Cache.ivy2Local.copy(
+    pattern = coursier.Cache.ivy2Local.pattern.replace("file:" + sys.props("user.home"), "file://${user.home}")
+  )
+
+  def fetch() = coursier.Cache.fetch()
+  def file(artifact: Artifact) = coursier.Cache.file(artifact)
+}
 ```
 
 To resolve dependencies, first create a `Resolution` case class with your dependencies in it,
@@ -365,9 +393,14 @@ these input metadata. It uses `scalaz.concurrent.Task` as a `Monad` to wrap them
 It caches all of these (metadata and artifacts) on disk, and validates checksums too.
 
 In the code below, we'll assume some imports are around,
-```tut:silent
+```scala
 import coursier._
 ```
+
+```tut:invisible
+import coursier.{ Cache => _, _ }
+```
+
 
 Resolving dependencies involves create an initial resolution state, with all the initial dependencies in it, like
 ```tut:silent
