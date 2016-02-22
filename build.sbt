@@ -101,10 +101,13 @@ val root = (project in file(".")).
     name in Universal := "sbt",
     version in Universal <<= sbtVersion,
     mappings in Universal <+= sbtLaunchJar map { _ -> "bin/sbt-launch.jar" },
-    
+
     // Misccelaneous publishing stuff...
     projectID in Debian    <<= moduleID,
-    projectID in Windows   <<= moduleID,
+    projectID in Windows := {
+      val m = moduleID.value
+      m.copy(revision = (version in Windows).value)
+    },
     projectID in Rpm       <<= moduleID,
     projectID in Universal <<= moduleID
   )
