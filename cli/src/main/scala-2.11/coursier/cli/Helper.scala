@@ -59,7 +59,8 @@ object Util {
 class Helper(
   common: CommonOptions,
   rawDependencies: Seq[String],
-  printResultStdout: Boolean = false
+  printResultStdout: Boolean = false,
+  ignoreErrors: Boolean = false
 ) {
   import common._
   import Helper.errPrintln
@@ -236,25 +237,6 @@ class Helper(
 
   logger.foreach(_.stop())
 
-  // FIXME Better to print all the messages related to the exit conditions below, then exit
-  //       rather than exit at the first one
-
-  exitIf(!res.isDone) {
-    errPrintln(s"Maximum number of iteration reached!")
-    sys.exit(1)
-  }
-
-  exitIf(res.errors.nonEmpty) {
-    s"\nError:\n" +
-    res.errors.map { case (dep, errs) =>
-      s"  ${dep.module}:${dep.version}:\n${errs.map("    " + _.replace("\n", "    \n")).mkString("\n")}"
-    }.mkString("\n")
-  }
-
-  exitIf(res.conflicts.nonEmpty) {
-    s"\nConflict:\n${Print.dependenciesUnknownConfigs(res.conflicts.toVector, projCache)}"
-  }
-
   val trDeps = res.minDependencies.toVector
 
   lazy val projCache = res.projectCache.mapValues { case (_, p) => p }
@@ -266,6 +248,39 @@ class Helper(
       println(depsStr)
     else
       errPrintln(depsStr)
+  }
+
+  var anyError = false
+
+  if (!res.isDone) {
+    anyError = true
+    errPrintln("\nMaximum number of iterations reached!")
+  }
+
+  if (res.errors.nonEmpty) {
+    anyError = true
+    errPrintln(
+      s"\nError:\n" +
+      res.errors.map {
+        case (dep, errs) =>
+          s"  ${dep.module}:${dep.version}:\n${errs.map("    " + _.replace("\n", "    \n")).mkString("\n")}"
+      }.mkString("\n")
+    )
+  }
+
+  if (res.conflicts.nonEmpty) {
+    anyError = true
+    errPrintln(
+      s"\nConflict:\n" +
+      Print.dependenciesUnknownConfigs(res.conflicts.toVector, projCache)
+    )
+  }
+
+  if (anyError) {
+    if (ignoreErrors)
+      errPrintln("Ignoring errors")
+    else
+      sys.exit(1)
   }
 
   def fetch(

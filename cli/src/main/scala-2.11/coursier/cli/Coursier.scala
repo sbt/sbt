@@ -95,11 +95,13 @@ case class Fetch(
   @Help("Print java -cp compatible output")
   @Short("p")
     classpath: Boolean,
+  @Help("Fetch artifacts even if the resolution is errored")
+    force: Boolean,
   @Recurse
     common: CommonOptions
 ) extends CoursierCommand {
 
-  val helper = new Helper(common, remainingArgs)
+  val helper = new Helper(common, remainingArgs, ignoreErrors = force)
 
   val files0 = helper.fetch(sources = sources, javadoc = javadoc)
 
