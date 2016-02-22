@@ -32,7 +32,7 @@ object ParseKey extends Properties("Key parser test") {
         parseExpected(structure, string, expected, mask)
     }
 
-  property("An unspecified project axis resolves to the current project") =
+  property("An unspecified project axis resolves to the current project or the build of the current project") =
     forAllNoShrink(structureDefinedKey) { (skm: StructureKeyMask) =>
       import skm.{ structure, key }
 
@@ -44,7 +44,7 @@ object ParseKey extends Properties("Key parser test") {
         ("Current: " + structure.current) |:
         parse(structure, string) {
           case Left(err) => false
-          case Right(sk) => sk.scope.project == Select(structure.current)
+          case Right(sk) => sk.scope.project == Select(structure.current) || sk.scope.project == Select(BuildRef(structure.current.build))
         }
     }
 
