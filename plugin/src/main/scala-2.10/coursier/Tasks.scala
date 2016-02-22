@@ -261,10 +261,7 @@ object Tasks {
 
         val pool = Executors.newFixedThreadPool(parallelDownloads, Strategy.DefaultDaemonThreadFactory)
 
-        def createLogger() = new TermDisplay(
-          new OutputStreamWriter(System.err),
-          fallbackMode = sys.env.get("COURSIER_NO_TERM").nonEmpty
-        )
+        def createLogger() = new TermDisplay(new OutputStreamWriter(System.err))
 
         val resLogger = createLogger()
 

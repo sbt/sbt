@@ -10,7 +10,7 @@ import scala.collection.mutable.ArrayBuffer
 
 class TermDisplay(
   out: Writer,
-  var fallbackMode: Boolean = false
+  var fallbackMode: Boolean = sys.env.get("COURSIER_NO_TERM").nonEmpty
 ) extends Cache.Logger {
 
   private val ansi = new Ansi(out)
