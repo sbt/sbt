@@ -37,6 +37,7 @@ is_cygwin() {
   local os=$(uname -s)
   case "$os" in
     CYGWIN*) return 0 ;;
+    MINGW*) return 0 ;;
     *)  return 1 ;;
   esac
 }
