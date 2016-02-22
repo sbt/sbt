@@ -15,6 +15,7 @@ val bintrayDebianUrl = "https://api.bintray.com/content/sbt/debian/"
 val bintrayRpmUrl = "https://api.bintray.com/content/sbt/rpm/"
 val bintrayGenericPackagesUrl = "https://api.bintray.com/content/sbt/native-packages/"
 val bintrayReleaseAllStaged = TaskKey[Unit]("bintray-release-all-staged", "Release all staged artifacts on bintray.")
+val windowsBuildId = settingKey[Int]("build id for Windows installer")
 
 // This build creates a SBT plugin with handy features *and* bundles the SBT script for distribution.
 val root = (project in file(".")).
@@ -81,18 +82,19 @@ val root = (project in file(".")).
     
     // WINDOWS SPECIFIC
     name in Windows := "sbt",
-    version in Windows <<= (sbtVersion) apply { sv =>
+    windowsBuildId := 1,
+    version in Windows <<= (sbtVersion, windowsBuildId) apply { (sv, bid) =>
       (sv split "[^\\d]" filterNot (_.isEmpty)) match {
-        case Array(major,minor,bugfix, _*) => Seq(major,minor,bugfix, "1") mkString "."
-        case Array(major,minor) => Seq(major,minor,"0","1") mkString "."
-        case Array(major) => Seq(major,"0","0","1") mkString "."
+        case Array(major,minor,bugfix, _*) => Seq(major, minor, bugfix, bid.toString) mkString "."
+        case Array(major,minor) => Seq(major, minor, "0", bid.toString) mkString "."
+        case Array(major) => Seq(major, "0", "0", bid.toString) mkString "."
       }
     },
     maintainer in Windows := "Typesafe, Inc.",
-    packageSummary in Windows := "sbt",
+    packageSummary in Windows := "sbt " + (version in Windows).value,
     packageDescription in Windows := "The interactive build tool.",
     wixProductId := "ce07be71-510d-414a-92d4-dff47631848a",
-    wixProductUpgradeId := "4552fb0e-e257-4dbd-9ecb-dba9dbacf424",
+    wixProductUpgradeId := Hash.toHex(Hash((version in Windows).value)).take(32),
     javacOptions := Seq("-source", "1.5", "-target", "1.5"),
 
     // Universal ZIP download install.
