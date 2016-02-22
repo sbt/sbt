@@ -11,7 +11,13 @@ object ConsoleProject {
     val cpImports = new Imports(extracted, state)
     val bindings = ("currentState" -> state) :: ("extracted" -> extracted) :: ("cpHelpers" -> cpImports) :: Nil
     val unit = extracted.currentUnit
-    val compiler = Compiler.compilers(ClasspathOptions.repl)(state.configuration, log).scalac
+    val (_, ivyConf) = extracted.runTask(Keys.ivyConfiguration, state)
+    val scalaInstance = {
+      val scalaProvider = state.configuration.provider.scalaProvider
+      ScalaInstance(scalaProvider.version, scalaProvider.launcher)
+    }
+    val sourcesModule = extracted.get(Keys.scalaCompilerBridgeSource)
+    val compiler = Compiler.scalaCompiler(scalaInstance, ClasspathOptions.repl, ivyConf, sourcesModule)(state.configuration, log)
     val imports = BuildUtil.getImports(unit.unit) ++ BuildUtil.importAll(bindings.map(_._1))
     val importString = imports.mkString("", ";\n", ";\n\n")
     val initCommands = importString + extra
