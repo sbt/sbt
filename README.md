@@ -599,6 +599,11 @@ java.lang.VerifyError: (class: org/jboss/netty/channel/socket/nio/NioWorkerPool,
 ```
 Excluding `org.jboss.netty:netty` from the spark dependencies fixes it.
 
+#### The coursier SBT plugin flow my CI output with messages. What can I do?
+
+Set the `COURSIER_NO_TERM` environment variable to `1`. This disables the
+progress bar message, and prints simple `Downloading URL` / `Downloaded URL`
+instead.
 
 ## Roadmap
 
