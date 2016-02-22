@@ -18,9 +18,12 @@ object Parse {
         last <- Some(from.rawItems.last).collect { case n: Version.Numeric => n }
         // a bit loose, but should do the job
         if from.repr.endsWith(last.repr)
-        to <- version(from.repr.stripSuffix(last.repr) + last.next.repr)
+        // appending -a1 to the next version, so has not to include things like
+        // nextVersion-RC1 in the interval - nothing like nextVersion* should be included
+        to <- version(from.repr.stripSuffix(last.repr) + last.next.repr + "-a1")
         // the contrary would mean something went wrong in the loose substitution above
-        if from.rawItems.init == to.rawItems.init
+        if from.rawItems.init == to.rawItems.dropRight(2).init
+        if to.rawItems.takeRight(2) == Seq(Version.Literal("a"), Version.Number(1))
       } yield VersionInterval(Some(from), Some(to), fromIncluded = true, toIncluded = false)
     } else
       None

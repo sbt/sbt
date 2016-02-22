@@ -163,22 +163,22 @@ object CentralTests extends TestSuite {
       )
     }
     'latestRevision - {
-      resolutionCheck(
+      * - resolutionCheck(
         Module("com.chuusai", "shapeless_2.11"),
-        "[2.2.0,2.3.0)"
+        "[2.2.0,2.3-a1)"
       )
 
-      resolutionCheck(
+      * - resolutionCheck(
         Module("com.chuusai", "shapeless_2.11"),
         "2.2.+"
       )
 
-      resolutionCheck(
+      * - resolutionCheck(
         Module("com.googlecode.libphonenumber", "libphonenumber"),
         "[7.0,7.1)"
       )
 
-      resolutionCheck(
+      * - resolutionCheck(
         Module("com.googlecode.libphonenumber", "libphonenumber"),
         "7.0.+"
       )
