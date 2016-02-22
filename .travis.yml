@@ -1,7 +1,6 @@
 language: java
 install:
-  - npm install xmldom
-  - npm install xhr2
+  - npm install
   - curl -L -o ~/sbt https://github.com/paulp/sbt-extras/raw/478a364a2d43d6e1ac4451f8b84cdafe43a2e43f/sbt
   - chmod +x ~/sbt
 os:

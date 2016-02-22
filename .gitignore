@@ -1,5 +1,6 @@
 target/
 .idea/
+node_modules/
 
 # tut backups?
 .*.swp
