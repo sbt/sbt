@@ -105,7 +105,7 @@ object FromSbt {
   def repository(resolver: Resolver, ivyProperties: Map[String, String]): Option[Repository] =
     resolver match {
       case sbt.MavenRepository(_, root) =>
-        if (root.startsWith("http://") || root.startsWith("https://")) {
+        if (root.startsWith("http://") || root.startsWith("https://") || root.startsWith("file:/")) {
           val root0 = if (root.endsWith("/")) root else root + "/"
           Some(MavenRepository(root0, sbtAttrStub = true))
         } else {
