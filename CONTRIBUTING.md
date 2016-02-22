@@ -135,7 +135,7 @@ Build from source
 
 	for v0.13.9 tag, or in:
 
-    $HOME/.ivy2/local/org.scala-sbt/sbt-launch/0.13.10-SNAPSHOT/jars/sbt-launch.jar
+    $HOME/.ivy2/local/org.scala-sbt/sbt-launch/0.13.11-SNAPSHOT/jars/sbt-launch.jar
 
 	for the development branch.
 
