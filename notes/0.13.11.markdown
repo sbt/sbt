@@ -89,10 +89,13 @@
   [2354]: https://github.com/sbt/sbt/pull/2354
   [2399]: https://github.com/sbt/sbt/pull/2399
   [2453]: https://github.com/sbt/sbt/pull/2453
+  [2467]: https://github.com/sbt/sbt/pull/2467
+  [101]: https://github.com/sbt/sbt-launcher-package/pull/101
+  [105]: https://github.com/sbt/sbt-launcher-package/pull/105
 
 ### Fixes with compatibility implications
 
-- JCenter is now opt-in. A new setting `useJCenter` can be set to `true` to re-include it, as the first external resolver to find library dependencies. [#2217][2217] by [@eed3si9n][@eed3si9n]
+- JCenter is now opt-in. A new setting `useJCenter` can be set to `true` to re-include it, as the first external resolver to find library dependencies. [#2217][2217]/[#2467][2467] by [@eed3si9n][@eed3si9n]
 - Adds `withInterProjectFirst` to the update option, which is enabled by default. When set to `true`, `inter-project` resolver will be prioritized above all resolvers and Ivy cache. [#1827][1827] by [@eed3si9n][@eed3si9n]
 - Fixes update option's `withLatestSnapshots` so it handles modules without an artifact. This flag will be enabled by default.
   [#1514][1514]/[#1616][1616]/[#2313][2313] by [@eed3si9n][@eed3si9n]
@@ -120,6 +123,7 @@
 - Adds `Resolver.bintrayIvyRepo(owner, repo)`. [#2285][2285] by [@dwijnand][@dwijnand]
 - Non-static annotation changes are no longer tracked by the incremental compiler. [#2343][2343] by [@romanowski][@romanowski]
 - Reduces the memory usage of API info extraction in the incremental compiler. [#2343][2343] by [@adriaanm][@adriaanm]
+- Memory-related options can now be overridden individually via the `-J` options. [sbt/sbt-launcher-package#105][105]
 
 ### Bug fixes
 
@@ -152,6 +156,7 @@
 - Fixes performance issues during tree traversal in the incremental compiler. [#2343][2343] by [@adriaanm][@adriaanm]
 - Fixes the tracking of self types and F-bounded existential types in the incremental compiler. [#2343][2343] by [@adriaanm][@adriaanm]
 - Avoid CCE when scalac internally uses `compileLate`. [#2453][2453] by [@retronym][@retronym]
+- Fixes the memory-related options overriding `SBT_OPTS`. [sbt/sbt-launcher-package#101][101] by [@eed3si9n][@eed3si9n]
 
 ### Configurable Scala compiler bridge
 
