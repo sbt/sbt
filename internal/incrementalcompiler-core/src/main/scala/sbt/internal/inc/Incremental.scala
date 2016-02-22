@@ -5,11 +5,12 @@ package sbt
 package internal
 package inc
 
+import java.io.File
+import sbt.util.Logger
+import scala.annotation.tailrec
 import xsbt.api.{ NameChanges, SameAPI, TopLevel }
-import annotation.tailrec
 import xsbti.api.{ Compilation, Source }
 import xsbti.compile.{ DependencyChanges, IncOptions, CompileAnalysis }
-import java.io.File
 
 /**
  * Helper class to run incremental compilation algorithm.
@@ -21,6 +22,12 @@ import java.io.File
  * - IncrementalAnyStyle
  */
 object Incremental {
+  class PrefixingLogger(val prefix: String)(orig: Logger) extends Logger {
+    def trace(t: => Throwable): Unit = orig.trace(t)
+    def success(message: => String): Unit = orig.success(message)
+    def log(level: sbt.util.Level.Value, message: => String): Unit = orig.log(level, message.replaceAll("(?m)^", prefix))
+  }
+
   /**
    * Runs the incremental compiler algorithm.
    *
@@ -49,7 +56,7 @@ object Incremental {
       val previous = previous0 match { case a: Analysis => a }
       val incremental: IncrementalCommon =
         if (options.nameHashing)
-          new IncrementalNameHashing(log, options)
+          new IncrementalNameHashing(new PrefixingLogger("[naha] ")(log), options)
         else if (options.antStyle)
           new IncrementalAntStyle(log, options)
         else
