@@ -37,7 +37,7 @@ final class MixedAnalyzingCompiler(
    */
   def compile(include: Set[File], changes: DependencyChanges, callback: AnalysisCallback): Unit = {
     val outputDirs = outputDirectories(output)
-    outputDirs foreach (IO.createDirectory)
+    outputDirs foreach (d => if (!d.getPath.endsWith(".jar")) IO.createDirectory(d))
     val incSrc = sources.filter(include)
     val (javaSrcs, scalaSrcs) = incSrc partition javaOnly
     logInputs(log, javaSrcs.size, scalaSrcs.size, outputDirs)
