@@ -234,7 +234,6 @@ object Keys {
   val productDirectories = TaskKey[Seq[File]]("product-directories", "Base directories of build products.", CTask)
   val exportJars = SettingKey[Boolean]("export-jars", "Determines whether the exported classpath for this project contains classes (false) or a packaged jar (true).", BSetting)
   val exportedProducts = TaskKey[Classpath]("exported-products", "Build products that go on the exported classpath.", CTask)
-  val exportedProductsAlways = TaskKey[Classpath]("exported-products-always", "Build products that go on the exported classpath for other projects.", CTask)
   val exportedProductsIfMissing = TaskKey[Classpath]("exported-products-if-missing", "Build products that go on the exported classpath if missing.", CTask)
   val exportedProductsNoTracking = TaskKey[Classpath]("exported-products-no-tracking", "Just the exported classpath without triggering the compilation.", CTask)
   val unmanagedClasspath = TaskKey[Classpath]("unmanaged-classpath", "Classpath entries (deep) that are manually managed.", BPlusTask)
