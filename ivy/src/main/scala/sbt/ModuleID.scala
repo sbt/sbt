@@ -120,6 +120,8 @@ final case class ModuleID(organization: String, name: String, revision: String, 
   def jar() = artifacts(Artifact(name))
 }
 object ModuleID {
+  implicit def fasttypetag[A]: FastTypeTag[A] = ???
+
   implicit val pickler: Pickler[ModuleID] with Unpickler[ModuleID] = PicklerUnpickler.generate[ModuleID]
 
   /** Prefixes all keys with `e:` if they are not already so prefixed. */

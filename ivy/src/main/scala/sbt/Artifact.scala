@@ -80,6 +80,8 @@ object Artifact {
   private val stringStringMapPickler = implicitly[Pickler[Map[String, String]]]
   private val stringStringMapUnpickler = implicitly[Unpickler[Map[String, String]]]
 
+  implicit def fasttypetag[A]: FastTypeTag[A] = ???
+
   implicit val pickler: Pickler[Artifact] = new Pickler[Artifact] {
     val tag = implicitly[FastTypeTag[Artifact]]
     val stringTag = implicitly[FastTypeTag[String]]

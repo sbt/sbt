@@ -79,10 +79,14 @@ private[sbt] object JsonUtil {
 
 private[sbt] case class UpdateReportLite(configurations: Seq[ConfigurationReportLite])
 private[sbt] object UpdateReportLite {
+  implicit def fasttypetag[A]: FastTypeTag[A] = ???
+
   implicit val pickler: Pickler[UpdateReportLite] with Unpickler[UpdateReportLite] = PicklerUnpickler.generate[UpdateReportLite]
 }
 
 private[sbt] case class ConfigurationReportLite(configuration: String, details: Seq[OrganizationArtifactReport])
 private[sbt] object ConfigurationReportLite {
+  implicit def fasttypetag[A]: FastTypeTag[A] = ???
+
   implicit val pickler: Pickler[ConfigurationReportLite] with Unpickler[ConfigurationReportLite] = PicklerUnpickler.generate[ConfigurationReportLite]
 }

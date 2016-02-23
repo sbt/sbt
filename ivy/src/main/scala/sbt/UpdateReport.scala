@@ -44,6 +44,7 @@ final class ConfigurationReport(
     new ConfigurationReport(configuration, modules map { _.retrieve((mid, art, file) => f(configuration, mid, art, file)) }, details, evicted)
 }
 object ConfigurationReport {
+  implicit def fasttypetag[A]: FastTypeTag[A] = ???
   implicit val pickler: Pickler[ConfigurationReport] with Unpickler[ConfigurationReport] = PicklerUnpickler.generate[ConfigurationReport]
 }
 
@@ -68,6 +69,7 @@ final class OrganizationArtifactReport private[sbt] (
   }
 }
 object OrganizationArtifactReport {
+  implicit def fasttypetag[A]: FastTypeTag[A] = ???
   implicit val pickler: Pickler[OrganizationArtifactReport] with Unpickler[OrganizationArtifactReport] = PicklerUnpickler.generate[OrganizationArtifactReport]
 
   def apply(organization: String, name: String, modules: Seq[ModuleReport]): OrganizationArtifactReport =
@@ -162,6 +164,8 @@ final class ModuleReport(
 }
 
 object ModuleReport {
+  implicit def fasttypetag[A]: FastTypeTag[A] = ???
+
   def apply(module: ModuleID, artifacts: Seq[(Artifact, File)], missingArtifacts: Seq[Artifact]): ModuleReport =
     new ModuleReport(module, artifacts, missingArtifacts, None, None, None, None,
       false, None, None, None, None, Map(), None, None, Nil, Nil, Nil)
@@ -233,6 +237,8 @@ final class UpdateReport(val cachedDescriptor: File, val configurations: Seq[Con
 }
 
 object UpdateReport {
+  implicit def fasttypetag[A]: FastTypeTag[A] = ???
+
   implicit def richUpdateReport(report: UpdateReport): RichUpdateReport = new RichUpdateReport(report)
 
   /** Provides extra methods for filtering the contents of an `UpdateReport` and for obtaining references to a selected subset of the underlying files. */
