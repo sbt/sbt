@@ -6,10 +6,17 @@ import java.io.File
 import sbt.util.Logger
 import sbt.internal.scripted.StatementHandler
 import sbt.util.InterfaceUtil._
+import xsbt.api.Discovery
 import xsbti.{ F1, Maybe }
 import xsbti.compile.{ CompileAnalysis, CompileOrder, DefinesClass, IncOptionsUtil, PreviousResult, Compilers => XCompilers }
 import sbt.io.IO
 import sbt.io.Path._
+
+import java.lang.reflect.Method
+import java.lang.reflect.Modifier.{ isPublic, isStatic }
+import sbt.internal.inc.classpath.ClasspathUtilities
+
+import sbt.internal.scripted.{ StatementHandler, TestFailed }
 
 final case class IncInstance(si: ScalaInstance, cs: XCompilers)
 
@@ -18,6 +25,7 @@ final class IncHandler(directory: File, scriptedLog: Logger) extends BridgeProvi
   type IncCommand = (List[String], IncInstance) => Unit
   val compiler = new IncrementalCompilerImpl
   val scalaVersion = scala.util.Properties.versionNumberString
+  val si = scalaInstance(scalaVersion)
   val maxErrors = 100
   val dc = f1[File, DefinesClass] { f =>
     val x = Locate.definesClass(f)
@@ -57,6 +65,19 @@ final class IncHandler(directory: File, scriptedLog: Logger) extends BridgeProvi
         checkSame(i)
         ()
       case (xs, _) => wrongArguments("checkSame", xs)
+    },
+    "run" -> {
+      case (params, i) =>
+        val analysis = compile(i)
+        discoverMainClasses(analysis) match {
+          case Seq(mainClassName) =>
+            val classpath = i.si.allJars :+ classesDir
+            val loader = ClasspathUtilities.makeLoader(classpath, i.si, directory)
+            val main = getMainMethod(mainClassName, loader)
+            invokeMain(loader, main, params)
+          case _ =>
+            throw new TestFailed("Found more than one main class.")
+        }
     }
   )
 
@@ -94,8 +115,8 @@ final class IncHandler(directory: File, scriptedLog: Logger) extends BridgeProvi
       val reporter = new LoggerReporter(maxErrors, scriptedLog, identity)
       val extra = Array(t2(("key", "value")))
       val setup = compiler.setup(analysisMap, dc, skip = false, cacheFile, CompilerCache.fresh, incOptions, reporter, extra)
-      val classpath = (si.allJars.toList ++ unmanagedJars).toArray
-      val in = compiler.inputs(classpath, scalaSources.toArray, classesDir, Array(), Array(), maxErrors, Array(),
+      val classpath = (i.si.allJars.toList ++ unmanagedJars :+ classesDir).toArray
+      val in = compiler.inputs(classpath, sources.toArray, classesDir, Array(), Array(), maxErrors, Array(),
         CompileOrder.Mixed, cs, setup, prev)
       val result = compiler.compile(in, log)
       val analysis = result.analysis match { case a: Analysis => a }
@@ -122,7 +143,6 @@ final class IncHandler(directory: File, scriptedLog: Logger) extends BridgeProvi
   private[this] def onNewIncInstance(f: IncInstance => Unit): Option[IncInstance] =
     {
       val compilerBridge = getCompilerBridge(directory, Logger.Null, scalaVersion)
-      val si = scalaInstance(scalaVersion)
       val sc = scalaCompiler(si, compilerBridge)
       val cs = compiler.compilers(si, ClasspathOptions.boot, None, sc)
       val i = IncInstance(si, cs)
@@ -141,4 +161,32 @@ final class IncHandler(directory: File, scriptedLog: Logger) extends BridgeProvi
   def spaced[T](l: Seq[T]): String = l.mkString(" ")
 
   def scriptError(message: String): Unit = sys.error("Test script error: " + message)
+
+  // Taken from Defaults.scala in sbt/sbt
+  private def discoverMainClasses(analysis: inc.Analysis): Seq[String] = {
+    val allDefs = analysis.apis.internal.values.flatMap(_.api.definitions).toSeq
+    Discovery.applications(allDefs).collect({ case (definition, discovered) if discovered.hasMain => definition.name }).sorted
+  }
+
+  // Taken from Run.scala in sbt/sbt
+  private def getMainMethod(mainClassName: String, loader: ClassLoader) =
+    {
+      val mainClass = Class.forName(mainClassName, true, loader)
+      val method = mainClass.getMethod("main", classOf[Array[String]])
+      // jvm allows the actual main class to be non-public and to run a method in the non-public class,
+      //  we need to make it accessible
+      method.setAccessible(true)
+      val modifiers = method.getModifiers
+      if (!isPublic(modifiers)) throw new NoSuchMethodException(mainClassName + ".main is not public")
+      if (!isStatic(modifiers)) throw new NoSuchMethodException(mainClassName + ".main is not static")
+      method
+    }
+
+  private def invokeMain(loader: ClassLoader, main: Method, options: Seq[String]): Unit = {
+    val currentThread = Thread.currentThread
+    val oldLoader = Thread.currentThread.getContextClassLoader
+    currentThread.setContextClassLoader(loader)
+    try { main.invoke(null, options.toArray[String]); () }
+    finally { currentThread.setContextClassLoader(oldLoader) }
+  }
 }
