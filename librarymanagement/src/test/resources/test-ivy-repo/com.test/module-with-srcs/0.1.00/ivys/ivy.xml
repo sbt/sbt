@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ivy-module version="2.0" xmlns:e="http://ant.apache.org/ivy/extra">
+	<info organisation="com.test" module="module-with-srcs" revision="0.1.00" status="release" publication="20160107130136">
+		<description>
+		Just a test module that publishes both a binary jar and a src jar in the 'compile' configuration.
+		</description>
+	</info>
+	<configurations>
+		<conf name="compile" visibility="public" description=""/>
+		<conf name="runtime" visibility="public" description="" extends="compile"/>
+		<conf name="test" visibility="public" description="" extends="runtime"/>
+		<conf name="provided" visibility="public" description=""/>
+		<conf name="optional" visibility="public" description=""/>
+		<conf name="default" visibility="public" description="" extends="runtime"/>
+		<conf name="pom" visibility="public" description=""/>
+	</configurations>
+	<publications>
+		<artifact name="libmodule" type="jar" ext="jar" conf="compile"/>
+		<artifact name="libmodule-source" type="src" ext="jar" conf="compile"/>
+	</publications>
+	<dependencies>
+	</dependencies>
+</ivy-module>
