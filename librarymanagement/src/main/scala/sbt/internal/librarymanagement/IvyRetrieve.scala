@@ -154,6 +154,7 @@ object IvyRetrieve {
 
   def toModuleID(revID: ModuleRevisionId): ModuleID =
     ModuleID(revID.getOrganisation, revID.getName, revID.getRevision, extraAttributes = IvySbt.getExtraAttributes(revID))
+      .branch(nonEmptyString(revID.getBranch))
 
   def toArtifact(art: IvyArtifact): Artifact =
     {

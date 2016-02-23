@@ -8,7 +8,7 @@ import java.net.URL
 import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
 import sbt.serialization._
 
-final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String] = None, isChanging: Boolean = false, isTransitive: Boolean = true, isForce: Boolean = false, explicitArtifacts: Seq[Artifact] = Nil, exclusions: Seq[ExclusionRule] = Nil, extraAttributes: Map[String, String] = Map.empty, crossVersion: CrossVersion = CrossVersion.Disabled) {
+final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String] = None, isChanging: Boolean = false, isTransitive: Boolean = true, isForce: Boolean = false, explicitArtifacts: Seq[Artifact] = Nil, exclusions: Seq[ExclusionRule] = Nil, extraAttributes: Map[String, String] = Map.empty, crossVersion: CrossVersion = CrossVersion.Disabled, branchName: Option[String] = None) {
   override def toString: String =
     organization + ":" + name + ":" + revision +
       (configurations match { case Some(s) => ":" + s; case None => "" }) +
@@ -118,7 +118,15 @@ final case class ModuleID(organization: String, name: String, revision: String, 
    * as when adding a dependency on an artifact with a classifier.
    */
   def jar() = artifacts(Artifact(name))
+
+  /**
+   * Sets the Ivy branch of this module.
+   */
+  def branch(branchName: String) = copy(branchName = Some(branchName))
+
+  def branch(branchName: Option[String]) = copy(branchName = branchName)
 }
+
 object ModuleID {
   implicit val pickler: Pickler[ModuleID] with Unpickler[ModuleID] = PicklerUnpickler.generate[ModuleID]
 
