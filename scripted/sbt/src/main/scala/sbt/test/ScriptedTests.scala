@@ -9,15 +9,13 @@ import java.io.File
 import java.nio.charset.Charset
 
 import xsbt.IPC
-import sbt.internal.scripted.{ CommentHandler, FileCommands, ScriptRunner, TestScriptParser }
+import sbt.internal.scripted.{ CommentHandler, FileCommands, ScriptRunner, TestScriptParser, TestException }
 import sbt.io.{ DirectoryFilter, GlobFilter, HiddenFileFilter, Path }
 import sbt.io.IO.wrapNull
 import sbt.internal.io.Resources
 
 import sbt.internal.util.{ BufferedLogger, ConsoleLogger, FullLogger }
 import sbt.util.{ AbstractLogger, Logger }
-
-import sbt.internal.scripted.TestException
 
 final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launcher: File, launchOpts: Seq[String]) {
   import ScriptedTests._
