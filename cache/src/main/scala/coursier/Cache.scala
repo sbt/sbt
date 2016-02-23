@@ -19,6 +19,26 @@ object Cache {
   // Check SHA-1 if available, else be fine with no checksum
   val defaultChecksums = Seq(Some("SHA-1"), None)
 
+  private val unsafeChars: Set[Char] = " %$&+,:;=?@<>#".toSet
+
+  // Scala version of http://stackoverflow.com/questions/4571346/how-to-encode-url-to-avoid-special-characters-in-java/4605848#4605848
+  // '/' was removed from the unsafe character list
+  private def escape(input: String): String = {
+
+    def toHex(ch: Int) =
+      (if (ch < 10) '0' + ch else 'A' + ch - 10).toChar
+
+    def isUnsafe(ch: Char) =
+      ch > 128 || ch < 0 || unsafeChars(ch)
+
+    input.flatMap {
+      case ch if isUnsafe(ch) =>
+        "%" + toHex(ch / 16) + toHex(ch % 16)
+      case other =>
+        other.toString
+    }
+  }
+
   private def withLocal(artifact: Artifact, cache: Seq[(String, File)]): Artifact = {
     def local(url: String) =
       if (url.startsWith("file:///"))
@@ -28,7 +48,7 @@ object Cache {
       else {
         val localPathOpt = cache.collectFirst {
           case (base, cacheDir) if url.startsWith(base) =>
-            cacheDir + "/" + url.stripPrefix(base)
+            cacheDir.toString + "/" + escape(url.stripPrefix(base))
         }
 
         localPathOpt.getOrElse {

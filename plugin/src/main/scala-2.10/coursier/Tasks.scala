@@ -23,15 +23,24 @@ import scalaz.concurrent.{ Task, Strategy }
 
 object Tasks {
 
-  def coursierResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] = Def.task {
-    var resolvers = externalResolvers.value
-    if (sbtPlugin.value)
-      resolvers = Seq(
-        sbtResolver.value,
-        Classpaths.sbtPluginReleases
-      ) ++ resolvers
-    resolvers
-  }
+  def coursierResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] =
+    (
+      externalResolvers,
+      sbtPlugin,
+      sbtResolver,
+      bootResolvers,
+      overrideBuildResolvers
+    ).map { (extRes, isSbtPlugin, sbtRes, bootResOpt, overrideFlag) =>
+      bootResOpt.filter(_ => overrideFlag).getOrElse {
+        var resolvers = extRes
+        if (isSbtPlugin)
+          resolvers = Seq(
+            sbtRes,
+            Classpaths.sbtPluginReleases
+          ) ++ resolvers
+        resolvers
+      }
+    }
 
   def coursierProjectTask: Def.Initialize[sbt.Task[Project]] =
     (
