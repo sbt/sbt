@@ -17,6 +17,26 @@ object APIUtil {
 
   def isScalaSourceName(name: String): Boolean = name.endsWith(".scala")
 
+  def hasPackageObject(s: SourceAPI): Boolean =
+    {
+      val check = new HasPackageObject
+      check.visitAPI(s)
+      check.hasPackageObject
+    }
+
+  private[this] class HasPackageObject extends Visit {
+    var hasPackageObject = false
+
+    private def isPackageObject(c: ClassLike): Boolean = {
+      import xsbti.api.DefinitionType.{ Module, PackageModule }
+      c.definitionType == PackageModule || (c.definitionType == Module && c.name.endsWith(".package"))
+    }
+
+    override def visitClass0(c: ClassLike): Unit = {
+      hasPackageObject ||= isPackageObject(c)
+    }
+  }
+
   def hasMacro(s: SourceAPI): Boolean =
     {
       val check = new HasMacro

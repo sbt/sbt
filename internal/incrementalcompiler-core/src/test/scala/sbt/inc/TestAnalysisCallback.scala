@@ -101,9 +101,10 @@ class TestAnalysisCallback(internalMap: Map[File, File], override val nameHashin
   def api(source: File, sourceAPI: SourceAPI): Unit = {
     assert(!apis.contains(source), s"The `api` method should be called once per source file: $source")
     val hasMacro = APIUtil.hasMacro(sourceAPI)
+    val hasPackageObject = APIUtil.hasPackageObject(sourceAPI)
     val nameHashes = new xsbt.api.NameHashing().nameHashes(sourceAPI)
     val sourceHash = hashFile(source)
-    val src = new Source(new Compilation(System.currentTimeMillis, Array.empty), sourceHash, sourceAPI, HashAPI(sourceAPI), nameHashes, hasMacro)
+    val src = new Source(new Compilation(System.currentTimeMillis, Array.empty), sourceHash, sourceAPI, HashAPI(sourceAPI), nameHashes, hasMacro, hasPackageObject)
     apis(source) = src
   }
   def problem(category: String, pos: xsbti.Position, message: String, severity: xsbti.Severity, reported: Boolean): Unit = ()
