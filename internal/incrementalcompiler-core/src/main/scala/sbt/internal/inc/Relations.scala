@@ -537,13 +537,14 @@ private[inc] class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDe
 
   override def toString = (
     """
-	  |Relations:
-	  |  products: %s
-	  |  bin deps: %s
-	  |  src deps: %s
-	  |  ext deps: %s
-	  |  class names: %s
-	  """.trim.stripMargin.format(List(srcProd, binaryDep, internalSrcDep, externalDep, classes) map relation_s: _*)
+    |Relations:
+    |  products: %s
+    |  bin deps: %s
+    |  src deps direct: %s
+    |  src deps inherited: %s
+    |  ext deps: %s
+    |  class names: %s
+    """.trim.stripMargin.format(List(srcProd, binaryDep, internalSrcDep, publicInherited.internal, externalDep, classes) map relation_s: _*)
   )
 }
 
@@ -642,14 +643,15 @@ private[inc] class MRelationsNameHashing(srcProd: Relation[File, File], binaryDe
 
   override def toString = (
     """
-	  |Relations (with name hashing enabled):
-	  |  products: %s
-	  |  bin deps: %s
-	  |  src deps: %s
-	  |  ext deps: %s
-	  |  class names: %s
-	  |  used names: %s
-	  """.trim.stripMargin.format(List(srcProd, binaryDep, internalSrcDep, externalDep, classes, names) map relation_s: _*)
+    |Relations (with name hashing enabled):
+    |  products: %s
+    |  bin deps: %s
+    |  src deps memberRef: %s
+    |  src deps inheritance: %s
+    |  ext deps: %s
+    |  class names: %s
+    |  used names: %s
+    """.trim.stripMargin.format(List(srcProd, binaryDep, memberRef.internal, inheritance.internal, externalDep, classes, names) map relation_s: _*)
   )
 
 }
