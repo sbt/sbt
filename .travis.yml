@@ -6,4 +6,4 @@ scala:
    - 2.11.7
 
 script:
-   - sbt "publishBridgesAndTest $TRAVIS_SCALA_VERSION"
+   - sbt -J-XX:ReservedCodeCacheSize=128m "publishBridgesAndTest $TRAVIS_SCALA_VERSION"
