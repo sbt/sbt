@@ -10,15 +10,15 @@ import sbt.util.Logger.o2m
 import xsbti.{ Problem, Severity, Maybe, Position }
 
 /** A wrapper around xsbti.Position so we can pass in Java input. */
-final case class JavaPosition(_sourceFilePath: String, _line: Int, _contents: String) extends Position {
-  def line: Maybe[Integer] = o2m(Option(Integer.valueOf(_line)))
+final case class JavaPosition(_sourceFilePath: String, _line: Int, _contents: String, _offset: Int) extends Position {
+  def line: Maybe[Integer] = o2m(Some(_line))
   def lineContent: String = _contents
-  def offset: Maybe[Integer] = o2m(None)
+  def offset: Maybe[Integer] = o2m(Some(_offset))
   def pointer: Maybe[Integer] = o2m(None)
   def pointerSpace: Maybe[String] = o2m(None)
   def sourcePath: Maybe[String] = o2m(Option(_sourceFilePath))
   def sourceFile: Maybe[File] = o2m(Option(new File(_sourceFilePath)))
-  override def toString = s"${_sourceFilePath}:${_line}"
+  override def toString = s"${_sourceFilePath}:${_line}:${_offset}"
 }
 
 /** A position which has no information, because there is none. */
@@ -132,7 +132,8 @@ class JavaErrorParser(relativeDir: File = new File(new File(".").getAbsolutePath
           new JavaPosition(
             findFileSource(file),
             line,
-            contents + '^' // TODO - Actually parse charat position out of here.
+            contents + '^', // TODO - Actually parse charat position out of here.
+            getOffset(contents)
           ),
           Severity.Error,
           msg
@@ -151,7 +152,8 @@ class JavaErrorParser(relativeDir: File = new File(new File(".").getAbsolutePath
           new JavaPosition(
             findFileSource(file),
             line,
-            contents + "^"
+            contents + "^",
+            getOffset(contents)
           ),
           Severity.Warn,
           msg
@@ -203,5 +205,8 @@ class JavaErrorParser(relativeDir: File = new File(new File(".").getAbsolutePath
         logger.warn(s"Unexpected javac output at:${n.pos.longString}.  Please report to sbt-dev@googlegroups.com.")
         Seq.empty
     }
+
+  private def getOffset(contents: String): Int =
+    contents.lines.toList.lastOption map (_.length) getOrElse 0
 
 }
