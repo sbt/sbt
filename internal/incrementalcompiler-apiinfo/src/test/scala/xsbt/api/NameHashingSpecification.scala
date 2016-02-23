@@ -296,14 +296,16 @@ class NameHashingSpecification extends UnitSpec {
   }
 
   /**
-    * Checks that private members do NOT contribute to name hashes.
-    * Test for https://github.com/sbt/sbt/issues/2324
-    */
+   * Checks that private members do NOT contribute to name hashes.
+   * Test for https://github.com/sbt/sbt/issues/2324
+   */
   it should "private members in classes do not contribute to name hashes" in {
     /* class Foo { private val x } */
     val classFoo =
-      simpleClass("Foo",
-        simpleStructure(new Val(emptyType, "x", privateAccess, defaultModifiers, Array.empty)))
+      simpleClass(
+        "Foo",
+        simpleStructure(new Val(emptyType, "x", privateAccess, defaultModifiers, Array.empty))
+      )
     val nameHashes = nameHashesForClass(classFoo)
     // make sure there's no name hash for the private member "x"
     assert(Seq("Foo") === nameHashes.regularMembers.map(_.name).toSeq)
