@@ -8,10 +8,10 @@ import java.net.URL
 import sbt.serialization._
 
 final case class Artifact(name: String, `type`: String, extension: String, classifier: Option[String], configurations: Iterable[Configuration], url: Option[URL], extraAttributes: Map[String, String]) {
-  def extra(attributes: (String, String)*) = Artifact(name, `type`, extension, classifier, configurations, url, extraAttributes ++ ModuleID.checkE(attributes))
+  def extra(attributes: (String, String)*) = copy(extraAttributes = extraAttributes ++ ModuleID.checkE(attributes))
 }
 
-import Configurations.{ config, Docs, Optional, Pom, Sources, Test }
+import Configurations.{ config, Optional, Pom, Test }
 
 object Artifact {
   def apply(name: String): Artifact = Artifact(name, DefaultType, DefaultExtension, None, Nil, None)
@@ -30,12 +30,23 @@ object Artifact {
   def javadoc(name: String) = classified(name, DocClassifier)
   def pom(name: String) = Artifact(name, PomType, PomType, None, Pom :: Nil, None)
 
+  // Possible ivy artifact types such that sbt will treat those artifacts at sources / docs
+  val DefaultSourceTypes = Set("src", "source", "sources")
+  val DefaultDocTypes = Set("doc", "docs", "javadoc", "javadocs")
+
   val DocClassifier = "javadoc"
   val SourceClassifier = "sources"
+
+  val TestsClassifier = "tests"
+  // Artifact types used when:
+  // * artifacts are explicitly created for Maven dependency resolution (see updateClassifiers)
+  // * declaring artifacts as part of creating Ivy files.
   val DocType = "doc"
   val SourceType = "src"
   val PomType = "pom"
-  val TestsClassifier = "tests"
+
+  assert(DefaultDocTypes contains DocType)
+  assert(DefaultSourceTypes contains SourceType)
 
   def extract(url: URL, default: String): String = extract(url.toString, default)
   def extract(name: String, default: String): String =
@@ -62,16 +73,22 @@ object Artifact {
       base + "-" + module.revision + classifierStr + "." + artifact.extension
     }
 
-  val classifierConfMap = Map(SourceClassifier -> Sources, DocClassifier -> Docs)
   val classifierTypeMap = Map(SourceClassifier -> SourceType, DocClassifier -> DocType)
+  @deprecated("Configuration should not be decided from the classifier.", "1.0")
   def classifierConf(classifier: String): Configuration =
     if (classifier.startsWith(TestsClassifier))
       Test
     else
-      classifierConfMap.getOrElse(classifier, Optional)
+      Optional
   def classifierType(classifier: String): String = classifierTypeMap.getOrElse(classifier.stripPrefix(TestsClassifier + "-"), DefaultType)
+
+  /**
+   * Create a classified explicit artifact, to be used when trying to resolve sources|javadocs from Maven. This is
+   * necessary because those artifacts are not published in the Ivy generated from the Pom of the module in question.
+   * The artifact is created under the default configuration.
+   */
   def classified(name: String, classifier: String): Artifact =
-    Artifact(name, classifierType(classifier), DefaultExtension, Some(classifier), classifierConf(classifier) :: Nil, None)
+    Artifact(name, classifierType(classifier), DefaultExtension, Some(classifier), Nil, None)
 
   private val optStringPickler = implicitly[Pickler[Option[String]]]
   private val optStringUnpickler = implicitly[Unpickler[Option[String]]]

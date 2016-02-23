@@ -6,8 +6,7 @@ package sbt.librarymanagement
 import java.util.Collections.emptyMap
 import scala.collection.mutable.HashSet
 
-import org.apache.ivy.core.module.descriptor.{ DefaultExcludeRule, ExcludeRule }
-import org.apache.ivy.core.module.descriptor.{ DependencyDescriptor, DefaultModuleDescriptor, ModuleDescriptor, OverrideDependencyDescriptorMediator }
+import org.apache.ivy.core.module.descriptor._
 import org.apache.ivy.core.module.id.{ ArtifactId, ModuleId, ModuleRevisionId }
 import org.apache.ivy.plugins.matcher.ExactPatternMatcher
 import sbt.util.Logger
@@ -122,6 +121,18 @@ private[sbt] object IvyScala {
     {
       val artifact = new ArtifactId(ModuleId.newInstance(organization, name), "*", excludeTypePattern, "*")
       val rule = new DefaultExcludeRule(artifact, ExactPatternMatcher.INSTANCE, emptyMap[AnyRef, AnyRef])
+      configurationNames.foreach(rule.addConfiguration)
+      rule
+    }
+
+  /**
+   * Creates an IncludeRule that includes artifacts with the given module organization and name for
+   * the given configurations.
+   */
+  private[sbt] def includeRule(organization: String, name: String, configurationNames: Iterable[String], includeTypePattern: String): IncludeRule =
+    {
+      val artifact = new ArtifactId(ModuleId.newInstance(organization, name), "*", includeTypePattern, "*")
+      val rule = new DefaultIncludeRule(artifact, ExactPatternMatcher.INSTANCE, emptyMap[AnyRef, AnyRef])
       configurationNames.foreach(rule.addConfiguration)
       rule
     }

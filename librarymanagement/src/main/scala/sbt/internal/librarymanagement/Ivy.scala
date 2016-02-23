@@ -140,6 +140,7 @@ final class IvySbt(val configuration: IvyConfiguration) {
 
   /**
    * Cleans cached resolution cache.
+   *
    * @param md - module descriptor of the original Ivy graph.
    */
   private[sbt] def cleanCachedResolutionCache(md: ModuleDescriptor, log: Logger): Unit =
@@ -621,6 +622,12 @@ private[sbt] object IvySbt {
           dependencyDescriptor.addExcludeRule(conf, IvyScala.excludeRule(excls.organization, excls.name, excls.configurations, excls.artifact))
         }
       }
+      for (incls <- dependency.inclusions) {
+        for (conf <- dependencyDescriptor.getModuleConfigurations) {
+          dependencyDescriptor.addIncludeRule(conf, IvyScala.includeRule(incls.organization, incls.name, incls.configurations, incls.artifact))
+        }
+      }
+
       dependencyDescriptor
     }
   def copyConfigurations(artifact: Artifact, addConfiguration: String => Unit): Unit =
