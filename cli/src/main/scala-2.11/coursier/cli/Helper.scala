@@ -283,11 +283,11 @@ class Helper(
       sys.exit(1)
   }
 
-  def fetch(
+  def artifacts(
     sources: Boolean,
     javadoc: Boolean,
     subset: Set[Dependency] = null
-  ): Seq[File] = {
+  ): Seq[Artifact] = {
 
     if (subset == null && verbose0 >= 0) {
       val msg = cachePolicies match {
@@ -302,17 +302,25 @@ class Helper(
 
     val res0 = Option(subset).fold(res)(res.subset)
 
-    val artifacts =
-      if (classifier0.nonEmpty || sources || javadoc) {
-        var classifiers = classifier0
-        if (sources)
-          classifiers = classifiers :+ "sources"
-        if (javadoc)
-          classifiers = classifiers :+ "javadoc"
+    if (classifier0.nonEmpty || sources || javadoc) {
+      var classifiers = classifier0
+      if (sources)
+        classifiers = classifiers :+ "sources"
+      if (javadoc)
+        classifiers = classifiers :+ "javadoc"
 
-        res0.classifiersArtifacts(classifiers.distinct)
-      } else
-        res0.artifacts
+      res0.classifiersArtifacts(classifiers.distinct)
+    } else
+      res0.artifacts
+  }
+
+  def fetch(
+    sources: Boolean,
+    javadoc: Boolean,
+    subset: Set[Dependency] = null
+  ): Seq[File] = {
+
+    val artifacts0 = artifacts(sources, javadoc, subset)
 
     val logger =
       if (verbose0 >= 0)
@@ -320,10 +328,10 @@ class Helper(
       else
         None
 
-    if (verbose0 >= 1 && artifacts.nonEmpty)
-      println(s"  Found ${artifacts.length} artifacts")
+    if (verbose0 >= 1 && artifacts0.nonEmpty)
+      println(s"  Found ${artifacts0.length} artifacts")
 
-    val tasks = artifacts.map(artifact =>
+    val tasks = artifacts0.map(artifact =>
       (Cache.file(artifact, caches, cachePolicies.head, checksums = checksums, logger = logger, pool = pool) /: cachePolicies.tail)(
         _ orElse Cache.file(artifact, caches, _, checksums = checksums, logger = logger, pool = pool)
       ).run.map(artifact.->)

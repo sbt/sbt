@@ -475,7 +475,7 @@ case class Bootstrap(
       )
     else
       (
-        helper.res.artifacts.map(_.url),
+        helper.artifacts(sources = false, javadoc = false).map(_.url),
         Seq.empty[File]
       )
 
