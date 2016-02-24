@@ -375,6 +375,10 @@ case class Bootstrap(
   @Value("key=value")
   @Short("P")
     property: List[String],
+  @Help("Set Java command-line options in the generated launcher.")
+  @Value("option")
+  @Short("J")
+    javaOpt: List[String],
   @Recurse
     isolated: IsolatedLoaderOptions,
   @Recurse
@@ -475,7 +479,7 @@ case class Bootstrap(
       )
     else
       (
-        helper.res.artifacts.map(_.url),
+        helper.artifacts(sources = false, javadoc = false).map(_.url),
         Seq.empty[File]
       )
 
@@ -552,10 +556,10 @@ case class Bootstrap(
 
   outputZip.close()
 
-
+  // escaping of  javaOpt  possibly a bit loose :-|
   val shellPreamble = Seq(
     "#!/usr/bin/env sh",
-    "exec java -jar \"$0\" \"$@\""
+    "exec java -jar " + javaOpt.map(s => "'" + s.replace("'", "\\'") + "'").mkString(" ") + " \"$0\" \"$@\""
   ).mkString("", "\n", "\n")
 
   try NIOFiles.write(output0.toPath, shellPreamble.getBytes("UTF-8") ++ buffer.toByteArray)

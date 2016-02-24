@@ -11,6 +11,9 @@ fi
 
 "$SBTPACK_LAUNCHER" bootstrap \
   com.github.alexarchambault:coursier-cli_2.11:$VERSION \
+  --classifier standalone \
+  --intransitive \
+  -J "-noverify" \
   --no-default \
   -r central \
   -r sonatype:releases \
