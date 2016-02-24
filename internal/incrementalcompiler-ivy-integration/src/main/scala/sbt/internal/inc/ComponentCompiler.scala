@@ -9,7 +9,7 @@ import java.io.File
 import scala.util.Try
 import sbt.io.{ Hash, IO }
 import sbt.internal.librarymanagement._
-import sbt.librarymanagement.{ Configurations, ModuleID, ModuleInfo, Resolver, UpdateOptions, VersionNumber }
+import sbt.librarymanagement.{ Configurations, ModuleID, ModuleInfo, Resolver, UpdateOptions, VersionNumber, ArtifactTypeFilter }
 import sbt.util.Logger
 import sbt.internal.util.{ BufferedLogger, FullLogger }
 
@@ -127,7 +127,7 @@ private[inc] class IvyComponentCompiler(compiler: RawCompiler, manager: Componen
   private def update(module: ivySbt.Module, retrieveDirectory: File): Seq[File] = {
 
     val retrieveConfiguration = new RetrieveConfiguration(retrieveDirectory, Resolver.defaultRetrievePattern, false)
-    val updateConfiguration = new UpdateConfiguration(Some(retrieveConfiguration), true, UpdateLogging.DownloadOnly)
+    val updateConfiguration = new UpdateConfiguration(Some(retrieveConfiguration), true, UpdateLogging.DownloadOnly, ArtifactTypeFilter.forbid(Set("src", "doc")))
 
     buffered.info(s"Attempting to fetch ${dependenciesNames(module)}. This operation may fail.")
     IvyActions.updateEither(module, updateConfiguration, UnresolvedWarningConfiguration(), LogicalClock.unknown, None, buffered) match {
