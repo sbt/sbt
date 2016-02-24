@@ -216,6 +216,14 @@ lazy val cache = project
       import com.typesafe.tools.mima.core.ProblemFilters._
       
       Seq(
+        // Since 1.0.0-M9
+        // Added an optional extra parameter to FileError.NotFound - only
+        // its unapply method should break compatibility at the source level.
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.FileError#NotFound.copy"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.FileError#NotFound.this"),
+        ProblemFilters.exclude[MissingTypesProblem]("coursier.FileError$NotFound$"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.FileError#NotFound.apply"),
+        // Since 1.0.0-M8
         ProblemFilters.exclude[MissingTypesProblem]("coursier.TermDisplay$Info$"),
         ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.apply"),
         ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.copy"),

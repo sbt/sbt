@@ -44,7 +44,7 @@ case class MavenSource(
     overrideClassifiers: Option[Seq[String]]
   ): Seq[Artifact] = {
 
-    def artifactOf(module: Module, publication: Publication) = {
+    def artifactOf(publication: Publication) = {
 
       val versioning = project
         .snapshotVersioning
@@ -52,10 +52,10 @@ case class MavenSource(
           mavenVersioning(versioning, publication.classifier, publication.`type`)
         )
 
-      val path = module.organization.split('.').toSeq ++ Seq(
-        MavenRepository.dirModuleName(module, sbtAttrStub),
+      val path = dependency.module.organization.split('.').toSeq ++ Seq(
+        MavenRepository.dirModuleName(dependency.module, sbtAttrStub),
         project.version,
-        s"${module.name}-${versioning getOrElse project.version}${Some(publication.classifier).filter(_.nonEmpty).map("-" + _).mkString}.${publication.ext}"
+        s"${dependency.module.name}-${versioning getOrElse project.version}${Some(publication.classifier).filter(_.nonEmpty).map("-" + _).mkString}.${publication.ext}"
       )
 
       val changing0 = changing.getOrElse(project.version.contains("-SNAPSHOT"))
@@ -76,6 +76,15 @@ case class MavenSource(
       artifact
     }
 
+    val metadataArtifact = artifactOf(Publication(dependency.module.name, "pom", "pom", ""))
+
+    def artifactWithExtra(publication: Publication) = {
+      val a = artifactOf(publication)
+      a.copy(
+        extra = a.extra + ("metadata" -> metadataArtifact)
+      )
+    }
+
     overrideClassifiers match {
       case Some(classifiers) =>
         val classifiersSet = classifiers.toSet
@@ -92,14 +101,11 @@ case class MavenSource(
           else
             publications
 
-        publications0.map { p =>
-          artifactOf(dependency.module, p)
-        }
+        publications0.map(artifactWithExtra)
 
       case None =>
         Seq(
-          artifactOf(
-            dependency.module,
+          artifactWithExtra(
             dependency.attributes.publication(
               dependency.module.name,
               dependency.attributes.`type`
