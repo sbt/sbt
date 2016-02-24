@@ -217,6 +217,8 @@ public class Bootstrap {
             });
         }
 
+        String clearLine = "\033[2K";
+
         try {
             while (localURLs.size() < urls.size()) {
                 Future<URL> future = completionService.take();
@@ -224,7 +226,6 @@ public class Bootstrap {
                     URL url = future.get();
                     localURLs.add(url);
                     int nowMissing = urls.size() - localURLs.size();
-                    String clearLine = "\033[2K";
                     String up = "\033[1A";
                     System.err.print(clearLine + "Downloaded " + (missingURLs.size() - nowMissing) + " missing file(s) / " + missingURLs.size() + "\n" + up);
                 } catch (ExecutionException ex) {
@@ -235,6 +236,8 @@ public class Bootstrap {
         } catch (InterruptedException ex) {
             exit("Interrupted");
         }
+
+        System.err.print(clearLine);
 
         return localURLs;
     }
