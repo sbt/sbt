@@ -6,7 +6,7 @@ import java.io._
 import sbt.internal.util.Relation
 import xsbti.T2
 import xsbti.api.{ Compilation, Source }
-import xsbti.compile.{ MultipleOutput, SingleOutput, MiniOptions, MiniSetup }
+import xsbti.compile.{ CompileAnalysis, MultipleOutput, SingleOutput, MiniOptions, MiniSetup }
 import javax.xml.bind.DatatypeConverter
 import java.net.URI
 
@@ -74,22 +74,23 @@ object TextAnalysisFormat {
       val get2: A2 = a2
     }
 
-  def write(out: Writer, analysis: Analysis, setup: MiniSetup): Unit = {
+  def write(out: Writer, analysis: CompileAnalysis, setup: MiniSetup): Unit = {
+    val analysis0 = analysis match { case analysis: Analysis => analysis }
     VersionF.write(out)
     // We start with writing compile setup which contains value of the `nameHashing`
     // flag that is needed to properly deserialize relations
     FormatTimer.time("write setup") { MiniSetupF.write(out, setup) }
     // Next we write relations because that's the part of greatest interest to external readers,
     // who can abort reading early once they're read them.
-    FormatTimer.time("write relations") { RelationsF.write(out, analysis.relations) }
-    FormatTimer.time("write stamps") { StampsF.write(out, analysis.stamps) }
-    FormatTimer.time("write apis") { APIsF.write(out, analysis.apis) }
-    FormatTimer.time("write sourceinfos") { SourceInfosF.write(out, analysis.infos) }
-    FormatTimer.time("write compilations") { CompilationsF.write(out, analysis.compilations) }
+    FormatTimer.time("write relations") { RelationsF.write(out, analysis0.relations) }
+    FormatTimer.time("write stamps") { StampsF.write(out, analysis0.stamps) }
+    FormatTimer.time("write apis") { APIsF.write(out, analysis0.apis) }
+    FormatTimer.time("write sourceinfos") { SourceInfosF.write(out, analysis0.infos) }
+    FormatTimer.time("write compilations") { CompilationsF.write(out, analysis0.compilations) }
     out.flush()
   }
 
-  def read(in: BufferedReader): (Analysis, MiniSetup) = {
+  def read(in: BufferedReader): (CompileAnalysis, MiniSetup) = {
     VersionF.read(in)
     val setup = FormatTimer.time("read setup") { MiniSetupF.read(in) }
     val relations = FormatTimer.time("read relations") { RelationsF.read(in, setup.nameHashing) }
