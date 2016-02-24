@@ -18,7 +18,7 @@ object Dependencies {
   lazy val utilTesting = "org.scala-sbt" %% "util-testing" % utilVersion
   lazy val utilTracking = "org.scala-sbt" %% "util-tracking" % utilVersion
   lazy val utilInterface = "org.scala-sbt" % "util-interface" % utilVersion
-  lazy val libraryManagement = "org.scala-sbt" %% "librarymanagement" % "0.1.0-M6"
+  lazy val libraryManagement = "org.scala-sbt" %% "librarymanagement" % "0.1.0-M7"
   lazy val utilScripted = "org.scala-sbt" %% "util-scripted" % utilVersion
 
   lazy val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0-M1"
