@@ -154,6 +154,14 @@ object Tasks {
 
   private val resolutionsCache = new mutable.HashMap[CacheKey, UpdateReport]
 
+  private def forcedScalaModules(scalaVersion: String): Map[Module, String] =
+    Map(
+      Module("org.scala-lang", "scala-library") -> scalaVersion,
+      Module("org.scala-lang", "scala-compiler") -> scalaVersion,
+      Module("org.scala-lang", "scala-reflect") -> scalaVersion,
+      Module("org.scala-lang", "scalap") -> scalaVersion
+    )
+
   def updateTask(withClassifiers: Boolean, sbtClassifiers: Boolean = false) = Def.task {
 
     // SBT logging should be better than that most of the time...
@@ -209,6 +217,8 @@ object Tasks {
       val cachePolicy = coursierCachePolicy.value
       val cacheDir = coursierCache.value
 
+      val sv = scalaVersion.value // is this always defined? (e.g. for Java only projects?)
+
       val resolvers =
         if (sbtClassifiers)
           coursierSbtResolvers.value
@@ -221,7 +231,7 @@ object Tasks {
       val startRes = Resolution(
         currentProject.dependencies.map { case (_, dep) => dep }.toSet,
         filter = Some(dep => !dep.optional),
-        forceVersions = projects.map(_.moduleVersion).toMap
+        forceVersions = forcedScalaModules(sv) ++ projects.map(_.moduleVersion)
       )
 
       // required for publish to be fine, later on

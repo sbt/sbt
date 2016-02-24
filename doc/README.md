@@ -52,8 +52,9 @@ Lastly, it can be used programmatically via its [API](#api) and has a Scala JS [
 4. [Limitations](#limitations)
 5. [FAQ](#faq)
 6. [Roadmap](#roadmap)
-7. [Contributors](#contributors)
-8. [Projects using coursier](#projects-using-coursier)
+7. [Development tips](#development-tips)
+8. [Contributors](#contributors)
+9. [Projects using coursier](#projects-using-coursier)
 
 ## Quick start
 
@@ -628,6 +629,17 @@ Excluding `org.jboss.netty:netty` from the spark dependencies fixes it.
 Set the `COURSIER_NO_TERM` environment variable to `1`. This disables the
 progress bar message, and prints simple `Downloading URL` / `Downloaded URL`
 instead.
+
+## Development tips
+
+#### Working on the plugin module in an IDE
+
+Set `scalaVersion` to `2.10.6` in `build.sbt`. Then re-open / reload the coursier project.
+
+#### Running the Scala JS tests
+
+They require `npm install` to have been run once from the `coursier` directory or a subdirectory of
+it. They can then be run with `sbt testsJS/test`.
 
 ## Roadmap
 
