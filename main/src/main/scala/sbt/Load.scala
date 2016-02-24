@@ -12,7 +12,6 @@ import java.net.{ URI, URL }
 import compiler.{ Eval, EvalImports }
 import scala.annotation.tailrec
 import collection.mutable
-import Compiler.Compilers
 import sbt.internal.inc.{ Analysis, ClasspathOptions, FileValueCache, Locate, ModuleUtilities }
 import sbt.internal.inc.classpath.ClasspathUtilities
 import Project.{ inScope, makeSettings }
@@ -30,6 +29,7 @@ import Locate.DefinesClass
 import sbt.io.{ GlobFilter, IO, Path }
 import sbt.internal.io.Alternatives
 import sbt.util.Logger
+import xsbti.compile.Compilers
 
 object Load {
   // note that there is State passed in but not pulled out

@@ -69,5 +69,5 @@ object Build {
 
   @deprecated("Use Attributed.data", "0.13.0")
   def data[T](in: Seq[Attributed[T]]): Seq[T] = Attributed.data(in)
-  def analyzed(in: Seq[Attributed[_]]): Seq[sbt.internal.inc.Analysis] = in.flatMap { _.metadata.get(Keys.analysis) }
+  def analyzed(in: Seq[Attributed[_]]): Seq[xsbti.compile.CompileAnalysis] = in.flatMap { _.metadata.get(Keys.analysis) }
 }

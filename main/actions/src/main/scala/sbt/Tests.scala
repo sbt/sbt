@@ -10,6 +10,7 @@ import TaskExtra._
 import sbt.internal.util.FeedbackProvidedException
 import sbt.internal.util.Types._
 import xsbti.api.Definition
+import xsbti.compile.CompileAnalysis
 import ConcurrentRestrictions.Tag
 
 import testing.{ AnnotatedFingerprint, Fingerprint, Framework, SubclassFingerprint, Runner, TaskDef, SuiteSelector, Task => TestTask }
@@ -269,10 +270,10 @@ object Tests {
     }
   def overall(results: Iterable[TestResult.Value]): TestResult.Value =
     (TestResult.Passed /: results) { (acc, result) => if (acc.id < result.id) result else acc }
-  def discover(frameworks: Seq[Framework], analysis: Analysis, log: Logger): (Seq[TestDefinition], Set[String]) =
+  def discover(frameworks: Seq[Framework], analysis: CompileAnalysis, log: Logger): (Seq[TestDefinition], Set[String]) =
     discover(frameworks flatMap TestFramework.getFingerprints, allDefs(analysis), log)
 
-  def allDefs(analysis: Analysis) = analysis.apis.internal.values.flatMap(_.api.definitions).toSeq
+  def allDefs(analysis: CompileAnalysis) = analysis match { case analysis: Analysis => analysis.apis.internal.values.flatMap(_.api.definitions).toSeq }
   def discover(fingerprints: Seq[Fingerprint], definitions: Seq[Definition], log: Logger): (Seq[TestDefinition], Set[String]) =
     {
       val subclasses = fingerprints collect { case sub: SubclassFingerprint => (sub.superclassName, sub.isModule, sub) };
