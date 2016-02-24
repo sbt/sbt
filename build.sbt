@@ -324,7 +324,7 @@ def customCommands: Seq[Setting[_]] = Seq(
     test.all(safeProjects).value
   },
   otherUnitTests := {
-    test.all(otherProjects)
+    test.all(otherProjects).value
   },
   commands += Command.command("release-sbt-local") { state =>
     "clean" ::
