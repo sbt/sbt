@@ -1,1 +1,1 @@
-incOptions := IncOptions.Default
+incOptions := xsbti.compile.IncOptionsUtil.defaultIncOptions

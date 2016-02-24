@@ -4,7 +4,7 @@ incOptions := incOptions.value.withNameHashing(false)
 lazy val verifyDeps = taskKey[Unit]("verify inherited dependencies are properly extracted")
 
 verifyDeps := {
-	val a = compile.in(Compile).value
+	val a = compile.in(Compile).value match { case a: Analysis => a }
 	val baseDir = baseDirectory.value
 	def relative(f: java.io.File): java.io.File =  f.relativeTo(baseDir) getOrElse f
 	def toFile(s: String) = relative(baseDir / (s + ".scala"))

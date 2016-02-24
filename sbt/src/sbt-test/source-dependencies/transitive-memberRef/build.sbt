@@ -13,7 +13,7 @@ incOptions := incOptions.value.withRecompileAllFraction(1.0)
  *  b) checks overall number of compilations performed
  */
 TaskKey[Unit]("check-compilations") := {
-  val analysis = (compile in Compile).value
+  val analysis = (compile in Compile).value match { case a: Analysis => a }
   val srcDir = (scalaSource in Compile).value
   def relative(f: java.io.File): java.io.File =  f.relativeTo(srcDir) getOrElse f
   val allCompilations = analysis.compilations.allCompilations
