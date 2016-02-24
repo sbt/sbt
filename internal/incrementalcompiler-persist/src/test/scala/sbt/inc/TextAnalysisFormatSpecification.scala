@@ -54,9 +54,9 @@ object TextAnalysisFormatTest extends Properties("TextAnalysisFormat") {
 
     val reader = new BufferedReader(new StringReader(result))
 
-    val (readAnalysis, readSetup) = TextAnalysisFormat.read(reader)
+    val (readAnalysis: Analysis, readSetup) = TextAnalysisFormat.read(reader)
 
-    (analysis == readAnalysis) && result.startsWith(commonHeader)
+    compare(analysis, readAnalysis) && result.startsWith(commonHeader)
   }
 
   property("Write and read simple Analysis") = {
@@ -88,7 +88,7 @@ object TextAnalysisFormatTest extends Properties("TextAnalysisFormat") {
 
     val reader = new BufferedReader(new StringReader(result))
 
-    val (readAnalysis, readSetup) = TextAnalysisFormat.read(reader)
+    val (readAnalysis: Analysis, readSetup) = TextAnalysisFormat.read(reader)
 
     compare(analysis, readAnalysis) && result.startsWith(commonHeader)
   }
@@ -102,13 +102,13 @@ object TextAnalysisFormatTest extends Properties("TextAnalysisFormat") {
 
     val reader = new BufferedReader(new StringReader(result))
 
-    val (readAnalysis, readSetup) = TextAnalysisFormat.read(reader)
+    val (readAnalysis: Analysis, readSetup) = TextAnalysisFormat.read(reader)
 
     compare(analysis, readAnalysis) && result.startsWith(commonHeader)
   }
 
   // Compare two analyses with useful labelling when they aren't equal.
-  private[this] def compare(left: Analysis, right: Analysis): Prop =
+  private[this] def compare(left: Analysis, right: Analysis): Prop = {
     s" LEFT: $left" |:
       s"RIGHT: $right" |:
       s"STAMPS EQUAL: ${left.stamps == right.stamps}" |:
@@ -116,4 +116,5 @@ object TextAnalysisFormatTest extends Properties("TextAnalysisFormat") {
       s"RELATIONS EQUAL: ${left.relations == right.relations}" |:
       "UNEQUAL" |:
       (left == right)
+  }
 }
