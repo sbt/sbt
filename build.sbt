@@ -5,7 +5,7 @@ import Scripted._
 // import StringUtilities.normalize
 import com.typesafe.tools.mima.core._, ProblemFilters._
 
-def baseVersion = "0.1.0-M2"
+def baseVersion = "0.1.0-M3"
 def internalPath   = file("internal")
 
 lazy val scalaVersions = Seq(scala210, scala211)
