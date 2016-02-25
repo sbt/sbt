@@ -6,7 +6,7 @@ val checkIterations = inputKey[Unit]("Verifies the accumlated number of iteratio
 
 checkIterations := {
         val expected: Int = (Space ~> NatBasic).parsed
-        val actual: Int = (compile in Compile).value.compilations.allCompilations.size
+        val actual: Int = (compile in Compile).value match { case a: Analysis => a.compilations.allCompilations.size }
         assert(expected == actual, s"Expected $expected compilations, got $actual")
 }
 

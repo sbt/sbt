@@ -431,7 +431,7 @@ object Import {
     type SelfFirstLoader = sbt.internal.inc.classpath.SelfFirstLoader
   }
 
-  val IncOptions = sbt.internal.inc.IncOptions
+  type IncOptions = xsbti.compile.IncOptions
   type Analysis = sbt.internal.inc.Analysis
   val Analysis = sbt.internal.inc.Analysis
   val ClassfileManager = sbt.internal.inc.ClassfileManager

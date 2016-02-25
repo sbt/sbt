@@ -7,7 +7,7 @@ incOptions := incOptions.value.withNameHashing(false).withAntStyle(true)
  *  b) checks overall number of compilations performed
  */
 TaskKey[Unit]("check-compilations") := {
-  val analysis = (compile in Compile).value
+  val analysis = (compile in Compile).value match { case analysis: Analysis => analysis }
   val srcDir = (scalaSource in Compile).value
   def relative(f: java.io.File): java.io.File =  f.relativeTo(srcDir) getOrElse f
   val allCompilations = analysis.compilations.allCompilations

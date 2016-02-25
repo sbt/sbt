@@ -34,8 +34,6 @@ package object sbt extends sbt.std.TaskExtra with sbt.internal.util.Types with s
   final val Runtime = C.Runtime
   final val IntegrationTest = C.IntegrationTest
   final val Default = C.Default
-  final val Docs = C.Docs
-  final val Sources = C.Sources
   final val Provided = C.Provided
   // java.lang.System is more important, so don't alias this one
   //	final val System = C.System

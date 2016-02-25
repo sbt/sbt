@@ -7,7 +7,7 @@ import sbt.util.Logger
 import java.io.File
 import sbt.librarymanagement.Resolver
 import sbt.internal.librarymanagement.{ InlineIvyConfiguration, IvyPaths }
-import sbt.internal.inc.{ AnalyzingCompiler, ClasspathOptions }
+import sbt.internal.inc.{ AnalyzingCompiler, ClasspathOptions, IncrementalCompilerImpl }
 
 object ConsoleProject {
   def apply(state: State, extra: String, cleanupCommands: String = "", options: Seq[String] = Nil)(implicit log: Logger): Unit = {
@@ -21,7 +21,7 @@ object ConsoleProject {
     val ivyPaths = new IvyPaths(unit.unit.localBase, bootIvyHome(state.configuration))
     val ivyConfiguration = new InlineIvyConfiguration(ivyPaths, Resolver.withDefaultResolvers(Nil),
       Nil, Nil, localOnly, lock, checksums, None, log)
-    val compiler: AnalyzingCompiler = Compiler.compilers(ClasspathOptions.repl, ivyConfiguration)(state.configuration, log).scalac
+    val compiler: AnalyzingCompiler = Compiler.compilers(ClasspathOptions.repl, ivyConfiguration)(state.configuration, log) match { case IncrementalCompilerImpl.Compilers(scalac, _) => scalac }
     val imports = BuildUtil.getImports(unit.unit) ++ BuildUtil.importAll(bindings.map(_._1))
     val importString = imports.mkString("", ";\n", ";\n\n")
     val initCommands = importString + extra

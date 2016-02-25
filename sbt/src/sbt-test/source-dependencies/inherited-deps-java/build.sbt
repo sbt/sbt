@@ -4,7 +4,7 @@ incOptions := incOptions.value.withNameHashing(false)
 lazy val verifyDeps = taskKey[Unit]("verify inherited dependencies are properly extracted")
 
 verifyDeps := {
-	val a = compile.in(Compile).value
+	val a = compile.in(Compile).value match { case a: Analysis => a }
 	same(a.relations.publicInherited.internal.forwardMap, expectedDeps.forwardMap)
 }
 
