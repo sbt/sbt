@@ -1,6 +1,6 @@
 package coursier
 
-import java.net.{HttpURLConnection, URL}
+import java.net.{ HttpURLConnection, URL, URLConnection }
 import java.nio.channels.{ OverlappingFileLockException, FileLock }
 import java.nio.file.{ StandardCopyOption, Files => NioFiles }
 import java.security.MessageDigest
@@ -9,7 +9,9 @@ import java.util.concurrent.{ConcurrentHashMap, Executors, ExecutorService}
 import coursier.ivy.IvyRepository
 
 import scala.annotation.tailrec
+
 import scalaz._
+import scalaz.Scalaz.ToEitherOps
 import scalaz.concurrent.{ Task, Strategy }
 
 import java.io.{ Serializable => _, _ }
@@ -189,6 +191,17 @@ object Cache {
       .extra
       .getOrElse("local", artifact)
 
+    // Reference file - if it exists, and we get not found errors on some URLs, we assume
+    // we can keep track of these missing, and not try to get them again later.
+    val referenceFileOpt = {
+      val referenceOpt = artifact.extra.get("metadata").map(withLocal(_, cache))
+      val referenceOpt0 = referenceOpt.map(a => a.extra.getOrElse("local", a))
+
+      referenceOpt0.map(a => new File(a.url))
+    }
+
+    def referenceFileExists: Boolean = referenceFileOpt.exists(_.exists())
+
     val pairs =
       Seq(artifact0.url -> artifact.url) ++ {
         checksums
@@ -256,6 +269,14 @@ object Cache {
         fromDatesOpt.getOrElse(true)
       }
 
+    def is404(conn: URLConnection) =
+      conn match {
+        case conn0: HttpURLConnection =>
+          conn0.getResponseCode == 404
+        case _ =>
+          false
+      }
+
     def remote(file: File, url: String): EitherT[Task, FileError, Unit] =
       EitherT {
         Task {
@@ -267,50 +288,111 @@ object Cache {
 
               val conn0 = urlConn(url)
 
-              val (partialDownload, conn) = conn0 match {
-                case conn0: HttpURLConnection if alreadyDownloaded > 0L =>
-                  conn0.setRequestProperty("Range", s"bytes=$alreadyDownloaded-")
+              if (is404(conn0))
+                FileError.NotFound(url, permanent = Some(true)).left
+              else {
+                val (partialDownload, conn) = conn0 match {
+                  case conn0: HttpURLConnection if alreadyDownloaded > 0L =>
+                    conn0.setRequestProperty("Range", s"bytes=$alreadyDownloaded-")
 
-                  if (conn0.getResponseCode == partialContentResponseCode) {
-                    val ackRange = Option(conn0.getHeaderField("Content-Range")).getOrElse("")
+                    if (conn0.getResponseCode == partialContentResponseCode) {
+                      val ackRange = Option(conn0.getHeaderField("Content-Range")).getOrElse("")
 
-                    if (ackRange.startsWith(s"bytes $alreadyDownloaded-"))
-                      (true, conn0)
-                    else
-                      // unrecognized Content-Range header -> start a new connection with no resume
-                      (false, urlConn(url))
-                  } else
-                    (false, conn0)
+                      if (ackRange.startsWith(s"bytes $alreadyDownloaded-"))
+                        (true, conn0)
+                      else
+                        // unrecognized Content-Range header -> start a new connection with no resume
+                        (false, urlConn(url))
+                    } else
+                      (false, conn0)
 
-                case _ => (false, conn0)
+                  case _ => (false, conn0)
+                }
+
+                for (len0 <- Option(conn.getContentLengthLong) if len0 >= 0L) {
+                  val len = len0 + (if (partialDownload) alreadyDownloaded else 0L)
+                  logger.foreach(_.downloadLength(url, len))
+                }
+
+                val in = new BufferedInputStream(conn.getInputStream, bufferSize)
+
+                val result =
+                  try {
+                    tmp.getParentFile.mkdirs()
+                    val out = new FileOutputStream(tmp, partialDownload)
+                    try \/-(readFullyTo(in, out, logger, url, if (partialDownload) alreadyDownloaded else 0L))
+                    finally out.close()
+                  } finally in.close()
+
+                file.getParentFile.mkdirs()
+                NioFiles.move(tmp.toPath, file.toPath, StandardCopyOption.ATOMIC_MOVE)
+
+                for (lastModified <- Option(conn.getLastModified) if lastModified > 0L)
+                  file.setLastModified(lastModified)
+
+                result
               }
-
-              for (len0 <- Option(conn.getContentLengthLong) if len0 >= 0L) {
-                val len = len0 + (if (partialDownload) alreadyDownloaded else 0L)
-                logger.foreach(_.downloadLength(url, len))
-              }
-
-              val in = new BufferedInputStream(conn.getInputStream, bufferSize)
-
-              val result =
-                try {
-                  tmp.getParentFile.mkdirs()
-                  val out = new FileOutputStream(tmp, partialDownload)
-                  try \/-(readFullyTo(in, out, logger, url, if (partialDownload) alreadyDownloaded else 0L))
-                  finally out.close()
-                } finally in.close()
-
-              file.getParentFile.mkdirs()
-              NioFiles.move(tmp.toPath, file.toPath, StandardCopyOption.ATOMIC_MOVE)
-
-              for (lastModified <- Option(conn.getLastModified) if lastModified > 0L)
-                file.setLastModified(lastModified)
-
-              result
             }
           }
         }
       }
+
+    def remoteKeepErrors(file: File, url: String): EitherT[Task, FileError, Unit] = {
+
+      val errFile = new File(file.getParentFile, "." + file.getName + ".error")
+
+      def validErrFileExists =
+        EitherT {
+          Task {
+            (referenceFileExists && errFile.exists()).right[FileError]
+          }
+        }
+
+      def createErrFile =
+        EitherT {
+          Task {
+            if (referenceFileExists) {
+              if (!errFile.exists())
+                NioFiles.write(errFile.toPath, "".getBytes("UTF-8"))
+            }
+
+            ().right[FileError]
+          }
+        }
+
+      def deleteErrFile =
+        EitherT {
+          Task {
+            if (errFile.exists())
+              errFile.delete()
+
+            ().right[FileError]
+          }
+        }
+
+      def retainError =
+        EitherT {
+          remote(file, url).run.flatMap {
+            case err @ -\/(FileError.NotFound(_, Some(true))) =>
+              createErrFile.run.map(_ => err)
+            case other =>
+              deleteErrFile.run.map(_ => other)
+          }
+        }
+
+      cachePolicy match {
+        case CachePolicy.FetchMissing | CachePolicy.LocalOnly =>
+          validErrFileExists.flatMap { exists =>
+            if (exists)
+              EitherT(Task.now(FileError.NotFound(url, Some(true)).left[Unit]))
+            else
+              retainError
+          }
+
+        case CachePolicy.ForceDownload | CachePolicy.Update | CachePolicy.UpdateChanging =>
+          retainError
+      }
+    }
 
     def checkFileExists(file: File, url: String): EitherT[Task, FileError, Unit] =
       EitherT {
@@ -344,14 +426,14 @@ object Cache {
               case CachePolicy.UpdateChanging | CachePolicy.Update =>
                 shouldDownload(file, url).flatMap {
                   case true =>
-                    remote(file, url)
+                    remoteKeepErrors(file, url)
                   case false =>
                     EitherT(Task.now(\/-(()) : FileError \/ Unit))
                 }
               case CachePolicy.FetchMissing =>
-                checkFileExists(file, url) orElse remote(file, url)
+                checkFileExists(file, url) orElse remoteKeepErrors(file, url)
               case CachePolicy.ForceDownload =>
-                remote(file, url)
+                remoteKeepErrors(file, url)
             }
 
         res.run.map((file, url) -> _)
@@ -597,7 +679,7 @@ object FileError {
 
   final case class DownloadError(reason: String) extends FileError(s"Download error: $reason")
 
-  final case class NotFound(file: String) extends FileError(s"Not found: $file")
+  final case class NotFound(file: String, permanent: Option[Boolean] = None) extends FileError(s"Not found: $file")
 
   final case class ChecksumNotFound(
     sumType: String,
