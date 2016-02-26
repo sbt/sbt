@@ -51,12 +51,14 @@
   [2046]: https://github.com/sbt/sbt/issues/2046
   [2097]: https://github.com/sbt/sbt/pull/2097
   [2129]: https://github.com/sbt/sbt/pull/2129
+  [1938]: https://github.com/sbt/sbt/pull/1938
 
 ### Fixes with compatibility implications
 
 - Starting 0.13.9, `crossScalaVersions` default value is fixed back to the older 0.12.x behavior. See below for details.
 - Starting 0.13.9, the generated POM files no longer include dependencies on source or javadoc jars obtained via `withSources()` or `withJavadoc()`. See below for details.
 - Scala version is bumped to 2.10.5. This brings in the fix for [SI-9027][SI9027]: XML node sequence literal bug. [#1666][1666]/[#2068][2068] by [@eed3si9n][@eed3si9n]
+- Change launcher configuration so [JCenter](https://bintray.com/bintray/jcenter) is looked at first before all other external repositories. [#1938][1938]
 
 ### Improvements
 

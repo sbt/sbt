@@ -1148,6 +1148,7 @@ object Classpaths {
     moduleConfigurations :== Nil,
     publishTo :== None,
     resolvers :== Nil,
+    useJCenter :== false,
     retrievePattern :== Resolver.defaultRetrievePattern,
     transitiveClassifiers :== Seq(SourceClassifier, DocClassifier),
     sourceArtifactTypes :== Artifact.DefaultSourceTypes,
@@ -1174,12 +1175,16 @@ object Classpaths {
     organizationHomepage <<= organizationHomepage or homepage,
     projectInfo <<= (name, description, homepage, startYear, licenses, organizationName, organizationHomepage, scmInfo, developers) apply ModuleInfo,
     overrideBuildResolvers <<= appConfiguration(isOverrideRepositories),
-    externalResolvers <<= (externalResolvers.task.?, resolvers, appResolvers) {
-      case (Some(delegated), Seq(), _) => delegated
-      case (_, rs, Some(ars))          => task { ars ++ rs } // TODO - Do we need to filter out duplicates?
-      case (_, rs, _)                  => task { Resolver.withDefaultResolvers(rs) }
+    externalResolvers <<= (externalResolvers.task.?, resolvers, appResolvers, useJCenter) {
+      case (Some(delegated), Seq(), _, _) => delegated
+      case (_, rs, Some(ars), uj)         => task { ars ++ rs }
+      case (_, rs, _, uj)                 => task { Resolver.withDefaultResolvers(rs, uj, true) }
     },
-    appResolvers <<= appConfiguration apply appRepositories,
+    appResolvers := {
+      val ac = appConfiguration.value
+      val uj = useJCenter.value
+      appRepositories(ac) map { ars => Resolver.reorganizeAppResolvers(ars, uj, true) }
+    },
     bootResolvers <<= appConfiguration map bootRepositories,
     fullResolvers <<= (projectResolver, externalResolvers, sbtPlugin, sbtResolver, bootResolvers, overrideBuildResolvers) map { (proj, rs, isPlugin, sbtr, boot, overrideFlag) =>
       boot match {

@@ -1,0 +1,11 @@
+> check
+
+> set useJCenter := true
+
+> check2
+
+> reload
+
+> set resolvers += Resolver.jcenterRepo
+
+> check2
