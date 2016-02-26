@@ -405,7 +405,11 @@ object Defaults extends BuildCommon {
     def file(id: String) = files(id).headOption getOrElse sys.error(s"Missing ${id}.jar")
     val allFiles = toolReport.modules.flatMap(_.artifacts.map(_._2))
     val libraryJar = file(ScalaArtifacts.LibraryID)
-    val compilerJar = file(ScalaArtifacts.CompilerID)
+    val compilerJar =
+      if (ScalaInstance.isDotty(scalaVersion.value))
+        file(ScalaArtifacts.dottyID(scalaBinaryVersion.value))
+      else
+        file(ScalaArtifacts.CompilerID)
     val otherJars = allFiles.filterNot(x => x == libraryJar || x == compilerJar)
     new ScalaInstance(scalaVersion.value, makeClassLoader(state.value)(libraryJar :: compilerJar :: otherJars.toList), libraryJar, compilerJar, otherJars.toArray, None)
   }
@@ -1299,8 +1303,11 @@ object Classpaths {
       val pluginAdjust = if (sbtPlugin.value) sbtDependency.value.copy(configurations = Some(Provided.name)) +: base else base
       if (scalaHome.value.isDefined || ivyScala.value.isEmpty || !managedScalaInstance.value)
         pluginAdjust
-      else
-        ScalaArtifacts.toolDependencies(scalaOrganization.value, scalaVersion.value) ++ pluginAdjust
+      else {
+        val version = scalaVersion.value
+        val isDotty = ScalaInstance.isDotty(version)
+        ScalaArtifacts.toolDependencies(scalaOrganization.value, version, isDotty) ++ pluginAdjust
+      }
     }
   )
   @deprecated("Split into ivyBaseSettings and jvmBaseSettings.", "0.13.2")
