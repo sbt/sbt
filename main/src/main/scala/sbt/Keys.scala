@@ -46,6 +46,7 @@ import sbt.librarymanagement.{
   UpdateReport
 }
 import sbt.internal.librarymanagement.{
+  CompatibilityWarningOptions,
   DeliverConfiguration,
   GetClassifiersModule,
   IvyConfiguration,
