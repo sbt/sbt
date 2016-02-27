@@ -41,7 +41,7 @@ import sbt.util.Logger
 import CommandStrings.ExportStream
 
 import xsbti.Maybe
-import sbt.util.InterfaceUtil.{ f1, o2m }
+import sbt.util.InterfaceUtil.{ f1, o2m, m2o }
 
 import sbt.internal.util.Types._
 
@@ -1635,7 +1635,7 @@ object Classpaths {
     val config = configuration.value
     for { (f, analysis) <- trackedProductsImplTask(track).value } yield APIMappings.store(analyzed(f, analysis), apiURL.value).put(artifact.key, art).put(moduleID.key, module).put(configuration.key, config)
   }
-  private[this] def trackedProductsImplTask(track: TrackLevel): Initialize[Task[Seq[(File, Analysis)]]] =
+  private[this] def trackedProductsImplTask(track: TrackLevel): Initialize[Task[Seq[(File, CompileAnalysis)]]] =
     Def.taskDyn {
       val useJars = exportJars.value
       val jar = (artifactPath in packageBin).value
@@ -1665,7 +1665,10 @@ object Classpaths {
           }
         case _ =>
           Def.task {
-            val analysis = previousCompile.value.analysis
+            val analysis = m2o(previousCompile.value.analysis) match {
+              case Some(a) => a
+              case None    => Analysis.Empty
+            }
             (if (useJars) Seq(jar)
             else dirs) map {
               (_, analysis)
