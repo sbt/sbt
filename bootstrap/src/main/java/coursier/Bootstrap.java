@@ -50,6 +50,15 @@ public class Bootstrap {
         return content.split("\n");
     }
 
+    /**
+     *
+     * @param jarDir can be null if nothing should be downloaded!
+     * @param isolationIDs
+     * @param bootstrapProtocol
+     * @param loader
+     * @return
+     * @throws IOException
+     */
     static Map<String, URL[]> readIsolationContexts(File jarDir, String[] isolationIDs, String bootstrapProtocol, ClassLoader loader) throws IOException {
         final Map<String, URL[]> perContextURLs = new LinkedHashMap<String, URL[]>();
 
@@ -151,6 +160,14 @@ public class Bootstrap {
         }
     }
 
+    /**
+     *
+     * @param urls
+     * @param jarDir: can be null if nothing should be downloaded!
+     * @param bootstrapProtocol
+     * @return
+     * @throws MalformedURLException
+     */
     static List<URL> getLocalURLs(List<URL> urls, final File jarDir, String bootstrapProtocol) throws MalformedURLException {
 
         ThreadFactory threadFactory = new ThreadFactory() {
@@ -178,6 +195,8 @@ public class Bootstrap {
             if (protocol.equals("file") || protocol.equals(bootstrapProtocol)) {
                 localURLs.add(url);
             } else {
+                assert jarDir != null : "Should not happen, not supposed to download things";
+
                 File dest = localFile(jarDir, url);
 
                 if (dest.exists()) {
@@ -190,6 +209,8 @@ public class Bootstrap {
 
         final Random random = new Random();
         for (final URL url : missingURLs) {
+            assert jarDir != null : "Should not happen, not supposed to download things";
+
             completionService.submit(new Callable<URL>() {
                 @Override
                 public URL call() throws Exception {
@@ -326,13 +347,17 @@ public class Bootstrap {
         String mainClass0 = System.getProperty("bootstrap.mainClass");
         String jarDir0 = System.getProperty("bootstrap.jarDir");
 
-        final File jarDir = new File(jarDir0);
+        File jarDir = null;
 
-        if (jarDir.exists()) {
-            if (!jarDir.isDirectory())
-                exit("Error: " + jarDir0 + " is not a directory");
-        } else if (!jarDir.mkdirs())
-            System.err.println("Warning: cannot create " + jarDir0 + ", continuing anyway.");
+        if (jarDir0 != null) {
+            jarDir = new File(jarDir0);
+
+            if (jarDir.exists()) {
+                if (!jarDir.isDirectory())
+                    exit("Error: " + jarDir0 + " is not a directory");
+            } else if (!jarDir.mkdirs())
+                System.err.println("Warning: cannot create " + jarDir0 + ", continuing anyway.");
+        }
 
         Random rng = new Random();
         String protocol = "bootstrap" + rng.nextLong();
