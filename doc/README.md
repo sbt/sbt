@@ -630,6 +630,10 @@ Set the `COURSIER_NO_TERM` environment variable to `1`. This disables the
 progress bar message, and prints simple `Downloading URL` / `Downloaded URL`
 instead.
 
+#### On first launch, the coursier launcher downloads a 1.5+ MB JAR. Is it possible to have a standalone launcher, that would not need to download things on first launch?
+
+Run `project/generate-launcher.sh -s` from the root of the coursier sources. That will generate a new (bigger) `coursier` launcher, that needs not to download anything on first launch.
+
 ## Development tips
 
 #### Working on the plugin module in an IDE
