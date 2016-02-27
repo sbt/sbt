@@ -46,6 +46,7 @@ import sbt.librarymanagement.{
   UpdateReport
 }
 import sbt.internal.librarymanagement.{
+  CompatibilityWarningOptions,
   DeliverConfiguration,
   GetClassifiersModule,
   IvyConfiguration,
@@ -376,6 +377,7 @@ object Keys {
   val forceUpdatePeriod = SettingKey[Option[FiniteDuration]]("force-update-period", "Duration after which to force a full update to occur", CSetting)
 
   val classifiersModule = TaskKey[GetClassifiersModule]("classifiers-module", rank = CTask)
+  val compatibilityWarningOptions = SettingKey[CompatibilityWarningOptions]("compatibility-warning", "Configures warnings around Maven incompatibility.", CSetting)
   val conflictWarning = SettingKey[ConflictWarning]("conflict-warning", "Configures warnings for conflicts in dependency management.", CSetting)
   val conflictManager = SettingKey[ConflictManager]("conflict-manager", "Selects the conflict manager to use for dependency management.", CSetting)
   val autoScalaLibrary = SettingKey[Boolean]("auto-scala-library", "Adds a dependency on scala-library if true.", ASetting)

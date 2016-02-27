@@ -1136,6 +1136,7 @@ object Classpaths {
 
   private[this] def baseGlobalDefaults = Defaults.globalDefaults(Seq(
     conflictWarning :== ConflictWarning.default("global"),
+    compatibilityWarningOptions :== CompatibilityWarningOptions.default,
     homepage :== None,
     startYear :== None,
     licenses :== Nil,
@@ -1442,6 +1443,8 @@ object Classpaths {
     val logicalClock = LogicalClock(st.hashCode)
     val depDir = dependencyCacheDirectory.value
     val uc0 = updateConfiguration.value
+    val ms = publishMavenStyle.value
+    val cw = compatibilityWarningOptions.value
     // Normally, log would capture log messages at all levels.
     // Ivy logs are treated specially using sbt.UpdateConfiguration.logging.
     // This code bumps up the sbt.UpdateConfiguration.logging to Full when logLevel is Debug.
@@ -1457,17 +1460,18 @@ object Classpaths {
     cachedUpdate(s.cacheDirectory / updateCacheName.value, show, ivyModule.value, uc, transform,
       skip = (skip in update).value, force = isRoot || forceUpdateByTime, depsUpdated = depsUpdated,
       uwConfig = uwConfig, logicalClock = logicalClock, depDir = Some(depDir),
-      ewo = ewo, log = s.log)
+      ewo = ewo, mavenStyle = ms, compatWarning = cw, log = s.log)
   }
   @deprecated("Use cachedUpdate with the variant that takes unresolvedHandler instead.", "0.13.6")
   def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration,
     transform: UpdateReport => UpdateReport, skip: Boolean, force: Boolean, depsUpdated: Boolean, log: Logger): UpdateReport =
     cachedUpdate(cacheFile, label, module, config, transform, skip, force, depsUpdated,
-      UnresolvedWarningConfiguration(), LogicalClock.unknown, None, EvictionWarningOptions.empty, log)
+      UnresolvedWarningConfiguration(), LogicalClock.unknown, None, EvictionWarningOptions.empty, true, CompatibilityWarningOptions.default, log)
   private[sbt] def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration,
     transform: UpdateReport => UpdateReport, skip: Boolean, force: Boolean, depsUpdated: Boolean,
     uwConfig: UnresolvedWarningConfiguration, logicalClock: LogicalClock, depDir: Option[File],
-    ewo: EvictionWarningOptions, log: Logger): UpdateReport =
+    ewo: EvictionWarningOptions, mavenStyle: Boolean, compatWarning: CompatibilityWarningOptions,
+    log: Logger): UpdateReport =
     {
       implicit val updateCache = updateIC
       type In = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
@@ -1486,6 +1490,7 @@ object Classpaths {
           val ew = EvictionWarning(module, ewo, result, log)
           ew.lines foreach { log.warn(_) }
           ew.infoAllTheThings foreach { log.info(_) }
+          val cw = CompatibilityWarning.run(compatWarning, module, mavenStyle, log)
           result
       }
       def uptodate(inChanged: Boolean, out: UpdateReport): Boolean =
