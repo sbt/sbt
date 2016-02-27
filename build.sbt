@@ -130,20 +130,13 @@ lazy val runProj = (project in file("run")).
       utilLogging, (utilLogging % Test).classifier("tests"), compilerClasspath)
   )
 
-lazy val scriptedBaseProj = (project in scriptedPath / "base").
-  settings(
-    testedBaseSettings,
-    name := "Scripted Framework",
-    libraryDependencies ++= scalaParsers.value ++ Seq(sbtIO)
-  )
-
 lazy val scriptedSbtProj = (project in scriptedPath / "sbt").
-  dependsOn(scriptedBaseProj, commandProj).
+  dependsOn(commandProj).
   settings(
     baseSettings,
     name := "Scripted sbt",
     libraryDependencies ++= Seq(launcherInterface % "provided",
-      sbtIO, utilLogging, compilerInterface)
+      sbtIO, utilLogging, compilerInterface, utilScripted)
   )
 
 lazy val scriptedPluginProj = (project in scriptedPath / "plugin").
@@ -236,7 +229,7 @@ lazy val myProvided = config("provided") intransitive
 
 def allProjects = Seq(
   testingProj, testAgentProj, taskProj, stdTaskProj, runProj,
-  scriptedBaseProj, scriptedSbtProj, scriptedPluginProj,
+  scriptedSbtProj, scriptedPluginProj,
   actionsProj, commandProj, mainSettingsProj, mainProj, sbtProj, bundledLauncherProj, mavenResolverPluginProj)
 
 def projectsWithMyProvided = allProjects.map(p => p.copy(configurations = (p.configurations.filter(_ != Provided)) :+ myProvided))
@@ -266,7 +259,7 @@ def otherRootSettings = Seq(
   }
 ))
 lazy val docProjects: ScopeFilter = ScopeFilter(
-  inAnyProject -- inProjects(sbtRoot, sbtProj, scriptedBaseProj, scriptedSbtProj, scriptedPluginProj, mavenResolverPluginProj),
+  inAnyProject -- inProjects(sbtRoot, sbtProj, scriptedSbtProj, scriptedPluginProj, mavenResolverPluginProj),
   inConfigurations(Compile)
 )
 def fullDocSettings = Util.baseScalacOptions ++ Docs.settings ++ Sxr.settings ++ Seq(
@@ -300,7 +293,7 @@ lazy val otherUnitTests = taskKey[Unit]("Unit test other projects")
 lazy val otherProjects: ScopeFilter = ScopeFilter(
   inProjects(
     testingProj, testAgentProj, taskProj,
-    scriptedBaseProj, scriptedSbtProj, scriptedPluginProj,
+    scriptedSbtProj, scriptedPluginProj,
     commandProj, mainSettingsProj, mainProj,
     sbtProj, mavenResolverPluginProj),
   inConfigurations(Test)

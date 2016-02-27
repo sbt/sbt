@@ -9,7 +9,7 @@ import java.io.File
 import java.nio.charset.Charset
 
 import xsbt.IPC
-import xsbt.test.{ CommentHandler, FileCommands, ScriptRunner, TestScriptParser }
+import sbt.internal.scripted.{ CommentHandler, FileCommands, ScriptRunner, TestScriptParser, TestException }
 import sbt.io.{ DirectoryFilter, GlobFilter, HiddenFileFilter, Path }
 import sbt.io.IO.wrapNull
 import sbt.internal.io.Resources
@@ -45,7 +45,7 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launc
             None
           } else {
             try { scriptedTest(str, testDirectory, prescripted, log); None }
-            catch { case _: xsbt.test.TestException | _: PendingTestSuccessException => Some(str) }
+            catch { case _: TestException | _: PendingTestSuccessException => Some(str) }
           }
         }
       }
@@ -88,7 +88,7 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launc
         buffered.info("+ " + label + pendingString)
         if (pending) throw new PendingTestSuccessException(label)
       } catch {
-        case e: xsbt.test.TestException =>
+        case e: TestException =>
           testFailed()
           e.getCause match {
             case null | _: java.net.SocketException => buffered.error("   " + e.getMessage)
@@ -147,7 +147,7 @@ class ScriptedRunner {
     run(resourceBaseDirectory, bufferLog, tests, logger, bootProperties, launchOpts, emptyCallback)
 
   def run(resourceBaseDirectory: File, bufferLog: Boolean, tests: Array[String], logger: AbstractLogger, bootProperties: File,
-    launchOpts: Array[String], prescripted: File => Unit) {
+    launchOpts: Array[String], prescripted: File => Unit): Unit = {
     val runner = new ScriptedTests(resourceBaseDirectory, bufferLog, bootProperties, launchOpts)
     val allTests = get(tests, resourceBaseDirectory, logger) flatMap {
       case ScriptedTest(group, name) =>
