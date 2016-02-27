@@ -20,4 +20,5 @@ fi
   -D "\${user.home}/.coursier/bootstrap/$VERSION" \
   -f -o coursier \
   -M coursier.cli.Coursier \
-  -P coursier.cache="\${user.home}/.coursier/cache/$CACHE_VERSION"
+  -P coursier.cache="\${user.home}/.coursier/cache/$CACHE_VERSION" \
+  "$@"
