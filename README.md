@@ -610,6 +610,14 @@ instead.
 
 Run `project/generate-launcher.sh -s` from the root of the coursier sources. That will generate a new (bigger) `coursier` launcher, that needs not to download anything on first launch.
 
+#### How can the launcher be run on Windows, or manually with the `java` program?
+
+Download it from the same link as the command above. Then run from a console, in the directory where the `coursier` launcher is,
+```
+> java -noverify -jar coursier
+```
+The `-noverify` option seems to be required after the proguarding step of the main JAR of coursier.
+
 ## Development tips
 
 #### Working on the plugin module in an IDE
