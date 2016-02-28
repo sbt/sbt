@@ -642,6 +642,17 @@ Download it from the same link as the command above. Then run from a console, in
 ```
 The `-noverify` option seems to be required after the proguarding step of the main JAR of coursier.
 
+#### How to enable sandboxing?
+
+Set the `COURSIER_CACHE` prior to running `coursier` or SBT, like
+```
+$ COURSIER_CACHE=$(pwd)/.coursier-cache coursier
+```
+or
+```
+$ COURSIER_CACHE=$(pwd)/.coursier-cache sbt
+```
+
 ## Development tips
 
 #### Working on the plugin module in an IDE
