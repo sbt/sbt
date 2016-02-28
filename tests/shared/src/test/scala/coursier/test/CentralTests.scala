@@ -26,20 +26,6 @@ object CentralTests extends TestSuite {
       .runF
   }
 
-  def repr(dep: Dependency) =
-    (
-      Seq(
-        dep.module,
-        dep.attributes.`type`
-      ) ++
-      Some(dep.attributes.classifier)
-        .filter(_.nonEmpty)
-        .toSeq ++
-      Seq(
-        dep.version
-      )
-    ).mkString(":")
-
   def resolutionCheck(
     module: Module,
     version: String,
@@ -75,10 +61,14 @@ object CentralTests extends TestSuite {
           val dep0 = dep.copy(
             version = projOpt.fold(dep.version)(_.version)
           )
-          repr(dep0)
+          (dep0.module.organization, dep0.module.name, dep0.version, dep0.configuration)
         }
         .sorted
         .distinct
+        .map {
+          case (org, name, ver, cfg) =>
+            Seq(org, name, ver, cfg).mkString(":")
+        }
 
       for (((e, r), idx) <- expected.zip(result).zipWithIndex if e != r)
         println(s"Line $idx:\n  expected: $e\n  got:      $r")
