@@ -12,18 +12,18 @@ object IvyLocalTests extends TestSuite {
   val tests = TestSuite{
     'coursier{
       val module = Module("com.github.alexarchambault", "coursier_2.11")
-      val version = "1.0.0-M5"
+      val version = coursier.util.Properties.version
 
       val extraRepo = Some(Cache.ivy2Local)
 
-      // Assume this module (and the sub-projects it depends on) is published locally
-      CentralTests.resolutionCheck(
+      // Assuming this module (and the sub-projects it depends on) is published locally
+      * - CentralTests.resolutionCheck(
         module, version,
         extraRepo
       )
 
 
-      async {
+      * - async {
         val res = await(CentralTests.resolve(
           Set(Dependency(module, version)),
           extraRepo = extraRepo

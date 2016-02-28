@@ -280,7 +280,7 @@ object Resolution {
       }
   }
 
-  def withParentConfigurations(config: String, configurations: Map[String, Seq[String]]): Set[String] = {
+  def withParentConfigurations(config: String, configurations: Map[String, Seq[String]]): (String, Set[String]) = {
     @tailrec
     def helper(configs: Set[String], acc: Set[String]): Set[String] =
       if (configs.isEmpty)
@@ -306,7 +306,20 @@ object Resolution {
       case None => config
     }
 
-    helper(Set(config0), Set.empty)
+    (config0, helper(Set(config0), Set.empty))
+  }
+
+  private val mavenScopes = {
+    val base = Map[String, Set[String]](
+      "compile" -> Set("compile"),
+      "provided" -> Set(),
+      "runtime" -> Set("compile", "runtime"),
+      "test" -> Set()
+    )
+
+    base ++ Seq(
+      "default" -> base("runtime")
+    )
   }
 
   /**
@@ -347,7 +360,12 @@ object Resolution {
 
     val properties = propertiesMap(properties0)
 
-    val configurations = withParentConfigurations(from.configuration, project.configurations)
+    val (actualConfig, configurations) = withParentConfigurations(from.configuration, project.configurations)
+
+    // Vague attempt at making the Maven scope model fit into the Ivy configuration one
+
+    val config = if (actualConfig.isEmpty) defaultConfiguration else actualConfig
+    val keepOpt = mavenScopes.get(config)
 
     withExclusions(
       depsWithDependencyManagement(
@@ -359,20 +377,36 @@ object Resolution {
       ),
       from.exclusions
     )
-    .map{
-      case (config, dep) =>
-        (if (config.isEmpty) defaultConfiguration else config) -> {
-          if (dep.configuration.isEmpty)
-            dep.copy(configuration = defaultConfiguration)
+    .flatMap {
+      case (config0, dep0) =>
+        // Dependencies from Maven verify
+        //   dep.configuration.isEmpty
+        // and expect dep.configuration to be filled here
+
+        val dep =
+          if (from.optional)
+            dep0.copy(optional = true)
           else
-            dep
-        }
-    }
-    .collect{case (config, dep) if configurations(config) =>
-      if (from.optional)
-        dep.copy(optional = true)
-      else
-        dep
+            dep0
+
+        val config = if (config0.isEmpty) defaultConfiguration else config0
+
+        def default =
+          if (configurations(config))
+            Seq(dep)
+          else
+            Nil
+
+        if (dep.configuration.nonEmpty)
+          default
+        else
+          keepOpt.fold(default) { keep =>
+            if (keep(config))
+              // really keeping the  from.configuration, with its fallback config part
+              Seq(dep.copy(configuration = from.configuration))
+            else
+              Nil
+          }
     }
   }
 

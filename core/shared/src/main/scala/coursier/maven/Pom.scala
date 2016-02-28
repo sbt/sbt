@@ -115,6 +115,9 @@ object Pom {
     } yield Profile(id, activeByDefault, activation, deps, depMgmts, properties.toMap)
   }
 
+  def packagingOpt(pom: Node): Option[String] =
+    text(pom, "packaging", "").toOption
+
   def project(pom: Node): String \/ Project = {
     import Scalaz._
 

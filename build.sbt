@@ -145,7 +145,12 @@ lazy val core = crossProject
       import com.typesafe.tools.mima.core._
       import com.typesafe.tools.mima.core.ProblemFilters._
       
-      Seq()
+      Seq(
+        // Since 1.0.0-M10
+        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.core.Resolution.withParentConfigurations"),
+        // New singleton object, problem for forward compatibility only
+        ProblemFilters.exclude[MissingTypesProblem]("coursier.maven.MavenSource$")
+      )
     }
   )
   .jvmSettings(

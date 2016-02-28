@@ -7,6 +7,8 @@ import scala.async.Async.{ async, await }
 import coursier.Platform.fetch
 import coursier.test.compatibility._
 
+import scala.concurrent.Future
+
 object CentralTests extends TestSuite {
 
   val repositories = Seq[Repository](
@@ -26,20 +28,6 @@ object CentralTests extends TestSuite {
       .runF
   }
 
-  def repr(dep: Dependency) =
-    (
-      Seq(
-        dep.module,
-        dep.attributes.`type`
-      ) ++
-      Some(dep.attributes.classifier)
-        .filter(_.nonEmpty)
-        .toSeq ++
-      Seq(
-        dep.version
-      )
-    ).mkString(":")
-
   def resolutionCheck(
     module: Module,
     version: String,
@@ -57,16 +45,27 @@ object CentralTests extends TestSuite {
 
       val expected =
         await(
-          textResource(s"resolutions/${module.organization}/${module.name}$attrPathPart/$version")
-        )
-        .split('\n')
-        .toSeq
+          textResource(
+            Seq(
+              "resolutions",
+              module.organization,
+              module.name,
+              attrPathPart,
+              version + (
+                if (configuration.isEmpty)
+                  ""
+                else
+                  "_" + configuration.replace('(', '_').replace(')', '_')
+              )
+            ).filter(_.nonEmpty).mkString("/")
+          )
+        ).split('\n').toSeq
 
       val dep = Dependency(module, version, configuration = configuration)
       val res = await(resolve(Set(dep), extraRepo = extraRepo))
 
       val result = res
-        .dependencies
+        .minDependencies
         .toVector
         .map { dep =>
           val projOpt = res.projectCache
@@ -75,16 +74,35 @@ object CentralTests extends TestSuite {
           val dep0 = dep.copy(
             version = projOpt.fold(dep.version)(_.version)
           )
-          repr(dep0)
+          (dep0.module.organization, dep0.module.nameWithAttributes, dep0.version, dep0.configuration)
         }
         .sorted
         .distinct
+        .map {
+          case (org, name, ver, cfg) =>
+            Seq(org, name, ver, cfg).mkString(":")
+        }
 
       for (((e, r), idx) <- expected.zip(result).zipWithIndex if e != r)
         println(s"Line $idx:\n  expected: $e\n  got:      $r")
 
       assert(result == expected)
     }
+
+  def ensureArtifactHasExtension(module: Module, version: String, extension: String): Future[Unit] = async {
+    val dep = Dependency(module, version, transitive = false)
+    val res = await(resolve(Set(dep)))
+
+    res.artifacts match {
+      case Seq(artifact) =>
+        assert(artifact.url.endsWith("." + extension))
+      case other =>
+        throw new Exception(
+          s"Unexpected artifact list size: ${other.size}\n" +
+            "Artifacts:\n" + other.map("  " + _).mkString("\n")
+        )
+    }
+  }
 
   val tests = TestSuite {
     'logback{
@@ -96,8 +114,8 @@ object CentralTests extends TestSuite {
           rootDependencies = Set(dep),
           dependencies = Set(
             dep.withCompileScope,
-            Dependency(Module("ch.qos.logback", "logback-core"), "1.1.3").withCompileScope,
-            Dependency(Module("org.slf4j", "slf4j-api"), "1.7.7").withCompileScope))
+            Dependency(Module("ch.qos.logback", "logback-core"), "1.1.3").withCompileScope.withJarAttributeType,
+            Dependency(Module("org.slf4j", "slf4j-api"), "1.7.7").withCompileScope.withJarAttributeType))
 
         assert(res == expected)
       }
@@ -111,8 +129,8 @@ object CentralTests extends TestSuite {
           rootDependencies = Set(dep),
           dependencies = Set(
             dep.withCompileScope,
-            Dependency(Module("org.ow2.asm", "asm-tree"), "5.0.2").withCompileScope,
-            Dependency(Module("org.ow2.asm", "asm"), "5.0.2").withCompileScope))
+            Dependency(Module("org.ow2.asm", "asm-tree"), "5.0.2").withCompileScope.withJarAttributeType,
+            Dependency(Module("org.ow2.asm", "asm"), "5.0.2").withCompileScope.withJarAttributeType))
 
         assert(res == expected)
       }
@@ -182,6 +200,36 @@ object CentralTests extends TestSuite {
         Module("com.googlecode.libphonenumber", "libphonenumber"),
         "7.0.+"
       )
+    }
+    'mavenScopes - {
+      def check(config: String) = resolutionCheck(
+        Module("com.android.tools", "sdklib"),
+        "24.5.0",
+        configuration = config
+      )
+
+      'compile - check("compile")
+      'runtime - check("runtime")
+    }
+
+    'packaging - {
+      * - {
+        // random aar-based module found on Central
+        ensureArtifactHasExtension(
+          Module("com.yandex.android", "speechkit"),
+          "2.5.0",
+          "aar"
+        )
+      }
+
+      * - {
+        // has packaging bundle - ensuring coursier gives its artifact the .jar extension
+        ensureArtifactHasExtension(
+          Module("com.google.guava", "guava"),
+          "17.0",
+          "jar"
+        )
+      }
     }
   }
 

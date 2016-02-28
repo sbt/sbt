@@ -118,10 +118,10 @@ class Helper(
   }
 
 
-  val (modVerErrors, moduleVersions) = Parse.moduleVersions(rawDependencies)
+  val (modVerCfgErrors, moduleVersionConfigs) = Parse.moduleVersionConfigs(rawDependencies)
 
-  prematureExitIf(modVerErrors.nonEmpty) {
-    s"Cannot parse dependencies:\n" + modVerErrors.map("  "+_).mkString("\n")
+  prematureExitIf(modVerCfgErrors.nonEmpty) {
+    s"Cannot parse dependencies:\n" + modVerCfgErrors.map("  "+_).mkString("\n")
   }
 
 
@@ -164,12 +164,12 @@ class Helper(
     (mod.organization, mod.name)
   }.toSet
 
-  val dependencies = moduleVersions.map {
-    case (module, version) =>
+  val dependencies = moduleVersionConfigs.map {
+    case (module, version, configOpt) =>
       Dependency(
         module,
         version,
-        configuration = "default(compile)",
+        configuration = configOpt.getOrElse(defaultConfiguration),
         exclusions = excludes,
         transitive = !intransitive
       )

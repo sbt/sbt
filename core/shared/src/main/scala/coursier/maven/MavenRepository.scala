@@ -45,8 +45,10 @@ object MavenRepository {
     "test" -> Seq("runtime")
   )
 
-  def defaultPublications(moduleName: String) = Seq(
-    "compile" -> Publication(moduleName, "jar", "jar", ""),
+  val defaultPackaging = "jar"
+
+  def defaultPublications(moduleName: String, packaging: String) = Seq(
+    "compile" -> Publication(moduleName, packaging, MavenSource.typeExtension(packaging), ""),
     "docs" -> Publication(moduleName, "doc", "jar", "javadoc"),
     "sources" -> Publication(moduleName, "src", "jar", "sources")
   )
@@ -240,15 +242,22 @@ case class MavenRepository(
 
     fetch(projectArtifact(module, version, versioningValue)).flatMap { str =>
       EitherT {
-        F.point {
-          (for {
+        F.point[String \/ Project] {
+          for {
             xml <- \/.fromEither(compatibility.xmlParse(str))
             _ <- if (xml.label == "project") \/-(()) else -\/("Project definition not found")
             proj <- Pom.project(xml)
-          } yield proj.copy(
-            configurations = defaultConfigurations,
-            publications = defaultPublications(module.name)
-          )): (String \/ Project)
+          } yield {
+            val packagingOpt = Pom.packagingOpt(xml)
+
+            proj.copy(
+              configurations = defaultConfigurations,
+              publications = defaultPublications(
+                module.name,
+                packagingOpt.getOrElse(defaultPackaging)
+              )
+            )
+          }
         }
       }
     }

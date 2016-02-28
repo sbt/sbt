@@ -1,5 +1,0 @@
-com.github.fommil:java-logging:jar:1.2-SNAPSHOT
-org.slf4j:jcl-over-slf4j:jar:1.7.5
-org.slf4j:log4j-over-slf4j:jar:1.7.5
-org.slf4j:slf4j-api:jar:1.7.5
-org.slf4j:slf4j-jdk14:jar:1.7.5

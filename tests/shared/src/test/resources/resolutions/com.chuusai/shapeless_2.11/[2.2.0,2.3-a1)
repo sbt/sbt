@@ -1,2 +1,2 @@
-com.chuusai:shapeless_2.11:jar:2.2.5
-org.scala-lang:scala-library:jar:2.11.7
+com.chuusai:shapeless_2.11:2.2.5:compile
+org.scala-lang:scala-library:2.11.7:compile
