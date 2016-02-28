@@ -82,12 +82,50 @@ object Parse {
   }
 
   /**
+    * Parses coordinates like
+    *   org:name:version
+    *  possibly with attributes, like
+    *   org:name;attr1=val1;attr2=val2:version
+    *  and a configuration, like
+    *   org:name:version:config
+    *  or
+    *   org:name;attr1=val1;attr2=val2:version:config
+    */
+  def moduleVersionConfig(s: String): Either[String, (Module, String, Option[String])] = {
+
+    val parts = s.split(":", 4)
+
+    parts match {
+      case Array(org, rawName, version, config) =>
+        module(s"$org:$rawName")
+          .right
+          .map((_, version, Some(config)))
+
+      case Array(org, rawName, version) =>
+        module(s"$org:$rawName")
+          .right
+          .map((_, version, None))
+
+      case _ =>
+        Left(s"Malformed coordinates: $s")
+    }
+  }
+
+  /**
     * Parses a sequence of coordinates.
     *
-    * @return Sequence of errors, and sequence of modules/versions
+    * @return Sequence of errors, and sequence of modules / versions
     */
   def moduleVersions(l: Seq[String]): (Seq[String], Seq[(Module, String)]) =
     valuesAndErrors(moduleVersion, l)
+
+  /**
+    * Parses a sequence of coordinates having an optional configuration.
+    *
+    * @return Sequence of errors, and sequence of modules / versions / optional configurations
+    */
+  def moduleVersionConfigs(l: Seq[String]): (Seq[String], Seq[(Module, String, Option[String])]) =
+    valuesAndErrors(moduleVersionConfig, l)
 
   def repository(s: String): Repository =
     if (s == "central")

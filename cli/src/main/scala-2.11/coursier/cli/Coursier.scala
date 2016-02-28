@@ -54,6 +54,10 @@ case class CommonOptions(
   @Value("classifier1,classifier2,...")
   @Short("C")
     classifier: List[String],
+  @Help("Default configuration (default(compile) by default)")
+  @Value("configuration")
+  @Short("c")
+    defaultConfiguration: String = "default(compile)",
   @Help("Maximum number of parallel downloads (default: 6)")
   @Short("n")
     parallel: Int = 6,
@@ -316,7 +320,7 @@ case class Launch(
         } else {
           // Trying to get the main class of the first artifact
           val mainClassOpt = for {
-            (module, _) <- helper.moduleVersions.headOption
+            (module, _, _) <- helper.moduleVersionConfigs.headOption
             mainClass <- mainClasses.collectFirst {
               case ((org, name), mainClass)
                 if org == module.organization && (
