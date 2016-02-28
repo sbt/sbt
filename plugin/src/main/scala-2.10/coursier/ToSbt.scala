@@ -2,6 +2,8 @@ package coursier
 
 import java.util.GregorianCalendar
 
+import coursier.maven.MavenSource
+
 import sbt._
 
 object ToSbt {
@@ -18,8 +20,9 @@ object ToSbt {
   def artifact(module: Module, artifact: Artifact): sbt.Artifact =
     sbt.Artifact(
       module.name,
+      // FIXME Get these two from publications
       artifact.attributes.`type`,
-      "jar",
+      MavenSource.typeExtension(artifact.attributes.`type`),
       Some(artifact.attributes.classifier).filter(_.nonEmpty),
       Nil,
       Some(url(artifact.url)),

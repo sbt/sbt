@@ -7,6 +7,8 @@ import scala.async.Async.{ async, await }
 import coursier.Platform.fetch
 import coursier.test.compatibility._
 
+import scala.concurrent.Future
+
 object CentralTests extends TestSuite {
 
   val repositories = Seq[Repository](
@@ -76,6 +78,21 @@ object CentralTests extends TestSuite {
       assert(result == expected)
     }
 
+  def ensureArtifactHasExtension(module: Module, version: String, extension: String): Future[Unit] = async {
+    val dep = Dependency(module, version, transitive = false)
+    val res = await(resolve(Set(dep)))
+
+    res.artifacts match {
+      case Seq(artifact) =>
+        assert(artifact.url.endsWith("." + extension))
+      case other =>
+        throw new Exception(
+          s"Unexpected artifact list size: ${other.size}\n" +
+            "Artifacts:\n" + other.map("  " + _).mkString("\n")
+        )
+    }
+  }
+
   val tests = TestSuite {
     'logback{
       async {
@@ -86,8 +103,8 @@ object CentralTests extends TestSuite {
           rootDependencies = Set(dep),
           dependencies = Set(
             dep.withCompileScope,
-            Dependency(Module("ch.qos.logback", "logback-core"), "1.1.3").withCompileScope,
-            Dependency(Module("org.slf4j", "slf4j-api"), "1.7.7").withCompileScope))
+            Dependency(Module("ch.qos.logback", "logback-core"), "1.1.3").withCompileScope.withJarAttributeType,
+            Dependency(Module("org.slf4j", "slf4j-api"), "1.7.7").withCompileScope.withJarAttributeType))
 
         assert(res == expected)
       }
@@ -101,8 +118,8 @@ object CentralTests extends TestSuite {
           rootDependencies = Set(dep),
           dependencies = Set(
             dep.withCompileScope,
-            Dependency(Module("org.ow2.asm", "asm-tree"), "5.0.2").withCompileScope,
-            Dependency(Module("org.ow2.asm", "asm"), "5.0.2").withCompileScope))
+            Dependency(Module("org.ow2.asm", "asm-tree"), "5.0.2").withCompileScope.withJarAttributeType,
+            Dependency(Module("org.ow2.asm", "asm"), "5.0.2").withCompileScope.withJarAttributeType))
 
         assert(res == expected)
       }
@@ -172,6 +189,26 @@ object CentralTests extends TestSuite {
         Module("com.googlecode.libphonenumber", "libphonenumber"),
         "7.0.+"
       )
+    }
+
+    'packaging - {
+      * - {
+        // random aar-based module found on Central
+        ensureArtifactHasExtension(
+          Module("com.yandex.android", "speechkit"),
+          "2.5.0",
+          "aar"
+        )
+      }
+
+      * - {
+        // has packaging bundle - ensuring coursier gives its artifact the .jar extension
+        ensureArtifactHasExtension(
+          Module("com.google.guava", "guava"),
+          "17.0",
+          "jar"
+        )
+      }
     }
   }
 

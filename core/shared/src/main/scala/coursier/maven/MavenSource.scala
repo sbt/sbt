@@ -85,7 +85,7 @@ case class MavenSource(
       )
     }
 
-    overrideClassifiers match {
+    val publications0 = overrideClassifiers match {
       case Some(classifiers) =>
         val classifiersSet = classifiers.toSet
         val publications = project.publications.collect {
@@ -93,25 +93,68 @@ case class MavenSource(
             p
         }
 
-        val publications0 =
-          if (publications.isEmpty)
-            classifiers.map { classifier =>
-              Publication(dependency.module.name, "jar", "jar", classifier)
-            }
-          else
-            publications
-
-        publications0.map(artifactWithExtra)
+        // Unlike with Ivy metadata, Maven POMs don't list the available publications (~artifacts)
+        // so we give a chance to any classifier we're given by returning some publications
+        // no matter what, even if we're unsure they're available.
+        if (publications.isEmpty)
+          classifiers.map { classifier =>
+            Publication(
+              dependency.module.name,
+              "jar",
+              "jar",
+              classifier
+            )
+          }
+        else
+          publications
 
       case None =>
-        Seq(
-          artifactWithExtra(
-            dependency.attributes.publication(
+
+        val publications =
+          if (dependency.attributes.classifier.nonEmpty)
+            // FIXME We're ignoring dependency.attributes.`type` in this case
+            project.publications.collect {
+              case (_, p) if p.classifier == dependency.attributes.classifier =>
+                p
+            }
+          else if (dependency.attributes.`type`.nonEmpty)
+            project.publications.collect {
+              case (_, p) if p.`type` == dependency.attributes.`type` =>
+                p
+            }
+          else
+            project.publications.collect {
+              case (_, p) if p.classifier.isEmpty =>
+                p
+            }
+
+        // See comment above
+        if (publications.isEmpty) {
+          val type0 = if (dependency.attributes.`type`.isEmpty) "jar" else dependency.attributes.`type`
+
+          Seq(
+            Publication(
               dependency.module.name,
-              dependency.attributes.`type`
+              type0,
+              MavenSource.typeExtension(type0),
+              dependency.attributes.classifier
             )
           )
-        )
+        } else
+          publications
     }
+
+    publications0.map(artifactWithExtra)
   }
+}
+
+object MavenSource {
+
+  def typeExtension(`type`: String): String =
+    `type` match {
+      // see similar things in sbt-maven-resolver/src/main/scala/sbt/mavenint/MavenRepositoryResolver.scala in SBT 0.13.8
+      case "eclipse-plugin" | "hk2-jar" | "orbit" | "scala-jar" | "jar" | "bundle" | "doc" | "src" => "jar"
+      case other => other
+    }
+
 }

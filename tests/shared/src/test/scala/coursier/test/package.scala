@@ -4,6 +4,7 @@ package object test {
 
   implicit class DependencyOps(val underlying: Dependency) extends AnyVal {
     def withCompileScope: Dependency = underlying.copy(configuration = "compile")
+    def withJarAttributeType: Dependency = underlying.copy(attributes = underlying.attributes.copy(`type` = "jar"))
   }
 
   implicit class ResolutionOps(val underlying: Resolution) extends AnyVal {

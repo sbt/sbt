@@ -30,7 +30,7 @@ package object coursier {
   type Attributes = core.Attributes
   object Attributes {
     def apply(
-      `type`: String = "jar",
+      `type`: String = "",
       classifier: String = ""
     ): Attributes =
       core.Attributes(`type`, classifier)
