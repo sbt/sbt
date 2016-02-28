@@ -1,0 +1,15 @@
+com.android.tools:annotations:24.5.0:runtime
+com.android.tools:common:24.5.0:runtime
+com.android.tools:dvlib:24.5.0:runtime
+com.android.tools:sdklib:24.5.0:runtime
+com.android.tools.layoutlib:layoutlib-api:24.5.0:runtime
+com.google.code.gson:gson:2.2.4:runtime
+com.google.guava:guava:17.0:runtime
+com.intellij:annotations:12.0:runtime
+commons-codec:commons-codec:1.4:runtime
+commons-logging:commons-logging:1.1.1:runtime
+net.sf.kxml:kxml2:2.3.0:runtime
+org.apache.commons:commons-compress:1.8.1:runtime
+org.apache.httpcomponents:httpclient:4.1.1:runtime
+org.apache.httpcomponents:httpcore:4.1:runtime
+org.apache.httpcomponents:httpmime:4.1:runtime

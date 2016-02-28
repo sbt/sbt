@@ -25,9 +25,11 @@ final case class Module(
     .map { case (k, v) => s"$k=$v" }
     .mkString(";")
 
-  override def toString =
-    s"$organization:$name" +
-    (if (attributes.nonEmpty) s";$attributesStr" else "")
+  def nameWithAttributes: String =
+    name + (if (attributes.nonEmpty) s";$attributesStr" else "")
+
+  override def toString: String =
+    s"$organization:$nameWithAttributes"
 
   override final lazy val hashCode = Module.unapply(this).get.hashCode()
 }

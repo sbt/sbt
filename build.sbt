@@ -147,6 +147,7 @@ lazy val core = crossProject
       
       Seq(
         // Since 1.0.0-M10
+        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.core.Resolution.withParentConfigurations"),
         // New singleton object, problem for forward compatibility only
         ProblemFilters.exclude[MissingTypesProblem]("coursier.maven.MavenSource$")
       )

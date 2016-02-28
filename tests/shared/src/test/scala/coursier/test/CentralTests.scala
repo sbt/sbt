@@ -45,16 +45,27 @@ object CentralTests extends TestSuite {
 
       val expected =
         await(
-          textResource(s"resolutions/${module.organization}/${module.name}$attrPathPart/$version")
-        )
-        .split('\n')
-        .toSeq
+          textResource(
+            Seq(
+              "resolutions",
+              module.organization,
+              module.name,
+              attrPathPart,
+              version + (
+                if (configuration.isEmpty)
+                  ""
+                else
+                  "_" + configuration.replace('(', '_').replace(')', '_')
+              )
+            ).filter(_.nonEmpty).mkString("/")
+          )
+        ).split('\n').toSeq
 
       val dep = Dependency(module, version, configuration = configuration)
       val res = await(resolve(Set(dep), extraRepo = extraRepo))
 
       val result = res
-        .dependencies
+        .minDependencies
         .toVector
         .map { dep =>
           val projOpt = res.projectCache
@@ -63,7 +74,7 @@ object CentralTests extends TestSuite {
           val dep0 = dep.copy(
             version = projOpt.fold(dep.version)(_.version)
           )
-          (dep0.module.organization, dep0.module.name, dep0.version, dep0.configuration)
+          (dep0.module.organization, dep0.module.nameWithAttributes, dep0.version, dep0.configuration)
         }
         .sorted
         .distinct
@@ -189,6 +200,16 @@ object CentralTests extends TestSuite {
         Module("com.googlecode.libphonenumber", "libphonenumber"),
         "7.0.+"
       )
+    }
+    'mavenScopes - {
+      def check(config: String) = resolutionCheck(
+        Module("com.android.tools", "sdklib"),
+        "24.5.0",
+        configuration = config
+      )
+
+      'compile - check("compile")
+      'runtime - check("runtime")
     }
 
     'packaging - {

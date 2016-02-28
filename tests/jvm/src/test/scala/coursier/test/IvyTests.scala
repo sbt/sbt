@@ -7,7 +7,7 @@ import utest._
 
 object IvyTests extends TestSuite {
 
-  // only tested on the JVM for lack of support of XML attributes in our XML wrappers
+  // only tested on the JVM for lack of support of XML attributes in the platform-dependent XML stubs
 
   val tests = TestSuite {
     'dropInfoAttributes - {
@@ -23,7 +23,8 @@ object IvyTests extends TestSuite {
               "[revision]/[type]s/[artifact](-[classifier]).[ext]",
             dropInfoAttributes = true
           )
-        )
+        ),
+        configuration = "default(compile)"
       )
     }
   }

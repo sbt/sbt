@@ -1,5 +1,0 @@
-com.github.fommil:java-logging:1.2-SNAPSHOT:runtime
-org.slf4j:jcl-over-slf4j:1.7.5:compile
-org.slf4j:log4j-over-slf4j:1.7.5:compile
-org.slf4j:slf4j-api:1.7.5:compile
-org.slf4j:slf4j-jdk14:1.7.5:compile
