@@ -10,7 +10,7 @@ abstract class ClientConnection(connection: Socket) {
 
   // TODO handle client disconnect
   private val running = new AtomicBoolean(true)
-  private val delimiter = '\0'.toByte
+  private val delimiter: Byte = '\n'.toByte
 
   private val out = connection.getOutputStream
 
