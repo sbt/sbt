@@ -7,6 +7,7 @@ import org.json4s.JsonAST.{ JArray, JString }
 import org.json4s._
 import org.json4s.JsonDSL._
 import org.json4s.native.JsonMethods._
+import org.json4s.ParserUtil.ParseException
 
 object Serialization {
 
@@ -40,15 +41,18 @@ object Serialization {
   /**
    * @return A command or an invalid input description
    */
-  def deserialize(bytes: Seq[Byte]): Either[String, Command] = {
-    val json = parse(new String(bytes.toArray, "UTF-8"))
+  def deserialize(bytes: Seq[Byte]): Either[String, Command] =
+    try {
+      val json = parse(new String(bytes.toArray, "UTF-8"))
+      implicit val formats = DefaultFormats
 
-    implicit val formats = DefaultFormats
-
-    (json \ "type").extract[String] match {
-      case "command" => Right(Execution((json \ "command_line").extract[String]))
-      case cmd       => Left(s"Unknown command type $cmd")
+      // TODO: is using extract safe?
+      (json \ "type").extract[String] match {
+        case "execution" => Right(Execution((json \ "command_line").extract[String]))
+        case cmd         => Left(s"Unknown command type $cmd")
+      }
+    } catch {
+      case e: ParseException   => Left(s"Parse error: ${e.getMessage}")
+      case e: MappingException => Left(s"Missing type field")
     }
-  }
-
 }
