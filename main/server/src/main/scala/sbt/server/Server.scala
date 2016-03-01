@@ -36,6 +36,7 @@ object Server {
 
               val connection = new ClientConnection(socket) {
                 override def onCommand(command: Command): Unit = {
+                  println(s"onCommand $command")
                   commandQueue.add(command)
                 }
               }
