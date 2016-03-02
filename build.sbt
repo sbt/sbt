@@ -160,6 +160,7 @@ lazy val actionsProj = (project in mainPath / "actions").
 
 // General command support and core commands not specific to a build system
 lazy val commandProj = (project in mainPath / "command").
+  dependsOn(serverProj).
   settings(
     testedBaseSettings,
     name := "Command",
@@ -185,7 +186,7 @@ lazy val serverProj = (project in mainPath / "server").
 
 // The main integration project for sbt.  It brings all of the Projsystems together, configures them, and provides for overriding conventions.
 lazy val mainProj = (project in mainPath).
-  dependsOn(actionsProj, mainSettingsProj, runProj, commandProj, serverProj).
+  dependsOn(actionsProj, mainSettingsProj, runProj, commandProj).
   settings(
     testedBaseSettings,
     name := "Main",

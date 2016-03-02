@@ -7,12 +7,12 @@ import java.net.{ SocketTimeoutException, InetAddress, ServerSocket }
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 
+sealed trait ServerInstance {
+  def shutdown(): Unit
+  def nextCommand(): Option[Command]
+}
+
 object Server {
-
-  trait ServerInstance {
-    def shutdown(): Unit
-  }
-
   def start(host: String, port: Int): ServerInstance =
     new ServerInstance {
 
@@ -36,6 +36,7 @@ object Server {
 
               val connection = new ClientConnection(socket) {
                 override def onCommand(command: Command): Unit = {
+                  println(s"onCommand $command")
                   commandQueue.add(command)
                 }
               }
