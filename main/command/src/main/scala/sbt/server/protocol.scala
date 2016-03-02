@@ -4,12 +4,22 @@
 package sbt
 package server
 
-trait Event
+/*
+ * These classes are the protocol for client-server interaction,
+ * commands can come from the client side, while events are emitted
+ * from sbt to inform the client of state changes etc.
+ */
+private[sbt] sealed trait Event
 
-case class LogEvent() extends Event
-case class StatusEvent() extends Event
-case class ExecutionEvent() extends Event
+private[sbt] final case class LogEvent(level: String, message: String) extends Event
 
-trait Command
+sealed trait Status
+private[sbt] final case object Ready extends Status
+private[sbt] final case class Processing(command: String, commandQueue: Seq[String]) extends Status
 
-case class Execution(cmd: String) extends Command
+private[sbt] final case class StatusEvent(status: Status) extends Event
+private[sbt] final case class ExecutionEvent(command: String, success: Boolean) extends Event
+
+private[sbt] sealed trait Command
+
+private[sbt] final case class Execution(cmd: String) extends Command

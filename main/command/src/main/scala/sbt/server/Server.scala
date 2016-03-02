@@ -8,27 +8,25 @@ import java.net.{ SocketTimeoutException, InetAddress, ServerSocket }
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 
-sealed trait ServerInstance {
+private[sbt] sealed trait ServerInstance {
   def shutdown(): Unit
-  def nextCommand(): Option[Command]
+  def publish(event: Event): Unit
 }
 
-object Server {
-  def start(host: String, port: Int): ServerInstance =
+private[sbt] object Server {
+  def start(host: String, port: Int, onIncommingCommand: Command => Unit): ServerInstance =
     new ServerInstance {
-
-      val commandQueue = new ConcurrentLinkedQueue[Command]()
 
       val lock = new AnyRef {}
       var clients = Vector[ClientConnection]()
       val running = new AtomicBoolean(true)
 
-      val serverSocket = new ServerSocket(port, 50, InetAddress.getByName(host))
-      serverSocket.setSoTimeout(5000)
-
       val serverThread = new Thread("sbt-socket-server") {
 
         override def run(): Unit = {
+          val serverSocket = new ServerSocket(port, 50, InetAddress.getByName(host))
+          serverSocket.setSoTimeout(5000)
+
           println(s"SBT socket server started at $host:$port")
           while (running.get()) {
             try {
@@ -37,8 +35,7 @@ object Server {
 
               val connection = new ClientConnection(socket) {
                 override def onCommand(command: Command): Unit = {
-                  println(s"onCommand $command")
-                  commandQueue.add(command)
+                  onIncommingCommand(command)
                 }
               }
 
@@ -62,13 +59,6 @@ object Server {
         lock.synchronized {
           clients.foreach(_.publish(bytes))
         }
-      }
-
-      /**
-       * @return The next queued command if there is one. It will have to be consumed because it is taken off the queue.
-       */
-      def nextCommand(): Option[Command] = {
-        Option(commandQueue.poll())
       }
 
       override def shutdown(): Unit = {
