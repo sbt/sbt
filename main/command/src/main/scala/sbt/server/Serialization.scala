@@ -1,7 +1,8 @@
 /*
  * Copyright (C) 2016 Lightbend Inc. <http://www.typesafe.com>
  */
-package sbt.server
+package sbt
+package server
 
 import org.json4s.JsonAST.{ JArray, JString }
 import org.json4s._

@@ -176,12 +176,11 @@ lazy val actionsProj = (project in file("main-actions")).
 
 // General command support and core commands not specific to a build system
 lazy val commandProj = (project in file("main-command")).
-  dependsOn(serverProj).
   settings(
     testedBaseSettings,
     name := "Command",
     libraryDependencies ++= Seq(launcherInterface, compilerInterface,
-      sbtIO, utilLogging, utilCompletion, compilerClasspath)
+      sbtIO, utilLogging, utilCompletion, compilerClasspath, json4s, json4sNative) // to transitively get json4s)
   )
 
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
@@ -194,15 +193,9 @@ lazy val mainSettingsProj = (project in file("main-settings")).
       utilLogging, sbtIO, utilCompletion, compilerClasspath, libraryManagement)
   )
 
-lazy val serverProj = (project in mainPath / "server").
-  settings(
-    baseSettings,
-    libraryDependencies ++= Seq(json4s, json4sNative) // to transitively get json4s
-  )
-
 // The main integration project for sbt.  It brings all of the Projsystems together, configures them, and provides for overriding conventions.
 lazy val mainProj = (project in file("main")).
-  dependsOn(actionsProj, mainSettingsProj, runProj, commandProj, serverProj).
+  dependsOn(actionsProj, mainSettingsProj, runProj, commandProj).
   settings(
     testedBaseSettings,
     name := "Main",
@@ -251,7 +244,7 @@ lazy val myProvided = config("provided") intransitive
 def allProjects = Seq(
   testingProj, testAgentProj, taskProj, stdTaskProj, runProj,
   scriptedSbtProj, scriptedPluginProj,
-  actionsProj, commandProj, mainSettingsProj, serverProj, mainProj, sbtProj, bundledLauncherProj)
+  actionsProj, commandProj, mainSettingsProj, mainProj, sbtProj, bundledLauncherProj)
 
 def projectsWithMyProvided = allProjects.map(p => p.copy(configurations = (p.configurations.filter(_ != Provided)) :+ myProvided))
 lazy val nonRoots = projectsWithMyProvided.map(p => LocalProject(p.id))
