@@ -442,6 +442,16 @@ object Cache {
     Nondeterminism[Task].gather(tasks)
   }
 
+  def parseChecksum(content: String): Option[String] = {
+    // matches md5 or sha1
+    val pattern = "^[0-9a-f]{32}([0-9a-f]{8})?"
+    content
+      .linesIterator
+      .toStream
+      .map(_.toLowerCase.replaceAll("\\s", ""))
+      .find(_.matches(pattern))
+  }
+
   def validateChecksum(
     artifact: Artifact,
     sumType: String,
@@ -459,12 +469,9 @@ object Cache {
       artifact0.checksumUrls.get(sumType) match {
         case Some(sumFile) =>
           Task {
-            val sum = new String(NioFiles.readAllBytes(new File(sumFile).toPath), "UTF-8")
-              .linesIterator
-              .toStream
-              .headOption
-              .mkString
-              .takeWhile(!_.isSpaceChar)
+            val sum = parseChecksum(
+              new String(NioFiles.readAllBytes(new File(sumFile).toPath), "UTF-8"))
+              .getOrElse("")
 
             val f = new File(artifact0.url)
             val md = MessageDigest.getInstance(sumType)
@@ -489,7 +496,7 @@ object Cache {
 
             res.flatMap { _ =>
               val digest = md.digest()
-              val calculatedSum = f"${BigInt(1, digest)}%040x"
+              val calculatedSum = f"${BigInt(1, digest)}%x"
 
               if (sum == calculatedSum)
                 \/-(())
