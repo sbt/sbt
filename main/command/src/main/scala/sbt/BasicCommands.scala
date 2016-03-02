@@ -189,6 +189,7 @@ object BasicCommands {
       commandListers foreach { x =>
         x.run(commandQueue, CommandStatus(s, true))
       }
+      askingAlready = true
     }
     blockUntilNextCommand match {
       case Some(line) =>

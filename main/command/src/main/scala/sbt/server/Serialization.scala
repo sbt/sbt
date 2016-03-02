@@ -17,25 +17,32 @@ object Serialization {
   }
 
   def toJson(event: Event): JObject = event match {
-    case LogEvent() =>
+    case LogEvent(level, message) =>
       JObject(
         "type" -> JString("log_event"),
-        "level" -> JString("INFO"),
-        "message" -> JString("todo")
+        "level" -> JString(level),
+        "message" -> JString(message)
       )
 
-    case StatusEvent() =>
+    case StatusEvent(Ready) =>
       JObject(
         "type" -> JString("status_event"),
         "status" -> JString("ready"),
         "command_queue" -> JArray(List.empty)
       )
 
-    case ExecutionEvent() =>
+    case StatusEvent(Processing(command, commandQueue)) =>
+      JObject(
+        "type" -> JString("status_event"),
+        "status" -> JString("processing"),
+        "command_queue" -> JArray(commandQueue.map(JString).toList)
+      )
+
+    case ExecutionEvent(command, status) =>
       JObject(
         "type" -> JString("execution_event"),
-        "command" -> JString("project todo"),
-        "success" -> JArray(List.empty)
+        "command" -> JString(command),
+        "success" -> JBool(status)
       )
   }
 
@@ -47,13 +54,16 @@ object Serialization {
       val json = parse(new String(bytes.toArray, "UTF-8"))
       implicit val formats = DefaultFormats
 
-      // TODO: is using extract safe?
-      (json \ "type").extract[String] match {
-        case "execution" => Right(Execution((json \ "command_line").extract[String]))
-        case cmd         => Left(s"Unknown command type $cmd")
+      (json \ "type").toOption match {
+        case Some(JString("execution")) =>
+          (json \ "command_line").toOption match {
+            case Some(JString(cmd)) => Right(Execution(cmd))
+            case _                  => Left("Missing or invalid command_line field")
+          }
+        case Some(cmd) => Left(s"Unknown command type $cmd")
+        case None      => Left("Invalid command, missing type field")
       }
     } catch {
-      case e: ParseException   => Left(s"Parse error: ${e.getMessage}")
-      case e: MappingException => Left(s"Missing type field")
+      case e: ParseException => Left(s"Parse error: ${e.getMessage}")
     }
 }
