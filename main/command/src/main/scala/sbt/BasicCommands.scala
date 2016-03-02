@@ -13,11 +13,13 @@ import BasicCommandStrings._
 import CommandUtil._
 import BasicKeys._
 
-import sbt.server.Server
 import java.io.File
 import sbt.io.IO
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicBoolean
 
 import scala.util.control.NonFatal
+import scala.annotation.tailrec
 
 object BasicCommands {
   lazy val allBasicCommands = Seq(nop, ignore, help, completionsCommand, multi, ifLast, append, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, reboot, call, early, exit, continuous, history, shell, read, alias) ++ compatCommands
@@ -171,16 +173,26 @@ object BasicCommands {
       }
     }
 
-  def shell = Command.command(Shell, Help.more(Shell, ShellDetailed)) { s =>
-    // TODO hook it in, start in the right place, shutdown on termination
-    val server = Server.start("127.0.0.1", 12700)
+  var askingAlready = false
+  val commandListers = Seq(new ConsoleListener(), new NetworkListener())
+  val commandQueue: ConcurrentLinkedQueue[Option[String]] = new ConcurrentLinkedQueue()
 
-    val history = (s get historyPath) getOrElse Some(new File(s.baseDir, ".history"))
-    val prompt = (s get shellPrompt) match { case Some(pf) => pf(s); case None => "> " }
-    val reader = new FullReader(history, s.combinedParser)
-    val line = reader.readLine(prompt)
-    line match {
+  @tailrec def blockUntilNextCommand: Option[String] =
+    Option(commandQueue.poll) match {
+      case Some(x) => x
+      case None =>
+        Thread.sleep(50)
+        blockUntilNextCommand
+    }
+  def shell = Command.command(Shell, Help.more(Shell, ShellDetailed)) { s =>
+    if (!askingAlready) {
+      commandListers foreach { x =>
+        x.run(commandQueue, CommandStatus(s, true))
+      }
+    }
+    blockUntilNextCommand match {
       case Some(line) =>
+        // tell listern to be inactive .
         val newState = s.copy(onFailure = Some(Shell), remainingCommands = line +: Shell +: s.remainingCommands).setInteractive(true)
         if (line.trim.isEmpty) newState else newState.clearGlobalLog
       case None => s.setInteractive(false)
