@@ -176,6 +176,7 @@ lazy val actionsProj = (project in file("main-actions")).
 
 // General command support and core commands not specific to a build system
 lazy val commandProj = (project in file("main-command")).
+  dependsOn(serverProj).
   settings(
     testedBaseSettings,
     name := "Command",

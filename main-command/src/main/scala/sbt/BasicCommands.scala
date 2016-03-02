@@ -13,6 +13,7 @@ import BasicCommandStrings._
 import CommandUtil._
 import BasicKeys._
 
+import sbt.server.Server
 import java.io.File
 import sbt.io.IO
 
@@ -179,6 +180,9 @@ object BasicCommands {
     }
 
   def shell = Command.command(Shell, Help.more(Shell, ShellDetailed)) { s =>
+    // TODO hook it in, start in the right place, shutdown on termination
+    val server = Server.start("127.0.0.1", 12700)
+
     val history = (s get historyPath) getOrElse Some(new File(s.baseDir, ".history"))
     val prompt = (s get shellPrompt) match { case Some(pf) => pf(s); case None => "> " }
     val reader = new FullReader(history, s.combinedParser)
