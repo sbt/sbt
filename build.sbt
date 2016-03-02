@@ -164,7 +164,7 @@ lazy val commandProj = (project in mainPath / "command").
     testedBaseSettings,
     name := "Command",
     libraryDependencies ++= Seq(launcherInterface, compilerInterface,
-      sbtIO, utilLogging, utilCompletion, compilerClasspath)
+      sbtIO, utilLogging, utilCompletion, compilerClasspath, json4s, json4sNative) // to transitively get json4s)
   )
 
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
