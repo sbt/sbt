@@ -9,7 +9,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 abstract class ClientConnection(connection: Socket) {
 
-  // TODO handle client disconnect
   private val running = new AtomicBoolean(true)
   private val delimiter: Byte = '\n'.toByte
 
@@ -17,35 +16,38 @@ abstract class ClientConnection(connection: Socket) {
 
   val thread = new Thread(s"sbt-client-${connection.getPort}") {
     override def run(): Unit = {
-      val readBuffer = new Array[Byte](4096)
-      val in = connection.getInputStream
-      connection.setSoTimeout(5000)
-      var buffer: Vector[Byte] = Vector.empty
-      var bytesRead = 0
-      while (bytesRead != -1 && running.get) {
-        try {
-          bytesRead = in.read(readBuffer)
-          val bytes = readBuffer.toVector.take(bytesRead)
-          buffer = buffer ++ bytes
+      try {
+        val readBuffer = new Array[Byte](4096)
+        val in = connection.getInputStream
+        connection.setSoTimeout(5000)
+        var buffer: Vector[Byte] = Vector.empty
+        var bytesRead = 0
+        while (bytesRead != -1 && running.get) {
+          try {
+            bytesRead = in.read(readBuffer)
+            val bytes = readBuffer.toVector.take(bytesRead)
+            buffer = buffer ++ bytes
 
-          // handle un-framing
-          val delimPos = bytes.indexOf(delimiter)
-          if (delimPos > 0) {
-            val chunk = buffer.take(delimPos)
-            buffer = buffer.drop(delimPos)
+            // handle un-framing
+            val delimPos = bytes.indexOf(delimiter)
+            if (delimPos > 0) {
+              val chunk = buffer.take(delimPos)
+              buffer = buffer.drop(delimPos + 1)
+              
+              Serialization.deserialize(chunk).fold(
+                errorDesc => println("Got invalid chunk from client: " + errorDesc),
+                onCommand
+              )
+            }
 
-            Serialization.deserialize(chunk).fold(
-              errorDesc => println("Got invalid chunk from client: " + errorDesc),
-              onCommand
-            )
+          } catch {
+            case _: SocketTimeoutException => // its ok
           }
-
-        } catch {
-          case _: SocketTimeoutException => // its ok
         }
-      }
 
-      shutdown()
+      } finally {
+        shutdown()
+      }
     }
   }
   thread.start()
