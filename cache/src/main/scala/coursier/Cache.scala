@@ -483,42 +483,26 @@ object Cache {
                 FileError.ChecksumFormatError(sumType, sumFile).left
 
               case Some(sum) =>
-                val f = new File(artifact0.url)
                 val md = MessageDigest.getInstance(sumType)
+
+                val f = new File(artifact0.url)
                 val is = new FileInputStream(f)
-                val res = try {
-                  var lock: FileLock = null
-                  try {
-                    lock = is.getChannel.tryLock(0L, Long.MaxValue, true)
-                    if (lock == null)
-                      FileError.Locked(f).left
-                    else {
-                      withContent(is, md.update(_, 0, _))
-                      ().right
-                    }
-                  }
-                  catch {
-                    case e: OverlappingFileLockException =>
-                      FileError.Locked(f).left
-                  }
-                  finally if (lock != null) lock.release()
-                } finally is.close()
+                try withContent(is, md.update(_, 0, _))
+                finally is.close()
 
-                res.flatMap { _ =>
-                  val digest = md.digest()
-                  val calculatedSum = new BigInteger(1, digest)
+                val digest = md.digest()
+                val calculatedSum = new BigInteger(1, digest)
 
-                  if (sum == calculatedSum)
-                    ().right
-                  else
-                    FileError.WrongChecksum(
-                      sumType,
-                      calculatedSum.toString(16),
-                      sum.toString(16),
-                      artifact0.url,
-                      sumFile
-                    ).left
-                }
+                if (sum == calculatedSum)
+                  ().right
+                else
+                  FileError.WrongChecksum(
+                    sumType,
+                    calculatedSum.toString(16),
+                    sum.toString(16),
+                    artifact0.url,
+                    sumFile
+                  ).left
             }
           }
 
