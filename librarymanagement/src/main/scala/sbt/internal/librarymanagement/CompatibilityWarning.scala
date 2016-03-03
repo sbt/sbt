@@ -32,9 +32,8 @@ private[sbt] object CompatibilityWarning {
   def processIntransitive(config: CompatibilityWarningOptions, module: IvySbt#Module, log: Logger): Unit = {
     val monitoredConfigsStr: Set[String] = (config.configurations map { _.name }).toSet
     val directDependencies: Seq[ModuleID] = module.moduleSettings match {
-      case x: InlineConfiguration             => x.dependencies
-      case x: InlineConfigurationWithExcludes => x.dependencies
-      case _                                  => Seq()
+      case x: InlineConfiguration => x.dependencies
+      case _                      => Seq()
     }
     def inMonitoredConfigs(configOpt: Option[String]): Boolean =
       configOpt match {
