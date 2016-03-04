@@ -1,10 +1,12 @@
 package coursier
 
+import java.math.BigInteger
 import java.net.{ HttpURLConnection, URL, URLConnection }
 import java.nio.channels.{ OverlappingFileLockException, FileLock }
 import java.nio.file.{ StandardCopyOption, Files => NioFiles }
 import java.security.MessageDigest
-import java.util.concurrent.{ConcurrentHashMap, Executors, ExecutorService}
+import java.util.concurrent.{ ConcurrentHashMap, Executors, ExecutorService }
+import java.util.regex.Pattern
 
 import coursier.ivy.IvyRepository
 
@@ -442,15 +444,18 @@ object Cache {
     Nondeterminism[Task].gather(tasks)
   }
 
-  def parseChecksum(content: String): Option[String] = {
-    // matches md5 or sha1
-    val pattern = "^[0-9a-f]{32}([0-9a-f]{8})?"
+  // matches md5 or sha1
+  private val checksumPattern = Pattern.compile("^[0-9a-f]{32}([0-9a-f]{8})?")
+
+  def parseChecksum(content: String): Option[BigInteger] =
     content
       .linesIterator
       .toStream
       .map(_.toLowerCase.replaceAll("\\s", ""))
-      .find(_.matches(pattern))
-  }
+      .collectFirst {
+        case rawSum if checksumPattern.matcher(rawSum).matches() =>
+          new BigInteger(rawSum, 16)
+      }
 
   def validateChecksum(
     artifact: Artifact,
@@ -469,44 +474,40 @@ object Cache {
       artifact0.checksumUrls.get(sumType) match {
         case Some(sumFile) =>
           Task {
-            val sum = parseChecksum(
-              new String(NioFiles.readAllBytes(new File(sumFile).toPath), "UTF-8"))
-              .getOrElse("")
+            val sumOpt = parseChecksum(
+              new String(NioFiles.readAllBytes(new File(sumFile).toPath), "UTF-8")
+            )
 
-            val f = new File(artifact0.url)
-            val md = MessageDigest.getInstance(sumType)
-            val is = new FileInputStream(f)
-            val res = try {
-              var lock: FileLock = null
-              try {
-                lock = is.getChannel.tryLock(0L, Long.MaxValue, true)
-                if (lock == null)
-                  -\/(FileError.Locked(f))
-                else {
-                  withContent(is, md.update(_, 0, _))
-                  \/-(())
-                }
-              }
-              catch {
-                case e: OverlappingFileLockException =>
-                  -\/(FileError.Locked(f))
-              }
-              finally if (lock != null) lock.release()
-            } finally is.close()
+            sumOpt match {
+              case None =>
+                FileError.ChecksumFormatError(sumType, sumFile).left
 
-            res.flatMap { _ =>
-              val digest = md.digest()
-              val calculatedSum = f"${BigInt(1, digest)}%x"
+              case Some(sum) =>
+                val md = MessageDigest.getInstance(sumType)
 
-              if (sum == calculatedSum)
-                \/-(())
-              else
-                -\/(FileError.WrongChecksum(sumType, calculatedSum, sum, artifact0.url, sumFile))
+                val f = new File(artifact0.url)
+                val is = new FileInputStream(f)
+                try withContent(is, md.update(_, 0, _))
+                finally is.close()
+
+                val digest = md.digest()
+                val calculatedSum = new BigInteger(1, digest)
+
+                if (sum == calculatedSum)
+                  ().right
+                else
+                  FileError.WrongChecksum(
+                    sumType,
+                    calculatedSum.toString(16),
+                    sum.toString(16),
+                    artifact0.url,
+                    sumFile
+                  ).left
             }
           }
 
         case None =>
-          Task.now(-\/(FileError.ChecksumNotFound(sumType, artifact0.url)))
+          Task.now(FileError.ChecksumNotFound(sumType, artifact0.url).left)
       }
     }
   }
@@ -692,6 +693,11 @@ object FileError {
     sumType: String,
     file: String
   ) extends FileError(s"$sumType checksum not found: $file")
+
+  final case class ChecksumFormatError(
+    sumType: String,
+    file: String
+  ) extends FileError(s"Unrecognized $sumType checksum format in $file")
 
   final case class WrongChecksum(
     sumType: String,
