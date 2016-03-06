@@ -227,6 +227,19 @@ lazy val cache = project
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.Cache.default"),
         ProblemFilters.exclude[IncompatibleMethTypeProblem]("coursier.Cache.validateChecksum"),
         ProblemFilters.exclude[MissingMethodProblem]("coursier.Cache.defaultBase"),
+        // New methdos in Cache.Logger
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.Cache#Logger.checkingUpdates"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.Cache#Logger.checkingUpdatesResult"),
+        // Changes to private class TermDisplay#Info
+        ProblemFilters.exclude[MissingClassProblem]("coursier.TermDisplay$Info$"),
+        ProblemFilters.exclude[AbstractClassProblem]("coursier.TermDisplay$Info"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.downloaded"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.productElement"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.productArity"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.canEqual"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.length"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.display"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.fraction"),
         // Since 1.0.0-M9
         // Added an optional extra parameter to FileError.NotFound - only
         // its unapply method should break compatibility at the source level.
