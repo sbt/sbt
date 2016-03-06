@@ -248,6 +248,7 @@ class TermDisplay(
 
   private case class DownloadInfo(
     downloaded: Long,
+    previouslyDownloaded: Long,
     length: Option[Long],
     startTime: Long,
     updateCheck: Boolean
@@ -258,7 +259,7 @@ class TermDisplay(
     def rate(): Option[Double] = {
       val currentTime = System.currentTimeMillis()
       if (currentTime > startTime)
-        Some(downloaded.toDouble / (System.currentTimeMillis() - startTime) * 1000.0)
+        Some((downloaded - previouslyDownloaded).toDouble / (System.currentTimeMillis() - startTime) * 1000.0)
       else
         None
     }
@@ -387,16 +388,16 @@ class TermDisplay(
   override def downloadingArtifact(url: String, file: File): Unit =
     newEntry(
       url,
-      DownloadInfo(0L, None, System.currentTimeMillis(), updateCheck = false),
+      DownloadInfo(0L, 0L, None, System.currentTimeMillis(), updateCheck = false),
       s"Downloading $url\n"
     )
 
-  override def downloadLength(url: String, length: Long): Unit = {
+  override def downloadLength(url: String, totalLength: Long, alreadyDownloaded: Long): Unit = {
     val info = infos.get(url)
     assert(info != null)
     val newInfo = info match {
       case info0: DownloadInfo =>
-        info0.copy(length = Some(length))
+        info0.copy(length = Some(totalLength), previouslyDownloaded = alreadyDownloaded)
       case _ =>
         throw new Exception(s"Incoherent display state for $url")
     }

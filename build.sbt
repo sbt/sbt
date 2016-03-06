@@ -230,6 +230,8 @@ lazy val cache = project
         // New methdos in Cache.Logger
         ProblemFilters.exclude[MissingMethodProblem]("coursier.Cache#Logger.checkingUpdates"),
         ProblemFilters.exclude[MissingMethodProblem]("coursier.Cache#Logger.checkingUpdatesResult"),
+        // Better overload of Cache.Logger.downloadLength, deprecate previous one
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.Cache#Logger.downloadLength"),
         // Changes to private class TermDisplay#Info
         ProblemFilters.exclude[MissingClassProblem]("coursier.TermDisplay$Info$"),
         ProblemFilters.exclude[AbstractClassProblem]("coursier.TermDisplay$Info"),
