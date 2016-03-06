@@ -220,6 +220,13 @@ lazy val cache = project
       import com.typesafe.tools.mima.core.ProblemFilters._
       
       Seq(
+        // Since 1.0.0-M10
+        // cache argument type changed from `Seq[(String, File)]` to `File`
+        ProblemFilters.exclude[IncompatibleMethTypeProblem]("coursier.Cache.file"),
+        ProblemFilters.exclude[IncompatibleMethTypeProblem]("coursier.Cache.fetch"),
+        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.Cache.default"),
+        ProblemFilters.exclude[IncompatibleMethTypeProblem]("coursier.Cache.validateChecksum"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.Cache.defaultBase"),
         // Since 1.0.0-M9
         // Added an optional extra parameter to FileError.NotFound - only
         // its unapply method should break compatibility at the source level.

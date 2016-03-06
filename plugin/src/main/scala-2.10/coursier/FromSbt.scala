@@ -1,8 +1,11 @@
 package coursier
 
 import coursier.ivy.{ IvyXml, IvyRepository }
-import sbt.mavenint.SbtPomExtraProperties
+
+import java.net.MalformedURLException
+
 import sbt.{ Resolver, CrossVersion, ModuleID }
+import sbt.mavenint.SbtPomExtraProperties
 
 object FromSbt {
 
@@ -105,12 +108,20 @@ object FromSbt {
   def repository(resolver: Resolver, ivyProperties: Map[String, String]): Option[Repository] =
     resolver match {
       case sbt.MavenRepository(_, root) =>
-        if (root.startsWith("http://") || root.startsWith("https://") || root.startsWith("file:/")) {
+        try {
+          Cache.url(root) // ensure root is a URL whose protocol can be handled here
           val root0 = if (root.endsWith("/")) root else root + "/"
           Some(MavenRepository(root0, sbtAttrStub = true))
-        } else {
-          Console.err.println(s"Warning: unrecognized Maven repository protocol in $root, ignoring it")
-          None
+        } catch {
+          case e: MalformedURLException =>
+            Console.err.println(
+              "Warning: error parsing Maven repository base " +
+              root +
+              Option(e.getMessage).map(" ("+_+")").mkString +
+              ", ignoring it"
+            )
+
+            None
         }
 
       case sbt.FileRepository(_, _, patterns)

@@ -77,11 +77,7 @@ class Helper(
       )
   }
 
-  val caches =
-    Seq(
-      "http://" -> new File(new File(cacheOptions.cache), "http"),
-      "https://" -> new File(new File(cacheOptions.cache), "https")
-    )
+  val cache = new File(cacheOptions.cache)
 
   val pool = Executors.newFixedThreadPool(parallel, Strategy.DefaultDaemonThreadFactory)
 
@@ -200,7 +196,7 @@ class Helper(
       None
 
   val fetchs = cachePolicies.map(p =>
-    Cache.fetch(caches, p, checksums = checksums, logger = logger, pool = pool)
+    Cache.fetch(cache, p, checksums = checksums, logger = logger, pool = pool)
   )
   val fetchQuiet = coursier.Fetch.from(
     repositories,
@@ -332,8 +328,8 @@ class Helper(
       println(s"  Found ${artifacts0.length} artifacts")
 
     val tasks = artifacts0.map(artifact =>
-      (Cache.file(artifact, caches, cachePolicies.head, checksums = checksums, logger = logger, pool = pool) /: cachePolicies.tail)(
-        _ orElse Cache.file(artifact, caches, _, checksums = checksums, logger = logger, pool = pool)
+      (Cache.file(artifact, cache, cachePolicies.head, checksums = checksums, logger = logger, pool = pool) /: cachePolicies.tail)(
+        _ orElse Cache.file(artifact, cache, _, checksums = checksums, logger = logger, pool = pool)
       ).run.map(artifact.->)
     )
 

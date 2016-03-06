@@ -41,7 +41,7 @@ object Platform {
 
   val artifact: Fetch.Content[Task] = { artifact =>
     EitherT {
-      val url = new URL(artifact.url)
+      val url = Cache.url(artifact.url)
 
       val conn = url.openConnection()
       // Dummy user-agent instead of the default "Java/...",

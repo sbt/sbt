@@ -74,7 +74,7 @@ case class CommonOptions(
 case class CacheOptions(
   @Help("Cache directory (defaults to environment variable COURSIER_CACHE or ~/.coursier/cache/v1)")
   @Short("C")
-    cache: String = Cache.defaultBase.toString
+    cache: String = Cache.default.toString
 )
 
 sealed abstract class CoursierCommand extends Command
@@ -490,9 +490,9 @@ case class Bootstrap(
   val isolatedUrls = isolatedArtifactFiles.map { case (k, (v, _)) => k -> v }
   val isolatedFiles = isolatedArtifactFiles.map { case (k, (_, v)) => k -> v }
 
-  val unrecognized = urls.filter(s => !s.startsWith("http://") && !s.startsWith("https://"))
-  if (unrecognized.nonEmpty)
-    Console.err.println(s"Warning: non HTTP URLs:\n${unrecognized.mkString("\n")}")
+  val nonHttpUrls = urls.filter(s => !s.startsWith("http://") && !s.startsWith("https://"))
+  if (nonHttpUrls.nonEmpty)
+    Console.err.println(s"Warning: non HTTP URLs:\n${nonHttpUrls.mkString("\n")}")
 
   val buffer = new ByteArrayOutputStream()
 

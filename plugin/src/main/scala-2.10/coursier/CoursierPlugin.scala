@@ -39,7 +39,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierVerbosity := 1,
     coursierResolvers <<= Tasks.coursierResolversTask,
     coursierSbtResolvers <<= externalResolvers in updateSbtClassifiers,
-    coursierCache := Cache.defaultBase,
+    coursierCache := Cache.default,
     update <<= Tasks.updateTask(withClassifiers = false),
     updateClassifiers <<= Tasks.updateTask(withClassifiers = true),
     updateSbtClassifiers in Defaults.TaskGlobal <<= Tasks.updateTask(withClassifiers = true, sbtClassifiers = true),
