@@ -215,7 +215,7 @@ object Tasks {
       val artifactsChecksums = coursierArtifactsChecksums.value
       val maxIterations = coursierMaxIterations.value
       val cachePolicy = coursierCachePolicy.value
-      val cacheDir = coursierCache.value
+      val cache = coursierCache.value
 
       val sv = scalaVersion.value // is this always defined? (e.g. for Java only projects?)
 
@@ -273,11 +273,6 @@ object Tasks {
 
         val repositories = Seq(globalPluginsRepo, interProjectRepo) ++ resolvers.flatMap(FromSbt.repository(_, ivyProperties))
 
-        val caches = Seq(
-          "http://" -> new File(cacheDir, "http"),
-          "https://" -> new File(cacheDir, "https")
-        )
-
         val pool = Executors.newFixedThreadPool(parallelDownloads, Strategy.DefaultDaemonThreadFactory)
 
         def createLogger() = new TermDisplay(new OutputStreamWriter(System.err))
@@ -286,8 +281,8 @@ object Tasks {
 
         val fetch = Fetch.from(
           repositories,
-          Cache.fetch(caches, CachePolicy.LocalOnly, checksums = checksums, logger = Some(resLogger), pool = pool),
-          Cache.fetch(caches, cachePolicy, checksums = checksums, logger = Some(resLogger), pool = pool)
+          Cache.fetch(cache, CachePolicy.LocalOnly, checksums = checksums, logger = Some(resLogger), pool = pool),
+          Cache.fetch(cache, cachePolicy, checksums = checksums, logger = Some(resLogger), pool = pool)
         )
 
         def depsRepr(deps: Seq[(String, Dependency)]) =
@@ -411,7 +406,7 @@ object Tasks {
         val artifactsLogger = createLogger()
 
         val artifactFileOrErrorTasks = allArtifacts.toVector.map { a =>
-          Cache.file(a, caches, cachePolicy, checksums = artifactsChecksums, logger = Some(artifactsLogger), pool = pool).run.map((a, _))
+          Cache.file(a, cache, cachePolicy, checksums = artifactsChecksums, logger = Some(artifactsLogger), pool = pool).run.map((a, _))
         }
 
         if (verbosity >= 0)

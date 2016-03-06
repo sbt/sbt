@@ -43,25 +43,30 @@ object Cache {
     }
   }
 
-  private def withLocal(artifact: Artifact, cache: Seq[(String, File)]): Artifact = {
+  private def withLocal(artifact: Artifact, cache: File): Artifact = {
     def local(url: String) =
       if (url.startsWith("file:///"))
         url.stripPrefix("file://")
       else if (url.startsWith("file:/"))
         url.stripPrefix("file:")
-      else {
-        val localPathOpt = cache.collectFirst {
-          case (base, cacheDir) if url.startsWith(base) =>
-            cacheDir.toString + "/" + escape(url.stripPrefix(base))
-        }
+      else
+        // FIXME Should we fully parse the URL here?
+        // FIXME Should some safeguards be added against '..' components in paths?
+        url.split(":", 2) match {
+          case Array(protocol, remaining) =>
+            val remaining0 =
+              if (remaining.startsWith("///"))
+                remaining.stripPrefix("///")
+              else if (remaining.startsWith("/"))
+                remaining.stripPrefix("/")
+              else
+                throw new Exception(s"URL $url doesn't contain an absolute path")
 
-        localPathOpt.getOrElse {
-          // FIXME Means we were handed an artifact from repositories other than the known ones
-          println(cache.mkString("\n"))
-          println(url)
-          ???
+            new File(cache, escape(protocol + "/" + remaining0)) .toString
+
+          case _ =>
+            throw new Exception(s"No protocol found in URL $url")
         }
-      }
 
     if (artifact.extra.contains("local"))
       artifact
@@ -180,7 +185,7 @@ object Cache {
 
   private def download(
     artifact: Artifact,
-    cache: Seq[(String, File)],
+    cache: File,
     checksums: Set[String],
     cachePolicy: CachePolicy,
     pool: ExecutorService,
@@ -460,7 +465,7 @@ object Cache {
   def validateChecksum(
     artifact: Artifact,
     sumType: String,
-    cache: Seq[(String, File)],
+    cache: File,
     pool: ExecutorService
   ): EitherT[Task, FileError, Unit] = {
 
@@ -514,7 +519,7 @@ object Cache {
 
   def file(
     artifact: Artifact,
-    cache: Seq[(String, File)] = default,
+    cache: File = default,
     cachePolicy: CachePolicy = CachePolicy.FetchMissing,
     checksums: Seq[Option[String]] = defaultChecksums,
     logger: Option[Logger] = None,
@@ -565,7 +570,7 @@ object Cache {
   }
 
   def fetch(
-    cache: Seq[(String, File)] = default,
+    cache: File = default,
     cachePolicy: CachePolicy = CachePolicy.FetchMissing,
     checksums: Seq[Option[String]] = defaultChecksums,
     logger: Option[Logger] = None,
@@ -613,17 +618,12 @@ object Cache {
     dropInfoAttributes = true
   )
 
-  lazy val defaultBase = new File(
+  lazy val default = new File(
     sys.env.getOrElse(
       "COURSIER_CACHE",
       sys.props("user.home") + "/.coursier/cache/v1"
     )
   ).getAbsoluteFile
-
-  lazy val default = Seq(
-    "http://" -> new File(defaultBase, "http"),
-    "https://" -> new File(defaultBase, "https")
-  )
 
   val defaultConcurrentDownloadCount = 6
 

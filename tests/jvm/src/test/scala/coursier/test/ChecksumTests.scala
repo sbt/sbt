@@ -37,10 +37,7 @@ object ChecksumTests extends TestSuite {
 
       val cachePath = getClass.getResource("/checksums").getPath
 
-      val cache = Seq(
-        "http://" -> new File(cachePath),
-        "https://" -> new File(cachePath)
-      )
+      val cache = new File(cachePath)
 
       def validate(artifact: Artifact, sumType: String) =
         Cache.validateChecksum(
