@@ -444,18 +444,28 @@ object Cache {
     Nondeterminism[Task].gather(tasks)
   }
 
+  def parseChecksum(content: String): Option[BigInteger] = {
+    val lines = content
+      .linesIterator
+      .toVector
+
+    parseChecksumLine(lines) orElse parseChecksumAlternative(lines)
+  }
+
   // matches md5 or sha1
   private val checksumPattern = Pattern.compile("^[0-9a-f]{32}([0-9a-f]{8})?")
 
-  def parseChecksum(content: String): Option[BigInteger] =
-    content
-      .linesIterator
-      .toStream
-      .map(_.toLowerCase.replaceAll("\\s", ""))
-      .collectFirst {
-        case rawSum if checksumPattern.matcher(rawSum).matches() =>
-          new BigInteger(rawSum, 16)
-      }
+  private def findChecksum(elems: Seq[String]): Option[BigInteger] =
+    elems.collectFirst {
+      case rawSum if checksumPattern.matcher(rawSum).matches() =>
+        new BigInteger(rawSum, 16)
+    }
+
+  private def parseChecksumLine(lines: Seq[String]): Option[BigInteger] =
+    findChecksum(lines.map(_.toLowerCase.replaceAll("\\s", "")))
+
+  private def parseChecksumAlternative(lines: Seq[String]): Option[BigInteger] =
+    findChecksum(lines.flatMap(_.toLowerCase.split("\\s+")))
 
   def validateChecksum(
     artifact: Artifact,
