@@ -35,7 +35,7 @@ object ChecksumTests extends TestSuite {
 
     'artifact - {
 
-      val cachePath = getClass.getResource("/checksums").getPath
+      val cachePath = getClass.getResource("/test-repo").getPath
 
       val cache = new File(cachePath)
 

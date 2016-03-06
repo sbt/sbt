@@ -1,5 +1,7 @@
 package coursier
 
+import java.net.MalformedURLException
+
 import coursier.ivy.IvyRepository
 import coursier.util.Parse
 
@@ -24,10 +26,13 @@ object CacheParse {
           sys.error(s"Unrecognized repository: $r")
       }
 
-      if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file:/"))
+      try {
+        Cache.url(url)
         repo.success
-      else
-        s"Unrecognized protocol in $url".failure
+      } catch {
+        case e: MalformedURLException =>
+          ("Error parsing URL " + url + Option(e.getMessage).map(" (" + _ + ")").mkString).failure
+      }
     }
 
   def repositories(l: Seq[String]): ValidationNel[String, Seq[Repository]] =

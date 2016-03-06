@@ -1,7 +1,7 @@
 package coursier
 
 import java.math.BigInteger
-import java.net.{ HttpURLConnection, URL, URLConnection }
+import java.net.{ HttpURLConnection, URL, URLConnection, URLStreamHandler }
 import java.nio.channels.{ OverlappingFileLockException, FileLock }
 import java.nio.file.{ StandardCopyOption, Files => NioFiles }
 import java.security.MessageDigest
@@ -183,6 +183,64 @@ object Cache {
 
   private val partialContentResponseCode = 206
 
+  private val handlerClsCache = new ConcurrentHashMap[String, Option[URLStreamHandler]]
+
+  private def handlerFor(url: String): Option[URLStreamHandler] = {
+    val protocol = url.takeWhile(_ != ':')
+
+    Option(handlerClsCache.get(protocol)) match {
+      case None =>
+        val clsName = s"coursier.cache.protocol.${protocol.capitalize}Handler"
+        val clsOpt =
+          try Some(Thread.currentThread().getContextClassLoader.loadClass(clsName))
+          catch {
+            case _: ClassNotFoundException =>
+              None
+          }
+
+        def printError(e: Exception): Unit =
+          scala.Console.err.println(
+            s"Cannot instantiate $clsName: $e${Option(e.getMessage).map(" ("+_+")")}"
+          )
+
+        val handlerOpt = clsOpt.flatMap {
+          cls =>
+            try Some(cls.newInstance().asInstanceOf[URLStreamHandler])
+            catch {
+              case e: InstantiationException =>
+                printError(e)
+                None
+              case e: IllegalAccessException =>
+                printError(e)
+                None
+              case e: ClassCastException =>
+                printError(e)
+                None
+            }
+        }
+
+        val prevOpt = Option(handlerClsCache.putIfAbsent(protocol, handlerOpt))
+        prevOpt.getOrElse(handlerOpt)
+
+      case Some(handlerOpt) =>
+        handlerOpt
+    }
+  }
+
+  /**
+    * Returns a `java.net.URL` for `s`, possibly using the custom protocol handlers found under the
+    * `coursier.cache.protocol` namespace.
+    *
+    * E.g. URL `"test://abc.com/foo"`, having protocol `"test"`, can be handled by a
+    * `URLStreamHandler` named `coursier.cache.protocol.TestHandler` (protocol name gets
+    * capitalized, and suffixed with `Handler` to get the class name).
+    *
+    * @param s
+    * @return
+    */
+  def url(s: String): URL =
+    new URL(null, s, handlerFor(s).orNull)
+
   private def download(
     artifact: Artifact,
     cache: File,
@@ -218,8 +276,8 @@ object Cache {
           .map(sumType => artifact0.checksumUrls(sumType) -> artifact.checksumUrls(sumType))
       }
 
-    def urlConn(url: String) = {
-      val conn = new URL(url).openConnection() // FIXME Should this be closed?
+    def urlConn(url0: String) = {
+      val conn = url(url0).openConnection() // FIXME Should this be closed?
       // Dummy user-agent instead of the default "Java/...",
       // so that we are not returned incomplete/erroneous metadata
       // (Maven 2 compatibility? - happens for snapshot versioning metadata,

@@ -490,9 +490,9 @@ case class Bootstrap(
   val isolatedUrls = isolatedArtifactFiles.map { case (k, (v, _)) => k -> v }
   val isolatedFiles = isolatedArtifactFiles.map { case (k, (_, v)) => k -> v }
 
-  val unrecognized = urls.filter(s => !s.startsWith("http://") && !s.startsWith("https://"))
-  if (unrecognized.nonEmpty)
-    Console.err.println(s"Warning: non HTTP URLs:\n${unrecognized.mkString("\n")}")
+  val nonHttpUrls = urls.filter(s => !s.startsWith("http://") && !s.startsWith("https://"))
+  if (nonHttpUrls.nonEmpty)
+    Console.err.println(s"Warning: non HTTP URLs:\n${nonHttpUrls.mkString("\n")}")
 
   val buffer = new ByteArrayOutputStream()
 
