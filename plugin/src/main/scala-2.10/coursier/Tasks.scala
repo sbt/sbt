@@ -147,6 +147,8 @@ object Tasks {
 
   // FIXME More things should possibly be put here too (resolvers, etc.)
   private case class CacheKey(
+    project: Project,
+    repositories: Seq[Repository],
     resolution: Resolution,
     withClassifiers: Boolean,
     sbtClassifiers: Boolean
@@ -250,29 +252,29 @@ object Tasks {
         Files.write(cacheIvyPropertiesFile.toPath, "".getBytes("UTF-8"))
       }
 
+      if (verbosity >= 2) {
+        println("InterProjectRepository")
+        for (p <- projects)
+          println(s"  ${p.module}:${p.version}")
+      }
+
+      val globalPluginsRepo = IvyRepository(
+        new File(sys.props("user.home") + "/.sbt/0.13/plugins/target/resolution-cache/").toURI.toString +
+          "[organization]/[module](/scala_[scalaVersion])(/sbt_[sbtVersion])/[revision]/resolved.xml.[ext]",
+        withChecksums = false,
+        withSignatures = false,
+        withArtifacts = false
+      )
+
+      val interProjectRepo = InterProjectRepository(projects)
+
+      val ivyProperties = Map(
+        "ivy.home" -> (new File(sys.props("user.home")).toURI.getPath + ".ivy2")
+      ) ++ sys.props
+
+      val repositories = Seq(globalPluginsRepo, interProjectRepo) ++ resolvers.flatMap(FromSbt.repository(_, ivyProperties))
+
       def report = {
-        if (verbosity >= 2) {
-          println("InterProjectRepository")
-          for (p <- projects)
-            println(s"  ${p.module}:${p.version}")
-        }
-
-        val globalPluginsRepo = IvyRepository(
-          new File(sys.props("user.home") + "/.sbt/0.13/plugins/target/resolution-cache/").toURI.toString +
-            "[organization]/[module](/scala_[scalaVersion])(/sbt_[sbtVersion])/[revision]/resolved.xml.[ext]",
-          withChecksums = false,
-          withSignatures = false,
-          withArtifacts = false
-        )
-
-        val interProjectRepo = InterProjectRepository(projects)
-
-        val ivyProperties = Map(
-          "ivy.home" -> (new File(sys.props("user.home")).toURI.getPath + ".ivy2")
-        ) ++ sys.props
-
-        val repositories = Seq(globalPluginsRepo, interProjectRepo) ++ resolvers.flatMap(FromSbt.repository(_, ivyProperties))
-
         val pool = Executors.newFixedThreadPool(parallelDownloads, Strategy.DefaultDaemonThreadFactory)
 
         def createLogger() = new TermDisplay(new OutputStreamWriter(System.err))
@@ -452,7 +454,13 @@ object Tasks {
       }
 
       resolutionsCache.getOrElseUpdate(
-        CacheKey(startRes.copy(filter = None), withClassifiers, sbtClassifiers),
+        CacheKey(
+          currentProject,
+          repositories,
+          startRes.copy(filter = None),
+          withClassifiers,
+          sbtClassifiers
+        ),
         report
       )
     }
