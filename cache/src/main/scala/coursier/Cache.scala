@@ -300,19 +300,37 @@ object Cache {
         }
       }
 
-    def urlLastModified(url: String): EitherT[Task, FileError, Option[Long]] =
+    def urlLastModified(
+      url: String,
+      currentLastModifiedOpt: Option[Long], // for the logger
+      logger: Option[Logger]
+    ): EitherT[Task, FileError, Option[Long]] =
       EitherT {
         Task {
           urlConn(url) match {
             case c: HttpURLConnection =>
-              c.setRequestMethod("HEAD")
-              val remoteLastModified = c.getLastModified
+              logger.foreach(_.checkingUpdates(url, currentLastModifiedOpt))
 
-              \/- {
-                if (remoteLastModified > 0L)
-                  Some(remoteLastModified)
-                else
-                  None
+              var success = false
+              try {
+                c.setRequestMethod("HEAD")
+                val remoteLastModified = c.getLastModified
+
+                // TODO 404 Not found could be checked here
+
+                val res =
+                  if (remoteLastModified > 0L)
+                    Some(remoteLastModified)
+                  else
+                    None
+
+                success = true
+                logger.foreach(_.checkingUpdatesResult(url, currentLastModifiedOpt, res))
+
+                res.right
+              } finally {
+                if (!success)
+                  logger.foreach(_.checkingUpdatesResult(url, currentLastModifiedOpt, None))
               }
 
             case other =>
@@ -321,10 +339,15 @@ object Cache {
         }
       }
 
-    def shouldDownload(file: File, url: String): EitherT[Task, FileError, Boolean] =
-      for {
+    def fileExists(file: File): Task[Boolean] =
+      Task {
+        file.exists()
+      }
+
+    def shouldDownload(file: File, url: String): EitherT[Task, FileError, Boolean] = {
+      def check = for {
         fileLastModOpt <- fileLastModified(file)
-        urlLastModOpt <- urlLastModified(url)
+        urlLastModOpt <- urlLastModified(url, fileLastModOpt, logger)
       } yield {
         val fromDatesOpt = for {
           fileLastMod <- fileLastModOpt
@@ -333,6 +356,16 @@ object Cache {
 
         fromDatesOpt.getOrElse(true)
       }
+
+      EitherT {
+        fileExists(file).flatMap {
+          case false =>
+            Task.now(true.right)
+          case true =>
+            check.run
+        }
+      }
+    }
 
     def is404(conn: URLConnection) =
       conn match {
@@ -484,22 +517,33 @@ object Cache {
             //   s"URL: ${filtered(url)}, file: ${filtered(file.toURI.toString)}"
             // )
             checkFileExists(file, url)
-          } else
-            cachePolicy match {
+          } else {
+            def update = shouldDownload(file, url).flatMap {
+              case true =>
+                remoteKeepErrors(file, url)
+              case false =>
+                EitherT(Task.now[FileError \/ Unit](().right))
+            }
+
+            val cachePolicy0 = cachePolicy match {
+              case CachePolicy.UpdateChanging if !artifact.changing =>
+                CachePolicy.FetchMissing
+              case other =>
+                other
+            }
+
+            cachePolicy0 match {
               case CachePolicy.LocalOnly =>
                 checkFileExists(file, url)
               case CachePolicy.UpdateChanging | CachePolicy.Update =>
-                shouldDownload(file, url).flatMap {
-                  case true =>
-                    remoteKeepErrors(file, url)
-                  case false =>
-                    EitherT(Task.now(\/-(()) : FileError \/ Unit))
-                }
+                update
               case CachePolicy.FetchMissing =>
                 checkFileExists(file, url) orElse remoteKeepErrors(file, url)
               case CachePolicy.ForceDownload =>
                 remoteKeepErrors(file, url)
             }
+          }
+
 
         res.run.map((file, url) -> _)
       }
@@ -707,6 +751,8 @@ object Cache {
     def downloadLength(url: String, length: Long): Unit = {}
     def downloadProgress(url: String, downloaded: Long): Unit = {}
     def downloadedArtifact(url: String, success: Boolean): Unit = {}
+    def checkingUpdates(url: String, currentTimeOpt: Option[Long]): Unit = {}
+    def checkingUpdatesResult(url: String, currentTimeOpt: Option[Long], remoteTimeOpt: Option[Long]): Unit = {}
   }
 
   var bufferSize = 1024*1024

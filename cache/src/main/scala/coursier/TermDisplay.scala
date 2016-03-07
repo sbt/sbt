@@ -1,6 +1,7 @@
 package coursier
 
-import java.io.{File, Writer}
+import java.io.{ File, Writer }
+import java.sql.Timestamp
 import java.util.concurrent._
 
 import scala.annotation.tailrec
@@ -67,12 +68,18 @@ class TermDisplay(
       val baseExtraWidth = width / 5
 
       def reflowed(url: String, info: Info) = {
-        val pctOpt = info.fraction.map(100.0 * _)
-        val extra =
-          if (info.length.isEmpty && info.downloaded == 0L)
-            ""
-          else
-            s"(${pctOpt.map(pct => f"$pct%.2f %%, ").mkString}${info.downloaded}${info.length.map(" / " + _).mkString})"
+        val extra = info match {
+          case downloadInfo: DownloadInfo =>
+            val pctOpt = downloadInfo.fraction.map(100.0 * _)
+
+            if (downloadInfo.length.isEmpty && downloadInfo.downloaded == 0L)
+              ""
+            else
+              s"(${pctOpt.map(pct => f"$pct%.2f %%, ").mkString}${downloadInfo.downloaded}${downloadInfo.length.map(" / " + _).mkString})"
+
+          case updateInfo: CheckUpdateInfo =>
+            "Checking for updates"
+        }
 
         val total = url.length + 1 + extra.length
         val (url0, extra0) =
@@ -234,7 +241,17 @@ class TermDisplay(
     lock.synchronized(())
   }
 
-  private case class Info(downloaded: Long, length: Option[Long], startTime: Long) {
+  private sealed abstract class Info extends Product with Serializable {
+    def fraction: Option[Double]
+    def display(): String
+  }
+
+  private case class DownloadInfo(
+    downloaded: Long,
+    length: Option[Long],
+    startTime: Long,
+    updateCheck: Boolean
+  ) extends Info {
     /** 0.0 to 1.0 */
     def fraction: Option[Double] = length.map(downloaded.toDouble / _)
     /** Byte / s */
@@ -270,6 +287,45 @@ class TermDisplay(
     }
   }
 
+  private val format =
+    new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+  private def formatTimestamp(ts: Long): String =
+    format.format(new Timestamp(ts))
+
+  private case class CheckUpdateInfo(
+    currentTimeOpt: Option[Long],
+    remoteTimeOpt: Option[Long],
+    isDone: Boolean
+  ) extends Info {
+    def fraction = None
+    def display(): String = {
+      if (isDone)
+        (currentTimeOpt, remoteTimeOpt) match {
+          case (Some(current), Some(remote)) =>
+            if (current < remote)
+              s"Updated since ${formatTimestamp(current)} (${formatTimestamp(remote)})"
+            else if (current == remote)
+              s"No new update since ${formatTimestamp(current)}"
+            else
+              s"Warning: local copy newer than remote one (${formatTimestamp(current)} > ${formatTimestamp(remote)})"
+          case (Some(_), None) =>
+            // FIXME Likely a 404 Not found, that should be taken into account by the cache
+            "No modified time in response"
+          case (None, Some(remote)) =>
+            s"Last update: ${formatTimestamp(remote)}"
+          case (None, None) =>
+            "" // ???
+        }
+      else
+        currentTimeOpt match {
+          case Some(current) =>
+            s"Checking for updates since ${formatTimestamp(current)}"
+          case None =>
+            "" // ???
+        }
+    }
+  }
+
   private val downloads = new ArrayBuffer[String]
   private val doneQueue = new ArrayBuffer[(String, Info)]
   private val infos = new ConcurrentHashMap[String, Info]
@@ -280,14 +336,18 @@ class TermDisplay(
       q.put(Right(()))
   }
 
-  override def downloadingArtifact(url: String, file: File): Unit = {
+  private def newEntry(
+    url: String,
+    info: Info,
+    fallbackMessage: => String
+  ): Unit = {
     assert(!infos.containsKey(url))
-    val prev = infos.putIfAbsent(url, Info(0L, None, System.currentTimeMillis()))
+    val prev = infos.putIfAbsent(url, info)
     assert(prev == null)
 
     if (fallbackMode) {
       // FIXME What about concurrent accesses to out from the thread above?
-      out.write(s"Downloading $url\n")
+      out.write(fallbackMessage)
       out.flush()
     }
 
@@ -297,10 +357,49 @@ class TermDisplay(
 
     update()
   }
+
+  private def removeEntry(
+    url: String,
+    success: Boolean,
+    fallbackMessage: => String
+  )(
+    update0: Info => Info
+  ): Unit = {
+    downloads.synchronized {
+      downloads -= url
+
+      val info = infos.remove(url)
+      assert(info != null)
+
+      if (success)
+        doneQueue += (url -> update0(info))
+    }
+
+    if (fallbackMode && success) {
+      // FIXME What about concurrent accesses to out from the thread above?
+      out.write(fallbackMessage)
+      out.flush()
+    }
+
+    update()
+  }
+
+  override def downloadingArtifact(url: String, file: File): Unit =
+    newEntry(
+      url,
+      DownloadInfo(0L, None, System.currentTimeMillis(), updateCheck = false),
+      s"Downloading $url\n"
+    )
+
   override def downloadLength(url: String, length: Long): Unit = {
     val info = infos.get(url)
     assert(info != null)
-    val newInfo = info.copy(length = Some(length))
+    val newInfo = info match {
+      case info0: DownloadInfo =>
+        info0.copy(length = Some(length))
+      case _ =>
+        throw new Exception(s"Incoherent display state for $url")
+    }
     infos.put(url, newInfo)
 
     update()
@@ -308,28 +407,46 @@ class TermDisplay(
   override def downloadProgress(url: String, downloaded: Long): Unit = {
     val info = infos.get(url)
     assert(info != null)
-    val newInfo = info.copy(downloaded = downloaded)
+    val newInfo = info match {
+      case info0: DownloadInfo =>
+        info0.copy(downloaded = downloaded)
+      case _ =>
+        throw new Exception(s"Incoherent display state for $url")
+    }
     infos.put(url, newInfo)
 
     update()
   }
-  override def downloadedArtifact(url: String, success: Boolean): Unit = {
-    downloads.synchronized {
-      downloads -= url
-      if (success)
-        doneQueue += (url -> infos.get(url))
+
+  override def downloadedArtifact(url: String, success: Boolean): Unit =
+    removeEntry(url, success, s"Downloaded $url\n")(x => x)
+
+  override def checkingUpdates(url: String, currentTimeOpt: Option[Long]): Unit =
+    newEntry(
+      url,
+      CheckUpdateInfo(currentTimeOpt, None, isDone = false),
+      s"Checking $url\n"
+    )
+
+  override def checkingUpdatesResult(
+    url: String,
+    currentTimeOpt: Option[Long],
+    remoteTimeOpt: Option[Long]
+  ): Unit = {
+    // Not keeping a message on-screen if a download should happen next
+    // so that the corresponding URL doesn't appear twice
+    val newUpdate = remoteTimeOpt.exists { remoteTime =>
+      currentTimeOpt.forall { currentTime =>
+        currentTime < remoteTime
+      }
     }
 
-    if (fallbackMode && success) {
-      // FIXME What about concurrent accesses to out from the thread above?
-      out.write(s"Downloaded $url\n")
-      out.flush()
+    removeEntry(url, !newUpdate, s"Checked $url") {
+      case info: CheckUpdateInfo =>
+        info.copy(remoteTimeOpt = remoteTimeOpt, isDone = true)
+      case _ =>
+        throw new Exception(s"Incoherent display state for $url")
     }
-
-    val info = infos.remove(url)
-    assert(info != null)
-
-    update()
   }
 
 }
