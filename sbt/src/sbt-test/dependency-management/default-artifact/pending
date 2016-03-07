@@ -1,0 +1,5 @@
+# Verify that we successfully get the artifacts.
+# This project depends on a module for which we cannot generate a "default artifact",
+# because no such artifact exists.
+
+> update
