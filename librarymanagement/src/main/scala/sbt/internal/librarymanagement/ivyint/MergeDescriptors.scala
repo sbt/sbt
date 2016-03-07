@@ -79,8 +79,8 @@ private final class MergedDescriptors(a: DependencyDescriptor, b: DependencyDesc
     {
       if (as.isEmpty)
         if (bs.isEmpty) as
-        else defaultArtifact(a) +: explicitConfigurations(b, bs)
-      else if (bs.isEmpty) explicitConfigurations(a, as) :+ defaultArtifact(b)
+        else defaultArtifact(a) ++ explicitConfigurations(b, bs)
+      else if (bs.isEmpty) explicitConfigurations(a, as) ++ defaultArtifact(b)
       else concat(explicitConfigurations(a, as), explicitConfigurations(b, bs))
     }
   private[this] def explicitConfigurations(base: DependencyDescriptor, arts: Array[DependencyArtifactDescriptor]): Array[DependencyArtifactDescriptor] =
@@ -93,11 +93,11 @@ private final class MergedDescriptors(a: DependencyDescriptor, b: DependencyDesc
       else
         art
     }
-  private[this] def defaultArtifact(a: DependencyDescriptor): DependencyArtifactDescriptor =
+  private[this] def defaultArtifact(a: DependencyDescriptor): Array[DependencyArtifactDescriptor] =
     {
       val dd = new DefaultDependencyArtifactDescriptor(a, a.getDependencyRevisionId.getName, "jar", "jar", null, null)
       addConfigurations(dd, a.getModuleConfigurations)
-      dd
+      a.getAllDependencyArtifacts.filter(_ == dd)
     }
   private[this] def copyWithConfigurations(dd: DependencyArtifactDescriptor, confs: Seq[String]): DependencyArtifactDescriptor =
     {
