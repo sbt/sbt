@@ -386,30 +386,30 @@ object Cache {
 
               val conn0 = urlConn(url)
 
-              if (is404(conn0))
+              val (partialDownload, conn) = conn0 match {
+                case conn0: HttpURLConnection if alreadyDownloaded > 0L =>
+                  conn0.setRequestProperty("Range", s"bytes=$alreadyDownloaded-")
+
+                  if (conn0.getResponseCode == partialContentResponseCode) {
+                    val ackRange = Option(conn0.getHeaderField("Content-Range")).getOrElse("")
+
+                    if (ackRange.startsWith(s"bytes $alreadyDownloaded-"))
+                      (true, conn0)
+                    else
+                      // unrecognized Content-Range header -> start a new connection with no resume
+                      (false, urlConn(url))
+                  } else
+                    (false, conn0)
+
+                case _ => (false, conn0)
+              }
+
+              if (is404(conn))
                 FileError.NotFound(url, permanent = Some(true)).left
               else {
-                val (partialDownload, conn) = conn0 match {
-                  case conn0: HttpURLConnection if alreadyDownloaded > 0L =>
-                    conn0.setRequestProperty("Range", s"bytes=$alreadyDownloaded-")
-
-                    if (conn0.getResponseCode == partialContentResponseCode) {
-                      val ackRange = Option(conn0.getHeaderField("Content-Range")).getOrElse("")
-
-                      if (ackRange.startsWith(s"bytes $alreadyDownloaded-"))
-                        (true, conn0)
-                      else
-                        // unrecognized Content-Range header -> start a new connection with no resume
-                        (false, urlConn(url))
-                    } else
-                      (false, conn0)
-
-                  case _ => (false, conn0)
-                }
-
                 for (len0 <- Option(conn.getContentLengthLong) if len0 >= 0L) {
                   val len = len0 + (if (partialDownload) alreadyDownloaded else 0L)
-                  logger.foreach(_.downloadLength(url, len))
+                  logger.foreach(_.downloadLength(url, len, alreadyDownloaded))
                 }
 
                 val in = new BufferedInputStream(conn.getInputStream, bufferSize)
@@ -747,9 +747,17 @@ object Cache {
 
   trait Logger {
     def foundLocally(url: String, f: File): Unit = {}
+
     def downloadingArtifact(url: String, file: File): Unit = {}
+
+    @deprecated("Use / override the variant with 3 arguments instead")
     def downloadLength(url: String, length: Long): Unit = {}
+    def downloadLength(url: String, totalLength: Long, alreadyDownloaded: Long): Unit = {
+      downloadLength(url, totalLength)
+    }
+
     def downloadProgress(url: String, downloaded: Long): Unit = {}
+
     def downloadedArtifact(url: String, success: Boolean): Unit = {}
     def checkingUpdates(url: String, currentTimeOpt: Option[Long]): Unit = {}
     def checkingUpdatesResult(url: String, currentTimeOpt: Option[Long], remoteTimeOpt: Option[Long]): Unit = {}
