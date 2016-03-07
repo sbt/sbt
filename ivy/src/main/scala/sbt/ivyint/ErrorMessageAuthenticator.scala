@@ -19,8 +19,8 @@ object ErrorMessageAuthenticator {
 
   private def originalAuthenticator: Option[Authenticator] = {
     try {
-      val f = classOf[Authenticator].getDeclaredField("theAuthenticator");
-      f.setAccessible(true);
+      val f = classOf[Authenticator].getDeclaredField("theAuthenticator")
+      f.setAccessible(true)
       Option(f.get(null).asInstanceOf[Authenticator])
     } catch {
       // TODO - Catch more specific errors.
@@ -48,7 +48,7 @@ object ErrorMessageAuthenticator {
       case originalOpt                                   => installIntoIvyImpl(originalOpt)
     } catch {
       case t: Throwable =>
-        Message.debug("Error occurred will trying to install debug messages into Ivy Authentication" + t.getMessage)
+        Message.debug("Error occurred while trying to install debug messages into Ivy Authentication" + t.getMessage)
     }
     Some(ivy)
   }
@@ -60,7 +60,7 @@ object ErrorMessageAuthenticator {
       try Authenticator.setDefault(new ErrorMessageAuthenticator(original))
       catch {
         case e: SecurityException if !securityWarningLogged =>
-          securityWarningLogged = true;
+          securityWarningLogged = true
           Message.warn("Not enough permissions to set the ErorrMessageAuthenticator. "
             + "Helpful debug messages disabled!");
       }
@@ -93,7 +93,7 @@ private[sbt] final class ErrorMessageAuthenticator(original: Option[Authenticato
       Message.error(s"Unable to find credentials for [${getRequestingPrompt} @ ${host}].")
       val configuredRealms = IvyCredentialsLookup.realmsForHost.getOrElse(host, Set.empty)
       if (configuredRealms.nonEmpty) {
-        Message.error(s"  Is one of these realms mispelled for host [${host}]:")
+        Message.error(s"  Is one of these realms misspelled for host [${host}]:")
         configuredRealms foreach { realm =>
           Message.error(s"  * ${realm}")
         }
@@ -106,7 +106,7 @@ private[sbt] final class ErrorMessageAuthenticator(original: Option[Authenticato
 
     // Grabs the authentication that would have been provided had we not been installed...
     def originalAuthentication: Option[PasswordAuthentication] = {
-      Authenticator.setDefault(original.getOrElse(null))
+      Authenticator.setDefault(original.orNull)
       try Option(Authenticator.requestPasswordAuthentication(
         getRequestingHost,
         getRequestingSite,
