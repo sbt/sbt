@@ -64,7 +64,7 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean = false) {
   def extractDependenciesFromSrcs(srcs: List[Map[Symbol, String]]): ExtractedSourceDependencies = {
     val rawGroupedSrcs = srcs.map(_.values.toList)
     val symbols = srcs.flatMap(_.keys)
-    val (tempSrcFiles, testCallback) = compileSrcs(rawGroupedSrcs)
+    val (tempSrcFiles, testCallback) = compileSrcs(rawGroupedSrcs, reuseCompilerInstance = true)
     val fileToSymbol = (tempSrcFiles zip symbols).toMap
 
     val memberRefFileDeps = testCallback.sourceDependencies collect {
@@ -107,18 +107,29 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean = false) {
    * useful to compile macros, which cannot be used in the same compilation run that
    * defines them.
    *
+   * The `reuseCompilerInstance` parameter controls whether the same Scala compiler instance
+   * is reused between compiling source groups. Separate compiler instances can be used to
+   * test stability of API representation (with respect to pickling) or to test handling of
+   * binary dependencies.
+   *
    * The sequence of temporary files corresponding to passed snippets and analysis
    * callback is returned as a result.
    */
-  private def compileSrcs(groupedSrcs: List[List[String]]): (Seq[File], TestCallback) = {
+  private def compileSrcs(groupedSrcs: List[List[String]],
+    reuseCompilerInstance: Boolean): (Seq[File], TestCallback) = {
     withTemporaryDirectory { temp =>
       val analysisCallback = new TestCallback(nameHashing)
       val classesDir = new File(temp, "classes")
       classesDir.mkdir()
 
-      val compiler = prepareCompiler(classesDir, analysisCallback, classesDir.toString)
+      lazy val commonCompilerInstance = prepareCompiler(classesDir, analysisCallback, classesDir.toString)
 
       val files = for ((compilationUnit, unitId) <- groupedSrcs.zipWithIndex) yield {
+        // use a separate instance of the compiler for each group of sources to
+        // have an ability to test for bugs in instability between source and pickled
+        // representation of types
+        val compiler = if (reuseCompilerInstance) commonCompilerInstance else
+          prepareCompiler(classesDir, analysisCallback, classesDir.toString)
         val run = new compiler.Run
         val srcFiles = compilationUnit.toSeq.zipWithIndex map {
           case (src, i) =>
@@ -137,7 +148,7 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean = false) {
   }
 
   private def compileSrcs(srcs: String*): (Seq[File], TestCallback) = {
-    compileSrcs(List(srcs.toList))
+    compileSrcs(List(srcs.toList), reuseCompilerInstance = true)
   }
 
   private def prepareSrcFile(baseDir: File, fileName: String, src: String): File = {
