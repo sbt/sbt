@@ -90,15 +90,17 @@ class ExtractAPISpecification extends Specification {
     val srcC4 = "class C4 { thisC: X => }"
     val srcC5 = "class C5 extends AnyRef with X with Y { self: X with Y => }"
     val srcC6 = "class C6 extends AnyRef with X { self: X with Y => }"
+    val srcC7 = "class C7 { _ => }"
+    val srcC8 = "class C8 { self => }"
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val apis = compilerForTesting.extractApisFromSrcs(reuseCompilerInstance = true)(
-      List(srcX, srcY, srcC1, srcC2, srcC3, srcC4, srcC5, srcC6)
+      List(srcX, srcY, srcC1, srcC2, srcC3, srcC4, srcC5, srcC6, srcC7, srcC8)
     ).map(x => collectFirstClass(x.definitions))
     val emptyType = new EmptyType
     def hasSelfType(c: ClassLike): Boolean =
       c.selfType != emptyType
     val (withSelfType, withoutSelfType) = apis.partition(hasSelfType)
     withSelfType.map(_.name).toSet === Set("C3", "C4", "C5", "C6")
-    withoutSelfType.map(_.name).toSet === Set("X", "Y", "C1", "C2")
+    withoutSelfType.map(_.name).toSet === Set("X", "Y", "C1", "C2", "C7", "C8")
   }
 }
