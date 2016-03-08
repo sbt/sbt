@@ -46,7 +46,7 @@ object SameAPI {
   def apply(a: Source, b: Source): Boolean =
     a.apiHash == b.apiHash && (a.hash.nonEmpty && b.hash.nonEmpty) && apply(a.api, b.api)
 
-  def apply(a: Def, b: Def): Boolean =
+  def apply(a: Definition, b: Definition): Boolean =
     (new SameAPI(false, true)).sameDefinitions(List(a), List(b), true)
 
   def apply(a: SourceAPI, b: SourceAPI): Boolean =

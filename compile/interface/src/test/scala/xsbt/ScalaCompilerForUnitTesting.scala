@@ -31,6 +31,15 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean = false) {
     analysisCallback.apis(tempSrcFile)
   }
 
+  /**
+   * Compiles given source code using Scala compiler and returns API representation
+   * extracted by ExtractAPI class.
+   */
+  def extractApisFromSrcs(reuseCompilerInstance: Boolean)(srcs: List[String]*): Seq[SourceAPI] = {
+    val (tempSrcFiles, analysisCallback) = compileSrcs(srcs.toList, reuseCompilerInstance)
+    tempSrcFiles.map(analysisCallback.apis)
+  }
+
   def extractUsedNamesFromSrc(src: String): Set[String] = {
     val (Seq(tempSrcFile), analysisCallback) = compileSrcs(src)
     analysisCallback.usedNames(tempSrcFile)
