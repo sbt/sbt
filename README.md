@@ -3,7 +3,8 @@
   [Setup]: http://www.scala-sbt.org/release/docs/Getting-Started/Setup
   [FAQ]: http://www.scala-sbt.org/release/docs/Faq.html
   [sbt-dev]: https://groups.google.com/d/forum/sbt-dev
-  [StackOverflow]: http://stackoverflow.com/tags/sbt
+  [searching]: http://stackoverflow.com/tags/sbt
+  [asking]: https://stackoverflow.com/questions/ask?tags=sbt
   [LICENSE]: LICENSE
 
 sbt
@@ -18,7 +19,7 @@ Issues and Pull Requests
 
 Please read [CONTRIBUTING] carefully before opening a GitHub Issue.
 
-The short version: try [StackOverflow] and [sbt-dev]. Don't open an Issue.
+The short version: try [searching] or [asking] on StackOverflow and [sbt-dev]. Don't open an Issue.
 
 sbt 1.0.x
 --------
