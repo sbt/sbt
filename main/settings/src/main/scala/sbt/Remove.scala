@@ -11,7 +11,7 @@ object Remove {
   trait Values[A, -B] extends Any {
     def removeValues(a: A, b: B): A
   }
-  sealed trait Sequence[A, -B, T] extends Value[A, T] with Values[A, B]
+  trait Sequence[A, -B, T] extends Value[A, T] with Values[A, B]
 
   implicit def removeSeq[T, V <: T]: Sequence[Seq[T], Seq[V], V] = new Sequence[Seq[T], Seq[V], V] {
     def removeValue(a: Seq[T], b: V): Seq[T] = a filterNot b.==
