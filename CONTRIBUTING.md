@@ -1,4 +1,5 @@
-  [StackOverflow]: http://stackoverflow.com/tags/sbt  
+  [StackOverflow]: http://stackoverflow.com/tags/sbt
+  [ask]: https://stackoverflow.com/questions/ask?tags=sbt
   [Setup]: http://www.scala-sbt.org/release/docs/Getting-Started/Setup
   [Issues]: https://github.com/sbt/sbt/issues
   [sbt-dev]: https://groups.google.com/d/forum/sbt-dev
@@ -25,7 +26,7 @@ Where to get help and/or file a bug report
 
 sbt project uses GitHub Issues as a publicly visible todo list. Please open a GitHub issue only when asked to do so.
 
-- If you need help with sbt, please ask on [StackOverflow] with the tag "sbt" and the name of the sbt plugin if any.
+- If you need help with sbt, please [ask] on StackOverflow with the tag "sbt" and the name of the sbt plugin if any.
 - If you run into an issue, have an enhancement idea, or a general discussion, bring it up to [sbt-dev] Google Group first.
 - If you need a faster response time, consider one of the [Typesafe subscriptions][subscriptions].
 
