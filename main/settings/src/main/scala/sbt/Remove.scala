@@ -17,4 +17,9 @@ object Remove {
     def removeValue(a: Seq[T], b: V): Seq[T] = a filterNot b.==
     def removeValues(a: Seq[T], b: Seq[V]): Seq[T] = a diff b
   }
+  implicit def removeOption[T]: Sequence[Seq[T], Option[T], Option[T]] =
+    new Sequence[Seq[T], Option[T], Option[T]] {
+      def removeValue(a: Seq[T], b: Option[T]): Seq[T] = b.fold(a)(a filterNot _.==)
+      def removeValues(a: Seq[T], b: Option[T]): Seq[T] = b.fold(a)(a filterNot _.==)
+    }
 }
