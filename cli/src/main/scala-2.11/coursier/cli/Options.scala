@@ -57,7 +57,7 @@ case class CommonOptions(
   @Recurse
     cacheOptions: CacheOptions
 ) {
-  val verbose0 = Tag.unwrap(verbose) - (if (quiet) 1 else 0)
+  val verbosityLevel = Tag.unwrap(verbose) - (if (quiet) 1 else 0)
   lazy val classifier0 = classifier.flatMap(_.split(',')).filter(_.nonEmpty)
 }
 

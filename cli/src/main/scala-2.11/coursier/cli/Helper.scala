@@ -190,7 +190,7 @@ class Helper(
   )
 
   val logger =
-    if (verbose0 >= 0)
+    if (verbosityLevel >= 0)
       Some(new TermDisplay(new OutputStreamWriter(System.err)))
     else
       None
@@ -204,17 +204,17 @@ class Helper(
     fetchs.tail: _*
   )
   val fetch0 =
-    if (verbose0 <= 0) fetchQuiet
-    else {
+    if (verbosityLevel >= 2) {
       modVers: Seq[(Module, String)] =>
         val print = Task {
           errPrintln(s"Getting ${modVers.length} project definition(s)")
         }
 
         print.flatMap(_ => fetchQuiet(modVers))
-    }
+    } else
+      fetchQuiet
 
-  if (verbose0 >= 0) {
+  if (verbosityLevel >= 1) {
     errPrintln(s"  Dependencies:\n${Print.dependenciesUnknownConfigs(dependencies, Map.empty)}")
 
     if (forceVersions.nonEmpty) {
@@ -237,8 +237,9 @@ class Helper(
 
   lazy val projCache = res.projectCache.mapValues { case (_, p) => p }
 
-  if (printResultStdout || verbose0 >= 0) {
-    errPrintln(s"  Result:")
+  if (printResultStdout || verbosityLevel >= 1) {
+    if ((printResultStdout && verbosityLevel >= 1) || verbosityLevel >= 2)
+      errPrintln(s"  Result:")
     val depsStr = Print.dependenciesUnknownConfigs(trDeps, projCache)
     if (printResultStdout)
       println(depsStr)
@@ -285,7 +286,7 @@ class Helper(
     subset: Set[Dependency] = null
   ): Seq[Artifact] = {
 
-    if (subset == null && verbose0 >= 0) {
+    if (subset == null && verbosityLevel >= 1) {
       val msg = cachePolicies match {
         case Seq(CachePolicy.LocalOnly) =>
           "  Checking artifacts"
@@ -319,12 +320,12 @@ class Helper(
     val artifacts0 = artifacts(sources, javadoc, subset)
 
     val logger =
-      if (verbose0 >= 0)
+      if (verbosityLevel >= 0)
         Some(new TermDisplay(new OutputStreamWriter(System.err)))
       else
         None
 
-    if (verbose0 >= 1 && artifacts0.nonEmpty)
+    if (verbosityLevel >= 1 && artifacts0.nonEmpty)
       println(s"  Found ${artifacts0.length} artifacts")
 
     val tasks = artifacts0.map(artifact =>

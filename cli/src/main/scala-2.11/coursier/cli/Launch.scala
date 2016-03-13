@@ -80,9 +80,9 @@ case class Launch(
       Launch.mainClassLoader(contextLoader)
         .flatMap(cl => Option(cl.getParent))
         .getOrElse {
-          if (options.common.verbose0 >= 0)
+          if (options.common.verbosityLevel >= 0)
             Console.err.println(
-              "Warning: cannot find the main ClassLoader that launched coursier. " +
+              "Warning: cannot find the main ClassLoader that launched coursier.\n" +
               "Was coursier launched by its main launcher? " +
               "The ClassLoader of the application that is about to be launched will be intertwined " +
               "with the one of coursier, which may be a problem if their dependencies conflict."
@@ -107,7 +107,7 @@ case class Launch(
             subset = options.isolated.isolatedDeps.getOrElse(target, Seq.empty).toSet
           )
 
-          if (options.common.verbose0 >= 1) {
+          if (options.common.verbosityLevel >= 2) {
             Console.err.println(s"Isolated loader files:")
             for (f <- isolatedFiles.map(_.toString).sorted)
               Console.err.println(s"  $f")
@@ -124,7 +124,7 @@ case class Launch(
           (isolatedLoader, filteredFiles0)
       }
 
-      if (options.common.verbose0 >= 1) {
+      if (options.common.verbosityLevel >= 2) {
         Console.err.println(s"Remaining files:")
         for (f <- filteredFiles0.map(_.toString).sorted)
           Console.err.println(s"  $f")
@@ -186,9 +186,9 @@ case class Launch(
       sys.exit(255)
     }
 
-  if (options.common.verbose0 >= 1)
+  if (options.common.verbosityLevel >= 2)
     Helper.errPrintln(s"Launching $mainClass0 ${extraArgs.mkString(" ")}")
-  else if (options.common.verbose0 == 0)
+  else if (options.common.verbosityLevel == 1)
     Helper.errPrintln(s"Launching")
 
   Thread.currentThread().setContextClassLoader(loader)
