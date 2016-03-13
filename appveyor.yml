@@ -15,10 +15,10 @@ install:
   - cmd: SET SBT_OPTS=-XX:MaxPermSize=2g -Xmx4g
   - cmd: SET COURSIER_NO_TERM=1
 build_script:
-  - sbt ++2.11.7 clean compile coreJVM/publishLocal
+  - sbt ++2.11.8 clean compile coreJVM/publishLocal
   - sbt ++2.10.6 clean compile
 test_script:
-  - sbt ++2.11.7 testsJVM/test # Would node be around for testsJS/test?
+  - sbt ++2.11.8 testsJVM/test # Would node be around for testsJS/test?
   - sbt ++2.10.6 testsJVM/test
 cache:
   - C:\sbt\
