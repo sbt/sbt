@@ -124,9 +124,8 @@ class TermDisplay(
 
         Option(q.poll(100L, TimeUnit.MILLISECONDS)) match {
           case None => helper(lineCount)
-          case Some(Left(())) => // poison pill
-          case Some(Right(())) =>
-            // update display
+          case Some(Message.Stop) => // poison pill
+          case Some(Message.Update) =>
 
             val (done0, downloads0) = downloads.synchronized {
               val q = doneQueue
@@ -182,8 +181,8 @@ class TermDisplay(
       @tailrec def fallbackHelper(previous: Set[String]): Unit =
         Option(q.poll(100L, TimeUnit.MILLISECONDS)) match {
           case None => fallbackHelper(previous)
-          case Some(Left(())) => // poison pill
-          case Some(Right(())) =>
+          case Some(Message.Stop) => // poison pill
+          case Some(Message.Update) =>
             val downloads0 = downloads.synchronized {
               downloads
                 .toVector
@@ -238,7 +237,7 @@ class TermDisplay(
     for (_ <- 0 until currentHeight) {
       out.up(2)
     }
-    q.put(Left(()))
+    q.put(Message.Stop)
     lock.synchronized(())
   }
 
@@ -332,10 +331,16 @@ class TermDisplay(
   private val doneQueue = new ArrayBuffer[(String, Info)]
   private val infos = new ConcurrentHashMap[String, Info]
 
-  private val q = new LinkedBlockingDeque[Either[Unit, Unit]]
+  private sealed abstract class Message extends Product with Serializable
+  private object Message {
+    case object Update extends Message
+    case object Stop extends Message
+  }
+
+  private val q = new LinkedBlockingDeque[Message]
   def update(): Unit = {
     if (q.size() == 0)
-      q.put(Right(()))
+      q.put(Message.Update)
   }
 
   private def newEntry(
