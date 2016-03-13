@@ -36,7 +36,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierChecksums := Seq(Some("SHA-1"), None),
     coursierArtifactsChecksums := Seq(None),
     coursierCachePolicy := CachePolicy.FetchMissing,
-    coursierVerbosity := 1,
+    coursierVerbosity := 0,
     coursierResolvers <<= Tasks.coursierResolversTask,
     coursierSbtResolvers <<= externalResolvers in updateSbtClassifiers,
     coursierCache := Cache.default,
