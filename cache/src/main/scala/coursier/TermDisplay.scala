@@ -231,6 +231,157 @@ object TermDisplay {
       update()
     }
 
+    private def reflowed(url: String, info: Info) = {
+      val extra = info match {
+        case downloadInfo: DownloadInfo =>
+          val pctOpt = downloadInfo.fraction.map(100.0 * _)
+
+          if (downloadInfo.length.isEmpty && downloadInfo.downloaded == 0L)
+            ""
+          else
+            s"(${pctOpt.map(pct => f"$pct%.2f %%, ").mkString}${downloadInfo.downloaded}${downloadInfo.length.map(" / " + _).mkString})"
+
+        case updateInfo: CheckUpdateInfo =>
+          "Checking for updates"
+      }
+
+      val baseExtraWidth = width / 5
+
+      val total = url.length + 1 + extra.length
+      val (url0, extra0) =
+        if (total >= width) { // or > ? If equal, does it go down 2 lines?
+        val overflow = total - width + 1
+
+          val extra0 =
+            if (extra.length > baseExtraWidth)
+              extra.take((baseExtraWidth max (extra.length - overflow)) - 1) + "…"
+            else
+              extra
+
+          val total0 = url.length + 1 + extra0.length
+          val overflow0 = total0 - width + 1
+
+          val url0 =
+            if (total0 >= width)
+              url.take(((width - baseExtraWidth - 1) max (url.length - overflow0)) - 1) + "…"
+            else
+              url
+
+          (url0, extra0)
+        } else
+          (url, extra)
+
+      (url0, extra0)
+    }
+
+    private def truncatedPrintln(s: String): Unit = {
+
+      out.clearLine(2)
+
+      if (s.length <= width)
+        out.write(s + "\n")
+      else
+        out.write(s.take(width - 1) + "…\n")
+    }
+
+    @tailrec private def updateDisplayLoop(lineCount: Int): Unit = {
+      currentHeight = lineCount
+
+      Option(q.poll(100L, TimeUnit.MILLISECONDS)) match {
+        case None => updateDisplayLoop(lineCount)
+        case Some(Message.Stop) => // poison pill
+        case Some(Message.Update) =>
+
+          val (done0, downloads0) = downloads.synchronized {
+            val q = doneQueue
+              .toVector
+              .filter {
+                case (url, _) =>
+                  !url.endsWith(".sha1") && !url.endsWith(".md5")
+              }
+              .sortBy { case (url, _) => url }
+
+            doneQueue.clear()
+
+            val dw = downloads
+              .toVector
+              .map { url => url -> infos.get(url) }
+              .sortBy { case (_, info) => - info.fraction.sum }
+
+            (q, dw)
+          }
+
+          for ((url, info) <- done0 ++ downloads0) {
+            assert(info != null, s"Incoherent state ($url)")
+
+            truncatedPrintln(url)
+            out.clearLine(2)
+            out.write(s"  ${info.display()}\n")
+          }
+
+          val displayedCount = (done0 ++ downloads0).length
+
+          if (displayedCount < lineCount) {
+            for (_ <- 1 to 2; _ <- displayedCount until lineCount) {
+              out.clearLine(2)
+              out.down(1)
+            }
+
+            for (_ <- displayedCount until lineCount)
+              out.up(2)
+          }
+
+          for (_ <- downloads0.indices)
+            out.up(2)
+
+          out.left(10000)
+
+          out.flush()
+          Thread.sleep(refreshInterval)
+          updateDisplayLoop(downloads0.length)
+      }
+    }
+
+    @tailrec private def fallbackDisplayLoop(previous: Set[String]): Unit =
+      Option(q.poll(100L, TimeUnit.MILLISECONDS)) match {
+        case None => fallbackDisplayLoop(previous)
+        case Some(Message.Stop) => // poison pill
+
+          // clean up display
+          for (_ <- 1 to 2; _ <- 0 until currentHeight) {
+            out.clearLine(2)
+            out.down(1)
+          }
+          for (_ <- 0 until currentHeight) {
+            out.up(2)
+          }
+
+        case Some(Message.Update) =>
+          val downloads0 = downloads.synchronized {
+            downloads
+              .toVector
+              .map { url => url -> infos.get(url) }
+              .sortBy { case (_, info) => - info.fraction.sum }
+          }
+
+          var displayedSomething = false
+          for ((url, info) <- downloads0 if previous(url)) {
+            assert(info != null, s"Incoherent state ($url)")
+
+            val (url0, extra0) = reflowed(url, info)
+
+            displayedSomething = true
+            out.write(s"$url0 $extra0\n")
+          }
+
+          if (displayedSomething)
+            out.write("\n")
+
+          out.flush()
+          Thread.sleep(fallbackRefreshInterval)
+          fallbackDisplayLoop(previous ++ downloads0.map { case (url, _) => url })
+      }
+
     override def run(): Unit = {
 
       Terminal.consoleDim("cols") match {
@@ -241,162 +392,10 @@ object TermDisplay {
           fallbackMode = true
       }
 
-      val baseExtraWidth = width / 5
-
-      def reflowed(url: String, info: Info) = {
-        val extra = info match {
-          case downloadInfo: DownloadInfo =>
-            val pctOpt = downloadInfo.fraction.map(100.0 * _)
-
-            if (downloadInfo.length.isEmpty && downloadInfo.downloaded == 0L)
-              ""
-            else
-              s"(${pctOpt.map(pct => f"$pct%.2f %%, ").mkString}${downloadInfo.downloaded}${downloadInfo.length.map(" / " + _).mkString})"
-
-          case updateInfo: CheckUpdateInfo =>
-            "Checking for updates"
-        }
-
-        val total = url.length + 1 + extra.length
-        val (url0, extra0) =
-          if (total >= width) { // or > ? If equal, does it go down 2 lines?
-          val overflow = total - width + 1
-
-            val extra0 =
-              if (extra.length > baseExtraWidth)
-                extra.take((baseExtraWidth max (extra.length - overflow)) - 1) + "…"
-              else
-                extra
-
-            val total0 = url.length + 1 + extra0.length
-            val overflow0 = total0 - width + 1
-
-            val url0 =
-              if (total0 >= width)
-                url.take(((width - baseExtraWidth - 1) max (url.length - overflow0)) - 1) + "…"
-              else
-                url
-
-            (url0, extra0)
-          } else
-            (url, extra)
-
-        (url0, extra0)
-      }
-
-      def truncatedPrintln(s: String): Unit = {
-
-        out.clearLine(2)
-
-        if (s.length <= width)
-          out.write(s + "\n")
-        else
-          out.write(s.take(width - 1) + "…\n")
-      }
-
-      @tailrec def helper(lineCount: Int): Unit = {
-        currentHeight = lineCount
-
-        Option(q.poll(100L, TimeUnit.MILLISECONDS)) match {
-          case None => helper(lineCount)
-          case Some(Message.Stop) => // poison pill
-          case Some(Message.Update) =>
-
-            val (done0, downloads0) = downloads.synchronized {
-              val q = doneQueue
-                .toVector
-                .filter {
-                  case (url, _) =>
-                    !url.endsWith(".sha1") && !url.endsWith(".md5")
-                }
-                .sortBy { case (url, _) => url }
-
-              doneQueue.clear()
-
-              val dw = downloads
-                .toVector
-                .map { url => url -> infos.get(url) }
-                .sortBy { case (_, info) => - info.fraction.sum }
-
-              (q, dw)
-            }
-
-            for ((url, info) <- done0 ++ downloads0) {
-              assert(info != null, s"Incoherent state ($url)")
-
-              truncatedPrintln(url)
-              out.clearLine(2)
-              out.write(s"  ${info.display()}\n")
-            }
-
-            val displayedCount = (done0 ++ downloads0).length
-
-            if (displayedCount < lineCount) {
-              for (_ <- 1 to 2; _ <- displayedCount until lineCount) {
-                out.clearLine(2)
-                out.down(1)
-              }
-
-              for (_ <- displayedCount until lineCount)
-                out.up(2)
-            }
-
-            for (_ <- downloads0.indices)
-              out.up(2)
-
-            out.left(10000)
-
-            out.flush()
-            Thread.sleep(refreshInterval)
-            helper(downloads0.length)
-        }
-      }
-
-
-      @tailrec def fallbackHelper(previous: Set[String]): Unit =
-        Option(q.poll(100L, TimeUnit.MILLISECONDS)) match {
-          case None => fallbackHelper(previous)
-          case Some(Message.Stop) => // poison pill
-
-            // clean up display
-            for (_ <- 1 to 2; _ <- 0 until currentHeight) {
-              out.clearLine(2)
-              out.down(1)
-            }
-            for (_ <- 0 until currentHeight) {
-              out.up(2)
-            }
-
-          case Some(Message.Update) =>
-            val downloads0 = downloads.synchronized {
-              downloads
-                .toVector
-                .map { url => url -> infos.get(url) }
-                .sortBy { case (_, info) => - info.fraction.sum }
-            }
-
-            var displayedSomething = false
-            for ((url, info) <- downloads0 if previous(url)) {
-              assert(info != null, s"Incoherent state ($url)")
-
-              val (url0, extra0) = reflowed(url, info)
-
-              displayedSomething = true
-              out.write(s"$url0 $extra0\n")
-            }
-
-            if (displayedSomething)
-              out.write("\n")
-
-            out.flush()
-            Thread.sleep(fallbackRefreshInterval)
-            fallbackHelper(previous ++ downloads0.map { case (url, _) => url })
-        }
-
       if (fallbackMode)
-        fallbackHelper(Set.empty)
+        fallbackDisplayLoop(Set.empty)
       else
-        helper(0)
+        updateDisplayLoop(0)
     }
   }
 
