@@ -221,6 +221,9 @@ lazy val cache = project
       
       Seq(
         // Since 1.0.0-M10
+        // methods that should have been private anyway
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay.update"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay.fallbackMode_="),
         // cache argument type changed from `Seq[(String, File)]` to `File`
         ProblemFilters.exclude[IncompatibleMethTypeProblem]("coursier.Cache.file"),
         ProblemFilters.exclude[IncompatibleMethTypeProblem]("coursier.Cache.fetch"),

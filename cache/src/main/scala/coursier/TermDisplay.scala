@@ -57,23 +57,189 @@ object TermDisplay {
 
     env || nonInteractive
   }
-}
 
-class TermDisplay(
-  out: Writer,
-  var fallbackMode: Boolean = TermDisplay.defaultFallbackMode
-) extends Cache.Logger {
 
-  import Terminal.Ansi
+  private sealed abstract class Info extends Product with Serializable {
+    def fraction: Option[Double]
+    def display(): String
+  }
 
-  private var width = 80
+  private case class DownloadInfo(
+    downloaded: Long,
+    previouslyDownloaded: Long,
+    length: Option[Long],
+    startTime: Long,
+    updateCheck: Boolean
+  ) extends Info {
+    /** 0.0 to 1.0 */
+    def fraction: Option[Double] = length.map(downloaded.toDouble / _)
+    /** Byte / s */
+    def rate(): Option[Double] = {
+      val currentTime = System.currentTimeMillis()
+      if (currentTime > startTime)
+        Some((downloaded - previouslyDownloaded).toDouble / (System.currentTimeMillis() - startTime) * 1000.0)
+      else
+        None
+    }
+
+    // Scala version of http://stackoverflow.com/questions/3758606/how-to-convert-byte-size-into-human-readable-format-in-java/3758880#3758880
+    private def byteCount(bytes: Long, si: Boolean = false) = {
+      val unit = if (si) 1000 else 1024
+      if (bytes < unit)
+        bytes + " B"
+      else {
+        val exp = (math.log(bytes) / math.log(unit)).toInt
+        val pre = (if (si) "kMGTPE" else "KMGTPE").charAt(exp - 1) + (if (si) "" else "i")
+        f"${bytes / math.pow(unit, exp)}%.1f ${pre}B"
+      }
+    }
+
+    def display(): String = {
+      val decile = (10.0 * fraction.getOrElse(0.0)).toInt
+      assert(decile >= 0)
+      assert(decile <= 10)
+
+      fraction.fold(" " * 6)(p => f"${100.0 * p}%5.1f%%") +
+        " [" + ("#" * decile) + (" " * (10 - decile)) + "] " +
+        byteCount(downloaded) +
+        rate().fold("")(r => s" (${byteCount(r.toLong)} / s)")
+    }
+  }
+
+  private val format =
+    new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+  private def formatTimestamp(ts: Long): String =
+    format.format(new Timestamp(ts))
+
+  private case class CheckUpdateInfo(
+    currentTimeOpt: Option[Long],
+    remoteTimeOpt: Option[Long],
+    isDone: Boolean
+  ) extends Info {
+    def fraction = None
+    def display(): String = {
+      if (isDone)
+        (currentTimeOpt, remoteTimeOpt) match {
+          case (Some(current), Some(remote)) =>
+            if (current < remote)
+              s"Updated since ${formatTimestamp(current)} (${formatTimestamp(remote)})"
+            else if (current == remote)
+              s"No new update since ${formatTimestamp(current)}"
+            else
+              s"Warning: local copy newer than remote one (${formatTimestamp(current)} > ${formatTimestamp(remote)})"
+          case (Some(_), None) =>
+            // FIXME Likely a 404 Not found, that should be taken into account by the cache
+            "No modified time in response"
+          case (None, Some(remote)) =>
+            s"Last update: ${formatTimestamp(remote)}"
+          case (None, None) =>
+            "" // ???
+        }
+      else
+        currentTimeOpt match {
+          case Some(current) =>
+            s"Checking for updates since ${formatTimestamp(current)}"
+          case None =>
+            "" // ???
+        }
+    }
+  }
+
+  private sealed abstract class Message extends Product with Serializable
+  private object Message {
+    case object Update extends Message
+    case object Stop extends Message
+  }
+
   private val refreshInterval = 1000 / 60
   private val fallbackRefreshInterval = 1000
 
-  private val lock = new AnyRef
-  private var currentHeight = 0
-  private val t = new Thread("TermDisplay") {
-    override def run() = lock.synchronized {
+  private class UpdateDisplayThread(
+    out: Writer,
+    var fallbackMode: Boolean
+  ) extends Thread("TermDisplay") {
+
+    import Terminal.Ansi
+
+    setDaemon(true)
+
+    private var width = 80
+    private var currentHeight = 0
+
+    private val q = new LinkedBlockingDeque[Message]
+
+
+    def update(): Unit = {
+      if (q.size() == 0)
+        q.put(Message.Update)
+    }
+
+    def end(): Unit = {
+      q.put(Message.Stop)
+      join()
+    }
+
+    private val downloads = new ArrayBuffer[String]
+    private val doneQueue = new ArrayBuffer[(String, Info)]
+    val infos = new ConcurrentHashMap[String, Info]
+
+    def newEntry(
+      url: String,
+      info: Info,
+      fallbackMessage: => String
+    ): Unit = {
+      assert(!infos.containsKey(url))
+      val prev = infos.putIfAbsent(url, info)
+      assert(prev == null)
+
+      if (fallbackMode) {
+        // FIXME What about concurrent accesses to out from the thread above?
+        out.write(fallbackMessage)
+        out.flush()
+      }
+
+      downloads.synchronized {
+        downloads.append(url)
+      }
+
+      update()
+    }
+
+    def removeEntry(
+      url: String,
+      success: Boolean,
+      fallbackMessage: => String
+    )(
+      update0: Info => Info
+    ): Unit = {
+      downloads.synchronized {
+        downloads -= url
+
+        val info = infos.remove(url)
+        assert(info != null)
+
+        if (success)
+          doneQueue += (url -> update0(info))
+      }
+
+      if (fallbackMode && success) {
+        // FIXME What about concurrent accesses to out from the thread above?
+        out.write(fallbackMessage)
+        out.flush()
+      }
+
+      update()
+    }
+
+    override def run(): Unit = {
+
+      Terminal.consoleDim("cols") match {
+        case Some(cols) =>
+          width = cols
+          out.clearLine(2)
+        case None =>
+          fallbackMode = true
+      }
 
       val baseExtraWidth = width / 5
 
@@ -191,6 +357,16 @@ class TermDisplay(
         Option(q.poll(100L, TimeUnit.MILLISECONDS)) match {
           case None => fallbackHelper(previous)
           case Some(Message.Stop) => // poison pill
+
+            // clean up display
+            for (_ <- 1 to 2; _ <- 0 until currentHeight) {
+              out.clearLine(2)
+              out.down(1)
+            }
+            for (_ <- 0 until currentHeight) {
+              out.up(2)
+            }
+
           case Some(Message.Update) =>
             val downloads0 = downloads.synchronized {
               downloads
@@ -215,7 +391,7 @@ class TermDisplay(
             out.flush()
             Thread.sleep(fallbackRefreshInterval)
             fallbackHelper(previous ++ downloads0.map { case (url, _) => url })
-          }
+        }
 
       if (fallbackMode)
         fallbackHelper(Set.empty)
@@ -224,191 +400,34 @@ class TermDisplay(
     }
   }
 
-  t.setDaemon(true)
+}
+
+class TermDisplay(
+  out: Writer,
+  val fallbackMode: Boolean = TermDisplay.defaultFallbackMode
+) extends Cache.Logger {
+
+  import TermDisplay._
+
+  private val updateThread = new UpdateDisplayThread(out, fallbackMode)
 
   def init(): Unit = {
-    Terminal.consoleDim("cols") match {
-      case Some(cols) =>
-        width = cols
-        out.clearLine(2)
-      case None =>
-        fallbackMode = true
-    }
-
-    t.start()
+    updateThread.start()
   }
 
   def stop(): Unit = {
-    for (_ <- 1 to 2; _ <- 0 until currentHeight) {
-      out.clearLine(2)
-      out.down(1)
-    }
-    for (_ <- 0 until currentHeight) {
-      out.up(2)
-    }
-    q.put(Message.Stop)
-    lock.synchronized(())
-  }
-
-  private sealed abstract class Info extends Product with Serializable {
-    def fraction: Option[Double]
-    def display(): String
-  }
-
-  private case class DownloadInfo(
-    downloaded: Long,
-    previouslyDownloaded: Long,
-    length: Option[Long],
-    startTime: Long,
-    updateCheck: Boolean
-  ) extends Info {
-    /** 0.0 to 1.0 */
-    def fraction: Option[Double] = length.map(downloaded.toDouble / _)
-    /** Byte / s */
-    def rate(): Option[Double] = {
-      val currentTime = System.currentTimeMillis()
-      if (currentTime > startTime)
-        Some((downloaded - previouslyDownloaded).toDouble / (System.currentTimeMillis() - startTime) * 1000.0)
-      else
-        None
-    }
-
-    // Scala version of http://stackoverflow.com/questions/3758606/how-to-convert-byte-size-into-human-readable-format-in-java/3758880#3758880
-    private def byteCount(bytes: Long, si: Boolean = false) = {
-      val unit = if (si) 1000 else 1024
-      if (bytes < unit)
-        bytes + " B"
-      else {
-        val exp = (math.log(bytes) / math.log(unit)).toInt
-        val pre = (if (si) "kMGTPE" else "KMGTPE").charAt(exp - 1) + (if (si) "" else "i")
-        f"${bytes / math.pow(unit, exp)}%.1f ${pre}B"
-      }
-    }
-
-    def display(): String = {
-      val decile = (10.0 * fraction.getOrElse(0.0)).toInt
-      assert(decile >= 0)
-      assert(decile <= 10)
-
-      fraction.fold(" " * 6)(p => f"${100.0 * p}%5.1f%%") +
-        " [" + ("#" * decile) + (" " * (10 - decile)) + "] " +
-        byteCount(downloaded) +
-        rate().fold("")(r => s" (${byteCount(r.toLong)} / s)")
-    }
-  }
-
-  private val format =
-    new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-  private def formatTimestamp(ts: Long): String =
-    format.format(new Timestamp(ts))
-
-  private case class CheckUpdateInfo(
-    currentTimeOpt: Option[Long],
-    remoteTimeOpt: Option[Long],
-    isDone: Boolean
-  ) extends Info {
-    def fraction = None
-    def display(): String = {
-      if (isDone)
-        (currentTimeOpt, remoteTimeOpt) match {
-          case (Some(current), Some(remote)) =>
-            if (current < remote)
-              s"Updated since ${formatTimestamp(current)} (${formatTimestamp(remote)})"
-            else if (current == remote)
-              s"No new update since ${formatTimestamp(current)}"
-            else
-              s"Warning: local copy newer than remote one (${formatTimestamp(current)} > ${formatTimestamp(remote)})"
-          case (Some(_), None) =>
-            // FIXME Likely a 404 Not found, that should be taken into account by the cache
-            "No modified time in response"
-          case (None, Some(remote)) =>
-            s"Last update: ${formatTimestamp(remote)}"
-          case (None, None) =>
-            "" // ???
-        }
-      else
-        currentTimeOpt match {
-          case Some(current) =>
-            s"Checking for updates since ${formatTimestamp(current)}"
-          case None =>
-            "" // ???
-        }
-    }
-  }
-
-  private val downloads = new ArrayBuffer[String]
-  private val doneQueue = new ArrayBuffer[(String, Info)]
-  private val infos = new ConcurrentHashMap[String, Info]
-
-  private sealed abstract class Message extends Product with Serializable
-  private object Message {
-    case object Update extends Message
-    case object Stop extends Message
-  }
-
-  private val q = new LinkedBlockingDeque[Message]
-  def update(): Unit = {
-    if (q.size() == 0)
-      q.put(Message.Update)
-  }
-
-  private def newEntry(
-    url: String,
-    info: Info,
-    fallbackMessage: => String
-  ): Unit = {
-    assert(!infos.containsKey(url))
-    val prev = infos.putIfAbsent(url, info)
-    assert(prev == null)
-
-    if (fallbackMode) {
-      // FIXME What about concurrent accesses to out from the thread above?
-      out.write(fallbackMessage)
-      out.flush()
-    }
-
-    downloads.synchronized {
-      downloads.append(url)
-    }
-
-    update()
-  }
-
-  private def removeEntry(
-    url: String,
-    success: Boolean,
-    fallbackMessage: => String
-  )(
-    update0: Info => Info
-  ): Unit = {
-    downloads.synchronized {
-      downloads -= url
-
-      val info = infos.remove(url)
-      assert(info != null)
-
-      if (success)
-        doneQueue += (url -> update0(info))
-    }
-
-    if (fallbackMode && success) {
-      // FIXME What about concurrent accesses to out from the thread above?
-      out.write(fallbackMessage)
-      out.flush()
-    }
-
-    update()
+    updateThread.end()
   }
 
   override def downloadingArtifact(url: String, file: File): Unit =
-    newEntry(
+    updateThread.newEntry(
       url,
       DownloadInfo(0L, 0L, None, System.currentTimeMillis(), updateCheck = false),
       s"Downloading $url\n"
     )
 
   override def downloadLength(url: String, totalLength: Long, alreadyDownloaded: Long): Unit = {
-    val info = infos.get(url)
+    val info = updateThread.infos.get(url)
     assert(info != null)
     val newInfo = info match {
       case info0: DownloadInfo =>
@@ -416,12 +435,12 @@ class TermDisplay(
       case _ =>
         throw new Exception(s"Incoherent display state for $url")
     }
-    infos.put(url, newInfo)
+    updateThread.infos.put(url, newInfo)
 
-    update()
+    updateThread.update()
   }
   override def downloadProgress(url: String, downloaded: Long): Unit = {
-    val info = infos.get(url)
+    val info = updateThread.infos.get(url)
     assert(info != null)
     val newInfo = info match {
       case info0: DownloadInfo =>
@@ -429,16 +448,16 @@ class TermDisplay(
       case _ =>
         throw new Exception(s"Incoherent display state for $url")
     }
-    infos.put(url, newInfo)
+    updateThread.infos.put(url, newInfo)
 
-    update()
+    updateThread.update()
   }
 
   override def downloadedArtifact(url: String, success: Boolean): Unit =
-    removeEntry(url, success, s"Downloaded $url\n")(x => x)
+    updateThread.removeEntry(url, success, s"Downloaded $url\n")(x => x)
 
   override def checkingUpdates(url: String, currentTimeOpt: Option[Long]): Unit =
-    newEntry(
+    updateThread.newEntry(
       url,
       CheckUpdateInfo(currentTimeOpt, None, isDone = false),
       s"Checking $url\n"
@@ -457,7 +476,7 @@ class TermDisplay(
       }
     }
 
-    removeEntry(url, !newUpdate, s"Checked $url") {
+    updateThread.removeEntry(url, !newUpdate, s"Checked $url") {
       case info: CheckUpdateInfo =>
         info.copy(remoteTimeOpt = remoteTimeOpt, isDone = true)
       case _ =>
