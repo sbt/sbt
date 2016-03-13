@@ -17,7 +17,7 @@ case class CommonOptions(
     quiet: Boolean,
   @Help("Increase verbosity (specify several times to increase more)")
   @Short("v")
-    verbose: List[Unit],
+    verbose: Int @@ Counter,
   @Help("Maximum number of resolution iterations (specify a negative value for unlimited, default: 100)")
   @Short("N")
     maxIterations: Int = 100,
@@ -57,7 +57,7 @@ case class CommonOptions(
   @Recurse
     cacheOptions: CacheOptions
 ) {
-  val verbose0 = verbose.length - (if (quiet) 1 else 0)
+  val verbose0 = Tag.unwrap(verbose) - (if (quiet) 1 else 0)
   lazy val classifier0 = classifier.flatMap(_.split(',')).filter(_.nonEmpty)
 }
 
