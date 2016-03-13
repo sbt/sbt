@@ -22,21 +22,21 @@ object Terminal {
     } else
       None
 
-  class Ansi(val output: Writer) extends AnyVal {
+  implicit class Ansi(val output: Writer) extends AnyVal {
     private def control(n: Int, c: Char) = output.write(s"\033[" + n + c)
 
     /**
       * Move up `n` squares
       */
-    def up(n: Int): Unit = if (n == 0) "" else control(n, 'A')
+    def up(n: Int): Unit = if (n > 0) control(n, 'A')
     /**
       * Move down `n` squares
       */
-    def down(n: Int): Unit = if (n == 0) "" else control(n, 'B')
+    def down(n: Int): Unit = if (n > 0) control(n, 'B')
     /**
       * Move left `n` squares
       */
-    def left(n: Int): Unit = if (n == 0) "" else control(n, 'D')
+    def left(n: Int): Unit = if (n > 0) control(n, 'D')
 
     /**
       * Clear the current line
@@ -55,7 +55,8 @@ class TermDisplay(
   var fallbackMode: Boolean = sys.env.get("COURSIER_NO_TERM").nonEmpty
 ) extends Cache.Logger {
 
-  private val ansi = new Terminal.Ansi(out)
+  import Terminal.Ansi
+
   private var width = 80
   private val refreshInterval = 1000 / 60
   private val fallbackRefreshInterval = 1000
@@ -110,7 +111,7 @@ class TermDisplay(
 
       def truncatedPrintln(s: String): Unit = {
 
-        ansi.clearLine(2)
+        out.clearLine(2)
 
         if (s.length <= width)
           out.write(s + "\n")
@@ -150,7 +151,7 @@ class TermDisplay(
               assert(info != null, s"Incoherent state ($url)")
 
               truncatedPrintln(url)
-              ansi.clearLine(2)
+              out.clearLine(2)
               out.write(s"  ${info.display()}\n")
             }
 
@@ -158,18 +159,18 @@ class TermDisplay(
 
             if (displayedCount < lineCount) {
               for (_ <- 1 to 2; _ <- displayedCount until lineCount) {
-                ansi.clearLine(2)
-                ansi.down(1)
+                out.clearLine(2)
+                out.down(1)
               }
 
               for (_ <- displayedCount until lineCount)
-                ansi.up(2)
+                out.up(2)
             }
 
             for (_ <- downloads0.indices)
-              ansi.up(2)
+              out.up(2)
 
-            ansi.left(10000)
+            out.left(10000)
 
             out.flush()
             Thread.sleep(refreshInterval)
@@ -221,7 +222,7 @@ class TermDisplay(
     Terminal.consoleDim("cols") match {
       case Some(cols) =>
         width = cols
-        ansi.clearLine(2)
+        out.clearLine(2)
       case None =>
         fallbackMode = true
     }
@@ -231,11 +232,11 @@ class TermDisplay(
 
   def stop(): Unit = {
     for (_ <- 1 to 2; _ <- 0 until currentHeight) {
-      ansi.clearLine(2)
-      ansi.down(1)
+      out.clearLine(2)
+      out.down(1)
     }
     for (_ <- 0 until currentHeight) {
-      ansi.up(2)
+      out.up(2)
     }
     q.put(Left(()))
     lock.synchronized(())
