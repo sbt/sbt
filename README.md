@@ -640,6 +640,21 @@ Set `scalaVersion` to `2.10.6` in `build.sbt`. Then re-open / reload the coursie
 They require `npm install` to have been run once from the `coursier` directory or a subdirectory of
 it. They can then be run with `sbt testsJS/test`.
 
+#### Quickly running the CLI app from the sources
+
+Run
+```
+$ sbt "~cli/pack"
+```
+
+This generates and updates a runnable distribution of coursier in `target/pack`, via
+the [sbt-pack](https://github.com/xerial/sbt-pack/) plugin.
+
+It can be run from another terminal with
+```
+$ cli/target/pack/bin/coursier
+```
+
 ## Roadmap
 
 The first releases were milestones like `0.1.0-M?`. As a launcher, basic Ivy
