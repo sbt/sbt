@@ -50,9 +50,18 @@ object Terminal {
 
 }
 
+object TermDisplay {
+  private def defaultFallbackMode: Boolean = {
+    val env = sys.env.get("COURSIER_NO_TERM").nonEmpty
+    def nonInteractive = System.console() == null
+
+    env || nonInteractive
+  }
+}
+
 class TermDisplay(
   out: Writer,
-  var fallbackMode: Boolean = sys.env.get("COURSIER_NO_TERM").nonEmpty
+  var fallbackMode: Boolean = TermDisplay.defaultFallbackMode
 ) extends Cache.Logger {
 
   import Terminal.Ansi
