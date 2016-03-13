@@ -35,9 +35,10 @@ object Orders {
   }
 
   /**
-   * Only relations:
-   *   Compile < Runtime < Test
-   */
+    * Configurations partial order based on configuration mapping `configurations`.
+    *
+    * @param configurations: for each configuration, the configurations it directly extends.
+    */
   def configurationPartialOrder(configurations: Map[String, Seq[String]]): PartialOrdering[String] =
     new PartialOrdering[String] {
       val allParentsMap = allConfigurations(configurations)
