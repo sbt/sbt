@@ -220,6 +220,11 @@ object Tasks {
       val cache = coursierCache.value
 
       val sv = scalaVersion.value // is this always defined? (e.g. for Java only projects?)
+      val sbv = scalaBinaryVersion.value
+
+      val userForceVersions = dependencyOverrides.value.map(
+        FromSbt.moduleVersion(_, sv, sbv)
+      ).toMap
 
       val resolvers =
         if (sbtClassifiers)
@@ -233,7 +238,7 @@ object Tasks {
       val startRes = Resolution(
         currentProject.dependencies.map { case (_, dep) => dep }.toSet,
         filter = Some(dep => !dep.optional),
-        forceVersions = forcedScalaModules(sv) ++ projects.map(_.moduleVersion)
+        forceVersions = userForceVersions ++ forcedScalaModules(sv) ++ projects.map(_.moduleVersion)
       )
 
       // required for publish to be fine, later on
