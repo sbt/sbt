@@ -104,8 +104,8 @@ lazy val baseCommonSettings = Seq(
 ) ++ releaseSettings
 
 lazy val commonSettings = baseCommonSettings ++ Seq(
-  scalaVersion := "2.11.7",
-  crossScalaVersions := Seq("2.11.7", "2.10.6"),
+  scalaVersion := "2.11.8",
+  crossScalaVersions := Seq("2.11.8", "2.10.6"),
   libraryDependencies ++= {
     if (scalaVersion.value startsWith "2.10.")
       Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.0.1" cross CrossVersion.full))
@@ -199,7 +199,8 @@ lazy val tests = crossProject
   )
   .jsSettings(
     postLinkJSEnv := NodeJSEnv().value,
-    scalaJSStage in Global := FastOptStage
+    scalaJSStage in Global := FastOptStage,
+    scalaJSUseRhino in Global := false
   )
 
 lazy val testsJvm = tests.jvm.dependsOn(cache % "test")
@@ -221,6 +222,9 @@ lazy val cache = project
       
       Seq(
         // Since 1.0.0-M10
+        // methods that should have been private anyway
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay.update"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay.fallbackMode_="),
         // cache argument type changed from `Seq[(String, File)]` to `File`
         ProblemFilters.exclude[IncompatibleMethTypeProblem]("coursier.Cache.file"),
         ProblemFilters.exclude[IncompatibleMethTypeProblem]("coursier.Cache.fetch"),

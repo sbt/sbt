@@ -6,13 +6,13 @@ install:
 os:
   - osx
 script:
-  - project/travis.sh "${TRAVIS_SCALA_VERSION:-2.11.7}" "$TRAVIS_PULL_REQUEST" "$TRAVIS_BRANCH" "$PUBLISH"
+  - project/travis.sh "${TRAVIS_SCALA_VERSION:-2.11.8}" "$TRAVIS_PULL_REQUEST" "$TRAVIS_BRANCH" "$PUBLISH"
 # Uncomment once https://github.com/scoverage/sbt-scoverage/issues/111 is fixed
 # after_success:
 #    - bash <(curl -s https://codecov.io/bash)
 matrix:
   include:
-    - env: TRAVIS_SCALA_VERSION=2.11.7 PUBLISH=1
+    - env: TRAVIS_SCALA_VERSION=2.11.8 PUBLISH=1
       os: linux
       jdk: oraclejdk8
     - env: TRAVIS_SCALA_VERSION=2.10.6 PUBLISH=1

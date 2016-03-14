@@ -847,6 +847,23 @@ final case class Resolution(
     )
   }
 
+  /**
+    * Minimized dependency set. Returns `dependencies` with no redundancy.
+    *
+    * E.g. `dependencies` may contains several dependencies towards module org:name:version,
+    * a first one excluding A and B, and a second one excluding A and C. In practice, B and C will
+    * be brought anyway, because the first dependency doesn't exclude C, and the second one doesn't
+    * exclude B. So having both dependencies is equivalent to having only one dependency towards
+    * org:name:version, excluding just A.
+    *
+    * The same kind of substitution / filtering out can be applied with configurations. If
+    * `dependencies` contains several dependencies towards org:name:version, a first one bringing
+    * its configuration "runtime", a second one "compile", and the configuration mapping of
+    * org:name:version says that "runtime" extends "compile", then all the dependencies brought
+    * by the latter will be brought anyway by the former, so that the latter can be removed.
+    *
+    * @return A minimized `dependencies`, applying this kind of substitutions.
+    */
   def minDependencies: Set[Dependency] =
     Orders.minDependencies(
       dependencies,
@@ -897,6 +914,15 @@ final case class Resolution(
         .toSeq
     } yield (dep, err)
 
+  /**
+    * Removes from this `Resolution` dependencies that are not in `dependencies` neither brought
+    * transitively by them.
+    *
+    * This keeps the versions calculated by this `Resolution`. The common dependencies of different
+    * subsets will thus be guaranteed to have the same versions.
+    *
+    * @param dependencies: the dependencies to keep from this `Resolution`
+    */
   def subset(dependencies: Set[Dependency]): Resolution = {
     val (_, _, finalVersions) = nextDependenciesAndConflicts
 

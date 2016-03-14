@@ -42,7 +42,7 @@ object Config {
       .groupBy(_.copy(configuration = ""))
       .map {
         case (dep, l) =>
-          dep.copy(configuration = l.map(_.configuration).mkString(","))
+          dep.copy(configuration = l.map(_.configuration).mkString(";"))
       }
       .toSet
 

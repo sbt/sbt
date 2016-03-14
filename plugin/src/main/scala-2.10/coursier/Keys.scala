@@ -9,7 +9,7 @@ object Keys {
   val coursierMaxIterations = SettingKey[Int]("coursier-max-iterations", "")
   val coursierChecksums = SettingKey[Seq[Option[String]]]("coursier-checksums", "")
   val coursierArtifactsChecksums = SettingKey[Seq[Option[String]]]("coursier-artifacts-checksums", "")
-  val coursierCachePolicy = SettingKey[CachePolicy]("coursier-cache-policy", "")
+  val coursierCachePolicies = SettingKey[Seq[CachePolicy]]("coursier-cache-policies", "")
 
   val coursierVerbosity = SettingKey[Int]("coursier-verbosity", "")
 

@@ -16,7 +16,7 @@ object CoursierPlugin extends AutoPlugin {
     val coursierMaxIterations = Keys.coursierMaxIterations
     val coursierChecksums = Keys.coursierChecksums
     val coursierArtifactsChecksums = Keys.coursierArtifactsChecksums
-    val coursierCachePolicy = Keys.coursierCachePolicy
+    val coursierCachePolicies = Keys.coursierCachePolicies
     val coursierVerbosity = Keys.coursierVerbosity
     val coursierResolvers = Keys.coursierResolvers
     val coursierSbtResolvers = Keys.coursierSbtResolvers
@@ -35,8 +35,8 @@ object CoursierPlugin extends AutoPlugin {
     coursierMaxIterations := 50,
     coursierChecksums := Seq(Some("SHA-1"), None),
     coursierArtifactsChecksums := Seq(None),
-    coursierCachePolicy := CachePolicy.FetchMissing,
-    coursierVerbosity := 1,
+    coursierCachePolicies := Settings.defaultCachePolicies,
+    coursierVerbosity := Settings.defaultVerbosityLevel,
     coursierResolvers <<= Tasks.coursierResolversTask,
     coursierSbtResolvers <<= externalResolvers in updateSbtClassifiers,
     coursierCache := Cache.default,

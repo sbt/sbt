@@ -107,11 +107,55 @@ object Cache {
     helper(alreadyDownloaded)
   }
 
-  private def withLockFor[T](file: File)(f: => FileError \/ T): FileError \/ T = {
+  private val processStructureLocks = new ConcurrentHashMap[File, AnyRef]
+
+  /**
+    * Should be acquired when doing operations changing the file structure of the cache (creating
+    * new directories, creating / acquiring locks, ...), so that these don't hinder each other.
+    *
+    * Should hopefully address some transient errors seen on the CI of ensime-server.
+    */
+  private def withStructureLock[T](cache: File)(f: => T): T = {
+
+    val intraProcessLock = Option(processStructureLocks.get(cache)).getOrElse {
+      val lock = new AnyRef
+      val prev = Option(processStructureLocks.putIfAbsent(cache, lock))
+      prev.getOrElse(lock)
+    }
+
+    intraProcessLock.synchronized {
+      val lockFile = new File(cache, ".structure.lock")
+      lockFile.getParentFile.mkdirs()
+      var out = new FileOutputStream(lockFile)
+
+      try {
+        var lock: FileLock = null
+        try {
+          lock = out.getChannel.lock()
+
+          try f
+          finally {
+            lock.release()
+            lock = null
+            out.close()
+            out = null
+            lockFile.delete()
+          }
+        }
+        finally if (lock != null) lock.release()
+      } finally if (out != null) out.close()
+    }
+  }
+
+  private def withLockFor[T](cache: File, file: File)(f: => FileError \/ T): FileError \/ T = {
     val lockFile = new File(file.getParentFile, s"${file.getName}.lock")
 
-    lockFile.getParentFile.mkdirs()
-    var out = new FileOutputStream(lockFile)
+    var out: FileOutputStream = null
+
+    withStructureLock(cache) {
+      lockFile.getParentFile.mkdirs()
+      out = new FileOutputStream(lockFile)
+    }
 
     try {
       var lock: FileLock = null
@@ -378,7 +422,7 @@ object Cache {
     def remote(file: File, url: String): EitherT[Task, FileError, Unit] =
       EitherT {
         Task {
-          withLockFor(file) {
+          withLockFor(cache, file) {
             downloading(url, file, logger) {
               val tmp = temporaryFile(file)
 
@@ -416,14 +460,18 @@ object Cache {
 
                 val result =
                   try {
-                    tmp.getParentFile.mkdirs()
-                    val out = new FileOutputStream(tmp, partialDownload)
+                    val out = withStructureLock(cache) {
+                      tmp.getParentFile.mkdirs()
+                      new FileOutputStream(tmp, partialDownload)
+                    }
                     try \/-(readFullyTo(in, out, logger, url, if (partialDownload) alreadyDownloaded else 0L))
                     finally out.close()
                   } finally in.close()
 
-                file.getParentFile.mkdirs()
-                NioFiles.move(tmp.toPath, file.toPath, StandardCopyOption.ATOMIC_MOVE)
+                withStructureLock(cache) {
+                  file.getParentFile.mkdirs()
+                  NioFiles.move(tmp.toPath, file.toPath, StandardCopyOption.ATOMIC_MOVE)
+                }
 
                 for (lastModified <- Option(conn.getLastModified) if lastModified > 0L)
                   file.setLastModified(lastModified)
@@ -800,37 +848,5 @@ object Cache {
       nRead = is.read(data, 0, data.length)
     }
   }
-
-}
-
-sealed abstract class FileError(val message: String) extends Product with Serializable
-
-object FileError {
-
-  final case class DownloadError(reason: String) extends FileError(s"Download error: $reason")
-
-  final case class NotFound(file: String, permanent: Option[Boolean] = None) extends FileError(s"Not found: $file")
-
-  final case class ChecksumNotFound(
-    sumType: String,
-    file: String
-  ) extends FileError(s"$sumType checksum not found: $file")
-
-  final case class ChecksumFormatError(
-    sumType: String,
-    file: String
-  ) extends FileError(s"Unrecognized $sumType checksum format in $file")
-
-  final case class WrongChecksum(
-    sumType: String,
-    got: String,
-    expected: String,
-    file: String,
-    sumFile: String
-  ) extends FileError(s"$sumType checksum validation failed: $file")
-
-  sealed abstract class Recoverable(message: String) extends FileError(message)
-  final case class Locked(file: File) extends Recoverable(s"Locked: $file")
-  final case class ConcurrentDownload(url: String) extends Recoverable(s"Concurrent download: $url")
 
 }

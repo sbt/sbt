@@ -34,7 +34,21 @@ object FromSbt {
       !k.startsWith(SbtPomExtraProperties.POM_INFO_KEY_PREFIX)
     }
 
-  def dependencies(
+  def moduleVersion(
+    module: ModuleID,
+    scalaVersion: String,
+    scalaBinaryVersion: String
+  ): (Module, String) = {
+
+    val fullName = sbtModuleIdName(module, scalaVersion, scalaBinaryVersion)
+
+    val module0 = Module(module.organization, fullName, FromSbt.attributes(module.extraDependencyAttributes))
+    val version = module.revision
+
+    (module0, version)
+  }
+
+    def dependencies(
     module: ModuleID,
     scalaVersion: String,
     scalaBinaryVersion: String
@@ -42,11 +56,11 @@ object FromSbt {
 
     // TODO Warn about unsupported properties in `module`
 
-    val fullName = sbtModuleIdName(module, scalaVersion, scalaBinaryVersion)
+    val (module0, version) = moduleVersion(module, scalaVersion, scalaBinaryVersion)
 
     val dep = Dependency(
-      Module(module.organization, fullName, FromSbt.attributes(module.extraDependencyAttributes)),
-      module.revision,
+      module0,
+      version,
       exclusions = module.exclusions.map { rule =>
         // FIXME Other `rule` fields are ignored here
         (rule.organization, rule.name)
