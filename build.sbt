@@ -199,7 +199,8 @@ lazy val tests = crossProject
   )
   .jsSettings(
     postLinkJSEnv := NodeJSEnv().value,
-    scalaJSStage in Global := FastOptStage
+    scalaJSStage in Global := FastOptStage,
+    scalaJSUseRhino in Global := false
   )
 
 lazy val testsJvm = tests.jvm.dependsOn(cache % "test")
