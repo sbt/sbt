@@ -1,0 +1,11 @@
+# In this test, we have a project `a`, on which a project `b` depends.
+# project `a` has a library dependency on:
+# - "a" % "b" % "1.0.0" % "compile->runtime"
+# - "a" % "b" % "1.0.0" % "compile->runtime2"
+# project "b" depends on:
+# - project `a`
+# - "b" % "b" % "1.0.1" % "compile->runtime"
+# "a" % "b" % "1.0.0" will be evicted in favor of "a" % "b" % "1.0.1", but we
+# have to keep the dependency on the two configurations "runtime" and "runtime2".
+# This test makes sure that we actually do.
+> compile
