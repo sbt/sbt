@@ -79,8 +79,8 @@ private final class MergedDescriptors(a: DependencyDescriptor, b: DependencyDesc
     {
       if (as.isEmpty)
         if (bs.isEmpty) as
-        else defaultArtifact(a) +: explicitConfigurations(b, bs)
-      else if (bs.isEmpty) explicitConfigurations(a, as) :+ defaultArtifact(b)
+        else defaultArtifact(a) ++ explicitConfigurations(b, bs)
+      else if (bs.isEmpty) explicitConfigurations(a, as) ++ defaultArtifact(b)
       else concat(explicitConfigurations(a, as), explicitConfigurations(b, bs))
     }
   private[this] def explicitConfigurations(base: DependencyDescriptor, arts: Array[DependencyArtifactDescriptor]): Array[DependencyArtifactDescriptor] =
@@ -93,11 +93,14 @@ private final class MergedDescriptors(a: DependencyDescriptor, b: DependencyDesc
       else
         art
     }
-  private[this] def defaultArtifact(a: DependencyDescriptor): DependencyArtifactDescriptor =
+  private[this] def defaultArtifact(a: DependencyDescriptor): Array[DependencyArtifactDescriptor] =
     {
       val dd = new DefaultDependencyArtifactDescriptor(a, a.getDependencyRevisionId.getName, "jar", "jar", null, null)
       addConfigurations(dd, a.getModuleConfigurations)
-      dd
+      // If the dependency descriptor is empty, then it means that it has been created from a POM file. In this case,
+      // it is correct to create a seemingly non-existent dependency artifact.
+      if (a.getAllDependencyArtifacts.isEmpty) Array(dd)
+      else a.getAllDependencyArtifacts filter (_ == dd)
     }
   private[this] def copyWithConfigurations(dd: DependencyArtifactDescriptor, confs: Seq[String]): DependencyArtifactDescriptor =
     {
