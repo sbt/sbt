@@ -1,0 +1,47 @@
+### Changes
+
+* Standalone launcher no more along the sources. It now has to be [manually generated](https://github.com/alexarchambault/coursier/tree/5d8ef5fefb34c54427684fdb84b937703a74aeff#on-first-launch-the-coursier-launcher-downloads-a-15-mb-jar-is-it-possible-to-have-a-standalone-launcher-that-would-not-need-to-download-things-on-first-launch). ([#179])
+* Fix in the generation of fully standalone bootstrap apps (those not needing downloading anything on first launch - [#179])
+* Add support for packaging parameter in POM ([#181])
+* Import fix in handling of Maven scopes ([#181])
+* Allow to ask for specific scopes / configurations of dependencies from the CLI tools ([#181])
+* Remove ammonite-terminal dependency ([#186])
+* Deal with more exotic checksum formats ([#171], [#188], [#191])
+* Add support for custom URL protocols (via `java.net.URLStreamHandler`, [#189])
+* Cache now designated via a single directory, from the API ([#189])
+* Fix `update-changing` cache mode ([#190])
+* Report update checks in the terminal (like downloads, [#190])
+* Important fix in SBT plugin - it should not mess with publish anymore (that is still handled by SBT / Ivy - [#192])
+* Don't wrongly consider previous partial download as instantaneously downloaded when starting a download, for bitrate calculations ([#193])
+* Add back support for partial downloads ([#193])
+* Switch to scala 2.11.8, scala JS 0.6.7 ([#197])
+* Change conf mapping separator in output (use semi-colon like Ivy - [#197])
+* Fix verbose option of CLI tools ([#197])
+* CLI tools and SBT plugin less verbose by default ([#197])
+* Disable progress bars in non-interactive mode ([#197])
+* Acquire cache-wide lock when creating new directories / file locks in cache ([#197])
+* Add support for `dependencyOverrides` in SBT plugin ([#197])
+
+[#171]: https://github.com/alexarchambault/coursier/pull/171
+[#179]: https://github.com/alexarchambault/coursier/pull/179
+[#181]: https://github.com/alexarchambault/coursier/pull/181
+[#186]: https://github.com/alexarchambault/coursier/pull/186
+[#188]: https://github.com/alexarchambault/coursier/pull/188
+[#189]: https://github.com/alexarchambault/coursier/pull/189
+[#190]: https://github.com/alexarchambault/coursier/pull/190
+[#191]: https://github.com/alexarchambault/coursier/pull/191
+[#192]: https://github.com/alexarchambault/coursier/pull/192
+[#193]: https://github.com/alexarchambault/coursier/pull/193
+[#197]: https://github.com/alexarchambault/coursier/pull/197
+
+### Non-backward compatible changes
+
+* *Important* From the API, the cache is now specified with a single directory, instead of a sequence of (prefix, directory). E.g. if you were providing as cache
+```scala
+Seq(
+  "http://"  -> new File(cacheDir, "http"),
+  "https://" -> new File(cacheDir, "https")
+)
+```
+with this exact format, all you have to provide now is `cacheDir`. The `cache` module methods now create themselves sub-directories for the various protocols. This allows to support other protocols too.
+* Various minor things changed at the binary level, it is recommended to recompile your code using coursier against the `1.0.0-M10` version.
