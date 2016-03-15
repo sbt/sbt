@@ -3,7 +3,7 @@
 * Standalone launcher no more along the sources. It now has to be [manually generated](https://github.com/alexarchambault/coursier/tree/5d8ef5fefb34c54427684fdb84b937703a74aeff#on-first-launch-the-coursier-launcher-downloads-a-15-mb-jar-is-it-possible-to-have-a-standalone-launcher-that-would-not-need-to-download-things-on-first-launch). ([#179])
 * Fix in the generation of fully standalone bootstrap apps (those not needing downloading anything on first launch - [#179])
 * Add support for packaging parameter in POM ([#181])
-* Import fix in handling of Maven scopes ([#181])
+* Important fix in handling of Maven scopes ([#181])
 * Allow to ask for specific scopes / configurations of dependencies from the CLI tools ([#181])
 * Remove ammonite-terminal dependency ([#186])
 * Deal with more exotic checksum formats ([#171], [#188], [#191])
