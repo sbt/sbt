@@ -18,7 +18,12 @@ object Terminal {
   def consoleDim(s: String): Option[Int] =
     if (new File("/dev/tty").exists()) {
       import sys.process._
-      Try(Seq("bash", "-c", s"$pathedTput $s 2> /dev/tty").!!.trim.toInt).toOption
+      val nullLog = new ProcessLogger {
+        def out(s: => String): Unit = {}
+        def err(s: => String): Unit = {}
+        def buffer[T](f: => T): T = f
+      }
+      Try(Process(Seq("bash", "-c", s"$pathedTput $s 2> /dev/tty")).!!(nullLog).trim.toInt).toOption
     } else
       None
 
