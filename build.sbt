@@ -90,7 +90,7 @@ lazy val noPublish210Settings = Seq(
 )
 
 lazy val baseCommonSettings = Seq(
-  organization := "com.github.alexarchambault",
+  organization := "io.get-coursier",
   resolvers ++= Seq(
     "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
     Resolver.sonatypeRepo("releases")
