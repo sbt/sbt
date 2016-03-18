@@ -186,30 +186,38 @@ object BasicCommands {
     }
   }
 
-  var askingAlready = false
-  val commandListers = Seq(new ConsoleListener(), new NetworkListener())
-  val commandQueue: ConcurrentLinkedQueue[Option[String]] = new ConcurrentLinkedQueue()
-
-  @tailrec def blockUntilNextCommand: Option[String] =
+  private[sbt] var askingAlready = false
+  private[sbt] val commandQueue: ConcurrentLinkedQueue[(String, Option[String])] = new ConcurrentLinkedQueue()
+  private[sbt] val commandListers = Seq(new ConsoleListener(commandQueue), new NetworkListener(commandQueue))
+  @tailrec private[sbt] def blockUntilNextCommand: (String, Option[String]) =
     Option(commandQueue.poll) match {
       case Some(x) => x
-      case None =>
+      case _ =>
         Thread.sleep(50)
         blockUntilNextCommand
     }
   def server = Command.command(Server, Help.more(Server, ServerDetailed)) { s =>
-    if (!askingAlready) {
+    if (askingAlready) {
       commandListers foreach { x =>
-        x.run(commandQueue, CommandStatus(s, true))
+        x.resume(CommandStatus(s, true))
+      }
+    } else {
+      commandListers foreach { x =>
+        x.run(CommandStatus(s, true))
       }
       askingAlready = true
     }
     blockUntilNextCommand match {
-      case Some(line) =>
-        // tell listern to be inactive .
+      case (source, Some(line)) =>
+        if (source != "human") {
+          println(line)
+        }
+        commandListers foreach { x =>
+          x.pause()
+        }
         val newState = s.copy(onFailure = Some(Server), remainingCommands = line +: Server +: s.remainingCommands).setInteractive(true)
         if (line.trim.isEmpty) newState else newState.clearGlobalLog
-      case None => s.setInteractive(false)
+      case _ => s.setInteractive(false)
     }
   }
 

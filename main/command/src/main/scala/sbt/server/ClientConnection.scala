@@ -33,7 +33,7 @@ abstract class ClientConnection(connection: Socket) {
             if (delimPos > 0) {
               val chunk = buffer.take(delimPos)
               buffer = buffer.drop(delimPos + 1)
-              
+
               Serialization.deserialize(chunk).fold(
                 errorDesc => println("Got invalid chunk from client: " + errorDesc),
                 onCommand

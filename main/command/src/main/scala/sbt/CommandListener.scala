@@ -3,10 +3,11 @@ package sbt
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 
-trait CommandListener {
+abstract class CommandListener(queue: ConcurrentLinkedQueue[(String, Option[String])]) {
   // represents a loop that keeps asking an IO device for String input
-  def run(queue: ConcurrentLinkedQueue[Option[String]],
-    status: CommandStatus): Unit
+  def run(status: CommandStatus): Unit
   def shutdown(): Unit
   def setStatus(status: CommandStatus): Unit
+  def pause(): Unit
+  def resume(status: CommandStatus): Unit
 }
