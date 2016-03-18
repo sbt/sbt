@@ -15,13 +15,12 @@ abstract class JLine extends LineReader {
 
   def readLine(prompt: String, mask: Option[Char] = None) = JLine.withJLine { unsynchronizedReadLine(prompt, mask) }
 
-  private[this] def unsynchronizedReadLine(prompt: String, mask: Option[Char]) =
-    readLineWithHistory(prompt, mask) match {
-      case null => None
-      case x    => Some(x.trim)
+  private[this] def unsynchronizedReadLine(prompt: String, mask: Option[Char]): Option[String] =
+    readLineWithHistory(prompt, mask) map { x =>
+      x.trim
     }
 
-  private[this] def readLineWithHistory(prompt: String, mask: Option[Char]): String =
+  private[this] def readLineWithHistory(prompt: String, mask: Option[Char]): Option[String] =
     reader.getHistory match {
       case fh: FileHistory =>
         try { readLineDirect(prompt, mask) }
@@ -29,17 +28,17 @@ abstract class JLine extends LineReader {
       case _ => readLineDirect(prompt, mask)
     }
 
-  private[this] def readLineDirect(prompt: String, mask: Option[Char]): String =
+  private[this] def readLineDirect(prompt: String, mask: Option[Char]): Option[String] =
     if (handleCONT)
       Signals.withHandler(() => resume(), signal = Signals.CONT)(() => readLineDirectRaw(prompt, mask))
     else
       readLineDirectRaw(prompt, mask)
-  private[this] def readLineDirectRaw(prompt: String, mask: Option[Char]): String =
+  private[this] def readLineDirectRaw(prompt: String, mask: Option[Char]): Option[String] =
     {
       val newprompt = handleMultilinePrompt(prompt)
       mask match {
-        case Some(m) => reader.readLine(newprompt, m)
-        case None    => reader.readLine(newprompt)
+        case Some(m) => Option(reader.readLine(newprompt, m))
+        case None    => Option(reader.readLine(newprompt))
       }
     }
 
