@@ -1,8 +1,7 @@
 package xsbt
 
 import org.junit.runner.RunWith
-import xsbti.api.ClassLike
-import xsbti.api.Def
+import xsbti.api._
 import xsbt.api.SameAPI
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
@@ -38,5 +37,70 @@ class ExtractAPISpecification extends Specification {
 				}""".stripMargin
     val fooMethodApi2 = compileAndGetFooMethodApi(src2)
     SameAPI.apply(fooMethodApi1, fooMethodApi2)
+  }
+
+  /**
+   * Checks if representation of the inherited Namer class (with a declared self variable) in Global.Foo
+   * is stable between compiling from source and unpickling. We compare extracted APIs of Global when Global
+   * is compiled together with Namers or Namers is compiled first and then Global refers
+   * to Namers by unpickling types from class files.
+   *
+   * See https://github.com/sbt/sbt/issues/2504
+   */
+  "Self variable and no self type" in {
+    def selectNamer(api: SourceAPI): ClassLike = {
+      def selectClass(defs: Iterable[Definition], name: String): ClassLike = defs.collectFirst {
+        case cls: ClassLike if cls.name == name => cls
+      }.get
+      val global = selectClass(api.definitions, "Global")
+      val foo = selectClass(global.structure.declared, "Global.Foo")
+      selectClass(foo.structure.inherited, "Namers.Namer")
+    }
+    val src1 =
+      """|class Namers {
+         |  class Namer { thisNamer => }
+         |}
+         |""".stripMargin
+    val src2 =
+      """|class Global {
+         |  class Foo extends Namers
+         |}
+         |""".stripMargin
+    val compilerForTesting = new ScalaCompilerForUnitTesting
+    val apis = compilerForTesting.extractApisFromSrcs(reuseCompilerInstance = false)(List(src1, src2), List(src2))
+    val _ :: src2Api1 :: src2Api2 :: Nil = apis.toList
+    val namerApi1 = selectNamer(src2Api1)
+    val namerApi2 = selectNamer(src2Api2)
+    SameAPI(namerApi1, namerApi2)
+  }
+
+  /**
+   * Checks if self type is properly extracted in various cases of declaring a self type
+   * with our without a self variable.
+   */
+  "Self type" in {
+    def collectFirstClass(defs: Array[Definition]): ClassLike = defs.collectFirst {
+      case c: ClassLike => c
+    }.get
+    val srcX = "trait X"
+    val srcY = "trait Y"
+    val srcC1 = "class C1 { this: C1 => }"
+    val srcC2 = "class C2 { thisC: C2 => }"
+    val srcC3 = "class C3 { this: X => }"
+    val srcC4 = "class C4 { thisC: X => }"
+    val srcC5 = "class C5 extends AnyRef with X with Y { self: X with Y => }"
+    val srcC6 = "class C6 extends AnyRef with X { self: X with Y => }"
+    val srcC7 = "class C7 { _ => }"
+    val srcC8 = "class C8 { self => }"
+    val compilerForTesting = new ScalaCompilerForUnitTesting
+    val apis = compilerForTesting.extractApisFromSrcs(reuseCompilerInstance = true)(
+      List(srcX, srcY, srcC1, srcC2, srcC3, srcC4, srcC5, srcC6, srcC7, srcC8)
+    ).map(x => collectFirstClass(x.definitions))
+    val emptyType = new EmptyType
+    def hasSelfType(c: ClassLike): Boolean =
+      c.selfType != emptyType
+    val (withSelfType, withoutSelfType) = apis.partition(hasSelfType)
+    withSelfType.map(_.name).toSet === Set("C3", "C4", "C5", "C6")
+    withoutSelfType.map(_.name).toSet === Set("X", "Y", "C1", "C2", "C7", "C8")
   }
 }
