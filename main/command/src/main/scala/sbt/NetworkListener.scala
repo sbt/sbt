@@ -4,16 +4,15 @@ import java.util.concurrent.ConcurrentLinkedQueue
 
 import sbt.server._
 
-private[sbt] final class NetworkListener extends CommandListener {
+private[sbt] final class NetworkListener(queue: ConcurrentLinkedQueue[(String, Option[String])]) extends CommandListener(queue) {
 
   private var server: Option[ServerInstance] = None
 
-  def run(queue: ConcurrentLinkedQueue[Option[String]],
-    status: CommandStatus): Unit =
+  def run(status: CommandStatus): Unit =
     {
       def onCommand(command: sbt.server.Command): Unit = {
         command match {
-          case Execution(cmd) => queue.add(Some(cmd))
+          case Execution(cmd) => queue.add(("network", Some(cmd)))
         }
       }
 
@@ -25,6 +24,12 @@ private[sbt] final class NetworkListener extends CommandListener {
       // interrupt and kill the thread
       server.foreach(_.shutdown())
     }
+
+  // network doesn't pause or resume
+  def pause(): Unit = ()
+
+  // network doesn't pause or resume
+  def resume(status: CommandStatus): Unit = ()
 
   def setStatus(cmdStatus: CommandStatus): Unit = {
     server.foreach(server =>
