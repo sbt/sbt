@@ -5,9 +5,11 @@ package sbt.internal.util
 
 import jline.console.ConsoleReader
 import jline.console.history.{ FileHistory, MemoryHistory }
-import java.io.{ File, InputStream, PrintWriter }
+import java.io.{ File, InputStream, PrintWriter, FileInputStream, FileDescriptor, FilterInputStream }
 import complete.Parser
 import java.util.concurrent.atomic.AtomicBoolean
+import scala.concurrent.duration.Duration
+import scala.annotation.tailrec
 
 abstract class JLine extends LineReader {
   protected[this] val handleCONT: Boolean
@@ -94,10 +96,14 @@ private[sbt] object JLine {
       t.restore
       f(t)
     }
-  def createReader(): ConsoleReader = createReader(None)
-  def createReader(historyPath: Option[File]): ConsoleReader =
+  def createReader(): ConsoleReader = createReader(None, true)
+  def createReader(historyPath: Option[File], injectThreadSleep: Boolean): ConsoleReader =
     usingTerminal { t =>
-      val cr = new ConsoleReader
+      val cr = if (injectThreadSleep) {
+        val originalIn = new FileInputStream(FileDescriptor.in)
+        val in = new InputStreamWrapper(originalIn, Duration("50 ms"))
+        new ConsoleReader(in, System.out)
+      } else new ConsoleReader
       cr.setExpandEvents(false) // https://issues.scala-lang.org/browse/SI-7650
       cr.setBellEnabled(false)
       val h = historyPath match {
@@ -115,25 +121,44 @@ private[sbt] object JLine {
       finally { t.restore }
     }
 
-  def simple(historyPath: Option[File], handleCONT: Boolean = HandleCONT): SimpleReader = new SimpleReader(historyPath, handleCONT)
+  def simple(
+    historyPath: Option[File],
+    handleCONT: Boolean = HandleCONT,
+    injectThreadSleep: Boolean = true
+  ): SimpleReader = new SimpleReader(historyPath, handleCONT, injectThreadSleep)
   val MaxHistorySize = 500
   val HandleCONT = !java.lang.Boolean.getBoolean("sbt.disable.cont") && Signals.supported(Signals.CONT)
+}
+
+private[sbt] class InputStreamWrapper(is: InputStream, val poll: Duration) extends FilterInputStream(is) {
+  @tailrec
+  final override def read(): Int =
+    if (is.available() != 0) is.read()
+    else {
+      Thread.sleep(poll.toMillis)
+      read()
+    }
 }
 
 trait LineReader {
   def readLine(prompt: String, mask: Option[Char] = None): Option[String]
 }
-final class FullReader(historyPath: Option[File], complete: Parser[_], val handleCONT: Boolean = JLine.HandleCONT) extends JLine {
+final class FullReader(
+  historyPath: Option[File],
+  complete: Parser[_],
+  val handleCONT: Boolean = JLine.HandleCONT,
+  val injectThreadSleep: Boolean = true
+) extends JLine {
   protected[this] val reader =
     {
-      val cr = JLine.createReader(historyPath)
+      val cr = JLine.createReader(historyPath, injectThreadSleep)
       sbt.internal.util.complete.JLineCompletion.installCustomCompletor(cr, complete)
       cr
     }
 }
 
-class SimpleReader private[sbt] (historyPath: Option[File], val handleCONT: Boolean) extends JLine {
-  protected[this] val reader = JLine.createReader(historyPath)
+class SimpleReader private[sbt] (historyPath: Option[File], val handleCONT: Boolean, val injectThreadSleep: Boolean) extends JLine {
+  protected[this] val reader = JLine.createReader(historyPath, injectThreadSleep)
 }
-object SimpleReader extends SimpleReader(None, JLine.HandleCONT)
+object SimpleReader extends SimpleReader(None, JLine.HandleCONT, true)
 
