@@ -12,15 +12,7 @@ private[sbt] final class ConsoleListener(queue: ConcurrentLinkedQueue[(String, O
     val s = status.state
     val history = (s get historyPath) getOrElse Some(new File(s.baseDir, ".history"))
     val prompt = (s get shellPrompt) match { case Some(pf) => pf(s); case None => "> " }
-    // val reader = new FullReader(history, s.combinedParser)
-    // val line = reader.readLine(prompt)
-    // line match {
-    //   case Some(line) =>
-    //     val newState = s.copy(onFailure = Some(Shell), remainingCommands = line +: Shell +: s.remainingCommands).setInteractive(true)
-    //     if (line.trim.isEmpty) newState else newState.clearGlobalLog
-    //   case None => s.setInteractive(false)
-    // }
-    val reader = JLine.simple(None, false)
+    val reader = new FullReader(history, s.combinedParser)
     override def run(): Unit = {
       try {
         val line = reader.readLine(prompt)
@@ -45,7 +37,6 @@ private[sbt] final class ConsoleListener(queue: ConcurrentLinkedQueue[(String, O
       case Some(x) if x.isAlive =>
         x.interrupt
         askUserThread = None
-        println("shutdown ask user thread")
       case _ => ()
     }
 
@@ -54,10 +45,8 @@ private[sbt] final class ConsoleListener(queue: ConcurrentLinkedQueue[(String, O
   def resume(status: CommandStatus): Unit =
     askUserThread match {
       case Some(x) if x.isAlive => //
-        println("resume??")
       case _ =>
         val x = makeAskUserThread(status)
-        println("resume")
         x.start
         askUserThread = Some(x)
     }
