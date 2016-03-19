@@ -6,9 +6,8 @@ package sbt
 import java.io.File
 import java.net.URI
 import java.util.Locale
-import Project._
-import Keys.{ stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings,
-  shellPrompt, watch }
+import Project.{ Initialize => _, Setting => _, _ }
+import Keys.{ appConfiguration, stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, shellPrompt, serverPort, thisProject, thisProjectRef, watch }
 import Scope.{ GlobalScope, ThisScope }
 import Def.{ Flattened, Initialize, ScopedKey, Setting }
 import sbt.internal.{ Load, BuildStructure, LoadedBuild, LoadedBuildUnit, SettingGraph, SettingCompletions, AddSettings, SessionSettings }
@@ -417,9 +416,11 @@ object Project extends ProjectExtra {
       val history = get(historyPath) flatMap idFun
       val prompt = get(shellPrompt)
       val watched = get(watch)
+      val port: Option[Int] = get(serverPort)
       val commandDefs = allCommands.distinct.flatten[Command].map(_ tag (projectCommand, true))
       val newDefinedCommands = commandDefs ++ BasicCommands.removeTagged(s.definedCommands, projectCommand)
-      val newAttrs = setCond(Watched.Configuration, watched, s.attributes).put(historyPath.key, history)
+      val newAttrs0 = setCond(Watched.Configuration, watched, s.attributes).put(historyPath.key, history)
+      val newAttrs = setCond(serverPort.key, port, newAttrs0)
       s.copy(attributes = setCond(shellPrompt.key, prompt, newAttrs), definedCommands = newDefinedCommands)
     }
   def setCond[T](key: AttributeKey[T], vopt: Option[T], attributes: AttributeMap): AttributeMap =
