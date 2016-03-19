@@ -46,7 +46,7 @@ import sbt.util.InterfaceUtil.{ f1, o2m }
 import sbt.internal.util.Types._
 
 import sbt.internal.io.WatchState
-import sbt.io.{ AllPassFilter, FileFilter, GlobFilter, HiddenFileFilter, IO, NameFilter, NothingFilter, Path, PathFinder }
+import sbt.io.{ AllPassFilter, FileFilter, GlobFilter, HiddenFileFilter, IO, NameFilter, NothingFilter, Path, PathFinder, Hash }
 
 import Path._
 import Keys._
@@ -174,7 +174,8 @@ object Defaults extends BuildCommon {
     fork :== false,
     initialize :== {},
     forcegc :== sys.props.get("sbt.task.forcegc").map(java.lang.Boolean.parseBoolean).getOrElse(GCUtil.defaultForceGarbageCollection),
-    minForcegcInterval :== GCUtil.defaultMinForcegcInterval
+    minForcegcInterval :== GCUtil.defaultMinForcegcInterval,
+    serverPort := 5000 + (Hash.toHex(Hash(appConfiguration.value.baseDirectory.toString)).## % 1000)
   ))
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] = inTask(key)(Seq(
     tags := Seq(Tags.Test -> 1),

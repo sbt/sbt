@@ -104,6 +104,7 @@ object Keys {
   // Command keys
   val historyPath = SettingKey(BasicKeys.historyPath)
   val shellPrompt = SettingKey(BasicKeys.shellPrompt)
+  val serverPort = SettingKey(BasicKeys.serverPort)
   val analysis = AttributeKey[CompileAnalysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.", DSetting)
   val watch = SettingKey(BasicKeys.watch)
   val pollInterval = SettingKey[Int]("poll-interval", "Interval between checks for modified sources by the continuous execution command.", BMinusSetting)
