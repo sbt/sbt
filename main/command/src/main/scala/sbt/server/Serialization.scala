@@ -55,7 +55,7 @@ object Serialization {
       implicit val formats = DefaultFormats
 
       (json \ "type").toOption match {
-        case Some(JString("execution")) =>
+        case Some(JString("command_exec")) =>
           (json \ "command_line").toOption match {
             case Some(JString(cmd)) => Right(Execution(cmd))
             case _                  => Left("Missing or invalid command_line field")
