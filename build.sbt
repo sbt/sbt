@@ -1,7 +1,7 @@
 import Dependencies._
 import Util._
 
-def baseVersion: String = "0.1.0-M8"
+def baseVersion: String = "0.1.0-M9"
 def internalPath   = file("internal")
 
 def commonSettings: Seq[Setting[_]] = Seq(
