@@ -5,7 +5,7 @@ import sbt.internal.util.complete.{ Completion, Completions, DefaultParsers, His
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.inc.classpath.ClasspathUtilities.toLoader
 import sbt.internal.inc.ModuleUtilities
-import sbt.internal.{ NetworkListener, ConsoleListener }
+import sbt.internal.{ CommandRequest, CommandSource, CommandStatus }
 import DefaultParsers._
 import Function.tupled
 import Command.applyEffect
@@ -16,11 +16,9 @@ import BasicKeys._
 
 import java.io.File
 import sbt.io.IO
-import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 
 import scala.util.control.NonFatal
-import scala.annotation.tailrec
 
 object BasicCommands {
   lazy val allBasicCommands = Seq(nop, ignore, help, completionsCommand, multi, ifLast, append, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, reboot, call, early, exit, continuous, history, shell, server, read, alias) ++ compatCommands
@@ -187,39 +185,19 @@ object BasicCommands {
     }
   }
 
-  private[sbt] var askingAlready = false
-  private[sbt] val commandQueue: ConcurrentLinkedQueue[(String, Option[String])] = new ConcurrentLinkedQueue()
-  private[sbt] val commandListers = Seq(new ConsoleListener(commandQueue), new NetworkListener(commandQueue))
-  @tailrec private[sbt] def blockUntilNextCommand: (String, Option[String]) =
-    Option(commandQueue.poll) match {
-      case Some(x) => x
-      case _ =>
-        Thread.sleep(50)
-        blockUntilNextCommand
-    }
   def server = Command.command(Server, Help.more(Server, ServerDetailed)) { s =>
-    if (askingAlready) {
-      commandListers foreach { x =>
-        x.resume(CommandStatus(s, true))
-      }
-    } else {
-      commandListers foreach { x =>
-        x.run(CommandStatus(s, true))
-      }
-      askingAlready = true
+    val exchange = State.exchange
+    exchange.channels foreach { x =>
+      x.runOrResume(CommandStatus(s, true))
+      x.setStatus(CommandStatus(s, true), None)
     }
-    blockUntilNextCommand match {
-      case (source, Some(line)) =>
-        if (source != "human") {
-          println(line)
-        }
-        commandListers foreach { x =>
-          x.pause()
-        }
-        val newState = s.copy(onFailure = Some(Server), remainingCommands = line +: Server +: s.remainingCommands).setInteractive(true)
-        if (line.trim.isEmpty) newState else newState.clearGlobalLog
-      case _ => s.setInteractive(false)
+    val CommandRequest(source, line) = exchange.blockUntilNextCommand
+    val newState = s.copy(onFailure = Some(Server), remainingCommands = line +: Server +: s.remainingCommands).setInteractive(true)
+    exchange.channels foreach { x =>
+      x.setStatus(CommandStatus(newState, false), Some(source))
     }
+    if (line.trim.isEmpty) newState
+    else newState.clearGlobalLog
   }
 
   def read = Command.make(ReadCommand, Help.more(ReadCommand, ReadDetailed))(s => applyEffect(readParser(s))(doRead(s)))
