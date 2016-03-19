@@ -2,6 +2,7 @@
  * Copyright (C) 2016 Lightbend Inc. <http://www.typesafe.com>
  */
 package sbt
+package internal
 package server
 
 import java.net.{ SocketTimeoutException, InetAddress, ServerSocket }

@@ -1,8 +1,9 @@
 package sbt
+package internal
 
 import java.util.concurrent.ConcurrentLinkedQueue
 
-import sbt.server._
+import sbt.internal.server._
 
 private[sbt] final class NetworkListener(queue: ConcurrentLinkedQueue[(String, Option[String])]) extends CommandListener(queue) {
 
@@ -10,7 +11,7 @@ private[sbt] final class NetworkListener(queue: ConcurrentLinkedQueue[(String, O
 
   def run(status: CommandStatus): Unit =
     {
-      def onCommand(command: sbt.server.Command): Unit = {
+      def onCommand(command: internal.server.Command): Unit = {
         command match {
           case Execution(cmd) => queue.add(("network", Some(cmd)))
         }

@@ -1,4 +1,5 @@
 package sbt
+package internal
 
 import sbt.internal.util._
 import java.util.concurrent.ConcurrentLinkedQueue
