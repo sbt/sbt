@@ -2,6 +2,7 @@
  * Copyright (C) 2016 Lightbend Inc. <http://www.typesafe.com>
  */
 package sbt
+package internal
 package server
 
 import org.json4s.JsonAST.{ JArray, JString }
