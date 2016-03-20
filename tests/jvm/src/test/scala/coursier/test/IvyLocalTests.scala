@@ -11,7 +11,7 @@ object IvyLocalTests extends TestSuite {
 
   val tests = TestSuite{
     'coursier{
-      val module = Module("com.github.alexarchambault", "coursier_2.11")
+      val module = Module("io.get-coursier", "coursier_2.11")
       val version = coursier.util.Properties.version
 
       val extraRepo = Some(Cache.ivy2Local)
