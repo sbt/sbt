@@ -5,7 +5,7 @@ import sbt.internal.util._
 import BasicKeys._
 import java.io.File
 
-private[sbt] final class ConsoleChannel(exchange: CommandExchange) extends CommandChannel(exchange) {
+private[sbt] final class ConsoleChannel extends CommandChannel {
   private var askUserThread: Option[Thread] = None
   def makeAskUserThread(status: CommandStatus): Thread = new Thread("ask-user-thread") {
     val s = status.state
@@ -19,8 +19,8 @@ private[sbt] final class ConsoleChannel(exchange: CommandExchange) extends Comma
       try {
         val line = reader.readLine(prompt)
         line match {
-          case Some(cmd) => exchange.append(CommandRequest(CommandSource.Human, cmd))
-          case None      => exchange.append(CommandRequest(CommandSource.Human, "exit"))
+          case Some(cmd) => append(Exec(CommandSource.Human, cmd))
+          case None      => append(Exec(CommandSource.Human, "exit"))
         }
       } catch {
         case e: InterruptedException =>
@@ -28,18 +28,18 @@ private[sbt] final class ConsoleChannel(exchange: CommandExchange) extends Comma
     }
   }
 
-  def runOrResume(status: CommandStatus): Unit =
-    askUserThread match {
-      case Some(x) if x.isAlive => //
-      case _ =>
-        val x = makeAskUserThread(status)
-        x.start
-        askUserThread = Some(x)
-    }
+  def run(s: State): State = s
 
-  def setStatus(status: CommandStatus, lastSource: Option[CommandSource]): Unit =
-    if (status.canEnter) ()
-    else {
+  def publishStatus(status: CommandStatus, lastSource: Option[CommandSource]): Unit =
+    if (status.canEnter) {
+      askUserThread match {
+        case Some(x) if x.isAlive => //
+        case _ =>
+          val x = makeAskUserThread(status)
+          x.start
+          askUserThread = Some(x)
+      }
+    } else {
       shutdown()
       lastSource match {
         case Some(src) if src != CommandSource.Human =>
