@@ -1,19 +1,26 @@
 package sbt
 package internal
 
+import java.util.concurrent.ConcurrentLinkedQueue
+
 /**
  * A command channel represents an IO device such as network socket or human
  * that can issue command or listen for some outputs.
  * We can think of a command channel to be an abstration of the terminal window.
  */
-abstract class CommandChannel(exchange: CommandExchange) {
-  /** start listening for a command request. */
-  def runOrResume(status: CommandStatus): Unit
-  def setStatus(status: CommandStatus, lastSource: Option[CommandSource]): Unit
+abstract class CommandChannel {
+  private val commandQueue: ConcurrentLinkedQueue[Exec] = new ConcurrentLinkedQueue()
+  def append(exec: Exec): Boolean =
+    commandQueue.add(exec)
+  def poll: Option[Exec] = Option(commandQueue.poll)
+
+  /** start listening for a command exec. */
+  def run(s: State): State
+  def publishStatus(status: CommandStatus, lastSource: Option[CommandSource]): Unit
   def shutdown(): Unit
 }
 
-case class CommandRequest(source: CommandSource, commandLine: String)
+case class Exec(source: CommandSource, commandLine: String)
 
 sealed trait CommandSource
 object CommandSource {

@@ -4,19 +4,18 @@ package internal
 import sbt.internal.server._
 import BasicKeys._
 
-private[sbt] final class NetworkChannel(exchange: CommandExchange) extends CommandChannel(exchange) {
+private[sbt] final class NetworkChannel extends CommandChannel {
   private var server: Option[ServerInstance] = None
 
-  def runOrResume(status: CommandStatus): Unit =
+  def run(s: State): State =
     {
-      val s = status.state
       val port = (s get serverPort) match {
         case Some(x) => x
         case None    => 5001
       }
       def onCommand(command: internal.server.Command): Unit = {
         command match {
-          case Execution(cmd) => exchange.append(CommandRequest(CommandSource.Network, cmd))
+          case Execution(cmd) => append(Exec(CommandSource.Network, cmd))
         }
       }
       server match {
@@ -24,6 +23,7 @@ private[sbt] final class NetworkChannel(exchange: CommandExchange) extends Comma
         case _ =>
           server = Some(Server.start("127.0.0.1", port, onCommand))
       }
+      s
     }
 
   def shutdown(): Unit =
@@ -33,13 +33,7 @@ private[sbt] final class NetworkChannel(exchange: CommandExchange) extends Comma
       server = None
     }
 
-  // network doesn't pause or resume
-  def pause(): Unit = ()
-
-  // network doesn't pause or resume
-  def resume(status: CommandStatus): Unit = ()
-
-  def setStatus(cmdStatus: CommandStatus, lastSource: Option[CommandSource]): Unit = {
+  def publishStatus(cmdStatus: CommandStatus, lastSource: Option[CommandSource]): Unit = {
     server.foreach(server =>
       server.publish(
         if (cmdStatus.canEnter) StatusEvent(Ready)
