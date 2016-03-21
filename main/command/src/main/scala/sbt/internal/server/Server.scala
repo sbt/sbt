@@ -8,6 +8,7 @@ package server
 import java.net.{ SocketTimeoutException, InetAddress, ServerSocket }
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
+import sbt.util.Logger
 
 private[sbt] sealed trait ServerInstance {
   def shutdown(): Unit
@@ -15,7 +16,7 @@ private[sbt] sealed trait ServerInstance {
 }
 
 private[sbt] object Server {
-  def start(host: String, port: Int, onIncommingCommand: Command => Unit): ServerInstance =
+  def start(host: String, port: Int, onIncommingCommand: Command => Unit, log: Logger): ServerInstance =
     new ServerInstance {
 
       val lock = new AnyRef {}
@@ -28,11 +29,11 @@ private[sbt] object Server {
           val serverSocket = new ServerSocket(port, 50, InetAddress.getByName(host))
           serverSocket.setSoTimeout(5000)
 
-          println(s"SBT socket server started at $host:$port")
+          log.info(s"sbt server started at $host:$port")
           while (running.get()) {
             try {
               val socket = serverSocket.accept()
-              println(s"New client connected from: ${socket.getPort}")
+              log.info(s"new client connected from: ${socket.getPort}")
 
               val connection = new ClientConnection(socket) {
                 override def onCommand(command: Command): Unit = {
@@ -63,7 +64,7 @@ private[sbt] object Server {
       }
 
       override def shutdown(): Unit = {
-        println("Shutting down server")
+        log.info("shutting down server")
         running.set(false)
       }
     }

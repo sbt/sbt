@@ -45,7 +45,7 @@ private[sbt] final class ConsoleChannel extends CommandChannel {
         case Some(src) if src != CommandSource.Human =>
           val s = status.state
           s.remainingCommands.headOption map {
-            println(_)
+            System.out.println(_)
           }
         case _ => //
       }

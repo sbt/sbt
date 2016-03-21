@@ -21,7 +21,7 @@ private[sbt] final class NetworkChannel extends CommandChannel {
       server match {
         case Some(x) => // do nothing
         case _ =>
-          server = Some(Server.start("127.0.0.1", port, onCommand))
+          server = Some(Server.start("127.0.0.1", port, onCommand, s.log))
       }
       s
     }
