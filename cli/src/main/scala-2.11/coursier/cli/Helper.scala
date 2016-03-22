@@ -2,6 +2,8 @@ package coursier
 package cli
 
 import java.io.{ OutputStreamWriter, File }
+import java.net.URL
+import java.util.jar.{ Manifest => JManifest }
 import java.util.concurrent.Executors
 
 import coursier.ivy.IvyRepository
@@ -15,17 +17,27 @@ object Helper {
 
   def errPrintln(s: String) = Console.err.println(s)
 
+  private val manifestPath = "META-INF/MANIFEST.MF"
+
   def mainClasses(cl: ClassLoader): Map[(String, String), String] = {
     import scala.collection.JavaConverters._
 
-    val metaInfs = cl.getResources("META-INF/MANIFEST.MF").asScala.toVector
+    val parentMetaInfs = Option(cl.getParent).fold(Set.empty[URL]) { parent =>
+      parent.getResources(manifestPath).asScala.toSet
+    }
+    val allMetaInfs = cl.getResources(manifestPath).asScala.toVector
+
+    val metaInfs = allMetaInfs.filterNot(parentMetaInfs)
 
     val mainClasses = metaInfs.flatMap { url =>
-      val attributes = new java.util.jar.Manifest(url.openStream()).getMainAttributes
+      val attributes = new JManifest(url.openStream()).getMainAttributes
 
-      val vendor = Option(attributes.getValue("Specification-Vendor")).getOrElse("")
-      val title = Option(attributes.getValue("Specification-Title")).getOrElse("")
-      val mainClass = Option(attributes.getValue("Main-Class"))
+      def attributeOpt(name: String) =
+        Option(attributes.getValue(name))
+
+      val vendor = attributeOpt("Specification-Vendor").getOrElse("")
+      val title = attributeOpt("Specification-Title").getOrElse("")
+      val mainClass = attributeOpt("Main-Class")
 
       mainClass.map((vendor, title) -> _)
     }
