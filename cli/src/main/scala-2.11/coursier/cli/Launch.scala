@@ -143,6 +143,13 @@ case class Launch(
     else {
       val mainClasses = Helper.mainClasses(loader)
 
+      if (options.common.verbosityLevel >= 2) {
+        Console.err.println("Found main classes:")
+        for (((vendor, title), mainClass) <- mainClasses)
+          Console.err.println(s"  $mainClass (vendor: $vendor, title: $title)")
+        Console.err.println("")
+      }
+
       val mainClass =
         if (mainClasses.isEmpty) {
           Helper.errPrintln("No main class found. Specify one with -M or --main.")
