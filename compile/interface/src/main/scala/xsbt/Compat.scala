@@ -51,6 +51,22 @@ abstract class Compat {
     def transformedType(tpe: Type): Type = tpe
   }
 
+  /**
+   * Traverses given type and collects result of applying a partial function `pf`.
+   *
+   * NOTE: This class exists in Scala 2.10 as CollectTypeCollector but does not in earlier
+   * versions (like 2.9) of Scala compiler that incremental cmpiler supports so we had to
+   * reimplement that class here.
+   */
+  class CollectTypeTraverser[T](pf: PartialFunction[Type, T]) extends TypeTraverser {
+    var collected: List[T] = Nil
+    def traverse(tpe: Type): Unit = {
+      if (pf.isDefinedAt(tpe))
+        collected = pf(tpe) :: collected
+      mapOver(tpe)
+    }
+  }
+
   private[this] final class MiscCompat {
     // in 2.9, nme.LOCALCHILD was renamed to tpnme.LOCAL_CHILD
     def tpnme = nme
