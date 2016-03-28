@@ -1,4 +1,4 @@
-$ copy-file changes/Build.scala project/Build.scala
+$ copy-file changes/build.sbt build.sbt
 > reload
 
 # ensure that a new global dependency gets picked up
