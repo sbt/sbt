@@ -2,7 +2,7 @@ import sbt._
 import Keys._
 import Import._
 
-object build extends Build {
+object Common {
   lazy val k1 = taskKey[Unit]("")
   lazy val k2 = taskKey[Unit]("")
   lazy val k3 = taskKey[Unit]("")
@@ -32,10 +32,6 @@ object build extends Build {
     // SessionSettings.writeSettings(ex.currentRef, session2, ex.session.original, ex.structure)
     SessionSettings.saveAllSettings(st1)
   }
-
-	lazy val root = Project("root", file(".")) settings(
-    commands ++= Seq(UpdateK1, UpdateK3)
-  )
 }
 
 // vim: set ts=4 sw=4 et:
