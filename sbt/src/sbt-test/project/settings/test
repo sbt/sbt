@@ -18,8 +18,3 @@ $ copy-file changes/local.sbt local.sbt
 $ copy-file changes/Global.scala global/plugins/Global.scala
 > reload
 > check 19
-
-# multiply by 9
-$ copy-file changes/Build.scala project/Build.scala
-> reload
-> check 1299
