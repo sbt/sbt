@@ -1,6 +1,7 @@
 package sbt
 
 import sbt.internal.util.{ Relation, Settings, Dag }
+import sbt.internal.Load
 
 import java.net.URI
 

@@ -1,11 +1,11 @@
 package sbt
 
 import sbt.internal.util.Attributed
-
+import sbt.internal.{ BuildDef, IncompatiblePluginsException }
 import java.io.File
 import java.net.URL
 import Attributed.data
-import Build.analyzed
+import sbt.internal.BuildDef.analyzed
 import xsbt.api.{ Discovered, Discovery }
 import xsbti.compile.CompileAnalysis
 import sbt.internal.inc.ModuleUtilities
@@ -22,7 +22,7 @@ object PluginDiscovery {
     final val Plugins = "sbt/sbt.plugins"
     final val Builds = "sbt/sbt.builds"
   }
-  /** Names of top-level modules that subclass sbt plugin-related classes: [[Plugin]], [[AutoPlugin]], and [[Build]]. */
+  /** Names of top-level modules that subclass sbt plugin-related classes: [[Plugin]], [[AutoPlugin]], and [[BuildDef]]. */
   final class DiscoveredNames(val plugins: Seq[String], val autoPlugins: Seq[String], val builds: Seq[String])
 
   def emptyDiscoveredNames: DiscoveredNames = new DiscoveredNames(Nil, Nil, Nil)
@@ -45,7 +45,7 @@ object PluginDiscovery {
         case (name, value) =>
           DetectedAutoPlugin(name, value, sbt.Plugins.hasAutoImportGetter(value, loader))
       }
-      new DetectedPlugins(discover[Plugin](Plugins), allAutoPlugins, discover[Build](Builds))
+      new DetectedPlugins(discover[Plugin](Plugins), allAutoPlugins, discover[BuildDef](Builds))
     }
 
   /** Discovers the sbt-plugin-related top-level modules from the provided source `analysis`. */
@@ -53,7 +53,7 @@ object PluginDiscovery {
     {
       def discover[T](implicit classTag: reflect.ClassTag[T]): Seq[String] =
         sourceModuleNames(analysis, classTag.runtimeClass.getName)
-      new DiscoveredNames(discover[Plugin], discover[AutoPlugin], discover[Build])
+      new DiscoveredNames(discover[Plugin], discover[AutoPlugin], discover[BuildDef])
     }
 
   // TODO: for 0.14.0, consider consolidating into a single file, which would make the classpath search 4x faster
