@@ -11,7 +11,7 @@ import sbt.io.Hash
 import sbt.internal.util.Attributed
 import sbt.internal.inc.ReflectUtilities
 
-private[sbt] trait BuildDef {
+trait BuildDef {
   def projectDefinitions(baseDirectory: File): Seq[Project] = projects
   def projects: Seq[Project] = ReflectUtilities.allVals[Project](this).values.toSeq
   // TODO: Should we grab the build core setting shere or in a plugin?
