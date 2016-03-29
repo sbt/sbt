@@ -6,11 +6,12 @@ package sbt
 import java.io.File
 import java.net.URI
 import java.util.Locale
-import Project.{ Initialize => _, Setting => _, _ }
+import Project._
 import Keys.{ appConfiguration, stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, shellPrompt, thisProject, thisProjectRef, watch }
 import Scope.{ GlobalScope, ThisScope }
 import Def.{ Flattened, Initialize, ScopedKey, Setting }
 import sbt.internal.Load
+import sbt.internal.util.Eval
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util.complete.DefaultParsers
 import sbt.librarymanagement.Configuration
@@ -87,27 +88,51 @@ sealed trait ProjectDefinition[PR <: ProjectReference] {
   private[this] def ifNonEmpty[T](label: String, ts: Iterable[T]): List[String] = if (ts.isEmpty) Nil else s"$label: $ts" :: Nil
 }
 sealed trait Project extends ProjectDefinition[ProjectReference] {
+  private[sbt] def settingsEval: Eval[Seq[Def.Setting[_]]]
+  private[sbt] def aggregateEval: Eval[Seq[ProjectReference]]
+  private[sbt] def delegatesEval: Eval[Seq[ProjectReference]]
+  private[sbt] def dependenciesEval: Eval[Seq[ClasspathDep[ProjectReference]]]
+
+
   // TODO: add parameters for plugins in 0.14.0 (not reasonable to do in a binary compatible way in 0.13)
-  def copy(id: String = id, base: File = base, aggregate: => Seq[ProjectReference] = aggregate, dependencies: => Seq[ClasspathDep[ProjectReference]] = dependencies,
-    delegates: => Seq[ProjectReference] = delegates, settings: => Seq[Setting[_]] = settings, configurations: Seq[Configuration] = configurations,
+  private[sbt] def copy(id: String = id,
+    base: File = base,
+    aggregateEval: Eval[Seq[ProjectReference]] = aggregateEval,
+    dependenciesEval: Eval[Seq[ClasspathDep[ProjectReference]]] = dependenciesEval,
+    delegatesEval: Eval[Seq[ProjectReference]] = delegatesEval,
+    settingsEval: Eval[Seq[Setting[_]]] = settingsEval,
+    configurations: Seq[Configuration] = configurations,
     auto: AddSettings = auto): Project =
-    unresolved(id, base, aggregate = aggregate, dependencies = dependencies, delegates = delegates, settings, configurations, auto, plugins, autoPlugins)
+    unresolved(id, base,
+      aggregateEval = aggregateEval,
+      dependenciesEval = dependenciesEval,
+      delegatesEval = delegatesEval,
+      settingsEval = settingsEval,
+      configurations, auto, plugins, autoPlugins)
 
   def resolve(resolveRef: ProjectReference => ProjectRef): ResolvedProject =
     {
       def resolveRefs(prs: Seq[ProjectReference]) = prs map resolveRef
       def resolveDeps(ds: Seq[ClasspathDep[ProjectReference]]) = ds map resolveDep
       def resolveDep(d: ClasspathDep[ProjectReference]) = ResolvedClasspathDependency(resolveRef(d.project), d.configuration)
-      resolved(id, base, aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies), delegates = resolveRefs(delegates),
-        settings, configurations, auto, plugins, autoPlugins)
+      resolved(id, base,
+        aggregateEval = aggregateEval map resolveRefs,
+        dependenciesEval = dependenciesEval map resolveDeps,
+        delegatesEval = delegatesEval map resolveRefs,
+        settingsEval,
+        configurations, auto, plugins, autoPlugins)
     }
   def resolveBuild(resolveRef: ProjectReference => ProjectReference): Project =
     {
       def resolveRefs(prs: Seq[ProjectReference]) = prs map resolveRef
       def resolveDeps(ds: Seq[ClasspathDep[ProjectReference]]) = ds map resolveDep
       def resolveDep(d: ClasspathDep[ProjectReference]) = ClasspathDependency(resolveRef(d.project), d.configuration)
-      unresolved(id, base, aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies), delegates = resolveRefs(delegates),
-        settings, configurations, auto, plugins, autoPlugins)
+      unresolved(id, base,
+        aggregateEval = aggregateEval map resolveRefs,
+        dependenciesEval = dependenciesEval map resolveDeps,
+        delegatesEval = delegatesEval map resolveRefs,
+        settingsEval,
+        configurations, auto, plugins, autoPlugins)
     }
 
   /**
@@ -133,22 +158,50 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
   def configs(cs: Configuration*): Project = copy(configurations = configurations ++ cs)
 
   /** Adds classpath dependencies on internal or external projects. */
-  def dependsOn(deps: ClasspathDep[ProjectReference]*): Project = copy(dependencies = dependencies ++ deps)
+  def dependsOn(deps: Eval[ClasspathDep[ProjectReference]]*): Project =
+    copy(dependenciesEval = dependenciesEval flatMap { ds0 =>
+      sequenceEval(deps.toSeq) map { ds1 => ds0 ++ ds1 }
+    })
 
-  @deprecated("Delegation between projects should be replaced by directly sharing settings.", "0.13.0")
-  def delegateTo(from: ProjectReference*): Project = copy(delegates = delegates ++ from)
+  /** Adds classpath dependencies on internal or external projects. */
+  def dependsOnSeq(deps: => Seq[ClasspathDep[ProjectReference]]): Project =
+    copy(dependenciesEval = dependenciesEval flatMap { ds0 =>
+      Eval.later { deps } map { ds1 => ds0 ++ ds1 }
+    })
+
+  // @deprecated("Delegation between projects should be replaced by directly sharing settings.", "0.13.0")
+  // def delegateTo(from: ProjectReference*): Project = copy(delegates = delegates ++ from)
 
   /**
    * Adds projects to be aggregated.  When a user requests a task to run on this project from the command line,
    * the task will also be run in aggregated projects.
    */
-  def aggregate(refs: ProjectReference*): Project = copy(aggregate = (aggregate: Seq[ProjectReference]) ++ refs)
+  def aggregate(refs: Eval[ProjectReference]*): Project =
+    copy(aggregateEval = aggregateEval flatMap { as0 =>
+      sequenceEval(refs.toSeq) map { as1 => as0 ++ as1 }
+    })
+
+  /**
+   * Adds projects to be aggregated.  When a user requests a task to run on this project from the command line,
+   * the task will also be run in aggregated projects.
+   */
+  def aggregateSeq(refs: => Seq[ProjectReference]): Project =
+    copy(aggregateEval = aggregateEval flatMap { as0 =>
+      // sequenceEval(refs.toSeq) map { as1 => as0 ++ as1 }
+      Eval.later { refs } map { as1 => as0 ++ as1 }
+    })
 
   /** Appends settings to the current settings sequence for this project. */
-  def settings(ss: Def.SettingsDefinition*): Project = copy(settings = (settings: Seq[Def.Setting[_]]) ++ Def.settings(ss: _*))
+  def settings(ss: Def.SettingsDefinition*): Project =
+    copy(settingsEval = settingsEval map { ss0 =>
+      (ss0: Seq[Def.Setting[_]]) ++ Def.settings(ss: _*)
+    })
 
-  @deprecated("Use settingSets method.", "0.13.5")
-  def autoSettings(select: AddSettings*): Project = settingSets(select.toSeq: _*)
+  /** Appends settings to the current settings sequence for this project. */
+  def settingsLazy(ss: Eval[Def.SettingsDefinition]*): Project =
+    copy(settingsEval = settingsEval flatMap { ss0 =>
+      sequenceEval(ss.toSeq) map { ss1 => (ss0: Seq[Def.Setting[_]]) ++ Def.settings(ss1: _*) }
+    })
 
   /** Configures how settings from other sources, such as .sbt files, are appended to the explicitly specified settings for this project. */
   def settingSets(select: AddSettings*): Project = copy(auto = AddSettings.seq(select: _*))
@@ -177,13 +230,13 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
 
   private[this] def setPlugins(ns: Plugins): Project = {
     // TODO: for 0.14.0, use copy when it has the additional `plugins` parameter
-    unresolved(id, base, aggregate = aggregate, dependencies = dependencies, delegates = delegates, settings, configurations, auto, ns, autoPlugins)
+    unresolved(id, base, aggregateEval = aggregateEval, dependenciesEval = dependenciesEval, delegatesEval = delegatesEval, settingsEval, configurations, auto, ns, autoPlugins)
   }
 
   /** Definitively set the [[AutoPlugin]]s for this project. */
   private[sbt] def setAutoPlugins(autos: Seq[AutoPlugin]): Project = {
     // TODO: for 0.14.0, use copy when it has the additional `autoPlugins` parameter
-    unresolved(id, base, aggregate = aggregate, dependencies = dependencies, delegates = delegates, settings, configurations, auto, plugins, autos)
+    unresolved(id, base, aggregateEval = aggregateEval, dependenciesEval = dependenciesEval, delegatesEval = delegatesEval, settingsEval, configurations, auto, plugins, autos)
   }
 }
 sealed trait ResolvedProject extends ProjectDefinition[ProjectRef] {
@@ -196,17 +249,44 @@ final case class ResolvedClasspathDependency(project: ProjectRef, configuration:
 final case class ClasspathDependency(project: ProjectReference, configuration: Option[String]) extends ClasspathDep[ProjectReference]
 
 object Project extends ProjectExtra {
-  @deprecated("Use Def.Setting", "0.13.0")
-  type Setting[T] = Def.Setting[T]
 
-  @deprecated("Use Def.Setting", "0.13.0")
-  type SettingsDefinition = Def.SettingsDefinition
+  private abstract class ProjectDef[PR <: ProjectReference](
+      val id: String,
+      val base: File,
+      val aggregateEval: Eval[Seq[PR]],
+      val dependenciesEval: Eval[Seq[ClasspathDep[PR]]],
+      val delegatesEval: Eval[Seq[PR]],
+      val settingsEval: Eval[Seq[Def.Setting[_]]],
+      val configurations: Seq[Configuration],
+      val auto: AddSettings,
+      val plugins: Plugins,
+      val autoPlugins: Seq[AutoPlugin]) extends ProjectDefinition[PR] {
+    def aggregate: Seq[PR] = aggregateEval.get
+    def dependencies: Seq[ClasspathDep[PR]] = dependenciesEval.get
+    def delegates: Seq[PR] = delegatesEval.get
+    def settings: Seq[Def.Setting[_]] = settingsEval.get
 
-  @deprecated("Use Def.Setting", "0.13.0")
-  val SettingsDefinition = Def.SettingsDefinition
+    Dag.topologicalSort(configurations)(_.extendsConfigs) // checks for cyclic references here instead of having to do it in Scope.delegates
+  }
 
-  @deprecated("Use Def.Initialize", "0.13.0")
-  type Initialize[T] = Def.Initialize[T]
+  private def evalNil[A]: Eval[Seq[A]] = Eval.now(Vector())
+  // hardcoded version of sequence for flipping Eval and Seq
+  def sequenceEval[A](es: Seq[Eval[A]]): Eval[Seq[A]] =
+    (evalNil[A] /: es) { (acc0, x0) =>
+      acc0 flatMap { acc =>
+        x0 map { x => acc :+ x }
+      }
+    }
+
+  def apply(id: String, base: File): Project =
+    unresolved(id, base, evalNil, evalNil, evalNil, evalNil, Nil, AddSettings.allDefaults, Plugins.empty, Nil)
+
+  // TODO: add parameter for plugins in 0.14.0
+  // TODO: Modify default settings to be the core settings, and automatically add the IvyModule + JvmPlugins.
+  // def apply(id: String, base: File, aggregate: => Seq[ProjectReference] = Nil, dependencies: => Seq[ClasspathDep[ProjectReference]] = Nil,
+  //  delegates: => Seq[ProjectReference] = Nil, settings: => Seq[Def.Setting[_]] = Nil, configurations: Seq[Configuration] = Nil,
+  //  auto: AddSettings = AddSettings.allDefaults): Project =
+  //  unresolved(id, base, aggregate, dependencies, delegates, settings, configurations, auto, Plugins.empty, Nil) // Note: JvmModule/IvyModule auto included...
 
   def showContextKey(state: State): Show[ScopedKey[_]] =
     showContextKey(state, None)
@@ -220,29 +300,11 @@ object Project extends ProjectExtra {
   def showLoadingKey(loaded: LoadedBuild, keyNameColor: Option[String] = None): Show[ScopedKey[_]] =
     Def.showRelativeKey(ProjectRef(loaded.root, loaded.units(loaded.root).rootProjects.head), loaded.allProjectRefs.size > 1, keyNameColor)
 
-  private abstract class ProjectDef[PR <: ProjectReference](val id: String, val base: File, aggregate0: => Seq[PR], dependencies0: => Seq[ClasspathDep[PR]],
-      delegates0: => Seq[PR], settings0: => Seq[Def.Setting[_]], val configurations: Seq[Configuration], val auto: AddSettings,
-      val plugins: Plugins, val autoPlugins: Seq[AutoPlugin]) extends ProjectDefinition[PR] {
-    lazy val aggregate = aggregate0
-    lazy val dependencies = dependencies0
-    lazy val delegates = delegates0
-    lazy val settings = settings0
-
-    Dag.topologicalSort(configurations)(_.extendsConfigs) // checks for cyclic references here instead of having to do it in Scope.delegates
-  }
-
-  // TODO: add parameter for plugins in 0.14.0
-  // TODO: Modify default settings to be the core settings, and automatically add the IvyModule + JvmPlugins.
-  def apply(id: String, base: File, aggregate: => Seq[ProjectReference] = Nil, dependencies: => Seq[ClasspathDep[ProjectReference]] = Nil,
-    delegates: => Seq[ProjectReference] = Nil, settings: => Seq[Def.Setting[_]] = Nil, configurations: Seq[Configuration] = Nil,
-    auto: AddSettings = AddSettings.allDefaults): Project =
-    unresolved(id, base, aggregate, dependencies, delegates, settings, configurations, auto, Plugins.empty, Nil) // Note: JvmModule/IvyModule auto included...
-
   /** This is a variation of def apply that mixes in GeneratedRootProject. */
-  private[sbt] def mkGeneratedRoot(id: String, base: File, aggregate: => Seq[ProjectReference]): Project =
+  private[sbt] def mkGeneratedRoot(id: String, base: File, aggregate: Eval[Seq[ProjectReference]]): Project =
     {
       validProjectID(id).foreach(errMsg => sys.error("Invalid project ID: " + errMsg))
-      new ProjectDef[ProjectReference](id, base, aggregate, Nil, Nil, Nil, Nil, AddSettings.allDefaults, Plugins.empty, Nil) with Project with GeneratedRootProject
+      new ProjectDef[ProjectReference](id, base, aggregate, evalNil, evalNil, evalNil, Nil, AddSettings.allDefaults, Plugins.empty, Nil) with Project with GeneratedRootProject
     }
 
   /** Returns None if `id` is a valid Project ID or Some containing the parser error message if it is not.*/
@@ -267,26 +329,18 @@ object Project extends ProjectExtra {
    */
   def normalizeModuleID(id: String): String = normalizeBase(id)
 
-  @deprecated("Will be removed.", "0.13.2")
-  def resolved(id: String, base: File, aggregate: => Seq[ProjectRef], dependencies: => Seq[ResolvedClasspathDependency], delegates: => Seq[ProjectRef],
-    settings: Seq[Def.Setting[_]], configurations: Seq[Configuration], auto: AddSettings): ResolvedProject =
-    resolved(id, base, aggregate, dependencies, delegates, settings, configurations, auto, Plugins.empty, Nil)
-
-  private def resolved(id: String, base: File, aggregate: => Seq[ProjectRef], dependencies: => Seq[ClasspathDep[ProjectRef]],
-    delegates: => Seq[ProjectRef], settings: Seq[Def.Setting[_]], configurations: Seq[Configuration], auto: AddSettings,
+  private def resolved(id: String, base: File, aggregateEval: Eval[Seq[ProjectRef]], dependenciesEval: Eval[Seq[ClasspathDep[ProjectRef]]],
+    delegatesEval: Eval[Seq[ProjectRef]], settingsEval: Eval[Seq[Def.Setting[_]]], configurations: Seq[Configuration], auto: AddSettings,
     plugins: Plugins, autoPlugins: Seq[AutoPlugin]): ResolvedProject =
-    new ProjectDef[ProjectRef](id, base, aggregate, dependencies, delegates, settings, configurations, auto, plugins, autoPlugins) with ResolvedProject
+    new ProjectDef[ProjectRef](id, base, aggregateEval, dependenciesEval, delegatesEval, settingsEval, configurations, auto, plugins, autoPlugins) with ResolvedProject
 
-  private def unresolved(id: String, base: File, aggregate: => Seq[ProjectReference], dependencies: => Seq[ClasspathDep[ProjectReference]],
-    delegates: => Seq[ProjectReference], settings: => Seq[Def.Setting[_]], configurations: Seq[Configuration], auto: AddSettings,
+  private def unresolved(id: String, base: File, aggregateEval: Eval[Seq[ProjectReference]], dependenciesEval: Eval[Seq[ClasspathDep[ProjectReference]]],
+    delegatesEval: Eval[Seq[ProjectReference]], settingsEval: Eval[Seq[Def.Setting[_]]], configurations: Seq[Configuration], auto: AddSettings,
     plugins: Plugins, autoPlugins: Seq[AutoPlugin]): Project =
     {
       validProjectID(id).foreach(errMsg => sys.error("Invalid project ID: " + errMsg))
-      new ProjectDef[ProjectReference](id, base, aggregate, dependencies, delegates, settings, configurations, auto, plugins, autoPlugins) with Project
+      new ProjectDef[ProjectReference](id, base, aggregateEval, dependenciesEval, delegatesEval, settingsEval, configurations, auto, plugins, autoPlugins) with Project
     }
-
-  @deprecated("Use Defaults.coreDefaultSettings instead, combined with AutoPlugins.", "0.13.2")
-  def defaultSettings: Seq[Def.Setting[_]] = Defaults.defaultSettings
 
   final class Constructor(p: ProjectReference) {
     def %(conf: Configuration): ClasspathDependency = %(conf.name)
@@ -349,9 +403,6 @@ object Project extends ProjectExtra {
     }
   def setCond[T](key: AttributeKey[T], vopt: Option[T], attributes: AttributeMap): AttributeMap =
     vopt match { case Some(v) => attributes.put(key, v); case None => attributes.remove(key) }
-  @deprecated("Use Def.make", "0.13.0")
-  def makeSettings(settings: Seq[Def.Setting[_]], delegates: Scope => Seq[Scope], scopeLocal: ScopedKey[_] => Seq[Def.Setting[_]])(implicit display: Show[ScopedKey[_]]) =
-    Def.make(settings)(delegates, scopeLocal, display)
 
   private[sbt] def checkTargets(data: Settings[Scope]): Option[String] =
     {
@@ -533,9 +584,6 @@ object Project extends ProjectExtra {
       val newS = setProjectReturn(s, newBase :: oldStack)
       (newS, newBase)
   }
-  @deprecated("This method does not apply state changes requested during task execution.  Use 'runTask' instead, which does.", "0.11.1")
-  def evaluateTask[T](taskKey: ScopedKey[Task[T]], state: State, checkCycles: Boolean = false, maxWorkers: Int = EvaluateTask.SystemProcessors): Option[Result[T]] =
-    runTask(taskKey, state, EvaluateConfig(true, EvaluateTask.defaultRestrictions(maxWorkers), checkCycles)).map(_._2)
 
   def runTask[T](taskKey: ScopedKey[Task[T]], state: State, checkCycles: Boolean = false): Option[(State, Result[T])] =
     {
@@ -545,12 +593,6 @@ object Project extends ProjectExtra {
       val r = EvaluateTask.restrictions(state)
       val fgc = EvaluateTask.forcegc(extracted, extracted.structure)
       runTask(taskKey, state, EvaluateTaskConfig(r, checkCycles, p, ch, fgc))
-    }
-  @deprecated("Use EvaluateTaskConfig option instead.", "0.13.5")
-  def runTask[T](taskKey: ScopedKey[Task[T]], state: State, config: EvaluateConfig): Option[(State, Result[T])] =
-    {
-      val extracted = Project.extract(state)
-      EvaluateTask(extracted.structure, taskKey, state, extracted.currentRef, config)
     }
   def runTask[T](taskKey: ScopedKey[Task[T]], state: State, config: EvaluateTaskConfig): Option[(State, Result[T])] = {
     val extracted = Project.extract(state)
@@ -584,9 +626,23 @@ object Project extends ProjectExtra {
 
 private[sbt] trait GeneratedRootProject
 
-trait ProjectExtra {
+trait ProjectExtra0 {
+   implicit def wrapProjectReferenceSeqEval[T <% ProjectReference](rs: => Seq[T]): Seq[Eval[ProjectReference]] =
+    rs map { r => Eval.later(r: ProjectReference) }
+}
+
+trait ProjectExtra extends ProjectExtra0 {
+  implicit def classpathDependencyEval[T <% ClasspathDep[ProjectReference]](p: => T): Eval[ClasspathDep[ProjectReference]] =
+    Eval.later(p: ClasspathDep[ProjectReference])
+  implicit def wrapProjectReferenceEval[T <% ProjectReference](ref: => T): Eval[ProjectReference] =
+    Eval.later(ref: ProjectReference)
+
+  implicit def wrapSettingDefinitionEval[T <% Def.SettingsDefinition](d: => T): Eval[Def.SettingsDefinition] = Eval.later(d)
+  implicit def wrapSettingSeqEval(ss: => Seq[Setting[_]]): Eval[Def.SettingsDefinition] = Eval.later(new Def.SettingList(ss))
+
   implicit def configDependencyConstructor[T <% ProjectReference](p: T): Constructor = new Constructor(p)
-  implicit def classpathDependency[T <% ProjectReference](p: T): ClasspathDependency = new ClasspathDependency(p, None)
+  implicit def classpathDependency[T <% ProjectReference](p: T): ClasspathDep[ProjectReference] = new ClasspathDependency(p, None)
+
 
   // These used to be in Project so that they didn't need to get imported (due to Initialize being nested in Project).
   // Moving Initialize and other settings types to Def and decoupling Project, Def, and Structure means these go here for now
