@@ -7,7 +7,7 @@
 > b/h
 > c/compile
 
-$ copy-file changes/Basic.scala project/Build.scala
+$ copy-file changes/Basic.sbt basic.sbt
 > reload
 > g
 > root/compile
@@ -15,15 +15,4 @@ $ copy-file changes/Basic.scala project/Build.scala
 > a/aa
 > b/compile
 > b/h
-> c/compile
-
-$ copy-file changes/Restricted.scala project/Build.scala
-> reload
-> root/compile
--> g
--> h
--> a/compile
--> a/aa
--> b/compile
--> b/h
 > c/compile

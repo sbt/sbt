@@ -1,1 +1,1 @@
-val c = Project("c", file("c"))
+val c = project
