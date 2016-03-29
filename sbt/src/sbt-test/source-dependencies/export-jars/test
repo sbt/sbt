@@ -12,7 +12,7 @@ $ copy-file changes/A3.scala a/A.scala
 $ sleep 2000
 > run 3
 
-$ copy-file changes/build2.sbt build.sbt
+$ copy-file changes/build2.sbt build2.sbt
 > reload
 
 $ copy-file changes/A1.scala a/A.scala
