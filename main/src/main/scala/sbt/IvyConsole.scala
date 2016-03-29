@@ -3,6 +3,7 @@
  */
 package sbt
 
+import sbt.internal.Load
 import sbt.internal.util.Attributed
 import sbt.util.{ Level, Logger }
 

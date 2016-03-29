@@ -7,9 +7,9 @@
 
 $ copy-file macro-provider/changes/Provider.scala macro-provider/Provider.scala
 
-> macro-provider/compile
+> macroProvider/compile
 
--> macro-client/compile
+-> macroClient/compile
 
 > clean
 

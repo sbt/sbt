@@ -6,7 +6,7 @@
 > f
 > reload
 > f
-$ copy-file changes/Changed.scala project/TestProject.scala
+$ copy-file changes/changed.sbt build.sbt
 > reload
 -> f
 > project {external}root2

@@ -1,5 +1,9 @@
-name := "project-runtime"
+lazy val `project-runtime` = (project in file(".")).
+  dependsOn(projectGenerator % "optional").
+  settings(
+    name := "project-runtime",
+    scalaVersion := "2.11.7",
+    crossPaths := false
+  )
 
-scalaVersion := "2.9.1"
-
-crossPaths := false
+lazy val projectGenerator = ProjectRef(uri("generator/"), "project")

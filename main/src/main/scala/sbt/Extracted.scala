@@ -1,5 +1,6 @@
 package sbt
 
+import sbt.internal.Load
 import Project._
 import Scope.GlobalScope
 import Def.{ ScopedKey, Setting }

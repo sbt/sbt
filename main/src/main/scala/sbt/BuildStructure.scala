@@ -9,6 +9,7 @@ import Def.{ displayFull, ScopedKey, ScopeLocal, Setting }
 import BuildPaths.outputDirectory
 import Scope.GlobalScope
 import BuildStreams.Streams
+import sbt.internal.{ BuildDef, Load }
 import sbt.io.Path._
 import sbt.internal.util.{ Attributed, AttributeEntry, AttributeKey, AttributeMap, Settings }
 import sbt.internal.util.Attributed.data
@@ -74,9 +75,9 @@ final class LoadedBuildUnit(val unit: BuildUnit, val defined: Map[String, Resolv
  * @param base The base directory of the build definition, typically `<build base>/project/`.
  * @param loader The ClassLoader containing all classes and plugins for the build definition project.
  *               Note that this does not include classes for .sbt files.
- * @param builds The list of [[Build]]s for the build unit.
- *               In addition to auto-discovered [[Build]]s, this includes any auto-generated default [[Build]]s.
- * @param projects The list of all [[Project]]s from all [[Build]]s.
+ * @param builds The list of [[BuildDef]]s for the build unit.
+ *               In addition to auto-discovered [[BuildDef]]s, this includes any auto-generated default [[BuildDef]]s.
+ * @param projects The list of all [[Project]]s from all [[BuildDef]]s.
  *                 These projects have not yet been resolved, but they have had auto-plugins applied.
  *                 In particular, each [[Project]]'s `autoPlugins` field is populated according to their configured `plugins`
  *                 and their `settings` and `configurations` updated as appropriate.
@@ -86,14 +87,14 @@ final class LoadedDefinitions(
     val base: File,
     val target: Seq[File],
     val loader: ClassLoader,
-    val builds: Seq[Build],
+    val builds: Seq[BuildDef],
     val projects: Seq[Project],
     val buildNames: Seq[String],
     val dslDefinitions: DefinedSbtValues) {
   def this(base: File,
     target: Seq[File],
     loader: ClassLoader,
-    builds: Seq[Build],
+    builds: Seq[BuildDef],
     projects: Seq[Project],
     buildNames: Seq[String]) = this(base, target, loader, builds, projects, buildNames, DefinedSbtValues.empty)
 }
@@ -122,7 +123,7 @@ case class DetectedAutoPlugin(name: String, value: AutoPlugin, hasAutoImport: Bo
  *
  * @param builds The [[Build]]s detected in the build definition.  This does not include the default [[Build]] that sbt creates if none is defined.
  */
-final class DetectedPlugins(val plugins: DetectedModules[Plugin], val autoPlugins: Seq[DetectedAutoPlugin], val builds: DetectedModules[Build]) {
+final class DetectedPlugins(val plugins: DetectedModules[Plugin], val autoPlugins: Seq[DetectedAutoPlugin], val builds: DetectedModules[BuildDef]) {
   /** Sequence of import expressions for the build definition.  This includes the names of the [[Plugin]], [[Build]], and [[AutoImport]] modules, but not the [[AutoPlugin]] modules. */
   lazy val imports: Seq[String] = BuildUtil.getImports(plugins.names ++ builds.names) ++
     BuildUtil.importAllRoot(autoImports(autoPluginAutoImports)) ++

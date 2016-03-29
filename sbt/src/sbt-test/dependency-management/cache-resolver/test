@@ -1,6 +1,6 @@
 # Publish the def/{a,b} projects to the local repository
 
-$ copy-file changes/def/Build.scala project/Build.scala
+$ copy-file changes/def/build.sbt build.sbt
 $ copy-file changes/def/Def.java b/Def.java
 > reload
 > publish-local
@@ -11,7 +11,7 @@ $ copy-file changes/def/Def.java b/Def.java
 # The resolver will be marked as local in the cache
 # The dependency on def/b will be properly resolved
 
-$ delete project/Build.scala
+$ delete build.sbt
 $ delete b/Def.java
 $ copy-file changes/use/build.sbt build.sbt
 $ copy-file changes/use/Use.java Use.java
@@ -23,7 +23,8 @@ $ copy-file changes/use/Use.java Use.java
 # Publish the def/{a,b} projects to the local repository again
 # This will change the resolver in the cache to be inter-project
 
-$ copy-file changes/def/Build.scala project/Build.scala
+$ delete build.sbt
+$ copy-file changes/both/build.sbt build.sbt
 $ copy-file changes/def/Def.java b/Def.java
 > reload
 > publish-local
@@ -33,7 +34,7 @@ $ copy-file changes/def/Def.java b/Def.java
 # Resolve from local again.  This will succeed, but the jars
 #  won't be on the classpath if the resolver isn't ignoredy.
 
-$ delete project/Build.scala
+$ delete build.sbt
 $ delete b/Def.java
 $ copy-file changes/use/build.sbt build.sbt
 $ copy-file changes/use/Use.java Use.java

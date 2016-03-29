@@ -3,6 +3,7 @@
  */
 package sbt
 
+import sbt.internal.Load
 import sbt.internal.util.complete
 
 import ProjectNavigation._

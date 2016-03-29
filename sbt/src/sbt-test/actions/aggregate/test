@@ -22,6 +22,7 @@ $ delete ran
 
 # switch to multi-project, no aggregation yet.  'reload' will drop session settings
 $ touch multi
+$ copy-file changes/build.sbt build.sbt
 $ mkdir sub sub/sub
 > reload
 

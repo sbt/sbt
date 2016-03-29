@@ -4,6 +4,7 @@
 
 package sbt
 
+import sbt.internal.BuildLoader
 import sbt.internal.librarymanagement.StringUtilities
 
 import sbt.io.{ Hash, IO }

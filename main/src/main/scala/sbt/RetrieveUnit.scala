@@ -5,7 +5,7 @@ package sbt
 
 import java.io.File
 import java.net.URI
-import BuildLoader.ResolveInfo
+import sbt.internal.BuildLoader.ResolveInfo
 import Def.{ ScopedKey, Setting }
 
 object RetrieveUnit {

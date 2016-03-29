@@ -22,7 +22,3 @@ object A extends AutoPlugin {
 		check := {}
 	)
 }
-
-object B extends Build {
-	lazy val extra = project.enablePlugins(bN)
-}
