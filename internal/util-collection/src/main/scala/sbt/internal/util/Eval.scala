@@ -15,7 +15,7 @@ sealed abstract class Eval[A] extends Serializable { self =>
    * will be performed at this point. For eager instances (Now), a
    * value will be immediately returned.
    */
-  def value: A
+  def get: A
 
   /**
    * Transform an Eval[A] into an Eval[B] given the transformation
@@ -87,7 +87,7 @@ sealed abstract class Eval[A] extends Serializable { self =>
  * This type should be used when an A value is already in hand, or
  * when the computation to produce an A value is pure and very fast.
  */
-final case class Now[A](value: A) extends Eval[A] {
+final case class Now[A](get: A) extends Eval[A] {
   def memoize: Eval[A] = this
 }
 
@@ -115,7 +115,7 @@ final class Later[A](f: () => A) extends Eval[A] {
   //
   // (For situations where `f` is small, but the output will be very
   // expensive to store, consider using `Always`.)
-  lazy val value: A = {
+  lazy val get: A = {
     val result = thunk()
     thunk = null // scalastyle:off
     result
@@ -139,7 +139,7 @@ object Later {
  * caching must be avoided. Generally, prefer Later.
  */
 final class Always[A](f: () => A) extends Eval[A] {
-  def value: A = f()
+  def get: A = f()
   def memoize: Eval[A] = new Later(f)
 }
 
@@ -193,8 +193,8 @@ object Eval {
    * they will be automatically created when needed.
    */
   sealed abstract class Call[A](val thunk: () => Eval[A]) extends Eval[A] {
-    def memoize: Eval[A] = new Later(() => value)
-    def value: A = Call.loop(this).value
+    def memoize: Eval[A] = new Later(() => get)
+    def get: A = Call.loop(this).get
   }
 
   object Call {
@@ -229,16 +229,16 @@ object Eval {
    *
    * Unlike a traditional trampoline, the internal workings of the
    * trampoline are not exposed. This allows a slightly more efficient
-   * implementation of the .value method.
+   * implementation of the .get method.
    */
   sealed abstract class Compute[A] extends Eval[A] {
     type Start
     val start: () => Eval[Start]
     val run: Start => Eval[A]
 
-    def memoize: Eval[A] = Later(value)
+    def memoize: Eval[A] = Later(get)
 
-    def value: A = {
+    def get: A = {
       type L = Eval[Any]
       type C = Any => Eval[Any]
       @tailrec def loop(curr: L, fs: List[C]): Any =
@@ -248,14 +248,15 @@ object Eval {
               case cc: Compute[_] =>
                 loop(
                   cc.start().asInstanceOf[L],
-                  cc.run.asInstanceOf[C] :: c.run.asInstanceOf[C] :: fs)
+                  cc.run.asInstanceOf[C] :: c.run.asInstanceOf[C] :: fs
+                )
               case xx =>
-                loop(c.run(xx.value).asInstanceOf[L], fs)
+                loop(c.run(xx.get).asInstanceOf[L], fs)
             }
           case x =>
             fs match {
-              case f :: fs => loop(f(x.value), fs)
-              case Nil     => x.value
+              case f :: fs => loop(f(x.get), fs)
+              case Nil     => x.get
             }
         }
       loop(this.asInstanceOf[L], Nil).asInstanceOf[A]
