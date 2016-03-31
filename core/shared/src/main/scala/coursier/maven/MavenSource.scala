@@ -152,6 +152,7 @@ object MavenSource {
   
   val typeExtensions: Map[String, String] = Map(
     "eclipse-plugin" -> "jar",
+    "maven-plugin"   -> "jar",
     "hk2-jar"        -> "jar",
     "orbit"          -> "jar",
     "scala-jar"      -> "jar",

@@ -247,6 +247,15 @@ object CentralTests extends TestSuite {
           "jar"
         )
       }
+
+      'mavenPlugin - {
+        // has packaging maven-plugin - ensuring coursier gives its artifact the .jar extension
+        ensureArtifactHasExtension(
+          Module("org.bytedeco", "javacpp"),
+          "1.1",
+          "jar"
+        )
+      }
     }
   }
 
