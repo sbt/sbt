@@ -56,4 +56,9 @@ object Append {
     def appendValues(a: Map[A, B], b: Map[X, Y]): Map[A, B] = a ++ b
     def appendValue(a: Map[A, B], b: (X, Y)): Map[A, B] = a + b
   }
+  implicit def appendOption[T]: Sequence[Seq[T], Option[T], Option[T]] =
+    new Sequence[Seq[T], Option[T], Option[T]] {
+      def appendValue(a: Seq[T], b: Option[T]): Seq[T] = b.fold(a)(a :+ _)
+      def appendValues(a: Seq[T], b: Option[T]): Seq[T] = b.fold(a)(a :+ _)
+    }
 }

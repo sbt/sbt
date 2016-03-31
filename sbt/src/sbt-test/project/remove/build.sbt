@@ -4,17 +4,23 @@ val intsFromScalaV = settingKey[Seq[Int]]("a seq of ints from scalaVersion")
 
 scalaVersion := "2.11.6"
 
-intsTask := Seq(1, 2, 3, 4, 5)
+intsTask := Seq(1, 2, 3, 4, 5, 6, 7)
 intsTask -= 3
 intsTask --= Seq(1, 2)
+intsTask -= Option(6)
+intsTask --= Option(7)
 
-intsSetting := Seq(1, 2, 3, 4, 5)
+intsSetting := Seq(1, 2, 3, 4, 5, 6, 7)
 intsSetting -= 3
 intsSetting --= Seq(1, 2)
+intsSetting -= Option(6)
+intsSetting --= Option(7)
 
-intsFromScalaV := Seq(1, 2, 3, 4, 5)
+intsFromScalaV := Seq(1, 2, 3, 4, 5, 6, 7)
 intsFromScalaV -= { if (scalaVersion.value == "2.11.6") 3 else 5 }
 intsFromScalaV --= { if (scalaVersion.value == "2.11.6") Seq(1, 2) else Seq(4) }
+intsFromScalaV -= { if (scalaVersion.value == "2.11.6") Option(6) else None }
+intsFromScalaV --= { if (scalaVersion.value == "2.11.6") Option(7) else None }
 
 val check = taskKey[Unit]("Runs the check")
 check := {
