@@ -1,6 +1,7 @@
 package coursier
 
 import java.io.{ OutputStreamWriter, File }
+import java.net.URL
 import java.nio.file.Files
 import java.util.concurrent.Executors
 
@@ -39,6 +40,26 @@ object Tasks {
             Classpaths.sbtPluginReleases
           ) ++ resolvers
         resolvers
+      }
+    }
+
+  def coursierFallbackDependenciesTask: Def.Initialize[sbt.Task[Seq[(Module, String, URL, Boolean)]]] =
+    (
+      sbt.Keys.state,
+      sbt.Keys.thisProjectRef
+    ).flatMap { (state, projectRef) =>
+
+      val allDependenciesTask = allDependencies.in(projectRef).get(state)
+
+      for {
+        allDependencies <- allDependenciesTask
+      } yield {
+
+        FromSbt.fallbackDependencies(
+          allDependencies,
+          scalaVersion.in(projectRef).get(state),
+          scalaBinaryVersion.in(projectRef).get(state)
+        )
       }
     }
 
@@ -181,19 +202,31 @@ object Tasks {
 
       lazy val cm = coursierSbtClassifiersModule.value
 
-      val currentProject =
-        if (sbtClassifiers)
-          FromSbt.project(
+      val (currentProject, fallbackDependencies) =
+        if (sbtClassifiers) {
+          val sv = scalaVersion.value
+          val sbv = scalaBinaryVersion.value
+
+          val proj = FromSbt.project(
             cm.id,
             cm.modules,
             cm.configurations.map(cfg => cfg.name -> cfg.extendsConfigs.map(_.name)).toMap,
-            scalaVersion.value,
-            scalaBinaryVersion.value
+            sv,
+            sbv
           )
-        else {
+
+          val fallbackDeps = FromSbt.fallbackDependencies(
+            cm.modules,
+            sv,
+            sbv
+          )
+
+          (proj, fallbackDeps)
+        } else {
           val proj = coursierProject.value
           val publications = coursierPublications.value
-          proj.copy(publications = publications)
+          val fallbackDeps = coursierFallbackDependencies.value
+          (proj.copy(publications = publications), fallbackDeps)
         }
 
       val ivySbt0 = ivySbt.value
@@ -277,7 +310,25 @@ object Tasks {
         "ivy.home" -> (new File(sys.props("user.home")).toURI.getPath + ".ivy2")
       ) ++ sys.props
 
-      val repositories = Seq(globalPluginsRepo, interProjectRepo) ++ resolvers.flatMap(FromSbt.repository(_, ivyProperties))
+      val repositories = Seq(
+        globalPluginsRepo,
+        interProjectRepo
+      ) ++ resolvers.flatMap(
+        FromSbt.repository(_, ivyProperties)
+      ) ++ {
+        if (fallbackDependencies.isEmpty)
+          Nil
+        else {
+          val map = fallbackDependencies.map {
+            case (mod, ver, url, changing) =>
+              (mod, ver) -> ((url, changing))
+          }.toMap
+
+          Seq(
+            FallbackDependenciesRepository(map)
+          )
+        }
+      }
 
       def report = {
         val pool = Executors.newFixedThreadPool(parallelDownloads, Strategy.DefaultDaemonThreadFactory)

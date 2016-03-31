@@ -1,6 +1,8 @@
 package coursier
 
 import java.io.File
+import java.net.URL
+
 import coursier.core.Publication
 import sbt.{ GetClassifiersModule, Resolver, SettingKey, TaskKey }
 
@@ -17,6 +19,8 @@ object Keys {
   val coursierSbtResolvers = TaskKey[Seq[Resolver]]("coursier-sbt-resolvers", "")
 
   val coursierCache = SettingKey[File]("coursier-cache", "")
+
+  val coursierFallbackDependencies = TaskKey[Seq[(Module, String, URL, Boolean)]]("coursier-fallback-dependencies", "")
 
   val coursierProject = TaskKey[Project]("coursier-project", "")
   val coursierProjects = TaskKey[Seq[Project]]("coursier-projects", "")
