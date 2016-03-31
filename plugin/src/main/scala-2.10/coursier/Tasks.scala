@@ -259,6 +259,24 @@ object Tasks {
         FromSbt.moduleVersion(_, sv, sbv)
       ).toMap
 
+      var anyNonSupportedExclusionRule = false
+      val exclusions = excludeDependencies.value.flatMap {
+        rule =>
+          if (
+            rule.artifact != "*" ||
+              rule.configurations.nonEmpty ||
+              rule.crossVersion != sbt.CrossVersion.Disabled
+          ) {
+            Console.err.println(s"Warning: unsupported exclusion rule $rule")
+            anyNonSupportedExclusionRule = true
+            Nil
+          } else
+            Seq((rule.organization, rule.name))
+      }.toSet
+
+      if (anyNonSupportedExclusionRule)
+        Console.err.println(s"Only supported exclusion rule fields: organization, name")
+
       val resolvers =
         if (sbtClassifiers)
           coursierSbtResolvers.value
@@ -269,7 +287,10 @@ object Tasks {
 
 
       val startRes = Resolution(
-        currentProject.dependencies.map { case (_, dep) => dep }.toSet,
+        currentProject.dependencies.map {
+          case (_, dep) =>
+            dep.copy(exclusions = dep.exclusions ++ exclusions)
+        }.toSet,
         filter = Some(dep => !dep.optional),
         forceVersions = userForceVersions ++ forcedScalaModules(sv) ++ projects.map(_.moduleVersion)
       )
