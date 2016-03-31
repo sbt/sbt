@@ -230,7 +230,7 @@ object CentralTests extends TestSuite {
     }
 
     'packaging - {
-      * - {
+      'aar - {
         // random aar-based module found on Central
         ensureArtifactHasExtension(
           Module("com.yandex.android", "speechkit"),
@@ -239,7 +239,7 @@ object CentralTests extends TestSuite {
         )
       }
 
-      * - {
+      'bundle - {
         // has packaging bundle - ensuring coursier gives its artifact the .jar extension
         ensureArtifactHasExtension(
           Module("com.google.guava", "guava"),

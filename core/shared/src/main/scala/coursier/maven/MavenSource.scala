@@ -149,12 +149,19 @@ case class MavenSource(
 }
 
 object MavenSource {
+  
+  val typeExtensions: Map[String, String] = Map(
+    "eclipse-plugin" -> "jar",
+    "hk2-jar"        -> "jar",
+    "orbit"          -> "jar",
+    "scala-jar"      -> "jar",
+    "jar"            -> "jar",
+    "bundle"         -> "jar",
+    "doc"            -> "jar",
+    "src"            -> "jar"
+  )
 
   def typeExtension(`type`: String): String =
-    `type` match {
-      // see similar things in sbt-maven-resolver/src/main/scala/sbt/mavenint/MavenRepositoryResolver.scala in SBT 0.13.8
-      case "eclipse-plugin" | "hk2-jar" | "orbit" | "scala-jar" | "jar" | "bundle" | "doc" | "src" => "jar"
-      case other => other
-    }
+    typeExtensions.getOrElse(`type`, `type`)
 
 }
