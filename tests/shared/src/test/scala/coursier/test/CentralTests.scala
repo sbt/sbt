@@ -105,7 +105,8 @@ object CentralTests extends TestSuite {
   }
 
   val tests = TestSuite {
-    'logback{
+
+    'logback - {
       async {
         val dep = Dependency(Module("ch.qos.logback", "logback-classic"), "1.1.3")
         val res = await(resolve(Set(dep))).clearCaches
@@ -120,7 +121,8 @@ object CentralTests extends TestSuite {
         assert(res == expected)
       }
     }
-    'asm{
+
+    'asm - {
       async {
         val dep = Dependency(Module("org.ow2.asm", "asm-commons"), "5.0.2")
         val res = await(resolve(Set(dep))).clearCaches
@@ -135,7 +137,8 @@ object CentralTests extends TestSuite {
         assert(res == expected)
       }
     }
-    'jodaVersionInterval{
+
+    'jodaVersionInterval - {
       async {
         val dep = Dependency(Module("joda-time", "joda-time"), "[2.2,2.8]")
         val res0 = await(resolve(Set(dep)))
@@ -153,19 +156,22 @@ object CentralTests extends TestSuite {
         assert(proj.version == "2.8")
       }
     }
-    'spark{
+
+    'spark - {
       resolutionCheck(
         Module("org.apache.spark", "spark-core_2.11"),
         "1.3.1"
       )
     }
-    'argonautShapeless{
+
+    'argonautShapeless - {
       resolutionCheck(
         Module("com.github.alexarchambault", "argonaut-shapeless_6.1_2.11"),
         "0.2.0"
       )
     }
-    'snapshotMetadata{
+
+    'snapshotMetadata - {
       // Let's hope this one won't change too much
       resolutionCheck(
         Module("com.github.fommil", "java-logging"),
@@ -189,6 +195,7 @@ object CentralTests extends TestSuite {
         "1.1.2"
       )
     }
+
     'latestRevision - {
       * - resolutionCheck(
         Module("com.chuusai", "shapeless_2.11"),
@@ -210,6 +217,7 @@ object CentralTests extends TestSuite {
         "7.0.+"
       )
     }
+
     'mavenScopes - {
       def check(config: String) = resolutionCheck(
         Module("com.android.tools", "sdklib"),
