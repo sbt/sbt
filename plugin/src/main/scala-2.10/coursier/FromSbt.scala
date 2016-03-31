@@ -80,7 +80,7 @@ object FromSbt {
         }
 
     for {
-      (from, to) <- allMappings.toSeq
+      (from, to) <- allMappings
       attr <- attributes
     } yield from -> dep.copy(configuration = to, attributes = attr)
   }
