@@ -322,21 +322,7 @@ object Resolution {
     )
   }
 
-  /**
-   * Get the dependencies of `project`, knowing that it came from dependency
-   * `from` (that is, `from.module == project.module`).
-   *
-   * Substitute properties, update scopes, apply exclusions, and get extra
-   * parameters from dependency management along the way.
-   */
-  def finalDependencies(
-    from: Dependency,
-    project: Project
-  ): Seq[Dependency] = {
-
-    // Here, we're substituting properties also in dependencies that
-    // come from parents or dependency management. This may not be
-    // the right thing to do.
+  def projectProperties(project: Project): Seq[(String, String)] = {
 
     // FIXME The extra properties should only be added for Maven projects, not Ivy ones
     val properties0 = Seq(
@@ -358,7 +344,39 @@ object Resolution {
         )
     }
 
-    val properties = propertiesMap(properties0)
+    // loose attempt at substituting properties in each others in properties0
+    // doesn't try to go recursive for now, but that could be made so if necessary
+
+    val (done, remaining) = properties0.partition {
+      case (_, value) =>
+        propRegex.findFirstIn(value).isEmpty
+    }
+
+    lazy val doneMap = done.toMap
+
+    done ++ remaining.map {
+      case (k, v) =>
+        k -> substituteProps(v, doneMap)
+    }
+  }
+
+  /**
+   * Get the dependencies of `project`, knowing that it came from dependency
+   * `from` (that is, `from.module == project.module`).
+   *
+   * Substitute properties, update scopes, apply exclusions, and get extra
+   * parameters from dependency management along the way.
+   */
+  def finalDependencies(
+    from: Dependency,
+    project: Project
+  ): Seq[Dependency] = {
+
+    // Here, we're substituting properties also in dependencies that
+    // come from parents or dependency management. This may not be
+    // the right thing to do.
+
+    val properties = propertiesMap(projectProperties(project))
 
     val (actualConfig, configurations) = withParentConfigurations(from.configuration, project.configurations)
 
@@ -690,11 +708,7 @@ final case class Resolution(
         .map(_._2.properties)
         .fold(project.properties)(project.properties ++ _)
 
-    val approxProperties = propertiesMap(approxProperties0) ++ Seq(
-      "project.groupId"     -> project.module.organization,
-      "project.artifactId"  -> project.module.name,
-      "project.version"     -> project.version
-    )
+    val approxProperties = propertiesMap(approxProperties0) ++ projectProperties(project)
 
     val profileDependencies =
       profiles(
@@ -775,11 +789,7 @@ final case class Resolution(
         .map(projectCache(_)._2.properties.toMap)
         .fold(project.properties)(project.properties ++ _)
 
-    val approxProperties = propertiesMap(approxProperties0) ++ Seq(
-      "project.groupId"     -> project.module.organization,
-      "project.artifactId"  -> project.module.name,
-      "project.version"     -> project.version
-    )
+    val approxProperties = propertiesMap(approxProperties0) ++ projectProperties(project)
 
     val profiles0 = profiles(
       project,
@@ -827,6 +837,7 @@ final case class Resolution(
     val depsSet = deps.toSet
 
     project.copy(
+      version = substituteProps(project.version, approxProperties),
       dependencies =
         dependencies0
           .filterNot{case (config, dep) =>

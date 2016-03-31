@@ -174,6 +174,15 @@ object CentralTests extends TestSuite {
         extraRepo = Some(MavenRepository("https://oss.sonatype.org/content/repositories/public/"))
       )
     }
+
+    'versionProperty - {
+      // nasty one - in its POM, its version contains "${parent.project.version}"
+      resolutionCheck(
+        Module("org.bytedeco.javacpp-presets", "opencv"),
+        "3.0.0-1.1"
+      )
+    }
+
     'parentProjectProperties - {
       resolutionCheck(
         Module("com.github.fommil.netlib", "all"),
