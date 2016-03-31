@@ -124,7 +124,7 @@ private[sbt] object JLine {
   def simple(
     historyPath: Option[File],
     handleCONT: Boolean = HandleCONT,
-    injectThreadSleep: Boolean = true
+    injectThreadSleep: Boolean = false
   ): SimpleReader = new SimpleReader(historyPath, handleCONT, injectThreadSleep)
   val MaxHistorySize = 500
   val HandleCONT = !java.lang.Boolean.getBoolean("sbt.disable.cont") && Signals.supported(Signals.CONT)
@@ -147,7 +147,7 @@ final class FullReader(
   historyPath: Option[File],
   complete: Parser[_],
   val handleCONT: Boolean = JLine.HandleCONT,
-  val injectThreadSleep: Boolean = true
+  val injectThreadSleep: Boolean = false
 ) extends JLine {
   protected[this] val reader =
     {
@@ -160,5 +160,5 @@ final class FullReader(
 class SimpleReader private[sbt] (historyPath: Option[File], val handleCONT: Boolean, val injectThreadSleep: Boolean) extends JLine {
   protected[this] val reader = JLine.createReader(historyPath, injectThreadSleep)
 }
-object SimpleReader extends SimpleReader(None, JLine.HandleCONT, true)
+object SimpleReader extends SimpleReader(None, JLine.HandleCONT, false)
 
