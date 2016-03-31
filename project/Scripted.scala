@@ -4,13 +4,30 @@ import Def.Initialize
 
 import scala.language.reflectiveCalls
 
-object Scripted {
-  def scriptedPath = file("scripted")
+object ScriptedPlugin extends sbt.AutoPlugin {
+  override def requires = plugins.JvmPlugin
+  object autoImport extends ScriptedKeys {
+    def scriptedPath = file("scripted")
+  }
+
+  import autoImport._
+  import Scripted._
+  override def projectSettings = Seq(
+    scriptedBufferLog := true,
+    scriptedPrescripted := { _ => }
+  )
+}
+
+trait ScriptedKeys {
+  lazy val publishAll = TaskKey[Unit]("publish-all")
   lazy val scripted = InputKey[Unit]("scripted")
   lazy val scriptedUnpublished = InputKey[Unit]("scripted-unpublished", "Execute scripted without publishing SBT first. Saves you some time when only your test has changed.")
   lazy val scriptedSource = SettingKey[File]("scripted-source")
   lazy val scriptedPrescripted = TaskKey[File => Unit]("scripted-prescripted")
+  lazy val scriptedBufferLog = SettingKey[Boolean]("scripted-buffer-log")
+}
 
+object Scripted {
   lazy val MavenResolverPluginTest = config("mavenResolverPluginTest") extend Compile
 
   import sbt.complete._
@@ -66,7 +83,8 @@ object Scripted {
       launchOpts: Array[String], prescripted: java.util.List[File]): Unit
   }
 
-  def doScripted(launcher: File, scriptedSbtClasspath: Seq[Attributed[File]], scriptedSbtInstance: ScalaInstance, sourcePath: File, args: Seq[String], prescripted: File => Unit): Unit = {
+  def doScripted(launcher: File, scriptedSbtClasspath: Seq[Attributed[File]], scriptedSbtInstance: ScalaInstance,
+      sourcePath: File, bufferLog: Boolean, args: Seq[String], prescripted: File => Unit): Unit = {
     System.err.println(s"About to run tests: ${args.mkString("\n * ", "\n * ", "\n")}")
     val noJLine = new classpath.FilteredLoader(scriptedSbtInstance.loader, "jline." :: Nil)
     val loader = classpath.ClasspathUtilities.toLoader(scriptedSbtClasspath.files, noJLine)
@@ -83,7 +101,7 @@ object Scripted {
         def get(x: Int): sbt.File = ???
         def size(): Int = 0
       }
-      bridge.run(sourcePath, true, args.toArray, launcher, launcherVmOptions, callback)
+      bridge.run(sourcePath, bufferLog, args.toArray, launcher, launcherVmOptions, callback)
     } catch { case ite: java.lang.reflect.InvocationTargetException => throw ite.getCause }
   }
 }

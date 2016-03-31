@@ -1,6 +1,5 @@
 import Util._
 import Dependencies._
-import Scripted._
 import Sxr.sxr
 
 import com.typesafe.tools.mima.core._, ProblemFilters._
@@ -52,6 +51,7 @@ def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
 
 lazy val sbtRoot: Project = (project in file(".")).
+  enablePlugins(ScriptedPlugin).
   configs(Sxr.sxrConf).
   aggregate(nonRoots: _*).
   settings(
@@ -210,19 +210,20 @@ lazy val mavenResolverPluginProj = (project in file("sbt-maven-resolver")).
   )
 
 def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
-  val result = scriptedSource(dir => (s: State) => scriptedParser(dir)).parsed
+  val result = scriptedSource(dir => (s: State) => Scripted.scriptedParser(dir)).parsed
   publishAll.value
-  doScripted((sbtLaunchJar in bundledLauncherProj).value, (fullClasspath in scriptedSbtProj in Test).value,
-    (scalaInstance in scriptedSbtProj).value, scriptedSource.value, result, scriptedPrescripted.value)
+  Scripted.doScripted((sbtLaunchJar in bundledLauncherProj).value, (fullClasspath in scriptedSbtProj in Test).value,
+    (scalaInstance in scriptedSbtProj).value,
+    scriptedSource.value, scriptedBufferLog.value, result, scriptedPrescripted.value)
 }
 
 def scriptedUnpublishedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
-  val result = scriptedSource(dir => (s: State) => scriptedParser(dir)).parsed
-  doScripted((sbtLaunchJar in bundledLauncherProj).value, (fullClasspath in scriptedSbtProj in Test).value,
-    (scalaInstance in scriptedSbtProj).value, scriptedSource.value, result, scriptedPrescripted.value)
+  val result = scriptedSource(dir => (s: State) => Scripted.scriptedParser(dir)).parsed
+  Scripted.doScripted((sbtLaunchJar in bundledLauncherProj).value, (fullClasspath in scriptedSbtProj in Test).value,
+    (scalaInstance in scriptedSbtProj).value,
+    scriptedSource.value, scriptedBufferLog.value, result, scriptedPrescripted.value)
 }
 
-lazy val publishAll = TaskKey[Unit]("publish-all")
 lazy val publishLauncher = TaskKey[Unit]("publish-launcher")
 
 lazy val myProvided = config("provided") intransitive
@@ -239,18 +240,17 @@ def rootSettings = fullDocSettings ++
   Util.publishPomSettings ++ otherRootSettings ++ Formatting.sbtFilesSettings ++
   Transform.conscriptSettings(bundledLauncherProj)
 def otherRootSettings = Seq(
-  Scripted.scriptedPrescripted := { _ => },
-  Scripted.scripted <<= scriptedTask,
-  Scripted.scriptedUnpublished <<= scriptedUnpublishedTask,
-  Scripted.scriptedSource := (sourceDirectory in sbtProj).value / "sbt-test",
+  scripted <<= scriptedTask,
+  scriptedUnpublished <<= scriptedUnpublishedTask,
+  scriptedSource := (sourceDirectory in sbtProj).value / "sbt-test",
   publishAll := {
     val _ = (publishLocal).all(ScopeFilter(inAnyProject)).value
   },
   aggregate in bintrayRelease := false
 ) ++ inConfig(Scripted.MavenResolverPluginTest)(Seq(
-  Scripted.scripted <<= scriptedTask,
-  Scripted.scriptedUnpublished <<= scriptedUnpublishedTask,
-  Scripted.scriptedPrescripted := { f =>
+  scripted <<= scriptedTask,
+  scriptedUnpublished <<= scriptedUnpublishedTask,
+  scriptedPrescripted := { f =>
     val inj = f / "project" / "maven.sbt"
     if (!inj.exists) {
       IO.write(inj, "addMavenResolverPlugin")
