@@ -87,7 +87,7 @@ abstract class AbstractRMap[K[_], V[_]] extends RMap[K, V] {
  */
 class DelegatingPMap[K[_], V[_]](backing: mutable.Map[K[_], V[_]]) extends AbstractRMap[K, V] with PMap[K, V] {
   def get[T](k: K[T]): Option[V[T]] = cast[T](backing.get(k))
-  def update[T](k: K[T], v: V[T]) { backing(k) = v }
+  def update[T](k: K[T], v: V[T]): Unit = { backing(k) = v }
   def remove[T](k: K[T]) = cast(backing.remove(k))
   def getOrUpdate[T](k: K[T], make: => V[T]) = cast[T](backing.getOrElseUpdate(k, make))
   def mapValue[T](k: K[T], init: V[T], f: V[T] => V[T]): V[T] =

@@ -7,7 +7,7 @@ package complete
 import History.number
 import java.io.File
 
-final class History private (val lines: IndexedSeq[String], val path: Option[File], error: String => Unit) extends NotNull {
+final class History private (val lines: IndexedSeq[String], val path: Option[File], error: String => Unit) {
   private def reversed = lines.reverse
 
   def all: Seq[String] = lines

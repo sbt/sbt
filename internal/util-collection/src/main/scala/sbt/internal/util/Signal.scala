@@ -31,7 +31,7 @@ object Signals {
       import sun.misc.{ Signal, SignalHandler }
       val intSignal = new Signal(signal)
       val newHandler = new SignalHandler {
-        def handle(sig: Signal) { handler() }
+        def handle(sig: Signal): Unit = { handler() }
       }
       val oldHandler = Signal.handle(intSignal, newHandler)
       object unregisterNewHandler extends Registration {
@@ -74,7 +74,7 @@ private final class Signals0 {
       import sun.misc.{ Signal, SignalHandler }
       val intSignal = new Signal(signal)
       val newHandler = new SignalHandler {
-        def handle(sig: Signal) { handler() }
+        def handle(sig: Signal): Unit = { handler() }
       }
 
       val oldHandler = Signal.handle(intSignal, newHandler)
