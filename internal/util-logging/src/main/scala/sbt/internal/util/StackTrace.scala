@@ -20,7 +20,7 @@ object StackTrace {
     require(d >= 0)
     val b = new StringBuilder()
 
-    def appendStackTrace(t: Throwable, first: Boolean) {
+    def appendStackTrace(t: Throwable, first: Boolean): Unit = {
 
       val include: StackTraceElement => Boolean =
         if (d == 0)
@@ -30,7 +30,7 @@ object StackTrace {
           (_ => { count -= 1; count >= 0 })
         }
 
-      def appendElement(e: StackTraceElement) {
+      def appendElement(e: StackTraceElement): Unit = {
         b.append("\tat ")
         b.append(e)
         b.append('\n')

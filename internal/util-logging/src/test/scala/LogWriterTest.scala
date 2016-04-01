@@ -103,14 +103,14 @@ object LogWriterTest extends Properties("Log Writer") {
 
 /* Helper classes*/
 
-final class Output(val lines: List[List[ToLog]], val level: Level.Value) extends NotNull {
+final class Output(val lines: List[List[ToLog]], val level: Level.Value) {
   override def toString =
     "Level: " + level + "\n" + lines.map(_.mkString).mkString("\n")
 }
-final class NewLine(val str: String) extends NotNull {
+final class NewLine(val str: String) {
   override def toString = Escape(str)
 }
-final class ToLog(val content: String, val byCharacter: Boolean) extends NotNull {
+final class ToLog(val content: String, val byCharacter: Boolean) {
   def contentOnly = Escape.newline(content, "")
   override def toString = if (content.isEmpty) "" else "ToLog('" + Escape(contentOnly) + "', " + byCharacter + ")"
 }

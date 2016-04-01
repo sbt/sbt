@@ -9,7 +9,7 @@ import Types._
 trait Param[A[_], B[_]] {
   type T
   def in: A[T]
-  def ret(out: B[T])
+  def ret(out: B[T]): Unit
   def ret: B[T]
 }
 

@@ -17,7 +17,7 @@ object ChangeReport {
     }
 }
 /** The result of comparing some current set of objects against a previous set of objects.*/
-trait ChangeReport[T] extends NotNull {
+trait ChangeReport[T] {
   /** The set of all of the objects in the current set.*/
   def checked: Set[T]
   /** All of the objects that are in the same state in the current and reference sets.*/
