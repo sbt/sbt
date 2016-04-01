@@ -421,14 +421,10 @@ trait Init[Scope] {
     def dependencies: Seq[ScopedKey[_]]
     def apply[S](g: T => S): Initialize[S]
 
-    @deprecated("Will be made private.", "0.13.2")
-    def mapReferenced(g: MapScoped): Initialize[T]
-    @deprecated("Will be made private.", "0.13.2")
-    def mapConstant(g: MapConstant): Initialize[T]
-
-    @deprecated("Will be made private.", "0.13.2")
-    def validateReferenced(g: ValidateRef): ValidatedInit[T] =
-      validateKeyReferenced(new ValidateKeyRef { def apply[T](key: ScopedKey[T], selfRefOk: Boolean) = g(key) })
+    private[sbt] def mapReferenced(g: MapScoped): Initialize[T]
+    private[sbt] def mapConstant(g: MapConstant): Initialize[T]
+    private[sbt] def validateReferenced(g: ValidateRef): ValidatedInit[T] =
+      validateKeyReferenced(new ValidateKeyRef { def apply[B](key: ScopedKey[B], selfRefOk: Boolean) = g(key) })
 
     private[sbt] def validateKeyReferenced(g: ValidateKeyRef): ValidatedInit[T]
 
@@ -482,14 +478,14 @@ trait Init[Scope] {
     private[sbt] def mapInitialize(f: Initialize[T] => Initialize[T]): Setting[T] = make(key, f(init), pos)
     override def toString = "setting(" + key + ") at " + pos
 
-    protected[this] def make[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition): Setting[T] = new Setting[T](key, init, pos)
+    protected[this] def make[B](key: ScopedKey[B], init: Initialize[B], pos: SourcePosition): Setting[B] = new Setting[B](key, init, pos)
     protected[sbt] def isDerived: Boolean = false
     private[sbt] def setScope(s: Scope): Setting[T] = make(key.copy(scope = s), init.mapReferenced(mapScope(const(s))), pos)
     /** Turn this setting into a `DefaultSetting` if it's not already, otherwise returns `this` */
     private[sbt] def default(id: => Long = nextDefaultID()): DefaultSetting[T] = DefaultSetting(key, init, pos, id)
   }
   private[Init] sealed class DerivedSetting[T](sk: ScopedKey[T], i: Initialize[T], p: SourcePosition, val filter: Scope => Boolean, val trigger: AttributeKey[_] => Boolean) extends Setting[T](sk, i, p) {
-    override def make[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition): Setting[T] = new DerivedSetting[T](key, init, pos, filter, trigger)
+    override def make[B](key: ScopedKey[B], init: Initialize[B], pos: SourcePosition): Setting[B] = new DerivedSetting[B](key, init, pos, filter, trigger)
     protected[sbt] override def isDerived: Boolean = true
     override def default(_id: => Long): DefaultSetting[T] = new DerivedSetting[T](sk, i, p, filter, trigger) with DefaultSetting[T] { val id = _id }
     override def toString = "derived " + super.toString
@@ -498,7 +494,7 @@ trait Init[Scope] {
   //  This is intended for internal sbt use only, where alternatives like Plugin.globalSettings are not available.
   private[Init] sealed trait DefaultSetting[T] extends Setting[T] {
     val id: Long
-    override def make[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition): Setting[T] = super.make(key, init, pos) default id
+    override def make[B](key: ScopedKey[B], init: Initialize[B], pos: SourcePosition): Setting[B] = super.make(key, init, pos) default id
     override final def hashCode = id.hashCode
     override final def equals(o: Any): Boolean = o match { case d: DefaultSetting[_] => d.id == id; case _ => false }
     override def toString = s"default($id) " + super.toString
@@ -547,7 +543,7 @@ trait Init[Scope] {
       case None        => this
       case Some(const) => new Value(() => transform(const))
     }
-    private[sbt] def processAttributes[S](init: S)(f: (S, AttributeMap) => S): S = init
+    private[sbt] def processAttributes[B](init: B)(f: (B, AttributeMap) => B): B = init
   }
   private[this] final class GetValue[S, T](val scopedKey: ScopedKey[S], val transform: S => T) extends Keyed[S, T]
   trait KeyedInitialize[T] extends Keyed[T, T] {
@@ -585,7 +581,7 @@ trait Init[Scope] {
       new Bind[S, T](s => handleUndefined(f(s) validateKeyReferenced g), validIn)
     }
     def mapConstant(g: MapConstant) = new Bind[S, T](s => f(s) mapConstant g, in mapConstant g)
-    private[sbt] def processAttributes[S](init: S)(f: (S, AttributeMap) => S): S = in.processAttributes(init)(f)
+    private[sbt] def processAttributes[B](init: B)(f: (B, AttributeMap) => B): B = in.processAttributes(init)(f)
   }
   private[sbt] final class Optional[S, T](val a: Option[Initialize[S]], val f: Option[S] => T) extends Initialize[T] {
     def dependencies = deps(a.toList)
@@ -599,7 +595,7 @@ trait Init[Scope] {
     def evaluate(ss: Settings[Scope]): T = f(a.flatMap(i => trapBadRef(evaluateT(ss)(i))))
     // proper solution is for evaluate to be deprecated or for external use only and a new internal method returning Either be used
     private[this] def trapBadRef[A](run: => A): Option[A] = try Some(run) catch { case e: InvalidReference => None }
-    private[sbt] def processAttributes[S](init: S)(f: (S, AttributeMap) => S): S = a match {
+    private[sbt] def processAttributes[B](init: B)(f: (B, AttributeMap) => B): B = a match {
       case None    => init
       case Some(i) => i.processAttributes(init)(f)
     }
@@ -633,7 +629,7 @@ trait Init[Scope] {
       {
         val tx = alist.transform(inputs, validateKeyReferencedT(g))
         val undefs = alist.toList(tx).flatMap(_.left.toSeq.flatten)
-        val get = new (ValidatedInit ~> Initialize) { def apply[T](vr: ValidatedInit[T]) = vr.right.get }
+        val get = new (ValidatedInit ~> Initialize) { def apply[B](vr: ValidatedInit[B]) = vr.right.get }
         if (undefs.isEmpty) Right(new Apply(f, alist.transform(tx, get), alist)) else Left(undefs)
       }
 
