@@ -89,7 +89,7 @@ object AttributeKey {
     def isLocal: Boolean = true
     def rank = Int.MaxValue
   }
-  private[sbt] final val LocalLabel = "$local"
+  private[sbt] final val LocalLabel = "$" + "local"
 }
 
 /**

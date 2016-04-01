@@ -52,7 +52,7 @@ abstract class JLine extends LineReader {
     }
   }
 
-  private[this] def resume() {
+  private[this] def resume(): Unit = {
     jline.TerminalFactory.reset
     JLine.terminal.init
     reader.drawLine()
