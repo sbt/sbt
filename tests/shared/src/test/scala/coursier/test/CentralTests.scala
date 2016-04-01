@@ -196,6 +196,13 @@ object CentralTests extends TestSuite {
       )
     }
 
+    'parentDependencyManagementProperties - {
+      resolutionCheck(
+        Module("com.nativelibs4java", "jnaerator-runtime"),
+        "0.12"
+      )
+    }
+
     'latestRevision - {
       * - resolutionCheck(
         Module("com.chuusai", "shapeless_2.11"),
