@@ -2,7 +2,7 @@ package coursier
 
 import coursier.ivy.{ IvyXml, IvyRepository }
 
-import java.net.MalformedURLException
+import java.net.{ MalformedURLException, URL }
 
 import sbt.{ Resolver, CrossVersion, ModuleID }
 import sbt.mavenint.SbtPomExtraProperties
@@ -80,10 +80,24 @@ object FromSbt {
         }
 
     for {
-      (from, to) <- allMappings.toSeq
+      (from, to) <- allMappings
       attr <- attributes
     } yield from -> dep.copy(configuration = to, attributes = attr)
   }
+
+  def fallbackDependencies(
+    allDependencies: Seq[ModuleID],
+    scalaVersion: String,
+    scalaBinaryVersion: String
+  ): Seq[(Module, String, URL, Boolean)] =
+    for {
+      module <- allDependencies
+      artifact <- module.explicitArtifacts
+      url <- artifact.url.toSeq
+    } yield {
+      val (module0, version) = moduleVersion(module, scalaVersion, scalaBinaryVersion)
+      (module0, version, url, module.isChanging)
+    }
 
   def project(
     projectID: ModuleID,

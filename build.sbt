@@ -400,9 +400,23 @@ lazy val plugin = project
     sbtPlugin := {
       scalaVersion.value.startsWith("2.10.")
     },
-    // added so that 2.10 artifacts of the other modules can be found by
-    // the too-naive-for-now inter-project resolver of the coursier SBT plugin
-    resolvers += Resolver.sonatypeRepo("snapshots")
+    resolvers ++= Seq(
+      // added so that 2.10 artifacts of the other modules can be found by
+      // the too-naive-for-now inter-project resolver of the coursier SBT plugin
+      Resolver.sonatypeRepo("snapshots"),
+      // added for sbt-scripted to be fine even with ++2.11.x
+      Resolver.typesafeIvyRepo("releases")
+    )
+  )
+  .settings(ScriptedPlugin.scriptedSettings)
+  .settings(
+    scriptedLaunchOpts ++= Seq(
+      "-Xmx1024M",
+      "-XX:MaxPermSize=256M",
+      "-Dplugin.version=" + version.value,
+      "-Dsbttest.base=" + (sourceDirectory.value / "sbt-test").getAbsolutePath
+    ),
+    scriptedBufferLog := false
   )
 
 lazy val `coursier` = project.in(file("."))

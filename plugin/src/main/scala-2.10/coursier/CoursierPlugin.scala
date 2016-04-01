@@ -20,6 +20,7 @@ object CoursierPlugin extends AutoPlugin {
     val coursierVerbosity = Keys.coursierVerbosity
     val coursierResolvers = Keys.coursierResolvers
     val coursierSbtResolvers = Keys.coursierSbtResolvers
+    val coursierFallbackDependencies = Keys.coursierFallbackDependencies
     val coursierCache = Keys.coursierCache
     val coursierProject = Keys.coursierProject
     val coursierProjects = Keys.coursierProjects
@@ -39,6 +40,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierVerbosity := Settings.defaultVerbosityLevel,
     coursierResolvers <<= Tasks.coursierResolversTask,
     coursierSbtResolvers <<= externalResolvers in updateSbtClassifiers,
+    coursierFallbackDependencies <<= Tasks.coursierFallbackDependenciesTask,
     coursierCache := Cache.default,
     update <<= Tasks.updateTask(withClassifiers = false),
     updateClassifiers <<= Tasks.updateTask(withClassifiers = true),
