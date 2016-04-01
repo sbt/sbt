@@ -3,7 +3,7 @@
  */
 package sbt.util
 
-sealed trait LogEvent extends NotNull
+sealed trait LogEvent
 final class Success(val msg: String) extends LogEvent
 final class Log(val level: Level.Value, val msg: String) extends LogEvent
 final class Trace(val exception: Throwable) extends LogEvent

@@ -214,14 +214,14 @@ trait UnionImplicits {
         write0(i)
       }
       def equiv: Equiv[Internal] = new Equiv[Internal] {
-        def equiv(a: Internal, b: Internal) =
+        def equiv(a: Internal, b: Internal): Boolean =
           {
             if (a.clazz == b.clazz)
               force(a.cache.equiv, a.value, b.value)
             else
               false
           }
-        def force[T <: UB, UB](e: Equiv[T], a: UB, b: UB) = e.equiv(a.asInstanceOf[T], b.asInstanceOf[T])
+        def force[T <: UB, UB](e: Equiv[T], a: UB, b: UB): Boolean = e.equiv(a.asInstanceOf[T], b.asInstanceOf[T])
       }
     }
 

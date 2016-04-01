@@ -10,7 +10,7 @@ import scala.reflect.Manifest
 import sbt.io.Hash
 import sbt.serialization._
 
-sealed trait FileInfo extends NotNull {
+sealed trait FileInfo {
   val file: File
 }
 @directSubclasses(Array(classOf[FileHash], classOf[HashModifiedFileInfo]))
