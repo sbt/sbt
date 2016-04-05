@@ -487,7 +487,7 @@ class TermDisplay(
       }
     }
 
-    updateThread.removeEntry(url, !newUpdate, s"Checked $url") {
+    updateThread.removeEntry(url, !newUpdate, s"Checked $url\n") {
       case info: CheckUpdateInfo =>
         info.copy(remoteTimeOpt = remoteTimeOpt, isDone = true)
       case _ =>
