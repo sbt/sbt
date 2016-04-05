@@ -305,12 +305,18 @@ class Helper(
   ): Seq[Artifact] = {
 
     if (subset == null && verbosityLevel >= 1) {
-      val msg = cachePolicies match {
-        case Seq(CachePolicy.LocalOnly) =>
-          "  Checking artifacts"
-        case _ =>
-          "  Fetching artifacts"
+      def isLocal(p: CachePolicy) = p match {
+        case CachePolicy.LocalOnly => true
+        case CachePolicy.LocalUpdate => true
+        case CachePolicy.LocalUpdateChanging => true
+        case _ => false
       }
+
+      val msg =
+        if (cachePolicies.forall(isLocal))
+          "  Checking artifacts"
+        else
+          "  Fetching artifacts"
 
       errPrintln(msg)
     }

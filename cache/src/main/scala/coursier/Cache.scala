@@ -527,7 +527,7 @@ object Cache {
         }
 
       cachePolicy match {
-        case CachePolicy.FetchMissing | CachePolicy.LocalOnly =>
+        case CachePolicy.FetchMissing | CachePolicy.LocalOnly | CachePolicy.LocalUpdate | CachePolicy.LocalUpdateChanging =>
           validErrFileExists.flatMap { exists =>
             if (exists)
               EitherT(Task.now(FileError.NotFound(url, Some(true)).left[Unit]))
@@ -540,7 +540,7 @@ object Cache {
       }
     }
 
-    def checkFileExists(file: File, url: String): EitherT[Task, FileError, Unit] =
+    def checkFileExists(file: File, url: String, log: Boolean = true): EitherT[Task, FileError, Unit] =
       EitherT {
         Task {
           if (file.exists()) {
@@ -576,6 +576,8 @@ object Cache {
             val cachePolicy0 = cachePolicy match {
               case CachePolicy.UpdateChanging if !artifact.changing =>
                 CachePolicy.FetchMissing
+              case CachePolicy.LocalUpdateChanging if !artifact.changing =>
+                CachePolicy.LocalOnly
               case other =>
                 other
             }
@@ -583,6 +585,10 @@ object Cache {
             cachePolicy0 match {
               case CachePolicy.LocalOnly =>
                 checkFileExists(file, url)
+              case CachePolicy.LocalUpdateChanging | CachePolicy.LocalUpdate =>
+                checkFileExists(file, url, log = false).flatMap { _ =>
+                  update
+                }
               case CachePolicy.UpdateChanging | CachePolicy.Update =>
                 update
               case CachePolicy.FetchMissing =>
