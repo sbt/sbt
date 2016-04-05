@@ -201,9 +201,15 @@ class Helper(
     filter = Some(dep => keepOptional || !dep.optional)
   )
 
+  val loggerFallbackMode =
+    !progress && TermDisplay.defaultFallbackMode
+
   val logger =
     if (verbosityLevel >= 0)
-      Some(new TermDisplay(new OutputStreamWriter(System.err)))
+      Some(new TermDisplay(
+        new OutputStreamWriter(System.err),
+        fallbackMode = loggerFallbackMode
+      ))
     else
       None
 
@@ -333,7 +339,10 @@ class Helper(
 
     val logger =
       if (verbosityLevel >= 0)
-        Some(new TermDisplay(new OutputStreamWriter(System.err)))
+        Some(new TermDisplay(
+          new OutputStreamWriter(System.err),
+          fallbackMode = loggerFallbackMode
+        ))
       else
         None
 

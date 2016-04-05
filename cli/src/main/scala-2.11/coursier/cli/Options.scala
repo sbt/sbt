@@ -18,6 +18,9 @@ case class CommonOptions(
   @Help("Increase verbosity (specify several times to increase more)")
   @Short("v")
     verbose: Int @@ Counter,
+  @Help("Force display of progress bars")
+  @Short("P")
+    progress: Boolean,
   @Help("Maximum number of resolution iterations (specify a negative value for unlimited, default: 100)")
   @Short("N")
     maxIterations: Int = 100,
@@ -163,7 +166,7 @@ case class BootstrapOptions(
     mainClass: String,
   @Short("o")
     output: String = "bootstrap",
-  @Short("D")
+  @Short("d")
     downloadDir: String,
   @Short("f")
     force: Boolean,
@@ -172,7 +175,7 @@ case class BootstrapOptions(
     standalone: Boolean,
   @Help("Set Java properties in the generated launcher.")
   @Value("key=value")
-  @Short("P")
+  @Short("D")
     property: List[String],
   @Help("Set Java command-line options in the generated launcher.")
   @Value("option")

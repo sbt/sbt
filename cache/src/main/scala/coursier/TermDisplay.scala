@@ -56,9 +56,16 @@ object Terminal {
 }
 
 object TermDisplay {
-  private def defaultFallbackMode: Boolean = {
-    val env = sys.env.get("COURSIER_NO_TERM").nonEmpty
+  def defaultFallbackMode: Boolean = {
+    val env0 = sys.env.get("COURSIER_PROGRESS").map(_.toLowerCase).collect {
+      case "true"  | "enable"  | "1" => true
+      case "false" | "disable" | "0" => false
+    }
+    def compatibilityEnv = sys.env.get("COURSIER_NO_TERM").nonEmpty
+
     def nonInteractive = System.console() == null
+
+    val env = env0.getOrElse(compatibilityEnv)
 
     env || nonInteractive
   }
