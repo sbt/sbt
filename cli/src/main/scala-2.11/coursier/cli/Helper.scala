@@ -9,6 +9,7 @@ import java.util.concurrent.Executors
 import coursier.ivy.IvyRepository
 import coursier.util.{Print, Parse}
 
+import scala.annotation.tailrec
 import scalaz.{Failure, Success, \/-, -\/}
 import scalaz.concurrent.{ Task, Strategy }
 
@@ -244,10 +245,108 @@ class Helper(
 
   logger.foreach(_.init())
 
-  val res = startRes
-    .process
-    .run(fetch0, maxIterations)
-    .run
+  val res =
+    if (benchmark > 0) {
+      class Counter(var value: Int = 0) {
+        def add(value: Int): Unit = {
+          this.value += value
+        }
+      }
+
+      def timed[T](name: String, counter: Counter, f: Task[T]): Task[T] =
+        Task(System.currentTimeMillis()).flatMap { start =>
+          f.map { t =>
+            val end = System.currentTimeMillis()
+            Console.err.println(s"$name: ${end - start} ms")
+            counter.add((end - start).toInt)
+            t
+          }
+        }
+
+      def helper(proc: ResolutionProcess, counter: Counter, iteration: Int): Task[Resolution] =
+        if (iteration >= maxIterations)
+          Task.now(proc.current)
+        else
+          proc match {
+            case _: core.Done =>
+              Task.now(proc.current)
+            case _ =>
+              val iterationType = proc match {
+                case _: core.Missing  => "IO"
+                case _: core.Continue => "calculations"
+                case _ => ???
+              }
+
+              timed(
+                s"Iteration ${iteration + 1} ($iterationType)",
+                counter,
+                proc.next(fetch0, fastForward = false)).flatMap(helper(_, counter, iteration + 1)
+              )
+          }
+
+      def res = {
+        val iterationCounter = new Counter
+        val resolutionCounter = new Counter
+
+        val res0 = timed(
+          "Resolution",
+          resolutionCounter,
+          helper(
+            startRes.process,
+            iterationCounter,
+            0
+          )
+        ).run
+
+        Console.err.println(s"Overhead: ${resolutionCounter.value - iterationCounter.value} ms")
+
+        res0
+      }
+
+      @tailrec
+      def result(warmUp: Int): Resolution =
+        if (warmUp >= benchmark) {
+          Console.err.println("Benchmark resolution")
+          res
+        } else {
+          Console.err.println(s"Warm-up ${warmUp + 1} / $benchmark")
+          res
+          result(warmUp + 1)
+        }
+
+      result(0)
+    } else if (benchmark < 0) {
+
+      def res(index: Int) = {
+        val start = System.currentTimeMillis()
+        val res0 = startRes
+          .process
+          .run(fetch0, maxIterations)
+          .run
+        val end = System.currentTimeMillis()
+
+        Console.err.println(s"Resolution ${index + 1} / ${-benchmark}: ${end - start} ms")
+
+        res0
+      }
+
+      @tailrec
+      def result(warmUp: Int): Resolution =
+        if (warmUp >= -benchmark) {
+          Console.err.println("Benchmark resolution")
+          res(warmUp)
+        } else {
+          Console.err.println(s"Warm-up ${warmUp + 1} / ${-benchmark}")
+          res(warmUp)
+          result(warmUp + 1)
+        }
+
+      result(0)
+    } else
+      startRes
+        .process
+        .run(fetch0, maxIterations)
+        .run
 
   logger.foreach(_.stop())
 

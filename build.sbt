@@ -147,6 +147,8 @@ lazy val core = crossProject
       
       Seq(
         // Since 1.0.0-M11
+        // Extra parameter with default value added, problem for forward compatibility only
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.core.ResolutionProcess.next"),
         // method made final (for - non critical - tail recursion)
         ProblemFilters.exclude[FinalMethodProblem]("coursier.core.ResolutionProcess.next"),
         // Since 1.0.0-M10

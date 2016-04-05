@@ -57,6 +57,10 @@ case class CommonOptions(
   @Help("Checksums")
   @Value("checksum1,checksum2,... - end with none to allow for no checksum validation if none are available")
     checksum: List[String],
+  @Help("Print the duration of each iteration of the resolution")
+  @Short("B")
+  @Value("Number of warm-up resolutions - if negative, doesn't print per iteration benchmark (less overhead)")
+    benchmark: Int,
   @Recurse
     cacheOptions: CacheOptions
 ) {
