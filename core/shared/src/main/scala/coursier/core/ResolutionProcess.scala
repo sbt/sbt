@@ -33,7 +33,8 @@ sealed abstract class ResolutionProcess {
     }
   }
 
-  def next[F[_]](
+  @tailrec
+  final def next[F[_]](
     fetch: Fetch.Metadata[F]
   )(implicit
     F: Monad[F]

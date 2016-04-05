@@ -49,7 +49,7 @@ object Parse {
         case Right(modVer) => values += modVer
       }
 
-    (errors.toSeq, values.toSeq)
+    (errors, values)
   }
 
   /**
@@ -77,7 +77,7 @@ object Parse {
            .map((_, version))
 
       case _ =>
-        Left(s"Malformed coordinates: $s")
+        Left(s"Malformed dependency: $s")
     }
   }
 
@@ -107,7 +107,7 @@ object Parse {
           .map((_, version, None))
 
       case _ =>
-        Left(s"Malformed coordinates: $s")
+        Left(s"Malformed dependency: $s")
     }
   }
 

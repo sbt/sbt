@@ -146,6 +146,9 @@ lazy val core = crossProject
       import com.typesafe.tools.mima.core.ProblemFilters._
       
       Seq(
+        // Since 1.0.0-M11
+        // method made final (for - non critical - tail recursion)
+        ProblemFilters.exclude[FinalMethodProblem]("coursier.core.ResolutionProcess.next"),
         // Since 1.0.0-M10
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.core.Resolution.withParentConfigurations"),
         // New singleton object, problem for forward compatibility only
