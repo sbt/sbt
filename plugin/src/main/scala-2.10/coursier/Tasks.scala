@@ -187,9 +187,6 @@ object Tasks {
 
   def updateTask(withClassifiers: Boolean, sbtClassifiers: Boolean = false) = Def.task {
 
-    // SBT logging should be better than that most of the time...
-    def errPrintln(s: String): Unit = scala.Console.err.println(s)
-
     def grouped[K, V](map: Seq[(K, V)]): Map[K, Seq[V]] =
       map.groupBy { case (k, _) => k }.map {
         case (k, l) =>
@@ -252,6 +249,8 @@ object Tasks {
       val cachePolicies = coursierCachePolicies.value
       val cache = coursierCache.value
 
+      val log = streams.value.log
+
       val sv = scalaVersion.value // is this always defined? (e.g. for Java only projects?)
       val sbv = scalaBinaryVersion.value
 
@@ -267,7 +266,7 @@ object Tasks {
               rule.configurations.nonEmpty ||
               rule.crossVersion != sbt.CrossVersion.Disabled
           ) {
-            Console.err.println(s"Warning: unsupported exclusion rule $rule")
+            log.warn(s"Unsupported exclusion rule $rule")
             anyNonSupportedExclusionRule = true
             Nil
           } else
@@ -275,7 +274,7 @@ object Tasks {
       }.toSet
 
       if (anyNonSupportedExclusionRule)
-        Console.err.println(s"Only supported exclusion rule fields: organization, name")
+        log.warn("Only supported exclusion rule fields: organization, name")
 
       val resolvers =
         if (sbtClassifiers)
@@ -312,9 +311,9 @@ object Tasks {
       }
 
       if (verbosityLevel >= 2) {
-        println("InterProjectRepository")
+        log.info("InterProjectRepository")
         for (p <- projects)
-          println(s"  ${p.module}:${p.version}")
+          log.info(s"  ${p.module}:${p.version}")
       }
 
       val globalPluginsRepo = IvyRepository(
@@ -335,7 +334,7 @@ object Tasks {
         globalPluginsRepo,
         interProjectRepo
       ) ++ resolvers.flatMap(
-        FromSbt.repository(_, ivyProperties)
+        FromSbt.repository(_, ivyProperties, log)
       ) ++ {
         if (fallbackDependencies.isEmpty)
           Nil
@@ -389,14 +388,17 @@ object Tasks {
               r.toString
           }
 
-          errPrintln(s"Repositories:\n${repoReprs.map("  "+_).mkString("\n")}")
+          log.info(
+            "Repositories:\n" +
+              repoReprs.map("  " + _).mkString("\n")
+          )
         }
 
         if (verbosityLevel >= 0)
-          errPrintln(s"Resolving ${currentProject.module.organization}:${currentProject.module.name}:${currentProject.version}")
+          log.info(s"Resolving ${currentProject.module.organization}:${currentProject.module.name}:${currentProject.version}")
         if (verbosityLevel >= 1)
           for (depRepr <- depsRepr(currentProject.dependencies))
-            errPrintln(s"  $depRepr")
+            log.info(s"  $depRepr")
 
         resLogger.init()
 
@@ -404,26 +406,36 @@ object Tasks {
           .process
           .run(fetch, maxIterations)
           .attemptRun
-          .leftMap(ex => throw new Exception(s"Exception during resolution", ex))
+          .leftMap(ex => throw new Exception("Exception during resolution", ex))
           .merge
 
         resLogger.stop()
 
 
         if (!res.isDone)
-          throw new Exception(s"Maximum number of iteration of dependency resolution reached")
+          throw new Exception("Maximum number of iteration of dependency resolution reached")
 
         if (res.conflicts.nonEmpty) {
           val projCache = res.projectCache.mapValues { case (_, p) => p }
-          println(s"${res.conflicts.size} conflict(s):\n  ${Print.dependenciesUnknownConfigs(res.conflicts.toVector, projCache)}")
-          throw new Exception(s"Conflict(s) in dependency resolution")
+          log.error(
+            s"${res.conflicts.size} conflict(s):\n" +
+              "  " + Print.dependenciesUnknownConfigs(res.conflicts.toVector, projCache)
+          )
+          throw new Exception("Conflict(s) in dependency resolution")
         }
 
         if (res.errors.nonEmpty) {
-          println(s"\n${res.errors.size} error(s):")
-          for ((dep, errs) <- res.errors) {
-            println(s"  ${dep.module}:${dep.version}:\n${errs.map("    " + _.replace("\n", "    \n")).mkString("\n")}")
-          }
+          log.error(
+            s"\n${res.errors.size} error(s):\n" +
+              res.errors.map {
+                case (dep, errs) =>
+                  s"  ${dep.module}:${dep.version}:\n" +
+                    errs
+                      .map("    " + _.replace("\n", "    \n"))
+                      .mkString("\n")
+              }.mkString("\n")
+          )
+
           throw new Exception(s"Encountered ${res.errors.length} error(s) in dependency resolution")
         }
 
@@ -454,7 +466,7 @@ object Tasks {
         }
 
         if (verbosityLevel >= 0)
-          errPrintln("Resolution done")
+          log.info("Resolution done")
         if (verbosityLevel >= 1) {
           val finalDeps = Config.dependenciesWithConfig(
             res,
@@ -464,7 +476,7 @@ object Tasks {
 
           val projCache = res.projectCache.mapValues { case (_, p) => p }
           val repr = Print.dependenciesUnknownConfigs(finalDeps.toVector, projCache)
-          println(repr.split('\n').map("  "+_).mkString("\n"))
+          log.info(repr.split('\n').map("  "+_).mkString("\n"))
         }
 
         val classifiers =
@@ -504,13 +516,13 @@ object Tasks {
         }
 
         if (verbosityLevel >= 0)
-          errPrintln(s"Fetching artifacts")
+          log.info("Fetching artifacts")
 
         artifactsLogger.init()
 
         val artifactFilesOrErrors = Task.gatherUnordered(artifactFileOrErrorTasks).attemptRun match {
           case -\/(ex) =>
-            throw new Exception(s"Error while downloading / verifying artifacts", ex)
+            throw new Exception("Error while downloading / verifying artifacts", ex)
           case \/-(l) =>
             l.toMap
         }
@@ -518,7 +530,7 @@ object Tasks {
         artifactsLogger.stop()
 
         if (verbosityLevel >= 0)
-          errPrintln(s"Fetching artifacts: done")
+          log.info("Fetching artifacts: done")
 
         def artifactFileOpt(artifact: Artifact) = {
           val fileOrError = artifactFilesOrErrors.getOrElse(artifact, -\/("Not downloaded"))
@@ -529,7 +541,7 @@ object Tasks {
                 throw new Exception(s"Wrong path: $file")
               Some(file)
             case -\/(err) =>
-              errPrintln(s"${artifact.url}: $err")
+              log.error(s"${artifact.url}: $err")
               None
           }
         }

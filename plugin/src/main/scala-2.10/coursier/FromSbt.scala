@@ -133,7 +133,11 @@ object FromSbt {
     )
   }
 
-  def repository(resolver: Resolver, ivyProperties: Map[String, String]): Option[Repository] =
+  def repository(
+    resolver: Resolver,
+    ivyProperties: Map[String, String],
+    log: sbt.Logger
+  ): Option[Repository] =
     resolver match {
       case sbt.MavenRepository(_, root) =>
         try {
@@ -142,10 +146,10 @@ object FromSbt {
           Some(MavenRepository(root0, sbtAttrStub = true))
         } catch {
           case e: MalformedURLException =>
-            Console.err.println(
-              "Warning: error parsing Maven repository base " +
+            log.warn(
+              "Error parsing Maven repository base " +
               root +
-              Option(e.getMessage).map(" ("+_+")").mkString +
+              Option(e.getMessage).map(" (" + _ + ")").mkString +
               ", ignoring it"
             )
 
@@ -177,7 +181,7 @@ object FromSbt {
         ))
 
       case other =>
-        Console.err.println(s"Warning: unrecognized repository ${other.name}, ignoring it")
+        log.warn(s"Unrecognized repository ${other.name}, ignoring it")
         None
     }
 
