@@ -219,7 +219,7 @@ case class MavenRepository(
         }
 
       F.bind(findVersioning(module, version, None, fetch).run) { eitherProj =>
-        if (eitherProj.isLeft)
+        if (eitherProj.isLeft && version.contains("-SNAPSHOT"))
           F.map(withSnapshotVersioning.run)(eitherProj0 =>
             if (eitherProj0.isLeft)
               eitherProj
