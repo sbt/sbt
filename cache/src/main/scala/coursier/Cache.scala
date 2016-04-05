@@ -43,8 +43,8 @@ object Cache {
     }
   }
 
-  private def withLocal(artifact: Artifact, cache: File): Artifact = {
-    def local(url: String) =
+  private def localFile(url: String, cache: File): File = {
+    val path =
       if (url.startsWith("file:///"))
         url.stripPrefix("file://")
       else if (url.startsWith("file:/"))
@@ -68,19 +68,7 @@ object Cache {
             throw new Exception(s"No protocol found in URL $url")
         }
 
-    if (artifact.extra.contains("local"))
-      artifact
-    else
-      artifact.copy(extra = artifact.extra + ("local" ->
-        artifact.copy(
-          url = local(artifact.url),
-          checksumUrls = artifact.checksumUrls
-            .mapValues(local)
-            .toVector
-            .toMap,
-          extra = Map.empty
-        )
-      ))
+    new File(path)
   }
 
   private def readFullyTo(
@@ -296,29 +284,14 @@ object Cache {
 
     implicit val pool0 = pool
 
-    val artifact0 = withLocal(artifact, cache)
-      .extra
-      .getOrElse("local", artifact)
-
     // Reference file - if it exists, and we get not found errors on some URLs, we assume
     // we can keep track of these missing, and not try to get them again later.
-    val referenceFileOpt = {
-      val referenceOpt = artifact.extra.get("metadata").map(withLocal(_, cache))
-      val referenceOpt0 = referenceOpt.map(a => a.extra.getOrElse("local", a))
-
-      referenceOpt0.map(a => new File(a.url))
-    }
+    val referenceFileOpt = artifact
+      .extra
+      .get("metadata")
+      .map(a => localFile(a.url, cache))
 
     def referenceFileExists: Boolean = referenceFileOpt.exists(_.exists())
-
-    val pairs =
-      Seq(artifact0.url -> artifact.url) ++ {
-        checksums
-          .intersect(artifact0.checksumUrls.keySet)
-          .intersect(artifact.checksumUrls.keySet)
-          .toSeq
-          .map(sumType => artifact0.checksumUrls(sumType) -> artifact.checksumUrls(sumType))
-      }
 
     def urlConn(url0: String) = {
       val conn = url(url0).openConnection() // FIXME Should this be closed?
@@ -551,9 +524,17 @@ object Cache {
         }
       }
 
+    val urls =
+      artifact.url +: {
+        checksums
+          .intersect(artifact.checksumUrls.keySet)
+          .toSeq
+          .map(artifact.checksumUrls)
+      }
+
     val tasks =
-      for ((f, url) <- pairs) yield {
-        val file = new File(f)
+      for (url <- urls) yield {
+        val file = localFile(url, cache)
 
         val res =
           if (url.startsWith("file:/")) {
@@ -637,27 +618,26 @@ object Cache {
 
     implicit val pool0 = pool
 
-    val artifact0 = withLocal(artifact, cache)
-      .extra
-      .getOrElse("local", artifact)
+    val localFile0 = localFile(artifact.url, cache)
 
     EitherT {
-      artifact0.checksumUrls.get(sumType) match {
-        case Some(sumFile) =>
+      artifact.checksumUrls.get(sumType) match {
+        case Some(sumUrl) =>
+          val sumFile = localFile(sumUrl, cache)
+
           Task {
             val sumOpt = parseChecksum(
-              new String(NioFiles.readAllBytes(new File(sumFile).toPath), "UTF-8")
+              new String(NioFiles.readAllBytes(sumFile.toPath), "UTF-8")
             )
 
             sumOpt match {
               case None =>
-                FileError.ChecksumFormatError(sumType, sumFile).left
+                FileError.ChecksumFormatError(sumType, sumFile.getPath).left
 
               case Some(sum) =>
                 val md = MessageDigest.getInstance(sumType)
 
-                val f = new File(artifact0.url)
-                val is = new FileInputStream(f)
+                val is = new FileInputStream(localFile0)
                 try withContent(is, md.update(_, 0, _))
                 finally is.close()
 
@@ -671,14 +651,14 @@ object Cache {
                     sumType,
                     calculatedSum.toString(16),
                     sum.toString(16),
-                    artifact0.url,
-                    sumFile
+                    localFile0.getPath,
+                    sumFile.getPath
                   ).left
             }
           }
 
         case None =>
-          Task.now(FileError.ChecksumNotFound(sumType, artifact0.url).left)
+          Task.now(FileError.ChecksumNotFound(sumType, localFile0.getPath).left)
       }
     }
   }
