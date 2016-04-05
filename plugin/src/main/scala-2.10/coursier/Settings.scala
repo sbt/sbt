@@ -4,7 +4,11 @@ import scala.util.{Failure, Success, Try}
 
 object Settings {
 
-  private val baseDefaultVerbosityLevel = 0
+  private lazy val baseDefaultVerbosityLevel =
+    if (System.console() == null) // non interactive mode
+      0
+    else
+      1
 
   def defaultVerbosityLevel: Int = {
 

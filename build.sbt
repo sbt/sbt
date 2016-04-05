@@ -226,6 +226,10 @@ lazy val cache = project
       import com.typesafe.tools.mima.core.ProblemFilters._
       
       Seq(
+        // Since 1.0.0-M11
+        // Add constructor parameter on FileError - shouldn't be built by users anyway
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.FileError.this"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.FileError#Recoverable.this"),
         // Since 1.0.0-M10
         // methods that should have been private anyway
         ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay.update"),

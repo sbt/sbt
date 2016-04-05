@@ -185,7 +185,11 @@ object Tasks {
       Module("org.scala-lang", "scalap") -> scalaVersion
     )
 
-  def updateTask(withClassifiers: Boolean, sbtClassifiers: Boolean = false) = Def.task {
+  def updateTask(
+    withClassifiers: Boolean,
+    sbtClassifiers: Boolean = false,
+    ignoreArtifactErrors: Boolean = false
+  ) = Def.task {
 
     def grouped[K, V](map: Seq[(K, V)]): Map[K, Seq[V]] =
       map.groupBy { case (k, _) => k }.map {
@@ -375,7 +379,7 @@ object Tasks {
             s"${dep.module}:${dep.version}:${dep.configuration}"
           }.sorted.distinct
 
-        if (verbosityLevel >= 1) {
+        if (verbosityLevel >= 2) {
           val repoReprs = repositories.map {
             case r: IvyRepository =>
               s"ivy:${r.pattern}"
@@ -396,7 +400,7 @@ object Tasks {
 
         if (verbosityLevel >= 0)
           log.info(s"Resolving ${currentProject.module.organization}:${currentProject.module.name}:${currentProject.version}")
-        if (verbosityLevel >= 1)
+        if (verbosityLevel >= 2)
           for (depRepr <- depsRepr(currentProject.dependencies))
             log.info(s"  $depRepr")
 
@@ -467,7 +471,7 @@ object Tasks {
 
         if (verbosityLevel >= 0)
           log.info("Resolution done")
-        if (verbosityLevel >= 1) {
+        if (verbosityLevel >= 2) {
           val finalDeps = Config.dependenciesWithConfig(
             res,
             depsByConfig.map { case (k, l) => k -> l.toSet },
@@ -532,18 +536,42 @@ object Tasks {
         if (verbosityLevel >= 0)
           log.info("Fetching artifacts: done")
 
-        def artifactFileOpt(artifact: Artifact) = {
-          val fileOrError = artifactFilesOrErrors.getOrElse(artifact, -\/("Not downloaded"))
+        val artifactFiles = artifactFilesOrErrors.collect {
+          case (artifact, \/-(file)) =>
+            artifact -> file
+        }
 
-          fileOrError match {
-            case \/-(file) =>
-              if (file.toString.contains("file:/"))
-                throw new Exception(s"Wrong path: $file")
-              Some(file)
-            case -\/(err) =>
-              log.error(s"${artifact.url}: $err")
-              None
+        val artifactErrors = artifactFilesOrErrors.toVector.collect {
+          case (_, -\/(err)) =>
+            err
+        }
+
+        if (artifactErrors.nonEmpty) {
+          val groupedArtifactErrors = artifactErrors
+            .groupBy(_.`type`)
+            .mapValues(_.map(_.message).sorted)
+            .toVector
+            .sortBy(_._1)
+
+          for ((type0, errors) <- groupedArtifactErrors) {
+            log.error(s"${errors.size} $type0")
+
+            if (!ignoreArtifactErrors || verbosityLevel >= 1)
+              for (err <- errors)
+                log.error("  " + err)
           }
+
+          if (!ignoreArtifactErrors)
+            throw new Exception(s"Encountered ${artifactErrors.length} errors (see above messages)")
+        }
+
+        def artifactFileOpt(artifact: Artifact) = {
+          val res = artifactFiles.get(artifact)
+
+          if (res.isEmpty)
+            log.error(s"${artifact.url} not downloaded (should not happen)")
+
+          res
         }
 
         writeIvyFiles()

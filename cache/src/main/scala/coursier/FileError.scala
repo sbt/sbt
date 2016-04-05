@@ -2,26 +2,41 @@ package coursier
 
 import java.io.File
 
-sealed abstract class FileError(val message: String) extends Product with Serializable
+sealed abstract class FileError(
+  val `type`: String,
+  val message: String
+) extends Product with Serializable
 
 object FileError {
 
-  final case class DownloadError(reason: String) extends FileError(s"Download error: $reason")
+  final case class DownloadError(reason: String) extends FileError(
+    "download error",
+    reason
+  )
 
   final case class NotFound(
     file: String,
     permanent: Option[Boolean] = None
-  ) extends FileError(s"Not found: $file")
+  ) extends FileError(
+    "not found",
+    file
+  )
 
   final case class ChecksumNotFound(
     sumType: String,
     file: String
-  ) extends FileError(s"$sumType checksum not found: $file")
+  ) extends FileError(
+    "checksum not found",
+    file
+  )
 
   final case class ChecksumFormatError(
     sumType: String,
     file: String
-  ) extends FileError(s"Unrecognized $sumType checksum format in $file")
+  ) extends FileError(
+    "checksum format error",
+    file
+  )
 
   final case class WrongChecksum(
     sumType: String,
@@ -29,10 +44,22 @@ object FileError {
     expected: String,
     file: String,
     sumFile: String
-  ) extends FileError(s"$sumType checksum validation failed: $file")
+  ) extends FileError(
+    "wrong checksum",
+    file
+  )
 
-  sealed abstract class Recoverable(message: String) extends FileError(message)
-  final case class Locked(file: File) extends Recoverable(s"Locked: $file")
-  final case class ConcurrentDownload(url: String) extends Recoverable(s"Concurrent download: $url")
+  sealed abstract class Recoverable(
+    `type`: String,
+    message: String
+  ) extends FileError(`type`, message)
+  final case class Locked(file: File) extends Recoverable(
+    "locked",
+    file.toString
+  )
+  final case class ConcurrentDownload(url: String) extends Recoverable(
+    "concurrent download",
+    url
+  )
 
 }
