@@ -59,4 +59,8 @@ public interface AnalysisCallback
 	 *       Do not depend on it, please.
 	 */
 	boolean nameHashing();
+	/**
+	 * Include synthetic methods into the dependency tracking by name hashing.
+	 */
+	boolean includeSynthToNameHashing();
 }

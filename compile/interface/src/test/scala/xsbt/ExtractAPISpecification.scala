@@ -15,7 +15,7 @@ class ExtractAPISpecification extends Specification {
 
   def stableExistentialNames: Boolean = {
     def compileAndGetFooMethodApi(src: String): Def = {
-      val compilerForTesting = new ScalaCompilerForUnitTesting
+      val compilerForTesting = new ScalaCompilerForUnitTesting(nameHashing = false)
       val sourceApi = compilerForTesting.extractApiFromSrc(src)
       val FooApi = sourceApi.definitions().find(_.name() == "Foo").get.asInstanceOf[ClassLike]
       val fooMethodApi = FooApi.structure().declared().find(_.name == "foo").get
@@ -66,7 +66,7 @@ class ExtractAPISpecification extends Specification {
          |  class Foo extends Namers
          |}
          |""".stripMargin
-    val compilerForTesting = new ScalaCompilerForUnitTesting
+    val compilerForTesting = new ScalaCompilerForUnitTesting(nameHashing = false)
     val apis = compilerForTesting.extractApisFromSrcs(reuseCompilerInstance = false)(List(src1, src2), List(src2))
     val _ :: src2Api1 :: src2Api2 :: Nil = apis.toList
     val namerApi1 = selectNamer(src2Api1)
@@ -92,7 +92,7 @@ class ExtractAPISpecification extends Specification {
     val srcC6 = "class C6 extends AnyRef with X { self: X with Y => }"
     val srcC7 = "class C7 { _ => }"
     val srcC8 = "class C8 { self => }"
-    val compilerForTesting = new ScalaCompilerForUnitTesting
+    val compilerForTesting = new ScalaCompilerForUnitTesting(nameHashing = false)
     val apis = compilerForTesting.extractApisFromSrcs(reuseCompilerInstance = true)(
       List(srcX, srcY, srcC1, srcC2, srcC3, srcC4, srcC5, srcC6, srcC7, srcC8)
     ).map(x => collectFirstClass(x.definitions))
