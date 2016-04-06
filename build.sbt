@@ -62,7 +62,7 @@ lazy val lm = (project in file("librarymanagement")).
       utilLogging, (utilLogging % Test).classifier("tests"),
       sbtIO, (sbtIO % Test).classifier("tests"),
       utilTesting % Test,
-      utilCollection, ivy, jsch, sbtSerialization, scalaReflect.value, launcherInterface),
+      utilCollection, utilCompletion, ivy, jsch, sbtSerialization, scalaReflect.value, launcherInterface),
     resourceGenerators in Compile <+= (version, resourceManaged, streams, compile in Compile) map Util.generateVersionFile,
     name := "librarymanagement",
     binaryIssueFilters ++= Seq(
