@@ -15,7 +15,6 @@ final case class IvyBridgeProvider(ivyConfiguration: IvyConfiguration, module: M
 
 /**
  * Indicates that the compiler bridge sould be retrieved from the resources on classpath.
- * @param sourceJarName  The name of the JAR containing the bridge sources, to find in the resources.
- * @param reflectJarName The name of the JAR corresponding to `scala-reflect.jar` in the standard scala distribution.
+ * @param sourceJarName The name of the JAR containing the bridge sources, to find in the resources.
  */
-final case class ResourceBridgeProvider(sourceJarName: String, reflectJarName: String) extends CompilerBridgeProvider
+final case class ResourceBridgeProvider(sourceJarName: String) extends CompilerBridgeProvider

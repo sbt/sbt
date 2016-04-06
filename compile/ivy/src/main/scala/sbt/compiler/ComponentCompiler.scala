@@ -37,8 +37,8 @@ object ComponentCompiler {
           val componentCompiler = new IvyComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptions.auto, log), manager, ivyConfiguration, sourcesModule, log)
           log.debug("Getting " + sourcesModule + " from component compiler for Scala " + scalaInstance.version)
           componentCompiler()
-        case ResourceBridgeProvider(sourceJarName, reflectJarName) =>
-          val componentCompiler = new ResourceComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptions.auto, log), manager, sourceJarName, reflectJarName, log)
+        case ResourceBridgeProvider(sourceJarName) =>
+          val componentCompiler = new ResourceComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptions.auto, log), manager, sourceJarName, log)
           log.debug("Compiling bridge source from resources for Scala " + scalaInstance.version)
           componentCompiler()
       }
@@ -90,10 +90,8 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager) {
 /**
  * Compiles the compiler bridge using the source extracted from the resources on classpath.
  */
-private[compiler] class ResourceComponentCompiler(compiler: RawCompiler, manager: ComponentManager, sourceJarName: String, reflectJarName: String, log: Logger) {
+private[compiler] class ResourceComponentCompiler(compiler: RawCompiler, manager: ComponentManager, sourceJarName: String, log: Logger) {
   import ComponentCompiler._
-
-  private val reflectID = "reflect"
 
   def apply(): File = {
     val binID = "bridge-from-resource" + binSeparator + compiler.scalaInstance.actualVersion + "__" + javaVersion
@@ -128,11 +126,7 @@ private[compiler] class ResourceComponentCompiler(compiler: RawCompiler, manager
       IO.withTemporaryDirectory { tempDirectory =>
 
         val sourceJar = copyFromResources(tempDirectory, sourceJarName)
-        val reflectJar = copyFromResources(tempDirectory, reflectJarName)
-
-        // We need to have `scala-reflect.jar` on the classpath when compiling the compiler bridge.
-        // In `IvyComponentCompiler`, `scala-reflect.jar` is automatically pulled in as a dependency.
-        AnalyzingCompiler.compileSources(Seq(sourceJar), targetJar, xsbtiJars ++ Seq(reflectJar), "bridge-from-resources", compiler, log)
+        AnalyzingCompiler.compileSources(Seq(sourceJar), targetJar, xsbtiJars, "bridge-from-resources", compiler, log)
         manager.define(binID, Seq(targetJar))
 
       }

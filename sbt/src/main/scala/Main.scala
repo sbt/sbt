@@ -80,7 +80,7 @@ private class StaticLauncher(appProvider: StaticAppProvider, scalaProvider: Stat
   }
   override def app(id: xsbti.ApplicationID, version: String): xsbti.AppProvider = appProvider
 
-  override def topLoader(): ClassLoader = new URLClassLoader(Array.empty)
+  override def topLoader(): ClassLoader = new URLClassLoader(Array.empty, null)
   override def globalLock(): xsbti.GlobalLock = new WeakGlobalLock
 
   override def bootDirectory(): File = new File(sys props "user.home") / ".sbt" / "boot"
