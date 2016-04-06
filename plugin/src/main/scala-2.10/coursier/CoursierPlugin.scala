@@ -1,7 +1,5 @@
 package coursier
 
-import java.io.File
-
 import sbt._
 import sbt.Keys._
 
@@ -43,7 +41,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierFallbackDependencies <<= Tasks.coursierFallbackDependenciesTask,
     coursierCache := Cache.default,
     update <<= Tasks.updateTask(withClassifiers = false),
-    updateClassifiers <<= Tasks.updateTask(withClassifiers = true),
+    updateClassifiers <<= Tasks.updateTask(withClassifiers = true, ignoreArtifactErrors = true),
     updateSbtClassifiers in Defaults.TaskGlobal <<= Tasks.updateTask(withClassifiers = true, sbtClassifiers = true),
     coursierProject <<= Tasks.coursierProjectTask,
     coursierProjects <<= Tasks.coursierProjectsTask,

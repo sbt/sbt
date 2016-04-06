@@ -18,6 +18,9 @@ case class CommonOptions(
   @Help("Increase verbosity (specify several times to increase more)")
   @Short("v")
     verbose: Int @@ Counter,
+  @Help("Force display of progress bars")
+  @Short("P")
+    progress: Boolean,
   @Help("Maximum number of resolution iterations (specify a negative value for unlimited, default: 100)")
   @Short("N")
     maxIterations: Int = 100,
@@ -54,6 +57,10 @@ case class CommonOptions(
   @Help("Checksums")
   @Value("checksum1,checksum2,... - end with none to allow for no checksum validation if none are available")
     checksum: List[String],
+  @Help("Print the duration of each iteration of the resolution")
+  @Short("B")
+  @Value("Number of warm-up resolutions - if negative, doesn't print per iteration benchmark (less overhead)")
+    benchmark: Int,
   @Recurse
     cacheOptions: CacheOptions
 ) {
@@ -163,7 +170,7 @@ case class BootstrapOptions(
     mainClass: String,
   @Short("o")
     output: String = "bootstrap",
-  @Short("D")
+  @Short("d")
     downloadDir: String,
   @Short("f")
     force: Boolean,
@@ -172,7 +179,7 @@ case class BootstrapOptions(
     standalone: Boolean,
   @Help("Set Java properties in the generated launcher.")
   @Value("key=value")
-  @Short("P")
+  @Short("D")
     property: List[String],
   @Help("Set Java command-line options in the generated launcher.")
   @Value("option")

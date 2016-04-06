@@ -146,6 +146,11 @@ lazy val core = crossProject
       import com.typesafe.tools.mima.core.ProblemFilters._
       
       Seq(
+        // Since 1.0.0-M11
+        // Extra parameter with default value added, problem for forward compatibility only
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.core.ResolutionProcess.next"),
+        // method made final (for - non critical - tail recursion)
+        ProblemFilters.exclude[FinalMethodProblem]("coursier.core.ResolutionProcess.next"),
         // Since 1.0.0-M10
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.core.Resolution.withParentConfigurations"),
         // New singleton object, problem for forward compatibility only
@@ -221,6 +226,10 @@ lazy val cache = project
       import com.typesafe.tools.mima.core.ProblemFilters._
       
       Seq(
+        // Since 1.0.0-M11
+        // Add constructor parameter on FileError - shouldn't be built by users anyway
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.FileError.this"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.FileError#Recoverable.this"),
         // Since 1.0.0-M10
         // methods that should have been private anyway
         ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay.update"),

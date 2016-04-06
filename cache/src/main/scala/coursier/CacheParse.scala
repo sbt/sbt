@@ -44,6 +44,10 @@ object CacheParse {
     s.split(',').toVector.traverseU {
       case "offline" =>
         Seq(CachePolicy.LocalOnly).successNel
+      case "update-local-changing" =>
+        Seq(CachePolicy.LocalUpdateChanging).successNel
+      case "update-local" =>
+        Seq(CachePolicy.LocalUpdate).successNel
       case "update-changing" =>
         Seq(CachePolicy.UpdateChanging).successNel
       case "update" =>

@@ -33,8 +33,10 @@ sealed abstract class ResolutionProcess {
     }
   }
 
-  def next[F[_]](
-    fetch: Fetch.Metadata[F]
+  @tailrec
+  final def next[F[_]](
+    fetch: Fetch.Metadata[F],
+    fastForward: Boolean = true
   )(implicit
     F: Monad[F]
   ): F[ResolutionProcess] = {
@@ -45,7 +47,10 @@ sealed abstract class ResolutionProcess {
       case missing0 @ Missing(missing, _, _) =>
         F.map(fetch(missing))(result => missing0.next(result))
       case cont @ Continue(_, _) =>
-        cont.nextNoCont.next(fetch)
+        if (fastForward)
+          cont.nextNoCont.next(fetch, fastForward = fastForward)
+        else
+          F.point(cont.next)
     }
   }
 
