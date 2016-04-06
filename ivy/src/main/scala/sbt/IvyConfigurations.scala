@@ -9,6 +9,7 @@ import scala.xml.NodeSeq
 
 final class IvyPaths(val baseDirectory: File, val ivyHome: Option[File]) {
   def withBase(newBaseDirectory: File) = new IvyPaths(newBaseDirectory, ivyHome)
+  override def toString: String = s"IvyPath($baseDirectory, $ivyHome)"
 }
 sealed trait IvyConfiguration {
   type This <: IvyConfiguration
