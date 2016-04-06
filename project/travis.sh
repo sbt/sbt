@@ -32,7 +32,15 @@ function isMasterOrDevelop() {
 
 # TODO Add coverage once https://github.com/scoverage/sbt-scoverage/issues/111 is fixed
 
-SBT_COMMANDS="compile test coreJVM/mimaReportBinaryIssues cache/mimaReportBinaryIssues"
+SBT_COMMANDS="compile test"
+
+if echo "$TRAVIS_SCALA_VERSION" | grep -q "^2\.10"; then
+  SBT_COMMANDS="$SBT_COMMANDS publishLocal" # to make the scripted tests happy
+  SBT_COMMANDS="$SBT_COMMANDS plugin/scripted"
+fi
+
+SBT_COMMANDS="$SBT_COMMANDS coreJVM/mimaReportBinaryIssues cache/mimaReportBinaryIssues"
+
 if isNotPr && publish && isMaster; then
   SBT_COMMANDS="$SBT_COMMANDS publish"
 fi

@@ -17,9 +17,10 @@ install:
 build_script:
   - sbt ++2.11.8 clean compile coreJVM/publishLocal
   - sbt ++2.10.6 clean compile
+  - sbt ++2.10.6 coreJVM/publishLocal cache/publishLocal # to make the scripted tests happy
 test_script:
   - sbt ++2.11.8 testsJVM/test # Would node be around for testsJS/test?
-  - sbt ++2.10.6 testsJVM/test
+  - sbt ++2.10.6 testsJVM/test plugin/scripted
 cache:
   - C:\sbt\
   - C:\Users\appveyor\.ivy2
