@@ -18,7 +18,7 @@ import CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
 import complete._
 import std.TaskExtra._
 import sbt.inc.{ Analysis, FileValueCache, IncOptions, Locate }
-import sbt.compiler.{ MixedAnalyzingCompiler, AggressiveCompile }
+import sbt.compiler.{ MixedAnalyzingCompiler, AggressiveCompile, IvyBridgeProvider }
 import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
 
 import sys.error
@@ -235,7 +235,8 @@ object Defaults extends BuildCommon {
       val _ = clean.value
       IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log)
     },
-    scalaCompilerBridgeSource := ModuleID(xsbti.ArtifactInfo.SbtOrganization, "compiler-interface", sbtVersion.value, Some("component")).sources()
+    scalaCompilerBridgeSource := ModuleID(xsbti.ArtifactInfo.SbtOrganization, "compiler-interface", sbtVersion.value, Some("component")).sources(),
+    compilerBridgeProvider := IvyBridgeProvider(bootIvyConfiguration.value, scalaCompilerBridgeSource.value)
   )
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(Seq(
@@ -265,7 +266,7 @@ object Defaults extends BuildCommon {
     }
 
   def compilersSetting = compilers := Compiler.compilers(scalaInstance.value, classpathOptions.value, javaHome.value,
-    bootIvyConfiguration.value, scalaCompilerBridgeSource.value)(appConfiguration.value, streams.value.log)
+    compilerBridgeProvider.value)(appConfiguration.value, streams.value.log)
 
   lazy val configTasks = docTaskSettings(doc) ++ inTask(compile)(compileInputsSettings) ++ configGlobal ++ compileAnalysisSettings ++ Seq(
     compile <<= compileTask,
@@ -1883,6 +1884,7 @@ object Classpaths {
     {
       import xsbti.Predefined
       repo match {
+        case f: FakeRepository        => f.rawRepository
         case m: xsbti.MavenRepository => MavenRepository(m.id, m.url.toString)
         case i: xsbti.IvyRepository =>
           val patterns = Patterns(i.ivyPattern :: Nil, i.artifactPattern :: Nil, mavenCompatible(i), descriptorOptional(i), skipConsistencyCheck(i))
