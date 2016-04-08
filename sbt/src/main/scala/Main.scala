@@ -20,6 +20,8 @@ private object StaticUtils {
   val COMPILER_JAR = "scala-compiler.jar"
   val LIBRARY = "library"
   val LIBRARY_JAR = "scala-library.jar"
+  val REFLECT = "reflect"
+  val REFLECT_JAR = "scala-reflect.jar"
   val XSBTI = "xsbti"
   val XSBTI_JAR = s"interface-${sbtApplicationID.version}.jar"
   val thisJAR: File = new File(getClass.getProtectionDomain().getCodeSource().getLocation().toURI().getPath())
@@ -109,7 +111,7 @@ private class StaticScalaProvider(appProvider: StaticAppProvider) extends xsbti.
   override def app(id: xsbti.ApplicationID): xsbti.AppProvider = appProvider
   override def compilerJar(): File = getComponent(StaticUtils.COMPILER)
   override def libraryJar(): File = getComponent(StaticUtils.LIBRARY)
-  override def jars(): Array[File] = Array(compilerJar, libraryJar)
+  override def jars(): Array[File] = Array(compilerJar, libraryJar, getComponent(StaticUtils.REFLECT))
   override def loader(): ClassLoader = new URLClassLoader(jars map (_.toURI.toURL))
   override def version(): String = StaticUtils.getProperty(loader, "compiler.properties", "version.number") getOrElse "unknown"
 }
@@ -122,6 +124,10 @@ private class StaticAppProvider(appConfig: StaticAppConfiguration) extends xsbti
 
   if (components.component(StaticUtils.LIBRARY).isEmpty) {
     installFromResources(StaticUtils.LIBRARY_JAR, StaticUtils.LIBRARY)
+  }
+
+  if (components.component(StaticUtils.REFLECT).isEmpty) {
+    installFromResources(StaticUtils.REFLECT_JAR, StaticUtils.REFLECT)
   }
 
   if (components.component(StaticUtils.XSBTI).isEmpty) {

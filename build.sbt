@@ -375,7 +375,7 @@ lazy val compilerIvyProj = (project in compilePath / "ivy").
         val compilerBridgeSrc = (Keys.packageSrc in (compileInterfaceProj, Compile)).value
         val xsbtiJAR = (Keys.packageBin in (interfaceProj, Compile)).value
         // They are immediately used by the static launcher.
-        val included = Set("scala-compiler.jar", "scala-library.jar")
+        val included = Set("scala-compiler.jar", "scala-library.jar", "scala-reflect.jar")
         val scalaJars = (externalDependencyClasspath in Compile).value.map(_.data).filter(j => included contains j.getName)
         Seq(compilerBridgeSrc, xsbtiJAR) ++ scalaJars
       }
