@@ -41,43 +41,15 @@ object Fetch {
 
     val task = lookups.foldLeft[F[Seq[String] \/ (Artifact.Source, Project)]](F.point(-\/(Nil))) {
       case (acc, (repo, eitherProjTask)) =>
-        val looseModuleValidation = repo match {
-          case m: MavenRepository => m.sbtAttrStub // that sucks so much
-          case _ => false
-        }
-        val moduleCmp = if (looseModuleValidation) module.copy(attributes = Map.empty) else module
         F.bind(acc) {
           case -\/(errors) =>
-            F.map(eitherProjTask)(_.flatMap{case (source, project) =>
-              val projModule =
-                if (looseModuleValidation)
-                  project.module.copy(attributes = Map.empty)
-                else
-                  project.module
-              if (projModule == moduleCmp) \/-((source, project))
-              else -\/(s"Wrong module returned (expected: $moduleCmp, got: ${project.module})")
-            }.leftMap(error => error +: errors))
-
+            F.map(eitherProjTask)(_.leftMap(error => error +: errors))
           case res @ \/-(_) =>
             F.point(res)
         }
     }
 
     EitherT(F.map(task)(_.leftMap(_.reverse)))
-      .map {case x @ (source, proj) =>
-        val looseModuleValidation = source match {
-          case m: MavenSource => m.sbtAttrStub // omfg
-          case _ => false
-        }
-        val projModule =
-          if (looseModuleValidation)
-            proj.module.copy(attributes = Map.empty)
-          else
-            proj.module
-        val moduleCmp = if (looseModuleValidation) module.copy(attributes = Map.empty) else module
-        assert(projModule == moduleCmp)
-        x
-      }
   }
 
   def from[F[_]](

@@ -203,6 +203,13 @@ object CentralTests extends TestSuite {
       )
     }
 
+    'artifactIdProperties - {
+      resolutionCheck(
+        Module("cc.factorie", "factorie_2.11"),
+        "1.2"
+      )
+    }
+
     'latestRevision - {
       * - resolutionCheck(
         Module("com.chuusai", "shapeless_2.11"),
