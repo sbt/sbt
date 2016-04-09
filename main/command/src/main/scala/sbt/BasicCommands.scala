@@ -33,9 +33,10 @@ object BasicCommands {
         a ++
           (try b.help(s) catch { case NonFatal(ex) => Help.empty })
       }
-      val helpCommands = h.detail.keySet
-      val spacedArg = singleArgument(helpCommands).?
-      applyEffect(spacedArg)(runHelp(s, h))
+      val helpData = h ++ s.taskHelpList
+      val helpKeys = helpData.detail.keySet
+      val spacedArg = singleArgument(helpKeys).?
+      applyEffect(spacedArg)(runHelp(s, helpData))
     }
 
   def runHelp(s: State, h: Help)(arg: Option[String]): State =
