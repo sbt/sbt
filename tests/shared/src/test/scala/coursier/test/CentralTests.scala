@@ -271,6 +271,43 @@ object CentralTests extends TestSuite {
         )
       }
     }
+
+    'artifacts - {
+      'uniqueness - {
+        async {
+          val deps = Set(
+            Dependency(
+              Module("org.scala-lang", "scala-compiler"), "2.11.8"
+            ),
+            Dependency(
+              Module("org.scala-js", "scalajs-compiler_2.11.8"), "0.6.8"
+            )
+          )
+
+          val res = await(resolve(deps))
+
+          assert(res.errors.isEmpty)
+          assert(res.conflicts.isEmpty)
+          assert(res.isDone)
+
+          val artifacts = res.artifacts
+
+          val map = artifacts.groupBy(a => a)
+
+          val nonUnique = map.filter {
+            case (_, l) => l.length > 1
+          }
+
+          if (nonUnique.nonEmpty)
+            println(
+              "Found non unique artifacts:\n" +
+                nonUnique.keys.toVector.map("  " + _).mkString("\n")
+            )
+
+          assert(nonUnique.isEmpty)
+        }
+      }
+    }
   }
 
 }

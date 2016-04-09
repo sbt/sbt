@@ -885,8 +885,8 @@ final case class Resolution(
           .getOrElse(Map.empty)
     )
 
-  private def artifacts0(overrideClassifiers: Option[Seq[String]]): Seq[Artifact] =
-    for {
+  private def artifacts0(overrideClassifiers: Option[Seq[String]]): Seq[Artifact] = {
+    val res = for {
       dep <- minDependencies.toSeq
       (source, proj) <- projectCache
         .get(dep.moduleVersion)
@@ -894,6 +894,9 @@ final case class Resolution(
       artifact <- source
         .artifacts(dep, proj, overrideClassifiers)
     } yield artifact
+
+    res.distinct
+  }
 
   def classifiersArtifacts(classifiers: Seq[String]): Seq[Artifact] =
     artifacts0(Some(classifiers))
