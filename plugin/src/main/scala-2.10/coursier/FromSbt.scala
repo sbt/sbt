@@ -133,6 +133,35 @@ object FromSbt {
     )
   }
 
+  private def mavenCompatibleBaseOpt(patterns: sbt.Patterns): Option[String] =
+    if (patterns.isMavenCompatible) {
+      val baseIvyPattern = patterns.ivyPatterns.head.takeWhile(c => c != '[' && c != '(')
+      val baseArtifactPattern = patterns.ivyPatterns.head.takeWhile(c => c != '[' && c != '(')
+
+      if (baseIvyPattern == baseArtifactPattern)
+        Some(baseIvyPattern)
+      else
+        None
+    } else
+      None
+
+  private def mavenRepositoryOpt(root: String, log: sbt.Logger): Option[MavenRepository] =
+    try {
+      Cache.url(root) // ensure root is a URL whose protocol can be handled here
+      val root0 = if (root.endsWith("/")) root else root + "/"
+      Some(MavenRepository(root0, sbtAttrStub = true))
+    } catch {
+      case e: MalformedURLException =>
+        log.warn(
+          "Error parsing Maven repository base " +
+          root +
+          Option(e.getMessage).map(" (" + _ + ")").mkString +
+          ", ignoring it"
+        )
+
+        None
+    }
+
   def repository(
     resolver: Resolver,
     ivyProperties: Map[String, String],
@@ -140,45 +169,45 @@ object FromSbt {
   ): Option[Repository] =
     resolver match {
       case sbt.MavenRepository(_, root) =>
-        try {
-          Cache.url(root) // ensure root is a URL whose protocol can be handled here
-          val root0 = if (root.endsWith("/")) root else root + "/"
-          Some(MavenRepository(root0, sbtAttrStub = true))
-        } catch {
-          case e: MalformedURLException =>
-            log.warn(
-              "Error parsing Maven repository base " +
-              root +
-              Option(e.getMessage).map(" (" + _ + ")").mkString +
-              ", ignoring it"
-            )
-
-            None
-        }
+        mavenRepositoryOpt(root, log)
 
       case sbt.FileRepository(_, _, patterns)
         if patterns.ivyPatterns.lengthCompare(1) == 0 &&
           patterns.artifactPatterns.lengthCompare(1) == 0 =>
 
-        Some(IvyRepository(
-          "file://" + patterns.artifactPatterns.head,
-          metadataPatternOpt = Some("file://" + patterns.ivyPatterns.head),
-          changing = Some(true),
-          properties = ivyProperties,
-          dropInfoAttributes = true
-        ))
+        val mavenCompatibleBaseOpt0 = mavenCompatibleBaseOpt(patterns)
+
+        mavenCompatibleBaseOpt0 match {
+          case None =>
+            Some(IvyRepository(
+              "file://" + patterns.artifactPatterns.head,
+              metadataPatternOpt = Some("file://" + patterns.ivyPatterns.head),
+              changing = Some(true),
+              properties = ivyProperties,
+              dropInfoAttributes = true
+            ))
+          case Some(mavenCompatibleBase) =>
+            mavenRepositoryOpt("file://" + mavenCompatibleBase, log)
+        }
 
       case sbt.URLRepository(_, patterns)
         if patterns.ivyPatterns.lengthCompare(1) == 0 &&
           patterns.artifactPatterns.lengthCompare(1) == 0 =>
 
-        Some(IvyRepository(
-          patterns.artifactPatterns.head,
-          metadataPatternOpt = Some(patterns.ivyPatterns.head),
-          changing = None,
-          properties = ivyProperties,
-          dropInfoAttributes = true
-        ))
+        val mavenCompatibleBaseOpt0 = mavenCompatibleBaseOpt(patterns)
+
+        mavenCompatibleBaseOpt0 match {
+          case None =>
+            Some(IvyRepository(
+              patterns.artifactPatterns.head,
+              metadataPatternOpt = Some(patterns.ivyPatterns.head),
+              changing = None,
+              properties = ivyProperties,
+              dropInfoAttributes = true
+            ))
+          case Some(mavenCompatibleBase) =>
+            mavenRepositoryOpt(mavenCompatibleBase, log)
+        }
 
       case other =>
         log.warn(s"Unrecognized repository ${other.name}, ignoring it")
