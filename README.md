@@ -75,6 +75,11 @@ Download and run its laucher with
 $ curl -L -o coursier https://git.io/vgvpD && chmod +x coursier && ./coursier --help
 ```
 
+Alternatively on OS X, install it via [@paulp](https://github.com/paulp/)'s homebrew formula,
+```
+$ brew install --HEAD paulp/extras/coursier
+```
+
 Run an application distributed via artifacts with
 ```
 $ ./coursier launch com.lihaoyi:ammonite-repl_2.11.7:0.5.2
@@ -226,6 +231,11 @@ $ curl -L -o coursier https://git.io/vgvpD && chmod +x coursier && ./coursier --
 
 The launcher itself weights only 8 kB and can be easily embedded as is in other projects.
 It downloads the artifacts required to launch coursier on the first run.
+
+Alternatively on OS X, install it via [@paulp](https://github.com/paulp/)'s homebrew formula, that puts the `coursier` launcher directly in your PATH,
+```
+$ brew install --HEAD paulp/extras/coursier
+```
 
 ```
 $ ./coursier --help
