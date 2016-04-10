@@ -264,5 +264,19 @@ object DefaultParsers extends Parsers with ParserMain {
     apply(p)(s).resultEmpty.isValid
 
   /** Returns `true` if `s` parses successfully according to [[ID]].*/
-  def validID(s: String): Boolean = matches(ID, s)
+  def validID(s: String): Boolean = {
+    // matches(ID, s) would be simple but KeyIndex can call this method 100k's of times
+    val length = s.length
+    if (length == 0 || !s(0).isLetter) {
+      return false
+    }
+    var i = 1
+    while (i < length) {
+      if (!isIDChar(s(i))) {
+        return false
+      }
+      i += 1
+    }
+    true
+  }
 }
