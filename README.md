@@ -9,6 +9,8 @@ A Scala library to fetch dependencies from Maven / Ivy repositories
 [![Join the chat at https://gitter.im/alexarchambault/coursier](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/alexarchambault/coursier?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Maven Central](https://img.shields.io/maven-central/v/com.github.alexarchambault/coursier_2.11.svg)](https://maven-badges.herokuapp.com/maven-central/com.github.alexarchambault/coursier_2.11)
 
+![Demo (courtesy of @paulp)](http://i.imgur.com/lCJ9oql.gif)
+
 *coursier* is a dependency resolver / fetcher *à la* Maven / Ivy, entirely
 rewritten from scratch in Scala. It aims at being fast and easy to embed
 in other contexts. Its very core (`core` module) aims at being
