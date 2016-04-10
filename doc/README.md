@@ -43,11 +43,14 @@ Lastly, it can be used programmatically via its [API](#api) and has a Scala JS [
 ## Table of content
 
 1. [Quick start](#quick-start)
-2. [Why](#why)
-3. [Usage](#usage)
   1. [SBT plugin](#sbt-plugin)
   2. [Command-line](#command-line)
   3. [API](#api)
+2. [Why](#why)
+3. [Usage](#usage)
+  1. [SBT plugin](#sbt-plugin-1)
+  2. [Command-line](#command-line-1)
+  3. [API](#api-1)
   4. [Scala JS demo](#scala-js-demo)
 4. [Limitations](#limitations)
 5. [FAQ](#faq)
@@ -58,7 +61,7 @@ Lastly, it can be used programmatically via its [API](#api) and has a Scala JS [
 
 ## Quick start
 
-* SBT plugin
+### SBT plugin
 
 Enable the SBT plugin by adding
 ```scala
@@ -68,7 +71,7 @@ to `~/.sbt/0.13/plugins/build.sbt` (enables it globally), or to the `project/plu
 of a SBT project. Tested with SBT 0.13.8 / 0.13.9.
 
 
-* CLI
+### Command-line
 
 Download and run its laucher with
 ```
@@ -99,7 +102,7 @@ Fetching artifacts
 ...
 ```
 
-* API
+### API
 
 Add to your `build.sbt`
 ```scala
