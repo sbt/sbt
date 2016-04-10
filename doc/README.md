@@ -695,6 +695,9 @@ Once RCs will be considered stable enough, `1.0.0` should be released.
 
 ## Contributors
 
+- Erik LaBianca ([@easel](https://github.com/easel))
+- Han Ju ([@darkjh](https://github.com/darkjh))
+- Simon Ochsenreither ([@soc](https://github.com/soc))
 - Your name here :-)
 
 Don't hesitate to pick an issue to contribute, and / or ask for help for how to proceed
