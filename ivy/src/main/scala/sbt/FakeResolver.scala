@@ -59,14 +59,15 @@ private[sbt] class FakeResolver(private var name: String, cacheDir: File, module
   override def download(artifact: ArtifactOrigin, options: DownloadOptions): ArtifactDownloadReport = {
     val report = new ArtifactDownloadReport(artifact.getArtifact)
     val path = new URL(artifact.getLocation).toURI.getPath
-    assert(path.nonEmpty, "Path to local artifact is empty.")
-
     val localFile = new File(path)
-    assert(localFile.exists, "Local file doesn't exist.")
 
-    report.setLocalFile(localFile)
-    report.setDownloadStatus(DownloadStatus.SUCCESSFUL)
-    report.setSize(localFile.length)
+    if (path.nonEmpty && localFile.exists) {
+      report.setLocalFile(localFile)
+      report.setDownloadStatus(DownloadStatus.SUCCESSFUL)
+      report.setSize(localFile.length)
+    } else {
+      report.setDownloadStatus(DownloadStatus.FAILED)
+    }
 
     report
   }
@@ -112,7 +113,7 @@ private[sbt] class FakeResolver(private var name: String, cacheDir: File, module
       new ResolvedModuleRevision(this, this, moduleDescriptor, metadataReport)
     }
 
-    artifact getOrElse (throw new Exception(s"Could not find module $organisation % $name % $revision"))
+    artifact.orNull
 
   }
 
@@ -161,7 +162,7 @@ private[sbt] class FakeResolver(private var name: String, cacheDir: File, module
         artifact <- artifacts find (a => a.name == art.getName && a.tpe == art.getType && a.ext == art.getExt)
       } yield new ArtifactOrigin(art, /* isLocal = */ true, artifact.file.toURI.toURL.toString)
 
-    artifact getOrElse (throw new IllegalStateException(s"Asking for non-existing module: $moduleOrganisation % $moduleName % $moduleRevision"))
+    artifact.orNull
 
   }
 

@@ -13,10 +13,14 @@ class FakeResolverSpecification extends BaseIvySpecification {
   The FakeResolver should
     find modules with only one artifact                     $singleArtifact
     find modules with more than one artifact                $multipleArtifacts
+    fail gracefully when asked for unknown modules          $nonExistingModule
+    fail gracefully when some artifacts cannot be found     $existingAndNonExistingArtifacts
   """
 
   val myModule = ModuleID("org.example", "my-module", "0.0.1-SNAPSHOT", Some("compile"))
   val example = ModuleID("com.example", "example", "1.0.0", Some("compile"))
+  val anotherExample = ModuleID("com.example", "another-example", "1.0.0", Some("compile"))
+  val nonExisting = ModuleID("com.example", "does-not-exist", "1.2.3", Some("compile"))
 
   def singleArtifact = {
     val m = getModule(myModule)
@@ -40,6 +44,16 @@ class FakeResolverSpecification extends BaseIvySpecification {
     allFiles map (_.getName) should beEqualTo(Set("artifact1-1.0.0.jar", "artifact2-1.0.0.txt"))
   }
 
+  def nonExistingModule = {
+    val m = getModule(nonExisting)
+    ivyUpdate(m) should throwA[ResolveException]
+  }
+
+  def existingAndNonExistingArtifacts = {
+    val m = getModule(anotherExample)
+    ivyUpdate(m) should throwA[ResolveException]("download failed: com.example#another-example;1.0.0!non-existing.txt")
+  }
+
   private def artifact1 = new File(getClass.getResource("/artifact1.jar").toURI.getPath)
   private def artifact2 = new File(getClass.getResource("/artifact2.txt").toURI.getPath)
 
@@ -51,6 +65,11 @@ class FakeResolverSpecification extends BaseIvySpecification {
     ("com.example", "example", "1.0.0") -> List(
       FakeArtifact("artifact1", "jar", "jar", artifact1),
       FakeArtifact("artifact2", "txt", "txt", artifact2)
+    ),
+
+    ("com.example", "another-example", "1.0.0") -> List(
+      FakeArtifact("artifact1", "jar", "jar", artifact1),
+      FakeArtifact("non-existing", "txt", "txt", new File("non-existing-file"))
     )
   )
 
