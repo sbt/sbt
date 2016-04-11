@@ -8,6 +8,9 @@ A Scala library to fetch dependencies from Maven / Ivy repositories
 [![Build status (Windows)](https://ci.appveyor.com/api/projects/status/trtum5b7washfbj9?svg=true)](https://ci.appveyor.com/project/alexarchambault/coursier)
 [![Join the chat at https://gitter.im/alexarchambault/coursier](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/alexarchambault/coursier?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Maven Central](https://img.shields.io/maven-central/v/com.github.alexarchambault/coursier_2.11.svg)](https://maven-badges.herokuapp.com/maven-central/com.github.alexarchambault/coursier_2.11)
+[![ScalaDoc](http://javadoc-badge.appspot.com/com.github.alexarchambault/coursier_2.11.svg?label=scaladoc)](http://javadoc-badge.appspot.com/com.github.alexarchambault/coursier_2.11)
+
+![Demo (courtesy of @paulp)](http://i.imgur.com/lCJ9oql.gif)
 
 *coursier* is a dependency resolver / fetcher *à la* Maven / Ivy, entirely
 rewritten from scratch in Scala. It aims at being fast and easy to embed
@@ -43,11 +46,14 @@ Lastly, it can be used programmatically via its [API](#api) and has a Scala JS [
 ## Table of content
 
 1. [Quick start](#quick-start)
-2. [Why](#why)
-3. [Usage](#usage)
   1. [SBT plugin](#sbt-plugin)
   2. [Command-line](#command-line)
   3. [API](#api)
+2. [Why](#why)
+3. [Usage](#usage)
+  1. [SBT plugin](#sbt-plugin-1)
+  2. [Command-line](#command-line-1)
+  3. [API](#api-1)
   4. [Scala JS demo](#scala-js-demo)
 4. [Limitations](#limitations)
 5. [FAQ](#faq)
@@ -58,7 +64,7 @@ Lastly, it can be used programmatically via its [API](#api) and has a Scala JS [
 
 ## Quick start
 
-* SBT plugin
+### SBT plugin
 
 Enable the SBT plugin by adding
 ```scala
@@ -68,11 +74,16 @@ to `~/.sbt/0.13/plugins/build.sbt` (enables it globally), or to the `project/plu
 of a SBT project. Tested with SBT 0.13.8 / 0.13.9.
 
 
-* CLI
+### Command-line
 
 Download and run its laucher with
 ```
 $ curl -L -o coursier https://git.io/vgvpD && chmod +x coursier && ./coursier --help
+```
+
+Alternatively on OS X, install it via [@paulp](https://github.com/paulp/)'s homebrew formula,
+```
+$ brew install --HEAD paulp/extras/coursier
 ```
 
 Run an application distributed via artifacts with
@@ -94,7 +105,7 @@ Fetching artifacts
 ...
 ```
 
-* API
+### API
 
 Add to your `build.sbt`
 ```scala
@@ -249,6 +260,11 @@ $ curl -L -o coursier https://git.io/vgvpD && chmod +x coursier && ./coursier --
 
 The launcher itself weights only 8 kB and can be easily embedded as is in other projects.
 It downloads the artifacts required to launch coursier on the first run.
+
+Alternatively on OS X, install it via [@paulp](https://github.com/paulp/)'s homebrew formula, that puts the `coursier` launcher directly in your PATH,
+```
+$ brew install --HEAD paulp/extras/coursier
+```
 
 ```
 $ ./coursier --help
@@ -695,6 +711,9 @@ Once RCs will be considered stable enough, `1.0.0` should be released.
 
 ## Contributors
 
+- Erik LaBianca ([@easel](https://github.com/easel))
+- Han Ju ([@darkjh](https://github.com/darkjh))
+- Simon Ochsenreither ([@soc](https://github.com/soc))
 - Your name here :-)
 
 Don't hesitate to pick an issue to contribute, and / or ask for help for how to proceed
