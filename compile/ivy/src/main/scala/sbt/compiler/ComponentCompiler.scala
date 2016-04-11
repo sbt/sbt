@@ -15,7 +15,7 @@ object ComponentCompiler {
   val compilerInterfaceSrcID = compilerInterfaceID + srcExtension
   val javaVersion = System.getProperty("java.class.version")
 
-  @deprecated("Use `interfaceProvider(ComponentManager, IvyConfiguration, ModuleID)`.", "0.13.10")
+  @deprecated("Use `interfaceProvider(ComponentManager, CompilerBridgeProvider)`.", "0.13.12")
   def interfaceProvider(manager: ComponentManager): CompilerInterfaceProvider = new CompilerInterfaceProvider {
     def apply(scalaInstance: xsbti.compile.ScalaInstance, log: Logger): File =
       {
@@ -26,13 +26,21 @@ object ComponentCompiler {
       }
   }
 
-  def interfaceProvider(manager: ComponentManager, ivyConfiguration: IvyConfiguration, sourcesModule: ModuleID): CompilerInterfaceProvider = new CompilerInterfaceProvider {
+  @deprecated("Use `interfaceProvider(ComponentManager, CompilerBridgeProvider)`", "0.13.12")
+  def interfaceProvider(manager: ComponentManager, ivyConfiguration: IvyConfiguration, sourcesModule: ModuleID): CompilerInterfaceProvider =
+    interfaceProvider(manager, IvyBridgeProvider(ivyConfiguration, sourcesModule))
+
+  def interfaceProvider(manager: ComponentManager, compilerBridgeProvider: CompilerBridgeProvider): CompilerInterfaceProvider = new CompilerInterfaceProvider {
     def apply(scalaInstance: xsbti.compile.ScalaInstance, log: Logger): File =
-      {
-        // this is the instance used to compile the interface component
-        val componentCompiler = new IvyComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptions.auto, log), manager, ivyConfiguration, sourcesModule, log)
-        log.debug("Getting " + sourcesModule + " from component compiler for Scala " + scalaInstance.version)
-        componentCompiler()
+      compilerBridgeProvider match {
+        case IvyBridgeProvider(ivyConfiguration, sourcesModule) =>
+          val componentCompiler = new IvyComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptions.auto, log), manager, ivyConfiguration, sourcesModule, log)
+          log.debug("Getting " + sourcesModule + " from component compiler for Scala " + scalaInstance.version)
+          componentCompiler()
+        case ResourceBridgeProvider(sourceJarName) =>
+          val componentCompiler = new ResourceComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptions.auto, log), manager, sourceJarName, log)
+          log.debug("Compiling bridge source from resources for Scala " + scalaInstance.version)
+          componentCompiler()
       }
   }
 }
@@ -41,7 +49,7 @@ object ComponentCompiler {
  * The compiled classes are cached using the provided component manager according
  * to the actualVersion field of the RawCompiler.
  */
-@deprecated("Replaced by IvyComponentCompiler.", "0.13.10")
+@deprecated("Replaced by IvyComponentCompiler and ResourceComponentCompiler.", "0.13.12")
 class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager) {
   import ComponentCompiler._
   def apply(id: String): File =
@@ -77,6 +85,53 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager) {
       manager.define(binID, Seq(targetJar))
     }
   }
+}
+
+/**
+ * Compiles the compiler bridge using the source extracted from the resources on classpath.
+ */
+private[compiler] class ResourceComponentCompiler(compiler: RawCompiler, manager: ComponentManager, sourceJarName: String, log: Logger) {
+  import ComponentCompiler._
+
+  def apply(): File = {
+    val binID = "bridge-from-resource" + binSeparator + compiler.scalaInstance.actualVersion + "__" + javaVersion
+    manager.file(binID)(new IfMissing.Define(true, compileAndInstall(binID)))
+  }
+
+  private def copyFromResources(destinationDirectory: File, fileName: String): File = {
+    Option(getClass.getClassLoader.getResourceAsStream(sourceJarName)) match {
+      case Some(stream) =>
+        val copiedFile = new File(destinationDirectory, fileName)
+        val out = new java.io.FileOutputStream(copiedFile)
+
+        var read = 0
+        val content = new Array[Byte](1024)
+        while ({ read = stream.read(content); read != -1 }) {
+          out.write(content, 0, read)
+        }
+
+        copiedFile
+
+      case None =>
+        throw new InvalidComponent(s"Could not find '$fileName' on resources path.")
+
+    }
+  }
+
+  private def compileAndInstall(binID: String): Unit =
+    IO.withTemporaryDirectory { binaryDirectory =>
+      val targetJar = new File(binaryDirectory, s"$binID.jar")
+      val xsbtiJars = manager.files(xsbtiID)(IfMissing.Fail)
+
+      IO.withTemporaryDirectory { tempDirectory =>
+
+        val sourceJar = copyFromResources(tempDirectory, sourceJarName)
+        AnalyzingCompiler.compileSources(Seq(sourceJar), targetJar, xsbtiJars, "bridge-from-resources", compiler, log)
+        manager.define(binID, Seq(targetJar))
+
+      }
+
+    }
 }
 
 /**
