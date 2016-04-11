@@ -357,9 +357,9 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
             case _ => ()
           }
 
-          // cache.getOrElseUpdateMiniGraph(md0, changing, logicalClock, miniGraphPath, cachedDescriptor, log) {
-          doWork(md0, dd)
-        // }
+          cache.getOrElseUpdateMiniGraph(md0, changing, logicalClock, miniGraphPath, cachedDescriptor, log) {
+            doWork(md0, dd)
+          }
       }
       val results = internalResults ++ externalResults
       val uReport = mergeResults(md0, results, missingOk, System.currentTimeMillis - start, os, log)
