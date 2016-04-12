@@ -147,13 +147,13 @@ final class ListTests(baseDirectory: File, accept: ScriptedTest => Boolean, log:
         listTests(group).map(ScriptedTest(groupName, _))
       }
     }
-  private[this] def listTests(group: File): Set[String] =
+  private[this] def listTests(group: File): Seq[String] =
     {
       val groupName = group.getName
-      val allTests = list(group, filter)
+      val allTests = list(group, filter).sortBy(_.getName)
       if (allTests.isEmpty) {
         log.warn("No tests in test group " + groupName)
-        Set.empty
+        Seq.empty
       } else {
         val (included, skipped) = allTests.toList.partition(test => accept(ScriptedTest(groupName, test.getName)))
         if (included.isEmpty)
@@ -162,7 +162,7 @@ final class ListTests(baseDirectory: File, accept: ScriptedTest => Boolean, log:
           log.warn("Tests skipped in group " + group.getName + ":")
           skipped.foreach(testName => log.warn(" " + testName.getName))
         }
-        Set(included.map(_.getName): _*)
+        Seq(included.map(_.getName): _*)
       }
     }
 }
