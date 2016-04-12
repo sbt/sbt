@@ -330,19 +330,79 @@ lazy val cli = project
       (
         moduleName,
         scalaBinaryVersion,
-        ProguardKeys.proguard in Proguard
+        ProguardKeys.proguard in Proguard,
+        packageBin.in(bootstrap) in Compile
       ).map {
-        (mod, sbv, files) =>
+        (mod, sbv, files, bootstrapJar) =>
           if (sbv == "2.10")
             Map.empty[Artifact, File]
           else {
-            val f = files match {
+            import java.util.zip.{ ZipEntry, ZipOutputStream, ZipInputStream }
+            import java.io.{ ByteArrayOutputStream, FileInputStream, FileOutputStream, File, InputStream, IOException }
+
+            val f0 = files match {
               case Seq(f) => f
               case Seq() =>
                 throw new Exception("Found no proguarded files. Expected one.")
               case _ =>
                 throw new Exception("Found several proguarded files. Don't know how to publish all of them.")
             }
+
+            val f = new File(f0.getParentFile, f0.getName.stripSuffix(".jar") + "-with-bootstrap.jar")
+
+            val is = new FileInputStream(f0)
+            val os = new FileOutputStream(f)
+            val bootstrapZip = new ZipInputStream(is)
+            val outputZip = new ZipOutputStream(os)
+
+            def readFullySync(is: InputStream) = {
+              val buffer = new ByteArrayOutputStream
+              val data = Array.ofDim[Byte](16384)
+
+              var nRead = is.read(data, 0, data.length)
+              while (nRead != -1) {
+                buffer.write(data, 0, nRead)
+                nRead = is.read(data, 0, data.length)
+              }
+
+              buffer.flush()
+              buffer.toByteArray
+            }
+
+            def zipEntries(zipStream: ZipInputStream): Iterator[(ZipEntry, Array[Byte])] =
+              new Iterator[(ZipEntry, Array[Byte])] {
+                var nextEntry = Option.empty[ZipEntry]
+                def update() =
+                  nextEntry = Option(zipStream.getNextEntry)
+
+                update()
+
+                def hasNext = nextEntry.nonEmpty
+                def next() = {
+                  val ent = nextEntry.get
+                  val data = readFullySync(zipStream)
+
+                  update()
+
+                  (ent, data)
+                }
+              }
+
+            for ((ent, data) <- zipEntries(bootstrapZip)) {
+              outputZip.putNextEntry(ent)
+              outputZip.write(data)
+              outputZip.closeEntry()
+            }
+
+            outputZip.putNextEntry(new ZipEntry("bootstrap.jar"))
+            outputZip.write(readFullySync(new FileInputStream(bootstrapJar)))
+            outputZip.closeEntry()
+
+            outputZip.close()
+
+            is.close()
+            os.close()
+
 
             Map(
               // FIXME Same Artifact as above
