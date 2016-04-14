@@ -45,12 +45,6 @@ abstract class Compat {
   val Nullary = global.NullaryMethodType
   val ScalaObjectClass = definitions.ScalaObjectClass
 
-  // `transformedType` doesn't exist in Scala < 2.10
-  implicit def withTransformedType(global: Global): WithTransformedType = new WithTransformedType(global)
-  class WithTransformedType(global: Global) {
-    def transformedType(tpe: Type): Type = tpe
-  }
-
   /**
    * Traverses given type and collects result of applying a partial function `pf`.
    *
@@ -121,10 +115,6 @@ abstract class Compat {
     private class WithRootMirror(x: Any) {
       def rootMirror: DummyMirror = new DummyMirror
     }
-    lazy val AnyValClass = global.rootMirror.getClassIfDefined("scala.AnyVal")
-
-    def isDerivedValueClass(sym: Symbol): Boolean =
-      sym.isNonBottomSubClass(AnyValClass) && !definitions.ScalaValueClasses.contains(sym)
   }
 
   object MacroExpansionOf {
