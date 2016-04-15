@@ -41,6 +41,8 @@ import scala.tools.nsc._
 class ExtractUsedNames[GlobalType <: CallbackGlobal](val global: GlobalType) extends Compat {
   import global._
 
+  @inline def debug(msg: => String) = if (settings.verbose.value) inform(msg)
+
   def extract(unit: CompilationUnit): Set[String] = {
     val tree = unit.body
     val extractedByTreeWalk = extractByTreeWalk(tree)
@@ -122,7 +124,7 @@ class ExtractUsedNames[GlobalType <: CallbackGlobal](val global: GlobalType) ext
     }
 
     (symbol != NoSymbol) &&
-      !symbol.isSynthetic &&
+      (callback.includeSynthToNameHashing || !symbol.isSynthetic) &&
       !emptyName(symbol.name)
   }
 }

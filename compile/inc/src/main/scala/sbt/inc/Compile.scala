@@ -206,6 +206,7 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
   def usedName(sourceFile: File, name: String) = add(usedNames, sourceFile, name)
 
   def nameHashing: Boolean = options.nameHashing
+  def includeSynthToNameHashing: Boolean = options.includeSynthToNameHashing
 
   def get: Analysis = addUsedNames(addCompilation(addProductsAndDeps(Analysis.empty(nameHashing = nameHashing))))
 
