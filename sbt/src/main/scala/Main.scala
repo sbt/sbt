@@ -22,6 +22,8 @@ private object StaticUtils {
   val LIBRARY_JAR = "scala-library.jar"
   val REFLECT = "reflect"
   val REFLECT_JAR = "scala-reflect.jar"
+  val BRIDGE = "compiler-interface"
+  val BRIDGE_JAR = s"compiler-interface-${sbtApplicationID.version}-sources.jar"
   val XSBTI = "xsbti"
   val XSBTI_JAR = s"interface-${sbtApplicationID.version}.jar"
   val thisJAR: File = new File(getClass.getProtectionDomain().getCodeSource().getLocation().toURI().getPath())
@@ -87,7 +89,7 @@ private class StaticLauncher(appProvider: StaticAppProvider, scalaProvider: Stat
 
   override def bootDirectory(): File = new File(sys props "user.home") / ".sbt" / "boot"
 
-  override def ivyRepositories(): Array[xsbti.Repository] = Array.empty
+  override def ivyRepositories(): Array[xsbti.Repository] = appRepositories
   override def appRepositories(): Array[xsbti.Repository] = Array(new FakeRepository(new FakeResolver("fakeresolver", bootDirectory / "fakeresolver-cache", modules)))
 
   override def isOverrideRepositories(): Boolean = false
@@ -95,14 +97,20 @@ private class StaticLauncher(appProvider: StaticAppProvider, scalaProvider: Stat
   override def ivyHome(): File = null
   override def checksums(): Array[String] = Array.empty
 
-  private val modules = Map(
-    ("org.scala-sbt", "sbt", "0.13.12-SNAPSHOT") -> Seq(FakeResolver.FakeArtifact("sbt", "jar", "jar", StaticUtils.thisJAR))
+  private lazy val modules = Map(
+    ("org.scala-sbt", "sbt", "0.13.12-SNAPSHOT") ->
+      Seq(FakeResolver.FakeArtifact("sbt", "jar", "jar", StaticUtils.thisJAR)),
+
+    ("org.scala-sbt", "compiler-interface", "0.13.12-SNAPSHOT") -> {
+      val file = scalaProvider.getComponent(StaticUtils.BRIDGE)
+      Seq(FakeResolver.FakeArtifact("compiler-interface", "src", "jar", file))
+    }
   )
 }
 
 private class StaticScalaProvider(appProvider: StaticAppProvider) extends xsbti.ScalaProvider {
 
-  private def getComponent(componentID: String): File = {
+  def getComponent(componentID: String): File = {
     val component = appProvider.components.component(componentID)
     assert(component.length == 1, s"""Component $componentID should have 1 file, ${component.length} files found: ${component.mkString(", ")}.""")
     component(0)
@@ -132,6 +140,10 @@ private class StaticAppProvider(appConfig: StaticAppConfiguration) extends xsbti
 
   if (components.component(StaticUtils.XSBTI).isEmpty) {
     installFromResources(StaticUtils.XSBTI_JAR, StaticUtils.XSBTI)
+  }
+
+  if (components.component(StaticUtils.BRIDGE).isEmpty) {
+    installFromResources(StaticUtils.BRIDGE_JAR, StaticUtils.BRIDGE)
   }
 
   override def components(): xsbti.ComponentProvider = new StaticComponentProvider(scalaProvider.launcher.bootDirectory)
@@ -173,4 +185,3 @@ private class StaticAppConfiguration(override val arguments: Array[String]) exte
   override val baseDirectory: File = new File(sys props "user.dir")
   override val provider: xsbti.AppProvider = new StaticAppProvider(this)
 }
-
