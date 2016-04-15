@@ -57,6 +57,7 @@ private[sbt] class FakeResolver(private var name: String, cacheDir: File, module
     throw new UnsupportedOperationException("This resolver doesn't support publishing.")
 
   override def download(artifact: ArtifactOrigin, options: DownloadOptions): ArtifactDownloadReport = {
+
     val report = new ArtifactDownloadReport(artifact.getArtifact)
     val path = new URL(artifact.getLocation).toURI.getPath
     val localFile = new File(path)
@@ -77,7 +78,7 @@ private[sbt] class FakeResolver(private var name: String, cacheDir: File, module
 
     artifacts foreach { art =>
       val artifactOrigin = locate(art)
-      report.addArtifactReport(download(artifactOrigin, options))
+      Option(locate(art)) foreach (o => report.addArtifactReport(download(o, options)))
     }
 
     report
