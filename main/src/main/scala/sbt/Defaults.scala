@@ -18,7 +18,7 @@ import CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
 import complete._
 import std.TaskExtra._
 import sbt.inc.{ Analysis, FileValueCache, IncOptions, Locate }
-import sbt.compiler.{ MixedAnalyzingCompiler, AggressiveCompile, IvyBridgeProvider }
+import sbt.compiler.{ MixedAnalyzingCompiler, AggressiveCompile }
 import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
 
 import sys.error
@@ -235,8 +235,7 @@ object Defaults extends BuildCommon {
       val _ = clean.value
       IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log)
     },
-    scalaCompilerBridgeSource := ModuleID(xsbti.ArtifactInfo.SbtOrganization, "compiler-interface", sbtVersion.value, Some("component")).sources(),
-    compilerBridgeProvider := IvyBridgeProvider(bootIvyConfiguration.value, scalaCompilerBridgeSource.value)
+    scalaCompilerBridgeSource := ModuleID(xsbti.ArtifactInfo.SbtOrganization, "compiler-interface", sbtVersion.value, Some("component")).sources()
   )
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(Seq(
@@ -266,7 +265,7 @@ object Defaults extends BuildCommon {
     }
 
   def compilersSetting = compilers := Compiler.compilers(scalaInstance.value, classpathOptions.value, javaHome.value,
-    compilerBridgeProvider.value)(appConfiguration.value, streams.value.log)
+    bootIvyConfiguration.value, scalaCompilerBridgeSource.value)(appConfiguration.value, streams.value.log)
 
   lazy val configTasks = docTaskSettings(doc) ++ inTask(compile)(compileInputsSettings) ++ configGlobal ++ compileAnalysisSettings ++ Seq(
     compile <<= compileTask,
