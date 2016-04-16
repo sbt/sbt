@@ -554,21 +554,36 @@ object Tasks {
             .sortBy(_._1)
 
           for ((type0, errors) <- groupedArtifactErrors) {
-            log.error(s"${errors.size} $type0")
+            def msg = s"${errors.size} $type0"
+            if (ignoreArtifactErrors)
+              log.warn(msg)
+            else
+              log.error(msg)
 
-            if (!ignoreArtifactErrors || verbosityLevel >= 1)
-              for (err <- errors)
-                log.error("  " + err)
+            if (!ignoreArtifactErrors || verbosityLevel >= 1) {
+              if (ignoreArtifactErrors)
+                for (err <- errors)
+                  log.warn("  " + err)
+              else
+                for (err <- errors)
+                  log.error("  " + err)
+            }
           }
 
           if (!ignoreArtifactErrors)
             throw new Exception(s"Encountered ${artifactErrors.length} errors (see above messages)")
         }
 
+        // can be non empty only if ignoreArtifactErrors is true
+        val erroredArtifacts = artifactFilesOrErrors.collect {
+          case (artifact, -\/(_)) =>
+            artifact
+        }.toSet
+
         def artifactFileOpt(artifact: Artifact) = {
           val res = artifactFiles.get(artifact)
 
-          if (res.isEmpty)
+          if (res.isEmpty && !erroredArtifacts(artifact))
             log.error(s"${artifact.url} not downloaded (should not happen)")
 
           res

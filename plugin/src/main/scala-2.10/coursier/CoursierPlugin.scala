@@ -41,8 +41,15 @@ object CoursierPlugin extends AutoPlugin {
     coursierFallbackDependencies <<= Tasks.coursierFallbackDependenciesTask,
     coursierCache := Cache.default,
     update <<= Tasks.updateTask(withClassifiers = false),
-    updateClassifiers <<= Tasks.updateTask(withClassifiers = true, ignoreArtifactErrors = true),
-    updateSbtClassifiers in Defaults.TaskGlobal <<= Tasks.updateTask(withClassifiers = true, sbtClassifiers = true),
+    updateClassifiers <<= Tasks.updateTask(
+      withClassifiers = true,
+      ignoreArtifactErrors = true
+    ),
+    updateSbtClassifiers in Defaults.TaskGlobal <<= Tasks.updateTask(
+      withClassifiers = true,
+      sbtClassifiers = true,
+      ignoreArtifactErrors = true
+    ),
     coursierProject <<= Tasks.coursierProjectTask,
     coursierProjects <<= Tasks.coursierProjectsTask,
     coursierPublications <<= Tasks.coursierPublicationsTask,
