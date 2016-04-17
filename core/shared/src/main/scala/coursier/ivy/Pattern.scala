@@ -9,6 +9,10 @@ import java.util.regex.Pattern.quote
 
 object Pattern {
 
+  val default =
+    "[organisation]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/" +
+    "[artifact](-[classifier]).[ext]"
+
   val propertyRegex = (quote("${") + "[^" + quote("{[()]}") + "]*" + quote("}")).r
   val optionalPartRegex = (quote("(") + "[^" + quote("{()}") + "]*" + quote(")")).r
   val variableRegex = (quote("[") + "[^" + quote("{[()]}") + "]*" + quote("]")).r
