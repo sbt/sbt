@@ -581,9 +581,11 @@ object Tasks {
         }.toSet
 
         def artifactFileOpt(artifact: Artifact) = {
-          val res = artifactFiles.get(artifact)
+          val artifact0 = artifact
+            .copy(attributes = Attributes()) // temporary hack :-(
+          val res = artifactFiles.get(artifact0)
 
-          if (res.isEmpty && !erroredArtifacts(artifact))
+          if (res.isEmpty && !erroredArtifacts(artifact0))
             log.error(s"${artifact.url} not downloaded (should not happen)")
 
           res
