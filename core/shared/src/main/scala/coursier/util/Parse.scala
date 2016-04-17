@@ -132,6 +132,13 @@ object Parse {
       MavenRepository("https://repo1.maven.org/maven2")
     else if (s.startsWith("sonatype:"))
       MavenRepository(s"https://oss.sonatype.org/content/repositories/${s.stripPrefix("sonatype:")}")
+    else if (s.startsWith("bintray:"))
+      MavenRepository(s"https://dl.bintray.com/${s.stripPrefix("bintray:")}/maven")
+    else if (s.startsWith("typesafe:ivy-"))
+      IvyRepository(
+        s"https://repo.typesafe.com/typesafe/ivy-" + s.stripPrefix("typesafe:ivy-") + "/" +
+          coursier.ivy.Pattern.default
+      )
     else if (s.startsWith("ivy:"))
       IvyRepository(s.stripPrefix("ivy:"))
     else
