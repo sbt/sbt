@@ -10,8 +10,8 @@ import shapeless.union.Union
 case class CoursierCommandHelper(
   command: CoursierCommandHelper.U
 ) extends ArgsApp {
-  def setRemainingArgs(remainingArgs: Seq[String]): Unit =
-    command.unify.setRemainingArgs(remainingArgs)
+  def setRemainingArgs(remainingArgs: Seq[String], extraArgs: Seq[String]): Unit =
+    command.unify.setRemainingArgs(remainingArgs, extraArgs)
   def remainingArgs: Seq[String] =
     command.unify.remainingArgs
   def apply(): Unit =

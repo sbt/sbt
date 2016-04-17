@@ -31,12 +31,12 @@ lazy val releaseSettings = Seq(
     else
       Some("releases"  at nexus + "service/local/staging/deploy/maven2")
   },
-  credentials += {
+  credentials ++= {
     Seq("SONATYPE_USER", "SONATYPE_PASS").map(sys.env.get) match {
       case Seq(Some(user), Some(pass)) =>
-        Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", user, pass)
+        Seq(Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", user, pass))
       case _ =>
-        Credentials(Path.userHome / ".ivy2" / ".credentials")
+        Seq()
     }
   }
 )
@@ -301,7 +301,7 @@ lazy val cli = project
       if (scalaVersion.value startsWith "2.10.")
         Seq()
       else
-        Seq("com.github.alexarchambault" %% "case-app" % "1.0.0-RC1")
+        Seq("com.github.alexarchambault" %% "case-app" % "1.0.0-RC2")
     },
     resourceGenerators in Compile += packageBin.in(bootstrap).in(Compile).map { jar =>
       Seq(jar)

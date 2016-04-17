@@ -51,23 +51,32 @@ class IsolatedClassLoader(
 
 }
 
+// should be in case-app somehow
+trait ExtraArgsApp extends caseapp.core.DefaultArgsApp {
+  private var remainingArgs1 = Seq.empty[String]
+  private var extraArgs1 = Seq.empty[String]
+
+  override def setRemainingArgs(remainingArgs: Seq[String], extraArgs: Seq[String]): Unit = {
+    remainingArgs1 = remainingArgs
+    extraArgs1 = extraArgs
+  }
+
+  override def remainingArgs: Seq[String] =
+    remainingArgs1
+  def extraArgs: Seq[String] =
+    extraArgs1
+}
+
 case class Launch(
   @Recurse
     options: LaunchOptions
-) extends App {
+) extends App with ExtraArgsApp {
 
-  val (rawDependencies, extraArgs) = {
-    val idxOpt = Some(remainingArgs.indexOf("--")).filter(_ >= 0)
-    idxOpt.fold((remainingArgs, Seq.empty[String])) { idx =>
-      val (l, r) = remainingArgs.splitAt(idx)
-      assert(r.nonEmpty)
-      (l, r.tail)
-    }
-  }
+  val userArgs = extraArgs
 
   val helper = new Helper(
     options.common,
-    rawDependencies ++ options.isolated.rawIsolated.map { case (_, dep) => dep }
+    remainingArgs ++ options.isolated.rawIsolated.map { case (_, dep) => dep }
   )
 
 
@@ -194,10 +203,10 @@ case class Launch(
     }
 
   if (options.common.verbosityLevel >= 2)
-    Helper.errPrintln(s"Launching $mainClass0 ${extraArgs.mkString(" ")}")
+    Helper.errPrintln(s"Launching $mainClass0 ${userArgs.mkString(" ")}")
   else if (options.common.verbosityLevel == 1)
     Helper.errPrintln(s"Launching")
 
   Thread.currentThread().setContextClassLoader(loader)
-  method.invoke(null, extraArgs.toArray)
+  method.invoke(null, userArgs.toArray)
 }
