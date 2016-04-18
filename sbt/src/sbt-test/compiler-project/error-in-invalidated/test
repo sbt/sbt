@@ -1,9 +1,13 @@
 > compile
+
 # comment out `initialized` method in A
 $ copy-file changes/A1.scala src/main/scala/A.scala
+$ sleep 1000
 # compilation of A.scala succeeds but B.scala gets invalidated (properly) and B.scala fails to compile
 -> compile
+
 # we change A.scala to its original shape so compilation should succeed again
 $ copy-file changes/A2.scala src/main/scala/A.scala
+$ sleep 1000
 # this fails at the moment due to use of stale class file for A, see #958 for details
 > compile
