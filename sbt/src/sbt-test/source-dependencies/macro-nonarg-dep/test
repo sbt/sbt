@@ -1,0 +1,11 @@
+> compile
+
+## Replace client-side file Bar.scala to something that should not compile
+$ copy-file changes/Bar.scala macro-client/Bar.scala
+
+## Expect failure here
+-> macroClient/compile
+
+## It should still fail after clean
+> macroClient/clean
+-> macroClient/compile
