@@ -98,10 +98,10 @@ private class StaticLauncher(appProvider: StaticAppProvider, scalaProvider: Stat
   override def checksums(): Array[String] = Array.empty
 
   private lazy val modules = Map(
-    ("org.scala-sbt", "sbt", "0.13.12-SNAPSHOT") ->
+    ("org.scala-sbt", "sbt", sbtApplicationID.version) ->
       Seq(FakeResolver.FakeArtifact("sbt", "jar", "jar", StaticUtils.thisJAR)),
 
-    ("org.scala-sbt", "compiler-interface", "0.13.12-SNAPSHOT") -> {
+    ("org.scala-sbt", "compiler-interface", sbtApplicationID.version) -> {
       val file = scalaProvider.getComponent(StaticUtils.BRIDGE)
       Seq(FakeResolver.FakeArtifact("compiler-interface", "src", "jar", file))
     }
