@@ -13,6 +13,7 @@ object ScriptedRunnerImpl {
   def run(resourceBaseDirectory: File, bufferLog: Boolean, tests: Array[String], handlersProvider: HandlersProvider): Unit = {
     val runner = new ScriptedTests(resourceBaseDirectory, bufferLog, handlersProvider)
     val logger = ConsoleLogger()
+    logger.setLevel(sbt.util.Level.Debug)
     val allTests = get(tests, resourceBaseDirectory, logger) flatMap {
       case ScriptedTest(group, name) =>
         runner.scriptedTest(group, name, logger)
@@ -73,6 +74,7 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, handl
   private def scriptedTest(label: String, testDirectory: File, prescripted: File => Unit, log: Logger): Unit =
     {
       val buffered = new BufferedLogger(new FullLogger(log))
+      buffered.setLevel(sbt.util.Level.Debug)
       if (bufferLog)
         buffered.record()
 
