@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION=1.0.0-M10
+VERSION=1.0.0-M11
 CACHE_VERSION=v1
 
 SBTPACK_LAUNCHER="$(dirname "$0")/../cli/target/pack/bin/coursier"
@@ -10,15 +10,15 @@ if [ ! -f "$SBTPACK_LAUNCHER" ]; then
 fi
 
 "$SBTPACK_LAUNCHER" bootstrap \
-  com.github.alexarchambault:coursier-cli_2.11:$VERSION \
+  io.get-coursier:coursier-cli_2.11:$VERSION \
   --classifier standalone \
   --intransitive \
   -J "-noverify" \
   --no-default \
   -r central \
   -r sonatype:releases \
-  -D "\${user.home}/.coursier/bootstrap/$VERSION" \
+  -d "\${user.home}/.coursier/bootstrap/$VERSION" \
   -f -o coursier \
   -M coursier.cli.Coursier \
-  -P coursier.cache="\${user.home}/.coursier/cache/$CACHE_VERSION" \
+  -D coursier.cache="\${user.home}/.coursier/cache/$CACHE_VERSION" \
   "$@"
