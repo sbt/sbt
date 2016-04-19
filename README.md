@@ -582,7 +582,7 @@ Check that the necessary repositories ("resolvers" in SBT parlance) are added to
 the sub-projects that need them.
 
 By default in SBT, all the caches of the various repositories
-are blended together. Which means that if the required repoitories are added at just one place,
+are blended together. Which means that if the required repositories are added at just one place,
 some dependencies may be put in cache from there, then become accessible from other places via
 the cache, even though the required repositories were not added to them.
 Coursier, on the other hand, keeps the caches of the various repositories separate, so that
