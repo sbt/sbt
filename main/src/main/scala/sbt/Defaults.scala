@@ -1883,6 +1883,7 @@ object Classpaths {
     {
       import xsbti.Predefined
       repo match {
+        case f: FakeRepository        => f.rawRepository
         case m: xsbti.MavenRepository => MavenRepository(m.id, m.url.toString)
         case i: xsbti.IvyRepository =>
           val patterns = Patterns(i.ivyPattern :: Nil, i.artifactPattern :: Nil, mavenCompatible(i), descriptorOptional(i), skipConsistencyCheck(i))

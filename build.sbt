@@ -28,7 +28,24 @@ def commonSettings: Seq[Setting[_]] = Seq(
   incOptions := incOptions.value.withNameHashing(true),
   crossScalaVersions := Seq(scala210),
   bintrayPackage := (bintrayPackage in ThisBuild).value,
-  bintrayRepository := (bintrayRepository in ThisBuild).value
+  bintrayRepository := (bintrayRepository in ThisBuild).value,
+  test in assembly := {},
+  assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = true),
+  assemblyMergeStrategy in assembly := {
+    case PathList(ps @ _*) if ps.last == "javax.inject.Named"      => MergeStrategy.first
+    case PathList(ps @ _*) if ps.last endsWith ".class"            => MergeStrategy.first
+    case PathList(ps @ _*) if ps.last endsWith "module.properties" => MergeStrategy.first
+    case PathList(ps @ _*) if ps.last == "MANIFEST.MF"             => MergeStrategy.rename
+    case "LICENSE"                                                 => MergeStrategy.first
+    case "NOTICE"                                                  => MergeStrategy.first
+    // excluded from fat jar because otherwise we may pick it up when determining the `actualVersion`
+    // of other scala instances.
+    case "compiler.properties"                                     => MergeStrategy.discard
+
+    case x =>
+      val oldStrategy = (assemblyMergeStrategy in assembly).value
+      oldStrategy(x)
+  }
 )
 
 def minimalSettings: Seq[Setting[_]] =
@@ -373,11 +390,24 @@ lazy val compilerIntegrationProj = (project in (compilePath / "integration")).
     name := "Compiler Integration"
   )
 
+lazy val packageBridgeSource = settingKey[Boolean]("Whether to package the compiler bridge sources in compiler ivy project's resources.")
 lazy val compilerIvyProj = (project in compilePath / "ivy").
   dependsOn (ivyProj, compilerProj).
   settings(
     baseSettings,
-    name := "Compiler Ivy Integration"
+    name := "Compiler Ivy Integration",
+    packageBridgeSource := false,
+    resourceGenerators in Compile <+= Def.task {
+      if (packageBridgeSource.value) {
+        val compilerBridgeSrc = (Keys.packageSrc in (compileInterfaceProj, Compile)).value
+        val xsbtiJAR = (Keys.packageBin in (interfaceProj, Compile)).value
+        // They are immediately used by the static launcher.
+        val included = Set("scala-compiler.jar", "scala-library.jar", "scala-reflect.jar")
+        val scalaJars = (externalDependencyClasspath in Compile).value.map(_.data).filter(j => included contains j.getName)
+        Seq(compilerBridgeSrc, xsbtiJAR) ++ scalaJars
+      }
+      else Nil
+    }
   )
 
 lazy val scriptedBaseProj = (project in scriptedPath / "base").
@@ -645,6 +675,17 @@ def customCommands: Seq[Setting[_]] = Seq(
       "compile" ::
       "publish" ::
       "bintrayRelease" ::
+      state
+  },
+  // Produces a fat runnable JAR that contains everything needed to use sbt.
+  commands += Command.command("install") { state =>
+    val packageBridgeSourceKey = packageBridgeSource.key.label
+    val compilerIvy = compilerIvyProj.id
+    val sbt = sbtProj.id
+    s"$compilerIvy/clean" ::
+      s"set $packageBridgeSourceKey in $compilerIvy := true" ::
+      s"$sbt/assembly" ::
+      s"set $packageBridgeSourceKey in $compilerIvy := false" ::
       state
   }
 )
