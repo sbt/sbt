@@ -1,0 +1,43 @@
+### Changes
+
+* Hacks to lower the odds of redundancy in returned resolution artifacts (in case of redundant artifact URLs not already in cache, the first download locks the corresponding file for the others - [#223], [#230])
+* Add support for `bintray:user` and `typesafe:ivy-...` repository aliases ([#229])
+* Have the launch command accept arguments for the launched application right after `--` ([#229])
+* Fix regression in classloader isolation setup of the launch command (`-i` and `-I` options - [#228])
+* Fix regression in the bootstrap command ([#225])
+* Take into account the `isMavenCompatible` flag of repositories from SBT ([#221])
+* Remove unnecessary check making some resolutions fail ([#222])
+* First scripted tests of the SBT plugin ([#212], [#218])
+* Add `-P` option to force displaying progress bars (in non interactive mode in particular, [#217])
+* Add `update-local` and `update-local-changing` modes, that only try to update already existing locally artifacts ([#217])
+* Try to download snapshot versioning metadata only for changing artifacts ([#217])
+* Add benchmark option `-B` to display resolution and resolution iterations durations (specify a negative value `-n` to run the resolution `n` times, a positive one to display the durations of individual iterations too - [#217])
+* Use SBT logging to print things from the SBT plugin ([#217])
+* Don't flood the terminal with ignored errors from the SBT plugin (those of missing sources / javadoc in `updateClassifiers` and `updateSbtClassifiers` - [#217])
+* Enlarge the scope of property substitution in POMs (fixes some resolution issues - [#213])
+* Add support for fallback artifacts (`from` syntax) in SBT plugin ([#212])
+* Add support for `excludeDependencies` in the SBT plugin ([#212])
+* Better lookup of the main class by the launch command ([#205])
+* Rename SBT plugin artifact to `sbt-coursier` (thanks to [@soc], [#202])
+* Change coursier artifacts organization to `io.get-coursier`
+* Really suppress `/dev/tty not configured` message ([#201])
+
+[#230]: https://github.com/alexarchambault/coursier/pull/230
+[#229]: https://github.com/alexarchambault/coursier/pull/229
+[#228]: https://github.com/alexarchambault/coursier/pull/228
+[#225]: https://github.com/alexarchambault/coursier/pull/225
+[#223]: https://github.com/alexarchambault/coursier/pull/223
+[#222]: https://github.com/alexarchambault/coursier/pull/222
+[#221]: https://github.com/alexarchambault/coursier/pull/221
+[#218]: https://github.com/alexarchambault/coursier/pull/218
+[#217]: https://github.com/alexarchambault/coursier/pull/217
+[#213]: https://github.com/alexarchambault/coursier/pull/213
+[#212]: https://github.com/alexarchambault/coursier/pull/212
+[#205]: https://github.com/alexarchambault/coursier/pull/205
+[#202]: https://github.com/alexarchambault/coursier/pull/202
+[#201]: https://github.com/alexarchambault/coursier/pull/201
+[@soc]: https://github.com/soc
+
+### Non-backward compatible changes
+
+* Possible minor incompatible binary changes, it is recommended to recompile your code using coursier against the `1.0.0-M11` version.
