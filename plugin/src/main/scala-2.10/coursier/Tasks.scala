@@ -267,14 +267,14 @@ object Tasks {
         rule =>
           if (
             rule.artifact != "*" ||
-              rule.configurations.nonEmpty ||
-              rule.crossVersion != sbt.CrossVersion.Disabled
+              rule.configurations.nonEmpty
           ) {
             log.warn(s"Unsupported exclusion rule $rule")
             anyNonSupportedExclusionRule = true
             Nil
           } else
-            Seq((rule.organization, rule.name))
+            Seq((rule.organization,
+              FromSbt.sbtCrossVersionName(rule.name, rule.crossVersion, sv, sbv)))
       }.toSet
 
       if (anyNonSupportedExclusionRule)
