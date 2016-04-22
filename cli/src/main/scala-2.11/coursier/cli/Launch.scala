@@ -85,22 +85,20 @@ case class Launch(
   val contextLoader = Thread.currentThread().getContextClassLoader
 
   val parentLoader0: ClassLoader =
-    if (Try(contextLoader.loadClass("coursier.cli.Launch")).isSuccess)
-      Launch.mainClassLoader(contextLoader)
-        .flatMap(cl => Option(cl.getParent))
-        .getOrElse {
-          if (options.common.verbosityLevel >= 0)
-            Console.err.println(
-              "Warning: cannot find the main ClassLoader that launched coursier.\n" +
-              "Was coursier launched by its main launcher? " +
-              "The ClassLoader of the application that is about to be launched will be intertwined " +
-              "with the one of coursier, which may be a problem if their dependencies conflict."
-            )
-          contextLoader
-        }
-    else
-      // proguarded -> no risk of conflicts, no need to find a specific ClassLoader
-      contextLoader
+    Launch.mainClassLoader(contextLoader)
+      .flatMap(cl => Option(cl.getParent))
+      .getOrElse {
+      // proguarded -> no risk of conflicts, no absolute need to find a specific ClassLoader
+        val isProguarded = Try(contextLoader.loadClass("coursier.cli.Launch")).isFailure
+        if (!isProguarded && options.common.verbosityLevel >= 0)
+          Console.err.println(
+            "Warning: cannot find the main ClassLoader that launched coursier.\n" +
+            "Was coursier launched by its main launcher? " +
+            "The ClassLoader of the application that is about to be launched will be intertwined " +
+            "with the one of coursier, which may be a problem if their dependencies conflict."
+          )
+        contextLoader
+      }
 
   val (parentLoader, filteredFiles) =
     if (options.isolated.isolated.isEmpty)
