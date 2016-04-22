@@ -186,7 +186,6 @@ private[sbt] case class SbtChainResolver(
               }
           }).reverse.headOption map {
             case (rmr, resolver) =>
-              Message.warn(s"Choosing $resolver for ${rmr.getId}")
               // Now that we know the real latest revision, let's force Ivy to use it
               val artifactOpt = findFirstArtifactRef(rmr.getDescriptor, dd, data, resolver)
               artifactOpt match {
