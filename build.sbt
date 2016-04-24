@@ -500,13 +500,15 @@ def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   (altLocalPublish in interfaceProj).value
   (altLocalPublish in compileInterfaceProj).value
   doScripted((sbtLaunchJar in bundledLauncherProj).value, (fullClasspath in scriptedSbtProj in Test).value,
-    (scalaInstance in scriptedSbtProj).value, scriptedSource.value, result, scriptedPrescripted.value)
+    (scalaInstance in scriptedSbtProj).value, scriptedSource.value, result, scriptedPrescripted.value,
+    scriptedLaunchOpts.value)
 }
 
 def scriptedUnpublishedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => scriptedParser(dir)).parsed
   doScripted((sbtLaunchJar in bundledLauncherProj).value, (fullClasspath in scriptedSbtProj in Test).value,
-    (scalaInstance in scriptedSbtProj).value, scriptedSource.value, result, scriptedPrescripted.value)
+    (scalaInstance in scriptedSbtProj).value, scriptedSource.value, result, scriptedPrescripted.value,
+    scriptedLaunchOpts.value)
 }
 
 lazy val publishAll = TaskKey[Unit]("publish-all")
@@ -531,6 +533,7 @@ def rootSettings = fullDocSettings ++
   Transform.conscriptSettings(bundledLauncherProj)
 def otherRootSettings = Seq(
   Scripted.scriptedPrescripted := { addSbtAlternateResolver _ },
+  Scripted.scriptedLaunchOpts := List("-XX:MaxPermSize=256M", "-Xmx1G"),
   Scripted.scripted <<= scriptedTask,
   Scripted.scriptedUnpublished <<= scriptedUnpublishedTask,
   Scripted.scriptedSource := (sourceDirectory in sbtProj).value / "sbt-test",
@@ -539,6 +542,7 @@ def otherRootSettings = Seq(
   },
   aggregate in bintrayRelease := false
 ) ++ inConfig(Scripted.MavenResolverPluginTest)(Seq(
+  Scripted.scriptedLaunchOpts := List("-XX:MaxPermSize=256M", "-Xmx1G"),
   Scripted.scripted <<= scriptedTask,
   Scripted.scriptedUnpublished <<= scriptedUnpublishedTask,
   Scripted.scriptedPrescripted := { f =>
@@ -547,9 +551,17 @@ def otherRootSettings = Seq(
       IO.write(inj, "addMavenResolverPlugin")
       // sLog.value.info(s"""Injected project/maven.sbt to $f""")
     }
-
     addSbtAlternateResolver(f)
   }
+)) ++ inConfig(Scripted.RepoOverrideTest)(Seq(
+  Scripted.scriptedPrescripted := { _ => () },
+  Scripted.scriptedLaunchOpts := {
+    List("-XX:MaxPermSize=256M", "-Xmx1G", "-Dsbt.override.build.repos=true",
+      s"""-Dsbt.repository.config=${ Scripted.scriptedSource.value / "repo.config" }""")
+  },
+  Scripted.scripted <<= scriptedTask,
+  Scripted.scriptedUnpublished <<= scriptedUnpublishedTask,
+  Scripted.scriptedSource := (sourceDirectory in sbtProj).value / "repo-override-test"
 ))
 
 def addSbtAlternateResolver(scriptedRoot: File) = {
