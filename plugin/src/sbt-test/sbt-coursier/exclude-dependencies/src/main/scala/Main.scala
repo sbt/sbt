@@ -12,10 +12,12 @@ object Main extends App {
   ).toOption.nonEmpty
 
   val shapelessFound = classFound("shapeless.HList")
+  val argonautFound = classFound("argonaut.Json")
   val argonautShapelessFound = classFound("argonaut.derive.MkEncodeJson")
 
   assert(argonautShapelessFound)
   assert(!shapelessFound)
+  assert(!argonautFound)
 
   Files.write(new File("output").toPath, "OK".getBytes("UTF-8"))
 }
