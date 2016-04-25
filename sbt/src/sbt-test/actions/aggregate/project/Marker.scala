@@ -1,10 +1,9 @@
 import sbt._
 import Keys._
 import Import._
-import Project.Initialize
+import Def.Initialize
 
-object Marker extends AutoPlugin
-{
+object Marker extends AutoPlugin {
   override def trigger = allRequirements
   override def requires = sbt.plugins.JvmPlugin
   object autoImport {
