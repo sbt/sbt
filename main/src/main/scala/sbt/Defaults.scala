@@ -23,6 +23,7 @@ import sbt.internal.inc.{ Analysis, ClassfileManager, ClasspathOptions, Compiler
 import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
 
 import sbt.librarymanagement.{ `package` => _, _ }
+import sbt.internal.OldPlugin
 import sbt.internal.librarymanagement._
 import sbt.internal.librarymanagement.syntax._
 import sbt.internal.util._
@@ -297,7 +298,7 @@ object Defaults extends BuildCommon {
     console <<= consoleTask,
     consoleQuick <<= consoleQuickTask,
     discoveredMainClasses <<= compile map discoverMainClasses storeAs discoveredMainClasses xtriggeredBy compile,
-    definedSbtPlugins <<= discoverPlugins,
+    // definedSbtPlugins <<= discoverPlugins,
     discoveredSbtPlugins <<= discoverSbtPluginNames,
     inTask(run)(runnerTask :: Nil).head,
     selectMainClass := mainClass.value orElse askForMainClass(discoveredMainClasses.value),
@@ -307,6 +308,7 @@ object Defaults extends BuildCommon {
     runMain <<= runMainTask(fullClasspath, runner in run),
     copyResources <<= copyResourcesTask
   )
+
   private[this] lazy val configGlobal = globalDefaults(Seq(
     initialCommands :== "",
     cleanupCommands :== ""
@@ -941,13 +943,6 @@ object Defaults extends BuildCommon {
   def discoverSbtPluginNames: Initialize[Task[PluginDiscovery.DiscoveredNames]] = Def.task {
     if (sbtPlugin.value) PluginDiscovery.discoverSourceAll(compile.value) else PluginDiscovery.emptyDiscoveredNames
   }
-
-  @deprecated("Use discoverSbtPluginNames.", "0.13.2")
-  def discoverPlugins: Initialize[Task[Set[String]]] = (compile, sbtPlugin, streams) map { (analysis, isPlugin, s) => if (isPlugin) discoverSbtPlugins(analysis, s.log) else Set.empty }
-
-  @deprecated("Use PluginDiscovery.sourceModuleNames[Plugin].", "0.13.2")
-  def discoverSbtPlugins(analysis: CompileAnalysis, log: Logger): Set[String] =
-    PluginDiscovery.sourceModuleNames(analysis, classOf[Plugin].getName).toSet
 
   def copyResourcesTask =
     (classDirectory, resources, resourceDirectories, streams) map { (target, resrcs, dirs, s) =>

@@ -9,7 +9,7 @@ import Def.{ displayFull, ScopedKey, ScopeLocal, Setting }
 import BuildPaths.outputDirectory
 import Scope.GlobalScope
 import BuildStreams.Streams
-import sbt.internal.{ BuildDef, Load }
+import sbt.internal.{ BuildDef, Load, OldPlugin }
 import sbt.io.Path._
 import sbt.internal.util.{ Attributed, AttributeEntry, AttributeKey, AttributeMap, Settings }
 import sbt.internal.util.Attributed.data
@@ -123,7 +123,7 @@ case class DetectedAutoPlugin(name: String, value: AutoPlugin, hasAutoImport: Bo
  *
  * @param builds The [[Build]]s detected in the build definition.  This does not include the default [[Build]] that sbt creates if none is defined.
  */
-final class DetectedPlugins(val plugins: DetectedModules[Plugin], val autoPlugins: Seq[DetectedAutoPlugin], val builds: DetectedModules[BuildDef]) {
+final class DetectedPlugins(val plugins: DetectedModules[OldPlugin], val autoPlugins: Seq[DetectedAutoPlugin], val builds: DetectedModules[BuildDef]) {
   /** Sequence of import expressions for the build definition.  This includes the names of the [[Plugin]], [[Build]], and [[AutoImport]] modules, but not the [[AutoPlugin]] modules. */
   lazy val imports: Seq[String] = BuildUtil.getImports(plugins.names ++ builds.names) ++
     BuildUtil.importAllRoot(autoImports(autoPluginAutoImports)) ++
@@ -169,19 +169,13 @@ final class DetectedPlugins(val plugins: DetectedModules[Plugin], val autoPlugin
  */
 final class LoadedPlugins(val base: File, val pluginData: PluginData, val loader: ClassLoader, val detected: DetectedPlugins) {
   @deprecated("Use the primary constructor.", "0.13.2")
-  def this(base: File, pluginData: PluginData, loader: ClassLoader, plugins: Seq[Plugin], pluginNames: Seq[String]) =
+  def this(base: File, pluginData: PluginData, loader: ClassLoader, plugins: Seq[OldPlugin], pluginNames: Seq[String]) =
     this(base, pluginData, loader,
       new DetectedPlugins(new DetectedModules(pluginNames zip plugins), Nil, new DetectedModules(Nil))
     )
 
-  @deprecated("Use detected.plugins.values.", "0.13.2")
-  val plugins: Seq[Plugin] = detected.plugins.values
-  @deprecated("Use detected.plugins.names.", "0.13.2")
-  val pluginNames: Seq[String] = detected.plugins.names
-
   def fullClasspath: Seq[Attributed[File]] = pluginData.classpath
   def classpath = data(fullClasspath)
-
 }
 /**
  * The loaded, but unresolved build unit.

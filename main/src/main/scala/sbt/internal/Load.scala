@@ -221,7 +221,6 @@ private[sbt] object Load {
           case (uri, build) =>
             val plugins = build.unit.plugins.detected.plugins.values
             val pluginBuildSettings = plugins.flatMap(_.buildSettings) ++ loaded.autos.buildSettings(uri)
-            val pluginNotThis = plugins.flatMap(_.settings) filterNot isProjectThis
             val projectSettings = build.defined flatMap {
               case (id, project) =>
                 val ref = ProjectRef(uri, id)
@@ -233,7 +232,7 @@ private[sbt] object Load {
             }
             val buildScope = Scope(Select(BuildRef(uri)), Global, Global, Global)
             val buildBase = baseDirectory :== build.localBase
-            val buildSettings = transformSettings(buildScope, uri, rootProject, pluginNotThis ++ pluginBuildSettings ++ (buildBase +: build.buildSettings))
+            val buildSettings = transformSettings(buildScope, uri, rootProject, pluginBuildSettings ++ (buildBase +: build.buildSettings))
             buildSettings ++ projectSettings
         }
     }
@@ -243,10 +242,6 @@ private[sbt] object Load {
       case (_, build) =>
         build.unit.plugins.detected.plugins.values flatMap { _.globalSettings }
     }
-
-  @deprecated("No longer used.", "0.13.0")
-  def extractSettings(plugins: Seq[Plugin]): (Seq[Setting[_]], Seq[Setting[_]], Seq[Setting[_]]) =
-    (plugins.flatMap(_.settings), plugins.flatMap(_.projectSettings), plugins.flatMap(_.buildSettings))
 
   def transformProjectOnly(uri: URI, rootProject: URI => String, settings: Seq[Setting[_]]): Seq[Setting[_]] =
     Project.transform(Scope.resolveProject(uri, rootProject), settings)
@@ -679,7 +674,7 @@ private[sbt] object Load {
       // Grabs the plugin settings for old-style sbt plugins.
       def pluginSettings(f: Plugins) = {
         val included = loadedPlugins.detected.plugins.values.filter(f.include) // don't apply the filter to AutoPlugins, only Plugins
-        included.flatMap(p => p.settings.filter(isProjectThis) ++ p.projectSettings)
+        included.flatMap(p => p.projectSettings)
       }
       // Filter the AutoPlugin settings we included based on which ones are
       // intended in the AddSettings.AutoPlugins filter.
@@ -860,28 +855,9 @@ private[sbt] object Load {
   def loadPlugins(dir: File, data: PluginData, loader: ClassLoader): sbt.LoadedPlugins =
     new sbt.LoadedPlugins(dir, data, loader, PluginDiscovery.discoverAll(data, loader))
 
-  @deprecated("Replaced by the more general PluginDiscovery.binarySourceModuleNames and will be made private.", "0.13.2")
-  def getPluginNames(classpath: Seq[Attributed[File]], loader: ClassLoader): Seq[String] =
-    PluginDiscovery.binarySourceModuleNames(classpath, loader, PluginDiscovery.Paths.Plugins, classOf[Plugin].getName)
-
-  @deprecated("Use PluginDiscovery.binaryModuleNames.", "0.13.2")
-  def binaryPlugins(classpath: Seq[File], loader: ClassLoader): Seq[String] =
-    PluginDiscovery.binaryModuleNames(classpath, loader, PluginDiscovery.Paths.Plugins)
-
   @deprecated("Use PluginDiscovery.onClasspath", "0.13.2")
   def onClasspath(classpath: Seq[File])(url: URL): Boolean =
     PluginDiscovery.onClasspath(classpath)(url)
-
-  @deprecated("Use ModuleUtilities.getCheckedObjects[Plugin].", "0.13.2")
-  def loadPlugins(loader: ClassLoader, pluginNames: Seq[String]): Seq[Plugin] =
-    ModuleUtilities.getCheckedObjects[Plugin](pluginNames, loader).map(_._2)
-
-  @deprecated("Use ModuleUtilities.getCheckedObject[Plugin].", "0.13.2")
-  def loadPlugin(pluginName: String, loader: ClassLoader): Plugin =
-    ModuleUtilities.getCheckedObject[Plugin](pluginName, loader)
-
-  @deprecated("No longer used.", "0.13.2")
-  def findPlugins(analysis: Analysis): Seq[String] = discover(analysis, "sbt.Plugin")
 
   @deprecated("No longer used.", "0.13.2")
   def findDefinitions(analysis: Analysis): Seq[String] = discover(analysis, "sbt.internal.BuildDef")
@@ -951,7 +927,9 @@ final case class LoadBuildConfiguration(
     extraBuilds: Seq[URI],
     log: Logger) {
   lazy val (globalPluginClasspath, globalPluginLoader) = Load.pluginDefinitionLoader(this, Load.globalPluginClasspath(globalPlugin))
-  lazy val globalPluginNames = if (globalPluginClasspath.isEmpty) Nil else Load.getPluginNames(globalPluginClasspath, globalPluginLoader)
+  lazy val globalPluginNames =
+    if (globalPluginClasspath.isEmpty) Nil
+    else PluginDiscovery.binarySourceModuleNames(classpath, loader, PluginDiscovery.Paths.Plugins, classOf[OldPlugin].getName)
 
   private[sbt] lazy val globalPluginDefs = {
     val pluginData = globalPlugin match {

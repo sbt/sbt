@@ -176,7 +176,6 @@ object Keys {
   val crossScalaVersions = SettingKey[Seq[String]]("cross-scala-versions", "The versions of Scala used when cross-building.", BPlusSetting)
   val crossVersion = SettingKey[CrossVersion]("cross-version", "Configures handling of the Scala version when cross-building.", CSetting)
   val classpathOptions = SettingKey[ClasspathOptions]("classpath-options", "Configures handling of Scala classpaths.", DSetting)
-  val definedSbtPlugins = TaskKey[Set[String]]("defined-sbt-plugins", "The set of names of Plugin implementations defined by this project.", CTask)
   val discoveredSbtPlugins = TaskKey[PluginDiscovery.DiscoveredNames]("discovered-sbt-plugins", "The names of sbt plugin-related modules (modules that extend Build, Plugin, AutoPlugin) defined by this project.", CTask)
   val sbtPlugin = SettingKey[Boolean]("sbt-plugin", "If true, enables adding sbt as a dependency and auto-generation of the plugin descriptor file.", BMinusSetting)
   val printWarnings = TaskKey[Unit]("print-warnings", "Shows warnings from compilation, including ones that weren't printed initially.", BPlusTask)
