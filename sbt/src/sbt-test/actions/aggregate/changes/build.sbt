@@ -1,5 +1,5 @@
 lazy val root = (project in file(".")).
-  aggregate((if(file("aggregate").exists) Seq(sub: sbt.ProjectReference) else Nil): _*)
+  aggregateSeq((if(file("aggregate").exists) Seq(sub: sbt.ProjectReference) else Nil))
 
 lazy val sub = (project in file("sub")).
   aggregate(sub2)

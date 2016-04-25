@@ -2,7 +2,7 @@ import Import._
 import complete.Parser
 import complete.DefaultParsers._
 import sbinary.DefaultProtocol._
-import Project.Initialize
+import Def.Initialize
 
 val keep = TaskKey[Int]("keep")
 val persisted = TaskKey[Int]("persist")

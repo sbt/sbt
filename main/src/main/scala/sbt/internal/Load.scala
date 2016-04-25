@@ -15,12 +15,12 @@ import scala.annotation.tailrec
 import collection.mutable
 import sbt.internal.inc.{ Analysis, ClasspathOptions, FileValueCache, Locate, ModuleUtilities }
 import sbt.internal.inc.classpath.ClasspathUtilities
-import Project.{ inScope, makeSettings }
+import Project.inScope
 import Def.{ isDummy, ScopedKey, ScopeLocal, Setting }
 import Keys.{ appConfiguration, baseDirectory, configuration, fullResolvers, fullClasspath, pluginData, streams, thisProject, thisProjectRef, update }
 import Keys.{ exportedProducts, loadedBuild, onLoadMessage, resolvedScoped, sbtPlugin, scalacOptions, taskDefinitionKey }
 import tools.nsc.reporters.ConsoleReporter
-import sbt.internal.util.Attributed
+import sbt.internal.util.{ Attributed, Eval => Ev }
 import sbt.internal.util.Attributed.data
 import Scope.{ GlobalScope, ThisScope }
 import sbt.internal.util.Types.const
@@ -705,7 +705,7 @@ private[sbt] object Load {
       expandSettings(transformedProject.auto)
     }
     // Finally, a project we can use in buildStructure.
-    transformedProject.copy(settings = allSettings).setAutoPlugins(autoPlugins).prefixConfigs(autoConfigs: _*)
+    transformedProject.copy(settingsEval = Ev.later(allSettings)).setAutoPlugins(autoPlugins).prefixConfigs(autoConfigs: _*)
   }
 
   /**
