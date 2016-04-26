@@ -104,6 +104,16 @@ private class StaticLauncher(appProvider: StaticAppProvider, scalaProvider: Stat
     ("org.scala-sbt", "compiler-interface", sbtApplicationID.version) -> {
       val file = scalaProvider.getComponent(StaticUtils.BRIDGE)
       Seq(FakeResolver.FakeArtifact("compiler-interface", "src", "jar", file))
+    },
+
+    (StaticUtils.SCALA_ORG, "scala-compiler", scalaProvider.version) -> {
+      val file = scalaProvider.getComponent(StaticUtils.COMPILER)
+      Seq(FakeResolver.FakeArtifact("scala-compiler", "jar", "jar", file))
+    },
+
+    (StaticUtils.SCALA_ORG, "scala-library", scalaProvider.version) -> {
+      val file = scalaProvider.getComponent(StaticUtils.LIBRARY)
+      Seq(FakeResolver.FakeArtifact("scala-library", "jar", "jar", file))
     }
   )
 }
