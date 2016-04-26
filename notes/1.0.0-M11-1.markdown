@@ -1,0 +1,11 @@
+Mostly a convenience release for [#240]
+
+### Changes
+
+* Better isolation between coursier and the launched app with the `launch` command ([#240])
+
+[#240]: https://github.com/alexarchambault/coursier/pull/240
+
+### Non-backward compatible changes
+
+* N/A
