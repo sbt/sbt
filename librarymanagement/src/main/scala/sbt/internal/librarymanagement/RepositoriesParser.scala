@@ -50,10 +50,14 @@ private[sbt] object RepositoriesParser {
     name ~ ": " ~ basicUri ~ (separator ~> ivyPattern).? ~ (separator ~> afterPattern).? map {
       case name ~ ": " ~ uri ~ None ~ _ =>
         new MavenRepository(name, uri.toURL)
-      case name ~ ": " ~ uri ~ Some(ivy) ~ None =>
-        new IvyRepository(name, uri.toURL, ivy, ivy, false, false, false, false)
-      case name ~ ": " ~ uri ~ Some(ivy) ~ Some(AfterPattern(artifactPattern, Flags(dOpt, sc, bo, mc))) =>
-        new IvyRepository(name, uri.toURL, ivy, artifactPattern getOrElse ivy, mc, sc, dOpt, bo)
+      case name ~ ": " ~ uri ~ Some(ivy) ~ ap =>
+        // scalac complains about the recursion depth if we pattern match over `ap` directly.
+        ap match {
+          case Some(AfterPattern(artifactPattern, Flags(dOpt, sc, bo, mc))) =>
+            new IvyRepository(name, uri.toURL, ivy, artifactPattern getOrElse ivy, mc, sc, dOpt, bo)
+          case None =>
+            new IvyRepository(name, uri.toURL, ivy, ivy, false, false, false, false)
+        }
     }
 
   def resolver: Parser[xsbti.Repository] =
