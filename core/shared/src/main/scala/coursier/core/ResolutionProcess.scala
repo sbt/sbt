@@ -77,14 +77,38 @@ final case class Missing(
     def cont0(res: Resolution): ResolutionProcess = {
 
       val depMgmtMissing0 = successes.map {
-        case (_, (_, proj)) =>
-          res.dependencyManagementMissing(proj)
-      }.fold(Set.empty)(_ ++ _)
+        case elem @ (_, (_, proj)) =>
+          elem -> res.dependencyManagementMissing(proj)
+      }
 
-      val depMgmtMissing = depMgmtMissing0 -- results.map(_._1)
+      val depMgmtMissing = depMgmtMissing0.map(_._2).fold(Set.empty)(_ ++ _) -- results.map(_._1)
 
       if (depMgmtMissing.isEmpty) {
-        val res0 = successes.foldLeft(res) {
+
+        type Elem = ((Module, String), (Artifact.Source, Project))
+        val modVer = depMgmtMissing0.map(_._1._1).toSet
+
+        @tailrec
+        def order(map: Map[Elem, Set[(Module, String)]], acc: List[Elem]): List[Elem] =
+          if (map.isEmpty)
+            acc.reverse
+          else {
+            val min = map.map(_._2.size).min // should be 0
+            val (toAdd, remaining) = map.partition {
+              case (k, v) => v.size == min
+            }
+            val acc0 = toAdd.keys.foldLeft(acc)(_.::(_))
+            val remainingKeys = remaining.keySet.map(_._1)
+            val map0 = remaining.map {
+              case (k, v) =>
+                k -> v.intersect(remainingKeys)
+            }
+            order(map0, acc0)
+          }
+
+        val orderedSuccesses = order(depMgmtMissing0.map { case (k, v) => k -> v.intersect(modVer) }.toMap, Nil)
+
+        val res0 = orderedSuccesses.foldLeft(res) {
           case (acc, (modVer, (source, proj))) =>
             acc.copyWithCache(
               projectCache = acc.projectCache + (
