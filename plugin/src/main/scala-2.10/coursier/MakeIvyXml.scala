@@ -62,9 +62,16 @@ object MakeIvyXml {
             <exclude org={org} module={name} name="*" type="*" ext="*" conf="" matcher="exact"/>
         }
 
-        <dependency org={dep.module.organization} name={dep.module.name} rev={dep.version} conf={s"$conf->${dep.configuration}"}>
+        val n = <dependency org={dep.module.organization} name={dep.module.name} rev={dep.version} conf={s"$conf->${dep.configuration}"}>
           {excludes}
         </dependency>
+
+        val moduleAttrs = dep.module.attributes.foldLeft[xml.MetaData](xml.Null) {
+          case (acc, (k, v)) =>
+            new PrefixedAttribute("e", k, v, acc)
+        }
+
+        n % moduleAttrs
     }
 
     <ivy-module version="2.0" xmlns:e="http://ant.apache.org/ivy/extra">
