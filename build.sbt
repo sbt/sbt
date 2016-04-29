@@ -199,16 +199,6 @@ lazy val sbtProj = (project in sbtPath).
     libraryDependencies ++= Seq(compilerBrdige)
   )
 
-// lazy val mavenResolverPluginProj = (project in file("sbt-maven-resolver")).
-//   dependsOn(sbtProj).
-//   settings(
-//     baseSettings,
-//     sbtBinaryVersion := "1.0.0-SNAPSHOT",
-//     name := "sbt-maven-resolver",
-//     libraryDependencies ++= aetherLibs ++ Seq(utilTesting % Test, (libraryManagement % Test).classifier("tests"), libraryManagement % Test),
-//     sbtPlugin := true
-//   )
-
 def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => Scripted.scriptedParser(dir)).parsed
   publishAll.value
@@ -247,17 +237,7 @@ def otherRootSettings = Seq(
     val _ = (publishLocal).all(ScopeFilter(inAnyProject)).value
   },
   aggregate in bintrayRelease := false
-) ++ inConfig(Scripted.MavenResolverPluginTest)(Seq(
-  scripted <<= scriptedTask,
-  scriptedUnpublished <<= scriptedUnpublishedTask,
-  scriptedPrescripted := { f =>
-    val inj = f / "project" / "maven.sbt"
-    if (!inj.exists) {
-      IO.write(inj, "addMavenResolverPlugin")
-      // sLog.value.info(s"""Injected project/maven.sbt to $f""")
-    }
-  }
-))
+)
 lazy val docProjects: ScopeFilter = ScopeFilter(
   inAnyProject -- inProjects(sbtRoot, sbtProj, scriptedSbtProj, scriptedPluginProj),
   inConfigurations(Compile)
