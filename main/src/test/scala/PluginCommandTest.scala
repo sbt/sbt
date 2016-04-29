@@ -4,7 +4,7 @@ import java.io._
 
 import org.specs2.mutable.Specification
 
-import sbt.internal.{ Load, BuildDef }
+import sbt.internal.{ Load, BuildDef, OldPlugin }
 import sbt.internal.util.{ AttributeEntry, AttributeMap, ConsoleOut, GlobalLogging, MainLogging, Settings }
 
 object PluginCommandTestPlugin0 extends AutoPlugin
@@ -83,7 +83,7 @@ object FakeState {
     )
 
     val pluginData = PluginData(Nil, Nil, None, None, Nil)
-    val detectedModules: DetectedModules[Plugin] = new DetectedModules(Nil)
+    val detectedModules: DetectedModules[OldPlugin] = new DetectedModules(Nil)
     val builds: DetectedModules[BuildDef] = new DetectedModules[BuildDef](Nil)
 
     val detectedAutoPlugins: Seq[DetectedAutoPlugin] = plugins.map(p => DetectedAutoPlugin(p.label, p, hasAutoImport = false))

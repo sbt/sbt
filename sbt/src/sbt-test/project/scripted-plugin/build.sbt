@@ -1,1 +1,0 @@
-ScriptedPlugin.scriptedSettings
