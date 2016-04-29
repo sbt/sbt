@@ -15,6 +15,7 @@ $ copy-file changes/local.sbt local.sbt
 > check 7
 
 # square
+# plugins, global.sbt, and then local.sbt = (100 * 100) / 25 + 3
 $ copy-file changes/Global.scala global/plugins/Global.scala
 > reload
-> check 19
+> check 403

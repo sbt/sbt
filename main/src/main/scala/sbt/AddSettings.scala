@@ -1,6 +1,7 @@
 package sbt
 
 import sbt.internal.util.Types.const
+import sbt.internal.OldPlugin
 import java.io.File
 
 /**
@@ -12,7 +13,7 @@ sealed abstract class AddSettings
 object AddSettings {
   private[sbt] final class Sequence(val sequence: Seq[AddSettings]) extends AddSettings
   private[sbt] final object User extends AddSettings
-  private[sbt] final class Plugins(val include: Plugin => Boolean) extends AddSettings
+  private[sbt] final class Plugins(val include: OldPlugin => Boolean) extends AddSettings
   private[sbt] final class AutoPlugins(val include: AutoPlugin => Boolean) extends AddSettings
   private[sbt] final class DefaultSbtFiles(val include: File => Boolean) extends AddSettings
   private[sbt] final class SbtFiles(val files: Seq[File]) extends AddSettings
@@ -36,7 +37,7 @@ object AddSettings {
   val allPlugins: AddSettings = seq(autoPlugins, nonAutoPlugins)
 
   /** Allows the plugins whose names match the `names` filter to automatically add settings to a project. */
-  def plugins(include: Plugin => Boolean): AddSettings = new Plugins(include)
+  def plugins(include: OldPlugin => Boolean): AddSettings = new Plugins(include)
 
   /** Includes user settings in the project. */
   val userSettings: AddSettings = User

@@ -1,7 +1,7 @@
 package sbt
 
 import sbt.internal.util.Attributed
-import sbt.internal.{ BuildDef, IncompatiblePluginsException }
+import sbt.internal.{ BuildDef, IncompatiblePluginsException, OldPlugin }
 import java.io.File
 import java.net.URL
 import Attributed.data
@@ -45,7 +45,7 @@ object PluginDiscovery {
         case (name, value) =>
           DetectedAutoPlugin(name, value, sbt.Plugins.hasAutoImportGetter(value, loader))
       }
-      new DetectedPlugins(discover[Plugin](Plugins), allAutoPlugins, discover[BuildDef](Builds))
+      new DetectedPlugins(discover[OldPlugin](Plugins), allAutoPlugins, discover[BuildDef](Builds))
     }
 
   /** Discovers the sbt-plugin-related top-level modules from the provided source `analysis`. */
@@ -53,7 +53,7 @@ object PluginDiscovery {
     {
       def discover[T](implicit classTag: reflect.ClassTag[T]): Seq[String] =
         sourceModuleNames(analysis, classTag.runtimeClass.getName)
-      new DiscoveredNames(discover[Plugin], discover[AutoPlugin], discover[BuildDef])
+      new DiscoveredNames(discover[OldPlugin], discover[AutoPlugin], discover[BuildDef])
     }
 
   // TODO: for 0.14.0, consider consolidating into a single file, which would make the classpath search 4x faster

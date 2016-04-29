@@ -15,22 +15,41 @@ import sbt.librarymanagement.Configuration
 
 import sbt.io.{ AllPassFilter, PathFinder }
 
-object ScriptedPlugin extends Plugin {
-  def scriptedConf = config("scripted-sbt") hide
-  def scriptedLaunchConf = config("scripted-sbt-launch") hide
-
-  val scriptedSbt = SettingKey[String]("scripted-sbt")
-  val sbtLauncher = TaskKey[File]("sbt-launcher")
-
-  val sbtTestDirectory = SettingKey[File]("sbt-test-directory")
-  val scriptedBufferLog = SettingKey[Boolean]("scripted-buffer-log")
-
-  val scriptedClasspath = TaskKey[PathFinder]("scripted-classpath")
-  val scriptedTests = TaskKey[AnyRef]("scripted-tests")
-  val scriptedRun = TaskKey[Method]("scripted-run")
-  val scriptedLaunchOpts = SettingKey[Seq[String]]("scripted-launch-opts", "options to pass to jvm launching scripted tasks")
-  val scriptedDependencies = TaskKey[Unit]("scripted-dependencies")
-  val scripted = InputKey[Unit]("scripted")
+object ScriptedPlugin extends AutoPlugin {
+  override def requires = plugins.JvmPlugin
+  override def trigger = allRequirements
+  object autoImport {
+    def scriptedConf = config("scripted-sbt") hide
+    def scriptedLaunchConf = config("scripted-sbt-launch") hide
+    val scriptedSbt = SettingKey[String]("scripted-sbt")
+    val sbtLauncher = TaskKey[File]("sbt-launcher")
+    val sbtTestDirectory = SettingKey[File]("sbt-test-directory")
+    val scriptedBufferLog = SettingKey[Boolean]("scripted-buffer-log")
+    val scriptedClasspath = TaskKey[PathFinder]("scripted-classpath")
+    val scriptedTests = TaskKey[AnyRef]("scripted-tests")
+    val scriptedRun = TaskKey[Method]("scripted-run")
+    val scriptedLaunchOpts = SettingKey[Seq[String]]("scripted-launch-opts", "options to pass to jvm launching scripted tasks")
+    val scriptedDependencies = TaskKey[Unit]("scripted-dependencies")
+    val scripted = InputKey[Unit]("scripted")
+  }
+  import autoImport._
+  override lazy val projectSettings = Seq(
+    ivyConfigurations ++= Seq(scriptedConf, scriptedLaunchConf),
+    scriptedSbt := sbtVersion.value,
+    sbtLauncher <<= getJars(scriptedLaunchConf).map(_.get.head),
+    sbtTestDirectory := sourceDirectory.value / "sbt-test",
+    libraryDependencies ++= Seq(
+      "org.scala-sbt" % "scripted-sbt" % scriptedSbt.value % scriptedConf.toString,
+      "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % scriptedLaunchConf.toString
+    ),
+    scriptedBufferLog := true,
+    scriptedClasspath := getJars(scriptedConf).value,
+    scriptedTests <<= scriptedTestsTask,
+    scriptedRun <<= scriptedRunTask,
+    scriptedDependencies <<= (compile in Test, publishLocal) map { (analysis, pub) => Unit },
+    scriptedLaunchOpts := Seq(),
+    scripted <<= scriptedTask
+  )
 
   def scriptedTestsTask: Initialize[Task[AnyRef]] = (scriptedClasspath, scalaInstance) map {
     (classpath, scala) =>
@@ -69,23 +88,6 @@ object ScriptedPlugin extends Plugin {
     } catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
   }
 
-  val scriptedSettings = Seq(
-    ivyConfigurations ++= Seq(scriptedConf, scriptedLaunchConf),
-    scriptedSbt := sbtVersion.value,
-    sbtLauncher <<= getJars(scriptedLaunchConf).map(_.get.head),
-    sbtTestDirectory := sourceDirectory.value / "sbt-test",
-    libraryDependencies ++= Seq(
-      "org.scala-sbt" % "scripted-sbt" % scriptedSbt.value % scriptedConf.toString,
-      "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % scriptedLaunchConf.toString
-    ),
-    scriptedBufferLog := true,
-    scriptedClasspath := getJars(scriptedConf).value,
-    scriptedTests <<= scriptedTestsTask,
-    scriptedRun <<= scriptedRunTask,
-    scriptedDependencies <<= (compile in Test, publishLocal) map { (analysis, pub) => Unit },
-    scriptedLaunchOpts := Seq(),
-    scripted <<= scriptedTask
-  )
   private[this] def getJars(config: Configuration): Initialize[Task[PathFinder]] = Def.task {
     PathFinder(Classpaths.managedJars(config, classpathTypes.value, update.value).map(_.data))
   }
