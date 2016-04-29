@@ -35,14 +35,10 @@ env:
     - SBT_CMD="scripted source-dependencies/*3of3"
     - SBT_CMD="scripted tests/*"
     - SBT_CMD="scripted project-load/*"
-    - SBT_CMD="checkBuildScala211"
-    - SBT_CMD="mavenResolverPluginTest:scripted dependency-management/*1of2 project/transitive-plugins"
-    - SBT_CMD="mavenResolverPluginTest:scripted dependency-management/*2of2"
 
 notifications:
   email:
-    - eugene.yokota@typesafe.com
-    - joshua.suereth@typesafe.com
+    - sbt-dev-bot@googlegroups.com
 
 script:
   - sbt -J-XX:ReservedCodeCacheSize=128m "$SBT_CMD"
