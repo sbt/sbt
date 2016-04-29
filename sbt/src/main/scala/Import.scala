@@ -1,7 +1,6 @@
 package sbt
 
 object Import {
-
   // sbt.io
   val AllPassFilter = sbt.io.AllPassFilter
   val DirectoryFilter = sbt.io.DirectoryFilter

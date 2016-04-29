@@ -1158,9 +1158,9 @@ object Classpaths {
       val id = app.provider.id
       val scalaVersion = app.provider.scalaProvider.version
       val binVersion = binaryScalaVersion(scalaVersion)
-      val cross = if (id.crossVersioned) CrossVersion.binary else CrossVersion.Disabled
-      val base = ModuleID(id.groupID, id.name, sbtVersion.value, crossVersion = cross)
-      CrossVersion(scalaVersion, binVersion)(base).copy(crossVersion = CrossVersion.Disabled)
+      val cross = CrossVersion.binary
+      ModuleID(id.groupID, id.name, sbtVersion.value, crossVersion = cross)
+      // CrossVersion(scalaVersion, binVersion)(base) // .copy(crossVersion = CrossVersion.Disabled)
     }
   ))
 
@@ -1368,7 +1368,7 @@ object Classpaths {
       val depDir = dependencyCacheDirectory.value
       withExcludes(out, mod.classifiers, lock(app)) { excludes =>
         val noExplicitCheck = ivyScala.value.map(_.copy(checkExplicit = false))
-        IvyActions.transitiveScratch(is, "sbt", GetClassifiersConfiguration(mod, excludes, c.copy(artifactFilter = c.artifactFilter.invert), noExplicitCheck, srcTypes, docTypes), uwConfig, LogicalClock(state.value.hashCode), Some(depDir), s.log)
+        IvyActions.transitiveScratch(is, "sbt_2.11", GetClassifiersConfiguration(mod, excludes, c.copy(artifactFilter = c.artifactFilter.invert), noExplicitCheck, srcTypes, docTypes), uwConfig, LogicalClock(state.value.hashCode), Some(depDir), s.log)
       }
     } tag (Tags.Update, Tags.Network)
   )) ++ Seq(bootIvyConfiguration := (ivyConfiguration in updateSbtClassifiers).value)

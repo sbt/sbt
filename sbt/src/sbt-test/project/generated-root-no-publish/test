@@ -1,10 +1,10 @@
 > publishLocal
-$ exists target/ivy-cache/local/com.example/app_2.10/0.1.0/poms/app_2.10.pom
-$ exists target/ivy-cache/local/com.example/app_2.10/0.1.0/jars/app_2.10.jar
-$ absent target/ivy-cache/local/com.example/default-root_2.10/0.1.0/ivys/ivy.xml
+$ exists target/ivy-cache/local/com.example/app_2.11/0.1.0/poms/app_2.11.pom
+$ exists target/ivy-cache/local/com.example/app_2.11/0.1.0/jars/app_2.11.jar
+$ absent target/ivy-cache/local/com.example/default-root_2.11/0.1.0/ivys/ivy.xml
 
 $ copy-file changes/bare.sbt build.sbt
 > reload
 > publishLocal
-$ exists target/ivy-cache/local/com.example/generated-root-no-publish_2.10/0.1.0/poms/generated-root-no-publish_2.10.pom
-$ exists target/ivy-cache/local/com.example/generated-root-no-publish_2.10/0.1.0/jars/generated-root-no-publish_2.10.jar
+$ exists target/ivy-cache/local/com.example/generated-root-no-publish_2.11/0.1.0/poms/generated-root-no-publish_2.11.pom
+$ exists target/ivy-cache/local/com.example/generated-root-no-publish_2.11/0.1.0/jars/generated-root-no-publish_2.11.jar

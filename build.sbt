@@ -19,11 +19,10 @@ def buildLevelSettings: Seq[Setting[_]] = inThisBuild(Seq(
 ))
 
 def commonSettings: Seq[Setting[_]] = Seq[SettingsDefinition](
-  scalaVersion := scala210,
+  scalaVersion := scala211,
   publishArtifact in packageDoc := false,
   publishMavenStyle := false,
   componentID := None,
-  crossPaths := false,
   resolvers += Resolver.typesafeIvyRepo("releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
   resolvers += Resolver.bintrayRepo("sbt", "maven-releases"),
@@ -31,7 +30,7 @@ def commonSettings: Seq[Setting[_]] = Seq[SettingsDefinition](
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
   incOptions := incOptions.value.withNameHashing(true),
-  crossScalaVersions := Seq(scala210),
+  crossScalaVersions := Seq(scala211),
   bintrayPackage := (bintrayPackage in ThisBuild).value,
   bintrayRepository := (bintrayRepository in ThisBuild).value,
   mimaDefaultSettings,
@@ -77,6 +76,7 @@ lazy val bundledLauncherProj =
     description := "sbt application launcher",
     publishArtifact in packageSrc := false,
     autoScalaLibrary := false,
+    crossPaths := false,
     publish := Release.deployLauncher.value,
     publishLauncher := Release.deployLauncher.value,
     packageBin in Compile := sbtLaunchJar.value
@@ -199,16 +199,6 @@ lazy val sbtProj = (project in sbtPath).
     libraryDependencies ++= Seq(compilerBrdige)
   )
 
-lazy val mavenResolverPluginProj = (project in file("sbt-maven-resolver")).
-  dependsOn(sbtProj).
-  settings(
-    baseSettings,
-    sbtBinaryVersion := "1.0.0-SNAPSHOT",
-    name := "sbt-maven-resolver",
-    libraryDependencies ++= aetherLibs ++ Seq(utilTesting % Test, (libraryManagement % Test).classifier("tests"), libraryManagement % Test),
-    sbtPlugin := true
-  )
-
 def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => Scripted.scriptedParser(dir)).parsed
   publishAll.value
@@ -231,7 +221,7 @@ lazy val myProvided = config("provided") intransitive
 def allProjects = Seq(
   testingProj, testAgentProj, taskProj, stdTaskProj, runProj,
   scriptedSbtProj, scriptedPluginProj,
-  actionsProj, commandProj, mainSettingsProj, mainProj, sbtProj, bundledLauncherProj, mavenResolverPluginProj)
+  actionsProj, commandProj, mainSettingsProj, mainProj, sbtProj, bundledLauncherProj)
 
 def projectsWithMyProvided = allProjects.map(p => p.copy(configurations = (p.configurations.filter(_ != Provided)) :+ myProvided))
 lazy val nonRoots = projectsWithMyProvided.map(p => LocalProject(p.id))
@@ -247,19 +237,9 @@ def otherRootSettings = Seq(
     val _ = (publishLocal).all(ScopeFilter(inAnyProject)).value
   },
   aggregate in bintrayRelease := false
-) ++ inConfig(Scripted.MavenResolverPluginTest)(Seq(
-  scripted <<= scriptedTask,
-  scriptedUnpublished <<= scriptedUnpublishedTask,
-  scriptedPrescripted := { f =>
-    val inj = f / "project" / "maven.sbt"
-    if (!inj.exists) {
-      IO.write(inj, "addMavenResolverPlugin")
-      // sLog.value.info(s"""Injected project/maven.sbt to $f""")
-    }
-  }
-))
+)
 lazy val docProjects: ScopeFilter = ScopeFilter(
-  inAnyProject -- inProjects(sbtRoot, sbtProj, scriptedSbtProj, scriptedPluginProj, mavenResolverPluginProj),
+  inAnyProject -- inProjects(sbtRoot, sbtProj, scriptedSbtProj, scriptedPluginProj),
   inConfigurations(Compile)
 )
 def fullDocSettings = Util.baseScalacOptions ++ Docs.settings ++ Sxr.settings ++ Seq(
@@ -295,7 +275,7 @@ lazy val otherProjects: ScopeFilter = ScopeFilter(
     testingProj, testAgentProj, taskProj,
     scriptedSbtProj, scriptedPluginProj,
     commandProj, mainSettingsProj, mainProj,
-    sbtProj, mavenResolverPluginProj),
+    sbtProj),
   inConfigurations(Test)
 )
 

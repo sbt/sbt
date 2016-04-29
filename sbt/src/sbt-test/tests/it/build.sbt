@@ -1,6 +1,7 @@
 lazy val root = (project in file(".")).
   configs(IntegrationTest).
   settings(
+    scalaVersion := "2.10.6",
     Defaults.itSettings,
     libraryDependencies += specs
   )
