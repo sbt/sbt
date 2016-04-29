@@ -372,9 +372,7 @@ object Resolution {
     project: Project
   ): Seq[Dependency] = {
 
-    // Here, we're substituting properties also in dependencies that
-    // come from parents or dependency management. This may not be
-    // the right thing to do.
+    // section numbers in the comments refer to withDependencyManagement
 
     val properties = propertiesMap(projectProperties(project))
 
@@ -386,10 +384,9 @@ object Resolution {
     val keepOpt = mavenScopes.get(config)
 
     withExclusions(
+      // 2.1 & 2.2
       depsWithDependencyManagement(
-        // Important: properties have to be applied to both,
-        //   so that dep mgmt can be matched properly
-        // Tested with org.ow2.asm:asm-commons:5.0.2 in CentralTests
+        // 1.7
         withProperties(project.dependencies, properties),
         withProperties(project.dependencyManagement, properties)
       ),
@@ -779,6 +776,36 @@ final case class Resolution(
    */
   def withDependencyManagement(project: Project): Project = {
 
+    /*
+
+       Loosely following what [Maven says](http://maven.apache.org/components/ref/3.3.9/maven-model-builder/):
+       (thanks to @MasseGuillaume for pointing that doc out)
+
+    phase 1
+         1.1 profile activation: see available activators. Notice that model interpolation hasn't happened yet, then interpolation for file-based activation is limited to ${basedir} (since Maven 3), System properties and request properties
+         1.2 raw model validation: ModelValidator (javadoc), with its DefaultModelValidator implementation (source)
+         1.3 model normalization - merge duplicates: ModelNormalizer (javadoc), with its DefaultModelNormalizer implementation (source)
+         1.4 profile injection: ProfileInjector (javadoc), with its DefaultProfileInjector implementation (source)
+         1.5 parent resolution until super-pom
+         1.6 inheritance assembly: InheritanceAssembler (javadoc), with its DefaultInheritanceAssembler implementation (source). Notice that project.url, project.scm.connection, project.scm.developerConnection, project.scm.url and project.distributionManagement.site.url have a special treatment: if not overridden in child, the default value is parent's one with child artifact id appended
+         1.7 model interpolation (see below)
+     N/A     url normalization: UrlNormalizer (javadoc), with its DefaultUrlNormalizer implementation (source)
+    phase 2, with optional plugin processing
+     N/A     model path translation: ModelPathTranslator (javadoc), with its DefaultModelPathTranslator implementation (source)
+     N/A     plugin management injection: PluginManagementInjector (javadoc), with its DefaultPluginManagementInjector implementation (source)
+     N/A     (optional) lifecycle bindings injection: LifecycleBindingsInjector (javadoc), with its DefaultLifecycleBindingsInjector implementation (source)
+         2.1 dependency management import (for dependencies of type pom in the <dependencyManagement> section)
+         2.2 dependency management injection: DependencyManagementInjector (javadoc), with its DefaultDependencyManagementInjector implementation (source)
+         2.3 model normalization - inject default values: ModelNormalizer (javadoc), with its DefaultModelNormalizer implementation (source)
+     N/A     (optional) reports configuration: ReportConfigurationExpander (javadoc), with its DefaultReportConfigurationExpander implementation (source)
+     N/A     (optional) reports conversion to decoupled site plugin: ReportingConverter (javadoc), with its DefaultReportingConverter implementation (source)
+     N/A     (optional) plugins configuration: PluginConfigurationExpander (javadoc), with its DefaultPluginConfigurationExpander implementation (source)
+         2.4 effective model validation: ModelValidator (javadoc), with its DefaultModelValidator implementation (source)
+
+    N/A: does not apply here (related to plugins, path of project being built, ...)
+
+     */
+
     // A bit fragile, but seems to work
     // TODO Add non regression test for the touchy  org.glassfish.jersey.core:jersey-client:2.19
     //      (for the way it uses  org.glassfish.hk2:hk2-bom,2.4.0-b25)
@@ -789,6 +816,7 @@ final case class Resolution(
         .map(projectCache(_)._2.properties.toMap)
         .fold(project.properties)(project.properties ++ _)
 
+    // 1.1 (see above)
     val approxProperties = propertiesMap(approxProperties0) ++ projectProperties(project)
 
     val profiles0 = profiles(
@@ -797,6 +825,9 @@ final case class Resolution(
       profileActivation getOrElse defaultProfileActivation
     )
 
+    // 1.2 made from Pom.scala (TODO look at the very details?)
+
+    // 1.3 & 1.4 (if only vaguely so)
     val dependencies0 = addDependencies(
       (project.dependencies +: profiles0.map(_.dependencies)).map(withProperties(_, approxProperties))
     )
@@ -808,7 +839,7 @@ final case class Resolution(
         acc ++ p.properties
       }
 
-    val deps0 = (
+    val deps0 =
       dependencies0
         .collect { case ("import", dep) =>
           dep.moduleVersion
@@ -817,10 +848,9 @@ final case class Resolution(
         .collect { case ("import", dep) =>
           dep.moduleVersion
         } ++
-      project.parent
-    )
+      project.parent // belongs to 1.5 & 1.6
 
-      val deps = deps0.filter(projectCache.contains)
+    val deps = deps0.filter(projectCache.contains)
 
     val projs = deps
       .map(projectCache(_)._2)
@@ -843,7 +873,7 @@ final case class Resolution(
           .filterNot{case (config, dep) =>
             config == "import" && depsSet(dep.moduleVersion)
           } ++
-        project.parent
+        project.parent  // belongs to 1.5 & 1.6
           .filter(projectCache.contains)
           .toSeq
           .flatMap(projectCache(_)._2.dependencies),
@@ -851,7 +881,7 @@ final case class Resolution(
         .filterNot{case (config, dep) =>
           config == "import" && depsSet(dep.moduleVersion)
         },
-      properties = project.parent
+      properties = project.parent  // belongs to 1.5 & 1.6
         .filter(projectCache.contains)
         .map(projectCache(_)._2.properties)
         .fold(properties0)(properties0 ++ _)

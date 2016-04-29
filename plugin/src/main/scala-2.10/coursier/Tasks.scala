@@ -399,7 +399,7 @@ object Tasks {
         }
 
         if (verbosityLevel >= 0)
-          log.info(s"Resolving ${currentProject.module.organization}:${currentProject.module.name}:${currentProject.version}")
+          log.info(s"Updating ${currentProject.module.organization}:${currentProject.module.name}:${currentProject.version}")
         if (verbosityLevel >= 2)
           for (depRepr <- depsRepr(currentProject.dependencies))
             log.info(s"  $depRepr")
