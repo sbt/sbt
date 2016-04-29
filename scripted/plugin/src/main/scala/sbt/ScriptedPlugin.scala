@@ -39,7 +39,7 @@ object ScriptedPlugin extends AutoPlugin {
     sbtLauncher <<= getJars(scriptedLaunchConf).map(_.get.head),
     sbtTestDirectory := sourceDirectory.value / "sbt-test",
     libraryDependencies ++= Seq(
-      "org.scala-sbt" % "scripted-sbt" % scriptedSbt.value % scriptedConf.toString,
+      "org.scala-sbt" %% "scripted-sbt" % scriptedSbt.value % scriptedConf.toString,
       "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % scriptedLaunchConf.toString
     ),
     scriptedBufferLog := true,

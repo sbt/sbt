@@ -1,4 +1,5 @@
 val defaultSettings = Seq(
+  scalaVersion := "2.10.6",
   libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _ )//,
   //incOptions := incOptions.value.withNameHashing(true)
 )
