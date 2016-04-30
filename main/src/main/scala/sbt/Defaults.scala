@@ -47,7 +47,7 @@ import sbt.util.InterfaceUtil.{ f1, o2m }
 import sbt.internal.util.Types._
 
 import sbt.internal.io.WatchState
-import sbt.io.{ AllPassFilter, FileFilter, GlobFilter, HiddenFileFilter, IO, NameFilter, NothingFilter, Path, PathFinder }
+import sbt.io.{ AllPassFilter, FileFilter, GlobFilter, HiddenFileFilter, IO, NameFilter, NothingFilter, Path, PathFinder, SimpleFileFilter }
 
 import Path._
 import Keys._
@@ -105,7 +105,7 @@ object Defaults extends BuildCommon {
       artifactClassifier in packageSrc :== Some(SourceClassifier),
       artifactClassifier in packageDoc :== Some(DocClassifier),
       includeFilter :== NothingFilter,
-      includeFilter in unmanagedSources :== "*.java" | "*.scala",
+      includeFilter in unmanagedSources :== ("*.java" | "*.scala") && new SimpleFileFilter(_.isFile),
       includeFilter in unmanagedJars :== "*.jar" | "*.so" | "*.dll" | "*.jnilib" | "*.zip",
       includeFilter in unmanagedResources :== AllPassFilter
     )
