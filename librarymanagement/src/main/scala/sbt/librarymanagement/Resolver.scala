@@ -159,6 +159,10 @@ final case class SftpRepository(name: String, connection: SshConnection, pattern
   protected def copy(patterns: Patterns): SftpRepository = SftpRepository(name, connection, patterns)
   protected def copy(connection: SshConnection): SftpRepository = SftpRepository(name, connection, patterns)
 }
+/** A repository that conforms to sbt launcher's interface */
+private[sbt] class FakeRepository(resolver: DependencyResolver) extends xsbti.Repository {
+  def rawRepository = new RawRepository(resolver)
+}
 
 import Resolver._
 
