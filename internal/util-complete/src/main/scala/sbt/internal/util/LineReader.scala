@@ -48,7 +48,10 @@ abstract class JLine extends LineReader {
     val lines = """\r?\n""".r.split(prompt)
     lines.length match {
       case 0 | 1 => prompt
-      case _     => reader.print(lines.init.mkString("\n") + "\n"); lines.last;
+      case _ =>
+        // Workaround for regression jline/jline2#205
+        reader.getOutput.write(lines.init.mkString("\n") + "\n")
+        lines.last
     }
   }
 
