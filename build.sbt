@@ -173,7 +173,7 @@ lazy val mainSettingsProj = (project in mainPath / "settings").
   settings(
     testedBaseSettings,
     name := "Main Settings",
-    libraryDependencies ++= Seq(sbinary, utilApplyMacro, compilerInterface, utilRelation,
+    libraryDependencies ++= Seq(utilCache, utilApplyMacro, compilerInterface, utilRelation,
       utilLogging, sbtIO, utilCompletion, compilerClasspath, libraryManagement)
   )
 
