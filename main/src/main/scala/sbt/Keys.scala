@@ -42,6 +42,7 @@ import sbt.librarymanagement.{
   Resolver,
   ScalaVersion,
   ScmInfo,
+  TrackLevel,
   UpdateOptions,
   UpdateReport
 }

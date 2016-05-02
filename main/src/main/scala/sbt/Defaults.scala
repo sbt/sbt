@@ -47,7 +47,7 @@ import sbt.util.InterfaceUtil.{ f1, o2m }
 import sbt.internal.util.Types._
 
 import sbt.internal.io.WatchState
-import sbt.io.{ AllPassFilter, FileFilter, GlobFilter, HiddenFileFilter, IO, NameFilter, NothingFilter, Path, PathFinder, SimpleFileFilter }
+import sbt.io.{ AllPassFilter, FileFilter, GlobFilter, HiddenFileFilter, IO, NameFilter, NothingFilter, Path, PathFinder, SimpleFileFilter, DirectoryFilter }
 
 import Path._
 import Keys._
@@ -1632,7 +1632,7 @@ object Classpaths {
     val config = configuration.value
     for { (f, analysis) <- trackedProductsImplTask(track).value } yield APIMappings.store(analyzed(f, analysis), apiURL.value).put(artifact.key, art).put(moduleID.key, module).put(configuration.key, config)
   }
-  private[this] def trackedProductsImplTask(track: TrackLevel): Initialize[Task[Seq[(File, Analysis)]]] =
+  private[this] def trackedProductsImplTask(track: TrackLevel): Initialize[Task[Seq[(File, CompileAnalysis)]]] =
     Def.taskDyn {
       val useJars = exportJars.value
       val jar = (artifactPath in packageBin).value
@@ -1662,10 +1662,11 @@ object Classpaths {
           }
         case _ =>
           Def.task {
-            val analysis = previousCompile.value.analysis
+            val analysisOpt = previousCompile.value.analysis
             (if (useJars) Seq(jar)
-            else dirs) map {
-              (_, analysis)
+            else dirs) map { x =>
+              (x, if (analysisOpt.isDefined) analysisOpt.get
+              else Analysis.empty(true))
             }
           }
       }
