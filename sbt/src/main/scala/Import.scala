@@ -322,6 +322,8 @@ object Import {
   type SshBasedRepository = sbt.librarymanagement.SshBasedRepository
   val SshRepository = sbt.librarymanagement.SshRepository
   type SshRepository = sbt.librarymanagement.SshRepository
+  type TrackLevel = sbt.librarymanagement.TrackLevel
+  val TrackLevel = sbt.librarymanagement.TrackLevel
   val URLRepository = sbt.librarymanagement.URLRepository
   type URLRepository = sbt.librarymanagement.URLRepository
   val UpdateOptions = sbt.librarymanagement.UpdateOptions

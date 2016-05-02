@@ -25,10 +25,12 @@ trait ScriptedKeys {
   lazy val scriptedSource = SettingKey[File]("scripted-source")
   lazy val scriptedPrescripted = TaskKey[File => Unit]("scripted-prescripted")
   lazy val scriptedBufferLog = SettingKey[Boolean]("scripted-buffer-log")
+  lazy val scriptedLaunchOpts = SettingKey[Seq[String]]("scripted-launch-opts", "options to pass to jvm launching scripted tasks")
 }
 
 object Scripted {
   lazy val MavenResolverPluginTest = config("mavenResolverPluginTest") extend Compile
+  lazy val RepoOverrideTest = config("repoOverrideTest") extend Compile
 
   import sbt.complete._
   import DefaultParsers._
@@ -83,14 +85,14 @@ object Scripted {
       launchOpts: Array[String], prescripted: java.util.List[File]): Unit
   }
 
-  def doScripted(launcher: File, scriptedSbtClasspath: Seq[Attributed[File]], scriptedSbtInstance: ScalaInstance,
-      sourcePath: File, bufferLog: Boolean, args: Seq[String], prescripted: File => Unit): Unit = {
+  def doScripted(launcher: File, scriptedSbtClasspath: Seq[Attributed[File]],
+    scriptedSbtInstance: ScalaInstance, sourcePath: File, bufferLog: Boolean,
+    args: Seq[String], prescripted: File => Unit, launchOpts: Seq[String]): Unit = {
     System.err.println(s"About to run tests: ${args.mkString("\n * ", "\n * ", "\n")}")
     val noJLine = new classpath.FilteredLoader(scriptedSbtInstance.loader, "jline." :: Nil)
     val loader = classpath.ClasspathUtilities.toLoader(scriptedSbtClasspath.files, noJLine)
     val bridgeClass = Class.forName("sbt.test.ScriptedRunner", true, loader)
     val bridge = bridgeClass.newInstance.asInstanceOf[SbtScriptedRunner]
-    val launcherVmOptions = Array("-XX:MaxPermSize=256M", "-Xmx1G") // increased after a failure in scripted source-dependencies/macro
     try {
       // Using java.util.List to encode File => Unit.
       val callback = new java.util.AbstractList[File] {
@@ -101,7 +103,7 @@ object Scripted {
         def get(x: Int): sbt.File = ???
         def size(): Int = 0
       }
-      bridge.run(sourcePath, bufferLog, args.toArray, launcher, launcherVmOptions, callback)
+      bridge.run(sourcePath, bufferLog, args.toArray, launcher, launchOpts.toArray, callback)
     } catch { case ite: java.lang.reflect.InvocationTargetException => throw ite.getCause }
   }
 }

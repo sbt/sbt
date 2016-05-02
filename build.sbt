@@ -202,16 +202,21 @@ lazy val sbtProj = (project in sbtPath).
 def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => Scripted.scriptedParser(dir)).parsed
   publishAll.value
+  // These two projects need to be visible in a repo even if the default
+  // local repository is hidden, so we publish them to an alternate location and add
+  // that alternate repo to the running scripted test (in Scripted.scriptedpreScripted).
+  // (altLocalPublish in interfaceProj).value
+  // (altLocalPublish in compileInterfaceProj).value
   Scripted.doScripted((sbtLaunchJar in bundledLauncherProj).value, (fullClasspath in scriptedSbtProj in Test).value,
     (scalaInstance in scriptedSbtProj).value,
-    scriptedSource.value, scriptedBufferLog.value, result, scriptedPrescripted.value)
+    scriptedSource.value, scriptedBufferLog.value, result, scriptedPrescripted.value, scriptedLaunchOpts.value)
 }
 
 def scriptedUnpublishedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => Scripted.scriptedParser(dir)).parsed
   Scripted.doScripted((sbtLaunchJar in bundledLauncherProj).value, (fullClasspath in scriptedSbtProj in Test).value,
     (scalaInstance in scriptedSbtProj).value,
-    scriptedSource.value, scriptedBufferLog.value, result, scriptedPrescripted.value)
+    scriptedSource.value, scriptedBufferLog.value, result, scriptedPrescripted.value, scriptedLaunchOpts.value)
 }
 
 lazy val publishLauncher = TaskKey[Unit]("publish-launcher")
@@ -233,11 +238,40 @@ def otherRootSettings = Seq(
   scripted <<= scriptedTask,
   scriptedUnpublished <<= scriptedUnpublishedTask,
   scriptedSource := (sourceDirectory in sbtProj).value / "sbt-test",
+  // scriptedPrescripted := { addSbtAlternateResolver _ },
+  scriptedLaunchOpts := List("-XX:MaxPermSize=256M", "-Xmx1G"),
   publishAll := {
     val _ = (publishLocal).all(ScopeFilter(inAnyProject)).value
   },
   aggregate in bintrayRelease := false
-)
+) ++ inConfig(Scripted.RepoOverrideTest)(Seq(
+  scriptedPrescripted := { _ => () },
+  scriptedLaunchOpts := {
+    List("-XX:MaxPermSize=256M", "-Xmx1G", "-Dsbt.override.build.repos=true",
+      s"""-Dsbt.repository.config=${ scriptedSource.value / "repo.config" }""")
+  },
+  scripted <<= scriptedTask,
+  scriptedUnpublished <<= scriptedUnpublishedTask,
+  scriptedSource := (sourceDirectory in sbtProj).value / "repo-override-test"
+))
+
+// def addSbtAlternateResolver(scriptedRoot: File) = {
+//   val resolver = scriptedRoot / "project" / "AddResolverPlugin.scala"
+//   if (!resolver.exists) {
+//     IO.write(resolver, s"""import sbt._
+//                           |import Keys._
+//                           |
+//                           |object AddResolverPlugin extends AutoPlugin {
+//                           |  override def requires = sbt.plugins.JvmPlugin
+//                           |  override def trigger = allRequirements
+//                           |
+//                           |  override lazy val projectSettings = Seq(resolvers += alternativeLocalResolver)
+//                           |  lazy val alternativeLocalResolver = Resolver.file("$altLocalRepoName", file("$altLocalRepoPath"))(Resolver.ivyStylePatterns)
+//                           |}
+//                           |""".stripMargin)
+//   }
+// }
+
 lazy val docProjects: ScopeFilter = ScopeFilter(
   inAnyProject -- inProjects(sbtRoot, sbtProj, scriptedSbtProj, scriptedPluginProj),
   inConfigurations(Compile)

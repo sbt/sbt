@@ -35,6 +35,8 @@ env:
     - SBT_CMD="scripted source-dependencies/*3of3"
     - SBT_CMD="scripted tests/*"
     - SBT_CMD="scripted project-load/*"
+    - SBT_CMD="checkBuildScala211"
+    - SBT_CMD="repoOverrideTest:scripted dependency-management/*"
 
 notifications:
   email:
