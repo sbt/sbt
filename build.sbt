@@ -154,7 +154,7 @@ lazy val actionsProj = (project in mainPath / "actions").
     testedBaseSettings,
     name := "Actions",
     libraryDependencies ++= Seq(compilerClasspath, utilCompletion, compilerApiInfo,
-      incrementalcompiler, compilerIvyIntegration, compilerInterface,
+      zinc, compilerIvyIntegration, compilerInterface,
       sbtIO, utilLogging, utilRelation, libraryManagement, utilTracking)
   )
 
@@ -184,7 +184,7 @@ lazy val mainProj = (project in mainPath).
     testedBaseSettings,
     name := "Main",
     libraryDependencies ++= scalaXml.value ++ Seq(launcherInterface, compilerInterface,
-      sbtIO, utilLogging, utilLogic, libraryManagement, incrementalcompilerCompile)
+      sbtIO, utilLogging, utilLogic, libraryManagement, zincCompile)
   )
 
 // Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object

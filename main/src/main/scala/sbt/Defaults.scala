@@ -508,18 +508,18 @@ object Defaults extends BuildCommon {
       (cp, s) =>
         val ans: Seq[Analysis] = cp.flatMap(_.metadata get Keys.analysis) map { case a0: Analysis => a0 }
         val succeeded = TestStatus.read(succeededFile(s.cacheDirectory))
-        val stamps = collection.mutable.Map.empty[File, Long]
+        val stamps = collection.mutable.Map.empty[String, Long]
         def stamp(dep: String): Long = {
-          val stamps = for (a <- ans; f <- a.relations.definesClass(dep)) yield intlStamp(f, a, Set.empty)
+          val stamps = for (a <- ans) yield intlStamp(dep, a, Set.empty)
           if (stamps.isEmpty) Long.MinValue else stamps.max
         }
-        def intlStamp(f: File, analysis: Analysis, s: Set[File]): Long = {
-          if (s contains f) Long.MinValue else
-            stamps.getOrElseUpdate(f, {
+        def intlStamp(c: String, analysis: Analysis, s: Set[String]): Long = {
+          if (s contains c) Long.MinValue else
+            stamps.getOrElseUpdate(c, {
               import analysis.{ relations => rel, apis }
-              rel.internalSrcDeps(f).map(intlStamp(_, analysis, s + f)) ++
-                rel.externalDeps(f).map(stamp) +
-                apis.internal(f).compilation.startTime
+              rel.internalClassDeps(c).map(intlStamp(_, analysis, s + c)) ++
+                rel.externalDeps(c).map(stamp) +
+                apis.internal(c).compilation.startTime
             }.max)
         }
         def noSuccessYet(test: String) = succeeded.get(test) match {
