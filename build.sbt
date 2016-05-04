@@ -196,6 +196,7 @@ lazy val sbtProj = (project in sbtPath).
     baseSettings,
     name := "sbt",
     normalizedName := "sbt",
+    crossPaths := false,
     libraryDependencies ++= Seq(compilerBrdige)
   )
 
