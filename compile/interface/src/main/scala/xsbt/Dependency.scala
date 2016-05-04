@@ -29,7 +29,7 @@ object Dependency {
  * where it originates from. The Symbol->Classfile mapping is implemented by
  * LocateClassFile that we inherit from.
  */
-final class Dependency(val global: CallbackGlobal) extends LocateClassFile {
+final class Dependency(val global: CallbackGlobal) extends LocateClassFile with GlobalHelpers {
   import global._
 
   def newPhase(prev: Phase): Phase = new DependencyPhase(prev)
@@ -79,6 +79,12 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile {
   private class ExtractDependenciesTraverser extends Traverser {
     private val _dependencies = collection.mutable.HashSet.empty[Symbol]
     protected def addDependency(dep: Symbol): Unit = if (dep ne NoSymbol) _dependencies += dep
+    protected def addTreeDependency(tree: Tree): Unit = {
+      addDependency(tree.symbol)
+      if (tree.tpe != null)
+        symbolsInType(tree.tpe).foreach(addDependency)
+      ()
+    }
     def dependencies: Iterator[Symbol] = _dependencies.iterator
     def topLevelDependencies: Iterator[Symbol] = _dependencies.map(enclosingTopLevelClass).iterator
 
@@ -118,11 +124,11 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile {
        *    this looks fishy, see this thread:
        *    https://groups.google.com/d/topic/scala-internals/Ms9WUAtokLo/discussion
        */
-      case id: Ident => addDependency(id.symbol)
+      case id: Ident => addTreeDependency(id)
       case sel @ Select(qual, _) =>
-        traverse(qual); addDependency(sel.symbol)
+        traverse(qual); addTreeDependency(sel)
       case sel @ SelectFromTypeTree(qual, _) =>
-        traverse(qual); addDependency(sel.symbol)
+        traverse(qual); addTreeDependency(sel)
 
       case Template(parents, self, body) =>
         // use typeSymbol to dealias type aliases -- we want to track the dependency on the real class in the alias's RHS
@@ -150,32 +156,6 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile {
         traverse(original)
         super.traverse(m)
       case other => super.traverse(other)
-    }
-
-    private def symbolsInType(tp: Type): Set[Symbol] = {
-      val typeSymbolCollector =
-        new CollectTypeTraverser({
-          case tpe if (tpe != null) && !tpe.typeSymbolDirect.isPackage => tpe.typeSymbolDirect
-        })
-
-      typeSymbolCollector.traverse(tp)
-      typeSymbolCollector.collected.toSet
-    }
-  }
-
-  /**
-   * Traverses given type and collects result of applying a partial function `pf`.
-   *
-   * NOTE: This class exists in Scala 2.10 as CollectTypeCollector but does not in earlier
-   * versions (like 2.9) of Scala compiler that incremental cmpiler supports so we had to
-   * reimplement that class here.
-   */
-  private final class CollectTypeTraverser[T](pf: PartialFunction[Type, T]) extends TypeTraverser {
-    var collected: List[T] = Nil
-    def traverse(tpe: Type): Unit = {
-      if (pf.isDefinedAt(tpe))
-        collected = pf(tpe) :: collected
-      mapOver(tpe)
     }
   }
 

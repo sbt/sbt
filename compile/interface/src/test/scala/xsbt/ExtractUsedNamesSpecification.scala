@@ -17,8 +17,9 @@ class ExtractUsedNamesSpecification extends Specification {
    * definition.
    */
   private val standardNames = Set(
-    // AnyRef is added as default parent of a class
-    "scala", "AnyRef",
+    "scala",
+    // The default parent of a class is "AnyRef" which is an alias for "Object"
+    "AnyRef", "Object",
     // class receives a default constructor which is internally called "<init>"
     "<init>")
 
@@ -69,7 +70,45 @@ class ExtractUsedNamesSpecification extends Specification {
 			|}""".stripMargin
     val compilerForTesting = new ScalaCompilerForUnitTesting(nameHashing = true)
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(srcA, srcB)
-    val expectedNames = standardNames ++ Set("A", "a", "B", "=")
+    val expectedNames = standardNames ++ Set("A", "a", "B", "=", "Int")
+    usedNames === expectedNames
+  }
+
+  "extract names in the types of trees" in {
+    val src1 = """|class X0
+                  |class X1 extends X0
+                  |class Y
+                  |class A {
+                  |  type T >: X1 <: X0
+                  |}
+                  |class M
+                  |class N
+                  |class P0
+                  |class P1 extends P0
+                  |object B {
+                  |  type S = Y
+                  |  val lista: List[A] = ???
+                  |  val at: A#T = ???
+                  |  val as: S = ???
+                  |  def foo(m: M): N = ???
+                  |  def bar[Param >: P1 <: P0](p: Param): Param = ???
+                  |}""".stripMargin
+    val src2 = """|object Test {
+                  |  val x = B.lista
+                  |  val y = B.at
+                  |  val z = B.as
+                  |  B.foo(???)
+                  |  B.bar(???)
+                  |}""".stripMargin
+    val compilerForTesting = new ScalaCompilerForUnitTesting(nameHashing = true)
+    val usedNames = compilerForTesting.extractUsedNamesFromSrc(src1, src2)
+    val expectedNames = standardNames ++ Set("Test", "B", "x", "y", "z",
+      "Predef", "???", "Nothing",
+      "lista", "package", "List", "A",
+      "at", "T",
+      "as", "S",
+      "foo", "M", "N",
+      "bar", "Param", "P1", "P0")
     usedNames === expectedNames
   }
 

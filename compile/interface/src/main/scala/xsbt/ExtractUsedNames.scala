@@ -7,6 +7,8 @@ import scala.tools.nsc._
  *
  * Extracts simple (unqualified) names mentioned in given in non-definition position by collecting
  * all symbols associated with non-definition trees and extracting names from all collected symbols.
+ * Also extract the names of the types of non-definition trees (see source-dependencies/types-in-used-names
+ * for an example where this is required).
  *
  * If given symbol is mentioned both in definition and in non-definition position (e.g. in member
  * selection) then that symbol is collected. It means that names of symbols defined and used in the
@@ -38,7 +40,7 @@ import scala.tools.nsc._
  * The tree walking algorithm walks into TypeTree.original explicitly.
  *
  */
-class ExtractUsedNames[GlobalType <: CallbackGlobal](val global: GlobalType) extends Compat {
+class ExtractUsedNames[GlobalType <: CallbackGlobal](val global: GlobalType) extends Compat with GlobalHelpers {
   import global._
 
   @inline def debug(msg: => String) = if (settings.verbose.value) inform(msg)
@@ -61,10 +63,12 @@ class ExtractUsedNames[GlobalType <: CallbackGlobal](val global: GlobalType) ext
      */
     val inspectedOriginalTrees = collection.mutable.Set.empty[Tree]
 
-    def addSymbol(symbol: Symbol): Unit = {
-      val symbolNameAsString = symbol.name.decode.trim
-      namesBuffer += symbolNameAsString
-    }
+    def addSymbol(symbol: Symbol): Unit =
+      if (eligibleAsUsedName(symbol)) {
+        val symbolNameAsString = symbol.name.decode.trim
+        namesBuffer += symbolNameAsString
+        ()
+      }
 
     def handleTreeNode(node: Tree): Unit = {
       def handleMacroExpansion(original: Tree): Unit = {
@@ -91,8 +95,10 @@ class ExtractUsedNames[GlobalType <: CallbackGlobal](val global: GlobalType) ext
         // not what we need
         case t: TypeTree if t.original != null =>
           t.original.foreach(handleTreeNode)
-        case t if t.hasSymbol && eligibleAsUsedName(t.symbol) =>
+        case t if t.hasSymbol =>
           addSymbol(t.symbol)
+          if (t.tpe != null)
+            symbolsInType(t.tpe).foreach(addSymbol)
         case _ => ()
       }
 

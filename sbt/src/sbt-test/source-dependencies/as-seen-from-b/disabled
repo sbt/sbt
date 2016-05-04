@@ -1,0 +1,22 @@
+$ copy-file changes/A1.scala A.scala
+
+> compile
+
+$ copy-file changes/B1.scala B.scala
+
+> compile
+
+
+$ copy-file changes/C1.scala C.scala
+
+> compile
+
+
+$ copy-file changes/D1.scala D.scala
+
+> compile
+
+$ copy-file changes/B2.scala B.scala
+$ sleep 1000
+
+-> compile
