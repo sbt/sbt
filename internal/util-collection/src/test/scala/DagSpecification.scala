@@ -19,8 +19,11 @@ object DagSpecification extends Properties("Dag") {
       val nodes = new HashSet[TestDag]
       def nonterminalGen(p: Gen.Parameters): Gen[TestDag] =
         {
-          for (i <- 0 until nodeCount; nextDeps <- Gen.someOf(nodes).apply(p))
-            nodes += new TestDag(i, nextDeps)
+          val seed = rng.Seed.random()
+          for {
+            i <- 0 until nodeCount
+            nextDeps <- Gen.someOf(nodes).apply(p, seed)
+          } nodes += new TestDag(i, nextDeps)
           for (nextDeps <- Gen.someOf(nodes)) yield new TestDag(nodeCount, nextDeps)
         }
       Gen.parameterized(nonterminalGen)
