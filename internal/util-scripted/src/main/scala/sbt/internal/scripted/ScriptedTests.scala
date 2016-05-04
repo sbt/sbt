@@ -7,6 +7,7 @@ import sbt.util.Logger
 import sbt.internal.util.{ ConsoleLogger, BufferedLogger, FullLogger }
 import sbt.io.IO.wrapNull
 import sbt.io.{ DirectoryFilter, HiddenFileFilter, Path, GlobFilter }
+import sbt.io.syntax._
 import sbt.internal.io.Resources
 
 object ScriptedRunnerImpl {

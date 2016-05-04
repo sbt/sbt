@@ -7,7 +7,7 @@ import Types.:+:
 import sbinary.{ DefaultProtocol, Format, Input, Output => Out }
 import DefaultProtocol.ByteFormat
 import java.io.{ File, InputStream, OutputStream }
-import sbt.internal.io.Using
+import sbt.io.Using
 
 trait InputCache[I] {
   type Internal

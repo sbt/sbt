@@ -7,6 +7,7 @@ package scripted
 
 import java.io.File
 import sbt.io.{ IO, Path }
+import sbt.io.syntax._
 import Path._
 
 class FileCommands(baseDirectory: File) extends BasicStatementHandler {

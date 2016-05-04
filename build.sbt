@@ -14,6 +14,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
   crossScalaVersions := Seq(scala210, scala211),
+  scalacOptions -= "-Yinline-warnings",
   scalacOptions ++= Seq(
     "-encoding", "utf8",
     "-deprecation",
@@ -23,7 +24,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
     "-language:higherKinds",
     "-language:implicitConversions",
     // "-Xfuture",
-    "-Yinline-warnings",
+    // "-Yinline-warnings",
     // "-Yfatal-warnings",
     "-Yno-adapted-args",
     "-Ywarn-dead-code",

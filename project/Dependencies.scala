@@ -3,9 +3,10 @@ import Keys._
 
 object Dependencies {
   lazy val scala210 = "2.10.6"
-  lazy val scala211 = "2.11.7"
+  lazy val scala211 = "2.11.8"
+  lazy val scala212 = "2.12.0-M4"
 
-  lazy val sbtIO = "org.scala-sbt" %% "io" % "1.0.0-M3"
+  lazy val sbtIO = "org.scala-sbt" %% "io" % "1.0.0-M5"
   lazy val jline = "jline" % "jline" % "2.13"
   lazy val sbtSerialization = "org.scala-sbt" %% "serialization" % "0.1.2"
   lazy val sbinary = "org.scala-sbt" %% "sbinary" % "0.4.3"
@@ -21,10 +22,10 @@ object Dependencies {
       }
     }
 
-  lazy val scalaXml = scala211Module("scala-xml", "1.0.1")
+  lazy val scalaXml = scala211Module("scala-xml", "1.0.5")
 
-  lazy val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.12.4"
-  lazy val scalatest = "org.scalatest" %% "scalatest" % "2.2.4"
+  val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.13.1"
+  val scalatest = "org.scalatest" %% "scalatest" % "2.2.6"
 
   lazy val parserCombinator211 = "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4"
 }

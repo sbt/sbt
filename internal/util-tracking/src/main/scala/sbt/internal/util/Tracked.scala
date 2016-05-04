@@ -11,7 +11,8 @@ import scala.reflect.Manifest
 import scala.collection.mutable
 import sbt.io.IO.{ delete, read, write }
 import sbt.io.{ IO, Path }
-import sbt.internal.io.Using
+import sbt.io.Using
+import sbt.io.syntax._
 import sbt.serialization._
 
 object Tracked {
