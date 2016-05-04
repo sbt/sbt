@@ -9,7 +9,7 @@ object Dependencies {
   lazy val scala211 = "2.11.8"
 
   // sbt modules
-  val utilVersion = "0.1.0-M10"
+  val utilVersion = "0.1.0-M11"
   val ioVersion = "1.0.0-M3"
   val incrementalcompilerVersion = "0.1.0-M3"
   val librarymanagementVersion = "0.1.0-M7"
