@@ -1,2 +1,2 @@
 libraryDependencies +=
-	"org.scala-sbt" %% "sbt" % appConfiguration.value.provider.id.version
+	"org.scala-sbt" % "sbt" % appConfiguration.value.provider.id.version
