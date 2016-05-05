@@ -1,6 +1,13 @@
 package sbt
 
-object Import {
+trait Import {
+  type Setting[T] = Def.Setting[T]
+  type ScopedKey[T] = Def.ScopedKey[T]
+  type SettingsDefinition = Def.SettingsDefinition
+  type File = java.io.File
+  type URI = java.net.URI
+  type URL = java.net.URL
+
   // sbt.io
   val AllPassFilter = sbt.io.AllPassFilter
   val DirectoryFilter = sbt.io.DirectoryFilter
@@ -17,10 +24,8 @@ object Import {
   type NameFilter = sbt.io.NameFilter
   val NothingFilter = sbt.io.NothingFilter
   val Path = sbt.io.Path
-  type PathExtra = sbt.io.PathExtra
   val PathFinder = sbt.io.PathFinder
   type PathFinder = sbt.io.PathFinder
-  type PathLow = sbt.io.PathLow
   type PatternFilter = sbt.io.PatternFilter
   type RichFile = sbt.io.RichFile
   type SimpleFileFilter = sbt.io.SimpleFileFilter
@@ -362,8 +367,6 @@ object Import {
   type ModuleSettings = sbt.internal.librarymanagement.ModuleSettings
   val InlineConfiguration = sbt.internal.librarymanagement.InlineConfiguration
   type InlineConfiguration = sbt.internal.librarymanagement.InlineConfiguration
-  val InlineConfigurationWithExcludes = sbt.internal.librarymanagement.InlineConfigurationWithExcludes
-  type InlineConfigurationWithExcludes = sbt.internal.librarymanagement.InlineConfigurationWithExcludes
   type InlineIvyConfiguration = sbt.internal.librarymanagement.InlineIvyConfiguration
   type InvalidComponent = sbt.internal.librarymanagement.InvalidComponent
   val IvyActions = sbt.internal.librarymanagement.IvyActions

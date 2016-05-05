@@ -140,23 +140,21 @@ object CacheIvy {
   }
   import L5._
 
-  implicit def inlineIvyIC: InputCache[InlineIvyConfiguration] = wrapIn
   implicit def moduleSettingsIC: InputCache[ModuleSettings] =
-    unionInputCache[ModuleSettings, PomConfiguration :+: InlineConfiguration :+: InlineConfigurationWithExcludes :+: IvyFileConfiguration :+: HNil]
+    unionInputCache[ModuleSettings, PomConfiguration :+: InlineConfiguration :+: IvyFileConfiguration :+: HNil]
 
   implicit def ivyConfigurationIC: InputCache[IvyConfiguration] =
     unionInputCache[IvyConfiguration, InlineIvyConfiguration :+: ExternalIvyConfiguration :+: HNil]
 
   object L4 {
-    implicit val inlineWithExcludesToHL = (c: InlineConfigurationWithExcludes) =>
+    implicit val inlineToHL = (c: InlineConfiguration) =>
       c.module :+: c.dependencies :+: c.ivyXML :+: c.configurations :+: c.defaultConfiguration.map(_.name) :+:
         c.ivyScala :+: c.validate :+: c.overrides :+: c.excludes :+: HNil
     implicit def moduleConfToHL = (m: ModuleConfiguration) => m.organization :+: m.name :+: m.revision :+: m.resolver :+: HNil
-    implicit def inlineToHL = (c: InlineConfiguration) => c.module :+: c.dependencies :+: c.ivyXML :+: c.configurations :+: c.defaultConfiguration.map(_.name) :+: c.ivyScala :+: c.validate :+: c.overrides :+: HNil
+    // implicit def inlineToHL = (c: InlineConfiguration) => c.module :+: c.dependencies :+: c.ivyXML :+: c.configurations :+: c.defaultConfiguration.map(_.name) :+: c.ivyScala :+: c.validate :+: c.overrides :+: HNil
   }
   import L4._
 
-  implicit def inlineWithExcludesIC: InputCache[InlineConfigurationWithExcludes] = wrapIn
   implicit def inlineIC: InputCache[InlineConfiguration] = wrapIn
   implicit def moduleConfIC: InputCache[ModuleConfiguration] = wrapIn
 

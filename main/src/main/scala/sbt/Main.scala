@@ -16,7 +16,7 @@ import Project.LoadAction
 
 import scala.annotation.tailrec
 import sbt.io.IO
-import sbt.io.Path._
+import sbt.io.syntax._
 import StandardMain._
 
 import java.io.File

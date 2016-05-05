@@ -9,6 +9,7 @@ import java.io.File
 import java.net.URL
 
 import sbt.io.Path
+import Path._
 
 /** Options for well-known tasks. */
 object Opts {
@@ -30,7 +31,7 @@ object Opts {
       mappings.map { case (f, u) => s"${f.getAbsolutePath}#${u.toExternalForm}" }.mkString("-doc-external-doc:", ",", "") :: Nil
   }
   object resolver {
-    import Path._
+    import sbt.io.syntax._
     val sonatypeReleases = Resolver.sonatypeRepo("releases")
     val sonatypeSnapshots = Resolver.sonatypeRepo("snapshots")
     val sonatypeStaging = new MavenRepository("sonatype-staging", "https://oss.sonatype.org/service/local/staging/deploy/maven2")
@@ -40,7 +41,7 @@ object Opts {
 
 object DefaultOptions {
   import Opts._
-  import Path._
+  import sbt.io.syntax._
   import BuildPaths.{ getGlobalBase, getGlobalSettingsDirectory }
   import Project.{ extract, richInitializeTask }
   import Def.Setting

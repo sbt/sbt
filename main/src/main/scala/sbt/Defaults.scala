@@ -50,6 +50,7 @@ import sbt.internal.io.WatchState
 import sbt.io.{ AllPassFilter, FileFilter, GlobFilter, HiddenFileFilter, IO, NameFilter, NothingFilter, Path, PathFinder, SimpleFileFilter, DirectoryFilter }
 
 import Path._
+import sbt.io.syntax._
 import Keys._
 
 object Defaults extends BuildCommon {
@@ -1046,7 +1047,6 @@ object Defaults extends BuildCommon {
 
 }
 object Classpaths {
-  import Path._
   import Keys._
   import Scope.ThisScope
   import Defaults._
@@ -1341,7 +1341,7 @@ object Classpaths {
       new IvySbt(conf)
     }
   def moduleSettings0: Initialize[Task[ModuleSettings]] = Def.task {
-    new InlineConfigurationWithExcludes(projectID.value, projectInfo.value, allDependencies.value, dependencyOverrides.value, excludeDependencies.value,
+    new InlineConfiguration(projectID.value, projectInfo.value, allDependencies.value, dependencyOverrides.value, excludeDependencies.value,
       ivyXML.value, ivyConfigurations.value, defaultConfiguration.value, ivyScala.value, ivyValidate.value, conflictManager.value)
   }
 

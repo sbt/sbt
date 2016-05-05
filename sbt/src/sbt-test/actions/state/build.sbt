@@ -1,4 +1,3 @@
-import Import._
 import complete.Parser
 import complete.DefaultParsers._
 import sbinary.DefaultProtocol._

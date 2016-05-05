@@ -11,7 +11,7 @@ import java.net.URI
 import ConcurrentRestrictions.Tag
 import Def.{ Initialize, KeyedInitialize, ScopedKey, Setting, setting }
 import sbt.io.{ FileFilter, Path, PathFinder }
-import Path._
+import sbt.io.syntax._
 import std.TaskExtra.{ task => mktask, _ }
 import Task._
 import sbt.internal.util.Types._

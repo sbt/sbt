@@ -11,8 +11,11 @@ import com.typesafe.tools.mima.plugin.MimaPlugin.mimaDefaultSettings
 def buildLevelSettings: Seq[Setting[_]] = inThisBuild(Seq(
   organization := "org.scala-sbt",
   version := "1.0.0-SNAPSHOT",
-  bintrayOrganization := Some(if (publishStatus.value == "releases") "typesafe" else "sbt"),
-  bintrayRepository := s"ivy-${publishStatus.value}",
+  bintrayOrganization := Some("sbt"),
+  bintrayRepository := {
+    if (isSnapshot.value) "maven-releases"
+    else "maven-snapshots"
+  },
   bintrayPackage := "sbt",
   bintrayReleaseOnPublish := false,
   resolvers += Resolver.mavenLocal
@@ -21,7 +24,6 @@ def buildLevelSettings: Seq[Setting[_]] = inThisBuild(Seq(
 def commonSettings: Seq[Setting[_]] = Seq[SettingsDefinition](
   scalaVersion := scala211,
   publishArtifact in packageDoc := false,
-  publishMavenStyle := false,
   componentID := None,
   resolvers += Resolver.typesafeIvyRepo("releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
@@ -30,7 +32,7 @@ def commonSettings: Seq[Setting[_]] = Seq[SettingsDefinition](
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
   incOptions := incOptions.value.withNameHashing(true),
-  crossScalaVersions := Seq(scala211),
+  crossScalaVersions := Seq(scala211, scala210),
   bintrayPackage := (bintrayPackage in ThisBuild).value,
   bintrayRepository := (bintrayRepository in ThisBuild).value,
   mimaDefaultSettings,
@@ -99,6 +101,9 @@ lazy val testingProj = (project in file("testing")).
 lazy val testAgentProj = (project in file("testing") / "agent").
   settings(
     minimalSettings,
+    crossScalaVersions := Seq(scala211),
+    crossPaths := false,
+    autoScalaLibrary := false,
     name := "Test Agent",
     libraryDependencies += testInterface
   )
@@ -316,15 +321,6 @@ lazy val otherProjects: ScopeFilter = ScopeFilter(
 def customCommands: Seq[Setting[_]] = Seq(
   commands += Command.command("setupBuildScala211") { state =>
     s"""set scalaVersion in ThisBuild := "$scala211" """ ::
-      state
-  },
-  // This is invoked by Travis
-  commands += Command.command("checkBuildScala211") { state =>
-    s"++ $scala211" ::
-      // First compile everything before attempting to test
-      "all compile test:compile" ::
-      // Now run known working tests.
-      safeUnitTests.key.label ::
       state
   },
   safeUnitTests := {

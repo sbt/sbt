@@ -274,7 +274,7 @@ private[sbt] object Load {
     // put cleanups there, perhaps.
     if (keepSet.nonEmpty) {
       def keepFile(f: File) = keepSet(f.getCanonicalPath)
-      import Path._
+      import sbt.io.syntax._
       val existing = (baseTarget.allPaths.get).filterNot(_.isDirectory)
       val toDelete = existing.filterNot(keepFile)
       if (toDelete.nonEmpty) {
@@ -799,7 +799,7 @@ private[sbt] object Load {
 
   def hasDefinition(dir: File) =
     {
-      import Path._
+      import sbt.io.syntax._
       (dir * -GlobFilter(DefaultTargetName)).get.nonEmpty
     }
   def noPlugins(dir: File, config: LoadBuildConfiguration): sbt.LoadedPlugins =

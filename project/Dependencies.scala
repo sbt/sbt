@@ -9,10 +9,10 @@ object Dependencies {
   lazy val scala211 = "2.11.8"
 
   // sbt modules
-  val utilVersion = "0.1.0-M11"
-  val ioVersion = "1.0.0-M3"
-  val zincVersion = "0.1.0-M3-84942e08e7b11c6ef831c6443fc31bbff19ed3c2-SNAPSHOT"
-  val librarymanagementVersion = "0.1.0-27bf18f7a3d945d84f72bb0e0e4aa98151417609-SNAPSHOT"
+  val ioVersion = "1.0.0-M5"
+  val utilVersion = "0.1.0-M12"
+  val librarymanagementVersion = "0.1.0-M8"
+  val zincVersion = "1.0.0-M1"
   lazy val sbtIO = "org.scala-sbt" %% "io" % ioVersion
   lazy val utilCollection = "org.scala-sbt" %% "util-collection" % utilVersion
   lazy val utilLogging = "org.scala-sbt" %% "util-logging" % utilVersion
@@ -26,8 +26,8 @@ object Dependencies {
   lazy val utilTracking = "org.scala-sbt" %% "util-tracking" % utilVersion
   lazy val utilScripted = "org.scala-sbt" %% "util-scripted" % utilVersion
   lazy val libraryManagement = "org.scala-sbt" %% "librarymanagement" % librarymanagementVersion
-  lazy val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0-M1"
-  lazy val rawLauncher = "org.scala-sbt" % "launcher" % "1.0.0-M1"
+  lazy val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
+  lazy val rawLauncher = "org.scala-sbt" % "launcher" % "1.0.0"
   lazy val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
 
   lazy val zinc = "org.scala-sbt" %% "zinc" % zincVersion

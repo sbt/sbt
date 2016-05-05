@@ -1,6 +1,4 @@
-import sbt._
-import Keys._
-import Import._
+import sbt._, syntax._, Keys._
 import Def.Initialize
 
 object Marker extends AutoPlugin {

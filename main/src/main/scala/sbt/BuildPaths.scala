@@ -18,7 +18,7 @@ object BuildPaths {
   val stagingDirectory = AttributeKey[File]("staging-directory", "The directory for staging remote projects.", DSetting)
   val dependencyBaseDirectory = AttributeKey[File]("dependency-base-directory", "The base directory for caching dependency resolution.", DSetting)
 
-  import Path._
+  import sbt.io.syntax._
 
   def getGlobalBase(state: State): File = {
     val default = defaultVersionedGlobalBase(binarySbtVersion(state))

@@ -8,7 +8,7 @@ import sbt.internal.util.complete.HistoryCommands
 import scala.annotation.tailrec
 
 import java.io.File
-import sbt.io.Path._
+import sbt.io.syntax._
 
 object BasicCommandStrings {
   val HelpCommand = "help"
