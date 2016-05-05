@@ -1,3 +1,5 @@
+> plugins
+
 # single project, 'mark' not defined
 -> mark
 $ absent ran

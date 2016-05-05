@@ -275,10 +275,12 @@ object Tests {
 
   def allDefs(analysis: CompileAnalysis) = analysis match {
     case analysis: Analysis =>
-      analysis.apis.internal.values.flatMap { ac =>
+      val acs: Seq[xsbti.api.AnalyzedClass] = analysis.apis.internal.values.toVector
+      acs.flatMap { ac =>
         val companions = ac.api
         val all =
-          companions.classApi.structure.declared ++ companions.classApi.structure.inherited ++
+          Seq(companions.classApi, companions.objectApi) ++
+            companions.classApi.structure.declared ++ companions.classApi.structure.inherited ++
             companions.objectApi.structure.declared ++ companions.objectApi.structure.inherited
 
         all

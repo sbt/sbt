@@ -23,7 +23,9 @@ object PluginDiscovery {
     final val Builds = "sbt/sbt.builds"
   }
   /** Names of top-level modules that subclass sbt plugin-related classes: [[Plugin]], [[AutoPlugin]], and [[BuildDef]]. */
-  final class DiscoveredNames(val plugins: Seq[String], val autoPlugins: Seq[String], val builds: Seq[String])
+  final class DiscoveredNames(val plugins: Seq[String], val autoPlugins: Seq[String], val builds: Seq[String]) {
+    override def toString: String = s"""DiscoveredNames($plugins, $autoPlugins, $builds)"""
+  }
 
   def emptyDiscoveredNames: DiscoveredNames = new DiscoveredNames(Nil, Nil, Nil)
 
@@ -96,7 +98,8 @@ object PluginDiscovery {
   def sourceModuleNames(analysis: CompileAnalysis, subclasses: String*): Seq[String] =
     {
       val subclassSet = subclasses.toSet
-      val ds = Discovery(subclassSet, Set.empty)(Tests.allDefs(analysis))
+      val defs = Tests.allDefs(analysis)
+      val ds = Discovery(subclassSet, Set.empty)(defs)
       ds.flatMap {
         case (definition, Discovered(subs, _, _, true)) =>
           if ((subs & subclassSet).isEmpty) Nil else definition.name :: Nil
