@@ -8,7 +8,7 @@ import java.util.concurrent.Callable
 import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.internal.librarymanagement.{ JsonUtil, ComponentManager, BaseIvySpecification }
 import sbt.io.IO
-import sbt.io.Path._
+import sbt.io.syntax._
 import sbt.librarymanagement.{ ModuleID, UpdateOptions, Resolver, Patterns, FileRepository, DefaultMavenRepository }
 import sbt.util.{ Logger, Level }
 import xsbti.{ ComponentProvider, GlobalLock }
