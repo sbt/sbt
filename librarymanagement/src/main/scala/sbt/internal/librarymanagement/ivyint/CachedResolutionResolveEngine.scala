@@ -137,7 +137,7 @@ private[sbt] class CachedResolutionResolveCache() {
     }
   def getOrElseUpdateMiniGraph(md: ModuleDescriptor, changing0: Boolean, logicalClock: LogicalClock, miniGraphPath: File, cachedDescriptor: File, log: Logger)(f: => Either[ResolveException, UpdateReport]): Either[ResolveException, UpdateReport] =
     {
-      import Path._
+      import sbt.io.syntax._
       val mrid = md.getResolvedModuleRevisionId
       val (pathOrg, pathName, pathRevision) = md match {
         case x: ArtificialModuleDescriptor =>
@@ -288,7 +288,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
    */
   def customResolve(md0: ModuleDescriptor, missingOk: Boolean, logicalClock: LogicalClock, options0: ResolveOptions, depDir: File, log: Logger): Either[ResolveException, UpdateReport] =
     cachedResolutionResolveCache.getOrElseUpdateProjectReport(md0.getModuleRevisionId, logicalClock) {
-      import Path._
+      import sbt.io.syntax._
       val start = System.currentTimeMillis
       val miniGraphPath = depDir / "module"
       val cachedDescriptor = getSettings.getResolutionCacheManager.getResolvedIvyFileInCache(md0.getModuleRevisionId)

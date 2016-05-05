@@ -1,7 +1,7 @@
 package sbt.internal.librarymanagement
 
-import sbt.io.Path._
 import sbt.io.IO
+import sbt.io.syntax._
 import java.io.File
 import cross.CrossVersionUtil
 import sbt.util.Logger
