@@ -1,1 +1,0 @@
-interface C extends D {}
