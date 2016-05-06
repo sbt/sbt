@@ -4,6 +4,7 @@ import coursier.ivy.{ IvyXml, IvyRepository }
 
 import java.net.{ MalformedURLException, URL }
 
+import coursier.core.Authentication
 import sbt.{ Resolver, CrossVersion, ModuleID }
 import sbt.mavenint.SbtPomExtraProperties
 
@@ -145,11 +146,21 @@ object FromSbt {
     } else
       None
 
-  private def mavenRepositoryOpt(root: String, log: sbt.Logger): Option[MavenRepository] =
+  private def mavenRepositoryOpt(
+    root: String,
+    log: sbt.Logger,
+    authentication: Option[Authentication]
+  ): Option[MavenRepository] =
     try {
       Cache.url(root) // ensure root is a URL whose protocol can be handled here
       val root0 = if (root.endsWith("/")) root else root + "/"
-      Some(MavenRepository(root0, sbtAttrStub = true))
+      Some(
+        MavenRepository(
+          root0,
+          sbtAttrStub = true,
+          authentication = authentication
+        )
+      )
     } catch {
       case e: MalformedURLException =>
         log.warn(
@@ -165,11 +176,12 @@ object FromSbt {
   def repository(
     resolver: Resolver,
     ivyProperties: Map[String, String],
-    log: sbt.Logger
+    log: sbt.Logger,
+    authentication: Option[Authentication]
   ): Option[Repository] =
     resolver match {
       case sbt.MavenRepository(_, root) =>
-        mavenRepositoryOpt(root, log)
+        mavenRepositoryOpt(root, log, authentication)
 
       case sbt.FileRepository(_, _, patterns)
         if patterns.ivyPatterns.lengthCompare(1) == 0 &&
@@ -184,10 +196,11 @@ object FromSbt {
               metadataPatternOpt = Some("file://" + patterns.ivyPatterns.head),
               changing = Some(true),
               properties = ivyProperties,
-              dropInfoAttributes = true
+              dropInfoAttributes = true,
+              authentication = authentication
             ))
           case Some(mavenCompatibleBase) =>
-            mavenRepositoryOpt("file://" + mavenCompatibleBase, log)
+            mavenRepositoryOpt("file://" + mavenCompatibleBase, log, authentication)
         }
 
       case sbt.URLRepository(_, patterns)
@@ -203,10 +216,11 @@ object FromSbt {
               metadataPatternOpt = Some(patterns.ivyPatterns.head),
               changing = None,
               properties = ivyProperties,
-              dropInfoAttributes = true
+              dropInfoAttributes = true,
+              authentication = authentication
             ))
           case Some(mavenCompatibleBase) =>
-            mavenRepositoryOpt(mavenCompatibleBase, log)
+            mavenRepositoryOpt(mavenCompatibleBase, log, authentication)
         }
 
       case other =>

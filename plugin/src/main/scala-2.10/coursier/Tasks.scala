@@ -371,6 +371,8 @@ object Tasks {
         "ivy.home" -> (new File(sys.props("user.home")).toURI.getPath + ".ivy2")
       ) ++ sys.props
 
+      val credentials = coursierCredentials.value
+
       val sourceRepositories0 = sourceRepositories.map {
         base =>
           MavenRepository(base.toURI.toString, changing = Some(true))
@@ -393,7 +395,14 @@ object Tasks {
       val repositories =
         Seq(globalPluginsRepo, interProjectRepo) ++
         sourceRepositories0 ++
-        resolvers.flatMap(FromSbt.repository(_, ivyProperties, log)) ++
+        resolvers.flatMap { resolver =>
+          FromSbt.repository(
+            resolver,
+            ivyProperties,
+            log,
+            credentials.get(resolver.name).map(_.authentication)
+          )
+        } ++
         fallbackDependenciesRepositories
 
       def resolution = {
