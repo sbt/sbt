@@ -6,7 +6,7 @@ import java.nio.channels.{ FileLock, OverlappingFileLockException }
 import org.http4s.dsl._
 import org.http4s.headers.Authorization
 import org.http4s.server.blaze.BlazeBuilder
-import org.http4s.{ BasicCredentials, Challenge, HttpService, Request, Response }
+import org.http4s.{ BasicCredentials, Challenge, EmptyBody, HttpService, Request, Response }
 
 import caseapp._
 
@@ -22,15 +22,17 @@ case class SimpleHttpServerApp(
   @ExtraName("p")
   @ValueDescription("port")
     port: Int = 8080,
-  @ExtraName("P")
+  @ExtraName("s")
     acceptPost: Boolean,
   @ExtraName("t")
     acceptPut: Boolean,
   @ExtraName("w")
-  @HelpMessage("Accept write requests. Equivalent to -P -t")
+  @HelpMessage("Accept write requests. Equivalent to -s -t")
     acceptWrite: Boolean,
   @ExtraName("v")
     verbose: Int @@ Counter,
+  @ExtraName("q")
+    quiet: Boolean,
   @ExtraName("u")
   @ValueDescription("user")
     user: String,
@@ -44,7 +46,7 @@ case class SimpleHttpServerApp(
 
   val baseDir = new File(if (directory.isEmpty) "." else directory)
 
-  val verbosityLevel = Tag.unwrap(verbose)
+  val verbosityLevel = Tag.unwrap(verbose) - (if (quiet) 1 else 0)
 
   def write(path: Seq[String], req: Request): Boolean = {
 
@@ -108,16 +110,34 @@ case class SimpleHttpServerApp(
     else
       HttpService {
         case req =>
+          def warn(msg: => String) =
+            if (verbosityLevel >= 1)
+              Console.err.println(s"${req.method.name} ${req.uri.path}: $msg")
+
           req.headers.get(Authorization) match {
             case None =>
+              warn("no authentication provided")
               unauthorized
             case Some(auth) =>
               auth.credentials match {
                 case basic: BasicCredentials =>
                   if (basic.username == user && basic.password == password)
                     service.run(req)
-                  else
+                  else {
+                    warn {
+                      val msg =
+                        if (basic.username == user)
+                          "wrong password"
+                        else
+                          s"unrecognized user ${basic.username}"
+
+                      s"authentication failed ($msg)"
+                    }
                     unauthorized
+                  }
+                case _ =>
+                  warn("no basic credentials found")
+                  unauthorized
               }
           }
       }
@@ -145,15 +165,22 @@ case class SimpleHttpServerApp(
   }
 
   def getService = authenticated {
-    case GET -> path =>
+    case (method @ (GET | HEAD)) -> path =>
       if (verbosityLevel >= 1)
-        Console.err.println(s"GET $path")
+        Console.err.println(s"${method.name} $path")
 
       val f = new File(baseDir, path.toList.mkString("/"))
-      if (f.exists())
+      val resp = if (f.exists())
         Ok(f)
       else
         NotFound()
+
+      method match {
+        case HEAD =>
+          resp.map(_.copy(body = EmptyBody))
+        case _ =>
+          resp
+      }
   }
 
   val builder = {
@@ -168,6 +195,9 @@ case class SimpleHttpServerApp(
 
     b
   }
+
+  if (verbosityLevel >= 0)
+    Console.err.println(s"Listening on http://$host:$port")
 
   builder
     .run
