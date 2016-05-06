@@ -1,5 +1,7 @@
 scalaVersion := "2.11.8"
 
+coursierCachePolicies := Seq(coursier.CachePolicy.ForceDownload)
+
 libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.41" from {
   
   val f = file(sys.props("sbttest.base")) / "sbt-coursier" / "from" / "shapeless_2.11-2.3.0.jar"
