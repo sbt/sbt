@@ -22,7 +22,7 @@ object CacheFetchTests extends TestSuite {
       def cleanTmpDir() = {
         def delete(f: File): Boolean =
           if (f.isDirectory) {
-            val removedContent = f.listFiles().map(delete).forall(x => x)
+            val removedContent = Option(f.listFiles()).toSeq.flatten.map(delete).forall(x => x)
             val removedDir = f.delete()
 
             removedContent && removedDir
