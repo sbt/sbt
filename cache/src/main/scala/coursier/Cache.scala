@@ -204,7 +204,7 @@ object Cache {
         -\/(FileError.ConcurrentDownload(url))
     }
     catch { case e: Exception =>
-      -\/(FileError.DownloadError(s"Caught $e (${e.getMessage})"))
+      -\/(FileError.DownloadError(s"Caught $e${Option(e.getMessage).fold("")(" (" + _ + ")")}"))
     }
 
   private def temporaryFile(file: File): File = {
@@ -232,7 +232,7 @@ object Cache {
 
         def printError(e: Exception): Unit =
           scala.Console.err.println(
-            s"Cannot instantiate $clsName: $e${Option(e.getMessage).map(" ("+_+")")}"
+            s"Cannot instantiate $clsName: $e${Option(e.getMessage).fold("")(" ("+_+")")}"
           )
 
         val handlerOpt = clsOpt.flatMap {
@@ -810,18 +810,6 @@ object Cache {
     buffer.flush()
     buffer.toByteArray
   }
-
-  def readFully(is: => InputStream) =
-    Task {
-      \/.fromTryCatchNonFatal {
-        val is0 = is
-        val b =
-          try readFullySync(is0)
-          finally is0.close()
-
-        new String(b, "UTF-8")
-      } .leftMap(_.getMessage)
-    }
 
   def withContent(is: InputStream, f: (Array[Byte], Int) => Unit): Unit = {
     val data = Array.ofDim[Byte](16384)

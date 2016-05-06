@@ -32,10 +32,10 @@ object Platform {
 
         new String(b, "UTF-8")
       } .leftMap{
-        case e: java.io.FileNotFoundException =>
+        case e: java.io.FileNotFoundException if e.getMessage != null =>
           s"Not found: ${e.getMessage}"
         case e =>
-          s"$e: ${e.getMessage}"
+          s"$e${Option(e.getMessage).fold("")(" (" + _ + ")")}"
       }
     }
 

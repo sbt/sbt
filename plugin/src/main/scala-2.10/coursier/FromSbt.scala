@@ -155,7 +155,7 @@ object FromSbt {
         log.warn(
           "Error parsing Maven repository base " +
           root +
-          Option(e.getMessage).map(" (" + _ + ")").mkString +
+          Option(e.getMessage).fold("")(" (" + _ + ")") +
           ", ignoring it"
         )
 

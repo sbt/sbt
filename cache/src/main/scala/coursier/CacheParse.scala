@@ -31,7 +31,7 @@ object CacheParse {
         repo.success
       } catch {
         case e: MalformedURLException =>
-          ("Error parsing URL " + url + Option(e.getMessage).map(" (" + _ + ")").mkString).failure
+          ("Error parsing URL " + url + Option(e.getMessage).fold("")(" (" + _ + ")")).failure
       }
     }
 
