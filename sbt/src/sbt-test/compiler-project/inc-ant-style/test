@@ -1,8 +1,0 @@
-# introduces first compile iteration
-> compile
-# remove A.foo method
-$ copy-file changes/A1.scala src/main/scala/A.scala
-# recompiles just A.scala in Ant mode so it introduces one more iteration
-> compile
-# check if there are only two compile iterations performed
-> check-compilations
