@@ -11,7 +11,7 @@ object Dependencies {
   // sbt modules
   val ioVersion = "1.0.0-M5"
   val utilVersion = "0.1.0-M12"
-  val librarymanagementVersion = "0.1.0-M8"
+  val librarymanagementVersion = "0.1.0-M9"
   val zincVersion = "1.0.0-M1"
   lazy val sbtIO = "org.scala-sbt" %% "io" % ioVersion
   lazy val utilCollection = "org.scala-sbt" %% "util-collection" % utilVersion
