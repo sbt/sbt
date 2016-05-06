@@ -512,16 +512,26 @@ object Defaults extends BuildCommon {
         val stamps = collection.mutable.Map.empty[String, Long]
         def stamp(dep: String): Long = {
           val stamps = for (a <- ans) yield intlStamp(dep, a, Set.empty)
-          if (stamps.isEmpty) Long.MinValue else stamps.max
+          if (stamps.isEmpty) Long.MinValue
+          else stamps.max
         }
         def intlStamp(c: String, analysis: Analysis, s: Set[String]): Long = {
-          if (s contains c) Long.MinValue else
-            stamps.getOrElseUpdate(c, {
+          if (s contains c) Long.MinValue
+          else {
+            val x = {
               import analysis.{ relations => rel, apis }
               rel.internalClassDeps(c).map(intlStamp(_, analysis, s + c)) ++
                 rel.externalDeps(c).map(stamp) +
-                apis.internal(c).compilation.startTime
-            }.max)
+                (apis.internal.get(c) match {
+                  case Some(x) => x.compilation.startTime
+                  case _       => Long.MinValue
+                })
+            }.max
+            if (x != Long.MinValue) {
+              stamps(c) = x
+            }
+            x
+          }
         }
         def noSuccessYet(test: String) = succeeded.get(test) match {
           case None     => true
