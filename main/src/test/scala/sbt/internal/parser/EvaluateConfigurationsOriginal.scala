@@ -1,8 +1,9 @@
-package sbt.internals.parser
+package sbt
+package internal
+package parser
 
 import java.io.File
 
-import sbt.EvaluateConfigurations
 import sbt.internal.util.LineRange
 
 import scala.annotation.tailrec

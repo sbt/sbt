@@ -2,6 +2,7 @@
  * Copyright 2011 Mark Harrah
  */
 package sbt
+package internal
 
 import sbt.internal.util.{ complete, AttributeEntry, AttributeKey, LineRange, MessageOnlyException, RangePosition, Settings }
 
@@ -10,7 +11,7 @@ import compiler.{ Eval, EvalImports }
 import complete.DefaultParsers.validID
 import Def.{ ScopedKey, Setting }
 import Scope.GlobalScope
-import sbt.internals.parser.SbtParser
+import sbt.internal.parser.SbtParser
 
 import scala.annotation.tailrec
 
@@ -27,7 +28,7 @@ import sbt.io.IO
  *
  *
  */
-object EvaluateConfigurations {
+private[sbt] object EvaluateConfigurations {
 
   type LazyClassLoaded[T] = ClassLoader => T
 
@@ -130,15 +131,15 @@ object EvaluateConfigurations {
           }
         val (settingsRaw, manipulationsRaw) =
           dslEntries map (_.result apply loader) partition {
-            case internals.ProjectSettings(_) => true
-            case _                            => false
+            case DslEntry.ProjectSettings(_) => true
+            case _                           => false
           }
         val settings = settingsRaw flatMap {
-          case internals.ProjectSettings(settings) => settings
-          case _                                   => Nil
+          case DslEntry.ProjectSettings(settings) => settings
+          case _                                  => Nil
         }
         val manipulations = manipulationsRaw map {
-          case internals.ProjectManipulation(f) => f
+          case DslEntry.ProjectManipulation(f) => f
         }
         // TODO -get project manipulations.
         new LoadedSbtFile(settings, projects, importDefs, manipulations, definitions, allGeneratedFiles)
@@ -158,8 +159,8 @@ object EvaluateConfigurations {
    * The name of the class we cast DSL "setting" (vs. definition) lines to.
    */
   val SettingsDefinitionName = {
-    val _ = classOf[sbt.internals.DslEntry] // this line exists to try to provide a compile-time error when the following line needs to be changed
-    "sbt.internals.DslEntry"
+    val _ = classOf[DslEntry] // this line exists to try to provide a compile-time error when the following line needs to be changed
+    "sbt.internal.DslEntry"
   }
 
   /**
@@ -171,10 +172,10 @@ object EvaluateConfigurations {
    * @param expression The scala expression we're compiling
    * @param range The original position in source of the expression, for error messages.
    *
-   * @return A method that given an sbt classloader, can return the actual [[internals.DslEntry]] defined by
+   * @return A method that given an sbt classloader, can return the actual [[sbt.internal.DslEntry]] defined by
    *         the expression, and the sequence of .class files generated.
    */
-  private[sbt] def evaluateDslEntry(eval: Eval, name: String, imports: Seq[(String, Int)], expression: String, range: LineRange): TrackedEvalResult[internals.DslEntry] = {
+  private[sbt] def evaluateDslEntry(eval: Eval, name: String, imports: Seq[(String, Int)], expression: String, range: LineRange): TrackedEvalResult[DslEntry] = {
     // TODO - Should we try to namespace these between.sbt files?  IF they hash to the same value, they may actually be
     // exactly the same setting, so perhaps we don't care?
     val result = try {
@@ -186,7 +187,7 @@ object EvaluateConfigurations {
     TrackedEvalResult(result.generated,
       loader => {
         val pos = RangePosition(name, range shift 1)
-        result.getValue(loader).asInstanceOf[internals.DslEntry].withPos(pos)
+        result.getValue(loader).asInstanceOf[DslEntry].withPos(pos)
       })
   }
 
@@ -207,8 +208,8 @@ object EvaluateConfigurations {
   def evaluateSetting(eval: Eval, name: String, imports: Seq[(String, Int)], expression: String, range: LineRange): LazyClassLoaded[Seq[Setting[_]]] =
     {
       evaluateDslEntry(eval, name, imports, expression, range).result andThen {
-        case internals.ProjectSettings(values) => values
-        case _                                 => Nil
+        case DslEntry.ProjectSettings(values) => values
+        case _                                => Nil
       }
     }
   private[this] def isSpace = (c: Char) => Character isWhitespace c

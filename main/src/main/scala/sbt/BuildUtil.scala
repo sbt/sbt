@@ -72,7 +72,7 @@ object BuildUtil {
     }
   }
 
-  def baseImports: Seq[String] = "import scala.xml.{TopScope=>$scope}" :: "import sbt._, Keys._, dsl._, syntax._" :: Nil
+  def baseImports: Seq[String] = "import scala.xml.{TopScope=>$scope}" :: "import sbt._, Keys._, syntax._" :: Nil
 
   def getImports(unit: BuildUnit): Seq[String] = unit.plugins.detected.imports ++ unit.definitions.dslDefinitions.imports
 

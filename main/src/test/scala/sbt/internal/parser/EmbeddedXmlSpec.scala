@@ -1,4 +1,4 @@
-package sbt.internals.parser
+package sbt.internal.parser
 
 import sbt.internal.util.MessageOnlyException
 

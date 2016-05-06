@@ -1,4 +1,4 @@
-package sbt.internals.parser
+package sbt.internal.parser
 
 import org.specs2.mutable._
 

@@ -1,12 +1,12 @@
 package sbt
-package internals
+package internal
 package parser
 
 import scala.reflect.runtime.universe._
 
 private[sbt] object SbtRefactorings {
 
-  import sbt.internals.parser.SbtParser.{ END_OF_LINE, FAKE_FILE }
+  import sbt.internal.parser.SbtParser.{ END_OF_LINE, FAKE_FILE }
   import sbt.SessionSettings.{ SessionSetting, SbtConfigFile }
 
   val EMPTY_STRING = ""

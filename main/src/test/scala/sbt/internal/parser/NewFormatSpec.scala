@@ -1,10 +1,11 @@
-package sbt.internals.parser
+package sbt
+package internal
+package parser
 
 import java.io.File
 
 import org.junit.runner.RunWith
 import org.specs2.runner.JUnitRunner
-import sbt.EvaluateConfigurations
 
 import scala.io.Source
 

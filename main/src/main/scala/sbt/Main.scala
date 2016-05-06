@@ -3,7 +3,7 @@
  */
 package sbt
 
-import sbt.internal.Load
+import sbt.internal.{ Load, EvaluateConfigurations }
 import sbt.internal.util.{ AttributeKey, AttributeMap, complete, ConsoleOut, GlobalLogging, LineRange, MainLogging, SimpleReader, Types }
 import sbt.util.{ Level, Logger }
 

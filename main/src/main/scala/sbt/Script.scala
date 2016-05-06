@@ -3,7 +3,7 @@
  */
 package sbt
 
-import sbt.internal.Load
+import sbt.internal.{ Load, EvaluateConfigurations }
 import sbt.librarymanagement.Configurations
 
 import sbt.util.Level

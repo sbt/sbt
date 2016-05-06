@@ -1,9 +1,10 @@
-package sbt.internals.parser
+package sbt
+package internal
+package parser
 
 import java.io.File
 
 import org.specs2.ScalaCheck
-import sbt.EvaluateConfigurations
 import sbt.internal.util.MessageOnlyException
 
 import scala.io.Source

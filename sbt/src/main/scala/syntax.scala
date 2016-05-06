@@ -1,5 +1,7 @@
 package sbt
 
+import sbt.internal.DslEntry
+
 object syntax extends syntax
 
 abstract class syntax extends IOSyntax0 with sbt.std.TaskExtra with sbt.internal.util.Types with sbt.ProcessExtra
@@ -45,6 +47,10 @@ abstract class syntax extends IOSyntax0 with sbt.std.TaskExtra with sbt.internal
   def settingKey[T](description: String): SettingKey[T] = macro std.KeyMacro.settingKeyImpl[T]
   def taskKey[T](description: String): TaskKey[T] = macro std.KeyMacro.taskKeyImpl[T]
   def inputKey[T](description: String): InputKey[T] = macro std.KeyMacro.inputKeyImpl[T]
+
+  def enablePlugins(ps: AutoPlugin*): DslEntry = DslEntry.DslEnablePlugins(ps)
+  def disablePlugins(ps: AutoPlugin*): DslEntry = DslEntry.DslDisablePlugins(ps)
+  def configs(cs: Configuration*): DslEntry = DslEntry.DslConfigs(cs)
 }
 
 // Todo share this this io.syntax

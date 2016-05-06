@@ -1,12 +1,12 @@
 package sbt
-package internals
+package internal
 package parser
 
 import sbt.internal.util.{ LineRange, MessageOnlyException }
 
 import java.io.File
 
-import sbt.internals.parser.SbtParser._
+import sbt.internal.parser.SbtParser._
 
 import scala.reflect.runtime.universe._
 
@@ -60,7 +60,7 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
   val (imports, settings, settingsTrees) = splitExpressions(file, lines)
 
   private def splitExpressions(file: File, lines: Seq[String]): (Seq[(String, Int)], Seq[(String, LineRange)], Seq[(String, Tree)]) = {
-    import sbt.internals.parser.MissingBracketHandler._
+    import sbt.internal.parser.MissingBracketHandler._
 
     import scala.compat.Platform.EOL
     import scala.reflect.runtime._

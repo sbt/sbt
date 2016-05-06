@@ -12,7 +12,7 @@ import Types.Endo
 import compiler.Eval
 
 import SessionSettings._
-import sbt.internals.parser.SbtRefactorings
+import sbt.internal.parser.SbtRefactorings
 
 import sbt.io.IO
 

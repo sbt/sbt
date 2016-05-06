@@ -1,4 +1,6 @@
-package sbt.internals.parser
+package sbt
+package internal
+package parser
 
 import java.io.File
 
