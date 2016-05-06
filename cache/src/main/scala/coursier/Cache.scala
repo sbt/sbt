@@ -8,7 +8,9 @@ import java.security.MessageDigest
 import java.util.concurrent.{ ConcurrentHashMap, Executors, ExecutorService }
 import java.util.regex.Pattern
 
+import coursier.core.Authentication
 import coursier.ivy.IvyRepository
+import coursier.util.Base64.Encoder
 
 import scala.annotation.tailrec
 
@@ -17,6 +19,10 @@ import scalaz.Scalaz.ToEitherOps
 import scalaz.concurrent.{ Task, Strategy }
 
 import java.io.{ Serializable => _, _ }
+
+trait AuthenticatedURLConnection extends URLConnection {
+  def authenticate(authentication: Authentication): Unit
+}
 
 object Cache {
 
@@ -43,7 +49,7 @@ object Cache {
     }
   }
 
-  private def localFile(url: String, cache: File): File = {
+  private def localFile(url: String, cache: File, user: Option[String]): File = {
     val path =
       if (url.startsWith("file:///"))
         url.stripPrefix("file://")
@@ -62,7 +68,10 @@ object Cache {
               else
                 throw new Exception(s"URL $url doesn't contain an absolute path")
 
-            new File(cache, escape(protocol + "/" + remaining0)) .toString
+            new File(
+              cache,
+              escape(protocol + "/" + user.fold("")(_ + "@") + remaining0.dropWhile(_ == '/'))
+            ).toString
 
           case _ =>
             throw new Exception(s"No protocol found in URL $url")
@@ -259,6 +268,17 @@ object Cache {
     }
   }
 
+  private val BasicRealm = (
+    "^" +
+      Pattern.quote("Basic realm=\"") +
+      "([^" + Pattern.quote("\"") + "]*)" +
+      Pattern.quote("\"") +
+    "$"
+  ).r
+
+  private def basicAuthenticationEncode(user: String, password: String): String =
+    (user + ":" + password).getBytes("UTF-8").toBase64
+
   /**
     * Returns a `java.net.URL` for `s`, possibly using the custom protocol handlers found under the
     * `coursier.cache.protocol` namespace.
@@ -289,7 +309,7 @@ object Cache {
     val referenceFileOpt = artifact
       .extra
       .get("metadata")
-      .map(a => localFile(a.url, cache))
+      .map(a => localFile(a.url, cache, a.authentication.map(_.user)))
 
     def referenceFileExists: Boolean = referenceFileOpt.exists(_.exists())
 
@@ -300,6 +320,20 @@ object Cache {
       // (Maven 2 compatibility? - happens for snapshot versioning metadata,
       // this is SO FSCKING CRAZY)
       conn.setRequestProperty("User-Agent", "")
+
+      for (auth <- artifact.authentication)
+        conn match {
+          case authenticated: AuthenticatedURLConnection =>
+            authenticated.authenticate(auth)
+          case conn0: HttpURLConnection =>
+            conn0.setRequestProperty(
+              "Authorization",
+              "Basic " + basicAuthenticationEncode(auth.user, auth.password)
+            )
+          case _ =>
+            // FIXME Authentication is ignored
+        }
+
       conn
     }
 
@@ -384,15 +418,28 @@ object Cache {
       }
     }
 
-    def is404(conn: URLConnection) =
+    def responseCode(conn: URLConnection): Option[Int] =
       conn match {
         case conn0: HttpURLConnection =>
-          conn0.getResponseCode == 404
+          Some(conn0.getResponseCode)
         case _ =>
-          false
+          None
       }
 
-    def remote(file: File, url: String): EitherT[Task, FileError, Unit] =
+    def realm(conn: URLConnection): Option[String] =
+      conn match {
+        case conn0: HttpURLConnection =>
+          Option(conn0.getHeaderField("WWW-Authenticate")).collect {
+            case BasicRealm(realm) => realm
+          }
+        case _ =>
+          None
+      }
+
+    def remote(
+      file: File,
+      url: String
+    ): EitherT[Task, FileError, Unit] =
       EitherT {
         Task {
           withLockFor(cache, file) {
@@ -421,8 +468,10 @@ object Cache {
                 case _ => (false, conn0)
               }
 
-              if (is404(conn))
+              if (responseCode(conn) == Some(404))
                 FileError.NotFound(url, permanent = Some(true)).left
+              else if (responseCode(conn) == Some(401))
+                FileError.Unauthorized(url, realm = realm(conn)).left
               else {
                 for (len0 <- Option(conn.getContentLengthLong) if len0 >= 0L) {
                   val len = len0 + (if (partialDownload) alreadyDownloaded else 0L)
@@ -534,7 +583,7 @@ object Cache {
 
     val tasks =
       for (url <- urls) yield {
-        val file = localFile(url, cache)
+        val file = localFile(url, cache, artifact.authentication.map(_.user))
 
         val res =
           if (url.startsWith("file:/")) {
@@ -618,12 +667,12 @@ object Cache {
 
     implicit val pool0 = pool
 
-    val localFile0 = localFile(artifact.url, cache)
+    val localFile0 = localFile(artifact.url, cache, artifact.authentication.map(_.user))
 
     EitherT {
       artifact.checksumUrls.get(sumType) match {
         case Some(sumUrl) =>
-          val sumFile = localFile(sumUrl, cache)
+          val sumFile = localFile(sumUrl, cache, artifact.authentication.map(_.user))
 
           Task {
             val sumOpt = parseChecksum(

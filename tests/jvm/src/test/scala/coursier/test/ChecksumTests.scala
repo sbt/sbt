@@ -70,7 +70,8 @@ object ChecksumTests extends TestSuite {
         ),
         Map.empty,
         Attributes("jar"),
-        changing = false
+        changing = false,
+        authentication = None
       )
 
       val artifacts = Seq(

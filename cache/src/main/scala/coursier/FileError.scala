@@ -22,6 +22,14 @@ object FileError {
     file
   )
 
+  final case class Unauthorized(
+    file: String,
+    realm: Option[String]
+  ) extends FileError(
+    "unauthorized",
+    file + realm.fold("")(" (" + _ + ")")
+  )
+
   final case class ChecksumNotFound(
     sumType: String,
     file: String
