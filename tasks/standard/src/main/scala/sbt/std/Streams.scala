@@ -10,7 +10,7 @@ import java.io.{ Closeable, File, FileInputStream, FileOutputStream, InputStream
 
 import sbt.internal.io.DeferredWriter
 import sbt.io.IO
-import sbt.io.Path._
+import sbt.io.syntax._
 
 import sbt.util.Logger
 

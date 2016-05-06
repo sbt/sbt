@@ -1,3 +1,4 @@
-scalaVersion := "2.9.1"
+lazy val specs2 = "org.specs2" %% "specs2" % "2.3.11"
+scalaVersion := "2.11.8"
 
-libraryDependencies += "org.specs2" %% "specs2" % "1.7.1" % "test"
+libraryDependencies += specs2 % Test

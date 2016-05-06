@@ -1,6 +1,7 @@
 package sbt
 
-import Keys._
+import sbt.syntax._
+import sbt.Keys._
 import xsbti.{Position, Severity}
 
 object TestPlugin extends AutoPlugin {

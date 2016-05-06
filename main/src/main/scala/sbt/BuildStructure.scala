@@ -10,7 +10,7 @@ import BuildPaths.outputDirectory
 import Scope.GlobalScope
 import BuildStreams.Streams
 import sbt.internal.{ BuildDef, Load, OldPlugin }
-import sbt.io.Path._
+import sbt.io.syntax._
 import sbt.internal.util.{ Attributed, AttributeEntry, AttributeKey, AttributeMap, Settings }
 import sbt.internal.util.Attributed.data
 import sbt.util.Logger

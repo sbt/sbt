@@ -8,7 +8,7 @@ import sbt.internal.inc.{ AnalyzingCompiler, JavaCompiler }
 
 import Predef.{ conforms => _, _ }
 import sbt.internal.util.Types.:+:
-import sbt.io.Path._
+import sbt.io.syntax._
 import sbt.io.IO
 
 import sbinary.DefaultProtocol.FileFormat

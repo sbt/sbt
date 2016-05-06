@@ -1,4 +1,4 @@
-lazy val project = (sbt.project in file(".")).
+lazy val project = (sbt.syntax.project in file(".")).
   settings(
     name := "project",
     scalaVersion := "2.11.7",

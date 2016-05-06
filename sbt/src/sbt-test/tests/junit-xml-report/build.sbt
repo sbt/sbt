@@ -10,8 +10,8 @@ val failingReportFile = "target/test-reports/another.pkg.FailingTest.xml"
 
 lazy val root = (project in file(".")).
   settings(
-    scalaVersion := "2.9.2",
-    libraryDependencies += "com.novocode" % "junit-interface" % "0.10" % "test",
+    scalaVersion := "2.11.8",
+    libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test,
 
     // TODO use matchers instead of sys.error
     checkReport := {

@@ -50,6 +50,7 @@ import sbt.internal.io.WatchState
 import sbt.io.{ AllPassFilter, FileFilter, GlobFilter, HiddenFileFilter, IO, NameFilter, NothingFilter, Path, PathFinder, SimpleFileFilter, DirectoryFilter }
 
 import Path._
+import sbt.io.syntax._
 import Keys._
 
 object Defaults extends BuildCommon {
@@ -508,19 +509,29 @@ object Defaults extends BuildCommon {
       (cp, s) =>
         val ans: Seq[Analysis] = cp.flatMap(_.metadata get Keys.analysis) map { case a0: Analysis => a0 }
         val succeeded = TestStatus.read(succeededFile(s.cacheDirectory))
-        val stamps = collection.mutable.Map.empty[File, Long]
+        val stamps = collection.mutable.Map.empty[String, Long]
         def stamp(dep: String): Long = {
-          val stamps = for (a <- ans; f <- a.relations.definesClass(dep)) yield intlStamp(f, a, Set.empty)
-          if (stamps.isEmpty) Long.MinValue else stamps.max
+          val stamps = for (a <- ans) yield intlStamp(dep, a, Set.empty)
+          if (stamps.isEmpty) Long.MinValue
+          else stamps.max
         }
-        def intlStamp(f: File, analysis: Analysis, s: Set[File]): Long = {
-          if (s contains f) Long.MinValue else
-            stamps.getOrElseUpdate(f, {
+        def intlStamp(c: String, analysis: Analysis, s: Set[String]): Long = {
+          if (s contains c) Long.MinValue
+          else {
+            val x = {
               import analysis.{ relations => rel, apis }
-              rel.internalSrcDeps(f).map(intlStamp(_, analysis, s + f)) ++
-                rel.externalDeps(f).map(stamp) +
-                apis.internal(f).compilation.startTime
-            }.max)
+              rel.internalClassDeps(c).map(intlStamp(_, analysis, s + c)) ++
+                rel.externalDeps(c).map(stamp) +
+                (apis.internal.get(c) match {
+                  case Some(x) => x.compilation.startTime
+                  case _       => Long.MinValue
+                })
+            }.max
+            if (x != Long.MinValue) {
+              stamps(c) = x
+            }
+            x
+          }
         }
         def noSuccessYet(test: String) = succeeded.get(test) match {
           case None     => true
@@ -1046,7 +1057,6 @@ object Defaults extends BuildCommon {
 
 }
 object Classpaths {
-  import Path._
   import Keys._
   import Scope.ThisScope
   import Defaults._
@@ -1341,7 +1351,7 @@ object Classpaths {
       new IvySbt(conf)
     }
   def moduleSettings0: Initialize[Task[ModuleSettings]] = Def.task {
-    new InlineConfigurationWithExcludes(projectID.value, projectInfo.value, allDependencies.value, dependencyOverrides.value, excludeDependencies.value,
+    new InlineConfiguration(projectID.value, projectInfo.value, allDependencies.value, dependencyOverrides.value, excludeDependencies.value,
       ivyXML.value, ivyConfigurations.value, defaultConfiguration.value, ivyScala.value, ivyValidate.value, conflictManager.value)
   }
 

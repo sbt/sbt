@@ -1,5 +1,3 @@
-
-
 TaskKey[Unit]("checkJavaFailures") := {
   val reporter = savedReporter.value
   val ignore = (compile in Compile).failure.value

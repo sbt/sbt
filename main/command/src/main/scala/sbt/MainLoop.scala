@@ -7,7 +7,7 @@ import scala.annotation.tailrec
 import java.io.{ File, PrintWriter }
 import jline.TerminalFactory
 
-import sbt.internal.io.Using
+import sbt.io.Using
 import sbt.internal.util.{ ErrorHandling, GlobalLogBacking, GlobalLogging }
 import sbt.util.{ AbstractLogger, Logger }
 

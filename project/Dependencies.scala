@@ -9,10 +9,10 @@ object Dependencies {
   lazy val scala211 = "2.11.8"
 
   // sbt modules
-  val utilVersion = "0.1.0-M10"
-  val ioVersion = "1.0.0-M3"
-  val incrementalcompilerVersion = "0.1.0-M3"
-  val librarymanagementVersion = "0.1.0-M7"
+  val ioVersion = "1.0.0-M5"
+  val utilVersion = "0.1.0-M12"
+  val librarymanagementVersion = "0.1.0-M8"
+  val zincVersion = "1.0.0-M1"
   lazy val sbtIO = "org.scala-sbt" %% "io" % ioVersion
   lazy val utilCollection = "org.scala-sbt" %% "util-collection" % utilVersion
   lazy val utilLogging = "org.scala-sbt" %% "util-logging" % utilVersion
@@ -26,17 +26,17 @@ object Dependencies {
   lazy val utilTracking = "org.scala-sbt" %% "util-tracking" % utilVersion
   lazy val utilScripted = "org.scala-sbt" %% "util-scripted" % utilVersion
   lazy val libraryManagement = "org.scala-sbt" %% "librarymanagement" % librarymanagementVersion
-  lazy val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0-M1"
-  lazy val rawLauncher = "org.scala-sbt" % "launcher" % "1.0.0-M1"
+  lazy val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
+  lazy val rawLauncher = "org.scala-sbt" % "launcher" % "1.0.0"
   lazy val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
 
-  lazy val incrementalcompiler = "org.scala-sbt" %% "incrementalcompiler" % incrementalcompilerVersion
-  lazy val incrementalcompilerCompile = "org.scala-sbt" %% "incrementalcompiler-compile" % incrementalcompilerVersion
-  lazy val compilerInterface = "org.scala-sbt" % "compiler-interface" % incrementalcompilerVersion
-  lazy val compilerBrdige = "org.scala-sbt" %% "compiler-bridge" % incrementalcompilerVersion
-  lazy val compilerClasspath = "org.scala-sbt" %% "incrementalcompiler-classpath" % incrementalcompilerVersion
-  lazy val compilerApiInfo = "org.scala-sbt" %% "incrementalcompiler-apiinfo" % incrementalcompilerVersion
-  lazy val compilerIvyIntegration = "org.scala-sbt" %% "incrementalcompiler-ivy-integration" % incrementalcompilerVersion
+  lazy val zinc = "org.scala-sbt" %% "zinc" % zincVersion
+  lazy val zincCompile = "org.scala-sbt" %% "zinc-compile" % zincVersion
+  lazy val compilerInterface = "org.scala-sbt" % "compiler-interface" % zincVersion
+  lazy val compilerBrdige = "org.scala-sbt" %% "compiler-bridge" % zincVersion
+  lazy val compilerClasspath = "org.scala-sbt" %% "zinc-classpath" % zincVersion
+  lazy val compilerApiInfo = "org.scala-sbt" %% "zinc-apiinfo" % zincVersion
+  lazy val compilerIvyIntegration = "org.scala-sbt" %% "zinc-ivy-integration" % zincVersion
 
   lazy val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.11.4"
   lazy val specs2 = "org.specs2" %% "specs2" % "2.3.11"

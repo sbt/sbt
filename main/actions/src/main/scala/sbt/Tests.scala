@@ -273,7 +273,19 @@ object Tests {
   def discover(frameworks: Seq[Framework], analysis: CompileAnalysis, log: Logger): (Seq[TestDefinition], Set[String]) =
     discover(frameworks flatMap TestFramework.getFingerprints, allDefs(analysis), log)
 
-  def allDefs(analysis: CompileAnalysis) = analysis match { case analysis: Analysis => analysis.apis.internal.values.flatMap(_.api.definitions).toSeq }
+  def allDefs(analysis: CompileAnalysis) = analysis match {
+    case analysis: Analysis =>
+      val acs: Seq[xsbti.api.AnalyzedClass] = analysis.apis.internal.values.toVector
+      acs.flatMap { ac =>
+        val companions = ac.api
+        val all =
+          Seq(companions.classApi, companions.objectApi) ++
+            companions.classApi.structure.declared ++ companions.classApi.structure.inherited ++
+            companions.objectApi.structure.declared ++ companions.objectApi.structure.inherited
+
+        all
+      }.toSeq
+  }
   def discover(fingerprints: Seq[Fingerprint], definitions: Seq[Definition], log: Logger): (Seq[TestDefinition], Set[String]) =
     {
       val subclasses = fingerprints collect { case sub: SubclassFingerprint => (sub.superclassName, sub.isModule, sub) };

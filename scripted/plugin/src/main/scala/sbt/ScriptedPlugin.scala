@@ -11,9 +11,7 @@ import sbt.internal.inc.ModuleUtilities
 import java.lang.reflect.{ InvocationTargetException, Method }
 import java.util.Properties
 
-import sbt.librarymanagement.Configuration
-
-import sbt.io.{ AllPassFilter, PathFinder }
+import sbt.syntax._
 
 object ScriptedPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin

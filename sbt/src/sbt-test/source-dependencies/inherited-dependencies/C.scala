@@ -1,1 +1,0 @@
-trait C extends D

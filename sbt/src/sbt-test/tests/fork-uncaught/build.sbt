@@ -1,4 +1,4 @@
-scalaVersion := "2.9.2"
+scalaVersion := "2.11.8"
 
 organization := "org.example"
 
@@ -6,5 +6,7 @@ name := "fork-uncaught"
 
 fork := true
 
-libraryDependencies += "org.scalatest" % "scalatest_2.9.2" % "2.0.M3" % "test" intransitive()
-
+libraryDependencies ++= List(
+  "org.scala-lang.modules" %% "scala-xml" % "1.0.1",
+  "org.scalatest" %% "scalatest" % "2.2.6" % Test intransitive()
+)

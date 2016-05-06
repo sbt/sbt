@@ -1,16 +1,14 @@
 package sbttest // you need package http://stackoverflow.com/questions/9822008/
 
-	import sbt._
-	import Import._
-	import sbt.Keys.{name, resolvedScoped, organization	}
+	import sbt._, syntax._, Keys._
 	import java.util.concurrent.atomic.{AtomicInteger => AInt}
 
-object Imports
-{
 	object A extends AutoPlugin
 	object B extends AutoPlugin
 	object E extends AutoPlugin
 
+object Imports
+{
 	lazy val q = config("q")
 	lazy val p = config("p").extend(q)
 

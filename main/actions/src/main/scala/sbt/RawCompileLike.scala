@@ -7,7 +7,7 @@ import java.io.File
 import sbt.internal.inc.{ AnalyzingCompiler, ClasspathOptions, JavaCompiler, RawCompiler, ScalaInstance }
 
 import Predef.{ conforms => _, _ }
-import sbt.io.Path._
+import sbt.io.syntax._
 import sbt.io.IO
 
 import sbinary.DefaultProtocol.FileFormat

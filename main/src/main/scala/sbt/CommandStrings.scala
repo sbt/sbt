@@ -284,7 +284,7 @@ defaults
 """
 
   import java.io.File
-  import Path._
+  import sbt.io.syntax._
 
   def sbtRCs(s: State): Seq[File] =
     (Path.userHome / sbtrc) ::

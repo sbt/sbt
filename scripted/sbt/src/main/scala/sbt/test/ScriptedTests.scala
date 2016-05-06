@@ -29,7 +29,7 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launc
   def scriptedTest(group: String, name: String, log: Logger): Seq[() => Option[String]] =
     scriptedTest(group, name, emptyCallback, log)
   def scriptedTest(group: String, name: String, prescripted: File => Unit, log: Logger): Seq[() => Option[String]] = {
-    import Path._
+    import sbt.io.syntax._
     import GlobFilter._
     var failed = false
     for (groupDir <- (resourceBaseDirectory * group).get; nme <- (groupDir * name).get) yield {

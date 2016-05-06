@@ -1,5 +1,3 @@
-import Configurations.{Compile, Test}
-
 lazy val root = (project in file(".")).
   settings(
     forConfig(Compile, "src"),
@@ -8,8 +6,8 @@ lazy val root = (project in file(".")).
   )
 
 def baseSettings = Seq(
-  scalaVersion := "2.8.1",
-  libraryDependencies += "org.scala-tools.testing" %% "scalacheck" % "1.8" % "test",
+  scalaVersion := "2.11.8",
+  libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.11.4" % Test,
   includeFilter in unmanagedSources := "*.java" | "*.scala"
 )
 
