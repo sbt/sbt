@@ -11,7 +11,7 @@ def groupPrefix(idx: Int) = groupId(idx) + "_file_"
 
 lazy val root = (project in file(".")).
   settings(
-    scalaVersion := "2.9.2",
+    scalaVersion := "2.11.8",
     testGrouping in Test <<= definedTests in Test map { tests =>
       assert(tests.size == 3)
       for (idx <- 0 until groups) yield
@@ -27,5 +27,8 @@ lazy val root = (project in file(".")).
         sys.error("Files were not created:\n\t" + absent.mkString("\n\t"))
     },
     concurrentRestrictions := Tags.limit(Tags.ForkedTestGroup, 2) :: Nil,
-    libraryDependencies += "org.scalatest" %% "scalatest" % "1.8" % Test
+    libraryDependencies ++= List(
+      "org.scala-lang.modules" %% "scala-xml" % "1.0.1",
+      "org.scalatest" %% "scalatest" % "2.2.6" % Test
+    )
   )

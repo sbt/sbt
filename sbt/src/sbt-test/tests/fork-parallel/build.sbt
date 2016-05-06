@@ -5,8 +5,8 @@ val check = taskKey[Unit]("Check that tests are executed in parallel")
 
 lazy val root = (project in file(".")).
   settings(
-    scalaVersion := "2.9.2",
-    libraryDependencies += "com.novocode" % "junit-interface" % "0.10" % "test",
+    scalaVersion := "2.11.8",
+    libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test,
     fork in Test := true,
     check := {
       val nbProc = java.lang.Runtime.getRuntime().availableProcessors()

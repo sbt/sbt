@@ -7,8 +7,11 @@ val check = TaskKey[Unit]("check", "Check correct error has been returned.")
 
 lazy val root = (project in file(".")).
   settings(
-    libraryDependencies += "org.scalatest" %% "scalatest" % "1.8" % Test,
-    scalaVersion := "2.9.2",
+    libraryDependencies ++= List(
+      "org.scala-lang.modules" %% "scala-xml" % "1.0.1",
+      "org.scalatest" %% "scalatest" % "2.2.6"
+    ),
+    scalaVersion := "2.11.8",
     fork := true,
     testListeners += new TestReportListener {
       def testEvent(event: TestEvent): Unit = {
