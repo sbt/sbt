@@ -779,7 +779,7 @@ object Cache {
         checksums = checksums,
         logger = logger,
         pool = pool
-      ).leftMap(_.message).map { f =>
+      ).leftMap(_.describe).map { f =>
         // FIXME Catch error here?
         new String(NioFiles.readAllBytes(f.toPath), "UTF-8")
       }
