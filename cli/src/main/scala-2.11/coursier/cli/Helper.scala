@@ -354,10 +354,16 @@ class Helper(
 
   lazy val projCache = res.projectCache.mapValues { case (_, p) => p }
 
-  if (printResultStdout || verbosityLevel >= 1) {
-    if ((printResultStdout && verbosityLevel >= 1) || verbosityLevel >= 2)
+  if (printResultStdout || verbosityLevel >= 1 || tree || reverseTree) {
+    if ((printResultStdout && verbosityLevel >= 1) || verbosityLevel >= 2 || tree || reverseTree)
       errPrintln(s"  Result:")
-    val depsStr = Print.dependenciesUnknownConfigs(trDeps, projCache)
+
+    val depsStr =
+      if (reverseTree || tree)
+        Print.dependencyTree(dependencies, res, printExclusions = verbosityLevel >= 1, reverse = reverseTree)
+      else
+        Print.dependenciesUnknownConfigs(trDeps, projCache)
+
     if (printResultStdout)
       println(depsStr)
     else

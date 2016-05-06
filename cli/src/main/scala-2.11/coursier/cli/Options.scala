@@ -61,6 +61,12 @@ case class CommonOptions(
   @Short("B")
   @Value("Number of warm-up resolutions - if negative, doesn't print per iteration benchmark (less overhead)")
     benchmark: Int,
+  @Help("Print dependencies as a tree")
+  @Short("t")
+    tree: Boolean,
+  @Help("Print dependencies as an inversed tree (dependees as children)")
+  @Short("T")
+    reverseTree: Boolean,
   @Recurse
     cacheOptions: CacheOptions
 ) {

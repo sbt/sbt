@@ -166,16 +166,49 @@ object Tasks {
       sbtArtifactsPublication ++ extraSbtArtifactsPublication
     }
 
-  // FIXME More things should possibly be put here too (resolvers, etc.)
-  private case class CacheKey(
+  def coursierConfigurationsTask = Def.task {
+
+    val configs0 = ivyConfigurations.value.map { config =>
+      config.name -> config.extendsConfigs.map(_.name)
+    }.toMap
+
+    def allExtends(c: String) = {
+      // possibly bad complexity
+      def helper(current: Set[String]): Set[String] = {
+        val newSet = current ++ current.flatMap(configs0.getOrElse(_, Nil))
+        if ((newSet -- current).nonEmpty)
+          helper(newSet)
+        else
+          newSet
+      }
+
+      helper(Set(c))
+    }
+
+    configs0.map {
+      case (config, _) =>
+        config -> allExtends(config)
+    }
+  }
+
+  private case class ResolutionCacheKey(
     project: Project,
     repositories: Seq[Repository],
+    resolution: Resolution,
+    sbtClassifiers: Boolean
+  )
+
+  private case class ReportCacheKey(
+    project: Project,
     resolution: Resolution,
     withClassifiers: Boolean,
     sbtClassifiers: Boolean
   )
 
-  private val resolutionsCache = new mutable.HashMap[CacheKey, UpdateReport]
+  private val resolutionsCache = new mutable.HashMap[ResolutionCacheKey, Resolution]
+  // these may actually not need to be cached any more, now that the resolutions
+  // are cached
+  private val reportsCache = new mutable.HashMap[ReportCacheKey, UpdateReport]
 
   private def forcedScalaModules(scalaVersion: String): Map[Module, String] =
     Map(
@@ -185,17 +218,12 @@ object Tasks {
       Module("org.scala-lang", "scalap") -> scalaVersion
     )
 
-  def updateTask(
-    withClassifiers: Boolean,
-    sbtClassifiers: Boolean = false,
-    ignoreArtifactErrors: Boolean = false
-  ) = Def.task {
+  private def projectDescription(project: Project) =
+    s"${project.module.organization}:${project.module.name}:${project.version}"
 
-    def grouped[K, V](map: Seq[(K, V)]): Map[K, Seq[V]] =
-      map.groupBy { case (k, _) => k }.map {
-        case (k, l) =>
-          k -> l.map { case (_, v) => v }
-      }
+  def resolutionTask(
+    sbtClassifiers: Boolean = false
+  ) = Def.task {
 
     // let's update only one module at once, for a better output
     // Downloads are already parallel, no need to parallelize further anyway
@@ -230,25 +258,10 @@ object Tasks {
           (proj.copy(publications = publications), fallbackDeps)
         }
 
-      val ivySbt0 = ivySbt.value
-      val ivyCacheManager = ivySbt0.withIvy(streams.value.log)(ivy =>
-        ivy.getResolutionCacheManager
-      )
-
-      val ivyModule = ModuleRevisionId.newInstance(
-        currentProject.module.organization,
-        currentProject.module.name,
-        currentProject.version,
-        currentProject.module.attributes.asJava
-      )
-      val cacheIvyFile = ivyCacheManager.getResolvedIvyFileInCache(ivyModule)
-      val cacheIvyPropertiesFile = ivyCacheManager.getResolvedIvyPropertiesInCache(ivyModule)
-
       val projects = coursierProjects.value
 
       val parallelDownloads = coursierParallelDownloads.value
       val checksums = coursierChecksums.value
-      val artifactsChecksums = coursierArtifactsChecksums.value
       val maxIterations = coursierMaxIterations.value
       val cachePolicies = coursierCachePolicies.value
       val cache = coursierCache.value
@@ -298,22 +311,6 @@ object Tasks {
         forceVersions = userForceVersions ++ forcedScalaModules(sv) ++ projects.map(_.moduleVersion)
       )
 
-      // required for publish to be fine, later on
-      def writeIvyFiles() = {
-        val printer = new scala.xml.PrettyPrinter(80, 2)
-
-        val b = new StringBuilder
-        b ++= """<?xml version="1.0" encoding="UTF-8"?>"""
-        b += '\n'
-        b ++= printer.format(MakeIvyXml(currentProject))
-        cacheIvyFile.getParentFile.mkdirs()
-        Files.write(cacheIvyFile.toPath, b.result().getBytes("UTF-8"))
-
-        // Just writing an empty file here... Are these only used?
-        cacheIvyPropertiesFile.getParentFile.mkdirs()
-        Files.write(cacheIvyPropertiesFile.toPath, "".getBytes("UTF-8"))
-      }
-
       if (verbosityLevel >= 2) {
         log.info("InterProjectRepository")
         for (p <- projects)
@@ -354,7 +351,7 @@ object Tasks {
         }
       }
 
-      def report = {
+      def resolution = {
         val pool = Executors.newFixedThreadPool(parallelDownloads, Strategy.DefaultDaemonThreadFactory)
 
         def createLogger() = new TermDisplay(new OutputStreamWriter(System.err))
@@ -372,11 +369,6 @@ object Tasks {
         def depsRepr(deps: Seq[(String, Dependency)]) =
           deps.map { case (config, dep) =>
             s"${dep.module}:${dep.version}:$config->${dep.configuration}"
-          }.sorted.distinct
-
-        def depsRepr0(deps: Seq[Dependency]) =
-          deps.map { dep =>
-            s"${dep.module}:${dep.version}:${dep.configuration}"
           }.sorted.distinct
 
         if (verbosityLevel >= 2) {
@@ -399,7 +391,10 @@ object Tasks {
         }
 
         if (verbosityLevel >= 0)
-          log.info(s"Updating ${currentProject.module.organization}:${currentProject.module.name}:${currentProject.version}")
+          log.info(
+            s"Updating ${projectDescription(currentProject)}" +
+              (if (sbtClassifiers) " (sbt classifiers)" else "")
+          )
         if (verbosityLevel >= 2)
           for (depRepr <- depsRepr(currentProject.dependencies))
             log.info(s"  $depRepr")
@@ -443,34 +438,115 @@ object Tasks {
           throw new Exception(s"Encountered ${res.errors.length} error(s) in dependency resolution")
         }
 
-        val depsByConfig = grouped(currentProject.dependencies)
+        if (verbosityLevel >= 0)
+          log.info(s"Resolved ${projectDescription(currentProject)} dependencies")
 
-        val configs = {
-          val configs0 = ivyConfigurations.value.map { config =>
-            config.name -> config.extendsConfigs.map(_.name)
-          }.toMap
+        res
+      }
 
-          def allExtends(c: String) = {
-            // possibly bad complexity
-            def helper(current: Set[String]): Set[String] = {
-              val newSet = current ++ current.flatMap(configs0.getOrElse(_, Nil))
-              if ((newSet -- current).nonEmpty)
-                helper(newSet)
-              else
-                newSet
-            }
+      resolutionsCache.getOrElseUpdate(
+        ResolutionCacheKey(
+          currentProject,
+          repositories,
+          startRes.copy(filter = None),
+          sbtClassifiers
+        ),
+        resolution
+      )
+    }
+  }
 
-            helper(Set(c))
-          }
+  def updateTask(
+    withClassifiers: Boolean,
+    sbtClassifiers: Boolean = false,
+    ignoreArtifactErrors: Boolean = false
+  ) = Def.task {
 
-          configs0.map {
-            case (config, _) =>
-              config -> allExtends(config)
-          }
+    def grouped[K, V](map: Seq[(K, V)]): Map[K, Seq[V]] =
+      map.groupBy { case (k, _) => k }.map {
+        case (k, l) =>
+          k -> l.map { case (_, v) => v }
+      }
+
+    // let's update only one module at once, for a better output
+    // Downloads are already parallel, no need to parallelize further anyway
+    synchronized {
+
+      lazy val cm = coursierSbtClassifiersModule.value
+
+      val currentProject =
+        if (sbtClassifiers) {
+          val sv = scalaVersion.value
+          val sbv = scalaBinaryVersion.value
+
+          FromSbt.project(
+            cm.id,
+            cm.modules,
+            cm.configurations.map(cfg => cfg.name -> cfg.extendsConfigs.map(_.name)).toMap,
+            sv,
+            sbv
+          )
+        } else {
+          val proj = coursierProject.value
+          val publications = coursierPublications.value
+          proj.copy(publications = publications)
         }
 
-        if (verbosityLevel >= 0)
-          log.info("Resolution done")
+      val ivySbt0 = ivySbt.value
+      val ivyCacheManager = ivySbt0.withIvy(streams.value.log)(ivy =>
+        ivy.getResolutionCacheManager
+      )
+
+      val ivyModule = ModuleRevisionId.newInstance(
+        currentProject.module.organization,
+        currentProject.module.name,
+        currentProject.version,
+        currentProject.module.attributes.asJava
+      )
+      val cacheIvyFile = ivyCacheManager.getResolvedIvyFileInCache(ivyModule)
+      val cacheIvyPropertiesFile = ivyCacheManager.getResolvedIvyPropertiesInCache(ivyModule)
+
+      val parallelDownloads = coursierParallelDownloads.value
+      val artifactsChecksums = coursierArtifactsChecksums.value
+      val cachePolicies = coursierCachePolicies.value
+      val cache = coursierCache.value
+
+      val log = streams.value.log
+
+      val verbosityLevel = coursierVerbosity.value
+
+      // required for publish to be fine, later on
+      def writeIvyFiles() = {
+        val printer = new scala.xml.PrettyPrinter(80, 2)
+
+        val b = new StringBuilder
+        b ++= """<?xml version="1.0" encoding="UTF-8"?>"""
+        b += '\n'
+        b ++= printer.format(MakeIvyXml(currentProject))
+        cacheIvyFile.getParentFile.mkdirs()
+        Files.write(cacheIvyFile.toPath, b.result().getBytes("UTF-8"))
+
+        // Just writing an empty file here... Are these only used?
+        cacheIvyPropertiesFile.getParentFile.mkdirs()
+        Files.write(cacheIvyPropertiesFile.toPath, "".getBytes("UTF-8"))
+      }
+
+      val res = {
+        if (withClassifiers && sbtClassifiers)
+          coursierSbtClassifiersResolution
+        else
+          coursierResolution
+      }.value
+
+      def report = {
+        val pool = Executors.newFixedThreadPool(parallelDownloads, Strategy.DefaultDaemonThreadFactory)
+
+        def createLogger() = new TermDisplay(new OutputStreamWriter(System.err))
+
+        val depsByConfig = grouped(currentProject.dependencies)
+
+        val configs = coursierConfigurations.value
+
         if (verbosityLevel >= 2) {
           val finalDeps = Config.dependenciesWithConfig(
             res,
@@ -520,7 +596,10 @@ object Tasks {
         }
 
         if (verbosityLevel >= 0)
-          log.info("Fetching artifacts")
+          log.info(
+            s"Fetching artifacts of ${projectDescription(currentProject)}" +
+              (if (sbtClassifiers) " (sbt classifiers)" else "")
+          )
 
         artifactsLogger.init()
 
@@ -534,7 +613,10 @@ object Tasks {
         artifactsLogger.stop()
 
         if (verbosityLevel >= 0)
-          log.info("Fetching artifacts: done")
+          log.info(
+            s"Fetched artifacts of ${projectDescription(currentProject)}" +
+              (if (sbtClassifiers) " (sbt classifiers)" else "")
+          )
 
         val artifactFiles = artifactFilesOrErrors.collect {
           case (artifact, \/-(file)) =>
@@ -602,17 +684,68 @@ object Tasks {
         )
       }
 
-      resolutionsCache.getOrElseUpdate(
-        CacheKey(
+      reportsCache.getOrElseUpdate(
+        ReportCacheKey(
           currentProject,
-          repositories,
-          startRes.copy(filter = None),
+          res,
           withClassifiers,
           sbtClassifiers
         ),
         report
       )
     }
+  }
+
+  def coursierDependencyTreeTask(
+    inverse: Boolean,
+    sbtClassifiers: Boolean = false,
+    ignoreArtifactErrors: Boolean = false
+  ) = Def.task {
+
+    val currentProject =
+      if (sbtClassifiers) {
+        val cm = coursierSbtClassifiersModule.value
+        val sv = scalaVersion.value
+        val sbv = scalaBinaryVersion.value
+
+        FromSbt.project(
+          cm.id,
+          cm.modules,
+          cm.configurations.map(cfg => cfg.name -> cfg.extendsConfigs.map(_.name)).toMap,
+          sv,
+          sbv
+        )
+      } else {
+        val proj = coursierProject.value
+        val publications = coursierPublications.value
+        proj.copy(publications = publications)
+      }
+
+    val res = {
+      if (sbtClassifiers)
+        coursierSbtClassifiersResolution
+      else
+        coursierResolution
+    }.value
+
+    val config = classpathConfiguration.value.name
+    val configs = coursierConfigurations.value
+
+    val includedConfigs = configs.getOrElse(config, Set.empty) + config
+
+    val dependencies0 = currentProject.dependencies.collect {
+      case (cfg, dep) if includedConfigs(cfg) => dep
+    }.sortBy { dep =>
+      (dep.module.organization, dep.module.name, dep.version)
+    }
+
+    val subRes = res.subset(dependencies0.toSet)
+
+    // use sbt logging?
+    println(
+      projectDescription(currentProject) + "\n" +
+      Print.dependencyTree(dependencies0, subRes, printExclusions = true, inverse)
+    )
   }
 
 }

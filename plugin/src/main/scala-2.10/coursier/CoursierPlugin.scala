@@ -24,10 +24,26 @@ object CoursierPlugin extends AutoPlugin {
     val coursierProjects = Keys.coursierProjects
     val coursierPublications = Keys.coursierPublications
     val coursierSbtClassifiersModule = Keys.coursierSbtClassifiersModule
+
+    val coursierConfigurations = Keys.coursierConfigurations
+
+    val coursierResolution = Keys.coursierResolution
+    val coursierSbtClassifiersResolution = Keys.coursierSbtClassifiersResolution
+
+    val coursierDependencyTree = Keys.coursierDependencyTree
+    val coursierDependencyInverseTree = Keys.coursierDependencyInverseTree
   }
 
   import autoImport._
 
+  lazy val treeSettings = Seq(
+    coursierDependencyTree <<= Tasks.coursierDependencyTreeTask(
+      inverse = false
+    ),
+    coursierDependencyInverseTree <<= Tasks.coursierDependencyTreeTask(
+      inverse = true
+    )
+  )
 
   override lazy val projectSettings = Seq(
     coursierParallelDownloads := 6,
@@ -53,7 +69,14 @@ object CoursierPlugin extends AutoPlugin {
     coursierProject <<= Tasks.coursierProjectTask,
     coursierProjects <<= Tasks.coursierProjectsTask,
     coursierPublications <<= Tasks.coursierPublicationsTask,
-    coursierSbtClassifiersModule <<= classifiersModule in updateSbtClassifiers
-  )
+    coursierSbtClassifiersModule <<= classifiersModule in updateSbtClassifiers,
+    coursierConfigurations <<= Tasks.coursierConfigurationsTask,
+    coursierResolution <<= Tasks.resolutionTask(),
+    coursierSbtClassifiersResolution <<= Tasks.resolutionTask(
+      sbtClassifiers = true
+    )
+  ) ++
+  inConfig(Compile)(treeSettings) ++
+  inConfig(Test)(treeSettings)
 
 }

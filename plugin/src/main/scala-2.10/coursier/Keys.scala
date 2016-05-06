@@ -27,4 +27,18 @@ object Keys {
   val coursierPublications = TaskKey[Seq[(String, Publication)]]("coursier-publications", "")
 
   val coursierSbtClassifiersModule = TaskKey[GetClassifiersModule]("coursier-sbt-classifiers-module", "")
+
+  val coursierConfigurations = TaskKey[Map[String, Set[String]]]("coursier-configurations", "")
+
+  val coursierResolution = TaskKey[Resolution]("coursier-resolution", "")
+  val coursierSbtClassifiersResolution = TaskKey[Resolution]("coursier-sbt-classifiers-resolution", "")
+
+  val coursierDependencyTree = TaskKey[Unit](
+    "coursier-dependency-tree",
+    "Prints dependencies and transitive dependencies as a tree"
+  )
+  val coursierDependencyInverseTree = TaskKey[Unit](
+    "coursier-dependency-inverse-tree",
+    "Prints dependencies and transitive dependencies as an inverted tree (dependees as children)"
+  )
 }
