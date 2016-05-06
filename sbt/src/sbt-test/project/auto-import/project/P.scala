@@ -1,4 +1,4 @@
-import sbt._
+import sbt._, syntax._
 
 object Q extends AutoPlugin {
   override val requires = plugins.JvmPlugin
