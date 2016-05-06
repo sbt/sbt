@@ -1,4 +1,5 @@
 package sbt
+package internal
 
 import Keys.Classpath
 import Def.Setting

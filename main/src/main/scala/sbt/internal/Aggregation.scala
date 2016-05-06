@@ -2,6 +2,7 @@
  * Copyright 2011 Mark Harrah
  */
 package sbt
+package internal
 
 import Def.ScopedKey
 import Keys.{ aggregate, showSuccess, showTiming, timingFormat }
@@ -9,14 +10,14 @@ import sbt.internal.util.complete.Parser
 import sbt.internal.util.{ Dag, HList, Relation, Settings, Show, Util }
 import sbt.util.Logger
 import java.net.URI
-import Parser._
+import Parser.{ seq, failure, success }
 import collection.mutable
 import std.Transform.{ DummyTaskMap, TaskAndValue }
 
 sealed trait Aggregation
 final object Aggregation {
   final case class ShowConfig(settingValues: Boolean, taskValues: Boolean, print: String => Unit, success: Boolean)
-  final case class Complete[T](start: Long, stop: Long, results: Result[Seq[KeyValue[T]]], state: State)
+  final case class Complete[T](start: Long, stop: Long, results: sbt.Result[Seq[KeyValue[T]]], state: State)
   final case class KeyValue[+T](key: ScopedKey[_], value: T)
 
   def defaultShow(state: State, showTasks: Boolean): ShowConfig = ShowConfig(settingValues = true, taskValues = showTasks, s => state.log.info(s), success = true)
@@ -44,7 +45,7 @@ final object Aggregation {
   def showRun[T](complete: Complete[T], show: ShowConfig)(implicit display: Show[ScopedKey[_]]): Unit = {
     import complete._
     val log = state.log
-    val extracted = Project extract state
+    val extracted = Project.extract(state)
     val success = results match { case Value(_) => true; case Inc(_) => false }
     results.toEither.right.foreach { r => if (show.taskValues) printSettings(r, show.print) }
     if (show.success) printSuccess(start, stop, extracted, success, log)

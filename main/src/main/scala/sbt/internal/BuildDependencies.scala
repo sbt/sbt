@@ -1,4 +1,5 @@
 package sbt
+package internal
 
 import sbt.internal.util.Types.idFun
 import sbt.internal.util.Dag

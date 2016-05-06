@@ -2,8 +2,8 @@
  * Copyright 2011  Mark Harrah
  */
 package sbt
+package internal
 
-import sbt.internal.{ Load, EvaluateConfigurations }
 import sbt.librarymanagement.Configurations
 
 import sbt.util.Level

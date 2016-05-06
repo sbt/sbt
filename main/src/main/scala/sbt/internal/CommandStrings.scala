@@ -2,6 +2,7 @@
  * Copyright 2010  Mark Harrah
  */
 package sbt
+package internal
 
 import sbt.io.Path
 

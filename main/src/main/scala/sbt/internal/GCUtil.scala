@@ -1,4 +1,5 @@
 package sbt
+package internal
 
 import java.util.concurrent.atomic.AtomicLong
 import scala.concurrent.duration._

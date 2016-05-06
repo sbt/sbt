@@ -2,6 +2,7 @@
  * Copyright 2011 Mark Harrah
  */
 package sbt
+package internal
 
 import java.io.File
 import java.net.URI
@@ -9,7 +10,6 @@ import Def.{ displayFull, ScopedKey, ScopeLocal, Setting }
 import BuildPaths.outputDirectory
 import Scope.GlobalScope
 import BuildStreams.Streams
-import sbt.internal.{ BuildDef, Load, OldPlugin }
 import sbt.io.syntax._
 import sbt.internal.util.{ Attributed, AttributeEntry, AttributeKey, AttributeMap, Settings }
 import sbt.internal.util.Attributed.data

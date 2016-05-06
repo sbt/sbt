@@ -1,7 +1,8 @@
 package sbt
+package internal
 
 import sbt.internal.util.Attributed
-import sbt.internal.{ BuildDef, IncompatiblePluginsException, OldPlugin }
+// import sbt.internal.{ BuildDef, IncompatiblePluginsException, OldPlugin }
 import java.io.File
 import java.net.URL
 import Attributed.data

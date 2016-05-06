@@ -1,4 +1,5 @@
 package sbt
+package internal
 
 import sbt.internal.util.{ AttributeKey, Dag, Relation, Util }
 import sbt.util.Logger

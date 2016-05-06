@@ -1,4 +1,5 @@
 package sbt
+package internal
 
 import Def.{ displayFull, ScopedKey }
 import Keys.taskDefinitionKey

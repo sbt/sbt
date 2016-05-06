@@ -2,6 +2,7 @@
  * Copyright 2011 Mark Harrah
  */
 package sbt
+package internal
 
 import sbt.internal.util.{ Show, Types }
 

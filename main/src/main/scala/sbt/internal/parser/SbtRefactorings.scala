@@ -7,7 +7,7 @@ import scala.reflect.runtime.universe._
 private[sbt] object SbtRefactorings {
 
   import sbt.internal.parser.SbtParser.{ END_OF_LINE, FAKE_FILE }
-  import sbt.SessionSettings.{ SessionSetting, SbtConfigFile }
+  import sbt.internal.SessionSettings.{ SessionSetting, SbtConfigFile }
 
   val EMPTY_STRING = ""
   val REVERSE_ORDERING_INT = Ordering[Int].reverse

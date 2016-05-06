@@ -4,12 +4,13 @@
 package sbt
 
 import Keys._
+import sbt.internal.{ GCUtil, CommandStrings }
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.internal.util.AttributeKey
 import DefaultParsers._
 import Def.{ ScopedKey, Setting }
 import Scope.GlobalScope
-import CommandStrings.{ CrossCommand, crossHelp, SwitchCommand, switchHelp }
+import sbt.internal.CommandStrings.{ CrossCommand, crossHelp, SwitchCommand, switchHelp }
 import java.io.File
 import sbt.internal.inc.ScalaInstance
 

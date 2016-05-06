@@ -2,8 +2,8 @@
  * Copyright 2008, 2009, 2010, 2011  Mark Harrah
  */
 package sbt
+package internal
 
-import sbt.internal.Load
 import sbt.internal.util.complete
 
 import ProjectNavigation._

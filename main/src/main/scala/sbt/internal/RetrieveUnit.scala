@@ -2,6 +2,7 @@
  * Copyright 2011 Mark Harrah
  */
 package sbt
+package internal
 
 import java.io.File
 import java.net.URI

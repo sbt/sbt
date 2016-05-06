@@ -1,4 +1,5 @@
 package sbt
+package internal
 
 import java.io.File
 import java.net.{ MalformedURLException, URL }

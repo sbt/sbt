@@ -1,7 +1,7 @@
 package sbt
+package internal
 
 import sbt.internal.util.Types.const
-import sbt.internal.OldPlugin
 import java.io.File
 
 /**

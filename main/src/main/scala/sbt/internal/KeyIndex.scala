@@ -2,6 +2,7 @@
  * Copyright 2011 Mark Harrah
  */
 package sbt
+package internal
 
 import sbt.internal.util.Relation
 
@@ -68,32 +69,32 @@ trait ExtendableKeyIndex extends KeyIndex {
   def addAggregated(scoped: ScopedKey[_], extra: BuildUtil[_]): ExtendableKeyIndex
 }
 // task axis <-> key
-private final class AKeyIndex(val data: Relation[Option[AttributeKey[_]], String]) {
+private[sbt] final class AKeyIndex(val data: Relation[Option[AttributeKey[_]], String]) {
   def add(task: Option[AttributeKey[_]], key: AttributeKey[_]): AKeyIndex = new AKeyIndex(data + (task, key.rawLabel) + (task, key.label))
   def keys(task: Option[AttributeKey[_]]): Set[String] = data.forward(task)
   def allKeys: Set[String] = data._2s.toSet
   def tasks: Set[AttributeKey[_]] = data._1s.flatten.toSet
   def tasks(key: String): Set[AttributeKey[_]] = data.reverse(key).flatten.toSet
 }
-private final class ConfigIndex(val data: Map[Option[String], AKeyIndex]) {
+private[sbt] final class ConfigIndex(val data: Map[Option[String], AKeyIndex]) {
   def add(config: Option[String], task: Option[AttributeKey[_]], key: AttributeKey[_]): ConfigIndex =
     new ConfigIndex(data updated (config, keyIndex(config).add(task, key)))
   def keyIndex(conf: Option[String]): AKeyIndex = getOr(data, conf, emptyAKeyIndex)
   def configs: Set[String] = keySet(data)
 }
-private final class ProjectIndex(val data: Map[Option[String], ConfigIndex]) {
+private[sbt] final class ProjectIndex(val data: Map[Option[String], ConfigIndex]) {
   def add(id: Option[String], config: Option[String], task: Option[AttributeKey[_]], key: AttributeKey[_]): ProjectIndex =
     new ProjectIndex(data updated (id, confIndex(id).add(config, task, key)))
   def confIndex(id: Option[String]): ConfigIndex = getOr(data, id, emptyConfigIndex)
   def projects: Set[String] = keySet(data)
 }
-private final class BuildIndex(val data: Map[Option[URI], ProjectIndex]) {
+private[sbt] final class BuildIndex(val data: Map[Option[URI], ProjectIndex]) {
   def add(build: Option[URI], project: Option[String], config: Option[String], task: Option[AttributeKey[_]], key: AttributeKey[_]): BuildIndex =
     new BuildIndex(data updated (build, projectIndex(build).add(project, config, task, key)))
   def projectIndex(build: Option[URI]): ProjectIndex = getOr(data, build, emptyProjectIndex)
   def builds: Set[URI] = keySet(data)
 }
-private final class KeyIndex0(val data: BuildIndex) extends ExtendableKeyIndex {
+private[sbt] final class KeyIndex0(val data: BuildIndex) extends ExtendableKeyIndex {
   def buildURIs: Set[URI] = data.builds
   def projects(uri: URI): Set[String] = data.projectIndex(Some(uri)).projects
   def exists(proj: Option[ResolvedReference]): Boolean =

@@ -3,7 +3,8 @@
  */
 package sbt
 
-import sbt.internal.{ Load, EvaluateConfigurations }
+import sbt.internal.{ Load, EvaluateConfigurations, LoadedBuildUnit, Aggregation, BuildStructure, Act, Inspect, BuildUnit, Output, PluginsDebug }
+import sbt.internal.{ SettingCompletions, CommandStrings, IvyConsole, ProjectNavigation, Script, SessionSettings }
 import sbt.internal.util.{ AttributeKey, AttributeMap, complete, ConsoleOut, GlobalLogging, LineRange, MainLogging, SimpleReader, Types }
 import sbt.util.{ Level, Logger }
 
@@ -31,7 +32,7 @@ final class xMain extends xsbti.AppMain {
       import BasicCommands.early
       import BasicCommandStrings.runEarly
       import BuiltinCommands.{ initialize, defaults }
-      import CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
+      import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
       runManaged(initialState(configuration,
         Seq(defaults, early),
         runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil)
@@ -79,7 +80,7 @@ object StandardMain {
 }
 
 import DefaultParsers._
-import CommandStrings._
+import sbt.internal.CommandStrings._
 import BasicCommandStrings._
 import BasicCommands._
 import CommandUtil._

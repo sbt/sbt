@@ -1,9 +1,8 @@
 package sbt
+package internal
 
 import sbt.librarymanagement.{ Configuration, Configurations, ModuleID, Resolver, SbtArtifacts, UpdateReport }
 import sbt.internal.util.Attributed
-
-import sbt.internal.{ Load, LoadBuildConfiguration }
 import Def.{ ScopedKey, Setting }
 import Scoped._
 import Keys._

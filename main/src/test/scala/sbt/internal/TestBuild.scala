@@ -1,4 +1,5 @@
 package sbt
+package internal
 
 import Def.{ ScopedKey, Setting }
 import sbt.internal.util.{ AttributeKey, AttributeMap, Relation, Settings }

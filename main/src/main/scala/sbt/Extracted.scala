@@ -1,6 +1,6 @@
 package sbt
 
-import sbt.internal.Load
+import sbt.internal.{ Load, BuildStructure, Act, Aggregation, SessionSettings }
 import Project._
 import Scope.GlobalScope
 import Def.{ ScopedKey, Setting }

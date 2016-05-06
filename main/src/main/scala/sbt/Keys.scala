@@ -19,6 +19,7 @@ import testing.Framework
 import sbt.internal.util.Types.Id
 import KeyRanks._
 
+import sbt.internal.{ BuildStructure, LoadedBuild, PluginDiscovery, BuildDependencies, SessionSettings }
 import sbt.io.FileFilter
 import sbt.internal.io.WatchState
 import sbt.internal.util.AttributeKey
