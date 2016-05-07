@@ -1,3 +1,4 @@
+import sbt.internal.inc.ScalaInstance
 
 lazy val OtherScala = config("other-scala").hide
 

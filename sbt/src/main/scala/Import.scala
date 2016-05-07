@@ -218,42 +218,6 @@ trait Import {
     type UpperBound = sbt.internal.util.complete.UpperBound
   }
 
-  // sbt.internal.util.appmacro
-  object appmacro {
-    import scala.reflect._
-    import macros._
-
-    type BuilderResult[C <: Context with Singleton] = sbt.internal.util.appmacro.BuilderResult[C]
-    val ContextUtil = sbt.internal.util.appmacro.ContextUtil
-    type ContextUtil[C <: Context] = sbt.internal.util.appmacro.ContextUtil[C]
-    type Convert = sbt.internal.util.appmacro.Convert
-    val Converted = sbt.internal.util.appmacro.Converted
-    type Converted[C <: Context with Singleton] = sbt.internal.util.appmacro.Converted[C]
-    val Instance = sbt.internal.util.appmacro.Instance
-    type Instance = sbt.internal.util.appmacro.Instance
-    val KListBuilder = sbt.internal.util.appmacro.KListBuilder
-    val MixedBuilder = sbt.internal.util.appmacro.MixedBuilder
-    type MonadInstance = sbt.internal.util.appmacro.MonadInstance
-    type TupleBuilder = sbt.internal.util.appmacro.TupleBuilder
-    val TupleNBuilder = sbt.internal.util.appmacro.TupleNBuilder
-  }
-
-  // sbt.internal.util.logic
-  object logic {
-    val Atom = sbt.internal.util.logic.Atom
-    type Atom = sbt.internal.util.logic.Atom
-    val Clause = sbt.internal.util.logic.Clause
-    type Clause = sbt.internal.util.logic.Clause
-    val Clauses = sbt.internal.util.logic.Clauses
-    type Clauses = sbt.internal.util.logic.Clauses
-    val Formula = sbt.internal.util.logic.Formula
-    type Formula = sbt.internal.util.logic.Formula
-    type Literal = sbt.internal.util.logic.Literal
-    val Logic = sbt.internal.util.logic.Logic
-    val Negated = sbt.internal.util.logic.Negated
-    type Negated = sbt.internal.util.logic.Negated
-  }
-
   // sbt.librarymanagement
   val Artifact = sbt.librarymanagement.Artifact
   type Artifact = sbt.librarymanagement.Artifact
@@ -341,104 +305,9 @@ trait Import {
   type VersionNumber = sbt.librarymanagement.VersionNumber
   type VersionNumberCompatibility = sbt.librarymanagement.VersionNumberCompatibility
 
-  // sbt.internal.librarymanagement
-  type ArtifactFilter = sbt.internal.librarymanagement.ArtifactFilter
-  val ComponentManager = sbt.internal.librarymanagement.ComponentManager
-  type ComponentManager = sbt.internal.librarymanagement.ComponentManager
-  type ConfigurationFilter = sbt.internal.librarymanagement.ConfigurationFilter
-  val ConfigurationReportLite = sbt.internal.librarymanagement.ConfigurationReportLite
-  type ConfigurationReportLite = sbt.internal.librarymanagement.ConfigurationReportLite
-  val ConvertResolver = sbt.internal.librarymanagement.ConvertResolver
-  val CustomPomParser = sbt.internal.librarymanagement.CustomPomParser
-  type CustomPomParser = sbt.internal.librarymanagement.CustomPomParser
-  val CustomXmlParser = sbt.internal.librarymanagement.CustomXmlParser
-  type DeliverConfiguration = sbt.internal.librarymanagement.DeliverConfiguration
-  val DependencyFilter = sbt.internal.librarymanagement.DependencyFilter
-  type DependencyFilter = sbt.internal.librarymanagement.DependencyFilter
-  type DependencyFilterExtra = sbt.internal.librarymanagement.DependencyFilterExtra
-  val ExternalIvyConfiguration = sbt.internal.librarymanagement.ExternalIvyConfiguration
-  type ExternalIvyConfiguration = sbt.internal.librarymanagement.ExternalIvyConfiguration
-  val GetClassifiersConfiguration = sbt.internal.librarymanagement.GetClassifiersConfiguration
-  type GetClassifiersConfiguration = sbt.internal.librarymanagement.GetClassifiersConfiguration
-  val GetClassifiersModule = sbt.internal.librarymanagement.GetClassifiersModule
-  type GetClassifiersModule = sbt.internal.librarymanagement.GetClassifiersModule
-  val IfMissing = sbt.internal.librarymanagement.IfMissing
-  type IfMissing = sbt.internal.librarymanagement.IfMissing
-  type ModuleSettings = sbt.internal.librarymanagement.ModuleSettings
-  val InlineConfiguration = sbt.internal.librarymanagement.InlineConfiguration
-  type InlineConfiguration = sbt.internal.librarymanagement.InlineConfiguration
-  type InlineIvyConfiguration = sbt.internal.librarymanagement.InlineIvyConfiguration
-  type InvalidComponent = sbt.internal.librarymanagement.InvalidComponent
-  val IvyActions = sbt.internal.librarymanagement.IvyActions
-  type IvyCache = sbt.internal.librarymanagement.IvyCache
-  val IvyConfiguration = sbt.internal.librarymanagement.IvyConfiguration
-  type IvyConfiguration = sbt.internal.librarymanagement.IvyConfiguration
-  val IvyFileConfiguration = sbt.internal.librarymanagement.IvyFileConfiguration
-  type IvyFileConfiguration = sbt.internal.librarymanagement.IvyFileConfiguration
-  type IvyPaths = sbt.internal.librarymanagement.IvyPaths
-  val IvyRetrieve = sbt.internal.librarymanagement.IvyRetrieve
-  val IvySbt = sbt.internal.librarymanagement.IvySbt
-  type IvySbt = sbt.internal.librarymanagement.IvySbt
-  val IvyUtil = sbt.internal.librarymanagement.IvyUtil
-  val JsonUtil = sbt.internal.librarymanagement.JsonUtil
-  val LogicalClock = sbt.internal.librarymanagement.LogicalClock
-  type LogicalClock = sbt.internal.librarymanagement.LogicalClock
-  val MakePom = sbt.internal.librarymanagement.MakePom
-  type MakePom = sbt.internal.librarymanagement.MakePom
-  val MakePomConfiguration = sbt.internal.librarymanagement.MakePomConfiguration
-  type MakePomConfiguration = sbt.internal.librarymanagement.MakePomConfiguration
-  type ModuleFilter = sbt.internal.librarymanagement.ModuleFilter
-  type NotInCache = sbt.internal.librarymanagement.NotInCache
-  val PomConfiguration = sbt.internal.librarymanagement.PomConfiguration
-  type PomConfiguration = sbt.internal.librarymanagement.PomConfiguration
-  val ProjectResolver = sbt.internal.librarymanagement.ProjectResolver
-  type ProjectResolver = sbt.internal.librarymanagement.ProjectResolver
-  type PublishConfiguration = sbt.internal.librarymanagement.PublishConfiguration
-  val ResolutionCache = sbt.internal.librarymanagement.ResolutionCache
-  type ResolutionCache = sbt.internal.librarymanagement.ResolutionCache
-  type ResolveException = sbt.internal.librarymanagement.ResolveException
-  type ResolverAdapter = sbt.internal.librarymanagement.ResolverAdapter
-  type RetrieveConfiguration = sbt.internal.librarymanagement.RetrieveConfiguration
-  val SbtExclusionRule = sbt.internal.librarymanagement.SbtExclusionRule
-  type SbtExclusionRule = sbt.internal.librarymanagement.SbtExclusionRule
-  val StringUtilities = sbt.internal.librarymanagement.StringUtilities
-  val UnresolvedWarning = sbt.internal.librarymanagement.UnresolvedWarning
-  type UnresolvedWarning = sbt.internal.librarymanagement.UnresolvedWarning
-  val UnresolvedWarningConfiguration = sbt.internal.librarymanagement.UnresolvedWarningConfiguration
-  type UnresolvedWarningConfiguration = sbt.internal.librarymanagement.UnresolvedWarningConfiguration
-  type UpdateConfiguration = sbt.internal.librarymanagement.UpdateConfiguration
-  val UpdateLogging = sbt.internal.librarymanagement.UpdateLogging
-  val UpdateReportLite = sbt.internal.librarymanagement.UpdateReportLite
-  type UpdateReportLite = sbt.internal.librarymanagement.UpdateReportLite
 
-  // sbt.internal.inc.classpath
-  object classpath {
-    type CachedClassLoader = sbt.internal.inc.classpath.CachedClassLoader
-    type ClassFilter = sbt.internal.inc.classpath.ClassFilter
-    type ClassLoaderCache = sbt.internal.inc.classpath.ClassLoaderCache
-    type ClasspathFilter = sbt.internal.inc.classpath.ClasspathFilter
-    val ClasspathUtilities = sbt.internal.inc.classpath.ClasspathUtilities
-    type DifferentLoaders = sbt.internal.inc.classpath.DifferentLoaders
-    type DualEnumeration[T] = sbt.internal.inc.classpath.DualEnumeration[T]
-    type DualLoader = sbt.internal.inc.classpath.DualLoader
-    type ExcludePackagesFilter = sbt.internal.inc.classpath.ExcludePackagesFilter
-    type FilteredLoader = sbt.internal.inc.classpath.FilteredLoader
-    type FixedResources = sbt.internal.inc.classpath.FixedResources
-    type IncludePackagesFilter = sbt.internal.inc.classpath.IncludePackagesFilter
-    type LoaderBase = sbt.internal.inc.classpath.LoaderBase
-    type NativeCopyConfig = sbt.internal.inc.classpath.NativeCopyConfig
-    type NativeCopyLoader = sbt.internal.inc.classpath.NativeCopyLoader
-    type NullLoader = sbt.internal.inc.classpath.NullLoader
-    type PackageFilter = sbt.internal.inc.classpath.PackageFilter
-    type RawResources = sbt.internal.inc.classpath.RawResources
-    val RawURL = sbt.internal.inc.classpath.RawURL
-    type SelfFirstLoader = sbt.internal.inc.classpath.SelfFirstLoader
-  }
+  // sbt.internal.librarymanagement
+  type IvyPaths = sbt.internal.librarymanagement.IvyPaths
 
   type IncOptions = xsbti.compile.IncOptions
-  type Analysis = sbt.internal.inc.Analysis
-  val Analysis = sbt.internal.inc.Analysis
-  val ClassfileManager = sbt.internal.inc.ClassfileManager
-  type ScalaInstance = sbt.internal.inc.ScalaInstance
-  val ScalaInstance = sbt.internal.inc.ScalaInstance
 }

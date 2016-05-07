@@ -1,3 +1,5 @@
+import sbt.internal.inc.classpath.ClasspathUtilities
+
 lazy val superRoot = (project in file("super")).
   dependsOn(rootRef)
 
@@ -22,7 +24,7 @@ def checkTask = (fullClasspath in (rootRef, Compile), fullClasspath in (rootRef,
 
 def check0(cp: Seq[Attributed[File]], label: String, shouldSucceed: Boolean): Unit =
 {
-  val loader = classpath.ClasspathUtilities.toLoader(cp.files)
+  val loader = ClasspathUtilities.toLoader(cp.files)
   println("Checking " + label)
   val err = try { Class.forName("org.example.ProvidedTest", false, loader); None }
   catch { case e: Exception => Some(e) }

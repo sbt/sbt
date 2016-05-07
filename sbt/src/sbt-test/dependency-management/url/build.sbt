@@ -1,4 +1,4 @@
-import classpath.ClasspathUtilities
+import sbt.internal.inc.classpath.ClasspathUtilities
 
 lazy val root = (project in file(".")).
   settings(

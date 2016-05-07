@@ -1,3 +1,5 @@
+import sbt.internal.inc.classpath.ClasspathUtilities
+
 lazy val scalaOverride = taskKey[Unit]("Check that the proper version of Scala is on the classpath.")
 
 lazy val root = (project in file(".")).
@@ -12,7 +14,7 @@ def check(className: String): Def.Initialize[Task[Unit]] = fullClasspath in Comp
   val existing = cp.files.filter(_.getName contains "scala-library")
   println("Full classpath: " + cp.mkString("\n\t", "\n\t", ""))
   println("scala-library.jar: " + existing.mkString("\n\t", "\n\t", ""))
-  val loader = classpath.ClasspathUtilities.toLoader(existing)
+  val loader = ClasspathUtilities.toLoader(existing)
   Class.forName(className, false, loader)
 }
 

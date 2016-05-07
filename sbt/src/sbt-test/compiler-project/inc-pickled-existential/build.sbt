@@ -1,3 +1,5 @@
+import sbt.internal.inc.Analysis
+
 logLevel := Level.Debug
 
 // dumps analysis into target/analysis-dump.txt file

@@ -1,15 +1,20 @@
+import sbt.internal.inc.Analysis
+
 /* Performs checks related to compilations:
  *  a) checks in which compilation given set of files was recompiled
  *  b) checks overall number of compilations performed
  */
 TaskKey[Unit]("check-compilations") := {
-  val analysis = (compile in Compile).value
+  val analysis = (compile in Compile).value match { case a: Analysis => a }
   val srcDir = (scalaSource in Compile).value
   def relative(f: java.io.File): java.io.File =  f.relativeTo(srcDir) getOrElse f
+  def findFile(className: String): File = {
+    relative(analysis.relations.definesClass(className).head)
+  }
   val allCompilations = analysis.compilations.allCompilations
   val recompiledFiles: Seq[Set[java.io.File]] = allCompilations map { c =>
     val recompiledFiles = analysis.apis.internal.collect {
-      case (file, api) if api.compilation.startTime == c.startTime => relative(file)
+      case (cn, api) if api.compilation.startTime == c.startTime => findFile(cn)
     }
     recompiledFiles.toSet
   }
