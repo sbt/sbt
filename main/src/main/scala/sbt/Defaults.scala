@@ -4,8 +4,7 @@
 package sbt
 
 import scala.concurrent.duration.{ FiniteDuration, Duration }
-import sbt.internal.{ OldPlugin, Aggregation, LoadedBuild, BuildUtil, PluginDiscovery, APIMappings, BuildDependencies, GCUtil, TaskSequential }
-import sbt.internal.ConsoleProject
+import sbt.internal._
 import sbt.internal.util.Attributed
 import sbt.internal.util.Attributed.data
 import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
