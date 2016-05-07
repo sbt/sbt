@@ -1,3 +1,5 @@
+import sbt.internal.librarymanagement._
+
 lazy val check = taskKey[Unit]("Runs the check")
 
 def commonSettings: Seq[Def.Setting[_]] =
