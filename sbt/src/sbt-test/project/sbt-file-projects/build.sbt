@@ -1,3 +1,5 @@
+import sbt.internal.AddSettings
+
 val a = "a"
 val f = file("a")
 val g = taskKey[Unit]("A task in the root project")

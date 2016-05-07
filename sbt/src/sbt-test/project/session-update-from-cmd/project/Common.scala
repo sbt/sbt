@@ -1,5 +1,7 @@
 import sbt._, syntax._, Keys._
 
+import sbt.internal.SessionSettings
+
 object Common {
   lazy val k1 = taskKey[Unit]("")
   lazy val k2 = taskKey[Unit]("")
