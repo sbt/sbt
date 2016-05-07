@@ -189,7 +189,7 @@ object BuiltinCommands {
           Some(index.keyMap(key))
         catch {
           case NonFatal(ex) =>
-            s.log error ex.getMessage
+            s.log debug ex.getMessage
             None
         }
       }.collect { case Some(s) => s }.distinct
