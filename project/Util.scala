@@ -78,7 +78,6 @@ object Util {
   def srcID = "compiler-interface-src"
 
   def publishPomSettings: Seq[Setting[_]] = Seq(
-    publishArtifact in makePom := false,
     pomPostProcess := cleanPom _
   )
 
@@ -100,7 +99,7 @@ object Util {
 
   def excludePomDependency(node: scala.xml.Node) = node \ "artifactId" exists { n => excludePomArtifact(n.text) }
 
-  def excludePomArtifact(artifactId: String) = (artifactId == "compiler-interface") || (artifactId startsWith "precompiled")
+  def excludePomArtifact(artifactId: String) = (artifactId startsWith "compiler-bridge")
 
   val testExclusive = tags in test += ((ExclusiveTest, 1))
 
