@@ -201,6 +201,7 @@ lazy val sbtProj = (project in file("sbt")).
     baseSettings,
     name := "sbt",
     normalizedName := "sbt",
+    crossScalaVersions := Seq(scala211),
     crossPaths := false,
     libraryDependencies ++= Seq(compilerBrdige)
   )
