@@ -1,3 +1,4 @@
+import sbt.internal.inc.Analysis
 import complete.DefaultParsers._
 
 val checkIterations = inputKey[Unit]("Verifies the accumlated number of iterations of incremental compilation.")

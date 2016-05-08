@@ -1,3 +1,5 @@
+import sbt.internal.inc.Analysis
+
 InputKey[Unit]("check-number-of-compiler-iterations") <<= inputTask { (argTask: TaskKey[Seq[String]]) =>
   (argTask, compile in Compile) map { case (args: Seq[String], a: Analysis) =>
     assert(args.size == 1)

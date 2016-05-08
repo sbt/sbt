@@ -109,7 +109,7 @@ lazy val testAgentProj = (project in file("testing") / "agent").
   )
 
 // Basic task engine
-lazy val taskProj = (project in tasksPath).
+lazy val taskProj = (project in file("tasks")).
   settings(
     testedBaseSettings,
     name := "Tasks",
@@ -117,7 +117,7 @@ lazy val taskProj = (project in tasksPath).
   )
 
 // Standard task system.  This provides map, flatMap, join, and more on top of the basic task model.
-lazy val stdTaskProj = (project in tasksPath / "standard").
+lazy val stdTaskProj = (project in file("tasks-standard")).
   dependsOn (taskProj % "compile;test->test").
   settings(
     testedBaseSettings,
@@ -153,7 +153,7 @@ lazy val scriptedPluginProj = (project in scriptedPath / "plugin").
   )
 
 // Implementation and support code for defining actions.
-lazy val actionsProj = (project in mainPath / "actions").
+lazy val actionsProj = (project in file("main-actions")).
   dependsOn(runProj, stdTaskProj, taskProj, testingProj).
   settings(
     testedBaseSettings,
@@ -164,7 +164,7 @@ lazy val actionsProj = (project in mainPath / "actions").
   )
 
 // General command support and core commands not specific to a build system
-lazy val commandProj = (project in mainPath / "command").
+lazy val commandProj = (project in file("main-command")).
   settings(
     testedBaseSettings,
     name := "Command",
@@ -173,7 +173,7 @@ lazy val commandProj = (project in mainPath / "command").
   )
 
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
-lazy val mainSettingsProj = (project in mainPath / "settings").
+lazy val mainSettingsProj = (project in file("main-settings")).
   dependsOn(commandProj, stdTaskProj).
   settings(
     testedBaseSettings,
@@ -183,7 +183,7 @@ lazy val mainSettingsProj = (project in mainPath / "settings").
   )
 
 // The main integration project for sbt.  It brings all of the Projsystems together, configures them, and provides for overriding conventions.
-lazy val mainProj = (project in mainPath).
+lazy val mainProj = (project in file("main")).
   dependsOn(actionsProj, mainSettingsProj, runProj, commandProj).
   settings(
     testedBaseSettings,
@@ -195,7 +195,7 @@ lazy val mainProj = (project in mainPath).
 // Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 //  technically, we need a dependency on all of mainProj's dependencies, but we don't do that since this is strictly an integration project
 //  with the sole purpose of providing certain identifiers without qualification (with a package object)
-lazy val sbtProj = (project in sbtPath).
+lazy val sbtProj = (project in file("sbt")).
   dependsOn(mainProj, scriptedSbtProj % "test->test").
   settings(
     baseSettings,
@@ -296,12 +296,6 @@ def fullDocSettings = Util.baseScalacOptions ++ Docs.settings ++ Sxr.settings ++
   fullClasspath in sxr := (externalDependencyClasspath in Compile in sbtProj).value,
   dependencyClasspath in (Compile, doc) := (fullClasspath in sxr).value
 )
-
-/* Nested Projproject paths */
-def sbtPath    = file("sbt")
-def tasksPath  = file("tasks")
-def launchPath = file("launch")
-def mainPath   = file("main")
 
 lazy val safeUnitTests = taskKey[Unit]("Known working tests (for both 2.10 and 2.11)")
 lazy val safeProjects: ScopeFilter = ScopeFilter(

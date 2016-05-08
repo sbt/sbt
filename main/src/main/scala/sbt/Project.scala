@@ -10,7 +10,7 @@ import Project._
 import Keys.{ appConfiguration, stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, shellPrompt, thisProject, thisProjectRef, watch }
 import Scope.{ GlobalScope, ThisScope }
 import Def.{ Flattened, Initialize, ScopedKey, Setting }
-import sbt.internal.Load
+import sbt.internal.{ Load, BuildStructure, LoadedBuild, LoadedBuildUnit, SettingGraph, SettingCompletions, AddSettings, SessionSettings }
 import sbt.internal.util.Eval
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util.complete.DefaultParsers
@@ -354,7 +354,7 @@ object Project extends ProjectExtra {
   def isProjectLoaded(state: State): Boolean = (state has sessionSettings) && (state has stateBuildStructure)
 
   def extract(state: State): Extracted = extract(session(state), structure(state))
-  def extract(se: SessionSettings, st: BuildStructure): Extracted = Extracted(st, se, se.current)(showContextKey(se, st))
+  private[sbt] def extract(se: SessionSettings, st: BuildStructure): Extracted = Extracted(st, se, se.current)(showContextKey(se, st))
 
   def getProjectForReference(ref: Reference, structure: BuildStructure): Option[ResolvedProject] =
     ref match { case pr: ProjectRef => getProject(pr, structure); case _ => None }

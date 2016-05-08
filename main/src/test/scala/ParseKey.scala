@@ -2,6 +2,7 @@ package sbt
 
 import Def.{ displayFull, displayMasked, ScopedKey }
 import java.net.URI
+import sbt.internal.{ TestBuild, Resolve }
 import TestBuild._
 import sbt.internal.util.complete._
 

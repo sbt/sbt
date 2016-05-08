@@ -3,7 +3,7 @@
  */
 package sbt
 
-import sbt.internal.Load
+import sbt.internal.{ Load, BuildStructure, TaskTimings, TaskName, GCUtil }
 import sbt.internal.util.{ ErrorHandling, RMap, Show, Signals, Types }
 import sbt.util.Logger
 import sbt.librarymanagement.{ Resolver, UpdateReport }

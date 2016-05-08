@@ -4,6 +4,7 @@
 package sbt
 
 import scala.concurrent.duration.{ FiniteDuration, Duration }
+import sbt.internal._
 import sbt.internal.util.Attributed
 import sbt.internal.util.Attributed.data
 import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
@@ -23,7 +24,6 @@ import sbt.internal.inc.{ Analysis, ClassfileManager, ClasspathOptions, Compiler
 import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
 
 import sbt.librarymanagement.{ `package` => _, _ }
-import sbt.internal.OldPlugin
 import sbt.internal.librarymanagement._
 import sbt.internal.librarymanagement.syntax._
 import sbt.internal.util._
@@ -39,7 +39,7 @@ import java.util.concurrent.{ TimeUnit, Callable }
 import sbinary.DefaultProtocol.StringFormat
 import sbt.internal.util.Cache.seqFormat
 import sbt.util.Logger
-import CommandStrings.ExportStream
+import sbt.internal.CommandStrings.ExportStream
 
 import xsbti.Maybe
 import sbt.util.InterfaceUtil.{ f1, o2m }

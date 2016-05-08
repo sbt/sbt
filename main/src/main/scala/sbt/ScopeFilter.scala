@@ -1,6 +1,6 @@
 package sbt
 
-import sbt.internal.Load
+import sbt.internal.{ Load, LoadedBuildUnit }
 import sbt.internal.util.{ AttributeKey, Dag, Types }
 
 import sbt.librarymanagement.Configuration

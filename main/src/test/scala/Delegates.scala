@@ -2,7 +2,7 @@ package sbt
 
 import Project._
 import sbt.internal.util.Types.{ idFun, some }
-import TestBuild._
+import sbt.internal.TestBuild._
 
 import java.io.File
 import java.net.URI

@@ -1,6 +1,6 @@
-logLevel := Level.Debug
+import sbt.internal.inc.Analysis
 
-incOptions := incOptions.value.withNameHashing(true)
+logLevel := Level.Debug
 
 // disable sbt's heauristic which recompiles everything in case
 // some fraction (e.g. 50%) of files is scheduled to be recompiled
