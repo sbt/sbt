@@ -1,5 +1,5 @@
 This is the first milestone (beta) release of sbt 1.0.
-There's no binrary compatibility with sbt 0.13 or other future versions.
+There's no binary compatibility with sbt 0.13 or other future versions.
 
 The biggest change in sbt 1.0 from 0.13 is internal code reorganization to modules
 (io, util, librarymanagement, zinc, and sbt), but hopefully this shouldn't affect you much.

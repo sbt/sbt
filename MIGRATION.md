@@ -5,7 +5,7 @@ Migration notes
 - Build.scala style builds are gone. Use multi-project `build.sbt`.
 - `Project(...)` constructor is restricted down to two parameters. Use `project` instead.
 - `sbt.Plugin` is also gone. Use auto plugins.
-- The incremental compiler, called Zinc, is uses class-based name hashing.
+- The incremental compiler, called Zinc, uses class-based name hashing.
 - Zinc drops support for Scala 2.8.x and 2.9.x.
 
 #### Additional import required
