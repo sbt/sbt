@@ -13,7 +13,7 @@ def buildLevelSettings: Seq[Setting[_]] = inThisBuild(Seq(
   version := "1.0.0-SNAPSHOT",
   bintrayOrganization := Some("sbt"),
   bintrayRepository := {
-    if (isSnapshot.value) "maven-releases"
+    if (!isSnapshot.value) "maven-releases"
     else "maven-snapshots"
   },
   bintrayPackage := "sbt",
@@ -201,6 +201,7 @@ lazy val sbtProj = (project in file("sbt")).
     baseSettings,
     name := "sbt",
     normalizedName := "sbt",
+    crossScalaVersions := Seq(scala211),
     crossPaths := false,
     libraryDependencies ++= Seq(compilerBrdige)
   )
