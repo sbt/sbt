@@ -4,6 +4,6 @@
 
 ### Improvements
 
-- Add Windows script support and native file extensions on Unix platforms. by [@ekrich][@ekrich]
+- Add Windows script support and native file extensions on Unix platforms. By [@ekrich][@ekrich]
 
 ### Bug fixes
