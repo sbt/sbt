@@ -297,8 +297,6 @@ def fullDocSettings = Util.baseScalacOptions ++ Docs.settings ++ Sxr.settings ++
   dependencyClasspath in (Compile, doc) := (fullClasspath in sxr).value
 )
 
-/* Nested Projproject paths */
-
 lazy val safeUnitTests = taskKey[Unit]("Known working tests (for both 2.10 and 2.11)")
 lazy val safeProjects: ScopeFilter = ScopeFilter(
   inProjects(mainSettingsProj, mainProj,
