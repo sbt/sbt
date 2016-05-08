@@ -1,14 +1,10 @@
 package sbt.internal.librarymanagement
 package ivyint
 
-import java.lang.reflect.Field
-import java.lang.reflect.Method
-import java.net.Authenticator
-import java.net.PasswordAuthentication
-import org.apache.ivy.util.Credentials
+import java.net.{ Authenticator, PasswordAuthentication }
+
 import org.apache.ivy.util.Message
 import org.apache.ivy.util.url.IvyAuthenticator
-import org.apache.ivy.util.url.CredentialsStore
 
 /**
  * Helper to install an Authenticator that works with the IvyAuthenticator to provide better error messages when
@@ -19,9 +15,9 @@ object ErrorMessageAuthenticator {
 
   private def originalAuthenticator: Option[Authenticator] = {
     try {
-      val f = classOf[Authenticator].getDeclaredField("theAuthenticator");
-      f.setAccessible(true);
-      Option(f.get(null).asInstanceOf[Authenticator])
+      val field = classOf[Authenticator].getDeclaredField("theAuthenticator")
+      field.setAccessible(true)
+      Option(field.get(null).asInstanceOf[Authenticator])
     } catch {
       // TODO - Catch more specific errors.
       case t: Throwable =>
@@ -48,7 +44,7 @@ object ErrorMessageAuthenticator {
       case originalOpt                                   => installIntoIvyImpl(originalOpt)
     } catch {
       case t: Throwable =>
-        Message.debug("Error occurred will trying to install debug messages into Ivy Authentication" + t.getMessage)
+        Message.debug("Error occurred while trying to install debug messages into Ivy Authentication" + t.getMessage)
     }
     Some(ivy)
   }
@@ -60,8 +56,8 @@ object ErrorMessageAuthenticator {
       try Authenticator.setDefault(new ErrorMessageAuthenticator(original))
       catch {
         case e: SecurityException if !securityWarningLogged =>
-          securityWarningLogged = true;
-          Message.warn("Not enough permissions to set the ErorrMessageAuthenticator. "
+          securityWarningLogged = true
+          Message.warn("Not enough permissions to set the ErrorMessageAuthenticator. "
             + "Helpful debug messages disabled!");
       }
     // We will try to use the original authenticator as backup authenticator.
@@ -94,7 +90,7 @@ private[sbt] final class ErrorMessageAuthenticator(original: Option[Authenticato
       Message.error(s"Unable to find credentials for [${getRequestingPrompt} @ ${host}].")
       val configuredRealms = IvyCredentialsLookup.realmsForHost.getOrElse(host, Set.empty)
       if (configuredRealms.nonEmpty) {
-        Message.error(s"  Is one of these realms mispelled for host [${host}]:")
+        Message.error(s"  Is one of these realms misspelled for host [${host}]:")
         configuredRealms foreach { realm =>
           Message.error(s"  * ${realm}")
         }
@@ -107,7 +103,7 @@ private[sbt] final class ErrorMessageAuthenticator(original: Option[Authenticato
 
     // Grabs the authentication that would have been provided had we not been installed...
     def originalAuthentication: Option[PasswordAuthentication] = {
-      Authenticator.setDefault(original.getOrElse(null))
+      Authenticator.setDefault(original.orNull)
       try Option(Authenticator.requestPasswordAuthentication(
         getRequestingHost,
         getRequestingSite,
