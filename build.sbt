@@ -11,6 +11,7 @@ import com.typesafe.tools.mima.plugin.MimaPlugin.mimaDefaultSettings
 def buildLevelSettings: Seq[Setting[_]] = inThisBuild(Seq(
   organization := "org.scala-sbt",
   version := "1.0.0-SNAPSHOT",
+  description := "sbt is an interactive build tool",
   bintrayOrganization := Some("sbt"),
   bintrayRepository := {
     if (!isSnapshot.value) "maven-releases"
@@ -18,12 +19,22 @@ def buildLevelSettings: Seq[Setting[_]] = inThisBuild(Seq(
   },
   bintrayPackage := "sbt",
   bintrayReleaseOnPublish := false,
+  licenses := List("BSD New" -> url("https://github.com/sbt/sbt/blob/0.13/LICENSE")),
+  developers := List(
+    Developer("harrah", "Mark Harrah", "@harrah", url("https://github.com/harrah")),
+    Developer("eed3si9n", "Eugene Yokota", "@eed3si9n", url("https://github.com/eed3si9n")),
+    Developer("jsuereth", "Josh Suereth", "@jsuereth", url("https://github.com/jsuereth")),
+    Developer("dwijnand", "Dale Wijnand", "@dwijnand", url("https://github.com/dwijnand")),
+    Developer("gkossakowski", "Grzegorz Kossakowski", "@gkossakowski", url("https://github.com/gkossakowski")),
+    Developer("Duhemm", "Martin Duhem", "@Duhemm", url("https://github.com/Duhemm"))
+  ),
+  homepage := Some(url("https://github.com/sbt/sbt")),
+  scmInfo := Some(ScmInfo(url("https://github.com/sbt/sbt"), "git@github.com:sbt/sbt.git")),
   resolvers += Resolver.mavenLocal
 ))
 
 def commonSettings: Seq[Setting[_]] = Seq[SettingsDefinition](
   scalaVersion := scala211,
-  publishArtifact in packageDoc := false,
   componentID := None,
   resolvers += Resolver.typesafeIvyRepo("releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
@@ -76,7 +87,6 @@ lazy val bundledLauncherProj =
     name := "sbt-launch",
     moduleName := "sbt-launch",
     description := "sbt application launcher",
-    publishArtifact in packageSrc := false,
     autoScalaLibrary := false,
     crossPaths := false,
     publish := Release.deployLauncher.value,
