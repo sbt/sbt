@@ -5,8 +5,9 @@ import java.nio.channels.{ FileLock, OverlappingFileLockException }
 
 import org.http4s.dsl._
 import org.http4s.headers.Authorization
+import org.http4s.server.HttpService
 import org.http4s.server.blaze.BlazeBuilder
-import org.http4s.{ BasicCredentials, Challenge, EmptyBody, HttpService, Request, Response }
+import org.http4s.{ BasicCredentials, Challenge, EmptyBody, Request, Response }
 
 import caseapp._
 
@@ -122,7 +123,10 @@ case class SimpleHttpServerApp(
               auth.credentials match {
                 case basic: BasicCredentials =>
                   if (basic.username == user && basic.password == password)
-                    service.run(req)
+                    service.run(req).flatMap {
+                      case Some(v) => Task.now(v)
+                      case None => NotFound()
+                    }
                   else {
                     warn {
                       val msg =

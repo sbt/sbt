@@ -506,13 +506,15 @@ lazy val plugin = project
     scriptedBufferLog := false
   )
 
+val http4sVersion = "0.8.6"
+
 lazy val `simple-web-server` = project
   .settings(commonSettings)
   .settings(packAutoSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "org.http4s" %% "http4s-blaze-server" % "0.13.2",
-      "org.http4s" %% "http4s-dsl" % "0.13.2",
+      "org.http4s" %% "http4s-blazeserver" % http4sVersion,
+      "org.http4s" %% "http4s-dsl" % http4sVersion,
       "org.slf4j" % "slf4j-nop" % "1.7.19",
       "com.github.alexarchambault" %% "case-app" % "1.0.0-RC2"
     )
