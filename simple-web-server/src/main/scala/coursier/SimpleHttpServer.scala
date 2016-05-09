@@ -1,6 +1,7 @@
 package coursier
 
 import java.io.{ File, FileOutputStream }
+import java.net.NetworkInterface
 import java.nio.channels.{ FileLock, OverlappingFileLockException }
 
 import org.http4s.dsl._
@@ -10,6 +11,8 @@ import org.http4s.server.blaze.BlazeBuilder
 import org.http4s.{ BasicCredentials, Challenge, EmptyBody, Request, Response }
 
 import caseapp._
+
+import scala.collection.JavaConverters._
 
 import scalaz.concurrent.Task
 
@@ -200,8 +203,15 @@ case class SimpleHttpServerApp(
     b
   }
 
-  if (verbosityLevel >= 0)
+  if (verbosityLevel >= 0) {
     Console.err.println(s"Listening on http://$host:$port")
+
+    if (verbosityLevel >= 1 && host == "0.0.0.0") {
+      Console.err.println(s"Listening on addresses")
+      for (itf <- NetworkInterface.getNetworkInterfaces.asScala; addr <- itf.getInetAddresses.asScala)
+        Console.err.println(s"  ${addr.getHostAddress} (${itf.getName})")
+    }
+  }
 
   builder
     .run
