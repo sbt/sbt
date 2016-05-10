@@ -183,7 +183,8 @@ final case class Artifact(
   checksumUrls: Map[String, String],
   extra: Map[String, Artifact],
   attributes: Attributes,
-  changing: Boolean
+  changing: Boolean,
+  authentication: Option[Authentication]
 )
 
 object Artifact {
@@ -204,4 +205,12 @@ object Artifact {
       ): Seq[Artifact] = Nil
     }
   }
+}
+
+case class Authentication(
+  user: String,
+  password: String
+) {
+  override def toString: String =
+    s"Authentication($user, *******)"
 }

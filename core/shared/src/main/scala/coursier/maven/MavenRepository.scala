@@ -70,14 +70,15 @@ case class MavenRepository(
   root: String,
   changing: Option[Boolean] = None,
   /** Hackish hack for sbt plugins mainly - what this does really sucks */
-  sbtAttrStub: Boolean = false
+  sbtAttrStub: Boolean = false,
+  authentication: Option[Authentication] = None
 ) extends Repository {
 
   import Repository._
   import MavenRepository._
 
   val root0 = if (root.endsWith("/")) root else root + "/"
-  val source = MavenSource(root0, changing, sbtAttrStub)
+  val source = MavenSource(root0, changing, sbtAttrStub, authentication)
 
   def projectArtifact(
     module: Module,
@@ -96,7 +97,8 @@ case class MavenRepository(
       Map.empty,
       Map.empty,
       Attributes("pom", ""),
-      changing = changing.getOrElse(version.contains("-SNAPSHOT"))
+      changing = changing.getOrElse(version.contains("-SNAPSHOT")),
+      authentication = authentication
     )
     .withDefaultChecksums
     .withDefaultSignature
@@ -115,7 +117,8 @@ case class MavenRepository(
         Map.empty,
         Map.empty,
         Attributes("pom", ""),
-        changing = true
+        changing = true,
+        authentication = authentication
       )
       .withDefaultChecksums
       .withDefaultSignature
@@ -140,7 +143,8 @@ case class MavenRepository(
         Map.empty,
         Map.empty,
         Attributes("pom", ""),
-        changing = true
+        changing = true,
+        authentication = authentication
       )
       .withDefaultChecksums
       .withDefaultSignature

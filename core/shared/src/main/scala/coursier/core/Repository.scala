@@ -34,7 +34,8 @@ object Repository {
             Map.empty,
             Map.empty,
             Attributes("asc", ""),
-            changing = underlying.changing
+            changing = underlying.changing,
+            authentication = underlying.authentication
           )
             .withDefaultChecksums
       ))

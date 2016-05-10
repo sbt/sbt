@@ -2,6 +2,7 @@ package coursier
 
 import java.net.MalformedURLException
 
+import coursier.core.Authentication
 import coursier.ivy.IvyRepository
 import coursier.util.Parse
 
@@ -26,12 +27,48 @@ object CacheParse {
           sys.error(s"Unrecognized repository: $r")
       }
 
-      try {
-        Cache.url(url)
-        repo.success
+      val validatedUrl = try {
+        Cache.url(url).success
       } catch {
         case e: MalformedURLException =>
-          ("Error parsing URL " + url + Option(e.getMessage).map(" (" + _ + ")").mkString).failure
+          ("Error parsing URL " + url + Option(e.getMessage).fold("")(" (" + _ + ")")).failure
+      }
+
+      validatedUrl.flatMap { url =>
+        Option(url.getUserInfo) match {
+          case None =>
+            repo.success
+          case Some(userInfo) =>
+            userInfo.split(":", 2) match {
+              case Array(user, password) =>
+                val baseUrl = new java.net.URL(
+                  url.getProtocol,
+                  url.getHost,
+                  url.getPort,
+                  url.getFile
+                ).toString
+
+                val repo0 = repo match {
+                  case m: MavenRepository =>
+                    m.copy(
+                      root = baseUrl,
+                      authentication = Some(Authentication(user, password))
+                    )
+                  case i: IvyRepository =>
+                    i.copy(
+                      pattern = baseUrl,
+                      authentication = Some(Authentication(user, password))
+                    )
+                  case r =>
+                    sys.error(s"Unrecognized repository: $r")
+                }
+
+                repo0.success
+
+              case _ =>
+                s"No password found in user info of URL $url".failure
+            }
+        }
       }
     }
 

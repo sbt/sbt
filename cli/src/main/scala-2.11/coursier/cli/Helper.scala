@@ -99,6 +99,18 @@ class Helper(
     MavenRepository("https://repo1.maven.org/maven2")
   )
 
+  val sourceDirectories = common.sources.map { path =>
+    val subDir = "target/repository"
+    val dir = new File(path)
+    val repoDir = new File(dir, subDir)
+    if (!dir.exists())
+      Console.err.println(s"Warning: sources $path not found")
+    else if (!repoDir.exists())
+      Console.err.println(s"Warning: directory $subDir not found under sources path $path")
+
+    repoDir
+  }
+
   val repositoriesValidation = CacheParse.repositories(common.repository).map { repos0 =>
 
     var repos = (if (common.noDefault) Nil else defaultRepositories) ++ repos0
@@ -119,10 +131,14 @@ class Helper(
   }
 
   val repositories = repositoriesValidation match {
-    case Success(repos) => repos
+    case Success(repos) =>
+      val sourceRepositories = sourceDirectories.map(dir =>
+        MavenRepository(dir.toURI.toString, changing = Some(true))
+      )
+      sourceRepositories ++ repos
     case Failure(errors) =>
       prematureExit(
-        s"Error parsing repositories:\n${errors.list.map("  "+_).mkString("\n")}"
+        s"Error with repositories:\n${errors.list.map("  "+_).mkString("\n")}"
       )
   }
 
@@ -140,8 +156,36 @@ class Helper(
     s"Cannot parse forced versions:\n" + forceVersionErrors.map("  "+_).mkString("\n")
   }
 
+  val sourceRepositoryForceVersions = sourceDirectories.flatMap { base =>
+
+    // FIXME Also done in the plugin module
+
+    def pomDirComponents(f: File, components: Vector[String]): Stream[Vector[String]] =
+      if (f.isDirectory) {
+        val components0 = components :+ f.getName
+        Option(f.listFiles()).toStream.flatten.flatMap(pomDirComponents(_, components0))
+      } else if (f.getName.endsWith(".pom"))
+        Stream(components)
+      else
+        Stream.empty
+
+    Option(base.listFiles())
+      .toVector
+      .flatten
+      .flatMap(pomDirComponents(_, Vector()))
+      // at least 3 for org / name / version - the contrary should not happen, but who knows
+      .filter(_.length >= 3)
+      .map { components =>
+        val org = components.dropRight(2).mkString(".")
+        val name = components(components.length - 2)
+        val version = components.last
+
+        Module(org, name) -> version
+      }
+  }
+
   val forceVersions = {
-    val grouped = forceVersions0
+    val grouped = (forceVersions0 ++ sourceRepositoryForceVersions)
       .groupBy { case (mod, _) => mod }
       .map { case (mod, l) => mod -> l.map { case (_, version) => version } }
 
@@ -354,10 +398,16 @@ class Helper(
 
   lazy val projCache = res.projectCache.mapValues { case (_, p) => p }
 
-  if (printResultStdout || verbosityLevel >= 1) {
-    if ((printResultStdout && verbosityLevel >= 1) || verbosityLevel >= 2)
+  if (printResultStdout || verbosityLevel >= 1 || tree || reverseTree) {
+    if ((printResultStdout && verbosityLevel >= 1) || verbosityLevel >= 2 || tree || reverseTree)
       errPrintln(s"  Result:")
-    val depsStr = Print.dependenciesUnknownConfigs(trDeps, projCache)
+
+    val depsStr =
+      if (reverseTree || tree)
+        Print.dependencyTree(dependencies, res, printExclusions = verbosityLevel >= 1, reverse = reverseTree)
+      else
+        Print.dependenciesUnknownConfigs(trDeps, projCache)
+
     if (printResultStdout)
       println(depsStr)
     else

@@ -80,7 +80,7 @@ object Platform {
         get(artifact.url)
           .map(\/-(_))
           .recover { case e: Exception =>
-          -\/(e.getMessage)
+          -\/(e.toString + Option(e.getMessage).fold("")(" (" + _ + ")"))
         }
       }
     )
@@ -104,9 +104,10 @@ object Platform {
           .flatMap(_ => get(artifact.url))
           .map { s => logger.fetched(artifact.url); \/-(s) }
           .recover { case e: Exception =>
-          logger.other(artifact.url, e.getMessage)
-          -\/(e.getMessage)
-        }
+            val msg = e.toString + Option(e.getMessage).fold("")(" (" + _ + ")")
+            logger.other(artifact.url, msg)
+            -\/(msg)
+          }
       }
     )
   }

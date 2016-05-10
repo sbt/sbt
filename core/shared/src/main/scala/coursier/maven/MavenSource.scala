@@ -6,7 +6,8 @@ case class MavenSource(
   root: String,
   changing: Option[Boolean] = None,
   /** See doc on MavenRepository */
-  sbtAttrStub: Boolean
+  sbtAttrStub: Boolean,
+  authentication: Option[Authentication]
 ) extends Artifact.Source {
 
   import Repository._
@@ -21,7 +22,8 @@ case class MavenSource(
           Map.empty,
           Map.empty,
           Attributes("jar", "src"),  // Are these the right attributes?
-          changing = underlying.changing
+          changing = underlying.changing,
+          authentication = authentication
         )
           .withDefaultChecksums
           .withDefaultSignature,
@@ -30,7 +32,8 @@ case class MavenSource(
           Map.empty,
           Map.empty,
           Attributes("jar", "javadoc"), // Same comment as above
-          changing = underlying.changing
+          changing = underlying.changing,
+          authentication = authentication
         )
           .withDefaultChecksums
           .withDefaultSignature
@@ -65,7 +68,8 @@ case class MavenSource(
           Map.empty,
           Map.empty,
           publication.attributes,
-          changing = changing0
+          changing = changing0,
+          authentication = authentication
         )
           .withDefaultChecksums
 

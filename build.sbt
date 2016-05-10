@@ -146,6 +146,21 @@ lazy val core = crossProject
       import com.typesafe.tools.mima.core.ProblemFilters._
       
       Seq(
+        // Since 1.0.0-M12
+        // Extra `authentication` field
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.core.Artifact.apply"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.core.Artifact.copy"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.core.Artifact.this"),
+        ProblemFilters.exclude[MissingTypesProblem]("coursier.ivy.IvyRepository$"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.ivy.IvyRepository.apply"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.ivy.IvyRepository.copy"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.ivy.IvyRepository.this"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.maven.MavenRepository.copy"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.maven.MavenRepository.this"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.maven.MavenSource.apply"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.maven.MavenRepository.apply"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.maven.MavenSource.copy"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.maven.MavenSource.this"),
         // Since 1.0.0-M11
         // Extra parameter with default value added, problem for forward compatibility only
         ProblemFilters.exclude[MissingMethodProblem]("coursier.core.ResolutionProcess.next"),
@@ -226,6 +241,9 @@ lazy val cache = project
       import com.typesafe.tools.mima.core.ProblemFilters._
       
       Seq(
+        // Since 1.0.0-M12
+        // Remove deprecated / unused helper method
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.Cache.readFully"),
         // Since 1.0.0-M11
         // Add constructor parameter on FileError - shouldn't be built by users anyway
         ProblemFilters.exclude[MissingMethodProblem]("coursier.FileError.this"),
@@ -488,13 +506,15 @@ lazy val plugin = project
     scriptedBufferLog := false
   )
 
+val http4sVersion = "0.8.6"
+
 lazy val `simple-web-server` = project
   .settings(commonSettings)
   .settings(packAutoSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "org.http4s" %% "http4s-blaze-server" % "0.13.2",
-      "org.http4s" %% "http4s-dsl" % "0.13.2",
+      "org.http4s" %% "http4s-blazeserver" % http4sVersion,
+      "org.http4s" %% "http4s-dsl" % http4sVersion,
       "org.slf4j" % "slf4j-nop" % "1.7.19",
       "com.github.alexarchambault" %% "case-app" % "1.0.0-RC2"
     )

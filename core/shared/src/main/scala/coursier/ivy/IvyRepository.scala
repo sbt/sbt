@@ -14,7 +14,8 @@ case class IvyRepository(
   withSignatures: Boolean = true,
   withArtifacts: Boolean = true,
   // hack for SBT putting infos in properties
-  dropInfoAttributes: Boolean = false
+  dropInfoAttributes: Boolean = false,
+  authentication: Option[Authentication] = None
 ) extends Repository {
 
   def metadataPattern: String = metadataPatternOpt.getOrElse(pattern)
@@ -92,7 +93,8 @@ case class IvyRepository(
               Map.empty,
               Map.empty,
               p.attributes,
-              changing = changing.getOrElse(project.version.contains("-SNAPSHOT")) // could be more reliable
+              changing = changing.getOrElse(project.version.contains("-SNAPSHOT")), // could be more reliable
+              authentication = authentication
             )
 
             if (withChecksums)
@@ -127,7 +129,8 @@ case class IvyRepository(
           Map.empty,
           Map.empty,
           Attributes("ivy", ""),
-          changing = changing.getOrElse(version.contains("-SNAPSHOT"))
+          changing = changing.getOrElse(version.contains("-SNAPSHOT")),
+          authentication = authentication
         )
 
         if (withChecksums)

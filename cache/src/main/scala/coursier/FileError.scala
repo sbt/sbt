@@ -5,7 +5,9 @@ import java.io.File
 sealed abstract class FileError(
   val `type`: String,
   val message: String
-) extends Product with Serializable
+) extends Product with Serializable {
+  def describe: String = s"${`type`}: $message"
+}
 
 object FileError {
 
@@ -20,6 +22,14 @@ object FileError {
   ) extends FileError(
     "not found",
     file
+  )
+
+  final case class Unauthorized(
+    file: String,
+    realm: Option[String]
+  ) extends FileError(
+    "unauthorized",
+    file + realm.fold("")(" (" + _ + ")")
   )
 
   final case class ChecksumNotFound(

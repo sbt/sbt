@@ -24,9 +24,12 @@ case class CommonOptions(
   @Help("Maximum number of resolution iterations (specify a negative value for unlimited, default: 100)")
   @Short("N")
     maxIterations: Int = 100,
-  @Help("Repositories - for multiple repositories, separate with comma and/or repeat this option (e.g. -r central,ivy2local -r sonatype-snapshots, or equivalently -r central,ivy2local,sonatype-snapshots)")
+  @Help("Repository - for multiple repositories, separate with comma and/or add this option multiple times (e.g. -r central,ivy2local -r sonatype-snapshots, or equivalently -r central,ivy2local,sonatype-snapshots)")
   @Short("r")
     repository: List[String],
+  @Help("Source repository - for multiple repositories, separate with comma and/or add this option multiple times")
+  @Short("R")
+    sources: List[String],
   @Help("Do not add default repositories (~/.ivy2/local, and Central)")
     noDefault: Boolean = false,
   @Help("Modify names in Maven repository paths for SBT plugins")
@@ -61,6 +64,12 @@ case class CommonOptions(
   @Short("B")
   @Value("Number of warm-up resolutions - if negative, doesn't print per iteration benchmark (less overhead)")
     benchmark: Int,
+  @Help("Print dependencies as a tree")
+  @Short("t")
+    tree: Boolean,
+  @Help("Print dependencies as an inversed tree (dependees as children)")
+  @Short("T")
+    reverseTree: Boolean,
   @Recurse
     cacheOptions: CacheOptions
 ) {

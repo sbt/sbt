@@ -529,6 +529,16 @@ final case class Resolution(
     } else
       Nil
 
+  def dependenciesOf(dep: Dependency, withReconciledVersions: Boolean = true): Seq[Dependency] =
+    if (withReconciledVersions)
+      finalDependencies0(dep).map { trDep =>
+        trDep.copy(
+          version = reconciledVersions.getOrElse(trDep.module, trDep.version)
+        )
+      }
+    else
+      finalDependencies0(dep)
+
   /**
    * Transitive dependencies of the current dependencies, according to
    * what there currently is in cache.
@@ -557,6 +567,9 @@ final case class Resolution(
       rootDependencies.map(withDefaultConfig) ++ dependencies ++ transitiveDependencies,
       forceVersions
     )
+
+  def reconciledVersions: Map[Module, String] =
+    nextDependenciesAndConflicts._3
 
   /**
    * The modules we miss some info about.
@@ -974,10 +987,9 @@ final case class Resolution(
     * @param dependencies: the dependencies to keep from this `Resolution`
     */
   def subset(dependencies: Set[Dependency]): Resolution = {
-    val (_, _, finalVersions) = nextDependenciesAndConflicts
 
     def updateVersion(dep: Dependency): Dependency =
-      dep.copy(version = finalVersions.getOrElse(dep.module, dep.version))
+      dep.copy(version = reconciledVersions.getOrElse(dep.module, dep.version))
 
     @tailrec def helper(current: Set[Dependency]): Set[Dependency] = {
       val newDeps = current ++ current

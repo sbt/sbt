@@ -18,7 +18,7 @@ case class FallbackDependenciesRepository(
         case None => Nil
         case Some((url, changing)) =>
           Seq(
-            Artifact(url.toString, Map.empty, Map.empty, Attributes("jar", ""), changing)
+            Artifact(url.toString, Map.empty, Map.empty, Attributes("jar", ""), changing, None)
           )
       }
   }

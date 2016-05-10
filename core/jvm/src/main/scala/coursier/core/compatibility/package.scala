@@ -14,7 +14,7 @@ package object compatibility {
   def xmlParse(s: String): Either[String, Xml.Node] = {
     def parse =
       try Right(scala.xml.XML.loadString(s))
-      catch { case e: Exception => Left(e.getMessage) }
+      catch { case e: Exception => Left(e.toString + Option(e.getMessage).fold("")(" (" + _ + ")")) }
 
     def fromNode(node: scala.xml.Node): Xml.Node =
       new Xml.Node {
