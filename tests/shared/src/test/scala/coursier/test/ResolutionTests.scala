@@ -34,11 +34,11 @@ object ResolutionTests extends TestSuite {
   
     Project(Module("acme", "play"), "2.4.1",
       dependencies = Seq(
-        "" -> Dependency(Module("acme", "play-json"), "${playJsonVersion}"),
-        "" -> Dependency(Module("${project.groupId}", "${configName}"), "1.3.0")),
+        "" -> Dependency(Module("acme", "play-json"), "${play_json_version}"),
+        "" -> Dependency(Module("${project.groupId}", "${WithSpecialChar©}"), "1.3.0")),
       properties = Seq(
-        "playJsonVersion" -> "2.4.0",
-        "configName" -> "config")),
+        "play_json_version" -> "2.4.0",
+        "WithSpecialChar©" -> "config")),
   
     Project(Module("acme", "play-extra-no-config"), "2.4.1",
       Seq(
