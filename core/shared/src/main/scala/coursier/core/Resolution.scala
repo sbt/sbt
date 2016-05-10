@@ -71,7 +71,7 @@ object Resolution {
   }
 
   val propRegex = (
-    quote("${") + "([a-zA-Z0-9-.]*)" + quote("}")
+    quote("${") + "([^" + quote("{}") + "]*)" + quote("}")
   ).r
 
   def substituteProps(s: String, properties: Map[String, String]) = {
