@@ -1,6 +1,11 @@
 scalaVersion := "2.11.8"
 
-coursierCachePolicies := Seq(coursier.CachePolicy.ForceDownload)
+coursierCachePolicies := {
+  if (sys.props("os.name").startsWith("Windows"))
+    coursierCachePolicies.value
+  else
+    Seq(coursier.CachePolicy.ForceDownload)
+}
 
 libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.41" from {
   
