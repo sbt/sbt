@@ -8,7 +8,6 @@ import sbt.internal.inc.{ Analysis, AnalyzingCompiler, ClasspathOptions, Compile
 import xsbti.{ Logger => _, _ }
 import xsbti.compile.{ CompileOrder, Compilers, CompileResult, GlobalsCache, IncOptions, Inputs, MiniSetup }
 import CompileOrder.{ JavaThenScala, Mixed, ScalaThenJava }
-import Locate.DefinesClass
 import java.io.File
 
 import sbt.internal.librarymanagement.{ ComponentManager, IvyConfiguration }
