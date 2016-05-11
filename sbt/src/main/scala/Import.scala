@@ -30,9 +30,6 @@ trait Import {
   type RichFile = sbt.io.RichFile
   type SimpleFileFilter = sbt.io.SimpleFileFilter
   type SimpleFilter = sbt.io.SimpleFilter
-  type TestError = sbt.io.TestError
-  type TestException = sbt.io.TestException
-  type TestRuntimeException = sbt.io.TestRuntimeException
 
   // sbt.util
   type AbstractLogger = sbt.util.AbstractLogger
