@@ -33,7 +33,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
     "-Ywarn-value-discard"),
   previousArtifact := None, // Some(organization.value %% moduleName.value % "1.0.0"),
   publishArtifact in Compile := true,
-  publishArtifact in Test := true
+  publishArtifact in Test := false
 )
 
 lazy val root = (project in file(".")).
@@ -59,19 +59,12 @@ lazy val root = (project in file(".")).
 lazy val lm = (project in file("librarymanagement")).
   settings(
     commonSettings,
+    name := "librarymanagement",
     libraryDependencies ++= Seq(
-      utilLogging.artifacts(
-        Artifact("util-logging", "jar", "jar", classifier = None, configurations = List(Compile), url = None),
-        Artifact("util-logging", "jar", "jar", classifier = Some("tests"), configurations = List(Test), url = None)
-      ),
-      sbtIO.artifacts(
-        Artifact("io", "jar", "jar", classifier = None, configurations = List(Compile), url = None),
-        Artifact("io", "jar", "jar", classifier = Some("tests"), configurations = List(Test), url = None)
-      ),
-      utilTesting % Test,
+      utilLogging, sbtIO, utilTesting % Test,
       utilCollection, utilCompletion, ivy, jsch, sbtSerialization, scalaReflect.value, launcherInterface),
     resourceGenerators in Compile <+= (version, resourceManaged, streams, compile in Compile) map Util.generateVersionFile,
-    name := "librarymanagement",
+    publishArtifact in Test := false,
     binaryIssueFilters ++= Seq()
   )
 

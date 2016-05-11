@@ -6,7 +6,6 @@ import java.io.File
 import cross.CrossVersionUtil
 import sbt.util.Logger
 import sbt.internal.util.ConsoleLogger
-import sbt.internal.util.UnitSpec
 import sbt.librarymanagement._
 import ivyint.SbtChainResolver
 import Configurations._
