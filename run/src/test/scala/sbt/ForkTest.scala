@@ -5,7 +5,7 @@ import Prop.{ Exception => _, _ }
 import Gen.{ alphaNumChar, frequency, nonEmptyListOf }
 import java.io.File
 
-import sbt.internal.util.TestLogger
+import sbt.internal.TestLogger
 import sbt.io.{ IO, Path }
 
 object ForkTest extends Properties("Fork") {
