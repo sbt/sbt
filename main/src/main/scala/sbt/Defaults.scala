@@ -11,6 +11,7 @@ import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
 import sbt.internal.librarymanagement.mavenint.{ PomExtraDependencyAttributes, SbtPomExtraProperties }
 import xsbt.api.Discovery
 import xsbti.compile.{ CompileAnalysis, CompileOptions, CompileOrder, CompileResult, DefinesClass, IncOptions, IncOptionsUtil, Inputs, MiniSetup, PreviousResult, Setup, TransactionalManagerType }
+import xsbti.compile.PerClasspathEntryLookup
 import Project.{ inConfig, inScope, inTask, richInitialize, richInitializeTask, richTaskSessionVar }
 import Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
 import sbt.internal.librarymanagement.{ CustomPomParser, DependencyFilter }
@@ -89,7 +90,7 @@ object Defaults extends BuildCommon {
       apiMappings := Map.empty,
       autoScalaLibrary :== true,
       managedScalaInstance :== true,
-      definesClass :== FileValueCache(Locate.definesClass _).get,
+      classpathEntryDefinesClass :== FileValueCache(Locate.definesClass _).get,
       traceLevel in run :== 0,
       traceLevel in runMain :== 0,
       traceLevel in console :== Int.MaxValue,
@@ -892,13 +893,17 @@ object Defaults extends BuildCommon {
       finally x.close() // workaround for #937
     }
   def compileIncSetupTask = Def.task {
-    val dc: File => DefinesClass = {
-      val dc = definesClass.value
-      f => new DefinesClass { override def apply(className: String): Boolean = dc(f)(className) }
+    val lookup = new PerClasspathEntryLookup {
+      private val cachedAnalysisMap = analysisMap(dependencyClasspath.value)
+      private val cachedPerEntryDefinesClassLookup = Keys.classpathEntryDefinesClass.value
+
+      override def analysis(classpathEntry: File): Maybe[CompileAnalysis] =
+        o2m(cachedAnalysisMap(classpathEntry))
+      override def definesClass(classpathEntry: File): DefinesClass =
+        cachedPerEntryDefinesClassLookup(classpathEntry)
     }
     new Setup(
-      f1(t => o2m(analysisMap(dependencyClasspath.value)(t))),
-      f1(dc),
+      lookup,
       (skip in compile).value,
       // TODO - this is kind of a bad way to grab the cache directory for streams...
       streams.value.cacheDirectory / compileAnalysisFilename.value,
