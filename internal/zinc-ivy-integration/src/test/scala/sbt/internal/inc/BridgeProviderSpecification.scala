@@ -6,7 +6,7 @@ import java.util.Properties
 import java.util.concurrent.Callable
 
 import sbt.internal.inc.classpath.ClasspathUtilities
-import sbt.internal.librarymanagement.{ JsonUtil, ComponentManager, BaseIvySpecification }
+import sbt.internal.librarymanagement.{ JsonUtil, ComponentManager }
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.librarymanagement.{ ModuleID, UpdateOptions, Resolver, Patterns, FileRepository, DefaultMavenRepository }
