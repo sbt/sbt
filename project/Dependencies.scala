@@ -6,7 +6,7 @@ object Dependencies {
   lazy val scala211 = "2.11.8"
   lazy val scala212 = "2.12.0-M4"
 
-  lazy val sbtIO = "org.scala-sbt" %% "io" % "1.0.0-M5"
+  lazy val sbtIO = "org.scala-sbt" %% "io" % "1.0.0-M6"
   lazy val jline = "jline" % "jline" % "2.13"
   lazy val sbtSerialization = "org.scala-sbt" %% "serialization" % "0.1.2"
   lazy val sbinary = "org.scala-sbt" %% "sbinary" % "0.4.3"
