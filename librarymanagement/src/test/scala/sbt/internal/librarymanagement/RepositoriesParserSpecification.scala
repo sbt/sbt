@@ -2,8 +2,6 @@ package sbt
 package internal
 package librarymanagement
 
-import sbt.internal.util.UnitSpec
-
 import java.net.URL
 
 /**

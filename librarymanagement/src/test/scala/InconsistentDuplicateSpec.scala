@@ -1,6 +1,5 @@
 package sbt.internal.librarymanagement
 
-import sbt.internal.util.UnitSpec
 import sbt.librarymanagement._
 
 // This is a specification to check the inconsistent duplicate warnings

@@ -8,7 +8,6 @@ import sbt.librarymanagement._
 import sbt.io.IO.withTemporaryDirectory
 import sbt.util.Logger
 import sbt.internal.util.ConsoleLogger
-import sbt.internal.util.UnitSpec
 
 class CustomPomParserTest extends UnitSpec {
   "CustomPomParser" should "resolve an artifact with packaging 'scala-jar' as a regular jar file." in {

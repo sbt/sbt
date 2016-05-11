@@ -3,7 +3,6 @@ package sbt.internal.librarymanagement
 import java.io.File
 import sbt.util.Logger
 import sbt.internal.util.ConsoleLogger
-import sbt.internal.util.UnitSpec
 
 // http://ant.apache.org/ivy/history/2.3.0/ivyfile/dependency.html
 // http://maven.apache.org/enforcer/enforcer-rules/versionRanges.html
