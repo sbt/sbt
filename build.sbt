@@ -47,6 +47,7 @@ def commonSettings: Seq[Setting[_]] = Seq[SettingsDefinition](
   bintrayPackage := (bintrayPackage in ThisBuild).value,
   bintrayRepository := (bintrayRepository in ThisBuild).value,
   mimaDefaultSettings,
+  publishArtifact in Test := false,
   previousArtifact := None, // Some(organization.value % moduleName.value % "1.0.0"),
   binaryIssueFilters ++= Seq(
   )
@@ -142,7 +143,7 @@ lazy val runProj = (project in file("run")).
     testedBaseSettings,
     name := "Run",
     libraryDependencies ++= Seq(sbtIO,
-      utilLogging, (utilLogging % Test).classifier("tests"), compilerClasspath)
+      utilLogging, compilerClasspath)
   )
 
 lazy val scriptedSbtProj = (project in scriptedPath / "sbt").
