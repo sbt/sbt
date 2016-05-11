@@ -2,7 +2,7 @@ import Dependencies._
 import Util._
 import com.typesafe.tools.mima.core._, ProblemFilters._
 
-def baseVersion: String = "0.1.0-M12"
+def baseVersion: String = "0.1.0-M13"
 def internalPath   = file("internal")
 
 def commonSettings: Seq[Setting[_]] = Seq(
@@ -32,7 +32,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
     "-Ywarn-value-discard"),
   previousArtifact := None, // Some(organization.value %% moduleName.value % "1.0.0"),
   publishArtifact in Compile := true,
-  publishArtifact in Test := true
+  publishArtifact in Test := false
 )
 
 lazy val utilRoot: Project = (project in file(".")).
@@ -108,7 +108,6 @@ lazy val utilLogging = (project in internalPath / "util-logging").
   dependsOn(utilInterface, utilTesting % Test).
   settings(
     commonSettings,
-    publishArtifact in (Test, packageBin) := true,
     name := "Util Logging",
     libraryDependencies += jline
   )
