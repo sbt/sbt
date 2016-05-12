@@ -3,7 +3,8 @@ import sbt.internal.inc.classpath.ClasspathUtilities
 lazy val root = (project in file(".")).
   settings(
     ivyPaths <<= (baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache"))),
-    libraryDependencies += "slinky" % "slinky" % "2.1" % "test" from "http://slinky2.googlecode.com/svn/artifacts/2.1/slinky.jar",
+    libraryDependencies += "org.jsoup" % "jsoup" % "1.9.1" % Test from "http://jsoup.org/packages/jsoup-1.9.1.jar",
+    ivyLoggingLevel := UpdateLogging.Full,
     TaskKey[Unit]("check-in-test") <<= checkClasspath(Test),
     TaskKey[Unit]("check-in-compile") <<= checkClasspath(Compile)
   )
@@ -13,7 +14,7 @@ def checkClasspath(conf: Configuration) =
     try
     {
       val loader = ClasspathUtilities.toLoader(cp.files)
-      Class.forName("slinky.http.Application", false, loader)
+      Class.forName("org.jsoup.Jsoup", false, loader)
       ()
     }
     catch

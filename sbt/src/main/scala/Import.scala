@@ -305,6 +305,7 @@ trait Import {
 
   // sbt.internal.librarymanagement
   type IvyPaths = sbt.internal.librarymanagement.IvyPaths
+  val UpdateLogging = sbt.internal.librarymanagement.UpdateLogging
 
   type IncOptions = xsbti.compile.IncOptions
 }
