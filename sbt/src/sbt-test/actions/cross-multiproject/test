@@ -1,0 +1,46 @@
+> + compile
+
+$ exists lib/target/scala-2.11
+$ exists lib/target/scala-2.10
+$ exists sbt-foo/target/scala-2.10
+-$ exists sbt-foo/target/scala-2.11
+
+> clean
+> + libProj/compile
+
+$ exists lib/target/scala-2.11
+$ exists lib/target/scala-2.10
+-$ exists sbt-foo/target/scala-2.10
+-$ exists sbt-foo/target/scala-2.11
+
+> clean
+> ++ 2.11.1 compile
+
+$ exists lib/target/scala-2.11
+-$ exists lib/target/scala-2.10
+$ exists sbt-foo/target/scala-2.10
+-$ exists sbt-foo/target/scala-2.11
+
+> clean
+> ++ 2.10.4 compile
+
+-$ exists lib/target/scala-2.11
+$ exists lib/target/scala-2.10
+$ exists sbt-foo/target/scala-2.10
+-$ exists sbt-foo/target/scala-2.11
+
+> clean
+> ++ 2.11.5 compile
+
+$ exists lib/target/scala-2.11
+-$ exists lib/target/scala-2.10
+$ exists sbt-foo/target/scala-2.10
+-$ exists sbt-foo/target/scala-2.11
+
+> clean
+> ++ 2.11.5! compile
+
+$ exists lib/target/scala-2.11
+-$ exists lib/target/scala-2.10
+-$ exists sbt-foo/target/scala-2.10
+$ exists sbt-foo/target/scala-2.11

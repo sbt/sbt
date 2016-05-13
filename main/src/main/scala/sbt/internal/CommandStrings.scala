@@ -293,37 +293,59 @@ defaults
       Nil
 
   val CrossCommand = "+"
+  val CrossRestoreSessionCommand = "+-"
   val SwitchCommand = "++"
 
   def crossHelp: Help = Help.more(CrossCommand, CrossDetailed)
+  def crossRestoreSessionHelp = Help.more(CrossRestoreSessionCommand, CrossRestoreSessionDetailed)
   def switchHelp: Help = Help.more(SwitchCommand, SwitchDetailed)
 
   def CrossDetailed =
-    s"""$CrossCommand <command>
+    s"""$CrossCommand [-v] <command>
 	Runs <command> for each Scala version specified for cross-building.
 
-	For each string in `crossScalaVersions` in the current project, this command sets the
-	`scalaVersion` of all projects to that version, reloads the build, and
-	executes <command>.  When finished, it reloads the build with the original
-	Scala version.
+	For each string in `crossScalaVersions` in each project project, this command sets
+	the `scalaVersion` of all projects that list that Scala version with that Scala
+  version reloads the build, and then executes <command> for those projects.  When
+  finished, it resets the build to its original state.
+
+  If -v is supplied, verbose logging of the Scala version switching is done.
 
 	See also `help $SwitchCommand`
 """
 
+  def CrossRestoreSessionDetailed =
+    s"""$CrossRestoreSessionCommand
+
+  Restores a session that was captured by the cross command, +.
+"""
+
   def SwitchDetailed =
-    s"""$SwitchCommand <scala-version> [<command>]
+    s"""$SwitchCommand <scala-version>[!] [-v] [<command>]
 	Changes the Scala version and runs a command.
 
-	Sets the `scalaVersion` of all projects to <scala-version> and reloads the build.
+	Sets the `scalaVersion` of all projects that define a Scala cross version that is binary
+  compatible with <scala-version> and reloads the build.  If ! is supplied, then the
+  version is forced on all projects regardless of whether they are binary compatible or
+  not.
+
+  If -v is supplied, verbose logging of the Scala version switching is done.
+
 	If <command> is provided, it is then executed.
 
-$SwitchCommand [<scala-version>=]<scala-home> [<command>]
+$SwitchCommand [<scala-version>=]<scala-home>[!] [-v] [<command>]
 	Uses the Scala installation at <scala-home> by configuring the scalaHome setting for
 	all projects.
 
 	If <scala-version> is specified, it is used as the value of the scalaVersion setting.
 	This is important when using managed dependencies.  This version will determine the
 	cross-version used as well as transitive dependencies.
+
+  Only projects that are listed to be binary compatible with the selected Scala version
+  have their Scala version switched.  If ! is supplied, then all projects projects have
+  their Scala version switched.
+
+  If -v is supplied, verbose logging of the Scala version switching is done.
 
 	If <command> is provided, it is then executed.
 
