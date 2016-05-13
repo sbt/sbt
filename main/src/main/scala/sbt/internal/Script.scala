@@ -20,10 +20,20 @@ object Script {
   lazy val command =
     Command.command(Name) { state =>
       val scriptArg = state.remainingCommands.headOption getOrElse sys.error("No script file specified")
-      val script = new File(scriptArg).getAbsoluteFile
-      val hash = Hash.halve(Hash.toHex(Hash(script.getAbsolutePath)))
+      val scriptFile = new File(scriptArg).getAbsoluteFile
+      val hash = Hash.halve(Hash.toHex(Hash(scriptFile.getAbsolutePath)))
       val base = new File(CommandUtil.bootDirectory(state), hash)
       IO.createDirectory(base)
+      val src = new File(base, "src_managed")
+      IO.createDirectory(src)
+      // handle any script extension or none
+      val scalaFile = {
+        val dotIndex = scriptArg.lastIndexOf(".")
+        if (dotIndex == -1) scriptArg + ".scala"
+        else scriptArg.substring(0, dotIndex) + ".scala"
+      }
+      val script = new File(src, scalaFile)
+      IO.copyFile(scriptFile, script)
 
       val (eval, structure) = Load.defaultLoad(state, base, state.log)
       val session = Load.initialSession(structure, eval)
