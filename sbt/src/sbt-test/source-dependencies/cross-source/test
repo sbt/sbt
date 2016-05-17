@@ -1,7 +1,7 @@
 # A.scala needs B.scala, it won't be in source list
-> ++2.11.4
+> ++2.11.4!
 -> compile
 
 # A.scala needs B.scala, it would be in source list
-> ++2.10.4
+> ++2.10.4!
 > compile
