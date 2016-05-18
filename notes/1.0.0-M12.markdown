@@ -5,6 +5,7 @@
 * Fix a resolution bug occurring randomly in some tricky resolutions ([#241])
 * Fix Ivy attributes missing in artifacts published from SBT with sbt-coursier enabled (mainly affects SBT plugins published this way, [#241])
 * Add support for printing dependency trees (`-t` and `-T` options from the command line, `coursierDependencyTree` and `coursierDependencyInverseTree` from the SBT plugin, [#243])
+* Add support for HTTP authentication (specify like `-r http://user:pass@repo.com/path` from the command-line, with the special key `coursierCredentials` from the SBT plugin - support for SBT `credential` key to come soon - [#243])
 * Experimental: add early support for using an SBT project as a repository for its projects (really experimental / probably unstable, [#243])
 * Handle Maven properties names with a wider range of characters ([#247])
 
