@@ -320,6 +320,14 @@ $ ./coursier launch net.sf.proguard:proguard-base:5.2.1 -M proguard.ProGuard
 $ ./coursier launch net.sf.proguard:proguard-retrace:5.2.1 -M proguard.retrace.ReTrace
 ```
 
+* Wiremock,
+```
+./coursier launch com.github.tomakehurst:wiremock:1.57 -- \
+--proxy-all="http://search.twitter.com" --record-mappings --verbose
+```
+
+If you wish to pass additional argument to the artifact being launched, separate them from the coursier's parameters list with the "--", just like in the Wiremock example above.
+
 #### fetch
 
 The `fetch` command simply fetches a set of dependencies, along with their
