@@ -1,0 +1,15 @@
+### Changes
+
+* Add support for cross version in `excludeDependencies` in SBT plugin (thanks to [@jalaziz], [#238])
+* Add `simple-web-server` module, providing an equivalent of python's `SimpleHTTPServer` or node's `http-server` (run like `./coursier launch io.get-coursier:simple-web-server_2.11:1.0.0-M12 -r http://dl.bintray.com/scalaz/releases`, add `-- --help` to list available options - [#241])
+* Fix a resolution bug occurring randomly in some tricky resolutions ([#241])
+* Fix Ivy attributes missing in artifacts published from SBT with sbt-coursier enabled (mainly affects SBT plugins published this way, [#241])
+* Add support for printing dependency trees (`-t` and `-T` options from the command line, `coursierDependencyTree` and `coursierDependencyInverseTree` from the SBT plugin, [#243])
+* Experimental: add early support for using an SBT project as a repository for its projects (really experimental / probably unstable, [#243])
+* Handle Maven properties names with a wider range of characters ([#247])
+
+[@jalaziz]: https://github.com/jalaziz
+[#238]: https://github.com/alexarchambault/coursier/pull/238
+[#241]: https://github.com/alexarchambault/coursier/pull/241
+[#243]: https://github.com/alexarchambault/coursier/pull/243
+[#247]: https://github.com/alexarchambault/coursier/pull/247
