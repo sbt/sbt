@@ -14,3 +14,7 @@
 [#241]: https://github.com/alexarchambault/coursier/pull/241
 [#243]: https://github.com/alexarchambault/coursier/pull/243
 [#247]: https://github.com/alexarchambault/coursier/pull/247
+
+### Non-backward compatible changes
+
+* Possible minor incompatible binary changes because of the added support for authentication, it is recommended to recompile your code against the `1.0.0-M12` version.
