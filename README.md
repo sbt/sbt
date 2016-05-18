@@ -68,7 +68,7 @@ Lastly, it can be used programmatically via its [API](#api) and has a Scala JS [
 
 Enable the SBT plugin by adding
 ```scala
-addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.0-M11")
+addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.0-M12")
 ```
 to `~/.sbt/0.13/plugins/build.sbt` (enables it globally), or to the `project/plugins.sbt` file
 of a SBT project. Tested with SBT 0.13.8 / 0.13.9.
@@ -110,8 +110,8 @@ Fetching artifacts
 Add to your `build.sbt`
 ```scala
 libraryDependencies ++= Seq(
-  "io.get-coursier" %% "coursier" % "1.0.0-M11",
-  "io.get-coursier" %% "coursier-cache" % "1.0.0-M11"
+  "io.get-coursier" %% "coursier" % "1.0.0-M12",
+  "io.get-coursier" %% "coursier-cache" % "1.0.0-M12"
 )
 ```
 
@@ -214,7 +214,7 @@ of the cache used by a particular project, in case you have any doubt about what
 
 Enable the SBT plugin globally by adding
 ```scala
-addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.0-M11")
+addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.0-M12")
 ```
 to `~/.sbt/0.13/plugins/build.sbt`
 
@@ -320,14 +320,6 @@ $ ./coursier launch net.sf.proguard:proguard-base:5.2.1 -M proguard.ProGuard
 $ ./coursier launch net.sf.proguard:proguard-retrace:5.2.1 -M proguard.retrace.ReTrace
 ```
 
-* Wiremock,
-```
-./coursier launch com.github.tomakehurst:wiremock:1.57 -- \
---proxy-all="http://search.twitter.com" --record-mappings --verbose
-```
-
-If you wish to pass additional argument to the artifact being launched, separate them from the coursier's parameters list with the "--", just like in the Wiremock example above.
-
 #### fetch
 
 The `fetch` command simply fetches a set of dependencies, along with their
@@ -363,7 +355,7 @@ The `bootstrap` generates tiny bootstrap launchers, able to pull their dependenc
 repositories on first launch. For example, the launcher of coursier is [generated](https://github.com/alexarchambault/coursier/blob/master/project/generate-launcher.sh) with a command like
 ```
 $ ./coursier bootstrap \
-    io.get-coursier:coursier-cli_2.11:1.0.0-M11 \
+    io.get-coursier:coursier-cli_2.11:1.0.0-M12 \
     -b -f -o coursier \
     -M coursier.cli.Coursier
 ```
@@ -375,12 +367,12 @@ See `./coursier bootstrap --help` for a list of the available options.
 Add to your `build.sbt`
 ```scala
 libraryDependencies ++= Seq(
-  "io.get-coursier" %% "coursier" % "1.0.0-M11",
-  "io.get-coursier" %% "coursier-cache" % "1.0.0-M11"
+  "io.get-coursier" %% "coursier" % "1.0.0-M12",
+  "io.get-coursier" %% "coursier-cache" % "1.0.0-M12"
 )
 ```
 
-The first module, `"io.get-coursier" %% "coursier" % "1.0.0-M11"`, mainly depends on
+The first module, `"io.get-coursier" %% "coursier" % "1.0.0-M12"`, mainly depends on
 `scalaz-core` (and only it, *not* `scalaz-concurrent` for example). It contains among others,
 definitions,
 mainly in [`Definitions.scala`](https://github.com/alexarchambault/coursier/blob/master/core/shared/src/main/scala/coursier/core/Definitions.scala),
@@ -390,7 +382,7 @@ that expects to be given metadata, wrapped in any `Monad`, then feeds these to `
 you the final `Resolution`, wrapped in the same `Monad` it was given input. This final `Resolution` has all the dependencies,
 including the transitive ones.
 
-The second module, `"io.get-coursier" %% "coursier-cache" % "1.0.0-M11"`, is precisely in charge of fetching
+The second module, `"io.get-coursier" %% "coursier-cache" % "1.0.0-M12"`, is precisely in charge of fetching
 these input metadata. It uses `scalaz.concurrent.Task` as a `Monad` to wrap them. It also fetches artifacts (JARs, etc.).
 It caches all of these (metadata and artifacts) on disk, and validates checksums too.
 
@@ -435,7 +427,7 @@ scala> val repositories = Seq(
      |   Cache.ivy2Local,
      |   MavenRepository("https://repo1.maven.org/maven2")
      | )
-repositories: Seq[coursier.core.Repository] = List(IvyRepository(file://${user.home}/.ivy2/local/[organisation]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext],None,None,Map(),true,true,true,true), MavenRepository(https://repo1.maven.org/maven2,None,false))
+repositories: Seq[coursier.core.Repository] = List(IvyRepository(file://${user.home}/.ivy2/local/[organisation]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext],None,None,Map(),true,true,true,true,None), MavenRepository(https://repo1.maven.org/maven2,None,false,None))
 ```
 The first one, `Cache.ivy2Local`, is defined in `coursier.Cache`, itself from the `coursier-cache` module that
 we added above. As we can see, it is an `IvyRepository`, picking things under `~/.ivy2/local`. An `IvyRepository`
