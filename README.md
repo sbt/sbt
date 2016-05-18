@@ -689,6 +689,9 @@ Once RCs will be considered stable enough, `1.0.0` should be released.
 
 - Erik LaBianca ([@easel](https://github.com/easel))
 - Han Ju ([@darkjh](https://github.com/darkjh))
+- Jameel Al-Aziz ([@jalaziz](https://github.com/jalaziz))
+- joriscode ([@joriscode](https://github.com/joriscode))
+- Roman Iakovlev ([@RomanIakovlev](https://github.com/RomanIakovlev))
 - Simon Ochsenreither ([@soc](https://github.com/soc))
 - Your name here :-)
 
