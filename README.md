@@ -223,6 +223,17 @@ provide more output about what's going on than their default implementations do.
 
 
 
+TEMPORARY As of the `1.0.0-M12` version, the SBT plugin doesn't re-use the `credentials` setting from SBT yet.
+To enable credentials for a repository, add its credentials to `coursierCredentials`, like
+```scala
+resolvers += "corp-releases" at "http://nexus.corp.com/content/repositories/releases"
+coursierCredentials += "corp-releases" -> coursier.Credentials("user", "pass")
+// alternatively, read credentials from a file
+coursierCredentials += "corp-releases" -> coursier.Credentials(file("path/to/credentials"))
+```
+
+Future versions of the plugin should support the `credentials` setting out-of-the-box.
+
 
 ### Command-line
 
@@ -261,6 +272,11 @@ unless the `--no-default` option is specified.
 
 Repositories starting with `ivy:` are assumed to be Ivy repositories, specified with an Ivy pattern, like `ivy:https://repo.typesafe.com/typesafe/ivy-releases/[organisation]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext]`.
 Else, a Maven repository is assumed.
+
+To set credentials for a repository, pass a user and password in its URL, like
+```
+-r https://user:pass@nexus.corp.com/content/repositories/releases
+```
 
 #### launch
 
@@ -448,6 +464,18 @@ like for any particular version of the standard library, under paths like
 
 Both `IvyRepository` and `MavenRepository` are case classes, so that it's straightforward to specify one's own
 repositories.
+
+To set credentials for a `MavenRepository` or `IvyRepository`, set their `authentication` field, like
+```scala
+scala> import coursier.core.Authentication
+import coursier.core.Authentication
+
+scala> MavenRepository(
+     |   "https://nexus.corp.com/content/repositories/releases",
+     |   authentication = Some(Authentication("user", "pass"))
+     | )
+res6: coursier.maven.MavenRepository = MavenRepository(https://nexus.corp.com/content/repositories/releases,None,false,Some(Authentication(user, *******)))
+```
 
 Now that we have repositories, we're going to mix these with things from the `coursier-cache` module,
 for resolution to happen via the cache. We'll create a function
