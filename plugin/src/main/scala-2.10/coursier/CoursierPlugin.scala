@@ -19,6 +19,7 @@ object CoursierPlugin extends AutoPlugin {
     val coursierSourceRepositories = Keys.coursierSourceRepositories
     val coursierResolvers = Keys.coursierResolvers
     val coursierSbtResolvers = Keys.coursierSbtResolvers
+    val coursierUseSbtCredentials = Keys.coursierUseSbtCredentials
     val coursierCredentials = Keys.coursierCredentials
     val coursierFallbackDependencies = Keys.coursierFallbackDependencies
     val coursierCache = Keys.coursierCache
@@ -62,6 +63,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierSourceRepositories := Nil,
     coursierResolvers <<= Tasks.coursierResolversTask,
     coursierSbtResolvers <<= externalResolvers in updateSbtClassifiers,
+    coursierUseSbtCredentials := true,
     coursierCredentials := Map.empty,
     coursierFallbackDependencies <<= Tasks.coursierFallbackDependenciesTask,
     coursierCache := Cache.default,
