@@ -65,9 +65,12 @@ object TermDisplay {
 
     def nonInteractive = System.console() == null
 
+    def insideEmacs = sys.env.contains("INSIDE_EMACS")
+    def ci = sys.env.contains("CI")
+
     val env = env0.getOrElse(compatibilityEnv)
 
-    env || nonInteractive
+    env || nonInteractive || insideEmacs || ci
   }
 
 

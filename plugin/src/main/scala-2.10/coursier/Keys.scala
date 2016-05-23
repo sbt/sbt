@@ -18,6 +18,7 @@ object Keys {
   val coursierSourceRepositories = SettingKey[Seq[File]]("coursier-source-repositories")
   val coursierResolvers = TaskKey[Seq[Resolver]]("coursier-resolvers")
   val coursierSbtResolvers = TaskKey[Seq[Resolver]]("coursier-sbt-resolvers")
+  val coursierUseSbtCredentials = SettingKey[Boolean]("coursier-use-sbt-credentials")
   val coursierCredentials = TaskKey[Map[String, Credentials]]("coursier-credentials")
 
   val coursierCache = SettingKey[File]("coursier-cache")

@@ -88,20 +88,16 @@ $ brew install --HEAD paulp/extras/coursier
 
 Run an application distributed via artifacts with
 ```
-$ ./coursier launch com.lihaoyi:ammonite-repl_2.11.7:0.5.2
+$ ./coursier launch com.lihaoyi:ammonite-repl_2.11.8:0.5.7
 ```
 
 Download and list the classpath of one or several dependencies with
 ```
-$ ./coursier fetch org.apache.spark:spark-sql_2.11:1.5.2 com.twitter:algebird-spark_2.11:0.11.0
-Dependencies:
-  org.apache.spark:spark-sql_2.11:1.5.2
-  com.twitter:algebird-spark_2.11:0.11.0
-Fetching artifacts
-/path/to/.coursier/cache/v1/https/repo1.maven.org/maven2/com/sun/jersey/jersey-client/1.9/jersey-client-1.9.jar
-/path/to/.coursier/cache/v1/https/repo1.maven.org/maven2/net/jpountz/lz4/lz4/1.3.0/lz4-1.3.0.jar
-/path/to/.coursier/cache/v1/https/repo1.maven.org/maven2/com/clearspring/analytics/stream/2.7.0/stream-2.7.0.jar
-/path/to/.coursier/cache/v1/https/repo1.maven.org/maven2/com/typesafe/config/1.2.1/config-1.2.1.jar
+$ ./coursier fetch org.apache.spark:spark-sql_2.11:1.6.1 com.twitter:algebird-spark_2.11:0.12.0
+/path/to/.coursier/cache/v1/https/repo1.maven.org/maven2/com/twitter/algebird-spark_2.11/0.12.0/algebird-spark_2.11-0.12.0.jar
+/path/to/.coursier/cache/v1/https/repo1.maven.org/maven2/com/twitter/algebird-core_2.11/0.12.0/algebird-core_2.11-0.12.0.jar
+/path/to/.coursier/cache/v1/https/repo1.maven.org/maven2/org/apache/hadoop/hadoop-annotations/2.2.0/hadoop-annotations-2.2.0.jar
+/path/to/.coursier/cache/v1/https/repo1.maven.org/maven2/org/tukaani/xz/1.0/xz-1.0.jar
 ...
 ```
 
@@ -131,10 +127,10 @@ To resolve dependencies, first create a `Resolution` case class with your depend
 val start = Resolution(
   Set(
     Dependency(
-      Module("org.scalaz", "scalaz-core_2.11"), "7.2.0"
+      Module("org.scalaz", "scalaz-core_2.11"), "7.2.3"
     ),
     Dependency(
-      Module("org.spire-math", "cats-core_2.11"), "0.3.0"
+      Module("org.typelevel", "cats-core_2.11"), "0.6.0"
     )
   )
 )
@@ -175,8 +171,8 @@ val localArtifacts: Seq[FileError \/ File] = Task.gatherUnordered(
 
 
 The default global cache used by coursier is `~/.coursier/cache/v1`. E.g. the artifact at
-`https://repo1.maven.org/maven2/org/scala-lang/scala-library/2.11.7/scala-library-2.11.7.jar`
-will land in `~/.coursier/cache/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.11.7/scala-library-2.11.7.jar`.
+`https://repo1.maven.org/maven2/org/scala-lang/scala-library/2.11.8/scala-library-2.11.8.jar`
+will land in `~/.coursier/cache/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.11.8/scala-library-2.11.8.jar`.
 
 From the SBT plugin, the default repositories are the ones provided by SBT (typically Central or JFrog, and `~/.ivy2/local`).
 From the CLI tools, these are Central (`https://repo1.maven.org/maven2`) and `~/.ivy2/local`.
@@ -219,13 +215,24 @@ addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.0-M12")
 to `~/.sbt/0.13/plugins/build.sbt`
 
 To enable it on a per-project basis, add it only to the `project/plugins.sbt` of a SBT project.
-The SBT plugin has been tested only with SBT 0.13.8 / 0.13.9.
+The SBT plugin has been tested only with SBT 0.13.8 / 0.13.9 / 0.13.11. It doesn't currently work with the SBT 1.0 milestones.
 
 Once enabled, the `update`, `updateClassifiers`, and `updateSbtClassifiers` commands are taken care of by coursier. These
 provide more output about what's going on than their default implementations do.
 
 
 
+
+TEMPORARY As of the `1.0.0-M12` version, the SBT plugin doesn't re-use the `credentials` setting from SBT yet.
+To enable credentials for a repository, add its credentials to `coursierCredentials`, like
+```scala
+resolvers += "corp-releases" at "http://nexus.corp.com/content/repositories/releases"
+coursierCredentials += "corp-releases" -> coursier.Credentials("user", "pass")
+// alternatively, read credentials from a file
+coursierCredentials += "corp-releases" -> coursier.Credentials(file("path/to/credentials"))
+```
+
+Future versions of the plugin should support the `credentials` setting out-of-the-box.
 
 
 ### Command-line
@@ -266,6 +273,11 @@ unless the `--no-default` option is specified.
 Repositories starting with `ivy:` are assumed to be Ivy repositories, specified with an Ivy pattern, like `ivy:https://repo.typesafe.com/typesafe/ivy-releases/[organisation]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext]`.
 Else, a Maven repository is assumed.
 
+To set credentials for a repository, pass a user and password in its URL, like
+```
+-r https://user:pass@nexus.corp.com/content/repositories/releases
+```
+
 #### launch
 
 The `launch` command fetches a set of Maven coordinates it is given, along
@@ -277,7 +289,7 @@ For example, it can launch:
 
 * [Ammonite](https://github.com/lihaoyi/Ammonite) (enhanced Scala REPL),
 ```
-$ ./coursier launch com.lihaoyi:ammonite-repl_2.11.7:0.5.2
+$ ./coursier launch com.lihaoyi:ammonite-repl_2.11.8:0.5.7
 ```
 
 along with the REPLs of various JVM languages like
@@ -320,6 +332,14 @@ $ ./coursier launch net.sf.proguard:proguard-base:5.2.1 -M proguard.ProGuard
 $ ./coursier launch net.sf.proguard:proguard-retrace:5.2.1 -M proguard.retrace.ReTrace
 ```
 
+* Wiremock,
+```
+./coursier launch com.github.tomakehurst:wiremock:1.57 -- \
+--proxy-all="http://search.twitter.com" --record-mappings --verbose
+```
+
+If you wish to pass additional argument to the artifact being launched, separate them from the coursier's parameters list with the "--", just like in the Wiremock example above.
+
 #### fetch
 
 The `fetch` command simply fetches a set of dependencies, along with their
@@ -327,21 +347,21 @@ transitive dependencies, then prints the local paths of all their artifacts.
 
 Example
 ```
-$ ./coursier fetch org.apache.spark:spark-sql_2.11:1.5.2
-...
-/path/to/.coursier/cache/0.1.0-SNAPSHOT-2f5e731/files/central/io/dropwizard/metrics/metrics-jvm/3.1.2/metrics-jvm-3.1.2.jar
-/path/to/.coursier/cache/0.1.0-SNAPSHOT-2f5e731/files/central/javax/servlet/javax.servlet-api/3.0.1/javax.servlet-api-3.0.1.jar
-/path/to/.coursier/cache/0.1.0-SNAPSHOT-2f5e731/files/central/javax/inject/javax.inject/1/javax.inject-1.jar
+$ ./coursier fetch org.apache.spark:spark-sql_2.11:1.6.1
+/path/to/.coursier/cache/v1/https/repo1.maven.org/maven2/org/apache/hadoop/hadoop-annotations/2.2.0/hadoop-annotations-2.2.0.jar
+/path/to/.coursier/cache/v1/https/repo1.maven.org/maven2/org/tukaani/xz/1.0/xz-1.0.jar
+/path/to/.coursier/cache/v1/https/repo1.maven.org/maven2/org/tachyonproject/tachyon-underfs-s3/0.8.2/tachyon-underfs-s3-0.8.2.jar
+/path/to/.coursier/cache/v1/https/repo1.maven.org/maven2/org/glassfish/grizzly/grizzly-http/2.1.2/grizzly-http-2.1.2.jar
 ...
 ```
 
 By adding the `-p` option, these paths can be handed over directly to
 `java -cp`, like
 ```
-$ java -cp "$(./coursier fetch -p com.lihaoyi:ammonite-repl_2.11.7:0.5.2)" ammonite.repl.Main
+$ java -cp "$(./coursier fetch -p com.lihaoyi:ammonite-repl_2.11.8:0.5.7)" ammonite.repl.Main
 Loading...
-Welcome to the Ammonite Repl 0.5.2
-(Scala 2.11.7 Java 1.8.0_51)
+Welcome to the Ammonite Repl 0.5.7
+(Scala 2.11.8 Java 1.8.0_60)
 @
 ```
 
@@ -400,10 +420,10 @@ Resolving dependencies involves create an initial resolution state, with all the
 val start = Resolution(
   Set(
     Dependency(
-      Module("org.spire-math", "cats-core_2.11"), "0.3.0"
+      Module("org.typelevel", "cats-core_2.11"), "0.6.0"
     ),
     Dependency(
-      Module("org.scalaz", "scalaz-core_2.11"), "7.2.0"
+      Module("org.scalaz", "scalaz-core_2.11"), "7.2.3"
     )
   )
 )
@@ -434,7 +454,7 @@ we added above. As we can see, it is an `IvyRepository`, picking things under `~
 is related to the [Ivy](http://ant.apache.org/ivy/) build tool. This kind of repository involves a so-called [pattern](http://ant.apache.org/ivy/history/2.4.0/concept.html#patterns), with
 various properties. These are not of very common use in Scala, although SBT uses them a bit.
 
-The second repository in a `MavenRepository`. These are simpler than the Ivy repositories. They're the ones
+The second repository is a `MavenRepository`. These are simpler than the Ivy repositories. They're the ones
 we're the most used to in Scala. Common ones like [Central](https://repo1.maven.org/maven2) like here, or the repositories
 from [Sonatype](https://oss.sonatype.org/content/repositories/), are Maven repositories. These originate
 from the [Maven](https://maven.apache.org/) build tool. Unlike the Ivy repositories which involve customisable patterns to point
@@ -444,6 +464,18 @@ like for any particular version of the standard library, under paths like
 
 Both `IvyRepository` and `MavenRepository` are case classes, so that it's straightforward to specify one's own
 repositories.
+
+To set credentials for a `MavenRepository` or `IvyRepository`, set their `authentication` field, like
+```scala
+scala> import coursier.core.Authentication
+import coursier.core.Authentication
+
+scala> MavenRepository(
+     |   "https://nexus.corp.com/content/repositories/releases",
+     |   authentication = Some(Authentication("user", "pass"))
+     | )
+res6: coursier.maven.MavenRepository = MavenRepository(https://nexus.corp.com/content/repositories/releases,None,false,Some(Authentication(user, *******)))
+```
 
 Now that we have repositories, we're going to mix these with things from the `coursier-cache` module,
 for resolution to happen via the cache. We'll create a function
@@ -610,7 +642,7 @@ spark-core tries to exclude `org.jboss.netty:netty` to land in its classpath via
 it does not via the former path. So it depends on it according to the
 [Maven documentation](https://maven.apache.org/guides/introduction/introduction-to-optional-and-excludes-dependencies.html#Dependency_Exclusions).
 
-This likely unintended, as it leads to exceptions like
+This is likely unintended, as it leads to exceptions like
 ```
 java.lang.VerifyError: (class: org/jboss/netty/channel/socket/nio/NioWorkerPool, method: createWorker signature: (Ljava/util/concurrent/Executor;)Lorg/jboss/netty/channel/socket/nio/AbstractNioWorker;) Wrong return type in function
 ```
@@ -618,9 +650,10 @@ Excluding `org.jboss.netty:netty` from the spark dependencies fixes it.
 
 #### The coursier SBT plugin flow my CI output with messages. What can I do?
 
-Set the `COURSIER_NO_TERM` environment variable to `1`. This disables the
+Set the `COURSIER_PROGRESS` environment variable to `0`. This disables the
 progress bar message, and prints simple `Downloading URL` / `Downloaded URL`
-instead.
+instead. Alternatively, if SBT is launched via the [sbt-extras](https://github.com/paulp/sbt-extras)
+launcher, pass it the `-batch` option, or have its stdin be `/dev/null` with `sbt ... < /dev/null`.
 
 #### On first launch, the coursier launcher downloads a 1.5+ MB JAR. Is it possible to have a standalone launcher, that would not need to download things on first launch?
 
@@ -646,6 +679,10 @@ $ COURSIER_CACHE=$(pwd)/.coursier-cache sbt
 ```
 
 ## Development tips
+
+In general, as coursier has a few modules that target either only scala 2.10 or 2.11, it is recommended
+to systematically force the scala version, with the `++2.11.8` or `++2.10.6` commands. The `cli` module
+in particular is only built in 2.11, and the `plugin` one only in 2.10.
 
 #### Working on the plugin module in an IDE
 
