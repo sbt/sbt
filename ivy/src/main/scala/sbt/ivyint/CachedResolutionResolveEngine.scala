@@ -351,7 +351,10 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
             case d: DefaultDependencyDescriptor =>
               configurationsInInternal foreach { c =>
                 val configurations = c.split(";").map(_.split("->"))
-                configurations foreach { conf => d.addDependencyConfiguration(conf(0), conf(1)) }
+                configurations foreach { conf =>
+                  try d.addDependencyConfiguration(conf(0), conf(1))
+                  catch { case _: Throwable => () } // An exception will be thrown if `conf(0)` doesn't exist.
+                }
               }
 
             case _ => ()
