@@ -974,21 +974,20 @@ object Load {
   final class EvaluatedConfigurations(val eval: Eval, val settings: Seq[Setting[_]])
   final case class InjectSettings(global: Seq[Setting[_]], project: Seq[Setting[_]], projectLoaded: ClassLoader => Seq[Setting[_]]) {
     import java.net.URLClassLoader
-    private val cache: mutable.Map[List[URL], Seq[Setting[_]]] = mutable.Map.empty
+    private val cache: mutable.Map[String, Seq[Setting[_]]] = mutable.Map.empty
     // Cache based on the underlying URL values of the classloader
     def cachedProjectLoaded(cl: ClassLoader): Seq[Setting[_]] =
       cl match {
-        case cl: URLClassLoader => cache.getOrElseUpdate(classLoaderToList(cl), projectLoaded(cl))
+        case cl: URLClassLoader => cache.getOrElseUpdate(classLoaderToHash(Some(cl)), projectLoaded(cl))
         case _                  => projectLoaded(cl)
       }
-    private def classLoaderToList(cl: ClassLoader): List[URL] =
-      cl match {
-        case cl: URLClassLoader =>
-          cl.getURLs.toList ::: (Option(cl.getParent) match {
-            case Some(x) => classLoaderToList(x)
-            case _ => Nil
-          })
-        case _ => Nil
+    private def classLoaderToHash(o: Option[ClassLoader]): String =
+      o match {
+        case Some(cl: URLClassLoader) =>
+          cl.getURLs.toList.toString + classLoaderToHash(Option(cl.getParent))
+        case Some(cl: ClassLoader) =>
+          cl.toString + classLoaderToHash(Option(cl.getParent))
+        case _ => "null"
       }
   }
 
