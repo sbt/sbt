@@ -722,7 +722,7 @@ private[sbt] object Load {
         // Expand the AddSettings instance into a real Seq[Setting[_]] we'll use on the project
         def expandSettings(auto: AddSettings): Seq[Setting[_]] = auto match {
           case BuildScalaFiles     => p.settings
-          case User                => globalUserSettings.projectLoaded(loadedPlugins.loader)
+          case User                => globalUserSettings.cachedProjectLoaded(loadedPlugins.loader)
           case sf: SbtFiles        => settings(sf.files.map(f => IO.resolve(p.base, f)))
           case sf: DefaultSbtFiles => settings(defaultSbtFiles.filter(sf.include))
           case p: AutoPlugins      => autoPluginSettings(p)
@@ -938,7 +938,11 @@ private[sbt] object Load {
   def referenced[PR <: ProjectReference](definitions: Seq[ProjectDefinition[PR]]): Seq[PR] = definitions flatMap { _.referenced }
 
   final class EvaluatedConfigurations(val eval: Eval, val settings: Seq[Setting[_]])
-  final case class InjectSettings(global: Seq[Setting[_]], project: Seq[Setting[_]], projectLoaded: ClassLoader => Seq[Setting[_]])
+  final case class InjectSettings(global: Seq[Setting[_]], project: Seq[Setting[_]], projectLoaded: ClassLoader => Seq[Setting[_]]) {
+    private val cache: mutable.Map[Unit, Seq[Setting[_]]] = mutable.Map.empty
+    def cachedProjectLoaded(cl: ClassLoader): Seq[Setting[_]] =
+      cache.getOrElseUpdate((), projectLoaded(cl))
+  }
 
   @deprecated("Use BuildUtil.apply", "0.13.0")
   def buildUtil(root: URI, units: Map[URI, LoadedBuildUnit], keyIndex: KeyIndex, data: Settings[Scope]): BuildUtil[ResolvedProject] = BuildUtil(root, units, keyIndex, data)
