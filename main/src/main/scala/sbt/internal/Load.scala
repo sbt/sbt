@@ -220,10 +220,10 @@ private[sbt] object Load {
     {
       val keys = Index.allKeys(settings)
       val attributeKeys = Index.attributeKeys(data) ++ keys.map(_.key)
-      val scopedKeys = keys ++ data.allKeys((s, k) => ScopedKey(s, k))
+      val scopedKeys = keys ++ data.allKeys((s, k) => ScopedKey(s, k)).toVector
       val projectsMap = projects.mapValues(_.defined.keySet)
-      val keyIndex = KeyIndex(scopedKeys, projectsMap)
-      val aggIndex = KeyIndex.aggregate(scopedKeys, extra(keyIndex), projectsMap)
+      val keyIndex = KeyIndex(scopedKeys.toVector, projectsMap)
+      val aggIndex = KeyIndex.aggregate(scopedKeys.toVector, extra(keyIndex), projectsMap)
       new StructureIndex(Index.stringToKeyMap(attributeKeys), Index.taskToKeyMap(data), Index.triggers(data), keyIndex, aggIndex)
     }
 
