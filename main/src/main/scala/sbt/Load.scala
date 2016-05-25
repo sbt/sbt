@@ -974,9 +974,14 @@ object Load {
 
   final class EvaluatedConfigurations(val eval: Eval, val settings: Seq[Setting[_]])
   final case class InjectSettings(global: Seq[Setting[_]], project: Seq[Setting[_]], projectLoaded: ClassLoader => Seq[Setting[_]]) {
-    private val cache: mutable.Map[Unit, Seq[Setting[_]]] = mutable.Map.empty
+    import java.net.URLClassLoader
+    private val cache: mutable.Map[Set[URL], Seq[Setting[_]]] = mutable.Map.empty
+    // Cache based on the underlying URL values of the classloader
     def cachedProjectLoaded(cl: ClassLoader): Seq[Setting[_]] =
-      cache.getOrElseUpdate((), projectLoaded(cl))
+      cl match {
+        case cl: URLClassLoader => cache.getOrElseUpdate(cl.getURLs.toSet, projectLoaded(cl))
+        case _                  => projectLoaded(cl)
+      }
   }
 
   @deprecated("LoadedDefinitions is now top-level", "0.13.0")
