@@ -154,6 +154,10 @@ object Load {
       }
       val delegates = timed("Load.apply: config.delegates", log) { config.delegates(loaded) }
       val data = timed("Load.apply: Def.make(settings)...", log) {
+        // When settings.size is 100000, Def.make takes around 10s.
+        if (settings.size > 10000) {
+          log.info(s"Resolving key references (${settings.size} settings) ...")
+        }
         Def.make(settings)(delegates, config.scopeLocal, Project.showLoadingKey(loaded))
       }
       Project.checkTargets(data) foreach sys.error
