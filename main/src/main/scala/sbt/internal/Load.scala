@@ -325,7 +325,6 @@ private[sbt] object Load {
   def load(file: File, loaders: BuildLoader, extra: List[URI]): PartBuild = loadURI(IO.directoryURI(file), loaders, extra)
   def loadURI(uri: URI, loaders: BuildLoader, extra: List[URI]): PartBuild =
     {
-      val log = loaders.config.log
       IO.assertAbsolute(uri)
       val (referenced, map, newLoaders) = loadAll(uri :: extra, Map.empty, loaders, Map.empty)
       checkAll(referenced, map)
