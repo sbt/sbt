@@ -718,7 +718,7 @@ object Load {
         // Expand the AddSettings instance into a real Seq[Setting[_]] we'll use on the project
         def expandSettings(auto: AddSettings): Seq[Setting[_]] = auto match {
           case BuildScalaFiles     => rawProject.settings
-          case User                => globalUserSettings.projectLoaded(loadedPlugins.loader)
+          case User                => globalUserSettings.cachedProjectLoaded(loadedPlugins.loader)
           case sf: SbtFiles        => settings(sf.files.map(f => IO.resolve(rawProject.base, f)))
           case sf: DefaultSbtFiles => settings(defaultSbtFiles.filter(sf.include))
           case p: Plugins          => pluginSettings(p)
@@ -969,7 +969,11 @@ object Load {
   val LoadBuildConfiguration = sbt.LoadBuildConfiguration
 
   final class EvaluatedConfigurations(val eval: Eval, val settings: Seq[Setting[_]])
-  final case class InjectSettings(global: Seq[Setting[_]], project: Seq[Setting[_]], projectLoaded: ClassLoader => Seq[Setting[_]])
+  final case class InjectSettings(global: Seq[Setting[_]], project: Seq[Setting[_]], projectLoaded: ClassLoader => Seq[Setting[_]]) {
+    private val cache: mutable.Map[Unit, Seq[Setting[_]]] = mutable.Map.empty
+    def cachedProjectLoaded(cl: ClassLoader): Seq[Setting[_]] =
+      cache.getOrElseUpdate((), projectLoaded(cl))
+  }
 
   @deprecated("LoadedDefinitions is now top-level", "0.13.0")
   type LoadedDefinitions = sbt.LoadedDefinitions
