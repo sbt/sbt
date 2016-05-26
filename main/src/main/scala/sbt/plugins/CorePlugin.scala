@@ -6,7 +6,7 @@ import Def.Setting
 /**
  * Plugin for core sbt-isms.
  *
- * Can control task-level paralleism, logging, etc.
+ * Can control task-level parallelism, logging, etc.
  */
 object CorePlugin extends AutoPlugin {
   // This is included by default
