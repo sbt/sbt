@@ -72,7 +72,7 @@ object CentralTests extends TestSuite {
             .get(dep.moduleVersion)
             .map { case (_, proj) => proj }
           val dep0 = dep.copy(
-            version = projOpt.fold(dep.version)(_.version)
+            version = projOpt.fold(dep.version)(_.actualVersion)
           )
           (dep0.module.organization, dep0.module.nameWithAttributes, dep0.version, dep0.configuration)
         }
@@ -89,13 +89,13 @@ object CentralTests extends TestSuite {
       assert(result == expected)
     }
 
-  def ensureArtifactHasExtension(module: Module, version: String, extension: String): Future[Unit] = async {
+  def withArtifact[T](module: Module, version: String)(f: Artifact => T): Future[T] = async {
     val dep = Dependency(module, version, transitive = false)
     val res = await(resolve(Set(dep)))
 
     res.artifacts match {
       case Seq(artifact) =>
-        assert(artifact.url.endsWith("." + extension))
+        f(artifact)
       case other =>
         throw new Exception(
           s"Unexpected artifact list size: ${other.size}\n" +
@@ -103,6 +103,11 @@ object CentralTests extends TestSuite {
         )
     }
   }
+
+  def ensureArtifactHasExtension(module: Module, version: String, extension: String): Future[Unit] =
+    withArtifact(module, version) { artifact =>
+      assert(artifact.url.endsWith("." + extension))
+    }
 
   val tests = TestSuite {
 
@@ -230,6 +235,18 @@ object CentralTests extends TestSuite {
         Module("com.googlecode.libphonenumber", "libphonenumber"),
         "7.0.+"
       )
+    }
+
+    'versionFromDependency - {
+      val mod = Module("org.apache.ws.commons", "XmlSchema")
+      val version = "1.1"
+      val expectedArtifactUrl = "https://repo1.maven.org/maven2/org/apache/ws/commons/XmlSchema/1.1/XmlSchema-1.1.jar"
+
+      * - resolutionCheck(mod, version)
+
+      * - withArtifact(mod, version) { artifact =>
+        assert(artifact.url == expectedArtifactUrl)
+      }
     }
 
     'mavenScopes - {

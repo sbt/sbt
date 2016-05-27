@@ -156,6 +156,7 @@ object IvyXml {
         Nil,
         None,
         None,
+        None,
         if (publicationsOpt.isEmpty)
           // no publications node -> default JAR artifact
           Seq("*" -> Publication(module.name, "jar", "jar", ""))

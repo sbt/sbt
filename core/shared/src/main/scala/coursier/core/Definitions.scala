@@ -81,6 +81,11 @@ final case class Project(
   profiles: Seq[Profile],
   versions: Option[Versions],
   snapshotVersioning: Option[SnapshotVersioning],
+  /**
+    * Optional exact version used to get this project metadata.
+    * May not match `version` for projects having a wrong version in their metadata.
+    */
+  actualVersionOpt: Option[String],
 
   // Ivy-specific
   // First String is configuration
@@ -94,6 +99,13 @@ final case class Project(
   /** All configurations that each configuration extends, including the ones it extends transitively */
   lazy val allConfigurations: Map[String, Set[String]] =
     Orders.allConfigurations(configurations)
+
+  /**
+    * Version used to get this project metadata if available, else the version from metadata.
+    * May not match `version` for projects having a wrong version in their metadata, if the actual version was kept
+    * around.
+    */
+  def actualVersion: String = actualVersionOpt.getOrElse(version)
 }
 
 /** Extra project info, not used during resolution */

@@ -237,6 +237,7 @@ object Pom {
         profiles,
         None,
         None,
+        None,
         Nil,
         Info(
           description,

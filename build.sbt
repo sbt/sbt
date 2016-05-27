@@ -146,6 +146,12 @@ lazy val core = crossProject
       import com.typesafe.tools.mima.core.ProblemFilters._
       
       Seq(
+        // Since 1.0.0-M13
+        // Extra `actualVersion` field in `Project`
+        ProblemFilters.exclude[MissingTypesProblem]("coursier.core.Project$"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.core.Project.apply"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.core.Project.copy"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.core.Project.this"),
         // Since 1.0.0-M12
         // Extra `authentication` field
         ProblemFilters.exclude[MissingMethodProblem]("coursier.core.Artifact.apply"),
