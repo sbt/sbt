@@ -1,6 +1,6 @@
 @REM SBT launcher script
 @REM 
-@REM Envioronment:
+@REM Environment:
 @REM JAVA_HOME - location of a JDK home dir (mandatory)
 @REM SBT_OPTS  - JVM options (optional)
 @REM Configuration:
