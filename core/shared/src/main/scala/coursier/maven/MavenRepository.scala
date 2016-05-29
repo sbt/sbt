@@ -222,7 +222,7 @@ case class MavenRepository(
           }
         }
 
-      F.bind(findVersioning(module, version, None, fetch).run) { eitherProj =>
+      val res = F.bind(findVersioning(module, version, None, fetch).run) { eitherProj =>
         if (eitherProj.isLeft && version.contains("-SNAPSHOT"))
           F.map(withSnapshotVersioning.run)(eitherProj0 =>
             if (eitherProj0.isLeft)
@@ -233,6 +233,9 @@ case class MavenRepository(
         else
           F.point(eitherProj)
       }
+
+      // keep exact version used to get metadata, in case the one inside the metadata is wrong
+      F.map(res)(_.map(proj => proj.copy(actualVersionOpt = Some(version))))
     }
 
   def findVersioning[F[_]](

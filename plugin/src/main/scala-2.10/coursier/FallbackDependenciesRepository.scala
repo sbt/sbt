@@ -46,6 +46,7 @@ case class FallbackDependenciesRepository(
           Nil,
           None,
           None,
+          None,
           Nil,
           Info.empty
         )

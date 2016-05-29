@@ -75,6 +75,7 @@ package object test {
         profiles,
         versions,
         snapshotVersioning,
+        None,
         publications,
         Info.empty
       )
