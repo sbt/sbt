@@ -531,3 +531,6 @@ lazy val `coursier` = project.in(file("."))
   .settings(commonSettings)
   .settings(noPublishSettings)
   .settings(releaseSettings)
+  .settings(
+    moduleName := "coursier-root"
+  )
