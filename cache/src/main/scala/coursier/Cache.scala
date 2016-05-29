@@ -68,9 +68,16 @@ object Cache {
               else
                 throw new Exception(s"URL $url doesn't contain an absolute path")
 
+            val remaining1 =
+              if (remaining0.endsWith("/"))
+                // keeping directory content in .directory files
+                remaining0 + ".directory"
+              else
+                remaining0
+
             new File(
               cache,
-              escape(protocol + "/" + user.fold("")(_ + "@") + remaining0.dropWhile(_ == '/'))
+              escape(protocol + "/" + user.fold("")(_ + "@") + remaining1.dropWhile(_ == '/'))
             ).toString
 
           case _ =>

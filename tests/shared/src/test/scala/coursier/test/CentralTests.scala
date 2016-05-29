@@ -89,9 +89,15 @@ object CentralTests extends TestSuite {
       assert(result == expected)
     }
 
-  def withArtifact[T](module: Module, version: String)(f: Artifact => T): Future[T] = async {
+  def withArtifact[T](
+    module: Module,
+    version: String,
+    extraRepo: Option[Repository] = None
+  )(
+    f: Artifact => T
+  ): Future[T] = async {
     val dep = Dependency(module, version, transitive = false)
-    val res = await(resolve(Set(dep)))
+    val res = await(resolve(Set(dep), extraRepo = extraRepo))
 
     res.artifacts match {
       case Seq(artifact) =>

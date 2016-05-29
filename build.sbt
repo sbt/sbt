@@ -182,7 +182,8 @@ lazy val core = crossProject
   .jvmSettings(
     libraryDependencies ++=
       Seq(
-        "org.scalaz" %% "scalaz-core" % "7.1.2"
+        "org.scalaz" %% "scalaz-core" % "7.1.2",
+        "org.jsoup" % "jsoup" % "1.9.2"
       ) ++ {
         if (scalaVersion.value.startsWith("2.10.")) Seq()
         else Seq(
