@@ -504,8 +504,8 @@ object Project extends ProjectExtra {
         printScopes("Delegates", delegates(structure, scope, key)) +
         printScopes("Related", related, 10)
     }
-  def settingGraph(structure: BuildStructure, basedir: File, scoped: ScopedKey[_])(implicit display: Show[ScopedKey[_]]): SettingGraph =
-    SettingGraph(structure, basedir, scoped, 0)
+  def settingGraph(structure: BuildStructure, basedir: File, scoped: ScopedKey[_], maxGraphWidth: Int)(implicit display: Show[ScopedKey[_]]): SettingGraph =
+    SettingGraph(structure, basedir, scoped, 0, maxGraphWidth)
   def graphSettings(structure: BuildStructure, basedir: File)(implicit display: Show[ScopedKey[_]]): Unit = {
     def graph(actual: Boolean, name: String) = graphSettings(structure, actual, name, new File(basedir, name + ".dot"))
     graph(true, "actual_dependencies")
