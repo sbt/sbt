@@ -93,4 +93,9 @@ package object compatibility {
   def encodeURIComponent(s: String): String =
     g.encodeURIComponent(s).asInstanceOf[String]
 
+  def listWebPageSubDirectories(page: String): Seq[String] = {
+    // TODO
+    ???
+  }
+
 }

@@ -4,6 +4,7 @@ import coursier.Fetch
 import coursier.core._
 
 import scalaz._
+import scalaz.Scalaz.ToEitherOps
 
 case class IvyRepository(
   pattern: String,
@@ -25,12 +26,24 @@ case class IvyRepository(
   private val pattern0 = Pattern(pattern, properties)
   private val metadataPattern0 = Pattern(metadataPattern, properties)
 
+  private val revisionListingPatternOpt = {
+    val idx = metadataPattern.indexOf("[revision]/")
+    if (idx < 0)
+      None
+    else
+      // FIXME A bit too permissive... we should check that [revision] indeed begins
+      // a path component (that is, has a '/' before it no matter what)
+      // This is trickier than simply checking for a '/' character before it in metadataPattern,
+      // because of optional parts in it.
+      Some(Pattern(metadataPattern.take(idx), properties))
+  }
+
   // See http://ant.apache.org/ivy/history/latest-milestone/concept.html for a
   // list of variables that should be supported.
   // Some are missing (branch, conf, originalName).
   private def variables(
     module: Module,
-    version: String,
+    versionOpt: Option[String],
     `type`: String,
     artifact: String,
     ext: String,
@@ -41,11 +54,13 @@ case class IvyRepository(
       "organisation" -> module.organization,
       "orgPath" -> module.organization.replace('.', '/'),
       "module" -> module.name,
-      "revision" -> version,
       "type" -> `type`,
       "artifact" -> artifact,
       "ext" -> ext
-    ) ++ module.attributes ++ classifierOpt.map("classifier" -> _).toSeq
+    ) ++
+    module.attributes ++
+    classifierOpt.map("classifier" -> _).toSeq ++
+    versionOpt.map("revision" -> _).toSeq
 
 
   val source: Artifact.Source =
@@ -79,7 +94,7 @@ case class IvyRepository(
           val retainedWithUrl = retained.flatMap { p =>
             pattern0.substitute(variables(
               dependency.module,
-              dependency.version,
+              Some(project.actualVersion),
               p.`type`,
               p.name,
               p.ext,
@@ -118,10 +133,69 @@ case class IvyRepository(
     F: Monad[F]
   ): EitherT[F, String, (Artifact.Source, Project)] = {
 
+    revisionListingPatternOpt match {
+      case None =>
+        findNoInverval(module, version, fetch)
+      case Some(revisionListingPattern) =>
+        Parse.versionInterval(version)
+          .orElse(Parse.ivyLatestSubRevisionInterval(version))
+          .filter(_.isValid) match {
+          case None =>
+            findNoInverval(module, version, fetch)
+          case Some(itv) =>
+            val listingUrl = revisionListingPattern.substitute(
+              variables(module, None, "ivy", "ivy", "xml", None)
+            ).flatMap { s =>
+              if (s.endsWith("/"))
+                s.right
+              else
+                s"Don't know how to list revisions of $metadataPattern".left
+            }
+
+            def fromWebPage(s: String) = {
+              val subDirs = coursier.core.compatibility.listWebPageSubDirectories(s)
+              val versions = subDirs.map(Parse.version).collect { case Some(v) => v }
+              val versionsInItv = versions.filter(itv.contains)
+
+              if (versionsInItv.isEmpty)
+                EitherT(F.point(s"No version found for $version".left[(Artifact.Source, Project)]))
+              else {
+                val version0 = versionsInItv.max
+                findNoInverval(module, version0.repr, fetch)
+              }
+            }
+
+            def artifactFor(url: String) =
+              Artifact(
+                url,
+                Map.empty,
+                Map.empty,
+                Attributes("", ""),
+                changing = true,
+                authentication
+              )
+
+            for {
+              url <- EitherT(F.point(listingUrl))
+              s <- fetch(artifactFor(url))
+              res <- fromWebPage(s)
+            } yield res
+        }
+    }
+  }
+
+  def findNoInverval[F[_]](
+    module: Module,
+    version: String,
+    fetch: Fetch.Content[F]
+  )(implicit
+    F: Monad[F]
+  ): EitherT[F, String, (Artifact.Source, Project)] = {
+
     val eitherArtifact: String \/ Artifact =
       for {
         url <- metadataPattern0.substitute(
-          variables(module, version, "ivy", "ivy", "xml", None)
+          variables(module, Some(version), "ivy", "ivy", "xml", None)
         )
       } yield {
         var artifact = Artifact(
@@ -176,7 +250,9 @@ case class IvyRepository(
         else
           proj0
 
-      (source, proj)
+      source -> proj.copy(
+        actualVersionOpt = Some(version)
+      )
     }
   }
 

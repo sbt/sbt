@@ -2,7 +2,10 @@ package coursier.core
 
 import coursier.util.Xml
 
+import scala.collection.JavaConverters._
 import scala.xml.{ Attribute, MetaData, Null }
+
+import org.jsoup.Jsoup
 
 package object compatibility {
 
@@ -52,5 +55,18 @@ package object compatibility {
 
   def encodeURIComponent(s: String): String =
     new java.net.URI(null, null, null, -1, s, null, null) .toASCIIString
+
+  def listWebPageSubDirectories(page: String): Seq[String] =
+    Jsoup.parse(page)
+      .select("a[href~=[^/]*/]")
+      .asScala
+      .toVector
+      .map { elem =>
+        elem
+          .attr("href")
+          .stripPrefix(":") // bintray typically prepends these
+          .stripSuffix("/")
+      }
+      .filter(n => n != "." && n != "..")
 
 }
