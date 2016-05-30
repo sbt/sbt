@@ -212,12 +212,15 @@ object Tasks {
   // are cached
   private val reportsCache = new mutable.HashMap[ReportCacheKey, UpdateReport]
 
-  private def forcedScalaModules(scalaVersion: String): Map[Module, String] =
+  private def forcedScalaModules(
+    scalaOrganization: String,
+    scalaVersion: String
+  ): Map[Module, String] =
     Map(
-      Module("org.scala-lang", "scala-library") -> scalaVersion,
-      Module("org.scala-lang", "scala-compiler") -> scalaVersion,
-      Module("org.scala-lang", "scala-reflect") -> scalaVersion,
-      Module("org.scala-lang", "scalap") -> scalaVersion
+      Module(scalaOrganization, "scala-library") -> scalaVersion,
+      Module(scalaOrganization, "scala-compiler") -> scalaVersion,
+      Module(scalaOrganization, "scala-reflect") -> scalaVersion,
+      Module(scalaOrganization, "scalap") -> scalaVersion
     )
 
   private def projectDescription(project: Project) =
@@ -270,7 +273,9 @@ object Tasks {
 
       val log = streams.value.log
 
-      val sv = scalaVersion.value // is this always defined? (e.g. for Java only projects?)
+      // are these always defined? (e.g. for Java only projects?)
+      val so = scalaOrganization.value
+      val sv = scalaVersion.value
       val sbv = scalaBinaryVersion.value
 
       val userForceVersions = dependencyOverrides.value.map(
@@ -348,7 +353,7 @@ object Tasks {
           // order matters here
           userForceVersions ++
           sourceRepositoriesForcedDependencies ++
-          forcedScalaModules(sv) ++
+          forcedScalaModules(so, sv) ++
           projects.map(_.moduleVersion)
       )
 
