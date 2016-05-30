@@ -14,7 +14,7 @@ import Predef.{ any2stringadd => _, _ }
 import sbt.io.IO
 
 object SettingGraph {
-  def apply(structure: BuildStructure, basedir: File, scoped: ScopedKey[_], generation: Int, graphMaxWidth: Int)(implicit display: Show[ScopedKey[_]]): SettingGraph =
+  def apply(structure: BuildStructure, basedir: File, scoped: ScopedKey[_], generation: Int)(implicit display: Show[ScopedKey[_]]): SettingGraph =
     {
       val cMap = flattenLocals(compiled(structure.settings, false)(structure.delegates, structure.scopeLocal, display))
       def loop(scoped: ScopedKey[_], generation: Int): SettingGraph =
@@ -29,8 +29,7 @@ object SettingGraph {
           SettingGraph(display(scoped), definedIn,
             Project.scopedKeyData(structure, scope, key),
             key.description, basedir,
-            depends map { (x: ScopedKey[_]) => loop(x, generation + 1) },
-            graphMaxWidth)
+            depends map { (x: ScopedKey[_]) => loop(x, generation + 1) })
         }
       loop(scoped, generation)
     }
@@ -41,8 +40,7 @@ case class SettingGraph(name: String,
     data: Option[ScopedKeyData[_]],
     description: Option[String],
     basedir: File,
-    depends: Set[SettingGraph],
-    graphMaxWidth: Int) {
+    depends: Set[SettingGraph]) {
   def dataString: String =
     data map { d =>
       d.settingValue map {
@@ -51,10 +49,10 @@ case class SettingGraph(name: String,
       } getOrElse { d.typeName }
     } getOrElse { "" }
 
-  def dependsAscii: String = Graph.toAscii(this,
+  def dependsAscii(defaultWidth: Int): String = Graph.toAscii(this,
     (x: SettingGraph) => x.depends.toSeq.sortBy(_.name),
     (x: SettingGraph) => "%s = %s" format (x.definedIn getOrElse { "" }, x.dataString),
-    graphMaxWidth)
+    defaultWidth)
 }
 
 object Graph {
