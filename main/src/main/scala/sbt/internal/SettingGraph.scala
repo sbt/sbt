@@ -13,7 +13,7 @@ import Predef.{ any2stringadd => _, _ }
 import sbt.io.IO
 
 object SettingGraph {
-  def apply(structure: BuildStructure, basedir: File, scoped: ScopedKey[_], generation: Int)(implicit display: Show[ScopedKey[_]]): SettingGraph =
+  def apply(structure: BuildStructure, basedir: File, scoped: ScopedKey[_], generation: Int, graphMaxWidth: Int)(implicit display: Show[ScopedKey[_]]): SettingGraph =
     {
       val cMap = flattenLocals(compiled(structure.settings, false)(structure.delegates, structure.scopeLocal, display))
       def loop(scoped: ScopedKey[_], generation: Int): SettingGraph =
@@ -28,7 +28,8 @@ object SettingGraph {
           SettingGraph(display(scoped), definedIn,
             Project.scopedKeyData(structure, scope, key),
             key.description, basedir,
-            depends map { (x: ScopedKey[_]) => loop(x, generation + 1) })
+            depends map { (x: ScopedKey[_]) => loop(x, generation + 1) },
+            graphMaxWidth)
         }
       loop(scoped, generation)
     }
@@ -40,7 +41,8 @@ case class SettingGraph(
     data: Option[ScopedKeyData[_]],
     description: Option[String],
     basedir: File,
-    depends: Set[SettingGraph]
+    depends: Set[SettingGraph],
+    graphMaxWidth: Int
 ) {
   def dataString: String =
     data map { d =>
@@ -53,7 +55,8 @@ case class SettingGraph(
   def dependsAscii: String = Graph.toAscii(
     this,
     (x: SettingGraph) => x.depends.toSeq.sortBy(_.name),
-    (x: SettingGraph) => "%s = %s" format (x.definedIn getOrElse { "" }, x.dataString)
+    (x: SettingGraph) => "%s = %s" format (x.definedIn getOrElse { "" }, x.dataString),
+    graphMaxWidth
   )
 }
 
@@ -63,8 +66,7 @@ object Graph {
   // [info]   | +-baz
   // [info]   |
   // [info]   +-quux
-  def toAscii[A](top: A, children: A => Seq[A], display: A => String): String = {
-    val defaultWidth = 40
+  def toAscii[A](top: A, children: A => Seq[A], display: A => String, defaultWidth: Int): String = {
     // TODO: Fix JLine
     val maxColumn = math.max( /*JLine.usingTerminal(_.getWidth)*/ 0, defaultWidth) - 8
     val twoSpaces = " " + " " // prevent accidentally being converted into a tab

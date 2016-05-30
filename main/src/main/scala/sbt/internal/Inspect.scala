@@ -47,7 +47,7 @@ object Inspect {
           Project.details(structure, actual, sk.scope, sk.key)
         case DependencyTreeMode =>
           val basedir = new File(Project.session(s).current.build)
-          Project.settingGraph(structure, basedir, sk).dependsAscii
+          Project.settingGraph(structure, basedir, sk, get(sbt.Keys.asciiGraphWidth)).dependsAscii
         case UsesMode =>
           Project.showUses(Project.usedBy(structure, true, sk.key))
         case DefinitionsMode =>
