@@ -143,10 +143,18 @@ class Helper(
   }
 
 
-  val (modVerCfgErrors, moduleVersionConfigs) = Parse.moduleVersionConfigs(rawDependencies)
+  val (modVerCfgErrors, moduleVersionConfigs) =
+    Parse.moduleVersionConfigs(rawDependencies)
+  val (intransitiveModVerCfgErrors, intransitiveModuleVersionConfigs) =
+    Parse.moduleVersionConfigs(intransitive)
 
   prematureExitIf(modVerCfgErrors.nonEmpty) {
     s"Cannot parse dependencies:\n" + modVerCfgErrors.map("  "+_).mkString("\n")
+  }
+
+  prematureExitIf(intransitiveModVerCfgErrors.nonEmpty) {
+    s"Cannot parse intransitive dependencies:\n" +
+      intransitiveModVerCfgErrors.map("  "+_).mkString("\n")
   }
 
 
@@ -217,16 +225,28 @@ class Helper(
     (mod.organization, mod.name)
   }.toSet
 
-  val dependencies = moduleVersionConfigs.map {
+  val baseDependencies = moduleVersionConfigs.map {
+    case (module, version, configOpt) =>
+      Dependency(
+        module,
+        version,
+        configuration = configOpt.getOrElse(defaultConfiguration),
+        exclusions = excludes
+      )
+  }
+
+  val intransitiveDependencies = intransitiveModuleVersionConfigs.map {
     case (module, version, configOpt) =>
       Dependency(
         module,
         version,
         configuration = configOpt.getOrElse(defaultConfiguration),
         exclusions = excludes,
-        transitive = !intransitive
+        transitive = false
       )
   }
+
+  val dependencies = baseDependencies ++ intransitiveDependencies
 
   val checksums = {
     val splitChecksumArgs = checksum.flatMap(_.split(',')).filter(_.nonEmpty)

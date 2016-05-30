@@ -44,8 +44,8 @@ case class CommonOptions(
   @Value("organization:name")
   @Short("E")
     exclude: List[String],
-  @Help("Consider provided dependencies to be intransitive. Applies to all the provided dependencies.")
-    intransitive: Boolean,
+  @Help("Add intransitive dependencies")
+    intransitive: List[String],
   @Help("Classifiers that should be fetched")
   @Value("classifier1,classifier2,...")
   @Short("C")
