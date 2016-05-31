@@ -248,6 +248,9 @@ lazy val cache = project
       import com.typesafe.tools.mima.core.ProblemFilters._
       
       Seq(
+        // Since 1.0.0-M13
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.Cache.file"),
+        ProblemFilters.exclude[MissingMethodProblem]("coursier.Cache.fetch"),
         // Since 1.0.0-M12
         // Remove deprecated / unused helper method
         ProblemFilters.exclude[MissingMethodProblem]("coursier.Cache.readFully"),

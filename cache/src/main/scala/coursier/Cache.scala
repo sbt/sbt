@@ -20,6 +20,9 @@ import scalaz.concurrent.{ Task, Strategy }
 
 import java.io.{ Serializable => _, _ }
 
+import scala.concurrent.duration.{ Duration, DurationInt, FiniteDuration }
+import scala.util.Try
+
 trait AuthenticatedURLConnection extends URLConnection {
   def authenticate(authentication: Authentication): Unit
 }
@@ -306,7 +309,8 @@ object Cache {
     checksums: Set[String],
     cachePolicy: CachePolicy,
     pool: ExecutorService,
-    logger: Option[Logger] = None
+    logger: Option[Logger] = None,
+    ttl: Option[FiniteDuration] = defaultTtl
   ): Task[Seq[((File, String), FileError \/ Unit)]] = {
 
     implicit val pool0 = pool
@@ -402,7 +406,44 @@ object Cache {
         file.exists()
       }
 
+    def ttlFile(file: File): File =
+      new File(file.getParent, s".${file.getName}.checked")
+
+    def lastCheck(file: File): Task[Option[Long]] = {
+
+      val ttlFile0 = ttlFile(file)
+
+      Task {
+        if (ttlFile0.exists())
+          Some(ttlFile0.lastModified()).filter(_ > 0L)
+        else
+          None
+      }
+    }
+
+    /** Not wrapped in a `Task` !!! */
+    def doTouchCheckFile(file: File): Unit = {
+      val ts = System.currentTimeMillis()
+      val f = ttlFile(file)
+      if (f.exists())
+        f.setLastModified(ts)
+      else {
+        val fos = new FileOutputStream(f)
+        fos.write(Array.empty[Byte])
+        fos.close()
+      }
+    }
+
     def shouldDownload(file: File, url: String): EitherT[Task, FileError, Boolean] = {
+
+      def checkNeeded = ttl.map(_.toMillis).filter(_ > 0L).fold(Task.now(true)) { ttlMs =>
+        lastCheck(file).flatMap {
+          case None => Task.now(true)
+          case Some(ts) =>
+            Task(System.currentTimeMillis()).map(_ > ts + ttlMs)
+        }
+      }
+
       def check = for {
         fileLastModOpt <- fileLastModified(file)
         urlLastModOpt <- urlLastModified(url, fileLastModOpt, logger)
@@ -420,7 +461,20 @@ object Cache {
           case false =>
             Task.now(true.right)
           case true =>
-            check.run
+            checkNeeded.flatMap {
+              case false =>
+                Task.now(false.right)
+              case true =>
+                check.run.flatMap {
+                  case \/-(false) =>
+                    Task {
+                      doTouchCheckFile(file)
+                      \/-(false)
+                    }
+                  case other =>
+                    Task.now(other)
+                }
+            }
         }
       }
     }
@@ -493,7 +547,7 @@ object Cache {
                       tmp.getParentFile.mkdirs()
                       new FileOutputStream(tmp, partialDownload)
                     }
-                    try \/-(readFullyTo(in, out, logger, url, if (partialDownload) alreadyDownloaded else 0L))
+                    try readFullyTo(in, out, logger, url, if (partialDownload) alreadyDownloaded else 0L)
                     finally out.close()
                   } finally in.close()
 
@@ -505,7 +559,9 @@ object Cache {
                 for (lastModified <- Option(conn.getLastModified) if lastModified > 0L)
                   file.setLastModified(lastModified)
 
-                result
+                doTouchCheckFile(file)
+
+                result.right
               }
             }
           }
@@ -725,7 +781,8 @@ object Cache {
     cachePolicy: CachePolicy = CachePolicy.FetchMissing,
     checksums: Seq[Option[String]] = defaultChecksums,
     logger: Option[Logger] = None,
-    pool: ExecutorService = defaultPool
+    pool: ExecutorService = defaultPool,
+    ttl: Option[FiniteDuration] = defaultTtl
   ): EitherT[Task, FileError, File] = {
 
     implicit val pool0 = pool
@@ -739,7 +796,8 @@ object Cache {
         checksums = checksums0.collect { case Some(c) => c }.toSet,
         cachePolicy,
         pool,
-        logger = logger
+        logger = logger,
+        ttl = ttl
       ).map { results =>
         val checksum = checksums0.find {
           case None => true
@@ -776,7 +834,8 @@ object Cache {
     cachePolicy: CachePolicy = CachePolicy.FetchMissing,
     checksums: Seq[Option[String]] = defaultChecksums,
     logger: Option[Logger] = None,
-    pool: ExecutorService = defaultPool
+    pool: ExecutorService = defaultPool,
+    ttl: Option[FiniteDuration] = defaultTtl
   ): Fetch.Content[Task] = {
     artifact =>
       file(
@@ -785,7 +844,8 @@ object Cache {
         cachePolicy,
         checksums = checksums,
         logger = logger,
-        pool = pool
+        pool = pool,
+        ttl = ttl
       ).leftMap(_.describe).map { f =>
         // FIXME Catch error here?
         new String(NioFiles.readAllBytes(f.toPath), "UTF-8")
@@ -830,6 +890,20 @@ object Cache {
   lazy val defaultPool =
     Executors.newFixedThreadPool(defaultConcurrentDownloadCount, Strategy.DefaultDaemonThreadFactory)
 
+  lazy val defaultTtl: Option[FiniteDuration] = {
+    def fromString(s: String) =
+      Try(Duration(s)).toOption.collect {
+        case d: FiniteDuration => d
+      }
+
+    val fromEnv = sys.env.get("COURSIER_TTL").flatMap(fromString)
+    def fromProps = sys.props.get("coursier.ttl").flatMap(fromString)
+    def default = 24.days
+
+    fromEnv
+      .orElse(fromProps)
+      .orElse(Some(default))
+  }
 
   private val urlLocks = new ConcurrentHashMap[String, Object]
 

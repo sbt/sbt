@@ -11,7 +11,11 @@ case class CommonOptions(
   @Help("Download mode (default: missing, that is fetch things missing from cache)")
   @Value("offline|update-changing|update|missing|force")
   @Short("m")
-    mode: String = "default",
+    mode: String = "",
+  @Help("TTL duration (e.g. \"24 hours\")")
+  @Value("duration")
+  @Short("l")
+    ttl: String,
   @Help("Quiet output")
   @Short("q")
     quiet: Boolean,
