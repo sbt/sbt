@@ -439,8 +439,10 @@ object Tasks {
         }
       }
 
+      val internalRepositories = Seq(globalPluginsRepo, interProjectRepo)
+
       val repositories =
-        Seq(globalPluginsRepo, interProjectRepo) ++
+        internalRepositories ++
         sourceRepositories0 ++
         resolvers.flatMap { resolver =>
           FromSbt.repository(
@@ -528,9 +530,21 @@ object Tasks {
           ).throwException()
         }
 
-        if (res.errors.nonEmpty)
-          ResolutionError.MetadataDownloadErrors(res.errors)
+        if (res.errors.nonEmpty) {
+          val internalRepositoriesLen = internalRepositories.length
+          val errors =
+            if (repositories.length > internalRepositoriesLen)
+              // drop internal repository errors
+              res.errors.map {
+                case (dep, errs) =>
+                  dep -> errs.drop(internalRepositoriesLen)
+              }
+            else
+              res.errors
+
+          ResolutionError.MetadataDownloadErrors(errors)
             .throwException()
+        }
 
         if (verbosityLevel >= 0)
           log.info(s"Resolved ${projectDescription(currentProject)} dependencies")
