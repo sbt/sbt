@@ -440,8 +440,10 @@ object Tasks {
         }
       }
 
+      val internalRepositories = Seq(globalPluginsRepo, interProjectRepo)
+
       val repositories =
-        Seq(globalPluginsRepo, interProjectRepo) ++
+        internalRepositories ++
         sourceRepositories0 ++
         resolvers.flatMap { resolver =>
           FromSbt.repository(
@@ -507,37 +509,42 @@ object Tasks {
           .process
           .run(fetch, maxIterations)
           .attemptRun
-          .leftMap(ex => throw new Exception("Exception during resolution", ex))
+          .leftMap(ex =>
+            ResolutionError.UnknownException(ex)
+              .throwException()
+          )
           .merge
 
         resLogger.stop()
 
 
         if (!res.isDone)
-          throw new Exception("Maximum number of iteration of dependency resolution reached")
+          ResolutionError.MaximumIterationsReached
+            .throwException()
 
         if (res.conflicts.nonEmpty) {
           val projCache = res.projectCache.mapValues { case (_, p) => p }
-          log.error(
-            s"${res.conflicts.size} conflict(s):\n" +
-              "  " + Print.dependenciesUnknownConfigs(res.conflicts.toVector, projCache)
-          )
-          throw new Exception("Conflict(s) in dependency resolution")
+
+          ResolutionError.Conflicts(
+            "Conflict(s) in dependency resolution:\n  " +
+              Print.dependenciesUnknownConfigs(res.conflicts.toVector, projCache)
+          ).throwException()
         }
 
         if (res.errors.nonEmpty) {
-          log.error(
-            s"\n${res.errors.size} error(s):\n" +
+          val internalRepositoriesLen = internalRepositories.length
+          val errors =
+            if (repositories.length > internalRepositoriesLen)
+              // drop internal repository errors
               res.errors.map {
                 case (dep, errs) =>
-                  s"  ${dep.module}:${dep.version}:\n" +
-                    errs
-                      .map("    " + _.replace("\n", "    \n"))
-                      .mkString("\n")
-              }.mkString("\n")
-          )
+                  dep -> errs.drop(internalRepositoriesLen)
+              }
+            else
+              res.errors
 
-          throw new Exception(s"Encountered ${res.errors.length} error(s) in dependency resolution")
+          ResolutionError.MetadataDownloadErrors(errors)
+            .throwException()
         }
 
         if (verbosityLevel >= 0)
@@ -709,7 +716,8 @@ object Tasks {
 
         val artifactFilesOrErrors = Task.gatherUnordered(artifactFileOrErrorTasks).attemptRun match {
           case -\/(ex) =>
-            throw new Exception("Error while downloading / verifying artifacts", ex)
+            ResolutionError.UnknownDownloadException(ex)
+              .throwException()
           case \/-(l) =>
             l.toMap
         }
@@ -733,31 +741,12 @@ object Tasks {
         }
 
         if (artifactErrors.nonEmpty) {
-          val groupedArtifactErrors = artifactErrors
-            .groupBy(_.`type`)
-            .mapValues(_.map(_.message).sorted)
-            .toVector
-            .sortBy(_._1)
+          val error = ResolutionError.DownloadErrors(artifactErrors)
 
-          for ((type0, errors) <- groupedArtifactErrors) {
-            def msg = s"${errors.size} $type0"
-            if (ignoreArtifactErrors)
-              log.warn(msg)
-            else
-              log.error(msg)
-
-            if (!ignoreArtifactErrors || verbosityLevel >= 1) {
-              if (ignoreArtifactErrors)
-                for (err <- errors)
-                  log.warn("  " + err)
-              else
-                for (err <- errors)
-                  log.error("  " + err)
-            }
-          }
-
-          if (!ignoreArtifactErrors)
-            throw new Exception(s"Encountered ${artifactErrors.length} errors (see above messages)")
+          if (ignoreArtifactErrors)
+            log.warn(error.description(verbosityLevel >= 1))
+          else
+            error.throwException()
         }
 
         // can be non empty only if ignoreArtifactErrors is true
