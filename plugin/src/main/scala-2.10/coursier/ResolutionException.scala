@@ -1,11 +1,10 @@
 package coursier
 
 final class ResolutionException(
-  val message: String,
-  val cause: Throwable = null
+  val error: ResolutionError
 ) extends Exception(
-  message,
-  cause,
+  error.message,
+  error.cause.orNull,
   true,
   false // don't keep stack trace around (improves readability from the SBT console)
 )
