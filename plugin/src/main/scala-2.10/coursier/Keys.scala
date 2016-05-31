@@ -7,7 +7,7 @@ import coursier.core.Publication
 
 import sbt.{ GetClassifiersModule, Resolver, SettingKey, TaskKey }
 
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.Duration
 
 object Keys {
   val coursierParallelDownloads = SettingKey[Int]("coursier-parallel-downloads")
@@ -15,7 +15,7 @@ object Keys {
   val coursierChecksums = SettingKey[Seq[Option[String]]]("coursier-checksums")
   val coursierArtifactsChecksums = SettingKey[Seq[Option[String]]]("coursier-artifacts-checksums")
   val coursierCachePolicies = SettingKey[Seq[CachePolicy]]("coursier-cache-policies")
-  val coursierTtl = SettingKey[Option[FiniteDuration]]("coursier-ttl")
+  val coursierTtl = SettingKey[Option[Duration]]("coursier-ttl")
 
   val coursierVerbosity = SettingKey[Int]("coursier-verbosity")
 

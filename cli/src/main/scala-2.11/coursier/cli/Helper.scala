@@ -10,7 +10,7 @@ import coursier.ivy.IvyRepository
 import coursier.util.{Print, Parse}
 
 import scala.annotation.tailrec
-import scala.concurrent.duration.{ Duration, FiniteDuration }
+import scala.concurrent.duration.Duration
 
 import scalaz.{Failure, Success, \/-, -\/}
 import scalaz.concurrent.{ Task, Strategy }
@@ -85,20 +85,12 @@ class Helper(
   val ttl0 =
     if (ttl.isEmpty)
       Cache.defaultTtl
-    else {
-      val d = try {
-        Duration(ttl)
-      } catch {
+    else
+      try Some(Duration(ttl))
+      catch {
         case e: Exception =>
           prematureExit(s"Unrecognized TTL duration: $ttl")
       }
-
-      d match {
-        case f: FiniteDuration => Some(f)
-        case _ =>
-          prematureExit(s"Non finite TTL duration: $ttl")
-      }
-    }
 
   val cachePolicies =
     if (common.mode.isEmpty)

@@ -20,7 +20,7 @@ import scalaz.concurrent.{ Task, Strategy }
 
 import java.io.{ Serializable => _, _ }
 
-import scala.concurrent.duration.{ Duration, DurationInt, FiniteDuration }
+import scala.concurrent.duration.{ Duration, DurationInt }
 import scala.util.Try
 
 trait AuthenticatedURLConnection extends URLConnection {
@@ -310,7 +310,7 @@ object Cache {
     cachePolicy: CachePolicy,
     pool: ExecutorService,
     logger: Option[Logger] = None,
-    ttl: Option[FiniteDuration] = defaultTtl
+    ttl: Option[Duration] = defaultTtl
   ): Task[Seq[((File, String), FileError \/ Unit)]] = {
 
     implicit val pool0 = pool
@@ -436,12 +436,15 @@ object Cache {
 
     def shouldDownload(file: File, url: String): EitherT[Task, FileError, Boolean] = {
 
-      def checkNeeded = ttl.map(_.toMillis).filter(_ > 0L).fold(Task.now(true)) { ttlMs =>
-        lastCheck(file).flatMap {
-          case None => Task.now(true)
-          case Some(ts) =>
-            Task(System.currentTimeMillis()).map(_ > ts + ttlMs)
-        }
+      def checkNeeded = ttl.fold(Task.now(true)) { ttl =>
+        if (ttl.isFinite())
+          lastCheck(file).flatMap {
+            case None => Task.now(true)
+            case Some(ts) =>
+              Task(System.currentTimeMillis()).map(_ > ts + ttl.toMillis)
+          }
+        else
+          Task.now(false)
       }
 
       def check = for {
@@ -782,7 +785,7 @@ object Cache {
     checksums: Seq[Option[String]] = defaultChecksums,
     logger: Option[Logger] = None,
     pool: ExecutorService = defaultPool,
-    ttl: Option[FiniteDuration] = defaultTtl
+    ttl: Option[Duration] = defaultTtl
   ): EitherT[Task, FileError, File] = {
 
     implicit val pool0 = pool
@@ -835,7 +838,7 @@ object Cache {
     checksums: Seq[Option[String]] = defaultChecksums,
     logger: Option[Logger] = None,
     pool: ExecutorService = defaultPool,
-    ttl: Option[FiniteDuration] = defaultTtl
+    ttl: Option[Duration] = defaultTtl
   ): Fetch.Content[Task] = {
     artifact =>
       file(
@@ -890,11 +893,9 @@ object Cache {
   lazy val defaultPool =
     Executors.newFixedThreadPool(defaultConcurrentDownloadCount, Strategy.DefaultDaemonThreadFactory)
 
-  lazy val defaultTtl: Option[FiniteDuration] = {
+  lazy val defaultTtl: Option[Duration] = {
     def fromString(s: String) =
-      Try(Duration(s)).toOption.collect {
-        case d: FiniteDuration => d
-      }
+      Try(Duration(s)).toOption
 
     val fromEnv = sys.env.get("COURSIER_TTL").flatMap(fromString)
     def fromProps = sys.props.get("coursier.ttl").flatMap(fromString)
