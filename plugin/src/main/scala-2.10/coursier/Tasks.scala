@@ -506,27 +506,27 @@ object Tasks {
           .process
           .run(fetch, maxIterations)
           .attemptRun
-          .leftMap(ex => throw new Exception("Exception during resolution", ex))
+          .leftMap(ex => throw new ResolutionException("Exception during resolution", ex))
           .merge
 
         resLogger.stop()
 
 
         if (!res.isDone)
-          throw new Exception("Maximum number of iteration of dependency resolution reached")
+          throw new ResolutionException("Maximum number of iteration of dependency resolution reached")
 
         if (res.conflicts.nonEmpty) {
           val projCache = res.projectCache.mapValues { case (_, p) => p }
-          log.error(
-            s"${res.conflicts.size} conflict(s):\n" +
-              "  " + Print.dependenciesUnknownConfigs(res.conflicts.toVector, projCache)
+
+          throw new ResolutionException(
+            "Conflict(s) in dependency resolution:\n  " +
+              Print.dependenciesUnknownConfigs(res.conflicts.toVector, projCache)
           )
-          throw new Exception("Conflict(s) in dependency resolution")
         }
 
-        if (res.errors.nonEmpty) {
-          log.error(
-            s"\n${res.errors.size} error(s):\n" +
+        if (res.errors.nonEmpty)
+          throw new ResolutionException(
+            s"Encountered ${res.errors.length} error(s) in dependency resolution:\n" +
               res.errors.map {
                 case (dep, errs) =>
                   s"  ${dep.module}:${dep.version}:\n" +
@@ -535,9 +535,6 @@ object Tasks {
                       .mkString("\n")
               }.mkString("\n")
           )
-
-          throw new Exception(s"Encountered ${res.errors.length} error(s) in dependency resolution")
-        }
 
         if (verbosityLevel >= 0)
           log.info(s"Resolved ${projectDescription(currentProject)} dependencies")
@@ -706,7 +703,7 @@ object Tasks {
 
         val artifactFilesOrErrors = Task.gatherUnordered(artifactFileOrErrorTasks).attemptRun match {
           case -\/(ex) =>
-            throw new Exception("Error while downloading / verifying artifacts", ex)
+            throw new ResolutionException("Error while downloading / verifying artifacts", ex)
           case \/-(l) =>
             l.toMap
         }
@@ -736,25 +733,23 @@ object Tasks {
             .toVector
             .sortBy(_._1)
 
+          val b = new StringBuilder
+
           for ((type0, errors) <- groupedArtifactErrors) {
             def msg = s"${errors.size} $type0"
-            if (ignoreArtifactErrors)
-              log.warn(msg)
-            else
-              log.error(msg)
+            b ++= msg
 
-            if (!ignoreArtifactErrors || verbosityLevel >= 1) {
-              if (ignoreArtifactErrors)
-                for (err <- errors)
-                  log.warn("  " + err)
-              else
-                for (err <- errors)
-                  log.error("  " + err)
-            }
+            if (!ignoreArtifactErrors || verbosityLevel >= 1)
+              for (err <- errors)
+                b ++= "  " + err
           }
 
-          if (!ignoreArtifactErrors)
-            throw new Exception(s"Encountered ${artifactErrors.length} errors (see above messages)")
+          if (ignoreArtifactErrors)
+            log.warn(b.result())
+          else
+            throw new ResolutionException(
+              s"Encountered ${artifactErrors.length} errors:\n" + b.result()
+            )
         }
 
         // can be non empty only if ignoreArtifactErrors is true
