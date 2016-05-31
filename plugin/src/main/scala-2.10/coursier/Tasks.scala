@@ -269,6 +269,7 @@ object Tasks {
       val checksums = coursierChecksums.value
       val maxIterations = coursierMaxIterations.value
       val cachePolicies = coursierCachePolicies.value
+      val ttl = coursierTtl.value
       val cache = coursierCache.value
 
       val log = streams.value.log
@@ -461,9 +462,9 @@ object Tasks {
 
         val fetch = Fetch.from(
           repositories,
-          Cache.fetch(cache, cachePolicies.head, checksums = checksums, logger = Some(resLogger), pool = pool),
+          Cache.fetch(cache, cachePolicies.head, checksums = checksums, logger = Some(resLogger), pool = pool, ttl = ttl),
           cachePolicies.tail.map(p =>
-            Cache.fetch(cache, p, checksums = checksums, logger = Some(resLogger), pool = pool)
+            Cache.fetch(cache, p, checksums = checksums, logger = Some(resLogger), pool = pool, ttl = ttl)
           ): _*
         )
 
@@ -610,6 +611,7 @@ object Tasks {
       val parallelDownloads = coursierParallelDownloads.value
       val artifactsChecksums = coursierArtifactsChecksums.value
       val cachePolicies = coursierCachePolicies.value
+      val ttl = coursierTtl.value
       val cache = coursierCache.value
 
       val log = streams.value.log
@@ -687,7 +689,8 @@ object Tasks {
               p,
               checksums = artifactsChecksums,
               logger = Some(artifactsLogger),
-              pool = pool
+              pool = pool,
+              ttl = ttl
             )
 
           cachePolicies.tail

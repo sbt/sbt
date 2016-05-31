@@ -10,6 +10,8 @@ import coursier.ivy.IvyRepository
 import coursier.util.{Print, Parse}
 
 import scala.annotation.tailrec
+import scala.concurrent.duration.Duration
+
 import scalaz.{Failure, Success, \/-, -\/}
 import scalaz.concurrent.{ Task, Strategy }
 
@@ -80,15 +82,27 @@ class Helper(
 
   import Util._
 
-  val cachePoliciesValidation = CacheParse.cachePolicies(common.mode)
+  val ttl0 =
+    if (ttl.isEmpty)
+      Cache.defaultTtl
+    else
+      try Some(Duration(ttl))
+      catch {
+        case e: Exception =>
+          prematureExit(s"Unrecognized TTL duration: $ttl")
+      }
 
-  val cachePolicies = cachePoliciesValidation match {
-    case Success(cp) => cp
-    case Failure(errors) =>
-      prematureExit(
-        s"Error parsing modes:\n${errors.list.map("  "+_).mkString("\n")}"
-      )
-  }
+  val cachePolicies =
+    if (common.mode.isEmpty)
+      CachePolicy.default
+    else
+      CacheParse.cachePolicies(common.mode) match {
+        case Success(cp) => cp
+        case Failure(errors) =>
+          prematureExit(
+            s"Error parsing modes:\n${errors.list.map("  "+_).mkString("\n")}"
+          )
+      }
 
   val cache = new File(cacheOptions.cache)
 
@@ -279,7 +293,7 @@ class Helper(
       None
 
   val fetchs = cachePolicies.map(p =>
-    Cache.fetch(cache, p, checksums = checksums, logger = logger, pool = pool)
+    Cache.fetch(cache, p, checksums = checksums, logger = logger, pool = pool, ttl = ttl0)
   )
   val fetchQuiet = coursier.Fetch.from(
     repositories,
@@ -524,11 +538,21 @@ class Helper(
     if (verbosityLevel >= 1 && artifacts0.nonEmpty)
       println(s"  Found ${artifacts0.length} artifacts")
 
-    val tasks = artifacts0.map(artifact =>
-      (Cache.file(artifact, cache, cachePolicies.head, checksums = checksums, logger = logger, pool = pool) /: cachePolicies.tail)(
-        _ orElse Cache.file(artifact, cache, _, checksums = checksums, logger = logger, pool = pool)
-      ).run.map(artifact.->)
-    )
+    val tasks = artifacts0.map { artifact =>
+      def file(policy: CachePolicy) = Cache.file(
+        artifact,
+        cache,
+        policy,
+        checksums = checksums,
+        logger = logger,
+        pool = pool,
+        ttl = ttl0
+      )
+
+      (file(cachePolicies.head) /: cachePolicies.tail)(_ orElse file(_))
+        .run
+        .map(artifact.->)
+    }
 
     logger.foreach(_.init())
 
