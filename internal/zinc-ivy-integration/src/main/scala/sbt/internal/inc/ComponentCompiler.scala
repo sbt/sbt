@@ -23,7 +23,7 @@ private[sbt] object ComponentCompiler {
     def apply(scalaInstance: xsbti.compile.ScalaInstance, log: Logger): File =
       {
         // this is the instance used to compile the interface component
-        val componentCompiler = new IvyComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptions.auto, log), manager, ivyConfiguration, sourcesModule, log)
+        val componentCompiler = new IvyComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptionsUtil.auto, log), manager, ivyConfiguration, sourcesModule, log)
         log.debug("Getting " + sourcesModule + " from component compiler for Scala " + scalaInstance.version)
         componentCompiler()
       }
