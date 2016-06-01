@@ -1,0 +1,27 @@
+### Changes
+
+* Read credentials from the `credentials` key from the SBT plugin ([#257])
+
+This is enabled by default, but isn't fully satisfying as is. `credentials`
+is handled by SBT, and seems to acquire a global lock when queried. If a
+SBT is starting up elsewhere (initial resolution necessarily not handled by coursier)
+or a `publish` command is running in another SBT, these acquire the lock and make the
+`credentials` setting, so the update, wait for it. The `coursierUseSbtCredentials` setting
+controls whether coursier checks the `credentials` key. It is set to true by
+default for now, but may not be so in the future because of this lock issue.
+
+* Disable progress bars by default if the `CI` or `INSIDE_EMACS` environement
+variables are set ([#257])
+
+These were already disabled if the current process has no input (that is if
+launched with `< /dev/null` - the sbt-extras launcher with the `-batch` option
+does that).
+
+By default, Travis CI seems not to provide the `-batch` option to the sbt-extras
+launcher, but it does set the `CI` environment variable.
+
+[#257]: https://github.com/alexarchambault/coursier/pull/257
+
+### Non-backward compatible changes
+
+N/A
