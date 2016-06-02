@@ -20,7 +20,7 @@ trait BaseIvySpecification extends UnitSpec {
 
   def configurations = Seq(Compile, Test, Runtime)
   def module(moduleId: ModuleID, deps: Seq[ModuleID], scalaFullVersion: Option[String],
-    uo: UpdateOptions = UpdateOptions()): IvySbt#Module = {
+    uo: UpdateOptions = UpdateOptions(), overrideScalaVersion: Boolean = true): IvySbt#Module = {
     val ivyScala = scalaFullVersion map { fv =>
       new IvyScala(
         scalaFullVersion = fv,
@@ -28,7 +28,7 @@ trait BaseIvySpecification extends UnitSpec {
         configurations = Nil,
         checkExplicit = true,
         filterImplicit = false,
-        overrideScalaVersion = false
+        overrideScalaVersion = overrideScalaVersion
       )
     }
 

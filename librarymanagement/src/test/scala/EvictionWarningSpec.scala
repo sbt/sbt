@@ -5,11 +5,15 @@ import sbt.internal.librarymanagement.BaseIvySpecification
 class EvictionWarningSpec extends BaseIvySpecification {
   // This is a specification to check the eviction warnings
 
-  """Eviction of scala-library whose scalaVersion
+  """Eviction of non-overridden scala-library whose scalaVersion
   """ should "be detected" in scalaVersionWarn1()
-  it should "not be detected if it's diabled" in scalaVersionWarn2()
+  it should "not be detected if it's disabled" in scalaVersionWarn2()
   it should "print out message about the eviction" in scalaVersionWarn3()
   it should "print out message about the eviction with callers" in scalaVersionWarn4()
+
+  """Non-eviction of overridden scala-library whose scalaVersion
+  """ should "not be detected if it's enabled" in scalaVersionWarn5()
+  it should "not be detected if it's disabled" in scalaVersionWarn6()
 
   """Including two (suspect) binary incompatible Java libraries to direct dependencies
   """ should "be detected as eviction" in javaLibWarn1()
@@ -61,19 +65,19 @@ class EvictionWarningSpec extends BaseIvySpecification {
   def scalaVersionDeps = Seq(scala2102, akkaActor230)
 
   def scalaVersionWarn1() = {
-    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"))
+    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"), overrideScalaVersion = false)
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions, report, log).scalaEvictions should have size (1)
   }
 
   def scalaVersionWarn2() = {
-    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"))
+    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"), overrideScalaVersion = false)
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions.withWarnScalaVersionEviction(false), report, log).scalaEvictions should have size (0)
   }
 
   def scalaVersionWarn3() = {
-    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"))
+    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"), overrideScalaVersion = false)
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions, report, log).lines shouldBe
       List(
@@ -86,7 +90,7 @@ class EvictionWarningSpec extends BaseIvySpecification {
   }
 
   def scalaVersionWarn4() = {
-    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"))
+    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"), overrideScalaVersion = false)
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions.withShowCallers(true), report, log).lines shouldBe
       List(
@@ -95,6 +99,18 @@ class EvictionWarningSpec extends BaseIvySpecification {
         "To force scalaVersion, add the following:",
         "\tivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }"
       )
+  }
+
+  def scalaVersionWarn5() = {
+    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"))
+    val report = ivyUpdate(m)
+    EvictionWarning(m, defaultOptions, report, log).scalaEvictions should have size (0)
+  }
+
+  def scalaVersionWarn6() = {
+    val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"))
+    val report = ivyUpdate(m)
+    EvictionWarning(m, defaultOptions.withWarnScalaVersionEviction(false), report, log).scalaEvictions should have size (0)
   }
 
   def javaLibDirectDeps = Seq(commonsIo14, commonsIo24)
