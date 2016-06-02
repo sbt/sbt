@@ -7,9 +7,10 @@ import java.util.Collections.emptyMap
 import scala.collection.mutable.HashSet
 
 import org.apache.ivy.core.module.descriptor.{ DefaultExcludeRule, ExcludeRule }
-import org.apache.ivy.core.module.descriptor.{ DependencyDescriptor, DefaultModuleDescriptor, ModuleDescriptor, OverrideDependencyDescriptorMediator }
+import org.apache.ivy.core.module.descriptor.{ DefaultDependencyDescriptor, DependencyDescriptor, DependencyDescriptorMediator, DefaultModuleDescriptor, ModuleDescriptor, OverrideDependencyDescriptorMediator }
 import org.apache.ivy.core.module.id.{ ArtifactId, ModuleId, ModuleRevisionId }
 import org.apache.ivy.plugins.matcher.ExactPatternMatcher
+import org.apache.ivy.plugins.namespace.NamespaceTransformer
 
 object ScalaArtifacts {
   import xsbti.ArtifactInfo._
@@ -17,6 +18,8 @@ object ScalaArtifacts {
   val LibraryID = ScalaLibraryID
   val CompilerID = ScalaCompilerID
   val ReflectID = "scala-reflect"
+  val ActorsID = "scala-actors"
+  val ScalapID = "scalap"
   val DottyIDPrefix = "dotty"
 
   def dottyID(binaryVersion: String): String = s"${DottyIDPrefix}_${binaryVersion}"
@@ -47,17 +50,41 @@ private object IvyScala {
   /** Performs checks/adds filters on Scala dependencies (if enabled in IvyScala). */
   def checkModule(module: DefaultModuleDescriptor, conf: String, log: Logger)(check: IvyScala): Unit = {
     if (check.checkExplicit)
-      checkDependencies(module, check.scalaBinaryVersion, check.configurations, log)
+      checkDependencies(module, check.scalaOrganization, check.scalaBinaryVersion, check.configurations, log)
     if (check.filterImplicit)
       excludeScalaJars(module, check.configurations)
     if (check.overrideScalaVersion)
-      overrideScalaVersion(module, check.scalaFullVersion)
+      overrideScalaVersion(module, check.scalaOrganization, check.scalaFullVersion)
   }
-  def overrideScalaVersion(module: DefaultModuleDescriptor, version: String): Unit = {
-    overrideVersion(module, Organization, LibraryID, version)
-    overrideVersion(module, Organization, CompilerID, version)
-    overrideVersion(module, Organization, ReflectID, version)
+
+  class OverrideScalaMediator(scalaOrganization: String, scalaVersion: String) extends DependencyDescriptorMediator {
+    def mediate(dd: DependencyDescriptor): DependencyDescriptor = {
+      val transformer =
+        new NamespaceTransformer {
+          def transform(mrid: ModuleRevisionId): ModuleRevisionId = {
+            if (mrid == null) mrid
+            else
+              mrid.getName match {
+                case name @ (CompilerID | LibraryID | ReflectID | ActorsID | ScalapID) =>
+                  ModuleRevisionId.newInstance(scalaOrganization, name, mrid.getBranch, scalaVersion, mrid.getQualifiedExtraAttributes)
+                case _ => mrid
+              }
+          }
+
+          def isIdentity: Boolean = false
+        }
+
+      DefaultDependencyDescriptor.transformInstance(dd, transformer, false)
+    }
   }
+
+  def overrideScalaVersion(module: DefaultModuleDescriptor, organization: String, version: String): Unit = {
+    val mediator = new OverrideScalaMediator(organization, version)
+    module.addDependencyDescriptorMediator(new ModuleId(Organization, "*"), ExactPatternMatcher.INSTANCE, mediator)
+    if (organization != Organization)
+      module.addDependencyDescriptorMediator(new ModuleId(organization, "*"), ExactPatternMatcher.INSTANCE, mediator)
+  }
+
   def overrideVersion(module: DefaultModuleDescriptor, org: String, name: String, version: String): Unit = {
     val id = new ModuleId(org, name)
     val over = new OverrideDependencyDescriptorMediator(null, version)
@@ -68,13 +95,13 @@ private object IvyScala {
    * Checks the immediate dependencies of module for dependencies on scala jars and verifies that the version on the
    * dependencies matches scalaVersion.
    */
-  private def checkDependencies(module: ModuleDescriptor, scalaBinaryVersion: String, configurations: Iterable[Configuration], log: Logger): Unit = {
+  private def checkDependencies(module: ModuleDescriptor, scalaOrganization: String, scalaBinaryVersion: String, configurations: Iterable[Configuration], log: Logger): Unit = {
     val configSet = if (configurations.isEmpty) (c: String) => true else configurationSet(configurations)
     def binaryScalaWarning(dep: DependencyDescriptor): Option[String] =
       {
         val id = dep.getDependencyRevisionId
         val depBinaryVersion = CrossVersion.binaryScalaVersion(id.getRevision)
-        def isScalaLangOrg = id.getOrganisation == Organization
+        def isScalaLangOrg = id.getOrganisation == scalaOrganization
         def isNotScalaActorsMigration = !(id.getName startsWith "scala-actors-migration") // Exception to the rule: sbt/sbt#1818
         def isNotScalaPickling = !(id.getName startsWith "scala-pickling") // Exception to the rule: sbt/sbt#1899
         def hasBinVerMismatch = depBinaryVersion != scalaBinaryVersion
