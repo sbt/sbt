@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='ISO-8859-1'?>
+<ivy-module version="2.0" xmlns:e="http://ant.apache.org/ivy/extra">
+  <info publication="20160520164058" status="release" revision="2.11.8" module="scala-library" organisation="org.other">
+    <license url="http://www.scala-lang.org/license.html" name="BSD 3-Clause"/>
+    <description homepage="http://www.scala-lang.org">
+    Scala Standard Library
+    </description>
+  </info>
+  <configurations>
+    <conf description="" visibility="public" name="compile"/>
+    <conf extends="compile" description="" visibility="public" name="runtime"/>
+    <conf extends="runtime" description="" visibility="public" name="test"/>
+    <conf description="" visibility="public" name="provided"/>
+    <conf description="" visibility="public" name="optional"/>
+    <conf description="" visibility="public" name="sources"/>
+    <conf description="" visibility="public" name="docs"/>
+    <conf description="" visibility="public" name="pom"/>
+    <conf extends="runtime" description="Default" visibility="public" name="default"/>
+  </configurations>
+  <publications>
+    <artifact conf="pom" ext="pom" type="pom" name="scala-library"/>
+    <artifact conf="compile" ext="jar" type="jar" name="scala-library"/>
+    <artifact e:classifier="sources" conf="sources" ext="jar" type="src" name="scala-library"/>
+    <artifact e:classifier="javadoc" conf="docs" ext="jar" type="doc" name="scala-library"/>
+  </publications>
+  <dependencies>
+  </dependencies>
+</ivy-module>
