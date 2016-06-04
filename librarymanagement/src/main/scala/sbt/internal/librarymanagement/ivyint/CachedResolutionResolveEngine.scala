@@ -331,12 +331,44 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
             Left(new ResolveException(messages, failed, failedPaths))
           }
         }
-      val results = mds map {
+      val (internal, external) = mds.partition { case (_, _, dd) => cache.internalDependency(dd, projectResolver).isDefined }
+      val internalResults = internal map {
         case (md, changing, dd) =>
           cache.getOrElseUpdateMiniGraph(md, changing, logicalClock, miniGraphPath, cachedDescriptor, log) {
             doWork(md, dd)
           }
       }
+      val externalResults = external map {
+        case (md0, changing, dd) =>
+          val configurationsInInternal = internalResults flatMap {
+            case Right(ur) => ur.allModules.flatMap {
+              case md =>
+                val sameName = md.name == dd.getDependencyId.getName
+                val sameOrg = md.organization == dd.getDependencyId.getOrganisation
+                if (sameName && sameOrg) md.configurations
+                else None
+            }
+            case _ => Nil
+          }
+
+          dd match {
+            case d: DefaultDependencyDescriptor =>
+              configurationsInInternal foreach { c =>
+                val configurations = c.split(";").map(_.split("->"))
+                configurations foreach { conf =>
+                  try d.addDependencyConfiguration(conf(0), conf(1))
+                  catch { case _: Throwable => () } // An exception will be thrown if `conf(0)` doesn't exist.
+                }
+              }
+
+            case _ => ()
+          }
+
+          cache.getOrElseUpdateMiniGraph(md0, changing, logicalClock, miniGraphPath, cachedDescriptor, log) {
+            doWork(md0, dd)
+          }
+      }
+      val results = internalResults ++ externalResults
       val uReport = mergeResults(md0, results, missingOk, System.currentTimeMillis - start, os, log)
       val cacheManager = getSettings.getResolutionCacheManager
       cacheManager.saveResolvedModuleDescriptor(md0)
