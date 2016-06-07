@@ -28,3 +28,5 @@ libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test"
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.3" % "test"
 
 scalaVersion := "2.11.0"
+
+ivyScala := ivyScala.value map {_.copy(overrideScalaVersion = sbtPlugin.value)}
