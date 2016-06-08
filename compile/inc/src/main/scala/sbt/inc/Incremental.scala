@@ -23,7 +23,11 @@ object Incremental {
   class PrefixingLogger(val prefix: String)(orig: Logger) extends Logger {
     def trace(t: => Throwable): Unit = orig.trace(t)
     def success(message: => String): Unit = orig.success(message)
-    def log(level: sbt.Level.Value, message: => String): Unit = orig.log(level, message.replaceAll("(?m)^", prefix))
+    def log(level: sbt.Level.Value, message: => String): Unit =
+      level match {
+        case Level.Debug => orig.log(level, message.replaceAll("(?m)^", prefix))
+        case _           => orig.log(level, message)
+      }
   }
 
   /**
