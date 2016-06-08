@@ -49,9 +49,10 @@ case class SettingGraph(name: String,
       } getOrElse { d.typeName }
     } getOrElse { "" }
 
-  def dependsAscii: String = Graph.toAscii(this,
+  def dependsAscii(defaultWidth: Int): String = Graph.toAscii(this,
     (x: SettingGraph) => x.depends.toSeq.sortBy(_.name),
-    (x: SettingGraph) => "%s = %s" format (x.definedIn getOrElse { "" }, x.dataString))
+    (x: SettingGraph) => "%s = %s" format (x.definedIn getOrElse { "" }, x.dataString),
+    defaultWidth)
 }
 
 object Graph {
@@ -60,8 +61,7 @@ object Graph {
   // [info]   | +-baz
   // [info]   |
   // [info]   +-quux
-  def toAscii[A](top: A, children: A => Seq[A], display: A => String): String = {
-    val defaultWidth = 40
+  def toAscii[A](top: A, children: A => Seq[A], display: A => String, defaultWidth: Int): String = {
     // TODO: Fix JLine
     val maxColumn = math.max( /*JLine.usingTerminal(_.getWidth)*/ 0, defaultWidth) - 8
     val twoSpaces = " " + " " // prevent accidentally being converted into a tab
