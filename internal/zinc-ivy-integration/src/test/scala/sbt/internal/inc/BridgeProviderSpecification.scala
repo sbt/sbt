@@ -32,7 +32,7 @@ abstract class BridgeProviderSpecification extends BaseIvySpecification {
     val bridgeId = compilerBridgeId(scalaVersion)
     val sourceModule = ModuleID(xsbti.ArtifactInfo.SbtOrganization, bridgeId, ComponentCompiler.incrementalVersion, Some("component")).sources()
 
-    val raw = new RawCompiler(instance, ClasspathOptions.auto, log)
+    val raw = new RawCompiler(instance, ClasspathOptionsUtil.auto, log)
     val manager = new ComponentManager(lock, provider(targetDir), None, log)
     val componentCompiler = new IvyComponentCompiler(raw, manager, ivyConfiguration, sourceModule, log)
 
