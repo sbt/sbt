@@ -53,7 +53,7 @@ import xsbt.api.APIUtil
 private[inc] class MemberRefInvalidator(log: Logger) {
   def get[T](memberRef: Relation[File, T], usedNames: Relation[File, String], apiChange: APIChange[_]): T => Set[File] = apiChange match {
     case _: APIChangeDueToMacroDefinition[_] =>
-      new InvalidateUnconditionally(memberRef)
+      new InvalidateDueToMacroDefinition(memberRef)
     case NamesChange(_, modifiedNames) if modifiedNames.implicitNames.nonEmpty =>
       new InvalidateUnconditionally(memberRef)
     case NamesChange(modifiedSrcFile, modifiedNames) =>
@@ -79,18 +79,31 @@ private[inc] class MemberRefInvalidator(log: Logger) {
     "MemberReferenceInvalidator.get should be called when name hashing is enabled " +
       "and in that case we shouldn't have SourceAPIChange as an api change."
 
+  private class InvalidateDueToMacroDefinition[T](memberRef: Relation[File, T]) extends (T => Set[File]) {
+    def apply(from: T): Set[File] = {
+      val invalidated = memberRef.reverse(from)
+      if (invalidated.nonEmpty) {
+        log.info(s"Because $from contains a macro definition, the following dependencies are invalidated unconditionally:\n" +
+          formatInvalidated(invalidated))
+      }
+      invalidated
+    }
+  }
+
   private class InvalidateUnconditionally[T](memberRef: Relation[File, T]) extends (T => Set[File]) {
     def apply(from: T): Set[File] = {
       val invalidated = memberRef.reverse(from)
-      if (invalidated.nonEmpty)
+      if (invalidated.nonEmpty) {
         log.debug(s"The following member ref dependencies of $from are invalidated:\n" +
           formatInvalidated(invalidated))
+      }
       invalidated
     }
-    private def formatInvalidated(invalidated: Set[File]): String = {
-      val sortedFiles = invalidated.toSeq.sortBy(_.getAbsolutePath)
-      sortedFiles.map(file => "\t" + file).mkString("\n")
-    }
+  }
+
+  private def formatInvalidated(invalidated: Set[File]): String = {
+    val sortedFiles = invalidated.toSeq.sortBy(_.getAbsolutePath)
+    sortedFiles.map(file => "\t" + file).mkString("\n")
   }
 
   private class NameHashFilteredInvalidator[T](
