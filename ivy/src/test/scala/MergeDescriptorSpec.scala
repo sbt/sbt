@@ -26,8 +26,7 @@ class MergeDescriptorSpec extends BaseIvySpecification {
     m.withModule(log) {
       case (ivy, md, _) =>
         val deps = md.getDependencies
-        assert(deps.size == 1)
-        deps.head match {
+        deps.headOption.getOrElse(sys.error("Dependencies not found")) match {
           case dd @ MergedDescriptors(dd0, dd1) =>
             val arts = dd.getAllDependencyArtifacts
             val a0: DependencyArtifactDescriptor = arts.toList(0)
