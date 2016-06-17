@@ -44,12 +44,13 @@ object Doc {
   // def apply(maximumErrors: Int, compiler: sbt.compiler.Javadoc) = new Javadoc(maximumErrors, compiler)
 
   private[sbt] final class Scaladoc(maximumErrors: Int, compiler: AnalyzingCompiler) extends Doc {
-    def apply(label: String, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger) {
+    def apply(label: String, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger): Unit = {
       generate("Scala", label, compiler.doc, sources, classpath, outputDirectory, options, maximumErrors, log)
     }
   }
+  // TODO: trait Javadoc in package inc is deprecated: Please use the new set of compilers in sbt.compilers.javac
   private[sbt] final class Javadoc(maximumErrors: Int, doc: sbt.internal.inc.Javadoc) extends Doc {
-    def apply(label: String, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger) {
+    def apply(label: String, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger): Unit = {
       // javadoc doesn't handle *.scala properly, so we evict them from javadoc sources list.
       generate("Java", label, doc.doc, sources.filterNot(_.name.endsWith(".scala")), classpath, outputDirectory, options, maximumErrors, log)
     }
@@ -61,7 +62,7 @@ sealed trait Doc {
 
   //   def apply(label: String, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger): Unit
 
-  private[sbt] final def generate(variant: String, label: String, docf: Gen, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], maxErrors: Int, log: Logger) {
+  private[sbt] final def generate(variant: String, label: String, docf: Gen, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], maxErrors: Int, log: Logger): Unit = {
     val logSnip = variant + " API documentation"
     if (sources.isEmpty)
       log.info("No sources available, skipping " + logSnip + "...")

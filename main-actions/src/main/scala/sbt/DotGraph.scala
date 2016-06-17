@@ -20,7 +20,7 @@ object DotGraph {
   def packages(relations: Relations, outputDirectory: File, sourceRoots: Iterable[File]): Unit = {
     val packageOnly = (path: String) =>
       {
-        val last = path.lastIndexOf(File.separatorChar)
+        val last = path.lastIndexOf(File.separatorChar.toInt)
         val packagePath = (if (last > 0) path.substring(0, last) else path).trim
         if (packagePath.isEmpty) "" else packagePath.replace(File.separatorChar, '.')
       }
@@ -34,8 +34,8 @@ object DotGraph {
     generateGraph(file("binary-dependencies"), "externalDependencies", relations.binaryDep, externalToString, sourceToString)
   }
 
-  def generateGraph[Key, Value](file: File, graphName: String, relation: Relation[Key, Value],
-    keyToString: Key => String, valueToString: Value => String) {
+  def generateGraph[K, V](file: File, graphName: String, relation: Relation[K, V],
+    keyToString: K => String, valueToString: V => String): Unit = {
     import scala.collection.mutable.{ HashMap, HashSet }
     val mappedGraph = new HashMap[String, HashSet[String]]
     for ((key, values) <- relation.forwardMap; keyString = keyToString(key); value <- values)

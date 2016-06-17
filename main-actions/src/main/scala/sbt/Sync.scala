@@ -59,7 +59,7 @@ object Sync {
       IO.copyLastModified(source, target)
     }
 
-  def noDuplicateTargets(relation: Relation[File, File]) {
+  def noDuplicateTargets(relation: Relation[File, File]): Unit = {
     val dups = relation.reverseMap.filter {
       case (target, srcs) =>
         srcs.size >= 2 && srcs.exists(!_.isDirectory)
