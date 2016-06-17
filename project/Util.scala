@@ -23,7 +23,19 @@ object Util {
     scalacOptions ++= Seq("-Xelide-below", "0"),
     scalacOptions <++= scalaVersion map CrossVersion.partialVersion map {
       case Some((2, 9)) | Some((2, 8)) => Nil // support 2.9 for some subprojects for the Scala Eclipse IDE
-      case _                           => Seq("-feature", "-language:implicitConversions", "-language:postfixOps", "-language:higherKinds", "-language:existentials")
+      case _ => Seq(
+        "-encoding", "utf8",
+        "-deprecation", "-feature", "-unchecked", "-Xlint",
+        "-language:existentials",
+        "-language:higherKinds",
+        "-language:implicitConversions",
+        "-language:postfixOps",
+        "-Xfuture",
+        "-Yinline-warnings",
+        "-Yno-adapted-args",
+        "-Ywarn-dead-code",
+        "-Ywarn-numeric-widen"
+      )
     },
     scalacOptions <++= scalaVersion map CrossVersion.partialVersion map {
       case Some((2, 10)) => Seq("-deprecation", "-Xlint")
