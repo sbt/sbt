@@ -71,9 +71,9 @@ final case class Info[T](attributes: AttributeMap = AttributeMap.empty, post: T 
   def description = attributes.get(Description)
   def setName(n: String) = set(Name, n)
   def setDescription(d: String) = set(Description, d)
-  def set[T](key: AttributeKey[T], value: T) = copy(attributes = this.attributes.put(key, value))
-  def get[T](key: AttributeKey[T]) = attributes.get(key)
-  def postTransform[A](f: (T, AttributeMap) => AttributeMap) = copy(post = (t: T) => f(t, post(t)))
+  def set[A](key: AttributeKey[A], value: A) = copy(attributes = this.attributes.put(key, value))
+  def get[A](key: AttributeKey[A]) = attributes.get(key)
+  def postTransform(f: (T, AttributeMap) => AttributeMap) = copy(post = (t: T) => f(t, post(t)))
 
   override def toString = if (attributes.isEmpty) "_" else attributes.toString
 }

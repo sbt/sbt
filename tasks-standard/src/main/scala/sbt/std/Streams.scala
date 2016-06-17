@@ -65,8 +65,8 @@ sealed trait TaskStreams[Key] {
   private[this] def getID(s: Option[String]) = s getOrElse default
 }
 sealed trait ManagedStreams[Key] extends TaskStreams[Key] {
-  def open()
-  def close()
+  def open(): Unit
+  def close(): Unit
   def isClosed: Boolean
 }
 
