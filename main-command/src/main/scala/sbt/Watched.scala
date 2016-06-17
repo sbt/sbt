@@ -23,16 +23,16 @@ trait Watched {
    */
   def pollInterval: Int = Watched.PollDelayMillis
   /** The message to show when triggered execution waits for sources to change.*/
-  def watchingMessage(s: WatchState): String = Watched.defaultWatchingMessage(s)
+  private[sbt] def watchingMessage(s: WatchState): String = Watched.defaultWatchingMessage(s)
   /** The message to show before an action is run. */
-  def triggeredMessage(s: WatchState): String = Watched.defaultTriggeredMessage(s)
+  private[sbt] def triggeredMessage(s: WatchState): String = Watched.defaultTriggeredMessage(s)
 }
 
 object Watched {
   val defaultWatchingMessage: WatchState => String = _.count + ". Waiting for source changes... (press enter to interrupt)"
   val defaultTriggeredMessage: WatchState => String = const("")
   val clearWhenTriggered: WatchState => String = const(clearScreen)
-  def clearScreen: String = "\033[2J\033[0;0H"
+  def clearScreen: String = "\u001b[2J\u001b[0;0H"
 
   private[this] class AWatched extends Watched
 
