@@ -37,7 +37,6 @@ lazy val root = (project in file(".")).
     publish := {},
     publishLocal := {},
     publishArtifact in Compile := false,
-    publishArtifact in Test := false,
     publishArtifact := false,
     customCommands
   )
@@ -50,7 +49,6 @@ lazy val lm = (project in file("librarymanagement")).
       utilLogging, sbtIO, utilTesting % Test,
       utilCollection, utilCompletion, ivy, jsch, sbtSerialization, scalaReflect.value, launcherInterface),
     resourceGenerators in Compile <+= (version, resourceManaged, streams, compile in Compile) map Util.generateVersionFile,
-    publishArtifact in Test := false,
     binaryIssueFilters ++= Seq()
   )
 
