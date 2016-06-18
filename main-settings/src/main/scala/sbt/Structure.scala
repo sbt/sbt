@@ -125,17 +125,17 @@ object Scoped {
    *  }}}
    *
    */
-  sealed trait ScopingSetting[Result] {
-    def in(s: Scope): Result
+  sealed trait ScopingSetting[ResultType] {
+    def in(s: Scope): ResultType
 
-    def in(p: Reference): Result = in(Select(p), This, This)
-    def in(t: Scoped): Result = in(This, This, Select(t.key))
-    def in(c: ConfigKey): Result = in(This, Select(c), This)
-    def in(c: ConfigKey, t: Scoped): Result = in(This, Select(c), Select(t.key))
-    def in(p: Reference, c: ConfigKey): Result = in(Select(p), Select(c), This)
-    def in(p: Reference, t: Scoped): Result = in(Select(p), This, Select(t.key))
-    def in(p: Reference, c: ConfigKey, t: Scoped): Result = in(Select(p), Select(c), Select(t.key))
-    def in(p: ScopeAxis[Reference], c: ScopeAxis[ConfigKey], t: ScopeAxis[AttributeKey[_]]): Result = in(Scope(p, c, t, This))
+    def in(p: Reference): ResultType = in(Select(p), This, This)
+    def in(t: Scoped): ResultType = in(This, This, Select(t.key))
+    def in(c: ConfigKey): ResultType = in(This, Select(c), This)
+    def in(c: ConfigKey, t: Scoped): ResultType = in(This, Select(c), Select(t.key))
+    def in(p: Reference, c: ConfigKey): ResultType = in(Select(p), Select(c), This)
+    def in(p: Reference, t: Scoped): ResultType = in(Select(p), This, Select(t.key))
+    def in(p: Reference, c: ConfigKey, t: Scoped): ResultType = in(Select(p), Select(c), Select(t.key))
+    def in(p: ScopeAxis[Reference], c: ScopeAxis[ConfigKey], t: ScopeAxis[AttributeKey[_]]): ResultType = in(Scope(p, c, t, This))
   }
 
   def scopedSetting[T](s: Scope, k: AttributeKey[T]): SettingKey[T] = new SettingKey[T] { val scope = s; val key = k }

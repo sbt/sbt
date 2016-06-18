@@ -13,6 +13,7 @@ import language.experimental.macros
 import scala.reflect._
 import reflect.macros._
 import reflect.internal.annotations.compileTimeOnly
+import scala.reflect.internal.util.UndefinedPosition
 
 /** Instance for the monad/applicative functor for plain Tasks. */
 object TaskInstance extends MonadInstance {
@@ -195,37 +196,37 @@ object TaskMacro {
 
   private[this] def appendMacroImpl(c: Context)(init: c.Tree, append: c.Tree)(newName: String): c.Tree =
     {
-      import c.universe.{ Apply, ApplyTag, newTermName, Select, SelectTag, TypeApply, TypeApplyTag }
+      import c.universe._
       c.macroApplication match {
         case Apply(Apply(TypeApply(Select(preT, nmeT), targs), _), a) =>
-          Apply(Apply(TypeApply(Select(preT, newTermName(newName).encodedName), targs), init :: sourcePosition(c).tree :: Nil), a)
+          Apply(Apply(TypeApply(Select(preT, TermName(newName).encodedName), targs), init :: sourcePosition(c).tree :: Nil), a)
         case x => ContextUtil.unexpectedTree(x)
       }
     }
   private[this] def removeMacroImpl(c: Context)(init: c.Tree, remove: c.Tree)(newName: String): c.Tree =
     {
-      import c.universe.{ Apply, ApplyTag, newTermName, Select, SelectTag, TypeApply, TypeApplyTag }
+      import c.universe._
       c.macroApplication match {
         case Apply(Apply(TypeApply(Select(preT, nmeT), targs), _), r) =>
-          Apply(Apply(TypeApply(Select(preT, newTermName(newName).encodedName), targs), init :: sourcePosition(c).tree :: Nil), r)
+          Apply(Apply(TypeApply(Select(preT, TermName(newName).encodedName), targs), init :: sourcePosition(c).tree :: Nil), r)
         case x => ContextUtil.unexpectedTree(x)
       }
     }
   private[this] def transformMacroImpl(c: Context)(init: c.Tree)(newName: String): c.Tree =
     {
-      import c.universe.{ Apply, ApplyTag, newTermName, Select, SelectTag }
+      import c.universe._
       val target =
         c.macroApplication match {
           case Apply(Select(prefix, _), _) => prefix
           case x                           => ContextUtil.unexpectedTree(x)
         }
-      Apply.apply(Select(target, newTermName(newName).encodedName), init :: sourcePosition(c).tree :: Nil)
+      Apply.apply(Select(target, TermName(newName).encodedName), init :: sourcePosition(c).tree :: Nil)
     }
   private[this] def sourcePosition(c: Context): c.Expr[SourcePosition] =
     {
       import c.universe.reify
       val pos = c.enclosingPosition
-      if (pos.isDefined && pos.line >= 0 && pos.source != null) {
+      if (!pos.isInstanceOf[UndefinedPosition] && pos.line >= 0 && pos.source != null) {
         val f = pos.source.file
         val name = constant[String](c, settingSource(c, f.path, f.name))
         val line = constant[Int](c, pos.line)
@@ -316,13 +317,10 @@ object TaskMacro {
   private[this] def iTaskMacro[T: c.WeakTypeTag](c: Context)(t: c.Expr[T]): c.Expr[Task[T]] =
     Instance.contImpl[T, Id](c, TaskInstance, TaskConvert, MixedBuilder)(Left(t), Instance.idTransform)
 
-  // TODO 2.11 Remove this after dropping 2.10.x support.
-  private object HasCompat { val compat = ??? }; import HasCompat._
-
   private[this] def inputTaskDynMacro0[T: c.WeakTypeTag](c: Context)(t: c.Expr[Initialize[Task[T]]]): c.Expr[Initialize[InputTask[T]]] =
     {
       import c.universe.{ Apply => ApplyTree, _ }
-      import compat._
+      import internal.decorators._
 
       val tag = implicitly[c.WeakTypeTag[T]]
       val util = ContextUtil[c.type](c)

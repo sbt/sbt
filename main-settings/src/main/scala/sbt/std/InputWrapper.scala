@@ -58,9 +58,6 @@ object InputWrapper {
   private[std] def wrapPrevious[T: c.WeakTypeTag](c: Context)(ts: c.Expr[Any], pos: c.Position): c.Expr[Option[T]] =
     wrapImpl[Option[T], InputWrapper.type](c, InputWrapper, WrapPreviousName)(ts, pos)
 
-  // TODO 2.11 Remove this after dropping 2.10.x support.
-  private object HasCompat { val compat = ??? }; import HasCompat._
-
   /**
    * Wraps an arbitrary Tree in a call to the `<s>.<wrapName>` method of this module for later processing by an enclosing macro.
    * The resulting Tree is the manually constructed version of:
@@ -70,11 +67,11 @@ object InputWrapper {
   def wrapImpl[T: c.WeakTypeTag, S <: AnyRef with Singleton](c: Context, s: S, wrapName: String)(ts: c.Expr[Any], pos: c.Position)(implicit it: c.TypeTag[s.type]): c.Expr[T] =
     {
       import c.universe.{ Apply => ApplyTree, _ }
-      import compat._
+      import internal.decorators._
       val util = new ContextUtil[c.type](c)
       val iw = util.singleton(s)
       val tpe = c.weakTypeOf[T]
-      val nme = newTermName(wrapName).encoded
+      val nme = TermName(wrapName).encodedName
       val sel = Select(Ident(iw), nme)
       sel.setPos(pos) // need to set the position on Select, because that is where the compileTimeOnly check looks
       val tree = ApplyTree(TypeApply(sel, TypeTree(tpe) :: Nil), ts.tree :: Nil)
@@ -87,7 +84,7 @@ object InputWrapper {
       //     call to `.value` was inside a the task macro and eliminated before the end of the typer phase.
       //     But, if a "naked" call to `.value` left the typer, the superaccessors phase would freak out when
       //     if hit the untyped trees, before we could get to refchecks and the desired @compileTimeOnly warning.
-      val typedTree = c.typeCheck(tree)
+      val typedTree = c.typecheck(tree)
       c.Expr[T](typedTree)
     }
 
@@ -189,7 +186,7 @@ object ParserInput {
         val e = c.Expr[Initialize[InputTask[T]]](p.tree)
         wrapInit[Task[T]](c)(reify { Def.toIParser(e.splice) }, pos)
       } else
-        c.abort(pos, s"Internal sbt error. Unexpected type ${tpe.normalize} in parsedInputMacroImpl.")
+        c.abort(pos, s"Internal sbt error. Unexpected type ${tpe.dealias} in parsedInputMacroImpl.")
     }
 
   /** Implements `Parser[T].parsed` by wrapping the Parser with the ParserInput wrapper.*/
@@ -209,6 +206,6 @@ object ParserInput {
       } else if (tpe <:< c.weakTypeOf[Initialize[State => Parser[T]]])
         wrapInit[T](c)(p, pos)
       else
-        c.abort(pos, s"Internal sbt error. Unexpected type ${tpe.normalize} in parsedMacroImpl")
+        c.abort(pos, s"Internal sbt error. Unexpected type ${tpe.dealias} in parsedMacroImpl")
     }
 }
