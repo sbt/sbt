@@ -278,7 +278,6 @@ trait Init[Scope] {
 
   def flattenLocals(compiled: CompiledMap): Map[ScopedKey[_], Flattened] =
     {
-      import collection.breakOut
       val locals = compiled flatMap { case (key, comp) => if (key.key.isLocal) Seq[Compiled[_]](comp) else Nil }
       val ordered = Dag.topologicalSort(locals)(_.dependencies.flatMap(dep => if (dep.key.isLocal) Seq[Compiled[_]](compiled(dep)) else Nil))
       def flatten(cmap: Map[ScopedKey[_], Flattened], key: ScopedKey[_], deps: Iterable[ScopedKey[_]]): Flattened =
@@ -339,11 +338,6 @@ trait Init[Scope] {
         val key = s.setting.key.key
         derivsByDef.getOrElseUpdate(key, new Deriveds(key, new mutable.ListBuffer)).settings += s
       }
-
-      // sort derived settings so that dependencies come first
-      // this is necessary when verifying that a derived setting's dependencies exist
-      val ddeps = (d: Deriveds) => d.dependencies.flatMap(derivsByDef.get)
-      val sortedDerivs = Dag.topologicalSort(derivsByDef.values)(ddeps)
 
       // index derived settings by triggering key.  This maps a key to the list of settings potentially derived from it.
       val derivedBy = new mutable.HashMap[AttributeKey[_], mutable.ListBuffer[Derived]]
