@@ -14,7 +14,7 @@ object ContextUtil {
    * Constructs an object with utility methods for operating in the provided macro context `c`.
    * Callers should explicitly specify the type parameter as `c.type` in order to preserve the path dependent types.
    */
-  def apply[C <: Context with Singleton](c: C): ContextUtil[C] = new ContextUtil(c)
+  def apply[C <: blackbox.Context with Singleton](c: C): ContextUtil[C] = new ContextUtil(c)
 
   /**
    * Helper for implementing a no-argument macro that is introduced via an implicit.
@@ -23,7 +23,7 @@ object ContextUtil {
    * Given `myImplicitConversion(someValue).extensionMethod`, where `extensionMethod` is a macro that uses this
    * method, the result of this method is `f(<Tree of someValue>)`.
    */
-  def selectMacroImpl[T: c.WeakTypeTag](c: Context)(f: (c.Expr[Any], c.Position) => c.Expr[T]): c.Expr[T] =
+  def selectMacroImpl[T: c.WeakTypeTag](c: blackbox.Context)(f: (c.Expr[Any], c.Position) => c.Expr[T]): c.Expr[T] =
     {
       import c.universe._
       c.macroApplication match {
@@ -32,20 +32,18 @@ object ContextUtil {
       }
     }
 
-  def unexpectedTree[C <: Context](tree: C#Tree): Nothing = sys.error("Unexpected macro application tree (" + tree.getClass + "): " + tree)
+  def unexpectedTree[C <: blackbox.Context](tree: C#Tree): Nothing = sys.error("Unexpected macro application tree (" + tree.getClass + "): " + tree)
 }
 
-// TODO 2.11 Remove this after dropping 2.10.x support.
-private object HasCompat { val compat = this }; import HasCompat._
-
 /**
- * Utility methods for macros.  Several methods assume that the context's universe is a full compiler (`scala.tools.nsc.Global`).
+ * Utility methods for macros.  Several methods assume that the context's universe is a full compiler
+ * (`scala.tools.nsc.Global`).
  * This is not thread safe due to the underlying Context and related data structures not being thread safe.
  * Use `ContextUtil[c.type](c)` to construct.
  */
-final class ContextUtil[C <: Context](val ctx: C) {
+final class ContextUtil[C <: blackbox.Context](val ctx: C) {
   import ctx.universe.{ Apply => ApplyTree, _ }
-  import compat._
+  import internal.decorators._
 
   val powerContext = ctx.asInstanceOf[reflect.macros.runtime.Context]
   val global: powerContext.universe.type = powerContext.universe
@@ -53,7 +51,7 @@ final class ContextUtil[C <: Context](val ctx: C) {
   val initialOwner: Symbol = callsiteTyper.context.owner.asInstanceOf[ctx.universe.Symbol]
 
   lazy val alistType = ctx.typeOf[AList[KList]]
-  lazy val alist: Symbol = alistType.typeSymbol.companionSymbol
+  lazy val alist: Symbol = alistType.typeSymbol.companion
   lazy val alistTC: Type = alistType.typeConstructor
 
   /** Modifiers for a local val.*/
@@ -63,9 +61,9 @@ final class ContextUtil[C <: Context](val ctx: C) {
 
   /**
    * Constructs a unique term name with the given prefix within this Context.
-   * (The current implementation uses Context.fresh, which increments
+   * (The current implementation uses Context.freshName, which increments
    */
-  def freshTermName(prefix: String) = newTermName(ctx.fresh("$" + prefix))
+  def freshTermName(prefix: String) = TermName(ctx.freshName("$" + prefix))
 
   /**
    * Constructs a new, synthetic, local ValDef Type `tpe`, a unique name,
@@ -76,7 +74,7 @@ final class ContextUtil[C <: Context](val ctx: C) {
       val SYNTHETIC = (1 << 21).toLong.asInstanceOf[FlagSet]
       val sym = owner.newTermSymbol(freshTermName("q"), pos, SYNTHETIC)
       setInfo(sym, tpe)
-      val vd = ValDef(sym, EmptyTree)
+      val vd = internal.valDef(sym, EmptyTree)
       vd.setPos(pos)
       vd
     }
@@ -94,7 +92,7 @@ final class ContextUtil[C <: Context](val ctx: C) {
       val process = new Traverser {
         override def traverse(t: Tree) = t match {
           case _: Ident => ()
-          case ApplyTree(TypeApply(Select(_, nme), tpe :: Nil), qual :: Nil) if isWrapper(nme.decoded, tpe.tpe, qual) => ()
+          case ApplyTree(TypeApply(Select(_, nme), tpe :: Nil), qual :: Nil) if isWrapper(nme.decodedName.toString, tpe.tpe, qual) => ()
           case tree =>
             if (tree.symbol ne null) defs += tree.symbol;
             super.traverse(tree)
@@ -117,7 +115,7 @@ final class ContextUtil[C <: Context](val ctx: C) {
    */
   def checkReferences(defs: collection.Set[Symbol], isWrapper: (String, Type, Tree) => Boolean): Tree => Unit = {
     case s @ ApplyTree(TypeApply(Select(_, nme), tpe :: Nil), qual :: Nil) =>
-      if (isWrapper(nme.decoded, tpe.tpe, qual)) ctx.error(s.pos, DynamicDependencyError)
+      if (isWrapper(nme.decodedName.toString, tpe.tpe, qual)) ctx.error(s.pos, DynamicDependencyError)
     case id @ Ident(name) if illegalReference(defs, id.symbol) => ctx.error(id.pos, DynamicReferenceError + ": " + name)
     case _ => ()
   }
@@ -134,11 +132,11 @@ final class ContextUtil[C <: Context](val ctx: C) {
   def mkTuple(args: List[Tree]): Tree =
     global.gen.mkTuple(args.asInstanceOf[List[global.Tree]]).asInstanceOf[ctx.universe.Tree]
 
-  def setSymbol[Tree](t: Tree, sym: Symbol): Unit = {
+  def setSymbol[_Tree](t: _Tree, sym: Symbol): Unit = {
     t.asInstanceOf[global.Tree].setSymbol(sym.asInstanceOf[global.Symbol])
     ()
   }
-  def setInfo[Tree](sym: Symbol, tpe: Type): Unit = {
+  def setInfo(sym: Symbol, tpe: Type): Unit = {
     sym.asInstanceOf[global.Symbol].setInfo(tpe.asInstanceOf[global.Type])
     ()
   }
@@ -151,7 +149,7 @@ final class ContextUtil[C <: Context](val ctx: C) {
   lazy val idTC: Type =
     {
       val tvar = newTypeVariable(NoSymbol)
-      polyType(tvar :: Nil, refVar(tvar))
+      internal.polyType(tvar :: Nil, refVar(tvar))
     }
   /** A Type that references the given type variable. */
   def refVar(variable: TypeSymbol): Type = variable.toTypeConstructor
@@ -159,12 +157,12 @@ final class ContextUtil[C <: Context](val ctx: C) {
   def newTCVariable(owner: Symbol): TypeSymbol =
     {
       val tc = newTypeVariable(owner)
-      val arg = newTypeVariable(tc, "x")
-      tc.setTypeSignature(PolyType(arg :: Nil, emptyTypeBounds))
+      val arg = newTypeVariable(tc, "x");
+      tc.setInfo(internal.polyType(arg :: Nil, emptyTypeBounds))
       tc
     }
   /** >: Nothing <: Any */
-  def emptyTypeBounds: TypeBounds = TypeBounds(definitions.NothingClass.toType, definitions.AnyClass.toType)
+  def emptyTypeBounds: TypeBounds = internal.typeBounds(definitions.NothingClass.toType, definitions.AnyClass.toType)
 
   /** Creates a new anonymous function symbol with Position `pos`. */
   def functionSymbol(pos: Position): Symbol =
@@ -210,7 +208,7 @@ final class ContextUtil[C <: Context](val ctx: C) {
       case x => sys.error("Instance must be static (was " + x + ").")
     }
 
-  def select(t: Tree, name: String): Tree = Select(t, newTermName(name))
+  def select(t: Tree, name: String): Tree = Select(t, TermName(name))
 
   /** Returns the symbol for the non-private method named `name` for the class/module `obj`. */
   def method(obj: Symbol, name: String): Symbol = {
@@ -247,7 +245,7 @@ final class ContextUtil[C <: Context](val ctx: C) {
         override def transform(tree: Tree): Tree =
           tree match {
             case ApplyTree(TypeApply(Select(_, nme), targ :: Nil), qual :: Nil) =>
-              subWrapper(nme.decoded, targ.tpe, qual, tree) match {
+              subWrapper(nme.decodedName.toString, targ.tpe, qual, tree) match {
                 case Converted.Success(t, finalTx) =>
                   changeOwner(qual, currentOwner, initialOwner) // Fixes https://github.com/sbt/sbt/issues/1150
                   finalTx(t)
