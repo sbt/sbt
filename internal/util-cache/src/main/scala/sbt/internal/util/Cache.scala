@@ -7,7 +7,7 @@ import sbinary.{ CollectionTypes, DefaultProtocol, Format, Input, JavaFormats, O
 import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, File, InputStream, OutputStream }
 import java.net.{ URI, URL }
 import Types.:+:
-import DefaultProtocol.{ asProduct2, asSingleton, BooleanFormat, ByteFormat, IntFormat, wrap }
+import DefaultProtocol.{ asSingleton, BooleanFormat, ByteFormat, IntFormat, wrap }
 import scala.xml.NodeSeq
 import scala.language.existentials
 

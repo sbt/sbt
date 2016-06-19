@@ -5,7 +5,7 @@ package sbt
 package internal
 package scripted
 
-import java.io.{ BufferedReader, File, InputStreamReader }
+import java.io.File
 import scala.util.parsing.combinator._
 import scala.util.parsing.input.Positional
 import Character.isWhitespace

@@ -5,9 +5,8 @@ package sbt.internal.util
 
 import jline.console.ConsoleReader
 import jline.console.history.{ FileHistory, MemoryHistory }
-import java.io.{ File, InputStream, PrintWriter, FileInputStream, FileDescriptor, FilterInputStream }
+import java.io.{ File, InputStream, FileInputStream, FileDescriptor, FilterInputStream }
 import complete.Parser
-import java.util.concurrent.atomic.AtomicBoolean
 import scala.concurrent.duration.Duration
 import scala.annotation.tailrec
 

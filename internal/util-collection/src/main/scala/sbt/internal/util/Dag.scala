@@ -94,7 +94,6 @@ object Dag {
    */
   private[sbt] def findNegativeCycle[Node](graph: DirectedSignedGraph[Node]): List[graph.Arrow] =
     {
-      import scala.annotation.tailrec
       import graph._
       val finished = new mutable.HashSet[Node]
       val visited = new mutable.HashSet[Node]
