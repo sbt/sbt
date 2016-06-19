@@ -3,7 +3,6 @@ package appmacro
 
 import scala.reflect._
 import macros._
-import scala.tools.nsc.Global
 import ContextUtil.{ DynamicDependencyError, DynamicReferenceError }
 
 object ContextUtil {
