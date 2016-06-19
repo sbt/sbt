@@ -1,8 +1,6 @@
 package sbt.internal.util
 package appmacro
 
-import Types.Id
-import scala.tools.nsc.Global
 import scala.reflect._
 import macros._
 

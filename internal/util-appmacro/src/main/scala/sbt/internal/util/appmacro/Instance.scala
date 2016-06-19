@@ -23,7 +23,6 @@ trait MonadInstance extends Instance {
 
 import scala.reflect._
 import macros._
-import reflect.internal.annotations.compileTimeOnly
 
 object Instance {
   final val ApplyName = "app"

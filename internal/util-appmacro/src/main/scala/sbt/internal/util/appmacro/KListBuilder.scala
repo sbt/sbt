@@ -1,8 +1,6 @@
 package sbt.internal.util
 package appmacro
 
-import Types.Id
-import scala.tools.nsc.Global
 import scala.reflect._
 import macros._
 
@@ -59,7 +57,6 @@ object KListBuilder extends TupleBuilder {
     val klistType: Type = (inputs :\ knilType)((in, klist) => kconsType(in.tpe, klist))
 
     val representationC = internal.polyType(tcVariable :: Nil, klistType)
-    val resultType = appliedType(representationC, idTC :: Nil)
     val input = klist
     val alistInstance: ctx.universe.Tree = TypeApply(select(Ident(alist), "klist"), TypeTree(representationC) :: Nil)
     def extract(param: ValDef) = bindKList(param, Nil, inputs.map(_.local))
