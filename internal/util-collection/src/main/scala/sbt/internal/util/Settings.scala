@@ -452,9 +452,7 @@ trait Init[Scope] {
     def settings = this :: Nil
     def definitive: Boolean = !init.dependencies.contains(key)
     def dependencies: Seq[ScopedKey[_]] = remove(init.dependencies, key)
-    @deprecated("Will be made private.", "0.13.2")
     def mapReferenced(g: MapScoped): Setting[T] = make(key, init mapReferenced g, pos)
-    @deprecated("Will be made private.", "0.13.2")
     def validateReferenced(g: ValidateRef): Either[Seq[Undefined], Setting[T]] = (init validateReferenced g).right.map(newI => make(key, newI, pos))
 
     private[sbt] def validateKeyReferenced(g: ValidateKeyRef): Either[Seq[Undefined], Setting[T]] =
@@ -462,7 +460,6 @@ trait Init[Scope] {
 
     def mapKey(g: MapScoped): Setting[T] = make(g(key), init, pos)
     def mapInit(f: (ScopedKey[T], T) => T): Setting[T] = make(key, init(t => f(key, t)), pos)
-    @deprecated("Will be made private.", "0.13.2")
     def mapConstant(g: MapConstant): Setting[T] = make(key, init mapConstant g, pos)
     def withPos(pos: SourcePosition) = make(key, init, pos)
     def positionString: Option[String] = pos match {
