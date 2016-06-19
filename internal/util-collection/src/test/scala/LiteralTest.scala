@@ -3,8 +3,6 @@
  */
 package sbt.internal.util
 
-import Types._
-
 // compilation test
 object LiteralTest {
   def x[A[_], B[_]](f: A ~> B) = f
