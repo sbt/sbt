@@ -83,11 +83,10 @@ object FakeState {
     )
 
     val pluginData = PluginData(Nil, Nil, None, None, Nil)
-    val detectedModules: DetectedModules[OldPlugin] = new DetectedModules(Nil)
     val builds: DetectedModules[BuildDef] = new DetectedModules[BuildDef](Nil)
 
     val detectedAutoPlugins: Seq[DetectedAutoPlugin] = plugins.map(p => DetectedAutoPlugin(p.label, p, hasAutoImport = false))
-    val detectedPlugins = new DetectedPlugins(detectedModules, detectedAutoPlugins, builds)
+    val detectedPlugins = new DetectedPlugins(detectedAutoPlugins, builds)
     val loadedPlugins = new LoadedPlugins(base, pluginData, ClassLoader.getSystemClassLoader, detectedPlugins)
     val buildUnit = new BuildUnit(base.toURI, base, loadedDefinitions, loadedPlugins)
 

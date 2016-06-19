@@ -949,10 +949,6 @@ object Defaults extends BuildCommon {
   def sbtPluginExtra(m: ModuleID, sbtV: String, scalaV: String): ModuleID =
     m.extra(PomExtraDependencyAttributes.SbtVersionKey -> sbtV, PomExtraDependencyAttributes.ScalaVersionKey -> scalaV).copy(crossVersion = CrossVersion.Disabled)
 
-  @deprecated("Use PluginDiscovery.writeDescriptor.", "0.13.2")
-  def writePluginsDescriptor(plugins: Set[String], dir: File): Seq[File] =
-    PluginDiscovery.writeDescriptor(plugins.toSeq, dir, PluginDiscovery.Paths.Plugins).toList
-
   def discoverSbtPluginNames: Initialize[Task[PluginDiscovery.DiscoveredNames]] = Def.task {
     if (sbtPlugin.value) PluginDiscovery.discoverSourceAll(compile.value) else PluginDiscovery.emptyDiscoveredNames
   }

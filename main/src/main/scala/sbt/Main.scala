@@ -126,7 +126,7 @@ object BuiltinCommands {
 
   def aboutPlugins(e: Extracted): String =
     {
-      def list(b: BuildUnit) = b.plugins.detected.autoPlugins.map(_.value.label) ++ b.plugins.detected.plugins.names
+      def list(b: BuildUnit) = b.plugins.detected.autoPlugins.map(_.value.label)
       val allPluginNames = e.structure.units.values.flatMap(u => list(u.unit)).toSeq.distinct
       if (allPluginNames.isEmpty) "" else allPluginNames.mkString("Available Plugins: ", ", ", "")
     }
