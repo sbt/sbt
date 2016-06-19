@@ -235,7 +235,6 @@ private[sbt] object EvaluateConfigurations {
       }
     }
 
-  @deprecated("This method is no longer part of the public API.", "0.13.7")
   def splitExpressions(lines: Seq[String]): (Seq[(String, Int)], Seq[(String, LineRange)]) = {
     val blank = (_: String).forall(isSpace)
     val isImport = firstNonSpaceIs("import ")
@@ -246,7 +245,6 @@ private[sbt] object EvaluateConfigurations {
     val (imports, settings) = lines.zipWithIndex span importOrBlank
     (imports filterNot fstS(blankOrComment), groupedLines(settings, blank, blankOrComment))
   }
-  @deprecated("This method is deprecated and no longer used.", "0.13.7")
   def groupedLines(lines: Seq[(String, Int)], delimiter: String => Boolean, skipInitial: String => Boolean): Seq[(String, LineRange)] =
     {
       val fdelim = fstS(delimiter)

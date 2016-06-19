@@ -10,7 +10,7 @@ final case class ScopedKeyData[A](scoped: ScopedKey[A], value: Any) {
   def settingValue: Option[Any] = fold(const(None), const(None), Some(value))
   def description: String = fold(fmtMf("Task: %s"), fmtMf("Input task: %s"),
     "Setting: %s = %s" format (key.manifest.toString, value.toString))
-  def fold[A](targ: OptManifest[_] => A, itarg: OptManifest[_] => A, s: => A): A =
+  def fold[T](targ: OptManifest[_] => T, itarg: OptManifest[_] => T, s: => T): T =
     if (key.manifest.runtimeClass == classOf[Task[_]]) targ(key.manifest.typeArguments.head)
     else if (key.manifest.runtimeClass == classOf[InputTask[_]]) itarg(key.manifest.typeArguments.head)
     else s

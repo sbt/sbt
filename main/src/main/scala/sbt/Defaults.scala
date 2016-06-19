@@ -41,7 +41,7 @@ import sbt.internal.util.Cache.seqFormat
 import sbt.util.Logger
 import sbt.internal.CommandStrings.ExportStream
 
-import xsbti.Maybe
+import xsbti.{ CrossValue, Maybe }
 import sbt.util.InterfaceUtil.{ f1, o2m }
 
 import sbt.internal.util.Types._
@@ -76,8 +76,7 @@ object Defaults extends BuildCommon {
   def thisBuildCore: Seq[Setting[_]] = inScope(GlobalScope.copy(project = Select(ThisBuild)))(Seq(
     managedDirectory := baseDirectory.value / "lib_managed"
   ))
-  @deprecated("Use AutoPlugins and globalSbtCore instead.", "0.13.2")
-  lazy val globalCore: Seq[Setting[_]] = globalDefaults(defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
+  private[sbt] lazy val globalCore: Seq[Setting[_]] = globalDefaults(defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
     excludeFilter :== HiddenFileFilter
   ) ++ globalIvyCore ++ globalJvmCore) ++ globalSbtCore
 
@@ -196,8 +195,7 @@ object Defaults extends BuildCommon {
     historyPath <<= historyPath or target(t => Some(t / ".history")),
     sourceDirectory := baseDirectory.value / "src",
     sourceManaged := crossTarget.value / "src_managed",
-    resourceManaged := crossTarget.value / "resource_managed",
-    cacheDirectory := crossTarget.value / CacheDirectoryName / thisProject.value.id / "global"
+    resourceManaged := crossTarget.value / "resource_managed"
   )
 
   lazy val configPaths = sourceConfigPaths ++ resourceConfigPaths ++ outputConfigPaths
@@ -229,7 +227,6 @@ object Defaults extends BuildCommon {
     resources <<= Classpaths.concat(managedResources, unmanagedResources)
   )
   lazy val outputConfigPaths = Seq(
-    cacheDirectory := crossTarget.value / CacheDirectoryName / thisProject.value.id / configuration.value.name,
     classDirectory := crossTarget.value / (prefix(configuration.value.name) + "classes"),
     target in doc := crossTarget.value / (prefix(configuration.value.name) + "api")
   )
@@ -358,10 +355,10 @@ object Defaults extends BuildCommon {
       override def pollInterval = interval
       override def watchingMessage(s: WatchState) = msg(s)
       override def triggeredMessage(s: WatchState) = trigMsg(s)
-      override def watchPaths(s: State) = EvaluateTask.evaluateTask(Project structure s, key, s, base) match {
-        case Some(Value(ps)) => ps
-        case Some(Inc(i))    => throw i
-        case None            => sys.error("key not found: " + Def.displayFull(key))
+      override def watchPaths(s: State) = EvaluateTask(Project structure s, key, s, base) match {
+        case Some((_, Value(ps))) => ps
+        case Some((_, Inc(i)))    => throw i
+        case None                 => sys.error("key not found: " + Def.displayFull(key))
       }
     }
   }
@@ -710,10 +707,6 @@ object Defaults extends BuildCommon {
   @deprecated("Use `Util.pairID` instead", "0.12.0")
   def pairID = Util.pairID
 
-  @deprecated("Use the cacheDirectory val on streams.", "0.13.0")
-  def perTaskCache(key: TaskKey[_]): Setting[File] =
-    cacheDirectory ~= { _ / ("for_" + key.key.label) }
-
   @deprecated("Use `packageTaskSettings` instead", "0.12.0")
   def packageTasks(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File, String)]]]) = packageTaskSettings(key, mappingsTask)
   def packageTaskSettings(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File, String)]]]) =
@@ -848,6 +841,7 @@ object Defaults extends BuildCommon {
   def consoleQuickTask = consoleTask(externalDependencyClasspath, consoleQuick)
   def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[_]): Initialize[Task[Unit]] =
     (compilers in task, classpath in task, scalacOptions in task, initialCommands in task, cleanupCommands in task, taskTemporaryDirectory in task, scalaInstance in task, streams) map {
+      // TODO: Make exhaustive after zinc is updated to include https://github.com/sbt/zinc/pull/128
       case (cs: IncrementalCompilerImpl.Compilers, cp, options, initCommands, cleanup, temp, si, s) =>
         val cpFiles = data(cp)
         val fullcp = (cpFiles ++ si.allJars).distinct
@@ -978,8 +972,8 @@ object Defaults extends BuildCommon {
 
   private def distinctParser(exs: Set[String], raw: Boolean): Parser[Seq[String]] =
     {
-      import DefaultParsers._
-      val base = token(Space) ~> token(NotSpace - "--" examples exs)
+      import DefaultParsers._, Parser.and
+      val base = token(Space) ~> token(and(NotSpace, not("--", "Unexpected: ---")) examples exs)
       val recurse = base flatMap { ex =>
         val (matching, notMatching) = exs.partition(GlobFilter(ex).accept _)
         distinctParser(notMatching, raw) map { result => if (raw) ex +: result else matching.toSeq ++ result }
@@ -1028,7 +1022,6 @@ object Defaults extends BuildCommon {
   lazy val runnerSettings: Seq[Setting[_]] = Seq(runnerTask)
   lazy val baseTasks: Seq[Setting[_]] = projectTasks ++ packageBase
 
-  lazy val baseClasspaths: Seq[Setting[_]] = Classpaths.publishSettings ++ Classpaths.baseSettings
   lazy val configSettings: Seq[Setting[_]] = Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig ++ Classpaths.compilerPluginConfig
 
   lazy val compileSettings: Seq[Setting[_]] = configSettings ++ (mainRunMainTask +: mainRunTask +: addBaseSources) ++ Classpaths.addUnmanagedLibrary
@@ -1037,10 +1030,6 @@ object Defaults extends BuildCommon {
   lazy val itSettings: Seq[Setting[_]] = inConfig(IntegrationTest)(testSettings)
   lazy val defaultConfigs: Seq[Setting[_]] = inConfig(Compile)(compileSettings) ++ inConfig(Test)(testSettings) ++ inConfig(Runtime)(Classpaths.configSettings)
 
-  // settings that are not specific to a configuration
-  @deprecated("Settings now split into AutoPlugins.", "0.13.2")
-  lazy val projectBaseSettings: Seq[Setting[_]] = projectCore ++ runnerSettings ++ paths ++ baseClasspaths ++ baseTasks ++ compileBase ++ disableAggregation
-
   // These are project level settings that MUST be on every project.
   lazy val coreDefaultSettings: Seq[Setting[_]] =
     projectCore ++ disableAggregation ++ Seq(
@@ -1048,8 +1037,6 @@ object Defaults extends BuildCommon {
       baseDirectory := thisProject.value.base,
       target := baseDirectory.value / "target"
     )
-  @deprecated("Default settings split into coreDefaultSettings and IvyModule/JvmModule plugins.", "0.13.2")
-  lazy val defaultSettings: Seq[Setting[_]] = projectBaseSettings ++ defaultConfigs
 
 }
 object Classpaths {
@@ -1136,8 +1123,6 @@ object Classpaths {
     publishLocal <<= publishTask(publishLocalConfiguration, deliverLocal),
     publishM2 <<= publishTask(publishM2Configuration, deliverLocal)
   )
-  @deprecated("This has been split into jvmPublishSettings and ivyPublishSettings.", "0.13.2")
-  val publishSettings: Seq[Setting[_]] = ivyPublishSettings ++ jvmPublishSettings
 
   private[this] def baseGlobalDefaults = Defaults.globalDefaults(Seq(
     conflictWarning :== ConflictWarning.default("global"),
@@ -1168,7 +1153,11 @@ object Classpaths {
       val id = app.provider.id
       val scalaVersion = app.provider.scalaProvider.version
       val binVersion = binaryScalaVersion(scalaVersion)
-      val cross = if (id.crossVersioned) CrossVersion.binary else CrossVersion.Disabled
+      val cross = id.crossVersionedValue match {
+        case CrossValue.Disabled => CrossVersion.Disabled
+        case CrossValue.Full     => CrossVersion.binary
+        case CrossValue.Binary   => CrossVersion.full
+      }
       val base = ModuleID(id.groupID, id.name, sbtVersion.value, crossVersion = cross)
       CrossVersion(scalaVersion, binVersion)(base).copy(crossVersion = CrossVersion.Disabled)
     }
@@ -1185,11 +1174,11 @@ object Classpaths {
     organizationHomepage <<= organizationHomepage or homepage,
     projectInfo <<= (name, description, homepage, startYear, licenses, organizationName, organizationHomepage, scmInfo, developers) apply ModuleInfo,
     overrideBuildResolvers <<= appConfiguration(isOverrideRepositories),
-    externalResolvers <<= (externalResolvers.task.?, resolvers, appResolvers, useJCenter) {
+    externalResolvers := ((externalResolvers.?.value, resolvers.value, appResolvers.value, useJCenter.value) match {
       case (Some(delegated), Seq(), _, _) => delegated
-      case (_, rs, Some(ars), uj)         => task { ars ++ rs }
-      case (_, rs, _, uj)                 => task { Resolver.withDefaultResolvers(rs, uj, mavenCentral = true) }
-    },
+      case (_, rs, Some(ars), uj)         => ars ++ rs
+      case (_, rs, _, uj)                 => Resolver.withDefaultResolvers(rs, uj, mavenCentral = true)
+    }),
     appResolvers := {
       val ac = appConfiguration.value
       val uj = useJCenter.value
@@ -1319,8 +1308,6 @@ object Classpaths {
       }
     }
   )
-  @deprecated("Split into ivyBaseSettings and jvmBaseSettings.", "0.13.2")
-  val baseSettings: Seq[Setting[_]] = ivyBaseSettings ++ jvmBaseSettings
 
   def warnResolversConflict(ress: Seq[Resolver], log: Logger): Unit = {
     val resset = ress.toSet
@@ -1686,10 +1673,9 @@ object Classpaths {
     for (f <- productsImplTask.value) yield APIMappings.store(analyzed(f, compile.value), apiURL.value).put(artifact.key, art).put(moduleID.key, module).put(configuration.key, config)
   }
 
-  private[this] def productsImplTask: Initialize[Task[Seq[File]]] =
-    (products.task, packageBin.task, exportJars) flatMap { (psTask, pkgTask, useJars) =>
-      if (useJars) Seq(pkgTask).join else psTask
-    }
+  private[this] def productsImplTask: Initialize[Task[Seq[File]]] = Def.task {
+    if (exportJars.value) Seq(packageBin.value) else products.value
+  }
 
   def constructBuildDependencies: Initialize[BuildDependencies] = loadedBuild(lb => BuildUtil.dependencies(lb.units))
 
@@ -2056,10 +2042,12 @@ trait BuildExtra extends BuildCommon with DefExtra {
     moduleSettings := new PomConfiguration(file.value, ivyScala.value, ivyValidate.value, managedScalaInstance.value)
 
   def runInputTask(config: Configuration, mainClass: String, baseArguments: String*): Initialize[InputTask[Unit]] =
-    inputTask { result =>
-      (fullClasspath in config, runner in (config, run), streams, result) map { (cp, r, s, args) =>
-        toError(r.run(mainClass, data(cp), baseArguments ++ args, s.log))
-      }
+    Def.inputTask {
+      import Def._
+      val r = (runner in (config, run)).value
+      val cp = (fullClasspath in config).value
+      val args = spaceDelimited().parsed
+      toError(r.run(mainClass, data(cp), baseArguments ++ args, streams.value.log))
     }
   def runTask(config: Configuration, mainClass: String, arguments: String*): Initialize[Task[Unit]] =
     (fullClasspath in config, runner in (config, run), streams) map { (cp, r, s) =>

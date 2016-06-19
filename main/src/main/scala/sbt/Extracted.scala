@@ -13,23 +13,25 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
   lazy val currentUnit = structure units currentRef.build
   lazy val currentProject = currentUnit defined currentRef.project
   lazy val currentLoader: ClassLoader = currentUnit.loader
-  def get[T](key: TaskKey[T]): Task[T] = get(key.task)
 
   /**
    * Gets the value assigned to `key` in the computed settings map.
    * If the project axis is not explicitly specified, it is resolved to be the current project according to the extracted `session`.
    * Other axes are resolved to be `Global` if they are not specified.
    */
-  def get[T](key: SettingKey[T]) = getOrError(inCurrent(key), key.key)
+  def get[T](key: SettingKey[T]): T = getOrError(inCurrent(key.scope), key.key)
+  def get[T](key: TaskKey[T]): Task[T] = getOrError(inCurrent(key.scope), key.key)
 
   /**
    * Gets the value assigned to `key` in the computed settings map wrapped in Some.  If it does not exist, None is returned.
    * If the project axis is not explicitly specified, it is resolved to be the current project according to the extracted `session`.
    * Other axes are resolved to be `Global` if they are not specified.
    */
-  def getOpt[T](key: SettingKey[T]): Option[T] = structure.data.get(inCurrent(key), key.key)
+  def getOpt[T](key: SettingKey[T]): Option[T] = structure.data.get(inCurrent(key.scope), key.key)
+  def getOpt[T](key: TaskKey[T]): Option[Task[T]] = structure.data.get(inCurrent(key.scope), key.key)
 
-  private[this] def inCurrent[T](key: SettingKey[T]): Scope = if (key.scope.project == This) key.scope.copy(project = Select(currentRef)) else key.scope
+  private[this] def inCurrent[T](scope: Scope): Scope =
+    if (scope.project == This) scope.copy(project = Select(currentRef)) else scope
 
   /**
    * Runs the task specified by `key` and returns the transformed State and the resulting value of the task.

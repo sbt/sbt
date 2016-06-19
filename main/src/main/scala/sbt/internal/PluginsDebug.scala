@@ -39,7 +39,7 @@ private[sbt] class PluginsDebug(val available: List[AutoPlugin], val nameToKey: 
       if(possible.nonEmpty) {
         val explained = possible.map(explainPluginEnable)
         val possibleString =
-          if(explained.size > 1) explained.zipWithIndex.map{case (s,i) => s"$i. $s"}.mkString("Multiple plugins are available that can provide $notFoundKey:\n", "\n", "")
+          if(explained.size > 1) explained.zipWithIndex.map{case (s,i) => s"$i. $s"}.mkString(s"Multiple plugins are available that can provide $notFoundKey:\n", "\n", "")
           else s"$notFoundKey is provided by an available (but not activated) plugin:\n${explained.mkString}"
         def impossiblePlugins = impossible.map(_.plugin.label).mkString(", ")
         val imPostfix = if(impossible.isEmpty) "" else s"\n\nThere are other available plugins that provide $notFoundKey, but they are impossible to add: $impossiblePlugins"

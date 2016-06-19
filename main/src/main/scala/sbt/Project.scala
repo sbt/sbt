@@ -592,7 +592,8 @@ object Project extends ProjectExtra {
       val p = EvaluateTask.executeProgress(extracted, extracted.structure, state)
       val r = EvaluateTask.restrictions(state)
       val fgc = EvaluateTask.forcegc(extracted, extracted.structure)
-      runTask(taskKey, state, EvaluateTaskConfig(r, checkCycles, p, ch, fgc))
+      val mfi = EvaluateTask.minForcegcInterval(extracted, extracted.structure)
+      runTask(taskKey, state, EvaluateTaskConfig(r, checkCycles, p, ch, fgc, mfi))
     }
   def runTask[T](taskKey: ScopedKey[Task[T]], state: State, config: EvaluateTaskConfig): Option[(State, Result[T])] = {
     val extracted = Project.extract(state)
@@ -627,21 +628,21 @@ object Project extends ProjectExtra {
 private[sbt] trait GeneratedRootProject
 
 trait ProjectExtra0 {
-   implicit def wrapProjectReferenceSeqEval[T <% ProjectReference](rs: => Seq[T]): Seq[Eval[ProjectReference]] =
+   implicit def wrapProjectReferenceSeqEval[T](rs: => Seq[T])(implicit ev: T => ProjectReference): Seq[Eval[ProjectReference]] =
     rs map { r => Eval.later(r: ProjectReference) }
 }
 
 trait ProjectExtra extends ProjectExtra0 {
-  implicit def classpathDependencyEval[T <% ClasspathDep[ProjectReference]](p: => T): Eval[ClasspathDep[ProjectReference]] =
+  implicit def classpathDependencyEval[T](p: => T)(implicit ev: T => ClasspathDep[ProjectReference]): Eval[ClasspathDep[ProjectReference]] =
     Eval.later(p: ClasspathDep[ProjectReference])
-  implicit def wrapProjectReferenceEval[T <% ProjectReference](ref: => T): Eval[ProjectReference] =
+  implicit def wrapProjectReferenceEval[T](ref: => T)(implicit ev: T => ProjectReference): Eval[ProjectReference] =
     Eval.later(ref: ProjectReference)
 
-  implicit def wrapSettingDefinitionEval[T <% Def.SettingsDefinition](d: => T): Eval[Def.SettingsDefinition] = Eval.later(d)
+  implicit def wrapSettingDefinitionEval[T](d: => T)(implicit ev: T => Def.SettingsDefinition): Eval[Def.SettingsDefinition] = Eval.later(d)
   implicit def wrapSettingSeqEval(ss: => Seq[Setting[_]]): Eval[Def.SettingsDefinition] = Eval.later(new Def.SettingList(ss))
 
-  implicit def configDependencyConstructor[T <% ProjectReference](p: T): Constructor = new Constructor(p)
-  implicit def classpathDependency[T <% ProjectReference](p: T): ClasspathDep[ProjectReference] = new ClasspathDependency(p, None)
+  implicit def configDependencyConstructor[T](p: T)(implicit ev: T => ProjectReference): Constructor = new Constructor(p)
+  implicit def classpathDependency[T](p: T)(implicit ev: T => ProjectReference): ClasspathDep[ProjectReference] = new ClasspathDependency(p, None)
 
 
   // These used to be in Project so that they didn't need to get imported (due to Initialize being nested in Project).

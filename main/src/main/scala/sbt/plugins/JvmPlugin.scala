@@ -27,8 +27,7 @@ object JvmPlugin extends AutoPlugin {
     Defaults.paths ++
     Classpaths.jvmPublishSettings ++
     Classpaths.jvmBaseSettings ++
-    Defaults.projectTasks ++
-    Defaults.packageBase ++
+    Defaults.baseTasks ++
     Defaults.compileBase ++
     Defaults.defaultConfigs
   override lazy val globalSettings: Seq[Setting[_]] =

@@ -341,7 +341,7 @@ ${listConflicts(conflicting)}""")
     val m = ru.runtimeMirror(loader)
     val im = m.reflect(ap)
     val hasGetterOpt = catching(classOf[ScalaReflectionException]) opt {
-      im.symbol.asType.toType.declaration(ru.newTermName("autoImport")) match {
+      im.symbol.asType.toType.decl(ru.TermName("autoImport")) match {
         case ru.NoSymbol => false
         case sym => sym.asTerm.isGetter || sym.asTerm.isModule
       }

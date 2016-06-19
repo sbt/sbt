@@ -97,9 +97,9 @@ object Resolvers {
   abstract class DistributedVCS {
     val scheme: String
 
-    def clone(from: String, to: File)
+    def clone(from: String, to: File): Unit
 
-    def checkout(branch: String, in: File)
+    def checkout(branch: String, in: File): Unit
 
     def toResolver: Resolver = (info: ResolveInfo) => {
       val uri = info.uri.withoutMarkerScheme
@@ -167,7 +167,7 @@ object Resolvers {
     }
 
   private[this] def normalizeDirectoryName(name: String): String =
-    StringUtilities.normalize(dropExtensions(name))
+    dropExtensions(name).toLowerCase(Locale.ENGLISH).replaceAll("""\W+""", "-")
 
   private[this] def dropExtensions(name: String): String = name.takeWhile(_ != '.')
 

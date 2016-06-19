@@ -5,7 +5,7 @@ package sbt
 package internal
 
 import sbt.internal.util.{ Settings, Show, ~> }
-import sbt.librarymanagement.{ Configuration, Configurations, Resolver }
+import sbt.librarymanagement.{ Configuration, Configurations, Resolver, UpdateOptions }
 import sbt.internal.librarymanagement.{ InlineIvyConfiguration, IvyPaths }
 
 import java.io.File
@@ -58,7 +58,7 @@ private[sbt] object Load {
       val checksums = Nil
       val ivyPaths = new IvyPaths(baseDirectory, bootIvyHome(state.configuration))
       val ivyConfiguration = new InlineIvyConfiguration(ivyPaths, Resolver.withDefaultResolvers(Nil),
-        Nil, Nil, localOnly, lock, checksums, None, log)
+        Nil, Nil, localOnly, lock, checksums, None, UpdateOptions(), log)
       val compilers = Compiler.compilers(ClasspathOptions.boot, ivyConfiguration)(state.configuration, log)
       val evalPluginDef = EvaluateTask.evalPluginDef(log) _
       val delegates = defaultDelegates
@@ -790,7 +790,7 @@ private[sbt] object Load {
       (dir * -GlobFilter(DefaultTargetName)).get.nonEmpty
     }
   def noPlugins(dir: File, config: LoadBuildConfiguration): LoadedPlugins =
-    loadPluginDefinition(dir, config, PluginData(config.globalPluginClasspath, None, None))
+    loadPluginDefinition(dir, config, PluginData(config.globalPluginClasspath, Nil, None, None, Nil))
   def buildPlugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins =
     loadPluginDefinition(dir, config, buildPluginDefinition(dir, s, config))
 
