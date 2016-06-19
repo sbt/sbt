@@ -15,13 +15,9 @@ object TupleNBuilder extends TupleBuilder {
   final val MaxInputs = 11
   final val TupleMethodName = "tuple"
 
-  // TODO 2.11 Remove this after dropping 2.10.x support.
-  private object HasCompat { val compat = this }; import HasCompat._
-
-  def make(c: Context)(mt: c.Type, inputs: Inputs[c.universe.type]): BuilderResult[c.type] = new BuilderResult[c.type] {
+  def make(c: blackbox.Context)(mt: c.Type, inputs: Inputs[c.universe.type]): BuilderResult[c.type] = new BuilderResult[c.type] {
     val util = ContextUtil[c.type](c)
     import c.universe.{ Apply => ApplyTree, _ }
-    import compat._
     import util._
 
     val global: Global = c.universe.asInstanceOf[Global]
@@ -30,9 +26,9 @@ object TupleNBuilder extends TupleBuilder {
     val ctx: c.type = c
     val representationC: PolyType = {
       val tcVariable: Symbol = newTCVariable(util.initialOwner)
-      val tupleTypeArgs = inputs.map(in => typeRef(NoPrefix, tcVariable, in.tpe :: Nil).asInstanceOf[global.Type])
+      val tupleTypeArgs = inputs.map(in => internal.typeRef(NoPrefix, tcVariable, in.tpe :: Nil).asInstanceOf[global.Type])
       val tuple = global.definitions.tupleType(tupleTypeArgs)
-      PolyType(tcVariable :: Nil, tuple.asInstanceOf[Type])
+      internal.polyType(tcVariable :: Nil, tuple.asInstanceOf[Type])
     }
     val resultType = appliedType(representationC, idTC :: Nil)
 
