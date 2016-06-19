@@ -13,55 +13,6 @@ trait SplitExpression {
 trait SplitExpressionsBehavior extends SplitExpression {
   this: SpecificationLike =>
 
-  def oldExpressionsSplitter(implicit splitter: SplitExpressions.SplitExpression): Unit = {
-
-    "parse a simple setting" in {
-      val (imports, settingsAndDefs) = split("""version := "1.0"""")
-      settingsAndDefs.head._1 === """version := "1.0""""
-
-      imports.isEmpty should beTrue
-      settingsAndDefs.isEmpty should beFalse
-    }
-
-    "parse a config containing a single import" in {
-      val (imports, settingsAndDefs) = split("""import foo.Bar""")
-      imports.isEmpty should beFalse
-      settingsAndDefs.isEmpty should beTrue
-    }
-
-    "parse a config containing two imports and a setting" in {
-      val (imports, settingsAndDefs) = split(
-        """import foo.Bar
-              import foo.Bar
-
-             version := "1.0"
-        """.stripMargin)
-      imports.size === 2
-      settingsAndDefs.size === 1
-    }
-
-    "parse a config containgn a def" in {
-      val (imports, settingsAndDefs) = split("""def foo(x: Int) = {
-  x + 1
-}""")
-      imports.isEmpty should beTrue
-      settingsAndDefs.isEmpty should beFalse
-    }
-
-    "parse a config containgn a val" in {
-      val (imports, settingsAndDefs) = split("""val answer = 42""")
-      imports.isEmpty should beTrue
-      settingsAndDefs.isEmpty should beFalse
-    }
-
-    "parse a config containgn a lazy val" in {
-      val (imports, settingsAndDefs) = split("""lazy val root = (project in file(".")).enablePlugins­(PlayScala)""")
-      imports.isEmpty should beTrue
-      settingsAndDefs.isEmpty should beFalse
-    }
-
-  }
-
   def newExpressionsSplitter(implicit splitter: SplitExpressions.SplitExpression): Unit = {
 
     "parse a two settings without intervening blank line" in {
