@@ -19,9 +19,6 @@ sealed trait AttributeKey[T] {
   /** The runtime evidence for `T` */
   def manifest: Manifest[T]
 
-  @deprecated("Should only be used for compatibility during the transition from hyphenated labels to camelCase labels.", "0.13.0")
-  def rawLabel: String
-
   /** The label is the identifier for the key and is camelCase by convention. */
   def label: String
 
@@ -73,7 +70,6 @@ object AttributeKey {
 
   private[this] def make[T](name: String, description0: Option[String], extend0: Seq[AttributeKey[_]], rank0: Int)(implicit mf: Manifest[T]): AttributeKey[T] = new SharedAttributeKey[T] {
     def manifest = mf
-    def rawLabel = name
     val label = Util.hyphenToCamel(name)
     def description = description0
     def extend = extend0
@@ -81,7 +77,6 @@ object AttributeKey {
   }
   private[sbt] def local[T](implicit mf: Manifest[T]): AttributeKey[T] = new AttributeKey[T] {
     def manifest = mf
-    def rawLabel = LocalLabel
     def label = LocalLabel
     def description = None
     def extend = Nil
