@@ -1,8 +1,6 @@
 package sbt
 
 import java.lang.{ Process => JProcess, ProcessBuilder => JProcessBuilder }
-import java.net.URL
-import java.io.File
 
 trait ProcessExtra {
   import scala.sys.process._
