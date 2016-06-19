@@ -171,14 +171,14 @@ class ScriptedRunner {
     }
 }
 
-final case class ScriptedTest(group: String, name: String) extends NotNull {
+final case class ScriptedTest(group: String, name: String) {
   override def toString = group + "/" + name
 }
 private[test] object ListTests {
   def list(directory: File, filter: java.io.FileFilter) = wrapNull(directory.listFiles(filter))
 }
 import ListTests._
-private[test] final class ListTests(baseDirectory: File, accept: ScriptedTest => Boolean, log: Logger) extends NotNull {
+private[test] final class ListTests(baseDirectory: File, accept: ScriptedTest => Boolean, log: Logger) {
   def filter = DirectoryFilter -- HiddenFileFilter
   def listTests: Seq[ScriptedTest] =
     {
