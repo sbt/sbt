@@ -5,7 +5,7 @@ package sbt.internal.util
 package complete
 
 import jline.console.ConsoleReader
-import jline.console.completer.{ CandidateListCompletionHandler, Completer, CompletionHandler }
+import jline.console.completer.{ Completer, CompletionHandler }
 import scala.annotation.tailrec
 import collection.JavaConversions
 

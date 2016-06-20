@@ -1,6 +1,5 @@
 package sbt.internal.util
 
-import sbt.util._
 import java.io.{ BufferedWriter, PrintStream, PrintWriter }
 
 sealed trait ConsoleOut {

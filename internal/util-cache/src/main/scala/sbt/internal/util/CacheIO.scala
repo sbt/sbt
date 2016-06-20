@@ -3,7 +3,7 @@
  */
 package sbt.internal.util
 
-import java.io.{ File, FileNotFoundException }
+import java.io.File
 import sbinary.{ DefaultProtocol, Format, Operations }
 import scala.reflect.Manifest
 import sbt.io.IO

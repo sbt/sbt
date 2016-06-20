@@ -2,7 +2,6 @@ import sbt._
 import Keys._
 
 object Dependencies {
-  lazy val scala210 = "2.10.6"
   lazy val scala211 = "2.11.8"
   lazy val scala212 = "2.12.0-M4"
 

@@ -8,9 +8,8 @@ import CacheIO.{ fromFile, toFile }
 import sbinary.Format
 import scala.pickling.PicklingException
 import scala.reflect.Manifest
-import scala.collection.mutable
 import sbt.io.IO.{ delete, read, write }
-import sbt.io.{ IO, Path }
+import sbt.io.IO
 import sbt.io.Using
 import sbt.io.syntax._
 import sbt.serialization._
@@ -257,7 +256,6 @@ object FileFunction {
 
   def cached(cacheBaseDirectory: File)(inStyle: FilesInfo.Style, outStyle: FilesInfo.Style)(action: UpdateFunction): Set[File] => Set[File] =
     {
-      import Path._
       lazy val inCache = Difference.inputs(cacheBaseDirectory / "in-cache", inStyle)
       lazy val outCache = Difference.outputs(cacheBaseDirectory / "out-cache", outStyle)
       inputs =>

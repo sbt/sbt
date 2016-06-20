@@ -3,7 +3,7 @@
  */
 package sbt.internal.util
 
-import java.io.{ File, IOException }
+import java.io.File
 import sbinary.{ DefaultProtocol, Format }
 import DefaultProtocol._
 import scala.reflect.Manifest

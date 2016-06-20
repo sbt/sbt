@@ -7,7 +7,7 @@ import sbinary.{ CollectionTypes, DefaultProtocol, Format, Input, JavaFormats, O
 import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, File, InputStream, OutputStream }
 import java.net.{ URI, URL }
 import Types.:+:
-import DefaultProtocol.{ asProduct2, asSingleton, BooleanFormat, ByteFormat, IntFormat, wrap }
+import DefaultProtocol.{ asSingleton, BooleanFormat, ByteFormat, IntFormat, wrap }
 import scala.xml.NodeSeq
 import scala.language.existentials
 
@@ -221,7 +221,7 @@ trait UnionImplicits {
             else
               false
           }
-        def force[T <: UB, UB](e: Equiv[T], a: UB, b: UB): Boolean = e.equiv(a.asInstanceOf[T], b.asInstanceOf[T])
+        def force[T <: UB2, UB2](e: Equiv[T], a: UB2, b: UB2): Boolean = e.equiv(a.asInstanceOf[T], b.asInstanceOf[T])
       }
     }
 

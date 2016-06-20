@@ -3,10 +3,8 @@
  */
 package sbt.internal.util
 
-import Types.:+:
-import sbinary.{ DefaultProtocol, Format, Input, Output => Out }
-import DefaultProtocol.ByteFormat
-import java.io.{ File, InputStream, OutputStream }
+import sbinary.{ Format, Input, Output => Out }
+import java.io.File
 import sbt.io.Using
 
 trait InputCache[I] {

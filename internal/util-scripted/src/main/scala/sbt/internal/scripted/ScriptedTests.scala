@@ -6,7 +6,7 @@ import java.io.File
 import sbt.util.Logger
 import sbt.internal.util.{ ConsoleLogger, BufferedLogger, FullLogger }
 import sbt.io.IO.wrapNull
-import sbt.io.{ DirectoryFilter, HiddenFileFilter, Path, GlobFilter }
+import sbt.io.{ DirectoryFilter, HiddenFileFilter }
 import sbt.io.syntax._
 import sbt.internal.io.Resources
 
@@ -49,9 +49,6 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, handl
   def scriptedTest(group: String, name: String, log: Logger): Seq[() => Option[String]] =
     scriptedTest(group, name, { _ => () }, log)
   def scriptedTest(group: String, name: String, prescripted: File => Unit, log: Logger): Seq[() => Option[String]] = {
-    import Path._
-    import GlobFilter._
-    var failed = false
     for (groupDir <- (resourceBaseDirectory * group).get; nme <- (groupDir * name).get) yield {
       val g = groupDir.getName
       val n = nme.getName
