@@ -16,8 +16,8 @@ package name.example {
 
     object autoImport {
       val xyz = 3
-      val checkMaxErrors = TaskKey[Unit]("check-max-errors")
-      val checkName = TaskKey[Unit]("check-name")
+      val checkMaxErrors = taskKey[Unit]("")
+      val checkName = taskKey[Unit]("")
     }
 
     import autoImport._

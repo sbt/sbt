@@ -1,4 +1,4 @@
--> publish-local
+-> publishLocal
 
 $ touch topublish.txt
-> publish-local
+> publishLocal

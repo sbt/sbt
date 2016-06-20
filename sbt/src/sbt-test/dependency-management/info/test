@@ -1,11 +1,11 @@
-> check-download
-> check-info
+> checkDownload
+> checkInfo
 
 > clean
 $ touch info
 > reload
 
-> show custom-info
-> check-download
-> show custom-info
-> check-info
+> show customInfo
+> checkDownload
+> show customInfo
+> checkInfo

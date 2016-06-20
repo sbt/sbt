@@ -3,7 +3,7 @@
 $ copy-file changes/def/build.sbt build.sbt
 $ copy-file changes/def/Def.java b/Def.java
 > reload
-> publish-local
+> publishLocal
 > clean
 
 
@@ -27,7 +27,7 @@ $ delete build.sbt
 $ copy-file changes/both/build.sbt build.sbt
 $ copy-file changes/def/Def.java b/Def.java
 > reload
-> publish-local
+> publishLocal
 > clean
 
 

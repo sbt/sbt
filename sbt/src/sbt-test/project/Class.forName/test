@@ -11,4 +11,4 @@ $ copy-file changes/build2.sbt build.sbt
 
 # The project definition uses the class in test.jar and will fail here if sbt did not put the
 # jars in project/lib on the runtime classpath
-> use-jar
+> useJar

@@ -1,6 +1,6 @@
 lazy val akey = AttributeKey[Int]("TestKey")
-lazy val t = TaskKey[String]("test-task")
-lazy val check = InputKey[Unit]("check")
+lazy val testTask = taskKey[String]("")
+lazy val check = inputKey[Unit]("")
 
 lazy val root = (project in file(".")).
   aggregate(a, b).
@@ -10,12 +10,12 @@ lazy val root = (project in file(".")).
 
 lazy val a = project.
   settings(
-    t := sys.error("Failing")
+    testTask := sys.error("Failing")
   )
 
 lazy val b = project.
   settings(
-    t <<= Def.task("").updateState(updater)
+    testTask <<= Def.task("").updateState(updater)
   )
 
 def checkState(runs: Int, s: State): Unit = {

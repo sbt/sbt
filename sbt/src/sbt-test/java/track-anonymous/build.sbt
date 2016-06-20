@@ -1,7 +1,7 @@
 {
 		import complete.DefaultParsers._
 	val parser = token(Space ~> ( ("exists" ^^^ true) | ("absent" ^^^ false) ) )
-	InputKey[Unit]("check-output") := {
+	InputKey[Unit]("checkOutput") := {
 		val shouldExist = parser.parsed
 		val dir = (classDirectory in Compile).value
 		if((dir / "Anon.class").exists != shouldExist)

@@ -1,4 +1,4 @@
-lazy val checkLoader = TaskKey[Unit]("check-loaders")
+lazy val checkLoaders = taskKey[Unit]("")
 
 def checkTask = subs.map(sub => scalaInstance in LocalProject(sub.id)).join.map { sis =>
   assert(sis.sliding(2).forall{ case Seq(x,y) => x.loader == y.loader }, "Not all ScalaInstances had the same class loader.")
@@ -6,7 +6,7 @@ def checkTask = subs.map(sub => scalaInstance in LocalProject(sub.id)).join.map 
 
 lazy val root = (project in file(".")).
   settings(
-    checkLoader <<= checkTask,
+    checkLoaders <<= checkTask,
     concurrentRestrictions := Nil
   )
 

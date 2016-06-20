@@ -12,8 +12,8 @@ lazy val root = (project in file(".")).
     TaskKey[Unit]("check-info") <<= checkInfo
   )
 
-lazy val delivered = TaskKey[NodeSeq]("delivered")
-lazy val customInfo = SettingKey[Boolean]("custom-info")
+lazy val delivered = taskKey[NodeSeq]("")
+lazy val customInfo = settingKey[Boolean]("")
 
 def inlineXML(addInfo: Boolean, organization: String, moduleID: String, version: String): NodeSeq =
   if(addInfo)

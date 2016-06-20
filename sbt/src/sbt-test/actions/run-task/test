@@ -1,5 +1,5 @@
 > demo
 -> demo 1
-> demo-in 1
--> demo-in 2
-> demo-in 1 2
+> demoIn 1
+-> demoIn 2
+> demoIn 1 2

@@ -7,8 +7,8 @@
 
 # This part verifies that the package-src action works properly under a flattened/merged source hierarchy
 
-> package-src
-> test:package-src
+> packageSrc
+> test:packageSrc
 
 $ delete src
 $ delete test-src

@@ -13,7 +13,7 @@
   )
 }
 
-InputKey[Unit]("check-count") <<= inputTask { argsTask =>
+InputKey[Unit]("checkCount") <<= inputTask { argsTask =>
 	(argsTask, state) map { (args, s) =>
 		def get(label: String) = s get AttributeKey[Int](label) getOrElse 0
 		val loadCount = get("load-count")

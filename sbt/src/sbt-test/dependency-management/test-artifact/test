@@ -4,7 +4,7 @@
 $ copy-file changes/def/build.sbt build.sbt
 $ copy-file changes/def/Def.java src/test/java/Def.java
 > reload
-> publish-local
+> publishLocal
 > publish
 > clean
 

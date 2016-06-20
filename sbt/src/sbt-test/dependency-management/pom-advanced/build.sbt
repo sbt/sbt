@@ -3,7 +3,7 @@ import complete.DefaultParsers._
 lazy val root = (project in file(".")).
   settings(
     resolvers ++= Seq(local, Resolver.sonatypeRepo("releases"), Resolver.sonatypeRepo("snapshots")),
-    InputKey[Unit]("check-pom") <<= InputTask(_ => spaceDelimited("<args>")) { result => (makePom, result, streams) map checkPomRepositories },
+    InputKey[Unit]("checkPom") <<= InputTask(_ => spaceDelimited("<args>")) { result => (makePom, result, streams) map checkPomRepositories },
     makePomConfiguration <<= (makePomConfiguration, baseDirectory) { (conf, base) =>
       conf.copy(filterRepositories = pomIncludeRepository(base, conf.filterRepositories) )
     },

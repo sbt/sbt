@@ -1,4 +1,4 @@
-TaskKey[Unit]("output-empty") <<= classDirectory in Configurations.Compile map { outputDirectory =>
+TaskKey[Unit]("outputEmpty") <<= classDirectory in Configurations.Compile map { outputDirectory =>
 	def classes = (outputDirectory ** "*.class").get
 	if(!classes.isEmpty) sys.error("Classes existed:\n\t" + classes.mkString("\n\t")) else ()
 }
