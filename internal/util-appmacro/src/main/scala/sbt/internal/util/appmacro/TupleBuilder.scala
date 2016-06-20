@@ -1,8 +1,6 @@
 package sbt.internal.util
 package appmacro
 
-import Types.Id
-import scala.tools.nsc.Global
 import scala.reflect._
 import macros._
 
@@ -29,10 +27,10 @@ trait TupleBuilder {
   type Inputs[U <: Universe with Singleton] = List[Instance.Input[U]]
 
   /** Constructs a one-time use Builder for Context `c` and type constructor `tcType`. */
-  def make(c: Context)(tcType: c.Type, inputs: Inputs[c.universe.type]): BuilderResult[c.type]
+  def make(c: blackbox.Context)(tcType: c.Type, inputs: Inputs[c.universe.type]): BuilderResult[c.type]
 }
 
-trait BuilderResult[C <: Context with Singleton] {
+trait BuilderResult[C <: blackbox.Context with Singleton] {
   val ctx: C
   import ctx.universe._
 

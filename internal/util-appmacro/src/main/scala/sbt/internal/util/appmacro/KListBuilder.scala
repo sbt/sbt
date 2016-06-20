@@ -1,27 +1,21 @@
 package sbt.internal.util
 package appmacro
 
-import Types.Id
-import scala.tools.nsc.Global
 import scala.reflect._
 import macros._
 
 /** A `TupleBuilder` that uses a KList as the tuple representation.*/
 object KListBuilder extends TupleBuilder {
-  // TODO 2.11 Remove this after dropping 2.10.x support.
-  private object HasCompat { val compat = this }; import HasCompat._
-
-  def make(c: Context)(mt: c.Type, inputs: Inputs[c.universe.type]): BuilderResult[c.type] = new BuilderResult[c.type] {
+  def make(c: blackbox.Context)(mt: c.Type, inputs: Inputs[c.universe.type]): BuilderResult[c.type] = new BuilderResult[c.type] {
     val ctx: c.type = c
     val util = ContextUtil[c.type](c)
     import c.universe.{ Apply => ApplyTree, _ }
-    import compat._
     import util._
 
     val knilType = c.typeOf[KNil]
-    val knil = Ident(knilType.typeSymbol.companionSymbol)
+    val knil = Ident(knilType.typeSymbol.companion)
     val kconsTpe = c.typeOf[KCons[Int, KNil, List]]
-    val kcons = kconsTpe.typeSymbol.companionSymbol
+    val kcons = kconsTpe.typeSymbol.companion
     val mTC: Type = mt.asInstanceOf[c.universe.Type]
     val kconsTC: Type = kconsTpe.typeConstructor
 
@@ -62,8 +56,7 @@ object KListBuilder extends TupleBuilder {
      */
     val klistType: Type = (inputs :\ knilType)((in, klist) => kconsType(in.tpe, klist))
 
-    val representationC = PolyType(tcVariable :: Nil, klistType)
-    val resultType = appliedType(representationC, idTC :: Nil)
+    val representationC = internal.polyType(tcVariable :: Nil, klistType)
     val input = klist
     val alistInstance: ctx.universe.Tree = TypeApply(select(Ident(alist), "klist"), TypeTree(representationC) :: Nil)
     def extract(param: ValDef) = bindKList(param, Nil, inputs.map(_.local))

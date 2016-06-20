@@ -23,7 +23,6 @@ trait MonadInstance extends Instance {
 
 import scala.reflect._
 import macros._
-import reflect.internal.annotations.compileTimeOnly
 
 object Instance {
   final val ApplyName = "app"
@@ -33,10 +32,10 @@ object Instance {
   final val InstanceTCName = "M"
 
   final class Input[U <: Universe with Singleton](val tpe: U#Type, val expr: U#Tree, val local: U#ValDef)
-  trait Transform[C <: Context with Singleton, N[_]] {
+  trait Transform[C <: blackbox.Context with Singleton, N[_]] {
     def apply(in: C#Tree): C#Tree
   }
-  def idTransform[C <: Context with Singleton]: Transform[C, Id] = new Transform[C, Id] {
+  def idTransform[C <: blackbox.Context with Singleton]: Transform[C, Id] = new Transform[C, Id] {
     def apply(in: C#Tree): C#Tree = in
   }
 
@@ -76,7 +75,7 @@ object Instance {
    * If this is for multi-input flatMap (app followed by flatMap),
    *  this should be the argument wrapped in Right.
    */
-  def contImpl[T, N[_]](c: Context, i: Instance with Singleton, convert: Convert, builder: TupleBuilder)(t: Either[c.Expr[T], c.Expr[i.M[T]]], inner: Transform[c.type, N])(
+  def contImpl[T, N[_]](c: blackbox.Context, i: Instance with Singleton, convert: Convert, builder: TupleBuilder)(t: Either[c.Expr[T], c.Expr[i.M[T]]], inner: Transform[c.type, N])(
     implicit
     tt: c.WeakTypeTag[T], nt: c.WeakTypeTag[N[T]], it: c.TypeTag[i.type]
   ): c.Expr[i.M[N[T]]] =
@@ -85,11 +84,11 @@ object Instance {
 
       val util = ContextUtil[c.type](c)
       val mTC: Type = util.extractTC(i, InstanceTCName)
-      val mttpe: Type = appliedType(mTC, nt.tpe :: Nil).normalize
+      val mttpe: Type = appliedType(mTC, nt.tpe :: Nil).dealias
 
       // the tree for the macro argument
       val (tree, treeType) = t match {
-        case Left(l)  => (l.tree, nt.tpe.normalize)
+        case Left(l)  => (l.tree, nt.tpe.dealias)
         case Right(r) => (r.tree, mttpe)
       }
       // the Symbol for the anonymous function passed to the appropriate Instance.map/flatMap/pure method
