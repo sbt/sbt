@@ -3,8 +3,6 @@
  */
 package sbt.internal.util
 
-import Types._
-
 // Used to emulate ~> literals
 trait Param[A[_], B[_]] {
   type T

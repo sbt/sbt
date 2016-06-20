@@ -3,7 +3,7 @@ package sbt.internal.util
 import java.lang.Runnable
 import java.util.concurrent.{ atomic, Executor, LinkedBlockingQueue }
 import atomic.{ AtomicBoolean, AtomicInteger }
-import Types.{ :+:, ConstK, Id }
+import Types.{ ConstK, Id }
 
 object EvaluationState extends Enumeration {
   val New, Blocked, Ready, Calling, Evaluated = Value

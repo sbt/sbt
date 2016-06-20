@@ -54,6 +54,7 @@ class FileExamplesTest extends UnitSpec {
       }
     }
 
+  // TODO: Remove DelayedInit - https://github.com/scala/scala/releases/tag/v2.11.0-RC1
   class DirectoryStructure(withCompletionPrefix: String = "") extends DelayedInit {
     var fileExamples: FileExamples = _
     var baseDir: File = _
