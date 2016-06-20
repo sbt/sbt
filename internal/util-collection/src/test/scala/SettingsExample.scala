@@ -32,7 +32,6 @@ object SettingsExample extends Init[Scope] {
 
 object SettingsUsage {
   import SettingsExample._
-  import Types._
 
   // Define some keys
   val a = AttributeKey[Int]("a")
