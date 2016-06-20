@@ -187,15 +187,15 @@ lazy val core = crossProject
       ) ++ {
         if (scalaVersion.value.startsWith("2.10.")) Seq()
         else Seq(
-          "org.scala-lang.modules" %% "scala-xml" % "1.0.3"
+          "org.scala-lang.modules" %% "scala-xml" % "1.0.5"
         )
       }
   )
   .jsSettings(
     libraryDependencies ++= Seq(
       "com.github.japgolly.fork.scalaz" %%% "scalaz-core" % (if (scalaVersion.value.startsWith("2.10.")) "7.1.1" else "7.1.2"),
-      "org.scala-js" %%% "scalajs-dom" % "0.8.0",
-      "be.doeraene" %%% "scalajs-jquery" % "0.8.0"
+      "org.scala-js" %%% "scalajs-dom" % "0.9.1",
+      "be.doeraene" %%% "scalajs-jquery" % "0.9.0"
     )
   )
 
@@ -218,8 +218,8 @@ lazy val tests = crossProject
   .settings(
     name := "coursier-tests",
     libraryDependencies ++= Seq(
-      "org.scala-lang.modules" %% "scala-async" % "0.9.1" % "provided",
-      "com.lihaoyi" %%% "utest" % "0.3.0" % "test"
+      "org.scala-lang.modules" %% "scala-async" % "0.9.5" % "provided",
+      "com.lihaoyi" %%% "utest" % "0.4.3" % "test"
     ),
     unmanagedResourceDirectories in Test += (baseDirectory in LocalRootProject).value / "tests" / "shared" / "src" / "test" / "resources",
     testFrameworks += new TestFramework("utest.runner.Framework")
@@ -329,7 +329,7 @@ lazy val cli = project
       if (scalaVersion.value startsWith "2.10.")
         Seq()
       else
-        Seq("com.github.alexarchambault" %% "case-app" % "1.0.0-RC2")
+        Seq("com.github.alexarchambault" %% "case-app" % "1.0.0-RC3")
     },
     resourceGenerators in Compile += packageBin.in(bootstrap).in(Compile).map { jar =>
       Seq(jar)
@@ -525,8 +525,8 @@ lazy val `simple-web-server` = project
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-blazeserver" % http4sVersion,
       "org.http4s" %% "http4s-dsl" % http4sVersion,
-      "org.slf4j" % "slf4j-nop" % "1.7.19",
-      "com.github.alexarchambault" %% "case-app" % "1.0.0-RC2"
+      "org.slf4j" % "slf4j-nop" % "1.7.21",
+      "com.github.alexarchambault" %% "case-app" % "1.0.0-RC3"
     )
   )
 

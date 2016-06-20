@@ -67,7 +67,7 @@ org.webjars.npm:once:1.3.3:default
 org.webjars.npm:private:0.1.6:default
 org.webjars.npm:q:1.1.2:default
 org.webjars.npm:react-tools:0.13.3:default
-org.webjars.npm:recast:0.10.24:default
+org.webjars.npm:recast:0.10.25:default
 org.webjars.npm:sigmund:1.0.1:default
 org.webjars.npm:source-map:0.4.4:default
 org.webjars.npm:wrappy:1.0.1:default
