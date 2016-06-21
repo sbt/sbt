@@ -10,8 +10,8 @@ language: scala
 
 # TODO - we'd like to actually test everything, but the process library has a deadlock right now
 jdk:
-  - openjdk6
-#  - oraclejdk7
+  - openjdk7
+  - oraclejdk7
 
 env:
   matrix:
