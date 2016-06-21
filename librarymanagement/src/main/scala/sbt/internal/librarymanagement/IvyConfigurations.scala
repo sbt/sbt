@@ -11,6 +11,7 @@ import sbt.librarymanagement._
 
 final class IvyPaths(val baseDirectory: File, val ivyHome: Option[File]) {
   def withBase(newBaseDirectory: File) = new IvyPaths(newBaseDirectory, ivyHome)
+  override def toString = s"IvyPaths($baseDirectory, $ivyHome)"
 }
 sealed trait IvyConfiguration {
   type This <: IvyConfiguration
