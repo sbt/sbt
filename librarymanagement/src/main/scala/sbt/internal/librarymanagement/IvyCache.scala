@@ -4,7 +4,6 @@
 package sbt.internal.librarymanagement
 
 import java.io.File
-import java.net.URL
 
 import org.apache.ivy.core.cache.{ ArtifactOrigin, CacheDownloadOptions, DefaultRepositoryCacheManager }
 import org.apache.ivy.core.module.descriptor.{ Artifact => IvyArtifact, DefaultArtifact }
@@ -69,7 +68,7 @@ class IvyCache(val ivyHome: Option[File]) {
   /** Calls the given function with the default Ivy cache.*/
   def withDefaultCache[T](lock: Option[xsbti.GlobalLock], log: Logger)(f: DefaultRepositoryCacheManager => T): T =
     {
-      val (ivy, local) = basicLocalIvy(lock, log)
+      val (ivy, _) = basicLocalIvy(lock, log)
       ivy.withIvy(log) { ivy =>
         val cache = ivy.getSettings.getDefaultRepositoryCacheManager.asInstanceOf[DefaultRepositoryCacheManager]
         cache.setUseOrigin(false)

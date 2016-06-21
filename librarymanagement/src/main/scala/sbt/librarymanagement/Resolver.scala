@@ -5,7 +5,7 @@ package sbt.librarymanagement
 
 import java.io.{ IOException, File }
 import java.net.URL
-import scala.xml.{ Text, NodeSeq, Elem, XML }
+import scala.xml.XML
 import org.apache.ivy.plugins.resolver.DependencyResolver
 import org.xml.sax.SAXParseException
 

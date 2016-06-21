@@ -3,7 +3,7 @@
  */
 package sbt.internal.librarymanagement
 
-import java.io.{ File, FileOutputStream }
+import java.io.File
 import java.util.concurrent.Callable
 import sbt.util.Logger
 import sbt.librarymanagement._
@@ -57,7 +57,6 @@ class ComponentManager(globalLock: xsbti.GlobalLock, provider: xsbti.ComponentPr
       case xs       => invalid("Expected single file for component '" + id + "', found: " + xs.mkString(", "))
     }
   private def invalid(msg: String) = throw new InvalidComponent(msg)
-  private def invalid(e: NotInCache) = throw new InvalidComponent(e.getMessage, e)
 
   def define(id: String, files: Iterable[File]) = lockLocalCache { provider.defineComponent(id, files.toSeq.toArray) }
   /** Retrieve the file for component 'id' from the local repository. */

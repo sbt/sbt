@@ -11,10 +11,8 @@ import org.apache.ivy.util.extendable.ExtendableItem
 
 import java.io.{ File, InputStream }
 import java.net.URL
-import java.util.regex.Pattern
 import sbt.internal.librarymanagement.mavenint.{ PomExtraDependencyAttributes, SbtPomExtraProperties }
 import sbt.io.Hash
-import sbt.librarymanagement._
 
 // @deprecated("We now use an Aether-based pom parser.", "0.13.8")
 final class CustomPomParser(delegate: ModuleDescriptorParser, transform: (ModuleDescriptorParser, ModuleDescriptor) => ModuleDescriptor) extends ModuleDescriptorParser {
@@ -99,12 +97,6 @@ object CustomPomParser {
       //  parses the immediate text nodes of the property.
       val extraDepAttributes = getDependencyExtra(filtered)
 
-      // Fixes up the detected extension in some cases missed by Ivy.
-      val convertArtifacts = artifactExtIncorrect(md)
-
-      // Merges artifact sections for duplicate dependency definitions
-      val mergeDuplicates = IvySbt.hasDuplicateDependencies(md.getDependencies)
-
       val unqualify = toUnqualify(filtered)
 
       // Here we always add extra attributes.  There's a scenario where parent-pom information corrupts child-poms with "e:" namespaced xml elements
@@ -123,12 +115,8 @@ object CustomPomParser {
   private[sbt] def toUnqualify(propertyAttributes: Map[String, String]): Map[String, String] =
     (propertyAttributes - ExtraAttributesKey) map { case (k, v) => ("e:" + k, v) }
 
-  private[this] def artifactExtIncorrect(md: ModuleDescriptor): Boolean =
-    md.getConfigurations.exists(conf => md.getArtifacts(conf.getName).exists(art => JarPackagings(art.getExt)))
   private[this] def shouldBeUnqualified(m: Map[String, String]): Map[String, String] = m.filterKeys(unqualifiedKeys)
 
-  private[this] def condAddExtra(properties: Map[String, String], id: ModuleRevisionId): ModuleRevisionId =
-    if (properties.isEmpty) id else addExtra(properties, id)
   private[this] def addExtra(properties: Map[String, String], id: ModuleRevisionId): ModuleRevisionId =
     {
       import collection.JavaConverters._
@@ -167,8 +155,6 @@ object CustomPomParser {
     }
   private[this] def transform(dep: DependencyDescriptor, f: ModuleRevisionId => ModuleRevisionId): DependencyDescriptor =
     DefaultDependencyDescriptor.transformInstance(dep, namespaceTransformer(dep.getDependencyRevisionId, f), false)
-  private[this] def extraTransformer(txId: ModuleRevisionId, extra: Map[String, String]): NamespaceTransformer =
-    namespaceTransformer(txId, revId => addExtra(extra, revId))
 
   private[this] def namespaceTransformer(txId: ModuleRevisionId, f: ModuleRevisionId => ModuleRevisionId): NamespaceTransformer =
     new NamespaceTransformer {

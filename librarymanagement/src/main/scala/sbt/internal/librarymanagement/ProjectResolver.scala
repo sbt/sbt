@@ -7,15 +7,14 @@ import java.io.File
 import java.util.Date
 
 import org.apache.ivy.core.{ cache, module, report, resolve, search }
-import cache.{ ArtifactOrigin, RepositoryCacheManager }
+import cache.ArtifactOrigin
 import search.{ ModuleEntry, OrganisationEntry, RevisionEntry }
 import module.id.ModuleRevisionId
 import module.descriptor.{ Artifact => IArtifact, DefaultArtifact, DependencyDescriptor, ModuleDescriptor }
 import org.apache.ivy.plugins.namespace.Namespace
-import org.apache.ivy.plugins.resolver.{ DependencyResolver, ResolverSettings }
+import org.apache.ivy.plugins.resolver.ResolverSettings
 import report.{ ArtifactDownloadReport, DownloadReport, DownloadStatus, MetadataArtifactDownloadReport }
 import resolve.{ DownloadOptions, ResolveData, ResolvedModuleRevision }
-import sbt.librarymanagement._
 
 /**
  * A Resolver that uses a predefined mapping from module ids to in-memory descriptors.

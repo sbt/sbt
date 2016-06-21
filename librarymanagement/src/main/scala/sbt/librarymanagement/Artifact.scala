@@ -11,7 +11,7 @@ final case class Artifact(name: String, `type`: String, extension: String, class
   def extra(attributes: (String, String)*) = copy(extraAttributes = extraAttributes ++ ModuleID.checkE(attributes))
 }
 
-import Configurations.{ config, Optional, Pom, Test }
+import Configurations.{ Optional, Pom, Test }
 
 object Artifact {
   def apply(name: String): Artifact = Artifact(name, DefaultType, DefaultExtension, None, Nil, None)

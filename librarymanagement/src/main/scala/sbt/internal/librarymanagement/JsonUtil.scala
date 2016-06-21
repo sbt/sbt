@@ -1,11 +1,9 @@
 package sbt.internal.librarymanagement
 
 import java.io.File
-import java.net.URL
 import org.apache.ivy.core
 import core.module.descriptor.ModuleDescriptor
 import sbt.serialization._
-import java.net.{ URLEncoder, URLDecoder }
 import sbt.util.Logger
 import sbt.librarymanagement._
 

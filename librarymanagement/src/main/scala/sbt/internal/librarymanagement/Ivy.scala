@@ -5,35 +5,25 @@ package sbt.internal.librarymanagement
 
 import java.io.File
 import java.net.URI
-import java.text.ParseException
 import java.util.concurrent.Callable
-import java.util.{ Collection, Collections => CS, Date }
-import CS.singleton
 
 import org.apache.ivy.Ivy
-import org.apache.ivy.core.report.ResolveReport
-import org.apache.ivy.core.{ IvyPatternHelper, LogOptions, IvyContext }
-import org.apache.ivy.core.cache.{ ResolutionCacheManager, CacheMetadataOptions, DefaultRepositoryCacheManager, ModuleDescriptorWriter }
+import org.apache.ivy.core.IvyPatternHelper
+import org.apache.ivy.core.cache.{ CacheMetadataOptions, DefaultRepositoryCacheManager }
 import org.apache.ivy.core.event.EventManager
 import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact, DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact }
 import org.apache.ivy.core.module.descriptor.{ DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor, License }
 import org.apache.ivy.core.module.descriptor.OverrideDependencyDescriptorMediator
-import org.apache.ivy.core.module.id.{ ArtifactId, ModuleId, ModuleRevisionId }
+import org.apache.ivy.core.module.id.{ ModuleId, ModuleRevisionId }
 import org.apache.ivy.core.resolve._
 import org.apache.ivy.core.settings.IvySettings
 import org.apache.ivy.core.sort.SortEngine
-import org.apache.ivy.plugins.latest.{ LatestStrategy, LatestRevisionStrategy, ArtifactInfo }
 import org.apache.ivy.plugins.matcher.PatternMatcher
-import org.apache.ivy.plugins.parser.m2.{ PomModuleDescriptorParser }
-import org.apache.ivy.plugins.resolver.{ ChainResolver, DependencyResolver, BasicResolver }
-import org.apache.ivy.plugins.resolver.util.{ HasLatestStrategy, ResolvedResource }
-import org.apache.ivy.plugins.version.ExactVersionMatcher
-import org.apache.ivy.plugins.repository.file.{ FileResource, FileRepository => IFileRepository }
-import org.apache.ivy.plugins.repository.url.URLResource
-import org.apache.ivy.util.{ Message, MessageLogger, StringUtils => IvyStringUtils }
+import org.apache.ivy.plugins.resolver.DependencyResolver
+import org.apache.ivy.util.{ Message, MessageLogger }
 import org.apache.ivy.util.extendable.ExtendableItem
 
-import scala.xml.{ NodeSeq, Text }
+import scala.xml.NodeSeq
 import scala.collection.mutable
 
 import sbt.util.Logger
@@ -44,12 +34,13 @@ import ivyint.{ CachedResolutionResolveEngine, CachedResolutionResolveCache, Sbt
 final class IvySbt(val configuration: IvyConfiguration) {
   import configuration.baseDirectory
 
-  /**
+  /*
    * ========== Configuration/Setup ============
    * This part configures the Ivy instance by first creating the logger interface to ivy, then IvySettings, and then the Ivy instance.
    * These are lazy so that they are loaded within the right context.  This is important so that no Ivy XML configuration needs to be loaded,
    * saving some time.  This is necessary because Ivy has global state (IvyContext, Message, DocumentBuilder, ...).
    */
+
   private def withDefaultLogger[T](logger: MessageLogger)(f: => T): T =
     {
       def action() =
@@ -119,7 +110,8 @@ final class IvySbt(val configuration: IvyConfiguration) {
   private lazy val ivy: Ivy = mkIvy
   // Must be the same file as is used in Update in the launcher
   private lazy val ivyLockFile = new File(settings.getDefaultIvyUserDir, ".sbt.ivy.lock")
-  /** ========== End Configuration/Setup ============*/
+
+  // ========== End Configuration/Setup ============
 
   /** Uses the configured Ivy instance within a safe context.*/
   def withIvy[T](log: Logger)(f: Ivy => T): T =
@@ -269,7 +261,7 @@ private[sbt] object IvySbt {
       settings.addResolver(chain)
       chain
     }
-    val otherChain = makeChain("Other", "sbt-other", other)
+    makeChain("Other", "sbt-other", other)
     val mainChain = makeChain("Default", "sbt-chain", resolvers)
     settings.setDefaultResolver(mainChain.getName)
   }
@@ -461,15 +453,6 @@ private[sbt] object IvySbt {
       if (map.isEmpty) null else scala.collection.JavaConversions.mapAsJavaMap(map)
     }
 
-  private object javaMap {
-    import java.util.{ HashMap, Map }
-    def apply[K, V](pairs: (K, V)*): Map[K, V] =
-      {
-        val map = new HashMap[K, V]
-        pairs.foreach { case (key, value) => map.put(key, value) }
-        map
-      }
-  }
   /** Creates a full ivy file for 'module' using the 'dependencies' XML as the part after the &lt;info&gt;...&lt;/info&gt; section. */
   private def wrapped(module: ModuleID, dependencies: NodeSeq) =
     {
@@ -608,7 +591,7 @@ private[sbt] object IvySbt {
           parser.parseDepsConfs(confs, dependencyDescriptor)
       }
       for (artifact <- dependency.explicitArtifacts) {
-        import artifact.{ name, classifier, `type`, extension, url }
+        import artifact.{ name, `type`, extension, url }
         val extraMap = extra(artifact)
         val ivyArtifact = new DefaultDependencyArtifactDescriptor(dependencyDescriptor, name, `type`, extension, url.orNull, extraMap)
         copyConfigurations(artifact, ivyArtifact.addConfiguration)

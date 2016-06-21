@@ -1,6 +1,5 @@
 package sbt.librarymanagement
 
-import sbt.internal.librarymanagement.DependencyFilter._
 import sbt.util.{ Logger, Level }
 
 /**
@@ -13,7 +12,6 @@ final case class ConflictWarning(label: String, level: Level.Value, failOnConfli
 object ConflictWarning {
   def disable: ConflictWarning = ConflictWarning("", Level.Debug, false)
 
-  private def org = (_: ModuleID).organization
   private[this] def idString(org: String, name: String) = s"$org:$name"
 
   def default(label: String): ConflictWarning = ConflictWarning(label, Level.Error, true)

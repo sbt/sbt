@@ -4,10 +4,8 @@
 package sbt.librarymanagement
 
 import java.io.File
-import java.net.URL
 import java.{ util => ju }
 import sbt.serialization._
-import sbt.internal.librarymanagement.{ DependencyFilter, ConfigurationFilter, ModuleFilter, ArtifactFilter }
 
 /**
  * Provides information about resolution of a single configuration.

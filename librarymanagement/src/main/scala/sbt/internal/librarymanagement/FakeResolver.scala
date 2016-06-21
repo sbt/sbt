@@ -14,7 +14,6 @@ import org.apache.ivy.core.resolve.{ DownloadOptions, ResolveData, ResolvedModul
 import org.apache.ivy.core.search.{ ModuleEntry, OrganisationEntry, RevisionEntry }
 import org.apache.ivy.core.settings.IvySettings
 import org.apache.ivy.plugins.namespace.Namespace
-import org.apache.ivy.plugins.repository.url.URLResource
 import org.apache.ivy.plugins.resolver.{ DependencyResolver, ResolverSettings }
 import org.apache.ivy.plugins.resolver.util.ResolvedResource
 
@@ -77,7 +76,6 @@ private[sbt] class FakeResolver(private var name: String, cacheDir: File, module
     val report = new DownloadReport
 
     artifacts foreach { art =>
-      val artifactOrigin = locate(art)
       Option(locate(art)) foreach (o => report.addArtifactReport(download(o, options)))
     }
 
@@ -176,10 +174,6 @@ private[sbt] class FakeResolver(private var name: String, cacheDir: File, module
   }
 
   override def setSettings(settings: ResolverSettings): Unit = ()
-
-  private class LocalURLResource(jar: File) extends URLResource(jar.toURI.toURL) {
-    override def isLocal(): Boolean = true
-  }
 
 }
 

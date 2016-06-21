@@ -5,7 +5,6 @@ package sbt.internal.librarymanagement
 
 import org.apache.ivy.util.{ Message, MessageLogger, MessageLoggerEngine }
 import sbt.util.Logger
-import sbt.librarymanagement._
 
 /** Interface to Ivy logging. */
 private final class IvyLoggerInterface(logger: Logger) extends MessageLogger {
