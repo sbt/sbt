@@ -4,7 +4,7 @@
 package sbt.internal.librarymanagement
 
 import java.io.File
-import java.net.{ URI, URL }
+import java.net.URI
 import scala.xml.NodeSeq
 import sbt.util.Logger
 import sbt.librarymanagement._

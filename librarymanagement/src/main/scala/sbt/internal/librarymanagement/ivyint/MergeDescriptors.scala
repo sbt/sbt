@@ -1,17 +1,10 @@
 package sbt.internal.librarymanagement
 package ivyint
 
-import java.io.File
-import java.net.URI
-import java.util.{ Collection, Collections => CS }
-import CS.singleton
-
-import org.apache.ivy.{ core, plugins, util, Ivy }
+import org.apache.ivy.core
 import core.module.descriptor.{ DependencyArtifactDescriptor, DefaultDependencyArtifactDescriptor }
-import core.module.descriptor.{ DefaultDependencyDescriptor => DDD, DependencyDescriptor }
-import core.module.id.{ ArtifactId, ModuleId, ModuleRevisionId }
-import plugins.namespace.Namespace
-import util.extendable.ExtendableItem
+import core.module.descriptor.DependencyDescriptor
+import core.module.id.{ ArtifactId, ModuleRevisionId }
 
 private[sbt] object MergeDescriptors {
   def mergeable(a: DependencyDescriptor, b: DependencyDescriptor): Boolean =

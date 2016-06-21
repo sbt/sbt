@@ -369,7 +369,6 @@ class MakePom(val log: Logger) {
 
   def makeRepositories(settings: IvySettings, includeAll: Boolean, filterRepositories: MavenRepository => Boolean) =
     {
-      class MavenRepo(name: String, snapshots: Boolean, releases: Boolean)
       val repositories = if (includeAll) allResolvers(settings) else resolvers(settings.getDefaultResolver)
       val mavenRepositories =
         repositories.flatMap {

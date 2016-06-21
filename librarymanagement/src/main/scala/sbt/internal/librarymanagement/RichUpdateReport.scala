@@ -3,7 +3,6 @@ package internal
 package librarymanagement
 
 import java.io.File
-import java.net.URL
 import sbt.librarymanagement._
 
 /** Provides extra methods for filtering the contents of an `UpdateReport` and for obtaining references to a selected subset of the underlying files. */

@@ -5,7 +5,6 @@ package sbt.internal.librarymanagement
 
 import java.net.URL
 import java.util.Collections
-import org.apache.ivy.core.module.id.ModuleRevisionId
 import org.apache.ivy.core.module.descriptor.DependencyDescriptor
 import org.apache.ivy.core.resolve.ResolveData
 import org.apache.ivy.core.settings.IvySettings
@@ -245,7 +244,7 @@ private[sbt] object ConvertResolver {
         }
         fireTransferInitiated(resource, TransferEvent.REQUEST_PUT);
         try {
-          var totalLength = source.length
+          val totalLength = source.length
           if (totalLength > 0) {
             progress.setTotalLength(totalLength);
           }

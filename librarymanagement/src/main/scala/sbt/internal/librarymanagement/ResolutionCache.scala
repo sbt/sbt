@@ -1,13 +1,11 @@
 package sbt.internal.librarymanagement
 
 import java.io.File
-import java.io.FileInputStream
-import java.util.Properties
 import org.apache.ivy.core
 import org.apache.ivy.plugins.parser
 import core.IvyPatternHelper
 import core.settings.IvySettings
-import core.cache.{ CacheMetadataOptions, DefaultRepositoryCacheManager, DefaultResolutionCacheManager, ResolutionCacheManager }
+import core.cache.ResolutionCacheManager
 import core.module.id.ModuleRevisionId
 import core.module.descriptor.ModuleDescriptor
 import ResolutionCache.{ Name, ReportDirectory, ResolvedName, ResolvedPattern }
@@ -77,9 +75,6 @@ private[sbt] object ResolutionCache {
   }
 
   private val ReportDirectory = "reports"
-
-  // name of the file providing a dependency resolution report for a configuration
-  private val ReportFileName = "report.xml"
 
   // base name (name except for extension) of resolution report file
   private val ResolvedName = "resolved.xml"

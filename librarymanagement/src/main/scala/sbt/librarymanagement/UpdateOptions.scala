@@ -1,6 +1,5 @@
 package sbt.librarymanagement
 
-import java.io.File
 import org.apache.ivy.plugins.resolver.DependencyResolver
 import org.apache.ivy.core.settings.IvySettings
 import sbt.util.Logger
@@ -23,7 +22,7 @@ final class UpdateOptions private[sbt] (
   val consolidatedResolution: Boolean,
   // If set to true, use cached resolution.
   val cachedResolution: Boolean,
-  // Extention point for an alternative resolver converter.
+  // Extension point for an alternative resolver converter.
   val resolverConverter: UpdateOptions.ResolverConverter
 ) {
   def withCircularDependencyLevel(circularDependencyLevel: CircularDependencyLevel): UpdateOptions =

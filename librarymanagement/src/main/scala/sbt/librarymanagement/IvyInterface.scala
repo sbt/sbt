@@ -3,11 +3,7 @@
  */
 package sbt.librarymanagement
 
-import java.io.File
-import java.net.{ URI, URL }
-import scala.xml.NodeSeq
-import org.apache.ivy.plugins.resolver.{ DependencyResolver, IBiblioResolver }
-import org.apache.ivy.util.url.CredentialsStore
+import java.net.URL
 import org.apache.ivy.core.module.descriptor
 import org.apache.ivy.util.filter.{ Filter => IvyFilter }
 import sbt.serialization._

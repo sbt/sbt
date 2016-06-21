@@ -6,7 +6,6 @@ package sbt.internal.librarymanagement
 import java.io.File
 import java.{ util => ju }
 import collection.mutable
-import java.net.URL
 import org.apache.ivy.core.{ module, report, resolve }
 import module.descriptor.{ Artifact => IvyArtifact, License => IvyLicense }
 import module.id.{ ModuleRevisionId, ModuleId => IvyModuleId }
@@ -52,7 +51,6 @@ object IvyRetrieve {
   // only the revolved modules.
   // Sometimes the entire module can be excluded via rules etc.
   private[sbt] def organizationArtifactReports(confReport: ConfigurationResolveReport): Seq[OrganizationArtifactReport] = {
-    val dependencies = confReport.getModuleRevisionIds.toArray.toVector collect { case revId: ModuleRevisionId => revId }
     val moduleIds = confReport.getModuleIds.toArray.toVector collect { case mId: IvyModuleId => mId }
     def organizationArtifact(mid: IvyModuleId): OrganizationArtifactReport = {
       val deps = confReport.getNodes(mid).toArray.toVector collect { case node: IvyNode => node }

@@ -2,7 +2,6 @@ package sbt.internal.librarymanagement
 package ivyint
 
 import java.util.Date
-import java.net.URL
 import java.io.File
 import java.text.SimpleDateFormat
 import collection.concurrent
@@ -12,19 +11,18 @@ import org.apache.ivy.Ivy
 import org.apache.ivy.core
 import core.resolve._
 import core.module.id.{ ModuleRevisionId, ModuleId => IvyModuleId }
-import core.report.{ ResolveReport, ConfigurationResolveReport, DownloadReport }
+import core.report.ResolveReport
 import core.module.descriptor.{ DefaultModuleDescriptor, ModuleDescriptor, DefaultDependencyDescriptor, DependencyDescriptor, Configuration => IvyConfiguration, ExcludeRule, IncludeRule }
-import core.module.descriptor.{ OverrideDependencyDescriptorMediator, DependencyArtifactDescriptor, DefaultDependencyArtifactDescriptor }
-import core.{ IvyPatternHelper, LogOptions }
+import core.module.descriptor.{ OverrideDependencyDescriptorMediator, DependencyArtifactDescriptor }
+import core.IvyPatternHelper
 import org.apache.ivy.util.{ Message, MessageLogger }
 import org.apache.ivy.plugins.latest.{ ArtifactInfo => IvyArtifactInfo }
 import org.apache.ivy.plugins.matcher.{ MapMatcher, PatternMatcher }
 import annotation.tailrec
 import scala.concurrent.duration._
-import sbt.io.{ DirectoryFilter, Hash, IO, Path }
+import sbt.io.{ DirectoryFilter, Hash, IO }
 import sbt.util.Logger
 import sbt.librarymanagement._
-import Configurations.{ System => _, _ }
 import sbt.internal.librarymanagement.syntax._
 
 private[sbt] object CachedResolutionResolveCache {
@@ -254,8 +252,6 @@ private[sbt] trait ArtificialModuleDescriptor { self: DefaultModuleDescriptor =>
 }
 
 private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
-  import CachedResolutionResolveCache._
-
   private[sbt] def cachedResolutionResolveCache: CachedResolutionResolveCache
   private[sbt] def projectResolver: Option[ProjectResolver]
   private[sbt] def makeInstance: Ivy
@@ -313,7 +309,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       def doWorkUsingIvy(md: ModuleDescriptor): Either[ResolveException, UpdateReport] =
         {
           val options1 = new ResolveOptions(options0)
-          var rr = withIvy(log) { ivy =>
+          val rr = withIvy(log) { ivy =>
             ivy.resolve(md, options1)
           }
           if (!rr.hasError || missingOk) Right(IvyRetrieve.updateReport(rr, cachedDescriptor))
@@ -718,7 +714,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
         val (surviving, evicted) = cache.getOrElseUpdateConflict(cf0, cf1, conflicts) { doResolveConflict }
         (surviving, evicted)
       } else {
-        val (surviving, evicted, mgr) = doResolveConflict
+        val (surviving, evicted, _) = doResolveConflict
         (surviving, evicted)
       }
     }
