@@ -20,15 +20,14 @@ object PluginDiscovery {
    */
   object Paths {
     final val AutoPlugins = "sbt/sbt.autoplugins"
-    final val Plugins = "sbt/sbt.plugins"
     final val Builds = "sbt/sbt.builds"
   }
-  /** Names of top-level modules that subclass sbt plugin-related classes: [[Plugin]], [[AutoPlugin]], and [[BuildDef]]. */
-  final class DiscoveredNames(val plugins: Seq[String], val autoPlugins: Seq[String], val builds: Seq[String]) {
-    override def toString: String = s"""DiscoveredNames($plugins, $autoPlugins, $builds)"""
+  /** Names of top-level modules that subclass sbt plugin-related classes: [[AutoPlugin]], and [[BuildDef]]. */
+  final class DiscoveredNames(val autoPlugins: Seq[String], val builds: Seq[String]) {
+    override def toString: String = s"""DiscoveredNames($autoPlugins, $builds)"""
   }
 
-  def emptyDiscoveredNames: DiscoveredNames = new DiscoveredNames(Nil, Nil, Nil)
+  def emptyDiscoveredNames: DiscoveredNames = new DiscoveredNames(Nil, Nil)
 
   /** Discovers and loads the sbt-plugin-related top-level modules from the classpath and source analysis in `data` and using the provided class `loader`. */
   def discoverAll(data: PluginData, loader: ClassLoader): DetectedPlugins =
@@ -48,7 +47,7 @@ object PluginDiscovery {
         case (name, value) =>
           DetectedAutoPlugin(name, value, sbt.Plugins.hasAutoImportGetter(value, loader))
       }
-      new DetectedPlugins(discover[OldPlugin](Plugins), allAutoPlugins, discover[BuildDef](Builds))
+      new DetectedPlugins(allAutoPlugins, discover[BuildDef](Builds))
     }
 
   /** Discovers the sbt-plugin-related top-level modules from the provided source `analysis`. */
@@ -56,7 +55,7 @@ object PluginDiscovery {
     {
       def discover[T](implicit classTag: reflect.ClassTag[T]): Seq[String] =
         sourceModuleNames(analysis, classTag.runtimeClass.getName)
-      new DiscoveredNames(discover[OldPlugin], discover[AutoPlugin], discover[BuildDef])
+      new DiscoveredNames(discover[AutoPlugin], discover[BuildDef])
     }
 
   // TODO: for 0.14.0, consider consolidating into a single file, which would make the classpath search 4x faster
@@ -65,8 +64,7 @@ object PluginDiscovery {
     {
       import Paths._
       val files =
-        writeDescriptor(names.plugins, dir, Plugins) ::
-          writeDescriptor(names.autoPlugins, dir, AutoPlugins) ::
+        writeDescriptor(names.autoPlugins, dir, AutoPlugins) ::
           writeDescriptor(names.builds, dir, Builds) ::
           Nil
       files.flatMap(_.toList)

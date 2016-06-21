@@ -158,7 +158,7 @@ object Act {
       val taskSeq = tasks.toSeq
       def taskKeys(f: AttributeKey[_] => String): Seq[(String, AttributeKey[_])] = taskSeq.map(key => (f(key), key))
       val normKeys = taskKeys(_.label)
-      val valid = allKnown ++ normKeys ++ taskKeys(_.rawLabel)
+      val valid = allKnown ++ normKeys
       val suggested = normKeys.map(_._1).toSet
       val keyP = filterStrings(examples(ID, suggested, "key"), valid.keySet, "key") map valid
       (token(value(keyP) | GlobalString ^^^ ParsedGlobal) <~ token("::".id)) ?? Omitted

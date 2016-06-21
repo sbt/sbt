@@ -5,8 +5,8 @@ lazy val root = (project in file(".")).
     ivyPaths <<= (baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache"))),
     libraryDependencies += "org.jsoup" % "jsoup" % "1.9.1" % Test from "http://jsoup.org/packages/jsoup-1.9.1.jar",
     ivyLoggingLevel := UpdateLogging.Full,
-    TaskKey[Unit]("check-in-test") <<= checkClasspath(Test),
-    TaskKey[Unit]("check-in-compile") <<= checkClasspath(Compile)
+    TaskKey[Unit]("checkInTest") <<= checkClasspath(Test),
+    TaskKey[Unit]("checkInCompile") <<= checkClasspath(Compile)
   )
 
 def checkClasspath(conf: Configuration) =

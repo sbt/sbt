@@ -75,13 +75,13 @@ trait Import {
   val ConsoleOut = sbt.internal.util.ConsoleOut
   type ConsoleOut = sbt.internal.util.ConsoleOut
   val Dag = sbt.internal.util.Dag
-  type Dag[Node <: Dag[Node]] = sbt.internal.util.Dag[Node]
+  type Dag[A <: Dag[A]] = sbt.internal.util.Dag[A]
   type DelegatingPMap[K[_], V[_]] = sbt.internal.util.DelegatingPMap[K, V]
   val Difference = sbt.internal.util.Difference
   type Difference = sbt.internal.util.Difference
   type EmptyChangeReport[T] = sbt.internal.util.EmptyChangeReport[T]
   val ErrorHandling = sbt.internal.util.ErrorHandling
-  type EvaluateSettings[Scope] = sbt.internal.util.EvaluateSettings[Scope]
+  type EvaluateSettings[S] = sbt.internal.util.EvaluateSettings[S]
   val EvaluationState = sbt.internal.util.EvaluationState
   val ExitHook = sbt.internal.util.ExitHook
   type ExitHook = sbt.internal.util.ExitHook
@@ -116,7 +116,7 @@ trait Import {
   type IDSet[T] = sbt.internal.util.IDSet[T]
   val IMap = sbt.internal.util.IMap
   type IMap[K[_], V[_]] = sbt.internal.util.IMap[K, V]
-  type Init[Scope] = sbt.internal.util.Init[Scope]
+  type Init[S] = sbt.internal.util.Init[S]
   val InputCache = sbt.internal.util.InputCache
   type InputCache[I] = sbt.internal.util.InputCache[I]
   type JLine = sbt.internal.util.JLine
@@ -151,7 +151,7 @@ trait Import {
   type Relation[A, B] = sbt.internal.util.Relation[A, B]
   type SBinaryFormats = sbt.internal.util.SBinaryFormats
   val ScalaKeywords = sbt.internal.util.ScalaKeywords
-  type Settings[Scope] = sbt.internal.util.Settings[Scope]
+  type Settings[S] = sbt.internal.util.Settings[S]
   type SharedAttributeKey[T] = sbt.internal.util.SharedAttributeKey[T]
   val Show = sbt.internal.util.Show
   type Show[T] = sbt.internal.util.Show[T]

@@ -13,7 +13,6 @@ sealed abstract class AddSettings
 object AddSettings {
   private[sbt] final class Sequence(val sequence: Seq[AddSettings]) extends AddSettings
   private[sbt] final object User extends AddSettings
-  private[sbt] final class Plugins(val include: OldPlugin => Boolean) extends AddSettings
   private[sbt] final class AutoPlugins(val include: AutoPlugin => Boolean) extends AddSettings
   private[sbt] final class DefaultSbtFiles(val include: File => Boolean) extends AddSettings
   private[sbt] final class SbtFiles(val files: Seq[File]) extends AddSettings
@@ -30,14 +29,8 @@ object AddSettings {
   /** Settings specified in Build.scala `Project` constructors. */
   val buildScalaFiles: AddSettings = BuildScalaFiles
 
-  /** All plugins that aren't auto plugins. */
-  val nonAutoPlugins: AddSettings = plugins(const(true))
-
   /** Adds all settings from a plugin to a project. */
-  val allPlugins: AddSettings = seq(autoPlugins, nonAutoPlugins)
-
-  /** Allows the plugins whose names match the `names` filter to automatically add settings to a project. */
-  def plugins(include: OldPlugin => Boolean): AddSettings = new Plugins(include)
+  val allPlugins: AddSettings = seq(autoPlugins)
 
   /** Includes user settings in the project. */
   val userSettings: AddSettings = User
@@ -52,7 +45,7 @@ object AddSettings {
   def seq(autos: AddSettings*): AddSettings = new Sequence(autos)
 
   /** The default inclusion of settings. */
-  val allDefaults: AddSettings = seq(autoPlugins, buildScalaFiles, userSettings, nonAutoPlugins, defaultSbtFiles)
+  val allDefaults: AddSettings = seq(autoPlugins, buildScalaFiles, userSettings, defaultSbtFiles)
 
   /** Combines two automatic setting configurations. */
   def append(a: AddSettings, b: AddSettings): AddSettings = (a, b) match {

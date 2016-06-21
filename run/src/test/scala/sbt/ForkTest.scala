@@ -51,7 +51,7 @@ object ForkTest extends Properties("Fork") {
 
   private[this] def trimClasspath(cp: String): String =
     if (cp.length > MaximumClasspathLength) {
-      val lastEntryI = cp.lastIndexOf(File.pathSeparatorChar, MaximumClasspathLength)
+      val lastEntryI = cp.lastIndexOf(File.pathSeparatorChar.toInt, MaximumClasspathLength)
       if (lastEntryI > 0)
         cp.substring(0, lastEntryI)
       else

@@ -42,7 +42,7 @@ private[sbt] object ForkTests {
         val resultsAcc = mutable.Map.empty[String, SuiteResult]
         lazy val result = TestOutput(overall(resultsAcc.values.map(_.result)), resultsAcc.toMap, Iterable.empty)
 
-        def run() {
+        def run(): Unit = {
           val socket =
             try {
               server.accept()

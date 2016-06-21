@@ -485,7 +485,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
       allFrames.foreach(_.dispose) // dispose all top-level windows, which will cause the AWT-EventQueue-* threads to exit
       val waitSeconds = 2
       log.debug(s"Waiting $waitSeconds s to let AWT thread exit.")
-      Thread.sleep(waitSeconds * 1000) // AWT Thread doesn't exit immediately, so wait to interrupt it
+      Thread.sleep(waitSeconds * 1000L) // AWT Thread doesn't exit immediately, so wait to interrupt it
     }
   }
   /** Returns true if the given thread is in the 'system' thread group or is an AWT thread other than AWT-EventQueue.*/

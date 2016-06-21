@@ -126,7 +126,7 @@ object BuiltinCommands {
 
   def aboutPlugins(e: Extracted): String =
     {
-      def list(b: BuildUnit) = b.plugins.detected.autoPlugins.map(_.value.label) ++ b.plugins.detected.plugins.names
+      def list(b: BuildUnit) = b.plugins.detected.autoPlugins.map(_.value.label)
       val allPluginNames = e.structure.units.values.flatMap(u => list(u.unit)).toSeq.distinct
       if (allPluginNames.isEmpty) "" else allPluginNames.mkString("Available Plugins: ", ", ", "")
     }
@@ -134,7 +134,7 @@ object BuiltinCommands {
     {
       val scalaVersion = e.getOpt(Keys.scalaVersion)
       val scalaHome = e.getOpt(Keys.scalaHome).flatMap(idFun)
-      val instance = e.getOpt(Keys.scalaInstance.task).flatMap(_ => quiet(e.runTask(Keys.scalaInstance, s)._2))
+      val instance = e.getOpt(Keys.scalaInstance).flatMap(_ => quiet(e.runTask(Keys.scalaInstance, s)._2))
       (scalaVersion, scalaHome, instance) match {
         case (sv, Some(home), Some(si)) => "local Scala version " + selectScalaVersion(sv, si) + " at " + home.getAbsolutePath
         case (_, Some(home), None)      => "a local Scala build at " + home.getAbsolutePath

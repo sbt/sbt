@@ -1,6 +1,6 @@
 > check
 
-> check-pom
+> checkPom
 
 $ delete build.sbt
 $ copy-file changes/non-mergeable.sbt build.sbt

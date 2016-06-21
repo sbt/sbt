@@ -148,8 +148,6 @@ object Keys {
 
   // Output paths
   val classDirectory = SettingKey[File]("class-directory", "Directory for compiled classes and copied resources.", AMinusSetting)
-  @deprecated("Use the cacheDirectory provided by streams.", "0.13.0")
-  val cacheDirectory = SettingKey[File]("cache-directory", "Directory used for caching task data.", BMinusSetting)
   val cleanFiles = SettingKey[Seq[File]]("clean-files", "The files to recursively delete during a clean.", BSetting)
   val cleanKeepFiles = SettingKey[Seq[File]]("clean-keep-files", "Files to keep during a clean.", CSetting)
   val crossPaths = SettingKey[Boolean]("cross-paths", "If true, enables cross paths, which distinguish input and output directories for cross-building.", ASetting)
@@ -275,6 +273,7 @@ object Keys {
   val defaultConfiguration = SettingKey[Option[Configuration]]("default-configuration", "Defines the configuration used when none is specified for a dependency in ivyXML.", CSetting)
 
   val products = TaskKey[Seq[File]]("products", "Build products that get packaged.", BMinusTask)
+  // TODO: This is used by exportedProducts, exportedProductsIfMissing, exportedProductsNoTracking..
   @deprecated("This task is unused by the default project and will be removed.", "0.13.0")
   val productDirectories = TaskKey[Seq[File]]("product-directories", "Base directories of build products.", CTask)
   val exportJars = SettingKey[Boolean]("export-jars", "Determines whether the exported classpath for this project contains classes (false) or a packaged jar (true).", BSetting)

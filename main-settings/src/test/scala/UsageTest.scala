@@ -37,8 +37,8 @@ object Assign {
   val dummyt = taskKey[complete.Parser[String]]("dummyt")
   val dummys = settingKey[complete.Parser[String]]("dummys")
   val dummy3 = settingKey[complete.Parser[(String, Int)]]("dummy3")
-  val tsk: complete.Parser[Task[String]] = ???
-  val itsk: Initialize[InputTask[Int]] = ???
+  val tsk: complete.Parser[Task[String]] = DefaultParsers.failure("ignored")
+  val itsk: Initialize[InputTask[Int]] = inputKey[Int]("ignored")
   val seqSetting = settingKey[Seq[String]]("seqSetting")
   val listSetting = settingKey[List[String]]("listSetting")
 

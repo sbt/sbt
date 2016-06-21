@@ -4,4 +4,4 @@
 > compile
 # verifies that there's no dependency on a class file corresponding
 # to a package
-> verify-binary-deps
+> verifyBinaryDeps

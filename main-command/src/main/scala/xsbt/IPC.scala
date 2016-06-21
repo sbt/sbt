@@ -53,14 +53,14 @@ object IPC {
     try { f(new IPC(s)) }
     finally { s.close() }
 
-  final class Server private[IPC] (s: ServerSocket) extends NotNull {
+  final class Server private[IPC] (s: ServerSocket) {
     def port = s.getLocalPort
     def close() = s.close()
     def isClosed: Boolean = s.isClosed
     def connection[T](f: IPC => T): T = IPC.ipc(s.accept())(f)
   }
 }
-final class IPC private (s: Socket) extends NotNull {
+final class IPC private (s: Socket) {
   def port = s.getLocalPort
   private val in = new BufferedReader(new InputStreamReader(s.getInputStream))
   private val out = new BufferedWriter(new OutputStreamWriter(s.getOutputStream))

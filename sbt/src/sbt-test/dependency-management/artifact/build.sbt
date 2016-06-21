@@ -1,7 +1,7 @@
 import sbt.internal.inc.classpath.ClasspathUtilities
 
-lazy val checkFull = TaskKey[Unit]("check-full")
-lazy val check = TaskKey[Unit]("check")
+lazy val checkFull = taskKey[Unit]("")
+lazy val check = taskKey[Unit]("")
 
 lazy val root = (project in file(".")).
   settings(

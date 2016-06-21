@@ -212,53 +212,17 @@ private[sbt] object EvaluateConfigurations {
         case _                                => Nil
       }
     }
-  private[this] def isSpace = (c: Char) => Character isWhitespace c
-  private[this] def fstS(f: String => Boolean): ((String, Int)) => Boolean = { case (s, i) => f(s) }
-  private[this] def firstNonSpaceIs(lit: String) = (_: String).view.dropWhile(isSpace).startsWith(lit)
-  private[this] def or[A](a: A => Boolean, b: A => Boolean): A => Boolean = in => a(in) || b(in)
 
-  /** Configures the use of the old sbt parser. */
-  private[sbt] def useOldParser: Boolean =
-    sys.props.get("sbt.parser.simple").exists(java.lang.Boolean.parseBoolean)
   /**
    * Splits a set of lines into (imports, expressions).  That is,
    * anything on the right of the tuple is a scala expression (definition or setting).
    */
   private[sbt] def splitExpressions(file: File, lines: Seq[String]): (Seq[(String, Int)], Seq[(String, LineRange)]) =
     {
-      if (useOldParser) splitExpressions(lines)
-      else {
-        val split = SbtParser(file, lines)
-        // TODO - Look at pulling the parsed expression trees from the SbtParser and stitch them back into a different
-        // scala compiler rather than re-parsing.
-        (split.imports, split.settings)
-      }
-    }
-
-  @deprecated("This method is no longer part of the public API.", "0.13.7")
-  def splitExpressions(lines: Seq[String]): (Seq[(String, Int)], Seq[(String, LineRange)]) = {
-    val blank = (_: String).forall(isSpace)
-    val isImport = firstNonSpaceIs("import ")
-    val comment = firstNonSpaceIs("//")
-    val blankOrComment = or(blank, comment)
-    val importOrBlank = fstS(or(blankOrComment, isImport))
-
-    val (imports, settings) = lines.zipWithIndex span importOrBlank
-    (imports filterNot fstS(blankOrComment), groupedLines(settings, blank, blankOrComment))
-  }
-  @deprecated("This method is deprecated and no longer used.", "0.13.7")
-  def groupedLines(lines: Seq[(String, Int)], delimiter: String => Boolean, skipInitial: String => Boolean): Seq[(String, LineRange)] =
-    {
-      val fdelim = fstS(delimiter)
-      @tailrec def group0(lines: Seq[(String, Int)], accum: Seq[(String, LineRange)]): Seq[(String, LineRange)] =
-        if (lines.isEmpty) accum.reverse
-        else {
-          val start = lines dropWhile fstS(skipInitial)
-          val (next, tail) = start.span { case (s, _) => !delimiter(s) }
-          val grouped = if (next.isEmpty) accum else (next.map(_._1).mkString("\n"), LineRange(next.head._2, next.last._2 + 1)) +: accum
-          group0(tail, grouped)
-        }
-      group0(lines, Nil)
+      val split = SbtParser(file, lines)
+      // TODO - Look at pulling the parsed expression trees from the SbtParser and stitch them back into a different
+      // scala compiler rather than re-parsing.
+      (split.imports, split.settings)
     }
 
   private[this] def splitSettingsDefinitions(lines: Seq[(String, LineRange)]): (Seq[(String, LineRange)], Seq[(String, LineRange)]) =
@@ -289,7 +253,7 @@ object Index {
   def attributeKeys(settings: Settings[Scope]): Set[AttributeKey[_]] =
     settings.data.values.flatMap(_.keys).toSet[AttributeKey[_]]
   def stringToKeyMap(settings: Set[AttributeKey[_]]): Map[String, AttributeKey[_]] =
-    stringToKeyMap0(settings)(_.rawLabel) ++ stringToKeyMap0(settings)(_.label)
+    stringToKeyMap0(settings)(_.label)
 
   private[this] def stringToKeyMap0(settings: Set[AttributeKey[_]])(label: AttributeKey[_] => String): Map[String, AttributeKey[_]] =
     {

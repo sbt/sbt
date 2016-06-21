@@ -1,9 +1,9 @@
 > check 0
--> test-task
+-> testTask
 > check 1
--> test-task
+-> testTask
 > check 2
-> b/test-task
+> b/testTask
 > check 3
--> a/test-task
+-> a/testTask
 > check 3

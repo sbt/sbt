@@ -123,9 +123,13 @@ case class DetectedAutoPlugin(name: String, value: AutoPlugin, hasAutoImport: Bo
  *
  * @param builds The [[Build]]s detected in the build definition.  This does not include the default [[Build]] that sbt creates if none is defined.
  */
-final class DetectedPlugins(val plugins: DetectedModules[OldPlugin], val autoPlugins: Seq[DetectedAutoPlugin], val builds: DetectedModules[BuildDef]) {
-  /** Sequence of import expressions for the build definition.  This includes the names of the [[Plugin]], [[Build]], and [[AutoImport]] modules, but not the [[AutoPlugin]] modules. */
-  lazy val imports: Seq[String] = BuildUtil.getImports(plugins.names ++ builds.names) ++
+final class DetectedPlugins(val autoPlugins: Seq[DetectedAutoPlugin], val builds: DetectedModules[BuildDef]) {
+  /**
+   * Sequence of import expressions for the build definition.
+   *  This includes the names of the [[BuildDef]], and [[DetectedAutoPlugin]] modules,
+   *  but not the [[AutoPlugin]] modules.
+   */
+  lazy val imports: Seq[String] = BuildUtil.getImports(builds.names) ++
     BuildUtil.importAllRoot(autoImports(autoPluginAutoImports)) ++
     BuildUtil.importAll(autoImports(topLevelAutoPluginAutoImports)) ++
     BuildUtil.importNamesRoot(autoPlugins.map(_.name).filter(nonTopLevelPlugin))
@@ -168,12 +172,6 @@ final class DetectedPlugins(val plugins: DetectedModules[OldPlugin], val autoPlu
  * @param detected Auto-detected modules in the build definition.
  */
 final class LoadedPlugins(val base: File, val pluginData: PluginData, val loader: ClassLoader, val detected: DetectedPlugins) {
-  @deprecated("Use the primary constructor.", "0.13.2")
-  def this(base: File, pluginData: PluginData, loader: ClassLoader, plugins: Seq[OldPlugin], pluginNames: Seq[String]) =
-    this(base, pluginData, loader,
-      new DetectedPlugins(new DetectedModules(pluginNames zip plugins), Nil, new DetectedModules(Nil))
-    )
-
   def fullClasspath: Seq[Attributed[File]] = pluginData.classpath
   def classpath = data(fullClasspath)
 }

@@ -1,7 +1,7 @@
 $ copy-file changes/def.sbt build.sbt
 $ copy-file changes/resolver.sbt resolver.sbt
 > reload
-> publish-local
+> publishLocal
 > publish
 
 $ delete build.sbt

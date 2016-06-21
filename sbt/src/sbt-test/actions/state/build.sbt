@@ -3,13 +3,13 @@ import complete.DefaultParsers._
 import sbinary.DefaultProtocol._
 import Def.Initialize
 
-val keep = TaskKey[Int]("keep")
-val persisted = TaskKey[Int]("persist")
-val checkKeep = InputKey[Unit]("check-keep")
-val checkPersisted = InputKey[Unit]("check-persist")
+val keep = taskKey[Int]("")
+val persist = taskKey[Int]("")
+val checkKeep = inputKey[Unit]("")
+val checkPersist = inputKey[Unit]("")
 
-val updateDemo = TaskKey[Int]("demo")
-val check = InputKey[Unit]("check")
+val updateDemo = taskKey[Int]("")
+val check = inputKey[Unit]("")
 val sample = AttributeKey[Int]("demo-key")
 
 def updateDemoInit = state map { s => (s get sample getOrElse 9) + 1 }
@@ -34,11 +34,11 @@ def checkInit: Initialize[InputTask[Unit]] = InputTask( (_: State) => token(Spac
   }
 }
 
-def inMemorySetting = keep <<= getPrevious(keep) map { case None => 3; case Some(x) => x + 1} keepAs(keep)
-def persistedSetting = persisted <<= loadPrevious(persisted) map { case None => 17; case Some(x) => x + 1} storeAs(persisted)
+def  inMemorySetting = keep    <<=  getPrevious(keep)    map { case None =>  3; case Some(x) => x + 1}  keepAs(keep)
+def persistedSetting = persist <<= loadPrevious(persist) map { case None => 17; case Some(x) => x + 1} storeAs(persist)
 
-def inMemoryCheck = checkKeep <<= inputCheck( (ctx, s) => Space ~> str(getFromContext(keep, ctx, s)) )
-def persistedCheck = checkPersisted <<= inputCheck( (ctx, s) => Space ~> str(loadFromContext(persisted, ctx, s)) )
+def  inMemoryCheck = checkKeep    <<= inputCheck( (ctx, s) => Space ~> str( getFromContext(   keep, ctx, s)) )
+def persistedCheck = checkPersist <<= inputCheck( (ctx, s) => Space ~> str(loadFromContext(persist, ctx, s)) )
 
 def inputCheck[T](f: (ScopedKey[_], State) => Parser[T]): Initialize[InputTask[Unit]] =
   InputTask( resolvedScoped(ctx => (s: State) => f(ctx, s)) )( dummyTask )

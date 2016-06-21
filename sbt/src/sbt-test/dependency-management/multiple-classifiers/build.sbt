@@ -8,7 +8,7 @@ TaskKey[Unit]("check") <<= dependencyClasspath in Compile map { cp =>
 	assert(cp.size == 3, "Expected 3 jars, got: " + cp.files.mkString("(", ", ", ")"))
 }
 
-TaskKey[Unit]("check-pom") <<= makePom map { file =>
+TaskKey[Unit]("checkPom") <<= makePom map { file =>
 	val pom = xml.XML.loadFile(file)
 	val actual = pom \\ "dependencies"
 	def depSection(classifier: String) =

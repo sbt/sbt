@@ -15,7 +15,7 @@ import java.util.concurrent.{ CountDownLatch, TimeUnit }
 
 object TaskSerial extends Properties("task serial") {
   val checkCycles = true
-  val Timeout = 100 // in milliseconds
+  val Timeout = 100L // in milliseconds
 
   def eval[T](t: Task[T]): T = tryRun(t, checkCycles, limitTotal(MaxWorkers))
 

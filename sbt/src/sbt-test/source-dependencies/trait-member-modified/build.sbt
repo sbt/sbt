@@ -4,7 +4,7 @@ import sbt.internal.inc.Analysis
  *  a) checks in which compilation given set of files was recompiled
  *  b) checks overall number of compilations performed
  */
-TaskKey[Unit]("check-compilations") := {
+TaskKey[Unit]("checkCompilations") := {
   val analysis = (compile in Compile).value match { case a: Analysis => a }
   val srcDir = (scalaSource in Compile).value
   def relative(f: java.io.File): java.io.File =  f.relativeTo(srcDir) getOrElse f

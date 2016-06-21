@@ -6,8 +6,8 @@ lazy val root = (project in file(".")).
     myIn
   )
 
-lazy val demoIn = InputKey[Unit]("demo-in", "Demo run input task", demo)
-lazy val demo = TaskKey[Unit]("demo", "Demo run task")
+lazy val demoIn = InputKey[Unit]("demoIn", "Demo run input task", demo)
+lazy val demo = taskKey[Unit]("Demo run task")
 
-def myRun = fullRunTask( demo, Compile, "A", "1", "1")
-def myIn = fullRunInputTask( demoIn, Compile, "A", "1")
+def myRun = fullRunTask(demo, Compile, "A", "1", "1")
+def myIn = fullRunInputTask(demoIn, Compile, "A", "1")

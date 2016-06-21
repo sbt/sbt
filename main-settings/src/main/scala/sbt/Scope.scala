@@ -76,6 +76,7 @@ object Scope {
       case LocalProject(id)    => ProjectRef(current, id)
       case RootProject(uri)    => RootProject(resolveBuild(current, uri))
       case ProjectRef(uri, id) => ProjectRef(resolveBuild(current, uri), id)
+      case ThisProject         => RootProject(current) // Is this right? It was an inexhaustive match before..
     }
   def resolveBuild(current: URI, uri: URI): URI =
     if (!uri.isAbsolute && current.isOpaque && uri.getSchemeSpecificPart == ".")
@@ -96,6 +97,7 @@ object Scope {
       case RootProject(uri) =>
         val res = resolveBuild(current, uri); ProjectRef(res, rootProject(res))
       case ProjectRef(uri, id) => ProjectRef(resolveBuild(current, uri), id)
+      case ThisProject         => ProjectRef(current, rootProject(current)) // Is this right? It was an inexhaustive match before..
     }
   def resolveBuildRef(current: URI, ref: BuildReference): BuildRef =
     ref match {
@@ -125,36 +127,6 @@ object Scope {
 
   def projectPrefix(project: ScopeAxis[Reference], show: Reference => String = showProject): String = project.foldStrict(show, "*/", "./")
   def showProject = (ref: Reference) => Reference.display(ref) + "/"
-
-  @deprecated("No longer used", "0.13.6")
-  def parseScopedKey(command: String): (Scope, String) =
-    {
-      val ScopedKeyRegex2 = """([{](.*?)[}])?((\w*)\/)?(([\w\*]+)\:)?(([\w\-]+)\:\:)?([\w\-]+)""".r
-      val ScopedKeyRegex2(_, uriOrNull, _, projectIdOrNull, _, configOrNull, _, inTaskOrNull, key) = command
-      val uriOpt = Option(uriOrNull) map { new URI(_) }
-      val projectIdOpt = Option(projectIdOrNull)
-      val configOpt = Option(configOrNull)
-      val inTaskOpt = Option(inTaskOrNull)
-      val DotURI = new URI(".")
-      val GlobalStr = "*"
-      val scope = (uriOpt, projectIdOpt, configOpt, inTaskOpt) match {
-        case (None, None, Some(GlobalStr), None) => GlobalScope
-        case _ =>
-          val projScope = (uriOpt, projectIdOpt) match {
-            case (Some(DotURI), Some("")) => Select(ThisBuild)
-            case (Some(uri), Some(""))    => Select(BuildRef(uri))
-            case (Some(uri), Some(p))     => Select(ProjectRef(uri, p))
-            case (None, Some(p))          => Select(LocalProject(p))
-            case _                        => This
-          }
-          val configScope = configOpt map { case c if c != GlobalStr => Select(ConfigKey(c)) } getOrElse This
-          val inTaskScope = inTaskOpt map { t => Select(AttributeKey(t)) } getOrElse This
-          Scope(projScope, configScope, inTaskScope, This)
-      }
-      (scope, transformTaskName(key))
-    }
-  @deprecated("No longer used", "0.13.6")
-  val ScopedKeyRegex = """((\w+)\/)?((\w+)\:)?([\w\-]+)""".r
 
   def transformTaskName(s: String) =
     {

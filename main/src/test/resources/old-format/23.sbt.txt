@@ -1,7 +1,0 @@
-import sbt._, Keys._,java.util._
-import a._
-import c._
-import d._
-import g._,h._
-
-scalaVersion := "2.11.4"

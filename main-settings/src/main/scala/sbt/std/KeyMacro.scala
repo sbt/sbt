@@ -31,7 +31,7 @@ private[sbt] object KeyMacro {
     {
       import c.universe.{ Apply => ApplyTree, _ }
       val methodName = c.macroApplication.symbol.name
-      def processName(n: Name): String = n.decoded.trim // trim is not strictly correct, but macros don't expose the API necessary
+      def processName(n: Name): String = n.decodedName.toString.trim // trim is not strictly correct, but macros don't expose the API necessary
       def enclosingVal(trees: List[c.Tree]): String =
         {
           trees match {
@@ -40,7 +40,7 @@ private[sbt] object KeyMacro {
             // lazy val x: X = <methodName> has this form for some reason (only when the explicit type is present, though)
             case Block(_, _) :: DefDef(mods, name, _, _, _, _) :: xs if mods.hasFlag(Flag.LAZY) => processName(name)
             case _ =>
-              c.error(c.enclosingPosition, invalidEnclosingTree(methodName.decoded))
+              c.error(c.enclosingPosition, invalidEnclosingTree(methodName.decodedName.toString))
               "<error>"
           }
         }

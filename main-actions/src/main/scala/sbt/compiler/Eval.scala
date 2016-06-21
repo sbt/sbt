@@ -3,11 +3,10 @@ package compiler
 
 import scala.reflect.Manifest
 import scala.tools.nsc.{ ast, interpreter, io, reporters, util, CompilerCommand, Global, Phase, Settings }
-import interpreter.AbstractFileClassLoader
 import io.{ AbstractFile, PlainFile, VirtualDirectory }
 import ast.parser.Tokens
 import reporters.{ ConsoleReporter, Reporter }
-import scala.reflect.internal.util.BatchSourceFile
+import scala.reflect.internal.util.{ AbstractFileClassLoader, BatchSourceFile }
 import Tokens.{ EOF, NEWLINE, NEWLINES, SEMI }
 import java.io.File
 import java.nio.ByteBuffer
@@ -90,7 +89,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
           val tpt: Tree = expectedType(tpeName)
           augment(parser, importTrees, tree, tpt, moduleName)
         }
-        def extra(run: Run, unit: CompilationUnit) = atPhase(run.typerPhase.next) { (new TypeExtractor).getType(unit.body) }
+        def extra(run: Run, unit: CompilationUnit) = enteringPhase(run.typerPhase.next) { (new TypeExtractor).getType(unit.body) }
         def read(file: File) = IO.read(file)
         def write(value: String, f: File) = IO.write(f, value)
         def extraHash = ""
@@ -112,7 +111,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
           syntheticModule(fullParser, importTrees, trees.toList, moduleName)
         }
         def extra(run: Run, unit: CompilationUnit) = {
-          atPhase(run.typerPhase.next) { (new ValExtractor(valTypes.toSet)).getVals(unit.body) }
+          enteringPhase(run.typerPhase.next) { (new ValExtractor(valTypes.toSet)).getVals(unit.body) }
         }
         def read(file: File) = IO.readLines(file)
         def write(value: Seq[String], file: File) = IO.writeLines(file, value)
@@ -176,7 +175,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
           if (phase == null || phase == phase.next || reporter.hasErrors)
             ()
           else {
-            atPhase(phase) { phase.run }
+            enteringPhase(phase) { phase.run }
             compile(phase.next)
           }
         }
@@ -221,7 +220,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
         Block(List(Apply(Select(Super(This(emptyTypeName), emptyTypeName), nme.CONSTRUCTOR), Nil)), Literal(Constant(())))
       )
 
-      def moduleBody = Template(List(gen.scalaAnyRefConstr), emptyValDef, emptyInit :: definitions)
+      def moduleBody = Template(List(gen.scalaAnyRefConstr), noSelfType, emptyInit :: definitions)
       def moduleDef = ModuleDef(NoMods, newTermName(objectName), moduleBody)
       parser.makePackaging(0, emptyPkg, (imports :+ moduleDef).toList)
     }
@@ -245,7 +244,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
     }
     override def traverse(tree: Tree): Unit = tree match {
       case ValDef(_, n, actualTpe, _) if isTopLevelModule(tree.symbol.owner) && isAcceptableType(actualTpe.tpe) =>
-        vals ::= nme.localToGetter(n).encoded
+        vals ::= n.dropLocal.encoded
       case _ => super.traverse(tree)
     }
   }
