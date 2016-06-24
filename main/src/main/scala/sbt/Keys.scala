@@ -8,7 +8,7 @@ import java.net.URL
 import scala.concurrent.duration.{ FiniteDuration, Duration }
 import Def.ScopedKey
 import sbt.internal.util.complete._
-import sbt.internal.inc.Locate.DefinesClass
+import xsbti.compile.DefinesClass
 import sbt.internal.inc.{ ClasspathOptions, MixedAnalyzingCompiler, ScalaInstance }
 import std.TaskExtra._
 import xsbti.compile.{ CompileAnalysis, CompileOptions, CompileOrder, Compilers, CompileResult, GlobalsCache, IncOptions, Inputs, PreviousResult, Setup }
@@ -195,7 +195,7 @@ object Keys {
   val compileIncSetup = TaskKey[Setup]("inc-compile-setup", "Configures aspects of incremental compilation.", DTask)
   val compilerCache = TaskKey[GlobalsCache]("compiler-cache", "Cache of scala.tools.nsc.Global instances.  This should typically be cached so that it isn't recreated every task run.", DTask)
   val stateCompilerCache = AttributeKey[GlobalsCache]("compiler-cache", "Internal use: Global cache.")
-  val definesClass = TaskKey[DefinesClass]("defines-class", "Internal use: provides a function that determines whether the provided file contains a given class.", Invisible)
+  val classpathEntryDefinesClass = TaskKey[File => DefinesClass]("classpath-entry-defines-class", "Internal use: provides a function that determines whether the provided file contains a given class.", Invisible)
   val doc = TaskKey[File]("doc", "Generates API documentation.", AMinusTask)
   val copyResources = TaskKey[Seq[(File, File)]]("copy-resources", "Copies resources to the output directory.", AMinusTask)
   val aggregate = SettingKey[Boolean]("aggregate", "Configures task aggregation.", BMinusSetting)

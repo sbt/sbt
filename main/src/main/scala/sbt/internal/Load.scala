@@ -26,7 +26,6 @@ import Scope.{ GlobalScope, ThisScope }
 import sbt.internal.util.Types.const
 import BuildPaths._
 import BuildStreams._
-import Locate.DefinesClass
 import sbt.io.{ GlobFilter, IO, Path }
 import sbt.internal.io.Alternatives
 import sbt.util.Logger
@@ -38,15 +37,13 @@ private[sbt] object Load {
     {
       val globalBase = getGlobalBase(state)
       val base = baseDirectory.getCanonicalFile
-      val definesClass = FileValueCache(Locate.definesClass _)
-      val rawConfig = defaultPreGlobal(state, base, definesClass.get, globalBase, log)
+      val rawConfig = defaultPreGlobal(state, base, globalBase, log)
       val config0 = defaultWithGlobal(state, base, rawConfig, globalBase, log)
       val config = if (isPlugin) enableSbtPlugin(config0) else config0.copy(extraBuilds = topLevelExtras)
       val result = apply(base, state, config)
-      definesClass.clear()
       result
     }
-  def defaultPreGlobal(state: State, baseDirectory: File, definesClass: DefinesClass, globalBase: File, log: Logger): LoadBuildConfiguration =
+  def defaultPreGlobal(state: State, baseDirectory: File, globalBase: File, log: Logger): LoadBuildConfiguration =
     {
       val provider = state.configuration.provider
       val scalaProvider = provider.scalaProvider
@@ -65,7 +62,7 @@ private[sbt] object Load {
       val initialID = baseDirectory.getName
       val pluginMgmt = PluginManagement(loader)
       val inject = InjectSettings(injectGlobal(state), Nil, const(Nil))
-      new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, definesClass, delegates,
+      new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, delegates,
         EvaluateTask.injectStreams, pluginMgmt, inject, None, Nil, log)
     }
   private def bootIvyHome(app: xsbti.AppConfiguration): Option[File] =
@@ -905,7 +902,6 @@ final case class LoadBuildConfiguration(
     loader: ClassLoader,
     compilers: Compilers,
     evalPluginDef: (BuildStructure, State) => PluginData,
-    definesClass: DefinesClass,
     delegates: LoadedBuild => Scope => Seq[Scope],
     scopeLocal: ScopeLocal,
     pluginManagement: PluginManagement,
