@@ -12,6 +12,7 @@ object CoursierPlugin extends AutoPlugin {
   object autoImport {
     val coursierParallelDownloads = Keys.coursierParallelDownloads
     val coursierMaxIterations = Keys.coursierMaxIterations
+    val coursierDefaultArtifactType = Keys.coursierDefaultArtifactType
     val coursierChecksums = Keys.coursierChecksums
     val coursierArtifactsChecksums = Keys.coursierArtifactsChecksums
     val coursierCachePolicies = Keys.coursierCachePolicies
@@ -57,6 +58,7 @@ object CoursierPlugin extends AutoPlugin {
   override lazy val projectSettings = Seq(
     coursierParallelDownloads := 6,
     coursierMaxIterations := 50,
+    coursierDefaultArtifactType := "jar",
     coursierChecksums := Seq(Some("SHA-1"), None),
     coursierArtifactsChecksums := Seq(None),
     coursierCachePolicies := CachePolicy.default,
