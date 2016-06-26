@@ -9,9 +9,9 @@ import scala.concurrent.duration.{ FiniteDuration, Duration }
 import Def.ScopedKey
 import sbt.internal.util.complete._
 import xsbti.compile.DefinesClass
-import sbt.internal.inc.{ ClasspathOptions, MixedAnalyzingCompiler, ScalaInstance }
+import sbt.internal.inc.{ MixedAnalyzingCompiler, ScalaInstance }
 import std.TaskExtra._
-import xsbti.compile.{ CompileAnalysis, CompileOptions, CompileOrder, Compilers, CompileResult, GlobalsCache, IncOptions, Inputs, PreviousResult, Setup }
+import xsbti.compile.{ ClasspathOptions, CompileAnalysis, CompileOptions, CompileOrder, Compilers, CompileResult, GlobalsCache, IncOptions, Inputs, PreviousResult, Setup }
 import scala.xml.{ Node => XNode, NodeSeq }
 import org.apache.ivy.core.module.{ descriptor, id }
 import descriptor.ModuleDescriptor, id.ModuleRevisionId

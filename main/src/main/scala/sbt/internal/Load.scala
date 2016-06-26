@@ -13,7 +13,7 @@ import java.net.{ URI, URL }
 import compiler.{ Eval, EvalImports }
 import scala.annotation.tailrec
 import collection.mutable
-import sbt.internal.inc.{ Analysis, ClasspathOptions, FileValueCache, Locate, ModuleUtilities }
+import sbt.internal.inc.{ Analysis, ClasspathOptionsUtil, FileValueCache, Locate, ModuleUtilities }
 import sbt.internal.inc.classpath.ClasspathUtilities
 import Project.inScope
 import Def.{ isDummy, ScopedKey, ScopeLocal, Setting }
@@ -56,7 +56,7 @@ private[sbt] object Load {
       val ivyPaths = new IvyPaths(baseDirectory, bootIvyHome(state.configuration))
       val ivyConfiguration = new InlineIvyConfiguration(ivyPaths, Resolver.withDefaultResolvers(Nil),
         Nil, Nil, localOnly, lock, checksums, None, UpdateOptions(), log)
-      val compilers = Compiler.compilers(ClasspathOptions.boot, ivyConfiguration)(state.configuration, log)
+      val compilers = Compiler.compilers(ClasspathOptionsUtil.boot, ivyConfiguration)(state.configuration, log)
       val evalPluginDef = EvaluateTask.evalPluginDef(log) _
       val delegates = defaultDelegates
       val initialID = baseDirectory.getName

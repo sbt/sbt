@@ -4,7 +4,7 @@
 package sbt
 
 import java.io.File
-import sbt.internal.inc.{ AnalyzingCompiler, ClasspathOptions, JavaCompiler, RawCompiler, ScalaInstance }
+import sbt.internal.inc.{ AnalyzingCompiler, RawCompiler, ScalaInstance }
 
 import Predef.{ conforms => _, _ }
 import sbt.io.syntax._
@@ -16,6 +16,7 @@ import sbt.internal.util.Cache.{ defaultEquiv, hConsCache, hNilCache, IntFormat,
 import sbt.internal.util.Tracked.{ inputChanged, outputChanged }
 import sbt.internal.util.{ FilesInfo, HashFileInfo, HNil, ModifiedFileInfo, PlainFileInfo }
 import sbt.internal.util.FilesInfo.{ exists, hash, lastModified }
+import xsbti.compile.ClasspathOptions
 
 import sbt.util.Logger
 

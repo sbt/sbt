@@ -3,10 +3,10 @@
  */
 package sbt
 
-import sbt.internal.inc.javac.{ IncrementalCompilerJavaTools, JavaTools }
-import sbt.internal.inc.{ Analysis, AnalyzingCompiler, ClasspathOptions, CompileOutput, ComponentCompiler, IncrementalCompilerImpl, JavaTool, Locate, LoggerReporter, ScalaInstance }
+import sbt.internal.inc.javac.JavaTools
+import sbt.internal.inc.{ Analysis, AnalyzingCompiler, CompileOutput, ComponentCompiler, IncrementalCompilerImpl, Locate, LoggerReporter, ScalaInstance }
 import xsbti.{ Logger => _, _ }
-import xsbti.compile.{ CompileOrder, Compilers, CompileResult, GlobalsCache, IncOptions, Inputs, MiniSetup }
+import xsbti.compile.{ ClasspathOptions, CompileOrder, Compilers, CompileResult, GlobalsCache, IncOptions, Inputs, MiniSetup }
 import CompileOrder.{ JavaThenScala, Mixed, ScalaThenJava }
 import java.io.File
 
@@ -120,7 +120,7 @@ object Compiler {
     ivyConfiguration: IvyConfiguration, sourcesModule: ModuleID)(implicit app: AppConfiguration, log: Logger): Compilers = {
     val scalac = scalaCompiler(instance, cpOptions, javaHome, ivyConfiguration, sourcesModule)
     val javac = JavaTools.directOrFork(instance, cpOptions, javaHome)
-    IncrementalCompilerImpl.Compilers(scalac, javac)
+    new Compilers(scalac, javac)
   }
   def scalaCompiler(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File], ivyConfiguration: IvyConfiguration, sourcesModule: ModuleID)(implicit app: AppConfiguration, log: Logger): AnalyzingCompiler =
     {

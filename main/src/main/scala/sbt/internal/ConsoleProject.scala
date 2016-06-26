@@ -8,7 +8,7 @@ import sbt.util.Logger
 import java.io.File
 import sbt.librarymanagement.Resolver
 import sbt.internal.librarymanagement.{ InlineIvyConfiguration, IvyPaths }
-import sbt.internal.inc.{ AnalyzingCompiler, ClasspathOptions, IncrementalCompilerImpl, ScalaInstance }
+import sbt.internal.inc.{ AnalyzingCompiler, ClasspathOptionsUtil, IncrementalCompilerImpl, ScalaInstance }
 
 object ConsoleProject {
   def apply(state: State, extra: String, cleanupCommands: String = "", options: Seq[String] = Nil)(implicit log: Logger): Unit = {
@@ -22,7 +22,7 @@ object ConsoleProject {
       ScalaInstance(scalaProvider.version, scalaProvider.launcher)
     }
     val sourcesModule = extracted.get(Keys.scalaCompilerBridgeSource)
-    val compiler = Compiler.scalaCompiler(scalaInstance, ClasspathOptions.repl, None, ivyConf, sourcesModule)(state.configuration, log)
+    val compiler = Compiler.scalaCompiler(scalaInstance, ClasspathOptionsUtil.repl, None, ivyConf, sourcesModule)(state.configuration, log)
     val imports = BuildUtil.getImports(unit.unit) ++ BuildUtil.importAll(bindings.map(_._1))
     val importString = imports.mkString("", ";\n", ";\n\n")
     val initCommands = importString + extra

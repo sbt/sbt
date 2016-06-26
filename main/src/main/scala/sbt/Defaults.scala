@@ -9,9 +9,6 @@ import sbt.internal.util.Attributed
 import sbt.internal.util.Attributed.data
 import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
 import sbt.internal.librarymanagement.mavenint.{ PomExtraDependencyAttributes, SbtPomExtraProperties }
-import xsbt.api.Discovery
-import xsbti.compile.{ CompileAnalysis, CompileOptions, CompileOrder, CompileResult, DefinesClass, IncOptions, IncOptionsUtil, Inputs, MiniSetup, PreviousResult, Setup, TransactionalManagerType }
-import xsbti.compile.PerClasspathEntryLookup
 import Project.{ inConfig, inScope, inTask, richInitialize, richInitializeTask, richTaskSessionVar }
 import Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
 import sbt.internal.librarymanagement.{ CustomPomParser, DependencyFilter }
@@ -21,7 +18,6 @@ import sbt.librarymanagement.Configurations.{ Compile, CompilerPlugin, Integrati
 import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
 import sbt.internal.util.complete._
 import std.TaskExtra._
-import sbt.internal.inc.{ Analysis, ClassfileManager, ClasspathOptions, CompilerCache, FileValueCache, IncrementalCompilerImpl, Locate, LoggerReporter, MixedAnalyzingCompiler, ScalaInstance }
 import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
 
 import sbt.librarymanagement.{ `package` => _, _ }
@@ -53,6 +49,12 @@ import sbt.io.{ AllPassFilter, FileFilter, GlobFilter, HiddenFileFilter, IO, Nam
 import Path._
 import sbt.io.syntax._
 import Keys._
+
+// incremental compiler
+import xsbt.api.Discovery
+import xsbti.compile.{ Compilers, ClasspathOptions, CompileAnalysis, CompileOptions, CompileOrder, CompileResult, DefinesClass, IncOptions, IncOptionsUtil, Inputs, MiniSetup, PreviousResult, Setup, TransactionalManagerType }
+import xsbti.compile.PerClasspathEntryLookup
+import sbt.internal.inc.{ AnalyzingCompiler, Analysis, ClassfileManager, CompilerCache, FileValueCache, IncrementalCompilerImpl, Locate, LoggerReporter, MixedAnalyzingCompiler, ScalaInstance, ClasspathOptionsUtil }
 
 object Defaults extends BuildCommon {
   final val CacheDirectoryName = "cache"
@@ -255,8 +257,8 @@ object Defaults extends BuildCommon {
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(Seq(
     incOptions := IncOptionsUtil.defaultIncOptions,
-    classpathOptions :== ClasspathOptions.boot,
-    classpathOptions in console :== ClasspathOptions.repl,
+    classpathOptions :== ClasspathOptionsUtil.boot,
+    classpathOptions in console :== ClasspathOptionsUtil.repl,
     compileOrder :== CompileOrder.Mixed,
     javacOptions :== Nil,
     scalacOptions :== Nil,
@@ -803,7 +805,7 @@ object Defaults extends BuildCommon {
     fileInputOptions := Seq("-doc-root-content", "-diagrams-dot-path"),
     key in TaskGlobal := {
       val s = streams.value
-      val cs: IncrementalCompilerImpl.Compilers = compilers.value match { case c: IncrementalCompilerImpl.Compilers => c }
+      val cs: Compilers = compilers.value
       val srcs = sources.value
       val out = target.value
       val sOpts = scalacOptions.value
@@ -820,10 +822,14 @@ object Defaults extends BuildCommon {
       (hasScala, hasJava) match {
         case (true, _) =>
           val options = sOpts ++ Opts.doc.externalAPI(xapis)
-          val runDoc = Doc.scaladoc(label, s.cacheDirectory / "scala", cs.scalac.onArgs(exported(s, "scaladoc")), fiOpts)
+          val runDoc = Doc.scaladoc(label, s.cacheDirectory / "scala",
+            cs.scalac match {
+              case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scaladoc"))
+            },
+            fiOpts)
           runDoc(srcs, cp, out, options, maxErrors.value, s.log)
         case (_, true) =>
-          val javadoc = sbt.inc.Doc.cachedJavadoc(label, s.cacheDirectory / "java", cs.javac)
+          val javadoc = sbt.inc.Doc.cachedJavadoc(label, s.cacheDirectory / "java", cs.javaTools)
           javadoc.run(srcs.toList, cp, out, javacOptions.value.toList, s.log, reporter)
         case _ => () // do nothing
       }
@@ -842,12 +848,14 @@ object Defaults extends BuildCommon {
   def consoleQuickTask = consoleTask(externalDependencyClasspath, consoleQuick)
   def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[_]): Initialize[Task[Unit]] =
     (compilers in task, classpath in task, scalacOptions in task, initialCommands in task, cleanupCommands in task, taskTemporaryDirectory in task, scalaInstance in task, streams) map {
-      // TODO: Make exhaustive after zinc is updated to include https://github.com/sbt/zinc/pull/128
-      case (cs: IncrementalCompilerImpl.Compilers, cp, options, initCommands, cleanup, temp, si, s) =>
+      case (cs: Compilers, cp, options, initCommands, cleanup, temp, si, s) =>
         val cpFiles = data(cp)
         val fullcp = (cpFiles ++ si.allJars).distinct
         val loader = sbt.internal.inc.classpath.ClasspathUtilities.makeLoader(fullcp, si, IO.createUniqueDirectory(temp))
-        val compiler = cs.scalac.onArgs(exported(s, "scala"))
+        val compiler =
+          cs.scalac match {
+            case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scala"))
+          }
         (new Console(compiler))(cpFiles, options, loader, initCommands, cleanup)()(s.log).foreach(msg => sys.error(msg))
         println()
     }
@@ -880,8 +888,17 @@ object Defaults extends BuildCommon {
   private[this] def compileIncrementalTaskImpl(s: TaskStreams, ci: Inputs): CompileResult =
     {
       lazy val x = s.text(ExportStream)
-      def onArgs(cs: IncrementalCompilerImpl.Compilers) = cs.copy(scalac = cs.scalac.onArgs(exported(x, "scalac")), javac = cs.javac /*.onArgs(exported(x, "javac"))*/ )
-      val compilers: IncrementalCompilerImpl.Compilers = ci.compilers match { case compilers: IncrementalCompilerImpl.Compilers => compilers }
+      def onArgs(cs: Compilers) =
+        cs.withScalac(
+          cs.scalac match {
+            case ac: AnalyzingCompiler => ac.onArgs(exported(x, "scalac"))
+            case x                     => x
+          }
+        )
+      // .withJavac(
+      //  cs.javac.onArgs(exported(x, "javac"))
+      //)
+      val compilers: Compilers = ci.compilers
       val i = ci.withCompilers(onArgs(compilers))
       try Compiler.compile(i, s.log)
       finally x.close() // workaround for #937
