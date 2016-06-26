@@ -122,7 +122,7 @@ object DependencyGraphSettings {
   def moduleGraphIvyReportTask = ivyReport map (absoluteReportPath.andThen(IvyReport.fromReportFile))
   def moduleGraphSbtTask =
     (ignoreMissingUpdate, crossProjectId, configuration) map { (update, root, config) ⇒
-      SbtUpdateReport.fromConfigurationReport(update.configuration(config.name).get, root)
+      update.configuration(config.name).map(report ⇒ SbtUpdateReport.fromConfigurationReport(report, root)).getOrElse(ModuleGraph.empty)
     }
 
   def printAsciiGraphTask =

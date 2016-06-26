@@ -36,6 +36,10 @@ case class Module(id: ModuleId,
   def isEvicted: Boolean = evictedByVersion.isDefined
 }
 
+object ModuleGraph {
+  val empty = ModuleGraph(Seq.empty, Seq.empty)
+}
+
 case class ModuleGraph(nodes: Seq[Module], edges: Seq[Edge]) {
   lazy val modules: Map[ModuleId, Module] =
     nodes.map(n ⇒ (n.id, n)).toMap
