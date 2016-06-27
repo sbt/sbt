@@ -3,59 +3,61 @@
  */
 package sbt.internal.util
 
-import sbinary.{ Format, Input, Output => Out }
-import java.io.File
-import sbt.io.Using
+import scala.util.Try
 
-trait InputCache[I] {
-  type Internal
-  def convert(i: I): Internal
-  def read(from: Input): Internal
-  def write(to: Out, j: Internal): Unit
-  def equiv: Equiv[Internal]
-}
-object InputCache {
-  implicit def basicInputCache[I](implicit fmt: Format[I], eqv: Equiv[I]): InputCache[I] =
-    new InputCache[I] {
-      type Internal = I
-      def convert(i: I) = i
-      def read(from: Input): I = fmt.reads(from)
-      def write(to: Out, i: I) = fmt.writes(to, i)
-      def equiv = eqv
-    }
-  def lzy[I](mkIn: => InputCache[I]): InputCache[I] =
-    new InputCache[I] {
-      lazy val ic = mkIn
-      type Internal = ic.Internal
-      def convert(i: I) = ic convert i
-      def read(from: Input): ic.Internal = ic.read(from)
-      def write(to: Out, i: ic.Internal) = ic.write(to, i)
-      def equiv = ic.equiv
-    }
+import sjsonnew.JsonFormat
+
+import CacheImplicits._
+
+/**
+ * A cache that stores a single value.
+ */
+trait SingletonCache[T] {
+  /** Reads the cache from the backing `from`. */
+  def read(from: Input): T
+
+  /** Writes `value` to the backing `to`. */
+  def write(to: Output, value: T): Unit
+
+  /** Equivalence for elements of type `T`. */
+  def equiv: Equiv[T]
 }
 
-class BasicCache[I, O](implicit input: InputCache[I], outFormat: Format[O]) extends Cache[I, O] {
-  def apply(file: File)(in: I) =
-    {
-      val j = input.convert(in)
-      try { applyImpl(file, j) }
-      catch { case e: Exception => Right(update(file)(j)) }
+object SingletonCache {
+
+  implicit def basicSingletonCache[T: JsonFormat: Equiv]: SingletonCache[T] =
+    new SingletonCache[T] {
+      override def read(from: Input): T = from.read[T]
+      override def write(to: Output, value: T) = to.write(value)
+      override def equiv: Equiv[T] = implicitly
     }
-  protected def applyImpl(file: File, in: input.Internal) =
-    {
-      Using.fileInputStream(file) { stream =>
-        val previousIn = input.read(stream)
-        if (input.equiv.equiv(in, previousIn))
-          Left(outFormat.reads(stream))
-        else
-          Right(update(file)(in))
-      }
+
+  /** A lazy `SingletonCache` */
+  def lzy[T: JsonFormat: Equiv](mkCache: => SingletonCache[T]): SingletonCache[T] =
+    new SingletonCache[T] {
+      lazy val cache = mkCache
+      override def read(from: Input): T = cache.read(from)
+      override def write(to: Output, value: T) = cache.write(to, value)
+      override def equiv = cache.equiv
     }
-  protected def update(file: File)(in: input.Internal) = (out: O) =>
-    {
-      Using.fileOutputStream(false)(file) { stream =>
-        input.write(stream, in)
-        outFormat.writes(stream, out)
-      }
-    }
+}
+
+/**
+ * Simple key-value cache.
+ */
+class BasicCache[I: JsonFormat: Equiv, O: JsonFormat] extends Cache[I, O] {
+  private val singletonCache: SingletonCache[(I, O)] = implicitly
+  val equiv: Equiv[I] = implicitly
+  override def apply(store: CacheStore)(key: I): CacheResult[O] =
+    Try {
+      val (previousKey, previousValue) = singletonCache.read(store)
+      if (equiv.equiv(key, previousKey))
+        Hit(previousValue)
+      else
+        Miss(update(store)(key))
+    } getOrElse Miss(update(store)(key))
+
+  private def update(store: CacheStore)(key: I) = (value: O) => {
+    singletonCache.write(store, (key, value))
+  }
 }
