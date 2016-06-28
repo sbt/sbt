@@ -21,6 +21,9 @@ trait CacheStore extends Input with Output {
 trait CacheStoreFactory {
   /** Create a new store. */
   def derive(identifier: String): CacheStore
+
+  /** Create a new `CacheStoreFactory` from this factory. */
+  def sub(identifier: String): CacheStoreFactory
 }
 
 /**
@@ -32,6 +35,9 @@ class DirectoryStoreFactory[J: IsoString](base: File, converter: SupportConverte
 
   override def derive(identifier: String): CacheStore =
     new FileBasedStore(base / identifier, converter)
+
+  override def sub(identifier: String): CacheStoreFactory =
+    new DirectoryStoreFactory(base / identifier, converter)
 }
 
 /**
