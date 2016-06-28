@@ -4,7 +4,7 @@
 package sbt
 
 import java.io.{ File, PrintWriter }
-import sbt.internal.inc.{ AnalyzingCompiler, JavaCompiler }
+import sbt.internal.inc.AnalyzingCompiler
 
 import Predef.{ conforms => _, _ }
 import sbt.internal.util.Types.:+:
@@ -17,6 +17,7 @@ import sbt.internal.util.Tracked.{ inputChanged, outputChanged }
 import sbt.internal.util.{ FilesInfo, HashFileInfo, HNil, ModifiedFileInfo, PlainFileInfo }
 import sbt.internal.util.FilesInfo.{ exists, hash, lastModified }
 import xsbti.Reporter
+import xsbti.compile.JavaTools
 
 import sbt.util.Logger
 
@@ -26,9 +27,9 @@ object Doc {
     scaladoc(label, cache, compiler, Seq())
   def scaladoc(label: String, cache: File, compiler: AnalyzingCompiler, fileInputOptions: Seq[String]): Gen =
     cached(cache, fileInputOptions, prepare(label + " Scala API documentation", compiler.doc))
-  def javadoc(label: String, cache: File, doc: sbt.internal.inc.javac.JavaTools, log: Logger, reporter: Reporter): Gen =
+  def javadoc(label: String, cache: File, doc: JavaTools, log: Logger, reporter: Reporter): Gen =
     javadoc(label, cache, doc, log, reporter, Seq())
-  def javadoc(label: String, cache: File, doc: sbt.internal.inc.javac.JavaTools, log: Logger, reporter: Reporter, fileInputOptions: Seq[String]): Gen =
+  def javadoc(label: String, cache: File, doc: JavaTools, log: Logger, reporter: Reporter, fileInputOptions: Seq[String]): Gen =
     cached(cache, fileInputOptions, prepare(label + " Java API documentation", filterSources(javaSourcesOnly,
       (sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], maxErrors: Int, log: Logger) => {
         // doc.doc
@@ -48,13 +49,13 @@ object Doc {
       generate("Scala", label, compiler.doc, sources, classpath, outputDirectory, options, maximumErrors, log)
     }
   }
-  // TODO: trait Javadoc in package inc is deprecated: Please use the new set of compilers in sbt.compilers.javac
-  private[sbt] final class Javadoc(maximumErrors: Int, doc: sbt.internal.inc.Javadoc) extends Doc {
-    def apply(label: String, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger): Unit = {
-      // javadoc doesn't handle *.scala properly, so we evict them from javadoc sources list.
-      generate("Java", label, doc.doc, sources.filterNot(_.name.endsWith(".scala")), classpath, outputDirectory, options, maximumErrors, log)
-    }
-  }
+
+  // private[sbt] final class Javadoc(maximumErrors: Int, doc: sbt.internal.inc.Javadoc) extends Doc {
+  //   def apply(label: String, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger) {
+  //     // javadoc doesn't handle *.scala properly, so we evict them from javadoc sources list.
+  //     generate("Java", label, doc.doc, sources.filterNot(_.name.endsWith(".scala")), classpath, outputDirectory, options, maximumErrors, log)
+  //   }
+  // }
 }
 // @deprecated("No longer used.  See `Doc.javadoc` or `Doc.scaladoc`", "0.13.0")
 sealed trait Doc {
