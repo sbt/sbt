@@ -9,9 +9,11 @@ object CacheImplicits extends BasicCacheImplicits
   with ByteFormat
   with FileFormat
   with IntFormat
+  with HListFormat
   with LongFormat
   with StringFormat
   with URIFormat
   with URLFormat
+  with StreamFormat
   with TupleFormats
   with CollectionFormats

@@ -1,12 +1,12 @@
 package sbt.internal.util
 
-import sbt.datatype.StringFormat
+import sbt.datatype.{ ArrayFormat, ByteFormat, StringFormat }
 import sbt.internal.util.Types.:+:
 
 import sjsonnew.{ Builder, deserializationError, JsonFormat, Unbuilder }
 import sjsonnew.BasicJsonProtocol.{ wrap, asSingleton }
 
-import java.io.File
+import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, File, InputStream, OutputStream }
 
 import java.net.{ URI, URL }
 
@@ -49,4 +49,20 @@ trait HListFormat {
 
   implicit val HNilFormat: JsonFormat[HNil] = asSingleton(HNil)
 
+}
+
+trait StreamFormat { self: ArrayFormat with ByteFormat =>
+  def streamFormat[T](write: (T, OutputStream) => Unit, read: InputStream => T): JsonFormat[T] = {
+    lazy val byteArrayFormat = implicitly[JsonFormat[Array[Byte]]]
+    val toBytes = (t: T) => { val bos = new ByteArrayOutputStream(); write(t, bos); bos.toByteArray }
+    val fromBytes = (bs: Array[Byte]) => read(new ByteArrayInputStream(bs))
+
+    new JsonFormat[T] {
+      override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): T =
+        fromBytes(byteArrayFormat.read(jsOpt, unbuilder))
+
+      override def write[J](obj: T, builder: Builder[J]): Unit =
+        byteArrayFormat.write(toBytes(obj), builder)
+    }
+  }
 }
