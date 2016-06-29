@@ -58,6 +58,10 @@ object DslEntry {
   case class DslDisablePlugins(plugins: Seq[AutoPlugin]) extends ProjectManipulation {
     override val toFunction: Project => Project = _.disablePlugins(plugins: _*)
   }
+  /** Represents registering an internal dependency for the current project */
+  case class DslDependsOn(cs: Seq[Eval[ClasspathDep[ProjectReference]]]) extends ProjectManipulation {
+    override val toFunction: Project => Project = _.dependsOn(cs: _*)
+  }
   /** Represents registering a set of configurations with the current project. */
   case class DslConfigs(cs: Seq[Configuration]) extends ProjectManipulation {
     override val toFunction: Project => Project = _.configs(cs: _*)
