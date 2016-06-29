@@ -189,7 +189,7 @@ object Defaults extends BuildCommon {
     sourceManaged <<= configSrcSub(sourceManaged),
     scalaSource := sourceDirectory.value / "scala",
     javaSource := sourceDirectory.value / "java",
-    unmanagedSourceDirectories := makeCrossSources(scalaSource.value, javaSource.value, scalaBinaryVersion.value, crossPaths.value),
+    unmanagedSourceDirectories := makeCrossSources(scalaSource.value, javaSource.value, scalaBinaryVersion.value, crossPaths.value, crossScalaVersions.value),
     unmanagedSources <<= collectFiles(unmanagedSourceDirectories, includeFilter in unmanagedSources, excludeFilter in unmanagedSources),
     watchSources in ConfigGlobal <++= unmanagedSources,
     managedSourceDirectories := Seq(sourceManaged.value),
@@ -251,8 +251,8 @@ object Defaults extends BuildCommon {
     derive(scalaBinaryVersion := binaryScalaVersion(scalaVersion.value))
   ))
 
-  def makeCrossSources(scalaSrcDir: File, javaSrcDir: File, sv: String, cross: Boolean): Seq[File] = {
-    if (cross)
+  def makeCrossSources(scalaSrcDir: File, javaSrcDir: File, sv: String, cross: Boolean, svs: Seq[String]): Seq[File] = {
+    if (cross && svs.length > 1)
       Seq(scalaSrcDir.getParentFile / s"${scalaSrcDir.name}-$sv", scalaSrcDir, javaSrcDir)
     else
       Seq(scalaSrcDir, javaSrcDir)
