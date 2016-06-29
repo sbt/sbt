@@ -81,12 +81,12 @@ import CommandUtil._
 object BuiltinCommands {
   def initialAttributes = AttributeMap.empty
 
-  def ConsoleCommands: Seq[Command] = Seq(ignore, exit, IvyConsole.command, setLogLevel, early, act, nop)
-  def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, setLogLevel, early, act, nop)
+  def ConsoleCommands: Seq[Command] = Seq(ignore, exit, quit, IvyConsole.command, setLogLevel, early, act, nop)
+  def ScriptCommands: Seq[Command] = Seq(ignore, exit, quit, Script.command, setLogLevel, early, act, nop)
   def DefaultCommands: Seq[Command] = Seq(ignore, help, completionsCommand, about, tasks, settingsCommand, loadProject,
     projects, project, reboot, read, history, set, sessionCommand, inspect, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
     setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, setLogLevel, plugin, plugins,
-    ifLast, multi, shell, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, early, initialize, act) ++
+    ifLast, multi, shell, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, quit, early, initialize, act) ++
     compatCommands
   def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
 

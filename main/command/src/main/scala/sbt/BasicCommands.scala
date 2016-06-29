@@ -16,7 +16,7 @@ import java.io.File
 import scala.util.control.NonFatal
 
 object BasicCommands {
-  lazy val allBasicCommands = Seq(nop, ignore, help, completionsCommand, multi, ifLast, append, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, reboot, call, early, exit, continuous, history, shell, read, alias) ++ compatCommands
+  lazy val allBasicCommands = Seq(nop, ignore, help, completionsCommand, multi, ifLast, append, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, reboot, call, early, exit, quit, continuous, history, shell, read, alias) ++ compatCommands
 
   def nop = Command.custom(s => success(() => s))
   def ignore = Command.command(FailureWall)(idFun)
@@ -144,6 +144,7 @@ object BasicCommands {
     token(StringBasic.map(s => IO.pathSplit(s).toSeq), "<classpath>")
 
   def exit = Command.command(TerminateAction, exitBrief, exitBrief)(_ exit true)
+  def quit = Command.command(Quit, exitBrief, exitBrief)(_ exit true)
 
   def continuous =
     Command(ContinuousExecutePrefix, continuousBriefHelp, continuousDetail)(otherCommandParser) { (s, arg) =>
