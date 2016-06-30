@@ -81,7 +81,8 @@ object ScriptedPlugin extends Plugin {
 		scriptedRun <<= scriptedRunTask,
 		scriptedDependencies <<= (compile in Test, publishLocal) map { (analysis, pub) => Unit },
 		scriptedLaunchOpts := Seq(),
-		scripted <<= scriptedTask
+		scripted <<= scriptedTask,
+		watchSources in scripted <++= (sbtTestDirectory).map{ dir => (dir ***).get }
 	)
 	private[this] def getJars(config: Configuration): Initialize[Task[PathFinder]] =
 		(classpathTypes, update) map { (ct, report) => PathFinder(Classpaths.managedJars(config, ct, report).map(_.data)) }
