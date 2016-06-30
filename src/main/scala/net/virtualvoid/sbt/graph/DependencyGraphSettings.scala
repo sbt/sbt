@@ -37,7 +37,7 @@ object DependencyGraphSettings {
     ivyReportFunction <<= ivyReportFunctionTask,
     updateConfiguration in ignoreMissingUpdate <<= updateConfiguration(config ⇒ new UpdateConfiguration(config.retrieve, true, config.logging)),
     ignoreMissingUpdateT,
-    filterScalaLibrary in Global := true) ++ Seq(Compile, Test, Runtime, Provided, Optional).flatMap(ivyReportForConfig)
+    filterScalaLibrary in Global := true) ++ Seq(Compile, Test, IntegrationTest, Runtime, Provided, Optional).flatMap(ivyReportForConfig)
 
   def ivyReportForConfig(config: Configuration) = inConfig(config)(Seq(
     ivyReport <<= ivyReportFunction map (_(config.toString)) dependsOn (ignoreMissingUpdate),
@@ -122,7 +122,7 @@ object DependencyGraphSettings {
   def moduleGraphIvyReportTask = ivyReport map (absoluteReportPath.andThen(IvyReport.fromReportFile))
   def moduleGraphSbtTask =
     (ignoreMissingUpdate, crossProjectId, configuration) map { (update, root, config) ⇒
-      SbtUpdateReport.fromConfigurationReport(update.configuration(config.name).get, root)
+      update.configuration(config.name).map(report ⇒ SbtUpdateReport.fromConfigurationReport(report, root)).getOrElse(ModuleGraph.empty)
     }
 
   def printAsciiGraphTask =
