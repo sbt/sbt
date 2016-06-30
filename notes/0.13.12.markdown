@@ -6,6 +6,7 @@
   [milessabin]: https://github.com/milessabin
   [@ekrich]: https://github.com/ekrich
   [@smarter]: https://github.com/smarter
+  [@anatolydwnld]: https://github.com/anatolydwnld
   [2637]: https://github.com/sbt/sbt/pull/2637
   [2286]: https://github.com/sbt/sbt/issues/2286
   [2634]: https://github.com/sbt/sbt/pull/2634
@@ -27,6 +28,7 @@
   [2557]: https://github.com/sbt/sbt/pull/2557
   [2603]: https://github.com/sbt/sbt/pull/2603
   [2630]: https://github.com/sbt/sbt/pull/2630
+  [2653]: https://github.com/sbt/sbt/pull/2653
 
 ### Fixes with compatibility implications
 
@@ -42,8 +44,9 @@
 ### Improvements
 
 - When `RecompileOnMacroDef` is enabled, sbt will now print out a info level log indicating that some sources are being recompiled because it's used from a source that contains a macro definition. [#2637][2637] by [@eed3si9n][@eed3si9n]
-- Add Windows script support and native file extensions on Unix platforms. [#2603][2603] by [@ekrich][@ekrich]
+- Adds Windows script support and native file extensions on Unix platforms. [#2603][2603] by [@ekrich][@ekrich]
 - Improves loading time of large builds. [#2630][2630] by [@eed3si9n][@eed3si9n]
+- Adds the ability to call `dependsOn` for the current project inside a `.sbt` file. [#2653][2653] by [@anatolydwnld][@anatolydwnld]
 
 ### Bug fixes
 
