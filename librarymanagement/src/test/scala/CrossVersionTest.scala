@@ -115,4 +115,13 @@ class CrossVersionTest extends UnitSpec {
   it should "return binary Scala version for 2.10.1 as 2.10" in {
     CrossVersion.binaryScalaVersion("2.10.1") shouldBe "2.10"
   }
+  it should "return disabled cross version as equal to a copy" in {
+    CrossVersion.Disabled shouldBe CrossVersion.Disabled
+  }
+  it should "return full cross version as equal to a copy" in {
+    CrossVersion.full shouldBe CrossVersion.full
+  }
+  it should "return binary cross version as equal to a copy" in {
+    CrossVersion.binary shouldBe CrossVersion.binary
+  }
 }
