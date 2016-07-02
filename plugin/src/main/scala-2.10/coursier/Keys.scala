@@ -12,6 +12,7 @@ import scala.concurrent.duration.Duration
 object Keys {
   val coursierParallelDownloads = SettingKey[Int]("coursier-parallel-downloads")
   val coursierMaxIterations = SettingKey[Int]("coursier-max-iterations")
+  val coursierDefaultArtifactType = SettingKey[String]("coursier-default-artifact-type")
   val coursierChecksums = SettingKey[Seq[Option[String]]]("coursier-checksums")
   val coursierArtifactsChecksums = SettingKey[Seq[Option[String]]]("coursier-artifacts-checksums")
   val coursierCachePolicies = SettingKey[Seq[CachePolicy]]("coursier-cache-policies")

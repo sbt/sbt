@@ -76,16 +76,22 @@ object Tasks {
 
       val allDependenciesTask = allDependencies.in(projectRef).get(state)
 
+      lazy val projId = projectID.in(projectRef).get(state)
+      lazy val sv = scalaVersion.in(projectRef).get(state)
+      lazy val sbv = scalaBinaryVersion.in(projectRef).get(state)
+      lazy val defaultArtifactType = coursierDefaultArtifactType.in(projectRef).get(state)
+
       for {
         allDependencies <- allDependenciesTask
       } yield {
 
         FromSbt.project(
-          projectID.in(projectRef).get(state),
+          projId,
           allDependencies,
           configurations.map { cfg => cfg.name -> cfg.extendsConfigs.map(_.name) }.toMap,
-          scalaVersion.in(projectRef).get(state),
-          scalaBinaryVersion.in(projectRef).get(state)
+          sv,
+          sbv,
+          defaultArtifactType
         )
       }
     }
@@ -240,13 +246,15 @@ object Tasks {
         if (sbtClassifiers) {
           val sv = scalaVersion.value
           val sbv = scalaBinaryVersion.value
+          val defaultArtifactType = coursierDefaultArtifactType.value
 
           val proj = FromSbt.project(
             cm.id,
             cm.modules,
             cm.configurations.map(cfg => cfg.name -> cfg.extendsConfigs.map(_.name)).toMap,
             sv,
-            sbv
+            sbv,
+            defaultArtifactType
           )
 
           val fallbackDeps = FromSbt.fallbackDependencies(
@@ -587,13 +595,15 @@ object Tasks {
         if (sbtClassifiers) {
           val sv = scalaVersion.value
           val sbv = scalaBinaryVersion.value
+          val defaultArtifactType = coursierDefaultArtifactType.value
 
           FromSbt.project(
             cm.id,
             cm.modules,
             cm.configurations.map(cfg => cfg.name -> cfg.extendsConfigs.map(_.name)).toMap,
             sv,
-            sbv
+            sbv,
+            defaultArtifactType
           )
         } else {
           val proj = coursierProject.value
@@ -800,13 +810,15 @@ object Tasks {
         val cm = coursierSbtClassifiersModule.value
         val sv = scalaVersion.value
         val sbv = scalaBinaryVersion.value
+        val defaultArtifactType = coursierDefaultArtifactType.value
 
         FromSbt.project(
           cm.id,
           cm.modules,
           cm.configurations.map(cfg => cfg.name -> cfg.extendsConfigs.map(_.name)).toMap,
           sv,
-          sbv
+          sbv,
+          defaultArtifactType
         )
       } else {
         val proj = coursierProject.value
