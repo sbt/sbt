@@ -119,6 +119,7 @@ lazy val core = crossProject
   .settings(mimaDefaultSettings: _*)
   .settings(
     name := "coursier",
+    libraryDependencies += "com.lihaoyi" %%% "fastparse" % "0.3.7",
     resourceGenerators.in(Compile) += {
       (target, version).map { (dir, ver) =>
         import sys.process._
@@ -152,6 +153,31 @@ lazy val core = crossProject
         ProblemFilters.exclude[MissingMethodProblem]("coursier.core.Project.apply"),
         ProblemFilters.exclude[MissingMethodProblem]("coursier.core.Project.copy"),
         ProblemFilters.exclude[MissingMethodProblem]("coursier.core.Project.this"),
+        // Reworked Ivy pattern handling
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.pattern"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.copy"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.properties"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.parts"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.substitute"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.this"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.substituteProperties"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.propertyRegex"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.apply"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.variableRegex"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.optionalPartRegex"),
+        ProblemFilters.exclude[MissingClassProblem]("coursier.ivy.Pattern$PatternPart$Literal$"),
+        ProblemFilters.exclude[MissingClassProblem]("coursier.ivy.Pattern$PatternPart"),
+        ProblemFilters.exclude[MissingClassProblem]("coursier.ivy.Pattern$PatternPart$"),
+        ProblemFilters.exclude[IncompatibleMethTypeProblem]("coursier.ivy.IvyRepository.apply"),
+        ProblemFilters.exclude[MissingClassProblem]("coursier.ivy.Pattern$PatternPart$Optional$"),
+        ProblemFilters.exclude[MissingClassProblem]("coursier.ivy.Pattern$PatternPart$Literal"),
+        ProblemFilters.exclude[MissingClassProblem]("coursier.ivy.Pattern$PatternPart$Optional"),
+        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.ivy.IvyRepository.pattern"),
+        ProblemFilters.exclude[IncompatibleMethTypeProblem]("coursier.ivy.IvyRepository.copy"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.IvyRepository.properties"),
+        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.ivy.IvyRepository.metadataPattern"),
+        ProblemFilters.exclude[IncompatibleMethTypeProblem]("coursier.ivy.IvyRepository.this"),
+        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.util.Parse.repository"),
         // Since 1.0.0-M12
         // Extra `authentication` field
         ProblemFilters.exclude[MissingMethodProblem]("coursier.core.Artifact.apply"),

@@ -9,11 +9,13 @@ object IvyTests extends TestSuite {
 
   // only tested on the JVM for lack of support of XML attributes in the platform-dependent XML stubs
 
-  val sbtRepo = IvyRepository(
+  val sbtRepo = IvyRepository.parse(
     "https://repo.scala-sbt.org/scalasbt/sbt-plugin-releases/" +
       "[organisation]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)" +
       "[revision]/[type]s/[artifact](-[classifier]).[ext]",
     dropInfoAttributes = true
+  ).getOrElse(
+    throw new Exception("Cannot happen")
   )
 
   val tests = TestSuite {

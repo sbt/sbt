@@ -1,146 +1,192 @@
 package coursier.ivy
 
-import scala.annotation.tailrec
+import scalaz._, Scalaz._
 
-import scalaz._
+import fastparse.all._
 
-import scala.util.matching.Regex
-import java.util.regex.Pattern.quote
+case class PropertiesPattern(chunks: Seq[PropertiesPattern.ChunkOrProperty]) {
 
-object Pattern {
+  def string: String = chunks.map(_.string).mkString
 
-  val default =
-    "[organisation]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/" +
-    "[artifact](-[classifier]).[ext]"
+  import PropertiesPattern.ChunkOrProperty
 
-  val propertyRegex = (quote("${") + "[^" + quote("{[()]}") + "]*" + quote("}")).r
-  val optionalPartRegex = (quote("(") + "[^" + quote("{()}") + "]*" + quote(")")).r
-  val variableRegex = (quote("[") + "[^" + quote("{[()]}") + "]*" + quote("]")).r
+  def substituteProperties(properties: Map[String, String]): String \/ Pattern = {
 
-  sealed abstract class PatternPart(val effectiveStart: Int, val effectiveEnd: Int) extends Product with Serializable {
-    require(effectiveStart <= effectiveEnd)
-    def start = effectiveStart
-    def end = effectiveEnd
-
-    // FIXME Some kind of validation should be used here, to report all the missing variables,
-    //       not only the first one missing.
-    def apply(content: String): Map[String, String] => String \/ String
-  }
-  object PatternPart {
-    final case class Literal(override val effectiveStart: Int, override val effectiveEnd: Int) extends PatternPart(effectiveStart, effectiveEnd) {
-      def apply(content: String): Map[String, String] => String \/ String = {
-        assert(content.length == effectiveEnd - effectiveStart)
-        val matches = variableRegex.findAllMatchIn(content).toList
-
-        variables =>
-          @tailrec
-          def helper(idx: Int, matches: List[Regex.Match], b: StringBuilder): String \/ String =
-            if (idx >= content.length)
-              \/-(b.result())
-            else {
-              assert(matches.headOption.forall(_.start >= idx))
-              matches.headOption.filter(_.start == idx) match {
-                case Some(m) =>
-                  val variableName = content.substring(m.start + 1, m.end - 1)
-                  variables.get(variableName) match {
-                    case None => -\/(s"Variable not found: $variableName")
-                    case Some(value) =>
-                      b ++= value
-                      helper(m.end, matches.tail, b)
-                  }
-                case None =>
-                  val nextIdx = matches.headOption.fold(content.length)(_.start)
-                  b ++= content.substring(idx, nextIdx)
-                  helper(nextIdx, matches, b)
-              }
+    val validation = chunks.toVector.traverseU {
+      case ChunkOrProperty.Prop(name, alternativesOpt) =>
+        properties.get(name) match {
+          case Some(value) =>
+            Seq(Pattern.Chunk.Const(value)).successNel
+          case None =>
+            alternativesOpt match {
+              case Some(alt) =>
+                PropertiesPattern(alt)
+                  .substituteProperties(properties)
+                  .map(_.chunks)
+                  .validation
+                  .toValidationNel
+              case None =>
+                name.failureNel
             }
+        }
 
-          helper(0, matches, new StringBuilder)
-      }
-    }
-    final case class Optional(start0: Int, end0: Int) extends PatternPart(start0 + 1, end0 - 1) {
-      override def start = start0
-      override def end = end0
+      case ChunkOrProperty.Opt(l @ _*) =>
+        PropertiesPattern(l)
+          .substituteProperties(properties)
+          .map(l => Seq(Pattern.Chunk.Opt(l.chunks: _*)))
+          .validation
+          .toValidationNel
 
-      def apply(content: String): Map[String, String] => String \/ String = {
-        assert(content.length == effectiveEnd - effectiveStart)
-        val inner = Literal(effectiveStart, effectiveEnd).apply(content)
+      case ChunkOrProperty.Var(name) =>
+        Seq(Pattern.Chunk.Var(name)).successNel
 
-        variables =>
-          \/-(inner(variables).fold(_ => "", x => x))
-      }
+      case ChunkOrProperty.Const(value) =>
+        Seq(Pattern.Chunk.Const(value)).successNel
+
+    }.map(_.flatten).map(Pattern(_))
+
+    validation.disjunction.leftMap { notFoundProps =>
+      s"Property(ies) not found: ${notFoundProps.toList.mkString(", ")}"
     }
   }
+}
+
+case class Pattern(chunks: Seq[Pattern.Chunk]) {
+
+  def +:(chunk: Pattern.Chunk): Pattern =
+    Pattern(chunk +: chunks)
+
+  import Pattern.Chunk
+
+  def string: String = chunks.map(_.string).mkString
+
+  def substituteVariables(variables: Map[String, String]): String \/ String = {
+
+    def helper(chunks: Seq[Chunk]): ValidationNel[String, Seq[Chunk.Const]] =
+      chunks.toVector.traverseU[ValidationNel[String, Seq[Chunk.Const]]] {
+        case Chunk.Var(name) =>
+          variables.get(name) match {
+            case Some(value) =>
+              Seq(Chunk.Const(value)).successNel
+            case None =>
+              name.failureNel
+          }
+        case Chunk.Opt(l @ _*) =>
+          val res = helper(l)
+          if (res.isSuccess)
+            res
+          else
+            Seq().successNel
+        case c: Chunk.Const =>
+          Seq(c).successNel
+      }.map(_.flatten)
+
+    val validation = helper(chunks)
+
+    validation match {
+      case Failure(notFoundVariables) =>
+        s"Variables not found: ${notFoundVariables.toList.mkString(", ")}".left
+      case Success(constants) =>
+        val b = new StringBuilder
+        constants.foreach(b ++= _.value)
+        b.result().right
+    }
+  }
+}
+
+object PropertiesPattern {
+
+  sealed abstract class ChunkOrProperty extends Product with Serializable {
+    def string: String
+  }
+
+  object ChunkOrProperty {
+    case class Prop(name: String, alternative: Option[Seq[ChunkOrProperty]]) extends ChunkOrProperty {
+      def string: String =
+      s"$${" + name + alternative.fold("")(alt => "-" + alt.map(_.string).mkString) + "}"
+    }
+    case class Var(name: String) extends ChunkOrProperty {
+      def string: String = "[" + name + "]"
+    }
+    case class Opt(content: ChunkOrProperty*) extends ChunkOrProperty {
+      def string: String = "(" + content.map(_.string).mkString + ")"
+    }
+    case class Const(value: String) extends ChunkOrProperty {
+      def string: String = value
+    }
+
+    implicit def fromString(s: String): ChunkOrProperty = Const(s)
+  }
+
+  private object Parser {
+
+    private val notIn = s"[]{}()$$".toSet
+    private val chars = P(CharsWhile(c => !notIn(c)).!)
+    private val noHyphenChars = P(CharsWhile(c => !notIn(c) && c != '-').!)
+
+    private val constant = P(chars).map(ChunkOrProperty.Const)
+
+    private lazy val property: Parser[ChunkOrProperty.Prop] =
+      P(s"$${" ~ noHyphenChars ~ ("-" ~ chunks).? ~ "}")
+        .map { case (name, altOpt) => ChunkOrProperty.Prop(name, altOpt) }
+
+    private lazy val variable: Parser[ChunkOrProperty.Var] = P("[" ~ chars ~ "]").map(ChunkOrProperty.Var)
+
+    private lazy val optional: Parser[ChunkOrProperty.Opt] = P("(" ~ chunks ~ ")")
+      .map(l => ChunkOrProperty.Opt(l: _*))
+
+    lazy val chunks: Parser[Seq[ChunkOrProperty]] = P((constant | property | variable | optional).rep)
+      .map(_.toVector) // "Vector" is more readable than "ArrayBuffer"
+  }
+
+  def parser: Parser[Seq[ChunkOrProperty]] = Parser.chunks
 
 
-  def substituteProperties(s: String, properties: Map[String, String]): String =
-    propertyRegex.findAllMatchIn(s).toVector.foldRight(s) { case (m, s0) =>
-      val key = s0.substring(m.start + "${".length, m.end - "}".length)
-      val value = properties.getOrElse(key, "")
-      s0.take(m.start) + value + s0.drop(m.end)
+  def parse(pattern: String): String \/ PropertiesPattern =
+    parser.parse(pattern) match {
+      case f: Parsed.Failure =>
+        f.msg.left
+      case Parsed.Success(v, _) =>
+        PropertiesPattern(v).right
     }
 
 }
 
-final case class Pattern(
-  pattern: String,
-  properties: Map[String, String]
-) {
+object Pattern {
 
-  import Pattern._
+  sealed abstract class Chunk extends Product with Serializable {
+    def string: String
+  }
 
-  private val pattern0 = substituteProperties(pattern, properties)
-
-  val parts = {
-    val optionalParts = optionalPartRegex.findAllMatchIn(pattern0).toList.map { m =>
-      PatternPart.Optional(m.start, m.end)
+  object Chunk {
+    case class Var(name: String) extends Chunk {
+      def string: String = "[" + name + "]"
+    }
+    case class Opt(content: Chunk*) extends Chunk {
+      def string: String = "(" + content.map(_.string).mkString + ")"
+    }
+    case class Const(value: String) extends Chunk {
+      def string: String = value
     }
 
-    val len = pattern0.length
-
-    @tailrec
-    def helper(
-      idx: Int,
-      opt: List[PatternPart.Optional],
-      acc: List[PatternPart]
-    ): Vector[PatternPart] =
-      if (idx >= len)
-        acc.toVector.reverse
-      else
-        opt match {
-          case Nil =>
-            helper(len, Nil, PatternPart.Literal(idx, len) :: acc)
-          case (opt0 @ PatternPart.Optional(start0, end0)) :: rem =>
-            if (idx < start0)
-              helper(start0, opt, PatternPart.Literal(idx, start0) :: acc)
-            else {
-              assert(idx == start0, s"idx: $idx, start0: $start0")
-              helper(end0, rem, opt0 :: acc)
-            }
-        }
-
-    helper(0, optionalParts, Nil)
+    implicit def fromString(s: String): Chunk = Const(s)
   }
 
-  assert(pattern0.isEmpty == parts.isEmpty)
-  if (pattern0.nonEmpty) {
-    for ((a, b) <- parts.zip(parts.tail))
-      assert(a.end == b.start)
-    assert(parts.head.start == 0)
-    assert(parts.last.end == pattern0.length)
-  }
+  import Chunk.{ Var, Opt }
 
-  private val substituteHelpers = parts.map { part =>
-    part(pattern0.substring(part.effectiveStart, part.effectiveEnd))
-  }
+  // Corresponds to
+  //   [organisation]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext]
 
-  def substitute(variables: Map[String, String]): String \/ String =
-    substituteHelpers.foldLeft[String \/ String](\/-("")) {
-      case (acc0, helper) =>
-        for {
-          acc <- acc0
-          s <- helper(variables)
-        } yield acc + s
-    }
+  val default = Pattern(
+    Seq(
+      Var("organisation"), "/",
+      Var("module"), "/",
+      Opt("scala_", Var("scalaVersion"), "/"),
+      Opt("sbt_", Var("sbtVersion"), "/"),
+      Var("revision"), "/",
+      Var("type"), "s/",
+      Var("artifact"), Opt("-", Var("classifier")), ".", Var("ext")
+    )
+  )
 
 }

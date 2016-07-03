@@ -18,17 +18,21 @@ object CacheParse {
     else {
       val repo = Parse.repository(s)
 
-      val url = repo match {
+      val url = repo.map {
         case m: MavenRepository =>
           m.root
         case i: IvyRepository =>
-          i.pattern
+          // FIXME We're not handling metadataPattern here
+          i.pattern.chunks.takeWhile {
+            case _: coursier.ivy.Pattern.Chunk.Const => true
+            case _ => false
+          }.map(_.string).mkString
         case r =>
           sys.error(s"Unrecognized repository: $r")
       }
 
       val validatedUrl = try {
-        Cache.url(url).success
+        url.map(Cache.url).validation
       } catch {
         case e: MalformedURLException =>
           ("Error parsing URL " + url + Option(e.getMessage).fold("")(" (" + _ + ")")).failure
@@ -37,7 +41,7 @@ object CacheParse {
       validatedUrl.flatMap { url =>
         Option(url.getUserInfo) match {
           case None =>
-            repo.success
+            repo.validation
           case Some(userInfo) =>
             userInfo.split(":", 2) match {
               case Array(user, password) =>
@@ -48,7 +52,7 @@ object CacheParse {
                   url.getFile
                 ).toString
 
-                val repo0 = repo match {
+                repo.validation.map {
                   case m: MavenRepository =>
                     m.copy(
                       root = baseUrl,
@@ -56,14 +60,17 @@ object CacheParse {
                     )
                   case i: IvyRepository =>
                     i.copy(
-                      pattern = baseUrl,
+                      pattern = coursier.ivy.Pattern(
+                        coursier.ivy.Pattern.Chunk.Const(baseUrl) +: i.pattern.chunks.dropWhile {
+                          case _: coursier.ivy.Pattern.Chunk.Const => true
+                          case _ => false
+                        }
+                      ),
                       authentication = Some(Authentication(user, password))
                     )
                   case r =>
                     sys.error(s"Unrecognized repository: $r")
                 }
-
-                repo0.success
 
               case _ =>
                 s"No password found in user info of URL $url".failure

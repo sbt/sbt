@@ -436,7 +436,10 @@ object Tasks {
               m
           case i: IvyRepository =>
             if (i.authentication.isEmpty) {
-              val base = i.pattern.takeWhile(c => c != '[' && c != '(' && c != '$')
+              val base = i.pattern.chunks.takeWhile {
+                case _: coursier.ivy.Pattern.Chunk.Const => true
+                case _ => false
+              }.map(_.string).mkString
 
               httpHost(base).flatMap(credentials.get).fold(i) { auth =>
                 i.copy(authentication = Some(auth))
