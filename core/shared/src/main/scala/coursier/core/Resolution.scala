@@ -239,13 +239,23 @@ object Resolution {
         var dep = dep0
 
         for ((mgmtConfig, mgmtDep) <- dict.get(DepMgmt.key(dep0))) {
-          if (dep.version.isEmpty)
+
+          if (mgmtDep.version.nonEmpty)
             dep = dep.copy(version = mgmtDep.version)
-          if (config.isEmpty)
+
+          if (mgmtConfig.nonEmpty)
             config = mgmtConfig
+
+          // FIXME The version and scope/config from dependency management, if any, are substituted
+          // no matter what. The same is not done for the exclusions and optionality, for a lack of
+          // way of distinguishing empty exclusions from no exclusion section and optional set to
+          // false from no optional section in the dependency management for now.
 
           if (dep.exclusions.isEmpty)
             dep = dep.copy(exclusions = mgmtDep.exclusions)
+
+          if (mgmtDep.optional)
+            dep = dep.copy(optional = mgmtDep.optional)
         }
         
         (config, dep)
