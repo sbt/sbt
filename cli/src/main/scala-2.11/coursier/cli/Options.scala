@@ -74,6 +74,10 @@ case class CommonOptions(
   @Help("Print dependencies as an inversed tree (dependees as children)")
   @Short("T")
     reverseTree: Boolean,
+  @Help("Enable profile")
+  @Value("profile")
+  @Short("F")
+    profile: List[String],
   @Recurse
     cacheOptions: CacheOptions
 ) {

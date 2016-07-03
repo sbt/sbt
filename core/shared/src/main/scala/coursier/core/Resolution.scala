@@ -453,6 +453,14 @@ object Resolution {
             }
         }
 
+  def userProfileActivation(userProfiles: Set[String])(
+    id: String,
+    activation: Activation,
+    props: Map[String, String]
+  ): Boolean =
+    userProfiles(id) ||
+      defaultProfileActivation(id, activation, props)
+
   /**
    * Default dependency filter used during resolution.
    *

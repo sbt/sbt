@@ -273,11 +273,13 @@ class Helper(
       }
   }
 
+  val userEnabledProfiles = profile.toSet
 
   val startRes = Resolution(
     dependencies.toSet,
     forceVersions = forceVersions,
-    filter = Some(dep => keepOptional || !dep.optional)
+    filter = Some(dep => keepOptional || !dep.optional),
+    profileActivation = Some(core.Resolution.userProfileActivation(userEnabledProfiles))
   )
 
   val loggerFallbackMode =
