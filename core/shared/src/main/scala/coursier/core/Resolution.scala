@@ -434,24 +434,18 @@ object Resolution {
     activation: Activation,
     props: Map[String, String]
   ): Boolean =
-    if (activation.properties.isEmpty)
-      false
-    else
-      activation
-        .properties
-        .forall {case (name, valueOpt) =>
-          props
-            .get(name)
-            .exists{ v =>
-              valueOpt
-                .forall { reqValue =>
-                  if (reqValue.startsWith("!"))
-                    v != reqValue.drop(1)
-                  else
-                    v == reqValue
-                }
+    activation.properties.nonEmpty &&
+      activation.properties.forall {
+        case (name, valueOpt) =>
+          props.get(name).exists { v =>
+            valueOpt.forall { reqValue =>
+              if (reqValue.startsWith("!"))
+                v != reqValue.drop(1)
+              else
+                v == reqValue
             }
-        }
+          }
+      }
 
   def userProfileActivation(userProfiles: Set[String])(
     id: String,
