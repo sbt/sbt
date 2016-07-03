@@ -207,6 +207,13 @@ object CentralTests extends TestSuite {
       )
     }
 
+    'projectProperties - {
+      resolutionCheck(
+        Module("org.glassfish.jersey.core", "jersey-client"),
+        "2.19"
+      )
+    }
+
     'parentDependencyManagementProperties - {
       resolutionCheck(
         Module("com.nativelibs4java", "jnaerator-runtime"),

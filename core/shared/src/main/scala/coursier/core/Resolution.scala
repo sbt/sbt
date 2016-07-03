@@ -820,8 +820,6 @@ final case class Resolution(
      */
 
     // A bit fragile, but seems to work
-    // TODO Add non regression test for the touchy  org.glassfish.jersey.core:jersey-client:2.19
-    //      (for the way it uses  org.glassfish.hk2:hk2-bom,2.4.0-b25)
 
     val approxProperties0 =
       project.parent
