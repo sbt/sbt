@@ -1,6 +1,7 @@
 package sbt
 package compiler
 
+import scala.collection.mutable.ListBuffer
 import scala.reflect.Manifest
 import scala.tools.nsc.{ ast, interpreter, io, reporters, util, CompilerCommand, Global, Phase, Settings }
 import io.{ AbstractFile, PlainFile, VirtualDirectory }
@@ -337,14 +338,12 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
   /** Parses one or more definitions (defs, vals, lazy vals, classes, traits, modules). */
   private[this] def parseDefinitions(parser: syntaxAnalyzer.UnitParser): Seq[Tree] =
     {
-      var defs = parser.nonLocalDefOrDcl
-      parser.acceptStatSepOpt()
-      while (!parser.isStatSeqEnd) {
-        val next = parser.nonLocalDefOrDcl
-        defs ++= next
+      val defs = ListBuffer[Tree]()
+      do {
+        defs ++= parser.nonLocalDefOrDcl
         parser.acceptStatSepOpt()
-      }
-      defs
+      } while (!parser.isStatSeqEnd)
+      defs.toList
     }
 
   private[this] trait EvalType[T] {
