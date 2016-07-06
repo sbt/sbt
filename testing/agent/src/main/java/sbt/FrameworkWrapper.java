@@ -8,9 +8,9 @@ import sbt.testing.*;
  */
 final class FrameworkWrapper implements Framework {
 
-	private org.scalatools.testing.Framework oldFramework;
+	private final org.scalatools.testing.Framework oldFramework;
 
-	public FrameworkWrapper(org.scalatools.testing.Framework oldFramework) {
+	FrameworkWrapper(final org.scalatools.testing.Framework oldFramework) {
 		this.oldFramework = oldFramework;
 	}
 
@@ -19,11 +19,11 @@ final class FrameworkWrapper implements Framework {
 	}
 
 	public Fingerprint[] fingerprints() {
-		org.scalatools.testing.Fingerprint[] oldFingerprints = oldFramework.tests();
-		int length = oldFingerprints.length;
-		Fingerprint[] fingerprints = new Fingerprint[length];
+		final org.scalatools.testing.Fingerprint[] oldFingerprints = oldFramework.tests();
+		final int length = oldFingerprints.length;
+		final Fingerprint[] fingerprints = new Fingerprint[length];
 		for (int i=0; i < length; i++) {
-			org.scalatools.testing.Fingerprint oldFingerprint = oldFingerprints[i];
+			final org.scalatools.testing.Fingerprint oldFingerprint = oldFingerprints[i];
 			if (oldFingerprint instanceof org.scalatools.testing.TestFingerprint)
 				fingerprints[i] = new SubclassFingerprintWrapper((org.scalatools.testing.TestFingerprint) oldFingerprint);
 			else if (oldFingerprint instanceof org.scalatools.testing.SubclassFingerprint)
@@ -34,20 +34,20 @@ final class FrameworkWrapper implements Framework {
 		return fingerprints;
 	}
 
-	public Runner runner(String[] args, String[] remoteArgs, ClassLoader testClassLoader) {
+	public Runner runner(final String[] args, final String[] remoteArgs, final ClassLoader testClassLoader) {
 		return new RunnerWrapper(oldFramework, testClassLoader, args);
 	}
 }
 
 final class SubclassFingerprintWrapper implements SubclassFingerprint {
-	private String superclassName;
-	private boolean isModule;
-	private boolean requireNoArgConstructor;
+	private final String superclassName;
+	private final boolean isModule;
+	private final boolean requireNoArgConstructor;
 
-	public SubclassFingerprintWrapper(org.scalatools.testing.SubclassFingerprint oldFingerprint) {
-		this.superclassName = oldFingerprint.superClassName();
-		this.isModule = oldFingerprint.isModule();
-		this.requireNoArgConstructor = false;  // Old framework SubclassFingerprint does not require no arg constructor
+	SubclassFingerprintWrapper(final org.scalatools.testing.SubclassFingerprint oldFingerprint) {
+		superclassName = oldFingerprint.superClassName();
+		isModule = oldFingerprint.isModule();
+		requireNoArgConstructor = false;  // Old framework SubclassFingerprint does not require no arg constructor
 	}
 
 	public boolean isModule() {
@@ -57,19 +57,19 @@ final class SubclassFingerprintWrapper implements SubclassFingerprint {
 	public String superclassName() {
 		return superclassName;
 	}
-	
+
 	public boolean requireNoArgConstructor() {
 		return requireNoArgConstructor;
 	}
 }
 
 final class AnnotatedFingerprintWrapper implements AnnotatedFingerprint {
-	private String annotationName;
-	private boolean isModule;
+	private final String annotationName;
+	private final boolean isModule;
 
-	public AnnotatedFingerprintWrapper(org.scalatools.testing.AnnotatedFingerprint oldFingerprint) {
-		this.annotationName = oldFingerprint.annotationName();
-		this.isModule = oldFingerprint.isModule();
+	AnnotatedFingerprintWrapper(final org.scalatools.testing.AnnotatedFingerprint oldFingerprint) {
+		annotationName = oldFingerprint.annotationName();
+		isModule = oldFingerprint.isModule();
 	}
 
 	public boolean isModule() {
@@ -83,33 +83,33 @@ final class AnnotatedFingerprintWrapper implements AnnotatedFingerprint {
 
 final class EventHandlerWrapper implements org.scalatools.testing.EventHandler {
 
-	private EventHandler newEventHandler;
-	private String fullyQualifiedName;
-	private Fingerprint fingerprint;
+	private final EventHandler newEventHandler;
+	private final String fullyQualifiedName;
+	private final Fingerprint fingerprint;
 
-	public EventHandlerWrapper(EventHandler newEventHandler, String fullyQualifiedName, Fingerprint fingerprint) {
+	EventHandlerWrapper(final EventHandler newEventHandler, final String fullyQualifiedName, final Fingerprint fingerprint) {
 		this.newEventHandler = newEventHandler;
 		this.fullyQualifiedName = fullyQualifiedName;
 		this.fingerprint = fingerprint;
 	}
 
-	public void handle(org.scalatools.testing.Event oldEvent) {
+	public void handle(final org.scalatools.testing.Event oldEvent) {
 		newEventHandler.handle(new EventWrapper(oldEvent, fullyQualifiedName, fingerprint));
 	}
 }
 
 final class EventWrapper implements Event {
 
-	private org.scalatools.testing.Event oldEvent;
-	private String className;
-	private Fingerprint fingerprint;
-	private OptionalThrowable throwable;
+	private final org.scalatools.testing.Event oldEvent;
+	private final String className;
+	private final Fingerprint fingerprint;
+	private final OptionalThrowable throwable;
 
-	public EventWrapper(org.scalatools.testing.Event oldEvent, String className, Fingerprint fingerprint) {
+	EventWrapper(final org.scalatools.testing.Event oldEvent, final String className, final Fingerprint fingerprint) {
 		this.oldEvent = oldEvent;
 		this.className = className;
 		this.fingerprint = fingerprint;
-		Throwable oldThrowable = oldEvent.error();
+		final Throwable oldThrowable = oldEvent.error();
 		if (oldThrowable == null)
 			throwable = new OptionalThrowable();
 		else
@@ -121,7 +121,7 @@ final class EventWrapper implements Event {
 	}
 
 	public Fingerprint fingerprint() {
-		return fingerprint; 
+		return fingerprint;
 	}
 
 	public Selector selector() {
@@ -130,9 +130,9 @@ final class EventWrapper implements Event {
 
 	public Status status() {
 		switch (oldEvent.result()) {
-			case Success: 
+			case Success:
 				return Status.Success;
-			case Error: 
+			case Error:
 				return Status.Error;
 			case Failure:
 				return Status.Failure;
@@ -154,47 +154,47 @@ final class EventWrapper implements Event {
 
 final class RunnerWrapper implements Runner {
 
-	private org.scalatools.testing.Framework oldFramework;
-	private ClassLoader testClassLoader;
-	private String[] args;
+	private final org.scalatools.testing.Framework oldFramework;
+	private final ClassLoader testClassLoader;
+	private final String[] args;
 
-	public RunnerWrapper(org.scalatools.testing.Framework oldFramework, ClassLoader testClassLoader, String[] args) {
+	RunnerWrapper(final org.scalatools.testing.Framework oldFramework, final ClassLoader testClassLoader, final String[] args) {
 		this.oldFramework = oldFramework;
 		this.testClassLoader = testClassLoader;
 		this.args = args;
 	}
-	
-	public Task[] tasks(TaskDef[] taskDefs) {
-		int length = taskDefs.length;
-		Task[] tasks = new Task[length];
+
+	public Task[] tasks(final TaskDef[] taskDefs) {
+		final int length = taskDefs.length;
+		final Task[] tasks = new Task[length];
 		for (int i = 0; i < length; i++) {
-			TaskDef taskDef = taskDefs[i];
+			final TaskDef taskDef = taskDefs[i];
 			tasks[i] = createTask(taskDef);
 		}
 		return tasks;
 	}
 
-	public Task createTask(final TaskDef taskDef) {
+	private Task createTask(final TaskDef taskDef) {
 		return new Task() {
 			public String[] tags() {
 				return new String[0];  // Old framework does not support tags
 			}
-			
+
 			private org.scalatools.testing.Logger createOldLogger(final Logger logger) {
 				return new org.scalatools.testing.Logger() {
-					public boolean ansiCodesSupported() { return logger.ansiCodesSupported(); } 
-					public void error(String msg) { logger.error(msg); }
-					public void warn(String msg) { logger.warn(msg); }
-					public void info(String msg) { logger.info(msg); }
-					public void debug(String msg) { logger.debug(msg); }
-					public void trace(Throwable t) { logger.trace(t); }
+					public boolean ansiCodesSupported() { return logger.ansiCodesSupported(); }
+					public void error(final String msg) { logger.error(msg); }
+					public void warn(final String msg) { logger.warn(msg); }
+					public void info(final String msg) { logger.info(msg); }
+					public void debug(final String msg) { logger.debug(msg); }
+					public void trace(final Throwable t) { logger.trace(t); }
 				};
 			}
-			
-			private void runRunner(org.scalatools.testing.Runner runner, Fingerprint fingerprint, EventHandler eventHandler) {
+
+			private void runRunner(final org.scalatools.testing.Runner runner, final Fingerprint fingerprint, final EventHandler eventHandler) {
 				// Old runner only support subclass fingerprint.
 				final SubclassFingerprint subclassFingerprint = (SubclassFingerprint) fingerprint;
-				org.scalatools.testing.TestFingerprint oldFingerprint = 
+				final org.scalatools.testing.TestFingerprint oldFingerprint =
 					new org.scalatools.testing.TestFingerprint() {
 						public boolean isModule() { return subclassFingerprint.isModule(); }
 						public String superClassName() { return subclassFingerprint.superclassName(); }
@@ -202,9 +202,9 @@ final class RunnerWrapper implements Runner {
 				final String name = taskDef.fullyQualifiedName();
 				runner.run(name, oldFingerprint, new EventHandlerWrapper(eventHandler, name, subclassFingerprint), args);
 			}
-			
-			private void runRunner2(org.scalatools.testing.Runner2 runner, Fingerprint fingerprint, EventHandler eventHandler) {
-				org.scalatools.testing.Fingerprint oldFingerprint = null;
+
+			private void runRunner2(final org.scalatools.testing.Runner2 runner, final Fingerprint fingerprint, final EventHandler eventHandler) {
+				final org.scalatools.testing.Fingerprint oldFingerprint;
 				if (fingerprint instanceof SubclassFingerprint) {
 					final SubclassFingerprint subclassFingerprint = (SubclassFingerprint) fingerprint;
 					oldFingerprint = new org.scalatools.testing.SubclassFingerprint() {
@@ -222,10 +222,10 @@ final class RunnerWrapper implements Runner {
 				final String name = taskDef.fullyQualifiedName();
 				runner.run(name, oldFingerprint, new EventHandlerWrapper(eventHandler, name, fingerprint), args);
 			}
-        
-			public Task[] execute(EventHandler eventHandler, Logger[] loggers) {
-				int length = loggers.length;
-				org.scalatools.testing.Logger[] oldLoggers = new org.scalatools.testing.Logger[length];
+
+			public Task[] execute(final EventHandler eventHandler, final Logger[] loggers) {
+				final int length = loggers.length;
+				final org.scalatools.testing.Logger[] oldLoggers = new org.scalatools.testing.Logger[length];
 				for (int i=0; i<length; i++) {
 					oldLoggers[i] = createOldLogger(loggers[i]);
 				}
@@ -240,7 +240,7 @@ final class RunnerWrapper implements Runner {
 				}
 				return new Task[0];
 			}
-			
+
 			public TaskDef taskDef() {
 				return taskDef;
 			}
