@@ -99,7 +99,7 @@ object TestBuild {
     def inheritConfig(ref: ResolvedReference, config: ConfigKey) = projectFor(ref).confMap(config.name).extended map toConfigKey
     def inheritTask(task: AttributeKey[_]) = taskMap.get(task) match { case None => Nil; case Some(t) => t.delegates map getKey }
     def inheritProject(ref: ProjectRef) = project(ref).delegates
-    def resolve(ref: Reference) = Scope.resolveReference(builds.head.uri, rootProject, ref)
+    def resolve(ref: Reference) = Scope.resolveReference(root.uri, rootProject, ref)
     lazy val delegates: Scope => Seq[Scope] =
       Scope.delegates(
         allProjects,

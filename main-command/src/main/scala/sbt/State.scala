@@ -166,7 +166,7 @@ object State {
     /** Changes the maximum number of commands kept, adjusting the current history if necessary.*/
     def setMaxSize(size: Int): History =
       new History(if (size <= 0) executed else executed.take(size), size)
-    def current: String = executed.head
+    def currentOption: Option[String] = executed.headOption
     def previous: Option[String] = executed.drop(1).headOption
   }
   /** Constructs an empty command History with a default, finite command limit.*/

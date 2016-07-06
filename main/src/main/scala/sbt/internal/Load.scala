@@ -312,7 +312,10 @@ private[sbt] object Load {
   def loaded(unit: BuildUnit): (PartBuildUnit, List[ProjectReference]) =
     {
       val defined = projects(unit)
-      if (defined.isEmpty) sys.error("No projects defined in build unit " + unit)
+      val firstDefined = defined match {
+        case Nil            => sys.error("No projects defined in build unit " + unit)
+        case Seq(first, _*) => first
+      }
 
       // since base directories are resolved at this point (after 'projects'),
       //   we can compare Files instead of converting to URIs
@@ -321,7 +324,7 @@ private[sbt] object Load {
       val externals = referenced(defined).toList
       val explicitRoots = unit.definitions.builds.flatMap(_.rootProject)
       val projectsInRoot = if (explicitRoots.isEmpty) defined.filter(isRoot) else explicitRoots
-      val rootProjects = if (projectsInRoot.isEmpty) defined.head :: Nil else projectsInRoot
+      val rootProjects = if (projectsInRoot.isEmpty) firstDefined :: Nil else projectsInRoot
       (new PartBuildUnit(unit, defined.map(d => (d.id, d)).toMap, rootProjects.map(_.id), buildSettings(unit)), externals)
     }
   def buildSettings(unit: BuildUnit): Seq[Setting[_]] =

@@ -77,19 +77,21 @@ object Graph {
           }) +
           s.slice(at + 1, s.length)
       else s
-    def toAsciiLines(node: A, level: Int): Vector[String] = {
+    def toAsciiLines(node: A, level: Int): (String, Vector[String]) = {
       val line = limitLine((twoSpaces * level) + (if (level == 0) "" else "+-") + display(node))
       val cs = Vector(children(node): _*)
       val childLines = cs map { toAsciiLines(_, level + 1) }
       val withBar = childLines.zipWithIndex flatMap {
-        case (lines, pos) if pos < (cs.size - 1) => lines map { insertBar(_, 2 * (level + 1)) }
-        case (lines, pos) =>
-          if (lines.last.trim != "") lines ++ Vector(twoSpaces * (level + 1))
-          else lines
+        case ((line, withBar), pos) if pos < (cs.size - 1) =>
+          (line +: withBar) map { insertBar(_, 2 * (level + 1)) }
+        case ((line, withBar), pos) if withBar.lastOption.getOrElse(line).trim != "" =>
+          (line +: withBar) ++ Vector(twoSpaces * (level + 1))
+        case ((line, withBar), _) => line +: withBar
       }
-      line +: withBar
+      (line, withBar)
     }
 
-    toAsciiLines(top, 0).mkString("\n")
+    val (line, withBar) = toAsciiLines(top, 0)
+    (line +: withBar).mkString("\n")
   }
 }
