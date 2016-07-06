@@ -5,6 +5,7 @@ import sbt.internal.util.Attributed
 // import sbt.internal.{ BuildDef, IncompatiblePluginsException, OldPlugin }
 import java.io.File
 import java.net.URL
+import scala.util.control.NonFatal
 import Attributed.data
 import sbt.internal.BuildDef.analyzed
 import xsbt.api.{ Discovered, Discovery }

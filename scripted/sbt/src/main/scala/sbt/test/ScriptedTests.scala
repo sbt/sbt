@@ -8,6 +8,8 @@ package test
 import java.io.File
 import java.nio.charset.Charset
 
+import scala.util.control.NonFatal
+
 import xsbt.IPC
 import sbt.internal.scripted.{ CommentHandler, FileCommands, ScriptRunner, TestScriptParser, TestException }
 import sbt.io.{ DirectoryFilter, GlobFilter, HiddenFileFilter, Path }
@@ -98,7 +100,7 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launc
           testFailed()
           buffered.error("  Mark as passing to remove this failure.")
           throw e
-        case e: Exception =>
+        case NonFatal(e) =>
           testFailed()
           if (!pending) throw e
       } finally { buffered.clear() }

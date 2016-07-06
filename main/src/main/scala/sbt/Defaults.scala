@@ -28,6 +28,7 @@ import sbt.util.Level
 
 import sys.error
 import scala.xml.NodeSeq
+import scala.util.control.NonFatal
 import org.apache.ivy.core.module.{ descriptor, id }
 import descriptor.ModuleDescriptor, id.ModuleRevisionId
 import java.io.{ File, PrintWriter }
@@ -1572,7 +1573,7 @@ object Classpaths {
             s.init.evaluate(empty) map { _ -> s.pos }
         }: _*)
       } catch {
-        case _: Throwable => Map()
+        case NonFatal(e) => Map()
       }
 
     val outCacheFile = cacheFile / "output_dsp"

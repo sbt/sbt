@@ -333,7 +333,7 @@ object BuiltinCommands {
       } yield () => {
         def export0(s: State): State = lastImpl(s, kvs, Some(ExportStream))
         val newS = try f() catch {
-          case e: Exception =>
+          case NonFatal(e) =>
             try export0(s)
             finally { throw e }
         }

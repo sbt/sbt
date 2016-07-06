@@ -1,5 +1,6 @@
 package sbt
 
+import scala.util.control.NonFatal
 import org.scalacheck._
 import Prop._
 import Project.project
@@ -27,7 +28,7 @@ object ProjectMacro extends Properties("ProjectMacro") {
   def secure(f: => Prop): Prop = try {
     Prop.secure(f)
   } catch {
-    case e: Throwable =>
+    case NonFatal(e) =>
       e.printStackTrace
       throw e
   }

@@ -6,6 +6,9 @@ import sbt.internal.util.{ ~>, AttributeKey, IMap, RMap }
 import sbt.internal.util.Types._
 
 import java.io.{ InputStream, OutputStream }
+
+import scala.util.control.NonFatal
+
 import sbinary.{ DefaultProtocol, Format }
 import DefaultProtocol.{ StringFormat, withStamp }
 
@@ -76,11 +79,11 @@ object Previous {
 
   private def read[T](stream: InputStream, format: Format[T]): Option[T] =
     try Some(format.reads(stream))
-    catch { case e: Exception => None }
+    catch { case NonFatal(e) => None }
 
   private def write[T](stream: OutputStream, format: Format[T], value: T): Unit =
     try format.writes(stream, value)
-    catch { case e: Exception => () }
+    catch { case NonFatal(e) => () }
 
   /** Public as a macro implementation detail.  Do not call directly. */
   def runtime[T](skey: TaskKey[T])(implicit format: Format[T]): Initialize[Task[Option[T]]] =
