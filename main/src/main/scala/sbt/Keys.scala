@@ -8,10 +8,10 @@ import java.net.URL
 import scala.concurrent.duration.{ FiniteDuration, Duration }
 import Def.ScopedKey
 import sbt.internal.util.complete._
-import xsbti.compile.DefinesClass
 import sbt.internal.inc.{ MixedAnalyzingCompiler, ScalaInstance }
 import std.TaskExtra._
-import xsbti.compile.{ ClasspathOptions, CompileAnalysis, CompileOptions, CompileOrder, Compilers, CompileResult, GlobalsCache, IncOptions, Inputs, PreviousResult, Setup }
+import xsbti.compile.{ DefinesClass, ClasspathOptions, CompileAnalysis, CompileOptions, CompileOrder,
+  Compilers, CompileResult, GlobalsCache, IncOptions, Inputs, PreviousResult, Setup }
 import scala.xml.{ Node => XNode, NodeSeq }
 import org.apache.ivy.core.module.{ descriptor, id }
 import descriptor.ModuleDescriptor, id.ModuleRevisionId
@@ -22,7 +22,7 @@ import KeyRanks._
 import sbt.internal.{ BuildStructure, LoadedBuild, PluginDiscovery, BuildDependencies, SessionSettings }
 import sbt.io.FileFilter
 import sbt.internal.io.WatchState
-import sbt.internal.util.AttributeKey
+import sbt.internal.util.{ AttributeKey, SourcePosition }
 
 import sbt.librarymanagement.Configurations.CompilerPlugin
 import sbt.librarymanagement.{
@@ -64,7 +64,6 @@ import sbt.internal.librarymanagement.{
   UpdateLogging
 }
 import sbt.util.{ AbstractLogger, Level, Logger }
-import sbt.internal.util.SourcePosition
 
 object Keys {
   val TraceValues = "-1 to disable, 0 for up to the first sbt frame, or a positive number to set the maximum number of frames shown."

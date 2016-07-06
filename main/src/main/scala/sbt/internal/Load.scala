@@ -4,7 +4,6 @@
 package sbt
 package internal
 
-import sbt.internal.util.{ Settings, Show, ~> }
 import sbt.librarymanagement.{ Configuration, Configurations, Resolver, UpdateOptions }
 import sbt.internal.librarymanagement.{ InlineIvyConfiguration, IvyPaths }
 
@@ -17,10 +16,11 @@ import sbt.internal.inc.{ Analysis, ClasspathOptionsUtil, FileValueCache, Locate
 import sbt.internal.inc.classpath.ClasspathUtilities
 import Project.inScope
 import Def.{ isDummy, ScopedKey, ScopeLocal, Setting }
-import Keys.{ appConfiguration, baseDirectory, configuration, fullResolvers, fullClasspath, pluginData, streams, thisProject, thisProjectRef, update }
-import Keys.{ exportedProducts, loadedBuild, onLoadMessage, resolvedScoped, sbtPlugin, scalacOptions, taskDefinitionKey }
+import Keys.{ appConfiguration, baseDirectory, configuration, exportedProducts, fullClasspath, fullResolvers, 
+  loadedBuild, onLoadMessage, pluginData, resolvedScoped, sbtPlugin, scalacOptions, streams, taskDefinitionKey,
+  thisProject, thisProjectRef, update }
 import tools.nsc.reporters.ConsoleReporter
-import sbt.internal.util.{ Attributed, Eval => Ev }
+import sbt.internal.util.{ Attributed, Eval => Ev, Settings, Show, ~> }
 import sbt.internal.util.Attributed.data
 import Scope.{ GlobalScope, ThisScope }
 import sbt.internal.util.Types.const

@@ -3,8 +3,9 @@
  */
 package sbt
 
-import sbt.internal.{ Load, EvaluateConfigurations, LoadedBuildUnit, Aggregation, BuildStructure, Act, Inspect, BuildUnit, Output, PluginsDebug }
-import sbt.internal.{ SettingCompletions, CommandStrings, IvyConsole, ProjectNavigation, Script, SessionSettings }
+import sbt.internal.{ Act, Aggregation, BuildStructure, BuildUnit, CommandStrings, EvaluateConfigurations,
+  Inspect, IvyConsole, Load, LoadedBuildUnit, Output, PluginsDebug, ProjectNavigation, Script, SessionSettings,
+  SettingCompletions }
 import sbt.internal.util.{ AttributeKey, AttributeMap, complete, ConsoleOut, GlobalLogging, LineRange, MainLogging, SimpleReader, Types }
 import sbt.util.{ Level, Logger }
 

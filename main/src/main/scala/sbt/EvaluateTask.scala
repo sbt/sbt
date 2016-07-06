@@ -4,19 +4,18 @@
 package sbt
 
 import sbt.internal.{ Load, BuildStructure, TaskTimings, TaskName, GCUtil }
-import sbt.internal.util.{ ErrorHandling, RMap, Show, Signals, Types }
+import sbt.internal.util.{ Attributed, ErrorHandling, HList, RMap, Show, Signals, Types }
 import sbt.util.Logger
 import sbt.librarymanagement.{ Resolver, UpdateReport }
 
 import scala.concurrent.duration.Duration
 import java.io.File
 import Def.{ displayFull, dummyState, ScopedKey, Setting }
-import Keys.{ streams, Streams, TaskStreams }
-import Keys.{ dummyRoots, dummyStreamsManager, executionRoots, pluginData, streamsManager, taskDefinitionKey, transformState }
+import Keys.{ Streams, TaskStreams, dummyRoots, dummyStreamsManager, executionRoots, pluginData, streams,
+  streamsManager, taskDefinitionKey, transformState }
 import Project.richInitializeTask
 import Scope.{ GlobalScope, ThisScope }
 import sbt.internal.util.Types.const
-import sbt.internal.util.{ Attributed, HList }
 import scala.Console.RED
 import std.Transform.{ DummyTaskMap, TaskAndValue }
 import TaskName._

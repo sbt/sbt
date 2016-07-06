@@ -5,15 +5,12 @@ package sbt
 
 import scala.concurrent.duration.{ FiniteDuration, Duration }
 import sbt.internal._
-import sbt.internal.util.Attributed
 import sbt.internal.util.Attributed.data
 import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
 import sbt.internal.librarymanagement.mavenint.{ PomExtraDependencyAttributes, SbtPomExtraProperties }
 import Project.{ inConfig, inScope, inTask, richInitialize, richInitializeTask, richTaskSessionVar }
 import Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
-import sbt.internal.librarymanagement.{ CustomPomParser, DependencyFilter }
 import sbt.librarymanagement.Artifact.{ DocClassifier, SourceClassifier }
-import sbt.librarymanagement.{ Configuration, Configurations, ConflictManager, CrossVersion, MavenRepository, Resolver, ScalaArtifacts, UpdateOptions }
 import sbt.librarymanagement.Configurations.{ Compile, CompilerPlugin, IntegrationTest, names, Provided, Runtime, Test }
 import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
 import sbt.internal.util.complete._
@@ -24,7 +21,7 @@ import sbt.librarymanagement.{ `package` => _, _ }
 import sbt.internal.librarymanagement._
 import sbt.internal.librarymanagement.syntax._
 import sbt.internal.util._
-import sbt.util.Level
+import sbt.util.{ Level, Logger }
 
 import sys.error
 import scala.xml.NodeSeq
@@ -36,7 +33,6 @@ import java.net.{ URI, URL, MalformedURLException }
 import java.util.concurrent.{ TimeUnit, Callable }
 import sbinary.DefaultProtocol.StringFormat
 import sbt.internal.util.Cache.seqFormat
-import sbt.util.Logger
 import sbt.internal.CommandStrings.ExportStream
 
 import xsbti.{ CrossValue, Maybe }
@@ -53,9 +49,11 @@ import Keys._
 
 // incremental compiler
 import xsbt.api.Discovery
-import xsbti.compile.{ Compilers, ClasspathOptions, CompileAnalysis, CompileOptions, CompileOrder, CompileResult, DefinesClass, IncOptions, IncOptionsUtil, Inputs, MiniSetup, PreviousResult, Setup, TransactionalManagerType }
-import xsbti.compile.PerClasspathEntryLookup
-import sbt.internal.inc.{ AnalyzingCompiler, Analysis, ClassfileManager, CompilerCache, FileValueCache, IncrementalCompilerImpl, Locate, LoggerReporter, MixedAnalyzingCompiler, ScalaInstance, ClasspathOptionsUtil }
+import xsbti.compile.{ Compilers, ClasspathOptions, CompileAnalysis, CompileOptions, CompileOrder,
+  CompileResult, DefinesClass, IncOptions, IncOptionsUtil, Inputs, MiniSetup, PerClasspathEntryLookup,
+  PreviousResult, Setup, TransactionalManagerType }
+import sbt.internal.inc.{ AnalyzingCompiler, Analysis, ClassfileManager, CompilerCache, FileValueCache,
+  IncrementalCompilerImpl, Locate, LoggerReporter, MixedAnalyzingCompiler, ScalaInstance, ClasspathOptionsUtil }
 
 object Defaults extends BuildCommon {
   final val CacheDirectoryName = "cache"
