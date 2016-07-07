@@ -18,7 +18,7 @@ matrix:
 
 env:
   matrix:
-    - SBT_CMD="mima-report-binary-issues"
+    - SBT_CMD="mimaReportBinaryIssues"
     - SBT_CMD="safeUnitTests"
     - SBT_CMD="otherUnitTests"
     - SBT_CMD="scripted actions/*"
