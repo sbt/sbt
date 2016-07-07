@@ -13,6 +13,9 @@ jdk:
   - openjdk7
   - oraclejdk7
 
+matrix:
+  fast_finish: true
+
 env:
   matrix:
     - SBT_CMD="mima-report-binary-issues"
