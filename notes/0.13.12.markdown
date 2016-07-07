@@ -12,7 +12,7 @@
 
 ### Improvements
 
-- When `RecompileOnMacroDef` is enabled, sbt will now print out a info level log indicating that some sources are being recompiled because it's used from a source that contains a macro definition. [#2637][2637] by [@eed3si9n][@eed3si9n]
+- When `RecompileOnMacroDef` is enabled, sbt will now print out a info level log indicating that some sources are being recompiled because it's used from a source that contains a macro definition. Can be disabled with `incOptions := incOptions.value.withLogRecompileOnMacro(false)` [#2637][2637]/[#2659][2659] by [@eed3si9n][@eed3si9n]/[@dwijnand][@dwijnand]
 - Adds Windows script support and native file extensions on Unix platforms. [#2603][2603] by [@ekrich][@ekrich]
 - Improves loading time of large builds. [#2630][2630] by [@eed3si9n][@eed3si9n]
 - Adds the ability to call `dependsOn` for the current project inside a `.sbt` file. [#2653][2653] by [@anatolydwnld][@anatolydwnld]
@@ -56,6 +56,7 @@
   [2002]: https://github.com/sbt/sbt/issues/2002
   [1500]: https://github.com/sbt/sbt/issues/1500
   [2537]: https://github.com/sbt/sbt/issues/2537
+  [2659]: https://github.com/sbt/sbt/pull/2659
 
   [@eed3si9n]: https://github.com/eed3si9n
   [@jsuereth]: https://github.com/jsuereth

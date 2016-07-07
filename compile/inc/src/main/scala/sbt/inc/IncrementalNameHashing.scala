@@ -13,7 +13,7 @@ import java.io.File
  */
 private final class IncrementalNameHashing(log: Logger, options: IncOptions) extends IncrementalCommon(log, options) {
 
-  private val memberRefInvalidator = new MemberRefInvalidator(log)
+  private val memberRefInvalidator = new MemberRefInvalidator(log, options.logRecompileOnMacro)
 
   // Package objects are fragile: if they inherit from an invalidated source, get "class file needed by package is missing" error
   //  This might be too conservative: we probably only need package objects for packages of invalidated sources.
