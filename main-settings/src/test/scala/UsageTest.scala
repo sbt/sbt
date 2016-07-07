@@ -20,8 +20,7 @@ import sbt.internal.util.complete.{ DefaultParsers, Parsers }
 }*/
 object Assign {
   import java.io.File
-  import Def.{ inputKey, settingKey, taskKey }
-  import Def.{ Initialize, macroValueT, parserToInput }
+  import Def.{ Initialize, inputKey, macroValueT, parserToInput, settingKey, taskKey }
   //	import UseTask.{x,y,z,a,set,plain}
 
   val ak = taskKey[Int]("a")

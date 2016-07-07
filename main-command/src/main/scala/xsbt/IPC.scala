@@ -6,6 +6,8 @@ package xsbt
 import java.io.{ BufferedReader, BufferedWriter, InputStream, InputStreamReader, OutputStreamWriter, OutputStream }
 import java.net.{ InetAddress, ServerSocket, Socket }
 
+import scala.util.control.NonFatal
+
 object IPC {
   private val portMin = 1025
   private val portMax = 65536
@@ -28,7 +30,7 @@ object IPC {
       def createServer(attempts: Int): ServerSocket =
         if (attempts > 0)
           try { new ServerSocket(nextPort, 1, loopback) }
-          catch { case _: Exception => createServer(attempts - 1) }
+          catch { case NonFatal(e) => createServer(attempts - 1) }
         else
           sys.error("Could not connect to socket: maximum attempts exceeded")
       createServer(10)

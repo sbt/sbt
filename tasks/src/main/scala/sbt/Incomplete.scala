@@ -3,6 +3,8 @@
  */
 package sbt
 
+import scala.collection.mutable.ListBuffer
+
 import sbt.internal.util.IDSet
 import Incomplete.{ Error, Value => IValue }
 
@@ -47,9 +49,9 @@ object Incomplete extends Enumeration {
   }
   def linearize(i: Incomplete): Seq[Incomplete] =
     {
-      var ordered = List[Incomplete]()
-      visitAll(i) { ordered ::= _ }
-      ordered
+      val ordered = ListBuffer[Incomplete]()
+      visitAll(i) { ordered += _ }
+      ordered.toList
     }
   def allExceptions(is: Seq[Incomplete]): Iterable[Throwable] =
     allExceptions(new Incomplete(None, causes = is))

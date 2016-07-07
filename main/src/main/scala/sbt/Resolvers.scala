@@ -17,6 +17,7 @@ import RichURI.fromURI
 import java.util.Locale
 
 import scala.sys.process.Process
+import scala.util.control.NonFatal
 
 object Resolvers {
   type Resolver = BuildLoader.Resolver
@@ -147,7 +148,7 @@ object Resolvers {
         try {
           f
         } catch {
-          case e: Throwable =>
+          case NonFatal(e) =>
             IO.delete(file)
             throw e
         }

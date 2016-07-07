@@ -1,5 +1,7 @@
 package sbt
 
+import scala.util.control.NonFatal
+
 import sbt.internal.util.{ AttributeMap, IMap, Types }
 
 import Def.ScopedKey
@@ -53,7 +55,7 @@ object SessionVar {
   def read[T](key: ScopedKey[Task[T]], state: State)(implicit f: Format[T]): Option[T] =
     Project.structure(state).streams(state).use(key) { s =>
       try { Some(Operations.read(s.readBinary(key, DefaultDataID))) }
-      catch { case e: Exception => None }
+      catch { case NonFatal(e) => None }
     }
 
   def load[T](key: ScopedKey[Task[T]], state: State)(implicit f: Format[T]): Option[T] =

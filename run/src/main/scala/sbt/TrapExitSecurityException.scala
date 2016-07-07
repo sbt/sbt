@@ -6,21 +6,10 @@ package sbt
  * terminating the thread's execution.
  */
 private final class TrapExitSecurityException(val exitCode: Int) extends SecurityException {
-  private var accessAllowed = false
-  def allowAccess(): Unit = {
-    accessAllowed = true
-  }
-  override def printStackTrace = ifAccessAllowed(super.printStackTrace)
-  override def toString = ifAccessAllowed(super.toString)
-  override def getCause = ifAccessAllowed(super.getCause)
-  override def getMessage = ifAccessAllowed(super.getMessage)
-  override def fillInStackTrace = ifAccessAllowed(super.fillInStackTrace)
-  override def getLocalizedMessage = ifAccessAllowed(super.getLocalizedMessage)
-  private def ifAccessAllowed[T](f: => T): T =
-    {
-      if (accessAllowed)
-        f
-      else
-        throw this
-    }
+  override def printStackTrace = throw this
+  override def toString = throw this
+  override def getCause = throw this
+  override def getMessage = throw this
+  override def fillInStackTrace = throw this
+  override def getLocalizedMessage = throw this
 }

@@ -3,6 +3,8 @@
  */
 package sbt
 
+import scala.util.control.NonFatal
+
 import org.scalacheck.Prop._
 
 object checkResult {
@@ -16,7 +18,7 @@ object checkResult {
           case i: Incomplete =>
             println(i)
             "One or more tasks failed" |: false
-          case e: Throwable =>
+          case NonFatal(e) =>
             e.printStackTrace()
             "Error in framework" |: false
         })

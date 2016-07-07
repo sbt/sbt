@@ -77,10 +77,11 @@ object TestBuild {
             global += skey
           else {
             val keys = tasks map makeKey
-            if (keys.size == 1)
-              single ++= keys
-            else if (keys.size > 1)
-              multi ++= keys
+            keys.size match {
+              case 0 =>
+              case 1 => single ++= keys
+              case _ => multi ++= keys
+            }
           }
         }
         (taskAxes, global.toSet, single.toSet, multi.toSet)
@@ -99,7 +100,7 @@ object TestBuild {
     def inheritConfig(ref: ResolvedReference, config: ConfigKey) = projectFor(ref).confMap(config.name).extended map toConfigKey
     def inheritTask(task: AttributeKey[_]) = taskMap.get(task) match { case None => Nil; case Some(t) => t.delegates map getKey }
     def inheritProject(ref: ProjectRef) = project(ref).delegates
-    def resolve(ref: Reference) = Scope.resolveReference(builds.head.uri, rootProject, ref)
+    def resolve(ref: Reference) = Scope.resolveReference(root.uri, rootProject, ref)
     lazy val delegates: Scope => Seq[Scope] =
       Scope.delegates(
         allProjects,

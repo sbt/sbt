@@ -3,10 +3,10 @@ package sbt;
 import java.io.Serializable;
 
 public final class ForkConfiguration implements Serializable {
-	private boolean ansiCodesSupported;
-	private boolean parallel;
+	private final boolean ansiCodesSupported;
+	private final boolean parallel;
 
-	public ForkConfiguration(boolean ansiCodesSupported, boolean parallel) {
+	public ForkConfiguration(final boolean ansiCodesSupported, final boolean parallel) {
 		this.ansiCodesSupported = ansiCodesSupported;
 		this.parallel = parallel;
 	}

@@ -76,10 +76,13 @@ object TestEvent {
 
   private[sbt] def overallResult(events: Seq[TEvent]): TestResult.Value =
     (TestResult.Passed /: events) { (sum, event) =>
-      val status = event.status
-      if (sum == TestResult.Error || status == TStatus.Error) TestResult.Error
-      else if (sum == TestResult.Failed || status == TStatus.Failure) TestResult.Failed
-      else TestResult.Passed
+      (sum, event.status) match {
+        case (TestResult.Error, _)  => TestResult.Error
+        case (_, TStatus.Error)     => TestResult.Error
+        case (TestResult.Failed, _) => TestResult.Failed
+        case (_, TStatus.Failure)   => TestResult.Failed
+        case _                      => TestResult.Passed
+      }
     }
 }
 

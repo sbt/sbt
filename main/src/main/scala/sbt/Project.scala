@@ -11,12 +11,10 @@ import Keys.{ appConfiguration, stateBuildStructure, commands, configuration, hi
 import Scope.{ GlobalScope, ThisScope }
 import Def.{ Flattened, Initialize, ScopedKey, Setting }
 import sbt.internal.{ Load, BuildStructure, LoadedBuild, LoadedBuildUnit, SettingGraph, SettingCompletions, AddSettings, SessionSettings }
-import sbt.internal.util.Eval
+import sbt.internal.util.{ AttributeKey, AttributeMap, Dag, Eval, Relation, Settings, Show, ~> }
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util.complete.DefaultParsers
 import sbt.librarymanagement.Configuration
-
-import sbt.internal.util.{ AttributeKey, AttributeMap, Dag, Relation, Settings, Show, ~> }
 
 import language.experimental.macros
 

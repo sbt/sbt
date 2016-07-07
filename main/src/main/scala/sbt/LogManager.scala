@@ -3,8 +3,7 @@
  */
 package sbt
 
-import java.io.PrintWriter
-import java.io.File
+import java.io.{ File, PrintWriter }
 import LogManager._
 import std.Transform
 import Def.ScopedKey

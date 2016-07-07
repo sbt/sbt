@@ -5,6 +5,7 @@ package sbt
 
 import java.io.File
 import java.net.URLClassLoader
+import scala.util.control.NonFatal
 import testing.{ Logger => TLogger, Task => TestTask, _ }
 import org.scalatools.testing.{ Framework => OldFramework }
 import sbt.internal.inc.classpath.{ ClasspathUtilities, DualLoader, FilteredLoader }
@@ -89,7 +90,7 @@ final class TestRunner(delegate: Runner, listeners: Seq[TestReportListener], log
         safeListenersCall(_.endGroup(name, suiteResult.result))
         (suiteResult, nestedTasks)
       } catch {
-        case e: Throwable =>
+        case NonFatal(e) =>
           safeListenersCall(_.endGroup(name, e))
           (SuiteResult.Error, Seq.empty[TestTask])
       }
@@ -107,7 +108,7 @@ object TestFramework {
     }
 
   private[sbt] def safeForeach[T](it: Iterable[T], log: Logger)(f: T => Unit): Unit =
-    it.foreach(i => try f(i) catch { case e: Exception => log.trace(e); log.error(e.toString) })
+    it.foreach(i => try f(i) catch { case NonFatal(e) => log.trace(e); log.error(e.toString) })
 
   private[sbt] def hashCode(f: Fingerprint): Int = f match {
     case s: SubclassFingerprint  => (s.isModule, s.superclassName).hashCode

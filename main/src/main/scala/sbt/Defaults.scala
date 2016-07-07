@@ -5,15 +5,12 @@ package sbt
 
 import scala.concurrent.duration.{ FiniteDuration, Duration }
 import sbt.internal._
-import sbt.internal.util.Attributed
 import sbt.internal.util.Attributed.data
 import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
 import sbt.internal.librarymanagement.mavenint.{ PomExtraDependencyAttributes, SbtPomExtraProperties }
 import Project.{ inConfig, inScope, inTask, richInitialize, richInitializeTask, richTaskSessionVar }
 import Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
-import sbt.internal.librarymanagement.{ CustomPomParser, DependencyFilter }
 import sbt.librarymanagement.Artifact.{ DocClassifier, SourceClassifier }
-import sbt.librarymanagement.{ Configuration, Configurations, ConflictManager, CrossVersion, MavenRepository, Resolver, ScalaArtifacts, UpdateOptions }
 import sbt.librarymanagement.Configurations.{ Compile, CompilerPlugin, IntegrationTest, names, Provided, Runtime, Test }
 import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
 import sbt.internal.util.complete._
@@ -24,10 +21,11 @@ import sbt.librarymanagement.{ `package` => _, _ }
 import sbt.internal.librarymanagement._
 import sbt.internal.librarymanagement.syntax._
 import sbt.internal.util._
-import sbt.util.Level
+import sbt.util.{ Level, Logger }
 
 import sys.error
 import scala.xml.NodeSeq
+import scala.util.control.NonFatal
 import org.apache.ivy.core.module.{ descriptor, id }
 import descriptor.ModuleDescriptor, id.ModuleRevisionId
 import java.io.{ File, PrintWriter }
@@ -35,7 +33,6 @@ import java.net.{ URI, URL, MalformedURLException }
 import java.util.concurrent.{ TimeUnit, Callable }
 import sbinary.DefaultProtocol.StringFormat
 import sbt.internal.util.Cache.seqFormat
-import sbt.util.Logger
 import sbt.internal.CommandStrings.ExportStream
 
 import xsbti.{ CrossValue, Maybe }
@@ -52,9 +49,11 @@ import Keys._
 
 // incremental compiler
 import xsbt.api.Discovery
-import xsbti.compile.{ Compilers, ClasspathOptions, CompileAnalysis, CompileOptions, CompileOrder, CompileResult, DefinesClass, IncOptions, IncOptionsUtil, Inputs, MiniSetup, PreviousResult, Setup, TransactionalManagerType }
-import xsbti.compile.PerClasspathEntryLookup
-import sbt.internal.inc.{ AnalyzingCompiler, Analysis, ClassfileManager, CompilerCache, FileValueCache, IncrementalCompilerImpl, Locate, LoggerReporter, MixedAnalyzingCompiler, ScalaInstance, ClasspathOptionsUtil }
+import xsbti.compile.{ Compilers, ClasspathOptions, CompileAnalysis, CompileOptions, CompileOrder,
+  CompileResult, DefinesClass, IncOptions, IncOptionsUtil, Inputs, MiniSetup, PerClasspathEntryLookup,
+  PreviousResult, Setup, TransactionalManagerType }
+import sbt.internal.inc.{ AnalyzingCompiler, Analysis, ClassfileManager, CompilerCache, FileValueCache,
+  IncrementalCompilerImpl, Locate, LoggerReporter, MixedAnalyzingCompiler, ScalaInstance, ClasspathOptionsUtil }
 
 object Defaults extends BuildCommon {
   final val CacheDirectoryName = "cache"
@@ -622,12 +621,10 @@ object Defaults extends BuildCommon {
       val includeFilters = includeArgs map GlobFilter.apply
       val excludeFilters = excludeArgs.map(_.substring(1)).map(GlobFilter.apply)
 
-      if (includeFilters.isEmpty && excludeArgs.isEmpty) {
-        Seq(const(true))
-      } else if (includeFilters.isEmpty) {
-        Seq({ (s: String) => !matches(excludeFilters, s) })
-      } else {
-        includeFilters.map { f => (s: String) => (f.accept(s) && !matches(excludeFilters, s)) }
+      (includeFilters, excludeArgs) match {
+        case (Nil, Nil) => Seq(const(true))
+        case (Nil, _)   => Seq((s: String) => !matches(excludeFilters, s))
+        case _          => includeFilters.map(f => (s: String) => (f.accept(s) && !matches(excludeFilters, s)))
       }
     }
   def detectTests: Initialize[Task[Seq[TestDefinition]]] = (loadedTestFrameworks, compile, streams) map { (frameworkMap, analysis, s) =>
@@ -1572,7 +1569,7 @@ object Classpaths {
             s.init.evaluate(empty) map { _ -> s.pos }
         }: _*)
       } catch {
-        case _: Throwable => Map()
+        case NonFatal(e) => Map()
       }
 
     val outCacheFile = cacheFile / "output_dsp"
@@ -1787,8 +1784,11 @@ object Classpaths {
     a => (Seq[B]() /: maps) { _ ++ _(a) } distinct;
 
   def parseList(s: String, allConfs: Seq[String]): Seq[String] = (trim(s split ",") flatMap replaceWildcard(allConfs)).distinct
-  def replaceWildcard(allConfs: Seq[String])(conf: String): Seq[String] =
-    if (conf == "") Nil else if (conf == "*") allConfs else conf :: Nil
+  def replaceWildcard(allConfs: Seq[String])(conf: String): Seq[String] = conf match {
+    case ""  => Nil
+    case "*" => allConfs
+    case _   => conf :: Nil
+  }
 
   private def trim(a: Array[String]): List[String] = a.toList.map(_.trim)
   def missingConfiguration(in: String, conf: String) =

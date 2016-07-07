@@ -1,3 +1,4 @@
+import scala.util.control.NonFatal
 import sbt._
 import Keys._
 import StringUtilities.normalize
@@ -164,5 +165,5 @@ object Licensed {
   def extractLicenses0(base: File, note: File, s: TaskStreams): Seq[File] =
     if (!note.exists) Nil else
       try { seePaths(base, IO.read(note)) }
-      catch { case e: Exception => s.log.warn("Could not read NOTICE"); Nil }
+      catch { case NonFatal(e) => s.log.warn("Could not read NOTICE"); Nil }
 }

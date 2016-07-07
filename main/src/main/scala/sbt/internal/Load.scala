@@ -4,7 +4,6 @@
 package sbt
 package internal
 
-import sbt.internal.util.{ Settings, Show, ~> }
 import sbt.librarymanagement.{ Configuration, Configurations, Resolver, UpdateOptions }
 import sbt.internal.librarymanagement.{ InlineIvyConfiguration, IvyPaths }
 
@@ -17,10 +16,11 @@ import sbt.internal.inc.{ Analysis, ClasspathOptionsUtil, FileValueCache, Locate
 import sbt.internal.inc.classpath.ClasspathUtilities
 import Project.inScope
 import Def.{ isDummy, ScopedKey, ScopeLocal, Setting }
-import Keys.{ appConfiguration, baseDirectory, configuration, fullResolvers, fullClasspath, pluginData, streams, thisProject, thisProjectRef, update }
-import Keys.{ exportedProducts, loadedBuild, onLoadMessage, resolvedScoped, sbtPlugin, scalacOptions, taskDefinitionKey }
+import Keys.{ appConfiguration, baseDirectory, configuration, exportedProducts, fullClasspath, fullResolvers, 
+  loadedBuild, onLoadMessage, pluginData, resolvedScoped, sbtPlugin, scalacOptions, streams, taskDefinitionKey,
+  thisProject, thisProjectRef, update }
 import tools.nsc.reporters.ConsoleReporter
-import sbt.internal.util.{ Attributed, Eval => Ev }
+import sbt.internal.util.{ Attributed, Eval => Ev, Settings, Show, ~> }
 import sbt.internal.util.Attributed.data
 import Scope.{ GlobalScope, ThisScope }
 import sbt.internal.util.Types.const
@@ -312,7 +312,10 @@ private[sbt] object Load {
   def loaded(unit: BuildUnit): (PartBuildUnit, List[ProjectReference]) =
     {
       val defined = projects(unit)
-      if (defined.isEmpty) sys.error("No projects defined in build unit " + unit)
+      val firstDefined = defined match {
+        case Nil            => sys.error("No projects defined in build unit " + unit)
+        case Seq(first, _*) => first
+      }
 
       // since base directories are resolved at this point (after 'projects'),
       //   we can compare Files instead of converting to URIs
@@ -321,7 +324,7 @@ private[sbt] object Load {
       val externals = referenced(defined).toList
       val explicitRoots = unit.definitions.builds.flatMap(_.rootProject)
       val projectsInRoot = if (explicitRoots.isEmpty) defined.filter(isRoot) else explicitRoots
-      val rootProjects = if (projectsInRoot.isEmpty) defined.head :: Nil else projectsInRoot
+      val rootProjects = if (projectsInRoot.isEmpty) firstDefined :: Nil else projectsInRoot
       (new PartBuildUnit(unit, defined.map(d => (d.id, d)).toMap, rootProjects.map(_.id), buildSettings(unit)), externals)
     }
   def buildSettings(unit: BuildUnit): Seq[Setting[_]] =
