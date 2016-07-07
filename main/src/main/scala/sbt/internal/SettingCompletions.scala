@@ -286,10 +286,13 @@ private[sbt] object SettingCompletions {
   def keyType[S](key: AttributeKey[_])(onSetting: Manifest[_] => S, onTask: Manifest[_] => S, onInput: Manifest[_] => S)(implicit tm: Manifest[Task[_]], im: Manifest[InputTask[_]]): S =
     {
       def argTpe = key.manifest.typeArguments.head
-      val e = key.manifest.runtimeClass
-      if (e == tm.runtimeClass) onTask(argTpe)
-      else if (e == im.runtimeClass) onInput(argTpe)
-      else onSetting(key.manifest)
+      val TaskClass = tm.runtimeClass
+      val InputTaskClass = im.runtimeClass
+      key.manifest.runtimeClass match {
+        case TaskClass      => onTask(argTpe)
+        case InputTaskClass => onInput(argTpe)
+        case _              => onSetting(key.manifest)
+      }
     }
 
   /** For a Task[T], InputTask[T], or Setting[T], this returns the manifest for T. */

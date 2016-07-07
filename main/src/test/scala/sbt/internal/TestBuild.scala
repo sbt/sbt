@@ -77,10 +77,11 @@ object TestBuild {
             global += skey
           else {
             val keys = tasks map makeKey
-            if (keys.size == 1)
-              single ++= keys
-            else if (keys.size > 1)
-              multi ++= keys
+            keys.size match {
+              case 0 =>
+              case 1 => single ++= keys
+              case _ => multi ++= keys
+            }
           }
         }
         (taskAxes, global.toSet, single.toSet, multi.toSet)

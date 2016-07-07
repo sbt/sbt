@@ -10,6 +10,7 @@ import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.internal.util.{ AList, LinePosition, NoPosition, SourcePosition }
 
 import language.experimental.macros
+import scala.annotation.tailrec
 import scala.reflect._
 import reflect.macros._
 import reflect.internal.annotations.compileTimeOnly
@@ -236,15 +237,14 @@ object TaskMacro {
     }
   private[this] def settingSource(c: Context, path: String, name: String): String =
     {
-      val ec = c.enclosingClass.symbol
-      def inEmptyPackage(s: c.Symbol): Boolean =
-        s != c.universe.NoSymbol && (s.owner == c.mirror.EmptyPackage || s.owner == c.mirror.EmptyPackageClass || inEmptyPackage(s.owner))
-      if (!ec.isStatic)
-        name
-      else if (inEmptyPackage(ec))
-        path
-      else
-        s"(${ec.fullName}) $name"
+      @tailrec def inEmptyPackage(s: c.Symbol): Boolean = s != c.universe.NoSymbol && (
+        s.owner == c.mirror.EmptyPackage || s.owner == c.mirror.EmptyPackageClass || inEmptyPackage(s.owner)
+      )
+      c.enclosingClass.symbol match {
+        case ec if !ec.isStatic       => name
+        case ec if inEmptyPackage(ec) => path
+        case ec                       => s"(${ec.fullName}) $name"
+      }
     }
 
   private[this] def constant[T: c.TypeTag](c: Context, t: T): c.Expr[T] = {

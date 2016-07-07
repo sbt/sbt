@@ -90,19 +90,14 @@ object InputWrapper {
 
   def valueMacroImpl[T: c.WeakTypeTag](c: Context): c.Expr[T] =
     ContextUtil.selectMacroImpl[T](c) { (ts, pos) =>
-      val tpe = ts.tree.tpe
-      if (tpe <:< c.weakTypeOf[Initialize[Task[T]]])
-        InputWrapper.wrapInitTask[T](c)(ts, pos)
-      else if (tpe <:< c.weakTypeOf[Initialize[T]])
-        InputWrapper.wrapInit[T](c)(ts, pos)
-      else if (tpe <:< c.weakTypeOf[Task[T]])
-        InputWrapper.wrapTask[T](c)(ts, pos)
-      else if (tpe <:< c.weakTypeOf[InputTask[T]])
-        InputWrapper.wrapInputTask[T](c)(ts, pos)
-      else if (tpe <:< c.weakTypeOf[Initialize[InputTask[T]]])
-        InputWrapper.wrapInitInputTask[T](c)(ts, pos)
-      else
-        c.abort(pos, s"Internal sbt error. Unexpected type ${tpe.widen}")
+      ts.tree.tpe match {
+        case tpe if tpe <:< c.weakTypeOf[Initialize[Task[T]]]      => InputWrapper.wrapInitTask[T](c)(ts, pos)
+        case tpe if tpe <:< c.weakTypeOf[Initialize[T]]            => InputWrapper.wrapInit[T](c)(ts, pos)
+        case tpe if tpe <:< c.weakTypeOf[Task[T]]                  => InputWrapper.wrapTask[T](c)(ts, pos)
+        case tpe if tpe <:< c.weakTypeOf[InputTask[T]]             => InputWrapper.wrapInputTask[T](c)(ts, pos)
+        case tpe if tpe <:< c.weakTypeOf[Initialize[InputTask[T]]] => InputWrapper.wrapInitInputTask[T](c)(ts, pos)
+        case tpe                                                   => unexpectedType(c)(pos, tpe)
+      }
     }
   def taskValueMacroImpl[T: c.WeakTypeTag](c: Context): c.Expr[Task[T]] =
     ContextUtil.selectMacroImpl[Task[T]](c) { (ts, pos) =>
@@ -110,7 +105,7 @@ object InputWrapper {
       if (tpe <:< c.weakTypeOf[Initialize[Task[T]]])
         InputWrapper.wrapInit[Task[T]](c)(ts, pos)
       else
-        c.abort(pos, s"Internal sbt error. Unexpected type ${tpe.widen}")
+        unexpectedType(c)(pos, tpe)
     }
   /** Translates <task: TaskKey[T]>.previous(format) to Previous.runtime(<task>)(format).value*/
   def previousMacroImpl[T: c.WeakTypeTag](c: Context)(format: c.Expr[sbinary.Format[T]]): c.Expr[Option[T]] =
@@ -123,10 +118,13 @@ object InputWrapper {
             val newTree = c.universe.reify { Previous.runtime[T](tsTyped.splice)(format.splice) }
             wrapPrevious[T](c)(newTree, a.pos)
           } else
-            c.abort(a.pos, s"Internal sbt error. Unexpected type ${t.tpe.widen}")
+            unexpectedType(c)(a.pos, t.tpe)
         case x => ContextUtil.unexpectedTree(x)
       }
     }
+
+  private def unexpectedType(c: Context)(pos: c.Position, tpe: c.Type) =
+    c.abort(pos, s"Internal sbt error. Unexpected type ${tpe.widen}")
 }
 
 sealed abstract class MacroTaskValue[T] {
@@ -177,35 +175,46 @@ object ParserInput {
 
   def parsedInputMacroImpl[T: c.WeakTypeTag](c: Context): c.Expr[Task[T]] =
     ContextUtil.selectMacroImpl[Task[T]](c) { (p, pos) =>
-      import c.universe.reify
-      val tpe = p.tree.tpe
-      if (tpe <:< c.weakTypeOf[InputTask[T]]) {
-        val e = c.Expr[InputTask[T]](p.tree)
-        wrap[Task[T]](c)(inputParser(c)(e), pos)
-      } else if (tpe <:< c.weakTypeOf[Initialize[InputTask[T]]]) {
-        val e = c.Expr[Initialize[InputTask[T]]](p.tree)
-        wrapInit[Task[T]](c)(reify { Def.toIParser(e.splice) }, pos)
-      } else
-        c.abort(pos, s"Internal sbt error. Unexpected type ${tpe.dealias} in parsedInputMacroImpl.")
+      p.tree.tpe match {
+        case tpe if tpe <:< c.weakTypeOf[InputTask[T]]             => wrapInputTask[T](c)(p.tree, pos)
+        case tpe if tpe <:< c.weakTypeOf[Initialize[InputTask[T]]] => wrapInitInputTask[T](c)(p.tree, pos)
+        case tpe                                                   => unexpectedType(c)(pos, tpe, "parsedInputMacroImpl")
+      }
     }
+
+  private def wrapInputTask[T: c.WeakTypeTag](c: Context)(tree: c.Tree, pos: c.Position) = {
+    val e = c.Expr[InputTask[T]](tree)
+    wrap[Task[T]](c)(inputParser(c)(e), pos)
+  }
+
+  private def wrapInitInputTask[T: c.WeakTypeTag](c: Context)(tree: c.Tree, pos: c.Position) = {
+    val e = c.Expr[Initialize[InputTask[T]]](tree)
+    wrapInit[Task[T]](c)(c.universe.reify {Def.toIParser(e.splice)}, pos)
+  }
 
   /** Implements `Parser[T].parsed` by wrapping the Parser with the ParserInput wrapper.*/
   def parsedMacroImpl[T: c.WeakTypeTag](c: Context): c.Expr[T] =
     ContextUtil.selectMacroImpl[T](c) { (p, pos) =>
-      import c.universe.reify
-      val tpe = p.tree.tpe
-      if (tpe <:< c.weakTypeOf[Parser[T]]) {
-        val e = c.Expr[Parser[T]](p.tree)
-        wrap[T](c)(reify { Def.toSParser(e.splice) }, pos)
-      } else if (tpe <:< c.weakTypeOf[State => Parser[T]])
-        wrap[T](c)(p, pos)
-      else if (tpe <:< c.weakTypeOf[Initialize[Parser[T]]]) {
-        val e = c.Expr[Initialize[Parser[T]]](p.tree)
-        val es = reify { Def.toISParser(e.splice) }
-        wrapInit[T](c)(es, pos)
-      } else if (tpe <:< c.weakTypeOf[Initialize[State => Parser[T]]])
-        wrapInit[T](c)(p, pos)
-      else
-        c.abort(pos, s"Internal sbt error. Unexpected type ${tpe.dealias} in parsedMacroImpl")
+      p.tree.tpe match {
+        case tpe if tpe <:< c.weakTypeOf[Parser[T]]                      => wrapParser[T](c)(p.tree, pos)
+        case tpe if tpe <:< c.weakTypeOf[State => Parser[T]]             => wrap[T](c)(p, pos)
+        case tpe if tpe <:< c.weakTypeOf[Initialize[Parser[T]]]          => wrapInitParser[T](c)(p.tree, pos)
+        case tpe if tpe <:< c.weakTypeOf[Initialize[State => Parser[T]]] => wrapInit[T](c)(p, pos)
+        case tpe                                                         => unexpectedType(c)(pos, tpe, "parsedMacroImpl")
+      }
     }
+
+  private def wrapParser[T: c.WeakTypeTag](c: Context)(tree: c.Tree, pos: c.Position) = {
+    val e = c.Expr[Parser[T]](tree)
+    wrap[T](c)(c.universe.reify {Def.toSParser(e.splice)}, pos)
+  }
+
+  private def wrapInitParser[T: c.WeakTypeTag](c: Context)(tree: c.Tree, pos: c.Position) = {
+    val e = c.Expr[Initialize[Parser[T]]](tree)
+    val es = c.universe.reify {Def.toISParser(e.splice)}
+    wrapInit[T](c)(es, pos)
+  }
+
+  private def unexpectedType(c: Context)(pos: c.Position, tpe: c.Type, label: String) =
+    c.abort(pos, s"Internal sbt error. Unexpected type ${tpe.dealias} in $label.")
 }

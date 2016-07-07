@@ -621,12 +621,10 @@ object Defaults extends BuildCommon {
       val includeFilters = includeArgs map GlobFilter.apply
       val excludeFilters = excludeArgs.map(_.substring(1)).map(GlobFilter.apply)
 
-      if (includeFilters.isEmpty && excludeArgs.isEmpty) {
-        Seq(const(true))
-      } else if (includeFilters.isEmpty) {
-        Seq({ (s: String) => !matches(excludeFilters, s) })
-      } else {
-        includeFilters.map { f => (s: String) => (f.accept(s) && !matches(excludeFilters, s)) }
+      (includeFilters, excludeArgs) match {
+        case (Nil, Nil) => Seq(const(true))
+        case (Nil, _)   => Seq((s: String) => !matches(excludeFilters, s))
+        case _          => includeFilters.map(f => (s: String) => (f.accept(s) && !matches(excludeFilters, s)))
       }
     }
   def detectTests: Initialize[Task[Seq[TestDefinition]]] = (loadedTestFrameworks, compile, streams) map { (frameworkMap, analysis, s) =>
@@ -1786,8 +1784,11 @@ object Classpaths {
     a => (Seq[B]() /: maps) { _ ++ _(a) } distinct;
 
   def parseList(s: String, allConfs: Seq[String]): Seq[String] = (trim(s split ",") flatMap replaceWildcard(allConfs)).distinct
-  def replaceWildcard(allConfs: Seq[String])(conf: String): Seq[String] =
-    if (conf == "") Nil else if (conf == "*") allConfs else conf :: Nil
+  def replaceWildcard(allConfs: Seq[String])(conf: String): Seq[String] = conf match {
+    case ""  => Nil
+    case "*" => allConfs
+    case _   => conf :: Nil
+  }
 
   private def trim(a: Array[String]): List[String] = a.toList.map(_.trim)
   def missingConfiguration(in: String, conf: String) =

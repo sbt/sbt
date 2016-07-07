@@ -461,20 +461,16 @@ object BuiltinCommands {
     {
       val result = (SimpleReader.readLine("Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? ") getOrElse Quit).toLowerCase(Locale.ENGLISH)
       def matches(s: String) = !result.isEmpty && (s startsWith result)
+      def retry = loadProjectCommand(LoadProject, loadArg) :: s.clearGlobalLog
+      def ignoreMsg = if (Project.isProjectLoaded(s)) "using previously loaded project" else "no project loaded"
 
-      if (result.isEmpty || matches("retry"))
-        loadProjectCommand(LoadProject, loadArg) :: s.clearGlobalLog
-      else if (matches(Quit))
-        s.exit(ok = false)
-      else if (matches("ignore")) {
-        val hadPrevious = Project.isProjectLoaded(s)
-        s.log.warn("Ignoring load failure: " + (if (hadPrevious) "using previously loaded project." else "no project loaded."))
-        s
-      } else if (matches("last"))
-        LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
-      else {
-        println("Invalid response.")
-        doLoadFailed(s, loadArg)
+      result match {
+        case ""                     => retry
+        case _ if matches("retry")  => retry
+        case _ if matches(Quit)     => s.exit(ok = false)
+        case _ if matches("ignore") => s.log.warn(s"Ignoring load failure: $ignoreMsg.") ; s
+        case _ if matches("last")   => LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
+        case _                      => println("Invalid response."); doLoadFailed(s, loadArg)
       }
     }
 
