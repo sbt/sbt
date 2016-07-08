@@ -1,0 +1,4 @@
+# Test case from https://github.com/sbt/sbt/issues/2081, adapted
+
+> test
+> check
