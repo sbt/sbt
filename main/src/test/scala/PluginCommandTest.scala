@@ -7,11 +7,11 @@ import org.specs2.mutable.Specification
 import sbt.internal._
 import sbt.internal.util.{ AttributeEntry, AttributeMap, ConsoleOut, GlobalLogging, MainLogging, Settings }
 
-object PluginCommandTestPlugin0 extends AutoPlugin
+object PluginCommandTestPlugin0 extends AutoPlugin { override def requires = empty }
 
 package subpackage {
 
-  object PluginCommandTestPlugin1 extends AutoPlugin
+  object PluginCommandTestPlugin1 extends AutoPlugin { override def requires = empty }
 
 }
 

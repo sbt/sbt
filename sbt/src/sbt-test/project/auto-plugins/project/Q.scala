@@ -3,9 +3,9 @@ package sbttest // you need package http://stackoverflow.com/questions/9822008/
 	import sbt._, syntax._, Keys._
 	import java.util.concurrent.atomic.{AtomicInteger => AInt}
 
-	object A extends AutoPlugin
-	object B extends AutoPlugin
-	object E extends AutoPlugin
+	object A extends AutoPlugin { override def requires: Plugins = empty }
+	object B extends AutoPlugin { override def requires: Plugins = empty }
+	object E extends AutoPlugin { override def requires: Plugins = empty }
 
 object Imports
 {
@@ -20,6 +20,7 @@ object Imports
 
 object OrgPlugin extends AutoPlugin {
 	override def trigger = allRequirements
+	override def requires: Plugins = empty
 	override def projectSettings = Seq(
       organization := "override"
 	)

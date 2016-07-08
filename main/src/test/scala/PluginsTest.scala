@@ -54,8 +54,8 @@ object AI
 	lazy val deducePlugin = Plugins.deducer(allPlugins)
 	lazy val log = Logger.Null
 
-	object A extends AutoPlugin
-	object B extends AutoPlugin
+	object A extends AutoPlugin { override def requires = empty }
+	object B extends AutoPlugin { override def requires = empty }
 
 	object Q extends AutoPlugin
 	{

@@ -71,7 +71,7 @@ abstract class AutoPlugin extends Plugins.Basic with PluginsFunctions {
 
   /** This AutoPlugin requires the plugins the [[Plugins]] matcher returned by this method. See [[trigger]].
    */
-  def requires: Plugins = empty
+  def requires: Plugins = plugins.JvmPlugin
 
   val label: String = getClass.getName.stripSuffix("$")
 

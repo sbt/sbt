@@ -11,6 +11,7 @@ import Def.Setting
 object CorePlugin extends AutoPlugin {
   // This is included by default
   override def trigger = allRequirements
+  override def requires = empty
 
   override lazy val projectSettings: Seq[Setting[_]] =
     Defaults.coreDefaultSettings
