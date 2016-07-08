@@ -26,6 +26,11 @@ object CrossVersion {
    */
   final class Binary(val remapVersion: String => String) extends CrossVersion {
     override def toString = "Binary"
+    override def hashCode = remapVersion.##
+    override def equals(that: Any) = that match {
+      case that: Binary => this.remapVersion == that.remapVersion
+      case _            => false
+    }
   }
 
   /**
@@ -35,6 +40,11 @@ object CrossVersion {
    */
   final class Full(val remapVersion: String => String) extends CrossVersion {
     override def toString = "Full"
+    override def hashCode = remapVersion.##
+    override def equals(that: Any) = that match {
+      case that: Full => this.remapVersion == that.remapVersion
+      case _          => false
+    }
   }
 
   private val disabledTag = implicitly[FastTypeTag[Disabled.type]]
@@ -75,7 +85,7 @@ object CrossVersion {
   }
 
   /** Cross-versions a module with the full version (typically the full Scala version). */
-  def full: CrossVersion = new Full(idFun)
+  def full: CrossVersion = new Full(idStringFun)
 
   /**
    * Cross-versions a module with the result of applying `remapVersion` to the full version
@@ -84,7 +94,7 @@ object CrossVersion {
   def fullMapped(remapVersion: String => String): CrossVersion = new Full(remapVersion)
 
   /** Cross-versions a module with the binary version (typically the binary Scala version).  */
-  def binary: CrossVersion = new Binary(idFun)
+  def binary: CrossVersion = new Binary(idStringFun)
 
   /**
    * Cross-versions a module with the result of applying `remapVersion` to the binary version
@@ -93,6 +103,7 @@ object CrossVersion {
   def binaryMapped(remapVersion: String => String): CrossVersion = new Binary(remapVersion)
 
   private[this] def idFun[T]: T => T = x => x
+  private[this] val idStringFun = idFun[String]
 
   private[sbt] def append(s: String): Option[String => String] = Some(x => crossName(x, s))
 
