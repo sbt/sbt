@@ -50,7 +50,7 @@ import xsbt.api.APIUtil
  * dependencies unconditionally. On the other hand, if api change is due to modified name hashes
  * of regular members then we'll invalidate sources that use those names.
  */
-private[inc] class MemberRefInvalidator(log: Logger) {
+private[inc] class MemberRefInvalidator(log: Logger, logRecompileOnMacro: Boolean) {
   def get[T](memberRef: Relation[File, T], usedNames: Relation[File, String], apiChange: APIChange[_]): T => Set[File] = apiChange match {
     case _: APIChangeDueToMacroDefinition[_] =>
       new InvalidateDueToMacroDefinition(memberRef)
@@ -82,7 +82,7 @@ private[inc] class MemberRefInvalidator(log: Logger) {
   private class InvalidateDueToMacroDefinition[T](memberRef: Relation[File, T]) extends (T => Set[File]) {
     def apply(from: T): Set[File] = {
       val invalidated = memberRef.reverse(from)
-      if (invalidated.nonEmpty) {
+      if (invalidated.nonEmpty && logRecompileOnMacro) {
         log.info(s"Because $from contains a macro definition, the following dependencies are invalidated unconditionally:\n" +
           formatInvalidated(invalidated))
       }

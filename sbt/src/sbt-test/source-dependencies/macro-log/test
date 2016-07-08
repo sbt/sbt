@@ -1,0 +1,18 @@
+> compile
+$ copy-file macros/changes/Foo.scala macros/Foo.scala
+> compile
+> checkPresent1
+
+> set incOptions := incOptions.value.withLogRecompileOnMacro(false)
+
+> compile
+$ copy-file macros/changes/Bar.scala macros/Bar.scala
+> compile
+> checkMissing2
+
+> set incOptions := incOptions.value.withLogRecompileOnMacro(true)
+
+> compile
+$ copy-file macros/changes/Baz.scala macros/Baz.scala
+> compile
+> checkPresent3
