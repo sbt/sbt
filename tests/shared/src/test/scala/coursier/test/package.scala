@@ -23,6 +23,8 @@ package object test {
       )
     def clearFilter: Resolution =
       underlying.copy(filter = None)
+    def clearProfileActivation: Resolution =
+      underlying.copy(profileActivation = None)
   }
 
   object Profile {

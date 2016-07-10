@@ -239,13 +239,23 @@ object Resolution {
         var dep = dep0
 
         for ((mgmtConfig, mgmtDep) <- dict.get(DepMgmt.key(dep0))) {
-          if (dep.version.isEmpty)
+
+          if (mgmtDep.version.nonEmpty)
             dep = dep.copy(version = mgmtDep.version)
-          if (config.isEmpty)
+
+          if (mgmtConfig.nonEmpty)
             config = mgmtConfig
+
+          // FIXME The version and scope/config from dependency management, if any, are substituted
+          // no matter what. The same is not done for the exclusions and optionality, for a lack of
+          // way of distinguishing empty exclusions from no exclusion section and optional set to
+          // false from no optional section in the dependency management for now.
 
           if (dep.exclusions.isEmpty)
             dep = dep.copy(exclusions = mgmtDep.exclusions)
+
+          if (mgmtDep.optional)
+            dep = dep.copy(optional = mgmtDep.optional)
         }
         
         (config, dep)
@@ -434,24 +444,26 @@ object Resolution {
     activation: Activation,
     props: Map[String, String]
   ): Boolean =
-    if (activation.properties.isEmpty)
-      false
-    else
-      activation
-        .properties
-        .forall {case (name, valueOpt) =>
-          props
-            .get(name)
-            .exists{ v =>
-              valueOpt
-                .forall { reqValue =>
-                  if (reqValue.startsWith("!"))
-                    v != reqValue.drop(1)
-                  else
-                    v == reqValue
-                }
+    activation.properties.nonEmpty &&
+      activation.properties.forall {
+        case (name, valueOpt) =>
+          props.get(name).exists { v =>
+            valueOpt.forall { reqValue =>
+              if (reqValue.startsWith("!"))
+                v != reqValue.drop(1)
+              else
+                v == reqValue
             }
-        }
+          }
+      }
+
+  def userProfileActivation(userProfiles: Set[String])(
+    id: String,
+    activation: Activation,
+    props: Map[String, String]
+  ): Boolean =
+    userProfiles(id) ||
+      defaultProfileActivation(id, activation, props)
 
   /**
    * Default dependency filter used during resolution.
@@ -820,8 +832,6 @@ final case class Resolution(
      */
 
     // A bit fragile, but seems to work
-    // TODO Add non regression test for the touchy  org.glassfish.jersey.core:jersey-client:2.19
-    //      (for the way it uses  org.glassfish.hk2:hk2-bom,2.4.0-b25)
 
     val approxProperties0 =
       project.parent
@@ -841,16 +851,26 @@ final case class Resolution(
     // 1.2 made from Pom.scala (TODO look at the very details?)
 
     // 1.3 & 1.4 (if only vaguely so)
-    val dependencies0 = addDependencies(
-      (project.dependencies +: profiles0.map(_.dependencies)).map(withProperties(_, approxProperties))
-    )
-    val dependenciesMgmt0 = addDependencies(
-      (project.dependencyManagement +: profiles0.map(_.dependencyManagement)).map(withProperties(_, approxProperties))
-    )
     val properties0 =
       (project.properties /: profiles0) { (acc, p) =>
         acc ++ p.properties
       }
+
+    val project0 = project.copy(
+      properties = project.parent  // belongs to 1.5 & 1.6
+        .filter(projectCache.contains)
+        .map(projectCache(_)._2.properties)
+        .fold(properties0)(_ ++ properties0)
+    )
+
+    val propertiesMap0 = propertiesMap(projectProperties(project0))
+
+    val dependencies0 = addDependencies(
+      (project0.dependencies +: profiles0.map(_.dependencies)).map(withProperties(_, propertiesMap0))
+    )
+    val dependenciesMgmt0 = addDependencies(
+      (project0.dependencyManagement +: profiles0.map(_.dependencyManagement)).map(withProperties(_, propertiesMap0))
+    )
 
     val deps0 =
       dependencies0
@@ -861,7 +881,7 @@ final case class Resolution(
         .collect { case ("import", dep) =>
           dep.moduleVersion
         } ++
-      project.parent // belongs to 1.5 & 1.6
+      project0.parent // belongs to 1.5 & 1.6
 
     val deps = deps0.filter(projectCache.contains)
 
@@ -869,35 +889,31 @@ final case class Resolution(
       .map(projectCache(_)._2)
 
     val depMgmt = (
-      project.dependencyManagement +: (
+      project0.dependencyManagement +: (
         profiles0.map(_.dependencyManagement) ++
         projs.map(_.dependencyManagement)
       )
     )
-      .map(withProperties(_, approxProperties))
+      .map(withProperties(_, propertiesMap0))
       .foldLeft(Map.empty[DepMgmt.Key, (String, Dependency)])(DepMgmt.addSeq)
 
     val depsSet = deps.toSet
 
-    project.copy(
-      version = substituteProps(project.version, approxProperties),
+    project0.copy(
+      version = substituteProps(project0.version, propertiesMap0),
       dependencies =
         dependencies0
           .filterNot{case (config, dep) =>
             config == "import" && depsSet(dep.moduleVersion)
           } ++
-        project.parent  // belongs to 1.5 & 1.6
+        project0.parent  // belongs to 1.5 & 1.6
           .filter(projectCache.contains)
           .toSeq
           .flatMap(projectCache(_)._2.dependencies),
       dependencyManagement = depMgmt.values.toSeq
         .filterNot{case (config, dep) =>
           config == "import" && depsSet(dep.moduleVersion)
-        },
-      properties = project.parent  // belongs to 1.5 & 1.6
-        .filter(projectCache.contains)
-        .map(projectCache(_)._2.properties)
-        .fold(properties0)(properties0 ++ _)
+        }
     )
   }
 

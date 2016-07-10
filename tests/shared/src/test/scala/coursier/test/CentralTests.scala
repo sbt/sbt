@@ -18,11 +18,18 @@ object CentralTests extends TestSuite {
   def resolve(
     deps: Set[Dependency],
     filter: Option[Dependency => Boolean] = None,
-    extraRepo: Option[Repository] = None
+    extraRepo: Option[Repository] = None,
+    profiles: Set[String] = Set.empty
   ) = {
     val repositories0 = extraRepo.toSeq ++ repositories
 
-    Resolution(deps, filter = filter)
+    Resolution(
+      deps,
+      filter = filter,
+      profileActivation = Some(
+        core.Resolution.userProfileActivation(profiles)
+      )
+    )
       .process
       .run(repositories0)
       .runF
@@ -32,7 +39,8 @@ object CentralTests extends TestSuite {
     module: Module,
     version: String,
     extraRepo: Option[Repository] = None,
-    configuration: String = ""
+    configuration: String = "",
+    profiles: Set[String] = Set.empty
   ) =
     async {
       val attrPathPart =
@@ -62,7 +70,7 @@ object CentralTests extends TestSuite {
         ).split('\n').toSeq
 
       val dep = Dependency(module, version, configuration = configuration)
-      val res = await(resolve(Set(dep), extraRepo = extraRepo))
+      val res = await(resolve(Set(dep), extraRepo = extraRepo, profiles = profiles))
 
       val result = res
         .minDependencies
@@ -120,7 +128,7 @@ object CentralTests extends TestSuite {
     'logback - {
       async {
         val dep = Dependency(Module("ch.qos.logback", "logback-classic"), "1.1.3")
-        val res = await(resolve(Set(dep))).clearCaches
+        val res = await(resolve(Set(dep))).clearCaches.clearProfileActivation
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -136,7 +144,7 @@ object CentralTests extends TestSuite {
     'asm - {
       async {
         val dep = Dependency(Module("org.ow2.asm", "asm-commons"), "5.0.2")
-        val res = await(resolve(Set(dep))).clearCaches
+        val res = await(resolve(Set(dep))).clearCaches.clearProfileActivation
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -153,7 +161,7 @@ object CentralTests extends TestSuite {
       async {
         val dep = Dependency(Module("joda-time", "joda-time"), "[2.2,2.8]")
         val res0 = await(resolve(Set(dep)))
-        val res = res0.clearCaches
+        val res = res0.clearCaches.clearProfileActivation
 
         val expected = Resolution(
           rootDependencies = Set(dep),
@@ -171,7 +179,8 @@ object CentralTests extends TestSuite {
     'spark - {
       resolutionCheck(
         Module("org.apache.spark", "spark-core_2.11"),
-        "1.3.1"
+        "1.3.1",
+        profiles = Set("hadoop-2.2")
       )
     }
 
@@ -204,6 +213,13 @@ object CentralTests extends TestSuite {
       resolutionCheck(
         Module("com.github.fommil.netlib", "all"),
         "1.1.2"
+      )
+    }
+
+    'projectProperties - {
+      resolutionCheck(
+        Module("org.glassfish.jersey.core", "jersey-client"),
+        "2.19"
       )
     }
 

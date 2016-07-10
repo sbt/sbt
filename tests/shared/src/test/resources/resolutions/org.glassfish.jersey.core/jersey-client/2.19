@@ -1,0 +1,13 @@
+javax.annotation:javax.annotation-api:1.2:compile
+javax.inject:javax.inject:1:compile
+javax.ws.rs:javax.ws.rs-api:2.0.1:compile
+org.glassfish.hk2:hk2-api:2.4.0-b25:compile
+org.glassfish.hk2:hk2-locator:2.4.0-b25:compile
+org.glassfish.hk2:hk2-utils:2.4.0-b25:compile
+org.glassfish.hk2:osgi-resource-locator:1.0.1:compile
+org.glassfish.hk2.external:aopalliance-repackaged:2.4.0-b25:compile
+org.glassfish.hk2.external:javax.inject:2.4.0-b25:compile
+org.glassfish.jersey.bundles.repackaged:jersey-guava:2.19:compile
+org.glassfish.jersey.core:jersey-client:2.19:compile
+org.glassfish.jersey.core:jersey-common:2.19:compile
+org.javassist:javassist:3.18.1-GA:compile
