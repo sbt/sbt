@@ -123,7 +123,7 @@ object Defaults extends BuildCommon {
       retrieveManagedSync :== false,
       configurationsToRetrieve :== None,
       scalaOrganization :== ScalaArtifacts.Organization,
-      sbtResolver := { if (sbtVersion.value endsWith "-SNAPSHOT") Classpaths.typesafeSnapshots else Classpaths.typesafeReleases },
+      sbtResolver := { if (sbtVersion.value endsWith "-SNAPSHOT") Classpaths.sbtIvySnapshots else Classpaths.typesafeReleases },
       crossVersion :== CrossVersion.Disabled,
       buildDependencies <<= Classpaths.constructBuildDependencies,
       version :== "0.1-SNAPSHOT",
@@ -1818,8 +1818,9 @@ object Classpaths {
     flatten(defaultConfiguration in p get data) getOrElse Configurations.Default
   def flatten[T](o: Option[Option[T]]): Option[T] = o flatMap idFun
 
+  val sbtIvySnapshots = Resolver.sbtIvyRepo("snapshots")
+
   lazy val typesafeReleases = Resolver.typesafeIvyRepo("releases")
-  lazy val typesafeSnapshots = Resolver.typesafeIvyRepo("snapshots")
 
   @deprecated("Use `typesafeReleases` instead", "0.12.0")
   lazy val typesafeResolver = typesafeReleases
@@ -1827,7 +1828,6 @@ object Classpaths {
   def typesafeRepo(status: String) = Resolver.typesafeIvyRepo(status)
 
   lazy val sbtPluginReleases = Resolver.sbtPluginRepo("releases")
-  lazy val sbtPluginSnapshots = Resolver.sbtPluginRepo("snapshots")
 
   def modifyForPlugin(plugin: Boolean, dep: ModuleID): ModuleID =
     if (plugin) dep.copy(configurations = Some(Provided.name)) else dep
