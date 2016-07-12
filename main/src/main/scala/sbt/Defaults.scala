@@ -1245,7 +1245,6 @@ object Classpaths {
       // By default, to retrieve all types *but* these (it's assumed that everything else is binary/resource)
       new UpdateConfiguration(retrieveConfiguration.value, false, ivyLoggingLevel.value, ArtifactTypeFilter.forbid(specialArtifactTypes))
     },
-    updateOptions := (updateOptions in Global).value,
     retrieveConfiguration := { if (retrieveManaged.value) Some(new RetrieveConfiguration(managedDirectory.value, retrievePattern.value, retrieveManagedSync.value, configurationsToRetrieve.value)) else None },
     ivyConfiguration <<= mkIvyConfiguration,
     ivyConfigurations := {

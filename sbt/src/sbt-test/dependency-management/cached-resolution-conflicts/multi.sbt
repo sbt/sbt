@@ -12,22 +12,17 @@ def commonSettings: Seq[Def.Setting[_]] =
     fullResolvers := fullResolvers.value.filterNot(_.name == "inter-project")
   )
 
-def cachedResolutionSettings: Seq[Def.Setting[_]] =
-  commonSettings ++ Seq(
-    updateOptions := updateOptions.value.withCachedResolution(true)
-  )
-
 lazy val X1 = project.
-  settings(cachedResolutionSettings: _*).
   settings(
+    commonSettings,
     libraryDependencies ++= Seq(
       "com.example" %% "y1" % "0.1.0" % "compile->compile;runtime->runtime",
       "com.example" %% "y2" % "0.1.0" % "compile->compile;runtime->runtime")
   )
 
 lazy val Y1 = project.
-  settings(cachedResolutionSettings: _*).
   settings(
+    commonSettings,
     name := "y1",
     libraryDependencies ++= Seq(
       // this includes slf4j 1.7.5
@@ -41,8 +36,8 @@ lazy val Y1 = project.
   )
 
 lazy val Y2 = project.
-  settings(cachedResolutionSettings: _*).
   settings(
+    commonSettings,
     name := "y2",
     libraryDependencies ++= Seq(
       // this includes slf4j 1.6.6
@@ -54,9 +49,10 @@ lazy val Y2 = project.
   )
 
 lazy val root = (project in file(".")).
-  settings(
-    organization in ThisBuild := "org.example",
-    version in ThisBuild := "1.0",
+  settings(inThisBuild(Seq(
+    organization := "org.example",
+    version := "1.0",
+    updateOptions := updateOptions.value.withCachedResolution(true),
     check := {
       val x1cp = (externalDependencyClasspath in Compile in X1).value.map {_.data.getName}.sorted
       // sys.error("slf4j-api is not found on X1" + x1cp)
@@ -69,4 +65,4 @@ lazy val root = (project in file(".")).
         sys.error("servlet-api-2.3.jar is found when it should be evicted:" + x1cp)
       } 
     }
-  )
+  )))

@@ -9,14 +9,9 @@ def commonSettings: Seq[Def.Setting[_]] =
     resolvers += Resolver.sonatypeRepo("snapshots")
   )
 
-def cachedResolutionSettings: Seq[Def.Setting[_]] =
-  commonSettings ++ Seq(
-   updateOptions := updateOptions.value.withCachedResolution(true)
-  )
-
 lazy val a = project.
-  settings(cachedResolutionSettings: _*).
   settings(
+    commonSettings,
     libraryDependencies += "net.databinder" %% "unfiltered-uploads" % "0.8.0" exclude("commons-io", "commons-io"),
     ivyXML :=
       <dependencies>
@@ -25,16 +20,17 @@ lazy val a = project.
   )
 
 lazy val b = project.
-  settings(cachedResolutionSettings: _*).
   settings(
+    commonSettings,
     libraryDependencies += "net.databinder" %% "unfiltered-uploads" % "0.8.0"
   )
 
 lazy val root = (project in file(".")).
   aggregate(a, b).
-  settings(
-    organization in ThisBuild := "org.example",
-    version in ThisBuild := "1.0",
+  settings(inThisBuild(Seq(
+    organization := "org.example",
+    version := "1.0",
+    updateOptions := updateOptions.value.withCachedResolution(true),
     check := {
       val acp = (externalDependencyClasspath in Compile in a).value.sortBy {_.data.getName}
       val bcp = (externalDependencyClasspath in Compile in b).value.sortBy {_.data.getName}
@@ -49,4 +45,4 @@ lazy val root = (project in file(".")).
         sys.error("commons-io NOT found when it should NOT be excluded")
       }
     }
-  )
+  )))
