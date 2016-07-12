@@ -4,11 +4,10 @@
 package sbt
 
 import java.io.File
-import java.net.URLClassLoader
 import scala.util.control.NonFatal
-import testing.{ Logger => TLogger, Task => TestTask, _ }
+import testing.{ Task => TestTask, _ }
 import org.scalatools.testing.{ Framework => OldFramework }
-import sbt.internal.inc.classpath.{ ClasspathUtilities, DualLoader, FilteredLoader }
+import sbt.internal.inc.classpath.{ ClasspathUtilities, DualLoader }
 import sbt.internal.inc.ScalaInstance
 import scala.annotation.tailrec
 import sbt.util.Logger
@@ -164,8 +163,6 @@ object TestFramework {
       val testsListeners = listeners collect { case tl: TestsListener => tl }
 
       def foreachListenerSafe(f: TestsListener => Unit): () => Unit = () => safeForeach(testsListeners, log)(f)
-
-      import TestResult.{ Error, Passed, Failed }
 
       val startTask = foreachListenerSafe(_.doInit)
       val testTasks =

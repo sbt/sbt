@@ -1,9 +1,8 @@
 package sbt
 
-import Def.{ Initialize, resolvedScoped, ScopedKey, Setting, streamsManagerKey }
+import Def.{ Initialize, ScopedKey, streamsManagerKey }
 import Previous._
 import sbt.internal.util.{ ~>, AttributeKey, IMap, RMap }
-import sbt.internal.util.Types._
 
 import java.io.{ InputStream, OutputStream }
 

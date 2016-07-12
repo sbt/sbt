@@ -2,8 +2,7 @@ package sbt
 package compiler
 
 import scala.collection.mutable.ListBuffer
-import scala.reflect.Manifest
-import scala.tools.nsc.{ ast, interpreter, io, reporters, util, CompilerCommand, Global, Phase, Settings }
+import scala.tools.nsc.{ ast, io, reporters, CompilerCommand, Global, Phase, Settings }
 import io.{ AbstractFile, PlainFile, VirtualDirectory }
 import ast.parser.Tokens
 import reporters.{ ConsoleReporter, Reporter }
@@ -70,7 +69,6 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
   }
   lazy val global: EvalGlobal = new EvalGlobal(settings, reporter)
   import global._
-  import definitions._
 
   private[sbt] def unlinkDeferred(): Unit = {
     toUnlinkLater foreach unlink

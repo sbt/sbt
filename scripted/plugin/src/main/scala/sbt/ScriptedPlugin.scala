@@ -8,8 +8,7 @@ import Keys._
 import sbt.internal.util.complete.{ Parser, DefaultParsers }
 import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.internal.inc.ModuleUtilities
-import java.lang.reflect.{ InvocationTargetException, Method }
-import java.util.Properties
+import java.lang.reflect.Method
 
 import sbt.syntax._
 

@@ -5,7 +5,6 @@ package sbt
 
 import java.io.File
 import sbt.internal.inc.AnalyzingCompiler
-import sbt.internal.util.JLine
 import sbt.util.Logger
 
 import xsbti.compile.{ Inputs, Compilers }

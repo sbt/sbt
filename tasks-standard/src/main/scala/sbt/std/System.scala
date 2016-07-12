@@ -6,9 +6,7 @@ package std
 
 import sbt.internal.util.Types._
 import sbt.internal.util.{ ~>, AList, DelegatingPMap, RMap }
-import Task._
 import TaskExtra.{ all, existToAny }
-import Execute._
 
 object Transform {
   def fromDummy[T](original: Task[T])(action: => T): Task[T] = Task(original.info, Pure(action _, false))
@@ -34,11 +32,7 @@ object Transform {
       def apply[T](in: Task[T]): Task[T] = map(in).getOrElse(in)
     }
 
-  def apply(dummies: DummyTaskMap) =
-    {
-      import System._
-      taskToNode(getOrId(dummyMap(dummies)))
-    }
+  def apply(dummies: DummyTaskMap) = taskToNode(getOrId(dummyMap(dummies)))
 
   def taskToNode(pre: Task ~> Task): NodeView[Task] = new NodeView[Task] {
     def apply[T](t: Task[T]): Node[Task, T] = pre(t).work match {

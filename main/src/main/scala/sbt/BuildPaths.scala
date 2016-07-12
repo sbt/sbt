@@ -4,7 +4,6 @@
 package sbt
 
 import java.io.File
-import java.net.URI
 import KeyRanks.DSetting
 
 import sbt.io.{ GlobFilter, Path }

@@ -10,7 +10,6 @@ import sbt.util.{ Level, Logger }
 import sbt.librarymanagement.{ Configurations, CrossVersion, MavenRepository, ModuleID, Resolver }
 
 import java.io.File
-import Attributed.blankSeq
 import Configurations.Compile
 import Def.Setting
 import Keys._

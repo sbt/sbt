@@ -6,9 +6,7 @@ package internal
 
 import sbt.util.Logger
 import java.io.File
-import sbt.librarymanagement.Resolver
-import sbt.internal.librarymanagement.{ InlineIvyConfiguration, IvyPaths }
-import sbt.internal.inc.{ AnalyzingCompiler, ClasspathOptionsUtil, IncrementalCompilerImpl, ScalaInstance }
+import sbt.internal.inc.{ ClasspathOptionsUtil, ScalaInstance }
 
 object ConsoleProject {
   def apply(state: State, extra: String, cleanupCommands: String = "", options: Seq[String] = Nil)(implicit log: Logger): Unit = {

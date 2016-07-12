@@ -6,7 +6,7 @@ package sbt
 
 import testing.{ Logger => TLogger, Event => TEvent, Status => TStatus }
 import sbt.internal.util.{ BufferedLogger, FullLogger }
-import sbt.util.{ Level, Logger }
+import sbt.util.Level
 
 trait TestReportListener {
   /** called for each class or equivalent grouping */

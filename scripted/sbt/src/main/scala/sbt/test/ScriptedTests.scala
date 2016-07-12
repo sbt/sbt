@@ -6,13 +6,11 @@ package sbt
 package test
 
 import java.io.File
-import java.nio.charset.Charset
 
 import scala.util.control.NonFatal
 
-import xsbt.IPC
 import sbt.internal.scripted.{ CommentHandler, FileCommands, ScriptRunner, TestScriptParser, TestException }
-import sbt.io.{ DirectoryFilter, GlobFilter, HiddenFileFilter, Path }
+import sbt.io.{ DirectoryFilter, HiddenFileFilter }
 import sbt.io.IO.wrapNull
 import sbt.internal.io.Resources
 
@@ -32,7 +30,6 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launc
     scriptedTest(group, name, emptyCallback, log)
   def scriptedTest(group: String, name: String, prescripted: File => Unit, log: Logger): Seq[() => Option[String]] = {
     import sbt.io.syntax._
-    import GlobFilter._
     for (groupDir <- (resourceBaseDirectory * group).get; nme <- (groupDir * name).get) yield {
       val g = groupDir.getName
       val n = nme.getName

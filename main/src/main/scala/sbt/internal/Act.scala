@@ -5,8 +5,7 @@ package sbt
 package internal
 
 import Def.{ showRelativeKey, ScopedKey }
-import Project.showContextKey
-import Keys.{ sessionSettings, thisProject }
+import Keys.sessionSettings
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import Aggregation.{ KeyValue, Values }
 import DefaultParsers._

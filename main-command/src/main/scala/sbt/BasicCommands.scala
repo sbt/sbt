@@ -8,7 +8,6 @@ import sbt.internal.inc.ModuleUtilities
 import DefaultParsers._
 import Function.tupled
 import Command.applyEffect
-import HistoryCommands.{ Start => HistoryPrefix }
 import BasicCommandStrings._
 import CommandUtil._
 import BasicKeys._

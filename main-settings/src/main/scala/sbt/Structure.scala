@@ -6,19 +6,16 @@ package sbt
 /** An abstraction on top of Settings for build configuration and task definition. */
 
 import java.io.File
-import java.net.URI
 
 import ConcurrentRestrictions.Tag
 import Def.{ Initialize, KeyedInitialize, ScopedKey, Setting, setting }
-import sbt.io.{ FileFilter, Path, PathFinder }
+import sbt.io.{ FileFilter, PathFinder }
 import sbt.io.syntax._
 import std.TaskExtra.{ task => mktask, _ }
-import Task._
 import sbt.internal.util.Types._
 import sbt.internal.util.{ ~>, AList, AttributeKey, Settings, SourcePosition }
 
 import language.experimental.macros
-import reflect.internal.annotations.compileTimeOnly
 
 sealed trait Scoped { def scope: Scope; val key: AttributeKey[_] }
 

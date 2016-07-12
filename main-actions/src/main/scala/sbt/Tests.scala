@@ -8,15 +8,12 @@ import xsbt.api.{ Discovered, Discovery }
 import sbt.internal.inc.Analysis
 import TaskExtra._
 import sbt.internal.util.FeedbackProvidedException
-import sbt.internal.util.Types._
 import xsbti.api.Definition
 import xsbti.compile.CompileAnalysis
 import ConcurrentRestrictions.Tag
 
 import testing.{ AnnotatedFingerprint, Fingerprint, Framework, SubclassFingerprint, Runner, TaskDef, SuiteSelector, Task => TestTask }
 import scala.annotation.tailrec
-
-import java.io.File
 
 import sbt.util.Logger
 
@@ -126,7 +123,7 @@ object Tests {
     val testListeners: Seq[TestReportListener])
   private[sbt] def processOptions(config: Execution, discovered: Seq[TestDefinition], log: Logger): ProcessedOptions =
     {
-      import collection.mutable.{ HashSet, ListBuffer, Map, Set }
+      import collection.mutable.{ HashSet, ListBuffer }
       val testFilters = new ListBuffer[String => Boolean]
       var orderedFilters = Seq[String => Boolean]()
       val excludeTestsSet = new HashSet[String]

@@ -3,7 +3,6 @@
  */
 package sbt
 
-import java.io.File
 import java.net.URI
 
 import sbt.internal.util.{ AttributeKey, AttributeMap, Dag }

@@ -3,7 +3,6 @@
  */
 package sbt
 
-import java.io.File
 import sbt.internal.inc.ReflectUtilities
 import sbt.internal.util.complete.{ DefaultParsers, EditDistance, Parser }
 import sbt.internal.util.Types.const

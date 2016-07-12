@@ -2,8 +2,7 @@ package sbt
 
 import sbt.internal.util.complete.Parser
 import Def.{ Initialize, ScopedKey }
-import std.TaskExtra.{ task => mktask, _ }
-import Task._
+import std.TaskExtra._
 import sbt.internal.util.{ ~>, AttributeKey, Types }
 import sbt.internal.util.Types._
 

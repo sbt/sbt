@@ -7,16 +7,13 @@ import java.io.File
 import java.net.URL
 import scala.concurrent.duration.{ FiniteDuration, Duration }
 import Def.ScopedKey
-import sbt.internal.util.complete._
-import sbt.internal.inc.{ MixedAnalyzingCompiler, ScalaInstance }
-import std.TaskExtra._
+import sbt.internal.inc.ScalaInstance
 import xsbti.compile.{ DefinesClass, ClasspathOptions, CompileAnalysis, CompileOptions, CompileOrder,
   Compilers, CompileResult, GlobalsCache, IncOptions, Inputs, PreviousResult, Setup }
 import scala.xml.{ Node => XNode, NodeSeq }
 import org.apache.ivy.core.module.{ descriptor, id }
 import descriptor.ModuleDescriptor, id.ModuleRevisionId
 import testing.Framework
-import sbt.internal.util.Types.Id
 import KeyRanks._
 
 import sbt.internal.{ BuildStructure, LoadedBuild, PluginDiscovery, BuildDependencies, SessionSettings }
@@ -424,7 +421,7 @@ object Keys {
   private[sbt] val executeProgress = SettingKey[State => TaskProgress]("executeProgress", "Experimental task execution listener.", DTask)
   private[sbt] val taskCancelStrategy = SettingKey[State => TaskCancellationStrategy]("taskCancelStrategy", "Experimental task cancellation handler.", DTask)
 
-  // Experimental in sbt 0.13.2 to enable grabing semantic compile failures.
+  // Experimental in sbt 0.13.2 to enable grabbing semantic compile failures.
   private[sbt] val compilerReporter = TaskKey[xsbti.Reporter]("compilerReporter", "Experimental hook to listen (or send) compilation failure messages.", DTask)
 
   val triggeredBy = Def.triggeredBy

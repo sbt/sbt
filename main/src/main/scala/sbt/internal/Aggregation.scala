@@ -5,17 +5,16 @@ package sbt
 package internal
 
 import Def.ScopedKey
-import Keys.{ aggregate, showSuccess, showTiming, timingFormat }
+import Keys.{ showSuccess, showTiming, timingFormat }
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.{ Dag, HList, Relation, Settings, Show, Util }
 import sbt.util.Logger
 import java.net.URI
 import Parser.{ seq, failure, success }
-import collection.mutable
-import std.Transform.{ DummyTaskMap, TaskAndValue }
+import std.Transform.DummyTaskMap
 
 sealed trait Aggregation
-final object Aggregation {
+object Aggregation {
   final case class ShowConfig(settingValues: Boolean, taskValues: Boolean, print: String => Unit, success: Boolean)
   final case class Complete[T](start: Long, stop: Long, results: sbt.Result[Seq[KeyValue[T]]], state: State)
   final case class KeyValue[+T](key: ScopedKey[_], value: T)
@@ -111,7 +110,6 @@ final object Aggregation {
     {
       val parsers = for (KeyValue(k, it) <- inputs) yield it.parser(s).map(v => KeyValue(k, v))
       Command.applyEffect(seq(parsers)) { roots =>
-        import EvaluateTask._
         runTasks(s, structure, roots, DummyTaskMap(Nil), show)
       }
     }

@@ -8,7 +8,7 @@ import sbt.internal.util.{ Show, Types }
 
 import java.util.regex.Pattern
 import java.io.File
-import Keys.{ Streams, TaskStreams }
+import Keys.Streams
 import Def.ScopedKey
 import Aggregation.{ KeyValue, Values }
 import Types.idFun

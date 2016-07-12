@@ -84,7 +84,7 @@ object BuildLoader {
     }
 
   def componentLoader: Loader = (info: LoadInfo) => {
-    import info.{ components, config, staging, state, uri }
+    import info.{ config, staging, state, uri }
     val cs = info.components
     for {
       resolve <- cs.resolver(new ResolveInfo(uri, staging, config, state))

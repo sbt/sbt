@@ -8,7 +8,6 @@ import scala.sys.process.{ BasicIO, ProcessIO, ProcessBuilder }
 
 import sbt.internal.util.AList
 import sbt.internal.util.Types._
-import Task._
 import java.io.{ BufferedInputStream, BufferedReader, File, InputStream }
 import sbt.io.IO
 

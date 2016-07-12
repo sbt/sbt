@@ -1,7 +1,7 @@
 package sbt
 package std
 
-import Def.{ Initialize, Setting }
+import Def.Initialize
 import sbt.internal.util.Types.{ idFun, Id }
 import sbt.internal.util.AList
 import sbt.internal.util.appmacro.{ Convert, Converted, Instance, MixedBuilder, MonadInstance }
@@ -14,8 +14,6 @@ object InitializeInstance extends MonadInstance {
   def pure[T](t: () => T): Initialize[T] = Def.pure(t)
 }
 
-import language.experimental.macros
-import scala.reflect._
 import reflect.macros._
 
 object InitializeConvert extends Convert {

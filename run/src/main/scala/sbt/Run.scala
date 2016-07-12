@@ -4,7 +4,6 @@
 package sbt
 
 import java.io.File
-import java.net.{ URL, URLClassLoader }
 import java.lang.reflect.{ Method, Modifier }
 import Modifier.{ isPublic, isStatic }
 import sbt.internal.inc.classpath.ClasspathUtilities

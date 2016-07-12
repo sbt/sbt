@@ -13,8 +13,6 @@ import Def.{ ScopedKey, Setting }
 import Scope.GlobalScope
 import sbt.internal.parser.SbtParser
 
-import scala.annotation.tailrec
-
 import sbt.io.IO
 
 /**

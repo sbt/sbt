@@ -32,7 +32,7 @@ final class xMain extends xsbti.AppMain {
     {
       import BasicCommands.early
       import BasicCommandStrings.runEarly
-      import BuiltinCommands.{ initialize, defaults }
+      import BuiltinCommands.defaults
       import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
       runManaged(initialState(configuration,
         Seq(defaults, early),

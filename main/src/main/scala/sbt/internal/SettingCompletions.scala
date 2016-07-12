@@ -5,12 +5,10 @@ import sbt.internal.util.{ AttributeKey, complete, Relation, Settings, Show, Typ
 
 import sbt.librarymanagement.Configuration
 
-import java.io.File
-import java.net.URI
 import Project._
 import Def.{ ScopedKey, Setting }
-import Scope.{ GlobalScope, ThisScope }
-import Types.{ const, idFun, Id }
+import Scope.GlobalScope
+import Types.{ const, idFun }
 import complete._
 import DefaultParsers._
 

@@ -4,7 +4,6 @@ package internal
 import sbt.librarymanagement.{ Configuration, Configurations, ModuleID, Resolver, SbtArtifacts, UpdateReport }
 import sbt.internal.util.Attributed
 import Def.{ ScopedKey, Setting }
-import Scoped._
 import Keys._
 import Configurations.{ Compile, Runtime }
 import java.io.File

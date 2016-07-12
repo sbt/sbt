@@ -7,7 +7,8 @@ import java.io.File
 import java.net.URI
 import java.util.Locale
 import Project._
-import Keys.{ appConfiguration, stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, shellPrompt, thisProject, thisProjectRef, watch }
+import Keys.{ stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings,
+  shellPrompt, watch }
 import Scope.{ GlobalScope, ThisScope }
 import Def.{ Flattened, Initialize, ScopedKey, Setting }
 import sbt.internal.{ Load, BuildStructure, LoadedBuild, LoadedBuildUnit, SettingGraph, SettingCompletions, AddSettings, SessionSettings }
@@ -611,7 +612,6 @@ object Project extends ProjectExtra {
       (i, Keys.resolvedScoped)((t, scoped) => tx(t, (state, value) => set(resolveContext(key, scoped.scope, state), state, value)))
   }
 
-  import scala.reflect._
   import reflect.macros._
 
   def projectMacroImpl(c: Context): c.Expr[Project] =
