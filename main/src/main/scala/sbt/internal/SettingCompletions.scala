@@ -56,7 +56,6 @@ private[sbt] object SettingCompletions {
       import extracted._
       val append = Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
       val newSession = session.appendSettings(append map (a => (a, arg.split('\n').toList)))
-      val struct = extracted.structure
       val r = relation(newSession.mergeSettings, true)(structure.delegates, structure.scopeLocal, implicitly)
       setResult(newSession, r, append)
     }
@@ -111,8 +110,7 @@ private[sbt] object SettingCompletions {
    */
   def settingParser(settings: Settings[Scope], rawKeyMap: Map[String, AttributeKey[_]], context: ResolvedProject): Parser[String] =
     {
-      val cutoff = KeyRanks.MainCutoff
-      val keyMap: Map[String, AttributeKey[_]] = rawKeyMap.map { case (k, v) => (keyScalaID(k), v) } toMap;
+      val keyMap: Map[String, AttributeKey[_]] = rawKeyMap.map { case (k, v) => (keyScalaID(k), v) }.toMap
       def inputScopedKey(pred: AttributeKey[_] => Boolean): Parser[ScopedKey[_]] =
         scopedKeyParser(keyMap.filter { case (_, k) => pred(k) }, settings, context)
       val full = for {

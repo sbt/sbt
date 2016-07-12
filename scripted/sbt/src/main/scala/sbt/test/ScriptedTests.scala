@@ -109,9 +109,9 @@ object ScriptedTests extends ScriptedRunner {
   def main(args: Array[String]): Unit = {
     val directory = new File(args(0))
     val buffer = args(1).toBoolean
-    val sbtVersion = args(2)
-    val defScalaVersion = args(3)
-    val buildScalaVersions = args(4)
+    //  val sbtVersion = args(2)
+    //  val defScalaVersion = args(3)
+    //  val buildScalaVersions = args(4)
     val bootProperties = new File(args(5))
     val tests = args.drop(6)
     val logger = ConsoleLogger()

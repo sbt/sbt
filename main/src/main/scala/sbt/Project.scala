@@ -385,11 +385,11 @@ object Project extends ProjectExtra {
     {
       val structure = Project.structure(s)
       val ref = Project.current(s)
-      val project = Load.getProject(structure.units, ref.build, ref.project)
+      Load.getProject(structure.units, ref.build, ref.project)
       val msg = Keys.onLoadMessage in ref get structure.data getOrElse ""
       if (!msg.isEmpty) s.log.info(msg)
       def get[T](k: SettingKey[T]): Option[T] = k in ref get structure.data
-      def commandsIn(axis: ResolvedReference) = commands in axis get structure.data toList;
+      def commandsIn(axis: ResolvedReference) = commands in axis get structure.data toList
 
       val allCommands = commandsIn(ref) ++ commandsIn(BuildRef(ref.build)) ++ (commands in Global get structure.data toList)
       val history = get(historyPath) flatMap idFun

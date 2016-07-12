@@ -77,7 +77,7 @@ object ScriptedPlugin extends AutoPlugin {
 
   def scriptedTask: Initialize[InputTask[Unit]] = Def.inputTask {
     val args = scriptedParser(sbtTestDirectory.value).parsed
-    val prereq: Unit = scriptedDependencies.value
+    scriptedDependencies.value
     try {
       scriptedRun.value.invoke(
         scriptedTests.value, sbtTestDirectory.value, scriptedBufferLog.value: java.lang.Boolean,

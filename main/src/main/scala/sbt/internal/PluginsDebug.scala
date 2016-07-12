@@ -215,15 +215,15 @@ private[sbt] object PluginsDebug {
     val minRequiredPlugins = plugins(minModel)
 
     // The presence of any one of these plugins would deactivate `plugin`
-    val minAbsentPlugins = excludes(minModel).toSet
+    val minAbsentPlugins = excludes(minModel)
 
     // Plugins that must be both activated and deactivated for `plugin` to activate.
     //  A non-empty list here cannot be satisfied and is an error.
     val contradictions = minAbsentPlugins & minRequiredPlugins
 
-    if(contradictions.nonEmpty) PluginImpossible(plugin, context, contradictions)
+    if (contradictions.nonEmpty) PluginImpossible(plugin, context, contradictions)
     else {
-      // Plguins that the user has to add to the currently selected plugins in order to enable `plugin`.
+      // Plugins that the user has to add to the currently selected plugins in order to enable `plugin`.
       val addToExistingPlugins = minRequiredPlugins -- initialPlugins
 
       // Plugins that are currently excluded that need to be allowed.
@@ -232,9 +232,7 @@ private[sbt] object PluginsDebug {
       // The model that results when the minimal plugins are enabled and the minimal plugins are excluded.
       //  This can include more plugins than just `minRequiredPlugins` because the plguins required for `plugin`
       //  might activate other plugins as well.
-      val modelForMin = context.deducePlugin(and(includeAll(minRequiredPlugins), excludeAll(minAbsentPlugins)), context.log)
-
-      val incrementalInputs = and( includeAll(minRequiredPlugins ++ initialPlugins), excludeAll(minAbsentPlugins ++ initialExcludes -- minRequiredPlugins))
+      val incrementalInputs = and(includeAll(minRequiredPlugins ++ initialPlugins), excludeAll(minAbsentPlugins ++ initialExcludes -- minRequiredPlugins))
       val incrementalModel = context.deducePlugin(incrementalInputs, context.log).toSet
 
       // Plugins that are newly enabled as a result of selecting the plugins needed for `plugin`, but aren't strictly required for `plugin`.

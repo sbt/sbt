@@ -55,7 +55,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
   lazy val settings =
     {
       val s = new Settings(println)
-      val command = new CompilerCommand(options.toList, s)
+      new CompilerCommand(options.toList, s) // this side-effects on Settings..
       s
     }
   lazy val reporter = mkReporter(settings)
@@ -258,11 +258,6 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
     backing match {
       case None      => Nil
       case Some(dir) => dir listFiles moduleFileFilter(moduleName)
-    }
-  private[this] def getClassFiles(backing: Option[File], moduleName: String): Seq[File] =
-    backing match {
-      case None      => Nil
-      case Some(dir) => dir listFiles moduleClassFilter(moduleName)
     }
   private[this] def moduleFileFilter(moduleName: String) = new java.io.FilenameFilter {
     def accept(dir: File, s: String) =

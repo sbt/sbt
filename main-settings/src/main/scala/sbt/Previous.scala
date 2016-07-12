@@ -2,7 +2,7 @@ package sbt
 
 import Def.{ Initialize, ScopedKey, streamsManagerKey }
 import Previous._
-import sbt.internal.util.{ ~>, AttributeKey, IMap, RMap }
+import sbt.internal.util.{ ~>, IMap, RMap }
 
 import java.io.{ InputStream, OutputStream }
 
@@ -46,7 +46,6 @@ object Previous {
 
   private[sbt] val references = SettingKey[References]("previous-references", "Collects all static references to previous values of tasks.", KeyRanks.Invisible)
   private[sbt] val cache = TaskKey[Previous]("previous-cache", "Caches previous values of tasks read from disk for the duration of a task execution.", KeyRanks.Invisible)
-  private[this] val previousReferenced = AttributeKey[Referenced[_]]("previous-referenced")
 
   /** Records references to previous task value. This should be completely populated after settings finish loading. */
   private[sbt] final class References {

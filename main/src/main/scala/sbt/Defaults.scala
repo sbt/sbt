@@ -776,7 +776,6 @@ object Defaults extends BuildCommon {
   def runnerInit: Initialize[Task[ScalaRun]] = Def.task {
     val tmp = taskTemporaryDirectory.value
     val resolvedScope = resolvedScoped.value.scope
-    val structure = buildStructure.value
     val si = scalaInstance.value
     val s = streams.value
     val options = javaOptions.value
@@ -811,9 +810,6 @@ object Defaults extends BuildCommon {
       val cp = data(dependencyClasspath.value).toList
       val label = nameForSrc(configuration.value.name)
       val fiOpts = fileInputOptions.value
-      val logger: Logger = s.log
-      val maxer = maxErrors.value
-      val spms = sourcePositionMappers.value
       val reporter = (compilerReporter in compile).value
       (hasScala, hasJava) match {
         case (true, _) =>
@@ -1300,9 +1296,6 @@ object Classpaths {
       val uwConfig = (unresolvedWarningConfiguration in update).value
       val depDir = dependencyCacheDirectory.value
       withExcludes(out, mod.classifiers, lock(app)) { excludes =>
-        val uwConfig = (unresolvedWarningConfiguration in update).value
-        val logicalClock = LogicalClock(state.value.hashCode)
-        val depDir = dependencyCacheDirectory.value
         IvyActions.updateClassifiers(is, GetClassifiersConfiguration(mod, excludes, c.copy(artifactFilter = c.artifactFilter.invert), ivyScala.value, srcTypes, docTypes), uwConfig, LogicalClock(state.value.hashCode), Some(depDir), Vector.empty, s.log)
       }
     } tag (Tags.Update, Tags.Network)
@@ -1493,7 +1486,7 @@ object Classpaths {
           val ew = EvictionWarning(module, ewo, result, log)
           ew.lines foreach { log.warn(_) }
           ew.infoAllTheThings foreach { log.info(_) }
-          val cw = CompatibilityWarning.run(compatWarning, module, mavenStyle, log)
+          CompatibilityWarning.run(compatWarning, module, mavenStyle, log)
           result
       }
       def uptodate(inChanged: Boolean, out: UpdateReport): Boolean =
@@ -1622,8 +1615,8 @@ object Classpaths {
 
   def analyzed[T](data: T, analysis: CompileAnalysis) = Attributed.blank(data).put(Keys.analysis, analysis)
   def makeProducts: Initialize[Task[Seq[File]]] = Def.task {
-    val x1 = compile.value
-    val x2 = copyResources.value
+    compile.value
+    copyResources.value
     classDirectory.value :: Nil
   }
   // This is a variant of exportProductsTask with tracking

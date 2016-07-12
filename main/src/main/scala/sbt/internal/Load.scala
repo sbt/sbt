@@ -58,10 +58,9 @@ private[sbt] object Load {
       val compilers = Compiler.compilers(ClasspathOptionsUtil.boot, ivyConfiguration)(state.configuration, log)
       val evalPluginDef = EvaluateTask.evalPluginDef(log) _
       val delegates = defaultDelegates
-      val initialID = baseDirectory.getName
       val pluginMgmt = PluginManagement(loader)
       val inject = InjectSettings(injectGlobal(state), Nil, const(Nil))
-      new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, delegates,
+      LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, delegates,
         EvaluateTask.injectStreams, pluginMgmt, inject, None, Nil, log)
     }
   private def bootIvyHome(app: xsbti.AppConfiguration): Option[File] =

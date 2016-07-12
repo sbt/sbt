@@ -5,7 +5,6 @@ package sbt
 package internal
 
 import sbt.util.Logger
-import java.io.File
 import sbt.internal.inc.{ ClasspathOptionsUtil, ScalaInstance }
 
 object ConsoleProject {
@@ -36,7 +35,4 @@ object ConsoleProject {
     implicit def settingKeyEvaluate[T](s: SettingKey[T]): Evaluate[T] = new Evaluate(get(s))
   }
   final class Evaluate[T] private[sbt] (val eval: T)
-  private def bootIvyHome(app: xsbti.AppConfiguration): Option[File] =
-    try { Option(app.provider.scalaProvider.launcher.ivyHome) }
-    catch { case _: NoSuchMethodError => None }
 }

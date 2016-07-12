@@ -254,7 +254,6 @@ object EvaluateTask {
   def logIncomplete(result: Incomplete, state: State, streams: Streams): Unit = {
     val all = Incomplete linearize result
     val keyed = for (Incomplete(Some(key: ScopedKey[_]), _, msg, _, ex) <- all) yield (key, msg, ex)
-    val un = all.filter { i => i.node.isEmpty || i.message.isEmpty }
 
     import ExceptionCategory._
     for ((key, msg, Some(ex)) <- keyed) {
