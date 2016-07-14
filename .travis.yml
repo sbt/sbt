@@ -18,6 +18,7 @@ matrix:
 
 env:
   matrix:
+    - SBT_CMD="test:compile scalariformCheck"
     - SBT_CMD="mimaReportBinaryIssues"
     - SBT_CMD="safeUnitTests"
     - SBT_CMD="otherUnitTests"
@@ -47,6 +48,6 @@ notifications:
 script:
   - sbt -J-XX:ReservedCodeCacheSize=128m "$SBT_CMD"
 
-  # Tricks to avoid unnecessary cache updates
-  - find $HOME/.sbt -name "*.lock" | xargs rm
-  - find $HOME/.ivy2 -name "ivydata-*.properties" | xargs rm
+before_cache:
+  - find $HOME/.ivy2 -name "ivydata-*.properties" -print -delete
+  - find $HOME/.sbt  -name "*.lock"               -print -delete

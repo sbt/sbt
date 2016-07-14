@@ -7,9 +7,23 @@ import java.io.File
 import java.net.URL
 import scala.concurrent.duration.{ FiniteDuration, Duration }
 import Def.ScopedKey
-import sbt.internal.inc.ScalaInstance
-import xsbti.compile.{ DefinesClass, ClasspathOptions, CompileAnalysis, CompileOptions, CompileOrder,
-  Compilers, CompileResult, GlobalsCache, IncOptions, Inputs, PreviousResult, Setup }
+import sbt.internal.util.complete._
+import sbt.internal.inc.{ MixedAnalyzingCompiler, ScalaInstance }
+import std.TaskExtra._
+import xsbti.compile.{
+  DefinesClass,
+  ClasspathOptions,
+  CompileAnalysis,
+  CompileOptions,
+  CompileOrder,
+  Compilers,
+  CompileResult,
+  GlobalsCache,
+  IncOptions,
+  Inputs,
+  PreviousResult,
+  Setup
+}
 import scala.xml.{ Node => XNode, NodeSeq }
 import org.apache.ivy.core.module.{ descriptor, id }
 import descriptor.ModuleDescriptor, id.ModuleRevisionId

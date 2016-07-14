@@ -49,11 +49,36 @@ import Keys._
 
 // incremental compiler
 import xsbt.api.Discovery
-import xsbti.compile.{ Compilers, CompileAnalysis, CompileOptions, CompileOrder,
-  CompileResult, DefinesClass, IncOptionsUtil, Inputs, MiniSetup, PerClasspathEntryLookup,
-  PreviousResult, Setup, TransactionalManagerType }
-import sbt.internal.inc.{ AnalyzingCompiler, Analysis, CompilerCache, FileValueCache,
-  Locate, LoggerReporter, MixedAnalyzingCompiler, ScalaInstance, ClasspathOptionsUtil }
+import xsbti.compile.{
+  Compilers,
+  ClasspathOptions,
+  CompileAnalysis,
+  CompileOptions,
+  CompileOrder,
+  CompileResult,
+  DefinesClass,
+  IncOptions,
+  IncOptionsUtil,
+  Inputs,
+  MiniSetup,
+  PerClasspathEntryLookup,
+  PreviousResult,
+  Setup,
+  TransactionalManagerType
+}
+import sbt.internal.inc.{
+  AnalyzingCompiler,
+  Analysis,
+  ClassfileManager,
+  CompilerCache,
+  FileValueCache,
+  IncrementalCompilerImpl,
+  Locate,
+  LoggerReporter,
+  MixedAnalyzingCompiler,
+  ScalaInstance,
+  ClasspathOptionsUtil
+}
 
 object Defaults extends BuildCommon {
   final val CacheDirectoryName = "cache"
