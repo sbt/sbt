@@ -11,10 +11,7 @@ import sbt.internal.util.Types.{ :+:, idFun }
 import java.io.File
 import java.{ util => ju }
 import java.net.URL
-import scala.xml.NodeSeq
 import sbinary.{ DefaultProtocol, Format }
-// import sbt.internal.librarymanagement.{ ExternalIvyConfiguration, IvyConfiguration, IvyPaths, IvyScala, ModuleSettings, RetrieveConfiguration, SbtExclusionRule, UpdateConfiguration, UpdateReport }
-// import sbt.librarymanagement.{ Configuration, ExclusionRule, CrossVersion, ModuleID, Patterns }
 import sbt.internal.librarymanagement._
 import sbt.librarymanagement._
 import sbt.librarymanagement.RepositoryHelpers._

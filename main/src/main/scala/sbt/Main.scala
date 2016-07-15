@@ -32,7 +32,7 @@ final class xMain extends xsbti.AppMain {
     {
       import BasicCommands.early
       import BasicCommandStrings.runEarly
-      import BuiltinCommands.{ initialize, defaults }
+      import BuiltinCommands.defaults
       import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
       runManaged(initialState(configuration,
         Seq(defaults, early),
@@ -286,7 +286,7 @@ object BuiltinCommands {
 
   def lastGrep = Command(LastGrepCommand, lastGrepBrief, lastGrepDetailed)(lastGrepParser) {
     case (s, (pattern, Some(sks))) =>
-      val (str, ref, display) = extractLast(s)
+      val (str, _, display) = extractLast(s)
       Output.lastGrep(sks, str.streams(s), pattern, printLast(s))(display)
       keepLastLog(s)
     case (s, (pattern, None)) =>
@@ -353,7 +353,7 @@ object BuiltinCommands {
 
   private[this] def lastImpl(s: State, sks: AnyKeys, sid: Option[String]): State =
     {
-      val (str, ref, display) = extractLast(s)
+      val (str, _, display) = extractLast(s)
       Output.last(sks, str.streams(s), printLast(s), sid)(display)
       keepLastLog(s)
     }

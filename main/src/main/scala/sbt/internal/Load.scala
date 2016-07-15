@@ -9,25 +9,24 @@ import sbt.internal.librarymanagement.{ InlineIvyConfiguration, IvyPaths }
 
 import java.io.File
 import java.net.{ URI, URL }
-import compiler.{ Eval, EvalImports }
+import compiler.Eval
 import scala.annotation.tailrec
 import collection.mutable
-import sbt.internal.inc.{ Analysis, ClasspathOptionsUtil, FileValueCache, Locate, ModuleUtilities }
+import sbt.internal.inc.{ Analysis, ClasspathOptionsUtil, ModuleUtilities }
 import sbt.internal.inc.classpath.ClasspathUtilities
 import Project.inScope
 import Def.{ isDummy, ScopedKey, ScopeLocal, Setting }
 import Keys.{ appConfiguration, baseDirectory, configuration, exportedProducts, fullClasspath, fullResolvers, 
-  loadedBuild, onLoadMessage, pluginData, resolvedScoped, sbtPlugin, scalacOptions, streams, taskDefinitionKey,
+  loadedBuild, onLoadMessage, pluginData, resolvedScoped, sbtPlugin, scalacOptions, streams,
   thisProject, thisProjectRef, update }
 import tools.nsc.reporters.ConsoleReporter
 import sbt.internal.util.{ Attributed, Eval => Ev, Settings, Show, ~> }
 import sbt.internal.util.Attributed.data
-import Scope.{ GlobalScope, ThisScope }
+import Scope.GlobalScope
 import sbt.internal.util.Types.const
 import BuildPaths._
 import BuildStreams._
 import sbt.io.{ GlobFilter, IO, Path }
-import sbt.internal.io.Alternatives
 import sbt.util.Logger
 import xsbti.compile.Compilers
 
@@ -59,10 +58,9 @@ private[sbt] object Load {
       val compilers = Compiler.compilers(ClasspathOptionsUtil.boot, ivyConfiguration)(state.configuration, log)
       val evalPluginDef = EvaluateTask.evalPluginDef(log) _
       val delegates = defaultDelegates
-      val initialID = baseDirectory.getName
       val pluginMgmt = PluginManagement(loader)
       val inject = InjectSettings(injectGlobal(state), Nil, const(Nil))
-      new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, delegates,
+      LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, delegates,
         EvaluateTask.injectStreams, pluginMgmt, inject, None, Nil, log)
     }
   private def bootIvyHome(app: xsbti.AppConfiguration): Option[File] =
@@ -304,7 +302,6 @@ private[sbt] object Load {
     unit.definitions.builds.flatMap(_.buildLoaders).toList match {
       case Nil => loaders
       case x :: xs =>
-        import Alternatives._
         val resolver = (x /: xs) { _ | _ }
         if (isRoot) loaders.setRoot(resolver) else loaders.addNonRoot(unit.uri, resolver)
     }
@@ -731,7 +728,7 @@ private[sbt] object Load {
       merge(fs.sortBy(_.getName).map(memoLoadSettingsFile))
 
     // Finds all the build files associated with this project
-    import AddSettings.{ User, SbtFiles, DefaultSbtFiles, AutoPlugins, Sequence, BuildScalaFiles }
+    import AddSettings.{ SbtFiles, DefaultSbtFiles, Sequence }
     def associatedFiles(auto: AddSettings): Seq[File] = auto match {
       case sf: SbtFiles        => sf.files.map(f => IO.resolve(projectBase, f)).filterNot(_.isHidden)
       case sf: DefaultSbtFiles => defaultSbtFiles.filter(sf.include).filterNot(_.isHidden)

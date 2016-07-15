@@ -2,11 +2,10 @@ package sbt
 package std
 
 import language.experimental.macros
-import scala.reflect._
 import reflect.macros._
 import reflect.internal.annotations.compileTimeOnly
 
-import Def.{ Initialize, ScopedKey }
+import Def.Initialize
 import sbt.internal.util.appmacro.ContextUtil
 import sbt.internal.util.complete.Parser
 

@@ -5,10 +5,9 @@ import sbt.internal.util.{ AttributeKey, Dag, Types }
 
 import sbt.librarymanagement.Configuration
 
-import Types.{ const, idFun }
+import Types.const
 import Def.Initialize
 import java.net.URI
-import ScopeFilter.Data
 
 object ScopeFilter {
   type ScopeFilter = Base[Scope]

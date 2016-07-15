@@ -5,7 +5,6 @@ package sbt
 
 import sbt.internal.util.Types._
 import sbt.internal.util.{ ~>, AList, AttributeKey, AttributeMap }
-import Task._
 import ConcurrentRestrictions.{ Tag, TagMap, tagsKey }
 
 // Action, Task, and Info are intentionally invariant in their type parameter.

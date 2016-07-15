@@ -4,7 +4,7 @@
 package sbt
 
 import java.io.File
-import sbt.internal.inc.{ AnalyzingCompiler, RawCompiler, ScalaInstance }
+import sbt.internal.inc.{ RawCompiler, ScalaInstance }
 
 import Predef.{ conforms => _, _ }
 import sbt.io.syntax._
@@ -12,7 +12,7 @@ import sbt.io.IO
 
 import sbinary.DefaultProtocol.FileFormat
 import sbt.internal.util.Types.:+:
-import sbt.internal.util.Cache.{ defaultEquiv, hConsCache, hNilCache, IntFormat, seqCache, seqFormat, streamFormat, StringFormat, UnitFormat, wrapIn }
+import sbt.internal.util.Cache.{ defaultEquiv, hConsCache, hNilCache, IntFormat, seqCache, StringFormat }
 import sbt.internal.util.Tracked.{ inputChanged, outputChanged }
 import sbt.internal.util.{ FilesInfo, HashFileInfo, HNil, ModifiedFileInfo, PlainFileInfo }
 import sbt.internal.util.FilesInfo.{ exists, hash, lastModified }

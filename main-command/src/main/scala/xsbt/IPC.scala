@@ -3,7 +3,7 @@
  */
 package xsbt
 
-import java.io.{ BufferedReader, BufferedWriter, InputStream, InputStreamReader, OutputStreamWriter, OutputStream }
+import java.io.{ BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter }
 import java.net.{ InetAddress, ServerSocket, Socket }
 
 import scala.util.control.NonFatal

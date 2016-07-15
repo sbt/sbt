@@ -35,7 +35,9 @@ object Util {
         "-Yinline-warnings",
         "-Yno-adapted-args",
         "-Ywarn-dead-code",
-        "-Ywarn-numeric-widen"
+        "-Ywarn-numeric-widen",
+        "-Ywarn-unused",
+        "-Ywarn-unused-import"
       )
     },
     scalacOptions <++= scalaVersion map CrossVersion.partialVersion map {

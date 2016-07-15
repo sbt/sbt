@@ -13,8 +13,6 @@ import Def.{ ScopedKey, Setting }
 import Scope.GlobalScope
 import sbt.internal.parser.SbtParser
 
-import scala.annotation.tailrec
-
 import sbt.io.IO
 
 /**
@@ -113,7 +111,6 @@ private[sbt] object EvaluateConfigurations {
         if (parsed.definitions.isEmpty) (Nil, DefinedSbtValues.empty) else {
           val definitions = evaluateDefinitions(eval, name, parsed.imports, parsed.definitions, Some(file))
           val imp = BuildUtil.importAllRoot(definitions.enclosingModule :: Nil)
-          val projs = (loader: ClassLoader) => definitions.values(loader).map(p => resolveBase(file.getParentFile, p.asInstanceOf[Project]))
           (imp, DefinedSbtValues(definitions))
         }
       val allImports = importDefs.map(s => (s, -1)) ++ parsed.imports

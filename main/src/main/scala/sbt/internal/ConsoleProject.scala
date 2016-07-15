@@ -5,10 +5,7 @@ package sbt
 package internal
 
 import sbt.util.Logger
-import java.io.File
-import sbt.librarymanagement.Resolver
-import sbt.internal.librarymanagement.{ InlineIvyConfiguration, IvyPaths }
-import sbt.internal.inc.{ AnalyzingCompiler, ClasspathOptionsUtil, IncrementalCompilerImpl, ScalaInstance }
+import sbt.internal.inc.{ ClasspathOptionsUtil, ScalaInstance }
 
 object ConsoleProject {
   def apply(state: State, extra: String, cleanupCommands: String = "", options: Seq[String] = Nil)(implicit log: Logger): Unit = {
@@ -38,7 +35,4 @@ object ConsoleProject {
     implicit def settingKeyEvaluate[T](s: SettingKey[T]): Evaluate[T] = new Evaluate(get(s))
   }
   final class Evaluate[T] private[sbt] (val eval: T)
-  private def bootIvyHome(app: xsbti.AppConfiguration): Option[File] =
-    try { Option(app.provider.scalaProvider.launcher.ivyHome) }
-    catch { case _: NoSuchMethodError => None }
 }

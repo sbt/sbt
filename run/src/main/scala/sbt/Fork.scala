@@ -7,7 +7,7 @@ import java.io.{ File, OutputStream }
 import java.util.Locale
 
 import sbt.util.Logger
-import scala.sys.process.{ Process, ProcessBuilder }
+import scala.sys.process.Process
 
 /**
  * Configures forking.

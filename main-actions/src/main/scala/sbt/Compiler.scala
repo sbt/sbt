@@ -4,14 +4,13 @@
 package sbt
 
 import sbt.internal.inc.javac.JavaTools
-import sbt.internal.inc.{ Analysis, AnalyzingCompiler, CompileOutput, ComponentCompiler, IncrementalCompilerImpl, Locate, LoggerReporter, ScalaInstance }
+import sbt.internal.inc.{ AnalyzingCompiler, ComponentCompiler, ScalaInstance }
 import xsbti.{ Logger => _, _ }
-import xsbti.compile.{ ClasspathOptions, CompileOrder, Compilers, CompileResult, GlobalsCache, IncOptions, Inputs, MiniSetup }
-import CompileOrder.{ JavaThenScala, Mixed, ScalaThenJava }
+import xsbti.compile.{ ClasspathOptions, Compilers, CompileResult, Inputs }
 import java.io.File
 
 import sbt.internal.librarymanagement.{ ComponentManager, IvyConfiguration }
-import sbt.librarymanagement.{ ModuleID, CrossVersion, VersionNumber }
+import sbt.librarymanagement.{ ModuleID, VersionNumber }
 import sbt.util.Logger
 
 object Compiler {

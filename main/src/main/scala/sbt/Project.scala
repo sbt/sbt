@@ -7,7 +7,8 @@ import java.io.File
 import java.net.URI
 import java.util.Locale
 import Project._
-import Keys.{ appConfiguration, stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, shellPrompt, thisProject, thisProjectRef, watch }
+import Keys.{ stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings,
+  shellPrompt, watch }
 import Scope.{ GlobalScope, ThisScope }
 import Def.{ Flattened, Initialize, ScopedKey, Setting }
 import sbt.internal.{ Load, BuildStructure, LoadedBuild, LoadedBuildUnit, SettingGraph, SettingCompletions, AddSettings, SessionSettings }
@@ -384,11 +385,11 @@ object Project extends ProjectExtra {
     {
       val structure = Project.structure(s)
       val ref = Project.current(s)
-      val project = Load.getProject(structure.units, ref.build, ref.project)
+      Load.getProject(structure.units, ref.build, ref.project)
       val msg = Keys.onLoadMessage in ref get structure.data getOrElse ""
       if (!msg.isEmpty) s.log.info(msg)
       def get[T](k: SettingKey[T]): Option[T] = k in ref get structure.data
-      def commandsIn(axis: ResolvedReference) = commands in axis get structure.data toList;
+      def commandsIn(axis: ResolvedReference) = commands in axis get structure.data toList
 
       val allCommands = commandsIn(ref) ++ commandsIn(BuildRef(ref.build)) ++ (commands in Global get structure.data toList)
       val history = get(historyPath) flatMap idFun
@@ -611,7 +612,6 @@ object Project extends ProjectExtra {
       (i, Keys.resolvedScoped)((t, scoped) => tx(t, (state, value) => set(resolveContext(key, scoped.scope, state), state, value)))
   }
 
-  import scala.reflect._
   import reflect.macros._
 
   def projectMacroImpl(c: Context): c.Expr[Project] =

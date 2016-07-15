@@ -12,9 +12,9 @@ import sbt.io.syntax._
 import sbt.io.IO
 
 import sbinary.{ DefaultProtocol, Format }
-import DefaultProtocol.{ FileFormat, immutableMapFormat, StringFormat, UnitFormat }
+import DefaultProtocol.{ FileFormat, immutableMapFormat, StringFormat }
 import sbt.internal.util.{ Cache, FileInfo, FilesInfo, HNil, ModifiedFileInfo, PlainFileInfo, Tracked }
-import Cache.{ defaultEquiv, hConsCache, hNilCache, streamFormat, wrapIn }
+import Cache.{ defaultEquiv, hConsCache, hNilCache, streamFormat }
 import Tracked.{ inputChanged, outputChanged }
 import FileInfo.exists
 import FilesInfo.lastModified

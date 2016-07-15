@@ -3,8 +3,6 @@ package internal
 
 import sbt.internal.util.AttributeKey
 
-import java.net.URI
-
 object Resolve {
   def apply(index: BuildUtil[_], current: ScopeAxis[Reference], key: AttributeKey[_], mask: ScopeMask): Scope => Scope =
     {

@@ -1,8 +1,6 @@
 package sbt
 package std
 
-import language.experimental.macros
-import scala.reflect._
 import reflect.macros._
 
 private[sbt] object KeyMacro {
@@ -21,7 +19,7 @@ private[sbt] object KeyMacro {
 
   def keyImpl[T: c.WeakTypeTag, S: c.WeakTypeTag](c: Context)(f: (c.Expr[String], c.Expr[Manifest[T]]) => c.Expr[S]): c.Expr[S] =
     {
-      import c.universe.{ Apply => ApplyTree, _ }
+      import c.universe._
       val enclosingValName = definingValName(c, methodName => s"""$methodName must be directly assigned to a val, such as `val x = $methodName[Int]("description")`.""")
       val name = c.Expr[String](Literal(Constant(enclosingValName)))
       val mf = c.Expr[Manifest[T]](c.inferImplicitValue(weakTypeOf[Manifest[T]]))

@@ -10,14 +10,13 @@ import sbt.librarymanagement.{ Resolver, UpdateReport }
 
 import scala.concurrent.duration.Duration
 import java.io.File
-import Def.{ displayFull, dummyState, ScopedKey, Setting }
-import Keys.{ Streams, TaskStreams, dummyRoots, dummyStreamsManager, executionRoots, pluginData, streams,
-  streamsManager, taskDefinitionKey, transformState }
+import Def.{ dummyState, ScopedKey, Setting }
+import Keys.{ Streams, TaskStreams, dummyRoots, executionRoots, pluginData, streams,
+  streamsManager, transformState }
 import Project.richInitializeTask
-import Scope.{ GlobalScope, ThisScope }
-import sbt.internal.util.Types.const
+import Scope.GlobalScope
 import scala.Console.RED
-import std.Transform.{ DummyTaskMap, TaskAndValue }
+import std.Transform.DummyTaskMap
 import TaskName._
 
 @deprecated("Use EvaluateTaskConfig instead.", "0.13.5")
@@ -26,10 +25,8 @@ final case class EvaluateConfig(cancelable: Boolean, restrictions: Seq[Tags.Rule
 /**
  * An API that allows you to cancel executing tasks upon some signal.
  *
- *  For example, this is implemented by the TaskEngine; invoking `cancel()` allows you
- *  to cancel the current task exeuction.   A `TaskCancel` is passed to the
- *  [[TaskEvalautionCancelHandler]] which is responsible for calling `cancel()` when
- *  appropriate.
+ *  For example, this is implemented by the TaskEngine;
+ *  invoking `cancelAndShutdown()` allows you to cancel the current task execution.
  */
 trait RunningTaskEngine {
   /** Attempts to kill and shutdown the running task engine.*/
@@ -98,7 +95,7 @@ sealed trait EvaluateTaskConfig {
    */
   def minForcegcInterval: Duration
 }
-final object EvaluateTaskConfig {
+object EvaluateTaskConfig {
   @deprecated("Use the alternative that specifies minForcegcInterval", "0.13.9")
   def apply(restrictions: Seq[Tags.Rule],
     checkCycles: Boolean,
@@ -138,8 +135,7 @@ final case class PluginData(dependencyClasspath: Seq[Attributed[File]], definiti
 }
 
 object EvaluateTask {
-  import std.{ TaskExtra, Transform }
-  import TaskExtra._
+  import std.Transform
   import Keys.state
 
   private[sbt] def defaultProgress: ExecuteProgress[Task] =
@@ -258,7 +254,6 @@ object EvaluateTask {
   def logIncomplete(result: Incomplete, state: State, streams: Streams): Unit = {
     val all = Incomplete linearize result
     val keyed = for (Incomplete(Some(key: ScopedKey[_]), _, msg, _, ex) <- all) yield (key, msg, ex)
-    val un = all.filter { i => i.node.isEmpty || i.message.isEmpty }
 
     import ExceptionCategory._
     for ((key, msg, Some(ex)) <- keyed) {
@@ -300,7 +295,7 @@ object EvaluateTask {
 
   def runTask[T](root: Task[T], state: State, streams: Streams, triggers: Triggers[Task], config: EvaluateTaskConfig)(implicit taskToNode: NodeView[Task]): (State, Result[T]) =
     {
-      import ConcurrentRestrictions.{ completionService, TagMap, Tag, tagged, tagsKey }
+      import ConcurrentRestrictions.{ completionService, tagged, tagsKey }
 
       val log = state.log
       log.debug(s"Running task... Cancel: ${config.cancelStrategy}, check cycles: ${config.checkCycles}, forcegc: ${config.forceGarbageCollection}")

@@ -6,7 +6,6 @@ package internal
 
 import sbt.internal.util.Show
 
-import java.net.URI
 import java.io.File
 import Def.{ compiled, flattenLocals, ScopedKey }
 import Predef.{ any2stringadd => _, _ }

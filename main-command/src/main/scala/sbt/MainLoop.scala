@@ -5,7 +5,6 @@ package sbt
 
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
-import java.io.{ File, PrintWriter }
 import jline.TerminalFactory
 
 import sbt.io.Using

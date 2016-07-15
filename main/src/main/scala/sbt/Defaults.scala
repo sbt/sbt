@@ -3,7 +3,7 @@
  */
 package sbt
 
-import scala.concurrent.duration.{ FiniteDuration, Duration }
+import scala.concurrent.duration.FiniteDuration
 import sbt.internal._
 import sbt.internal.util.Attributed.data
 import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
@@ -29,7 +29,7 @@ import scala.util.control.NonFatal
 import org.apache.ivy.core.module.{ descriptor, id }
 import descriptor.ModuleDescriptor, id.ModuleRevisionId
 import java.io.{ File, PrintWriter }
-import java.net.{ URI, URL, MalformedURLException }
+import java.net.{ URI, URL }
 import java.util.concurrent.{ TimeUnit, Callable }
 import sbinary.DefaultProtocol.StringFormat
 import sbt.internal.util.Cache.seqFormat
@@ -49,11 +49,11 @@ import Keys._
 
 // incremental compiler
 import xsbt.api.Discovery
-import xsbti.compile.{ Compilers, ClasspathOptions, CompileAnalysis, CompileOptions, CompileOrder,
-  CompileResult, DefinesClass, IncOptions, IncOptionsUtil, Inputs, MiniSetup, PerClasspathEntryLookup,
+import xsbti.compile.{ Compilers, CompileAnalysis, CompileOptions, CompileOrder,
+  CompileResult, DefinesClass, IncOptionsUtil, Inputs, MiniSetup, PerClasspathEntryLookup,
   PreviousResult, Setup, TransactionalManagerType }
-import sbt.internal.inc.{ AnalyzingCompiler, Analysis, ClassfileManager, CompilerCache, FileValueCache,
-  IncrementalCompilerImpl, Locate, LoggerReporter, MixedAnalyzingCompiler, ScalaInstance, ClasspathOptionsUtil }
+import sbt.internal.inc.{ AnalyzingCompiler, Analysis, CompilerCache, FileValueCache,
+  Locate, LoggerReporter, MixedAnalyzingCompiler, ScalaInstance, ClasspathOptionsUtil }
 
 object Defaults extends BuildCommon {
   final val CacheDirectoryName = "cache"
@@ -755,7 +755,6 @@ object Defaults extends BuildCommon {
     }
   def runMainTask(classpath: Initialize[Task[Classpath]], scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[Unit]] =
     {
-      import DefaultParsers._
       val parser = loadForParser(discoveredMainClasses)((s, names) => runMainParser(s, names getOrElse Nil))
       Def.inputTask {
         val (mainClass, args) = parser.parsed
@@ -777,7 +776,6 @@ object Defaults extends BuildCommon {
   def runnerInit: Initialize[Task[ScalaRun]] = Def.task {
     val tmp = taskTemporaryDirectory.value
     val resolvedScope = resolvedScoped.value.scope
-    val structure = buildStructure.value
     val si = scalaInstance.value
     val s = streams.value
     val options = javaOptions.value
@@ -812,9 +810,6 @@ object Defaults extends BuildCommon {
       val cp = data(dependencyClasspath.value).toList
       val label = nameForSrc(configuration.value.name)
       val fiOpts = fileInputOptions.value
-      val logger: Logger = s.log
-      val maxer = maxErrors.value
-      val spms = sourcePositionMappers.value
       val reporter = (compilerReporter in compile).value
       (hasScala, hasJava) match {
         case (true, _) =>
@@ -1060,9 +1055,7 @@ object Defaults extends BuildCommon {
 }
 object Classpaths {
   import Keys._
-  import Scope.ThisScope
   import Defaults._
-  import Attributed.{ blank, blankSeq }
 
   def concatDistinct[T](a: ScopedTaskable[Seq[T]], b: ScopedTaskable[Seq[T]]): Initialize[Task[Seq[T]]] = (a, b) map { (x, y) => (x ++ y).distinct }
   def concat[T](a: ScopedTaskable[Seq[T]], b: ScopedTaskable[Seq[T]]): Initialize[Task[Seq[T]]] = (a, b) map (_ ++ _)
@@ -1286,7 +1279,6 @@ object Classpaths {
       ew
     },
     classifiersModule in updateClassifiers := {
-      import language.implicitConversions
       implicit val key = (m: ModuleID) => (m.organization, m.name, m.revision)
       val projectDeps = projectDependencies.value.iterator.map(key).toSet
       val externalModules = update.value.allModules.filterNot(m => projectDeps contains key(m))
@@ -1304,9 +1296,6 @@ object Classpaths {
       val uwConfig = (unresolvedWarningConfiguration in update).value
       val depDir = dependencyCacheDirectory.value
       withExcludes(out, mod.classifiers, lock(app)) { excludes =>
-        val uwConfig = (unresolvedWarningConfiguration in update).value
-        val logicalClock = LogicalClock(state.value.hashCode)
-        val depDir = dependencyCacheDirectory.value
         IvyActions.updateClassifiers(is, GetClassifiersConfiguration(mod, excludes, c.copy(artifactFilter = c.artifactFilter.invert), ivyScala.value, srcTypes, docTypes), uwConfig, LogicalClock(state.value.hashCode), Some(depDir), Vector.empty, s.log)
       }
     } tag (Tags.Update, Tags.Network)
@@ -1399,14 +1388,7 @@ object Classpaths {
       IvyActions.publish(module, config, s.log)
     } tag (Tags.Publish, Tags.Network)
 
-  import Cache._
-  import CacheIvy.{
-    classpathFormat, /*publishIC,*/ updateIC,
-    updateReportFormat,
-    excludeMap,
-    moduleIDSeqIC,
-    modulePositionMapFormat
-  }
+  import CacheIvy.{ updateIC, updateReportFormat, excludeMap, moduleIDSeqIC, modulePositionMapFormat }
 
   def withExcludes(out: File, classifiers: Seq[String], lock: xsbti.GlobalLock)(f: Map[ModuleID, Set[String]] => UpdateReport): UpdateReport =
     {
@@ -1504,7 +1486,7 @@ object Classpaths {
           val ew = EvictionWarning(module, ewo, result, log)
           ew.lines foreach { log.warn(_) }
           ew.infoAllTheThings foreach { log.info(_) }
-          val cw = CompatibilityWarning.run(compatWarning, module, mavenStyle, log)
+          CompatibilityWarning.run(compatWarning, module, mavenStyle, log)
           result
       }
       def uptodate(inChanged: Boolean, out: UpdateReport): Boolean =
@@ -1633,8 +1615,8 @@ object Classpaths {
 
   def analyzed[T](data: T, analysis: CompileAnalysis) = Attributed.blank(data).put(Keys.analysis, analysis)
   def makeProducts: Initialize[Task[Seq[File]]] = Def.task {
-    val x1 = compile.value
-    val x2 = copyResources.value
+    compile.value
+    copyResources.value
     classDirectory.value :: Nil
   }
   // This is a variant of exportProductsTask with tracking

@@ -2,7 +2,6 @@ package sbt
 package std
 
 import language.experimental.macros
-import scala.reflect._
 import reflect.macros._
 
 import Def.Initialize

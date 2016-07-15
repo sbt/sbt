@@ -7,7 +7,6 @@
  */
 package sbt
 
-import scala.collection.Set
 import scala.reflect.Manifest
 import scala.collection.concurrent.TrieMap
 
@@ -16,7 +15,6 @@ import Thread.currentThread
 import java.security.Permission
 import java.util.concurrent.{ ConcurrentHashMap => CMap }
 import java.lang.Integer.{ toHexString => hex }
-import java.lang.Long.{ toHexString => hexL }
 
 import sbt.util.Logger
 
@@ -94,7 +92,6 @@ object TrapExit {
 
   // interrupts the given thread, but first replaces the exception handler so that the InterruptedException is not printed
   private def safeInterrupt(thread: Thread, log: Logger): Unit = {
-    val name = thread.getName
     log.debug("Interrupting thread " + thread.getName)
     thread.setUncaughtExceptionHandler(new TrapInterrupt(thread.getUncaughtExceptionHandler))
     thread.interrupt

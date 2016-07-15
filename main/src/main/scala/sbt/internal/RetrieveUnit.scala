@@ -7,7 +7,6 @@ package internal
 import java.io.File
 import java.net.URI
 import sbt.internal.BuildLoader.ResolveInfo
-import Def.{ ScopedKey, Setting }
 
 object RetrieveUnit {
   def apply(info: ResolveInfo): Option[() => File] =

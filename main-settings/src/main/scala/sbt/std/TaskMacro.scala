@@ -3,17 +3,14 @@ package std
 
 import Def.{ Initialize, Setting }
 import sbt.internal.util.Types.{ const, idFun, Id }
-import TaskExtra.allM
-import sbt.internal.util.appmacro.{ ContextUtil, Convert, Converted, Instance, MixedBuilder, MonadInstance }
+import sbt.internal.util.appmacro.{ ContextUtil, Converted, Instance, MixedBuilder, MonadInstance }
 import Instance.Transform
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.internal.util.{ AList, LinePosition, NoPosition, SourcePosition }
 
 import language.experimental.macros
 import scala.annotation.tailrec
-import scala.reflect._
 import reflect.macros._
-import reflect.internal.annotations.compileTimeOnly
 import scala.reflect.internal.util.UndefinedPosition
 
 /** Instance for the monad/applicative functor for plain Tasks. */
