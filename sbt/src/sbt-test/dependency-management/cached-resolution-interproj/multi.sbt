@@ -9,32 +9,28 @@ def commonSettings: Seq[Def.Setting[_]] =
     resolvers += Resolver.sonatypeRepo("snapshots")
   )
 
-def cachedResolutionSettings: Seq[Def.Setting[_]] =
-  commonSettings ++ Seq(
-   updateOptions := updateOptions.value.withCachedResolution(true)
-  )
-
 lazy val transitiveTest = project.
-  settings(cachedResolutionSettings: _*).
   settings(
+    commonSettings,
     libraryDependencies += "junit" % "junit" % "4.11" % Test
   )
 
 lazy val transitiveTestDefault = project.
-  settings(cachedResolutionSettings: _*).
   settings(
+    commonSettings,
     libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.1"
   )
 
 lazy val a = project.
-dependsOn(transitiveTestDefault % Test, transitiveTest % "test->test").
-  settings(cachedResolutionSettings: _*)
+  dependsOn(transitiveTestDefault % Test, transitiveTest % "test->test").
+  settings(commonSettings)
 
 lazy val root = (project in file(".")).
   aggregate(a).
-  settings(
-    organization in ThisBuild := "org.example",
-    version in ThisBuild := "1.0",
+  settings(inThisBuild(Seq(
+    organization := "org.example",
+    version := "1.0",
+    updateOptions := updateOptions.value.withCachedResolution(true),
     check := {
       val ur = (update in a).value
       val acp = (externalDependencyClasspath in Compile in a).value.map {_.data.getName}
@@ -53,4 +49,4 @@ lazy val root = (project in file(".")).
         sys.error("junit NOT found when it should be included: " + atestcp.toString)
       }
     }
-  )
+  )))
