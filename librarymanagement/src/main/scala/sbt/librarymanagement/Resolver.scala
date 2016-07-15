@@ -174,7 +174,9 @@ object Resolver {
   private[sbt] def useSecureResolvers = sys.props.get("sbt.repository.secure") map { _.toLowerCase == "true" } getOrElse true
 
   val TypesafeRepositoryRoot = typesafeRepositoryRoot(useSecureResolvers)
-  val SbtPluginRepositoryRoot = sbtPluginRepositoryRoot(useSecureResolvers)
+  val SbtRepositoryRoot = sbtRepositoryRoot(useSecureResolvers)
+  @deprecated("Renamed to SbtRepositoryRoot.", "1.0.0")
+  val SbtPluginRepositoryRoot = SbtRepositoryRoot
   val SonatypeRepositoryRoot = "https://oss.sonatype.org/content/repositories"
   val JavaNet2RepositoryName = "java.net Maven2 Repository"
   val JavaNet2RepositoryRoot = javanet2RepositoryRoot(useSecureResolvers)
@@ -190,7 +192,7 @@ object Resolver {
   // TODO: This switch is only kept for backward compatibility. Hardcode to HTTPS in the future.
   private[sbt] def typesafeRepositoryRoot(secure: Boolean) = (if (secure) "https" else "http") + "://repo.typesafe.com/typesafe"
   // TODO: This switch is only kept for backward compatibility. Hardcode to HTTPS in the future.
-  private[sbt] def sbtPluginRepositoryRoot(secure: Boolean) = (if (secure) "https" else "http") + "://repo.scala-sbt.org/scalasbt"
+  private[sbt] def sbtRepositoryRoot(secure: Boolean) = (if (secure) "https" else "http") + "://repo.scala-sbt.org/scalasbt"
 
   // obsolete: kept only for launcher compatibility
   private[sbt] val ScalaToolsReleasesName = "Sonatype OSS Releases"
@@ -202,7 +204,8 @@ object Resolver {
 
   def typesafeRepo(status: String) = new MavenRepository("typesafe-" + status, TypesafeRepositoryRoot + "/" + status)
   def typesafeIvyRepo(status: String) = url("typesafe-ivy-" + status, new URL(TypesafeRepositoryRoot + "/ivy-" + status + "/"))(ivyStylePatterns)
-  def sbtPluginRepo(status: String) = url("sbt-plugin-" + status, new URL(SbtPluginRepositoryRoot + "/sbt-plugin-" + status + "/"))(ivyStylePatterns)
+  def sbtIvyRepo(status: String) = url(s"sbt-ivy-$status", new URL(s"$SbtRepositoryRoot/ivy-$status/"))(ivyStylePatterns)
+  def sbtPluginRepo(status: String) = url("sbt-plugin-" + status, new URL(SbtRepositoryRoot + "/sbt-plugin-" + status + "/"))(ivyStylePatterns)
   def sonatypeRepo(status: String) = new MavenRepository("sonatype-" + status, SonatypeRepositoryRoot + "/" + status)
   def bintrayRepo(owner: String, repo: String) = new MavenRepository(s"bintray-$owner-$repo", s"https://dl.bintray.com/$owner/$repo/")
   def bintrayIvyRepo(owner: String, repo: String) = url(s"bintray-$owner-$repo", new URL(s"https://dl.bintray.com/$owner/$repo/"))(Resolver.ivyStylePatterns)
