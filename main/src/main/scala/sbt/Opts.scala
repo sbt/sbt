@@ -52,13 +52,9 @@ object DefaultOptions {
   def scaladoc(name: String, version: String): Seq[String] = doc.title(name) ++ doc.version(version)
 
   def resolvers(snapshot: Boolean): Seq[Resolver] = {
-    if (snapshot) Seq(Classpaths.typesafeSnapshots, resolver.sonatypeSnapshots) else Nil
-  }
-  def pluginResolvers(plugin: Boolean, snapshot: Boolean): Seq[Resolver] = {
-    if (plugin && snapshot) Seq(Classpaths.typesafeSnapshots, Classpaths.sbtPluginSnapshots) else Nil
+    if (snapshot) Seq(resolver.sonatypeSnapshots) else Nil
   }
   def addResolvers: Setting[_] = Keys.resolvers <++= Keys.isSnapshot apply resolvers
-  def addPluginResolvers: Setting[_] = Keys.resolvers <++= (Keys.sbtPlugin, Keys.isSnapshot) apply pluginResolvers
 
   @deprecated("Use `credentials(State)` instead to make use of configuration path dynamically configured via `Keys.globalSettingsDirectory`; relying on ~/.ivy2 is not recommended anymore.", "0.12.0")
   def credentials: Credentials = Credentials(userHome / ".ivy2" / ".credentials")
