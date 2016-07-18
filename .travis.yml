@@ -18,7 +18,7 @@ matrix:
 
 env:
   matrix:
-    - SBT_CMD="test:compile scalariformCheck"
+    - SBT_CMD=";test:compile;scalariformCheck"
     - SBT_CMD="mimaReportBinaryIssues"
     - SBT_CMD="safeUnitTests"
     - SBT_CMD="otherUnitTests"
