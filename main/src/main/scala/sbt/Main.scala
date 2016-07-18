@@ -3,9 +3,24 @@
  */
 package sbt
 
-import sbt.internal.{ Act, Aggregation, BuildStructure, BuildUnit, CommandStrings, EvaluateConfigurations,
-  Inspect, IvyConsole, Load, LoadedBuildUnit, Output, PluginsDebug, ProjectNavigation, Script, SessionSettings,
-  SettingCompletions }
+import sbt.internal.{
+  Act,
+  Aggregation,
+  BuildStructure,
+  BuildUnit,
+  CommandStrings,
+  EvaluateConfigurations,
+  Inspect,
+  IvyConsole,
+  Load,
+  LoadedBuildUnit,
+  Output,
+  PluginsDebug,
+  ProjectNavigation,
+  Script,
+  SessionSettings,
+  SettingCompletions
+}
 import sbt.internal.util.{ AttributeKey, AttributeMap, complete, ConsoleOut, GlobalLogging, LineRange, MainLogging, SimpleReader, Types }
 import sbt.util.{ Level, Logger }
 
@@ -465,12 +480,13 @@ object BuiltinCommands {
       def ignoreMsg = if (Project.isProjectLoaded(s)) "using previously loaded project" else "no project loaded"
 
       result match {
-        case ""                     => retry
-        case _ if matches("retry")  => retry
-        case _ if matches(Quit)     => s.exit(ok = false)
-        case _ if matches("ignore") => s.log.warn(s"Ignoring load failure: $ignoreMsg.") ; s
-        case _ if matches("last")   => LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
-        case _                      => println("Invalid response."); doLoadFailed(s, loadArg)
+        case ""                    => retry
+        case _ if matches("retry") => retry
+        case _ if matches(Quit)    => s.exit(ok = false)
+        case _ if matches("ignore") =>
+          s.log.warn(s"Ignoring load failure: $ignoreMsg."); s
+        case _ if matches("last") => LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
+        case _                    => println("Invalid response."); doLoadFailed(s, loadArg)
       }
     }
 
