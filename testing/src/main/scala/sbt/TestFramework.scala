@@ -187,7 +187,11 @@ object TestFramework {
   def createTestLoader(classpath: Seq[File], scalaInstance: ScalaInstance, tempDir: File): ClassLoader =
     {
       val interfaceJar = IO.classLocationFile(classOf[testing.Framework])
-      val interfaceFilter = (name: String) => name.startsWith("org.scalatools.testing.") || name.startsWith("sbt.testing.")
+      // We exclude scalacheck her, possibly temporarily, because a consequence of
+      // https://github.com/scala/scala/pull/5244 is that scalacheck class files are
+      // found via the scalaInstance loader, but fail resolution because the
+      // test-interface classes aren't also present.
+      val interfaceFilter = (name: String) => name.startsWith("org.scalatools.testing.") || name.startsWith("sbt.testing.") || name.startsWith("org.scalacheck.")
       val notInterfaceFilter = (name: String) => !interfaceFilter(name)
       val dual = new DualLoader(scalaInstance.loader, notInterfaceFilter, x => true, getClass.getClassLoader, interfaceFilter, x => false)
       val main = ClasspathUtilities.makeLoader(classpath, dual, scalaInstance, tempDir)
