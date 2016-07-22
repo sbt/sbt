@@ -619,7 +619,7 @@ object Defaults extends BuildCommon {
             s.log.debug(s"javaOptions: ${opts.runJVMOptions}")
             val forkedConfig = config.copy(parallel = config.parallel && forkedParallelExecution)
             s.log.debug(s"Forking tests - parallelism = ${forkedConfig.parallel}")
-            ForkTests(runners, tests.toList, forkedConfig, cp.files, opts, s.log) tag Tags.ForkedTestGroup
+            ForkTests(runners, tests.toList, forkedConfig, cp.files, opts, s.log, Tags.ForkedTestGroup)
           case Tests.InProcess =>
             if (javaOptions.nonEmpty) {
               s.log.warn("javaOptions will be ignored, fork is set to false")
