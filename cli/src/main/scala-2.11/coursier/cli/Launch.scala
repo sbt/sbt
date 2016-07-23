@@ -199,6 +199,7 @@ case class Launch(
       Helper.errPrintln(s"Error: method main not found in $mainClass0")
       sys.exit(255)
     }
+  method.setAccessible(true)
 
   if (options.common.verbosityLevel >= 2)
     Helper.errPrintln(s"Launching $mainClass0 ${userArgs.mkString(" ")}")
