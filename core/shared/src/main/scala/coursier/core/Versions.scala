@@ -1,5 +1,8 @@
 package coursier.core
 
+import scalaz.{ -\/, \/, \/- }
+import scalaz.Scalaz.ToEitherOps
+
 case class VersionInterval(from: Option[Version],
                            to: Option[Version],
                            fromIncluded: Boolean,
@@ -64,9 +67,9 @@ case class VersionInterval(from: Option[Version],
 
   def constraint: VersionConstraint =
     this match {
-      case VersionInterval.zero => VersionConstraint.None
-      case VersionInterval(Some(version), None, true, false) => VersionConstraint.Preferred(version)
-      case itv => VersionConstraint.Interval(itv)
+      case VersionInterval.zero => VersionConstraint.all
+      case VersionInterval(Some(version), None, true, false) => VersionConstraint.preferred(version)
+      case itv => VersionConstraint.interval(itv)
     }
 
   def repr: String = Seq(
@@ -82,23 +85,54 @@ object VersionInterval {
   val zero = VersionInterval(None, None, fromIncluded = false, toIncluded = false)
 }
 
-sealed abstract class VersionConstraint(
-  val interval: VersionInterval,
-  val repr: String
-)
+final case class VersionConstraint(
+  interval: VersionInterval,
+  preferred: Seq[Version]
+) {
+  def blend: Option[VersionInterval \/ Version] =
+    if (interval.isValid) {
+      val preferredInInterval = preferred.filter(interval.contains)
+
+      if (preferredInInterval.isEmpty)
+        Some(interval.left)
+      else
+        Some(preferredInInterval.max.right)
+    } else
+      None
+
+  def repr: Option[String] =
+    blend.map {
+      case -\/(itv) =>
+        if (itv == VersionInterval.zero)
+          ""
+        else
+          itv.repr
+      case \/-(v) => v.repr
+    }
+}
 
 object VersionConstraint {
-  /** Currently treated as minimum... */
-  final case class Preferred(version: Version) extends VersionConstraint(
-    VersionInterval(Some(version), Option.empty, fromIncluded = true, toIncluded = false),
-    version.repr
-  )
-  final case class Interval(interval0: VersionInterval) extends VersionConstraint(
-    interval0,
-    interval0.repr
-  )
-  case object None extends VersionConstraint(
-    VersionInterval.zero,
-    "" // Once parsed, "(,)" becomes "" because of this
-  )
+
+  def preferred(version: Version): VersionConstraint =
+    VersionConstraint(VersionInterval.zero, Seq(version))
+  def interval(interval: VersionInterval): VersionConstraint =
+    VersionConstraint(interval, Nil)
+
+  val all = VersionConstraint(VersionInterval.zero, Nil)
+
+  def merge(constraints: VersionConstraint*): Option[VersionConstraint] = {
+
+    val intervals = constraints.map(_.interval)
+
+    val intervalOpt =
+      (Option(VersionInterval.zero) /: intervals) {
+        case (acc, itv) =>
+          acc.flatMap(_.merge(itv))
+      }
+
+    for (interval <- intervalOpt) yield {
+      val preferreds = constraints.flatMap(_.preferred).distinct
+      VersionConstraint(interval, preferreds)
+    }
+  }
 }

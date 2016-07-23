@@ -10,45 +10,30 @@ object VersionConstraintTests extends TestSuite {
     'parse{
       'empty{
         val c0 = Parse.versionConstraint("")
-        assert(c0 == Some(VersionConstraint.None))
+        assert(c0 == Some(VersionConstraint.all))
       }
       'basicVersion{
         val c0 = Parse.versionConstraint("1.2")
-        assert(c0 == Some(VersionConstraint.Preferred(Version("1.2"))))
+        assert(c0 == Some(VersionConstraint.preferred(Version("1.2"))))
       }
       'basicVersionInterval{
         val c0 = Parse.versionConstraint("(,1.2]")
-        assert(c0 == Some(VersionConstraint.Interval(VersionInterval(None, Some(Version("1.2")), false, true))))
+        assert(c0 == Some(VersionConstraint.interval(VersionInterval(None, Some(Version("1.2")), false, true))))
       }
     }
 
     'repr{
       'empty{
-        val s0 = VersionConstraint.None.repr
-        assert(s0 == "")
+        val s0 = VersionConstraint.all.repr
+        assert(s0 == Some(""))
       }
       'preferred{
-        val s0 = VersionConstraint.Preferred(Version("2.1")).repr
-        assert(s0 == "2.1")
+        val s0 = VersionConstraint.preferred(Version("2.1")).repr
+        assert(s0 == Some("2.1"))
       }
       'interval{
-        val s0 = VersionConstraint.Interval(VersionInterval(None, Some(Version("2.1")), false, true)).repr
-        assert(s0 == "(,2.1]")
-      }
-    }
-
-    'interval{
-      'empty{
-        val s0 = VersionConstraint.None.interval
-        assert(s0 == VersionInterval.zero)
-      }
-      'preferred{
-        val s0 = VersionConstraint.Preferred(Version("2.1")).interval
-        assert(s0 == VersionInterval(Some(Version("2.1")), None, true, false))
-      }
-      'interval{
-        val s0 = VersionConstraint.Interval(VersionInterval(None, Some(Version("2.1")), false, true)).interval
-        assert(s0 == VersionInterval(None, Some(Version("2.1")), false, true))
+        val s0 = VersionConstraint.interval(VersionInterval(None, Some(Version("2.1")), false, true)).repr
+        assert(s0 == Some("(,2.1]"))
       }
     }
   }

@@ -140,25 +140,26 @@ object Resolution {
    * Returns `None` in case of conflict.
    */
   def mergeVersions(versions: Seq[String]): Option[String] = {
-    val (nonParsedConstraints, parsedConstraints) =
-      versions
-        .map(v => v -> Parse.versionConstraint(v))
-        .partition(_._2.isEmpty)
+
+    val parseResults = versions.map(v => v -> Parse.versionConstraint(v))
+
+    val nonParsedConstraints = parseResults.collect {
+      case (repr, None) => repr
+    }
 
     // FIXME Report this in return type, not this way
     if (nonParsedConstraints.nonEmpty)
       Console.err.println(
-        s"Ignoring unparsed versions: ${nonParsedConstraints.map(_._1)}"
+        s"Ignoring unparsed versions: $nonParsedConstraints"
       )
 
-    val intervalOpt =
-      (Option(VersionInterval.zero) /: parsedConstraints) {
-        case (acc, (_, someCstr)) =>
-          acc.flatMap(_.merge(someCstr.get.interval))
-      }
+    val parsedConstraints = parseResults.collect {
+      case (_, Some(c)) => c
+    }
 
-    intervalOpt
-      .map(_.constraint.repr)
+    VersionConstraint
+      .merge(parsedConstraints: _*)
+      .flatMap(_.repr)
   }
 
   /**

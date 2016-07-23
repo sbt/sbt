@@ -237,6 +237,15 @@ object CentralTests extends TestSuite {
       )
     }
 
+    'versionInterval - {
+      // Warning: needs to be updated when new versions of org.webjars.bower:jquery and
+      // org.webjars.bower:jquery-mousewheel are published :-|
+      resolutionCheck(
+        Module("org.webjars.bower", "malihu-custom-scrollbar-plugin"),
+        "3.1.5"
+      )
+    }
+
     'latestRevision - {
       * - resolutionCheck(
         Module("com.chuusai", "shapeless_2.11"),
