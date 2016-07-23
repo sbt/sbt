@@ -355,6 +355,42 @@ object CentralTests extends TestSuite {
           assert(nonUnique.isEmpty)
         }
       }
+
+      'testJarType - {
+        // dependencies with type "test-jar" should be given the classifier "tests" by default
+
+        async {
+          val deps = Set(
+            Dependency(
+              Module("org.apache.hadoop", "hadoop-yarn-server-resourcemanager"),
+              "2.7.1"
+            )
+          )
+
+          val res = await(resolve(deps))
+
+          assert(res.errors.isEmpty)
+          assert(res.conflicts.isEmpty)
+          assert(res.isDone)
+
+          val dependencyArtifacts = res.dependencyArtifacts
+
+          val zookeeperTestArtifacts = dependencyArtifacts.collect {
+            case (dep, artifact)
+              if dep.module == Module("org.apache.zookeeper", "zookeeper") &&
+                 dep.attributes.`type` == "test-jar" =>
+              artifact
+          }
+
+          assert(zookeeperTestArtifacts.length == 1)
+
+          val zookeeperTestArtifact = zookeeperTestArtifacts.head
+
+          assert(zookeeperTestArtifact.attributes.`type` == "test-jar")
+          assert(zookeeperTestArtifact.attributes.classifier == "tests")
+          zookeeperTestArtifact.url.endsWith("-tests.jar")
+        }
+      }
     }
   }
 
