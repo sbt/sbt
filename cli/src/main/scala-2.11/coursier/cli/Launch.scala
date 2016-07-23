@@ -104,6 +104,9 @@ case class Launch(
     if (options.isolated.isolated.isEmpty)
       (parentLoader0, files0)
     else {
+
+      val isolatedDeps = options.isolated.isolatedDeps(options.common.defaultArtifactType)
+
       val (isolatedLoader, filteredFiles0) = options.isolated.targets.foldLeft((parentLoader0, files0)) {
         case ((parent, files0), target) =>
 
@@ -111,7 +114,7 @@ case class Launch(
           val isolatedFiles = helper.fetch(
             sources = false,
             javadoc = false,
-            subset = options.isolated.isolatedDeps.getOrElse(target, Seq.empty).toSet
+            subset = isolatedDeps.getOrElse(target, Seq.empty).toSet
           )
 
           if (options.common.verbosityLevel >= 2) {

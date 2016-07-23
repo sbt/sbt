@@ -244,6 +244,7 @@ class Helper(
       Dependency(
         module,
         version,
+        attributes = Attributes(defaultArtifactType, ""),
         configuration = configOpt.getOrElse(defaultConfiguration),
         exclusions = excludes
       )
@@ -254,6 +255,7 @@ class Helper(
       Dependency(
         module,
         version,
+        attributes = Attributes(defaultArtifactType, ""),
         configuration = configOpt.getOrElse(defaultConfiguration),
         exclusions = excludes,
         transitive = false

@@ -11,7 +11,7 @@ package object coursier {
       version: String,
       // Substituted by Resolver with its own default configuration (compile)
       configuration: String = "",
-      attributes: Attributes = Attributes(),
+      attributes: Attributes = Attributes("jar"),
       exclusions: Set[(String, String)] = Set.empty,
       optional: Boolean = false,
       transitive: Boolean = true

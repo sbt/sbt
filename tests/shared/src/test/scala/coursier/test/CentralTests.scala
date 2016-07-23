@@ -104,7 +104,7 @@ object CentralTests extends TestSuite {
   )(
     f: Artifact => T
   ): Future[T] = async {
-    val dep = Dependency(module, version, transitive = false)
+    val dep = Dependency(module, version, transitive = false, attributes = Attributes())
     val res = await(resolve(Set(dep), extraRepo = extraRepo))
 
     res.artifacts match {
