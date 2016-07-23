@@ -4,39 +4,34 @@ import coursier.Fetch
 import coursier.core._
 
 import scalaz._
-import scalaz.Scalaz.ToEitherOps
+import scalaz.Scalaz._
 
 case class IvyRepository(
-  pattern: String,
-  metadataPatternOpt: Option[String] = None,
-  changing: Option[Boolean] = None,
-  properties: Map[String, String] = Map.empty,
-  withChecksums: Boolean = true,
-  withSignatures: Boolean = true,
-  withArtifacts: Boolean = true,
+  pattern: Pattern,
+  metadataPatternOpt: Option[Pattern],
+  changing: Option[Boolean],
+  withChecksums: Boolean,
+  withSignatures: Boolean,
+  withArtifacts: Boolean,
   // hack for SBT putting infos in properties
-  dropInfoAttributes: Boolean = false,
-  authentication: Option[Authentication] = None
+  dropInfoAttributes: Boolean,
+  authentication: Option[Authentication]
 ) extends Repository {
 
-  def metadataPattern: String = metadataPatternOpt.getOrElse(pattern)
+  def metadataPattern: Pattern = metadataPatternOpt.getOrElse(pattern)
 
-  import Repository._
+  lazy val revisionListingPatternOpt: Option[Pattern] = {
+    val idx = metadataPattern.chunks.indexWhere { chunk =>
+      chunk == Pattern.Chunk.Var("revision")
+    }
 
-  private val pattern0 = Pattern(pattern, properties)
-  private val metadataPattern0 = Pattern(metadataPattern, properties)
-
-  private val revisionListingPatternOpt = {
-    val idx = metadataPattern.indexOf("[revision]/")
     if (idx < 0)
       None
     else
-      // FIXME A bit too permissive... we should check that [revision] indeed begins
-      // a path component (that is, has a '/' before it no matter what)
-      // This is trickier than simply checking for a '/' character before it in metadataPattern,
-      // because of optional parts in it.
-      Some(Pattern(metadataPattern.take(idx), properties))
+      Some(Pattern(metadataPattern.chunks.take(idx)))
   }
+
+  import Repository._
 
   // See http://ant.apache.org/ivy/history/latest-milestone/concept.html for a
   // list of variables that should be supported.
@@ -92,14 +87,14 @@ case class IvyRepository(
             }
 
           val retainedWithUrl = retained.flatMap { p =>
-            pattern0.substitute(variables(
+            pattern.substituteVariables(variables(
               dependency.module,
               Some(project.actualVersion),
               p.`type`,
               p.name,
               p.ext,
               Some(p.classifier).filter(_.nonEmpty)
-            )).toList.map(p -> _)
+            )).toList.map(p -> _) // FIXME Validation errors are ignored
           }
 
           retainedWithUrl.map { case (p, url) =>
@@ -143,13 +138,13 @@ case class IvyRepository(
           case None =>
             findNoInverval(module, version, fetch)
           case Some(itv) =>
-            val listingUrl = revisionListingPattern.substitute(
+            val listingUrl = revisionListingPattern.substituteVariables(
               variables(module, None, "ivy", "ivy", "xml", None)
             ).flatMap { s =>
               if (s.endsWith("/"))
                 s.right
               else
-                s"Don't know how to list revisions of $metadataPattern".left
+                s"Don't know how to list revisions of ${metadataPattern.string}".left
             }
 
             def fromWebPage(s: String) = {
@@ -194,7 +189,7 @@ case class IvyRepository(
 
     val eitherArtifact: String \/ Artifact =
       for {
-        url <- metadataPattern0.substitute(
+        url <- metadataPattern.substituteVariables(
           variables(module, Some(version), "ivy", "ivy", "xml", None)
         )
       } yield {
@@ -256,4 +251,92 @@ case class IvyRepository(
     }
   }
 
+}
+
+object IvyRepository {
+  def parse(
+    pattern: String,
+    metadataPatternOpt: Option[String] = None,
+    changing: Option[Boolean] = None,
+    properties: Map[String, String] = Map.empty,
+    withChecksums: Boolean = true,
+    withSignatures: Boolean = true,
+    withArtifacts: Boolean = true,
+    // hack for SBT putting infos in properties
+    dropInfoAttributes: Boolean = false,
+    authentication: Option[Authentication] = None
+  ): String \/ IvyRepository =
+
+    for {
+      propertiesPattern <- PropertiesPattern.parse(pattern)
+      metadataPropertiesPatternOpt <- metadataPatternOpt.fold(Option.empty[PropertiesPattern].right[String])(PropertiesPattern.parse(_).map(Some(_)))
+
+      pattern <- propertiesPattern.substituteProperties(properties)
+      metadataPatternOpt <- metadataPropertiesPatternOpt.fold(Option.empty[Pattern].right[String])(_.substituteProperties(properties).map(Some(_)))
+
+    } yield
+      IvyRepository(
+        pattern,
+        metadataPatternOpt,
+        changing,
+        withChecksums,
+        withSignatures,
+        withArtifacts,
+        dropInfoAttributes,
+        authentication
+      )
+
+  // because of the compatibility apply method below, we can't give default values
+  // to the default constructor of IvyPattern
+  // this method accepts the same arguments as this constructor, with default values when possible
+  def fromPattern(
+    pattern: Pattern,
+    metadataPatternOpt: Option[Pattern] = None,
+    changing: Option[Boolean] = None,
+    withChecksums: Boolean = true,
+    withSignatures: Boolean = true,
+    withArtifacts: Boolean = true,
+    // hack for SBT putting infos in properties
+    dropInfoAttributes: Boolean = false,
+    authentication: Option[Authentication] = None
+  ): IvyRepository =
+    IvyRepository(
+      pattern,
+      metadataPatternOpt,
+      changing,
+      withChecksums,
+      withSignatures,
+      withArtifacts,
+      dropInfoAttributes,
+      authentication
+    )
+
+  @deprecated("Can now raise exceptions - use parse instead", "1.0.0-M13")
+  def apply(
+    pattern: String,
+    metadataPatternOpt: Option[String] = None,
+    changing: Option[Boolean] = None,
+    properties: Map[String, String] = Map.empty,
+    withChecksums: Boolean = true,
+    withSignatures: Boolean = true,
+    withArtifacts: Boolean = true,
+    // hack for SBT putting infos in properties
+    dropInfoAttributes: Boolean = false,
+    authentication: Option[Authentication] = None
+  ): IvyRepository =
+    parse(
+      pattern,
+      metadataPatternOpt,
+      changing,
+      properties,
+      withChecksums,
+      withSignatures,
+      withArtifacts,
+      dropInfoAttributes,
+      authentication
+    ) match {
+      case \/-(repo) => repo
+      case -\/(msg) =>
+        throw new IllegalArgumentException(s"Error while parsing Ivy patterns: $msg")
+    }
 }

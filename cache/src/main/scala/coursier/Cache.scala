@@ -864,12 +864,12 @@ object Cache {
       str + "/"
   }
 
-  lazy val ivy2Local = IvyRepository(
-    ivy2HomeUri + "local/" + coursier.ivy.Pattern.default,
+  lazy val ivy2Local = IvyRepository.fromPattern(
+    (ivy2HomeUri + "local/") +: coursier.ivy.Pattern.default,
     dropInfoAttributes = true
   )
 
-  lazy val ivy2Cache = IvyRepository(
+  lazy val ivy2Cache = IvyRepository.parse(
     ivy2HomeUri + "cache/" +
       "(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[organisation]/[module]/[type]s/[artifact]-[revision](-[classifier]).[ext]",
     metadataPatternOpt = Some(
@@ -879,6 +879,8 @@ object Cache {
     withChecksums = false,
     withSignatures = false,
     dropInfoAttributes = true
+  ).getOrElse(
+    throw new Exception("Cannot happen")
   )
 
   lazy val default = new File(
