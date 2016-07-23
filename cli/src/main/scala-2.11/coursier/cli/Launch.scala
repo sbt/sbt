@@ -207,5 +207,9 @@ case class Launch(
     Helper.errPrintln(s"Launching")
 
   Thread.currentThread().setContextClassLoader(loader)
-  method.invoke(null, userArgs.toArray)
+  try method.invoke(null, userArgs.toArray)
+  catch {
+    case e: java.lang.reflect.InvocationTargetException =>
+      throw Option(e.getCause).getOrElse(e)
+  }
 }
