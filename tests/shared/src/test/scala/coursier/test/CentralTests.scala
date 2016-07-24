@@ -104,7 +104,7 @@ object CentralTests extends TestSuite {
   )(
     f: Artifact => T
   ): Future[T] = async {
-    val dep = Dependency(module, version, transitive = false)
+    val dep = Dependency(module, version, transitive = false, attributes = Attributes())
     val res = await(resolve(Set(dep), extraRepo = extraRepo))
 
     res.artifacts match {
@@ -237,6 +237,15 @@ object CentralTests extends TestSuite {
       )
     }
 
+    'versionInterval - {
+      // Warning: needs to be updated when new versions of org.webjars.bower:jquery and
+      // org.webjars.bower:jquery-mousewheel are published :-|
+      resolutionCheck(
+        Module("org.webjars.bower", "malihu-custom-scrollbar-plugin"),
+        "3.1.5"
+      )
+    }
+
     'latestRevision - {
       * - resolutionCheck(
         Module("com.chuusai", "shapeless_2.11"),
@@ -344,6 +353,42 @@ object CentralTests extends TestSuite {
             )
 
           assert(nonUnique.isEmpty)
+        }
+      }
+
+      'testJarType - {
+        // dependencies with type "test-jar" should be given the classifier "tests" by default
+
+        async {
+          val deps = Set(
+            Dependency(
+              Module("org.apache.hadoop", "hadoop-yarn-server-resourcemanager"),
+              "2.7.1"
+            )
+          )
+
+          val res = await(resolve(deps))
+
+          assert(res.errors.isEmpty)
+          assert(res.conflicts.isEmpty)
+          assert(res.isDone)
+
+          val dependencyArtifacts = res.dependencyArtifacts
+
+          val zookeeperTestArtifacts = dependencyArtifacts.collect {
+            case (dep, artifact)
+              if dep.module == Module("org.apache.zookeeper", "zookeeper") &&
+                 dep.attributes.`type` == "test-jar" =>
+              artifact
+          }
+
+          assert(zookeeperTestArtifacts.length == 1)
+
+          val zookeeperTestArtifact = zookeeperTestArtifacts.head
+
+          assert(zookeeperTestArtifact.attributes.`type` == "test-jar")
+          assert(zookeeperTestArtifact.attributes.classifier == "tests")
+          zookeeperTestArtifact.url.endsWith("-tests.jar")
         }
       }
     }

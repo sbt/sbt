@@ -23,7 +23,9 @@ object ToSbt {
       // FIXME Get these two from publications
       artifact.attributes.`type`,
       MavenSource.typeExtension(artifact.attributes.`type`),
-      Some(artifact.attributes.classifier).filter(_.nonEmpty),
+      Some(artifact.attributes.classifier)
+        .filter(_.nonEmpty)
+        .orElse(MavenSource.typeDefaultClassifierOpt(artifact.attributes.`type`)),
       Nil,
       Some(url(artifact.url)),
       Map.empty

@@ -135,8 +135,13 @@ object Cache {
   // but it would then have required properties, which would have cluttered
   // output here.
 
-  val ivy2Local = coursier.Cache.ivy2Local.copy(
-    pattern = coursier.Cache.ivy2Local.pattern.replace("file:" + sys.props("user.home"), "file://${user.home}")
+  import coursier.ivy.Pattern.Chunk, Chunk._
+
+  val ivy2Local = coursier.ivy.IvyRepository.fromPattern(
+    coursier.ivy.Pattern(
+      Seq[Chunk]("file://", Var("user.home"), "/local/") ++ coursier.ivy.Pattern.default.chunks
+    ),
+    dropInfoAttributes = true
   )
 
   def fetch() = coursier.Cache.fetch()
@@ -575,6 +580,8 @@ We're using the `Cache.file` method, that can also be given a `Logger` (for more
 ## Limitations
 
 #### Inter-project repository in the SBT plugin is a bit naive
+
+**Fixed in 1.0.0-M13**
 
 The inter-project repository is the pseudo-repository, nesting the metadata
 of sub-projects. It gets confused in at least these two cases:

@@ -447,7 +447,7 @@ scala> val repositories = Seq(
      |   Cache.ivy2Local,
      |   MavenRepository("https://repo1.maven.org/maven2")
      | )
-repositories: Seq[coursier.core.Repository] = List(IvyRepository(file://${user.home}/.ivy2/local/[organisation]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext],None,None,Map(),true,true,true,true,None), MavenRepository(https://repo1.maven.org/maven2,None,false,None))
+repositories: Seq[coursier.core.Repository] = List(IvyRepository(Pattern(List(Const(file://), Var(user.home), Const(/local/), Var(organisation), Const(/), Var(module), Const(/), Opt(WrappedArray(Const(scala_), Var(scalaVersion), Const(/))), Opt(WrappedArray(Const(sbt_), Var(sbtVersion), Const(/))), Var(revision), Const(/), Var(type), Const(s/), Var(artifact), Opt(WrappedArray(Const(-), Var(classifier))), Const(.), Var(ext))),None,None,true,true,true,true,None), MavenRepository(https://repo1.maven.org/maven2,None,false,None))
 ```
 The first one, `Cache.ivy2Local`, is defined in `coursier.Cache`, itself from the `coursier-cache` module that
 we added above. As we can see, it is an `IvyRepository`, picking things under `~/.ivy2/local`. An `IvyRepository`
@@ -553,6 +553,8 @@ We're using the `Cache.file` method, that can also be given a `Logger` (for more
 ## Limitations
 
 #### Inter-project repository in the SBT plugin is a bit naive
+
+**Fixed in 1.0.0-M13**
 
 The inter-project repository is the pseudo-repository, nesting the metadata
 of sub-projects. It gets confused in at least these two cases:

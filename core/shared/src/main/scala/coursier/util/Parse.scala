@@ -136,7 +136,7 @@ object Parse {
     else if (s.startsWith("sonatype:"))
       MavenRepository(s"https://oss.sonatype.org/content/repositories/${s.stripPrefix("sonatype:")}").right
     else if (s.startsWith("bintray:"))
-      MavenRepository(s"https://dl.bintray.com/${s.stripPrefix("bintray:")}/maven").right
+      MavenRepository(s"https://dl.bintray.com/${s.stripPrefix("bintray:")}").right
     else if (s.startsWith("typesafe:ivy-"))
       IvyRepository.fromPattern(
         (s"https://repo.typesafe.com/typesafe/ivy-" + s.stripPrefix("typesafe:ivy-") + "/") +:

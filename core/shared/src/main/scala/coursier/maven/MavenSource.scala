@@ -136,12 +136,20 @@ case class MavenSource(
         if (publications.isEmpty) {
           val type0 = if (dependency.attributes.`type`.isEmpty) "jar" else dependency.attributes.`type`
 
+          val extension = MavenSource.typeExtension(type0)
+
+          val classifier =
+            if (dependency.attributes.classifier.isEmpty)
+              MavenSource.typeDefaultClassifier(type0)
+            else
+              dependency.attributes.classifier
+
           Seq(
             Publication(
               dependency.module.name,
               type0,
-              MavenSource.typeExtension(type0),
-              dependency.attributes.classifier
+              extension,
+              classifier
             )
           )
         } else
@@ -163,10 +171,27 @@ object MavenSource {
     "jar"            -> "jar",
     "bundle"         -> "jar",
     "doc"            -> "jar",
-    "src"            -> "jar"
+    "src"            -> "jar",
+    "test-jar"       -> "jar",
+    "ejb-client"     -> "jar"
   )
 
   def typeExtension(`type`: String): String =
     typeExtensions.getOrElse(`type`, `type`)
+
+  // see https://github.com/apache/maven/blob/c023e58104b71e27def0caa034d39ab0fa0373b6/maven-core/src/main/resources/META-INF/plexus/artifact-handlers.xml
+  // discussed in https://github.com/alexarchambault/coursier/issues/298
+  val typeDefaultClassifiers: Map[String, String] = Map(
+    "test-jar"    -> "tests",
+    "javadoc"     -> "javadoc",
+    "java-source" -> "sources",
+    "ejb-client"  -> "client"
+  )
+
+  def typeDefaultClassifierOpt(`type`: String): Option[String] =
+    typeDefaultClassifiers.get(`type`)
+
+  def typeDefaultClassifier(`type`: String): String =
+    typeDefaultClassifierOpt(`type`).getOrElse("")
 
 }

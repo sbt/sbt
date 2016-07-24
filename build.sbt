@@ -148,6 +148,14 @@ lazy val core = crossProject
       
       Seq(
         // Since 1.0.0-M13
+        // reworked VersionConstraint
+        ProblemFilters.exclude[MissingClassProblem]("coursier.core.VersionConstraint$Interval"),
+        ProblemFilters.exclude[MissingClassProblem]("coursier.core.VersionConstraint$Preferred"),
+        ProblemFilters.exclude[MissingClassProblem]("coursier.core.VersionConstraint$Preferred$"),
+        ProblemFilters.exclude[MissingClassProblem]("coursier.core.VersionConstraint$Interval$"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.core.VersionConstraint"),
+        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.core.VersionConstraint.repr"),
+        ProblemFilters.exclude[IncompatibleMethTypeProblem]("coursier.core.VersionConstraint.this"),
         // Extra `actualVersion` field in `Project`
         ProblemFilters.exclude[MissingTypesProblem]("coursier.core.Project$"),
         ProblemFilters.exclude[MissingMethodProblem]("coursier.core.Project.apply"),

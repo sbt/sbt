@@ -75,10 +75,12 @@ case class Bootstrap(
 
   val helper = new Helper(options.common, remainingArgs)
 
+  val isolatedDeps = options.isolated.isolatedDeps(options.common.defaultArtifactType)
+
   val (_, isolatedArtifactFiles) =
     options.isolated.targets.foldLeft((Vector.empty[String], Map.empty[String, (Seq[String], Seq[File])])) {
       case ((done, acc), target) =>
-        val subRes = helper.res.subset(options.isolated.isolatedDeps.getOrElse(target, Nil).toSet)
+        val subRes = helper.res.subset(isolatedDeps.getOrElse(target, Nil).toSet)
         val subArtifacts = subRes.artifacts.map(_.url)
 
         val filteredSubArtifacts = subArtifacts.diff(done)
@@ -86,7 +88,7 @@ case class Bootstrap(
         def subFiles0 = helper.fetch(
           sources = false,
           javadoc = false,
-          subset = options.isolated.isolatedDeps.getOrElse(target, Seq.empty).toSet
+          subset = isolatedDeps.getOrElse(target, Seq.empty).toSet
         )
 
         val (subUrls, subFiles) =

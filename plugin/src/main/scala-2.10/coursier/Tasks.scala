@@ -96,9 +96,32 @@ object Tasks {
       }
     }
 
-  def coursierProjectsTask: Def.Initialize[sbt.Task[Seq[Project]]] =
-    sbt.Keys.state.flatMap { state =>
-      val projects = structure(state).allProjectRefs
+  def coursierInterProjectDependenciesTask: Def.Initialize[sbt.Task[Seq[Project]]] =
+    (
+      sbt.Keys.state,
+      sbt.Keys.thisProjectRef
+    ).flatMap { (state, projectRef) =>
+
+      def dependencies(map: Map[String, Seq[String]], id: String): Set[String] = {
+
+        def helper(map: Map[String, Seq[String]], acc: Set[String]): Set[String] =
+          if (acc.exists(map.contains)) {
+            val (kept, rem) = map.partition { case (k, _) => acc(k) }
+            helper(rem, acc ++ kept.valuesIterator.flatten)
+          } else
+            acc
+
+        helper(map - id, map.getOrElse(id, Nil).toSet)
+      }
+
+      val allProjectsDeps =
+        for (p <- structure(state).allProjects)
+          yield p.id -> p.dependencies.map(_.project.project)
+
+      val deps = dependencies(allProjectsDeps.toMap, projectRef.project)
+
+      val projects = structure(state).allProjectRefs.filter(p => deps(p.project))
+
       coursierProject.forAllProjects(state, projects).map(_.values.toVector)
     }
 
@@ -271,7 +294,7 @@ object Tasks {
           (proj.copy(publications = publications), fallbackDeps)
         }
 
-      val projects = coursierProjects.value
+      val interProjectDependencies = coursierInterProjectDependencies.value
 
       val parallelDownloads = coursierParallelDownloads.value
       val checksums = coursierChecksums.value
@@ -363,12 +386,12 @@ object Tasks {
           userForceVersions ++
           sourceRepositoriesForcedDependencies ++
           forcedScalaModules(so, sv) ++
-          projects.map(_.moduleVersion)
+          interProjectDependencies.map(_.moduleVersion)
       )
 
       if (verbosityLevel >= 2) {
         log.info("InterProjectRepository")
-        for (p <- projects)
+        for (p <- interProjectDependencies)
           log.info(s"  ${p.module}:${p.version}")
       }
 
@@ -380,7 +403,7 @@ object Tasks {
         withArtifacts = false
       )
 
-      val interProjectRepo = InterProjectRepository(projects)
+      val interProjectRepo = InterProjectRepository(interProjectDependencies)
 
       val ivyProperties = Map(
         "ivy.home" -> (new File(sys.props("user.home")).toURI.getPath + ".ivy2")

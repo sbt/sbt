@@ -58,6 +58,10 @@ case class CommonOptions(
   @Value("configuration")
   @Short("c")
     defaultConfiguration: String = "default(compile)",
+  @Help("Default artifact type (make it empty to follow POM packaging - default: jar)")
+  @Value("type")
+  @Short("a")
+    defaultArtifactType: String = "jar",
   @Help("Maximum number of parallel downloads (default: 6)")
   @Short("n")
     parallel: Int = 6,
@@ -145,13 +149,19 @@ case class IsolatedLoaderOptions(
       t -> modVers
   }
 
-  lazy val isolatedDeps = isolatedModuleVersions.map {
-    case (t, l) =>
-      t -> l.map {
-        case (mod, ver) =>
-          Dependency(mod, ver, configuration = "runtime")
-      }
-  }
+  def isolatedDeps(defaultArtifactType: String) =
+    isolatedModuleVersions.map {
+      case (t, l) =>
+        t -> l.map {
+          case (mod, ver) =>
+            Dependency(
+              mod,
+              ver,
+              configuration = "runtime",
+              attributes = Attributes(defaultArtifactType, "")
+            )
+        }
+    }
 
 }
 

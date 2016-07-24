@@ -48,7 +48,12 @@ object MavenRepository {
   val defaultPackaging = "jar"
 
   def defaultPublications(moduleName: String, packaging: String) = Seq(
-    "compile" -> Publication(moduleName, packaging, MavenSource.typeExtension(packaging), ""),
+    "compile" -> Publication(
+      moduleName,
+      packaging,
+      MavenSource.typeExtension(packaging),
+      MavenSource.typeDefaultClassifier(packaging)
+    ),
     "docs" -> Publication(moduleName, "doc", "jar", "javadoc"),
     "sources" -> Publication(moduleName, "src", "jar", "sources")
   )

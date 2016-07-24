@@ -104,6 +104,9 @@ case class Launch(
     if (options.isolated.isolated.isEmpty)
       (parentLoader0, files0)
     else {
+
+      val isolatedDeps = options.isolated.isolatedDeps(options.common.defaultArtifactType)
+
       val (isolatedLoader, filteredFiles0) = options.isolated.targets.foldLeft((parentLoader0, files0)) {
         case ((parent, files0), target) =>
 
@@ -111,7 +114,7 @@ case class Launch(
           val isolatedFiles = helper.fetch(
             sources = false,
             javadoc = false,
-            subset = options.isolated.isolatedDeps.getOrElse(target, Seq.empty).toSet
+            subset = isolatedDeps.getOrElse(target, Seq.empty).toSet
           )
 
           if (options.common.verbosityLevel >= 2) {
@@ -199,6 +202,7 @@ case class Launch(
       Helper.errPrintln(s"Error: method main not found in $mainClass0")
       sys.exit(255)
     }
+  method.setAccessible(true)
 
   if (options.common.verbosityLevel >= 2)
     Helper.errPrintln(s"Launching $mainClass0 ${userArgs.mkString(" ")}")
@@ -206,5 +210,9 @@ case class Launch(
     Helper.errPrintln(s"Launching")
 
   Thread.currentThread().setContextClassLoader(loader)
-  method.invoke(null, userArgs.toArray)
+  try method.invoke(null, userArgs.toArray)
+  catch {
+    case e: java.lang.reflect.InvocationTargetException =>
+      throw Option(e.getCause).getOrElse(e)
+  }
 }
