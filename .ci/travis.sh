@@ -48,7 +48,7 @@ if echo "$TRAVIS_SCALA_VERSION" | grep -q "^2\.10"; then
   SBT_COMMANDS="$SBT_COMMANDS plugin/scripted"
 fi
 
-SBT_COMMANDS="$SBT_COMMANDS coreJVM/mimaReportBinaryIssues cache/mimaReportBinaryIssues"
+SBT_COMMANDS="$SBT_COMMANDS tut coreJVM/mimaReportBinaryIssues cache/mimaReportBinaryIssues"
 
 if isNotPr && publish && isMaster; then
   SBT_COMMANDS="$SBT_COMMANDS publish"

@@ -135,8 +135,13 @@ object Cache {
   // but it would then have required properties, which would have cluttered
   // output here.
 
-  val ivy2Local = coursier.Cache.ivy2Local.copy(
-    pattern = coursier.Cache.ivy2Local.pattern.replace("file:" + sys.props("user.home"), "file://${user.home}")
+  import coursier.ivy.Pattern.Chunk, Chunk._
+
+  val ivy2Local = coursier.ivy.IvyRepository.fromPattern(
+    coursier.ivy.Pattern(
+      Seq[Chunk]("file://", Var("user.home"), "/local/") ++ coursier.ivy.Pattern.default.chunks
+    ),
+    dropInfoAttributes = true
   )
 
   def fetch() = coursier.Cache.fetch()
