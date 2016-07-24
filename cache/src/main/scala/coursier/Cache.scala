@@ -849,9 +849,17 @@ object Cache {
         logger = logger,
         pool = pool,
         ttl = ttl
-      ).leftMap(_.describe).map { f =>
-        // FIXME Catch error here?
-        new String(NioFiles.readAllBytes(f.toPath), "UTF-8")
+      ).leftMap(_.describe).flatMap { f =>
+        val res = if (!f.isDirectory && f.exists()) {
+          Try(new String(NioFiles.readAllBytes(f.toPath), "UTF-8")) match {
+            case scala.util.Success(content) =>
+              Right(content)
+            case scala.util.Failure(e) =>
+              Left(s"Could not read (file:${f.getCanonicalPath}): ${e.getMessage}")
+          }
+        } else Left(s"Could not read (file:${f.getCanonicalPath}) (isFile:${!f.isDirectory}) (exists:${f.exists()})")
+
+        EitherT.fromEither(Task.now[Either[String, String]](res))
       }
   }
 
