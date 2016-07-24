@@ -18,6 +18,7 @@ object CoursierPlugin extends AutoPlugin {
     val coursierCachePolicies = Keys.coursierCachePolicies
     val coursierTtl = Keys.coursierTtl
     val coursierVerbosity = Keys.coursierVerbosity
+    val mavenProfiles = Keys.mavenProfiles
     val coursierSourceRepositories = Keys.coursierSourceRepositories
     val coursierResolvers = Keys.coursierResolvers
     val coursierSbtResolvers = Keys.coursierSbtResolvers
@@ -64,6 +65,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierCachePolicies := CachePolicy.default,
     coursierTtl := Cache.defaultTtl,
     coursierVerbosity := Settings.defaultVerbosityLevel,
+    mavenProfiles := Set.empty,
     coursierSourceRepositories := Nil,
     coursierResolvers <<= Tasks.coursierResolversTask,
     coursierSbtResolvers <<= externalResolvers in updateSbtClassifiers,

@@ -374,6 +374,7 @@ object Tasks {
 
       val verbosityLevel = coursierVerbosity.value
 
+      val userEnabledProfiles = mavenProfiles.value
 
       val startRes = Resolution(
         currentProject.dependencies.map {
@@ -381,6 +382,7 @@ object Tasks {
             dep.copy(exclusions = dep.exclusions ++ exclusions)
         }.toSet,
         filter = Some(dep => !dep.optional),
+        profileActivation = Some(core.Resolution.userProfileActivation(userEnabledProfiles)),
         forceVersions =
           // order matters here
           userForceVersions ++
