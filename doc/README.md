@@ -576,6 +576,8 @@ We're using the `Cache.file` method, that can also be given a `Logger` (for more
 
 #### Inter-project repository in the SBT plugin is a bit naive
 
+**Fixed in 1.0.0-M13**
+
 The inter-project repository is the pseudo-repository, nesting the metadata
 of sub-projects. It gets confused in at least these two cases:
 
