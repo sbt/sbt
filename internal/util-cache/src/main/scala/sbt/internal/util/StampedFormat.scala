@@ -2,11 +2,9 @@ package sbt.internal.util
 
 import scala.reflect.Manifest
 
-import sbt.datatype.IntFormat
+import sjsonnew.{ BasicJsonProtocol, Builder, deserializationError, JsonFormat, Unbuilder }
 
-import sjsonnew.{ Builder, deserializationError, JsonFormat, Unbuilder }
-
-object StampedFormat extends IntFormat {
+object StampedFormat extends BasicJsonProtocol {
 
   def apply[T](format: JsonFormat[T])(implicit mf: Manifest[JsonFormat[T]]): JsonFormat[T] = {
     withStamp(stamp(format))(format)

@@ -1,25 +1,28 @@
 package sbt.internal.util
 
-import sbt.datatype.{ ArrayFormat, ByteFormat, StringFormat }
 import sbt.internal.util.Types.:+:
 
 import sjsonnew.{ Builder, deserializationError, JsonFormat, Unbuilder }
-import sjsonnew.BasicJsonProtocol.{ wrap, asSingleton }
+import sjsonnew.BasicJsonProtocol, BasicJsonProtocol.asSingleton
 
 import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, File, InputStream, OutputStream }
 
 import java.net.{ URI, URL }
 
-trait URIFormat { self: StringFormat =>
+trait URIFormat { self: BasicJsonProtocol =>
   implicit def URIFormat: JsonFormat[URI] = wrap(_.toString, new URI(_: String))
 }
 
-trait URLFormat { self: StringFormat =>
+trait URLFormat { self: BasicJsonProtocol =>
   implicit def URLFormat: JsonFormat[URL] = wrap(_.toString, new URL(_: String))
 }
 
-trait FileFormat { self: StringFormat =>
+trait FileFormat { self: BasicJsonProtocol =>
   implicit def FileFormat: JsonFormat[File] = wrap(_.toString, new File(_: String))
+}
+
+trait SetFormat { self: BasicJsonProtocol =>
+  implicit def SetFormat[T: JsonFormat]: JsonFormat[Set[T]] = wrap(_.toSeq, (_: Seq[T]).toSet)
 }
 
 trait HListFormat {
@@ -51,7 +54,7 @@ trait HListFormat {
 
 }
 
-trait StreamFormat { self: ArrayFormat with ByteFormat =>
+trait StreamFormat { self: BasicJsonProtocol =>
   def streamFormat[T](write: (T, OutputStream) => Unit, read: InputStream => T): JsonFormat[T] = {
     lazy val byteArrayFormat = implicitly[JsonFormat[Array[Byte]]]
     val toBytes = (t: T) => { val bos = new ByteArrayOutputStream(); write(t, bos); bos.toByteArray }

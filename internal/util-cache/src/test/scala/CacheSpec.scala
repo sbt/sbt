@@ -5,7 +5,7 @@ import sbt.io.syntax._
 
 import CacheImplicits._
 
-import sjsonnew.{ Builder, deserializationError, IsoString, JsonFormat, Unbuilder }
+import sjsonnew.IsoString
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, FixedParser }
 
 import scala.json.ast.unsafe.JValue

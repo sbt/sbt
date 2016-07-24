@@ -117,7 +117,7 @@ lazy val utilCache = (project in internalPath / "util-cache").
   settings(
     commonSettings,
     name := "Util Cache",
-    libraryDependencies ++= Seq(datatypeCodecs, sbtSerialization, scalaReflect.value, sbtIO) ++ scalaXml.value,
+    libraryDependencies ++= Seq(sjsonnew, scalaReflect.value, sbtIO) ++ scalaXml.value,
     libraryDependencies += sjsonnewScalaJson % Test
   )
 

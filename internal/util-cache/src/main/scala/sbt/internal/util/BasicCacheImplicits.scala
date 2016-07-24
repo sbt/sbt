@@ -1,13 +1,10 @@
 package sbt.internal.util
 
-import sbt.datatype.{ ArrayFormat, BooleanFormat, ByteFormat, IntFormat }
-
 import java.net.{ URI, URL }
 
-import sjsonnew.JsonFormat
-import sjsonnew.BasicJsonProtocol.asSingleton
+import sjsonnew.{ BasicJsonProtocol, JsonFormat }
 
-trait BasicCacheImplicits { self: ArrayFormat with BooleanFormat with ByteFormat with IntFormat =>
+trait BasicCacheImplicits { self: BasicJsonProtocol =>
 
   implicit def basicCache[I: JsonFormat: Equiv, O: JsonFormat]: Cache[I, O] =
     new BasicCache[I, O]()

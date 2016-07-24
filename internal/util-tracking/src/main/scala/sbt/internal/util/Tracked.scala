@@ -13,7 +13,7 @@ import sjsonnew.JsonFormat
 
 object Tracked {
 
-  import CacheImplicits.LongFormat
+  import CacheImplicits.LongJsonFormat
 
   /**
    * Creates a tracker that provides the last time it was evaluated.
