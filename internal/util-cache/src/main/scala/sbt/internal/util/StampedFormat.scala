@@ -15,15 +15,13 @@ object StampedFormat extends BasicJsonProtocol {
       override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): T =
         jsOpt match {
           case Some(js) =>
-            unbuilder.extractArray(js) match {
-              case Vector(readStamp, readValue) =>
-                val actualStamp = formatStamp.read(Some(readStamp), unbuilder)
-                if (equivStamp.equiv(actualStamp, stamp)) format.read(Some(readValue), unbuilder)
-                else sys.error(s"Incorrect stamp. Expected: $stamp, Found: $readStamp")
-
-              case other =>
-                deserializationError(s"Expected JsArray of size 2, but found JsArray of size ${other.size}")
-            }
+            val stampedLength = unbuilder.beginArray(js)
+            if (stampedLength != 2) sys.error(s"Expected JsArray of size 2, found JsArray of size $stampedLength.")
+            val readStamp = unbuilder.nextElement
+            val readValue = unbuilder.nextElement
+            val actualStamp = formatStamp.read(Some(readStamp), unbuilder)
+            if (equivStamp.equiv(actualStamp, stamp)) format.read(Some(readValue), unbuilder)
+            else sys.error(s"Incorrect stamp. Expected: $stamp, Found: $readStamp")
 
           case None =>
             deserializationError("Expected JsArray but found None.")

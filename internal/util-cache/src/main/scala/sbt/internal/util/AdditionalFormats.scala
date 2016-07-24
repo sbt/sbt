@@ -10,19 +10,19 @@ import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, File, InputStream,
 import java.net.{ URI, URL }
 
 trait URIFormat { self: BasicJsonProtocol =>
-  implicit def URIFormat: JsonFormat[URI] = wrap(_.toString, new URI(_: String))
+  implicit def URIFormat: JsonFormat[URI] = project(_.toString, new URI(_: String))
 }
 
 trait URLFormat { self: BasicJsonProtocol =>
-  implicit def URLFormat: JsonFormat[URL] = wrap(_.toString, new URL(_: String))
+  implicit def URLFormat: JsonFormat[URL] = project(_.toString, new URL(_: String))
 }
 
 trait FileFormat { self: BasicJsonProtocol =>
-  implicit def FileFormat: JsonFormat[File] = wrap(_.toString, new File(_: String))
+  implicit def FileFormat: JsonFormat[File] = project(_.toString, new File(_: String))
 }
 
 trait SetFormat { self: BasicJsonProtocol =>
-  implicit def SetFormat[T: JsonFormat]: JsonFormat[Set[T]] = wrap(_.toSeq, (_: Seq[T]).toSet)
+  implicit def SetFormat[T: JsonFormat]: JsonFormat[Set[T]] = project(_.toSeq, (_: Seq[T]).toSet)
 }
 
 trait HListFormat {
