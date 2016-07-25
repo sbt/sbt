@@ -1,0 +1,3 @@
+aggregateProjects(
+  RootProject(file("projA"))
+)
