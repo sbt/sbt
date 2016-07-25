@@ -20,6 +20,8 @@ object Keys {
 
   val coursierVerbosity = SettingKey[Int]("coursier-verbosity")
 
+  val mavenProfiles = SettingKey[Set[String]]("maven-profiles")
+
   val coursierSourceRepositories = SettingKey[Seq[File]]("coursier-source-repositories")
   val coursierResolvers = TaskKey[Seq[Resolver]]("coursier-resolvers")
   val coursierSbtResolvers = TaskKey[Seq[Resolver]]("coursier-sbt-resolvers")

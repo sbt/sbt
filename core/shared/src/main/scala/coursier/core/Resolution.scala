@@ -948,20 +948,13 @@ final case class Resolution(
   private def artifacts0(
     overrideClassifiers: Option[Seq[String]],
     keepAttributes: Boolean
-  ): Seq[Artifact] = {
-    val res = for {
-      dep <- minDependencies.toSeq
-      (source, proj) <- projectCache
-        .get(dep.moduleVersion)
-        .toSeq
-      artifact <- source
-        .artifacts(dep, proj, overrideClassifiers)
-    } yield (if (keepAttributes) artifact else artifact.copy(attributes = Attributes("", "")))
+  ): Seq[Artifact] =
+    dependencyArtifacts0(overrideClassifiers).map {
+      case (_, artifact) =>
+        if (keepAttributes) artifact else artifact.copy(attributes = Attributes("", ""))
+    }.distinct
 
-    res.distinct
-  }
-
-  // temporary hack :-|
+  // keepAttributes to false is a temporary hack :-|
   // if one wants the attributes field of artifacts not to be cleared, call dependencyArtifacts
 
   def classifiersArtifacts(classifiers: Seq[String]): Seq[Artifact] =

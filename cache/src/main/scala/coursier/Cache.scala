@@ -909,7 +909,7 @@ object Cache {
 
     val fromEnv = sys.env.get("COURSIER_TTL").flatMap(fromString)
     def fromProps = sys.props.get("coursier.ttl").flatMap(fromString)
-    def default = 24.days
+    def default = 24.hours
 
     fromEnv
       .orElse(fromProps)

@@ -13,6 +13,8 @@ object CachePolicy {
     *
     * If no local file is found, *don't* try download it. Updates are only checked for files already
     * in cache.
+    *
+    * Follows the TTL parameter (assumes no update is needed if the last one is recent enough).
     */
   case object LocalUpdateChanging extends CachePolicy
 
@@ -21,6 +23,8 @@ object CachePolicy {
     *
     * If no local file is found, *don't* try download it. Updates are only checked for files already
     * in cache.
+    *
+    * Follows the TTL parameter (assumes no update is needed if the last one is recent enough).
     *
     * Unlike `LocalUpdateChanging`, all found local files are checked for updates, not just the
     * changing ones.
@@ -31,11 +35,15 @@ object CachePolicy {
     * Pick local files, and download the missing ones.
     *
     * For changing ones, check for updates, and download those if any.
+    *
+    * Follows the TTL parameter (assumes no update is needed if the last one is recent enough).
     */
   case object UpdateChanging extends CachePolicy
 
   /**
     * Pick local files, download the missing ones, check for updates and download those if any.
+    *
+    * Follows the TTL parameter (assumes no update is needed if the last one is recent enough).
     *
     * Unlike `UpdateChanging`, all found local files are checked for updates, not just the changing
     * ones.
@@ -58,7 +66,11 @@ object CachePolicy {
 
 
   private val baseDefault = Seq(
+    // first, try to update changing artifacts that were previously downloaded (follows TTL)
+    CachePolicy.LocalUpdateChanging,
+    // then, use what's available locally
     CachePolicy.LocalOnly,
+    // lastly, try to download what's missing
     CachePolicy.FetchMissing
   )
 
