@@ -1,7 +1,7 @@
 package sbt
 package internal
 
-import sbt.internal.util.RangePosition
+import sbt.internal.util.{ Eval, RangePosition }
 
 import sbt.librarymanagement.Configuration
 
@@ -61,5 +61,8 @@ object DslEntry {
   case class DslConfigs(cs: Seq[Configuration]) extends ProjectManipulation {
     override val toFunction: Project => Project = _.configs(cs: _*)
   }
-
+  /** this represents an `aggregate()` in the sbt DSL */
+  case class DslAggregate(refs: Seq[Eval[ProjectReference]]) extends ProjectManipulation {
+    override val toFunction: Project => Project = _.aggregate(refs: _*)
+  }
 }

@@ -1,6 +1,7 @@
 package sbt
 
 import sbt.internal.DslEntry
+import sbt.internal.util.Eval
 
 object syntax extends syntax
 
@@ -51,6 +52,8 @@ abstract class syntax extends IOSyntax0 with sbt.std.TaskExtra with sbt.internal
   def enablePlugins(ps: AutoPlugin*): DslEntry = DslEntry.DslEnablePlugins(ps)
   def disablePlugins(ps: AutoPlugin*): DslEntry = DslEntry.DslDisablePlugins(ps)
   def configs(cs: Configuration*): DslEntry = DslEntry.DslConfigs(cs)
+  // avoid conflict with `sbt.Keys.aggregate`
+  def aggregateProjects(refs: Eval[ProjectReference]*): DslEntry = DslEntry.DslAggregate(refs)
 }
 
 // Todo share this this io.syntax
