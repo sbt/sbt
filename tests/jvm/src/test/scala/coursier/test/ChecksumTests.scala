@@ -3,7 +3,6 @@ package test
 
 import java.io.File
 import java.math.BigInteger
-import java.util.concurrent.Executors
 
 import utest._
 

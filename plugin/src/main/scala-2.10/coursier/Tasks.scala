@@ -3,7 +3,7 @@ package coursier
 import java.io.{ OutputStreamWriter, File }
 import java.net.URL
 import java.nio.file.Files
-import java.util.concurrent.Executors
+import java.util.concurrent.{ ExecutorService, Executors }
 
 import coursier.core.{ Authentication, Publication }
 import coursier.ivy.IvyRepository
@@ -255,6 +255,8 @@ object Tasks {
   private def projectDescription(project: Project) =
     s"${project.module.organization}:${project.module.name}:${project.version}"
 
+  private def createLogger() = new TermDisplay(new OutputStreamWriter(System.err))
+
   def resolutionTask(
     sbtClassifiers: Boolean = false
   ) = Def.task {
@@ -492,101 +494,105 @@ object Tasks {
         fallbackDependenciesRepositories
 
       def resolution = {
-        val pool = Executors.newFixedThreadPool(parallelDownloads, Strategy.DefaultDaemonThreadFactory)
+        var pool: ExecutorService = null
+        var resLogger: TermDisplay = null
 
-        def createLogger() = new TermDisplay(new OutputStreamWriter(System.err))
+        try {
+          pool = Executors.newFixedThreadPool(parallelDownloads, Strategy.DefaultDaemonThreadFactory)
+          resLogger = createLogger()
 
-        val resLogger = createLogger()
+          val fetch = Fetch.from(
+            repositories,
+            Cache.fetch(cache, cachePolicies.head, checksums = checksums, logger = Some(resLogger), pool = pool, ttl = ttl),
+            cachePolicies.tail.map(p =>
+              Cache.fetch(cache, p, checksums = checksums, logger = Some(resLogger), pool = pool, ttl = ttl)
+            ): _*
+          )
 
-        val fetch = Fetch.from(
-          repositories,
-          Cache.fetch(cache, cachePolicies.head, checksums = checksums, logger = Some(resLogger), pool = pool, ttl = ttl),
-          cachePolicies.tail.map(p =>
-            Cache.fetch(cache, p, checksums = checksums, logger = Some(resLogger), pool = pool, ttl = ttl)
-          ): _*
-        )
+          def depsRepr(deps: Seq[(String, Dependency)]) =
+            deps.map { case (config, dep) =>
+              s"${dep.module}:${dep.version}:$config->${dep.configuration}"
+            }.sorted.distinct
 
-        def depsRepr(deps: Seq[(String, Dependency)]) =
-          deps.map { case (config, dep) =>
-            s"${dep.module}:${dep.version}:$config->${dep.configuration}"
-          }.sorted.distinct
+          if (verbosityLevel >= 2) {
+            val repoReprs = repositories.map {
+              case r: IvyRepository =>
+                s"ivy:${r.pattern}"
+              case r: InterProjectRepository =>
+                "inter-project"
+              case r: MavenRepository =>
+                r.root
+              case r =>
+                // should not happen
+                r.toString
+            }
 
-        if (verbosityLevel >= 2) {
-          val repoReprs = repositories.map {
-            case r: IvyRepository =>
-              s"ivy:${r.pattern}"
-            case r: InterProjectRepository =>
-              "inter-project"
-            case r: MavenRepository =>
-              r.root
-            case r =>
-              // should not happen
-              r.toString
+            log.info(
+              "Repositories:\n" +
+                repoReprs.map("  " + _).mkString("\n")
+            )
           }
 
-          log.info(
-            "Repositories:\n" +
-              repoReprs.map("  " + _).mkString("\n")
-          )
-        }
+          if (verbosityLevel >= 0)
+            log.info(
+              s"Updating ${projectDescription(currentProject)}" +
+                (if (sbtClassifiers) " (sbt classifiers)" else "")
+            )
+          if (verbosityLevel >= 2)
+            for (depRepr <- depsRepr(currentProject.dependencies))
+              log.info(s"  $depRepr")
 
-        if (verbosityLevel >= 0)
-          log.info(
-            s"Updating ${projectDescription(currentProject)}" +
-              (if (sbtClassifiers) " (sbt classifiers)" else "")
-          )
-        if (verbosityLevel >= 2)
-          for (depRepr <- depsRepr(currentProject.dependencies))
-            log.info(s"  $depRepr")
+          resLogger.init()
 
-        resLogger.init()
+          val res = startRes
+            .process
+            .run(fetch, maxIterations)
+            .attemptRun
+            .leftMap(ex =>
+              ResolutionError.UnknownException(ex)
+                .throwException()
+            )
+            .merge
 
-        val res = startRes
-          .process
-          .run(fetch, maxIterations)
-          .attemptRun
-          .leftMap(ex =>
-            ResolutionError.UnknownException(ex)
+          if (!res.isDone)
+            ResolutionError.MaximumIterationsReached
               .throwException()
-          )
-          .merge
 
-        resLogger.stop()
+          if (res.conflicts.nonEmpty) {
+            val projCache = res.projectCache.mapValues { case (_, p) => p }
 
+            ResolutionError.Conflicts(
+              "Conflict(s) in dependency resolution:\n  " +
+                Print.dependenciesUnknownConfigs(res.conflicts.toVector, projCache)
+            ).throwException()
+          }
 
-        if (!res.isDone)
-          ResolutionError.MaximumIterationsReached
-            .throwException()
-
-        if (res.conflicts.nonEmpty) {
-          val projCache = res.projectCache.mapValues { case (_, p) => p }
-
-          ResolutionError.Conflicts(
-            "Conflict(s) in dependency resolution:\n  " +
-              Print.dependenciesUnknownConfigs(res.conflicts.toVector, projCache)
-          ).throwException()
-        }
-
-        if (res.errors.nonEmpty) {
-          val internalRepositoriesLen = internalRepositories.length
-          val errors =
-            if (repositories.length > internalRepositoriesLen)
+          if (res.errors.nonEmpty) {
+            val internalRepositoriesLen = internalRepositories.length
+            val errors =
+              if (repositories.length > internalRepositoriesLen)
               // drop internal repository errors
-              res.errors.map {
-                case (dep, errs) =>
-                  dep -> errs.drop(internalRepositoriesLen)
-              }
-            else
-              res.errors
+                res.errors.map {
+                  case (dep, errs) =>
+                    dep -> errs.drop(internalRepositoriesLen)
+                }
+              else
+                res.errors
 
-          ResolutionError.MetadataDownloadErrors(errors)
-            .throwException()
+            ResolutionError.MetadataDownloadErrors(errors)
+              .throwException()
+          }
+
+          if (verbosityLevel >= 0)
+            log.info(s"Resolved ${projectDescription(currentProject)} dependencies")
+
+          res
+        } finally {
+          if (pool != null)
+            pool.shutdown()
+          if (resLogger != null)
+            resLogger.stop()
         }
-
-        if (verbosityLevel >= 0)
-          log.info(s"Resolved ${projectDescription(currentProject)} dependencies")
-
-        res
       }
 
       resolutionsCache.getOrElseUpdate(
@@ -687,132 +693,138 @@ object Tasks {
       }.value
 
       def report = {
-        val pool = Executors.newFixedThreadPool(parallelDownloads, Strategy.DefaultDaemonThreadFactory)
+        var pool: ExecutorService = null
+        var artifactsLogger: TermDisplay = null
 
-        def createLogger() = new TermDisplay(new OutputStreamWriter(System.err))
+        try {
+          pool = Executors.newFixedThreadPool(parallelDownloads, Strategy.DefaultDaemonThreadFactory)
 
-        val depsByConfig = grouped(currentProject.dependencies)
+          val depsByConfig = grouped(currentProject.dependencies)
 
-        val configs = coursierConfigurations.value
+          val configs = coursierConfigurations.value
 
-        if (verbosityLevel >= 2) {
-          val finalDeps = Config.dependenciesWithConfig(
-            res,
-            depsByConfig.map { case (k, l) => k -> l.toSet },
-            configs
-          )
-
-          val projCache = res.projectCache.mapValues { case (_, p) => p }
-          val repr = Print.dependenciesUnknownConfigs(finalDeps.toVector, projCache)
-          log.info(repr.split('\n').map("  "+_).mkString("\n"))
-        }
-
-        val classifiers =
-          if (withClassifiers)
-            Some {
-              if (sbtClassifiers)
-                cm.classifiers
-              else
-                transitiveClassifiers.value
-            }
-          else
-            None
-
-        val allArtifacts =
-          classifiers match {
-            case None => res.artifacts
-            case Some(cl) => res.classifiersArtifacts(cl)
-          }
-
-        val artifactsLogger = createLogger()
-
-        val artifactFileOrErrorTasks = allArtifacts.toVector.map { a =>
-          def f(p: CachePolicy) =
-            Cache.file(
-              a,
-              cache,
-              p,
-              checksums = artifactsChecksums,
-              logger = Some(artifactsLogger),
-              pool = pool,
-              ttl = ttl
+          if (verbosityLevel >= 2) {
+            val finalDeps = Config.dependenciesWithConfig(
+              res,
+              depsByConfig.map { case (k, l) => k -> l.toSet },
+              configs
             )
 
-          cachePolicies.tail
-            .foldLeft(f(cachePolicies.head))(_ orElse f(_))
-            .run
-            .map((a, _))
-        }
+            val projCache = res.projectCache.mapValues { case (_, p) => p }
+            val repr = Print.dependenciesUnknownConfigs(finalDeps.toVector, projCache)
+            log.info(repr.split('\n').map("  " + _).mkString("\n"))
+          }
 
-        if (verbosityLevel >= 0)
-          log.info(
-            s"Fetching artifacts of ${projectDescription(currentProject)}" +
-              (if (sbtClassifiers) " (sbt classifiers)" else "")
+          val classifiers =
+            if (withClassifiers)
+              Some {
+                if (sbtClassifiers)
+                  cm.classifiers
+                else
+                  transitiveClassifiers.value
+              }
+            else
+              None
+
+          val allArtifacts =
+            classifiers match {
+              case None => res.artifacts
+              case Some(cl) => res.classifiersArtifacts(cl)
+            }
+
+          artifactsLogger = createLogger()
+
+          val artifactFileOrErrorTasks = allArtifacts.toVector.map { a =>
+            def f(p: CachePolicy) =
+              Cache.file(
+                a,
+                cache,
+                p,
+                checksums = artifactsChecksums,
+                logger = Some(artifactsLogger),
+                pool = pool,
+                ttl = ttl
+              )
+
+            cachePolicies.tail
+              .foldLeft(f(cachePolicies.head))(_ orElse f(_))
+              .run
+              .map((a, _))
+          }
+
+          if (verbosityLevel >= 0)
+            log.info(
+              s"Fetching artifacts of ${projectDescription(currentProject)}" +
+                (if (sbtClassifiers) " (sbt classifiers)" else "")
+            )
+
+          artifactsLogger.init()
+
+          val artifactFilesOrErrors = Task.gatherUnordered(artifactFileOrErrorTasks).attemptRun match {
+            case -\/(ex) =>
+              ResolutionError.UnknownDownloadException(ex)
+                .throwException()
+            case \/-(l) =>
+              l.toMap
+          }
+
+          if (verbosityLevel >= 0)
+            log.info(
+              s"Fetched artifacts of ${projectDescription(currentProject)}" +
+                (if (sbtClassifiers) " (sbt classifiers)" else "")
+            )
+
+          val artifactFiles = artifactFilesOrErrors.collect {
+            case (artifact, \/-(file)) =>
+              artifact -> file
+          }
+
+          val artifactErrors = artifactFilesOrErrors.toVector.collect {
+            case (_, -\/(err)) =>
+              err
+          }
+
+          if (artifactErrors.nonEmpty) {
+            val error = ResolutionError.DownloadErrors(artifactErrors)
+
+            if (ignoreArtifactErrors)
+              log.warn(error.description(verbosityLevel >= 1))
+            else
+              error.throwException()
+          }
+
+          // can be non empty only if ignoreArtifactErrors is true
+          val erroredArtifacts = artifactFilesOrErrors.collect {
+            case (artifact, -\/(_)) =>
+              artifact
+          }.toSet
+
+          def artifactFileOpt(artifact: Artifact) = {
+            val artifact0 = artifact
+              .copy(attributes = Attributes()) // temporary hack :-(
+            val res = artifactFiles.get(artifact0)
+
+            if (res.isEmpty && !erroredArtifacts(artifact0))
+              log.error(s"${artifact.url} not downloaded (should not happen)")
+
+            res
+          }
+
+          writeIvyFiles()
+
+          ToSbt.updateReport(
+            depsByConfig,
+            res,
+            configs,
+            classifiers,
+            artifactFileOpt
           )
-
-        artifactsLogger.init()
-
-        val artifactFilesOrErrors = Task.gatherUnordered(artifactFileOrErrorTasks).attemptRun match {
-          case -\/(ex) =>
-            ResolutionError.UnknownDownloadException(ex)
-              .throwException()
-          case \/-(l) =>
-            l.toMap
+        } finally {
+          if (pool != null)
+            pool.shutdown()
+          if (artifactsLogger != null)
+            artifactsLogger.stop()
         }
-
-        artifactsLogger.stop()
-
-        if (verbosityLevel >= 0)
-          log.info(
-            s"Fetched artifacts of ${projectDescription(currentProject)}" +
-              (if (sbtClassifiers) " (sbt classifiers)" else "")
-          )
-
-        val artifactFiles = artifactFilesOrErrors.collect {
-          case (artifact, \/-(file)) =>
-            artifact -> file
-        }
-
-        val artifactErrors = artifactFilesOrErrors.toVector.collect {
-          case (_, -\/(err)) =>
-            err
-        }
-
-        if (artifactErrors.nonEmpty) {
-          val error = ResolutionError.DownloadErrors(artifactErrors)
-
-          if (ignoreArtifactErrors)
-            log.warn(error.description(verbosityLevel >= 1))
-          else
-            error.throwException()
-        }
-
-        // can be non empty only if ignoreArtifactErrors is true
-        val erroredArtifacts = artifactFilesOrErrors.collect {
-          case (artifact, -\/(_)) =>
-            artifact
-        }.toSet
-
-        def artifactFileOpt(artifact: Artifact) = {
-          val artifact0 = artifact
-            .copy(attributes = Attributes()) // temporary hack :-(
-          val res = artifactFiles.get(artifact0)
-
-          if (res.isEmpty && !erroredArtifacts(artifact0))
-            log.error(s"${artifact.url} not downloaded (should not happen)")
-
-          res
-        }
-
-        writeIvyFiles()
-
-        ToSbt.updateReport(
-          depsByConfig,
-          res,
-          configs,
-          classifiers,
-          artifactFileOpt
-        )
       }
 
       reportsCache.getOrElseUpdate(
