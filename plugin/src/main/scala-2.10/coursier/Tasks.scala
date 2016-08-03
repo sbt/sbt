@@ -225,6 +225,7 @@ object Tasks {
   private case class ResolutionCacheKey(
     project: Project,
     repositories: Seq[Repository],
+    userEnabledProfiles: Set[String],
     resolution: Resolution,
     sbtClassifiers: Boolean
   )
@@ -599,7 +600,8 @@ object Tasks {
         ResolutionCacheKey(
           currentProject,
           repositories,
-          startRes.copy(filter = None),
+          userEnabledProfiles,
+          startRes.copy(filter = None, profileActivation = None),
           sbtClassifiers
         ),
         resolution
@@ -830,7 +832,7 @@ object Tasks {
       reportsCache.getOrElseUpdate(
         ReportCacheKey(
           currentProject,
-          res,
+          res.copy(filter = None, profileActivation = None),
           withClassifiers,
           sbtClassifiers
         ),
