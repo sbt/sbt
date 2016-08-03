@@ -57,6 +57,13 @@ private object IvyScala {
       overrideScalaVersion(module, check.scalaOrganization, check.scalaFullVersion)
   }
 
+  def pre210(scalaVersion: String): Boolean =
+    CrossVersion.scalaApiVersion(scalaVersion) match {
+      case Some((2, y)) if y < 10 => true
+      case Some((x, _)) if x < 2  => true
+      case _                      => false
+    }
+
   class OverrideScalaMediator(scalaOrganization: String, scalaVersion: String) extends DependencyDescriptorMediator {
     def mediate(dd: DependencyDescriptor): DependencyDescriptor = {
       val transformer =
@@ -65,6 +72,7 @@ private object IvyScala {
             if (mrid == null) mrid
             else
               mrid.getName match {
+                case ReflectID | ActorsID if pre210(scalaVersion) => mrid
                 case name @ (CompilerID | LibraryID | ReflectID | ActorsID | ScalapID) =>
                   ModuleRevisionId.newInstance(scalaOrganization, name, mrid.getBranch, scalaVersion, mrid.getQualifiedExtraAttributes)
                 case _ => mrid
