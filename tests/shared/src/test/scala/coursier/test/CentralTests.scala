@@ -280,6 +280,13 @@ object CentralTests extends TestSuite {
       }
     }
 
+    'fixedVersionDependency - {
+      val mod = Module("io.grpc", "grpc-netty")
+      val version = "0.14.1"
+
+      resolutionCheck(mod, version)
+    }
+
     'mavenScopes - {
       def check(config: String) = resolutionCheck(
         Module("com.android.tools", "sdklib"),
