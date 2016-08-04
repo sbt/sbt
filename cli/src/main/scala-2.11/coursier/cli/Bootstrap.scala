@@ -16,11 +16,24 @@ case class Bootstrap(
 
   import scala.collection.JavaConverters._
 
-  if (!options.standalone && options.downloadDir.isEmpty) {
-    Console.err.println(s"Error: no download dir specified. Specify one with -D or --download-dir")
-    Console.err.println("E.g. -D \"\\$HOME/.app-name/jars\"")
-    sys.exit(255)
-  }
+  val helper = new Helper(
+    options.common,
+    remainingArgs,
+    isolated = options.isolated,
+    warnBaseLoaderNotFound = false
+  )
+
+  lazy val downloadDir =
+    if (options.downloadDir.isEmpty)
+      helper.baseDependencies.headOption match {
+        case Some(dep) =>
+          s"\\$$HOME/.coursier/bootstrap/${dep.module.organization}/${dep.module.name}"
+        case None =>
+          Console.err.println("Error: no dependencies specified.")
+          sys.exit(255)
+      }
+    else
+      options.downloadDir
 
   val (validProperties, wrongProperties) = options.property.partition(_.contains("="))
   if (wrongProperties.nonEmpty) {
@@ -67,13 +80,6 @@ case class Bootstrap(
       }
     }
 
-
-  val helper = new Helper(
-    options.common,
-    remainingArgs,
-    isolated = options.isolated,
-    warnBaseLoaderNotFound = false
-  )
 
   val isolatedDeps = options.isolated.isolatedDeps(options.common.defaultArtifactType)
 
@@ -181,7 +187,7 @@ case class Bootstrap(
   val properties = new Properties
   properties.setProperty("bootstrap.mainClass", mainClass)
   if (!options.standalone)
-    properties.setProperty("bootstrap.jarDir", options.downloadDir)
+    properties.setProperty("bootstrap.jarDir", downloadDir)
 
   outputZip.putNextEntry(propsEntry)
   properties.store(outputZip, "")
