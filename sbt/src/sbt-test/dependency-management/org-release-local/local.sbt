@@ -1,0 +1,2 @@
+scalaOrganization := "org.other"
+
