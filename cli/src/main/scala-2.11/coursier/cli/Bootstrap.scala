@@ -81,7 +81,10 @@ case class Bootstrap(
     }
 
 
-  val isolatedDeps = options.isolated.isolatedDeps(options.common.defaultArtifactType)
+  val isolatedDeps = options.isolated.isolatedDeps(
+    options.common.defaultArtifactType,
+    options.common.scalaVersion
+  )
 
   val (_, isolatedArtifactFiles) =
     options.isolated.targets.foldLeft((Vector.empty[String], Map.empty[String, (Seq[String], Seq[File])])) {
