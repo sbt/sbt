@@ -27,7 +27,7 @@ case class Bootstrap(
     if (options.downloadDir.isEmpty)
       helper.baseDependencies.headOption match {
         case Some(dep) =>
-          s"\\$$HOME/.coursier/bootstrap/${dep.module.organization}/${dep.module.name}"
+          s"$${user.home}/.coursier/bootstrap/${dep.module.organization}/${dep.module.name}"
         case None =>
           Console.err.println("Error: no dependencies specified.")
           sys.exit(255)
