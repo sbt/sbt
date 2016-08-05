@@ -556,6 +556,7 @@ lazy val `http-server` = project
   .settings(commonSettings)
   .settings(packAutoSettings)
   .settings(
+    name := "http-server-java7",
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-blazeserver" % http4sVersion,
       "org.http4s" %% "http4s-dsl" % http4sVersion,

@@ -32,7 +32,7 @@ function isMasterOrDevelop() {
 
 # Required for HTTP authentication tests
 ./coursier launch \
-  io.get-coursier:http-server_2.11:1.0.0-SNAPSHOT \
+  io.get-coursier:http-server-java7_2.11:1.0.0-SNAPSHOT \
   -r http://dl.bintray.com/scalaz/releases \
   -- \
     -d tests/jvm/src/test/resources/test-repo/http/abc.com \
