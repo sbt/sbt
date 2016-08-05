@@ -1322,6 +1322,14 @@ object Classpaths {
       val pluginIDs: Seq[ModuleID] = pluginJars.flatMap(_ get moduleID.key)
       GetClassifiersModule(pid, sbtDep +: pluginIDs, Configurations.Default :: Nil, classifiers)
     },
+    // Redefine scalaVersion and scalaBinaryVersion specifically for the dependency graph used for updateSbtClassifiers task.
+    // to fix https://github.com/sbt/sbt/issues/2686
+    scalaVersion := appConfiguration.value.provider.scalaProvider.version,
+    scalaBinaryVersion := binaryScalaVersion(scalaVersion.value),
+    ivyScala := {
+      Some(new IvyScala(scalaVersion.value, scalaBinaryVersion.value, Nil, filterImplicit = false, checkExplicit = false,
+        overrideScalaVersion = true, scalaOrganization = scalaOrganization.value))
+    },
     updateSbtClassifiers in TaskGlobal <<= Def.task {
       val s = streams.value
       val is = ivySbt.value
@@ -1332,7 +1340,7 @@ object Classpaths {
       val uwConfig = (unresolvedWarningConfiguration in update).value
       val depDir = dependencyCacheDirectory.value
       withExcludes(out, mod.classifiers, lock(app)) { excludes =>
-        val noExplicitCheck = ivyScala.value.map(_.copy(checkExplicit = false))
+        val noExplicitCheck = ivyScala.value
         IvyActions.transitiveScratch(is, "sbt", GetClassifiersConfiguration(mod, excludes, c, noExplicitCheck), uwConfig, LogicalClock(state.value.hashCode), Some(depDir), s.log)
       }
     } tag (Tags.Update, Tags.Network)
