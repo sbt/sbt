@@ -16,7 +16,7 @@ import scala.collection.JavaConverters._
 
 import scalaz.concurrent.Task
 
-case class SimpleHttpServerApp(
+case class HttpServerApp(
   @ExtraName("d")
   @ValueDescription("served directory")
     directory: String,
@@ -219,4 +219,4 @@ case class SimpleHttpServerApp(
 
 }
 
-object SimpleHttpServer extends AppOf[SimpleHttpServerApp]
+object HttpServer extends AppOf[HttpServerApp]

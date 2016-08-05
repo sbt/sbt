@@ -48,6 +48,9 @@ case class CommonOptions(
   @Value("organization:name")
   @Short("E")
     exclude: List[String],
+  @Help("Default scala version")
+  @Short("e")
+    scalaVersion: String = scala.util.Properties.versionNumberString,
   @Help("Add intransitive dependencies")
     intransitive: List[String],
   @Help("Classifiers that should be fetched")
@@ -137,9 +140,9 @@ case class IsolatedLoaderOptions(
     target -> dep
   }
 
-  lazy val isolatedModuleVersions = rawIsolated.groupBy { case (t, _) => t }.map {
+  def isolatedModuleVersions(defaultScalaVersion: String) = rawIsolated.groupBy { case (t, _) => t }.map {
     case (t, l) =>
-      val (errors, modVers) = Parse.moduleVersions(l.map { case (_, d) => d })
+      val (errors, modVers) = Parse.moduleVersions(l.map { case (_, d) => d }, defaultScalaVersion)
 
       if (errors.nonEmpty) {
         errors.foreach(Console.err.println)
@@ -149,8 +152,8 @@ case class IsolatedLoaderOptions(
       t -> modVers
   }
 
-  def isolatedDeps(defaultArtifactType: String) =
-    isolatedModuleVersions.map {
+  def isolatedDeps(defaultArtifactType: String, defaultScalaVersion: String) =
+    isolatedModuleVersions(defaultScalaVersion).map {
       case (t, l) =>
         t -> l.map {
           case (mod, ver) =>

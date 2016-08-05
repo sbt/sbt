@@ -161,9 +161,9 @@ class Helper(
 
 
   val (modVerCfgErrors, moduleVersionConfigs) =
-    Parse.moduleVersionConfigs(rawDependencies)
+    Parse.moduleVersionConfigs(rawDependencies, scalaVersion)
   val (intransitiveModVerCfgErrors, intransitiveModuleVersionConfigs) =
-    Parse.moduleVersionConfigs(intransitive)
+    Parse.moduleVersionConfigs(intransitive, scalaVersion)
 
   prematureExitIf(modVerCfgErrors.nonEmpty) {
     s"Cannot parse dependencies:\n" + modVerCfgErrors.map("  "+_).mkString("\n")
@@ -175,7 +175,7 @@ class Helper(
   }
 
 
-  val (forceVersionErrors, forceVersions0) = Parse.moduleVersions(forceVersion)
+  val (forceVersionErrors, forceVersions0) = Parse.moduleVersions(forceVersion, scalaVersion)
 
   prematureExitIf(forceVersionErrors.nonEmpty) {
     s"Cannot parse forced versions:\n" + forceVersionErrors.map("  "+_).mkString("\n")
@@ -220,7 +220,7 @@ class Helper(
     grouped.map { case (mod, versions) => mod -> versions.last }
   }
 
-  val (excludeErrors, excludes0) = Parse.modules(exclude)
+  val (excludeErrors, excludes0) = Parse.modules(exclude, scalaVersion)
 
   prematureExitIf(excludeErrors.nonEmpty) {
     s"Cannot parse excluded modules:\n" +
@@ -607,7 +607,7 @@ class Helper(
       (parentLoader0, files0)
     else {
 
-      val isolatedDeps = isolated.isolatedDeps(common.defaultArtifactType)
+      val isolatedDeps = isolated.isolatedDeps(common.defaultArtifactType, common.scalaVersion)
 
       val (isolatedLoader, filteredFiles0) = isolated.targets.foldLeft((parentLoader0, files0)) {
         case ((parent, files0), target) =>

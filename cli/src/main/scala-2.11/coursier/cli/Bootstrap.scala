@@ -27,7 +27,7 @@ case class Bootstrap(
     if (options.downloadDir.isEmpty)
       helper.baseDependencies.headOption match {
         case Some(dep) =>
-          s"\\$$HOME/.coursier/bootstrap/${dep.module.organization}/${dep.module.name}"
+          s"$${user.home}/.coursier/bootstrap/${dep.module.organization}/${dep.module.name}"
         case None =>
           Console.err.println("Error: no dependencies specified.")
           sys.exit(255)
@@ -81,7 +81,10 @@ case class Bootstrap(
     }
 
 
-  val isolatedDeps = options.isolated.isolatedDeps(options.common.defaultArtifactType)
+  val isolatedDeps = options.isolated.isolatedDeps(
+    options.common.defaultArtifactType,
+    options.common.scalaVersion
+  )
 
   val (_, isolatedArtifactFiles) =
     options.isolated.targets.foldLeft((Vector.empty[String], Map.empty[String, (Seq[String], Seq[File])])) {
