@@ -163,10 +163,6 @@ object VersionIntervalTests extends TestSuite {
 
     'parse{
       'malformed{
-        val s1 = "[1.1]"
-        val itv1 = Parse.versionInterval(s1)
-        assert(itv1 == None)
-
         val s2 = "(1.1)"
         val itv2 = Parse.versionInterval(s2)
         assert(itv2 == None)
@@ -262,6 +258,38 @@ object VersionIntervalTests extends TestSuite {
         val itv4 = Parse.versionInterval(s4)
         assert(itv4 == Some(VersionInterval(None, None, false, true)))
         assert(!itv4.get.isValid)
+      }
+
+      'fixedVersion - {
+        * - {
+          val itv = Parse.versionInterval("[1.2]")
+          assert(itv == Some(VersionInterval(Some(Version("1.2")), Some(Version("1.2")), true, true)))
+        }
+
+        * - {
+          val itv = Parse.versionInterval("[1.2)")
+          assert(itv.isEmpty)
+        }
+
+        * - {
+          val itv = Parse.versionInterval("(1.2]")
+          assert(itv.isEmpty)
+        }
+
+        * - {
+          val itv = Parse.versionInterval("(1.2)")
+          assert(itv.isEmpty)
+        }
+
+        * - {
+          val itv = Parse.versionInterval("[]")
+          assert(itv.isEmpty)
+        }
+
+        * - {
+          val itv = Parse.versionInterval("[0.0]")
+          assert(itv.isEmpty)
+        }
       }
     }
 

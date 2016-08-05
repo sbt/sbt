@@ -16,16 +16,24 @@ case class Bootstrap(
 
   import scala.collection.JavaConverters._
 
-  if (options.mainClass.isEmpty) {
-    Console.err.println(s"Error: no main class specified. Specify one with -M or --main")
-    sys.exit(255)
-  }
+  val helper = new Helper(
+    options.common,
+    remainingArgs,
+    isolated = options.isolated,
+    warnBaseLoaderNotFound = false
+  )
 
-  if (!options.standalone && options.downloadDir.isEmpty) {
-    Console.err.println(s"Error: no download dir specified. Specify one with -D or --download-dir")
-    Console.err.println("E.g. -D \"\\$HOME/.app-name/jars\"")
-    sys.exit(255)
-  }
+  lazy val downloadDir =
+    if (options.downloadDir.isEmpty)
+      helper.baseDependencies.headOption match {
+        case Some(dep) =>
+          s"\\$$HOME/.coursier/bootstrap/${dep.module.organization}/${dep.module.name}"
+        case None =>
+          Console.err.println("Error: no dependencies specified.")
+          sys.exit(255)
+      }
+    else
+      options.downloadDir
 
   val (validProperties, wrongProperties) = options.property.partition(_.contains("="))
   if (wrongProperties.nonEmpty) {
@@ -73,8 +81,6 @@ case class Bootstrap(
     }
 
 
-  val helper = new Helper(options.common, remainingArgs)
-
   val isolatedDeps = options.isolated.isolatedDeps(options.common.defaultArtifactType)
 
   val (_, isolatedArtifactFiles) =
@@ -121,7 +127,9 @@ case class Bootstrap(
   if (nonHttpUrls.nonEmpty)
     Console.err.println(s"Warning: non HTTP URLs:\n${nonHttpUrls.mkString("\n")}")
 
-  val buffer = new ByteArrayOutputStream()
+  val mainClass = helper.retainedMainClass
+
+  val buffer = new ByteArrayOutputStream
 
   val bootstrapZip = new ZipInputStream(new ByteArrayInputStream(bootstrapJar))
   val outputZip = new ZipOutputStream(buffer)
@@ -176,10 +184,10 @@ case class Bootstrap(
   val propsEntry = new ZipEntry("bootstrap.properties")
   propsEntry.setTime(time)
 
-  val properties = new Properties()
-  properties.setProperty("bootstrap.mainClass", options.mainClass)
+  val properties = new Properties
+  properties.setProperty("bootstrap.mainClass", mainClass)
   if (!options.standalone)
-    properties.setProperty("bootstrap.jarDir", options.downloadDir)
+    properties.setProperty("bootstrap.jarDir", downloadDir)
 
   outputZip.putNextEntry(propsEntry)
   properties.store(outputZip, "")

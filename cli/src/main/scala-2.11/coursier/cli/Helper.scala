@@ -2,7 +2,7 @@ package coursier
 package cli
 
 import java.io.{ OutputStreamWriter, File }
-import java.net.URL
+import java.net.{ URL, URLClassLoader }
 import java.util.jar.{ Manifest => JManifest }
 import java.util.concurrent.Executors
 
@@ -11,6 +11,7 @@ import coursier.util.{Print, Parse}
 
 import scala.annotation.tailrec
 import scala.concurrent.duration.Duration
+import scala.util.Try
 
 import scalaz.{Failure, Success, \/-, -\/}
 import scalaz.concurrent.{ Task, Strategy }
@@ -75,7 +76,9 @@ class Helper(
   common: CommonOptions,
   rawDependencies: Seq[String],
   printResultStdout: Boolean = false,
-  ignoreErrors: Boolean = false
+  ignoreErrors: Boolean = false,
+  isolated: IsolatedLoaderOptions = IsolatedLoaderOptions(),
+  warnBaseLoaderNotFound: Boolean = true
 ) {
   import common._
   import Helper.errPrintln
@@ -576,5 +579,117 @@ class Helper(
     }
 
     files0
+  }
+
+  lazy val (parentLoader, filteredFiles) = {
+
+    val contextLoader = Thread.currentThread().getContextClassLoader
+
+    val files0 = fetch(sources = false, javadoc = false)
+
+    val parentLoader0: ClassLoader =
+      Launch.mainClassLoader(contextLoader)
+        .flatMap(cl => Option(cl.getParent))
+        .getOrElse {
+          // proguarded -> no risk of conflicts, no absolute need to find a specific ClassLoader
+          val isProguarded = Try(contextLoader.loadClass("coursier.cli.Launch")).isFailure
+          if (warnBaseLoaderNotFound && !isProguarded && common.verbosityLevel >= 0)
+            Console.err.println(
+              "Warning: cannot find the main ClassLoader that launched coursier.\n" +
+                "Was coursier launched by its main launcher? " +
+                "The ClassLoader of the application that is about to be launched will be intertwined " +
+                "with the one of coursier, which may be a problem if their dependencies conflict."
+            )
+          contextLoader
+        }
+
+    if (isolated.isolated.isEmpty)
+      (parentLoader0, files0)
+    else {
+
+      val isolatedDeps = isolated.isolatedDeps(common.defaultArtifactType)
+
+      val (isolatedLoader, filteredFiles0) = isolated.targets.foldLeft((parentLoader0, files0)) {
+        case ((parent, files0), target) =>
+
+          // FIXME These were already fetched above
+          val isolatedFiles = fetch(
+            sources = false,
+            javadoc = false,
+            subset = isolatedDeps.getOrElse(target, Seq.empty).toSet
+          )
+
+          if (common.verbosityLevel >= 2) {
+            Console.err.println(s"Isolated loader files:")
+            for (f <- isolatedFiles.map(_.toString).sorted)
+              Console.err.println(s"  $f")
+          }
+
+          val isolatedLoader = new IsolatedClassLoader(
+            isolatedFiles.map(_.toURI.toURL).toArray,
+            parent,
+            Array(target)
+          )
+
+          val filteredFiles0 = files0.filterNot(isolatedFiles.toSet)
+
+          (isolatedLoader, filteredFiles0)
+      }
+
+      if (common.verbosityLevel >= 2) {
+        Console.err.println(s"Remaining files:")
+        for (f <- filteredFiles0.map(_.toString).sorted)
+          Console.err.println(s"  $f")
+      }
+
+      (isolatedLoader, filteredFiles0)
+    }
+  }
+
+  lazy val loader = new URLClassLoader(
+    filteredFiles.map(_.toURI.toURL).toArray,
+    parentLoader
+  )
+
+
+  lazy val retainedMainClass = {
+
+    val mainClasses = Helper.mainClasses(loader)
+
+    if (common.verbosityLevel >= 2) {
+      Console.err.println("Found main classes:")
+      for (((vendor, title), mainClass) <- mainClasses)
+        Console.err.println(s"  $mainClass (vendor: $vendor, title: $title)")
+      Console.err.println("")
+    }
+
+    val mainClass =
+      if (mainClasses.isEmpty) {
+        Helper.errPrintln("No main class found. Specify one with -M or --main.")
+        sys.exit(255)
+      } else if (mainClasses.size == 1) {
+        val (_, mainClass) = mainClasses.head
+        mainClass
+      } else {
+        // Trying to get the main class of the first artifact
+        val mainClassOpt = for {
+          (module, _, _) <- moduleVersionConfigs.headOption
+          mainClass <- mainClasses.collectFirst {
+            case ((org, name), mainClass)
+              if org == module.organization && (
+                module.name == name ||
+                  module.name.startsWith(name + "_") // Ignore cross version suffix
+                ) =>
+              mainClass
+          }
+        } yield mainClass
+
+        mainClassOpt.getOrElse {
+          Helper.errPrintln(s"Cannot find default main class. Specify one with -M or --main.")
+          sys.exit(255)
+        }
+      }
+
+    mainClass
   }
 }

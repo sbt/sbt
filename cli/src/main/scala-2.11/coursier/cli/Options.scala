@@ -98,10 +98,10 @@ case class CacheOptions(
 case class IsolatedLoaderOptions(
   @Value("target:dependency")
   @Short("I")
-    isolated: List[String],
+    isolated: List[String] = Nil,
   @Help("Comma-separated isolation targets")
   @Short("i")
-    isolateTarget: List[String]
+    isolateTarget: List[String] = Nil
 ) {
 
   def anyIsolatedDep = isolateTarget.nonEmpty || isolated.nonEmpty
