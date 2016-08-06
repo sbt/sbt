@@ -80,22 +80,28 @@ case class Launch(
     isolated = options.isolated
   )
 
+  val mainClass =
+    if (options.mainClass.isEmpty)
+      helper.retainedMainClass
+    else
+      options.mainClass
+
   val cls =
-    try helper.loader.loadClass(helper.retainedMainClass)
+    try helper.loader.loadClass(mainClass)
     catch { case e: ClassNotFoundException =>
-      Helper.errPrintln(s"Error: class ${helper.retainedMainClass} not found")
+      Helper.errPrintln(s"Error: class $mainClass not found")
       sys.exit(255)
     }
   val method =
     try cls.getMethod("main", classOf[Array[String]])
     catch { case e: NoSuchMethodException =>
-      Helper.errPrintln(s"Error: method main not found in ${helper.retainedMainClass}")
+      Helper.errPrintln(s"Error: method main not found in $mainClass")
       sys.exit(255)
     }
   method.setAccessible(true)
 
   if (options.common.verbosityLevel >= 2)
-    Helper.errPrintln(s"Launching ${helper.retainedMainClass} ${userArgs.mkString(" ")}")
+    Helper.errPrintln(s"Launching $mainClass ${userArgs.mkString(" ")}")
   else if (options.common.verbosityLevel == 1)
     Helper.errPrintln(s"Launching")
 
