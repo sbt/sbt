@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION=1.0.0-M12
+VERSION=1.0.0-M13
 CACHE_VERSION=v1
 
 SBTPACK_LAUNCHER="$(dirname "$0")/../cli/target/pack/bin/coursier"
@@ -10,9 +10,8 @@ if [ ! -f "$SBTPACK_LAUNCHER" ]; then
 fi
 
 "$SBTPACK_LAUNCHER" bootstrap \
-  io.get-coursier:coursier-cli_2.11:$VERSION \
+  --intransitive io.get-coursier::coursier-cli:$VERSION \
   --classifier standalone \
-  --intransitive \
   -J "-noverify" \
   --no-default \
   -r central \
