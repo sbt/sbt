@@ -130,7 +130,11 @@ case class Bootstrap(
   if (nonHttpUrls.nonEmpty)
     Console.err.println(s"Warning: non HTTP URLs:\n${nonHttpUrls.mkString("\n")}")
 
-  val mainClass = helper.retainedMainClass
+  val mainClass =
+    if (options.mainClass.isEmpty)
+      helper.retainedMainClass
+    else
+      options.mainClass
 
   val buffer = new ByteArrayOutputStream
 

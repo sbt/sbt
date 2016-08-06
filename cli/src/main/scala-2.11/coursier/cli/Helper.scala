@@ -664,10 +664,7 @@ class Helper(
     }
 
     val mainClass =
-      if (mainClasses.isEmpty) {
-        Helper.errPrintln("No main class found. Specify one with -M or --main.")
-        sys.exit(255)
-      } else if (mainClasses.size == 1) {
+      if (mainClasses.size == 1) {
         val (_, mainClass) = mainClasses.head
         mainClass
       } else {
