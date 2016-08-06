@@ -730,6 +730,7 @@ Once RCs will be considered stable enough, `1.0.0` should be released.
 - Han Ju ([@darkjh](https://github.com/darkjh))
 - Jameel Al-Aziz ([@jalaziz](https://github.com/jalaziz))
 - joriscode ([@joriscode](https://github.com/joriscode))
+- Rodrigo Fernandes ([@rtfpessoa](https://github.com/rtfpessoa))
 - Roman Iakovlev ([@RomanIakovlev](https://github.com/RomanIakovlev))
 - Simon Ochsenreither ([@soc](https://github.com/soc))
 - Your name here :-)
