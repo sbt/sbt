@@ -140,6 +140,22 @@ private[sbt] class InputStreamWrapper(is: InputStream, val poll: Duration) exten
       Thread.sleep(poll.toMillis)
       read()
     }
+
+  @tailrec
+  final override def read(b: Array[Byte]): Int =
+    if (is.available() != 0) is.read(b)
+    else {
+      Thread.sleep(poll.toMillis)
+      read(b)
+    }
+
+  @tailrec
+  final override def read(b: Array[Byte], off: Int, len: Int): Int =
+    if (is.available() != 0) is.read(b, off, len)
+    else {
+      Thread.sleep(poll.toMillis)
+      read(b, off, len)
+    }
 }
 
 trait LineReader {
