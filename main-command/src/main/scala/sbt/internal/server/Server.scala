@@ -5,10 +5,10 @@ package sbt
 package internal
 package server
 
-import java.net.{ SocketTimeoutException, InetAddress, ServerSocket }
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.net.{ SocketTimeoutException, InetAddress, ServerSocket, SocketException }
 import java.util.concurrent.atomic.AtomicBoolean
 import sbt.util.Logger
+import scala.collection.mutable
 
 private[sbt] sealed trait ServerInstance {
   def shutdown(): Unit
@@ -20,7 +20,7 @@ private[sbt] object Server {
     new ServerInstance {
 
       val lock = new AnyRef {}
-      var clients = Vector[ClientConnection]()
+      val clients: mutable.ListBuffer[ClientConnection] = mutable.ListBuffer.empty
       val running = new AtomicBoolean(true)
 
       val serverThread = new Thread("sbt-socket-server") {
@@ -42,7 +42,7 @@ private[sbt] object Server {
               }
 
               lock.synchronized {
-                clients = clients :+ connection
+                clients += connection
               }
 
             } catch {
@@ -59,7 +59,17 @@ private[sbt] object Server {
         // TODO do not do this on the calling thread
         val bytes = Serialization.serialize(event)
         lock.synchronized {
-          clients.foreach(_.publish(bytes))
+          val toDel: mutable.ListBuffer[ClientConnection] = mutable.ListBuffer.empty
+          clients.foreach { client =>
+            try {
+              client.publish(bytes)
+            } catch {
+              case e: SocketException =>
+                log.debug(e.getMessage)
+                toDel += client
+            }
+          }
+          clients --= toDel.toList
         }
       }
 
