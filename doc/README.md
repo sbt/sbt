@@ -93,7 +93,7 @@ $ brew install --HEAD paulp/extras/coursier
 
 Run an application distributed via artifacts with
 ```
-$ ./coursier launch com.lihaoyi:ammonite-repl_2.11.8:0.5.7
+$ ./coursier launch com.lihaoyi:ammonite_2.11.8:0.7.0
 ```
 
 Download and list the classpath of one or several dependencies with
@@ -310,7 +310,7 @@ For example, it can launch:
 
 * [Ammonite](https://github.com/lihaoyi/Ammonite) (enhanced Scala REPL),
 ```
-$ ./coursier launch com.lihaoyi:ammonite-repl_2.11.8:0.5.7
+$ ./coursier launch com.lihaoyi:ammonite_2.11.8:0.7.0
 ```
 
 along with the REPLs of various JVM languages like
@@ -379,9 +379,9 @@ $ ./coursier fetch org.apache.spark:spark-sql_2.11:1.6.1
 By adding the `-p` option, these paths can be handed over directly to
 `java -cp`, like
 ```
-$ java -cp "$(./coursier fetch -p com.lihaoyi:ammonite-repl_2.11.8:0.5.7)" ammonite.repl.Main
+$ java -cp "$(./coursier fetch -p com.lihaoyi:ammonite_2.11.8:0.7.0)" ammonite.Main
 Loading...
-Welcome to the Ammonite Repl 0.5.7
+Welcome to the Ammonite Repl 0.7.0
 (Scala 2.11.8 Java 1.8.0_60)
 @
 ```
