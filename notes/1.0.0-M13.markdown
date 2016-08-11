@@ -1,0 +1,28 @@
+### Changes
+
+* Lots of fixes ([#262], [#290], [#293], [#294], [#304], [#305], [#311], [#312])
+* Add support for version intervals for Ivy repositories ([#265])
+* Better --intransitive option from the command-line tools ([#264])
+* Take into account scalaOrganization setting ([#267])
+* Add support for TTL ([#269], [#306])
+* Better error messages from the SBT plugin ([#270])
+* Allow to specify Maven profiles to use ([#293], [#306])
+
+[#262]: https://github.com/alexarchambault/coursier/pull/262
+[#264]: https://github.com/alexarchambault/coursier/pull/264
+[#265]: https://github.com/alexarchambault/coursier/pull/265
+[#267]: https://github.com/alexarchambault/coursier/pull/267
+[#269]: https://github.com/alexarchambault/coursier/pull/269
+[#270]: https://github.com/alexarchambault/coursier/pull/270
+[#290]: https://github.com/alexarchambault/coursier/pull/290
+[#293]: https://github.com/alexarchambault/coursier/pull/293
+[#294]: https://github.com/alexarchambault/coursier/pull/294
+[#304]: https://github.com/alexarchambault/coursier/pull/304
+[#305]: https://github.com/alexarchambault/coursier/pull/305
+[#306]: https://github.com/alexarchambault/coursier/pull/306
+[#311]: https://github.com/alexarchambault/coursier/pull/311
+[#312]: https://github.com/alexarchambault/coursier/pull/312
+
+### Non-backward compatible changes
+
+* Possible minor incompatible binary changes because of changes in the internals of coursier, it is recommended to recompile your code against the `1.0.0-M13` version.

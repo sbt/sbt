@@ -55,12 +55,17 @@ Lastly, it can be used programmatically via its [API](#api) and has a Scala JS [
   2. [Command-line](#command-line-1)
   3. [API](#api-1)
   4. [Scala JS demo](#scala-js-demo)
-4. [Limitations](#limitations)
-5. [FAQ](#faq)
-6. [Roadmap](#roadmap)
-7. [Development tips](#development-tips)
-8. [Contributors](#contributors)
-9. [Projects using coursier](#projects-using-coursier)
+4. [Extra features](#extra-features)
+  1. [Printing trees](#printing-trees)
+  2. [Generating bootstrap launchers](#generating-bootstrap-launchers)
+  3. [Credentials](#credentials)
+  4. [Extra protocols](#extra-protocols)
+5. [Limitations](#limitations)
+6. [FAQ](#faq)
+7. [Roadmap](#roadmap)
+8. [Development tips](#development-tips)
+9. [Contributors](#contributors)
+10. [Projects using coursier](#projects-using-coursier)
 
 ## Quick start
 
@@ -577,31 +582,72 @@ We're using the `Cache.file` method, that can also be given a `Logger` (for more
 *coursier* is also compiled to Scala JS, and can be tested in the browser via its
 [demo](http://alexarchambault.github.io/coursier/#demo).
 
+## Extra features
+
+### Printing trees
+
+E.g. to print the dependency tree of `io.circe:circe-core:0.4.1`,
+```
+$ coursier resolve -t io.circe:circe-core_2.11:0.4.1
+  Result:
+└─ io.circe:circe-core_2.11:0.4.1
+   ├─ io.circe:circe-numbers_2.11:0.4.1
+   |  └─ org.scala-lang:scala-library:2.11.8
+   ├─ org.scala-lang:scala-library:2.11.8
+   └─ org.typelevel:cats-core_2.11:0.4.1
+      ├─ com.github.mpilquist:simulacrum_2.11:0.7.0
+      |  ├─ org.scala-lang:scala-library:2.11.7 -> 2.11.8
+      |  └─ org.typelevel:macro-compat_2.11:1.1.0
+      |     └─ org.scala-lang:scala-library:2.11.7 -> 2.11.8
+...
+```
+
+From SBT, with sbt-coursier enabled, the command `coursierDependencyTree` prints the dependency tree of the various sub-projects,
+```
+> coursierDependencyTree
+io.get-coursier:coursier_2.11:1.0.0-SNAPSHOT
+├─ com.lihaoyi:fastparse_2.11:0.3.7
+|  ├─ com.lihaoyi:fastparse-utils_2.11:0.3.7
+|  |  ├─ com.lihaoyi:sourcecode_2.11:0.1.1
+|  |  |  └─ org.scala-lang:scala-library:2.11.7 -> 2.11.8
+|  |  └─ org.scala-lang:scala-library:2.11.7 -> 2.11.8
+|  ├─ com.lihaoyi:sourcecode_2.11:0.1.1
+|  |  └─ org.scala-lang:scala-library:2.11.7 -> 2.11.8
+|  └─ org.scala-lang:scala-library:2.11.7 -> 2.11.8
+├─ org.jsoup:jsoup:1.9.2
+...
+```
+
+Note that this command can be scoped to sub-projects, like `proj/coursierDependencyTree`.
+
+The printed trees highlight version bumps, that only change the patch number, in yellow. The `2.11.7 -> 2.11.8` above mean that the parent dependency wanted version `2.11.7`, but version `2.11.8` landed in the classpath, pulled in this version by other dependencies.
+
+They highlight in red version bumps that may not be binary compatible, changing major or minor version number.
+
+### Generating bootstrap launchers
+
+The `coursier bootstrap` command generates tiny bootstrap launchers (~12 kB). These are able to download their dependencies upon first launch, then launch the corresponding application. E.g. to generate a launcher for scalafmt,
+```
+$ coursier bootstrap com.geirsson:scalafmt-cli_2.11:0.2.3 -o scalafmt
+```
+
+This generates a `scalafmt` file, which is a tiny JAR, corresponding to the `boostrap` sub-project of coursier. It contains resource files, with the URLs of the various dependencies of scalafmt. On first launch, these are downloaded under `~/.coursier/boostrap/com.geirsson/scalafmt-cli_2.11` (following the organization and name of the first dependency - note that this directory can be changed with the `-D` option). Nothing needs to be downloaded once all the dependencies are there, and the application is then launched straightaway.
+
+### Credentials
+
+To use artifacts from repositories requiring credentials, pass the user and password via the repository URL, like
+```
+$ coursier fetch -r https://user:pass@company.com/repo com.company:lib:0.1.0
+```
+
+From SBT, add the setting `coursierUseSbtCredentials := true` for sbt-coursier to use the credentials set via the `credentials` key. This manual step was added in order for the `credentials` setting not to be checked if not needed, as it seems to acquire some (good ol') global lock when checked, which sbt-coursier aims at avoiding.
+
+### Extra protocols
+
+By default, coursier and sbt-coursier handle the `http://`, `https://`, and `file://` protocols. It should also be fine
+by protocols supported by `java.net.URL` (not thoroughly tested). Support for other protocols can be added via plugins. [coursier-s3](https://github.com/rtfpessoa/coursier-s3), a plugin for S3, is under development, and illustrates how to write such plugins.
+
 ## Limitations
-
-#### Inter-project repository in the SBT plugin is a bit naive
-
-**Fixed in 1.0.0-M13**
-
-The inter-project repository is the pseudo-repository, nesting the metadata
-of sub-projects. It gets confused in at least these two cases:
-
-- two sub-projects have the same organization and module name,
-- a sub-project depends on a released version of another sub-project, possibly transitively.
-
-The problem with it is that it doesn't look at the real sub-projects graph. It
-just trusts SBT to put dependencies between projects in the library
-dependencies.
-
-So if a link appears transitively, with a sub-project depending on
-a released version of a sub-project (second point above), the coursier SBT plugin will
-think there's a dependency between the sub-projects. Thus it will trust
-SBT to put the second project build products on the classpath.
-But SBT knows there's no such link, so it just doesn't put them.
-
-The second point happens for the `readme` sub-project of Ammonite, for example,
-which transitively depends on a released version of `ammonite-ops`, itself also
-built by the `ops` sub-project.
 
 #### Ivy support is poorly tested
 
@@ -757,6 +803,7 @@ Once RCs will be considered stable enough, `1.0.0` should be released.
 - Han Ju ([@darkjh](https://github.com/darkjh))
 - Jameel Al-Aziz ([@jalaziz](https://github.com/jalaziz))
 - joriscode ([@joriscode](https://github.com/joriscode))
+- Rodrigo Fernandes ([@rtfpessoa](https://github.com/rtfpessoa))
 - Roman Iakovlev ([@RomanIakovlev](https://github.com/RomanIakovlev))
 - Simon Ochsenreither ([@soc](https://github.com/soc))
 - Your name here :-)
