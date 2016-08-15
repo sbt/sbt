@@ -6,7 +6,7 @@ import java.nio.file.Files
 import java.util.concurrent.{ ExecutorService, Executors }
 
 import coursier.core.{ Authentication, Publication }
-import coursier.ivy.IvyRepository
+import coursier.ivy.{ IvyRepository, PropertiesPattern }
 import coursier.Keys._
 import coursier.Structure._
 import coursier.maven.WritePom
@@ -258,6 +258,26 @@ object Tasks {
 
   private def createLogger() = new TermDisplay(new OutputStreamWriter(System.err))
 
+  private lazy val globalPluginPattern = {
+    // FIXME get the 0.13 automatically?
+    val s = s"file:$${sbt.global.base-$${user.home}/.sbt/0.13}/plugins/target/resolution-cache/" +
+      "[organization]/[module](/scala_[scalaVersion])(/sbt_[sbtVersion])/[revision]/resolved.xml.[ext]"
+
+    val p = PropertiesPattern.parse(s) match {
+      case -\/(err) =>
+        throw new Exception(s"Cannot parse pattern $s: $err")
+      case \/-(p) =>
+        p
+    }
+
+    p.substituteProperties(sys.props.toMap) match {
+      case -\/(err) =>
+        throw new Exception(err)
+      case \/-(p) =>
+        p
+    }
+  }
+
   def resolutionTask(
     sbtClassifiers: Boolean = false
   ) = Def.task {
@@ -400,9 +420,8 @@ object Tasks {
           log.info(s"  ${p.module}:${p.version}")
       }
 
-      val globalPluginsRepo = IvyRepository(
-        new File(sys.props("user.home") + "/.sbt/0.13/plugins/target/resolution-cache/").toURI.toString +
-          "[organization]/[module](/scala_[scalaVersion])(/sbt_[sbtVersion])/[revision]/resolved.xml.[ext]",
+      val globalPluginsRepo = IvyRepository.fromPattern(
+        globalPluginPattern,
         withChecksums = false,
         withSignatures = false,
         withArtifacts = false
@@ -410,8 +429,19 @@ object Tasks {
 
       val interProjectRepo = InterProjectRepository(interProjectDependencies)
 
+      val ivyHome = sys.props.getOrElse(
+        "ivy.home",
+        new File(sys.props("user.home")).toURI.getPath + ".ivy2"
+      )
+
+      val sbtIvyHome = sys.props.getOrElse(
+        "sbt.ivy.home",
+        ivyHome
+      )
+
       val ivyProperties = Map(
-        "ivy.home" -> (new File(sys.props("user.home")).toURI.getPath + ".ivy2")
+        "ivy.home" -> ivyHome,
+        "sbt.ivy.home" -> sbtIvyHome
       ) ++ sys.props
 
       val useSbtCredentials = coursierUseSbtCredentials.value
