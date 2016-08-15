@@ -69,6 +69,10 @@ object MavenRepository {
     } else
       module.name
 
+  val ignorePackaging = Set(
+    Module("org.apache.zookeeper", "zookeeper", Map.empty)
+  )
+
 }
 
 case class MavenRepository(
@@ -76,7 +80,8 @@ case class MavenRepository(
   changing: Option[Boolean] = None,
   /** Hackish hack for sbt plugins mainly - what this does really sucks */
   sbtAttrStub: Boolean = false,
-  authentication: Option[Authentication] = None
+  authentication: Option[Authentication] = None,
+  packagingBlacklist: Set[Module] = MavenRepository.ignorePackaging
 ) extends Repository {
 
   import Repository._
@@ -260,7 +265,11 @@ case class MavenRepository(
             _ <- if (xml.label == "project") \/-(()) else -\/("Project definition not found")
             proj <- Pom.project(xml)
           } yield {
-            val packagingOpt = Pom.packagingOpt(xml)
+            val packagingOpt =
+              if (packagingBlacklist(module))
+                None
+              else
+                Pom.packagingOpt(xml)
 
             proj.copy(
               configurations = defaultConfigurations,

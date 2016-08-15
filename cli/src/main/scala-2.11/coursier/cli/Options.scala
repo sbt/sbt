@@ -61,10 +61,10 @@ case class CommonOptions(
   @Value("configuration")
   @Short("c")
     defaultConfiguration: String = "default(compile)",
-  @Help("Default artifact type (make it empty to follow POM packaging - default: jar)")
+  @Help("Default artifact type (default: follow packaging infos, else default to jar)")
   @Value("type")
   @Short("a")
-    defaultArtifactType: String = "jar",
+    defaultArtifactType: String = "",
   @Help("Maximum number of parallel downloads (default: 6)")
   @Short("n")
     parallel: Int = 6,
