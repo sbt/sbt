@@ -41,7 +41,7 @@ function isMasterOrDevelop() {
 
 # TODO Add coverage once https://github.com/scoverage/sbt-scoverage/issues/111 is fixed
 
-SBT_COMMANDS="compile test"
+SBT_COMMANDS="compile test it:test"
 
 if echo "$TRAVIS_SCALA_VERSION" | grep -q "^2\.10"; then
   SBT_COMMANDS="$SBT_COMMANDS publishLocal" # to make the scripted tests happy
