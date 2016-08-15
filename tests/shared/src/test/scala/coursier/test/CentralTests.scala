@@ -399,6 +399,13 @@ object CentralTests extends TestSuite {
         }
       }
     }
+
+    'ignoreUtf8Bom - {
+      resolutionCheck(
+        Module("dk.brics.automaton", "automaton"),
+        "1.11-8"
+      )
+    }
   }
 
 }

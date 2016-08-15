@@ -832,6 +832,8 @@ object Cache {
     }
   }
 
+  private val utf8Bom = "\ufeff"
+
   def fetch(
     cache: File = default,
     cachePolicy: CachePolicy = CachePolicy.FetchMissing,
@@ -853,7 +855,9 @@ object Cache {
         val res = if (!f.isDirectory && f.exists()) {
           Try(new String(NioFiles.readAllBytes(f.toPath), "UTF-8")) match {
             case scala.util.Success(content) =>
-              Right(content)
+              // stripping any UTF-8 BOM if any, see
+              // https://github.com/alexarchambault/coursier/issues/316 and the corresponding test
+              Right(content.stripPrefix(utf8Bom))
             case scala.util.Failure(e) =>
               Left(s"Could not read (file:${f.getCanonicalPath}): ${e.getMessage}")
           }
