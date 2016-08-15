@@ -59,7 +59,7 @@ object CoursierPlugin extends AutoPlugin {
   override lazy val projectSettings = Seq(
     coursierParallelDownloads := 6,
     coursierMaxIterations := 50,
-    coursierDefaultArtifactType := "jar",
+    coursierDefaultArtifactType := "",
     coursierChecksums := Seq(Some("SHA-1"), None),
     coursierArtifactsChecksums := Seq(None),
     coursierCachePolicies := CachePolicy.default,

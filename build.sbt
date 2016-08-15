@@ -6,6 +6,8 @@ import MimaKeys.{ previousArtifacts, binaryIssueFilters }
 
 val binaryCompatibilityVersion = "1.0.0-M7"
 
+lazy val IntegrationTest = config("it") extend Test
+
 lazy val releaseSettings = Seq(
   publishMavenStyle := true,
   licenses := Seq("Apache 2.0" -> url("http://opensource.org/licenses/Apache-2.0")),
@@ -249,11 +251,13 @@ lazy val tests = crossProject
   .dependsOn(core)
   .settings(commonSettings: _*)
   .settings(noPublishSettings: _*)
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings: _*)
   .settings(
     name := "coursier-tests",
     libraryDependencies ++= Seq(
       "org.scala-lang.modules" %% "scala-async" % "0.9.5" % "provided",
-      "com.lihaoyi" %%% "utest" % "0.4.3" % "test"
+      "com.lihaoyi" %%% "utest" % "0.4.3" % "test,it"
     ),
     unmanagedResourceDirectories in Test += (baseDirectory in LocalRootProject).value / "tests" / "shared" / "src" / "test" / "resources",
     testFrameworks += new TestFramework("utest.runner.Framework")

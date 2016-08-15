@@ -96,16 +96,16 @@ object ResolutionError {
         .toVector
         .sortBy(_._1)
 
-      val b = new StringBuilder
+      val b = new ArrayBuffer[String]
 
       for ((type0, errors) <- groupedArtifactErrors) {
-        b ++= s"${errors.size} $type0"
+        b += s"${errors.size} $type0"
         if (verbose)
           for (err <- errors)
-            b ++= "  " + err
+            b += "  " + err
       }
 
-      b.result()
+      b.mkString("\n")
     }
   }
 }
