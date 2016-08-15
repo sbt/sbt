@@ -19,6 +19,7 @@ import sbt.Keys._
 
 import scala.collection.mutable
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
 
 import scalaz.{ \/-, -\/ }
@@ -259,8 +260,22 @@ object Tasks {
   private def createLogger() = new TermDisplay(new OutputStreamWriter(System.err))
 
   private lazy val globalPluginPattern = {
+
+    val props = sys.props.toMap
+
+    val extraProps = new ArrayBuffer[(String, String)]
+
+    def addUriProp(key: String): Unit =
+      for (b <- props.get(key)) {
+        val uri = new File(b).toURI.toString
+        extraProps += s"$key.uri" -> uri
+      }
+
+    addUriProp("sbt.global.base")
+    addUriProp("user.home")
+
     // FIXME get the 0.13 automatically?
-    val s = s"file:$${sbt.global.base-$${user.home}/.sbt/0.13}/plugins/target/resolution-cache/" +
+    val s = s"$${sbt.global.base.uri-$${user.home.uri}/.sbt/0.13}/plugins/target/resolution-cache/" +
       "[organization]/[module](/scala_[scalaVersion])(/sbt_[sbtVersion])/[revision]/resolved.xml.[ext]"
 
     val p = PropertiesPattern.parse(s) match {
@@ -270,7 +285,7 @@ object Tasks {
         p
     }
 
-    p.substituteProperties(sys.props.toMap) match {
+    p.substituteProperties(props ++ extraProps) match {
       case -\/(err) =>
         throw new Exception(err)
       case \/-(p) =>
