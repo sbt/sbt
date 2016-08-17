@@ -21,6 +21,7 @@ object CoursierPlugin extends AutoPlugin {
     val mavenProfiles = Keys.mavenProfiles
     val coursierSourceRepositories = Keys.coursierSourceRepositories
     val coursierResolvers = Keys.coursierResolvers
+    val coursierRecursiveResolvers = Keys.coursierRecursiveResolvers
     val coursierSbtResolvers = Keys.coursierSbtResolvers
     val coursierUseSbtCredentials = Keys.coursierUseSbtCredentials
     val coursierCredentials = Keys.coursierCredentials
@@ -68,6 +69,7 @@ object CoursierPlugin extends AutoPlugin {
     mavenProfiles := Set.empty,
     coursierSourceRepositories := Nil,
     coursierResolvers <<= Tasks.coursierResolversTask,
+    coursierRecursiveResolvers <<= Tasks.coursierRecursiveResolversTask,
     coursierSbtResolvers <<= externalResolvers in updateSbtClassifiers,
     coursierUseSbtCredentials := false,
     coursierCredentials := Map.empty,

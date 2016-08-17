@@ -69,6 +69,19 @@ object Tasks {
       }
     }
 
+  def coursierRecursiveResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] =
+    (
+      sbt.Keys.state,
+      sbt.Keys.thisProjectRef
+    ).flatMap { (state, projectRef) =>
+
+      val projects = allRecursiveInterDependencies(state, projectRef)
+
+      coursierResolvers
+        .forAllProjects(state, projectRef +: projects)
+        .map(_.values.toVector.flatten)
+    }
+
   def coursierFallbackDependenciesTask: Def.Initialize[sbt.Task[Seq[(Module, String, URL, Boolean)]]] =
     (
       sbt.Keys.state,
@@ -383,7 +396,7 @@ object Tasks {
         if (sbtClassifiers)
           coursierSbtResolvers.value
         else
-          coursierResolvers.value
+          coursierRecursiveResolvers.value.distinct
 
       val sourceRepositories = coursierSourceRepositories.value.map { dir =>
         // FIXME Don't hardcode this path?
