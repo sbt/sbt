@@ -103,7 +103,7 @@ class Helper(
         case Success(cp) => cp
         case Failure(errors) =>
           prematureExit(
-            s"Error parsing modes:\n${errors.list.map("  "+_).mkString("\n")}"
+            s"Error parsing modes:\n${errors.list.toList.map("  "+_).mkString("\n")}"
           )
       }
 
@@ -155,7 +155,7 @@ class Helper(
       sourceRepositories ++ repos
     case Failure(errors) =>
       prematureExit(
-        s"Error with repositories:\n${errors.list.map("  "+_).mkString("\n")}"
+        s"Error with repositories:\n${errors.list.toList.map("  "+_).mkString("\n")}"
       )
   }
 

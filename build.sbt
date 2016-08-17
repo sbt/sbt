@@ -121,7 +121,10 @@ lazy val core = crossProject
   .settings(mimaDefaultSettings: _*)
   .settings(
     name := "coursier",
-    libraryDependencies += "com.lihaoyi" %%% "fastparse" % "0.3.7",
+    libraryDependencies ++= Seq(
+      "org.scalaz" %%% "scalaz-core" % "7.2.5",
+      "com.lihaoyi" %%% "fastparse" % "0.3.7"
+    ),
     resourceGenerators.in(Compile) += {
       (target, version).map { (dir, ver) =>
         import sys.process._
@@ -218,7 +221,6 @@ lazy val core = crossProject
   .jvmSettings(
     libraryDependencies ++=
       Seq(
-        "org.scalaz" %% "scalaz-core" % "7.1.2",
         "org.jsoup" % "jsoup" % "1.9.2"
       ) ++ {
         if (scalaVersion.value.startsWith("2.10.")) Seq()
@@ -229,7 +231,6 @@ lazy val core = crossProject
   )
   .jsSettings(
     libraryDependencies ++= Seq(
-      "com.github.japgolly.fork.scalaz" %%% "scalaz-core" % (if (scalaVersion.value.startsWith("2.10.")) "7.1.1" else "7.1.2"),
       "org.scala-js" %%% "scalajs-dom" % "0.9.1",
       "be.doeraene" %%% "scalajs-jquery" % "0.9.0"
     )
@@ -278,7 +279,7 @@ lazy val cache = project
   .settings(
     name := "coursier-cache",
     libraryDependencies ++= Seq(
-      "org.scalaz" %% "scalaz-concurrent" % "7.1.2"
+      "org.scalaz" %% "scalaz-concurrent" % "7.2.5"
     ),
     previousArtifacts := Set("com.github.alexarchambault" %% moduleName.value % binaryCompatibilityVersion),
     binaryIssueFilters ++= {

@@ -4,6 +4,5 @@ com.lihaoyi:sourcecode_2.11:0.1.1:default
 io.get-coursier:coursier_2.11:1.0.0-SNAPSHOT:compile
 org.jsoup:jsoup:1.9.2:default
 org.scala-lang:scala-library:2.11.8:default
-org.scala-lang.modules:scala-parser-combinators_2.11:1.0.4:default
 org.scala-lang.modules:scala-xml_2.11:1.0.5:default
-org.scalaz:scalaz-core_2.11:7.1.2:default
+org.scalaz:scalaz-core_2.11:7.2.5:default
