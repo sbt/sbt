@@ -14,6 +14,16 @@ public abstract class Maybe<t>
 		return new Maybe<s>() {
 			public boolean isDefined() { return true; }
 			public s get() { return v; }
+			public int hashCode() { return 17 + (v == null ? 0 : v.hashCode()); }
+			public String toString() { return "Maybe(" + v + ")"; }
+			public boolean equals(Object o) {
+				if (o == null) return false;
+				if (!(o instanceof Maybe)) return false;
+				Maybe<?> other = (Maybe<?>) o;
+				if (!other.isDefined()) return false;
+				if (v == null) return other.get() == null;
+				return v.equals(other.get());
+			}
 		};
 	}
 	public static <s> Maybe<s> nothing()
@@ -21,7 +31,16 @@ public abstract class Maybe<t>
 		return new Maybe<s>() {
 			public boolean isDefined() { return false; }
 			public s get() { throw new UnsupportedOperationException("nothing.get"); }
+			public int hashCode() { return 1; }
+			public String toString() { return "Nothing"; }
+			public boolean equals(Object o) {
+				if (o == null) return false;
+				if (!(o instanceof Maybe)) return false;
+				Maybe<?> other = (Maybe<?>) o;
+				return !other.isDefined();
+			}
 		};
+
 	}
 
 	public final boolean isEmpty() { return !isDefined(); }
