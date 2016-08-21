@@ -953,7 +953,7 @@ object Tasks {
         coursierResolution
     }.value
 
-    val config = classpathConfiguration.value.name
+    val config = configuration.value.name
     val configs = coursierConfigurations.value
 
     val includedConfigs = configs.getOrElse(config, Set.empty) + config
