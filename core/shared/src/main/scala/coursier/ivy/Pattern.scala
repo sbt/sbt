@@ -12,17 +12,17 @@ case class PropertiesPattern(chunks: Seq[PropertiesPattern.ChunkOrProperty]) {
 
   def substituteProperties(properties: Map[String, String]): String \/ Pattern = {
 
-    val validation = chunks.toVector.traverseU {
+    val validation = chunks.toVector.traverseM[({ type L[X] = ValidationNel[String, X] })#L, Pattern.Chunk] {
       case ChunkOrProperty.Prop(name, alternativesOpt) =>
         properties.get(name) match {
           case Some(value) =>
-            Seq(Pattern.Chunk.Const(value)).successNel
+            Vector(Pattern.Chunk.Const(value)).successNel
           case None =>
             alternativesOpt match {
               case Some(alt) =>
                 PropertiesPattern(alt)
                   .substituteProperties(properties)
-                  .map(_.chunks)
+                  .map(_.chunks.toVector)
                   .validation
                   .toValidationNel
               case None =>
@@ -33,17 +33,17 @@ case class PropertiesPattern(chunks: Seq[PropertiesPattern.ChunkOrProperty]) {
       case ChunkOrProperty.Opt(l @ _*) =>
         PropertiesPattern(l)
           .substituteProperties(properties)
-          .map(l => Seq(Pattern.Chunk.Opt(l.chunks: _*)))
+          .map(l => Vector(Pattern.Chunk.Opt(l.chunks: _*)))
           .validation
           .toValidationNel
 
       case ChunkOrProperty.Var(name) =>
-        Seq(Pattern.Chunk.Var(name)).successNel
+        Vector(Pattern.Chunk.Var(name)).successNel
 
       case ChunkOrProperty.Const(value) =>
-        Seq(Pattern.Chunk.Const(value)).successNel
+        Vector(Pattern.Chunk.Const(value)).successNel
 
-    }.map(_.flatten).map(Pattern(_))
+    }.map(Pattern(_))
 
     validation.disjunction.leftMap { notFoundProps =>
       s"Property(ies) not found: ${notFoundProps.toList.mkString(", ")}"

@@ -27,6 +27,29 @@ import scalaz.concurrent.{ Task, Strategy }
 
 object Tasks {
 
+  def allRecursiveInterDependencies(state: sbt.State, projectRef: sbt.ProjectRef) = {
+
+    def dependencies(map: Map[String, Seq[String]], id: String): Set[String] = {
+
+      def helper(map: Map[String, Seq[String]], acc: Set[String]): Set[String] =
+        if (acc.exists(map.contains)) {
+          val (kept, rem) = map.partition { case (k, _) => acc(k) }
+          helper(rem, acc ++ kept.valuesIterator.flatten)
+        } else
+          acc
+
+      helper(map - id, map.getOrElse(id, Nil).toSet)
+    }
+
+    val allProjectsDeps =
+      for (p <- structure(state).allProjects)
+        yield p.id -> p.dependencies.map(_.project.project)
+
+    val deps = dependencies(allProjectsDeps.toMap, projectRef.project)
+
+    structure(state).allProjectRefs.filter(p => deps(p.project))
+  }
+
   def coursierResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] =
     (
       externalResolvers,
@@ -46,13 +69,30 @@ object Tasks {
       }
     }
 
+  def coursierRecursiveResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] =
+    (
+      sbt.Keys.state,
+      sbt.Keys.thisProjectRef
+    ).flatMap { (state, projectRef) =>
+
+      val projects = allRecursiveInterDependencies(state, projectRef)
+
+      coursierResolvers
+        .forAllProjects(state, projectRef +: projects)
+        .map(_.values.toVector.flatten)
+    }
+
   def coursierFallbackDependenciesTask: Def.Initialize[sbt.Task[Seq[(Module, String, URL, Boolean)]]] =
     (
       sbt.Keys.state,
       sbt.Keys.thisProjectRef
     ).flatMap { (state, projectRef) =>
 
-      val allDependenciesTask = allDependencies.in(projectRef).get(state)
+      val projects = allRecursiveInterDependencies(state, projectRef)
+
+      val allDependenciesTask = allDependencies
+        .forAllProjects(state, projectRef +: projects)
+        .map(_.values.toVector.flatten)
 
       for {
         allDependencies <- allDependenciesTask
@@ -103,25 +143,7 @@ object Tasks {
       sbt.Keys.thisProjectRef
     ).flatMap { (state, projectRef) =>
 
-      def dependencies(map: Map[String, Seq[String]], id: String): Set[String] = {
-
-        def helper(map: Map[String, Seq[String]], acc: Set[String]): Set[String] =
-          if (acc.exists(map.contains)) {
-            val (kept, rem) = map.partition { case (k, _) => acc(k) }
-            helper(rem, acc ++ kept.valuesIterator.flatten)
-          } else
-            acc
-
-        helper(map - id, map.getOrElse(id, Nil).toSet)
-      }
-
-      val allProjectsDeps =
-        for (p <- structure(state).allProjects)
-          yield p.id -> p.dependencies.map(_.project.project)
-
-      val deps = dependencies(allProjectsDeps.toMap, projectRef.project)
-
-      val projects = structure(state).allProjectRefs.filter(p => deps(p.project))
+      val projects = allRecursiveInterDependencies(state, projectRef)
 
       coursierProject.forAllProjects(state, projects).map(_.values.toVector)
     }
@@ -374,7 +396,7 @@ object Tasks {
         if (sbtClassifiers)
           coursierSbtResolvers.value
         else
-          coursierResolvers.value
+          coursierRecursiveResolvers.value.distinct
 
       val sourceRepositories = coursierSourceRepositories.value.map { dir =>
         // FIXME Don't hardcode this path?

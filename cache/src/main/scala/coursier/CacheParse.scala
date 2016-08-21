@@ -32,16 +32,16 @@ object CacheParse {
       }
 
       val validatedUrl = try {
-        url.map(Cache.url).validation
+        url.map(Cache.url)
       } catch {
         case e: MalformedURLException =>
-          ("Error parsing URL " + url + Option(e.getMessage).fold("")(" (" + _ + ")")).failure
+          ("Error parsing URL " + url + Option(e.getMessage).fold("")(" (" + _ + ")")).left
       }
 
       validatedUrl.flatMap { url =>
         Option(url.getUserInfo) match {
           case None =>
-            repo.validation
+            repo
           case Some(userInfo) =>
             userInfo.split(":", 2) match {
               case Array(user, password) =>
@@ -52,7 +52,7 @@ object CacheParse {
                   url.getFile
                 ).toString
 
-                repo.validation.map {
+                repo.map {
                   case m: MavenRepository =>
                     m.copy(
                       root = baseUrl,
@@ -73,10 +73,10 @@ object CacheParse {
                 }
 
               case _ =>
-                s"No password found in user info of URL $url".failure
+                s"No password found in user info of URL $url".left
             }
         }
-      }
+      }.validation
     }
 
   def repositories(l: Seq[String]): ValidationNel[String, Seq[Repository]] =
@@ -85,25 +85,25 @@ object CacheParse {
     }
 
   def cachePolicies(s: String): ValidationNel[String, Seq[CachePolicy]] =
-    s.split(',').toVector.traverseU {
+    s.split(',').toVector.traverseM[({ type L[X] = ValidationNel[String, X] })#L, CachePolicy] {
       case "offline" =>
-        Seq(CachePolicy.LocalOnly).successNel
+        Vector(CachePolicy.LocalOnly).successNel
       case "update-local-changing" =>
-        Seq(CachePolicy.LocalUpdateChanging).successNel
+        Vector(CachePolicy.LocalUpdateChanging).successNel
       case "update-local" =>
-        Seq(CachePolicy.LocalUpdate).successNel
+        Vector(CachePolicy.LocalUpdate).successNel
       case "update-changing" =>
-        Seq(CachePolicy.UpdateChanging).successNel
+        Vector(CachePolicy.UpdateChanging).successNel
       case "update" =>
-        Seq(CachePolicy.Update).successNel
+        Vector(CachePolicy.Update).successNel
       case "missing" =>
-        Seq(CachePolicy.FetchMissing).successNel
+        Vector(CachePolicy.FetchMissing).successNel
       case "force" =>
-        Seq(CachePolicy.ForceDownload).successNel
+        Vector(CachePolicy.ForceDownload).successNel
       case "default" =>
-        Seq(CachePolicy.LocalOnly, CachePolicy.FetchMissing).successNel
+        Vector(CachePolicy.LocalOnly, CachePolicy.FetchMissing).successNel
       case other =>
         s"Unrecognized mode: $other".failureNel
-    }.map(_.flatten)
+    }
 
 }
