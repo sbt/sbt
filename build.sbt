@@ -570,8 +570,18 @@ lazy val `http-server` = project
     )
   )
 
+lazy val okhttp = project
+  .dependsOn(cache)
+  .settings(commonSettings)
+  .settings(
+    name := "coursier-okhttp",
+    libraryDependencies ++= Seq(
+      "com.squareup.okhttp" % "okhttp-urlconnection" % "2.7.5"
+    )
+  )
+
 lazy val `coursier` = project.in(file("."))
-  .aggregate(coreJvm, coreJs, `fetch-js`, testsJvm, testsJs, cache, bootstrap, cli, plugin, web, doc, `http-server`)
+  .aggregate(coreJvm, coreJs, `fetch-js`, testsJvm, testsJs, cache, bootstrap, cli, plugin, web, doc, `http-server`, okhttp)
   .settings(commonSettings)
   .settings(noPublishSettings)
   .settings(releaseSettings)
