@@ -6,13 +6,13 @@ import sbt.io.syntax._
 import CacheImplicits._
 
 import sjsonnew.IsoString
-import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, FixedParser }
+import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
 
 import scala.json.ast.unsafe.JValue
 
 class CacheSpec extends UnitSpec {
 
-  implicit val isoString: IsoString[JValue] = IsoString.iso(CompactPrinter.apply, FixedParser.parseUnsafe)
+  implicit val isoString: IsoString[JValue] = IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
 
   "A cache" should "NOT throw an exception if read without being written previously" in {
     testCache[String, Int] {

@@ -6,13 +6,13 @@ import sbt.io.syntax._
 import CacheImplicits._
 
 import sjsonnew.IsoString
-import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, FixedParser }
+import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
 
 import scala.json.ast.unsafe.JValue
 
 class TrackedSpec extends UnitSpec {
 
-  implicit val isoString: IsoString[JValue] = IsoString.iso(CompactPrinter.apply, FixedParser.parseUnsafe)
+  implicit val isoString: IsoString[JValue] = IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
 
   "lastOutput" should "store the last output" in {
     withStore { store =>

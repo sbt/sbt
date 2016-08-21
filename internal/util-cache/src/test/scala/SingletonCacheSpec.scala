@@ -6,7 +6,7 @@ import sbt.io.syntax._
 import CacheImplicits._
 
 import sjsonnew.{ Builder, deserializationError, IsoString, JsonFormat, Unbuilder }
-import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, FixedParser }
+import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
 
 import scala.json.ast.unsafe.JValue
 
@@ -41,7 +41,7 @@ class SingletonCacheSpec extends UnitSpec {
       }
   }
 
-  implicit val isoString: IsoString[JValue] = IsoString.iso(CompactPrinter.apply, FixedParser.parseUnsafe)
+  implicit val isoString: IsoString[JValue] = IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
 
   "A singleton cache" should "throw an exception if read without being written previously" in {
     testCache[Int] {

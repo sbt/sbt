@@ -26,7 +26,7 @@ object Dependencies {
 
   lazy val parserCombinator211 = "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4"
 
-  lazy val sjsonnewVersion = "0.4.1"
+  lazy val sjsonnewVersion = "0.4.2"
   lazy val sjsonnew = "com.eed3si9n" %% "sjson-new-core" % sjsonnewVersion
   lazy val sjsonnewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % sjsonnewVersion
 }
