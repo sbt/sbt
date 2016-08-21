@@ -15,7 +15,7 @@ public abstract class Maybe<t>
 			public boolean isDefined() { return true; }
 			public s get() { return v; }
 			public int hashCode() { return 17 + (v == null ? 0 : v.hashCode()); }
-			public String toString() { return "Maybe(" + v + ")"; }
+			public String toString() { return "Maybe.just(" + v + ")"; }
 			public boolean equals(Object o) {
 				if (o == null) return false;
 				if (!(o instanceof Maybe)) return false;
@@ -32,7 +32,7 @@ public abstract class Maybe<t>
 			public boolean isDefined() { return false; }
 			public s get() { throw new UnsupportedOperationException("nothing.get"); }
 			public int hashCode() { return 1; }
-			public String toString() { return "Nothing"; }
+			public String toString() { return "Maybe.nothing()"; }
 			public boolean equals(Object o) {
 				if (o == null) return false;
 				if (!(o instanceof Maybe)) return false;
