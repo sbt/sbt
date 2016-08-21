@@ -93,7 +93,12 @@ package object compatibility {
   def encodeURIComponent(s: String): String =
     g.encodeURIComponent(s).asInstanceOf[String]
 
-  def listWebPageSubDirectories(page: String): Seq[String] = {
+  def listWebPageSubDirectories(url: String, page: String): Seq[String] = {
+    // TODO
+    ???
+  }
+
+  def listWebPageFiles(url: String, page: String): Seq[String] = {
     // TODO
     ???
   }

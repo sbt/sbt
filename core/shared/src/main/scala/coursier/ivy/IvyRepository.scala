@@ -147,8 +147,8 @@ case class IvyRepository(
                 s"Don't know how to list revisions of ${metadataPattern.string}".left
             }
 
-            def fromWebPage(s: String) = {
-              val subDirs = coursier.core.compatibility.listWebPageSubDirectories(s)
+            def fromWebPage(url: String, s: String) = {
+              val subDirs = coursier.core.compatibility.listWebPageSubDirectories(url, s)
               val versions = subDirs.map(Parse.version).collect { case Some(v) => v }
               val versionsInItv = versions.filter(itv.contains)
 
@@ -173,7 +173,7 @@ case class IvyRepository(
             for {
               url <- EitherT(F.point(listingUrl))
               s <- fetch(artifactFor(url))
-              res <- fromWebPage(s)
+              res <- fromWebPage(url, s)
             } yield res
         }
     }

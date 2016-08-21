@@ -903,9 +903,32 @@ object Cache {
 
         val res = if (f.exists()) {
           if (f.isDirectory) {
-            if (artifact.url.startsWith("file:"))
-              Left("Not implemented: listing of local directories")
-            else {
+            if (artifact.url.startsWith("file:")) {
+
+              val elements = f.listFiles().map { c =>
+                val name = c.getName
+                val name0 = if (c.isDirectory)
+                  name + "/"
+                else
+                  name
+
+                s"""<li><a href="$name0">$name0</a></li>"""
+              }.mkString
+
+              val page =
+                s"""<!DOCTYPE html>
+                   |<html>
+                   |<head></head>
+                   |<body>
+                   |<ul>
+                   |$elements
+                   |</ul>
+                   |</body>
+                   |</html>
+                 """.stripMargin
+
+              Right(page)
+            } else {
               val f0 = new File(f, ".directory")
 
               if (f0.exists()) {
