@@ -1,13 +1,13 @@
 language: scala
 script:
-  - sbt ++$TRAVIS_SCALA_VERSION rpm:packageBin debian:packageBin universal:packageBin
+  - sbt -Dsbt.build.version=1.0.0-M1 ++$TRAVIS_SCALA_VERSION rpm:packageBin debian:packageBin universal:packageBin
 scala:
   - 2.10.3
 jdk:
-  - openjdk6
+  - oraclejdk7
 notifications:
   email:
-    - qbranch@typesafe.com
+    - sbt-dev-bot@googlegroups.com
 before_install:
   - cat /etc/hosts # optionally check the content *before*
   - sudo hostname "$(hostname | cut -c1-63)"

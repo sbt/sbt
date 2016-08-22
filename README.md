@@ -1,7 +1,7 @@
 sbt: the launcher
 ==================
 
-An alternative script for running [sbt](https://github.com/harrah/xsbt).
+An alternative script for running [sbt](https://github.com/sbt/sbt).
 It works with sbt 0.7.x projects as well as 0.10+. If you're in an sbt
 project directory, the runner will figure out the versions of sbt and
 scala required by the project and download them if necessary.

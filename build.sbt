@@ -1,6 +1,4 @@
-import com.typesafe.sbt.packager.Keys._
-import com.typesafe.sbt.SbtNativePackager._
-import util.control.Exception.catching
+import scala.util.control.Exception.catching
 import _root_.bintray.InternalBintrayKeys._
 import _root_.bintray.{BintrayRepo, Bintray}
 
@@ -25,15 +23,13 @@ val windowsBuildId = settingKey[Int]("build id for Windows installer")
 
 // This build creates a SBT plugin with handy features *and* bundles the SBT script for distribution.
 val root = (project in file(".")).
+  enablePlugins(UniversalPlugin, LinuxPlugin, DebianPlugin, RpmPlugin, WindowsPlugin).
   settings(
     organization := "org.scala-sbt",
     name := "sbt-launcher-packaging",
     version := "0.1.0",
     crossTarget <<= target,
-    packagerSettings,
     deploymentSettings,
-    mapGenericFilesToLinux,
-    mapGenericFilesToWindows,
     publishToSettings,
     sbtLaunchJarUrl := downloadUrlForVersion(sbtVersionToRelease),
     sbtLaunchJarLocation <<= target apply (_ / "sbt-launch.jar"),
@@ -50,7 +46,7 @@ val root = (project in file(".")).
       file
     },
     // GENERAL LINUX PACKAGING STUFFS
-    maintainer := "Eugene Yokota <eugene.yokota@typesafe.com>",
+    maintainer := "Eugene Yokota <eugene.yokota@lightbend.com>",
     packageSummary := "sbt, the interactive build tool",
     packageDescription := """This script provides a native way to run sbt,
   a build tool for Scala and more.""",

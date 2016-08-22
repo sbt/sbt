@@ -6,7 +6,7 @@ object PluginBuild extends Build {
   
   val root = Project("root", file(".")) settings(
     resolvers += Resolver.url("scalasbt", new URL("http://scalasbt.artifactoryonline.com/scalasbt/sbt-plugin-releases"))(Resolver.ivyStylePatterns),
-    addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "0.6.3"),
+    addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.1.1"),
     libraryDependencies += "net.databinder" %% "dispatch-http" % "0.8.10"
   ) //dependsOn(nativePackager)
 
