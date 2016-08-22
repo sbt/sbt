@@ -148,6 +148,7 @@ object Defaults extends BuildCommon {
       retrieveManagedSync :== false,
       configurationsToRetrieve :== None,
       scalaOrganization :== ScalaArtifacts.Organization,
+      scalaArtifacts :== ScalaArtifacts.Artifacts,
       sbtResolver := { if (sbtVersion.value endsWith "-SNAPSHOT") Classpaths.sbtIvySnapshots else Classpaths.typesafeReleases },
       crossVersion :== CrossVersion.Disabled,
       buildDependencies <<= Classpaths.constructBuildDependencies,
@@ -1248,8 +1249,8 @@ object Classpaths {
     allDependencies := {
       projectDependencies.value ++ libraryDependencies.value
     },
-    ivyScala <<= ivyScala or (scalaHome, scalaVersion in update, scalaBinaryVersion in update, scalaOrganization, sbtPlugin) { (sh, fv, bv, so, plugin) =>
-      Some(new IvyScala(fv, bv, Nil, filterImplicit = false, checkExplicit = true, overrideScalaVersion = true, scalaOrganization = so))
+    ivyScala <<= ivyScala or (scalaHome, scalaVersion in update, scalaBinaryVersion in update, scalaOrganization, scalaArtifacts, sbtPlugin) { (sh, fv, bv, so, sa, plugin) =>
+      Some(new IvyScala(fv, bv, Nil, filterImplicit = false, checkExplicit = true, overrideScalaVersion = true, scalaOrganization = so, scalaArtifacts = sa))
     },
     artifactPath in makePom <<= artifactPathSetting(artifact in makePom),
     publishArtifact in makePom := publishMavenStyle.value && publishArtifact.value,
