@@ -56,17 +56,25 @@ package object compatibility {
   def encodeURIComponent(s: String): String =
     new java.net.URI(null, null, null, -1, s, null, null) .toASCIIString
 
-  def listWebPageSubDirectories(page: String): Seq[String] =
+  def listWebPageDirectoryElements(url: String, page: String, directories: Boolean): Seq[String] =
     Jsoup.parse(page)
-      .select("a[href~=[^/]*/]")
+      .select("a")
       .asScala
       .toVector
-      .map { elem =>
-        elem
-          .attr("href")
-          .stripPrefix(":") // bintray typically prepends these
-          .stripSuffix("/")
+      .map(_.attr("href"))
+      .collect {
+        case elem if elem.nonEmpty && elem.endsWith("/") == directories =>
+          elem
+            .stripSuffix("/")
+            .stripPrefix(url)
+            .stripPrefix(":") // bintray typically prepends these
       }
-      .filter(n => n != "." && n != "..")
+      .filter(n => !n.contains("/") && n != "." && n != "..")
+
+  def listWebPageSubDirectories(url: String, page: String): Seq[String] =
+    listWebPageDirectoryElements(url, page, directories = true)
+
+  def listWebPageFiles(url: String, page: String): Seq[String] =
+    listWebPageDirectoryElements(url, page, directories = false)
 
 }

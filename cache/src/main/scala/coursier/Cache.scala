@@ -22,6 +22,7 @@ import java.io.{ Serializable => _, _ }
 
 import scala.concurrent.duration.{ Duration, DurationInt }
 import scala.util.Try
+import scala.util.control.NonFatal
 
 trait AuthenticatedURLConnection extends URLConnection {
   def authenticate(authentication: Authentication): Unit
@@ -325,27 +326,41 @@ object Cache {
     def referenceFileExists: Boolean = referenceFileOpt.exists(_.exists())
 
     def urlConn(url0: String) = {
-      val conn = url(url0).openConnection() // FIXME Should this be closed?
-      // Dummy user-agent instead of the default "Java/...",
-      // so that we are not returned incomplete/erroneous metadata
-      // (Maven 2 compatibility? - happens for snapshot versioning metadata,
-      // this is SO FSCKING CRAZY)
-      conn.setRequestProperty("User-Agent", "")
+      var conn: URLConnection = null
 
-      for (auth <- artifact.authentication)
-        conn match {
-          case authenticated: AuthenticatedURLConnection =>
-            authenticated.authenticate(auth)
-          case conn0: HttpURLConnection =>
-            conn0.setRequestProperty(
-              "Authorization",
-              "Basic " + basicAuthenticationEncode(auth.user, auth.password)
-            )
-          case _ =>
+      try {
+        conn = url(url0).openConnection() // FIXME Should this be closed?
+        // Dummy user-agent instead of the default "Java/...",
+        // so that we are not returned incomplete/erroneous metadata
+        // (Maven 2 compatibility? - happens for snapshot versioning metadata,
+        // this is SO FSCKING CRAZY)
+        conn.setRequestProperty("User-Agent", "")
+
+        for (auth <- artifact.authentication)
+          conn match {
+            case authenticated: AuthenticatedURLConnection =>
+              authenticated.authenticate(auth)
+            case conn0: HttpURLConnection =>
+              conn0.setRequestProperty(
+                "Authorization",
+                "Basic " + basicAuthenticationEncode(auth.user, auth.password)
+              )
+            case _ =>
             // FIXME Authentication is ignored
-        }
+          }
 
-      conn
+        conn
+      } catch {
+        case NonFatal(e) =>
+          if (conn != null)
+            conn match {
+              case conn0: HttpURLConnection =>
+                conn0.getInputStream.close()
+                conn0.disconnect()
+              case _ =>
+            }
+          throw e
+      }
     }
 
 
@@ -369,34 +384,47 @@ object Cache {
     ): EitherT[Task, FileError, Option[Long]] =
       EitherT {
         Task {
-          urlConn(url) match {
-            case c: HttpURLConnection =>
-              logger.foreach(_.checkingUpdates(url, currentLastModifiedOpt))
+          var conn: URLConnection = null
 
-              var success = false
-              try {
-                c.setRequestMethod("HEAD")
-                val remoteLastModified = c.getLastModified
+          try {
+            conn = urlConn(url)
 
-                // TODO 404 Not found could be checked here
+            conn match {
+              case c: HttpURLConnection =>
+                logger.foreach(_.checkingUpdates(url, currentLastModifiedOpt))
 
-                val res =
-                  if (remoteLastModified > 0L)
-                    Some(remoteLastModified)
-                  else
-                    None
+                var success = false
+                try {
+                  c.setRequestMethod("HEAD")
+                  val remoteLastModified = c.getLastModified
 
-                success = true
-                logger.foreach(_.checkingUpdatesResult(url, currentLastModifiedOpt, res))
+                  // TODO 404 Not found could be checked here
 
-                res.right
-              } finally {
-                if (!success)
-                  logger.foreach(_.checkingUpdatesResult(url, currentLastModifiedOpt, None))
+                  val res =
+                    if (remoteLastModified > 0L)
+                      Some(remoteLastModified)
+                    else
+                      None
+
+                  success = true
+                  logger.foreach(_.checkingUpdatesResult(url, currentLastModifiedOpt, res))
+
+                  res.right
+                } finally {
+                  if (!success)
+                    logger.foreach(_.checkingUpdatesResult(url, currentLastModifiedOpt, None))
+                }
+
+              case other =>
+                -\/(FileError.DownloadError(s"Cannot do HEAD request with connection $other ($url)"))
+            }
+          } finally {
+            if (conn != null)
+              conn match {
+                case conn0: HttpURLConnection =>
+                  conn0.disconnect()
+                case _ =>
               }
-
-            case other =>
-              -\/(FileError.DownloadError(s"Cannot do HEAD request with connection $other ($url)"))
           }
         }
       }
@@ -512,59 +540,70 @@ object Cache {
 
               val alreadyDownloaded = tmp.length()
 
-              val conn0 = urlConn(url)
+              var conn: URLConnection = null
 
-              val (partialDownload, conn) = conn0 match {
-                case conn0: HttpURLConnection if alreadyDownloaded > 0L =>
-                  conn0.setRequestProperty("Range", s"bytes=$alreadyDownloaded-")
+              try {
+                conn = urlConn(url)
 
-                  if (conn0.getResponseCode == partialContentResponseCode) {
-                    val ackRange = Option(conn0.getHeaderField("Content-Range")).getOrElse("")
+                val partialDownload = conn match {
+                  case conn0: HttpURLConnection if alreadyDownloaded > 0L =>
+                    conn0.setRequestProperty("Range", s"bytes=$alreadyDownloaded-")
 
-                    if (ackRange.startsWith(s"bytes $alreadyDownloaded-"))
-                      (true, conn0)
-                    else
-                      // unrecognized Content-Range header -> start a new connection with no resume
-                      (false, urlConn(url))
-                  } else
-                    (false, conn0)
+                    (conn0.getResponseCode == partialContentResponseCode) && {
+                      val ackRange = Option(conn0.getHeaderField("Content-Range")).getOrElse("")
 
-                case _ => (false, conn0)
-              }
-
-              if (responseCode(conn) == Some(404))
-                FileError.NotFound(url, permanent = Some(true)).left
-              else if (responseCode(conn) == Some(401))
-                FileError.Unauthorized(url, realm = realm(conn)).left
-              else {
-                for (len0 <- Option(conn.getContentLengthLong) if len0 >= 0L) {
-                  val len = len0 + (if (partialDownload) alreadyDownloaded else 0L)
-                  logger.foreach(_.downloadLength(url, len, alreadyDownloaded))
-                }
-
-                val in = new BufferedInputStream(conn.getInputStream, bufferSize)
-
-                val result =
-                  try {
-                    val out = withStructureLock(cache) {
-                      tmp.getParentFile.mkdirs()
-                      new FileOutputStream(tmp, partialDownload)
+                      ackRange.startsWith(s"bytes $alreadyDownloaded-") || {
+                        // unrecognized Content-Range header -> start a new connection with no resume
+                        conn0.getInputStream.close()
+                        conn0.disconnect()
+                        conn = urlConn(url)
+                        false
+                      }
                     }
-                    try readFullyTo(in, out, logger, url, if (partialDownload) alreadyDownloaded else 0L)
-                    finally out.close()
-                  } finally in.close()
-
-                withStructureLock(cache) {
-                  file.getParentFile.mkdirs()
-                  NioFiles.move(tmp.toPath, file.toPath, StandardCopyOption.ATOMIC_MOVE)
+                  case _ => false
                 }
 
-                for (lastModified <- Option(conn.getLastModified) if lastModified > 0L)
-                  file.setLastModified(lastModified)
+                if (responseCode(conn) == Some(404))
+                  FileError.NotFound(url, permanent = Some(true)).left
+                else if (responseCode(conn) == Some(401))
+                  FileError.Unauthorized(url, realm = realm(conn)).left
+                else {
+                  for (len0 <- Option(conn.getContentLengthLong) if len0 >= 0L) {
+                    val len = len0 + (if (partialDownload) alreadyDownloaded else 0L)
+                    logger.foreach(_.downloadLength(url, len, alreadyDownloaded))
+                  }
 
-                doTouchCheckFile(file)
+                  val in = new BufferedInputStream(conn.getInputStream, bufferSize)
 
-                result.right
+                  val result =
+                    try {
+                      val out = withStructureLock(cache) {
+                        tmp.getParentFile.mkdirs()
+                        new FileOutputStream(tmp, partialDownload)
+                      }
+                      try readFullyTo(in, out, logger, url, if (partialDownload) alreadyDownloaded else 0L)
+                      finally out.close()
+                    } finally in.close()
+
+                  withStructureLock(cache) {
+                    file.getParentFile.mkdirs()
+                    NioFiles.move(tmp.toPath, file.toPath, StandardCopyOption.ATOMIC_MOVE)
+                  }
+
+                  for (lastModified <- Option(conn.getLastModified) if lastModified > 0L)
+                    file.setLastModified(lastModified)
+
+                  doTouchCheckFile(file)
+
+                  result.right
+                }
+              } finally {
+                if (conn != null)
+                  conn match {
+                    case conn0: HttpURLConnection =>
+                      conn0.disconnect()
+                    case _ =>
+                  }
               }
             }
           }
@@ -852,16 +891,58 @@ object Cache {
         pool = pool,
         ttl = ttl
       ).leftMap(_.describe).flatMap { f =>
-        val res = if (!f.isDirectory && f.exists()) {
-          Try(new String(NioFiles.readAllBytes(f.toPath), "UTF-8")) match {
-            case scala.util.Success(content) =>
-              // stripping any UTF-8 BOM if any, see
-              // https://github.com/alexarchambault/coursier/issues/316 and the corresponding test
-              Right(content.stripPrefix(utf8Bom))
-            case scala.util.Failure(e) =>
+
+        def notFound(f: File) = Left(s"${f.getCanonicalPath} not found")
+
+        def read(f: File) =
+          try Right(new String(NioFiles.readAllBytes(f.toPath), "UTF-8").stripPrefix(utf8Bom))
+          catch {
+            case NonFatal(e) =>
               Left(s"Could not read (file:${f.getCanonicalPath}): ${e.getMessage}")
           }
-        } else Left(s"Could not read (file:${f.getCanonicalPath}) (isFile:${!f.isDirectory}) (exists:${f.exists()})")
+
+        val res = if (f.exists()) {
+          if (f.isDirectory) {
+            if (artifact.url.startsWith("file:")) {
+
+              val elements = f.listFiles().map { c =>
+                val name = c.getName
+                val name0 = if (c.isDirectory)
+                  name + "/"
+                else
+                  name
+
+                s"""<li><a href="$name0">$name0</a></li>"""
+              }.mkString
+
+              val page =
+                s"""<!DOCTYPE html>
+                   |<html>
+                   |<head></head>
+                   |<body>
+                   |<ul>
+                   |$elements
+                   |</ul>
+                   |</body>
+                   |</html>
+                 """.stripMargin
+
+              Right(page)
+            } else {
+              val f0 = new File(f, ".directory")
+
+              if (f0.exists()) {
+                if (f0.isDirectory)
+                  Left(s"Woops: ${f.getCanonicalPath} is a directory")
+                else
+                  read(f0)
+              } else
+                notFound(f0)
+            }
+          } else
+            read(f)
+        } else
+          notFound(f)
 
         EitherT.fromEither(Task.now[Either[String, String]](res))
       }

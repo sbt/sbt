@@ -276,9 +276,6 @@ object Tasks {
       Module(scalaOrganization, "scalap") -> scalaVersion
     )
 
-  private def projectDescription(project: Project) =
-    s"${project.module.organization}:${project.module.name}:${project.version}"
-
   private def createLogger() = new TermDisplay(new OutputStreamWriter(System.err))
 
   private lazy val globalPluginPattern = {
@@ -324,6 +321,8 @@ object Tasks {
     synchronized {
 
       lazy val cm = coursierSbtClassifiersModule.value
+
+      lazy val projectName = thisProjectRef.value.project
 
       val (currentProject, fallbackDependencies) =
         if (sbtClassifiers) {
@@ -614,8 +613,7 @@ object Tasks {
 
           if (verbosityLevel >= 0)
             log.info(
-              s"Updating ${projectDescription(currentProject)}" +
-                (if (sbtClassifiers) " (sbt classifiers)" else "")
+              s"Updating $projectName" + (if (sbtClassifiers) " (sbt classifiers)" else "")
             )
           if (verbosityLevel >= 2)
             for (depRepr <- depsRepr(currentProject.dependencies))
@@ -663,7 +661,7 @@ object Tasks {
           }
 
           if (verbosityLevel >= 0)
-            log.info(s"Resolved ${projectDescription(currentProject)} dependencies")
+            log.info(s"Resolved $projectName dependencies")
 
           res
         } finally {
@@ -704,6 +702,8 @@ object Tasks {
     synchronized {
 
       lazy val cm = coursierSbtClassifiersModule.value
+
+      lazy val projectName = thisProjectRef.value.project
 
       val currentProject =
         if (sbtClassifiers) {
@@ -834,7 +834,7 @@ object Tasks {
 
           if (verbosityLevel >= 0)
             log.info(
-              s"Fetching artifacts of ${projectDescription(currentProject)}" +
+              s"Fetching artifacts of $projectName" +
                 (if (sbtClassifiers) " (sbt classifiers)" else "")
             )
 
@@ -850,7 +850,7 @@ object Tasks {
 
           if (verbosityLevel >= 0)
             log.info(
-              s"Fetched artifacts of ${projectDescription(currentProject)}" +
+              s"Fetched artifacts of $projectName" +
                 (if (sbtClassifiers) " (sbt classifiers)" else "")
             )
 
@@ -925,6 +925,8 @@ object Tasks {
     ignoreArtifactErrors: Boolean = false
   ) = Def.task {
 
+    lazy val projectName = thisProjectRef.value.project
+
     val currentProject =
       if (sbtClassifiers) {
         val cm = coursierSbtClassifiersModule.value
@@ -953,7 +955,7 @@ object Tasks {
         coursierResolution
     }.value
 
-    val config = classpathConfiguration.value.name
+    val config = configuration.value.name
     val configs = coursierConfigurations.value
 
     val includedConfigs = configs.getOrElse(config, Set.empty) + config
@@ -968,7 +970,7 @@ object Tasks {
 
     // use sbt logging?
     println(
-      projectDescription(currentProject) + "\n" +
+      projectName + "\n" +
       Print.dependencyTree(dependencies0, subRes, printExclusions = true, inverse)
     )
   }
