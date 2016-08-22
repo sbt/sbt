@@ -155,6 +155,7 @@ object Defaults extends BuildCommon {
       retrieveManagedSync :== false,
       configurationsToRetrieve :== None,
       scalaOrganization :== ScalaArtifacts.Organization,
+      scalaArtifacts :== ScalaArtifacts.Artifacts,
       sbtResolver := { if (sbtVersion.value endsWith "-SNAPSHOT") Classpaths.sbtIvySnapshots else Classpaths.typesafeReleases },
       crossVersion :== Disabled(),
       buildDependencies := Classpaths.constructBuildDependencies.value,
@@ -1431,7 +1432,9 @@ object Classpaths {
           (scalaVersion in update).value,
           (scalaBinaryVersion in update).value,
           Vector.empty, filterImplicit = false, checkExplicit = true, overrideScalaVersion = true
-        ).withScalaOrganization(scalaOrganization.value))
+        )
+          .withScalaOrganization(scalaOrganization.value)
+          .withScalaArtifacts(scalaArtifacts.value))
       }
     )).value,
     artifactPath in makePom := artifactPathSetting(artifact in makePom).value,
