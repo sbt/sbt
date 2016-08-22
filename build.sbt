@@ -50,7 +50,7 @@ val root = (project in file(".")).
       file
     },
     // GENERAL LINUX PACKAGING STUFFS
-    maintainer := "Eugene Yokota <eugene.yokota@typesafe.com>",
+    maintainer := "Eugene Yokota <eugene.yokota@lightbend.com>",
     packageSummary := "sbt, the interactive build tool",
     packageDescription := """This script provides a native way to run sbt,
   a build tool for Scala and more.""",
