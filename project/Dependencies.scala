@@ -21,6 +21,8 @@ object Dependencies {
   lazy val junit = "junit" % "junit" % "4.11"
   lazy val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0-M1"
   lazy val rawLauncher = "org.scala-sbt" % "launcher" % "1.0.0-M1"
+  lazy val templateResolverApi = "org.scala-sbt" % "template-resolver" % "0.1"
+  lazy val giter8 = "org.foundweekends.giter8" %% "giter8" % "0.7.0"
 
   private def scala211Module(name: String, moduleVersion: String) =
     Def.setting {

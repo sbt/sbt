@@ -449,7 +449,7 @@ lazy val commandProj = (project in mainPath / "command").
   settings(
     testedBaseSettings,
     name := "Command",
-    libraryDependencies += launcherInterface
+    libraryDependencies ++= Seq(launcherInterface, templateResolverApi, giter8)
   )
 
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
