@@ -11,6 +11,7 @@ object BasicCommandStrings {
   val CompletionsCommand = "completions"
   val Exit = "exit"
   val Quit = "quit"
+  val TemplateCommand = "new"
 
   /** The command name to terminate the program.*/
   val TerminateAction: String = Exit
@@ -31,6 +32,10 @@ object BasicCommandStrings {
 
   def CompletionsDetailed = "Displays a list of completions for the given argument string (run 'completions <string>')."
   def CompletionsBrief = (CompletionsCommand, CompletionsDetailed)
+
+  def templateBrief = (TemplateCommand, "Creates a new sbt build.")
+  def templateDetailed = TemplateCommand + """ [--options] <template>
+  Create a new sbt build based on the given template."""
 
   def HistoryHelpBrief = (HistoryCommands.Start -> "History command help.  Lists and describes all history commands.")
   def historyHelp = Help(Nil, (HistoryHelpBrief +: HistoryCommands.descriptions).toMap, Set(HistoryCommands.Start))

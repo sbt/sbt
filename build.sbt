@@ -192,7 +192,7 @@ lazy val commandProj = (project in file("main-command")).
   settings(
     testedBaseSettings,
     name := "Command",
-    libraryDependencies ++= Seq(launcherInterface, sjsonNewScalaJson),
+    libraryDependencies ++= Seq(launcherInterface, sjsonNewScalaJson, templateResolverApi, giter8),
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats
   ).
