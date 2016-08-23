@@ -1,7 +1,7 @@
 package coursier
 
 import java.math.BigInteger
-import java.net.{ HttpURLConnection, URL, URLConnection, URLStreamHandler }
+import java.net.{ HttpURLConnection, URL, URLConnection, URLStreamHandler, URLStreamHandlerFactory }
 import java.nio.channels.{ OverlappingFileLockException, FileLock }
 import java.nio.file.{ StandardCopyOption, Files => NioFiles }
 import java.security.MessageDigest
@@ -243,21 +243,24 @@ object Cache {
     Option(handlerClsCache.get(protocol)) match {
       case None =>
         val clsName = s"coursier.cache.protocol.${protocol.capitalize}Handler"
-        val clsOpt =
-          try Some(Thread.currentThread().getContextClassLoader.loadClass(clsName))
+        def clsOpt(loader: ClassLoader) =
+          try Some(loader.loadClass(clsName))
           catch {
             case _: ClassNotFoundException =>
               None
           }
+
+        val clsOpt0 = clsOpt(Thread.currentThread().getContextClassLoader)
+          .orElse(clsOpt(getClass.getClassLoader))
 
         def printError(e: Exception): Unit =
           scala.Console.err.println(
             s"Cannot instantiate $clsName: $e${Option(e.getMessage).fold("")(" ("+_+")")}"
           )
 
-        val handlerOpt = clsOpt.flatMap {
+        val handlerFactoryOpt = clsOpt0.flatMap {
           cls =>
-            try Some(cls.newInstance().asInstanceOf[URLStreamHandler])
+            try Some(cls.newInstance().asInstanceOf[URLStreamHandlerFactory])
             catch {
               case e: InstantiationException =>
                 printError(e)
@@ -267,6 +270,18 @@ object Cache {
                 None
               case e: ClassCastException =>
                 printError(e)
+                None
+            }
+        }
+
+        val handlerOpt = handlerFactoryOpt.flatMap {
+          factory =>
+            try Some(factory.createURLStreamHandler(protocol))
+            catch {
+              case NonFatal(e) =>
+                scala.Console.err.println(
+                  s"Cannot get handler for $protocol from $clsName: $e${Option(e.getMessage).fold("")(" ("+_+")")}"
+                )
                 None
             }
         }
