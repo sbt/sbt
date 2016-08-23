@@ -160,6 +160,7 @@ object Defaults extends BuildCommon {
     maxErrors :== 100,
     fork :== false,
     initialize :== {},
+    templateResolvers :== Nil,
     forcegc :== sys.props.get("sbt.task.forcegc").map(java.lang.Boolean.parseBoolean).getOrElse(GCUtil.defaultForceGarbageCollection),
     minForcegcInterval :== GCUtil.defaultMinForcegcInterval
   ))

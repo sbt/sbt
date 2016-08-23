@@ -10,7 +10,7 @@ object Dependencies {
 
   lazy val jline = "jline" % "jline" % "2.13"
   lazy val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-2cc8d2761242b072cedb0a04cb39435c4fa24f9a"
-  lazy val jsch = "com.jcraft" % "jsch" % "0.1.46" intransitive ()
+  lazy val jsch = "com.jcraft" % "jsch" % "0.1.50" intransitive ()
   lazy val sbinary = "org.scala-tools.sbinary" %% "sbinary" % "0.4.2"
   lazy val sbtSerialization = "org.scala-sbt" %% "serialization" % "0.1.2"
   lazy val scalaCompiler = Def.setting { "org.scala-lang" % "scala-compiler" % scalaVersion.value }
@@ -21,6 +21,8 @@ object Dependencies {
   lazy val junit = "junit" % "junit" % "4.11"
   lazy val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0-M1"
   lazy val rawLauncher = "org.scala-sbt" % "launcher" % "1.0.0-M1"
+  lazy val templateResolverApi = "org.scala-sbt" % "template-resolver" % "0.1"
+  lazy val giter8 = "org.foundweekends.giter8" %% "giter8" % "0.7.1"
 
   private def scala211Module(name: String, moduleVersion: String) =
     Def.setting {
@@ -50,6 +52,7 @@ object Dependencies {
   val guice = "com.google.inject" % "guice" % "3.0"
   val guava = "com.google.guava" % "guava" % "18.0"
   val javaxInject = "javax.inject" % "javax.inject" % "1"
+  val plexusUtils = "org.codehaus.plexus" % "plexus-utils" % "3.0.18"
 
   //val sisuGuice = ("org.eclipse.sisu" % "sisu-guice" % "3.1.0").classifier("no_aop").exclude("javax.enterprise", "cdi-api", )
 
