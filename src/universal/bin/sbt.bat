@@ -22,6 +22,21 @@ FOR /F "tokens=* eol=# usebackq delims=" %%i IN ("%FN%") DO (
   set CFG_OPTS=!CFG_OPTS! !DO_NOT_REUSE_ME!
 )
 
+rem poor man's jenv (which is not available on Windows)
+IF DEFINED JAVA_HOMES (
+  IF EXIST .java-version FOR /F %%A IN (.java-version) DO (
+    SET JAVA_HOME=%JAVA_HOMES%\%%A
+    SET JDK_HOME=%JAVA_HOMES%\%%A
+  )
+)
+rem must set PATH or wrong javac is used for java projects
+IF DEFINED JAVA_HOME SET PATH=%JAVA_HOME%\bin;%PATH%
+
+rem users can set JAVA_OPTS via .jvmopts (sbt-extras style)
+IF EXIST .jvmopts FOR /F %%A IN (.jvmopts) DO (
+  SET JAVA_OPTS=%%A !JAVA_OPTS!
+)
+
 rem We use the value of the JAVACMD environment variable if defined
 set _JAVACMD=%JAVACMD%
 
