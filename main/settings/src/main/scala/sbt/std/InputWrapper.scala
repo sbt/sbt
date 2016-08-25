@@ -98,9 +98,10 @@ object InputWrapper {
         InputWrapper.wrapInitTask[T](c)(ts, pos)
       else if (tpe <:< c.weakTypeOf[Initialize[T]]) {
         if (c.weakTypeOf[T] <:< c.weakTypeOf[InputTask[_]]) {
-          c.abort(pos, """`value` is no longer allowed for an input task. Use `evaluated` or `toInputTask`.
-                         |See http://www.scala-sbt.org/0.13/docs/Input-Tasks.html for more details.""".stripMargin)
-        } else InputWrapper.wrapInit[T](c)(ts, pos)
+          c.warning(pos, """`value` is deprecated for an input task. Use `evaluated` or `toInputTask`.
+                           |See http://www.scala-sbt.org/0.13/docs/Input-Tasks.html for more details.""".stripMargin)
+        }
+        InputWrapper.wrapInit[T](c)(ts, pos)
       }
       else if (tpe <:< c.weakTypeOf[Task[T]])
         InputWrapper.wrapTask[T](c)(ts, pos)

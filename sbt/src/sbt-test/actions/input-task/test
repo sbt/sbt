@@ -1,2 +1,1 @@
-## build.sbt should not load
--> compile
+> compile
