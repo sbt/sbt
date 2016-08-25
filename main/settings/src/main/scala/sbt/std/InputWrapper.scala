@@ -105,6 +105,10 @@ object InputWrapper {
       }
       else if (tpe <:< c.weakTypeOf[Task[T]])
         InputWrapper.wrapTask[T](c)(ts, pos)
+      else if (tpe <:< c.weakTypeOf[InputTask[T]])
+        InputWrapper.wrapInputTask[T](c)(ts, pos)
+      else if (tpe <:< c.weakTypeOf[Initialize[InputTask[T]]])
+        InputWrapper.wrapInitInputTask[T](c)(ts, pos)
       else
         c.abort(pos, s"Internal sbt error. Unexpected type ${tpe.widen}")
     }
