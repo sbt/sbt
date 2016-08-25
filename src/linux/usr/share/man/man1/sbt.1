@@ -72,10 +72,15 @@ add -X to sbt's scalacOptions (-S is stripped)
 .RS
 The user configuration file.
 .RE
+.I ".jvmopts"
+.RS
+if this file exists in the current directory, its contents are appended
+to the JAVA_OPTS.
+.RE
 .I ".sbtopts"
 .RS
-if this file exists in the current directory, it is prepended to the
-runner args.
+if this file exists in the current directory, its contents are prepended
+to the runner args.
 .RE
 .I "/etc/sbt/sbtopts"
 .RS
