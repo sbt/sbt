@@ -109,7 +109,6 @@ object InputWrapper {
     }
   def toInputTaskMacroImpl[T: c.WeakTypeTag](c: Context): c.Expr[InputTask[T]] =
     ContextUtil.selectMacroImpl[InputTask[T]](c) { (ts, pos) =>
-      val tpe = ts.tree.tpe
       InputWrapper.wrapInit[InputTask[T]](c)(ts, pos)
     }
   def taskValueMacroImpl[T: c.WeakTypeTag](c: Context): c.Expr[Task[T]] =
