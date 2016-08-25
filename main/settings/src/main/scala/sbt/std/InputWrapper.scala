@@ -96,16 +96,21 @@ object InputWrapper {
       val tpe = ts.tree.tpe
       if (tpe <:< c.weakTypeOf[Initialize[Task[T]]])
         InputWrapper.wrapInitTask[T](c)(ts, pos)
-      else if (tpe <:< c.weakTypeOf[Initialize[T]])
-        InputWrapper.wrapInit[T](c)(ts, pos)
+      else if (tpe <:< c.weakTypeOf[Initialize[T]]) {
+        if (c.weakTypeOf[T] <:< c.weakTypeOf[InputTask[_]]) {
+          c.abort(pos, """`value` is no longer allowed for an input task. Use `evaluated` or `toInputTask`.
+                         |See http://www.scala-sbt.org/0.13/docs/Input-Tasks.html for more details.""".stripMargin)
+        } else InputWrapper.wrapInit[T](c)(ts, pos)
+      }
       else if (tpe <:< c.weakTypeOf[Task[T]])
         InputWrapper.wrapTask[T](c)(ts, pos)
-      else if (tpe <:< c.weakTypeOf[InputTask[T]])
-        InputWrapper.wrapInputTask[T](c)(ts, pos)
-      else if (tpe <:< c.weakTypeOf[Initialize[InputTask[T]]])
-        InputWrapper.wrapInitInputTask[T](c)(ts, pos)
       else
         c.abort(pos, s"Internal sbt error. Unexpected type ${tpe.widen}")
+    }
+  def toInputTaskMacroImpl[T: c.WeakTypeTag](c: Context): c.Expr[InputTask[T]] =
+    ContextUtil.selectMacroImpl[InputTask[T]](c) { (ts, pos) =>
+      val tpe = ts.tree.tpe
+      InputWrapper.wrapInit[InputTask[T]](c)(ts, pos)
     }
   def taskValueMacroImpl[T: c.WeakTypeTag](c: Context): c.Expr[Task[T]] =
     ContextUtil.selectMacroImpl[Task[T]](c) { (ts, pos) =>
@@ -147,6 +152,8 @@ sealed abstract class ParserInput[T] {
 sealed abstract class InputEvaluated[T] {
   @compileTimeOnly("`evaluated` can only be used within an input task macro, such as := or Def.inputTask.")
   def evaluated: T = macro InputWrapper.valueMacroImpl[T]
+  @compileTimeOnly("`toInputTask` can only be used within an input task macro, such as := or Def.inputTask.")
+  def toInputTask: InputTask[T] = macro InputWrapper.toInputTaskMacroImpl[T]
 }
 sealed abstract class ParserInputTask[T] {
   @compileTimeOnly("`parsed` can only be used within an input task macro, such as := or Def.inputTask.")
