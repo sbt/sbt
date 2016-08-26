@@ -92,7 +92,7 @@ object InputWrapper {
       ts.tree.tpe match {
         case tpe if tpe <:< c.weakTypeOf[Initialize[T]] =>
           if (c.weakTypeOf[T] <:< c.weakTypeOf[InputTask[_]]) {
-            c.abort(pos, """`value` is removed from input tasks. Use `evaluated` or `toInputTask`.
+            c.abort(pos, """`value` is removed from input tasks. Use `evaluated` or `inputTaskValue`.
                            |See http://www.scala-sbt.org/1.0/docs/Input-Tasks.html for more details.""".stripMargin)
           }
           InputWrapper.wrapInit[T](c)(ts, pos)
@@ -103,7 +103,7 @@ object InputWrapper {
         case tpe                                                   => unexpectedType(c)(pos, tpe)
       }
     }
-  def toInputTaskMacroImpl[T: c.WeakTypeTag](c: Context): c.Expr[InputTask[T]] =
+  def inputTaskValueMacroImpl[T: c.WeakTypeTag](c: Context): c.Expr[InputTask[T]] =
     ContextUtil.selectMacroImpl[InputTask[T]](c) { (ts, pos) =>
       InputWrapper.wrapInit[InputTask[T]](c)(ts, pos)
     }
@@ -150,8 +150,8 @@ sealed abstract class ParserInput[T] {
 sealed abstract class InputEvaluated[T] {
   @compileTimeOnly("`evaluated` can only be used within an input task macro, such as := or Def.inputTask.")
   def evaluated: T = macro InputWrapper.valueMacroImpl[T]
-  @compileTimeOnly("`toInputTask` can only be used within an input task macro, such as := or Def.inputTask.")
-  def toInputTask: InputTask[T] = macro InputWrapper.toInputTaskMacroImpl[T]
+  @compileTimeOnly("`inputTaskValue` can only be used within an input task macro, such as := or Def.inputTask.")
+  def inputTaskValue: InputTask[T] = macro InputWrapper.inputTaskValueMacroImpl[T]
 }
 sealed abstract class ParserInputTask[T] {
   @compileTimeOnly("`parsed` can only be used within an input task macro, such as := or Def.inputTask.")
