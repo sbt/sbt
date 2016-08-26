@@ -357,11 +357,12 @@ abstract class MavenRepositoryResolver(settings: IvySettings) extends AbstractRe
           case _ => tmp
         }
       }
+      val transitive = d.getExclusions.asScala.forall(e => e.getGroupId != "*" || e.getArtifactId != "*")
 
       // Note: The previous maven integration ALWAYS set force to true for dependnecies.  If we do not do this, for some
       //       reason, Ivy will create dummy nodes when doing dependnecy mediation (e.g. dependencyManagement of one pom overrides version of a dependency)
       //       which was leading to "data not found" exceptions as Ivy would pick the correct IvyNode in the dependency tree but never load it with data....
-      val dd = new DefaultDependencyDescriptor(md, drid, /* force  */ true, isChanging, true) {}
+      val dd = new DefaultDependencyDescriptor(md, drid, /* force  */ true, isChanging, transitive) {}
 
       // TODO - Configuration mappings (are we grabbing scope correctly, or should the default not always be compile?)
       val scope = Option(d.getScope).filterNot(_.isEmpty).getOrElse("compile")
@@ -389,16 +390,18 @@ abstract class MavenRepositoryResolver(settings: IvySettings) extends AbstractRe
         // TOOD - We may need to fix the configuration mappings here.
         dd.addDependencyArtifact(optionalizedScope, depArtifact)
       }
-      // Include rules and exclude rules.
-      for (e <- d.getExclusions.asScala) {
-        val excludedModule = new ModuleId(e.getGroupId, e.getArtifactId)
-        for (conf <- dd.getModuleConfigurations) {
-          // TODO - Do we need extra attributes for this?
-          dd.addExcludeRule(conf, new DefaultExcludeRule(new ArtifactId(
-            excludedModule, PatternMatcher.ANY_EXPRESSION,
-            PatternMatcher.ANY_EXPRESSION,
-            PatternMatcher.ANY_EXPRESSION),
-            ExactPatternMatcher.INSTANCE, null))
+      if (dd.isTransitive) {
+        // Include rules and exclude rules.
+        for (e <- d.getExclusions.asScala) {
+          val excludedModule = new ModuleId(e.getGroupId, e.getArtifactId)
+          for (conf <- dd.getModuleConfigurations) {
+            // TODO - Do we need extra attributes for this?
+            dd.addExcludeRule(conf, new DefaultExcludeRule(new ArtifactId(
+              excludedModule, PatternMatcher.ANY_EXPRESSION,
+              PatternMatcher.ANY_EXPRESSION,
+              PatternMatcher.ANY_EXPRESSION),
+              ExactPatternMatcher.INSTANCE, null))
+          }
         }
       }
       md.addDependency(dd)
