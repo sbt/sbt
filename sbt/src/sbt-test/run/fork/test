@@ -4,7 +4,7 @@ $ delete flag
 
 $ mkdir "forked"
 > set fork := true
-> 'set baseDirectory in run <<= baseDirectory(_ / "forked")'
+> 'set baseDirectory in run := baseDirectory(_ / "forked").value'
 
 > run "forked"
 $ exists forked/flag

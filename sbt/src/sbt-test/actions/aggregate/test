@@ -3,7 +3,7 @@
 $ absent ran
 
 # single project, 'mark' defined
-> set Mark <<= mark
+> set Mark := mark.value
 > mark
 $ exists ran
 $ delete ran
@@ -26,14 +26,14 @@ $ mkdir sub sub/sub
 > reload
 
 # define in root project only
-> set Mark <<= mark
+> set Mark := mark.value
 > mark
 $ exists ran
 $ absent sub/ran
 $ delete ran
 
 # define in sub project, but shouldn't run without aggregation
-> set Mark in sub <<= mark(sub)
+> set Mark in sub := mark(sub).value
 > mark
 $ exists ran
 $ absent sub/ran
@@ -55,8 +55,8 @@ $ touch aggregate
 > reload
 
 # add tasks to each subproject
-> set Mark in sub <<= mark(sub)
-> set Mark in sub2 <<= mark(sub2)
+> set Mark in sub := mark(sub).value
+> set Mark in sub2 := mark(sub2).value
 
 # check that aggregation works when root project has no task
 > mark
@@ -71,7 +71,7 @@ $ absent ran
 $ delete sub/ran sub/sub/ran
 
 # add task to root project
-> set Mark <<= mark
+> set Mark := mark.value
 
 # disable aggregation for sub/mark so that sub2/mark doesn't run
 > set aggregate in (sub,Mark) := false

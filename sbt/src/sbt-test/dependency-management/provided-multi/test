@@ -1,10 +1,10 @@
-$ copy-file changes/P.scala project/P.scala
+$ copy-file changes/p.sbt p.sbt
 $ copy-file changes/A.scala a/src/main/scala/A.scala
 $ copy-file changes/B.scala b/src/main/scala/B.scala
 > reload
 
-> A/compile
--> B/compile
+> a/compile
+-> b/compile
 
 $ touch b/declare.lib
 > reload

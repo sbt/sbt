@@ -3,4 +3,4 @@ libraryDependencies ++= Seq(
 	"junit" % "junit" % "4.8" % "test"
 )
 
-libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _ )
+libraryDependencies += scalaVersion("org.scala-lang" % "scala-compiler" % _ ).value
