@@ -90,6 +90,12 @@ abstract class AutoPlugin extends Plugins.Basic with PluginsFunctions {
 
   // TODO?: def commands: Seq[Command]
 
+  /** The [[Project]]s to add to the current build. */
+  def buildExtras: Seq[Project] = Nil
+
+  /** The [[Project]]s to add to the current build based on an existing project. */
+  def projectExtras(proj: ProjectDefinition[_]): Seq[Project] = Nil
+
   private[sbt] def unary_! : Exclude = Exclude(this)
 
 

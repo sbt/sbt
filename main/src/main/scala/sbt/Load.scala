@@ -467,10 +467,13 @@ object Load {
       val defsScala = timed("Load.loadUnit: defsScala", log) {
         plugs.detected.builds.values
       }
+      val buildLevelExtraProjects = plugs.detected.autoPlugins flatMap { d =>
+        d.value.buildExtras map {_.setProjectOrigin(ProjectOrigin.BuildExtra)}
+      }
 
       // NOTE - because we create an eval here, we need a clean-eval later for this URI.
       lazy val eval = timed("Load.loadUnit: mkEval", log) { mkEval(plugs.classpath, defDir, plugs.pluginData.scalacOptions) }
-      val initialProjects = defsScala.flatMap(b => projectsFromBuild(b, normBase))
+      val initialProjects = defsScala.flatMap(b => projectsFromBuild(b, normBase)) ++ buildLevelExtraProjects
 
       val hasRootAlreadyDefined = defsScala.exists(_.rootProject.isDefined)
 
@@ -580,10 +583,28 @@ object Load {
       // load all relevant configuration files (.sbt, as .scala already exists at this point)
       def discover(auto: AddSettings, base: File): DiscoveredProjects =
         discoverProjects(auto, base, plugins, eval, memoSettings)
-      // Step two, Finalize a project with all its settings/configuration.
-      def finalizeProject(p: Project, configFiles: Seq[File]): Project = {
-        val loadedFiles = configFiles flatMap { f => memoSettings.get(f) }
-        resolveProject(p, loadedFiles, plugins, injectSettings, memoSettings, log)
+      // Step two:
+      // a. Apply all the project manipulations from .sbt files in order
+      // b. Deduce the auto plugins for the project
+      // c. Finalize a project with all its settings/configuration.
+      def finalizeProject(p: Project, files: Seq[File], expand: Boolean): (Project, Seq[Project]) = {
+        val configFiles = files flatMap { f => memoSettings.get(f) }
+        val p1: Project =
+          timed(s"Load.loadTransitive(${p.id}): transformedProject", log) {
+            configFiles.flatMap(_.manipulations).foldLeft(p) { (prev, t) =>
+              t(prev)
+            }
+          }
+        val autoPlugins: Seq[AutoPlugin] =
+          timed(s"Load.loadTransitive(${p.id}): autoPlugins", log) {
+            try plugins.detected.deducePluginsFromProject(p1, log)
+            catch { case e: AutoPluginException => throw translateAutoPluginException(e, p) }
+          }
+        val p2 = this.resolveProject(p1, autoPlugins, plugins, injectSettings, memoSettings, log)
+        val projectLevelExtra =
+          if (expand) autoPlugins flatMap { _.projectExtras(p2) map {_.setProjectOrigin(ProjectOrigin.ProjectExtra)} }
+          else Nil
+        (p2, projectLevelExtra)
       }
       // Discover any new project definition for the base directory of this project, and load all settings.
       // Also return any newly discovered project instances.
@@ -596,9 +617,10 @@ object Load {
             (root, rest, files, generated)
           case DiscoveredProjects(None, rest, files, generated) => (p, rest, files, generated)
         }
-        val finalRoot = finalizeProject(root, files)
-        (finalRoot, discovered, generated)
+        val (finalRoot, projectLevelExtra) = finalizeProject(root, files, true)
+        (finalRoot, discovered ++ projectLevelExtra, generated)
       }
+
       // Load all config files AND finalize the project at the root directory, if it exists.
       // Continue loading if we find any more.
       newProjects match {
@@ -611,8 +633,10 @@ object Load {
           discover(AddSettings.defaultSbtFiles, buildBase) match {
             case DiscoveredProjects(Some(root), discovered, files, generated) =>
               log.debug(s"[Loading] Found root project ${root.id} w/ remaining ${discovered.map(_.id).mkString(",")}")
-              val finalRoot = timed(s"Load.loadTransitive: finalizeProject($root)", log) { finalizeProject(root, files) }
-              loadTransitive(discovered, buildBase, plugins, eval, injectSettings, finalRoot +: acc, memoSettings, log, false, buildUri, context, generated ++ generatedConfigClassFiles)
+              val (finalRoot, projectLevelExtra) = timed(s"Load.loadTransitive: finalizeProject($root)", log) {
+                finalizeProject(root, files, true)
+              }
+              loadTransitive(discovered ++ projectLevelExtra, buildBase, plugins, eval, injectSettings, finalRoot +: acc, memoSettings, log, false, buildUri, context, generated ++ generatedConfigClassFiles)
             // Here we need to create a root project...
             case DiscoveredProjects(None, discovered, files, generated) =>
               log.debug(s"[Loading] Found non-root projects ${discovered.map(_.id).mkString(",")}")
@@ -624,7 +648,9 @@ object Load {
               val defaultID = autoID(buildBase, context, existingIds)
               val root0 = if (discovered.isEmpty || java.lang.Boolean.getBoolean("sbt.root.ivyplugin")) Build.defaultAggregatedProject(defaultID, buildBase, refs)
               else Build.generatedRootWithoutIvyPlugin(defaultID, buildBase, refs)
-              val root = timed(s"Load.loadTransitive: finalizeProject2($root0)", log) { finalizeProject(root0, files) }
+              val (root, _) = timed(s"Load.loadTransitive: finalizeProject2($root0)", log) {
+                finalizeProject(root0, files, false)
+              }
               val result = root +: (acc ++ otherProjects.projects)
               log.debug(s"[Loading] Done in ${buildBase}, returning: ${result.map(_.id).mkString("(", ", ", ")")}")
               LoadedProjects(result, generated ++ otherGenerated ++ generatedConfigClassFiles)
@@ -656,13 +682,11 @@ object Load {
   /**
    * This method attempts to resolve/apply all configuration loaded for a project. It is responsible for the following:
    *
-   * 1. Apply any manipulations defined in .sbt files.
-   * 2. Detecting which autoPlugins are enabled for the project.
-   * 3. Ordering all Setting[_]s for the project
+   * Ordering all Setting[_]s for the project
    *
    *
-   * @param rawProject  The original project, with nothing manipulated since it was evaluated/discovered.
-   * @param configFiles All configuration files loaded for this project.  Used to discover project manipulations
+   * @param transformedProject  The project with manipulation.
+   * @param projectPlugins The deduced list of plugins for the given project.
    * @param loadedPlugins  The project definition (and classloader) of the build.
    * @param globalUserSettings All the settings contributed from the ~/.sbt/<version> directory
    * @param memoSettings A recording of all loaded files (our files should reside in there).  We should need not load any
@@ -670,48 +694,35 @@ object Load {
    * @param log  A logger to report auto-plugin issues to.
    */
   private[this] def resolveProject(
-    rawProject: Project,
-    configFiles: Seq[LoadedSbtFile],
+    p: Project,
+    projectPlugins: Seq[AutoPlugin],
     loadedPlugins: sbt.LoadedPlugins,
     globalUserSettings: InjectSettings,
     memoSettings: mutable.Map[File, LoadedSbtFile],
     log: Logger): Project =
-    timed(s"Load.resolveProject(${rawProject.id})", log) {
+    timed(s"Load.resolveProject(${p.id})", log) {
       import AddSettings._
-      // 1. Apply all the project manipulations from .sbt files in order
-      val transformedProject =
-        timed(s"Load.resolveProject(${rawProject.id}): transformedProject", log) {
-          configFiles.flatMap(_.manipulations).foldLeft(rawProject) { (prev, t) =>
-            t(prev)
-          }
-        }
-      // 2. Discover all the autoplugins and contributed configurations.
-      val autoPlugins =
-        timed(s"Load.resolveProject(${rawProject.id}): autoPlugins", log) {
-          try loadedPlugins.detected.deducePluginsFromProject(transformedProject, log)
-          catch { case e: AutoPluginException => throw translateAutoPluginException(e, transformedProject) }
-        }
-      val autoConfigs = autoPlugins.flatMap(_.projectConfigurations)
+      val autoConfigs = projectPlugins.flatMap(_.projectConfigurations)
 
       // 3. Use AddSettings instance to order all Setting[_]s appropriately
       val allSettings = {
         // TODO - This mechanism of applying settings could be off... It's in two places now...
-        lazy val defaultSbtFiles = configurationSources(transformedProject.base)
+        lazy val defaultSbtFiles = configurationSources(p.base)
         // Grabs the plugin settings for old-style sbt plugins.
         def pluginSettings(f: Plugins) =
-          timed(s"Load.resolveProject(${rawProject.id}): expandSettings(...): pluginSettings($f)", log) {
+          timed(s"Load.resolveProject(${p.id}): expandSettings(...): pluginSettings($f)", log) {
             val included = loadedPlugins.detected.plugins.values.filter(f.include) // don't apply the filter to AutoPlugins, only Plugins
             included.flatMap(p => p.settings.filter(isProjectThis) ++ p.projectSettings)
           }
         // Filter the AutoPlugin settings we included based on which ones are
         // intended in the AddSettings.AutoPlugins filter.
         def autoPluginSettings(f: AutoPlugins) =
-          timed(s"Load.resolveProject(${rawProject.id}): expandSettings(...): autoPluginSettings($f)", log) {
-            autoPlugins.filter(f.include).flatMap(_.projectSettings)
+          timed(s"Load.resolveProject(${p.id}): expandSettings(...): autoPluginSettings($f)", log) {
+            projectPlugins.filter(f.include).flatMap(_.projectSettings)
           }
         // Grab all the settigns we already loaded from sbt files
         def settings(files: Seq[File]): Seq[Setting[_]] =
-          timed(s"Load.resolveProject(${rawProject.id}): expandSettings(...): settings($files)", log) {
+          timed(s"Load.resolveProject(${p.id}): expandSettings(...): settings($files)", log) {
             for {
               file <- files
               config <- (memoSettings get file).toSeq
@@ -720,20 +731,20 @@ object Load {
           }
         // Expand the AddSettings instance into a real Seq[Setting[_]] we'll use on the project
         def expandSettings(auto: AddSettings): Seq[Setting[_]] = auto match {
-          case BuildScalaFiles     => rawProject.settings
+          case BuildScalaFiles     => p.settings
           case User                => globalUserSettings.cachedProjectLoaded(loadedPlugins.loader)
-          case sf: SbtFiles        => settings(sf.files.map(f => IO.resolve(rawProject.base, f)))
+          case sf: SbtFiles        => settings(sf.files.map(f => IO.resolve(p.base, f)))
           case sf: DefaultSbtFiles => settings(defaultSbtFiles.filter(sf.include))
           case p: Plugins          => pluginSettings(p)
           case p: AutoPlugins      => autoPluginSettings(p)
           case q: Sequence         => (Seq.empty[Setting[_]] /: q.sequence) { (b, add) => b ++ expandSettings(add) }
         }
-        timed(s"Load.resolveProject(${rawProject.id}): expandSettings(...)", log) {
-          expandSettings(transformedProject.auto)
+        timed(s"Load.resolveProject(${p.id}): expandSettings(...)", log) {
+          expandSettings(p.auto)
         }
       }
       // Finally, a project we can use in buildStructure.
-      transformedProject.copy(settings = allSettings).setAutoPlugins(autoPlugins).prefixConfigs(autoConfigs: _*)
+      p.copy(settings = allSettings).setAutoPlugins(projectPlugins).prefixConfigs(autoConfigs: _*)
     }
 
   /**
