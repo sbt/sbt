@@ -1,3 +1,5 @@
+import sbt.inc.Analysis
+
 name := "test"
 
 TaskKey[Unit]("checkSame") := (compile in Configurations.Compile map { case analysis: Analysis =>

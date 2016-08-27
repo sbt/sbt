@@ -1,3 +1,5 @@
+import sbt.inc.Analysis
+
 // checks number of compilation iterations performed since last `clean` run
 InputKey[Unit]("check-number-of-compiler-iterations") := (inputTask { (argTask: TaskKey[Seq[String]]) =>
   (argTask, compile in Compile) map { case (args: Seq[String], a: Analysis) =>
