@@ -67,6 +67,9 @@ sealed trait ProjectDefinition[PR <: ProjectReference] {
    */
   def plugins: Plugins
 
+  /** Indicates whether the project was created organically, or was generated synthetically. */
+  def projectOrigin: ProjectOrigin
+
   /** The [[AutoPlugin]]s enabled for this project.  This value is only available on a loaded Project. */
   private[sbt] def autoPlugins: Seq[AutoPlugin]
 
@@ -107,7 +110,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
       dependenciesEval = dependenciesEval,
       delegatesEval = delegatesEval,
       settingsEval = settingsEval,
-      configurations, auto, plugins, autoPlugins)
+      configurations, auto, plugins, autoPlugins, projectOrigin)
 
   def resolve(resolveRef: ProjectReference => ProjectRef): ResolvedProject =
     {
@@ -119,7 +122,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
         dependenciesEval = dependenciesEval map resolveDeps,
         delegatesEval = delegatesEval map resolveRefs,
         settingsEval,
-        configurations, auto, plugins, autoPlugins)
+        configurations, auto, plugins, autoPlugins, projectOrigin)
     }
   def resolveBuild(resolveRef: ProjectReference => ProjectReference): Project =
     {
@@ -131,7 +134,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
         dependenciesEval = dependenciesEval map resolveDeps,
         delegatesEval = delegatesEval map resolveRefs,
         settingsEval,
-        configurations, auto, plugins, autoPlugins)
+        configurations, auto, plugins, autoPlugins, projectOrigin)
     }
 
   /**
@@ -229,13 +232,19 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
 
   private[this] def setPlugins(ns: Plugins): Project = {
     // TODO: for 0.14.0, use copy when it has the additional `plugins` parameter
-    unresolved(id, base, aggregateEval = aggregateEval, dependenciesEval = dependenciesEval, delegatesEval = delegatesEval, settingsEval, configurations, auto, ns, autoPlugins)
+    unresolved(id, base, aggregateEval = aggregateEval, dependenciesEval = dependenciesEval, delegatesEval = delegatesEval, settingsEval, configurations, auto, ns, autoPlugins, projectOrigin)
   }
 
   /** Definitively set the [[AutoPlugin]]s for this project. */
   private[sbt] def setAutoPlugins(autos: Seq[AutoPlugin]): Project = {
     // TODO: for 0.14.0, use copy when it has the additional `autoPlugins` parameter
-    unresolved(id, base, aggregateEval = aggregateEval, dependenciesEval = dependenciesEval, delegatesEval = delegatesEval, settingsEval, configurations, auto, plugins, autos)
+    unresolved(id, base, aggregateEval = aggregateEval, dependenciesEval = dependenciesEval, delegatesEval = delegatesEval, settingsEval, configurations, auto, plugins, autos, projectOrigin)
+  }
+
+  /** Definitively set the [[ProjectOrigin]] for this project. */
+  private[sbt] def setProjectOrigin(origin: ProjectOrigin): Project = {
+    // TODO: for 1.0.x, use withProjectOrigin.
+    unresolved(id, base, aggregateEval = aggregateEval, dependenciesEval = dependenciesEval, delegatesEval = delegatesEval, settingsEval, configurations, auto, plugins, autoPlugins, origin)
   }
 }
 sealed trait ResolvedProject extends ProjectDefinition[ProjectRef] {
@@ -246,6 +255,18 @@ sealed trait ResolvedProject extends ProjectDefinition[ProjectRef] {
 sealed trait ClasspathDep[PR <: ProjectReference] { def project: PR; def configuration: Option[String] }
 final case class ResolvedClasspathDependency(project: ProjectRef, configuration: Option[String]) extends ClasspathDep[ProjectRef]
 final case class ClasspathDependency(project: ProjectReference, configuration: Option[String]) extends ClasspathDep[ProjectReference]
+
+/**
+ * Indicate whether the project was created organically, synthesized by a plugin,
+ * or is a "generic root" project supplied by sbt when a project doesn't exist for `file(".")`.
+ */
+sealed trait ProjectOrigin
+object ProjectOrigin {
+  case object Organic        extends ProjectOrigin
+  case object ExtraProject   extends ProjectOrigin
+  case object DerivedProject extends ProjectOrigin
+  case object GenericRoot    extends ProjectOrigin
+}
 
 object Project extends ProjectExtra {
 
@@ -259,7 +280,8 @@ object Project extends ProjectExtra {
       val configurations: Seq[Configuration],
       val auto: AddSettings,
       val plugins: Plugins,
-      val autoPlugins: Seq[AutoPlugin]) extends ProjectDefinition[PR] {
+      val autoPlugins: Seq[AutoPlugin],
+      val projectOrigin: ProjectOrigin) extends ProjectDefinition[PR] {
     def aggregate: Seq[PR] = aggregateEval.get
     def dependencies: Seq[ClasspathDep[PR]] = dependenciesEval.get
     def delegates: Seq[PR] = delegatesEval.get
@@ -278,9 +300,9 @@ object Project extends ProjectExtra {
     }
 
   def apply(id: String, base: File): Project =
-    unresolved(id, base, evalNil, evalNil, evalNil, evalNil, Nil, AddSettings.allDefaults, Plugins.empty, Nil)
+    unresolved(id, base, evalNil, evalNil, evalNil, evalNil, Nil, AddSettings.allDefaults, Plugins.empty, Nil, ProjectOrigin.Organic)
 
-  // TODO: add parameter for plugins in 0.14.0
+  // TODO: add parameter for plugins and projectOrigin in 1.0
   // TODO: Modify default settings to be the core settings, and automatically add the IvyModule + JvmPlugins.
   // def apply(id: String, base: File, aggregate: => Seq[ProjectReference] = Nil, dependencies: => Seq[ClasspathDep[ProjectReference]] = Nil,
   //  delegates: => Seq[ProjectReference] = Nil, settings: => Seq[Def.Setting[_]] = Nil, configurations: Seq[Configuration] = Nil,
@@ -303,7 +325,7 @@ object Project extends ProjectExtra {
   private[sbt] def mkGeneratedRoot(id: String, base: File, aggregate: Eval[Seq[ProjectReference]]): Project =
     {
       validProjectID(id).foreach(errMsg => sys.error("Invalid project ID: " + errMsg))
-      new ProjectDef[ProjectReference](id, base, aggregate, evalNil, evalNil, evalNil, Nil, AddSettings.allDefaults, Plugins.empty, Nil) with Project with GeneratedRootProject
+      new ProjectDef[ProjectReference](id, base, aggregate, evalNil, evalNil, evalNil, Nil, AddSettings.allDefaults, Plugins.empty, Nil, ProjectOrigin.GenericRoot) with Project with GeneratedRootProject
     }
 
   /** Returns None if `id` is a valid Project ID or Some containing the parser error message if it is not.*/
@@ -330,15 +352,15 @@ object Project extends ProjectExtra {
 
   private def resolved(id: String, base: File, aggregateEval: Eval[Seq[ProjectRef]], dependenciesEval: Eval[Seq[ClasspathDep[ProjectRef]]],
     delegatesEval: Eval[Seq[ProjectRef]], settingsEval: Eval[Seq[Def.Setting[_]]], configurations: Seq[Configuration], auto: AddSettings,
-    plugins: Plugins, autoPlugins: Seq[AutoPlugin]): ResolvedProject =
-    new ProjectDef[ProjectRef](id, base, aggregateEval, dependenciesEval, delegatesEval, settingsEval, configurations, auto, plugins, autoPlugins) with ResolvedProject
+    plugins: Plugins, autoPlugins: Seq[AutoPlugin], origin: ProjectOrigin): ResolvedProject =
+    new ProjectDef[ProjectRef](id, base, aggregateEval, dependenciesEval, delegatesEval, settingsEval, configurations, auto, plugins, autoPlugins, origin) with ResolvedProject
 
   private def unresolved(id: String, base: File, aggregateEval: Eval[Seq[ProjectReference]], dependenciesEval: Eval[Seq[ClasspathDep[ProjectReference]]],
     delegatesEval: Eval[Seq[ProjectReference]], settingsEval: Eval[Seq[Def.Setting[_]]], configurations: Seq[Configuration], auto: AddSettings,
-    plugins: Plugins, autoPlugins: Seq[AutoPlugin]): Project =
+    plugins: Plugins, autoPlugins: Seq[AutoPlugin], origin: ProjectOrigin): Project =
     {
       validProjectID(id).foreach(errMsg => sys.error("Invalid project ID: " + errMsg))
-      new ProjectDef[ProjectReference](id, base, aggregateEval, dependenciesEval, delegatesEval, settingsEval, configurations, auto, plugins, autoPlugins) with Project
+      new ProjectDef[ProjectReference](id, base, aggregateEval, dependenciesEval, delegatesEval, settingsEval, configurations, auto, plugins, autoPlugins, origin) with Project
     }
 
   final class Constructor(p: ProjectReference) {
