@@ -1,0 +1,25 @@
+### Changes
+
+* Ignore UTF-8 BOM in metadata files ([#321])
+* Take into account `sbt.global.base` and `sbt.ivy.home` properties ([#326])
+* Fix regression in 1.0.0-M13 related to non-JAR packaging ([#326])
+* Take into account scala JARs put in the classpath by SBT for the scala version it uses ([#326])
+* Switch to scalaz 7.2 ([#328])
+* Propagate user-supplied URLs with `from` to other sub-projets ([#328])
+* Propagate resolvers to other sub-projects ([#328])
+* Have `coursierDependencyTree` not trigger a full update ([#330])
+* More reliable handling of user-supplied URLs via `from` (resolution should not fail if the URL is wrong, [#330])
+* Use sub-project names rather than their coordinates in the SBT plugin output ([#330])
+* Add okhttp plugin (to use as a replacement for the sometimes flaky `java.net.HttpUrlConnection`, [#331])
+* Important fix in the handling of plugins for extra protocols ([#332])
+
+[#321]: https://github.com/alexarchambault/coursier/pull/321
+[#326]: https://github.com/alexarchambault/coursier/pull/326
+[#328]: https://github.com/alexarchambault/coursier/pull/328
+[#330]: https://github.com/alexarchambault/coursier/pull/330
+[#331]: https://github.com/alexarchambault/coursier/pull/331
+[#332]: https://github.com/alexarchambault/coursier/pull/332
+
+### Non-backward compatible changes
+
+* Switch to scalaz 7.2, as 1.0 final is coming later than initially thought.

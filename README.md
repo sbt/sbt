@@ -73,7 +73,7 @@ Lastly, it can be used programmatically via its [API](#api) and has a Scala JS [
 
 Enable the SBT plugin by adding
 ```scala
-addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.0-M13")
+addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.0-M14")
 ```
 to `~/.sbt/0.13/plugins/build.sbt` (enables it globally), or to the `project/plugins.sbt` file
 of a SBT project. Tested with SBT 0.13.8 / 0.13.9 / 0.13.11 / 0.13.12.
@@ -111,8 +111,8 @@ $ ./coursier fetch org.apache.spark:spark-sql_2.11:1.6.1 com.twitter:algebird-sp
 Add to your `build.sbt`
 ```scala
 libraryDependencies ++= Seq(
-  "io.get-coursier" %% "coursier" % "1.0.0-M13",
-  "io.get-coursier" %% "coursier-cache" % "1.0.0-M13"
+  "io.get-coursier" %% "coursier" % "1.0.0-M14",
+  "io.get-coursier" %% "coursier-cache" % "1.0.0-M14"
 )
 ```
 
@@ -215,7 +215,7 @@ of the cache used by a particular project, in case you have any doubt about what
 
 Enable the SBT plugin globally by adding
 ```scala
-addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.0-M13")
+addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.0-M14")
 ```
 to `~/.sbt/0.13/plugins/build.sbt`
 
@@ -368,7 +368,7 @@ The `bootstrap` generates tiny bootstrap launchers, able to pull their dependenc
 repositories on first launch. For example, the launcher of coursier is [generated](https://github.com/alexarchambault/coursier/blob/master/project/generate-launcher.sh) with a command like
 ```
 $ ./coursier bootstrap \
-    io.get-coursier:coursier-cli_2.11:1.0.0-M13 \
+    io.get-coursier:coursier-cli_2.11:1.0.0-M14 \
     -b -f -o coursier \
     -M coursier.cli.Coursier
 ```
@@ -380,12 +380,12 @@ See `./coursier bootstrap --help` for a list of the available options.
 Add to your `build.sbt`
 ```scala
 libraryDependencies ++= Seq(
-  "io.get-coursier" %% "coursier" % "1.0.0-M13",
-  "io.get-coursier" %% "coursier-cache" % "1.0.0-M13"
+  "io.get-coursier" %% "coursier" % "1.0.0-M14",
+  "io.get-coursier" %% "coursier-cache" % "1.0.0-M14"
 )
 ```
 
-The first module, `"io.get-coursier" %% "coursier" % "1.0.0-M13"`, mainly depends on
+The first module, `"io.get-coursier" %% "coursier" % "1.0.0-M14"`, mainly depends on
 `scalaz-core` (and only it, *not* `scalaz-concurrent` for example). It contains among others,
 definitions,
 mainly in [`Definitions.scala`](https://github.com/alexarchambault/coursier/blob/master/core/shared/src/main/scala/coursier/core/Definitions.scala),
@@ -395,7 +395,7 @@ that expects to be given metadata, wrapped in any `Monad`, then feeds these to `
 you the final `Resolution`, wrapped in the same `Monad` it was given input. This final `Resolution` has all the dependencies,
 including the transitive ones.
 
-The second module, `"io.get-coursier" %% "coursier-cache" % "1.0.0-M13"`, is precisely in charge of fetching
+The second module, `"io.get-coursier" %% "coursier-cache" % "1.0.0-M14"`, is precisely in charge of fetching
 these input metadata. It uses `scalaz.concurrent.Task` as a `Monad` to wrap them. It also fetches artifacts (JARs, etc.).
 It caches all of these (metadata and artifacts) on disk, and validates checksums too.
 
@@ -440,7 +440,7 @@ scala> val repositories = Seq(
      |   Cache.ivy2Local,
      |   MavenRepository("https://repo1.maven.org/maven2")
      | )
-repositories: Seq[coursier.core.Repository] = List(IvyRepository(Pattern(List(Const(file://), Var(user.home), Const(/local/), Var(organisation), Const(/), Var(module), Const(/), Opt(WrappedArray(Const(scala_), Var(scalaVersion), Const(/))), Opt(WrappedArray(Const(sbt_), Var(sbtVersion), Const(/))), Var(revision), Const(/), Var(type), Const(s/), Var(artifact), Opt(WrappedArray(Const(-), Var(classifier))), Const(.), Var(ext))),None,None,true,true,true,true,None), MavenRepository(https://repo1.maven.org/maven2,None,false,None))
+repositories: Seq[coursier.core.Repository] = List(IvyRepository(Pattern(List(Const(file://), Var(user.home), Const(/local/), Var(organisation), Const(/), Var(module), Const(/), Opt(WrappedArray(Const(scala_), Var(scalaVersion), Const(/))), Opt(WrappedArray(Const(sbt_), Var(sbtVersion), Const(/))), Var(revision), Const(/), Var(type), Const(s/), Var(artifact), Opt(WrappedArray(Const(-), Var(classifier))), Const(.), Var(ext))),None,None,true,true,true,true,None), MavenRepository(https://repo1.maven.org/maven2,None,false,None,Set(org.apache.zookeeper:zookeeper)))
 ```
 The first one, `Cache.ivy2Local`, is defined in `coursier.Cache`, itself from the `coursier-cache` module that
 we added above. As we can see, it is an `IvyRepository`, picking things under `~/.ivy2/local`. An `IvyRepository`
@@ -467,7 +467,7 @@ scala> MavenRepository(
      |   "https://nexus.corp.com/content/repositories/releases",
      |   authentication = Some(Authentication("user", "pass"))
      | )
-res6: coursier.maven.MavenRepository = MavenRepository(https://nexus.corp.com/content/repositories/releases,None,false,Some(Authentication(user, *******)))
+res6: coursier.maven.MavenRepository = MavenRepository(https://nexus.corp.com/content/repositories/releases,None,false,Some(Authentication(user, *******)),Set(org.apache.zookeeper:zookeeper))
 ```
 
 Now that we have repositories, we're going to mix these with things from the `coursier-cache` module,
@@ -644,18 +644,6 @@ Plus the inherent amount of bugs arising in a young project :-)
 
 ## FAQ
 
-#### Why does coursier seem not to find some artifacts, whereas SBT does?
-
-Check that the necessary repositories ("resolvers" in SBT parlance) are added to all
-the sub-projects that need them.
-
-By default in SBT, all the caches of the various repositories
-are blended together. Which means that if the required repositories are added at just one place,
-some dependencies may be put in cache from there, then become accessible from other places via
-the cache, even though the required repositories were not added to them.
-Coursier, on the other hand, keeps the caches of the various repositories separate, so that
-they don't interfere with each other in such undesirable ways.
-
 #### Even though the coursier SBT plugin is enabled and some `coursier*` keys can be found from the SBT prompt, dependency resolution seems still to be handled by SBT itself. Why?
 
 Check that the default SBT settings (`sbt.Defaults.defaultSettings`) are not manually added to your project.
@@ -683,13 +671,6 @@ This is likely unintended, as it leads to exceptions like
 java.lang.VerifyError: (class: org/jboss/netty/channel/socket/nio/NioWorkerPool, method: createWorker signature: (Ljava/util/concurrent/Executor;)Lorg/jboss/netty/channel/socket/nio/AbstractNioWorker;) Wrong return type in function
 ```
 Excluding `org.jboss.netty:netty` from the spark dependencies fixes it.
-
-#### The coursier SBT plugin flow my CI output with messages. What can I do?
-
-Set the `COURSIER_PROGRESS` environment variable to `0`. This disables the
-progress bar message, and prints simple `Downloading URL` / `Downloaded URL`
-instead. Alternatively, if SBT is launched via the [sbt-extras](https://github.com/paulp/sbt-extras)
-launcher, pass it the `-batch` option, or have its stdin be `/dev/null` with `sbt ... < /dev/null`.
 
 #### On first launch, the coursier launcher downloads a 1.5+ MB JAR. Is it possible to have a standalone launcher, that would not need to download things on first launch?
 
