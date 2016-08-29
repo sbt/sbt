@@ -1,7 +1,6 @@
 package sbt
 package std
 
-import language.experimental.macros
 import reflect.macros._
 
 import Def.Initialize

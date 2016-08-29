@@ -1,11 +1,9 @@
 package sbt
 
 import Project._
-import sbt.internal.util.Types.{ idFun, some }
+import sbt.internal.util.Types.idFun
 import sbt.internal.TestBuild._
 
-import java.io.File
-import java.net.URI
 import org.scalacheck._
 import Prop._
 import Gen._

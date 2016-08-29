@@ -2,7 +2,6 @@ import sbt._
 
 import org.scalacheck._
 import Prop._
-import Task._
 import TaskGen._
 import math.abs
 

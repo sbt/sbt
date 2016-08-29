@@ -3,7 +3,6 @@ import sbt._
 import org.scalacheck._
 import Prop._
 import TaskGen._
-import Task._
 
 object TaskRunnerCallTest extends Properties("TaskRunner Call") {
   property("calculates fibonacci") = forAll(MaxTasksGen, MaxWorkersGen) { (i: Int, workers: Int) =>

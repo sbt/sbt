@@ -3,15 +3,12 @@ package internal
 
 import Def.{ ScopedKey, Setting }
 import sbt.internal.util.{ AttributeKey, AttributeMap, Relation, Settings }
-import sbt.internal.util.Types.{ const, idFun, some }
+import sbt.internal.util.Types.{ const, some }
 import sbt.internal.util.complete.Parser
 
-import java.io.File
 import java.net.URI
 import org.scalacheck._
-import Prop._
 import Gen._
-import Arbitrary.arbBool
 
 // Notes:
 //  Generator doesn't produce cross-build project dependencies or do anything with the 'extra' axis
@@ -59,7 +56,7 @@ object TestBuild {
     lazy val allAttributeKeys: Set[AttributeKey[_]] = data.data.values.flatMap(_.keys).toSet
     lazy val (taskAxes, globalTaskAxis, onlyTaskAxis, multiTaskAxis) =
       {
-        import collection.{ breakOut, mutable }
+        import collection.mutable
         import mutable.HashSet
 
         // task axis of Scope is set to Global and the value of the second map is the original task axis

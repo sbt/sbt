@@ -2,7 +2,7 @@ package sbt
 package std
 
 import sbt.internal.util.complete
-import sbt.internal.util.complete.{ DefaultParsers, Parsers }
+import sbt.internal.util.complete.DefaultParsers
 
 /*object UseTask
 {

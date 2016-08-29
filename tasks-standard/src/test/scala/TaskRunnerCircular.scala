@@ -3,7 +3,6 @@ package sbt
 import org.scalacheck._
 import Prop._
 import TaskGen._
-import Task._
 
 object TaskRunnerCircularTest extends Properties("TaskRunner Circular") {
   property("Catches circular references") = forAll(MaxTasksGen, MaxWorkersGen) { checkCircularReferences _ }

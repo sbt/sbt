@@ -1,7 +1,5 @@
 package sbt
 
-import java.io._
-
 import org.specs2.mutable.Specification
 
 object DefaultsTest extends Specification {
