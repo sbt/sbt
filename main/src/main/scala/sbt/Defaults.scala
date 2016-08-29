@@ -1718,10 +1718,10 @@ object Classpaths {
       }
 
   import java.util.LinkedHashSet
-  import collection.JavaConversions.asScalaSet
+  import collection.JavaConverters._
   def interSort(projectRef: ProjectRef, conf: Configuration, data: Settings[Scope], deps: BuildDependencies): Seq[(ProjectRef, String)] =
     {
-      val visited = asScalaSet(new LinkedHashSet[(ProjectRef, String)])
+      val visited = (new LinkedHashSet[(ProjectRef, String)]).asScala
       def visit(p: ProjectRef, c: Configuration): Unit = {
         val applicableConfigs = allConfigs(c)
         for (ac <- applicableConfigs) // add all configurations in this project
@@ -1758,7 +1758,7 @@ object Classpaths {
     track: TrackLevel, includeSelf: Boolean, f: (ProjectRef, String, Settings[Scope], TrackLevel) => Task[Classpath]): Task[Classpath] =
     {
       val visited = interSort(projectRef, conf, data, deps)
-      val tasks = asScalaSet(new LinkedHashSet[Task[Classpath]])
+      val tasks = (new LinkedHashSet[Task[Classpath]]).asScala
       for ((dep, c) <- visited)
         if (includeSelf || (dep != projectRef) || (conf.name != c && self.name != c))
           tasks += f(dep, c, data, track)

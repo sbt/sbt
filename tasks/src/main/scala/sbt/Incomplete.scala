@@ -29,8 +29,8 @@ object Incomplete extends Enumeration {
   def transformBU(i: Incomplete)(f: Incomplete => Incomplete): Incomplete = transform(i, false)(f)
   def transform(i: Incomplete, topDown: Boolean)(f: Incomplete => Incomplete): Incomplete =
     {
-      import collection.JavaConversions._
-      val visited: collection.mutable.Map[Incomplete, Incomplete] = new java.util.IdentityHashMap[Incomplete, Incomplete]
+      import collection.JavaConverters._
+      val visited: collection.mutable.Map[Incomplete, Incomplete] = (new java.util.IdentityHashMap[Incomplete, Incomplete]).asScala
       def visit(inc: Incomplete): Incomplete =
         visited.getOrElseUpdate(inc, if (topDown) visitCauses(f(inc)) else f(visitCauses(inc)))
       def visitCauses(inc: Incomplete): Incomplete =
