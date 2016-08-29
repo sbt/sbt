@@ -2,7 +2,7 @@ libraryDependencies += "log4j" % "log4j" % "1.2.16" % "compile"
 
 autoScalaLibrary := false
 
-TaskKey[Unit]("check-last-update-time") <<= streams map { (s) =>
+TaskKey[Unit]("check-last-update-time") := (streams map { (s) =>
   val fullUpdateOutput = s.cacheDirectory / "out"
   val timeDiff = System.currentTimeMillis()-fullUpdateOutput.lastModified()
   val exists = fullUpdateOutput.exists()
@@ -10,4 +10,4 @@ TaskKey[Unit]("check-last-update-time") <<= streams map { (s) =>
   if (exists && timeDiff > 5000) {
     sys.error("Full update not perfomed")
   }
-}
+}).value

@@ -8,8 +8,8 @@ $ touch transitive
 > reload
 #$ pause
 
-> check-transitive
--> check-intransitive
+> checkTransitive
+-> checkIntransitive
 
 
 # load the project definition with transitive dependencies disabled
@@ -19,5 +19,5 @@ $ delete ivy-cache
 $ delete transitive
 > reload
 
--> check-transitive
-> check-intransitive
+-> checkTransitive
+> checkIntransitive

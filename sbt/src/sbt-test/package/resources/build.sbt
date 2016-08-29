@@ -4,7 +4,7 @@ version := "0.1"
 
 crossPaths := false
 
-packageOptions <<= (packageOptions, scalaInstance) map { (opts, si) =>
+packageOptions := ((packageOptions, scalaInstance) map { (opts, si) =>
 	def manifestExtra =
 	{
 		import java.util.jar._
@@ -13,4 +13,4 @@ packageOptions <<= (packageOptions, scalaInstance) map { (opts, si) =>
 		mf
 	}
 	Package.JarManifest(manifestExtra) +: opts
-}
+}).value

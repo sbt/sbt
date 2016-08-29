@@ -2,7 +2,7 @@
 -> check
 
 # verify that check-full succeeds
-> check-full
+> checkFull
 
 # publish test jar to test repository
 > publish

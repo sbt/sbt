@@ -5,35 +5,35 @@
 > check 16 15
 
 
--> check-keep 3
-> check-keep blue
+-> checkKeep 3
+> checkKeep blue
 
 > keep
-> check-keep 3
--> check-keep 4
-> check-keep 3
+> checkKeep 3
+-> checkKeep 4
+> checkKeep 3
 
 > keep
--> check-keep 3
-> check-keep 4
-> check-keep 4
+-> checkKeep 3
+> checkKeep 4
+> checkKeep 4
 
 > reload
-> check-keep blue
+> checkKeep blue
 > keep
-> check-keep 3
+> checkKeep 3
 
 
--> check-persist 17
-> check-persist blue
-
-> persist
-> check-persist 17
--> check-persist blue
+-> checkPersist 17
+> checkPersist blue
 
 > persist
-> check-persist 18
+> checkPersist 17
+-> checkPersist blue
+
+> persist
+> checkPersist 18
 > reload
-> check-persist 18
+> checkPersist 18
 > persist
-> check-persist 19
+> checkPersist 19

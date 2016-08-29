@@ -1,8 +1,8 @@
 publishMavenStyle := false
 
-resolvers <<= baseDirectory { base =>
+resolvers := (baseDirectory { base =>
 	Resolver.file("test-repo", base / "repo")(Patterns(false, Resolver.mavenStyleBasePattern)) :: Nil
-}
+}).value
 
 libraryDependencies ++= Seq(
 	"org.example" %% "test-ivy" % "1.0",

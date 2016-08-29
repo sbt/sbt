@@ -4,4 +4,4 @@
 #  problems in practice due to the different approach that substantially
 #  reduces the probability of simultaneous access.  The better test for 0.13+
 #  is the unit test on ClassLoaderCache
-> check-loaders
+> checkLoaders
