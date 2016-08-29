@@ -29,9 +29,9 @@ private[sbt] final class TaskTimings extends ExecuteProgress[Task] {
     {
       val total = System.nanoTime - start
       println("Total time: " + (total * 1e-6) + " ms")
-      import collection.JavaConversions._
+      import collection.JavaConverters._
       def sumTimes(in: Seq[(Task[_], Long)]) = in.map(_._2).sum
-      val timingsByName = timings.toSeq.groupBy { case (t, time) => mappedName(t) } mapValues (sumTimes)
+      val timingsByName = timings.asScala.toSeq.groupBy { case (t, time) => mappedName(t) } mapValues (sumTimes)
       for ((taskName, time) <- timingsByName.toSeq.sortBy(_._2).reverse)
         println("  " + taskName + ": " + (time * 1e-6) + " ms")
     }

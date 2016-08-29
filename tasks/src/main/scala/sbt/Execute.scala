@@ -9,11 +9,12 @@ import sbt.internal.util.Types._
 import Execute._
 
 import scala.annotation.tailrec
-import scala.collection.{ mutable, JavaConversions }
+import scala.collection.mutable
+import scala.collection.JavaConverters._
 import mutable.Map
 
 private[sbt] object Execute {
-  def idMap[A, B]: Map[A, B] = JavaConversions.mapAsScalaMap(new java.util.IdentityHashMap[A, B])
+  def idMap[A, B]: Map[A, B] = (new java.util.IdentityHashMap[A, B]).asScala
   def pMap[A[_], B[_]]: PMap[A, B] = new DelegatingPMap[A, B](idMap)
   private[sbt] def completed(p: => Unit): Completed = new Completed {
     def process(): Unit = p

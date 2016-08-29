@@ -112,8 +112,8 @@ object PluginDiscovery {
    */
   def binaryModuleNames(classpath: Seq[File], loader: ClassLoader, resourceName: String): Seq[String] =
     {
-      import collection.JavaConversions._
-      loader.getResources(resourceName).toSeq.filter(onClasspath(classpath)) flatMap { u =>
+      import collection.JavaConverters._
+      loader.getResources(resourceName).asScala.toSeq.filter(onClasspath(classpath)) flatMap { u =>
         IO.readLinesURL(u).map(_.trim).filter(!_.isEmpty)
       }
     }

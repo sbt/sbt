@@ -29,10 +29,10 @@ private[sbt] object TestStatus {
   import java.util.Properties
   def read(f: File): Map[String, Long] =
     {
-      import scala.collection.JavaConversions.{ propertiesAsScalaMap }
+      import scala.collection.JavaConverters._
       val properties = new Properties
       IO.load(properties, f)
-      properties map { case (k, v) => (k, v.toLong) }
+      properties.asScala map { case (k, v) => (k, v.toLong) }
     }
   def write(map: Map[String, Long], label: String, f: File): Unit = {
     val properties = new Properties
