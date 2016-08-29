@@ -72,7 +72,7 @@ object Assign {
   }
 
   val it3: Initialize[InputTask[String]] = Def.inputTask[String] {
-    tsk.parsed.value + itsk.parsed.value.toString + isk.value
+    tsk.parsed.value + itsk.parsed.value.toString + isk.evaluated
   }
   // should not compile: cannot use a task to define the parser
   /*	val it4 = Def.inputTask {
