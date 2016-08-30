@@ -51,13 +51,11 @@ import Keys._
 import xsbt.api.Discovery
 import xsbti.compile.{
   Compilers,
-  ClasspathOptions,
   CompileAnalysis,
   CompileOptions,
   CompileOrder,
   CompileResult,
   DefinesClass,
-  IncOptions,
   IncOptionsUtil,
   Inputs,
   MiniSetup,
@@ -69,10 +67,8 @@ import xsbti.compile.{
 import sbt.internal.inc.{
   AnalyzingCompiler,
   Analysis,
-  ClassfileManager,
   CompilerCache,
   FileValueCache,
-  IncrementalCompilerImpl,
   Locate,
   LoggerReporter,
   MixedAnalyzingCompiler,

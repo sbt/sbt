@@ -10,7 +10,7 @@ import sbt.io.IO
 
 object EvalTest extends Properties("eval") {
   private[this] val reporter = new StoreReporter
-  import reporter.{ ERROR, Info, Severity }
+  import reporter.{ ERROR, Info }
   private[this] val eval = new Eval(_ => reporter, None)
 
   property("inferred integer") = forAll { (i: Int) =>

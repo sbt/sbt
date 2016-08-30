@@ -1,6 +1,5 @@
 package sbt
 
-import java.io.File
 import org.specs2._
 import mutable.Specification
 import sbt.util.Logger

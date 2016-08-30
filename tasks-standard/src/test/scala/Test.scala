@@ -3,10 +3,7 @@
  */
 package sbt
 
-import sbt.internal.util.Types._
 import sbt.internal.util.AList
-import Task._
-import Execute._
 
 object Test extends std.TaskExtra {
   def t2[A, B](a: Task[A], b: Task[B]) = multInputTask[({ type l[L[x]] = (L[A], L[B]) })#l]((a, b))(AList.tuple2)

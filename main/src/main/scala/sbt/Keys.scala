@@ -7,9 +7,7 @@ import java.io.File
 import java.net.URL
 import scala.concurrent.duration.{ FiniteDuration, Duration }
 import Def.ScopedKey
-import sbt.internal.util.complete._
-import sbt.internal.inc.{ MixedAnalyzingCompiler, ScalaInstance }
-import std.TaskExtra._
+import sbt.internal.inc.ScalaInstance
 import xsbti.compile.{
   DefinesClass,
   ClasspathOptions,
