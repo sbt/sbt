@@ -16,8 +16,8 @@ def updateDemoInit = state map { s => (s get sample getOrElse 9) + 1 }
 
 lazy val root = (project in file(".")).
   settings(
-    updateDemo <<= updateDemoInit updateState demoState,
-    check <<= checkInit,
+    updateDemo := (updateDemoInit updateState demoState).value,
+    check := checkInit.evaluated,
     inMemorySetting,
     persistedSetting,
     inMemoryCheck,
@@ -34,11 +34,11 @@ def checkInit: Initialize[InputTask[Unit]] = InputTask( (_: State) => token(Spac
   }
 }
 
-def  inMemorySetting = keep    <<=  getPrevious(keep)    map { case None =>  3; case Some(x) => x + 1}  keepAs(keep)
-def persistedSetting = persist <<= loadPrevious(persist) map { case None => 17; case Some(x) => x + 1} storeAs(persist)
+def  inMemorySetting = keep    :=  (getPrevious(keep)    map { case None =>  3; case Some(x) => x + 1}  keepAs(keep)).value
+def persistedSetting = persist := (loadPrevious(persist) map { case None => 17; case Some(x) => x + 1} storeAs(persist)).value
 
-def  inMemoryCheck = checkKeep    <<= inputCheck( (ctx, s) => Space ~> str( getFromContext(   keep, ctx, s)) )
-def persistedCheck = checkPersist <<= inputCheck( (ctx, s) => Space ~> str(loadFromContext(persist, ctx, s)) )
+def  inMemoryCheck = checkKeep    := (inputCheck( (ctx, s) => Space ~> str( getFromContext(   keep, ctx, s)) )).evaluated
+def persistedCheck = checkPersist := (inputCheck( (ctx, s) => Space ~> str(loadFromContext(persist, ctx, s)) )).evaluated
 
 def inputCheck[T](f: (ScopedKey[_], State) => Parser[T]): Initialize[InputTask[Unit]] =
   InputTask( resolvedScoped(ctx => (s: State) => f(ctx, s)) )( dummyTask )

@@ -3,7 +3,7 @@ lazy val custom = config("custom")
 lazy val root = (project in file(".")).
   configs(custom).
   settings(
-    TaskKey[Unit]("checkPom") <<= checkPom,
+    TaskKey[Unit]("checkPom") := checkPom.value,
     libraryDependencies ++= Seq(
       "a" % "a" % "1.0",
       "b" % "b" % "1.0" % "runtime,optional",

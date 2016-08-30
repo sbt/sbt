@@ -4,11 +4,11 @@ lazy val scalaOverride = taskKey[Unit]("Check that the proper version of Scala i
 
 lazy val root = (project in file(".")).
   settings(
-    libraryDependencies <++= baseDirectory(dependencies),
+    libraryDependencies ++= baseDirectory(dependencies).value,
     scalaVersion := "2.9.2",
     ivyScala := { ivyScala.value map {_.copy(overrideScalaVersion = sbtPlugin.value)} },
-    autoScalaLibrary <<= baseDirectory(base => !(base / "noscala").exists ),
-    scalaOverride <<= check("scala.App")
+    autoScalaLibrary := baseDirectory(base => !(base / "noscala").exists ).value,
+    scalaOverride := check("scala.App").value
   )
 
 def check(className: String): Def.Initialize[Task[Unit]] = fullClasspath in Compile map { cp =>

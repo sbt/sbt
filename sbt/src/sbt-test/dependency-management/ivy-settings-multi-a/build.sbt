@@ -1,6 +1,6 @@
 lazy val commonSettings = Seq(
   autoScalaLibrary := false,
-  unmanagedJars in Compile <++= scalaInstance map (_.allJars.toSeq)
+  unmanagedJars in Compile ++= (scalaInstance map (_.allJars.toSeq)).value
 )
 
 lazy val dep = project.

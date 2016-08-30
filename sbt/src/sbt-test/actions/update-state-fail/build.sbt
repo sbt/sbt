@@ -15,7 +15,7 @@ lazy val a = project.
 
 lazy val b = project.
   settings(
-    testTask <<= Def.task("").updateState(updater)
+    testTask := Def.task("").updateState(updater).value
   )
 
 def checkState(runs: Int, s: State): Unit = {

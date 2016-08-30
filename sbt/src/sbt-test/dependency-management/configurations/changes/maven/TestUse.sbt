@@ -1,6 +1,6 @@
-resolvers <<= baseDirectory { base =>
+resolvers := (baseDirectory { base =>
 	Resolver.file("test-repo", base / "repo") :: Nil
-}
+}).value
 
 libraryDependencies ++= Seq(
 	"org.example" %% "test" % "1.0",

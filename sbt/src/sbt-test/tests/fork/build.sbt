@@ -12,7 +12,8 @@ def groupPrefix(idx: Int) = groupId(idx) + "_file_"
 lazy val root = (project in file(".")).
   settings(
     scalaVersion := "2.11.8",
-    testGrouping in Test <<= definedTests in Test map { tests =>
+    testGrouping in Test := {
+      val tests = (definedTests in Test).value
       assert(tests.size == 3)
       for (idx <- 0 until groups) yield
         new Group(groupId(idx), tests, SubProcess(Seq("-Dgroup.prefix=" + groupPrefix(idx))))

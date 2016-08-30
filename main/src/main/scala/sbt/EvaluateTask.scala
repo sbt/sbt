@@ -397,10 +397,12 @@ object EvaluateTask {
   // if the return type Seq[Setting[_]] is not explicitly given, scalac hangs
   val injectStreams: ScopedKey[_] => Seq[Setting[_]] = scoped =>
     if (scoped.key == streams.key)
-      Seq(streams in scoped.scope <<= streamsManager map { mgr =>
-        val stream = mgr(scoped)
-        stream.open()
-        stream
+      Seq(streams in scoped.scope := {
+        (streamsManager map { mgr =>
+          val stream = mgr(scoped)
+          stream.open()
+          stream
+        }).value
       })
     else
       Nil

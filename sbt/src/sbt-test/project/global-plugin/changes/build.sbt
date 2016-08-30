@@ -4,7 +4,7 @@ lazy val proj = (project in file(".")).
   settings(
     name := "my-test-proj",
     organization := "com.example",
-    check <<= update map checkVersion,
+    check := (update map checkVersion).value,
     version := "0.1.0-SNAPSHOT"
   )
 

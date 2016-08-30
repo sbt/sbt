@@ -1,9 +1,9 @@
 lazy val root = (project in file(".")).
   settings(
-    ivyPaths <<= (baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache"))),
-    libraryDependencies <+= baseDirectory(transitive("javax.mail" % "mail" % "1.4.1")),
-    TaskKey[Unit]("checkTransitive") <<= check(true),
-    TaskKey[Unit]("checkIntransitive") <<= check(false)
+    ivyPaths := (baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache"))).value,
+    libraryDependencies += baseDirectory(transitive("javax.mail" % "mail" % "1.4.1")).value,
+    TaskKey[Unit]("checkTransitive") := check(true).value,
+    TaskKey[Unit]("checkIntransitive") := check(false).value
   )
 
 def transitive(dep: ModuleID)(base: File) =

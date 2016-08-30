@@ -11,5 +11,5 @@ k3 := {
 
 k4 := (); k5 := ()
 
-k1 <<= k1 map {_ => sys.error("k1")}
+k1 := (k1 map {_ => sys.error("k1")}).value
 

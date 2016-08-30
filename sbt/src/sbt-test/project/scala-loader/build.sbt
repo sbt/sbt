@@ -6,7 +6,7 @@ def checkTask = subs.map(sub => scalaInstance in LocalProject(sub.id)).join.map 
 
 lazy val root = (project in file(".")).
   settings(
-    checkLoaders <<= checkTask,
+    checkLoaders := checkTask.value,
     concurrentRestrictions := Nil
   )
 

@@ -5,8 +5,8 @@ lazy val root = (project in file(".")).
   settings(
     externalPom(),
     scalaVersion := "2.9.0-1",
-    check <<= checkTask,
-    managedClasspath in Provided <<= (classpathTypes, update) map { (cpts, report) => Classpaths.managedJars(Provided, cpts, report) }
+    check := checkTask.evaluated,
+    managedClasspath in Provided := ((classpathTypes, update) map { (cpts, report) => Classpaths.managedJars(Provided, cpts, report) }).value
   )
 
 def checkTask = InputTask(_ => parser ) { result =>
@@ -15,7 +15,7 @@ def checkTask = InputTask(_ => parser ) { result =>
       checkClasspath(conf match {
         case Provided => p
         case Compile => c
-        case Test => t 
+        case Test => t
         case Runtime => r
       }, names.toSet)
     }

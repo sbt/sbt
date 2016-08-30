@@ -40,7 +40,7 @@ private[sbt] object SettingCompletions {
           val globalSetting = resolve(Def.setting(global, setting.init, setting.pos))
           globalSetting ++ allDefs.flatMap { d =>
             if (d.key == akey)
-              Seq(SettingKey(akey) in d.scope <<= global)
+              Seq(SettingKey(akey) in d.scope := { global.value })
             else
               Nil
           }
