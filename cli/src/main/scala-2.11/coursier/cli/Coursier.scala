@@ -19,7 +19,7 @@ case class CoursierCommandHelper(
 }
 
 object CoursierCommandHelper {
-  type U = Union.`'bootstrap -> Bootstrap, 'fetch -> Fetch, 'launch -> Launch, 'resolve -> Resolve`.T
+  type U = Union.`'bootstrap -> Bootstrap, 'fetch -> Fetch, 'launch -> Launch, 'resolve -> Resolve, 'sparksubmit -> SparkSubmit`.T
 
   implicit val commandParser: CommandParser[CoursierCommandHelper] =
     CommandParser[U].map(CoursierCommandHelper(_))
