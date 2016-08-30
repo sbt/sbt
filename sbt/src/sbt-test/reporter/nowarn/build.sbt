@@ -19,6 +19,6 @@ def check(expectation: Boolean) = Def.task[Unit] {
   }
 }
 
-assertWarning <<= check(true)
+assertWarning := check(true).value
 
-assertNoWarning <<= check(false)
+assertNoWarning := check(false).value

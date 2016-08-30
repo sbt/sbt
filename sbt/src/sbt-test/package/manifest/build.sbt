@@ -9,7 +9,7 @@ crossPaths := false
 
 mainClass := Some("jartest.Main")
 
-packageOptions in (Compile, packageBin) <<= (packageOptions in (Compile, packageBin), scalaInstance) map { (opts, si) =>
+packageOptions in (Compile, packageBin) := ((packageOptions in (Compile, packageBin), scalaInstance) map { (opts, si) =>
 	def manifestExtra =
 	{
 		val mf = new Manifest
@@ -17,4 +17,4 @@ packageOptions in (Compile, packageBin) <<= (packageOptions in (Compile, package
 		mf
 	}
 	opts :+ Package.JarManifest(manifestExtra)
-}
+}).value

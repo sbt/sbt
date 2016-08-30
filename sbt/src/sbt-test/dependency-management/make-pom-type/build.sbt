@@ -31,7 +31,8 @@ lazy val expectedInter =
     <version>1.0</version>
   </dependency>
 
-def checkTask(expectedDep: xml.Elem) = TaskKey[Unit]("checkPom") <<= makePom map { file =>
+def checkTask(expectedDep: xml.Elem) = TaskKey[Unit]("checkPom") := {
+  val file = makePom.value
   val pom = xml.XML.loadFile(file)
   val actual = pom \\ "dependencies"
   val expected = <d>

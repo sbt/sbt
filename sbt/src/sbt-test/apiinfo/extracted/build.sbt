@@ -41,14 +41,14 @@ def testInputTask[T](name: String, expected: String, task: InputKey[T], arg: Str
   }
 }
 
-myInputTask <<= argFunction(_.toUpperCase(Locale.ENGLISH))
+myInputTask := argFunction(_.toUpperCase(Locale.ENGLISH)).evaluated
 testInputTask("testRunInputTaskRoot", "FOO", myInputTask, "foo")
 
-myInputTask in Compile <<= argFunction(_.toLowerCase(Locale.ENGLISH))
+myInputTask in Compile := argFunction(_.toLowerCase(Locale.ENGLISH)).evaluated
 testInputTask("testRunInputTaskRootCompile", "foo", myInputTask in Compile, "FOO")
 
-myInputTask in sub <<= argFunction(_.head.toString)
+myInputTask in sub := argFunction(_.head.toString).evaluated
 testInputTask("testRunInputTaskSub", "f", myInputTask in sub, "foo")
 
-myInputTask in (sub, Compile) <<= argFunction(_.tail)
+myInputTask in (sub, Compile) := argFunction(_.tail).evaluated
 testInputTask("testRunInputTaskSubCompile", "oo", myInputTask in (sub, Compile), "foo")

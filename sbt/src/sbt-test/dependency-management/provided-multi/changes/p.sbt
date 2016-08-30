@@ -12,8 +12,8 @@ lazy val a = project.
 lazy val b = project.
   dependsOn(a).
   settings(
-    libraryDependencies <<= declared(d => if(d) Seq("org.scala-tools.sbinary" %% "sbinary" % "0.4.0" % "provided") else Nil),
-    declared <<= baseDirectory(_ / "declare.lib" exists),
+    libraryDependencies := declared(d => if(d) Seq("org.scala-tools.sbinary" %% "sbinary" % "0.4.0" % "provided") else Nil).value,
+    declared := baseDirectory(_ / "declare.lib" exists).value,
     configIvyScala,
     scalaBinaryVersion in update := "2.9.0"
   )

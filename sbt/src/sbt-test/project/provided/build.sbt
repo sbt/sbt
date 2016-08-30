@@ -13,7 +13,7 @@ lazy val sub = project
 
 lazy val rootRef = LocalProject("root")
 
-def rootSettings = (TaskKey[Unit]("check") <<= checkTask)
+def rootSettings = (TaskKey[Unit]("check") := checkTask.value)
 def checkTask = (fullClasspath in (rootRef, Compile), fullClasspath in (rootRef, Runtime), fullClasspath in (rootRef, Test), fullClasspath in (sub, Test), fullClasspath in (superRoot, Compile)) map { (rc, rr, rt, st, pr) =>
   check0(st, "sub test", true)
   check0(pr, "superRoot main", false)

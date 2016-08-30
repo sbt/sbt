@@ -3,11 +3,11 @@ import complete.DefaultParsers._
 lazy val root = (project in file(".")).
   settings(
     resolvers ++= Seq(local, Resolver.sonatypeRepo("releases"), Resolver.sonatypeRepo("snapshots")),
-    InputKey[Unit]("checkPom") <<= InputTask(_ => spaceDelimited("<args>")) { result => (makePom, result, streams) map checkPomRepositories },
-    makePomConfiguration <<= (makePomConfiguration, baseDirectory) { (conf, base) =>
+    InputKey[Unit]("checkPom") := (InputTask(_ => spaceDelimited("<args>")) { result => (makePom, result, streams) map checkPomRepositories }).evaluated,
+    makePomConfiguration := ((makePomConfiguration, baseDirectory) { (conf, base) =>
       conf.copy(filterRepositories = pomIncludeRepository(base, conf.filterRepositories) )
-    },
-    ivyPaths <<= baseDirectory( dir => new IvyPaths(dir, Some(dir / "ivy-home")))
+    }).value,
+    ivyPaths := baseDirectory( dir => new IvyPaths(dir, Some(dir / "ivy-home"))).value
   )
 
 val local = "local-maven-repo" at "file://" + (Path.userHome / ".m2" /"repository").absolutePath

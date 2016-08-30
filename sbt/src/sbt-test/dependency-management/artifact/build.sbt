@@ -5,18 +5,19 @@ lazy val check = taskKey[Unit]("")
 
 lazy val root = (project in file(".")).
   settings(
-    ivyPaths <<= (baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache"))),
+    ivyPaths := ((baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache")))).value,
     publishTo := Some(Resolver.file("Test Publish Repo", file("test-repo"))),
-    resolvers <+= baseDirectory { base => "Test Repo" at (base / "test-repo").toURI.toString },
+    resolvers += (baseDirectory { base => "Test Repo" at (base / "test-repo").toURI.toString }).value,
     moduleName := artifactID,
-    projectID <<= baseDirectory { base => (if(base / "retrieve" exists) retrieveID else publishedID) },
+    projectID := (baseDirectory { base => (if(base / "retrieve" exists) retrieveID else publishedID) }).value,
     artifact in (Compile, packageBin) := mainArtifact,
-    libraryDependencies <<= (libraryDependencies, baseDirectory) { (deps, base) => deps ++ (if(base / "retrieve" exists) publishedID :: Nil else Nil) },
+    libraryDependencies := ((libraryDependencies, baseDirectory) { (deps, base) =>
+      deps ++ (if(base / "retrieve" exists) publishedID :: Nil else Nil) }).value,
       // needed to add a jar with a different type to the managed classpath
-    unmanagedClasspath in Compile <+= scalaInstance.map(_.libraryJar),
+    unmanagedClasspath in Compile += scalaInstance.map(_.libraryJar).value,
     classpathTypes := Set(tpe),
-    check <<= checkTask(dependencyClasspath),
-    checkFull <<= checkTask(fullClasspath)
+    check := checkTask(dependencyClasspath).value,
+    checkFull := checkTask(fullClasspath).value
   )
 
 // define strings for defining the artifact

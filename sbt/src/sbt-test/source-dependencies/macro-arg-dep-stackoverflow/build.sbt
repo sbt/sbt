@@ -1,5 +1,5 @@
 val defaultSettings = Seq(
-  libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _ )
+  libraryDependencies += scalaVersion("org.scala-lang" % "scala-reflect" % _ ).value
 )
 
 lazy val root = (project in file(".")).

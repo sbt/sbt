@@ -2,10 +2,10 @@ import scala.xml._
 
 lazy val root = (project in file(".")).
   settings(
-    readPom <<= makePom map XML.loadFile,
-    TaskKey[Unit]("checkPom") <<= checkPom,
-    TaskKey[Unit]("checkExtra") <<= checkExtra,
-    TaskKey[Unit]("checkVersionPlusMapping") <<= checkVersionPlusMapping,
+    readPom := (makePom map XML.loadFile).value,
+    TaskKey[Unit]("checkPom") := checkPom.value,
+    TaskKey[Unit]("checkExtra") := checkExtra.value,
+    TaskKey[Unit]("checkVersionPlusMapping") := checkVersionPlusMapping.value,
     resolvers += Resolver.sonatypeRepo("snapshots"),
     makePomConfiguration ~= { _.copy(extra = <extra-tag/>) },
     libraryDependencies += "com.google.code.findbugs" % "jsr305" % "1.3.+"

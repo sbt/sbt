@@ -1,9 +1,9 @@
 lazy val root = (project in file(".")).
   settings(
-    ivyPaths <<= (baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache"))),
-    libraryDependencies <++= baseDirectory (libraryDeps),
-    TaskKey[Unit]("checkForced") <<= check("1.2.14"),
-    TaskKey[Unit]("checkDepend") <<= check("1.2.13")
+    ivyPaths := (baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache"))).value,
+    libraryDependencies ++= baseDirectory (libraryDeps).value,
+    TaskKey[Unit]("checkForced") := check("1.2.14").value,
+    TaskKey[Unit]("checkDepend") := check("1.2.13").value
   )
 
 def libraryDeps(base: File) = {

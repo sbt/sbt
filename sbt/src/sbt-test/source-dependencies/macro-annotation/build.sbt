@@ -13,13 +13,13 @@ lazy val root = (project in file(".")).
   aggregate(macros, core).
   settings(
     commonSettings,
-    run <<= run in Compile in core
+    run := (run in Compile in core).evaluated
   )
 
 lazy val macros = (project in file("macros")).
   settings(
     commonSettings,
-    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
+    libraryDependencies += (scalaVersion)("org.scala-lang" % "scala-reflect" % _).value,
     libraryDependencies ++= (
       if (scalaVersion.value.startsWith("2.10")) List("org.scalamacros" %% "quasiquotes" % paradiseVersion)
       else Nil

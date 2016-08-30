@@ -1,12 +1,12 @@
-ivyPaths <<= (baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache")))
+ivyPaths := (baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache"))).value
 
 publishMavenStyle := false
 
-publishTo <<= baseDirectory { base =>
+publishTo := (baseDirectory { base =>
 	Some(Resolver.file("test-repo", base / "repo" / "test")(Resolver.defaultIvyPatterns))
-}
+}).value
 
-projectID <<= projectID { _.extra("e:color" -> "red") }
+projectID := (projectID { _.extra("e:color" -> "red") }).value
 
 organization := "org.scala-sbt"
 
