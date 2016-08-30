@@ -8,7 +8,7 @@ A Scala library to fetch dependencies from Maven / Ivy repositories
 [![Build status (Windows)](https://ci.appveyor.com/api/projects/status/trtum5b7washfbj9?svg=true)](https://ci.appveyor.com/project/alexarchambault/coursier)
 [![Join the chat at https://gitter.im/alexarchambault/coursier](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/alexarchambault/coursier?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Maven Central](https://img.shields.io/maven-central/v/io.get-coursier/coursier_2.11.svg)](https://maven-badges.herokuapp.com/maven-central/io.get-coursier/coursier_2.11)
-[![ScalaDoc](http://javadoc-badge.appspot.com/io.get-coursier/coursier_2.11.svg?label=scaladoc)](http://javadoc-badge.appspot.com/io.get-coursier/coursier_2.11)
+[![Scaladoc](http://javadoc-badge.appspot.com/io.get-coursier/coursier_2.11.svg?label=scaladoc)](http://javadoc-badge.appspot.com/io.get-coursier/coursier_2.11)
 
 ![Demo (courtesy of @paulp)](http://i.imgur.com/lCJ9oql.gif)
 
@@ -34,7 +34,7 @@ and is able to fetch metadata and artifacts from both Maven and Ivy repositories
 Compared to the default dependency resolution of SBT, it adds:
 * downloading of artifacts in parallel,
 * better offline mode - one can safely work with snapshot dependencies if these are in cache (SBT tends to try and fail if it cannot check for updates),
-* non obfuscated cache (cache structure just mimicks the URL it caches),
+* non obfuscated cache (cache structure just mimics the URL it caches),
 * no global lock (no "Waiting for ~/.ivy2/.sbt.ivy.lock to be available").
 
 From the command-line, it also has:
@@ -81,7 +81,7 @@ of a SBT project. Tested with SBT 0.13.8 / 0.13.9 / 0.13.11 / 0.13.12.
 
 ### Command-line
 
-Download and run its laucher with
+Download and run its launcher with
 ```
 $ curl -L -o coursier https://git.io/vgvpD && chmod +x coursier && ./coursier --help
 ```
@@ -258,12 +258,12 @@ provide more output about what's going on than their default implementations do.
 
 ### Command-line
 
-Download and run its laucher with
+Download and run its launcher with
 ```
 $ curl -L -o coursier https://git.io/vgvpD && chmod +x coursier && ./coursier --help
 ```
 
-The launcher itself weights only 8 kB and can be easily embedded as is in other projects.
+The launcher itself weighs only 8 kB and can be easily embedded as is in other projects.
 It downloads the artifacts required to launch coursier on the first run.
 
 Alternatively on OS X, install it via [@paulp](https://github.com/paulp/)'s homebrew formula, that puts the `coursier` launcher directly in your PATH,
@@ -281,7 +281,7 @@ $ ./coursier command --help
 to get a description of the various options the command `command` (replace with one
 of the above command) accepts.
 
-Both command belows can be given repositories with the `-r` or `--repository` option, like
+Both commands below can be given repositories with the `-r` or `--repository` option, like
 ```
 -r central
 -r https://oss.sonatype.org/content/repositories/snapshots
@@ -347,7 +347,7 @@ etc.
 
 and various programs, like
 
-* Proguard and its utility Retrace,
+* ProGuard and its utility Retrace,
 ```
 $ ./coursier launch net.sf.proguard:proguard-base:5.2.1 -M proguard.ProGuard
 $ ./coursier launch net.sf.proguard:proguard-retrace:5.2.1 -M proguard.retrace.ReTrace
@@ -619,7 +619,7 @@ The `coursier bootstrap` command generates tiny bootstrap launchers (~12 kB). Th
 $ coursier bootstrap com.geirsson:scalafmt-cli_2.11:0.2.3 -o scalafmt
 ```
 
-This generates a `scalafmt` file, which is a tiny JAR, corresponding to the `boostrap` sub-project of coursier. It contains resource files, with the URLs of the various dependencies of scalafmt. On first launch, these are downloaded under `~/.coursier/boostrap/com.geirsson/scalafmt-cli_2.11` (following the organization and name of the first dependency - note that this directory can be changed with the `-D` option). Nothing needs to be downloaded once all the dependencies are there, and the application is then launched straightaway.
+This generates a `scalafmt` file, which is a tiny JAR, corresponding to the `bootstrap` sub-project of coursier. It contains resource files, with the URLs of the various dependencies of scalafmt. On first launch, these are downloaded under `~/.coursier/bootstrap/com.geirsson/scalafmt-cli_2.11` (following the organization and name of the first dependency - note that this directory can be changed with the `-D` option). Nothing needs to be downloaded once all the dependencies are there, and the application is then launched straightaway.
 
 ### Credentials
 
@@ -641,7 +641,7 @@ by protocols supported by `java.net.URL` (not thoroughly tested). Support for ot
 
 The minimum was made for SBT plugins to be resolved fine (including dependencies
 between plugins, the possibility that some of them come from Maven repositories,
-with a pecularities, classifiers - sources, javadoc - should be fine too).
+with a peculiarities, classifiers - sources, javadoc - should be fine too).
 So it is likely that projects relying more heavily
 on Ivy features could run into the limitations of the current implementation.
 
@@ -652,7 +652,7 @@ if possible, would be greatly appreciated.
 
 SBT seems to require the `update` command to generate a few metadata files
 later used by `publish`. If ever there's an issue with these, this might
-add discrepencies in the artifacts published with `publish` or `publishLocal`.
+add discrepancies in the artifacts published with `publish` or `publishLocal`.
 Should you want to use the coursier SBT plugin while publishing artifacts at the
 same time, I'd recommend an extreme caution at first, like manually inspecting
 the metadata files and compare with previous ones, to ensure everything's fine.
@@ -760,7 +760,7 @@ coursier is now aiming directly at `1.0.0`.
 
 The last features I'd like to add until a feature freeze are mainly a
 better / nicer output, for both the command-line tools and the SBT plugin.
-These are tracked via Github [issues](https://github.com/alexarchambault/coursier/issues?q=is%3Aopen+is%3Aissue+milestone%3A1.0.0), along with other points.
+These are tracked via GitHub [issues](https://github.com/alexarchambault/coursier/issues?q=is%3Aopen+is%3Aissue+milestone%3A1.0.0), along with other points.
 Milestones will keep being released until then.
 Then coursier should undergo `RC` releases, with no new features added, and
 only fixes and minor refactorings between them.
