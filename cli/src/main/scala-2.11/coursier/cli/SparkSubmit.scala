@@ -83,7 +83,7 @@ case class SparkSubmit(
     .getLocation
     .getPath              // TODO Safety check: protocol must be file
 
-  val (check, extraJars) = jars.partition(_ == mainJar)
+  val (check, extraJars) = jars.partition(_.getAbsolutePath == mainJar)
 
   if (check.isEmpty)
     Console.err.println(
