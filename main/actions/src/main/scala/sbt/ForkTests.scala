@@ -4,6 +4,7 @@
 package sbt
 
 import scala.collection.mutable
+import scala.util.control.NonFatal
 import testing._
 import java.net.ServerSocket
 import java.io._
@@ -73,6 +74,8 @@ private[sbt] object ForkTests {
             os.flush()
 
             new React(is, os, log, opts.testListeners, resultsAcc).react()
+          } catch {
+            case NonFatal(e) => resultsAcc("Forked test harness failed: " + e.getMessage) = SuiteResult.Error
           } finally {
             is.close(); os.close(); socket.close()
           }
