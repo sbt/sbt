@@ -1,8 +1,6 @@
 import java.io.FileOutputStream
 
 import com.typesafe.tools.mima.plugin.MimaPlugin.mimaDefaultSettings
-import com.typesafe.tools.mima.plugin.MimaKeys
-import MimaKeys.{ previousArtifacts, binaryIssueFilters }
 
 val binaryCompatibilityVersion = "1.0.0-M7"
 
@@ -12,12 +10,12 @@ lazy val releaseSettings = Seq(
   publishMavenStyle := true,
   licenses := Seq("Apache 2.0" -> url("http://opensource.org/licenses/Apache-2.0")),
   homepage := Some(url("https://github.com/alexarchambault/coursier")),
+  scmInfo := Some(ScmInfo(
+    url("https://github.com/alexarchambault/coursier.git"),
+    "scm:git:github.com/alexarchambault/coursier.git",
+    Some("scm:git:git@github.com:alexarchambault/coursier.git")
+  )),
   pomExtra := {
-    <scm>
-      <connection>scm:git:github.com/alexarchambault/coursier.git</connection>
-      <developerConnection>scm:git:git@github.com:alexarchambault/coursier.git</developerConnection>
-      <url>github.com/alexarchambault/coursier.git</url>
-    </scm>
     <developers>
       <developer>
         <id>alexarchambault</id>
@@ -49,49 +47,28 @@ lazy val noPublishSettings = Seq(
   publishArtifact := false
 )
 
-lazy val noPublish211Settings = Seq(
+def noPublishForScalaVersionSettings(sbv: String) = Seq(
   publish := {
-    if (scalaVersion.value startsWith "2.10.")
-      publish.value
-    else
-      ()
-  },
-  publishLocal := {
-    if (scalaVersion.value startsWith "2.10.")
-      publishLocal.value
-    else
-      ()
-  },
-  publishArtifact := {
-    if (scalaVersion.value startsWith "2.10.")
-      publishArtifact.value
-    else
-      false
-  }
-)
-
-lazy val noPublish210Settings = Seq(
-  publish := {
-    if (scalaVersion.value startsWith "2.10.")
+    if (scalaBinaryVersion.value == sbv)
       ()
     else
       publish.value
   },
   publishLocal := {
-    if (scalaVersion.value startsWith "2.10.")
+    if (scalaBinaryVersion.value == sbv)
       ()
     else
       publishLocal.value
   },
   publishArtifact := {
-    if (scalaVersion.value startsWith "2.10.")
+    if (scalaBinaryVersion.value == sbv)
       false
     else
       publishArtifact.value
   }
 )
 
-lazy val baseCommonSettings = Seq(
+lazy val scalaVersionAgnosticCommonSettings = Seq(
   organization := "io.get-coursier",
   resolvers ++= Seq(
     "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
@@ -105,16 +82,18 @@ lazy val baseCommonSettings = Seq(
   javacOptions in Keys.doc := Seq()
 ) ++ releaseSettings
 
-lazy val commonSettings = baseCommonSettings ++ Seq(
+lazy val commonSettings = scalaVersionAgnosticCommonSettings ++ Seq(
   scalaVersion := "2.11.8",
   crossScalaVersions := Seq("2.11.8", "2.10.6"),
   libraryDependencies ++= {
-    if (scalaVersion.value startsWith "2.10.")
+    if (scalaBinaryVersion.value == "2.10")
       Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.0.1" cross CrossVersion.full))
     else
       Seq()
   }
 )
+
+val scalazVersion = "7.2.5"
 
 lazy val core = crossProject
   .settings(commonSettings: _*)
@@ -122,7 +101,7 @@ lazy val core = crossProject
   .settings(
     name := "coursier",
     libraryDependencies ++= Seq(
-      "org.scalaz" %%% "scalaz-core" % "7.2.5",
+      "org.scalaz" %%% "scalaz-core" % scalazVersion,
       "com.lihaoyi" %%% "fastparse" % "0.3.7"
     ),
     resourceGenerators.in(Compile) += {
@@ -132,7 +111,7 @@ lazy val core = crossProject
         val f = dir / "coursier.properties"
         dir.mkdirs()
 
-        val p = new java.util.Properties()
+        val p = new java.util.Properties
 
         p.setProperty("version", ver)
         p.setProperty("commit-hash", Seq("git", "rev-parse", "HEAD").!!.trim)
@@ -146,11 +125,10 @@ lazy val core = crossProject
         Seq(f)
       }.taskValue
     },
-    previousArtifacts := Set("com.github.alexarchambault" %% moduleName.value % binaryCompatibilityVersion),
-    binaryIssueFilters ++= {
+    mimaPreviousArtifacts := Set("com.github.alexarchambault" %% moduleName.value % binaryCompatibilityVersion),
+    mimaBinaryIssueFilters ++= {
       import com.typesafe.tools.mima.core._
-      import com.typesafe.tools.mima.core.ProblemFilters._
-      
+
       Seq(
         // Since 1.0.0-M13
         // reworked VersionConstraint
@@ -223,7 +201,7 @@ lazy val core = crossProject
       Seq(
         "org.jsoup" % "jsoup" % "1.9.2"
       ) ++ {
-        if (scalaVersion.value.startsWith("2.10.")) Seq()
+        if (scalaBinaryVersion.value == "2.10") Seq()
         else Seq(
           "org.scala-lang.modules" %% "scala-xml" % "1.0.5"
         )
@@ -258,13 +236,13 @@ lazy val tests = crossProject
     name := "coursier-tests",
     libraryDependencies ++= Seq(
       "org.scala-lang.modules" %% "scala-async" % "0.9.5" % "provided",
-      "com.lihaoyi" %%% "utest" % "0.4.3" % "test,it"
+      "com.lihaoyi" %%% "utest" % "0.4.3" % "test"
     ),
     unmanagedResourceDirectories in Test += (baseDirectory in LocalRootProject).value / "tests" / "shared" / "src" / "test" / "resources",
     testFrameworks += new TestFramework("utest.runner.Framework")
   )
   .jsSettings(
-    postLinkJSEnv := NodeJSEnv().value,
+    jsEnv := NodeJSEnv().value,
     scalaJSStage in Global := FastOptStage,
     scalaJSUseRhino in Global := false
   )
@@ -278,14 +256,11 @@ lazy val cache = project
   .settings(mimaDefaultSettings)
   .settings(
     name := "coursier-cache",
-    libraryDependencies ++= Seq(
-      "org.scalaz" %% "scalaz-concurrent" % "7.2.5"
-    ),
-    previousArtifacts := Set("com.github.alexarchambault" %% moduleName.value % binaryCompatibilityVersion),
-    binaryIssueFilters ++= {
+    libraryDependencies += "org.scalaz" %% "scalaz-concurrent" % scalazVersion,
+    mimaPreviousArtifacts := Set("com.github.alexarchambault" %% moduleName.value % binaryCompatibilityVersion),
+    mimaBinaryIssueFilters ++= {
       import com.typesafe.tools.mima.core._
-      import com.typesafe.tools.mima.core.ProblemFilters._
-      
+
       Seq(
         // Since 1.0.0-M13
         ProblemFilters.exclude[MissingMethodProblem]("coursier.Cache.file"),
@@ -340,7 +315,7 @@ lazy val cache = project
   )
 
 lazy val bootstrap = project
-  .settings(baseCommonSettings)
+  .settings(scalaVersionAgnosticCommonSettings)
   .settings(noPublishSettings)
   .settings(
     name := "coursier-bootstrap",
@@ -359,13 +334,13 @@ lazy val bootstrap = project
 lazy val cli = project
   .dependsOn(coreJvm, cache)
   .settings(commonSettings)
-  .settings(noPublish210Settings)
+  .settings(noPublishForScalaVersionSettings("2.10"))
   .settings(packAutoSettings)
   .settings(proguardSettings)
   .settings(
     name := "coursier-cli",
     libraryDependencies ++= {
-      if (scalaVersion.value startsWith "2.10.")
+      if (scalaBinaryVersion.value == "2.10")
         Seq()
       else
         Seq("com.github.alexarchambault" %% "case-app" % "1.0.0-RC3")
@@ -492,7 +467,7 @@ lazy val web = project
   .settings(noPublishSettings)
   .settings(
     libraryDependencies ++= {
-      if (scalaVersion.value startsWith "2.10.")
+      if (scalaBinaryVersion.value == "2.10")
         Seq()
       else
         Seq("com.github.japgolly.scalajs-react" %%% "core" % "0.9.0")
@@ -500,7 +475,7 @@ lazy val web = project
     sourceDirectory := {
       val dir = sourceDirectory.value
 
-      if (scalaVersion.value startsWith "2.10.")
+      if (scalaBinaryVersion.value == "2.10")
         dir / "dummy"
       else
         dir
@@ -529,13 +504,11 @@ lazy val doc = project
 // Don't try to compile that if you're not in 2.10
 lazy val plugin = project
   .dependsOn(coreJvm, cache)
-  .settings(baseCommonSettings)
-  .settings(noPublish211Settings)
+  .settings(scalaVersionAgnosticCommonSettings)
+  .settings(noPublishForScalaVersionSettings("2.11"))
   .settings(
     name := "sbt-coursier",
-    sbtPlugin := {
-      scalaVersion.value.startsWith("2.10.")
-    },
+    sbtPlugin := (scalaBinaryVersion.value == "2.10"),
     resolvers ++= Seq(
       // added so that 2.10 artifacts of the other modules can be found by
       // the too-naive-for-now inter-project resolver of the coursier SBT plugin
