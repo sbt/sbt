@@ -944,6 +944,7 @@ object Defaults extends BuildCommon {
       compilerCache.value,
       incOptions.value,
       (compilerReporter in compile).value,
+      o2m(None),
       // TODO - task / setting for extra,
       Array.empty)
   }
