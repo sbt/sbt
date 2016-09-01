@@ -20,6 +20,7 @@ object ScriptedPlugin extends sbt.AutoPlugin {
 
 trait ScriptedKeys {
   lazy val publishAll = TaskKey[Unit]("publish-all")
+  lazy val publishLocalBinAll = taskKey[Unit]("")
   lazy val scripted = InputKey[Unit]("scripted")
   lazy val scriptedUnpublished = InputKey[Unit]("scripted-unpublished", "Execute scripted without publishing SBT first. Saves you some time when only your test has changed.")
   lazy val scriptedSource = SettingKey[File]("scripted-source")
