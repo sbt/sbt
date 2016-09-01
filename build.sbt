@@ -495,7 +495,7 @@ lazy val mavenResolverPluginProj = (project in file("sbt-maven-resolver")).
 
 def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => scriptedParser(dir)).parsed
-  publishAll.value
+  publishLocalBinAll.value
   // These two projects need to be visible in a repo even if the default
   // local repository is hidden, so we publish them to an alternate location and add
   // that alternate repo to the running scripted test (in Scripted.scriptedpreScripted).
@@ -514,6 +514,7 @@ def scriptedUnpublishedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
 }
 
 lazy val publishAll = TaskKey[Unit]("publish-all")
+lazy val publishLocalBinAll = taskKey[Unit]("")
 lazy val publishLauncher = TaskKey[Unit]("publish-launcher")
 
 lazy val myProvided = config("provided") intransitive
@@ -539,9 +540,8 @@ def otherRootSettings = Seq(
   Scripted.scripted <<= scriptedTask,
   Scripted.scriptedUnpublished <<= scriptedUnpublishedTask,
   Scripted.scriptedSource := (sourceDirectory in sbtProj).value / "sbt-test",
-  publishAll := {
-    val _ = (publishLocal).all(ScopeFilter(inAnyProject)).value
-  },
+  publishAll := { val _ = (publishLocal).all(ScopeFilter(inAnyProject)).value },
+  publishLocalBinAll := { val _ = (publishLocalBin).all(ScopeFilter(inAnyProject)).value },
   aggregate in bintrayRelease := false
 ) ++ inConfig(Scripted.MavenResolverPluginTest)(Seq(
   Scripted.scriptedLaunchOpts := List("-XX:MaxPermSize=256M", "-Xmx1G"),
