@@ -1,7 +1,8 @@
 package coursier.cli
 
-import java.io.{ BufferedReader, File, InputStream, InputStreamReader, OutputStream }
-import java.nio.file.{ Files, Paths }
+import java.io.{BufferedReader, File, InputStream, InputStreamReader, OutputStream}
+import java.net.{URL, URLClassLoader}
+import java.nio.file.{Files, Paths}
 
 import caseapp._
 
@@ -29,20 +30,29 @@ case class SparkSubmit(
     else
       options.sparkHome
 
-  val sparkAssembly = {
-    // TODO Make this more reliable (assemblies can be found in other directories I think, this
-    // must be fine with spark 2.10 too, ...)
-    val dir = new File(sparkHome + "/assembly/target/scala-2.11")
+  def searchAssembly(dir: File): String = {
     Option(dir.listFiles()).getOrElse(Array.empty).filter { f =>
-      f.isFile && f.getName.endsWith(".jar")
+      f.isFile && f.getName.endsWith(".jar") && f.getName.contains("spark-assembly")
     } match {
       case Array(assemblyFile) =>
         assemblyFile.getAbsolutePath
       case Array() =>
         throw new Exception(s"No spark assembly found under $dir")
       case jars =>
-        throw new Exception(s"Found several JARs under $dir")
+        throw new Exception(s"Found several assembly JARs under $dir: ${jars.mkString(",")}")
     }
+  }
+
+  val sparkAssembly = {
+    // TODO Make this more reliable (assemblies can be found in other directories I think, this
+    // must be fine with spark 2.10 too, ...)
+    // TODO(han) maybe a conf or sys env ???
+    val dirs = List(
+      new File(sparkHome + "/assembly/target/scala-2.11"),
+      new File(sparkHome + "/lib")
+    )
+
+    dirs.map(searchAssembly).head
   }
 
   val libManaged = {
@@ -62,6 +72,16 @@ case class SparkSubmit(
     sparkHome + "/conf",
     sparkAssembly
   ) ++ libManaged ++ yarnConfOpt.toSeq
+
+  def addFileToCP(path: String): Unit = {
+    val file = new File(path)
+    val method = classOf[URLClassLoader].getDeclaredMethod("addURL", classOf[URL])
+    method.setAccessible(true)
+    method.invoke(ClassLoader.getSystemClassLoader(), file.toURI().toURL())
+  }
+
+  // Inject spark's runtime extra classpath (confs, yarn jars etc.) to the current class loader
+  cp.foreach(addFileToCP)
 
   val idx = extraArgs.indexOf("--")
   assert(idx >= 0)
@@ -218,4 +238,6 @@ case class SparkSubmit(
 
   sys.exit(exitValue)
 
+  //
+  SparkSubmit.main(sparkSubmitOptions.toArray)
 }
