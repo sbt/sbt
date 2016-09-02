@@ -75,7 +75,11 @@ private[sbt] object ForkTests {
 
             new React(is, os, log, opts.testListeners, resultsAcc).react()
           } catch {
-            case NonFatal(e) => resultsAcc("Forked test harness failed: " + e.getMessage) = SuiteResult.Error
+            case NonFatal(e) =>
+              def throwableToString(t: Throwable) = {
+                import java.io._; val sw = new StringWriter; t.printStackTrace(new PrintWriter(sw)); sw.toString
+              }
+              resultsAcc("Forked test harness failed: " + throwableToString(e)) = SuiteResult.Error
           } finally {
             is.close(); os.close(); socket.close()
           }
