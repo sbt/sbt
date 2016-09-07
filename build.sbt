@@ -219,7 +219,7 @@ lazy val sbtProj = (project in file("sbt")).
 
 def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => Scripted.scriptedParser(dir)).parsed
-  publishAll.value
+  publishLocalBinAll.value
   // These two projects need to be visible in a repo even if the default
   // local repository is hidden, so we publish them to an alternate location and add
   // that alternate repo to the running scripted test (in Scripted.scriptedpreScripted).
@@ -258,9 +258,8 @@ def otherRootSettings = Seq(
   scriptedSource := (sourceDirectory in sbtProj).value / "sbt-test",
   // scriptedPrescripted := { addSbtAlternateResolver _ },
   scriptedLaunchOpts := List("-XX:MaxPermSize=256M", "-Xmx1G"),
-  publishAll := {
-    val _ = (publishLocal).all(ScopeFilter(inAnyProject)).value
-  },
+  publishAll := { val _ = (publishLocal).all(ScopeFilter(inAnyProject)).value },
+  publishLocalBinAll := { val _ = (publishLocalBin).all(ScopeFilter(inAnyProject)).value },
   aggregate in bintrayRelease := false
 ) ++ inConfig(Scripted.RepoOverrideTest)(Seq(
   scriptedPrescripted := { _ => () },
