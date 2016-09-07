@@ -315,7 +315,7 @@ object Defaults extends BuildCommon {
       val extra =
         if (crossPaths.value) s"_${scalaBinaryVersion.value}"
         else ""
-      s"inc_compile${extra}"
+      s"inc_compile${extra}.zip"
     },
     compileIncSetup := compileIncSetupTask.value,
     console := consoleTask.value,
