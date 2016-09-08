@@ -561,16 +561,3 @@ lazy val `coursier` = project.in(file("."))
   .settings(
     moduleName := "coursier-root"
   )
-
-val sparkVersion = "1.6.1"
-
-lazy val spark = project
-  .dependsOn(cli)
-  .settings(commonSettings)
-  .settings(noPublishForScalaVersionSettings("2.10"))
-  .settings(packAutoSettings)
-  .settings(proguardSettings)
-  .settings(
-    name := "coursier-spark",
-    libraryDependencies += "org.apache.spark" %% "spark-core" % sparkVersion
-  )
