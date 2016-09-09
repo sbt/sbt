@@ -1,0 +1,11 @@
+Mainly a convinience release for the current state of the `coursier spark-submit` command.
+
+### Changes
+
+* Add an experimental and subject to change `coursier spark-submit` command, allowing to submit applications via spark rather than launching them locally ([#335]).
+
+[#335]: https://github.com/alexarchambault/coursier/pull/335
+
+### Non-backward compatible changes
+
+* N/A
