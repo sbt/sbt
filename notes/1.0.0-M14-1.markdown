@@ -1,4 +1,4 @@
-Mainly a convinience release for the current state of the `coursier spark-submit` command.
+Mainly a convenience release for the current state of the `coursier spark-submit` command.
 
 ### Changes
 
