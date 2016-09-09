@@ -33,6 +33,43 @@ object Launch {
         mainClassLoader(cl.getParent)
     }
 
+  def run(
+    loader: ClassLoader,
+    mainClass: String,
+    args: Seq[String],
+    verbosity: Int,
+    beforeMain: => Unit = ()
+  ): Unit = {
+
+    val cls =
+      try loader.loadClass(mainClass)
+      catch { case e: ClassNotFoundException =>
+        Helper.errPrintln(s"Error: class $mainClass not found")
+        sys.exit(255)
+      }
+    val method =
+      try cls.getMethod("main", classOf[Array[String]])
+      catch { case e: NoSuchMethodException =>
+        Helper.errPrintln(s"Error: method main not found in $mainClass")
+        sys.exit(255)
+      }
+    method.setAccessible(true)
+
+    if (verbosity >= 2)
+      Helper.errPrintln(s"Launching $mainClass ${args.mkString(" ")}")
+    else if (verbosity == 1)
+      Helper.errPrintln(s"Launching")
+
+    beforeMain
+
+    Thread.currentThread().setContextClassLoader(loader)
+    try method.invoke(null, args.toArray)
+    catch {
+      case e: java.lang.reflect.InvocationTargetException =>
+        throw Option(e.getCause).getOrElse(e)
+    }
+  }
+
 }
 
 class IsolatedClassLoader(
@@ -86,29 +123,10 @@ case class Launch(
     else
       options.mainClass
 
-  val cls =
-    try helper.loader.loadClass(mainClass)
-    catch { case e: ClassNotFoundException =>
-      Helper.errPrintln(s"Error: class $mainClass not found")
-      sys.exit(255)
-    }
-  val method =
-    try cls.getMethod("main", classOf[Array[String]])
-    catch { case e: NoSuchMethodException =>
-      Helper.errPrintln(s"Error: method main not found in $mainClass")
-      sys.exit(255)
-    }
-  method.setAccessible(true)
-
-  if (options.common.verbosityLevel >= 2)
-    Helper.errPrintln(s"Launching $mainClass ${userArgs.mkString(" ")}")
-  else if (options.common.verbosityLevel == 1)
-    Helper.errPrintln(s"Launching")
-
-  Thread.currentThread().setContextClassLoader(helper.loader)
-  try method.invoke(null, userArgs.toArray)
-  catch {
-    case e: java.lang.reflect.InvocationTargetException =>
-      throw Option(e.getCause).getOrElse(e)
-  }
+  Launch.run(
+    helper.loader,
+    mainClass,
+    userArgs,
+    options.common.verbosityLevel
+  )
 }

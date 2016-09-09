@@ -194,22 +194,6 @@ case class LaunchOptions(
     common: CommonOptions
 )
 
-case class SparkSubmitOptions(
-  @Short("M")
-  @Short("main")
-    mainClass: String,
-  @Help("If master is yarn-cluster, write YARN app ID to a file. (The ID is deduced from the spark-submit output.)")
-  @Value("file")
-    yarnIdFile: String,
-  @Help("Spark home (default: SPARK_HOME from the environment)")
-    sparkHome: String,
-  @Help("Maximum idle time of spark-submit (time with no output). Exit early if no output from spark-submit for more than this duration. Set to 0 for unlimited. (Default: 0)")
-  @Value("seconds")
-    maxIdleTime: Int,
-  @Recurse
-    common: CommonOptions
-)
-
 case class BootstrapOptions(
   @Short("M")
   @Short("main")
@@ -233,6 +217,28 @@ case class BootstrapOptions(
     javaOpt: List[String],
   @Recurse
     isolated: IsolatedLoaderOptions,
+  @Recurse
+    common: CommonOptions
+)
+
+case class SparkSubmitOptions(
+  @Short("M")
+  @Short("main")
+  @Help("Main class to be launched (optional if in manifest)")
+    mainClass: String,
+  @Help("If master is yarn-cluster, write YARN app ID to a file. (The ID is deduced from the spark-submit output.)")
+  @Value("file")
+    yarnIdFile: String,
+  @Help("Spark assembly. If empty, automatically generate (default: empty)")
+    sparkAssembly: String,
+  noDefaultAssemblyDependencies: Boolean,
+  assemblyDependencies: List[String],
+  noDefaultSubmitDependencies: Boolean,
+  submitDependencies: List[String],
+  sparkVersion: String,
+  @Help("Maximum idle time of spark-submit (time with no output). Exit early if no output from spark-submit for more than this duration. Set to 0 for unlimited. (Default: 0)")
+  @Value("seconds")
+    maxIdleTime: Int,
   @Recurse
     common: CommonOptions
 )
