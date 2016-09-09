@@ -1,0 +1,12 @@
+Mainly a convenience release for the new state of the `coursier spark-submit` command.
+
+### Changes
+
+* Changes in the experimental and subject to change `coursier spark-submit` command, now allowing to launch spark applications without requiring a spark distribution ([#343], [#346]).
+
+[#343]: https://github.com/alexarchambault/coursier/pull/343
+[#346]: https://github.com/alexarchambault/coursier/pull/346
+
+### Non-backward compatible changes
+
+* N/A
