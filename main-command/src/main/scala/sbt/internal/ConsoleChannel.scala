@@ -14,17 +14,15 @@ private[sbt] final class ConsoleChannel extends CommandChannel {
       case Some(pf) => pf(s)
       case None     => "> "
     }
-    val reader = new FullReader(history, s.combinedParser)
+    val reader = new FullReader(history, s.combinedParser, JLine.HandleCONT, true)
     override def run(): Unit = {
-      try {
-        val line = reader.readLine(prompt)
-        line match {
-          case Some(cmd) => append(Exec(CommandSource.Human, cmd))
-          case None      => append(Exec(CommandSource.Human, "exit"))
-        }
-      } catch {
-        case e: InterruptedException =>
+      // This internally handles thread interruption and returns Some("")
+      val line = reader.readLine(prompt)
+      line match {
+        case Some(cmd) => append(Exec(CommandSource.Human, cmd))
+        case None      => append(Exec(CommandSource.Human, "exit"))
       }
+      askUserThread = None
     }
   }
 
@@ -33,21 +31,21 @@ private[sbt] final class ConsoleChannel extends CommandChannel {
   def publishStatus(status: CommandStatus, lastSource: Option[CommandSource]): Unit =
     if (status.canEnter) {
       askUserThread match {
-        case Some(x) if x.isAlive => //
+        case Some(x) => //
         case _ =>
           val x = makeAskUserThread(status)
-          x.start
           askUserThread = Some(x)
+          x.start
       }
     } else {
-      shutdown()
       lastSource match {
         case Some(src) if src != CommandSource.Human =>
-          val s = status.state
-          s.remainingCommands.headOption map {
-            System.out.println(_)
+          askUserThread match {
+            case Some(x) =>
+              shutdown()
+            case _ =>
           }
-        case _ => //
+        case _ =>
       }
     }
 
