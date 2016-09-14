@@ -11,9 +11,10 @@ import scala.concurrent.duration.Duration
 import scala.annotation.tailrec
 
 abstract class JLine extends LineReader {
-  protected[this] val handleCONT: Boolean
-  protected[this] val reader: ConsoleReader
-
+  protected[this] def handleCONT: Boolean
+  protected[this] def reader: ConsoleReader
+  protected[this] def injectThreadSleep: Boolean
+  protected[this] val in: InputStream = JLine.makeInputStream(injectThreadSleep)
   def readLine(prompt: String, mask: Option[Char] = None) = JLine.withJLine { unsynchronizedReadLine(prompt, mask) }
 
   private[this] def unsynchronizedReadLine(prompt: String, mask: Option[Char]): Option[String] =
@@ -37,9 +38,13 @@ abstract class JLine extends LineReader {
   private[this] def readLineDirectRaw(prompt: String, mask: Option[Char]): Option[String] =
     {
       val newprompt = handleMultilinePrompt(prompt)
-      mask match {
-        case Some(m) => Option(reader.readLine(newprompt, m))
-        case None    => Option(reader.readLine(newprompt))
+      try {
+        mask match {
+          case Some(m) => Option(reader.readLine(newprompt, m))
+          case None    => Option(reader.readLine(newprompt))
+        }
+      } catch {
+        case e: InterruptedException => Option("")
       }
     }
 
@@ -81,6 +86,11 @@ private[sbt] object JLine {
     ()
   }
 
+  protected[this] val originalIn = new FileInputStream(FileDescriptor.in)
+  private[sbt] def makeInputStream(injectThreadSleep: Boolean): InputStream =
+    if (injectThreadSleep) new InputStreamWrapper(originalIn, Duration("50 ms"))
+    else originalIn
+
   // When calling this, ensure that enableEcho has been or will be called.
   // TerminalFactory.get will initialize the terminal to disable echo.
   private def terminal = jline.TerminalFactory.get
@@ -98,14 +108,10 @@ private[sbt] object JLine {
       t.restore
       f(t)
     }
-  def createReader(): ConsoleReader = createReader(None, true)
-  def createReader(historyPath: Option[File], injectThreadSleep: Boolean): ConsoleReader =
+  def createReader(): ConsoleReader = createReader(None, JLine.makeInputStream(true))
+  def createReader(historyPath: Option[File], in: InputStream): ConsoleReader =
     usingTerminal { t =>
-      val cr = if (injectThreadSleep) {
-        val originalIn = new FileInputStream(FileDescriptor.in)
-        val in = new InputStreamWrapper(originalIn, Duration("50 ms"))
-        new ConsoleReader(in, System.out)
-      } else new ConsoleReader
+      val cr = new ConsoleReader(in, System.out)
       cr.setExpandEvents(false) // https://issues.scala-lang.org/browse/SI-7650
       cr.setBellEnabled(false)
       val h = historyPath match {
@@ -140,6 +146,22 @@ private[sbt] class InputStreamWrapper(is: InputStream, val poll: Duration) exten
       Thread.sleep(poll.toMillis)
       read()
     }
+
+  @tailrec
+  final override def read(b: Array[Byte]): Int =
+    if (is.available() != 0) is.read(b)
+    else {
+      Thread.sleep(poll.toMillis)
+      read(b)
+    }
+
+  @tailrec
+  final override def read(b: Array[Byte], off: Int, len: Int): Int =
+    if (is.available() != 0) is.read(b, off, len)
+    else {
+      Thread.sleep(poll.toMillis)
+      read(b, off, len)
+    }
 }
 
 trait LineReader {
@@ -153,14 +175,15 @@ final class FullReader(
 ) extends JLine {
   protected[this] val reader =
     {
-      val cr = JLine.createReader(historyPath, injectThreadSleep)
+      val cr = JLine.createReader(historyPath, in)
       sbt.internal.util.complete.JLineCompletion.installCustomCompletor(cr, complete)
       cr
     }
 }
 
 class SimpleReader private[sbt] (historyPath: Option[File], val handleCONT: Boolean, val injectThreadSleep: Boolean) extends JLine {
-  protected[this] val reader = JLine.createReader(historyPath, injectThreadSleep)
+  protected[this] val reader = JLine.createReader(historyPath, in)
+
 }
 object SimpleReader extends SimpleReader(None, JLine.HandleCONT, false)
 
