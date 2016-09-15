@@ -52,7 +52,7 @@ object BasicCommandStrings {
 	This will be used as the default level for logging from commands, settings, and tasks.
 	Any explicit `logLevel` configuration in a project overrides this setting.
 
-${runEarly(level.toString)}
+-$level
 
 	Sets the global logging level as described above, but does so before any other commands are executed on startup, including project loading.
 	This is useful as a startup option:
@@ -62,7 +62,9 @@ ${runEarly(level.toString)}
 
   def runEarly(command: String) = s"$EarlyCommand($command)"
   private[sbt] def isEarlyCommand(s: String): Boolean = {
-    s.startsWith(EarlyCommand + "(") && s.endsWith(")")
+    val levelOptions = Level.values.toSeq map { "-" + _ }
+    (s.startsWith(EarlyCommand + "(") && s.endsWith(")")) ||
+      (levelOptions contains s)
   }
 
   val EarlyCommand = "early"
