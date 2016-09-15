@@ -10,6 +10,8 @@ Migration notes
 - Removed the pre-0.13.7 *.sbt file parser (previously available under `-Dsbt.parser.simple=true`)
 - Removed old, hyphen-separated key names (use `publishLocal` instead of `publish-local`)
 - Removes no-longer-documented old operators `<<=`, `<+=`, and `<++=`.
+- Renames early command feature from `--<command>` to `early(<command>)`.
+- Log options `-error`, `-warn`, `-info`, `-debug` are added as shorthand for `"early(error)"` etc.
 
 #### Additional import required
 
