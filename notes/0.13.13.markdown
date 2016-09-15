@@ -16,7 +16,7 @@
 - Adds the ability to call `aggregateProjects(..)` for the current project inside a build sbt file. [#2682][2682] by [@xuwei-k][@xuwei-k]
 - Adds `.jvmopts` support to the launcher script. [sbt/sbt-launcher-package#111][111] by [@fommil][@fommil]
 - Adds `.java-version` support to the Windows launcher script. [sbt/sbt-launcher-package#111][111] by [@fommil][@fommil]
-
+- The startup log level is dropped to `-error` in script mode using `scalas`. [#840][840]/[#2746][2746] by [@eed3si9n][@eed3si9n]
 
 ### Bug fixes
 
@@ -98,6 +98,7 @@ For `<+=` and `<++=`, use `+= { x.value }` and `++= { x.value }`.
   [g8]: http://www.foundweekends.org/giter8/
   [eed3si9n/hello.g8]: https://github.com/eed3si9n/hello.g8
 
+  [840]: https://github.com/sbt/sbt/issues/840
   [1041]: https://github.com/sbt/sbt/issues/1041
   [1431]: https://github.com/sbt/sbt/issues/1431
   [2442]: https://github.com/sbt/sbt/issues/2442
@@ -114,6 +115,7 @@ For `<+=` and `<++=`, use `+= { x.value }` and `++= { x.value }`.
   [2731]: https://github.com/sbt/sbt/pull/2731
   [2738]: https://github.com/sbt/sbt/issues/2738
   [2742]: https://github.com/sbt/sbt/pull/2742
+  [2746]: https://github.com/sbt/sbt/pull/2746
   [110]: https://github.com/sbt/sbt-launcher-package/pull/110
   [111]: https://github.com/sbt/sbt-launcher-package/pull/111
   [sbt-ivy-22]: https://github.com/sbt/ivy/pull/22
