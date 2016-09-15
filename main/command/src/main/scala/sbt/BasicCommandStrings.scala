@@ -60,7 +60,7 @@ object BasicCommandStrings {
 	This will be used as the default level for logging from commands, settings, and tasks.
 	Any explicit `logLevel` configuration in a project overrides this setting.
 
-${runEarly(level.toString)}
+-$level
 
 	Sets the global logging level as described above, but does so before any other commands are executed on startup, including project loading.
 	This is useful as a startup option:
@@ -68,21 +68,23 @@ ${runEarly(level.toString)}
 		* if no other commands are passed, interactive mode is still entered
 """
 
-  def runEarly(command: String) = {
-    val sep = if (command.isEmpty || Character.isLetter(command.charAt(0))) "" else " "
-    s"$EarlyCommand$sep$command"
-  }
+  def runEarly(command: String) = s"$EarlyCommand($command)"
   private[sbt] def isEarlyCommand(s: String): Boolean = {
-    s.startsWith(EarlyCommand) && s != Compat.FailureWall && s != Compat.ClearOnFailure
+    val levelShortOptions = Level.values.toSeq map { "-" + _ }
+    val levelLongOptions = Level.values.toSeq map { "--" + _ }
+    (s.startsWith(EarlyCommand + "(") && s.endsWith(")")) ||
+      (levelShortOptions contains s) ||
+      (levelLongOptions contains s)
   }
 
-  val EarlyCommand = "--"
-  val EarlyCommandBrief = (s"$EarlyCommand<command>", "Schedules a command to run before other commands on startup.")
+  val OldEarlyCommand = "--"
+  val EarlyCommand = "early"
+  val EarlyCommandBrief = (s"$EarlyCommand(<command>)", "Schedules a command to run before other commands on startup.")
   val EarlyCommandDetailed =
-    s"""$EarlyCommand<command>
+    s"""$EarlyCommand(<command>)
 
 	Schedules an early command, which will be run before other commands on the command line.
-	The order is preserved between all early commands, so `sbt --a --b` executes `a` and `b` in order.
+	The order is preserved between all early commands, so `sbt "early(a)" "early(b)"` executes `a` and `b` in order.
 """
 
   def ReadCommand = "<"
