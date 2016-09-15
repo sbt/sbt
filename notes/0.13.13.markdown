@@ -14,11 +14,15 @@
 - Auto plugins can add synthetic subprojects. See below for more details.
 - Supports wildcard exclusions in POMs [#1431][1431]/[sbt/ivy#22][sbt-ivy-22]/[#2731][2731] by [@jtgrabowski][@jtgrabowski]
 - Adds the ability to call `aggregateProjects(..)` for the current project inside a build sbt file. [#2682][2682] by [@xuwei-k][@xuwei-k]
+- Adds `.jvmopts` support to the launcher script. [sbt/sbt-launcher-package#111][111] by [@fommil][@fommil]
+- Adds `.java-version` support to the Windows launcher script. [sbt/sbt-launcher-package#111][111] by [@fommil][@fommil]
+
 
 ### Bug fixes
 
 - Fixes a regression in sbt 0.13.12 that wrongly reports build-level keys to be ambiguous. [#2707][2707]/[#2708][2708] by [@Duhemm][@Duhemm]
 - Fixes forked tests being reported as successful when the test harness fails. [#2442][2442]/[#2722][2722]/[#2730][2730] by [@eed3si9n][@eed3si9n]/[@dwijnand][@dwijnand]
+- Fixes incorrect installation path on Windows. [sbt/sbt-launcher-package#110][110] by [@dwijnand][@dwijnand]
 
 ### new command and templateResolvers
 
@@ -110,6 +114,8 @@ For `<+=` and `<++=`, use `+= { x.value }` and `++= { x.value }`.
   [2731]: https://github.com/sbt/sbt/pull/2731
   [2738]: https://github.com/sbt/sbt/issues/2738
   [2742]: https://github.com/sbt/sbt/pull/2742
+  [110]: https://github.com/sbt/sbt-launcher-package/pull/110
+  [111]: https://github.com/sbt/sbt-launcher-package/pull/111
   [sbt-ivy-22]: https://github.com/sbt/ivy/pull/22
 
   [@eed3si9n]: https://github.com/eed3si9n
@@ -117,3 +123,4 @@ For `<+=` and `<++=`, use `+= { x.value }` and `++= { x.value }`.
   [@Duhemm]: https://github.com/Duhemm
   [@xuwei-k]: https://github.com/xuwei-k
   [@jtgrabowski]: https://github.com/jtgrabowski
+  [@fommil]: https://github.com/fommil
