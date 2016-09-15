@@ -207,10 +207,10 @@ final case class ClasspathDependency(project: ProjectReference, configuration: O
  */
 sealed trait ProjectOrigin
 object ProjectOrigin {
-  case object Organic      extends ProjectOrigin
-  case object BuildExtra   extends ProjectOrigin
-  case object ProjectExtra extends ProjectOrigin
-  case object GenericRoot  extends ProjectOrigin
+  case object Organic        extends ProjectOrigin
+  case object ExtraProject   extends ProjectOrigin
+  case object DerivedProject extends ProjectOrigin
+  case object GenericRoot    extends ProjectOrigin
 }
 
 object Project extends ProjectExtra {

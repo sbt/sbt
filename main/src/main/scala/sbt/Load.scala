@@ -468,7 +468,7 @@ object Load {
         plugs.detected.builds.values
       }
       val buildLevelExtraProjects = plugs.detected.autoPlugins flatMap { d =>
-        d.value.buildExtras map {_.setProjectOrigin(ProjectOrigin.BuildExtra)}
+        d.value.extraProjects map {_.setProjectOrigin(ProjectOrigin.ExtraProject)}
       }
 
       // NOTE - because we create an eval here, we need a clean-eval later for this URI.
@@ -602,7 +602,7 @@ object Load {
           }
         val p2 = this.resolveProject(p1, autoPlugins, plugins, injectSettings, memoSettings, log)
         val projectLevelExtra =
-          if (expand) autoPlugins flatMap { _.projectExtras(p2) map {_.setProjectOrigin(ProjectOrigin.ProjectExtra)} }
+          if (expand) autoPlugins flatMap { _.derivedProjects(p2) map {_.setProjectOrigin(ProjectOrigin.DerivedProject)} }
           else Nil
         (p2, projectLevelExtra)
       }
