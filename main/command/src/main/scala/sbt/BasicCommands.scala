@@ -22,7 +22,18 @@ object BasicCommands {
   def ignore = Command.command(FailureWall)(idFun)
 
   def early = Command.arb(earlyParser, earlyHelp) { (s, other) => other :: s }
-  private[this] def earlyParser = (s: State) => token(EarlyCommand).flatMap(_ => otherCommandParser(s))
+  private[this] def levelParser: Parser[String] =
+    token(Level.Debug.toString) | token(Level.Info.toString) | token(Level.Warn.toString) | token(Level.Error.toString)
+  private[this] def earlyParser: State => Parser[String] = (s: State) =>
+    (token(EarlyCommand + "(") flatMap { _ =>
+      otherCommandParser(s) <~ token(")")
+    }) |
+      (token("-") flatMap { _ =>
+        levelParser
+      }) |
+      (token(OldEarlyCommand) flatMap { _ =>
+        levelParser
+      })
   private[this] def earlyHelp = Help(EarlyCommand, EarlyCommandBrief, EarlyCommandDetailed)
 
   def help = Command.make(HelpCommand, helpBrief, helpDetailed)(helpParser)
