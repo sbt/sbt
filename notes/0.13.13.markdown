@@ -1,0 +1,126 @@
+
+### Fixes with compatibility implications
+
+- Deprecates the old symbolic operators, to be removed in sbt 1.0. See below for more details.
+- The `.value` method is deprecated for input tasks. Calling `.value` on an input key returns an `InputTask[A]`,
+  which is completely unintuitive and often results in a bug. In most cases `.evaluated` should be called,
+  which returns `A` by evaluating the task.
+  Just in case `InputTask[A]` is needed, `.inputTaskValue` method is now provided. [#2709][2709] by [@eed3si9n][@eed3si9n]
+- sbt 0.13.13 renames the early command `--<command>` that was added in 0.13.1 to `early(<command>)`. This fixes the regression [#1041][1041]. For backward compatibility `--error`, `--warn`, `--info`, and `--debug` will continue to function during the 0.13 series, but it is strongly encouraged to migrate to the single hyphen options: `-error`, `-warn`, `-info`, and `-debug`. [#2742][2742] by [@eed3si9n][@eed3si9n]
+
+### Improvements
+
+- Adds `new` command and `templateResolvers`. See below for more details.
+- Auto plugins can add synthetic subprojects. See below for more details.
+- Supports wildcard exclusions in POMs [#1431][1431]/[sbt/ivy#22][sbt-ivy-22]/[#2731][2731] by [@jtgrabowski][@jtgrabowski]
+- Adds the ability to call `aggregateProjects(..)` for the current project inside a build sbt file. [#2682][2682] by [@xuwei-k][@xuwei-k]
+- Adds `.jvmopts` support to the launcher script. [sbt/sbt-launcher-package#111][111] by [@fommil][@fommil]
+- Adds `.java-version` support to the Windows launcher script. [sbt/sbt-launcher-package#111][111] by [@fommil][@fommil]
+
+
+### Bug fixes
+
+- Fixes a regression in sbt 0.13.12 that wrongly reports build-level keys to be ambiguous. [#2707][2707]/[#2708][2708] by [@Duhemm][@Duhemm]
+- Fixes forked tests being reported as successful when the test harness fails. [#2442][2442]/[#2722][2722]/[#2730][2730] by [@eed3si9n][@eed3si9n]/[@dwijnand][@dwijnand]
+- Fixes incorrect installation path on Windows. [sbt/sbt-launcher-package#110][110] by [@dwijnand][@dwijnand]
+
+### new command and templateResolvers
+
+sbt 0.13.13 adds a `new` command, which helps create new build definitions.
+The `new` command is extensible via a mechanism called the template resolver,
+which evaluates the arguments passed to the command to find and run a template.
+As a reference implementation [Giter8][g8] is provided. For instance:
+
+    sbt new eed3si9n/hello.g8
+
+will run [eed3si9n/hello.g8][] using Giter8.
+
+[#2705][2705] by [@eed3si9n][@eed3si9n]
+
+### Synthetic subprojects
+
+sbt 0.13.13 adds support for `AutoPlugin`s to define subprojects programmatically,
+by overriding the `extraProjects` method:
+
+    import sbt._, Keys._
+
+    object ExtraProjectsPlugin extends AutoPlugin {
+      override def extraProjects: Seq[Project] =
+        List("foo", "bar", "baz") map generateProject
+
+      def generateProject(id: String): Project =
+        Project(id, file(id)).
+          settings(
+            name := id
+          )
+    }
+
+In addition, subprojects may be derived from an existing subproject
+by overriding `derivedProjects`:
+
+    import sbt._, Keys._
+
+    object DerivedProjectsPlugin extends AutoPlugin {
+      // Enable this plugin by default
+      override def requires: Plugins = sbt.plugins.CorePlugin
+      override def trigger = allRequirements
+
+      override def derivedProjects(proj: ProjectDefinition[_]): Seq[Project] =
+        // Make sure to exclude project extras to avoid recursive generation
+        if (proj.projectOrigin != ProjectOrigin.DerivedProject) {
+          val id = proj.id + "1"
+          Seq(
+            Project(id, file(id)).
+              enablePlugins(DatabasePlugin)
+          )
+        }
+        else Nil
+    }
+
+[#2532][2532]/[#2717][2717]/[#2738][2738] by [@eed3si9n][@eed3si9n]
+
+### Deprecate old operators
+
+The no-longer-documented operators `<<=`, `<+=`, and `<++=` are deprecated,
+and will be removed in sbt 1.0.
+
+For `<<=`, the suggested migration would be to use either `:=` or `~=` operators.
+The RHS of `<<=` takes an `Initialize[_]` expression, which can be converted to `:=` style
+by wrapping the expression in parenthesis, and calling `.value` at the end.
+For example:
+
+    key := (key.dependsOn(compile in Test)).value
+
+For `<+=` and `<++=`, use `+= { x.value }` and `++= { x.value }`.
+
+[#2716][2716] by [@eed3si9n][@eed3si9n]
+
+  [g8]: http://www.foundweekends.org/giter8/
+  [eed3si9n/hello.g8]: https://github.com/eed3si9n/hello.g8
+
+  [1041]: https://github.com/sbt/sbt/issues/1041
+  [1431]: https://github.com/sbt/sbt/issues/1431
+  [2442]: https://github.com/sbt/sbt/issues/2442
+  [2532]: https://github.com/sbt/sbt/issues/2532
+  [2705]: https://github.com/sbt/sbt/pull/2705
+  [2682]: https://github.com/sbt/sbt/pull/2682
+  [2707]: https://github.com/sbt/sbt/issues/2707
+  [2708]: https://github.com/sbt/sbt/issues/2708
+  [2709]: https://github.com/sbt/sbt/pull/2709
+  [2716]: https://github.com/sbt/sbt/pull/2716
+  [2717]: https://github.com/sbt/sbt/pull/2717
+  [2722]: https://github.com/sbt/sbt/issues/2722
+  [2730]: https://github.com/sbt/sbt/pull/2730
+  [2731]: https://github.com/sbt/sbt/pull/2731
+  [2738]: https://github.com/sbt/sbt/issues/2738
+  [2742]: https://github.com/sbt/sbt/pull/2742
+  [110]: https://github.com/sbt/sbt-launcher-package/pull/110
+  [111]: https://github.com/sbt/sbt-launcher-package/pull/111
+  [sbt-ivy-22]: https://github.com/sbt/ivy/pull/22
+
+  [@eed3si9n]: https://github.com/eed3si9n
+  [@dwijnand]: https://github.com/dwijnand
+  [@Duhemm]: https://github.com/Duhemm
+  [@xuwei-k]: https://github.com/xuwei-k
+  [@jtgrabowski]: https://github.com/jtgrabowski
+  [@fommil]: https://github.com/fommil
