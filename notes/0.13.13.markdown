@@ -5,18 +5,18 @@
   which is completely unintuitive and often results in a bug. In most cases `.evaluated` should be called,
   which returns `A` by evaluating the task.
   Just in case `InputTask[A]` is needed, `.inputTaskValue` method is now provided. [#2709][2709] by [@eed3si9n][@eed3si9n]
-- Deprecate the old symbolic operators, to be removed in sbt 1.0. See below for more details.
+- Deprecates the old symbolic operators, to be removed in sbt 1.0. See below for more details.
 - sbt 0.13.13 renames the early command `--<command>` that was added in 0.13.1 to `early(<command>)`. This fixes the regression [#1041][1041]. For backward compatibility `--error`, `--warn`, `--info`, and `--debug` will continue to function during the 0.13 series, but it is strongly encouraged to migrate to the single hyphen options: `-error`, `-warn`, `-info`, and `-debug`. [#2742][2742] by [@eed3si9n][@eed3si9n]
 
 ### Improvements
 
-- Add the ability to call `aggregateProjects(..)` for the current project inside a build sbt file. [#2682][2682] by [@xuwei-k][@xuwei-k]
+- Adds the ability to call `aggregateProjects(..)` for the current project inside a build sbt file. [#2682][2682] by [@xuwei-k][@xuwei-k]
 
 ### Bug fixes
 
-- Fix key selection for build level keys. sbt wrongly reported some keys as ambiguous. [#2707][2707]/[#2708][2708] by [@Duhemm][@Duhemm]
-- Support wildcard exclusions in POMs [#1431][1431]/[sbt/ivy#22][sbt-ivy-22]/[#2731][2731] by [@jtgrabowski][@jtgrabowski]
-- Fix forked tests being reported as successful when the test harness fails. [#2442][2442]/[#2722][2722]/[#2730][2730] by [@eed3si9n][@eed3si9n]/[@dwijnand][@dwijnand]
+- Fixes key selection for build level keys. sbt wrongly reported some keys as ambiguous. [#2707][2707]/[#2708][2708] by [@Duhemm][@Duhemm]
+- Supports wildcard exclusions in POMs [#1431][1431]/[sbt/ivy#22][sbt-ivy-22]/[#2731][2731] by [@jtgrabowski][@jtgrabowski]
+- Fixes forked tests being reported as successful when the test harness fails. [#2442][2442]/[#2722][2722]/[#2730][2730] by [@eed3si9n][@eed3si9n]/[@dwijnand][@dwijnand]
 
 ### new command and templateResolvers
 
