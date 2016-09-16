@@ -34,10 +34,13 @@ final class xMain extends xsbti.AppMain {
 }
 final class ScriptMain extends xsbti.AppMain {
   def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
-    runManaged(initialState(configuration,
-      BuiltinCommands.ScriptCommands,
-      Script.Name :: Nil)
-    )
+    {
+      import BasicCommandStrings.runEarly
+      runManaged(initialState(configuration,
+        BuiltinCommands.ScriptCommands,
+        runEarly(Level.Error.toString) :: Script.Name :: Nil)
+      )
+    }
 }
 final class ConsoleMain extends xsbti.AppMain {
   def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
