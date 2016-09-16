@@ -21,6 +21,8 @@
 ### Bug fixes
 
 - Fixes a regression in sbt 0.13.12 that wrongly reports build-level keys to be ambiguous. [#2707][2707]/[#2708][2708] by [@Duhemm][@Duhemm]
+- Fixes a regression in sbt 0.13.12 that was misfiring Scala version enforcement when an alternative `scalaOrganization` is set. [#2703][2703] by [@milessabin][@milessabin]
+- Fixes `Tags.ForkedTestGroup`. [#2677][2677]/[#2681][2681] by [@pauldraper][@pauldraper]
 - Fixes forked tests being reported as successful when the test harness fails. [#2442][2442]/[#2722][2722]/[#2730][2730] by [@eed3si9n][@eed3si9n]/[@dwijnand][@dwijnand]
 - Fixes incorrect installation path on Windows. [sbt/sbt-launcher-package#110][110] by [@dwijnand][@dwijnand]
 
@@ -103,8 +105,11 @@ For `<+=` and `<++=`, use `+= { x.value }` and `++= { x.value }`.
   [1431]: https://github.com/sbt/sbt/issues/1431
   [2442]: https://github.com/sbt/sbt/issues/2442
   [2532]: https://github.com/sbt/sbt/issues/2532
+  [2677]: https://github.com/sbt/sbt/issues/2677
+  [2681]: https://github.com/sbt/sbt/pull/2681
   [2705]: https://github.com/sbt/sbt/pull/2705
   [2682]: https://github.com/sbt/sbt/pull/2682
+  [2703]: https://github.com/sbt/sbt/pull/2703
   [2707]: https://github.com/sbt/sbt/issues/2707
   [2708]: https://github.com/sbt/sbt/issues/2708
   [2709]: https://github.com/sbt/sbt/pull/2709
@@ -126,3 +131,5 @@ For `<+=` and `<++=`, use `+= { x.value }` and `++= { x.value }`.
   [@xuwei-k]: https://github.com/xuwei-k
   [@jtgrabowski]: https://github.com/jtgrabowski
   [@fommil]: https://github.com/fommil
+  [@milessabin]: https://github.com/milessabin
+  [@pauldraper]: https://github.com/pauldraper
