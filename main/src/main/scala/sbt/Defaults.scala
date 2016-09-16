@@ -1181,7 +1181,11 @@ object Classpaths {
     dependencyOverrides :== Set.empty,
     libraryDependencies :== Nil,
     excludeDependencies :== Nil,
-    ivyLoggingLevel :== UpdateLogging.Default,
+    ivyLoggingLevel :== {
+      // This will suppress "Resolving..." logs on Jenkins and Travis.
+      if (sys.env.get("BUILD_NUMBER").isDefined || sys.env.get("CI").isDefined) UpdateLogging.Quiet
+      else UpdateLogging.Default
+    },
     ivyXML :== NodeSeq.Empty,
     ivyValidate :== false,
     moduleConfigurations :== Nil,
