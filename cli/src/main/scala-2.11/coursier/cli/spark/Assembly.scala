@@ -4,6 +4,7 @@ import java.io.{File, FileInputStream, FileOutputStream}
 import java.math.BigInteger
 import java.nio.file.{Files, StandardCopyOption}
 import java.security.MessageDigest
+import java.util.jar.{Attributes, JarFile, JarOutputStream, Manifest}
 import java.util.regex.Pattern
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 
@@ -39,14 +40,19 @@ object Assembly {
     val rulesMap = rules.collect { case r: Rule.PathRule => r.path -> r }.toMap
     val excludePatterns = rules.collect { case Rule.ExcludePattern(p) => p }
 
+    val manifest = new Manifest
+    manifest.getMainAttributes.put(Attributes.Name.MANIFEST_VERSION, "1.0")
+
     var fos: FileOutputStream = null
     var zos: ZipOutputStream = null
 
     try {
       fos = new FileOutputStream(output)
-      zos = new ZipOutputStream(fos)
+      zos = new JarOutputStream(fos, manifest)
 
       val concatenedEntries = new mutable.HashMap[String, ::[(ZipEntry, Array[Byte])]]
+
+      var ignore = Set.empty[String]
 
       for (jar <- jars) {
         var fis: FileInputStream = null
@@ -65,10 +71,13 @@ object Assembly {
                 concatenedEntries += path -> ::((ent, content), concatenedEntries.getOrElse(path, Nil))
 
               case None =>
-                if (!excludePatterns.exists(_.matcher(ent.getName).matches())) {
+                if (!excludePatterns.exists(_.matcher(ent.getName).matches()) && !ignore(ent.getName)) {
+                  ent.setCompressedSize(-1L)
                   zos.putNextEntry(ent)
                   zos.write(content)
                   zos.closeEntry()
+
+                  ignore += ent.getName
                 }
             }
 
@@ -80,12 +89,19 @@ object Assembly {
         }
       }
 
-      for ((path, entries) <- concatenedEntries) {
+      for ((_, entries) <- concatenedEntries) {
         val (ent, _) = entries.head
+
+        ent.setCompressedSize(-1L)
+
+        if (entries.tail.nonEmpty)
+          ent.setSize(entries.map(_._2.length).sum)
+
         zos.putNextEntry(ent)
-        for ((_, b) <- entries.reverse)
-          zos.write(b)
-        zos.close()
+        // for ((_, b) <- entries.reverse)
+        //  zos.write(b)
+        zos.write(entries.reverse.toArray.flatMap(_._2))
+        zos.closeEntry()
       }
     } finally {
       if (zos != null)
@@ -99,23 +115,24 @@ object Assembly {
     Rule.Append("META-INF/services/org.apache.hadoop.fs.FileSystem"),
     Rule.Append("reference.conf"),
     Rule.Exclude("log4j.properties"),
-    Rule.ExcludePattern("META-INF/*.[sS][fF]"),
-    Rule.ExcludePattern("META-INF/*.[dD][sS][aA]"),
-    Rule.ExcludePattern("META-INF/*.[rR][sS][aA]")
+    Rule.Exclude(JarFile.MANIFEST_NAME),
+    Rule.ExcludePattern("META-INF/.*\\.[sS][fF]"),
+    Rule.ExcludePattern("META-INF/.*\\.[dD][sS][aA]"),
+    Rule.ExcludePattern("META-INF/.*\\.[rR][sS][aA]")
   )
 
   def sparkAssemblyDependencies(
     scalaVersion: String,
     sparkVersion: String
   ) = Seq(
-    "org.apache.spark:spark-core_$scalaVersion:$sparkVersion",
-    "org.apache.spark:spark-bagel_$scalaVersion:$sparkVersion",
-    "org.apache.spark:spark-mllib_$scalaVersion:$sparkVersion",
-    "org.apache.spark:spark-streaming_$scalaVersion:$sparkVersion",
-    "org.apache.spark:spark-graphx_$scalaVersion:$sparkVersion",
-    "org.apache.spark:spark-sql_$scalaVersion:$sparkVersion",
-    "org.apache.spark:spark-repl_$scalaVersion:$sparkVersion",
-    "org.apache.spark:spark-yarn_$scalaVersion:$sparkVersion"
+    s"org.apache.spark:spark-core_$scalaVersion:$sparkVersion",
+    s"org.apache.spark:spark-bagel_$scalaVersion:$sparkVersion",
+    s"org.apache.spark:spark-mllib_$scalaVersion:$sparkVersion",
+    s"org.apache.spark:spark-streaming_$scalaVersion:$sparkVersion",
+    s"org.apache.spark:spark-graphx_$scalaVersion:$sparkVersion",
+    s"org.apache.spark:spark-sql_$scalaVersion:$sparkVersion",
+    s"org.apache.spark:spark-repl_$scalaVersion:$sparkVersion",
+    s"org.apache.spark:spark-yarn_$scalaVersion:$sparkVersion"
   )
 
   def spark(

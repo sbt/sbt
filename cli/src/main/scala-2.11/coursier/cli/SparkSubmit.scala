@@ -55,10 +55,19 @@ case class SparkSubmit(
     options: SparkSubmitOptions
 ) extends App with ExtraArgsApp {
 
+  val rawExtraJars = options.extraJars.map(new File(_))
+
+  val extraDirs = rawExtraJars.filter(_.isDirectory)
+  if (extraDirs.nonEmpty) {
+    Console.err.println(s"Error: directories not allowed in extra job JARs.")
+    Console.err.println(extraDirs.map("  " + _).mkString("\n"))
+    sys.exit(1)
+  }
+
   val helper: Helper = new Helper(
     options.common,
     remainingArgs,
-    extraJars = options.extraJars.map(new File(_))
+    extraJars = rawExtraJars
   )
   val jars =
     helper.fetch(sources = false, javadoc = false) ++
@@ -79,37 +88,15 @@ case class SparkSubmit(
       (options.common.scalaVersion, options.sparkVersion)
 
   val assemblyOrError =
-    if (options.sparkAssembly.isEmpty) {
-
-      // FIXME Also vaguely done in Helper and below
-
-      val (errors, modVers) = Parse.moduleVersionConfigs(
-        options.assemblyDependencies,
-        options.common.scalaVersion
+    if (options.sparkAssembly.isEmpty)
+      Assembly.spark(
+        scalaVersion,
+        sparkVersion,
+        options.noDefaultAssemblyDependencies,
+        options.assemblyDependencies.flatMap(_.split(",")).filter(_.nonEmpty),
+        options.common
       )
-
-      val deps = modVers.map {
-        case (module, version, configOpt) =>
-          Dependency(
-            module,
-            version,
-            attributes = Attributes(options.common.defaultArtifactType, ""),
-            configuration = configOpt.getOrElse(options.common.defaultConfiguration),
-            exclusions = helper.excludes
-          )
-      }
-
-      if (errors.isEmpty)
-        Assembly.spark(
-          scalaVersion,
-          sparkVersion,
-          options.noDefaultAssemblyDependencies,
-          options.assemblyDependencies,
-          options.common
-        )
-      else
-        Left(s"Cannot parse assembly dependencies:\n${errors.map("  " + _).mkString("\n")}")
-    } else {
+    else {
       val f = new File(options.sparkAssembly)
       if (f.isFile)
         Right((f, Nil))
@@ -182,7 +169,7 @@ case class SparkSubmit(
     scalaVersion,
     sparkVersion,
     options.noDefaultSubmitDependencies,
-    options.submitDependencies,
+    options.submitDependencies.flatMap(_.split(",")).filter(_.nonEmpty),
     options.common
   )
 
