@@ -55,8 +55,14 @@ case class SparkSubmit(
     options: SparkSubmitOptions
 ) extends App with ExtraArgsApp {
 
-  val helper = new Helper(options.common, remainingArgs)
-  val jars = helper.fetch(sources = false, javadoc = false)
+  val helper: Helper = new Helper(
+    options.common,
+    remainingArgs,
+    extraJars = options.extraJars.map(new File(_))
+  )
+  val jars =
+    helper.fetch(sources = false, javadoc = false) ++
+      options.extraJars.map(new File(_))
 
   val (scalaVersion, sparkVersion) =
     if (options.sparkVersion.isEmpty)
