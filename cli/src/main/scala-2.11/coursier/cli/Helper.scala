@@ -75,6 +75,7 @@ object Util {
 class Helper(
   common: CommonOptions,
   rawDependencies: Seq[String],
+  extraJars: Seq[File] = Nil,
   printResultStdout: Boolean = false,
   ignoreErrors: Boolean = false,
   isolated: IsolatedLoaderOptions = IsolatedLoaderOptions(),
@@ -648,7 +649,7 @@ class Helper(
   }
 
   lazy val loader = new URLClassLoader(
-    filteredFiles.map(_.toURI.toURL).toArray,
+    (filteredFiles ++ extraJars).map(_.toURI.toURL).toArray,
     parentLoader
   )
 

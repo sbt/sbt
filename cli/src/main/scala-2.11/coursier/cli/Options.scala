@@ -188,6 +188,9 @@ case class LaunchOptions(
   @Short("M")
   @Short("main")
     mainClass: String,
+  @Short("J")
+  @Help("Extra JARs to be added to the classpath of the launched application. Directories accepted too.")
+    extraJars: List[String],
   @Recurse
     isolated: IsolatedLoaderOptions,
   @Recurse

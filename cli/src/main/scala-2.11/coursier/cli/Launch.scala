@@ -1,6 +1,7 @@
 package coursier
 package cli
 
+import java.io.File
 import java.net.{ URL, URLClassLoader }
 
 import caseapp._
@@ -114,6 +115,7 @@ case class Launch(
   val helper = new Helper(
     options.common,
     remainingArgs ++ options.isolated.rawIsolated.map { case (_, dep) => dep },
+    extraJars = options.extraJars.map(new File(_)),
     isolated = options.isolated
   )
 
@@ -123,8 +125,19 @@ case class Launch(
     else
       options.mainClass
 
+  val extraJars = options.extraJars.filter(_.nonEmpty)
+
+  val loader =
+    if (extraJars.isEmpty)
+      helper.loader
+    else
+      new URLClassLoader(
+        extraJars.map(new File(_).toURI.toURL).toArray,
+        helper.loader
+      )
+
   Launch.run(
-    helper.loader,
+    loader,
     mainClass,
     userArgs,
     options.common.verbosityLevel
