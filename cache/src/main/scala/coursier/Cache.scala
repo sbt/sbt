@@ -53,7 +53,7 @@ object Cache {
     }
   }
 
-  private def localFile(url: String, cache: File, user: Option[String]): File = {
+  def localFile(url: String, cache: File, user: Option[String]): File = {
     val path =
       if (url.startsWith("file:///"))
         url.stripPrefix("file://")
@@ -155,7 +155,7 @@ object Cache {
     }
   }
 
-  private def withLockFor[T](cache: File, file: File)(f: => FileError \/ T): FileError \/ T = {
+  def withLockFor[T](cache: File, file: File)(f: => FileError \/ T): FileError \/ T = {
     val lockFile = new File(file.getParentFile, s"${file.getName}.lock")
 
     var out: FileOutputStream = null

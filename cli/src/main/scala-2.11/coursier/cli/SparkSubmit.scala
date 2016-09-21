@@ -94,7 +94,13 @@ case class SparkSubmit(
       }
 
       if (errors.isEmpty)
-        Assembly.spark(scalaVersion, sparkVersion, options.noDefaultAssemblyDependencies, deps)
+        Assembly.spark(
+          scalaVersion,
+          sparkVersion,
+          options.noDefaultAssemblyDependencies,
+          options.assemblyDependencies,
+          options.common
+        )
       else
         Left(s"Cannot parse assembly dependencies:\n${errors.map("  " + _).mkString("\n")}")
     } else {
