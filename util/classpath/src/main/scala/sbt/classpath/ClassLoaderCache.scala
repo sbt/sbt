@@ -15,25 +15,35 @@ private[sbt] final class ClassLoaderCache(val commonParent: ClassLoader) {
    * This method is thread-safe.
    */
   def apply(files: List[File]): ClassLoader = synchronized {
-    val tstamps = files.map(_.lastModified)
-    getFromReference(files, tstamps, delegate.get(files))
+    cachedCustomClassloader(files, () => new URLClassLoader(files.map(_.toURI.toURL).toArray, commonParent))
   }
 
-  private[this] def getFromReference(files: List[File], stamps: List[Long], existingRef: Reference[CachedClassLoader]) =
-    if (existingRef eq null)
-      newEntry(files, stamps)
-    else
-      get(files, stamps, existingRef.get)
+  /**
+   * Returns a ClassLoader, as created by `mkLoader`.
+   *
+   * The returned ClassLoader may be cached from a previous call if the last modified time of all `files` is unchanged.
+   * This method is thread-safe.
+   */
+  def cachedCustomClassloader(files: List[File], mkLoader: () => ClassLoader): ClassLoader = synchronized {
+    val tstamps = files.map(_.lastModified)
+    getFromReference(files, tstamps, delegate.get(files), mkLoader)
+  }
 
-  private[this] def get(files: List[File], stamps: List[Long], existing: CachedClassLoader): ClassLoader =
+  private[this] def getFromReference(files: List[File], stamps: List[Long], existingRef: Reference[CachedClassLoader], mkLoader: () => ClassLoader) =
+    if (existingRef eq null)
+      newEntry(files, stamps, mkLoader)
+    else
+      get(files, stamps, existingRef.get, mkLoader)
+
+  private[this] def get(files: List[File], stamps: List[Long], existing: CachedClassLoader, mkLoader: () => ClassLoader): ClassLoader =
     if (existing == null || stamps != existing.timestamps) {
-      newEntry(files, stamps)
+      newEntry(files, stamps, mkLoader)
     } else
       existing.loader
 
-  private[this] def newEntry(files: List[File], stamps: List[Long]): ClassLoader =
+  private[this] def newEntry(files: List[File], stamps: List[Long], mkLoader: () => ClassLoader): ClassLoader =
     {
-      val loader = new URLClassLoader(files.map(_.toURI.toURL).toArray, commonParent)
+      val loader = mkLoader()
       delegate.put(files, new SoftReference(new CachedClassLoader(loader, files, stamps)))
       loader
     }

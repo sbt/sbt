@@ -9,6 +9,8 @@ import xsbti.compile.{ CachedCompiler, CachedCompilerProvider, DependencyChanges
 import java.io.File
 import java.net.{ URL, URLClassLoader }
 
+import sbt.classpath.ClassLoaderCache
+
 /**
  * Interface to the Scala compiler that uses the dependency analysis plugin.  This class uses the Scala library and compiler
  * provided by scalaInstance.  This class requires a ComponentManager in order to obtain the interface code to scalac and
@@ -26,7 +28,12 @@ final class AnalyzingCompiler private (val scalaInstance: xsbti.compile.ScalaIns
   @deprecated("A Logger is no longer needed.", "0.13.0")
   def this(scalaInstance: xsbti.compile.ScalaInstance, provider: CompilerInterfaceProvider, cp: xsbti.compile.ClasspathOptions, log: Logger) = this(scalaInstance, provider, cp)
 
-  def onArgs(f: Seq[String] => Unit): AnalyzingCompiler = new AnalyzingCompiler(scalaInstance, provider, cp, f)
+  def onArgs(f: Seq[String] => Unit): AnalyzingCompiler =
+    {
+      val ac = new AnalyzingCompiler(scalaInstance, provider, cp, f)
+      ac.classLoaderCache = this.classLoaderCache
+      ac
+    }
 
   def apply(sources: Seq[File], changes: DependencyChanges, classpath: Seq[File], singleOutput: File, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, cache: GlobalsCache, log: Logger) {
     val arguments = (new CompilerArguments(scalaInstance, cp))(Nil, classpath, None, options)
@@ -110,17 +117,29 @@ final class AnalyzingCompiler private (val scalaInstance: xsbti.compile.ScalaIns
   private[this] def loader(log: Logger) =
     {
       val interfaceJar = provider(scalaInstance, log)
-      // this goes to scalaInstance.loader for scala classes and the loader of this class for xsbti classes
-      val dual = createDualLoader(scalaInstance.loader, getClass.getClassLoader)
-      new URLClassLoader(Array(interfaceJar.toURI.toURL), dual)
+      def createInterfaceLoader =
+        new URLClassLoader(Array(interfaceJar.toURI.toURL), createDualLoader(scalaInstance.loader(), getClass.getClassLoader))
+
+      classLoaderCache match {
+        case Some(cache) => cache.cachedCustomClassloader(interfaceJar :: scalaInstance.allJars().toList, () => createInterfaceLoader)
+        case None        => createInterfaceLoader
+      }
     }
+
   private[this] def getInterfaceClass(name: String, log: Logger) = Class.forName(name, true, loader(log))
+
   protected def createDualLoader(scalaLoader: ClassLoader, sbtLoader: ClassLoader): ClassLoader =
     {
       val xsbtiFilter = (name: String) => name.startsWith("xsbti.")
       val notXsbtiFilter = (name: String) => !xsbtiFilter(name)
       new classpath.DualLoader(scalaLoader, notXsbtiFilter, x => true, sbtLoader, xsbtiFilter, x => false)
     }
+
+  // TODO This should really be a constructor parameter, the var was used to avoid binary incompat changes
+  //      to signatures. Refactor for SBT 1.0.
+  def setClassLoaderCache(cache: ClassLoaderCache): Unit = classLoaderCache = Some(cache)
+  private var classLoaderCache: Option[ClassLoaderCache] = None
+
   override def toString = "Analyzing compiler (Scala " + scalaInstance.actualVersion + ")"
 }
 object AnalyzingCompiler {
