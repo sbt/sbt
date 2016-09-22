@@ -1,13 +1,14 @@
 package coursier
 package cli
 
-import java.io.{ FileInputStream, ByteArrayInputStream, ByteArrayOutputStream, File, IOException }
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream, File, FileInputStream, IOException}
 import java.nio.file.Files
 import java.nio.file.attribute.PosixFilePermission
 import java.util.Properties
-import java.util.zip.{ ZipEntry, ZipOutputStream, ZipInputStream }
+import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 
 import caseapp._
+import coursier.cli.util.Zip
 
 case class Bootstrap(
   @Recurse
@@ -60,26 +61,6 @@ case class Bootstrap(
     Console.err.println(s"Error: ${options.output} already exists, use -f option to force erasing it.")
     sys.exit(1)
   }
-
-  def zipEntries(zipStream: ZipInputStream): Iterator[(ZipEntry, Array[Byte])] =
-    new Iterator[(ZipEntry, Array[Byte])] {
-      var nextEntry = Option.empty[ZipEntry]
-      def update() =
-        nextEntry = Option(zipStream.getNextEntry)
-
-      update()
-
-      def hasNext = nextEntry.nonEmpty
-      def next() = {
-        val ent = nextEntry.get
-        val data = Platform.readFullySync(zipStream)
-
-        update()
-
-        (ent, data)
-      }
-    }
-
 
   val isolatedDeps = options.isolated.isolatedDeps(
     options.common.defaultArtifactType,
@@ -141,7 +122,7 @@ case class Bootstrap(
   val bootstrapZip = new ZipInputStream(new ByteArrayInputStream(bootstrapJar))
   val outputZip = new ZipOutputStream(buffer)
 
-  for ((ent, data) <- zipEntries(bootstrapZip)) {
+  for ((ent, data) <- Zip.zipEntries(bootstrapZip)) {
     outputZip.putNextEntry(ent)
     outputZip.write(data)
     outputZip.closeEntry()

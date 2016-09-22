@@ -75,6 +75,7 @@ object Util {
 class Helper(
   common: CommonOptions,
   rawDependencies: Seq[String],
+  extraJars: Seq[File] = Nil,
   printResultStdout: Boolean = false,
   ignoreErrors: Boolean = false,
   isolated: IsolatedLoaderOptions = IsolatedLoaderOptions(),
@@ -584,7 +585,7 @@ class Helper(
   def contextLoader = Thread.currentThread().getContextClassLoader
 
   // TODO Would ClassLoader.getSystemClassLoader be better here?
-  val baseLoader: ClassLoader =
+  lazy val baseLoader: ClassLoader =
     Launch.mainClassLoader(contextLoader)
       .flatMap(cl => Option(cl.getParent))
       .getOrElse {
@@ -648,7 +649,7 @@ class Helper(
   }
 
   lazy val loader = new URLClassLoader(
-    filteredFiles.map(_.toURI.toURL).toArray,
+    (filteredFiles ++ extraJars).map(_.toURI.toURL).toArray,
     parentLoader
   )
 

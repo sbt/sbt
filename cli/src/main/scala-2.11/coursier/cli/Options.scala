@@ -188,6 +188,9 @@ case class LaunchOptions(
   @Short("M")
   @Short("main")
     mainClass: String,
+  @Short("J")
+  @Help("Extra JARs to be added to the classpath of the launched application. Directories accepted too.")
+    extraJars: List[String],
   @Recurse
     isolated: IsolatedLoaderOptions,
   @Recurse
@@ -226,6 +229,9 @@ case class SparkSubmitOptions(
   @Short("main")
   @Help("Main class to be launched (optional if in manifest)")
     mainClass: String,
+  @Short("J")
+  @Help("Extra JARs to be added in the classpath of the job")
+    extraJars: List[String],
   @Help("If master is yarn-cluster, write YARN app ID to a file. (The ID is deduced from the spark-submit output.)")
   @Value("file")
     yarnIdFile: String,
