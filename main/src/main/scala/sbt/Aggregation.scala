@@ -18,11 +18,16 @@ final object Aggregation {
   final case class KeyValue[+T](key: ScopedKey[_], value: T)
 
   def defaultShow(state: State, showTasks: Boolean): ShowConfig = ShowConfig(settingValues = true, taskValues = showTasks, s => state.log.info(s), success = true)
-  def printSettings(xs: Seq[KeyValue[_]], print: String => Unit)(implicit display: Show[ScopedKey[_]]) =
+
+  def printSettings(xs: Seq[KeyValue[_]], print: String => Unit)(implicit display: Show[ScopedKey[_]]) = {
+    def showSeq = !java.lang.Boolean.getBoolean("sbt.disable.show.seq")
     xs match {
-      case KeyValue(_, x) :: Nil => print(x.toString)
-      case _                     => xs foreach { case KeyValue(key, value) => print(display(key) + "\n\t" + value.toString) }
+      case KeyValue(_, x: Seq[_]) :: Nil if showSeq => print(x.mkString("* ", "\n* ", ""))
+      case KeyValue(_, x) :: Nil                    => print(x.toString)
+      case _                                        => xs foreach { case KeyValue(key, value) => print(display(key) + "\n\t" + value.toString) }
     }
+  }
+
   type Values[T] = Seq[KeyValue[T]]
   type AnyKeys = Values[_]
   def seqParser[T](ps: Values[Parser[T]]): Parser[Seq[KeyValue[T]]] = seq(ps.map { case KeyValue(k, p) => p.map(v => KeyValue(k, v)) })
