@@ -22,8 +22,9 @@ object Aggregation {
   def defaultShow(state: State, showTasks: Boolean): ShowConfig = ShowConfig(settingValues = true, taskValues = showTasks, s => state.log.info(s), success = true)
   def printSettings(xs: Seq[KeyValue[_]], print: String => Unit)(implicit display: Show[ScopedKey[_]]) =
     xs match {
-      case KeyValue(_, x) :: Nil => print(x.toString)
-      case _                     => xs foreach { case KeyValue(key, value) => print(display(key) + "\n\t" + value.toString) }
+      case KeyValue(_, x: Seq[_]) :: Nil => print(x.mkString("* ", "\n* ", ""))
+      case KeyValue(_, x) :: Nil         => print(x.toString)
+      case _                             => xs foreach { case KeyValue(key, value) => print(display(key) + "\n\t" + value.toString) }
     }
   type Values[T] = Seq[KeyValue[T]]
   type AnyKeys = Values[_]
