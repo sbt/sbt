@@ -265,8 +265,16 @@ object Defaults extends BuildCommon {
       if (plugin) scalaBase / ("sbt-" + sbtv) else scalaBase
     }
 
-  def compilersSetting = compilers := Compiler.compilers(scalaInstance.value, classpathOptions.value, javaHome.value,
-    bootIvyConfiguration.value, scalaCompilerBridgeSource.value)(appConfiguration.value, streams.value.log)
+  def compilersSetting = {
+    compilers := {
+      val compilers = Compiler.compilers(
+        scalaInstance.value, classpathOptions.value, javaHome.value, bootIvyConfiguration.value,
+        scalaCompilerBridgeSource.value)(appConfiguration.value, streams.value.log)
+      if (java.lang.Boolean.getBoolean("sbt.disable.interface.classloader.cache")) compilers else {
+        compilers.withClassLoaderCache(state.value.classLoaderCache)
+      }
+    }
+  }
 
   lazy val configTasks = docTaskSettings(doc) ++ inTask(compile)(compileInputsSettings) ++ configGlobal ++ compileAnalysisSettings ++ Seq(
     compile := compileTask.value,
