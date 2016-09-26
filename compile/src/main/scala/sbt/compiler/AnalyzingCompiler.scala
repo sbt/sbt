@@ -17,9 +17,9 @@ import sbt.classpath.ClassLoaderCache
  * the analysis plugin.  Because these call Scala code for a different Scala version than the one used for this class, they must
  * be compiled for the version of Scala being used.
  */
-final class AnalyzingCompiler private (val scalaInstance: xsbti.compile.ScalaInstance, val provider: CompilerInterfaceProvider, val cp: xsbti.compile.ClasspathOptions, onArgsF: Seq[String] => Unit) extends CachedCompilerProvider {
+final class AnalyzingCompiler private (val scalaInstance: xsbti.compile.ScalaInstance, val provider: CompilerInterfaceProvider, val cp: xsbti.compile.ClasspathOptions, onArgsF: Seq[String] => Unit, val classLoaderCache: Option[ClassLoaderCache]) extends CachedCompilerProvider {
   def this(scalaInstance: xsbti.compile.ScalaInstance, provider: CompilerInterfaceProvider, cp: xsbti.compile.ClasspathOptions) =
-    this(scalaInstance, provider, cp, _ => ())
+    this(scalaInstance, provider, cp, _ => (), None)
   def this(scalaInstance: ScalaInstance, provider: CompilerInterfaceProvider) = this(scalaInstance, provider, ClasspathOptions.auto)
 
   @deprecated("A Logger is no longer needed.", "0.13.0")
@@ -29,11 +29,10 @@ final class AnalyzingCompiler private (val scalaInstance: xsbti.compile.ScalaIns
   def this(scalaInstance: xsbti.compile.ScalaInstance, provider: CompilerInterfaceProvider, cp: xsbti.compile.ClasspathOptions, log: Logger) = this(scalaInstance, provider, cp)
 
   def onArgs(f: Seq[String] => Unit): AnalyzingCompiler =
-    {
-      val ac = new AnalyzingCompiler(scalaInstance, provider, cp, f)
-      ac.classLoaderCache = this.classLoaderCache
-      ac
-    }
+    new AnalyzingCompiler(scalaInstance, provider, cp, f, classLoaderCache)
+
+  def withClassLoaderCache(classLoaderCache: ClassLoaderCache) =
+    new AnalyzingCompiler(scalaInstance, provider, cp, onArgsF, Some(classLoaderCache))
 
   def apply(sources: Seq[File], changes: DependencyChanges, classpath: Seq[File], singleOutput: File, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, cache: GlobalsCache, log: Logger) {
     val arguments = (new CompilerArguments(scalaInstance, cp))(Nil, classpath, None, options)
@@ -134,11 +133,6 @@ final class AnalyzingCompiler private (val scalaInstance: xsbti.compile.ScalaIns
       val notXsbtiFilter = (name: String) => !xsbtiFilter(name)
       new classpath.DualLoader(scalaLoader, notXsbtiFilter, x => true, sbtLoader, xsbtiFilter, x => false)
     }
-
-  // TODO This should really be a constructor parameter, the var was used to avoid binary incompat changes
-  //      to signatures. Refactor for SBT 1.0.
-  def setClassLoaderCache(cache: ClassLoaderCache): Unit = classLoaderCache = Some(cache)
-  private var classLoaderCache: Option[ClassLoaderCache] = None
 
   override def toString = "Analyzing compiler (Scala " + scalaInstance.actualVersion + ")"
 }

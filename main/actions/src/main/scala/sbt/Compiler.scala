@@ -9,6 +9,7 @@ import xsbti.compile.{ CompileOrder, GlobalsCache }
 import CompileOrder.{ JavaThenScala, Mixed, ScalaThenJava }
 import compiler._
 import inc._
+import sbt.classpath.ClassLoaderCache
 import Locate.DefinesClass
 import java.io.File
 
@@ -31,6 +32,8 @@ object Compiler {
         case x: JavaToolWithNewInterface => Some(x.newJavac)
         case _                           => None
       }
+    def withClassLoaderCache(classLoaderCache: ClassLoaderCache) =
+      copy(scalac = scalac.withClassLoaderCache(classLoaderCache))
   }
   /** The previous source dependency analysis result from compilation. */
   final case class PreviousAnalysis(analysis: Analysis, setup: Option[CompileSetup])
