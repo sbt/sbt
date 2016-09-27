@@ -7,6 +7,7 @@
   which returns `A` by evaluating the task.
   Just in case `InputTask[A]` is needed, `.inputTaskValue` method is now provided. [#2709][2709] by [@eed3si9n][@eed3si9n]
 - sbt 0.13.13 renames the early command `--<command>` that was added in 0.13.1 to `early(<command>)`. This fixes the regression [#1041][1041]. For backward compatibility `--error`, `--warn`, `--info`, and `--debug` will continue to function during the 0.13 series, but it is strongly encouraged to migrate to the single hyphen options: `-error`, `-warn`, `-info`, and `-debug`. [#2742][2742] by [@eed3si9n][@eed3si9n]
+- Improve `show` when key returns a `Seq` by showing the elements one per line. Disable with `-Dsbt.disable.show.seq=true`. [#2755][2755] by [@eed3si9n][@eed3si9n]
 
 ### Improvements
 
@@ -121,6 +122,7 @@ For `<+=` and `<++=`, use `+= { x.value }` and `++= { x.value }`.
   [2738]: https://github.com/sbt/sbt/issues/2738
   [2742]: https://github.com/sbt/sbt/pull/2742
   [2746]: https://github.com/sbt/sbt/pull/2746
+  [2755]: https://github.com/sbt/sbt/pull/2755
   [110]: https://github.com/sbt/sbt-launcher-package/pull/110
   [111]: https://github.com/sbt/sbt-launcher-package/pull/111
   [sbt-ivy-22]: https://github.com/sbt/ivy/pull/22
