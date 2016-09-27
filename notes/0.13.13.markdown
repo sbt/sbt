@@ -17,6 +17,10 @@
 - Adds `.jvmopts` support to the launcher script. [sbt/sbt-launcher-package#111][111] by [@fommil][@fommil]
 - Adds `.java-version` support to the Windows launcher script. [sbt/sbt-launcher-package#111][111] by [@fommil][@fommil]
 - The startup log level is dropped to `-error` in script mode using `scalas`. [#840][840]/[#2746][2746] by [@eed3si9n][@eed3si9n]
+- Adds `CrossVersion.patch` which sits in between `CrossVersion.binary` and `CrossVersion.full` in that it strips off any
+  trailing `-bin-...` suffix which is used to distinguish variant but binary compatible Scala toolchain builds. Most things
+  which are currently `CrossVersion.full` (eg. Scala compiler plugins, esp. macro-paradise) would be more appropriately
+  depended on as `CrossVersion.patch` from this release on.
 
 ### Bug fixes
 

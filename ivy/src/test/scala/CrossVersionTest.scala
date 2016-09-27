@@ -118,5 +118,24 @@ object CrossVersionTest extends Specification {
     "return binary Scala version for 2.10.1 as 2.10" in {
       CrossVersion.binaryScalaVersion("2.10.1") must_== "2.10"
     }
+
+    "return patch Scala version for 2.11.8 as 2.11.8" in {
+      CrossVersion(CrossVersion.patch, "2.11.8", "dummy").map(_("artefact")) must_== Some("artefact_2.11.8")
+    }
+    "return patch Scala version for 2.11.8-M1 as 2.11.8-M1" in {
+      CrossVersion(CrossVersion.patch, "2.11.8-M1", "dummy").map(_("artefact")) must_== Some("artefact_2.11.8-M1")
+    }
+    "return patch Scala version for 2.11.8-RC1 as 2.11.8-RC1" in {
+      CrossVersion(CrossVersion.patch, "2.11.8-RC1", "dummy").map(_("artefact")) must_== Some("artefact_2.11.8-RC1")
+    }
+    "return patch Scala version for 2.11.8-bin-extra as 2.11.8" in {
+      CrossVersion(CrossVersion.patch, "2.11.8-bin-extra", "dummy").map(_("artefact")) must_== Some("artefact_2.11.8")
+    }
+    "return patch Scala version for 2.11.8-M1-bin-extra as 2.11.8-M1" in {
+      CrossVersion(CrossVersion.patch, "2.11.8-M1-bin-extra", "dummy").map(_("artefact")) must_== Some("artefact_2.11.8-M1")
+    }
+    "return patch Scala version for 2.11.8-RC1-bin-extra as 2.11.8-RC1" in {
+      CrossVersion(CrossVersion.patch, "2.11.8-RC1-bin-extra", "dummy").map(_("artefact")) must_== Some("artefact_2.11.8-RC1")
+    }
   }
 }
