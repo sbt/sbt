@@ -45,7 +45,7 @@ notifications:
     - joshua.suereth@typesafe.com
 
 script:
-  - sbt -J-XX:ReservedCodeCacheSize=128m "$SBT_CMD"
+  - sbt --debug -J-XX:ReservedCodeCacheSize=128m "$SBT_CMD"
 
   # Tricks to avoid unnecessary cache updates
   - find $HOME/.sbt -name "*.lock" | xargs rm
