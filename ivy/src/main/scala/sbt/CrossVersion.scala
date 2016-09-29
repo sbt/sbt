@@ -92,6 +92,19 @@ object CrossVersion {
 
   private[this] def idFun[T]: T => T = x => x
 
+  /**
+   * Cross-versions a module with the full Scala version excluding any `-bin` suffix.
+   */
+  def patch: CrossVersion = new Full(patchFun)
+
+  private[this] def patchFun(fullVersion: String): String = {
+    val BinCompatV = """(\d+)\.(\d+)\.(\d+)(-\w+)??-bin(-.*)?""".r
+    fullVersion match {
+      case BinCompatV(x, y, z, w, _) => s"""$x.$y.$z${if (w == null) "" else w}"""
+      case other                     => other
+    }
+  }
+
   @deprecated("Will be made private.", "0.13.1")
   def append(s: String): Option[String => String] = Some(x => crossName(x, s))
 
