@@ -6,8 +6,9 @@ import coursier.core.compatibility._
 object Parse {
 
   def version(s: String): Option[Version] = {
-    if (s.isEmpty || s.exists(c => c != '.' && c != '-' && c != '_' && !c.letterOrDigit)) None
-    else Some(Version(s))
+    val trimmed = s.trim
+    if (trimmed.isEmpty || trimmed.exists(c => c != '.' && c != '-' && c != '_' && !c.letterOrDigit)) None
+    else Some(Version(trimmed))
   }
 
   def ivyLatestSubRevisionInterval(s: String): Option[VersionInterval] =
