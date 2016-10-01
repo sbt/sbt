@@ -62,7 +62,7 @@ private final class DelegatingReporter(warnFatal: Boolean, noWarn: Boolean, priv
       val offset = getOffset(pos)
       val pointer = offset - src.lineToOffset(src.offsetToLine(offset))
       val pointerSpace = ((lineContent: Seq[Char]).take(pointer).map { case '\t' => '\t'; case x => ' ' }).mkString
-      position(Some(sourcePath), Some(sourceFile), Some(line), lineContent, Some(offset), Some(pointer), Some(pointerSpace))
+      position(Option(sourcePath), Option(sourceFile), Some(line), lineContent, Some(offset), Some(pointer), Some(pointerSpace))
     }
   private[this] def getOffset(pos: Position): Int =
     {
