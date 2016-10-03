@@ -7,7 +7,7 @@ import Sxr.sxr
 // but can be shared across the multi projects.
 def buildLevelSettings: Seq[Setting[_]] = inThisBuild(Seq(
   organization := "org.scala-sbt",
-  version := "0.13.12-SNAPSHOT",
+  version := "0.13.13-SNAPSHOT",
   bintrayOrganization := Some(if (publishStatus.value == "releases") "typesafe" else "sbt"),
   bintrayRepository := s"ivy-${publishStatus.value}",
   bintrayPackage := "sbt",
@@ -449,7 +449,8 @@ lazy val commandProj = (project in mainPath / "command").
   settings(
     testedBaseSettings,
     name := "Command",
-    libraryDependencies += launcherInterface
+    libraryDependencies ++= Seq(launcherInterface, templateResolverApi, giter8),
+    dependencyOverrides += plexusUtils
   )
 
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
@@ -488,6 +489,7 @@ lazy val mavenResolverPluginProj = (project in file("sbt-maven-resolver")).
     baseSettings,
     name := "sbt-maven-resolver",
     libraryDependencies ++= aetherLibs,
+    dependencyOverrides += plexusUtils,
     sbtPlugin := true
   )
 

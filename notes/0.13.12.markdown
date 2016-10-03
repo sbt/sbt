@@ -1,0 +1,80 @@
+
+### Fixes with compatibility implications
+
+- By default the Scala toolchain artifacts are now transitively resolved using the provided `scalaVersion` and
+  `scalaOrganization`. Previously a user specified `scalaOrganization` would not have affected transitive
+  dependencies on, eg. `scala-reflect`. An Ivy-level mechanism is used for this purpose, and as a consequence
+  the overriding happens early in the resolution process which might improve resolution times, and as a side
+  benefit fixes [#2286][2286]. The old behavior can be restored by adding
+  `ivyScala := { ivyScala.value map {_.copy(overrideScalaVersion = sbtPlugin.value)} }`
+  to your build. [#2286][2286]/[#2634][2634] by [@milessabin][milessabin]
+- The Build trait is deprecated in favor of the `.sbt` format [#2530][2530] by [@dwijnand][@dwijnand]
+
+### Improvements
+
+- When `RecompileOnMacroDef` is enabled, sbt will now print out a info level log indicating that some sources are being recompiled because it's used from a source that contains a macro definition. Can be disabled with `incOptions := incOptions.value.withLogRecompileOnMacro(false)` [#2637][2637]/[#2659][2659] by [@eed3si9n][@eed3si9n]/[@dwijnand][@dwijnand]
+- Adds Windows script support and native file extensions on Unix platforms. [#2603][2603] by [@ekrich][@ekrich]
+- Improves loading time of large builds. [#2630][2630] by [@eed3si9n][@eed3si9n]
+- Adds the ability to call `dependsOn` for the current project inside a `.sbt` file. [#2653][2653] by [@anatolydwnld][@anatolydwnld]
+
+### Bug fixes
+
+- Fixes a 0.13.11 regression: dependency resolution hitting Maven Central even with repository overrides. [#2519][2519]/[#2569][2569] by [@eed3si9n][@eed3si9n]
+- Fixes a 0.13.11 regression in incremental compiler: `IndexOutOfBoundsException` in ExtractAPI [#2497][2497]/[#2557][2557] by [@smarter][@smarter]
+- Fixes merged dependency descriptors dropping configuration specification. [#2002][2002]/[#1500][1500] by [@eed3si9n][@eed3si9n]
+- Fixes merged dependency descriptors creating non-existing artifacts. [#2431][2431]/[#2500][2500] by [@Duhemm][@Duhemm]
+- Fixes incremental compilation misses when macro expansion references another source. [#2560][2560]/[#2563][2563] by [@eed3si9n][@eed3si9n]
+- Fixes incremental compilation of package objects transitively in name hashing. [#2432][2432]/[#2326][2326] by [@gkossakowski][@gkossakowski]
+- Fixes incremental compilation relying on filename of package objects. [#2438][2438] by [@Duhemm][@Duhemm]
+- Provides a workaround flag `incOptions := incOptions.value.withIncludeSynthToNameHashing(true)` for name hashing not including synthetic methods. This will not be enabled by default in sbt 0.13. It can also enabled by passing `sbt.inc.include_synth=true` to JVM. [#2537][2537] by [@eed3si9n][@eed3si9n]
+- Fixes tab completion for tasks defined in AutoPlugin's buildSettings [#2460][2460]/[#2469][2469] by [@Duhemm][@Duhemm]
+- Fixes configuration merging during cached resolution. [#2435][2435]/[#2513][2513] by [@Duhemm][@Duhemm]
+
+  [2637]: https://github.com/sbt/sbt/pull/2637
+  [2286]: https://github.com/sbt/sbt/issues/2286
+  [2634]: https://github.com/sbt/sbt/pull/2634
+  [2530]: https://github.com/sbt/sbt/pull/2530
+  [2460]: https://github.com/sbt/sbt/issues/2460
+  [2469]: https://github.com/sbt/sbt/pull/2469
+  [2432]: https://github.com/sbt/sbt/pull/2432
+  [2326]: https://github.com/sbt/sbt/issues/2326
+  [2438]: https://github.com/sbt/sbt/pull/2438
+  [2431]: https://github.com/sbt/sbt/issues/2431
+  [2500]: https://github.com/sbt/sbt/pull/2500
+  [2435]: https://github.com/sbt/sbt/issues/2435
+  [2513]: https://github.com/sbt/sbt/pull/2513
+  [2560]: https://github.com/sbt/sbt/issues/2560
+  [2563]: https://github.com/sbt/sbt/pull/2563
+  [2519]: https://github.com/sbt/sbt/issues/2519
+  [2569]: https://github.com/sbt/sbt/pull/2569
+  [2497]: https://github.com/sbt/sbt/issues/2497
+  [2557]: https://github.com/sbt/sbt/pull/2557
+  [2603]: https://github.com/sbt/sbt/pull/2603
+  [2630]: https://github.com/sbt/sbt/pull/2630
+  [2653]: https://github.com/sbt/sbt/pull/2653
+  [2642]: https://github.com/sbt/sbt/pull/2642
+  [2002]: https://github.com/sbt/sbt/issues/2002
+  [1500]: https://github.com/sbt/sbt/issues/1500
+  [2537]: https://github.com/sbt/sbt/issues/2537
+  [2659]: https://github.com/sbt/sbt/pull/2659
+
+  [@eed3si9n]: https://github.com/eed3si9n
+  [@jsuereth]: https://github.com/jsuereth
+  [@dwijnand]: http://github.com/dwijnand
+  [@Duhemm]: http://github.com/Duhemm
+  [@gkossakowski]: https://github.com/gkossakowski
+  [@adriaanm]: https://github.com/adriaanm
+  [@jrudolph]: https://github.com/jrudolph
+  [@stuhood]: https://github.com/stuhood
+  [@pdalpra]: https://github.com/pdalpra
+  [@fkorotkov]: http://github.com/fkorotkov
+  [@hgiddens]: https://github.com/hgiddens
+  [@DavidPerezIngeniero]: https://github.com/DavidPerezIngeniero
+  [@romanowski]: https://github.com/romanowski
+  [@timcharper]: https://github.com/timcharper
+  [@smarter]: https://github.com/smarter
+  [@retronym]: https://github.com/retronym
+  [milessabin]: https://github.com/milessabin
+  [@ekrich]: https://github.com/ekrich
+  [@smarter]: https://github.com/smarter
+  [@anatolydwnld]: https://github.com/anatolydwnld

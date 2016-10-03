@@ -1,10 +1,10 @@
-publishTo <<= (baseDirectory in ThisBuild)(x =>
+publishTo := (baseDirectory in ThisBuild)(x =>
 	Some(Resolver.file("test-publish", x / "repo"))
-)
+).value
 
-resolvers <+= (baseDirectory in ThisBuild)(x =>
+resolvers += (baseDirectory in ThisBuild)(x =>
 	"test" at (x / "repo").asURL.toString
-)
+).value
 
 name := "demo2"
 

@@ -16,13 +16,24 @@ import java.io.File
 import scala.util.control.NonFatal
 
 object BasicCommands {
-  lazy val allBasicCommands = Seq(nop, ignore, help, completionsCommand, multi, ifLast, append, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, reboot, call, early, exit, continuous, history, shell, read, alias) ++ compatCommands
+  lazy val allBasicCommands = Seq(nop, ignore, help, completionsCommand, templateCommand, multi, ifLast, append, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, reboot, call, early, exit, continuous, history, shell, read, alias) ++ compatCommands
 
   def nop = Command.custom(s => success(() => s))
   def ignore = Command.command(FailureWall)(idFun)
 
   def early = Command.arb(earlyParser, earlyHelp) { (s, other) => other :: s }
-  private[this] def earlyParser = (s: State) => token(EarlyCommand).flatMap(_ => otherCommandParser(s))
+  private[this] def levelParser: Parser[String] =
+    token(Level.Debug.toString) | token(Level.Info.toString) | token(Level.Warn.toString) | token(Level.Error.toString)
+  private[this] def earlyParser: State => Parser[String] = (s: State) =>
+    (token(EarlyCommand + "(") flatMap { _ =>
+      otherCommandParser(s) <~ token(")")
+    }) |
+      (token("-") flatMap { _ =>
+        levelParser
+      }) |
+      (token(OldEarlyCommand) flatMap { _ =>
+        levelParser
+      })
   private[this] def earlyHelp = Help(EarlyCommand, EarlyCommandBrief, EarlyCommandDetailed)
 
   def help = Command.make(HelpCommand, helpBrief, helpDetailed)(helpParser)
@@ -68,6 +79,31 @@ object BasicCommands {
     }
     state
   }
+
+  def templateCommand = Command.make(TemplateCommand, templateBrief, templateDetailed)(templateCommandParser)
+  def templateCommandParser(state: State) =
+    {
+      val p = (token(Space) ~> repsep(StringBasic, token(Space))) | (token(EOF) map { case _ => Nil })
+      val trs = (state get templateResolvers) match {
+        case Some(trs) => trs.toList
+        case None      => Nil
+      }
+      applyEffect(p)({ inputArg =>
+        val arguments = inputArg.toList ++
+          (state.remainingCommands.toList match {
+            case "shell" :: Nil => Nil
+            case xs             => xs
+          })
+        trs find { tr =>
+          tr.isDefined(arguments.toArray)
+        } match {
+          case Some(tr) => tr.run(arguments.toArray)
+          case None =>
+            System.err.println("Template not found for: " + arguments.mkString(" "))
+        }
+        "exit" :: state.copy(remainingCommands = Nil)
+      })
+    }
 
   def multiParser(s: State): Parser[Seq[String]] =
     {

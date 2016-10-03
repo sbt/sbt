@@ -58,4 +58,11 @@ case class DslDisablePlugins(plugins: Seq[AutoPlugin]) extends ProjectManipulati
 case class DslConfigs(cs: Seq[Configuration]) extends ProjectManipulation {
   override val toFunction: Project => Project = _.configs(cs: _*)
 }
-
+/** Represents registering an internal dependency for the current project */
+case class DslDependsOn(cs: Seq[ClasspathDep[ProjectReference]]) extends ProjectManipulation {
+  override val toFunction: Project => Project = _.dependsOn(cs: _*)
+}
+/** this represents an `aggregate()` in the sbt DSL */
+case class DslAggregate(refs: Seq[ProjectReference]) extends ProjectManipulation {
+  override val toFunction: Project => Project = _.aggregate(refs: _*)
+}

@@ -1,8 +1,9 @@
 libraryDependencies += "org.scalacheck" % "scalacheck" % "1.5"
 
-ivyPaths <<= baseDirectory( dir => new IvyPaths(dir, Some(dir / "ivy-home")))
+ivyPaths := baseDirectory( dir => new IvyPaths(dir, Some(dir / "ivy-home"))).value
 
-TaskKey[Unit]("check") <<= update map { report =>
+TaskKey[Unit]("check") := {
+  val report = update.value
 	val files = report.matching( moduleFilter(organization = "org.scalacheck", name = "scalacheck", revision = "1.5") )
 	assert(files.nonEmpty, "ScalaCheck module not found in update report")
 	val missing = files.filter(! _.exists)

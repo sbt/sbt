@@ -4,11 +4,12 @@ libraryDependencies ++= Seq("natives-windows", "natives-linux", "natives-osx") m
 
 autoScalaLibrary := false
 
-TaskKey[Unit]("check") <<= dependencyClasspath in Compile map { cp =>
+TaskKey[Unit]("check") := (dependencyClasspath in Compile map { cp =>
 	assert(cp.size == 3, "Expected 3 jars, got: " + cp.files.mkString("(", ", ", ")"))
-}
+}).value
 
-TaskKey[Unit]("check-pom") <<= makePom map { file =>
+TaskKey[Unit]("checkPom") := {
+	val file = makePom.value
 	val pom = xml.XML.loadFile(file)
 	val actual = pom \\ "dependencies"
 	def depSection(classifier: String) =

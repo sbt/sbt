@@ -20,6 +20,7 @@ object ScalaArtifacts {
   val ReflectID = "scala-reflect"
   val ActorsID = "scala-actors"
   val ScalapID = "scalap"
+  val Artifacts = Seq(LibraryID, CompilerID, ReflectID, ActorsID, ScalapID)
   val DottyIDPrefix = "dotty"
 
   def dottyID(binaryVersion: String): String = s"${DottyIDPrefix}_${binaryVersion}"
@@ -102,11 +103,10 @@ private object IvyScala {
         val id = dep.getDependencyRevisionId
         val depBinaryVersion = CrossVersion.binaryScalaVersion(id.getRevision)
         def isScalaLangOrg = id.getOrganisation == scalaOrganization
-        def isNotScalaActorsMigration = !(id.getName startsWith "scala-actors-migration") // Exception to the rule: sbt/sbt#1818
-        def isNotScalaPickling = !(id.getName startsWith "scala-pickling") // Exception to the rule: sbt/sbt#1899
+        def isScalaArtifact = Artifacts.contains(id.getName)
         def hasBinVerMismatch = depBinaryVersion != scalaBinaryVersion
         def matchesOneOfTheConfigs = dep.getModuleConfigurations.exists(configSet)
-        val mismatched = isScalaLangOrg && isNotScalaActorsMigration && isNotScalaPickling && hasBinVerMismatch && matchesOneOfTheConfigs
+        val mismatched = isScalaLangOrg && isScalaArtifact && hasBinVerMismatch && matchesOneOfTheConfigs
         if (mismatched)
           Some("Binary version (" + depBinaryVersion + ") for dependency " + id +
             "\n\tin " + module.getModuleRevisionId +

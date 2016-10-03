@@ -52,14 +52,14 @@ object DefaultOptions {
   def pluginResolvers(plugin: Boolean, snapshot: Boolean): Seq[Resolver] = {
     if (plugin && snapshot) Seq(Classpaths.typesafeSnapshots, Classpaths.sbtPluginSnapshots) else Nil
   }
-  def addResolvers: Setting[_] = Keys.resolvers <++= Keys.isSnapshot apply resolvers
-  def addPluginResolvers: Setting[_] = Keys.resolvers <++= (Keys.sbtPlugin, Keys.isSnapshot) apply pluginResolvers
+  def addResolvers: Setting[_] = Keys.resolvers ++= { resolvers(Keys.isSnapshot.value) }
 
   @deprecated("Use `credentials(State)` instead to make use of configuration path dynamically configured via `Keys.globalSettingsDirectory`; relying on ~/.ivy2 is not recommended anymore.", "0.12.0")
   def credentials: Credentials = Credentials(userHome / ".ivy2" / ".credentials")
   def credentials(state: State): Credentials = Credentials(getGlobalSettingsDirectory(state, getGlobalBase(state)) / ".credentials")
-  def addCredentials: Setting[_] = Keys.credentials <+= Keys.state map credentials
+  def addCredentials: Setting[_] = Keys.credentials += { credentials(Keys.state.value) }
 
-  def shellPrompt(version: String): State => String = s => "%s:%s:%s> ".format(s.configuration.provider.id.name, extract(s).currentProject.id, version)
-  def setupShellPrompt: Setting[_] = Keys.shellPrompt <<= Keys.version apply shellPrompt
+  def shellPrompt(version: String): State => String =
+    s => "%s:%s:%s> ".format(s.configuration.provider.id.name, extract(s).currentProject.id, version)
+  def setupShellPrompt: Setting[_] = Keys.shellPrompt := { shellPrompt(Keys.version.value) }
 }

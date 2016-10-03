@@ -1,8 +1,8 @@
 publishMavenStyle := false
 
-publishTo <<= baseDirectory { base =>
+publishTo := (baseDirectory { base =>
 	Some( Resolver.file("test-repo", base / "repo")(Patterns(false, Resolver.mavenStyleBasePattern)) )
-}
+}).value
 
 name := "test-ivy"
 

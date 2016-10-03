@@ -1,6 +1,6 @@
 scriptedSettings
 
-scriptedSbt <<= sbtVersion
+scriptedSbt := sbtVersion.value
 
 sbtPlugin := true
 

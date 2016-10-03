@@ -3,7 +3,7 @@
 > reload
 -> k1
 
-> set k2 <<= k1 map identity
+> set k2 := (k1 map identity).value
 > session save
 > reload
 -> k2
@@ -16,7 +16,7 @@ $ must-mirror build.sbt build.check.1
 > k2
 $ must-mirror build.sbt build.check.2
 
-> set k1 <<= k1 map {_ => sys.error("k1")}
+> set k1 := (k1 map {_ => sys.error("k1")}).value
 > set k2 := {}
 > session save
 > reload

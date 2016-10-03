@@ -2,11 +2,11 @@ $ touch force
 
 > reload
 
-> check-forced
--> check-depend
+> checkForced
+-> checkDepend
 
 $ delete force
 > reload
 
--> check-forced
-> check-depend
+-> checkForced
+> checkDepend

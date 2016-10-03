@@ -4,21 +4,21 @@
 ivyConfigurations += config("macro").hide.extend(Compile)
 
 // add the compiler as a dependency for src/macro/
-libraryDependencies <+=
-  scalaVersion("org.scala-lang" % "scala-compiler" % _ % "macro")
+libraryDependencies +=
+  scalaVersion("org.scala-lang" % "scala-compiler" % _ % "macro").value
 
 // adds standard compile, console, package tasks for src/macro/
 inConfig(config("macro"))(Defaults.configSettings)
 
 // puts the compiled macro on the classpath for the main sources
-unmanagedClasspath in Compile <++=
-  fullClasspath in config("macro")
+unmanagedClasspath in Compile ++=
+  (fullClasspath in config("macro")).value
 
 // includes sources in src/macro/ in the main source package
-mappings in (Compile, packageSrc) <++=
-  mappings in (config("macro"), packageSrc)
+mappings in (Compile, packageSrc) ++=
+  (mappings in (config("macro"), packageSrc)).value
 
 // Includes classes compiled from src/macro/ in the main binary
 // This can be omitted if the classes in src/macro/ aren't used at runtime
-mappings in (Compile, packageBin) <++=
-  mappings in (config("macro"), packageBin)
+mappings in (Compile, packageBin) ++=
+  (mappings in (config("macro"), packageBin)).value

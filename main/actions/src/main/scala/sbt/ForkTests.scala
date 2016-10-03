@@ -4,14 +4,16 @@
 package sbt
 
 import scala.collection.mutable
+import scala.util.control.NonFatal
 import testing._
 import java.net.ServerSocket
 import java.io._
 import Tests.{ Output => TestOutput, _ }
 import ForkMain._
+import sbt.ConcurrentRestrictions.Tag
 
 private[sbt] object ForkTests {
-  def apply(runners: Map[TestFramework, Runner], tests: List[TestDefinition], config: Execution, classpath: Seq[File], fork: ForkOptions, log: Logger): Task[TestOutput] = {
+  def apply(runners: Map[TestFramework, Runner], tests: List[TestDefinition], config: Execution, classpath: Seq[File], fork: ForkOptions, log: Logger, tag: Tag): Task[TestOutput] = {
     val opts = processOptions(config, tests, log)
 
     import std.TaskExtra._
@@ -23,7 +25,7 @@ private[sbt] object ForkTests {
         constant(TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty))
       else
         mainTestTask(runners, opts, classpath, fork, log, config.parallel).tagw(config.tags: _*)
-    main.dependsOn(all(opts.setup): _*) flatMap { results =>
+    main.tag(tag).dependsOn(all(opts.setup): _*) flatMap { results =>
       all(opts.cleanup).join.map(_ => results)
     }
   }
@@ -72,6 +74,12 @@ private[sbt] object ForkTests {
             os.flush()
 
             new React(is, os, log, opts.testListeners, resultsAcc).react()
+          } catch {
+            case NonFatal(e) =>
+              def throwableToString(t: Throwable) = {
+                import java.io._; val sw = new StringWriter; t.printStackTrace(new PrintWriter(sw)); sw.toString
+              }
+              resultsAcc("Forked test harness failed: " + throwableToString(e)) = SuiteResult.Error
           } finally {
             is.close(); os.close(); socket.close()
           }
