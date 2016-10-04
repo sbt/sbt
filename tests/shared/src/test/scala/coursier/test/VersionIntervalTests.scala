@@ -133,7 +133,7 @@ object VersionIntervalTests extends TestSuite {
 
       'basic{
         val itv = Parse.versionInterval("[2.2,)").get
-        
+
         assert(!itv.contains(v21))
         assert(itv.contains(v22))
         assert(itv.contains(v23))
@@ -195,6 +195,10 @@ object VersionIntervalTests extends TestSuite {
         val s4 = "(1.1,1.3)"
         val itv4 = Parse.versionInterval(s4)
         assert(itv4 == Some(VersionInterval(Some(Version("1.1")), Some(Version("1.3")), false, false)))
+
+        val s5 = "(1.11.0, 1.12.0]"
+        val itv5 = Parse.versionInterval(s5)
+        assert(itv5 == Some(VersionInterval(Some(Version("1.11.0")), Some(Version("1.12.0")), false, true)))
       }
       'leftEmptyVersions {
         val s1 = "[,1.3]"
