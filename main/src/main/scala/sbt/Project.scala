@@ -636,7 +636,7 @@ object Project extends ProjectExtra {
 
   import reflect.macros._
 
-  def projectMacroImpl(c: Context): c.Expr[Project] =
+  def projectMacroImpl(c: blackbox.Context): c.Expr[Project] =
     {
       import c.universe._
       val enclosingValName = std.KeyMacro.definingValName(c, methodName => s"""$methodName must be directly assigned to a val, such as `val x = $methodName`. Alternatively, you can use `sbt.Project.apply`""")
