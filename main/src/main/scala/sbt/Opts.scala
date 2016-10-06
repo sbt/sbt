@@ -43,7 +43,7 @@ object DefaultOptions {
   import Opts._
   import sbt.io.syntax._
   import BuildPaths.{ getGlobalBase, getGlobalSettingsDirectory }
-  import Project.{ extract, richInitializeTask }
+  import Project.extract
   import Def.Setting
 
   def javac: Seq[String] = compile.encoding("UTF-8")

@@ -17,7 +17,7 @@ object InitializeInstance extends MonadInstance {
 import reflect.macros._
 
 object InitializeConvert extends Convert {
-  def apply[T: c.WeakTypeTag](c: Context)(nme: String, in: c.Tree): Converted[c.type] =
+  def apply[T: c.WeakTypeTag](c: blackbox.Context)(nme: String, in: c.Tree): Converted[c.type] =
     nme match {
       case InputWrapper.WrapInitName                                 => convert[T](c)(in)
       case InputWrapper.WrapTaskName | InputWrapper.WrapInitTaskName => failTask[c.type](c)(in.pos)
@@ -25,23 +25,23 @@ object InitializeConvert extends Convert {
       case _                                                         => Converted.NotApplicable
     }
 
-  private def convert[T](c: Context)(in: c.Tree): Converted[c.type] =
+  private def convert[T](c: blackbox.Context)(in: c.Tree): Converted[c.type] =
     {
       val i = c.Expr[Initialize[T]](in)
       val t = c.universe.reify(i.splice).tree
       Converted.Success(t)
     }
 
-  private def failTask[C <: Context with Singleton](c: C)(pos: c.Position): Converted[c.type] =
+  private def failTask[C <: blackbox.Context with Singleton](c: C)(pos: c.Position): Converted[c.type] =
     Converted.Failure(pos, "A setting cannot depend on a task")
-  private def failPrevious[C <: Context with Singleton](c: C)(pos: c.Position): Converted[c.type] =
+  private def failPrevious[C <: blackbox.Context with Singleton](c: C)(pos: c.Position): Converted[c.type] =
     Converted.Failure(pos, "A setting cannot depend on a task's previous value.")
 }
 
 object SettingMacro {
-  def settingMacroImpl[T: c.WeakTypeTag](c: Context)(t: c.Expr[T]): c.Expr[Initialize[T]] =
+  def settingMacroImpl[T: c.WeakTypeTag](c: blackbox.Context)(t: c.Expr[T]): c.Expr[Initialize[T]] =
     Instance.contImpl[T, Id](c, InitializeInstance, InitializeConvert, MixedBuilder)(Left(t), Instance.idTransform[c.type])
 
-  def settingDynMacroImpl[T: c.WeakTypeTag](c: Context)(t: c.Expr[Initialize[T]]): c.Expr[Initialize[T]] =
+  def settingDynMacroImpl[T: c.WeakTypeTag](c: blackbox.Context)(t: c.Expr[Initialize[T]]): c.Expr[Initialize[T]] =
     Instance.contImpl[T, Id](c, InitializeInstance, InitializeConvert, MixedBuilder)(Right(t), Instance.idTransform[c.type])
 }
