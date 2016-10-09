@@ -7,7 +7,7 @@ lazy val root = (project in file(".")).
   settings(inThisBuild(List(
       organization := "com.softwaremill",
       version := "0.0.1-SNAPSHOT",
-      scalaVersion := "2.10.0"
+      scalaVersion := "2.10.6"
     )),
     commonSettings
   )

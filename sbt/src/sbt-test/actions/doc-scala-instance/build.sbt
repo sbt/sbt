@@ -6,5 +6,5 @@ lazy val a = project.settings(
 )
 
 lazy val b = project.settings(
-	scalaVersion := "2.10.1"
+	scalaVersion := "2.10.6"
 )
