@@ -9,7 +9,7 @@ cache:
 language: scala
 
 jdk:
-  - oraclejdk7
+  - oraclejdk8
 
 matrix:
   fast_finish: true
