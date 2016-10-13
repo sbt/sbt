@@ -404,7 +404,7 @@ object Keys {
   val sbtVersion = SettingKey[String]("sbt-version", "Provides the version of sbt.  This setting should be not be modified.", AMinusSetting)
   val sbtBinaryVersion = SettingKey[String]("sbt-binary-version", "Defines the binary compatibility version substring.", BPlusSetting)
   val skip = TaskKey[Boolean]("skip", "For tasks that support it (currently only 'compile' and 'update'), setting skip to true will force the task to not to do its work.  This exact semantics may vary by task.", BSetting)
-  val templateResolvers = SettingKey[Seq[TemplateResolver]]("templateResolvers", "Template resolvers used for 'new'.", BSetting)
+  val templateResolverInfos = SettingKey[Seq[TemplateResolverInfo]]("templateResolverInfos", "Template resolvers used for 'new'.", BSetting)
 
   // special
   val sessionVars = AttributeKey[SessionVar.Map]("session-vars", "Bindings that exist for the duration of the session.", Invisible)

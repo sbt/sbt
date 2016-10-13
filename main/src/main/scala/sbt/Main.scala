@@ -107,6 +107,7 @@ import sbt.internal.CommandStrings._
 import BasicCommandStrings._
 import BasicCommands._
 import CommandUtil._
+import TemplateCommandUtil.templateCommand
 
 object BuiltinCommands {
   def initialAttributes = AttributeMap.empty

@@ -20,7 +20,7 @@ import sbt.io.IO
 import scala.util.control.NonFatal
 
 object BasicCommands {
-  lazy val allBasicCommands = Seq(nop, ignore, help, completionsCommand, templateCommand, multi, ifLast, append, setOnFailure, clearOnFailure,
+  lazy val allBasicCommands = Seq(nop, ignore, help, completionsCommand, multi, ifLast, append, setOnFailure, clearOnFailure,
     stashOnFailure, popOnFailure, reboot, call, early, exit, continuous, history, shell, server, client, read, alias) ++ compatCommands
 
   def nop = Command.custom(s => success(() => s))
@@ -82,9 +82,6 @@ object BasicCommands {
     state
   }
 
-<<<<<<< HEAD:main-command/src/main/scala/sbt/BasicCommands.scala
-  def multiParser(s: State): Parser[List[String]] =
-=======
   def templateCommand = Command.make(TemplateCommand, templateBrief, templateDetailed)(templateCommandParser)
   def templateCommandParser(state: State) =
     {
@@ -110,8 +107,7 @@ object BasicCommands {
       })
     }
 
-  def multiParser(s: State): Parser[Seq[String]] =
->>>>>>> 954e744... Adds templateResolvers and `new` command:main/command/src/main/scala/sbt/BasicCommands.scala
+  def multiParser(s: State): Parser[List[String]] =
     {
       val nonSemi = token(charClass(_ != ';').+, hide = const(true))
       (token(';' ~> OptSpace) flatMap { _ => matched((s.combinedParser & nonSemi) | nonSemi) <~ token(OptSpace) } map (_.trim)).+ map { _.toList }

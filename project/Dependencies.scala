@@ -93,7 +93,6 @@ object Dependencies {
   val specs2 = "org.specs2" %% "specs2" % "2.4.17"
   val junit = "junit" % "junit" % "4.11"
   val templateResolverApi = "org.scala-sbt" % "template-resolver" % "0.1"
-  val giter8 = "org.foundweekends.giter8" %% "giter8" % "0.7.0"
 
   private def scala211Module(name: String, moduleVersion: String) = Def setting (
     scalaBinaryVersion.value match {
