@@ -449,8 +449,7 @@ lazy val commandProj = (project in mainPath / "command").
   settings(
     testedBaseSettings,
     name := "Command",
-    libraryDependencies ++= Seq(launcherInterface, templateResolverApi),
-    dependencyOverrides += plexusUtils
+    libraryDependencies ++= Seq(launcherInterface, templateResolverApi)
   )
 
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
@@ -489,7 +488,6 @@ lazy val mavenResolverPluginProj = (project in file("sbt-maven-resolver")).
     baseSettings,
     name := "sbt-maven-resolver",
     libraryDependencies ++= aetherLibs,
-    dependencyOverrides += plexusUtils,
     sbtPlugin := true
   )
 
