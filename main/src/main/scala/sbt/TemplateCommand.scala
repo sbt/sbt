@@ -87,10 +87,7 @@ private[sbt] object TemplateCommandUtil {
       else {
         IO.createDirectory(templateDirectory)
         val m = updateUtil.getModule(info.module.copy(configurations = Some("component")), ivyScala)
-        val xs = updateUtil.update(m, templateDirectory)(_ => true) match {
-          case Some(xs) => xs.toList
-          case None     => Nil
-        }
+        val xs = updateUtil.update(m, templateDirectory)(_ => true).toList.flatten
         xs
       }
     }
