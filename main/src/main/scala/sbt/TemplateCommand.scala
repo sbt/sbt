@@ -1,5 +1,6 @@
 package sbt
 
+import java.lang.reflect.InvocationTargetException
 import java.io.File
 import xsbti.AppConfiguration
 import sbt.classpath.ClasspathUtilities
@@ -66,10 +67,7 @@ private[sbt] object TemplateCommandUtil {
       val method = interfaceClass.getMethod(methodName, argTypes: _*)
       try { method.invoke(interface, args: _*) }
       catch {
-        case e: java.lang.reflect.InvocationTargetException =>
-          e.getCause match {
-            case t => throw t
-          }
+        case e: InvocationTargetException => throw e.getCause
       }
     }
   private def getInterfaceClass(name: String, loader: ClassLoader) = Class.forName(name, true, loader)
