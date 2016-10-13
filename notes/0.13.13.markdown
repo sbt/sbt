@@ -12,7 +12,7 @@
 
 ### Improvements
 
-- Adds `new` command and `templateResolvers`. See below for more details.
+- Adds `new` command and `templateResolverInfos`. See below for more details.
 - Auto plugins can add synthetic subprojects. See below for more details.
 - Supports wildcard exclusions in POMs [#1431][1431]/[sbt/ivy#22][sbt-ivy-22]/[#2731][2731] by [@jtgrabowski][@jtgrabowski]
 - Adds the ability to call `aggregateProjects(..)` for the current project inside a build sbt file. [#2682][2682] by [@xuwei-k][@xuwei-k]
@@ -32,7 +32,7 @@
 - Fixes forked tests being reported as successful when the test harness fails. [#2442][2442]/[#2722][2722]/[#2730][2730] by [@eed3si9n][@eed3si9n]/[@dwijnand][@dwijnand]
 - Fixes incorrect installation path on Windows. [sbt/sbt-launcher-package#110][110] by [@dwijnand][@dwijnand]
 
-### new command and templateResolvers
+### new command and templateResolverInfos
 
 sbt 0.13.13 adds a `new` command, which helps create new build definitions.
 The `new` command is extensible via a mechanism called the template resolver,

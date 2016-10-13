@@ -445,11 +445,11 @@ lazy val actionsProj = (project in mainPath / "actions").
 
 // General command support and core commands not specific to a build system
 lazy val commandProj = (project in mainPath / "command").
-  dependsOn(interfaceProj, ioProj, logProj, completeProj, classpathProj, crossProj).
+  dependsOn(interfaceProj, ioProj, logProj, completeProj, classpathProj, crossProj, ivyProj).
   settings(
     testedBaseSettings,
     name := "Command",
-    libraryDependencies ++= Seq(launcherInterface, templateResolverApi, giter8),
+    libraryDependencies ++= Seq(launcherInterface, templateResolverApi),
     dependencyOverrides += plexusUtils
   )
 
