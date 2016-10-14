@@ -1009,7 +1009,7 @@ object Defaults extends BuildCommon {
   lazy val baseTasks: Seq[Setting[_]] = projectTasks ++ packageBase
 
   lazy val baseClasspaths: Seq[Setting[_]] = Classpaths.publishSettings ++ Classpaths.baseSettings
-  lazy val configSettings: Seq[Setting[_]] = Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig ++ Classpaths.compilerPluginConfig
+  lazy val configSettings: Seq[Setting[_]] = Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig ++ Classpaths.compilerPluginConfig ++ deprecationSettings
 
   lazy val compileSettings: Seq[Setting[_]] = configSettings ++ (mainRunMainTask +: mainRunTask +: addBaseSources) ++ Classpaths.addUnmanagedLibrary
   lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks
@@ -1028,6 +1028,17 @@ object Defaults extends BuildCommon {
       baseDirectory := thisProject.value.base,
       target := baseDirectory.value / "target"
     )
+  // build.sbt is treated a Scala source of metabuild, so to enable deprecation flag on build.sbt we set the option here.
+  lazy val deprecationSettings: Seq[Setting[_]] =
+    inConfig(Compile)(Seq(
+      scalacOptions := {
+        val old = scalacOptions.value
+        val existing = old.toSet
+        val d = "-deprecation"
+        if (sbtPlugin.value && !existing(d)) d :: old.toList
+        else old
+      }
+    ))
   @deprecated("Default settings split into coreDefaultSettings and IvyModule/JvmModule plugins.", "0.13.2")
   lazy val defaultSettings: Seq[Setting[_]] = projectBaseSettings ++ defaultConfigs
 

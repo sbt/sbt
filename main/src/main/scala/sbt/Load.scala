@@ -847,7 +847,7 @@ object Load {
       (dir * -GlobFilter(DefaultTargetName)).get.nonEmpty
     }
   def noPlugins(dir: File, config: sbt.LoadBuildConfiguration): sbt.LoadedPlugins =
-    loadPluginDefinition(dir, config, PluginData(config.globalPluginClasspath, None, None))
+    loadPluginDefinition(dir, config, PluginData(config.globalPluginClasspath, Nil, None, None, Nil))
   def buildPlugins(dir: File, s: State, config: sbt.LoadBuildConfiguration): sbt.LoadedPlugins =
     loadPluginDefinition(dir, config, buildPluginDefinition(dir, s, config))
 
