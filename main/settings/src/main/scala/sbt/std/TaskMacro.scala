@@ -72,13 +72,11 @@ object TaskMacro {
   final val TransformInitName = "transform"
   final val InputTaskCreateDynName = "createDyn"
   final val InputTaskCreateFreeName = "createFree"
-  final val append1Migration = "Use `lhs += { x.value }`."
-  final val appendNMigration = "Use `lhs ++= { x.value }`."
+  final val append1Migration = "`<+=` operator is deprecated. Use `lhs += { x.value }`."
+  final val appendNMigration = "`<++=` operator is deprecated. Use `lhs ++= { x.value }`."
   final val assignMigration =
-    """Use `key := { x.value }` or `key ~= (old => { newValue })`.
-      |The RHS of `<<=` takes an `Initialize[_]` expression, which can be converted to `:=` style
-      |by wrapping the expression in parenthesis, and calling `.value` at the end.
-      |For example, `key := (key.dependsOn(compile in Test)).value`.""".stripMargin
+    """`<<=` operator is deprecated. Use `key := { x.value }` or `key ~= (old => { newValue })`.
+      |See http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html""".stripMargin
 
   def taskMacroImpl[T: c.WeakTypeTag](c: Context)(t: c.Expr[T]): c.Expr[Initialize[Task[T]]] =
     Instance.contImpl[T, Id](c, FullInstance, FullConvert, MixedBuilder)(Left(t), Instance.idTransform[c.type])
