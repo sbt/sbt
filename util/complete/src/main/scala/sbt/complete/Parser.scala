@@ -559,8 +559,8 @@ trait ParserMain {
   def seq[T](p: Seq[Parser[T]]): Parser[Seq[T]] = seq0(p, Nil)
   def seq0[T](p: Seq[Parser[T]], errors: => Seq[String]): Parser[Seq[T]] =
     {
-      val (newErrors, valid) = separate(p) { case Invalid(f) => Left(f.errors); case ok => Right(ok) }
-      def combinedErrors = errors ++ newErrors.flatten
+      val (newErrors, valid) = separate(p) { case Invalid(f) => Left(f.errors _); case ok => Right(ok) }
+      def combinedErrors = errors ++ newErrors.flatMap(_())
       if (valid.isEmpty) invalid(combinedErrors) else new ParserSeq(valid, combinedErrors)
     }
 
