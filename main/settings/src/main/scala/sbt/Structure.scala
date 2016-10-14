@@ -40,9 +40,7 @@ sealed abstract class SettingKey[T] extends ScopedTaskable[T] with KeyedInitiali
   final def :=(v: T): Setting[T] = macro std.TaskMacro.settingAssignMacroImpl[T]
   final def +=[U](v: U)(implicit a: Append.Value[T, U]): Setting[T] = macro std.TaskMacro.settingAppend1Impl[T, U]
   final def ++=[U](vs: U)(implicit a: Append.Values[T, U]): Setting[T] = macro std.TaskMacro.settingAppendNImpl[T, U]
-  @deprecated("Use `lhs += { x.value }`", "0.13.13")
   final def <+=[V](v: Initialize[V])(implicit a: Append.Value[T, V]): Setting[T] = macro std.TaskMacro.settingAppend1Position[T, V]
-  @deprecated("Use `lhs ++= { x.value }`", "0.13.13")
   final def <++=[V](vs: Initialize[V])(implicit a: Append.Values[T, V]): Setting[T] = macro std.TaskMacro.settingAppendNPosition[T, V]
   final def -=[U](v: U)(implicit r: Remove.Value[T, U]): Setting[T] = macro std.TaskMacro.settingRemove1Impl[T, U]
   final def --=[U](vs: U)(implicit r: Remove.Values[T, U]): Setting[T] = macro std.TaskMacro.settingRemoveNImpl[T, U]
@@ -73,9 +71,7 @@ sealed abstract class TaskKey[T] extends ScopedTaskable[T] with KeyedInitialize[
 
   def +=[U](v: U)(implicit a: Append.Value[T, U]): Setting[Task[T]] = macro std.TaskMacro.taskAppend1Impl[T, U]
   def ++=[U](vs: U)(implicit a: Append.Values[T, U]): Setting[Task[T]] = macro std.TaskMacro.taskAppendNImpl[T, U]
-  @deprecated("Use `lhs += { x.value }`", "0.13.13")
   def <+=[V](v: Initialize[Task[V]])(implicit a: Append.Value[T, V]): Setting[Task[T]] = macro std.TaskMacro.taskAppend1Position[T, V]
-  @deprecated("Use `lhs ++= { x.value }`", "0.13.13")
   def <++=[V](vs: Initialize[Task[V]])(implicit a: Append.Values[T, V]): Setting[Task[T]] = macro std.TaskMacro.taskAppendNPosition[T, V]
   final def -=[U](v: U)(implicit r: Remove.Value[T, U]): Setting[Task[T]] = macro std.TaskMacro.taskRemove1Impl[T, U]
   final def --=[U](vs: U)(implicit r: Remove.Values[T, U]): Setting[Task[T]] = macro std.TaskMacro.taskRemoveNImpl[T, U]
@@ -157,10 +153,6 @@ object Scoped {
      * @param app value to bind to this key
      * @return setting binding this key to the given value.
      */
-    @deprecated("""Use `key := { x.value }` or `key ~= (old => { newValue })`.
-                  |The RHS of `<<=` takes an `Initialize[_]` expression, which can be converted to `:=` style
-                  |by wrapping the expression in parenthesis, and calling `.value` at the end.
-                  |For example, `key := (key.dependsOn(compile in Test)).value`.""".stripMargin, "0.13.13")
     final def <<=(app: Initialize[S]): Setting[S] = macro std.TaskMacro.settingAssignPosition[S]
 
     /** Internally used function for setting a value along with the `.sbt` file location where it is defined. */
@@ -207,10 +199,6 @@ object Scoped {
     def :=(v: S): Setting[Task[S]] = macro std.TaskMacro.taskAssignMacroImpl[S]
     def ~=(f: S => S): Setting[Task[S]] = macro std.TaskMacro.taskTransformPosition[S]
 
-    @deprecated("""Use `key := { x.value }` or `key ~= (old => { newValue })`.
-                  |The RHS of `<<=` takes an `Initialize[_]` expression, which can be converted to `:=` style
-                  |by wrapping the expression in parenthesis, and calling `.value` at the end.
-                  |For example, `key := (key.dependsOn(compile in Test)).value`.""".stripMargin, "0.13.13")
     def <<=(app: Initialize[Task[S]]): Setting[Task[S]] = macro std.TaskMacro.itaskAssignPosition[S]
     def set(app: Initialize[Task[S]], source: SourcePosition): Setting[Task[S]] = Def.setting(scopedKey, app, source)
     def transform(f: S => S, source: SourcePosition): Setting[Task[S]] = set(scopedKey(_ map f), source)

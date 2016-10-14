@@ -72,6 +72,13 @@ object TaskMacro {
   final val TransformInitName = "transform"
   final val InputTaskCreateDynName = "createDyn"
   final val InputTaskCreateFreeName = "createFree"
+  final val append1Migration = "Use `lhs += { x.value }`."
+  final val appendNMigration = "Use `lhs ++= { x.value }`."
+  final val assignMigration =
+    """Use `key := { x.value }` or `key ~= (old => { newValue })`.
+      |The RHS of `<<=` takes an `Initialize[_]` expression, which can be converted to `:=` style
+      |by wrapping the expression in parenthesis, and calling `.value` at the end.
+      |For example, `key := (key.dependsOn(compile in Test)).value`.""".stripMargin
 
   def taskMacroImpl[T: c.WeakTypeTag](c: Context)(t: c.Expr[T]): c.Expr[Initialize[Task[T]]] =
     Instance.contImpl[T, Id](c, FullInstance, FullConvert, MixedBuilder)(Left(t), Instance.idTransform[c.type])
@@ -97,9 +104,14 @@ object TaskMacro {
   /* Implementations of <<= macro variations for tasks and settings. These just get the source position of the call site.*/
 
   def itaskAssignPosition[T: c.WeakTypeTag](c: Context)(app: c.Expr[Initialize[Task[T]]]): c.Expr[Setting[Task[T]]] =
-    settingAssignPosition(c)(app)
+    {
+      c.warning(c.macroApplication.pos, assignMigration)
+      settingAssignPosition(c)(app)
+    }
+  private def itaskAssignPosition0[T: c.WeakTypeTag](c: Context)(app: c.Expr[Initialize[Task[T]]]): c.Expr[Setting[Task[T]]] =
+    settingAssignPosition0(c)(app)
   def taskAssignPositionT[T: c.WeakTypeTag](c: Context)(app: c.Expr[Task[T]]): c.Expr[Setting[Task[T]]] =
-    itaskAssignPosition(c)(c.universe.reify { Def.valueStrict(app.splice) })
+    itaskAssignPosition0(c)(c.universe.reify { Def.valueStrict(app.splice) })
   def taskAssignPositionPure[T: c.WeakTypeTag](c: Context)(app: c.Expr[T]): c.Expr[Setting[Task[T]]] =
     taskAssignPositionT(c)(c.universe.reify { TaskExtra.constant(app.splice) })
 
@@ -111,20 +123,34 @@ object TaskMacro {
     c.Expr[Setting[S]](transformMacroImpl(c)(f.tree)(TransformInitName))
 
   def taskAppendNPosition[S: c.WeakTypeTag, V: c.WeakTypeTag](c: Context)(vs: c.Expr[Initialize[Task[V]]])(a: c.Expr[Append.Values[S, V]]): c.Expr[Setting[Task[S]]] =
-    c.Expr[Setting[Task[S]]](appendMacroImpl(c)(vs.tree, a.tree)(AppendNInitName))
-
+    {
+      c.warning(c.macroApplication.pos, appendNMigration)
+      c.Expr[Setting[Task[S]]](appendMacroImpl(c)(vs.tree, a.tree)(AppendNInitName))
+    }
   def settingAppendNPosition[S: c.WeakTypeTag, V: c.WeakTypeTag](c: Context)(vs: c.Expr[Initialize[V]])(a: c.Expr[Append.Values[S, V]]): c.Expr[Setting[S]] =
-    c.Expr[Setting[S]](appendMacroImpl(c)(vs.tree, a.tree)(AppendNInitName))
-
+    {
+      c.warning(c.macroApplication.pos, appendNMigration)
+      c.Expr[Setting[S]](appendMacroImpl(c)(vs.tree, a.tree)(AppendNInitName))
+    }
   def taskAppend1Position[S: c.WeakTypeTag, V: c.WeakTypeTag](c: Context)(v: c.Expr[Initialize[Task[V]]])(a: c.Expr[Append.Value[S, V]]): c.Expr[Setting[Task[S]]] =
-    c.Expr[Setting[Task[S]]](appendMacroImpl(c)(v.tree, a.tree)(Append1InitName))
+    {
+      c.warning(c.macroApplication.pos, append1Migration)
+      c.Expr[Setting[Task[S]]](appendMacroImpl(c)(v.tree, a.tree)(Append1InitName))
+    }
 
   def settingAppend1Position[S: c.WeakTypeTag, V: c.WeakTypeTag](c: Context)(v: c.Expr[Initialize[V]])(a: c.Expr[Append.Value[S, V]]): c.Expr[Setting[S]] =
-    c.Expr[Setting[S]](appendMacroImpl(c)(v.tree, a.tree)(Append1InitName))
-
+    {
+      c.warning(c.macroApplication.pos, append1Migration)
+      c.Expr[Setting[S]](appendMacroImpl(c)(v.tree, a.tree)(Append1InitName))
+    }
   def settingAssignPure[T: c.WeakTypeTag](c: Context)(app: c.Expr[T]): c.Expr[Setting[T]] =
-    settingAssignPosition(c)(c.universe.reify { Def.valueStrict(app.splice) })
+    settingAssignPosition0(c)(c.universe.reify { Def.valueStrict(app.splice) })
   def settingAssignPosition[T: c.WeakTypeTag](c: Context)(app: c.Expr[Initialize[T]]): c.Expr[Setting[T]] =
+    {
+      c.warning(c.macroApplication.pos, assignMigration)
+      settingAssignPosition0[T](c)(app)
+    }
+  private def settingAssignPosition0[T: c.WeakTypeTag](c: Context)(app: c.Expr[Initialize[T]]): c.Expr[Setting[T]] =
     c.Expr[Setting[T]](transformMacroImpl(c)(app.tree)(AssignInitName))
 
   /** Implementation of := macro for tasks. */
