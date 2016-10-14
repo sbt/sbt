@@ -445,12 +445,11 @@ lazy val actionsProj = (project in mainPath / "actions").
 
 // General command support and core commands not specific to a build system
 lazy val commandProj = (project in mainPath / "command").
-  dependsOn(interfaceProj, ioProj, logProj, completeProj, classpathProj, crossProj).
+  dependsOn(interfaceProj, ioProj, logProj, completeProj, classpathProj, crossProj, ivyProj).
   settings(
     testedBaseSettings,
     name := "Command",
-    libraryDependencies ++= Seq(launcherInterface, templateResolverApi, giter8),
-    dependencyOverrides += plexusUtils
+    libraryDependencies ++= Seq(launcherInterface, templateResolverApi)
   )
 
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
@@ -489,7 +488,6 @@ lazy val mavenResolverPluginProj = (project in file("sbt-maven-resolver")).
     baseSettings,
     name := "sbt-maven-resolver",
     libraryDependencies ++= aetherLibs,
-    dependencyOverrides += plexusUtils,
     sbtPlugin := true
   )
 

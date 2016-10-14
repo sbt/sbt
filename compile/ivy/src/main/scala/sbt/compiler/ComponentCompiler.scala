@@ -91,9 +91,10 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
   private val sbtOrg = xsbti.ArtifactInfo.SbtOrganization
   private val sbtOrgTemp = JsonUtil.sbtOrgTemp
   private val modulePrefixTemp = "temp-module-"
-  private val ivySbt: IvySbt = new IvySbt(ivyConfiguration)
+
   private val sbtVersion = ComponentManager.version
   private val buffered = new BufferedLogger(FullLogger(log))
+  private val updateUtil = new UpdateUtil(ivyConfiguration, buffered)
 
   def apply(): File = {
     // binID is of the form "org.example-compilerbridge-1.0.0-bin_2.11.7__50.0"
@@ -115,7 +116,7 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
       buffered bufferQuietly {
 
         IO.withTemporaryDirectory { retrieveDirectory =>
-          (update(getModule(sourcesModule), retrieveDirectory)(_.getName endsWith "-sources.jar")) match {
+          (updateUtil.update(updateUtil.getModule(sourcesModule), retrieveDirectory)(_.getName endsWith "-sources.jar")) match {
             case Some(sources) =>
               AnalyzingCompiler.compileSources(sources, targetJar, xsbtiJars, sourcesModule.name, compiler, log)
               manager.define(binID, Seq(targetJar))
@@ -128,67 +129,4 @@ private[compiler] class IvyComponentCompiler(compiler: RawCompiler, manager: Com
       }
     }
 
-  /**
-   * Returns a dummy module that depends on `moduleID`.
-   * Note: Sbt's implementation of Ivy requires us to do this, because only the dependencies
-   *       of the specified module will be downloaded.
-   */
-  private def getModule(moduleID: ModuleID): ivySbt.Module = {
-    val sha1 = Hash.toHex(Hash(moduleID.name))
-    val dummyID = ModuleID(sbtOrgTemp, modulePrefixTemp + sha1, moduleID.revision, moduleID.configurations)
-    getModule(dummyID, Seq(moduleID))
-  }
-
-  private def getModule(moduleID: ModuleID, deps: Seq[ModuleID], uo: UpdateOptions = UpdateOptions()): ivySbt.Module = {
-    val moduleSetting = InlineConfiguration(
-      module = moduleID,
-      moduleInfo = ModuleInfo(moduleID.name),
-      dependencies = deps,
-      configurations = Seq(Configurations.Component),
-      ivyScala = None)
-
-    new ivySbt.Module(moduleSetting)
-  }
-
-  private def dependenciesNames(module: ivySbt.Module): String = module.moduleSettings match {
-    // `module` is a dummy module, we will only fetch its dependencies.
-    case ic: InlineConfiguration =>
-      ic.dependencies map {
-        case mID: ModuleID =>
-          import mID._
-          s"$organization % $name % $revision"
-      } mkString ", "
-    case _ =>
-      s"unknown"
-  }
-
-  private def update(module: ivySbt.Module, retrieveDirectory: File)(predicate: File => Boolean): Option[Seq[File]] = {
-
-    val retrieveConfiguration = new RetrieveConfiguration(retrieveDirectory, Resolver.defaultRetrievePattern, false)
-    val updateConfiguration = new UpdateConfiguration(Some(retrieveConfiguration), true, UpdateLogging.DownloadOnly)
-
-    buffered.info(s"Attempting to fetch ${dependenciesNames(module)}. This operation may fail.")
-    IvyActions.updateEither(module, updateConfiguration, UnresolvedWarningConfiguration(), LogicalClock.unknown, None, buffered) match {
-      case Left(unresolvedWarning) =>
-        buffered.debug("Couldn't retrieve module ${dependenciesNames(module)}.")
-        None
-
-      case Right(updateReport) =>
-        val allFiles =
-          for {
-            conf <- updateReport.configurations
-            m <- conf.modules
-            (_, f) <- m.artifacts
-          } yield f
-
-        buffered.debug(s"Files retrieved for ${dependenciesNames(module)}:")
-        buffered.debug(allFiles mkString ", ")
-
-        allFiles filter predicate match {
-          case Seq() => None
-          case files => Some(files)
-        }
-
-    }
-  }
 }
