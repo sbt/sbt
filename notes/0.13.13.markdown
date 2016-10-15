@@ -36,9 +36,11 @@
 ### new command and templateResolverInfos
 
 sbt 0.13.13 adds a `new` command, which helps create new build definitions.
-The `new` command is extensible via a mechanism called the template resolver,
-which evaluates the arguments passed to the command to find and run a template.
-As a reference implementation [Giter8][g8] is provided. For instance:
+The `new` command is extensible via a mechanism called the template resolver.
+A template resolver pattern matches on the passed in arguments after `new`,
+and if it's a match it will apply the template.
+
+As a reference implementation, template resolver for [Giter8][g8] is provided. For instance:
 
     sbt new eed3si9n/hello.g8
 
