@@ -93,7 +93,8 @@ class LoggerReporter(maximumErrors: Int, log: Logger, sourcePositionMapper: Posi
       log(msg)
     else {
       val sourcePrefix = m2o(pos.sourcePath).getOrElse("")
-      val lineNumberString = m2o(pos.line).map(":" + _ + ":").getOrElse(":") + " "
+      val columnNumber = m2o(pos.pointer).map(_.toInt + 1).getOrElse(1)
+      val lineNumberString = m2o(pos.line).map(":" + _ + ":" + columnNumber + ":").getOrElse(":") + " "
       log(sourcePrefix + lineNumberString + msg)
       val lineContent = pos.lineContent
       if (!lineContent.isEmpty) {
