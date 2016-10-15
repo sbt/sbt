@@ -292,20 +292,16 @@ object Scoped {
   }
 
   // this is the least painful arrangement I came up with
-  implicit def t2ToTable2[A, B](t2: (ScopedTaskable[A], ScopedTaskable[B])): RichTaskable2[A, B] = new RichTaskable2(t2)
-  implicit def t3ToTable3[A, B, C](t3: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C])): RichTaskable3[A, B, C] = new RichTaskable3(t3)
-  implicit def t4ToTable4[A, B, C, D](t4: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D])): RichTaskable4[A, B, C, D] = new RichTaskable4(t4)
-  implicit def t5ToTable5[A, B, C, D, E](t5: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E])): RichTaskable5[A, B, C, D, E] = new RichTaskable5(t5)
-  implicit def t6ToTable6[A, B, C, D, E, F](t6: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F])): RichTaskable6[A, B, C, D, E, F] = new RichTaskable6(t6)
-  implicit def t7ToTable7[A, B, C, D, E, F, G](t7: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G])): RichTaskable7[A, B, C, D, E, F, G] = new RichTaskable7(t7)
-  implicit def t8ToTable8[A, B, C, D, E, F, G, H](t8: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H])): RichTaskable8[A, B, C, D, E, F, G, H] = new RichTaskable8(t8)
-  implicit def t9ToTable9[A, B, C, D, E, F, G, H, I](t9: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I])): RichTaskable9[A, B, C, D, E, F, G, H, I] = new RichTaskable9(t9)
-  implicit def t10ToTable10[A, B, C, D, E, F, G, H, I, J](t10: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J])): RichTaskable10[A, B, C, D, E, F, G, H, I, J] = new RichTaskable10(t10)
-  implicit def t11ToTable11[A, B, C, D, E, F, G, H, I, J, K](t11: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K])): RichTaskable11[A, B, C, D, E, F, G, H, I, J, K] = new RichTaskable11(t11)
-  /*	implicit def t12ToTable12[A,B,C,D,E,F,G,H,I,J,K,L](t12: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K], ScopedTaskable[L]) ): RichTaskable12[A,B,C,D,E,F,G,H,I,J,K,L] = new RichTaskable12(t12)
-	implicit def t13ToTable13[A,B,C,D,E,F,G,H,I,J,K,L,N](t13: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K], ScopedTaskable[L], ScopedTaskable[N]) ): RichTaskable13[A,B,C,D,E,F,G,H,I,J,K,L,N] = new RichTaskable13(t13)
-	implicit def t14ToTable14[A,B,C,D,E,F,G,H,I,J,K,L,N,O](t14: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K], ScopedTaskable[L], ScopedTaskable[N], ScopedTaskable[O]) ): RichTaskable14[A,B,C,D,E,F,G,H,I,J,K,L,N,O] = new RichTaskable14(t14)
-	implicit def t15ToTable15[A,B,C,D,E,F,G,H,I,J,K,L,N,O,P](t15: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K], ScopedTaskable[L], ScopedTaskable[N], ScopedTaskable[O], ScopedTaskable[P]) ): RichTaskable15[A,B,C,D,E,F,G,H,I,J,K,L,N,O,P] = new RichTaskable15(t15)*/
+  @deprecated("The sbt 0.10 style DSL is deprecated: '(k1, k2) map { (x, y) => ... }' should now be '{ val x = k1.value; val y = k2.value }'.\nSee http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html") implicit def t2ToTable2[A, B](t2: (ScopedTaskable[A], ScopedTaskable[B])): RichTaskable2[A, B] = new RichTaskable2(t2)
+  @deprecated("The sbt 0.10 style DSL is deprecated: '(k1, k2) map { (x, y) => ... }' should now be '{ val x = k1.value; val y = k2.value }'.\nSee http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html") implicit def t3ToTable3[A, B, C](t3: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C])): RichTaskable3[A, B, C] = new RichTaskable3(t3)
+  @deprecated("The sbt 0.10 style DSL is deprecated: '(k1, k2) map { (x, y) => ... }' should now be '{ val x = k1.value; val y = k2.value }'.\nSee http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html") implicit def t4ToTable4[A, B, C, D](t4: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D])): RichTaskable4[A, B, C, D] = new RichTaskable4(t4)
+  @deprecated("The sbt 0.10 style DSL is deprecated: '(k1, k2) map { (x, y) => ... }' should now be '{ val x = k1.value; val y = k2.value }'.\nSee http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html") implicit def t5ToTable5[A, B, C, D, E](t5: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E])): RichTaskable5[A, B, C, D, E] = new RichTaskable5(t5)
+  @deprecated("The sbt 0.10 style DSL is deprecated: '(k1, k2) map { (x, y) => ... }' should now be '{ val x = k1.value; val y = k2.value }'.\nSee http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html") implicit def t6ToTable6[A, B, C, D, E, F](t6: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F])): RichTaskable6[A, B, C, D, E, F] = new RichTaskable6(t6)
+  @deprecated("The sbt 0.10 style DSL is deprecated: '(k1, k2) map { (x, y) => ... }' should now be '{ val x = k1.value; val y = k2.value }'.\nSee http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html") implicit def t7ToTable7[A, B, C, D, E, F, G](t7: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G])): RichTaskable7[A, B, C, D, E, F, G] = new RichTaskable7(t7)
+  @deprecated("The sbt 0.10 style DSL is deprecated: '(k1, k2) map { (x, y) => ... }' should now be '{ val x = k1.value; val y = k2.value }'.\nSee http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html") implicit def t8ToTable8[A, B, C, D, E, F, G, H](t8: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H])): RichTaskable8[A, B, C, D, E, F, G, H] = new RichTaskable8(t8)
+  @deprecated("The sbt 0.10 style DSL is deprecated: '(k1, k2) map { (x, y) => ... }' should now be '{ val x = k1.value; val y = k2.value }'.\nSee http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html") implicit def t9ToTable9[A, B, C, D, E, F, G, H, I](t9: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I])): RichTaskable9[A, B, C, D, E, F, G, H, I] = new RichTaskable9(t9)
+  @deprecated("The sbt 0.10 style DSL is deprecated: '(k1, k2) map { (x, y) => ... }' should now be '{ val x = k1.value; val y = k2.value }'.\nSee http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html") implicit def t10ToTable10[A, B, C, D, E, F, G, H, I, J](t10: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J])): RichTaskable10[A, B, C, D, E, F, G, H, I, J] = new RichTaskable10(t10)
+  @deprecated("The sbt 0.10 style DSL is deprecated: '(k1, k2) map { (x, y) => ... }' should now be '{ val x = k1.value; val y = k2.value }'.\nSee http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html") implicit def t11ToTable11[A, B, C, D, E, F, G, H, I, J, K](t11: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K])): RichTaskable11[A, B, C, D, E, F, G, H, I, J, K] = new RichTaskable11(t11)
 
   sealed abstract class RichTaskables[K[L[x]]]( final val keys: K[ScopedTaskable])(implicit a: AList[K]) {
     type App[T] = Initialize[Task[T]]
@@ -374,49 +370,17 @@ object Scoped {
     protected def convert[M[_], R](z: Fun[M, R]) = z.tupled
   }
 
-  /*	final class RichTaskable12[A,B,C,D,E,F,G,H,I,J,K,L](t12: ((ST[A], ST[B], ST[C], ST[D], ST[E], ST[F], ST[G], ST[H], ST[I], ST[J], ST[K], ST[L]))) extends RichTaskables(k12(t12))
-	{
-		type Fun[M[_],Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K], M[L]) => Ret
-		def identityMap = map(mkTuple12)
-		protected def convert[M[_],R](z: Fun[M,R]) = z.tupled
-	}
+  @deprecated("The sbt 0.10 style DSL is deprecated: '(k1, k2) map { (x, y) => ... }' should now be '{ val x = k1.value; val y = k2.value }'.\nSee http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html") implicit def t2ToApp2[A, B](t2: (Initialize[A], Initialize[B])): Apply2[A, B] = new Apply2(t2)
+  @deprecated("The sbt 0.10 style DSL is deprecated: '(k1, k2) map { (x, y) => ... }' should now be '{ val x = k1.value; val y = k2.value }'.\nSee http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html") implicit def t3ToApp3[A, B, C](t3: (Initialize[A], Initialize[B], Initialize[C])): Apply3[A, B, C] = new Apply3(t3)
+  @deprecated("The sbt 0.10 style DSL is deprecated: '(k1, k2) map { (x, y) => ... }' should now be '{ val x = k1.value; val y = k2.value }'.\nSee http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html") implicit def t4ToApp4[A, B, C, D](t4: (Initialize[A], Initialize[B], Initialize[C], Initialize[D])): Apply4[A, B, C, D] = new Apply4(t4)
+  @deprecated("The sbt 0.10 style DSL is deprecated: '(k1, k2) map { (x, y) => ... }' should now be '{ val x = k1.value; val y = k2.value }'.\nSee http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html") implicit def t5ToApp5[A, B, C, D, E](t5: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E])): Apply5[A, B, C, D, E] = new Apply5(t5)
+  @deprecated("The sbt 0.10 style DSL is deprecated: '(k1, k2) map { (x, y) => ... }' should now be '{ val x = k1.value; val y = k2.value }'.\nSee http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html") implicit def t6ToApp6[A, B, C, D, E, F](t6: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F])): Apply6[A, B, C, D, E, F] = new Apply6(t6)
+  @deprecated("The sbt 0.10 style DSL is deprecated: '(k1, k2) map { (x, y) => ... }' should now be '{ val x = k1.value; val y = k2.value }'.\nSee http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html") implicit def t7ToApp7[A, B, C, D, E, F, G](t7: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G])): Apply7[A, B, C, D, E, F, G] = new Apply7(t7)
+  @deprecated("The sbt 0.10 style DSL is deprecated: '(k1, k2) map { (x, y) => ... }' should now be '{ val x = k1.value; val y = k2.value }'.\nSee http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html") implicit def t8ToApp8[A, B, C, D, E, F, G, H](t8: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H])): Apply8[A, B, C, D, E, F, G, H] = new Apply8(t8)
+  @deprecated("The sbt 0.10 style DSL is deprecated: '(k1, k2) map { (x, y) => ... }' should now be '{ val x = k1.value; val y = k2.value }'.\nSee http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html") implicit def t9ToApp9[A, B, C, D, E, F, G, H, I](t9: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I])): Apply9[A, B, C, D, E, F, G, H, I] = new Apply9(t9)
+  @deprecated("The sbt 0.10 style DSL is deprecated: '(k1, k2) map { (x, y) => ... }' should now be '{ val x = k1.value; val y = k2.value }'.\nSee http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html") implicit def t10ToApp10[A, B, C, D, E, F, G, H, I, J](t10: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J])): Apply10[A, B, C, D, E, F, G, H, I, J] = new Apply10(t10)
+  @deprecated("The sbt 0.10 style DSL is deprecated: '(k1, k2) map { (x, y) => ... }' should now be '{ val x = k1.value; val y = k2.value }'.\nSee http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html") implicit def t11ToApp11[A, B, C, D, E, F, G, H, I, J, K](t11: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K])): Apply11[A, B, C, D, E, F, G, H, I, J, K] = new Apply11(t11)
 
-	final class RichTaskable13[A,B,C,D,E,F,G,H,I,J,K,L,N](t13: ((ST[A], ST[B], ST[C], ST[D], ST[E], ST[F], ST[G], ST[H], ST[I], ST[J], ST[K], ST[L], ST[N]))) extends RichTaskables(k13(t13))
-	{
-		type Fun[M[_],Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K], M[L], M[N]) => Ret
-		def identityMap = map(mkTuple13)
-		protected def convert[M[_],R](z: Fun[M,R]) = z.tupled
-	}
-
-	final class RichTaskable14[A,B,C,D,E,F,G,H,I,J,K,L,N,O](t14: ((ST[A], ST[B], ST[C], ST[D], ST[E], ST[F], ST[G], ST[H], ST[I], ST[J], ST[K], ST[L], ST[N], ST[O]))) extends RichTaskables(k14(t14))
-	{
-		type Fun[M[_],Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K], M[L], M[N], M[O]) => Ret
-		def identityMap = map(mkTuple14)
-		protected def convert[M[_],R](z: Fun[M,R]) = z.tupled
-	}
-
-	final class RichTaskable15[A,B,C,D,E,F,G,H,I,J,K,L,N,O,P](t15: ((ST[A], ST[B], ST[C], ST[D], ST[E], ST[F], ST[G], ST[H], ST[I], ST[J], ST[K], ST[L], ST[N], ST[O], ST[P]))) extends RichTaskables(k15(t15))
-	{
-		type Fun[M[_],Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K], M[L], M[N], M[O], M[P]) => Ret
-		def identityMap = map(mkTuple15)
-		protected def convert[M[_],R](z: Fun[M,R]) = z.tupled
-	}*/
-
-  implicit def t2ToApp2[A, B](t2: (Initialize[A], Initialize[B])): Apply2[A, B] = new Apply2(t2)
-  implicit def t3ToApp3[A, B, C](t3: (Initialize[A], Initialize[B], Initialize[C])): Apply3[A, B, C] = new Apply3(t3)
-  implicit def t4ToApp4[A, B, C, D](t4: (Initialize[A], Initialize[B], Initialize[C], Initialize[D])): Apply4[A, B, C, D] = new Apply4(t4)
-  implicit def t5ToApp5[A, B, C, D, E](t5: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E])): Apply5[A, B, C, D, E] = new Apply5(t5)
-  implicit def t6ToApp6[A, B, C, D, E, F](t6: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F])): Apply6[A, B, C, D, E, F] = new Apply6(t6)
-  implicit def t7ToApp7[A, B, C, D, E, F, G](t7: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G])): Apply7[A, B, C, D, E, F, G] = new Apply7(t7)
-  implicit def t8ToApp8[A, B, C, D, E, F, G, H](t8: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H])): Apply8[A, B, C, D, E, F, G, H] = new Apply8(t8)
-  implicit def t9ToApp9[A, B, C, D, E, F, G, H, I](t9: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I])): Apply9[A, B, C, D, E, F, G, H, I] = new Apply9(t9)
-  implicit def t10ToApp10[A, B, C, D, E, F, G, H, I, J](t10: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J])): Apply10[A, B, C, D, E, F, G, H, I, J] = new Apply10(t10)
-  implicit def t11ToApp11[A, B, C, D, E, F, G, H, I, J, K](t11: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K])): Apply11[A, B, C, D, E, F, G, H, I, J, K] = new Apply11(t11)
-  /*    implicit def t12ToApp12[A,B,C,D,E,F,G,H,I,J,K,L](t12: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K], Initialize[L]) ): Apply12[A,B,C,D,E,F,G,H,I,J,K,L] = new Apply12(t12)
-    implicit def t13ToApp13[A,B,C,D,E,F,G,H,I,J,K,L,N](t13: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K], Initialize[L], Initialize[N]) ): Apply13[A,B,C,D,E,F,G,H,I,J,K,L,N] = new Apply13(t13)
-    implicit def t14ToApp14[A,B,C,D,E,F,G,H,I,J,K,L,N,O](t14: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K], Initialize[L], Initialize[N], Initialize[O]) ): Apply14[A,B,C,D,E,F,G,H,I,J,K,L,N,O] = new Apply14(t14)
-    implicit def t15ToApp15[A,B,C,D,E,F,G,H,I,J,K,L,N,O,P](t15: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K], Initialize[L], Initialize[N], Initialize[O], Initialize[P]) ): Apply15[A,B,C,D,E,F,G,H,I,J,K,L,N,O,P] = new Apply15(t15)
-*/
   def mkTuple2[A, B] = (a: A, b: B) => (a, b)
   def mkTuple3[A, B, C] = (a: A, b: B, c: C) => (a, b, c)
   def mkTuple4[A, B, C, D] = (a: A, b: B, c: C, d: D) => (a, b, c, d)
@@ -472,23 +436,7 @@ object Scoped {
     def apply[T](z: (A, B, C, D, E, F, G, H, I, J, K) => T) = Def.app[AList.T11K[A, B, C, D, E, F, G, H, I, J, K]#l, T](t11)(z.tupled)(AList.tuple11[A, B, C, D, E, F, G, H, I, J, K])
     def identity = apply(mkTuple11)
   }
-  /*    final class Apply12[A,B,C,D,E,F,G,H,I,J,K,L](t12: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K], Initialize[L])) {
-        def apply[T](z: (A,B,C,D,E,F,G,H,I,J,K,L) => T) = Def.app( k12(t12) )( hf12(z) )
-        def identity = apply(mkTuple12)
-    }
-    final class Apply13[A,B,C,D,E,F,G,H,I,J,K,L,N](t13: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K], Initialize[L], Initialize[N])) {
-        def apply[T](z: (A,B,C,D,E,F,G,H,I,J,K,L,N) => T) = Def.app( k13(t13) )( hf13(z) )
-        def identity = apply(mkTuple13)
-    }
-    final class Apply14[A,B,C,D,E,F,G,H,I,J,K,L,N,O](t14: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K], Initialize[L], Initialize[N], Initialize[O])) {
-        def apply[T](z: (A,B,C,D,E,F,G,H,I,J,K,L,N,O) => T) = Def.app( k14(t14) )( hf14(z) )
-        def identity = apply(mkTuple14)
-    }
-    final class Apply15[A,B,C,D,E,F,G,H,I,J,K,L,N,O,P](t15: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K], Initialize[L], Initialize[N], Initialize[O], Initialize[P])) {
-        def apply[T](z: (A,B,C,D,E,F,G,H,I,J,K,L,N,O,P) => T) = Def.app( k15(t15) )( hf15(z) )
-        def identity = apply(mkTuple15)
-    }
-*/
+
   private[sbt] def extendScoped(s1: Scoped, ss: Seq[Scoped]): Seq[AttributeKey[_]] = s1.key +: ss.map(_.key)
 }
 
