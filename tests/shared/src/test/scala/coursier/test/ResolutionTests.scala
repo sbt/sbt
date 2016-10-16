@@ -155,6 +155,12 @@ object ResolutionTests extends TestSuite {
       // the property "special" is unset. Because that is the case here,
       // the "default" build profile should be active and "librairie-standard"
       // should be provided as a transitive dependency when resolved.
+      //
+      // We additionally include the property "!special" -> "true" to
+      // disambiguate the absence of the "special" property versus
+      // the presence of the "!special" property (which is probably not valid pom
+      // anyways)
+      properties = Seq("!special" -> "true"),
       profiles = Seq(
         Profile("default", activation = Profile.Activation(properties = Seq("!special" -> None)), dependencies = Seq(
           "" -> Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))))),

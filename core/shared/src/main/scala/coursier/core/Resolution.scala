@@ -258,7 +258,7 @@ object Resolution {
           if (mgmtDep.optional)
             dep = dep.copy(optional = mgmtDep.optional)
         }
-        
+
         (config, dep)
       }
   }
@@ -448,12 +448,16 @@ object Resolution {
     activation.properties.nonEmpty &&
       activation.properties.forall {
         case (name, valueOpt) =>
-          props.get(name).exists { v =>
-            valueOpt.forall { reqValue =>
-              if (reqValue.startsWith("!"))
-                v != reqValue.drop(1)
-              else
-                v == reqValue
+          if (name.startsWith("!")) {
+            props.get(name.drop(1)).isEmpty
+          } else {
+            props.get(name).exists { v =>
+              valueOpt.forall { reqValue =>
+                if (reqValue.startsWith("!"))
+                  v != reqValue.drop(1)
+                else
+                  v == reqValue
+              }
             }
           }
       }
