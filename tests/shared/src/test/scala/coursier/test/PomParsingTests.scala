@@ -77,6 +77,41 @@ object PomParsingTests extends TestSuite {
 
       assert(result == expected)
     }
+    'readProfileActiveByPropertyWithoutValue{
+      val profileNode ="""
+        <profile>
+          <id>profile1</id>
+          <activation>
+            <property>
+              <name>hadoop.profile</name>
+            </property>
+          </activation>
+        </profile>
+                       """
+      val expected = \/-(Profile("profile1", None, Profile.Activation(List("hadoop.profile" -> None)), Nil, Nil, Map.empty))
+      val result = Pom.profile(xmlParse(profileNode).right.get)
+
+      assert(result == expected)
+    }
+
+    'readProfileActiveByPropertyWithValue{
+      val profileNode ="""
+        <profile>
+          <id>profile1</id>
+          <activation>
+            <property>
+              <name>hadoop.profile</name>
+              <value>yes</value>
+            </property>
+          </activation>
+        </profile>
+                       """
+      val expected = \/-(Profile("profile1", None, Profile.Activation(List("hadoop.profile" -> Some("yes"))), Nil, Nil, Map.empty))
+      val result = Pom.profile(xmlParse(profileNode).right.get)
+
+      assert(result == expected)
+    }
+
     'readProfileDependencies{
       val profileNode ="""
         <profile>
