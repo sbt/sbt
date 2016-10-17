@@ -26,12 +26,12 @@ object ResolutionTests extends TestSuite {
 
   val projects = Seq(
     Project(Module("acme", "config"), "1.3.0"),
-  
+
     Project(Module("acme", "play"), "2.4.0", Seq(
       "" -> Dependency(Module("acme", "play-json"), "2.4.0"))),
-  
+
     Project(Module("acme", "play-json"), "2.4.0"),
-  
+
     Project(Module("acme", "play"), "2.4.1",
       dependencies = Seq(
         "" -> Dependency(Module("acme", "play-json"), "${play_json_version}"),
@@ -39,7 +39,7 @@ object ResolutionTests extends TestSuite {
       properties = Seq(
         "play_json_version" -> "2.4.0",
         "WithSpecialChar©" -> "config")),
-  
+
     Project(Module("acme", "play-extra-no-config"), "2.4.1",
       Seq(
         "" -> Dependency(Module("acme", "play"), "2.4.1",
@@ -133,6 +133,36 @@ object ResolutionTests extends TestSuite {
       properties = Seq("special" -> "true"),
       profiles = Seq(
         Profile("default", activation = Profile.Activation(properties = Seq("special" -> Some("!false"))), dependencies = Seq(
+          "" -> Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))))),
+
+    Project(Module("com.github.dummy", "libb"), "0.5.7",
+      // This project demonstrates a build profile that activates only when
+      // the property "special" is unset. Because "special" is set to "true"
+      // here, the build profile should not be active and "librairie-standard"
+      // should not be provided as a transitive dependency when resolved.
+      //
+      // We additionally include the property "!special" -> "true" to
+      // disambiguate the absence of the "special" property versus
+      // the presence of the "!special" property (which is probably not valid pom
+      // anyways)
+      properties = Seq("special" -> "true", "!special" -> "true"),
+      profiles = Seq(
+        Profile("default", activation = Profile.Activation(properties = Seq("!special" -> None)), dependencies = Seq(
+          "" -> Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))))),
+
+    Project(Module("com.github.dummy", "libb"), "0.5.8",
+      // This project demonstrates a build profile that activates only when
+      // the property "special" is unset. Because that is the case here,
+      // the "default" build profile should be active and "librairie-standard"
+      // should be provided as a transitive dependency when resolved.
+      //
+      // We additionally include the property "!special" -> "true" to
+      // disambiguate the absence of the "special" property versus
+      // the presence of the "!special" property (which is probably not valid pom
+      // anyways)
+      properties = Seq("!special" -> "true"),
+      profiles = Seq(
+        Profile("default", activation = Profile.Activation(properties = Seq("!special" -> None)), dependencies = Seq(
           "" -> Dependency(Module("org.escalier", "librairie-standard"), "2.11.6"))))),
 
     Project(Module("an-org", "a-name"), "1.0"),
@@ -398,7 +428,7 @@ object ResolutionTests extends TestSuite {
     }
     'depsFromPropertyActivatedProfile{
       val f =
-        for (version <- Seq("0.5.3", "0.5.4", "0.5.5", "0.5.6")) yield {
+        for (version <- Seq("0.5.3", "0.5.4", "0.5.5", "0.5.6", "0.5.8")) yield {
           async {
             val dep = Dependency(Module("com.github.dummy", "libb"), version)
             val trDeps = Seq(
@@ -417,6 +447,30 @@ object ResolutionTests extends TestSuite {
         }
 
       scala.concurrent.Future.sequence(f)
+    }
+    'depsFromProfileDisactivatedByPropertyAbsence{
+      // A build profile only activates in the absence of some property should
+      // not be activated when that property is present.
+      // ---
+      // The target dependency in this test (com.github.dummy % libb % 0.5.7)
+      // declares a profile that is only active when name=!special,
+      // and names a transitive dependency (librairie-standard) that is only
+      // active under that build profile. When we resolve a module with
+      // the "special" attribute set to "true", the transitive dependency
+      // should not appear.
+      async {
+        val dep = Dependency(Module("com.github.dummy", "libb"), "0.5.7")
+        val res = await(resolve0(
+          Set(dep)
+        )).clearCaches
+
+        val expected = Resolution(
+          rootDependencies = Set(dep),
+          dependencies = Set(dep.withCompileScope)
+        )
+
+        assert(res == expected)
+      }
     }
     'depsScopeOverrideFromProfile{
       async {
