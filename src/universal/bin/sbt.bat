@@ -52,19 +52,24 @@ rem We use the value of the JAVA_OPTS environment variable if defined, rather th
 set _JAVA_OPTS=%JAVA_OPTS%
 if "%_JAVA_OPTS%"=="" set _JAVA_OPTS=%CFG_OPTS%
 
-FOR %%a IN (%*) DO (
-  if "%%a" == "-jvm-debug" (
-    set JVM_DEBUG=true
-    set /a JVM_DEBUG_PORT=5005 2>nul >nul
-  ) else if "!JVM_DEBUG!" == "true" (
-    set /a JVM_DEBUG_PORT=%%a 2>nul >nul
-    if not "%%a" == "!JVM_DEBUG_PORT!" (
-      set SBT_ARGS=!SBT_ARGS! %%a
-    )
-  ) else (
-    set SBT_ARGS=!SBT_ARGS! %%a
+:args_loop
+if "%~1" == "" goto args_end
+
+if "%~1" == "-jvm-debug" (
+  set JVM_DEBUG=true
+  set /a JVM_DEBUG_PORT=5005 2>nul >nul
+) else if "!JVM_DEBUG!" == "true" (
+  set /a JVM_DEBUG_PORT=%1 2>nul >nul
+  if not "%~1" == "!JVM_DEBUG_PORT!" (
+    set SBT_ARGS=!SBT_ARGS! %1
   )
+) else (
+  set SBT_ARGS=!SBT_ARGS! %1
 )
+
+shift
+goto args_loop
+:args_end
 
 if defined JVM_DEBUG_PORT (
   set _JAVA_OPTS=!_JAVA_OPTS! -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=!JVM_DEBUG_PORT!
