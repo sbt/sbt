@@ -343,7 +343,7 @@ lazy val cli = project
       if (scalaBinaryVersion.value == "2.10")
         Seq()
       else
-        Seq("com.github.alexarchambault" %% "case-app" % "1.0.0-RC3")
+        Seq("com.github.alexarchambault" %% "case-app" % "1.1.1")
     },
     resourceGenerators in Compile += packageBin.in(bootstrap).in(Compile).map { jar =>
       Seq(jar)
