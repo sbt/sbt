@@ -343,7 +343,7 @@ lazy val cli = project
       if (scalaBinaryVersion.value == "2.10")
         Seq()
       else
-        Seq("com.github.alexarchambault" %% "case-app" % "1.1.1")
+        Seq("com.github.alexarchambault" %% "case-app" % "1.1.2")
     },
     resourceGenerators in Compile += packageBin.in(bootstrap).in(Compile).map { jar =>
       Seq(jar)
@@ -539,7 +539,7 @@ lazy val `http-server` = project
       "org.http4s" %% "http4s-blazeserver" % http4sVersion,
       "org.http4s" %% "http4s-dsl" % http4sVersion,
       "org.slf4j" % "slf4j-nop" % "1.7.21",
-      "com.github.alexarchambault" %% "case-app" % "1.0.0-RC3"
+      "com.github.alexarchambault" %% "case-app" % "1.1.2"
     )
   )
 
