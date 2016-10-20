@@ -382,7 +382,7 @@ public class Bootstrap {
             parentClassLoader = new IsolatedClassLoader(contextURLs, parentClassLoader, new String[]{ isolationID });
         }
 
-        ClassLoader classLoader = new BootstrapClassLoader(localURLs.toArray(new URL[localURLs.size()]), parentClassLoader);
+        ClassLoader classLoader = new URLClassLoader(localURLs.toArray(new URL[localURLs.size()]), parentClassLoader);
 
         Class<?> mainClass = null;
         Method mainMethod = null;
