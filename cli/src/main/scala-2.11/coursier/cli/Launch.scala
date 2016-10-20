@@ -6,33 +6,7 @@ import java.net.{ URL, URLClassLoader }
 
 import caseapp._
 
-import scala.annotation.tailrec
-import scala.language.reflectiveCalls
-import scala.util.Try
-
 object Launch {
-
-  @tailrec
-  def mainClassLoader(cl: ClassLoader): Option[ClassLoader] =
-    if (cl == null)
-      None
-    else {
-      val isMainLoader = try {
-        val cl0 = cl.asInstanceOf[Object {
-          def isBootstrapLoader: Boolean
-        }]
-
-        cl0.isBootstrapLoader
-      } catch {
-        case e: Exception =>
-          false
-      }
-
-      if (isMainLoader)
-        Some(cl)
-      else
-        mainClassLoader(cl.getParent)
-    }
 
   def run(
     loader: ClassLoader,
@@ -125,19 +99,8 @@ case class Launch(
     else
       options.mainClass
 
-  val extraJars = options.extraJars.filter(_.nonEmpty)
-
-  val loader =
-    if (extraJars.isEmpty)
-      helper.loader
-    else
-      new URLClassLoader(
-        extraJars.map(new File(_).toURI.toURL).toArray,
-        helper.loader
-      )
-
   Launch.run(
-    loader,
+    helper.loader,
     mainClass,
     userArgs,
     options.common.verbosityLevel

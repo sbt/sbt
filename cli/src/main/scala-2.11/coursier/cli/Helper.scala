@@ -584,22 +584,7 @@ class Helper(
 
   def contextLoader = Thread.currentThread().getContextClassLoader
 
-  // TODO Would ClassLoader.getSystemClassLoader be better here?
-  lazy val baseLoader: ClassLoader =
-    Launch.mainClassLoader(contextLoader)
-      .flatMap(cl => Option(cl.getParent))
-      .getOrElse {
-        // proguarded -> no risk of conflicts, no absolute need to find a specific ClassLoader
-        val isProguarded = Try(contextLoader.loadClass("coursier.cli.Launch")).isFailure
-        if (warnBaseLoaderNotFound && !isProguarded && common.verbosityLevel >= 0)
-          Console.err.println(
-            "Warning: cannot find the main ClassLoader that launched coursier.\n" +
-              "Was coursier launched by its main launcher? " +
-              "The ClassLoader of the application that is about to be launched will be intertwined " +
-              "with the one of coursier, which may be a problem if their dependencies conflict."
-          )
-        contextLoader
-      }
+  def baseLoader = ClassLoader.getSystemClassLoader
 
   lazy val (parentLoader, filteredFiles) = {
 
