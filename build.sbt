@@ -74,11 +74,6 @@ lazy val scalaVersionAgnosticCommonSettings = Seq(
     "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
     Resolver.sonatypeRepo("releases")
   ),
-  scalacOptions += "-target:jvm-1.7",
-  javacOptions ++= Seq(
-    "-source", "1.7",
-    "-target", "1.7"
-  ),
   javacOptions in Keys.doc := Seq()
 ) ++ releaseSettings
 
@@ -87,7 +82,7 @@ lazy val commonSettings = scalaVersionAgnosticCommonSettings ++ Seq(
   crossScalaVersions := Seq("2.11.8", "2.10.6"),
   libraryDependencies ++= {
     if (scalaBinaryVersion.value == "2.10")
-      Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.0.1" cross CrossVersion.full))
+      Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full))
     else
       Seq()
   }
@@ -102,7 +97,7 @@ lazy val core = crossProject
     name := "coursier",
     libraryDependencies ++= Seq(
       "org.scalaz" %%% "scalaz-core" % scalazVersion,
-      "com.lihaoyi" %%% "fastparse" % "0.3.7"
+      "com.lihaoyi" %%% "fastparse" % "0.4.1"
     ),
     resourceGenerators.in(Compile) += {
       (target, version).map { (dir, ver) =>
@@ -236,7 +231,7 @@ lazy val tests = crossProject
     name := "coursier-tests",
     libraryDependencies ++= Seq(
       "org.scala-lang.modules" %% "scala-async" % "0.9.5" % "provided",
-      "com.lihaoyi" %%% "utest" % "0.4.3" % "test"
+      "com.lihaoyi" %%% "utest" % "0.4.4" % "test"
     ),
     unmanagedResourceDirectories in Test += (baseDirectory in LocalRootProject).value / "tests" / "shared" / "src" / "test" / "resources",
     testFrameworks += new TestFramework("utest.runner.Framework")
