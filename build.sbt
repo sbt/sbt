@@ -47,21 +47,21 @@ lazy val noPublishSettings = Seq(
   publishArtifact := false
 )
 
-def noPublishForScalaVersionSettings(sbv: String) = Seq(
+def noPublishForScalaVersionSettings(sbv: String*) = Seq(
   publish := {
-    if (scalaBinaryVersion.value == sbv)
+    if (sbv.contains(scalaBinaryVersion.value))
       ()
     else
       publish.value
   },
   publishLocal := {
-    if (scalaBinaryVersion.value == sbv)
+    if (sbv.contains(scalaBinaryVersion.value))
       ()
     else
       publishLocal.value
   },
   publishArtifact := {
-    if (scalaBinaryVersion.value == sbv)
+    if (sbv.contains(scalaBinaryVersion.value))
       false
     else
       publishArtifact.value
@@ -88,7 +88,7 @@ lazy val commonSettings = scalaVersionAgnosticCommonSettings ++ Seq(
   }
 )
 
-val scalazVersion = "7.2.5"
+val scalazVersion = "7.2.6"
 
 lazy val core = crossProject
   .settings(commonSettings: _*)
@@ -97,7 +97,7 @@ lazy val core = crossProject
     name := "coursier",
     libraryDependencies ++= Seq(
       "org.scalaz" %%% "scalaz-core" % scalazVersion,
-      "com.lihaoyi" %%% "fastparse" % "0.4.1"
+      "com.lihaoyi" %%% "fastparse" % "0.4.2"
     ),
     resourceGenerators.in(Compile) += {
       (target, version).map { (dir, ver) =>
@@ -229,10 +229,16 @@ lazy val tests = crossProject
   .settings(Defaults.itSettings: _*)
   .settings(
     name := "coursier-tests",
-    libraryDependencies ++= Seq(
-      "org.scala-lang.modules" %% "scala-async" % "0.9.5" % "provided",
-      "com.lihaoyi" %%% "utest" % "0.4.4" % "test"
-    ),
+    libraryDependencies += {
+      val asyncVersion =
+        if (scalaBinaryVersion.value == "2.10")
+          "0.9.5"
+        else
+          "0.9.6-RC6"
+
+        "org.scala-lang.modules" %% "scala-async" % asyncVersion % "provided"
+    },
+    libraryDependencies += "com.lihaoyi" %%% "utest" % "0.4.4" % "test",
     unmanagedResourceDirectories in Test += (baseDirectory in LocalRootProject).value / "tests" / "shared" / "src" / "test" / "resources",
     testFrameworks += new TestFramework("utest.runner.Framework")
   )
@@ -329,16 +335,16 @@ lazy val bootstrap = project
 lazy val cli = project
   .dependsOn(coreJvm, cache)
   .settings(commonSettings)
-  .settings(noPublishForScalaVersionSettings("2.10"))
+  .settings(noPublishForScalaVersionSettings("2.10", "2.12"))
   .settings(packAutoSettings)
   .settings(proguardSettings)
   .settings(
     name := "coursier-cli",
     libraryDependencies ++= {
-      if (scalaBinaryVersion.value == "2.10")
-        Seq()
-      else
+      if (scalaBinaryVersion.value == "2.11")
         Seq("com.github.alexarchambault" %% "case-app" % "1.1.2")
+      else
+        Seq()
     },
     resourceGenerators in Compile += packageBin.in(bootstrap).in(Compile).map { jar =>
       Seq(jar)
@@ -352,16 +358,17 @@ lazy val cli = project
     javaOptions in (Proguard, ProguardKeys.proguard) := Seq("-Xmx3172M"),
     artifactPath in Proguard := (ProguardKeys.proguardDirectory in Proguard).value / "coursier-standalone.jar",
     artifacts ++= {
-      if (scalaBinaryVersion.value == "2.10")
-        Nil
-      else Seq(
-        Artifact(
-          moduleName.value,
-          "jar",
-          "jar",
-          "standalone"
+      if (scalaBinaryVersion.value == "2.11")
+        Seq(
+          Artifact(
+            moduleName.value,
+            "jar",
+            "jar",
+            "standalone"
+          )
         )
-      )
+      else
+        Nil
     },
     packagedArtifacts <++= {
       (
@@ -371,9 +378,7 @@ lazy val cli = project
         packageBin.in(bootstrap) in Compile
       ).map {
         (mod, sbv, files, bootstrapJar) =>
-          if (sbv == "2.10")
-            Map.empty[Artifact, File]
-          else {
+          if (sbv == "2.11") {
             import java.util.zip.{ ZipEntry, ZipOutputStream, ZipInputStream }
             import java.io.{ ByteArrayOutputStream, FileInputStream, FileOutputStream, File, InputStream, IOException }
 
@@ -450,7 +455,8 @@ lazy val cli = project
                 "standalone"
               ) -> f
             )
-          }
+          } else
+            Map.empty[Artifact, File]
       }
     }
   )
@@ -462,18 +468,18 @@ lazy val web = project
   .settings(noPublishSettings)
   .settings(
     libraryDependencies ++= {
-      if (scalaBinaryVersion.value == "2.10")
-        Seq()
-      else
+      if (scalaBinaryVersion.value == "2.11")
         Seq("com.github.japgolly.scalajs-react" %%% "core" % "0.9.0")
+      else
+        Seq()
     },
     sourceDirectory := {
       val dir = sourceDirectory.value
 
-      if (scalaBinaryVersion.value == "2.10")
-        dir / "dummy"
-      else
+      if (scalaBinaryVersion.value == "2.11")
         dir
+      else
+        dir / "dummy"
     },
     test in Test := (),
     testOnly in Test := (),
@@ -500,7 +506,7 @@ lazy val doc = project
 lazy val plugin = project
   .dependsOn(coreJvm, cache)
   .settings(scalaVersionAgnosticCommonSettings)
-  .settings(noPublishForScalaVersionSettings("2.11"))
+  .settings(noPublishForScalaVersionSettings("2.11", "2.12"))
   .settings(
     name := "sbt-coursier",
     sbtPlugin := (scalaBinaryVersion.value == "2.10"),
@@ -528,14 +534,20 @@ val http4sVersion = "0.8.6"
 lazy val `http-server` = project
   .settings(commonSettings)
   .settings(packAutoSettings)
+  .settings(noPublishForScalaVersionSettings("2.10", "2.12"))
   .settings(
     name := "http-server-java7",
-    libraryDependencies ++= Seq(
-      "org.http4s" %% "http4s-blazeserver" % http4sVersion,
-      "org.http4s" %% "http4s-dsl" % http4sVersion,
-      "org.slf4j" % "slf4j-nop" % "1.7.21",
-      "com.github.alexarchambault" %% "case-app" % "1.1.2"
-    )
+    libraryDependencies ++= {
+      if (scalaBinaryVersion.value == "2.11")
+        Seq(
+          "org.http4s" %% "http4s-blazeserver" % http4sVersion,
+          "org.http4s" %% "http4s-dsl" % http4sVersion,
+          "org.slf4j" % "slf4j-nop" % "1.7.21",
+          "com.github.alexarchambault" %% "case-app" % "1.1.2"
+        )
+      else
+        Seq()
+    }
   )
 
 lazy val okhttp = project
