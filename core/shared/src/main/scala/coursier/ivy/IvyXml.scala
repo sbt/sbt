@@ -107,7 +107,8 @@ object IvyXml {
         .find(_.label == "info")
         .toRightDisjunction("Info not found")
 
-      (module, version) <- info(infoNode)
+      modVer <- info(infoNode)
+      (module, version) = modVer
 
       dependenciesNodeOpt = node.children
         .find(_.label == "dependencies")

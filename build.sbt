@@ -204,8 +204,7 @@ lazy val core = crossProject
   )
   .jsSettings(
     libraryDependencies ++= Seq(
-      "org.scala-js" %%% "scalajs-dom" % "0.9.1",
-      "be.doeraene" %%% "scalajs-jquery" % "0.9.0"
+      "org.scala-js" %%% "scalajs-dom" % "0.9.1"
     )
   )
 
@@ -469,7 +468,10 @@ lazy val web = project
   .settings(
     libraryDependencies ++= {
       if (scalaBinaryVersion.value == "2.11")
-        Seq("com.github.japgolly.scalajs-react" %%% "core" % "0.9.0")
+        Seq(
+          "be.doeraene" %%% "scalajs-jquery" % "0.9.0",
+          "com.github.japgolly.scalajs-react" %%% "core" % "0.9.0"
+        )
       else
         Seq()
     },
