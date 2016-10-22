@@ -99,27 +99,6 @@ lazy val core = crossProject
       "org.scalaz" %%% "scalaz-core" % scalazVersion,
       "com.lihaoyi" %%% "fastparse" % "0.4.2"
     ),
-    resourceGenerators.in(Compile) += {
-      (target, version).map { (dir, ver) =>
-        import sys.process._
-
-        val f = dir / "coursier.properties"
-        dir.mkdirs()
-
-        val p = new java.util.Properties
-
-        p.setProperty("version", ver)
-        p.setProperty("commit-hash", Seq("git", "rev-parse", "HEAD").!!.trim)
-
-        val w = new FileOutputStream(f)
-        p.store(w, "Coursier properties")
-        w.close()
-
-        println(s"Wrote $f")
-
-        Seq(f)
-      }.taskValue
-    },
     mimaPreviousArtifacts := Set("com.github.alexarchambault" %% moduleName.value % binaryCompatibilityVersion),
     mimaBinaryIssueFilters ++= {
       import com.typesafe.tools.mima.core._
@@ -200,7 +179,28 @@ lazy val core = crossProject
         else Seq(
           "org.scala-lang.modules" %% "scala-xml" % "1.0.5"
         )
-      }
+      },
+    resourceGenerators.in(Compile) += {
+      (target, version).map { (dir, ver) =>
+        import sys.process._
+
+        val f = dir / "coursier.properties"
+        dir.mkdirs()
+
+        val p = new java.util.Properties
+
+        p.setProperty("version", ver)
+        p.setProperty("commit-hash", Seq("git", "rev-parse", "HEAD").!!.trim)
+
+        val w = new FileOutputStream(f)
+        p.store(w, "Coursier properties")
+        w.close()
+
+        println(s"Wrote $f")
+
+        Seq(f)
+      }.taskValue
+    }
   )
   .jsSettings(
     libraryDependencies ++= Seq(
