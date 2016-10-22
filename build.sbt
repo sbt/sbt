@@ -74,6 +74,25 @@ lazy val scalaVersionAgnosticCommonSettings = Seq(
     "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
     Resolver.sonatypeRepo("releases")
   ),
+  scalacOptions ++= {
+    scalaBinaryVersion.value match {
+      case "2.10" | "2.11" =>
+        Seq("-target:jvm-1.7")
+      case _ =>
+        Seq()
+    }
+  },
+  javacOptions ++= {
+    scalaBinaryVersion.value match {
+      case "2.10" | "2.11" =>
+        Seq(
+          "-source", "1.7",
+          "-target", "1.7"
+        )
+      case _ =>
+        Seq()
+    }
+  },
   javacOptions in Keys.doc := Seq()
 ) ++ releaseSettings
 
