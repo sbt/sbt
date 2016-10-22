@@ -12,6 +12,9 @@ script:
 #    - bash <(curl -s https://codecov.io/bash)
 matrix:
   include:
+    - env: TRAVIS_SCALA_VERSION=2.12.0-RC2 PUBLISH=1
+      os: linux
+      jdk: oraclejdk8
     - env: TRAVIS_SCALA_VERSION=2.11.8 PUBLISH=1
       os: linux
       jdk: oraclejdk8
