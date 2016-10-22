@@ -261,9 +261,7 @@ lazy val tests = crossProject
     testFrameworks += new TestFramework("utest.runner.Framework")
   )
   .jsSettings(
-    jsEnv := NodeJSEnv().value,
-    scalaJSStage in Global := FastOptStage,
-    scalaJSUseRhino in Global := false
+    scalaJSStage in Global := FastOptStage
   )
 
 lazy val testsJvm = tests.jvm.dependsOn(cache % "test")
