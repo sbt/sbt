@@ -118,7 +118,14 @@ lazy val core = crossProject
       "org.scalaz" %%% "scalaz-core" % scalazVersion,
       "com.lihaoyi" %%% "fastparse" % "0.4.2"
     ),
-    mimaPreviousArtifacts := Set("com.github.alexarchambault" %% moduleName.value % binaryCompatibilityVersion),
+    mimaPreviousArtifacts := {
+      scalaBinaryVersion.value match {
+        case "2.10" | "2.11" =>
+          Set("com.github.alexarchambault" %% moduleName.value % binaryCompatibilityVersion)
+        case _ =>
+          Set()
+      }
+    },
     mimaBinaryIssueFilters ++= {
       import com.typesafe.tools.mima.core._
 
@@ -274,7 +281,14 @@ lazy val cache = project
   .settings(
     name := "coursier-cache",
     libraryDependencies += "org.scalaz" %% "scalaz-concurrent" % scalazVersion,
-    mimaPreviousArtifacts := Set("com.github.alexarchambault" %% moduleName.value % binaryCompatibilityVersion),
+    mimaPreviousArtifacts := {
+      scalaBinaryVersion.value match {
+        case "2.10" | "2.11" =>
+          Set("com.github.alexarchambault" %% moduleName.value % binaryCompatibilityVersion)
+        case _ =>
+          Set()
+      }
+    },
     mimaBinaryIssueFilters ++= {
       import com.typesafe.tools.mima.core._
 
