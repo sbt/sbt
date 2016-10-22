@@ -92,7 +92,7 @@ object CentralTests extends TestSuite {
         }
 
       for (((e, r), idx) <- expected.zip(result).zipWithIndex if e != r)
-        println(s"Line $idx:\n  expected: $e\n  got:      $r")
+        println(s"Line ${idx + 1}:\n  expected: $e\n  got:      $r")
 
       assert(result == expected)
     }
