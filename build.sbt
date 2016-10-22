@@ -98,7 +98,7 @@ lazy val scalaVersionAgnosticCommonSettings = Seq(
 
 lazy val commonSettings = scalaVersionAgnosticCommonSettings ++ Seq(
   scalaVersion := "2.11.8",
-  crossScalaVersions := Seq("2.11.8", "2.10.6"),
+  crossScalaVersions := Seq("2.12.0-RC2", "2.11.8", "2.10.6"),
   libraryDependencies ++= {
     if (scalaBinaryVersion.value == "2.10")
       Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full))
