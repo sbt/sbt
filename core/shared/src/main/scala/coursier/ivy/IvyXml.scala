@@ -108,26 +108,26 @@ object IvyXml {
         .toRightDisjunction("Info not found")
 
       modVer <- info(infoNode)
-      (module, version) = modVer
+    } yield {
 
-      dependenciesNodeOpt = node.children
+      val (module, version) = modVer
+
+      val dependenciesNodeOpt = node.children
         .find(_.label == "dependencies")
 
-      dependencies0 = dependenciesNodeOpt.map(dependencies).getOrElse(Nil)
+      val dependencies0 = dependenciesNodeOpt.map(dependencies).getOrElse(Nil)
 
-      configurationsNodeOpt = node.children
+      val configurationsNodeOpt = node.children
         .find(_.label == "configurations")
 
-      configurationsOpt = configurationsNodeOpt.map(configurations)
+      val configurationsOpt = configurationsNodeOpt.map(configurations)
 
-      configurations0 = configurationsOpt.getOrElse(Seq("default" -> Seq.empty[String]))
+      val configurations0 = configurationsOpt.getOrElse(Seq("default" -> Seq.empty[String]))
 
-      publicationsNodeOpt = node.children
+      val publicationsNodeOpt = node.children
         .find(_.label == "publications")
 
-      publicationsOpt = publicationsNodeOpt.map(publications)
-
-    } yield {
+      val publicationsOpt = publicationsNodeOpt.map(publications)
 
       val description = infoNode.children
         .find(_.label == "description")
