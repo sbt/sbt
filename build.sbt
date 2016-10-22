@@ -379,7 +379,7 @@ lazy val cli = project
     resourceGenerators in Compile += packageBin.in(bootstrap).in(Compile).map { jar =>
       Seq(jar)
     }.taskValue,
-    ProguardKeys.proguardVersion in Proguard := "5.2.1",
+    ProguardKeys.proguardVersion in Proguard := "5.3",
     ProguardKeys.options in Proguard ++= Seq(
       "-dontwarn",
       "-keep class coursier.cli.Coursier {\n  public static void main(java.lang.String[]);\n}",
