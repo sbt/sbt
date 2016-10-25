@@ -7,8 +7,6 @@ object Dependencies {
 
   lazy val sbtIO = "org.scala-sbt" %% "io" % "1.0.0-M6"
   lazy val jline = "jline" % "jline" % "2.13"
-  lazy val sbtSerialization = "org.scala-sbt" %% "serialization" % "0.1.2"
-  lazy val sbinary = "org.scala-sbt" %% "sbinary" % "0.4.3"
 
   lazy val scalaCompiler = Def.setting { "org.scala-lang" % "scala-compiler" % scalaVersion.value }
   lazy val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
@@ -27,4 +25,8 @@ object Dependencies {
   val scalatest = "org.scalatest" %% "scalatest" % "2.2.6"
 
   lazy val parserCombinator211 = "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4"
+
+  lazy val sjsonnewVersion = "0.4.2"
+  lazy val sjsonnew = "com.eed3si9n" %% "sjson-new-core" % sjsonnewVersion
+  lazy val sjsonnewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % sjsonnewVersion
 }
