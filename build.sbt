@@ -176,11 +176,13 @@ lazy val actionsProj = (project in file("main-actions")).
 
 // General command support and core commands not specific to a build system
 lazy val commandProj = (project in file("main-command")).
+  enablePlugins(DatatypePlugin, JsonCodecPlugin).
   settings(
     testedBaseSettings,
     name := "Command",
     libraryDependencies ++= Seq(launcherInterface, compilerInterface,
-      sbtIO, utilLogging, utilCompletion, compilerClasspath, json4s, json4sNative) // to transitively get json4s)
+      sbtIO, utilLogging, utilCompletion, compilerClasspath, sjsonNewScalaJson),
+    sourceManaged in (Compile, generateDatatypes) := baseDirectory.value / "src" / "main" / "datatype-scala"
   )
 
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
