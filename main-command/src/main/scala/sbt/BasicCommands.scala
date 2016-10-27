@@ -6,6 +6,7 @@ import sbt.internal.util.complete.{ Completion, Completions, DefaultParsers, His
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.inc.classpath.ClasspathUtilities.toLoader
 import sbt.internal.inc.ModuleUtilities
+import sbt.internal.{ Exec, CommandSource, CommandStatus }
 import DefaultParsers._
 import Function.tupled
 import Command.applyEffect
@@ -15,11 +16,12 @@ import BasicKeys._
 
 import java.io.File
 import sbt.io.IO
+import java.util.concurrent.atomic.AtomicBoolean
 
 import scala.util.control.NonFatal
 
 object BasicCommands {
-  lazy val allBasicCommands = Seq(nop, ignore, help, completionsCommand, multi, ifLast, append, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, reboot, call, early, exit, continuous, history, shell, read, alias) ++ compatCommands
+  lazy val allBasicCommands = Seq(nop, ignore, help, completionsCommand, multi, ifLast, append, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, reboot, call, early, exit, continuous, history, shell, server, read, alias) ++ compatCommands
 
   def nop = Command.custom(s => success(() => s))
   def ignore = Command.command(FailureWall)(idFun)
@@ -189,6 +191,17 @@ object BasicCommands {
         if (line.trim.isEmpty) newState else newState.clearGlobalLog
       case None => s.setInteractive(false)
     }
+  }
+
+  def server = Command.command(Server, Help.more(Server, ServerDetailed)) { s0 =>
+    val exchange = State.exchange
+    val s1 = exchange.run(s0)
+    exchange.publishStatus(CommandStatus(s0, true), None)
+    val Exec(source, line) = exchange.blockUntilNextExec
+    val newState = s1.copy(onFailure = Some(Server), remainingCommands = line +: Server +: s1.remainingCommands).setInteractive(true)
+    exchange.publishStatus(CommandStatus(newState, false), Some(source))
+    if (line.trim.isEmpty) newState
+    else newState.clearGlobalLog
   }
 
   def read = Command.make(ReadCommand, Help.more(ReadCommand, ReadDetailed))(s => applyEffect(readParser(s))(doRead(s)))

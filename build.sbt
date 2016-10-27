@@ -43,7 +43,7 @@ def commonSettings: Seq[Setting[_]] = Seq[SettingsDefinition](
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
   incOptions := incOptions.value.withNameHashing(true),
-  crossScalaVersions := Seq(scala211, scala210),
+  crossScalaVersions := Seq(scala211),
   bintrayPackage := (bintrayPackage in ThisBuild).value,
   bintrayRepository := (bintrayRepository in ThisBuild).value,
   mimaDefaultSettings,
@@ -176,11 +176,13 @@ lazy val actionsProj = (project in file("main-actions")).
 
 // General command support and core commands not specific to a build system
 lazy val commandProj = (project in file("main-command")).
+  enablePlugins(DatatypePlugin, JsonCodecPlugin).
   settings(
     testedBaseSettings,
     name := "Command",
     libraryDependencies ++= Seq(launcherInterface, compilerInterface,
-      sbtIO, utilLogging, utilCompletion, compilerClasspath)
+      sbtIO, utilLogging, utilCompletion, compilerClasspath, sjsonNewScalaJson),
+    sourceManaged in (Compile, generateDatatypes) := baseDirectory.value / "src" / "main" / "datatype-scala"
   )
 
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
