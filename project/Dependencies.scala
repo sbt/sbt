@@ -11,16 +11,6 @@ object Dependencies {
   lazy val scalaCompiler = Def.setting { "org.scala-lang" % "scala-compiler" % scalaVersion.value }
   lazy val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
 
-  private def scala211Module(name: String, moduleVersion: String) =
-    Def.setting {
-      scalaVersion.value match {
-        case sv if (sv startsWith "2.9.") || (sv startsWith "2.10.") => Nil
-        case _ => ("org.scala-lang.modules" %% name % moduleVersion) :: Nil
-      }
-    }
-
-  lazy val scalaXml = scala211Module("scala-xml", "1.0.5")
-
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.13.1"
   val scalatest = "org.scalatest" %% "scalatest" % "2.2.6"
 
