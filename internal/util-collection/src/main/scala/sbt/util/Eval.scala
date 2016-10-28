@@ -1,4 +1,4 @@
-package sbt.internal.util
+package sbt.util
 
 import scala.annotation.tailrec
 
