@@ -155,7 +155,8 @@ lazy val controlProj = (project in utilPath / "control").
     baseSettings,
     Util.crossBuild,
     name := "Control",
-    crossScalaVersions := Seq(scala210, scala211, scala212)
+    crossScalaVersions := Seq(scala210, scala211)
+    // crossScalaVersions := Seq(scala210, scala211, scala212) // sbt 0.13 is JDK 6, can't do 2.12
   )
 
 lazy val collectionProj = (project in utilPath / "collection").
@@ -192,7 +193,8 @@ lazy val ioProj = (project in utilPath / "io").
     Util.crossBuild,
     name := "IO",
     libraryDependencies += scalaCompiler.value % Test,
-    crossScalaVersions := Seq(scala210, scala211, scala212)
+    crossScalaVersions := Seq(scala210, scala211)
+    // crossScalaVersions := Seq(scala210, scala211, scala212) // sbt 0.13 is JDK 6, can't do 2.12
   )
 
 // Utilities related to reflection, managing Scala versions, and custom class loaders
