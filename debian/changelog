@@ -1,0 +1,21 @@
+sbt (0.13.13)
+
+  * The `new` command, which helps creating new build definitions.
+    This is extensible via `templateResolverInfos` setting.
+    sbt 0.13.13 will ship with Giter8 template resolver out of the box.
+    #2705 by @eed3si9n
+  * Auto plugins can add synthetic subprojects. #2717 by @eed3si9n
+  * The no-longer-documented sbt 0.12 DSL `<<=`, `<+=`, and `<++=`
+    operators and tuple enrichment are now marked deprecated.
+    (These are removed in 1.0.x branch.) @eed3si9n and @dwijnand
+  * The `.value` method is deprecated for input tasks since `.evaluated`
+    is normally what's needed.
+    (Also removed in 1.0.x branch) #2709 by @eed3si9n
+  * sbt 0.13.13 will display deprecation warning for build.sbt.
+    #2784 by @eed3si9n
+  * Renames the early command `--<command>` that was added in 0.13.1 to
+    `early(<command>)`. `--error` will work, but we encourage you to
+    migrate to single hyphen version: `-error`, `-warn`, `-info`, and
+    `-debug`. #2742 by @eed3si9n
+
+ -- Dale Wijnand <dale.wijnand@gmail.com>

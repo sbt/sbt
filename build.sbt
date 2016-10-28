@@ -68,6 +68,7 @@ val root = (project in file(".")).
         (bd / "debian/changelog") -> "/usr/share/doc/sbt/changelog.gz"
       ) withUser "root" withGroup "root" withPerms "0644" gzipped) asDocs()
     },
+    debianChangelog in Debian := Some(file("debian/changelog"))
 
     // RPM SPECIFIC
     name in Rpm := "sbt",
