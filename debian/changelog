@@ -1,4 +1,4 @@
-sbt (0.13.13)
+sbt (0.13.13) stable; urgency=low
 
   * The `new` command, which helps creating new build definitions.
     This is extensible via `templateResolverInfos` setting.
@@ -18,4 +18,4 @@ sbt (0.13.13)
     migrate to single hyphen version: `-error`, `-warn`, `-info`, and
     `-debug`. #2742 by @eed3si9n
 
- -- Dale Wijnand <dale.wijnand@gmail.com>
+ -- Dale Wijnand <dale.wijnand@gmail.com>  Fri, 28 Oct 2016 14:30:00 +0000
