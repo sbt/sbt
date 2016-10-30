@@ -54,7 +54,22 @@ object Print {
     resolution: Resolution,
     printExclusions: Boolean,
     reverse: Boolean
+  ): String =
+    dependencyTree(roots, resolution, printExclusions, reverse, colors = true)
+
+  def dependencyTree(
+    roots: Seq[Dependency],
+    resolution: Resolution,
+    printExclusions: Boolean,
+    reverse: Boolean,
+    colors: Boolean
   ): String = {
+
+    val (red, yellow, reset) =
+      if (colors)
+        (Console.RED, Console.YELLOW, Console.RESET)
+      else
+        ("", "", "")
 
     case class Elem(dep: Dependency, excluded: Boolean) {
 
@@ -65,7 +80,7 @@ object Print {
         if (excluded)
           resolution.reconciledVersions.get(dep.module) match {
             case None =>
-              s"${Console.YELLOW}(excluded)${Console.RESET} ${dep.module}:${dep.version}"
+              s"$yellow(excluded)$reset ${dep.module}:${dep.version}"
             case Some(version) =>
               val versionMsg =
                 if (version == dep.version)
@@ -74,7 +89,7 @@ object Print {
                   s"version $version"
 
                 s"${dep.module}:${dep.version} " +
-                  s"${Console.RED}(excluded, $versionMsg present anyway)${Console.RESET}"
+                  s"$red(excluded, $versionMsg present anyway)$reset"
           }
         else {
           val versionStr =
@@ -83,9 +98,10 @@ object Print {
             else {
               val assumeCompatibleVersions = compatibleVersions(dep.version, reconciledVersion)
 
-              (if (assumeCompatibleVersions) Console.YELLOW else Console.RED) +
+              (if (assumeCompatibleVersions) yellow else red) +
                 s"${dep.version} -> $reconciledVersion" +
-                Console.RESET
+                (if (assumeCompatibleVersions || colors) "" else " (possible incompatibility)") +
+                reset
             }
 
           s"${dep.module}:$versionStr"
@@ -138,16 +154,16 @@ object Print {
       ) {
         lazy val repr: String =
           if (excluding)
-            s"${Console.YELLOW}(excluded by)${Console.RESET} $module:$version"
+            s"$yellow(excluded by)$reset $module:$version"
           else if (wantVersion == gotVersion)
             s"$module:$version"
           else {
             val assumeCompatibleVersions = compatibleVersions(wantVersion, gotVersion)
 
             s"$module:$version " +
-              (if (assumeCompatibleVersions) Console.YELLOW else Console.RED) +
+              (if (assumeCompatibleVersions) yellow else red) +
               s"(wants $dependsOn:$wantVersion, got $gotVersion)" +
-              Console.RESET
+              reset
           }
       }
 
