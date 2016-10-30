@@ -70,8 +70,11 @@ case class SparkSubmit(
     extraJars = rawExtraJars
   )
   val jars =
-    helper.fetch(sources = false, javadoc = false) ++
-      options.extraJars.map(new File(_))
+    helper.fetch(
+      sources = false,
+      javadoc = false,
+      artifactTypes = options.artifactOptions.artifactTypes
+    ) ++ options.extraJars.map(new File(_))
 
   val (scalaVersion, sparkVersion) =
     if (options.sparkVersion.isEmpty)
@@ -170,6 +173,7 @@ case class SparkSubmit(
     sparkVersion,
     options.noDefaultSubmitDependencies,
     options.submitDependencies.flatMap(_.split(",")).filter(_.nonEmpty),
+    options.artifactOptions.artifactTypes,
     options.common
   )
 
