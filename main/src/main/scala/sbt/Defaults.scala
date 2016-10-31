@@ -57,6 +57,7 @@ import xsbti.compile.{
   CompileResult,
   DefinesClass,
   IncOptionsUtil,
+  IncToolOptionsUtil,
   Inputs,
   MiniSetup,
   PerClasspathEntryLookup,
@@ -72,7 +73,6 @@ import sbt.internal.inc.{
   Locate,
   LoggerReporter,
   MixedAnalyzingCompiler,
-  NoopClassFileManager,
   ScalaInstance,
   ClasspathOptionsUtil
 }
@@ -855,7 +855,7 @@ object Defaults extends BuildCommon {
           runDoc(srcs, cp, out, options, maxErrors.value, s.log)
         case (_, true) =>
           val javadoc = sbt.inc.Doc.cachedJavadoc(label, s.cacheDirectory / "java", cs.javaTools)
-          javadoc.run(srcs.toList, cp, out, javacOptions.value.toList, new NoopClassFileManager(), s.log, reporter)
+          javadoc.run(srcs.toList, cp, out, javacOptions.value.toList, IncToolOptionsUtil.defaultIncToolOptions(), s.log, reporter)
         case _ => () // do nothing
       }
       out
