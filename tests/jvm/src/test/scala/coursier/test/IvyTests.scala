@@ -1,6 +1,6 @@
 package coursier.test
 
-import coursier.Module
+import coursier.{ Attributes, Dependency, Module }
 import coursier.ivy.IvyRepository
 
 import utest._
@@ -46,8 +46,54 @@ object IvyTests extends TestSuite {
         extraRepo = Some(sbtRepo)
       )
 
-      * - CentralTests.withArtifact(mod, ver, extraRepo = Some(sbtRepo)) { artifact =>
+      * - CentralTests.withArtifact(mod, ver, "jar", extraRepo = Some(sbtRepo)) { artifact =>
         assert(artifact.url == expectedArtifactUrl)
+      }
+    }
+
+    'testArtifacts - {
+
+      val dep = Dependency(
+        Module("com.example", "a_2.11"),
+        "0.1.0-SNAPSHOT",
+        transitive = false,
+        attributes = Attributes()
+      )
+
+      val repoBase = getClass.getResource("/test-repo/http/ivy.abc.com").toString.stripSuffix("/") + "/"
+
+      val repo = IvyRepository.fromPattern(
+        repoBase +: coursier.ivy.Pattern.default,
+        dropInfoAttributes = true
+      )
+
+      val mainJarUrl = repoBase + "com.example/a_2.11/0.1.0-SNAPSHOT/jars/a_2.11.jar"
+      val testJarUrl = repoBase + "com.example/a_2.11/0.1.0-SNAPSHOT/jars/a_2.11-tests.jar"
+
+      * - CentralTests.withArtifacts(
+        dep = dep,
+        artifactType = "jar",
+        extraRepo = Some(repo)
+      ) {
+        case Seq(artifact) =>
+          assert(artifact.url == mainJarUrl)
+        case other =>
+          throw new Exception(s"Unexpected number of artifacts\n${other.mkString("\n")}")
+      }
+
+      * - CentralTests.withArtifacts(
+        dep = dep.copy(configuration = "test"),
+        artifactType = "jar",
+        extraRepo = Some(repo)
+      ) {
+        case Seq(artifact1, artifact2) =>
+          val urls = Set(
+            artifact1.url,
+            artifact2.url
+          )
+          assert(urls == Set(mainJarUrl, testJarUrl))
+        case other =>
+          throw new Exception(s"Unexpected number of artifacts\n${other.mkString("\n")}")
       }
     }
   }

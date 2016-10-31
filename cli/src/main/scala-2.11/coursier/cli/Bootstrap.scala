@@ -12,6 +12,8 @@ import coursier.cli.util.Zip
 
 case class Bootstrap(
   @Recurse
+    artifactOptions: ArtifactOptions,
+  @Recurse
     options: BootstrapOptions
 ) extends App {
 
@@ -78,6 +80,7 @@ case class Bootstrap(
         def subFiles0 = helper.fetch(
           sources = false,
           javadoc = false,
+          artifactTypes = artifactOptions.artifactTypes,
           subset = isolatedDeps.getOrElse(target, Seq.empty).toSet
         )
 
@@ -96,11 +99,19 @@ case class Bootstrap(
     if (options.standalone)
       (
         Seq.empty[String],
-        helper.fetch(sources = false, javadoc = false)
+        helper.fetch(
+          sources = false,
+          javadoc = false,
+          artifactTypes = artifactOptions.artifactTypes
+        )
       )
     else
       (
-        helper.artifacts(sources = false, javadoc = false).map(_.url),
+        helper.artifacts(
+          sources = false,
+          javadoc = false,
+          artifactTypes = artifactOptions.artifactTypes
+        ).map(_.url),
         Seq.empty[File]
       )
 

@@ -11,6 +11,7 @@ object Submit {
     sparkVersion: String,
     noDefault: Boolean,
     extraDependencies: Seq[String],
+    artifactTypes: Set[String],
     common: CommonOptions
   ): Seq[File] = {
 
@@ -43,7 +44,11 @@ object Submit {
       (if (noDefault) Nil else defaultDependencies) ++ extraDependencies
     )
 
-    helper.fetch(sources = false, javadoc = false) ++ extraCp
+    helper.fetch(
+      sources = false,
+      javadoc = false,
+      artifactTypes = artifactTypes
+    ) ++ extraCp
   }
 
   def mainClassName = "org.apache.spark.deploy.SparkSubmit"

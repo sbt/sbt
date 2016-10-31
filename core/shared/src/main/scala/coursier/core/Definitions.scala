@@ -197,7 +197,10 @@ final case class Artifact(
   attributes: Attributes,
   changing: Boolean,
   authentication: Option[Authentication]
-)
+) {
+  def `type`: String = attributes.`type`
+  def classifier: String = attributes.classifier
+}
 
 object Artifact {
   trait Source {

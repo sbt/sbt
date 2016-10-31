@@ -100,14 +100,12 @@ object CentralTests extends TestSuite {
   def withArtifact[T](
     module: Module,
     version: String,
+    artifactType: String,
     extraRepo: Option[Repository] = None
   )(
     f: Artifact => T
-  ): Future[T] = async {
-    val dep = Dependency(module, version, transitive = false, attributes = Attributes())
-    val res = await(resolve(Set(dep), extraRepo = extraRepo))
-
-    res.artifacts match {
+  ): Future[T] =
+    withArtifacts(module, version, artifactType, extraRepo) {
       case Seq(artifact) =>
         f(artifact)
       case other =>
@@ -116,10 +114,41 @@ object CentralTests extends TestSuite {
             "Artifacts:\n" + other.map("  " + _).mkString("\n")
         )
     }
+
+  def withArtifacts[T](
+    module: Module,
+    version: String,
+    artifactType: String,
+    extraRepo: Option[Repository] = None
+  )(
+    f: Seq[Artifact] => T
+  ): Future[T] = {
+    val dep = Dependency(module, version, transitive = false, attributes = Attributes())
+    withArtifacts(dep, artifactType, extraRepo)(f)
   }
 
-  def ensureArtifactHasExtension(module: Module, version: String, extension: String): Future[Unit] =
-    withArtifact(module, version) { artifact =>
+  def withArtifacts[T](
+    dep: Dependency,
+    artifactType: String,
+    extraRepo: Option[Repository]
+  )(
+    f: Seq[Artifact] => T
+  ): Future[T] = async {
+    val res = await(resolve(Set(dep), extraRepo = extraRepo))
+
+    assert(res.errors.isEmpty)
+    assert(res.conflicts.isEmpty)
+    assert(res.isDone)
+
+    val artifacts = res.dependencyArtifacts.map(_._2).filter { a =>
+      a.`type` == artifactType
+    }
+
+    f(artifacts)
+  }
+
+  def ensureHasArtifactWithExtension(module: Module, version: String, artifactType: String, extension: String): Future[Unit] =
+    withArtifact(module, version, artifactType) { artifact =>
       assert(artifact.url.endsWith("." + extension))
     }
 
@@ -275,7 +304,7 @@ object CentralTests extends TestSuite {
 
       * - resolutionCheck(mod, version)
 
-      * - withArtifact(mod, version) { artifact =>
+      * - withArtifact(mod, version, "jar") { artifact =>
         assert(artifact.url == expectedArtifactUrl)
       }
     }
@@ -301,27 +330,30 @@ object CentralTests extends TestSuite {
     'packaging - {
       'aar - {
         // random aar-based module found on Central
-        ensureArtifactHasExtension(
+        ensureHasArtifactWithExtension(
           Module("com.yandex.android", "speechkit"),
           "2.5.0",
+          "aar",
           "aar"
         )
       }
 
       'bundle - {
         // has packaging bundle - ensuring coursier gives its artifact the .jar extension
-        ensureArtifactHasExtension(
+        ensureHasArtifactWithExtension(
           Module("com.google.guava", "guava"),
           "17.0",
+          "bundle",
           "jar"
         )
       }
 
       'mavenPlugin - {
         // has packaging maven-plugin - ensuring coursier gives its artifact the .jar extension
-        ensureArtifactHasExtension(
+        ensureHasArtifactWithExtension(
           Module("org.bytedeco", "javacpp"),
           "1.1",
+          "maven-plugin",
           "jar"
         )
       }

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ivy-module version="2.0" xmlns:e="http://ant.apache.org/ivy/extra">
+  <info organisation="com.example" module="a_2.11" revision="0.1.0-SNAPSHOT" status="integration" publication="20161030134939">
+    <description/>
+  </info>
+  <configurations>
+    
+    <conf name="pom" visibility="public" description=""/>
+    <conf extends="runtime" name="test" visibility="public" description=""/>
+    <conf name="provided" visibility="public" description=""/>
+    
+    <conf name="docs" visibility="public" description=""/>
+    <conf name="optional" visibility="public" description=""/>
+    <conf name="compile" visibility="public" description=""/>
+    
+    
+    <conf name="sources" visibility="public" description=""/>
+    <conf extends="compile" name="runtime" visibility="public" description=""/>
+    
+  </configurations>
+  <publications>
+    <artifact name="a_2.11" type="jar" ext="jar" conf="compile"/>
+    <artifact name="a_2.11" type="pom" ext="pom" conf="pom"/>
+    <artifact e:classifier="javadoc" name="a_2.11" type="doc" ext="jar" conf="compile">
+</artifact>
+    <artifact e:classifier="sources" name="a_2.11" type="src" ext="jar" conf="compile">
+</artifact>
+    <artifact e:classifier="tests-javadoc" name="a_2.11" type="doc" ext="jar" conf="test">
+</artifact>
+    <artifact e:classifier="tests-sources" name="a_2.11" type="src" ext="jar" conf="test">
+</artifact>
+    <artifact e:classifier="tests" name="a_2.11" type="jar" ext="jar" conf="test"/>
+  </publications>
+  <dependencies>
+    
+    
+    
+    
+    <dependency org="org.scala-lang" name="scala-library" rev="2.11.8" conf="compile->default(compile)">
+</dependency>
+  </dependencies>
+</ivy-module>

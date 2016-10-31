@@ -1,8 +1,67 @@
 package coursier
 
-import java.net.URL
+import java.io.{ File, FileNotFoundException, IOException }
+import java.net.{ HttpURLConnection, URL, URLConnection }
 
 import scalaz.{ EitherT, Monad }
+
+object FallbackDependenciesRepository {
+
+  def exists(url: URL): Boolean = {
+
+    // Sometimes HEAD attempts fail even though standard GETs are fine.
+    // E.g. https://github.com/NetLogo/NetLogo/releases/download/5.3.1/NetLogo.jar
+    // returning 403s. Hence the second attempt below.
+
+    val firstAttemptOpt = url.getProtocol match {
+      case "file" =>
+        Some(new File(url.getPath).exists()) // FIXME Escaping / de-escaping needed here?
+
+      case "http" | "https" =>
+
+        // HEAD request attempt, adapted from http://stackoverflow.com/questions/22541629/android-how-can-i-make-an-http-head-request/22545275#22545275
+
+        var conn: HttpURLConnection = null
+        try {
+          conn = url
+            .openConnection()
+            .asInstanceOf[HttpURLConnection]
+          conn.setRequestMethod("HEAD")
+          conn.getInputStream.close()
+          Some(true)
+        } catch {
+          case _: FileNotFoundException =>
+            Some(false)
+          case _: IOException => // error other than not found
+            None
+        } finally {
+          if (conn != null)
+            conn.disconnect()
+        }
+      case _ =>
+        None
+    }
+
+    firstAttemptOpt.getOrElse {
+      var conn: URLConnection = null
+      try {
+        conn = url.openConnection()
+        // NOT setting request type to HEAD here.
+        conn.getInputStream.close()
+        true
+      } catch {
+        case _: IOException =>
+          false
+      } finally {
+        conn match {
+          case conn0: HttpURLConnection => conn0.disconnect()
+          case _ =>
+        }
+      }
+    }
+  }
+
+}
 
 case class FallbackDependenciesRepository(
   fallbacks: Map[(Module, String), (URL, Boolean)]
@@ -44,12 +103,10 @@ case class FallbackDependenciesRepository(
         else {
           val (dirUrlStr, fileName) = urlStr.splitAt(idx + 1)
 
-          fetch(Artifact(dirUrlStr, Map.empty, Map.empty, Attributes("", ""), changing = true, None)).flatMap { listing =>
-
-            val files = coursier.core.compatibility.listWebPageFiles(dirUrlStr, listing)
-
-            if (files.contains(fileName)) {
-
+          // Not sure F.point will make that run like Task.apply would have
+          // if F = Task
+          EitherT.right(F.point(FallbackDependenciesRepository.exists(url))).flatMap { exists =>
+            if (exists) {
               val proj = Project(
                 module,
                 version,

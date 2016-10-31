@@ -12,9 +12,13 @@ case class Fetch(
     options: FetchOptions
 ) extends App {
 
-  val helper = new Helper(options.common, remainingArgs, ignoreErrors = options.force)
+  val helper = new Helper(options.common, remainingArgs, ignoreErrors = options.artifactOptions.force)
 
-  val files0 = helper.fetch(sources = options.sources, javadoc = options.javadoc)
+  val files0 = helper.fetch(
+    sources = options.sources,
+    javadoc = options.javadoc,
+    artifactTypes = options.artifactOptions.artifactTypes
+  )
 
   val out =
     if (options.classpath)

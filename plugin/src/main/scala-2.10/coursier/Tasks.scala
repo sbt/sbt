@@ -971,7 +971,13 @@ object Tasks {
     // use sbt logging?
     println(
       projectName + "\n" +
-      Print.dependencyTree(dependencies0, subRes, printExclusions = true, inverse)
+      Print.dependencyTree(
+        dependencies0,
+        subRes,
+        printExclusions = true,
+        inverse,
+        colors = !sys.props.get("sbt.log.noformat").toSeq.contains("true")
+      )
     )
   }
 

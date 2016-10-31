@@ -492,6 +492,7 @@ class Helper(
   def artifacts(
     sources: Boolean,
     javadoc: Boolean,
+    artifactTypes: Set[String],
     subset: Set[Dependency] = null
   ): Seq[Artifact] = {
 
@@ -514,25 +515,34 @@ class Helper(
 
     val res0 = Option(subset).fold(res)(res.subset)
 
-    if (classifier0.nonEmpty || sources || javadoc) {
-      var classifiers = classifier0
-      if (sources)
-        classifiers = classifiers :+ "sources"
-      if (javadoc)
-        classifiers = classifiers :+ "javadoc"
+    val artifacts0 =
+      if (classifier0.nonEmpty || sources || javadoc) {
+        var classifiers = classifier0
+        if (sources)
+          classifiers = classifiers :+ "sources"
+        if (javadoc)
+          classifiers = classifiers :+ "javadoc"
 
-      res0.classifiersArtifacts(classifiers.distinct)
-    } else
-      res0.artifacts
+        res0.dependencyClassifiersArtifacts(classifiers.distinct).map(_._2)
+      } else
+        res0.dependencyArtifacts.map(_._2)
+
+    if (artifactTypes("*"))
+      artifacts0
+    else
+      artifacts0.filter { artifact =>
+        artifactTypes(artifact.`type`)
+      }
   }
 
   def fetch(
     sources: Boolean,
     javadoc: Boolean,
+    artifactTypes: Set[String],
     subset: Set[Dependency] = null
   ): Seq[File] = {
 
-    val artifacts0 = artifacts(sources, javadoc, subset)
+    val artifacts0 = artifacts(sources, javadoc, artifactTypes, subset)
 
     val logger =
       if (verbosityLevel >= 0)
@@ -588,7 +598,15 @@ class Helper(
 
   lazy val (parentLoader, filteredFiles) = {
 
-    val files0 = fetch(sources = false, javadoc = false)
+    // FIXME That shouldn't be hard-coded this way...
+    // This whole class ought to be rewritten more cleanly.
+    val artifactTypes = Set("jar")
+
+    val files0 = fetch(
+      sources = false,
+      javadoc = false,
+      artifactTypes = artifactTypes
+    )
 
     if (isolated.isolated.isEmpty)
       (baseLoader, files0)
@@ -603,6 +621,7 @@ class Helper(
           val isolatedFiles = fetch(
             sources = false,
             javadoc = false,
+            artifactTypes = artifactTypes,
             subset = isolatedDeps.getOrElse(target, Seq.empty).toSet
           )
 

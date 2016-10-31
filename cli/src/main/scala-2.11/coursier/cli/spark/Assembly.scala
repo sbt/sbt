@@ -140,14 +140,15 @@ object Assembly {
     sparkVersion: String,
     noDefault: Boolean,
     extraDependencies: Seq[String],
-    options: CommonOptions
+    options: CommonOptions,
+    artifactTypes: Set[String] = Set("jar")
   ): Either[String, (File, Seq[File])] = {
 
     val base = if (noDefault) Seq() else sparkAssemblyDependencies(scalaVersion, sparkVersion)
     val helper = new Helper(options, extraDependencies ++ base)
 
-    val artifacts = helper.artifacts(sources = false, javadoc = false)
-    val jars = helper.fetch(sources = false, javadoc = false)
+    val artifacts = helper.artifacts(sources = false, javadoc = false, artifactTypes = artifactTypes)
+    val jars = helper.fetch(sources = false, javadoc = false, artifactTypes = artifactTypes)
 
     val checksums = artifacts.map { a =>
       val f = a.checksumUrls.get("SHA-1") match {

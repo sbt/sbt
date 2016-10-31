@@ -168,6 +168,33 @@ case class IsolatedLoaderOptions(
 
 }
 
+object ArtifactOptions {
+  def defaultArtifactTypes = Set("jar", "bundle")
+}
+
+case class ArtifactOptions(
+  @Help("Artifact types that should be retained (e.g. jar, src, doc, etc.) - defaults to jar,bundle")
+  @Value("type1,type2,...")
+  @Short("A")
+    artifactType: List[String],
+  @Help("Fetch artifacts even if the resolution is errored")
+    force: Boolean
+) {
+  lazy val artifactTypes = {
+    val types0 = artifactType
+      .flatMap(_.split(','))
+      .filter(_.nonEmpty)
+      .toSet
+
+    if (types0.isEmpty)
+      ArtifactOptions.defaultArtifactTypes
+    else if (types0("*"))
+      Set("*")
+    else
+      types0
+  }
+}
+
 case class FetchOptions(
   @Help("Fetch source artifacts")
   @Short("S")
@@ -178,8 +205,8 @@ case class FetchOptions(
   @Help("Print java -cp compatible output")
   @Short("p")
     classpath: Boolean,
-  @Help("Fetch artifacts even if the resolution is errored")
-    force: Boolean,
+  @Recurse
+    artifactOptions: ArtifactOptions,
   @Recurse
     common: CommonOptions
 )
@@ -245,6 +272,8 @@ case class SparkSubmitOptions(
   @Help("Maximum idle time of spark-submit (time with no output). Exit early if no output from spark-submit for more than this duration. Set to 0 for unlimited. (Default: 0)")
   @Value("seconds")
     maxIdleTime: Int,
+  @Recurse
+    artifactOptions: ArtifactOptions,
   @Recurse
     common: CommonOptions
 )

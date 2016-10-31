@@ -72,10 +72,9 @@ case class IvyRepository(
               case None =>
                 project.publications.collect {
                   case (conf, p)
-                    if (conf == "*" ||
-                        conf == dependency.configuration ||
-                        project.allConfigurations.getOrElse(dependency.configuration, Set.empty).contains(conf)
-                       ) && p.classifier.isEmpty =>
+                    if conf == "*" ||
+                       conf == dependency.configuration ||
+                       project.allConfigurations.getOrElse(dependency.configuration, Set.empty).contains(conf) =>
                     p
                 }
               case Some(classifiers) =>
