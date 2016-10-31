@@ -37,6 +37,7 @@ object Dependencies {
   lazy val compilerClasspath = "org.scala-sbt" %% "zinc-classpath" % zincVersion
   lazy val compilerApiInfo = "org.scala-sbt" %% "zinc-apiinfo" % zincVersion
   lazy val compilerIvyIntegration = "org.scala-sbt" %% "zinc-ivy-integration" % zincVersion
+  lazy val sjsonNewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % "0.4.2"
 
   lazy val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.11.4"
   lazy val specs2 = "org.specs2" %% "specs2" % "2.3.11"
