@@ -107,7 +107,7 @@ lazy val commonSettings = scalaVersionAgnosticCommonSettings ++ Seq(
   }
 )
 
-val scalazVersion = "7.2.6"
+val scalazVersion = "7.2.7"
 
 lazy val core = crossProject
   .settings(commonSettings: _*)
@@ -259,7 +259,7 @@ lazy val tests = crossProject
         if (scalaBinaryVersion.value == "2.10")
           "0.9.5"
         else
-          "0.9.6-RC6"
+          "0.9.6"
 
         "org.scala-lang.modules" %% "scala-async" % asyncVersion % "provided"
     },
