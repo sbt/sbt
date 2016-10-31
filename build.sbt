@@ -7,7 +7,7 @@ lazy val sbtVersionToRelease = sys.props.getOrElse("sbt.build.version", sys.env.
       }))
 lazy val isExperimental = (sbtVersionToRelease contains "RC") || (sbtVersionToRelease contains "M")
 val sbtLaunchJarUrl = SettingKey[String]("sbt-launch-jar-url")
-val sbtLaunchJarLocation = SettingKey[File]("sbt-launch-jar-location")  
+val sbtLaunchJarLocation = SettingKey[File]("sbt-launch-jar-location")
 val sbtLaunchJar = TaskKey[File]("sbt-launch-jar", "Resolves SBT launch jar")
 val moduleID = (organization) apply { (o) => ModuleID(o, "sbt", sbtVersionToRelease) }
 
@@ -27,6 +27,7 @@ val root = (project in file(".")).
   settings(
     organization := "org.scala-sbt",
     name := "sbt-launcher-packaging",
+    packageName := "sbt",
     version := "0.1.0",
     crossTarget <<= target,
     deploymentSettings,
@@ -59,7 +60,6 @@ val root = (project in file(".")).
       } yield link
     },
     // DEBIAN SPECIFIC
-    name in Debian := "sbt",
     version in Debian := sbtVersionToRelease,
     debianPackageDependencies in Debian ++= Seq("java6-runtime-headless", "bash (>= 2.05a-11)"),
     debianPackageRecommends in Debian += "git",
@@ -71,7 +71,6 @@ val root = (project in file(".")).
     debianChangelog in Debian := Some(file("debian/changelog")),
 
     // RPM SPECIFIC
-    name in Rpm := "sbt",
     version in Rpm := {
       val stable = (sbtVersionToRelease split "[^\\d]" filterNot (_.isEmpty) mkString ".")
       if (isExperimental) ((sbtVersionToRelease split "[^\\d]" filterNot (_.isEmpty)).toList match {
@@ -87,7 +86,6 @@ val root = (project in file(".")).
     rpmProvides := Seq("sbt"),
 
     // WINDOWS SPECIFIC
-    name in Windows := "sbt",
     windowsBuildId := 1,
     version in Windows <<= (windowsBuildId) apply { (bid) =>
       val sv = sbtVersionToRelease
@@ -105,7 +103,7 @@ val root = (project in file(".")).
     javacOptions := Seq("-source", "1.5", "-target", "1.5"),
 
     // Universal ZIP download install.
-    name in Universal := "sbt",
+    packageName in Universal := packageName.value, // needs to be set explicitly due to a bug in native-packager
     version in Universal := sbtVersionToRelease,
     mappings in Universal <+= sbtLaunchJar map { _ -> "bin/sbt-launch.jar" },
 
@@ -171,4 +169,3 @@ def publishToSettings =
 
 def bintrayRelease(repo: BintrayRepo, pkg: String, version: String, log: Logger): Unit =
   repo.release(pkg, version, log)
-
