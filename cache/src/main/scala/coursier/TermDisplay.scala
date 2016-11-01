@@ -103,8 +103,9 @@ object TermDisplay {
       if (bytes < unit)
         bytes + " B"
       else {
-        val exp = (math.log(bytes) / math.log(unit)).toInt
-        val pre = (if (si) "kMGTPE" else "KMGTPE").charAt(exp - 1) + (if (si) "" else "i")
+        val prefixes = if (si) "kMGTPE" else "KMGTPE"
+        val exp = (math.log(bytes) / math.log(unit)).toInt min prefixes.length
+        val pre = prefixes.charAt(exp - 1) + (if (si) "" else "i")
         f"${bytes / math.pow(unit, exp)}%.1f ${pre}B"
       }
     }
