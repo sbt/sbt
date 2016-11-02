@@ -98,7 +98,7 @@ lazy val scalaVersionAgnosticCommonSettings = Seq(
 
 lazy val commonSettings = scalaVersionAgnosticCommonSettings ++ Seq(
   scalaVersion := "2.11.8",
-  crossScalaVersions := Seq("2.12.0-RC2", "2.11.8", "2.10.6"),
+  crossScalaVersions := Seq("2.12.0", "2.11.8", "2.10.6"),
   libraryDependencies ++= {
     if (scalaBinaryVersion.value == "2.10")
       Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full))
@@ -107,7 +107,7 @@ lazy val commonSettings = scalaVersionAgnosticCommonSettings ++ Seq(
   }
 )
 
-val scalazVersion = "7.2.6"
+val scalazVersion = "7.2.7"
 
 lazy val core = crossProject
   .settings(commonSettings: _*)
@@ -259,7 +259,7 @@ lazy val tests = crossProject
         if (scalaBinaryVersion.value == "2.10")
           "0.9.5"
         else
-          "0.9.6-RC6"
+          "0.9.6"
 
         "org.scala-lang.modules" %% "scala-async" % asyncVersion % "provided"
     },
@@ -365,7 +365,7 @@ lazy val bootstrap = project
 lazy val cli = project
   .dependsOn(coreJvm, cache)
   .settings(commonSettings)
-  .settings(noPublishForScalaVersionSettings("2.10", "2.12.0-RC2"))
+  .settings(noPublishForScalaVersionSettings("2.10", "2.12"))
   .settings(packAutoSettings)
   .settings(proguardSettings)
   .settings(
@@ -539,7 +539,7 @@ lazy val doc = project
 lazy val plugin = project
   .dependsOn(coreJvm, cache)
   .settings(scalaVersionAgnosticCommonSettings)
-  .settings(noPublishForScalaVersionSettings("2.11", "2.12.0-RC2"))
+  .settings(noPublishForScalaVersionSettings("2.11", "2.12"))
   .settings(
     name := "sbt-coursier",
     sbtPlugin := (scalaBinaryVersion.value == "2.10"),
@@ -567,7 +567,7 @@ val http4sVersion = "0.8.6"
 lazy val `http-server` = project
   .settings(commonSettings)
   .settings(packAutoSettings)
-  .settings(noPublishForScalaVersionSettings("2.10", "2.12.0-RC2"))
+  .settings(noPublishForScalaVersionSettings("2.10", "2.12"))
   .settings(
     name := "http-server-java7",
     libraryDependencies ++= {
