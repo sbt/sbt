@@ -1,6 +1,6 @@
 package sbt
 
-package object librarymanagement {
+package object librarymanagement extends ResolversSyntax {
   type ExclusionRule = InclExclRule
   val ExclusionRule = InclExclRule
 

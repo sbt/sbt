@@ -10,22 +10,32 @@ import sbt.librarymanagement._
 import ivyint.SbtChainResolver
 import Configurations._
 
+import sbt.internal.util.FileBasedStore
+
+import sjsonnew.IsoString
+import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
+
+import scala.json.ast.unsafe.JValue
+
 trait BaseIvySpecification extends UnitSpec {
   def currentBase: File = new File(".")
   def currentTarget: File = currentBase / "target" / "ivyhome"
   def currentManaged: File = currentBase / "target" / "lib_managed"
   def currentDependency: File = currentBase / "target" / "dependency"
-  def defaultModuleId: ModuleID = ModuleID("com.example", "foo", "0.1.0", Some("compile"))
+  def defaultModuleId: ModuleID = ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile"))
+
+  implicit val isoString: IsoString[JValue] = IsoString.iso(CompactPrinter.apply, FixedParser.parseUnsafe)
+  val fileToStore = (f: File) => new FileBasedStore(f, Converter)
   lazy val log = ConsoleLogger()
 
-  def configurations = Seq(Compile, Test, Runtime)
-  def module(moduleId: ModuleID, deps: Seq[ModuleID], scalaFullVersion: Option[String],
+  def configurations = Vector(Compile, Test, Runtime)
+  def module(moduleId: ModuleID, deps: Vector[ModuleID], scalaFullVersion: Option[String],
     uo: UpdateOptions = UpdateOptions(), overrideScalaVersion: Boolean = true): IvySbt#Module = {
     val ivyScala = scalaFullVersion map { fv =>
       new IvyScala(
         scalaFullVersion = fv,
         scalaBinaryVersion = CrossVersionUtil.binaryScalaVersion(fv),
-        configurations = Nil,
+        configurations = Vector.empty,
         checkExplicit = true,
         filterImplicit = false,
         overrideScalaVersion = overrideScalaVersion
@@ -33,32 +43,32 @@ trait BaseIvySpecification extends UnitSpec {
     }
 
     val moduleSetting: ModuleSettings = InlineConfiguration(
+      false,
+      ivyScala,
       module = moduleId,
       moduleInfo = ModuleInfo("foo"),
-      dependencies = deps,
-      configurations = configurations,
-      ivyScala = ivyScala
-    )
-    val ivySbt = new IvySbt(mkIvyConfiguration(uo))
+      dependencies = deps
+    ).withConfigurations(configurations)
+    val ivySbt = new IvySbt(mkIvyConfiguration(uo), fileToStore)
     new ivySbt.Module(moduleSetting)
   }
 
-  def resolvers: Seq[Resolver] = Seq(DefaultMavenRepository)
+  def resolvers: Vector[Resolver] = Vector(DefaultMavenRepository)
 
   def chainResolver = ChainedResolver("sbt-chain", resolvers)
 
   def mkIvyConfiguration(uo: UpdateOptions): IvyConfiguration = {
     val paths = new IvyPaths(currentBase, Some(currentTarget))
-    val other = Nil
-    val moduleConfs = Seq(ModuleConfiguration("*", chainResolver))
+    val other = Vector.empty
+    val moduleConfs = Vector(ModuleConfiguration("*", chainResolver))
     val off = false
-    val check = Nil
+    val check = Vector.empty
     val resCacheDir = currentTarget / "resolution-cache"
     new InlineIvyConfiguration(paths, resolvers, other, moduleConfs, off, None, check, Some(resCacheDir), uo, log)
   }
 
   def makeUpdateConfiguration: UpdateConfiguration = {
-    val retrieveConfig = new RetrieveConfiguration(currentManaged, Resolver.defaultRetrievePattern, false)
+    val retrieveConfig = new RetrieveConfiguration(currentManaged, Resolver.defaultRetrievePattern).withSync(false)
     new UpdateConfiguration(Some(retrieveConfig), false, UpdateLogging.Full, ArtifactTypeFilter.forbid(Set("src", "doc")))
   }
 
@@ -84,7 +94,7 @@ trait BaseIvySpecification extends UnitSpec {
       ivyFile = None,
       resolverName = resolver.name,
       artifacts = artifacts,
-      checksums = Seq(),
+      checksums = Vector.empty,
       logging = UpdateLogging.Full,
       overwrite = true
     )

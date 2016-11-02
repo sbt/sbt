@@ -24,6 +24,7 @@ import sbt.io.{ DirectoryFilter, Hash, IO }
 import sbt.util.Logger
 import sbt.librarymanagement._
 import sbt.internal.librarymanagement.syntax._
+import sbt.internal.util.CacheStore
 
 private[sbt] object CachedResolutionResolveCache {
   def createID(organization: String, name: String, revision: String) =
@@ -38,8 +39,9 @@ private[sbt] object CachedResolutionResolveCache {
   lazy val yyyymmdd: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd")
 }
 
-private[sbt] class CachedResolutionResolveCache() {
+private[sbt] class CachedResolutionResolveCache(fileToStore: File => CacheStore) {
   import CachedResolutionResolveCache._
+  val jsonUtil = new JsonUtil(fileToStore)
   val updateReportCache: concurrent.Map[ModuleRevisionId, Either[ResolveException, UpdateReport]] = concurrent.TrieMap()
   // Used for subproject
   val projectReportCache: concurrent.Map[(ModuleRevisionId, LogicalClock), Either[ResolveException, UpdateReport]] = concurrent.TrieMap()
@@ -164,7 +166,7 @@ private[sbt] class CachedResolutionResolveCache() {
         else None) match {
           case Some(path) =>
             log.debug(s"parsing ${path.getAbsolutePath.toString}")
-            val ur = JsonUtil.parseUpdateReport(md, path, cachedDescriptor, log)
+            val ur = jsonUtil.parseUpdateReport(md, path, cachedDescriptor, log)
             if (ur.allFiles forall { _.exists }) {
               updateReportCache(md.getModuleRevisionId) = Right(ur)
               Some(Right(ur))
@@ -198,7 +200,7 @@ private[sbt] class CachedResolutionResolveCache() {
               if (changing) {
                 cleanDynamicGraph()
               }
-              JsonUtil.writeUpdateReport(ur, gp)
+              jsonUtil.writeUpdateReport(ur, gp)
               // limit the update cache size
               if (updateReportCache.size > maxUpdateReportCacheSize) {
                 updateReportCache.remove(updateReportCache.head._1)
@@ -221,7 +223,7 @@ private[sbt] class CachedResolutionResolveCache() {
     {
       def reconstructReports(surviving: Vector[ModuleID], evicted: Vector[ModuleID], mgr: String): (Vector[ModuleReport], Vector[ModuleReport]) = {
         val moduleIdMap = Map(conflicts map { x => x.module -> x }: _*)
-        (surviving map moduleIdMap, evicted map moduleIdMap map { _.copy(evicted = true, evictedReason = Some(mgr.toString)) })
+        (surviving map moduleIdMap, evicted map moduleIdMap map { _.withEvicted(true).withEvictedReason(Some(mgr.toString)) })
       }
       (conflictCache get ((cf0, cf1))) match {
         case Some((surviving, evicted, mgr)) => reconstructReports(surviving, evicted, mgr)
@@ -256,6 +258,9 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
   private[sbt] def projectResolver: Option[ProjectResolver]
   private[sbt] def makeInstance: Ivy
   private[sbt] val ignoreTransitiveForce: Boolean = true
+
+  private[sbt] val fileToStore: File => CacheStore
+  private val jsonUtil = new JsonUtil(fileToStore)
 
   def withIvy[A](log: Logger)(f: Ivy => A): A =
     withIvy(new IvyLoggerInterface(log))(f)
@@ -428,7 +433,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
           if (mr.evicted || mr.problem.nonEmpty) None
           else
             // https://github.com/sbt/sbt/issues/1763
-            Some(mr.copy(callers = JsonUtil.filterOutArtificialCallers(mr.callers)))
+            Some(mr.withCallers(jsonUtil.filterOutArtificialCallers(mr.callers)))
         } match {
           case Vector() => None
           case ms       => Some(OrganizationArtifactReport(report0.organization, report0.name, ms))
@@ -504,7 +509,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
                         if (callers.size == callers0.size) mr
                         else {
                           log.debug(s":: $rootModuleConf: removing caller $moduleWithMostCallers -> $next for sorting")
-                          mr.copy(callers = callers)
+                          mr.withCallers(callers)
                         }
                       }
                       OrganizationArtifactReport(oar.organization, oar.name, mrs)
@@ -591,18 +596,18 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
    * Merges ModuleReports, which represents orgnization, name, and version.
    * Returns a touple of (surviving modules ++ non-conflicting modules, newly evicted modules).
    */
-  def mergeModuleReports(rootModuleConf: String, modules: Seq[ModuleReport], os: Vector[IvyOverride], log: Logger): (Vector[ModuleReport], Vector[ModuleReport]) =
+  def mergeModuleReports(rootModuleConf: String, modules: Vector[ModuleReport], os: Vector[IvyOverride], log: Logger): (Vector[ModuleReport], Vector[ModuleReport]) =
     {
       if (modules.nonEmpty) {
         log.debug(s":: merging module reports for $rootModuleConf: ${modules.head.module.organization}:${modules.head.module.name}")
       }
-      def mergeModuleReports(org: String, name: String, version: String, xs: Seq[ModuleReport]): ModuleReport = {
+      def mergeModuleReports(org: String, name: String, version: String, xs: Vector[ModuleReport]): ModuleReport = {
         val completelyEvicted = xs forall { _.evicted }
         val allCallers = xs flatMap { _.callers }
         // Caller info is often repeated across the subprojects. We only need ModuleID info for later, so xs.head is ok.
-        val distinctByModuleId = allCallers.groupBy({ _.caller }).toList map { case (k, xs) => xs.head }
+        val distinctByModuleId = allCallers.groupBy({ _.caller }).toVector map { case (k, xs) => xs.head }
         val allArtifacts = (xs flatMap { _.artifacts }).distinct
-        xs.head.copy(artifacts = allArtifacts, evicted = completelyEvicted, callers = distinctByModuleId)
+        xs.head.withArtifacts(allArtifacts).withEvicted(completelyEvicted).withCallers(distinctByModuleId)
       }
       val merged = (modules groupBy { m => (m.module.organization, m.module.name, m.module.revision) }).toSeq.toVector flatMap {
         case ((org, name, version), xs) =>
@@ -637,7 +642,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
               }
               x
             }
-            val newlyEvicted = affected map { _.copy(evicted = true, evictedReason = Some("transitive-evict")) }
+            val newlyEvicted = affected map { _.withEvicted(true).withEvictedReason(Some("transitive-evict")) }
             if (affected.isEmpty) oar
             else new OrganizationArtifactReport(organization, name, unaffected ++ newlyEvicted)
           }
@@ -669,7 +674,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
         }) match {
           case Some(m) =>
             log.debug(s"- directly forced dependency: $m ${m.callers}")
-            (Vector(m), conflicts filterNot { _ == m } map { _.copy(evicted = true, evictedReason = Some("direct-force")) }, "direct-force")
+            (Vector(m), conflicts filterNot { _ == m } map { _.withEvicted(true).withEvictedReason(Some("direct-force")) }, "direct-force")
           case None =>
             (conflicts find { m =>
               m.callers.exists { _.isForceDependency }
@@ -677,13 +682,13 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
               // Ivy translates pom.xml dependencies to forced="true", so transitive force is broken.
               case Some(m) if !ignoreTransitiveForce =>
                 log.debug(s"- transitively forced dependency: $m ${m.callers}")
-                (Vector(m), conflicts filterNot { _ == m } map { _.copy(evicted = true, evictedReason = Some("transitive-force")) }, "transitive-force")
+                (Vector(m), conflicts filterNot { _ == m } map { _.withEvicted(true).withEvictedReason(Some("transitive-force")) }, "transitive-force")
               case _ =>
                 val strategy = lcm.getStrategy
                 val infos = conflicts map { ModuleReportArtifactInfo(_) }
                 Option(strategy.findLatest(infos.toArray, None.orNull)) match {
                   case Some(ModuleReportArtifactInfo(m)) =>
-                    (Vector(m), conflicts filterNot { _ == m } map { _.copy(evicted = true, evictedReason = Some(lcm.toString)) }, lcm.toString)
+                    (Vector(m), conflicts filterNot { _ == m } map { _.withEvicted(true).withEvictedReason(Some(lcm.toString)) }, lcm.toString)
                   case _ => (conflicts, Vector(), lcm.toString)
                 }
             }
@@ -696,7 +701,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
               mr.module.revision == ovrVersion
             } match {
               case Some(m) =>
-                (Vector(m), conflicts filterNot { _ == m } map { _.copy(evicted = true, evictedReason = Some("override")) }, "override")
+                (Vector(m), conflicts filterNot { _ == m } map { _.withEvicted(true).withEvictedReason(Some("override")) }, "override")
               case None =>
                 sys.error(s"override dependency specifies $ovrVersion but no candidates were found: " + (conflicts map { _.module }).mkString("(", ", ", ")"))
             }

@@ -3,18 +3,22 @@ package sbt.internal.librarymanagement
 import java.io.File
 import org.apache.ivy.core
 import core.module.descriptor.ModuleDescriptor
-import sbt.serialization._
 import sbt.util.Logger
+import sbt.internal.util.CacheStore
 import sbt.librarymanagement._
+import sbt.librarymanagement.LibraryManagementCodec._
+import JsonUtil._
 
 private[sbt] object JsonUtil {
   def sbtOrgTemp = "org.scala-sbt.temp"
   def fakeCallerOrganization = "org.scala-sbt.temp-callers"
+}
 
+private[sbt] class JsonUtil(fileToStore: File => CacheStore) {
   def parseUpdateReport(md: ModuleDescriptor, path: File, cachedDescriptor: File, log: Logger): UpdateReport =
     {
       try {
-        val lite = fromJsonFile[UpdateReportLite](path).get
+        val lite = fileToStore(path).read[UpdateReportLite]
         fromLite(lite, cachedDescriptor)
       } catch {
         case e: Throwable =>
@@ -25,7 +29,7 @@ private[sbt] object JsonUtil {
   def writeUpdateReport(ur: UpdateReport, graphPath: File): Unit =
     {
       sbt.io.IO.createDirectory(graphPath.getParentFile)
-      toJsonFile(toLite(ur), graphPath)
+      fileToStore(graphPath).write(toLite(ur))
     }
   def toLite(ur: UpdateReport): UpdateReportLite =
     UpdateReportLite(ur.configurations map { cr =>
@@ -44,7 +48,7 @@ private[sbt] object JsonUtil {
     })
   // #1763/#2030. Caller takes up 97% of space, so we need to shrink it down,
   // but there are semantics associated with some of them.
-  def filterOutArtificialCallers(callers: Seq[Caller]): Seq[Caller] =
+  def filterOutArtificialCallers(callers: Vector[Caller]): Vector[Caller] =
     if (callers.isEmpty) callers
     else {
       val nonArtificial = callers filter { c =>
@@ -53,8 +57,8 @@ private[sbt] object JsonUtil {
       }
       val interProj = (callers find { c =>
         c.caller.organization == sbtOrgTemp
-      }).toList
-      interProj ::: nonArtificial.toList
+      }).toVector
+      interProj ++ nonArtificial
     }
 
   def fromLite(lite: UpdateReportLite, cachedDescriptor: File): UpdateReport =
@@ -71,14 +75,4 @@ private[sbt] object JsonUtil {
       }
       new UpdateReport(cachedDescriptor, configReports, stats, Map.empty)
     }
-}
-
-private[sbt] case class UpdateReportLite(configurations: Seq[ConfigurationReportLite])
-private[sbt] object UpdateReportLite {
-  implicit val pickler: Pickler[UpdateReportLite] with Unpickler[UpdateReportLite] = PicklerUnpickler.generate[UpdateReportLite]
-}
-
-private[sbt] case class ConfigurationReportLite(configuration: String, details: Seq[OrganizationArtifactReport])
-private[sbt] object ConfigurationReportLite {
-  implicit val pickler: Pickler[ConfigurationReportLite] with Unpickler[ConfigurationReportLite] = PicklerUnpickler.generate[ConfigurationReportLite]
 }

@@ -8,8 +8,8 @@ import sbt.internal.util.UnitSpec
 object ResolverTest extends UnitSpec {
 
   "Resolver url" should "propagate pattern descriptorOptional and skipConsistencyCheck." in {
-    val pats = Seq("[orgPath]")
-    val patsExpected = Seq("http://foo.com/test/[orgPath]")
+    val pats = Vector("[orgPath]")
+    val patsExpected = Vector("http://foo.com/test/[orgPath]")
     val patterns = Resolver.url("test", new URL("http://foo.com/test"))(Patterns(pats, pats, isMavenCompatible = false, descriptorOptional = true, skipConsistencyCheck = true)).patterns
 
     patterns.ivyPatterns shouldBe patsExpected

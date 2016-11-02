@@ -1,88 +1,16 @@
 package sbt.librarymanagement
 
-import sbt.serialization._
 import sbt.internal.librarymanagement.SbtExclusionRule
 import sbt.internal.librarymanagement.cross.CrossVersionUtil
 
 final case class ScalaVersion(full: String, binary: String)
 
-/** Configures how a module will be cross-versioned. */
-sealed trait CrossVersion
-
-object CrossVersion {
+abstract class CrossVersionCompanion {
   /** The first `major.minor` Scala version that the Scala binary version should be used for cross-versioning instead of the full version. */
   val TransitionScalaVersion = CrossVersionUtil.TransitionScalaVersion
 
   /** The first `major.minor` sbt version that the sbt binary version should be used for cross-versioning instead of the full version. */
   val TransitionSbtVersion = CrossVersionUtil.TransitionSbtVersion
-
-  /** Disables cross versioning for a module.*/
-  object Disabled extends CrossVersion { override def toString = "disabled" }
-
-  /**
-   * Cross-versions a module using the result of applying `remapVersion` to the binary version.
-   * For example, if `remapVersion = v => "2.10"` and the binary version is "2.9.2" or "2.10",
-   * the module is cross-versioned with "2.10".
-   */
-  final class Binary(val remapVersion: String => String) extends CrossVersion {
-    override def toString = "Binary"
-    override def hashCode = remapVersion.##
-    override def equals(that: Any) = that match {
-      case that: Binary => this.remapVersion == that.remapVersion
-      case _            => false
-    }
-  }
-
-  /**
-   * Cross-versions a module with the result of applying `remapVersion` to the full version.
-   * For example, if `remapVersion = v => "2.10"` and the full version is "2.9.2" or "2.10.3",
-   * the module is cross-versioned with "2.10".
-   */
-  final class Full(val remapVersion: String => String) extends CrossVersion {
-    override def toString = "Full"
-    override def hashCode = remapVersion.##
-    override def equals(that: Any) = that match {
-      case that: Full => this.remapVersion == that.remapVersion
-      case _          => false
-    }
-  }
-
-  private val disabledTag = implicitly[FastTypeTag[Disabled.type]]
-  private val binaryTag = implicitly[FastTypeTag[Binary]]
-  private val fullTag = implicitly[FastTypeTag[Full]]
-  implicit val pickler: Pickler[CrossVersion] = new Pickler[CrossVersion] {
-    val tag = implicitly[FastTypeTag[CrossVersion]]
-    def pickle(a: CrossVersion, builder: PBuilder): Unit = {
-      builder.pushHints()
-      builder.hintTag(a match {
-        case Disabled  => disabledTag
-        case x: Binary => binaryTag
-        case x: Full   => fullTag
-      })
-      builder.beginEntry(a)
-      builder.endEntry()
-      builder.popHints()
-      ()
-    }
-  }
-  implicit val unpickler: Unpickler[CrossVersion] = new Unpickler[CrossVersion] {
-    val tag = implicitly[FastTypeTag[CrossVersion]]
-    def unpickle(tpe: String, reader: PReader): Any = {
-      reader.pushHints()
-      reader.hintTag(tag)
-      val tpeStr = reader.beginEntry()
-      val tpe = scala.pickling.FastTypeTag(tpeStr)
-      // sys.error(tpe.toString)
-      val result = tpe match {
-        case t if t == disabledTag => Disabled
-        case t if t == binaryTag   => binary
-        case t if t == fullTag     => full
-      }
-      reader.endEntry()
-      reader.popHints()
-      result
-    }
-  }
 
   /** Cross-versions a module with the full version (typically the full Scala version). */
   def full: CrossVersion = new Full(idStringFun)
@@ -114,9 +42,9 @@ object CrossVersion {
    */
   def apply(cross: CrossVersion, fullVersion: String, binaryVersion: String): Option[String => String] =
     cross match {
-      case Disabled  => None
-      case b: Binary => append(b.remapVersion(binaryVersion))
-      case f: Full   => append(f.remapVersion(fullVersion))
+      case _: Disabled => None
+      case b: Binary   => append(b.remapVersion(binaryVersion))
+      case f: Full     => append(f.remapVersion(fullVersion))
     }
 
   /** Constructs the cross-version function defined by `module` and `is`, if one is configured. */
@@ -128,7 +56,7 @@ object CrossVersion {
     is flatMap { i => apply(module, i) }
 
   /** Cross-version each `Artifact` in `artifacts` according to cross-version function `cross`. */
-  def substituteCross(artifacts: Seq[Artifact], cross: Option[String => String]): Seq[Artifact] =
+  def substituteCross(artifacts: Vector[Artifact], cross: Option[String => String]): Vector[Artifact] =
     cross match {
       case None     => artifacts
       case Some(is) => substituteCrossA(artifacts, cross)
@@ -147,14 +75,14 @@ object CrossVersion {
   private[sbt] def substituteCross(exclude: SbtExclusionRule, is: Option[IvyScala]): SbtExclusionRule = {
     val fopt: Option[String => String] =
       is flatMap { i => CrossVersion(exclude.crossVersion, i.scalaFullVersion, i.scalaBinaryVersion) }
-    exclude.copy(name = applyCross(exclude.name, fopt))
+    exclude.withName(applyCross(exclude.name, fopt))
   }
 
   /** Cross-versions `a` according to cross-version function `cross`. */
   def substituteCross(a: Artifact, cross: Option[String => String]): Artifact =
-    a.copy(name = applyCross(a.name, cross))
+    a.withName(applyCross(a.name, cross))
 
-  private[sbt] def substituteCrossA(as: Seq[Artifact], cross: Option[String => String]): Seq[Artifact] =
+  private[sbt] def substituteCrossA(as: Vector[Artifact], cross: Option[String => String]): Vector[Artifact] =
     as.map(art => substituteCross(art, cross))
 
   /**
@@ -166,7 +94,7 @@ object CrossVersion {
     {
       val cross = apply(m.crossVersion, scalaFullVersion, scalaBinaryVersion)
       if (cross.isDefined)
-        m.copy(name = applyCross(m.name, cross), explicitArtifacts = substituteCrossA(m.explicitArtifacts, cross))
+        m.withName(applyCross(m.name, cross)).withExplicitArtifacts(substituteCrossA(m.explicitArtifacts, cross))
       else
         m
     }

@@ -44,25 +44,25 @@ class EvictionWarningSpec extends BaseIvySpecification {
   it should "be detected if it's enabled" in scalaLibTransitiveWarn2()
   it should "print out message about the eviction if it's enabled" in scalaLibTransitiveWarn3()
 
-  def akkaActor214 = ModuleID("com.typesafe.akka", "akka-actor", "2.1.4", Some("compile")) cross CrossVersion.binary
-  def akkaActor230 = ModuleID("com.typesafe.akka", "akka-actor", "2.3.0", Some("compile")) cross CrossVersion.binary
-  def akkaActor234 = ModuleID("com.typesafe.akka", "akka-actor", "2.3.4", Some("compile")) cross CrossVersion.binary
-  def scala2102 = ModuleID("org.scala-lang", "scala-library", "2.10.2", Some("compile"))
-  def scala2103 = ModuleID("org.scala-lang", "scala-library", "2.10.3", Some("compile"))
-  def scala2104 = ModuleID("org.scala-lang", "scala-library", "2.10.4", Some("compile"))
-  def commonsIo13 = ModuleID("commons-io", "commons-io", "1.3", Some("compile"))
-  def commonsIo14 = ModuleID("commons-io", "commons-io", "1.4", Some("compile"))
-  def commonsIo24 = ModuleID("commons-io", "commons-io", "2.4", Some("compile"))
-  def bnfparser10 = ModuleID("ca.gobits.bnf", "bnfparser", "1.0", Some("compile")) // uses commons-io 2.4
-  def unfilteredUploads080 = ModuleID("net.databinder", "unfiltered-uploads", "0.8.0", Some("compile")) cross CrossVersion.binary // uses commons-io 1.4
-  def bananaSesame04 = ModuleID("org.w3", "banana-sesame", "0.4", Some("compile")) cross CrossVersion.binary // uses akka-actor 2.1.4
-  def akkaRemote234 = ModuleID("com.typesafe.akka", "akka-remote", "2.3.4", Some("compile")) cross CrossVersion.binary // uses akka-actor 2.3.4
+  def akkaActor214 = ModuleID("com.typesafe.akka", "akka-actor", "2.1.4").withConfigurations(Some("compile")) cross CrossVersion.binary
+  def akkaActor230 = ModuleID("com.typesafe.akka", "akka-actor", "2.3.0").withConfigurations(Some("compile")) cross CrossVersion.binary
+  def akkaActor234 = ModuleID("com.typesafe.akka", "akka-actor", "2.3.4").withConfigurations(Some("compile")) cross CrossVersion.binary
+  def scala2102 = ModuleID("org.scala-lang", "scala-library", "2.10.2").withConfigurations(Some("compile"))
+  def scala2103 = ModuleID("org.scala-lang", "scala-library", "2.10.3").withConfigurations(Some("compile"))
+  def scala2104 = ModuleID("org.scala-lang", "scala-library", "2.10.4").withConfigurations(Some("compile"))
+  def commonsIo13 = ModuleID("commons-io", "commons-io", "1.3").withConfigurations(Some("compile"))
+  def commonsIo14 = ModuleID("commons-io", "commons-io", "1.4").withConfigurations(Some("compile"))
+  def commonsIo24 = ModuleID("commons-io", "commons-io", "2.4").withConfigurations(Some("compile"))
+  def bnfparser10 = ModuleID("ca.gobits.bnf", "bnfparser", "1.0").withConfigurations(Some("compile")) // uses commons-io 2.4
+  def unfilteredUploads080 = ModuleID("net.databinder", "unfiltered-uploads", "0.8.0").withConfigurations(Some("compile")) cross CrossVersion.binary // uses commons-io 1.4
+  def bananaSesame04 = ModuleID("org.w3", "banana-sesame", "0.4").withConfigurations(Some("compile")) cross CrossVersion.binary // uses akka-actor 2.1.4
+  def akkaRemote234 = ModuleID("com.typesafe.akka", "akka-remote", "2.3.4").withConfigurations(Some("compile")) cross CrossVersion.binary // uses akka-actor 2.3.4
 
   def defaultOptions = EvictionWarningOptions.default
 
   import sbt.internal.util.ShowLines._
 
-  def scalaVersionDeps = Seq(scala2102, akkaActor230)
+  def scalaVersionDeps = Vector(scala2102, akkaActor230)
 
   def scalaVersionWarn1() = {
     val m = module(defaultModuleId, scalaVersionDeps, Some("2.10.2"), overrideScalaVersion = false)
@@ -113,7 +113,7 @@ class EvictionWarningSpec extends BaseIvySpecification {
     EvictionWarning(m, defaultOptions.withWarnScalaVersionEviction(false), report, log).scalaEvictions should have size (0)
   }
 
-  def javaLibDirectDeps = Seq(commonsIo14, commonsIo24)
+  def javaLibDirectDeps = Vector(commonsIo14, commonsIo24)
 
   def javaLibWarn1() = {
     val m = module(defaultModuleId, javaLibDirectDeps, Some("2.10.3"))
@@ -151,20 +151,20 @@ class EvictionWarningSpec extends BaseIvySpecification {
   }
 
   def javaLibNoWarn1() = {
-    val deps = Seq(commonsIo14, commonsIo13)
+    val deps = Vector(commonsIo14, commonsIo13)
     val m = module(defaultModuleId, deps, Some("2.10.3"))
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions, report, log).reportedEvictions should have size (0)
   }
 
   def javaLibNoWarn2() = {
-    val deps = Seq(commonsIo14, commonsIo13)
+    val deps = Vector(commonsIo14, commonsIo13)
     val m = module(defaultModuleId, deps, Some("2.10.3"))
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions, report, log).lines shouldBe Nil
   }
 
-  def javaLibTransitiveDeps = Seq(unfilteredUploads080, bnfparser10)
+  def javaLibTransitiveDeps = Vector(unfilteredUploads080, bnfparser10)
 
   def javaLibTransitiveWarn1() = {
     val m = module(defaultModuleId, javaLibTransitiveDeps, Some("2.10.3"))
@@ -190,14 +190,14 @@ class EvictionWarningSpec extends BaseIvySpecification {
   }
 
   def scalaLibWarn1() = {
-    val deps = Seq(scala2104, akkaActor214, akkaActor234)
+    val deps = Vector(scala2104, akkaActor214, akkaActor234)
     val m = module(defaultModuleId, deps, Some("2.10.4"))
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions, report, log).reportedEvictions should have size (1)
   }
 
   def scalaLibWarn2() = {
-    val deps = Seq(scala2104, akkaActor214, akkaActor234)
+    val deps = Vector(scala2104, akkaActor214, akkaActor234)
     val m = module(defaultModuleId, deps, Some("2.10.4"))
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions, report, log).lines shouldBe
@@ -210,20 +210,20 @@ class EvictionWarningSpec extends BaseIvySpecification {
   }
 
   def scalaLibNoWarn1() = {
-    val deps = Seq(scala2104, akkaActor230, akkaActor234)
+    val deps = Vector(scala2104, akkaActor230, akkaActor234)
     val m = module(defaultModuleId, deps, Some("2.10.4"))
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions, report, log).reportedEvictions should have size (0)
   }
 
   def scalaLibNoWarn2() = {
-    val deps = Seq(scala2104, akkaActor230, akkaActor234)
+    val deps = Vector(scala2104, akkaActor230, akkaActor234)
     val m = module(defaultModuleId, deps, Some("2.10.4"))
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions, report, log).lines shouldBe Nil
   }
 
-  def scalaLibTransitiveDeps = Seq(scala2104, bananaSesame04, akkaRemote234)
+  def scalaLibTransitiveDeps = Vector(scala2104, bananaSesame04, akkaRemote234)
 
   def scalaLibTransitiveWarn1() = {
     val m = module(defaultModuleId, scalaLibTransitiveDeps, Some("2.10.4"))

@@ -6,13 +6,37 @@ package sbt.librarymanagement
 import java.net.URL
 
 import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
-import sbt.serialization._
 
-final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String] = None, isChanging: Boolean = false, isTransitive: Boolean = true, isForce: Boolean = false, explicitArtifacts: Seq[Artifact] = Nil, inclusions: Seq[InclusionRule] = Nil, exclusions: Seq[ExclusionRule] = Nil, extraAttributes: Map[String, String] = Map.empty, crossVersion: CrossVersion = CrossVersion.Disabled, branchName: Option[String] = None) {
-  override def toString: String =
-    organization + ":" + name + ":" + revision +
-      (configurations match { case Some(s) => ":" + s; case None => "" }) +
-      (if (extraAttributes.isEmpty) "" else " " + extraString)
+abstract class ModuleIDParent {
+  def organization: String
+  def name: String
+  def revision: String
+  def configurations: Option[String]
+  def isChanging: Boolean
+  def isTransitive: Boolean
+  def isForce: Boolean
+  def explicitArtifacts: Vector[Artifact]
+  def inclusions: Vector[InclusionRule]
+  def exclusions: Vector[ExclusionRule]
+  def extraAttributes: Map[String, String]
+  def crossVersion: CrossVersion
+  def branchName: Option[String]
+
+  protected[this] def copy(
+    organization: String = organization,
+    name: String = name,
+    revision: String = revision,
+    configurations: Option[String] = configurations,
+    isChanging: Boolean = isChanging,
+    isTransitive: Boolean = isTransitive,
+    isForce: Boolean = isForce,
+    explicitArtifacts: Vector[Artifact] = explicitArtifacts,
+    inclusions: Vector[InclusionRule] = inclusions,
+    exclusions: Vector[ExclusionRule] = exclusions,
+    extraAttributes: Map[String, String] = extraAttributes,
+    crossVersion: CrossVersion = crossVersion,
+    branchName: Option[String] = branchName
+  ): ModuleID
 
   /** String representation of the extra attributes, excluding any information only attributes. */
   def extraString: String = extraDependencyAttributes.map { case (k, v) => k + "=" + v } mkString ("(", ", ", ")")
@@ -21,10 +45,10 @@ final case class ModuleID(organization: String, name: String, revision: String, 
   def extraDependencyAttributes: Map[String, String] = extraAttributes.filterKeys(!_.startsWith(SbtPomExtraProperties.POM_INFO_KEY_PREFIX))
 
   @deprecated("Use `cross(CrossVersion)`, the variant accepting a CrossVersion value constructed by a member of the CrossVersion object instead.", "0.12.0")
-  def cross(v: Boolean): ModuleID = cross(if (v) CrossVersion.binary else CrossVersion.Disabled)
+  def cross(v: Boolean): ModuleID = cross(if (v) CrossVersion.binary else Disabled())
 
   @deprecated("Use `cross(CrossVersion)`, the variant accepting a CrossVersion value constructed by a member of the CrossVersion object instead.", "0.12.0")
-  def cross(v: Boolean, verRemap: String => String): ModuleID = cross(if (v) CrossVersion.binaryMapped(verRemap) else CrossVersion.Disabled)
+  def cross(v: Boolean, verRemap: String => String): ModuleID = cross(if (v) CrossVersion.binaryMapped(verRemap) else Disabled())
 
   /** Specifies the cross-version behavior for this module.  See [CrossVersion] for details.*/
   def cross(v: CrossVersion): ModuleID = copy(crossVersion = v)
@@ -64,7 +88,7 @@ final case class ModuleID(organization: String, name: String, revision: String, 
    * Declares the explicit artifacts for this module.  If this ModuleID represents a dependency,
    * these artifact definitions override the information in the dependency's published metadata.
    */
-  def artifacts(newArtifacts: Artifact*) = copy(explicitArtifacts = newArtifacts ++ this.explicitArtifacts)
+  def artifacts(newArtifacts: Artifact*) = copy(explicitArtifacts = newArtifacts.toVector ++ explicitArtifacts)
 
   /**
    * Applies the provided exclusions to dependencies of this module.  Note that only exclusions that specify
@@ -73,7 +97,7 @@ final case class ModuleID(organization: String, name: String, revision: String, 
   def excludeAll(rules: InclExclRule*) = copy(exclusions = this.exclusions ++ rules)
 
   /** Excludes the dependency with organization `org` and `name` from being introduced by this dependency during resolution. */
-  def exclude(org: String, name: String) = excludeAll(InclExclRule(org, name))
+  def exclude(org: String, name: String) = excludeAll(InclExclRule().withOrganization(org).withName(name))
 
   /**
    * Adds extra attributes for this module.  All keys are prefixed with `e:` if they are not already so prefixed.
@@ -127,9 +151,7 @@ final case class ModuleID(organization: String, name: String, revision: String, 
   def branch(branchName: Option[String]) = copy(branchName = branchName)
 }
 
-object ModuleID {
-  implicit val pickler: Pickler[ModuleID] with Unpickler[ModuleID] = PicklerUnpickler.generate[ModuleID]
-
+abstract class ModuleIDCompanion {
   /** Prefixes all keys with `e:` if they are not already so prefixed. */
   def checkE(attributes: Seq[(String, String)]) =
     for ((key, value) <- attributes) yield if (key.startsWith("e:")) (key, value) else ("e:" + key, value)
