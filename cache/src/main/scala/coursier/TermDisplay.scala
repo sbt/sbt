@@ -3,8 +3,8 @@ package coursier
 import java.io.{ File, Writer }
 import java.sql.Timestamp
 import java.util.concurrent._
+import java.util.concurrent.atomic.AtomicBoolean
 
-import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
 
@@ -103,8 +103,9 @@ object TermDisplay {
       if (bytes < unit)
         bytes + " B"
       else {
-        val exp = (math.log(bytes) / math.log(unit)).toInt
-        val pre = (if (si) "kMGTPE" else "KMGTPE").charAt(exp - 1) + (if (si) "" else "i")
+        val prefixes = if (si) "kMGTPE" else "KMGTPE"
+        val exp = (math.log(bytes) / math.log(unit)).toInt min prefixes.length
+        val pre = prefixes.charAt(exp - 1) + (if (si) "" else "i")
         f"${bytes / math.pow(unit, exp)}%.1f ${pre}B"
       }
     }
@@ -160,39 +161,20 @@ object TermDisplay {
     }
   }
 
-  private sealed abstract class Message extends Product with Serializable
-  private object Message {
-    case object Update extends Message
-    case object Stop extends Message
-  }
-
-  private val refreshInterval = 1000 / 60
-  private val fallbackRefreshInterval = 1000
-
-  private class UpdateDisplayThread(
+  private class UpdateDisplayRunnable(
     out: Writer,
-    var fallbackMode: Boolean
-  ) extends Thread("TermDisplay") {
+    width: Int,
+    fallbackMode: Boolean
+  ) extends Runnable {
 
     import Terminal.Ansi
 
-    setDaemon(true)
-
-    private var width = 80
     private var currentHeight = 0
 
-    private val q = new LinkedBlockingDeque[Message]
+    private val needsUpdate = new AtomicBoolean(false)
 
-
-    def update(): Unit = {
-      if (q.size() == 0)
-        q.put(Message.Update)
-    }
-
-    def end(): Unit = {
-      q.put(Message.Stop)
-      join()
-    }
+    def update(): Unit =
+      needsUpdate.set(true)
 
     private val downloads = new ArrayBuffer[String]
     private val doneQueue = new ArrayBuffer[(String, Info)]
@@ -299,119 +281,104 @@ object TermDisplay {
         out.write(s.take(width - 1) + "…\n")
     }
 
-    @tailrec private def updateDisplayLoop(lineCount: Int): Unit = {
-      currentHeight = lineCount
-
-      Option(q.poll(100L, TimeUnit.MILLISECONDS)) match {
-        case None => updateDisplayLoop(lineCount)
-        case Some(Message.Stop) => // poison pill
-        case Some(Message.Update) =>
-
-          val (done0, downloads0) = downloads.synchronized {
-            val q = doneQueue
-              .toVector
-              .filter {
-                case (url, _) =>
-                  !url.endsWith(".sha1") && !url.endsWith(".md5")
-              }
-              .sortBy { case (url, _) => url }
-
-            doneQueue.clear()
-
-            val dw = downloads
-              .toVector
-              .map { url => url -> infos.get(url) }
-              .sortBy { case (_, info) => - info.fraction.sum }
-
-            (q, dw)
-          }
-
-          for ((url, info) <- done0 ++ downloads0) {
-            assert(info != null, s"Incoherent state ($url)")
-
-            truncatedPrintln(url)
-            out.clearLine(2)
-            out.write(s"  ${info.display()}\n")
-          }
-
-          val displayedCount = (done0 ++ downloads0).length
-
-          if (displayedCount < lineCount) {
-            for (_ <- 1 to 2; _ <- displayedCount until lineCount) {
-              out.clearLine(2)
-              out.down(1)
+    private def updateDisplay(): Unit =
+      if (needsUpdate.getAndSet(false)) {
+        val (done0, downloads0) = downloads.synchronized {
+          val q = doneQueue
+            .toVector
+            .filter {
+              case (url, _) =>
+                !url.endsWith(".sha1") && !url.endsWith(".md5")
             }
+            .sortBy { case (url, _) => url }
 
-            for (_ <- displayedCount until lineCount)
-              out.up(2)
-          }
+          doneQueue.clear()
 
-          for (_ <- downloads0.indices)
-            out.up(2)
+          val dw = downloads
+            .toVector
+            .map { url => url -> infos.get(url) }
+            .sortBy { case (_, info) => - info.fraction.sum }
 
-          out.left(10000)
+          (q, dw)
+        }
 
-          out.flush()
-          Thread.sleep(refreshInterval)
-          updateDisplayLoop(downloads0.length)
-      }
-    }
+        for ((url, info) <- done0 ++ downloads0) {
+          assert(info != null, s"Incoherent state ($url)")
 
-    @tailrec private def fallbackDisplayLoop(previous: Set[String]): Unit =
-      Option(q.poll(100L, TimeUnit.MILLISECONDS)) match {
-        case None => fallbackDisplayLoop(previous)
-        case Some(Message.Stop) => // poison pill
+          truncatedPrintln(url)
+          out.clearLine(2)
+          out.write(s"  ${info.display()}\n")
+        }
 
-          // clean up display
-          for (_ <- 1 to 2; _ <- 0 until currentHeight) {
+        val displayedCount = (done0 ++ downloads0).length
+
+        if (displayedCount < currentHeight) {
+          for (_ <- 1 to 2; _ <- displayedCount until currentHeight) {
             out.clearLine(2)
             out.down(1)
           }
-          for (_ <- 0 until currentHeight) {
+
+          for (_ <- displayedCount until currentHeight)
             out.up(2)
-          }
+        }
 
-        case Some(Message.Update) =>
-          val downloads0 = downloads.synchronized {
-            downloads
-              .toVector
-              .map { url => url -> infos.get(url) }
-              .sortBy { case (_, info) => - info.fraction.sum }
-          }
+        for (_ <- downloads0.indices)
+          out.up(2)
 
-          var displayedSomething = false
-          for ((url, info) <- downloads0 if previous(url)) {
-            assert(info != null, s"Incoherent state ($url)")
+        out.left(10000)
 
-            val (url0, extra0) = reflowed(url, info)
+        out.flush()
 
-            displayedSomething = true
-            out.write(s"$url0 $extra0\n")
-          }
-
-          if (displayedSomething)
-            out.write("\n")
-
-          out.flush()
-          Thread.sleep(fallbackRefreshInterval)
-          fallbackDisplayLoop(previous ++ downloads0.map { case (url, _) => url })
+        currentHeight = downloads0.length
       }
 
-    override def run(): Unit = {
-
-      Terminal.consoleDim("cols") match {
-        case Some(cols) =>
-          width = cols
-          out.clearLine(2)
-        case None =>
-          fallbackMode = true
+    def cleanDisplay(): Unit = {
+      for (_ <- 1 to 2; _ <- 0 until currentHeight) {
+        out.clearLine(2)
+        out.down(1)
       }
-
-      if (fallbackMode)
-        fallbackDisplayLoop(Set.empty)
-      else
-        updateDisplayLoop(0)
+      for (_ <- 0 until currentHeight)
+        out.up(2)
     }
+
+    private var previous = Set.empty[String]
+
+    private def fallbackDisplay(): Unit = {
+
+      val downloads0 = downloads.synchronized {
+        downloads
+          .toVector
+          .map { url => url -> infos.get(url) }
+          .sortBy { case (_, info) => - info.fraction.sum }
+      }
+
+      var displayedSomething = false
+      for ((url, info) <- downloads0 if previous(url)) {
+        assert(info != null, s"Incoherent state ($url)")
+
+        val (url0, extra0) = reflowed(url, info)
+
+        displayedSomething = true
+        out.write(s"$url0 $extra0\n")
+      }
+
+      if (displayedSomething)
+        out.write("\n")
+
+      out.flush()
+
+      previous = previous ++ downloads0.map { case (url, _) => url }
+    }
+
+    def init(): Unit =
+      if (!fallbackMode)
+        out.clearLine(2)
+
+    def run(): Unit =
+      if (fallbackMode)
+        fallbackDisplay()
+      else
+        updateDisplay()
   }
 
 }
@@ -423,25 +390,60 @@ class TermDisplay(
 
   import TermDisplay._
 
-  private val updateThread = new UpdateDisplayThread(out, fallbackMode)
+  private var updateRunnableOpt = Option.empty[UpdateDisplayRunnable]
+  private val scheduler = Executors.newSingleThreadScheduledExecutor(
+    new ThreadFactory {
+      val defaultThreadFactory = Executors.defaultThreadFactory()
+      def newThread(r: Runnable) = {
+        val t = defaultThreadFactory.newThread(r)
+        t.setDaemon(true)
+        t.setName("progress-bar")
+        t
+      }
+    }
+  )
+
+  private def updateRunnable = updateRunnableOpt.getOrElse {
+    throw new Exception("Uninitialized TermDisplay")
+  }
+
+  val defaultWidth = 80
+
+  lazy val (width, fallbackMode0) = Terminal.consoleDim("cols") match {
+    case Some(w) =>
+      (w, fallbackMode)
+    case None =>
+      (defaultWidth, true)
+  }
+
+  lazy val refreshInterval =
+    if (fallbackMode0)
+      1000L
+    else
+      1000L / 60
 
   def init(): Unit = {
-    updateThread.start()
+    updateRunnableOpt = Some(new UpdateDisplayRunnable(out, width, fallbackMode0))
+
+    updateRunnable.init()
+    scheduler.scheduleAtFixedRate(updateRunnable, 0L, refreshInterval, TimeUnit.MILLISECONDS)
   }
 
   def stop(): Unit = {
-    updateThread.end()
+    scheduler.shutdown()
+    scheduler.awaitTermination(refreshInterval, TimeUnit.MILLISECONDS)
+    updateRunnable.cleanDisplay()
   }
 
   override def downloadingArtifact(url: String, file: File): Unit =
-    updateThread.newEntry(
+    updateRunnable.newEntry(
       url,
       DownloadInfo(0L, 0L, None, System.currentTimeMillis(), updateCheck = false),
       s"Downloading $url\n"
     )
 
   override def downloadLength(url: String, totalLength: Long, alreadyDownloaded: Long): Unit = {
-    val info = updateThread.infos.get(url)
+    val info = updateRunnable.infos.get(url)
     assert(info != null)
     val newInfo = info match {
       case info0: DownloadInfo =>
@@ -449,12 +451,12 @@ class TermDisplay(
       case _ =>
         throw new Exception(s"Incoherent display state for $url")
     }
-    updateThread.infos.put(url, newInfo)
+    updateRunnable.infos.put(url, newInfo)
 
-    updateThread.update()
+    updateRunnable.update()
   }
   override def downloadProgress(url: String, downloaded: Long): Unit = {
-    val info = updateThread.infos.get(url)
+    val info = updateRunnable.infos.get(url)
     assert(info != null)
     val newInfo = info match {
       case info0: DownloadInfo =>
@@ -462,16 +464,16 @@ class TermDisplay(
       case _ =>
         throw new Exception(s"Incoherent display state for $url")
     }
-    updateThread.infos.put(url, newInfo)
+    updateRunnable.infos.put(url, newInfo)
 
-    updateThread.update()
+    updateRunnable.update()
   }
 
   override def downloadedArtifact(url: String, success: Boolean): Unit =
-    updateThread.removeEntry(url, success, s"Downloaded $url\n")(x => x)
+    updateRunnable.removeEntry(url, success, s"Downloaded $url\n")(x => x)
 
   override def checkingUpdates(url: String, currentTimeOpt: Option[Long]): Unit =
-    updateThread.newEntry(
+    updateRunnable.newEntry(
       url,
       CheckUpdateInfo(currentTimeOpt, None, isDone = false),
       s"Checking $url\n"
@@ -490,7 +492,7 @@ class TermDisplay(
       }
     }
 
-    updateThread.removeEntry(url, !newUpdate, s"Checked $url\n") {
+    updateRunnable.removeEntry(url, !newUpdate, s"Checked $url\n") {
       case info: CheckUpdateInfo =>
         info.copy(remoteTimeOpt = remoteTimeOpt, isDone = true)
       case _ =>
