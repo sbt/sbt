@@ -19,7 +19,7 @@ private[sbt] object ComponentCompiler {
   val binSeparator = "-bin_"
   val javaVersion = System.getProperty("java.class.version")
 
-  def interfaceProvider(manager: ComponentManager, ivyConfiguration: IvyConfiguration, sourcesModule: ModuleID): CompilerInterfaceProvider = new CompilerInterfaceProvider {
+  def interfaceProvider(manager: ComponentManager, ivyConfiguration: IvyConfiguration, sourcesModule: ModuleID): CompilerBridgeProvider = new CompilerBridgeProvider {
     def apply(scalaInstance: xsbti.compile.ScalaInstance, log: Logger): File =
       {
         // this is the instance used to compile the interface component
