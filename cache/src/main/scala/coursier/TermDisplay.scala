@@ -453,7 +453,7 @@ class TermDisplay(
     */
   def stopDidPrintSomething(): Boolean = {
     scheduler.shutdown()
-    scheduler.awaitTermination(refreshInterval, TimeUnit.MILLISECONDS)
+    scheduler.awaitTermination(2 * refreshInterval, TimeUnit.MILLISECONDS)
     updateRunnable.cleanDisplay()
     updateRunnable.printedAnything()
   }
