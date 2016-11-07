@@ -128,9 +128,6 @@ object Info {
 }
 
 // Maven-specific
-final case class Activation(properties: Seq[(String, Option[String])])
-
-// Maven-specific
 final case class Profile(
   id: String,
   activeByDefault: Option[Boolean],

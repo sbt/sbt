@@ -23,15 +23,13 @@ package object test {
       )
     def clearFilter: Resolution =
       underlying.copy(filter = None)
-    def clearProfileActivation: Resolution =
-      underlying.copy(profileActivation = None)
   }
 
   object Profile {
     type Activation = core.Activation
     object Activation {
       def apply(properties: Seq[(String, Option[String])] = Nil): Activation =
-        core.Activation(properties)
+        core.Activation(properties, coursier.core.Activation.Os.empty, None)
     }
 
     def apply(

@@ -11,25 +11,53 @@ object Resolution {
 
   type ModuleVersion = (Module, String)
 
+  def profileIsActive(
+    profile: Profile,
+    properties: Map[String, String],
+    osInfo: Activation.Os,
+    jdkVersion: Option[Version],
+    userActivations: Option[Map[String, Boolean]]
+  ): Boolean = {
+
+    val fromUserOrDefault = userActivations match {
+      case Some(activations) =>
+        activations.get(profile.id)
+      case None =>
+        if (profile.activeByDefault.toSeq.contains(true))
+          Some(true)
+        else
+          None
+    }
+
+    def fromActivation = profile.activation.isActive(properties, osInfo, jdkVersion)
+
+    val res = fromUserOrDefault.getOrElse(fromActivation)
+
+    // println(s"Profile\n$profile\n$res\n")
+
+    res
+  }
+
   /**
    * Get the active profiles of `project`, using the current properties `properties`,
-   * and `profileActivation` stating if a profile is active.
+   * and `profileActivations` stating if a profile is active.
    */
   def profiles(
     project: Project,
     properties: Map[String, String],
-    profileActivation: (String, Activation, Map[String, String]) => Boolean
-  ): Seq[Profile] = {
-
-    val activated = project.profiles
-      .filter(p => profileActivation(p.id, p.activation, properties))
-
-    def default = project.profiles
-      .filter(_.activeByDefault.toSeq.contains(true))
-
-    if (activated.isEmpty) default
-    else activated
-  }
+    osInfo: Activation.Os,
+    jdkVersion: Option[Version],
+    userActivations: Option[Map[String, Boolean]]
+  ): Seq[Profile] =
+    project.profiles.filter { profile =>
+      profileIsActive(
+        profile,
+        properties,
+        osInfo,
+        jdkVersion,
+        userActivations
+      )
+    }
 
   object DepMgmt {
     type Key = (String, String, String)
@@ -500,7 +528,9 @@ final case class Resolution(
   errorCache: Map[Resolution.ModuleVersion, Seq[String]],
   finalDependenciesCache: Map[Dependency, Seq[Dependency]],
   filter: Option[Dependency => Boolean],
-  profileActivation: Option[(String, Activation, Map[String, String]) => Boolean]
+  osInfo: Activation.Os,
+  jdkVersion: Option[Version],
+  userActivations: Option[Map[String, Boolean]]
 ) {
 
   def copyWithCache(
@@ -511,7 +541,9 @@ final case class Resolution(
     projectCache: Map[Resolution.ModuleVersion, (Artifact.Source, Project)] = projectCache,
     errorCache: Map[Resolution.ModuleVersion, Seq[String]] = errorCache,
     filter: Option[Dependency => Boolean] = filter,
-    profileActivation: Option[(String, Activation, Map[String, String]) => Boolean] = profileActivation
+    osInfo: Activation.Os = osInfo,
+    jdkVersion: Option[Version] = jdkVersion,
+    userActivations: Option[Map[String, Boolean]] = userActivations
   ): Resolution =
     copy(
       rootDependencies,
@@ -522,7 +554,9 @@ final case class Resolution(
       errorCache,
       finalDependenciesCache ++ finalDependenciesCache0.asScala,
       filter,
-      profileActivation
+      osInfo,
+      jdkVersion,
+      userActivations
     )
 
   import Resolution._
@@ -741,7 +775,9 @@ final case class Resolution(
       profiles(
         project,
         approxProperties,
-        profileActivation getOrElse defaultProfileActivation
+        osInfo,
+        jdkVersion,
+        userActivations
       ).flatMap(p => p.dependencies ++ p.dependencyManagement)
 
     val modules = withProperties(
@@ -850,7 +886,9 @@ final case class Resolution(
     val profiles0 = profiles(
       project,
       approxProperties,
-      profileActivation getOrElse defaultProfileActivation
+      osInfo,
+      jdkVersion,
+      userActivations
     )
 
     // 1.2 made from Pom.scala (TODO look at the very details?)

@@ -75,7 +75,23 @@ object Pom {
         } yield (name, valueOpt)
       }
 
-    (byDefault, Activation(properties))
+    val osNodeOpt = node.children.collectFirst { case n if n.label == "os" => n }
+
+    val os = Activation.Os(
+      osNodeOpt.flatMap(n => text(n, "arch", "").toOption),
+      osNodeOpt.flatMap(n => text(n, "family", "").toOption).toSet,
+      osNodeOpt.flatMap(n => text(n, "name", "").toOption),
+      osNodeOpt.flatMap(n => text(n, "version", "").toOption)
+    )
+
+    val jdk = text(node, "jdk", "").toOption.flatMap { s =>
+      Parse.versionInterval(s).map(-\/(_))
+        .orElse(Parse.version(s).map(v => \/-(Seq(v))))
+    }
+
+    val activation = Activation(properties, os, jdk)
+
+    (byDefault, activation)
   }
 
   def profile(node: Node): String \/ Profile = {
@@ -85,7 +101,7 @@ object Pom {
 
     val xmlActivationOpt = node.children
       .find(_.label == "activation")
-    val (activeByDefault, activation) = xmlActivationOpt.fold((Option.empty[Boolean], Activation(Nil)))(profileActivation)
+    val (activeByDefault, activation) = xmlActivationOpt.fold((Option.empty[Boolean], Activation.empty))(profileActivation)
 
     val xmlDeps = node.children
       .find(_.label == "dependencies")

@@ -285,7 +285,9 @@ class Helper(
     dependencies.toSet,
     forceVersions = forceVersions,
     filter = Some(dep => keepOptional || !dep.optional),
-    profileActivation = Some(core.Resolution.userProfileActivation(userEnabledProfiles))
+    userActivations =
+      if (userEnabledProfiles.isEmpty) None
+      else Some(userEnabledProfiles.iterator.map(_ -> true).toMap)
   )
 
   val loggerFallbackMode =

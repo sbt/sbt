@@ -441,7 +441,11 @@ object Tasks {
             dep.copy(exclusions = dep.exclusions ++ exclusions)
         }.toSet,
         filter = Some(dep => !dep.optional),
-        profileActivation = Some(core.Resolution.userProfileActivation(userEnabledProfiles)),
+        userActivations =
+          if (userEnabledProfiles.isEmpty)
+            None
+          else
+            Some(userEnabledProfiles.iterator.map(_ -> true).toMap),
         forceVersions =
           // order matters here
           userForceVersions ++
@@ -677,7 +681,7 @@ object Tasks {
           currentProject,
           repositories,
           userEnabledProfiles,
-          startRes.copy(filter = None, profileActivation = None),
+          startRes.copy(filter = None),
           sbtClassifiers
         ),
         resolution
@@ -910,7 +914,7 @@ object Tasks {
       reportsCache.getOrElseUpdate(
         ReportCacheKey(
           currentProject,
-          res.copy(filter = None, profileActivation = None),
+          res.copy(filter = None),
           withClassifiers,
           sbtClassifiers
         ),
