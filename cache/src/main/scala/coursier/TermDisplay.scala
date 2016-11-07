@@ -162,6 +162,7 @@ object TermDisplay {
   }
 
   private class UpdateDisplayRunnable(
+    beforeOutput: => Unit,
     out: Writer,
     width: Int,
     fallbackMode: Boolean
@@ -170,6 +171,9 @@ object TermDisplay {
     import Terminal.Ansi
 
     private var currentHeight = 0
+    private var printedAnything0 = false
+
+    def printedAnything() = printedAnything0
 
     private val needsUpdate = new AtomicBoolean(false)
 
@@ -305,6 +309,11 @@ object TermDisplay {
         for ((url, info) <- done0 ++ downloads0) {
           assert(info != null, s"Incoherent state ($url)")
 
+          if (!printedAnything0) {
+            beforeOutput
+            printedAnything0 = true
+          }
+
           truncatedPrintln(url)
           out.clearLine(2)
           out.write(s"  ${info.display()}\n")
@@ -422,18 +431,35 @@ class TermDisplay(
     else
       1000L / 60
 
-  def init(): Unit = {
-    updateRunnableOpt = Some(new UpdateDisplayRunnable(out, width, fallbackMode0))
+  /***
+    *
+    * @param beforeOutput: called before any output is printed, iff something else is outputed.
+    *                      (That is, if that `TermDisplay` doesn't print any progress,
+    *                      `initialMessage` won't be printed either.)
+    */
+  def init(beforeOutput: => Unit): Unit = {
+    updateRunnableOpt = Some(new UpdateDisplayRunnable(beforeOutput, out, width, fallbackMode0))
 
     updateRunnable.init()
     scheduler.scheduleAtFixedRate(updateRunnable, 0L, refreshInterval, TimeUnit.MILLISECONDS)
   }
 
-  def stop(): Unit = {
+  def init(): Unit =
+    init(())
+
+  /**
+    *
+    * @return: whether any message was printed by this `TermDisplay`
+    */
+  def stopDidPrintSomething(): Boolean = {
     scheduler.shutdown()
     scheduler.awaitTermination(refreshInterval, TimeUnit.MILLISECONDS)
     updateRunnable.cleanDisplay()
+    updateRunnable.printedAnything()
   }
+
+  def stop(): Unit =
+    stopDidPrintSomething()
 
   override def downloadingArtifact(url: String, file: File): Unit =
     updateRunnable.newEntry(
