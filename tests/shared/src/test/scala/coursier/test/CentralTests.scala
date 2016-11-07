@@ -436,6 +436,17 @@ object CentralTests extends TestSuite {
         "1.11-8"
       )
     }
+
+    'nd4jNative - {
+      // In particular:
+      // - uses OS-based activation,
+      // - requires converting a "x86-64" to "x86_64" in it, and
+      // - uses "project.packaging" property
+      resolutionCheck(
+        Module("org.nd4j", "nd4j-native"),
+        "0.5.0"
+      )
+    }
   }
 
 }

@@ -56,8 +56,14 @@ object Activation {
     def isEmpty: Boolean =
       arch.isEmpty && families.isEmpty && name.isEmpty && version.isEmpty
 
+    def archMatch(current: Option[String]): Boolean =
+      arch.forall(current.toSeq.contains) || {
+        // seems required by org.nd4j:nd4j-native:0.5.0
+        arch.toSeq.contains("x86-64") && current.toSeq.contains("x86_64")
+      }
+
     def isActive(osInfo: Os): Boolean =
-      arch.forall(osInfo.arch.toSeq.contains) &&
+      archMatch(osInfo.arch) &&
         families.forall { f =>
           if (Os.knownFamilies(f))
             osInfo.families.contains(f)
