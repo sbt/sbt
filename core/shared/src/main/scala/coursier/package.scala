@@ -1,3 +1,4 @@
+import coursier.core.{Activation, Parse, Version}
 
 /**
  * Mainly pulls definitions from coursier.core, sometimes with default arguments.
@@ -72,7 +73,9 @@ package object coursier {
       errorCache: Map[ModuleVersion, Seq[String]] = Map.empty,
       finalDependencies: Map[Dependency, Seq[Dependency]] = Map.empty,
       filter: Option[Dependency => Boolean] = None,
-      profileActivation: Option[(String, core.Activation, Map[String, String]) => Boolean] = None
+      osInfo: Activation.Os = Activation.Os.fromProperties(sys.props.toMap),
+      jdkVersion: Option[Version] = sys.props.get("java.version").flatMap(Parse.version),
+      userActivations: Option[Map[String, Boolean]] = None
     ): Resolution =
       core.Resolution(
         rootDependencies,
@@ -83,7 +86,9 @@ package object coursier {
         errorCache,
         finalDependencies,
         filter,
-        profileActivation
+        osInfo,
+        jdkVersion,
+        userActivations
       )
   }
 

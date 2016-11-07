@@ -130,6 +130,18 @@ lazy val core = crossProject
       import com.typesafe.tools.mima.core._
 
       Seq(
+        // Since 1.0.0-M15
+        // reworked profile activation
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Resolution.copy"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Resolution.profileActivation"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Resolution.copyWithCache"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Resolution.this"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Activation.copy"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Activation.this"),
+        ProblemFilters.exclude[MissingTypesProblem]("coursier.core.Activation$"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Activation.apply"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Resolution.profiles"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Resolution.apply"),
         // Since 1.0.0-M13
         // reworked VersionConstraint
         ProblemFilters.exclude[MissingClassProblem]("coursier.core.VersionConstraint$Interval"),

@@ -1,0 +1,16 @@
+com.google.code.findbugs:annotations:2.0.1:compile
+com.google.guava:guava:18.0:compile
+commons-io:commons-io:2.4:compile
+org.apache.commons:commons-lang3:3.3.1:compile
+org.apache.commons:commons-math3:3.4.1:compile
+org.bytedeco:javacpp:1.2.3:compile
+org.javassist:javassist:3.18.2-GA:compile
+org.nd4j:nd4j-api:0.5.0:compile
+org.nd4j:nd4j-buffer:0.5.0:compile
+org.nd4j:nd4j-common:0.5.0:compile
+org.nd4j:nd4j-context:0.5.0:compile
+org.nd4j:nd4j-native:0.5.0:compile
+org.nd4j:nd4j-native-api:0.5.0:compile
+org.projectlombok:lombok:1.16.4:compile
+org.reflections:reflections:0.9.10:compile
+org.slf4j:slf4j-api:1.7.10:compile
