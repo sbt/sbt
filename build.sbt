@@ -7,7 +7,7 @@ import Sxr.sxr
 // but can be shared across the multi projects.
 def buildLevelSettings: Seq[Setting[_]] = inThisBuild(Seq(
   organization := "org.scala-sbt",
-  version := "0.13.13-SNAPSHOT",
+  version := "0.13.13",
   bintrayOrganization := Some(if (publishStatus.value == "releases") "typesafe" else "sbt"),
   bintrayRepository := s"ivy-${publishStatus.value}",
   bintrayPackage := "sbt",
@@ -164,7 +164,7 @@ lazy val collectionProj = (project in utilPath / "collection").
     Util.keywordsSettings,
     Util.crossBuild,
     name := "Collections",
-    crossScalaVersions := Seq(scala210, scala211)
+    crossScalaVersions := Seq(scala210, scala211, scala212)
   )
 
 lazy val applyMacroProj = (project in utilPath / "appmacro").
@@ -212,7 +212,7 @@ lazy val completeProj = (project in utilPath / "complete").
     Util.crossBuild,
     name := "Completion",
     libraryDependencies += jline,
-    crossScalaVersions := Seq(scala210, scala211)
+    crossScalaVersions := Seq(scala210, scala211, scala212)
   )
 
 // logging
