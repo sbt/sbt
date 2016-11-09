@@ -91,7 +91,10 @@ lazy val cli = project
     coursierPrefix,
     libs ++= {
       if (scalaBinaryVersion.value == "2.11")
-        Seq(Deps.caseApp)
+        Seq(
+          Deps.caseApp,
+          Deps.argonautShapeless
+        )
       else
         Seq()
     },

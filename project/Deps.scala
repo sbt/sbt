@@ -16,6 +16,7 @@ object Deps {
   def okhttpUrlConnection = "com.squareup.okhttp" % "okhttp-urlconnection" % "2.7.5"
   def sbtLauncherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
   def typesafeConfig = "com.typesafe" % "config" % "1.3.1"
+  def argonautShapeless = "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M4"
 
   def scalaAsync = Def.setting {
 

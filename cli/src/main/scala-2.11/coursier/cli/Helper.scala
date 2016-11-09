@@ -6,6 +6,7 @@ import java.net.{ URL, URLClassLoader }
 import java.util.jar.{ Manifest => JManifest }
 import java.util.concurrent.Executors
 
+import coursier.cli.scaladex.Scaladex
 import coursier.cli.typelevel.Typelevel
 import coursier.ivy.IvyRepository
 import coursier.util.{Print, Parse}
@@ -162,10 +163,59 @@ class Helper(
   }
 
 
+  val (scaladexRawDependencies, otherRawDependencies) =
+    rawDependencies.partition(s => s.contains("/") || !s.contains(":"))
+
+  val scaladexModuleVersionConfigs = {
+    val res = scaladexRawDependencies.map { s =>
+      val deps = Scaladex.dependencies(
+        s,
+        "2.11",
+        if (verbosityLevel >= 0) Console.err.println(_) else _ => ()
+      )
+
+      deps.map { modVers =>
+        val m = modVers.groupBy(_._2)
+        if (m.size > 1) {
+          val (keptVer, modVers0) = m.map {
+            case (v, l) =>
+              val ver = coursier.core.Parse.version(v)
+                .getOrElse(???) // FIXME
+
+            ver -> l
+          }
+          .maxBy(_._1)
+
+          if (verbosityLevel >= 0)
+            Console.err.println(s"Keeping version ${keptVer.repr}")
+
+          modVers0
+        } else
+          modVers
+      }
+    }
+
+    val errors = res.collect { case -\/(err) => err }
+
+    prematureExitIf(errors.nonEmpty) {
+      s"Error getting scaladex infos:\n" + errors.map("  " + _).mkString("\n")
+    }
+
+    res
+      .collect { case \/-(l) => l }
+      .flatten
+      .map { case (mod, ver) => (mod, ver, None) }
+  }
+
+
   val (modVerCfgErrors, moduleVersionConfigs) =
-    Parse.moduleVersionConfigs(rawDependencies, scalaVersion)
+    Parse.moduleVersionConfigs(otherRawDependencies, scalaVersion)
   val (intransitiveModVerCfgErrors, intransitiveModuleVersionConfigs) =
     Parse.moduleVersionConfigs(intransitive, scalaVersion)
+
+  def allModuleVersionConfigs =
+    // FIXME Order of the dependencies is not respected here (scaladex ones go first)
+    scaladexModuleVersionConfigs ++ moduleVersionConfigs
 
   prematureExitIf(modVerCfgErrors.nonEmpty) {
     s"Cannot parse dependencies:\n" + modVerCfgErrors.map("  "+_).mkString("\n")
@@ -244,7 +294,7 @@ class Helper(
     (mod.organization, mod.name)
   }.toSet
 
-  val baseDependencies = moduleVersionConfigs.map {
+  val baseDependencies = allModuleVersionConfigs.map {
     case (module, version, configOpt) =>
       Dependency(
         module,
@@ -692,7 +742,7 @@ class Helper(
       } else {
         // Trying to get the main class of the first artifact
         val mainClassOpt = for {
-          (module, _, _) <- moduleVersionConfigs.headOption
+          (module, _, _) <- allModuleVersionConfigs.headOption
           mainClass <- mainClasses.collectFirst {
             case ((org, name), mainClass)
               if org == module.organization && (
