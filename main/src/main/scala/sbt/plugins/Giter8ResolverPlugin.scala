@@ -13,7 +13,7 @@ object Giter8TemplatePlugin extends AutoPlugin {
   override lazy val globalSettings: Seq[Setting[_]] =
     Seq(
       templateResolverInfos +=
-        TemplateResolverInfo(ModuleID("org.scala-sbt.sbt-giter8-resolver", "sbt-giter8-resolver", "0.1.0") cross CrossVersion.binary,
+        TemplateResolverInfo(ModuleID("org.scala-sbt.sbt-giter8-resolver", "sbt-giter8-resolver", "0.1.2") cross CrossVersion.binary,
           "sbtgiter8resolver.Giter8TemplateResolver")
     )
 }
