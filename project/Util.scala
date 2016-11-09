@@ -1,6 +1,5 @@
 import sbt._
 import Keys._
-import StringUtilities.normalize
 
 object Util {
   lazy val scalaKeywords = TaskKey[Set[String]]("scala-keywords")
@@ -9,7 +8,7 @@ object Util {
   lazy val javaOnlySettings = Seq[Setting[_]](
     crossPaths := false,
     compileOrder := CompileOrder.JavaThenScala,
-    unmanagedSourceDirectories in Compile <<= Seq(javaSource in Compile).join,
+    unmanagedSourceDirectories in Compile := Seq((javaSource in Compile).value),
     crossScalaVersions := Seq(Dependencies.scala211),
     autoScalaLibrary := false
   )
@@ -35,7 +34,7 @@ object %s {
     }
   def keywordsSettings: Seq[Setting[_]] = inConfig(Compile)(Seq(
     scalaKeywords := getScalaKeywords,
-    generateKeywords <<= (sourceManaged, scalaKeywords) map writeScalaKeywords,
-    sourceGenerators <+= generateKeywords map (x => Seq(x))
+    generateKeywords := writeScalaKeywords(sourceManaged.value, scalaKeywords.value),
+    sourceGenerators += (generateKeywords map (x => Seq(x))).taskValue
   ))
 }
