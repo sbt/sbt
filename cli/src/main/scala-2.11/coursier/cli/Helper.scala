@@ -15,8 +15,9 @@ import scala.annotation.tailrec
 import scala.concurrent.duration.Duration
 import scala.util.Try
 
-import scalaz.{Failure, Success, \/-, -\/}
+import scalaz.{Failure, Nondeterminism, Success, \/-, -\/}
 import scalaz.concurrent.{ Task, Strategy }
+import scalaz.std.list._
 
 object Helper {
   def fileRepr(f: File) = f.toString
@@ -187,11 +188,11 @@ class Helper(
 
       val scaladex = Scaladex.cached(fetchs: _*)
 
-      val res = scaladexRawDependencies.map { s =>
+      val res = Nondeterminism[Task].gather(scaladexRawDependencies.map { s =>
         val deps = scaladex.dependencies(
           s,
           "2.11",
-          if (verbosityLevel >= 0) Console.err.println(_) else _ => ()
+          if (verbosityLevel >= 2) Console.err.println(_) else _ => ()
         )
 
         deps.map { modVers =>
@@ -206,14 +207,14 @@ class Helper(
             }
             .maxBy(_._1)
 
-            if (verbosityLevel >= 0)
+            if (verbosityLevel >= 1)
               Console.err.println(s"Keeping version ${keptVer.repr}")
 
             modVers0
           } else
             modVers
-        }
-      }
+        }.run
+      }).unsafePerformSync
 
       logger.foreach(_.stop())
 
