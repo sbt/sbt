@@ -166,46 +166,68 @@ class Helper(
   val (scaladexRawDependencies, otherRawDependencies) =
     rawDependencies.partition(s => s.contains("/") || !s.contains(":"))
 
-  val scaladexModuleVersionConfigs = {
-    val res = scaladexRawDependencies.map { s =>
-      val deps = Scaladex.dependencies(
-        s,
-        "2.11",
-        if (verbosityLevel >= 0) Console.err.println(_) else _ => ()
+  val scaladexModuleVersionConfigs =
+    if (scaladexRawDependencies.isEmpty)
+      Nil
+    else {
+      val logger =
+        if (verbosityLevel >= 0)
+          Some(new TermDisplay(
+            new OutputStreamWriter(System.err),
+            fallbackMode = loggerFallbackMode
+          ))
+        else
+          None
+
+      val fetchs = cachePolicies.map(p =>
+        Cache.fetch(cache, p, checksums = Nil, logger = logger, pool = pool, ttl = ttl0)
       )
 
-      deps.map { modVers =>
-        val m = modVers.groupBy(_._2)
-        if (m.size > 1) {
-          val (keptVer, modVers0) = m.map {
-            case (v, l) =>
-              val ver = coursier.core.Parse.version(v)
-                .getOrElse(???) // FIXME
+      logger.foreach(_.init())
 
-            ver -> l
-          }
-          .maxBy(_._1)
+      val scaladex = Scaladex.cached(fetchs: _*)
 
-          if (verbosityLevel >= 0)
-            Console.err.println(s"Keeping version ${keptVer.repr}")
+      val res = scaladexRawDependencies.map { s =>
+        val deps = scaladex.dependencies(
+          s,
+          "2.11",
+          if (verbosityLevel >= 0) Console.err.println(_) else _ => ()
+        )
 
-          modVers0
-        } else
-          modVers
+        deps.map { modVers =>
+          val m = modVers.groupBy(_._2)
+          if (m.size > 1) {
+            val (keptVer, modVers0) = m.map {
+              case (v, l) =>
+                val ver = coursier.core.Parse.version(v)
+                  .getOrElse(???) // FIXME
+
+              ver -> l
+            }
+            .maxBy(_._1)
+
+            if (verbosityLevel >= 0)
+              Console.err.println(s"Keeping version ${keptVer.repr}")
+
+            modVers0
+          } else
+            modVers
+        }
       }
+
+      logger.foreach(_.stop())
+
+      val errors = res.collect { case -\/(err) => err }
+
+      prematureExitIf(errors.nonEmpty) {
+        s"Error getting scaladex infos:\n" + errors.map("  " + _).mkString("\n")
+      }
+
+      res
+        .collect { case \/-(l) => l }
+        .flatten
+        .map { case (mod, ver) => (mod, ver, None) }
     }
-
-    val errors = res.collect { case -\/(err) => err }
-
-    prematureExitIf(errors.nonEmpty) {
-      s"Error getting scaladex infos:\n" + errors.map("  " + _).mkString("\n")
-    }
-
-    res
-      .collect { case \/-(l) => l }
-      .flatten
-      .map { case (mod, ver) => (mod, ver, None) }
-  }
 
 
   val (modVerCfgErrors, moduleVersionConfigs) =

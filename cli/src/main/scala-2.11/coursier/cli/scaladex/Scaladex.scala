@@ -3,18 +3,16 @@ package coursier.cli.scaladex
 import java.net.HttpURLConnection
 import java.nio.charset.StandardCharsets
 
-import argonaut._
-import Argonaut._
-import ArgonautShapeless._
-import coursier.Module
+import argonaut._, Argonaut._, ArgonautShapeless._
+import coursier.core.{ Artifact, Attributes }
+import coursier.{ Fetch, Module }
 
 import scalaz.{-\/, \/, \/-}
 import scalaz.Scalaz.ToEitherOps
 import scalaz.Scalaz.ToEitherOpsFromEither
+import scalaz.concurrent.Task
 
 object Scaladex {
-
-  // quick & dirty API for querying scaladex
 
   case class SearchResult(
     /** GitHub organization */
@@ -25,31 +23,6 @@ object Scaladex {
     artifacts: List[String] = Nil
   )
 
-  def search(name: String, target: String, scalaVersion: String): String \/ Seq[SearchResult] = {
-
-    val url = new java.net.URL(
-      // FIXME Escaping
-      s"https://index.scala-lang.org/api/scastie/search?q=$name&target=$target&scalaVersion=$scalaVersion"
-    )
-
-    var conn: HttpURLConnection = null
-
-    val b = try {
-      conn = url.openConnection().asInstanceOf[HttpURLConnection]
-      // FIXME See below
-      // conn.setRequestProperty("Accept", "application/json")
-
-      coursier.Platform.readFullySync(conn.getInputStream)
-    } finally {
-      if (conn != null)
-        conn.disconnect()
-    }
-
-    val s = new String(b, StandardCharsets.UTF_8)
-
-    s.decodeEither[List[SearchResult]].disjunction
-  }
-
   case class ArtifactInfos(
     /** Dependency group ID (aka organization) */
     groupId: String,
@@ -59,6 +32,52 @@ object Scaladex {
     version: String
   )
 
+  def apply(): Scaladex =
+    Scaladex { url =>
+      var conn: HttpURLConnection = null
+
+      val b = try {
+        conn = new java.net.URL(url).openConnection().asInstanceOf[HttpURLConnection]
+        coursier.Platform.readFullySync(conn.getInputStream)
+      } finally {
+        if (conn != null)
+          conn.disconnect()
+      }
+
+      new String(b, StandardCharsets.UTF_8)
+    }
+
+  def cached(fetch: Fetch.Content[Task]*): Scaladex =
+    Scaladex {
+      url =>
+        def get(fetch: Fetch.Content[Task]) =
+          fetch(
+            Artifact(url, Map(), Map(), Attributes("", ""), changing = true, None)
+          )
+
+        (get(fetch.head) /: fetch.tail)(_ orElse get(_)).run.unsafePerformSync match {
+          case -\/(err) =>
+            throw new Exception(s"Fetching $url: $err")
+          case \/-(s) => s
+        }
+    }
+}
+
+// TODO Add F[_] type param, change `fetch` type to `String => EitherT[F, String, String]`, adjust method signatures accordingly, ...
+case class Scaladex(fetch: String => String) {
+
+  // quick & dirty API for querying scaladex
+
+  def search(name: String, target: String, scalaVersion: String): String \/ Seq[Scaladex.SearchResult] = {
+
+    val s = fetch(
+      // FIXME Escaping
+      s"https://index.scala-lang.org/api/scastie/search?q=$name&target=$target&scalaVersion=$scalaVersion"
+    )
+
+    s.decodeEither[List[Scaladex.SearchResult]].disjunction
+  }
+
   /**
     *
     * @param organization: GitHub organization
@@ -66,29 +85,14 @@ object Scaladex {
     * @param artifactName: Scaladex artifact name
     * @return
     */
-  def artifactInfos(organization: String, repository: String, artifactName: String): String \/ ArtifactInfos = {
+  def artifactInfos(organization: String, repository: String, artifactName: String): String \/ Scaladex.ArtifactInfos = {
 
-    val url = new java.net.URL(
+    val s = fetch(
       // FIXME Escaping
       s"https://index.scala-lang.org/api/scastie/project?organization=$organization&repository=$repository&artifact=$artifactName"
     )
 
-    var conn: HttpURLConnection = null
-
-    val b = try {
-      conn = url.openConnection().asInstanceOf[HttpURLConnection]
-      // FIXME See below
-      // conn.setRequestProperty("Accept", "application/json")
-
-      coursier.Platform.readFullySync(conn.getInputStream)
-    } finally {
-      if (conn != null)
-        conn.disconnect()
-    }
-
-    val s = new String(b, StandardCharsets.UTF_8)
-
-    s.decodeEither[ArtifactInfos].disjunction
+    s.decodeEither[Scaladex.ArtifactInfos].disjunction
   }
 
   /**
@@ -99,25 +103,10 @@ object Scaladex {
     */
   def artifactNames(organization: String, repository: String): String \/ Seq[String] = {
 
-    val url = new java.net.URL(
+    val s = fetch(
       // FIXME Escaping
       s"https://index.scala-lang.org/api/scastie/project?organization=$organization&repository=$repository"
     )
-
-    var conn: HttpURLConnection = null
-
-    val b = try {
-      conn = url.openConnection().asInstanceOf[HttpURLConnection]
-      // FIXME report to scaladex, it should accept that (it currently returns JSON as text/plain)
-      // conn.setRequestProperty("Accept", "application/json")
-
-      coursier.Platform.readFullySync(conn.getInputStream)
-    } finally {
-      if (conn != null)
-        conn.disconnect()
-    }
-
-    val s = new String(b, StandardCharsets.UTF_8)
 
     case class Result(artifacts: List[String])
 
