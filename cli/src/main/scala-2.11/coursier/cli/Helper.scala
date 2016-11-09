@@ -546,7 +546,9 @@ class Helper(
     subset: Set[Dependency] = null
   ): Seq[File] = {
 
-    val artifacts0 = artifacts(sources, javadoc, artifactTypes, subset)
+    val artifacts0 = artifacts(sources, javadoc, artifactTypes, subset).map { artifact =>
+      artifact.copy(attributes = Attributes())
+    }.distinct
 
     val logger =
       if (verbosityLevel >= 0)
