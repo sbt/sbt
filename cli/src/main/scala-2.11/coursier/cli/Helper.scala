@@ -598,7 +598,17 @@ class Helper(
 
   def contextLoader = Thread.currentThread().getContextClassLoader
 
-  def baseLoader = ClassLoader.getSystemClassLoader
+  def baseLoader = {
+
+    @tailrec
+    def rootLoader(cl: ClassLoader): ClassLoader =
+      Option(cl.getParent) match {
+        case Some(par) => rootLoader(par)
+        case None => cl
+      }
+
+    rootLoader(ClassLoader.getSystemClassLoader)
+  }
 
   lazy val (parentLoader, filteredFiles) = {
 
