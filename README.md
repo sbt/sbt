@@ -771,6 +771,7 @@ and allows to add dependencies in its sessions with coursier (initial motivation
 for writing coursier),
 - [Apache Toree](https://github.com/apache/incubator-toree) - formerly known as [spark-kernel](https://github.com/ibm-et/spark-kernel), is now using coursier to
 add dependencies on-the-fly ([#4](https://github.com/apache/incubator-toree/pull/4)),
+- [Quill](https://github.com/getquill/quill) is using coursier for faster dependency resolution ([#591](https://github.com/getquill/quill/pull/591)),
 - Your project here :-)
 
 
