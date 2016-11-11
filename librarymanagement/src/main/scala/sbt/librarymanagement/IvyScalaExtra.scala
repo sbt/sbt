@@ -47,24 +47,28 @@ import ScalaArtifacts._
 
 private[sbt] abstract class IvyScalaFunctions {
   /** Performs checks/adds filters on Scala dependencies (if enabled in IvyScala). */
-  def checkModule(module: DefaultModuleDescriptor, conf: String, log: Logger)(check: IvyScala): Unit = {
+  def checkModule(module: DefaultModuleDescriptor, conf: String, scalaVersionConfigs: Vector[String], log: Logger)(check: IvyScala): Unit = {
     if (check.checkExplicit)
       checkDependencies(module, check.scalaOrganization, check.scalaArtifacts, check.scalaBinaryVersion, check.configurations, log)
     if (check.filterImplicit)
       excludeScalaJars(module, check.configurations)
     if (check.overrideScalaVersion)
-      overrideScalaVersion(module, check.scalaOrganization, check.scalaFullVersion)
+      overrideScalaVersion(module, check.scalaOrganization, check.scalaFullVersion, scalaVersionConfigs)
   }
 
-  class OverrideScalaMediator(scalaOrganization: String, scalaVersion: String) extends DependencyDescriptorMediator {
+  class OverrideScalaMediator(scalaOrganization: String, scalaVersion: String, scalaVersionConfigs0: Vector[String]) extends DependencyDescriptorMediator {
+    private[this] val scalaVersionConfigs = scalaVersionConfigs0.toSet
     def mediate(dd: DependencyDescriptor): DependencyDescriptor = {
+      // Mediate only for the dependencies in scalaVersion configurations. https://github.com/sbt/sbt/issues/2786
+      def configQualifies: Boolean =
+        (dd.getModuleConfigurations exists { scalaVersionConfigs })
       val transformer =
         new NamespaceTransformer {
           def transform(mrid: ModuleRevisionId): ModuleRevisionId = {
             if (mrid == null) mrid
             else
               mrid.getName match {
-                case name @ (CompilerID | LibraryID | ReflectID | ActorsID | ScalapID) =>
+                case name @ (CompilerID | LibraryID | ReflectID | ActorsID | ScalapID) if configQualifies =>
                   ModuleRevisionId.newInstance(scalaOrganization, name, mrid.getBranch, scalaVersion, mrid.getQualifiedExtraAttributes)
                 case _ => mrid
               }
@@ -77,8 +81,8 @@ private[sbt] abstract class IvyScalaFunctions {
     }
   }
 
-  def overrideScalaVersion(module: DefaultModuleDescriptor, organization: String, version: String): Unit = {
-    val mediator = new OverrideScalaMediator(organization, version)
+  def overrideScalaVersion(module: DefaultModuleDescriptor, organization: String, version: String, scalaVersionConfigs: Vector[String]): Unit = {
+    val mediator = new OverrideScalaMediator(organization, version, scalaVersionConfigs)
     module.addDependencyDescriptorMediator(new ModuleId(Organization, "*"), ExactPatternMatcher.INSTANCE, mediator)
     if (organization != Organization)
       module.addDependencyDescriptorMediator(new ModuleId(organization, "*"), ExactPatternMatcher.INSTANCE, mediator)
