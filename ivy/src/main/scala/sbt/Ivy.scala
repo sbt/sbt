@@ -174,7 +174,21 @@ final class IvySbt(val configuration: IvyConfiguration) {
             case pc: PomConfiguration                => configurePom(pc)
             case ifc: IvyFileConfiguration           => configureIvyFile(ifc)
           }
-        moduleSettings.ivyScala.foreach(IvyScala.checkModule(baseModule, baseConfiguration, configuration.log))
+
+        val configs =
+          moduleSettings match {
+            case ic: InlineConfiguration             => ic.configurations
+            case ic: InlineConfigurationWithExcludes => ic.configurations
+            case ec: EmptyConfiguration              => Nil
+            case pc: PomConfiguration                => Configurations.default ++ Configurations.defaultInternal
+            case ifc: IvyFileConfiguration           => Configurations.default ++ Configurations.defaultInternal
+          }
+        moduleSettings.ivyScala match {
+          case Some(is) =>
+            val svc = configs.toVector filter Configurations.underScalaVersion map { _.name }
+            IvyScala.checkModule(baseModule, baseConfiguration, svc, configuration.log)(is)
+          case _ => // do nothing
+        }
         IvySbt.addExtraNamespace(baseModule)
         (baseModule, baseConfiguration)
       }

@@ -51,6 +51,15 @@ object Configurations {
   private[sbt] def DefaultConfiguration(mavenStyle: Boolean) = if (mavenStyle) DefaultMavenConfiguration else DefaultIvyConfiguration
   private[sbt] def defaultConfiguration(mavenStyle: Boolean) = if (mavenStyle) Configurations.Compile else Configurations.Default
   private[sbt] def removeDuplicates(configs: Iterable[Configuration]) = Set(scala.collection.mutable.Map(configs.map(config => (config.name, config)).toSeq: _*).values.toList: _*)
+
+  /** Returns true if the configuration should be under the influence of scalaVersion. */
+  private[sbt] def underScalaVersion(c: Configuration): Boolean =
+    c match {
+      case Default | Compile | IntegrationTest | Provided | Runtime | Test | Optional |
+        CompilerPlugin | CompileInternal | RuntimeInternal | TestInternal => true
+      case config =>
+        config.extendsConfigs exists underScalaVersion
+    }
 }
 /** Represents an Ivy configuration. */
 final case class Configuration(name: String, description: String, isPublic: Boolean, extendsConfigs: List[Configuration], transitive: Boolean) {
