@@ -49,7 +49,7 @@ private[sbt] abstract class IvyScalaFunctions {
   /** Performs checks/adds filters on Scala dependencies (if enabled in IvyScala). */
   def checkModule(module: DefaultModuleDescriptor, conf: String, scalaVersionConfigs: Vector[String], log: Logger)(check: IvyScala): Unit = {
     if (check.checkExplicit)
-      checkDependencies(module, check.scalaOrganization, check.scalaArtifacts, check.scalaBinaryVersion, check.configurations, log)
+      checkDependencies(module, check.scalaOrganization, check.scalaArtifacts, check.scalaBinaryVersion, scalaVersionConfigs, log)
     if (check.filterImplicit)
       excludeScalaJars(module, check.configurations)
     if (check.overrideScalaVersion)
@@ -98,8 +98,8 @@ private[sbt] abstract class IvyScalaFunctions {
    * Checks the immediate dependencies of module for dependencies on scala jars and verifies that the version on the
    * dependencies matches scalaVersion.
    */
-  private def checkDependencies(module: ModuleDescriptor, scalaOrganization: String, scalaArtifacts: Seq[String], scalaBinaryVersion: String, configurations: Iterable[Configuration], log: Logger): Unit = {
-    val configSet = if (configurations.isEmpty) (c: String) => true else configurationSet(configurations)
+  private def checkDependencies(module: ModuleDescriptor, scalaOrganization: String, scalaArtifacts: Vector[String], scalaBinaryVersion: String, scalaVersionConfigs0: Vector[String], log: Logger): Unit = {
+    val scalaVersionConfigs: String => Boolean = if (scalaVersionConfigs0.isEmpty) (c: String) => false else scalaVersionConfigs0.toSet
     def binaryScalaWarning(dep: DependencyDescriptor): Option[String] =
       {
         val id = dep.getDependencyRevisionId
@@ -107,7 +107,7 @@ private[sbt] abstract class IvyScalaFunctions {
         def isScalaLangOrg = id.getOrganisation == scalaOrganization
         def isScalaArtifact = scalaArtifacts.contains(id.getName)
         def hasBinVerMismatch = depBinaryVersion != scalaBinaryVersion
-        def matchesOneOfTheConfigs = dep.getModuleConfigurations.exists(configSet)
+        def matchesOneOfTheConfigs = dep.getModuleConfigurations exists { scalaVersionConfigs }
         val mismatched = isScalaLangOrg && isScalaArtifact && hasBinVerMismatch && matchesOneOfTheConfigs
         if (mismatched)
           Some("Binary version (" + depBinaryVersion + ") for dependency " + id +
