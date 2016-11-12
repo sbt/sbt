@@ -49,6 +49,5 @@ checkDependencies := {
       m <- c.modules
       if !m.evicted
     } yield m.module.copy(extraAttributes = Map.empty)).toSet
-
   assert(resolved == expected)
 }

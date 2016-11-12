@@ -14,10 +14,12 @@ object ScalaOverrideTest extends Specification {
   val OtherOrgID = "other.org"
 
   def check(org0: String, version0: String)(org1: String, name1: String, version1: String) = {
-    val osm = new OverrideScalaMediator(org0, version0)
+    val scalaConfigs = Configurations.default.toVector filter { Configurations.underScalaVersion } map { _.name }
+    val osm = new OverrideScalaMediator(org0, version0, scalaConfigs)
 
     val mrid = ModuleRevisionId.newInstance(org1, name1, version1)
     val dd = new DefaultDependencyDescriptor(mrid, false)
+    dd.addDependencyConfiguration("compile", "compile")
 
     val res = osm.mediate(dd)
     res.getDependencyRevisionId must_== ModuleRevisionId.newInstance(org0, name1, version0)
