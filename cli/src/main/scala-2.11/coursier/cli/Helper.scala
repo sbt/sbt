@@ -191,7 +191,7 @@ class Helper(
       val res = Nondeterminism[Task].gather(scaladexRawDependencies.map { s =>
         val deps = scaladex.dependencies(
           s,
-          "2.11",
+          scalaVersion,
           if (verbosityLevel >= 2) Console.err.println(_) else _ => ()
         )
 

@@ -74,7 +74,7 @@ case class Scaladex[F[_]](fetch: String => EitherT[F, String, String], F: Nondet
 
     val s = fetch(
       // FIXME Escaping
-      s"https://index.scala-lang.org/api/scastie/search?q=$name&target=$target&scalaVersion=$scalaVersion"
+      s"https://index.scala-lang.org/api/search?q=$name&target=$target&scalaVersion=$scalaVersion&cli=true"
     )
 
     s.flatMap(s => EitherT.fromDisjunction[F](s.decodeEither[List[Scaladex.SearchResult]].disjunction))
@@ -91,7 +91,7 @@ case class Scaladex[F[_]](fetch: String => EitherT[F, String, String], F: Nondet
 
     val s = fetch(
       // FIXME Escaping
-      s"https://index.scala-lang.org/api/scastie/project?organization=$organization&repository=$repository&artifact=$artifactName"
+      s"https://index.scala-lang.org/api/project?organization=$organization&repository=$repository&artifact=$artifactName"
     )
 
     s.flatMap(s => EitherT.fromDisjunction[F](s.decodeEither[Scaladex.ArtifactInfos].disjunction))
@@ -122,7 +122,6 @@ case class Scaladex[F[_]](fetch: String => EitherT[F, String, String], F: Nondet
     * Latest version only.
     */
   def dependencies(name: String, scalaVersion: String, logger: String => Unit): EitherT[F, String, Seq[(Module, String)]] = {
-
     val idx = name.indexOf('/')
     val orgNameOrError =
       if (idx >= 0) {
