@@ -79,17 +79,11 @@ sealed trait RichParser[A] {
    */
   def failOnException: Parser[A]
 
-  @deprecated("Use `not` and explicitly provide the failure message", "0.12.2")
-  def unary_- : Parser[Unit]
-
   /**
    * Apply the original parser, but only succeed if `o` also succeeds.
    * Note that `o` does not need to consume the same amount of input to satisfy this condition.
    */
   def &(o: Parser[_]): Parser[A]
-
-  @deprecated("Use `and` and `not` and explicitly provide the failure message", "0.12.2")
-  def -(o: Parser[_]): Parser[A]
 
   /** Explicitly defines the completions for the original Parser.*/
   def examples(s: String*): Parser[A]
@@ -188,12 +182,6 @@ object Parser extends ParserMain {
   def mkFailures(errors: => Seq[String], definitive: Boolean = false): Failure = new Failure(errors.distinct, definitive)
   def mkFailure(error: => String, definitive: Boolean = false): Failure = new Failure(error :: Nil, definitive)
 
-  @deprecated("This method is deprecated and will be removed in the next major version. Use the parser directly to check for invalid completions.", since = "0.13.2")
-  def checkMatches(a: Parser[_], completions: Seq[String]): Unit = {
-    val bad = completions.filter(apply(a)(_).resultEmpty.isFailure)
-    if (bad.nonEmpty) sys.error("Invalid example completions: " + bad.mkString("'", "', '", "'"))
-  }
-
   def tuple[A, B](a: Option[A], b: Option[B]): Option[(A, B)] =
     (a, b) match { case (Some(av), Some(bv)) => Some((av, bv)); case _ => None }
 
@@ -279,9 +267,6 @@ object Parser extends ParserMain {
         case None => checkRepeated(success(Nil))
       }
     }
-
-  @deprecated("Explicitly call `and` and `not` to provide the failure message.", "0.12.2")
-  def sub[T](a: Parser[T], b: Parser[_]): Parser[T] = and(a, not(b))
 
   def and[T](a: Parser[T], b: Parser[_]): Parser[T] = a.ifValid(b.ifValid(new And(a, b)))
 }
@@ -527,13 +512,6 @@ trait ParserMain {
   def token[T](t: Parser[T], complete: TokenCompletions): Parser[T] =
     mkToken(t, "", complete)
 
-  @deprecated("Use a different `token` overload.", "0.12.1")
-  def token[T](t: Parser[T], seen: String, track: Boolean, hide: Int => Boolean): Parser[T] =
-    {
-      val base = if (track) TokenCompletions.default else TokenCompletions.displayOnly(seen)
-      token(t, base.hideWhen(hide))
-    }
-
   private[sbt] def mkToken[T](t: Parser[T], seen: String, complete: TokenCompletions): Parser[T] =
     if (t.valid && !t.isTokenStart)
       if (t.result.isEmpty) new TokenStart(t, seen, complete) else t
@@ -546,9 +524,6 @@ trait ParserMain {
     case (av, Invalid(_))           => av
     case (av, bv)                   => new HomParser(a, b)
   }
-
-  @deprecated("Explicitly specify the failure message.", "0.12.2")
-  def not(p: Parser[_]): Parser[Unit] = not(p, "Excluded.")
 
   def not(p: Parser[_], failMessage: String): Parser[Unit] = p.result match {
     case None    => new Not(p, failMessage)
