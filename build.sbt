@@ -83,8 +83,9 @@ lazy val utilComplete = (project in internalPath / "util-complete").
   settings(
     commonSettings,
     name := "Util Completion",
-    libraryDependencies ++= Seq(jline, sbtIO)
-  )
+    libraryDependencies += jline
+  ).
+  configure(addSbtIO)
 
 // logging
 lazy val utilLogging = (project in internalPath / "util-logging").
@@ -117,9 +118,10 @@ lazy val utilCache = (project in internalPath / "util-cache").
   settings(
     commonSettings,
     name := "Util Cache",
-    libraryDependencies ++= Seq(sjsonnew, scalaReflect.value, sbtIO),
+    libraryDependencies ++= Seq(sjsonnew, scalaReflect.value),
     libraryDependencies += sjsonnewScalaJson % Test
-  )
+  ).
+  configure(addSbtIO)
 
 // Builds on cache to provide caching for filesystem-related operations
 lazy val utilTracking = (project in internalPath / "util-tracking").
@@ -127,9 +129,9 @@ lazy val utilTracking = (project in internalPath / "util-tracking").
   settings(
     commonSettings,
     name := "Util Tracking",
-    libraryDependencies += sbtIO,
     libraryDependencies += sjsonnewScalaJson % Test
-  )
+  ).
+  configure(addSbtIO)
 
 // Internal utility for testing
 lazy val utilTesting = (project in internalPath / "util-testing").
@@ -144,12 +146,12 @@ lazy val utilScripted = (project in internalPath / "util-scripted").
   settings(
     commonSettings,
     name := "Util Scripted",
-    libraryDependencies += sbtIO,
     libraryDependencies ++= {
       if (scalaVersion.value startsWith "2.11") Seq(parserCombinator211)
       else Seq()
     }
-  )
+  ).
+  configure(addSbtIO)
 
 def customCommands: Seq[Setting[_]] = Seq(
   commands += Command.command("release") { state =>
