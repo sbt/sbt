@@ -28,17 +28,8 @@ object MainLogging {
       f
     }
 
-  @deprecated("Explicitly specify the console output.", "0.13.0")
-  def defaultMultiConfig(backing: AbstractLogger): MultiLoggerConfig =
-    defaultMultiConfig(ConsoleOut.systemOut, backing)
   def defaultMultiConfig(console: ConsoleOut, backing: AbstractLogger): MultiLoggerConfig =
     new MultiLoggerConfig(defaultScreen(console, ConsoleLogger.noSuppressedMessage), backing, Nil, Level.Info, Level.Debug, -1, Int.MaxValue)
-
-  @deprecated("Explicitly specify the console output.", "0.13.0")
-  def defaultScreen(): AbstractLogger = ConsoleLogger()
-
-  @deprecated("Explicitly specify the console output.", "0.13.0")
-  def defaultScreen(suppressedMessage: SuppressedTraceContext => Option[String]): AbstractLogger = ConsoleLogger(suppressedMessage = suppressedMessage)
 
   def defaultScreen(console: ConsoleOut): AbstractLogger = ConsoleLogger(console)
   def defaultScreen(console: ConsoleOut, suppressedMessage: SuppressedTraceContext => Option[String]): AbstractLogger =

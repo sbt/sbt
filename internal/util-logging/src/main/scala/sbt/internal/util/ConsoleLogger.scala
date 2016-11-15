@@ -4,28 +4,10 @@
 package sbt.internal.util
 
 import sbt.util._
-import java.io.{ BufferedWriter, PrintStream, PrintWriter }
+import java.io.{ PrintStream, PrintWriter }
 import java.util.Locale
 
 object ConsoleLogger {
-  @deprecated("Moved to ConsoleOut", "0.13.0")
-  def systemOut: ConsoleOut = ConsoleOut.systemOut
-
-  @deprecated("Moved to ConsoleOut", "0.13.0")
-  def overwriteContaining(s: String): (String, String) => Boolean = ConsoleOut.overwriteContaining(s)
-
-  @deprecated("Moved to ConsoleOut", "0.13.0")
-  def systemOutOverwrite(f: (String, String) => Boolean): ConsoleOut = ConsoleOut.systemOutOverwrite(f)
-
-  @deprecated("Moved to ConsoleOut", "0.13.0")
-  def printStreamOut(out: PrintStream): ConsoleOut = ConsoleOut.printStreamOut(out)
-
-  @deprecated("Moved to ConsoleOut", "0.13.0")
-  def printWriterOut(out: PrintWriter): ConsoleOut = ConsoleOut.printWriterOut(out)
-
-  @deprecated("Moved to ConsoleOut", "0.13.0")
-  def bufferedWriterOut(out: BufferedWriter): ConsoleOut = bufferedWriterOut(out)
-
   /** Escape character, used to introduce an escape sequence. */
   final val ESC = '\u001B'
 
