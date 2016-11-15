@@ -47,11 +47,11 @@ lazy val lm = (project in file("librarymanagement")).
     commonSettings,
     name := "librarymanagement",
     libraryDependencies ++= Seq(
-      utilLogging, sbtIO, utilTesting % Test,
-      utilCollection, utilCompletion, ivy, jsch, sbtSerialization, scalaReflect.value, launcherInterface),
+      ivy, jsch, sbtSerialization, scalaReflect.value, launcherInterface),
     resourceGenerators in Compile <+= (version, resourceManaged, streams, compile in Compile) map Util.generateVersionFile,
     binaryIssueFilters ++= Seq()
-  )
+  ).
+  configure(addSbtIO, addSbtUtilLogging, addSbtUtilTesting, addSbtUtilCollection, addSbtUtilCompletion)
 
 def customCommands: Seq[Setting[_]] = Seq(
   commands += Command.command("release") { state =>
