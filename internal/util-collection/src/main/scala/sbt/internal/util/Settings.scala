@@ -87,9 +87,6 @@ trait Init[Scope] {
    */
   private[sbt] final def validated[T](key: ScopedKey[T], selfRefOk: Boolean): ValidationCapture[T] = new ValidationCapture(key, selfRefOk)
 
-  @deprecated("Use the version with default arguments and default parameter.", "0.13.7")
-  final def derive[T](s: Setting[T], allowDynamic: Boolean, filter: Scope => Boolean, trigger: AttributeKey[_] => Boolean): Setting[T] =
-    derive(s, allowDynamic, filter, trigger, false)
   /**
    * Constructs a derived setting that will be automatically defined in every scope where one of its dependencies
    * is explicitly defined and the where the scope matches `filter`.
@@ -101,10 +98,12 @@ trait Init[Scope] {
     val d = new DerivedSetting[T](s.key, s.init, s.pos, filter, trigger)
     if (default) d.default() else d
   }
+
   def deriveAllowed[T](s: Setting[T], allowDynamic: Boolean): Option[String] = s.init match {
     case _: Bind[_, _] if !allowDynamic => Some("Cannot derive from dynamic dependencies.")
     case _                              => None
   }
+
   // id is used for equality
   private[sbt] final def defaultSetting[T](s: Setting[T]): Setting[T] = s.default()
   private[sbt] def defaultSettings(ss: Seq[Setting[_]]): Seq[Setting[_]] = ss.map(s => defaultSetting(s))
@@ -238,29 +237,13 @@ trait Init[Scope] {
     }
 
   final class Uninitialized(val undefined: Seq[Undefined], override val toString: String) extends Exception(toString)
-  final class Undefined private[sbt] (val defining: Setting[_], val referencedKey: ScopedKey[_]) {
-    @deprecated("For compatibility only, use `defining` directly.", "0.13.1")
-    val definingKey = defining.key
-    @deprecated("For compatibility only, use `defining` directly.", "0.13.1")
-    val derived: Boolean = defining.isDerived
-    @deprecated("Use the non-deprecated Undefined factory method.", "0.13.1")
-    def this(definingKey: ScopedKey[_], referencedKey: ScopedKey[_], derived: Boolean) = this(fakeUndefinedSetting(definingKey, derived), referencedKey)
-  }
+  final class Undefined private[sbt] (val defining: Setting[_], val referencedKey: ScopedKey[_])
   final class RuntimeUndefined(val undefined: Seq[Undefined]) extends RuntimeException("References to undefined settings at runtime.") {
     override def getMessage =
       super.getMessage + undefined.map { u =>
         "\n" + u.defining + " referenced from " + u.referencedKey
       }.mkString
   }
-
-  @deprecated("Use the other overload.", "0.13.1")
-  def Undefined(definingKey: ScopedKey[_], referencedKey: ScopedKey[_], derived: Boolean): Undefined =
-    new Undefined(fakeUndefinedSetting(definingKey, derived), referencedKey)
-  private[this] def fakeUndefinedSetting[T](definingKey: ScopedKey[T], d: Boolean): Setting[T] =
-    {
-      val init: Initialize[T] = pure(() => sys.error("Dummy setting for compatibility only."))
-      new Setting(definingKey, init, NoPosition) { override def isDerived = d }
-    }
 
   def Undefined(defining: Setting[_], referencedKey: ScopedKey[_]): Undefined = new Undefined(defining, referencedKey)
   def Uninitialized(validKeys: Seq[ScopedKey[_]], delegates: Scope => Seq[Scope], keys: Seq[Undefined], runtime: Boolean)(implicit display: Show[ScopedKey[_]]): Uninitialized =

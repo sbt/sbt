@@ -82,8 +82,6 @@ final class DisplayOnly(val display: String) extends Completion {
   override def toString = "{" + display + "}"
 }
 final class Token(val display: String, val append: String) extends Completion {
-  @deprecated("Retained only for compatibility.  All information is now in `display` and `append`.", "0.12.1")
-  lazy val prepend = display.stripSuffix(append)
   def isEmpty = display.isEmpty && append.isEmpty
   override final def toString = "[" + display + "]++" + append
 }
@@ -127,19 +125,13 @@ object Completion {
 
   // TODO: make strict in 0.13.0 to match DisplayOnly
   def displayOnly(value: => String): Completion = new DisplayOnly(value)
-  @deprecated("Use displayOnly.", "0.12.1")
-  def displayStrict(value: String): Completion = displayOnly(value)
 
   // TODO: make strict in 0.13.0 to match Token
   def token(prepend: => String, append: => String): Completion = new Token(prepend + append, append)
-  @deprecated("Use token.", "0.12.1")
-  def tokenStrict(prepend: String, append: String): Completion = token(prepend, append)
 
   /** @since 0.12.1 */
   def tokenDisplay(append: String, display: String): Completion = new Token(display, append)
 
   // TODO: make strict in 0.13.0 to match Suggestion
   def suggestion(value: => String): Completion = new Suggestion(value)
-  @deprecated("Use suggestion.", "0.12.1")
-  def suggestStrict(value: String): Completion = suggestion(value)
 }
