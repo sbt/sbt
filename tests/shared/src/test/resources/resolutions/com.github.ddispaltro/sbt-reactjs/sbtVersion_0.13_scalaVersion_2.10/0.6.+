@@ -55,8 +55,8 @@ org.webjars.npm:esprima-fb:15001.1.0-dev-harmony-fb:default
 org.webjars.npm:glob:4.2.1:default
 org.webjars.npm:graceful-fs:3.0.7:default
 org.webjars.npm:iconv-lite:0.4.13:default
-org.webjars.npm:inflight:1.0.4:default
-org.webjars.npm:inherits:2.0.1:default
+org.webjars.npm:inflight:1.0.6:default
+org.webjars.npm:inherits:2.0.3:default
 org.webjars.npm:install:0.1.8:default
 org.webjars.npm:jstransform:10.1.0:default
 org.webjars.npm:lru-cache:2.7.0:default

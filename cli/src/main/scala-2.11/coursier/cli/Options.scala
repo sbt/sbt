@@ -85,6 +85,8 @@ case class CommonOptions(
   @Value("profile")
   @Short("F")
     profile: List[String],
+  @Help("Swap the mainline Scala JARs by Typelevel ones")
+    typelevel: Boolean = false,
   @Recurse
     cacheOptions: CacheOptions
 ) {

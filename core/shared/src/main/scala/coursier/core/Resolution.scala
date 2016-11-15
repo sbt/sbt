@@ -538,7 +538,8 @@ final case class Resolution(
   filter: Option[Dependency => Boolean],
   osInfo: Activation.Os,
   jdkVersion: Option[Version],
-  userActivations: Option[Map[String, Boolean]]
+  userActivations: Option[Map[String, Boolean]],
+  mapDependencies: Option[Dependency => Dependency]
 ) {
 
   def copyWithCache(
@@ -552,6 +553,7 @@ final case class Resolution(
     osInfo: Activation.Os = osInfo,
     jdkVersion: Option[Version] = jdkVersion,
     userActivations: Option[Map[String, Boolean]] = userActivations
+    // don't allow changing mapDependencies here - that would invalidate finalDependenciesCache
   ): Resolution =
     copy(
       rootDependencies,
@@ -578,7 +580,8 @@ final case class Resolution(
       if (deps == null)
         projectCache.get(dep.moduleVersion) match {
           case Some((_, proj)) =>
-            val res = finalDependencies(dep, proj).filter(filter getOrElse defaultFilter)
+            val res0 = finalDependencies(dep, proj).filter(filter getOrElse defaultFilter)
+            val res = mapDependencies.fold(res0)(res0.map(_))
             finalDependenciesCache0.put(dep, res)
             res
           case None => Nil
