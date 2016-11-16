@@ -27,7 +27,7 @@ object Transform {
     {
       IO.delete(conscriptBase)
       val pairs = Seq(
-        "sbt.xMain" -> "sbt",
+        "sbt.xMain" -> "xsbt",
         "sbt.ScriptMain" -> "scalas",
         "sbt.ConsoleMain" -> "screpl"
       )
