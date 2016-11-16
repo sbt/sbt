@@ -4,10 +4,8 @@ import sbt.io.IO
 import sbt.io.syntax._
 import java.io.File
 import cross.CrossVersionUtil
-import sbt.util.Logger
 import sbt.internal.util.ConsoleLogger
 import sbt.librarymanagement._
-import ivyint.SbtChainResolver
 import Configurations._
 
 import sbt.internal.util.FileBasedStore

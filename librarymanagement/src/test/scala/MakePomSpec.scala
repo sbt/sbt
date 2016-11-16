@@ -1,7 +1,5 @@
 package sbt.internal.librarymanagement
 
-import java.io.File
-import sbt.util.Logger
 import sbt.internal.util.ConsoleLogger
 
 // http://ant.apache.org/ivy/history/2.3.0/ivyfile/dependency.html

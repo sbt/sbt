@@ -1,6 +1,5 @@
 package sbt.librarymanagement
 
-import java.io.File
 import sbt.internal.util.UnitSpec
 
 class CrossVersionTest extends UnitSpec {

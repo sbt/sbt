@@ -1,6 +1,6 @@
 package sbt.librarymanagement
 
-import org.apache.ivy.core.module.id.{ ModuleId, ModuleRevisionId }
+import org.apache.ivy.core.module.id.ModuleRevisionId
 import org.apache.ivy.core.module.descriptor.DefaultDependencyDescriptor
 
 import sbt.internal.util.UnitSpec

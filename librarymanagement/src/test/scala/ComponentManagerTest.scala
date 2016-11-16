@@ -2,12 +2,11 @@ package sbt.internal.librarymanagement
 
 import java.io.File
 import java.util.concurrent.Callable
-import sbt.io.IO.{ createDirectory, delete, touch, withTemporaryDirectory }
+import sbt.io.IO.withTemporaryDirectory
 import sbt.io.IO
 import org.apache.ivy.util.ChecksumHelper
 import IfMissing.Fail
 import xsbti.ComponentProvider
-import sbt.util.Logger
 
 // TODO - We need to re-enable this test.  Right now, we dont' have a "stub" launcher for this.
 //        This is testing something which uses a launcher interface, but was grabbing the underlying class directly

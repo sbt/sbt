@@ -6,7 +6,6 @@ import org.apache.ivy.core.module.id.ModuleRevisionId
 import org.apache.ivy.core.resolve.ResolveOptions
 import sbt.librarymanagement._
 import sbt.io.IO.withTemporaryDirectory
-import sbt.util.Logger
 import sbt.internal.util.ConsoleLogger
 
 class CustomPomParserTest extends UnitSpec {
