@@ -15,6 +15,14 @@ import sbt.io.Path
 import sbt.util.Logger
 import sbt.librarymanagement._
 
+import sbt.internal.util.{ CacheStore, FileBasedStore }
+
+import scala.json.ast.unsafe._
+import scala.collection.mutable
+import jawn.{ SupportParser, MutableFacade }
+import sjsonnew.IsoString
+import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
+
 class NotInCache(val id: ModuleID, cause: Throwable)
   extends RuntimeException(NotInCache(id, cause), cause) {
   def this(id: ModuleID) = this(id, null)
@@ -27,7 +35,9 @@ private object NotInCache {
     }
 }
 /** Provides methods for working at the level of a single jar file with the default Ivy cache.*/
-class IvyCache(val ivyHome: Option[File]) {
+class IvyCache(val ivyHome: Option[File], fileToStore: File => CacheStore) {
+  def this(ivyHome: Option[File]) = this(ivyHome, DefaultFileToStore)
+
   def lockFile = new File(ivyHome getOrElse Path.userHome, ".sbt.cache.lock")
   /** Caches the given 'file' with the given ID.  It may be retrieved or cleared using this ID.*/
   def cacheJar(moduleID: ModuleID, file: File, lock: Option[xsbti.GlobalLock], log: Logger): Unit = {
@@ -81,8 +91,8 @@ class IvyCache(val ivyHome: Option[File]) {
     {
       val local = Resolver.defaultLocal
       val paths = new IvyPaths(new File("."), ivyHome)
-      val conf = new InlineIvyConfiguration(paths, Seq(local), Nil, Nil, false, lock, IvySbt.DefaultChecksums, None, UpdateOptions(), log)
-      (new IvySbt(conf), local)
+      val conf = new InlineIvyConfiguration(paths, Vector(local), Vector.empty, Vector.empty, false, lock, IvySbt.DefaultChecksums, None, UpdateOptions(), log)
+      (new IvySbt(conf, fileToStore), local)
     }
   /** Creates a default jar artifact based on the given ID.*/
   private def defaultArtifact(moduleID: ModuleID): IvyArtifact =
@@ -97,4 +107,32 @@ private class FileDownloader extends ResourceDownloader {
     if (!part.renameTo(dest))
       sys.error("Could not move temporary file " + part + " to final location " + dest)
   }
+}
+
+object FixedParser extends SupportParser[JValue] {
+  implicit val facade: MutableFacade[JValue] =
+    new MutableFacade[JValue] {
+      def jnull() = JNull
+      def jfalse() = JFalse
+      def jtrue() = JTrue
+      def jnum(s: String) = JNumber(s)
+      def jint(s: String) = JNumber(s)
+      def jstring(s: String) = JString(s)
+      def jarray(vs: mutable.ArrayBuffer[JValue]) = JArray(vs.toArray)
+      def jobject(vs: mutable.Map[String, JValue]) = {
+        val array = new Array[JField](vs.size)
+        var i = 0
+        vs.foreach {
+          case (key, value) =>
+            array(i) = JField(key, value)
+            i += 1
+        }
+        JObject(array)
+      }
+    }
+}
+
+object DefaultFileToStore extends (File => CacheStore) {
+  private implicit lazy val isoString: IsoString[JValue] = IsoString.iso(CompactPrinter.apply _, FixedParser.parseUnsafe _)
+  override def apply(f: File): CacheStore = new FileBasedStore(f, Converter)
 }

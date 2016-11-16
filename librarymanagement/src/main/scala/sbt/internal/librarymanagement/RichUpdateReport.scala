@@ -35,18 +35,16 @@ final class RichUpdateReport(report: UpdateReport) {
   /** Constructs a new report that only contains files matching the specified filter.*/
   private[sbt] def filter(f: DependencyFilter): UpdateReport =
     moduleReportMap { (configuration, modReport) =>
-      modReport.copy(
-        artifacts = modReport.artifacts filter { case (art, file) => f(configuration, modReport.module, art) },
-        missingArtifacts = modReport.missingArtifacts filter { art => f(configuration, modReport.module, art) }
-      )
+      modReport
+        .withArtifacts(modReport.artifacts filter { case (art, file) => f(configuration, modReport.module, art) })
+        .withMissingArtifacts(modReport.missingArtifacts filter { art => f(configuration, modReport.module, art) })
     }
-  def substitute(f: (String, ModuleID, Seq[(Artifact, File)]) => Seq[(Artifact, File)]): UpdateReport =
+  def substitute(f: (String, ModuleID, Vector[(Artifact, File)]) => Vector[(Artifact, File)]): UpdateReport =
     moduleReportMap { (configuration, modReport) =>
       val newArtifacts = f(configuration, modReport.module, modReport.artifacts)
-      modReport.copy(
-        artifacts = newArtifacts,
-        missingArtifacts = modReport.missingArtifacts
-      )
+      modReport
+        .withArtifacts(newArtifacts)
+        .withMissingArtifacts(modReport.missingArtifacts)
     }
 
   def toSeq: Seq[(String, ModuleID, Artifact, File)] =
@@ -57,9 +55,8 @@ final class RichUpdateReport(report: UpdateReport) {
 
   def addMissing(f: ModuleID => Seq[Artifact]): UpdateReport =
     moduleReportMap { (configuration, modReport) =>
-      modReport.copy(
-        missingArtifacts = (modReport.missingArtifacts ++ f(modReport.module)).distinct
-      )
+      modReport
+        .withMissingArtifacts((modReport.missingArtifacts ++ f(modReport.module)).distinct)
     }
 
   def moduleReportMap(f: (String, ModuleReport) => ModuleReport): UpdateReport =

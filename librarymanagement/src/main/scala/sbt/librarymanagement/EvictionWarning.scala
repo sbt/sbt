@@ -88,7 +88,7 @@ final class EvictionPair private[sbt] (
   val organization: String,
   val name: String,
   val winner: Option[ModuleReport],
-  val evicteds: Seq[ModuleReport],
+  val evicteds: Vector[ModuleReport],
   val includesDirect: Boolean,
   val showCallers: Boolean
 ) {
@@ -168,7 +168,7 @@ object EvictionWarning {
   private[sbt] def processEvictions(module: IvySbt#Module, options: EvictionWarningOptions, reports: Seq[OrganizationArtifactReport]): EvictionWarning = {
     val directDependencies = module.moduleSettings match {
       case x: InlineConfiguration => x.dependencies
-      case _                      => Seq()
+      case _                      => Vector.empty
     }
     val pairs = reports map { detail =>
       val evicteds = detail.modules filter { _.evicted }

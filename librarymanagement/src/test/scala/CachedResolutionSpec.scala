@@ -9,12 +9,12 @@ class CachedResolutionSpec extends BaseIvySpecification {
   "Resolving the same module twice" should "work" in {
     cleanIvyCache()
     val m = module(
-      ModuleID("com.example", "foo", "0.1.0", Some("compile")),
-      Seq(commonsIo13), Some("2.10.2"), UpdateOptions().withCachedResolution(true)
+      ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile")),
+      Vector(commonsIo13), Some("2.10.2"), UpdateOptions().withCachedResolution(true)
     )
     val report = ivyUpdate(m)
     cleanCachedResolutionCache(m)
-    val report2 = ivyUpdate(m)
+    val _ = ivyUpdate(m)
     // first resolution creates the minigraph
     println(report)
     // second resolution reads from the minigraph
@@ -25,8 +25,8 @@ class CachedResolutionSpec extends BaseIvySpecification {
   "Resolving the unsolvable module should" should "not work" in {
     // log.setLevel(Level.Debug)
     val m = module(
-      ModuleID("com.example", "foo", "0.2.0", Some("compile")),
-      Seq(mavenCayennePlugin302), Some("2.10.2"), UpdateOptions().withCachedResolution(true)
+      ModuleID("com.example", "foo", "0.2.0").withConfigurations(Some("compile")),
+      Vector(mavenCayennePlugin302), Some("2.10.2"), UpdateOptions().withCachedResolution(true)
     )
     ivyUpdateEither(m) match {
       case Right(_) => sys.error("this should've failed")
@@ -52,12 +52,12 @@ class CachedResolutionSpec extends BaseIvySpecification {
     // log.setLevel(Level.Debug)
     cleanIvyCache()
     val m = module(
-      ModuleID("com.example", "foo", "0.3.0", Some("compile")),
-      Seq(avro177, dataAvro1940, netty320),
+      ModuleID("com.example", "foo", "0.3.0").withConfigurations(Some("compile")),
+      Vector(avro177, dataAvro1940, netty320),
       Some("2.10.2"), UpdateOptions().withCachedResolution(true)
     )
     // first resolution creates the minigraph
-    val report0 = ivyUpdate(m)
+    val _ = ivyUpdate(m)
     cleanCachedResolutionCache(m)
     // second resolution reads from the minigraph
     val report = ivyUpdate(m)
@@ -66,11 +66,11 @@ class CachedResolutionSpec extends BaseIvySpecification {
     assert(!(modules exists { x: String => x contains """org.jboss.netty:netty:3.2.1.Final""" }))
   }
 
-  def commonsIo13 = ModuleID("commons-io", "commons-io", "1.3", Some("compile"))
-  def mavenCayennePlugin302 = ModuleID("org.apache.cayenne.plugins", "maven-cayenne-plugin", "3.0.2", Some("compile"))
-  def avro177 = ModuleID("org.apache.avro", "avro", "1.7.7", Some("compile"))
-  def dataAvro1940 = ModuleID("com.linkedin.pegasus", "data-avro", "1.9.40", Some("compile"))
-  def netty320 = ModuleID("org.jboss.netty", "netty", "3.2.0.Final", Some("compile"))
+  def commonsIo13 = ModuleID("commons-io", "commons-io", "1.3").withConfigurations(Some("compile"))
+  def mavenCayennePlugin302 = ModuleID("org.apache.cayenne.plugins", "maven-cayenne-plugin", "3.0.2").withConfigurations(Some("compile"))
+  def avro177 = ModuleID("org.apache.avro", "avro", "1.7.7").withConfigurations(Some("compile"))
+  def dataAvro1940 = ModuleID("com.linkedin.pegasus", "data-avro", "1.9.40").withConfigurations(Some("compile"))
+  def netty320 = ModuleID("org.jboss.netty", "netty", "3.2.0.Final").withConfigurations(Some("compile"))
 
   def defaultOptions = EvictionWarningOptions.default
 }

@@ -17,7 +17,6 @@ def commonSettings: Seq[Setting[_]] = Seq(
   crossScalaVersions := Seq(scala211),
   resolvers += Resolver.sonatypeRepo("public"),
   scalacOptions += "-Ywarn-unused",
-  scalacOptions += "-Ywarn-unused-import",
   previousArtifact := None, // Some(organization.value %% moduleName.value % "1.0.0"),
   publishArtifact in Compile := true,
   publishArtifact in Test := false
@@ -47,11 +46,14 @@ lazy val lm = (project in file("librarymanagement")).
     commonSettings,
     name := "librarymanagement",
     libraryDependencies ++= Seq(
-      ivy, jsch, sbtSerialization, scalaReflect.value, launcherInterface),
-    resourceGenerators in Compile <+= (version, resourceManaged, streams, compile in Compile) map Util.generateVersionFile,
-    binaryIssueFilters ++= Seq()
+      ivy, jsch, scalaReflect.value, launcherInterface, sjsonnewScalaJson % Optional),
+    libraryDependencies ++= scalaXml.value,
+    resourceGenerators in Compile += Def.task(Util.generateVersionFile(version.value, resourceManaged.value, streams.value, (compile in Compile).value)).taskValue,
+    binaryIssueFilters ++= Seq(),
+    datatypeFormatsForType in generateDatatypes in Compile := DatatypeConfig.getFormats
   ).
-  configure(addSbtIO, addSbtUtilLogging, addSbtUtilTesting, addSbtUtilCollection, addSbtUtilCompletion)
+  configure(addSbtIO, addSbtUtilLogging, addSbtUtilTesting, addSbtUtilCollection, addSbtUtilCompletion, addSbtUtilCache).
+  enablePlugins(DatatypePlugin, JsonCodecPlugin)
 
 def customCommands: Seq[Setting[_]] = Seq(
   commands += Command.command("release") { state =>

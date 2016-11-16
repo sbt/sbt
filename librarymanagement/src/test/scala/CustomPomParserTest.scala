@@ -6,7 +6,6 @@ import org.apache.ivy.core.module.id.ModuleRevisionId
 import org.apache.ivy.core.resolve.ResolveOptions
 import sbt.librarymanagement._
 import sbt.io.IO.withTemporaryDirectory
-import sbt.util.Logger
 import sbt.internal.util.ConsoleLogger
 
 class CustomPomParserTest extends UnitSpec {
@@ -16,8 +15,8 @@ class CustomPomParserTest extends UnitSpec {
       val repoUrl = getClass.getResource("/test-maven-repo")
       val local = MavenRepository("Test Repo", repoUrl.toExternalForm)
       val paths = new IvyPaths(new File("."), Some(cacheDir))
-      val conf = new InlineIvyConfiguration(paths, Seq(local), Nil, Nil, false, None, Seq("sha1", "md5"), None, UpdateOptions(), log)
-      val ivySbt = new IvySbt(conf)
+      val conf = new InlineIvyConfiguration(paths, Vector(local), Vector.empty, Vector.empty, false, None, Vector("sha1", "md5"), None, UpdateOptions(), log)
+      val ivySbt = new IvySbt(conf, DefaultFileToStore)
       val resolveOpts = new ResolveOptions().setConfs(Array("default"))
       val mrid = ModuleRevisionId.newInstance("com.test", "test-artifact", "1.0.0-SNAPSHOT")
 

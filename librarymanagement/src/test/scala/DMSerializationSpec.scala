@@ -2,8 +2,12 @@ package sbt.librarymanagement
 
 import java.net.URL
 import java.io.File
-import sbt.serialization._
-import sbt.internal.util.UnitSpec
+
+import sbt.internal._, librarymanagement._, util.UnitSpec
+import scala.json.ast.unsafe._
+import sjsonnew._, support.scalajson.unsafe._
+
+import LibraryManagementCodec._
 
 class DMSerializationSpec extends UnitSpec {
   "CrossVersion.full" should "roundtrip" in {
@@ -13,7 +17,7 @@ class DMSerializationSpec extends UnitSpec {
     roundtripStr(CrossVersion.binary: CrossVersion)
   }
   "CrossVersion.Disabled" should "roundtrip" in {
-    roundtrip(CrossVersion.Disabled: CrossVersion)
+    roundtrip(Disabled(): CrossVersion)
   }
   """Artifact("foo")""" should "roundtrip" in {
     roundtrip(Artifact("foo"))
@@ -34,7 +38,7 @@ class DMSerializationSpec extends UnitSpec {
     roundtrip(ModuleID("org", "name", "1.0"))
   }
   """ModuleReport(ModuleID("org", "name", "1.0"), Nil, Nil)""" should "roundtrip" in {
-    roundtripStr(ModuleReport(ModuleID("org", "name", "1.0"), Nil, Nil))
+    roundtripStr(ModuleReport(ModuleID("org", "name", "1.0"), Vector.empty, Vector.empty))
   }
   "Organization artifact report" should "roundtrip" in {
     roundtripStr(organizationArtifactReportExample)
@@ -55,17 +59,19 @@ class DMSerializationSpec extends UnitSpec {
   lazy val organizationArtifactReportExample =
     new OrganizationArtifactReport("org", "name", Vector(moduleReportExample))
   lazy val moduleReportExample =
-    ModuleReport(ModuleID("org", "name", "1.0"), Nil, Nil)
+    ModuleReport(ModuleID("org", "name", "1.0"), Vector.empty, Vector.empty)
 
-  def roundtrip[A: Pickler: Unpickler](a: A): Unit =
+  def roundtrip[A: JsonReader: JsonWriter](a: A): Unit =
     roundtripBuilder(a) { _ shouldBe _ }
-  def roundtripStr[A: Pickler: Unpickler](a: A): Unit =
+  def roundtripStr[A: JsonReader: JsonWriter](a: A): Unit =
     roundtripBuilder(a) { _.toString shouldBe _.toString }
-  def roundtripBuilder[A: Pickler: Unpickler](a: A)(f: (A, A) => Unit): Unit =
+  def roundtripBuilder[A: JsonReader: JsonWriter](a: A)(f: (A, A) => Unit): Unit =
     {
-      val json = toJsonString(a)
+      val json = isoString to (Converter toJsonUnsafe a)
       println(json)
-      val obj = fromJsonString[A](json).get
+      val obj = Converter fromJsonUnsafe[A] (isoString from json)
       f(a, obj)
     }
+
+  implicit val isoString: IsoString[JValue] = IsoString.iso(CompactPrinter.apply, FixedParser.parseUnsafe)
 }

@@ -3,8 +3,6 @@
  */
 package sbt.librarymanagement
 
-import sbt.serialization._
-
 object Configurations {
   def config(name: String) = new Configuration(name)
   def default: Seq[Configuration] = defaultMavenConfigurations
@@ -50,18 +48,20 @@ object Configurations {
   private[sbt] def defaultConfiguration(mavenStyle: Boolean) = if (mavenStyle) Configurations.Compile else Configurations.Default
   private[sbt] def removeDuplicates(configs: Iterable[Configuration]) = Set(scala.collection.mutable.Map(configs.map(config => (config.name, config)).toSeq: _*).values.toList: _*)
 }
-/** Represents an Ivy configuration. */
-final case class Configuration(name: String, description: String, isPublic: Boolean, extendsConfigs: List[Configuration], transitive: Boolean) {
+
+abstract class ConfigurationExtra {
+  def name: String
+  def description: String
+  def isPublic: Boolean
+  def extendsConfigs: Vector[Configuration]
+  def transitive: Boolean
+
   require(name != null && !name.isEmpty)
   require(description != null)
-  def this(name: String) = this(name, "", true, Nil, true)
+
   def describedAs(newDescription: String) = Configuration(name, newDescription, isPublic, extendsConfigs, transitive)
-  def extend(configs: Configuration*) = Configuration(name, description, isPublic, configs.toList ::: extendsConfigs, transitive)
+  def extend(configs: Configuration*) = Configuration(name, description, isPublic, configs.toVector ++ extendsConfigs, transitive)
   def notTransitive = intransitive
   def intransitive = Configuration(name, description, isPublic, extendsConfigs, false)
   def hide = Configuration(name, description, false, extendsConfigs, transitive)
-  override def toString = name
-}
-object Configuration {
-  implicit val pickler: Pickler[Configuration] with Unpickler[Configuration] = PicklerUnpickler.generate[Configuration]
 }

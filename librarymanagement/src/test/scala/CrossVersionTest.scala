@@ -1,6 +1,5 @@
 package sbt.librarymanagement
 
-import java.io.File
 import sbt.internal.util.UnitSpec
 
 class CrossVersionTest extends UnitSpec {
@@ -116,7 +115,7 @@ class CrossVersionTest extends UnitSpec {
     CrossVersion.binaryScalaVersion("2.10.1") shouldBe "2.10"
   }
   it should "return disabled cross version as equal to a copy" in {
-    CrossVersion.Disabled shouldBe CrossVersion.Disabled
+    Disabled() shouldBe Disabled()
   }
   it should "return full cross version as equal to a copy" in {
     CrossVersion.full shouldBe CrossVersion.full

@@ -195,20 +195,20 @@ private[sbt] object ConvertResolver {
     initializePatterns(resolver, repo.patterns, settings)
     initializeConnection(resolver, repo.connection)
   }
-  private def initializeConnection(resolver: AbstractSshBasedResolver, connection: RepositoryHelpers.SshConnection): Unit = {
+  private def initializeConnection(resolver: AbstractSshBasedResolver, connection: SshConnection): Unit = {
     import resolver._
     import connection._
     hostname.foreach(setHost)
     port.foreach(setPort)
     authentication foreach
       {
-        case RepositoryHelpers.PasswordAuthentication(user, password) =>
-          setUser(user)
-          password.foreach(setUserPassword)
-        case RepositoryHelpers.KeyFileAuthentication(user, file, password) =>
-          setKeyFile(file)
-          password.foreach(setKeyFilePassword)
-          setUser(user)
+        case pa: PasswordAuthentication =>
+          setUser(pa.user)
+          pa.password.foreach(setUserPassword)
+        case kfa: KeyFileAuthentication =>
+          setKeyFile(kfa.keyfile)
+          kfa.password.foreach(setKeyFilePassword)
+          setUser(kfa.user)
       }
   }
   private def initializePatterns(resolver: AbstractPatternsBasedResolver, patterns: Patterns, settings: IvySettings): Unit = {

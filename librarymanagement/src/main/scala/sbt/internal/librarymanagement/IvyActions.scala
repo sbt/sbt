@@ -21,36 +21,19 @@ import sbt.util.Logger
 import sbt.internal.util.{ ShowLines, SourcePosition, LinePosition, RangePosition, LineRange }
 import sbt.librarymanagement._
 import sbt.internal.librarymanagement.syntax._
+import sbt.internal.librarymanagement._
 
-final class DeliverConfiguration(val deliverIvyPattern: String, val status: String, val configurations: Option[Seq[Configuration]], val logging: UpdateLogging.Value)
-final class PublishConfiguration(val ivyFile: Option[File], val resolverName: String, val artifacts: Map[Artifact, File], val checksums: Seq[String], val logging: UpdateLogging.Value,
+final class DeliverConfiguration(val deliverIvyPattern: String, val status: String, val configurations: Option[Vector[Configuration]], val logging: UpdateLogging)
+final class PublishConfiguration(val ivyFile: Option[File], val resolverName: String, val artifacts: Map[Artifact, File], val checksums: Vector[String], val logging: UpdateLogging,
   val overwrite: Boolean) {
-  def this(ivyFile: Option[File], resolverName: String, artifacts: Map[Artifact, File], checksums: Seq[String], logging: UpdateLogging.Value) =
+  def this(ivyFile: Option[File], resolverName: String, artifacts: Map[Artifact, File], checksums: Vector[String], logging: UpdateLogging) =
     this(ivyFile, resolverName, artifacts, checksums, logging, false)
 }
 
-final class UpdateConfiguration(val retrieve: Option[RetrieveConfiguration], val missingOk: Boolean, val logging: UpdateLogging.Value, val artifactFilter: ArtifactTypeFilter) {
-  @deprecated("You should use the constructor that provides an artifactFilter", "1.0.x")
-  def this(retrieve: Option[RetrieveConfiguration], missingOk: Boolean, logging: UpdateLogging.Value) {
-    this(retrieve, missingOk, logging, ArtifactTypeFilter.forbid(Set("src", "doc"))) // allow everything but "src", "doc" by default
-  }
-
-  private[sbt] def copy(
-    retrieve: Option[RetrieveConfiguration] = this.retrieve,
-    missingOk: Boolean = this.missingOk,
-    logging: UpdateLogging.Value = this.logging,
-    artifactFilter: ArtifactTypeFilter = this.artifactFilter
-  ): UpdateConfiguration =
-    new UpdateConfiguration(retrieve, missingOk, logging, artifactFilter)
-}
-final class RetrieveConfiguration(val retrieveDirectory: File, val outputPattern: String, val sync: Boolean, val configurationsToRetrieve: Option[Set[Configuration]]) {
-  def this(retrieveDirectory: File, outputPattern: String) = this(retrieveDirectory, outputPattern, false, None)
-  def this(retrieveDirectory: File, outputPattern: String, sync: Boolean) = this(retrieveDirectory, outputPattern, sync, None)
-}
-final case class MakePomConfiguration(file: File, moduleInfo: ModuleInfo, configurations: Option[Seq[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: XNode => XNode = n => n, filterRepositories: MavenRepository => Boolean = _ => true, allRepositories: Boolean, includeTypes: Set[String] = Set(Artifact.DefaultType, Artifact.PomType))
+final case class MakePomConfiguration(file: File, moduleInfo: ModuleInfo, configurations: Option[Vector[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: XNode => XNode = n => n, filterRepositories: MavenRepository => Boolean = _ => true, allRepositories: Boolean, includeTypes: Set[String] = Set(Artifact.DefaultType, Artifact.PomType))
 /** @param exclude is a map from ModuleID to classifiers that were previously tried and failed, so should now be excluded */
 final case class GetClassifiersConfiguration(module: GetClassifiersModule, exclude: Map[ModuleID, Set[String]], configuration: UpdateConfiguration, ivyScala: Option[IvyScala], sourceArtifactTypes: Set[String], docArtifactTypes: Set[String])
-final case class GetClassifiersModule(id: ModuleID, modules: Seq[ModuleID], configurations: Seq[Configuration], classifiers: Seq[String])
+final case class GetClassifiersModule(id: ModuleID, modules: Vector[ModuleID], configurations: Vector[Configuration], classifiers: Vector[String])
 
 final class UnresolvedWarningConfiguration private[sbt] (
   val modulePositions: Map[ModuleID, SourcePosition]
@@ -59,17 +42,6 @@ object UnresolvedWarningConfiguration {
   def apply(): UnresolvedWarningConfiguration = apply(Map())
   def apply(modulePositions: Map[ModuleID, SourcePosition]): UnresolvedWarningConfiguration =
     new UnresolvedWarningConfiguration(modulePositions)
-}
-
-/**
- * Configures logging during an 'update'.  `level` determines the amount of other information logged.
- * `Full` is the default and logs the most.
- * `DownloadOnly` only logs what is downloaded.
- * `Quiet` only displays errors.
- * `Default` uses the current log level of `update` task.
- */
-object UpdateLogging extends Enumeration {
-  val Full, DownloadOnly, Quiet, Default = Value
 }
 
 object IvyActions {
@@ -133,13 +105,13 @@ object IvyActions {
         if (resolver eq null) sys.error("Undefined resolver '" + resolverName + "'")
         val ivyArtifact = ivyFile map { file => (MDArtifact.newIvyArtifact(md), file) }
         val cross = crossVersionMap(module.moduleSettings)
-        val as = mapArtifacts(md, cross, artifacts) ++ ivyArtifact.toSeq
+        val as = mapArtifacts(md, cross, artifacts) ++ ivyArtifact.toList
         withChecksums(resolver, checksums) { publish(md, as, resolver, overwrite = overwrite) }
     }
   }
-  private[this] def withChecksums[T](resolver: DependencyResolver, checksums: Seq[String])(act: => T): T =
+  private[this] def withChecksums[T](resolver: DependencyResolver, checksums: Vector[String])(act: => T): T =
     resolver match { case br: BasicResolver => withChecksums(br, checksums)(act); case _ => act }
-  private[this] def withChecksums[T](resolver: BasicResolver, checksums: Seq[String])(act: => T): T =
+  private[this] def withChecksums[T](resolver: BasicResolver, checksums: Vector[String])(act: => T): T =
     {
       val previous = resolver.getChecksumAlgorithms
       resolver.setChecksums(checksums mkString ",")
@@ -151,9 +123,9 @@ object IvyActions {
       case i: InlineConfiguration => CrossVersion(i.module, i.ivyScala)
       case _                      => None
     }
-  def mapArtifacts(module: ModuleDescriptor, cross: Option[String => String], artifacts: Map[Artifact, File]): Seq[(IArtifact, File)] =
+  def mapArtifacts(module: ModuleDescriptor, cross: Option[String => String], artifacts: Map[Artifact, File]): Vector[(IArtifact, File)] =
     {
-      val rawa = artifacts.keys.toSeq
+      val rawa = artifacts.keys.toVector
       val seqa = CrossVersion.substituteCross(rawa, cross)
       val zipped = rawa zip IvySbt.mapArtifacts(module, seqa)
       zipped map { case (a, ivyA) => (ivyA, artifacts(a)) }
@@ -235,8 +207,8 @@ object IvyActions {
     {
       import config.{ configuration => c, ivyScala, module => mod }
       import mod.{ id, modules => deps }
-      val base = restrictedCopy(id, true).copy(name = id.name + "$" + label)
-      val module = new ivySbt.Module(InlineConfiguration(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala))
+      val base = restrictedCopy(id, true).withName(id.name + "$" + label)
+      val module = new ivySbt.Module(InlineConfiguration(false, ivyScala, base, ModuleInfo(base.name), deps))
       val report = updateEither(module, c, uwconfig, logicalClock, depDir, log) match {
         case Right(r) => r
         case Left(w) =>
@@ -270,10 +242,10 @@ object IvyActions {
       val baseModules = modules map { m => restrictedCopy(m, true) }
       // Adding list of explicit artifacts here.
       val deps = baseModules.distinct flatMap classifiedArtifacts(classifiers, exclude, artifacts)
-      val base = restrictedCopy(id, true).copy(name = id.name + classifiers.mkString("$", "_", ""))
-      val module = new ivySbt.Module(InlineConfiguration(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala, configurations = confs))
+      val base = restrictedCopy(id, true).withName(id.name + classifiers.mkString("$", "_", ""))
+      val module = new ivySbt.Module(InlineConfiguration(false, ivyScala, base, ModuleInfo(base.name), deps).withConfigurations(confs))
       // c.copy ensures c.types is preserved too
-      val upConf = c.copy(missingOk = true)
+      val upConf = c.withMissingOk(true)
       updateEither(module, upConf, uwconfig, logicalClock, depDir, log) match {
         case Right(r) =>
           // The artifacts that came from Ivy don't have their classifier set, let's set it according to
@@ -285,7 +257,7 @@ object IvyActions {
             artFileSeq map {
               case (art, f) =>
                 // Deduce the classifier from the type if no classifier is present already
-                art.copy(classifier = art.classifier orElse typeClassifierMap.get(art.`type`)) -> f
+                art.withClassifier(art.classifier orElse typeClassifierMap.get(art.`type`)) -> f
             }
           }
         case Left(w) =>
@@ -294,7 +266,7 @@ object IvyActions {
     }
   // This version adds explicit artifact
   private[sbt] def classifiedArtifacts(
-    classifiers: Seq[String],
+    classifiers: Vector[String],
     exclude: Map[ModuleID, Set[String]],
     artifacts: Vector[(String, ModuleID, Artifact, File)]
   )(m: ModuleID): Option[ModuleID] = {
@@ -308,7 +280,7 @@ object IvyActions {
     def hardcodedArtifacts = classifiedArtifacts(classifiers, exclude)(m)
     explicitArtifacts orElse hardcodedArtifacts
   }
-  private def classifiedArtifacts(classifiers: Seq[String], exclude: Map[ModuleID, Set[String]])(m: ModuleID): Option[ModuleID] =
+  private def classifiedArtifacts(classifiers: Vector[String], exclude: Map[ModuleID, Set[String]])(m: ModuleID): Option[ModuleID] =
     {
       val excluded = exclude getOrElse (restrictedCopy(m, false), Set.empty)
       val included = classifiers filterNot excluded
@@ -330,12 +302,12 @@ object IvyActions {
    * }}}
    * `usage.getDependencyIncludesSet` returns null if there are no (explicit) include rules.
    */
-  private def intransitiveModuleWithExplicitArts(module: ModuleID, arts: Seq[Artifact]): ModuleID =
-    module.copy(isTransitive = false, explicitArtifacts = arts, inclusions = InclExclRule.everything :: Nil)
+  private def intransitiveModuleWithExplicitArts(module: ModuleID, arts: Vector[Artifact]): ModuleID =
+    module.withIsTransitive(false).withExplicitArtifacts(arts).withInclusions(Vector(InclExclRule.everything))
 
-  def addExcluded(report: UpdateReport, classifiers: Seq[String], exclude: Map[ModuleID, Set[String]]): UpdateReport =
+  def addExcluded(report: UpdateReport, classifiers: Vector[String], exclude: Map[ModuleID, Set[String]]): UpdateReport =
     report.addMissing { id => classifiedArtifacts(id.name, classifiers filter getExcluded(id, exclude)) }
-  def classifiedArtifacts(name: String, classifiers: Seq[String]): Seq[Artifact] =
+  def classifiedArtifacts(name: String, classifiers: Vector[String]): Vector[Artifact] =
     classifiers map { c => Artifact.classified(name, c) }
   private[this] def getExcluded(id: ModuleID, exclude: Map[ModuleID, Set[String]]): Set[String] =
     exclude.getOrElse(restrictedCopy(id, false), Set.empty[String])
@@ -344,10 +316,10 @@ object IvyActions {
     report.allMissing flatMap { case (_, mod, art) => art.classifier.map { c => (restrictedCopy(mod, false), c) } } groupBy (_._1) map { case (mod, pairs) => (mod, pairs.map(_._2).toSet) }
 
   private[this] def restrictedCopy(m: ModuleID, confs: Boolean) =
-    ModuleID(m.organization, m.name, m.revision, crossVersion = m.crossVersion, extraAttributes = m.extraAttributes, configurations = if (confs) m.configurations else None)
+    ModuleID(m.organization, m.name, m.revision).withCrossVersion(m.crossVersion).withExtraAttributes(m.extraAttributes).withConfigurations(if (confs) m.configurations else None)
       .branch(m.branchName)
 
-  private[this] def resolve(logging: UpdateLogging.Value)(ivy: Ivy, module: DefaultModuleDescriptor, defaultConf: String, filter: ArtifactTypeFilter): (ResolveReport, Option[ResolveException]) =
+  private[this] def resolve(logging: UpdateLogging)(ivy: Ivy, module: DefaultModuleDescriptor, defaultConf: String, filter: ArtifactTypeFilter): (ResolveReport, Option[ResolveException]) =
     {
       val resolveOptions = new ResolveOptions
       val resolveId = ResolveOptions.getDefaultResolveId(module)
@@ -420,7 +392,7 @@ object IvyActions {
 
   import UpdateLogging.{ Quiet, Full, DownloadOnly, Default }
   import LogOptions.{ LOG_QUIET, LOG_DEFAULT, LOG_DOWNLOAD_ONLY }
-  private def ivyLogLevel(level: UpdateLogging.Value) =
+  private def ivyLogLevel(level: UpdateLogging) =
     level match {
       case Quiet        => LOG_QUIET
       case DownloadOnly => LOG_DOWNLOAD_ONLY

@@ -30,8 +30,9 @@ import sbt.util.Logger
 import sbt.librarymanagement._
 import Resolver.PluginPattern
 import ivyint.{ CachedResolutionResolveEngine, CachedResolutionResolveCache, SbtDefaultDependencyDescriptor }
+import sbt.internal.util.CacheStore
 
-final class IvySbt(val configuration: IvyConfiguration) {
+final class IvySbt(val configuration: IvyConfiguration, fileToStore: File => CacheStore) { self =>
   import configuration.baseDirectory
 
   /*
@@ -92,7 +93,8 @@ final class IvySbt(val configuration: IvyConfiguration) {
           setEventManager(new EventManager())
           if (configuration.updateOptions.cachedResolution) {
             setResolveEngine(new ResolveEngine(getSettings, getEventManager, getSortEngine) with CachedResolutionResolveEngine {
-              val cachedResolutionResolveCache = IvySbt.cachedResolutionResolveCache
+              override private[sbt] val fileToStore: File => CacheStore = self.fileToStore
+              val cachedResolutionResolveCache = IvySbt.cachedResolutionResolveCache(fileToStore)
               val projectResolver = prOpt
               def makeInstance = mkIvy
             })
@@ -139,7 +141,7 @@ final class IvySbt(val configuration: IvyConfiguration) {
     withIvy(log) { i =>
       val prOpt = Option(i.getSettings.getResolver(ProjectResolver.InterProject)) map { case pr: ProjectResolver => pr }
       if (configuration.updateOptions.cachedResolution) {
-        IvySbt.cachedResolutionResolveCache.clean(md, prOpt)
+        IvySbt.cachedResolutionResolveCache(fileToStore).clean(md, prOpt)
       }
     }
 
@@ -236,8 +238,8 @@ private[sbt] object IvySbt {
   val DefaultIvyConfigFilename = "ivysettings.xml"
   val DefaultIvyFilename = "ivy.xml"
   val DefaultMavenFilename = "pom.xml"
-  val DefaultChecksums = Seq("sha1", "md5")
-  private[sbt] val cachedResolutionResolveCache: CachedResolutionResolveCache = new CachedResolutionResolveCache()
+  val DefaultChecksums = Vector("sha1", "md5")
+  private[sbt] def cachedResolutionResolveCache(fileToStore: File => CacheStore): CachedResolutionResolveCache = new CachedResolutionResolveCache(fileToStore)
 
   def defaultIvyFile(project: File) = new File(project, DefaultIvyFilename)
   def defaultIvyConfiguration(project: File) = new File(project, DefaultIvyConfigFilename)
@@ -305,8 +307,8 @@ private[sbt] object IvySbt {
    */
   def hasImplicitClassifier(artifact: IArtifact): Boolean =
     {
-      import collection.JavaConversions._
-      artifact.getQualifiedExtraAttributes.keys.exists(_.asInstanceOf[String] startsWith "m:")
+      import scala.collection.JavaConverters._
+      artifact.getQualifiedExtraAttributes.asScala.keys.exists(_.asInstanceOf[String] startsWith "m:")
     }
   private def setModuleConfigurations(settings: IvySettings, moduleConfigurations: Seq[ModuleConfiguration], log: Logger): Unit = {
     val existing = settings.getResolverNames
@@ -426,7 +428,7 @@ private[sbt] object IvySbt {
     {
       val sub = CrossVersion(scalaFullVersion, scalaBinaryVersion)
       m match {
-        case ic: InlineConfiguration => ic.copy(module = sub(ic.module), dependencies = ic.dependencies map sub, overrides = ic.overrides map sub)
+        case ic: InlineConfiguration => ic.withModule(sub(ic.module)).withDependencies(ic.dependencies map sub).withOverrides(ic.overrides map sub)
         case _                       => m
       }
     }
@@ -439,7 +441,7 @@ private[sbt] object IvySbt {
     }
   def getExtraAttributes(revID: ExtendableItem): Map[String, String] =
     {
-      import collection.JavaConverters._
+      import scala.collection.JavaConverters._
       revID.getExtraAttributes.asInstanceOf[java.util.Map[String, String]].asScala.toMap
     }
   private[sbt] def extra(artifact: Artifact, unqualify: Boolean = false): java.util.Map[String, String] =
@@ -449,8 +451,9 @@ private[sbt] object IvySbt {
     }
   private[sbt] def javaMap(m: Map[String, String], unqualify: Boolean = false) =
     {
+      import scala.collection.JavaConverters._
       val map = if (unqualify) m map { case (k, v) => (k.stripPrefix("e:"), v) } else m
-      if (map.isEmpty) null else scala.collection.JavaConversions.mapAsJavaMap(map)
+      if (map.isEmpty) null else map.asJava
     }
 
   /** Creates a full ivy file for 'module' using the 'dependencies' XML as the part after the &lt;info&gt;...&lt;/info&gt; section. */
@@ -514,7 +517,7 @@ private[sbt] object IvySbt {
       val dds = moduleID.getDependencies
       val deps = dds flatMap { dd =>
         val module = toModuleID(dd.getDependencyRevisionId)
-        dd.getModuleConfigurations map (c => module.copy(configurations = Some(c)))
+        dd.getModuleConfigurations map (c => module.withConfigurations(Some(c)))
       }
       inconsistentDuplicateWarning(deps)
     }
@@ -571,7 +574,7 @@ private[sbt] object IvySbt {
         deps.put(id, updated)
       }
 
-      import collection.JavaConverters._
+      import scala.collection.JavaConverters._
       deps.values.asScala.toSeq.flatMap { dds =>
         val mergeable = (dds, dds.tail).zipped.forall(ivyint.MergeDescriptors.mergeable _)
         if (mergeable) dds.reverse.reduceLeft(ivyint.MergeDescriptors.apply _) :: Nil else dds
@@ -652,7 +655,7 @@ private[sbt] object IvySbt {
       val overridden = overrides.map(id => (key(id), id.revision)).toMap
       dependencies map { dep =>
         overridden get key(dep) match {
-          case Some(rev) => dep.copy(revision = rev)
+          case Some(rev) => dep.withRevision(rev)
           case None      => dep
         }
       }

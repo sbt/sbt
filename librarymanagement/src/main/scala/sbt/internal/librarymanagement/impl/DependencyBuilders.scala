@@ -26,7 +26,7 @@ trait DependencyBuilders {
 }
 
 final class GroupID private[sbt] (private[sbt] val groupID: String) {
-  def %(artifactID: String) = groupArtifact(artifactID, CrossVersion.Disabled)
+  def %(artifactID: String) = groupArtifact(artifactID, Disabled())
   def %%(artifactID: String): GroupArtifactID = groupArtifact(artifactID, CrossVersion.binary)
 
   private def groupArtifact(artifactID: String, cross: CrossVersion) =
@@ -53,7 +53,7 @@ final class ModuleIDConfigurable private[sbt] (moduleID: ModuleID) {
     {
       nonEmpty(configurations, "Configurations")
       val c = configurations
-      moduleID.copy(configurations = Some(c))
+      moduleID.withConfigurations(configurations = Some(c))
     }
 }
 final class RepositoryName private[sbt] (name: String) {

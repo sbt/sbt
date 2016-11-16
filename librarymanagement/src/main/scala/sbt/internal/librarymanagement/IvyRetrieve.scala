@@ -17,10 +17,10 @@ import sbt.librarymanagement._
 import sbt.internal.librarymanagement.syntax._
 
 object IvyRetrieve {
-  def reports(report: ResolveReport): Seq[ConfigurationResolveReport] =
-    report.getConfigurations map report.getConfigurationReport
+  def reports(report: ResolveReport): Vector[ConfigurationResolveReport] =
+    report.getConfigurations.toVector map report.getConfigurationReport
 
-  def moduleReports(confReport: ConfigurationResolveReport): Seq[ModuleReport] =
+  def moduleReports(confReport: ConfigurationResolveReport): Vector[ModuleReport] =
     for {
       revId <- confReport.getModuleRevisionIds.toArray.toVector collect { case revId: ModuleRevisionId => revId }
     } yield moduleRevisionDetail(confReport, confReport.getDependency(revId))
@@ -32,7 +32,7 @@ object IvyRetrieve {
       ModuleReport(mid, resolved, missing)
     }
 
-  private[sbt] def artifacts(mid: ModuleID, artReport: Seq[ArtifactDownloadReport]): (Seq[(Artifact, File)], Seq[Artifact]) =
+  private[sbt] def artifacts(mid: ModuleID, artReport: Seq[ArtifactDownloadReport]): (Vector[(Artifact, File)], Vector[Artifact]) =
     {
       val missing = new mutable.ListBuffer[Artifact]
       val resolved = new mutable.ListBuffer[(Artifact, File)]
@@ -44,13 +44,13 @@ object IvyRetrieve {
           case None       => missing += art
         }
       }
-      (resolved.toSeq, missing.toSeq)
+      (resolved.toVector, missing.toVector)
     }
 
   // We need this because current module report used as part of UpdateReport/ConfigurationReport contains
   // only the revolved modules.
   // Sometimes the entire module can be excluded via rules etc.
-  private[sbt] def organizationArtifactReports(confReport: ConfigurationResolveReport): Seq[OrganizationArtifactReport] = {
+  private[sbt] def organizationArtifactReports(confReport: ConfigurationResolveReport): Vector[OrganizationArtifactReport] = {
     val moduleIds = confReport.getModuleIds.toArray.toVector collect { case mId: IvyModuleId => mId }
     def organizationArtifact(mid: IvyModuleId): OrganizationArtifactReport = {
       val deps = confReport.getNodes(mid).toArray.toVector collect { case node: IvyNode => node }
@@ -130,14 +130,14 @@ object IvyRetrieve {
       case _        => dep.getResolvedId.getExtraAttributes
     })
     val isDefault = Option(dep.getDescriptor) map { _.isDefault }
-    val configurations = dep.getConfigurations(confReport.getConfiguration).toList
-    val licenses: Seq[(String, Option[String])] = mdOpt match {
+    val configurations = dep.getConfigurations(confReport.getConfiguration).toVector
+    val licenses: Vector[(String, Option[String])] = mdOpt match {
       case Some(md) => md.getLicenses.toVector collect {
         case lic: IvyLicense if Option(lic.getName).isDefined =>
           val temporaryURL = "http://localhost"
           (lic.getName, nonEmptyString(lic.getUrl) orElse { Some(temporaryURL) })
       }
-      case _ => Nil
+      case _ => Vector.empty
     }
     val callers = dep.getCallers(confReport.getConfiguration).toVector map { toCaller }
     val (resolved, missing) = artifacts(moduleId, confReport getDownloadReports revId)
@@ -151,13 +151,13 @@ object IvyRetrieve {
     confReport.getEvictedNodes.map(node => toModuleID(node.getId))
 
   def toModuleID(revID: ModuleRevisionId): ModuleID =
-    ModuleID(revID.getOrganisation, revID.getName, revID.getRevision, extraAttributes = IvySbt.getExtraAttributes(revID))
+    ModuleID(revID.getOrganisation, revID.getName, revID.getRevision).withExtraAttributes(IvySbt.getExtraAttributes(revID))
       .branch(nonEmptyString(revID.getBranch))
 
   def toArtifact(art: IvyArtifact): Artifact =
     {
       import art._
-      Artifact(getName, getType, getExt, Option(getExtraAttribute("classifier")), getConfigurations map Configurations.config, Option(getUrl))
+      Artifact(getName, getType, getExt, Option(getExtraAttribute("classifier")), getConfigurations.toVector map Configurations.config, Option(getUrl))
     }
 
   def updateReport(report: ResolveReport, cachedDescriptor: File): UpdateReport =

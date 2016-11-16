@@ -19,7 +19,7 @@ object ScalaArtifacts {
   val ReflectID = "scala-reflect"
   val ActorsID = "scala-actors"
   val ScalapID = "scalap"
-  val Artifacts = Seq(LibraryID, CompilerID, ReflectID, ActorsID, ScalapID)
+  val Artifacts = Vector(LibraryID, CompilerID, ReflectID, ActorsID, ScalapID)
   val DottyIDPrefix = "dotty"
 
   def dottyID(binaryVersion: String): String = s"${DottyIDPrefix}_${binaryVersion}"
@@ -28,8 +28,8 @@ object ScalaArtifacts {
 
   private[sbt] def toolDependencies(org: String, version: String, isDotty: Boolean = false): Seq[ModuleID] =
     if (isDotty)
-      Seq(ModuleID(org, DottyIDPrefix, version, Some(Configurations.ScalaTool.name + "->compile"),
-        crossVersion = CrossVersion.binary))
+      Seq(ModuleID(org, DottyIDPrefix, version).withConfigurations(Some(Configurations.ScalaTool.name + "->compile"))
+        .withCrossVersion(CrossVersion.binary))
     else
       Seq(
         scalaToolDependency(org, ScalaArtifacts.CompilerID, version),
@@ -37,7 +37,7 @@ object ScalaArtifacts {
       )
 
   private[this] def scalaToolDependency(org: String, id: String, version: String): ModuleID =
-    ModuleID(org, id, version, Some(Configurations.ScalaTool.name + "->default,optional(default)"))
+    ModuleID(org, id, version).withConfigurations(Some(Configurations.ScalaTool.name + "->default,optional(default)"))
 }
 object SbtArtifacts {
   val Organization = "org.scala-sbt"
@@ -45,9 +45,7 @@ object SbtArtifacts {
 
 import ScalaArtifacts._
 
-final case class IvyScala(scalaFullVersion: String, scalaBinaryVersion: String, configurations: Iterable[Configuration], checkExplicit: Boolean, filterImplicit: Boolean, overrideScalaVersion: Boolean, scalaOrganization: String = ScalaArtifacts.Organization, scalaArtifacts: Seq[String] = ScalaArtifacts.Artifacts)
-
-private[sbt] object IvyScala {
+private[sbt] abstract class IvyScalaFunctions {
   /** Performs checks/adds filters on Scala dependencies (if enabled in IvyScala). */
   def checkModule(module: DefaultModuleDescriptor, conf: String, log: Logger)(check: IvyScala): Unit = {
     if (check.checkExplicit)
