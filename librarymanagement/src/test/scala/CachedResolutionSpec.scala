@@ -14,7 +14,7 @@ class CachedResolutionSpec extends BaseIvySpecification {
     )
     val report = ivyUpdate(m)
     cleanCachedResolutionCache(m)
-    val report2 = ivyUpdate(m)
+    val _ = ivyUpdate(m)
     // first resolution creates the minigraph
     println(report)
     // second resolution reads from the minigraph
@@ -57,7 +57,7 @@ class CachedResolutionSpec extends BaseIvySpecification {
       Some("2.10.2"), UpdateOptions().withCachedResolution(true)
     )
     // first resolution creates the minigraph
-    val report0 = ivyUpdate(m)
+    val _ = ivyUpdate(m)
     cleanCachedResolutionCache(m)
     // second resolution reads from the minigraph
     val report = ivyUpdate(m)

@@ -58,7 +58,6 @@ class IvyRepoSpec extends BaseIvySpecification with DependencyBuilders {
 
     val clMod = {
       import language.implicitConversions
-      implicit val key = (m: ModuleID) => (m.organization, m.name, m.revision)
       val externalModules = Vector(dep)
       // Note: need to extract ourModuleID so we can plug it in here, can't fish it back out of the IvySbt#Module (`m`)
       GetClassifiersModule(ourModuleID, externalModules, Vector(Configurations.Compile), attemptedClassifiers)
