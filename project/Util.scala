@@ -14,8 +14,8 @@ object Util {
   def crossBuild: Seq[Setting[_]] =
     Seq(
       crossPaths := (scalaBinaryVersion.value match {
-        case "2.11" => true
-        case _      => false
+        case "2.10" => false
+        case _      => true
       })
     )
 
