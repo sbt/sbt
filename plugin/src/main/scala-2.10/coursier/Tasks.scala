@@ -579,6 +579,8 @@ object Tasks {
         var pool: ExecutorService = null
         var resLogger: TermDisplay = null
 
+        val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
+
         val res = try {
           pool = Executors.newFixedThreadPool(parallelDownloads, Strategy.DefaultDaemonThreadFactory)
           resLogger = createLogger()
@@ -629,10 +631,10 @@ object Tasks {
                 Nil
             ).flatten.mkString("\n")
 
-          if (verbosityLevel >= 1)
+          if (verbosityLevel >= 2)
             log.info(initialMessage)
 
-          resLogger.init(if (verbosityLevel < 1) log.info(initialMessage))
+          resLogger.init(if (printOptionalMessage) log.info(initialMessage))
 
           startRes
             .process
@@ -647,7 +649,7 @@ object Tasks {
           if (pool != null)
             pool.shutdown()
           if (resLogger != null)
-            if ((resLogger.stopDidPrintSomething() && verbosityLevel >= 0) || verbosityLevel >= 1)
+            if ((resLogger.stopDidPrintSomething() && printOptionalMessage) || verbosityLevel >= 2)
               log.info(s"Resolved $projectName dependencies")
         }
 
@@ -821,6 +823,8 @@ object Tasks {
         var pool: ExecutorService = null
         var artifactsLogger: TermDisplay = null
 
+        val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
+
         val artifactFilesOrErrors = try {
           pool = Executors.newFixedThreadPool(parallelDownloads, Strategy.DefaultDaemonThreadFactory)
           artifactsLogger = createLogger()
@@ -850,10 +854,10 @@ object Tasks {
             else
               ""
 
-          if (verbosityLevel >= 1)
+          if (verbosityLevel >= 2)
             log.info(artifactInitialMessage)
 
-          artifactsLogger.init(if (verbosityLevel < 1) log.info(artifactInitialMessage))
+          artifactsLogger.init(if (printOptionalMessage) log.info(artifactInitialMessage))
 
           Task.gatherUnordered(artifactFileOrErrorTasks).attemptRun match {
             case -\/(ex) =>
@@ -866,7 +870,7 @@ object Tasks {
           if (pool != null)
             pool.shutdown()
           if (artifactsLogger != null)
-            if ((artifactsLogger.stopDidPrintSomething() && verbosityLevel >= 0) || verbosityLevel >= 1)
+            if ((artifactsLogger.stopDidPrintSomething() && printOptionalMessage) || verbosityLevel >= 2)
               log.info(
                 s"Fetched artifacts of $projectName" +
                   (if (sbtClassifiers) " (sbt classifiers)" else "")
