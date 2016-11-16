@@ -10,7 +10,7 @@ abstract class InclExclRuleCompanion {
   def everything = new InclExclRule("*", "*", "*", Vector.empty)
 }
 
-abstract class ArtifactTypeFilterParent {
+abstract class ArtifactTypeFilterExtra {
   def types: Set[String]
   def inverted: Boolean
 

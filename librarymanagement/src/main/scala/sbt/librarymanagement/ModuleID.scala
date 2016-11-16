@@ -7,7 +7,7 @@ import java.net.URL
 
 import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
 
-abstract class ModuleIDParent {
+abstract class ModuleIDExtra {
   def organization: String
   def name: String
   def revision: String

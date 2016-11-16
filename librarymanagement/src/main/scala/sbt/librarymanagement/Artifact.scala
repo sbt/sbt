@@ -6,7 +6,7 @@ package sbt.librarymanagement
 import java.io.File
 import java.net.URL
 
-abstract class ArtifactParent {
+abstract class ArtifactExtra {
   def name: String
   def `type`: String
   def extension: String

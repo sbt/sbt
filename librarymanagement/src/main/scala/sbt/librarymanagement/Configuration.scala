@@ -49,7 +49,7 @@ object Configurations {
   private[sbt] def removeDuplicates(configs: Iterable[Configuration]) = Set(scala.collection.mutable.Map(configs.map(config => (config.name, config)).toSeq: _*).values.toList: _*)
 }
 
-abstract class ConfigurationParent {
+abstract class ConfigurationExtra {
   def name: String
   def description: String
   def isPublic: Boolean

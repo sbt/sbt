@@ -6,7 +6,7 @@ package sbt.librarymanagement
 import java.io.File
 import java.{ util => ju }
 
-abstract class ConfigurationReportParent {
+abstract class ConfigurationReportExtra {
   def configuration: String
   def modules: Vector[ModuleReport]
   def details: Vector[OrganizationArtifactReport]
@@ -36,7 +36,7 @@ abstract class ConfigurationReportParent {
     new ConfigurationReport(configuration, modules map { _.retrieve((mid, art, file) => f(configuration, mid, art, file)) }, details)
 }
 
-abstract class ModuleReportParent {
+abstract class ModuleReportExtra {
   def module: ModuleID
   def artifacts: Vector[(Artifact, File)]
   def missingArtifacts: Vector[Artifact]
@@ -120,7 +120,7 @@ abstract class ModuleReportParent {
   ): ModuleReport
 }
 
-abstract class UpdateReportParent {
+abstract class UpdateReportExtra {
   def cachedDescriptor: File
   def configurations: Vector[ConfigurationReport]
   def stats: UpdateStats

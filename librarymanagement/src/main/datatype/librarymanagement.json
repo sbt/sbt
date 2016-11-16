@@ -27,7 +27,7 @@
         "Provides information about the resolution of a module.",
         "This information is in the context of a specific configuration."
       ],
-      "parents": "sbt.librarymanagement.ModuleReportParent",
+      "parents": "sbt.librarymanagement.ModuleReportExtra",
       "fields": [
         { "name": "module",           "type": "sbt.librarymanagement.ModuleID"                                                     },
         { "name": "artifacts",        "type": "scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]*"                        },
@@ -343,7 +343,7 @@
       "target": "Scala",
       "type": "record",
       "doc": "Represents an Ivy configuration.",
-      "parents": "sbt.librarymanagement.ConfigurationParent",
+      "parents": "sbt.librarymanagement.ConfigurationExtra",
       "fields": [
         { "name": "name",           "type": "String"                                                                            },
         { "name": "description",    "type": "String",                               "default": "\"\"",         "since": "0.0.1" },
@@ -358,7 +358,7 @@
       "namespace": "sbt.librarymanagement",
       "target": "Scala",
       "type": "record",
-      "parents": "sbt.librarymanagement.ArtifactParent",
+      "parents": "sbt.librarymanagement.ArtifactExtra",
       "fields": [
         { "name": "name",            "type": "String"                                                                                         },
         { "name": "type",            "type": "String",                               "default": "Artifact.DefaultType",      "since": "0.0.1" },
@@ -672,7 +672,7 @@
       "namespace": "sbt.librarymanagement",
       "target": "Scala",
       "type": "record",
-      "parents": "sbt.librarymanagement.ModuleIDParent",
+      "parents": "sbt.librarymanagement.ModuleIDExtra",
       "fields": [
         { "name": "organization",      "type": "String"                                                                                               },
         { "name": "name",              "type": "String"                                                                                               },
@@ -701,7 +701,7 @@
       "target": "Scala",
       "type": "record",
       "doc": "Work around the inadequacy of Ivy's ArtifactTypeFilter (that it cannot reverse a filter)",
-      "parents": "sbt.librarymanagement.ArtifactTypeFilterParent",
+      "parents": "sbt.librarymanagement.ArtifactTypeFilterExtra",
       "fields": [
         {
           "name": "types",
@@ -730,7 +730,7 @@
         "It does not include information about evicted modules, only about the modules ultimately selected by the conflict manager.",
         "This means that for a given configuration, there should only be one revision for a given organization and module name."
       ],
-      "parents": "sbt.librarymanagement.UpdateReportParent",
+      "parents": "sbt.librarymanagement.UpdateReportExtra",
       "fields": [
         {
           "name": "cachedDescriptor",
@@ -759,7 +759,7 @@
       "doc": [
         "Provides information about resolution of a single configuration."
       ],
-      "parents": "sbt.librarymanagement.ConfigurationReportParent",
+      "parents": "sbt.librarymanagement.ConfigurationReportExtra",
       "fields": [
         { "name": "configuration", "type": "String", "doc": [ "the configuration this report is for." ] },
         {
