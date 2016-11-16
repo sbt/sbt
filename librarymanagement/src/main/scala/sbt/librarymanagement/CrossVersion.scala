@@ -13,25 +13,10 @@ abstract class CrossVersionFunctions {
   val TransitionSbtVersion = CrossVersionUtil.TransitionSbtVersion
 
   /** Cross-versions a module with the full version (typically the full Scala version). */
-  def full: CrossVersion = new Full(idStringFun)
-
-  /**
-   * Cross-versions a module with the result of applying `remapVersion` to the full version
-   * (typically the full Scala version).  See also [[sbt.librarymanagement.CrossVersion.Full]].
-   */
-  def fullMapped(remapVersion: String => String): CrossVersion = new Full(remapVersion)
+  def full: CrossVersion = new Full()
 
   /** Cross-versions a module with the binary version (typically the binary Scala version).  */
-  def binary: CrossVersion = new Binary(idStringFun)
-
-  /**
-   * Cross-versions a module with the result of applying `remapVersion` to the binary version
-   * (typically the binary Scala version).  See also [[sbt.librarymanagement.CrossVersion.Binary]].
-   */
-  def binaryMapped(remapVersion: String => String): CrossVersion = new Binary(remapVersion)
-
-  private[this] def idFun[T]: T => T = x => x
-  private[this] val idStringFun = idFun[String]
+  def binary: CrossVersion = new Binary()
 
   private[sbt] def append(s: String): Option[String => String] = Some(x => crossName(x, s))
 
@@ -43,8 +28,8 @@ abstract class CrossVersionFunctions {
   def apply(cross: CrossVersion, fullVersion: String, binaryVersion: String): Option[String => String] =
     cross match {
       case _: Disabled => None
-      case b: Binary   => append(b.remapVersion(binaryVersion))
-      case f: Full     => append(f.remapVersion(fullVersion))
+      case _: Binary   => append(binaryVersion)
+      case _: Full     => append(fullVersion)
     }
 
   /** Constructs the cross-version function defined by `module` and `is`, if one is configured. */

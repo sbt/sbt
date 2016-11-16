@@ -20,9 +20,6 @@ object DatatypeConfig {
   val myCodecs: PartialFunction[String, TpeRef => List[String]] = {
     case "java.util.Date" => { _ => "sbt.internal.librarymanagement.formats.DateFormat" :: Nil }
 
-    case "Function1" =>
-      { tpe => "sbt.internal.librarymanagement.formats.Function1Format" :: twoArgs(tpe).flatMap(getFormats) }
-
     case "scala.xml.NodeSeq" => { _ => "sbt.internal.librarymanagement.formats.NodeSeqFormat" :: Nil }
 
     case "org.apache.ivy.plugins.resolver.DependencyResolver" =>

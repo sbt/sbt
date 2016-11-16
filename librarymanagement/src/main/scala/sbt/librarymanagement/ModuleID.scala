@@ -47,9 +47,6 @@ abstract class ModuleIDExtra {
   @deprecated("Use `cross(CrossVersion)`, the variant accepting a CrossVersion value constructed by a member of the CrossVersion object instead.", "0.12.0")
   def cross(v: Boolean): ModuleID = cross(if (v) CrossVersion.binary else Disabled())
 
-  @deprecated("Use `cross(CrossVersion)`, the variant accepting a CrossVersion value constructed by a member of the CrossVersion object instead.", "0.12.0")
-  def cross(v: Boolean, verRemap: String => String): ModuleID = cross(if (v) CrossVersion.binaryMapped(verRemap) else Disabled())
-
   /** Specifies the cross-version behavior for this module.  See [CrossVersion] for details.*/
   def cross(v: CrossVersion): ModuleID = copy(crossVersion = v)
 

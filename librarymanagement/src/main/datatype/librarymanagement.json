@@ -315,10 +315,7 @@
             "For example, if `remapVersion = v => \"2.10\"` and the binary version is \"2.9.2\" or \"2.10\",",
             "the module is cross-versioned with \"2.10\"."
           ],
-          "type": "record",
-          "fields": [
-            { "name": "remapVersion", "type": "Function1[String, String]" }
-          ]
+          "type": "record"
         },
         {
           "name": "Full",
@@ -329,9 +326,6 @@
             "Cross-versions a module with the result of applying `remapVersion` to the full version.",
             "For example, if `remapVersion = v => \"2.10\"` and the full version is \"2.9.2\" or \"2.10.3\",",
             "the module is cross-versioned with \"2.10\"."
-          ],
-          "fields": [
-            { "name": "remapVersion", "type": "Function1[String, String]" }
           ]
         }
       ],
