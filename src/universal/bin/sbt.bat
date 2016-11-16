@@ -30,7 +30,7 @@ IF DEFINED JAVA_HOMES (
   )
 )
 rem must set PATH or wrong javac is used for java projects
-IF DEFINED JAVA_HOME SET PATH=%JAVA_HOME%\bin;%PATH%
+IF DEFINED JAVA_HOME SET "PATH=%JAVA_HOME%\bin;%PATH%"
 
 rem users can set JAVA_OPTS via .jvmopts (sbt-extras style)
 IF EXIST .jvmopts FOR /F %%A IN (.jvmopts) DO (
