@@ -5,7 +5,7 @@ package sbt.internal.librarymanagement
 
 import sbt.librarymanagement._
 
-abstract class InlineConfigurationCompanion {
+abstract class InlineConfigurationFunctions {
   def configurations(explicitConfigurations: Iterable[Configuration], defaultConfiguration: Option[Configuration]) =
     if (explicitConfigurations.isEmpty) {
       defaultConfiguration match {

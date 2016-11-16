@@ -45,7 +45,7 @@ object SbtArtifacts {
 
 import ScalaArtifacts._
 
-private[sbt] abstract class IvyScalaCompanion {
+private[sbt] abstract class IvyScalaFunctions {
   /** Performs checks/adds filters on Scala dependencies (if enabled in IvyScala). */
   def checkModule(module: DefaultModuleDescriptor, conf: String, log: Logger)(check: IvyScala): Unit = {
     if (check.checkExplicit)

@@ -26,7 +26,7 @@ final class RawRepository(val resolver: DependencyResolver) extends Resolver(res
     }
 }
 
-abstract class PatternsCompanion {
+abstract class PatternsFunctions {
   implicit def defaultPatterns: Patterns = Resolver.defaultPatterns
 
   def apply(artifactPatterns: String*): Patterns = Patterns(true, artifactPatterns: _*)
@@ -48,7 +48,7 @@ trait ResolversSyntax {
   val JCenterRepository = new MavenRepository(JCenterRepositoryName, JCenterRepositoryRoot)
 }
 
-abstract class ResolverCompanion {
+abstract class ResolverFunctions {
   private[sbt] def useSecureResolvers = sys.props.get("sbt.repository.secure") map { _.toLowerCase == "true" } getOrElse true
 
   val TypesafeRepositoryRoot = typesafeRepositoryRoot(useSecureResolvers)

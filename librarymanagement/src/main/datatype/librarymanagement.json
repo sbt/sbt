@@ -192,7 +192,7 @@
         { "name": "organization", "type": "String", "default": "\"*\"", "since": "0.0.1" },
         { "name": "module",       "type": "String", "default": "\"*\"", "since": "0.0.1" }
       ],
-      "parentsCompanion": "sbt.librarymanagement.ConflictManagerCompanion"
+      "parentsCompanion": "sbt.librarymanagement.ConflictManagerFunctions"
     },
     {
       "name": "IvyScala",
@@ -209,7 +209,7 @@
         { "name": "scalaOrganization",    "type": "String",  "default": "sbt.librarymanagement.ScalaArtifacts.Organization", "since": "0.0.1" },
         { "name": "scalaArtifacts",       "type": "String*", "default": "sbt.librarymanagement.ScalaArtifacts.Artifacts",    "since": "0.0.1" }
       ],
-      "parentsCompanion": "sbt.librarymanagement.IvyScalaCompanion"
+      "parentsCompanion": "sbt.librarymanagement.IvyScalaFunctions"
     },
     {
       "name": "ModuleSettings",
@@ -257,7 +257,7 @@
             { "name": "defaultConfiguration", "type": "sbt.librarymanagement.Configuration?",             "default": "None",                                          "since": "0.0.1" },
             { "name": "conflictManager",      "type": "sbt.librarymanagement.ConflictManager",            "default": "sbt.librarymanagement.ConflictManager.default", "since": "0.0.1" }
           ],
-          "parentsCompanion": "sbt.internal.librarymanagement.InlineConfigurationCompanion"
+          "parentsCompanion": "sbt.internal.librarymanagement.InlineConfigurationFunctions"
         }
       ]
     },
@@ -290,7 +290,7 @@
         { "name": "artifact",       "type": "String",  "default": "\"*\"",        "since": "0.0.1" },
         { "name": "configurations", "type": "String*", "default": "Vector.empty", "since": "0.0.1" }
       ],
-      "parentsCompanion": "sbt.librarymanagement.InclExclRuleCompanion"
+      "parentsCompanion": "sbt.librarymanagement.InclExclRuleFunctions"
     },
     {
       "name": "CrossVersion",
@@ -335,7 +335,7 @@
           ]
         }
       ],
-      "parentsCompanion": "sbt.librarymanagement.CrossVersionCompanion"
+      "parentsCompanion": "sbt.librarymanagement.CrossVersionFunctions"
     },
     {
       "name": "Configuration",
@@ -368,7 +368,7 @@
         { "name": "url",             "type": "java.net.URL?",                        "default": "None",                      "since": "0.0.1" },
         { "name": "extraAttributes", "type": "Map[String, String]",                  "default": "Map.empty",                 "since": "0.0.1" }
       ],
-      "parentsCompanion": "sbt.librarymanagement.ArtifactCompanion"
+      "parentsCompanion": "sbt.librarymanagement.ArtifactFunctions"
     },
     {
       "name": "SshAuthentication",
@@ -437,7 +437,7 @@
         "\"Patterns(ivyPatterns=%s, artifactPatterns=%s, isMavenCompatible=%s, descriptorOptional=%s, skipConsistencyCheck=%s)\".format(",
         "  ivyPatterns, artifactPatterns, isMavenCompatible, descriptorOptional, skipConsistencyCheck)"
       ],
-      "parentsCompanion": "sbt.librarymanagement.PatternsCompanion"
+      "parentsCompanion": "sbt.librarymanagement.PatternsFunctions"
     },
     {
       "name": "Resolver",
@@ -575,7 +575,7 @@
           ]
         }
       ],
-      "parentsCompanion": "sbt.librarymanagement.ResolverCompanion"
+      "parentsCompanion": "sbt.librarymanagement.ResolverFunctions"
     },
     {
       "name": "ModuleConfiguration",
@@ -693,7 +693,7 @@
         "  (configurations match { case Some(s) => \":\" + s; case None => \"\" }) +",
         "  (if (extraAttributes.isEmpty) \"\" else \" \" + extraString)"
       ],
-      "parentsCompanion": "sbt.librarymanagement.ModuleIDCompanion"
+      "parentsCompanion": "sbt.librarymanagement.ModuleIDFunctions"
     },
     {
       "name": "ArtifactTypeFilter",
@@ -718,7 +718,7 @@
           "type": "boolean"
         }
       ],
-      "parentsCompanion": "sbt.librarymanagement.ArtifactTypeFilterCompanion"
+      "parentsCompanion": "sbt.librarymanagement.ArtifactTypeFilterFunctions"
     },
     {
       "name": "UpdateReport",

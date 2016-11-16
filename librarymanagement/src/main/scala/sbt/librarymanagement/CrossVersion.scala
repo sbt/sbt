@@ -5,7 +5,7 @@ import sbt.internal.librarymanagement.cross.CrossVersionUtil
 
 final case class ScalaVersion(full: String, binary: String)
 
-abstract class CrossVersionCompanion {
+abstract class CrossVersionFunctions {
   /** The first `major.minor` Scala version that the Scala binary version should be used for cross-versioning instead of the full version. */
   val TransitionScalaVersion = CrossVersionUtil.TransitionScalaVersion
 

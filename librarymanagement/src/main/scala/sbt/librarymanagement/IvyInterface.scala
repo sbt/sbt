@@ -6,7 +6,7 @@ package sbt.librarymanagement
 import org.apache.ivy.core.module.descriptor
 import org.apache.ivy.util.filter.{ Filter => IvyFilter }
 
-abstract class InclExclRuleCompanion {
+abstract class InclExclRuleFunctions {
   def everything = new InclExclRule("*", "*", "*", Vector.empty)
 }
 
@@ -20,7 +20,7 @@ abstract class ArtifactTypeFilterExtra {
   def apply(a: descriptor.Artifact): Boolean = (types contains a.getType) ^ inverted
 }
 
-abstract class ArtifactTypeFilterCompanion {
+abstract class ArtifactTypeFilterFunctions {
   def allow(types: Set[String]) = ArtifactTypeFilter(types, false)
   def forbid(types: Set[String]) = ArtifactTypeFilter(types, true)
 
@@ -29,7 +29,7 @@ abstract class ArtifactTypeFilterCompanion {
   }
 }
 
-abstract class ConflictManagerCompanion {
+abstract class ConflictManagerFunctions {
   // To avoid NPE (or making the val's below lazy)
   // For case classes refchecks rewrites apply calls to constructor calls, we have to do it manually
   def apply(name: String, organization: String = "*", module: String = "*"): ConflictManager

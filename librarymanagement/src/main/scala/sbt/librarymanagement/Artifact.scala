@@ -30,7 +30,7 @@ abstract class ArtifactExtra {
 
 import Configurations.{ Optional, Pom, Test }
 
-abstract class ArtifactCompanion {
+abstract class ArtifactFunctions {
   def apply(name: String, extra: Map[String, String]): Artifact = Artifact(name, DefaultType, DefaultExtension, None, Vector.empty, None, extra)
   def apply(name: String, classifier: String): Artifact = Artifact(name, DefaultType, DefaultExtension, Some(classifier), Vector.empty, None)
   def apply(name: String, `type`: String, extension: String): Artifact = Artifact(name, `type`, extension, None, Vector.empty, None)

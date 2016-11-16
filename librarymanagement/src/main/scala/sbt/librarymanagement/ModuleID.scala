@@ -151,7 +151,7 @@ abstract class ModuleIDExtra {
   def branch(branchName: Option[String]) = copy(branchName = branchName)
 }
 
-abstract class ModuleIDCompanion {
+abstract class ModuleIDFunctions {
   /** Prefixes all keys with `e:` if they are not already so prefixed. */
   def checkE(attributes: Seq[(String, String)]) =
     for ((key, value) <- attributes) yield if (key.startsWith("e:")) (key, value) else ("e:" + key, value)
