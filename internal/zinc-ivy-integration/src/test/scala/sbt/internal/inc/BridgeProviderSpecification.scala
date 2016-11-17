@@ -21,20 +21,20 @@ abstract class BridgeProviderSpecification extends BaseIvySpecification {
 
   def realLocal: Resolver =
     {
-      val pList = s"$${user.home}/.ivy2/local/${Resolver.localBasePattern}" :: Nil
-      FileRepository("local", Resolver.defaultFileConfiguration, Patterns(pList, pList, false))
+      val pList = Vector(s"$${user.home}/.ivy2/local/${Resolver.localBasePattern}")
+      FileRepository("local", Resolver.defaultFileConfiguration, Patterns().withIvyPatterns(pList).withArtifactPatterns(pList).withIsMavenCompatible(false))
     }
-  override def resolvers: Seq[Resolver] = Seq(realLocal, DefaultMavenRepository)
+  override def resolvers: Vector[Resolver] = Vector(realLocal, DefaultMavenRepository)
   private val ivyConfiguration = mkIvyConfiguration(UpdateOptions())
 
   def getCompilerBridge(targetDir: File, log: Logger, scalaVersion: String): File = {
     val instance = scalaInstance(scalaVersion)
     val bridgeId = compilerBridgeId(scalaVersion)
-    val sourceModule = ModuleID(xsbti.ArtifactInfo.SbtOrganization, bridgeId, ComponentCompiler.incrementalVersion, Some("component")).sources()
+    val sourceModule = ModuleID(xsbti.ArtifactInfo.SbtOrganization, bridgeId, ComponentCompiler.incrementalVersion).withConfigurations(Some("component")).sources()
 
     val raw = new RawCompiler(instance, ClasspathOptionsUtil.auto, log)
     val manager = new ComponentManager(lock, provider(targetDir), None, log)
-    val componentCompiler = new IvyComponentCompiler(raw, manager, ivyConfiguration, sourceModule, log)
+    val componentCompiler = new IvyComponentCompiler(raw, manager, ivyConfiguration, fileToStore, sourceModule, log)
 
     val bridge = componentCompiler.apply()
     val target = targetDir / s"target-bridge-$scalaVersion.jar"
@@ -44,11 +44,11 @@ abstract class BridgeProviderSpecification extends BaseIvySpecification {
 
   def scalaInstance(scalaVersion: String): ScalaInstance = {
     val scalaModule = {
-      val dummyModule = ModuleID(JsonUtil.sbtOrgTemp, "tmp-scala-" + scalaVersion, scalaVersion, Some("compile"))
-      val scalaLibrary = ModuleID(xsbti.ArtifactInfo.ScalaOrganization, xsbti.ArtifactInfo.ScalaLibraryID, scalaVersion, Some("compile"))
-      val scalaCompiler = ModuleID(xsbti.ArtifactInfo.ScalaOrganization, xsbti.ArtifactInfo.ScalaCompilerID, scalaVersion, Some("compile"))
+      val dummyModule = ModuleID(JsonUtil.sbtOrgTemp, "tmp-scala-" + scalaVersion, scalaVersion).withConfigurations(Some("compile"))
+      val scalaLibrary = ModuleID(xsbti.ArtifactInfo.ScalaOrganization, xsbti.ArtifactInfo.ScalaLibraryID, scalaVersion).withConfigurations(Some("compile"))
+      val scalaCompiler = ModuleID(xsbti.ArtifactInfo.ScalaOrganization, xsbti.ArtifactInfo.ScalaCompilerID, scalaVersion).withConfigurations(Some("compile"))
 
-      module(dummyModule, Seq(scalaLibrary, scalaCompiler), None)
+      module(dummyModule, Vector(scalaLibrary, scalaCompiler), None)
     }
 
     val allArtifacts =

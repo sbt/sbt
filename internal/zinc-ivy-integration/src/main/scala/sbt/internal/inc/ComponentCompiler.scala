@@ -9,9 +9,9 @@ import java.io.File
 import scala.util.Try
 import sbt.io.{ Hash, IO }
 import sbt.internal.librarymanagement._
-import sbt.librarymanagement.{ Configurations, ModuleID, ModuleInfo, Resolver, UpdateOptions, VersionNumber, ArtifactTypeFilter }
+import sbt.librarymanagement.{ Configurations, ModuleID, ModuleInfo, Resolver, UpdateConfiguration, UpdateLogging, UpdateOptions, ArtifactTypeFilter }
 import sbt.util.Logger
-import sbt.internal.util.{ BufferedLogger, FullLogger }
+import sbt.internal.util.{ BufferedLogger, CacheStore, FullLogger }
 
 private[sbt] object ComponentCompiler {
   // val xsbtiID = "xsbti"
@@ -19,11 +19,11 @@ private[sbt] object ComponentCompiler {
   val binSeparator = "-bin_"
   val javaVersion = System.getProperty("java.class.version")
 
-  def interfaceProvider(manager: ComponentManager, ivyConfiguration: IvyConfiguration, sourcesModule: ModuleID): CompilerBridgeProvider = new CompilerBridgeProvider {
+  def interfaceProvider(manager: ComponentManager, ivyConfiguration: IvyConfiguration, fileToStore: File => CacheStore, sourcesModule: ModuleID): CompilerBridgeProvider = new CompilerBridgeProvider {
     def apply(scalaInstance: xsbti.compile.ScalaInstance, log: Logger): File =
       {
         // this is the instance used to compile the interface component
-        val componentCompiler = new IvyComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptionsUtil.auto, log), manager, ivyConfiguration, sourcesModule, log)
+        val componentCompiler = new IvyComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptionsUtil.auto, log), manager, ivyConfiguration, fileToStore, sourcesModule, log)
         log.debug("Getting " + sourcesModule + " from component compiler for Scala " + scalaInstance.version)
         componentCompiler()
       }
@@ -43,7 +43,7 @@ private[sbt] object ComponentCompiler {
  * The compiled classes are cached using the provided component manager according
  * to the actualVersion field of the RawCompiler.
  */
-private[inc] class IvyComponentCompiler(compiler: RawCompiler, manager: ComponentManager, ivyConfiguration: IvyConfiguration, sourcesModule: ModuleID, log: Logger) {
+private[inc] class IvyComponentCompiler(compiler: RawCompiler, manager: ComponentManager, ivyConfiguration: IvyConfiguration, fileToStore: File => CacheStore, sourcesModule: ModuleID, log: Logger) {
   import ComponentCompiler._
 
   private val sbtOrg = xsbti.ArtifactInfo.SbtOrganization
@@ -51,7 +51,7 @@ private[inc] class IvyComponentCompiler(compiler: RawCompiler, manager: Componen
   // private val xsbtiInterfaceID = s"interface-$incrementalVersion"
   private val sbtOrgTemp = JsonUtil.sbtOrgTemp
   private val modulePrefixTemp = "temp-module-"
-  private val ivySbt: IvySbt = new IvySbt(ivyConfiguration)
+  private val ivySbt: IvySbt = new IvySbt(ivyConfiguration, fileToStore)
   private val buffered = new BufferedLogger(FullLogger(log))
 
   def apply(): File = {
@@ -96,18 +96,18 @@ private[inc] class IvyComponentCompiler(compiler: RawCompiler, manager: Componen
    */
   private def getModule(moduleID: ModuleID): ivySbt.Module = {
     val sha1 = Hash.toHex(Hash(moduleID.name))
-    val dummyID = ModuleID(sbtOrgTemp, modulePrefixTemp + sha1, moduleID.revision, moduleID.configurations)
-    getModule(dummyID, Seq(moduleID))
+    val dummyID = ModuleID(sbtOrgTemp, modulePrefixTemp + sha1, moduleID.revision).withConfigurations(moduleID.configurations)
+    getModule(dummyID, Vector(moduleID))
   }
 
-  private def getModule(moduleID: ModuleID, deps: Seq[ModuleID], uo: UpdateOptions = UpdateOptions()): ivySbt.Module = {
+  private def getModule(moduleID: ModuleID, deps: Vector[ModuleID], uo: UpdateOptions = UpdateOptions()): ivySbt.Module = {
     val moduleSetting = InlineConfiguration(
+      validate = false,
+      ivyScala = None,
       module = moduleID,
       moduleInfo = ModuleInfo(moduleID.name),
-      dependencies = deps,
-      configurations = Seq(Configurations.Component),
-      ivyScala = None
-    )
+      dependencies = deps
+    ).withConfigurations(Vector(Configurations.Component))
 
     new ivySbt.Module(moduleSetting)
   }
@@ -126,7 +126,7 @@ private[inc] class IvyComponentCompiler(compiler: RawCompiler, manager: Componen
 
   private def update(module: ivySbt.Module, retrieveDirectory: File): Seq[File] = {
 
-    val retrieveConfiguration = new RetrieveConfiguration(retrieveDirectory, Resolver.defaultRetrievePattern, false)
+    val retrieveConfiguration = new RetrieveConfiguration(retrieveDirectory, Resolver.defaultRetrievePattern, false, None)
     val updateConfiguration = new UpdateConfiguration(Some(retrieveConfiguration), true, UpdateLogging.DownloadOnly, ArtifactTypeFilter.forbid(Set("doc")))
 
     buffered.info(s"Attempting to fetch ${dependenciesNames(module)}. This operation may fail.")
