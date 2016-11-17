@@ -2,7 +2,6 @@ import Dependencies._
 import com.typesafe.tools.mima.core._, ProblemFilters._
 
 def baseVersion = "0.1.0"
-def internalPath   = file("internal")
 
 def commonSettings: Seq[Setting[_]] = Seq(
   scalaVersion := scala211,
@@ -22,7 +21,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
   publishArtifact in Test := false
 )
 
-lazy val root = (project in file(".")).
+lazy val lmRoot = (project in file(".")).
   aggregate(lm).
   settings(
     inThisBuild(Seq(
