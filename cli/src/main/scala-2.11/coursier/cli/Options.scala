@@ -7,7 +7,7 @@ import coursier.util.Parse
 
 case class CommonOptions(
   @Help("Keep optional dependencies (Maven)")
-    keepOptional: Boolean,
+    keepOptional: Boolean = false,
   @Help("Download mode (default: missing, that is fetch things missing from cache)")
   @Value("offline|update-changing|update|missing|force")
   @Short("m")
@@ -15,25 +15,25 @@ case class CommonOptions(
   @Help("TTL duration (e.g. \"24 hours\")")
   @Value("duration")
   @Short("l")
-    ttl: String,
+    ttl: String = "",
   @Help("Quiet output")
   @Short("q")
-    quiet: Boolean,
+    quiet: Boolean = false,
   @Help("Increase verbosity (specify several times to increase more)")
   @Short("v")
-    verbose: Int @@ Counter,
+    verbose: Int @@ Counter = Tag.of(0),
   @Help("Force display of progress bars")
   @Short("P")
-    progress: Boolean,
+    progress: Boolean = false,
   @Help("Maximum number of resolution iterations (specify a negative value for unlimited, default: 100)")
   @Short("N")
     maxIterations: Int = 100,
   @Help("Repository - for multiple repositories, separate with comma and/or add this option multiple times (e.g. -r central,ivy2local -r sonatype-snapshots, or equivalently -r central,ivy2local,sonatype-snapshots)")
   @Short("r")
-    repository: List[String],
+    repository: List[String] = Nil,
   @Help("Source repository - for multiple repositories, separate with comma and/or add this option multiple times")
   @Short("R")
-    sources: List[String],
+    sources: List[String] = Nil,
   @Help("Do not add default repositories (~/.ivy2/local, and Central)")
     noDefault: Boolean = false,
   @Help("Modify names in Maven repository paths for SBT plugins")
@@ -43,20 +43,20 @@ case class CommonOptions(
   @Help("Force module version")
   @Value("organization:name:forcedVersion")
   @Short("V")
-    forceVersion: List[String],
+    forceVersion: List[String] = Nil,
   @Help("Exclude module")
   @Value("organization:name")
   @Short("E")
-    exclude: List[String],
+    exclude: List[String] = Nil,
   @Help("Default scala version")
   @Short("e")
     scalaVersion: String = scala.util.Properties.versionNumberString,
   @Help("Add intransitive dependencies")
-    intransitive: List[String],
+    intransitive: List[String] = Nil,
   @Help("Classifiers that should be fetched")
   @Value("classifier1,classifier2,...")
   @Short("C")
-    classifier: List[String],
+    classifier: List[String] = Nil,
   @Help("Default configuration (default(compile) by default)")
   @Value("configuration")
   @Short("c")
@@ -70,25 +70,25 @@ case class CommonOptions(
     parallel: Int = 6,
   @Help("Checksums")
   @Value("checksum1,checksum2,... - end with none to allow for no checksum validation if none are available")
-    checksum: List[String],
+    checksum: List[String] = Nil,
   @Help("Print the duration of each iteration of the resolution")
   @Short("B")
   @Value("Number of warm-up resolutions - if negative, doesn't print per iteration benchmark (less overhead)")
-    benchmark: Int,
+    benchmark: Int = 0,
   @Help("Print dependencies as a tree")
   @Short("t")
-    tree: Boolean,
+    tree: Boolean = false,
   @Help("Print dependencies as an inversed tree (dependees as children)")
   @Short("T")
-    reverseTree: Boolean,
+    reverseTree: Boolean = false,
   @Help("Enable profile")
   @Value("profile")
   @Short("F")
-    profile: List[String],
+    profile: List[String] = Nil,
   @Help("Swap the mainline Scala JARs by Typelevel ones")
     typelevel: Boolean = false,
   @Recurse
-    cacheOptions: CacheOptions
+    cacheOptions: CacheOptions = CacheOptions()
 ) {
   val verbosityLevel = Tag.unwrap(verbose) - (if (quiet) 1 else 0)
   lazy val classifier0 = classifier.flatMap(_.split(',')).filter(_.nonEmpty)
@@ -178,9 +178,9 @@ case class ArtifactOptions(
   @Help("Artifact types that should be retained (e.g. jar, src, doc, etc.) - defaults to jar,bundle")
   @Value("type1,type2,...")
   @Short("A")
-    artifactType: List[String],
+    artifactType: List[String] = Nil,
   @Help("Fetch artifacts even if the resolution is errored")
-    force: Boolean
+    force: Boolean = false
 ) {
   lazy val artifactTypes = {
     val types0 = artifactType
@@ -200,82 +200,82 @@ case class ArtifactOptions(
 case class FetchOptions(
   @Help("Fetch source artifacts")
   @Short("S")
-    sources: Boolean,
+    sources: Boolean = false,
   @Help("Fetch javadoc artifacts")
   @Short("D")
-    javadoc: Boolean,
+    javadoc: Boolean = false,
   @Help("Print java -cp compatible output")
   @Short("p")
-    classpath: Boolean,
+    classpath: Boolean = false,
   @Recurse
-    artifactOptions: ArtifactOptions,
+    artifactOptions: ArtifactOptions = ArtifactOptions(),
   @Recurse
-    common: CommonOptions
+    common: CommonOptions = CommonOptions()
 )
 
 case class LaunchOptions(
   @Short("M")
   @Short("main")
-    mainClass: String,
+    mainClass: String = "",
   @Short("J")
   @Help("Extra JARs to be added to the classpath of the launched application. Directories accepted too.")
-    extraJars: List[String],
+    extraJars: List[String] = Nil,
   @Recurse
-    isolated: IsolatedLoaderOptions,
+    isolated: IsolatedLoaderOptions = IsolatedLoaderOptions(),
   @Recurse
-    common: CommonOptions
+    common: CommonOptions = CommonOptions()
 )
 
 case class BootstrapOptions(
   @Short("M")
   @Short("main")
-    mainClass: String,
+    mainClass: String = "",
   @Short("o")
     output: String = "bootstrap",
   @Short("d")
-    downloadDir: String,
+    downloadDir: String = "",
   @Short("f")
-    force: Boolean,
+    force: Boolean = false,
   @Help("Generate a standalone launcher, with all JARs included, instead of one downloading its dependencies on startup.")
   @Short("s")
-    standalone: Boolean,
+    standalone: Boolean = false,
   @Help("Set Java properties in the generated launcher.")
   @Value("key=value")
   @Short("D")
-    property: List[String],
+    property: List[String] = Nil,
   @Help("Set Java command-line options in the generated launcher.")
   @Value("option")
   @Short("J")
-    javaOpt: List[String],
+    javaOpt: List[String] = Nil,
   @Recurse
-    isolated: IsolatedLoaderOptions,
+    isolated: IsolatedLoaderOptions = IsolatedLoaderOptions(),
   @Recurse
-    common: CommonOptions
+    common: CommonOptions = CommonOptions()
 )
 
 case class SparkSubmitOptions(
   @Short("M")
   @Short("main")
   @Help("Main class to be launched (optional if in manifest)")
-    mainClass: String,
+    mainClass: String = "",
   @Short("J")
   @Help("Extra JARs to be added in the classpath of the job")
-    extraJars: List[String],
+    extraJars: List[String] = Nil,
   @Help("If master is yarn-cluster, write YARN app ID to a file. (The ID is deduced from the spark-submit output.)")
   @Value("file")
-    yarnIdFile: String,
+    yarnIdFile: String = "",
   @Help("Spark assembly. If empty, automatically generate (default: empty)")
-    sparkAssembly: String,
-  noDefaultAssemblyDependencies: Boolean,
-  assemblyDependencies: List[String],
-  noDefaultSubmitDependencies: Boolean,
-  submitDependencies: List[String],
-  sparkVersion: String,
+    sparkAssembly: String = "",
+  noDefaultAssemblyDependencies: Boolean = false,
+  assemblyDependencies: List[String] = Nil,
+  noDefaultSubmitDependencies: Boolean = false,
+  submitDependencies: List[String] = Nil,
+  sparkVersion: String = "",
   @Help("Maximum idle time of spark-submit (time with no output). Exit early if no output from spark-submit for more than this duration. Set to 0 for unlimited. (Default: 0)")
   @Value("seconds")
-    maxIdleTime: Int,
+    maxIdleTime: Int = 0,
   @Recurse
-    artifactOptions: ArtifactOptions,
+    artifactOptions: ArtifactOptions = ArtifactOptions(),
   @Recurse
-    common: CommonOptions
+    common: CommonOptions = CommonOptions()
 )
