@@ -90,31 +90,51 @@ case class SparkSubmit(
     else
       (options.common.scalaVersion, options.sparkVersion)
 
-  val assemblyOrError =
-    if (options.sparkAssembly.isEmpty)
-      Assembly.spark(
+  val (sparkYarnExtraConf, sparkBaseJars) =
+    if (!options.autoAssembly || sparkVersion.startsWith("2.")) {
+
+      val assemblyJars = Assembly.sparkJars(
         scalaVersion,
         sparkVersion,
-        options.noDefaultAssemblyDependencies,
+        options.yarnVersion,
+        options.defaultAssemblyDependencies.getOrElse(options.autoAssembly),
         options.assemblyDependencies.flatMap(_.split(",")).filter(_.nonEmpty),
         options.common
       )
-    else {
-      val f = new File(options.sparkAssembly)
-      if (f.isFile)
-        Right((f, Nil))
-      else if (f.exists())
-        Left(s"${options.sparkAssembly} is not a file")
-      else
-        Left(s"${options.sparkAssembly} not found")
-    }
 
-  val (assembly, assemblyJars) = assemblyOrError match {
-    case Left(err) =>
-      Console.err.println(s"Cannot get spark assembly: $err")
-      sys.exit(1)
-    case Right(res) => res
-  }
+      val extraConf =
+        if (options.autoAssembly && sparkVersion.startsWith("2."))
+          Seq(
+            "spark.yarn.jars" -> assemblyJars.map(_.getAbsolutePath).mkString(",")
+          )
+        else
+          Nil
+
+      (extraConf, assemblyJars)
+    } else {
+
+      val assemblyAndJarsOrError = Assembly.spark(
+        scalaVersion,
+        sparkVersion,
+        options.yarnVersion,
+        options.defaultAssemblyDependencies.getOrElse(true),
+        options.assemblyDependencies.flatMap(_.split(",")).filter(_.nonEmpty),
+        options.common
+      )
+
+      val (assembly, assemblyJars) = assemblyAndJarsOrError match {
+        case Left(err) =>
+          Console.err.println(s"Cannot get spark assembly: $err")
+          sys.exit(1)
+        case Right(res) => res
+      }
+
+      val extraConf = Seq(
+        "spark.yarn.jar" -> assembly.getAbsolutePath
+      )
+
+      (extraConf, assemblyJars)
+    }
 
 
   val idx = {
@@ -146,16 +166,18 @@ case class SparkSubmit(
 
   val (check, extraJars0) = jars.partition(_.getAbsolutePath == mainJar)
 
-  val extraJars = extraJars0.filterNot(assemblyJars.toSet)
+  val extraJars = extraJars0.filterNot(sparkBaseJars.toSet)
 
   if (check.isEmpty)
     Console.err.println(
       s"Warning: cannot find back $mainJar among the dependencies JARs (likely a coursier bug)"
     )
 
-  val extraSparkOpts = Seq(
-    "--conf", "spark.yarn.jar=" + assembly.getAbsolutePath
-  )
+  val extraSparkOpts = sparkYarnExtraConf.flatMap {
+    case (k, v) => Seq(
+      "--conf", s"$k=$v"
+    )
+  }
 
   val extraJarsOptions =
     if (extraJars.isEmpty)
