@@ -140,32 +140,77 @@ object Assembly {
     Rule.ExcludePattern("META-INF/.*\\.[rR][sS][aA]")
   )
 
-  def sparkAssemblyDependencies(
+  def sparkBaseDependencies(
     scalaVersion: String,
-    sparkVersion: String
-  ) = Seq(
-    s"org.apache.spark:spark-core_$scalaVersion:$sparkVersion",
-    s"org.apache.spark:spark-bagel_$scalaVersion:$sparkVersion",
-    s"org.apache.spark:spark-mllib_$scalaVersion:$sparkVersion",
-    s"org.apache.spark:spark-streaming_$scalaVersion:$sparkVersion",
-    s"org.apache.spark:spark-graphx_$scalaVersion:$sparkVersion",
-    s"org.apache.spark:spark-sql_$scalaVersion:$sparkVersion",
-    s"org.apache.spark:spark-repl_$scalaVersion:$sparkVersion",
-    s"org.apache.spark:spark-yarn_$scalaVersion:$sparkVersion"
-  )
+    sparkVersion: String,
+    yarnVersion: String
+  ) =
+    if (sparkVersion.startsWith("2."))
+      Seq(
+        s"org.apache.spark::spark-hive-thriftserver:$sparkVersion",
+        s"org.apache.spark::spark-repl:$sparkVersion",
+        s"org.apache.spark::spark-hive:$sparkVersion",
+        s"org.apache.spark::spark-graphx:$sparkVersion",
+        s"org.apache.spark::spark-mllib:$sparkVersion",
+        s"org.apache.spark::spark-streaming:$sparkVersion",
+        s"org.apache.spark::spark-yarn:$sparkVersion",
+        s"org.apache.spark::spark-sql:$sparkVersion",
+        s"org.apache.hadoop:hadoop-client:$yarnVersion",
+        s"org.apache.hadoop:hadoop-yarn-server-web-proxy:$yarnVersion",
+        s"org.apache.hadoop:hadoop-yarn-server-nodemanager:$yarnVersion"
+      )
+    else
+      Seq(
+        s"org.apache.spark:spark-core_$scalaVersion:$sparkVersion",
+        s"org.apache.spark:spark-bagel_$scalaVersion:$sparkVersion",
+        s"org.apache.spark:spark-mllib_$scalaVersion:$sparkVersion",
+        s"org.apache.spark:spark-streaming_$scalaVersion:$sparkVersion",
+        s"org.apache.spark:spark-graphx_$scalaVersion:$sparkVersion",
+        s"org.apache.spark:spark-sql_$scalaVersion:$sparkVersion",
+        s"org.apache.spark:spark-repl_$scalaVersion:$sparkVersion",
+        s"org.apache.spark:spark-yarn_$scalaVersion:$sparkVersion"
+      )
+
+  def sparkJarsHelper(
+    scalaVersion: String,
+    sparkVersion: String,
+    yarnVersion: String,
+    default: Boolean,
+    extraDependencies: Seq[String],
+    options: CommonOptions
+  ): Helper = {
+
+    val base = if (default) sparkBaseDependencies(scalaVersion, sparkVersion, yarnVersion) else Seq()
+    new Helper(options, extraDependencies ++ base)
+  }
+
+  def sparkJars(
+    scalaVersion: String,
+    sparkVersion: String,
+    yarnVersion: String,
+    default: Boolean,
+    extraDependencies: Seq[String],
+    options: CommonOptions,
+    artifactTypes: Set[String] = Set("jar")
+  ): Seq[File] = {
+
+    val helper = sparkJarsHelper(scalaVersion, sparkVersion, yarnVersion, default, extraDependencies, options)
+
+    helper.fetch(sources = false, javadoc = false, artifactTypes = artifactTypes)
+  }
 
   def spark(
     scalaVersion: String,
     sparkVersion: String,
-    noDefault: Boolean,
+    yarnVersion: String,
+    default: Boolean,
     extraDependencies: Seq[String],
     options: CommonOptions,
     artifactTypes: Set[String] = Set("jar"),
     checksumSeed: Array[Byte] = "v1".getBytes("UTF-8")
   ): Either[String, (File, Seq[File])] = {
 
-    val base = if (noDefault) Seq() else sparkAssemblyDependencies(scalaVersion, sparkVersion)
-    val helper = new Helper(options, extraDependencies ++ base)
+    val helper = sparkJarsHelper(scalaVersion, sparkVersion, yarnVersion, default, extraDependencies, options)
 
     val artifacts = helper.artifacts(sources = false, javadoc = false, artifactTypes = artifactTypes)
     val jars = helper.fetch(sources = false, javadoc = false, artifactTypes = artifactTypes)
