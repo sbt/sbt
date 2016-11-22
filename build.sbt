@@ -15,6 +15,8 @@ def commonSettings: Seq[Setting[_]] = Seq(
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
   crossScalaVersions := Seq(scala211),
   scalacOptions ++= Seq("-Ywarn-unused", "-Ywarn-unused-import"),
+  scalacOptions --= // scalac 2.10 rejects some HK types under -Xfuture it seems..
+    (CrossVersion partialVersion scalaVersion.value collect { case (2, 10) => List("-Xfuture", "-Ywarn-unused", "-Ywarn-unused-import") }).toList.flatten,
   previousArtifact := None, // Some(organization.value %% moduleName.value % "1.0.0"),
   publishArtifact in Compile := true,
   publishArtifact in Test := false
@@ -92,6 +94,7 @@ lazy val utilLogging = (project in internalPath / "util-logging").
   dependsOn(utilInterface, utilTesting % Test).
   settings(
     commonSettings,
+    crossScalaVersions := Seq(scala210, scala211),
     name := "Util Logging",
     libraryDependencies += jline
   )
@@ -137,6 +140,7 @@ lazy val utilTracking = (project in internalPath / "util-tracking").
 lazy val utilTesting = (project in internalPath / "util-testing").
   settings(
     commonSettings,
+    crossScalaVersions := Seq(scala210, scala211),
     name := "Util Testing",
     libraryDependencies ++= Seq(scalaCheck, scalatest)
   )
