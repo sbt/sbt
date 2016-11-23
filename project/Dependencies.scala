@@ -9,38 +9,81 @@ object Dependencies {
   val scala211 = "2.11.8"
 
   // sbt modules
-  val ioVersion   = "1.0.0-M6"
-  val utilVersion = "0.1.0-M14"
-  val lmVersion   = "0.1.0-X1"
-  val zincVersion = "1.0.0-X3"
+  private val ioVersion   = "1.0.0-M6"
+  private val utilVersion = "0.1.0-M14"
+  private val lmVersion   = "0.1.0-X1"
+  private val zincVersion = "1.0.0-X3"
 
-  val sbtIO = "org.scala-sbt" %% "io" % ioVersion
+  private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
-  val utilApplyMacro = "org.scala-sbt" %% "util-apply-macro" % utilVersion
-  val utilCache      = "org.scala-sbt" %% "util-cache"       % utilVersion
-  val utilCollection = "org.scala-sbt" %% "util-collection"  % utilVersion
-  val utilCompletion = "org.scala-sbt" %% "util-completion"  % utilVersion
-  val utilControl    = "org.scala-sbt" %% "util-control"     % utilVersion
-  val utilLogging    = "org.scala-sbt" %% "util-logging"     % utilVersion
-  val utilLogic      = "org.scala-sbt" %% "util-logic"       % utilVersion
-  val utilRelation   = "org.scala-sbt" %% "util-relation"    % utilVersion
-  val utilScripted   = "org.scala-sbt" %% "util-scripted"    % utilVersion
-  val utilTesting    = "org.scala-sbt" %% "util-testing"     % utilVersion
-  val utilTracking   = "org.scala-sbt" %% "util-tracking"    % utilVersion
+  private val utilApplyMacro = "org.scala-sbt" %% "util-apply-macro" % utilVersion
+  private val utilCache      = "org.scala-sbt" %% "util-cache"       % utilVersion
+  private val utilCollection = "org.scala-sbt" %% "util-collection"  % utilVersion
+  private val utilCompletion = "org.scala-sbt" %% "util-completion"  % utilVersion
+  private val utilControl    = "org.scala-sbt" %% "util-control"     % utilVersion
+  private val utilLogging    = "org.scala-sbt" %% "util-logging"     % utilVersion
+  private val utilLogic      = "org.scala-sbt" %% "util-logic"       % utilVersion
+  private val utilRelation   = "org.scala-sbt" %% "util-relation"    % utilVersion
+  private val utilScripted   = "org.scala-sbt" %% "util-scripted"    % utilVersion
+  private val utilTesting    = "org.scala-sbt" %% "util-testing"     % utilVersion
+  private val utilTracking   = "org.scala-sbt" %% "util-tracking"    % utilVersion
 
-  val libraryManagement = "org.scala-sbt" %% "librarymanagement" % lmVersion
+  private val libraryManagement = "org.scala-sbt" %% "librarymanagement" % lmVersion
 
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
   val rawLauncher       = "org.scala-sbt" % "launcher"           % "1.0.0"
   val testInterface     = "org.scala-sbt" % "test-interface"     % "1.0"
 
-  val compilerApiInfo        = "org.scala-sbt" %% "zinc-apiinfo"         % zincVersion
-  val compilerBridge         = "org.scala-sbt" %% "compiler-bridge"      % zincVersion
-  val compilerClasspath      = "org.scala-sbt" %% "zinc-classpath"       % zincVersion
-  val compilerInterface      = "org.scala-sbt"  % "compiler-interface"   % zincVersion
-  val compilerIvyIntegration = "org.scala-sbt" %% "zinc-ivy-integration" % zincVersion
-  val zinc                   = "org.scala-sbt" %% "zinc"                 % zincVersion
-  val zincCompile            = "org.scala-sbt" %% "zinc-compile"         % zincVersion
+  private val compilerApiInfo        = "org.scala-sbt" %% "zinc-apiinfo"         % zincVersion
+  private val compilerBridge         = "org.scala-sbt" %% "compiler-bridge"      % zincVersion
+  private val compilerClasspath      = "org.scala-sbt" %% "zinc-classpath"       % zincVersion
+  private val compilerInterface      = "org.scala-sbt"  % "compiler-interface"   % zincVersion
+  private val compilerIvyIntegration = "org.scala-sbt" %% "zinc-ivy-integration" % zincVersion
+  private val zinc                   = "org.scala-sbt" %% "zinc"                 % zincVersion
+  private val zincCompile            = "org.scala-sbt" %% "zinc-compile"         % zincVersion
+
+  def getSbtModulePath(key: String, name: String) = {
+    val localProps = new java.util.Properties()
+    IO.load(localProps, file("project/local.properties"))
+    val path = Option(localProps getProperty key) orElse (sys.props get key)
+    path foreach (f => println(s"Using $name from $f"))
+    path
+  }
+
+  lazy val sbtIoPath   = getSbtModulePath("sbtio.path",   "sbt/io")
+  lazy val sbtUtilPath = getSbtModulePath("sbtutil.path", "sbt/util")
+  lazy val sbtLmPath   = getSbtModulePath("sbtlm.path",   "sbt/lm")
+  lazy val sbtZincPath = getSbtModulePath("sbtzinc.path", "sbt/zinc")
+
+  def addSbtModule(p: Project, path: Option[String], projectName: String, m: ModuleID, c: Option[Configuration] = None) =
+    path match {
+      case Some(f) => p dependsOn c.fold[ClasspathDependency](ProjectRef(file(f), projectName))(ProjectRef(file(f), projectName) % _)
+      case None    => p settings (libraryDependencies += c.fold(m)(m % _))
+    }
+
+  def addSbtIO(p: Project): Project = addSbtModule(p, sbtIoPath, "io", sbtIO)
+
+  def addSbtUtilApplyMacro(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilApplyMacro", utilApplyMacro)
+  def addSbtUtilCache(p: Project): Project      = addSbtModule(p, sbtUtilPath, "utilCache",      utilCache)
+  def addSbtUtilCollection(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilCollection", utilCollection)
+  def addSbtUtilCompletion(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilComplete",   utilCompletion)
+  def addSbtUtilControl(p: Project): Project    = addSbtModule(p, sbtUtilPath, "utilControl",    utilControl)
+  def addSbtUtilLogging(p: Project): Project    = addSbtModule(p, sbtUtilPath, "utilLogging",    utilLogging)
+  def addSbtUtilLogic(p: Project): Project      = addSbtModule(p, sbtUtilPath, "utilLogic",      utilLogic)
+  def addSbtUtilRelation(p: Project): Project   = addSbtModule(p, sbtUtilPath, "utilRelation",   utilRelation)
+  def addSbtUtilScripted(p: Project): Project   = addSbtModule(p, sbtUtilPath, "utilScripted",   utilScripted)
+  def addSbtUtilTesting(p: Project): Project    = addSbtModule(p, sbtUtilPath, "utilTesting",    utilTesting,  Some(Test))
+  def addSbtUtilTracking(p: Project): Project   = addSbtModule(p, sbtUtilPath, "utilTracking",   utilTracking)
+
+  def addSbtLm(p: Project): Project = addSbtModule(p, sbtLmPath, "lm", libraryManagement)
+
+  def addSbtCompilerApiInfo(p: Project): Project        = addSbtModule(p, sbtZincPath, "zincApiInfo",        compilerApiInfo)
+  def addSbtCompilerBridge(p: Project): Project         = addSbtModule(p, sbtZincPath, "compilerBridge",     compilerBridge)
+  def addSbtCompilerClasspath(p: Project): Project      = addSbtModule(p, sbtZincPath, "zincClasspath",      compilerClasspath)
+  def addSbtCompilerInterface(p: Project): Project      = addSbtModule(p, sbtZincPath, "compilerInterface",  compilerInterface)
+  def addSbtCompilerIvyIntegration(p: Project): Project = addSbtModule(p, sbtZincPath, "zincIvyIntegration", compilerIvyIntegration)
+  def addSbtZinc(p: Project): Project                   = addSbtModule(p, sbtZincPath, "zinc",               zinc)
+  def addSbtZincCompile(p: Project): Project            = addSbtModule(p, sbtZincPath, "zincCompile",        zincCompile)
 
   val sjsonNewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % "0.4.2"
 
