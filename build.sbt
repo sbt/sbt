@@ -195,7 +195,7 @@ lazy val mainSettingsProj = (project in file("main-settings")).
       utilLogging, sbtIO, utilCompletion, compilerClasspath, libraryManagement)
   )
 
-// The main integration project for sbt.  It brings all of the Projsystems together, configures them, and provides for overriding conventions.
+// The main integration project for sbt.  It brings all of the projects together, configures them, and provides for overriding conventions.
 lazy val mainProj = (project in file("main")).
   dependsOn(actionsProj, mainSettingsProj, runProj, commandProj).
   settings(
@@ -216,7 +216,7 @@ lazy val sbtProj = (project in file("sbt")).
     normalizedName := "sbt",
     crossScalaVersions := Seq(scala211),
     crossPaths := false,
-    libraryDependencies ++= Seq(compilerBrdige)
+    libraryDependencies ++= Seq(compilerBridge)
   )
 
 def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
