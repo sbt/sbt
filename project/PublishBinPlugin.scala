@@ -12,6 +12,8 @@ object PublishBinPlugin extends AutoPlugin {
 
   import autoImport._
 
+  override def globalSettings = Seq(publishLocalBin := (()))
+
   override def projectSettings = Def settings (
     publishLocalBin       := Classpaths.publishTask(publishLocalBinConfig, deliverLocal).value,
     publishLocalBinConfig := Classpaths.publishConfig(
