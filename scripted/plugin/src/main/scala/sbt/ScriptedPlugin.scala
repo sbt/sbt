@@ -85,7 +85,8 @@ object ScriptedPlugin extends AutoPlugin {
     try {
       scriptedRun.value.invoke(
         scriptedTests.value, sbtTestDirectory.value, scriptedBufferLog.value: java.lang.Boolean,
-        args.toArray, sbtLauncher.value, scriptedLaunchOpts.value.toArray)
+        args.toArray, sbtLauncher.value, scriptedLaunchOpts.value.toArray
+      )
     } catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
   }
 

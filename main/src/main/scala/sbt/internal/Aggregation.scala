@@ -150,11 +150,10 @@ object Aggregation {
         } else {
           val base = if (tasks.isEmpty) success(() => s) else
             applyTasks(s, structure, maps(tasks)(x => success(castToAny(x))), show)
-          base.map { res =>
-            () =>
-              val newState = res()
-              if (show.settingValues && settings.nonEmpty) printSettings(settings, show.print)
-              newState
+          base.map { res => () =>
+            val newState = res()
+            if (show.settingValues && settings.nonEmpty) printSettings(settings, show.print)
+            newState
           }
         }
       }
@@ -169,8 +168,7 @@ object Aggregation {
     {
       val resRef = proj.map(p => extra.projectRefFor(extra.resolveRef(p)))
       resRef.toList.flatMap(ref =>
-        if (reverse) extra.aggregates.reverse(ref) else extra.aggregates.forward(ref)
-      )
+        if (reverse) extra.aggregates.reverse(ref) else extra.aggregates.forward(ref))
     }
 
   def aggregate[T, Proj](key: ScopedKey[T], rawMask: ScopeMask, extra: BuildUtil[Proj], reverse: Boolean = false): Seq[ScopedKey[T]] =

@@ -24,21 +24,29 @@ object Serialization {
   def toMessage(event: Event): EventMessage =
     event match {
       case LogEvent(level, message) =>
-        EventMessage(`type` = "logEvent",
+        EventMessage(
+          `type` = "logEvent",
           status = None, commandQueue = Vector(),
-          level = Some(level), message = Some(message), success = None, commandLine = None)
+          level = Some(level), message = Some(message), success = None, commandLine = None
+        )
       case StatusEvent(Ready) =>
-        EventMessage(`type` = "statusEvent",
+        EventMessage(
+          `type` = "statusEvent",
           status = Some("ready"), commandQueue = Vector(),
-          level = None, message = None, success = None, commandLine = None)
+          level = None, message = None, success = None, commandLine = None
+        )
       case StatusEvent(Processing(command, commandQueue)) =>
-        EventMessage(`type` = "statusEvent",
+        EventMessage(
+          `type` = "statusEvent",
           status = Some("processing"), commandQueue = commandQueue.toVector,
-          level = None, message = None, success = None, commandLine = None)
+          level = None, message = None, success = None, commandLine = None
+        )
       case ExecutionEvent(command, status) =>
-        EventMessage(`type` = "executionEvent",
+        EventMessage(
+          `type` = "executionEvent",
           status = None, commandQueue = Vector(),
-          level = None, message = None, success = Some(status), commandLine = Some(command))
+          level = None, message = None, success = Some(status), commandLine = Some(command)
+        )
     }
 
   /**

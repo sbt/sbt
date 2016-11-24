@@ -16,9 +16,24 @@ import sbt.internal.inc.{ Analysis, ClasspathOptionsUtil, ModuleUtilities }
 import sbt.internal.inc.classpath.ClasspathUtilities
 import Project.inScope
 import Def.{ isDummy, ScopedKey, ScopeLocal, Setting }
-import Keys.{ appConfiguration, baseDirectory, configuration, exportedProducts, fullClasspath, fullResolvers, 
-  loadedBuild, onLoadMessage, pluginData, resolvedScoped, sbtPlugin, scalacOptions, streams,
-  thisProject, thisProjectRef, update }
+import Keys.{
+  appConfiguration,
+  baseDirectory,
+  configuration,
+  exportedProducts,
+  fullClasspath,
+  fullResolvers,
+  loadedBuild,
+  onLoadMessage,
+  pluginData,
+  resolvedScoped,
+  sbtPlugin,
+  scalacOptions,
+  streams,
+  thisProject,
+  thisProjectRef,
+  update
+}
 import tools.nsc.reporters.ConsoleReporter
 import sbt.internal.util.{ Attributed, Eval => Ev, Settings, Show, ~> }
 import sbt.internal.util.Attributed.data
@@ -437,7 +452,7 @@ private[sbt] object Load {
       val plugs = plugins(defDir, s, config.copy(pluginManagement = config.pluginManagement.forPlugin))
       val defsScala = plugs.detected.builds.values
       val buildLevelExtraProjects = plugs.detected.autoPlugins flatMap { d =>
-        d.value.extraProjects map {_.setProjectOrigin(ProjectOrigin.ExtraProject)}
+        d.value.extraProjects map { _.setProjectOrigin(ProjectOrigin.ExtraProject) }
       }
 
       // NOTE - because we create an eval here, we need a clean-eval later for this URI.
@@ -547,7 +562,8 @@ private[sbt] object Load {
     makeOrDiscoverRoot: Boolean,
     buildUri: URI,
     context: PluginManagement.Context,
-    generatedConfigClassFiles: Seq[File]): LoadedProjects =
+    generatedConfigClassFiles: Seq[File]
+  ): LoadedProjects =
     {
       // load all relevant configuration files (.sbt, as .scala already exists at this point)
       def discover(auto: AddSettings, base: File): DiscoveredProjects =
@@ -567,7 +583,7 @@ private[sbt] object Load {
           catch { case e: AutoPluginException => throw translateAutoPluginException(e, p) }
         val p2 = this.resolveProject(p1, autoPlugins, plugins, injectSettings, memoSettings, log)
         val projectLevelExtra =
-          if (expand) autoPlugins flatMap { _.derivedProjects(p2) map {_.setProjectOrigin(ProjectOrigin.DerivedProject)} }
+          if (expand) autoPlugins flatMap { _.derivedProjects(p2) map { _.setProjectOrigin(ProjectOrigin.DerivedProject) } }
           else Nil
         (p2, projectLevelExtra)
       }
@@ -638,7 +654,8 @@ private[sbt] object Load {
     root: Option[Project],
     nonRoot: Seq[Project],
     sbtFiles: Seq[File],
-    generatedFiles: Seq[File])
+    generatedFiles: Seq[File]
+  )
 
   /**
    * This method attempts to resolve/apply all configuration loaded for a project. It is responsible for the following:
@@ -660,7 +677,8 @@ private[sbt] object Load {
     loadedPlugins: LoadedPlugins,
     globalUserSettings: InjectSettings,
     memoSettings: mutable.Map[File, LoadedSbtFile],
-    log: Logger): Project = {
+    log: Logger
+  ): Project = {
     import AddSettings._
     val autoConfigs = projectPlugins.flatMap(_.projectConfigurations)
 
@@ -707,7 +725,8 @@ private[sbt] object Load {
     projectBase: File,
     loadedPlugins: LoadedPlugins,
     eval: () => Eval,
-    memoSettings: mutable.Map[File, LoadedSbtFile]): DiscoveredProjects = {
+    memoSettings: mutable.Map[File, LoadedSbtFile]
+  ): DiscoveredProjects = {
 
     // Default sbt files to read, if needed
     lazy val defaultSbtFiles = configurationSources(projectBase)
@@ -915,7 +934,8 @@ final case class LoadBuildConfiguration(
     injectSettings: Load.InjectSettings,
     globalPlugin: Option[GlobalPlugin],
     extraBuilds: Seq[URI],
-    log: Logger) {
+    log: Logger
+) {
   lazy val (globalPluginClasspath, _) = Load.pluginDefinitionLoader(this, Load.globalPluginClasspath(globalPlugin))
 
   private[sbt] lazy val globalPluginDefs = {

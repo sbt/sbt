@@ -38,7 +38,6 @@ private[sbt] final class NetworkChannel extends CommandChannel {
       server.publish(
         if (cmdStatus.canEnter) StatusEvent(Ready)
         else StatusEvent(Processing("TODO current command", cmdStatus.state.remainingCommands))
-      )
-    )
+      ))
   }
 }

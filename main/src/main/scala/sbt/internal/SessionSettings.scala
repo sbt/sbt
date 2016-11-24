@@ -190,7 +190,7 @@ object SessionSettings {
       case ((in, oth, keys), s) =>
         s.pos match {
           case RangePosition(`path`, _) if !keys.contains(s.key) => (s :: in, oth, keys + s.key)
-          case _ => (in, s :: oth, keys)
+          case _                                                 => (in, s :: oth, keys)
         }
     }
 

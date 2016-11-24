@@ -229,7 +229,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
     def getType(t: Tree) = { result = ""; traverse(t); result }
     override def traverse(tree: Tree): Unit = tree match {
       case d: DefDef if d.symbol.nameString == WrapValName => result = d.symbol.tpe.finalResultType.toString
-      case _ => super.traverse(tree)
+      case _                                               => super.traverse(tree)
     }
   }
   /** Tree traverser that obtains the names of vals in a top-level module whose type is a subtype of one of `types`.*/

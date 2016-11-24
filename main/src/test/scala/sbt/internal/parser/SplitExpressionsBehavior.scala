@@ -36,7 +36,8 @@ lazy val root = (project in file(".")).enablePlugins­(PlayScala)""")
         """import foo.Bar
               import foo.Bar
              version := "1.0"
-        """.stripMargin)
+        """.stripMargin
+      )
       imports.size === 2
       settingsAndDefs.size === 1
     }

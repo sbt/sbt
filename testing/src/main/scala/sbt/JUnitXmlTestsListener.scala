@@ -85,12 +85,12 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
                                                      ""
                                                    }
                                                    e.status match {
-                                                     case TStatus.Error if (e.throwable.isDefined) => <error message={ e.throwable.get.getMessage } type={ e.throwable.get.getClass.getName }>{ trace }</error>
-                                                     case TStatus.Error => <error message={ "No Exception or message provided" }/>
-                                                     case TStatus.Failure if (e.throwable.isDefined) => <failure message={ e.throwable.get.getMessage } type={ e.throwable.get.getClass.getName }>{ trace }</failure>
-                                                     case TStatus.Failure => <failure message={ "No Exception or message provided" }/>
-                                                     case TStatus.Ignored | TStatus.Skipped | TStatus.Pending => <skipped/>
-                                                     case _ => {}
+                                                     case TStatus.Error if (e.throwable.isDefined)=> <error message={ e.throwable.get.getMessage } type={ e.throwable.get.getClass.getName }>{ trace }</error>
+                                                     case TStatus.Error=> <error message={ "No Exception or message provided" }/>
+                                                     case TStatus.Failure if (e.throwable.isDefined)=> <failure message={ e.throwable.get.getMessage } type={ e.throwable.get.getClass.getName }>{ trace }</failure>
+                                                     case TStatus.Failure=> <failure message={ "No Exception or message provided" }/>
+                                                     case TStatus.Ignored | TStatus.Skipped | TStatus.Pending=> <skipped/>
+                                                     case _    => {}
                                                    }
                                                  }
                                                </testcase>

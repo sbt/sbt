@@ -37,7 +37,8 @@ trait TestsListener extends TestReportListener {
 final class SuiteResult(
     val result: TestResult.Value,
     val passedCount: Int, val failureCount: Int, val errorCount: Int,
-    val skippedCount: Int, val ignoredCount: Int, val canceledCount: Int, val pendingCount: Int) {
+    val skippedCount: Int, val ignoredCount: Int, val canceledCount: Int, val pendingCount: Int
+) {
   def +(other: SuiteResult): SuiteResult = {
     val combinedTestResult =
       (result, other.result) match {

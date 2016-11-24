@@ -78,7 +78,7 @@ object MainLoop {
     Logger.transferLevels(old.backed, logging.backed)
     (old.full, logging.full) match { // well, this is a hack
       case (oldLog: AbstractLogger, newLog: AbstractLogger) => Logger.transferLevels(oldLog, newLog)
-      case _ => ()
+      case _                                                => ()
     }
   }
 

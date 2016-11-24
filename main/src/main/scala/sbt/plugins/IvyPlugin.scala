@@ -19,8 +19,8 @@ object IvyPlugin extends AutoPlugin {
   override def requires = CorePlugin
   override def trigger = allRequirements
 
-  override lazy val projectSettings: Seq[Setting[_]] = 
+  override lazy val projectSettings: Seq[Setting[_]] =
     Classpaths.ivyPublishSettings ++ Classpaths.ivyBaseSettings
   override lazy val globalSettings: Seq[Setting[_]] =
-     Defaults.globalIvyCore
+    Defaults.globalIvyCore
 }

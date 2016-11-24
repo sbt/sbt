@@ -179,7 +179,9 @@ private[sbt] final class Execute[A[_] <: AnyRef](config: Config, triggers: Trigg
     val v = register(node)
     val deps = dependencies(v) ++ runBefore(node)
     val active = IDSet[A[_]](deps filter notDone)
-    progressState = progress.registered(progressState, node, deps, active.toList /** active is mutable, so take a snapshot */ )
+    progressState = progress.registered(progressState, node, deps, active.toList
+    /** active is mutable, so take a snapshot */
+    )
 
     if (active.isEmpty)
       ready(node)

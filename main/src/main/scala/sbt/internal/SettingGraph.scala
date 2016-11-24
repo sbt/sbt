@@ -34,12 +34,14 @@ object SettingGraph {
     }
 }
 
-case class SettingGraph(name: String,
+case class SettingGraph(
+    name: String,
     definedIn: Option[String],
     data: Option[ScopedKeyData[_]],
     description: Option[String],
     basedir: File,
-    depends: Set[SettingGraph]) {
+    depends: Set[SettingGraph]
+) {
   def dataString: String =
     data map { d =>
       d.settingValue map {
@@ -48,9 +50,11 @@ case class SettingGraph(name: String,
       } getOrElse { d.typeName }
     } getOrElse { "" }
 
-  def dependsAscii: String = Graph.toAscii(this,
+  def dependsAscii: String = Graph.toAscii(
+    this,
     (x: SettingGraph) => x.depends.toSeq.sortBy(_.name),
-    (x: SettingGraph) => "%s = %s" format (x.definedIn getOrElse { "" }, x.dataString))
+    (x: SettingGraph) => "%s = %s" format (x.definedIn getOrElse { "" }, x.dataString)
+  )
 }
 
 object Graph {

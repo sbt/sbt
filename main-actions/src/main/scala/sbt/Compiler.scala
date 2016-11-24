@@ -18,7 +18,7 @@ object Compiler {
   private[sbt] def defaultCompilerBridgeSource(sv: String): ModuleID =
     VersionNumber(sv) match {
       case VersionNumber(ns, _, _) if (ns.size == 3) && (ns(0) == 2) && (ns(1) <= 10) => scalaCompilerBridgeSource2_10
-      case _ => scalaCompilerBridgeSource2_11
+      case _                                                                          => scalaCompilerBridgeSource2_11
     }
   private[sbt] def scalaCompilerBridgeSource2_10: ModuleID =
     ModuleID(xsbti.ArtifactInfo.SbtOrganization, "compiler-bridge_2.10",

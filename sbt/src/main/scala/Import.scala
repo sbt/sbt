@@ -178,7 +178,6 @@ trait Import {
   val ~> = sbt.internal.util.~>
   type ~>[-K[_], +V[_]] = sbt.internal.util.~>[K, V]
 
-
   // sbt.internal.util.complete
   object complete {
     val Completion = sbt.internal.util.complete.Completion
@@ -301,7 +300,6 @@ trait Import {
   val VersionNumber = sbt.librarymanagement.VersionNumber
   type VersionNumber = sbt.librarymanagement.VersionNumber
   type VersionNumberCompatibility = sbt.librarymanagement.VersionNumberCompatibility
-
 
   // sbt.internal.librarymanagement
   type IvyPaths = sbt.internal.librarymanagement.IvyPaths

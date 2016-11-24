@@ -11,8 +11,16 @@ import sbt.librarymanagement.{ Resolver, UpdateReport }
 import scala.concurrent.duration.Duration
 import java.io.File
 import Def.{ dummyState, ScopedKey, Setting }
-import Keys.{ Streams, TaskStreams, dummyRoots, executionRoots, pluginData, streams,
-  streamsManager, transformState }
+import Keys.{
+  Streams,
+  TaskStreams,
+  dummyRoots,
+  executionRoots,
+  pluginData,
+  streams,
+  streamsManager,
+  transformState
+}
 import Project.richInitializeTask
 import Scope.GlobalScope
 import scala.Console.RED
@@ -97,21 +105,25 @@ sealed trait EvaluateTaskConfig {
 }
 object EvaluateTaskConfig {
   @deprecated("Use the alternative that specifies minForcegcInterval", "0.13.9")
-  def apply(restrictions: Seq[Tags.Rule],
+  def apply(
+    restrictions: Seq[Tags.Rule],
     checkCycles: Boolean,
     progressReporter: ExecuteProgress[Task],
     cancelStrategy: TaskCancellationStrategy,
-    forceGarbageCollection: Boolean): EvaluateTaskConfig =
+    forceGarbageCollection: Boolean
+  ): EvaluateTaskConfig =
     apply(restrictions, checkCycles, progressReporter, cancelStrategy, forceGarbageCollection,
       GCUtil.defaultMinForcegcInterval)
 
   /** Raw constructor for EvaluateTaskConfig. */
-  def apply(restrictions: Seq[Tags.Rule],
+  def apply(
+    restrictions: Seq[Tags.Rule],
     checkCycles: Boolean,
     progressReporter: ExecuteProgress[Task],
     cancelStrategy: TaskCancellationStrategy,
     forceGarbageCollection: Boolean,
-    minForcegcInterval: Duration): EvaluateTaskConfig = {
+    minForcegcInterval: Duration
+  ): EvaluateTaskConfig = {
     val r = restrictions
     val check = checkCycles
     val cs = cancelStrategy
@@ -362,7 +374,7 @@ object EvaluateTask {
     result.toEither.left.map { i => Incomplete.transformBU(i)(convertCyclicInc andThen taskToKey andThen liftAnonymous) }
   def taskToKey: Incomplete => Incomplete = {
     case in @ Incomplete(Some(node: Task[_]), _, _, _, _) => in.copy(node = transformNode(node))
-    case i => i
+    case i                                                => i
   }
   type AnyCyclic = Execute[({ type A[_] <: AnyRef })#A]#CyclicException[_]
   def convertCyclicInc: Incomplete => Incomplete = {

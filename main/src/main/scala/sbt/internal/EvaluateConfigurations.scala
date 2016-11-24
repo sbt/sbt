@@ -181,11 +181,13 @@ private[sbt] object EvaluateConfigurations {
       case e: sbt.compiler.EvalException => throw new MessageOnlyException(e.getMessage)
     }
     // TODO - keep track of configuration classes defined.
-    TrackedEvalResult(result.generated,
+    TrackedEvalResult(
+      result.generated,
       loader => {
         val pos = RangePosition(name, range shift 1)
         result.getValue(loader).asInstanceOf[DslEntry].withPos(pos)
-      })
+      }
+    )
   }
 
   /**

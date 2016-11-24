@@ -5,7 +5,8 @@ import sbt.librarymanagement.{ Configuration, Configurations }
 
 import Def.Setting
 
-/** A plugin representing the ability to build a JVM project.
+/**
+ * A plugin representing the ability to build a JVM project.
  *
  *  Core tasks/keys:
  *  - `run`
@@ -21,18 +22,18 @@ object JvmPlugin extends AutoPlugin {
   // for ours to work.
   override def requires = IvyPlugin
   override def trigger = allRequirements
-  
-  override lazy val projectSettings: Seq[Setting[_]] = 
-    Defaults.runnerSettings ++
-    Defaults.paths ++
-    Classpaths.jvmPublishSettings ++
-    Classpaths.jvmBaseSettings ++
-    Defaults.baseTasks ++
-    Defaults.compileBase ++
-    Defaults.defaultConfigs
-  override lazy val globalSettings: Seq[Setting[_]] =
-     Defaults.globalJvmCore
 
-  override def projectConfigurations: Seq[Configuration] = 
+  override lazy val projectSettings: Seq[Setting[_]] =
+    Defaults.runnerSettings ++
+      Defaults.paths ++
+      Classpaths.jvmPublishSettings ++
+      Classpaths.jvmBaseSettings ++
+      Defaults.baseTasks ++
+      Defaults.compileBase ++
+      Defaults.defaultConfigs
+  override lazy val globalSettings: Seq[Setting[_]] =
+    Defaults.globalJvmCore
+
+  override def projectConfigurations: Seq[Configuration] =
     Configurations.default
 }

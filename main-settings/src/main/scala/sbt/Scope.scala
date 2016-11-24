@@ -142,7 +142,8 @@ object Scope {
     projectInherit: ProjectRef => Seq[ProjectRef],
     configInherit: (ResolvedReference, ConfigKey) => Seq[ConfigKey],
     taskInherit: AttributeKey[_] => Seq[AttributeKey[_]],
-    extraInherit: (ResolvedReference, AttributeMap) => Seq[AttributeMap]): Scope => Seq[Scope] =
+    extraInherit: (ResolvedReference, AttributeMap) => Seq[AttributeMap]
+  ): Scope => Seq[Scope] =
     {
       val index = delegates(refs, configurations, projectInherit, configInherit)
       scope => indexedDelegates(resolve, index, rootProject, taskInherit, extraInherit)(scope)
@@ -153,7 +154,8 @@ object Scope {
     index: DelegateIndex,
     rootProject: URI => String,
     taskInherit: AttributeKey[_] => Seq[AttributeKey[_]],
-    extraInherit: (ResolvedReference, AttributeMap) => Seq[AttributeMap])(rawScope: Scope): Seq[Scope] =
+    extraInherit: (ResolvedReference, AttributeMap) => Seq[AttributeMap]
+  )(rawScope: Scope): Seq[Scope] =
     {
       val scope = Scope.replaceThis(GlobalScope)(rawScope)
 
@@ -190,7 +192,8 @@ object Scope {
     refs: Seq[(ProjectRef, Proj)],
     configurations: Proj => Seq[ConfigKey],
     projectInherit: ProjectRef => Seq[ProjectRef],
-    configInherit: (ResolvedReference, ConfigKey) => Seq[ConfigKey]): DelegateIndex =
+    configInherit: (ResolvedReference, ConfigKey) => Seq[ConfigKey]
+  ): DelegateIndex =
     {
       val pDelegates = refs map {
         case (ref, project) =>

@@ -12,13 +12,13 @@ object RetrieveUnit {
   def apply(info: ResolveInfo): Option[() => File] =
     {
       info.uri match {
-        case Scheme("svn") | Scheme("svn+ssh") => Resolvers.subversion(info)
-        case Scheme("hg") => Resolvers.mercurial(info)
-        case Scheme("git") => Resolvers.git(info)
-        case Path(path) if path.endsWith(".git") => Resolvers.git(info)
+        case Scheme("svn") | Scheme("svn+ssh")                => Resolvers.subversion(info)
+        case Scheme("hg")                                     => Resolvers.mercurial(info)
+        case Scheme("git")                                    => Resolvers.git(info)
+        case Path(path) if path.endsWith(".git")              => Resolvers.git(info)
         case Scheme("http") | Scheme("https") | Scheme("ftp") => Resolvers.remote(info)
-        case Scheme("file") => Resolvers.local(info)
-        case _ => None
+        case Scheme("file")                                   => Resolvers.local(info)
+        case _                                                => None
       }
     }
 

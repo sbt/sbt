@@ -12,7 +12,8 @@ final class BuildUtil[Proj](
     val rootProjectID: URI => String,
     val project: (URI, String) => Proj,
     val configurations: Proj => Seq[ConfigKey],
-    val aggregates: Relation[ProjectRef, ProjectRef]) {
+    val aggregates: Relation[ProjectRef, ProjectRef]
+) {
   def rootProject(uri: URI): Proj =
     project(uri, rootProjectID(uri))
 

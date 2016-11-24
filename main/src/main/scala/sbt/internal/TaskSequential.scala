@@ -9,8 +9,10 @@ import Def._
 trait TaskSequential {
   def sequential[B](last: Initialize[Task[B]]): Initialize[Task[B]] =
     sequential(Nil, last)
-  def sequential[A0, B](task0: Initialize[Task[A0]],
-    last: Initialize[Task[B]]): Initialize[Task[B]] =
+  def sequential[A0, B](
+    task0: Initialize[Task[A0]],
+    last: Initialize[Task[B]]
+  ): Initialize[Task[B]] =
     sequential(List(unitTask(task0)), last)
   def sequential[A0, A1, B](task0: Initialize[Task[A0]], task1: Initialize[Task[A1]],
     last: Initialize[Task[B]]): Initialize[Task[B]] =

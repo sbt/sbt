@@ -4,7 +4,8 @@ package plugins
 import Def.Setting
 import Keys._
 
-/** An experimental plugin that adds the ability for junit-xml to be generated.
+/**
+ * An experimental plugin that adds the ability for junit-xml to be generated.
  *
  *  To disable this plugin, you need to add:
  *  {{{
@@ -17,7 +18,7 @@ object JUnitXmlReportPlugin extends AutoPlugin {
   // TODO - If testing becomes its own plugin, we only rely on the core settings.
   override def requires = JvmPlugin
   override def trigger = allRequirements
-  
+
   // Right now we add to the global test listeners which should capture *all* tests.
   // It might be a good idea to derive this setting into specific test scopes.
   override lazy val projectSettings: Seq[Setting[_]] =

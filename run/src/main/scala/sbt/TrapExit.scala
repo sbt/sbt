@@ -285,7 +285,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
       val group = t.getThreadGroup
       val previousHandler = t.getUncaughtExceptionHandler match {
         case null | `group` | (_: LoggingExceptionHandler) => None
-        case x => Some(x) // delegate to a custom handler only
+        case x                                             => Some(x) // delegate to a custom handler only
       }
       t.setUncaughtExceptionHandler(new LoggingExceptionHandler(log, previousHandler))
     }
