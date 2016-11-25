@@ -5,25 +5,7 @@ import sbt.internal.util.Types.:+:
 import sjsonnew.{ Builder, deserializationError, JsonFormat, Unbuilder }
 import sjsonnew.BasicJsonProtocol, BasicJsonProtocol.asSingleton
 
-import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, File, InputStream, OutputStream }
-
-import java.net.{ URI, URL }
-
-trait URIFormat { self: BasicJsonProtocol =>
-  implicit def URIFormat: JsonFormat[URI] = project(_.toString, new URI(_: String))
-}
-
-trait URLFormat { self: BasicJsonProtocol =>
-  implicit def URLFormat: JsonFormat[URL] = project(_.toString, new URL(_: String))
-}
-
-trait FileFormat { self: BasicJsonProtocol =>
-  implicit def FileFormat: JsonFormat[File] = project(_.toString, new File(_: String))
-}
-
-trait SetFormat { self: BasicJsonProtocol =>
-  implicit def SetFormat[T: JsonFormat]: JsonFormat[Set[T]] = project(_.toSeq, (_: Seq[T]).toSet)
-}
+import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, InputStream, OutputStream }
 
 trait HListFormat {
   implicit def HConsFormat[H: JsonFormat, T <: HList: JsonFormat]: JsonFormat[H :+: T] =
