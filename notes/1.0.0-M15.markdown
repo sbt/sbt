@@ -1,0 +1,41 @@
+### Changes
+
+* Add experimental `coursier spark-submit` command ([#335], [#346], [#350], [#377], [#396], with contributions from [@darkjh])
+* Accept spaces in version intervals ([#354], thanks to [@eboto])
+* Better profile activation handling ([#360], thanks to [@eboto])
+* Switch to case-app 1.1.2 ([#365])
+* Use system classloader as base classloader when launching apps ([#366])
+* Add support for scala 2.12 ([#368], [#374], with contributions from [@larsrh])
+* Take into account `sbt.log.noformat` property ([#373])
+* Ignore fallback dependencies in SBT plugin if the corresponding URL cannot be found ("`from "url"`", [#373])
+* Handle cycles when printing trees ([#376], thanks to [@kzys])
+* Handle OS / JDK conditions in profile activation ([#381])
+* Limit messages in SBT plugin (nothing should be printed if nothing is downloaded, [#381], [#393])
+* Add option to swap Scala mainline JARs with Typelevel ones ([#392])
+* Java 6 compatibility ([#401])
+
+[#335]: https://github.com/alexarchambault/coursier/pull/335
+[#346]: https://github.com/alexarchambault/coursier/pull/346
+[#350]: https://github.com/alexarchambault/coursier/pull/350
+[#354]: https://github.com/alexarchambault/coursier/pull/354
+[#360]: https://github.com/alexarchambault/coursier/pull/360
+[#365]: https://github.com/alexarchambault/coursier/pull/365
+[#366]: https://github.com/alexarchambault/coursier/pull/366
+[#368]: https://github.com/alexarchambault/coursier/pull/368
+[#373]: https://github.com/alexarchambault/coursier/pull/373
+[#374]: https://github.com/alexarchambault/coursier/pull/374
+[#376]: https://github.com/alexarchambault/coursier/pull/376
+[#377]: https://github.com/alexarchambault/coursier/pull/377
+[#381]: https://github.com/alexarchambault/coursier/pull/381
+[#392]: https://github.com/alexarchambault/coursier/pull/392
+[#393]: https://github.com/alexarchambault/coursier/pull/393
+[#396]: https://github.com/alexarchambault/coursier/pull/396
+[#401]: https://github.com/alexarchambault/coursier/pull/401
+[@darkjh]: https://github.com/darkjh
+[@eboto]: https://github.com/eboto
+[@kzys]: https://github.com/kzys
+[@larsrh]: https://github.com/larsrh
+
+### Non-backward compatible changes
+
+* A few things related to profile activation changed, both internally and in the user API, it is recommended to re-compile your code against `1.0.0-M15`.
