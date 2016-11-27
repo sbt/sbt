@@ -18,9 +18,15 @@ matrix:
     - env: TRAVIS_SCALA_VERSION=2.11.8 PUBLISH=1
       os: linux
       jdk: oraclejdk8
+      sudo: required
+      services:
+        - docker
     - env: TRAVIS_SCALA_VERSION=2.10.6 PUBLISH=1
       os: linux
       jdk: oraclejdk8
+      sudo: required
+      services:
+        - docker
 env:
   global:
   - COURSIER_NO_TERM=1

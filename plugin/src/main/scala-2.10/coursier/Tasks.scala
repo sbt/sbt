@@ -8,6 +8,7 @@ import coursier.core.{ Authentication, Publication }
 import coursier.ivy.{ IvyRepository, PropertiesPattern }
 import coursier.Keys._
 import coursier.Structure._
+import coursier.internal.FileUtil
 import coursier.util.{ Config, Print }
 import org.apache.ivy.core.module.id.ModuleRevisionId
 
@@ -730,11 +731,11 @@ object Tasks {
         b += '\n'
         b ++= printer.format(MakeIvyXml(currentProject))
         cacheIvyFile.getParentFile.mkdirs()
-        Files.write(cacheIvyFile.toPath, b.result().getBytes("UTF-8"))
+        FileUtil.write(cacheIvyFile, b.result().getBytes("UTF-8"))
 
         // Just writing an empty file here... Are these only used?
         cacheIvyPropertiesFile.getParentFile.mkdirs()
-        Files.write(cacheIvyPropertiesFile.toPath, "".getBytes("UTF-8"))
+        FileUtil.write(cacheIvyPropertiesFile, "".getBytes("UTF-8"))
       }
 
       val res = {

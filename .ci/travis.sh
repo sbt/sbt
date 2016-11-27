@@ -50,8 +50,12 @@ fi
 
 SBT_COMMANDS="$SBT_COMMANDS tut coreJVM/mimaReportBinaryIssues cache/mimaReportBinaryIssues"
 
+~/sbt ++${TRAVIS_SCALA_VERSION} $SBT_COMMANDS
+
+.ci/java-6-test.sh
+
 if isNotPr && publish && isMaster; then
-  SBT_COMMANDS="$SBT_COMMANDS publish"
+  ~/sbt ++${TRAVIS_SCALA_VERSION} publish
 fi
 
 PUSH_GHPAGES=0
@@ -60,7 +64,5 @@ if isNotPr && publish && isMasterOrDevelop; then
     PUSH_GHPAGES=1
   fi
 fi
-
-~/sbt ++${TRAVIS_SCALA_VERSION} $SBT_COMMANDS
 
 # [ "$PUSH_GHPAGES" = 0 ] || "$(dirname "$0")/push-gh-pages.sh" "$TRAVIS_SCALA_VERSION"

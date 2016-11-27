@@ -2,12 +2,12 @@ package coursier.cli
 
 import java.io.{PrintStream, BufferedReader, File, PipedInputStream, PipedOutputStream, InputStream, InputStreamReader}
 import java.net.URLClassLoader
-import java.nio.file.Files
 
 import caseapp._
 
 import coursier.{ Attributes, Dependency }
 import coursier.cli.spark.{ Assembly, Submit }
+import coursier.internal.FileUtil
 import coursier.util.Parse
 
 import scala.util.control.NonFatal
@@ -273,9 +273,8 @@ object OutputHelper {
               lock.synchronized {
                 if (!written) {
                   println(s"Detected YARN app ID $id")
-                  val path = yarnAppFile.toPath
-                  Option(path.getParent).foreach(_.toFile.mkdirs())
-                  Files.write(path, id.getBytes("UTF-8"))
+                  Option(yarnAppFile.getParentFile).foreach(_.mkdirs())
+                  FileUtil.write(yarnAppFile, id.getBytes("UTF-8"))
                   written = true
                 }
               }
