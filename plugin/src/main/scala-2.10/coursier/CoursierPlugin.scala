@@ -19,7 +19,6 @@ object CoursierPlugin extends AutoPlugin {
     val coursierTtl = Keys.coursierTtl
     val coursierVerbosity = Keys.coursierVerbosity
     val mavenProfiles = Keys.mavenProfiles
-    val coursierSourceRepositories = Keys.coursierSourceRepositories
     val coursierResolvers = Keys.coursierResolvers
     val coursierRecursiveResolvers = Keys.coursierRecursiveResolvers
     val coursierSbtResolvers = Keys.coursierSbtResolvers
@@ -39,11 +38,6 @@ object CoursierPlugin extends AutoPlugin {
 
     val coursierDependencyTree = Keys.coursierDependencyTree
     val coursierDependencyInverseTree = Keys.coursierDependencyInverseTree
-
-    val coursierExport = Keys.coursierExport
-    val coursierExportDirectory = Keys.coursierExportDirectory
-    val coursierExportJavadoc = Keys.coursierExportJavadoc
-    val coursierExportSources = Keys.coursierExportSources
   }
 
   import autoImport._
@@ -67,7 +61,6 @@ object CoursierPlugin extends AutoPlugin {
     coursierTtl := Cache.defaultTtl,
     coursierVerbosity := Settings.defaultVerbosityLevel,
     mavenProfiles := Set.empty,
-    coursierSourceRepositories := Nil,
     coursierResolvers <<= Tasks.coursierResolversTask,
     coursierRecursiveResolvers <<= Tasks.coursierRecursiveResolversTask,
     coursierSbtResolvers <<= externalResolvers in updateSbtClassifiers,
@@ -93,11 +86,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierResolution <<= Tasks.resolutionTask(),
     coursierSbtClassifiersResolution <<= Tasks.resolutionTask(
       sbtClassifiers = true
-    ),
-    coursierExport <<= Tasks.coursierExportTask,
-    coursierExportDirectory := baseDirectory.in(ThisBuild).value / "target" / "repository",
-    coursierExportJavadoc := false,
-    coursierExportSources := false
+    )
   ) ++
   inConfig(Compile)(treeSettings) ++
   inConfig(Test)(treeSettings)
