@@ -77,7 +77,7 @@ lazy val scalaVersionAgnosticCommonSettings = Seq(
   scalacOptions ++= {
     scalaBinaryVersion.value match {
       case "2.10" | "2.11" =>
-        Seq("-target:jvm-1.7")
+        Seq("-target:jvm-1.6")
       case _ =>
         Seq()
     }
@@ -86,8 +86,8 @@ lazy val scalaVersionAgnosticCommonSettings = Seq(
     scalaBinaryVersion.value match {
       case "2.10" | "2.11" =>
         Seq(
-          "-source", "1.7",
-          "-target", "1.7"
+          "-source", "1.6",
+          "-target", "1.6"
         )
       case _ =>
         Seq()

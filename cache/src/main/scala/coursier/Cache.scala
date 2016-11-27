@@ -3,13 +3,13 @@ package coursier
 import java.math.BigInteger
 import java.net.{ HttpURLConnection, URL, URLConnection, URLStreamHandler, URLStreamHandlerFactory }
 import java.nio.channels.{ OverlappingFileLockException, FileLock }
-import java.nio.file.{ StandardCopyOption, Files => NioFiles }
 import java.security.MessageDigest
 import java.util.concurrent.{ ConcurrentHashMap, Executors, ExecutorService }
 import java.util.regex.Pattern
 
 import coursier.core.Authentication
 import coursier.ivy.IvyRepository
+import coursier.internal.FileUtil
 import coursier.util.Base64.Encoder
 
 import scala.annotation.tailrec
@@ -583,7 +583,8 @@ object Cache {
                 else if (responseCode(conn) == Some(401))
                   FileError.Unauthorized(url, realm = realm(conn)).left
                 else {
-                  for (len0 <- Option(conn.getContentLengthLong) if len0 >= 0L) {
+                  // TODO Use the safer getContentLengthLong when switching back to Java >= 7
+                  for (len0 <- Option(conn.getContentLength) if len0 >= 0L) {
                     val len = len0 + (if (partialDownload) alreadyDownloaded else 0L)
                     logger.foreach(_.downloadLength(url, len, alreadyDownloaded))
                   }
@@ -602,7 +603,7 @@ object Cache {
 
                   withStructureLock(cache) {
                     file.getParentFile.mkdirs()
-                    NioFiles.move(tmp.toPath, file.toPath, StandardCopyOption.ATOMIC_MOVE)
+                    FileUtil.atomicMove(tmp, file)
                   }
 
                   for (lastModified <- Option(conn.getLastModified) if lastModified > 0L)
@@ -641,7 +642,7 @@ object Cache {
           Task {
             if (referenceFileExists) {
               if (!errFile.exists())
-                NioFiles.write(errFile.toPath, "".getBytes("UTF-8"))
+                FileUtil.write(errFile, "".getBytes("UTF-8"))
             }
 
             ().right[FileError]
@@ -796,7 +797,7 @@ object Cache {
 
           Task {
             val sumOpt = parseChecksum(
-              new String(NioFiles.readAllBytes(sumFile.toPath), "UTF-8")
+              new String(FileUtil.readAllBytes(sumFile), "UTF-8")
             )
 
             sumOpt match {
@@ -910,7 +911,7 @@ object Cache {
         def notFound(f: File) = Left(s"${f.getCanonicalPath} not found")
 
         def read(f: File) =
-          try Right(new String(NioFiles.readAllBytes(f.toPath), "UTF-8").stripPrefix(utf8Bom))
+          try Right(new String(FileUtil.readAllBytes(f), "UTF-8").stripPrefix(utf8Bom))
           catch {
             case NonFatal(e) =>
               Left(s"Could not read (file:${f.getCanonicalPath}): ${e.getMessage}")

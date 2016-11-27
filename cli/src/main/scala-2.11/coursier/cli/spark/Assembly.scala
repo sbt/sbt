@@ -2,7 +2,6 @@ package coursier.cli.spark
 
 import java.io.{File, FileInputStream, FileOutputStream}
 import java.math.BigInteger
-import java.nio.file.{Files, StandardCopyOption}
 import java.security.MessageDigest
 import java.util.jar.{Attributes, JarFile, JarOutputStream, Manifest}
 import java.util.regex.Pattern
@@ -11,6 +10,7 @@ import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 import coursier.Cache
 import coursier.cli.{CommonOptions, Helper}
 import coursier.cli.util.Zip
+import coursier.internal.FileUtil
 
 import scala.collection.mutable
 import scalaz.\/-
@@ -224,7 +224,7 @@ object Assembly {
       }
 
       val sumOpt = Cache.parseChecksum(
-        new String(Files.readAllBytes(f.toPath), "UTF-8")
+        new String(FileUtil.readAllBytes(f), "UTF-8")
       )
 
       sumOpt match {
@@ -273,7 +273,7 @@ object Assembly {
         val tmpDest = new File(dest.getParentFile, s".${dest.getName}.part")
         // FIXME Acquire lock on tmpDest
         Assembly.make(jars, tmpDest, assemblyRules)
-        Files.move(tmpDest.toPath, dest.toPath, StandardCopyOption.ATOMIC_MOVE)
+        FileUtil.atomicMove(tmpDest, dest)
         \/-((dest, jars))
       }.leftMap(_.describe).toEither
   }

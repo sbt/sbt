@@ -2,10 +2,9 @@ package coursier
 package test
 
 import java.io.File
-import java.nio.file.Files
 
 import coursier.cache.protocol.TestprotocolHandler
-import coursier.core.Authentication
+import coursier.internal.FileUtil
 
 import utest._
 
@@ -15,7 +14,7 @@ object CacheFetchTests extends TestSuite {
 
   def check(extraRepo: Repository): Unit = {
 
-    val tmpDir = Files.createTempDirectory("coursier-cache-fetch-tests").toFile
+    val tmpDir = FileUtil.createTempDirectory("coursier-cache-fetch-tests")
 
     def cleanTmpDir() = {
       def delete(f: File): Boolean =

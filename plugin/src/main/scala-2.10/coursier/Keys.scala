@@ -22,7 +22,6 @@ object Keys {
 
   val mavenProfiles = SettingKey[Set[String]]("maven-profiles")
 
-  val coursierSourceRepositories = SettingKey[Seq[File]]("coursier-source-repositories")
   val coursierResolvers = TaskKey[Seq[Resolver]]("coursier-resolvers")
   val coursierRecursiveResolvers = TaskKey[Seq[Resolver]]("coursier-recursive-resolvers", "Resolvers of the current project, plus those of all from its inter-dependency projects")
   val coursierSbtResolvers = TaskKey[Seq[Resolver]]("coursier-sbt-resolvers")
@@ -51,22 +50,5 @@ object Keys {
   val coursierDependencyInverseTree = TaskKey[Unit](
     "coursier-dependency-inverse-tree",
     "Prints dependencies and transitive dependencies as an inverted tree (dependees as children)"
-  )
-
-  val coursierExport = TaskKey[Option[File]](
-    "coursier-export",
-    "Generates files allowing using these sources as a source dependency repository"
-  )
-  val coursierExportDirectory = TaskKey[File](
-    "coursier-export-directory",
-    "Base directory for the products of coursierExport"
-  )
-  val coursierExportJavadoc = SettingKey[Boolean](
-    "coursier-export-javadoc",
-    "Build javadoc packages for the coursier source dependency repository"
-  )
-  val coursierExportSources = SettingKey[Boolean](
-    "coursier-export-sources",
-    "Build sources packages for the coursier source dependency repository"
   )
 }

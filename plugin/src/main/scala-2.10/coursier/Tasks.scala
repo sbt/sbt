@@ -2,14 +2,13 @@ package coursier
 
 import java.io.{ OutputStreamWriter, File }
 import java.net.URL
-import java.nio.file.Files
 import java.util.concurrent.{ ExecutorService, Executors }
 
 import coursier.core.{ Authentication, Publication }
 import coursier.ivy.{ IvyRepository, PropertiesPattern }
 import coursier.Keys._
 import coursier.Structure._
-import coursier.maven.WritePom
+import coursier.internal.FileUtil
 import coursier.util.{ Config, Print }
 import org.apache.ivy.core.module.id.ModuleRevisionId
 
@@ -397,38 +396,6 @@ object Tasks {
         else
           coursierRecursiveResolvers.value.distinct
 
-      val sourceRepositories = coursierSourceRepositories.value.map { dir =>
-        // FIXME Don't hardcode this path?
-        new File(dir, "target/repository")
-      }
-
-      val sourceRepositoriesForcedDependencies = sourceRepositories.flatMap {
-        base =>
-
-          def pomDirComponents(f: File, components: Vector[String]): Stream[Vector[String]] =
-            if (f.isDirectory) {
-              val components0 = components :+ f.getName
-              Option(f.listFiles()).toStream.flatten.flatMap(pomDirComponents(_, components0))
-            } else if (f.getName.endsWith(".pom"))
-              Stream(components)
-            else
-              Stream.empty
-
-          Option(base.listFiles())
-            .toVector
-            .flatten
-            .flatMap(pomDirComponents(_, Vector()))
-            // at least 3 for org / name / version - the contrary should not happen, but who knows
-            .filter(_.length >= 3)
-            .map { components =>
-              val org = components.dropRight(2).mkString(".")
-              val name = components(components.length - 2)
-              val version = components.last
-
-              Module(org, name) -> version
-            }
-      }
-
       // TODO Warn about possible duplicated modules from source repositories?
 
       val verbosityLevel = coursierVerbosity.value
@@ -449,7 +416,6 @@ object Tasks {
         forceVersions =
           // order matters here
           userForceVersions ++
-          sourceRepositoriesForcedDependencies ++
           forcedScalaModules(so, sv) ++
           interProjectDependencies.map(_.moduleVersion)
       )
@@ -508,11 +474,6 @@ object Tasks {
 
       val authenticationByRepositoryId = coursierCredentials.value.mapValues(_.authentication)
 
-      val sourceRepositories0 = sourceRepositories.map {
-        base =>
-          MavenRepository(base.toURI.toString, changing = Some(true))
-      }
-
       val fallbackDependenciesRepositories =
         if (fallbackDependencies.isEmpty)
           Nil
@@ -564,7 +525,6 @@ object Tasks {
 
       val repositories =
         internalRepositories ++
-        sourceRepositories0 ++
         resolvers.flatMap { resolver =>
           FromSbt.repository(
             resolver,
@@ -771,11 +731,11 @@ object Tasks {
         b += '\n'
         b ++= printer.format(MakeIvyXml(currentProject))
         cacheIvyFile.getParentFile.mkdirs()
-        Files.write(cacheIvyFile.toPath, b.result().getBytes("UTF-8"))
+        FileUtil.write(cacheIvyFile, b.result().getBytes("UTF-8"))
 
         // Just writing an empty file here... Are these only used?
         cacheIvyPropertiesFile.getParentFile.mkdirs()
-        Files.write(cacheIvyPropertiesFile.toPath, "".getBytes("UTF-8"))
+        FileUtil.write(cacheIvyPropertiesFile, "".getBytes("UTF-8"))
       }
 
       val res = {
@@ -997,94 +957,5 @@ object Tasks {
       )
     )
   }
-
-  def coursierExportTask =
-    (
-      sbt.Keys.state,
-      sbt.Keys.thisProjectRef,
-      sbt.Keys.projectID,
-      sbt.Keys.scalaVersion,
-      sbt.Keys.scalaBinaryVersion,
-      sbt.Keys.ivyConfigurations,
-      streams,
-      coursierProject,
-      coursierExportDirectory,
-      coursierExportJavadoc,
-      coursierExportSources
-    ).flatMap { (state, projectRef, projId, sv, sbv, ivyConfs, streams, proj, exportDir, exportJavadoc, exportSources) =>
-
-      val javadocPackageTasks =
-        if (exportJavadoc)
-          Seq(Some("javadoc") -> packageDoc)
-        else
-          Nil
-
-      val sourcesPackageTasks =
-        if (exportJavadoc)
-          Seq(Some("sources") -> packageSrc)
-        else
-          Nil
-
-      val packageTasks = Seq(None -> packageBin) ++ javadocPackageTasks ++ sourcesPackageTasks
-
-      val configs = Seq(None -> Compile, Some("tests") -> Test)
-
-      val productTasks =
-        for {
-          (classifierOpt, pkgTask) <- packageTasks
-          (classifierPrefixOpt, config) <- configs
-          if publishArtifact.in(projectRef).in(pkgTask).in(config).getOrElse(state, false)
-        } yield {
-          val classifier = (classifierPrefixOpt.toSeq ++ classifierOpt.toSeq).mkString("-")
-          pkgTask.in(projectRef).in(config).get(state).map((classifier, _))
-        }
-
-      val productTask = sbt.std.TaskExtra.joinTasks(productTasks).join
-
-      val dir = new File(
-        exportDir,
-        s"${proj.module.organization.replace('.', '/')}/${proj.module.name}/${proj.version}"
-      )
-
-      def pom = "<?xml version='1.0' encoding='UTF-8'?>\n" + WritePom.project(proj, Some("jar"))
-
-      val log = streams.log
-
-      productTask.map { products =>
-
-        if (products.isEmpty)
-          None
-        else {
-
-          dir.mkdirs()
-
-          val pomFile = new File(dir, s"${proj.module.name}-${proj.version}.pom")
-          Files.write(pomFile.toPath, pom.getBytes("UTF-8"))
-          log.info(s"Wrote POM file to $pomFile")
-
-          for ((classifier, f) <- products) {
-
-            val suffix = if (classifier.isEmpty) "" else "-" + classifier
-
-            val jarPath = new File(dir, s"${proj.module.name}-${proj.version}$suffix.jar")
-
-            if (jarPath.exists()) {
-              if (!jarPath.delete())
-                log.warn(s"Cannot remove $jarPath")
-            }
-
-            Files.createSymbolicLink(
-              jarPath.toPath,
-              dir.toPath.relativize(f.toPath)
-            )
-            log.info(s"Created symbolic link $jarPath -> $f")
-          }
-
-          // TODO Clean extra files in dir
-
-          Some(exportDir)
-        }
-      }
-    }
 
 }
