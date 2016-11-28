@@ -38,6 +38,7 @@ is_cygwin() {
   case "$os" in
     CYGWIN*) return 0 ;;
     MINGW*) return 0 ;;
+    MSYS*) return 0 ;;
     *)  return 1 ;;
   esac
 }
