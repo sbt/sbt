@@ -232,6 +232,12 @@ object Parser extends ParserMain {
       }
     }
 
+  def combinedParser[A](a: Parser[A], b: Parser[A]): Parser[Seq[A]] =
+    if (a.valid)
+      if (b.valid) new CombiningParser(a, b) else a.map(Seq(_))
+    else
+      b.map(Seq(_))
+
   def choiceParser[A, B](a: Parser[A], b: Parser[B]): Parser[Either[A, B]] =
     if (a.valid)
       if (b.valid) new HetParser(a, b) else a.map(left.fn)
@@ -312,11 +318,7 @@ trait ParserMain {
     def filter(f: A => Boolean, msg: String => String): Parser[A] = filterParser(a, f, "", msg)
     def string(implicit ev: A <:< Seq[Char]): Parser[String] = map(_.mkString)
     def flatMap[B](f: A => Parser[B]) = bindParser(a, f)
-    def combinedWith(b: Parser[A]): Parser[Seq[A]] =
-      if (a.valid)
-        if (b.valid) new CombiningParser(a, b) else a.map(Seq(_))
-      else
-        b.map(Seq(_))
+    def combinedWith(b: Parser[A]): Parser[Seq[A]] = combinedParser(a, b)
   }
 
   implicit def literalRichCharParser(c: Char): RichParser[Char] = richParser(c)
