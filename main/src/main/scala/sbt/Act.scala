@@ -77,16 +77,11 @@ object Act {
       selectFromValid(ss filter isValid(data), default)
     }
   def selectFromValid(ss: Seq[ParsedKey], default: Parser[ParsedKey])(implicit show: Show[ScopedKey[_]]): Parser[ParsedKey] =
-    selectByTask(selectByConfig(ss)) partition isBuildKey match {
-      case (_, Seq(single))         => success(single)
-      case (Seq(single), Seq())     => success(single)
-      case (Seq(), Seq())           => default
-      case (buildKeys, projectKeys) => failure("Ambiguous keys: " + showAmbiguous(keys(buildKeys ++ projectKeys)))
+    selectByTask(selectByConfig(ss)) match {
+      case Seq()       => default
+      case Seq(single) => success(single)
+      case multi       => failure("Ambiguous keys: " + showAmbiguous(keys(multi)))
     }
-  private def isBuildKey(parsed: ParsedKey): Boolean = parsed.key.scope.project match {
-    case Select(_: BuildReference) => true
-    case _                         => false
-  }
   private[this] def keys(ss: Seq[ParsedKey]): Seq[ScopedKey[_]] = ss.map(_.key)
   def selectByConfig(ss: Seq[ParsedKey]): Seq[ParsedKey] =
     ss match {
