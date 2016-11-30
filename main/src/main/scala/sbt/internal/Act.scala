@@ -134,7 +134,16 @@ object Act {
         token(ID !!! "Expected key" examples dropHyphenated(keys)) flatMap { keyString =>
           getKey(keyMap, keyString, idFun)
         }
-      keyParser(index.keys(proj, conf, task))
+      // Fixes sbt/sbt#2460 and sbt/sbt#2851
+      // The parser already accepts build-level keys.
+      // This queries the key index so tab completion will list the build-level keys.
+      val buildKeys: Set[String] =
+        proj match {
+          case Some(ProjectRef(uri, id)) => index.keys(Some(BuildRef(uri)), conf, task)
+          case _                         => Set()
+        }
+      val keys: Set[String] = index.keys(proj, conf, task) ++ buildKeys
+      keyParser(keys)
     }
 
   def getKey[T](keyMap: Map[String, AttributeKey[_]], keyString: String, f: AttributeKey[_] => T): Parser[T] =
