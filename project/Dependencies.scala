@@ -2,11 +2,11 @@ import sbt._
 import Keys._
 
 object Dependencies {
-  lazy val scala210 = "2.10.6"
-  lazy val scala211 = "2.11.8"
-  lazy val scala212 = "2.12.0-M4"
+  val scala210 = "2.10.6"
+  val scala211 = "2.11.8"
+  val scala212 = "2.12.0"
 
-  private lazy val sbtIO = "org.scala-sbt" %% "io" % "1.0.0-M6"
+  private val sbtIO = "org.scala-sbt" %% "io" % "1.0.0-M7"
 
   def getSbtModulePath(key: String, name: String) = {
     val localProps = new java.util.Properties()
@@ -26,17 +26,17 @@ object Dependencies {
 
   def addSbtIO(p: Project): Project = addSbtModule(p, sbtIoPath, "io", sbtIO)
 
-  lazy val jline = "jline" % "jline" % "2.13"
+  val jline = "jline" % "jline" % "2.13"
 
-  lazy val scalaCompiler = Def.setting { "org.scala-lang" % "scala-compiler" % scalaVersion.value }
-  lazy val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
+  val scalaCompiler = Def.setting { "org.scala-lang" % "scala-compiler" % scalaVersion.value }
+  val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
 
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.13.1"
   val scalatest = "org.scalatest" %% "scalatest" % "2.2.6"
 
-  lazy val parserCombinator211 = "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4"
+  val parserCombinator211 = "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4"
 
-  lazy val sjsonnewVersion = "0.5.1"
-  lazy val sjsonnew = "com.eed3si9n" %% "sjson-new-core" % sjsonnewVersion
-  lazy val sjsonnewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % sjsonnewVersion
+  val sjsonnewVersion = "0.5.1"
+  val sjsonnew = "com.eed3si9n" %% "sjson-new-core" % sjsonnewVersion
+  val sjsonnewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % sjsonnewVersion
 }
