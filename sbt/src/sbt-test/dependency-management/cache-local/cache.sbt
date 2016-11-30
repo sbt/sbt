@@ -1,1 +1,1 @@
-ivyPaths := { new IvyPaths(baseDirectory.value, Some(target.value / ".ivy2")) }
+ivyPaths := { IvyPaths(baseDirectory.value, Some(target.value / ".ivy2")) }

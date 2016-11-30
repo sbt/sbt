@@ -6,7 +6,7 @@ lazy val root = (project in file(".")).
   settings(
     libraryDependencies ++= baseDirectory(dependencies).value,
     scalaVersion := "2.9.2",
-    ivyScala := { ivyScala.value map {_.copy(overrideScalaVersion = sbtPlugin.value)} },
+    ivyScala := ivyScala.value map (_.withOverrideScalaVersion(sbtPlugin.value)),
     autoScalaLibrary := baseDirectory(base => !(base / "noscala").exists ).value,
     scalaOverride := check("scala.App").value
   )

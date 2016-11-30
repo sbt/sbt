@@ -116,7 +116,7 @@ object InputWrapper {
         unexpectedType(c)(pos, tpe)
     }
   /** Translates <task: TaskKey[T]>.previous(format) to Previous.runtime(<task>)(format).value*/
-  def previousMacroImpl[T: c.WeakTypeTag](c: blackbox.Context)(format: c.Expr[sbinary.Format[T]]): c.Expr[Option[T]] =
+  def previousMacroImpl[T: c.WeakTypeTag](c: blackbox.Context)(format: c.Expr[sjsonnew.JsonFormat[T]]): c.Expr[Option[T]] =
     {
       import c.universe._
       c.macroApplication match {
@@ -159,7 +159,7 @@ sealed abstract class ParserInputTask[T] {
 }
 sealed abstract class MacroPrevious[T] {
   @compileTimeOnly("`previous` can only be used within a task macro, such as :=, +=, ++=, or Def.task.")
-  def previous(implicit format: sbinary.Format[T]): Option[T] = macro InputWrapper.previousMacroImpl[T]
+  def previous(implicit format: sjsonnew.JsonFormat[T]): Option[T] = macro InputWrapper.previousMacroImpl[T]
 }
 
 /** Implementation detail.  The wrap method temporarily holds the input parser (as a Tree, at compile time) until the input task macro processes it. */

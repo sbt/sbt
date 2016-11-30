@@ -6,5 +6,5 @@ TaskKey[Unit]("verify-binary-deps") := {
   val base = baseDirectory.value
   val nestedPkgClass = classDir / "test/nested.class"
   val fooSrc = base / "src/main/scala/test/nested/Foo.scala"
-  assert(!a.relations.binaryDeps(fooSrc).contains(nestedPkgClass), a.relations.toString)
+  assert(!a.relations.libraryDeps(fooSrc).contains(nestedPkgClass), a.relations.toString)
 }

@@ -6,6 +6,8 @@ resolvers += (baseDirectory in ThisBuild)(x =>
 	"test" at (x / "repo/").asURL.toString
 ).value
 
+resolvers += Resolver.mavenLocal
+
 name := "demo1"
 
 organization := "org.example"

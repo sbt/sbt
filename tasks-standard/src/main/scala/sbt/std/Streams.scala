@@ -25,6 +25,9 @@ import sbt.io.syntax._
 
 import sbt.util.Logger
 
+import sjsonnew.{ IsoString, SupportConverter }
+import sbt.internal.util.{ CacheStoreFactory, DirectoryStoreFactory, Input, Output, PlainInput, PlainOutput }
+
 // no longer specific to Tasks, so 'TaskStreams' should be renamed
 /**
  * Represents a set of streams associated with a context.
@@ -37,6 +40,9 @@ sealed trait TaskStreams[Key] {
 
   def outID = "out"
   def errorID = "err"
+
+  def getInput(key: Key, sid: String = default): Input
+  def getOutput(sid: String = default): Output
 
   /**
    * Provides a reader to read text from the stream `sid` for `key`.
@@ -65,6 +71,8 @@ sealed trait TaskStreams[Key] {
 
   /** A cache directory that is unique to the context of this streams instance.*/
   def cacheDirectory: File
+
+  def cacheStoreFactory: CacheStoreFactory
 
   // default logger
   /** Obtains the default logger. */
@@ -112,11 +120,17 @@ object Streams {
       synchronized { streams.values.foreach(_.close()); streams.clear() }
   }
 
-  def apply[Key](taskDirectory: Key => File, name: Key => String, mkLogger: (Key, PrintWriter) => Logger): Streams[Key] = new Streams[Key] {
+  def apply[Key, J: IsoString](taskDirectory: Key => File, name: Key => String, mkLogger: (Key, PrintWriter) => Logger, converter: SupportConverter[J]): Streams[Key] = new Streams[Key] {
 
     def apply(a: Key): ManagedStreams[Key] = new ManagedStreams[Key] {
       private[this] var opened: List[Closeable] = Nil
       private[this] var closed = false
+
+      def getInput(a: Key, sid: String = default): Input =
+        make(a, sid)(f => new PlainInput(new FileInputStream(f), converter))
+
+      def getOutput(sid: String = default): Output =
+        make(a, sid)(f => new PlainOutput(new FileOutputStream(f), converter))
 
       def readText(a: Key, sid: String = default): BufferedReader =
         make(a, sid)(f => new BufferedReader(new InputStreamReader(new FileInputStream(f), IO.defaultCharset)))
@@ -135,6 +149,9 @@ object Streams {
         IO.createDirectory(dir)
         dir
       }
+
+      lazy val cacheStoreFactory: CacheStoreFactory =
+        new DirectoryStoreFactory(cacheDirectory, converter)
 
       def log(sid: String): Logger = mkLogger(a, text(sid))
 

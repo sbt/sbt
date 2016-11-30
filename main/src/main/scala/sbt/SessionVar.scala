@@ -7,7 +7,7 @@ import sbt.internal.util.{ AttributeMap, IMap, Types }
 import Def.ScopedKey
 import Types.Id
 import Keys.sessionVars
-import sbinary.{ Format, Operations }
+import sjsonnew.JsonFormat
 
 object SessionVar {
   val DefaultDataID = "data"
@@ -20,15 +20,15 @@ object SessionVar {
   }
   def emptyMap = Map(IMap.empty)
 
-  def persistAndSet[T](key: ScopedKey[Task[T]], state: State, value: T)(implicit f: sbinary.Format[T]): State =
+  def persistAndSet[T](key: ScopedKey[Task[T]], state: State, value: T)(implicit f: JsonFormat[T]): State =
     {
       persist(key, state, value)(f)
       set(key, state, value)
     }
 
-  def persist[T](key: ScopedKey[Task[T]], state: State, value: T)(implicit f: sbinary.Format[T]): Unit =
+  def persist[T](key: ScopedKey[Task[T]], state: State, value: T)(implicit f: JsonFormat[T]): Unit =
     Project.structure(state).streams(state).use(key)(s =>
-      Operations.write(s.binary(DefaultDataID), value)(f))
+      s.getOutput(DefaultDataID).write(value))
 
   def clear(s: State): State = s.put(sessionVars, SessionVar.emptyMap)
 
@@ -51,16 +51,16 @@ object SessionVar {
       ScopedKey(scope, key.key)
     }
 
-  def read[T](key: ScopedKey[Task[T]], state: State)(implicit f: Format[T]): Option[T] =
+  def read[T](key: ScopedKey[Task[T]], state: State)(implicit f: JsonFormat[T]): Option[T] =
     Project.structure(state).streams(state).use(key) { s =>
-      try { Some(Operations.read(s.readBinary(key, DefaultDataID))) }
+      try { Some(s.getInput(key, DefaultDataID).read[T]) }
       catch { case NonFatal(e) => None }
     }
 
-  def load[T](key: ScopedKey[Task[T]], state: State)(implicit f: Format[T]): Option[T] =
+  def load[T](key: ScopedKey[Task[T]], state: State)(implicit f: JsonFormat[T]): Option[T] =
     get(key, state) orElse read(key, state)(f)
 
-  def loadAndSet[T](key: ScopedKey[Task[T]], state: State, setIfUnset: Boolean = true)(implicit f: Format[T]): (State, Option[T]) =
+  def loadAndSet[T](key: ScopedKey[Task[T]], state: State, setIfUnset: Boolean = true)(implicit f: JsonFormat[T]): (State, Option[T]) =
     get(key, state) match {
       case s: Some[T] => (state, s)
       case None => read(key, state)(f) match {

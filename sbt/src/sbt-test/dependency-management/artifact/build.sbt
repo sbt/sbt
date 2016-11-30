@@ -5,7 +5,7 @@ lazy val check = taskKey[Unit]("")
 
 lazy val root = (project in file(".")).
   settings(
-    ivyPaths := ((baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache")))).value,
+    ivyPaths := ((baseDirectory, target)( (dir, t) => IvyPaths(dir, Some(t / "ivy-cache")))).value,
     publishTo := Some(Resolver.file("Test Publish Repo", file("test-repo"))),
     resolvers += (baseDirectory { base => "Test Repo" at (base / "test-repo").toURI.toString }).value,
     moduleName := artifactID,

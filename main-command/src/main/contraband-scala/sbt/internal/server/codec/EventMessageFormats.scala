@@ -13,13 +13,13 @@ implicit lazy val EventMessageFormat: JsonFormat[sbt.internal.server.EventMessag
       unbuilder.beginObject(js)
       val `type` = unbuilder.readField[String]("type")
       val status = unbuilder.readField[Option[String]]("status")
-      val commandQueue = unbuilder.readField[Vector[String]]("commandQueue")
+      val commandQueue = unbuilder.readField[scala.Vector[String]]("commandQueue")
       val level = unbuilder.readField[Option[String]]("level")
       val message = unbuilder.readField[Option[String]]("message")
       val success = unbuilder.readField[Option[Boolean]]("success")
       val commandLine = unbuilder.readField[Option[String]]("commandLine")
       unbuilder.endObject()
-      new sbt.internal.server.EventMessage(`type`, status, commandQueue, level, message, success, commandLine)
+      sbt.internal.server.EventMessage(`type`, status, commandQueue, level, message, success, commandLine)
       case None =>
       deserializationError("Expected JsObject but found None")
     }

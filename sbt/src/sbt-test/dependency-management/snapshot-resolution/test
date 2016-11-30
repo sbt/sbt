@@ -16,7 +16,9 @@ $ sleep 1000
 > dependent/update
 > dependent/compile
 
-# Now let's try this on the opposite order: pubishLocal => publish
+
+
+# Now let's try this on the opposite order: publishLocal => publish
 $ copy-file changes/BadCommon.scala common/src/main/scala/Common.scala
 > common/publishLocal
 

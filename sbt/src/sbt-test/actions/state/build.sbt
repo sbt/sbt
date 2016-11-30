@@ -2,6 +2,7 @@ import complete.Parser
 import complete.DefaultParsers._
 import sbinary.DefaultProtocol._
 import Def.Initialize
+import sjsonnew.BasicJsonProtocol.{ project => _, _ }
 
 val keep = taskKey[Int]("")
 val persist = taskKey[Int]("")

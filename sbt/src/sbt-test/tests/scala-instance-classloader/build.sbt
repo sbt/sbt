@@ -29,4 +29,4 @@ libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.3" % "test"
 
 scalaVersion := "2.11.0"
 
-ivyScala := ivyScala.value map {_.copy(overrideScalaVersion = sbtPlugin.value)}
+ivyScala := ivyScala.value map (_.withOverrideScalaVersion(sbtPlugin.value))

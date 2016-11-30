@@ -2,7 +2,7 @@ import sbt.internal.librarymanagement.syntax._
 
 libraryDependencies += "org.scalacheck" % "scalacheck" % "1.5"
 
-ivyPaths := baseDirectory( dir => new IvyPaths(dir, Some(dir / "ivy-home"))).value
+ivyPaths := baseDirectory( dir => IvyPaths(dir, Some(dir / "ivy-home"))).value
 
 TaskKey[Unit]("check") := {
   val report = update.value

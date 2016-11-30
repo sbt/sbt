@@ -1,7 +1,8 @@
 package sbt
 package internal
 
-import sbt.internal.util.{ Eval, RangePosition }
+import sbt.internal.util.RangePosition
+import sbt.util.Eval
 
 import sbt.librarymanagement.Configuration
 

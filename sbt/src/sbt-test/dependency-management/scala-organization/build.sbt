@@ -6,8 +6,8 @@ scalaVersion := "2.11.8"
 
 resolvers += Resolver.file("buggy", (baseDirectory in LocalRootProject).value / "repo")(
   Patterns(
-    ivyPatterns = Seq("[organization]/[module]/[revision]/ivy.xml"),
-    artifactPatterns = Seq("[organization]/[module]/[revision]/dummy.jar"),
+    ivyPatterns = Vector("[organization]/[module]/[revision]/ivy.xml"),
+    artifactPatterns = Vector("[organization]/[module]/[revision]/dummy.jar"),
     isMavenCompatible = false,
     descriptorOptional = true,
     skipConsistencyCheck = true
@@ -48,7 +48,7 @@ checkDependencies := {
       c <- update.value.configurations
       m <- c.modules
       if !m.evicted
-    } yield m.module.copy(extraAttributes = Map.empty)).toSet
+    } yield m.module.withExtraAttributes(Map.empty)).toSet
 
   assert(resolved == expected)
 }
