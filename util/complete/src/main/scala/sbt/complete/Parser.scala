@@ -126,9 +126,6 @@ sealed trait RichParser[A] {
 
   /** Applies the original parser, applies `f` to the result to get the next parser, and applies that parser and uses its result for the overall result. */
   def flatMap[B](f: A => Parser[B]): Parser[B]
-
-  /** Applied both the original parser and `b` on the same input and returns the results produced by each parser */
-  def combinedWith(b: Parser[A]): Parser[Seq[A]]
 }
 
 /** Contains Parser implementation helper methods not typically needed for using parsers. */
@@ -312,11 +309,6 @@ trait ParserMain {
     def filter(f: A => Boolean, msg: String => String): Parser[A] = filterParser(a, f, "", msg)
     def string(implicit ev: A <:< Seq[Char]): Parser[String] = map(_.mkString)
     def flatMap[B](f: A => Parser[B]) = bindParser(a, f)
-    def combinedWith(b: Parser[A]): Parser[Seq[A]] =
-      if (a.valid)
-        if (b.valid) new CombiningParser(a, b) else a.map(Seq(_))
-      else
-        b.map(Seq(_))
   }
 
   implicit def literalRichCharParser(c: Char): RichParser[Char] = richParser(c)
@@ -640,24 +632,6 @@ private final class HetParser[A, B](a: Parser[A], b: Parser[B]) extends ValidPar
   lazy val resultEmpty = a.resultEmpty either b.resultEmpty
   def completions(level: Int) = a.completions(level) ++ b.completions(level)
   override def toString = "(" + a + " || " + b + ")"
-}
-private final class CombiningParser[T](a: Parser[T], b: Parser[T]) extends ValidParser[Seq[T]] {
-  lazy val result: Option[Seq[T]] = (a.result.toSeq ++ b.result.toSeq) match { case Seq() => None; case seq => Some(seq) }
-  def completions(level: Int) = a.completions(level) ++ b.completions(level)
-  def derive(i: Char) =
-    (a.valid, b.valid) match {
-      case (true, true)   => new CombiningParser(a derive i, b derive i)
-      case (true, false)  => a derive i map (Seq(_))
-      case (false, true)  => b derive i map (Seq(_))
-      case (false, false) => new Invalid(mkFailure("No valid parser available."))
-    }
-  def resultEmpty =
-    (a.resultEmpty, b.resultEmpty) match {
-      case (Value(ra), Value(rb)) => Value(Seq(ra, rb))
-      case (Value(ra), _)         => Value(Seq(ra))
-      case (_, Value(rb))         => Value(Seq(rb))
-      case _                      => Value(Nil)
-    }
 }
 private final class ParserSeq[T](a: Seq[Parser[T]], errors: => Seq[String]) extends ValidParser[Seq[T]] {
   assert(a.nonEmpty)
