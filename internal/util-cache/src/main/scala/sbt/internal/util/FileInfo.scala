@@ -4,6 +4,7 @@
 package sbt.internal.util
 
 import java.io.File
+import scala.util.control.NonFatal
 import sbt.io.Hash
 import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
 import CacheImplicits._
@@ -30,7 +31,7 @@ object FileInfo {
   sealed trait Style {
     type F <: FileInfo
 
-    implicit val format: JsonFormat[F]
+    implicit def format: JsonFormat[F]
 
     def apply(file: File): F
     def apply(files: Set[File]): FilesInfo[F] = FilesInfo(files map apply)
@@ -91,7 +92,7 @@ object FileInfo {
 
     implicit def apply(file: File): HashFileInfo = FileHash(file.getAbsoluteFile, computeHash(file))
 
-    private def computeHash(file: File): List[Byte] = try Hash(file).toList catch { case _: Exception => Nil }
+    private def computeHash(file: File): List[Byte] = try Hash(file).toList catch { case NonFatal(_) => Nil }
   }
 
   object lastModified extends Style {
