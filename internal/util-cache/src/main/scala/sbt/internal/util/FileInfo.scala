@@ -23,7 +23,6 @@ private final case class FileHashModified(file: File, hash: List[Byte], lastModi
 
 final case class FilesInfo[F <: FileInfo] private (files: Set[F])
 object FilesInfo {
-  implicit def format[F <: FileInfo]: JsonFormat[FilesInfo[F]] = implicitly
   def empty[F <: FileInfo]: FilesInfo[F] = FilesInfo(Set.empty[F])
 }
 
@@ -32,6 +31,7 @@ object FileInfo {
     type F <: FileInfo
 
     implicit def format: JsonFormat[F]
+    implicit def formats: JsonFormat[FilesInfo[F]] = project(_.files, (fs: Set[F]) => FilesInfo(fs))
 
     def apply(file: File): F
     def apply(files: Set[File]): FilesInfo[F] = FilesInfo(files map apply)

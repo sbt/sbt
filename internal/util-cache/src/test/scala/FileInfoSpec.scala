@@ -4,11 +4,11 @@ import scala.json.ast.unsafe._
 import sjsonnew._, support.scalajson.unsafe._
 
 class FileInfoSpec extends UnitSpec {
-  val file = new java.io.File(".")
+  val file = new java.io.File(".").getAbsoluteFile
   val fileInfo: ModifiedFileInfo = FileModified(file, file.lastModified())
   val filesInfo = FilesInfo(Set(fileInfo))
 
-  it should "round trip" in assertRoundTrip(filesInfo)
+  it should "round trip" in assertRoundTrip(filesInfo)(FileInfo.lastModified.formats, FileInfo.lastModified.formats)
 
   def assertRoundTrip[A: JsonWriter: JsonReader](x: A) = {
     val jsonString: String = toJsonString(x)
