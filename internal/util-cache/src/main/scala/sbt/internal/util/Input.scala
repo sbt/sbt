@@ -1,20 +1,18 @@
 package sbt.internal.util
 
-import sbt.io.{ IO, Using }
-
 import java.io.{ Closeable, InputStream }
-
-import scala.util.{ Failure, Success }
-
+import scala.util.control.NonFatal
 import sjsonnew.{ IsoString, JsonReader, SupportConverter }
+import sbt.io.{ IO, Using }
 
 trait Input extends Closeable {
   def read[T: JsonReader](): T
-  def read[T: JsonReader](default: => T): T
+  def read[T: JsonReader](default: => T): T = try read[T]() catch { case NonFatal(_) => default }
 }
 
 class PlainInput[J: IsoString](input: InputStream, converter: SupportConverter[J]) extends Input {
   val isoFormat: IsoString[J] = implicitly
+
   private def readFully(): String = {
     Using.streamReader(input, IO.utf8) { reader =>
       val builder = new StringBuilder()
@@ -28,18 +26,7 @@ class PlainInput[J: IsoString](input: InputStream, converter: SupportConverter[J
     }
   }
 
-  override def read[T: JsonReader](): T = {
-    val string = readFully()
-    val json = isoFormat.from(string)
-    converter.fromJson(json) match {
-      case Success(value) => value
-      case Failure(ex)    => throw ex
-    }
-  }
+  def read[T: JsonReader]() = converter.fromJson(isoFormat.from(readFully())).get
 
-  override def read[T: JsonReader](default: => T): T =
-    try read[T]()
-    catch { case _: Exception => default }
-
-  override def close(): Unit = input.close()
+  def close() = input.close()
 }
