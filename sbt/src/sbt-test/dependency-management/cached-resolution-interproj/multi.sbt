@@ -3,7 +3,7 @@ lazy val check = taskKey[Unit]("Runs the check")
 
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
-    ivyPaths := new IvyPaths( (baseDirectory in ThisBuild).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),
+    ivyPaths := IvyPaths( (baseDirectory in ThisBuild).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),
     dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",
     scalaVersion := "2.11.4",
     resolvers += Resolver.sonatypeRepo("snapshots")

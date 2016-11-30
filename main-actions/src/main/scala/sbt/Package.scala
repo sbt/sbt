@@ -3,23 +3,21 @@
  */
 package sbt
 
-import Predef.{ conforms => _, _ }
+import scala.Predef.{ conforms => _, _ }
 import java.io.File
 import java.util.jar.{ Attributes, Manifest }
-import collection.JavaConverters._
+import scala.collection.JavaConverters._
 import sbt.internal.util.Types.:+:
-import sbt.io.syntax._
 import sbt.io.IO
 
-import sbinary.{ DefaultProtocol, Format }
-import DefaultProtocol.{ FileFormat, immutableMapFormat, StringFormat }
-import sbt.internal.util.{ Cache, FileInfo, FilesInfo, HNil, ModifiedFileInfo, PlainFileInfo, Tracked }
-import Cache.{ defaultEquiv, hConsCache, hNilCache, streamFormat }
-import Tracked.{ inputChanged, outputChanged }
-import FileInfo.exists
-import FilesInfo.lastModified
+import sjsonnew.JsonFormat
 
 import sbt.util.Logger
+
+import sbt.internal.util.{ CacheStoreFactory, FilesInfo, HNil, ModifiedFileInfo, PlainFileInfo }
+import sbt.internal.util.FileInfo.{ exists, lastModified }
+import sbt.internal.util.CacheImplicits._
+import sbt.internal.util.Tracked.inputChanged
 
 sealed trait PackageOption
 object Package {
@@ -48,7 +46,7 @@ object Package {
   }
 
   final class Configuration(val sources: Seq[(File, String)], val jar: File, val options: Seq[PackageOption])
-  def apply(conf: Configuration, cacheFile: File, log: Logger): Unit = {
+  def apply(conf: Configuration, cacheStoreFactory: CacheStoreFactory, log: Logger): Unit = {
     val manifest = new Manifest
     val main = manifest.getMainAttributes
     for (option <- conf.options) {
@@ -61,9 +59,10 @@ object Package {
     }
     setVersion(main)
 
-    val cachedMakeJar = inputChanged(cacheFile / "inputs") { (inChanged, inputs: Map[File, String] :+: FilesInfo[ModifiedFileInfo] :+: Manifest :+: HNil) =>
+    val cachedMakeJar = inputChanged(cacheStoreFactory derive "inputs") { (inChanged, inputs: Map[File, String] :+: FilesInfo[ModifiedFileInfo] :+: Manifest :+: HNil) =>
+      import exists.format
       val sources :+: _ :+: manifest :+: HNil = inputs
-      outputChanged(cacheFile / "output") { (outChanged, jar: PlainFileInfo) =>
+      inputChanged(cacheStoreFactory derive "output") { (outChanged, jar: PlainFileInfo) =>
         if (inChanged || outChanged)
           makeJar(sources.toSeq, jar.file, manifest, log)
         else
@@ -73,7 +72,7 @@ object Package {
 
     val map = conf.sources.toMap
     val inputs = map :+: lastModified(map.keySet) :+: manifest :+: HNil
-    cachedMakeJar(inputs)(() => exists(conf.jar))
+    cachedMakeJar(inputs)(exists(conf.jar))
   }
   def setVersion(main: Attributes): Unit = {
     val version = Attributes.Name.MANIFEST_VERSION
@@ -105,7 +104,14 @@ object Package {
     "Input file mappings:\n\t" + (sources map { case (f, s) => s + "\n\t  " + f } mkString ("\n\t"))
 
   implicit def manifestEquiv: Equiv[Manifest] = defaultEquiv
-  implicit def manifestFormat: Format[Manifest] = streamFormat(_ write _, in => new Manifest(in))
+  implicit def manifestFormat: JsonFormat[Manifest] = project[Manifest, Array[Byte]](
+    m => {
+      val bos = new java.io.ByteArrayOutputStream()
+      m write bos
+      bos.toByteArray
+    },
+    bs => new Manifest(new java.io.ByteArrayInputStream(bs))
+  )
 
   implicit def stringMapEquiv: Equiv[Map[File, String]] = defaultEquiv
 }

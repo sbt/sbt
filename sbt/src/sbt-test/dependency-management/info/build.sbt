@@ -2,7 +2,7 @@ import scala.xml._
 
 lazy val root = (project in file(".")).
   settings(
-    ivyPaths := (baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache"))).value,
+    ivyPaths := (baseDirectory, target)( (dir, t) => IvyPaths(dir, Some(t / "ivy-cache"))).value,
     ivyXML := ((customInfo, organization, moduleName, version) apply inlineXML).value,
     scalaVersion := "2.9.1",
     projectID ~= (_ cross false),

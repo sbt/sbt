@@ -4,7 +4,7 @@ lazy val root = (project in file(".")).
   settings(inThisBuild(List(
       organization := "A",
       version := "1.0",
-      ivyPaths := baseDirectory( dir => new IvyPaths(dir, Some(dir / "ivy" / "cache")) ).value,
+      ivyPaths := baseDirectory( dir => IvyPaths(dir, Some(dir / "ivy" / "cache")) ).value,
       externalResolvers := (baseDirectory map { base => Resolver.file("local", base / "ivy" / "local" asFile)(Resolver.ivyStylePatterns) :: Nil }).value
     )),
     mavenStyle,

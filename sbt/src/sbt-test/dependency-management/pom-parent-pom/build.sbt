@@ -3,7 +3,7 @@ val checkIvyXml = taskKey[Unit]("Checks the ivy.xml transform was correct")
 lazy val root = (project in file(".")).
   settings(
     name := "test-parent-pom",
-    ivyPaths := new IvyPaths( (baseDirectory in ThisBuild).value, Some((target in LocalRootProject).value / "ivy-cache")),
+    ivyPaths := IvyPaths( (baseDirectory in ThisBuild).value, Some((target in LocalRootProject).value / "ivy-cache")),
     resolvers += MavenCache("Maven2 Local Test", baseDirectory.value / "local-repo"),
     libraryDependencies += "com.example" % "example-child" % "1.0-SNAPSHOT",
     libraryDependencies += "org.apache.geronimo.specs" % "geronimo-jta_1.1_spec" % "1.1.1",
