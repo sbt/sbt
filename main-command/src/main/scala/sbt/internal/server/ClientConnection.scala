@@ -7,6 +7,7 @@ package server
 
 import java.net.{ SocketTimeoutException, Socket }
 import java.util.concurrent.atomic.AtomicBoolean
+import sbt.protocol._
 
 abstract class ClientConnection(connection: Socket) {
 
@@ -59,7 +60,7 @@ abstract class ClientConnection(connection: Socket) {
     out.flush()
   }
 
-  def onCommand(command: Command): Unit
+  def onCommand(command: CommandMessage): Unit
 
   def shutdown(): Unit = {
     println("Shutting down client connection")

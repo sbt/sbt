@@ -8,15 +8,16 @@ package server
 import java.net.{ SocketTimeoutException, InetAddress, ServerSocket, SocketException }
 import java.util.concurrent.atomic.AtomicBoolean
 import sbt.util.Logger
+import sbt.protocol._
 import scala.collection.mutable
 
 private[sbt] sealed trait ServerInstance {
   def shutdown(): Unit
-  def publish(event: Event): Unit
+  def publish(event: EventMessage): Unit
 }
 
 private[sbt] object Server {
-  def start(host: String, port: Int, onIncommingCommand: Command => Unit, log: Logger): ServerInstance =
+  def start(host: String, port: Int, onIncommingCommand: CommandMessage => Unit, log: Logger): ServerInstance =
     new ServerInstance {
 
       val lock = new AnyRef {}
@@ -36,7 +37,7 @@ private[sbt] object Server {
               log.info(s"new client connected from: ${socket.getPort}")
 
               val connection = new ClientConnection(socket) {
-                override def onCommand(command: Command): Unit = {
+                override def onCommand(command: CommandMessage): Unit = {
                   onIncommingCommand(command)
                 }
               }
@@ -55,7 +56,7 @@ private[sbt] object Server {
       serverThread.start()
 
       /** Publish an event to all connected clients */
-      def publish(event: Event): Unit = {
+      def publish(event: EventMessage): Unit = {
         // TODO do not do this on the calling thread
         val bytes = Serialization.serialize(event)
         lock.synchronized {

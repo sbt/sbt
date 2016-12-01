@@ -2,6 +2,7 @@ package sbt
 package internal
 
 import sbt.internal.server._
+import sbt.protocol._
 import BasicKeys._
 
 private[sbt] final class NetworkChannel extends CommandChannel {
@@ -13,11 +14,10 @@ private[sbt] final class NetworkChannel extends CommandChannel {
         case Some(x) => x
         case None    => 5001
       }
-      def onCommand(command: internal.server.Command): Unit = {
+      def onCommand(command: CommandMessage): Unit =
         command match {
-          case Execution(cmd) => append(Exec(CommandSource.Network, cmd))
+          case x: ExecCommand => append(Exec(CommandSource.Network, x.commandLine))
         }
-      }
       server match {
         case Some(x) => // do nothing
         case _ =>
@@ -36,8 +36,8 @@ private[sbt] final class NetworkChannel extends CommandChannel {
   def publishStatus(cmdStatus: CommandStatus, lastSource: Option[CommandSource]): Unit = {
     server.foreach(server =>
       server.publish(
-        if (cmdStatus.canEnter) StatusEvent(Ready)
-        else StatusEvent(Processing("TODO current command", cmdStatus.state.remainingCommands))
+        if (cmdStatus.canEnter) StatusEvent("Ready", Vector())
+        else StatusEvent("Processing", cmdStatus.state.remainingCommands.toVector)
       ))
   }
 }
