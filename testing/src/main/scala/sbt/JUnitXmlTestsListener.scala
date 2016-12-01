@@ -62,7 +62,10 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
 
       val (errors, failures, tests) = (count(TStatus.Error), count(TStatus.Failure), events.size)
 
-      val result = <testsuite hostname={ hostname } name={ name } tests={ tests + "" } errors={ errors + "" } failures={ failures + "" } time={ (duration / 1000.0).toString }>
+      /** Junit XML reports don't differentiate between ignored, skipped or pending tests */
+      val ignoredSkippedPending = count(TStatus.Ignored) + count(TStatus.Skipped) + count(TStatus.Pending)
+
+      val result = <testsuite hostname={ hostname } name={ name } tests={ tests + "" } errors={ errors + "" } failures={ failures + "" } skipped={ ignoredSkippedPending + "" } time={ (duration / 1000.0).toString }>
                      { properties }
                      {
                        for (e <- events) yield <testcase classname={ name } name={
@@ -86,7 +89,7 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
                                                      case TStatus.Error => <error message={ "No Exception or message provided" }/>
                                                      case TStatus.Failure if (e.throwable.isDefined) => <failure message={ e.throwable.get.getMessage } type={ e.throwable.get.getClass.getName }>{ trace }</failure>
                                                      case TStatus.Failure => <failure message={ "No Exception or message provided" }/>
-                                                     case TStatus.Skipped => <skipped/>
+                                                     case TStatus.Ignored | TStatus.Skipped | TStatus.Pending => <skipped/>
                                                      case _ => {}
                                                    }
                                                  }
@@ -122,7 +125,7 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
    *  We map one group to one Testsuite, so for each Group
    *  we create an XML like this:
    *  <?xml version="1.0" encoding="UTF-8" ?>
-   *  <testsuite errors="x" failures="y" tests="z" hostname="example.com" name="eu.henkelmann.bla.SomeTest" time="0.23">
+   *  <testsuite skipped="w" errors="x" failures="y" tests="z" hostname="example.com" name="eu.henkelmann.bla.SomeTest" time="0.23">
    *       <properties>
    *           <property name="os.name" value="Linux" />
    *           ...
