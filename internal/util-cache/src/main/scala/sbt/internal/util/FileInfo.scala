@@ -16,6 +16,19 @@ sealed trait PlainFileInfo extends FileInfo { def exists: Boolean }
 
 sealed trait HashModifiedFileInfo extends HashFileInfo with ModifiedFileInfo
 
+object HashFileInfo {
+  implicit val format: JsonFormat[HashFileInfo] = FileInfo.hash.format
+}
+object ModifiedFileInfo {
+  implicit val format: JsonFormat[ModifiedFileInfo] = FileInfo.lastModified.format
+}
+object PlainFileInfo {
+  implicit val format: JsonFormat[PlainFileInfo] = FileInfo.exists.format
+}
+object HashModifiedFileInfo {
+  implicit val format: JsonFormat[HashModifiedFileInfo] = FileInfo.full.format
+}
+
 private final case class PlainFile(file: File, exists: Boolean) extends PlainFileInfo
 private final case class FileModified(file: File, lastModified: Long) extends ModifiedFileInfo
 private final case class FileHash(file: File, hash: List[Byte]) extends HashFileInfo
@@ -24,6 +37,9 @@ private final case class FileHashModified(file: File, hash: List[Byte], lastModi
 final case class FilesInfo[F <: FileInfo] private (files: Set[F])
 object FilesInfo {
   def empty[F <: FileInfo]: FilesInfo[F] = FilesInfo(Set.empty[F])
+
+  implicit def format[F <: FileInfo: JsonFormat]: JsonFormat[FilesInfo[F]] =
+    project(_.files, (fs: Set[F]) => FilesInfo(fs))
 }
 
 object FileInfo {
