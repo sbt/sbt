@@ -115,7 +115,7 @@ object BuiltinCommands {
   def DefaultCommands: Seq[Command] = Seq(ignore, help, completionsCommand, about, tasks, settingsCommand, loadProject,
     projects, project, reboot, read, history, set, sessionCommand, inspect, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
     Cross.crossRestoreSession, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, setLogLevel, plugin, plugins,
-    ifLast, multi, shell, BasicCommands.server, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, early, initialize, act) ++
+    ifLast, multi, shell, BasicCommands.server, BasicCommands.client, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, early, initialize, act) ++
     compatCommands
   def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
 

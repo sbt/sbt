@@ -58,7 +58,7 @@ private[sbt] object Server {
       /** Publish an event to all connected clients */
       def publish(event: EventMessage): Unit = {
         // TODO do not do this on the calling thread
-        val bytes = Serialization.serialize(event)
+        val bytes = Serialization.serializeEvent(event)
         lock.synchronized {
           val toDel: mutable.ListBuffer[ClientConnection] = mutable.ListBuffer.empty
           clients.foreach { client =>

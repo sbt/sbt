@@ -7,6 +7,7 @@ import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.inc.classpath.ClasspathUtilities.toLoader
 import sbt.internal.inc.ModuleUtilities
 import sbt.internal.{ Exec, CommandSource, CommandStatus }
+import sbt.internal.client.NetworkClient
 import DefaultParsers._
 import Function.tupled
 import Command.applyEffect
@@ -16,12 +17,11 @@ import BasicKeys._
 
 import java.io.File
 import sbt.io.IO
-import java.util.concurrent.atomic.AtomicBoolean
-
 import scala.util.control.NonFatal
 
 object BasicCommands {
-  lazy val allBasicCommands = Seq(nop, ignore, help, completionsCommand, multi, ifLast, append, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, reboot, call, early, exit, continuous, history, shell, server, read, alias) ++ compatCommands
+  lazy val allBasicCommands = Seq(nop, ignore, help, completionsCommand, multi, ifLast, append, setOnFailure, clearOnFailure,
+    stashOnFailure, popOnFailure, reboot, call, early, exit, continuous, history, shell, server, client, read, alias) ++ compatCommands
 
   def nop = Command.custom(s => success(() => s))
   def ignore = Command.command(FailureWall)(idFun)
@@ -203,6 +203,21 @@ object BasicCommands {
     if (line.trim.isEmpty) newState
     else newState.clearGlobalLog
   }
+
+  def client = Command.make(Client, Help.more(Client, ClientDetailed))(clientParser)
+  def clientParser(s0: State) =
+    {
+      val p = (token(Space) ~> repsep(StringBasic, token(Space))) | (token(EOF) map { case _ => Nil })
+      applyEffect(p)({ inputArg =>
+        val arguments = inputArg.toList ++
+          (s0.remainingCommands.toList match {
+            case "shell" :: Nil => Nil
+            case xs             => xs
+          })
+        NetworkClient.run(arguments)
+        "exit" :: s0.copy(remainingCommands = Nil)
+      })
+    }
 
   def read = Command.make(ReadCommand, Help.more(ReadCommand, ReadDetailed))(s => applyEffect(readParser(s))(doRead(s)))
   def readParser(s: State) =

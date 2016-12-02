@@ -3,20 +3,20 @@
  */
 package sbt
 package internal
-package server
+package client
 
 import java.net.{ SocketTimeoutException, Socket }
 import java.util.concurrent.atomic.AtomicBoolean
 import sbt.protocol._
 
-abstract class ClientConnection(connection: Socket) {
+abstract class ServerConnection(connection: Socket) {
 
   private val running = new AtomicBoolean(true)
   private val delimiter: Byte = '\n'.toByte
 
   private val out = connection.getOutputStream
 
-  val thread = new Thread(s"sbt-clientconnection-${connection.getPort}") {
+  val thread = new Thread(s"sbt-serverconnection-${connection.getPort}") {
     override def run(): Unit = {
       try {
         val readBuffer = new Array[Byte](4096)
@@ -34,9 +34,11 @@ abstract class ClientConnection(connection: Socket) {
               val chunk = buffer.take(delimPos)
               buffer = buffer.drop(delimPos + 1)
 
-              Serialization.deserializeCommand(chunk).fold(
-                errorDesc => println("Got invalid chunk from client: " + errorDesc),
-                onCommand
+              Serialization.deserializeEvent(chunk).fold({ errorDesc =>
+                val s = new String(chunk.toArray, "UTF-8")
+                println(s"Got invalid chunk from server: $s \n" + errorDesc)
+              },
+                onEvent
               )
             }
 
@@ -44,7 +46,6 @@ abstract class ClientConnection(connection: Socket) {
             case _: SocketTimeoutException => // its ok
           }
         }
-
       } finally {
         shutdown()
       }
@@ -52,18 +53,21 @@ abstract class ClientConnection(connection: Socket) {
   }
   thread.start()
 
-  def publish(event: Array[Byte]): Unit = {
-    out.write(event)
+  def publish(command: Array[Byte]): Unit = {
+    out.write(command)
     out.write(delimiter.toInt)
     out.flush()
   }
 
-  def onCommand(command: CommandMessage): Unit
+  def onEvent(event: EventMessage): Unit
+
+  def onShutdown: Unit
 
   def shutdown(): Unit = {
     println("Shutting down client connection")
     running.set(false)
     out.close()
+    onShutdown
   }
 
 }
