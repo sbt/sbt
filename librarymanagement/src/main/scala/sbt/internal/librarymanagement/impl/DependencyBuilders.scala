@@ -60,6 +60,6 @@ final class RepositoryName private[sbt] (name: String) {
   def at(location: String) =
     {
       nonEmpty(location, "Repository location")
-      new MavenRepository(name, location)
+      MavenRepository(name, location)
     }
 }

@@ -26,6 +26,11 @@ final class RawRepository(val resolver: DependencyResolver) extends Resolver(res
     }
 }
 
+abstract class MavenRepositoryFunctions {
+  def apply(name: String, root: String, localIfFile: Boolean = true): MavenRepository =
+    new MavenRepo(name, root, localIfFile)
+}
+
 abstract class PatternsFunctions {
   implicit def defaultPatterns: Patterns = Resolver.defaultPatterns
 
@@ -43,9 +48,9 @@ private[sbt] class FakeRepository(resolver: DependencyResolver) extends xsbti.Re
 
 trait ResolversSyntax {
   import Resolver._
-  val DefaultMavenRepository = new MavenRepository("public", centralRepositoryRoot(useSecureResolvers))
-  val JavaNet2Repository = new MavenRepository(JavaNet2RepositoryName, JavaNet2RepositoryRoot)
-  val JCenterRepository = new MavenRepository(JCenterRepositoryName, JCenterRepositoryRoot)
+  val DefaultMavenRepository = MavenRepository("public", centralRepositoryRoot(useSecureResolvers))
+  val JavaNet2Repository = MavenRepository(JavaNet2RepositoryName, JavaNet2RepositoryRoot)
+  val JCenterRepository = MavenRepository(JCenterRepositoryName, JCenterRepositoryRoot)
 }
 
 abstract class ResolverFunctions {
@@ -77,15 +82,15 @@ abstract class ResolverFunctions {
   private[sbt] val ScalaToolsSnapshotsName = "Sonatype OSS Snapshots"
   private[sbt] val ScalaToolsReleasesRoot = SonatypeRepositoryRoot + "/releases"
   private[sbt] val ScalaToolsSnapshotsRoot = SonatypeRepositoryRoot + "/snapshots"
-  private[sbt] val ScalaToolsReleases = new MavenRepository(ScalaToolsReleasesName, ScalaToolsReleasesRoot)
-  private[sbt] val ScalaToolsSnapshots = new MavenRepository(ScalaToolsSnapshotsName, ScalaToolsSnapshotsRoot)
+  private[sbt] val ScalaToolsReleases = MavenRepository(ScalaToolsReleasesName, ScalaToolsReleasesRoot)
+  private[sbt] val ScalaToolsSnapshots = MavenRepository(ScalaToolsSnapshotsName, ScalaToolsSnapshotsRoot)
 
-  def typesafeRepo(status: String) = new MavenRepository("typesafe-" + status, TypesafeRepositoryRoot + "/" + status)
+  def typesafeRepo(status: String) = MavenRepository("typesafe-" + status, TypesafeRepositoryRoot + "/" + status)
   def typesafeIvyRepo(status: String) = url("typesafe-ivy-" + status, new URL(TypesafeRepositoryRoot + "/ivy-" + status + "/"))(ivyStylePatterns)
   def sbtIvyRepo(status: String) = url(s"sbt-ivy-$status", new URL(s"$SbtRepositoryRoot/ivy-$status/"))(ivyStylePatterns)
   def sbtPluginRepo(status: String) = url("sbt-plugin-" + status, new URL(SbtRepositoryRoot + "/sbt-plugin-" + status + "/"))(ivyStylePatterns)
-  def sonatypeRepo(status: String) = new MavenRepository("sonatype-" + status, SonatypeRepositoryRoot + "/" + status)
-  def bintrayRepo(owner: String, repo: String) = new MavenRepository(s"bintray-$owner-$repo", s"https://dl.bintray.com/$owner/$repo/")
+  def sonatypeRepo(status: String) = MavenRepository("sonatype-" + status, SonatypeRepositoryRoot + "/" + status)
+  def bintrayRepo(owner: String, repo: String) = MavenRepository(s"bintray-$owner-$repo", s"https://dl.bintray.com/$owner/$repo/")
   def bintrayIvyRepo(owner: String, repo: String) = url(s"bintray-$owner-$repo", new URL(s"https://dl.bintray.com/$owner/$repo/"))(Resolver.ivyStylePatterns)
   def jcenterRepo = JCenterRepository
 
@@ -259,7 +264,7 @@ abstract class ResolverFunctions {
   }
   // TODO - should this just be the *exact* same as mavenLocal?  probably...
   def publishMavenLocal: MavenCache = new MavenCache("publish-m2-local", mavenLocalDir)
-  def mavenLocal: IMavenRepository = new MavenCache("Maven2 Local", mavenLocalDir)
+  def mavenLocal: MavenRepository = new MavenCache("Maven2 Local", mavenLocalDir)
   def defaultLocal = defaultUserFileRepository("local")
   def defaultShared = defaultUserFileRepository("shared")
   def defaultUserFileRepository(id: String) =
