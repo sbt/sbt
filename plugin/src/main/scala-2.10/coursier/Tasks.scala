@@ -435,17 +435,6 @@ object Tasks {
 
       val interProjectRepo = InterProjectRepository(interProjectDependencies)
 
-      val internalSbtScalaProvider = appConfiguration.value.provider.scalaProvider
-      val internalSbtScalaJarsRepo = SbtScalaJarsRepository(
-        so, // this seems plain wrong - this assumes that the scala org of the project is the same
-            // as the one that started SBT. This will scrap the scala org specific JARs by the ones
-            // that booted SBT, even if the latter come from the standard org.scala-lang org.
-            // But SBT itself does it this way, and not doing so may make two different versions
-            // of the scala JARs land in the classpath...
-        internalSbtScalaProvider.version(),
-        internalSbtScalaProvider.jars()
-      )
-
       val ivyHome = sys.props.getOrElse(
         "ivy.home",
         new File(sys.props("user.home")).toURI.getPath + ".ivy2"
@@ -521,7 +510,7 @@ object Tasks {
         }
       }
 
-      val internalRepositories = Seq(globalPluginsRepo, interProjectRepo, internalSbtScalaJarsRepo)
+      val internalRepositories = Seq(globalPluginsRepo, interProjectRepo)
 
       val repositories =
         internalRepositories ++
@@ -673,6 +662,18 @@ object Tasks {
     // let's update only one module at once, for a better output
     // Downloads are already parallel, no need to parallelize further anyway
     synchronized {
+
+      val so = scalaOrganization.value
+      val internalSbtScalaProvider = appConfiguration.value.provider.scalaProvider
+      val sbtBootJarOverrides = SbtBootJars(
+        so, // this seems plain wrong - this assumes that the scala org of the project is the same
+        // as the one that started SBT. This will scrap the scala org specific JARs by the ones
+        // that booted SBT, even if the latter come from the standard org.scala-lang org.
+        // But SBT itself does it this way, and not doing so may make two different versions
+        // of the scala JARs land in the classpath...
+        internalSbtScalaProvider.version(),
+        internalSbtScalaProvider.jars()
+      )
 
       lazy val cm = coursierSbtClassifiersModule.value
 
@@ -862,10 +863,22 @@ object Tasks {
             artifact
         }.toSet
 
-        def artifactFileOpt(artifact: Artifact) = {
+        def artifactFileOpt(module: Module, version: String, artifact: Artifact) = {
+
           val artifact0 = artifact
             .copy(attributes = Attributes()) // temporary hack :-(
-          val res = artifactFiles.get(artifact0)
+
+          // Under some conditions, SBT puts the scala JARs of its own classpath
+          // in the application classpath. Ensuring we return SBT's jars rather than
+          // JARs from the coursier cache, so that a same JAR doesn't land twice in the
+          // application classpath (once via SBT jars, once via coursier cache).
+          val fromBootJars =
+            if (artifact.classifier.isEmpty && artifact.`type` == "jar")
+              sbtBootJarOverrides.get((module, version))
+            else
+              None
+
+          val res = fromBootJars.orElse(artifactFiles.get(artifact0))
 
           if (res.isEmpty && !erroredArtifacts(artifact0))
             log.error(s"${artifact.url} not downloaded (should not happen)")

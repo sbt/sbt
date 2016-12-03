@@ -96,7 +96,7 @@ object ToSbt {
   def moduleReports(
     res: Resolution,
     classifiersOpt: Option[Seq[String]],
-    artifactFileOpt: Artifact => Option[File]
+    artifactFileOpt: (Module, String, Artifact) => Option[File]
   ) = {
     val depArtifacts =
       classifiersOpt match {
@@ -145,7 +145,7 @@ object ToSbt {
           dep,
           dependees,
           proj,
-          artifacts.map(a => a -> artifactFileOpt(a))
+          artifacts.map(a => a -> artifactFileOpt(proj.module, proj.version, a))
         )
     }
   }
@@ -155,7 +155,7 @@ object ToSbt {
     resolution: Resolution,
     configs: Map[String, Set[String]],
     classifiersOpt: Option[Seq[String]],
-    artifactFileOpt: Artifact => Option[File]
+    artifactFileOpt: (Module, String, Artifact) => Option[File]
   ): sbt.UpdateReport = {
 
     val configReports = configs.map {
