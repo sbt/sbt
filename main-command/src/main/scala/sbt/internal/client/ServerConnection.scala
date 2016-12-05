@@ -61,7 +61,7 @@ abstract class ServerConnection(connection: Socket) {
 
   def onEvent(event: EventMessage): Unit
 
-  def onShutdown: Unit
+  def onShutdown(): Unit
 
   def shutdown(): Unit = {
     println("Shutting down client connection")

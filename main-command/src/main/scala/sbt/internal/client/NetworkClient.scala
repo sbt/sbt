@@ -8,10 +8,10 @@ package client
 import java.net.{ URI, Socket, InetAddress, SocketException }
 import sbt.protocol._
 import sbt.internal.util.JLine
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 
 class NetworkClient(arguments: List[String]) {
-  private var status: String = "Ready"
+  private val status = new AtomicReference("Ready")
   private val lock: AnyRef = new AnyRef {}
   private val running = new AtomicBoolean(true)
   def usageError = sys.error("Expecting: sbt client 127.0.0.1:port")
@@ -41,12 +41,12 @@ class NetworkClient(arguments: List[String]) {
         event match {
           case e: StatusEvent =>
             lock.synchronized {
-              status = e.status
+              status.set(e.status)
             }
             println(event)
           case e => println(e.toString)
         }
-      override def onShutdown: Unit =
+      override def onShutdown(): Unit =
         {
           running.set(false)
         }
@@ -64,7 +64,7 @@ class NetworkClient(arguments: List[String]) {
             publishCommand(ExecCommand(s))
           case _ => //
         }
-        while (status != "Ready") {
+        while (status.get != "Ready") {
           Thread.sleep(100)
         }
       }
@@ -81,7 +81,7 @@ class NetworkClient(arguments: List[String]) {
         // toDel += client
       }
       lock.synchronized {
-        status = "Processing"
+        status.set("Processing")
       }
     }
 }
