@@ -14,9 +14,8 @@ abstract class CommandChannel {
     commandQueue.add(exec)
   def poll: Option[Exec] = Option(commandQueue.poll)
 
-  /** start listening for a command exec. */
-  def run(s: State): State
   def publishStatus(status: CommandStatus, lastSource: Option[CommandSource]): Unit
+  def publishBytes(bytes: Array[Byte]): Unit
   def shutdown(): Unit
 }
 

@@ -28,6 +28,8 @@ private[sbt] final class ConsoleChannel extends CommandChannel {
 
   def run(s: State): State = s
 
+  def publishBytes(bytes: Array[Byte]): Unit = ()
+
   def publishStatus(status: CommandStatus, lastSource: Option[CommandSource]): Unit =
     if (status.canEnter) {
       askUserThread match {

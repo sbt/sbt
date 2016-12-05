@@ -5,18 +5,16 @@ package sbt
 package internal
 package server
 
-import java.net.{ SocketTimeoutException, Socket }
+import java.net.{ Socket, SocketTimeoutException }
 import java.util.concurrent.atomic.AtomicBoolean
-import sbt.protocol._
+import sbt.protocol.{ Serialization, CommandMessage, ExecCommand }
 
-abstract class ClientConnection(connection: Socket) {
-
+final class NetworkChannel(name: String, connection: Socket) extends CommandChannel {
   private val running = new AtomicBoolean(true)
   private val delimiter: Byte = '\n'.toByte
-
   private val out = connection.getOutputStream
 
-  val thread = new Thread(s"sbt-clientconnection-${connection.getPort}") {
+  val thread = new Thread(s"sbt-networkchannel-${connection.getPort}") {
     override def run(): Unit = {
       try {
         val readBuffer = new Array[Byte](4096)
@@ -52,18 +50,25 @@ abstract class ClientConnection(connection: Socket) {
   }
   thread.start()
 
-  def publish(event: Array[Byte]): Unit = {
-    out.write(event)
-    out.write(delimiter.toInt)
-    out.flush()
-  }
+  def publishStatus(status: CommandStatus, lastSource: Option[CommandSource]): Unit =
+    {
+      ()
+    }
+  def publishBytes(event: Array[Byte]): Unit =
+    {
+      out.write(event)
+      out.write(delimiter.toInt)
+      out.flush()
+    }
 
-  def onCommand(command: CommandMessage): Unit
+  def onCommand(command: CommandMessage): Unit =
+    command match {
+      case x: ExecCommand => append(Exec(CommandSource.Network, x.commandLine))
+    }
 
   def shutdown(): Unit = {
     println("Shutting down client connection")
     running.set(false)
     out.close()
   }
-
 }

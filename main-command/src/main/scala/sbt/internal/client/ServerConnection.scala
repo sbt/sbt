@@ -34,7 +34,8 @@ abstract class ServerConnection(connection: Socket) {
               val chunk = buffer.take(delimPos)
               buffer = buffer.drop(delimPos + 1)
 
-              Serialization.deserializeEvent(chunk).fold({ errorDesc =>
+              Serialization.deserializeEvent(chunk).fold(
+                { errorDesc =>
                 val s = new String(chunk.toArray, "UTF-8")
                 println(s"Got invalid chunk from server: $s \n" + errorDesc)
               },
