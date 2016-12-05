@@ -5,7 +5,7 @@ val commonSettings = Seq(
   scalaVersion := "2.11.4",
   resolvers += Resolver.sonatypeRepo("snapshots"),
   resolvers += Resolver.sonatypeRepo("releases"),
-  addCompilerPlugin("org.scalamacros" % "paradise" % paradiseVersion cross CrossVersion.full),
+  addCompilerPlugin("org.scalamacros" % "paradise" % paradiseVersion),
   incOptions := incOptions.value.withNameHashing(true)
 )
 

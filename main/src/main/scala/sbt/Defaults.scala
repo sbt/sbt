@@ -2040,7 +2040,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
 
   /** Transforms `dependency` to be in the auto-compiler plugin configuration. */
   def compilerPlugin(dependency: ModuleID): ModuleID =
-    dependency.copy(configurations = Some("plugin->default(compile)"))
+    dependency.copy(configurations = Some("plugin->default(compile)")) cross CrossVersion.full
 
   /** Adds `dependency` to `libraryDependencies` in the auto-compiler plugin configuration. */
   def addCompilerPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =
