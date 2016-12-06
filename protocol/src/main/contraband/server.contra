@@ -17,6 +17,10 @@ type ExecCommand implements CommandMessage {
 interface EventMessage {
 }
 
+type ChannelAcceptedEvent implements EventMessage {
+  channelName: String!
+}
+
 ## Log event.
 type LogEvent implements EventMessage {
   level: String!

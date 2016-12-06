@@ -94,9 +94,9 @@ object StandardMain {
       import BasicCommandStrings.isEarlyCommand
       val userCommands = configuration.arguments.map(_.trim)
       val (earlyCommands, normalCommands) = (preCommands ++ userCommands).partition(isEarlyCommand)
-      val commands = earlyCommands ++ normalCommands
+      val commands = (earlyCommands ++ normalCommands).toList map { x => Exec(x, None) }
       val initAttrs = BuiltinCommands.initialAttributes
-      val s = State(configuration, initialDefinitions, Set.empty, None, commands, State.newHistory, initAttrs, initialGlobalLogging, State.Continue)
+      val s = State(configuration, initialDefinitions, Set.empty, None, commands, State.newHistory, initAttrs, initialGlobalLogging, None, State.Continue)
       s.initializeClassLoaderCache
     }
 }
@@ -129,7 +129,7 @@ object BuiltinCommands {
   // This parser schedules the default boot commands unless overridden by an alias
   def bootParser(s: State) =
     {
-      val orElse = () => DefaultBootCommands ::: s
+      val orElse = () => DefaultBootCommands.toList ::: s
       delegateToAlias(BootCommand, success(orElse))(s)
     }
 
@@ -242,7 +242,7 @@ object BuiltinCommands {
   }
 
   def initialize = Command.command(InitCommand) { s =>
-    /*"load-commands -base ~/.sbt/commands" :: */ readLines(readable(sbtRCs(s))) ::: s
+    /*"load-commands -base ~/.sbt/commands" :: */ readLines(readable(sbtRCs(s))).toList ::: s
   }
 
   def eval = Command.single(EvalCommand, Help.more(EvalCommand, evalDetailed)) { (s, arg) =>

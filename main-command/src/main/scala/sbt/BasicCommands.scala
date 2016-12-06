@@ -6,7 +6,7 @@ import sbt.internal.util.complete.{ Completion, Completions, DefaultParsers, His
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.inc.classpath.ClasspathUtilities.toLoader
 import sbt.internal.inc.ModuleUtilities
-import sbt.internal.{ Exec, ConsolePromptEvent, ConsoleUnpromptEvent }
+import sbt.internal.{ ConsolePromptEvent, ConsoleUnpromptEvent }
 import sbt.internal.client.NetworkClient
 import DefaultParsers._
 import Function.tupled
@@ -82,13 +82,13 @@ object BasicCommands {
     state
   }
 
-  def multiParser(s: State): Parser[Seq[String]] =
+  def multiParser(s: State): Parser[List[String]] =
     {
       val nonSemi = token(charClass(_ != ';').+, hide = const(true))
-      (token(';' ~> OptSpace) flatMap { _ => matched((s.combinedParser & nonSemi) | nonSemi) <~ token(OptSpace) } map (_.trim)).+
+      (token(';' ~> OptSpace) flatMap { _ => matched((s.combinedParser & nonSemi) | nonSemi) <~ token(OptSpace) } map (_.trim)).+ map { _.toList }
     }
 
-  def multiApplied(s: State) =
+  def multiApplied(s: State): Parser[() => State] =
     Command.applyEffect(multiParser(s))(_ ::: s)
 
   def multi = Command.custom(multiApplied, Help(Multi, MultiBrief, MultiDetailed))
@@ -101,11 +101,11 @@ object BasicCommands {
     if (s.remainingCommands.isEmpty) arg :: s else s
   }
   def append = Command(AppendCommand, Help.more(AppendCommand, AppendLastDetailed))(otherCommandParser) { (s, arg) =>
-    s.copy(remainingCommands = s.remainingCommands :+ arg)
+    s.copy(remainingCommands = s.remainingCommands :+ Exec(arg, s.source))
   }
 
   def setOnFailure = Command(OnFailure, Help.more(OnFailure, OnFailureDetailed))(otherCommandParser) { (s, arg) =>
-    s.copy(onFailure = Some(arg))
+    s.copy(onFailure = Some(Exec(arg, s.source)))
   }
   private[sbt] def compatCommands = Seq(
     Command.command(Compat.ClearOnFailure) { s =>
@@ -114,7 +114,7 @@ object BasicCommands {
     },
     Command.arb(s => token(Compat.OnFailure, hide = const(true)).flatMap(x => otherCommandParser(s))) { (s, arg) =>
       s.log.warn(Compat.OnFailureDeprecated)
-      s.copy(onFailure = Some(arg))
+      s.copy(onFailure = Some(Exec(arg, s.source)))
     },
     Command.command(Compat.FailureWall) { s =>
       s.log.warn(Compat.FailureWallDeprecated)
@@ -187,7 +187,7 @@ object BasicCommands {
     val line = reader.readLine(prompt)
     line match {
       case Some(line) =>
-        val newState = s.copy(onFailure = Some(Shell), remainingCommands = line +: Shell +: s.remainingCommands).setInteractive(true)
+        val newState = s.copy(onFailure = Some(Exec(Shell, None)), remainingCommands = Exec(line, s.source) +: Exec(Shell, None) +: s.remainingCommands).setInteractive(true)
         if (line.trim.isEmpty) newState else newState.clearGlobalLog
       case None => s.setInteractive(false)
     }
@@ -197,9 +197,11 @@ object BasicCommands {
     val exchange = State.exchange
     val s1 = exchange.run(s0)
     exchange.publishEvent(ConsolePromptEvent(s0))
-    val Exec(line, source) = exchange.blockUntilNextExec
+    val exec: Exec = exchange.blockUntilNextExec
+    val line = exec.commandLine
+    val source = exec.source
     println(s"server (line, source): ($line, $source)")
-    val newState = s1.copy(onFailure = Some(Server), remainingCommands = line +: Server +: s1.remainingCommands).setInteractive(true)
+    val newState = s1.copy(onFailure = Some(Exec(Server, None)), remainingCommands = Exec(line, source) +: Exec(Server, None) +: s1.remainingCommands).setInteractive(true)
     exchange.publishEvent(ConsoleUnpromptEvent(source))
     if (line.trim.isEmpty) newState
     else newState.clearGlobalLog
@@ -212,8 +214,8 @@ object BasicCommands {
       applyEffect(p)({ inputArg =>
         val arguments = inputArg.toList ++
           (s0.remainingCommands.toList match {
-            case "shell" :: Nil => Nil
-            case xs             => xs
+            case e :: Nil if e.commandLine == "shell" :: Nil => Nil
+            case xs                                          => xs map { _.commandLine }
           })
         NetworkClient.run(arguments)
         "exit" :: s0.copy(remainingCommands = Nil)
@@ -233,7 +235,7 @@ object BasicCommands {
         val port = math.abs(portAndSuccess)
         val previousSuccess = portAndSuccess >= 0
         readMessage(port, previousSuccess) match {
-          case Some(message) => (message :: (ReadCommand + " " + port) :: s).copy(onFailure = Some(ReadCommand + " " + (-port)))
+          case Some(message) => (message :: (ReadCommand + " " + port) :: s).copy(onFailure = Some(Exec(ReadCommand + " " + (-port), s.source)))
           case None =>
             System.err.println("Connection closed.")
             s.fail
@@ -241,7 +243,7 @@ object BasicCommands {
       case Right(from) =>
         val notFound = notReadable(from)
         if (notFound.isEmpty)
-          readLines(from) ::: s // this means that all commands from all files are loaded, parsed, and inserted before any are executed
+          readLines(from).toList ::: s // this means that all commands from all files are loaded, parsed, and inserted before any are executed
         else {
           s.log.error("Command file(s) not readable: \n\t" + notFound.mkString("\n\t"))
           s

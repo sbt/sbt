@@ -1,0 +1,11 @@
+package sbt
+@target(Scala)
+
+type Exec {
+  commandLine: String!
+  source: sbt.CommandSource
+}
+
+type CommandSource {
+  channelName: String!
+}

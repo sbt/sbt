@@ -89,16 +89,16 @@ object Command {
     }
 
   /** This is the main function State transfer function of the sbt command processing, called by MainLoop.next, */
-  def process(command: String, state: State): State =
+  def process(command: Exec, state: State): State =
     {
       val parser = combine(state.definedCommands)
-      val newState = parse(command, parser(state)) match {
+      val newState = parse(command.commandLine, parser(state)) match {
         case Right(s) => s() // apply command.  command side effects happen here
         case Left(errMsg) =>
           state.log.error(errMsg)
           state.fail
       }
-      State.exchange.publishEvent(ExecStatusEvent("Ready", newState.remainingCommands.toVector))
+      State.exchange.publishEvent(ExecStatusEvent("Ready", newState.remainingCommands.toVector map { _.commandLine }))
       newState
     }
   def invalidValue(label: String, allowed: Iterable[String])(value: String): String =

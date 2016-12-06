@@ -6,7 +6,7 @@ import BasicKeys._
 import java.io.File
 import sbt.protocol.EventMessage
 
-private[sbt] final class ConsoleChannel(name: String) extends CommandChannel {
+private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel {
   private var askUserThread: Option[Thread] = None
   def makeAskUserThread(s: State): Thread = new Thread("ask-user-thread") {
     val history = (s get historyPath) getOrElse Some(new File(s.baseDir, ".history"))

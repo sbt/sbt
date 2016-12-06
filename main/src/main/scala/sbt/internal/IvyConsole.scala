@@ -20,7 +20,7 @@ object IvyConsole {
   final val Name = "ivy-console"
   lazy val command =
     Command.command(Name) { state =>
-      val Dependencies(managed, repos, unmanaged) = parseDependencies(state.remainingCommands, state.log)
+      val Dependencies(managed, repos, unmanaged) = parseDependencies(state.remainingCommands map { _.commandLine }, state.log)
       val base = new File(CommandUtil.bootDirectory(state), Name)
       IO.createDirectory(base)
 
@@ -39,7 +39,7 @@ object IvyConsole {
       val append = Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, depSettings)
 
       val newStructure = Load.reapply(session.original ++ append, structure)
-      val newState = state.copy(remainingCommands = "console-quick" :: Nil)
+      val newState = state.copy(remainingCommands = Exec("console-quick", None) :: Nil)
       Project.setProject(session, newStructure, newState)
     }
 

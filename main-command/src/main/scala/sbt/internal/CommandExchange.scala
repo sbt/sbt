@@ -5,7 +5,7 @@ import java.net.SocketException
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 import sbt.internal.server._
-import sbt.protocol.{ EventMessage, Serialization }
+import sbt.protocol.{ EventMessage, Serialization, ChannelAcceptedEvent }
 import scala.collection.mutable.ListBuffer
 import scala.annotation.tailrec
 import BasicKeys.serverPort
@@ -74,6 +74,7 @@ private[sbt] final class CommandExchange {
           s.log.info(s"new client connected from: ${socket.getPort}")
           val channel = new NetworkChannel(newChannelName, socket)
           subscribe(channel)
+          channel.publishEvent(ChannelAcceptedEvent(channel.name))
         }
       server match {
         case Some(x) => // do nothing

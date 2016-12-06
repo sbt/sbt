@@ -11,7 +11,8 @@ import sbt.protocol._
 import sbt.internal.util.JLine
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 
-class NetworkClient(arguments: List[String]) {
+class NetworkClient(arguments: List[String]) { self =>
+  private val channelName = new AtomicReference("_")
   private val status = new AtomicReference("Ready")
   private val lock: AnyRef = new AnyRef {}
   private val running = new AtomicBoolean(true)
@@ -38,21 +39,24 @@ class NetworkClient(arguments: List[String]) {
     println(s"client on port $port")
     val socket = new Socket(InetAddress.getByName(host), port)
     new ServerConnection(socket) {
-      override def onEvent(event: EventMessage): Unit =
-        event match {
-          case e: ExecStatusEvent =>
-            lock.synchronized {
-              status.set(e.status)
-            }
-            println(event)
-          case e => println(e.toString)
-        }
+      override def onEvent(event: EventMessage): Unit = self.onEvent(event)
       override def onShutdown(): Unit =
         {
           running.set(false)
         }
     }
   }
+
+  def onEvent(event: EventMessage): Unit =
+    event match {
+      case e: ChannelAcceptedEvent =>
+        channelName.set(e.channelName)
+        println(event)
+      case e: ExecStatusEvent =>
+        status.set(e.status)
+        println(event)
+      case e => println(e.toString)
+    }
 
   def start(): Unit =
     {

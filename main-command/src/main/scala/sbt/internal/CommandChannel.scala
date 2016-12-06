@@ -18,11 +18,12 @@ abstract class CommandChannel {
   def publishEvent(event: EventMessage): Unit
   def publishBytes(bytes: Array[Byte]): Unit
   def shutdown(): Unit
+  def name: String
 }
 
-case class Exec(commandLine: String, source: Option[CommandSource])
+// case class Exec(commandLine: String, source: Option[CommandSource])
 
-case class CommandSource(channelName: String)
+// case class CommandSource(channelName: String)
 
 /*
  * This is a data passed specifically for local prompting console.

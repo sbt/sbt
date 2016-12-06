@@ -137,7 +137,7 @@ object Cross {
           Seq(s"$SwitchCommand $verbose $version", projects.map(_ + "/" + aggCommand).mkString("all ", " ", ""))
       }
 
-      allCommands ::: CrossRestoreSessionCommand :: captureCurrentSession(state, x)
+      allCommands.toList ::: CrossRestoreSessionCommand :: captureCurrentSession(state, x)
     }
   }
 
@@ -169,7 +169,7 @@ object Cross {
   private def switchCommandImpl(state: State, args: Switch): State = {
     val switchedState = switchScalaVersion(args, state)
 
-    args.command.toSeq ::: switchedState
+    args.command.toList ::: switchedState
   }
 
   private def switchScalaVersion(switch: Switch, state: State): State = {

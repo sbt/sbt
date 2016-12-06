@@ -9,7 +9,7 @@ import java.net.{ Socket, SocketTimeoutException }
 import java.util.concurrent.atomic.AtomicBoolean
 import sbt.protocol.{ Serialization, CommandMessage, ExecCommand, EventMessage }
 
-final class NetworkChannel(name: String, connection: Socket) extends CommandChannel {
+final class NetworkChannel(val name: String, connection: Socket) extends CommandChannel {
   private val running = new AtomicBoolean(true)
   private val delimiter: Byte = '\n'.toByte
   private val out = connection.getOutputStream
@@ -50,7 +50,11 @@ final class NetworkChannel(name: String, connection: Socket) extends CommandChan
   }
   thread.start()
 
-  def publishEvent(event: EventMessage): Unit = ()
+  def publishEvent(event: EventMessage): Unit =
+    {
+      val bytes = Serialization.serializeEvent(event)
+      publishBytes(bytes)
+    }
 
   def publishBytes(event: Array[Byte]): Unit =
     {
