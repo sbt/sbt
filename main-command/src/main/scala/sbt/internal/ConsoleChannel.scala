@@ -4,11 +4,11 @@ package internal
 import sbt.internal.util._
 import BasicKeys._
 import java.io.File
+import sbt.protocol.EventMessage
 
-private[sbt] final class ConsoleChannel extends CommandChannel {
+private[sbt] final class ConsoleChannel(name: String) extends CommandChannel {
   private var askUserThread: Option[Thread] = None
-  def makeAskUserThread(status: CommandStatus): Thread = new Thread("ask-user-thread") {
-    val s = status.state
+  def makeAskUserThread(s: State): Thread = new Thread("ask-user-thread") {
     val history = (s get historyPath) getOrElse Some(new File(s.baseDir, ".history"))
     val prompt = (s get shellPrompt) match {
       case Some(pf) => pf(s)
@@ -19,8 +19,8 @@ private[sbt] final class ConsoleChannel extends CommandChannel {
       // This internally handles thread interruption and returns Some("")
       val line = reader.readLine(prompt)
       line match {
-        case Some(cmd) => append(Exec(CommandSource.Human, cmd))
-        case None      => append(Exec(CommandSource.Human, "exit"))
+        case Some(cmd) => append(Exec(cmd, Some(CommandSource(name))))
+        case None      => append(Exec("exit", Some(CommandSource(name))))
       }
       askUserThread = None
     }
@@ -30,25 +30,27 @@ private[sbt] final class ConsoleChannel extends CommandChannel {
 
   def publishBytes(bytes: Array[Byte]): Unit = ()
 
-  def publishStatus(status: CommandStatus, lastSource: Option[CommandSource]): Unit =
-    if (status.canEnter) {
-      askUserThread match {
-        case Some(x) => //
-        case _ =>
-          val x = makeAskUserThread(status)
-          askUserThread = Some(x)
-          x.start
-      }
-    } else {
-      lastSource match {
-        case Some(src) if src != CommandSource.Human =>
-          askUserThread match {
-            case Some(x) =>
-              shutdown()
-            case _ =>
-          }
-        case _ =>
-      }
+  def publishEvent(event: EventMessage): Unit =
+    event match {
+      case e: ConsolePromptEvent =>
+        askUserThread match {
+          case Some(x) => //
+          case _ =>
+            val x = makeAskUserThread(e.state)
+            askUserThread = Some(x)
+            x.start
+        }
+      case e: ConsoleUnpromptEvent =>
+        e.lastSource match {
+          case Some(src) if src.channelName != name =>
+            askUserThread match {
+              case Some(x) =>
+                shutdown()
+              case _ =>
+            }
+          case _ =>
+        }
+      case _ => //
     }
 
   def shutdown(): Unit =

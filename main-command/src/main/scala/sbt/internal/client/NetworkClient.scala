@@ -6,6 +6,7 @@ package internal
 package client
 
 import java.net.{ URI, Socket, InetAddress, SocketException }
+import java.util.UUID
 import sbt.protocol._
 import sbt.internal.util.JLine
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
@@ -39,7 +40,7 @@ class NetworkClient(arguments: List[String]) {
     new ServerConnection(socket) {
       override def onEvent(event: EventMessage): Unit =
         event match {
-          case e: StatusEvent =>
+          case e: ExecStatusEvent =>
             lock.synchronized {
               status.set(e.status)
             }
@@ -61,11 +62,12 @@ class NetworkClient(arguments: List[String]) {
           case Some("exit") =>
             running.set(false)
           case Some(s) =>
-            publishCommand(ExecCommand(s))
+            val execId = UUID.randomUUID.toString
+            publishCommand(ExecCommand(s, execId))
+            while (status.get != "Ready") {
+              Thread.sleep(100)
+            }
           case _ => //
-        }
-        while (status.get != "Ready") {
-          Thread.sleep(100)
         }
       }
     }

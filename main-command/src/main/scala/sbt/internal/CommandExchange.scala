@@ -5,11 +5,10 @@ import java.net.SocketException
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 import sbt.internal.server._
-import sbt.protocol.Serialization
+import sbt.protocol.{ EventMessage, Serialization }
 import scala.collection.mutable.ListBuffer
 import scala.annotation.tailrec
 import BasicKeys.serverPort
-import sbt.protocol.StatusEvent
 import java.net.Socket
 
 /**
@@ -21,6 +20,7 @@ import java.net.Socket
 private[sbt] final class CommandExchange {
   private val lock = new AnyRef {}
   private var server: Option[ServerInstance] = None
+  private var consoleChannel: Option[ConsoleChannel] = None
   private val commandQueue: ConcurrentLinkedQueue[Exec] = new ConcurrentLinkedQueue()
   private val channelBuffer: ListBuffer[CommandChannel] = new ListBuffer()
   private val nextChannelId: AtomicInteger = new AtomicInteger(0)
@@ -29,8 +29,6 @@ private[sbt] final class CommandExchange {
     lock.synchronized {
       channelBuffer.append(c)
     }
-
-  subscribe(new ConsoleChannel())
 
   // periodically move all messages from all the channels
   @tailrec def blockUntilNextExec: Exec =
@@ -51,7 +49,17 @@ private[sbt] final class CommandExchange {
       }
     }
 
-  def run(s: State): State = runServer(s)
+  def run(s: State): State =
+    {
+      consoleChannel match {
+        case Some(x) => // do nothing
+        case _ =>
+          val x = new ConsoleChannel("console0")
+          consoleChannel = Some(x)
+          subscribe(x)
+      }
+      runServer(s)
+    }
 
   private def newChannelName: String = s"channel-${nextChannelId.incrementAndGet()}"
 
@@ -85,27 +93,33 @@ private[sbt] final class CommandExchange {
       server = None
     }
 
-  // fanout publishStatus to all channels
-  def publishStatus(status: CommandStatus, lastSource: Option[CommandSource]): Unit =
+  // fanout publisEvent
+  def publishEvent(event: EventMessage): Unit =
     {
       val toDel: ListBuffer[CommandChannel] = ListBuffer.empty
-
-      val event =
-        if (status.canEnter) StatusEvent("Ready", Vector())
-        else StatusEvent("Processing", status.state.remainingCommands.toVector)
-
-      // TODO do not do this on the calling thread
-      val bytes = Serialization.serializeEvent(event)
-      channels.foreach {
-        case c: ConsoleChannel =>
-          c.publishStatus(status, lastSource)
-        case c: NetworkChannel =>
-          try {
-            c.publishBytes(bytes)
-          } catch {
-            case e: SocketException =>
-              // log.debug(e.getMessage)
-              toDel += c
+      event match {
+        // Special treatment for ConsolePromptEvent since it's hand coded without codec.
+        case e: ConsolePromptEvent =>
+          channels collect {
+            case c: ConsoleChannel => c.publishEvent(e)
+          }
+        case e: ConsoleUnpromptEvent =>
+          channels collect {
+            case c: ConsoleChannel => c.publishEvent(e)
+          }
+        case _ =>
+          // TODO do not do this on the calling thread
+          val bytes = Serialization.serializeEvent(event)
+          channels.foreach {
+            case c: ConsoleChannel =>
+              c.publishEvent(event)
+            case c: NetworkChannel =>
+              try {
+                c.publishBytes(bytes)
+              } catch {
+                case e: SocketException =>
+                  toDel += c
+              }
           }
       }
       toDel.toList match {

@@ -2,6 +2,7 @@ package sbt
 package internal
 
 import java.util.concurrent.ConcurrentLinkedQueue
+import sbt.protocol.EventMessage
 
 /**
  * A command channel represents an IO device such as network socket or human
@@ -14,22 +15,21 @@ abstract class CommandChannel {
     commandQueue.add(exec)
   def poll: Option[Exec] = Option(commandQueue.poll)
 
-  def publishStatus(status: CommandStatus, lastSource: Option[CommandSource]): Unit
+  def publishEvent(event: EventMessage): Unit
   def publishBytes(bytes: Array[Byte]): Unit
   def shutdown(): Unit
 }
 
-case class Exec(source: CommandSource, commandLine: String)
+case class Exec(commandLine: String, source: Option[CommandSource])
 
-sealed trait CommandSource
-object CommandSource {
-  case object Human extends CommandSource
-  case object Network extends CommandSource
-}
+case class CommandSource(channelName: String)
 
-/**
- * This is a data that is passed on to the channels.
- * The canEnter paramter indicates that the console devise or UI
- * should stop listening.
+/*
+ * This is a data passed specifically for local prompting console.
  */
-case class CommandStatus(state: State, canEnter: Boolean)
+case class ConsolePromptEvent(state: State) extends EventMessage
+
+/*
+ * This is a data passed specifically for unprompting local console.
+ */
+case class ConsoleUnpromptEvent(lastSource: Option[CommandSource]) extends EventMessage

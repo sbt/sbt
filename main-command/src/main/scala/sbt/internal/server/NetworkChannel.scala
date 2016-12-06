@@ -7,7 +7,7 @@ package server
 
 import java.net.{ Socket, SocketTimeoutException }
 import java.util.concurrent.atomic.AtomicBoolean
-import sbt.protocol.{ Serialization, CommandMessage, ExecCommand }
+import sbt.protocol.{ Serialization, CommandMessage, ExecCommand, EventMessage }
 
 final class NetworkChannel(name: String, connection: Socket) extends CommandChannel {
   private val running = new AtomicBoolean(true)
@@ -50,10 +50,8 @@ final class NetworkChannel(name: String, connection: Socket) extends CommandChan
   }
   thread.start()
 
-  def publishStatus(status: CommandStatus, lastSource: Option[CommandSource]): Unit =
-    {
-      ()
-    }
+  def publishEvent(event: EventMessage): Unit = ()
+
   def publishBytes(event: Array[Byte]): Unit =
     {
       out.write(event)
@@ -63,7 +61,7 @@ final class NetworkChannel(name: String, connection: Socket) extends CommandChan
 
   def onCommand(command: CommandMessage): Unit =
     command match {
-      case x: ExecCommand => append(Exec(CommandSource.Network, x.commandLine))
+      case x: ExecCommand => append(Exec(x.commandLine, Some(CommandSource(name))))
     }
 
   def shutdown(): Unit = {

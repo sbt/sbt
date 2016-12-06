@@ -10,6 +10,7 @@ interface CommandMessage {
 ## Command to execute sbt command.
 type ExecCommand implements CommandMessage {
   commandLine: String!
+  execId: String @since("0.0.1")
 }
 
 ## Message for events.
@@ -23,7 +24,7 @@ type LogEvent implements EventMessage {
 }
 
 ## Status event.
-type StatusEvent implements EventMessage {
+type ExecStatusEvent implements EventMessage {
   status: String!
   commandQueue: [String]
 }

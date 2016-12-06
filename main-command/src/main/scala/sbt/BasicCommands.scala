@@ -6,7 +6,7 @@ import sbt.internal.util.complete.{ Completion, Completions, DefaultParsers, His
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.inc.classpath.ClasspathUtilities.toLoader
 import sbt.internal.inc.ModuleUtilities
-import sbt.internal.{ Exec, CommandSource, CommandStatus }
+import sbt.internal.{ Exec, ConsolePromptEvent, ConsoleUnpromptEvent }
 import sbt.internal.client.NetworkClient
 import DefaultParsers._
 import Function.tupled
@@ -196,10 +196,11 @@ object BasicCommands {
   def server = Command.command(Server, Help.more(Server, ServerDetailed)) { s0 =>
     val exchange = State.exchange
     val s1 = exchange.run(s0)
-    exchange.publishStatus(CommandStatus(s0, true), None)
-    val Exec(source, line) = exchange.blockUntilNextExec
+    exchange.publishEvent(ConsolePromptEvent(s0))
+    val Exec(line, source) = exchange.blockUntilNextExec
+    println(s"server (line, source): ($line, $source)")
     val newState = s1.copy(onFailure = Some(Server), remainingCommands = line +: Server +: s1.remainingCommands).setInteractive(true)
-    exchange.publishStatus(CommandStatus(newState, false), Some(source))
+    exchange.publishEvent(ConsoleUnpromptEvent(source))
     if (line.trim.isEmpty) newState
     else newState.clearGlobalLog
   }
