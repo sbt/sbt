@@ -420,7 +420,7 @@
           ]
         },
         {
-          "name": "IMavenRepository",
+          "name": "MavenRepository",
           "namespace": "sbt.librarymanagement",
           "target": "Scala",
           "type": "interface",
@@ -431,10 +431,11 @@
           ],
           "types": [
             {
-              "name": "MavenRepository",
+              "name": "MavenRepo",
               "namespace": "sbt.librarymanagement",
               "target": "Scala",
               "type": "record",
+              "extra": "def isCache: Boolean = false",
               "toString": "s\"$name: $root\""
             },
             {
@@ -449,11 +450,16 @@
               "fields": [
                 { "name": "rootFile", "type": "java.io.File" }
               ],
-              "extra": "def this(name: String, rootFile: java.io.File) = this(name, rootFile.toURI.toURL.toString, true, rootFile)",
+              "extra": [
+                "def this(name: String, rootFile: java.io.File) = this(name, rootFile.toURI.toURL.toString, true, rootFile)",
+                "def isCache: Boolean = true"
+              ],
               "toString": "s\"cache:$name: ${rootFile.getAbsolutePath}\"",
               "extraCompanion": "def apply(name: String, rootFile: java.io.File): MavenCache = new MavenCache(name, rootFile)"
             }
-          ]
+          ],
+          "extra": "def isCache: Boolean",
+          "parentsCompanion": "sbt.librarymanagement.MavenRepositoryFunctions"
         },
         {
           "name": "PatternsBasedRepository",
