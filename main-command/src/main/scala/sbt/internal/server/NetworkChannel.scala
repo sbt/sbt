@@ -65,7 +65,7 @@ final class NetworkChannel(val name: String, connection: Socket) extends Command
 
   def onCommand(command: CommandMessage): Unit =
     command match {
-      case x: ExecCommand => append(Exec(x.commandLine, Some(CommandSource(name))))
+      case x: ExecCommand => append(Exec(x.commandLine, x.execId orElse Some(Exec.newExecId), Some(CommandSource(name))))
     }
 
   def shutdown(): Unit = {

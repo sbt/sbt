@@ -30,6 +30,8 @@ type LogEvent implements EventMessage {
 ## Status event.
 type ExecStatusEvent implements EventMessage {
   status: String!
+  channelName: String
+  execId: String
   commandQueue: [String]
 }
 

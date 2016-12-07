@@ -19,8 +19,8 @@ private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel
       // This internally handles thread interruption and returns Some("")
       val line = reader.readLine(prompt)
       line match {
-        case Some(cmd) => append(Exec(cmd, Some(CommandSource(name))))
-        case None      => append(Exec("exit", Some(CommandSource(name))))
+        case Some(cmd) => append(Exec(cmd, Some(Exec.newExecId), Some(CommandSource(name))))
+        case None      => append(Exec("exit", Some(Exec.newExecId), Some(CommandSource(name))))
       }
       askUserThread = None
     }

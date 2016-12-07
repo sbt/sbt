@@ -7,15 +7,18 @@ package client
 
 import java.net.{ URI, Socket, InetAddress, SocketException }
 import java.util.UUID
+import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import sbt.protocol._
 import sbt.internal.util.JLine
-import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
+import scala.collection.mutable.ListBuffer
 
 class NetworkClient(arguments: List[String]) { self =>
   private val channelName = new AtomicReference("_")
   private val status = new AtomicReference("Ready")
   private val lock: AnyRef = new AnyRef {}
   private val running = new AtomicBoolean(true)
+  private val pendingExecIds = ListBuffer.empty[String]
+
   def usageError = sys.error("Expecting: sbt client 127.0.0.1:port")
   val connection = init()
   start()
@@ -54,7 +57,14 @@ class NetworkClient(arguments: List[String]) { self =>
         println(event)
       case e: ExecStatusEvent =>
         status.set(e.status)
-        println(event)
+        // println(event)
+        e.execId foreach { execId =>
+          if (e.status == "Done" && (pendingExecIds contains execId)) {
+            lock.synchronized {
+              pendingExecIds -= execId
+            }
+          }
+        }
       case e => println(e.toString)
     }
 
@@ -68,7 +78,10 @@ class NetworkClient(arguments: List[String]) { self =>
           case Some(s) =>
             val execId = UUID.randomUUID.toString
             publishCommand(ExecCommand(s, execId))
-            while (status.get != "Ready") {
+            lock.synchronized {
+              pendingExecIds += execId
+            }
+            while (pendingExecIds contains execId) {
               Thread.sleep(100)
             }
           case _ => //

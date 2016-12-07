@@ -3,7 +3,10 @@ package sbt
 
 type Exec {
   commandLine: String!
+  execId: String @since("0.0.1")
   source: sbt.CommandSource
+
+  #xcompanion def newExecId: String = java.util.UUID.randomUUID.toString
 }
 
 type CommandSource {

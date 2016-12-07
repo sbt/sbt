@@ -198,12 +198,9 @@ object BasicCommands {
     val s1 = exchange.run(s0)
     exchange.publishEvent(ConsolePromptEvent(s0))
     val exec: Exec = exchange.blockUntilNextExec
-    val line = exec.commandLine
-    val source = exec.source
-    println(s"server (line, source): ($line, $source)")
-    val newState = s1.copy(onFailure = Some(Exec(Server, None)), remainingCommands = Exec(line, source) +: Exec(Server, None) +: s1.remainingCommands).setInteractive(true)
-    exchange.publishEvent(ConsoleUnpromptEvent(source))
-    if (line.trim.isEmpty) newState
+    val newState = s1.copy(onFailure = Some(Exec(Server, None)), remainingCommands = exec +: Exec(Server, None) +: s1.remainingCommands).setInteractive(true)
+    exchange.publishEvent(ConsoleUnpromptEvent(exec.source))
+    if (exec.commandLine.trim.isEmpty) newState
     else newState.clearGlobalLog
   }
 
