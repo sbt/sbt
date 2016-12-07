@@ -52,7 +52,7 @@ object FakeState {
     try {
       System.setOut(new PrintStream(outBuffer, true))
       val state = FakeState(enabledPlugins: _*)
-      Command.process(input, state)
+      Command.process(Exec(input, None), state)
       new String(outBuffer.toByteArray)
     } finally {
       System.setOut(previousOut)
@@ -106,10 +106,11 @@ object FakeState {
       Seq(BuiltinCommands.plugin),
       Set.empty,
       None,
-      Seq.empty,
+      List(),
       State.newHistory,
       attributes,
       GlobalLogging.initial(MainLogging.globalDefault(ConsoleOut.systemOut), File.createTempFile("sbt", ".log"), ConsoleOut.systemOut),
+      None,
       State.Continue
     )
 
