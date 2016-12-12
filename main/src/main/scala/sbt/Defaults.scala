@@ -265,7 +265,8 @@ object Defaults extends BuildCommon {
 
   def compileBase = inTask(console)(compilersSetting :: Nil) ++ compileBaseGlobal ++ Seq(
     incOptions := incOptions.value.withClassfileManagerType(
-      Maybe.just(new TransactionalManagerType(crossTarget.value / "classes.bak", sbt.util.Logger.Null))),
+      Maybe.just(new TransactionalManagerType(crossTarget.value / "classes.bak", sbt.util.Logger.Null))
+    ),
     scalaInstance := scalaInstanceTask.value,
     crossVersion := (if (crossPaths.value) CrossVersion.binary else CrossVersion.Disabled),
     crossTarget := makeCrossTarget(target.value, scalaBinaryVersion.value, sbtBinaryVersion.value, sbtPlugin.value, crossPaths.value),
@@ -678,7 +679,8 @@ object Defaults extends BuildCommon {
       }
     )) ++
       inTask(packageSrc)(Seq(
-        packageOptions := Package.addSpecManifestAttributes(name.value, version.value, organizationName.value) +: packageOptions.value)) ++
+        packageOptions := Package.addSpecManifestAttributes(name.value, version.value, organizationName.value) +: packageOptions.value
+      )) ++
       packageTaskSettings(packageBin, packageBinMappings) ++
       packageTaskSettings(packageSrc, packageSrcMappings) ++
       packageTaskSettings(packageDoc, packageDocMappings) ++
@@ -947,7 +949,8 @@ object Defaults extends BuildCommon {
       (compilerReporter in compile).value,
       o2m(None),
       // TODO - task / setting for extra,
-      Array.empty)
+      Array.empty
+    )
   }
   def compileInputsSettings: Seq[Setting[_]] = {
     Seq(
@@ -959,13 +962,15 @@ object Defaults extends BuildCommon {
         javacOptions.value.toArray,
         maxErrors.value,
         f1(Compiler.foldMappers(sourcePositionMappers.value)),
-        compileOrder.value),
+        compileOrder.value
+      ),
       compilerReporter := new LoggerReporter(maxErrors.value, streams.value.log, Compiler.foldMappers(sourcePositionMappers.value)),
       compileInputs := new Inputs(
         compilers.value,
         compileOptions.value,
         compileIncSetup.value,
-        previousCompile.value)
+        previousCompile.value
+      )
     )
   }
   def compileAnalysisSettings: Seq[Setting[_]] = Seq(
@@ -1484,8 +1489,8 @@ object Classpaths {
     import UpdateLogging.{ Full, DownloadOnly, Default }
     val uc = (logLevel in update).?.value orElse st.get(logLevel.key) match {
       case Some(Level.Debug) if uc0.logging == Default => uc0.copy(logging = Full)
-      case Some(x) if uc0.logging == Default => uc0.copy(logging = DownloadOnly)
-      case _ => uc0
+      case Some(x) if uc0.logging == Default           => uc0.copy(logging = DownloadOnly)
+      case _                                           => uc0
     }
     val ewo =
       if (executionRoots.value exists { _.key == evicted.key }) EvictionWarningOptions.empty
@@ -1543,7 +1548,7 @@ object Classpaths {
         Tracked.inputChanged(cacheFile / "inputs") { (inChanged: Boolean, in: In) =>
           val outCache = Tracked.lastOutput[In, UpdateReport](outCacheFile) {
             case (_, Some(out)) if uptodate(inChanged, out) => out
-            case _ => work(in)
+            case _                                          => work(in)
           }
           try {
             outCache(in)

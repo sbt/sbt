@@ -77,7 +77,8 @@ object TestResultLogger {
         printSummary: TestResultLogger = Defaults.printSummary,
         printStandard: TestResultLogger = Defaults.printStandard,
         printFailures: TestResultLogger = Defaults.printFailures,
-        printNoTests: TestResultLogger = Defaults.printNoTests) extends TestResultLogger {
+        printNoTests: TestResultLogger = Defaults.printNoTests
+    ) extends TestResultLogger {
 
       override def run(log: Logger, results: Output, taskName: String): Unit = {
         def run(r: TestResultLogger): Unit = r.run(log, results, taskName)
@@ -154,7 +155,6 @@ object TestResultLogger {
     })
 
     val printNoTests = TestResultLogger((log, results, taskName) =>
-      log.info("No tests to run for " + taskName)
-    )
+      log.info("No tests to run for " + taskName))
   }
 }

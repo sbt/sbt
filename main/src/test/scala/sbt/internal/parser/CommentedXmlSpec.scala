@@ -13,7 +13,8 @@ class CommentedXmlSpec extends CheckIfParsedSpec {
          |
          |val tra = "</scm>"
          |
-       """.stripMargin, "Xml in string", false, true),
+       """.stripMargin, "Xml in string", false, true
+    ),
     ("""
         |val scmpom = taskKey[xml.NodeBuffer]("Node buffer")
         |

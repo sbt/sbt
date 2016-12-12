@@ -9,13 +9,18 @@ object Formatting {
 
   val scalariformCheck = taskKey[Unit]("Checks that the existing code is formatted, via git diff")
 
-  lazy val settings: Seq[Setting[_]] = Seq() ++ scalariformSettings ++ prefs
   lazy val prefs: Seq[Setting[_]] = {
     import scalariform.formatter.preferences._
     Seq(
-      scalariformPreferences ~= (_.setPreference(AlignSingleLineCaseStatements, true))
+      scalariformPreferences ~= (_
+        .setPreference(AlignSingleLineCaseStatements, true)
+        .setPreference(AlignSingleLineCaseStatements.MaxArrowIndent, 100)
+        .setPreference(DanglingCloseParenthesis, Force)
+      )
     )
   }
+
+  lazy val settings: Seq[Setting[_]] = Seq() ++ scalariformSettings ++ prefs
   lazy val sbtFilesSettings: Seq[Setting[_]] = Seq() ++ scalariformSettings ++ prefs ++
     inConfig(BuildConfig)(configScalariformSettings) ++
     inConfig(BuildSbtConfig)(configScalariformSettings) ++

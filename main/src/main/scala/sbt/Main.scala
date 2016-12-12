@@ -49,28 +49,31 @@ final class xMain extends xsbti.AppMain {
       import BasicCommandStrings.runEarly
       import BuiltinCommands.defaults
       import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
-      runManaged(initialState(configuration,
+      runManaged(initialState(
+        configuration,
         Seq(defaults, early),
-        runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil)
-      )
+        runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
+      ))
     }
 }
 final class ScriptMain extends xsbti.AppMain {
   def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
     {
       import BasicCommandStrings.runEarly
-      runManaged(initialState(configuration,
+      runManaged(initialState(
+        configuration,
         BuiltinCommands.ScriptCommands,
-        runEarly(Level.Error.toString) :: Script.Name :: Nil)
-      )
+        runEarly(Level.Error.toString) :: Script.Name :: Nil
+      ))
     }
 }
 final class ConsoleMain extends xsbti.AppMain {
   def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
-    runManaged(initialState(configuration,
+    runManaged(initialState(
+      configuration,
       BuiltinCommands.ConsoleCommands,
-      IvyConsole.Name :: Nil)
-    )
+      IvyConsole.Name :: Nil
+    ))
 }
 
 object StandardMain {

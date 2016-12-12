@@ -63,7 +63,8 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
     import EvaluateTask._
 
     val scopedKey = Scoped.scopedSetting(
-      Scope.resolveScope(Load.projectScope(currentRef), currentRef.build, structure.rootProject)(key.scope), key.key)
+      Scope.resolveScope(Load.projectScope(currentRef), currentRef.build, structure.rootProject)(key.scope), key.key
+    )
     val rkey = resolve(scopedKey.scopedKey)
     val inputTask = get(Scoped.scopedSetting(rkey.scope, rkey.key))
     val task = Parser.parse(input, inputTask.parser(state)) match {

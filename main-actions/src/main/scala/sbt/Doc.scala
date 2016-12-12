@@ -24,11 +24,13 @@ object Doc {
   def javadoc(label: String, cache: File, doc: JavaTools, log: Logger, reporter: Reporter): Gen =
     javadoc(label, cache, doc, log, reporter, Seq())
   def javadoc(label: String, cache: File, doc: JavaTools, log: Logger, reporter: Reporter, fileInputOptions: Seq[String]): Gen =
-    cached(cache, fileInputOptions, prepare(label + " Java API documentation", filterSources(javaSourcesOnly,
+    cached(cache, fileInputOptions, prepare(label + " Java API documentation", filterSources(
+      javaSourcesOnly,
       (sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], maxErrors: Int, log: Logger) => {
         // doc.doc
         ???
-      })))
+      }
+    )))
 
   val javaSourcesOnly: File => Boolean = _.getName.endsWith(".java")
 

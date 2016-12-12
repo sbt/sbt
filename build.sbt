@@ -105,8 +105,9 @@ lazy val testingProj = (project in file("testing")).
   settings(
     baseSettings,
     name := "Testing",
-    libraryDependencies ++= Seq(sbtIO, testInterface,launcherInterface, compilerClasspath, utilLogging)
-  )
+    libraryDependencies ++= Seq(testInterface,launcherInterface)
+  ).
+  configure(addSbtIO, addSbtCompilerClasspath, addSbtUtilLogging)
 
 // Testing agent for running tests in a separate process.
 lazy val testAgentProj = (project in file("testing") / "agent").
@@ -123,9 +124,9 @@ lazy val testAgentProj = (project in file("testing") / "agent").
 lazy val taskProj = (project in file("tasks")).
   settings(
     testedBaseSettings,
-    name := "Tasks",
-    libraryDependencies ++= Seq(utilControl, utilCollection)
-  )
+    name := "Tasks"
+  ).
+  configure(addSbtUtilControl, addSbtUtilCollection)
 
 // Standard task system.  This provides map, flatMap, join, and more on top of the basic task model.
 lazy val stdTaskProj = (project in file("tasks-standard")).
@@ -133,46 +134,45 @@ lazy val stdTaskProj = (project in file("tasks-standard")).
   settings(
     testedBaseSettings,
     name := "Task System",
-    testExclusive,
-    libraryDependencies ++= Seq(utilCollection, utilLogging, sbtIO)
-  )
+    testExclusive
+  ).
+  configure(addSbtUtilCollection, addSbtUtilLogging, addSbtIO)
 
 // Embedded Scala code runner
 lazy val runProj = (project in file("run")).
   settings(
     testedBaseSettings,
-    name := "Run",
-    libraryDependencies ++= Seq(sbtIO,
-      utilLogging, compilerClasspath)
-  )
+    name := "Run"
+  ).
+  configure(addSbtIO, addSbtUtilLogging, addSbtCompilerClasspath)
 
 lazy val scriptedSbtProj = (project in scriptedPath / "sbt").
   dependsOn(commandProj).
   settings(
     baseSettings,
     name := "Scripted sbt",
-    libraryDependencies ++= Seq(launcherInterface % "provided",
-      sbtIO, utilLogging, compilerInterface, utilScripted)
-  )
+    libraryDependencies ++= Seq(launcherInterface % "provided")
+  ).
+  configure(addSbtIO, addSbtUtilLogging, addSbtCompilerInterface, addSbtUtilScripted)
 
 lazy val scriptedPluginProj = (project in scriptedPath / "plugin").
   dependsOn(sbtProj).
   settings(
     baseSettings,
-    name := "Scripted Plugin",
-    libraryDependencies ++= Seq(compilerClasspath)
-  )
+    name := "Scripted Plugin"
+  ).
+  configure(addSbtCompilerClasspath)
 
 // Implementation and support code for defining actions.
 lazy val actionsProj = (project in file("main-actions")).
   dependsOn(runProj, stdTaskProj, taskProj, testingProj).
   settings(
     testedBaseSettings,
-    name := "Actions",
-    libraryDependencies ++= Seq(compilerClasspath, utilCompletion, compilerApiInfo,
-      zinc, compilerIvyIntegration, compilerInterface,
-      sbtIO, utilLogging, utilRelation, libraryManagement, utilTracking)
-  )
+    name := "Actions"
+  ).
+  configure(addSbtCompilerClasspath, addSbtUtilCompletion, addSbtCompilerApiInfo,
+    addSbtZinc, addSbtCompilerIvyIntegration, addSbtCompilerInterface,
+    addSbtIO, addSbtUtilLogging, addSbtUtilRelation, addSbtLm, addSbtUtilTracking)
 
 // General command support and core commands not specific to a build system
 lazy val commandProj = (project in file("main-command")).
@@ -180,30 +180,31 @@ lazy val commandProj = (project in file("main-command")).
   settings(
     testedBaseSettings,
     name := "Command",
-    libraryDependencies ++= Seq(launcherInterface, compilerInterface,
-      sbtIO, utilLogging, utilCompletion, compilerClasspath, sjsonNewScalaJson),
+    libraryDependencies ++= Seq(launcherInterface, sjsonNewScalaJson),
     sourceManaged in (Compile, generateDatatypes) := baseDirectory.value / "src" / "main" / "datatype-scala"
-  )
+  ).
+  configure(addSbtCompilerInterface, addSbtIO, addSbtUtilLogging, addSbtUtilCompletion, addSbtCompilerClasspath)
 
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
 lazy val mainSettingsProj = (project in file("main-settings")).
   dependsOn(commandProj, stdTaskProj).
   settings(
     testedBaseSettings,
-    name := "Main Settings",
-    libraryDependencies ++= Seq(utilCache, utilApplyMacro, compilerInterface, utilRelation,
-      utilLogging, sbtIO, utilCompletion, compilerClasspath, libraryManagement)
-  )
+    name := "Main Settings"
+  ).
+  configure(addSbtUtilCache, addSbtUtilApplyMacro, addSbtCompilerInterface, addSbtUtilRelation,
+    addSbtUtilLogging, addSbtIO, addSbtUtilCompletion, addSbtCompilerClasspath, addSbtLm)
 
-// The main integration project for sbt.  It brings all of the Projsystems together, configures them, and provides for overriding conventions.
+// The main integration project for sbt.  It brings all of the projects together, configures them, and provides for overriding conventions.
 lazy val mainProj = (project in file("main")).
   dependsOn(actionsProj, mainSettingsProj, runProj, commandProj).
   settings(
     testedBaseSettings,
     name := "Main",
-    libraryDependencies ++= scalaXml.value ++ Seq(launcherInterface, compilerInterface,
-      sbtIO, utilLogging, utilLogic, libraryManagement, zincCompile)
-  )
+    libraryDependencies ++= scalaXml.value ++ Seq(launcherInterface)
+  ).
+  configure(addSbtCompilerInterface,
+    addSbtIO, addSbtUtilLogging, addSbtUtilLogic, addSbtLm, addSbtZincCompile)
 
 // Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 //  technically, we need a dependency on all of mainProj's dependencies, but we don't do that since this is strictly an integration project
@@ -215,9 +216,9 @@ lazy val sbtProj = (project in file("sbt")).
     name := "sbt",
     normalizedName := "sbt",
     crossScalaVersions := Seq(scala211),
-    crossPaths := false,
-    libraryDependencies ++= Seq(compilerBrdige)
-  )
+    crossPaths := false
+  ).
+  configure(addSbtCompilerBridge)
 
 def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => Scripted.scriptedParser(dir)).parsed

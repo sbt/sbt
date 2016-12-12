@@ -120,7 +120,8 @@ object Tests {
     val tests: Seq[TestDefinition],
     val setup: Seq[ClassLoader => Unit],
     val cleanup: Seq[ClassLoader => Unit],
-    val testListeners: Seq[TestReportListener])
+    val testListeners: Seq[TestReportListener]
+  )
   private[sbt] def processOptions(config: Execution, discovered: Seq[TestDefinition], log: Logger): ProcessedOptions =
     {
       import collection.mutable.{ HashSet, ListBuffer }

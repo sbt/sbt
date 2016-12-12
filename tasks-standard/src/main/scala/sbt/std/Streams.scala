@@ -4,8 +4,20 @@
 package sbt
 package std
 
-import java.io.{ BufferedInputStream, BufferedOutputStream, BufferedReader, BufferedWriter, Closeable, File, 
-  FileInputStream, FileOutputStream, IOException, InputStreamReader, OutputStreamWriter, PrintWriter }
+import java.io.{
+  BufferedInputStream,
+  BufferedOutputStream,
+  BufferedReader,
+  BufferedWriter,
+  Closeable,
+  File,
+  FileInputStream,
+  FileOutputStream,
+  IOException,
+  InputStreamReader,
+  OutputStreamWriter,
+  PrintWriter
+}
 
 import sbt.internal.io.DeferredWriter
 import sbt.io.IO

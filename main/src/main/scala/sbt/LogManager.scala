@@ -31,9 +31,11 @@ object LogManager {
 
   def withScreenLogger(mk: (ScopedKey[_], State) => AbstractLogger): LogManager = withLoggers(screen = mk)
 
-  def withLoggers(screen: (ScopedKey[_], State) => AbstractLogger = (sk, s) => defaultScreen(s.globalLogging.console),
+  def withLoggers(
+    screen: (ScopedKey[_], State) => AbstractLogger = (sk, s) => defaultScreen(s.globalLogging.console),
     backed: PrintWriter => AbstractLogger = defaultBacked(),
-    extra: ScopedKey[_] => Seq[AbstractLogger] = _ => Nil): LogManager = new LogManager {
+    extra: ScopedKey[_] => Seq[AbstractLogger] = _ => Nil
+  ): LogManager = new LogManager {
     def apply(data: Settings[Scope], state: State, task: ScopedKey[_], to: PrintWriter): Logger =
       defaultLogger(data, state, task, screen(task, state), backed(to), extra(task).toList)
   }

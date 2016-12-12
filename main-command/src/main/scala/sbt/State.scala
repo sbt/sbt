@@ -32,7 +32,8 @@ final case class State(
     history: State.History,
     attributes: AttributeMap,
     globalLogging: GlobalLogging,
-    next: State.Next) extends Identity {
+    next: State.Next
+) extends Identity {
   lazy val combinedParser = Command.combine(definedCommands)(this)
 }
 

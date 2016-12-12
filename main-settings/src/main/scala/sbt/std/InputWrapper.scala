@@ -199,7 +199,7 @@ object ParserInput {
 
   private def wrapInitInputTask[T: c.WeakTypeTag](c: blackbox.Context)(tree: c.Tree, pos: c.Position) = {
     val e = c.Expr[Initialize[InputTask[T]]](tree)
-    wrapInit[Task[T]](c)(c.universe.reify {Def.toIParser(e.splice)}, pos)
+    wrapInit[Task[T]](c)(c.universe.reify { Def.toIParser(e.splice) }, pos)
   }
 
   /** Implements `Parser[T].parsed` by wrapping the Parser with the ParserInput wrapper.*/
@@ -216,12 +216,12 @@ object ParserInput {
 
   private def wrapParser[T: c.WeakTypeTag](c: blackbox.Context)(tree: c.Tree, pos: c.Position) = {
     val e = c.Expr[Parser[T]](tree)
-    wrap[T](c)(c.universe.reify {Def.toSParser(e.splice)}, pos)
+    wrap[T](c)(c.universe.reify { Def.toSParser(e.splice) }, pos)
   }
 
   private def wrapInitParser[T: c.WeakTypeTag](c: blackbox.Context)(tree: c.Tree, pos: c.Position) = {
     val e = c.Expr[Initialize[Parser[T]]](tree)
-    val es = c.universe.reify {Def.toISParser(e.splice)}
+    val es = c.universe.reify { Def.toISParser(e.splice) }
     wrapInit[T](c)(es, pos)
   }
 

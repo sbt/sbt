@@ -55,7 +55,8 @@ class CacheIvyTest extends Properties("CacheIvy") {
     } yield ModuleID(
       organization = o, name = n, revision = r, configurations = cs, isChanging = isChanging, isTransitive = isTransitive,
       isForce = isForce, explicitArtifacts = explicitArtifacts, inclusions = inclusions, exclusions = exclusions,
-      extraAttributes = extraAttributes, crossVersion = crossVersion, branchName = branch)
+      extraAttributes = extraAttributes, crossVersion = crossVersion, branchName = branch
+    )
   }
 
   property("moduleIDFormat") = forAll { (m: ModuleID) =>

@@ -94,16 +94,17 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
   private[sbt] def delegatesEval: Eval[Seq[ProjectReference]]
   private[sbt] def dependenciesEval: Eval[Seq[ClasspathDep[ProjectReference]]]
 
-
   // TODO: add parameters for plugins in 0.14.0 (not reasonable to do in a binary compatible way in 0.13)
-  private[sbt] def copy(id: String = id,
+  private[sbt] def copy(
+    id: String = id,
     base: File = base,
     aggregateEval: Eval[Seq[ProjectReference]] = aggregateEval,
     dependenciesEval: Eval[Seq[ClasspathDep[ProjectReference]]] = dependenciesEval,
     delegatesEval: Eval[Seq[ProjectReference]] = delegatesEval,
     settingsEval: Eval[Seq[Setting[_]]] = settingsEval,
     configurations: Seq[Configuration] = configurations,
-    auto: AddSettings = auto): Project =
+    auto: AddSettings = auto
+  ): Project =
     unresolved(id, base,
       aggregateEval = aggregateEval,
       dependenciesEval = dependenciesEval,
@@ -261,10 +262,10 @@ final case class ClasspathDependency(project: ProjectReference, configuration: O
  */
 sealed trait ProjectOrigin
 object ProjectOrigin {
-  case object Organic        extends ProjectOrigin
-  case object ExtraProject   extends ProjectOrigin
+  case object Organic extends ProjectOrigin
+  case object ExtraProject extends ProjectOrigin
   case object DerivedProject extends ProjectOrigin
-  case object GenericRoot    extends ProjectOrigin
+  case object GenericRoot extends ProjectOrigin
 }
 
 object Project extends ProjectExtra {
@@ -280,7 +281,8 @@ object Project extends ProjectExtra {
       val auto: AddSettings,
       val plugins: Plugins,
       val autoPlugins: Seq[AutoPlugin],
-      val projectOrigin: ProjectOrigin) extends ProjectDefinition[PR] {
+      val projectOrigin: ProjectOrigin
+  ) extends ProjectDefinition[PR] {
     def aggregate: Seq[PR] = aggregateEval.get
     def dependencies: Seq[ClasspathDep[PR]] = dependenciesEval.get
     def delegates: Seq[PR] = delegatesEval.get
@@ -649,7 +651,7 @@ object Project extends ProjectExtra {
 private[sbt] trait GeneratedRootProject
 
 trait ProjectExtra0 {
-   implicit def wrapProjectReferenceSeqEval[T](rs: => Seq[T])(implicit ev: T => ProjectReference): Seq[Eval[ProjectReference]] =
+  implicit def wrapProjectReferenceSeqEval[T](rs: => Seq[T])(implicit ev: T => ProjectReference): Seq[Eval[ProjectReference]] =
     rs map { r => Eval.later(r: ProjectReference) }
 }
 
@@ -664,7 +666,6 @@ trait ProjectExtra extends ProjectExtra0 {
 
   implicit def configDependencyConstructor[T](p: T)(implicit ev: T => ProjectReference): Constructor = new Constructor(p)
   implicit def classpathDependency[T](p: T)(implicit ev: T => ProjectReference): ClasspathDep[ProjectReference] = new ClasspathDependency(p, None)
-
 
   // These used to be in Project so that they didn't need to get imported (due to Initialize being nested in Project).
   // Moving Initialize and other settings types to Def and decoupling Project, Def, and Structure means these go here for now

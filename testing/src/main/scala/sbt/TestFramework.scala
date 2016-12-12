@@ -116,9 +116,9 @@ object TestFramework {
   }
   def matches(a: Fingerprint, b: Fingerprint) =
     (a, b) match {
-      case (a: SubclassFingerprint, b: SubclassFingerprint) => a.isModule == b.isModule && a.superclassName == b.superclassName
+      case (a: SubclassFingerprint, b: SubclassFingerprint)   => a.isModule == b.isModule && a.superclassName == b.superclassName
       case (a: AnnotatedFingerprint, b: AnnotatedFingerprint) => a.isModule == b.isModule && a.annotationName == b.annotationName
-      case _ => false
+      case _                                                  => false
     }
   def toString(f: Fingerprint): String =
     f match {
@@ -127,12 +127,14 @@ object TestFramework {
       case _                        => f.toString
     }
 
-  def testTasks(frameworks: Map[TestFramework, Framework],
+  def testTasks(
+    frameworks: Map[TestFramework, Framework],
     runners: Map[TestFramework, Runner],
     testLoader: ClassLoader,
     tests: Seq[TestDefinition],
     log: Logger,
-    listeners: Seq[TestReportListener]): (() => Unit, Seq[(String, TestFunction)], TestResult.Value => () => Unit) =
+    listeners: Seq[TestReportListener]
+  ): (() => Unit, Seq[(String, TestFunction)], TestResult.Value => () => Unit) =
     {
       val mappedTests = testMap(frameworks.values.toSeq, tests)
       if (mappedTests.isEmpty)

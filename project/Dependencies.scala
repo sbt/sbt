@@ -2,54 +2,102 @@ import sbt._
 import Keys._
 
 object Dependencies {
-  lazy val scala282 = "2.8.2"
-  lazy val scala292 = "2.9.2"
-  lazy val scala293 = "2.9.3"
-  lazy val scala210 = "2.10.6"
-  lazy val scala211 = "2.11.8"
+  val scala282 = "2.8.2"
+  val scala292 = "2.9.2"
+  val scala293 = "2.9.3"
+  val scala210 = "2.10.6"
+  val scala211 = "2.11.8"
 
   // sbt modules
-  val ioVersion = "1.0.0-M6"
-  val utilVersion = "0.1.0-M14"
-  val librarymanagementVersion = "0.1.0-X1"
-  val zincVersion = "1.0.0-X3"
-  lazy val sbtIO = "org.scala-sbt" %% "io" % ioVersion
-  lazy val utilCollection = "org.scala-sbt" %% "util-collection" % utilVersion
-  lazy val utilLogging = "org.scala-sbt" %% "util-logging" % utilVersion
-  lazy val utilTesting = "org.scala-sbt" %% "util-testing" % utilVersion
-  lazy val utilControl = "org.scala-sbt" %% "util-control" % utilVersion
-  lazy val utilCompletion = "org.scala-sbt" %% "util-completion" % utilVersion
-  lazy val utilApplyMacro = "org.scala-sbt" %% "util-apply-macro" % utilVersion
-  lazy val utilRelation = "org.scala-sbt" %% "util-relation" % utilVersion
-  lazy val utilLogic = "org.scala-sbt" %% "util-logic" % utilVersion
-  lazy val utilCache = "org.scala-sbt" %% "util-cache" % utilVersion
-  lazy val utilTracking = "org.scala-sbt" %% "util-tracking" % utilVersion
-  lazy val utilScripted = "org.scala-sbt" %% "util-scripted" % utilVersion
-  lazy val libraryManagement = "org.scala-sbt" %% "librarymanagement" % librarymanagementVersion
-  lazy val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
-  lazy val rawLauncher = "org.scala-sbt" % "launcher" % "1.0.0"
-  lazy val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
+  private val ioVersion = "1.0.0-M6"
+  private val utilVersion = "0.1.0-M14"
+  private val lmVersion = "0.1.0-X1"
+  private val zincVersion = "1.0.0-X3"
 
-  lazy val zinc = "org.scala-sbt" %% "zinc" % zincVersion
-  lazy val zincCompile = "org.scala-sbt" %% "zinc-compile" % zincVersion
-  lazy val compilerInterface = "org.scala-sbt" % "compiler-interface" % zincVersion
-  lazy val compilerBrdige = "org.scala-sbt" %% "compiler-bridge" % zincVersion
-  lazy val compilerClasspath = "org.scala-sbt" %% "zinc-classpath" % zincVersion
-  lazy val compilerApiInfo = "org.scala-sbt" %% "zinc-apiinfo" % zincVersion
-  lazy val compilerIvyIntegration = "org.scala-sbt" %% "zinc-ivy-integration" % zincVersion
-  lazy val sjsonNewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % "0.4.2"
+  private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
-  lazy val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.11.4"
-  lazy val specs2 = "org.specs2" %% "specs2" % "2.3.11"
-  lazy val junit = "junit" % "junit" % "4.11"
+  private val utilApplyMacro = "org.scala-sbt" %% "util-apply-macro" % utilVersion
+  private val utilCache = "org.scala-sbt" %% "util-cache" % utilVersion
+  private val utilCollection = "org.scala-sbt" %% "util-collection" % utilVersion
+  private val utilCompletion = "org.scala-sbt" %% "util-completion" % utilVersion
+  private val utilControl = "org.scala-sbt" %% "util-control" % utilVersion
+  private val utilLogging = "org.scala-sbt" %% "util-logging" % utilVersion
+  private val utilLogic = "org.scala-sbt" %% "util-logic" % utilVersion
+  private val utilRelation = "org.scala-sbt" %% "util-relation" % utilVersion
+  private val utilScripted = "org.scala-sbt" %% "util-scripted" % utilVersion
+  private val utilTesting = "org.scala-sbt" %% "util-testing" % utilVersion
+  private val utilTracking = "org.scala-sbt" %% "util-tracking" % utilVersion
 
-  private def scala211Module(name: String, moduleVersion: String) =
-    Def.setting {
-      scalaVersion.value match {
-        case sv if (sv startsWith "2.9.") || (sv startsWith "2.10.") => Nil
-        case _ => ("org.scala-lang.modules" %% name % moduleVersion) :: Nil
-      }
+  private val libraryManagement = "org.scala-sbt" %% "librarymanagement" % lmVersion
+
+  val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
+  val rawLauncher = "org.scala-sbt" % "launcher" % "1.0.0"
+  val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
+
+  private val compilerApiInfo = "org.scala-sbt" %% "zinc-apiinfo" % zincVersion
+  private val compilerBridge = "org.scala-sbt" %% "compiler-bridge" % zincVersion
+  private val compilerClasspath = "org.scala-sbt" %% "zinc-classpath" % zincVersion
+  private val compilerInterface = "org.scala-sbt" % "compiler-interface" % zincVersion
+  private val compilerIvyIntegration = "org.scala-sbt" %% "zinc-ivy-integration" % zincVersion
+  private val zinc = "org.scala-sbt" %% "zinc" % zincVersion
+  private val zincCompile = "org.scala-sbt" %% "zinc-compile" % zincVersion
+
+  def getSbtModulePath(key: String, name: String) = {
+    val localProps = new java.util.Properties()
+    IO.load(localProps, file("project/local.properties"))
+    val path = Option(localProps getProperty key) orElse (sys.props get key)
+    path foreach (f => println(s"Using $name from $f"))
+    path
+  }
+
+  lazy val sbtIoPath = getSbtModulePath("sbtio.path", "sbt/io")
+  lazy val sbtUtilPath = getSbtModulePath("sbtutil.path", "sbt/util")
+  lazy val sbtLmPath = getSbtModulePath("sbtlm.path", "sbt/lm")
+  lazy val sbtZincPath = getSbtModulePath("sbtzinc.path", "sbt/zinc")
+
+  def addSbtModule(p: Project, path: Option[String], projectName: String, m: ModuleID, c: Option[Configuration] = None) =
+    path match {
+      case Some(f) => p dependsOn c.fold[ClasspathDependency](ProjectRef(file(f), projectName))(ProjectRef(file(f), projectName) % _)
+      case None    => p settings (libraryDependencies += c.fold(m)(m % _))
     }
-  lazy val scalaXml = scala211Module("scala-xml", "1.0.1")
-  lazy val scalaParsers = scala211Module("scala-parser-combinators", "1.0.1")
+
+  def addSbtIO(p: Project): Project = addSbtModule(p, sbtIoPath, "io", sbtIO)
+
+  def addSbtUtilApplyMacro(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilApplyMacro", utilApplyMacro)
+  def addSbtUtilCache(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilCache", utilCache)
+  def addSbtUtilCollection(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilCollection", utilCollection)
+  def addSbtUtilCompletion(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilComplete", utilCompletion)
+  def addSbtUtilControl(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilControl", utilControl)
+  def addSbtUtilLogging(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilLogging", utilLogging)
+  def addSbtUtilLogic(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilLogic", utilLogic)
+  def addSbtUtilRelation(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilRelation", utilRelation)
+  def addSbtUtilScripted(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilScripted", utilScripted)
+  def addSbtUtilTesting(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilTesting", utilTesting, Some(Test))
+  def addSbtUtilTracking(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilTracking", utilTracking)
+
+  def addSbtLm(p: Project): Project = addSbtModule(p, sbtLmPath, "lm", libraryManagement)
+
+  def addSbtCompilerApiInfo(p: Project): Project = addSbtModule(p, sbtZincPath, "zincApiInfo", compilerApiInfo)
+  def addSbtCompilerBridge(p: Project): Project = addSbtModule(p, sbtZincPath, "compilerBridge", compilerBridge)
+  def addSbtCompilerClasspath(p: Project): Project = addSbtModule(p, sbtZincPath, "zincClasspath", compilerClasspath)
+  def addSbtCompilerInterface(p: Project): Project = addSbtModule(p, sbtZincPath, "compilerInterface", compilerInterface)
+  def addSbtCompilerIvyIntegration(p: Project): Project = addSbtModule(p, sbtZincPath, "zincIvyIntegration", compilerIvyIntegration)
+  def addSbtZinc(p: Project): Project = addSbtModule(p, sbtZincPath, "zinc", zinc)
+  def addSbtZincCompile(p: Project): Project = addSbtModule(p, sbtZincPath, "zincCompile", zincCompile)
+
+  val sjsonNewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % "0.4.2"
+
+  val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.11.4"
+  val specs2 = "org.specs2" %% "specs2" % "2.3.11"
+  val junit = "junit" % "junit" % "4.11"
+
+  private def scala211Module(name: String, moduleVersion: String) = Def setting (
+    scalaBinaryVersion.value match {
+      case "2.9" | "2.10" => Nil
+      case _              => ("org.scala-lang.modules" %% name % moduleVersion) :: Nil
+    }
+  )
+
+  val scalaXml = scala211Module("scala-xml", "1.0.1")
+  val scalaParsers = scala211Module("scala-parser-combinators", "1.0.1")
 }

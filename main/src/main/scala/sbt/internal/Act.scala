@@ -253,12 +253,11 @@ object Act {
         def evaluate(kvs: Seq[ScopedKey[_]]): Parser[() => State] = {
           val preparedPairs = anyKeyValues(structure, kvs)
           val showConfig = Aggregation.defaultShow(state, showTasks = action == ShowAction)
-          evaluatingParser(state, structure, showConfig)(preparedPairs) map { evaluate =>
-            () => {
-              val keyStrings = preparedPairs.map(pp => showKey(pp.key)).mkString(", ")
-              state.log.debug("Evaluating tasks: " + keyStrings)
-              evaluate()
-            }
+          evaluatingParser(state, structure, showConfig)(preparedPairs) map { evaluate => () => {
+            val keyStrings = preparedPairs.map(pp => showKey(pp.key)).mkString(", ")
+            state.log.debug("Evaluating tasks: " + keyStrings)
+            evaluate()
+          }
           }
         }
         action match {

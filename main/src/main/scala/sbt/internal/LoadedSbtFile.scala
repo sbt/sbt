@@ -16,7 +16,8 @@ private[sbt] final class LoadedSbtFile(
     // TODO - we may want to expose a simpler interface on top of here for the set command,
     // rather than what we have now...
     val definitions: DefinedSbtValues,
-    val generatedFiles: Seq[File]) {
+    val generatedFiles: Seq[File]
+) {
   // We still use merge for now.  We track originating sbt file in an alternative manner.
   def merge(o: LoadedSbtFile): LoadedSbtFile =
     new LoadedSbtFile(
@@ -25,7 +26,8 @@ private[sbt] final class LoadedSbtFile(
       importedDefs ++ o.importedDefs,
       manipulations,
       definitions zip o.definitions,
-      generatedFiles ++ o.generatedFiles)
+      generatedFiles ++ o.generatedFiles
+    )
 
   def clearProjects = new LoadedSbtFile(settings, Nil, importedDefs, manipulations, definitions, generatedFiles)
 }

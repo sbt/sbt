@@ -30,7 +30,8 @@ final class StructureIndex(
   val taskToKey: Map[Task[_], ScopedKey[Task[_]]],
   val triggers: Triggers[Task],
   val keyIndex: KeyIndex,
-  val aggregateKeyIndex: KeyIndex)
+  val aggregateKeyIndex: KeyIndex
+)
 
 /**
  * A resolved build unit.  (`ResolvedBuildUnit` would be a better name to distinguish it from the loaded, but unresolved `BuildUnit`.)
@@ -92,13 +93,16 @@ final class LoadedDefinitions(
     val builds: Seq[BuildDef],
     val projects: Seq[Project],
     val buildNames: Seq[String],
-    val dslDefinitions: DefinedSbtValues) {
-  def this(base: File,
+    val dslDefinitions: DefinedSbtValues
+) {
+  def this(
+    base: File,
     target: Seq[File],
     loader: ClassLoader,
     builds: Seq[BuildDef],
     projects: Seq[Project],
-    buildNames: Seq[String]) = this(base, target, loader, builds, projects, buildNames, DefinedSbtValues.empty)
+    buildNames: Seq[String]
+  ) = this(base, target, loader, builds, projects, buildNames, DefinedSbtValues.empty)
 }
 
 /** Auto-detected top-level modules (as in `object X`) of type `T` paired with their source names. */
