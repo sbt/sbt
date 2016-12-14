@@ -49,7 +49,14 @@ lazy val lm = (project in file("librarymanagement")).
     libraryDependencies ++= scalaXml.value,
     resourceGenerators in Compile += Def.task(Util.generateVersionFile(version.value, resourceManaged.value, streams.value, (compile in Compile).value)).taskValue,
     binaryIssueFilters ++= Seq(),
-    datatypeFormatsForType in generateDatatypes in Compile := DatatypeConfig.getFormats
+    datatypeFormatsForType in generateDatatypes in Compile := DatatypeConfig.getFormats,
+    // WORKAROUND sbt/sbt#2205 include managed sources in packageSrc
+    mappings in (Compile, packageSrc) ++= {
+      val srcs = (managedSources in Compile).value
+      val sdirs = (managedSourceDirectories in Compile).value
+      val base = baseDirectory.value
+      (((srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)) toSeq)
+    }
   ).
   configure(addSbtIO, addSbtUtilLogging, addSbtUtilTesting, addSbtUtilCollection, addSbtUtilCompletion, addSbtUtilCache).
   enablePlugins(DatatypePlugin, JsonCodecPlugin)
