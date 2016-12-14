@@ -98,7 +98,10 @@ object DependencyGraphSettings {
     },
     whatDependsOn <<= InputTask(artifactIdParser) { module ⇒
       (module, streams, moduleGraph) map { (module, streams, graph) ⇒
-        streams.log.info(rendering.AsciiTree.asciiTree(GraphTransformations.reverseGraphStartingAt(graph, module)))
+        if (module.version.isEmpty) {
+          val modules = graph.reverseDependencyMap.filter(m ⇒ m._1.copy(version = "") == module).keys
+          modules.foreach(m ⇒ streams.log.info(rendering.AsciiTree.asciiTree(GraphTransformations.reverseGraphStartingAt(graph, m))))
+        } else streams.log.info(rendering.AsciiTree.asciiTree(GraphTransformations.reverseGraphStartingAt(graph, module)))
       }
     },
     licenseInfo <<= (moduleGraph, streams) map showLicenseInfo))
@@ -188,11 +191,14 @@ object DependencyGraphSettings {
         import sbt.complete.DefaultParsers._
         graph.nodes.map(_.id).map {
           case id @ ModuleId(org, name, version) ⇒
-            (Space ~ token(org) ~ token(Space ~ name) ~ token(Space ~ version)).map(_ ⇒ id)
+            (Space ~ token(org) ~ token(Space ~ name) ~ token(Space ~ version).?).map(_._2 match {
+              case Some(_) ⇒ id
+              case None    ⇒ id.copy(version = "")
+            })
         }.reduceOption(_ | _).getOrElse {
-          (Space ~> token(StringBasic, "organization") ~ Space ~ token(StringBasic, "module") ~ Space ~ token(StringBasic, "version")).map {
-            case ((((org, _), mod), _), version) ⇒
-              ModuleId(org, mod, version)
+          (Space ~> token(StringBasic, "organization") ~ Space ~ token(StringBasic, "module") ~ (Space ~ token(StringBasic, "version")).?).map {
+            case (((org, _), mod), version) ⇒
+              ModuleId(org, mod, version.map(_._2).getOrElse(""))
           }
         }
     }
