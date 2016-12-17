@@ -1,5 +1,7 @@
 # sbt-dependency-graph
 
+[![Join the chat at https://gitter.im/jrudolph/sbt-dependency-graph](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jrudolph/sbt-dependency-graph?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Visualize your project's dependencies.
 
 ## Preliminaries
