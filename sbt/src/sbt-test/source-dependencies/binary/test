@@ -2,5 +2,13 @@
 > use/package
 $ sleep 2000
 
+$ exists dep/target/scala-2.11/classes/A$.class
+
+> debug
+
 $ copy-file changes/Break.scala dep/A.scala
+
+> dep/compile
+-$ exists dep/target/scala-2.11/classes/A$.class
+
 -> use/compile
