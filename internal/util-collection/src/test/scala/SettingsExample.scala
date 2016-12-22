@@ -10,7 +10,7 @@ final case class Scope(nestIndex: Int, idAtIndex: Int = 0)
 //  Lots of type constructors would become binary, which as you may know requires lots of type lambdas
 //  when you want a type function with only one parameter.
 //  That would be a general pain.)
-object SettingsExample extends Init[Scope] {
+case class SettingsExample() extends Init[Scope] {
   // Provides a way of showing a Scope+AttributeKey[_]
   val showFullKey: Show[ScopedKey[_]] = new Show[ScopedKey[_]] {
     def apply(key: ScopedKey[_]) = s"${key.scope.nestIndex}(${key.scope.idAtIndex})/${key.key.label}"
@@ -30,8 +30,8 @@ object SettingsExample extends Init[Scope] {
 
 /** Usage Example **/
 
-object SettingsUsage {
-  import SettingsExample._
+case class SettingsUsage(val settingsExample: SettingsExample) {
+  import settingsExample._
 
   // Define some keys
   val a = AttributeKey[Int]("a")
