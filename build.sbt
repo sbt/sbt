@@ -13,14 +13,14 @@ def commonSettings: Seq[Setting[_]] = Seq(
   resolvers += Resolver.mavenLocal,
   // concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
-  javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
-  crossScalaVersions := Seq(scala211),
+  javacOptions in compile ++= Seq("-Xlint", "-Xlint:-serial"),
+  crossScalaVersions := Seq(scala211, scala212),
   scalacOptions ++= Seq("-Ywarn-unused", "-Ywarn-unused-import"),
   scalacOptions --= // scalac 2.10 rejects some HK types under -Xfuture it seems..
     (CrossVersion partialVersion scalaVersion.value collect { case (2, 10) => List("-Xfuture", "-Ywarn-unused", "-Ywarn-unused-import") }).toList.flatten,
   scalacOptions in console in Compile -= "-Ywarn-unused-import",
   scalacOptions in console in Test    -= "-Ywarn-unused-import",
-  previousArtifact := None, // Some(organization.value %% moduleName.value % "1.0.0"),
+  mimaPreviousArtifacts := Set(), // Some(organization.value %% moduleName.value % "1.0.0"),
   publishArtifact in Compile := true,
   publishArtifact in Test := false
 )
@@ -154,8 +154,11 @@ lazy val utilScripted = (project in internalPath / "util-scripted").
     commonSettings,
     name := "Util Scripted",
     libraryDependencies ++= {
-      if (scalaVersion.value startsWith "2.11") Seq(parserCombinator211)
-      else Seq()
+      scalaVersion.value match {
+        case sv if sv startsWith "2.11" => Seq(parserCombinator211)
+        case sv if sv startsWith "2.12" => Seq(parserCombinator211)
+        case _ => Seq()
+      }
     }
   ).
   configure(addSbtIO)
