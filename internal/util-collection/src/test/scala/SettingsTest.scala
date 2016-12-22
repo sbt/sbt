@@ -2,10 +2,12 @@ package sbt.internal.util
 
 import org.scalacheck._
 import Prop._
-import SettingsUsage._
-import SettingsExample._
 
 object SettingsTest extends Properties("settings") {
+  val settingsExample: SettingsExample = SettingsExample()
+  import settingsExample._
+  val settingsUsage = SettingsUsage(settingsExample)
+  import settingsUsage._
 
   import scala.reflect.Manifest
 
@@ -126,7 +128,7 @@ object SettingsTest extends Properties("settings") {
           // Each project defines an initial value, but the update is defined in globalKey.
           // However, the derived Settings that come from this should be scoped in each project.
           val settings: Seq[Setting[_]] =
-            derive(setting(globalDerivedKey, SettingsExample.map(globalKey)(_ + 1))) +: projectKeys.map(pk => setting(pk, value(0)))
+            derive(setting(globalDerivedKey, settingsExample.map(globalKey)(_ + 1))) +: projectKeys.map(pk => setting(pk, value(0)))
           val ev = evaluate(settings)
           // Also check that the key has no value at the "global" scope
           val props = for { pk <- projectDerivedKeys } yield checkKey(pk, Some(1), ev)
@@ -184,6 +186,7 @@ object SettingsTest extends Properties("settings") {
 }
 // This setup is a workaround for module synchronization issues 
 final class CCR(intermediate: Int) {
+  import SettingsTest.settingsExample._
   lazy val top = iterate(value(intermediate), intermediate)
   def iterate(init: Initialize[Int], i: Int): Initialize[Int] =
     bind(init) { t =>
