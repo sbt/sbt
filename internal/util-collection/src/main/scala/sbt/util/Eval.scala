@@ -5,9 +5,37 @@ import scala.annotation.tailrec
 // Copied from Cats (MIT license)
 
 /**
- * Eval is a datatype, which controls evaluation.
+ * Eval is a monad which controls evaluation.
+ *
+ * This type wraps a value (or a computation that produces a value)
+ * and can produce it on command via the `.value` method.
+ *
+ * There are three basic evaluation strategies:
+ *
+ *  - Now:    evaluated immediately
+ *  - Later:  evaluated once when value is needed
+ *  - Always: evaluated every time value is needed
+ *
+ * The Later and Always are both lazy strategies while Now is eager.
+ * Later and Always are distinguished from each other only by
+ * memoization: once evaluated Later will save the value to be returned
+ * immediately if it is needed again. Always will run its computation
+ * every time.
+ *
+ * Eval supports stack-safe lazy computation via the .map and .flatMap
+ * methods, which use an internal trampoline to avoid stack overflows.
+ * Computation done within .map and .flatMap is always done lazily,
+ * even when applied to a Now instance.
+ *
+ * It is not generally good style to pattern-match on Eval instances.
+ * Rather, use .map and .flatMap to chain computation, and use .value
+ * to get the result when needed. It is also not good style to create
+ * Eval instances whose computation involves calling .value on another
+ * Eval instance -- this can defeat the trampolining and lead to stack
+ * overflows.
  */
-sealed abstract class Eval[A] extends Serializable { self =>
+sealed abstract class Eval[+A] extends Serializable { self =>
+
   /**
    * Evaluate the computation and return an A value.
    *
@@ -15,7 +43,7 @@ sealed abstract class Eval[A] extends Serializable { self =>
    * will be performed at this point. For eager instances (Now), a
    * value will be immediately returned.
    */
-  def get: A
+  def value: A
 
   /**
    * Transform an Eval[A] into an Eval[B] given the transformation
@@ -47,8 +75,11 @@ sealed abstract class Eval[A] extends Serializable { self =>
       case c: Eval.Compute[A] =>
         new Eval.Compute[B] {
           type Start = c.Start
-          val start = c.start
-          val run = (s: c.Start) =>
+          // See https://issues.scala-lang.org/browse/SI-9931 for an explanation
+          // of why the type annotations are necessary in these two lines on
+          // Scala 2.12.0.
+          val start: () => Eval[Start] = c.start
+          val run: Start => Eval[B] = (s: c.Start) =>
             new Eval.Compute[B] {
               type Start = A
               val start = () => c.run(s)
@@ -87,7 +118,7 @@ sealed abstract class Eval[A] extends Serializable { self =>
  * This type should be used when an A value is already in hand, or
  * when the computation to produce an A value is pure and very fast.
  */
-final case class Now[A](get: A) extends Eval[A] {
+final case class Now[A](value: A) extends Eval[A] {
   def memoize: Eval[A] = this
 }
 
@@ -115,7 +146,7 @@ final class Later[A](f: () => A) extends Eval[A] {
   //
   // (For situations where `f` is small, but the output will be very
   // expensive to store, consider using `Always`.)
-  lazy val get: A = {
+  lazy val value: A = {
     val result = thunk()
     thunk = null // scalastyle:off
     result
@@ -139,7 +170,7 @@ object Later {
  * caching must be avoided. Generally, prefer Later.
  */
 final class Always[A](f: () => A) extends Eval[A] {
-  def get: A = f()
+  def value: A = f()
   def memoize: Eval[A] = new Later(f)
 }
 
@@ -193,8 +224,8 @@ object Eval {
    * they will be automatically created when needed.
    */
   sealed abstract class Call[A](val thunk: () => Eval[A]) extends Eval[A] {
-    def memoize: Eval[A] = new Later(() => get)
-    def get: A = Call.loop(this).get
+    def memoize: Eval[A] = new Later(() => value)
+    def value: A = Call.loop(this).value
   }
 
   object Call {
@@ -229,16 +260,16 @@ object Eval {
    *
    * Unlike a traditional trampoline, the internal workings of the
    * trampoline are not exposed. This allows a slightly more efficient
-   * implementation of the .get method.
+   * implementation of the .value method.
    */
   sealed abstract class Compute[A] extends Eval[A] {
     type Start
     val start: () => Eval[Start]
     val run: Start => Eval[A]
 
-    def memoize: Eval[A] = Later(get)
+    def memoize: Eval[A] = Later(value)
 
-    def get: A = {
+    def value: A = {
       type L = Eval[Any]
       type C = Any => Eval[Any]
       @tailrec def loop(curr: L, fs: List[C]): Any =
@@ -251,12 +282,12 @@ object Eval {
                   cc.run.asInstanceOf[C] :: c.run.asInstanceOf[C] :: fs
                 )
               case xx =>
-                loop(c.run(xx.get).asInstanceOf[L], fs)
+                loop(c.run(xx.value), fs)
             }
           case x =>
             fs match {
-              case f :: fs => loop(f(x.get), fs)
-              case Nil     => x.get
+              case f :: fs => loop(f(x.value), fs)
+              case Nil     => x.value
             }
         }
       loop(this.asInstanceOf[L], Nil).asInstanceOf[A]
