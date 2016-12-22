@@ -6,7 +6,7 @@ object Dependencies {
   val scala211 = "2.11.8"
   val scala212 = "2.12.0"
 
-  private val sbtIO = "org.scala-sbt" %% "io" % "1.0.0-M7-6c64b6b5b29e4e12e95b09ceda6d2e8dd6092f00"
+  private val sbtIO = "org.scala-sbt" %% "io" % "1.0.0-M7"
 
   def getSbtModulePath(key: String, name: String) = {
     val localProps = new java.util.Properties()
@@ -36,7 +36,7 @@ object Dependencies {
 
   val parserCombinator211 = "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4"
 
-  val sjsonnewVersion = "0.6.1-dnw"
+  val sjsonnewVersion = "0.7.0"
   val sjsonnew = "com.eed3si9n" %% "sjson-new-core" % sjsonnewVersion
   val sjsonnewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % sjsonnewVersion
 }
