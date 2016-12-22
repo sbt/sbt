@@ -9,29 +9,58 @@ trait HListFormat {
 
   private def forHNil[A <: HNil](hnil: A): JsonFormat[A] = new JsonFormat[A] {
     def write[J](x: A, builder: Builder[J]): Unit = {
-      if (builder.state != BuilderState.InArray) builder.beginArray()
+      builder.beginArray()
       builder.endArray()
     }
 
-    def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): A = {
-      if (unbuilder.state == UnbuilderState.InArray) unbuilder.endArray()
-      hnil
+    def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): A = jsOpt match {
+      case None     => hnil
+      case Some(js) => unbuilder.beginArray(js); unbuilder.endArray(); hnil
     }
   }
 
-  implicit def hconsFormat[H, T <: HList](implicit hf: JsonFormat[H], tf: JsonFormat[T]): JsonFormat[H :+: T] =
+  implicit def hconsFormat[H, T <: HList](implicit hf: JsonFormat[H], tf: HListJF[T]): JsonFormat[H :+: T] =
     new JsonFormat[H :+: T] {
       def write[J](hcons: H :+: T, builder: Builder[J]) = {
-        if (builder.state != BuilderState.InArray) builder.beginArray()
+        builder.beginArray()
         hf.write(hcons.head, builder)
         tf.write(hcons.tail, builder)
+        builder.endArray()
       }
 
       def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]) = jsOpt match {
         case None => HCons(hf.read(None, unbuilder), tf.read(None, unbuilder))
         case Some(js) =>
-          if (unbuilder.state != UnbuilderState.InArray) unbuilder.beginArray(js)
-          HCons(hf.read(Some(unbuilder.nextElement), unbuilder), tf.read(Some(js), unbuilder))
+          unbuilder.beginArray(js)
+          val hcons = HCons(hf.read(Some(unbuilder.nextElement), unbuilder), tf.read(Some(js), unbuilder))
+          unbuilder.endArray()
+          hcons
       }
     }
+
+  trait HListJF[A <: HList] {
+    def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): A
+    def write[J](obj: A, builder: Builder[J]): Unit
+  }
+
+  implicit def hconsHListJF[H, T <: HList](implicit hf: JsonFormat[H], tf: HListJF[T]): HListJF[H :+: T] =
+    new HListJF[H :+: T] {
+      def write[J](hcons: H :+: T, builder: Builder[J]) = {
+        hf.write(hcons.head, builder)
+        tf.write(hcons.tail, builder)
+      }
+
+      def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]) = jsOpt match {
+        case None     => HCons(hf.read(None, unbuilder), tf.read(None, unbuilder))
+        case Some(js) => HCons(hf.read(Some(unbuilder.nextElement), unbuilder), tf.read(Some(js), unbuilder))
+      }
+    }
+
+  implicit val lnilHListJF1: HListJF[HNil] = hnilHListJF(HNil)
+  implicit val lnilHListJF2: HListJF[HNil.type] = hnilHListJF(HNil)
+
+  implicit def hnilHListJF[A <: HNil](hnil: A): HListJF[A] = new HListJF[A] {
+    def write[J](hcons: A, builder: Builder[J]) = ()
+    def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]) = hnil
+  }
 }

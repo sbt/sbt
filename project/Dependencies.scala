@@ -36,7 +36,7 @@ object Dependencies {
 
   val parserCombinator211 = "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4"
 
-  val sjsonnewVersion = "0.5.1"
+  val sjsonnewVersion = "0.7.0"
   val sjsonnew = "com.eed3si9n" %% "sjson-new-core" % sjsonnewVersion
   val sjsonnewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % sjsonnewVersion
 }

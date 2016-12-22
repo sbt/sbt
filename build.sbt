@@ -2,7 +2,7 @@ import Dependencies._
 import Util._
 import com.typesafe.tools.mima.core._, ProblemFilters._
 
-def baseVersion: String = "0.1.0-M15"
+def baseVersion: String = "0.1.0-M16"
 def internalPath   = file("internal")
 
 def commonSettings: Seq[Setting[_]] = Seq(
@@ -10,6 +10,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
   // publishArtifact in packageDoc := false,
   resolvers += Resolver.typesafeIvyRepo("releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
+  resolvers += Resolver.mavenLocal,
   // concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
