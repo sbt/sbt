@@ -15,9 +15,13 @@ def commonSettings: Seq[Setting[_]] = Seq(
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-Xlint", "-Xlint:-serial"),
   crossScalaVersions := Seq(scala211, scala212),
-  scalacOptions ++= Seq("-Ywarn-unused", "-Ywarn-unused-import"),
-  scalacOptions --= // scalac 2.10 rejects some HK types under -Xfuture it seems..
-    (CrossVersion partialVersion scalaVersion.value collect { case (2, 10) => List("-Xfuture", "-Ywarn-unused", "-Ywarn-unused-import") }).toList.flatten,
+  scalacOptions := {
+    val old = scalacOptions.value
+    scalaVersion.value match {
+      case sv if sv.startsWith("2.10") => old diff List("-Xfuture", "-Ywarn-unused", "-Ywarn-unused-import")
+      case _                           => old ++ List("-Ywarn-unused", "-Ywarn-unused-import")
+    }
+  },
   scalacOptions in console in Compile -= "-Ywarn-unused-import",
   scalacOptions in console in Test    -= "-Ywarn-unused-import",
   mimaPreviousArtifacts := Set(), // Some(organization.value %% moduleName.value % "1.0.0"),
@@ -97,7 +101,7 @@ lazy val utilLogging = (project in internalPath / "util-logging").
   dependsOn(utilInterface, utilTesting % Test).
   settings(
     commonSettings,
-    crossScalaVersions := Seq(scala210, scala211),
+    crossScalaVersions := Seq(scala210, scala211, scala212),
     name := "Util Logging",
     libraryDependencies += jline
   )
@@ -143,7 +147,7 @@ lazy val utilTracking = (project in internalPath / "util-tracking").
 lazy val utilTesting = (project in internalPath / "util-testing").
   settings(
     commonSettings,
-    crossScalaVersions := Seq(scala210, scala211),
+    crossScalaVersions := Seq(scala210, scala211, scala212),
     name := "Util Testing",
     libraryDependencies ++= Seq(scalaCheck, scalatest)
   )
