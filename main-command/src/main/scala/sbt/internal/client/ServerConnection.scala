@@ -36,9 +36,9 @@ abstract class ServerConnection(connection: Socket) {
 
               Serialization.deserializeEvent(chunk).fold(
                 { errorDesc =>
-                val s = new String(chunk.toArray, "UTF-8")
-                println(s"Got invalid chunk from server: $s \n" + errorDesc)
-              },
+                  val s = new String(chunk.toArray, "UTF-8")
+                  println(s"Got invalid chunk from server: $s \n" + errorDesc)
+                },
                 onEvent
               )
             }
