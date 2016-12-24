@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import sbt.protocol._
 import sbt.internal.util.JLine
 import scala.collection.mutable.ListBuffer
+import scala.util.control.NonFatal
 
 class NetworkClient(arguments: List[String]) { self =>
   private val channelName = new AtomicReference("_")
@@ -110,6 +111,6 @@ object NetworkClient {
     try {
       new NetworkClient(arguments)
     } catch {
-      case e: Exception => println(e.getMessage)
+      case NonFatal(e) => println(e.getMessage)
     }
 }
