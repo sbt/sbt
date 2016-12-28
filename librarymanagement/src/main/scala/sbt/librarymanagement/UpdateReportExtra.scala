@@ -15,10 +15,6 @@ abstract class ConfigurationReportExtra {
   def evicted: Seq[ModuleID] =
     details flatMap (_.modules) filter (_.evicted) map (_.module)
 
-  override def toString = s"\t$configuration:\n" +
-    (if (details.isEmpty) modules.mkString + details.flatMap(_.modules).filter(_.evicted).map("\t\t(EVICTED) " + _ + "\n").mkString
-    else details.mkString)
-
   /**
    * All resolved modules for this configuration.
    * For a given organization and module name, there is only one revision/`ModuleID` in this sequence.
