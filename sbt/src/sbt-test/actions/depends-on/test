@@ -1,11 +1,13 @@
 -> a
 -> b
 -> c
+-> d
 
 $ touch succeed
 > a
 > b
 > c
+> d
 
 > project input
 -> j
