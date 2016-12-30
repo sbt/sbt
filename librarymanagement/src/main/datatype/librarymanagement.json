@@ -766,7 +766,8 @@
         { "name": "artifact",       "type": "String"                             },
         { "name": "configurations", "type": "String*"                            },
         { "name": "crossVersion",   "type": "sbt.librarymanagement.CrossVersion" }
-      ]
+      ],
+      "parentsCompanion": "sbt.internal.librarymanagement.SbtExclusionRuleFunctions"
     },
     {
       "name": "UpdateReportLite",
