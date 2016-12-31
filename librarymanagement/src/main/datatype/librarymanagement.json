@@ -99,6 +99,11 @@
           "type": "sbt.librarymanagement.OrganizationArtifactReport*",
           "doc": [ "a sequence containing one report for each org/name, which may or may not be part of the final resolution." ]
         }
+      ],
+      "toString": [
+        "s\"\\t$configuration:\\n\" +",
+        "(if (details.isEmpty) modules.mkString + details.flatMap(_.modules).filter(_.evicted).map(\"\\t\\t(EVICTED) \" + _ + \"\\n\").mkString",
+        "else details.mkString)"
       ]
     },
     {
