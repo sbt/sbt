@@ -6,7 +6,9 @@ object Dependencies {
   val scala211 = "2.11.8"
   val scala212 = "2.12.1"
 
-  private val sbtIO = "org.scala-sbt" %% "io" % "1.0.0-M7"
+  private val ioVersion = "1.0.0-M9"
+
+  private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
   def getSbtModulePath(key: String, name: String) = {
     val localProps = new java.util.Properties()
