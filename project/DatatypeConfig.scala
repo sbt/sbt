@@ -19,8 +19,6 @@ object DatatypeConfig {
 
   /** Codecs that were manually written. */
   val myCodecs: PartialFunction[String, Type => List[String]] = {
-    case "java.util.Date" => { _ => "sbt.internal.librarymanagement.formats.DateFormat" :: Nil }
-
     case "scala.xml.NodeSeq" => { _ => "sbt.internal.librarymanagement.formats.NodeSeqFormat" :: Nil }
 
     case "org.apache.ivy.plugins.resolver.DependencyResolver" =>

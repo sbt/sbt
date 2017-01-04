@@ -92,9 +92,11 @@ object IvyRetrieve {
     val branch = nonEmptyString(revId.getBranch)
     val (status, publicationDate, resolver, artifactResolver) = dep.isLoaded match {
       case true =>
+        val c = new ju.GregorianCalendar()
+        c.setTimeInMillis(dep.getPublication)
         (
           nonEmptyString(dep.getDescriptor.getStatus),
-          Some(new ju.Date(dep.getPublication)),
+          Some(c),
           nonEmptyString(dep.getModuleRevision.getResolver.getName),
           nonEmptyString(dep.getModuleRevision.getArtifactResolver.getName)
         )

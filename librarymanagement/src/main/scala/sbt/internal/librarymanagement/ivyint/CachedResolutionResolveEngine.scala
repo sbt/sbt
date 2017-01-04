@@ -686,6 +686,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
               case _ =>
                 val strategy = lcm.getStrategy
                 val infos = conflicts map { ModuleReportArtifactInfo(_) }
+                log.debug(s"- Using $strategy with $infos")
                 Option(strategy.findLatest(infos.toArray, None.orNull)) match {
                   case Some(ModuleReportArtifactInfo(m)) =>
                     (Vector(m), conflicts filterNot { _ == m } map { _.withEvicted(true).withEvictedReason(Some(lcm.toString)) }, lcm.toString)
@@ -766,8 +767,9 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
 }
 
 private[sbt] case class ModuleReportArtifactInfo(moduleReport: ModuleReport) extends IvyArtifactInfo {
-  override def getLastModified: Long = moduleReport.publicationDate map { _.getTime } getOrElse 0L
+  override def getLastModified: Long = moduleReport.publicationDate map { _.getTimeInMillis } getOrElse 0L
   override def getRevision: String = moduleReport.module.revision
+  override def toString: String = s"ModuleReportArtifactInfo(${moduleReport.module}, $getRevision, $getLastModified)"
 }
 private[sbt] case class IvyOverride(moduleId: IvyModuleId, pm: PatternMatcher, ddm: OverrideDependencyDescriptorMediator) {
   override def toString: String = s"""IvyOverride($moduleId,$pm,${ddm.getVersion},${ddm.getBranch})"""

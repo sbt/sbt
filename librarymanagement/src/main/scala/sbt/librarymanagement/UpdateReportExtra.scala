@@ -37,7 +37,7 @@ abstract class ModuleReportExtra {
   def artifacts: Vector[(Artifact, File)]
   def missingArtifacts: Vector[Artifact]
   def status: Option[String]
-  def publicationDate: Option[ju.Date]
+  def publicationDate: Option[ju.Calendar]
   def resolver: Option[String]
   def artifactResolver: Option[String]
   def evicted: Boolean
@@ -99,7 +99,7 @@ abstract class ModuleReportExtra {
     artifacts: Vector[(Artifact, File)] = artifacts,
     missingArtifacts: Vector[Artifact] = missingArtifacts,
     status: Option[String] = status,
-    publicationDate: Option[ju.Date] = publicationDate,
+    publicationDate: Option[ju.Calendar] = publicationDate,
     resolver: Option[String] = resolver,
     artifactResolver: Option[String] = artifactResolver,
     evicted: Boolean = evicted,

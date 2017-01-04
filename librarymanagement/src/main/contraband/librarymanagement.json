@@ -296,7 +296,7 @@
         { "name": "artifacts",        "type": "scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]*"                        },
         { "name": "missingArtifacts", "type": "sbt.librarymanagement.Artifact*"                                                    },
         { "name": "status",           "type": "Option[String]",                        "default": "None",         "since": "0.0.1" },
-        { "name": "publicationDate",  "type": "Option[java.util.Date]",                "default": "None",         "since": "0.0.1" },
+        { "name": "publicationDate",  "type": "Option[java.util.Calendar]",            "default": "None",         "since": "0.0.1" },
         { "name": "resolver",         "type": "Option[String]",                        "default": "None",         "since": "0.0.1" },
         { "name": "artifactResolver", "type": "Option[String]",                        "default": "None",         "since": "0.0.1" },
         { "name": "evicted",          "type": "boolean",                               "default": "false",        "since": "0.0.1" },
