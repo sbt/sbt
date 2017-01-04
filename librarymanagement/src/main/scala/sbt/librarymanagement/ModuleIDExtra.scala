@@ -6,6 +6,7 @@ package sbt.librarymanagement
 import java.net.URL
 
 import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
+import scala.collection.mutable.ListBuffer
 
 abstract class ModuleIDExtra {
   def organization: String
@@ -37,6 +38,31 @@ abstract class ModuleIDExtra {
     crossVersion: CrossVersion = crossVersion,
     branchName: Option[String] = branchName
   ): ModuleID
+
+  protected def toStringImpl: String =
+    s"""$organization:$name:$revision""" +
+      (configurations match { case Some(s) => ":" + s; case None => "" }) +
+      {
+        val attr = attributeString
+        if (attr == "") ""
+        else " " + attr
+      } +
+      (if (extraAttributes.isEmpty) "" else " " + extraString)
+
+  protected def attributeString: String =
+    {
+      val buffer = ListBuffer.empty[String]
+      if (isChanging) {
+        buffer += "changing"
+      }
+      if (!isTransitive) {
+        buffer += "intransitive"
+      }
+      if (isForce) {
+        buffer += "force"
+      }
+      buffer.toList.mkString(";")
+    }
 
   /** String representation of the extra attributes, excluding any information only attributes. */
   def extraString: String = extraDependencyAttributes.map { case (k, v) => k + "=" + v } mkString ("(", ", ", ")")

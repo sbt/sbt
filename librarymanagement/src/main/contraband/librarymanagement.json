@@ -257,9 +257,7 @@
         { "name": "branchName",        "type": "Option[String]",                      "default": "None",                             "since": "0.0.1" }
       ],
       "toString": [
-        "organization + \":\" + name + \":\" + revision +",
-        "  (configurations match { case Some(s) => \":\" + s; case None => \"\" }) +",
-        "  (if (extraAttributes.isEmpty) \"\" else \" \" + extraString)"
+        "this.toStringImpl"
       ],
       "parentsCompanion": "sbt.librarymanagement.ModuleIDFunctions"
     },
