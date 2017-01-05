@@ -14,7 +14,7 @@
         },
         {
           "name": "commandLine",
-          "type": "String?",
+          "type": "Option[String]",
           "default": "None",
           "since": "0.1.0"
         }
@@ -33,37 +33,37 @@
         },
         {
           "name": "status",
-          "type": "String?",
+          "type": "Option[String]",
           "default": "None",
           "since": "0.1.0"
         },
         {
           "name": "commandQueue",
-          "type": "String*",
+          "type": "scala.Vector[String]",
           "default": "Vector()",
           "since": "0.1.0"
         },
         {
           "name": "level",
-          "type": "String?",
+          "type": "Option[String]",
           "default": "None",
           "since": "0.1.0"
         },
         {
           "name": "message",
-          "type": "String?",
+          "type": "Option[String]",
           "default": "None",
           "since": "0.1.0"
         },
         {
           "name": "success",
-          "type": "boolean?",
+          "type": "Option[Boolean]",
           "default": "None",
           "since": "0.1.0"
         },
         {
           "name": "commandLine",
-          "type": "String?",
+          "type": "Option[String]",
           "default": "None",
           "since": "0.1.0"
         }

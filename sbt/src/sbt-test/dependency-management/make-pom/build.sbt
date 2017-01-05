@@ -69,4 +69,4 @@ def normalize(url: String): String =
     val base = uri( url ).normalize.toString
     if(base.endsWith("/")) base else (base + "/")
   }
-def normalize(repo: MavenRepository): MavenRepository = new MavenRepository(repo.name, normalize(repo.root))
+def normalize(repo: MavenRepository): MavenRepository = MavenRepository(repo.name, normalize(repo.root))

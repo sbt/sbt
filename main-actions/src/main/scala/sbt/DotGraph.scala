@@ -31,7 +31,7 @@ object DotGraph {
     def file(name: String) = new File(outputDir, name)
     IO.createDirectory(outputDir)
     generateGraph(file("int-class-deps"), "dependencies", relations.internalClassDep, identity[String], identity[String])
-    generateGraph(file("binary-dependencies"), "externalDependencies", relations.binaryDep, externalToString, sourceToString)
+    generateGraph(file("binary-dependencies"), "externalDependencies", relations.libraryDep, externalToString, sourceToString)
   }
 
   def generateGraph[K, V](file: File, graphName: String, relation: Relation[K, V],

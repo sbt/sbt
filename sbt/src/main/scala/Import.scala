@@ -64,8 +64,7 @@ trait Import {
   type BufferedLogger = sbt.internal.util.BufferedLogger
   val Cache = sbt.internal.util.Cache
   type Cache[I, O] = sbt.internal.util.Cache[I, O]
-  val CacheIO = sbt.internal.util.CacheIO
-  type CacheImplicits = sbt.internal.util.CacheImplicits
+  val CacheImplicits = sbt.internal.util.CacheImplicits
   val ChangeReport = sbt.internal.util.ChangeReport
   type ChangeReport[T] = sbt.internal.util.ChangeReport[T]
   type Changed[O] = sbt.internal.util.Changed[O]
@@ -107,7 +106,6 @@ trait Import {
   type HCons[H, T <: HList] = sbt.internal.util.HCons[H, T]
   val HList = sbt.internal.util.HList
   type HList = sbt.internal.util.HList
-  type HListCacheImplicits = sbt.internal.util.HListCacheImplicits
   val HNil = sbt.internal.util.HNil
   type HNil = sbt.internal.util.HNil
   type HashFileInfo = sbt.internal.util.HashFileInfo
@@ -117,8 +115,6 @@ trait Import {
   val IMap = sbt.internal.util.IMap
   type IMap[K[_], V[_]] = sbt.internal.util.IMap[K, V]
   type Init[S] = sbt.internal.util.Init[S]
-  val InputCache = sbt.internal.util.InputCache
-  type InputCache[I] = sbt.internal.util.InputCache[I]
   type JLine = sbt.internal.util.JLine
   val KCons = sbt.internal.util.KCons
   type KCons[H, +T <: KList[M], +M[_]] = sbt.internal.util.KCons[H, T, M]
@@ -149,7 +145,6 @@ trait Import {
   type RangePosition = sbt.internal.util.RangePosition
   val Relation = sbt.internal.util.Relation
   type Relation[A, B] = sbt.internal.util.Relation[A, B]
-  type SBinaryFormats = sbt.internal.util.SBinaryFormats
   val ScalaKeywords = sbt.internal.util.ScalaKeywords
   type Settings[S] = sbt.internal.util.Settings[S]
   type SharedAttributeKey[T] = sbt.internal.util.SharedAttributeKey[T]
@@ -172,7 +167,6 @@ trait Import {
   type TypeFunctions = sbt.internal.util.TypeFunctions
   val Types = sbt.internal.util.Types
   type Types = sbt.internal.util.Types
-  type UnionImplicits = sbt.internal.util.UnionImplicits
   type UnprintableException = sbt.internal.util.UnprintableException
   val Util = sbt.internal.util.Util
   val ~> = sbt.internal.util.~>
@@ -217,6 +211,8 @@ trait Import {
   // sbt.librarymanagement
   val Artifact = sbt.librarymanagement.Artifact
   type Artifact = sbt.librarymanagement.Artifact
+  val Binary = sbt.librarymanagement.Binary
+  type Binary = sbt.librarymanagement.Binary
   val Caller = sbt.librarymanagement.Caller
   type Caller = sbt.librarymanagement.Caller
   val ChainedResolver = sbt.librarymanagement.ChainedResolver
@@ -239,6 +235,8 @@ trait Import {
   val DefaultMavenRepository = sbt.librarymanagement.DefaultMavenRepository
   val Developer = sbt.librarymanagement.Developer
   type Developer = sbt.librarymanagement.Developer
+  val Disabled = sbt.librarymanagement.Disabled
+  type Disabled = sbt.librarymanagement.Disabled
   type DirectCredentials = sbt.librarymanagement.DirectCredentials
   val EvictionPair = sbt.librarymanagement.EvictionPair
   type EvictionPair = sbt.librarymanagement.EvictionPair
@@ -251,12 +249,16 @@ trait Import {
   type FileCredentials = sbt.librarymanagement.FileCredentials
   val FileRepository = sbt.librarymanagement.FileRepository
   type FileRepository = sbt.librarymanagement.FileRepository
+  val Full = sbt.librarymanagement.Full
+  type Full = sbt.librarymanagement.Full
   val IvyScala = sbt.librarymanagement.IvyScala
   type IvyScala = sbt.librarymanagement.IvyScala
   val JCenterRepository = sbt.librarymanagement.JCenterRepository
   val JavaNet2Repository = sbt.librarymanagement.JavaNet2Repository
   val MavenCache = sbt.librarymanagement.MavenCache
   type MavenCache = sbt.librarymanagement.MavenCache
+  val MavenRepo = sbt.librarymanagement.MavenRepo
+  type MavenRepo = sbt.librarymanagement.MavenRepo
   val MavenRepository = sbt.librarymanagement.MavenRepository
   type MavenRepository = sbt.librarymanagement.MavenRepository
   val ModuleConfiguration = sbt.librarymanagement.ModuleConfiguration
@@ -273,7 +275,6 @@ trait Import {
   type Patterns = sbt.librarymanagement.Patterns
   type PatternsBasedRepository = sbt.librarymanagement.PatternsBasedRepository
   type RawRepository = sbt.librarymanagement.RawRepository
-  val RepositoryHelpers = sbt.librarymanagement.RepositoryHelpers
   val Resolver = sbt.librarymanagement.Resolver
   type Resolver = sbt.librarymanagement.Resolver
   val SbtArtifacts = sbt.librarymanagement.SbtArtifacts
@@ -291,6 +292,7 @@ trait Import {
   val TrackLevel = sbt.librarymanagement.TrackLevel
   val URLRepository = sbt.librarymanagement.URLRepository
   type URLRepository = sbt.librarymanagement.URLRepository
+  val UpdateLogging = sbt.librarymanagement.UpdateLogging
   val UpdateOptions = sbt.librarymanagement.UpdateOptions
   type UpdateOptions = sbt.librarymanagement.UpdateOptions
   val UpdateReport = sbt.librarymanagement.UpdateReport
@@ -303,7 +305,7 @@ trait Import {
 
   // sbt.internal.librarymanagement
   type IvyPaths = sbt.internal.librarymanagement.IvyPaths
-  val UpdateLogging = sbt.internal.librarymanagement.UpdateLogging
+  val IvyPaths = sbt.internal.librarymanagement.IvyPaths
 
   type IncOptions = xsbti.compile.IncOptions
 }

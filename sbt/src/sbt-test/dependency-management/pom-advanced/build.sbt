@@ -7,7 +7,7 @@ lazy val root = (project in file(".")).
     makePomConfiguration := ((makePomConfiguration, baseDirectory) { (conf, base) =>
       conf.copy(filterRepositories = pomIncludeRepository(base, conf.filterRepositories) )
     }).value,
-    ivyPaths := baseDirectory( dir => new IvyPaths(dir, Some(dir / "ivy-home"))).value
+    ivyPaths := baseDirectory( dir => IvyPaths(dir, Some(dir / "ivy-home"))).value
   )
 
 val local = "local-maven-repo" at "file://" + (Path.userHome / ".m2" /"repository").absolutePath

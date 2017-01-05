@@ -2,14 +2,12 @@ package sbt
 
 import Def.{ Initialize, ScopedKey, streamsManagerKey }
 import Previous._
-import sbt.internal.util.{ ~>, IMap, RMap }
+import sbt.internal.util.{ ~>, AttributeKey, IMap, Input, Output, PlainInput, RMap, StampedFormat }
+import sbt.internal.util.Types._
 
 import java.io.{ InputStream, OutputStream }
 
-import scala.util.control.NonFatal
-
-import sbinary.{ DefaultProtocol, Format }
-import DefaultProtocol.{ StringFormat, withStamp }
+import sjsonnew.{ IsoString, JsonFormat, SupportConverter }
 
 /**
  * Reads the previous value of tasks on-demand.  The read values are cached so that they are only read once per task execution.
@@ -22,7 +20,7 @@ private[sbt] final class Previous(streams: Streams, referenced: IMap[ScopedTaskK
   private[this] final class ReferencedValue[T](referenced: Referenced[T]) {
     import referenced.{ stamped, task }
     lazy val previousValue: Option[T] = {
-      val in = streams(task).readBinary(task, StreamName)
+      val in = streams(task).getInput(task, StreamName)
       try read(in, stamped) finally in.close()
     }
   }
@@ -32,6 +30,7 @@ private[sbt] final class Previous(streams: Streams, referenced: IMap[ScopedTaskK
     map.get(key).flatMap(_.previousValue)
 }
 object Previous {
+  import sjsonnew.BasicJsonProtocol.StringJsonFormat
   private[sbt]type ScopedTaskKey[T] = ScopedKey[Task[T]]
   private type Streams = sbt.std.Streams[ScopedKey[_]]
 
@@ -39,8 +38,8 @@ object Previous {
   private final val StreamName = "previous"
 
   /** Represents a reference task.previous*/
-  private[sbt] final class Referenced[T](val task: ScopedKey[Task[T]], val format: Format[T]) {
-    lazy val stamped = withStamp(task.key.manifest.toString)(format)
+  private[sbt] final class Referenced[T](val task: ScopedKey[Task[T]], val format: JsonFormat[T]) {
+    lazy val stamped = StampedFormat.withStamp(task.key.manifest.toString)(format)
     def setTask(newTask: ScopedKey[Task[T]]) = new Referenced(newTask, format)
   }
 
@@ -51,9 +50,9 @@ object Previous {
   private[sbt] final class References {
     private[this] var map = IMap.empty[ScopedTaskKey, Referenced]
 
-    // TODO: this arbitrarily chooses a Format.
+    // TODO: this arbitrarily chooses a JsonFormat.
     // The need to choose is a fundamental problem with this approach, but this should at least make a stable choice.
-    def recordReference[T](key: ScopedKey[Task[T]], format: Format[T]): Unit = synchronized {
+    def recordReference[T](key: ScopedKey[Task[T]], format: JsonFormat[T]): Unit = synchronized {
       map = map.put(key, new Referenced(key, format))
     }
     def getReferences: IMap[ScopedTaskKey, Referenced] = synchronized { map }
@@ -65,7 +64,7 @@ object Previous {
       val map = referenced.getReferences
       def impl[T](key: ScopedKey[_], result: T): Unit =
         for (i <- map.get(key.asInstanceOf[ScopedTaskKey[T]])) {
-          val out = streams.apply(i.task).binary(StreamName)
+          val out = streams.apply(i.task).getOutput(StreamName)
           try write(out, i.stamped, result) finally out.close()
         }
 
@@ -75,16 +74,16 @@ object Previous {
       } impl(key, result)
     }
 
-  private def read[T](stream: InputStream, format: Format[T]): Option[T] =
-    try Some(format.reads(stream))
-    catch { case NonFatal(e) => None }
+  private def read[T](input: Input, format: JsonFormat[T]): Option[T] =
+    try Some(input.read()(format))
+    catch { case e: Exception => None }
 
-  private def write[T](stream: OutputStream, format: Format[T], value: T): Unit =
-    try format.writes(stream, value)
-    catch { case NonFatal(e) => () }
+  private def write[T](output: Output, format: JsonFormat[T], value: T): Unit =
+    try output.write(value)(format)
+    catch { case e: Exception => () }
 
   /** Public as a macro implementation detail.  Do not call directly. */
-  def runtime[T](skey: TaskKey[T])(implicit format: Format[T]): Initialize[Task[Option[T]]] =
+  def runtime[T](skey: TaskKey[T])(implicit format: JsonFormat[T]): Initialize[Task[Option[T]]] =
     {
       val inputs = (cache in Global) zip Def.validated(skey, selfRefOk = true) zip (references in Global)
       inputs {

@@ -17,5 +17,5 @@ version in ThisBuild := "1.0"
 lazy val common = Seq(
 	autoScalaLibrary := false, // avoid downloading fresh scala-library/scala-compiler
 	managedScalaInstance := false,
-	ivyPaths := new IvyPaths( (baseDirectory in ThisBuild).value, Some((target in LocalRootProject).value / "ivy-cache"))
+	ivyPaths := IvyPaths( (baseDirectory in ThisBuild).value, Some((target in LocalRootProject).value / "ivy-cache"))
 )

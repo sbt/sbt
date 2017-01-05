@@ -1,11 +1,13 @@
 def customIvyPaths: Seq[Def.Setting[_]] = Seq(
-  ivyPaths := new IvyPaths((baseDirectory in ThisBuild).value, Some((baseDirectory in ThisBuild).value / "ivy-cache"))
+  ivyPaths := IvyPaths((baseDirectory in ThisBuild).value, Some((baseDirectory in ThisBuild).value / "ivy-cache"))
 )
 
-lazy val sharedResolver: Resolver =
-  Resolver.defaultShared.nonlocal()
+lazy val sharedResolver: Resolver = {
+  val r = Resolver.defaultShared
+  r withConfiguration (r.configuration withIsLocal false)
   //MavenRepository("example-shared-repo", "file:///tmp/shared-maven-repo-bad-example")
   //Resolver.file("example-shared-repo", repoDir)(Resolver.defaultPatterns)
+}
 
 lazy val common = project.
   settings(customIvyPaths: _*).
@@ -14,12 +16,11 @@ lazy val common = project.
     name := "badexample",
     version := "1.0-SNAPSHOT",
     publishTo := Some(sharedResolver),
-    crossVersion := CrossVersion.Disabled,
+    crossVersion := Disabled(),
     publishMavenStyle := (sharedResolver match {
       case repo: PatternsBasedRepository => repo.patterns.isMavenCompatible
       case _: RawRepository => false // TODO - look deeper
       case _: MavenRepository => true
-      case _: MavenCache => true
       case _ => false  // TODO - Handle chain repository?
     })
     // updateOptions := updateOptions.value.withLatestSnapshots(true)

@@ -14,7 +14,7 @@ implicit lazy val CommandMessageFormat: JsonFormat[sbt.internal.server.CommandMe
       val `type` = unbuilder.readField[String]("type")
       val commandLine = unbuilder.readField[Option[String]]("commandLine")
       unbuilder.endObject()
-      new sbt.internal.server.CommandMessage(`type`, commandLine)
+      sbt.internal.server.CommandMessage(`type`, commandLine)
       case None =>
       deserializationError("Expected JsObject but found None")
     }

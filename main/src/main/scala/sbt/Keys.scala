@@ -31,7 +31,7 @@ import KeyRanks._
 import sbt.internal.{ BuildStructure, LoadedBuild, PluginDiscovery, BuildDependencies, SessionSettings }
 import sbt.io.FileFilter
 import sbt.internal.io.WatchState
-import sbt.internal.util.{ AttributeKey, SourcePosition }
+import sbt.internal.util.{ AttributeKey, CacheStore, SourcePosition }
 
 import sbt.librarymanagement.Configurations.CompilerPlugin
 import sbt.librarymanagement.{
@@ -49,11 +49,14 @@ import sbt.librarymanagement.{
   ModuleConfiguration,
   ModuleID,
   ModuleInfo,
+  ModuleSettings,
   Resolver,
   ScalaVersion,
   ScmInfo,
   TrackLevel,
+  UpdateConfiguration,
   UpdateOptions,
+  UpdateLogging,
   UpdateReport
 }
 import sbt.internal.librarymanagement.{
@@ -64,18 +67,17 @@ import sbt.internal.librarymanagement.{
   IvyPaths,
   IvySbt,
   MakePomConfiguration,
-  ModuleSettings,
   PublishConfiguration,
   RetrieveConfiguration,
   SbtExclusionRule,
-  UnresolvedWarningConfiguration,
-  UpdateConfiguration,
-  UpdateLogging
+  UnresolvedWarningConfiguration
 }
 import sbt.util.{ AbstractLogger, Level, Logger }
 
 object Keys {
   val TraceValues = "-1 to disable, 0 for up to the first sbt frame, or a positive number to set the maximum number of frames shown."
+
+  val fileToStore = SettingKey[File => CacheStore]("file-to-store", "How to go from a file to a store.", ASetting)
 
   // logging
   val logLevel = SettingKey[Level.Value]("log-level", "The amount of logging sent to the screen.", ASetting)
@@ -374,7 +376,7 @@ object Keys {
   val ivyXML = SettingKey[NodeSeq]("ivy-xml", "Defines inline Ivy XML for configuring dependency management.", BSetting)
   val ivyScala = SettingKey[Option[IvyScala]]("ivy-scala", "Configures how Scala dependencies are checked, filtered, and injected.", CSetting)
   val ivyValidate = SettingKey[Boolean]("ivy-validate", "Enables/disables Ivy validation of module metadata.", BSetting)
-  val ivyLoggingLevel = SettingKey[UpdateLogging.Value]("ivy-logging-level", "The logging level for updating.", BSetting)
+  val ivyLoggingLevel = SettingKey[UpdateLogging]("ivy-logging-level", "The logging level for updating.", BSetting)
   val publishTo = TaskKey[Option[Resolver]]("publish-to", "The resolver to publish to.", ASetting)
   val artifacts = SettingKey[Seq[Artifact]]("artifacts", "The artifact definitions for the current module.  Must be consistent with " + packagedArtifacts.key.label + ".", BSetting)
   val projectDescriptors = TaskKey[Map[ModuleRevisionId, ModuleDescriptor]]("project-descriptors", "Project dependency map for the inter-project resolver.", DTask)

@@ -1,7 +1,7 @@
 resolvers += Resolver.file("buggy", file("repo"))(
 	Patterns(
-		ivyPatterns =  Seq("[organization]/[module]/[revision]/ivy.xml"),
-		artifactPatterns = Seq("[organization]/[module]/[revision]/[artifact].[ext]"),
+		ivyPatterns = Vector("[organization]/[module]/[revision]/ivy.xml"),
+		artifactPatterns = Vector("[organization]/[module]/[revision]/[artifact].[ext]"),
 		isMavenCompatible = false,
 		descriptorOptional = true,
 		skipConsistencyCheck = true

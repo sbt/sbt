@@ -1,7 +1,7 @@
 package sbt
 
 import sbt.internal.DslEntry
-import sbt.internal.util.Eval
+import sbt.util.Eval
 
 object syntax extends syntax
 

@@ -136,7 +136,7 @@ lazy val stdTaskProj = (project in file("tasks-standard")).
     name := "Task System",
     testExclusive
   ).
-  configure(addSbtUtilCollection, addSbtUtilLogging, addSbtIO)
+  configure(addSbtUtilCollection, addSbtUtilLogging, addSbtUtilCache, addSbtIO)
 
 // Embedded Scala code runner
 lazy val runProj = (project in file("run")).
@@ -168,7 +168,8 @@ lazy val actionsProj = (project in file("main-actions")).
   dependsOn(runProj, stdTaskProj, taskProj, testingProj).
   settings(
     testedBaseSettings,
-    name := "Actions"
+    name := "Actions",
+    libraryDependencies += sjsonNewScalaJson
   ).
   configure(addSbtCompilerClasspath, addSbtUtilCompletion, addSbtCompilerApiInfo,
     addSbtZinc, addSbtCompilerIvyIntegration, addSbtCompilerInterface,
@@ -176,12 +177,13 @@ lazy val actionsProj = (project in file("main-actions")).
 
 // General command support and core commands not specific to a build system
 lazy val commandProj = (project in file("main-command")).
-  enablePlugins(DatatypePlugin, JsonCodecPlugin).
+  enablePlugins(ContrabandPlugin, JsonCodecPlugin).
   settings(
     testedBaseSettings,
     name := "Command",
     libraryDependencies ++= Seq(launcherInterface, sjsonNewScalaJson),
-    sourceManaged in (Compile, generateDatatypes) := baseDirectory.value / "src" / "main" / "datatype-scala"
+    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
+    contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats
   ).
   configure(addSbtCompilerInterface, addSbtIO, addSbtUtilLogging, addSbtUtilCompletion, addSbtCompilerClasspath)
 
