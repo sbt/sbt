@@ -402,13 +402,13 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       val cachedDescriptor = getSettings.getResolutionCacheManager.getResolvedIvyFileInCache(md0.getModuleRevisionId)
       val rootModuleConfigs = md0.getConfigurations.toVector
       val cachedReports = reports filter { !_.stats.cached }
-      val stats = new UpdateStats(resolveTime, (cachedReports map { _.stats.downloadTime }).sum, (cachedReports map { _.stats.downloadSize }).sum, false)
+      val stats = UpdateStats(resolveTime, (cachedReports map { _.stats.downloadTime }).sum, (cachedReports map { _.stats.downloadSize }).sum, false)
       val configReports = rootModuleConfigs map { conf =>
         log.debug("::: -----------")
         val crs = reports flatMap { _.configurations filter { _.configuration == conf.getName } }
         mergeConfigurationReports(conf.getName, crs, os, log)
       }
-      new UpdateReport(cachedDescriptor, configReports, stats, Map.empty)
+      UpdateReport(cachedDescriptor, configReports, stats, Map.empty)
     }
   // memory usage 62%, of which 58% is in mergeOrganizationArtifactReports
   def mergeConfigurationReports(rootModuleConf: String, reports: Vector[ConfigurationReport], os: Vector[IvyOverride], log: Logger): ConfigurationReport =
@@ -420,7 +420,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
           !mr.evicted && mr.problem.isEmpty
         }
       }
-      new ConfigurationReport(rootModuleConf, modules, details)
+      ConfigurationReport(rootModuleConf, modules, details)
     }
   /**
    * Returns a tuple of (merged org + name combo, newly evicted modules)
@@ -579,7 +579,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
                     val notEvicted = (survivor ++ newlyEvicted) filter { m => !m.evicted }
                     log.debug("::: adds " + (notEvicted map { _.module }).mkString(", "))
                     log.debug("::: evicted " + (evicted map { _.module }).mkString(", "))
-                    val x = new OrganizationArtifactReport(organization, name, survivor ++ newlyEvicted)
+                    val x = OrganizationArtifactReport(organization, name, survivor ++ newlyEvicted)
                     val nextModules = transitivelyEvict(rootModuleConf, rest, allModules, evicted, log)
                     x :: resolveConflicts(rest, nextModules)
                 })
@@ -644,7 +644,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
             }
             val newlyEvicted = affected map { _.withEvicted(true).withEvictedReason(Some("transitive-evict")) }
             if (affected.isEmpty) oar
-            else new OrganizationArtifactReport(organization, name, unaffected ++ newlyEvicted)
+            else OrganizationArtifactReport(organization, name, unaffected ++ newlyEvicted)
           }
           Seq(((organization, name), oars))
       }
@@ -761,7 +761,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
         }
         mergeConfigurationReports(conf0.getName, remappedCRs, os, log)
       }
-      new UpdateReport(ur.cachedDescriptor, configurations, ur.stats, ur.stamps)
+      UpdateReport(ur.cachedDescriptor, configurations, ur.stats, ur.stamps)
     }
 }
 

@@ -29,7 +29,7 @@ abstract class ConfigurationReportExtra {
   }
 
   def retrieve(f: (String, ModuleID, Artifact, File) => File): ConfigurationReport =
-    new ConfigurationReport(configuration, modules map { _.retrieve((mid, art, file) => f(configuration, mid, art, file)) }, details)
+    ConfigurationReport(configuration, modules map { _.retrieve((mid, art, file) => f(configuration, mid, art, file)) }, details)
 }
 
 abstract class ModuleReportExtra {
@@ -141,7 +141,7 @@ abstract class UpdateReportExtra {
     }
 
   def retrieve(f: (String, ModuleID, Artifact, File) => File): UpdateReport =
-    new UpdateReport(cachedDescriptor, configurations map { _ retrieve f }, stats, stamps)
+    UpdateReport(cachedDescriptor, configurations map { _ retrieve f }, stats, stamps)
 
   /** Gets the report for the given configuration, or `None` if the configuration was not resolved.*/
   def configuration(s: String) = configurations.find(_.configuration == s)

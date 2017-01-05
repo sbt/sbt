@@ -7,7 +7,7 @@ import org.apache.ivy.core.module.descriptor
 import org.apache.ivy.util.filter.{ Filter => IvyFilter }
 
 abstract class InclExclRuleFunctions {
-  def everything = new InclExclRule("*", "*", "*", Vector.empty)
+  def everything = InclExclRule("*", "*", "*", Vector.empty)
 }
 
 abstract class ArtifactTypeFilterExtra {

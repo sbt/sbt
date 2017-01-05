@@ -28,7 +28,7 @@ final class RawRepository(val resolver: DependencyResolver) extends Resolver(res
 
 abstract class MavenRepositoryFunctions {
   def apply(name: String, root: String, localIfFile: Boolean = true): MavenRepository =
-    new MavenRepo(name, root, localIfFile)
+    MavenRepo(name, root, localIfFile)
 }
 
 abstract class PatternsFunctions {

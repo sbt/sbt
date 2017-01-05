@@ -13,10 +13,10 @@ abstract class CrossVersionFunctions {
   val TransitionSbtVersion = CrossVersionUtil.TransitionSbtVersion
 
   /** Cross-versions a module with the full version (typically the full Scala version). */
-  def full: CrossVersion = new Full()
+  def full: CrossVersion = Full()
 
   /** Cross-versions a module with the binary version (typically the binary Scala version).  */
-  def binary: CrossVersion = new Binary()
+  def binary: CrossVersion = Binary()
 
   private[sbt] def append(s: String): Option[String => String] = Some(x => crossName(x, s))
 

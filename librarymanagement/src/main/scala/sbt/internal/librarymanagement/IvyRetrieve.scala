@@ -85,7 +85,7 @@ object IvyRetrieve {
         case Some(dd) => (toExtraAttributes(dd.getExtraAttributes), dd.isForce, dd.isChanging, dd.isTransitive, false)
         case None     => (Map.empty[String, String], false, false, true, false)
       }
-      new Caller(m, callerConfigurations, extraAttributes, isForce, isChanging, isTransitive, isDirectlyForce)
+      Caller(m, callerConfigurations, extraAttributes, isForce, isChanging, isTransitive, isDirectlyForce)
     }
     val revId = dep.getResolvedId
     val moduleId = toModuleID(revId)
@@ -142,7 +142,7 @@ object IvyRetrieve {
     val callers = dep.getCallers(confReport.getConfiguration).toVector map { toCaller }
     val (resolved, missing) = artifacts(moduleId, confReport getDownloadReports revId)
 
-    new ModuleReport(moduleId, resolved, missing, status, publicationDate, resolver, artifactResolver,
+    ModuleReport(moduleId, resolved, missing, status, publicationDate, resolver, artifactResolver,
       evicted, evictedData, evictedReason, problem, homepage, extraAttributes, isDefault, branch,
       configurations, licenses, callers)
   }
@@ -161,11 +161,11 @@ object IvyRetrieve {
     }
 
   def updateReport(report: ResolveReport, cachedDescriptor: File): UpdateReport =
-    new UpdateReport(cachedDescriptor, reports(report) map configurationReport, updateStats(report), Map.empty) recomputeStamps ()
+    UpdateReport(cachedDescriptor, reports(report) map configurationReport, updateStats(report), Map.empty) recomputeStamps ()
   def updateStats(report: ResolveReport): UpdateStats =
-    new UpdateStats(report.getResolveTime, report.getDownloadTime, report.getDownloadSize, false)
+    UpdateStats(report.getResolveTime, report.getDownloadTime, report.getDownloadSize, false)
   def configurationReport(confReport: ConfigurationResolveReport): ConfigurationReport =
-    new ConfigurationReport(confReport.getConfiguration, moduleReports(confReport), organizationArtifactReports(confReport))
+    ConfigurationReport(confReport.getConfiguration, moduleReports(confReport), organizationArtifactReports(confReport))
 
   /**
    * Tries to find Ivy graph path the from node to target.

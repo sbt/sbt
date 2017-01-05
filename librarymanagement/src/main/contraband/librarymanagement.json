@@ -12,9 +12,9 @@
         { "name": "name",            "type": "String"                                                                                         },
         { "name": "type",            "type": "String",                               "default": "Artifact.DefaultType",      "since": "0.0.1" },
         { "name": "extension",       "type": "String",                               "default": "Artifact.DefaultExtension", "since": "0.0.1" },
-        { "name": "classifier",      "type": "String?",                              "default": "None",                      "since": "0.0.1" },
+        { "name": "classifier",      "type": "Option[String]",                       "default": "None",                      "since": "0.0.1" },
         { "name": "configurations",  "type": "sbt.librarymanagement.Configuration*", "default": "Vector.empty",              "since": "0.0.1" },
-        { "name": "url",             "type": "java.net.URL?",                        "default": "None",                      "since": "0.0.1" },
+        { "name": "url",             "type": "Option[java.net.URL]",                 "default": "None",                      "since": "0.0.1" },
         { "name": "extraAttributes", "type": "Map[String, String]",                  "default": "Map.empty",                 "since": "0.0.1" }
       ],
       "parentsCompanion": "sbt.librarymanagement.ArtifactFunctions"
@@ -208,14 +208,14 @@
       "target": "Scala",
       "type": "record",
       "fields": [
-        { "name": "scalaFullVersion",     "type": "String"                                                                                    },
-        { "name": "scalaBinaryVersion",   "type": "String"                                                                                    },
-        { "name": "configurations",       "type": "sbt.librarymanagement.Configuration*"                                                      },
-        { "name": "checkExplicit",        "type": "boolean"                                                                                   },
-        { "name": "filterImplicit",       "type": "boolean"                                                                                   },
-        { "name": "overrideScalaVersion", "type": "boolean"                                                                                   },
-        { "name": "scalaOrganization",    "type": "String",  "default": "sbt.librarymanagement.ScalaArtifacts.Organization", "since": "0.0.1" },
-        { "name": "scalaArtifacts",       "type": "String*", "default": "sbt.librarymanagement.ScalaArtifacts.Artifacts",    "since": "0.0.1" }
+        { "name": "scalaFullVersion",     "type": "String"                                                                                                 },
+        { "name": "scalaBinaryVersion",   "type": "String"                                                                                                 },
+        { "name": "configurations",       "type": "sbt.librarymanagement.Configuration*"                                                                   },
+        { "name": "checkExplicit",        "type": "boolean"                                                                                                },
+        { "name": "filterImplicit",       "type": "boolean"                                                                                                },
+        { "name": "overrideScalaVersion", "type": "boolean"                                                                                                },
+        { "name": "scalaOrganization",    "type": "String",               "default": "sbt.librarymanagement.ScalaArtifacts.Organization", "since": "0.0.1" },
+        { "name": "scalaArtifacts",       "type": "scala.Vector[String]", "default": "sbt.librarymanagement.ScalaArtifacts.Artifacts",    "since": "0.0.1" }
       ],
       "parentsCompanion": "sbt.librarymanagement.IvyScalaFunctions"
     },
@@ -245,7 +245,7 @@
         { "name": "organization",      "type": "String"                                                                                               },
         { "name": "name",              "type": "String"                                                                                               },
         { "name": "revision",          "type": "String"                                                                                               },
-        { "name": "configurations",    "type": "String?",                             "default": "None",                             "since": "0.0.1" },
+        { "name": "configurations",    "type": "Option[String]",                      "default": "None",                             "since": "0.0.1" },
         { "name": "isChanging",        "type": "boolean",                             "default": "false",                            "since": "0.0.1" },
         { "name": "isTransitive",      "type": "boolean",                             "default": "true",                             "since": "0.0.1" },
         { "name": "isForce",           "type": "boolean",                             "default": "false",                            "since": "0.0.1" },
@@ -254,7 +254,7 @@
         { "name": "exclusions",        "type": "sbt.librarymanagement.InclExclRule*", "default": "Vector.empty",                     "since": "0.0.1" },
         { "name": "extraAttributes",   "type": "Map[String, String]",                 "default": "Map.empty",                        "since": "0.0.1" },
         { "name": "crossVersion",      "type": "sbt.librarymanagement.CrossVersion",  "default": "sbt.librarymanagement.Disabled()", "since": "0.0.1" },
-        { "name": "branchName",        "type": "String?",                             "default": "None",                             "since": "0.0.1" }
+        { "name": "branchName",        "type": "Option[String]",                      "default": "None",                             "since": "0.0.1" }
       ],
       "toString": [
         "organization + \":\" + name + \":\" + revision +",
@@ -270,15 +270,15 @@
       "type": "record",
       "doc": "Additional information about a project module",
       "fields": [
-        { "name": "nameFormal",           "type": "String"                                                                           },
-        { "name": "description",          "type": "String",                              "default": "\"\"",         "since": "0.0.1" },
-        { "name": "homepage",             "type": "java.net.URL?",                       "default": "None",         "since": "0.0.1" },
-        { "name": "startYear",            "type": "int?",                                "default": "None",         "since": "0.0.1" },
-        { "name": "licenses",             "type": "scala.Tuple2[String, java.net.URL]*", "default": "Vector.empty", "since": "0.0.1" },
-        { "name": "organizationName",     "type": "String",                              "default": "\"\"",         "since": "0.0.1" },
-        { "name": "organizationHomepage", "type": "java.net.URL?",                       "default": "None",         "since": "0.0.1" },
-        { "name": "scmInfo",              "type": "sbt.librarymanagement.ScmInfo?",      "default": "None",         "since": "0.0.1" },
-        { "name": "developers",           "type": "sbt.librarymanagement.Developer*",    "default": "Vector.empty", "since": "0.0.1" }
+        { "name": "nameFormal",           "type": "String"                                                                             },
+        { "name": "description",          "type": "String",                                "default": "\"\"",         "since": "0.0.1" },
+        { "name": "homepage",             "type": "Option[java.net.URL]",                  "default": "None",         "since": "0.0.1" },
+        { "name": "startYear",            "type": "Option[Int]",                           "default": "None",         "since": "0.0.1" },
+        { "name": "licenses",             "type": "scala.Tuple2[String, java.net.URL]*",   "default": "Vector.empty", "since": "0.0.1" },
+        { "name": "organizationName",     "type": "String",                                "default": "\"\"",         "since": "0.0.1" },
+        { "name": "organizationHomepage", "type": "Option[java.net.URL]",                  "default": "None",         "since": "0.0.1" },
+        { "name": "scmInfo",              "type": "Option[sbt.librarymanagement.ScmInfo]", "default": "None",         "since": "0.0.1" },
+        { "name": "developers",           "type": "sbt.librarymanagement.Developer*",      "default": "Vector.empty",     "since": "0.0.1" }
       ]
     },
     {
@@ -295,18 +295,18 @@
         { "name": "module",           "type": "sbt.librarymanagement.ModuleID"                                                     },
         { "name": "artifacts",        "type": "scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]*"                        },
         { "name": "missingArtifacts", "type": "sbt.librarymanagement.Artifact*"                                                    },
-        { "name": "status",           "type": "String?",                               "default": "None",         "since": "0.0.1" },
-        { "name": "publicationDate",  "type": "java.util.Date?",                       "default": "None",         "since": "0.0.1" },
-        { "name": "resolver",         "type": "String?",                               "default": "None",         "since": "0.0.1" },
-        { "name": "artifactResolver", "type": "String?",                               "default": "None",         "since": "0.0.1" },
+        { "name": "status",           "type": "Option[String]",                        "default": "None",         "since": "0.0.1" },
+        { "name": "publicationDate",  "type": "Option[java.util.Date]",                "default": "None",         "since": "0.0.1" },
+        { "name": "resolver",         "type": "Option[String]",                        "default": "None",         "since": "0.0.1" },
+        { "name": "artifactResolver", "type": "Option[String]",                        "default": "None",         "since": "0.0.1" },
         { "name": "evicted",          "type": "boolean",                               "default": "false",        "since": "0.0.1" },
-        { "name": "evictedData",      "type": "String?",                               "default": "None",         "since": "0.0.1" },
-        { "name": "evictedReason",    "type": "String?",                               "default": "None",         "since": "0.0.1" },
-        { "name": "problem",          "type": "String?",                               "default": "None",         "since": "0.0.1" },
-        { "name": "homepage",         "type": "String?",                               "default": "None",         "since": "0.0.1" },
+        { "name": "evictedData",      "type": "Option[String]",                        "default": "None",         "since": "0.0.1" },
+        { "name": "evictedReason",    "type": "Option[String]",                        "default": "None",         "since": "0.0.1" },
+        { "name": "problem",          "type": "Option[String]",                        "default": "None",         "since": "0.0.1" },
+        { "name": "homepage",         "type": "Option[String]",                        "default": "None",         "since": "0.0.1" },
         { "name": "extraAttributes",  "type": "Map[String, String]",                   "default": "Map.empty",    "since": "0.0.1" },
-        { "name": "isDefault",        "type": "boolean?",                              "default": "None",         "since": "0.0.1" },
-        { "name": "branch",           "type": "String?",                               "default": "None",         "since": "0.0.1" },
+        { "name": "isDefault",        "type": "Option[Boolean]",                       "default": "None",         "since": "0.0.1" },
+        { "name": "branch",           "type": "Option[String]",                        "default": "None",         "since": "0.0.1" },
         { "name": "configurations",   "type": "String*",                               "default": "Vector.empty", "since": "0.0.1" },
         { "name": "licenses",         "type": "scala.Tuple2[String, Option[String]]*", "default": "Vector.empty", "since": "0.0.1" },
         { "name": "callers",          "type": "sbt.librarymanagement.Caller*",         "default": "Vector.empty", "since": "0.0.1" }
@@ -359,7 +359,7 @@
             { "name": "excludes",             "type": "sbt.internal.librarymanagement.SbtExclusionRule*", "default": "Vector.empty",                                  "since": "0.0.1" },
             { "name": "ivyXML",               "type": "scala.xml.NodeSeq",                                "default": "scala.xml.NodeSeq.Empty",                       "since": "0.0.1" },
             { "name": "configurations",       "type": "sbt.librarymanagement.Configuration*",             "default": "Vector.empty",                                  "since": "0.0.1" },
-            { "name": "defaultConfiguration", "type": "sbt.librarymanagement.Configuration?",             "default": "None",                                          "since": "0.0.1" },
+            { "name": "defaultConfiguration", "type": "Option[sbt.librarymanagement.Configuration]",      "default": "None",                                          "since": "0.0.1" },
             { "name": "conflictManager",      "type": "sbt.librarymanagement.ConflictManager",            "default": "sbt.librarymanagement.ConflictManager.default", "since": "0.0.1" }
           ],
           "parentsCompanion": "sbt.internal.librarymanagement.InlineConfigurationFunctions"
@@ -754,10 +754,10 @@
       "target": "Scala",
       "type": "record",
       "fields": [
-        { "name": "retrieveDirectory",        "type": "java.io.File"                                                                    },
-        { "name": "outputPattern",            "type": "String"                                                                          },
-        { "name": "sync",                     "type": "boolean",                                   "default": "false", "since": "0.0.1" },
-        { "name": "configurationsToRetrieve", "type": "Set[sbt.librarymanagement.Configuration]?", "default": "None",  "since": "0.0.1" }
+        { "name": "retrieveDirectory",        "type": "java.io.File"                                                                           },
+        { "name": "outputPattern",            "type": "String"                                                                                 },
+        { "name": "sync",                     "type": "boolean",                                          "default": "false", "since": "0.0.1" },
+        { "name": "configurationsToRetrieve", "type": "Option[Set[sbt.librarymanagement.Configuration]]", "default": "None",  "since": "0.0.1" }
       ]
     },
     {
