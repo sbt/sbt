@@ -30,7 +30,7 @@ trait BaseIvySpecification extends UnitSpec {
   def module(moduleId: ModuleID, deps: Vector[ModuleID], scalaFullVersion: Option[String],
     uo: UpdateOptions = UpdateOptions(), overrideScalaVersion: Boolean = true): IvySbt#Module = {
     val ivyScala = scalaFullVersion map { fv =>
-      new IvyScala(
+      IvyScala(
         scalaFullVersion = fv,
         scalaBinaryVersion = CrossVersionUtil.binaryScalaVersion(fv),
         configurations = Vector.empty,
@@ -56,7 +56,7 @@ trait BaseIvySpecification extends UnitSpec {
   def chainResolver = ChainedResolver("sbt-chain", resolvers)
 
   def mkIvyConfiguration(uo: UpdateOptions): IvyConfiguration = {
-    val paths = new IvyPaths(currentBase, Some(currentTarget))
+    val paths = IvyPaths(currentBase, Some(currentTarget))
     val other = Vector.empty
     val moduleConfs = Vector(ModuleConfiguration("*", chainResolver))
     val off = false
@@ -66,8 +66,8 @@ trait BaseIvySpecification extends UnitSpec {
   }
 
   def makeUpdateConfiguration: UpdateConfiguration = {
-    val retrieveConfig = new RetrieveConfiguration(currentManaged, Resolver.defaultRetrievePattern).withSync(false)
-    new UpdateConfiguration(Some(retrieveConfig), false, UpdateLogging.Full, ArtifactTypeFilter.forbid(Set("src", "doc")))
+    val retrieveConfig = RetrieveConfiguration(currentManaged, Resolver.defaultRetrievePattern).withSync(false)
+    UpdateConfiguration(Some(retrieveConfig), false, UpdateLogging.Full, ArtifactTypeFilter.forbid(Set("src", "doc")))
   }
 
   def ivyUpdateEither(module: IvySbt#Module): Either[UnresolvedWarning, UpdateReport] = {

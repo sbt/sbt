@@ -11,7 +11,7 @@ final class RichUpdateReport(report: UpdateReport) {
     {
       val files = report.cachedDescriptor +: allFiles
       val stamps = files.map(f => (f, f.lastModified)).toMap
-      new UpdateReport(report.cachedDescriptor, report.configurations, report.stats, stamps)
+      UpdateReport(report.cachedDescriptor, report.configurations, report.stats, stamps)
     }
 
   import DependencyFilter._
@@ -64,8 +64,8 @@ final class RichUpdateReport(report: UpdateReport) {
       val newConfigurations = report.configurations.map { confReport =>
         import confReport._
         val newModules = modules map { modReport => f(configuration, modReport) }
-        new ConfigurationReport(configuration, newModules, details)
+        ConfigurationReport(configuration, newModules, details)
       }
-      new UpdateReport(report.cachedDescriptor, newConfigurations, report.stats, report.stamps)
+      UpdateReport(report.cachedDescriptor, newConfigurations, report.stats, report.stamps)
     }
 }

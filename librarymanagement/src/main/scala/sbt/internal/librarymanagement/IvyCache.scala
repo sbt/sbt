@@ -90,7 +90,7 @@ class IvyCache(val ivyHome: Option[File], fileToStore: File => CacheStore) {
   private def basicLocalIvy(lock: Option[xsbti.GlobalLock], log: Logger) =
     {
       val local = Resolver.defaultLocal
-      val paths = new IvyPaths(new File("."), ivyHome)
+      val paths = IvyPaths(new File("."), ivyHome)
       val conf = new InlineIvyConfiguration(paths, Vector(local), Vector.empty, Vector.empty, false, lock, IvySbt.DefaultChecksums, None, UpdateOptions(), log)
       (new IvySbt(conf, fileToStore), local)
     }

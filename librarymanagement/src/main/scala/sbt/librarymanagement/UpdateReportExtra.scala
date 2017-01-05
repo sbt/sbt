@@ -29,7 +29,7 @@ abstract class ConfigurationReportExtra {
   }
 
   def retrieve(f: (String, ModuleID, Artifact, File) => File): ConfigurationReport =
-    new ConfigurationReport(configuration, modules map { _.retrieve((mid, art, file) => f(configuration, mid, art, file)) }, details)
+    ConfigurationReport(configuration, modules map { _.retrieve((mid, art, file) => f(configuration, mid, art, file)) }, details)
 }
 
 abstract class ModuleReportExtra {
@@ -37,7 +37,7 @@ abstract class ModuleReportExtra {
   def artifacts: Vector[(Artifact, File)]
   def missingArtifacts: Vector[Artifact]
   def status: Option[String]
-  def publicationDate: Option[ju.Date]
+  def publicationDate: Option[ju.Calendar]
   def resolver: Option[String]
   def artifactResolver: Option[String]
   def evicted: Boolean
@@ -99,7 +99,7 @@ abstract class ModuleReportExtra {
     artifacts: Vector[(Artifact, File)] = artifacts,
     missingArtifacts: Vector[Artifact] = missingArtifacts,
     status: Option[String] = status,
-    publicationDate: Option[ju.Date] = publicationDate,
+    publicationDate: Option[ju.Calendar] = publicationDate,
     resolver: Option[String] = resolver,
     artifactResolver: Option[String] = artifactResolver,
     evicted: Boolean = evicted,
@@ -141,7 +141,7 @@ abstract class UpdateReportExtra {
     }
 
   def retrieve(f: (String, ModuleID, Artifact, File) => File): UpdateReport =
-    new UpdateReport(cachedDescriptor, configurations map { _ retrieve f }, stats, stamps)
+    UpdateReport(cachedDescriptor, configurations map { _ retrieve f }, stats, stamps)
 
   /** Gets the report for the given configuration, or `None` if the configuration was not resolved.*/
   def configuration(s: String) = configurations.find(_.configuration == s)

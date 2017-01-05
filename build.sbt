@@ -49,7 +49,7 @@ lazy val lm = (project in file("librarymanagement")).
     libraryDependencies ++= scalaXml.value,
     resourceGenerators in Compile += Def.task(Util.generateVersionFile(version.value, resourceManaged.value, streams.value, (compile in Compile).value)).taskValue,
     binaryIssueFilters ++= Seq(),
-    datatypeFormatsForType in generateDatatypes in Compile := DatatypeConfig.getFormats,
+    contrabandFormatsForType in generateContrabands in Compile := DatatypeConfig.getFormats,
     // WORKAROUND sbt/sbt#2205 include managed sources in packageSrc
     mappings in (Compile, packageSrc) ++= {
       val srcs = (managedSources in Compile).value
@@ -59,7 +59,7 @@ lazy val lm = (project in file("librarymanagement")).
     }
   ).
   configure(addSbtIO, addSbtUtilLogging, addSbtUtilTesting, addSbtUtilCollection, addSbtUtilCompletion, addSbtUtilCache).
-  enablePlugins(DatatypePlugin, JsonCodecPlugin)
+  enablePlugins(ContrabandPlugin, JsonCodecPlugin)
 
 def customCommands: Seq[Setting[_]] = Seq(
   commands += Command.command("release") { state =>

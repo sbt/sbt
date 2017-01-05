@@ -2,18 +2,18 @@ import sbt._
 import Keys._
 
 object Dependencies {
-  lazy val scala211 = "2.11.8"
+  val scala211 = "2.11.8"
 
-  val ioVersion = "1.0.0-M6"
-  val utilVersion = "0.1.0-M15"
+  private val ioVersion = "1.0.0-M9"
+  private val utilVersion = "1.0.0-M17"
 
-  private lazy val sbtIO = "org.scala-sbt" %% "io" % ioVersion
+  private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
-  private lazy val utilCollection = "org.scala-sbt" %% "util-collection" % utilVersion
-  private lazy val utilLogging    = "org.scala-sbt" %% "util-logging"    % utilVersion
-  private lazy val utilTesting    = "org.scala-sbt" %% "util-testing"    % utilVersion
-  private lazy val utilCompletion = "org.scala-sbt" %% "util-completion" % utilVersion
-  private lazy val utilCache      = "org.scala-sbt" %% "util-cache"      % utilVersion
+  private val utilCollection = "org.scala-sbt" %% "util-collection" % utilVersion
+  private val utilLogging    = "org.scala-sbt" %% "util-logging"    % utilVersion
+  private val utilTesting    = "org.scala-sbt" %% "util-testing"    % utilVersion
+  private val utilCompletion = "org.scala-sbt" %% "util-completion" % utilVersion
+  private val utilCache      = "org.scala-sbt" %% "util-cache"      % utilVersion
 
   def getSbtModulePath(key: String, name: String) = {
     val localProps = new java.util.Properties()
@@ -32,7 +32,7 @@ object Dependencies {
       case None    => p settings (libraryDependencies += c.fold(m)(m % _))
     }
 
-  def addSbtIO(p: Project): Project             = addSbtModule(p, sbtIoPath, "io", sbtIO)
+  def addSbtIO(p: Project): Project = addSbtModule(p, sbtIoPath, "io", sbtIO)
 
   def addSbtUtilCollection(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilCollection", utilCollection)
   def addSbtUtilLogging(p: Project): Project    = addSbtModule(p, sbtUtilPath, "utilLogging",    utilLogging)
@@ -40,13 +40,13 @@ object Dependencies {
   def addSbtUtilCompletion(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilComplete",   utilCompletion)
   def addSbtUtilCache(p: Project): Project      = addSbtModule(p, sbtUtilPath, "utilCache",      utilCache)
 
-  lazy val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
-  lazy val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-2cc8d2761242b072cedb0a04cb39435c4fa24f9a"
-  lazy val jsch = "com.jcraft" % "jsch" % "0.1.46" intransitive ()
-  lazy val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
-  lazy val scalaXml = scala211Module("scala-xml", "1.0.5")
-  lazy val sjsonnewVersion = "0.4.1"
-  lazy val sjsonnewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % sjsonnewVersion
+  val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
+  val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-2cc8d2761242b072cedb0a04cb39435c4fa24f9a"
+  val jsch = "com.jcraft" % "jsch" % "0.1.46" intransitive ()
+  val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
+  val scalaXml = scala211Module("scala-xml", "1.0.5")
+  val sjsonnewVersion = "0.7.0"
+  val sjsonnewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % sjsonnewVersion
 
   private def scala211Module(name: String, moduleVersion: String) =
     Def.setting {

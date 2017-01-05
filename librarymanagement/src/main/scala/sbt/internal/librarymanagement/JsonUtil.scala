@@ -34,8 +34,8 @@ private[sbt] class JsonUtil(fileToStore: File => CacheStore) {
   def toLite(ur: UpdateReport): UpdateReportLite =
     UpdateReportLite(ur.configurations map { cr =>
       ConfigurationReportLite(cr.configuration, cr.details map { oar =>
-        new OrganizationArtifactReport(oar.organization, oar.name, oar.modules map { mr =>
-          new ModuleReport(
+        OrganizationArtifactReport(oar.organization, oar.name, oar.modules map { mr =>
+          ModuleReport(
             mr.module, mr.artifacts, mr.missingArtifacts, mr.status,
             mr.publicationDate, mr.resolver, mr.artifactResolver,
             mr.evicted, mr.evictedData, mr.evictedReason,
@@ -63,7 +63,7 @@ private[sbt] class JsonUtil(fileToStore: File => CacheStore) {
 
   def fromLite(lite: UpdateReportLite, cachedDescriptor: File): UpdateReport =
     {
-      val stats = new UpdateStats(0L, 0L, 0L, false)
+      val stats = UpdateStats(0L, 0L, 0L, false)
       val configReports = lite.configurations map { cr =>
         val details = cr.details
         val modules = details flatMap {
@@ -71,8 +71,8 @@ private[sbt] class JsonUtil(fileToStore: File => CacheStore) {
             !mr.evicted && mr.problem.isEmpty
           }
         }
-        new ConfigurationReport(cr.configuration, modules, details)
+        ConfigurationReport(cr.configuration, modules, details)
       }
-      new UpdateReport(cachedDescriptor, configReports, stats, Map.empty)
+      UpdateReport(cachedDescriptor, configReports, stats, Map.empty)
     }
 }

@@ -1,25 +1,24 @@
-import sbt.datatype.{ CodecCodeGen, TpeRef }
+import sbt.contraband.ast._
+import sbt.contraband.CodecCodeGen
 
 object DatatypeConfig {
 
   /** Extract the only type parameter from a TpeRef */
-  def oneArg(tpe: TpeRef): TpeRef = {
-    val pat = s"""${CodecCodeGen.removeTypeParameters(tpe.name)}[<\\[](.+?)[>\\]]""".r
+  def oneArg(tpe: Type): Type = {
+    val pat = s"""${tpe.removeTypeParameters.name}[<\\[](.+?)[>\\]]""".r
     val pat(arg0) = tpe.name
-    TpeRef(arg0, false, false, false)
+    NamedType(arg0 split '.' toList)
   }
 
   /** Extract the two type parameters from a TpeRef */
-  def twoArgs(tpe: TpeRef): List[TpeRef] = {
-    val pat = s"""${CodecCodeGen.removeTypeParameters(tpe.name)}[<\\[](.+?), (.+?)[>\\]]""".r
+  def twoArgs(tpe: Type): List[Type] = {
+    val pat = s"""${tpe.removeTypeParameters.name}[<\\[](.+?), (.+?)[>\\]]""".r
     val pat(arg0, arg1) = tpe.name
-    TpeRef(arg0, false, false, false) :: TpeRef(arg1, false, false, false) :: Nil
+    NamedType(arg0 split '.' toList) :: NamedType(arg1 split '.' toList) :: Nil
   }
 
   /** Codecs that were manually written. */
-  val myCodecs: PartialFunction[String, TpeRef => List[String]] = {
-    case "java.util.Date" => { _ => "sbt.internal.librarymanagement.formats.DateFormat" :: Nil }
-
+  val myCodecs: PartialFunction[String, Type => List[String]] = {
     case "scala.xml.NodeSeq" => { _ => "sbt.internal.librarymanagement.formats.NodeSeqFormat" :: Nil }
 
     case "org.apache.ivy.plugins.resolver.DependencyResolver" =>
@@ -32,7 +31,7 @@ object DatatypeConfig {
       { _ => "sbt.internal.librarymanagement.formats.UpdateOptionsFormat" :: Nil }
 
     // TODO: These are handled by BasicJsonProtocol, and sbt-datatype should handle them by default, imo
-    case "Option" | "Set"                  => { tpe => getFormats(oneArg(tpe)) }
+    case "Option" | "Set" | "scala.Vector" => { tpe => getFormats(oneArg(tpe)) }
     case "Map" | "Tuple2" | "scala.Tuple2" => { tpe => twoArgs(tpe).flatMap(getFormats) }
     case "Int" | "Long"                    => { _ => Nil }
   }
@@ -43,13 +42,13 @@ object DatatypeConfig {
     "sbt.librarymanagement.ExclusionRule")
 
   /** Returns the list of formats required to encode the given `TpeRef`. */
-  val getFormats: TpeRef => List[String] =
+  val getFormats: Type => List[String] =
     CodecCodeGen.extensibleFormatsForType {
-      case TpeRef("sbt.internal.librarymanagement.RetrieveConfiguration", false, false, false) =>
+      case NamedType(List("sbt", "internal", "librarymanagement", "RetrieveConfiguration"), _) =>
         "sbt.librarymanagement.RetrieveConfigurationFormats" :: Nil
-      case tpe @ TpeRef(name, _, _, _) if myCodecs isDefinedAt CodecCodeGen.removeTypeParameters(name) =>
-        myCodecs(CodecCodeGen.removeTypeParameters(name))(tpe)
-      case TpeRef(name, _, _, _) if excluded contains CodecCodeGen.removeTypeParameters(name) =>
+      case tpe: Type if myCodecs isDefinedAt tpe.removeTypeParameters.name =>
+        myCodecs(tpe.removeTypeParameters.name)(tpe)
+      case tpe: Type if excluded contains tpe.removeTypeParameters.name =>
         Nil
       case other =>
         CodecCodeGen.formatsForType(other)

@@ -4,7 +4,7 @@
 package sbt.librarymanagement
 
 object Configurations {
-  def config(name: String) = new Configuration(name)
+  def config(name: String) = Configuration(name)
   def default: Seq[Configuration] = defaultMavenConfigurations
   def defaultMavenConfigurations: Seq[Configuration] = Seq(Compile, Runtime, Test, Provided, Optional)
   def defaultInternal: Seq[Configuration] = Seq(CompileInternal, RuntimeInternal, TestInternal)

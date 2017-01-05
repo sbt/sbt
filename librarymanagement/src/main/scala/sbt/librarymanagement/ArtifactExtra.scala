@@ -38,7 +38,7 @@ abstract class ArtifactFunctions {
   def apply(name: String, url: URL): Artifact = Artifact(name, extract(url, DefaultType), extract(url, DefaultExtension), None, Vector.empty, Some(url))
 
   def apply(name: String, `type`: String, extension: String, classifier: Option[String], configurations: Vector[Configuration], url: Option[URL]): Artifact =
-    Artifact(name, `type`, extension, classifier, configurations, url, Map.empty)
+    Artifact(name, `type`, extension, classifier, configurations, url, Map.empty[String, String])
 
   val DefaultExtension = "jar"
   val DefaultType = "jar"
