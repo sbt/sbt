@@ -126,8 +126,8 @@ private[inc] class IvyComponentCompiler(compiler: RawCompiler, manager: Componen
 
   private def update(module: ivySbt.Module, retrieveDirectory: File): Seq[File] = {
 
-    val retrieveConfiguration = new RetrieveConfiguration(retrieveDirectory, Resolver.defaultRetrievePattern, false, None)
-    val updateConfiguration = new UpdateConfiguration(Some(retrieveConfiguration), true, UpdateLogging.DownloadOnly, ArtifactTypeFilter.forbid(Set("doc")))
+    val retrieveConfiguration = RetrieveConfiguration(retrieveDirectory, Resolver.defaultRetrievePattern, false, None)
+    val updateConfiguration = UpdateConfiguration(Some(retrieveConfiguration), true, UpdateLogging.DownloadOnly, ArtifactTypeFilter.forbid(Set("doc")))
 
     buffered.info(s"Attempting to fetch ${dependenciesNames(module)}. This operation may fail.")
     IvyActions.updateEither(module, updateConfiguration, UnresolvedWarningConfiguration(), LogicalClock.unknown, None, buffered) match {
