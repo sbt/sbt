@@ -64,7 +64,7 @@ object Serialization {
                 case "exec" =>
                   command.commandLine match {
                     case Some(cmd) => Right(Execution(cmd))
-                    case None      => Left("Missing or invalid command_line field")
+                    case None      => Left("Missing or invalid commandLine field")
                   }
                 case cmd => Left(s"Unknown command type $cmd")
               }

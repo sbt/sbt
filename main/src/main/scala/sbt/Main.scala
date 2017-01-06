@@ -21,10 +21,10 @@ import sbt.internal.{
   SessionSettings,
   SettingCompletions
 }
-import sbt.internal.util.{ AttributeKey, AttributeMap, complete, ConsoleOut, GlobalLogging, LineRange, MainLogging, SimpleReader, Types }
+import sbt.internal.util.{ AttributeKey, AttributeMap, ConsoleOut, GlobalLogging, LineRange, MainLogging, SimpleReader, Types }
 import sbt.util.{ Level, Logger }
 
-import complete.{ DefaultParsers, Parser }
+import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.internal.inc.{ CompilerCache, ScalaInstance }
 import sbt.compiler.EvalImports
 import Types.{ const, idFun }
@@ -347,7 +347,7 @@ object BuiltinCommands {
       val extracted = Project extract s
       import extracted.{ showKey, structure }
       val keysParser = token(flag("--last" <~ Space)) ~ Act.aggregatedKeyParser(extracted)
-      val show = Aggregation.ShowConfig(settingValues = true, taskValues = false, print = println _, success = false)
+      val show = Aggregation.ShowConfig(settingValues = true, taskValues = false, print = println(_), success = false)
       for {
         lastOnly_keys <- keysParser
         kvs = Act.keyValues(structure)(lastOnly_keys._2)
