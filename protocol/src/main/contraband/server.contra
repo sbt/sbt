@@ -40,8 +40,8 @@ type ExecStatusEvent implements EventMessage {
 #  Processing
 # }
 
-## Executon event.
-type ExectionEvent {
+## Execution event.
+type ExecutionEvent {
   success: String!
   commandLine: String!
 }
