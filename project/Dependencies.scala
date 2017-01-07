@@ -3,6 +3,7 @@ import Keys._
 
 object Dependencies {
   val scala211 = "2.11.8"
+  val scala212 = "2.12.1"
 
   private val ioVersion = "1.0.0-M9"
   private val utilVersion = "1.0.0-M17"
