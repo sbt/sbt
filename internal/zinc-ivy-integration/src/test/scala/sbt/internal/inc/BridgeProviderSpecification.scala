@@ -77,8 +77,8 @@ abstract class BridgeProviderSpecification extends BaseIvySpecification {
 
   def compilerBridgeId(scalaVersion: String) =
     scalaVersion match {
-      case sc if sc startsWith "2.11" => "compiler-bridge_2.11"
-      case _                          => "compiler-bridge_2.10"
+      case sc if (sc startsWith "2.10.") => "compiler-bridge_2.10"
+      case _                             => "compiler-bridge_2.12"
     }
 
   def scalaLoader(jars: Seq[File]) = new URLClassLoader(sbt.io.Path.toURLs(jars), ClasspathUtilities.rootLoader)
