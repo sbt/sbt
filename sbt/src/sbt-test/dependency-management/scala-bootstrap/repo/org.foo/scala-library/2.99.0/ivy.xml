@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ivy-module version="2.0" xmlns:e="http://ant.apache.org/ivy/extra">
+	<info organisation="org.foo" module="scala-library" revision="2.99.0" status="integration" publication="20170108222108">
+		<license name="BSD New" url="https://github.com/lampepfl/dotty/blob/master/LICENSE.md"/>
+		<description homepage="https://github.com/lampepfl/dotty">
+		scala-library
+		</description>
+	</info>
+	<configurations>
+		<conf name="compile" visibility="public" description=""/>
+		<conf name="runtime" visibility="public" description="" extends="compile"/>
+		<conf name="test" visibility="public" description="" extends="runtime"/>
+		<conf name="provided" visibility="public" description=""/>
+		<conf name="optional" visibility="public" description=""/>
+		
+		<conf extends="runtime" description="Default" visibility="public" name="default"/>
+		
+		<conf name="sources" visibility="public" description=""/>
+		<conf name="docs" visibility="public" description=""/>
+		<conf name="pom" visibility="public" description=""/>
+		
+	</configurations>
+	<publications>
+		<artifact name="scala-library" type="pom" ext="pom" conf="pom"/>
+		<artifact name="scala-library" type="jar" ext="jar" conf="compile"/>
+		<artifact name="scala-library" type="src" ext="jar" conf="sources" e:classifier="sources"/>
+		<artifact name="scala-library" type="doc" ext="jar" conf="docs" e:classifier="javadoc"/>
+	</publications>
+	<dependencies>
+		
+		<dependency org="org.scala-lang" name="scala-library" rev="2.11.8" conf="compile->default(compile)"/>
+	</dependencies>
+</ivy-module>
