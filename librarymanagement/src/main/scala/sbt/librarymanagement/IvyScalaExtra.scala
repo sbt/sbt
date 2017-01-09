@@ -65,12 +65,14 @@ private[sbt] abstract class IvyScalaFunctions {
       // Do not rewrite the dependencies of Scala dependencies themselves, this prevents bootstrapping
       // a Scala compiler using another Scala compiler.
       def dependeeQualifies: Boolean =
-        dd.getParentRevisionId.getName match {
-          case name @ (CompilerID | LibraryID | ReflectID | ActorsID | ScalapID) =>
-            false
-          case _ =>
-            true
-        }
+        dd.getParentRevisionId == null || (
+          dd.getParentRevisionId.getName match {
+            case name @ (CompilerID | LibraryID | ReflectID | ActorsID | ScalapID) =>
+              false
+            case _ =>
+              true
+          }
+        )
       val transformer =
         new NamespaceTransformer {
           def transform(mrid: ModuleRevisionId): ModuleRevisionId = {
