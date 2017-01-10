@@ -283,7 +283,12 @@ object Defaults extends BuildCommon {
       val _ = clean.value
       IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log)
     },
-    scalaCompilerBridgeSource := Compiler.defaultCompilerBridgeSource(scalaVersion.value)
+    scalaCompilerBridgeSource := {
+      if (ScalaInstance.isDotty(scalaVersion.value))
+        // Maintained at https://github.com/lampepfl/dotty/tree/master/sbt-bridge
+        ModuleID(scalaOrganization.value, "dotty-sbt-bridge", scalaVersion.value).withConfigurations(Some("component")).sources()
+      else Compiler.defaultCompilerBridgeSource(scalaVersion.value)
+    }
   )
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(Seq(
