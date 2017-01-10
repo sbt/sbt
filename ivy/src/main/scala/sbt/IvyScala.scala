@@ -29,7 +29,7 @@ object ScalaArtifacts {
 
   private[sbt] def toolDependencies(org: String, version: String, isDotty: Boolean = false): Seq[ModuleID] =
     if (isDotty)
-      Seq(ModuleID(org, DottyIDPrefix, version, Some(Configurations.ScalaTool.name + "->compile"),
+      Seq(ModuleID(org, DottyIDPrefix, version, Some(Configurations.ScalaTool.name + "->default(compile)"),
         crossVersion = CrossVersion.binary))
     else
       Seq(scalaToolDependency(org, ScalaArtifacts.CompilerID, version),
