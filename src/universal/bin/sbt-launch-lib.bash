@@ -147,7 +147,7 @@ process_args () {
     process_my_args "${myargs[@]}"
   }
 
-  java_version=$("$java_cmd" -Xmx512M -version 2>&1 | awk -F '"' '/version/ {print $2}')
+  java_version=$("$java_cmd" -Xmx512M -version 2>&1 | sed 's/.*version "\([0-9]*\)\.\([0-9]*\)\..*"/\1.\2/; 1q')
   vlog "[process_args] java_version = '$java_version'"
 }
 
