@@ -1,0 +1,7 @@
+> taskB
+$ exists target/b
+$ exists target/a
+
+> taskD
+$ exists target/d
+$ exists target/c
