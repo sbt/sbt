@@ -120,16 +120,11 @@ trait TaskExtra {
     def failure: Task[Incomplete] = mapFailure(idFun)
     def result: Task[Result[S]] = mapR(idFun)
 
-    private val triggeredByKey = AttributeKey[Seq[Task[_]]]("triggered-by")
-    private val runBeforeKey = AttributeKey[Seq[Task[_]]]("run-before")
-    private def newInfo[A]: Info[A] =
-      Seq(triggeredByKey, runBeforeKey)
-        .flatMap(k => (in.info get k) map (k -> _))
-        .foldLeft(Info[A]()) { case (i, (k, v)) => i.set(k, v) }
+    private def newInfo[A]: Info[A] = Info[A](in.info.attributes)
 
-    def flatMapR[T](f: Result[S] => Task[T]): Task[T] = Task(Info(), new FlatMapped[T, K](in, f, ml))
+    def flatMapR[T](f: Result[S] => Task[T]): Task[T] = Task(newInfo, new FlatMapped[T, K](in, f, ml))
     def mapR[T](f: Result[S] => T): Task[T] = Task(newInfo, new Mapped[T, K](in, f, ml))
-    def dependsOn(tasks: Task[_]*): Task[S] = Task(Info(), new DependsOn(in, tasks))
+    def dependsOn(tasks: Task[_]*): Task[S] = Task(newInfo, new DependsOn(in, tasks))
 
     def flatMap[T](f: S => Task[T]): Task[T] = flatMapR(f compose successM)
     def flatFailure[T](f: Incomplete => Task[T]): Task[T] = flatMapR(f compose failM)
