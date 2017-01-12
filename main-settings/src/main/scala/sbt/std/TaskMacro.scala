@@ -18,7 +18,7 @@ object TaskInstance extends MonadInstance {
   import TaskExtra._
 
   final type M[x] = Task[x]
-  def app[K[L[x]], Z](in: K[Task], f: K[Id] => Z)(implicit a: AList[K]): Task[Z] = Task(Info(), new Mapped[Z, K](in, f compose allM, a))
+  def app[K[L[x]], Z](in: K[Task], f: K[Id] => Z)(implicit a: AList[K]): Task[Z] = in map f
   def map[S, T](in: Task[S], f: S => T): Task[T] = in map f
   def flatten[T](in: Task[Task[T]]): Task[T] = in flatMap idFun[Task[T]]
   def pure[T](t: () => T): Task[T] = toTask(t)
