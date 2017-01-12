@@ -152,6 +152,9 @@ object BasicCommandStrings {
   def Server = "server"
   def ServerDetailed = "Provides a network server and an interactive prompt from which commands can be run."
 
+  def Client = "client"
+  def ClientDetailed = "Provides an interactive prompt from which commands can be run on a server."
+
   def StashOnFailure = "sbtStashOnFailure"
   def PopOnFailure = "sbtPopOnFailure"
 

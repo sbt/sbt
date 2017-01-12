@@ -175,9 +175,20 @@ lazy val actionsProj = (project in file("main-actions")).
     addSbtZinc, addSbtCompilerIvyIntegration, addSbtCompilerInterface,
     addSbtIO, addSbtUtilLogging, addSbtUtilRelation, addSbtLm, addSbtUtilTracking)
 
+lazy val protocolProj = (project in file("protocol")).
+  enablePlugins(ContrabandPlugin, JsonCodecPlugin).
+  settings(
+    testedBaseSettings,
+    name := "Protocol",
+    libraryDependencies ++= Seq(sjsonNewScalaJson),
+    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala"
+  ).
+  configure(addSbtUtilLogging)
+
 // General command support and core commands not specific to a build system
 lazy val commandProj = (project in file("main-command")).
   enablePlugins(ContrabandPlugin, JsonCodecPlugin).
+  dependsOn(protocolProj).
   settings(
     testedBaseSettings,
     name := "Command",
@@ -248,7 +259,7 @@ lazy val myProvided = config("provided") intransitive
 
 def allProjects = Seq(
   testingProj, testAgentProj, taskProj, stdTaskProj, runProj,
-  scriptedSbtProj, scriptedPluginProj,
+  scriptedSbtProj, scriptedPluginProj, protocolProj,
   actionsProj, commandProj, mainSettingsProj, mainProj, sbtProj, bundledLauncherProj)
 
 def projectsWithMyProvided = allProjects.map(p => p.copy(configurations = (p.configurations.filter(_ != Provided)) :+ myProvided))

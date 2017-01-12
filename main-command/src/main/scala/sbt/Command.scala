@@ -7,6 +7,7 @@ import sbt.internal.inc.ReflectUtilities
 import sbt.internal.util.complete.{ DefaultParsers, EditDistance, Parser }
 import sbt.internal.util.Types.const
 import sbt.internal.util.{ AttributeKey, AttributeMap, Util }
+import sbt.protocol.ExecStatusEvent
 
 sealed trait Command {
   def help: State => Help
@@ -87,15 +88,20 @@ object Command {
       }
     }
 
-  def process(command: String, state: State): State =
+  /** This is the main function State transfer function of the sbt command processing, called by MainLoop.next, */
+  def process(exec: Exec, state: State): State =
     {
+      val channelName = exec.source map { _.channelName }
+      State.exchange.publishEvent(ExecStatusEvent("Processing", channelName, exec.execId, Vector()))
       val parser = combine(state.definedCommands)
-      parse(command, parser(state)) match {
+      val newState = parse(exec.commandLine, parser(state)) match {
         case Right(s) => s() // apply command.  command side effects happen here
         case Left(errMsg) =>
           state.log.error(errMsg)
           state.fail
       }
+      State.exchange.publishEvent(ExecStatusEvent("Done", channelName, exec.execId, newState.remainingCommands.toVector map { _.commandLine }))
+      newState
     }
   def invalidValue(label: String, allowed: Iterable[String])(value: String): String =
     "Not a valid " + label + ": " + value + similar(value, allowed)

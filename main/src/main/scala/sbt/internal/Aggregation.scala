@@ -35,21 +35,15 @@ object Aggregation {
       runTasks(s, structure, ts, DummyTaskMap(Nil), show)
     }
 
-  @deprecated("Use `timedRun` and `showRun` directly or use `runTasks`.", "0.13.0")
-  def runTasksWithResult[T](s: State, structure: BuildStructure, ts: Values[Task[T]], extra: DummyTaskMap, show: ShowConfig)(implicit display: Show[ScopedKey[_]]): (State, Result[Seq[KeyValue[T]]]) =
+  private def showRun[T](complete: Complete[T], show: ShowConfig)(implicit display: Show[ScopedKey[_]]): Unit =
     {
-      val complete = timedRun[T](s, ts, extra)
-      showRun(complete, show)
-      (complete.state, complete.results)
+      import complete._
+      val log = state.log
+      val extracted = Project.extract(state)
+      val success = results match { case Value(_) => true; case Inc(_) => false }
+      results.toEither.right.foreach { r => if (show.taskValues) printSettings(r, show.print) }
+      if (show.success) printSuccess(start, stop, extracted, success, log)
     }
-  def showRun[T](complete: Complete[T], show: ShowConfig)(implicit display: Show[ScopedKey[_]]): Unit = {
-    import complete._
-    val log = state.log
-    val extracted = Project.extract(state)
-    val success = results match { case Value(_) => true; case Inc(_) => false }
-    results.toEither.right.foreach { r => if (show.taskValues) printSettings(r, show.print) }
-    if (show.success) printSuccess(start, stop, extracted, success, log)
-  }
   def timedRun[T](s: State, ts: Values[Task[T]], extra: DummyTaskMap): Complete[T] =
     {
       import EvaluateTask._

@@ -1,0 +1,47 @@
+package sbt.protocol
+@target(Scala)
+@codecPackage("sbt.protocol.codec")
+@fullCodec("JsonProtocol")
+
+## Message to invoke command.
+interface CommandMessage {
+}
+
+## Command to execute sbt command.
+type ExecCommand implements CommandMessage {
+  commandLine: String!
+  execId: String @since("0.0.1")
+}
+
+## Message for events.
+interface EventMessage {
+}
+
+type ChannelAcceptedEvent implements EventMessage {
+  channelName: String!
+}
+
+## Log event.
+type LogEvent implements EventMessage {
+  level: String!
+  message: String!
+}
+
+## Status event.
+type ExecStatusEvent implements EventMessage {
+  status: String!
+  channelName: String
+  execId: String
+  commandQueue: [String]
+}
+
+# enum Status {
+#  Ready
+#  Processing
+# }
+
+## Execution event.
+type ExecutionEvent {
+  success: String!
+  commandLine: String!
+}

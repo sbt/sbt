@@ -19,7 +19,7 @@ object Script {
   final val Name = "script"
   lazy val command =
     Command.command(Name) { state =>
-      val scriptArg = state.remainingCommands.headOption getOrElse sys.error("No script file specified")
+      val scriptArg = state.remainingCommands.headOption map { _.commandLine } getOrElse sys.error("No script file specified")
       val scriptFile = new File(scriptArg).getAbsoluteFile
       val hash = Hash.halve(Hash.toHex(Hash(scriptFile.getAbsolutePath)))
       val base = new File(CommandUtil.bootDirectory(state), hash)
