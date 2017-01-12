@@ -118,10 +118,11 @@ trait TaskExtra {
     def result: Task[Result[S]] = mapR(idFun)
 
     private val triggeredByKey = AttributeKey[Seq[Task[_]]]("triggered-by")
-    private def newInfo[A]: Info[A] = {
-      val i = Info[A]()
-      (in.info get triggeredByKey).fold(i)(i.set(triggeredByKey, _))
-    }
+    private val runBeforeKey = AttributeKey[Seq[Task[_]]]("run-before")
+    private def newInfo[A]: Info[A] =
+      Seq(triggeredByKey, runBeforeKey)
+        .flatMap(k => (in.info get k) map (k -> _))
+        .foldLeft(Info[A]()) { case (i, (k, v)) => i.set(k, v) }
 
     def flatMapR[T](f: Result[S] => Task[T]): Task[T] = Task(Info(), new FlatMapped[T, K](in, f, ml))
     def mapR[T](f: Result[S] => T): Task[T] = Task(newInfo, new Mapped[T, K](in, f, ml))
