@@ -1,0 +1,15 @@
+> taskB
+$ exists target/b
+$ exists target/a
+
+> taskD
+$ exists target/d
+$ exists target/c
+
+> taskF
+$ exists target/e
+$ exists target/f
+
+> taskH
+$ exists target/g
+$ exists target/h
