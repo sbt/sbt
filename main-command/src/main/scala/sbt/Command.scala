@@ -92,7 +92,7 @@ object Command {
   def process(exec: Exec, state: State): State =
     {
       val channelName = exec.source map { _.channelName }
-      State.exchange.publishEvent(ExecStatusEvent("Processing", channelName, exec.execId, Vector()))
+      State.exchange.publishEventMessage(ExecStatusEvent("Processing", channelName, exec.execId, Vector()))
       val parser = combine(state.definedCommands)
       val newState = parse(exec.commandLine, parser(state)) match {
         case Right(s) => s() // apply command.  command side effects happen here
@@ -100,7 +100,7 @@ object Command {
           state.log.error(errMsg)
           state.fail
       }
-      State.exchange.publishEvent(ExecStatusEvent("Done", channelName, exec.execId, newState.remainingCommands.toVector map { _.commandLine }))
+      State.exchange.publishEventMessage(ExecStatusEvent("Done", channelName, exec.execId, newState.remainingCommands.toVector map { _.commandLine }))
       newState
     }
   def invalidValue(label: String, allowed: Iterable[String])(value: String): String =

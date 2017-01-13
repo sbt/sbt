@@ -8,10 +8,11 @@ package client
 import java.net.{ URI, Socket, InetAddress, SocketException }
 import java.util.UUID
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
-import sbt.protocol._
-import sbt.internal.util.JLine
 import scala.collection.mutable.ListBuffer
 import scala.util.control.NonFatal
+import sbt.protocol._
+import sbt.internal.util.{ JLine, ChannelLogEntry, ConsoleAppender }
+import sbt.util.Level
 
 class NetworkClient(arguments: List[String]) { self =>
   private val channelName = new AtomicReference("_")
@@ -19,6 +20,8 @@ class NetworkClient(arguments: List[String]) { self =>
   private val lock: AnyRef = new AnyRef {}
   private val running = new AtomicBoolean(true)
   private val pendingExecIds = ListBuffer.empty[String]
+
+  private val console = ConsoleAppender("thin1")
 
   def usageError = sys.error("Expecting: sbt client 127.0.0.1:port")
   val connection = init()
@@ -44,12 +47,24 @@ class NetworkClient(arguments: List[String]) { self =>
     val socket = new Socket(InetAddress.getByName(host), port)
     new ServerConnection(socket) {
       override def onEvent(event: EventMessage): Unit = self.onEvent(event)
+      override def onLogEntry(event: ChannelLogEntry): Unit = self.onLogEntry(event)
       override def onShutdown(): Unit =
         {
           running.set(false)
         }
     }
   }
+
+  def onLogEntry(event: ChannelLogEntry): Unit =
+    {
+      val level = event.level match {
+        case "debug" => Level.Debug
+        case "info"  => Level.Info
+        case "warn"  => Level.Warn
+        case "error" => Level.Error
+      }
+      console.appendLog(level, event.message)
+    }
 
   def onEvent(event: EventMessage): Unit =
     event match {
