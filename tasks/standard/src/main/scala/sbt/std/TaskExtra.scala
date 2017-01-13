@@ -117,7 +117,10 @@ trait TaskExtra {
     def failure: Task[Incomplete] = mapFailure(idFun)
     def result: Task[Result[S]] = mapR(idFun)
 
-    private def newInfo[A]: Info[A] = Info[A](in.info.attributes)
+    // The "taskDefinitionKey" is used, at least, by the ".previous" functionality.
+    // But apparently it *cannot* survive a task map/flatMap/etc. See actions/depends-on.
+    private def newInfo[A]: Info[A] =
+      Info[A](AttributeMap(in.info.attributes.entries.filter(_.key.label != "taskDefinitionKey")))
 
     def flatMapR[T](f: Result[S] => Task[T]): Task[T] = Task(newInfo, new FlatMapped[T, K](in, f, ml))
     def mapR[T](f: Result[S] => T): Task[T] = Task(newInfo, new Mapped[T, K](in, f, ml))
