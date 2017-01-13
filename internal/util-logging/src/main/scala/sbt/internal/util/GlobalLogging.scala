@@ -5,6 +5,7 @@ package sbt.internal.util
 
 import sbt.util._
 import java.io.{ File, PrintWriter }
+import org.apache.logging.log4j.core.Appender
 
 /**
  * Provides the current global logging configuration.
@@ -15,7 +16,10 @@ import java.io.{ File, PrintWriter }
  * `backing` tracks the files that persist the global logging.
  * `newLogger` creates a new global logging configuration from a sink and backing configuration.
  */
-final case class GlobalLogging(full: Logger, console: ConsoleOut, backed: AbstractLogger, backing: GlobalLogBacking, newLogger: (PrintWriter, GlobalLogBacking) => GlobalLogging)
+final case class GlobalLogging(full: ManagedLogger, console: ConsoleOut, backed: Appender,
+  backing: GlobalLogBacking, newAppender: (ManagedLogger, PrintWriter, GlobalLogBacking) => GlobalLogging)
+
+final case class GlobalLogging1(full: Logger, console: ConsoleOut, backed: AbstractLogger, backing: GlobalLogBacking, newLogger: (PrintWriter, GlobalLogBacking) => GlobalLogging1)
 
 /**
  * Tracks the files that persist the global logging.
@@ -38,10 +42,28 @@ final case class GlobalLogBacking(file: File, last: Option[File], newBackingFile
 object GlobalLogBacking {
   def apply(newBackingFile: => File): GlobalLogBacking = GlobalLogBacking(newBackingFile, None, newBackingFile _)
 }
+
 object GlobalLogging {
-  def initial(newLogger: (PrintWriter, GlobalLogBacking) => GlobalLogging, newBackingFile: => File, console: ConsoleOut): GlobalLogging =
+  import java.util.concurrent.atomic.AtomicInteger
+  private def generateName: String =
+    "GlobalLogging" + generateId.incrementAndGet
+  private val generateId: AtomicInteger = new AtomicInteger
+
+  def initial1(newLogger: (PrintWriter, GlobalLogBacking) => GlobalLogging1, newBackingFile: => File, console: ConsoleOut): GlobalLogging1 =
     {
       val log = ConsoleLogger(console)
-      GlobalLogging(log, console, log, GlobalLogBacking(newBackingFile), newLogger)
+      GlobalLogging1(log, console, log, GlobalLogBacking(newBackingFile), newLogger)
+    }
+
+  def initial(newAppender: (ManagedLogger, PrintWriter, GlobalLogBacking) => GlobalLogging, newBackingFile: => File, console: ConsoleOut): GlobalLogging =
+    {
+      val loggerName = generateName
+      val log = LogExchange.logger(loggerName)
+      val appender = ConsoleAppender(ConsoleAppender.generateName, console)
+      LogExchange.bindLoggerAppenders(
+        loggerName, List(appender -> Level.Info)
+      )
+      GlobalLogging(log, console, appender, GlobalLogBacking(newBackingFile), newAppender)
     }
 }
+

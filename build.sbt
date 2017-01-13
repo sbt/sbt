@@ -2,7 +2,7 @@ import Dependencies._
 import Util._
 import com.typesafe.tools.mima.core._, ProblemFilters._
 
-def baseVersion: String = "0.1.0-M16"
+def baseVersion: String = "1.0.0-M18"
 def internalPath   = file("internal")
 
 def commonSettings: Seq[Setting[_]] = Seq(
@@ -98,12 +98,14 @@ lazy val utilComplete = (project in internalPath / "util-complete").
 
 // logging
 lazy val utilLogging = (project in internalPath / "util-logging").
+  enablePlugins(ContrabandPlugin, JsonCodecPlugin).
   dependsOn(utilInterface, utilTesting % Test).
   settings(
     commonSettings,
     crossScalaVersions := Seq(scala210, scala211, scala212),
     name := "Util Logging",
-    libraryDependencies += jline
+    libraryDependencies ++= Seq(jline, log4jApi, log4jCore, disruptor, sjsonnewScalaJson),
+    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala"
   )
 
 // Relation
@@ -150,7 +152,8 @@ lazy val utilTesting = (project in internalPath / "util-testing").
     crossScalaVersions := Seq(scala210, scala211, scala212),
     name := "Util Testing",
     libraryDependencies ++= Seq(scalaCheck, scalatest)
-  )
+  ).
+  configure(addSbtIO)
 
 lazy val utilScripted = (project in internalPath / "util-scripted").
   dependsOn(utilLogging).
