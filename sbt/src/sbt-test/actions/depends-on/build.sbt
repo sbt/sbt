@@ -14,7 +14,7 @@ lazy val d = taskKey[Unit]("")
 
 lazy val input = (project in file("input")).
   settings(
-    f := (inputTask { _ map { args => if (args(0) == "succeed") () else sys.error("fail") } }).evaluated,
+    f := (if (Def.spaceDelimited().parsed.head == "succeed") () else sys.error("fail")),
     j := sys.error("j"),
     g := (f dependsOn(j)).evaluated,
     h := (f map { _ => IO.touch(file("h")) }).evaluated
