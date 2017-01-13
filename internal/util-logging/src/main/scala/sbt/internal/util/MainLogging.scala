@@ -2,42 +2,65 @@ package sbt.internal.util
 
 import sbt.util._
 import java.io.PrintWriter
+import org.apache.logging.log4j.core.Appender
 
-object MainLogging {
-  def multiLogger(config: MultiLoggerConfig): Logger =
+object MainAppender {
+  import java.util.concurrent.atomic.AtomicInteger
+  private def generateGlobalBackingName: String =
+    "GlobalBacking" + generateId.incrementAndGet
+  private val generateId: AtomicInteger = new AtomicInteger
+
+  def multiLogger(log: ManagedLogger, config: MainAppenderConfig): ManagedLogger =
     {
       import config._
-      val multi = new MultiLogger(console :: backed :: extra)
-      // sets multi to the most verbose for clients that inspect the current level
-      multi setLevel Level.unionAll(backingLevel :: screenLevel :: extra.map(_.getLevel))
-      // set the specific levels
-      console setLevel screenLevel
-      backed setLevel backingLevel
-      console setTrace screenTrace
-      backed setTrace backingTrace
-      multi: Logger
+      // TODO
+      // console setTrace screenTrace
+      // backed setTrace backingTrace
+      // multi: Logger
+
+      // val log = LogExchange.logger(loggerName)
+      LogExchange.unbindLoggerAppenders(log.name)
+      LogExchange.bindLoggerAppenders(
+        log.name,
+        (consoleOpt.toList map { _ -> screenLevel }) :::
+          List(backed -> backingLevel) :::
+          (extra map { x => (x -> Level.Info) })
+      )
+      log
     }
 
-  def globalDefault(console: ConsoleOut): (PrintWriter, GlobalLogBacking) => GlobalLogging =
+  def globalDefault(console: ConsoleOut): (ManagedLogger, PrintWriter, GlobalLogBacking) => GlobalLogging =
     {
-      lazy val f: (PrintWriter, GlobalLogBacking) => GlobalLogging = (writer, backing) => {
-        val backed = defaultBacked()(writer)
-        val full = multiLogger(defaultMultiConfig(console, backed))
-        GlobalLogging(full, console, backed, backing, f)
+      lazy val newAppender: (ManagedLogger, PrintWriter, GlobalLogBacking) => GlobalLogging = (log, writer, backing) => {
+        val backed: Appender = defaultBacked(generateGlobalBackingName)(writer)
+        val full = multiLogger(log, defaultMultiConfig(Option(console), backed, Nil))
+        GlobalLogging(full, console, backed, backing, newAppender)
       }
-      f
+      newAppender
     }
 
-  def defaultMultiConfig(console: ConsoleOut, backing: AbstractLogger): MultiLoggerConfig =
-    new MultiLoggerConfig(defaultScreen(console, ConsoleLogger.noSuppressedMessage), backing, Nil, Level.Info, Level.Debug, -1, Int.MaxValue)
+  def defaultMultiConfig(consoleOpt: Option[ConsoleOut], backing: Appender, extra: List[Appender]): MainAppenderConfig =
+    MainAppenderConfig(consoleOpt map { defaultScreen(_, ConsoleAppender.noSuppressedMessage) }, backing, extra,
+      Level.Info, Level.Debug, -1, Int.MaxValue)
+  def defaultScreen(console: ConsoleOut): Appender = ConsoleAppender(ConsoleAppender.generateName, console)
+  def defaultScreen(console: ConsoleOut, suppressedMessage: SuppressedTraceContext => Option[String]): Appender =
+    ConsoleAppender(ConsoleAppender.generateName, console, suppressedMessage = suppressedMessage)
+  def defaultScreen(name: String, console: ConsoleOut, suppressedMessage: SuppressedTraceContext => Option[String]): Appender =
+    ConsoleAppender(name, console, suppressedMessage = suppressedMessage)
 
-  def defaultScreen(console: ConsoleOut): AbstractLogger = ConsoleLogger(console)
-  def defaultScreen(console: ConsoleOut, suppressedMessage: SuppressedTraceContext => Option[String]): AbstractLogger =
-    ConsoleLogger(console, suppressedMessage = suppressedMessage)
+  def defaultBacked(
+    loggerName: String = generateGlobalBackingName,
+    useColor: Boolean = ConsoleAppender.formatEnabled
+  ): PrintWriter => Appender =
+    to => {
+      ConsoleAppender(
+        ConsoleAppender.generateName,
+        ConsoleOut.printWriterOut(to), useColor = useColor
+      )
+    }
 
-  def defaultBacked(useColor: Boolean = ConsoleLogger.formatEnabled): PrintWriter => ConsoleLogger =
-    to => ConsoleLogger(ConsoleOut.printWriterOut(to), useColor = useColor)
+  final case class MainAppenderConfig(
+    consoleOpt: Option[Appender], backed: Appender, extra: List[Appender],
+    screenLevel: Level.Value, backingLevel: Level.Value, screenTrace: Int, backingTrace: Int
+  )
 }
-
-final case class MultiLoggerConfig(console: AbstractLogger, backed: AbstractLogger, extra: List[AbstractLogger],
-  screenLevel: Level.Value, backingLevel: Level.Value, screenTrace: Int, backingTrace: Int)

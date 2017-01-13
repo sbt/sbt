@@ -1,0 +1,16 @@
+package sbt.internal.util
+@target(Scala)
+@codecPackage("sbt.internal.util.codec")
+@fullCodec("JsonProtocol")
+
+interface AbstractEntry {
+  channelName: String
+  execId: String
+}
+
+type ChannelLogEntry implements sbt.internal.util.AbstractEntry {
+  level: String!
+  message: String!
+  channelName: String
+  execId: String
+}
