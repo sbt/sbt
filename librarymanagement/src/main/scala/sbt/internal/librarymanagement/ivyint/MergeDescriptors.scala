@@ -31,7 +31,7 @@ private[sbt] object MergeDescriptors {
 
 // combines the artifacts, configurations, includes, and excludes for DependencyDescriptors `a` and `b`
 // that otherwise have equal IDs
-private final class MergedDescriptors(a: DependencyDescriptor, b: DependencyDescriptor) extends DependencyDescriptor {
+private[sbt] final case class MergedDescriptors(a: DependencyDescriptor, b: DependencyDescriptor) extends DependencyDescriptor {
   def getDependencyId = a.getDependencyId
   def isForce = a.isForce
   def isChanging = a.isChanging
@@ -80,11 +80,14 @@ private final class MergedDescriptors(a: DependencyDescriptor, b: DependencyDesc
     arts map { art => explicitConfigurations(base, art) }
   private[this] def explicitConfigurations(base: DependencyDescriptor, art: DependencyArtifactDescriptor): DependencyArtifactDescriptor =
     {
-      val aConfs = art.getConfigurations
-      if (aConfs == null || aConfs.isEmpty)
-        copyWithConfigurations(art, base.getModuleConfigurations)
-      else
-        art
+      val aConfs = Option(art.getConfigurations) map { _.toList }
+      // In case configuration list is "*", we should still specify the module configuration of the DependencyDescriptor
+      // otherwise the explicit specified artifacts from one dd can leak over to the other.
+      // See gh-1500, gh-2002
+      aConfs match {
+        case None | Some(Nil) | Some(List("*")) => copyWithConfigurations(art, base.getModuleConfigurations)
+        case _                                  => art
+      }
     }
   private[this] def defaultArtifact(a: DependencyDescriptor): Array[DependencyArtifactDescriptor] =
     {
