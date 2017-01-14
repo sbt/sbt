@@ -1,7 +1,7 @@
 import Dependencies._
 import com.typesafe.tools.mima.core._, ProblemFilters._
 
-def baseVersion = "0.1.0"
+def baseVersion = "1.0.0"
 
 def commonSettings: Seq[Setting[_]] = Seq(
   scalaVersion := scala212,
