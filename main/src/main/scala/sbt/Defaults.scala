@@ -1413,6 +1413,14 @@ object Classpaths {
       val pluginIDs: Vector[ModuleID] = pluginJars.flatMap(_ get moduleID.key)
       GetClassifiersModule(pid, sbtDep +: pluginIDs, Vector(Configurations.Default), classifiers.toVector)
     }).value,
+    // Redefine scalaVersion and scalaBinaryVersion specifically for the dependency graph used for updateSbtClassifiers task.
+    // to fix https://github.com/sbt/sbt/issues/2686
+    scalaVersion := appConfiguration.value.provider.scalaProvider.version,
+    scalaBinaryVersion := binaryScalaVersion(scalaVersion.value),
+    ivyScala := {
+      Some(IvyScala(scalaVersion.value, scalaBinaryVersion.value, Vector(), checkExplicit = false, filterImplicit = false,
+        overrideScalaVersion = true).withScalaOrganization(scalaOrganization.value))
+    },
     updateSbtClassifiers in TaskGlobal := (Def.task {
       val s = streams.value
       val is = ivySbt.value
