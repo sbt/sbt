@@ -53,8 +53,8 @@ final class NetworkChannel(val name: String, connection: Socket) extends Command
 
   def publishEvent[A: JsonFormat](event: A): Unit =
     {
-      // val bytes = Serialization.serializeEvent(event)
-      // publishBytes(bytes)
+      val bytes = Serialization.serializeEvent(event)
+      publishBytes(bytes)
     }
 
   def publishEventMessage(event: EventMessage): Unit =
