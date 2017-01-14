@@ -5,7 +5,7 @@ import java.io._
 import org.specs2.mutable.Specification
 
 import sbt.internal._
-import sbt.internal.util.{ AttributeEntry, AttributeMap, ConsoleOut, GlobalLogging, MainLogging, Settings }
+import sbt.internal.util.{ AttributeEntry, AttributeMap, ConsoleOut, GlobalLogging, MainAppender, Settings }
 
 object PluginCommandTestPlugin0 extends AutoPlugin { override def requires = empty }
 
@@ -109,7 +109,7 @@ object FakeState {
       List(),
       State.newHistory,
       attributes,
-      GlobalLogging.initial(MainLogging.globalDefault(ConsoleOut.systemOut), File.createTempFile("sbt", ".log"), ConsoleOut.systemOut),
+      GlobalLogging.initial(MainAppender.globalDefault(ConsoleOut.systemOut), File.createTempFile("sbt", ".log"), ConsoleOut.systemOut),
       None,
       State.Continue
     )

@@ -8,6 +8,7 @@ package server
 import java.net.{ Socket, SocketTimeoutException }
 import java.util.concurrent.atomic.AtomicBoolean
 import sbt.protocol.{ Serialization, CommandMessage, ExecCommand, EventMessage }
+import sjsonnew.JsonFormat
 
 final class NetworkChannel(val name: String, connection: Socket) extends CommandChannel {
   private val running = new AtomicBoolean(true)
@@ -50,9 +51,15 @@ final class NetworkChannel(val name: String, connection: Socket) extends Command
   }
   thread.start()
 
-  def publishEvent(event: EventMessage): Unit =
+  def publishEvent[A: JsonFormat](event: A): Unit =
     {
       val bytes = Serialization.serializeEvent(event)
+      publishBytes(bytes)
+    }
+
+  def publishEventMessage(event: EventMessage): Unit =
+    {
+      val bytes = Serialization.serializeEventMessage(event)
       publishBytes(bytes)
     }
 

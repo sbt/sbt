@@ -98,10 +98,6 @@ trait Import {
   type FullLogger = sbt.internal.util.FullLogger
   val FullReader = sbt.internal.util.FullReader
   type FullReader = sbt.internal.util.FullReader
-  val GlobalLogBacking = sbt.internal.util.GlobalLogBacking
-  type GlobalLogBacking = sbt.internal.util.GlobalLogBacking
-  val GlobalLogging = sbt.internal.util.GlobalLogging
-  type GlobalLogging = sbt.internal.util.GlobalLogging
   val HCons = sbt.internal.util.HCons
   type HCons[H, T <: HList] = sbt.internal.util.HCons[H, T]
   val HList = sbt.internal.util.HList
@@ -128,12 +124,9 @@ trait Import {
   type LineReader = sbt.internal.util.LineReader
   val LoggerWriter = sbt.internal.util.LoggerWriter
   type LoggerWriter = sbt.internal.util.LoggerWriter
-  val MainLogging = sbt.internal.util.MainLogging
   type MessageOnlyException = sbt.internal.util.MessageOnlyException
   type ModifiedFileInfo = sbt.internal.util.ModifiedFileInfo
   type MultiLogger = sbt.internal.util.MultiLogger
-  val MultiLoggerConfig = sbt.internal.util.MultiLoggerConfig
-  type MultiLoggerConfig = sbt.internal.util.MultiLoggerConfig
   val NoPosition = sbt.internal.util.NoPosition
   val PMap = sbt.internal.util.PMap
   type PMap[K[_], V[_]] = sbt.internal.util.PMap[K, V]

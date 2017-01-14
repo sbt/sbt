@@ -4,13 +4,20 @@
 package sbt
 package protocol
 
-import sjsonnew.support.scalajson.unsafe.{ Converter, CompactPrinter }
-import scala.json.ast.unsafe.JValue
-import sjsonnew.support.scalajson.unsafe.Parser
+import sjsonnew.JsonFormat
+import sjsonnew.support.scalajson.unsafe.{ Parser, Converter, CompactPrinter }
+import scala.json.ast.unsafe.{ JValue, JObject, JString }
 import java.nio.ByteBuffer
 import scala.util.{ Success, Failure }
+import sbt.internal.util.ChannelLogEntry
 
 object Serialization {
+  def serializeEvent[A: JsonFormat](event: A): Array[Byte] =
+    {
+      val json: JValue = Converter.toJson[A](event).get
+      CompactPrinter(json).getBytes("UTF-8")
+    }
+
   def serializeCommand(command: CommandMessage): Array[Byte] =
     {
       import codec.JsonProtocol._
@@ -18,7 +25,7 @@ object Serialization {
       CompactPrinter(json).getBytes("UTF-8")
     }
 
-  def serializeEvent(event: EventMessage): Array[Byte] =
+  def serializeEventMessage(event: EventMessage): Array[Byte] =
     {
       import codec.JsonProtocol._
       val json: JValue = Converter.toJson[EventMessage](event).get
@@ -46,7 +53,44 @@ object Serialization {
   /**
    * @return A command or an invalid input description
    */
-  def deserializeEvent(bytes: Seq[Byte]): Either[String, EventMessage] =
+  def deserializeEvent(bytes: Seq[Byte]): Either[String, Any] =
+    {
+      val buffer = ByteBuffer.wrap(bytes.toArray)
+      Parser.parseFromByteBuffer(buffer) match {
+        case Success(json) =>
+          detectType(json) match {
+            case Some("ChannelLogEntry") =>
+              import sbt.internal.util.codec.JsonProtocol._
+              Converter.fromJson[ChannelLogEntry](json) match {
+                case Success(event) => Right(event)
+                case Failure(e)     => Left(e.getMessage)
+              }
+            case _ =>
+              import codec.JsonProtocol._
+              Converter.fromJson[EventMessage](json) match {
+                case Success(event) => Right(event)
+                case Failure(e)     => Left(e.getMessage)
+              }
+          }
+        case Failure(e) =>
+          Left(s"Parse error: ${e.getMessage}")
+      }
+    }
+
+  def detectType(json: JValue): Option[String] =
+    json match {
+      case JObject(fields) =>
+        (fields find { _.field == "type" } map { _.value }) match {
+          case Some(JString(value)) => Some(value)
+          case _                    => None
+        }
+      case _ => None
+    }
+
+  /**
+   * @return A command or an invalid input description
+   */
+  def deserializeEventMessage(bytes: Seq[Byte]): Either[String, EventMessage] =
     {
       val buffer = ByteBuffer.wrap(bytes.toArray)
       Parser.parseFromByteBuffer(buffer) match {

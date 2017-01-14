@@ -196,10 +196,10 @@ object BasicCommands {
   def server = Command.command(Server, Help.more(Server, ServerDetailed)) { s0 =>
     val exchange = State.exchange
     val s1 = exchange.run(s0)
-    exchange.publishEvent(ConsolePromptEvent(s0))
+    exchange.publishEventMessage(ConsolePromptEvent(s0))
     val exec: Exec = exchange.blockUntilNextExec
     val newState = s1.copy(onFailure = Some(Exec(Server, None)), remainingCommands = exec +: Exec(Server, None) +: s1.remainingCommands).setInteractive(true)
-    exchange.publishEvent(ConsoleUnpromptEvent(exec.source))
+    exchange.publishEventMessage(ConsoleUnpromptEvent(exec.source))
     if (exec.commandLine.trim.isEmpty) newState
     else newState.clearGlobalLog
   }

@@ -28,7 +28,7 @@ import descriptor.ModuleDescriptor, id.ModuleRevisionId
 import testing.Framework
 import KeyRanks._
 
-import sbt.internal.{ BuildStructure, LoadedBuild, PluginDiscovery, BuildDependencies, SessionSettings }
+import sbt.internal.{ BuildStructure, LoadedBuild, PluginDiscovery, BuildDependencies, SessionSettings, LogManager }
 import sbt.io.FileFilter
 import sbt.internal.io.WatchState
 import sbt.internal.util.{ AttributeKey, CacheStore, SourcePosition }
@@ -73,6 +73,7 @@ import sbt.internal.librarymanagement.{
   UnresolvedWarningConfiguration
 }
 import sbt.util.{ AbstractLogger, Level, Logger }
+import org.apache.logging.log4j.core.Appender
 
 object Keys {
   val TraceValues = "-1 to disable, 0 for up to the first sbt frame, or a positive number to set the maximum number of frames shown."
@@ -87,7 +88,7 @@ object Keys {
   val showSuccess = SettingKey[Boolean]("show-success", "If true, displays a success message after running a command successfully.", CSetting)
   val showTiming = SettingKey[Boolean]("show-timing", "If true, the command success message includes the completion time.", CSetting)
   val timingFormat = SettingKey[java.text.DateFormat]("timing-format", "The format used for displaying the completion time.", CSetting)
-  val extraLoggers = SettingKey[ScopedKey[_] => Seq[AbstractLogger]]("extra-loggers", "A function that provides additional loggers for a given setting.", DSetting)
+  val extraLoggers = SettingKey[ScopedKey[_] => Seq[Appender]]("extra-loggers", "A function that provides additional loggers for a given setting.", DSetting)
   val logManager = SettingKey[LogManager]("log-manager", "The log manager, which creates Loggers for different contexts.", DSetting)
   val logBuffered = SettingKey[Boolean]("log-buffered", "True if logging should be buffered until work completes.", CSetting)
   val sLog = SettingKey[Logger]("setting-logger", "Logger usable by settings during project loading.", CSetting)

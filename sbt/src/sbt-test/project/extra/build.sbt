@@ -38,6 +38,6 @@ def addExtra2(s: State, extra: Seq[File]): State =
     else
     {
       val newID = ApplicationID(currentID).copy(extra = extra)
-      s.setResult(Some(reload.copy(app = newID)))
+      s.setNext(new State.Return(reload.copy(app = newID)))
     }
   }

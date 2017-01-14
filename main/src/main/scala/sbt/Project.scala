@@ -10,7 +10,7 @@ import Project._
 import Keys.{ appConfiguration, stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, shellPrompt, serverPort, thisProject, thisProjectRef, watch }
 import Scope.{ GlobalScope, ThisScope }
 import Def.{ Flattened, Initialize, ScopedKey, Setting }
-import sbt.internal.{ Load, BuildStructure, LoadedBuild, LoadedBuildUnit, SettingGraph, SettingCompletions, AddSettings, SessionSettings }
+import sbt.internal.{ Load, BuildStructure, LoadedBuild, LoadedBuildUnit, SettingGraph, SettingCompletions, AddSettings, SessionSettings, LogManager }
 import sbt.internal.util.{ AttributeKey, AttributeMap, Dag, Relation, Settings, Show, ~> }
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util.complete.DefaultParsers
@@ -398,7 +398,8 @@ object Project extends ProjectExtra {
       val (onLoad, onUnload) = getHooks(structure.data)
       val newAttrs = unloaded.attributes.put(stateBuildStructure, structure).put(sessionSettings, session).put(Keys.onUnload.key, onUnload)
       val newState = unloaded.copy(attributes = newAttrs)
-      onLoad(LogManager.setGlobalLogLevels(updateCurrent(newState), structure.data))
+      // TODO: Fix this
+      onLoad(updateCurrent(newState) /*LogManager.setGlobalLogLevels(updateCurrent(newState), structure.data)*/ )
     }
 
   def orIdentity[T](opt: Option[T => T]): T => T = opt getOrElse idFun

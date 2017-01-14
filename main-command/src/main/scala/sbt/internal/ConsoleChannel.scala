@@ -5,6 +5,7 @@ import sbt.internal.util._
 import BasicKeys._
 import java.io.File
 import sbt.protocol.EventMessage
+import sjsonnew.JsonFormat
 
 private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel {
   private var askUserThread: Option[Thread] = None
@@ -30,7 +31,9 @@ private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel
 
   def publishBytes(bytes: Array[Byte]): Unit = ()
 
-  def publishEvent(event: EventMessage): Unit =
+  def publishEvent[A: JsonFormat](event: A): Unit = ()
+
+  def publishEventMessage(event: EventMessage): Unit =
     event match {
       case e: ConsolePromptEvent =>
         askUserThread match {

@@ -19,9 +19,10 @@ import sbt.internal.{
   ProjectNavigation,
   Script,
   SessionSettings,
-  SettingCompletions
+  SettingCompletions,
+  LogManager
 }
-import sbt.internal.util.{ AttributeKey, AttributeMap, complete, ConsoleOut, GlobalLogging, LineRange, MainLogging, SimpleReader, Types }
+import sbt.internal.util.{ AttributeKey, AttributeMap, complete, ConsoleOut, GlobalLogging, LineRange, MainAppender, SimpleReader, Types }
 import sbt.util.{ Level, Logger }
 
 import complete.{ DefaultParsers, Parser }
@@ -87,7 +88,7 @@ object StandardMain {
   /** The common interface to standard output, used for all built-in ConsoleLoggers. */
   val console = ConsoleOut.systemOutOverwrite(ConsoleOut.overwriteContaining("Resolving "))
 
-  def initialGlobalLogging: GlobalLogging = GlobalLogging.initial(MainLogging.globalDefault(console), File.createTempFile("sbt", ".log"), console)
+  def initialGlobalLogging: GlobalLogging = GlobalLogging.initial(MainAppender.globalDefault(console), File.createTempFile("sbt", ".log"), console)
 
   def initialState(configuration: xsbti.AppConfiguration, initialDefinitions: Seq[Command], preCommands: Seq[String]): State =
     {

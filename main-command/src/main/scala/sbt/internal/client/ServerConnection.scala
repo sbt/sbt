@@ -8,6 +8,7 @@ package client
 import java.net.{ SocketTimeoutException, Socket }
 import java.util.concurrent.atomic.AtomicBoolean
 import sbt.protocol._
+import sbt.internal.util.ChannelLogEntry
 
 abstract class ServerConnection(connection: Socket) {
 
@@ -39,7 +40,10 @@ abstract class ServerConnection(connection: Socket) {
                   val s = new String(chunk.toArray, "UTF-8")
                   println(s"Got invalid chunk from server: $s \n" + errorDesc)
                 },
-                onEvent
+                _ match {
+                  case event: EventMessage    => onEvent(event)
+                  case event: ChannelLogEntry => onLogEntry(event)
+                }
               )
             }
 
@@ -61,6 +65,7 @@ abstract class ServerConnection(connection: Socket) {
   }
 
   def onEvent(event: EventMessage): Unit
+  def onLogEntry(event: ChannelLogEntry): Unit
 
   def onShutdown(): Unit
 

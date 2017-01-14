@@ -32,10 +32,16 @@ final case class State(
     history: State.History,
     attributes: AttributeMap,
     globalLogging: GlobalLogging,
-    source: Option[CommandSource],
+    currentCommand: Option[Exec],
     next: State.Next
 ) extends Identity {
   lazy val combinedParser = Command.combine(definedCommands)(this)
+
+  def source: Option[CommandSource] =
+    currentCommand match {
+      case Some(x) => x.source
+      case _       => None
+    }
 }
 
 trait Identity {
@@ -75,11 +81,6 @@ trait StateOps {
 
   /** Sets the next command processing action to do.*/
   def setNext(n: State.Next): State
-
-  /** Sets the current command source channel.*/
-  def setSource(source: CommandSource): State
-
-  @deprecated("Use setNext", "0.11.0") def setResult(ro: Option[xsbti.MainResult]): State
 
   /**
    * Restarts sbt without dropping loaded Scala classes.  It is a shallower restart than `reboot`.
@@ -203,7 +204,7 @@ object State {
         case List() => exit(true)
         case x :: xs =>
           log.debug(s"> $x")
-          f(x, s.copy(remainingCommands = xs, history = x :: s.history))
+          f(x, s.copy(remainingCommands = xs, currentCommand = Some(x), history = x :: s.history))
       }
 
     def :::(newCommands: List[String]): State = ++:(newCommands map { Exec(_, s.source) })
@@ -214,8 +215,6 @@ object State {
     def +(newCommand: Command): State = this ++ (newCommand :: Nil)
     def baseDir: File = s.configuration.baseDirectory
     def setNext(n: Next) = s.copy(next = n)
-    def setSource(x: CommandSource): State = s.copy(source = Some(x))
-    def setResult(ro: Option[xsbti.MainResult]) = ro match { case None => continue; case Some(r) => setNext(new Return(r)) }
     def continue = setNext(Continue)
     def reboot(full: Boolean) = { runExitHooks(); throw new xsbti.FullReload((s.remainingCommands map { case e: Exec => e.commandLine }).toArray, full) }
     def reload = runExitHooks().setNext(new Return(defaultReload(s)))
