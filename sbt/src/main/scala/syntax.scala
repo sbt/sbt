@@ -52,6 +52,7 @@ abstract class syntax extends IOSyntax0 with sbt.std.TaskExtra with sbt.internal
   def enablePlugins(ps: AutoPlugin*): DslEntry = DslEntry.DslEnablePlugins(ps)
   def disablePlugins(ps: AutoPlugin*): DslEntry = DslEntry.DslDisablePlugins(ps)
   def configs(cs: Configuration*): DslEntry = DslEntry.DslConfigs(cs)
+  def dependsOn(deps: Eval[ClasspathDep[ProjectReference]]*): DslEntry = DslEntry.DslDependsOn(deps)
   // avoid conflict with `sbt.Keys.aggregate`
   def aggregateProjects(refs: Eval[ProjectReference]*): DslEntry = DslEntry.DslAggregate(refs)
 }
