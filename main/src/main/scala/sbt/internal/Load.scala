@@ -478,10 +478,13 @@ private[sbt] object Load {
       val defsScala = timed("Load.loadUnit: defsScala", log) {
         plugs.detected.builds.values
       }
+      val buildLevelExtraProjects = plugs.detected.autoPlugins flatMap { d =>
+        d.value.extraProjects map { _.setProjectOrigin(ProjectOrigin.ExtraProject) }
+      }
 
       // NOTE - because we create an eval here, we need a clean-eval later for this URI.
       lazy val eval = timed("Load.loadUnit: mkEval", log) { mkEval(plugs.classpath, defDir, plugs.pluginData.scalacOptions) }
-      val initialProjects = defsScala.flatMap(b => projectsFromBuild(b, normBase))
+      val initialProjects = defsScala.flatMap(b => projectsFromBuild(b, normBase)) ++ buildLevelExtraProjects
 
       val hasRootAlreadyDefined = defsScala.exists(_.rootProject.isDefined)
 
