@@ -1,0 +1,168 @@
+
+### Fixes with compatibility implications
+
+- Deprecates the old sbt 0.12 DSL, to be removed in sbt 1.0. See below for more details.
+- The `.value` method is deprecated for input tasks. Calling `.value` on an input key returns an `InputTask[A]`,
+  which is completely unintuitive and often results in a bug. In most cases `.evaluated` should be called,
+  which returns `A` by evaluating the task.
+  Just in case `InputTask[A]` is needed, `.inputTaskValue` method is now provided. [#2709][2709] by [@eed3si9n][@eed3si9n]
+- sbt 0.13.13 renames the early command `--<command>` that was added in 0.13.1 to `early(<command>)`. This fixes the regression [#1041][1041]. For backward compatibility `--error`, `--warn`, `--info`, and `--debug` will continue to function during the 0.13 series, but it is strongly encouraged to migrate to the single hyphen options: `-error`, `-warn`, `-info`, and `-debug`. [#2742][2742] by [@eed3si9n][@eed3si9n]
+- Improve `show` when key returns a `Seq` by showing the elements one per line. Disable with `-Dsbt.disable.show.seq=true`. [#2755][2755] by [@eed3si9n][@eed3si9n]
+- Recycles classloaders to be anti-hostile to JIT. Disable with `-Dsbt.disable.interface.classloader.cache=true`. [#2754][2754] by [@retronym][@retronym]
+
+### Improvements
+
+- Adds `new` command and `templateResolverInfos`. See below for more details.
+- Auto plugins can add synthetic subprojects. See below for more details.
+- Supports wildcard exclusions in POMs [#1431][1431]/[sbt/ivy#22][sbt-ivy-22]/[#2731][2731] by [@jtgrabowski][@jtgrabowski]
+- Adds the ability to call `aggregateProjects(..)` for the current project inside a build sbt file. [#2682][2682] by [@xuwei-k][@xuwei-k]
+- Adds `.jvmopts` support to the launcher script. [sbt/sbt-launcher-package#111][111] by [@fommil][@fommil]
+- Adds `.java-version` support to the Windows launcher script. [sbt/sbt-launcher-package#111][111] by [@fommil][@fommil]
+- The startup log level is dropped to `-error` in script mode using `scalas`. [#840][840]/[#2746][2746] by [@eed3si9n][@eed3si9n]
+- Adds `CrossVersion.patch` which sits in between `CrossVersion.binary` and `CrossVersion.full` in that it strips off any
+  trailing `-bin-...` suffix which is used to distinguish variant but binary compatible Scala toolchain builds. Most things
+  which are currently `CrossVersion.full` (eg. Scala compiler plugins, esp. macro-paradise) would be more appropriately
+  depended on as `CrossVersion.patch` from this release on.
+
+### Bug fixes
+
+- Fixes a regression in sbt 0.13.12 that wrongly reports build-level keys to be ambiguous. [#2707][2707]/[#2708][2708] by [@Duhemm][@Duhemm]
+- Fixes a regression in sbt 0.13.12 that was misfiring Scala version enforcement when an alternative `scalaOrganization` is set. [#2703][2703] by [@milessabin][@milessabin]
+- Fixes `Tags.ForkedTestGroup`. [#2677][2677]/[#2681][2681] by [@pauldraper][@pauldraper]
+- Fixes forked tests being reported as successful when the test harness fails. [#2442][2442]/[#2722][2722]/[#2730][2730] by [@eed3si9n][@eed3si9n]/[@dwijnand][@dwijnand]
+- Fixes incorrect installation path on Windows. [sbt/sbt-launcher-package#110][110] by [@dwijnand][@dwijnand]
+
+### new command and templateResolverInfos
+
+sbt 0.13.13 adds a `new` command, which helps create new build definitions.
+The `new` command is extensible via a mechanism called the template resolver.
+A template resolver pattern matches on the passed in arguments after `new`,
+and if it's a match it will apply the template.
+
+As a reference implementation, template resolver for [Giter8][g8] is provided. For instance:
+
+    sbt new eed3si9n/hello.g8
+
+will run [eed3si9n/hello.g8][] using Giter8.
+
+[#2705][2705] by [@eed3si9n][@eed3si9n]
+
+### Synthetic subprojects
+
+sbt 0.13.13 adds support for `AutoPlugin`s to define subprojects programmatically,
+by overriding the `extraProjects` method:
+
+    import sbt._, Keys._
+
+    object ExtraProjectsPlugin extends AutoPlugin {
+      override def extraProjects: Seq[Project] =
+        List("foo", "bar", "baz") map generateProject
+
+      def generateProject(id: String): Project =
+        Project(id, file(id)).
+          settings(
+            name := id
+          )
+    }
+
+In addition, subprojects may be derived from an existing subproject
+by overriding `derivedProjects`:
+
+    import sbt._, Keys._
+
+    object DerivedProjectsPlugin extends AutoPlugin {
+      // Enable this plugin by default
+      override def requires: Plugins = sbt.plugins.CorePlugin
+      override def trigger = allRequirements
+
+      override def derivedProjects(proj: ProjectDefinition[_]): Seq[Project] =
+        // Make sure to exclude project extras to avoid recursive generation
+        if (proj.projectOrigin != ProjectOrigin.DerivedProject) {
+          val id = proj.id + "1"
+          Seq(
+            Project(id, file(id)).
+              enablePlugins(DatabasePlugin)
+          )
+        }
+        else Nil
+    }
+
+[#2532][2532]/[#2717][2717]/[#2738][2738] by [@eed3si9n][@eed3si9n]
+
+### Deprecate old sbt 0.12 DSL
+
+The no-longer-documented operators `<<=`, `<+=`, and `<++=` and tuple enrichments are deprecated,
+and will be removed in sbt 1.0.
+
+Generally,
+
+    task3 <<= (task1, task2) map { (t1, t2) => println(t1 + t2); t1 + t2 }
+
+should migrate to
+
+    task3 := {
+      println(task1.value + task2.value)
+      task1.value + task2.value
+    }
+
+Except for source generators, which requires task values:
+
+    sourceGenerators in Compile <+= buildInfo
+
+This becomes:
+
+    sourceGenerators in Compile += buildInfo.taskValue
+
+Another exception is input task:
+
+    run <<= docsRunSetting
+
+This becomes:
+
+    run := docsRunSetting.evaluated
+
+See [Migrating from sbt 0.12.x](http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html) for more details.
+
+[#2716][2716]/[#2763][2763]/[#2764][2764] by [@eed3si9n][@eed3si9n] and [@dwijnand][@dwijnand]
+
+  [g8]: http://www.foundweekends.org/giter8/
+  [eed3si9n/hello.g8]: https://github.com/eed3si9n/hello.g8
+
+  [840]: https://github.com/sbt/sbt/issues/840
+  [1041]: https://github.com/sbt/sbt/issues/1041
+  [1431]: https://github.com/sbt/sbt/issues/1431
+  [2442]: https://github.com/sbt/sbt/issues/2442
+  [2532]: https://github.com/sbt/sbt/issues/2532
+  [2677]: https://github.com/sbt/sbt/issues/2677
+  [2681]: https://github.com/sbt/sbt/pull/2681
+  [2705]: https://github.com/sbt/sbt/pull/2705
+  [2682]: https://github.com/sbt/sbt/pull/2682
+  [2703]: https://github.com/sbt/sbt/pull/2703
+  [2707]: https://github.com/sbt/sbt/issues/2707
+  [2708]: https://github.com/sbt/sbt/issues/2708
+  [2709]: https://github.com/sbt/sbt/pull/2709
+  [2716]: https://github.com/sbt/sbt/pull/2716
+  [2717]: https://github.com/sbt/sbt/pull/2717
+  [2722]: https://github.com/sbt/sbt/issues/2722
+  [2730]: https://github.com/sbt/sbt/pull/2730
+  [2731]: https://github.com/sbt/sbt/pull/2731
+  [2738]: https://github.com/sbt/sbt/issues/2738
+  [2742]: https://github.com/sbt/sbt/pull/2742
+  [2746]: https://github.com/sbt/sbt/pull/2746
+  [2754]: https://github.com/sbt/sbt/pull/2754
+  [2755]: https://github.com/sbt/sbt/pull/2755
+  [2763]: https://github.com/sbt/sbt/issues/2763
+  [2764]: https://github.com/sbt/sbt/pull/2764
+  [110]: https://github.com/sbt/sbt-launcher-package/pull/110
+  [111]: https://github.com/sbt/sbt-launcher-package/pull/111
+  [sbt-ivy-22]: https://github.com/sbt/ivy/pull/22
+
+  [@eed3si9n]: https://github.com/eed3si9n
+  [@dwijnand]: https://github.com/dwijnand
+  [@Duhemm]: https://github.com/Duhemm
+  [@xuwei-k]: https://github.com/xuwei-k
+  [@jtgrabowski]: https://github.com/jtgrabowski
+  [@fommil]: https://github.com/fommil
+  [@milessabin]: https://github.com/milessabin
+  [@pauldraper]: https://github.com/pauldraper
+  [@retronym]: https://github.com/retronym
