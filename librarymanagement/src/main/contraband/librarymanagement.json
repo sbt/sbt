@@ -145,6 +145,16 @@
           "type": "record"
         },
         {
+          "name": "Patch",
+          "namespace": "sbt.librarymanagement",
+          "target": "Scala",
+          "doc": [
+            "Cross-versions a module by stripping off -bin-suffix.",
+            "This is intented for patch-version compatible alternative replacements."
+          ],
+          "type": "record"
+        },
+        {
           "name": "Full",
           "namespace": "sbt.librarymanagement",
           "target": "Scala",
