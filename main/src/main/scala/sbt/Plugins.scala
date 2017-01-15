@@ -175,36 +175,38 @@ object Plugins extends PluginsFunctions {
 
       // Note: Here is where the function begins.  We're given a list of plugins now.
       (requestedPlugins, log) => {
-        def explicitlyDisabled(p: AutoPlugin): Boolean = hasExclude(requestedPlugins, p)
-        val alwaysEnabled: List[AutoPlugin] = defined.filter(_.isAlwaysEnabled).filterNot(explicitlyDisabled)
-        val knowlege0: Set[Atom] = ((flatten(requestedPlugins) ++ alwaysEnabled) collect {
-          case x: AutoPlugin => Atom(x.label)
-        }).toSet
-        val clauses = Clauses((allRequirementsClause ::: allEnabledByClause) filterNot { _.head subsetOf knowlege0 })
-        log.debug(s"deducing auto plugins based on known facts ${knowlege0.toString} and clauses ${clauses.toString}")
-        Logic.reduce(clauses, (flattenConvert(requestedPlugins) ++ convertAll(alwaysEnabled)).toSet) match {
-          case Left(problem) => throw AutoPluginException(problem)
-          case Right(results) =>
-            log.debug(s"  :: deduced result: ${results}")
-            val selectedAtoms: List[Atom] = results.ordered
-            val selectedPlugins = selectedAtoms map { a =>
-              byAtomMap.getOrElse(a, throw AutoPluginException(s"${a} was not found in atom map."))
-            }
-            val forbidden: Set[AutoPlugin] = (selectedPlugins flatMap { Plugins.asExclusions }).toSet
-            val c = selectedPlugins.toSet & forbidden
-            if (c.nonEmpty) {
-              exlusionConflictError(requestedPlugins, selectedPlugins, c.toSeq sortBy { _.label })
-            }
-            val retval = topologicalSort(selectedPlugins, log)
-            log.debug(s"  :: sorted deduced result: ${retval.toString}")
-            retval
+        timed("Plugins.deducer#function", log) {
+          def explicitlyDisabled(p: AutoPlugin): Boolean = hasExclude(requestedPlugins, p)
+          val alwaysEnabled: List[AutoPlugin] = defined.filter(_.isAlwaysEnabled).filterNot(explicitlyDisabled)
+          val knowlege0: Set[Atom] = ((flatten(requestedPlugins) ++ alwaysEnabled) collect {
+            case x: AutoPlugin => Atom(x.label)
+          }).toSet
+          val clauses = Clauses((allRequirementsClause ::: allEnabledByClause) filterNot { _.head subsetOf knowlege0 })
+          log.debug(s"deducing auto plugins based on known facts ${knowlege0.toString} and clauses ${clauses.toString}")
+          Logic.reduce(clauses, (flattenConvert(requestedPlugins) ++ convertAll(alwaysEnabled)).toSet) match {
+            case Left(problem) => throw AutoPluginException(problem)
+            case Right(results) =>
+              log.debug(s"  :: deduced result: ${results}")
+              val selectedAtoms: List[Atom] = results.ordered
+              val selectedPlugins = selectedAtoms map { a =>
+                byAtomMap.getOrElse(a, throw AutoPluginException(s"${a} was not found in atom map."))
+              }
+              val forbidden: Set[AutoPlugin] = (selectedPlugins flatMap { Plugins.asExclusions }).toSet
+              val c = selectedPlugins.toSet & forbidden
+              if (c.nonEmpty) {
+                exlusionConflictError(requestedPlugins, selectedPlugins, c.toSeq sortBy { _.label })
+              }
+              val retval = topologicalSort(selectedPlugins, log)
+              // log.debug(s"  :: sorted deduced result: ${retval.toString}")
+              retval
+          }
         }
       }
     }
   private[sbt] def topologicalSort(ns: List[AutoPlugin], log: Logger): List[AutoPlugin] = {
-    log.debug(s"sorting: ns: ${ns.toString}")
+    // log.debug(s"sorting: ns: ${ns.toString}")
     @tailrec def doSort(found0: List[AutoPlugin], notFound0: List[AutoPlugin], limit0: Int): List[AutoPlugin] = {
-      log.debug(s"  :: sorting:: found: ${found0.toString} not found ${notFound0.toString}")
+      // log.debug(s"  :: sorting:: found: ${found0.toString} not found ${notFound0.toString}")
       if (limit0 < 0) throw AutoPluginException(s"Failed to sort ${ns} topologically")
       else if (notFound0.isEmpty) found0
       else {
@@ -359,5 +361,14 @@ ${listConflicts(conflicting)}""")
       }
     }
     hasGetterOpt getOrElse false
+  }
+
+  /** Debugging method to time how long it takes to run various compilation tasks. */
+  private[this] def timed[T](label: String, log: Logger)(t: => T): T = {
+    val start = System.nanoTime
+    val result = t
+    val elapsed = System.nanoTime - start
+    log.debug(label + " took " + (elapsed / 1e6) + " ms")
+    result
   }
 }
