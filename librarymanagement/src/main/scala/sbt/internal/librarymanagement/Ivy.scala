@@ -171,11 +171,9 @@ final class IvySbt(val configuration: IvyConfiguration, fileToStore: File => Cac
 
         val configs =
           moduleSettings match {
-            case ic: InlineConfiguration             => ic.configurations
-            case ic: InlineConfigurationWithExcludes => ic.configurations
-            case ec: EmptyConfiguration              => Nil
-            case pc: PomConfiguration                => Configurations.default ++ Configurations.defaultInternal
-            case ifc: IvyFileConfiguration           => Configurations.default ++ Configurations.defaultInternal
+            case ic: InlineConfiguration   => ic.configurations
+            case pc: PomConfiguration      => Configurations.default ++ Configurations.defaultInternal
+            case ifc: IvyFileConfiguration => Configurations.default ++ Configurations.defaultInternal
           }
         moduleSettings.ivyScala match {
           case Some(is) =>
