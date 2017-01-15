@@ -12,6 +12,7 @@ lazy val sharedResolver: Resolver = {
 lazy val common = project.
   settings(customIvyPaths: _*).
   settings(
+    scalaVersion := "2.11.8",
     organization := "com.badexample",
     name := "badexample",
     version := "1.0-SNAPSHOT",
@@ -29,6 +30,7 @@ lazy val common = project.
 lazy val dependent = project.
   settings(customIvyPaths: _*).
   settings(
+    scalaVersion := "2.11.8",
     // Uncomment the following to test the before/after
     // updateOptions := updateOptions.value.withLatestSnapshots(false),
     // Ignore the inter-project resolver, so we force to look remotely.

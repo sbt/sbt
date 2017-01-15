@@ -9,7 +9,7 @@ import sbt.internal.util.MessageOnlyException
 
 import scala.io.Source
 
-class ErrorSpec extends AbstractSpec with ScalaCheck {
+class ErrorSpec extends AbstractSpec {
   implicit val splitter: SplitExpressions.SplitExpression = EvaluateConfigurations.splitExpressions
 
   "Parser " should {

@@ -32,7 +32,6 @@ object Util {
         "-language:implicitConversions",
         "-language:postfixOps",
         "-Xfuture",
-        "-Yinline-warnings",
         "-Yno-adapted-args",
         "-Ywarn-dead-code",
         "-Ywarn-numeric-widen",

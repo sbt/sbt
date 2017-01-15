@@ -34,7 +34,7 @@ def buildLevelSettings: Seq[Setting[_]] = inThisBuild(Seq(
 ))
 
 def commonSettings: Seq[Setting[_]] = Seq[SettingsDefinition](
-  scalaVersion := scala211,
+  scalaVersion := baseScalaVersion,
   componentID := None,
   resolvers += Resolver.typesafeIvyRepo("releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
@@ -43,7 +43,7 @@ def commonSettings: Seq[Setting[_]] = Seq[SettingsDefinition](
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
   incOptions := incOptions.value.withNameHashing(true),
-  crossScalaVersions := Seq(scala211),
+  crossScalaVersions := Seq(baseScalaVersion),
   bintrayPackage := (bintrayPackage in ThisBuild).value,
   bintrayRepository := (bintrayRepository in ThisBuild).value,
   mimaDefaultSettings,
@@ -113,7 +113,7 @@ lazy val testingProj = (project in file("testing")).
 lazy val testAgentProj = (project in file("testing") / "agent").
   settings(
     minimalSettings,
-    crossScalaVersions := Seq(scala211),
+    crossScalaVersions := Seq(baseScalaVersion),
     crossPaths := false,
     autoScalaLibrary := false,
     name := "Test Agent",
@@ -228,7 +228,7 @@ lazy val sbtProj = (project in file("sbt")).
     baseSettings,
     name := "sbt",
     normalizedName := "sbt",
-    crossScalaVersions := Seq(scala211),
+    crossScalaVersions := Seq(baseScalaVersion),
     crossPaths := false
   ).
   configure(addSbtCompilerBridge)
@@ -341,8 +341,8 @@ lazy val otherProjects: ScopeFilter = ScopeFilter(
 )
 
 def customCommands: Seq[Setting[_]] = Seq(
-  commands += Command.command("setupBuildScala211") { state =>
-    s"""set scalaVersion in ThisBuild := "$scala211" """ ::
+  commands += Command.command("setupBuildScala212") { state =>
+    s"""set scalaVersion in ThisBuild := "$scala212" """ ::
       state
   },
   safeUnitTests := {

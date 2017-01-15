@@ -7,6 +7,8 @@ object Dependencies {
   val scala293 = "2.9.3"
   val scala210 = "2.10.6"
   val scala211 = "2.11.8"
+  val scala212 = "2.12.1"
+  val baseScalaVersion = scala212
 
   // sbt modules
   private val ioVersion = "1.0.0-M9"
@@ -87,8 +89,8 @@ object Dependencies {
 
   val sjsonNewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % "0.7.0"
 
-  val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.11.4"
-  val specs2 = "org.specs2" %% "specs2" % "2.3.11"
+  val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.13.4"
+  val specs2 = "org.specs2" %% "specs2" % "2.4.17"
   val junit = "junit" % "junit" % "4.11"
 
   private def scala211Module(name: String, moduleVersion: String) = Def setting (

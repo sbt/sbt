@@ -8,10 +8,10 @@ import scala.tools.nsc.reporters.StoreReporter
 
 import sbt.io.IO
 
-object EvalTest extends Properties("eval") {
-  private[this] val reporter = new StoreReporter
+class EvalTest extends Properties("eval") {
+  private[this] lazy val reporter = new StoreReporter
   import reporter.{ ERROR, Info }
-  private[this] val eval = new Eval(_ => reporter, None)
+  private[this] lazy val eval = new Eval(_ => reporter, None)
 
   property("inferred integer") = forAll { (i: Int) =>
     val result = eval.eval(i.toString)
