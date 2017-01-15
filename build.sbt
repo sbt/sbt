@@ -196,7 +196,7 @@ lazy val commandProj = (project in file("main-command")).
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats
   ).
-  configure(addSbtCompilerInterface, addSbtIO, addSbtUtilLogging, addSbtUtilCompletion, addSbtCompilerClasspath)
+  configure(addSbtCompilerInterface, addSbtIO, addSbtUtilLogging, addSbtUtilCompletion, addSbtCompilerClasspath, addSbtLm)
 
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
 lazy val mainSettingsProj = (project in file("main-settings")).

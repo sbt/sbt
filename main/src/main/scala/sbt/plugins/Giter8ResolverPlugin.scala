@@ -3,6 +3,7 @@ package plugins
 
 import Def.Setting
 import Keys._
+import librarymanagement._
 
 /**
  * An experimental plugin that adds the ability for Giter8 templates to be resolved

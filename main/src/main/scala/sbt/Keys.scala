@@ -27,7 +27,6 @@ import org.apache.ivy.core.module.{ descriptor, id }
 import descriptor.ModuleDescriptor, id.ModuleRevisionId
 import testing.Framework
 import KeyRanks._
-import sbt.template.TemplateResolver
 
 import sbt.internal.{ BuildStructure, LoadedBuild, PluginDiscovery, BuildDependencies, SessionSettings, LogManager }
 import sbt.io.FileFilter

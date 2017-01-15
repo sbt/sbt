@@ -6,7 +6,7 @@ package sbt
 import java.io.File
 import java.net.URI
 import java.util.Locale
-import Project.{ Initialize => _, Setting => _, _ }
+import Project._
 import Keys.{ appConfiguration, stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, shellPrompt, templateResolverInfos, serverPort, thisProject, thisProjectRef, watch }
 import Scope.{ GlobalScope, ThisScope }
 import Def.{ Flattened, Initialize, ScopedKey, Setting }
@@ -17,7 +17,6 @@ import sbt.internal.util.complete.DefaultParsers
 import sbt.librarymanagement.Configuration
 import sbt.util.Eval
 import sjsonnew.JsonFormat
-import sbt.template.TemplateResolver
 
 import language.experimental.macros
 

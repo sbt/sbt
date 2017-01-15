@@ -82,31 +82,6 @@ object BasicCommands {
     state
   }
 
-  def templateCommand = Command.make(TemplateCommand, templateBrief, templateDetailed)(templateCommandParser)
-  def templateCommandParser(state: State) =
-    {
-      val p = (token(Space) ~> repsep(StringBasic, token(Space))) | (token(EOF) map { case _ => Nil })
-      val trs = (state get templateResolvers) match {
-        case Some(trs) => trs.toList
-        case None      => Nil
-      }
-      applyEffect(p)({ inputArg =>
-        val arguments = inputArg.toList ++
-          (state.remainingCommands.toList match {
-            case "shell" :: Nil => Nil
-            case xs             => xs
-          })
-        trs find { tr =>
-          tr.isDefined(arguments.toArray)
-        } match {
-          case Some(tr) => tr.run(arguments.toArray)
-          case None =>
-            System.err.println("Template not found for: " + arguments.mkString(" "))
-        }
-        "exit" :: state.copy(remainingCommands = Nil)
-      })
-    }
-
   def multiParser(s: State): Parser[List[String]] =
     {
       val nonSemi = token(charClass(_ != ';').+, hide = const(true))

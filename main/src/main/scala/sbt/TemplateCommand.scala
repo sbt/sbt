@@ -2,14 +2,19 @@ package sbt
 
 import java.lang.reflect.InvocationTargetException
 import java.io.File
+import sbt.util._
+import sbt.internal.util._
 import xsbti.AppConfiguration
-import sbt.classpath.ClasspathUtilities
+import sbt.internal.inc.classpath.ClasspathUtilities
 import BasicCommandStrings._
 import BasicKeys._
 import complete.{ Parser, DefaultParsers }
 import DefaultParsers._
 import Command.applyEffect
-import Path._
+import sbt.io._
+import sbt.io.syntax._
+import sbt.librarymanagement._
+import sbt.internal.librarymanagement.IvyConfiguration
 
 private[sbt] object TemplateCommandUtil {
   def templateCommand = Command.make(TemplateCommand, templateBrief, templateDetailed)(templateCommandParser)
@@ -28,8 +33,8 @@ private[sbt] object TemplateCommandUtil {
       applyEffect(p)({ inputArg =>
         val arguments = inputArg.toList ++
           (state.remainingCommands.toList match {
-            case "shell" :: Nil => Nil
-            case xs             => xs
+            case exec :: Nil if exec.commandLine == "shell" => Nil
+            case xs                                         => xs map { _.commandLine }
           })
         run(infos, arguments, state.configuration, ivyConf, globalBase, ivyScala, log)
         "exit" :: s2.copy(remainingCommands = Nil)
@@ -76,7 +81,7 @@ private[sbt] object TemplateCommandUtil {
   // Cache files under ~/.sbt/0.13/templates/org_name_version
   private def classpathForInfo(info: TemplateResolverInfo, ivyConf: IvyConfiguration, globalBase: File, ivyScala: Option[IvyScala], log: Logger): List[File] =
     {
-      val updateUtil = new UpdateUtil(ivyConf, log)
+      val lm = new DefaultLibraryManagement(ivyConf, log)
       val templatesBaseDirectory = new File(globalBase, "templates")
       val templateId = s"${info.module.organization}_${info.module.name}_${info.module.revision}"
       val templateDirectory = new File(templatesBaseDirectory, templateId)
@@ -84,8 +89,8 @@ private[sbt] object TemplateCommandUtil {
       if (!(info.module.revision endsWith "-SNAPSHOT") && jars.nonEmpty) jars.toList
       else {
         IO.createDirectory(templateDirectory)
-        val m = updateUtil.getModule(info.module.copy(configurations = Some("component")), ivyScala)
-        val xs = updateUtil.update(m, templateDirectory)(_ => true).toList.flatten
+        val m = lm.getModule(info.module.withConfigurations(Some("component")), ivyScala)
+        val xs = lm.update(m, templateDirectory)(_ => true).toList.flatten
         xs
       }
     }

@@ -279,5 +279,3 @@ object State {
   private[sbt] def getBoolean(s: State, key: AttributeKey[Boolean], default: Boolean): Boolean =
     s.get(key) getOrElse default
 }
-
-case class TemplateResolverInfo(module: ModuleID, implementationClass: String)
