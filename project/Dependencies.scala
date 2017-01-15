@@ -42,7 +42,7 @@ object Dependencies {
   def addSbtUtilCache(p: Project): Project      = addSbtModule(p, sbtUtilPath, "utilCache",      utilCache)
 
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
-  val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-2cc8d2761242b072cedb0a04cb39435c4fa24f9a"
+  val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-2cf13e211b2cb31f0d3b317289dca70eca3362f6"
   val jsch = "com.jcraft" % "jsch" % "0.1.46" intransitive ()
   val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
   val scalaXml = scala211Module("scala-xml", "1.0.5")
