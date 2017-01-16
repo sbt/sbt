@@ -18,6 +18,19 @@ abstract class CrossVersionFunctions {
   /** Cross-versions a module with the binary version (typically the binary Scala version).  */
   def binary: CrossVersion = Binary()
 
+  /**
+   * Cross-versions a module with the full Scala version excluding any `-bin` suffix.
+   */
+  def patch: CrossVersion = Patch()
+
+  private[sbt] def patchFun(fullVersion: String): String = {
+    val BinCompatV = """(\d+)\.(\d+)\.(\d+)(-\w+)??-bin(-.*)?""".r
+    fullVersion match {
+      case BinCompatV(x, y, z, w, _) => s"""$x.$y.$z${if (w == null) "" else w}"""
+      case other                     => other
+    }
+  }
+
   private[sbt] def append(s: String): Option[String => String] = Some(x => crossName(x, s))
 
   /**
@@ -29,6 +42,7 @@ abstract class CrossVersionFunctions {
     cross match {
       case _: Disabled => None
       case _: Binary   => append(binaryVersion)
+      case _: Patch    => append(patchFun(fullVersion))
       case _: Full     => append(fullVersion)
     }
 

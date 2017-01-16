@@ -114,6 +114,24 @@ class CrossVersionTest extends UnitSpec {
   it should "return binary Scala version for 2.10.1 as 2.10" in {
     CrossVersion.binaryScalaVersion("2.10.1") shouldBe "2.10"
   }
+  it should "return patch Scala version for 2.11.8 as 2.11.8" in {
+    CrossVersion(CrossVersion.patch, "2.11.8", "dummy").map(_("artefact")) shouldBe Some("artefact_2.11.8")
+  }
+  it should "return patch Scala version for 2.11.8-M1 as 2.11.8-M1" in {
+    CrossVersion(CrossVersion.patch, "2.11.8-M1", "dummy").map(_("artefact")) shouldBe Some("artefact_2.11.8-M1")
+  }
+  it should "return patch Scala version for 2.11.8-RC1 as 2.11.8-RC1" in {
+    CrossVersion(CrossVersion.patch, "2.11.8-RC1", "dummy").map(_("artefact")) shouldBe Some("artefact_2.11.8-RC1")
+  }
+  it should "return patch Scala version for 2.11.8-bin-extra as 2.11.8" in {
+    CrossVersion(CrossVersion.patch, "2.11.8-bin-extra", "dummy").map(_("artefact")) shouldBe Some("artefact_2.11.8")
+  }
+  it should "return patch Scala version for 2.11.8-M1-bin-extra as 2.11.8-M1" in {
+    CrossVersion(CrossVersion.patch, "2.11.8-M1-bin-extra", "dummy").map(_("artefact")) shouldBe Some("artefact_2.11.8-M1")
+  }
+  it should "return patch Scala version for 2.11.8-RC1-bin-extra as 2.11.8-RC1" in {
+    CrossVersion(CrossVersion.patch, "2.11.8-RC1-bin-extra", "dummy").map(_("artefact")) shouldBe Some("artefact_2.11.8-RC1")
+  }
   it should "return disabled cross version as equal to a copy" in {
     Disabled() shouldBe Disabled()
   }
