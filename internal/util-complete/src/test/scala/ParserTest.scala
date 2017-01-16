@@ -108,15 +108,6 @@ object ParserTest extends Properties("Completing Parser") {
   property("repeatDep requires at least one token") = !matches(repeat, "")
   property("repeatDep accepts one token") = matches(repeat, colors.toSeq.head)
   property("repeatDep accepts two tokens") = matches(repeat, colors.toSeq.take(2).mkString(" "))
-  property("combined parser gives completion of both parsers") = {
-    val prefix = "fix"
-    val p1Suffixes = Set("", "ated", "ation")
-    val p2Suffixes = Set("es", "ed")
-    val p1: Parser[String] = p1Suffixes map (suffix => (prefix + suffix): Parser[String]) reduce (_ | _)
-    val p2: Parser[String] = p2Suffixes map (suffix => (prefix + suffix): Parser[String]) reduce (_ | _)
-    val suggestions: Set[Completion] = p1Suffixes ++ p2Suffixes map (new Suggestion(_))
-    checkAll(prefix, p1 combinedWith p2, Completions(suggestions))
-  }
 }
 object ParserExample {
   val ws = charClass(_.isWhitespace).+
