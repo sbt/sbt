@@ -14,7 +14,7 @@ def buildLevelSettings: Seq[Setting[_]] = inThisBuild(Seq(
   description := "sbt is an interactive build tool",
   bintrayOrganization := Some("sbt"),
   bintrayRepository := {
-    if (!isSnapshot.value) "maven-releases"
+    if (publishStatus.value == "releases") "maven-releases"
     else "maven-snapshots"
   },
   bintrayPackage := "sbt",
