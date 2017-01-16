@@ -5,6 +5,7 @@ package sbt
 
 import scala.collection.mutable
 import testing.{ Logger => _, _ }
+import scala.util.control.NonFatal
 import java.net.ServerSocket
 import java.io._
 import Tests.{ Output => TestOutput, _ }
@@ -74,6 +75,12 @@ private[sbt] object ForkTests {
             os.flush()
 
             new React(is, os, log, opts.testListeners, resultsAcc).react()
+          } catch {
+            case NonFatal(e) =>
+              def throwableToString(t: Throwable) = {
+                import java.io._; val sw = new StringWriter; t.printStackTrace(new PrintWriter(sw)); sw.toString
+              }
+              resultsAcc("Forked test harness failed: " + throwableToString(e)) = SuiteResult.Error
           } finally {
             is.close(); os.close(); socket.close()
           }
