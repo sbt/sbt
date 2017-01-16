@@ -3,6 +3,7 @@ package sbt
 import java.io.File
 import sbt.internal.util.AttributeKey
 import sbt.internal.inc.classpath.ClassLoaderCache
+import sbt.librarymanagement.ModuleID
 
 object BasicKeys {
   val historyPath = AttributeKey[Option[File]]("history", "The location where command line history is persisted.", 40)
@@ -13,4 +14,7 @@ object BasicKeys {
   private[sbt] val classLoaderCache = AttributeKey[ClassLoaderCache]("class-loader-cache", "Caches class loaders based on the classpath entries and last modified times.", 10)
   private[sbt] val OnFailureStack = AttributeKey[List[Option[Exec]]]("on-failure-stack", "Stack that remembers on-failure handlers.", 10)
   private[sbt] val explicitGlobalLogLevels = AttributeKey[Boolean]("explicit-global-log-levels", "True if the global logging levels were explicitly set by the user.", 10)
+  private[sbt] val templateResolverInfos = AttributeKey[Seq[TemplateResolverInfo]]("templateResolverInfos", "List of template resolver infos.", 1000)
 }
+
+case class TemplateResolverInfo(module: ModuleID, implementationClass: String)

@@ -13,7 +13,7 @@ object Dependencies {
   // sbt modules
   private val ioVersion = "1.0.0-M9"
   private val utilVersion = "1.0.0-M18"
-  private val lmVersion = "1.0.0-X4"
+  private val lmVersion = "1.0.0-X5"
   private val zincVersion = "1.0.0-X8"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
@@ -92,6 +92,7 @@ object Dependencies {
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.13.4"
   val specs2 = "org.specs2" %% "specs2" % "2.4.17"
   val junit = "junit" % "junit" % "4.11"
+  val templateResolverApi = "org.scala-sbt" % "template-resolver" % "0.1"
 
   private def scala211Module(name: String, moduleVersion: String) = Def setting (
     scalaBinaryVersion.value match {

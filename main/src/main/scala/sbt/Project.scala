@@ -7,7 +7,7 @@ import java.io.File
 import java.net.URI
 import java.util.Locale
 import Project._
-import Keys.{ appConfiguration, stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, shellPrompt, serverPort, thisProject, thisProjectRef, watch }
+import Keys.{ appConfiguration, stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, shellPrompt, templateResolverInfos, serverPort, thisProject, thisProjectRef, watch }
 import Scope.{ GlobalScope, ThisScope }
 import Def.{ Flattened, Initialize, ScopedKey, Setting }
 import sbt.internal.{ Load, BuildStructure, LoadedBuild, LoadedBuildUnit, SettingGraph, SettingCompletions, AddSettings, SessionSettings, LogManager }
@@ -420,12 +420,15 @@ object Project extends ProjectExtra {
       val allCommands = commandsIn(ref) ++ commandsIn(BuildRef(ref.build)) ++ (commands in Global get structure.data toList)
       val history = get(historyPath) flatMap idFun
       val prompt = get(shellPrompt)
+      val trs = (templateResolverInfos in Global get structure.data).toList.flatten
       val watched = get(watch)
       val port: Option[Int] = get(serverPort)
       val commandDefs = allCommands.distinct.flatten[Command].map(_ tag (projectCommand, true))
       val newDefinedCommands = commandDefs ++ BasicCommands.removeTagged(s.definedCommands, projectCommand)
       val newAttrs0 = setCond(Watched.Configuration, watched, s.attributes).put(historyPath.key, history)
       val newAttrs = setCond(serverPort.key, port, newAttrs0)
+        .put(historyPath.key, history)
+        .put(templateResolverInfos.key, trs)
       s.copy(attributes = setCond(shellPrompt.key, prompt, newAttrs), definedCommands = newDefinedCommands)
     }
   def setCond[T](key: AttributeKey[T], vopt: Option[T], attributes: AttributeMap): AttributeMap =
