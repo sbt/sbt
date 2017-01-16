@@ -129,7 +129,7 @@ class EmbeddedXmlSpec extends CheckIfParsedSpec {
         |	val pom = xml.XML.loadFile(pomFile)
         |	val tpe = pom \\ "type"
         |	if(!tpe.isEmpty)
-        |		error("Expected no <type> sections, got: " + tpe + " in \n\n" + pom)
+        |		sys.error("Expected no <type> sections, got: " + tpe + " in \n\n" + pom)
         |}
         |
         |

@@ -29,5 +29,5 @@ def checkPomRepositories(file: File, args: Seq[String], s: TaskStreams)
   s.log.info("Extracted: " + extracted.mkString("\n\t", "\n\t", "\n"))
   s.log.info("Expected: " + args.mkString("\n\t", "\n\t", "\n"))
   extracted.find { e => !expected.exists(_.accept(e.root)) } map { "Repository should not be exported: " + _ } orElse
-    (expected.find { e => !extracted.exists(r => e.accept(r.root)) } map { "Repository should be exported: " + _ } ) foreach error
+    (expected.find { e => !extracted.exists(r => e.accept(r.root)) } map { "Repository should be exported: " + _ } ) foreach sys.error
 }

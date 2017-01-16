@@ -12,7 +12,8 @@ import Gen._
 
 // Notes:
 //  Generator doesn't produce cross-build project dependencies or do anything with the 'extra' axis
-object TestBuild {
+object TestBuild extends TestBuild
+abstract class TestBuild {
   val MaxTasks = 6
   val MaxProjects = 7
   val MaxConfigs = 5
@@ -32,6 +33,7 @@ object TestBuild {
 
   implicit val cGen = Arbitrary { genConfigs(idGen, MaxDepsGen, MaxConfigsGen) }
   implicit val tGen = Arbitrary { genTasks(idGen, MaxDepsGen, MaxTasksGen) }
+  val seed = rng.Seed.random
 
   final class Keys(val env: Env, val scopes: Seq[Scope]) {
     override def toString = env + "\n" + scopes.mkString("Scopes:\n\t", "\n\t", "")
@@ -53,7 +55,13 @@ object TestBuild {
         new BuildUtil(keyIndex, data, env.root.uri, env.rootProject, getp, _.configurations.map(c => ConfigKey(c.name)), Relation.empty)
       }
 
-    lazy val allAttributeKeys: Set[AttributeKey[_]] = data.data.values.flatMap(_.keys).toSet
+    lazy val allAttributeKeys: Set[AttributeKey[_]] = {
+      val x = data.data.values.flatMap(_.keys).toSet
+      if (x.isEmpty) {
+        sys.error("allAttributeKeys is empty")
+      }
+      x
+    }
     lazy val (taskAxes, globalTaskAxis, onlyTaskAxis, multiTaskAxis) =
       {
         import collection.mutable
@@ -170,6 +178,15 @@ object TestBuild {
   def structure(env: Env, settings: Seq[Setting[_]], current: ProjectRef): Structure =
     {
       implicit val display = Def.showRelativeKey(current, env.allProjects.size > 1)
+      if (settings.isEmpty) {
+        try {
+          sys.error("settings is empty")
+        } catch {
+          case e: Throwable =>
+            e.printStackTrace
+            throw e
+        }
+      }
       val data = Def.make(settings)(env.delegates, const(Nil), display)
       val keys = data.allKeys((s, key) => ScopedKey(s, key))
       val keyMap = keys.map(k => (k.key.label, k.key)).toMap[String, AttributeKey[_]]
@@ -246,7 +263,7 @@ object TestBuild {
         genAcyclic(maxDeps, xs, next :: acc)
     }
   def sequence[T](gs: Seq[Gen[T]]): Gen[Seq[T]] = Gen.parameterized { prms =>
-    wrap(gs map { g => g(prms) getOrElse sys.error("failed generator") })
+    delay(gs map { g => g(prms, seed) getOrElse sys.error("failed generator") })
   }
   type Inputs[A, T] = (T, Seq[T], Seq[A] => A)
 }

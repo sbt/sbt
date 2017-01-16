@@ -5,9 +5,9 @@
 		val shouldExist = parser.parsed
 		val dir = (classDirectory in Compile).value
 		if((dir / "Anon.class").exists != shouldExist)
-			error("Top level class incorrect" )
+			sys.error("Top level class incorrect" )
 		else if( (dir / "Anon$1.class").exists != shouldExist)
-			error("Inner class incorrect" )
+			sys.error("Inner class incorrect" )
 		else
 			()
 	}

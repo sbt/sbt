@@ -1,3 +1,5 @@
+scalaVersion in ThisBuild := "2.11.8"
+
 lazy val dep = project
 
 lazy val use = project.

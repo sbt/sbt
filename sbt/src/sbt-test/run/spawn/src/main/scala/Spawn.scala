@@ -23,7 +23,7 @@ object Spawn
 		catch	{ case e: InterruptedException =>
 			val msg = "TrapExit improperly interrupted non-daemon thread"
 			System.err.println(msg)
-			error(msg)
+			sys.error(msg)
 		}
 	}
 }

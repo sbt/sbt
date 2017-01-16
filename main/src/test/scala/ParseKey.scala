@@ -136,6 +136,8 @@ object ParseKey extends Properties("Key parser test") {
       structure <- f(scopes, env, current)
     } yield structure
 
+  // pickN is a function that randomly picks load % items from the from sequence.
+  // The rest of the tests expect at least one item, so I changed it to return 1 in case of 0.
   def pickN[T](load: Double, from: Seq[T]): Gen[Seq[T]] =
-    pick((load * from.size).toInt, from)
+    pick(Math.max((load * from.size).toInt, 1), from)
 }
