@@ -101,6 +101,6 @@ object Dependencies {
     }
   )
 
-  val scalaXml = scala211Module("scala-xml", "1.0.1")
-  val scalaParsers = scala211Module("scala-parser-combinators", "1.0.1")
+  val scalaXml = scala211Module("scala-xml", "1.0.6")
+  val scalaParsers = scala211Module("scala-parser-combinators", "1.0.5")
 }
