@@ -161,7 +161,7 @@ checkJava() {
     echo Please go to http://www.java.com/getjava/ and download
     echo
     exit 1
-  elif [[ ! "$java_version" > "$required_version" ]]; then
+  elif [[ "$java_version" < "$required_version" ]]; then
     echo
     echo The java installation you have is not up to date
     echo $script_name requires at least version $required_version+, you have
