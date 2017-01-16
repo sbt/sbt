@@ -36,6 +36,8 @@ object Opts {
     val sonatypeSnapshots = Resolver.sonatypeRepo("snapshots")
     val sonatypeStaging = MavenRepository("sonatype-staging", "https://oss.sonatype.org/service/local/staging/deploy/maven2")
     val mavenLocalFile = Resolver.file("Local Repository", userHome / ".m2" / "repository" asFile)(Resolver.defaultPatterns)
+    val sbtSnapshots = Resolver.bintrayRepo("sbt", "maven-snapshots")
+    val sbtIvySnapshots = Resolver.bintrayIvyRepo("sbt", "ivy-snapshots")
   }
 }
 
@@ -52,9 +54,13 @@ object DefaultOptions {
   def scaladoc(name: String, version: String): Seq[String] = doc.title(name) ++ doc.version(version)
 
   def resolvers(snapshot: Boolean): Seq[Resolver] = {
-    if (snapshot) Seq(resolver.sonatypeSnapshots) else Nil
+    if (snapshot) Seq(resolver.sbtSnapshots) else Nil
+  }
+  def pluginResolvers(plugin: Boolean, snapshot: Boolean): Seq[Resolver] = {
+    if (plugin && snapshot) Seq(resolver.sbtSnapshots, resolver.sbtIvySnapshots) else Nil
   }
   def addResolvers: Setting[_] = Keys.resolvers ++= { resolvers(Keys.isSnapshot.value) }
+  def addPluginResolvers: Setting[_] = Keys.resolvers ++= pluginResolvers(Keys.sbtPlugin.value, Keys.isSnapshot.value)
 
   @deprecated("Use `credentials(State)` instead to make use of configuration path dynamically configured via `Keys.globalSettingsDirectory`; relying on ~/.ivy2 is not recommended anymore.", "0.12.0")
   def credentials: Credentials = Credentials(userHome / ".ivy2" / ".credentials")
