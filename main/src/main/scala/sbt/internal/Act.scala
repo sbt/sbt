@@ -49,22 +49,12 @@ object Act {
           new ParsedKey(makeScopedKey(proj, conf, task, extra, key), mask)
         }
 
-      val projectKeys =
-        for {
-          rawProject <- optProjectRef(index, current)
-          proj = resolveProject(rawProject, current)
-          confAmb <- config(index configs proj)
-          partialMask = ScopeMask(rawProject.isExplicit, confAmb.isExplicit, false, false)
-        } yield taskKeyExtra(proj, confAmb, partialMask)
-
-      val build = Some(BuildRef(current.build))
-      val buildKeys =
-        for {
-          confAmb <- config(index configs build)
-          partialMask = ScopeMask(false, confAmb.isExplicit, false, false)
-        } yield taskKeyExtra(build, confAmb, partialMask)
-
-      buildKeys combinedWith projectKeys map (_.flatten)
+      for {
+        rawProject <- optProjectRef(index, current)
+        proj = resolveProject(rawProject, current)
+        confAmb <- config(index configs proj)
+        partialMask = ScopeMask(rawProject.isExplicit, confAmb.isExplicit, false, false)
+      } yield taskKeyExtra(proj, confAmb, partialMask)
     }
   def makeScopedKey(proj: Option[ResolvedReference], conf: Option[String], task: Option[AttributeKey[_]], extra: ScopeAxis[AttributeMap], key: AttributeKey[_]): ScopedKey[_] =
     ScopedKey(Scope(toAxis(proj, Global), toAxis(conf map ConfigKey.apply, Global), toAxis(task, Global), extra), key)
@@ -78,16 +68,11 @@ object Act {
       selectFromValid(ss filter isValid(data), default)
     }
   def selectFromValid(ss: Seq[ParsedKey], default: Parser[ParsedKey])(implicit show: Show[ScopedKey[_]]): Parser[ParsedKey] =
-    selectByTask(selectByConfig(ss)) partition isBuildKey match {
-      case (_, Seq(single))         => success(single)
-      case (Seq(single), Seq())     => success(single)
-      case (Seq(), Seq())           => default
-      case (buildKeys, projectKeys) => failure("Ambiguous keys: " + showAmbiguous(keys(buildKeys ++ projectKeys)))
+    selectByTask(selectByConfig(ss)) match {
+      case Seq()       => default
+      case Seq(single) => success(single)
+      case multi       => failure("Ambiguous keys: " + showAmbiguous(keys(multi)))
     }
-  private def isBuildKey(parsed: ParsedKey): Boolean = parsed.key.scope.project match {
-    case Select(_: BuildReference) => true
-    case _                         => false
-  }
   private[this] def keys(ss: Seq[ParsedKey]): Seq[ScopedKey[_]] = ss.map(_.key)
   def selectByConfig(ss: Seq[ParsedKey]): Seq[ParsedKey] =
     ss match {
@@ -149,7 +134,16 @@ object Act {
         token(ID !!! "Expected key" examples dropHyphenated(keys)) flatMap { keyString =>
           getKey(keyMap, keyString, idFun)
         }
-      keyParser(index.keys(proj, conf, task))
+      // Fixes sbt/sbt#2460 and sbt/sbt#2851
+      // The parser already accepts build-level keys.
+      // This queries the key index so tab completion will list the build-level keys.
+      val buildKeys: Set[String] =
+        proj match {
+          case Some(ProjectRef(uri, id)) => index.keys(Some(BuildRef(uri)), conf, task)
+          case _                         => Set()
+        }
+      val keys: Set[String] = index.keys(proj, conf, task) ++ buildKeys
+      keyParser(keys)
     }
 
   def getKey[T](keyMap: Map[String, AttributeKey[_]], keyString: String, f: AttributeKey[_] => T): Parser[T] =
