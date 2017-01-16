@@ -34,7 +34,6 @@ object Dependencies {
     }
 
   def addSbtIO(p: Project): Project = addSbtModule(p, sbtIoPath, "io", sbtIO)
-
   def addSbtUtilCollection(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilCollection", utilCollection)
   def addSbtUtilLogging(p: Project): Project    = addSbtModule(p, sbtUtilPath, "utilLogging",    utilLogging)
   def addSbtUtilTesting(p: Project): Project    = addSbtModule(p, sbtUtilPath, "utilTesting",    utilTesting, Some(Test))
@@ -42,7 +41,7 @@ object Dependencies {
   def addSbtUtilCache(p: Project): Project      = addSbtModule(p, sbtUtilPath, "utilCache",      utilCache)
 
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
-  val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-2cf13e211b2cb31f0d3b317289dca70eca3362f6"
+  val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-48dd0744422128446aee9ac31aa356ee203cc9f4"
   val jsch = "com.jcraft" % "jsch" % "0.1.46" intransitive ()
   val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
   val scalaXml = scala211Module("scala-xml", "1.0.5")
