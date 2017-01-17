@@ -210,9 +210,9 @@ object BasicCommands {
       val p = (token(Space) ~> repsep(StringBasic, token(Space))) | (token(EOF) map { case _ => Nil })
       applyEffect(p)({ inputArg =>
         val arguments = inputArg.toList ++
-          (s0.remainingCommands.toList match {
-            case e :: Nil if e.commandLine == "shell" :: Nil => Nil
-            case xs                                          => xs map { _.commandLine }
+          (s0.remainingCommands match {
+            case e :: Nil if e.commandLine == "shell" => Nil
+            case xs                                   => xs map { _.commandLine }
           })
         NetworkClient.run(arguments)
         "exit" :: s0.copy(remainingCommands = Nil)
