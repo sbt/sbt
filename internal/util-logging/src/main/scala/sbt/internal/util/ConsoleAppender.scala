@@ -5,7 +5,7 @@ import java.io.{ PrintStream, PrintWriter }
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicInteger
 import org.apache.logging.log4j.{ Level => XLevel }
-import org.apache.logging.log4j.message.{ Message, ParameterizedMessage, ObjectMessage }
+import org.apache.logging.log4j.message.{ Message, ParameterizedMessage, ObjectMessage, ReusableObjectMessage }
 import org.apache.logging.log4j.core.{ LogEvent => XLogEvent }
 import org.apache.logging.log4j.core.appender.AbstractAppender
 import org.apache.logging.log4j.core.layout.PatternLayout
@@ -244,10 +244,11 @@ class ConsoleAppender private[ConsoleAppender] (
 
   def messageToString(msg: Message): String =
     msg match {
-      case p: ParameterizedMessage => p.getFormattedMessage
-      case r: RingBufferLogEvent   => r.getFormattedMessage
-      case o: ObjectMessage        => objectToString(o.getParameter)
-      case _                       => msg.toString
+      case p: ParameterizedMessage  => p.getFormattedMessage
+      case r: RingBufferLogEvent    => r.getFormattedMessage
+      case o: ObjectMessage         => objectToString(o.getParameter)
+      case o: ReusableObjectMessage => objectToString(o.getParameter)
+      case _                        => msg.getFormattedMessage
     }
   def objectToString(o: AnyRef): String =
     o match {
