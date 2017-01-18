@@ -2,11 +2,11 @@ import Dependencies._
 import Util._
 import com.typesafe.tools.mima.core._, ProblemFilters._
 
-def baseVersion: String = "1.0.0-M18"
+def baseVersion: String = "1.0.0-M19"
 def internalPath   = file("internal")
 
 def commonSettings: Seq[Setting[_]] = Seq(
-  scalaVersion := scala211,
+  scalaVersion := scala212,
   // publishArtifact in packageDoc := false,
   resolvers += Resolver.typesafeIvyRepo("releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
