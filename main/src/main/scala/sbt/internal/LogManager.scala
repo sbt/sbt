@@ -129,7 +129,11 @@ object LogManager {
 
   // This is the default implementation for the relay appender
   val defaultRelay: Unit => Appender = _ => defaultRelayImpl
-  private[this] lazy val defaultRelayImpl: RelayAppender = new RelayAppender("Relay0")
+  private[this] lazy val defaultRelayImpl: RelayAppender = {
+    val appender = new RelayAppender("Relay0")
+    appender.start()
+    appender
+  }
 
   private[this] def hasExplicitGlobalLogLevels(s: State): Boolean =
     State.getBoolean(s, BasicKeys.explicitGlobalLogLevels, default = false)
