@@ -188,7 +188,7 @@ When `trackInternalDependencies` is set to `TrackLevel.TrackIfMissing`, sbt will
         ))
       )
 
-The `exportToInternal` setting allows the dependee subprojects to opt out of the internal tracking, which might be useful if you want to track most subprojects except for a few. The intersection of the `trackInternalDependencies` and `exportToInternal` settings will be used to determine the actual track level. Here's an example to opt-out one project:
+The `exportToInternal` setting allows the dependent subprojects to opt out of the internal tracking, which might be useful if you want to track most subprojects except for a few. The intersection of the `trackInternalDependencies` and `exportToInternal` settings will be used to determine the actual track level. Here's an example to opt-out one project:
 
     lazy val dontTrackMe = (project in file("dontTrackMe")).
       settings(
