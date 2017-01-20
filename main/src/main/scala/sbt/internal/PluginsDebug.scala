@@ -235,7 +235,7 @@ private[sbt] object PluginsDebug {
       val blockingExcludes = initialExcludes & minRequiredPlugins
 
       // The model that results when the minimal plugins are enabled and the minimal plugins are excluded.
-      //  This can include more plugins than just `minRequiredPlugins` because the plguins required for `plugin`
+      //  This can include more plugins than just `minRequiredPlugins` because the plugins required for `plugin`
       //  might activate other plugins as well.
       val incrementalInputs = and(includeAll(minRequiredPlugins ++ initialPlugins), excludeAll(minAbsentPlugins ++ initialExcludes -- minRequiredPlugins))
       val incrementalModel = context.deducePlugin(incrementalInputs, context.log).toSet
