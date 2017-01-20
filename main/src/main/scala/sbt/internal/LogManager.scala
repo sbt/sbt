@@ -54,7 +54,7 @@ object LogManager {
       defaultLogger(data, state, task, screen(task, state), backed(to), relay(()), extra(task).toList)
   }
 
-  // This is the main function that is used to generat the logger for tasks.
+  // This is the main function that is used to generate the logger for tasks.
   def defaultLogger(data: Settings[Scope], state: State, task: ScopedKey[_],
     console: Appender, backed: Appender, relay: Appender, extra: List[Appender]): Logger =
     {
