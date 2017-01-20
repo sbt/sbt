@@ -68,7 +68,7 @@
 - Discovered main classes will be sorted. [#1180][1180] by [@kretes][@kretes]
 - Implemented a new mechanism of forking javac, whereby errors are captured.  Also more likely to run in-process. [#1702][1702] by [@jsuereth][@jsuereth]
 - `evicted` will display all evictions (including the ones not suspected of binary incompatibility). [#1615][1615] by [@eed3si9n][@eed3si9n]
-- Better abstration to track new kinds of dependencies for incremental compiler. [#1340][1340] by [@Duhemm][@Duhemm]
+- Better abstraction to track new kinds of dependencies for incremental compiler. [#1340][1340] by [@Duhemm][@Duhemm]
 - Source dependency uses `--depth 1` for git clone. [#1787][1787] by [@xuwei-k][@xuwei-k]
 - Facilitate nicer ways of declaring project settings. See below. [#1902][1902] by [@dwijnand][@dwijnand]
 
@@ -90,7 +90,7 @@
 - Fixes sporadic ConcurrentModificationException from JUnitXmlTestsListener. [#1881][1881] by [@aerskine][@aerskine]
 - Fixes handling of ANSI CSI codes. [#1885][1885] by [@jsuereth][@jsuereth]
 - Exempt org.scala-lang:scala-actors-migration and org.scala-lang:scala-pickling from scala binary version checks. [#1818][1818]/[#1899][1899] by [@dwijnand][@dwijnand]
-- Fixes cached resolution handling of internal depdendencies. [#1711][1711] by [@eed3si9n][@eed3si9n]
+- Fixes cached resolution handling of internal dependencies. [#1711][1711] by [@eed3si9n][@eed3si9n]
 - Fixes cached resolution being too verbose. [#1752][1752] by [@eed3si9n][@eed3si9n]
 - Fixes cached resolution not evicting modules transitively. [#1760][1760] by [@eed3si9n][@eed3si9n]
 

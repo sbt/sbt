@@ -41,7 +41,7 @@ trait RunningTaskEngine {
   def cancelAndShutdown(): Unit
 }
 /**
- * A startegy for being able to cancle tasks.
+ * A strategy for being able to cancle tasks.
  *
  * Implementations of this trait determine what will trigger `cancel()` for
  * the task engine, providing in the `start` method.

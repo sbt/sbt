@@ -6,7 +6,7 @@ resolvers += {
 }
 libraryDependencies += "exclude.test" % "app" % "1.0.0"
 
-val checkDependencies = taskKey[Unit]("Checks that dependcies are correct.")
+val checkDependencies = taskKey[Unit]("Checks that dependencies are correct.")
 
 checkDependencies := {
   val hasBadJar = (fullClasspath in Compile).value.exists { jar => jar.data.getName contains "bottom-1.0.0.jar"}

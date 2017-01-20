@@ -1,7 +1,7 @@
 import sbt.internal.inc.Analysis
 import complete.DefaultParsers._
 
-val checkIterations = inputKey[Unit]("Verifies the accumlated number of iterations of incremental compilation.")
+val checkIterations = inputKey[Unit]("Verifies the accumulated number of iterations of incremental compilation.")
 
 checkIterations := {
   val expected: Int = (Space ~> NatBasic).parsed

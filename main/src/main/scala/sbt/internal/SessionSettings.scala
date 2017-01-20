@@ -61,7 +61,7 @@ final case class SessionSettings(currentBuild: URI, currentProject: Map[URI, Str
   /**
    * Appends a set of raw Setting[_] objects to the current session.
    * @param ss  The raw settings to include
-   * @return A new SessionSettings with the appeneded settings.
+   * @return A new SessionSettings with the appended settings.
    */
   def appendRaw(ss: Seq[Setting[_]]): SessionSettings = copy(rawAppend = rawAppend ++ ss)
 

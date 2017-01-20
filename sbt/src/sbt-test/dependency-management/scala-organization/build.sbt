@@ -16,7 +16,7 @@ resolvers += Resolver.file("buggy", (baseDirectory in LocalRootProject).value / 
 
 libraryDependencies += "org.typelevel" %% "cats" % "0.6.0"
 
-val checkDependencies = taskKey[Unit]("Checks that dependcies are correct.")
+val checkDependencies = taskKey[Unit]("Checks that dependencies are correct.")
 
 checkDependencies := {
   val expected: Set[ModuleID] = Set(

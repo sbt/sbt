@@ -16,7 +16,7 @@ import sjsonnew.JsonFormat
 /**
  * The command exchange merges multiple command channels (e.g. network and console),
  * and acts as the central multiplexing point.
- * Instead of blocking on JLine.readLine, the server commmand will block on
+ * Instead of blocking on JLine.readLine, the server command will block on
  * this exchange, which could serve command request from either of the channel.
  */
 private[sbt] final class CommandExchange {
@@ -139,7 +139,7 @@ private[sbt] final class CommandExchange {
       }
     }
 
-  // fanout publisEvent
+  // fanout publishEvent
   def publishEventMessage(event: EventMessage): Unit =
     {
       val toDel: ListBuffer[CommandChannel] = ListBuffer.empty

@@ -178,11 +178,11 @@ object Plugins extends PluginsFunctions {
         timed("Plugins.deducer#function", log) {
           def explicitlyDisabled(p: AutoPlugin): Boolean = hasExclude(requestedPlugins, p)
           val alwaysEnabled: List[AutoPlugin] = defined.filter(_.isAlwaysEnabled).filterNot(explicitlyDisabled)
-          val knowlege0: Set[Atom] = ((flatten(requestedPlugins) ++ alwaysEnabled) collect {
+          val knowledge0: Set[Atom] = ((flatten(requestedPlugins) ++ alwaysEnabled) collect {
             case x: AutoPlugin => Atom(x.label)
           }).toSet
-          val clauses = Clauses((allRequirementsClause ::: allEnabledByClause) filterNot { _.head subsetOf knowlege0 })
-          log.debug(s"deducing auto plugins based on known facts ${knowlege0.toString} and clauses ${clauses.toString}")
+          val clauses = Clauses((allRequirementsClause ::: allEnabledByClause) filterNot { _.head subsetOf knowledge0 })
+          log.debug(s"deducing auto plugins based on known facts ${knowledge0.toString} and clauses ${clauses.toString}")
           Logic.reduce(clauses, (flattenConvert(requestedPlugins) ++ convertAll(alwaysEnabled)).toSet) match {
             case Left(problem) => throw AutoPluginException(problem)
             case Right(results) =>
@@ -194,7 +194,7 @@ object Plugins extends PluginsFunctions {
               val forbidden: Set[AutoPlugin] = (selectedPlugins flatMap { Plugins.asExclusions }).toSet
               val c = selectedPlugins.toSet & forbidden
               if (c.nonEmpty) {
-                exlusionConflictError(requestedPlugins, selectedPlugins, c.toSeq sortBy { _.label })
+                exclusionConflictError(requestedPlugins, selectedPlugins, c.toSeq sortBy { _.label })
               }
               val retval = topologicalSort(selectedPlugins, log)
               // log.debug(s"  :: sorted deduced result: ${retval.toString}")
@@ -219,7 +219,7 @@ object Plugins extends PluginsFunctions {
   }
   private[sbt] def translateMessage(e: LogicException) = e match {
     case ic: InitialContradictions => s"Contradiction in selected plugins.  These plugins were both included and excluded: ${literalsString(ic.literals.toSeq)}"
-    case io: InitialOverlap        => s"Cannot directly enable plugins.  Plugins are enabled when their required plugins are satisifed.  The directly selected plugins were: ${literalsString(io.literals.toSeq)}"
+    case io: InitialOverlap        => s"Cannot directly enable plugins.  Plugins are enabled when their required plugins are satisfied.  The directly selected plugins were: ${literalsString(io.literals.toSeq)}"
     case cn: CyclicNegation        => s"Cycles in plugin requirements cannot involve excludes.  The problematic cycle is: ${literalsString(cn.cycle)}"
   }
   private[this] def literalsString(lits: Seq[Literal]): String =
@@ -232,7 +232,7 @@ object Plugins extends PluginsFunctions {
     val message = s"Plugin$ns provided by multiple AutoPlugins:$nl${dupStrings.mkString(nl)}"
     throw AutoPluginException(message)
   }
-  private[this] def exlusionConflictError(requested: Plugins, selected: Seq[AutoPlugin], conflicting: Seq[AutoPlugin]): Unit = {
+  private[this] def exclusionConflictError(requested: Plugins, selected: Seq[AutoPlugin], conflicting: Seq[AutoPlugin]): Unit = {
     def listConflicts(ns: Seq[AutoPlugin]) = (ns map { c =>
       val reasons = (if (flatten(requested) contains c) List("requested")
       else Nil) ++
@@ -342,7 +342,7 @@ ${listConflicts(conflicting)}""")
   }
   private[this] def convertAll(ns: Seq[Basic]): Seq[Literal] = ns map convertBasic
 
-  /** True if the trigger clause `n` is satisifed by `model`. */
+  /** True if the trigger clause `n` is satisfied by `model`. */
   def satisfied(n: Plugins, model: Set[AutoPlugin]): Boolean =
     flatten(n) forall {
       case Exclude(a)     => !model(a)

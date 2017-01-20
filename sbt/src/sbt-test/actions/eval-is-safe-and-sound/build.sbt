@@ -9,9 +9,9 @@ lazy val numConfigClasses = taskKey[Int]("counts number of config classes")
 
 lazy val configClassCountFile = settingKey[File]("File where we write the # of config classes")
 
-lazy val saveNumConfigClasses = taskKey[Unit]("Saves the number of config clases")
+lazy val saveNumConfigClasses = taskKey[Unit]("Saves the number of config classes")
 
-lazy val checkNumConfigClasses = taskKey[Unit]("Checks the number of config clases")
+lazy val checkNumConfigClasses = taskKey[Unit]("Checks the number of config classes")
 
 lazy val checkDifferentConfigClasses = taskKey[Unit]("Checks that the number of config classes are different.")
 

@@ -718,7 +718,7 @@ private[sbt] object Load {
         // intended in the AddSettings.AutoPlugins filter.
         def autoPluginSettings(f: AutoPlugins) =
           projectPlugins.filter(f.include).flatMap(_.projectSettings)
-        // Grab all the settigns we already loaded from sbt files
+        // Grab all the settings we already loaded from sbt files
         def settings(files: Seq[File]): Seq[Setting[_]] =
           for {
             file <- files

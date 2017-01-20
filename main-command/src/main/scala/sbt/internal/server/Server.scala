@@ -15,7 +15,7 @@ private[sbt] sealed trait ServerInstance {
 
 private[sbt] object Server {
   def start(host: String, port: Int, onIncomingSocket: Socket => Unit,
-    /*onIncommingCommand: CommandMessage => Unit,*/ log: Logger): ServerInstance =
+    /*onIncomingCommand: CommandMessage => Unit,*/ log: Logger): ServerInstance =
     new ServerInstance {
 
       // val lock = new AnyRef {}

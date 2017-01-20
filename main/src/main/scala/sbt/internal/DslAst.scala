@@ -8,7 +8,7 @@ import sbt.librarymanagement.Configuration
 
 import Def._
 
-/** This reprsents a `Setting` expression configured by the sbt DSL. */
+/** This represents a `Setting` expression configured by the sbt DSL. */
 sealed trait DslEntry {
   /** Called by the parser.  Sets the position where this entry was defined in the build.sbt file. */
   def withPos(pos: RangePosition): DslEntry

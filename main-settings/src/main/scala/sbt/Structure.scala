@@ -108,7 +108,7 @@ object Scoped {
   implicit def inputScopedToKey[T](s: InputKey[T]): ScopedKey[InputTask[T]] = ScopedKey(s.scope, s.key)
 
   /**
-   * Mixin trait for adding convenience vocabulary associated with specifiying the [[Scope]] of a setting.
+   * Mixin trait for adding convenience vocabulary associated with specifying the [[Scope]] of a setting.
    * Allows specification of the Scope or part of the [[Scope]] of a setting being referenced.
    * @example
    *  {{{
@@ -180,7 +180,7 @@ object Scoped {
   }
 
   /**
-   * Wraps an [[sbt.Def.Initialize]] instance to provide `map` and `flatMap` symantics.
+   * Wraps an [[sbt.Def.Initialize]] instance to provide `map` and `flatMap` semantics.
    */
   final class RichInitialize[S](init: Initialize[S]) {
     def map[T](f: S => T): Initialize[Task[T]] = init(s => mktask(f(s)))
