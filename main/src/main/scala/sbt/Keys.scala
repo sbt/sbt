@@ -253,6 +253,7 @@ object Keys {
   val bgWaitFor = inputKey[Unit]("Wait for a background job to finish by providing its ID.")
   val bgRun = inputKey[JobHandle]("Start an application's default main class as a background job")
   val bgRunMain = inputKey[JobHandle]("Start a provided main class as a background job")
+  val bgCopyClasspath = settingKey[Boolean]("Copies classpath on bgRun to prevent conflict.")
 
   // Test Keys
   val testLoader = TaskKey[ClassLoader]("test-loader", "Provides the class loader used for testing.", DTask)

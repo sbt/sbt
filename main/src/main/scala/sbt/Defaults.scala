@@ -137,7 +137,8 @@ object Defaults extends BuildCommon {
       bgList := { bgJobService.value.jobs },
       ps := psTask.value,
       bgStop := bgStopTask.evaluated,
-      bgWaitFor := bgWaitForTask.evaluated
+      bgWaitFor := bgWaitForTask.evaluated,
+      bgCopyClasspath :== true
     )
 
   private[sbt] lazy val globalIvyCore: Seq[Setting[_]] =
@@ -353,8 +354,8 @@ object Defaults extends BuildCommon {
     run := runTask(fullClasspath, mainClass in run, runner in run).evaluated,
     copyResources := copyResourcesTask.value,
     // note that we use the same runner and mainClass as plain run
-    bgRunMain := bgRunMainTask(fullClasspathAsJars, runner in run).evaluated,
-    bgRun := bgRunTask(fullClasspathAsJars, mainClass in run, runner in run).evaluated
+    bgRunMain := bgRunMainTask(exportedProductJars, fullClasspathAsJars, bgCopyClasspath in bgRunMain, runner in run).evaluated,
+    bgRun := bgRunTask(exportedProductJars, fullClasspathAsJars, mainClass in run, bgCopyClasspath in bgRun, runner in run).evaluated
   ) ++ inTask(run)(runnerSettings)
 
   private[this] lazy val configGlobal = globalDefaults(Seq(
@@ -815,25 +816,34 @@ object Defaults extends BuildCommon {
       IO.move(mappings.map(_.swap))
     }
 
-  def bgRunMainTask(classpath: Initialize[Task[Classpath]], scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[JobHandle]] =
+  def bgRunMainTask(products: Initialize[Task[Classpath]], classpath: Initialize[Task[Classpath]],
+    copyClasspath: Initialize[Boolean], scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[JobHandle]] =
     {
       val parser = Defaults.loadForParser(discoveredMainClasses)((s, names) => Defaults.runMainParser(s, names getOrElse Nil))
       Def.inputTask {
+        val service = bgJobService.value
         val (mainClass, args) = parser.parsed
-        bgJobService.value.runInBackground(resolvedScoped.value, state.value) { (logger) =>
-          scalaRun.value.run(mainClass, data(classpath.value), args, logger).get
+        service.runInBackground(resolvedScoped.value, state.value) { (logger, workingDir) =>
+          val cp =
+            if (copyClasspath.value) service.copyClasspath(products.value, classpath.value, workingDir)
+            else classpath.value
+          scalaRun.value.run(mainClass, data(cp), args, logger).get
         }
       }
     }
-  def bgRunTask(classpath: Initialize[Task[Classpath]], mainClassTask: Initialize[Task[Option[String]]], scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[JobHandle]] =
+  def bgRunTask(products: Initialize[Task[Classpath]], classpath: Initialize[Task[Classpath]], mainClassTask: Initialize[Task[Option[String]]],
+    copyClasspath: Initialize[Boolean], scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[JobHandle]] =
     {
       import Def.parserToInput
       val parser = Def.spaceDelimited()
       Def.inputTask {
+        val service = bgJobService.value
         val mainClass = mainClassTask.value getOrElse sys.error("No main class detected.")
-        bgJobService.value.runInBackground(resolvedScoped.value, state.value) { (logger) =>
-          // TODO - Copy the classpath into some tmp directory so we don't immediately die if a recompile happens.
-          scalaRun.value.run(mainClass, data(classpath.value), parser.parsed, logger).get
+        service.runInBackground(resolvedScoped.value, state.value) { (logger, workingDir) =>
+          val cp =
+            if (copyClasspath.value) service.copyClasspath(products.value, classpath.value, workingDir)
+            else classpath.value
+          scalaRun.value.run(mainClass, data(cp), parser.parsed, logger).get
         }
       }
     }
@@ -951,8 +961,8 @@ object Defaults extends BuildCommon {
     }
   ))
 
-  def mainBgRunTask = bgRun := bgRunTask(fullClasspathAsJars in Runtime, mainClass in run, runner in run).evaluated
-  def mainBgRunMainTask = bgRunMain := bgRunMainTask(fullClasspathAsJars in Runtime, runner in run).evaluated
+  def mainBgRunTask = bgRun := bgRunTask(exportedProductJars, fullClasspathAsJars in Runtime, mainClass in run, bgCopyClasspath in bgRun, runner in run).evaluated
+  def mainBgRunMainTask = bgRunMain := bgRunMainTask(exportedProductJars, fullClasspathAsJars in Runtime, bgCopyClasspath in bgRunMain, runner in run).evaluated
 
   def discoverMainClasses(analysis: CompileAnalysis): Seq[String] =
     Discovery.applications(Tests.allDefs(analysis)).collect({ case (definition, discovered) if discovered.hasMain => definition.name }).sorted

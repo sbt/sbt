@@ -3,10 +3,14 @@ package internal
 
 import java.util.concurrent.atomic.AtomicLong
 import java.io.Closeable
-import sbt.util.Logger
-import Def.{ ScopedKey, Setting }
+import Def.{ ScopedKey, Setting, Classpath }
 import scala.concurrent.ExecutionContext
 import Scope.GlobalScope
+import java.io.File
+import sbt.io.{ IO, Hash }
+import sbt.io.syntax._
+import sbt.util.{ Logger, LogExchange }
+import sbt.internal.util.{ Attributed, ManagedLogger }
 
 /**
  * Interface between sbt and a thing running in the background.
@@ -32,6 +36,7 @@ private[sbt] abstract class AbstractJobHandle extends JobHandle {
 private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobService {
   private val nextId = new AtomicLong(1)
   private val pool = new BackgroundThreadPool()
+  private val serviceTempDir = IO.createTemporaryDirectory
 
   // hooks for sending start/stop events
   protected def onAddJob(job: JobHandle): Unit = {}
@@ -55,7 +60,7 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
 
   final class ThreadJobHandle(
       override val id: Long, override val spawningTask: ScopedKey[_],
-      val logger: Logger, val job: BackgroundJob
+      val logger: ManagedLogger, val workingDirectory: File, val job: BackgroundJob
   ) extends AbstractJobHandle {
     def humanReadableName: String = job.humanReadableName
     // EC for onStop handler below
@@ -64,6 +69,8 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
       // TODO: Fix this
       // logger.close()
       removeJob(this)
+      IO.delete(workingDirectory)
+      LogExchange.unbindLoggerAppenders(logger.name)
     }
     addJob(this)
     override final def equals(other: Any): Boolean = other match {
@@ -80,13 +87,16 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
     override val spawningTask: ScopedKey[_] = unknownTask
   }
 
-  protected def makeContext(id: Long, spawningTask: ScopedKey[_], state: State): Logger
+  protected def makeContext(id: Long, spawningTask: ScopedKey[_], state: State): ManagedLogger
 
-  def doRunInBackground(spawningTask: ScopedKey[_], state: State, start: (Logger) => BackgroundJob): JobHandle = {
+  def doRunInBackground(spawningTask: ScopedKey[_], state: State, start: (Logger, File) => BackgroundJob): JobHandle = {
     val id = nextId.getAndIncrement()
     val logger = makeContext(id, spawningTask, state)
-    val job = try new ThreadJobHandle(id, spawningTask, logger, start(logger))
-    catch {
+    val workingDir = serviceTempDir / s"job-$id"
+    IO.createDirectory(workingDir)
+    val job = try {
+      new ThreadJobHandle(id, spawningTask, logger, workingDir, start(logger, workingDir))
+    } catch {
       case e: Throwable =>
         // TODO: Fix this
         // logger.close()
@@ -95,7 +105,7 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
     job
   }
 
-  override def runInBackground(spawningTask: ScopedKey[_], state: State)(start: (Logger) => Unit): JobHandle = {
+  override def runInBackground(spawningTask: ScopedKey[_], state: State)(start: (Logger, File) => Unit): JobHandle = {
     pool.run(this, spawningTask, state)(start)
   }
 
@@ -110,6 +120,7 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
       }
     }
     pool.close()
+    IO.delete(serviceTempDir)
   }
 
   private def withHandle(job: JobHandle)(f: ThreadJobHandle => Unit): Unit = job match {
@@ -125,6 +136,29 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
     withHandle(job)(_.job.awaitTermination())
 
   override def toString(): String = s"BackgroundJobService(jobs=${jobs.map(_.id).mkString})"
+
+  /**
+   * Copies products to the workind directory, and the rest to the serviceTempDir of this service,
+   * both wrapped in SHA-1 hash of the file contents.
+   * This is intended to mimize the file copying and accumulation of the unused JAR file.
+   * Since working directory is wiped out when the background job ends, the product JAR is deleted too.
+   * Meanwhile, the rest of the dependencies are cached for the duration of this service.
+   */
+  override def copyClasspath(products: Classpath, full: Classpath, workingDirectory: File): Classpath =
+    {
+      def syncTo(dir: File)(source0: Attributed[File]): Attributed[File] =
+        {
+          val source = source0.data
+          val hash8 = Hash.toHex(Hash(source)).take(8)
+          val dest = dir / hash8 / source.getName
+          if (!dest.exists) { IO.copyFile(source, dest) }
+          Attributed.blank(dest)
+        }
+      val xs = (products.toVector map { syncTo(workingDirectory / "target") }) ++
+        ((full diff products) map { syncTo(serviceTempDir / "target") })
+      Thread.sleep(100)
+      xs
+    }
 }
 
 private[sbt] object BackgroundThreadPool {
@@ -243,10 +277,10 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
       }
   }
 
-  def run(manager: AbstractBackgroundJobService, spawningTask: ScopedKey[_], state: State)(work: (Logger) => Unit): JobHandle = {
-    def start(logger: Logger): BackgroundJob = {
+  def run(manager: AbstractBackgroundJobService, spawningTask: ScopedKey[_], state: State)(work: (Logger, File) => Unit): JobHandle = {
+    def start(logger: Logger, workingDir: File): BackgroundJob = {
       val runnable = new BackgroundRunnable(spawningTask.key.label, { () =>
-        work(logger)
+        work(logger, workingDir)
       })
       executor.execute(runnable)
       runnable
@@ -260,7 +294,7 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
 }
 
 private[sbt] class DefaultBackgroundJobService extends AbstractBackgroundJobService {
-  override def makeContext(id: Long, spawningTask: ScopedKey[_], state: State): Logger = {
+  override def makeContext(id: Long, spawningTask: ScopedKey[_], state: State): ManagedLogger = {
     val extracted = Project.extract(state)
     LogManager.constructBackgroundLog(extracted.structure.data, state)(spawningTask)
   }

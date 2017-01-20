@@ -22,6 +22,9 @@ sealed trait ScalaRun {
 class ForkRun(config: ForkOptions) extends ScalaRun {
   def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Try[Unit] =
     {
+      def processExitCode(exitCode: Int, label: String): Try[Unit] =
+        if (exitCode == 0) Success(())
+        else Failure(new RuntimeException(s"""Nonzero exit code returned from $label: $exitCode""".stripMargin))
       val process = fork(mainClass, classpath, options, log)
       def cancel() = {
         log.warn("Run canceled.")
@@ -34,7 +37,7 @@ class ForkRun(config: ForkOptions) extends ScalaRun {
 
   def fork(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Process =
     {
-      log.info("Running " + mainClass + " " + options.mkString(" "))
+      log.info("Running (fork) " + mainClass + " " + options.mkString(" "))
 
       val scalaOptions = classpathOption(classpath) ::: mainClass :: options.toList
       val configLogged =
@@ -44,11 +47,6 @@ class ForkRun(config: ForkOptions) extends ScalaRun {
       Fork.java.fork(configLogged, scalaOptions)
     }
   private def classpathOption(classpath: Seq[File]) = "-classpath" :: Path.makeString(classpath) :: Nil
-  private def processExitCode(exitCode: Int, label: String): Try[Unit] =
-    {
-      if (exitCode == 0) Success(())
-      else Failure(new RuntimeException("Nonzero exit code returned from " + label + ": " + exitCode))
-    }
 }
 class Run(instance: ScalaInstance, trapExit: Boolean, nativeTmp: File) extends ScalaRun {
   /** Runs the class 'mainClass' using the given classpath and options using the scala runner.*/

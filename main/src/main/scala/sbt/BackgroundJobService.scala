@@ -2,8 +2,9 @@ package sbt
 
 import java.io.Closeable
 import sbt.util.Logger
-import Def.ScopedKey
+import Def.{ ScopedKey, Classpath }
 import sbt.internal.util.complete._
+import java.io.File
 
 abstract class BackgroundJobService extends Closeable {
   /**
@@ -12,16 +13,20 @@ abstract class BackgroundJobService extends Closeable {
    *  then you should get an InterruptedException while blocking on the process, and
    *  then you could process.destroy() for example.
    */
-  def runInBackground(spawningTask: ScopedKey[_], state: State)(start: (Logger) => Unit): JobHandle
+  def runInBackground(spawningTask: ScopedKey[_], state: State)(start: (Logger, File) => Unit): JobHandle
+  /** Same as shutown. */
   def close(): Unit
+  /** Shuts down all background jobs. */
   def shutdown(): Unit
   def jobs: Vector[JobHandle]
   def stop(job: JobHandle): Unit
   def waitFor(job: JobHandle): Unit
+  /** Copies classpath to temporary directories. */
+  def copyClasspath(products: Classpath, full: Classpath, workingDirectory: File): Classpath
 }
 
 object BackgroundJobService {
-  def jobIdParser: (State, Seq[JobHandle]) => Parser[Seq[JobHandle]] = {
+  private[sbt] def jobIdParser: (State, Seq[JobHandle]) => Parser[Seq[JobHandle]] = {
     import DefaultParsers._
     (state, handles) => {
       val stringIdParser: Parser[Seq[String]] = Space ~> token(NotSpace examples handles.map(_.id.toString).toSet, description = "<job id>").+

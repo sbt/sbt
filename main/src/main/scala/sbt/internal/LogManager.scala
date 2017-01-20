@@ -12,11 +12,12 @@ import scala.Console.{ BLUE, RESET }
 import sbt.internal.util.{ AttributeKey, ConsoleOut, Settings, SuppressedTraceContext, MainAppender }
 import MainAppender._
 import sbt.util.{ AbstractLogger, Level, Logger, LogExchange }
+import sbt.internal.util.ManagedLogger
 import org.apache.logging.log4j.core.Appender
 
 sealed abstract class LogManager {
   def apply(data: Settings[Scope], state: State, task: ScopedKey[_], writer: PrintWriter): Logger
-  def backgroundLog(data: Settings[Scope], state: State, task: ScopedKey[_]): Logger
+  def backgroundLog(data: Settings[Scope], state: State, task: ScopedKey[_]): ManagedLogger
 }
 
 object LogManager {
@@ -30,7 +31,7 @@ object LogManager {
       manager(data, state, task, to)
     }
 
-  def constructBackgroundLog(data: Settings[Scope], state: State): (ScopedKey[_]) => Logger = (task: ScopedKey[_]) =>
+  def constructBackgroundLog(data: Settings[Scope], state: State): (ScopedKey[_]) => ManagedLogger = (task: ScopedKey[_]) =>
     {
       val manager: LogManager = (logManager in task.scope).get(data) getOrElse { defaultManager(state.globalLogging.console) }
       manager.backgroundLog(data, state, task)
@@ -60,7 +61,7 @@ object LogManager {
     def apply(data: Settings[Scope], state: State, task: ScopedKey[_], to: PrintWriter): Logger =
       defaultLogger(data, state, task, screen(task, state), backed(to), relay(()), extra(task).toList)
 
-    def backgroundLog(data: Settings[Scope], state: State, task: ScopedKey[_]): Logger =
+    def backgroundLog(data: Settings[Scope], state: State, task: ScopedKey[_]): ManagedLogger =
       LogManager.backgroundLog(data, state, task, screen(task, state), relay(()), extra(task).toList)
   }
 
@@ -112,7 +113,7 @@ object LogManager {
   }
 
   def backgroundLog(data: Settings[Scope], state: State, task: ScopedKey[_],
-    console: Appender, /* TODO: backed: Appender,*/ relay: Appender, extra: List[Appender]): Logger =
+    console: Appender, /* TODO: backed: Appender,*/ relay: Appender, extra: List[Appender]): ManagedLogger =
     {
       val execOpt = state.currentCommand
       val loggerName: String = s"bg-${task.key.label}-${generateId.incrementAndGet}"
@@ -121,7 +122,7 @@ object LogManager {
       val log = LogExchange.logger(loggerName, channelName, None)
       LogExchange.unbindLoggerAppenders(loggerName)
       val consoleOpt = consoleLocally(state, console)
-      LogExchange.bindLoggerAppenders(loggerName, (consoleOpt.toList map { _ -> Level.Info }) ::: (relay -> Level.Debug) :: Nil)
+      LogExchange.bindLoggerAppenders(loggerName, (consoleOpt.toList map { _ -> Level.Debug }) ::: (relay -> Level.Debug) :: Nil)
       log
     }
 
