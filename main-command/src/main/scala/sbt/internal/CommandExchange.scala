@@ -139,7 +139,7 @@ private[sbt] final class CommandExchange {
       }
     }
 
-  // fanout publisEvent
+  // fanout publishEvent
   def publishEventMessage(event: EventMessage): Unit =
     {
       val toDel: ListBuffer[CommandChannel] = ListBuffer.empty
