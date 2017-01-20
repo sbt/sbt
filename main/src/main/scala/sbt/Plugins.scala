@@ -178,11 +178,11 @@ object Plugins extends PluginsFunctions {
         timed("Plugins.deducer#function", log) {
           def explicitlyDisabled(p: AutoPlugin): Boolean = hasExclude(requestedPlugins, p)
           val alwaysEnabled: List[AutoPlugin] = defined.filter(_.isAlwaysEnabled).filterNot(explicitlyDisabled)
-          val knowlege0: Set[Atom] = ((flatten(requestedPlugins) ++ alwaysEnabled) collect {
+          val knowledge0: Set[Atom] = ((flatten(requestedPlugins) ++ alwaysEnabled) collect {
             case x: AutoPlugin => Atom(x.label)
           }).toSet
-          val clauses = Clauses((allRequirementsClause ::: allEnabledByClause) filterNot { _.head subsetOf knowlege0 })
-          log.debug(s"deducing auto plugins based on known facts ${knowlege0.toString} and clauses ${clauses.toString}")
+          val clauses = Clauses((allRequirementsClause ::: allEnabledByClause) filterNot { _.head subsetOf knowledge0 })
+          log.debug(s"deducing auto plugins based on known facts ${knowledge0.toString} and clauses ${clauses.toString}")
           Logic.reduce(clauses, (flattenConvert(requestedPlugins) ++ convertAll(alwaysEnabled)).toSet) match {
             case Left(problem) => throw AutoPluginException(problem)
             case Right(results) =>
