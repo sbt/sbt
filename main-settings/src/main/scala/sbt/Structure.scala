@@ -108,7 +108,7 @@ object Scoped {
   implicit def inputScopedToKey[T](s: InputKey[T]): ScopedKey[InputTask[T]] = ScopedKey(s.scope, s.key)
 
   /**
-   * Mixin trait for adding convenience vocabulary associated with specifiying the [[Scope]] of a setting.
+   * Mixin trait for adding convenience vocabulary associated with specifying the [[Scope]] of a setting.
    * Allows specification of the Scope or part of the [[Scope]] of a setting being referenced.
    * @example
    *  {{{
