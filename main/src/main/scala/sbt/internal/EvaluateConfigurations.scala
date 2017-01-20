@@ -81,7 +81,7 @@ private[sbt] object EvaluateConfigurations {
    * @param eval    The evaluating scala compiler instance we use to handle evaluating scala configuration.
    * @param file    The file we've parsed
    * @param imports The default imports to use in this .sbt configuration
-   * @param lines   The lines of the configurtion we'd like to evaluate.
+   * @param lines   The lines of the configuration we'd like to evaluate.
    *
    * @return Just the Setting[_] instances defined in the .sbt file.
    */
