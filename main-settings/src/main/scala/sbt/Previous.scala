@@ -25,7 +25,7 @@ private[sbt] final class Previous(streams: Streams, referenced: IMap[ScopedTaskK
     }
   }
 
-  /** Used by the .previous runtime implemention to get the previous value for task `key`. */
+  /** Used by the .previous runtime implementation to get the previous value for task `key`. */
   private def get[T](key: ScopedKey[Task[T]]): Option[T] =
     map.get(key).flatMap(_.previousValue)
 }
