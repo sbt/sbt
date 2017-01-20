@@ -16,7 +16,7 @@ lazy val root = (project in file(".")).
           cacheDir / "org.apache.geronimo.specs" / "geronimo-jta_1.1_spec" / "ivy-1.1.1.xml"
         val lines = IO.read(xmlFile)
         if(lines.isEmpty) sys.error(s"Unable to read $xmlFile, could not resolve geronimo...")
-        // Note: We do not do this if the maven plguin is enabled, because there is no rewrite of ivy.xml, extra attribtues
+        // Note: We do not do this if the maven plguin is enabled, because there is no rewrite of ivy.xml, extra attributes
         // are handled in a different mechanism.  This is a hacky mechanism to detect that.
         val isMavenResolver = updateOptions.value.resolverConverter != PartialFunction.empty
         if(!isMavenResolver) assert(lines contains "xmlns:e", s"Failed to appropriately modify ivy.xml file for sbt extra attributes!\n$lines")
