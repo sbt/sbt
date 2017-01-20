@@ -347,6 +347,8 @@ object Defaults extends BuildCommon {
     consoleQuick := consoleQuickTask.value,
     discoveredMainClasses := (compile map discoverMainClasses storeAs discoveredMainClasses xtriggeredBy compile).value,
     discoveredSbtPlugins := discoverSbtPluginNames.value,
+    // This fork options, scoped to the configuration is used for tests
+    forkOptions := forkOptionsTask.value,
     selectMainClass := mainClass.value orElse askForMainClass(discoveredMainClasses.value),
     mainClass in run := (selectMainClass in run).value,
     mainClass := pickMainClassOrWarn(discoveredMainClasses.value, streams.value.log),
