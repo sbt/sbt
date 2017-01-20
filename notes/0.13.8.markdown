@@ -90,7 +90,7 @@
 - Fixes sporadic ConcurrentModificationException from JUnitXmlTestsListener. [#1881][1881] by [@aerskine][@aerskine]
 - Fixes handling of ANSI CSI codes. [#1885][1885] by [@jsuereth][@jsuereth]
 - Exempt org.scala-lang:scala-actors-migration and org.scala-lang:scala-pickling from scala binary version checks. [#1818][1818]/[#1899][1899] by [@dwijnand][@dwijnand]
-- Fixes cached resolution handling of internal depdendencies. [#1711][1711] by [@eed3si9n][@eed3si9n]
+- Fixes cached resolution handling of internal dependencies. [#1711][1711] by [@eed3si9n][@eed3si9n]
 - Fixes cached resolution being too verbose. [#1752][1752] by [@eed3si9n][@eed3si9n]
 - Fixes cached resolution not evicting modules transitively. [#1760][1760] by [@eed3si9n][@eed3si9n]
 
