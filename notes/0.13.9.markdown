@@ -158,7 +158,7 @@ This problem surfaced as:
 - Version range not working for artifacts hosted on Bintray. [#2005][2005]
 - Potentially other `SNAPSHOT` related issues.
 
-sbt 0.13.9 fixes this by relaxing the Maven compatiblity check, so it will read `maven-metadata.xml`. [#2075][2075] by [@eed3si9n][@eed3si9n]
+sbt 0.13.9 fixes this by relaxing the Maven compatibility check, so it will read `maven-metadata.xml`. [#2075][2075] by [@eed3si9n][@eed3si9n]
 
 ### Contributors
 
