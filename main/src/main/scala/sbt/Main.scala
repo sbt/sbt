@@ -8,6 +8,7 @@ import sbt.internal.{
   Aggregation,
   BuildStructure,
   BuildUnit,
+  CommandExchange,
   CommandStrings,
   EvaluateConfigurations,
   Inspect,
@@ -78,6 +79,8 @@ final class ConsoleMain extends xsbti.AppMain {
 }
 
 object StandardMain {
+  private[sbt] lazy val exchange = new CommandExchange()
+
   def runManaged(s: State): xsbti.MainResult =
     {
       val previous = TrapExit.installManager()
@@ -117,7 +120,7 @@ object BuiltinCommands {
   def DefaultCommands: Seq[Command] = Seq(ignore, help, completionsCommand, about, tasks, settingsCommand, loadProject, templateCommand,
     projects, project, reboot, read, history, set, sessionCommand, inspect, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
     Cross.crossRestoreSession, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, setLogLevel, plugin, plugins,
-    ifLast, multi, shell, BasicCommands.server, BasicCommands.client, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, early, initialize, act) ++
+    ifLast, multi, shell, server, BasicCommands.client, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, early, initialize, act) ++
     compatCommands
   def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
 
@@ -544,4 +547,16 @@ object BuiltinCommands {
         }
       s.put(Keys.stateCompilerCache, cache)
     }
+
+  def server = Command.command(Server, Help.more(Server, ServerDetailed)) { s0 =>
+    import sbt.internal.{ ConsolePromptEvent, ConsoleUnpromptEvent }
+    val exchange = StandardMain.exchange
+    val s1 = exchange run s0
+    exchange publishEventMessage ConsolePromptEvent(s0)
+    val exec: Exec = exchange.blockUntilNextExec
+    val newState = s1.copy(onFailure = Some(Exec(Server, None)), remainingCommands = exec +: Exec(Server, None) +: s1.remainingCommands).setInteractive(true)
+    exchange publishEventMessage ConsoleUnpromptEvent(exec.source)
+    if (exec.commandLine.trim.isEmpty) newState
+    else newState.clearGlobalLog
+  }
 }

@@ -21,7 +21,7 @@ import scala.util.control.NonFatal
 
 object BasicCommands {
   lazy val allBasicCommands = Seq(nop, ignore, help, completionsCommand, multi, ifLast, append, setOnFailure, clearOnFailure,
-    stashOnFailure, popOnFailure, reboot, call, early, exit, continuous, history, shell, server, client, read, alias) ++ compatCommands
+    stashOnFailure, popOnFailure, reboot, call, early, exit, continuous, history, shell, client, read, alias) ++ compatCommands
 
   def nop = Command.custom(s => success(() => s))
   def ignore = Command.command(FailureWall)(idFun)
@@ -191,17 +191,6 @@ object BasicCommands {
         if (line.trim.isEmpty) newState else newState.clearGlobalLog
       case None => s.setInteractive(false)
     }
-  }
-
-  def server = Command.command(Server, Help.more(Server, ServerDetailed)) { s0 =>
-    val exchange = State.exchange
-    val s1 = exchange.run(s0)
-    exchange.publishEventMessage(ConsolePromptEvent(s0))
-    val exec: Exec = exchange.blockUntilNextExec
-    val newState = s1.copy(onFailure = Some(Exec(Server, None)), remainingCommands = exec +: Exec(Server, None) +: s1.remainingCommands).setInteractive(true)
-    exchange.publishEventMessage(ConsoleUnpromptEvent(exec.source))
-    if (exec.commandLine.trim.isEmpty) newState
-    else newState.clearGlobalLog
   }
 
   def client = Command.make(Client, Help.more(Client, ClientDetailed))(clientParser)

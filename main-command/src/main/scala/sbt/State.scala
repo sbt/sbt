@@ -8,7 +8,6 @@ import java.util.concurrent.Callable
 import sbt.util.Logger
 import sbt.internal.util.{ AttributeKey, AttributeMap, ErrorHandling, ExitHook, ExitHooks, GlobalLogging }
 import sbt.internal.util.complete.HistoryCommands
-import sbt.internal.CommandExchange
 import sbt.internal.inc.classpath.ClassLoaderCache
 
 /**
@@ -194,8 +193,6 @@ object State {
         app.id, state.configuration.baseDirectory
       )
     }
-
-  private[sbt] lazy val exchange = new CommandExchange()
 
   /** Provides operations and transformations on State. */
   implicit def stateOps(s: State): StateOps = new StateOps {
