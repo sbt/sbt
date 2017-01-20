@@ -208,7 +208,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
 
   /**
    * Represents an isolated application as simulated by [[TrapExit]].
-   * `execute` is the application code to evalute.
+   * `execute` is the application code to evaluate.
    * `log` is used for debug logging.
    */
   private final class App(val execute: xsbti.F0[Unit], val log: Logger) extends Runnable {
