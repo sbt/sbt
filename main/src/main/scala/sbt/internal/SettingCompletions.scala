@@ -102,7 +102,7 @@ private[sbt] object SettingCompletions {
 
   /**
    * Parser that provides tab completion for the main argument to the `set` command.
-   * `settings` are the evaluated settings for the build, `rawKeyMap` maps the hypenated key identifier to the key object,
+   * `settings` are the evaluated settings for the build, `rawKeyMap` maps the hyphenated key identifier to the key object,
    * and `context` is the current project.
    * The tab completion will try to present the most relevant information first, with additional descriptions or keys available
    * when there are fewer choices or tab is pressed multiple times.
@@ -267,7 +267,7 @@ private[sbt] object SettingCompletions {
     }
 
   /**
-   * Transforms the hypenated key label `k` into camel-case and quotes it with backticks if it is a Scala keyword.
+   * Transforms the hyphenated key label `k` into camel-case and quotes it with backticks if it is a Scala keyword.
    * This is intended to be an estimate of the Scala identifier that may be used to reference the keyword in the default sbt context.
    */
   def keyScalaID(k: String): String = Util.quoteIfKeyword(Util.hyphenToCamel(k))
