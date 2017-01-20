@@ -49,7 +49,7 @@ case class CustomOutput(output: OutputStream) extends OutputStrategy
 import java.lang.{ ProcessBuilder => JProcessBuilder }
 
 /**
- * Represents a commad that can be forked.
+ * Represents a command that can be forked.
  *
  * @param commandName The java-like binary to fork.  This is expected to exist in bin/ of the Java home directory.
  * @param runnerClass If Some, this will be prepended to the `arguments` passed to the `apply` or `fork` methods.
