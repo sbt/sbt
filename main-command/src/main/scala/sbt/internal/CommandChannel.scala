@@ -8,7 +8,7 @@ import sjsonnew.JsonFormat
 /**
  * A command channel represents an IO device such as network socket or human
  * that can issue command or listen for some outputs.
- * We can think of a command channel to be an abstration of the terminal window.
+ * We can think of a command channel to be an abstraction of the terminal window.
  */
 abstract class CommandChannel {
   private val commandQueue: ConcurrentLinkedQueue[Exec] = new ConcurrentLinkedQueue()
