@@ -26,7 +26,7 @@ sealed trait ParsedSbtFileExpressions {
   /** The set of parsed import expressions. */
   def imports: Seq[(String, Int)]
 
-  /** The set of parsed defintions and/or sbt build settings. */
+  /** The set of parsed definitions and/or sbt build settings. */
   def settings: Seq[(String, LineRange)]
 
   /** The set of scala tree's for parsed definitions/settings and the underlying string representation.. */
@@ -55,7 +55,7 @@ sealed trait ParsedSbtFileExpressions {
  */
 private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends ParsedSbtFileExpressions {
   //settingsTrees,modifiedContent needed for "session save"
-  // TODO - We should look into splitting out "defintiions" vs. "settings" here instead of further string lookups, since we have the
+  // TODO - We should look into splitting out "definitions" vs. "settings" here instead of further string lookups, since we have the
   // parsed trees.
   val (imports, settings, settingsTrees) = splitExpressions(file, lines)
 
