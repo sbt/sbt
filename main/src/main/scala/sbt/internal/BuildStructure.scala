@@ -214,7 +214,9 @@ object BuildStreams {
 
   def mkStreams(units: Map[URI, LoadedBuildUnit], root: URI, data: Settings[Scope]): State => Streams = s => {
     implicit val isoString: sjsonnew.IsoString[scala.json.ast.unsafe.JValue] = sjsonnew.IsoString.iso(sjsonnew.support.scalajson.unsafe.CompactPrinter.apply, sjsonnew.support.scalajson.unsafe.Parser.parseUnsafe)
-    s get Keys.stateStreams getOrElse std.Streams(path(units, root, data), displayFull, LogManager.construct(data, s), sjsonnew.support.scalajson.unsafe.Converter)
+    (s get Keys.stateStreams) getOrElse {
+      std.Streams(path(units, root, data), displayFull, LogManager.construct(data, s), sjsonnew.support.scalajson.unsafe.Converter)
+    }
   }
 
   def path(units: Map[URI, LoadedBuildUnit], root: URI, data: Settings[Scope])(scoped: ScopedKey[_]): File =

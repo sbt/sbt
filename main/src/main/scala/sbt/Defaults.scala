@@ -26,7 +26,6 @@ import sbt.internal.librarymanagement._
 import sbt.internal.librarymanagement.syntax._
 import sbt.internal.util._
 import sbt.util.{ Level, Logger }
-import sys.error
 import scala.xml.NodeSeq
 import scala.util.control.NonFatal
 
@@ -134,7 +133,13 @@ object Defaults extends BuildCommon {
       includeFilter in unmanagedSources :== ("*.java" | "*.scala") && new SimpleFileFilter(_.isFile),
       includeFilter in unmanagedJars :== "*.jar" | "*.so" | "*.dll" | "*.jnilib" | "*.zip",
       includeFilter in unmanagedResources :== AllPassFilter,
-      fileToStore :== DefaultFileToStore
+      fileToStore :== DefaultFileToStore,
+      bgJobService := { new DefaultBackgroundJobService() },
+      bgList := { bgJobService.value.jobs },
+      ps := psTask.value,
+      bgStop := bgStopTask.evaluated,
+      bgWaitFor := bgWaitForTask.evaluated,
+      onUnload := { s => try onUnload.value(s) finally bgJobService.value.close() }
     )
 
   private[sbt] lazy val globalIvyCore: Seq[Setting[_]] =
@@ -325,7 +330,7 @@ object Defaults extends BuildCommon {
     }
   }
 
-  lazy val configTasks = docTaskSettings(doc) ++ inTask(compile)(compileInputsSettings) ++ configGlobal ++ compileAnalysisSettings ++ Seq(
+  lazy val configTasks: Seq[Setting[_]] = docTaskSettings(doc) ++ inTask(compile)(compileInputsSettings) ++ configGlobal ++ compileAnalysisSettings ++ Seq(
     compile := compileTask.value,
     manipulateBytecode := compileIncremental.value,
     compileIncremental := (compileIncrementalTask tag (Tags.Compile, Tags.CPU)).value,
@@ -343,14 +348,16 @@ object Defaults extends BuildCommon {
     consoleQuick := consoleQuickTask.value,
     discoveredMainClasses := (compile map discoverMainClasses storeAs discoveredMainClasses xtriggeredBy compile).value,
     discoveredSbtPlugins := discoverSbtPluginNames.value,
-    inTask(run)(runnerTask :: Nil).head,
     selectMainClass := mainClass.value orElse askForMainClass(discoveredMainClasses.value),
     mainClass in run := (selectMainClass in run).value,
     mainClass := pickMainClassOrWarn(discoveredMainClasses.value, streams.value.log),
-    run := runTask(fullClasspath, mainClass in run, runner in run).evaluated,
     runMain := runMainTask(fullClasspath, runner in run).evaluated,
-    copyResources := copyResourcesTask.value
-  )
+    run := runTask(fullClasspath, mainClass in run, runner in run).evaluated,
+    copyResources := copyResourcesTask.value,
+    // note that we use the same runner and mainClass as plain run
+    bgRunMain := bgRunMainTask(fullClasspath, runner in run).evaluated,
+    bgRun := bgRunTask(fullClasspath, mainClass in run, runner in run).evaluated
+  ) ++ inTask(run)(runnerSettings)
 
   private[this] lazy val configGlobal = globalDefaults(Seq(
     initialCommands :== "",
@@ -531,11 +538,18 @@ object Defaults extends BuildCommon {
     val opts = forkOptions.value
     Seq(new Tests.Group("<default>", tests, if (fk) Tests.SubProcess(opts) else Tests.InProcess))
   }
-  private[this] def forkOptions: Initialize[Task[ForkOptions]] =
-    (baseDirectory, javaOptions, outputStrategy, envVars, javaHome, connectInput) map {
-      (base, options, strategy, env, javaHomeDir, connectIn) =>
+  def forkOptionsTask: Initialize[Task[ForkOptions]] =
+    Def.task {
+      ForkOptions(
         // bootJars is empty by default because only jars on the user's classpath should be on the boot classpath
-        ForkOptions(bootJars = Nil, javaHome = javaHomeDir, connectInput = connectIn, outputStrategy = strategy, runJVMOptions = options, workingDirectory = Some(base), envVars = env)
+        bootJars = Nil,
+        javaHome = javaHome.value,
+        connectInput = connectInput.value,
+        outputStrategy = outputStrategy.value,
+        runJVMOptions = javaOptions.value,
+        workingDirectory = Some(baseDirectory.value),
+        envVars = envVars.value
+      )
     }
 
   def testExecutionTask(task: Scoped): Initialize[Task[Tests.Execution]] =
@@ -781,10 +795,6 @@ object Defaults extends BuildCommon {
       new Package.Configuration(srcs, path, options)
     }
 
-  @deprecated("use Defaults.askForMainClass", "0.13.7")
-  def selectRunMain(classes: Seq[String]): Option[String] = askForMainClass(classes)
-  @deprecated("use Defaults.pickMainClass", "0.13.7")
-  def selectPackageMain(classes: Seq[String]): Option[String] = pickMainClass(classes)
   def askForMainClass(classes: Seq[String]): Option[String] =
     sbt.SelectMainClass(Some(SimpleReader readLine _), classes)
   def pickMainClass(classes: Seq[String]): Option[String] =
@@ -806,35 +816,71 @@ object Defaults extends BuildCommon {
       IO.createDirectories(dirs) // recreate empty directories
       IO.move(mappings.map(_.swap))
     }
+
+  def bgRunMainTask(classpath: Initialize[Task[Classpath]], scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[JobHandle]] =
+    {
+      val parser = Defaults.loadForParser(discoveredMainClasses)((s, names) => Defaults.runMainParser(s, names getOrElse Nil))
+      Def.inputTask {
+        val (mainClass, args) = parser.parsed
+        bgJobService.value.runInBackground(resolvedScoped.value, state.value) { (logger) =>
+          scalaRun.value.run(mainClass, data(classpath.value), args, logger).get
+        }
+      }
+    }
+  def bgRunTask(classpath: Initialize[Task[Classpath]], mainClassTask: Initialize[Task[Option[String]]], scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[JobHandle]] =
+    {
+      import Def.parserToInput
+      val parser = Def.spaceDelimited()
+      Def.inputTask {
+        val mainClass = mainClassTask.value getOrElse sys.error("No main class detected.")
+        bgJobService.value.runInBackground(resolvedScoped.value, state.value) { (logger) =>
+          // TODO - Copy the classpath into some tmp directory so we don't immediately die if a recompile happens.
+          scalaRun.value.run(mainClass, data(classpath.value), parser.parsed, logger).get
+        }
+      }
+    }
+  // runMain calls bgRunMain in the background and waits for the result.
+  def foregroundRunMainTask: Initialize[InputTask[Unit]] =
+    Def.inputTask {
+      val handle = bgRunMain.evaluated
+      val service = bgJobService.value
+      service.waitFor(handle)
+    }
+  // run calls bgRun in the background and waits for the result.
+  def foregroundRunTask: Initialize[InputTask[Unit]] =
+    Def.inputTask {
+      val handle = bgRun.evaluated
+      val service = bgJobService.value
+      service.waitFor(handle)
+    }
   def runMainTask(classpath: Initialize[Task[Classpath]], scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[Unit]] =
     {
       val parser = loadForParser(discoveredMainClasses)((s, names) => runMainParser(s, names getOrElse Nil))
       Def.inputTask {
         val (mainClass, args) = parser.parsed
-        toError(scalaRun.value.run(mainClass, data(classpath.value), args, streams.value.log))
+        scalaRun.value.run(mainClass, data(classpath.value), args, streams.value.log).get
       }
     }
-
   def runTask(classpath: Initialize[Task[Classpath]], mainClassTask: Initialize[Task[Option[String]]], scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[Unit]] =
     {
       import Def.parserToInput
       val parser = Def.spaceDelimited()
       Def.inputTask {
         val mainClass = mainClassTask.value getOrElse sys.error("No main class detected.")
-        toError(scalaRun.value.run(mainClass, data(classpath.value), parser.parsed, streams.value.log))
+        scalaRun.value.run(mainClass, data(classpath.value), parser.parsed, streams.value.log).get
       }
     }
-
-  def runnerTask = runner := runnerInit.value
+  def runnerTask: Initialize[Task[ScalaRun]] = runnerInit
   def runnerInit: Initialize[Task[ScalaRun]] = Def.task {
     val tmp = taskTemporaryDirectory.value
     val resolvedScope = resolvedScoped.value.scope
     val si = scalaInstance.value
     val s = streams.value
+    val opts = forkOptions.value
     val options = javaOptions.value
     if (fork.value) {
       s.log.debug(s"javaOptions: $options")
-      new ForkRun(forkOptions.value)
+      new ForkRun(opts)
     } else {
       if (options.nonEmpty) {
         val mask = ScopeMask(project = false)
@@ -845,6 +891,31 @@ object Defaults extends BuildCommon {
       new Run(si, trapExit.value, tmp)
     }
   }
+
+  private def foreachJobTask(f: (BackgroundJobService, JobHandle) => Unit): Initialize[InputTask[Unit]] = {
+    val parser: Initialize[State => Parser[Seq[JobHandle]]] = Def.setting { (s: State) =>
+      val extracted = Project.extract(s)
+      val service = extracted.get(bgJobService)
+      // you might be tempted to use the jobList task here, but the problem
+      // is that its result gets cached during execution and therefore stale
+      BackgroundJobService.jobIdParser(s, service.jobs)
+    }
+    Def.inputTask {
+      val handles = parser.parsed
+      for (handle <- handles) {
+        f(bgJobService.value, handle)
+      }
+    }
+  }
+  def psTask: Initialize[Task[Vector[JobHandle]]] =
+    Def.task {
+      val xs = bgList.value
+      val s = streams.value
+      xs foreach { x => s.log.info(x.toString) }
+      xs
+    }
+  def bgStopTask: Initialize[InputTask[Unit]] = foreachJobTask { (manager, handle) => manager.stop(handle) }
+  def bgWaitForTask: Initialize[InputTask[Unit]] = foreachJobTask { (manager, handle) => manager.waitFor(handle) }
 
   @deprecated("Use `docTaskSettings` instead", "0.12.0")
   def docSetting(key: TaskKey[File]) = docTaskSettings(key)
@@ -882,8 +953,8 @@ object Defaults extends BuildCommon {
     }
   ))
 
-  def mainRunTask = run := runTask(fullClasspath in Runtime, mainClass in run, runner in run).evaluated
-  def mainRunMainTask = runMain := runMainTask(fullClasspath in Runtime, runner in run).evaluated
+  def mainBgRunTask = bgRun := bgRunTask(fullClasspath in Runtime, mainClass in run, runner in run).evaluated
+  def mainBgRunMainTask = bgRunMain := bgRunMainTask(fullClasspath in Runtime, runner in run).evaluated
 
   def discoverMainClasses(analysis: CompileAnalysis): Seq[String] =
     Discovery.applications(Tests.allDefs(analysis)).collect({ case (definition, discovered) if discovered.hasMain => definition.name }).sorted
@@ -901,7 +972,7 @@ object Defaults extends BuildCommon {
           cs.scalac match {
             case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scala"))
           }
-        (new Console(compiler))(cpFiles, options, loader, initCommands, cleanup)()(s.log).foreach(msg => sys.error(msg))
+        (new Console(compiler))(cpFiles, options, loader, initCommands, cleanup)()(s.log).get
         println()
     }
 
@@ -1086,15 +1157,21 @@ object Defaults extends BuildCommon {
 
   val CompletionsID = "completions"
 
-  def noAggregation: Seq[Scoped] = Seq(run, runMain, console, consoleQuick, consoleProject)
+  def noAggregation: Seq[Scoped] = Seq(run, runMain, bgRun, bgRunMain, console, consoleQuick, consoleProject)
   lazy val disableAggregation = Defaults.globalDefaults(noAggregation map disableAggregate)
   def disableAggregate(k: Scoped) = aggregate in k :== false
 
-  lazy val runnerSettings: Seq[Setting[_]] = Seq(runnerTask)
+  // 1. runnerSettings is added unscoped via JvmPlugin.
+  // 2. In addition it's added scoped to run task.
+  lazy val runnerSettings: Seq[Setting[_]] =
+    Seq(
+      runner := runnerInit.value,
+      forkOptions := forkOptionsTask.value
+    )
   lazy val baseTasks: Seq[Setting[_]] = projectTasks ++ packageBase
   lazy val configSettings: Seq[Setting[_]] = Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig ++ Classpaths.compilerPluginConfig ++ deprecationSettings
 
-  lazy val compileSettings: Seq[Setting[_]] = configSettings ++ (mainRunMainTask +: mainRunTask +: addBaseSources) ++ Classpaths.addUnmanagedLibrary
+  lazy val compileSettings: Seq[Setting[_]] = configSettings ++ (mainBgRunMainTask +: mainBgRunTask +: addBaseSources) ++ Classpaths.addUnmanagedLibrary
   lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks
 
   lazy val itSettings: Seq[Setting[_]] = inConfig(IntegrationTest)(testSettings)
@@ -2255,11 +2332,14 @@ trait BuildExtra extends BuildCommon with DefExtra {
       val r = (runner in (config, run)).value
       val cp = (fullClasspath in config).value
       val args = spaceDelimited().parsed
-      toError(r.run(mainClass, data(cp), baseArguments ++ args, streams.value.log))
+      r.run(mainClass, data(cp), baseArguments ++ args, streams.value.log).get
     }
   def runTask(config: Configuration, mainClass: String, arguments: String*): Initialize[Task[Unit]] =
-    (fullClasspath in config, runner in (config, run), streams) map { (cp, r, s) =>
-      toError(r.run(mainClass, data(cp), arguments, s.log))
+    Def.task {
+      val cp = (fullClasspath in config).value
+      val r = (runner in (config, run)).value
+      val s = streams.value
+      r.run(mainClass, data(cp), arguments, s.log).get
     }
 
   def fullRunInputTask(scoped: InputKey[Unit], config: Configuration, mainClass: String, baseArguments: String*): Setting[InputTask[Unit]] =
@@ -2267,7 +2347,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
       (initScoped(scoped.scopedKey, runnerInit) zipWith (fullClasspath in config, streams, result).identityMap) { (rTask, t) =>
         (t, rTask) map {
           case ((cp, s, args), r) =>
-            toError(r.run(mainClass, data(cp), baseArguments ++ args, s.log))
+            r.run(mainClass, data(cp), baseArguments ++ args, s.log).get
         }
       }
     }).evaluated
@@ -2276,7 +2356,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
       case (rTask, t) =>
         (t, rTask) map {
           case ((cp, s), r) =>
-            toError(r.run(mainClass, data(cp), arguments, s.log))
+            r.run(mainClass, data(cp), arguments, s.log).get
         }
     }).value
   def initScoped[T](sk: ScopedKey[_], i: Initialize[T]): Initialize[T] = initScope(fillTaskAxis(sk.scope, sk.key), i)
@@ -2323,7 +2403,6 @@ trait BuildCommon {
     /** Converts the `Seq[File]` to a Classpath, which is an alias for `Seq[Attributed[File]]`. */
     def classpath: Classpath = Attributed blankSeq s
   }
-  def toError(o: Option[String]): Unit = o foreach error
 
   def overrideConfigs(cs: Configuration*)(configurations: Seq[Configuration]): Seq[Configuration] =
     {

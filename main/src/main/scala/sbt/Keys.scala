@@ -74,6 +74,7 @@ import sbt.internal.librarymanagement.{
 }
 import sbt.util.{ AbstractLogger, Level, Logger }
 import org.apache.logging.log4j.core.Appender
+import sbt.BuildSyntax._
 
 object Keys {
   val TraceValues = "-1 to disable, 0 for up to the first sbt frame, or a positive number to set the maximum number of frames shown."
@@ -238,11 +239,20 @@ object Keys {
   val trapExit = SettingKey[Boolean]("trap-exit", "If true, enables exit trapping and thread management for 'run'-like tasks.  This is currently only suitable for serially-executed 'run'-like tasks.", CSetting)
 
   val fork = SettingKey[Boolean]("fork", "If true, forks a new JVM when running.  If false, runs in the same JVM as the build.", ASetting)
+  val forkOptions = TaskKey[ForkOptions]("fork-option", "Configures JVM forking.", DSetting)
   val outputStrategy = SettingKey[Option[sbt.OutputStrategy]]("output-strategy", "Selects how to log output when running a main class.", DSetting)
   val connectInput = SettingKey[Boolean]("connect-input", "If true, connects standard input when running a main class forked.", CSetting)
   val javaHome = SettingKey[Option[File]]("java-home", "Selects the Java installation used for compiling and forking.  If None, uses the Java installation running the build.", ASetting)
   val javaOptions = TaskKey[Seq[String]]("java-options", "Options passed to a new JVM when forking.", BPlusTask)
   val envVars = TaskKey[Map[String, String]]("envVars", "Environment variables used when forking a new JVM", BTask)
+
+  val bgJobService = settingKey[BackgroundJobService]("Job manager used to run background jobs.")
+  val bgList = taskKey[Vector[JobHandle]]("List running background jobs.")
+  val ps = taskKey[Vector[JobHandle]]("bgList variant that displays on the log.")
+  val bgStop = inputKey[Unit]("Stop a background job by providing its ID.")
+  val bgWaitFor = inputKey[Unit]("Wait for a background job to finish by providing its ID.")
+  val bgRun = inputKey[JobHandle]("Start an application's default main class as a background job")
+  val bgRunMain = inputKey[JobHandle]("Start a provided main class as a background job")
 
   // Test Keys
   val testLoader = TaskKey[ClassLoader]("test-loader", "Provides the class loader used for testing.", DTask)
