@@ -34,7 +34,7 @@ TaskKey[Unit]("checkCompilations") := {
   recompiledFilesInIteration(0, Set("X.scala", "Y.scala"))
   // A.scala is changed and recompiled
   recompiledFilesInIteration(1, Set("A.scala"))
-  // change in A.scala causes recompilation of B.scala, C.scala, D.scala which depend on transtiviely
+  // change in A.scala causes recompilation of B.scala, C.scala, D.scala which depend on transitively
   // and by inheritance on A.scala
   // X.scala is also recompiled because it depends by member reference on B.scala
   // Note that Y.scala is not recompiled because it depends just on X through member reference dependency
