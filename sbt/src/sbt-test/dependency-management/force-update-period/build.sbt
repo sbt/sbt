@@ -8,6 +8,6 @@ TaskKey[Unit]("check-last-update-time") := (streams map { (s) =>
   val exists = fullUpdateOutput.exists()
   s.log.info(s"Amount of time since last full update: $timeDiff")
   if (exists && timeDiff > 5000) {
-    sys.error("Full update not perfomed")
+    sys.error("Full update not performed")
   }
 }).value
