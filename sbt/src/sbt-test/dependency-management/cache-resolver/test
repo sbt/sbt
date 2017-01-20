@@ -32,7 +32,7 @@ $ copy-file changes/def/Def.java b/Def.java
 
 
 # Resolve from local again.  This will succeed, but the jars
-#  won't be on the classpath if the resolver isn't ignoredy.
+#  won't be on the classpath if the resolver isn't ignored.
 
 $ delete build.sbt
 $ delete b/Def.java
