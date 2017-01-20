@@ -2,7 +2,7 @@ import sbt.internal.inc.Analysis
 
 logLevel := Level.Debug
 
-// disable sbt's heauristic which recompiles everything in case
+// disable sbt's heuristic which recompiles everything in case
 // some fraction (e.g. 50%) of files is scheduled to be recompiled
 // in this test we want precise information about recompiled files
 // which that heuristic would distort
