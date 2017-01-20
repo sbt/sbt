@@ -3,7 +3,7 @@
 
 > library/publishM2
 
-# should suceed because local Ivy repository works
+# should succeed because local Ivy repository works
 > main/update
 
 # should succeed when local Maven repository is added
