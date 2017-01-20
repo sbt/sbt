@@ -219,7 +219,7 @@ object Plugins extends PluginsFunctions {
   }
   private[sbt] def translateMessage(e: LogicException) = e match {
     case ic: InitialContradictions => s"Contradiction in selected plugins.  These plugins were both included and excluded: ${literalsString(ic.literals.toSeq)}"
-    case io: InitialOverlap        => s"Cannot directly enable plugins.  Plugins are enabled when their required plugins are satisifed.  The directly selected plugins were: ${literalsString(io.literals.toSeq)}"
+    case io: InitialOverlap        => s"Cannot directly enable plugins.  Plugins are enabled when their required plugins are satisfied.  The directly selected plugins were: ${literalsString(io.literals.toSeq)}"
     case cn: CyclicNegation        => s"Cycles in plugin requirements cannot involve excludes.  The problematic cycle is: ${literalsString(cn.cycle)}"
   }
   private[this] def literalsString(lits: Seq[Literal]): String =
@@ -342,7 +342,7 @@ ${listConflicts(conflicting)}""")
   }
   private[this] def convertAll(ns: Seq[Basic]): Seq[Literal] = ns map convertBasic
 
-  /** True if the trigger clause `n` is satisifed by `model`. */
+  /** True if the trigger clause `n` is satisfied by `model`. */
   def satisfied(n: Plugins, model: Set[AutoPlugin]): Boolean =
     flatten(n) forall {
       case Exclude(a)     => !model(a)
