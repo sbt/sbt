@@ -52,7 +52,7 @@ object FakeState {
     try {
       System.setOut(new PrintStream(outBuffer, true))
       val state = FakeState(enabledPlugins: _*)
-      Command.process(Exec(input, None), state)
+      MainLoop.processCommand(Exec(input, None), state)
       new String(outBuffer.toByteArray)
     } finally {
       System.setOut(previousOut)

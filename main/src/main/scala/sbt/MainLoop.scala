@@ -9,7 +9,9 @@ import jline.TerminalFactory
 
 import sbt.io.Using
 import sbt.internal.util.{ ErrorHandling, GlobalLogBacking, GlobalLogging }
+import sbt.internal.util.complete.DefaultParsers
 import sbt.util.{ AbstractLogger, Logger }
+import sbt.protocol._
 
 object MainLoop {
   /** Entry point to run the remaining commands in State with managed global logging.*/
@@ -98,11 +100,27 @@ object MainLoop {
     }
 
   def next(state: State): State =
-    ErrorHandling.wideConvert { state.process(Command.process) } match {
+    ErrorHandling.wideConvert { state.process(processCommand) } match {
       case Right(s)                  => s
       case Left(t: xsbti.FullReload) => throw t
       case Left(t)                   => state.handleError(t)
     }
+
+  /** This is the main function State transfer function of the sbt command processing. */
+  def processCommand(exec: Exec, state: State): State = {
+    import DefaultParsers._
+    val channelName = exec.source map (_.channelName)
+    StandardMain.exchange publishEventMessage ExecStatusEvent("Processing", channelName, exec.execId, Vector())
+    val parser = Command combine state.definedCommands
+    val newState = parse(exec.commandLine, parser(state)) match {
+      case Right(s) => s() // apply command.  command side effects happen here
+      case Left(errMsg) =>
+        state.log error errMsg
+        state.fail
+    }
+    StandardMain.exchange publishEventMessage ExecStatusEvent("Done", channelName, exec.execId, newState.remainingCommands.toVector map (_.commandLine))
+    newState
+  }
 
   @deprecated("Use State.handleError", "0.13.0")
   def handleException(e: Throwable, s: State): State = s.handleError(e)
