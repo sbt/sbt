@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import sbt.protocol.{ Serialization, CommandMessage, ExecCommand, EventMessage }
 import sjsonnew.JsonFormat
 
-final class NetworkChannel(val name: String, connection: Socket) extends CommandChannel {
+final class NetworkChannel(val name: String, connection: Socket, state: State) extends CommandChannel {
   private val running = new AtomicBoolean(true)
   private val delimiter: Byte = '\n'.toByte
   private val out = connection.getOutputStream
