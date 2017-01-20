@@ -71,7 +71,7 @@
 - Adds help message for `inspect actual`. [#1651][1651]/[#1990][1990] by [@dwijnand][@dwijnand]
 - Supports excluding tests in `testOnly`/`testQuick` with `-`, for example `-MySpec`.
   [#1970][1970] by [@matthewfarwell][@matthewfarwell]
-- Adds more diagnostic info for underfined settings.
+- Adds more diagnostic info for undefined settings.
   [#2008][2008]/[#2009][2009] by [@DavidPerezIngeniero][@DavidPerezIngeniero]
 - Adds an `Extracted.runInputTask` helper to assist with imperatively executing input tasks. [#2006][2006] by [@jroper][@jroper]
 - Renames `distinct` method on `PathFinder` to `distinctName`. [#1973][1973] by [@eed3si9n][@eed3si9n]
