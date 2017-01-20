@@ -70,10 +70,12 @@ final class NetworkChannel(val name: String, connection: Socket) extends Command
       out.flush()
     }
 
-  def onCommand(command: CommandMessage): Unit =
-    command match {
-      case x: ExecCommand => append(Exec(x.commandLine, x.execId orElse Some(Exec.newExecId), Some(CommandSource(name))))
-    }
+  def onCommand(command: CommandMessage): Unit = command match {
+    case x: ExecCommand => onExecCommand(x)
+  }
+
+  private def onExecCommand(cmd: ExecCommand) =
+    append(Exec(cmd.commandLine, cmd.execId orElse Some(Exec.newExecId), Some(CommandSource(name))))
 
   def shutdown(): Unit = {
     println("Shutting down client connection")
