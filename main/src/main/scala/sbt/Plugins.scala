@@ -194,7 +194,7 @@ object Plugins extends PluginsFunctions {
               val forbidden: Set[AutoPlugin] = (selectedPlugins flatMap { Plugins.asExclusions }).toSet
               val c = selectedPlugins.toSet & forbidden
               if (c.nonEmpty) {
-                exlusionConflictError(requestedPlugins, selectedPlugins, c.toSeq sortBy { _.label })
+                exclusionConflictError(requestedPlugins, selectedPlugins, c.toSeq sortBy { _.label })
               }
               val retval = topologicalSort(selectedPlugins, log)
               // log.debug(s"  :: sorted deduced result: ${retval.toString}")
@@ -232,7 +232,7 @@ object Plugins extends PluginsFunctions {
     val message = s"Plugin$ns provided by multiple AutoPlugins:$nl${dupStrings.mkString(nl)}"
     throw AutoPluginException(message)
   }
-  private[this] def exlusionConflictError(requested: Plugins, selected: Seq[AutoPlugin], conflicting: Seq[AutoPlugin]): Unit = {
+  private[this] def exclusionConflictError(requested: Plugins, selected: Seq[AutoPlugin], conflicting: Seq[AutoPlugin]): Unit = {
     def listConflicts(ns: Seq[AutoPlugin]) = (ns map { c =>
       val reasons = (if (flatten(requested) contains c) List("requested")
       else Nil) ++
