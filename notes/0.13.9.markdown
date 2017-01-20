@@ -141,7 +141,7 @@ and `A2` and `B1` are also is in the graph. This is fixed by sorting the graph p
 when it creates classloaders to call Scala Compilers.
 sbt 0.13.9 will call GC on a set interval (default: 60s).
 It will also call GC right before cross building.
-This behavior can diabled using by setting false to `forcegc`
+This behavior can disabled using by setting false to `forcegc`
 setting or `sbt.task.forcegc` flag.
 
 [#1773][1773] by [@eed3si9n][@eed3si9n]
