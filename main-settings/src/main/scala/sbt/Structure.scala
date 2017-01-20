@@ -180,7 +180,7 @@ object Scoped {
   }
 
   /**
-   * Wraps an [[sbt.Def.Initialize]] instance to provide `map` and `flatMap` symantics.
+   * Wraps an [[sbt.Def.Initialize]] instance to provide `map` and `flatMap` semantics.
    */
   final class RichInitialize[S](init: Initialize[S]) {
     def map[T](f: S => T): Initialize[Task[T]] = init(s => mktask(f(s)))
