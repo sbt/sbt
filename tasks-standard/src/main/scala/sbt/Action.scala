@@ -10,7 +10,7 @@ import ConcurrentRestrictions.{ Tag, TagMap, tagsKey }
 // Action, Task, and Info are intentionally invariant in their type parameter.
 //  Various natural transformations used, such as PMap, require invariant type constructors for correctness
 
-/** Defines a task compuation*/
+/** Defines a task computation*/
 sealed trait Action[T] {
   // TODO: remove after deprecated InputTask constructors are removed
   private[sbt] def mapTask(f: Task ~> Task): Action[T]
