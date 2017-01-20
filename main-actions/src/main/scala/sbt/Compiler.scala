@@ -30,7 +30,7 @@ object Compiler {
 
   /** Inputs necessary to run the incremental compiler. */
   // final case class Inputs(compilers: Compilers, config: Options, incSetup: IncSetup)
-  // /** The inputs for the copiler *and* the previous analysis of source dependecnies. */
+  // /** The inputs for the compiler *and* the previous analysis of source dependecnies. */
   // final case class InputsWithPrevious(inputs: Inputs, previousAnalysis: PreviousAnalysis)
   // final case class Options(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, sourcePositionMapper: Position => Position, order: CompileOrder)
   // final case class IncSetup(analysisMap: File => Option[Analysis], definesClass: DefinesClass, skip: Boolean, cacheFile: File, cache: GlobalsCache, incOptions: IncOptions)
