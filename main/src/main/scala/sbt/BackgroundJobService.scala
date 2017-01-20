@@ -13,7 +13,8 @@ abstract class BackgroundJobService extends Closeable {
    *  then you could process.destroy() for example.
    */
   def runInBackground(spawningTask: ScopedKey[_], state: State)(start: (Logger) => Unit): JobHandle
-  def close: Unit = ()
+  def close(): Unit
+  def shutdown(): Unit
   def jobs: Vector[JobHandle]
   def stop(job: JobHandle): Unit
   def waitFor(job: JobHandle): Unit

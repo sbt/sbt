@@ -1,12 +1,12 @@
 package sbt
 package internal
 
-import java.util.concurrent.atomic.{ AtomicLong, AtomicInteger }
+import java.util.concurrent.atomic.AtomicLong
 import java.io.Closeable
-import sbt.util.{ Logger, LogExchange, Level }
-import sbt.internal.util.MainAppender
-import Def.ScopedKey
+import sbt.util.Logger
+import Def.{ ScopedKey, Setting }
 import scala.concurrent.ExecutionContext
+import Scope.GlobalScope
 
 /**
  * Interface between sbt and a thing running in the background.
@@ -99,7 +99,8 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
     pool.run(this, spawningTask, state)(start)
   }
 
-  override def close(): Unit = {
+  override final def close(): Unit = shutdown()
+  override def shutdown(): Unit = {
     while (jobSet.nonEmpty) {
       jobSet.headOption.foreach {
         case handle: ThreadJobHandle @unchecked =>
@@ -259,10 +260,13 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
 }
 
 private[sbt] class DefaultBackgroundJobService extends AbstractBackgroundJobService {
-  private val generateId: AtomicInteger = new AtomicInteger
-
   override def makeContext(id: Long, spawningTask: ScopedKey[_], state: State): Logger = {
     val extracted = Project.extract(state)
     LogManager.constructBackgroundLog(extracted.structure.data, state)(spawningTask)
   }
+}
+private[sbt] object DefaultBackgroundJobService {
+  lazy val backgroundJobService: DefaultBackgroundJobService = new DefaultBackgroundJobService
+  lazy val backgroundJobServiceSetting: Setting[_] =
+    ((Keys.bgJobService in GlobalScope) :== backgroundJobService)
 }

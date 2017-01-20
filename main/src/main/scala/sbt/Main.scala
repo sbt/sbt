@@ -20,7 +20,8 @@ import sbt.internal.{
   Script,
   SessionSettings,
   SettingCompletions,
-  LogManager
+  LogManager,
+  DefaultBackgroundJobService
 }
 import sbt.internal.util.{ AttributeKey, AttributeMap, complete, ConsoleOut, GlobalLogging, LineRange, MainAppender, SimpleReader, Types }
 import sbt.util.{ Level, Logger }
@@ -81,8 +82,11 @@ object StandardMain {
   def runManaged(s: State): xsbti.MainResult =
     {
       val previous = TrapExit.installManager()
-      try MainLoop.runLogged(s)
-      finally TrapExit.uninstallManager(previous)
+      try {
+        try {
+          MainLoop.runLogged(s)
+        } finally DefaultBackgroundJobService.backgroundJobService.shutdown()
+      } finally TrapExit.uninstallManager(previous)
     }
 
   /** The common interface to standard output, used for all built-in ConsoleLoggers. */

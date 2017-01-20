@@ -134,12 +134,10 @@ object Defaults extends BuildCommon {
       includeFilter in unmanagedJars :== "*.jar" | "*.so" | "*.dll" | "*.jnilib" | "*.zip",
       includeFilter in unmanagedResources :== AllPassFilter,
       fileToStore :== DefaultFileToStore,
-      bgJobService := { new DefaultBackgroundJobService() },
       bgList := { bgJobService.value.jobs },
       ps := psTask.value,
       bgStop := bgStopTask.evaluated,
-      bgWaitFor := bgWaitForTask.evaluated,
-      onUnload := { s => try onUnload.value(s) finally bgJobService.value.close() }
+      bgWaitFor := bgWaitForTask.evaluated
     )
 
   private[sbt] lazy val globalIvyCore: Seq[Setting[_]] =
