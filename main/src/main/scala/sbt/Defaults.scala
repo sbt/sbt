@@ -2370,24 +2370,32 @@ trait BuildExtra extends BuildCommon with DefExtra {
       val s = streams.value
       r.run(mainClass, data(cp), arguments, s.log).get
     }
+  // public API
+  /** Returns a vector of settings that create custom run input task. */
+  def fullRunInputTask(scoped: InputKey[Unit], config: Configuration, mainClass: String, baseArguments: String*): Vector[Setting[_]] =
+    Vector(
+      scoped := (inputTask { result =>
+        (initScoped(scoped.scopedKey, runnerInit) zipWith (fullClasspath in config, streams, result).identityMap) { (rTask, t) =>
+          (t, rTask) map {
+            case ((cp, s, args), r) =>
+              r.run(mainClass, data(cp), baseArguments ++ args, s.log).get
+          }
+        }
+      }).evaluated
+    ) ++ inTask(scoped)(forkOptions := forkOptionsTask.value)
+  // public API
+  /** Returns a vector of settings that create custom run task. */
+  def fullRunTask(scoped: TaskKey[Unit], config: Configuration, mainClass: String, arguments: String*): Vector[Setting[_]] =
+    Vector(
+      scoped := ((initScoped(scoped.scopedKey, runnerInit) zipWith (fullClasspath in config, streams).identityMap) {
+        case (rTask, t) =>
+          (t, rTask) map {
+            case ((cp, s), r) =>
+              r.run(mainClass, data(cp), arguments, s.log).get
+          }
+      }).value
+    ) ++ inTask(scoped)(forkOptions := forkOptionsTask.value)
 
-  def fullRunInputTask(scoped: InputKey[Unit], config: Configuration, mainClass: String, baseArguments: String*): Setting[InputTask[Unit]] =
-    scoped := (inputTask { result =>
-      (initScoped(scoped.scopedKey, runnerInit) zipWith (fullClasspath in config, streams, result).identityMap) { (rTask, t) =>
-        (t, rTask) map {
-          case ((cp, s, args), r) =>
-            r.run(mainClass, data(cp), baseArguments ++ args, s.log).get
-        }
-      }
-    }).evaluated
-  def fullRunTask(scoped: TaskKey[Unit], config: Configuration, mainClass: String, arguments: String*): Setting[Task[Unit]] =
-    scoped := ((initScoped(scoped.scopedKey, runnerInit) zipWith (fullClasspath in config, streams).identityMap) {
-      case (rTask, t) =>
-        (t, rTask) map {
-          case ((cp, s), r) =>
-            r.run(mainClass, data(cp), arguments, s.log).get
-        }
-    }).value
   def initScoped[T](sk: ScopedKey[_], i: Initialize[T]): Initialize[T] = initScope(fillTaskAxis(sk.scope, sk.key), i)
   def initScope[T](s: Scope, i: Initialize[T]): Initialize[T] = i mapReferenced Project.mapScope(Scope.replaceThis(s))
 
