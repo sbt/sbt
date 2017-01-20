@@ -19,7 +19,7 @@ private[sbt] object SbtParser {
 }
 
 /**
- * This method soley exists to add scaladoc to members in SbtParser which
+ * This method solely exists to add scaladoc to members in SbtParser which
  * are defined using pattern matching.
  */
 sealed trait ParsedSbtFileExpressions {
