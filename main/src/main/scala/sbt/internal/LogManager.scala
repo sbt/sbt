@@ -12,10 +12,12 @@ import scala.Console.{ BLUE, RESET }
 import sbt.internal.util.{ AttributeKey, ConsoleOut, Settings, SuppressedTraceContext, MainAppender }
 import MainAppender._
 import sbt.util.{ AbstractLogger, Level, Logger, LogExchange }
+import sbt.internal.util.ManagedLogger
 import org.apache.logging.log4j.core.Appender
 
 sealed abstract class LogManager {
   def apply(data: Settings[Scope], state: State, task: ScopedKey[_], writer: PrintWriter): Logger
+  def backgroundLog(data: Settings[Scope], state: State, task: ScopedKey[_]): ManagedLogger
 }
 
 object LogManager {
@@ -23,10 +25,16 @@ object LogManager {
   private val generateId: AtomicInteger = new AtomicInteger
 
   // This is called by mkStreams
-  def construct(data: Settings[Scope], state: State) = (task: ScopedKey[_], to: PrintWriter) =>
+  def construct(data: Settings[Scope], state: State): (ScopedKey[_], PrintWriter) => Logger = (task: ScopedKey[_], to: PrintWriter) =>
     {
-      val manager = logManager in task.scope get data getOrElse defaultManager(state.globalLogging.console)
+      val manager: LogManager = (logManager in task.scope).get(data) getOrElse { defaultManager(state.globalLogging.console) }
       manager(data, state, task, to)
+    }
+
+  def constructBackgroundLog(data: Settings[Scope], state: State): (ScopedKey[_]) => ManagedLogger = (task: ScopedKey[_]) =>
+    {
+      val manager: LogManager = (logManager in task.scope).get(data) getOrElse { defaultManager(state.globalLogging.console) }
+      manager.backgroundLog(data, state, task)
     }
 
   def defaultManager(console: ConsoleOut): LogManager = withLoggers((sk, s) => defaultScreen(console))
@@ -52,6 +60,9 @@ object LogManager {
   ) extends LogManager {
     def apply(data: Settings[Scope], state: State, task: ScopedKey[_], to: PrintWriter): Logger =
       defaultLogger(data, state, task, screen(task, state), backed(to), relay(()), extra(task).toList)
+
+    def backgroundLog(data: Settings[Scope], state: State, task: ScopedKey[_]): ManagedLogger =
+      LogManager.backgroundLog(data, state, task, screen(task, state), relay(()), extra(task).toList)
   }
 
   // This is the main function that is used to generate the logger for tasks.
@@ -71,19 +82,21 @@ object LogManager {
       val screenTrace = getOr(traceLevel.key, defaultTraceLevel(state))
       val backingTrace = getOr(persistTraceLevel.key, Int.MaxValue)
       val extraBacked = state.globalLogging.backed :: relay :: Nil
-      val consoleOpt =
-        execOpt match {
-          case Some(x: Exec) =>
-            x.source match {
-              // TODO: Fix this stringliness
-              case Some(x: CommandSource) if x.channelName == "console0" => Option(console)
-              case Some(x: CommandSource)                                => None
-              case _                                                     => Option(console)
-            }
-          case _ => Option(console)
-        }
+      val consoleOpt = consoleLocally(state, console)
       multiLogger(log, MainAppender.MainAppenderConfig(consoleOpt, backed,
         extraBacked ::: extra, screenLevel, backingLevel, screenTrace, backingTrace))
+    }
+  // Return None if the exec is not from console origin.
+  def consoleLocally(state: State, console: Appender): Option[Appender] =
+    state.currentCommand match {
+      case Some(x: Exec) =>
+        x.source match {
+          // TODO: Fix this stringliness
+          case Some(x: CommandSource) if x.channelName == "console0" => Option(console)
+          case Some(x: CommandSource)                                => None
+          case _                                                     => Option(console)
+        }
+      case _ => Option(console)
     }
   def defaultTraceLevel(state: State): Int =
     if (state.interactive) -1 else Int.MaxValue
@@ -98,6 +111,20 @@ object LogManager {
     case Select(task) => ScopedKey(key.scope.copy(task = Global), task)
     case _            => key // should never get here
   }
+
+  def backgroundLog(data: Settings[Scope], state: State, task: ScopedKey[_],
+    console: Appender, /* TODO: backed: Appender,*/ relay: Appender, extra: List[Appender]): ManagedLogger =
+    {
+      val execOpt = state.currentCommand
+      val loggerName: String = s"bg-${task.key.label}-${generateId.incrementAndGet}"
+      val channelName: Option[String] = execOpt flatMap { e => e.source map { _.channelName } }
+      // val execId: Option[String] = execOpt flatMap { _.execId }
+      val log = LogExchange.logger(loggerName, channelName, None)
+      LogExchange.unbindLoggerAppenders(loggerName)
+      val consoleOpt = consoleLocally(state, console)
+      LogExchange.bindLoggerAppenders(loggerName, (consoleOpt.toList map { _ -> Level.Debug }) ::: (relay -> Level.Debug) :: Nil)
+      log
+    }
 
   // TODO: Fix this
   // if global logging levels are not explicitly set, set them from project settings

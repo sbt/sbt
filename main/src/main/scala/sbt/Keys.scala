@@ -74,6 +74,7 @@ import sbt.internal.librarymanagement.{
 }
 import sbt.util.{ AbstractLogger, Level, Logger }
 import org.apache.logging.log4j.core.Appender
+import sbt.BuildSyntax._
 
 object Keys {
   val TraceValues = "-1 to disable, 0 for up to the first sbt frame, or a positive number to set the maximum number of frames shown."
@@ -238,11 +239,21 @@ object Keys {
   val trapExit = SettingKey[Boolean]("trap-exit", "If true, enables exit trapping and thread management for 'run'-like tasks.  This is currently only suitable for serially-executed 'run'-like tasks.", CSetting)
 
   val fork = SettingKey[Boolean]("fork", "If true, forks a new JVM when running.  If false, runs in the same JVM as the build.", ASetting)
+  val forkOptions = TaskKey[ForkOptions]("fork-options", "Configures JVM forking.", DSetting)
   val outputStrategy = SettingKey[Option[sbt.OutputStrategy]]("output-strategy", "Selects how to log output when running a main class.", DSetting)
   val connectInput = SettingKey[Boolean]("connect-input", "If true, connects standard input when running a main class forked.", CSetting)
   val javaHome = SettingKey[Option[File]]("java-home", "Selects the Java installation used for compiling and forking.  If None, uses the Java installation running the build.", ASetting)
   val javaOptions = TaskKey[Seq[String]]("java-options", "Options passed to a new JVM when forking.", BPlusTask)
   val envVars = TaskKey[Map[String, String]]("envVars", "Environment variables used when forking a new JVM", BTask)
+
+  val bgJobService = settingKey[BackgroundJobService]("Job manager used to run background jobs.")
+  val bgList = taskKey[Vector[JobHandle]]("List running background jobs.")
+  val ps = taskKey[Vector[JobHandle]]("bgList variant that displays on the log.")
+  val bgStop = inputKey[Unit]("Stop a background job by providing its ID.")
+  val bgWaitFor = inputKey[Unit]("Wait for a background job to finish by providing its ID.")
+  val bgRun = inputKey[JobHandle]("Start an application's default main class as a background job")
+  val bgRunMain = inputKey[JobHandle]("Start a provided main class as a background job")
+  val bgCopyClasspath = settingKey[Boolean]("Copies classpath on bgRun to prevent conflict.")
 
   // Test Keys
   val testLoader = TaskKey[ClassLoader]("test-loader", "Provides the class loader used for testing.", DTask)
@@ -285,8 +296,6 @@ object Keys {
   val defaultConfiguration = SettingKey[Option[Configuration]]("default-configuration", "Defines the configuration used when none is specified for a dependency in ivyXML.", CSetting)
 
   val products = TaskKey[Seq[File]]("products", "Build products that get packaged.", BMinusTask)
-  // TODO: This is used by exportedProducts, exportedProductsIfMissing, exportedProductsNoTracking..
-  @deprecated("This task is unused by the default project and will be removed.", "0.13.0")
   val productDirectories = TaskKey[Seq[File]]("product-directories", "Base directories of build products.", CTask)
   val exportJars = SettingKey[Boolean]("export-jars", "Determines whether the exported classpath for this project contains classes (false) or a packaged jar (true).", BSetting)
   val exportedProducts = TaskKey[Classpath]("exported-products", "Build products that go on the exported classpath.", CTask)
@@ -301,6 +310,12 @@ object Keys {
   val fullClasspath = TaskKey[Classpath]("full-classpath", "The exported classpath, consisting of build products and unmanaged and managed, internal and external dependencies.", BPlusTask)
   val trackInternalDependencies = SettingKey[TrackLevel]("track-internal-dependencies", "The level of tracking for the internal (inter-project) dependency.", BSetting)
   val exportToInternal = SettingKey[TrackLevel]("export-to-internal", "The level of tracking for this project by the internal callers.", BSetting)
+  val exportedProductJars = taskKey[Classpath]("Build products that go on the exported classpath as JARs.")
+  val exportedProductJarsIfMissing = taskKey[Classpath]("Build products that go on the exported classpath as JARs if missing.")
+  val exportedProductJarsNoTracking = taskKey[Classpath]("Just the exported classpath as JARs without triggering the compilation.")
+  val internalDependencyAsJars = taskKey[Classpath]("The internal (inter-project) classpath as JARs.")
+  val dependencyClasspathAsJars = taskKey[Classpath]("The classpath consisting of internal and external, managed and unmanaged dependencies, all as JARs.")
+  val fullClasspathAsJars = taskKey[Classpath]("The exported classpath, consisting of build products and unmanaged and managed, internal and external dependencies, all as JARs.")
 
   val internalConfigurationMap = SettingKey[Configuration => Configuration]("internal-configuration-map", "Maps configurations to the actual configuration used to define the classpath.", CSetting)
   val classpathConfiguration = TaskKey[Configuration]("classpath-configuration", "The configuration used to define the classpath.", CTask)

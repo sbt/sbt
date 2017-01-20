@@ -26,7 +26,6 @@ import sbt.internal.librarymanagement._
 import sbt.internal.librarymanagement.syntax._
 import sbt.internal.util._
 import sbt.util.{ Level, Logger }
-import sys.error
 import scala.xml.NodeSeq
 import scala.util.control.NonFatal
 
@@ -134,7 +133,12 @@ object Defaults extends BuildCommon {
       includeFilter in unmanagedSources :== ("*.java" | "*.scala") && new SimpleFileFilter(_.isFile),
       includeFilter in unmanagedJars :== "*.jar" | "*.so" | "*.dll" | "*.jnilib" | "*.zip",
       includeFilter in unmanagedResources :== AllPassFilter,
-      fileToStore :== DefaultFileToStore
+      fileToStore :== DefaultFileToStore,
+      bgList := { bgJobService.value.jobs },
+      ps := psTask.value,
+      bgStop := bgStopTask.evaluated,
+      bgWaitFor := bgWaitForTask.evaluated,
+      bgCopyClasspath :== true
     )
 
   private[sbt] lazy val globalIvyCore: Seq[Setting[_]] =
@@ -325,7 +329,7 @@ object Defaults extends BuildCommon {
     }
   }
 
-  lazy val configTasks = docTaskSettings(doc) ++ inTask(compile)(compileInputsSettings) ++ configGlobal ++ compileAnalysisSettings ++ Seq(
+  lazy val configTasks: Seq[Setting[_]] = docTaskSettings(doc) ++ inTask(compile)(compileInputsSettings) ++ configGlobal ++ compileAnalysisSettings ++ Seq(
     compile := compileTask.value,
     manipulateBytecode := compileIncremental.value,
     compileIncremental := (compileIncrementalTask tag (Tags.Compile, Tags.CPU)).value,
@@ -343,14 +347,18 @@ object Defaults extends BuildCommon {
     consoleQuick := consoleQuickTask.value,
     discoveredMainClasses := (compile map discoverMainClasses storeAs discoveredMainClasses xtriggeredBy compile).value,
     discoveredSbtPlugins := discoverSbtPluginNames.value,
-    inTask(run)(runnerTask :: Nil).head,
+    // This fork options, scoped to the configuration is used for tests
+    forkOptions := forkOptionsTask.value,
     selectMainClass := mainClass.value orElse askForMainClass(discoveredMainClasses.value),
     mainClass in run := (selectMainClass in run).value,
     mainClass := pickMainClassOrWarn(discoveredMainClasses.value, streams.value.log),
-    run := runTask(fullClasspath, mainClass in run, runner in run).evaluated,
     runMain := runMainTask(fullClasspath, runner in run).evaluated,
-    copyResources := copyResourcesTask.value
-  )
+    run := runTask(fullClasspath, mainClass in run, runner in run).evaluated,
+    copyResources := copyResourcesTask.value,
+    // note that we use the same runner and mainClass as plain run
+    bgRunMain := bgRunMainTask(exportedProductJars, fullClasspathAsJars, bgCopyClasspath in bgRunMain, runner in run).evaluated,
+    bgRun := bgRunTask(exportedProductJars, fullClasspathAsJars, mainClass in run, bgCopyClasspath in bgRun, runner in run).evaluated
+  ) ++ inTask(run)(runnerSettings)
 
   private[this] lazy val configGlobal = globalDefaults(Seq(
     initialCommands :== "",
@@ -531,11 +539,18 @@ object Defaults extends BuildCommon {
     val opts = forkOptions.value
     Seq(new Tests.Group("<default>", tests, if (fk) Tests.SubProcess(opts) else Tests.InProcess))
   }
-  private[this] def forkOptions: Initialize[Task[ForkOptions]] =
-    (baseDirectory, javaOptions, outputStrategy, envVars, javaHome, connectInput) map {
-      (base, options, strategy, env, javaHomeDir, connectIn) =>
+  def forkOptionsTask: Initialize[Task[ForkOptions]] =
+    Def.task {
+      ForkOptions(
         // bootJars is empty by default because only jars on the user's classpath should be on the boot classpath
-        ForkOptions(bootJars = Nil, javaHome = javaHomeDir, connectInput = connectIn, outputStrategy = strategy, runJVMOptions = options, workingDirectory = Some(base), envVars = env)
+        bootJars = Nil,
+        javaHome = javaHome.value,
+        connectInput = connectInput.value,
+        outputStrategy = outputStrategy.value,
+        runJVMOptions = javaOptions.value,
+        workingDirectory = Some(baseDirectory.value),
+        envVars = envVars.value
+      )
     }
 
   def testExecutionTask(task: Scoped): Initialize[Task[Tests.Execution]] =
@@ -781,10 +796,6 @@ object Defaults extends BuildCommon {
       new Package.Configuration(srcs, path, options)
     }
 
-  @deprecated("use Defaults.askForMainClass", "0.13.7")
-  def selectRunMain(classes: Seq[String]): Option[String] = askForMainClass(classes)
-  @deprecated("use Defaults.pickMainClass", "0.13.7")
-  def selectPackageMain(classes: Seq[String]): Option[String] = pickMainClass(classes)
   def askForMainClass(classes: Seq[String]): Option[String] =
     sbt.SelectMainClass(Some(SimpleReader readLine _), classes)
   def pickMainClass(classes: Seq[String]): Option[String] =
@@ -806,35 +817,80 @@ object Defaults extends BuildCommon {
       IO.createDirectories(dirs) // recreate empty directories
       IO.move(mappings.map(_.swap))
     }
+
+  def bgRunMainTask(products: Initialize[Task[Classpath]], classpath: Initialize[Task[Classpath]],
+    copyClasspath: Initialize[Boolean], scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[JobHandle]] =
+    {
+      val parser = Defaults.loadForParser(discoveredMainClasses)((s, names) => Defaults.runMainParser(s, names getOrElse Nil))
+      Def.inputTask {
+        val service = bgJobService.value
+        val (mainClass, args) = parser.parsed
+        service.runInBackground(resolvedScoped.value, state.value) { (logger, workingDir) =>
+          val cp =
+            if (copyClasspath.value) service.copyClasspath(products.value, classpath.value, workingDir)
+            else classpath.value
+          scalaRun.value.run(mainClass, data(cp), args, logger).get
+        }
+      }
+    }
+  def bgRunTask(products: Initialize[Task[Classpath]], classpath: Initialize[Task[Classpath]], mainClassTask: Initialize[Task[Option[String]]],
+    copyClasspath: Initialize[Boolean], scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[JobHandle]] =
+    {
+      import Def.parserToInput
+      val parser = Def.spaceDelimited()
+      Def.inputTask {
+        val service = bgJobService.value
+        val mainClass = mainClassTask.value getOrElse sys.error("No main class detected.")
+        service.runInBackground(resolvedScoped.value, state.value) { (logger, workingDir) =>
+          val cp =
+            if (copyClasspath.value) service.copyClasspath(products.value, classpath.value, workingDir)
+            else classpath.value
+          scalaRun.value.run(mainClass, data(cp), parser.parsed, logger).get
+        }
+      }
+    }
+  // runMain calls bgRunMain in the background and waits for the result.
+  def foregroundRunMainTask: Initialize[InputTask[Unit]] =
+    Def.inputTask {
+      val handle = bgRunMain.evaluated
+      val service = bgJobService.value
+      service.waitFor(handle)
+    }
+  // run calls bgRun in the background and waits for the result.
+  def foregroundRunTask: Initialize[InputTask[Unit]] =
+    Def.inputTask {
+      val handle = bgRun.evaluated
+      val service = bgJobService.value
+      service.waitFor(handle)
+    }
   def runMainTask(classpath: Initialize[Task[Classpath]], scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[Unit]] =
     {
       val parser = loadForParser(discoveredMainClasses)((s, names) => runMainParser(s, names getOrElse Nil))
       Def.inputTask {
         val (mainClass, args) = parser.parsed
-        toError(scalaRun.value.run(mainClass, data(classpath.value), args, streams.value.log))
+        scalaRun.value.run(mainClass, data(classpath.value), args, streams.value.log).get
       }
     }
-
   def runTask(classpath: Initialize[Task[Classpath]], mainClassTask: Initialize[Task[Option[String]]], scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[Unit]] =
     {
       import Def.parserToInput
       val parser = Def.spaceDelimited()
       Def.inputTask {
         val mainClass = mainClassTask.value getOrElse sys.error("No main class detected.")
-        toError(scalaRun.value.run(mainClass, data(classpath.value), parser.parsed, streams.value.log))
+        scalaRun.value.run(mainClass, data(classpath.value), parser.parsed, streams.value.log).get
       }
     }
-
-  def runnerTask = runner := runnerInit.value
+  def runnerTask: Initialize[Task[ScalaRun]] = runnerInit
   def runnerInit: Initialize[Task[ScalaRun]] = Def.task {
     val tmp = taskTemporaryDirectory.value
     val resolvedScope = resolvedScoped.value.scope
     val si = scalaInstance.value
     val s = streams.value
+    val opts = forkOptions.value
     val options = javaOptions.value
     if (fork.value) {
       s.log.debug(s"javaOptions: $options")
-      new ForkRun(forkOptions.value)
+      new ForkRun(opts)
     } else {
       if (options.nonEmpty) {
         val mask = ScopeMask(project = false)
@@ -845,6 +901,31 @@ object Defaults extends BuildCommon {
       new Run(si, trapExit.value, tmp)
     }
   }
+
+  private def foreachJobTask(f: (BackgroundJobService, JobHandle) => Unit): Initialize[InputTask[Unit]] = {
+    val parser: Initialize[State => Parser[Seq[JobHandle]]] = Def.setting { (s: State) =>
+      val extracted = Project.extract(s)
+      val service = extracted.get(bgJobService)
+      // you might be tempted to use the jobList task here, but the problem
+      // is that its result gets cached during execution and therefore stale
+      BackgroundJobService.jobIdParser(s, service.jobs)
+    }
+    Def.inputTask {
+      val handles = parser.parsed
+      for (handle <- handles) {
+        f(bgJobService.value, handle)
+      }
+    }
+  }
+  def psTask: Initialize[Task[Vector[JobHandle]]] =
+    Def.task {
+      val xs = bgList.value
+      val s = streams.value
+      xs foreach { x => s.log.info(x.toString) }
+      xs
+    }
+  def bgStopTask: Initialize[InputTask[Unit]] = foreachJobTask { (manager, handle) => manager.stop(handle) }
+  def bgWaitForTask: Initialize[InputTask[Unit]] = foreachJobTask { (manager, handle) => manager.waitFor(handle) }
 
   @deprecated("Use `docTaskSettings` instead", "0.12.0")
   def docSetting(key: TaskKey[File]) = docTaskSettings(key)
@@ -882,8 +963,8 @@ object Defaults extends BuildCommon {
     }
   ))
 
-  def mainRunTask = run := runTask(fullClasspath in Runtime, mainClass in run, runner in run).evaluated
-  def mainRunMainTask = runMain := runMainTask(fullClasspath in Runtime, runner in run).evaluated
+  def mainBgRunTask = bgRun := bgRunTask(exportedProductJars, fullClasspathAsJars in Runtime, mainClass in run, bgCopyClasspath in bgRun, runner in run).evaluated
+  def mainBgRunMainTask = bgRunMain := bgRunMainTask(exportedProductJars, fullClasspathAsJars in Runtime, bgCopyClasspath in bgRunMain, runner in run).evaluated
 
   def discoverMainClasses(analysis: CompileAnalysis): Seq[String] =
     Discovery.applications(Tests.allDefs(analysis)).collect({ case (definition, discovered) if discovered.hasMain => definition.name }).sorted
@@ -901,7 +982,7 @@ object Defaults extends BuildCommon {
           cs.scalac match {
             case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scala"))
           }
-        (new Console(compiler))(cpFiles, options, loader, initCommands, cleanup)()(s.log).foreach(msg => sys.error(msg))
+        (new Console(compiler))(cpFiles, options, loader, initCommands, cleanup)()(s.log).get
         println()
     }
 
@@ -1086,15 +1167,21 @@ object Defaults extends BuildCommon {
 
   val CompletionsID = "completions"
 
-  def noAggregation: Seq[Scoped] = Seq(run, runMain, console, consoleQuick, consoleProject)
+  def noAggregation: Seq[Scoped] = Seq(run, runMain, bgRun, bgRunMain, console, consoleQuick, consoleProject)
   lazy val disableAggregation = Defaults.globalDefaults(noAggregation map disableAggregate)
   def disableAggregate(k: Scoped) = aggregate in k :== false
 
-  lazy val runnerSettings: Seq[Setting[_]] = Seq(runnerTask)
+  // 1. runnerSettings is added unscoped via JvmPlugin.
+  // 2. In addition it's added scoped to run task.
+  lazy val runnerSettings: Seq[Setting[_]] =
+    Seq(
+      runner := runnerInit.value,
+      forkOptions := forkOptionsTask.value
+    )
   lazy val baseTasks: Seq[Setting[_]] = projectTasks ++ packageBase
   lazy val configSettings: Seq[Setting[_]] = Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig ++ Classpaths.compilerPluginConfig ++ deprecationSettings
 
-  lazy val compileSettings: Seq[Setting[_]] = configSettings ++ (mainRunMainTask +: mainRunTask +: addBaseSources) ++ Classpaths.addUnmanagedLibrary
+  lazy val compileSettings: Seq[Setting[_]] = configSettings ++ (mainBgRunMainTask +: mainBgRunTask +: addBaseSources) ++ Classpaths.addUnmanagedLibrary
   lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks
 
   lazy val itSettings: Seq[Setting[_]] = inConfig(IntegrationTest)(testSettings)
@@ -1142,6 +1229,12 @@ object Classpaths {
     exportedProducts := trackedExportedProducts(TrackLevel.TrackAlways).value,
     exportedProductsIfMissing := trackedExportedProducts(TrackLevel.TrackIfMissing).value,
     exportedProductsNoTracking := trackedExportedProducts(TrackLevel.NoTracking).value,
+    exportedProductJars := trackedExportedJarProducts(TrackLevel.TrackAlways).value,
+    exportedProductJarsIfMissing := trackedExportedJarProducts(TrackLevel.TrackIfMissing).value,
+    exportedProductJarsNoTracking := trackedExportedJarProducts(TrackLevel.NoTracking).value,
+    internalDependencyAsJars := internalDependencyJarsTask.value,
+    dependencyClasspathAsJars := concat(internalDependencyAsJars, externalDependencyClasspath).value,
+    fullClasspathAsJars := concatDistinct(exportedProductJars, dependencyClasspathAsJars).value,
     unmanagedJars := findUnmanagedJars(configuration.value, unmanagedBase.value, includeFilter in unmanagedJars value, excludeFilter in unmanagedJars value)
   ).map(exportClasspath)
 
@@ -1816,17 +1909,26 @@ object Classpaths {
     copyResources.value
     classDirectory.value :: Nil
   }
-  // This is a variant of exportProductsTask with tracking
   private[sbt] def trackedExportedProducts(track: TrackLevel): Initialize[Task[Classpath]] = Def.task {
     val art = (artifact in packageBin).value
     val module = projectID.value
     val config = configuration.value
-    for { (f, analysis) <- trackedProductsImplTask(track).value } yield APIMappings.store(analyzed(f, analysis), apiURL.value).put(artifact.key, art).put(moduleID.key, module).put(configuration.key, config)
+    for { (f, analysis) <- trackedExportedProductsImplTask(track).value } yield APIMappings.store(analyzed(f, analysis), apiURL.value).put(artifact.key, art).put(moduleID.key, module).put(configuration.key, config)
   }
-  private[this] def trackedProductsImplTask(track: TrackLevel): Initialize[Task[Seq[(File, CompileAnalysis)]]] =
+  private[sbt] def trackedExportedJarProducts(track: TrackLevel): Initialize[Task[Classpath]] = Def.task {
+    val art = (artifact in packageBin).value
+    val module = projectID.value
+    val config = configuration.value
+    for { (f, analysis) <- trackedJarProductsImplTask(track).value } yield APIMappings.store(analyzed(f, analysis), apiURL.value).put(artifact.key, art).put(moduleID.key, module).put(configuration.key, config)
+  }
+  private[this] def trackedExportedProductsImplTask(track: TrackLevel): Initialize[Task[Seq[(File, CompileAnalysis)]]] =
     Def.taskDyn {
       val useJars = exportJars.value
-      val jar = (artifactPath in packageBin).value
+      if (useJars) trackedJarProductsImplTask(track)
+      else trackedNonJarProductsImplTask(track)
+    }
+  private[this] def trackedNonJarProductsImplTask(track: TrackLevel): Initialize[Task[Seq[(File, CompileAnalysis)]]] =
+    Def.taskDyn {
       val dirs = productDirectories.value
       def containsClassFile(fs: List[File]): Boolean =
         (fs exists { dir =>
@@ -1835,41 +1937,46 @@ object Classpaths {
           }
         })
       TrackLevel.intersection(track, exportToInternal.value) match {
-        case TrackLevel.TrackAlways if (useJars) =>
-          Def.task {
-            Seq((packageBin.value, compile.value))
-          }
         case TrackLevel.TrackAlways =>
           Def.task {
             products.value map { (_, compile.value) }
           }
-        case TrackLevel.TrackIfMissing if (useJars && !jar.exists) =>
-          Def.task {
-            Seq((packageBin.value, compile.value))
-          }
-        case TrackLevel.TrackIfMissing if (!useJars && !containsClassFile(dirs.toList)) =>
+        case TrackLevel.TrackIfMissing if !containsClassFile(dirs.toList) =>
           Def.task {
             products.value map { (_, compile.value) }
           }
         case _ =>
           Def.task {
             val analysisOpt = previousCompile.value.analysis
-            (if (useJars) Seq(jar)
-            else dirs) map { x =>
+            dirs map { x =>
               (x, if (analysisOpt.isDefined) analysisOpt.get
               else Analysis.empty(true))
             }
           }
       }
     }
-
-  @deprecated("This is no longer used.", "0.13.10")
-  def exportProductsTask: Initialize[Task[Classpath]] = Def.task {
-    val art = (artifact in packageBin).value
-    val module = projectID.value
-    val config = configuration.value
-    for (f <- productsImplTask.value) yield APIMappings.store(analyzed(f, compile.value), apiURL.value).put(artifact.key, art).put(moduleID.key, module).put(configuration.key, config)
-  }
+  private[this] def trackedJarProductsImplTask(track: TrackLevel): Initialize[Task[Seq[(File, CompileAnalysis)]]] =
+    Def.taskDyn {
+      val jar = (artifactPath in packageBin).value
+      TrackLevel.intersection(track, exportToInternal.value) match {
+        case TrackLevel.TrackAlways =>
+          Def.task {
+            Seq((packageBin.value, compile.value))
+          }
+        case TrackLevel.TrackIfMissing if !jar.exists =>
+          Def.task {
+            Seq((packageBin.value, compile.value))
+          }
+        case _ =>
+          Def.task {
+            val analysisOpt = previousCompile.value.analysis
+            Seq(jar) map { x =>
+              (x, if (analysisOpt.isDefined) analysisOpt.get
+              else Analysis.empty(true))
+            }
+          }
+      }
+    }
 
   private[this] def productsImplTask: Initialize[Task[Seq[File]]] = Def.task {
     if (exportJars.value) Seq(packageBin.value) else products.value
@@ -1878,7 +1985,10 @@ object Classpaths {
   def constructBuildDependencies: Initialize[BuildDependencies] = loadedBuild(lb => BuildUtil.dependencies(lb.units))
 
   def internalDependencies: Initialize[Task[Classpath]] =
-    (thisProjectRef, classpathConfiguration, configuration, settingsData, buildDependencies, trackInternalDependencies) flatMap internalDependencies0
+    (thisProjectRef, classpathConfiguration, configuration, settingsData, buildDependencies, trackInternalDependencies) flatMap internalDependenciesImplTask
+  def internalDependencyJarsTask: Initialize[Task[Classpath]] =
+    (thisProjectRef, classpathConfiguration, configuration, settingsData, buildDependencies, trackInternalDependencies) flatMap internalDependencyJarsImplTask
+
   def unmanagedDependencies: Initialize[Task[Classpath]] =
     (thisProjectRef, configuration, settingsData, buildDependencies) flatMap unmanagedDependencies0
   def mkIvyConfiguration: Initialize[Task[IvyConfiguration]] =
@@ -1917,16 +2027,10 @@ object Classpaths {
     }
   def unmanagedDependencies0(projectRef: ProjectRef, conf: Configuration, data: Settings[Scope], deps: BuildDependencies): Task[Classpath] =
     interDependencies(projectRef, deps, conf, conf, data, TrackLevel.TrackAlways, true, unmanagedLibs0)
-  @deprecated("This is no longer public.", "0.13.10")
-  def internalDependencies0(projectRef: ProjectRef, conf: Configuration, self: Configuration, data: Settings[Scope], deps: BuildDependencies): Task[Classpath] =
-    interDependencies(projectRef, deps, conf, self, data, false, productsTask)
-  private[sbt] def internalDependencies0(projectRef: ProjectRef, conf: Configuration, self: Configuration, data: Settings[Scope], deps: BuildDependencies, track: TrackLevel): Task[Classpath] =
-    interDependencies(projectRef, deps, conf, self, data, track, false, productsTask0)
-  @deprecated("This is no longer public.", "0.13.10")
-  def interDependencies(projectRef: ProjectRef, deps: BuildDependencies, conf: Configuration, self: Configuration, data: Settings[Scope], includeSelf: Boolean,
-    f: (ProjectRef, String, Settings[Scope]) => Task[Classpath]): Task[Classpath] =
-    interDependencies(projectRef, deps, conf, self, data, TrackLevel.TrackAlways, includeSelf,
-      { (pr: ProjectRef, s: String, sc: Settings[Scope], tl: TrackLevel) => f(pr, s, sc) })
+  private[sbt] def internalDependenciesImplTask(projectRef: ProjectRef, conf: Configuration, self: Configuration, data: Settings[Scope], deps: BuildDependencies, track: TrackLevel): Task[Classpath] =
+    interDependencies(projectRef, deps, conf, self, data, track, false, productsTask)
+  private[sbt] def internalDependencyJarsImplTask(projectRef: ProjectRef, conf: Configuration, self: Configuration, data: Settings[Scope], deps: BuildDependencies, track: TrackLevel): Task[Classpath] =
+    interDependencies(projectRef, deps, conf, self, data, track, false, jarProductsTask)
   private[sbt] def interDependencies(projectRef: ProjectRef, deps: BuildDependencies, conf: Configuration, self: Configuration, data: Settings[Scope],
     track: TrackLevel, includeSelf: Boolean, f: (ProjectRef, String, Settings[Scope], TrackLevel) => Task[Classpath]): Task[Classpath] =
     {
@@ -1979,13 +2083,17 @@ object Classpaths {
     ivyConfigurations in p get data getOrElse Nil
   def confOpt(configurations: Seq[Configuration], conf: String): Option[Configuration] =
     configurations.find(_.name == conf)
-  def productsTask(dep: ResolvedReference, conf: String, data: Settings[Scope]): Task[Classpath] =
-    getClasspath(exportedProducts, dep, conf, data)
-  def productsTask0(dep: ResolvedReference, conf: String, data: Settings[Scope], track: TrackLevel): Task[Classpath] =
+  private[sbt] def productsTask(dep: ResolvedReference, conf: String, data: Settings[Scope], track: TrackLevel): Task[Classpath] =
     track match {
       case TrackLevel.NoTracking     => getClasspath(exportedProductsNoTracking, dep, conf, data)
       case TrackLevel.TrackIfMissing => getClasspath(exportedProductsIfMissing, dep, conf, data)
       case TrackLevel.TrackAlways    => getClasspath(exportedProducts, dep, conf, data)
+    }
+  private[sbt] def jarProductsTask(dep: ResolvedReference, conf: String, data: Settings[Scope], track: TrackLevel): Task[Classpath] =
+    track match {
+      case TrackLevel.NoTracking     => getClasspath(exportedProductJarsNoTracking, dep, conf, data)
+      case TrackLevel.TrackIfMissing => getClasspath(exportedProductJarsIfMissing, dep, conf, data)
+      case TrackLevel.TrackAlways    => getClasspath(exportedProductJars, dep, conf, data)
     }
   private[sbt] def unmanagedLibs0(dep: ResolvedReference, conf: String, data: Settings[Scope], track: TrackLevel): Task[Classpath] =
     unmanagedLibs(dep, conf, data)
@@ -2054,7 +2162,7 @@ object Classpaths {
 
   private[this] lazy val internalCompilerPluginClasspath: Initialize[Task[Classpath]] =
     (thisProjectRef, settingsData, buildDependencies) flatMap { (ref, data, deps) =>
-      internalDependencies0(ref, CompilerPlugin, CompilerPlugin, data, deps, TrackLevel.TrackAlways)
+      internalDependenciesImplTask(ref, CompilerPlugin, CompilerPlugin, data, deps, TrackLevel.TrackAlways)
     }
 
   lazy val compilerPluginConfig = Seq(
@@ -2255,30 +2363,41 @@ trait BuildExtra extends BuildCommon with DefExtra {
       val r = (runner in (config, run)).value
       val cp = (fullClasspath in config).value
       val args = spaceDelimited().parsed
-      toError(r.run(mainClass, data(cp), baseArguments ++ args, streams.value.log))
+      r.run(mainClass, data(cp), baseArguments ++ args, streams.value.log).get
     }
   def runTask(config: Configuration, mainClass: String, arguments: String*): Initialize[Task[Unit]] =
-    (fullClasspath in config, runner in (config, run), streams) map { (cp, r, s) =>
-      toError(r.run(mainClass, data(cp), arguments, s.log))
+    Def.task {
+      val cp = (fullClasspath in config).value
+      val r = (runner in (config, run)).value
+      val s = streams.value
+      r.run(mainClass, data(cp), arguments, s.log).get
     }
+  // public API
+  /** Returns a vector of settings that create custom run input task. */
+  def fullRunInputTask(scoped: InputKey[Unit], config: Configuration, mainClass: String, baseArguments: String*): Vector[Setting[_]] =
+    Vector(
+      scoped := (inputTask { result =>
+        (initScoped(scoped.scopedKey, runnerInit) zipWith (fullClasspath in config, streams, result).identityMap) { (rTask, t) =>
+          (t, rTask) map {
+            case ((cp, s, args), r) =>
+              r.run(mainClass, data(cp), baseArguments ++ args, s.log).get
+          }
+        }
+      }).evaluated
+    ) ++ inTask(scoped)(forkOptions := forkOptionsTask.value)
+  // public API
+  /** Returns a vector of settings that create custom run task. */
+  def fullRunTask(scoped: TaskKey[Unit], config: Configuration, mainClass: String, arguments: String*): Vector[Setting[_]] =
+    Vector(
+      scoped := ((initScoped(scoped.scopedKey, runnerInit) zipWith (fullClasspath in config, streams).identityMap) {
+        case (rTask, t) =>
+          (t, rTask) map {
+            case ((cp, s), r) =>
+              r.run(mainClass, data(cp), arguments, s.log).get
+          }
+      }).value
+    ) ++ inTask(scoped)(forkOptions := forkOptionsTask.value)
 
-  def fullRunInputTask(scoped: InputKey[Unit], config: Configuration, mainClass: String, baseArguments: String*): Setting[InputTask[Unit]] =
-    scoped := (inputTask { result =>
-      (initScoped(scoped.scopedKey, runnerInit) zipWith (fullClasspath in config, streams, result).identityMap) { (rTask, t) =>
-        (t, rTask) map {
-          case ((cp, s, args), r) =>
-            toError(r.run(mainClass, data(cp), baseArguments ++ args, s.log))
-        }
-      }
-    }).evaluated
-  def fullRunTask(scoped: TaskKey[Unit], config: Configuration, mainClass: String, arguments: String*): Setting[Task[Unit]] =
-    scoped := ((initScoped(scoped.scopedKey, runnerInit) zipWith (fullClasspath in config, streams).identityMap) {
-      case (rTask, t) =>
-        (t, rTask) map {
-          case ((cp, s), r) =>
-            toError(r.run(mainClass, data(cp), arguments, s.log))
-        }
-    }).value
   def initScoped[T](sk: ScopedKey[_], i: Initialize[T]): Initialize[T] = initScope(fillTaskAxis(sk.scope, sk.key), i)
   def initScope[T](s: Scope, i: Initialize[T]): Initialize[T] = i mapReferenced Project.mapScope(Scope.replaceThis(s))
 
@@ -2323,7 +2442,6 @@ trait BuildCommon {
     /** Converts the `Seq[File]` to a Classpath, which is an alias for `Seq[Attributed[File]]`. */
     def classpath: Classpath = Attributed blankSeq s
   }
-  def toError(o: Option[String]): Unit = o foreach error
 
   def overrideConfigs(cs: Configuration*)(configurations: Seq[Configuration]): Seq[Configuration] =
     {

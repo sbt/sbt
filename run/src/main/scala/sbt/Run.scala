@@ -12,19 +12,20 @@ import sbt.internal.inc.ScalaInstance
 import sbt.io.Path
 
 import sbt.util.Logger
+import scala.util.{ Try, Success, Failure }
+import scala.util.control.NonFatal
+import scala.sys.process.Process
 
-trait ScalaRun {
-  def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String]
+sealed trait ScalaRun {
+  def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Try[Unit]
 }
 class ForkRun(config: ForkOptions) extends ScalaRun {
-  def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] =
+  def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Try[Unit] =
     {
-      log.info("Running " + mainClass + " " + options.mkString(" "))
-
-      val scalaOptions = classpathOption(classpath) ::: mainClass :: options.toList
-      val configLogged = if (config.outputStrategy.isDefined) config else config.copy(outputStrategy = Some(LoggedOutput(log)))
-      // fork with Java because Scala introduces an extra class loader (#702)
-      val process = Fork.java.fork(configLogged, scalaOptions)
+      def processExitCode(exitCode: Int, label: String): Try[Unit] =
+        if (exitCode == 0) Success(())
+        else Failure(new RuntimeException(s"""Nonzero exit code returned from $label: $exitCode""".stripMargin))
+      val process = fork(mainClass, classpath, options, log)
       def cancel() = {
         log.warn("Run canceled.")
         process.destroy()
@@ -33,27 +34,40 @@ class ForkRun(config: ForkOptions) extends ScalaRun {
       val exitCode = try process.exitValue() catch { case e: InterruptedException => cancel() }
       processExitCode(exitCode, "runner")
     }
-  private def classpathOption(classpath: Seq[File]) = "-classpath" :: Path.makeString(classpath) :: Nil
-  private def processExitCode(exitCode: Int, label: String) =
+
+  def fork(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Process =
     {
-      if (exitCode == 0)
-        None
-      else
-        Some("Nonzero exit code returned from " + label + ": " + exitCode)
+      log.info("Running (fork) " + mainClass + " " + options.mkString(" "))
+
+      val scalaOptions = classpathOption(classpath) ::: mainClass :: options.toList
+      val configLogged =
+        if (config.outputStrategy.isDefined) config
+        else config.copy(outputStrategy = Some(LoggedOutput(log)))
+      // fork with Java because Scala introduces an extra class loader (#702)
+      Fork.java.fork(configLogged, scalaOptions)
     }
+  private def classpathOption(classpath: Seq[File]) = "-classpath" :: Path.makeString(classpath) :: Nil
 }
 class Run(instance: ScalaInstance, trapExit: Boolean, nativeTmp: File) extends ScalaRun {
   /** Runs the class 'mainClass' using the given classpath and options using the scala runner.*/
-  def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger) =
+  def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Try[Unit] =
     {
       log.info("Running " + mainClass + " " + options.mkString(" "))
 
       def execute() =
         try { run0(mainClass, classpath, options, log) }
         catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
-      def directExecute() = try { execute(); None } catch { case e: Exception => log.trace(e); Some(e.toString) }
+      def directExecute(): Try[Unit] =
+        Try(execute()) recover {
+          case NonFatal(e) =>
+            // bgStop should not print out stack trace
+            // log.trace(e)
+            throw e
+        }
+      // try { execute(); None } catch { case e: Exception => log.trace(e); Some(e.toString) }
 
-      if (trapExit) Run.executeTrapExit(execute(), log) else directExecute()
+      if (trapExit) Run.executeTrapExit(execute(), log)
+      else directExecute()
     }
   private def run0(mainClassName: String, classpath: Seq[File], options: Seq[String], log: Logger): Unit = {
     log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
@@ -88,13 +102,12 @@ object Run {
     runner.run(mainClass, classpath, options, log)
 
   /** Executes the given function, trapping calls to System.exit. */
-  def executeTrapExit(f: => Unit, log: Logger): Option[String] =
+  def executeTrapExit(f: => Unit, log: Logger): Try[Unit] =
     {
       val exitCode = TrapExit(f, log)
       if (exitCode == 0) {
         log.debug("Exited with code 0")
-        None
-      } else
-        Some("Nonzero exit code: " + exitCode)
+        Success(())
+      } else Failure(new RuntimeException("Nonzero exit code: " + exitCode))
     }
 }
