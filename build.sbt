@@ -23,18 +23,20 @@ val windowsBuildId = settingKey[Int]("build id for Windows installer")
 
 // This build creates a SBT plugin with handy features *and* bundles the SBT script for distribution.
 val root = (project in file(".")).
-  enablePlugins(UniversalPlugin, LinuxPlugin, DebianPlugin, RpmPlugin, WindowsPlugin).
+  enablePlugins(UniversalPlugin, LinuxPlugin, DebianPlugin, RpmPlugin, WindowsPlugin,
+    UniversalDeployPlugin, DebianDeployPlugin, RpmDeployPlugin, WindowsDeployPlugin).
   settings(
     organization := "org.scala-sbt",
     name := "sbt-launcher-packaging",
     packageName := "sbt",
     version := "0.1.0",
-    crossTarget <<= target,
-    deploymentSettings,
+    crossTarget := target.value,
     publishToSettings,
     sbtLaunchJarUrl := downloadUrlForVersion(sbtVersionToRelease),
-    sbtLaunchJarLocation <<= target apply (_ / "sbt-launch.jar"),
-    sbtLaunchJar <<= (sbtLaunchJarUrl, sbtLaunchJarLocation) map { (uri, file) =>
+    sbtLaunchJarLocation := { target.value / "sbt-launch.jar" },
+    sbtLaunchJar := {
+      val uri = sbtLaunchJarUrl.value
+      val file = sbtLaunchJarLocation.value
       import dispatch.classic._
       if(!file.exists) {
          // oddly, some places require us to create the file before writing...
@@ -52,7 +54,8 @@ val root = (project in file(".")).
     packageDescription := """This script provides a native way to run sbt,
   a build tool for Scala and more.""",
     // Here we remove the jar file and launch lib from the symlinks:
-    linuxPackageSymlinks <<= linuxPackageSymlinks map { links =>
+    linuxPackageSymlinks := {
+      val links = linuxPackageSymlinks.value
       for {
         link <- links
         if !(link.destination endsWith "sbt-launch-lib.bash")
@@ -63,13 +66,13 @@ val root = (project in file(".")).
     version in Debian := sbtVersionToRelease,
     debianPackageDependencies in Debian ++= Seq("java6-runtime-headless", "bash (>= 2.05a-11)"),
     debianPackageRecommends in Debian += "git",
-    linuxPackageMappings in Debian <+= (sourceDirectory) map { bd =>
+    linuxPackageMappings in Debian += {
+      val bd = sourceDirectory.value
       (packageMapping(
-        (bd / "debian/changelog") -> "/usr/share/doc/sbt/changelog.gz"
+        (bd / "debian" / "changelog") -> "/usr/share/doc/sbt/changelog.gz"
       ) withUser "root" withGroup "root" withPerms "0644" gzipped) asDocs()
     },
-    debianChangelog in Debian := Some(file("debian/changelog")),
-
+    debianChangelog in Debian := { Some(sourceDirectory.value / "debian" / "changelog") },
     // RPM SPECIFIC
     version in Rpm := {
       val stable = (sbtVersionToRelease split "[^\\d]" filterNot (_.isEmpty) mkString ".")
@@ -87,7 +90,8 @@ val root = (project in file(".")).
 
     // WINDOWS SPECIFIC
     windowsBuildId := 1,
-    version in Windows <<= (windowsBuildId) apply { (bid) =>
+    version in Windows := {
+      val bid = windowsBuildId.value
       val sv = sbtVersionToRelease
       (sv split "[^\\d]" filterNot (_.isEmpty)) match {
         case Array(major,minor,bugfix, _*) => Seq(major, minor, bugfix, bid.toString) mkString "."
@@ -105,16 +109,16 @@ val root = (project in file(".")).
     // Universal ZIP download install.
     packageName in Universal := packageName.value, // needs to be set explicitly due to a bug in native-packager
     version in Universal := sbtVersionToRelease,
-    mappings in Universal <+= sbtLaunchJar map { _ -> "bin/sbt-launch.jar" },
+    mappings in Universal += { sbtLaunchJar.value -> "bin/sbt-launch.jar" },
 
     // Misccelaneous publishing stuff...
-    projectID in Debian    <<= moduleID,
+    projectID in Debian := moduleID.value,
     projectID in Windows := {
       val m = moduleID.value
       m.copy(revision = (version in Windows).value)
     },
-    projectID in Rpm       <<= moduleID,
-    projectID in Universal <<= moduleID
+    projectID in Rpm := moduleID.value,
+    projectID in Universal := moduleID.value
   )
 
 def downloadUrlForVersion(v: String) = (v split "[^\\d]" flatMap (i => catching(classOf[Exception]) opt (i.toInt))) match {
@@ -160,7 +164,7 @@ def makePublishToForConfig(config: Configuration) = {
     //   } yield bintrayRelease(repo, bintrayPackage, version, sLog)
     // }
   )) ++ Seq(
-     resolvers <++= (publishTo in config) apply (_.toSeq)
+     resolvers ++= ((publishTo in config) apply (_.toSeq)).value
   )
 }
 
