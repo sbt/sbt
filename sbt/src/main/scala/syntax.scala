@@ -2,7 +2,7 @@ package sbt
 
 object syntax extends syntax
 
-abstract class syntax extends IOSyntax0 with sbt.std.TaskExtra with sbt.internal.util.Types with sbt.ProcessExtra
+abstract class syntax extends IOSyntax0 with sbt.std.TaskExtra with sbt.internal.util.Types
     with sbt.internal.librarymanagement.impl.DependencyBuilders with sbt.ProjectExtra
     with sbt.internal.librarymanagement.DependencyFilterExtra with sbt.BuildExtra with sbt.TaskMacroExtra
     with sbt.ScopeFilter.Make
