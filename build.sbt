@@ -64,7 +64,7 @@ val root = (project in file(".")).
     },
     // DEBIAN SPECIFIC
     version in Debian := sbtVersionToRelease,
-    debianPackageDependencies in Debian ++= Seq("java6-runtime-headless", "bash (>= 2.05a-11)"),
+    debianPackageDependencies in Debian ++= Seq("openjdk-8-jdk", "bash (>= 3.2)"),
     debianPackageRecommends in Debian += "git",
     linuxPackageMappings in Debian += {
       val bd = sourceDirectory.value
