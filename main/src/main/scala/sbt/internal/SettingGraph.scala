@@ -4,7 +4,7 @@
 package sbt
 package internal
 
-import sbt.internal.util.Show
+import sbt.internal.util.{ Show, JLine }
 
 import java.io.File
 import Def.{ compiled, flattenLocals, ScopedKey }
@@ -50,10 +50,11 @@ case class SettingGraph(
       } getOrElse { d.typeName }
     } getOrElse { "" }
 
-  def dependsAscii: String = Graph.toAscii(
+  def dependsAscii(defaultWidth: Int): String = Graph.toAscii(
     this,
     (x: SettingGraph) => x.depends.toSeq.sortBy(_.name),
-    (x: SettingGraph) => "%s = %s" format (x.definedIn getOrElse { "" }, x.dataString)
+    (x: SettingGraph) => "%s = %s" format (x.definedIn getOrElse { "" }, x.dataString),
+    defaultWidth
   )
 }
 
@@ -63,10 +64,8 @@ object Graph {
   // [info]   | +-baz
   // [info]   |
   // [info]   +-quux
-  def toAscii[A](top: A, children: A => Seq[A], display: A => String): String = {
-    val defaultWidth = 40
-    // TODO: Fix JLine
-    val maxColumn = math.max( /*JLine.usingTerminal(_.getWidth)*/ 0, defaultWidth) - 8
+  def toAscii[A](top: A, children: A => Seq[A], display: A => String, defaultWidth: Int): String = {
+    val maxColumn = math.max(JLine.usingTerminal(_.getWidth), defaultWidth) - 8
     val twoSpaces = " " + " " // prevent accidentally being converted into a tab
     def limitLine(s: String): String =
       if (s.length > maxColumn) s.slice(0, maxColumn - 2) + ".."

@@ -362,7 +362,8 @@ object Defaults extends BuildCommon {
 
   private[this] lazy val configGlobal = globalDefaults(Seq(
     initialCommands :== "",
-    cleanupCommands :== ""
+    cleanupCommands :== "",
+    asciiGraphWidth :== 40
   ))
 
   lazy val projectTasks: Seq[Setting[_]] = Seq(
