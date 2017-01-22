@@ -1434,7 +1434,7 @@ object Classpaths {
           Vector.empty, filterImplicit = false, checkExplicit = true, overrideScalaVersion = true
         )
           .withScalaOrganization(scalaOrganization.value)
-          .withScalaArtifacts(scalaArtifacts.value))
+          .withScalaArtifacts(scalaArtifacts.value.toVector))
       }
     )).value,
     artifactPath in makePom := artifactPathSetting(artifact in makePom).value,
