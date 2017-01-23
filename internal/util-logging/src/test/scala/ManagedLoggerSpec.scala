@@ -13,6 +13,13 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
     log.debug("test")
   }
 
+  it should "support event logging" in {
+    import sjsonnew.BasicJsonProtocol._
+    val log = LogExchange.logger("foo")
+    LogExchange.bindLoggerAppenders("foo", List(LogExchange.asyncStdout -> Level.Info))
+    log.infoEvent(1)
+  }
+
   "global logging" should "log immediately after initialization" in {
     // this is passed into State normally
     val global0 = initialGlobalLogging

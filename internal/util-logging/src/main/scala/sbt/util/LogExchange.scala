@@ -6,6 +6,8 @@ import org.apache.logging.log4j.core._
 import org.apache.logging.log4j.core.appender.AsyncAppender
 import org.apache.logging.log4j.core.config.{ AppenderRef, LoggerConfig }
 import scala.collection.JavaConverters._
+import scala.collection.concurrent
+import sjsonnew.JsonFormat
 
 // http://logging.apache.org/log4j/2.x/manual/customconfig.html
 // https://logging.apache.org/log4j/2.x/log4j-core/apidocs/index.html
@@ -13,6 +15,7 @@ import scala.collection.JavaConverters._
 sealed abstract class LogExchange {
   private[sbt] lazy val context: LoggerContext = init()
   private[sbt] lazy val asyncStdout: AsyncAppender = buildAsyncStdout
+  private[sbt] val jsonCodecs: concurrent.Map[Class[_], JsonFormat[_]] = concurrent.TrieMap()
 
   def logger(name: String): ManagedLogger = logger(name, None, None)
   def logger(name: String, channelName: Option[String], execId: Option[String]): ManagedLogger = {
@@ -43,6 +46,13 @@ sealed abstract class LogExchange {
     val config = ctx.getConfiguration
     config.getLoggerConfig(loggerName)
   }
+  def jsonCodec[A](clazz: Class[A]): Option[JsonFormat[A]] =
+    jsonCodecs.get(clazz) map { _.asInstanceOf[JsonFormat[A]] }
+  def hasJsonCodec[A](clazz: Class[A]): Boolean =
+    jsonCodecs.contains(clazz)
+  def getOrElseUpdateJsonCodec[A](clazz: Class[A], v: JsonFormat[A]): JsonFormat[A] =
+    jsonCodecs.getOrElseUpdate(clazz, v).asInstanceOf[JsonFormat[A]]
+
   private[sbt] def buildAsyncStdout: AsyncAppender = {
     val ctx = XLogManager.getContext(false) match { case x: LoggerContext => x }
     val config = ctx.getConfiguration
