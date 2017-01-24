@@ -81,7 +81,10 @@ import sbt.internal.inc.{
 object Defaults extends BuildCommon {
   final val CacheDirectoryName = "cache"
 
-  def configSrcSub(key: SettingKey[File]): Initialize[File] = (key in ThisScope.copy(config = Global), configuration) { (src, conf) => src / nameForSrc(conf.name) }
+  def configSrcSub(key: SettingKey[File]): Initialize[File] =
+    Def.setting {
+      (key in ThisScope.copy(config = Global)).value / nameForSrc(configuration.value.name)
+    }
   def nameForSrc(config: String) = if (config == Configurations.Compile.name) "main" else config
   def prefix(config: String) = if (config == Configurations.Compile.name) "" else config + "-"
 
@@ -220,7 +223,10 @@ object Defaults extends BuildCommon {
   def projectCore: Seq[Setting[_]] = Seq(
     name := thisProject.value.id,
     logManager := LogManager.defaults(extraLoggers.value, StandardMain.console),
-    onLoadMessage := (onLoadMessage or (name, thisProjectRef)("Set current project to " + _ + " (in build " + _.build + ")")).value
+    onLoadMessage := (onLoadMessage or
+      Def.setting {
+        s"Set current project to ${name.value} (in build ${thisProjectRef.value.build})"
+      }).value
   )
   def paths = Seq(
     baseDirectory := thisProject.value.base,
@@ -255,7 +261,7 @@ object Defaults extends BuildCommon {
     unmanagedResources := collectFiles(unmanagedResourceDirectories, includeFilter in unmanagedResources, excludeFilter in unmanagedResources).value,
     watchSources in ConfigGlobal ++= unmanagedResources.value,
     resourceGenerators :== Nil,
-    resourceGenerators += ((discoveredSbtPlugins, resourceManaged) map PluginDiscovery.writeDescriptors).taskValue,
+    resourceGenerators += (Def.task { PluginDiscovery.writeDescriptors(discoveredSbtPlugins.value, resourceManaged.value) }).taskValue,
     managedResources := generate(resourceGenerators).value,
     resources := Classpaths.concat(managedResources, unmanagedResources).value
   )
@@ -400,20 +406,25 @@ object Defaults extends BuildCommon {
     Def.task { allUpdates.value.flatten ++ globalPluginUpdate.?.value }
   }
 
-  def watchSetting: Initialize[Watched] = (pollInterval, thisProjectRef, watchingMessage, triggeredMessage) { (interval, base, msg, trigMsg) =>
-    new Watched {
-      val scoped = watchTransitiveSources in base
-      val key = ScopedKey(scoped.scope, scoped.key)
-      override def pollInterval = interval
-      override def watchingMessage(s: WatchState) = msg(s)
-      override def triggeredMessage(s: WatchState) = trigMsg(s)
-      override def watchPaths(s: State) = EvaluateTask(Project structure s, key, s, base) match {
-        case Some((_, Value(ps))) => ps
-        case Some((_, Inc(i)))    => throw i
-        case None                 => sys.error("key not found: " + Def.displayFull(key))
+  def watchSetting: Initialize[Watched] =
+    Def.setting {
+      val interval = pollInterval.value
+      val base = thisProjectRef.value
+      val msg = watchingMessage.value
+      val trigMsg = triggeredMessage.value
+      new Watched {
+        val scoped = watchTransitiveSources in base
+        val key = ScopedKey(scoped.scope, scoped.key)
+        override def pollInterval = interval
+        override def watchingMessage(s: WatchState) = msg(s)
+        override def triggeredMessage(s: WatchState) = trigMsg(s)
+        override def watchPaths(s: State) = EvaluateTask(Project structure s, key, s, base) match {
+          case Some((_, Value(ps))) => ps
+          case Some((_, Inc(i)))    => throw i
+          case None                 => sys.error("key not found: " + Def.displayFull(key))
+        }
       }
     }
-  }
 
   @deprecated("Use scalaInstanceTask.", "0.13.0")
   def scalaInstanceSetting = scalaInstanceTask
@@ -488,7 +499,13 @@ object Defaults extends BuildCommon {
     definedTests := detectTests.value,
     definedTestNames := (definedTests map (_.map(_.name).distinct) storeAs definedTestNames triggeredBy compile).value,
     testFilter in testQuick := testQuickFilter.value,
-    executeTests := ((streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, testForkedParallel, javaOptions in test) flatMap allTestGroupsTask).value,
+    executeTests := (
+      Def.taskDyn {
+        allTestGroupsTask((streams in test).value, loadedTestFrameworks.value, testLoader.value, (testGrouping in test).value,
+          (testExecution in test).value, (fullClasspath in test).value, (javaHome in test).value, testForkedParallel.value, (javaOptions in test).value)
+      }
+    ).value,
+    // ((streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, testForkedParallel, javaOptions in test) flatMap allTestGroupsTask).value,
     testResultLogger in (Test, test) :== TestResultLogger.SilentWhenNoTests, // https://github.com/sbt/sbt/issues/1185
     test := {
       val trl = (testResultLogger in (Test, test)).value
@@ -555,46 +572,43 @@ object Defaults extends BuildCommon {
     }
 
   def testExecutionTask(task: Scoped): Initialize[Task[Tests.Execution]] =
-    (testOptions in task, parallelExecution in task, tags in task) map {
-      (opts, par, ts) =>
-        new Tests.Execution(opts, par, ts)
-    }
+    Def.task { new Tests.Execution((testOptions in task).value, (parallelExecution in task).value, (tags in task).value) }
 
   def testQuickFilter: Initialize[Task[Seq[String] => Seq[String => Boolean]]] =
-    (fullClasspath in test, streams in test) map {
-      (cp, s) =>
-        val ans: Seq[Analysis] = cp.flatMap(_.metadata get Keys.analysis) map { case a0: Analysis => a0 }
-        val succeeded = TestStatus.read(succeededFile(s.cacheDirectory))
-        val stamps = collection.mutable.Map.empty[String, Long]
-        def stamp(dep: String): Long = {
-          val stamps = for (a <- ans) yield intlStamp(dep, a, Set.empty)
-          if (stamps.isEmpty) Long.MinValue
-          else stamps.max
-        }
-        def intlStamp(c: String, analysis: Analysis, s: Set[String]): Long = {
-          if (s contains c) Long.MinValue
-          else {
-            val x = {
-              import analysis.{ relations => rel, apis }
-              rel.internalClassDeps(c).map(intlStamp(_, analysis, s + c)) ++
-                rel.externalDeps(c).map(stamp) +
-                (apis.internal.get(c) match {
-                  case Some(x) => x.compilation.startTime
-                  case _       => Long.MinValue
-                })
-            }.max
-            if (x != Long.MinValue) {
-              stamps(c) = x
-            }
-            x
+    Def.task {
+      val cp = (fullClasspath in test).value
+      val s = (streams in test).value
+      val ans: Seq[Analysis] = cp.flatMap(_.metadata get Keys.analysis) map { case a0: Analysis => a0 }
+      val succeeded = TestStatus.read(succeededFile(s.cacheDirectory))
+      val stamps = collection.mutable.Map.empty[String, Long]
+      def stamp(dep: String): Long = {
+        val stamps = for (a <- ans) yield intlStamp(dep, a, Set.empty)
+        if (stamps.isEmpty) Long.MinValue
+        else stamps.max
+      }
+      def intlStamp(c: String, analysis: Analysis, s: Set[String]): Long = {
+        if (s contains c) Long.MinValue
+        else {
+          val x = {
+            import analysis.{ relations => rel, apis }
+            rel.internalClassDeps(c).map(intlStamp(_, analysis, s + c)) ++
+              rel.externalDeps(c).map(stamp) +
+              (apis.internal.get(c) match {
+                case Some(x) => x.compilation.startTime
+                case _       => Long.MinValue
+              })
+          }.max
+          if (x != Long.MinValue) {
+            stamps(c) = x
           }
+          x
         }
-        def noSuccessYet(test: String) = succeeded.get(test) match {
-          case None     => true
-          case Some(ts) => stamp(test) > ts
-        }
-
-        args => for (filter <- selectedFilter(args)) yield (test: String) => filter(test) && noSuccessYet(test)
+      }
+      def noSuccessYet(test: String) = succeeded.get(test) match {
+        case None     => true
+        case Some(ts) => stamp(test) > ts
+      }
+      args => for (filter <- selectedFilter(args)) yield (test: String) => filter(test) && noSuccessYet(test)
     }
   def succeededFile(dir: File) = dir / "succeeded_tests"
 
@@ -615,7 +629,7 @@ object Defaults extends BuildCommon {
         val taskName = display(resolvedScoped.value)
         val trl = testResultLogger.value
         val processed = output.map(out => trl.run(s.log, out, taskName))
-        Def.value(processed)
+        processed
       }
     }
 
@@ -633,15 +647,15 @@ object Defaults extends BuildCommon {
     }
   }
 
-  def allTestGroupsTask(s: TaskStreams, frameworks: Map[TestFramework, Framework], loader: ClassLoader, groups: Seq[Tests.Group], config: Tests.Execution, cp: Classpath, javaHome: Option[File]): Task[Tests.Output] = {
+  private[sbt] def allTestGroupsTask(s: TaskStreams, frameworks: Map[TestFramework, Framework], loader: ClassLoader, groups: Seq[Tests.Group], config: Tests.Execution, cp: Classpath, javaHome: Option[File]): Initialize[Task[Tests.Output]] = {
     allTestGroupsTask(s, frameworks, loader, groups, config, cp, javaHome, forkedParallelExecution = false, javaOptions = Nil)
   }
 
-  def allTestGroupsTask(s: TaskStreams, frameworks: Map[TestFramework, Framework], loader: ClassLoader, groups: Seq[Tests.Group], config: Tests.Execution, cp: Classpath, javaHome: Option[File], forkedParallelExecution: Boolean): Task[Tests.Output] = {
+  private[sbt] def allTestGroupsTask(s: TaskStreams, frameworks: Map[TestFramework, Framework], loader: ClassLoader, groups: Seq[Tests.Group], config: Tests.Execution, cp: Classpath, javaHome: Option[File], forkedParallelExecution: Boolean): Initialize[Task[Tests.Output]] = {
     allTestGroupsTask(s, frameworks, loader, groups, config, cp, javaHome, forkedParallelExecution, javaOptions = Nil)
   }
 
-  def allTestGroupsTask(s: TaskStreams, frameworks: Map[TestFramework, Framework], loader: ClassLoader, groups: Seq[Tests.Group], config: Tests.Execution, cp: Classpath, javaHome: Option[File], forkedParallelExecution: Boolean, javaOptions: Seq[String]): Task[Tests.Output] = {
+  private[sbt] def allTestGroupsTask(s: TaskStreams, frameworks: Map[TestFramework, Framework], loader: ClassLoader, groups: Seq[Tests.Group], config: Tests.Execution, cp: Classpath, javaHome: Option[File], forkedParallelExecution: Boolean, javaOptions: Seq[String]): Initialize[Task[Tests.Output]] = {
     val runners = createTestRunners(frameworks, loader, config)
     val groupTasks = groups map {
       case Tests.Group(name, tests, runPolicy) =>
@@ -659,7 +673,7 @@ object Defaults extends BuildCommon {
         }
     }
     val output = Tests.foldTasks(groupTasks, config.parallel)
-    output map { out =>
+    val result = output map { out =>
       val summaries =
         runners map {
           case (tf, r) =>
@@ -667,6 +681,7 @@ object Defaults extends BuildCommon {
         }
       out.copy(summaries = summaries)
     }
+    Def.value { result }
   }
 
   def selectedFilter(args: Seq[String]): Seq[String => Boolean] =
@@ -684,9 +699,10 @@ object Defaults extends BuildCommon {
         case _          => includeFilters.map(f => (s: String) => (f.accept(s) && !matches(excludeFilters, s)))
       }
     }
-  def detectTests: Initialize[Task[Seq[TestDefinition]]] = (loadedTestFrameworks, compile, streams) map { (frameworkMap, analysis, s) =>
-    Tests.discover(frameworkMap.values.toList, analysis, s.log)._1
-  }
+  def detectTests: Initialize[Task[Seq[TestDefinition]]] =
+    Def.task {
+      Tests.discover(loadedTestFrameworks.value.values.toList, compile.value, streams.value.log)._1
+    }
   def defaultRestrictions: Initialize[Seq[Tags.Rule]] = parallelExecution { par =>
     val max = EvaluateTask.SystemProcessors
     Tags.limitAll(if (par) max else 1) :: Tags.limit(Tags.ForkedTestGroup, 1) :: Nil
@@ -736,24 +752,32 @@ object Defaults extends BuildCommon {
   def concatMappings(as: Mappings, bs: Mappings) = (as zipWith bs)((a, b) => (a, b) map { case (a, b) => a ++ b })
 
   // drop base directories, since there are no valid mappings for these
-  def sourceMappings = (unmanagedSources, unmanagedSourceDirectories, baseDirectory) map { (srcs, sdirs, base) =>
-    (srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)
-  }
+  def sourceMappings: Initialize[Task[Seq[(File, String)]]] =
+    Def.task {
+      val srcs = unmanagedSources.value
+      val sdirs = unmanagedSourceDirectories.value
+      val base = baseDirectory.value
+      (srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)
+    }
   def resourceMappings = relativeMappings(unmanagedResources, unmanagedResourceDirectories)
   def relativeMappings(files: ScopedTaskable[Seq[File]], dirs: ScopedTaskable[Seq[File]]): Initialize[Task[Seq[(File, String)]]] =
-    (files, dirs) map { (rs, rdirs) =>
+    Def.task {
+      val rs = files.toTask.value
+      val rdirs = dirs.toTask.value
       (rs --- rdirs) pair (relativeTo(rdirs) | flat)
     }
-
   def collectFiles(dirs: ScopedTaskable[Seq[File]], filter: ScopedTaskable[FileFilter], excludes: ScopedTaskable[FileFilter]): Initialize[Task[Seq[File]]] =
-    (dirs, filter, excludes) map { (d, f, excl) => d.descendantsExcept(f, excl).get }
-
-  def artifactPathSetting(art: SettingKey[Artifact]) = (crossTarget, projectID, art, scalaVersion in artifactName, scalaBinaryVersion in artifactName, artifactName) {
-    (t, module, a, sv, sbv, toString) =>
-      t / toString(ScalaVersion(sv, sbv), module, a) asFile
-  }
-  def artifactSetting = ((artifact, artifactClassifier).identity zipWith configuration.?) {
-    case ((a, classifier), cOpt) =>
+    Def.task { dirs.toTask.value.descendantsExcept(filter.toTask.value, excludes.toTask.value).get }
+  def artifactPathSetting(art: SettingKey[Artifact]): Initialize[File] =
+    Def.setting {
+      val f = artifactName.value
+      (crossTarget.value / f(ScalaVersion((scalaVersion in artifactName).value, (scalaBinaryVersion in artifactName).value), projectID.value, art.value)).asFile
+    }
+  def artifactSetting: Initialize[Artifact] =
+    Def.setting {
+      val a = artifact.value
+      val classifier = artifactClassifier.value
+      val cOpt = configuration.?.value
       val cPart = cOpt flatMap {
         case Compile => None
         case Test    => Some(Artifact.TestsClassifier)
@@ -765,7 +789,7 @@ object Defaults extends BuildCommon {
         val confs = cOpt.toVector flatMap { c => artifactConfigurations(a, c, classifier) }
         a.withClassifier(Some(classifierString)).withType(Artifact.classifierType(classifierString)).withConfigurations(confs)
       }
-  }
+    }
   @deprecated("The configuration(s) should not be decided based on the classifier.", "1.0")
   def artifactConfigurations(base: Artifact, scope: Configuration, classifier: Option[String]): Iterable[Configuration] =
     classifier match {
@@ -788,15 +812,14 @@ object Defaults extends BuildCommon {
       artifactPath := artifactPathSetting(artifact).value
     ))
   def packageTask: Initialize[Task[File]] =
-    (packageConfiguration, streams) map { (config, s) =>
+    Def.task {
+      val config = packageConfiguration.value
+      val s = streams.value
       Package(config, s.cacheStoreFactory, s.log)
       config.jar
     }
   def packageConfigurationTask: Initialize[Task[Package.Configuration]] =
-    (mappings, artifactPath, packageOptions) map { (srcs, path, options) =>
-      new Package.Configuration(srcs, path, options)
-    }
-
+    Def.task { new Package.Configuration(mappings.value, artifactPath.value, packageOptions.value) }
   def askForMainClass(classes: Seq[String]): Option[String] =
     sbt.SelectMainClass(Some(SimpleReader readLine _), classes)
   def pickMainClass(classes: Seq[String]): Option[String] =
@@ -970,21 +993,26 @@ object Defaults extends BuildCommon {
   def discoverMainClasses(analysis: CompileAnalysis): Seq[String] =
     Discovery.applications(Tests.allDefs(analysis)).collect({ case (definition, discovered) if discovered.hasMain => definition.name }).sorted
 
-  def consoleProjectTask = (state, streams, initialCommands in consoleProject) map { (state, s, extra) => ConsoleProject(state, extra)(s.log); println() }
+  def consoleProjectTask =
+    Def.task {
+      ConsoleProject(state.value, (initialCommands in consoleProject).value)(streams.value.log)
+      println()
+    }
   def consoleTask: Initialize[Task[Unit]] = consoleTask(fullClasspath, console)
   def consoleQuickTask = consoleTask(externalDependencyClasspath, consoleQuick)
   def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[_]): Initialize[Task[Unit]] =
-    (compilers in task, classpath in task, scalacOptions in task, initialCommands in task, cleanupCommands in task, taskTemporaryDirectory in task, scalaInstance in task, streams) map {
-      case (cs: Compilers, cp, options, initCommands, cleanup, temp, si, s) =>
-        val cpFiles = data(cp)
-        val fullcp = (cpFiles ++ si.allJars).distinct
-        val loader = sbt.internal.inc.classpath.ClasspathUtilities.makeLoader(fullcp, si, IO.createUniqueDirectory(temp))
-        val compiler =
-          cs.scalac match {
-            case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scala"))
-          }
-        (new Console(compiler))(cpFiles, options, loader, initCommands, cleanup)()(s.log).get
-        println()
+    Def.task {
+      val si = (scalaInstance in task).value
+      val s = streams.value
+      val cpFiles = data((classpath in task).value)
+      val fullcp = (cpFiles ++ si.allJars).distinct
+      val loader = sbt.internal.inc.classpath.ClasspathUtilities.makeLoader(fullcp, si, IO.createUniqueDirectory((taskTemporaryDirectory in task).value))
+      val compiler =
+        (compilers in task).value.scalac match {
+          case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scala"))
+        }
+      (new Console(compiler))(cpFiles, (scalacOptions in task).value, loader, (initialCommands in task).value, (cleanupCommands in task).value)()(s.log).get
+      println()
     }
 
   private[this] def exported(w: PrintWriter, command: String): Seq[String] => Unit = args =>
@@ -1086,11 +1114,13 @@ object Defaults extends BuildCommon {
   )
 
   def printWarningsTask: Initialize[Task[Unit]] =
-    (streams, compile, maxErrors, sourcePositionMappers) map {
-      case (s, analysis: Analysis, max, spms) =>
-        val problems = analysis.infos.allInfos.values.flatMap(i => i.reportedProblems ++ i.unreportedProblems)
-        val reporter = new LoggerReporter(max, s.log, Compiler.foldMappers(spms))
-        problems foreach { p => reporter.display(p.position, p.message, p.severity) }
+    Def.task {
+      val analysis = compile.value match { case a: Analysis => a }
+      val max = maxErrors.value
+      val spms = sourcePositionMappers.value
+      val problems = analysis.infos.allInfos.values.flatMap(i => i.reportedProblems ++ i.unreportedProblems)
+      val reporter = new LoggerReporter(max, streams.value.log, Compiler.foldMappers(spms))
+      problems foreach { p => reporter.display(p.position, p.message, p.severity) }
     }
 
   def sbtPluginExtra(m: ModuleID, sbtV: String, scalaV: String): ModuleID =
@@ -1101,9 +1131,12 @@ object Defaults extends BuildCommon {
   }
 
   def copyResourcesTask =
-    (classDirectory, resources, resourceDirectories, streams) map { (target, resrcs, dirs, s) =>
+    Def.task {
+      val t = classDirectory.value
+      val dirs = resourceDirectories.value
+      val s = streams.value
       val cacheStore = s.cacheStoreFactory derive "copy-resources"
-      val mappings = (resrcs --- dirs) pair (rebase(dirs, target) | flat(target))
+      val mappings = (resources.value --- dirs) pair (rebase(dirs, t) | flat(t))
       s.log.debug("Copy resource mappings: " + mappings.mkString("\n\t", "\n\t", ""))
       Sync(cacheStore)(mappings)
       mappings
@@ -1211,9 +1244,9 @@ object Classpaths {
   import Keys._
   import Defaults._
 
-  def concatDistinct[T](a: ScopedTaskable[Seq[T]], b: ScopedTaskable[Seq[T]]): Initialize[Task[Seq[T]]] = (a, b) map { (x, y) => (x ++ y).distinct }
-  def concat[T](a: ScopedTaskable[Seq[T]], b: ScopedTaskable[Seq[T]]): Initialize[Task[Seq[T]]] = (a, b) map (_ ++ _)
-  def concatSettings[T](a: SettingKey[Seq[T]], b: SettingKey[Seq[T]]): Initialize[Seq[T]] = (a, b)(_ ++ _)
+  def concatDistinct[T](a: ScopedTaskable[Seq[T]], b: ScopedTaskable[Seq[T]]): Initialize[Task[Seq[T]]] = Def.task { (a.toTask.value ++ b.toTask.value).distinct }
+  def concat[T](a: ScopedTaskable[Seq[T]], b: ScopedTaskable[Seq[T]]): Initialize[Task[Seq[T]]] = Def.task { a.toTask.value ++ b.toTask.value }
+  def concatSettings[T](a: SettingKey[Seq[T]], b: SettingKey[Seq[T]]): Initialize[Seq[T]] = Def.setting { a.value ++ b.value }
 
   lazy val configSettings: Seq[Setting[_]] = classpaths ++ Seq(
     products := makeProducts.value,
@@ -1367,14 +1400,17 @@ object Classpaths {
       }
     },
     bootResolvers := (appConfiguration map bootRepositories).value,
-    fullResolvers := ((projectResolver, externalResolvers, sbtPlugin, sbtResolver, bootResolvers, overrideBuildResolvers) map { (proj, rs, isPlugin, sbtr, boot, overrideFlag) =>
-      boot match {
-        case Some(repos) if overrideFlag => proj +: repos
-        case _ =>
-          val base = if (isPlugin) sbtr +: sbtPluginReleases +: rs else rs
-          proj +: base
-      }
-    }).value,
+    fullResolvers :=
+      (Def.task {
+        val proj = projectResolver.value
+        val rs = externalResolvers.value
+        bootResolvers.value match {
+          case Some(repos) if overrideBuildResolvers.value => proj +: repos
+          case _ =>
+            val base = if (sbtPlugin.value) sbtResolver.value +: sbtPluginReleases +: rs else rs
+            proj +: base
+        }
+      }).value,
     moduleName := normalizedName.value,
     ivyPaths := IvyPaths(baseDirectory.value, bootIvyHome(appConfiguration.value)),
     dependencyCacheDirectory := {
@@ -1390,10 +1426,15 @@ object Classpaths {
     allDependencies := {
       projectDependencies.value ++ libraryDependencies.value
     },
-    ivyScala :=
-      (ivyScala or ((scalaHome, scalaVersion in update, scalaBinaryVersion in update, scalaOrganization, sbtPlugin) { (sh, fv, bv, so, plugin) =>
-        Option(IvyScala(fv, bv, Vector.empty, filterImplicit = false, checkExplicit = true, overrideScalaVersion = true).withScalaOrganization(so))
-      })).value,
+    ivyScala := (ivyScala or (
+      Def.setting {
+        Option(IvyScala(
+          (scalaVersion in update).value,
+          (scalaBinaryVersion in update).value,
+          Vector.empty, filterImplicit = false, checkExplicit = true, overrideScalaVersion = true
+        ).withScalaOrganization(scalaOrganization.value))
+      }
+    )).value,
     artifactPath in makePom := artifactPathSetting(artifact in makePom).value,
     publishArtifact in makePom := publishMavenStyle.value && publishArtifact.value,
     artifact in makePom := Artifact.pom(moduleName.value),
@@ -1498,15 +1539,15 @@ object Classpaths {
       case _       => base
     }
   }
-
-  def pluginProjectID: Initialize[ModuleID] = (sbtBinaryVersion in update, scalaBinaryVersion in update, projectID, sbtPlugin) {
-    (sbtBV, scalaBV, pid, isPlugin) =>
-      if (isPlugin) sbtPluginExtra(pid, sbtBV, scalaBV) else pid
-  }
-  def ivySbt0: Initialize[Task[IvySbt]] =
-    (ivyConfiguration, fileToStore, credentials, streams) map { (conf, fts, creds, s) =>
-      Credentials.register(creds, s.log)
-      new IvySbt(conf, fts)
+  def pluginProjectID: Initialize[ModuleID] =
+    Def.setting {
+      if (sbtPlugin.value) sbtPluginExtra(projectID.value, (sbtBinaryVersion in update).value, (scalaBinaryVersion in update).value)
+      else projectID.value
+    }
+  private[sbt] def ivySbt0: Initialize[Task[IvySbt]] =
+    Def.task {
+      Credentials.register(credentials.value, streams.value.log)
+      new IvySbt(ivyConfiguration.value, fileToStore.value)
     }
   def moduleSettings0: Initialize[Task[ModuleSettings]] = Def.task {
     InlineConfiguration(ivyValidate.value, ivyScala.value,
@@ -1525,12 +1566,7 @@ object Classpaths {
     ivyConfiguration := new InlineIvyConfiguration(ivyPaths.value, externalResolvers.value.toVector, Vector.empty, Vector.empty, offline.value, Option(lock(appConfiguration.value)),
       checksums.value.toVector, Some(target.value / "resolution-cache"), UpdateOptions(), streams.value.log),
     ivySbt := ivySbt0.value,
-    classifiersModule := ((projectID, sbtDependency, transitiveClassifiers, loadedBuild, thisProjectRef) map { (pid, sbtDep, classifiers, lb, ref) =>
-      val pluginClasspath = lb.units(ref.build).unit.plugins.fullClasspath.toVector
-      val pluginJars = pluginClasspath.filter(_.data.isFile) // exclude directories: an approximation to whether they've been published
-      val pluginIDs: Vector[ModuleID] = pluginJars.flatMap(_ get moduleID.key)
-      GetClassifiersModule(pid, sbtDep +: pluginIDs, Vector(Configurations.Default), classifiers.toVector)
-    }).value,
+    classifiersModule := classifiersModuleTask.value,
     // Redefine scalaVersion and scalaBinaryVersion specifically for the dependency graph used for updateSbtClassifiers task.
     // to fix https://github.com/sbt/sbt/issues/2686
     scalaVersion := appConfiguration.value.provider.scalaProvider.version,
@@ -1557,13 +1593,24 @@ object Classpaths {
     } tag (Tags.Update, Tags.Network)).value
   )) ++ Seq(bootIvyConfiguration := (ivyConfiguration in updateSbtClassifiers).value)
 
+  def classifiersModuleTask: Initialize[Task[GetClassifiersModule]] =
+    Def.task {
+      val classifiers = transitiveClassifiers.value
+      val ref = thisProjectRef.value
+      val pluginClasspath = loadedBuild.value.units(ref.build).unit.plugins.fullClasspath.toVector
+      val pluginJars = pluginClasspath.filter(_.data.isFile) // exclude directories: an approximation to whether they've been published
+      val pluginIDs: Vector[ModuleID] = pluginJars.flatMap(_ get moduleID.key)
+      GetClassifiersModule(projectID.value, sbtDependency.value +: pluginIDs, Vector(Configurations.Default), classifiers.toVector)
+    }
   def deliverTask(config: TaskKey[DeliverConfiguration]): Initialize[Task[File]] =
-    (ivyModule, config, update, streams) map { (module, config, _, s) => IvyActions.deliver(module, config, s.log) }
+    Def.task {
+      val _ = update.value
+      IvyActions.deliver(ivyModule.value, config.value, streams.value.log)
+    }
   def publishTask(config: TaskKey[PublishConfiguration], deliverKey: TaskKey[_]): Initialize[Task[Unit]] =
-    (ivyModule, config, streams) map { (module, config, s) =>
-      IvyActions.publish(module, config, s.log)
+    Def.task {
+      IvyActions.publish(ivyModule.value, config.value, streams.value.log)
     } tag (Tags.Publish, Tags.Network)
-
   val moduleIdJsonKeyFormat: sjsonnew.JsonKeyFormat[ModuleID] = new sjsonnew.JsonKeyFormat[ModuleID] {
     import sjsonnew.support.scalajson.unsafe._
     import LibraryManagementCodec._
@@ -1881,22 +1928,25 @@ object Classpaths {
   def deliverPattern(outputPath: File): String = (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
 
   def projectDependenciesTask: Initialize[Task[Seq[ModuleID]]] =
-    (thisProjectRef, settingsData, buildDependencies) map { (ref, data, deps) =>
+    Def.task {
+      val ref = thisProjectRef.value
+      val data = settingsData.value
+      val deps = buildDependencies.value
       deps.classpath(ref) flatMap { dep =>
         (projectID in dep.project) get data map {
           _.withConfigurations(dep.configuration).withExplicitArtifacts(Vector.empty)
         }
       }
     }
-
-  def depMap: Initialize[Task[Map[ModuleRevisionId, ModuleDescriptor]]] =
-    (thisProjectRef, settingsData, buildDependencies, streams) flatMap { (root, data, deps, s) =>
-      depMap(deps classpathTransitiveRefs root, data, s.log)
+  private[sbt] def depMap: Initialize[Task[Map[ModuleRevisionId, ModuleDescriptor]]] =
+    Def.taskDyn {
+      depMap(buildDependencies.value classpathTransitiveRefs thisProjectRef.value, settingsData.value, streams.value.log)
     }
-
-  def depMap(projects: Seq[ProjectRef], data: Settings[Scope], log: Logger): Task[Map[ModuleRevisionId, ModuleDescriptor]] =
-    projects.flatMap(ivyModule in _ get data).join.map { mod =>
-      mod map { _.dependencyMapping(log) } toMap;
+  private[sbt] def depMap(projects: Seq[ProjectRef], data: Settings[Scope], log: Logger): Initialize[Task[Map[ModuleRevisionId, ModuleDescriptor]]] =
+    Def.value {
+      projects.flatMap(ivyModule in _ get data).join.map { mod =>
+        mod map { _.dependencyMapping(log) } toMap;
+      }
     }
 
   def projectResolverTask: Initialize[Task[Resolver]] =
@@ -1979,27 +2029,28 @@ object Classpaths {
       }
     }
 
-  private[this] def productsImplTask: Initialize[Task[Seq[File]]] = Def.task {
-    if (exportJars.value) Seq(packageBin.value) else products.value
-  }
-
   def constructBuildDependencies: Initialize[BuildDependencies] = loadedBuild(lb => BuildUtil.dependencies(lb.units))
 
   def internalDependencies: Initialize[Task[Classpath]] =
-    (thisProjectRef, classpathConfiguration, configuration, settingsData, buildDependencies, trackInternalDependencies) flatMap internalDependenciesImplTask
+    Def.taskDyn { internalDependenciesImplTask(thisProjectRef.value, classpathConfiguration.value, configuration.value, settingsData.value, buildDependencies.value, trackInternalDependencies.value) }
   def internalDependencyJarsTask: Initialize[Task[Classpath]] =
-    (thisProjectRef, classpathConfiguration, configuration, settingsData, buildDependencies, trackInternalDependencies) flatMap internalDependencyJarsImplTask
-
+    Def.taskDyn { internalDependencyJarsImplTask(thisProjectRef.value, classpathConfiguration.value, configuration.value, settingsData.value, buildDependencies.value, trackInternalDependencies.value) }
   def unmanagedDependencies: Initialize[Task[Classpath]] =
-    (thisProjectRef, configuration, settingsData, buildDependencies) flatMap unmanagedDependencies0
+    Def.taskDyn { unmanagedDependencies0(thisProjectRef.value, configuration.value, settingsData.value, buildDependencies.value) }
   def mkIvyConfiguration: Initialize[Task[IvyConfiguration]] =
-    (fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums in update, appConfiguration,
-      target, updateOptions, streams) map { (rs, paths, other, moduleConfs, off, check, app, t, uo, s) =>
-        warnResolversConflict(rs ++: other, s.log)
-        val resCacheDir = t / "resolution-cache"
-
-        new InlineIvyConfiguration(paths, rs.toVector, other.toVector, moduleConfs.toVector, off, Option(lock(app)), check.toVector, Some(resCacheDir), uo, s.log)
-      }
+    Def.task {
+      val (rs, other) = (fullResolvers.value.toVector, otherResolvers.value.toVector)
+      val s = streams.value
+      warnResolversConflict(rs ++: other, s.log)
+      val resCacheDir = target.value / "resolution-cache"
+      new InlineIvyConfiguration(ivyPaths.value, rs, other,
+        moduleConfigurations.value.toVector,
+        offline.value,
+        Option(lock(appConfiguration.value)),
+        (checksums in update).value.toVector,
+        Some(resCacheDir),
+        updateOptions.value, s.log)
+    }
 
   import java.util.LinkedHashSet
   import collection.JavaConverters._
@@ -2026,12 +2077,12 @@ object Classpaths {
       visit(projectRef, conf)
       visited.toSeq
     }
-  def unmanagedDependencies0(projectRef: ProjectRef, conf: Configuration, data: Settings[Scope], deps: BuildDependencies): Task[Classpath] =
-    interDependencies(projectRef, deps, conf, conf, data, TrackLevel.TrackAlways, true, unmanagedLibs0)
-  private[sbt] def internalDependenciesImplTask(projectRef: ProjectRef, conf: Configuration, self: Configuration, data: Settings[Scope], deps: BuildDependencies, track: TrackLevel): Task[Classpath] =
-    interDependencies(projectRef, deps, conf, self, data, track, false, productsTask)
-  private[sbt] def internalDependencyJarsImplTask(projectRef: ProjectRef, conf: Configuration, self: Configuration, data: Settings[Scope], deps: BuildDependencies, track: TrackLevel): Task[Classpath] =
-    interDependencies(projectRef, deps, conf, self, data, track, false, jarProductsTask)
+  private[sbt] def unmanagedDependencies0(projectRef: ProjectRef, conf: Configuration, data: Settings[Scope], deps: BuildDependencies): Initialize[Task[Classpath]] =
+    Def.value { interDependencies(projectRef, deps, conf, conf, data, TrackLevel.TrackAlways, true, unmanagedLibs0) }
+  private[sbt] def internalDependenciesImplTask(projectRef: ProjectRef, conf: Configuration, self: Configuration, data: Settings[Scope], deps: BuildDependencies, track: TrackLevel): Initialize[Task[Classpath]] =
+    Def.value { interDependencies(projectRef, deps, conf, self, data, track, false, productsTask) }
+  private[sbt] def internalDependencyJarsImplTask(projectRef: ProjectRef, conf: Configuration, self: Configuration, data: Settings[Scope], deps: BuildDependencies, track: TrackLevel): Initialize[Task[Classpath]] =
+    Def.value { interDependencies(projectRef, deps, conf, self, data, track, false, jarProductsTask) }
   private[sbt] def interDependencies(projectRef: ProjectRef, deps: BuildDependencies, conf: Configuration, self: Configuration, data: Settings[Scope],
     track: TrackLevel, includeSelf: Boolean, f: (ProjectRef, String, Settings[Scope], TrackLevel) => Task[Classpath]): Task[Classpath] =
     {
@@ -2162,7 +2213,10 @@ object Classpaths {
     }
 
   private[this] lazy val internalCompilerPluginClasspath: Initialize[Task[Classpath]] =
-    (thisProjectRef, settingsData, buildDependencies) flatMap { (ref, data, deps) =>
+    Def.taskDyn {
+      val ref = thisProjectRef.value
+      val data = settingsData.value
+      val deps = buildDependencies.value
       internalDependenciesImplTask(ref, CompilerPlugin, CompilerPlugin, data, deps, TrackLevel.TrackAlways)
     }
 
@@ -2341,7 +2395,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
     externalIvySettingsURI(Def.value(url.toURI), addMultiResolver)
   def externalIvySettingsURI(uri: Initialize[URI], addMultiResolver: Boolean = true): Setting[Task[IvyConfiguration]] =
     {
-      val other = (baseDirectory, appConfiguration, projectResolver, updateOptions, streams).identityMap
+      val other = Def.task { (baseDirectory.value, appConfiguration.value, projectResolver.value, updateOptions.value, streams.value) }
       ivyConfiguration := ((uri zipWith other) {
         case (u, otherTask) =>
           otherTask map {
@@ -2378,25 +2432,27 @@ trait BuildExtra extends BuildCommon with DefExtra {
   def fullRunInputTask(scoped: InputKey[Unit], config: Configuration, mainClass: String, baseArguments: String*): Vector[Setting[_]] =
     Vector(
       scoped := (inputTask { result =>
-        (initScoped(scoped.scopedKey, runnerInit) zipWith (fullClasspath in config, streams, result).identityMap) { (rTask, t) =>
-          (t, rTask) map {
-            case ((cp, s, args), r) =>
-              r.run(mainClass, data(cp), baseArguments ++ args, s.log).get
+        (initScoped(scoped.scopedKey, runnerInit)
+          .zipWith(Def.task { ((fullClasspath in config).value, streams.value, result.value) })) { (rTask, t) =>
+            (t, rTask) map {
+              case ((cp, s, args), r) =>
+                r.run(mainClass, data(cp), baseArguments ++ args, s.log).get
+            }
           }
-        }
       }).evaluated
     ) ++ inTask(scoped)(forkOptions := forkOptionsTask.value)
   // public API
   /** Returns a vector of settings that create custom run task. */
   def fullRunTask(scoped: TaskKey[Unit], config: Configuration, mainClass: String, arguments: String*): Vector[Setting[_]] =
     Vector(
-      scoped := ((initScoped(scoped.scopedKey, runnerInit) zipWith (fullClasspath in config, streams).identityMap) {
-        case (rTask, t) =>
-          (t, rTask) map {
-            case ((cp, s), r) =>
-              r.run(mainClass, data(cp), arguments, s.log).get
-          }
-      }).value
+      scoped := ((initScoped(scoped.scopedKey, runnerInit)
+        .zipWith(Def.task { ((fullClasspath in config).value, streams.value) })) {
+          case (rTask, t) =>
+            (t, rTask) map {
+              case ((cp, s), r) =>
+                r.run(mainClass, data(cp), arguments, s.log).get
+            }
+        }).value
     ) ++ inTask(scoped)(forkOptions := forkOptionsTask.value)
 
   def initScoped[T](sk: ScopedKey[_], i: Initialize[T]): Initialize[T] = initScope(fillTaskAxis(sk.scope, sk.key), i)
@@ -2464,19 +2520,18 @@ trait BuildCommon {
   def loadForParser[P, T](task: TaskKey[T])(f: (State, Option[T]) => Parser[P])(implicit format: JsonFormat[T]): Initialize[State => Parser[P]] =
     loadForParserI(task)(Def value f)(format)
   def loadForParserI[P, T](task: TaskKey[T])(init: Initialize[(State, Option[T]) => Parser[P]])(implicit format: JsonFormat[T]): Initialize[State => Parser[P]] =
-    (resolvedScoped, init)((ctx, f) => (s: State) => f(s, loadFromContext(task, ctx, s)(format)))
+    Def.setting { (s: State) => init.value(s, loadFromContext(task, resolvedScoped.value, s)(format)) }
 
   def getForParser[P, T](task: TaskKey[T])(init: (State, Option[T]) => Parser[P]): Initialize[State => Parser[P]] =
     getForParserI(task)(Def value init)
   def getForParserI[P, T](task: TaskKey[T])(init: Initialize[(State, Option[T]) => Parser[P]]): Initialize[State => Parser[P]] =
-    (resolvedScoped, init)((ctx, f) => (s: State) => f(s, getFromContext(task, ctx, s)))
+    Def.setting { (s: State) => init.value(s, getFromContext(task, resolvedScoped.value, s)) }
 
   // these are for use for constructing Tasks
   def loadPrevious[T](task: TaskKey[T])(implicit f: JsonFormat[T]): Initialize[Task[Option[T]]] =
-    (state, resolvedScoped) map { (s, ctx) => loadFromContext(task, ctx, s)(f) }
-
+    Def.task { loadFromContext(task, resolvedScoped.value, state.value)(f) }
   def getPrevious[T](task: TaskKey[T]): Initialize[Task[Option[T]]] =
-    (state, resolvedScoped) map { (s, ctx) => getFromContext(task, ctx, s) }
+    Def.task { getFromContext(task, resolvedScoped.value, state.value) }
 
   private[sbt] def derive[T](s: Setting[T]): Setting[T] = Def.derive(s, allowDynamic = true, trigger = _ != streams.key, default = true)
 }

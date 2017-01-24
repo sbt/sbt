@@ -52,11 +52,11 @@ object ScriptedPlugin extends AutoPlugin {
     scripted := scriptedTask.evaluated
   )
 
-  def scriptedTestsTask: Initialize[Task[AnyRef]] = (scriptedClasspath, scalaInstance) map {
-    (classpath, scala) =>
-      val loader = ClasspathUtilities.toLoader(classpath, scala.loader)
+  def scriptedTestsTask: Initialize[Task[AnyRef]] =
+    Def.task {
+      val loader = ClasspathUtilities.toLoader(scriptedClasspath.value, scalaInstance.value.loader)
       ModuleUtilities.getObject("sbt.test.ScriptedTests", loader)
-  }
+    }
 
   def scriptedRunTask: Initialize[Task[Method]] = (scriptedTests) map {
     (m) =>

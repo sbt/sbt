@@ -72,7 +72,7 @@ import sbt.internal.librarymanagement.{
   SbtExclusionRule,
   UnresolvedWarningConfiguration
 }
-import sbt.util.{ AbstractLogger, Level, Logger }
+import sbt.util.{ Level, Logger }
 import org.apache.logging.log4j.core.Appender
 import sbt.BuildSyntax._
 
