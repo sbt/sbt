@@ -48,14 +48,15 @@ object MainAppender {
   def defaultScreen(name: String, console: ConsoleOut, suppressedMessage: SuppressedTraceContext => Option[String]): Appender =
     ConsoleAppender(name, console, suppressedMessage = suppressedMessage)
 
-  def defaultBacked(
-    loggerName: String = generateGlobalBackingName,
-    useColor: Boolean = ConsoleAppender.formatEnabled
-  ): PrintWriter => Appender =
+  def defaultBacked: PrintWriter => Appender = defaultBacked(generateGlobalBackingName, ConsoleAppender.formatEnabled)
+  def defaultBacked(loggerName: String): PrintWriter => Appender = defaultBacked(loggerName, ConsoleAppender.formatEnabled)
+  def defaultBacked(useColor: Boolean): PrintWriter => Appender = defaultBacked(generateGlobalBackingName, useColor)
+  def defaultBacked(loggerName: String, useColor: Boolean): PrintWriter => Appender =
     to => {
       ConsoleAppender(
         ConsoleAppender.generateName,
-        ConsoleOut.printWriterOut(to), useColor = useColor
+        ConsoleOut.printWriterOut(to),
+        useColor = useColor
       )
     }
 

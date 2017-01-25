@@ -149,7 +149,7 @@ object ConsoleAppender {
     }
   }
 
-  val formatEnabled =
+  val formatEnabled: Boolean =
     {
       import java.lang.Boolean.{ getBoolean, parseBoolean }
       val value = System.getProperty("sbt.log.format")
@@ -180,8 +180,16 @@ object ConsoleAppender {
 
   def apply(out: PrintStream): ConsoleAppender = apply(generateName, ConsoleOut.printStreamOut(out))
   def apply(out: PrintWriter): ConsoleAppender = apply(generateName, ConsoleOut.printWriterOut(out))
-  def apply(name: String = generateName, out: ConsoleOut = ConsoleOut.systemOut, ansiCodesSupported: Boolean = formatEnabled,
-    useColor: Boolean = formatEnabled, suppressedMessage: SuppressedTraceContext => Option[String] = noSuppressedMessage): ConsoleAppender =
+  def apply(): ConsoleAppender = apply(generateName, ConsoleOut.systemOut)
+  def apply(name: String): ConsoleAppender = apply(name, ConsoleOut.systemOut, formatEnabled, formatEnabled, noSuppressedMessage)
+  def apply(out: ConsoleOut): ConsoleAppender = apply(generateName, out, formatEnabled, formatEnabled, noSuppressedMessage)
+  def apply(name: String, out: ConsoleOut): ConsoleAppender = apply(name, out, formatEnabled, formatEnabled, noSuppressedMessage)
+  def apply(name: String, out: ConsoleOut, suppressedMessage: SuppressedTraceContext => Option[String]): ConsoleAppender =
+    apply(name, out, formatEnabled, formatEnabled, suppressedMessage)
+  def apply(name: String, out: ConsoleOut, useColor: Boolean): ConsoleAppender =
+    apply(name, out, formatEnabled, useColor, noSuppressedMessage)
+  def apply(name: String, out: ConsoleOut, ansiCodesSupported: Boolean,
+    useColor: Boolean, suppressedMessage: SuppressedTraceContext => Option[String]): ConsoleAppender =
     {
       val appender = new ConsoleAppender(name, out, ansiCodesSupported, useColor, suppressedMessage)
       appender.start
