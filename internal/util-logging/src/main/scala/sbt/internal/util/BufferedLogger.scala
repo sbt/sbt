@@ -5,6 +5,76 @@ package sbt.internal.util
 
 import sbt.util._
 import scala.collection.mutable.ListBuffer
+import org.apache.logging.log4j.core.{ LogEvent => XLogEvent, Appender }
+import org.apache.logging.log4j.core.appender.AbstractAppender
+import org.apache.logging.log4j.core.layout.PatternLayout
+import java.util.concurrent.atomic.AtomicInteger
+
+object BufferedAppender {
+  def generateName: String =
+    "buffered-" + generateId.incrementAndGet
+  private val generateId: AtomicInteger = new AtomicInteger
+  def apply(delegate: Appender): BufferedAppender =
+    apply(generateName, delegate)
+  def apply(name: String, delegate: Appender): BufferedAppender =
+    {
+      val appender = new BufferedAppender(name, delegate)
+      appender.start
+      appender
+    }
+}
+
+/**
+ * Am appender that can buffer the logging done on it and then can flush the buffer
+ * to the delegate appender provided in the constructor.  Use 'record()' to
+ * start buffering and then 'play' to flush the buffer to the backing appender.
+ *  The logging level set at the time a message is originally logged is used, not
+ * the level at the time 'play' is called.
+ */
+class BufferedAppender private[BufferedAppender] (name: String, delegate: Appender) extends AbstractAppender(name, null, PatternLayout.createDefaultLayout(), true) {
+  private[this] val buffer = new ListBuffer[XLogEvent]
+  private[this] var recording = false
+
+  def append(event: XLogEvent): Unit =
+    {
+      if (recording) {
+        buffer += event
+      } else delegate.append(event)
+    }
+
+  /** Enables buffering. */
+  def record() = synchronized { recording = true }
+  def buffer[T](f: => T): T = {
+    record()
+    try { f }
+    finally { stopQuietly() }
+  }
+  def bufferQuietly[T](f: => T): T = {
+    record()
+    try {
+      val result = f
+      clearBuffer()
+      result
+    } catch { case e: Throwable => stopQuietly(); throw e }
+  }
+  def stopQuietly() = synchronized { try { stopBuffer() } catch { case e: Exception => () } }
+
+  /**
+   * Flushes the buffer to the delegate logger.  This method calls logAll on the delegate
+   * so that the messages are written consecutively. The buffer is cleared in the process.
+   */
+  def play(): Unit =
+    synchronized {
+      buffer.toList foreach {
+        delegate.append
+      }
+      buffer.clear()
+    }
+  /** Clears buffered events and disables buffering. */
+  def clearBuffer(): Unit = synchronized { buffer.clear(); recording = false }
+  /** Plays buffered events and disables buffering. */
+  def stopBuffer(): Unit = synchronized { play(); clearBuffer() }
+}
 
 /**
  * A logger that can buffer the logging done on it and then can flush the buffer
