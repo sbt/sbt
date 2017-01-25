@@ -17,7 +17,7 @@ import xsbti.{ ComponentProvider, GlobalLock }
  * Base class for test suites that must be able to fetch and compile the compiler bridge.
  */
 abstract class BridgeProviderSpecification extends BaseIvySpecification {
-  log.setLevel(Level.Warn)
+  // log.setLevel(Level.Warn)
 
   def realLocal: Resolver =
     {
