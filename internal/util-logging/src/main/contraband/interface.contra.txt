@@ -1,0 +1,19 @@
+package sbt.internal.util
+@target(Java)
+@codecPackage("sbt.internal.util.codec")
+@fullCodec("JsonProtocol")
+
+enum Severity
+{
+  Info, Warn, Error
+}
+
+type Position {
+  line: Int
+  lineContent: String!
+  offset: Int
+  pointer: Int
+  pointerSpace: String
+  sourcePath: String
+  sourceFile: java.io.File
+}

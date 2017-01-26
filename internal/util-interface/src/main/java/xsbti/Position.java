@@ -3,16 +3,19 @@
  */
 package xsbti;
 
+import java.io.File;
+import java.util.Optional;
+
 public interface Position
 {
-	Maybe<Integer> line();
+	Optional<Integer> line();
 	String lineContent();
-	Maybe<Integer> offset();
+	Optional<Integer> offset();
 
 	// pointer to the column position of the error/warning
-	Maybe<Integer> pointer();
-	Maybe<String> pointerSpace();
+	Optional<Integer> pointer();
+	Optional<String> pointerSpace();
 
-	Maybe<String> sourcePath();
-	Maybe<java.io.File> sourceFile();	
+	Optional<String> sourcePath();
+	Optional<File> sourceFile();
 }

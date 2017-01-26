@@ -2,6 +2,7 @@ package sbt.util
 
 import xsbti.{ Maybe, F0, F1, T2, Position, Problem, Severity }
 import java.io.File
+import java.util.Optional
 
 object InterfaceUtil {
   def f0[A](a: => A): F0[A] = new ConcreteF0[A](a)
@@ -16,6 +17,16 @@ object InterfaceUtil {
     o match {
       case Some(v) => Maybe.just(v)
       case None    => Maybe.nothing()
+    }
+
+  def jo2o[A](o: Optional[A]): Option[A] =
+    if (o.isPresent) Some(o.get)
+    else None
+
+  def o2jo[A](o: Option[A]): Optional[A] =
+    o match {
+      case Some(v) => Optional.ofNullable(v)
+      case None    => Optional.empty[A]()
     }
 
   def position(line0: Option[Integer], content: String, offset0: Option[Integer], pointer0: Option[Integer],
@@ -61,13 +72,13 @@ object InterfaceUtil {
     sourcePath0: Option[String],
     sourceFile0: Option[File]
   ) extends Position {
-    val line = o2m(line0)
+    val line = o2jo(line0)
     val lineContent = content
-    val offset = o2m(offset0)
-    val pointer = o2m(pointer0)
-    val pointerSpace = o2m(pointerSpace0)
-    val sourcePath = o2m(sourcePath0)
-    val sourceFile = o2m(sourceFile0)
+    val offset = o2jo(offset0)
+    val pointer = o2jo(pointer0)
+    val pointerSpace = o2jo(pointerSpace0)
+    val sourcePath = o2jo(sourcePath0)
+    val sourceFile = o2jo(sourceFile0)
   }
 
   private final class ConcreteProblem(
