@@ -17,3 +17,10 @@ type Position {
   sourcePath: String
   sourceFile: java.io.File
 }
+
+type Problem {
+  category: String!
+  severity: Severity!
+  message: String!
+  position: Position!
+}
