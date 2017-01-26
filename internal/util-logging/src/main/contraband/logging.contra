@@ -8,7 +8,7 @@ interface AbstractEntry {
   execId: String
 }
 
-type ChannelLogEntry implements sbt.internal.util.AbstractEntry {
+type StringEvent implements sbt.internal.util.AbstractEntry {
   level: String!
   message: String!
   channelName: String

@@ -5,7 +5,7 @@ package util
 import sbt.util.Level
 import sjsonnew.JsonFormat
 
-final class ObjectLogEntry[A](
+final class ObjectEvent[A](
   val level: Level.Value,
   val message: A,
   val channelName: Option[String],

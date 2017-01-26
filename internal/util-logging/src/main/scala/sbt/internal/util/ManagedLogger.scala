@@ -19,7 +19,7 @@ class ManagedLogger(
     {
       xlogger.log(
         ConsoleAppender.toXLevel(level),
-        new ObjectMessage(ChannelLogEntry(level.toString, message, channelName, execId))
+        new ObjectMessage(StringEvent(level.toString, message, channelName, execId))
       )
     }
   override def success(message: => String): Unit = xlogger.info(message)
@@ -33,7 +33,7 @@ class ManagedLogger(
       val v: A = event
       val clazz: Class[A] = v.getClass.asInstanceOf[Class[A]]
       val ev = LogExchange.getOrElseUpdateJsonCodec(clazz, implicitly[JsonFormat[A]])
-      val entry: ObjectLogEntry[A] = new ObjectLogEntry(level, v, channelName, execId, ev, clazz)
+      val entry: ObjectEvent[A] = new ObjectEvent(level, v, channelName, execId, ev, clazz)
       xlogger.log(
         ConsoleAppender.toXLevel(level),
         new ObjectMessage(entry)

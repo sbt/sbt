@@ -5,9 +5,9 @@
 // DO NOT EDIT MANUALLY
 package sbt.internal.util.codec
 import _root_.sjsonnew.{ deserializationError, serializationError, Builder, JsonFormat, Unbuilder }
-trait ChannelLogEntryFormats { self: sjsonnew.BasicJsonProtocol =>
-implicit lazy val ChannelLogEntryFormat: JsonFormat[sbt.internal.util.ChannelLogEntry] = new JsonFormat[sbt.internal.util.ChannelLogEntry] {
-  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.util.ChannelLogEntry = {
+trait StringEventFormats { self: sjsonnew.BasicJsonProtocol =>
+implicit lazy val StringEventFormat: JsonFormat[sbt.internal.util.StringEvent] = new JsonFormat[sbt.internal.util.StringEvent] {
+  override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.util.StringEvent = {
     jsOpt match {
       case Some(js) =>
       unbuilder.beginObject(js)
@@ -16,12 +16,12 @@ implicit lazy val ChannelLogEntryFormat: JsonFormat[sbt.internal.util.ChannelLog
       val channelName = unbuilder.readField[Option[String]]("channelName")
       val execId = unbuilder.readField[Option[String]]("execId")
       unbuilder.endObject()
-      sbt.internal.util.ChannelLogEntry(level, message, channelName, execId)
+      sbt.internal.util.StringEvent(level, message, channelName, execId)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
   }
-  override def write[J](obj: sbt.internal.util.ChannelLogEntry, builder: Builder[J]): Unit = {
+  override def write[J](obj: sbt.internal.util.StringEvent, builder: Builder[J]): Unit = {
     builder.beginObject()
     builder.addField("level", obj.level)
     builder.addField("message", obj.message)

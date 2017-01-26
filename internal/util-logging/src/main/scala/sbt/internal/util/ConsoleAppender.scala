@@ -260,9 +260,9 @@ class ConsoleAppender private[ConsoleAppender] (
     }
   def objectToString(o: AnyRef): String =
     o match {
-      case x: ChannelLogEntry   => x.message
-      case x: ObjectLogEntry[_] => x.message.toString
-      case _                    => o.toString
+      case x: StringEvent    => x.message
+      case x: ObjectEvent[_] => x.message.toString
+      case _                 => o.toString
     }
 
   def messageColor(level: Level.Value) = RESET
