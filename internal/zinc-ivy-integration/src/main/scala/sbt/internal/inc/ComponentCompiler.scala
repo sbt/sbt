@@ -6,9 +6,8 @@ package internal
 package inc
 
 import java.io.File
-import scala.util.Try
 import sbt.io.{ Hash, IO }
-import sbt.internal.librarymanagement._
+import sbt.internal.librarymanagement.{ IvyConfiguration, JsonUtil, IvySbt, InlineConfiguration, RetrieveConfiguration, IvyActions, UnresolvedWarningConfiguration, LogicalClock }
 import sbt.librarymanagement.{ Configurations, ModuleID, ModuleInfo, Resolver, UpdateConfiguration, UpdateLogging, UpdateOptions, ArtifactTypeFilter }
 import sbt.util.Logger
 import sbt.internal.util.{ BufferedLogger, CacheStore, FullLogger }
@@ -19,7 +18,7 @@ private[sbt] object ComponentCompiler {
   val binSeparator = "-bin_"
   val javaVersion = System.getProperty("java.class.version")
 
-  def interfaceProvider(manager: ComponentManager, ivyConfiguration: IvyConfiguration, fileToStore: File => CacheStore, sourcesModule: ModuleID): CompilerBridgeProvider = new CompilerBridgeProvider {
+  def interfaceProvider(manager: ZincComponentManager, ivyConfiguration: IvyConfiguration, fileToStore: File => CacheStore, sourcesModule: ModuleID): CompilerBridgeProvider = new CompilerBridgeProvider {
     def apply(scalaInstance: xsbti.compile.ScalaInstance, log: Logger): File =
       {
         // this is the instance used to compile the interface component
@@ -43,10 +42,8 @@ private[sbt] object ComponentCompiler {
  * The compiled classes are cached using the provided component manager according
  * to the actualVersion field of the RawCompiler.
  */
-private[inc] class IvyComponentCompiler(compiler: RawCompiler, manager: ComponentManager, ivyConfiguration: IvyConfiguration, fileToStore: File => CacheStore, sourcesModule: ModuleID, log: Logger) {
+private[inc] class IvyComponentCompiler(compiler: RawCompiler, manager: ZincComponentManager, ivyConfiguration: IvyConfiguration, fileToStore: File => CacheStore, sourcesModule: ModuleID, log: Logger) {
   import ComponentCompiler._
-
-  private val sbtOrg = xsbti.ArtifactInfo.SbtOrganization
   // private val xsbtiInterfaceModuleName = "compiler-interface"
   // private val xsbtiInterfaceID = s"interface-$incrementalVersion"
   private val sbtOrgTemp = JsonUtil.sbtOrgTemp
@@ -57,7 +54,7 @@ private[inc] class IvyComponentCompiler(compiler: RawCompiler, manager: Componen
   def apply(): File = {
     // binID is of the form "org.example-compilerbridge-1.0.0-bin_2.11.7__50.0"
     val binID = binaryID(s"${sourcesModule.organization}-${sourcesModule.name}-${sourcesModule.revision}")
-    manager.file(binID)(new IfMissing.Define(true, compileAndInstall(binID)))
+    manager.file(binID)(IfMissing.define(true, compileAndInstall(binID)))
   }
 
   private def binaryID(id: String): String = {
@@ -82,7 +79,6 @@ private[inc] class IvyComponentCompiler(compiler: RawCompiler, manager: Componen
               val (sources, xsbtiJars) = allArtifacts partition (_.getName endsWith "-sources.jar")
               AnalyzingCompiler.compileSources(sources, targetJar, xsbtiJars, sourcesModule.name, compiler, log)
               manager.define(binID, Seq(targetJar))
-
           }
         }
 

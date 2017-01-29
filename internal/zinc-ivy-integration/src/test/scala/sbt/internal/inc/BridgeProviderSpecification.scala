@@ -6,7 +6,7 @@ import java.util.Properties
 import java.util.concurrent.Callable
 
 import sbt.internal.inc.classpath.ClasspathUtilities
-import sbt.internal.librarymanagement.{ JsonUtil, ComponentManager }
+import sbt.internal.librarymanagement.JsonUtil
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.librarymanagement.{ ModuleID, UpdateOptions, Resolver, Patterns, FileRepository, DefaultMavenRepository }
@@ -27,13 +27,20 @@ abstract class BridgeProviderSpecification extends BaseIvySpecification {
   override def resolvers: Vector[Resolver] = Vector(realLocal, DefaultMavenRepository)
   private val ivyConfiguration = mkIvyConfiguration(UpdateOptions())
 
+  def secondaryCacheDirectory: File =
+    {
+      val target = file("target").getAbsoluteFile
+      target / "zinc-components"
+    }
+  def secondaryCacheOpt: Option[File] = Some(secondaryCacheDirectory)
+
   def getCompilerBridge(targetDir: File, log: Logger, scalaVersion: String): File = {
     val instance = scalaInstance(scalaVersion)
     val bridgeId = compilerBridgeId(scalaVersion)
     val sourceModule = ModuleID(xsbti.ArtifactInfo.SbtOrganization, bridgeId, ComponentCompiler.incrementalVersion).withConfigurations(Some("component")).sources()
 
     val raw = new RawCompiler(instance, ClasspathOptionsUtil.auto, log)
-    val manager = new ComponentManager(lock, provider(targetDir), None, log)
+    val manager = new ZincComponentManager(lock, provider(targetDir), secondaryCacheOpt, log)
     val componentCompiler = new IvyComponentCompiler(raw, manager, ivyConfiguration, fileToStore, sourceModule, log)
 
     val bridge = componentCompiler.apply()
