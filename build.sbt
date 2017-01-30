@@ -107,11 +107,11 @@ lazy val core = crossProject
   .jvmSettings(
     libraryDependencies ++=
       Seq(
-        "org.jsoup" % "jsoup" % "1.9.2"
+        "org.jsoup" % "jsoup" % "1.10.2"
       ) ++ {
         if (scalaBinaryVersion.value == "2.10") Seq()
         else Seq(
-          "org.scala-lang.modules" %% "scala-xml" % "1.0.5"
+          "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
         )
       },
     resourceGenerators.in(Compile) += {
@@ -171,7 +171,7 @@ lazy val tests = crossProject
 
         "org.scala-lang.modules" %% "scala-async" % asyncVersion % "provided"
     },
-    libraryDependencies += "com.lihaoyi" %%% "utest" % "0.4.4" % "test",
+    libraryDependencies += "com.lihaoyi" %%% "utest" % "0.4.5" % "test",
     unmanagedResourceDirectories in Test += (baseDirectory in LocalRootProject).value / "tests" / "shared" / "src" / "test" / "resources",
     testFrameworks += new TestFramework("utest.runner.Framework")
   )
@@ -279,7 +279,7 @@ lazy val cli = project
     name := "coursier-cli",
     libraryDependencies ++= {
       if (scalaBinaryVersion.value == "2.11")
-        Seq("com.github.alexarchambault" %% "case-app" % "1.1.2")
+        Seq("com.github.alexarchambault" %% "case-app" % "1.1.3")
       else
         Seq()
     },
@@ -407,7 +407,7 @@ lazy val web = project
     libraryDependencies ++= {
       if (scalaBinaryVersion.value == "2.11")
         Seq(
-          "be.doeraene" %%% "scalajs-jquery" % "0.9.0",
+          "be.doeraene" %%% "scalajs-jquery" % "0.9.1",
           "com.github.japgolly.scalajs-react" %%% "core" % "0.9.0"
         )
       else
@@ -474,8 +474,8 @@ lazy val `http-server` = project
         Seq(
           "org.http4s" %% "http4s-blazeserver" % http4sVersion,
           "org.http4s" %% "http4s-dsl" % http4sVersion,
-          "org.slf4j" % "slf4j-nop" % "1.7.21",
-          "com.github.alexarchambault" %% "case-app" % "1.1.2"
+          "org.slf4j" % "slf4j-nop" % "1.7.22",
+          "com.github.alexarchambault" %% "case-app" % "1.1.3"
         )
       else
         Seq()
