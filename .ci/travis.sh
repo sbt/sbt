@@ -28,7 +28,7 @@ function isMasterOrDevelop() {
 }
 
 # Required for ~/.ivy2/local repo tests
-~/sbt coreJVM/publishLocal http-server/publishLocal
+~/sbt ++2.11.8 coreJVM/publishLocal http-server/publishLocal
 
 # Required for HTTP authentication tests
 ./coursier launch \

@@ -97,7 +97,7 @@ lazy val scalaVersionAgnosticCommonSettings = Seq(
 ) ++ releaseSettings
 
 lazy val commonSettings = scalaVersionAgnosticCommonSettings ++ Seq(
-  scalaVersion := "2.11.8",
+  scalaVersion := "2.12.1",
   crossScalaVersions := Seq("2.12.1", "2.11.8", "2.10.6"),
   libraryDependencies ++= {
     if (scalaBinaryVersion.value == "2.10")
