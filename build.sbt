@@ -1,139 +1,13 @@
 import java.io.FileOutputStream
 
-import com.typesafe.tools.mima.plugin.MimaPlugin.mimaDefaultSettings
-
 val binaryCompatibilityVersion = "1.0.0-M7"
 
 lazy val IntegrationTest = config("it") extend Test
 
-lazy val releaseSettings = Seq(
-  publishMavenStyle := true,
-  licenses := Seq("Apache 2.0" -> url("http://opensource.org/licenses/Apache-2.0")),
-  homepage := Some(url("https://github.com/alexarchambault/coursier")),
-  scmInfo := Some(ScmInfo(
-    url("https://github.com/alexarchambault/coursier.git"),
-    "scm:git:github.com/alexarchambault/coursier.git",
-    Some("scm:git:git@github.com:alexarchambault/coursier.git")
-  )),
-  pomExtra := {
-    <developers>
-      <developer>
-        <id>alexarchambault</id>
-        <name>Alexandre Archambault</name>
-        <url>https://github.com/alexarchambault</url>
-      </developer>
-    </developers>
-  },
-  publishTo := {
-    val nexus = "https://oss.sonatype.org/"
-    if (isSnapshot.value)
-      Some("snapshots" at nexus + "content/repositories/snapshots")
-    else
-      Some("releases"  at nexus + "service/local/staging/deploy/maven2")
-  },
-  credentials ++= {
-    Seq("SONATYPE_USER", "SONATYPE_PASS").map(sys.env.get) match {
-      case Seq(Some(user), Some(pass)) =>
-        Seq(Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", user, pass))
-      case _ =>
-        Seq()
-    }
-  }
-)
-
-lazy val noPublishSettings = Seq(
-  publish := (),
-  publishLocal := (),
-  publishArtifact := false
-)
-
-def noPublishForScalaVersionSettings(sbv: String*) = Seq(
-  publish := {
-    if (sbv.contains(scalaBinaryVersion.value))
-      ()
-    else
-      publish.value
-  },
-  publishLocal := {
-    if (sbv.contains(scalaBinaryVersion.value))
-      ()
-    else
-      publishLocal.value
-  },
-  publishArtifact := {
-    if (sbv.contains(scalaBinaryVersion.value))
-      false
-    else
-      publishArtifact.value
-  }
-)
-
-lazy val scalaVersionAgnosticCommonSettings = Seq(
-  organization := "io.get-coursier",
-  resolvers ++= Seq(
-    "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
-    Resolver.sonatypeRepo("releases")
-  ),
-  scalacOptions ++= {
-    scalaBinaryVersion.value match {
-      case "2.10" | "2.11" =>
-        Seq("-target:jvm-1.6")
-      case _ =>
-        Seq()
-    }
-  },
-  javacOptions ++= {
-    scalaBinaryVersion.value match {
-      case "2.10" | "2.11" =>
-        Seq(
-          "-source", "1.6",
-          "-target", "1.6"
-        )
-      case _ =>
-        Seq()
-    }
-  },
-  javacOptions in Keys.doc := Seq()
-) ++ releaseSettings
-
-lazy val commonSettings = scalaVersionAgnosticCommonSettings ++ Seq(
-  scalaVersion := "2.12.1",
-  crossScalaVersions := Seq("2.12.1", "2.11.8", "2.10.6"),
-  libraryDependencies ++= {
-    if (scalaBinaryVersion.value == "2.10")
-      Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full))
-    else
-      Seq()
-  }
-)
-
-lazy val pluginSettings =
-  scalaVersionAgnosticCommonSettings ++
-  noPublishForScalaVersionSettings("2.11", "2.12") ++
-  ScriptedPlugin.scriptedSettings ++
-  Seq(
-    scriptedLaunchOpts ++= Seq(
-      "-Xmx1024M",
-      "-XX:MaxPermSize=256M",
-      "-Dplugin.version=" + version.value,
-      "-Dsbttest.base=" + (sourceDirectory.value / "sbt-test").getAbsolutePath
-    ),
-    scriptedBufferLog := false,
-    sbtPlugin := (scalaBinaryVersion.value == "2.10"),
-    resolvers ++= Seq(
-      // added so that 2.10 artifacts of the other modules can be found by
-      // the too-naive-for-now inter-project resolver of the coursier SBT plugin
-      Resolver.sonatypeRepo("snapshots"),
-      // added for sbt-scripted to be fine even with ++2.11.x
-      Resolver.typesafeIvyRepo("releases")
-    )
-  )
-
-val scalazVersion = "7.2.7"
+lazy val scalazVersion = "7.2.7"
 
 lazy val core = crossProject
-  .settings(commonSettings: _*)
-  .settings(mimaDefaultSettings: _*)
+  .settings(commonSettings)
   .settings(
     name := "coursier",
     libraryDependencies ++= Seq(
@@ -282,10 +156,10 @@ lazy val `fetch-js` = project
 
 lazy val tests = crossProject
   .dependsOn(core)
-  .settings(commonSettings: _*)
-  .settings(noPublishSettings: _*)
+  .settings(commonSettings)
+  .settings(noPublishSettings)
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings: _*)
+  .settings(Defaults.itSettings)
   .settings(
     name := "coursier-tests",
     libraryDependencies += {
@@ -311,7 +185,6 @@ lazy val testsJs = tests.js.dependsOn(`fetch-js` % "test")
 lazy val cache = project
   .dependsOn(coreJvm)
   .settings(commonSettings)
-  .settings(mimaDefaultSettings)
   .settings(
     name := "coursier-cache",
     libraryDependencies += "org.scalaz" %% "scalaz-concurrent" % scalazVersion,
@@ -620,10 +493,149 @@ lazy val okhttp = project
   )
 
 lazy val `coursier` = project.in(file("."))
-  .aggregate(coreJvm, coreJs, `fetch-js`, testsJvm, testsJs, cache, bootstrap, cli, plugin, `sbt-shading`, web, doc, `http-server`, okhttp)
+  .aggregate(
+    coreJvm,
+    coreJs,
+    `fetch-js`,
+    testsJvm,
+    testsJs,
+    cache,
+    bootstrap,
+    cli,
+    plugin,
+    `sbt-shading`,
+    web,
+    doc,
+    `http-server`,
+    okhttp
+  )
   .settings(commonSettings)
   .settings(noPublishSettings)
   .settings(releaseSettings)
   .settings(
     moduleName := "coursier-root"
   )
+
+lazy val releaseSettings = Seq(
+  publishMavenStyle := true,
+  licenses := Seq("Apache 2.0" -> url("http://opensource.org/licenses/Apache-2.0")),
+  homepage := Some(url("https://github.com/alexarchambault/coursier")),
+  scmInfo := Some(ScmInfo(
+    url("https://github.com/alexarchambault/coursier.git"),
+    "scm:git:github.com/alexarchambault/coursier.git",
+    Some("scm:git:git@github.com:alexarchambault/coursier.git")
+  )),
+  pomExtra := {
+    <developers>
+      <developer>
+        <id>alexarchambault</id>
+        <name>Alexandre Archambault</name>
+        <url>https://github.com/alexarchambault</url>
+      </developer>
+    </developers>
+  },
+  publishTo := {
+    val nexus = "https://oss.sonatype.org/"
+    if (isSnapshot.value)
+      Some("snapshots" at nexus + "content/repositories/snapshots")
+    else
+      Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+  },
+  credentials ++= {
+    Seq("SONATYPE_USER", "SONATYPE_PASS").map(sys.env.get) match {
+      case Seq(Some(user), Some(pass)) =>
+        Seq(Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", user, pass))
+      case _ =>
+        Seq()
+    }
+  }
+)
+
+lazy val noPublishSettings = Seq(
+  publish := (),
+  publishLocal := (),
+  publishArtifact := false
+)
+
+def noPublishForScalaVersionSettings(sbv: String*) = Seq(
+  publish := {
+    if (sbv.contains(scalaBinaryVersion.value))
+      ()
+    else
+      publish.value
+  },
+  publishLocal := {
+    if (sbv.contains(scalaBinaryVersion.value))
+      ()
+    else
+      publishLocal.value
+  },
+  publishArtifact := {
+    if (sbv.contains(scalaBinaryVersion.value))
+      false
+    else
+      publishArtifact.value
+  }
+)
+
+lazy val scalaVersionAgnosticCommonSettings = Seq(
+  organization := "io.get-coursier",
+  resolvers ++= Seq(
+    "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
+    Resolver.sonatypeRepo("releases")
+  ),
+  scalacOptions ++= {
+    scalaBinaryVersion.value match {
+      case "2.10" | "2.11" =>
+        Seq("-target:jvm-1.6")
+      case _ =>
+        Seq()
+    }
+  },
+  javacOptions ++= {
+    scalaBinaryVersion.value match {
+      case "2.10" | "2.11" =>
+        Seq(
+          "-source", "1.6",
+          "-target", "1.6"
+        )
+      case _ =>
+        Seq()
+    }
+  },
+  javacOptions in Keys.doc := Seq()
+) ++ releaseSettings
+
+lazy val commonSettings = scalaVersionAgnosticCommonSettings ++ Seq(
+  scalaVersion := "2.12.1",
+  crossScalaVersions := Seq("2.12.1", "2.11.8", "2.10.6"),
+  libraryDependencies ++= {
+    if (scalaBinaryVersion.value == "2.10")
+      Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full))
+    else
+      Seq()
+  }
+)
+
+lazy val pluginSettings =
+  scalaVersionAgnosticCommonSettings ++
+  noPublishForScalaVersionSettings("2.11", "2.12") ++
+  ScriptedPlugin.scriptedSettings ++
+  Seq(
+    scriptedLaunchOpts ++= Seq(
+      "-Xmx1024M",
+      "-XX:MaxPermSize=256M",
+      "-Dplugin.version=" + version.value,
+      "-Dsbttest.base=" + (sourceDirectory.value / "sbt-test").getAbsolutePath
+    ),
+    scriptedBufferLog := false,
+    sbtPlugin := (scalaBinaryVersion.value == "2.10"),
+    resolvers ++= Seq(
+      // added so that 2.10 artifacts of the other modules can be found by
+      // the too-naive-for-now inter-project resolver of the coursier SBT plugin
+      Resolver.sonatypeRepo("snapshots"),
+      // added for sbt-scripted to be fine even with ++2.11.x
+      Resolver.typesafeIvyRepo("releases")
+    )
+  )
+
