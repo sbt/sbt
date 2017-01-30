@@ -14,6 +14,15 @@ install:
   - cmd: SET PATH=C:\sbt\sbt\bin;%JAVA_HOME%\bin;%PATH%
   - cmd: SET SBT_OPTS=-XX:MaxPermSize=2g -Xmx4g
   - cmd: SET COURSIER_NO_TERM=1
+  # required by the sbt-shading scripted tests, disabled for now (see below)
+  # ps: |
+  #   if (!(Test-Path 'C:\Users\appveyor\.m2\repository\org\anarres\jarjar\jarjar-core\1.0.1-coursier-SNAPSHOT')) {
+  #     iex 'git clone https://github.com/alexarchambault/jarjar'
+  #     Set-Location -Path jarjar
+  #     iex 'git checkout 249c8dbb970f8'
+  #     iex './gradlew.bat :jarjar-core:install'
+  #     Set-Location -Path ..
+  #   }
 build_script:
   - sbt ++2.11.8 clean compile coreJVM/publishLocal http-server/publishLocal
   - sbt ++2.10.6 clean compile
@@ -23,6 +32,9 @@ test_script:
   - sbt ++2.12.0 testsJVM/test testsJVM/it:test # Would node be around for testsJS/test?
   - sbt ++2.11.8 testsJVM/test testsJVM/it:test
   - sbt ++2.10.6 testsJVM/test testsJVM/it:test plugin/scripted
+  # not running the scripted tests of sbt-shading here, as these seem to fail randomly on single core machines
+  # (which is kind of worrying)
 cache:
   - C:\Users\appveyor\.ivy2
+  - C:\Users\appveyor\.m2
   - C:\Users\appveyor\.sbt

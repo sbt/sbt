@@ -4,7 +4,20 @@ import scala.xml.{ Node, PrefixedAttribute }
 
 object MakeIvyXml {
 
-  def apply(project: Project): Node = {
+  def apply(project0: Project, shadedConfigOpt: Option[String]): Node = {
+
+    val filterOutDependencies =
+      shadedConfigOpt.toSet[String].flatMap { shadedConfig =>
+        project0
+          .dependencies
+          .collect { case (`shadedConfig`, dep) => dep }
+      }
+
+    val project: Project = project0.copy(
+      dependencies = project0.dependencies.collect {
+        case p @ (_, dep) if !filterOutDependencies(dep) => p
+      }
+    )
 
     val infoAttrs = project.module.attributes.foldLeft[xml.MetaData](xml.Null) {
       case (acc, (k, v)) =>
@@ -31,11 +44,12 @@ object MakeIvyXml {
       </info>
     } % infoAttrs
 
-    val confElems = project.configurations.toVector.map {
-      case (name, extends0) =>
+    val confElems = project.configurations.toVector.collect {
+      case (name, extends0) if shadedConfigOpt != Some(name) =>
+        val extends1 = shadedConfigOpt.fold(extends0)(c => extends0.filter(_ != c))
         val n = <conf name={name} visibility="public" description="" />
-        if (extends0.nonEmpty)
-          n % <x extends={extends0.mkString(",")} />.attributes
+        if (extends1.nonEmpty)
+          n % <x extends={extends1.mkString(",")} />.attributes
         else
           n
     }

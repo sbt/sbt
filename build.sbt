@@ -107,6 +107,28 @@ lazy val commonSettings = scalaVersionAgnosticCommonSettings ++ Seq(
   }
 )
 
+lazy val pluginSettings =
+  scalaVersionAgnosticCommonSettings ++
+  noPublishForScalaVersionSettings("2.11", "2.12") ++
+  ScriptedPlugin.scriptedSettings ++
+  Seq(
+    scriptedLaunchOpts ++= Seq(
+      "-Xmx1024M",
+      "-XX:MaxPermSize=256M",
+      "-Dplugin.version=" + version.value,
+      "-Dsbttest.base=" + (sourceDirectory.value / "sbt-test").getAbsolutePath
+    ),
+    scriptedBufferLog := false,
+    sbtPlugin := (scalaBinaryVersion.value == "2.10"),
+    resolvers ++= Seq(
+      // added so that 2.10 artifacts of the other modules can be found by
+      // the too-naive-for-now inter-project resolver of the coursier SBT plugin
+      Resolver.sonatypeRepo("snapshots"),
+      // added for sbt-scripted to be fine even with ++2.11.x
+      Resolver.typesafeIvyRepo("releases")
+    )
+  )
+
 val scalazVersion = "7.2.7"
 
 lazy val core = crossProject
@@ -550,28 +572,20 @@ lazy val doc = project
 // Don't try to compile that if you're not in 2.10
 lazy val plugin = project
   .dependsOn(coreJvm, cache)
-  .settings(scalaVersionAgnosticCommonSettings)
-  .settings(noPublishForScalaVersionSettings("2.11", "2.12"))
+  .settings(pluginSettings)
   .settings(
-    name := "sbt-coursier",
-    sbtPlugin := (scalaBinaryVersion.value == "2.10"),
-    resolvers ++= Seq(
-      // added so that 2.10 artifacts of the other modules can be found by
-      // the too-naive-for-now inter-project resolver of the coursier SBT plugin
-      Resolver.sonatypeRepo("snapshots"),
-      // added for sbt-scripted to be fine even with ++2.11.x
-      Resolver.typesafeIvyRepo("releases")
-    )
+    name := "sbt-coursier"
   )
-  .settings(ScriptedPlugin.scriptedSettings)
+
+// Don't try to compile that if you're not in 2.10
+lazy val `sbt-shading` = project
+  .dependsOn(plugin)
+  .settings(pluginSettings)
   .settings(
-    scriptedLaunchOpts ++= Seq(
-      "-Xmx1024M",
-      "-XX:MaxPermSize=256M",
-      "-Dplugin.version=" + version.value,
-      "-Dsbttest.base=" + (sourceDirectory.value / "sbt-test").getAbsolutePath
-    ),
-    scriptedBufferLog := false
+    // Warning: this version doesn't handle well class names with '$'s
+    // (so basically any Scala library)
+    // See https://github.com/shevek/jarjar/pull/4
+    libraryDependencies += "org.anarres.jarjar" % "jarjar-core" % "1.0.0"
   )
 
 val http4sVersion = "0.8.6"
@@ -606,7 +620,7 @@ lazy val okhttp = project
   )
 
 lazy val `coursier` = project.in(file("."))
-  .aggregate(coreJvm, coreJs, `fetch-js`, testsJvm, testsJs, cache, bootstrap, cli, plugin, web, doc, `http-server`, okhttp)
+  .aggregate(coreJvm, coreJs, `fetch-js`, testsJvm, testsJs, cache, bootstrap, cli, plugin, `sbt-shading`, web, doc, `http-server`, okhttp)
   .settings(commonSettings)
   .settings(noPublishSettings)
   .settings(releaseSettings)

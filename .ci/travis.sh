@@ -43,9 +43,33 @@ function isMasterOrDevelop() {
 
 SBT_COMMANDS="compile test it:test"
 
+RUN_SHADING_TESTS=0
+
 if echo "$TRAVIS_SCALA_VERSION" | grep -q "^2\.10"; then
   SBT_COMMANDS="$SBT_COMMANDS publishLocal" # to make the scripted tests happy
   SBT_COMMANDS="$SBT_COMMANDS plugin/scripted"
+
+  if [ "$RUN_SHADING_TESTS" = 1 ]; then
+    # for the shading scripted test
+    sudo cp coursier /usr/local/bin/
+
+    JARJAR_VERSION=1.0.1-coursier-SNAPSHOT
+
+    if [ ! -d "$HOME/.m2/repository/org/anarres/jarjar/jarjar-core/$JARJAR_VERSION" ]; then
+      git clone https://github.com/alexarchambault/jarjar.git
+      cd jarjar
+      if ! grep -q "^version=$JARJAR_VERSION\$" gradle.properties; then
+        echo "Expected jarjar version not found" 1>&2
+        exit 1
+      fi
+      git checkout 249c8dbb970f8
+      ./gradlew :jarjar-core:install
+      cd ..
+      rm -rf jarjar
+    fi
+
+    SBT_COMMANDS="$SBT_COMMANDS sbt-shading/scripted"
+  fi
 fi
 
 SBT_COMMANDS="$SBT_COMMANDS tut coreJVM/mimaReportBinaryIssues cache/mimaReportBinaryIssues"
