@@ -28,7 +28,7 @@ build_script:
   - sbt ++2.10.6 coreJVM/publishLocal cache/publishLocal # to make the scripted tests happy
 test_script:
   - ps: Start-Job { & java -jar -noverify C:\projects\coursier\coursier launch -r http://dl.bintray.com/scalaz/releases io.get-coursier:http-server-java7_2.11:1.0.0-SNAPSHOT -- -d /C:/projects/coursier/tests/jvm/src/test/resources/test-repo/http/abc.com -u user -P pass -r realm -v }
-  - sbt ++2.12.0 testsJVM/test testsJVM/it:test # Would node be around for testsJS/test?
+  - sbt ++2.12.1 testsJVM/test testsJVM/it:test # Would node be around for testsJS/test?
   - sbt ++2.11.8 testsJVM/test testsJVM/it:test
   - sbt ++2.10.6 testsJVM/test testsJVM/it:test plugin/scripted plugin/publishLocal sbt-shading/scripted
 cache:
