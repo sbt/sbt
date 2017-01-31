@@ -1,4 +1,4 @@
-package sbt.internal.util
+package sbt.util
 
 trait ShowLines[A] {
   def showLines(a: A): Seq[String]

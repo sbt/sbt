@@ -95,7 +95,7 @@ abstract class EvaluateSettings[Scope] {
       keyString
 
     private[this] def keyString =
-      (static.toSeq.flatMap { case (key, value) => if (value eq this) init.showFullKey(key) :: Nil else Nil }).headOption getOrElse "non-static"
+      (static.toSeq.flatMap { case (key, value) => if (value eq this) init.showFullKey.show(key) :: Nil else Nil }).headOption getOrElse "non-static"
 
     final def get: T = synchronized {
       assert(value != null, toString + " not evaluated")
