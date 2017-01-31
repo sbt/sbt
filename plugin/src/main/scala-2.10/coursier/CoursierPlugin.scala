@@ -55,6 +55,21 @@ object CoursierPlugin extends AutoPlugin {
     )
   )
 
+  def makeIvyXmlBefore[T](
+    task: TaskKey[T],
+    shadedConfigOpt: Option[(String, String)]
+  ): Setting[Task[T]] =
+    // not 100% sure that make writeFiles below happen before the actions triggered by task.value...
+    task := {
+      val currentProject = {
+        val proj = coursierProject.value
+        val publications = coursierPublications.value
+        proj.copy(publications = publications)
+      }
+      IvyXml.writeFiles(currentProject, shadedConfigOpt, ivySbt.value, streams.value.log)
+      task.value
+    }
+
   def coursierSettings(
     shadedConfigOpt: Option[(String, String)],
     packageConfigs: Seq[(Configuration, String)]
@@ -83,6 +98,8 @@ object CoursierPlugin extends AutoPlugin {
       withClassifiers = true,
       sbtClassifiers = true
     ),
+    makeIvyXmlBefore(deliverLocalConfiguration, shadedConfigOpt),
+    makeIvyXmlBefore(deliverConfiguration, shadedConfigOpt),
     update <<= Tasks.updateTask(
       shadedConfigOpt,
       withClassifiers = false

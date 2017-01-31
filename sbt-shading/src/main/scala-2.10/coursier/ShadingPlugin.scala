@@ -1,6 +1,6 @@
 package coursier
 
-import coursier.ivy.IvyXml
+import coursier.ivy.IvyXml.{ mappings => ivyXmlMappings }
 import sbt.Keys._
 import sbt.{AutoPlugin, Compile, Configuration, TaskKey, inConfig}
 
@@ -69,7 +69,7 @@ object ShadingPlugin extends AutoPlugin {
             .map(c => c.copy(extendsConfigs = c.extendsConfigs.filter(_.name != Shaded.name))),
           libraryDependencies := libraryDependencies.in(baseSbtConfiguration).value.filter { dep =>
             val isShaded = dep.configurations.exists { mappings =>
-              IvyXml.mappings(mappings).exists(_._1 == Shaded.name)
+              ivyXmlMappings(mappings).exists(_._1 == Shaded.name)
             }
 
             !isShaded

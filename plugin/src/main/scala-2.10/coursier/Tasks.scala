@@ -844,41 +844,9 @@ object Tasks {
           proj.copy(publications = publications)
         }
 
-      val ivySbt0 = ivySbt.value
-      val ivyCacheManager = ivySbt0.withIvy(streams.value.log)(ivy =>
-        ivy.getResolutionCacheManager
-      )
-
-      val ivyModule = ModuleRevisionId.newInstance(
-        currentProject.module.organization,
-        currentProject.module.name,
-        currentProject.version,
-        currentProject.module.attributes.asJava
-      )
-      val cacheIvyFile = ivyCacheManager.getResolvedIvyFileInCache(ivyModule)
-      val cacheIvyPropertiesFile = ivyCacheManager.getResolvedIvyPropertiesInCache(ivyModule)
-
       val log = streams.value.log
 
       val verbosityLevel = coursierVerbosity.value
-
-      // required for publish to be fine, later on
-      def writeIvyFiles() = {
-        val printer = new scala.xml.PrettyPrinter(80, 2)
-
-        val b = new StringBuilder
-        b ++= """<?xml version="1.0" encoding="UTF-8"?>"""
-        b += '\n'
-        b ++= printer.format(MakeIvyXml(currentProject, shadedConfigOpt.map(_._2)))
-        cacheIvyFile.getParentFile.mkdirs()
-        FileUtil.write(cacheIvyFile, b.result().getBytes("UTF-8"))
-
-        // Just writing an empty file here... Are these only used?
-        cacheIvyPropertiesFile.getParentFile.mkdirs()
-        FileUtil.write(cacheIvyPropertiesFile, "".getBytes("UTF-8"))
-      }
-
-      writeIvyFiles()
 
       val res = {
         if (withClassifiers && sbtClassifiers)

@@ -1,10 +1,49 @@
 package coursier
 
-import scala.xml.{ Node, PrefixedAttribute }
+import coursier.internal.FileUtil
+import org.apache.ivy.core.module.id.ModuleRevisionId
 
-object MakeIvyXml {
+import scala.collection.JavaConverters._
+import scala.xml.{Node, PrefixedAttribute}
 
-  def apply(project0: Project, shadedConfigOpt: Option[String]): Node = {
+object IvyXml {
+
+  // These are required for publish to be fine, later on.
+  def writeFiles(
+    currentProject: Project,
+    shadedConfigOpt: Option[(String, String)],
+    ivySbt: sbt.IvySbt,
+    log: sbt.Logger
+  ): Unit = {
+
+    val ivyCacheManager = ivySbt.withIvy(log)(ivy =>
+      ivy.getResolutionCacheManager
+    )
+
+    val ivyModule = ModuleRevisionId.newInstance(
+      currentProject.module.organization,
+      currentProject.module.name,
+      currentProject.version,
+      currentProject.module.attributes.asJava
+    )
+
+    val cacheIvyFile = ivyCacheManager.getResolvedIvyFileInCache(ivyModule)
+    val cacheIvyPropertiesFile = ivyCacheManager.getResolvedIvyPropertiesInCache(ivyModule)
+
+    val printer = new scala.xml.PrettyPrinter(80, 2)
+
+    val content0 = """<?xml version="1.0" encoding="UTF-8"?>""" + '\n' +
+      printer.format(content(currentProject, shadedConfigOpt.map(_._2)))
+    cacheIvyFile.getParentFile.mkdirs()
+    log.info(s"Writing Ivy file $cacheIvyFile")
+    FileUtil.write(cacheIvyFile, content0.getBytes("UTF-8"))
+
+    // Just writing an empty file here... Are these only used?
+    cacheIvyPropertiesFile.getParentFile.mkdirs()
+    FileUtil.write(cacheIvyPropertiesFile, Array())
+  }
+
+  def content(project0: Project, shadedConfigOpt: Option[String]): Node = {
 
     val filterOutDependencies =
       shadedConfigOpt.toSet[String].flatMap { shadedConfig =>
