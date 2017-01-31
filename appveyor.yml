@@ -32,6 +32,6 @@ test_script:
   - sbt ++2.11.8 testsJVM/test testsJVM/it:test
   - sbt ++2.10.6 testsJVM/test testsJVM/it:test plugin/scripted plugin/publishLocal sbt-shading/scripted
 cache:
-  - C:\Users\appveyor\.ivy2
+  - C:\Users\appveyor\.ivy2\cache
   - C:\Users\appveyor\.m2
   - C:\Users\appveyor\.sbt
