@@ -1,6 +1,7 @@
 import java.io.FileOutputStream
 
-val binaryCompatibilityVersion = "1.0.0-M7"
+val binaryCompatibilityVersion = "1.0.0-M14"
+val binaryCompatibility212Version = "1.0.0-M15"
 
 lazy val IntegrationTest = config("it") extend Test
 
@@ -8,26 +9,21 @@ lazy val scalazVersion = "7.2.7"
 
 lazy val core = crossProject
   .settings(commonSettings)
+  .settings(mimaPreviousArtifactSettings)
   .settings(
     name := "coursier",
     libraryDependencies ++= Seq(
       "org.scalaz" %%% "scalaz-core" % scalazVersion,
       "com.lihaoyi" %%% "fastparse" % "0.4.2"
     ),
-    mimaPreviousArtifacts := {
-      scalaBinaryVersion.value match {
-        case "2.10" | "2.11" =>
-          Set("com.github.alexarchambault" %% moduleName.value % binaryCompatibilityVersion)
-        case _ =>
-          Set()
-      }
-    },
     mimaBinaryIssueFilters ++= {
       import com.typesafe.tools.mima.core._
 
       Seq(
-        // Since 1.0.0-M15
-        // reworked profile activation
+        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.package#Resolution.apply$default$9"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.package#Resolution.apply"),
+        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.core.Resolution.copy$default$9"),
+        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.core.Resolution.copyWithCache$default$8"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Resolution.copy"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Resolution.profileActivation"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Resolution.copyWithCache"),
@@ -37,70 +33,7 @@ lazy val core = crossProject
         ProblemFilters.exclude[MissingTypesProblem]("coursier.core.Activation$"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Activation.apply"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Resolution.profiles"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Resolution.apply"),
-        // Since 1.0.0-M13
-        // reworked VersionConstraint
-        ProblemFilters.exclude[MissingClassProblem]("coursier.core.VersionConstraint$Interval"),
-        ProblemFilters.exclude[MissingClassProblem]("coursier.core.VersionConstraint$Preferred"),
-        ProblemFilters.exclude[MissingClassProblem]("coursier.core.VersionConstraint$Preferred$"),
-        ProblemFilters.exclude[MissingClassProblem]("coursier.core.VersionConstraint$Interval$"),
-        ProblemFilters.exclude[FinalClassProblem]("coursier.core.VersionConstraint"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.core.VersionConstraint.repr"),
-        ProblemFilters.exclude[IncompatibleMethTypeProblem]("coursier.core.VersionConstraint.this"),
-        // Extra `actualVersion` field in `Project`
-        ProblemFilters.exclude[MissingTypesProblem]("coursier.core.Project$"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.core.Project.apply"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.core.Project.copy"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.core.Project.this"),
-        // Reworked Ivy pattern handling
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.pattern"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.copy"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.properties"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.parts"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.substitute"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.this"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.substituteProperties"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.propertyRegex"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.apply"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.variableRegex"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.Pattern.optionalPartRegex"),
-        ProblemFilters.exclude[MissingClassProblem]("coursier.ivy.Pattern$PatternPart$Literal$"),
-        ProblemFilters.exclude[MissingClassProblem]("coursier.ivy.Pattern$PatternPart"),
-        ProblemFilters.exclude[MissingClassProblem]("coursier.ivy.Pattern$PatternPart$"),
-        ProblemFilters.exclude[IncompatibleMethTypeProblem]("coursier.ivy.IvyRepository.apply"),
-        ProblemFilters.exclude[MissingClassProblem]("coursier.ivy.Pattern$PatternPart$Optional$"),
-        ProblemFilters.exclude[MissingClassProblem]("coursier.ivy.Pattern$PatternPart$Literal"),
-        ProblemFilters.exclude[MissingClassProblem]("coursier.ivy.Pattern$PatternPart$Optional"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.ivy.IvyRepository.pattern"),
-        ProblemFilters.exclude[IncompatibleMethTypeProblem]("coursier.ivy.IvyRepository.copy"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.ivy.IvyRepository.properties"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.ivy.IvyRepository.metadataPattern"),
-        ProblemFilters.exclude[IncompatibleMethTypeProblem]("coursier.ivy.IvyRepository.this"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.util.Parse.repository"),
-        // Since 1.0.0-M12
-        // Extra `authentication` field
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.core.Artifact.apply"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.core.Artifact.copy"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.core.Artifact.this"),
-        ProblemFilters.exclude[MissingTypesProblem]("coursier.ivy.IvyRepository$"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.ivy.IvyRepository.apply"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.ivy.IvyRepository.copy"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.ivy.IvyRepository.this"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.maven.MavenRepository.copy"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.maven.MavenRepository.this"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.maven.MavenSource.apply"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.maven.MavenRepository.apply"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.maven.MavenSource.copy"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.maven.MavenSource.this"),
-        // Since 1.0.0-M11
-        // Extra parameter with default value added, problem for forward compatibility only
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.core.ResolutionProcess.next"),
-        // method made final (for - non critical - tail recursion)
-        ProblemFilters.exclude[FinalMethodProblem]("coursier.core.ResolutionProcess.next"),
-        // Since 1.0.0-M10
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.core.Resolution.withParentConfigurations"),
-        // New singleton object, problem for forward compatibility only
-        ProblemFilters.exclude[MissingTypesProblem]("coursier.maven.MavenSource$")
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Resolution.apply")
       )
     }
   )
@@ -185,69 +118,19 @@ lazy val testsJs = tests.js.dependsOn(`fetch-js` % "test")
 lazy val cache = project
   .dependsOn(coreJvm)
   .settings(commonSettings)
+  .settings(mimaPreviousArtifactSettings)
   .settings(
     name := "coursier-cache",
     libraryDependencies += "org.scalaz" %% "scalaz-concurrent" % scalazVersion,
-    mimaPreviousArtifacts := {
-      scalaBinaryVersion.value match {
-        case "2.10" | "2.11" =>
-          Set("com.github.alexarchambault" %% moduleName.value % binaryCompatibilityVersion)
-        case _ =>
-          Set()
-      }
-    },
     mimaBinaryIssueFilters ++= {
       import com.typesafe.tools.mima.core._
 
       Seq(
-        // Since 1.0.0-M13
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.Cache.file"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.Cache.fetch"),
-        // Since 1.0.0-M12
-        // Remove deprecated / unused helper method
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.Cache.readFully"),
-        // Since 1.0.0-M11
-        // Add constructor parameter on FileError - shouldn't be built by users anyway
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.FileError.this"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.FileError#Recoverable.this"),
-        // Since 1.0.0-M10
-        // methods that should have been private anyway
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay.update"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay.fallbackMode_="),
-        // cache argument type changed from `Seq[(String, File)]` to `File`
-        ProblemFilters.exclude[IncompatibleMethTypeProblem]("coursier.Cache.file"),
-        ProblemFilters.exclude[IncompatibleMethTypeProblem]("coursier.Cache.fetch"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.Cache.default"),
-        ProblemFilters.exclude[IncompatibleMethTypeProblem]("coursier.Cache.validateChecksum"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.Cache.defaultBase"),
-        // New methdos in Cache.Logger
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.Cache#Logger.checkingUpdates"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.Cache#Logger.checkingUpdatesResult"),
-        // Better overload of Cache.Logger.downloadLength, deprecate previous one
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.Cache#Logger.downloadLength"),
-        // Changes to private class TermDisplay#Info
-        ProblemFilters.exclude[MissingClassProblem]("coursier.TermDisplay$Info$"),
-        ProblemFilters.exclude[AbstractClassProblem]("coursier.TermDisplay$Info"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.downloaded"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.productElement"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.productArity"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.canEqual"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.length"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.display"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.fraction"),
-        // Since 1.0.0-M9
-        // Added an optional extra parameter to FileError.NotFound - only
-        // its unapply method should break compatibility at the source level.
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.FileError#NotFound.copy"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.FileError#NotFound.this"),
-        ProblemFilters.exclude[MissingTypesProblem]("coursier.FileError$NotFound$"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.FileError#NotFound.apply"),
-        // Since 1.0.0-M8
-        ProblemFilters.exclude[MissingTypesProblem]("coursier.TermDisplay$Info$"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.apply"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.copy"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.pct"),
-        ProblemFilters.exclude[MissingMethodProblem]("coursier.TermDisplay#Info.this")
+        ProblemFilters.exclude[MissingClassProblem]("coursier.TermDisplay$Message$Stop$"),
+        ProblemFilters.exclude[MissingClassProblem]("coursier.TermDisplay$Message"),
+        ProblemFilters.exclude[MissingClassProblem]("coursier.TermDisplay$Message$"),
+        ProblemFilters.exclude[MissingClassProblem]("coursier.TermDisplay$Message$Update$"),
+        ProblemFilters.exclude[MissingClassProblem]("coursier.TermDisplay$UpdateDisplayThread")
       )
     }
   )
@@ -639,3 +522,13 @@ lazy val pluginSettings =
     )
   )
 
+lazy val mimaPreviousArtifactSettings = Seq(
+  mimaPreviousArtifacts := {
+    val version = scalaBinaryVersion.value match {
+      case "2.12" => binaryCompatibility212Version
+      case _ => binaryCompatibilityVersion
+    }
+
+    Set(organization.value %% moduleName.value % version)
+  }
+)
