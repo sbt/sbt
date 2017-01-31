@@ -43,7 +43,7 @@ function isMasterOrDevelop() {
 
 SBT_COMMANDS="compile test it:test"
 
-RUN_SHADING_TESTS=0
+RUN_SHADING_TESTS=1
 
 if echo "$TRAVIS_SCALA_VERSION" | grep -q "^2\.10"; then
   SBT_COMMANDS="$SBT_COMMANDS publishLocal" # to make the scripted tests happy
@@ -68,7 +68,7 @@ if echo "$TRAVIS_SCALA_VERSION" | grep -q "^2\.10"; then
       rm -rf jarjar
     fi
 
-    SBT_COMMANDS="$SBT_COMMANDS sbt-shading/scripted"
+    SBT_COMMANDS="$SBT_COMMANDS plugin/publishLocal sbt-shading/scripted"
   fi
 fi
 
