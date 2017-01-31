@@ -10,8 +10,6 @@ final class ObjectEvent[A](
   val message: A,
   val channelName: Option[String],
   val execId: Option[String],
-  val ev: JsonFormat[A],
-  val clazz: Class[A]
+  val tag: String
 ) extends Serializable {
-
 }

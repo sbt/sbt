@@ -5,11 +5,10 @@ import java.io.{ PrintStream, PrintWriter }
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicInteger
 import org.apache.logging.log4j.{ Level => XLevel }
-import org.apache.logging.log4j.message.{ Message, ParameterizedMessage, ObjectMessage, ReusableObjectMessage }
+import org.apache.logging.log4j.message.{ Message, ObjectMessage, ReusableObjectMessage }
 import org.apache.logging.log4j.core.{ LogEvent => XLogEvent }
 import org.apache.logging.log4j.core.appender.AbstractAppender
 import org.apache.logging.log4j.core.layout.PatternLayout
-import org.apache.logging.log4j.core.async.RingBufferLogEvent
 
 import ConsoleAppender._
 
@@ -246,25 +245,30 @@ class ConsoleAppender private[ConsoleAppender] (
     {
       val level = ConsoleAppender.toLevel(event.getLevel)
       val message = event.getMessage
-      val str = messageToString(message)
-      appendLog(level, str)
+      // val str = messageToString(message)
+      appendMessage(level, message)
     }
 
-  def messageToString(msg: Message): String =
+  def appendMessage(level: Level.Value, msg: Message): Unit =
     msg match {
-      case p: ParameterizedMessage  => p.getFormattedMessage
-      case r: RingBufferLogEvent    => r.getFormattedMessage
-      case o: ObjectMessage         => objectToString(o.getParameter)
-      case o: ReusableObjectMessage => objectToString(o.getParameter)
-      case _                        => msg.getFormattedMessage
+      case o: ObjectMessage         => objectToLines(o.getParameter) foreach { appendLog(level, _) }
+      case o: ReusableObjectMessage => objectToLines(o.getParameter) foreach { appendLog(level, _) }
+      case _                        => appendLog(level, msg.getFormattedMessage)
     }
-  def objectToString(o: AnyRef): String =
+  def objectToLines(o: AnyRef): Vector[String] =
     o match {
-      case x: StringEvent    => x.message
-      case x: ObjectEvent[_] => x.message.toString
-      case _                 => o.toString
+      case x: StringEvent    => Vector(x.message)
+      case x: ObjectEvent[_] => objectEventToLines(x)
+      case _                 => Vector(o.toString)
     }
-
+  def objectEventToLines(oe: ObjectEvent[_]): Vector[String] =
+    {
+      val tag = oe.tag
+      LogExchange.stringCodec[AnyRef](tag) match {
+        case Some(codec) => codec.showLines(oe.message.asInstanceOf[AnyRef]).toVector
+        case _           => Vector(oe.message.toString)
+      }
+    }
   def messageColor(level: Level.Value) = RESET
   def labelColor(level: Level.Value) =
     level match {

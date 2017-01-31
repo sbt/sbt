@@ -4,6 +4,7 @@ import sbt.util._
 import org.apache.logging.log4j.{ Logger => XLogger }
 import org.apache.logging.log4j.message.ObjectMessage
 import sjsonnew.JsonFormat
+import scala.reflect.runtime.universe.TypeTag
 
 /**
  * Delegates log events to the associated LogExchange.
@@ -24,16 +25,24 @@ class ManagedLogger(
     }
   override def success(message: => String): Unit = xlogger.info(message)
 
-  final def debugEvent[A: JsonFormat](event: => A): Unit = logEvent(Level.Debug, event)
-  final def infoEvent[A: JsonFormat](event: => A): Unit = logEvent(Level.Info, event)
-  final def warnEvent[A: JsonFormat](event: => A): Unit = logEvent(Level.Warn, event)
-  final def errorEvent[A: JsonFormat](event: => A): Unit = logEvent(Level.Error, event)
-  def logEvent[A: JsonFormat](level: Level.Value, event: => A): Unit =
+  def registerStringCodec[A: ShowLines: TypeTag]: Unit =
+    {
+      val tag = StringTypeTag[A]
+      val ev = implicitly[ShowLines[A]]
+      // println(s"registerStringCodec ${tag.key}")
+      val _ = LogExchange.getOrElseUpdateStringCodec(tag.key, ev)
+    }
+  final def debugEvent[A: JsonFormat: TypeTag](event: => A): Unit = logEvent(Level.Debug, event)
+  final def infoEvent[A: JsonFormat: TypeTag](event: => A): Unit = logEvent(Level.Info, event)
+  final def warnEvent[A: JsonFormat: TypeTag](event: => A): Unit = logEvent(Level.Warn, event)
+  final def errorEvent[A: JsonFormat: TypeTag](event: => A): Unit = logEvent(Level.Error, event)
+  def logEvent[A: JsonFormat: TypeTag](level: Level.Value, event: => A): Unit =
     {
       val v: A = event
-      val clazz: Class[A] = v.getClass.asInstanceOf[Class[A]]
-      val ev = LogExchange.getOrElseUpdateJsonCodec(clazz, implicitly[JsonFormat[A]])
-      val entry: ObjectEvent[A] = new ObjectEvent(level, v, channelName, execId, ev, clazz)
+      val tag = StringTypeTag[A]
+      LogExchange.getOrElseUpdateJsonCodec(tag.key, implicitly[JsonFormat[A]])
+      // println("logEvent " + tag.key)
+      val entry: ObjectEvent[A] = new ObjectEvent(level, v, channelName, execId, tag.key)
       xlogger.log(
         ConsoleAppender.toXLevel(level),
         new ObjectMessage(entry)

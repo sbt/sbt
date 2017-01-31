@@ -20,6 +20,33 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
     log.infoEvent(1)
   }
 
+  it should "allow registering Show[Int]" in {
+    import sjsonnew.BasicJsonProtocol._
+    val log = LogExchange.logger("foo")
+    LogExchange.bindLoggerAppenders("foo", List(LogExchange.asyncStdout -> Level.Info))
+    implicit val intShow: ShowLines[Int] = ShowLines({ (x: Int) => Vector(s"String representation of $x") })
+    log.registerStringCodec[Int]
+    log.infoEvent(1)
+  }
+
+  it should "allow registering Show[Array[Int]]" in {
+    import sjsonnew.BasicJsonProtocol._
+    val log = LogExchange.logger("foo")
+    LogExchange.bindLoggerAppenders("foo", List(LogExchange.asyncStdout -> Level.Info))
+    implicit val intArrayShow: ShowLines[Array[Int]] = ShowLines({ (x: Array[Int]) => Vector(s"String representation of ${x.mkString}") })
+    log.registerStringCodec[Array[Int]]
+    log.infoEvent(Array(1, 2, 3))
+  }
+
+  it should "allow registering Show[Vector[Vector[Int]]]" in {
+    import sjsonnew.BasicJsonProtocol._
+    val log = LogExchange.logger("foo")
+    LogExchange.bindLoggerAppenders("foo", List(LogExchange.asyncStdout -> Level.Info))
+    implicit val intVectorShow: ShowLines[Vector[Vector[Int]]] = ShowLines({ (xss: Vector[Vector[Int]]) => Vector(s"String representation of $xss") })
+    log.registerStringCodec[Vector[Vector[Int]]]
+    log.infoEvent(Vector(Vector(1, 2, 3)))
+  }
+
   "global logging" should "log immediately after initialization" in {
     // this is passed into State normally
     val global0 = initialGlobalLogging
