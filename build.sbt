@@ -5,7 +5,7 @@ val binaryCompatibility212Version = "1.0.0-M15"
 
 lazy val IntegrationTest = config("it") extend Test
 
-lazy val scalazVersion = "7.2.7"
+lazy val scalazVersion = "7.2.8"
 
 lazy val core = crossProject
   .settings(commonSettings)
