@@ -76,7 +76,7 @@ Enable the SBT plugin by adding
 addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.0-M15")
 ```
 to `~/.sbt/0.13/plugins/build.sbt` (enables it globally), or to the `project/plugins.sbt` file
-of an SBT project. Tested with SBT 0.13.8 / 0.13.9 / 0.13.11 / 0.13.12.
+of an SBT project. Tested with SBT 0.13.8 / 0.13.9 / 0.13.11 / 0.13.12 / 0.13.13.
 
 
 ### Command-line
@@ -220,7 +220,7 @@ addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.0-M15")
 to `~/.sbt/0.13/plugins/build.sbt`
 
 To enable it on a per-project basis, add it only to the `project/plugins.sbt` of an SBT project.
-The SBT plugin has been tested only with SBT 0.13.8 / 0.13.9 / 0.13.11 / 0.13.12. It doesn't currently work with the SBT 1.0 milestones.
+The SBT plugin has been tested only with SBT 0.13.8 / 0.13.9 / 0.13.11 / 0.13.12 / 0.13.13. It doesn't currently work with the SBT 1.0 milestones.
 
 Once enabled, the `update`, `updateClassifiers`, and `updateSbtClassifiers` commands are taken care of by coursier. These
 provide more output about what's going on than their default implementations do.
