@@ -1,6 +1,6 @@
 package coursier
 
-import coursier.maven.MavenSource
+import scala.language.higherKinds
 
 import scalaz._
 

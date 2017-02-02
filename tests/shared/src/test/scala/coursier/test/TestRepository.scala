@@ -3,6 +3,8 @@ package test
 
 import coursier.core._
 
+import scala.language.higherKinds
+
 import scalaz.{ Monad, EitherT }
 import scalaz.Scalaz._
 

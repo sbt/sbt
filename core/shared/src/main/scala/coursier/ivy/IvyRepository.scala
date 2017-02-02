@@ -3,6 +3,8 @@ package coursier.ivy
 import coursier.Fetch
 import coursier.core._
 
+import scala.language.higherKinds
+
 import scalaz._
 import scalaz.Scalaz._
 

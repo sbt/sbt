@@ -1,5 +1,7 @@
 package coursier
 
+import scala.language.higherKinds
+
 import scalaz.{ -\/, \/-, Monad, EitherT }
 
 case class InterProjectRepository(projects: Seq[Project]) extends Repository {
