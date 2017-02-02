@@ -63,7 +63,7 @@ object Resolution {
     type Key = (String, String, String)
 
     def key(dep: Dependency): Key =
-      (dep.module.organization, dep.module.name, dep.attributes.`type`)
+      (dep.module.organization, dep.module.name, if (dep.attributes.`type`.isEmpty) "jar" else dep.attributes.`type`)
 
     def add(
       dict: Map[Key, (String, Dependency)],

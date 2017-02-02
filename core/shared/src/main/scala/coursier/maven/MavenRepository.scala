@@ -45,19 +45,6 @@ object MavenRepository {
     "test" -> Seq("runtime")
   )
 
-  val defaultPackaging = "jar"
-
-  def defaultPublications(moduleName: String, packaging: String) = Seq(
-    "compile" -> Publication(
-      moduleName,
-      packaging,
-      MavenSource.typeExtension(packaging),
-      MavenSource.typeDefaultClassifier(packaging)
-    ),
-    "docs" -> Publication(moduleName, "doc", "jar", "javadoc"),
-    "sources" -> Publication(moduleName, "src", "jar", "sources")
-  )
-
   def dirModuleName(module: Module, sbtAttrStub: Boolean): String =
     if (sbtAttrStub) {
       var name = module.name
@@ -69,10 +56,6 @@ object MavenRepository {
     } else
       module.name
 
-  val ignorePackaging = Set(
-    Module("org.apache.zookeeper", "zookeeper", Map.empty)
-  )
-
 }
 
 final case class MavenRepository(
@@ -80,8 +63,7 @@ final case class MavenRepository(
   changing: Option[Boolean] = None,
   /** Hackish hack for sbt plugins mainly - what this does really sucks */
   sbtAttrStub: Boolean = false,
-  authentication: Option[Authentication] = None,
-  packagingBlacklist: Set[Module] = MavenRepository.ignorePackaging
+  authentication: Option[Authentication] = None
 ) extends Repository {
 
   import Repository._
@@ -262,30 +244,89 @@ final case class MavenRepository(
     F: Monad[F]
   ): EitherT[F, String, Project] = {
 
-    fetch(projectArtifact(module, version, versioningValue)).flatMap { str =>
-      EitherT {
-        F.point[String \/ Project] {
-          for {
-            xml <- \/.fromEither(compatibility.xmlParse(str))
-            _ <- if (xml.label == "project") \/-(()) else -\/("Project definition not found")
-            proj <- Pom.project(xml)
-          } yield {
-            val packagingOpt =
-              if (packagingBlacklist(module))
-                None
-              else
-                Pom.packagingOpt(xml)
+    def parseRawPom(str: String) =
+      for {
+        xml <- \/.fromEither(compatibility.xmlParse(str))
+        _ <- if (xml.label == "project") \/-(()) else -\/("Project definition not found")
+        proj <- Pom.project(xml)
+      } yield proj
 
-            proj.copy(
-              configurations = defaultConfigurations,
-              publications = defaultPublications(
-                module.name,
-                packagingOpt.getOrElse(defaultPackaging)
-              )
-            )
-          }
+    def artifactFor(url: String) =
+      Artifact(
+        url,
+        Map.empty,
+        Map.empty,
+        Attributes("", ""),
+        changing = true,
+        authentication
+      )
+
+    def isArtifact(fileName: String, prefix: String): Option[(String, String)] =
+      // TODO There should be a regex for that...
+      if (fileName.startsWith(prefix)) {
+        val end = fileName.stripPrefix(prefix)
+        val idx = end.lastIndexOf('.')
+        if (idx >= 0) {
+          val ext = end.drop(idx + 1)
+          val rem = end.take(idx)
+          if (rem.isEmpty)
+            Some(("", ext))
+          else if (rem.startsWith("-"))
+            Some((rem.drop(1), ext))
+          else
+            None
+        } else
+          None
+      } else
+        None
+
+
+    val listFilesUrl = urlFor(modulePath(module, version)) + "/"
+
+    for {
+      str <- fetch(projectArtifact(module, version, versioningValue))
+      rawListFilesPage <- fetch(artifactFor(listFilesUrl))
+      proj <- EitherT(F.point[String \/ Project](parseRawPom(str)))
+    } yield {
+
+      val files = coursier.core.compatibility.listWebPageFiles(listFilesUrl, rawListFilesPage)
+
+      val versioning = proj
+        .snapshotVersioning
+        .flatMap(versioning =>
+          mavenVersioning(versioning, "", "")
+        )
+
+      val prefix = s"${module.name}-${versioning.getOrElse(version)}"
+
+      val packagingTpeMap = proj.packagingOpt
+        .map { packaging =>
+          (MavenSource.typeDefaultClassifier(packaging), MavenSource.typeExtension(packaging)) -> packaging
         }
-      }
+        .toMap
+
+      val foundPublications = files
+        .flatMap(isArtifact(_, prefix))
+        .map {
+          case (classifier, ext) =>
+            val tpe = packagingTpeMap.getOrElse(
+              (classifier, ext),
+              MavenSource.classifierExtensionDefaultTypeOpt(classifier, ext).getOrElse(ext)
+            )
+            val config = MavenSource.typeDefaultConfig(tpe).getOrElse("compile")
+            config -> Publication(
+              module.name,
+              tpe,
+              ext,
+              classifier
+            )
+        }
+
+      proj.copy(
+        actualVersionOpt = Some(version),
+        configurations = defaultConfigurations,
+        publications = foundPublications
+      )
     }
   }
 

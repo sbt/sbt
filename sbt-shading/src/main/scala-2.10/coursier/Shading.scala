@@ -60,6 +60,7 @@ object Shading {
     res: Resolution,
     configs: Map[String, Set[String]],
     artifactFilesOrErrors: Map[Artifact, FileError \/ File],
+    classpathTypes: Set[String],
     shadingNamespace: String,
     baseConfig: String,
     shadedConf: String,
@@ -97,7 +98,12 @@ object Shading {
       )
     }
 
-    val dependencyArtifacts = res.dependencyArtifacts.toMap
+    val dependencyArtifacts = res.dependencyArtifacts
+      .filter { case (_, a) => classpathTypes(a.`type`) }
+      .groupBy(_._1)
+      .mapValues(_.map(_._2))
+      .iterator
+      .toMap
 
     val artifactFilesOrErrors0 = artifactFilesOrErrors
       .collect {
@@ -121,6 +127,7 @@ object Shading {
       .dependencies
       .toSeq
       .flatMap(dependencyArtifacts.get)
+      .flatten
       .map(_.url)
       .flatMap(artifactFilesOrErrors0.get)
 

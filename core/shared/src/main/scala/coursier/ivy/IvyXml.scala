@@ -80,7 +80,7 @@ object IvyXml {
             version,
             toConf,
             allConfsExcludes ++ excludes.getOrElse(fromConf, Set.empty),
-            Attributes("jar", ""), // should come from possible artifact nodes
+            Attributes("", ""), // should come from possible artifact nodes
             optional = false,
             transitive = transitive
           )
@@ -155,6 +155,7 @@ object IvyXml {
         Nil,
         Nil,
         Nil,
+        None,
         None,
         None,
         None,

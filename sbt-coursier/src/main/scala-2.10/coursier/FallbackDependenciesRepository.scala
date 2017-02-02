@@ -78,8 +78,10 @@ final case class FallbackDependenciesRepository(
       fallbacks.get(dependency.moduleVersion) match {
         case None => Nil
         case Some((url, changing)) =>
+          val url0 = url.toString
+          val ext = url0.substring(url0.lastIndexOf('.') + 1)
           Seq(
-            Artifact(url.toString, Map.empty, Map.empty, Attributes("jar", ""), changing, None)
+            Artifact(url0, Map.empty, Map.empty, Attributes(ext, ""), changing, None)
           )
       }
   }
@@ -118,6 +120,7 @@ final case class FallbackDependenciesRepository(
                 Nil,
                 Nil,
                 Nil,
+                None,
                 None,
                 None,
                 None,

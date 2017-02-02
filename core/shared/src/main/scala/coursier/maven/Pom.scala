@@ -28,9 +28,6 @@ object Pom {
   private def readVersion(node: Node) =
     text(node, "version", "Version").getOrElse("").trim
 
-  private val defaultType = "jar"
-  private val defaultClassifier = ""
-
   def dependency(node: Node): String \/ (String, Dependency) = {
     for {
       mod <- module(node)
@@ -52,7 +49,7 @@ object Pom {
         version0,
         "",
         exclusions.map(mod => (mod.organization, mod.name)).toSet,
-        Attributes(typeOpt getOrElse defaultType, classifierOpt getOrElse defaultClassifier),
+        Attributes(typeOpt.getOrElse(""), classifierOpt.getOrElse("")),
         optional,
         transitive = true
       )
@@ -253,6 +250,7 @@ object Pom {
         profiles,
         None,
         None,
+        packagingOpt(pom),
         None,
         Nil,
         Info(

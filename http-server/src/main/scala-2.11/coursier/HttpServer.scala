@@ -5,10 +5,10 @@ import java.net.NetworkInterface
 import java.nio.channels.{ FileLock, OverlappingFileLockException }
 
 import org.http4s.dsl._
-import org.http4s.headers.Authorization
+import org.http4s.headers.{ Authorization, `Content-Type` }
 import org.http4s.server.HttpService
 import org.http4s.server.blaze.BlazeBuilder
-import org.http4s.{ BasicCredentials, Challenge, EmptyBody, Request, Response }
+import org.http4s.{ BasicCredentials, Challenge, EmptyBody, MediaType, Request, Response }
 
 import caseapp._
 
@@ -45,7 +45,10 @@ final case class HttpServerApp(
     password: String,
   @ExtraName("r")
   @ValueDescription("realm")
-    realm: String
+    realm: String,
+  @ExtraName("l")
+  @HelpMessage("Generate content listing pages for directories")
+    listPages: Boolean
 ) extends App {
 
   val baseDir = new File(if (directory.isEmpty) "." else directory)
@@ -171,16 +174,65 @@ final case class HttpServerApp(
         Locked()
   }
 
+  def isDirectory(f: File): Task[Option[Boolean]] =
+    Task {
+      if (f.isDirectory)
+        Some(true)
+      else if (f.isFile)
+        Some(false)
+      else
+        None
+    }
+
+  def directoryListingPage(dir: File, title: String): Task[String] =
+    Task {
+      val entries = dir
+        .listFiles()
+        .flatMap { f =>
+          def name = f.getName
+          if (f.isDirectory)
+            Seq(name + "/")
+          else if (f.isFile)
+            Seq(name)
+          else
+            Nil
+        }
+
+      // meh escaping
+      // TODO Use to scalatags to generate that
+      s"""<!DOCTYPE html>
+         |<html>
+         |<head>
+         |<title>$title</title>
+         |</head>
+         |<body>
+         |<ul>
+         |${entries.map(e => "  <li><a href=\"" + e + "\">" + e + "</a></li>").mkString("\n")}
+         |</ul>
+         |</body>
+         |</html>
+       """.stripMargin
+    }
+
   def getService = authenticated {
     case (method @ (GET | HEAD)) -> path =>
       if (verbosityLevel >= 1)
         Console.err.println(s"${method.name} $path")
 
-      val f = new File(baseDir, path.toList.mkString("/"))
-      val resp = if (f.exists())
-        Ok(f)
-      else
-        NotFound()
+      val relPath = path.toList.mkString("/")
+      val f = new File(baseDir, relPath)
+      val resp =
+        for {
+          isDirOpt <- isDirectory(f)
+          resp <- isDirOpt match {
+            case Some(true) if listPages =>
+              directoryListingPage(f, relPath).flatMap(page =>
+                Ok(page).withContentType(Some(`Content-Type`(MediaType.`text/html`)))
+              )
+            case Some(false) => Ok(f)
+            case _ => NotFound()
+          }
+        } yield resp
 
       method match {
         case HEAD =>

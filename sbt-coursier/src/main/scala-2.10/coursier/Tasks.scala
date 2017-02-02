@@ -118,7 +118,6 @@ object Tasks {
       lazy val projId = projectID.in(projectRef).get(state)
       lazy val sv = scalaVersion.in(projectRef).get(state)
       lazy val sbv = scalaBinaryVersion.in(projectRef).get(state)
-      lazy val defaultArtifactType = coursierDefaultArtifactType.in(projectRef).get(state)
 
       for {
         allDependencies <- allDependenciesTask
@@ -129,8 +128,7 @@ object Tasks {
           allDependencies,
           configurations.map { cfg => cfg.name -> cfg.extendsConfigs.map(_.name) }.toMap,
           sv,
-          sbv,
-          defaultArtifactType
+          sbv
         )
       }
     }
@@ -333,15 +331,13 @@ object Tasks {
         if (sbtClassifiers) {
           val sv = scalaVersion.value
           val sbv = scalaBinaryVersion.value
-          val defaultArtifactType = coursierDefaultArtifactType.value
 
           val proj = FromSbt.project(
             cm.id,
             cm.modules,
             cm.configurations.map(cfg => cfg.name -> cfg.extendsConfigs.map(_.name)).toMap,
             sv,
-            sbv,
-            defaultArtifactType
+            sbv
           )
 
           val fallbackDeps = FromSbt.fallbackDependencies(
@@ -828,15 +824,13 @@ object Tasks {
         if (sbtClassifiers) {
           val sv = scalaVersion.value
           val sbv = scalaBinaryVersion.value
-          val defaultArtifactType = coursierDefaultArtifactType.value
 
           FromSbt.project(
             cm.id,
             cm.modules,
             cm.configurations.map(cfg => cfg.name -> cfg.extendsConfigs.map(_.name)).toMap,
             sv,
-            sbv,
-            defaultArtifactType
+            sbv
           )
         } else {
           val proj = coursierProject.value
@@ -977,15 +971,13 @@ object Tasks {
         val cm = coursierSbtClassifiersModule.value
         val sv = scalaVersion.value
         val sbv = scalaBinaryVersion.value
-        val defaultArtifactType = coursierDefaultArtifactType.value
 
         FromSbt.project(
           cm.id,
           cm.modules,
           cm.configurations.map(cfg => cfg.name -> cfg.extendsConfigs.map(_.name)).toMap,
           sv,
-          sbv,
-          defaultArtifactType
+          sbv
         )
       } else {
         val proj = coursierProject.value

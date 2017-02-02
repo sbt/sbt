@@ -37,6 +37,7 @@ function isMasterOrDevelop() {
   -- \
     -d tests/jvm/src/test/resources/test-repo/http/abc.com \
     -u user -P pass -r realm \
+    --list-pages \
     -v &
 
 # TODO Add coverage once https://github.com/scoverage/sbt-scoverage/issues/111 is fixed

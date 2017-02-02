@@ -20,6 +20,23 @@ lazy val core = crossProject
       import com.typesafe.tools.mima.core._
 
       Seq(
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.defaultPublications"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.defaultPackaging"),
+        ProblemFilters.exclude[MissingClassProblem]("coursier.maven.MavenSource$DocSourcesArtifactExtensions"),
+        ProblemFilters.exclude[MissingTypesProblem]("coursier.core.Project$"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Project.apply"),
+        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.core.Project.copy$default$13"),
+        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.core.Project.copy$default$12"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Project.copy"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Project.this"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.copy$default$5"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.packagingBlacklist"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.copy"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.this"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.apply$default$5"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.ignorePackaging"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.<init>$default$5"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.apply"),
         ProblemFilters.exclude[FinalClassProblem]("coursier.core.Activation$Os"),
         ProblemFilters.exclude[FinalClassProblem]("coursier.core.Version"),
         ProblemFilters.exclude[FinalClassProblem]("coursier.core.Authentication"),

@@ -4,7 +4,6 @@ package object test {
 
   implicit class DependencyOps(val underlying: Dependency) extends AnyVal {
     def withCompileScope: Dependency = underlying.copy(configuration = "compile")
-    def withJarAttributeType: Dependency = underlying.copy(attributes = underlying.attributes.copy(`type` = "jar"))
   }
 
   implicit class ResolutionOps(val underlying: Resolution) extends AnyVal {
@@ -62,6 +61,7 @@ package object test {
       profiles: Seq[Profile] = Seq.empty,
       versions: Option[core.Versions] = None,
       snapshotVersioning: Option[core.SnapshotVersioning] = None,
+      packaging: Option[String] = None,
       publications: Seq[(String, core.Publication)] = Nil
     ): Project =
       core.Project(
@@ -76,6 +76,7 @@ package object test {
         versions,
         snapshotVersioning,
         None,
+        packaging,
         publications,
         Info.empty
       )
