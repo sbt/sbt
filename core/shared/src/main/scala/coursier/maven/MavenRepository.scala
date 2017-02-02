@@ -90,20 +90,29 @@ final case class MavenRepository(
   val root0 = if (root.endsWith("/")) root else root + "/"
   val source = MavenSource(root0, changing, sbtAttrStub, authentication)
 
+  private def modulePath(
+    module: Module,
+    version: String
+  ): Seq[String] =
+    module.organization.split('.').toSeq ++ Seq(
+      dirModuleName(module, sbtAttrStub),
+      version
+    )
+
+  private def urlFor(path: Seq[String]): String =
+    root0 + path.map(encodeURIComponent).mkString("/")
+
   def projectArtifact(
     module: Module,
     version: String,
     versioningValue: Option[String]
   ): Artifact = {
 
-    val path = module.organization.split('.').toSeq ++ Seq(
-      dirModuleName(module, sbtAttrStub),
-      version,
+    val path = modulePath(module, version) :+
       s"${module.name}-${versioningValue getOrElse version}.pom"
-    )
 
     Artifact(
-      root0 + path.map(encodeURIComponent).mkString("/"),
+      urlFor(path),
       Map.empty,
       Map.empty,
       Attributes("pom", ""),
@@ -123,7 +132,7 @@ final case class MavenRepository(
 
     val artifact =
       Artifact(
-        root0 + path.map(encodeURIComponent).mkString("/"),
+        urlFor(path),
         Map.empty,
         Map.empty,
         Attributes("pom", ""),
@@ -141,15 +150,11 @@ final case class MavenRepository(
     version: String
   ): Option[Artifact] = {
 
-    val path = module.organization.split('.').toSeq ++ Seq(
-      dirModuleName(module, sbtAttrStub),
-      version,
-      "maven-metadata.xml"
-    )
+    val path = modulePath(module, version) :+ "maven-metadata.xml"
 
     val artifact =
       Artifact(
-        root0 + path.map(encodeURIComponent).mkString("/"),
+        urlFor(path),
         Map.empty,
         Map.empty,
         Attributes("pom", ""),
