@@ -345,16 +345,13 @@ lazy val doc = project
   )
 
 // Don't try to compile that if you're not in 2.10
-lazy val plugin = project
+lazy val `sbt-coursier` = project
   .dependsOn(coreJvm, cache)
   .settings(pluginSettings)
-  .settings(
-    name := "sbt-coursier"
-  )
 
 // Don't try to compile that if you're not in 2.10
 lazy val `sbt-shading` = project
-  .dependsOn(plugin)
+  .dependsOn(`sbt-coursier`)
   .settings(pluginSettings)
   .settings(
     // Warning: this version doesn't handle well class names with '$'s
@@ -404,7 +401,7 @@ lazy val `coursier` = project.in(file("."))
     cache,
     bootstrap,
     cli,
-    plugin,
+    `sbt-coursier`,
     `sbt-shading`,
     web,
     doc,
