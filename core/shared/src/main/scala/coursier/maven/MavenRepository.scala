@@ -75,7 +75,7 @@ object MavenRepository {
 
 }
 
-case class MavenRepository(
+final case class MavenRepository(
   root: String,
   changing: Option[Boolean] = None,
   /** Hackish hack for sbt plugins mainly - what this does really sucks */

@@ -3,7 +3,7 @@ package cli
 
 import caseapp._
 
-case class Resolve(
+final case class Resolve(
   @Recurse
     common: CommonOptions
 ) extends App {

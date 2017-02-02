@@ -2,7 +2,7 @@ package coursier.maven
 
 import coursier.core._
 
-case class MavenSource(
+final case class MavenSource(
   root: String,
   changing: Option[Boolean] = None,
   /** See doc on MavenRepository */

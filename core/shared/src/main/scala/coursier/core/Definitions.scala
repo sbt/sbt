@@ -219,7 +219,7 @@ object Artifact {
   }
 }
 
-case class Authentication(
+final case class Authentication(
   user: String,
   password: String
 ) {

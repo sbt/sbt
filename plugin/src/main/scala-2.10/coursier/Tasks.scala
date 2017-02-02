@@ -250,7 +250,7 @@ object Tasks {
     }
   }
 
-  private case class ResolutionCacheKey(
+  private final case class ResolutionCacheKey(
     project: Project,
     repositories: Seq[Repository],
     userEnabledProfiles: Set[String],
@@ -258,7 +258,7 @@ object Tasks {
     sbtClassifiers: Boolean
   )
 
-  private case class ReportCacheKey(
+  private final case class ReportCacheKey(
     project: Project,
     resolution: Resolution,
     withClassifiers: Boolean,

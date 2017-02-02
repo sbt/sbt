@@ -15,11 +15,11 @@ sealed abstract class Credentials extends Product with Serializable {
 
 object Credentials {
 
-  case class Direct(user: String, password: String) extends Credentials {
+  final case class Direct(user: String, password: String) extends Credentials {
     override def toString = s"Direct($user, ******)"
   }
 
-  case class FromFile(file: File) extends Credentials {
+  final case class FromFile(file: File) extends Credentials {
 
     private lazy val props = {
       val p = new Properties()

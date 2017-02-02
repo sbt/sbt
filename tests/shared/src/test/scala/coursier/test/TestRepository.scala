@@ -8,7 +8,7 @@ import scala.language.higherKinds
 import scalaz.{ Monad, EitherT }
 import scalaz.Scalaz._
 
-case class TestRepository(projects: Map[(Module, String), Project]) extends Repository {
+final case class TestRepository(projects: Map[(Module, String), Project]) extends Repository {
   val source = new core.Artifact.Source {
     def artifacts(
       dependency: Dependency,

@@ -7,7 +7,7 @@ import caseapp.core.{ ArgsApp, CommandsMessages }
 import shapeless.union.Union
 
 // Temporary, see comment in Coursier below
-case class CoursierCommandHelper(
+final case class CoursierCommandHelper(
   command: CoursierCommandHelper.U
 ) extends ArgsApp {
   def setRemainingArgs(remainingArgs: Seq[String], extraArgs: Seq[String]): Unit =

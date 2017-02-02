@@ -5,7 +5,7 @@ import caseapp.{ HelpMessage => Help, ValueDescription => Value, ExtraName => Sh
 
 import coursier.util.Parse
 
-case class CommonOptions(
+final case class CommonOptions(
   @Help("Keep optional dependencies (Maven)")
     keepOptional: Boolean = false,
   @Help("Download mode (default: missing, that is fetch things missing from cache)")
@@ -94,13 +94,13 @@ case class CommonOptions(
   lazy val classifier0 = classifier.flatMap(_.split(',')).filter(_.nonEmpty)
 }
 
-case class CacheOptions(
+final case class CacheOptions(
   @Help("Cache directory (defaults to environment variable COURSIER_CACHE or ~/.coursier/cache/v1)")
   @Short("C")
     cache: String = Cache.default.toString
 )
 
-case class IsolatedLoaderOptions(
+final case class IsolatedLoaderOptions(
   @Value("target:dependency")
   @Short("I")
     isolated: List[String] = Nil,
@@ -174,7 +174,7 @@ object ArtifactOptions {
   def defaultArtifactTypes = Set("jar", "bundle")
 }
 
-case class ArtifactOptions(
+final case class ArtifactOptions(
   @Help("Artifact types that should be retained (e.g. jar, src, doc, etc.) - defaults to jar,bundle")
   @Value("type1,type2,...")
   @Short("A")
@@ -197,7 +197,7 @@ case class ArtifactOptions(
   }
 }
 
-case class FetchOptions(
+final case class FetchOptions(
   @Help("Fetch source artifacts")
   @Short("S")
     sources: Boolean = false,
@@ -213,7 +213,7 @@ case class FetchOptions(
     common: CommonOptions = CommonOptions()
 )
 
-case class LaunchOptions(
+final case class LaunchOptions(
   @Short("M")
   @Short("main")
     mainClass: String = "",
@@ -226,7 +226,7 @@ case class LaunchOptions(
     common: CommonOptions = CommonOptions()
 )
 
-case class BootstrapOptions(
+final case class BootstrapOptions(
   @Short("M")
   @Short("main")
     mainClass: String = "",
@@ -253,7 +253,7 @@ case class BootstrapOptions(
     common: CommonOptions = CommonOptions()
 )
 
-case class SparkSubmitOptions(
+final case class SparkSubmitOptions(
   @Short("M")
   @Short("main")
   @Help("Main class to be launched (optional if in manifest)")

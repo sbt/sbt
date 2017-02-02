@@ -15,11 +15,11 @@ import scala.concurrent.Future
 import scala.scalajs.js
 import js.Dynamic.{ global => g }
 
-case class ResolutionOptions(
+final case class ResolutionOptions(
   followOptional: Boolean = false
 )
 
-case class State(
+final case class State(
   modules: Seq[Dependency],
   repositories: Seq[(String, MavenRepository)],
   options: ResolutionOptions,

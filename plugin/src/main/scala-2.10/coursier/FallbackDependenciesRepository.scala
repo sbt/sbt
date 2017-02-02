@@ -65,7 +65,7 @@ object FallbackDependenciesRepository {
 
 }
 
-case class FallbackDependenciesRepository(
+final case class FallbackDependenciesRepository(
   fallbacks: Map[(Module, String), (URL, Boolean)]
 ) extends Repository {
 

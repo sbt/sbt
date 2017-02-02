@@ -16,7 +16,7 @@ import scala.collection.JavaConverters._
 
 import scalaz.concurrent.Task
 
-case class HttpServerApp(
+final case class HttpServerApp(
   @ExtraName("d")
   @ValueDescription("served directory")
     directory: String,

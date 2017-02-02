@@ -71,7 +71,7 @@ object Print {
       else
         ("", "", "")
 
-    case class Elem(dep: Dependency, excluded: Boolean) {
+    final case class Elem(dep: Dependency, excluded: Boolean) {
 
       lazy val reconciledVersion = resolution.reconciledVersions
         .getOrElse(dep.module, dep.version)
@@ -144,7 +144,7 @@ object Print {
 
     if (reverse) {
 
-      case class Parent(
+      final case class Parent(
         module: Module,
         version: String,
         dependsOn: Module,

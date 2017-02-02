@@ -11,7 +11,7 @@ import caseapp._
 import coursier.cli.util.Zip
 import coursier.internal.FileUtil
 
-case class Bootstrap(
+final case class Bootstrap(
   @Recurse
     artifactOptions: ArtifactOptions,
   @Recurse

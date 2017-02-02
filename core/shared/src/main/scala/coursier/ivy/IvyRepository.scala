@@ -8,7 +8,7 @@ import scala.language.higherKinds
 import scalaz._
 import scalaz.Scalaz._
 
-case class IvyRepository(
+final case class IvyRepository(
   pattern: Pattern,
   metadataPatternOpt: Option[Pattern],
   changing: Option[Boolean],

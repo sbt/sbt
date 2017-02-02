@@ -20,6 +20,22 @@ lazy val core = crossProject
       import com.typesafe.tools.mima.core._
 
       Seq(
+        ProblemFilters.exclude[FinalClassProblem]("coursier.core.Activation$Os"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.core.Version"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.core.Authentication"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.core.VersionInterval"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.Pattern"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.Pattern$Chunk$Opt"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.PropertiesPattern$ChunkOrProperty$Const"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.PropertiesPattern$ChunkOrProperty$Opt"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.PropertiesPattern"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.Pattern$Chunk$Var"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.IvyRepository"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.Pattern$Chunk$Const"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.PropertiesPattern$ChunkOrProperty$Prop"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.PropertiesPattern$ChunkOrProperty$Var"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.maven.MavenRepository"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.maven.MavenSource"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.package#Resolution.apply$default$9"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.package#Resolution.apply"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.core.Resolution.copy$default$9"),
@@ -126,6 +142,9 @@ lazy val cache = project
       import com.typesafe.tools.mima.core._
 
       Seq(
+        ProblemFilters.exclude[FinalClassProblem]("coursier.TermDisplay$DownloadInfo"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.TermDisplay$CheckUpdateInfo"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.util.Base64$B64Scheme"),
         ProblemFilters.exclude[MissingClassProblem]("coursier.TermDisplay$Message$Stop$"),
         ProblemFilters.exclude[MissingClassProblem]("coursier.TermDisplay$Message"),
         ProblemFilters.exclude[MissingClassProblem]("coursier.TermDisplay$Message$"),

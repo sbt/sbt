@@ -8,7 +8,7 @@ import coursier.core.compatibility._
  *
  *  Same kind of ordering as aether-util/src/main/java/org/eclipse/aether/util/version/GenericVersion.java
  */
-case class Version(repr: String) extends Ordered[Version] {
+final case class Version(repr: String) extends Ordered[Version] {
   lazy val items = Version.items(repr)
   lazy val rawItems: Seq[Version.Item] = {
     val (first, tokens) = Version.Tokenizer(repr)
