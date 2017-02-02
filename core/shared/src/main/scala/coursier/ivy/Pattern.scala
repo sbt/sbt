@@ -1,5 +1,7 @@
 package coursier.ivy
 
+import scala.language.implicitConversions
+
 import scalaz._, Scalaz._
 
 import fastparse.all._
