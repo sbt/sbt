@@ -13,7 +13,6 @@ import coursier.util.{ Config, Print }
 import org.apache.ivy.core.module.id.ModuleRevisionId
 
 import sbt.{ UpdateReport, Classpaths, Resolver, Def }
-import sbt.Configurations.{ Compile, Test }
 import sbt.Keys._
 
 import scala.collection.mutable
@@ -147,7 +146,7 @@ object Tasks {
       coursierProject.forAllProjects(state, projects).map(_.values.toVector)
     }
 
-  def coursierPublicationsTask: Def.Initialize[sbt.Task[Seq[(String, Publication)]]] =
+  def coursierPublicationsTask(configsMap: (sbt.Configuration, String)*): Def.Initialize[sbt.Task[Seq[(String, Publication)]]] =
     (
       sbt.Keys.state,
       sbt.Keys.thisProjectRef,
@@ -158,17 +157,16 @@ object Tasks {
     ).map { (state, projectRef, projId, sv, sbv, ivyConfs) =>
 
       val packageTasks = Seq(packageBin, packageSrc, packageDoc)
-      val configs = Seq(Compile, Test)
 
       val sbtArtifacts =
         for {
           pkgTask <- packageTasks
-          config <- configs
+          (config, targetConfig) <- configsMap
         } yield {
           val publish = publishArtifact.in(projectRef).in(pkgTask).in(config).getOrElse(state, false)
           if (publish)
             Option(artifact.in(projectRef).in(pkgTask).in(config).getOrElse(state, null))
-              .map(config.name -> _)
+              .map(targetConfig -> _)
           else
             None
         }
@@ -219,7 +217,7 @@ object Tasks {
       sbtArtifactsPublication ++ extraSbtArtifactsPublication
     }
 
-  def coursierConfigurationsTask = Def.task {
+  def coursierConfigurationsTask(shadedConfig: Option[(String, String)]) = Def.task {
 
     val configs0 = ivyConfigurations.value.map { config =>
       config.name -> config.extendsConfigs.map(_.name)
@@ -238,9 +236,17 @@ object Tasks {
       helper(Set(c))
     }
 
-    configs0.map {
+    val map = configs0.map {
       case (config, _) =>
         config -> allExtends(config)
+    }
+
+    map ++ shadedConfig.toSeq.flatMap {
+      case (baseConfig, shadedConfig) =>
+        Seq(
+          baseConfig -> (map.getOrElse(baseConfig, Set(baseConfig)) + shadedConfig),
+          shadedConfig -> map.getOrElse(shadedConfig, Set(shadedConfig))
+        )
     }
   }
 
@@ -647,14 +653,155 @@ object Tasks {
     }
   }
 
-  def updateTask(
+  def artifactFilesOrErrors(
     withClassifiers: Boolean,
     sbtClassifiers: Boolean = false,
     ignoreArtifactErrors: Boolean = false
   ) = Def.task {
 
-    def grouped[K, V](map: Seq[(K, V)]): Map[K, Seq[V]] =
-      map.groupBy { case (k, _) => k }.map {
+    // let's update only one module at once, for a better output
+    // Downloads are already parallel, no need to parallelize further anyway
+    synchronized {
+
+      lazy val cm = coursierSbtClassifiersModule.value
+
+      lazy val projectName = thisProjectRef.value.project
+
+      val parallelDownloads = coursierParallelDownloads.value
+      val artifactsChecksums = coursierArtifactsChecksums.value
+      val cachePolicies = coursierCachePolicies.value
+      val ttl = coursierTtl.value
+      val cache = coursierCache.value
+
+      val log = streams.value.log
+
+      val verbosityLevel = coursierVerbosity.value
+
+      val res = {
+        if (withClassifiers && sbtClassifiers)
+          coursierSbtClassifiersResolution
+        else
+          coursierResolution
+      }.value
+
+      val classifiers =
+        if (withClassifiers)
+          Some {
+            if (sbtClassifiers)
+              cm.classifiers
+            else
+              transitiveClassifiers.value
+          }
+        else
+          None
+
+      val allArtifacts =
+        classifiers match {
+          case None => res.artifacts
+          case Some(cl) => res.classifiersArtifacts(cl)
+        }
+
+      var pool: ExecutorService = null
+      var artifactsLogger: TermDisplay = null
+
+      val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
+
+      val artifactFilesOrErrors = try {
+        pool = Executors.newFixedThreadPool(parallelDownloads, Strategy.DefaultDaemonThreadFactory)
+        artifactsLogger = createLogger()
+
+        val artifactFileOrErrorTasks = allArtifacts.toVector.map { a =>
+          def f(p: CachePolicy) =
+            Cache.file(
+              a,
+              cache,
+              p,
+              checksums = artifactsChecksums,
+              logger = Some(artifactsLogger),
+              pool = pool,
+              ttl = ttl
+            )
+
+          cachePolicies.tail
+            .foldLeft(f(cachePolicies.head))(_ orElse f(_))
+            .run
+            .map((a, _))
+        }
+
+        val artifactInitialMessage =
+          if (verbosityLevel >= 0)
+            s"Fetching artifacts of $projectName" +
+              (if (sbtClassifiers) " (sbt classifiers)" else "")
+          else
+            ""
+
+        if (verbosityLevel >= 2)
+          log.info(artifactInitialMessage)
+
+        artifactsLogger.init(if (printOptionalMessage) log.info(artifactInitialMessage))
+
+        Task.gatherUnordered(artifactFileOrErrorTasks).attemptRun match {
+          case -\/(ex) =>
+            ResolutionError.UnknownDownloadException(ex)
+              .throwException()
+          case \/-(l) =>
+            l.toMap
+        }
+      } finally {
+        if (pool != null)
+          pool.shutdown()
+        if (artifactsLogger != null)
+          if ((artifactsLogger.stopDidPrintSomething() && printOptionalMessage) || verbosityLevel >= 2)
+            log.info(
+              s"Fetched artifacts of $projectName" +
+                (if (sbtClassifiers) " (sbt classifiers)" else "")
+            )
+      }
+
+      artifactFilesOrErrors
+    }
+  }
+
+  private def artifactFileOpt(
+    sbtBootJarOverrides: Map[(Module, String), File],
+    artifactFiles: Map[Artifact, File],
+    erroredArtifacts: Set[Artifact],
+    log: sbt.Logger,
+    module: Module,
+    version: String,
+    artifact: Artifact
+  ) = {
+
+    val artifact0 = artifact
+      .copy(attributes = Attributes()) // temporary hack :-(
+
+    // Under some conditions, SBT puts the scala JARs of its own classpath
+    // in the application classpath. Ensuring we return SBT's jars rather than
+    // JARs from the coursier cache, so that a same JAR doesn't land twice in the
+    // application classpath (once via SBT jars, once via coursier cache).
+    val fromBootJars =
+      if (artifact.classifier.isEmpty && artifact.`type` == "jar")
+        sbtBootJarOverrides.get((module, version))
+      else
+        None
+
+    val res = fromBootJars.orElse(artifactFiles.get(artifact0))
+
+    if (res.isEmpty && !erroredArtifacts(artifact0))
+      log.error(s"${artifact.url} not downloaded (should not happen)")
+
+    res
+  }
+
+  def updateTask(
+    shadedConfigOpt: Option[(String, String)],
+    withClassifiers: Boolean,
+    sbtClassifiers: Boolean = false,
+    ignoreArtifactErrors: Boolean = false
+  ) = Def.task {
+
+    def grouped[K, V](map: Seq[(K, V)])(mapKey: K => K): Map[K, Seq[V]] =
+      map.groupBy { case (k, _) => mapKey(k) }.map {
         case (k, l) =>
           k -> l.map { case (_, v) => v }
       }
@@ -677,8 +824,6 @@ object Tasks {
 
       lazy val cm = coursierSbtClassifiersModule.value
 
-      lazy val projectName = thisProjectRef.value.project
-
       val currentProject =
         if (sbtClassifiers) {
           val sv = scalaVersion.value
@@ -699,45 +844,9 @@ object Tasks {
           proj.copy(publications = publications)
         }
 
-      val ivySbt0 = ivySbt.value
-      val ivyCacheManager = ivySbt0.withIvy(streams.value.log)(ivy =>
-        ivy.getResolutionCacheManager
-      )
-
-      val ivyModule = ModuleRevisionId.newInstance(
-        currentProject.module.organization,
-        currentProject.module.name,
-        currentProject.version,
-        currentProject.module.attributes.asJava
-      )
-      val cacheIvyFile = ivyCacheManager.getResolvedIvyFileInCache(ivyModule)
-      val cacheIvyPropertiesFile = ivyCacheManager.getResolvedIvyPropertiesInCache(ivyModule)
-
-      val parallelDownloads = coursierParallelDownloads.value
-      val artifactsChecksums = coursierArtifactsChecksums.value
-      val cachePolicies = coursierCachePolicies.value
-      val ttl = coursierTtl.value
-      val cache = coursierCache.value
-
       val log = streams.value.log
 
       val verbosityLevel = coursierVerbosity.value
-
-      // required for publish to be fine, later on
-      def writeIvyFiles() = {
-        val printer = new scala.xml.PrettyPrinter(80, 2)
-
-        val b = new StringBuilder
-        b ++= """<?xml version="1.0" encoding="UTF-8"?>"""
-        b += '\n'
-        b ++= printer.format(MakeIvyXml(currentProject))
-        cacheIvyFile.getParentFile.mkdirs()
-        FileUtil.write(cacheIvyFile, b.result().getBytes("UTF-8"))
-
-        // Just writing an empty file here... Are these only used?
-        cacheIvyPropertiesFile.getParentFile.mkdirs()
-        FileUtil.write(cacheIvyPropertiesFile, "".getBytes("UTF-8"))
-      }
 
       val res = {
         if (withClassifiers && sbtClassifiers)
@@ -748,9 +857,25 @@ object Tasks {
 
       def report = {
 
-        val depsByConfig = grouped(currentProject.dependencies)
+        val depsByConfig = grouped(currentProject.dependencies)(
+          config =>
+            shadedConfigOpt match {
+              case Some((baseConfig, `config`)) =>
+                baseConfig
+              case _ =>
+                config
+            }
+        )
 
-        val configs = coursierConfigurations.value
+        val configs = {
+          val m = coursierConfigurations.value
+          shadedConfigOpt.fold(m) {
+            case (baseConfig, shadedConfig) =>
+              (m - shadedConfig) + (
+                baseConfig -> (m.getOrElse(baseConfig, Set()) - shadedConfig)
+              )
+          }
+        }
 
         if (verbosityLevel >= 2) {
           val finalDeps = Config.dependenciesWithConfig(
@@ -775,75 +900,22 @@ object Tasks {
           else
             None
 
-        val allArtifacts =
-          classifiers match {
-            case None => res.artifacts
-            case Some(cl) => res.classifiersArtifacts(cl)
-          }
-
-        var pool: ExecutorService = null
-        var artifactsLogger: TermDisplay = null
-
-        val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
-
-        val artifactFilesOrErrors = try {
-          pool = Executors.newFixedThreadPool(parallelDownloads, Strategy.DefaultDaemonThreadFactory)
-          artifactsLogger = createLogger()
-
-          val artifactFileOrErrorTasks = allArtifacts.toVector.map { a =>
-            def f(p: CachePolicy) =
-              Cache.file(
-                a,
-                cache,
-                p,
-                checksums = artifactsChecksums,
-                logger = Some(artifactsLogger),
-                pool = pool,
-                ttl = ttl
-              )
-
-            cachePolicies.tail
-              .foldLeft(f(cachePolicies.head))(_ orElse f(_))
-              .run
-              .map((a, _))
-          }
-
-          val artifactInitialMessage =
-            if (verbosityLevel >= 0)
-              s"Fetching artifacts of $projectName" +
-                (if (sbtClassifiers) " (sbt classifiers)" else "")
+        val artifactFilesOrErrors0 = (
+          if (withClassifiers) {
+            if (sbtClassifiers)
+              Keys.coursierSbtClassifiersArtifacts
             else
-              ""
+              Keys.coursierClassifiersArtifacts
+          } else
+            Keys.coursierArtifacts
+        ).value
 
-          if (verbosityLevel >= 2)
-            log.info(artifactInitialMessage)
-
-          artifactsLogger.init(if (printOptionalMessage) log.info(artifactInitialMessage))
-
-          Task.gatherUnordered(artifactFileOrErrorTasks).attemptRun match {
-            case -\/(ex) =>
-              ResolutionError.UnknownDownloadException(ex)
-                .throwException()
-            case \/-(l) =>
-              l.toMap
-          }
-        } finally {
-          if (pool != null)
-            pool.shutdown()
-          if (artifactsLogger != null)
-            if ((artifactsLogger.stopDidPrintSomething() && printOptionalMessage) || verbosityLevel >= 2)
-              log.info(
-                s"Fetched artifacts of $projectName" +
-                  (if (sbtClassifiers) " (sbt classifiers)" else "")
-              )
-        }
-
-        val artifactFiles = artifactFilesOrErrors.collect {
+        val artifactFiles = artifactFilesOrErrors0.collect {
           case (artifact, \/-(file)) =>
             artifact -> file
         }
 
-        val artifactErrors = artifactFilesOrErrors.toVector.collect {
+        val artifactErrors = artifactFilesOrErrors0.toVector.collect {
           case (_, -\/(err)) =>
             err
         }
@@ -858,42 +930,25 @@ object Tasks {
         }
 
         // can be non empty only if ignoreArtifactErrors is true
-        val erroredArtifacts = artifactFilesOrErrors.collect {
+        val erroredArtifacts = artifactFilesOrErrors0.collect {
           case (artifact, -\/(_)) =>
             artifact
         }.toSet
-
-        def artifactFileOpt(module: Module, version: String, artifact: Artifact) = {
-
-          val artifact0 = artifact
-            .copy(attributes = Attributes()) // temporary hack :-(
-
-          // Under some conditions, SBT puts the scala JARs of its own classpath
-          // in the application classpath. Ensuring we return SBT's jars rather than
-          // JARs from the coursier cache, so that a same JAR doesn't land twice in the
-          // application classpath (once via SBT jars, once via coursier cache).
-          val fromBootJars =
-            if (artifact.classifier.isEmpty && artifact.`type` == "jar")
-              sbtBootJarOverrides.get((module, version))
-            else
-              None
-
-          val res = fromBootJars.orElse(artifactFiles.get(artifact0))
-
-          if (res.isEmpty && !erroredArtifacts(artifact0))
-            log.error(s"${artifact.url} not downloaded (should not happen)")
-
-          res
-        }
-
-        writeIvyFiles()
 
         ToSbt.updateReport(
           depsByConfig,
           res,
           configs,
           classifiers,
-          artifactFileOpt
+          artifactFileOpt(
+            sbtBootJarOverrides,
+            artifactFiles,
+            erroredArtifacts,
+            log,
+            _,
+            _,
+            _
+          )
         )
       }
 

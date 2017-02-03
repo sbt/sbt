@@ -1,0 +1,10 @@
+$ delete output
+> rootJVM/run
+$ exists output
+$ delete output
+> rootJVM/publishLocal
+$ exec java -jar coursier launch io.get-coursier.test:shading-cross-test_2.11:0.1.0-SNAPSHOT
+-$ exec java -jar coursier launch io.get-coursier.test:shading-cross-test_2.11:0.1.0-SNAPSHOT -- --shaded
+> rootJVM/shading:publishLocal
+-$ exec java -jar coursier launch io.get-coursier.test:shading-cross-test_2.11:0.1.0-SNAPSHOT
+$ exec java -jar coursier launch io.get-coursier.test:shading-cross-test_2.11:0.1.0-SNAPSHOT -- --shaded

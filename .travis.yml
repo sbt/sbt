@@ -12,7 +12,7 @@ script:
 #    - bash <(curl -s https://codecov.io/bash)
 matrix:
   include:
-    - env: TRAVIS_SCALA_VERSION=2.12.0 PUBLISH=1
+    - env: TRAVIS_SCALA_VERSION=2.12.1 PUBLISH=1
       os: linux
       jdk: oraclejdk8
     - env: TRAVIS_SCALA_VERSION=2.11.8 PUBLISH=1
@@ -36,3 +36,9 @@ env:
 branches:
   only:
   - master
+cache:
+  directories:
+  - $HOME/.m2
+  - $HOME/.ivy2/cache
+  - $HOME/.sbt
+# Not adding $HOME/.coursier, we check that sbt-coursier works fine with an initially empty cache

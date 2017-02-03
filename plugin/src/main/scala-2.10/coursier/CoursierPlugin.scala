@@ -38,6 +38,10 @@ object CoursierPlugin extends AutoPlugin {
 
     val coursierDependencyTree = Keys.coursierDependencyTree
     val coursierDependencyInverseTree = Keys.coursierDependencyInverseTree
+
+    val coursierArtifacts = Keys.coursierArtifacts
+    val coursierClassifiersArtifacts = Keys.coursierClassifiersArtifacts
+    val coursierSbtClassifiersArtifacts = Keys.coursierSbtClassifiersArtifacts
   }
 
   import autoImport._
@@ -51,7 +55,25 @@ object CoursierPlugin extends AutoPlugin {
     )
   )
 
-  override lazy val projectSettings = Seq(
+  def makeIvyXmlBefore[T](
+    task: TaskKey[T],
+    shadedConfigOpt: Option[(String, String)]
+  ): Setting[Task[T]] =
+    // not 100% sure that make writeFiles below happen before the actions triggered by task.value...
+    task := {
+      val currentProject = {
+        val proj = coursierProject.value
+        val publications = coursierPublications.value
+        proj.copy(publications = publications)
+      }
+      IvyXml.writeFiles(currentProject, shadedConfigOpt, ivySbt.value, streams.value.log)
+      task.value
+    }
+
+  def coursierSettings(
+    shadedConfigOpt: Option[(String, String)],
+    packageConfigs: Seq[(Configuration, String)]
+  ) = Seq(
     coursierParallelDownloads := 6,
     coursierMaxIterations := 50,
     coursierDefaultArtifactType := "",
@@ -68,27 +90,44 @@ object CoursierPlugin extends AutoPlugin {
     coursierCredentials := Map.empty,
     coursierFallbackDependencies <<= Tasks.coursierFallbackDependenciesTask,
     coursierCache := Cache.default,
-    update <<= Tasks.updateTask(withClassifiers = false),
+    coursierArtifacts <<= Tasks.artifactFilesOrErrors(withClassifiers = false),
+    coursierClassifiersArtifacts <<= Tasks.artifactFilesOrErrors(
+      withClassifiers = true
+    ),
+    coursierSbtClassifiersArtifacts <<= Tasks.artifactFilesOrErrors(
+      withClassifiers = true,
+      sbtClassifiers = true
+    ),
+    makeIvyXmlBefore(deliverLocalConfiguration, shadedConfigOpt),
+    makeIvyXmlBefore(deliverConfiguration, shadedConfigOpt),
+    update <<= Tasks.updateTask(
+      shadedConfigOpt,
+      withClassifiers = false
+    ),
     updateClassifiers <<= Tasks.updateTask(
+      shadedConfigOpt,
       withClassifiers = true,
       ignoreArtifactErrors = true
     ),
     updateSbtClassifiers in Defaults.TaskGlobal <<= Tasks.updateTask(
+      shadedConfigOpt,
       withClassifiers = true,
       sbtClassifiers = true,
       ignoreArtifactErrors = true
     ),
     coursierProject <<= Tasks.coursierProjectTask,
     coursierInterProjectDependencies <<= Tasks.coursierInterProjectDependenciesTask,
-    coursierPublications <<= Tasks.coursierPublicationsTask,
+    coursierPublications <<= Tasks.coursierPublicationsTask(packageConfigs: _*),
     coursierSbtClassifiersModule <<= classifiersModule in updateSbtClassifiers,
-    coursierConfigurations <<= Tasks.coursierConfigurationsTask,
+    coursierConfigurations <<= Tasks.coursierConfigurationsTask(None),
     coursierResolution <<= Tasks.resolutionTask(),
     coursierSbtClassifiersResolution <<= Tasks.resolutionTask(
       sbtClassifiers = true
     )
-  ) ++
-  inConfig(Compile)(treeSettings) ++
-  inConfig(Test)(treeSettings)
+  )
+
+  override lazy val projectSettings = coursierSettings(None, Seq(Compile, Test).map(c => c -> c.name)) ++
+    inConfig(Compile)(treeSettings) ++
+    inConfig(Test)(treeSettings)
 
 }

@@ -1,10 +1,62 @@
 package coursier
 
-import scala.xml.{ Node, PrefixedAttribute }
+import coursier.internal.FileUtil
+import org.apache.ivy.core.module.id.ModuleRevisionId
 
-object MakeIvyXml {
+import scala.collection.JavaConverters._
+import scala.xml.{Node, PrefixedAttribute}
 
-  def apply(project: Project): Node = {
+object IvyXml {
+
+  // These are required for publish to be fine, later on.
+  def writeFiles(
+    currentProject: Project,
+    shadedConfigOpt: Option[(String, String)],
+    ivySbt: sbt.IvySbt,
+    log: sbt.Logger
+  ): Unit = {
+
+    val ivyCacheManager = ivySbt.withIvy(log)(ivy =>
+      ivy.getResolutionCacheManager
+    )
+
+    val ivyModule = ModuleRevisionId.newInstance(
+      currentProject.module.organization,
+      currentProject.module.name,
+      currentProject.version,
+      currentProject.module.attributes.asJava
+    )
+
+    val cacheIvyFile = ivyCacheManager.getResolvedIvyFileInCache(ivyModule)
+    val cacheIvyPropertiesFile = ivyCacheManager.getResolvedIvyPropertiesInCache(ivyModule)
+
+    val printer = new scala.xml.PrettyPrinter(80, 2)
+
+    val content0 = """<?xml version="1.0" encoding="UTF-8"?>""" + '\n' +
+      printer.format(content(currentProject, shadedConfigOpt.map(_._2)))
+    cacheIvyFile.getParentFile.mkdirs()
+    log.info(s"Writing Ivy file $cacheIvyFile")
+    FileUtil.write(cacheIvyFile, content0.getBytes("UTF-8"))
+
+    // Just writing an empty file here... Are these only used?
+    cacheIvyPropertiesFile.getParentFile.mkdirs()
+    FileUtil.write(cacheIvyPropertiesFile, Array())
+  }
+
+  def content(project0: Project, shadedConfigOpt: Option[String]): Node = {
+
+    val filterOutDependencies =
+      shadedConfigOpt.toSet[String].flatMap { shadedConfig =>
+        project0
+          .dependencies
+          .collect { case (`shadedConfig`, dep) => dep }
+      }
+
+    val project: Project = project0.copy(
+      dependencies = project0.dependencies.collect {
+        case p @ (_, dep) if !filterOutDependencies(dep) => p
+      }
+    )
 
     val infoAttrs = project.module.attributes.foldLeft[xml.MetaData](xml.Null) {
       case (acc, (k, v)) =>
@@ -31,11 +83,12 @@ object MakeIvyXml {
       </info>
     } % infoAttrs
 
-    val confElems = project.configurations.toVector.map {
-      case (name, extends0) =>
+    val confElems = project.configurations.toVector.collect {
+      case (name, extends0) if shadedConfigOpt != Some(name) =>
+        val extends1 = shadedConfigOpt.fold(extends0)(c => extends0.filter(_ != c))
         val n = <conf name={name} visibility="public" description="" />
-        if (extends0.nonEmpty)
-          n % <x extends={extends0.mkString(",")} />.attributes
+        if (extends1.nonEmpty)
+          n % <x extends={extends1.mkString(",")} />.attributes
         else
           n
     }

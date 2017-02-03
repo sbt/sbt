@@ -1,6 +1,7 @@
 package coursier
 
-import coursier.ivy.{ IvyXml, IvyRepository }
+import coursier.ivy.IvyRepository
+import coursier.ivy.IvyXml.{ mappings => ivyXmlMappings }
 
 import java.net.{ MalformedURLException, URL }
 
@@ -71,7 +72,7 @@ object FromSbt {
     )
 
     val mapping = module.configurations.getOrElse("compile")
-    val allMappings = IvyXml.mappings(mapping)
+    val allMappings = ivyXmlMappings(mapping)
 
     val attributes =
       if (module.explicitArtifacts.isEmpty)
