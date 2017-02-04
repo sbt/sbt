@@ -287,12 +287,12 @@ final case class MavenRepository(
     for {
       str <- fetch(projectArtifact(module, version, versioningValue))
       rawListFilesPage <- fetch(artifactFor(listFilesUrl))
-      proj <- EitherT(F.point[String \/ Project](parseRawPom(str)))
+      proj0 <- EitherT(F.point[String \/ Project](parseRawPom(str)))
     } yield {
 
       val files = WebPage.listFiles(listFilesUrl, rawListFilesPage)
 
-      val versioning = proj
+      val versioning = proj0
         .snapshotVersioning
         .flatMap(versioning =>
           mavenVersioning(versioning, "", "")
@@ -300,7 +300,7 @@ final case class MavenRepository(
 
       val prefix = s"${module.name}-${versioning.getOrElse(version)}"
 
-      val packagingTpeMap = proj.packagingOpt
+      val packagingTpeMap = proj0.packagingOpt
         .map { packaging =>
           (MavenSource.typeDefaultClassifier(packaging), MavenSource.typeExtension(packaging)) -> packaging
         }
@@ -323,9 +323,14 @@ final case class MavenRepository(
             )
         }
 
+      val proj = Pom.addOptionalDependenciesInConfig(
+        proj0.copy(configurations = defaultConfigurations),
+        Set("", "compile"),
+        "optional"
+      )
+
       proj.copy(
         actualVersionOpt = Some(version),
-        configurations = defaultConfigurations,
         publications = foundPublications
       )
     }

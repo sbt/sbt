@@ -1,6 +1,6 @@
 package coursier
 
-import java.io.{ OutputStreamWriter, File }
+import java.io.{ File, InputStream, OutputStreamWriter }
 import java.net.URL
 import java.util.concurrent.{ ExecutorService, Executors }
 
@@ -123,10 +123,14 @@ object Tasks {
         allDependencies <- allDependenciesTask
       } yield {
 
+        val configMap = configurations
+          .map { cfg => cfg.name -> cfg.extendsConfigs.map(_.name) }
+          .toMap
+
         FromSbt.project(
           projId,
           allDependencies,
-          configurations.map { cfg => cfg.name -> cfg.extendsConfigs.map(_.name) }.toMap,
+          configMap,
           sv,
           sbv
         )

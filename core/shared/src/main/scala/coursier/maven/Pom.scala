@@ -451,4 +451,24 @@ object Pom {
         } yield modVers :+ modVer
     }
   }
+
+  def addOptionalDependenciesInConfig(
+    proj: Project,
+    fromConfigs: Set[String],
+    optionalConfig: String
+  ): Project = {
+
+    val optionalDeps = proj.dependencies.collect {
+      case (conf, dep) if dep.optional && fromConfigs(conf) =>
+        optionalConfig -> dep.copy(optional = false)
+    }
+
+    val configurations = proj.configurations +
+      (optionalConfig -> (proj.configurations.getOrElse(optionalConfig, Nil) ++ fromConfigs.filter(_.nonEmpty)).distinct)
+
+    proj.copy(
+      configurations = configurations,
+      dependencies = proj.dependencies ++ optionalDeps
+    )
+  }
 }

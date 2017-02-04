@@ -465,6 +465,22 @@ object CentralTests extends TestSuite {
         "0.5.0"
       )
     }
+
+    'scalaCompilerJLine - {
+
+      // optional should bring jline
+
+      * - resolutionCheck(
+        Module("org.scala-lang", "scala-compiler"),
+        "2.11.8"
+      )
+
+      * - resolutionCheck(
+        Module("org.scala-lang", "scala-compiler"),
+        "2.11.8",
+        configuration = "optional"
+      )
+    }
   }
 
 }

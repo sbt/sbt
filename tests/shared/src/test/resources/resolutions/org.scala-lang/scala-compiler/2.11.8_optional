@@ -1,0 +1,6 @@
+jline:jline:2.12.1:compile
+org.scala-lang:scala-compiler:2.11.8:optional
+org.scala-lang:scala-library:2.11.8:compile
+org.scala-lang:scala-reflect:2.11.8:compile
+org.scala-lang.modules:scala-parser-combinators_2.11:1.0.4:compile
+org.scala-lang.modules:scala-xml_2.11:1.0.4:compile
