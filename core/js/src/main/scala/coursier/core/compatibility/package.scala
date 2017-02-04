@@ -6,6 +6,8 @@ import org.scalajs.dom.raw.NodeList
 
 import coursier.util.Xml
 
+import scala.collection.mutable.ListBuffer
+
 package object compatibility {
   def option[A](a: js.Dynamic): Option[A] =
     if (js.isUndefined(a)) None
@@ -93,14 +95,22 @@ package object compatibility {
   def encodeURIComponent(s: String): String =
     g.encodeURIComponent(s).asInstanceOf[String]
 
-  def listWebPageSubDirectories(url: String, page: String): Seq[String] = {
-    // TODO
-    ???
-  }
+  // FIXME Won't work in the browser
+  lazy val cheerio = g.require("cheerio")
 
-  def listWebPageFiles(url: String, page: String): Seq[String] = {
-    // TODO
-    ???
-  }
+  def listWebPageRawElements(page: String): Seq[String] = {
 
+    val jquery = cheerio.load(page)
+
+    val links = new ListBuffer[String]
+
+    jquery("a").each({ self: js.Dynamic =>
+      val href = jquery(self).attr("href")
+      if (!js.isUndefined(href))
+        links += href.asInstanceOf[String]
+      ()
+    }: js.ThisFunction0[js.Dynamic, Unit])
+
+    links.result()
+  }
 }

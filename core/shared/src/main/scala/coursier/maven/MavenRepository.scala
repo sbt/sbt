@@ -3,6 +3,7 @@ package coursier.maven
 import coursier.Fetch
 import coursier.core._
 import coursier.core.compatibility.encodeURIComponent
+import coursier.util.WebPage
 
 import scala.language.higherKinds
 import scalaz._
@@ -289,7 +290,7 @@ final case class MavenRepository(
       proj <- EitherT(F.point[String \/ Project](parseRawPom(str)))
     } yield {
 
-      val files = coursier.core.compatibility.listWebPageFiles(listFilesUrl, rawListFilesPage)
+      val files = WebPage.listFiles(listFilesUrl, rawListFilesPage)
 
       val versioning = proj
         .snapshotVersioning

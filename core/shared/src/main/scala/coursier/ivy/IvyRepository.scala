@@ -2,6 +2,7 @@ package coursier.ivy
 
 import coursier.Fetch
 import coursier.core._
+import coursier.util.WebPage
 
 import scala.language.higherKinds
 
@@ -149,7 +150,7 @@ final case class IvyRepository(
             }
 
             def fromWebPage(url: String, s: String) = {
-              val subDirs = coursier.core.compatibility.listWebPageSubDirectories(url, s)
+              val subDirs = WebPage.listDirectories(url, s)
               val versions = subDirs.map(Parse.version).collect { case Some(v) => v }
               val versionsInItv = versions.filter(itv.contains)
 
