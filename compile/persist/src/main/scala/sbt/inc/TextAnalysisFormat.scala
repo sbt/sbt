@@ -5,7 +5,6 @@ import java.io._
 import sbt.{ CompileSetup, Relation }
 import xsbti.api.{ Compilation, Source }
 import xsbti.compile.{ MultipleOutput, SingleOutput }
-import javax.xml.bind.DatatypeConverter
 
 // Very simple timer for timing repeated code sections.
 // TODO: Temporary. Remove once we've milked all available performance gains.
@@ -328,11 +327,11 @@ object TextAnalysisFormat {
       val out = new sbinary.JavaOutput(baos)
       FormatTimer.aggregate("sbinary write") { try { fmt.writes(out, o) } finally { baos.close() } }
       val bytes = FormatTimer.aggregate("byte copy") { baos.toByteArray }
-      FormatTimer.aggregate("bytes -> base64") { DatatypeConverter.printBase64Binary(bytes) }
+      FormatTimer.aggregate("bytes -> base64") { Base64.factory().encode(bytes) }
     }
 
     def stringToObj[T](s: String)(implicit fmt: sbinary.Format[T]) = {
-      val bytes = FormatTimer.aggregate("base64 -> bytes") { DatatypeConverter.parseBase64Binary(s) }
+      val bytes = FormatTimer.aggregate("base64 -> bytes") { Base64.factory().decode(s) }
       val in = new sbinary.JavaInput(new ByteArrayInputStream(bytes))
       FormatTimer.aggregate("sbinary read") { fmt.reads(in) }
     }
