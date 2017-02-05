@@ -292,7 +292,7 @@ object TermDisplay {
             .toVector
             .filter {
               case (url, _) =>
-                !url.endsWith(".sha1") && !url.endsWith(".md5")
+                !url.endsWith(".sha1") && !url.endsWith(".md5") && !url.endsWith("/")
             }
             .sortBy { case (url, _) => url }
 
