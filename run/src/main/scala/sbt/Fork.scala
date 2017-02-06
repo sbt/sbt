@@ -46,8 +46,6 @@ case class LoggedOutput(logger: Logger) extends OutputStrategy
  */
 case class CustomOutput(output: OutputStream) extends OutputStrategy
 
-import java.lang.{ ProcessBuilder => JProcessBuilder }
-
 /**
  * Represents a command that can be forked.
  *
@@ -75,20 +73,16 @@ final class Fork(val commandName: String, val runnerClass: Option[String]) {
       val executable = Fork.javaCommand(javaHome, commandName).getAbsolutePath
       val preOptions = makeOptions(runJVMOptions, bootJars, arguments)
       val (classpathEnv, options) = Fork.fitClasspath(preOptions)
-      val command = (executable +: options).toArray
-      val builder = new JProcessBuilder(command: _*)
-      workingDirectory.foreach(wd => builder.directory(wd))
-      val environment = builder.environment
-      for ((key, value) <- env)
-        environment.put(key, value)
-      for (cpenv <- classpathEnv)
-        // overriding, not appending, is correct due to the specified priorities of -classpath and CLASSPATH
-        environment.put(Fork.ClasspathEnvKey, cpenv)
+      val command = executable +: options
+
+      val environment = env ++ classpathEnv.map(value => Fork.ClasspathEnvKey -> value)
+      val process = Process(command, workingDirectory, environment.toList: _*)
+
       outputStrategy.getOrElse(StdoutOutput) match {
-        case StdoutOutput           => Process(builder).run(connectInput)
-        case BufferedOutput(logger) => logger.buffer { Process(builder).run(logger, connectInput) }
-        case LoggedOutput(logger)   => Process(builder).run(logger, connectInput)
-        case CustomOutput(output)   => (Process(builder) #> output).run(connectInput)
+        case StdoutOutput           => process.run(connectInput)
+        case BufferedOutput(logger) => logger.buffer { process.run(logger, connectInput) }
+        case LoggedOutput(logger)   => process.run(logger, connectInput)
+        case CustomOutput(output)   => (process #> output).run(connectInput)
       }
     }
   private[this] def makeOptions(jvmOptions: Seq[String], bootJars: Iterable[File], arguments: Seq[String]): Seq[String] =

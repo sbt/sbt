@@ -12,6 +12,7 @@ Migration notes
 - Removes no-longer-documented old operators `<<=`, `<+=`, and `<++=`.
 - Renames early command feature from `--<command>` to `early(<command>)`.
 - Log options `-error`, `-warn`, `-info`, `-debug` are added as shorthand for `"early(error)"` etc.
+- `sbt.Process` and `sbt.ProcessExtra` are gone. Use `scala.sys.process` instead.
 
 #### Additional import required
 
