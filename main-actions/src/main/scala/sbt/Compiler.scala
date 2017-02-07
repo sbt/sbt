@@ -4,12 +4,12 @@
 package sbt
 
 import sbt.internal.inc.javac.JavaTools
-import sbt.internal.inc.{ AnalyzingCompiler, ComponentCompiler, ScalaInstance }
+import sbt.internal.inc.{ AnalyzingCompiler, ComponentCompiler, ZincComponentManager, ScalaInstance }
 import xsbti.{ Logger => _, _ }
 import xsbti.compile.{ ClasspathOptions, Compilers, CompileResult, Inputs }
 import java.io.File
 
-import sbt.internal.librarymanagement.{ ComponentManager, IvyConfiguration }
+import sbt.internal.librarymanagement.IvyConfiguration
 import sbt.librarymanagement.{ ModuleID, VersionNumber }
 import sbt.util.Logger
 import sbt.internal.util.CacheStore
@@ -125,7 +125,7 @@ object Compiler {
   def scalaCompiler(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File], ivyConfiguration: IvyConfiguration, fileToStore: File => CacheStore, sourcesModule: ModuleID)(implicit app: AppConfiguration, log: Logger): AnalyzingCompiler =
     {
       val launcher = app.provider.scalaProvider.launcher
-      val componentManager = new ComponentManager(launcher.globalLock, app.provider.components, Option(launcher.ivyHome), log)
+      val componentManager = new ZincComponentManager(launcher.globalLock, app.provider.components, Option(launcher.ivyHome), log)
       val provider = ComponentCompiler.interfaceProvider(componentManager, ivyConfiguration, fileToStore, sourcesModule)
       new AnalyzingCompiler(instance, provider, cpOptions, _ => (), None)
     }
