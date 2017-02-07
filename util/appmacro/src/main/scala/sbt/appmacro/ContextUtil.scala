@@ -126,6 +126,9 @@ final class ContextUtil[C <: Context](val ctx: C) {
   def freshMethodParameter(tpe: Type): ValDef =
     ValDef(parameterModifiers, freshTermName("p"), TypeTree(tpe), EmptyTree)
 
+  def typeArgs(tpe: Type): List[Type] =
+    tpe.asInstanceOf[global.Type].typeArgs map { _.asInstanceOf[Type] }
+
   /** Constructs a ValDef with local modifiers and a unique name. */
   def localValDef(tpt: Tree, rhs: Tree): ValDef =
     ValDef(localModifiers, freshTermName("q"), tpt, rhs)
