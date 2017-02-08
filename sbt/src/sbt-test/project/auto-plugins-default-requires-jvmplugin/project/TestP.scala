@@ -1,4 +1,4 @@
-import sbt._, syntax._, Keys._
+import sbt._, Keys._
 
 object TestP extends AutoPlugin {
   override def projectSettings: Seq[Setting[_]] = Seq(

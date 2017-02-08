@@ -1,6 +1,5 @@
 package sbt
 
-import sbt.syntax._
 import sbt.Keys._
 import xsbti.{Position, Severity}
 

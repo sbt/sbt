@@ -1,6 +1,6 @@
 package sbttest // you need package http://stackoverflow.com/questions/9822008/
 
-	import sbt._, syntax._, Keys._
+	import sbt._, Keys._
 	import java.util.concurrent.atomic.{AtomicInteger => AInt}
 
 	object A extends AutoPlugin { override def requires: Plugins = empty }
