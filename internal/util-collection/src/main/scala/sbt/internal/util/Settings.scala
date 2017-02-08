@@ -6,6 +6,7 @@ package sbt.internal.util
 import scala.language.existentials
 
 import Types._
+import sbt.util.Show
 
 sealed trait Settings[Scope] {
   def data: Map[Scope, AttributeMap]
@@ -119,7 +120,7 @@ trait Init[Scope] {
   def mapScope(f: Scope => Scope): MapScoped = new MapScoped {
     def apply[T](k: ScopedKey[T]): ScopedKey[T] = k.copy(scope = f(k.scope))
   }
-  private final class InvalidReference(val key: ScopedKey[_]) extends RuntimeException("Internal settings error: invalid reference to " + showFullKey(key))
+  private final class InvalidReference(val key: ScopedKey[_]) extends RuntimeException("Internal settings error: invalid reference to " + showFullKey.show(key))
 
   private[this] def applyDefaults(ss: Seq[Setting[_]]): Seq[Setting[_]] =
     {
@@ -215,11 +216,11 @@ trait Init[Scope] {
     {
       val guessed = guessIntendedScope(validKeys, delegates, u.referencedKey)
       val derived = u.defining.isDerived
-      val refString = display(u.defining.key)
+      val refString = display.show(u.defining.key)
       val sourceString = if (derived) "" else parenPosString(u.defining)
-      val guessedString = if (derived) "" else guessed.map(g => "\n     Did you mean " + display(g) + " ?").toList.mkString
+      val guessedString = if (derived) "" else guessed.map(g => "\n     Did you mean " + display.show(g) + " ?").toList.mkString
       val derivedString = if (derived) ", which is a derived setting that needs this key to be defined in this scope." else ""
-      display(u.referencedKey) + " from " + refString + sourceString + derivedString + guessedString
+      display.show(u.referencedKey) + " from " + refString + sourceString + derivedString + guessedString
     }
   private[this] def parenPosString(s: Setting[_]): String =
     s.positionString match { case None => ""; case Some(s) => " (" + s + ")" }
@@ -255,7 +256,7 @@ trait Init[Scope] {
       new Uninitialized(keys, prefix + suffix + " to undefined setting" + suffix + ": " + keysString + "\n ")
     }
   final class Compiled[T](val key: ScopedKey[T], val dependencies: Iterable[ScopedKey[_]], val settings: Seq[Setting[T]]) {
-    override def toString = showFullKey(key)
+    override def toString = showFullKey.show(key)
   }
   final class Flattened(val key: ScopedKey[_], val dependencies: Iterable[ScopedKey[_]])
 

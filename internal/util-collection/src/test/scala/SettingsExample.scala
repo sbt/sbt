@@ -1,5 +1,7 @@
 package sbt.internal.util
 
+import sbt.util.Show
+
 /** Define our settings system */
 
 // A basic scope indexed by an integer.
@@ -12,9 +14,10 @@ final case class Scope(nestIndex: Int, idAtIndex: Int = 0)
 //  That would be a general pain.)
 case class SettingsExample() extends Init[Scope] {
   // Provides a way of showing a Scope+AttributeKey[_]
-  val showFullKey: Show[ScopedKey[_]] = new Show[ScopedKey[_]] {
-    def apply(key: ScopedKey[_]) = s"${key.scope.nestIndex}(${key.scope.idAtIndex})/${key.key.label}"
-  }
+  val showFullKey: Show[ScopedKey[_]] = Show[ScopedKey[_]]((key: ScopedKey[_]) =>
+    {
+      s"${key.scope.nestIndex}(${key.scope.idAtIndex})/${key.key.label}"
+    })
 
   // A sample delegation function that delegates to a Scope with a lower index.
   val delegates: Scope => Seq[Scope] = {
