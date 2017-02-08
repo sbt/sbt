@@ -5,11 +5,10 @@ import java.io.{ PrintStream, PrintWriter }
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicInteger
 import org.apache.logging.log4j.{ Level => XLevel }
-import org.apache.logging.log4j.message.{ Message, ParameterizedMessage, ObjectMessage, ReusableObjectMessage }
+import org.apache.logging.log4j.message.{ Message, ObjectMessage, ReusableObjectMessage }
 import org.apache.logging.log4j.core.{ LogEvent => XLogEvent }
 import org.apache.logging.log4j.core.appender.AbstractAppender
 import org.apache.logging.log4j.core.layout.PatternLayout
-import org.apache.logging.log4j.core.async.RingBufferLogEvent
 
 import ConsoleAppender._
 
@@ -149,7 +148,7 @@ object ConsoleAppender {
     }
   }
 
-  val formatEnabled =
+  val formatEnabled: Boolean =
     {
       import java.lang.Boolean.{ getBoolean, parseBoolean }
       val value = System.getProperty("sbt.log.format")
@@ -180,8 +179,16 @@ object ConsoleAppender {
 
   def apply(out: PrintStream): ConsoleAppender = apply(generateName, ConsoleOut.printStreamOut(out))
   def apply(out: PrintWriter): ConsoleAppender = apply(generateName, ConsoleOut.printWriterOut(out))
-  def apply(name: String = generateName, out: ConsoleOut = ConsoleOut.systemOut, ansiCodesSupported: Boolean = formatEnabled,
-    useColor: Boolean = formatEnabled, suppressedMessage: SuppressedTraceContext => Option[String] = noSuppressedMessage): ConsoleAppender =
+  def apply(): ConsoleAppender = apply(generateName, ConsoleOut.systemOut)
+  def apply(name: String): ConsoleAppender = apply(name, ConsoleOut.systemOut, formatEnabled, formatEnabled, noSuppressedMessage)
+  def apply(out: ConsoleOut): ConsoleAppender = apply(generateName, out, formatEnabled, formatEnabled, noSuppressedMessage)
+  def apply(name: String, out: ConsoleOut): ConsoleAppender = apply(name, out, formatEnabled, formatEnabled, noSuppressedMessage)
+  def apply(name: String, out: ConsoleOut, suppressedMessage: SuppressedTraceContext => Option[String]): ConsoleAppender =
+    apply(name, out, formatEnabled, formatEnabled, suppressedMessage)
+  def apply(name: String, out: ConsoleOut, useColor: Boolean): ConsoleAppender =
+    apply(name, out, formatEnabled, useColor, noSuppressedMessage)
+  def apply(name: String, out: ConsoleOut, ansiCodesSupported: Boolean,
+    useColor: Boolean, suppressedMessage: SuppressedTraceContext => Option[String]): ConsoleAppender =
     {
       val appender = new ConsoleAppender(name, out, ansiCodesSupported, useColor, suppressedMessage)
       appender.start
@@ -238,24 +245,30 @@ class ConsoleAppender private[ConsoleAppender] (
     {
       val level = ConsoleAppender.toLevel(event.getLevel)
       val message = event.getMessage
-      val str = messageToString(message)
-      appendLog(level, str)
+      // val str = messageToString(message)
+      appendMessage(level, message)
     }
 
-  def messageToString(msg: Message): String =
+  def appendMessage(level: Level.Value, msg: Message): Unit =
     msg match {
-      case p: ParameterizedMessage  => p.getFormattedMessage
-      case r: RingBufferLogEvent    => r.getFormattedMessage
-      case o: ObjectMessage         => objectToString(o.getParameter)
-      case o: ReusableObjectMessage => objectToString(o.getParameter)
-      case _                        => msg.getFormattedMessage
+      case o: ObjectMessage         => objectToLines(o.getParameter) foreach { appendLog(level, _) }
+      case o: ReusableObjectMessage => objectToLines(o.getParameter) foreach { appendLog(level, _) }
+      case _                        => appendLog(level, msg.getFormattedMessage)
     }
-  def objectToString(o: AnyRef): String =
+  def objectToLines(o: AnyRef): Vector[String] =
     o match {
-      case x: ChannelLogEntry => x.message
-      case _                  => o.toString
+      case x: StringEvent    => Vector(x.message)
+      case x: ObjectEvent[_] => objectEventToLines(x)
+      case _                 => Vector(o.toString)
     }
-
+  def objectEventToLines(oe: ObjectEvent[_]): Vector[String] =
+    {
+      val tag = oe.tag
+      LogExchange.stringCodec[AnyRef](tag) match {
+        case Some(codec) => codec.showLines(oe.message.asInstanceOf[AnyRef]).toVector
+        case _           => Vector(oe.message.toString)
+      }
+    }
   def messageColor(level: Level.Value) = RESET
   def labelColor(level: Level.Value) =
     level match {

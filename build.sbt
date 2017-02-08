@@ -99,12 +99,12 @@ lazy val utilComplete = (project in internalPath / "util-complete").
 // logging
 lazy val utilLogging = (project in internalPath / "util-logging").
   enablePlugins(ContrabandPlugin, JsonCodecPlugin).
-  dependsOn(utilInterface, utilTesting % Test).
+  dependsOn(utilInterface, utilCollection, utilTesting % Test).
   settings(
     commonSettings,
     crossScalaVersions := Seq(scala210, scala211, scala212),
     name := "Util Logging",
-    libraryDependencies ++= Seq(jline, log4jApi, log4jCore, disruptor, sjsonnewScalaJson),
+    libraryDependencies ++= Seq(jline, log4jApi, log4jCore, disruptor, sjsonnewScalaJson, scalaReflect.value),
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala"
   )
 

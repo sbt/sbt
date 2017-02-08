@@ -9,6 +9,7 @@ import sys.process.ProcessLogger
 import sbt.internal.util.{ BufferedLogger, FullLogger }
 
 import java.io.File
+import java.util.Optional
 
 /**
  * This is intended to be the simplest logging interface for use by code that wants to log.
@@ -88,6 +89,8 @@ object Logger {
   def f0[A](a: => A): F0[A] = InterfaceUtil.f0[A](a)
   def m2o[A](m: Maybe[A]): Option[A] = InterfaceUtil.m2o(m)
   def o2m[A](o: Option[A]): Maybe[A] = InterfaceUtil.o2m(o)
+  def jo2o[A](o: Optional[A]): Option[A] = InterfaceUtil.jo2o(o)
+  def o2jo[A](o: Option[A]): Optional[A] = InterfaceUtil.o2jo(o)
   def position(line0: Option[Integer], content: String, offset0: Option[Integer], pointer0: Option[Integer],
     pointerSpace0: Option[String], sourcePath0: Option[String], sourceFile0: Option[File]): Position =
     InterfaceUtil.position(line0, content, offset0, pointer0, pointerSpace0, sourcePath0, sourceFile0)
