@@ -1,4 +1,4 @@
-import sbt._, syntax._, Keys._
+import sbt._, Keys._
 import Def.Initialize
 import complete.{DefaultParsers, Parser}
 

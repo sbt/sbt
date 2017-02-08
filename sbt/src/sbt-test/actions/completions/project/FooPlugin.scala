@@ -1,5 +1,4 @@
 import sbt._
-import syntax._
 
 object FooPlugin extends AutoPlugin {
   override def trigger = noTrigger
