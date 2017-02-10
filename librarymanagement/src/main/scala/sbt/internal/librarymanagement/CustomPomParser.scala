@@ -162,6 +162,17 @@ object CustomPomParser {
       def isIdentity = false
     }
 
+  // TODO: It would be better if we can make dd.isForce to `false` when VersionRange.isVersionRange is `true`.
+  private[this] def stripVersionRange(dd: DependencyDescriptor): DependencyDescriptor =
+    VersionRange.stripMavenVersionRange(dd.getDependencyRevisionId.getRevision) match {
+      case Some(newVersion) =>
+        val id = dd.getDependencyRevisionId
+        val newId = ModuleRevisionId.newInstance(id.getOrganisation, id.getName, id.getBranch, newVersion, id.getExtraAttributes)
+        transform(dd, _ => newId)
+      case None => dd
+    }
+  private[sbt] lazy val versionRangeFlag = sys.props.get("sbt.modversionrange") map { _.toLowerCase == "true" } getOrElse true
+
   import collection.JavaConverters._
   def addExtra(properties: Map[String, String], dependencyExtra: Map[ModuleRevisionId, Map[String, String]], parser: ModuleDescriptorParser, md: ModuleDescriptor): ModuleDescriptor =
     {
@@ -187,7 +198,10 @@ object CustomPomParser {
       IvySbt.addExtraNamespace(dmd)
 
       val withExtra = md.getDependencies map { dd => addExtra(dd, dependencyExtra) }
-      val unique = IvySbt.mergeDuplicateDefinitions(withExtra)
+      val withVersionRangeMod: Seq[DependencyDescriptor] =
+        if (versionRangeFlag) withExtra map { stripVersionRange }
+        else withExtra
+      val unique = IvySbt.mergeDuplicateDefinitions(withVersionRangeMod)
       unique foreach dmd.addDependency
 
       for (ed <- md.getInheritedDescriptors) dmd.addInheritedDescriptor(new DefaultExtendsDescriptor(md, ed.getLocation, ed.getExtendsTypes))
