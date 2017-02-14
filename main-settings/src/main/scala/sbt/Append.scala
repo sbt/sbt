@@ -4,6 +4,8 @@ import java.io.File
 import Def.Classpath
 import scala.annotation.implicitNotFound
 import sbt.internal.util.Attributed
+import Def.Initialize
+import reflect.internal.annotations.compileTimeOnly
 
 object Append {
   @implicitNotFound(msg = "No implicit for Append.Value[${A}, ${B}] found,\n  so ${B} cannot be appended to ${A}")
@@ -23,6 +25,14 @@ object Append {
   implicit def appendSeqImplicit[T, V](implicit ev: V => T): Sequence[Seq[T], Seq[V], V] = new Sequence[Seq[T], Seq[V], V] {
     def appendValues(a: Seq[T], b: Seq[V]): Seq[T] = a ++ (b map { x => (x: T) })
     def appendValue(a: Seq[T], b: V): Seq[T] = a :+ (b: T)
+  }
+  @compileTimeOnly("This can be used in += only.")
+  implicit def appendTaskValueSeq[T, V <: T]: Value[Seq[Task[T]], Initialize[Task[V]]] = new Value[Seq[Task[T]], Initialize[Task[V]]] {
+    def appendValue(a: Seq[Task[T]], b: Initialize[Task[V]]): Seq[Task[T]] = ???
+  }
+  @compileTimeOnly("This can be used in += only.")
+  implicit def appendTaskKeySeq[T, V <: T]: Value[Seq[Task[T]], TaskKey[V]] = new Value[Seq[Task[T]], TaskKey[V]] {
+    def appendValue(a: Seq[Task[T]], b: TaskKey[V]): Seq[Task[T]] = ???
   }
   implicit def appendList[T, V <: T]: Sequence[List[T], List[V], V] = new Sequence[List[T], List[V], V] {
     def appendValues(a: List[T], b: List[V]): List[T] = a ::: b

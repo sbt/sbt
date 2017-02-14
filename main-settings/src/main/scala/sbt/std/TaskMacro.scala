@@ -161,9 +161,23 @@ object TaskMacro {
   /** Implementation of += macro for settings. */
   def settingAppend1Impl[T: c.WeakTypeTag, U: c.WeakTypeTag](c: blackbox.Context)(v: c.Expr[U])(a: c.Expr[Append.Value[T, U]]): c.Expr[Setting[T]] =
     {
-      val init = SettingMacro.settingMacroImpl[U](c)(v)
-      val append = appendMacroImpl(c)(init.tree, a.tree)(Append1InitName)
-      c.Expr[Setting[T]](append)
+      import c.universe._
+      val ttpe = c.weakTypeOf[T]
+      val typeArgs = ttpe.typeArgs
+      v.tree.tpe match {
+        // To allow Initialize[Task[A]] in the position of += RHS, we're going to call "taskValue" automatically.
+        case tpe if typeArgs.nonEmpty && (tpe weak_<:< c.weakTypeOf[Initialize[_]]) =>
+          c.macroApplication match {
+            case Apply(Apply(TypeApply(Select(preT, nmeT), targs), _), _) =>
+              val tree = Apply(TypeApply(Select(preT, TermName("+=").encodedName), TypeTree(typeArgs.head) :: Nil), Select(v.tree, TermName("taskValue").encodedName) :: Nil)
+              c.Expr[Setting[T]](tree)
+            case x => ContextUtil.unexpectedTree(x)
+          }
+        case _ =>
+          val init = SettingMacro.settingMacroImpl[U](c)(v)
+          val append = appendMacroImpl(c)(init.tree, a.tree)(Append1InitName)
+          c.Expr[Setting[T]](append)
+      }
     }
   /** Implementation of ++= macro for tasks. */
   def taskAppendNImpl[T: c.WeakTypeTag, U: c.WeakTypeTag](c: blackbox.Context)(vs: c.Expr[U])(a: c.Expr[Append.Values[T, U]]): c.Expr[Setting[Task[T]]] =
@@ -179,7 +193,6 @@ object TaskMacro {
       val append = appendMacroImpl(c)(init.tree, a.tree)(AppendNInitName)
       c.Expr[Setting[T]](append)
     }
-
   /** Implementation of -= macro for tasks. */
   def taskRemove1Impl[T: c.WeakTypeTag, U: c.WeakTypeTag](c: blackbox.Context)(v: c.Expr[U])(r: c.Expr[Remove.Value[T, U]]): c.Expr[Setting[Task[T]]] =
     {
@@ -213,8 +226,8 @@ object TaskMacro {
     {
       import c.universe._
       c.macroApplication match {
-        case Apply(Apply(TypeApply(Select(preT, nmeT), targs), _), a) =>
-          Apply(Apply(TypeApply(Select(preT, TermName(newName).encodedName), targs), init :: sourcePosition(c).tree :: Nil), a)
+        case Apply(Apply(TypeApply(Select(preT, nmeT), targs), _), _) =>
+          Apply(Apply(TypeApply(Select(preT, TermName(newName).encodedName), targs), init :: sourcePosition(c).tree :: Nil), append :: Nil)
         case x => ContextUtil.unexpectedTree(x)
       }
     }

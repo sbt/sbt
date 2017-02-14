@@ -1,6 +1,6 @@
 package test
 
-import sbt._, syntax._, Keys._
+import sbt._, Keys._
 
 object Global {
   val x = 3

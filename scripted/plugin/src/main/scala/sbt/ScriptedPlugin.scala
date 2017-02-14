@@ -10,8 +10,6 @@ import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.internal.inc.ModuleUtilities
 import java.lang.reflect.Method
 
-import sbt.syntax._
-
 object ScriptedPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin
   override def trigger = allRequirements

@@ -323,7 +323,7 @@ object Keys {
   val classpathConfiguration = TaskKey[Configuration]("classpath-configuration", "The configuration used to define the classpath.", CTask)
   val ivyConfiguration = TaskKey[IvyConfiguration]("ivy-configuration", "General dependency management (Ivy) settings, such as the resolvers and paths to use.", DTask)
   val ivyConfigurations = SettingKey[Seq[Configuration]]("ivy-configurations", "The defined configurations for dependency management.  This may be different from the configurations for Project settings.", BSetting)
-  // This setting was created to workaround the limitation of derived tasks not being able to use task-scoped task: ivyConfiguration in updateSbtClassifiers
+  // This setting was created to work around the limitation of derived tasks not being able to use task-scoped task: ivyConfiguration in updateSbtClassifiers
   val bootIvyConfiguration = TaskKey[IvyConfiguration]("boot-ivy-configuration", "General dependency management (Ivy) settings, configured to retrieve sbt's components.", DTask)
   val moduleSettings = TaskKey[ModuleSettings]("module-settings", "Module settings, which configure dependency management for a specific module, such as a project.", DTask)
   val unmanagedBase = SettingKey[File]("unmanaged-base", "The default directory for manually managed libraries.", ASetting)
@@ -417,7 +417,7 @@ object Keys {
   val managedScalaInstance = SettingKey[Boolean]("managed-scala-instance", "Automatically obtains Scala tools as managed dependencies if true.", BSetting)
   val sbtResolver = SettingKey[Resolver]("sbt-resolver", "Provides a resolver for obtaining sbt as a dependency.", BMinusSetting)
   val sbtDependency = SettingKey[ModuleID]("sbt-dependency", "Provides a definition for declaring the current version of sbt.", BMinusSetting)
-  val sbtVersion = SettingKey[String]("sbt-version", "Provides the version of sbt.  This setting should be not be modified.", AMinusSetting)
+  val sbtVersion = SettingKey[String]("sbt-version", "Provides the version of sbt.  This setting should not be modified.", AMinusSetting)
   val sbtBinaryVersion = SettingKey[String]("sbt-binary-version", "Defines the binary compatibility version substring.", BPlusSetting)
   val skip = TaskKey[Boolean]("skip", "For tasks that support it (currently only 'compile' and 'update'), setting skip to true will force the task to not to do its work.  This exact semantics may vary by task.", BSetting)
   val templateResolverInfos = SettingKey[Seq[TemplateResolverInfo]]("templateResolverInfos", "Template resolvers used for 'new'.", BSetting)

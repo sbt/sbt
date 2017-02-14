@@ -262,7 +262,7 @@ object Defaults extends BuildCommon {
     unmanagedResources := collectFiles(unmanagedResourceDirectories, includeFilter in unmanagedResources, excludeFilter in unmanagedResources).value,
     watchSources in ConfigGlobal ++= unmanagedResources.value,
     resourceGenerators :== Nil,
-    resourceGenerators += (Def.task { PluginDiscovery.writeDescriptors(discoveredSbtPlugins.value, resourceManaged.value) }).taskValue,
+    resourceGenerators += Def.task { PluginDiscovery.writeDescriptors(discoveredSbtPlugins.value, resourceManaged.value) },
     managedResources := generate(resourceGenerators).value,
     resources := Classpaths.concat(managedResources, unmanagedResources).value
   )
