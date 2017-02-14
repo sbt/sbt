@@ -16,7 +16,7 @@ import scala.collection.mutable.ArrayBuilder
 
 object Base64 {
 
-  case class B64Scheme(encodeTable: Array[Char], strictPadding: Boolean = true,
+  final case class B64Scheme(encodeTable: Array[Char], strictPadding: Boolean = true,
                        postEncode: String => String = identity,
                        preDecode: String => String = identity) {
     lazy val decodeTable = {

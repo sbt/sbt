@@ -26,7 +26,7 @@ object PomParsingTests extends TestSuite {
           Module("comp", "lib"),
           "2.1",
           attributes = Attributes(classifier = "extra")
-        ).withJarAttributeType
+        )
       )
 
       val result = Pom.dependency(xmlParse(depNode).right.get)
@@ -131,7 +131,7 @@ object PomParsingTests extends TestSuite {
         None,
         Profile.Activation(Nil),
         Seq(
-          "" -> Dependency(Module("comp", "lib"), "0.2").withJarAttributeType),
+          "" -> Dependency(Module("comp", "lib"), "0.2")),
         Nil,
         Map.empty
       ))
@@ -163,7 +163,7 @@ object PomParsingTests extends TestSuite {
         Profile.Activation(Nil),
         Nil,
         Seq(
-          "test" -> Dependency(Module("comp", "lib"), "0.2").withJarAttributeType),
+          "test" -> Dependency(Module("comp", "lib"), "0.2")),
         Map.empty
       ))
 

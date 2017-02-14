@@ -1,10 +1,12 @@
 package coursier.ivy
 
+import scala.language.implicitConversions
+
 import scalaz._, Scalaz._
 
 import fastparse.all._
 
-case class PropertiesPattern(chunks: Seq[PropertiesPattern.ChunkOrProperty]) {
+final case class PropertiesPattern(chunks: Seq[PropertiesPattern.ChunkOrProperty]) {
 
   def string: String = chunks.map(_.string).mkString
 
@@ -51,7 +53,7 @@ case class PropertiesPattern(chunks: Seq[PropertiesPattern.ChunkOrProperty]) {
   }
 }
 
-case class Pattern(chunks: Seq[Pattern.Chunk]) {
+final case class Pattern(chunks: Seq[Pattern.Chunk]) {
 
   def +:(chunk: Pattern.Chunk): Pattern =
     Pattern(chunk +: chunks)
@@ -101,17 +103,17 @@ object PropertiesPattern {
   }
 
   object ChunkOrProperty {
-    case class Prop(name: String, alternative: Option[Seq[ChunkOrProperty]]) extends ChunkOrProperty {
+    final case class Prop(name: String, alternative: Option[Seq[ChunkOrProperty]]) extends ChunkOrProperty {
       def string: String =
       s"$${" + name + alternative.fold("")(alt => "-" + alt.map(_.string).mkString) + "}"
     }
-    case class Var(name: String) extends ChunkOrProperty {
+    final case class Var(name: String) extends ChunkOrProperty {
       def string: String = "[" + name + "]"
     }
-    case class Opt(content: ChunkOrProperty*) extends ChunkOrProperty {
+    final case class Opt(content: ChunkOrProperty*) extends ChunkOrProperty {
       def string: String = "(" + content.map(_.string).mkString + ")"
     }
-    case class Const(value: String) extends ChunkOrProperty {
+    final case class Const(value: String) extends ChunkOrProperty {
       def string: String = value
     }
 
@@ -159,13 +161,13 @@ object Pattern {
   }
 
   object Chunk {
-    case class Var(name: String) extends Chunk {
+    final case class Var(name: String) extends Chunk {
       def string: String = "[" + name + "]"
     }
-    case class Opt(content: Chunk*) extends Chunk {
+    final case class Opt(content: Chunk*) extends Chunk {
       def string: String = "(" + content.map(_.string).mkString + ")"
     }
-    case class Const(value: String) extends Chunk {
+    final case class Const(value: String) extends Chunk {
       def string: String = value
     }
 

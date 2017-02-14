@@ -28,9 +28,6 @@ object Pom {
   private def readVersion(node: Node) =
     text(node, "version", "Version").getOrElse("").trim
 
-  private val defaultType = "jar"
-  private val defaultClassifier = ""
-
   def dependency(node: Node): String \/ (String, Dependency) = {
     for {
       mod <- module(node)
@@ -52,7 +49,7 @@ object Pom {
         version0,
         "",
         exclusions.map(mod => (mod.organization, mod.name)).toSet,
-        Attributes(typeOpt getOrElse defaultType, classifierOpt getOrElse defaultClassifier),
+        Attributes(typeOpt.getOrElse(""), classifierOpt.getOrElse("")),
         optional,
         transitive = true
       )
@@ -253,6 +250,7 @@ object Pom {
         profiles,
         None,
         None,
+        packagingOpt(pom),
         None,
         Nil,
         Info(
@@ -452,5 +450,25 @@ object Pom {
           modVer <- extraAttribute(line)
         } yield modVers :+ modVer
     }
+  }
+
+  def addOptionalDependenciesInConfig(
+    proj: Project,
+    fromConfigs: Set[String],
+    optionalConfig: String
+  ): Project = {
+
+    val optionalDeps = proj.dependencies.collect {
+      case (conf, dep) if dep.optional && fromConfigs(conf) =>
+        optionalConfig -> dep.copy(optional = false)
+    }
+
+    val configurations = proj.configurations +
+      (optionalConfig -> (proj.configurations.getOrElse(optionalConfig, Nil) ++ fromConfigs.filter(_.nonEmpty)).distinct)
+
+    proj.copy(
+      configurations = configurations,
+      dependencies = proj.dependencies ++ optionalDeps
+    )
   }
 }

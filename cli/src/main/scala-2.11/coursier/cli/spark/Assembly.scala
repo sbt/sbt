@@ -24,8 +24,8 @@ object Assembly {
       def path: String
     }
 
-    case class Exclude(path: String) extends PathRule
-    case class ExcludePattern(path: Pattern) extends Rule
+    final case class Exclude(path: String) extends PathRule
+    final case class ExcludePattern(path: Pattern) extends Rule
 
     object ExcludePattern {
       def apply(s: String): ExcludePattern =
@@ -34,8 +34,8 @@ object Assembly {
 
     // TODO Accept a separator: Array[Byte] argument in these
     // (to separate content with a line return in particular)
-    case class Append(path: String) extends PathRule
-    case class AppendPattern(path: Pattern) extends Rule
+    final case class Append(path: String) extends PathRule
+    final case class AppendPattern(path: Pattern) extends Rule
 
     object AppendPattern {
       def apply(s: String): AppendPattern =

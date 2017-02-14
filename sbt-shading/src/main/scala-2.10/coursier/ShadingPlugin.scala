@@ -83,6 +83,7 @@ object ShadingPlugin extends AutoPlugin {
               coursierResolution.in(baseSbtConfiguration).value,
               coursierConfigurations.in(baseSbtConfiguration).value,
               Keys.coursierArtifacts.in(baseSbtConfiguration).value,
+              classpathTypes.value,
               shadingNamespace.?.value.getOrElse {
                 throw new NoSuchElementException("shadingNamespace key not set")
               },

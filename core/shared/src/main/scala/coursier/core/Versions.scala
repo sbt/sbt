@@ -3,10 +3,12 @@ package coursier.core
 import scalaz.{ -\/, \/, \/- }
 import scalaz.Scalaz.ToEitherOps
 
-case class VersionInterval(from: Option[Version],
-                           to: Option[Version],
-                           fromIncluded: Boolean,
-                           toIncluded: Boolean) {
+final case class VersionInterval(
+  from: Option[Version],
+  to: Option[Version],
+  fromIncluded: Boolean,
+  toIncluded: Boolean
+) {
 
   def isValid: Boolean = {
     val fromToOrder =

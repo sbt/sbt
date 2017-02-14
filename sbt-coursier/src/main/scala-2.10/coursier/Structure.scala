@@ -2,6 +2,8 @@ package coursier
 
 import sbt._
 
+import scala.language.implicitConversions
+
 // things from sbt-structure
 object Structure {
   import Def.Initialize._

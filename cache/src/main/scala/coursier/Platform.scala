@@ -1,7 +1,8 @@
 package coursier
 
 import java.io._
-import java.net.URL
+
+import scala.language.implicitConversions
 
 import scalaz._
 import scalaz.concurrent.Task

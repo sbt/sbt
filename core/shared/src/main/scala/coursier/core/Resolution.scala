@@ -63,7 +63,7 @@ object Resolution {
     type Key = (String, String, String)
 
     def key(dep: Dependency): Key =
-      (dep.module.organization, dep.module.name, dep.attributes.`type`)
+      (dep.module.organization, dep.module.name, if (dep.attributes.`type`.isEmpty) "jar" else dep.attributes.`type`)
 
     def add(
       dict: Map[Key, (String, Dependency)],
@@ -351,6 +351,7 @@ object Resolution {
   private val mavenScopes = {
     val base = Map[String, Set[String]](
       "compile" -> Set("compile"),
+      "optional" -> Set("compile", "optional"),
       "provided" -> Set(),
       "runtime" -> Set("compile", "runtime"),
       "test" -> Set()
@@ -463,10 +464,16 @@ object Resolution {
           default
         else
           keepOpt.fold(default) { keep =>
-            if (keep(config))
-              // really keeping the  from.configuration, with its fallback config part
-              Seq(dep.copy(configuration = from.configuration))
-            else
+            if (keep(config)) {
+              val depConfig =
+                if (actualConfig == "optional")
+                  defaultConfiguration
+                else
+                  // really keeping the  from.configuration, with its fallback config part
+                  from.configuration
+
+              Seq(dep.copy(configuration = depConfig))
+            } else
               Nil
           }
     }

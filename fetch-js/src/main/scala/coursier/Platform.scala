@@ -4,6 +4,8 @@ import org.scalajs.dom.raw.{ Event, XMLHttpRequest }
 
 import scala.concurrent.{ ExecutionContext, Promise, Future }
 
+import scala.language.implicitConversions
+
 import scala.scalajs.js
 import js.Dynamic.{ global => g }
 

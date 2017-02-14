@@ -99,11 +99,12 @@ object CentralTests extends TestSuite {
     module: Module,
     version: String,
     artifactType: String,
+    attributes: Attributes = Attributes(),
     extraRepo: Option[Repository] = None
   )(
     f: Artifact => T
   ): Future[T] =
-    withArtifacts(module, version, artifactType, extraRepo) {
+    withArtifacts(module, version, artifactType, attributes, extraRepo) {
       case Seq(artifact) =>
         f(artifact)
       case other =>
@@ -117,11 +118,12 @@ object CentralTests extends TestSuite {
     module: Module,
     version: String,
     artifactType: String,
+    attributes: Attributes = Attributes(),
     extraRepo: Option[Repository] = None
   )(
     f: Seq[Artifact] => T
   ): Future[T] = {
-    val dep = Dependency(module, version, transitive = false, attributes = Attributes())
+    val dep = Dependency(module, version, transitive = false, attributes = attributes)
     withArtifacts(dep, artifactType, extraRepo)(f)
   }
 
@@ -145,8 +147,14 @@ object CentralTests extends TestSuite {
     f(artifacts)
   }
 
-  def ensureHasArtifactWithExtension(module: Module, version: String, artifactType: String, extension: String): Future[Unit] =
-    withArtifact(module, version, artifactType) { artifact =>
+  def ensureHasArtifactWithExtension(
+    module: Module,
+    version: String,
+    artifactType: String,
+    extension: String,
+    attributes: Attributes = Attributes()
+  ): Future[Unit] =
+    withArtifact(module, version, artifactType, attributes = attributes) { artifact =>
       assert(artifact.url.endsWith("." + extension))
     }
 
@@ -161,8 +169,8 @@ object CentralTests extends TestSuite {
           rootDependencies = Set(dep),
           dependencies = Set(
             dep.withCompileScope,
-            Dependency(Module("ch.qos.logback", "logback-core"), "1.1.3").withCompileScope.withJarAttributeType,
-            Dependency(Module("org.slf4j", "slf4j-api"), "1.7.7").withCompileScope.withJarAttributeType))
+            Dependency(Module("ch.qos.logback", "logback-core"), "1.1.3").withCompileScope,
+            Dependency(Module("org.slf4j", "slf4j-api"), "1.7.7").withCompileScope))
 
         assert(res == expected)
       }
@@ -177,8 +185,8 @@ object CentralTests extends TestSuite {
           rootDependencies = Set(dep),
           dependencies = Set(
             dep.withCompileScope,
-            Dependency(Module("org.ow2.asm", "asm-tree"), "5.0.2").withCompileScope.withJarAttributeType,
-            Dependency(Module("org.ow2.asm", "asm"), "5.0.2").withCompileScope.withJarAttributeType))
+            Dependency(Module("org.ow2.asm", "asm-tree"), "5.0.2").withCompileScope,
+            Dependency(Module("org.ow2.asm", "asm"), "5.0.2").withCompileScope))
 
         assert(res == expected)
       }
@@ -338,11 +346,21 @@ object CentralTests extends TestSuite {
 
       'bundle - {
         // has packaging bundle - ensuring coursier gives its artifact the .jar extension
-        ensureHasArtifactWithExtension(
+        * - ensureHasArtifactWithExtension(
           Module("com.google.guava", "guava"),
           "17.0",
           "bundle",
           "jar"
+        )
+
+        // even though packaging is bundle, depending on attribute type "jar" should still find
+        // an artifact
+        * - ensureHasArtifactWithExtension(
+          Module("com.google.guava", "guava"),
+          "17.0",
+          "bundle",
+          "jar",
+          attributes = Attributes("jar")
         )
       }
 
@@ -445,6 +463,22 @@ object CentralTests extends TestSuite {
       resolutionCheck(
         Module("org.nd4j", "nd4j-native"),
         "0.5.0"
+      )
+    }
+
+    'scalaCompilerJLine - {
+
+      // optional should bring jline
+
+      * - resolutionCheck(
+        Module("org.scala-lang", "scala-compiler"),
+        "2.11.8"
+      )
+
+      * - resolutionCheck(
+        Module("org.scala-lang", "scala-compiler"),
+        "2.11.8",
+        configuration = "optional"
       )
     }
   }

@@ -81,6 +81,8 @@ final case class Project(
   profiles: Seq[Profile],
   versions: Option[Versions],
   snapshotVersioning: Option[SnapshotVersioning],
+  packagingOpt: Option[String],
+
   /**
     * Optional exact version used to get this project metadata.
     * May not match `version` for projects having a wrong version in their metadata.
@@ -219,7 +221,7 @@ object Artifact {
   }
 }
 
-case class Authentication(
+final case class Authentication(
   user: String,
   password: String
 ) {

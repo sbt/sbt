@@ -53,8 +53,7 @@ object FromSbt {
   def dependencies(
     module: ModuleID,
     scalaVersion: String,
-    scalaBinaryVersion: String,
-    defaultArtifactType: String
+    scalaBinaryVersion: String
   ): Seq[(String, Dependency)] = {
 
     // TODO Warn about unsupported properties in `module`
@@ -76,10 +75,10 @@ object FromSbt {
 
     val attributes =
       if (module.explicitArtifacts.isEmpty)
-        Seq(Attributes(defaultArtifactType, ""))
+        Seq(Attributes("", ""))
       else
         module.explicitArtifacts.map { a =>
-          Attributes(`type` = a.extension, classifier = a.classifier.getOrElse(""))
+          Attributes(`type` = a.`type`, classifier = a.classifier.getOrElse(""))
         }
 
     for {
@@ -107,15 +106,14 @@ object FromSbt {
     allDependencies: Seq[ModuleID],
     ivyConfigurations: Map[String, Seq[String]],
     scalaVersion: String,
-    scalaBinaryVersion: String,
-    defaultArtifactType: String
+    scalaBinaryVersion: String
   ): Project = {
 
     // FIXME Ignored for now - easy to support though
     // val sbtDepOverrides = dependencyOverrides.value
     // val sbtExclusions = excludeDependencies.value
 
-    val deps = allDependencies.flatMap(dependencies(_, scalaVersion, scalaBinaryVersion, defaultArtifactType))
+    val deps = allDependencies.flatMap(dependencies(_, scalaVersion, scalaBinaryVersion))
 
     Project(
       Module(
@@ -130,6 +128,7 @@ object FromSbt {
       Nil,
       Nil,
       Nil,
+      None,
       None,
       None,
       None,

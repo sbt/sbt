@@ -79,7 +79,7 @@ trait ExtraArgsApp extends caseapp.core.DefaultArgsApp {
     extraArgs1
 }
 
-case class Launch(
+final case class Launch(
   @Recurse
     options: LaunchOptions
 ) extends App with ExtraArgsApp {

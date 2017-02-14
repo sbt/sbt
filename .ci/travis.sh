@@ -37,6 +37,7 @@ function isMasterOrDevelop() {
   -- \
     -d tests/jvm/src/test/resources/test-repo/http/abc.com \
     -u user -P pass -r realm \
+    --list-pages \
     -v &
 
 # TODO Add coverage once https://github.com/scoverage/sbt-scoverage/issues/111 is fixed
@@ -47,7 +48,7 @@ RUN_SHADING_TESTS=1
 
 if echo "$TRAVIS_SCALA_VERSION" | grep -q "^2\.10"; then
   SBT_COMMANDS="$SBT_COMMANDS publishLocal" # to make the scripted tests happy
-  SBT_COMMANDS="$SBT_COMMANDS plugin/scripted"
+  SBT_COMMANDS="$SBT_COMMANDS sbt-coursier/scripted"
 
   if [ "$RUN_SHADING_TESTS" = 1 ]; then
     # for the shading scripted test
@@ -68,7 +69,7 @@ if echo "$TRAVIS_SCALA_VERSION" | grep -q "^2\.10"; then
       rm -rf jarjar
     fi
 
-    SBT_COMMANDS="$SBT_COMMANDS plugin/publishLocal sbt-shading/scripted"
+    SBT_COMMANDS="$SBT_COMMANDS sbt-coursier/publishLocal sbt-shading/scripted"
   fi
 fi
 

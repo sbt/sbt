@@ -39,11 +39,11 @@ sealed abstract class ResolutionError extends Product with Serializable {
 object ResolutionError {
 
   case object MaximumIterationsReached extends ResolutionError
-  case class UnknownException(ex: Throwable) extends ResolutionError
-  case class UnknownDownloadException(ex: Throwable) extends ResolutionError
-  case class Conflicts(description: String) extends ResolutionError
+  final case class UnknownException(ex: Throwable) extends ResolutionError
+  final case class UnknownDownloadException(ex: Throwable) extends ResolutionError
+  final case class Conflicts(description: String) extends ResolutionError
 
-  case class MetadataDownloadErrors(errors: Seq[(Dependency, Seq[String])]) extends ResolutionError {
+  final case class MetadataDownloadErrors(errors: Seq[(Dependency, Seq[String])]) extends ResolutionError {
     def description(): String = {
 
       def grouped(errs: Seq[String]) =
@@ -86,7 +86,7 @@ object ResolutionError {
     }
   }
 
-  case class DownloadErrors(errors: Seq[FileError]) extends ResolutionError {
+  final case class DownloadErrors(errors: Seq[FileError]) extends ResolutionError {
 
     def description(verbose: Boolean): String = {
 

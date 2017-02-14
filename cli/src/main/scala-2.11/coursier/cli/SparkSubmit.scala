@@ -50,7 +50,7 @@ object SparkSubmit {
   * @author Han Ju
   */
 @CommandName("spark-submit")
-case class SparkSubmit(
+final case class SparkSubmit(
   @Recurse
     options: SparkSubmitOptions
 ) extends App with ExtraArgsApp {

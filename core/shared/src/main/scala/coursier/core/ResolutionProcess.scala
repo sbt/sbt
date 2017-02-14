@@ -3,6 +3,7 @@ package core
 
 import scalaz._
 import scala.annotation.tailrec
+import scala.language.higherKinds
 
 
 sealed abstract class ResolutionProcess {

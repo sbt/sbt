@@ -3,6 +3,8 @@ package coursier
 import java.io.{ File, FileNotFoundException, IOException }
 import java.net.{ HttpURLConnection, URL, URLConnection }
 
+import scala.language.higherKinds
+
 import scalaz.{ EitherT, Monad }
 
 object FallbackDependenciesRepository {
@@ -63,7 +65,7 @@ object FallbackDependenciesRepository {
 
 }
 
-case class FallbackDependenciesRepository(
+final case class FallbackDependenciesRepository(
   fallbacks: Map[(Module, String), (URL, Boolean)]
 ) extends Repository {
 
@@ -76,8 +78,10 @@ case class FallbackDependenciesRepository(
       fallbacks.get(dependency.moduleVersion) match {
         case None => Nil
         case Some((url, changing)) =>
+          val url0 = url.toString
+          val ext = url0.substring(url0.lastIndexOf('.') + 1)
           Seq(
-            Artifact(url.toString, Map.empty, Map.empty, Attributes("jar", ""), changing, None)
+            Artifact(url0, Map.empty, Map.empty, Attributes(ext, ""), changing, None)
           )
       }
   }
@@ -116,6 +120,7 @@ case class FallbackDependenciesRepository(
                 Nil,
                 Nil,
                 Nil,
+                None,
                 None,
                 None,
                 None,

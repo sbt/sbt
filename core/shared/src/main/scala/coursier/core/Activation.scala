@@ -47,7 +47,7 @@ final case class Activation(
 
 object Activation {
 
-  case class Os(
+  final case class Os(
     arch: Option[String],
     families: Set[String],
     name: Option[String],

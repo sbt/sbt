@@ -2,7 +2,7 @@ package coursier.maven
 
 import coursier.core._
 
-case class MavenSource(
+final case class MavenSource(
   root: String,
   changing: Option[Boolean] = None,
   /** See doc on MavenRepository */
@@ -12,34 +12,6 @@ case class MavenSource(
 
   import Repository._
   import MavenRepository._
-
-  private implicit class DocSourcesArtifactExtensions(val underlying: Artifact) {
-    def withJavadocSources: Artifact = {
-      val base = underlying.url.stripSuffix(".jar")
-      underlying.copy(extra = underlying.extra ++ Seq(
-        "sources" -> Artifact(
-          base + "-sources.jar",
-          Map.empty,
-          Map.empty,
-          Attributes("jar", "src"),  // Are these the right attributes?
-          changing = underlying.changing,
-          authentication = authentication
-        )
-          .withDefaultChecksums
-          .withDefaultSignature,
-        "javadoc" -> Artifact(
-          base + "-javadoc.jar",
-          Map.empty,
-          Map.empty,
-          Attributes("jar", "javadoc"), // Same comment as above
-          changing = underlying.changing,
-          authentication = authentication
-        )
-          .withDefaultChecksums
-          .withDefaultSignature
-      ))
-    }
-  }
 
   def artifacts(
     dependency: Dependency,
@@ -73,9 +45,9 @@ case class MavenSource(
         )
           .withDefaultChecksums
 
-      if (publication.ext == "jar") {
+      if (publication.ext == "jar")
+        // TODO Get available signature / checksums from directory listing
         artifact = artifact.withDefaultSignature
-      }
 
       artifact
     }
@@ -92,68 +64,33 @@ case class MavenSource(
     val publications0 = overrideClassifiers match {
       case Some(classifiers) =>
         val classifiersSet = classifiers.toSet
-        val publications = project.publications.collect {
+
+        project.publications.collect {
           case (_, p) if classifiersSet(p.classifier) =>
             p
         }
 
-        // Unlike with Ivy metadata, Maven POMs don't list the available publications (~artifacts)
-        // so we give a chance to any classifier we're given by returning some publications
-        // no matter what, even if we're unsure they're available.
-        if (publications.isEmpty)
-          classifiers.map { classifier =>
-            Publication(
-              dependency.module.name,
-              "jar",
-              "jar",
-              classifier
-            )
-          }
-        else
-          publications
-
       case None =>
 
-        val publications =
-          if (dependency.attributes.classifier.nonEmpty)
-            // FIXME We're ignoring dependency.attributes.`type` in this case
-            project.publications.collect {
-              case (_, p) if p.classifier == dependency.attributes.classifier =>
-                p
-            }
-          else if (dependency.attributes.`type`.nonEmpty)
-            project.publications.collect {
-              case (_, p) if p.`type` == dependency.attributes.`type` =>
-                p
-            }
-          else
-            project.publications.collect {
-              case (_, p) if p.classifier.isEmpty =>
-                p
-            }
-
-        // See comment above
-        if (publications.isEmpty) {
-          val type0 = if (dependency.attributes.`type`.isEmpty) "jar" else dependency.attributes.`type`
-
-          val extension = MavenSource.typeExtension(type0)
-
-          val classifier =
-            if (dependency.attributes.classifier.isEmpty)
-              MavenSource.typeDefaultClassifier(type0)
-            else
-              dependency.attributes.classifier
-
-          Seq(
-            Publication(
-              dependency.module.name,
-              type0,
-              extension,
-              classifier
-            )
-          )
-        } else
-          publications
+        if (dependency.attributes.classifier.nonEmpty)
+          // FIXME We're ignoring dependency.attributes.`type` in this case
+          project.publications.collect {
+            case (_, p) if p.classifier == dependency.attributes.classifier =>
+              p
+          }
+        else if (dependency.attributes.`type`.nonEmpty)
+          project.publications.collect {
+            case (_, p)
+              if p.`type` == dependency.attributes.`type` ||
+                p.ext == dependency.attributes.`type` // wow
+              =>
+              p
+          }
+        else
+          project.publications.collect {
+            case (_, p) if p.classifier.isEmpty =>
+              p
+          }
     }
 
     publications0.map(artifactWithExtra)
@@ -193,5 +130,23 @@ object MavenSource {
 
   def typeDefaultClassifier(`type`: String): String =
     typeDefaultClassifierOpt(`type`).getOrElse("")
+
+  val classifierExtensionDefaultTypes: Map[(String, String), String] = Map(
+    ("tests", "jar")   -> "test-jar",
+    ("javadoc", "jar") -> "doc",
+    ("sources", "jar") -> "src"
+    // don't know much about "client" classifier, not including it here
+  )
+
+  def classifierExtensionDefaultTypeOpt(classifier: String, ext: String): Option[String] =
+    classifierExtensionDefaultTypes.get((classifier, ext))
+
+  val typeDefaultConfigs: Map[String, String] = Map(
+    "doc" -> "docs",
+    "src" -> "sources"
+  )
+
+  def typeDefaultConfig(`type`: String): Option[String] =
+    typeDefaultConfigs.get(`type`)
 
 }

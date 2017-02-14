@@ -79,7 +79,7 @@ object TermDisplay {
     def display(): String
   }
 
-  private case class DownloadInfo(
+  private final case class DownloadInfo(
     downloaded: Long,
     previouslyDownloaded: Long,
     length: Option[Long],
@@ -127,7 +127,7 @@ object TermDisplay {
   private def formatTimestamp(ts: Long): String =
     format.format(new Timestamp(ts))
 
-  private case class CheckUpdateInfo(
+  private final case class CheckUpdateInfo(
     currentTimeOpt: Option[Long],
     remoteTimeOpt: Option[Long],
     isDone: Boolean
@@ -292,7 +292,7 @@ object TermDisplay {
             .toVector
             .filter {
               case (url, _) =>
-                !url.endsWith(".sha1") && !url.endsWith(".md5")
+                !url.endsWith(".sha1") && !url.endsWith(".md5") && !url.endsWith("/")
             }
             .sortBy { case (url, _) => url }
 

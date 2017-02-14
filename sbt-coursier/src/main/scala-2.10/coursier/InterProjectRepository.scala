@@ -1,8 +1,10 @@
 package coursier
 
+import scala.language.higherKinds
+
 import scalaz.{ -\/, \/-, Monad, EitherT }
 
-case class InterProjectRepository(projects: Seq[Project]) extends Repository {
+final case class InterProjectRepository(projects: Seq[Project]) extends Repository {
 
   private val map = projects
     .map { proj => proj.moduleVersion -> proj }

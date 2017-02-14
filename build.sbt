@@ -20,6 +20,42 @@ lazy val core = crossProject
       import com.typesafe.tools.mima.core._
 
       Seq(
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.defaultPublications"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.defaultPackaging"),
+        ProblemFilters.exclude[MissingClassProblem]("coursier.maven.MavenSource$DocSourcesArtifactExtensions"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.compatibility.package.listWebPageDirectoryElements"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.compatibility.package.listWebPageSubDirectories"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.compatibility.package.listWebPageFiles"),
+        ProblemFilters.exclude[MissingTypesProblem]("coursier.core.Project$"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Project.apply"),
+        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.core.Project.copy$default$13"),
+        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.core.Project.copy$default$12"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Project.copy"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Project.this"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.copy$default$5"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.packagingBlacklist"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.copy"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.this"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.apply$default$5"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.ignorePackaging"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.<init>$default$5"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.apply"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.core.Activation$Os"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.core.Version"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.core.Authentication"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.core.VersionInterval"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.Pattern"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.Pattern$Chunk$Opt"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.PropertiesPattern$ChunkOrProperty$Const"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.PropertiesPattern$ChunkOrProperty$Opt"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.PropertiesPattern"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.Pattern$Chunk$Var"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.IvyRepository"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.Pattern$Chunk$Const"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.PropertiesPattern$ChunkOrProperty$Prop"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.PropertiesPattern$ChunkOrProperty$Var"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.maven.MavenRepository"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.maven.MavenSource"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.package#Resolution.apply$default$9"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.package#Resolution.apply"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.core.Resolution.copy$default$9"),
@@ -126,6 +162,9 @@ lazy val cache = project
       import com.typesafe.tools.mima.core._
 
       Seq(
+        ProblemFilters.exclude[FinalClassProblem]("coursier.TermDisplay$DownloadInfo"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.TermDisplay$CheckUpdateInfo"),
+        ProblemFilters.exclude[FinalClassProblem]("coursier.util.Base64$B64Scheme"),
         ProblemFilters.exclude[MissingClassProblem]("coursier.TermDisplay$Message$Stop$"),
         ProblemFilters.exclude[MissingClassProblem]("coursier.TermDisplay$Message"),
         ProblemFilters.exclude[MissingClassProblem]("coursier.TermDisplay$Message$"),
@@ -326,16 +365,13 @@ lazy val doc = project
   )
 
 // Don't try to compile that if you're not in 2.10
-lazy val plugin = project
+lazy val `sbt-coursier` = project
   .dependsOn(coreJvm, cache)
   .settings(pluginSettings)
-  .settings(
-    name := "sbt-coursier"
-  )
 
 // Don't try to compile that if you're not in 2.10
 lazy val `sbt-shading` = project
-  .dependsOn(plugin)
+  .dependsOn(`sbt-coursier`)
   .settings(pluginSettings)
   .settings(
     // Warning: this version doesn't handle well class names with '$'s
@@ -385,7 +421,7 @@ lazy val `coursier` = project.in(file("."))
     cache,
     bootstrap,
     cli,
-    plugin,
+    `sbt-coursier`,
     `sbt-shading`,
     web,
     doc,
