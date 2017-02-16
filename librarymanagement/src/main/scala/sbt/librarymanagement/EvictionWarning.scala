@@ -4,7 +4,7 @@ import collection.mutable
 import Configurations.Compile
 import ScalaArtifacts.{ LibraryID, CompilerID }
 import sbt.util.Logger
-import sbt.internal.util.ShowLines
+import sbt.util.ShowLines
 import sbt.internal.librarymanagement.{ InlineConfiguration, IvySbt }
 
 final class EvictionWarningOptions private[sbt] (

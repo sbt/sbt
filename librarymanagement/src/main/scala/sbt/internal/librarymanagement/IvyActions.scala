@@ -17,8 +17,8 @@ import org.apache.ivy.core.report.ResolveReport
 import org.apache.ivy.core.resolve.ResolveOptions
 import org.apache.ivy.plugins.resolver.{ BasicResolver, DependencyResolver }
 import sbt.io.{ IO, PathFinder }
-import sbt.util.Logger
-import sbt.internal.util.{ ShowLines, SourcePosition, LinePosition, RangePosition, LineRange }
+import sbt.util.{ Logger, ShowLines }
+import sbt.internal.util.{ SourcePosition, LinePosition, RangePosition, LineRange }
 import sbt.librarymanagement._
 import sbt.internal.librarymanagement.syntax._
 import sbt.internal.librarymanagement._
