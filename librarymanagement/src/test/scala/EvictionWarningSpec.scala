@@ -60,7 +60,7 @@ class EvictionWarningSpec extends BaseIvySpecification {
 
   def defaultOptions = EvictionWarningOptions.default
 
-  import sbt.internal.util.ShowLines._
+  import sbt.util.ShowLines._
 
   def scalaVersionDeps = Vector(scala2102, akkaActor230)
 
