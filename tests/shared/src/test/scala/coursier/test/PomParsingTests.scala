@@ -194,6 +194,29 @@ object PomParsingTests extends TestSuite {
 
       assert(result == expected)
     }
+    'propertyWithSpaces{
+      val profileNode ="""
+        <profile>
+          <id>profile1</id>
+          <properties>
+            <first.prop>   value1   </first.prop>
+          </properties>
+        </profile>
+                       """
+
+      val expected = \/-(Profile(
+        "profile1",
+        None,
+        Profile.Activation(Nil),
+        Nil,
+        Nil,
+        Map("first.prop" -> "value1")
+      ))
+
+      val result = Pom.profile(xmlParse(profileNode).right.get)
+
+      assert(result == expected)
+    }
     'beFineWithCommentsInProperties{
       import scalaz._, Scalaz._
 
