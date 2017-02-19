@@ -115,15 +115,6 @@ if /I %ERRORLEVEL% EQU 0 (set JAVA_VERSION=1.6)
 findstr /c:"version \"1.5" "%TEMP%.\out.txt"
 if /I %ERRORLEVEL% EQU 0 (set JAVA_VERSION=1.5)
 
-set rtexport=%SBT_HOME%java9-rt-export.jar
-
-"%_JAVACMD%" %_JAVA_OPTS% %SBT_OPTS% -jar "%rtexport%" --global-base > "%TEMP%.\global_base.txt"
-set /p sbt_global_dir= < "%TEMP%.\global_base.txt"
-set java9_ext=%sbt_global_dir%\java9-rt-ext
-set java9_rt=%java9_ext%\rt.jar
-
-echo %java9_rt%
-
 exit /B 0
 
 :checkjava
@@ -143,6 +134,13 @@ exit /B 1
 
 :copyrt
 if /I "%JAVA_VERSION%" GEQ "9" (
+  set rtexport=%SBT_HOME%java9-rt-export.jar
+
+  "%_JAVACMD%" %_JAVA_OPTS% %SBT_OPTS% -jar "%rtexport%" --global-base > "%TEMP%.\global_base.txt"
+  set /p sbt_global_dir= < "%TEMP%.\global_base.txt"
+  set java9_ext=%sbt_global_dir%\java9-rt-ext
+  set java9_rt=%java9_ext%\rt.jar
+
   if not exist "%java9_rt%" (
     echo Copying runtime jar.
     mkdir "%java9_ext%"

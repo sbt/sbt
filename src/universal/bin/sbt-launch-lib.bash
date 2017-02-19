@@ -154,13 +154,6 @@ process_args () {
   ## parses 1.7, 1.8, 9, etc out of java version "1.8.0_91"
   java_version=$("$java_cmd" -Xmx512M -version 2>&1 | sed 's/.*version "\([0-9]*\)\(\.[0-9]*\)\{0,1\}\(.*\)*"/\1\2/; 1q')
   vlog "[process_args] java_version = '$java_version'"
-  rtexport=$(rt_export_file)
-  sbt_global_dir=$("$java_cmd" ${JAVA_OPTS} ${SBT_OPTS:-$default_sbt_opts} ${java_args[@]} \
-    -jar "$rtexport" --global-base)
-  java9_ext=$(echo "$sbt_global_dir/java9-rt-ext")
-  java9_rt=$(echo "$java9_ext/rt.jar")
-  vlog "[process_args] sbt_global_dir = '$sbt_global_dir'"
-  vlog "[process_args] java9_rt = '$java9_rt'"
 }
 
 # Detect that we have java installed.
@@ -187,20 +180,26 @@ checkJava() {
 }
 
 copyRt() {
-  if [[ "$java_version" > "8" ]] && [[ ! -f "$java9_rt" ]]; then
-    echo Copying runtime jar.
-    execRunner "$java_cmd" \
-      ${JAVA_OPTS} \
-      ${SBT_OPTS:-$default_sbt_opts} \
-      ${java_args[@]} \
-      -jar "$rtexport" \
-      "${java9_rt}"
-  fi
   if [[ "$java_version" > "8" ]]; then
+    rtexport=$(rt_export_file)
+    sbt_global_dir=$("$java_cmd" ${JAVA_OPTS} ${SBT_OPTS:-$default_sbt_opts} ${java_args[@]} \
+      -jar "$rtexport" --global-base)
+    java9_ext=$(echo "$sbt_global_dir/java9-rt-ext")
+    java9_rt=$(echo "$java9_ext/rt.jar")
+    vlog "[copyRt] sbt_global_dir = '$sbt_global_dir'"
+    vlog "[copyRt] java9_rt = '$java9_rt'"
+    if [[ ! -f "$java9_rt" ]]; then
+      echo Copying runtime jar.
+      execRunner "$java_cmd" \
+        ${JAVA_OPTS} \
+        ${SBT_OPTS:-$default_sbt_opts} \
+        ${java_args[@]} \
+        -jar "$rtexport" \
+        "${java9_rt}"
+    fi
     addJava "-Dscala.ext.dirs=${java9_ext}"
   fi
 }
-
 
 run() {
   # no jar? download it.
