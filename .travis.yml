@@ -40,4 +40,4 @@ cache:
   - $HOME/.m2
   - $HOME/.ivy2/cache
   - $HOME/.sbt
-# Not adding $HOME/.coursier, we check that sbt-coursier works fine with an initially empty cache
+  - $HOME/.coursier
