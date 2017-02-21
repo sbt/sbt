@@ -595,7 +595,7 @@ object Defaults extends BuildCommon {
             rel.internalClassDeps(c).map(intlStamp(_, analysis, s + c)) ++
               rel.externalDeps(c).map(stamp) +
               (apis.internal.get(c) match {
-                case Some(x) => Long.MinValue // FIXME: x.compilation.startTime
+                case Some(x) => x.compilationTimestamp
                 case _       => Long.MinValue
               })
           }.max
