@@ -68,7 +68,7 @@ object TermDisplay {
     def insideEmacs = sys.env.contains("INSIDE_EMACS")
     def ci = sys.env.contains("CI")
 
-    val env = env0.getOrElse(compatibilityEnv)
+    val env = env0.fold(compatibilityEnv)(!_)
 
     env || nonInteractive || insideEmacs || ci
   }
