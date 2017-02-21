@@ -348,6 +348,8 @@ object TermDisplay {
       }
       for (_ <- 0 until currentHeight)
         out.up(2)
+
+      out.flush()
     }
 
     private var previous = Set.empty[String]
