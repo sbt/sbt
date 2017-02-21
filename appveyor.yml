@@ -13,7 +13,6 @@ install:
       }
   - cmd: SET PATH=C:\sbt\sbt\bin;%JAVA_HOME%\bin;%PATH%
   - cmd: SET SBT_OPTS=-XX:MaxPermSize=2g -Xmx4g
-  - cmd: SET COURSIER_NO_TERM=1
   - ps: |
       if (!(Test-Path 'C:\Users\appveyor\.m2\repository\org\anarres\jarjar\jarjar-core\1.0.1-coursier-SNAPSHOT')) {
         iex 'git clone https://github.com/alexarchambault/jarjar'
