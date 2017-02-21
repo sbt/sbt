@@ -82,7 +82,7 @@ final case class MavenSource(
           project.publications.collect {
             case (_, p)
               if p.`type` == dependency.attributes.`type` ||
-                p.ext == dependency.attributes.`type` // wow
+                (p.ext == dependency.attributes.`type` && project.packagingOpt.toSeq.contains(p.`type`)) // wow
               =>
               p
           }
