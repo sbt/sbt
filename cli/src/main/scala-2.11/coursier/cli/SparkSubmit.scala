@@ -73,7 +73,7 @@ final case class SparkSubmit(
     helper.fetch(
       sources = false,
       javadoc = false,
-      artifactTypes = options.artifactOptions.artifactTypes
+      artifactTypes = options.artifactOptions.artifactTypes(sources = false, javadoc = false)
     ) ++ options.extraJars.map(new File(_))
 
   val (scalaVersion, sparkVersion) =
@@ -195,7 +195,7 @@ final case class SparkSubmit(
     sparkVersion,
     options.noDefaultSubmitDependencies,
     options.submitDependencies.flatMap(_.split(",")).filter(_.nonEmpty),
-    options.artifactOptions.artifactTypes,
+    options.artifactOptions.artifactTypes(sources = false, javadoc = false),
     options.common
   )
 

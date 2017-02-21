@@ -17,7 +17,10 @@ final case class Fetch(
   val files0 = helper.fetch(
     sources = options.sources,
     javadoc = options.javadoc,
-    artifactTypes = options.artifactOptions.artifactTypes
+    artifactTypes = options.artifactOptions.artifactTypes(
+      options.sources || options.common.classifier0("sources"),
+      options.javadoc || options.common.classifier0("javadoc")
+    )
   )
 
   val out =
