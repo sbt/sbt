@@ -162,6 +162,7 @@ lazy val cache = project
       import com.typesafe.tools.mima.core._
 
       Seq(
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.TermDisplay#UpdateDisplayRunnable.cleanDisplay"),
         ProblemFilters.exclude[FinalClassProblem]("coursier.TermDisplay$DownloadInfo"),
         ProblemFilters.exclude[FinalClassProblem]("coursier.TermDisplay$CheckUpdateInfo"),
         ProblemFilters.exclude[FinalClassProblem]("coursier.util.Base64$B64Scheme"),
