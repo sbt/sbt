@@ -77,7 +77,7 @@ SBT_COMMANDS="$SBT_COMMANDS tut coreJVM/mimaReportBinaryIssues cache/mimaReportB
 
 ~/sbt ++${TRAVIS_SCALA_VERSION} $SBT_COMMANDS
 
-.ci/java-6-test.sh
+scripts/java-6-test.sh
 
 if isNotPr && publish && isMaster; then
   ~/sbt ++${TRAVIS_SCALA_VERSION} publish
