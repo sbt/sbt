@@ -222,6 +222,9 @@ object FromSbt {
             mavenRepositoryOpt(mavenCompatibleBase, log, authentication)
         }
 
+      case raw: sbt.RawRepository if raw.name == "inter-project" => // sbt.RawRepository.equals just compares names anyway
+        None
+
       case other =>
         log.warn(s"Unrecognized repository ${other.name}, ignoring it")
         None
