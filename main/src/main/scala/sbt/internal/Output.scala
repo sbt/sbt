@@ -4,7 +4,8 @@
 package sbt
 package internal
 
-import sbt.internal.util.{ Show, Types }
+import sbt.internal.util.Types
+import sbt.util.Show
 
 import java.util.regex.Pattern
 import java.io.File
@@ -47,7 +48,7 @@ object Output {
       outputs flatMap {
         case KeyValue(key, lines) =>
           val flines = f(lines)
-          if (!single) bold(display(key)) +: flines else flines
+          if (!single) bold(display show key) +: flines else flines
       }
     }
 

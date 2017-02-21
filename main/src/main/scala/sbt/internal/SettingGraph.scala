@@ -4,7 +4,8 @@
 package sbt
 package internal
 
-import sbt.internal.util.{ Show, JLine }
+import sbt.internal.util.JLine
+import sbt.util.Show
 
 import java.io.File
 import Def.{ compiled, flattenLocals, ScopedKey }
@@ -20,12 +21,12 @@ object SettingGraph {
         {
           val key = scoped.key
           val scope = scoped.scope
-          val definedIn = structure.data.definingScope(scope, key) map { sc => display(ScopedKey(sc, key)) }
+          val definedIn = structure.data.definingScope(scope, key) map (sc => display show ScopedKey(sc, key))
           val depends = cMap.get(scoped) match { case Some(c) => c.dependencies.toSet; case None => Set.empty }
           // val related = cMap.keys.filter(k => k.key == key && k.scope != scope)
           // val reverse = reverseDependencies(cMap, scoped)
 
-          SettingGraph(display(scoped), definedIn,
+          SettingGraph(display show scoped, definedIn,
             Project.scopedKeyData(structure, scope, key),
             key.description, basedir,
             depends map { (x: ScopedKey[_]) => loop(x, generation + 1) })

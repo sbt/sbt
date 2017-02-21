@@ -25,7 +25,7 @@ import sbt.librarymanagement.{ `package` => _, _ }
 import sbt.internal.librarymanagement._
 import sbt.internal.librarymanagement.syntax._
 import sbt.internal.util._
-import sbt.util.{ Level, Logger }
+import sbt.util.{ Level, Logger, LogExchange, ShowLines }
 import scala.xml.NodeSeq
 import scala.util.control.NonFatal
 
@@ -510,7 +510,7 @@ object Defaults extends BuildCommon {
     testResultLogger in (Test, test) :== TestResultLogger.SilentWhenNoTests, // https://github.com/sbt/sbt/issues/1185
     test := {
       val trl = (testResultLogger in (Test, test)).value
-      val taskName = Project.showContextKey(state.value)(resolvedScoped.value)
+      val taskName = Project.showContextKey(state.value) show resolvedScoped.value
       trl.run(streams.value.log, executeTests.value, taskName)
     },
     testOnly := inputTests(testOnly).evaluated,
@@ -595,7 +595,7 @@ object Defaults extends BuildCommon {
             rel.internalClassDeps(c).map(intlStamp(_, analysis, s + c)) ++
               rel.externalDeps(c).map(stamp) +
               (apis.internal.get(c) match {
-                case Some(x) => x.compilation.startTime
+                case Some(x) => Long.MinValue // FIXME: x.compilation.startTime
                 case _       => Long.MinValue
               })
           }.max
@@ -627,7 +627,7 @@ object Defaults extends BuildCommon {
         val modifiedOpts = Tests.Filters(filter(selected)) +: Tests.Argument(frameworkOptions: _*) +: config.options
         val newConfig = config.copy(options = modifiedOpts)
         val output = allTestGroupsTask(s, loadedTestFrameworks.value, testLoader.value, testGrouping.value, newConfig, fullClasspath.value, javaHome.value, testForkedParallel.value, javaOptions.value)
-        val taskName = display(resolvedScoped.value)
+        val taskName = display show resolvedScoped.value
         val trl = testResultLogger.value
         val processed = output.map(out => trl.run(s.log, out, taskName))
         processed
@@ -1094,7 +1094,7 @@ object Defaults extends BuildCommon {
         f1(Compiler.foldMappers(sourcePositionMappers.value)),
         compileOrder.value
       ),
-      compilerReporter := new LoggerReporter(maxErrors.value, streams.value.log, Compiler.foldMappers(sourcePositionMappers.value)),
+      compilerReporter := new LoggerReporter(maxErrors.value, LogExchange logger "", Compiler.foldMappers(sourcePositionMappers.value)),
       compileInputs := new Inputs(
         compilers.value,
         compileOptions.value,
@@ -1120,8 +1120,8 @@ object Defaults extends BuildCommon {
       val max = maxErrors.value
       val spms = sourcePositionMappers.value
       val problems = analysis.infos.allInfos.values.flatMap(i => i.reportedProblems ++ i.unreportedProblems)
-      val reporter = new LoggerReporter(max, streams.value.log, Compiler.foldMappers(spms))
-      problems foreach { p => reporter.display(p.position, p.message, p.severity) }
+      val reporter = new LoggerReporter(max, LogExchange logger "", Compiler.foldMappers(spms))
+      // FIXME: problems foreach { p => reporter.display(p.position, p.message, p.severity) }
     }
 
   def sbtPluginExtra(m: ModuleID, sbtV: String, scalaV: String): ModuleID =

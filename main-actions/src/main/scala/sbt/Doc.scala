@@ -4,34 +4,43 @@
 package sbt
 
 import java.io.File
-import sbt.internal.inc.AnalyzingCompiler
 
-import Predef.{ conforms => _, _ }
-import sbt.io.syntax._
+import scala.Predef.{ conforms => _, _ }
+
 import sbt.io.IO
+import sbt.io.syntax._
 
-import sbt.internal.util.CacheStoreFactory
+import sbt.internal.util.{ CacheStoreFactory, ManagedLogger }
+import sbt.util.{ LogExchange, Logger }
+
 import xsbti.Reporter
 import xsbti.compile.JavaTools
-
-import sbt.util.Logger
+import sbt.internal.inc.AnalyzingCompiler
 
 object Doc {
   import RawCompileLike._
+
   def scaladoc(label: String, cacheStoreFactory: CacheStoreFactory, compiler: AnalyzingCompiler): Gen =
     scaladoc(label, cacheStoreFactory, compiler, Seq())
-  def scaladoc(label: String, cacheStoreFactory: CacheStoreFactory, compiler: AnalyzingCompiler, fileInputOptions: Seq[String]): Gen =
-    cached(cacheStoreFactory, fileInputOptions, prepare(label + " Scala API documentation", compiler.doc))
-  def javadoc(label: String, cacheStoreFactory: CacheStoreFactory, doc: JavaTools, log: Logger, reporter: Reporter): Gen =
+
+  def scaladoc(label: String, cacheStoreFactory: CacheStoreFactory, compiler: AnalyzingCompiler,
+    fileInputOptions: Seq[String]): Gen =
+    cached(cacheStoreFactory, fileInputOptions, prepare(s"$label Scala API documentation", compiler.doc))
+
+  def javadoc(label: String, cacheStoreFactory: CacheStoreFactory, doc: JavaTools, log: Logger,
+    reporter: Reporter): Gen =
     javadoc(label, cacheStoreFactory, doc, log, reporter, Seq())
-  def javadoc(label: String, cacheStoreFactory: CacheStoreFactory, doc: JavaTools, log: Logger, reporter: Reporter, fileInputOptions: Seq[String]): Gen =
-    cached(cacheStoreFactory, fileInputOptions, prepare(label + " Java API documentation", filterSources(
-      javaSourcesOnly,
-      (sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], maxErrors: Int, log: Logger) => {
-        // doc.doc
-        ???
-      }
-    )))
+
+  def javadoc(label: String, cacheStoreFactory: CacheStoreFactory, doc: JavaTools, log: Logger,
+    reporter: Reporter, fileInputOptions: Seq[String]): Gen = {
+    def gen1(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String],
+      maxErrors: Int, log: Logger): Unit = {
+      // doc.doc
+      ???
+    }
+    val gen2 = filterSources(javaSourcesOnly, gen1)
+    cached(cacheStoreFactory, fileInputOptions, prepare(s"$label Java API documentation", gen2))
+  }
 
   val javaSourcesOnly: File => Boolean = _.getName.endsWith(".java")
 
@@ -44,8 +53,9 @@ object Doc {
 
 sealed trait Doc {
   type Gen = (Seq[File], Seq[File], File, Seq[String], Int, Logger) => Unit
+  type Gen2 = (Seq[File], Seq[File], File, Seq[String], Int, ManagedLogger) => Unit
 
-  private[sbt] final def generate(variant: String, label: String, docf: Gen, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], maxErrors: Int, log: Logger): Unit = {
+  private[sbt] final def generate(variant: String, label: String, docf: Gen2, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], maxErrors: Int, log: Logger): Unit = {
     val logSnip = variant + " API documentation"
     if (sources.isEmpty)
       log.info("No sources available, skipping " + logSnip + "...")
@@ -53,7 +63,7 @@ sealed trait Doc {
       log.info("Generating " + logSnip + " for " + label + " sources to " + outputDirectory.absolutePath + "...")
       IO.delete(outputDirectory)
       IO.createDirectory(outputDirectory)
-      docf(sources, classpath, outputDirectory, options, maxErrors, log)
+      docf(sources, classpath, outputDirectory, options, maxErrors, LogExchange logger "")
       log.info(logSnip + " generation successful.")
     }
   }

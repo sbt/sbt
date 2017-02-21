@@ -5,73 +5,24 @@ package sbt
 
 import java.io.File
 import java.net.URL
-import scala.concurrent.duration.{ FiniteDuration, Duration }
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.{ Duration, FiniteDuration }
 import Def.ScopedKey
 import sbt.internal.inc.ScalaInstance
-import xsbti.compile.{
-  DefinesClass,
-  ClasspathOptions,
-  CompileAnalysis,
-  CompileOptions,
-  CompileOrder,
-  Compilers,
-  CompileResult,
-  GlobalsCache,
-  IncOptions,
-  Inputs,
-  PreviousResult,
-  Setup
-}
-import scala.xml.{ Node => XNode, NodeSeq }
+import xsbti.compile.{ ClasspathOptions, CompileAnalysis, CompileOptions, CompileOrder, CompileResult, Compilers, DefinesClass, GlobalsCache, IncOptions, Inputs, PreviousResult, Setup }
+import scala.xml.{ NodeSeq, Node => XNode }
 import org.apache.ivy.core.module.{ descriptor, id }
-import descriptor.ModuleDescriptor, id.ModuleRevisionId
+import descriptor.ModuleDescriptor
+import id.ModuleRevisionId
 import testing.Framework
 import KeyRanks._
-
-import sbt.internal.{ BuildStructure, LoadedBuild, PluginDiscovery, BuildDependencies, SessionSettings, LogManager }
+import sbt.internal.{ BuildDependencies, BuildStructure, LoadedBuild, LogManager, PluginDiscovery, SessionSettings }
 import sbt.io.FileFilter
 import sbt.internal.io.WatchState
 import sbt.internal.util.{ AttributeKey, CacheStore, SourcePosition }
-
 import sbt.librarymanagement.Configurations.CompilerPlugin
-import sbt.librarymanagement.{
-  Artifact,
-  Configuration,
-  ConflictManager,
-  ConflictWarning,
-  Credentials,
-  CrossVersion,
-  Developer,
-  EvictionWarning,
-  EvictionWarningOptions,
-  IvyScala,
-  MavenRepository,
-  ModuleConfiguration,
-  ModuleID,
-  ModuleInfo,
-  ModuleSettings,
-  Resolver,
-  ScalaVersion,
-  ScmInfo,
-  TrackLevel,
-  UpdateConfiguration,
-  UpdateOptions,
-  UpdateLogging,
-  UpdateReport
-}
-import sbt.internal.librarymanagement.{
-  CompatibilityWarningOptions,
-  DeliverConfiguration,
-  GetClassifiersModule,
-  IvyConfiguration,
-  IvyPaths,
-  IvySbt,
-  MakePomConfiguration,
-  PublishConfiguration,
-  RetrieveConfiguration,
-  SbtExclusionRule,
-  UnresolvedWarningConfiguration
-}
+import sbt.librarymanagement.{ Artifact, Configuration, ConflictManager, ConflictWarning, Credentials, CrossVersion, Developer, EvictionWarning, EvictionWarningOptions, IvyScala, MavenRepository, ModuleConfiguration, ModuleID, ModuleInfo, ModuleSettings, Resolver, ScalaVersion, ScmInfo, TrackLevel, UpdateConfiguration, UpdateLogging, UpdateOptions, UpdateReport }
+import sbt.internal.librarymanagement.{ CompatibilityWarningOptions, DeliverConfiguration, GetClassifiersModule, IvyConfiguration, IvyPaths, IvySbt, MakePomConfiguration, PublishConfiguration, RetrieveConfiguration, SbtExclusionRule, UnresolvedWarningConfiguration }
 import sbt.util.{ Level, Logger }
 import org.apache.logging.log4j.core.Appender
 import sbt.BuildSyntax._

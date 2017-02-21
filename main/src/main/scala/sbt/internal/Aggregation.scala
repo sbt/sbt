@@ -7,8 +7,8 @@ package internal
 import Def.ScopedKey
 import Keys.{ showSuccess, showTiming, timingFormat }
 import sbt.internal.util.complete.Parser
-import sbt.internal.util.{ Dag, HList, Relation, Settings, Show, Util }
-import sbt.util.Logger
+import sbt.internal.util.{ Dag, HList, Relation, Settings, Util }
+import sbt.util.{ Logger, Show }
 import java.net.URI
 import Parser.{ seq, failure, success }
 import std.Transform.DummyTaskMap
@@ -24,7 +24,7 @@ object Aggregation {
     xs match {
       case KeyValue(_, x: Seq[_]) :: Nil => print(x.mkString("* ", "\n* ", ""))
       case KeyValue(_, x) :: Nil         => print(x.toString)
-      case _                             => xs foreach { case KeyValue(key, value) => print(display(key) + "\n\t" + value.toString) }
+      case _                             => xs foreach { case KeyValue(key, value) => print((display show key) + "\n\t" + value.toString) }
     }
   type Values[T] = Seq[KeyValue[T]]
   type AnyKeys = Values[_]

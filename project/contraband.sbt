@@ -1,1 +1,1 @@
-addSbtPlugin("org.scala-sbt" % "sbt-contraband" % "0.3.0-M3")
+addSbtPlugin("org.scala-sbt" % "sbt-contraband" % "0.3.0-M4")

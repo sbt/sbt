@@ -1,8 +1,9 @@
 package sbt
 
 import sbt.internal.util.Types.const
-import sbt.internal.util.{ Attributed, AttributeKey, Init, Show }
+import sbt.internal.util.{ Attributed, AttributeKey, Init }
 import sbt.internal.util.complete.Parser
+import sbt.util.Show
 import java.io.File
 import Scope.{ ThisScope, GlobalScope }
 import KeyRanks.{ DTask, Invisible }
@@ -20,10 +21,10 @@ object Def extends Init[Scope] with TaskMacroExtra {
 
   lazy val showFullKey: Show[ScopedKey[_]] = showFullKey(None)
   def showFullKey(keyNameColor: Option[String]): Show[ScopedKey[_]] =
-    new Show[ScopedKey[_]] { def apply(key: ScopedKey[_]) = displayFull(key, keyNameColor) }
+    new Show[ScopedKey[_]] { def show(key: ScopedKey[_]) = displayFull(key, keyNameColor) }
 
   def showRelativeKey(current: ProjectRef, multi: Boolean, keyNameColor: Option[String] = None): Show[ScopedKey[_]] = new Show[ScopedKey[_]] {
-    def apply(key: ScopedKey[_]) =
+    def show(key: ScopedKey[_]) =
       Scope.display(key.scope, colored(key.key.label, keyNameColor), ref => displayRelative(current, multi, ref))
   }
   def displayRelative(current: ProjectRef, multi: Boolean, project: Reference): String = project match {
