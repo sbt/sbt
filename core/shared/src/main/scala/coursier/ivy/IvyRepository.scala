@@ -168,7 +168,7 @@ final case class IvyRepository(
                 Map.empty,
                 Map.empty,
                 Attributes("", ""),
-                changing = true,
+                changing = changing.getOrElse(version.contains("-SNAPSHOT")),
                 authentication
               )
 

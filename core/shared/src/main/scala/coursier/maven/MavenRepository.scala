@@ -258,7 +258,7 @@ final case class MavenRepository(
         Map.empty,
         Map.empty,
         Attributes("", ""),
-        changing = true,
+        changing = changing.getOrElse(version.contains("-SNAPSHOT")),
         authentication
       )
 
