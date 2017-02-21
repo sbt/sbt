@@ -206,6 +206,7 @@ lazy val cli = project
       else
         Seq()
     },
+    packExcludeArtifactTypes += "pom",
     resourceGenerators in Compile += packageBin.in(bootstrap).in(Compile).map { jar =>
       Seq(jar)
     }.taskValue,
@@ -399,7 +400,8 @@ lazy val `http-server` = project
         )
       else
         Seq()
-    }
+    },
+    packExcludeArtifactTypes += "pom"
   )
 
 lazy val okhttp = project
