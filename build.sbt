@@ -382,6 +382,19 @@ lazy val `sbt-shading` = project
     libraryDependencies += "org.anarres.jarjar" % "jarjar-core" % "1.0.0"
   )
 
+lazy val `sbt-launcher` = project
+  .dependsOn(cache)
+  .settings(commonSettings)
+  .settings(packAutoSettings)
+  .settings(
+    libraryDependencies ++= Seq(
+      "com.github.alexarchambault" %% "case-app" % "1.1.3",
+      "org.scala-sbt" % "launcher-interface" % "1.0.0",
+      "com.typesafe" % "config" % "1.3.1"
+    ),
+    packExcludeArtifactTypes += "pom"
+  )
+
 val http4sVersion = "0.8.6"
 
 lazy val `http-server` = project
@@ -426,6 +439,7 @@ lazy val `coursier` = project.in(file("."))
     cli,
     `sbt-coursier`,
     `sbt-shading`,
+    `sbt-launcher`,
     web,
     doc,
     `http-server`,
