@@ -3,6 +3,8 @@ import java.io.FileOutputStream
 val binaryCompatibilityVersion = "1.0.0-M14"
 val binaryCompatibility212Version = "1.0.0-M15"
 
+parallelExecution in Global := false
+
 lazy val IntegrationTest = config("it") extend Test
 
 lazy val scalazVersion = "7.2.8"
