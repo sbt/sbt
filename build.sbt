@@ -85,7 +85,7 @@ val root = (project in file(".")).
     rpmVendor := "lightbend",
     rpmUrl := Some("http://github.com/sbt/sbt-launcher-package"),
     rpmLicense := Some("BSD"),
-    rpmRequirements := Seq("java-devel >= 1.8", "java-devel < 1.9"),
+    rpmRequirements := Seq("java-1.8.0-devel"),
     rpmProvides := Seq("sbt"),
 
     // WINDOWS SPECIFIC
