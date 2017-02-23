@@ -83,7 +83,7 @@ Pull Requests
 
 ### Branch to work against
 
-Whether implementing a new feature, fixing a bug, or modifying documentation, please work against the latest development branch (currently, 0.13).
+Whether implementing a new feature, fixing a bug, or modifying documentation, please work against the latest development branch (currently, 1.0.x).
 See below for instructions on building sbt from source.
 
 ### Adding notes
@@ -125,11 +125,11 @@ Build from source
 		$ git clone git://github.com/sbt/sbt.git
 		$ cd sbt
 
-3. The default branch is the development branch [0.13](https://github.com/sbt/sbt/tree/0.13), which contains the latest code for the next major sbt release.  To build a specific release or commit, switch to the associated tag.  The tag for the latest stable release is [v0.13.9](https://github.com/sbt/sbt/tree/v0.13.9):
+3. The default branch is the development branch [1.0.x](https://github.com/sbt/sbt/tree/1.0.x), which contains the latest code for the next major sbt release.  To build a specific release or commit, switch to the associated tag.  The tag for the latest stable release is [v0.13.13](https://github.com/sbt/sbt/tree/v0.13.13):
 
-		$ git checkout v0.13.9
+		$ git checkout v0.13.13
 
-	Note that sbt is always built with the previous stable release.  For example, the [0.13](https://github.com/sbt/sbt/tree/0.13) branch is built with 0.13.9 and the [v0.13.9](https://github.com/sbt/sbt/tree/v0.13.9) tag is built with 0.13.8.
+	Note that sbt is always built with the previous stable release.  For example, the [1.0.x](https://github.com/sbt/sbt/tree/1.0.x) branch is built with 0.13.13 and the [v0.13.13](https://github.com/sbt/sbt/tree/v0.13.13) tag is built with 0.13.12.
 
 4. To build the launcher and publish all components locally,
 
@@ -158,7 +158,7 @@ Build from source
 
 3. After each `publishLocal`, clean the `~/.sbt/boot/` directory.  Alternatively, if sbt is running and the launcher hasn't changed, run `reboot full` to have sbt do this for you.
 
-4. If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `0.13.10-SNAPSHOT`.
+4. If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `1.0.0-SNAPSHOT`.
 
 ## Diagnosing build failures
 
@@ -194,7 +194,7 @@ Please note that these tests run PAINFULLY slow if the version set in
 `build.sbt` is set to SNAPSHOT, as every time the scripted test boots
 up a test instance of sbt, remote mirrors are scanned for possible
 updates. It is recommended that you set the version suffix to
-`-devel`, as in `0.13.10-devel`.
+`-devel`, as in `1.0.0-devel`.
 
 Building Documentation
 ======================
