@@ -124,6 +124,7 @@ object Keys {
   val compileOrder = SettingKey[CompileOrder]("compile-order", "Configures the order in which Java and sources within a single compilation are compiled.  Valid values are: JavaThenScala, ScalaThenJava, or Mixed.", BPlusSetting)
   val initialCommands = SettingKey[String]("initial-commands", "Initial commands to execute when starting up the Scala interpreter.", AMinusSetting)
   val cleanupCommands = SettingKey[String]("cleanup-commands", "Commands to execute before the Scala interpreter exits.", BMinusSetting)
+  val asciiGraphWidth = SettingKey[Int]("asciiGraphWidth", "Determines maximum width of the settings graph in ASCII mode", AMinusSetting)
   val compileInputs = TaskKey[Compiler.Inputs]("compile-inputs", "Collects all inputs needed for compilation.", DTask)
   val scalaHome = SettingKey[Option[File]]("scala-home", "If Some, defines the local Scala installation to use for compilation, running, and testing.", ASetting)
   val scalaInstance = TaskKey[ScalaInstance]("scala-instance", "Defines the Scala instance to use for compilation, running, and testing.", DTask)
