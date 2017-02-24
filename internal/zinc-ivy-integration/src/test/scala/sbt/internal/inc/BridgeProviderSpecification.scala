@@ -10,7 +10,7 @@ import sbt.internal.librarymanagement.JsonUtil
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.librarymanagement.{ ModuleID, UpdateOptions, Resolver, Patterns, FileRepository, DefaultMavenRepository }
-import sbt.util.{ Logger, Level }
+import sbt.util.Logger
 import xsbti.{ ComponentProvider, GlobalLock }
 
 /**
