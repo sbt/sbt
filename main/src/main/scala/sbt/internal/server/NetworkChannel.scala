@@ -5,13 +5,13 @@ package sbt
 package internal
 package server
 
-import java.net.{ Socket, SocketTimeoutException }
+import java.net.{ Socket, SocketTimeoutException, URI }
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.util.{ Left, Right }
 import sbt.protocol._
 import sjsonnew._
 
-final class NetworkChannel(val name: String, connection: Socket, state: State) extends CommandChannel {
+final class NetworkChannel(val name: String, connection: Socket, structure: BuildStructure, currentBuild: URI) extends CommandChannel {
   private val running = new AtomicBoolean(true)
   private val delimiter: Byte = '\n'.toByte
   private val out = connection.getOutputStream
@@ -82,11 +82,10 @@ final class NetworkChannel(val name: String, connection: Socket, state: State) e
   private def onSettingQuery(req: SettingQuery) = {
     import sbt.internal.util.complete.Parser
 
-    val extracted = Project extract state
-    val key = Parser.parse(req.setting, SettingQuery scopedKeyParser extracted)
+    val key = Parser.parse(req.setting, SettingQuery.scopedKeyParser(structure, currentBuild))
 
     def getSettingValue[A](key: Def.ScopedKey[A]) =
-      extracted.structure.data.get(key.scope, key.key)
+      structure.data.get(key.scope, key.key)
         .toRight(s"Key ${Def displayFull key} not found")
         .flatMap {
           case _: Task[_]      => Left(s"Key ${Def displayFull key} is a task, can only query settings")
@@ -115,7 +114,6 @@ final class NetworkChannel(val name: String, connection: Socket, state: State) e
 }
 
 object SettingQuery {
-  import java.net.URI
   import sbt.internal.util.{ AttributeKey, Settings }
   import sbt.internal.util.complete.{ DefaultParsers, Parser }, DefaultParsers._
   import sbt.Def.{ showBuildRelativeKey, ScopedKey }
@@ -167,7 +165,4 @@ object SettingQuery {
     data: Settings[Scope]
   ): Parser[ScopedKey[_]] =
     scopedKeySelected(index, currentBuild, defaultConfigs, keyMap, data).map(_.key)
-
-  def scopedKeyParser(extracted: Extracted): Parser[ScopedKey[_]] =
-    scopedKeyParser(extracted.structure, extracted.currentRef.build)
 }
