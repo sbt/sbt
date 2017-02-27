@@ -41,7 +41,7 @@ type ExecStatusEvent implements EventMessage {
 }
 
 type SettingQueryResponse implements EventMessage {
-  values: [String]
+  value: String!
 }
 
 # enum Status {

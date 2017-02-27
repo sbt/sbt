@@ -11,16 +11,16 @@ implicit lazy val SettingQueryResponseFormat: JsonFormat[sbt.protocol.SettingQue
     jsOpt match {
       case Some(js) =>
       unbuilder.beginObject(js)
-      val values = unbuilder.readField[Vector[String]]("values")
+      val value = unbuilder.readField[String]("value")
       unbuilder.endObject()
-      sbt.protocol.SettingQueryResponse(values)
+      sbt.protocol.SettingQueryResponse(value)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
   }
   override def write[J](obj: sbt.protocol.SettingQueryResponse, builder: Builder[J]): Unit = {
     builder.beginObject()
-    builder.addField("values", obj.values)
+    builder.addField("value", obj.value)
     builder.endObject()
   }
 }

@@ -83,7 +83,7 @@ final class NetworkChannel(val name: String, connection: Socket, state: State) e
     import sbt.internal.util.complete.Parser
 
     val extracted = Project extract state
-    val keys = Parser.parse(req.setting, Act aggregatedKeyParser extracted)
+    val key = Parser.parse(req.setting, Act scopedKeyParser extracted)
 
     def getSettingValue[A](key: Def.ScopedKey[A]) =
       extracted.structure.data.get(key.scope, key.key)
@@ -94,23 +94,14 @@ final class NetworkChannel(val name: String, connection: Socket, state: State) e
           case x               => Right(x)
         }
 
-    def zeroValues: Either[Vector[String], Vector[Any]] = Right(Vector.empty)
-    def anyLeftsOrAllRights[A, B](acc: Either[Vector[A], Vector[B]], elem: Either[A, B]): Either[Vector[A], Vector[B]] =
-      (acc, elem) match {
-        case (Right(a), Right(x)) => Right(a :+ x)
-        case (Right(_), Left(x))  => Left(Vector(x))
-        case (Left(a), Right(_))  => Left(a)
-        case (Left(a), Left(x))   => Left(a :+ x)
-      }
-
-    val values = keys match {
-      case Left(msg)   => Left(s"Invalid programmatic input:" +: (msg.lines.toVector map ("   " + _)))
-      case Right(keys) => keys.map(getSettingValue(_)).foldLeft(zeroValues)(anyLeftsOrAllRights)
+    val values = key match {
+      case Left(msg)  => Left(s"Invalid programmatic input: $msg")
+      case Right(key) => Right(getSettingValue(key))
     }
 
     val jsonValues = values match {
-      case Left(errors)  => errors
-      case Right(values) => values map (_.toString)
+      case Left(errors) => errors
+      case Right(value) => value.toString
     }
 
     StandardMain.exchange publishEventMessage SettingQueryResponse(jsonValues)
