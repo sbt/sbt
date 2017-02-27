@@ -83,7 +83,7 @@ final class NetworkChannel(val name: String, connection: Socket, state: State) e
     import sbt.internal.util.complete.Parser
 
     val extracted = Project extract state
-    val key = Parser.parse(req.setting, Act scopedKeyParser extracted)
+    val key = Parser.parse(req.setting, SettingQuery scopedKeyParser extracted)
 
     def getSettingValue[A](key: Def.ScopedKey[A]) =
       extracted.structure.data.get(key.scope, key.key)
@@ -112,4 +112,62 @@ final class NetworkChannel(val name: String, connection: Socket, state: State) e
     running.set(false)
     out.close()
   }
+}
+
+object SettingQuery {
+  import java.net.URI
+  import sbt.internal.util.{ AttributeKey, Settings }
+  import sbt.internal.util.complete.{ DefaultParsers, Parser }, DefaultParsers._
+  import sbt.Def.{ showBuildRelativeKey, ScopedKey }
+
+  // Similar to Act.projectRef, except doesn't match "*" or omitted project references
+  def projectRef(index: KeyIndex, currentBuild: URI): Parser[ResolvedReference] = {
+    val trailing = '/' !!! "Expected '/' (if selecting a project)"
+    Act.resolvedReference(index, currentBuild, trailing)
+  }
+
+  def scopedKeyFull(
+    index: KeyIndex,
+    currentBuild: URI,
+    defaultConfigs: Option[ResolvedReference] => Seq[String],
+    keyMap: Map[String, AttributeKey[_]]
+  ): Parser[Seq[Parser[ParsedKey]]] = {
+    for {
+      proj <- projectRef(index, currentBuild)
+      confAmb <- Act.config(index configs Some(proj))
+      partialMask = ScopeMask(true, confAmb.isExplicit, false, false)
+    } yield Act.taskKeyExtra(index, defaultConfigs, keyMap, Some(proj), confAmb, partialMask)
+  }
+
+  def scopedKeyParser(structure: BuildStructure, currentBuild: URI): Parser[ScopedKey[_]] =
+    scopedKey(
+      structure.index.keyIndex,
+      currentBuild,
+      structure.extra.configurationsForAxis,
+      structure.index.keyMap,
+      structure.data
+    )
+
+  def scopedKeySelected(
+    index: KeyIndex,
+    currentBuild: URI,
+    defaultConfigs: Option[ResolvedReference] => Seq[String],
+    keyMap: Map[String, AttributeKey[_]],
+    data: Settings[Scope]
+  ): Parser[ParsedKey] =
+    scopedKeyFull(index, currentBuild, defaultConfigs, keyMap) flatMap { choices =>
+      Act.select(choices, data)(showBuildRelativeKey(currentBuild, index.buildURIs.size > 1))
+    }
+
+  def scopedKey(
+    index: KeyIndex,
+    currentBuild: URI,
+    defaultConfigs: Option[ResolvedReference] => Seq[String],
+    keyMap: Map[String, AttributeKey[_]],
+    data: Settings[Scope]
+  ): Parser[ScopedKey[_]] =
+    scopedKeySelected(index, currentBuild, defaultConfigs, keyMap, data).map(_.key)
+
+  def scopedKeyParser(extracted: Extracted): Parser[ScopedKey[_]] =
+    scopedKeyParser(extracted.structure, extracted.currentRef.build)
 }
