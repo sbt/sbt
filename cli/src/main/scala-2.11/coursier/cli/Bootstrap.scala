@@ -65,10 +65,7 @@ final case class Bootstrap(
     sys.exit(1)
   }
 
-  val isolatedDeps = options.isolated.isolatedDeps(
-    options.common.defaultArtifactType,
-    options.common.scalaVersion
-  )
+  val isolatedDeps = options.isolated.isolatedDeps(options.common.scalaVersion)
 
   val (_, isolatedArtifactFiles) =
     options.isolated.targets.foldLeft((Vector.empty[String], Map.empty[String, (Seq[String], Seq[File])])) {
@@ -81,7 +78,7 @@ final case class Bootstrap(
         def subFiles0 = helper.fetch(
           sources = false,
           javadoc = false,
-          artifactTypes = artifactOptions.artifactTypes,
+          artifactTypes = artifactOptions.artifactTypes(sources = false, javadoc = false),
           subset = isolatedDeps.getOrElse(target, Seq.empty).toSet
         )
 
@@ -103,7 +100,7 @@ final case class Bootstrap(
         helper.fetch(
           sources = false,
           javadoc = false,
-          artifactTypes = artifactOptions.artifactTypes
+          artifactTypes = artifactOptions.artifactTypes(sources = false, javadoc = false)
         )
       )
     else
@@ -111,7 +108,7 @@ final case class Bootstrap(
         helper.artifacts(
           sources = false,
           javadoc = false,
-          artifactTypes = artifactOptions.artifactTypes
+          artifactTypes = artifactOptions.artifactTypes(sources = false, javadoc = false)
         ).map(_.url),
         Seq.empty[File]
       )

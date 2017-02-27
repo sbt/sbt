@@ -109,10 +109,6 @@ object FromSbt {
     scalaBinaryVersion: String
   ): Project = {
 
-    // FIXME Ignored for now - easy to support though
-    // val sbtDepOverrides = dependencyOverrides.value
-    // val sbtExclusions = excludeDependencies.value
-
     val deps = allDependencies.flatMap(dependencies(_, scalaVersion, scalaBinaryVersion))
 
     Project(
@@ -225,6 +221,9 @@ object FromSbt {
           case Some(mavenCompatibleBase) =>
             mavenRepositoryOpt(mavenCompatibleBase, log, authentication)
         }
+
+      case raw: sbt.RawRepository if raw.name == "inter-project" => // sbt.RawRepository.equals just compares names anyway
+        None
 
       case other =>
         log.warn(s"Unrecognized repository ${other.name}, ignoring it")

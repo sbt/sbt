@@ -61,10 +61,6 @@ final case class CommonOptions(
   @Value("configuration")
   @Short("c")
     defaultConfiguration: String = "default(compile)",
-  @Help("Default artifact type (default: follow packaging infos, else default to jar)")
-  @Value("type")
-  @Short("a")
-    defaultArtifactType: String = "",
   @Help("Maximum number of parallel downloads (default: 6)")
   @Short("n")
     parallel: Int = 6,
@@ -91,7 +87,7 @@ final case class CommonOptions(
     cacheOptions: CacheOptions = CacheOptions()
 ) {
   val verbosityLevel = Tag.unwrap(verbose) - (if (quiet) 1 else 0)
-  lazy val classifier0 = classifier.flatMap(_.split(',')).filter(_.nonEmpty)
+  lazy val classifier0 = classifier.flatMap(_.split(',')).filter(_.nonEmpty).toSet
 }
 
 final case class CacheOptions(
@@ -154,7 +150,7 @@ final case class IsolatedLoaderOptions(
       t -> modVers
   }
 
-  def isolatedDeps(defaultArtifactType: String, defaultScalaVersion: String) =
+  def isolatedDeps(defaultScalaVersion: String) =
     isolatedModuleVersions(defaultScalaVersion).map {
       case (t, l) =>
         t -> l.map {
@@ -163,7 +159,7 @@ final case class IsolatedLoaderOptions(
               mod,
               ver,
               configuration = "runtime",
-              attributes = Attributes(defaultArtifactType, "")
+              attributes = Attributes("", "")
             )
         }
     }
@@ -182,15 +178,18 @@ final case class ArtifactOptions(
   @Help("Fetch artifacts even if the resolution is errored")
     force: Boolean = false
 ) {
-  lazy val artifactTypes = {
+  def artifactTypes(sources: Boolean, javadoc: Boolean) = {
     val types0 = artifactType
       .flatMap(_.split(','))
       .filter(_.nonEmpty)
       .toSet
 
-    if (types0.isEmpty)
-      ArtifactOptions.defaultArtifactTypes
-    else if (types0("*"))
+    if (types0.isEmpty) {
+      if (sources || javadoc)
+        Some("src").filter(_ => sources).toSet ++ Some("doc").filter(_ => javadoc)
+      else
+        ArtifactOptions.defaultArtifactTypes
+    } else if (types0("*"))
       Set("*")
     else
       types0

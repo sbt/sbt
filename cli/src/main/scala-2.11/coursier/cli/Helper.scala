@@ -249,7 +249,7 @@ class Helper(
       Dependency(
         module,
         version,
-        attributes = Attributes(defaultArtifactType, ""),
+        attributes = Attributes("", ""),
         configuration = configOpt.getOrElse(defaultConfiguration),
         exclusions = excludes
       )
@@ -260,7 +260,7 @@ class Helper(
       Dependency(
         module,
         version,
-        attributes = Attributes(defaultArtifactType, ""),
+        attributes = Attributes("", ""),
         configuration = configOpt.getOrElse(defaultConfiguration),
         exclusions = excludes,
         transitive = false
@@ -523,11 +523,11 @@ class Helper(
       if (classifier0.nonEmpty || sources || javadoc) {
         var classifiers = classifier0
         if (sources)
-          classifiers = classifiers :+ "sources"
+          classifiers = classifiers + "sources"
         if (javadoc)
-          classifiers = classifiers :+ "javadoc"
+          classifiers = classifiers + "javadoc"
 
-        res0.dependencyClassifiersArtifacts(classifiers.distinct).map(_._2)
+        res0.dependencyClassifiersArtifacts(classifiers.toVector.sorted).map(_._2)
       } else
         res0.dependencyArtifacts.map(_._2)
 
@@ -616,7 +616,7 @@ class Helper(
 
     // FIXME That shouldn't be hard-coded this way...
     // This whole class ought to be rewritten more cleanly.
-    val artifactTypes = Set("jar")
+    val artifactTypes = Set("jar", "bundle")
 
     val files0 = fetch(
       sources = false,
@@ -628,7 +628,7 @@ class Helper(
       (baseLoader, files0)
     else {
 
-      val isolatedDeps = isolated.isolatedDeps(common.defaultArtifactType, common.scalaVersion)
+      val isolatedDeps = isolated.isolatedDeps(common.scalaVersion)
 
       val (isolatedLoader, filteredFiles0) = isolated.targets.foldLeft((baseLoader, files0)) {
         case ((parent, files0), target) =>

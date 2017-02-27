@@ -68,7 +68,7 @@ object TermDisplay {
     def insideEmacs = sys.env.contains("INSIDE_EMACS")
     def ci = sys.env.contains("CI")
 
-    val env = env0.getOrElse(compatibilityEnv)
+    val env = env0.fold(compatibilityEnv)(!_)
 
     env || nonInteractive || insideEmacs || ci
   }
@@ -172,6 +172,8 @@ object TermDisplay {
 
     private var currentHeight = 0
     private var printedAnything0 = false
+
+    private var stopped = false
 
     def printedAnything() = printedAnything0
 
@@ -286,7 +288,7 @@ object TermDisplay {
     }
 
     private def updateDisplay(): Unit =
-      if (needsUpdate.getAndSet(false)) {
+      if (!stopped && needsUpdate.getAndSet(false)) {
         val (done0, downloads0) = downloads.synchronized {
           val q = doneQueue
             .toVector
@@ -341,13 +343,17 @@ object TermDisplay {
         currentHeight = downloads0.length
       }
 
-    def cleanDisplay(): Unit = {
+    def stop(): Unit = {
       for (_ <- 1 to 2; _ <- 0 until currentHeight) {
         out.clearLine(2)
         out.down(1)
       }
       for (_ <- 0 until currentHeight)
         out.up(2)
+
+      out.flush()
+
+      stopped = true
     }
 
     private var previous = Set.empty[String]
@@ -454,7 +460,7 @@ class TermDisplay(
   def stopDidPrintSomething(): Boolean = {
     scheduler.shutdown()
     scheduler.awaitTermination(2 * refreshInterval, TimeUnit.MILLISECONDS)
-    updateRunnable.cleanDisplay()
+    updateRunnable.stop()
     updateRunnable.printedAnything()
   }
 

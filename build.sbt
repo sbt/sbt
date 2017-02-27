@@ -3,6 +3,8 @@ import java.io.FileOutputStream
 val binaryCompatibilityVersion = "1.0.0-M14"
 val binaryCompatibility212Version = "1.0.0-M15"
 
+parallelExecution in Global := false
+
 lazy val IntegrationTest = config("it") extend Test
 
 lazy val scalazVersion = "7.2.8"
@@ -162,6 +164,7 @@ lazy val cache = project
       import com.typesafe.tools.mima.core._
 
       Seq(
+        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.TermDisplay#UpdateDisplayRunnable.cleanDisplay"),
         ProblemFilters.exclude[FinalClassProblem]("coursier.TermDisplay$DownloadInfo"),
         ProblemFilters.exclude[FinalClassProblem]("coursier.TermDisplay$CheckUpdateInfo"),
         ProblemFilters.exclude[FinalClassProblem]("coursier.util.Base64$B64Scheme"),
@@ -205,6 +208,7 @@ lazy val cli = project
       else
         Seq()
     },
+    packExcludeArtifactTypes += "pom",
     resourceGenerators in Compile += packageBin.in(bootstrap).in(Compile).map { jar =>
       Seq(jar)
     }.taskValue,
@@ -380,6 +384,19 @@ lazy val `sbt-shading` = project
     libraryDependencies += "org.anarres.jarjar" % "jarjar-core" % "1.0.0"
   )
 
+lazy val `sbt-launcher` = project
+  .dependsOn(cache)
+  .settings(commonSettings)
+  .settings(packAutoSettings)
+  .settings(
+    libraryDependencies ++= Seq(
+      "com.github.alexarchambault" %% "case-app" % "1.1.3",
+      "org.scala-sbt" % "launcher-interface" % "1.0.0",
+      "com.typesafe" % "config" % "1.3.1"
+    ),
+    packExcludeArtifactTypes += "pom"
+  )
+
 val http4sVersion = "0.8.6"
 
 lazy val `http-server` = project
@@ -398,7 +415,8 @@ lazy val `http-server` = project
         )
       else
         Seq()
-    }
+    },
+    packExcludeArtifactTypes += "pom"
   )
 
 lazy val okhttp = project
@@ -409,6 +427,41 @@ lazy val okhttp = project
     libraryDependencies ++= Seq(
       "com.squareup.okhttp" % "okhttp-urlconnection" % "2.7.5"
     )
+  )
+
+lazy val jvm = project
+  .aggregate(
+    coreJvm,
+    testsJvm,
+    cache,
+    bootstrap,
+    cli,
+    `sbt-coursier`,
+    `sbt-shading`,
+    `sbt-launcher`,
+    doc,
+    `http-server`,
+    okhttp
+  )
+  .settings(commonSettings)
+  .settings(noPublishSettings)
+  .settings(releaseSettings)
+  .settings(
+    moduleName := "coursier-jvm"
+  )
+
+lazy val js = project
+  .aggregate(
+    coreJs,
+    `fetch-js`,
+    testsJs,
+    web
+  )
+  .settings(commonSettings)
+  .settings(noPublishSettings)
+  .settings(releaseSettings)
+  .settings(
+    moduleName := "coursier-js"
   )
 
 lazy val `coursier` = project.in(file("."))
@@ -423,6 +476,7 @@ lazy val `coursier` = project.in(file("."))
     cli,
     `sbt-coursier`,
     `sbt-shading`,
+    `sbt-launcher`,
     web,
     doc,
     `http-server`,
