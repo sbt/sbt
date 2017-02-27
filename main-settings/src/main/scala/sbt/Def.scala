@@ -4,6 +4,7 @@ import sbt.internal.util.Types.const
 import sbt.internal.util.{ Attributed, AttributeKey, Init, Show }
 import sbt.internal.util.complete.Parser
 import java.io.File
+import java.net.URI
 import Scope.{ ThisScope, GlobalScope }
 import KeyRanks.{ DTask, Invisible }
 
@@ -26,11 +27,20 @@ object Def extends Init[Scope] with TaskMacroExtra {
     def apply(key: ScopedKey[_]) =
       Scope.display(key.scope, colored(key.key.label, keyNameColor), ref => displayRelative(current, multi, ref))
   }
+  def showBuildRelativeKey(currentBuild: URI, multi: Boolean, keyNameColor: Option[String] = None): Show[ScopedKey[_]] = new Show[ScopedKey[_]] {
+    def apply(key: ScopedKey[_]) =
+      Scope.display(key.scope, colored(key.key.label, keyNameColor), ref => displayBuildRelative(currentBuild, multi, ref))
+  }
   def displayRelative(current: ProjectRef, multi: Boolean, project: Reference): String = project match {
     case BuildRef(current.build)      => "{.}/"
     case `current`                    => if (multi) current.project + "/" else ""
     case ProjectRef(current.build, x) => x + "/"
     case _                            => Reference.display(project) + "/"
+  }
+  def displayBuildRelative(currentBuild: URI, multi: Boolean, project: Reference): String = project match {
+    case BuildRef(`currentBuild`)      => "{.}/"
+    case ProjectRef(`currentBuild`, x) => x + "/"
+    case _                             => Reference.display(project) + "/"
   }
   def displayFull(scoped: ScopedKey[_]): String = displayFull(scoped, None)
   def displayFull(scoped: ScopedKey[_], keyNameColor: Option[String]): String = Scope.display(scoped.scope, colored(scoped.key.label, keyNameColor))
