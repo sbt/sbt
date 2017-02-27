@@ -118,10 +118,22 @@ object SettingQuery {
   import sbt.internal.util.complete.{ DefaultParsers, Parser }, DefaultParsers._
   import sbt.Def.{ showBuildRelativeKey, ScopedKey }
 
-  // Similar to Act.projectRef, except doesn't match "*" or omitted project references
-  def projectRef(index: KeyIndex, currentBuild: URI): Parser[ResolvedReference] = {
+  // Similar to Act.ParsedAxis / Act.projectRef / Act.resolveProject except you can't omit the project reference
+
+  sealed trait ParsedExplicitAxis[+T]
+  final object ParsedExplicitGlobal extends ParsedExplicitAxis[Nothing]
+  final class ParsedExplicitValue[T](val value: T) extends ParsedExplicitAxis[T]
+  def explicitValue[T](t: Parser[T]): Parser[ParsedExplicitAxis[T]] = t map { v => new ParsedExplicitValue(v) }
+
+  def projectRef(index: KeyIndex, currentBuild: URI): Parser[ParsedExplicitAxis[ResolvedReference]] = {
+    val global = token(Act.GlobalString ~ '/') ^^^ ParsedExplicitGlobal
     val trailing = '/' !!! "Expected '/' (if selecting a project)"
-    Act.resolvedReference(index, currentBuild, trailing)
+    global | explicitValue(Act.resolvedReference(index, currentBuild, trailing))
+  }
+
+  def resolveProject(parsed: ParsedExplicitAxis[ResolvedReference]): Option[ResolvedReference] = parsed match {
+    case ParsedExplicitGlobal       => None
+    case pv: ParsedExplicitValue[_] => Some(pv.value)
   }
 
   def scopedKeyFull(
@@ -131,10 +143,11 @@ object SettingQuery {
     keyMap: Map[String, AttributeKey[_]]
   ): Parser[Seq[Parser[ParsedKey]]] = {
     for {
-      proj <- projectRef(index, currentBuild)
-      confAmb <- Act.config(index configs Some(proj))
+      rawProject <- projectRef(index, currentBuild)
+      proj = resolveProject(rawProject)
+      confAmb <- Act.config(index configs proj)
       partialMask = ScopeMask(true, confAmb.isExplicit, false, false)
-    } yield Act.taskKeyExtra(index, defaultConfigs, keyMap, Some(proj), confAmb, partialMask)
+    } yield Act.taskKeyExtra(index, defaultConfigs, keyMap, proj, confAmb, partialMask)
   }
 
   def scopedKeyParser(structure: BuildStructure, currentBuild: URI): Parser[ScopedKey[_]] =
