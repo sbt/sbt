@@ -429,6 +429,41 @@ lazy val okhttp = project
     )
   )
 
+lazy val jvm = project
+  .aggregate(
+    coreJvm,
+    testsJvm,
+    cache,
+    bootstrap,
+    cli,
+    `sbt-coursier`,
+    `sbt-shading`,
+    `sbt-launcher`,
+    doc,
+    `http-server`,
+    okhttp
+  )
+  .settings(commonSettings)
+  .settings(noPublishSettings)
+  .settings(releaseSettings)
+  .settings(
+    moduleName := "coursier-jvm"
+  )
+
+lazy val js = project
+  .aggregate(
+    coreJs,
+    `fetch-js`,
+    testsJs,
+    web
+  )
+  .settings(commonSettings)
+  .settings(noPublishSettings)
+  .settings(releaseSettings)
+  .settings(
+    moduleName := "coursier-js"
+  )
+
 lazy val `coursier` = project.in(file("."))
   .aggregate(
     coreJvm,
