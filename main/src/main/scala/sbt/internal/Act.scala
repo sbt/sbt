@@ -36,26 +36,34 @@ object Act {
 
   def scopedKeyFull(index: KeyIndex, current: ProjectRef, defaultConfigs: Option[ResolvedReference] => Seq[String], keyMap: Map[String, AttributeKey[_]]): Parser[Seq[Parser[ParsedKey]]] =
     {
-      def taskKeyExtra(proj: Option[ResolvedReference], confAmb: ParsedAxis[String], baseMask: ScopeMask): Seq[Parser[ParsedKey]] =
-        for {
-          conf <- configs(confAmb, defaultConfigs, proj, index)
-        } yield for {
-          taskAmb <- taskAxis(conf, index.tasks(proj, conf), keyMap)
-          task = resolveTask(taskAmb)
-          key <- key(index, proj, conf, task, keyMap)
-          extra <- extraAxis(keyMap, IMap.empty)
-        } yield {
-          val mask = baseMask.copy(task = taskAmb.isExplicit, extra = true)
-          new ParsedKey(makeScopedKey(proj, conf, task, extra, key), mask)
-        }
-
       for {
         rawProject <- optProjectRef(index, current)
         proj = resolveProject(rawProject, current)
         confAmb <- config(index configs proj)
         partialMask = ScopeMask(rawProject.isExplicit, confAmb.isExplicit, false, false)
-      } yield taskKeyExtra(proj, confAmb, partialMask)
+      } yield taskKeyExtra(index, defaultConfigs, keyMap, proj, confAmb, partialMask)
     }
+
+  def taskKeyExtra(
+    index: KeyIndex,
+    defaultConfigs: Option[ResolvedReference] => Seq[String],
+    keyMap: Map[String, AttributeKey[_]],
+    proj: Option[ResolvedReference],
+    confAmb: ParsedAxis[String],
+    baseMask: ScopeMask
+  ): Seq[Parser[ParsedKey]] =
+    for {
+      conf <- configs(confAmb, defaultConfigs, proj, index)
+    } yield for {
+      taskAmb <- taskAxis(conf, index.tasks(proj, conf), keyMap)
+      task = resolveTask(taskAmb)
+      key <- key(index, proj, conf, task, keyMap)
+      extra <- extraAxis(keyMap, IMap.empty)
+    } yield {
+      val mask = baseMask.copy(task = taskAmb.isExplicit, extra = true)
+      new ParsedKey(makeScopedKey(proj, conf, task, extra, key), mask)
+    }
+
   def makeScopedKey(proj: Option[ResolvedReference], conf: Option[String], task: Option[AttributeKey[_]], extra: ScopeAxis[AttributeMap], key: AttributeKey[_]): ScopedKey[_] =
     ScopedKey(Scope(toAxis(proj, Global), toAxis(conf map ConfigKey.apply, Global), toAxis(task, Global), extra), key)
 
