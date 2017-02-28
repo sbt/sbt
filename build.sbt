@@ -12,11 +12,22 @@ lazy val scalazVersion = "7.2.8"
 lazy val core = crossProject
   .settings(commonSettings)
   .settings(mimaPreviousArtifactSettings)
+  .jvmConfigure(_
+    .enablePlugins(_root_.coursier.ShadingPlugin)
+  )
+  .jvmSettings(
+    shadingNamespace := "coursier.shaded",
+    libraryDependencies += "com.lihaoyi" %% "fastparse" % "0.4.2" % "shaded",
+    publish := publish.in(Shading).value,
+    publishLocal := publishLocal.in(Shading).value
+  )
+  .jsSettings(
+    libraryDependencies += "com.lihaoyi" %%% "fastparse" % "0.4.2"
+  )
   .settings(
     name := "coursier",
     libraryDependencies ++= Seq(
-      "org.scalaz" %%% "scalaz-core" % scalazVersion,
-      "com.lihaoyi" %%% "fastparse" % "0.4.2"
+      "org.scalaz" %%% "scalaz-core" % scalazVersion
     ),
     mimaBinaryIssueFilters ++= {
       import com.typesafe.tools.mima.core._

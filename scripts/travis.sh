@@ -67,7 +67,6 @@ runSbtCoursierTests() {
 }
 
 runSbtShadingTests() {
-  setupCustomJarjar
   sbt ++$SCALA_VERSION sbt-coursier/publishLocal sbt-shading/scripted
 }
 
@@ -143,6 +142,8 @@ publish() {
 
 
 # TODO Add coverage once https://github.com/scoverage/sbt-scoverage/issues/111 is fixed
+
+setupCustomJarjar
 
 setupCoursierBinDir
 downloadInstallSbtExtras
