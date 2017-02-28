@@ -12,11 +12,22 @@ lazy val scalazVersion = "7.2.8"
 lazy val core = crossProject
   .settings(commonSettings)
   .settings(mimaPreviousArtifactSettings)
+  .jvmConfigure(_
+    .enablePlugins(_root_.coursier.ShadingPlugin)
+  )
+  .jvmSettings(
+    shadingNamespace := "coursier.shaded",
+    libraryDependencies += "com.lihaoyi" %% "fastparse" % "0.4.2" % "shaded",
+    publish := publish.in(Shading).value,
+    publishLocal := publishLocal.in(Shading).value
+  )
+  .jsSettings(
+    libraryDependencies += "com.lihaoyi" %%% "fastparse" % "0.4.2"
+  )
   .settings(
     name := "coursier",
     libraryDependencies ++= Seq(
-      "org.scalaz" %%% "scalaz-core" % scalazVersion,
-      "com.lihaoyi" %%% "fastparse" % "0.4.2"
+      "org.scalaz" %%% "scalaz-core" % scalazVersion
     ),
     mimaBinaryIssueFilters ++= {
       import com.typesafe.tools.mima.core._
@@ -216,7 +227,8 @@ lazy val cli = project
     ProguardKeys.options in Proguard ++= Seq(
       "-dontwarn",
       "-keep class coursier.cli.Coursier {\n  public static void main(java.lang.String[]);\n}",
-      "-keep class coursier.cli.IsolatedClassLoader {\n  public java.lang.String[] getIsolationTargets();\n}"
+      "-keep class coursier.cli.IsolatedClassLoader {\n  public java.lang.String[] getIsolationTargets();\n}",
+      "-adaptresourcefilenames **.properties"
     ),
     javaOptions in (Proguard, ProguardKeys.proguard) := Seq("-Xmx3172M"),
     artifactPath in Proguard := (ProguardKeys.proguardDirectory in Proguard).value / "coursier-standalone.jar",
@@ -375,13 +387,37 @@ lazy val `sbt-coursier` = project
 
 // Don't try to compile that if you're not in 2.10
 lazy val `sbt-shading` = project
+  .enablePlugins(_root_.coursier.ShadingPlugin)
   .dependsOn(`sbt-coursier`)
   .settings(pluginSettings)
   .settings(
-    // Warning: this version doesn't handle well class names with '$'s
-    // (so basically any Scala library)
-    // See https://github.com/shevek/jarjar/pull/4
-    libraryDependencies += "org.anarres.jarjar" % "jarjar-core" % "1.0.0"
+    shadingNamespace := "coursier.shaded",
+    resolvers += Resolver.mavenLocal,
+    libraryDependencies += {
+      val coursierJarjarVersion = "1.0.1-coursier-SNAPSHOT"
+      def coursierJarjarFoundInM2 = (file(sys.props("user.home")) / s".m2/repository/org/anarres/jarjar/jarjar-core/$coursierJarjarVersion").exists()
+
+      val jarjarVersion =
+        if (sys.env.contains("CI") || coursierJarjarFoundInM2 || !isSnapshot.value)
+          coursierJarjarVersion
+        else {
+          val fallback = "1.0.0"
+
+          // streams.value.log.warn( // "a setting cannot depend on a task"
+          scala.Console.err.println(
+           s"""Warning: using jarjar $fallback, which doesn't properly shade Scala JARs (classes with '$$' aren't shaded).
+              |See the instructions around
+              |https://github.com/alexarchambault/coursier/blob/630a780487d662dd994ed1c3246895a22c00cf21/scripts/travis.sh#L40
+              |to use a version fine with Scala JARs.""".stripMargin
+          )
+
+          fallback
+        }
+
+      "org.anarres.jarjar" % "jarjar-core" % jarjarVersion % "shaded"
+    },
+    publish := publish.in(Shading).value,
+    publishLocal := publishLocal.in(Shading).value
   )
 
 lazy val `sbt-launcher` = project
