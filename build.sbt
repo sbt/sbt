@@ -216,7 +216,8 @@ lazy val cli = project
     ProguardKeys.options in Proguard ++= Seq(
       "-dontwarn",
       "-keep class coursier.cli.Coursier {\n  public static void main(java.lang.String[]);\n}",
-      "-keep class coursier.cli.IsolatedClassLoader {\n  public java.lang.String[] getIsolationTargets();\n}"
+      "-keep class coursier.cli.IsolatedClassLoader {\n  public java.lang.String[] getIsolationTargets();\n}",
+      "-adaptresourcefilenames **.properties"
     ),
     javaOptions in (Proguard, ProguardKeys.proguard) := Seq("-Xmx3172M"),
     artifactPath in Proguard := (ProguardKeys.proguardDirectory in Proguard).value / "coursier-standalone.jar",
