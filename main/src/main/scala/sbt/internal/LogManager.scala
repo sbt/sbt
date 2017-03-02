@@ -11,7 +11,7 @@ import Keys.{ logLevel, logManager, persistLogLevel, persistTraceLevel, sLog, tr
 import scala.Console.{ BLUE, RESET }
 import sbt.internal.util.{ AttributeKey, ConsoleOut, Settings, SuppressedTraceContext, MainAppender }
 import MainAppender._
-import sbt.util.{ AbstractLogger, Level, Logger, LogExchange }
+import sbt.util.{ Level, Logger, LogExchange }
 import sbt.internal.util.ManagedLogger
 import org.apache.logging.log4j.core.Appender
 
@@ -147,10 +147,6 @@ object LogManager {
   //   }
 
   def setGlobalLogLevel(s: State, level: Level.Value): State = {
-    s.globalLogging.full match {
-      case a: AbstractLogger => a.setLevel(level)
-      case _                 => ()
-    }
     s.put(BasicKeys.explicitGlobalLogLevels, true).put(Keys.logLevel.key, level)
   }
 
@@ -161,9 +157,6 @@ object LogManager {
     appender.start()
     appender
   }
-
-  private[this] def hasExplicitGlobalLogLevels(s: State): Boolean =
-    State.getBoolean(s, BasicKeys.explicitGlobalLogLevels, default = false)
 
   private[sbt] def settingsLogger(state: State): Def.Setting[_] =
     // strict to avoid retaining a reference to `state`

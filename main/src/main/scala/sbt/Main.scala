@@ -24,7 +24,7 @@ import sbt.internal.{
   LogManager,
   DefaultBackgroundJobService
 }
-import sbt.internal.util.{ AttributeKey, AttributeMap, complete, ConsoleOut, GlobalLogging, LineRange, MainAppender, SimpleReader, Types }
+import sbt.internal.util.{ AttributeKey, AttributeMap, ConsoleOut, GlobalLogging, LineRange, MainAppender, SimpleReader, Types }
 import sbt.util.{ Level, Logger }
 
 import sbt.internal.util.complete.{ DefaultParsers, Parser }

@@ -1,13 +1,9 @@
 package sbt
 
-import Def.{ Initialize, ScopedKey, streamsManagerKey }
+import Def.{ Initialize, ScopedKey }
 import Previous._
-import sbt.internal.util.{ ~>, AttributeKey, IMap, Input, Output, PlainInput, RMap, StampedFormat }
-import sbt.internal.util.Types._
-
-import java.io.{ InputStream, OutputStream }
-
-import sjsonnew.{ IsoString, JsonFormat, SupportConverter }
+import sbt.internal.util.{ ~>, IMap, Input, Output, RMap, StampedFormat }
+import sjsonnew.JsonFormat
 
 /**
  * Reads the previous value of tasks on-demand.  The read values are cached so that they are only read once per task execution.
@@ -93,6 +89,4 @@ object Previous {
           prevTask.map(_ get resolved) // evaluated if this task is evaluated
       }
     }
-
-  private[sbt] def cacheSetting = (streamsManagerKey, references) map { (s, refs) => new Previous(s, refs.getReferences) }
 }

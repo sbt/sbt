@@ -8,9 +8,9 @@ import scala.util.control.NonFatal
 import jline.TerminalFactory
 
 import sbt.io.Using
-import sbt.internal.util.{ ErrorHandling, GlobalLogBacking, GlobalLogging }
+import sbt.internal.util.{ ErrorHandling, GlobalLogBacking }
 import sbt.internal.util.complete.DefaultParsers
-import sbt.util.{ AbstractLogger, Logger }
+import sbt.util.Logger
 import sbt.protocol._
 
 object MainLoop {

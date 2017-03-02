@@ -8,7 +8,7 @@ import xsbti.AppConfiguration
 import sbt.internal.inc.classpath.ClasspathUtilities
 import BasicCommandStrings._
 import BasicKeys._
-import complete.{ Parser, DefaultParsers }
+import complete.DefaultParsers
 import DefaultParsers._
 import Command.applyEffect
 import sbt.io._

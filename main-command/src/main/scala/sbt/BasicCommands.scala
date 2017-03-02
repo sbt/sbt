@@ -6,7 +6,6 @@ import sbt.internal.util.complete.{ Completion, Completions, DefaultParsers, His
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.inc.classpath.ClasspathUtilities.toLoader
 import sbt.internal.inc.ModuleUtilities
-import sbt.internal.{ ConsolePromptEvent, ConsoleUnpromptEvent }
 import sbt.internal.client.NetworkClient
 import DefaultParsers._
 import Function.tupled

@@ -267,7 +267,7 @@ object TaskMacro {
       @tailrec def inEmptyPackage(s: c.Symbol): Boolean = s != c.universe.NoSymbol && (
         s.owner == c.mirror.EmptyPackage || s.owner == c.mirror.EmptyPackageClass || inEmptyPackage(s.owner)
       )
-      c.enclosingClass.symbol match {
+      c.internal.enclosingOwner match {
         case ec if !ec.isStatic       => name
         case ec if inEmptyPackage(ec) => path
         case ec                       => s"(${ec.fullName}) $name"

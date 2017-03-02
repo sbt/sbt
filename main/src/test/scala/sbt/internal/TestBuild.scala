@@ -40,7 +40,7 @@ abstract class TestBuild {
     lazy val delegated = scopes map env.delegates
   }
 
-  final case class Structure(env: Env, current: ProjectRef, data: Settings[Scope], keyIndex: KeyIndex, keyMap: Map[String, AttributeKey[_]]) {
+  sealed case class Structure(env: Env, current: ProjectRef, data: Settings[Scope], keyIndex: KeyIndex, keyMap: Map[String, AttributeKey[_]]) {
     override def toString = env.toString + "\n" + "current: " + current + "\nSettings:\n\t" + showData + keyMap.keys.mkString("All keys:\n\t", ", ", "")
     def showKeys(map: AttributeMap): String = map.keys.mkString("\n\t   ", ",", "\n")
     def showData: String =

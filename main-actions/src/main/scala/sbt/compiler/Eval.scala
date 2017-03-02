@@ -263,10 +263,6 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
     def accept(dir: File, s: String) =
       (s contains moduleName)
   }
-  private[this] def moduleClassFilter(moduleName: String) = new java.io.FilenameFilter {
-    def accept(dir: File, s: String) =
-      (s contains moduleName) && (s endsWith ".class")
-  }
 
   private[this] class ParseErrorStrings(val base: String, val extraBlank: String, val missingBlank: String, val extraSemi: String)
   private[this] def definitionErrorStrings = new ParseErrorStrings(
