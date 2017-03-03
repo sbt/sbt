@@ -13,14 +13,16 @@ import sbt.io.IO
 import sbt.internal.util.Types.:+:
 import sbt.internal.util.CacheImplicits._
 import sbt.internal.util.Tracked.inputChanged
-import sbt.internal.util.{ CacheStoreFactory, FilesInfo, HashFileInfo, HNil, ModifiedFileInfo, PlainFileInfo }
+import sbt.internal.util.{ CacheStoreFactory, FilesInfo, HashFileInfo, HNil, ManagedLogger, ModifiedFileInfo, PlainFileInfo }
 import sbt.internal.util.FileInfo.{ exists, hash, lastModified }
-import xsbti.compile.ClasspathOptions
 
-import sbt.util.Logger
+import sbt.util.{ Logger, LogExchange }
+
+import xsbti.compile.ClasspathOptions
 
 object RawCompileLike {
   type Gen = (Seq[File], Seq[File], File, Seq[String], Int, Logger) => Unit
+  type Gen2 = (Seq[File], Seq[File], File, Seq[String], Int, ManagedLogger) => Unit
 
   private def optionFiles(options: Seq[String], fileInputOpts: Seq[String]): List[File] =
     {
@@ -57,7 +59,7 @@ object RawCompileLike {
       }
       cachedComp(inputs)(exists(outputDirectory.allPaths.get.toSet))
     }
-  def prepare(description: String, doCompile: Gen): Gen = (sources, classpath, outputDirectory, options, maxErrors, log) =>
+  def prepare(description: String, doCompile: Gen2): Gen = (sources, classpath, outputDirectory, options, maxErrors, log) =>
     {
       if (sources.isEmpty)
         log.info("No sources available, skipping " + description + "...")
@@ -65,7 +67,7 @@ object RawCompileLike {
         log.info(description.capitalize + " to " + outputDirectory.absolutePath + "...")
         IO.delete(outputDirectory)
         IO.createDirectory(outputDirectory)
-        doCompile(sources, classpath, outputDirectory, options, maxErrors, log)
+        doCompile(sources, classpath, outputDirectory, options, maxErrors, LogExchange logger "")
         log.info(description.capitalize + " successful.")
       }
     }

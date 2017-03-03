@@ -47,7 +47,7 @@ object LogManager {
 
   def withLoggers(
     screen: (ScopedKey[_], State) => Appender = (sk, s) => defaultScreen(s.globalLogging.console),
-    backed: PrintWriter => Appender = defaultBacked(),
+    backed: PrintWriter => Appender = defaultBacked(_: PrintWriter),
     relay: Unit => Appender = defaultRelay,
     extra: ScopedKey[_] => Seq[Appender] = _ => Nil
   ): LogManager = new DefaultLogManager(screen, backed, relay, extra)
@@ -103,7 +103,7 @@ object LogManager {
   def suppressedMessage(key: ScopedKey[_], state: State): SuppressedTraceContext => Option[String] =
     {
       lazy val display = Project.showContextKey(state)
-      def commandBase = "last " + display(unwrapStreamsKey(key))
+      def commandBase = s"last ${display show unwrapStreamsKey(key)}"
       def command(useColor: Boolean) = if (useColor) BLUE + commandBase + RESET else "'" + commandBase + "'"
       context => Some("Stack trace suppressed: run %s for the full output.".format(command(context.useColor)))
     }

@@ -25,7 +25,7 @@ object TestFrameworks {
   val JUnit = new TestFramework("com.novocode.junit.JUnitFramework")
 }
 
-case class TestFramework(implClassNames: String*) {
+final case class TestFramework(implClassNames: String*) {
   @tailrec
   private def createFramework(loader: ClassLoader, log: Logger, frameworkClassNames: List[String]): Option[Framework] = {
     frameworkClassNames match {
@@ -48,6 +48,7 @@ case class TestFramework(implClassNames: String*) {
   def create(loader: ClassLoader, log: Logger): Option[Framework] =
     createFramework(loader, log, implClassNames.toList)
 }
+
 final class TestDefinition(val name: String, val fingerprint: Fingerprint, val explicitlySpecified: Boolean, val selectors: Array[Selector]) {
   override def toString = "Test " + name + " : " + TestFramework.toString(fingerprint)
   override def equals(t: Any) =

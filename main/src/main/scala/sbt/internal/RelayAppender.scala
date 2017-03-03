@@ -30,6 +30,6 @@ class RelayAppender(name: String) extends AbstractAppender(name, null, PatternLa
   }
   def appendEvent(level: Level.Value, event: AnyRef): Unit =
     event match {
-      case x: ChannelLogEntry => StandardMain.exchange.publishEvent(x: AbstractEntry)
+      case x: StringEvent => StandardMain.exchange.publishEvent(x: AbstractEntry)
     }
 }

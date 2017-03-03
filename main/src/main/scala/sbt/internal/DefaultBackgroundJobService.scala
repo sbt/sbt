@@ -30,7 +30,7 @@ private[sbt] abstract class BackgroundJob {
 }
 
 private[sbt] abstract class AbstractJobHandle extends JobHandle {
-  override def toString = s"JobHandle(${id}, ${humanReadableName}, ${Def.showFullKey(spawningTask)})"
+  override def toString = s"JobHandle(${id}, ${humanReadableName}, ${Def.showFullKey show spawningTask})"
 }
 
 private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobService {

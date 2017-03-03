@@ -52,12 +52,12 @@ object BuildUtil {
   def dependencies(units: Map[URI, LoadedBuildUnit]): BuildDependencies =
     {
       import collection.mutable.HashMap
-      val agg = new HashMap[ProjectRef, Seq[ProjectRef]]
-      val cp = new HashMap[ProjectRef, Seq[ClasspathDep[ProjectRef]]]
+      val agg = new HashMap[ProjectRef, Vector[ProjectRef]]
+      val cp = new HashMap[ProjectRef, Vector[ClasspathDep[ProjectRef]]]
       for (lbu <- units.values; rp <- lbu.defined.values) {
         val ref = ProjectRef(lbu.unit.uri, rp.id)
-        cp(ref) = rp.dependencies
-        agg(ref) = rp.aggregate
+        cp(ref) = rp.dependencies.toVector
+        agg(ref) = rp.aggregate.toVector
       }
       BuildDependencies(cp.toMap, agg.toMap)
     }
