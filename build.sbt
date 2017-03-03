@@ -48,8 +48,8 @@ def commonSettings: Seq[Setting[_]] = Seq[SettingsDefinition](
   bintrayRepository := (bintrayRepository in ThisBuild).value,
   mimaDefaultSettings,
   publishArtifact in Test := false,
-  previousArtifact := None, // Some(organization.value % moduleName.value % "1.0.0"),
-  binaryIssueFilters ++= Seq(
+  mimaPreviousArtifacts := Set.empty, // Set(organization.value % moduleName.value % "1.0.0"),
+  mimaBinaryIssueFilters ++= Seq(
   )
 ) flatMap (_.settings)
 
@@ -269,8 +269,8 @@ def rootSettings = fullDocSettings ++
   Util.publishPomSettings ++ otherRootSettings ++ Formatting.sbtFilesSettings ++
   Transform.conscriptSettings(bundledLauncherProj)
 def otherRootSettings = Seq(
-  scripted <<= scriptedTask,
-  scriptedUnpublished <<= scriptedUnpublishedTask,
+  scripted := scriptedTask.evaluated,
+  scriptedUnpublished := scriptedUnpublishedTask.evaluated,
   scriptedSource := (sourceDirectory in sbtProj).value / "sbt-test",
   // scriptedPrescripted := { addSbtAlternateResolver _ },
   scriptedLaunchOpts := List("-XX:MaxPermSize=256M", "-Xmx1G"),
@@ -283,8 +283,8 @@ def otherRootSettings = Seq(
     List("-XX:MaxPermSize=256M", "-Xmx1G", "-Dsbt.override.build.repos=true",
       s"""-Dsbt.repository.config=${ scriptedSource.value / "repo.config" }""")
   },
-  scripted <<= scriptedTask,
-  scriptedUnpublished <<= scriptedUnpublishedTask,
+  scripted := scriptedTask.evaluated,
+  scriptedUnpublished := scriptedUnpublishedTask.evaluated,
   scriptedSource := (sourceDirectory in sbtProj).value / "repo-override-test"
 ))
 
