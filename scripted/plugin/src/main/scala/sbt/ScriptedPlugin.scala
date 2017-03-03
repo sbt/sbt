@@ -41,8 +41,12 @@ object ScriptedPlugin extends AutoPlugin {
     scriptedClasspath := getJars(scriptedConf).value,
     scriptedTests := scriptedTestsTask.value,
     scriptedRun := scriptedRunTask.value,
-    scriptedDependencies := (()),
-    scriptedDependencies := scriptedDependencies.dependsOn(compile in Test, publishLocal).value,
+    scriptedDependencies := {
+      def use[A](x: A*): Unit = () // avoid unused warnings
+      val analysis = (compile in Test).value
+      val pub = (publishLocal).value
+      use(analysis, pub)
+    },
     scriptedLaunchOpts := Seq(),
     scripted := scriptedTask.evaluated
   )
