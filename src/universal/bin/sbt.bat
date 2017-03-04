@@ -136,9 +136,8 @@ exit /B 1
 if /I "%JAVA_VERSION%" GEQ "9" (
   set rtexport=%SBT_HOME%java9-rt-export.jar
 
-  "%_JAVACMD%" %_JAVA_OPTS% %SBT_OPTS% -jar "%rtexport%" --global-base > "%TEMP%.\global_base.txt"
-  set /p sbt_global_dir= < "%TEMP%.\global_base.txt"
-  set java9_ext=%sbt_global_dir%\java9-rt-ext
+  "%_JAVACMD%" %_JAVA_OPTS% %SBT_OPTS% -jar "%rtexport%" --rt-ext-dir > "%TEMP%.\rtext.txt"
+  set /p java9_ext= < "%TEMP%.\rtext.txt"
   set java9_rt=%java9_ext%\rt.jar
 
   if not exist "%java9_rt%" (

@@ -9,7 +9,7 @@ import java.util.EnumSet;
 import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
-public class Copy {
+public class IO {
     public static void copyDirectory(final Path source, final Path target)
             throws IOException {
         Files.walkFileTree(source, EnumSet.of(FileVisitOption.FOLLOW_LINKS),

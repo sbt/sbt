@@ -182,11 +182,9 @@ checkJava() {
 copyRt() {
   if [[ "$java_version" > "8" ]]; then
     rtexport=$(rt_export_file)
-    sbt_global_dir=$("$java_cmd" ${JAVA_OPTS} ${SBT_OPTS:-$default_sbt_opts} ${java_args[@]} \
-      -jar "$rtexport" --global-base)
-    java9_ext=$(echo "$sbt_global_dir/java9-rt-ext")
+    java9_ext=$("$java_cmd" ${JAVA_OPTS} ${SBT_OPTS:-$default_sbt_opts} ${java_args[@]} \
+      -jar "$rtexport" --rt-ext-dir)
     java9_rt=$(echo "$java9_ext/rt.jar")
-    vlog "[copyRt] sbt_global_dir = '$sbt_global_dir'"
     vlog "[copyRt] java9_rt = '$java9_rt'"
     if [[ ! -f "$java9_rt" ]]; then
       echo Copying runtime jar.
