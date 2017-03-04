@@ -42,9 +42,10 @@ object ScriptedPlugin extends AutoPlugin {
     scriptedTests := scriptedTestsTask.value,
     scriptedRun := scriptedRunTask.value,
     scriptedDependencies := {
+      def use[A](x: A*): Unit = () // avoid unused warnings
       val analysis = (compile in Test).value
       val pub = (publishLocal).value
-      Unit
+      use(analysis, pub)
     },
     scriptedLaunchOpts := Seq(),
     scripted := scriptedTask.evaluated

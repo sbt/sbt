@@ -54,7 +54,6 @@ object Delegates extends Properties("delegates") {
       all(ds map { d => (axis(d) == Global): Prop }: _*)
   def globalCombinations(s: Scope, ds: Seq[Scope], axis: Scope => ScopeAxis[_]): Prop =
     {
-      val value = axis(s)
       val mods = List[Scope => Scope](_.copy(project = Global), _.copy(config = Global), _.copy(task = Global), _.copy(extra = Global))
       val modAndIdent = mods.map(_ :: idFun[Scope] :: Nil)
 

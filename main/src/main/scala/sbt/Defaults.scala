@@ -197,7 +197,7 @@ object Defaults extends BuildCommon {
     skip :== false,
     taskTemporaryDirectory := { val dir = IO.createTemporaryDirectory; dir.deleteOnExit(); dir },
     onComplete := { val dir = taskTemporaryDirectory.value; () => { IO.delete(dir); IO.createDirectory(dir) } },
-    Previous.cache := Previous.cacheSetting.value,
+    Previous.cache := new Previous(Def.streamsManagerKey.value, Previous.references.value.getReferences),
     Previous.references :== new Previous.References,
     concurrentRestrictions := defaultRestrictions.value,
     parallelExecution :== true,
@@ -1769,6 +1769,7 @@ object Classpaths {
           implicitly[Equiv[InlineIvyHL]].equiv(inlineIvyToHL(x), inlineIvyToHL(y))
         case (x: ExternalIvyConfiguration, y: ExternalIvyConfiguration) =>
           implicitly[Equiv[ExternalIvyHL]].equiv(externalIvyToHL(x), externalIvyToHL(y))
+        case (x: Any, y: Any) => sys error s"Trying to compare ${x.getClass} with ${y.getClass}"
       }
     }
 

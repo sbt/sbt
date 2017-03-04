@@ -84,7 +84,6 @@ object Assign {
   }
   val it6 = Def.inputTaskDyn {
     val d3 = dummy3.parsed
-    val x = d3._1
     val i = d3._2
     Def.task { tk.value + i }
   }

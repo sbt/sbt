@@ -4,12 +4,12 @@ package std
 import sbt.internal.util.Types._
 import TaskExtra._
 import TaskTest.tryRun
-import TaskGen.{ MaxWorkers, MaxWorkersGen }
+import TaskGen.MaxWorkers
 
 import org.scalacheck._
 import Prop.forAll
 import Transform.taskToNode
-import ConcurrentRestrictions.{ All, completionService, limitTotal, tagged => tagged0, TagMap, unrestricted }
+import ConcurrentRestrictions.{ completionService, limitTotal, tagged => tagged0, TagMap }
 
 import java.util.concurrent.{ CountDownLatch, TimeUnit }
 
