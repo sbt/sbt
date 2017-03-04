@@ -4,31 +4,30 @@
 package sbt
 
 import Resolver.PluginPattern
-import ivyint.{ CachedResolutionResolveEngine, CachedResolutionResolveCache, SbtDefaultDependencyDescriptor }
-
+import ivyint.{ CachedResolutionResolveCache, CachedResolutionResolveEngine, ParallelResolveEngine, SbtDefaultDependencyDescriptor }
 import java.io.File
 import java.net.URI
 import java.text.ParseException
 import java.util.concurrent.Callable
-import java.util.{ Collection, Collections => CS, Date }
+import java.util.{ Collection, Date, Collections => CS }
 import CS.singleton
 
 import org.apache.ivy.Ivy
 import org.apache.ivy.core.report.ResolveReport
-import org.apache.ivy.core.{ IvyPatternHelper, LogOptions, IvyContext }
-import org.apache.ivy.core.cache.{ ResolutionCacheManager, CacheMetadataOptions, DefaultRepositoryCacheManager, ModuleDescriptorWriter }
+import org.apache.ivy.core.{ IvyContext, IvyPatternHelper, LogOptions }
+import org.apache.ivy.core.cache.{ CacheMetadataOptions, DefaultRepositoryCacheManager, ModuleDescriptorWriter, ResolutionCacheManager }
 import org.apache.ivy.core.event.EventManager
-import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact, DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact }
-import org.apache.ivy.core.module.descriptor.{ DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor, License }
+import org.apache.ivy.core.module.descriptor.{ DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact, Artifact => IArtifact }
+import org.apache.ivy.core.module.descriptor.{ DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, License, ModuleDescriptor }
 import org.apache.ivy.core.module.descriptor.OverrideDependencyDescriptorMediator
 import org.apache.ivy.core.module.id.{ ArtifactId, ModuleId, ModuleRevisionId }
 import org.apache.ivy.core.resolve._
 import org.apache.ivy.core.settings.IvySettings
 import org.apache.ivy.core.sort.SortEngine
-import org.apache.ivy.plugins.latest.{ LatestStrategy, LatestRevisionStrategy, ArtifactInfo }
+import org.apache.ivy.plugins.latest.{ ArtifactInfo, LatestRevisionStrategy, LatestStrategy }
 import org.apache.ivy.plugins.matcher.PatternMatcher
-import org.apache.ivy.plugins.parser.m2.{ PomModuleDescriptorParser }
-import org.apache.ivy.plugins.resolver.{ ChainResolver, DependencyResolver, BasicResolver }
+import org.apache.ivy.plugins.parser.m2.PomModuleDescriptorParser
+import org.apache.ivy.plugins.resolver.{ BasicResolver, ChainResolver, DependencyResolver }
 import org.apache.ivy.plugins.resolver.util.{ HasLatestStrategy, ResolvedResource }
 import org.apache.ivy.plugins.version.ExactVersionMatcher
 import org.apache.ivy.plugins.repository.file.{ FileResource, FileRepository => IFileRepository }
@@ -88,32 +87,48 @@ final class IvySbt(val configuration: IvyConfiguration) {
       }
       is
     }
-  private[sbt] def mkIvy: Ivy =
-    {
-      val i = new Ivy() {
-        private val loggerEngine = new SbtMessageLoggerEngine
-        override def getLoggerEngine = loggerEngine
-        override def bind(): Unit = {
-          val prOpt = Option(getSettings.getResolver(ProjectResolver.InterProject)) map { case pr: ProjectResolver => pr }
-          // We inject the deps we need before we can hook our resolve engine.
-          setSortEngine(new SortEngine(getSettings))
-          setEventManager(new EventManager())
-          if (configuration.updateOptions.cachedResolution) {
-            setResolveEngine(new ResolveEngine(getSettings, getEventManager, getSortEngine) with CachedResolutionResolveEngine {
-              val cachedResolutionResolveCache = IvySbt.cachedResolutionResolveCache
-              val projectResolver = prOpt
-              def makeInstance = mkIvy
-            })
-          } else setResolveEngine(new ResolveEngine(getSettings, getEventManager, getSortEngine))
-          super.bind()
+
+  private class IvyImplementation extends Ivy {
+    private val loggerEngine = new SbtMessageLoggerEngine
+    override def getLoggerEngine = loggerEngine
+    override def bind(): Unit = {
+      // We inject the deps we need before we can hook our resolve engine.
+      val settings = getSettings
+
+      val eventManager = new EventManager()
+      val sortEngine = new SortEngine(settings)
+      setSortEngine(sortEngine)
+      setEventManager(eventManager)
+
+      val resolveEngine = {
+        if (configuration.updateOptions.cachedResolution) {
+          new ParallelResolveEngine(settings, eventManager, sortEngine) with CachedResolutionResolveEngine {
+            def makeInstance = mkIvy
+            val cachedResolutionResolveCache =
+              IvySbt.cachedResolutionResolveCache
+            val projectResolver = {
+              val res = settings.getResolver(ProjectResolver.InterProject)
+              Option(res.asInstanceOf[ProjectResolver])
+            }
+          }
+        } else {
+          new ParallelResolveEngine(settings, eventManager, sortEngine)
         }
       }
 
-      i.setSettings(settings)
-      i.bind()
-      i.getLoggerEngine.pushLogger(new IvyLoggerInterface(configuration.log))
-      i
+      setResolveEngine(resolveEngine)
+      super.bind()
     }
+  }
+
+  private[sbt] def mkIvy: Ivy = {
+    val ivy = new IvyImplementation()
+    ivy.setSettings(settings)
+    ivy.bind()
+    val logger = new IvyLoggerInterface(configuration.log)
+    ivy.getLoggerEngine.pushLogger(logger)
+    ivy
+  }
 
   private lazy val ivy: Ivy = mkIvy
   // Must be the same file as is used in Update in the launcher

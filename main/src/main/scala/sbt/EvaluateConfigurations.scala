@@ -174,6 +174,7 @@ object EvaluateConfigurations {
     // TODO - Should we try to namespace these between.sbt files?  IF they hash to the same value, they may actually be
     // exactly the same setting, so perhaps we don't care?
     val result = try {
+      println(s"EXPRESSION $expression")
       eval.eval(expression, imports = new EvalImports(imports, name), srcName = name, tpeName = Some(SettingsDefinitionName), line = range.start)
     } catch {
       case e: sbt.compiler.EvalException => throw new MessageOnlyException(e.getMessage)
