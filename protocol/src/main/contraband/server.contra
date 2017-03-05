@@ -13,6 +13,11 @@ type ExecCommand implements CommandMessage {
   execId: String @since("0.0.1")
 }
 
+type SettingQuery implements CommandMessage {
+  setting: String!
+}
+
+
 ## Message for events.
 interface EventMessage {
 }
@@ -33,6 +38,10 @@ type ExecStatusEvent implements EventMessage {
   channelName: String
   execId: String
   commandQueue: [String]
+}
+
+type SettingQueryResponse implements EventMessage {
+  value: String!
 }
 
 # enum Status {
