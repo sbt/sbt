@@ -1,4 +1,5 @@
 import java.io.FileOutputStream
+import com.typesafe.sbt.pgp.PgpSettings
 
 val binaryCompatibilityVersion = "1.0.0-M14"
 val binaryCompatibility212Version = "1.0.0-M15"
@@ -16,10 +17,8 @@ lazy val core = crossProject
     .enablePlugins(_root_.coursier.ShadingPlugin)
   )
   .jvmSettings(
-    shadingNamespace := "coursier.shaded",
     libraryDependencies += "com.lihaoyi" %% "fastparse" % "0.4.2" % "shaded",
-    publish := publish.in(Shading).value,
-    publishLocal := publishLocal.in(Shading).value
+    shadingSettings
   )
   .jsSettings(
     libraryDependencies += "com.lihaoyi" %%% "fastparse" % "0.4.2"
@@ -391,7 +390,6 @@ lazy val `sbt-shading` = project
   .dependsOn(`sbt-coursier`)
   .settings(pluginSettings)
   .settings(
-    shadingNamespace := "coursier.shaded",
     resolvers += Resolver.mavenLocal,
     libraryDependencies += {
       val coursierJarjarVersion = "1.0.1-coursier-SNAPSHOT"
@@ -416,8 +414,7 @@ lazy val `sbt-shading` = project
 
       "org.anarres.jarjar" % "jarjar-core" % jarjarVersion % "shaded"
     },
-    publish := publish.in(Shading).value,
-    publishLocal := publishLocal.in(Shading).value
+    shadingSettings
   )
 
 lazy val `sbt-launcher` = project
@@ -658,3 +655,16 @@ lazy val mimaPreviousArtifactSettings = Seq(
     Set(organization.value %% moduleName.value % version)
   }
 )
+
+lazy val shadingSettings =
+  inConfig(Shading)(PgpSettings.projectSettings) ++
+     // ytf does this have to be repeated here?
+     // Can't figure out why configuration get lost without this in particular...
+    _root_.coursier.ShadingPlugin.projectSettings ++
+    Seq(
+      shadingNamespace := "coursier.shaded",
+      publish := publish.in(Shading).value,
+      publishLocal := publishLocal.in(Shading).value,
+      PgpKeys.publishSigned := PgpKeys.publishSigned.in(Shading).value,
+      PgpKeys.publishLocalSigned := PgpKeys.publishLocalSigned.in(Shading).value
+    )
