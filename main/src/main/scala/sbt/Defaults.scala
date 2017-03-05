@@ -2051,75 +2051,89 @@ object Classpaths {
     )
   }
 
-  def updateTask: Initialize[Task[UpdateReport]] = Def.task {
-    val depsUpdated = transitiveUpdate.value.exists(!_.stats.cached)
-    val isRoot = executionRoots.value contains resolvedScoped.value
-    val forceUpdate = forceUpdatePeriod.value
-    val s = streams.value
-    val fullUpdateOutput = s.cacheDirectory / "out"
-    val forceUpdateByTime = forceUpdate match {
-      case None => false
-      case Some(period) =>
-        val elapsedDuration =
-          new FiniteDuration(System.currentTimeMillis() - fullUpdateOutput.lastModified(),
-                             TimeUnit.MILLISECONDS)
-        fullUpdateOutput.exists() && elapsedDuration > period
-    }
-    val scalaProvider = appConfiguration.value.provider.scalaProvider
-
-    // Only substitute unmanaged jars for managed jars when the major.minor parts of the versions the same for:
-    //   the resolved Scala version and the scalaHome version: compatible (weakly- no qualifier checked)
-    //   the resolved Scala version and the declared scalaVersion: assume the user intended scalaHome to override anything with scalaVersion
-    def subUnmanaged(subVersion: String, jars: Seq[File]) =
-      (sv: String) =>
-        (partialVersion(sv), partialVersion(subVersion), partialVersion(scalaVersion.value)) match {
-          case (Some(res), Some(sh), _) if res == sh     => jars
-          case (Some(res), _, Some(decl)) if res == decl => jars
-          case _                                         => Nil
+  /**
+   * Substitute unmanaged jars for managed jars when the major.minor parts of
+   * the version are the same for:
+   *   1. The Scala version and the `scalaHome` (unmanaged) version are equal.
+   *   2. The Scala version and the `declared` (managed) version are equal.
+   *
+   * Equality is weak, that is, no version qualifier is checked.
+   */
+  private def unmanagedJarsTask(scalaVersion: String, unmanagedVersion: String, jars: Seq[File]) = {
+    (subVersion0: String) =>
+      val scalaV = partialVersion(scalaVersion)
+      val managedV = partialVersion(subVersion0)
+      val unmanagedV = partialVersion(unmanagedVersion)
+      (managedV, unmanagedV, scalaV) match {
+        case (Some(mv), Some(uv), _) if mv == uv => jars
+        case (Some(mv), _, Some(sv)) if mv == sv => jars
+        case _                                   => Nil
       }
-    val subScalaJars: String => Seq[File] = Defaults.unmanagedScalaInstanceOnly.value match {
-      case Some(si) => subUnmanaged(si.version, si.allJars)
-      case None =>
-        sv =>
-          if (scalaProvider.version == sv) scalaProvider.jars else Nil
+  }
+
+  def updateTask: Initialize[Task[UpdateReport]] = Def.task {
+    val s = streams.value
+    val cacheDirectory = streams.value.cacheDirectory
+
+    val isRoot = executionRoots.value contains resolvedScoped.value
+    val shouldForce = isRoot || {
+      forceUpdatePeriod.value match {
+        case None => false
+        case Some(period) =>
+          val fullUpdateOutput = cacheDirectory / "out"
+          val now = System.currentTimeMillis
+          val diff = now - fullUpdateOutput.lastModified()
+          val elapsedDuration = new FiniteDuration(diff, TimeUnit.MILLISECONDS)
+          fullUpdateOutput.exists() && elapsedDuration > period
+      }
     }
-    val transform: UpdateReport => UpdateReport =
-      r => substituteScalaFiles(scalaOrganization.value, r)(subScalaJars)
-    val uwConfig = (unresolvedWarningConfiguration in update).value
-    val show = Reference.display(thisProjectRef.value)
-    val st = state.value
-    val logicalClock = LogicalClock(st.hashCode)
-    val depDir = dependencyCacheDirectory.value
-    val uc0 = updateConfiguration.value
-    val ms = publishMavenStyle.value
-    val cw = compatibilityWarningOptions.value
-    // Normally, log would capture log messages at all levels.
-    // Ivy logs are treated specially using sbt.UpdateConfiguration.logging.
-    // This code bumps up the sbt.UpdateConfiguration.logging to Full when logLevel is Debug.
-    import UpdateLogging.{ Full, DownloadOnly, Default }
-    val uc = (logLevel in update).?.value orElse st.get(logLevel.key) match {
-      case Some(Level.Debug) if uc0.logging == Default => uc0.withLogging(Full)
-      case Some(x) if uc0.logging == Default           => uc0.withLogging(DownloadOnly)
-      case _                                           => uc0
+
+    val providedScalaJars: String => Seq[File] = {
+      val scalaProvider = appConfiguration.value.provider.scalaProvider
+      Defaults.unmanagedScalaInstanceOnly.value match {
+        case Some(instance) =>
+          unmanagedJarsTask(scalaVersion.value, instance.version, instance.allJars)
+        case None =>
+          (subVersion: String) =>
+            if (scalaProvider.version == subVersion) scalaProvider.jars else Nil
+      }
     }
-    val ewo =
-      if (executionRoots.value exists { _.key == evicted.key }) EvictionWarningOptions.empty
+
+    val state0 = state.value
+    val updateConf = {
+      // Log captures log messages at all levels, except ivy logs.
+      // Use full level when debug is enabled so that ivy logs are shown.
+      import UpdateLogging.{ Full, DownloadOnly, Default }
+      val conf = updateConfiguration.value
+      val maybeUpdateLevel = (logLevel in update).?.value
+      maybeUpdateLevel.orElse(state0.get(logLevel.key)) match {
+        case Some(Level.Debug) if conf.logging == Default => conf.withLogging(logging = Full)
+        case Some(_) if conf.logging == Default           => conf.withLogging(logging = DownloadOnly)
+        case _                                            => conf
+      }
+    }
+
+    val evictionOptions = {
+      if (executionRoots.value.exists(_.key == evicted.key))
+        EvictionWarningOptions.empty
       else (evictionWarningOptions in update).value
+    }
+
     cachedUpdate(
-      s.cacheStoreFactory sub updateCacheName.value,
-      show,
+      s.cacheStoreFactory.sub(updateCacheName.value),
+      Reference.display(thisProjectRef.value),
       ivyModule.value,
-      uc,
-      transform,
+      updateConf,
+      substituteScalaFiles(scalaOrganization.value, _)(providedScalaJars),
       skip = (skip in update).value,
-      force = isRoot || forceUpdateByTime,
-      depsUpdated = depsUpdated,
-      uwConfig = uwConfig,
-      logicalClock = logicalClock,
-      depDir = Some(depDir),
-      ewo = ewo,
-      mavenStyle = ms,
-      compatWarning = cw,
+      force = shouldForce,
+      depsUpdated = transitiveUpdate.value.exists(!_.stats.cached),
+      uwConfig = (unresolvedWarningConfiguration in update).value,
+      logicalClock = LogicalClock(state0.hashCode),
+      depDir = Some(dependencyCacheDirectory.value),
+      ewo = evictionOptions,
+      mavenStyle = publishMavenStyle.value,
+      compatWarning = compatibilityWarningOptions.value,
       log = s.log
     )
   }
@@ -2230,87 +2244,101 @@ object Classpaths {
     }
   }
 
-  private[sbt] def cachedUpdate(cacheStoreFactory: CacheStoreFactory,
-                                label: String,
-                                module: IvySbt#Module,
-                                config: UpdateConfiguration,
-                                transform: UpdateReport => UpdateReport,
-                                skip: Boolean,
-                                force: Boolean,
-                                depsUpdated: Boolean,
-                                uwConfig: UnresolvedWarningConfiguration,
-                                logicalClock: LogicalClock,
-                                depDir: Option[File],
-                                ewo: EvictionWarningOptions,
-                                mavenStyle: Boolean,
-                                compatWarning: CompatibilityWarningOptions,
-                                log: Logger): UpdateReport = {
-    type In = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
+  private type UpdateInputs = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
 
-    def work = (_: In) match {
-      case conf :+: settings :+: config :+: HNil =>
-        import ShowLines._
-        log.info("Updating " + label + "...")
-        val r =
-          IvyActions.updateEither(module, config, uwConfig, logicalClock, depDir, log) match {
-            case Right(ur) => ur
-            case Left(uw) =>
-              uw.lines foreach { log.warn(_) }
-              throw uw.resolveException
-          }
-        log.info("Done updating.")
-        val result = transform(r)
-        val ew = EvictionWarning(module, ewo, result, log)
-        ew.lines foreach { log.warn(_) }
-        ew.infoAllTheThings foreach { log.info(_) }
-        CompatibilityWarning.run(compatWarning, module, mavenStyle, log)
-        result
+  private[sbt] def cachedUpdate(
+      cacheStoreFactory: CacheStoreFactory,
+      label: String,
+      module: IvySbt#Module,
+      updateConfig: UpdateConfiguration,
+      transform: UpdateReport => UpdateReport,
+      skip: Boolean,
+      force: Boolean,
+      depsUpdated: Boolean,
+      uwConfig: UnresolvedWarningConfiguration,
+      logicalClock: LogicalClock,
+      depDir: Option[File],
+      ewo: EvictionWarningOptions,
+      mavenStyle: Boolean,
+      compatWarning: CompatibilityWarningOptions,
+      log: Logger
+  ): UpdateReport = {
+
+    /* Resolve the module settings from the inputs. */
+    def resolve(inputs: UpdateInputs): UpdateReport = {
+      import ShowLines._
+
+      log.info(s"Updating $label...")
+      val reportOrUnresolved: Either[UnresolvedWarning, UpdateReport] =
+        IvyActions.updateEither(module, updateConfig, uwConfig, logicalClock, depDir, log)
+
+      val report = reportOrUnresolved match {
+        case Right(report0) => report0
+        case Left(unresolvedWarning) =>
+          unresolvedWarning.lines.foreach(log.warn(_))
+          throw unresolvedWarning.resolveException
+      }
+      log.info("Done updating.")
+      val finalReport = transform(report)
+
+      // Warn of any eviction and compatibility warnings
+      val ew = EvictionWarning(module, ewo, finalReport, log)
+      ew.lines foreach { log.warn(_) }
+      ew.infoAllTheThings foreach { log.info(_) }
+      CompatibilityWarning.run(compatWarning, module, mavenStyle, log)
+
+      finalReport
     }
-    def uptodate(inChanged: Boolean, out: UpdateReport): Boolean =
-      !force &&
-        !depsUpdated &&
-        !inChanged &&
-        out.allFiles.forall(f => fileUptodate(f, out.stamps)) &&
-        fileUptodate(out.cachedDescriptor, out.stamps)
 
-    val outStore = cacheStoreFactory make "output"
-    def skipWork: In => UpdateReport = {
+    /* Check if a update report is still up to date or we must resolve again. */
+    def upToDate(inChanged: Boolean, out: UpdateReport): Boolean = {
+      !force &&
+      !depsUpdated &&
+      !inChanged &&
+      out.allFiles.forall(f => fileUptodate(f, out.stamps)) &&
+      fileUptodate(out.cachedDescriptor, out.stamps)
+    }
+
+    /* Skip resolve if last output exists, otherwise error. */
+    def skipResolve(cache: CacheStore): UpdateInputs => UpdateReport = {
       import LibraryManagementCodec._
-      Tracked.lastOutput[In, UpdateReport](outStore) {
+      Tracked.lastOutput[UpdateInputs, UpdateReport](cache) {
         case (_, Some(out)) => out
         case _ =>
           sys.error("Skipping update requested, but update has not previously run successfully.")
       }
     }
-    def doWorkInternal = { (inChanged: Boolean, in: In) =>
-      import LibraryManagementCodec._
-      val outCache = Tracked.lastOutput[In, UpdateReport](outStore) {
-        case (_, Some(out)) if uptodate(inChanged, out) => out
-        case _                                          => work(in)
+
+    def doResolve(cache: CacheStore): UpdateInputs => UpdateReport = {
+      val doCachedResolve = { (inChanged: Boolean, updateInputs: UpdateInputs) =>
+        import LibraryManagementCodec._
+        val cachedResolve = Tracked.lastOutput[UpdateInputs, UpdateReport](cache) {
+          case (_, Some(out)) if upToDate(inChanged, out) => out
+          case _                                          => resolve(updateInputs)
+        }
+        import scala.util.control.Exception.catching
+        catching(classOf[NullPointerException], classOf[OutOfMemoryError])
+          .withApply { t =>
+            val resolvedAgain = resolve(updateInputs)
+            val culprit = t.getClass.getSimpleName
+            log.warn(s"Update task caching failed due to $culprit.")
+            log.warn("Report the following output to sbt:")
+            resolvedAgain.toString.lines foreach { log.warn(_) }
+            log.trace(t)
+            resolvedAgain
+          }
+          .apply(cachedResolve(updateInputs))
       }
-      try {
-        outCache(in)
-      } catch {
-        case e: NullPointerException =>
-          val r = work(in)
-          log.warn("Update task has failed to cache the report due to null.")
-          log.warn("Report the following output to sbt:")
-          r.toString.lines foreach { log.warn(_) }
-          log.trace(e)
-          r
-        case e: OutOfMemoryError =>
-          val r = work(in)
-          log.warn("Update task has failed to cache the report due to OutOfMemoryError.")
-          log.trace(e)
-          r
-      }
-    }
-    def doWork: In => UpdateReport = {
       import AltLibraryManagementCodec._
-      Tracked.inputChanged(cacheStoreFactory make "inputs")(doWorkInternal)
+      Tracked.inputChanged(cacheStoreFactory.make("inputs"))(doCachedResolve)
     }
-    val f = if (skip && !force) skipWork else doWork
-    f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)
+
+    // Get the handler to use and feed it in the inputs
+    val ivyConfig = module.owner.configuration
+    val settings = module.moduleSettings
+    val outStore = cacheStoreFactory.make("output")
+    val handler = if (skip && !force) skipResolve(outStore) else doResolve(outStore)
+    handler(ivyConfig :+: settings :+: updateConfig :+: HNil)
   }
 
   private[this] def fileUptodate(file: File, stamps: Map[File, Long]): Boolean =
