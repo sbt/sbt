@@ -176,13 +176,18 @@ object State {
 
   /** Provides operations and transformations on State. */
   implicit def stateOps(s: State): StateOps = new StateOps {
-    def process(f: (String, State) => State): State =
-      s.remainingCommands match {
-        case Seq() => exit(true)
-        case Seq(x, xs @ _*) =>
-          log.debug(s"> $x")
-          f(x, s.copy(remainingCommands = xs, history = x :: s.history))
+    def process(f: (String, State) => State): State = {
+      def doX(x: String, xs: Seq[String]) = {
+        log.debug(s"> $x")
+        f(x, s.copy(remainingCommands = xs, history = x :: s.history))
       }
+      def isInteractive = System.console() != null
+      def hasInput = System.console().reader().ready()
+      s.remainingCommands match {
+        case Seq()           => if (isInteractive && hasInput) doX("shell", Nil) else exit(true)
+        case Seq(x, xs @ _*) => doX(x, xs)
+      }
+    }
     def :::(newCommands: Seq[String]): State = s.copy(remainingCommands = newCommands ++ s.remainingCommands)
     def ::(command: String): State = (command :: Nil) ::: this
     def ++(newCommands: Seq[Command]): State = s.copy(definedCommands = (s.definedCommands ++ newCommands).distinct)
