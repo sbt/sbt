@@ -65,6 +65,10 @@ object MainLoop {
       val newLogging = state.globalLogging.newLogger(out, logBacking)
       transferLevels(state, newLogging)
       val loggedState = state.copy(globalLogging = newLogging)
+      def isInteractive = System.console() != null
+      def hasShell = state.remainingCommands contains "shell"
+      if (isInteractive && !hasShell)
+        state.log info "!!! Executing in batch mode !!! For better performance, hit [ENTER] to remain in the sbt shell"
       try run(loggedState) finally out.close()
     }
 
