@@ -75,7 +75,7 @@ object MainLoop {
       def isInteractive = System.console() != null
       def hasShell = state.remainingCommands contains "shell"
       if (isInteractive && !hasShell)
-        state.log info "!!! Executing in batch mode !!! For better performance, hit [ENTER] to remain in the sbt shell"
+        state.log warn "Executing in batch mode; for better performance, hit [ENTER] to remain in the sbt shell"
       try run(loggedState) finally out.close()
     }
 
