@@ -196,7 +196,18 @@ object State {
 
   /** Provides operations and transformations on State. */
   implicit def stateOps(s: State): StateOps = new StateOps {
-    def process(f: (Exec, State) => State): State =
+    def process(f: (Exec, State) => State): State = {
+      def doX(x: Exec, xs: List[Exec]) = {
+        log.debug(s"> $x")
+        f(x, s.copy(remainingCommands = xs, currentCommand = Some(x), history = x :: s.history))
+      }
+      def isInteractive = System.console() != null
+      def hasInput = System.console().reader().ready()
+      s.remainingCommands match {
+        case List()           => if (isInteractive && hasInput) doX(Exec("shell", s.source), Nil) else exit(true)
+        case List(x, xs @ _*) => doX(x, xs)
+      }
+    }
       s.remainingCommands match {
         case List() => exit(true)
         case x :: xs =>
