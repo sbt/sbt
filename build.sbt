@@ -1,6 +1,7 @@
 import scala.util.control.Exception.catching
 import _root_.bintray.InternalBintrayKeys._
 import _root_.bintray.{BintrayRepo, Bintray}
+import NativePackagerHelper._
 
 lazy val sbtVersionToRelease = sys.props.getOrElse("sbt.build.version", sys.env.getOrElse("sbt.build.version", {
         sys.error("-Dsbt.build.version must be set")
@@ -114,6 +115,19 @@ val root = (project in file(".")).
       val rtExportJar = (packageBin in Compile in java9rtexport).value
       Seq(launchJar -> "bin/sbt-launch.jar", rtExportJar -> "bin/java9-rt-export.jar")
     },
+    mappings in Universal ++= {
+      val _ = (exportRepo in dist).value
+      directory((target in dist).value / "lib")
+    },
+    stage in Universal := {
+      val old = (stage in Universal).value
+      val sd = (stagingDirectory in Universal).value
+      val x = IO.read(sd / "bin" / "sbt-launch-lib.bash")
+      IO.write(sd / "bin" / "sbt-launch-lib.bash", x.replaceAllLiterally("declare init_sbt_version=", s"declare init_sbt_version=$sbtVersionToRelease"))
+      val y = IO.read(sd / "bin" / "sbt.bat")
+      IO.write(sd / "bin" / "sbt.bat", y.replaceAllLiterally("set INIT_SBT_VERSION=", s"set INIT_SBT_VERSION=$sbtVersionToRelease"))
+      old
+    },
 
     // Misccelaneous publishing stuff...
     projectID in Debian := moduleID.value,
@@ -189,3 +203,49 @@ def publishToSettings =
 
 def bintrayRelease(repo: BintrayRepo, pkg: String, version: String, log: Logger): Unit =
   repo.release(pkg, version, log)
+
+
+lazy val scala210 = "2.10.6"
+lazy val scala212 = "2.12.1"
+lazy val scala210Jline = "org.scala-lang" % "jline" % scala210
+lazy val jansi = "org.fusesource.jansi" % "jansi" % "1.4"
+lazy val scala212Jline = "jline" % "jline" % "2.14.1"
+lazy val scala212Xml = "org.scala-lang.modules" % "scala-xml_2.12" % "1.0.6"
+lazy val scala212Compiler = "org.scala-lang" % "scala-compiler" % scala212
+lazy val sbtActual = "org.scala-sbt" % "sbt" % sbtVersionToRelease
+
+def downloadUrl(uri: URI, out: File): Unit =
+  {
+    import dispatch.classic._
+    if(!out.exists) {
+       IO.touch(out)
+       val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(out))
+       try Http(url(uri.toString) >>> writer)
+       finally writer.close()
+    }
+  }
+
+lazy val dist = (project in file("dist"))
+  .enablePlugins(ExportRepoPlugin)
+  .settings(
+    name := "dist",
+    scalaVersion := scala210,
+    libraryDependencies ++= Seq(sbtActual, scala210Jline, jansi, scala212Compiler, scala212Jline, scala212Xml),
+    exportRepo := {
+      val old = exportRepo.value
+      sbtVersionToRelease match {
+        case v if v.startsWith("0.13.") =>
+          val outbase = exportRepoDirectory.value / "org.scala-sbt" / "compiler-interface" / v
+          val uribase = s"https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/compiler-interface/$v/"
+          downloadUrl(uri(uribase + "ivys/ivy.xml"), outbase / "ivys" / "ivy.xml")
+          downloadUrl(uri(uribase + "jars/compiler-interface.jar"), outbase / "jars" / "compiler-interface.jar")
+          downloadUrl(uri(uribase + "srcs/compiler-interface-sources.jar"), outbase / "srcs" / "compiler-interface-sources.jar")
+        case _ =>
+      }
+      old
+    },
+    exportRepoDirectory := target.value / "lib" / "local-preloaded",
+    conflictWarning := ConflictWarning.disable,
+    publish := (),
+    publishLocal := ()
+  )

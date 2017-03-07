@@ -14,6 +14,7 @@ declare java_cmd=java
 declare java_version
 declare -r sbt_bin_dir="$(dirname "$(realpath "$0")")"
 declare -r sbt_home="$(dirname "$sbt_bin_dir")"
+declare init_sbt_version=
 
 echoerr () {
   echo 1>&2 "$@"
@@ -156,6 +157,14 @@ process_args () {
   vlog "[process_args] java_version = '$java_version'"
 }
 
+syncPreloaded() {
+  [[ -f "$HOME/.sbt/preloaded/org.scala-sbt/sbt/$init_sbt_version/jars/sbt.jar" ]] || {
+    command -v rsync >/dev/null 2>&1 && {
+      rsync -a --ignore-existing "$sbt_home/lib/local-preloaded/" "$HOME/.sbt/preloaded"
+    }
+  }
+}
+
 # Detect that we have java installed.
 checkJava() {
   local required_version="$1"
@@ -200,6 +209,8 @@ copyRt() {
 }
 
 run() {
+  syncPreloaded
+
   # no jar? download it.
   [[ -f "$sbt_jar" ]] || acquire_sbt_jar "$sbt_version" || {
     # still no jar? uh-oh.
