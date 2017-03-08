@@ -49,7 +49,7 @@ lazy val checkPom = (readPom, fullResolvers) map { (pomXML, ivyRepositories) =>
     val repositories =  repositoriesElement \ "repository"
     val writtenRepositories = repositories.map(read).distinct
     val mavenStyleRepositories = ivyRepositories.collect {
-      case x: MavenRepository if (x.name != "public") && (x.name != "jcenter") => normalize(x)
+      case x: MavenRepository if (x.name != "public") && (x.name != "jcenter") && !(x.root startsWith "file:") => normalize(x)
     } distinct;
 
     lazy val explain = (("Written:" +: writtenRepositories) ++ ("Declared:" +: mavenStyleRepositories)).mkString("\n\t")
