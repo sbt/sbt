@@ -17,7 +17,17 @@ lazy val core = crossProject
     .enablePlugins(_root_.coursier.ShadingPlugin)
   )
   .jvmSettings(
-    libraryDependencies += "com.lihaoyi" %% "fastparse" % "0.4.2" % "shaded",
+    libraryDependencies ++= {
+
+      val extra =
+        if (scalaBinaryVersion.value == "2.10")
+          // directly depending on that one so that it doesn't get shaded
+          Seq("org.scalamacros" %% "quasiquotes" % "2.1.0")
+        else
+          Nil
+
+      Seq("com.lihaoyi" %% "fastparse" % "0.4.2" % "shaded") ++ extra
+    },
     shadingSettings
   )
   .jsSettings(
@@ -391,7 +401,7 @@ lazy val `sbt-shading` = project
   .settings(pluginSettings)
   .settings(
     resolvers += Resolver.mavenLocal,
-    libraryDependencies += {
+    libraryDependencies ++= {
       val coursierJarjarVersion = "1.0.1-coursier-SNAPSHOT"
       def coursierJarjarFoundInM2 = (file(sys.props("user.home")) / s".m2/repository/org/anarres/jarjar/jarjar-core/$coursierJarjarVersion").exists()
 
@@ -412,7 +422,14 @@ lazy val `sbt-shading` = project
           fallback
         }
 
-      "org.anarres.jarjar" % "jarjar-core" % jarjarVersion % "shaded"
+      Seq(
+        "org.anarres.jarjar" % "jarjar-core" % jarjarVersion % "shaded",
+        // dependencies of jarjar-core - directly depending on these so that they don't get shaded
+        "com.google.code.findbugs" % "jsr305" % "2.0.2",
+        "org.ow2.asm" % "asm-commons" % "5.0.3",
+        "org.ow2.asm" % "asm-util" % "5.0.3",
+        "org.slf4j" % "slf4j-api" % "1.7.12"
+      )
     },
     shadingSettings
   )
