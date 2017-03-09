@@ -98,6 +98,11 @@ object Shading {
       )
     }
 
+    // Things could be split into intermediate tasks here, like
+    //   shadingDependencies: Seq[coursier.Dependency], dependencies whose JARs are to be shaded
+    //   shadingJars: Seq[java.io.File], JARs about to be shaded
+    // Note that shadingDependencies is not explicitly calculated below.
+
     val dependencyArtifacts = res.dependencyArtifacts
       .filter { case (_, a) => classpathTypes(a.`type`) }
       .groupBy(_._1)
@@ -115,12 +120,18 @@ object Shading {
 
     val compileOnlyDeps = compileDeps.filterNot(shadedDeps)
 
-    log.info(s"Found ${compileDeps.size} dependencies in $baseConfig")
-    log.debug(compileDeps.toVector.map("  " + _).sorted.mkString("\n"))
-    log.info(s"Found ${compileOnlyDeps.size} dependencies only in $baseConfig")
-    log.debug(compileOnlyDeps.toVector.map("  " + _).sorted.mkString("\n"))
-    log.info(s"Found ${shadedDeps.size} dependencies in $shadedConf")
-    log.debug(shadedDeps.toVector.map("  " + _).sorted.mkString("\n"))
+    log.debug(
+      s"Found ${compileDeps.size} dependencies in $baseConfig\n" +
+        compileDeps.toVector.map("  " + _).sorted.mkString("\n")
+    )
+    log.debug(
+      s"Found ${compileOnlyDeps.size} dependencies only in $baseConfig\n" +
+        compileOnlyDeps.toVector.map("  " + _).sorted.mkString("\n")
+    )
+    log.debug(
+      s"Found ${shadedDeps.size} dependencies in $shadedConf\n" +
+        shadedDeps.toVector.map("  " + _).sorted.mkString("\n")
+    )
 
     def files(deps: Set[Dependency]) = res
       .subset(deps)
@@ -131,26 +142,36 @@ object Shading {
       .map(_.url)
       .flatMap(artifactFilesOrErrors0.get)
 
-    val compileOnlyJars = files(compileOnlyDeps)
-    val shadedJars = files(shadedDeps)
+    val noShadeJars = files(compileOnlyDeps)
+    val allShadedConfJars = files(shadedDeps)
 
-    log.info(s"Found ${compileOnlyJars.length} JAR(s) only in $baseConfig")
-    log.debug(compileOnlyJars.map("  " + _).sorted.mkString("\n"))
-    log.info(s"Found ${shadedJars.length} JAR(s) in $shadedConf")
-    log.debug(shadedJars.map("  " + _).sorted.mkString("\n"))
+    log.debug(
+      s"Found ${noShadeJars.length} JAR(s) only in $baseConfig\n" +
+        noShadeJars.map("  " + _).sorted.mkString("\n")
+    )
+    log.debug(
+      s"Found ${allShadedConfJars.length} JAR(s) in $shadedConf\n" +
+        allShadedConfJars.map("  " + _).sorted.mkString("\n")
+    )
 
-    val shadeJars = shadedJars.filterNot(compileOnlyJars.toSet)
-    val shadeClasses = shadeJars.flatMap(Shading.jarClassNames)
+    val toShadeJars = allShadedConfJars.filterNot(noShadeJars.toSet)
 
-    log.info(s"Will shade ${shadeClasses.length} class(es)")
-    log.debug(shadeClasses.map("  " + _).sorted.mkString("\n"))
+    log.info(
+      s"Shading ${toShadeJars.length} JAR(s):\n" +
+        toShadeJars.map("  " + _).sorted.mkString("\n")
+    )
+
+    val toShadeClasses = toShadeJars.flatMap(jarClassNames)
+
+    log.info(s"Found ${toShadeClasses.length} class(es) in JAR(s) to be shaded")
+    log.debug(toShadeClasses.map("  " + _).sorted.mkString("\n"))
 
     val processor = new DefaultJarProcessor
-    for (cls <- shadeClasses)
+    for (cls <- toShadeClasses)
       processor.addClassRename(new ClassRename(cls, shadingNamespace + ".@0"))
 
     val transformer = new JarTransformer(outputJar, processor)
-    val cp = new ClassPath(file(sys.props("user.dir")), (baseJar +: shadeJars).toArray)
+    val cp = new ClassPath(file(sys.props("user.dir")), (baseJar +: toShadeJars).toArray)
     transformer.transform(cp)
 
     outputJar
