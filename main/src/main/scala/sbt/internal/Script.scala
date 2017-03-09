@@ -49,7 +49,7 @@ object Script {
       val append = Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, scriptSettings ++ embeddedSettings)
 
       val newStructure = Load.reapply(session.original ++ append, structure)
-      val arguments = state.remainingCommands.drop(1)
+      val arguments = state.remainingCommands.drop(1).map(e => s""""${e.commandLine}"""")
       val newState = arguments.mkString("run ", " ", "") :: state.copy(remainingCommands = Nil)
       Project.setProject(session, newStructure, newState)
     }
