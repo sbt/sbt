@@ -676,7 +676,7 @@ private[sbt] object Load {
    *  @param root The project at "root" directory we were looking, or non if non was defined.
    *  @param nonRoot Any sub-projects discovered from this directory
    *  @param sbtFiles Any sbt file loaded during this discovery (used later to complete the project).
-   *  @param generatedFile Any .class file that was generated when compiling/discovering these projects.
+   *  @param generatedFiles Any .class file that was generated when compiling/discovering these projects.
    */
   private[this] case class DiscoveredProjects(
     root: Option[Project],
@@ -691,7 +691,7 @@ private[sbt] object Load {
    * Ordering all Setting[_]s for the project
    *
    *
-   * @param transformedProject  The project with manipulation.
+   * @param p  The project with manipulation.
    * @param projectPlugins The deduced list of plugins for the given project.
    * @param loadedPlugins  The project definition (and classloader) of the build.
    * @param globalUserSettings All the settings contributed from the ~/.sbt/<version> directory
@@ -720,12 +720,15 @@ private[sbt] object Load {
         def autoPluginSettings(f: AutoPlugins) =
           projectPlugins.filter(f.include).flatMap(_.projectSettings)
         // Grab all the settings we already loaded from sbt files
-        def settings(files: Seq[File]): Seq[Setting[_]] =
+        def settings(files: Seq[File]): Seq[Setting[_]] = {
+          if (files.nonEmpty)
+            log.info(s"${files.map(_.getName).mkString("Loading settings from ", ",", " ...")}")
           for {
             file <- files
             config <- (memoSettings get file).toSeq
             setting <- config.settings
           } yield setting
+        }
         // Expand the AddSettings instance into a real Seq[Setting[_]] we'll use on the project
         def expandSettings(auto: AddSettings): Seq[Setting[_]] = auto match {
           case BuildScalaFiles     => p.settings
