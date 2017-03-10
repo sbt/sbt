@@ -1,75 +1,144 @@
 package sbt
 package compiler
 
-import scala.reflect.Manifest
-import scala.tools.nsc.{ ast, interpreter, io, reporters, util, CompilerCommand, Global, Phase, Settings }
-import interpreter.AbstractFileClassLoader
-import io.{ AbstractFile, PlainFile, VirtualDirectory }
-import ast.parser.Tokens
-import reporters.{ ConsoleReporter, Reporter }
+import scala.tools.nsc.{ CompilerCommand, Global, Phase, Settings }
 import scala.reflect.internal.util.BatchSourceFile
-import Tokens.{ EOF, NEWLINE, NEWLINES, SEMI }
+import scala.tools.nsc.interpreter.AbstractFileClassLoader
+import scala.tools.nsc.io.{ AbstractFile, PlainFile, VirtualDirectory }
+import scala.tools.nsc.ast.parser.Tokens.{ EOF, NEWLINE, NEWLINES, SEMI }
+import scala.tools.nsc.reporters.{ ConsoleReporter, Reporter }
 import java.io.File
 import java.nio.ByteBuffer
 import java.net.URLClassLoader
-import Eval.{ getModule, getValue, WrapValName }
 
-// TODO: provide a way to cleanup backing directory
-
-final class EvalImports(val strings: Seq[(String, Int)], val srcName: String)
+import scala.annotation.tailrec
 
 /**
- * The result of evaluating a Scala expression.  The inferred type of the expression is given by `tpe`.
- * The value may be obtained from `getValue` by providing a parent class loader that provides the classes from the classpath
- * this expression was compiled against.  Each call to `getValue` constructs a new class loader and loads
- * the module from that class loader.  `generated` contains the compiled classes and cache files related
- * to the expression.  The name of the auto-generated module wrapping the expression is `enclosingModule`.
+ * Represents the imports that are present to evaluate an expression.
+ *
+ * @param exprs The import expressions with their pertinent line numbers.
+ * @param srcName The name of the source where these expressions are.
  */
-final class EvalResult(val tpe: String, val getValue: ClassLoader => Any, val generated: Seq[File], val enclosingModule: String)
+final class EvalImports(val exprs: Seq[(String, Int)], val srcName: String)
 
 /**
- * The result of evaluating a group of Scala definitions.  The definitions are wrapped in an auto-generated,
- * top-level module named `enclosingModule`.  `generated` contains the compiled classes and cache files related to the definitions.
- * A new class loader containing the module may be obtained from `loader` by passing the parent class loader providing the classes
- * from the classpath that the definitions were compiled against.  The list of vals with the requested types is `valNames`.
- * The values for these may be obtained by providing the parent class loader to `values` as is done with `loader`.
+ * Represents the result of evaluating a Scala expression.
+ *
+ * @param tpe Inferred type of the expression by the compiler.
+ * @param getValue A function that returns the value of the expression. This
+ *                 function expects a class loader that provides the classes
+ *                 that were present in the classpath at compile time.
+ * @param generated The compiled class files related to the evaluated code.
+ * @param enclosingModule The name of the synthetic enclosing module.
  */
-final class EvalDefinitions(val loader: ClassLoader => ClassLoader, val generated: Seq[File], val enclosingModule: String, val valNames: Seq[String]) {
+final class EvalResult(val tpe: String,
+  val getValue: ClassLoader => Any,
+  val generated: Seq[File],
+  val enclosingModule: String)
+
+/**
+ * Represents the evaluated sbt DSL definitions.
+ *
+ * These definitions are wrapped in synthetic top-level modules that can then
+ * be imported in all the use sites.
+ *
+ * @param loader A function to get a new class loader that contains the
+ *               synthetic enclosing module. It needs a parent class loader.
+ * @param names The names of the compiled definitions.
+ * @param generated The compiled class files related to the evaluated code.
+ * @param enclosingModule The name of the synthetic enclosing module.
+ */
+final class EvalDefinitions(val loader: ClassLoader => ClassLoader,
+    val names: Seq[String],
+    val generated: Seq[File],
+    val enclosingModule: String) {
+
+  /**
+   * Get the values of all the definitions.
+   *
+   *
+   * @param parent The parent class loader on which to load the module defs.
+   * @return The values of all the evaluated definitions.
+   */
   def values(parent: ClassLoader): Seq[Any] = {
-    val module = getModule(enclosingModule, loader(parent))
-    for (n <- valNames) yield module.getClass.getMethod(n).invoke(module)
+    // TODO: `loader(parent)` could be cached ? .
+    val module = Eval.getModule(enclosingModule, loader(parent))
+    for (n <- names)
+      yield module.getClass.getMethod(n).invoke(module)
   }
 }
 
+/**
+ * Represents a compilation error.
+ *
+ * @param msg The error message captured from the compiler.
+ */
 final class EvalException(msg: String) extends RuntimeException(msg)
-// not thread safe, since it reuses a Global instance
-final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Settings => Reporter, backing: Option[File]) {
-  def this(mkReporter: Settings => Reporter, backing: Option[File]) = this(Nil, IO.classLocationFile[Product] :: Nil, mkReporter, backing)
+
+/**
+ * Represents the evaluation logic of sbt files.
+ *
+ * This method is not thread-safe since it reuses the same [[Global]] instance.
+ *
+ * @param optionsWithoutClasspath Scalac options that don't include 'cp'.
+ * @param classpath The classpath to compile and evaluate sbt code.
+ * @param mkReporter A function that turns settings into a reporter.
+ * @param target The directory where the compiled class files are saved.
+ */
+final class Eval(optionsWithoutClasspath: Seq[String],
+  classpath: Seq[File],
+  mkReporter: Settings => Reporter,
+  target: Option[File])
+    extends SbtParser
+    with SbtDefinitions
+    with SbtCodegen
+    with SbtHashGen {
+
+  def this(mkReporter: Settings => Reporter, target: Option[File]) =
+    this(Nil, IO.classLocationFile[Product] :: Nil, mkReporter, target)
+
   def this() = this(s => new ConsoleReporter(s), None)
 
-  backing.foreach(IO.createDirectory)
-  val classpathString = Path.makeString(classpath ++ backing.toList)
-  val options = "-cp" +: classpathString +: optionsNoncp
-
-  lazy val settings =
-    {
-      val s = new Settings(println)
-      val command = new CompilerCommand(options.toList, s)
-      s
-    }
-  lazy val reporter = mkReporter(settings)
   /**
-   * Subclass of Global which allows us to mutate currentRun from outside.
-   * See for rationale https://issues.scala-lang.org/browse/SI-8794
+   * Represent a subclass of [[Global]] to mutate the current run.
+   *
+   * This is necessary to control the Scalac pipeline.
    */
-  final class EvalGlobal(settings: Settings, reporter: Reporter) extends Global(settings, reporter) {
+  final class EvalGlobal(settings: Settings, reporter: Reporter)
+      extends Global(settings, reporter) {
     override def currentRun: Run = curRun
     var curRun: Run = null
   }
-  lazy val global: EvalGlobal = new EvalGlobal(settings, reporter)
-  import global._
-  import definitions._
 
+  /* *********************************************************************** */
+  /* ******** Initialize the target, settings, reporter and global ********* */
+  /* *********************************************************************** */
+
+  // TODO: provide a way to cleanup target directory
+  target.foreach(IO.createDirectory)
+
+  val scalacOptions: Seq[String] = {
+    val completeClasspath = Path.makeString(classpath ++ target.toList)
+    "-cp" +: completeClasspath +: optionsWithoutClasspath
+  }
+
+  lazy val settings: Settings = {
+    val settings0 = new Settings(println)
+    // Don't touch this line if you like order in the universe
+    new CompilerCommand(scalacOptions.toList, settings0)
+    settings0
+  }
+
+  lazy val reporter: Reporter = mkReporter(settings)
+  lazy val global: EvalGlobal = new EvalGlobal(settings, reporter)
+
+  import global._
+
+  /* *********************************************************************** */
+  /* ************ Define the main logic of the sbt evaluation ************** */
+  /* *********************************************************************** */
+
+  // This method is used outside of this class
   private[sbt] def unlinkDeferred(): Unit = {
     toUnlinkLater foreach unlink
     toUnlinkLater = Nil
@@ -78,161 +147,249 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
   private[this] var toUnlinkLater = List[Symbol]()
   private[this] def unlink(sym: Symbol) = sym.owner.info.decls.unlink(sym)
 
-  def eval(expression: String, imports: EvalImports = noImports, tpeName: Option[String] = None, srcName: String = "<setting>", line: Int = DefaultStartLine): EvalResult =
-    {
-      val ev = new EvalType[String] {
-        def makeUnit = mkUnit(srcName, line, expression)
-        def unlink = true
-        def unitBody(unit: CompilationUnit, importTrees: Seq[Tree], moduleName: String): Tree = {
-          val (parser, tree) = parse(unit, settingErrorStrings, _.expr())
-          val tpt: Tree = expectedType(tpeName)
-          augment(parser, importTrees, tree, tpt, moduleName)
-        }
-        def extra(run: Run, unit: CompilationUnit) = atPhase(run.typerPhase.next) { (new TypeExtractor).getType(unit.body) }
-        def read(file: File) = IO.read(file)
-        def write(value: String, f: File) = IO.write(f, value)
-        def extraHash = ""
+  private val DefaultSetting = "<setting>"
+  private val DefaultStartLine = 0
+
+  /** Misnomer, it should be called `evalSetting` for clarity. */
+  @deprecated("Use `Eval.evalSetting` instead.", "0.13.14")
+  def eval(expression: String,
+    imports: EvalImports = noImports,
+    tpeName: Option[String] = None,
+    srcName: String = DefaultSetting,
+    line: Int = DefaultStartLine): EvalResult =
+    evalSetting(expression, imports, tpeName, srcName, line)
+
+  /**
+   * Evaluate a sbt setting.
+   *
+   * @param expression The expression to be evaluated.
+   * @param imports The imports present during compilation.
+   * @param tpeName The expected type of the setting.
+   * @param srcName The name of the source file.
+   * @param line The line where the setting comes from.
+   * @return An instance of [[EvalResult]].
+   */
+  def evalSetting(expression: String,
+    imports: EvalImports = noImports,
+    tpeName: Option[String] = None,
+    srcName: String = DefaultSetting,
+    line: Int = DefaultStartLine): EvalResult = {
+
+    // Define the settings evaluator
+    val evaluator = new Evaluator[String] {
+      def unlink = true
+      def makeUnit: CompilationUnit = mkUnit(srcName, line, expression)
+
+      def read(file: File): String = IO.read(file)
+      def write(value: String, f: File): Unit = IO.write(f, value)
+      def extraHash = ""
+
+      def unitBody(unit: CompilationUnit,
+        importTrees: Seq[Tree],
+        moduleName: String): Tree = {
+        val (parser, tree) = parse(unit, settingErrorStrings, _.expr())
+        val tpt: Tree = expectedType(tpeName)
+        wrapInModule(parser, importTrees, tree, tpt, moduleName)
       }
-      val i = evalCommon(expression :: Nil, imports, tpeName, ev)
-      val value = (cl: ClassLoader) => getValue[Any](i.enclosingModule, i.loader(cl))
-      new EvalResult(i.extra, value, i.generated, i.enclosingModule)
+
+      def extra(run: Run, unit: CompilationUnit): String =
+        atPhase(run.typerPhase.next) { (new TypeExtractor).getType(unit.body) }
     }
-  def evalDefinitions(definitions: Seq[(String, scala.Range)], imports: EvalImports, srcName: String, file: Option[File], valTypes: Seq[String]): EvalDefinitions =
-    {
-      require(definitions.nonEmpty, "Definitions to evaluate cannot be empty.")
-      val ev = new EvalType[Seq[String]] {
-        lazy val (fullUnit, defUnits) = mkDefsUnit(srcName, definitions)
-        def makeUnit = fullUnit
-        def unlink = false
-        def unitBody(unit: CompilationUnit, importTrees: Seq[Tree], moduleName: String): Tree = {
-          val fullParser = new syntaxAnalyzer.UnitParser(unit)
-          val trees = defUnits flatMap parseDefinitions
-          syntheticModule(fullParser, importTrees, trees.toList, moduleName)
+
+    val ir = evalCommon(expression :: Nil, imports, tpeName, evaluator)
+    val valueLoader = (cl: ClassLoader) =>
+      Eval.getValue[Any](ir.enclosingModule, ir.loader(cl))
+    new EvalResult(ir.extra, valueLoader, ir.generated, ir.enclosingModule)
+  }
+
+  /**
+   * Evaluate sbt definitions.
+   *
+   * Sbt definitions are anything that [[parseDefinitions]] parse successfully.
+   *
+   * @param definitions The definitions to be compiled.
+   * @param imports The imports accessible to the definitions.
+   * @param srcName The name of the source file.
+   * @param target The target directory where class files are generated.
+   * @param valTypes The expected types of the definitions.
+   * @return An instance of [[EvalDefinitions]].
+   */
+  def evalDefinitions(definitions: Seq[(String, scala.Range)],
+    imports: EvalImports,
+    srcName: String,
+    target: Option[File],
+    valTypes: Seq[String]): EvalDefinitions = {
+    require(definitions.nonEmpty, "Definitions to evaluate cannot be empty.")
+
+    val evaluator = new Evaluator[Seq[String]] {
+      lazy val (fullUnit, defUnits) = mkUnitsForDefs(srcName, definitions)
+      def makeUnit: CompilationUnit = fullUnit
+      def unlink = false
+      def unitBody(unit: CompilationUnit,
+        importTrees: Seq[Tree],
+        moduleName: String): Tree = {
+        val fullParser = new syntaxAnalyzer.UnitParser(unit)
+        val trees = defUnits flatMap parseDefinitions
+        syntheticModule(fullParser, importTrees, trees.toList, moduleName)
+      }
+
+      def extra(run: Run, unit: CompilationUnit): List[String] = {
+        atPhase(run.typerPhase.next) {
+          new ValExtractor(valTypes.toSet).getVals(unit.body)
         }
-        def extra(run: Run, unit: CompilationUnit) = {
-          atPhase(run.typerPhase.next) { (new ValExtractor(valTypes.toSet)).getVals(unit.body) }
-        }
-        def read(file: File) = IO.readLines(file)
-        def write(value: Seq[String], file: File) = IO.writeLines(file, value)
-        def extraHash = file match {
+      }
+
+      def read(file: File): List[String] = IO.readLines(file)
+      def write(value: Seq[String], file: File): Unit =
+        IO.writeLines(file, value)
+      def extraHash: String = {
+        target match {
           case Some(f) => f.getAbsolutePath
           case None    => ""
         }
       }
-      val i = evalCommon(definitions.map(_._1), imports, Some(""), ev)
-      new EvalDefinitions(i.loader, i.generated, i.enclosingModule, i.extra)
     }
 
-  private[this] def evalCommon[T](content: Seq[String], imports: EvalImports, tpeName: Option[String], ev: EvalType[T]): EvalIntermediate[T] =
-    {
-      import Eval._
-      // TODO - We also encode the source of the setting into the hash to avoid conflicts where the exact SAME setting
-      // is defined in multiple evaluated instances with a backing.  This leads to issues with finding a previous
-      // value on the classpath when compiling.
-      val hash = Hash.toHex(Hash(bytes(stringSeqBytes(content) :: optBytes(backing)(fileExistsBytes) :: stringSeqBytes(options) ::
-        seqBytes(classpath)(fileModifiedBytes) :: stringSeqBytes(imports.strings.map(_._1)) :: optBytes(tpeName)(bytes) ::
-        bytes(ev.extraHash) :: Nil)))
-      val moduleName = makeModuleName(hash)
+    val ir = evalCommon(definitions.map(_._1), imports, Some(""), evaluator)
+    new EvalDefinitions(ir.loader, ir.extra, ir.generated, ir.enclosingModule)
+  }
 
-      lazy val unit = {
-        reporter.reset
-        ev.makeUnit
-      }
-      lazy val run = new Run {
-        override def units = (unit :: Nil).iterator
-      }
-      def unlinkAll(): Unit = for ((sym, _) <- run.symSource) if (ev.unlink) unlink(sym) else toUnlinkLater ::= sym
+  /**
+   * Hosts the common logic for evaluating sbt settings and definitions.
+   *
+   * @param lines The lines of the source file that are part of the unit.
+   * @param imports The imports to be accessible at compilation.
+   * @param tpeName The expected type.
+   * @param evaluator An evaluator that returns compiler information.
+   * @tparam T The compiler information that we expect it to return.
+   * @return An instance of [[IR]] that is later process by the use sites.
+   */
+  private[this] def evalCommon[T](lines: Seq[String],
+    imports: EvalImports,
+    tpeName: Option[String],
+    evaluator: Evaluator[T]): IR[T] = {
+    // Generate the name of the module from the hash of all the inputs
+    val importExprs = imports.exprs.map(_._1)
+    val extraH = evaluator.extraHash
+    val inputs = CompilationInputs(lines, target, scalacOptions, classpath)
+    val hash = hashInputs(inputs, importExprs, tpeName, extraH)
+    val moduleName = makeModuleName(hash)
 
-      val (extra, loader) = backing match {
+    // Get the evaluation information and the loader generator
+    val (extra, loader) = {
+      target match {
         case Some(back) if classExists(back, moduleName) =>
-          val loader = (parent: ClassLoader) => new URLClassLoader(Array(back.toURI.toURL), parent)
-          val extra = ev.read(cacheFile(back, moduleName))
+          val loader = (parent: ClassLoader) =>
+            new URLClassLoader(Array(back.toURI.toURL), parent)
+          val extra = evaluator.read(cacheFile(back, moduleName))
           (extra, loader)
         case _ =>
-          try { compileAndLoad(run, unit, imports, backing, moduleName, ev) }
-          finally { unlinkAll() }
+          reporter.reset()
+          val unit = evaluator.makeUnit
+          val run = new Run { override def units = (unit :: Nil).iterator }
+          try {
+            compileAndLoad(run, unit, imports, target, moduleName, evaluator)
+          } finally { unlinkAll(run, evaluator) }
       }
-
-      val generatedFiles = getGeneratedFiles(backing, moduleName)
-      new EvalIntermediate(extra, loader, generatedFiles, moduleName)
-    }
-  // location of the cached type or definition information
-  private[this] def cacheFile(base: File, moduleName: String): File = new File(base, moduleName + ".cache")
-  private[this] def compileAndLoad[T](run: Run, unit: CompilationUnit, imports: EvalImports, backing: Option[File], moduleName: String, ev: EvalType[T]): (T, ClassLoader => ClassLoader) =
-    {
-      global.curRun = run
-      run.currentUnit = unit
-      val dir = outputDirectory(backing)
-      settings.outputDirs setSingleOutput dir
-
-      val importTrees = parseImports(imports)
-      unit.body = ev.unitBody(unit, importTrees, moduleName)
-
-      def compile(phase: Phase): Unit =
-        {
-          globalPhase = phase
-          if (phase == null || phase == phase.next || reporter.hasErrors)
-            ()
-          else {
-            atPhase(phase) { phase.run }
-            compile(phase.next)
-          }
-        }
-
-      compile(run.namerPhase)
-      checkError("Type error in expression")
-
-      val extra = ev.extra(run, unit)
-      for (f <- backing) ev.write(extra, cacheFile(f, moduleName))
-      val loader = (parent: ClassLoader) => new AbstractFileClassLoader(dir, parent)
-      (extra, loader)
     }
 
-  private[this] def expectedType(tpeName: Option[String]): Tree =
+    // Create the intermediate representation for further manipulation
+    val generatedFiles = getGeneratedFiles(target, moduleName)
+    new IR(extra, loader, generatedFiles, moduleName)
+  }
+
+  private[this] def compileAndLoad[T](
+    run: Run,
+    unit: CompilationUnit,
+    imports: EvalImports,
+    target: Option[File],
+    moduleName: String,
+    evaluator: Evaluator[T]): (T, ClassLoader => ClassLoader) = {
+
+    @tailrec def compile(phase: Phase): Unit = {
+      globalPhase = phase
+      if (phase == null || phase == phase.next || reporter.hasErrors) ()
+      else {
+        atPhase(phase) { phase.run }
+        compile(phase.next)
+      }
+    }
+
+    global.curRun = run
+    run.currentUnit = unit
+    val dir = outputDirectory(target)
+    settings.outputDirs.setSingleOutput(dir)
+
+    val importTrees = imports.exprs.flatMap {
+      case (importExpr, line) =>
+        parseImport(mkUnit(imports.srcName, line, importExpr))
+    }
+
+    unit.body = evaluator.unitBody(unit, importTrees, moduleName)
+    compile(run.namerPhase)
+    Eval.checkError(reporter, "Type error in expression")
+
+    val extra = evaluator.extra(run, unit)
+    for (cls <- target) evaluator.write(extra, cacheFile(cls, moduleName))
+    val loader = (host: ClassLoader) => new AbstractFileClassLoader(dir, host)
+    (extra, loader)
+  }
+
+  def load(dir: AbstractFile, moduleName: String): ClassLoader => Any = {
+    (parent: ClassLoader) =>
+      Eval.getValue[Any](moduleName, new AbstractFileClassLoader(dir, parent))
+  }
+
+  def loadPlain(dir: File, moduleName: String): ClassLoader => Any = {
+    (parent: ClassLoader) =>
+      Eval.getValue[Any](moduleName,
+        new URLClassLoader(Array(dir.toURI.toURL), parent))
+  }
+
+  /* ************************************************************************ */
+  /* ***************************** Utilities ******************************** */
+  /* ************************************************************************ */
+
+  private[this] def cacheFile(base: File, moduleName: String): File =
+    new File(base, moduleName + ".cache")
+
+  private[this] def unlinkAll(run: Run, evaluator: Evaluator[_]): Unit = {
+    for ((sym, _) <- run.symSource) {
+      if (evaluator.unlink) unlink(sym)
+      else toUnlinkLater ::= sym
+    }
+  }
+
+  private[this] def expectedType(tpeName: Option[String]): Tree = {
     tpeName match {
-      case Some(tpe) => parseType(tpe)
-      case None      => TypeTree(NoType)
+      case Some(tpe) =>
+        val unit = mkUnit("<expected-type>", DefaultStartLine, tpe)
+        parseType(unit, tpe)
+      case None => TypeTree(NoType)
     }
+  }
 
-  private[this] def outputDirectory(backing: Option[File]): AbstractFile =
-    backing match { case None => new VirtualDirectory("<virtual>", None); case Some(dir) => new PlainFile(dir) }
-
-  def load(dir: AbstractFile, moduleName: String): ClassLoader => Any = parent => getValue[Any](moduleName, new AbstractFileClassLoader(dir, parent))
-  def loadPlain(dir: File, moduleName: String): ClassLoader => Any = parent => getValue[Any](moduleName, new URLClassLoader(Array(dir.toURI.toURL), parent))
-
-  //wrap tree in object objectName { def WrapValName = <tree> }
-  def augment(parser: global.syntaxAnalyzer.UnitParser, imports: Seq[Tree], tree: Tree, tpt: Tree, objectName: String): Tree =
-    {
-      val method = DefDef(NoMods, newTermName(WrapValName), Nil, Nil, tpt, tree)
-      syntheticModule(parser, imports, method :: Nil, objectName)
+  private[this] def outputDirectory(target: Option[File]): AbstractFile = {
+    target match {
+      case None      => new VirtualDirectory("<virtual>", None);
+      case Some(dir) => new PlainFile(dir)
     }
-  private[this] def syntheticModule(parser: global.syntaxAnalyzer.UnitParser, imports: Seq[Tree], definitions: List[Tree], objectName: String): Tree =
-    {
-      val emptyTypeName = nme.EMPTY.toTypeName
-      def emptyPkg = parser.atPos(0, 0, 0) { Ident(nme.EMPTY_PACKAGE_NAME) }
-      def emptyInit = DefDef(
-        NoMods,
-        nme.CONSTRUCTOR,
-        Nil,
-        List(Nil),
-        TypeTree(),
-        Block(List(Apply(Select(Super(This(emptyTypeName), emptyTypeName), nme.CONSTRUCTOR), Nil)), Literal(Constant(())))
-      )
-
-      def moduleBody = Template(List(gen.scalaAnyRefConstr), emptyValDef, emptyInit :: definitions)
-      def moduleDef = ModuleDef(NoMods, newTermName(objectName), moduleBody)
-      parser.makePackaging(0, emptyPkg, (imports :+ moduleDef).toList)
-    }
+  }
 
   private[this] final class TypeExtractor extends Traverser {
     private[this] var result = ""
     def getType(t: Tree) = { result = ""; traverse(t); result }
     override def traverse(tree: Tree): Unit = tree match {
-      case d: DefDef if d.symbol.nameString == WrapValName => result = d.symbol.tpe.finalResultType.toString
+      case d: DefDef if d.symbol.nameString == Eval.WrapValName =>
+        result = d.symbol.tpe.finalResultType.toString
       case _ => super.traverse(tree)
     }
   }
-  /** Tree traverser that obtains the names of vals in a top-level module whose type is a subtype of one of `types`.*/
+
+  /**
+   * Tree traverser that obtains the names of vals in a top-level module
+   * whose type is the subtype of one of the provided `tpes`.
+   */
   private[this] final class ValExtractor(tpes: Set[String]) extends Traverser {
     private[this] var vals = List[String]()
     def getVals(t: Tree): List[String] = { vals = Nil; traverse(t); vals }
@@ -247,230 +404,497 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
       case _ => super.traverse(tree)
     }
   }
-  // inlined implemented of Symbol.isTopLevelModule that was removed in e5b050814deb2e7e1d6d05511d3a6cb6b013b549
-  private[this] def isTopLevelModule(s: Symbol): Boolean = s.hasFlag(reflect.internal.Flags.MODULE) && s.owner.isPackageClass
-
-  private[this] final class EvalIntermediate[T](val extra: T, val loader: ClassLoader => ClassLoader, val generated: Seq[File], val enclosingModule: String)
-
-  private[this] def classExists(dir: File, name: String) = (new File(dir, name + ".class")).exists
-  // TODO: use the code from Analyzer
-  private[this] def getGeneratedFiles(backing: Option[File], moduleName: String): Seq[File] =
-    backing match {
-      case None      => Nil
-      case Some(dir) => dir listFiles moduleFileFilter(moduleName)
-    }
-  private[this] def getClassFiles(backing: Option[File], moduleName: String): Seq[File] =
-    backing match {
-      case None      => Nil
-      case Some(dir) => dir listFiles moduleClassFilter(moduleName)
-    }
-  private[this] def moduleFileFilter(moduleName: String) = new java.io.FilenameFilter {
-    def accept(dir: File, s: String) =
-      (s contains moduleName)
-  }
-  private[this] def moduleClassFilter(moduleName: String) = new java.io.FilenameFilter {
-    def accept(dir: File, s: String) =
-      (s contains moduleName) && (s endsWith ".class")
-  }
-
-  private[this] class ParseErrorStrings(val base: String, val extraBlank: String, val missingBlank: String, val extraSemi: String)
-  private[this] def definitionErrorStrings = new ParseErrorStrings(
-    base = "Error parsing definition.",
-    extraBlank = "  Ensure that there are no blank lines within a definition.",
-    missingBlank = "  Ensure that definitions are separated by blank lines.",
-    extraSemi = "  A trailing semicolon is not permitted for standalone definitions."
-  )
-  private[this] def settingErrorStrings = new ParseErrorStrings(
-    base = "Error parsing expression.",
-    extraBlank = "  Ensure that there are no blank lines within a setting.",
-    missingBlank = "  Ensure that settings are separated by blank lines.",
-    extraSemi = "  Note that settings are expressions and do not end with semicolons.  (Semicolons are fine within {} blocks, however.)"
-  )
 
   /**
-   * Parses the provided compilation `unit` according to `f` and then performs checks on the final parser state
-   * to catch errors that are common when the content is embedded in a blank-line-delimited format.
+   * Check whether a module is top level or not.
+   *
+   * Removed in commit `e5b050814deb2e7e1d6d05511d3a6cb6b013b549`.
    */
-  private[this] def parse[T](unit: CompilationUnit, errors: ParseErrorStrings, f: syntaxAnalyzer.UnitParser => T): (syntaxAnalyzer.UnitParser, T) =
-    {
-      val parser = new syntaxAnalyzer.UnitParser(unit)
+  private[this] def isTopLevelModule(s: Symbol): Boolean =
+    s.hasFlag(reflect.internal.Flags.MODULE) && s.owner.isPackageClass
 
-      val tree = f(parser)
-      val extra = parser.in.token match {
-        case EOF => errors.extraBlank
-        case _   => ""
-      }
-      checkError(errors.base + extra)
+  // TODO: reuse the code from `Analyzer`
+  private[this] def classExists(dir: File, name: String) =
+    new File(dir, name + ".class").exists
 
-      parser.accept(EOF)
-      val extra2 = parser.in.token match {
-        case SEMI               => errors.extraSemi
-        case NEWLINE | NEWLINES => errors.missingBlank
-        case _                  => ""
-      }
-      checkError(errors.base + extra2)
-
-      (parser, tree)
+  private[this] def getGeneratedFiles(target: Option[File],
+    moduleName: String): Seq[File] = {
+    target match {
+      case Some(dir) =>
+        dir.listFiles {
+          new java.io.FilenameFilter {
+            def accept(dir: File, s: String): Boolean =
+              s.contains(moduleName)
+          }
+        }
+      case None => Nil
     }
-  private[this] def parseType(tpe: String): Tree =
-    {
-      val tpeParser = new syntaxAnalyzer.UnitParser(mkUnit("<expected-type>", DefaultStartLine, tpe))
-      val tpt0: Tree = tpeParser.typ()
-      tpeParser.accept(EOF)
-      checkError("Error parsing expression type.")
-      tpt0
-    }
-  private[this] def parseImports(imports: EvalImports): Seq[Tree] =
-    imports.strings flatMap { case (s, line) => parseImport(mkUnit(imports.srcName, line, s)) }
-  private[this] def parseImport(importUnit: CompilationUnit): Seq[Tree] =
-    {
-      val parser = new syntaxAnalyzer.UnitParser(importUnit)
-      val trees: Seq[Tree] = parser.importClause()
-      parser.accept(EOF)
-      checkError("Error parsing imports for expression.")
-      trees
-    }
-  private[this] def parseDefinitions(du: CompilationUnit): Seq[Tree] =
-    parse(du, definitionErrorStrings, parseDefinitions)._2
-
-  /** Parses one or more definitions (defs, vals, lazy vals, classes, traits, modules). */
-  private[this] def parseDefinitions(parser: syntaxAnalyzer.UnitParser): Seq[Tree] =
-    {
-      var defs = parser.nonLocalDefOrDcl
-      parser.acceptStatSepOpt()
-      while (!parser.isStatSeqEnd) {
-        val next = parser.nonLocalDefOrDcl
-        defs ++= next
-        parser.acceptStatSepOpt()
-      }
-      defs
-    }
-
-  private[this] trait EvalType[T] {
-    /** Extracts additional information after the compilation unit is evaluated.*/
-    def extra(run: Run, unit: CompilationUnit): T
-
-    /** Deserializes the extra information for unchanged inputs from a cache file.*/
-    def read(file: File): T
-
-    /** Serializes the extra information to a cache file, where it can be `read` back if inputs haven't changed.*/
-    def write(value: T, file: File): Unit
-
-    /**
-     * Constructs the full compilation unit for this evaluation.
-     * This is used for error reporting during compilation.
-     * The `unitBody` method actually does the parsing and may parse the Tree from another source.
-     */
-    def makeUnit: CompilationUnit
-
-    /** If true, all top-level symbols from this evaluation will be unlinked.*/
-    def unlink: Boolean
-
-    /**
-     * Constructs the Tree to be compiled.  The full compilation `unit` from `makeUnit` is provided along with the
-     * parsed imports `importTrees` to be used.  `moduleName` should be name of the enclosing module.
-     * The Tree doesn't need to be parsed from the contents of `unit`.
-     */
-    def unitBody(unit: CompilationUnit, importTrees: Seq[Tree], moduleName: String): Tree
-
-    /** Extra information to include in the hash'd object name to help avoid collisions. */
-    def extraHash: String
   }
 
-  val DefaultStartLine = 0
-  private[this] def makeModuleName(hash: String): String = "$" + Hash.halve(hash)
   private[this] def noImports = new EvalImports(Nil, "")
-  private[this] def mkUnit(srcName: String, firstLine: Int, s: String) = new CompilationUnit(new EvalSourceFile(srcName, firstLine, s))
-  private[this] def checkError(label: String) = if (reporter.hasErrors) throw new EvalException(label)
+  private[this] def mkUnit(srcName: String, firstLine: Int, s: String) =
+    new CompilationUnit(new EvalSourceFile(srcName, firstLine, s))
 
-  private[this] final class EvalSourceFile(name: String, startLine: Int, contents: String) extends BatchSourceFile(name, contents) {
-    override def lineToOffset(line: Int): Int = super.lineToOffset((line - startLine) max 0)
-    override def offsetToLine(offset: Int): Int = super.offsetToLine(offset) + startLine
-  }
   /**
-   * Constructs a CompilationUnit for each definition, which can be used to independently parse the definition into a Tree.
-   * Additionally, a CompilationUnit for the combined definitions is constructed for use by combined compilation after parsing.
+   * Construct a [[CompilationUnit]] for each definition and another one
+   * for batch compilation.
+   *
+   * Every compilation unit is then used to independently parse the
+   * definition into a [[Tree]]. Additionally, a [[CompilationUnit]] is
+   * constructed to use it for combined compilation after parsing. This is
+   * useful because definitions can all be compiled at once.
    */
-  private[this] def mkDefsUnit(srcName: String, definitions: Seq[(String, scala.Range)]): (CompilationUnit, Seq[CompilationUnit]) =
-    {
-      def fragmentUnit(content: String, lineMap: Array[Int]) = new CompilationUnit(fragmentSourceFile(srcName, content, lineMap))
+  private[this] def mkUnitsForDefs(srcName: String,
+    definitions: Seq[(String, scala.Range)]): (CompilationUnit, Seq[CompilationUnit]) = {
+    def fragmentUnit(content: String, lineMap: Array[Int]) =
+      new CompilationUnit(fragmentSourceFile(srcName, content, lineMap))
 
-      import collection.mutable.ListBuffer
-      val lines = new ListBuffer[Int]()
-      val defs = new ListBuffer[CompilationUnit]()
-      val fullContent = new java.lang.StringBuilder()
-      for ((defString, range) <- definitions) {
-        defs += fragmentUnit(defString, range.toArray)
-        fullContent.append(defString)
-        lines ++= range
-        fullContent.append("\n\n")
-        lines ++= (range.end :: range.end :: Nil)
-      }
-      val fullUnit = fragmentUnit(fullContent.toString, lines.toArray)
-      (fullUnit, defs.toSeq)
+    import collection.mutable.ListBuffer
+    val lines = new ListBuffer[Int]()
+    val defs = new ListBuffer[CompilationUnit]()
+    val fullContent = new java.lang.StringBuilder()
+    for ((defString, range) <- definitions) {
+      defs += fragmentUnit(defString, range.toArray)
+      fullContent.append(defString)
+      lines ++= range
+      fullContent.append("\n\n")
+      lines ++= (range.end :: range.end :: Nil)
     }
+    val fullUnit = fragmentUnit(fullContent.toString, lines.toArray)
+    (fullUnit, defs.toSeq)
+  }
 
   /**
-   * Source file that can map the offset in the file to and from line numbers that may discontinuous.
-   * The values in `lineMap` must be ordered, but need not be consecutive.
+   * Create a "virtual" source file that will show only a fragment of a
+   * the contents of an existing user-defined sbt source file.
+   *
+   * @param srcName The name of the virtual source file.
+   * @param content The contents of the original user-defined source file.
+   * @param lineMap The lines to contain, need to be ordered but not consecutive.
+   * @return A file that will show only the `lineMap` of `content`.
    */
-  private[this] def fragmentSourceFile(srcName: String, content: String, lineMap: Array[Int]) = new BatchSourceFile(srcName, content) {
-    override def lineToOffset(line: Int): Int = super.lineToOffset(lineMap.indexWhere(_ == line) max 0)
-    override def offsetToLine(offset: Int): Int = index(lineMap, super.offsetToLine(offset))
-    // the SourceFile attribute is populated from this method, so we are required to only return the name
-    override def toString = new File(srcName).getName
-    private[this] def index(a: Array[Int], i: Int): Int = if (i < 0 || i >= a.length) 0 else a(i)
+  private[this] def fragmentSourceFile(srcName: String,
+    content: String,
+    lineMap: Array[Int]) = {
+    new BatchSourceFile(srcName, content) {
+      override def lineToOffset(line: Int): Int =
+        super.lineToOffset(lineMap.indexWhere(_ == line) max 0)
+
+      override def offsetToLine(offset: Int): Int =
+        index(lineMap, super.offsetToLine(offset))
+
+      private[this] def index(a: Array[Int], i: Int): Int =
+        if (i < 0 || i >= a.length) 0 else a(i)
+
+      /** Return only the name of the file since we use it to populate `SourceFile`. */
+      override def toString: String = new File(srcName).getName
+    }
   }
 }
-private[sbt] object Eval {
-  def optBytes[T](o: Option[T])(f: T => Array[Byte]): Array[Byte] = seqBytes(o.toSeq)(f)
-  def stringSeqBytes(s: Seq[String]): Array[Byte] = seqBytes(s)(bytes)
-  def seqBytes[T](s: Seq[T])(f: T => Array[Byte]): Array[Byte] = bytes(s map f)
-  def bytes(b: Seq[Array[Byte]]): Array[Byte] = bytes(b.length) ++ b.flatten.toArray[Byte]
-  def bytes(b: Boolean): Array[Byte] = Array[Byte](if (b) 1 else 0)
-  def filesModifiedBytes(fs: Array[File]): Array[Byte] = if (fs eq null) filesModifiedBytes(Array[File]()) else seqBytes(fs)(fileModifiedBytes)
-  def fileModifiedBytes(f: File): Array[Byte] =
-    (if (f.isDirectory) filesModifiedBytes(f listFiles classDirFilter) else bytes(f.lastModified)) ++
-      bytes(f.getAbsolutePath)
-  def fileExistsBytes(f: File): Array[Byte] =
-    bytes(f.exists) ++
-      bytes(f.getAbsolutePath)
 
-  def bytes(s: String): Array[Byte] = s getBytes "UTF-8"
-  def bytes(l: Long): Array[Byte] =
-    {
-      val buffer = ByteBuffer.allocate(8)
-      buffer.putLong(l)
-      buffer.array
-    }
-  def bytes(i: Int): Array[Byte] =
-    {
-      val buffer = ByteBuffer.allocate(4)
-      buffer.putInt(i)
-      buffer.array
-    }
+private[sbt] object Eval {
+  private[sbt] def checkError(reporter: Reporter, label: String) =
+    if (reporter.hasErrors) throw new EvalException(label)
 
   /** The name of the synthetic val in the synthetic module that an expression is assigned to. */
   final val WrapValName = "$sbtdef"
 
   /**
-   * Gets the value of the expression wrapped in module `objectName`, which is accessible via `loader`.
-   * The module name should not include the trailing `$`.
+   * Gets the value of the expression wrapped in module `objectName`.
+   *
+   * @param objectName The name of the synthetic sbt object. This module
+   *                   name should not include the trailing `$`.
+   * @param loader The class loader on which `objectName` is accessible.
+   * @tparam T The expected type of the value.
+   * @return The value typed as [[T]].
    */
-  def getValue[T](objectName: String, loader: ClassLoader): T =
-    {
-      val module = getModule(objectName, loader)
-      val accessor = module.getClass.getMethod(WrapValName)
-      val value = accessor.invoke(module)
-      value.asInstanceOf[T]
-    }
+  def getValue[T](objectName: String, loader: ClassLoader): T = {
+    val module = getModule(objectName, loader)
+    val accessor = module.getClass.getMethod(WrapValName)
+    val value = accessor.invoke(module)
+    value.asInstanceOf[T]
+  }
 
-  /** Gets the top-level module `moduleName` from the provided class `loader`.  The module name should not include the trailing `$`.*/
-  def getModule(moduleName: String, loader: ClassLoader): Any =
-    {
-      val clazz = Class.forName(moduleName + "$", true, loader)
-      clazz.getField("MODULE$").get(null)
-    }
+  /**
+   * Gets the top-level module `moduleName` from the provided class `loader`.
+   *
+   * @param moduleName The name of the target module name. This name should
+   *                   not include the trailing `$`.
+   * @param loader The class loader on which `objectName` is accessible.
+   * @return The module if found, otherwise null.
+   */
+  def getModule(moduleName: String, loader: ClassLoader): Any = {
+    val clazz = Class.forName(moduleName + "$", true, loader)
+    clazz.getField("MODULE$").get(null)
+  }
 
-  private val classDirFilter: FileFilter = DirectoryFilter || GlobFilter("*.class")
+}
+
+/** Defines utilities to parse `*.sbt` files. */
+private[sbt] trait SbtParser {
+  val global: Global
+  val reporter: Reporter
+  import global.{ CompilationUnit, Tree }
+  import global.syntaxAnalyzer.UnitParser
+
+  protected class ParseErrorStrings(val base: String,
+    val extraBlank: String,
+    val missingBlank: String,
+    val extraSemi: String)
+
+  protected def definitionErrorStrings = new ParseErrorStrings(
+    base = "Error parsing definition.",
+    extraBlank = "  Ensure that there are no blank lines within a definition.",
+    missingBlank = "  Ensure that definitions are separated by blank lines.",
+    extraSemi =
+      "  A trailing semicolon is not permitted for standalone definitions."
+  )
+
+  protected def settingErrorStrings = new ParseErrorStrings(
+    base = "Error parsing expression.",
+    extraBlank = "  Ensure that there are no blank lines within a setting.",
+    missingBlank = "  Ensure that settings are separated by blank lines.",
+    extraSemi =
+      "  Note that settings are expressions and do not end with semicolons.  (Semicolons are fine within {} blocks, however.)"
+  )
+
+  /**
+   * Parse a compilation unit according to `parserLogic`.
+   *
+   * This method performs check on the final parser state to give concrete
+   * parser errors to the user, especifically on '\n'-delimited sbt files.
+   *
+   * It's generic because different use sites inject their own `parserLogic`.
+   */
+  protected def parse[T](unit: CompilationUnit,
+    errors: ParseErrorStrings,
+    parserLogic: UnitParser => T): (UnitParser, T) = {
+    val parser = new UnitParser(unit)
+    val tree = parserLogic(parser)
+    val extra = parser.in.token match {
+      case EOF => errors.extraBlank
+      case _   => ""
+    }
+    Eval.checkError(reporter, errors.base + extra)
+
+    parser.accept(EOF)
+    val extra2 = parser.in.token match {
+      case SEMI               => errors.extraSemi
+      case NEWLINE | NEWLINES => errors.missingBlank
+      case _                  => ""
+    }
+    Eval.checkError(reporter, errors.base + extra2)
+
+    (parser, tree)
+  }
+
+  protected def parseType(unit: CompilationUnit, tpe: String): Tree = {
+    val tpeParser = new UnitParser(unit)
+    val tpt0: Tree = tpeParser.typ()
+    tpeParser.accept(EOF)
+    Eval.checkError(reporter, "Error parsing expression type.")
+    tpt0
+  }
+
+  protected def parseImport(importUnit: CompilationUnit): Seq[Tree] = {
+    val parser = new UnitParser(importUnit)
+    val trees: Seq[Tree] = parser.importClause()
+    parser.accept(EOF)
+    Eval.checkError(reporter, "Error parsing imports for expression.")
+    trees
+  }
+
+  protected def parseDefinitions(du: CompilationUnit): Seq[Tree] =
+    parse(du, definitionErrorStrings, parseDefinitions)._2
+
+  /**
+   * Parse sbt definitions.
+   *
+   * This parser considers the following as definitions:
+   *   `def`s, `val`s, `lazy val`s, classes, traits and objects.
+   *
+   * Note that even parsing classes, trait, and objects is supported by this
+   * method, they will never be parsed because they are not valid sbt
+   * expressions and `EvaluateConfigurations` prunes them before hitting this.
+   */
+  private[this] def parseDefinitions(parser: UnitParser): Seq[Tree] = {
+    var defs = parser.nonLocalDefOrDcl
+    parser.acceptStatSepOpt()
+    while (!parser.isStatSeqEnd) {
+      val next = parser.nonLocalDefOrDcl
+      defs ++= next
+      parser.acceptStatSepOpt()
+    }
+    defs
+  }
+}
+
+private[sbt] trait SbtCodegen {
+  val global: Global
+  import global._
+  import syntaxAnalyzer.UnitParser
+
+  protected def makeModuleName(hash: String): String = "$" + Hash.halve(hash)
+
+  /**
+   * Create a synthetic module that contains `imports` and `definitions`.
+   *
+   * It produces a tree equivalent to:
+   * {{{
+   *   object <objectName> {
+   *     <imports>
+   *     <definitions>
+   *   }
+   * }}}
+   *
+   * @param parser A parser instance.
+   * @param imports The imports accessible to the module definitions.
+   * @param definitions The definitions of the module.
+   * @param moduleName The name of the synthetic module.
+   * @return
+   */
+  protected def syntheticModule(parser: UnitParser,
+    imports: Seq[Tree],
+    definitions: List[Tree],
+    moduleName: String): Tree = {
+    // Generate an empty constructor for the module template
+    val emptyName = nme.EMPTY.toTypeName
+    val superCall: Apply =
+      Apply(Select(Super(This(emptyName), emptyName), nme.CONSTRUCTOR), Nil)
+    val body = Block(List(superCall), Literal(Constant(())))
+    val emptyConstructor: DefDef =
+      DefDef(NoMods, nme.CONSTRUCTOR, Nil, List(Nil), TypeTree(), body)
+
+    // Generate the synthetic module
+    val moduleDefinitions = emptyConstructor :: definitions
+    def moduleBody: Template =
+      Template(List(gen.scalaAnyRefConstr), emptyValDef, moduleDefinitions)
+    def moduleDef = ModuleDef(NoMods, newTermName(moduleName), moduleBody)
+
+    // Create a package around the generated module def and the imports
+    val emptyPkg = parser.atPos(0, 0, 0) { Ident(nme.EMPTY_PACKAGE_NAME) }
+    val allTrees = (imports :+ moduleDef).toList
+    parser.makePackaging(0, emptyPkg, allTrees)
+  }
+
+  /**
+   * Wrap the sbt pieces into an enclosing object with a concrete method.
+   *
+   * It produces a tree equivalent to:
+   * {{{
+   *   object <objectName> {
+   *     <imports>
+   *     def WrapValName: <tpt> = <tree>
+   *   }
+   * }}}
+   *
+   * @param parser A parser.
+   * @param imports The imports to be used.
+   * @param tree The tree to be wrapped in the `WrapValName` function.
+   * @param tpt The return type of the wrapped function.
+   * @param moduleName The name of the enclosing object.
+   * @return The augmented tree.
+   */
+  def wrapInModule(parser: UnitParser,
+    imports: Seq[Tree],
+    tree: Tree,
+    tpt: Tree,
+    moduleName: String): Tree = {
+    import Eval.WrapValName
+    val method = DefDef(NoMods, newTermName(WrapValName), Nil, Nil, tpt, tree)
+    syntheticModule(parser, imports, method :: Nil, moduleName)
+  }
+
+}
+
+private[sbt] trait SbtDefinitions {
+  val global: Global
+  import global.{ CompilationUnit, Tree, Run }
+
+  /**
+   * Define an "intermediate representation" for sbt definitions and settings.
+   * This intermediate representation is a product of [[Evaluator]].
+   *
+   * @param extra The extra information extracted after evaluation.
+   * @param loader A function that provides a class loader with all the
+   *               compiled class files loaded.
+   * @param generated The generated class files by [[Evaluator]].
+   * @param enclosingModule The name of the synthetic enclosing module.
+   * @tparam T The expected type of the expression.
+   */
+  protected final class IR[T](val extra: T,
+    val loader: ClassLoader => ClassLoader,
+    val generated: Seq[File],
+    val enclosingModule: String)
+
+  /**
+   * Define an evaluator that represents how a sbt compilation unit should
+   * be compiled by scalac.
+   *
+   * @tparam T The expected type of the evaluated expression.
+   */
+  protected trait Evaluator[T] {
+
+    /** Hash of the extra information to avoid collisions. */
+    def extraHash: String
+
+    /**
+     * Define a hook to extract additional information from the compiler.
+     *
+     * This hook is called after the evaluation of the compilation unit.
+     *
+     * @param run The `Run` class that will compile `unit`.
+     * @param unit The unit to be evaluated.
+     * @return The read extra information of type [[T]]
+     */
+    def extra(run: Run, unit: CompilationUnit): T
+
+    /**
+     * Deserializes the extra information from a cache file.
+     *
+     * This method is only called if the inputs are the same.
+     */
+    def read(file: File): T
+
+    /**
+     * Serializes the extra information to a cache file.
+     *
+     * This method is only called if the inputs are the same.
+     *
+     * @param value The extra information to be serialized.
+     * @param file The cache file.
+     */
+    def write(value: T, file: File): Unit
+
+    /** Defines whether all evaluted top-level symbols should be unlinked. */
+    def unlink: Boolean
+
+    /**
+     * Constructs the full compilation unit for this evaluation.
+     *
+     * This is used for error reporting during compilation. `unitBody`
+     * does the parsing and may parse the tree from another source.
+     */
+    def makeUnit: CompilationUnit
+
+    /**
+     * Constructs the tree to be compiled.
+     *
+     * @param unit The full compilation unit from [[makeUnit]].
+     * @param importTrees The import trees to be used.
+     * @param moduleName The synthetic name of the enclosing module.
+     * @return A tree representing the compilation unit to compile. This tree
+     *         may not be parsed from the contents of `unit`.
+     */
+    def unitBody(unit: CompilationUnit,
+      importTrees: Seq[Tree],
+      moduleName: String): Tree
+  }
+
+  /**
+   * Represents the user inputs for the compilation.
+   *
+   * @param content The lines to be compiled (contents of a source file).
+   * @param target The target directory for class files.
+   * @param scalacOptions The options for compilation.
+   * @param classpath The compilation classpath.
+   */
+  case class CompilationInputs(content: Seq[String],
+    target: Option[File],
+    scalacOptions: Seq[String],
+    classpath: Seq[File])
+
+  /**
+   * Defines a virtual source file with the contents starting from a line.
+   *
+   * @param name The name of the source file.
+   * @param startLine The start line where the position starts.
+   * @param contents The contents of the file.
+   */
+  protected final class EvalSourceFile(name: String,
+    startLine: Int,
+    contents: String)
+      extends BatchSourceFile(name, contents) {
+    override def lineToOffset(line: Int): Int =
+      super.lineToOffset((line - startLine) max 0)
+    override def offsetToLine(offset: Int): Int =
+      super.offsetToLine(offset) + startLine
+  }
+
+}
+
+/** Define utils to hash inputs to the sbt compiler. */
+private[sbt] trait SbtHashGen { self: SbtDefinitions =>
+
+  private val classDirFilter: FileFilter =
+    DirectoryFilter || GlobFilter("*.class")
+
+  /**
+   * Hash the inputs.
+   *
+   * It includes the lines of the source files in the hash to avoid
+   * conflicts where the exact same settings is defined in multiple evaluated
+   * instances for a target, which can lead to issues with finding a previous
+   * value on the classpath during compilation.
+   *
+   * @param compilationInputs The user-defined compilation inputs.
+   * @param importExprs The imports to be used in the compilation unit.
+   * @param typeName The type name.
+   * @param extra Extra evaluation information.
+   * @return
+   */
+  def hashInputs(compilationInputs: CompilationInputs,
+    importExprs: Seq[String],
+    typeName: Option[String],
+    extra: String): String = {
+    val allBytes =
+      stringSeqBytes(compilationInputs.content) ::
+        optBytes(compilationInputs.target)(fileExistsBytes) ::
+        stringSeqBytes(compilationInputs.scalacOptions) ::
+        seqBytes(compilationInputs.classpath)(fileModifiedBytes) ::
+        stringSeqBytes(importExprs) ::
+        optBytes(typeName)(bytes) ::
+        bytes(extra) ::
+        Nil
+    Hash.toHex(Hash(bytes(allBytes)))
+  }
+
+  def optBytes[T](o: Option[T])(f: T => Array[Byte]): Array[Byte] =
+    seqBytes(o.toSeq)(f)
+
+  def seqBytes[T](s: Seq[T])(f: T => Array[Byte]): Array[Byte] =
+    bytes(s.map(f))
+
+  def stringSeqBytes(s: Seq[String]): Array[Byte] =
+    seqBytes(s)(bytes)
+
+  def fileExistsBytes(f: File): Array[Byte] =
+    bytes(f.exists) ++ bytes(f.getAbsolutePath)
+  def filesModifiedBytes(fs: Array[File]): Array[Byte] = {
+    if (fs eq null) filesModifiedBytes(Array[File]())
+    else seqBytes(fs)(fileModifiedBytes)
+  }
+  def fileModifiedBytes(f: File): Array[Byte] = {
+    val fullContentsHash =
+      if (f.isDirectory) filesModifiedBytes(f.listFiles(classDirFilter))
+      else bytes(f.lastModified)
+    fullContentsHash ++ bytes(f.getAbsolutePath)
+  }
+
+  def bytes(b: Boolean): Array[Byte] = Array[Byte](if (b) 1 else 0)
+  def bytes(s: String): Array[Byte] = s.getBytes("UTF-8")
+  def bytes(b: Seq[Array[Byte]]): Array[Byte] =
+    bytes(b.length) ++ b.flatten.toArray[Byte]
+
+  def bytes(l: Long): Array[Byte] = {
+    val buffer = ByteBuffer.allocate(8)
+    buffer.putLong(l)
+    buffer.array
+  }
+
+  def bytes(i: Int): Array[Byte] = {
+    val buffer = ByteBuffer.allocate(4)
+    buffer.putInt(i)
+    buffer.array
+  }
 }

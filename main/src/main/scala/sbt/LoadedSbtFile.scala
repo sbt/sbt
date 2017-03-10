@@ -47,7 +47,7 @@ private[sbt] final class DefinedSbtValues(val sbtFiles: Seq[compiler.EvalDefinit
     for {
       file <- sbtFiles
       m = file.enclosingModule
-      v <- file.valNames
+      v <- file.names
     } yield s"import ${m}.${v}"
   }
   def generated: Seq[File] =

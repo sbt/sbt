@@ -34,7 +34,7 @@ object EvalTest extends Properties("eval") {
 
   property("backed local class") = forAll { (i: Int) =>
     IO.withTemporaryDirectory { dir =>
-      val eval = new Eval(_ => reporter, backing = Some(dir))
+      val eval = new Eval(_ => reporter, target = Some(dir))
       val result = eval.eval(local(i))
       val v = value(result).asInstanceOf[{ def i: Int }].i
       (label("Value", v) |: (v == i)) &&
@@ -61,7 +61,7 @@ val p = {
   property("val test") = secure {
     val defs = (ValTestContent, 1 to 7) :: Nil
     val res = eval.evalDefinitions(defs, new EvalImports(Nil, ""), "<defs>", None, "scala.Int" :: Nil)
-    label("Val names", res.valNames) |: (res.valNames.toSet == ValTestNames)
+    label("Val names", res.names) |: (res.names.toSet == ValTestNames)
   }
 
   property("explicit import") = forAll(testImport("import math.abs" :: Nil))
