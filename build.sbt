@@ -604,7 +604,7 @@ def noPublishForScalaVersionSettings(sbv: String*) = Seq(
 lazy val scalaVersionAgnosticCommonSettings = Seq(
   organization := "io.get-coursier",
   resolvers ++= Seq(
-    "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
+    "Scalaz Bintray Repo" at "https://dl.bintray.com/scalaz/releases",
     Resolver.sonatypeRepo("releases")
   ),
   scalacOptions ++= {
