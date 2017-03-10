@@ -84,7 +84,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierResolvers <<= Tasks.coursierResolversTask,
     coursierRecursiveResolvers <<= Tasks.coursierRecursiveResolversTask,
     coursierSbtResolvers <<= externalResolvers in updateSbtClassifiers,
-    coursierUseSbtCredentials := false,
+    coursierUseSbtCredentials := true,
     coursierCredentials := Map.empty,
     coursierFallbackDependencies <<= Tasks.coursierFallbackDependenciesTask,
     coursierCache := Cache.default,
