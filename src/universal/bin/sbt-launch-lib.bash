@@ -38,6 +38,10 @@ acquire_sbt_jar () {
   fi
 }
 
+rt_export_file () {
+  echo "${sbt_bin_dir}/java9-rt-export.jar"
+}
+
 execRunner () {
   # print the arguments one to a line, quoting any containing spaces
   [[ $verbose || $debug ]] && echo "# Executing command line:" && {
@@ -147,7 +151,8 @@ process_args () {
     process_my_args "${myargs[@]}"
   }
 
-  java_version=$("$java_cmd" -Xmx512M -version 2>&1 | sed 's/.*version "\([0-9]*\)\.\([0-9]*\)\..*"/\1.\2/; 1q')
+  ## parses 1.7, 1.8, 9, etc out of java version "1.8.0_91"
+  java_version=$("$java_cmd" -Xmx512M -version 2>&1 | sed 's/.*version "\([0-9]*\)\(\.[0-9]*\)\{0,1\}\(.*\)*"/\1\2/; 1q')
   vlog "[process_args] java_version = '$java_version'"
 }
 
@@ -174,6 +179,25 @@ checkJava() {
   fi
 }
 
+copyRt() {
+  if [[ "$java_version" > "8" ]]; then
+    rtexport=$(rt_export_file)
+    java9_ext=$("$java_cmd" ${JAVA_OPTS} ${SBT_OPTS:-$default_sbt_opts} ${java_args[@]} \
+      -jar "$rtexport" --rt-ext-dir)
+    java9_rt=$(echo "$java9_ext/rt.jar")
+    vlog "[copyRt] java9_rt = '$java9_rt'"
+    if [[ ! -f "$java9_rt" ]]; then
+      echo Copying runtime jar.
+      execRunner "$java_cmd" \
+        ${JAVA_OPTS} \
+        ${SBT_OPTS:-$default_sbt_opts} \
+        ${java_args[@]} \
+        -jar "$rtexport" \
+        "${java9_rt}"
+    fi
+    addJava "-Dscala.ext.dirs=${java9_ext}"
+  fi
+}
 
 run() {
   # no jar? download it.
@@ -190,6 +214,9 @@ run() {
 
   # TODO - java check should be configurable...
   checkJava "1.6"
+
+  # Java 9 support
+  copyRt
 
   #If we're in cygwin, we should use the windows config, and terminal hacks
   if [[ "$CYGWIN_FLAG" == "true" ]]; then
