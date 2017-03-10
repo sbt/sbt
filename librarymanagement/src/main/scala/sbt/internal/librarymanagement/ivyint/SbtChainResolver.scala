@@ -72,7 +72,7 @@ private[sbt] case class SbtChainResolver(
   override def getDependency(dd: DependencyDescriptor, data: ResolveData) =
     {
       if (data.getOptions.getLog != LogOptions.LOG_QUIET)
-        Message.info("Resolving " + dd.getDependencyRevisionId + " ...")
+        Message.debug("Resolving " + dd.getDependencyRevisionId + " ...")
       val gd = doGetDependency(dd, data)
       val mod = IvySbt.resetArtifactResolver(gd)
       mod
