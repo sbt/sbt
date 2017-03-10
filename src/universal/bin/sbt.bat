@@ -81,6 +81,8 @@ call :checkjava
 
 call :copyrt
 
+call :sync_preloaded
+
 call :run %SBT_ARGS%
 
 if ERRORLEVEL 1 goto error
@@ -90,15 +92,6 @@ goto end
 
 "%_JAVACMD%" %_JAVA_OPTS% %SBT_OPTS% -cp "%SBT_HOME%sbt-launch.jar" xsbt.boot.Boot %*
 goto :eof
-
-:error
-@endlocal
-exit /B 1
-
-
-:end
-@endlocal
-exit /B 0
 
 :process
 rem parses 1.7, 1.8, 9, etc out of java version "1.8.0_91"
@@ -147,4 +140,26 @@ if /I "%JAVA_VERSION%" GEQ "9" (
   )
   set _JAVA_OPTS=!_JAVA_OPTS! -Dscala.ext.dirs="%java9_ext%"
 )
+exit /B 0
+
+:sync_preloaded
+set PRELOAD_SBT_JAR="%UserProfile%\.sbt\preloaded\org.scala-sbt\sbt\%INIT_SBT_VERSION%\jars\sbt.jar"
+if /I "%JAVA_VERSION%" GEQ "8" (
+  where robocopy >nul 2>nul
+  if %ERRORLEVEL% equ 0 (
+    echo %PRELOAD_SBT_JAR%
+    if not exist %PRELOAD_SBT_JAR% (
+      echo 'about to robocopy'
+      robocopy "%SBT_HOME%\..\lib\local-preloaded\" "%UserProfile%\.sbt\preloaded"
+    )
+  )
+)
+exit /B 0
+
+:error
+@endlocal
+exit /B 1
+
+:end
+@endlocal
 exit /B 0
