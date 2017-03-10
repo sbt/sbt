@@ -75,6 +75,12 @@ if defined JVM_DEBUG_PORT (
   set _JAVA_OPTS=!_JAVA_OPTS! -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=!JVM_DEBUG_PORT!
 )
 
+call :process
+
+call :checkjava
+
+call :copyrt
+
 call :run %SBT_ARGS%
 
 if ERRORLEVEL 1 goto error
@@ -92,4 +98,53 @@ exit /B 1
 
 :end
 @endlocal
+exit /B 0
+
+:process
+rem parses 1.7, 1.8, 9, etc out of java version "1.8.0_91"
+"%_JAVACMD%" -Xmx512M -version 2> "%TEMP%.\out.txt"
+set JAVA_VERSION=0
+findstr /c:"version \"9" "%TEMP%.\out.txt"
+if /I %ERRORLEVEL% EQU 0 (set JAVA_VERSION=9)
+findstr /c:"version \"1.8" "%TEMP%.\out.txt"
+if /I %ERRORLEVEL% EQU 0 (set JAVA_VERSION=1.8)
+findstr /c:"version \"1.7" "%TEMP%.\out.txt"
+if /I %ERRORLEVEL% EQU 0 (set JAVA_VERSION=1.7)
+findstr /c:"version \"1.6" "%TEMP%.\out.txt"
+if /I %ERRORLEVEL% EQU 0 (set JAVA_VERSION=1.6)
+findstr /c:"version \"1.5" "%TEMP%.\out.txt"
+if /I %ERRORLEVEL% EQU 0 (set JAVA_VERSION=1.5)
+
+exit /B 0
+
+:checkjava
+set required_version=1.6
+if /I "%JAVA_VERSION%" GEQ "%required_version%" (
+  exit /B 0
+)
+echo.
+echo The java installation you have is not up to date
+echo sbt requires at least version %required_version%+, you have
+echo version %JAVA_VERSION%
+echo.
+echo Please go to http://www.java.com/getjava/ and download
+echo a valid Java Runtime and install before running sbt.
+echo.
+exit /B 1
+
+:copyrt
+if /I "%JAVA_VERSION%" GEQ "9" (
+  set rtexport=%SBT_HOME%java9-rt-export.jar
+
+  "%_JAVACMD%" %_JAVA_OPTS% %SBT_OPTS% -jar "%rtexport%" --rt-ext-dir > "%TEMP%.\rtext.txt"
+  set /p java9_ext= < "%TEMP%.\rtext.txt"
+  set java9_rt=%java9_ext%\rt.jar
+
+  if not exist "%java9_rt%" (
+    echo Copying runtime jar.
+    mkdir "%java9_ext%"
+    "%_JAVACMD%" %_JAVA_OPTS% %SBT_OPTS% -jar "%rtexport%" "%java9_rt%"
+  )
+  set _JAVA_OPTS=!_JAVA_OPTS! -Dscala.ext.dirs="%java9_ext%"
+)
 exit /B 0

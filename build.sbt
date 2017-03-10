@@ -109,7 +109,11 @@ val root = (project in file(".")).
     // Universal ZIP download install.
     packageName in Universal := packageName.value, // needs to be set explicitly due to a bug in native-packager
     version in Universal := sbtVersionToRelease,
-    mappings in Universal += { sbtLaunchJar.value -> "bin/sbt-launch.jar" },
+    mappings in Universal ++= {
+      val launchJar = sbtLaunchJar.value
+      val rtExportJar = (packageBin in Compile in java9rtexport).value
+      Seq(launchJar -> "bin/sbt-launch.jar", rtExportJar -> "bin/java9-rt-export.jar")
+    },
 
     // Misccelaneous publishing stuff...
     projectID in Debian := moduleID.value,
@@ -119,6 +123,18 @@ val root = (project in file(".")).
     },
     projectID in Rpm := moduleID.value,
     projectID in Universal := moduleID.value
+  )
+
+lazy val java9rtexport = (project in file("java9-rt-export"))
+  .settings(
+    name := "java9-rt-export",
+    autoScalaLibrary := false,
+    crossPaths := false,
+    description := "Exports the contents of the Java 9. JEP-220 runtime image to a JAR for compatibility with older tools.",
+    homepage := Some(url("http://github.com/retronym/" + name.value)),
+    startYear := Some(2017),
+    licenses += ("Scala license", url(homepage.value.get.toString + "/blob/master/LICENSE")),
+    mainClass in Compile := Some("io.github.retronym.java9rtexport.Export")
   )
 
 def downloadUrlForVersion(v: String) = (v split "[^\\d]" flatMap (i => catching(classOf[Exception]) opt (i.toInt))) match {
