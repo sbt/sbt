@@ -70,8 +70,8 @@ object TaskMacro {
   final val TransformInitName = "transform"
   final val InputTaskCreateDynName = "createDyn"
   final val InputTaskCreateFreeName = "createFree"
-  final val append1Migration = "`<+=` operator is deprecated. Use `lhs += { x.value }`."
-  final val appendNMigration = "`<++=` operator is deprecated. Use `lhs ++= { x.value }`."
+  final val append1Migration = "`<+=` operator is deprecated. Try `lhs += { x.value }`\n  or see http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html."
+  final val appendNMigration = "`<++=` operator is deprecated. Try `lhs ++= { x.value }`\n  or see http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html."
   final val assignMigration =
     """`<<=` operator is deprecated. Use `key := { x.value }` or `key ~= (old => { newValue })`.
       |See http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html""".stripMargin
