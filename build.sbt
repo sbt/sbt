@@ -32,6 +32,10 @@ val root = (project in file(".")).
     packageName := "sbt",
     version := "0.1.0",
     crossTarget := target.value,
+    clean := {
+      val _ = (clean in dist).value
+      clean.value
+    },
     publishToSettings,
     sbtLaunchJarUrl := downloadUrlForVersion(sbtVersionToRelease),
     sbtLaunchJarLocation := { target.value / "sbt-launch.jar" },
