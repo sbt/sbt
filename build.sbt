@@ -247,5 +247,6 @@ lazy val dist = (project in file("dist"))
     exportRepoDirectory := target.value / "lib" / "local-preloaded",
     conflictWarning := ConflictWarning.disable,
     publish := (),
-    publishLocal := ()
+    publishLocal := (),
+    resolvers += Resolver.typesafeIvyRepo("releases")
   )
