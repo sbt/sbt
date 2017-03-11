@@ -4,9 +4,10 @@
 package sbt
 
 import java.io.File
-import compiler.{ Eval, EvalImports }
+
+import compiler.{Eval, EvalDefinitions, EvalImports}
 import complete.DefaultParsers.validID
-import Def.{ ScopedKey, Setting }
+import Def.{ScopedKey, Setting}
 import Scope.GlobalScope
 import sbt.internals.parser.SbtParser
 
@@ -105,10 +106,13 @@ object EvaluateConfigurations {
       val name = file.getPath
       val parsed = parseConfiguration(file, lines, imports, offset)
       val (importDefs, definitions) =
-        if (parsed.definitions.isEmpty) (Nil, DefinedSbtValues.empty) else {
-          val definitions = evaluateDefinitions(eval, name, parsed.imports, parsed.definitions, Some(file))
+        if (parsed.definitions.isEmpty) (Nil, DefinedSbtValues.empty)
+        else {
+          val imports = parsed.imports
+          val defs = parsed.definitions
+          val definitions: EvalDefinitions =
+            evaluateDefinitions(eval, name, imports, defs, Some(file))
           val imp = BuildUtil.importAllRoot(definitions.enclosingModule :: Nil)
-          val projs = (loader: ClassLoader) => definitions.values(loader).map(p => resolveBase(file.getParentFile, p.asInstanceOf[Project]))
           (imp, DefinedSbtValues(definitions))
         }
       val allImports = importDefs.map(s => (s, -1)) ++ parsed.imports
