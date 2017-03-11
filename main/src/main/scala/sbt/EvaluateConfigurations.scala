@@ -28,7 +28,14 @@ object EvaluateConfigurations {
 
   type LazyClassLoaded[T] = ClassLoader => T
 
-  private[sbt] case class TrackedEvalResult[T](generated: Seq[File], result: LazyClassLoaded[T])
+  /**
+   * Represents the result of a [[sbt.internals.DslEntry]] evaluation.
+   *
+   * @param generated The generated class files for the evaluation.
+   * @param result A function that will return the loaded value.
+   * @tparam T The expected result type of the loaded value.
+   */
+  private[sbt] case class EvalResult[T](generated: Seq[File], result: LazyClassLoaded[T])
 
   /**
    * This represents the parsed expressions in a build sbt, as well as where they were defined.
@@ -196,7 +203,7 @@ object EvaluateConfigurations {
    * @return A method that given an sbt classloader, can return the actual [[internals.DslEntry]] defined by
    *         the expression, and the sequence of .class files generated.
    */
-  private[sbt] def evaluateDslEntry(eval: Eval, name: String, imports: Seq[(String, Int)], expression: String, range: LineRange): TrackedEvalResult[internals.DslEntry] = {
+  private[sbt] def evaluateDslEntry(eval: Eval, name: String, imports: Seq[(String, Int)], expression: String, range: LineRange): EvalResult[internals.DslEntry] = {
     // TODO - Should we try to namespace these between.sbt files?  IF they hash to the same value, they may actually be
     // exactly the same setting, so perhaps we don't care?
     val result = try {
@@ -205,11 +212,12 @@ object EvaluateConfigurations {
       case e: sbt.compiler.EvalException => throw new MessageOnlyException(e.getMessage)
     }
     // TODO - keep track of configuration classes defined.
-    TrackedEvalResult(result.generated,
-      loader => {
-        val pos = RangePosition(name, range shift 1)
+    val loadDslEntry = {
+      (loader: ClassLoader) =>
+        val pos = RangePosition(name, range.shift(1))
         result.getValue(loader).asInstanceOf[internals.DslEntry].withPos(pos)
-      })
+    }
+    EvalResult(result.generated, loadDslEntry)
   }
 
   /**
