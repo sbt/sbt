@@ -202,6 +202,17 @@ final class Eval(optionsWithoutClasspath: Seq[String],
     new EvalResult(ir.extra, valueLoader, ir.generated, ir.enclosingModule)
   }
 
+  @deprecated("Use alternative `evalDefinitions` definition.", "0.13.14")
+  def evalDefinitions(definitions: Seq[(String, scala.Range)],
+    imports: EvalImports,
+    srcName: String,
+    target: Option[File],
+    valTypes: Seq[String]): EvalDefinitions = {
+    require(target.isEmpty,
+      "The target directory for `evalDefinitions` cannot be empty.")
+    evalDefinitions(definitions, imports, srcName, target.get, valTypes)
+  }
+
   /**
    * Evaluate sbt definitions.
    *
@@ -217,7 +228,7 @@ final class Eval(optionsWithoutClasspath: Seq[String],
   def evalDefinitions(definitions: Seq[(String, scala.Range)],
     imports: EvalImports,
     srcName: String,
-    target: Option[File],
+    target: File,
     valTypes: Seq[String]): EvalDefinitions = {
     require(definitions.nonEmpty, "Definitions to evaluate cannot be empty.")
 
@@ -242,12 +253,7 @@ final class Eval(optionsWithoutClasspath: Seq[String],
       def read(file: File): List[String] = IO.readLines(file)
       def write(value: Seq[String], file: File): Unit =
         IO.writeLines(file, value)
-      def extraHash: String = {
-        target match {
-          case Some(f) => f.getAbsolutePath
-          case None    => ""
-        }
-      }
+      def extraHash: String = target.getAbsolutePath
     }
 
     val ir = evalCommon(definitions.map(_._1), imports, Some(""), evaluator)

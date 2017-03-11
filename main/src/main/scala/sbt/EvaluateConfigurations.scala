@@ -100,7 +100,7 @@ object EvaluateConfigurations {
    * Evaluates a parsed sbt configuration file.
    *
    * @param eval The sbt evaluation logic.
-   * @param file The sbt file to evaluate.
+   * @param targetDir The target directory to store class files.
    * @param defaultImports The default imports to use in this .sbt configuration.
    *
    * @return A function which can take an sbt classloader and return the raw types/configuration
@@ -108,22 +108,22 @@ object EvaluateConfigurations {
    */
   private[sbt] def evaluateSbtFile(
     eval: Eval,
-    file: File,
+    targetDir: File,
     lines: Seq[String],
     defaultImports: Seq[String],
     offset: Int): LazyClassLoaded[LoadedSbtFile] = {
 
     // TODO: Detect for which project the project manipulations should be done.
     // For that, store the file on the `LoadedSbtFile` or its parent directory.
-    val fileName = file.getPath
-    val parsed = parseConfiguration(file, lines, defaultImports, offset)
+    val targetName = targetDir.getPath
+    val parsed = parseConfiguration(targetDir, lines, defaultImports, offset)
     val definitions = parsed.definitions
     val imports = parsed.imports
     val (importsForDefinitions, definedSbtValues) = {
       if (definitions.isEmpty) (Nil, DefinedSbtValues.empty)
       else {
         val sbtDefs: EvalDefinitions =
-          evaluateDefinitions(eval, fileName, imports, definitions, Some(file))
+          evaluateDefinitions(eval, targetName, imports, definitions, targetDir)
         val imp = BuildUtil.importAllRoot(sbtDefs.enclosingModule :: Nil)
         (imp, DefinedSbtValues(sbtDefs))
       }
@@ -132,7 +132,7 @@ object EvaluateConfigurations {
     val allImports = importsForDefinitions.map(s => (s, -1)) ++ imports
     val dslEntries = parsed.settings.map {
       case (dslExpression, range) =>
-        evaluateDslEntry(eval, fileName, allImports, dslExpression, range)
+        evaluateDslEntry(eval, targetName, allImports, dslExpression, range)
     }
     eval.unlinkDeferred()
 
@@ -159,7 +159,7 @@ object EvaluateConfigurations {
 
       // Get the defined projects by the user
       val projects = loadedSbtValues.collect {
-        case p: Project => resolveBase(file.getParentFile, p)
+        case p: Project => resolveBase(targetDir.getParentFile, p)
       }
 
       new LoadedSbtFile(
@@ -195,7 +195,9 @@ object EvaluateConfigurations {
    * This actually compiles a scala expression which represents a sbt.internals.DslEntry.
    *
    * @param eval The mechanism to compile and evaluate Scala expressions.
-   * @param name The name for the thing we're compiling
+   * @param fileName The file name of the sbt file that holds this dsl entry. It
+   *                 may be a dummy name for evaluations that are written in
+   *                 the sbt shell. Several dsl entries can share this name.
    * @param imports The scala imports to have in place when we compile the expression
    * @param expression The scala expression we're compiling
    * @param range The original position in source of the expression, for error messages.
@@ -203,18 +205,18 @@ object EvaluateConfigurations {
    * @return A method that given an sbt classloader, can return the actual [[internals.DslEntry]] defined by
    *         the expression, and the sequence of .class files generated.
    */
-  private[sbt] def evaluateDslEntry(eval: Eval, name: String, imports: Seq[(String, Int)], expression: String, range: LineRange): EvalResult[internals.DslEntry] = {
+  private[sbt] def evaluateDslEntry(eval: Eval, fileName: String, imports: Seq[(String, Int)], expression: String, range: LineRange): EvalResult[internals.DslEntry] = {
     // TODO - Should we try to namespace these between.sbt files?  IF they hash to the same value, they may actually be
     // exactly the same setting, so perhaps we don't care?
     val result = try {
-      eval.eval(expression, imports = new EvalImports(imports, name), srcName = name, tpeName = Some(SettingsDefinitionName), line = range.start)
+      eval.eval(expression, imports = new EvalImports(imports, fileName), srcName = fileName, tpeName = Some(SettingsDefinitionName), line = range.start)
     } catch {
       case e: sbt.compiler.EvalException => throw new MessageOnlyException(e.getMessage)
     }
     // TODO - keep track of configuration classes defined.
     val loadDslEntry = {
       (loader: ClassLoader) =>
-        val pos = RangePosition(name, range.shift(1))
+        val pos = RangePosition(fileName, range.shift(1))
         result.getValue(loader).asInstanceOf[internals.DslEntry].withPos(pos)
     }
     EvalResult(result.generated, loadDslEntry)
@@ -299,10 +301,10 @@ object EvaluateConfigurations {
     }
   private[this] def extractedValTypes: Seq[String] =
     Seq(classOf[Project], classOf[InputKey[_]], classOf[TaskKey[_]], classOf[SettingKey[_]]).map(_.getName)
-  private[this] def evaluateDefinitions(eval: Eval, name: String, imports: Seq[(String, Int)], definitions: Seq[(String, LineRange)], file: Option[File]): compiler.EvalDefinitions =
+  private[this] def evaluateDefinitions(eval: Eval, name: String, imports: Seq[(String, Int)], definitions: Seq[(String, LineRange)], target: File): compiler.EvalDefinitions =
     {
       val convertedRanges = definitions.map { case (s, r) => (s, r.start to r.end) }
-      eval.evalDefinitions(convertedRanges, new EvalImports(imports, name), name, file, extractedValTypes)
+      eval.evalDefinitions(convertedRanges, new EvalImports(imports, name), name, target, extractedValTypes)
     }
 }
 object Index {

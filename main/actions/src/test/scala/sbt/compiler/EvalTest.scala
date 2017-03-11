@@ -60,8 +60,10 @@ val p = {
 
   property("val test") = secure {
     val defs = (ValTestContent, 1 to 7) :: Nil
-    val res = eval.evalDefinitions(defs, new EvalImports(Nil, ""), "<defs>", None, "scala.Int" :: Nil)
-    label("Val names", res.names) |: (res.names.toSet == ValTestNames)
+    IO.withTemporaryDirectory { target =>
+      val res = eval.evalDefinitions(defs, new EvalImports(Nil, ""), "<defs>", target, "scala.Int" :: Nil)
+      label("Val names", res.names) |: (res.names.toSet == ValTestNames)
+    }
   }
 
   property("explicit import") = forAll(testImport("import math.abs" :: Nil))
