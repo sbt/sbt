@@ -20,21 +20,25 @@ abstract class EvaluateSettings[Scope] {
   private[this] val complete = new LinkedBlockingQueue[Option[Throwable]]
   private[this] val static = PMap.empty[ScopedKey, INode]
   private[this] val allScopes: Set[Scope] = compiledSettings.map(_.key.scope).toSet
-  private[this] def getStatic[T](key: ScopedKey[T]): INode[T] = static get key getOrElse sys.error("Illegal reference to key " + key)
+  private[this] def getStatic[T](key: ScopedKey[T]): INode[T] =
+    static get key getOrElse sys.error("Illegal reference to key " + key)
 
   private[this] val transform: Initialize ~> INode = new (Initialize ~> INode) {
     def apply[T](i: Initialize[T]): INode[T] = i match {
-      case k: Keyed[s, T] @unchecked          => single(getStatic(k.scopedKey), k.transform)
-      case a: Apply[k, T] @unchecked          => new MixedNode[k, T](a.alist.transform[Initialize, INode](a.inputs, transform), a.f, a.alist)
-      case b: Bind[s, T] @unchecked           => new BindNode[s, T](transform(b.in), x => transform(b.f(x)))
-      case init.StaticScopes                  => strictConstant(allScopes.asInstanceOf[T]) // can't convince scalac that StaticScopes => T == Set[Scope]
+      case k: Keyed[s, T] @unchecked => single(getStatic(k.scopedKey), k.transform)
+      case a: Apply[k, T] @unchecked =>
+        new MixedNode[k, T](a.alist.transform[Initialize, INode](a.inputs, transform), a.f, a.alist)
+      case b: Bind[s, T] @unchecked => new BindNode[s, T](transform(b.in), x => transform(b.f(x)))
+      case init.StaticScopes =>
+        strictConstant(allScopes.asInstanceOf[T]) // can't convince scalac that StaticScopes => T == Set[Scope]
       case v: Value[T] @unchecked             => constant(v.value)
       case v: ValidationCapture[T] @unchecked => strictConstant(v.key)
       case t: TransformCapture                => strictConstant(t.f)
-      case o: Optional[s, T] @unchecked => o.a match {
-        case None    => constant(() => o.f(None))
-        case Some(i) => single[s, T](transform(i), x => o.f(Some(x)))
-      }
+      case o: Optional[s, T] @unchecked =>
+        o.a match {
+          case None    => constant(() => o.f(None))
+          case Some(i) => single[s, T](transform(i), x => o.f(Some(x)))
+        }
     }
   }
   private[this] lazy val roots: Seq[INode[_]] = compiledSettings flatMap { cs =>
@@ -47,18 +51,17 @@ abstract class EvaluateSettings[Scope] {
   private[this] var running = new AtomicInteger
   private[this] var cancel = new AtomicBoolean(false)
 
-  def run(implicit delegates: Scope => Seq[Scope]): Settings[Scope] =
-    {
-      assert(running.get() == 0, "Already running")
-      startWork()
-      roots.foreach(_.registerIfNew())
-      workComplete()
-      complete.take() foreach { ex =>
-        cancel.set(true)
-        throw ex
-      }
-      getResults(delegates)
+  def run(implicit delegates: Scope => Seq[Scope]): Settings[Scope] = {
+    assert(running.get() == 0, "Already running")
+    startWork()
+    roots.foreach(_.registerIfNew())
+    workComplete()
+    complete.take() foreach { ex =>
+      cancel.set(true)
+      throw ex
     }
+    getResults(delegates)
+  }
   private[this] def getResults(implicit delegates: Scope => Seq[Scope]) =
     (empty /: static.toTypedSeq) {
       case (ss, static.TPair(key, node)) =>
@@ -68,16 +71,14 @@ abstract class EvaluateSettings[Scope] {
 
   private[this] def submitEvaluate(node: INode[_]) = submit(node.evaluate())
   private[this] def submitCallComplete[T](node: BindNode[_, T], value: T) = submit(node.callComplete(value))
-  private[this] def submit(work: => Unit): Unit =
-    {
-      startWork()
-      executor.execute(new Runnable { def run = if (!cancel.get()) run0(work) })
-    }
-  private[this] def run0(work: => Unit): Unit =
-    {
-      try { work } catch { case e: Throwable => complete.put(Some(e)) }
-      workComplete()
-    }
+  private[this] def submit(work: => Unit): Unit = {
+    startWork()
+    executor.execute(new Runnable { def run = if (!cancel.get()) run0(work) })
+  }
+  private[this] def run0(work: => Unit): Unit = {
+    try { work } catch { case e: Throwable => complete.put(Some(e)) }
+    workComplete()
+  }
 
   private[this] def startWork(): Unit = running.incrementAndGet()
   private[this] def workComplete(): Unit =
@@ -91,8 +92,9 @@ abstract class EvaluateSettings[Scope] {
     private[this] var blockedOn: Int = 0
     private[this] val calledBy = new collection.mutable.ListBuffer[BindNode[_, T]]
 
-    override def toString = getClass.getName + " (state=" + state + ",blockedOn=" + blockedOn + ",calledBy=" + calledBy.size + ",blocking=" + blocking.size + "): " +
-      keyString
+    override def toString =
+      getClass.getName + " (state=" + state + ",blockedOn=" + blockedOn + ",calledBy=" + calledBy.size + ",blocking=" + blocking.size + "): " +
+        keyString
 
     private[this] def keyString =
       (static.toSeq.flatMap { case (key, value) => if (value eq this) init.showFullKey(key) :: Nil else Nil }).headOption getOrElse "non-static"
@@ -145,7 +147,9 @@ abstract class EvaluateSettings[Scope] {
       state = Evaluated
       blocking foreach { _.unblocked() }
       blocking.clear()
-      calledBy foreach { node => submitCallComplete(node, value) }
+      calledBy foreach { node =>
+        submitCallComplete(node, value)
+      }
       calledBy.clear()
     }
     final def call(by: BindNode[_, T]): Unit = synchronized {
@@ -160,8 +164,10 @@ abstract class EvaluateSettings[Scope] {
   }
 
   private[this] def strictConstant[T](v: T): INode[T] = constant(() => v)
-  private[this] def constant[T](f: () => T): INode[T] = new MixedNode[ConstK[Unit]#l, T]((), _ => f(), AList.empty)
-  private[this] def single[S, T](in: INode[S], f: S => T): INode[T] = new MixedNode[({ type l[L[x]] = L[S] })#l, T](in, f, AList.single[S])
+  private[this] def constant[T](f: () => T): INode[T] =
+    new MixedNode[ConstK[Unit]#l, T]((), _ => f(), AList.empty)
+  private[this] def single[S, T](in: INode[S], f: S => T): INode[T] =
+    new MixedNode[({ type l[L[x]] = L[S] })#l, T](in, f, AList.single[S])
   private[this] final class BindNode[S, T](in: INode[S], f: S => INode[T]) extends INode[T] {
     protected def dependsOn = in :: Nil
     protected def evaluate0(): Unit = makeCall(this, f(in.get))
@@ -170,7 +176,8 @@ abstract class EvaluateSettings[Scope] {
       setValue(value)
     }
   }
-  private[this] final class MixedNode[K[L[x]], T](in: K[INode], f: K[Id] => T, alist: AList[K]) extends INode[T] {
+  private[this] final class MixedNode[K[L[x]], T](in: K[INode], f: K[Id] => T, alist: AList[K])
+      extends INode[T] {
     protected def dependsOn = alist.toList(in)
     protected def evaluate0(): Unit = setValue(f(alist.transform(in, getValue)))
   }

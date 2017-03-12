@@ -27,17 +27,15 @@ final case class KCons[H, +T <: KList[M], +M[_]](head: M[H], tail: T) extends KL
 
   def transform[N[_]](f: M ~> N) = KCons(f(head), tail.transform(f))
   def toList: List[M[_]] = head :: tail.toList
-  def apply[N[x] >: M[x], Z](f: Transform[Id] => Z)(implicit ap: Applicative[N]): N[Z] =
-    {
-      val g = (t: tail.Transform[Id]) => (h: H) => f(KCons[H, tail.Transform[Id], Id](h, t))
-      ap.apply(tail.apply[N, H => Z](g), head)
-    }
-  def traverse[N[_], P[_]](f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[Transform[P]] =
-    {
-      val tt: N[tail.Transform[P]] = tail.traverse[N, P](f)
-      val g = (t: tail.Transform[P]) => (h: P[H]) => KCons(h, t)
-      np.apply(np.map(g, tt), f(head))
-    }
+  def apply[N[x] >: M[x], Z](f: Transform[Id] => Z)(implicit ap: Applicative[N]): N[Z] = {
+    val g = (t: tail.Transform[Id]) => (h: H) => f(KCons[H, tail.Transform[Id], Id](h, t))
+    ap.apply(tail.apply[N, H => Z](g), head)
+  }
+  def traverse[N[_], P[_]](f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[Transform[P]] = {
+    val tt: N[tail.Transform[P]] = tail.traverse[N, P](f)
+    val g = (t: tail.Transform[P]) => (h: P[H]) => KCons(h, t)
+    np.apply(np.map(g, tt), f(head))
+  }
   def :^:[A, N[x] >: M[x]](h: N[A]) = KCons(h, this)
   override def foldr[T](f: (M[_], T) => T, init: T): T = f(head, tail.foldr(f, init))
 }

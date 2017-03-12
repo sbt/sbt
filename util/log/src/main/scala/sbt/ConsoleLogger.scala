@@ -29,50 +29,50 @@ object ConsoleLogger {
   final val ESC = '\u001B'
 
   /**
-   * An escape terminator is a character in the range `@` (decimal value 64) to `~` (decimal value 126).
-   * It is the final character in an escape sequence.
-   *
-   * cf. http://en.wikipedia.org/wiki/ANSI_escape_code#CSI_codes
-   */
+    * An escape terminator is a character in the range `@` (decimal value 64) to `~` (decimal value 126).
+    * It is the final character in an escape sequence.
+    *
+    * cf. http://en.wikipedia.org/wiki/ANSI_escape_code#CSI_codes
+    */
   @deprecated("No longer public.", "0.13.8")
   def isEscapeTerminator(c: Char): Boolean =
     c >= '@' && c <= '~'
 
   /**
-   * Test if the character AFTER an ESC is the ANSI CSI.
-   *
-   * see: http://en.wikipedia.org/wiki/ANSI_escape_code
-   *
-   * The CSI (control sequence instruction) codes start with ESC + '['.   This is for testing the second character.
-   *
-   * There is an additional CSI (one character) that we could test for, but is not frequnetly used, and we don't
-   * check for it.
-   *
-   * cf. http://en.wikipedia.org/wiki/ANSI_escape_code#CSI_codes
-   */
+    * Test if the character AFTER an ESC is the ANSI CSI.
+    *
+    * see: http://en.wikipedia.org/wiki/ANSI_escape_code
+    *
+    * The CSI (control sequence instruction) codes start with ESC + '['.   This is for testing the second character.
+    *
+    * There is an additional CSI (one character) that we could test for, but is not frequnetly used, and we don't
+    * check for it.
+    *
+    * cf. http://en.wikipedia.org/wiki/ANSI_escape_code#CSI_codes
+    */
   private def isCSI(c: Char): Boolean = c == '['
 
   /**
-   * Tests whether or not a character needs to immediately terminate the ANSI sequence.
-   *
-   * c.f. http://en.wikipedia.org/wiki/ANSI_escape_code#Sequence_elements
-   */
+    * Tests whether or not a character needs to immediately terminate the ANSI sequence.
+    *
+    * c.f. http://en.wikipedia.org/wiki/ANSI_escape_code#Sequence_elements
+    */
   private def isAnsiTwoCharacterTerminator(c: Char): Boolean =
     (c >= '@') && (c <= '_')
 
   /**
-   * Returns true if the string contains the ESC character.
-   *
-   * TODO - this should handle raw CSI (not used much)
-   */
+    * Returns true if the string contains the ESC character.
+    *
+    * TODO - this should handle raw CSI (not used much)
+    */
   def hasEscapeSequence(s: String): Boolean =
     s.indexOf(ESC) >= 0
 
   /**
-   * Returns the string `s` with escape sequences removed.
-   * An escape sequence starts with the ESC character (decimal value 27) and ends with an escape terminator.
-   * @see isEscapeTerminator
-   */
+    * Returns the string `s` with escape sequences removed.
+    * An escape sequence starts with the ESC character (decimal value 27) and ends with an escape terminator.
+    * @see isEscapeTerminator
+    */
   def removeEscapeSequences(s: String): String =
     if (s.isEmpty || !hasEscapeSequence(s))
       s
@@ -100,7 +100,7 @@ object ConsoleLogger {
   }
 
   /** Skips the escape sequence starting at `i-1`.  `i` should be positioned at the character after the ESC that starts the sequence. */
-  private[this] def skipESC(s: String, i: Int): Int = {
+  private[this] def skipESC(s: String, i: Int): Int =
     if (i >= s.length) {
       i
     } else if (isEscapeTerminator(s.charAt(i))) {
@@ -108,14 +108,12 @@ object ConsoleLogger {
     } else {
       skipESC(s, i + 1)
     }
-  }
 
-  val formatEnabled =
-    {
-      import java.lang.Boolean.{ getBoolean, parseBoolean }
-      val value = System.getProperty("sbt.log.format")
-      if (value eq null) (ansiSupported && !getBoolean("sbt.log.noformat")) else parseBoolean(value)
-    }
+  val formatEnabled = {
+    import java.lang.Boolean.{ getBoolean, parseBoolean }
+    val value = System.getProperty("sbt.log.format")
+    if (value eq null) (ansiSupported && !getBoolean("sbt.log.noformat")) else parseBoolean(value)
+  }
   private[this] def jline1to2CompatMsg = "Found class jline.Terminal, but interface was expected"
 
   private[this] def ansiSupported =
@@ -131,7 +129,9 @@ object ConsoleLogger {
       // this results in a linkage error as detected below.  The detection is likely jvm specific, but the priority
       // is avoiding mistakenly identifying something as a launcher incompatibility when it is not
       case e: IncompatibleClassChangeError if e.getMessage == jline1to2CompatMsg =>
-        throw new IncompatibleClassChangeError("JLine incompatibility detected.  Check that the sbt launcher is version 0.13.x or later.")
+        throw new IncompatibleClassChangeError(
+          "JLine incompatibility detected.  Check that the sbt launcher is version 0.13.x or later."
+        )
     }
 
   val noSuppressedMessage = (_: SuppressedTraceContext) => None
@@ -141,8 +141,10 @@ object ConsoleLogger {
 
   def apply(out: PrintStream): ConsoleLogger = apply(ConsoleOut.printStreamOut(out))
   def apply(out: PrintWriter): ConsoleLogger = apply(ConsoleOut.printWriterOut(out))
-  def apply(out: ConsoleOut = ConsoleOut.systemOut, ansiCodesSupported: Boolean = formatEnabled,
-    useColor: Boolean = formatEnabled, suppressedMessage: SuppressedTraceContext => Option[String] = noSuppressedMessage): ConsoleLogger =
+  def apply(out: ConsoleOut = ConsoleOut.systemOut,
+            ansiCodesSupported: Boolean = formatEnabled,
+            useColor: Boolean = formatEnabled,
+            suppressedMessage: SuppressedTraceContext => Option[String] = noSuppressedMessage): ConsoleLogger =
     new ConsoleLogger(out, ansiCodesSupported, useColor, suppressedMessage)
 
   private[this] val EscapeSequence = (27.toChar + "[^@-~]*[@-~]").r
@@ -151,12 +153,16 @@ object ConsoleLogger {
 }
 
 /**
- * A logger that logs to the console.  On supported systems, the level labels are
- * colored.
- *
- * This logger is not thread-safe.
- */
-class ConsoleLogger private[ConsoleLogger] (val out: ConsoleOut, override val ansiCodesSupported: Boolean, val useColor: Boolean, val suppressedMessage: SuppressedTraceContext => Option[String]) extends BasicLogger {
+  * A logger that logs to the console.  On supported systems, the level labels are
+  * colored.
+  *
+  * This logger is not thread-safe.
+  */
+class ConsoleLogger private[ConsoleLogger] (val out: ConsoleOut,
+                                            override val ansiCodesSupported: Boolean,
+                                            val useColor: Boolean,
+                                            val suppressedMessage: SuppressedTraceContext => Option[String])
+    extends BasicLogger {
   import scala.Console.{ BLUE, GREEN, RED, RESET, YELLOW }
   def messageColor(level: Level.Value) = RESET
   def labelColor(level: Level.Value) =
@@ -167,10 +173,9 @@ class ConsoleLogger private[ConsoleLogger] (val out: ConsoleOut, override val an
     }
   def successLabelColor = GREEN
   def successMessageColor = RESET
-  override def success(message: => String): Unit = {
+  override def success(message: => String): Unit =
     if (successEnabled)
       log(successLabelColor, Level.SuccessLabel, successMessageColor, message)
-  }
   def trace(t: => Throwable): Unit =
     out.lockObject.synchronized {
       val traceLevel = getTrace
@@ -180,36 +185,34 @@ class ConsoleLogger private[ConsoleLogger] (val out: ConsoleOut, override val an
         for (msg <- suppressedMessage(new SuppressedTraceContext(traceLevel, ansiCodesSupported && useColor)))
           printLabeledLine(labelColor(Level.Error), "trace", messageColor(Level.Error), msg)
     }
-  def log(level: Level.Value, message: => String): Unit = {
+  def log(level: Level.Value, message: => String): Unit =
     if (atLevel(level))
       log(labelColor(level), level.toString, messageColor(level), message)
-  }
   private def reset(): Unit = setColor(RESET)
 
-  private def setColor(color: String): Unit = {
+  private def setColor(color: String): Unit =
     if (ansiCodesSupported && useColor)
       out.lockObject.synchronized { out.print(color) }
-  }
   private def log(labelColor: String, label: String, messageColor: String, message: String): Unit =
     out.lockObject.synchronized {
       for (line <- message.split("""\n"""))
         printLabeledLine(labelColor, label, messageColor, line)
     }
-  private def printLabeledLine(labelColor: String, label: String, messageColor: String, line: String): Unit =
-    {
-      reset()
-      out.print("[")
-      setColor(labelColor)
-      out.print(label)
-      reset()
-      out.print("] ")
-      setColor(messageColor)
-      out.print(line)
-      reset()
-      out.println()
-    }
+  private def printLabeledLine(labelColor: String, label: String, messageColor: String, line: String): Unit = {
+    reset()
+    out.print("[")
+    setColor(labelColor)
+    out.print(label)
+    reset()
+    out.print("] ")
+    setColor(messageColor)
+    out.print(line)
+    reset()
+    out.println()
+  }
 
   def logAll(events: Seq[LogEvent]) = out.lockObject.synchronized { events.foreach(log) }
-  def control(event: ControlEvent.Value, message: => String): Unit = log(labelColor(Level.Info), Level.Info.toString, BLUE, message)
+  def control(event: ControlEvent.Value, message: => String): Unit =
+    log(labelColor(Level.Info), Level.Info.toString, BLUE, message)
 }
 final class SuppressedTraceContext(val traceLevel: Int, val useColor: Boolean)

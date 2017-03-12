@@ -35,7 +35,8 @@ object HistoryCommands {
     StartsWithString -> "Execute the most recent command starting with 'string'",
     ContainsString -> "Execute the most recent command containing 'string'"
   )
-  def helpString = "History commands:\n   " + (descriptions.map { case (c, d) => c + "    " + d }).mkString("\n   ")
+  def helpString =
+    "History commands:\n   " + (descriptions.map { case (c, d) => c + "    " + d }).mkString("\n   ")
   def printHelp(): Unit =
     println(helpString)
   def printHistory(history: complete.History, historySize: Int, show: Int): Unit =
@@ -46,8 +47,8 @@ object HistoryCommands {
   val MaxLines = 500
   lazy val num = token(NatBasic, "<integer>")
   lazy val last = Last ^^^ { execute(_ !!) }
-  lazy val list = ListCommands ~> (num ?? Int.MaxValue) map { show =>
-    (h: History) => { printHistory(h, MaxLines, show); Some(Nil) }
+  lazy val list = ListCommands ~> (num ?? Int.MaxValue) map { show => (h: History) =>
+    { printHistory(h, MaxLines, show); Some(Nil) }
   }
   lazy val execStr = flag('?') ~ token(any.+.string, "<string>") map {
     case (contains, str) =>
@@ -59,14 +60,15 @@ object HistoryCommands {
   }
   lazy val help = success((h: History) => { printHelp(); Some(Nil) })
 
-  def execute(f: History => Option[String]): History => Option[List[String]] = (h: History) =>
-    {
-      val command = f(h).filterNot(_.startsWith(Start))
-      val lines = h.lines.toArray
-      command.foreach(lines(lines.length - 1) = _)
-      h.path foreach { h => IO.writeLines(h, lines) }
-      Some(command.toList)
+  def execute(f: History => Option[String]): History => Option[List[String]] = (h: History) => {
+    val command = f(h).filterNot(_.startsWith(Start))
+    val lines = h.lines.toArray
+    command.foreach(lines(lines.length - 1) = _)
+    h.path foreach { h =>
+      IO.writeLines(h, lines)
     }
+    Some(command.toList)
+  }
 
   val actionParser: Parser[complete.History => Option[List[String]]] =
     Start ~> (help | last | execInt | list | execStr) // execStr must come last

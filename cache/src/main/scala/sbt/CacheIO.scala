@@ -22,21 +22,18 @@ object CacheIO {
   def fromFile[T](file: File, default: => T)(implicit format: Format[T], mf: Manifest[Format[T]]): T =
     fromFile[T](file) getOrElse default
   def fromFile[T](file: File)(implicit format: Format[T], mf: Manifest[Format[T]]): Option[T] =
-    try { Some(Operations.fromFile(file)(stampedFormat(format))) }
-    catch { case e: Exception => None }
+    try { Some(Operations.fromFile(file)(stampedFormat(format))) } catch { case e: Exception => None }
 
   def toFile[T](format: Format[T])(value: T)(file: File)(implicit mf: Manifest[Format[T]]): Unit =
     toFile(value)(file)(format, mf)
-  def toFile[T](value: T)(file: File)(implicit format: Format[T], mf: Manifest[Format[T]]): Unit =
-    {
-      IO.createDirectory(file.getParentFile)
-      Operations.toFile(value)(file)(stampedFormat(format))
-    }
-  def stampedFormat[T](format: Format[T])(implicit mf: Manifest[Format[T]]): Format[T] =
-    {
-      import DefaultProtocol._
-      withStamp(stamp(format))(format)
-    }
+  def toFile[T](value: T)(file: File)(implicit format: Format[T], mf: Manifest[Format[T]]): Unit = {
+    IO.createDirectory(file.getParentFile)
+    Operations.toFile(value)(file)(stampedFormat(format))
+  }
+  def stampedFormat[T](format: Format[T])(implicit mf: Manifest[Format[T]]): Format[T] = {
+    import DefaultProtocol._
+    withStamp(stamp(format))(format)
+  }
   def stamp[T](format: Format[T])(implicit mf: Manifest[Format[T]]): Int = typeHash(mf)
   def typeHash[T](implicit mf: Manifest[T]) = mf.toString.hashCode
   def manifest[T](implicit mf: Manifest[T]): Manifest[T] = mf

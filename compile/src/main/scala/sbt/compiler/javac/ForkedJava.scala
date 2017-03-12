@@ -3,14 +3,20 @@ package sbt.compiler.javac
 import java.io.File
 
 import sbt.IO._
-import sbt.{ IO, Process, Logger }
+import sbt.{ IO, Logger, Process }
 import xsbti.Reporter
 import xsbti.compile.{ ClasspathOptions, ScalaInstance }
 
 /** Helper methods for running the java toolchain by forking. */
 object ForkedJava {
+
   /** Helper method to launch programs. */
-  private[javac] def launch(javaHome: Option[File], program: String, sources: Seq[File], options: Seq[String], log: Logger, reporter: Reporter): Boolean = {
+  private[javac] def launch(javaHome: Option[File],
+                            program: String,
+                            sources: Seq[File],
+                            options: Seq[String],
+                            log: Logger,
+                            reporter: Reporter): Boolean = {
     val (jArgs, nonJArgs) = options.partition(_.startsWith("-J"))
     val allArguments = nonJArgs ++ sources.map(_.getAbsolutePath)
 
@@ -31,31 +37,31 @@ object ForkedJava {
   }
 
   /**
-   * Helper method to create an argument file that we pass to Javac.  Gets over the windows
-   * command line length limitation.
-   * @param args The string arguments to pass to Javac.
-   * @param f  A function which is passed the arg file.
-   * @tparam T The return type.
-   * @return  The result of using the argument file.
-   */
-  def withArgumentFile[T](args: Seq[String])(f: File => T): T =
-    {
-      import IO.{ Newline, withTemporaryDirectory, write }
-      withTemporaryDirectory { tmp =>
-        val argFile = new File(tmp, "argfile")
-        write(argFile, args.map(escapeSpaces).mkString(Newline))
-        f(argFile)
-      }
+    * Helper method to create an argument file that we pass to Javac.  Gets over the windows
+    * command line length limitation.
+    * @param args The string arguments to pass to Javac.
+    * @param f  A function which is passed the arg file.
+    * @tparam T The return type.
+    * @return  The result of using the argument file.
+    */
+  def withArgumentFile[T](args: Seq[String])(f: File => T): T = {
+    import IO.{ withTemporaryDirectory, write, Newline }
+    withTemporaryDirectory { tmp =>
+      val argFile = new File(tmp, "argfile")
+      write(argFile, args.map(escapeSpaces).mkString(Newline))
+      f(argFile)
     }
+  }
   // javac's argument file seems to allow naive space escaping with quotes.  escaping a quote with a backslash does not work
   private def escapeSpaces(s: String): String = '\"' + normalizeSlash(s) + '\"'
   private def normalizeSlash(s: String) = s.replace(File.separatorChar, '/')
 
   import sbt.Path._
+
   /** create the executable name for java */
   private[javac] def getJavaExecutable(javaHome: Option[File], name: String): String =
     javaHome match {
-      case None => name
+      case None     => name
       case Some(jh) =>
         // TODO - Was there any hackery for windows before?
         (jh / "bin" / name).getAbsolutePath

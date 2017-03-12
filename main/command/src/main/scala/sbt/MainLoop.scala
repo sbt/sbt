@@ -8,6 +8,7 @@ import java.io.{ File, PrintWriter }
 import jline.TerminalFactory
 
 object MainLoop {
+
   /** Entry point to run the remaining commands in State with managed global logging.*/
   def runLogged(state: State): xsbti.MainResult = {
     // We've disabled jline shutdown hooks to prevent classloader leaks, and have been careful to always restore
@@ -42,14 +43,15 @@ object MainLoop {
 
   /** Runs the next sequence of commands, cleaning up global logging after any exceptions. */
   def runAndClearLast(state: State, logBacking: GlobalLogBacking): RunNext =
-    try
-      runWithNewLog(state, logBacking)
+    try runWithNewLog(state, logBacking)
     catch {
       case e: xsbti.FullReload =>
         deleteLastLog(logBacking)
         throw e // pass along a reboot request
       case e: Throwable =>
-        System.err.println("sbt appears to be exiting abnormally.\n  The log file for this session is at " + logBacking.file)
+        System.err.println(
+          "sbt appears to be exiting abnormally.\n  The log file for this session is at " + logBacking.file
+        )
         deleteLastLog(logBacking)
         throw e
     }
@@ -72,7 +74,8 @@ object MainLoop {
         state.log warn "  For better performance, hit [ENTER] to switch to interactive mode, or"
         state.log warn "  consider launching sbt without any commands, or explicitly passing 'shell'"
       }
-      try run(loggedState) finally out.close()
+      try run(loggedState)
+      finally out.close()
     }
 
   /** Transfers logging and trace levels from the old global loggers to the new ones. */
@@ -81,7 +84,7 @@ object MainLoop {
     Logger.transferLevels(old.backed, logging.backed)
     (old.full, logging.full) match { // well, this is a hack
       case (oldLog: AbstractLogger, newLog: AbstractLogger) => Logger.transferLevels(oldLog, newLog)
-      case _ => ()
+      case _                                                => ()
     }
   }
 

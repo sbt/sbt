@@ -12,33 +12,40 @@ import xsbti.compile._
 import xsbti.{ AnalysisCallback, Reporter }
 
 /**
- * This is a java compiler which will also report any discovered source dependencies/apis out via
- * an analysis callback.
- *
- * @param searchClasspath Differes from classpath in that we look up binary dependencies via this classpath.
- * @param classLookup A mechanism by which we can figure out if a JAR contains a classfile.
- */
-final class AnalyzingJavaCompiler private[sbt] (
-    val javac: xsbti.compile.JavaCompiler,
-    val classpath: Seq[File],
-    val scalaInstance: xsbti.compile.ScalaInstance,
-    val classLookup: (String => Option[File]),
-    val searchClasspath: Seq[File]) {
+  * This is a java compiler which will also report any discovered source dependencies/apis out via
+  * an analysis callback.
+  *
+  * @param searchClasspath Differes from classpath in that we look up binary dependencies via this classpath.
+  * @param classLookup A mechanism by which we can figure out if a JAR contains a classfile.
+  */
+final class AnalyzingJavaCompiler private[sbt] (val javac: xsbti.compile.JavaCompiler,
+                                                val classpath: Seq[File],
+                                                val scalaInstance: xsbti.compile.ScalaInstance,
+                                                val classLookup: (String => Option[File]),
+                                                val searchClasspath: Seq[File]) {
+
   /**
-   * Compile some java code using the current configured compiler.
-   *
-   * @param sources  The sources to compile
-   * @param options  The options for the Java compiler
-   * @param output   The output configuration for this compiler
-   * @param callback  A callback to report discovered source/binary dependencies on.
-   * @param reporter  A reporter where semantic compiler failures can be reported.
-   * @param log       A place where we can log debugging/error messages.
-   * @param progressOpt An optional compilation progress reporter.  Where we can report back what files we're currently compiling.
-   */
-  def compile(sources: Seq[File], options: Seq[String], output: Output, callback: AnalysisCallback, reporter: Reporter, log: Logger, progressOpt: Option[CompileProgress]): Unit = {
+    * Compile some java code using the current configured compiler.
+    *
+    * @param sources  The sources to compile
+    * @param options  The options for the Java compiler
+    * @param output   The output configuration for this compiler
+    * @param callback  A callback to report discovered source/binary dependencies on.
+    * @param reporter  A reporter where semantic compiler failures can be reported.
+    * @param log       A place where we can log debugging/error messages.
+    * @param progressOpt An optional compilation progress reporter.  Where we can report back what files we're currently compiling.
+    */
+  def compile(sources: Seq[File],
+              options: Seq[String],
+              output: Output,
+              callback: AnalysisCallback,
+              reporter: Reporter,
+              log: Logger,
+              progressOpt: Option[CompileProgress]): Unit =
     if (sources.nonEmpty) {
       val absClasspath = classpath.map(_.getAbsoluteFile)
-      @annotation.tailrec def ancestor(f1: File, f2: File): Boolean =
+      @annotation.tailrec
+      def ancestor(f1: File, f2: File): Boolean =
         if (f2 eq null) false else if (f1 == f2) true else ancestor(f1, f2.getParentFile)
       // Here we outline "chunks" of compiles we need to run so that the .class files end up in the right
       // location for Java.
@@ -46,7 +53,9 @@ final class AnalyzingJavaCompiler private[sbt] (
         case single: SingleOutput => Map(Some(single.outputDirectory) -> sources)
         case multi: MultipleOutput =>
           sources groupBy { src =>
-            multi.outputGroups find { out => ancestor(out.sourceDirectory, src) } map (_.outputDirectory)
+            multi.outputGroups find { out =>
+              ancestor(out.sourceDirectory, src)
+            } map (_.outputDirectory)
           }
       }
       // Report warnings about source files that have no output directory.
@@ -62,7 +71,14 @@ final class AnalyzingJavaCompiler private[sbt] (
       val loader = ClasspathUtilities.toLoader(searchClasspath)
       // TODO - Perhaps we just record task 0/2 here
       timed("Java compilation", log) {
-        try javac.compileWithReporter(sources.toArray, absClasspath.toArray, output, options.toArray, reporter, log)
+        try javac.compileWithReporter(
+          sources.toArray,
+          absClasspath.toArray,
+          output,
+          options.toArray,
+          reporter,
+          log
+        )
         catch {
           // Handle older APIs
           case _: NoSuchMethodError =>
@@ -86,7 +102,7 @@ final class AnalyzingJavaCompiler private[sbt] (
       }
       // TODO - Perhaps we just record task 2/2 here
     }
-  }
+
   /** Debugging method to time how long it takes to run various compilation tasks. */
   private[this] def timed[T](label: String, log: Logger)(t: => T): T = {
     val start = System.nanoTime

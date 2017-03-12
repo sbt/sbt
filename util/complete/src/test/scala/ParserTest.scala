@@ -55,21 +55,19 @@ object ParserTest extends Properties("Completing Parser") {
   def checkOne(in: String, parser: Parser[_], expect: Completion): Prop =
     completions(parser, in, 1) == Completions.single(expect)
 
-  def checkAll(in: String, parser: Parser[_], expect: Completions): Prop =
-    {
-      val cs = completions(parser, in, 1)
-      ("completions: " + cs) |: ("Expected: " + expect) |: (cs == expect: Prop)
-    }
+  def checkAll(in: String, parser: Parser[_], expect: Completions): Prop = {
+    val cs = completions(parser, in, 1)
+    ("completions: " + cs) |: ("Expected: " + expect) |: (cs == expect: Prop)
+  }
 
   def checkInvalid(in: String) =
     (("token '" + in + "'") |: checkInv(in, nested)) &&
       (("display '" + in + "'") |: checkInv(in, nestedDisplay))
 
-  def checkInv(in: String, parser: Parser[_]): Prop =
-    {
-      val cs = completions(parser, in, 1)
-      ("completions: " + cs) |: (cs == Completions.nil: Prop)
-    }
+  def checkInv(in: String, parser: Parser[_]): Prop = {
+    val cs = completions(parser, in, 1)
+    ("completions: " + cs) |: (cs == Completions.nil: Prop)
+  }
 
   property("nested tokens a") = checkSingle("", Completion.token("", "a1"))(Completion.displayOnly("<a1>"))
   property("nested tokens a1") = checkSingle("a", Completion.token("a", "1"))(Completion.displayOnly("<a1>"))
@@ -85,14 +83,19 @@ object ParserTest extends Properties("Completing Parser") {
   property("suggest port") = checkOne(" ", spacePort, Completion.displayOnly("<port>"))
   property("no suggest at end") = checkOne("asdf", "asdf", Completion.suggestion(""))
   property("no suggest at token end") = checkOne("asdf", token("asdf"), Completion.suggestion(""))
-  property("empty suggest for examples") = checkOne("asdf", any.+.examples("asdf", "qwer"), Completion.suggestion(""))
-  property("empty suggest for examples token") = checkOne("asdf", token(any.+.examples("asdf", "qwer")), Completion.suggestion(""))
+  property("empty suggest for examples") =
+    checkOne("asdf", any.+.examples("asdf", "qwer"), Completion.suggestion(""))
+  property("empty suggest for examples token") =
+    checkOne("asdf", token(any.+.examples("asdf", "qwer")), Completion.suggestion(""))
 
   val colors = Set("blue", "green", "red")
   val base = (seen: Seq[String]) => token(ID examples (colors -- seen))
   val sep = token(Space)
   val repeat = repeatDep(base, sep)
-  def completionStrings(ss: Set[String]): Completions = Completions(ss.map { s => Completion.token("", s) })
+  def completionStrings(ss: Set[String]): Completions =
+    Completions(ss.map { s =>
+      Completion.token("", s)
+    })
 
   property("repeatDep no suggestions for bad input") = checkInv(".", repeat)
   property("repeatDep suggest all") = checkAll("", repeat, completionStrings(colors))
@@ -109,13 +112,14 @@ object ParserTest extends Properties("Completing Parser") {
   property("repeatDep accepts two tokens") = matches(repeat, colors.toSeq.take(2).mkString(" "))
 }
 object ParserExample {
-  val ws = charClass(_.isWhitespace)+
-  val notws = charClass(!_.isWhitespace)+
+  val ws = charClass(_.isWhitespace) +
+  val notws = charClass(!_.isWhitespace) +
 
   val name = token("test")
-  val options = (ws ~> token("quick" | "failed" | "new"))*
+  val options = (ws ~> token("quick" | "failed" | "new")) *
   val exampleSet = Set("am", "is", "are", "was", "were")
-  val include = (ws ~> token(examples(notws.string, new FixedSetExamples(exampleSet), exampleSet.size, false)))*
+  val include =
+    (ws ~> token(examples(notws.string, new FixedSetExamples(exampleSet), exampleSet.size, false))) *
 
   val t = name ~ options ~ include
 

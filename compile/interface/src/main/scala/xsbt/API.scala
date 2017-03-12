@@ -25,13 +25,12 @@ final class API(val global: CallbackGlobal) extends Compat {
   class ApiPhase(prev: Phase) extends GlobalPhase(prev) {
     override def description = "Extracts the public API from source files."
     def name = API.name
-    override def run(): Unit =
-      {
-        val start = System.currentTimeMillis
-        super.run
-        val stop = System.currentTimeMillis
-        debug("API phase took : " + ((stop - start) / 1000.0) + " s")
-      }
+    override def run(): Unit = {
+      val start = System.currentTimeMillis
+      super.run
+      val stop = System.currentTimeMillis
+      debug("API phase took : " + ((stop - start) / 1000.0) + " s")
+    }
 
     def apply(unit: global.CompilationUnit): Unit = processUnit(unit)
 
@@ -46,7 +45,9 @@ final class API(val global: CallbackGlobal) extends Compat {
         val extractUsedNames = new ExtractUsedNames[global.type](global)
         val names = extractUsedNames.extract(unit)
         debug("The " + sourceFile + " contains the following used names " + names)
-        names foreach { (name: String) => callback.usedName(sourceFile, name) }
+        names foreach { (name: String) =>
+          callback.usedName(sourceFile, name)
+        }
       }
       val packages = traverser.packages.toArray[String].map(p => new xsbti.api.Package(p))
       val source = new xsbti.api.SourceAPI(packages, traverser.definitions.toArray[xsbti.api.Definition])
@@ -58,24 +59,23 @@ final class API(val global: CallbackGlobal) extends Compat {
   private final class TopLevelHandler(extractApi: ExtractAPI[global.type]) extends TopLevelTraverser {
     val packages = new HashSet[String]
     val definitions = new ListBuffer[xsbti.api.Definition]
-    def `class`(c: Symbol): Unit = {
+    def `class`(c: Symbol): Unit =
       definitions += extractApi.classLike(c.owner, c)
-    }
+
     /** Record packages declared in the source file*/
-    def `package`(p: Symbol): Unit = {
+    def `package`(p: Symbol): Unit =
       if ((p eq null) || p == NoSymbol || p.isRoot || p.isRootPackage || p.isEmptyPackageClass || p.isEmptyPackage)
         ()
       else {
         packages += p.fullName
         `package`(p.enclosingPackage)
       }
-    }
   }
 
   private abstract class TopLevelTraverser extends Traverser {
     def `class`(s: Symbol)
     def `package`(s: Symbol)
-    override def traverse(tree: Tree): Unit = {
+    override def traverse(tree: Tree): Unit =
       tree match {
         case (_: ClassDef | _: ModuleDef) if isTopLevel(tree.symbol) => `class`(tree.symbol)
         case p: PackageDef =>
@@ -83,7 +83,6 @@ final class API(val global: CallbackGlobal) extends Compat {
           super.traverse(tree)
         case _ =>
       }
-    }
     def isTopLevel(sym: Symbol): Boolean =
       (sym ne null) && (sym != NoSymbol) && !sym.isImplClass && !sym.isNestedClass && sym.isStatic &&
         !sym.hasFlag(Flags.SYNTHETIC) && !sym.hasFlag(Flags.JAVA)

@@ -19,7 +19,11 @@ object BasicCommandStrings {
   /** The command name to terminate the program.*/
   val TerminateAction: String = Exit
 
-  def helpBrief = (HelpCommand, s"Displays this help message or prints detailed help on requested commands (run '$HelpCommand <command>').")
+  def helpBrief =
+    (
+      HelpCommand,
+      s"Displays this help message or prints detailed help on requested commands (run '$HelpCommand <command>')."
+    )
   def helpDetailed = HelpCommand + """
 
 	Prints a help summary.
@@ -33,26 +37,28 @@ object BasicCommandStrings {
 	Searches the help according to the provided regular expression.
 """
 
-  def CompletionsDetailed = "Displays a list of completions for the given argument string (run 'completions <string>')."
+  def CompletionsDetailed =
+    "Displays a list of completions for the given argument string (run 'completions <string>')."
   def CompletionsBrief = (CompletionsCommand, CompletionsDetailed)
 
   def templateBrief = (TemplateCommand, "Creates a new sbt build.")
   def templateDetailed = TemplateCommand + """ [--options] <template>
   Create a new sbt build based on the given template."""
 
-  def HistoryHelpBrief = (HistoryCommands.Start -> "History command help.  Lists and describes all history commands.")
-  def historyHelp = Help(Nil, (HistoryHelpBrief +: HistoryCommands.descriptions).toMap, Set(HistoryCommands.Start))
+  def HistoryHelpBrief =
+    (HistoryCommands.Start -> "History command help.  Lists and describes all history commands.")
+  def historyHelp =
+    Help(Nil, (HistoryHelpBrief +: HistoryCommands.descriptions).toMap, Set(HistoryCommands.Start))
 
   def exitBrief = "Terminates the build."
 
-  def logLevelHelp =
-    {
-      val levels = Level.values.toSeq
-      val levelList = levels.mkString(", ")
-      val brief = ("<log-level>", "Sets the logging level to 'log-level'.  Valid levels: " + levelList)
-      val detailed = levels.map(l => (l.toString, logLevelDetail(l))).toMap
-      Help(brief, detailed)
-    }
+  def logLevelHelp = {
+    val levels = Level.values.toSeq
+    val levelList = levels.mkString(", ")
+    val brief = ("<log-level>", "Sets the logging level to 'log-level'.  Valid levels: " + levelList)
+    val detailed = levels.map(l => (l.toString, logLevelDetail(l))).toMap
+    Help(brief, detailed)
+  }
   private[this] def logLevelDetail(level: Level.Value): String =
     s"""$level
 
@@ -73,13 +79,14 @@ object BasicCommandStrings {
     val levelShortOptions = Level.values.toSeq map { "-" + _ }
     val levelLongOptions = Level.values.toSeq map { "--" + _ }
     (s.startsWith(EarlyCommand + "(") && s.endsWith(")")) ||
-      (levelShortOptions contains s) ||
-      (levelLongOptions contains s)
+    (levelShortOptions contains s) ||
+    (levelLongOptions contains s)
   }
 
   val OldEarlyCommand = "--"
   val EarlyCommand = "early"
-  val EarlyCommandBrief = (s"$EarlyCommand(<command>)", "Schedules a command to run before other commands on startup.")
+  val EarlyCommandBrief =
+    (s"$EarlyCommand(<command>)", "Schedules a command to run before other commands on startup.")
   val EarlyCommandDetailed =
     s"""$EarlyCommand(<command>)
 
@@ -122,7 +129,8 @@ object BasicCommandStrings {
 	  and is useful when working with development versions of sbt or Scala."""
 
   def Multi = ";"
-  def MultiBrief = (Multi + " <command> (" + Multi + " <command>)*", "Runs the provided semicolon-separated commands.")
+  def MultiBrief =
+    (Multi + " <command> (" + Multi + " <command>)*", "Runs the provided semicolon-separated commands.")
   def MultiDetailed =
     Multi + " command1 " + Multi + """ command2 ...
 

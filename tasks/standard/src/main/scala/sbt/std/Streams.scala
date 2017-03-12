@@ -4,7 +4,7 @@
 package sbt
 package std
 
-import java.io.{ InputStream, IOException, OutputStream, Reader, Writer }
+import java.io.{ IOException, InputStream, OutputStream, Reader, Writer }
 import java.io.{ BufferedInputStream, BufferedOutputStream, BufferedReader, BufferedWriter, PrintWriter }
 import java.io.{ Closeable, File, FileInputStream, FileOutputStream, InputStreamReader, OutputStreamWriter }
 
@@ -12,11 +12,12 @@ import Path._
 
 // no longer specific to Tasks, so 'TaskStreams' should be renamed
 /**
- * Represents a set of streams associated with a context.
- * In sbt, this is a named set of streams for a particular scoped key.
- * For example, logging for test:compile is by default sent to the "out" stream in the test:compile context.
- */
+  * Represents a set of streams associated with a context.
+  * In sbt, this is a named set of streams for a particular scoped key.
+  * For example, logging for test:compile is by default sent to the "out" stream in the test:compile context.
+  */
 sealed trait TaskStreams[Key] {
+
   /** The default stream ID, used when an ID is not provided. */
   def default = outID
 
@@ -24,17 +25,17 @@ sealed trait TaskStreams[Key] {
   def errorID = "err"
 
   /**
-   * Provides a reader to read text from the stream `sid` for `key`.
-   * It is the caller's responsibility to coordinate writing to the stream.
-   * That is, no synchronization or ordering is provided and so this method should only be called when writing is complete.
-   */
+    * Provides a reader to read text from the stream `sid` for `key`.
+    * It is the caller's responsibility to coordinate writing to the stream.
+    * That is, no synchronization or ordering is provided and so this method should only be called when writing is complete.
+    */
   def readText(key: Key, sid: String = default): BufferedReader
 
   /**
-   * Provides an output stream to read from the stream `sid` for `key`.
-   * It is the caller's responsibility to coordinate writing to the stream.
-   * That is, no synchronization or ordering is provided and so this method should only be called when writing is complete.
-   */
+    * Provides an output stream to read from the stream `sid` for `key`.
+    * It is the caller's responsibility to coordinate writing to the stream.
+    * That is, no synchronization or ordering is provided and so this method should only be called when writing is complete.
+    */
   def readBinary(a: Key, sid: String = default): BufferedInputStream
 
   final def readText(a: Key, sid: Option[String]): BufferedReader = readText(a, getID(sid))
@@ -68,12 +69,11 @@ sealed trait ManagedStreams[Key] extends TaskStreams[Key] {
 
 trait Streams[Key] {
   def apply(a: Key): ManagedStreams[Key]
-  def use[T](key: Key)(f: TaskStreams[Key] => T): T =
-    {
-      val s = apply(key)
-      s.open()
-      try { f(s) } finally { s.close() }
-    }
+  def use[T](key: Key)(f: TaskStreams[Key] => T): T = {
+    val s = apply(key)
+    s.open()
+    try { f(s) } finally { s.close() }
+  }
 }
 trait CloseableStreams[Key] extends Streams[Key] with java.io.Closeable
 object Streams {
@@ -97,7 +97,9 @@ object Streams {
       synchronized { streams.values.foreach(_.close()); streams.clear() }
   }
 
-  def apply[Key](taskDirectory: Key => File, name: Key => String, mkLogger: (Key, PrintWriter) => Logger): Streams[Key] = new Streams[Key] {
+  def apply[Key](taskDirectory: Key => File,
+                 name: Key => String,
+                 mkLogger: (Key, PrintWriter) => Logger): Streams[Key] = new Streams[Key] {
 
     def apply(a: Key): ManagedStreams[Key] = new ManagedStreams[Key] {
       private[this] var opened: List[Closeable] = Nil
@@ -110,7 +112,14 @@ object Streams {
         make(a, sid)(f => new BufferedInputStream(new FileInputStream(f)))
 
       def text(sid: String = default): PrintWriter =
-        make(a, sid)(f => new PrintWriter(new DeferredWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(f), IO.defaultCharset)))))
+        make(a, sid)(
+          f =>
+            new PrintWriter(
+              new DeferredWriter(
+                new BufferedWriter(new OutputStreamWriter(new FileOutputStream(f), IO.defaultCharset))
+              )
+          )
+        )
 
       def binary(sid: String = default): BufferedOutputStream =
         make(a, sid)(f => new BufferedOutputStream(new FileOutputStream(f)))

@@ -1,10 +1,15 @@
 package sbt
 
-import org.apache.ivy.plugins.circular.{ CircularDependencyStrategy, WarnCircularDependencyStrategy, IgnoreCircularDependencyStrategy, ErrorCircularDependencyStrategy }
+import org.apache.ivy.plugins.circular.{
+  CircularDependencyStrategy,
+  ErrorCircularDependencyStrategy,
+  IgnoreCircularDependencyStrategy,
+  WarnCircularDependencyStrategy
+}
 
 /**
- * Wrapper around circular dependency strategy.
- */
+  * Wrapper around circular dependency strategy.
+  */
 sealed trait CircularDependencyLevel {
   private[sbt] def ivyStrategy: CircularDependencyStrategy
   private[sbt] def name: String

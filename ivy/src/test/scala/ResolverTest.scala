@@ -10,7 +10,17 @@ object ResolverTest extends Specification {
       "propagate pattern descriptorOptional and skipConsistencyCheck." in {
         val pats = Seq("[orgPath]")
         val patsExpected = Seq("http://foo.com/test/[orgPath]")
-        val patterns = Resolver.url("test", new URL("http://foo.com/test"))(Patterns(pats, pats, isMavenCompatible = false, descriptorOptional = true, skipConsistencyCheck = true)).patterns
+        val patterns = Resolver
+          .url("test", new URL("http://foo.com/test"))(
+            Patterns(
+              pats,
+              pats,
+              isMavenCompatible = false,
+              descriptorOptional = true,
+              skipConsistencyCheck = true
+            )
+          )
+          .patterns
 
         patterns.ivyPatterns must equalTo(patsExpected)
         patterns.artifactPatterns must equalTo(patsExpected)

@@ -1,13 +1,6 @@
 package sbt
 
-import internals.{
-  DslEntry,
-  DslConfigs,
-  DslEnablePlugins,
-  DslDisablePlugins,
-  DslDependsOn,
-  DslAggregate
-}
+import internals.{ DslAggregate, DslConfigs, DslDependsOn, DslDisablePlugins, DslEnablePlugins, DslEntry }
 
 package object dsl {
   def enablePlugins(ps: AutoPlugin*): DslEntry = DslEnablePlugins(ps)

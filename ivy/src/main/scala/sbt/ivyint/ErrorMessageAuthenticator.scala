@@ -11,13 +11,13 @@ import org.apache.ivy.util.url.IvyAuthenticator
 import org.apache.ivy.util.url.CredentialsStore
 
 /**
- * Helper to install an Authenticator that works with the IvyAuthenticator to provide better error messages when
- * credentials don't line up.
- */
+  * Helper to install an Authenticator that works with the IvyAuthenticator to provide better error messages when
+  * credentials don't line up.
+  */
 object ErrorMessageAuthenticator {
   private var securityWarningLogged = false
 
-  private def originalAuthenticator: Option[Authenticator] = {
+  private def originalAuthenticator: Option[Authenticator] =
     try {
       val f = classOf[Authenticator].getDeclaredField("theAuthenticator")
       f.setAccessible(true)
@@ -28,7 +28,6 @@ object ErrorMessageAuthenticator {
         Message.debug("Error occurred while getting the original authenticator: " + t.getMessage)
         None
     }
-  }
 
   private lazy val ivyOriginalField = {
     val field = classOf[IvyAuthenticator].getDeclaredField("original")
@@ -48,7 +47,9 @@ object ErrorMessageAuthenticator {
       case originalOpt                                   => installIntoIvyImpl(originalOpt)
     } catch {
       case t: Throwable =>
-        Message.debug("Error occurred while trying to install debug messages into Ivy Authentication" + t.getMessage)
+        Message.debug(
+          "Error occurred while trying to install debug messages into Ivy Authentication" + t.getMessage
+        )
     }
     Some(ivy)
   }
@@ -61,8 +62,10 @@ object ErrorMessageAuthenticator {
       catch {
         case e: SecurityException if !securityWarningLogged =>
           securityWarningLogged = true
-          Message.warn("Not enough permissions to set the ErorrMessageAuthenticator. "
-            + "Helpful debug messages disabled!");
+          Message.warn(
+            "Not enough permissions to set the ErorrMessageAuthenticator. "
+              + "Helpful debug messages disabled!"
+          );
       }
     // We will try to use the original authenticator as backup authenticator.
     // Since there is no getter available, so try to use some reflection to
@@ -76,13 +79,14 @@ object ErrorMessageAuthenticator {
     doInstallIfIvy(originalAuthenticator)
   }
 }
+
 /**
- * An authenticator which just delegates to a previous authenticator and issues *nice*
- * error messages on failure to find credentials.
- *
- * Since ivy installs its own credentials handler EVERY TIME it resolves or publishes, we want to
- * install this one at some point and eventually ivy will capture it and use it.
- */
+  * An authenticator which just delegates to a previous authenticator and issues *nice*
+  * error messages on failure to find credentials.
+  *
+  * Since ivy installs its own credentials handler EVERY TIME it resolves or publishes, we want to
+  * install this one at some point and eventually ivy will capture it and use it.
+  */
 private[sbt] final class ErrorMessageAuthenticator(original: Option[Authenticator]) extends Authenticator {
 
   protected override def getPasswordAuthentication(): PasswordAuthentication = {
@@ -107,22 +111,25 @@ private[sbt] final class ErrorMessageAuthenticator(original: Option[Authenticato
     // Grabs the authentication that would have been provided had we not been installed...
     def originalAuthentication: Option[PasswordAuthentication] = {
       Authenticator.setDefault(original.orNull)
-      try Option(Authenticator.requestPasswordAuthentication(
-        getRequestingHost,
-        getRequestingSite,
-        getRequestingPort,
-        getRequestingProtocol,
-        getRequestingPrompt,
-        getRequestingScheme))
+      try Option(
+        Authenticator.requestPasswordAuthentication(
+          getRequestingHost,
+          getRequestingSite,
+          getRequestingPort,
+          getRequestingProtocol,
+          getRequestingPrompt,
+          getRequestingScheme
+        )
+      )
       finally Authenticator.setDefault(this)
     }
     originalAuthentication.orNull
   }
 
   /**
-   * Returns true if this authentication if for a proxy and not for an HTTP server.
-   *  We want to display different error messages, depending.
-   */
+    * Returns true if this authentication if for a proxy and not for an HTTP server.
+    *  We want to display different error messages, depending.
+    */
   private def isProxyAuthentication: Boolean =
     getRequestorType == Authenticator.RequestorType.PROXY
 

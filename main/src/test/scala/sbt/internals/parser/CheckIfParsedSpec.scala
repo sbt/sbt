@@ -2,7 +2,9 @@ package sbt.internals.parser
 
 import sbt.EvaluateConfigurations
 
-abstract class CheckIfParsedSpec(implicit val splitter: SplitExpressions.SplitExpression = EvaluateConfigurations.splitExpressions) extends AbstractSpec {
+abstract class CheckIfParsedSpec(
+    implicit val splitter: SplitExpressions.SplitExpression = EvaluateConfigurations.splitExpressions
+) extends AbstractSpec {
 
   this.getClass.getName should {
 
@@ -12,22 +14,21 @@ abstract class CheckIfParsedSpec(implicit val splitter: SplitExpressions.SplitEx
           println(s"""${getClass.getSimpleName}: "$description" """)
           val (imports, statements) = split(content)
           statements.nonEmpty must be_==(nonEmptyStatements).setMessage(s"""$description
-                                 |***${shouldContains(nonEmptyStatements)} statements***
-                                 |$content """.stripMargin)
+                                                                           |***${shouldContains(nonEmptyStatements)} statements***
+                                                                           |$content """.stripMargin)
           imports.nonEmpty must be_==(nonEmptyImports).setMessage(s"""$description
-                               |***${shouldContains(nonEmptyImports)} imports***
-                               |$content """.stripMargin)
+                                                                     |***${shouldContains(nonEmptyImports)} imports***
+                                                                     |$content """.stripMargin)
       }
     }
   }
 
-  private def shouldContains(b: Boolean) = s"""Should ${
-    if (b) {
+  private def shouldContains(b: Boolean) =
+    s"""Should ${if (b) {
       "contain"
     } else {
       "not contain"
-    }
-  }"""
+    }}"""
 
   protected val files: Seq[(String, String, Boolean, Boolean)]
 

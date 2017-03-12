@@ -12,32 +12,35 @@ import xsbti.api.DefinitionType.PackageModule
 import xsbti.api.DefinitionType.Trait
 
 /**
- * A class that computes hashes for each group of definitions grouped by a simple name.
- *
- * See `nameHashes` method for details.
- */
+  * A class that computes hashes for each group of definitions grouped by a simple name.
+  *
+  * See `nameHashes` method for details.
+  */
 class NameHashing {
 
   import NameHashing._
 
   /**
-   * This method takes an API representation and extracts a flat collection of all
-   * definitions contained in that API representation. Then it groups definition
-   * by a simple name. Lastly, it computes a hash sum of all definitions in a single
-   * group.
-   *
-   * NOTE: The hashing sum used for hashing a group of definition is insensitive
-   * to order of definitions.
-   */
+    * This method takes an API representation and extracts a flat collection of all
+    * definitions contained in that API representation. Then it groups definition
+    * by a simple name. Lastly, it computes a hash sum of all definitions in a single
+    * group.
+    *
+    * NOTE: The hashing sum used for hashing a group of definition is insensitive
+    * to order of definitions.
+    */
   def nameHashes(source: SourceAPI): _internalOnly_NameHashes = {
     val apiPublicDefs = publicDefs(source)
-    val (regularDefs, implicitDefs) = apiPublicDefs.partition(locDef => !locDef.definition.modifiers.isImplicit)
+    val (regularDefs, implicitDefs) =
+      apiPublicDefs.partition(locDef => !locDef.definition.modifiers.isImplicit)
     val regularNameHashes = nameHashesForLocatedDefinitions(regularDefs)
     val implicitNameHashes = nameHashesForLocatedDefinitions(implicitDefs)
     new _internalOnly_NameHashes(regularNameHashes.toArray, implicitNameHashes.toArray)
   }
 
-  private def nameHashesForLocatedDefinitions(locatedDefs: Iterable[LocatedDefinition]): Iterable[_internalOnly_NameHash] = {
+  private def nameHashesForLocatedDefinitions(
+      locatedDefs: Iterable[LocatedDefinition]
+  ): Iterable[_internalOnly_NameHash] = {
     val groupedBySimpleName = locatedDefs.groupBy(locatedDef => localName(locatedDef.definition.name))
     val hashes = groupedBySimpleName.mapValues(hashLocatedDefinitions)
     hashes.toIterable.map({ case (name: String, hash: Int) => new _internalOnly_NameHash(name, hash) })
@@ -49,19 +52,19 @@ class NameHashing {
   }
 
   /**
-   * A visitor that visits given API object and extracts all nested public
-   * definitions it finds. The extracted definitions have Location attached
-   * to them which identifies API object's location.
-   *
-   * The returned location is basically a path to a definition that contains
-   * the located definition. For example, if we have:
-   *
-   * object Foo {
-   *   class Bar { def abc: Int }
-   * }
-   *
-   * then location of `abc` is Seq((TermName, Foo), (TypeName, Bar))
-   */
+    * A visitor that visits given API object and extracts all nested public
+    * definitions it finds. The extracted definitions have Location attached
+    * to them which identifies API object's location.
+    *
+    * The returned location is basically a path to a definition that contains
+    * the located definition. For example, if we have:
+    *
+    * object Foo {
+    *   class Bar { def abc: Int }
+    * }
+    *
+    * then location of `abc` is Seq((TermName, Foo), (TypeName, Bar))
+    */
   private class ExtractPublicDefinitions extends Visit {
     val locatedDefs = scala.collection.mutable.Buffer[LocatedDefinition]()
     private var currentLocation: Location = Location()
@@ -108,10 +111,11 @@ class NameHashing {
     name.substring(index)
   }
 
-  private def packageAsLocation(pkg: String): Location = if (pkg != "") {
-    val selectors = pkg.split('.').map(name => Selector(name, TermName)).toSeq
-    Location(selectors: _*)
-  } else Location.Empty
+  private def packageAsLocation(pkg: String): Location =
+    if (pkg != "") {
+      val selectors = pkg.split('.').map(name => Selector(name, TermName)).toSeq
+      Location(selectors: _*)
+    } else Location.Empty
 
   private def classLikeAsLocation(prefix: Location, cl: ClassLike): Location = {
     val selector = {
@@ -124,13 +128,14 @@ class NameHashing {
 
 object NameHashing {
   private case class LocatedDefinition(location: Location, definition: Definition)
+
   /**
-   * Location is expressed as sequence of annotated names. The annotation denotes
-   * a type of a name, i.e. whether it's a term name or type name.
-   *
-   * Using Scala compiler terminology, location is defined as a sequence of member
-   * selections that uniquely identify a given Symbol.
-   */
+    * Location is expressed as sequence of annotated names. The annotation denotes
+    * a type of a name, i.e. whether it's a term name or type name.
+    *
+    * Using Scala compiler terminology, location is defined as a sequence of member
+    * selections that uniquely identify a given Symbol.
+    */
   private case class Location(selectors: Selector*)
   private object Location {
     val Empty = Location(Seq.empty: _*)

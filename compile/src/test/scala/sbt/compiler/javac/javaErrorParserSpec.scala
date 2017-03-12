@@ -23,7 +23,8 @@ object JavaErrorParserSpec extends Specification {
     val logger = Logger.Null
     val problems = parser.parseProblems(sampleLinuxMessage, logger)
     def rightSize = problems must haveSize(1)
-    def rightFile = problems(0).position.sourcePath.get must beEqualTo("/home/me/projects/sample/src/main/Test.java")
+    def rightFile =
+      problems(0).position.sourcePath.get must beEqualTo("/home/me/projects/sample/src/main/Test.java")
     rightSize and rightFile
   }
 
@@ -65,10 +66,10 @@ object JavaErrorParserSpec extends Specification {
 
   def sampleWindowsMessage: String =
     s"""
-      |$windowsFile:4: cannot find symbol
-      |symbol  : method baz()
-      |location: class Foo
-      |return baz();
+       |$windowsFile:4: cannot find symbol
+       |symbol  : method baz()
+       |location: class Foo
+       |return baz();
     """.stripMargin
 
   def windowsFile: String = """C:\Projects\sample\src\main\java\Test.java"""

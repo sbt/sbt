@@ -1,16 +1,16 @@
 package sbt.compiler.javac
 
 import java.io.File
-import javax.tools.{ Diagnostic, JavaFileObject, DiagnosticListener }
+import javax.tools.{ Diagnostic, DiagnosticListener, JavaFileObject }
 
 import sbt.Logger
-import xsbti.{ Severity, Reporter, Maybe }
+import xsbti.{ Maybe, Reporter, Severity }
 import javax.tools.Diagnostic.NOPOS
 
 /**
- * A diagnostics listener that feeds all messages into the given reporter.
- * @param reporter
- */
+  * A diagnostics listener that feeds all messages into the given reporter.
+  * @param reporter
+  */
 final class DiagnosticsReporter(reporter: Reporter) extends DiagnosticListener[JavaFileObject] {
   val END_OF_LINE_MATCHER = "(\r\n)|[\r]|[\n]"
   val EOL = System.getProperty("line.separator")
@@ -36,11 +36,12 @@ final class DiagnosticsReporter(reporter: Reporter) extends DiagnosticListener[J
       lines.mkString(EOL)
     }
     d.getKind match {
-      case Diagnostic.Kind.ERROR | Diagnostic.Kind.WARNING | Diagnostic.Kind.MANDATORY_WARNING => fixWarnOrErrorMessage
+      case Diagnostic.Kind.ERROR | Diagnostic.Kind.WARNING | Diagnostic.Kind.MANDATORY_WARNING =>
+        fixWarnOrErrorMessage
       case _ => getRawMessage
     }
   }
-  private def fixSource[T <: JavaFileObject](source: T): Option[String] = {
+  private def fixSource[T <: JavaFileObject](source: T): Option[String] =
     try Option(source).map(_.toUri.normalize).map(new File(_)).map(_.getAbsolutePath)
     catch {
       case t: IllegalArgumentException =>
@@ -49,13 +50,12 @@ final class DiagnosticsReporter(reporter: Reporter) extends DiagnosticListener[J
         // but we may need to re-evaluate.
         Option(source).map(_.toUri.toString)
     }
-  }
   override def report(d: Diagnostic[_ <: JavaFileObject]): Unit = {
     val severity =
       d.getKind match {
-        case Diagnostic.Kind.ERROR => Severity.Error
+        case Diagnostic.Kind.ERROR                                       => Severity.Error
         case Diagnostic.Kind.WARNING | Diagnostic.Kind.MANDATORY_WARNING => Severity.Warn
-        case _ => Severity.Info
+        case _                                                           => Severity.Info
       }
     val msg = fixedDiagnosticMessage(d)
     val pos: xsbti.Position =
@@ -69,10 +69,14 @@ final class DiagnosticsReporter(reporter: Reporter) extends DiagnosticListener[J
             case x           => Option(x)
           }
 
-        override val line: Maybe[Integer] = Logger.o2m(checkNoPos(d.getLineNumber) map { x => new Integer(x.toInt) })
+        override val line: Maybe[Integer] = Logger.o2m(checkNoPos(d.getLineNumber) map { x =>
+          new Integer(x.toInt)
+        })
         def startPosition: Option[Long] = checkNoPos(d.getStartPosition)
         def endPosition: Option[Long] = checkNoPos(d.getEndPosition)
-        override val offset: Maybe[Integer] = Logger.o2m(checkNoPos(d.getPosition) map { x => new Integer(x.toInt) })
+        override val offset: Maybe[Integer] = Logger.o2m(checkNoPos(d.getPosition) map { x =>
+          new Integer(x.toInt)
+        })
         override def lineContent: String = {
           def getDiagnosticLine: Option[String] =
             try {
@@ -81,11 +85,15 @@ final class DiagnosticsReporter(reporter: Reporter) extends DiagnosticListener[J
               // See com.sun.tools.javac.util.JCDiagnostic#getDiagnosticSource
               val getDiagnosticSourceMethod = diagnostic.getClass.getDeclaredMethod("getDiagnosticSource")
               val getPositionMethod = diagnostic.getClass.getDeclaredMethod("getPosition")
-              (Option(getDiagnosticSourceMethod.invoke(diagnostic)), Option(getPositionMethod.invoke(diagnostic))) match {
+              (
+                Option(getDiagnosticSourceMethod.invoke(diagnostic)),
+                Option(getPositionMethod.invoke(diagnostic))
+              ) match {
                 case (Some(diagnosticSource), Some(position: java.lang.Long)) =>
                   // See com.sun.tools.javac.util.DiagnosticSource
                   val getLineMethod = diagnosticSource.getClass.getMethod("getLine", Integer.TYPE)
-                  Option(getLineMethod.invoke(diagnosticSource, new Integer(position.intValue()))).map(_.toString)
+                  Option(getLineMethod.invoke(diagnosticSource, new Integer(position.intValue())))
+                    .map(_.toString)
                 case _ => None
               }
             } catch {

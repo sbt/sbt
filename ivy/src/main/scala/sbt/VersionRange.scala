@@ -1,14 +1,14 @@
 package sbt
 
 object VersionRange {
+
   /** True if the revision is an ivy-range, not a complete revision. */
-  def isVersionRange(revision: String): Boolean = {
+  def isVersionRange(revision: String): Boolean =
     (revision endsWith "+") ||
       (revision contains "[") ||
       (revision contains "]") ||
       (revision contains "(") ||
       (revision contains ")")
-  }
 
   // Assuming Ivy is used to resolve conflict, this removes the version range
   // when it is open-ended to avoid dependency resolution hitting the Internet to get the latest.
@@ -48,13 +48,14 @@ object VersionRange {
     val maxDigit = 5
     try {
       revision match {
-        case "+"                           => "[0,)"
-        case DotPlusPattern(base)          => plusRange(base)
+        case "+"                  => "[0,)"
+        case DotPlusPattern(base) => plusRange(base)
         // This is a heuristic.  Maven just doesn't support Ivy's notions of 1+, so
         // we assume version ranges never go beyond 5 siginificant digits.
-        case NumPlusPattern(tail)          => (0 until maxDigit).map(plusRange(tail, _)).mkString(",")
-        case DotNumPlusPattern(base, tail) => (0 until maxDigit).map(plusRange(base + "." + tail, _)).mkString(",")
-        case rev if rev endsWith "+"       => sys.error(s"dynamic revision '$rev' cannot be translated to POM")
+        case NumPlusPattern(tail) => (0 until maxDigit).map(plusRange(tail, _)).mkString(",")
+        case DotNumPlusPattern(base, tail) =>
+          (0 until maxDigit).map(plusRange(base + "." + tail, _)).mkString(",")
+        case rev if rev endsWith "+" => sys.error(s"dynamic revision '$rev' cannot be translated to POM")
         case rev if startSym(rev(0)) && stopSym(rev(rev.length - 1)) =>
           val start = rev(0)
           val stop = rev(rev.length - 1)

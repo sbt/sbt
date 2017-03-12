@@ -6,14 +6,12 @@ package sbt
 /** Promotes the simple Logger interface to the full AbstractLogger interface. */
 class FullLogger(delegate: Logger) extends BasicLogger {
   override val ansiCodesSupported: Boolean = delegate.ansiCodesSupported
-  def trace(t: => Throwable): Unit = {
+  def trace(t: => Throwable): Unit =
     if (traceEnabled)
       delegate.trace(t)
-  }
-  def log(level: Level.Value, message: => String): Unit = {
+  def log(level: Level.Value, message: => String): Unit =
     if (atLevel(level))
       delegate.log(level, message)
-  }
   def success(message: => String): Unit =
     if (successEnabled)
       delegate.success(message)

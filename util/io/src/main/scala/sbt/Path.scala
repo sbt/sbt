@@ -11,10 +11,13 @@ import scala.collection.{ generic, immutable, mutable }
 
 final class RichFile(val asFile: File) {
   def /(component: String): File = if (component == ".") asFile else new File(asFile, component)
+
   /** True if and only if the wrapped file exists.*/
   def exists = asFile.exists
+
   /** True if and only if the wrapped file is a directory.*/
   def isDirectory = asFile.isDirectory
+
   /** The last modified time of the wrapped file.*/
   def lastModified = asFile.lastModified
   /* True if and only if the wrapped file `asFile` exists and the file 'other'
@@ -23,22 +26,24 @@ final class RichFile(val asFile: File) {
   /* True if and only if the wrapped file `asFile` does not exist or the file `other`
 	* exists and was modified after `asFile`.*/
   def olderThan(other: File): Boolean = Path.newerThan(other, asFile)
+
   /** The wrapped file converted to a <code>URL</code>.*/
   def asURL = asFile.toURI.toURL
   def absolutePath: String = asFile.getAbsolutePath
 
   /** The last component of this path.*/
   def name = asFile.getName
+
   /** The extension part of the name of this path.  This is the part of the name after the last period, or the empty string if there is no period.*/
   def ext = baseAndExt._2
+
   /** The base of the name of this path.  This is the part of the name before the last period, or the full name if there is no period.*/
   def base = baseAndExt._1
-  def baseAndExt: (String, String) =
-    {
-      val nme = name
-      val dot = nme.lastIndexOf('.')
-      if (dot < 0) (nme, "") else (nme.substring(0, dot), nme.substring(dot + 1))
-    }
+  def baseAndExt: (String, String) = {
+    val nme = name
+    val dot = nme.lastIndexOf('.')
+    if (dot < 0) (nme, "") else (nme.substring(0, dot), nme.substring(dot + 1))
+  }
 
   def relativize(sub: File): Option[File] = Path.relativizeFile(asFile, sub)
   def relativeTo(base: File): Option[File] = Path.relativizeFile(base, asFile)
@@ -80,6 +85,7 @@ object Path extends PathExtra {
   def toURLs(files: Seq[File]): Array[URL] = files.map(_.toURI.toURL).toArray
 }
 object PathFinder {
+
   /** A <code>PathFinder</code> that always produces the empty set of <code>Path</code>s.*/
   val empty = new PathFinder { private[sbt] def addTo(fileSet: mutable.Set[File]) {} }
   def strict(files: Traversable[File]): PathFinder = apply(files)
@@ -90,104 +96,111 @@ object PathFinder {
 }
 
 /**
- * A path finder constructs a set of paths.  The set is evaluated by a call to the <code>get</code>
- * method.  The set will be different for different calls to <code>get</code> if the underlying filesystem
- * has changed.
- */
+  * A path finder constructs a set of paths.  The set is evaluated by a call to the <code>get</code>
+  * method.  The set will be different for different calls to <code>get</code> if the underlying filesystem
+  * has changed.
+  */
 sealed abstract class PathFinder {
+
   /** The union of the paths found by this <code>PathFinder</code> with the paths found by 'paths'.*/
   def +++(paths: PathFinder): PathFinder = new Paths(this, paths)
+
   /** Excludes all paths from <code>excludePaths</code> from the paths selected by this <code>PathFinder</code>.*/
   def ---(excludePaths: PathFinder): PathFinder = new ExcludeFiles(this, excludePaths)
+
   /**
-   * Constructs a new finder that selects all paths with a name that matches <code>filter</code> and are
-   * descendants of paths selected by this finder.
-   */
+    * Constructs a new finder that selects all paths with a name that matches <code>filter</code> and are
+    * descendants of paths selected by this finder.
+    */
   def **(filter: FileFilter): PathFinder = new DescendantOrSelfPathFinder(this, filter)
   def *** : PathFinder = **(AllPassFilter)
+
   /**
-   * Constructs a new finder that selects all paths with a name that matches <code>filter</code> and are
-   * immediate children of paths selected by this finder.
-   */
+    * Constructs a new finder that selects all paths with a name that matches <code>filter</code> and are
+    * immediate children of paths selected by this finder.
+    */
   def *(filter: FileFilter): PathFinder = new ChildPathFinder(this, filter)
+
   /**
-   * Constructs a new finder that selects all paths with name <code>literal</code> that are immediate children
-   * of paths selected by this finder.
-   */
+    * Constructs a new finder that selects all paths with name <code>literal</code> that are immediate children
+    * of paths selected by this finder.
+    */
   def /(literal: String): PathFinder = new ChildPathFinder(this, new ExactFilter(literal))
+
   /**
-   * Constructs a new finder that selects all paths with name <code>literal</code> that are immediate children
-   * of paths selected by this finder.
-   */
+    * Constructs a new finder that selects all paths with name <code>literal</code> that are immediate children
+    * of paths selected by this finder.
+    */
   final def \(literal: String): PathFinder = this / literal
 
   @deprecated("Use pair.", "0.13.1")
   def x_![T](mapper: File => Option[T]): Traversable[(File, T)] = pair(mapper, false)
 
   /**
-   * Applies `mapper` to each path selected by this PathFinder and returns the path paired with the non-empty result.
-   * If the result is empty (None) and `errorIfNone` is true, an exception is thrown.
-   * If `errorIfNone` is false, the path is dropped from the returned Traversable.
-   */
-  def pair[T](mapper: File => Option[T], errorIfNone: Boolean = true): Seq[(File, T)] =
-    {
-      val apply = if (errorIfNone) mapper | fail else mapper
-      for (file <- get; mapped <- apply(file)) yield (file, mapped)
-    }
+    * Applies `mapper` to each path selected by this PathFinder and returns the path paired with the non-empty result.
+    * If the result is empty (None) and `errorIfNone` is true, an exception is thrown.
+    * If `errorIfNone` is false, the path is dropped from the returned Traversable.
+    */
+  def pair[T](mapper: File => Option[T], errorIfNone: Boolean = true): Seq[(File, T)] = {
+    val apply = if (errorIfNone) mapper | fail else mapper
+    for (file <- get; mapped <- apply(file)) yield (file, mapped)
+  }
 
   @deprecated("Use pair.", "0.13.1")
   def x[T](mapper: File => Option[T], errorIfNone: Boolean = true): Seq[(File, T)] = pair(mapper, errorIfNone)
 
   /**
-   * Selects all descendant paths with a name that matches <code>include</code> and do not have an intermediate
-   * path with a name that matches <code>intermediateExclude</code>.  Typical usage is:
-   *
-   * <code>descendantsExcept("*.jar", ".svn")</code>
-   */
+    * Selects all descendant paths with a name that matches <code>include</code> and do not have an intermediate
+    * path with a name that matches <code>intermediateExclude</code>.  Typical usage is:
+    *
+    * <code>descendantsExcept("*.jar", ".svn")</code>
+    */
   def descendantsExcept(include: FileFilter, intermediateExclude: FileFilter): PathFinder =
     (this ** include) --- (this ** intermediateExclude ** include)
 
   /**
-   * Evaluates this finder and converts the results to a `Seq` of distinct `File`s.  The files returned by this method will reflect the underlying filesystem at the
-   * time of calling.  If the filesystem changes, two calls to this method might be different.
-   */
-  final def get: Seq[File] =
-    {
-      import collection.JavaConversions._
-      val pathSet: mutable.Set[File] = new java.util.LinkedHashSet[File]
-      addTo(pathSet)
-      pathSet.toSeq
-    }
+    * Evaluates this finder and converts the results to a `Seq` of distinct `File`s.  The files returned by this method will reflect the underlying filesystem at the
+    * time of calling.  If the filesystem changes, two calls to this method might be different.
+    */
+  final def get: Seq[File] = {
+    import collection.JavaConversions._
+    val pathSet: mutable.Set[File] = new java.util.LinkedHashSet[File]
+    addTo(pathSet)
+    pathSet.toSeq
+  }
 
   /** Only keeps paths for which `f` returns true.  It is non-strict, so it is not evaluated until the returned finder is evaluated.*/
   final def filter(f: File => Boolean): PathFinder = PathFinder(get filter f)
   /* Non-strict flatMap: no evaluation occurs until the returned finder is evaluated.*/
   final def flatMap(f: File => PathFinder): PathFinder = PathFinder(get.flatMap(p => f(p).get))
+
   /** Evaluates this finder and converts the results to an `Array` of `URL`s..*/
   final def getURLs: Array[URL] = get.toArray.map(_.toURI.toURL)
+
   /** Evaluates this finder and converts the results to a distinct sequence of absolute path strings.*/
   final def getPaths: Seq[String] = get.map(_.absolutePath)
   private[sbt] def addTo(fileSet: mutable.Set[File])
 
   /**
-   * Create a PathFinder from this one where each path has a unique name.
-   * A single path is arbitrarily selected from the set of paths with the same name.
-   */
+    * Create a PathFinder from this one where each path has a unique name.
+    * A single path is arbitrarily selected from the set of paths with the same name.
+    */
   def distinctName: PathFinder = PathFinder { get.map(p => (p.asFile.getName, p)).toMap.values }
 
   /**
-   * Same as <code>distinctName</code>.
-   */
+    * Same as <code>distinctName</code>.
+    */
   @deprecated("Use distinctName", "0.13.9")
   def distinct: PathFinder = distinctName
 
   /**
-   * Create a PathFinder from this one where each path has a unique absolute path.
-   */
+    * Create a PathFinder from this one where each path has a unique absolute path.
+    */
   def distinctPath: PathFinder = PathFinder { get.map(p => (p.absolutePath, p)).toMap.values }
 
   /** Constructs a string by evaluating this finder, converting the resulting Paths to absolute path strings, and joining them with the platform path separator.*/
   final def absString = Path.makeString(get)
+
   /** Constructs a debugging string for this finder by evaluating it and separating paths by newlines.*/
   override def toString = get.mkString("\n   ", "\n   ", "")
 }

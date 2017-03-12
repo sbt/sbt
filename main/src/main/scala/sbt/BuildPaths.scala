@@ -8,11 +8,22 @@ import java.net.URI
 import KeyRanks.DSetting
 
 object BuildPaths {
-  val globalBaseDirectory = AttributeKey[File]("global-base-directory", "The base directory for global sbt configuration and staging.", DSetting)
-  val globalPluginsDirectory = AttributeKey[File]("global-plugins-directory", "The base directory for global sbt plugins.", DSetting)
-  val globalSettingsDirectory = AttributeKey[File]("global-settings-directory", "The base directory for global sbt settings.", DSetting)
-  val stagingDirectory = AttributeKey[File]("staging-directory", "The directory for staging remote projects.", DSetting)
-  val dependencyBaseDirectory = AttributeKey[File]("dependency-base-directory", "The base directory for caching dependency resolution.", DSetting)
+  val globalBaseDirectory = AttributeKey[File](
+    "global-base-directory",
+    "The base directory for global sbt configuration and staging.",
+    DSetting
+  )
+  val globalPluginsDirectory =
+    AttributeKey[File]("global-plugins-directory", "The base directory for global sbt plugins.", DSetting)
+  val globalSettingsDirectory =
+    AttributeKey[File]("global-settings-directory", "The base directory for global sbt settings.", DSetting)
+  val stagingDirectory =
+    AttributeKey[File]("staging-directory", "The directory for staging remote projects.", DSetting)
+  val dependencyBaseDirectory = AttributeKey[File](
+    "dependency-base-directory",
+    "The base directory for caching dependency resolution.",
+    DSetting
+  )
 
   import Path._
 
@@ -43,7 +54,9 @@ object BuildPaths {
   def getDependencyDirectory(state: State, globalBase: File): File =
     fileSetting(dependencyBaseDirectory, DependencyBaseProperty, defaultDependencyBase(globalBase))(state)
 
-  private[this] def fileSetting(stateKey: AttributeKey[File], property: String, default: File)(state: State): File =
+  private[this] def fileSetting(stateKey: AttributeKey[File], property: String, default: File)(
+      state: State
+  ): File =
     getFileSetting(stateKey, property, default)(state)
 
   def getFileSetting(stateKey: AttributeKey[File], property: String, default: => File)(state: State): File =

@@ -4,7 +4,7 @@ import scala.tools.nsc.Global
 
 trait GlobalHelpers extends Compat {
   val global: CallbackGlobal
-  import global.{ Tree, Type, Symbol, TypeTraverser }
+  import global.{ Symbol, Tree, Type, TypeTraverser }
 
   def symbolsInType(tp: Type): Set[Symbol] = {
     val typeSymbolCollector =

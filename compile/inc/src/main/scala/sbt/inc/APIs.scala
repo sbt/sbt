@@ -12,15 +12,17 @@ import scala.util.Sorting
 import xsbt.api.SameAPI
 
 trait APIs {
+
   /**
-   * The API for the source file `src` at the time represented by this instance.
-   * This method returns an empty API if the file had no API or is not known to this instance.
-   */
+    * The API for the source file `src` at the time represented by this instance.
+    * This method returns an empty API if the file had no API or is not known to this instance.
+    */
   def internalAPI(src: File): Source
+
   /**
-   * The API for the external class `ext` at the time represented by this instance.
-   * This method returns an empty API if the file had no API or is not known to this instance.
-   */
+    * The API for the external class `ext` at the time represented by this instance.
+    * This method returns an empty API if the file had no API or is not known to this instance.
+    */
   def externalAPI(ext: String): Source
 
   def allExternals: collection.Set[String]
@@ -68,7 +70,9 @@ private class MAPIs(val internal: Map[File, Source], val external: Map[String, S
   def filterExt(keep: String => Boolean): APIs = new MAPIs(internal, external.filterKeys(keep))
   @deprecated("Broken implementation. OK to remove in 0.14", "0.13.1")
   def groupBy[K](f: (File) => K, keepExternal: Map[K, String => Boolean]): Map[K, APIs] =
-    internal.groupBy(item => f(item._1)) map { group => (group._1, new MAPIs(group._2, external).filterExt(keepExternal.getOrElse(group._1, _ => false))) }
+    internal.groupBy(item => f(item._1)) map { group =>
+      (group._1, new MAPIs(group._2, external).filterExt(keepExternal.getOrElse(group._1, _ => false)))
+    }
 
   def internalAPI(src: File) = getAPI(internal, src)
   def externalAPI(ext: String) = getAPI(external, ext)
@@ -77,20 +81,23 @@ private class MAPIs(val internal: Map[File, Source], val external: Map[String, S
 
   override def equals(other: Any): Boolean = other match {
     case o: MAPIs => {
-      def areEqual[T](x: Map[T, Source], y: Map[T, Source])(implicit ord: math.Ordering[T]) = {
-        x.size == y.size && (sorted(x) zip sorted(y) forall { z => z._1._1 == z._2._1 && SameAPI(z._1._2, z._2._2) })
-      }
+      def areEqual[T](x: Map[T, Source], y: Map[T, Source])(implicit ord: math.Ordering[T]) =
+        x.size == y.size && (sorted(x) zip sorted(y) forall { z =>
+          z._1._1 == z._2._1 && SameAPI(z._1._2, z._2._2)
+        })
       areEqual(internal, o.internal) && areEqual(external, o.external)
     }
     case _ => false
   }
 
   override lazy val hashCode: Int = {
-    def hash[T](m: Map[T, Source])(implicit ord: math.Ordering[T]) = sorted(m).map(x => (x._1, x._2.apiHash).hashCode).hashCode
+    def hash[T](m: Map[T, Source])(implicit ord: math.Ordering[T]) =
+      sorted(m).map(x => (x._1, x._2.apiHash).hashCode).hashCode
     (hash(internal), hash(external)).hashCode
   }
 
   override def toString: String = "API(internal: %d, external: %d)".format(internal.size, external.size)
 
-  private[this] def sorted[T](m: Map[T, Source])(implicit ord: math.Ordering[T]): Seq[(T, Source)] = m.toSeq.sortBy(_._1)
+  private[this] def sorted[T](m: Map[T, Source])(implicit ord: math.Ordering[T]): Seq[(T, Source)] =
+    m.toSeq.sortBy(_._1)
 }

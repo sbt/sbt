@@ -3,7 +3,8 @@ package sbt
 import org.specs2._
 
 class VersionNumberSpec extends Specification {
-  def is = s2"""
+  def is =
+    s2"""
 
   This is a specification to check the version number parsing.
 
@@ -76,8 +77,16 @@ class VersionNumberSpec extends Specification {
 
 
   2.10.4-20140115-000117-b3a-sources should
-    ${beParsedAs("2.10.4-20140115-000117-b3a-sources", Seq(2, 10, 4), Seq("20140115", "000117", "b3a", "sources"), Seq())}
-    ${generateCorrectCascadingNumbers("2.10.4-20140115-000117-b3a-sources", Seq("2.10.4-20140115-000117-b3a-sources", "2.10.4", "2.10"))}
+    ${beParsedAs(
+      "2.10.4-20140115-000117-b3a-sources",
+      Seq(2, 10, 4),
+      Seq("20140115", "000117", "b3a", "sources"),
+      Seq()
+    )}
+    ${generateCorrectCascadingNumbers(
+      "2.10.4-20140115-000117-b3a-sources",
+      Seq("2.10.4-20140115-000117-b3a-sources", "2.10.4", "2.10")
+    )}
 
     ${beSemVerCompatWith("2.10.4-20140115-000117-b3a-sources", "2.0.0")}
 
@@ -110,8 +119,11 @@ class VersionNumberSpec extends Specification {
       case VersionNumber(ns1, ts1, es1) =>
         sys.error(s"$ns1, $ts1, $es1")
     }
-  def breakDownTo(s: String, major: Option[Long], minor: Option[Long] = None,
-    patch: Option[Long] = None, buildNumber: Option[Long] = None) =
+  def breakDownTo(s: String,
+                  major: Option[Long],
+                  minor: Option[Long] = None,
+                  patch: Option[Long] = None,
+                  buildNumber: Option[Long] = None) =
     s match {
       case VersionNumber(ns, ts, es) =>
         val v = VersionNumber(ns, ts, es)

@@ -1,6 +1,6 @@
 package sbt
 
-import java.io.{ IOException, StringWriter, PrintWriter, File }
+import java.io.{ File, IOException, PrintWriter, StringWriter }
 import java.net.InetAddress
 import java.util.Hashtable
 
@@ -10,17 +10,19 @@ import scala.xml.{ Elem, Node => XNode, XML }
 import testing.{ Event => TEvent, Status => TStatus, OptionalThrowable, TestSelector }
 
 /**
- * A tests listener that outputs the results it receives in junit xml
- * report format.
- * @param outputDir path to the dir in which a folder with results is generated
- */
+  * A tests listener that outputs the results it receives in junit xml
+  * report format.
+  * @param outputDir path to the dir in which a folder with results is generated
+  */
 class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
+
   /**Current hostname so we know which machine executed the tests*/
   val hostname =
     try InetAddress.getLocalHost.getHostName
     catch {
       case x: IOException => "localhost"
     }
+
   /**The dir in which we put all result files. Is equal to the given dir + "/test-reports"*/
   val targetDir = new File(outputDir + "/test-reports/")
 
@@ -41,9 +43,9 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
     </properties>
 
   /**
-   * Gathers data for one Test Suite. We map test groups to TestSuites.
-   * Each TestSuite gets its own output file.
-   */
+    * Gathers data for one Test Suite. We map test groups to TestSuites.
+    * Each TestSuite gets its own output file.
+    */
   class TestSuite(val name: String) {
     val events: ListBuffer[TEvent] = new ListBuffer()
 
@@ -54,9 +56,9 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
     def count(status: TStatus) = events.count(_.status == status)
 
     /**
-     * Stops the time measuring and emits the XML for
-     * All tests collected so far.
-     */
+      * Stops the time measuring and emits the XML for
+      * All tests collected so far.
+      */
     def stop(): Elem = {
       val duration = events.map(_.duration()).sum
 
@@ -65,7 +67,8 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
       /** Junit XML reports don't differentiate between ignored, skipped or pending tests */
       val ignoredSkippedPending = count(TStatus.Ignored) + count(TStatus.Skipped) + count(TStatus.Pending)
 
-      val result = <testsuite hostname={ hostname } name={ name } tests={ tests + "" } errors={ errors + "" } failures={ failures + "" } skipped={ ignoredSkippedPending + "" } time={ (duration / 1000.0).toString }>
+      val result =
+        <testsuite hostname={ hostname } name={ name } tests={ tests + "" } errors={ errors + "" } failures={ failures + "" } skipped={ ignoredSkippedPending + "" } time={ (duration / 1000.0).toString }>
                      { properties }
                      {
                        for (e <- events) yield <testcase classname={ name } name={
@@ -108,39 +111,39 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
   val testSuite = new DynamicVariable(null: TestSuite)
 
   /**Creates the output Dir*/
-  override def doInit() = { targetDir.mkdirs() }
+  override def doInit() = targetDir.mkdirs()
 
   /**
-   * Starts a new, initially empty Suite with the given name.
-   */
+    * Starts a new, initially empty Suite with the given name.
+    */
   override def startGroup(name: String): Unit = testSuite.value_=(new TestSuite(name))
 
   /**
-   * Adds all details for the given even to the current suite.
-   */
+    * Adds all details for the given even to the current suite.
+    */
   override def testEvent(event: TestEvent): Unit = for (e <- event.detail) { testSuite.value.addEvent(e) }
 
   /**
-   * called for each class or equivalent grouping
-   *  We map one group to one Testsuite, so for each Group
-   *  we create an XML like this:
-   *  <?xml version="1.0" encoding="UTF-8" ?>
-   *  <testsuite skipped="w" errors="x" failures="y" tests="z" hostname="example.com" name="eu.henkelmann.bla.SomeTest" time="0.23">
-   *       <properties>
-   *           <property name="os.name" value="Linux" />
-   *           ...
-   *       </properties>
-   *       <testcase classname="eu.henkelmann.bla.SomeTest" name="testFooWorks" time="0.0" >
-   *           <error message="the foo did not work" type="java.lang.NullPointerException">... stack ...</error>
-   *       </testcase>
-   *       <testcase classname="eu.henkelmann.bla.SomeTest" name="testBarThrowsException" time="0.0" />
-   *       <testcase classname="eu.henkelmann.bla.SomeTest" name="testBaz" time="0.0">
-   *           <failure message="the baz was no bar" type="junit.framework.AssertionFailedError">...stack...</failure>
-   *        </testcase>
-   *       <system-out><![CDATA[]]></system-out>
-   *       <system-err><![CDATA[]]></system-err>
-   *  </testsuite>
-   */
+    * called for each class or equivalent grouping
+    *  We map one group to one Testsuite, so for each Group
+    *  we create an XML like this:
+    *  <?xml version="1.0" encoding="UTF-8" ?>
+    *  <testsuite skipped="w" errors="x" failures="y" tests="z" hostname="example.com" name="eu.henkelmann.bla.SomeTest" time="0.23">
+    *       <properties>
+    *           <property name="os.name" value="Linux" />
+    *           ...
+    *       </properties>
+    *       <testcase classname="eu.henkelmann.bla.SomeTest" name="testFooWorks" time="0.0" >
+    *           <error message="the foo did not work" type="java.lang.NullPointerException">... stack ...</error>
+    *       </testcase>
+    *       <testcase classname="eu.henkelmann.bla.SomeTest" name="testBarThrowsException" time="0.0" />
+    *       <testcase classname="eu.henkelmann.bla.SomeTest" name="testBaz" time="0.0">
+    *           <failure message="the baz was no bar" type="junit.framework.AssertionFailedError">...stack...</failure>
+    *        </testcase>
+    *       <system-out><![CDATA[]]></system-out>
+    *       <system-err><![CDATA[]]></system-err>
+    *  </testsuite>
+    */
   override def endGroup(name: String, t: Throwable) = {
     // create our own event to record the error
     val event = new TEvent {
@@ -158,12 +161,11 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
   }
 
   /**
-   * Ends the current suite, wraps up the result and writes it to an XML file
-   *  in the output folder that is named after the suite.
-   */
-  override def endGroup(name: String, result: TestResult.Value) = {
+    * Ends the current suite, wraps up the result and writes it to an XML file
+    *  in the output folder that is named after the suite.
+    */
+  override def endGroup(name: String, result: TestResult.Value) =
     writeSuite()
-  }
 
   // Here we normalize the name to ensure that it's a nicer filename, rather than
   // contort the user into not using spaces.

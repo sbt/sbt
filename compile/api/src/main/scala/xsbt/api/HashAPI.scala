@@ -27,14 +27,14 @@ object HashAPI {
 }
 
 /**
- * Implements hashing of public API.
- *
- * @param includePrivate should private definitions be included in a hash sum
- * @param includeParamNames should parameter names for methods be included in a hash sum
- * @param includeDefinitions when hashing a structure (e.g. of a class) should hashes of definitions (members)
- *   be included in a hash sum. Structure can appear as a type (in structural type) and in that case we
- *   always include definitions in a hash sum.
- */
+  * Implements hashing of public API.
+  *
+  * @param includePrivate should private definitions be included in a hash sum
+  * @param includeParamNames should parameter names for methods be included in a hash sum
+  * @param includeDefinitions when hashing a structure (e.g. of a class) should hashes of definitions (members)
+  *   be included in a hash sum. Structure can appear as a type (in structural type) and in that case we
+  *   always include definitions in a hash sum.
+  */
 final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, includeDefinitions: Boolean) {
   // this constructor variant is for source and binary backwards compatibility with sbt 0.13.0
   def this(includePrivate: Boolean, includeParamNames: Boolean) {
@@ -44,12 +44,21 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
   }
 
   import scala.collection.mutable
-  import MurmurHash.{ extendHash, nextMagicA, nextMagicB, startHash, startMagicA, startMagicB, stringHash, symmetricHash }
+  import MurmurHash.{
+    extendHash,
+    nextMagicA,
+    nextMagicB,
+    startHash,
+    startMagicA,
+    startMagicB,
+    stringHash,
+    symmetricHash
+  }
 
   private[this] val visitedStructures = visitedMap[Structure]
   private[this] val visitedClassLike = visitedMap[ClassLike]
   private[this] def visitedMap[T] = new mutable.HashMap[T, List[Hash]]
-  private[this] def visit[T](map: mutable.Map[T, List[Hash]], t: T)(hashF: T => Unit): Unit = {
+  private[this] def visit[T](map: mutable.Map[T, List[Hash]], t: T)(hashF: T => Unit): Unit =
     map.put(t, hash :: map.getOrElse(t, Nil)) match {
       case Some(x :: _) => extend(x)
       case _ =>
@@ -58,7 +67,6 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
           extend(hs)
         map.put(t, hash :: Nil)
     }
-  }
 
   private[this] def isTrait(cl: ClassLike) = cl.definitionType == DefinitionType.Trait
 
@@ -135,13 +143,12 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
 
   def hashModifiers(m: Modifiers) = extend(m.raw)
 
-  def hashAPI(s: SourceAPI): Hash =
-    {
-      hash = startHash(0)
-      hashSymmetric(s.packages, hashPackage)
-      hashDefinitions(s.definitions, topLevel = true,  isTrait = false)
-      finalizeHash
-    }
+  def hashAPI(s: SourceAPI): Hash = {
+    hash = startHash(0)
+    hashSymmetric(s.packages, hashPackage)
+    hashDefinitions(s.definitions, topLevel = true, isTrait = false)
+    finalizeHash
+  }
 
   def hashPackage(p: Package) = hashString(p.name)
 
@@ -149,46 +156,44 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
   def hashDefinitions(ds: Seq[Definition], topLevel: Boolean): Unit =
     hashDefinitions(ds, topLevel, isTrait = false)
 
-  def hashDefinitions(ds: Seq[Definition], topLevel: Boolean, isTrait: Boolean): Unit =
-    {
-      def isPublic(d: Definition): Boolean = d.access match { case _: xsbti.api.Public => true; case _ => false }
-      def isTraitBreaker(d: Definition): Boolean = d match {
-        // Vars and vals in traits introduce getters, setters and fields in the implementing classes.
-        // See test `source-dependencies/trait-private-var
-        case _: FieldLike  => true
-        // Objects in traits introduce fields in the implementing classes.
-        // See test `source-dependencies/trait-private-object`
-        case cl: ClassLike => cl.definitionType == DefinitionType.Module
-        // super calls introduce accessors that are not part of the public API
-        case d: Def        => d.modifiers.isSuperAccessor
-        case _             => false
-      }
-      val includedPrivateDefinitions =
-        if (!includePrivate && !topLevel && isTrait) {
-          ds filter (x => isTraitBreaker(x) && !isPublic(x))
-        } else Seq.empty
-
-      val defs = SameAPI.filterDefinitions(ds, topLevel, includePrivate)
-      hashSymmetric(includedPrivateDefinitions ++ defs, hashDefinition)
+  def hashDefinitions(ds: Seq[Definition], topLevel: Boolean, isTrait: Boolean): Unit = {
+    def isPublic(d: Definition): Boolean = d.access match { case _: xsbti.api.Public => true; case _ => false }
+    def isTraitBreaker(d: Definition): Boolean = d match {
+      // Vars and vals in traits introduce getters, setters and fields in the implementing classes.
+      // See test `source-dependencies/trait-private-var
+      case _: FieldLike => true
+      // Objects in traits introduce fields in the implementing classes.
+      // See test `source-dependencies/trait-private-object`
+      case cl: ClassLike => cl.definitionType == DefinitionType.Module
+      // super calls introduce accessors that are not part of the public API
+      case d: Def => d.modifiers.isSuperAccessor
+      case _      => false
     }
+    val includedPrivateDefinitions =
+      if (!includePrivate && !topLevel && isTrait) {
+        ds filter (x => isTraitBreaker(x) && !isPublic(x))
+      } else Seq.empty
+
+    val defs = SameAPI.filterDefinitions(ds, topLevel, includePrivate)
+    hashSymmetric(includedPrivateDefinitions ++ defs, hashDefinition)
+  }
 
   /**
-   * Hashes a sequence of definitions by combining each definition's own
-   * hash with extra one supplied as first element of a pair.
-   *
-   * It's useful when one wants to influence hash of a definition by some
-   * external (to definition) factor (e.g. location of definition).
-   *
-   * NOTE: This method doesn't perform any filtering of passed definitions.
-   */
-  def hashDefinitionsWithExtraHashes(ds: Seq[(Definition, Hash)]): Unit =
-    {
-      def hashDefinitionCombined(d: Definition, extraHash: Hash): Unit = {
-        hashDefinition(d)
-        extend(extraHash)
-      }
-      hashSymmetric(ds, (hashDefinitionCombined _).tupled)
+    * Hashes a sequence of definitions by combining each definition's own
+    * hash with extra one supplied as first element of a pair.
+    *
+    * It's useful when one wants to influence hash of a definition by some
+    * external (to definition) factor (e.g. location of definition).
+    *
+    * NOTE: This method doesn't perform any filtering of passed definitions.
+    */
+  def hashDefinitionsWithExtraHashes(ds: Seq[(Definition, Hash)]): Unit = {
+    def hashDefinitionCombined(d: Definition, extraHash: Hash): Unit = {
+      hashDefinition(d)
+      extend(extraHash)
     }
+    hashSymmetric(ds, (hashDefinitionCombined _).tupled)
+  }
   def hashDefinition(d: Definition): Unit = {
     hashString(d.name)
     hashAnnotations(d.annotations)
@@ -227,14 +232,13 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
       case pub: Public     => extend(PublicHash)
       case qual: Qualified => hashQualified(qual)
     }
-  def hashQualified(qual: Qualified): Unit =
-    {
-      qual match {
-        case p: Protected => extend(ProtectedHash)
-        case p: Private   => extend(PrivateHash)
-      }
-      hashQualifier(qual.qualifier)
+  def hashQualified(qual: Qualified): Unit = {
+    qual match {
+      case p: Protected => extend(ProtectedHash)
+      case p: Private   => extend(PrivateHash)
     }
+    hashQualifier(qual.qualifier)
+  }
   def hashQualifier(qual: Qualifier): Unit =
     qual match {
       case _: Unqualified   => extend(UnqualifiedHash)
@@ -244,24 +248,22 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
         hashString(id.value)
     }
 
-  def hashValueParameters(valueParameters: Seq[ParameterList]) = hashSeq(valueParameters, hashValueParameterList)
-  def hashValueParameterList(list: ParameterList) =
-    {
-      extend(ValueParamsHash)
-      hashBoolean(list.isImplicit)
-      hashSeq(list.parameters, hashValueParameter)
-    }
-  def hashValueParameter(parameter: MethodParameter) =
-    {
-      hashString(parameter.name)
-      hashType(parameter.tpe)
-      extend(parameter.modifier.ordinal)
-      hashBoolean(parameter.hasDefault)
-    }
-
-  def hashParameterizedDefinition[T <: ParameterizedDefinition](d: T): Unit = {
-    hashTypeParameters(d.typeParameters)
+  def hashValueParameters(valueParameters: Seq[ParameterList]) =
+    hashSeq(valueParameters, hashValueParameterList)
+  def hashValueParameterList(list: ParameterList) = {
+    extend(ValueParamsHash)
+    hashBoolean(list.isImplicit)
+    hashSeq(list.parameters, hashValueParameter)
   }
+  def hashValueParameter(parameter: MethodParameter) = {
+    hashString(parameter.name)
+    hashType(parameter.tpe)
+    extend(parameter.modifier.ordinal)
+    hashBoolean(parameter.hasDefault)
+  }
+
+  def hashParameterizedDefinition[T <: ParameterizedDefinition](d: T): Unit =
+    hashTypeParameters(d.typeParameters)
   def hashTypeDeclaration(d: TypeDeclaration): Unit = {
     extend(TypeDeclHash)
     hashParameterizedDefinition(d)
@@ -284,11 +286,10 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
     hashAnnotations(parameter.annotations)
   }
   def hashAnnotations(annotations: Seq[Annotation]) = hashSeq(annotations, hashAnnotation)
-  def hashAnnotation(annotation: Annotation) =
-    {
-      hashType(annotation.base)
-      hashAnnotationArguments(annotation.arguments)
-    }
+  def hashAnnotation(annotation: Annotation) = {
+    hashType(annotation.base)
+    hashAnnotationArguments(annotation.arguments)
+  }
   def hashAnnotationArguments(args: Seq[AnnotationArgument]) = hashSeq(args, hashAnnotationArgument)
   def hashAnnotationArgument(arg: AnnotationArgument): Unit = {
     hashString(arg.name)
@@ -334,28 +335,24 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
     hashString(id.id)
   }
 
-  def hashConstant(c: Constant) =
-    {
-      extend(ConstantHash)
-      hashString(c.value)
-      hashType(c.baseType)
-    }
-  def hashExistential(e: Existential) =
-    {
-      extend(ExistentialHash)
-      hashParameters(e.clause, e.baseType)
-    }
-  def hashPolymorphic(p: Polymorphic) =
-    {
-      extend(PolymorphicHash)
-      hashParameters(p.parameters, p.baseType)
-    }
-  def hashProjection(p: Projection) =
-    {
-      extend(ProjectionHash)
-      hashString(p.id)
-      hashType(p.prefix)
-    }
+  def hashConstant(c: Constant) = {
+    extend(ConstantHash)
+    hashString(c.value)
+    hashType(c.baseType)
+  }
+  def hashExistential(e: Existential) = {
+    extend(ExistentialHash)
+    hashParameters(e.clause, e.baseType)
+  }
+  def hashPolymorphic(p: Polymorphic) = {
+    extend(PolymorphicHash)
+    hashParameters(p.parameters, p.baseType)
+  }
+  def hashProjection(p: Projection) = {
+    extend(ProjectionHash)
+    hashString(p.id)
+    hashType(p.prefix)
+  }
   def hashParameterized(p: Parameterized): Unit = {
     extend(ParameterizedHash)
     hashType(p.baseType)
@@ -382,9 +379,8 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
       hashDefinitions(structure.inherited, topLevel = false, isTrait)
     }
   }
-  def hashParameters(parameters: Seq[TypeParameter], base: Type): Unit =
-    {
-      hashTypeParameters(parameters)
-      hashType(base)
-    }
+  def hashParameters(parameters: Seq[TypeParameter], base: Type): Unit = {
+    hashTypeParameters(parameters)
+    hashType(base)
+  }
 }

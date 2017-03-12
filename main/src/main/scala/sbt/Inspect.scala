@@ -14,10 +14,12 @@ object Inspect {
   val Uses: Mode = new Opt("inspect")
   val Definitions: Mode = new Opt("definitions")
 
-  def parser: State => Parser[(Inspect.Mode, ScopedKey[_])] = (s: State) => spacedModeParser(s) flatMap {
-    case opt @ (Uses | Definitions)          => allKeyParser(s).map(key => (opt, Def.ScopedKey(Global, key)))
-    case opt @ (DependencyTree | Details(_)) => spacedKeyParser(s).map(key => (opt, key))
-  }
+  def parser: State => Parser[(Inspect.Mode, ScopedKey[_])] =
+    (s: State) =>
+      spacedModeParser(s) flatMap {
+        case opt @ (Uses | Definitions)          => allKeyParser(s).map(key => (opt, Def.ScopedKey(Global, key)))
+        case opt @ (DependencyTree | Details(_)) => spacedKeyParser(s).map(key => (opt, key))
+    }
   val spacedModeParser: (State => Parser[Mode]) = (s: State) => {
     val actual = "actual" ^^^ Details(true)
     val tree = "tree" ^^^ DependencyTree
@@ -26,28 +28,29 @@ object Inspect {
     token(Space ~> (tree | actual | uses | definitions)) ?? Details(false)
   }
 
-  def allKeyParser(s: State): Parser[AttributeKey[_]] =
-    {
-      val keyMap = Project.structure(s).index.keyMap
-      token(Space ~> (ID !!! "Expected key" examples keyMap.keySet)) flatMap { key => Act.getKey(keyMap, key, idFun) }
+  def allKeyParser(s: State): Parser[AttributeKey[_]] = {
+    val keyMap = Project.structure(s).index.keyMap
+    token(Space ~> (ID !!! "Expected key" examples keyMap.keySet)) flatMap { key =>
+      Act.getKey(keyMap, key, idFun)
     }
-  val spacedKeyParser: State => Parser[ScopedKey[_]] = (s: State) => Act.requireSession(s, token(Space) ~> Act.scopedKeyParser(s))
+  }
+  val spacedKeyParser: State => Parser[ScopedKey[_]] = (s: State) =>
+    Act.requireSession(s, token(Space) ~> Act.scopedKeyParser(s))
 
-  def output(s: State, option: Mode, sk: Def.ScopedKey[_]): String =
-    {
-      val extracted = Project.extract(s)
-      import extracted._
-      option match {
-        case Details(actual) =>
-          Project.details(structure, actual, sk.scope, sk.key)
-        case DependencyTree =>
-          val basedir = new File(Project.session(s).current.build)
-          Project.settingGraph(structure, basedir, sk).dependsAscii(get(sbt.Keys.asciiGraphWidth))
-        case Uses =>
-          Project.showUses(Project.usedBy(structure, true, sk.key))
-        case Definitions =>
-          Project.showDefinitions(sk.key, Project.definitions(structure, true, sk.key))
-      }
+  def output(s: State, option: Mode, sk: Def.ScopedKey[_]): String = {
+    val extracted = Project.extract(s)
+    import extracted._
+    option match {
+      case Details(actual) =>
+        Project.details(structure, actual, sk.scope, sk.key)
+      case DependencyTree =>
+        val basedir = new File(Project.session(s).current.build)
+        Project.settingGraph(structure, basedir, sk).dependsAscii(get(sbt.Keys.asciiGraphWidth))
+      case Uses =>
+        Project.showUses(Project.usedBy(structure, true, sk.key))
+      case Definitions =>
+        Project.showDefinitions(sk.key, Project.definitions(structure, true, sk.key))
     }
+  }
 
 }

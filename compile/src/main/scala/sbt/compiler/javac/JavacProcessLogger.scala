@@ -8,14 +8,14 @@ import xsbti._
 import java.io.File
 
 /**
- * An adapted process logger which can feed semantic error events from Javac as well as just
- * dump logs.
- *
- *
- * @param log  The logger where all input will go.
- * @param reporter  A reporter for semantic Javac error messages.
- * @param cwd The current working directory of the Javac process, used when parsing Filenames.
- */
+  * An adapted process logger which can feed semantic error events from Javac as well as just
+  * dump logs.
+  *
+  *
+  * @param log  The logger where all input will go.
+  * @param reporter  A reporter for semantic Javac error messages.
+  * @param cwd The current working directory of the Javac process, used when parsing Filenames.
+  */
 final class JavacLogger(log: sbt.Logger, reporter: Reporter, cwd: File) extends ProcessLogger {
   import scala.collection.mutable.ListBuffer
   import Level.{ Info, Warn, Error, Value => LogLevel }

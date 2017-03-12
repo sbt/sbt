@@ -29,8 +29,11 @@ object SourceInfos {
 private final class MSourceInfos(val allInfos: Map[File, SourceInfo]) extends SourceInfos {
   def ++(o: SourceInfos) = new MSourceInfos(allInfos ++ o.allInfos)
   def --(sources: Iterable[File]) = new MSourceInfos(allInfos -- sources)
-  def groupBy[K](f: File => K): Map[K, SourceInfos] = allInfos groupBy (x => f(x._1)) map { x => (x._1, new MSourceInfos(x._2)) }
+  def groupBy[K](f: File => K): Map[K, SourceInfos] = allInfos groupBy (x => f(x._1)) map { x =>
+    (x._1, new MSourceInfos(x._2))
+  }
   def add(file: File, info: SourceInfo) = new MSourceInfos(allInfos + ((file, info)))
   def get(file: File) = allInfos.getOrElse(file, SourceInfos.emptyInfo)
 }
-private final class MSourceInfo(val reportedProblems: Seq[Problem], val unreportedProblems: Seq[Problem]) extends SourceInfo
+private final class MSourceInfo(val reportedProblems: Seq[Problem], val unreportedProblems: Seq[Problem])
+    extends SourceInfo

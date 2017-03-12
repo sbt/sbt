@@ -11,11 +11,10 @@ object Util {
   def separateE[A, B](ps: Seq[Either[A, B]]): (Seq[A], Seq[B]) =
     separate(ps)(Types.idFun)
 
-  def separate[T, A, B](ps: Seq[T])(f: T => Either[A, B]): (Seq[A], Seq[B]) =
-    {
-      val (a, b) = ((Nil: Seq[A], Nil: Seq[B]) /: ps)((xs, y) => prependEither(xs, f(y)))
-      (a.reverse, b.reverse)
-    }
+  def separate[T, A, B](ps: Seq[T])(f: T => Either[A, B]): (Seq[A], Seq[B]) = {
+    val (a, b) = ((Nil: Seq[A], Nil: Seq[B]) /: ps)((xs, y) => prependEither(xs, f(y)))
+    (a.reverse, b.reverse)
+  }
 
   def prependEither[A, B](acc: (Seq[A], Seq[B]), next: Either[A, B]): (Seq[A], Seq[B]) =
     next match {

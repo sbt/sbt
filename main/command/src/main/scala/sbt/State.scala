@@ -7,27 +7,27 @@ import java.io.File
 import java.util.concurrent.Callable
 
 /**
- * Data structure representing all command execution information.
- *
- * @param configuration provides access to the launcher environment, including the application configuration, Scala versions, jvm/filesystem wide locking, and the launcher itself
- * @param definedCommands the list of command definitions that evaluate command strings.  These may be modified to change the available commands.
- * @param onFailure the command to execute when another command fails.  `onFailure` is cleared before the failure handling command is executed.
- * @param remainingCommands the sequence of commands to execute.  This sequence may be modified to change the commands to be executed.  Typically, the `::` and `:::` methods are used to prepend new commands to run.
- * @param exitHooks code to run before sbt exits, usually to ensure resources are cleaned up.
- * @param history tracks the recently executed commands
- * @param attributes custom command state.  It is important to clean up attributes when no longer needed to avoid memory leaks and class loader leaks.
- * @param next the next action for the command processor to take.  This may be to continue with the next command, adjust global logging, or exit.
- */
-final case class State(
-    configuration: xsbti.AppConfiguration,
-    definedCommands: Seq[Command],
-    exitHooks: Set[ExitHook],
-    onFailure: Option[String],
-    remainingCommands: Seq[String],
-    history: State.History,
-    attributes: AttributeMap,
-    globalLogging: GlobalLogging,
-    next: State.Next) extends Identity {
+  * Data structure representing all command execution information.
+  *
+  * @param configuration provides access to the launcher environment, including the application configuration, Scala versions, jvm/filesystem wide locking, and the launcher itself
+  * @param definedCommands the list of command definitions that evaluate command strings.  These may be modified to change the available commands.
+  * @param onFailure the command to execute when another command fails.  `onFailure` is cleared before the failure handling command is executed.
+  * @param remainingCommands the sequence of commands to execute.  This sequence may be modified to change the commands to be executed.  Typically, the `::` and `:::` methods are used to prepend new commands to run.
+  * @param exitHooks code to run before sbt exits, usually to ensure resources are cleaned up.
+  * @param history tracks the recently executed commands
+  * @param attributes custom command state.  It is important to clean up attributes when no longer needed to avoid memory leaks and class loader leaks.
+  * @param next the next action for the command processor to take.  This may be to continue with the next command, adjust global logging, or exit.
+  */
+final case class State(configuration: xsbti.AppConfiguration,
+                       definedCommands: Seq[Command],
+                       exitHooks: Set[ExitHook],
+                       onFailure: Option[String],
+                       remainingCommands: Seq[String],
+                       history: State.History,
+                       attributes: AttributeMap,
+                       globalLogging: GlobalLogging,
+                       next: State.Next)
+    extends Identity {
   lazy val combinedParser = Command.combine(definedCommands)(this)
 }
 
@@ -51,13 +51,13 @@ trait StateOps {
   def continue: State
 
   /**
-   * Reboots sbt.  A reboot restarts execution from the entry point of the launcher.
-   * A reboot is designed to be as close as possible to actually restarting the JVM without actually doing so.
-   * Because the JVM is not restarted, JVM exit hooks are not run.
-   * State.exitHooks should be used instead and those will be run before rebooting.
-   * If `full` is true, the boot directory is deleted before starting again.
-   * This command is currently implemented to not return, but may be implemented in the future to only reboot at the next command processing step.
-   */
+    * Reboots sbt.  A reboot restarts execution from the entry point of the launcher.
+    * A reboot is designed to be as close as possible to actually restarting the JVM without actually doing so.
+    * Because the JVM is not restarted, JVM exit hooks are not run.
+    * State.exitHooks should be used instead and those will be run before rebooting.
+    * If `full` is true, the boot directory is deleted before starting again.
+    * This command is currently implemented to not return, but may be implemented in the future to only reboot at the next command processing step.
+    */
   def reboot(full: Boolean): State
 
   /** Sets the next command processing action to do.*/
@@ -66,43 +66,50 @@ trait StateOps {
   @deprecated("Use setNext", "0.11.0") def setResult(ro: Option[xsbti.MainResult]): State
 
   /**
-   * Restarts sbt without dropping loaded Scala classes.  It is a shallower restart than `reboot`.
-   * This method takes a snapshot of the remaining commands and will resume executing those commands after reload.
-   * This means that any commands added to this State will be dropped.
-   */
+    * Restarts sbt without dropping loaded Scala classes.  It is a shallower restart than `reboot`.
+    * This method takes a snapshot of the remaining commands and will resume executing those commands after reload.
+    * This means that any commands added to this State will be dropped.
+    */
   def reload: State
 
   /** Sets the next command processing action to be to rotate the global log and continue executing commands.*/
   def clearGlobalLog: State
+
   /** Sets the next command processing action to be to keep the previous log and continue executing commands.  */
   def keepLastLog: State
 
   /** Sets the next command processing action to be to exit with a zero exit code if `ok` is true and a nonzero exit code if `ok` if false.*/
   def exit(ok: Boolean): State
+
   /** Marks the currently executing command as failing.  This triggers failure handling by the command processor.  See also `State.onFailure`*/
   def fail: State
 
   /**
-   * Marks the currently executing command as failing due to the given exception.
-   * This displays the error appropriately and triggers failure handling by the command processor.
-   * Note that this does not throw an exception and returns normally.
-   * It is only once control is returned to the command processor that failure handling at the command level occurs.
-   */
+    * Marks the currently executing command as failing due to the given exception.
+    * This displays the error appropriately and triggers failure handling by the command processor.
+    * Note that this does not throw an exception and returns normally.
+    * It is only once control is returned to the command processor that failure handling at the command level occurs.
+    */
   def handleError(t: Throwable): State
 
   /** Registers `newCommands` as available commands. */
   def ++(newCommands: Seq[Command]): State
+
   /** Registers `newCommand` as an available command. */
   def +(newCommand: Command): State
 
   /** Gets the value associated with `key` from the custom attributes map.*/
   def get[T](key: AttributeKey[T]): Option[T]
+
   /** Sets the value associated with `key` in the custom attributes map.*/
   def put[T](key: AttributeKey[T], value: T): State
+
   /** Removes the `key` and any associated value from the custom attributes map.*/
   def remove(key: AttributeKey[_]): State
+
   /** Sets the value associated with `key` in the custom attributes map by transforming the current value.*/
   def update[T](key: AttributeKey[T])(f: Option[T] => T): State
+
   /** Returns true if `key` exists in the custom attributes map, false if it does not exist.*/
   def has(key: AttributeKey[_]): Boolean
 
@@ -117,11 +124,13 @@ trait StateOps {
 
   /** Runs any defined exitHooks and then clears them.*/
   def runExitHooks(): State
+
   /** Registers a new exit hook, which will run when sbt exits or restarts.*/
   def addExitHook(f: => Unit): State
 
   /** An advisory flag that is `true` if this application will execute commands based on user input.*/
   def interactive: Boolean
+
   /** Changes the advisory `interactive` flag. */
   def setInteractive(flag: Boolean): State
 
@@ -133,46 +142,52 @@ trait StateOps {
 }
 
 object State {
+
   /** Indicates where command execution should resume after a failure.*/
   val FailureWall = BasicCommandStrings.FailureWall
 
   /** Represents the next action for the command processor.*/
   sealed trait Next
+
   /** Indicates that the command processor should process the next command.*/
   object Continue extends Next
+
   /** Indicates that the application should exit with the given result.*/
   final class Return(val result: xsbti.MainResult) extends Next
+
   /** Indicates that global logging should be rotated.*/
   final object ClearGlobalLog extends Next
+
   /** Indicates that the previous log file should be preserved instead of discarded.*/
   final object KeepLastLog extends Next
 
   /**
-   * Provides a list of recently executed commands.  The commands are stored as processed instead of as entered by the user.
-   * @param executed the list of the most recently executed commands, with the most recent command first.
-   * @param maxSize the maximum number of commands to keep, or 0 to keep an unlimited number.
-   */
+    * Provides a list of recently executed commands.  The commands are stored as processed instead of as entered by the user.
+    * @param executed the list of the most recently executed commands, with the most recent command first.
+    * @param maxSize the maximum number of commands to keep, or 0 to keep an unlimited number.
+    */
   final class History private[State] (val executed: Seq[String], val maxSize: Int) {
+
     /** Adds `command` as the most recently executed command.*/
-    def ::(command: String): History =
-      {
-        val prependTo = if (maxSize > 0 && executed.size >= maxSize) executed.take(maxSize - 1) else executed
-        new History(command +: prependTo, maxSize)
-      }
+    def ::(command: String): History = {
+      val prependTo = if (maxSize > 0 && executed.size >= maxSize) executed.take(maxSize - 1) else executed
+      new History(command +: prependTo, maxSize)
+    }
+
     /** Changes the maximum number of commands kept, adjusting the current history if necessary.*/
     def setMaxSize(size: Int): History =
       new History(if (size <= 0) executed else executed.take(size), size)
     def current: String = executed.head
     def previous: Option[String] = executed.drop(1).headOption
   }
+
   /** Constructs an empty command History with a default, finite command limit.*/
   def newHistory = new History(Vector.empty, complete.HistoryCommands.MaxLines)
 
-  def defaultReload(state: State): Reboot =
-    {
-      val app = state.configuration.provider
-      new Reboot(app.scalaProvider.version, state.remainingCommands, app.id, state.configuration.baseDirectory)
-    }
+  def defaultReload(state: State): Reboot = {
+    val app = state.configuration.provider
+    new Reboot(app.scalaProvider.version, state.remainingCommands, app.id, state.configuration.baseDirectory)
+  }
 
   /** Provides operations and transformations on State. */
   implicit def stateOps(s: State): StateOps = new StateOps {
@@ -190,13 +205,18 @@ object State {
     }
     def :::(newCommands: Seq[String]): State = s.copy(remainingCommands = newCommands ++ s.remainingCommands)
     def ::(command: String): State = (command :: Nil) ::: this
-    def ++(newCommands: Seq[Command]): State = s.copy(definedCommands = (s.definedCommands ++ newCommands).distinct)
+    def ++(newCommands: Seq[Command]): State =
+      s.copy(definedCommands = (s.definedCommands ++ newCommands).distinct)
     def +(newCommand: Command): State = this ++ (newCommand :: Nil)
     def baseDir: File = s.configuration.baseDirectory
     def setNext(n: Next) = s.copy(next = n)
-    def setResult(ro: Option[xsbti.MainResult]) = ro match { case None => continue; case Some(r) => setNext(new Return(r)) }
+    def setResult(ro: Option[xsbti.MainResult]) = ro match {
+      case None => continue; case Some(r) => setNext(new Return(r))
+    }
     def continue = setNext(Continue)
-    def reboot(full: Boolean) = { runExitHooks(); throw new xsbti.FullReload(s.remainingCommands.toArray, full) }
+    def reboot(full: Boolean) = {
+      runExitHooks(); throw new xsbti.FullReload(s.remainingCommands.toArray, full)
+    }
     def reload = runExitHooks().setNext(new Return(defaultReload(s)))
     def clearGlobalLog = setNext(ClearGlobalLog)
     def keepLastLog = setNext(KeepLastLog)
@@ -208,15 +228,14 @@ object State {
     def remove(key: AttributeKey[_]) = s.copy(attributes = s.attributes remove key)
     def log = s.globalLogging.full
     def handleError(t: Throwable): State = handleException(t, s, log)
-    def fail =
-      {
-        import BasicCommandStrings.Compat.{ FailureWall => CompatFailureWall }
-        val remaining = s.remainingCommands.dropWhile(c => c != FailureWall && c != CompatFailureWall)
-        if (remaining.isEmpty)
-          applyOnFailure(s, Nil, exit(ok = false))
-        else
-          applyOnFailure(s, remaining, s.copy(remainingCommands = remaining))
-      }
+    def fail = {
+      import BasicCommandStrings.Compat.{ FailureWall => CompatFailureWall }
+      val remaining = s.remainingCommands.dropWhile(c => c != FailureWall && c != CompatFailureWall)
+      if (remaining.isEmpty)
+        applyOnFailure(s, Nil, exit(ok = false))
+      else
+        applyOnFailure(s, remaining, s.copy(remainingCommands = remaining))
+    }
     private[this] def applyOnFailure(s: State, remaining: Seq[String], noHandler: => State): State =
       s.onFailure match {
         case Some(c) => s.copy(remainingCommands = c +: remaining, onFailure = None)
@@ -235,22 +254,23 @@ object State {
     def interactive = getBoolean(s, BasicKeys.interactive, false)
     def setInteractive(i: Boolean) = s.put(BasicKeys.interactive, i)
 
-    def classLoaderCache: classpath.ClassLoaderCache = s get BasicKeys.classLoaderCache getOrElse newClassLoaderCache
+    def classLoaderCache: classpath.ClassLoaderCache =
+      s get BasicKeys.classLoaderCache getOrElse newClassLoaderCache
     def initializeClassLoaderCache = s.put(BasicKeys.classLoaderCache, newClassLoaderCache)
-    private[this] def newClassLoaderCache = new classpath.ClassLoaderCache(s.configuration.provider.scalaProvider.launcher.topLoader)
+    private[this] def newClassLoaderCache =
+      new classpath.ClassLoaderCache(s.configuration.provider.scalaProvider.launcher.topLoader)
   }
 
   import ExceptionCategory._
 
-  private[sbt] def handleException(t: Throwable, s: State, log: Logger): State =
-    {
-      ExceptionCategory(t) match {
-        case AlreadyHandled => ()
-        case m: MessageOnly => log.error(m.message)
-        case f: Full        => logFullException(f.exception, log)
-      }
-      s.fail
+  private[sbt] def handleException(t: Throwable, s: State, log: Logger): State = {
+    ExceptionCategory(t) match {
+      case AlreadyHandled => ()
+      case m: MessageOnly => log.error(m.message)
+      case f: Full        => logFullException(f.exception, log)
     }
+    s.fail
+  }
   private[sbt] def logFullException(e: Throwable, log: Logger): Unit = {
     log.trace(e)
     log.error(ErrorHandling reducedToString e)

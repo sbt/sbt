@@ -26,12 +26,14 @@ object TokenCompletions {
   def displayOnly(msg: String): TokenCompletions = new Fixed {
     def completions(seen: String, level: Int) = Completions.single(displayStrict(msg))
   }
-  def overrideDisplay(msg: String): TokenCompletions = mapDelegateCompletions((seen, level, c) => tokenDisplay(display = msg, append = c.append))
+  def overrideDisplay(msg: String): TokenCompletions =
+    mapDelegateCompletions((seen, level, c) => tokenDisplay(display = msg, append = c.append))
 
   def fixed(f: (String, Int) => Completions): TokenCompletions = new Fixed {
     def completions(seen: String, level: Int) = f(seen, level)
   }
   def mapDelegateCompletions(f: (String, Int, Completion) => Completion): TokenCompletions = new Delegating {
-    def completions(seen: String, level: Int, delegate: Completions) = Completions(delegate.get.map(c => f(seen, level, c)))
+    def completions(seen: String, level: Int, delegate: Completions) =
+      Completions(delegate.get.map(c => f(seen, level, c)))
   }
 }

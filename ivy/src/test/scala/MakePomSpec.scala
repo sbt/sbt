@@ -70,4 +70,3 @@ class MakePomSpec extends Specification {
       case e: Throwable => success
     }
 }
-

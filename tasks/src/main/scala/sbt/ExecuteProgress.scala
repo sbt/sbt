@@ -1,52 +1,52 @@
 package sbt
 
 /**
- * Processes progress events during task execution.
- * All methods are called from the same thread except `started` and `finished`,
- * which is called from the executing task's thread.
- * All methods should return quickly to avoid task execution overhead.
- *
- * This class is experimental and subject to binary and source incompatible changes at any time.
- */
+  * Processes progress events during task execution.
+  * All methods are called from the same thread except `started` and `finished`,
+  * which is called from the executing task's thread.
+  * All methods should return quickly to avoid task execution overhead.
+  *
+  * This class is experimental and subject to binary and source incompatible changes at any time.
+  */
 private[sbt] trait ExecuteProgress[A[_]] {
   type S
   def initial: S
 
   /**
-   * Notifies that a `task` has been registered in the system for execution.
-   * The dependencies of `task` are `allDeps` and the subset of those dependencies that
-   * have not completed are `pendingDeps`.
-   */
+    * Notifies that a `task` has been registered in the system for execution.
+    * The dependencies of `task` are `allDeps` and the subset of those dependencies that
+    * have not completed are `pendingDeps`.
+    */
   def registered(state: S, task: A[_], allDeps: Iterable[A[_]], pendingDeps: Iterable[A[_]]): S
 
   /**
-   * Notifies that all of the dependencies of `task` have completed and `task` is therefore
-   * ready to run.  The task has not been scheduled on a thread yet.
-   */
+    * Notifies that all of the dependencies of `task` have completed and `task` is therefore
+    * ready to run.  The task has not been scheduled on a thread yet.
+    */
   def ready(state: S, task: A[_]): S
 
   /**
-   * Notifies that the work for `task` is starting after this call returns.
-   * This is called from the thread the task executes on, unlike most other methods in this callback.
-   * It is called immediately before the task's work starts with minimal intervening executor overhead.
-   */
+    * Notifies that the work for `task` is starting after this call returns.
+    * This is called from the thread the task executes on, unlike most other methods in this callback.
+    * It is called immediately before the task's work starts with minimal intervening executor overhead.
+    */
   def workStarting(task: A[_]): Unit
 
   /**
-   * Notifies that the work for `task` work has finished.  The task may have computed the next task to
-   * run, in which case `result` contains that next task wrapped in Left.  If the task produced a value
-   * or terminated abnormally, `result` provides that outcome wrapped in Right.  The ultimate result of
-   * a task is provided to the `completed` method.
-   * This is called from the thread the task executes on, unlike most other methods in this callback.
-   * It is immediately called after the task's work is complete with minimal intervening executor overhead.
-   */
+    * Notifies that the work for `task` work has finished.  The task may have computed the next task to
+    * run, in which case `result` contains that next task wrapped in Left.  If the task produced a value
+    * or terminated abnormally, `result` provides that outcome wrapped in Right.  The ultimate result of
+    * a task is provided to the `completed` method.
+    * This is called from the thread the task executes on, unlike most other methods in this callback.
+    * It is immediately called after the task's work is complete with minimal intervening executor overhead.
+    */
   def workFinished[T](task: A[T], result: Either[A[T], Result[T]]): Unit
 
   /**
-   * Notifies that `task` has completed.
-   * The task's work is done with a final `result`.
-   * Any tasks called by `task` have completed.
-   */
+    * Notifies that `task` has completed.
+    * The task's work is done with a final `result`.
+    * Any tasks called by `task` have completed.
+    */
   def completed[T](state: S, task: A[T], result: Result[T]): S
 
   /** All tasks have completed with the final `results` provided. */

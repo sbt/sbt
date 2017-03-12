@@ -6,21 +6,21 @@ import org.eclipse.aether.repository.RemoteRepository
 import org.eclipse.aether.spi.connector.transport._
 
 /**
- * A bridge file transportation protocol which uses some Ivy/sbt mechanisms.
- */
+  * A bridge file transportation protocol which uses some Ivy/sbt mechanisms.
+  */
 class FileTransport(repository: RemoteRepository) extends AbstractTransporter {
   class NotFoundException(msg: String) extends Exception(msg)
   private def toURL(task: TransportTask): java.net.URL =
     try new java.net.URL(s"${repository.getUrl}/${task.getLocation.toASCIIString}")
     catch {
-      case e: IllegalArgumentException => throw new IllegalArgumentException(s" URL (${task.getLocation}) is not absolute.")
+      case e: IllegalArgumentException =>
+        throw new IllegalArgumentException(s" URL (${task.getLocation}) is not absolute.")
     }
   private def toResource(task: TransportTask): Resource = new URLResource(toURL(task))
   private def toFile(task: TransportTask): java.io.File =
     new java.io.File(toURL(task).toURI)
-  override def implPeek(peek: PeekTask): Unit = {
+  override def implPeek(peek: PeekTask): Unit =
     if (!toFile(peek).exists()) throw new NotFoundException(s"Could not find ${peek.getLocation}")
-  }
   override def implClose(): Unit = ()
   override def implGet(out: GetTask): Unit = {
     val from = toFile(out)

@@ -15,8 +15,11 @@ trait BaseIvySpecification extends Specification {
   lazy val log = ConsoleLogger()
 
   def configurations = Seq(Compile, Test, Runtime)
-  def module(moduleId: ModuleID, deps: Seq[ModuleID], scalaFullVersion: Option[String],
-    uo: UpdateOptions = UpdateOptions(), overrideScalaVersion: Boolean = true): IvySbt#Module = {
+  def module(moduleId: ModuleID,
+             deps: Seq[ModuleID],
+             scalaFullVersion: Option[String],
+             uo: UpdateOptions = UpdateOptions(),
+             overrideScalaVersion: Boolean = true): IvySbt#Module = {
     val ivyScala = scalaFullVersion map { fv =>
       new IvyScala(
         scalaFullVersion = fv,
@@ -24,7 +27,8 @@ trait BaseIvySpecification extends Specification {
         configurations = Nil,
         checkExplicit = true,
         filterImplicit = false,
-        overrideScalaVersion = overrideScalaVersion)
+        overrideScalaVersion = overrideScalaVersion
+      )
     }
 
     val moduleSetting: ModuleSettings = InlineConfiguration(
@@ -32,7 +36,8 @@ trait BaseIvySpecification extends Specification {
       moduleInfo = ModuleInfo("foo"),
       dependencies = deps,
       configurations = configurations,
-      ivyScala = ivyScala)
+      ivyScala = ivyScala
+    )
     val ivySbt = new IvySbt(mkIvyConfiguration(uo))
     new ivySbt.Module(moduleSetting)
   }
@@ -48,19 +53,38 @@ trait BaseIvySpecification extends Specification {
     val off = false
     val check = Nil
     val resCacheDir = currentTarget / "resolution-cache"
-    new InlineIvyConfiguration(paths, resolvers, other, moduleConfs, off, None, check, Some(resCacheDir), uo, log)
+    new InlineIvyConfiguration(
+      paths,
+      resolvers,
+      other,
+      moduleConfs,
+      off,
+      None,
+      check,
+      Some(resCacheDir),
+      uo,
+      log
+    )
   }
 
   def ivyUpdateEither(module: IvySbt#Module): Either[UnresolvedWarning, UpdateReport] = {
     // IO.delete(currentTarget)
     val retrieveConfig = new RetrieveConfiguration(currentManaged, Resolver.defaultRetrievePattern, false)
     val config = new UpdateConfiguration(Some(retrieveConfig), false, UpdateLogging.Full)
-    IvyActions.updateEither(module, config, UnresolvedWarningConfiguration(), LogicalClock.unknown, Some(currentDependency), log)
+    IvyActions.updateEither(
+      module,
+      config,
+      UnresolvedWarningConfiguration(),
+      LogicalClock.unknown,
+      Some(currentDependency),
+      log
+    )
   }
 
   def cleanIvyCache(): Unit = IO.delete(currentTarget / "cache")
 
-  def cleanCachedResolutionCache(module: IvySbt#Module): Unit = IvyActions.cleanCachedResolutionCache(module, log)
+  def cleanCachedResolutionCache(module: IvySbt#Module): Unit =
+    IvyActions.cleanCachedResolutionCache(module, log)
 
   def ivyUpdate(module: IvySbt#Module) =
     ivyUpdateEither(module) match {
@@ -69,17 +93,16 @@ trait BaseIvySpecification extends Specification {
         throw w.resolveException
     }
 
-  def mkPublishConfiguration(resolver: Resolver, artifacts: Map[Artifact, File]): PublishConfiguration = {
+  def mkPublishConfiguration(resolver: Resolver, artifacts: Map[Artifact, File]): PublishConfiguration =
     new PublishConfiguration(
       ivyFile = None,
       resolverName = resolver.name,
       artifacts = artifacts,
       checksums = Seq(),
       logging = UpdateLogging.Full,
-      overwrite = true)
-  }
+      overwrite = true
+    )
 
-  def ivyPublish(module: IvySbt#Module, config: PublishConfiguration) = {
+  def ivyPublish(module: IvySbt#Module, config: PublishConfiguration) =
     IvyActions.publish(module, config, log)
-  }
 }

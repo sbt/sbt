@@ -55,11 +55,10 @@ object CheckStash extends Specification {
     }
 
   def allCorrect(s: Seq[File]) = (s.toList zip TestFiles.toList).foreach((correct _).tupled)
-  def correct(check: File, ref: (File, String)) =
-    {
-      check.exists must beTrue
-      read(check) must equalTo(ref._2)
-    }
+  def correct(check: File, ref: (File, String)) = {
+    check.exists must beTrue
+    read(check) must equalTo(ref._2)
+  }
   def noneExist(s: Seq[File]) = s.forall(!_.exists) must beTrue
 
   lazy val TestFiles =
@@ -70,8 +69,8 @@ object CheckStash extends Specification {
       "e/g" -> "asdf",
       "a/g/c" -> "other"
     ) map {
-        case (f, c) => (new File(f), c)
-      }
+      case (f, c) => (new File(f), c)
+    }
 }
 class TestError extends Error
 class TestRuntimeException extends RuntimeException

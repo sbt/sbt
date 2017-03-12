@@ -16,7 +16,8 @@ class SplitExpressionsFilesTest extends AbstractSplitExpressionsFilesTest("/old-
 
 abstract class AbstractSplitExpressionsFilesTest(pathName: String) extends Specification {
 
-  case class SplitterComparison(oldSplitterResult: util.Try[(Seq[(String, Int)], Seq[LineRange])], newSplitterResult: util.Try[(Seq[(String, Int)], Seq[LineRange])])
+  case class SplitterComparison(oldSplitterResult: util.Try[(Seq[(String, Int)], Seq[LineRange])],
+                                newSplitterResult: util.Try[(Seq[(String, Int)], Seq[LineRange])])
 
   val oldSplitter: SplitExpressions.SplitExpression = EvaluateConfigurationsOriginal.splitExpressions
   val newSplitter: SplitExpressions.SplitExpression = EvaluateConfigurations.splitExpressions
@@ -34,7 +35,10 @@ abstract class AbstractSplitExpressionsFilesTest(pathName: String) extends Speci
       val results = for {
         path <- allFiles
         lines = Source.fromFile(path).getLines().toList
-        comparison = SplitterComparison(splitLines(path, oldSplitter, lines), splitLines(path, newSplitter, lines))
+        comparison = SplitterComparison(
+          splitLines(path, oldSplitter, lines),
+          splitLines(path, newSplitter, lines)
+        )
       } yield path -> comparison
 
       printResults(results)
@@ -58,7 +62,9 @@ abstract class AbstractSplitExpressionsFilesTest(pathName: String) extends Speci
   }
 
   @tailrec
-  private def removeSlashAsterisk(statements: Seq[String], lineRange: LineRange, reverted: Boolean): Option[(Seq[String], LineRange)] =
+  private def removeSlashAsterisk(statements: Seq[String],
+                                  lineRange: LineRange,
+                                  reverted: Boolean): Option[(Seq[String], LineRange)] =
     statements match {
       case statement +: _ =>
         val openSlashAsteriskIndex = statement.indexOf(START_COMMENT, 0)
@@ -82,11 +88,11 @@ abstract class AbstractSplitExpressionsFilesTest(pathName: String) extends Speci
     }
 
   /**
-   * Remove // and /* */
-   * @param statements - lines
-   * @param lineRange - LineRange
-   * @return (lines,lineRange) without comments
-   */
+    * Remove // and /* */
+    * @param statements - lines
+    * @param lineRange - LineRange
+    * @return (lines,lineRange) without comments
+    */
   def removeDoubleSlash(statements: Seq[String], lineRange: LineRange): Option[(Seq[String], LineRange)] = {
 
     @tailrec
@@ -112,7 +118,9 @@ abstract class AbstractSplitExpressionsFilesTest(pathName: String) extends Speci
     removeDoubleSlashReversed(statements.reverse, lineRange).map(t => (t._1.reverse, t._2))
   }
 
-  def splitLines(file: File, splitter: SplitExpressions.SplitExpression, lines: List[String]): util.Try[(Seq[(String, Int)], Seq[LineRange])] = {
+  def splitLines(file: File,
+                 splitter: SplitExpressions.SplitExpression,
+                 lines: List[String]): util.Try[(Seq[(String, Int)], Seq[LineRange])] =
     try {
       val (imports, settingsAndDefs) = splitter(file, lines)
 
@@ -126,9 +134,8 @@ abstract class AbstractSplitExpressionsFilesTest(pathName: String) extends Speci
       case e: Throwable =>
         util.Failure(e)
     }
-  }
 
-  def printResults(results: List[(File, SplitterComparison)]) = {
+  def printResults(results: List[(File, SplitterComparison)]) =
     for ((file, comparison) <- results) {
       val fileName = file.getName
       comparison match {
@@ -139,15 +146,13 @@ abstract class AbstractSplitExpressionsFilesTest(pathName: String) extends Speci
           ex.printStackTrace()
         case SplitterComparison(util.Success(resultOld), util.Success(resultNew)) =>
           if (resultOld != resultNew) {
-            println(
-              s"""In file: $fileName, results differ:
-                 |resultOld:
-                 |$resultOld
-                 |resultNew:
-                 |$resultNew""".stripMargin)
+            println(s"""In file: $fileName, results differ:
+                       |resultOld:
+                       |$resultOld
+                       |resultNew:
+                       |$resultNew""".stripMargin)
           }
       }
 
     }
-  }
 }

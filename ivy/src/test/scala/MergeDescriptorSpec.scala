@@ -14,15 +14,20 @@ class MergeDescriptorSpec extends BaseIvySpecification {
                                                                 """
 
   def guavaTest = ModuleID("com.google.guava", "guava-tests", "18.0", configurations = Some("compile"))
-  def guavaTestTests = ModuleID("com.google.guava", "guava-tests", "18.0", configurations = Some("test")).classifier("tests")
+  def guavaTestTests =
+    ModuleID("com.google.guava", "guava-tests", "18.0", configurations = Some("test")).classifier("tests")
   def defaultOptions = EvictionWarningOptions.default
 
   import ShowLines._
 
   def e1 = {
     cleanIvyCache()
-    val m = module(ModuleID("com.example", "foo", "0.1.0", Some("compile")),
-      Seq(guavaTest, guavaTestTests), None, UpdateOptions())
+    val m = module(
+      ModuleID("com.example", "foo", "0.1.0", Some("compile")),
+      Seq(guavaTest, guavaTestTests),
+      None,
+      UpdateOptions()
+    )
     m.withModule(log) {
       case (ivy, md, _) =>
         val deps = md.getDependencies

@@ -20,7 +20,8 @@ final class Analyzer(val global: CallbackGlobal) extends LocateClassFile {
 
   def newPhase(prev: Phase): Phase = new AnalyzerPhase(prev)
   private class AnalyzerPhase(prev: Phase) extends GlobalPhase(prev) {
-    override def description = "Finds concrete instances of provided superclasses, and application entry points."
+    override def description =
+      "Finds concrete instances of provided superclasses, and application entry points."
     def name = Analyzer.name
     def apply(unit: CompilationUnit) {
       if (!unit.isJava) {
@@ -28,10 +29,9 @@ final class Analyzer(val global: CallbackGlobal) extends LocateClassFile {
         // build list of generated classes
         for (iclass <- unit.icode) {
           val sym = iclass.symbol
-          def addGenerated(separatorRequired: Boolean): Unit = {
+          def addGenerated(separatorRequired: Boolean): Unit =
             for (classFile <- outputDirs map (fileForClass(_, sym, separatorRequired)) find (_.exists))
               callback.generatedClass(sourceFile, classFile, className(sym, '.', separatorRequired))
-          }
           if (sym.isModuleClass && !sym.isImplClass) {
             if (isTopLevelModule(sym) && sym.companionClass == NoSymbol)
               addGenerated(false)

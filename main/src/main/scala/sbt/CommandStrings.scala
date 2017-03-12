@@ -4,6 +4,7 @@
 package sbt
 
 object CommandStrings {
+
   /** The prefix used to identify a request to execute the remaining input on source changes.*/
   val AboutCommand = "about"
   val TasksCommand = "tasks"
@@ -15,7 +16,8 @@ object CommandStrings {
   val BootCommand = "boot"
 
   val EvalCommand = "eval"
-  val evalBrief = (EvalCommand + " <expression>", "Evaluates a Scala expression and prints the result and type.")
+  val evalBrief =
+    (EvalCommand + " <expression>", "Evaluates a Scala expression and prints the result and type.")
   val evalDetailed =
     EvalCommand + """ <expression>
 
@@ -94,46 +96,50 @@ $ShowCommand <task>
 """
 
   val InspectCommand = "inspect"
-  val inspectBrief = (InspectCommand + " [uses|tree|definitions] <key>", "Prints the value for 'key', the defining scope, delegates, related definitions, and dependencies.")
+  val inspectBrief = (
+    InspectCommand + " [uses|tree|definitions] <key>",
+    "Prints the value for 'key', the defining scope, delegates, related definitions, and dependencies."
+  )
   val inspectDetailed = s"""
-    |$InspectCommand <key>
-    |
-    |	For a plain setting, the value bound to the key argument is displayed using its toString method.
-    |	Otherwise, the type of task ("Task" or "Input task") is displayed.
-    |
-    |	"Dependencies" shows the settings that this setting depends on.
-    |
-    |	"Reverse dependencies" shows the settings that depend on this setting.
-    |
-    |	When a key is resolved to a value, it may not actually be defined in the requested scope.
-    |	In this case, there is a defined search sequence.
-    |	"Delegates" shows the scopes that are searched for the key.
-    |	"Provided by" shows the scope that contained the value returned for the key.
-    |
-    |	"Related" shows all of the scopes in which the key is defined.
-    |
-    |$InspectCommand tree <key>
-    |
-    |	Displays `key` and its dependencies in a tree structure.
-    |	For settings, the value bound to the setting is displayed and for tasks, the type of the task is shown.
-    |
-    |$InspectCommand uses <key>
-    |
-    |	Displays the settings and tasks that directly depend on `key`.
-    |
-    |$InspectCommand definitions <key>
-    |
-    |	Displays the scopes in which `key` is defined.
-    |
-    |$InspectCommand actual <key>
-    |
-    |	Displays the actual dependencies used by `key`.
-    |	This is useful because delegation means that a dependency can come from a scope other than the requested one.
-    |	Using `inspect actual` will show exactly which scope is providing a value for a setting.
+                           |$InspectCommand <key>
+                           |
+                           |	For a plain setting, the value bound to the key argument is displayed using its toString method.
+                           |	Otherwise, the type of task ("Task" or "Input task") is displayed.
+                           |
+                           |	"Dependencies" shows the settings that this setting depends on.
+                           |
+                           |	"Reverse dependencies" shows the settings that depend on this setting.
+                           |
+                           |	When a key is resolved to a value, it may not actually be defined in the requested scope.
+                           |	In this case, there is a defined search sequence.
+                           |	"Delegates" shows the scopes that are searched for the key.
+                           |	"Provided by" shows the scope that contained the value returned for the key.
+                           |
+                           |	"Related" shows all of the scopes in which the key is defined.
+                           |
+                           |$InspectCommand tree <key>
+                           |
+                           |	Displays `key` and its dependencies in a tree structure.
+                           |	For settings, the value bound to the setting is displayed and for tasks, the type of the task is shown.
+                           |
+                           |$InspectCommand uses <key>
+                           |
+                           |	Displays the settings and tasks that directly depend on `key`.
+                           |
+                           |$InspectCommand definitions <key>
+                           |
+                           |	Displays the scopes in which `key` is defined.
+                           |
+                           |$InspectCommand actual <key>
+                           |
+                           |	Displays the actual dependencies used by `key`.
+                           |	This is useful because delegation means that a dependency can come from a scope other than the requested one.
+                           |	Using `inspect actual` will show exactly which scope is providing a value for a setting.
   """.stripMargin.trim
 
   val SetCommand = "set"
-  val setBrief = (s"$SetCommand [every] <setting>", "Evaluates a Setting and applies it to the current project.")
+  val setBrief =
+    (s"$SetCommand [every] <setting>", "Evaluates a Setting and applies it to the current project.")
   val setDetailed =
     SetCommand + """ [every] <setting-expression>
 
@@ -152,13 +158,16 @@ $ShowCommand <task>
 """
 
   def SessionCommand = "session"
-  def sessionBrief = (SessionCommand, "Manipulates session settings.  For details, run 'help " + SessionCommand + "'.")
+  def sessionBrief =
+    (SessionCommand, "Manipulates session settings.  For details, run 'help " + SessionCommand + "'.")
 
   def settingsPreamble = commonPreamble("settings")
-  def tasksPreamble = commonPreamble("tasks") + """
+  def tasksPreamble =
+    commonPreamble("tasks") + """
 Tasks produce values.  Use the 'show' command to run the task and print the resulting value."""
 
-  def commonPreamble(label: String) = """
+  def commonPreamble(label: String) =
+    """
 This is a list of %s defined for the current project.
 It does not list the scopes the %<s are defined in; use the 'inspect' command for that.""".format(label)
 
@@ -182,7 +191,12 @@ Syntax summary
 """.format(label, BasicCommandStrings.HelpCommand)
 
   def moreAvailableMessage(label: String, search: Boolean) =
-    "More %s may be %s by increasing verbosity.  See '%s %s'.\n".format(label, if (search) "searched" else "viewed", BasicCommandStrings.HelpCommand, label)
+    "More %s may be %s by increasing verbosity.  See '%s %s'.\n".format(
+      label,
+      if (search) "searched" else "viewed",
+      BasicCommandStrings.HelpCommand,
+      label
+    )
 
   def aboutBrief = "Displays basic information about sbt and the build."
   def aboutDetailed = aboutBrief
@@ -221,7 +235,8 @@ Syntax summary
 	Use n+1 dots to change to the nth parent.
 	For example, 'project ....' is equivalent to three consecutive 'project ..' commands."""
 
-  def projectsBrief = "Lists the names of available projects or temporarily adds/removes extra builds to the session."
+  def projectsBrief =
+    "Lists the names of available projects or temporarily adds/removes extra builds to the session."
   def projectsDetailed =
     ProjectsCommand + """
 	List the names of available builds and the projects defined in those builds.
@@ -251,9 +266,11 @@ Syntax summary
 
   def LoadProjectImpl = "loadp"
   def LoadProject = "reload"
-  def LoadProjectBrief = (LoadProject, "(Re)loads the current project or changes to plugins project or returns from it.")
-  def LoadProjectDetailed = LoadProject +
-    s"""
+  def LoadProjectBrief =
+    (LoadProject, "(Re)loads the current project or changes to plugins project or returns from it.")
+  def LoadProjectDetailed =
+    LoadProject +
+      s"""
 
 \t(Re)loads the project in the current directory.
 

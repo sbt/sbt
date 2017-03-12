@@ -6,22 +6,27 @@ package sbt
 import java.io.{ File, PrintWriter }
 
 /**
- * Provides the current global logging configuration.
- *
- * `full` is the current global logger.  It should not be set directly because it is generated as needed from `backing.newLogger`.
- * `console` is where all logging from all ConsoleLoggers should go.
- * `backed` is the Logger that other loggers should feed into.
- * `backing` tracks the files that persist the global logging.
- * `newLogger` creates a new global logging configuration from a sink and backing configuration.
- */
-final case class GlobalLogging(full: Logger, console: ConsoleOut, backed: AbstractLogger, backing: GlobalLogBacking, newLogger: (PrintWriter, GlobalLogBacking) => GlobalLogging)
+  * Provides the current global logging configuration.
+  *
+  * `full` is the current global logger.  It should not be set directly because it is generated as needed from `backing.newLogger`.
+  * `console` is where all logging from all ConsoleLoggers should go.
+  * `backed` is the Logger that other loggers should feed into.
+  * `backing` tracks the files that persist the global logging.
+  * `newLogger` creates a new global logging configuration from a sink and backing configuration.
+  */
+final case class GlobalLogging(full: Logger,
+                               console: ConsoleOut,
+                               backed: AbstractLogger,
+                               backing: GlobalLogBacking,
+                               newLogger: (PrintWriter, GlobalLogBacking) => GlobalLogging)
 
 /**
- * Tracks the files that persist the global logging.
- * `file` is the current backing file.  `last` is the previous backing file, if there is one.
- * `newBackingFile` creates a new temporary location for the next backing file.
- */
+  * Tracks the files that persist the global logging.
+  * `file` is the current backing file.  `last` is the previous backing file, if there is one.
+  * `newBackingFile` creates a new temporary location for the next backing file.
+  */
 final case class GlobalLogBacking(file: File, last: Option[File], newBackingFile: () => File) {
+
   /** Shifts the current backing file to `last` and sets the current backing to `newFile`. */
   def shift(newFile: File) = GlobalLogBacking(newFile, Some(file), newBackingFile)
 
@@ -29,18 +34,20 @@ final case class GlobalLogBacking(file: File, last: Option[File], newBackingFile
   def shiftNew() = shift(newBackingFile())
 
   /**
-   * If there is a previous backing file in `last`, that becomes the current backing file and the previous backing is cleared.
-   * Otherwise, no changes are made.
-   */
+    * If there is a previous backing file in `last`, that becomes the current backing file and the previous backing is cleared.
+    * Otherwise, no changes are made.
+    */
   def unshift = GlobalLogBacking(last getOrElse file, None, newBackingFile)
 }
 object GlobalLogBacking {
-  def apply(newBackingFile: => File): GlobalLogBacking = GlobalLogBacking(newBackingFile, None, newBackingFile _)
+  def apply(newBackingFile: => File): GlobalLogBacking =
+    GlobalLogBacking(newBackingFile, None, newBackingFile _)
 }
 object GlobalLogging {
-  def initial(newLogger: (PrintWriter, GlobalLogBacking) => GlobalLogging, newBackingFile: => File, console: ConsoleOut): GlobalLogging =
-    {
-      val log = ConsoleLogger(console)
-      GlobalLogging(log, console, log, GlobalLogBacking(newBackingFile), newLogger)
-    }
+  def initial(newLogger: (PrintWriter, GlobalLogBacking) => GlobalLogging,
+              newBackingFile: => File,
+              console: ConsoleOut): GlobalLogging = {
+    val log = ConsoleLogger(console)
+    GlobalLogging(log, console, log, GlobalLogBacking(newBackingFile), newLogger)
+  }
 }

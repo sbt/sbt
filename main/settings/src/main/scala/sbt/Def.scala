@@ -3,7 +3,7 @@ package sbt
 import Types.const
 import complete.Parser
 import java.io.File
-import Scope.{ ThisScope, GlobalScope }
+import Scope.{ GlobalScope, ThisScope }
 import KeyRanks.{ DTask, Invisible }
 
 /** A concrete settings system that uses `sbt.Scope` for the scope type. */
@@ -14,16 +14,27 @@ object Def extends Init[Scope] with TaskMacroExtra {
 
   val triggeredBy = AttributeKey[Seq[Task[_]]]("triggered-by")
   val runBefore = AttributeKey[Seq[Task[_]]]("run-before")
-  val resolvedScoped = SettingKey[ScopedKey[_]]("resolved-scoped", "The ScopedKey for the referencing setting or task.", KeyRanks.DSetting)
-  private[sbt] val taskDefinitionKey = AttributeKey[ScopedKey[_]]("task-definition-key", "Internal: used to map a task back to its ScopedKey.", Invisible)
+  val resolvedScoped = SettingKey[ScopedKey[_]](
+    "resolved-scoped",
+    "The ScopedKey for the referencing setting or task.",
+    KeyRanks.DSetting
+  )
+  private[sbt] val taskDefinitionKey = AttributeKey[ScopedKey[_]](
+    "task-definition-key",
+    "Internal: used to map a task back to its ScopedKey.",
+    Invisible
+  )
 
   lazy val showFullKey: Show[ScopedKey[_]] = showFullKey(None)
   def showFullKey(keyNameColor: Option[String]): Show[ScopedKey[_]] =
     new Show[ScopedKey[_]] { def apply(key: ScopedKey[_]) = displayFull(key, keyNameColor) }
 
-  def showRelativeKey(current: ProjectRef, multi: Boolean, keyNameColor: Option[String] = None): Show[ScopedKey[_]] = new Show[ScopedKey[_]] {
+  def showRelativeKey(current: ProjectRef,
+                      multi: Boolean,
+                      keyNameColor: Option[String] = None): Show[ScopedKey[_]] = new Show[ScopedKey[_]] {
     def apply(key: ScopedKey[_]) =
-      Scope.display(key.scope, colored(key.key.label, keyNameColor), ref => displayRelative(current, multi, ref))
+      Scope
+        .display(key.scope, colored(key.key.label, keyNameColor), ref => displayRelative(current, multi, ref))
   }
   def displayRelative(current: ProjectRef, multi: Boolean, project: Reference): String = project match {
     case BuildRef(current.build)      => "{.}/"
@@ -32,8 +43,10 @@ object Def extends Init[Scope] with TaskMacroExtra {
     case _                            => Reference.display(project) + "/"
   }
   def displayFull(scoped: ScopedKey[_]): String = displayFull(scoped, None)
-  def displayFull(scoped: ScopedKey[_], keyNameColor: Option[String]): String = Scope.display(scoped.scope, colored(scoped.key.label, keyNameColor))
-  def displayMasked(scoped: ScopedKey[_], mask: ScopeMask): String = Scope.displayMasked(scoped.scope, scoped.key.label, mask)
+  def displayFull(scoped: ScopedKey[_], keyNameColor: Option[String]): String =
+    Scope.display(scoped.scope, colored(scoped.key.label, keyNameColor))
+  def displayMasked(scoped: ScopedKey[_], mask: ScopeMask): String =
+    Scope.displayMasked(scoped.scope, scoped.key.label, mask)
 
   def colored(s: String, color: Option[String]): String = color match {
     case Some(c) => c + s + scala.Console.RESET
@@ -43,7 +56,9 @@ object Def extends Init[Scope] with TaskMacroExtra {
   override def deriveAllowed[T](s: Setting[T], allowDynamic: Boolean): Option[String] =
     super.deriveAllowed(s, allowDynamic) orElse
       (if (s.key.scope != ThisScope) Some(s"Scope cannot be defined for ${definedSettingString(s)}") else None) orElse
-      s.dependencies.find(k => k.scope != ThisScope).map(k => s"Scope cannot be defined for dependency ${k.key.label} of ${definedSettingString(s)}")
+      s.dependencies
+        .find(k => k.scope != ThisScope)
+        .map(k => s"Scope cannot be defined for dependency ${k.key.label} of ${definedSettingString(s)}")
 
   override def intersect(s1: Scope, s2: Scope)(implicit delegates: Scope => Seq[Scope]): Option[Scope] =
     if (s2 == GlobalScope) Some(s1) // s1 is more specific
@@ -56,10 +71,11 @@ object Def extends Init[Scope] with TaskMacroExtra {
     s.positionString match { case None => ""; case Some(pos) => s" defined at $pos" }
 
   /**
-   * A default Parser for splitting input into space-separated arguments.
-   * `argLabel` is an optional, fixed label shown for an argument during tab completion.
-   */
-  def spaceDelimited(argLabel: String = "<arg>"): Parser[Seq[String]] = complete.Parsers.spaceDelimited(argLabel)
+    * A default Parser for splitting input into space-separated arguments.
+    * `argLabel` is an optional, fixed label shown for an argument during tab completion.
+    */
+  def spaceDelimited(argLabel: String = "<arg>"): Parser[Seq[String]] =
+    complete.Parsers.spaceDelimited(argLabel)
 
   /** Lifts the result of a setting initialization into a Task. */
   def toITask[T](i: Initialize[T]): Initialize[Task[T]] = map(i)(std.TaskExtra.inlineTask)
@@ -69,16 +85,17 @@ object Def extends Init[Scope] with TaskMacroExtra {
   def toIParser[T](p: Initialize[InputTask[T]]): Initialize[State => Parser[Task[T]]] = p(_.parser)
 
   import language.experimental.macros
-  import std.TaskMacro.{ inputTaskMacroImpl, inputTaskDynMacroImpl, taskDynMacroImpl, taskMacroImpl }
+  import std.TaskMacro.{ inputTaskDynMacroImpl, inputTaskMacroImpl, taskDynMacroImpl, taskMacroImpl }
   import std.SettingMacro.{ settingDynMacroImpl, settingMacroImpl }
-  import std.{ InputEvaluated, MacroPrevious, MacroValue, MacroTaskValue, ParserInput }
+  import std.{ InputEvaluated, MacroPrevious, MacroTaskValue, MacroValue, ParserInput }
 
   def task[T](t: T): Def.Initialize[Task[T]] = macro taskMacroImpl[T]
   def taskDyn[T](t: Def.Initialize[Task[T]]): Def.Initialize[Task[T]] = macro taskDynMacroImpl[T]
   def setting[T](t: T): Def.Initialize[T] = macro settingMacroImpl[T]
   def settingDyn[T](t: Def.Initialize[T]): Def.Initialize[T] = macro settingDynMacroImpl[T]
   def inputTask[T](t: T): Def.Initialize[InputTask[T]] = macro inputTaskMacroImpl[T]
-  def inputTaskDyn[T](t: Def.Initialize[Task[T]]): Def.Initialize[InputTask[T]] = macro inputTaskDynMacroImpl[T]
+  def inputTaskDyn[T](t: Def.Initialize[Task[T]]): Def.Initialize[InputTask[T]] =
+    macro inputTaskDynMacroImpl[T]
 
   // The following conversions enable the types Initialize[T], Initialize[Task[T]], and Task[T] to
   //  be used in task and setting macros as inputs with an ultimate result of type T
@@ -99,17 +116,25 @@ object Def extends Init[Scope] with TaskMacroExtra {
   def taskKey[T](description: String): TaskKey[T] = macro std.KeyMacro.taskKeyImpl[T]
   def inputKey[T](description: String): InputKey[T] = macro std.KeyMacro.inputKeyImpl[T]
 
-  private[sbt] def dummy[T: Manifest](name: String, description: String): (TaskKey[T], Task[T]) = (TaskKey[T](name, description, DTask), dummyTask(name))
-  private[sbt] def dummyTask[T](name: String): Task[T] =
-    {
-      import std.TaskExtra.{ task => newTask, _ }
-      val base: Task[T] = newTask(sys.error("Dummy task '" + name + "' did not get converted to a full task.")) named name
-      base.copy(info = base.info.set(isDummyTask, true))
-    }
+  private[sbt] def dummy[T: Manifest](name: String, description: String): (TaskKey[T], Task[T]) =
+    (TaskKey[T](name, description, DTask), dummyTask(name))
+  private[sbt] def dummyTask[T](name: String): Task[T] = {
+    import std.TaskExtra.{ task => newTask, _ }
+    val base
+      : Task[T] = newTask(sys.error("Dummy task '" + name + "' did not get converted to a full task.")) named name
+    base.copy(info = base.info.set(isDummyTask, true))
+  }
   private[sbt] def isDummy(t: Task[_]): Boolean = t.info.attributes.get(isDummyTask) getOrElse false
-  private[sbt] val isDummyTask = AttributeKey[Boolean]("is-dummy-task", "Internal: used to identify dummy tasks.  sbt injects values for these tasks at the start of task execution.", Invisible)
+  private[sbt] val isDummyTask = AttributeKey[Boolean](
+    "is-dummy-task",
+    "Internal: used to identify dummy tasks.  sbt injects values for these tasks at the start of task execution.",
+    Invisible
+  )
   private[sbt] val (stateKey, dummyState) = dummy[State]("state", "Current build state.")
-  private[sbt] val (streamsManagerKey, dummyStreamsManager) = Def.dummy[std.Streams[ScopedKey[_]]]("streams-manager", "Streams manager, which provides streams for different contexts.")
+  private[sbt] val (streamsManagerKey, dummyStreamsManager) = Def.dummy[std.Streams[ScopedKey[_]]](
+    "streams-manager",
+    "Streams manager, which provides streams for different contexts."
+  )
 }
 // these need to be mixed into the sbt package object because the target doesn't involve Initialize or anything in Def
 trait TaskMacroExtra {

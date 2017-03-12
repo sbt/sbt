@@ -12,12 +12,12 @@ class HttpTransport(repository: RemoteRepository) extends AbstractTransporter {
   private def toURL(task: TransportTask): java.net.URL =
     try new java.net.URL(s"${repository.getUrl}/${task.getLocation.toASCIIString}")
     catch {
-      case e: IllegalArgumentException => throw new IllegalArgumentException(s" URL (${task.getLocation}) is not absolute.")
+      case e: IllegalArgumentException =>
+        throw new IllegalArgumentException(s" URL (${task.getLocation}) is not absolute.")
     }
   private def toResource(task: TransportTask): Resource = new URLResource(toURL(task))
-  override def implPeek(peek: PeekTask): Unit = {
+  override def implPeek(peek: PeekTask): Unit =
     if (!toResource(peek).exists()) throw new NotFoundException(s"Could not find ${peek.getLocation}")
-  }
   override def implClose(): Unit = ()
   override def implGet(out: GetTask): Unit = {
     if (!toResource(out).exists()) throw new NotFoundException(s"Could not find ${out.getLocation}")
@@ -27,7 +27,7 @@ class HttpTransport(repository: RemoteRepository) extends AbstractTransporter {
     val to = toURL(put)
     Option(put.getDataFile) match {
       case Some(file) => URLHandlerRegistry.getDefault.upload(file, to, null)
-      case None =>
+      case None       =>
         // TODO - Ivy does not support uploading not from a file.  This isn't very efficient in ANY way,
         //        so if we rewrite the URL handler for Ivy we should fix this as well.
         sbt.IO.withTemporaryFile("tmp", "upload") { file =>

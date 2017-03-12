@@ -50,4 +50,3 @@ object DefaultsTest extends Specification {
   }
 
 }
-

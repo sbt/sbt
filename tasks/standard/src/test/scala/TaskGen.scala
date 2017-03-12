@@ -17,13 +17,14 @@ object TaskGen extends std.TaskExtra {
   val MaxJoinGen = choose(0, MaxJoin)
   val TaskListGen = MaxTasksGen.flatMap(size => Gen.listOfN(size, Arbitrary.arbInt.arbitrary))
 
-  def run[T](root: Task[T], checkCycles: Boolean, maxWorkers: Int): Result[T] =
-    {
-      val (service, shutdown) = CompletionService[Task[_], Completed](maxWorkers)
-      val dummies = std.Transform.DummyTaskMap(Nil)
-      val x = new Execute[Task](Execute.config(checkCycles), Execute.noTriggers, ExecuteProgress.empty[Task])(std.Transform(dummies))
-      try { x.run(root)(service) } finally { shutdown() }
-    }
+  def run[T](root: Task[T], checkCycles: Boolean, maxWorkers: Int): Result[T] = {
+    val (service, shutdown) = CompletionService[Task[_], Completed](maxWorkers)
+    val dummies = std.Transform.DummyTaskMap(Nil)
+    val x = new Execute[Task](Execute.config(checkCycles), Execute.noTriggers, ExecuteProgress.empty[Task])(
+      std.Transform(dummies)
+    )
+    try { x.run(root)(service) } finally { shutdown() }
+  }
   def tryRun[T](root: Task[T], checkCycles: Boolean, maxWorkers: Int): T =
     run(root, checkCycles, maxWorkers) match {
       case Value(v) => v

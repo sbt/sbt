@@ -15,11 +15,10 @@ import Keys.{ logLevel, logManager, persistLogLevel, persistTraceLevel, sLog, st
 import scala.Console.{ BLUE, RESET }
 
 object LogManager {
-  def construct(data: Settings[Scope], state: State) = (task: ScopedKey[_], to: PrintWriter) =>
-    {
-      val manager = logManager in task.scope get data getOrElse defaultManager(state.globalLogging.console)
-      manager(data, state, task, to)
-    }
+  def construct(data: Settings[Scope], state: State) = (task: ScopedKey[_], to: PrintWriter) => {
+    val manager = logManager in task.scope get data getOrElse defaultManager(state.globalLogging.console)
+    manager(data, state, task, to)
+  }
   @deprecated("Use defaultManager to explicitly specify standard out.", "0.13.0")
   lazy val default: LogManager = defaultManager(StandardMain.console)
 
@@ -33,34 +32,50 @@ object LogManager {
 
   def withScreenLogger(mk: (ScopedKey[_], State) => AbstractLogger): LogManager = withLoggers(screen = mk)
 
-  def withLoggers(screen: (ScopedKey[_], State) => AbstractLogger = (sk, s) => defaultScreen(s.globalLogging.console),
-    backed: PrintWriter => AbstractLogger = defaultBacked(),
-    extra: ScopedKey[_] => Seq[AbstractLogger] = _ => Nil): LogManager = new LogManager {
+  def withLoggers(screen: (ScopedKey[_], State) => AbstractLogger = (sk, s) =>
+                    defaultScreen(s.globalLogging.console),
+                  backed: PrintWriter => AbstractLogger = defaultBacked(),
+                  extra: ScopedKey[_] => Seq[AbstractLogger] = _ => Nil): LogManager = new LogManager {
     def apply(data: Settings[Scope], state: State, task: ScopedKey[_], to: PrintWriter): Logger =
       defaultLogger(data, state, task, screen(task, state), backed(to), extra(task).toList)
   }
 
-  def defaultLogger(data: Settings[Scope], state: State, task: ScopedKey[_], console: AbstractLogger, backed: AbstractLogger, extra: List[AbstractLogger]): Logger =
-    {
-      val scope = task.scope
-      // to change from global being the default to overriding, switch the order of state.get and data.get
-      def getOr[T](key: AttributeKey[T], default: T): T = data.get(scope, key) orElse state.get(key) getOrElse default
-      val screenLevel = getOr(logLevel.key, Level.Info)
-      val backingLevel = getOr(persistLogLevel.key, Level.Debug)
-      val screenTrace = getOr(traceLevel.key, defaultTraceLevel(state))
-      val backingTrace = getOr(persistTraceLevel.key, Int.MaxValue)
-      val extraBacked = state.globalLogging.backed :: Nil
-      multiLogger(new MultiLoggerConfig(console, backed, extraBacked ::: extra, screenLevel, backingLevel, screenTrace, backingTrace))
-    }
+  def defaultLogger(data: Settings[Scope],
+                    state: State,
+                    task: ScopedKey[_],
+                    console: AbstractLogger,
+                    backed: AbstractLogger,
+                    extra: List[AbstractLogger]): Logger = {
+    val scope = task.scope
+    // to change from global being the default to overriding, switch the order of state.get and data.get
+    def getOr[T](key: AttributeKey[T], default: T): T =
+      data.get(scope, key) orElse state.get(key) getOrElse default
+    val screenLevel = getOr(logLevel.key, Level.Info)
+    val backingLevel = getOr(persistLogLevel.key, Level.Debug)
+    val screenTrace = getOr(traceLevel.key, defaultTraceLevel(state))
+    val backingTrace = getOr(persistTraceLevel.key, Int.MaxValue)
+    val extraBacked = state.globalLogging.backed :: Nil
+    multiLogger(
+      new MultiLoggerConfig(
+        console,
+        backed,
+        extraBacked ::: extra,
+        screenLevel,
+        backingLevel,
+        screenTrace,
+        backingTrace
+      )
+    )
+  }
   def defaultTraceLevel(state: State): Int =
     if (state.interactive) -1 else Int.MaxValue
-  def suppressedMessage(key: ScopedKey[_], state: State): SuppressedTraceContext => Option[String] =
-    {
-      lazy val display = Project.showContextKey(state)
-      def commandBase = "last " + display(unwrapStreamsKey(key))
-      def command(useColor: Boolean) = if (useColor) BLUE + commandBase + RESET else "'" + commandBase + "'"
-      context => Some("Stack trace suppressed: run %s for the full output.".format(command(context.useColor)))
-    }
+  def suppressedMessage(key: ScopedKey[_], state: State): SuppressedTraceContext => Option[String] = {
+    lazy val display = Project.showContextKey(state)
+    def commandBase = "last " + display(unwrapStreamsKey(key))
+    def command(useColor: Boolean) = if (useColor) BLUE + commandBase + RESET else "'" + commandBase + "'"
+    context =>
+      Some("Stack trace suppressed: run %s for the full output.".format(command(context.useColor)))
+  }
   def unwrapStreamsKey(key: ScopedKey[_]): ScopedKey[_] = key.scope.task match {
     case Select(task) => ScopedKey(key.scope.copy(task = Global), task)
     case _            => key // should never get here
@@ -104,17 +119,17 @@ object LogManager {
 
   // construct a Logger that delegates to the global logger, but only holds a weak reference
   //  this is an approximation to the ideal that would invalidate the delegate after loading completes
-  private[this] def globalWrapper(s: State): Logger = {
+  private[this] def globalWrapper(s: State): Logger =
     new Logger {
       private[this] val ref = new java.lang.ref.WeakReference(s.globalLogging.full)
-      private[this] def slog: Logger = Option(ref.get) getOrElse sys.error("Settings logger used after project was loaded.")
+      private[this] def slog: Logger =
+        Option(ref.get) getOrElse sys.error("Settings logger used after project was loaded.")
 
       override val ansiCodesSupported = slog.ansiCodesSupported
       override def trace(t: => Throwable) = slog.trace(t)
       override def success(message: => String) = slog.success(message)
       override def log(level: Level.Value, message: => String) = slog.log(level, message)
     }
-  }
 }
 
 trait LogManager {

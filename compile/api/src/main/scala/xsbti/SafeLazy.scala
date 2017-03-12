@@ -12,13 +12,13 @@ object SafeLazy {
 
   def strict[T <: AnyRef](value: T): xsbti.api.Lazy[T] = apply(value)
 
-  private[this] final class Impl[T <: AnyRef](private[this] var eval: () => T) extends xsbti.api.AbstractLazy[T] {
-    private[this] lazy val _t =
-      {
-        val t = eval()
-        eval = null // clear the reference, ensuring the only memory we hold onto is the result
-        t
-      }
+  private[this] final class Impl[T <: AnyRef](private[this] var eval: () => T)
+      extends xsbti.api.AbstractLazy[T] {
+    private[this] lazy val _t = {
+      val t = eval()
+      eval = null // clear the reference, ensuring the only memory we hold onto is the result
+      t
+    }
     def get: T = _t
   }
 }

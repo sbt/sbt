@@ -40,18 +40,19 @@ class ExtractAPISpecification extends Specification {
   }
 
   /**
-   * Checks if representation of the inherited Namer class (with a declared self variable) in Global.Foo
-   * is stable between compiling from source and unpickling. We compare extracted APIs of Global when Global
-   * is compiled together with Namers or Namers is compiled first and then Global refers
-   * to Namers by unpickling types from class files.
-   *
-   * See https://github.com/sbt/sbt/issues/2504
-   */
+    * Checks if representation of the inherited Namer class (with a declared self variable) in Global.Foo
+    * is stable between compiling from source and unpickling. We compare extracted APIs of Global when Global
+    * is compiled together with Namers or Namers is compiled first and then Global refers
+    * to Namers by unpickling types from class files.
+    *
+    * See https://github.com/sbt/sbt/issues/2504
+    */
   "Self variable and no self type" in {
     def selectNamer(api: SourceAPI): ClassLike = {
-      def selectClass(defs: Iterable[Definition], name: String): ClassLike = defs.collectFirst {
-        case cls: ClassLike if cls.name == name => cls
-      }.get
+      def selectClass(defs: Iterable[Definition], name: String): ClassLike =
+        defs.collectFirst {
+          case cls: ClassLike if cls.name == name => cls
+        }.get
       val global = selectClass(api.definitions, "Global")
       val foo = selectClass(global.structure.declared, "Global.Foo")
       selectClass(foo.structure.inherited, "Namers.Namer")
@@ -67,7 +68,8 @@ class ExtractAPISpecification extends Specification {
          |}
          |""".stripMargin
     val compilerForTesting = new ScalaCompilerForUnitTesting(nameHashing = false)
-    val apis = compilerForTesting.extractApisFromSrcs(reuseCompilerInstance = false)(List(src1, src2), List(src2))
+    val apis =
+      compilerForTesting.extractApisFromSrcs(reuseCompilerInstance = false)(List(src1, src2), List(src2))
     val _ :: src2Api1 :: src2Api2 :: Nil = apis.toList
     val namerApi1 = selectNamer(src2Api1)
     val namerApi2 = selectNamer(src2Api2)
@@ -75,13 +77,14 @@ class ExtractAPISpecification extends Specification {
   }
 
   /**
-   * Checks if self type is properly extracted in various cases of declaring a self type
-   * with our without a self variable.
-   */
+    * Checks if self type is properly extracted in various cases of declaring a self type
+    * with our without a self variable.
+    */
   "Self type" in {
-    def collectFirstClass(defs: Array[Definition]): ClassLike = defs.collectFirst {
-      case c: ClassLike => c
-    }.get
+    def collectFirstClass(defs: Array[Definition]): ClassLike =
+      defs.collectFirst {
+        case c: ClassLike => c
+      }.get
     val srcX = "trait X"
     val srcY = "trait Y"
     val srcC1 = "class C1 { this: C1 => }"
@@ -93,9 +96,11 @@ class ExtractAPISpecification extends Specification {
     val srcC7 = "class C7 { _ => }"
     val srcC8 = "class C8 { self => }"
     val compilerForTesting = new ScalaCompilerForUnitTesting(nameHashing = false)
-    val apis = compilerForTesting.extractApisFromSrcs(reuseCompilerInstance = true)(
-      List(srcX, srcY, srcC1, srcC2, srcC3, srcC4, srcC5, srcC6, srcC7, srcC8)
-    ).map(x => collectFirstClass(x.definitions))
+    val apis = compilerForTesting
+      .extractApisFromSrcs(reuseCompilerInstance = true)(
+        List(srcX, srcY, srcC1, srcC2, srcC3, srcC4, srcC5, srcC6, srcC7, srcC8)
+      )
+      .map(x => collectFirstClass(x.definitions))
     val emptyType = new EmptyType
     def hasSelfType(c: ClassLike): Boolean =
       c.selfType != emptyType
