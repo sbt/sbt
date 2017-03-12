@@ -4,10 +4,10 @@ package plugins
 import Def.Setting
 
 /**
- * Plugin for core sbt-isms.
- *
- * Can control task-level paralleism, logging, etc.
- */
+  * Plugin for core sbt-isms.
+  *
+  * Can control task-level paralleism, logging, etc.
+  */
 object CorePlugin extends AutoPlugin {
   // This is included by default
   override def trigger = allRequirements

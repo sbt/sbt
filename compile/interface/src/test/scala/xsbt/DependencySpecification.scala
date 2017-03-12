@@ -94,8 +94,16 @@ class DependencySpecification extends Specification {
     val srcH = "trait H extends G.T[Int] with (E[Int] @unchecked)"
 
     val compilerForTesting = new ScalaCompilerForUnitTesting(nameHashing = true)
-    val sourceDependencies = compilerForTesting.extractDependenciesFromSrcs('A -> srcA, 'B -> srcB, 'C -> srcC,
-      'D -> srcD, 'E -> srcE, 'F -> srcF, 'G -> srcG, 'H -> srcH)
+    val sourceDependencies = compilerForTesting.extractDependenciesFromSrcs(
+      'A -> srcA,
+      'B -> srcB,
+      'C -> srcC,
+      'D -> srcD,
+      'E -> srcE,
+      'F -> srcF,
+      'G -> srcG,
+      'H -> srcH
+    )
     sourceDependencies
   }
 

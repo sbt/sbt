@@ -17,7 +17,7 @@ object LogWriterTest extends Properties("Log Writer") {
   /* Tests that content written through a LoggerWriter is properly passed to the underlying Logger.
 	* Each line, determined by the specified newline separator, must be logged at the correct logging level. */
   property("properly logged") = forAll { (output: Output, newLine: NewLine) =>
-    import output.{ lines, level }
+    import output.{ level, lines }
     val log = new RecordingLogger
     val writer = new LoggerWriter(log, Some(level), newLine.str)
     logLines(writer, lines, newLine.str)
@@ -27,26 +27,28 @@ object LogWriterTest extends Properties("Log Writer") {
   }
 
   /**
-   * Displays a LogEvent in a useful format for debugging.  In particular, we are only interested in `Log` types
-   * and non-printable characters should be escaped
-   */
+    * Displays a LogEvent in a useful format for debugging.  In particular, we are only interested in `Log` types
+    * and non-printable characters should be escaped
+    */
   def show(event: LogEvent): String =
     event match {
       case l: Log => "Log('" + Escape(l.msg) + "', " + l.level + ")"
       case _      => "Not Log"
     }
+
   /**
-   * Writes the given lines to the Writer.  `lines` is taken to be a list of lines, which are
-   * represented as separately written segments (ToLog instances).  ToLog.`byCharacter`
-   * indicates whether to write the segment by character (true) or all at once (false)
-   */
+    * Writes the given lines to the Writer.  `lines` is taken to be a list of lines, which are
+    * represented as separately written segments (ToLog instances).  ToLog.`byCharacter`
+    * indicates whether to write the segment by character (true) or all at once (false)
+    */
   def logLines(writer: Writer, lines: List[List[ToLog]], newLine: String): Unit = {
     for (line <- lines; section <- line) {
       val content = section.content
       val normalized = Escape.newline(content, newLine)
       if (section.byCharacter)
-        normalized.foreach { c => writer.write(c.toInt) }
-      else
+        normalized.foreach { c =>
+          writer.write(c.toInt)
+        } else
         writer.write(normalized)
     }
     writer.flush()
@@ -55,6 +57,7 @@ object LogWriterTest extends Properties("Log Writer") {
   /** Converts the given lines in segments to lines as Strings for checking the results of the test.*/
   def toLines(lines: List[List[ToLog]]): List[String] =
     lines.map(_.map(_.contentOnly).mkString)
+
   /** Checks that the expected `lines` were recorded as `events` at level `Lvl`.*/
   def check(lines: List[String], events: List[LogEvent], Lvl: Level.Value): Boolean =
     (lines zip events) forall {
@@ -75,7 +78,8 @@ object LogWriterTest extends Properties("Log Writer") {
   implicit lazy val arbLevel: Arbitrary[Level.Value] = Arbitrary(genLevel)
 
   implicit def genLine(implicit logG: Gen[ToLog]): Gen[List[ToLog]] =
-    for (l <- listOf[ToLog](MaxSegments); last <- logG) yield (addNewline(last) :: l.filter(!_.content.isEmpty)).reverse
+    for (l <- listOf[ToLog](MaxSegments); last <- logG)
+      yield (addNewline(last) :: l.filter(!_.content.isEmpty)).reverse
 
   implicit def genLog(implicit content: Arbitrary[String], byChar: Arbitrary[Boolean]): Gen[ToLog] =
     for (c <- content.arbitrary; by <- byChar.arbitrary) yield {
@@ -97,7 +101,9 @@ object LogWriterTest extends Properties("Log Writer") {
     new ToLog(l.content + "\n", l.byCharacter) // \n will be replaced by a random line terminator for all lines
 
   def listOf[T](max: Int)(implicit content: Arbitrary[T]): Gen[List[T]] =
-    Gen.choose(0, max) flatMap { sz => listOfN(sz, content.arbitrary) }
+    Gen.choose(0, max) flatMap { sz =>
+      listOfN(sz, content.arbitrary)
+    }
 }
 
 /* Helper classes*/
@@ -111,29 +117,32 @@ final class NewLine(val str: String) extends NotNull {
 }
 final class ToLog(val content: String, val byCharacter: Boolean) extends NotNull {
   def contentOnly = Escape.newline(content, "")
-  override def toString = if (content.isEmpty) "" else "ToLog('" + Escape(contentOnly) + "', " + byCharacter + ")"
+  override def toString =
+    if (content.isEmpty) "" else "ToLog('" + Escape(contentOnly) + "', " + byCharacter + ")"
 }
+
 /** Defines some utility methods for escaping unprintable characters.*/
 object Escape {
+
   /** Escapes characters with code less than 20 by printing them as unicode escapes.*/
-  def apply(s: String): String =
-    {
-      val builder = new StringBuilder(s.length)
-      for (c <- s) {
-        def escaped = pad(c.toInt.toHexString.toUpperCase, 4, '0')
-        if (c < 20) builder.append("\\u").append(escaped) else builder.append(c)
-      }
-      builder.toString
+  def apply(s: String): String = {
+    val builder = new StringBuilder(s.length)
+    for (c <- s) {
+      def escaped = pad(c.toInt.toHexString.toUpperCase, 4, '0')
+      if (c < 20) builder.append("\\u").append(escaped) else builder.append(c)
     }
-  def pad(s: String, minLength: Int, extra: Char) =
-    {
-      val diff = minLength - s.length
-      if (diff <= 0) s else List.fill(diff)(extra).mkString("", "", s)
-    }
+    builder.toString
+  }
+  def pad(s: String, minLength: Int, extra: Char) = {
+    val diff = minLength - s.length
+    if (diff <= 0) s else List.fill(diff)(extra).mkString("", "", s)
+  }
+
   /** Replaces a \n character at the end of a string `s` with `nl`.*/
   def newline(s: String, nl: String): String =
     if (s.endsWith("\n")) s.substring(0, s.length - 1) + nl else s
 }
+
 /** Records logging events for later retrieval.*/
 final class RecordingLogger extends BasicLogger {
   private var events: List[LogEvent] = Nil
@@ -141,10 +150,11 @@ final class RecordingLogger extends BasicLogger {
   def getEvents = events.reverse
 
   override def ansiCodesSupported = true
-  def trace(t: => Throwable): Unit = { events ::= new Trace(t) }
-  def log(level: Level.Value, message: => String): Unit = { events ::= new Log(level, message) }
-  def success(message: => String): Unit = { events ::= new Success(message) }
-  def logAll(es: Seq[LogEvent]): Unit = { events :::= es.toList }
-  def control(event: ControlEvent.Value, message: => String): Unit = { events ::= new ControlEvent(event, message) }
+  def trace(t: => Throwable): Unit = events ::= new Trace(t)
+  def log(level: Level.Value, message: => String): Unit = events ::= new Log(level, message)
+  def success(message: => String): Unit = events ::= new Success(message)
+  def logAll(es: Seq[LogEvent]): Unit = events :::= es.toList
+  def control(event: ControlEvent.Value, message: => String): Unit =
+    events ::= new ControlEvent(event, message)
 
 }

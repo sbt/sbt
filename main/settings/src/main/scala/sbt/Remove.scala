@@ -3,11 +3,15 @@ package sbt
 import scala.annotation.implicitNotFound
 
 object Remove {
-  @implicitNotFound(msg = "No implicit for Remove.Value[${A}, ${B}] found,\n  so ${B} cannot be removed from ${A}")
+  @implicitNotFound(
+    msg = "No implicit for Remove.Value[${A}, ${B}] found,\n  so ${B} cannot be removed from ${A}"
+  )
   trait Value[A, B] extends Any {
     def removeValue(a: A, b: B): A
   }
-  @implicitNotFound(msg = "No implicit for Remove.Values[${A}, ${B}] found,\n  so ${B} cannot be removed from ${A}")
+  @implicitNotFound(
+    msg = "No implicit for Remove.Values[${A}, ${B}] found,\n  so ${B} cannot be removed from ${A}"
+  )
   trait Values[A, -B] extends Any {
     def removeValues(a: A, b: B): A
   }

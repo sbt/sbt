@@ -14,10 +14,12 @@ private[sbt] object Base64 {
   lazy val factory: () => Base64 = {
     try {
       new Java678Encoder().encode(Array[Byte]())
-      () => new Java678Encoder()
+      () =>
+        new Java678Encoder()
     } catch {
       case _: LinkageError =>
-        () => new Java89Encoder
+        () =>
+          new Java89Encoder
     }
   }
 }
@@ -37,25 +39,31 @@ private[sbt] object Java89Encoder {
   private val Base64_getDecoder = ensureAccessible(Base64_class.getMethod("getEncoder"))
   private val Base64_Encoder_class = Class.forName("java.util.Base64$Encoder")
   private val Base64_Decoder_class = Class.forName("java.util.Base64$Decoder")
-  private val Base64_Encoder_encodeToString = ensureAccessible(Base64_Encoder_class.getMethod("encodeToString", classOf[Array[Byte]]))
-  private val Base64_Decoder_decode = ensureAccessible(Base64_Decoder_class.getMethod("decode", classOf[String]))
+  private val Base64_Encoder_encodeToString = ensureAccessible(
+    Base64_Encoder_class.getMethod("encodeToString", classOf[Array[Byte]])
+  )
+  private val Base64_Decoder_decode = ensureAccessible(
+    Base64_Decoder_class.getMethod("decode", classOf[String])
+  )
 }
 
 private[sbt] class Java89Encoder extends Base64 {
 
   import Java89Encoder._
 
-  def encode(bytes: Array[Byte]): String = try {
-    val encoder = Base64_getEncoder.invoke(null)
-    Base64_Encoder_encodeToString.invoke(encoder, bytes).asInstanceOf[String]
-  } catch {
-    case ex: InvocationTargetException => throw ex.getCause
-  }
+  def encode(bytes: Array[Byte]): String =
+    try {
+      val encoder = Base64_getEncoder.invoke(null)
+      Base64_Encoder_encodeToString.invoke(encoder, bytes).asInstanceOf[String]
+    } catch {
+      case ex: InvocationTargetException => throw ex.getCause
+    }
 
-  def decode(string: String): Array[Byte] = try {
-    val decoder = Base64_getDecoder.invoke(null)
-    Base64_Decoder_decode.invoke(decoder, string).asInstanceOf[Array[Byte]]
-  } catch {
-    case ex: InvocationTargetException => throw ex.getCause
-  }
+  def decode(string: String): Array[Byte] =
+    try {
+      val decoder = Base64_getDecoder.invoke(null)
+      Base64_Decoder_decode.invoke(decoder, string).asInstanceOf[Array[Byte]]
+    } catch {
+      case ex: InvocationTargetException => throw ex.getCause
+    }
 }

@@ -7,20 +7,20 @@ import scala.reflect.runtime.universe._
 private[sbt] object SbtRefactorings {
 
   import sbt.internals.parser.SbtParser.{ END_OF_LINE, FAKE_FILE }
-  import sbt.SessionSettings.{ SessionSetting, SbtConfigFile }
+  import sbt.SessionSettings.{ SbtConfigFile, SessionSetting }
 
   val EMPTY_STRING = ""
   val REVERSE_ORDERING_INT = Ordering[Int].reverse
 
   /**
-   * Refactoring a `.sbt` file so that the new settings are used instead of any existing settings.
-   * @param configFile SbtConfigFile with the lines of an sbt file as a List[String] where each string is one line
-   * @param commands A List of settings (space separate) that should be inserted into the current file.
-   *                 If the settings replaces a value, it will replace the original line in the .sbt file.
-   *                 If in the `.sbt` file we have multiply value for one settings -
-   *                 the first will be replaced and the other will be removed.
-   * @return a SbtConfigFile with new lines which represent the contents of the refactored .sbt file.
-   */
+    * Refactoring a `.sbt` file so that the new settings are used instead of any existing settings.
+    * @param configFile SbtConfigFile with the lines of an sbt file as a List[String] where each string is one line
+    * @param commands A List of settings (space separate) that should be inserted into the current file.
+    *                 If the settings replaces a value, it will replace the original line in the .sbt file.
+    *                 If in the `.sbt` file we have multiply value for one settings -
+    *                 the first will be replaced and the other will be removed.
+    * @return a SbtConfigFile with new lines which represent the contents of the refactored .sbt file.
+    */
   def applySessionSettings(configFile: SbtConfigFile, commands: Seq[SessionSetting]): SbtConfigFile = {
     val (file, lines) = configFile
     val split = SbtParser(FAKE_FILE, lines)
@@ -31,7 +31,8 @@ private[sbt] object SbtRefactorings {
     (file, newContent.lines.toList)
   }
 
-  private def replaceFromBottomToTop(modifiedContent: String, sortedRecordedCommands: Seq[(Int, String, String)]) = {
+  private def replaceFromBottomToTop(modifiedContent: String,
+                                     sortedRecordedCommands: Seq[(Int, String, String)]) =
     sortedRecordedCommands.foldLeft(modifiedContent) {
       case (acc, (from, old, replacement)) =>
         val before = acc.substring(0, from)
@@ -39,7 +40,6 @@ private[sbt] object SbtRefactorings {
         val afterLast = emptyStringForEmptyString(after)
         before + replacement + afterLast
     }
-  }
 
   private def emptyStringForEmptyString(text: String) = {
     val trimmed = text.trim

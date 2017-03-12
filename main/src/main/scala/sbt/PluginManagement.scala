@@ -6,7 +6,11 @@ import PluginManagement._
 
 import java.net.{ URI, URL, URLClassLoader }
 
-final case class PluginManagement(overrides: Set[ModuleID], applyOverrides: Set[ModuleID], loader: PluginClassLoader, initialLoader: ClassLoader, context: Context) {
+final case class PluginManagement(overrides: Set[ModuleID],
+                                  applyOverrides: Set[ModuleID],
+                                  loader: PluginClassLoader,
+                                  initialLoader: ClassLoader,
+                                  context: Context) {
   def shift: PluginManagement =
     PluginManagement(Set.empty, overrides, new PluginClassLoader(initialLoader), initialLoader, context)
 
@@ -20,9 +24,12 @@ final case class PluginManagement(overrides: Set[ModuleID], applyOverrides: Set[
     Keys.dependencyOverrides ++= overrides
   )
 
-  def resetDepth: PluginManagement = copy(context = Context(globalPluginProject = false, pluginProjectDepth = 0))
-  def forGlobalPlugin: PluginManagement = copy(context = Context(globalPluginProject = true, pluginProjectDepth = 0))
-  def forPlugin: PluginManagement = copy(context = context.copy(pluginProjectDepth = context.pluginProjectDepth + 1))
+  def resetDepth: PluginManagement =
+    copy(context = Context(globalPluginProject = false, pluginProjectDepth = 0))
+  def forGlobalPlugin: PluginManagement =
+    copy(context = Context(globalPluginProject = true, pluginProjectDepth = 0))
+  def forPlugin: PluginManagement =
+    copy(context = context.copy(pluginProjectDepth = context.pluginProjectDepth + 1))
 }
 object PluginManagement {
   final case class Context private[sbt] (globalPluginProject: Boolean, pluginProjectDepth: Int)

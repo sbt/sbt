@@ -4,8 +4,8 @@
 package sbt
 package inc
 
-import xsbti.api.{ Source, SourceAPI, Compilation, OutputSetting, _internalOnly_NameHashes }
-import xsbti.compile.{ DependencyChanges, Output, SingleOutput, MultipleOutput }
+import xsbti.api.{ _internalOnly_NameHashes, Compilation, OutputSetting, Source, SourceAPI }
+import xsbti.compile.{ DependencyChanges, MultipleOutput, Output, SingleOutput }
 import xsbti.{ Position, Problem, Severity }
 import Logger.{ m2o, problem }
 import java.io.File
@@ -14,59 +14,76 @@ import xsbti.DependencyContext
 import xsbti.DependencyContext.{ DependencyByInheritance, DependencyByMemberRef }
 
 /**
- * Helper methods for running incremental compilation.  All this is responsible for is
- * adapting any xsbti.AnalysisCallback into one compatible with the [[sbt.inc.Incremental]] class.
- */
+  * Helper methods for running incremental compilation.  All this is responsible for is
+  * adapting any xsbti.AnalysisCallback into one compatible with the [[sbt.inc.Incremental]] class.
+  */
 object IncrementalCompile {
+
   /**
-   * Runs the incremental compilation algorithm.
-   * @param sources
-   *              The full set of input sources
-   * @param entry
-   *              A className -> source file lookup function.
-   * @param compile
-   *                The mechanism to run a single 'step' of compile, for ALL source files involved.
-   * @param previous
-   *                 The previous dependency Analysis (or an empty one).
-   * @param forEntry
-   *                 The dependency Analysis associated with a given file
-   * @param output
-   *               The configured output directory/directory mapping for source files.
-   * @param log
-   *            Where all log messages should go
-   * @param options
-   *                Incremental compiler options (like name hashing vs. not).
-   * @return
-   *         A flag of whether or not compilation completed succesfully, and the resulting dependency analysis object.
-   *
-   */
-  def apply(sources: Set[File], entry: String => Option[File],
-    compile: (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit,
-    previous: Analysis,
-    forEntry: File => Option[Analysis],
-    output: Output, log: Logger,
-    options: IncOptions): (Boolean, Analysis) =
-    {
-      val current = Stamps.initial(Stamp.lastModified, Stamp.hash, Stamp.lastModified)
-      val internalMap = (f: File) => previous.relations.produced(f).headOption
-      val externalAPI = getExternalAPI(entry, forEntry)
-      try {
-        Incremental.compile(sources, entry, previous, current, forEntry, doCompile(compile, internalMap, externalAPI, current, output, options), log, options)
-      } catch {
-        case e: xsbti.CompileCancelled =>
-          log.info("Compilation has been cancelled")
-          // in case compilation got cancelled potential partial compilation results (e.g. produced classs files) got rolled back
-          // and we can report back as there was no change (false) and return a previous Analysis which is still up-to-date
-          (false, previous)
-      }
+    * Runs the incremental compilation algorithm.
+    * @param sources
+    *              The full set of input sources
+    * @param entry
+    *              A className -> source file lookup function.
+    * @param compile
+    *                The mechanism to run a single 'step' of compile, for ALL source files involved.
+    * @param previous
+    *                 The previous dependency Analysis (or an empty one).
+    * @param forEntry
+    *                 The dependency Analysis associated with a given file
+    * @param output
+    *               The configured output directory/directory mapping for source files.
+    * @param log
+    *            Where all log messages should go
+    * @param options
+    *                Incremental compiler options (like name hashing vs. not).
+    * @return
+    *         A flag of whether or not compilation completed succesfully, and the resulting dependency analysis object.
+    *
+    */
+  def apply(sources: Set[File],
+            entry: String => Option[File],
+            compile: (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit,
+            previous: Analysis,
+            forEntry: File => Option[Analysis],
+            output: Output,
+            log: Logger,
+            options: IncOptions): (Boolean, Analysis) = {
+    val current = Stamps.initial(Stamp.lastModified, Stamp.hash, Stamp.lastModified)
+    val internalMap = (f: File) => previous.relations.produced(f).headOption
+    val externalAPI = getExternalAPI(entry, forEntry)
+    try {
+      Incremental.compile(
+        sources,
+        entry,
+        previous,
+        current,
+        forEntry,
+        doCompile(compile, internalMap, externalAPI, current, output, options),
+        log,
+        options
+      )
+    } catch {
+      case e: xsbti.CompileCancelled =>
+        log.info("Compilation has been cancelled")
+        // in case compilation got cancelled potential partial compilation results (e.g. produced classs files) got rolled back
+        // and we can report back as there was no change (false) and return a previous Analysis which is still up-to-date
+        (false, previous)
     }
-  def doCompile(compile: (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit, internalMap: File => Option[File], externalAPI: (File, String) => Option[Source], current: ReadStamps, output: Output, options: IncOptions) =
+  }
+  def doCompile(compile: (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit,
+                internalMap: File => Option[File],
+                externalAPI: (File, String) => Option[Source],
+                current: ReadStamps,
+                output: Output,
+                options: IncOptions) =
     (srcs: Set[File], changes: DependencyChanges) => {
       val callback = new AnalysisCallback(internalMap, externalAPI, current, output, options)
       compile(srcs, changes, callback)
       callback.get
     }
-  def getExternalAPI(entry: String => Option[File], forEntry: File => Option[Analysis]): (File, String) => Option[Source] =
+  def getExternalAPI(entry: String => Option[File],
+                     forEntry: File => Option[Analysis]): (File, String) => Option[Source] =
     (file: File, className: String) =>
       entry(className) flatMap { defines =>
         if (file != Locate.resolve(defines, className))
@@ -77,19 +94,29 @@ object IncrementalCompile {
               analysis.apis.internal get src
             }
           }
-      }
+    }
 }
-private final class AnalysisCallback(internalMap: File => Option[File], externalAPI: (File, String) => Option[Source], current: ReadStamps, output: Output, options: IncOptions) extends xsbti.AnalysisCallback {
+private final class AnalysisCallback(internalMap: File => Option[File],
+                                     externalAPI: (File, String) => Option[Source],
+                                     current: ReadStamps,
+                                     output: Output,
+                                     options: IncOptions)
+    extends xsbti.AnalysisCallback {
   val compilation = {
     val outputSettings = output match {
       case single: SingleOutput => Array(new OutputSetting("/", single.outputDirectory.getAbsolutePath))
       case multi: MultipleOutput =>
-        multi.outputGroups.map(out => new OutputSetting(out.sourceDirectory.getAbsolutePath, out.outputDirectory.getAbsolutePath))
+        multi.outputGroups.map(
+          out => new OutputSetting(out.sourceDirectory.getAbsolutePath, out.outputDirectory.getAbsolutePath)
+        )
     }
     new Compilation(System.currentTimeMillis, outputSettings)
   }
 
-  override def toString = (List("APIs", "Binary deps", "Products", "Source deps") zip List(apis, binaryDeps, classes, intSrcDeps)).map { case (label, map) => label + "\n\t" + map.mkString("\n\t") }.mkString("\n")
+  override def toString =
+    (List("APIs", "Binary deps", "Products", "Source deps") zip List(apis, binaryDeps, classes, intSrcDeps))
+      .map { case (label, map) => label + "\n\t" + map.mkString("\n\t") }
+      .mkString("\n")
 
   import collection.mutable.{ HashMap, HashSet, ListBuffer, Map, Set }
 
@@ -117,30 +144,32 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
     map.getOrElseUpdate(a, new HashSet[B]) += b
 
   def problem(category: String, pos: Position, msg: String, severity: Severity, reported: Boolean): Unit =
-    {
-      for (source <- m2o(pos.sourceFile)) {
-        val map = if (reported) reporteds else unreporteds
-        map.getOrElseUpdate(source, ListBuffer.empty) += Logger.problem(category, pos, msg, severity)
-      }
+    for (source <- m2o(pos.sourceFile)) {
+      val map = if (reported) reporteds else unreporteds
+      map.getOrElseUpdate(source, ListBuffer.empty) += Logger.problem(category, pos, msg, severity)
     }
 
-  def sourceDependency(dependsOn: File, source: File, context: DependencyContext) = {
+  def sourceDependency(dependsOn: File, source: File, context: DependencyContext) =
     add(intSrcDeps, source, InternalDependency(source, dependsOn, context))
-  }
 
   @deprecated("Use `sourceDependency(File, File, DependencyContext)`.", "0.13.8")
-  def sourceDependency(dependsOn: File, source: File, inherited: Boolean) =
-    {
-      val context = if (inherited) DependencyByInheritance else DependencyByMemberRef
-      sourceDependency(dependsOn, source, context)
-    }
+  def sourceDependency(dependsOn: File, source: File, inherited: Boolean) = {
+    val context = if (inherited) DependencyByInheritance else DependencyByMemberRef
+    sourceDependency(dependsOn, source, context)
+  }
 
-  private[this] def externalBinaryDependency(binary: File, className: String, source: File, context: DependencyContext) = {
+  private[this] def externalBinaryDependency(binary: File,
+                                             className: String,
+                                             source: File,
+                                             context: DependencyContext) = {
     binaryClassName.put(binary, className)
     add(binaryDeps, source, binary)
   }
 
-  private[this] def externalSourceDependency(sourceFile: File, dependsOn: String, source: Source, context: DependencyContext) = {
+  private[this] def externalSourceDependency(sourceFile: File,
+                                             dependsOn: String,
+                                             source: Source,
+                                             context: DependencyContext) = {
     val dependency = ExternalDependency(sourceFile, dependsOn, source, context)
     add(extSrcDeps, sourceFile, dependency)
   }
@@ -167,7 +196,10 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
     binaryDependency(classFile, name, source, context)
   }
 
-  private[this] def externalDependency(classFile: File, name: String, source: File, context: DependencyContext): Unit =
+  private[this] def externalDependency(classFile: File,
+                                       name: String,
+                                       source: File,
+                                       context: DependencyContext): Unit =
     externalAPI(classFile, name) match {
       case Some(api) =>
         // dependency is a product of a source in another project
@@ -177,11 +209,10 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
         externalBinaryDependency(classFile, name, source, context)
     }
 
-  def generatedClass(source: File, module: File, name: String) =
-    {
-      add(classes, source, (module, name))
-      classToSource.put(module, source)
-    }
+  def generatedClass(source: File, module: File, name: String) = {
+    add(classes, source, (module, name))
+    classToSource.put(module, source)
+  }
 
   // empty value used when name hashing algorithm is disabled
   private val emptyNameHashes = new xsbti.api._internalOnly_NameHashes(Array.empty, Array.empty)
@@ -208,7 +239,8 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
   def nameHashing: Boolean = options.nameHashing
   def includeSynthToNameHashing: Boolean = options.includeSynthToNameHashing
 
-  def get: Analysis = addUsedNames(addCompilation(addProductsAndDeps(Analysis.empty(nameHashing = nameHashing))))
+  def get: Analysis =
+    addUsedNames(addCompilation(addProductsAndDeps(Analysis.empty(nameHashing = nameHashing))))
 
   def getOrNil[A, B](m: collection.Map[A, Seq[B]], a: A): Seq[B] = m.get(a).toList.flatten
   def addCompilation(base: Analysis): Analysis = base.copy(compilations = base.compilations.add(compilation))

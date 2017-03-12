@@ -1,9 +1,9 @@
 package sbt
 
 /**
- * An enumeration defining the tracking of dependencies.  A level includes all of the levels
- * with id larger than its own id.  For example, Warn (id=3) includes Error (id=4).
- */
+  * An enumeration defining the tracking of dependencies.  A level includes all of the levels
+  * with id larger than its own id.  For example, Warn (id=3) includes Error (id=4).
+  */
 object TrackLevel {
   case object NoTracking extends TrackLevel {
     override def id: Int = 0

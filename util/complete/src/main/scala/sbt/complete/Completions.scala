@@ -4,10 +4,10 @@
 package sbt.complete
 
 /**
- * Represents a set of completions.
- * It exists instead of implicitly defined operations on top of Set[Completion]
- *  for laziness.
- */
+  * Represents a set of completions.
+  * It exists instead of implicitly defined operations on top of Set[Completion]
+  *  for laziness.
+  */
 sealed trait Completions {
   def get: Set[Completion]
   final def x(o: Completions): Completions = flatMap(_ x o)
@@ -22,6 +22,7 @@ sealed trait Completions {
   override final def equals(o: Any) = o match { case c: Completions => get == c.get; case _ => false }
 }
 object Completions {
+
   /** Returns a lazy Completions instance using the provided Completion Set. */
   def apply(cs: => Set[Completion]): Completions = new Completions {
     lazy val get = cs
@@ -31,15 +32,15 @@ object Completions {
   def strict(cs: Set[Completion]): Completions = apply(cs)
 
   /**
-   * No suggested completions, not even the empty Completion.
-   * This typically represents invalid input.
-   */
+    * No suggested completions, not even the empty Completion.
+    * This typically represents invalid input.
+    */
   val nil: Completions = strict(Set.empty)
 
   /**
-   * Only includes an empty Suggestion.
-   * This typically represents valid input that either has no completions or accepts no further input.
-   */
+    * Only includes an empty Suggestion.
+    * This typically represents valid input that either has no completions or accepts no further input.
+    */
   val empty: Completions = strict(Set.empty + Completion.empty)
 
   /** Returns a strict Completions instance containing only the provided Completion.*/
@@ -47,33 +48,39 @@ object Completions {
 }
 
 /**
- * Represents a completion.
- * The abstract members `display` and `append` are best explained with an example.
- *
- * Assuming space-delimited tokens, processing this:
- *   am is are w<TAB>
- * could produce these Completions:
- *   Completion { display = "was"; append = "as" }
- *   Completion { display = "were"; append = "ere" }
- * to suggest the tokens "was" and "were".
- *
- * In this way, two pieces of information are preserved:
- *  1) what needs to be appended to the current input if a completion is selected
- *  2) the full token being completed, which is useful for presenting a user with choices to select
- */
+  * Represents a completion.
+  * The abstract members `display` and `append` are best explained with an example.
+  *
+  * Assuming space-delimited tokens, processing this:
+  *   am is are w<TAB>
+  * could produce these Completions:
+  *   Completion { display = "was"; append = "as" }
+  *   Completion { display = "were"; append = "ere" }
+  * to suggest the tokens "was" and "were".
+  *
+  * In this way, two pieces of information are preserved:
+  *  1) what needs to be appended to the current input if a completion is selected
+  *  2) the full token being completed, which is useful for presenting a user with choices to select
+  */
 sealed trait Completion {
+
   /** The proposed suffix to append to the existing input to complete the last token in the input.*/
   def append: String
+
   /** The string to present to the user to represent the full token being suggested.*/
   def display: String
+
   /** True if this Completion is suggesting the empty string.*/
   def isEmpty: Boolean
 
   /** Appends the completions in `o` with the completions in this Completion.*/
   def ++(o: Completion): Completion = Completion.concat(this, o)
-  final def x(o: Completions): Completions = if (Completion evaluatesRight this) o.map(this ++ _) else Completions.strict(Set.empty + this)
+  final def x(o: Completions): Completions =
+    if (Completion evaluatesRight this) o.map(this ++ _) else Completions.strict(Set.empty + this)
   override final lazy val hashCode = Completion.hashCode(this)
-  override final def equals(o: Any) = o match { case c: Completion => Completion.equal(this, c); case _ => false }
+  override final def equals(o: Any) = o match {
+    case c: Completion => Completion.equal(this, c); case _ => false
+  }
 }
 final class DisplayOnly(val display: String) extends Completion {
   def isEmpty = display.isEmpty

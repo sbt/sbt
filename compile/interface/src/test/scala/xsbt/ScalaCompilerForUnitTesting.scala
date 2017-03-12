@@ -17,24 +17,24 @@ import xsbti.DependencyContext._
 import ScalaCompilerForUnitTesting.ExtractedSourceDependencies
 
 /**
- * Provides common functionality needed for unit tests that require compiling
- * source code using Scala compiler.
- */
+  * Provides common functionality needed for unit tests that require compiling
+  * source code using Scala compiler.
+  */
 class ScalaCompilerForUnitTesting(nameHashing: Boolean, includeSynthToNameHashing: Boolean = false) {
 
   /**
-   * Compiles given source code using Scala compiler and returns API representation
-   * extracted by ExtractAPI class.
-   */
+    * Compiles given source code using Scala compiler and returns API representation
+    * extracted by ExtractAPI class.
+    */
   def extractApiFromSrc(src: String): SourceAPI = {
     val (Seq(tempSrcFile), analysisCallback) = compileSrcs(src)
     analysisCallback.apis(tempSrcFile)
   }
 
   /**
-   * Compiles given source code using Scala compiler and returns API representation
-   * extracted by ExtractAPI class.
-   */
+    * Compiles given source code using Scala compiler and returns API representation
+    * extracted by ExtractAPI class.
+    */
   def extractApisFromSrcs(reuseCompilerInstance: Boolean)(srcs: List[String]*): Seq[SourceAPI] = {
     val (tempSrcFiles, analysisCallback) = compileSrcs(srcs.toList, reuseCompilerInstance)
     tempSrcFiles.map(analysisCallback.apis)
@@ -46,12 +46,12 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean, includeSynthToNameHashin
   }
 
   /**
-   * Extract used names from src provided as the second argument.
-   *
-   * The purpose of the first argument is to define names that the second
-   * source is going to refer to. Both files are compiled in the same compiler
-   * Run but only names used in the second src file are returned.
-   */
+    * Extract used names from src provided as the second argument.
+    *
+    * The purpose of the first argument is to define names that the second
+    * source is going to refer to. Both files are compiled in the same compiler
+    * Run but only names used in the second src file are returned.
+    */
   def extractUsedNamesFromSrc(definitionSrc: String, actualSrc: String): Set[String] = {
     // we drop temp src file corresponding to the definition src file
     val (Seq(_, tempSrcFile), analysisCallback) = compileSrcs(definitionSrc, actualSrc)
@@ -59,17 +59,17 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean, includeSynthToNameHashin
   }
 
   /**
-   * Compiles given source code snippets (passed as Strings) using Scala compiler and returns extracted
-   * dependencies between snippets. Source code snippets are identified by symbols. Each symbol should
-   * be associated with one snippet only.
-   *
-   * Snippets can be grouped to be compiled together in the same compiler run. This is
-   * useful to compile macros, which cannot be used in the same compilation run that
-   * defines them.
-   *
-   * Symbols are used to express extracted dependencies between source code snippets. This way we have
-   * file system-independent way of testing dependencies between source code "files".
-   */
+    * Compiles given source code snippets (passed as Strings) using Scala compiler and returns extracted
+    * dependencies between snippets. Source code snippets are identified by symbols. Each symbol should
+    * be associated with one snippet only.
+    *
+    * Snippets can be grouped to be compiled together in the same compiler run. This is
+    * useful to compile macros, which cannot be used in the same compilation run that
+    * defines them.
+    *
+    * Symbols are used to express extracted dependencies between source code snippets. This way we have
+    * file system-independent way of testing dependencies between source code "files".
+    */
   def extractDependenciesFromSrcs(srcs: List[Map[Symbol, String]]): ExtractedSourceDependencies = {
     val rawGroupedSrcs = srcs.map(_.values.toList)
     val symbols = srcs.flatMap(_.keys)
@@ -85,7 +85,7 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean, includeSynthToNameHashin
       case (target, src, DependencyByInheritance) => (src, target)
     }
     def toSymbols(src: File, target: File): (Symbol, Symbol) = (fileToSymbol(src), fileToSymbol(target))
-    val memberRefDeps = memberRefFileDeps map { case (src, target) => toSymbols(src, target) }
+    val memberRefDeps = memberRefFileDeps map { case (src, target)     => toSymbols(src, target) }
     val inheritanceDeps = inheritanceFileDeps map { case (src, target) => toSymbols(src, target) }
     def pairsToMultiMap[A, B](pairs: Seq[(A, B)]): Map[A, Set[B]] = {
       import scala.collection.mutable.{ HashMap, MultiMap }
@@ -103,29 +103,28 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean, includeSynthToNameHashin
 
   def extractDependenciesFromSrcs(srcs: (Symbol, String)*): ExtractedSourceDependencies = {
     val symbols = srcs.map(_._1)
-    assert(symbols.distinct.size == symbols.size,
-      s"Duplicate symbols for srcs detected: $symbols")
+    assert(symbols.distinct.size == symbols.size, s"Duplicate symbols for srcs detected: $symbols")
     extractDependenciesFromSrcs(List(srcs.toMap))
   }
 
   /**
-   * Compiles given source code snippets written to temporary files. Each snippet is
-   * written to a separate temporary file.
-   *
-   * Snippets can be grouped to be compiled together in the same compiler run. This is
-   * useful to compile macros, which cannot be used in the same compilation run that
-   * defines them.
-   *
-   * The `reuseCompilerInstance` parameter controls whether the same Scala compiler instance
-   * is reused between compiling source groups. Separate compiler instances can be used to
-   * test stability of API representation (with respect to pickling) or to test handling of
-   * binary dependencies.
-   *
-   * The sequence of temporary files corresponding to passed snippets and analysis
-   * callback is returned as a result.
-   */
+    * Compiles given source code snippets written to temporary files. Each snippet is
+    * written to a separate temporary file.
+    *
+    * Snippets can be grouped to be compiled together in the same compiler run. This is
+    * useful to compile macros, which cannot be used in the same compilation run that
+    * defines them.
+    *
+    * The `reuseCompilerInstance` parameter controls whether the same Scala compiler instance
+    * is reused between compiling source groups. Separate compiler instances can be used to
+    * test stability of API representation (with respect to pickling) or to test handling of
+    * binary dependencies.
+    *
+    * The sequence of temporary files corresponding to passed snippets and analysis
+    * callback is returned as a result.
+    */
   private def compileSrcs(groupedSrcs: List[List[String]],
-    reuseCompilerInstance: Boolean): (Seq[File], TestCallback) = {
+                          reuseCompilerInstance: Boolean): (Seq[File], TestCallback) =
     withTemporaryDirectory { temp =>
       val analysisCallback = new TestCallback(nameHashing, includeSynthToNameHashing)
       val classesDir = new File(temp, "classes")
@@ -137,8 +136,10 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean, includeSynthToNameHashin
         // use a separate instance of the compiler for each group of sources to
         // have an ability to test for bugs in instability between source and pickled
         // representation of types
-        val compiler = if (reuseCompilerInstance) commonCompilerInstance else
-          prepareCompiler(classesDir, analysisCallback, classesDir.toString)
+        val compiler =
+          if (reuseCompilerInstance) commonCompilerInstance
+          else
+            prepareCompiler(classesDir, analysisCallback, classesDir.toString)
         val run = new compiler.Run
         val srcFiles = compilationUnit.toSeq.zipWithIndex map {
           case (src, i) =>
@@ -154,11 +155,9 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean, includeSynthToNameHashin
       }
       (files.flatten.toSeq, analysisCallback)
     }
-  }
 
-  private def compileSrcs(srcs: String*): (Seq[File], TestCallback) = {
+  private def compileSrcs(srcs: String*): (Seq[File], TestCallback) =
     compileSrcs(List(srcs.toList), reuseCompilerInstance = true)
-  }
 
   private def prepareSrcFile(baseDir: File, fileName: String, src: String): File = {
     val srcFile = new File(baseDir, fileName)
@@ -166,7 +165,9 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean, includeSynthToNameHashin
     srcFile
   }
 
-  private def prepareCompiler(outputDir: File, analysisCallback: AnalysisCallback, classpath: String = "."): CachedCompiler0#Compiler = {
+  private def prepareCompiler(outputDir: File,
+                              analysisCallback: AnalysisCallback,
+                              classpath: String = "."): CachedCompiler0#Compiler = {
     val args = Array.empty[String]
     object output extends SingleOutput {
       def outputDirectory: File = outputDir
@@ -198,5 +199,6 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean, includeSynthToNameHashin
 }
 
 object ScalaCompilerForUnitTesting {
-  case class ExtractedSourceDependencies(memberRef: Map[Symbol, Set[Symbol]], inheritance: Map[Symbol, Set[Symbol]])
+  case class ExtractedSourceDependencies(memberRef: Map[Symbol, Set[Symbol]],
+                                         inheritance: Map[Symbol, Set[Symbol]])
 }

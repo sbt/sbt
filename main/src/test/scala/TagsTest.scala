@@ -22,11 +22,12 @@ object TagsTest extends Properties("Tags") {
     excl(tag)(tm - tag)
   }
 
-  property("exclusive only allows a group with an excusive tag when the size is one") = forAll { (tm: TagMap, size: Size, etag: Tag) =>
-    val absSize = size.value
-    val tm2: TagMap = tm.updated(etag, absSize).updated(Tags.All, tm.getOrElse(Tags.All, 0) + absSize)
-    (s"TagMap: $tm2") |:
-      (excl(etag)(tm2) == (absSize <= 1))
+  property("exclusive only allows a group with an excusive tag when the size is one") = forAll {
+    (tm: TagMap, size: Size, etag: Tag) =>
+      val absSize = size.value
+      val tm2: TagMap = tm.updated(etag, absSize).updated(Tags.All, tm.getOrElse(Tags.All, 0) + absSize)
+      (s"TagMap: $tm2") |:
+        (excl(etag)(tm2) == (absSize <= 1))
   }
 
   property("exclusive always allows a group of size one") = forAll { (etag: Tag, mapTag: Tag) =>

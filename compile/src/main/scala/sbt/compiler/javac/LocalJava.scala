@@ -2,19 +2,31 @@ package sbt.compiler.javac
 
 import java.io.{ File, PrintWriter }
 
-import sbt.{ LoggerWriter, Level, Logger }
+import sbt.{ Level, Logger, LoggerWriter }
 import xsbti.Reporter
-import xsbti.compile.{ ScalaInstance, ClasspathOptions }
+import xsbti.compile.{ ClasspathOptions, ScalaInstance }
 
 /**
- * Helper methods for trying to run the java toolchain out of our own classloaders.
- */
+  * Helper methods for trying to run the java toolchain out of our own classloaders.
+  */
 object LocalJava {
   private[this] val javadocClass = "com.sun.tools.javadoc.Main"
 
   private[this] def javadocMethod =
     try {
-      Option(Class.forName(javadocClass).getDeclaredMethod("execute", classOf[String], classOf[PrintWriter], classOf[PrintWriter], classOf[PrintWriter], classOf[String], classOf[Array[String]]))
+      Option(
+        Class
+          .forName(javadocClass)
+          .getDeclaredMethod(
+            "execute",
+            classOf[String],
+            classOf[PrintWriter],
+            classOf[PrintWriter],
+            classOf[PrintWriter],
+            classOf[String],
+            classOf[Array[String]]
+          )
+      )
     } catch {
       case e @ (_: ClassNotFoundException | _: NoSuchMethodException) => None
     }
@@ -23,20 +35,26 @@ object LocalJava {
   def hasLocalJavadoc: Boolean = javadocMethod.isDefined
 
   /** A mechanism to call the javadoc tool via reflection. */
-  private[javac] def unsafeJavadoc(args: Array[String], err: PrintWriter, warn: PrintWriter, notice: PrintWriter): Int = {
+  private[javac] def unsafeJavadoc(args: Array[String],
+                                   err: PrintWriter,
+                                   warn: PrintWriter,
+                                   notice: PrintWriter): Int =
     javadocMethod match {
       case Some(m) =>
         System.err.println("Running javadoc tool!")
-        m.invoke(null, "javadoc", err, warn, notice, "com.sun.tools.doclets.standard.Standard", args).asInstanceOf[java.lang.Integer].intValue
+        m.invoke(null, "javadoc", err, warn, notice, "com.sun.tools.doclets.standard.Standard", args)
+          .asInstanceOf[java.lang.Integer]
+          .intValue
       case _ =>
         System.err.println("Unable to reflectively invoke javadoc, cannot find it on the current classloader!")
         -1
     }
-  }
 }
+
 /** Implementation of javadoc tool which attempts to run it locally (in-class). */
 final class LocalJavadoc() extends Javadoc {
-  override def run(sources: Seq[File], options: Seq[String])(implicit log: Logger, reporter: Reporter): Boolean = {
+  override def run(sources: Seq[File], options: Seq[String])(implicit log: Logger,
+                                                             reporter: Reporter): Boolean = {
     val cwd = new File(new File(".").getAbsolutePath).getCanonicalFile
     val (jArgs, nonJArgs) = options.partition(_.startsWith("-J"))
     val allArguments = nonJArgs ++ sources.map(_.getAbsolutePath)
@@ -58,7 +76,8 @@ final class LocalJavadoc() extends Javadoc {
 
 /** An implementation of compiling java which delegates to the JVM resident java compiler. */
 final class LocalJavaCompiler(compiler: javax.tools.JavaCompiler) extends JavaCompiler {
-  override def run(sources: Seq[File], options: Seq[String])(implicit log: Logger, reporter: Reporter): Boolean = {
+  override def run(sources: Seq[File], options: Seq[String])(implicit log: Logger,
+                                                             reporter: Reporter): Boolean = {
     import collection.JavaConverters._
     val logger = new LoggerWriter(log)
     val logWriter = new PrintWriter(logger)
@@ -74,7 +93,8 @@ final class LocalJavaCompiler(compiler: javax.tools.JavaCompiler) extends JavaCo
       log.warn("Javac is running in 'local' mode. These flags have been removed:")
       log.warn(invalidOptions.mkString("\t", ", ", ""))
     }
-    val success = compiler.getTask(logWriter, fileManager, diagnostics, cleanedOptions.asJava, null, jfiles).call()
+    val success =
+      compiler.getTask(logWriter, fileManager, diagnostics, cleanedOptions.asJava, null, jfiles).call()
 
     // The local compiler may report a successful compilation even though there are errors (e.g. encoding problems in the
     // source files). In a similar situation, command line javac reports a failed compilation. To have the local java compiler

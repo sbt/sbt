@@ -13,15 +13,17 @@ import org.specs2.mutable.Specification
 class ExtractUsedNamesSpecification extends Specification {
 
   /**
-   * Standard names that appear in every compilation unit that has any class
-   * definition.
-   */
+    * Standard names that appear in every compilation unit that has any class
+    * definition.
+    */
   private val standardNames = Set(
     "scala",
     // The default parent of a class is "AnyRef" which is an alias for "Object"
-    "AnyRef", "Object",
+    "AnyRef",
+    "Object",
     // class receives a default constructor which is internally called "<init>"
-    "<init>")
+    "<init>"
+  )
 
   "imported name" in {
     val src = """
@@ -102,13 +104,31 @@ class ExtractUsedNamesSpecification extends Specification {
                   |}""".stripMargin
     val compilerForTesting = new ScalaCompilerForUnitTesting(nameHashing = true)
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(src1, src2)
-    val expectedNames = standardNames ++ Set("Test", "B", "x", "y", "z",
-      "Predef", "???", "Nothing",
-      "lista", "package", "List", "A",
-      "at", "T",
-      "as", "S",
-      "foo", "M", "N",
-      "bar", "Param", "P1", "P0")
+    val expectedNames = standardNames ++ Set(
+      "Test",
+      "B",
+      "x",
+      "y",
+      "z",
+      "Predef",
+      "???",
+      "Nothing",
+      "lista",
+      "package",
+      "List",
+      "A",
+      "at",
+      "T",
+      "as",
+      "S",
+      "foo",
+      "M",
+      "N",
+      "bar",
+      "Param",
+      "P1",
+      "P0"
+    )
     usedNames === expectedNames
   }
 
@@ -142,6 +162,8 @@ class ExtractUsedNamesSpecification extends Specification {
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(srcA, srcB)
     val expectedNames = standardNames ++ Set("B", "A", "a", "Int", "selectDynamic", "bla")
     usedNames === expectedNames
-  }.pendingUntilFixed("Call to Dynamic is desugared in type checker so Select nodes is turned into string literal.")
+  }.pendingUntilFixed(
+    "Call to Dynamic is desugared in type checker so Select nodes is turned into string literal."
+  )
 
 }

@@ -21,18 +21,19 @@ object Sxr {
     sxr in taskGlobal <<= sxrTask
   )
   def taskGlobal = ThisScope.copy(task = Global)
-  def sxrTask = (sources, target, scalacOptions, classpathOptions, scalaInstance, fullClasspath, streams) map { (srcs, out, opts, cpOpts, si, cp, s) =>
-    val cache = s.cacheDirectory
-    val outputDir = out.getParentFile / (out.getName + ".sxr")
-    val f = FileFunction.cached(cache / "sxr", FilesInfo.hash) { in =>
-      s.log.info("Generating sxr output in " + outputDir.getAbsolutePath + "...")
-      IO.delete(out)
-      IO.createDirectory(out)
-      val comp = new compiler.RawCompiler(si, cpOpts, s.log)
-      comp(in.toSeq.sorted, cp.files, out, opts)
-      Set(outputDir)
-    }
-    f(srcs.toSet)
-    outputDir
+  def sxrTask = (sources, target, scalacOptions, classpathOptions, scalaInstance, fullClasspath, streams) map {
+    (srcs, out, opts, cpOpts, si, cp, s) =>
+      val cache = s.cacheDirectory
+      val outputDir = out.getParentFile / (out.getName + ".sxr")
+      val f = FileFunction.cached(cache / "sxr", FilesInfo.hash) { in =>
+        s.log.info("Generating sxr output in " + outputDir.getAbsolutePath + "...")
+        IO.delete(out)
+        IO.createDirectory(out)
+        val comp = new compiler.RawCompiler(si, cpOpts, s.log)
+        comp(in.toSeq.sorted, cp.files, out, opts)
+        Set(outputDir)
+      }
+      f(srcs.toSet)
+      outputDir
   }
 }

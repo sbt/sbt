@@ -1,17 +1,7 @@
-# Use Docker-based container (instead of OpenVZ)
 sudo: false
-
-cache:
-  directories:
-    - $HOME/.ivy2/cache
-    - $HOME/.sbt/boot
-
+jdk: openjdk6
 language: scala
-
-# TODO - we'd like to actually test everything, but the process library has a deadlock right now
-jdk:
-  - openjdk6
-#  - oraclejdk7
+script: sbt -J-XX:ReservedCodeCacheSize=128m "$SBT_CMD"
 
 env:
   matrix:
@@ -39,14 +29,22 @@ env:
     - SBT_CMD="mavenResolverPluginTest:scripted dependency-management/*2of2"
     - SBT_CMD="mavenResolverPluginTest:scripted dependency-management/*1of2 project/transitive-plugins"
 
+matrix:
+  fast_finish: true
+  include:
+    - env: SBT_CMD="scalafmtDiffTest"
+      jdk: oraclejdk8
+
+cache:
+  directories:
+    - $HOME/.ivy2/cache
+    - $HOME/.sbt
+
+before_cache:
+  - find $HOME/.ivy2/cache -name "ivydata-*.properties" -print -delete
+  - find $HOME/.sbt        -name "*.lock"               -print -delete
+
 notifications:
   email:
-    - eugene.yokota@typesafe.com
-    - joshua.suereth@typesafe.com
-
-script:
-  - sbt -J-XX:ReservedCodeCacheSize=128m "$SBT_CMD"
-
-  # Tricks to avoid unnecessary cache updates
-  - find $HOME/.sbt -name "*.lock" | xargs rm
-  - find $HOME/.ivy2 -name "ivydata-*.properties" | xargs rm
+    recipients: sbt-dev-bot@googlegroups.com
+    on_success: never

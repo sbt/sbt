@@ -5,7 +5,14 @@ import java.net.URL
 
 import org.apache.ivy.core.cache.ArtifactOrigin
 import org.apache.ivy.core.cache.{ DefaultRepositoryCacheManager, RepositoryCacheManager }
-import org.apache.ivy.core.module.descriptor.{ Artifact => IvyArtifact, DefaultArtifact, DefaultDependencyArtifactDescriptor, DefaultModuleDescriptor, DependencyArtifactDescriptor, DependencyDescriptor }
+import org.apache.ivy.core.module.descriptor.{
+  Artifact => IvyArtifact,
+  DefaultArtifact,
+  DefaultDependencyArtifactDescriptor,
+  DefaultModuleDescriptor,
+  DependencyArtifactDescriptor,
+  DependencyDescriptor
+}
 import org.apache.ivy.core.module.id.ModuleRevisionId
 import org.apache.ivy.core.report.ArtifactDownloadReport
 import org.apache.ivy.core.report.{ DownloadReport, DownloadStatus }
@@ -21,9 +28,10 @@ import org.apache.ivy.plugins.resolver.util.ResolvedResource
 import FakeResolver._
 
 /**
- * A fake `DependencyResolver` that statically serves predefined artifacts.
- */
-private[sbt] class FakeResolver(private var name: String, cacheDir: File, modules: ModulesMap) extends DependencyResolver {
+  * A fake `DependencyResolver` that statically serves predefined artifacts.
+  */
+private[sbt] class FakeResolver(private var name: String, cacheDir: File, modules: ModulesMap)
+    extends DependencyResolver {
 
   private object Artifact {
     def unapply(art: IvyArtifact): Some[(String, String, String)] = {
@@ -101,12 +109,12 @@ private[sbt] class FakeResolver(private var name: String, cacheDir: File, module
     val mrid = dd.getDependencyRevisionId()
 
     val artifact = modules get ((organisation, name, revision)) map { arts =>
-
       val artifacts: Array[DependencyArtifactDescriptor] = arts.toArray map (_ artifactOf dd)
       val moduleDescriptor = DefaultModuleDescriptor.newDefaultInstance(mrid, artifacts)
       val defaultArtifact = arts.headOption match {
-        case Some(FakeArtifact(name, tpe, ext, _)) => new DefaultArtifact(mrid, new java.util.Date, name, tpe, ext)
-        case None                                  => null
+        case Some(FakeArtifact(name, tpe, ext, _)) =>
+          new DefaultArtifact(mrid, new java.util.Date, name, tpe, ext)
+        case None => null
       }
       val metadataReport = new MetadataArtifactDownloadReport(defaultArtifact)
       metadataReport.setDownloadStatus(DownloadStatus.SUCCESSFUL)
@@ -149,7 +157,8 @@ private[sbt] class FakeResolver(private var name: String, cacheDir: File, module
         new RevisionEntry(module, v)
     }.toArray
 
-  override def listTokenValues(tokens: Array[String], criteria: java.util.Map[_, _]): Array[java.util.Map[_, _]] =
+  override def listTokenValues(tokens: Array[String],
+                               criteria: java.util.Map[_, _]): Array[java.util.Map[_, _]] =
     Array.empty
 
   override def listTokenValues(token: String, otherTokenValues: java.util.Map[_, _]): Array[String] =

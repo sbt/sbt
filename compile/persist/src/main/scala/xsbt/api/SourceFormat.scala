@@ -14,11 +14,10 @@ import scala.collection.mutable
 
 object SourceFormat extends Format[Source] {
   import java.io._
-  def reads(in: Input): Source =
-    {
-      val oin = new ObjectInputStream(new InputWrapperStream(in))
-      try { oin.readObject.asInstanceOf[Source] } finally { oin.close() }
-    }
+  def reads(in: Input): Source = {
+    val oin = new ObjectInputStream(new InputWrapperStream(in))
+    try { oin.readObject.asInstanceOf[Source] } finally { oin.close() }
+  }
   def writes(out: Output, src: Source): Unit = {
     val oout = new ObjectOutputStream(new OutputWrapperStream(out))
     try { oout.writeObject(src) } finally { oout.close() }

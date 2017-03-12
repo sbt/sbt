@@ -23,11 +23,9 @@ object RichURISpecification extends Properties("Rich URI") {
 
   implicit val arbitraryURI: Arbitrary[URI] =
     Arbitrary(
-      for (
-        scheme <- identifier;
-        path <- pathGen;
-        fragment <- nullable(strGen)
-      ) yield new URI(scheme, "file:" + path, fragment)
+      for (scheme <- identifier;
+           path <- pathGen;
+           fragment <- nullable(strGen)) yield new URI(scheme, "file:" + path, fragment)
     )
 
   property("withoutFragment should drop fragment") = forAll { (uri: URI) =>

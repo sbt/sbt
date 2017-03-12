@@ -1,7 +1,6 @@
 package sbt
 
 /** Define our settings system */
-
 // A basic scope indexed by an integer.
 final case class Scope(nestIndex: Int, idAtIndex: Int = 0)
 
@@ -19,7 +18,8 @@ object SettingsExample extends Init[Scope] {
   // A sample delegation function that delegates to a Scope with a lower index.
   val delegates: Scope => Seq[Scope] = {
     case s @ Scope(index, proj) =>
-      s +: (if (index <= 0) Nil else { (if (proj > 0) List(Scope(index)) else Nil) ++: delegates(Scope(index - 1)) })
+      s +: (if (index <= 0) Nil
+            else { (if (proj > 0) List(Scope(index)) else Nil) ++: delegates(Scope(index - 1)) })
   }
 
   // Not using this feature in this example.
@@ -29,7 +29,6 @@ object SettingsExample extends Init[Scope] {
 }
 
 /** Usage Example **/
-
 object SettingsUsage {
   import SettingsExample._
   import Types._
@@ -63,25 +62,25 @@ object SettingsUsage {
 	}*/
 
   /**
-   * Output:
-   * For the None results, we never defined the value and there was no value to delegate to.
-   * For a3, we explicitly defined it to be 3.
-   * a4 wasn't defined, so it delegates to a3 according to our delegates function.
-   * b4 gets the value for a4 (which delegates to a3, so it is 3) and multiplies by 3
-   * a5 is defined as the previous value of a5 + 1 and
-   *   since no previous value of a5 was defined, it delegates to a4, resulting in 3+1=4.
-   * b5 isn't defined explicitly, so it delegates to b4 and is therefore equal to 9 as well
-   * a0 = None
-   * b0 = None
-   * a1 = None
-   * b1 = None
-   * a2 = None
-   * b2 = None
-   * a3 = Some(3)
-   * b3 = None
-   * a4 = Some(3)
-   * b4 = Some(9)
-   * a5 = Some(4)
-   * b5 = Some(9)
-   */
+  * Output:
+  * For the None results, we never defined the value and there was no value to delegate to.
+  * For a3, we explicitly defined it to be 3.
+  * a4 wasn't defined, so it delegates to a3 according to our delegates function.
+  * b4 gets the value for a4 (which delegates to a3, so it is 3) and multiplies by 3
+  * a5 is defined as the previous value of a5 + 1 and
+  *   since no previous value of a5 was defined, it delegates to a4, resulting in 3+1=4.
+  * b5 isn't defined explicitly, so it delegates to b4 and is therefore equal to 9 as well
+  * a0 = None
+  * b0 = None
+  * a1 = None
+  * b1 = None
+  * a2 = None
+  * b2 = None
+  * a3 = Some(3)
+  * b3 = None
+  * a4 = Some(3)
+  * b4 = Some(9)
+  * a5 = Some(4)
+  * b5 = Some(9)
+  */
 }

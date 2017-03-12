@@ -22,14 +22,19 @@ object Opts {
     def sourceUrl(u: String): Seq[String] = Seq("-doc-source-url", u)
     def title(t: String): Seq[String] = Seq("-doc-title", t)
     def version(v: String): Seq[String] = Seq("-doc-version", v)
-    def externalAPI(mappings: Iterable[(File, URL)]): Seq[String] = if (mappings.isEmpty) Nil else
-      mappings.map { case (f, u) => s"${f.getAbsolutePath}#${u.toExternalForm}" }.mkString("-doc-external-doc:", ",", "") :: Nil
+    def externalAPI(mappings: Iterable[(File, URL)]): Seq[String] =
+      if (mappings.isEmpty) Nil
+      else
+        mappings
+          .map { case (f, u) => s"${f.getAbsolutePath}#${u.toExternalForm}" }
+          .mkString("-doc-external-doc:", ",", "") :: Nil
   }
   object resolver {
     import Path._
     val sonatypeReleases = Resolver.sonatypeRepo("releases")
     val sonatypeSnapshots = Resolver.sonatypeRepo("snapshots")
-    val sonatypeStaging = new MavenRepository("sonatype-staging", "https://oss.sonatype.org/service/local/staging/deploy/maven2")
+    val sonatypeStaging =
+      new MavenRepository("sonatype-staging", "https://oss.sonatype.org/service/local/staging/deploy/maven2")
     val mavenLocalFile = Resolver.file("Local Repository", userHome / ".m2" / "repository" asFile)
   }
 }
@@ -46,18 +51,21 @@ object DefaultOptions {
   def javadoc(name: String, version: String): Seq[String] = Seq("-doctitle", "%s %s API".format(name, version))
   def scaladoc(name: String, version: String): Seq[String] = doc.title(name) ++ doc.version(version)
 
-  def resolvers(snapshot: Boolean): Seq[Resolver] = {
+  def resolvers(snapshot: Boolean): Seq[Resolver] =
     if (snapshot) Seq(Classpaths.typesafeSnapshots, resolver.sonatypeSnapshots) else Nil
-  }
-  def pluginResolvers(plugin: Boolean, snapshot: Boolean): Seq[Resolver] = {
+  def pluginResolvers(plugin: Boolean, snapshot: Boolean): Seq[Resolver] =
     if (plugin && snapshot) Seq(Classpaths.typesafeSnapshots, Classpaths.sbtPluginSnapshots) else Nil
-  }
   def addResolvers: Setting[_] = Keys.resolvers ++= { resolvers(Keys.isSnapshot.value) }
-  def addPluginResolvers: Setting[_] = Keys.resolvers ++= pluginResolvers(Keys.sbtPlugin.value, Keys.isSnapshot.value)
+  def addPluginResolvers: Setting[_] =
+    Keys.resolvers ++= pluginResolvers(Keys.sbtPlugin.value, Keys.isSnapshot.value)
 
-  @deprecated("Use `credentials(State)` instead to make use of configuration path dynamically configured via `Keys.globalSettingsDirectory`; relying on ~/.ivy2 is not recommended anymore.", "0.12.0")
+  @deprecated(
+    "Use `credentials(State)` instead to make use of configuration path dynamically configured via `Keys.globalSettingsDirectory`; relying on ~/.ivy2 is not recommended anymore.",
+    "0.12.0"
+  )
   def credentials: Credentials = Credentials(userHome / ".ivy2" / ".credentials")
-  def credentials(state: State): Credentials = Credentials(getGlobalSettingsDirectory(state, getGlobalBase(state)) / ".credentials")
+  def credentials(state: State): Credentials =
+    Credentials(getGlobalSettingsDirectory(state, getGlobalBase(state)) / ".credentials")
   def addCredentials: Setting[_] = Keys.credentials += { credentials(Keys.state.value) }
 
   def shellPrompt(version: String): State => String =

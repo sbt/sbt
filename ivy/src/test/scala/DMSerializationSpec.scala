@@ -43,11 +43,19 @@ class DMSerializationSpec extends Specification {
   """
 
   lazy val updateReportExample =
-    new UpdateReport(new File("./foo"), Vector(configurationReportExample),
-      new UpdateStats(0, 0, 0, false), Map(new File("./foo") -> 0))
+    new UpdateReport(
+      new File("./foo"),
+      Vector(configurationReportExample),
+      new UpdateStats(0, 0, 0, false),
+      Map(new File("./foo") -> 0)
+    )
   lazy val configurationReportExample =
-    new ConfigurationReport("compile", Vector(moduleReportExample),
-      Vector(organizationArtifactReportExample), Nil)
+    new ConfigurationReport(
+      "compile",
+      Vector(moduleReportExample),
+      Vector(organizationArtifactReportExample),
+      Nil
+    )
   lazy val organizationArtifactReportExample =
     new OrganizationArtifactReport("org", "name", Vector(moduleReportExample))
   lazy val moduleReportExample =
@@ -57,11 +65,10 @@ class DMSerializationSpec extends Specification {
     roundtripBuilder(a) { _ must_== _ }
   def roundtripStr[A: Pickler: Unpickler](a: A) =
     roundtripBuilder(a) { _.toString must_== _.toString }
-  def roundtripBuilder[A: Pickler: Unpickler](a: A)(f: (A, A) => MatchResult[Any]): MatchResult[Any] =
-    {
-      val json = toJsonString(a)
-      println(json)
-      val obj = fromJsonString[A](json).get
-      f(a, obj)
-    }
+  def roundtripBuilder[A: Pickler: Unpickler](a: A)(f: (A, A) => MatchResult[Any]): MatchResult[Any] = {
+    val json = toJsonString(a)
+    println(json)
+    val obj = fromJsonString[A](json).get
+    f(a, obj)
+  }
 }

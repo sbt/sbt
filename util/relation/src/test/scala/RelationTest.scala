@@ -11,21 +11,20 @@ object RelationTest extends Properties("Relation") {
     val r = Relation.empty[Int, Double] ++ pairs
     check(r, pairs)
   }
-  def check(r: Relation[Int, Double], pairs: Seq[(Int, Double)]) =
-    {
-      val _1s = pairs.map(_._1).toSet
-      val _2s = pairs.map(_._2).toSet
+  def check(r: Relation[Int, Double], pairs: Seq[(Int, Double)]) = {
+    val _1s = pairs.map(_._1).toSet
+    val _2s = pairs.map(_._2).toSet
 
-      r._1s == _1s && r.forwardMap.keySet == _1s &&
-        r._2s == _2s && r.reverseMap.keySet == _2s &&
-        pairs.forall {
-          case (a, b) =>
-            (r.forward(a) contains b) &&
-              (r.reverse(b) contains a) &&
-              (r.forwardMap(a) contains b) &&
-              (r.reverseMap(b) contains a)
-        }
+    r._1s == _1s && r.forwardMap.keySet == _1s &&
+    r._2s == _2s && r.reverseMap.keySet == _2s &&
+    pairs.forall {
+      case (a, b) =>
+        (r.forward(a) contains b) &&
+          (r.reverse(b) contains a) &&
+          (r.forwardMap(a) contains b) &&
+          (r.reverseMap(b) contains a)
     }
+  }
 
   property("Does not contain removed entries") = forAll { (pairs: List[(Int, Double, Boolean)]) =>
     val add = pairs.map { case (a, b, c) => (a, b) }
@@ -39,17 +38,17 @@ object RelationTest extends Properties("Relation") {
 
     all(removeCoarse) { rem =>
       ("_1s does not contain removed" |: (!r._1s.contains(rem))) &&
-        ("Forward does not contain removed" |: r.forward(rem).isEmpty) &&
-        ("Forward map does not contain removed" |: !r.forwardMap.contains(rem)) &&
-        ("Removed is not a value in reverse map" |: !r.reverseMap.values.toSet.contains(rem))
+      ("Forward does not contain removed" |: r.forward(rem).isEmpty) &&
+      ("Forward map does not contain removed" |: !r.forwardMap.contains(rem)) &&
+      ("Removed is not a value in reverse map" |: !r.reverseMap.values.toSet.contains(rem))
     } &&
-      all(removeFine) {
-        case (a, b) =>
-          ("Forward does not contain removed" |: (!r.forward(a).contains(b))) &&
-            ("Reverse does not contain removed" |: (!r.reverse(b).contains(a))) &&
-            ("Forward map does not contain removed" |: (notIn(r.forwardMap, a, b))) &&
-            ("Reverse map does not contain removed" |: (notIn(r.reverseMap, b, a)))
-      }
+    all(removeFine) {
+      case (a, b) =>
+        ("Forward does not contain removed" |: (!r.forward(a).contains(b))) &&
+          ("Reverse does not contain removed" |: (!r.reverse(b).contains(a))) &&
+          ("Forward map does not contain removed" |: (notIn(r.forwardMap, a, b))) &&
+          ("Reverse map does not contain removed" |: (notIn(r.reverseMap, b, a)))
+    }
   }
 
   property("Groups correctly") = forAll { (entries: List[(Int, Double)], randomInt: Int) =>
@@ -75,8 +74,12 @@ object RelationTest extends Properties("Relation") {
 object EmptyRelationTest extends Properties("Empty relation") {
   lazy val e = Relation.empty[Int, Double]
 
-  property("Forward empty") = forAll { (i: Int) => e.forward(i).isEmpty }
-  property("Reverse empty") = forAll { (i: Double) => e.reverse(i).isEmpty }
+  property("Forward empty") = forAll { (i: Int) =>
+    e.forward(i).isEmpty
+  }
+  property("Reverse empty") = forAll { (i: Double) =>
+    e.reverse(i).isEmpty
+  }
   property("Forward map empty") = e.forwardMap.isEmpty
   property("Reverse map empty") = e.reverseMap.isEmpty
   property("_1 empty") = e._1s.isEmpty

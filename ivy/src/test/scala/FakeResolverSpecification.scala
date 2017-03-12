@@ -51,7 +51,9 @@ class FakeResolverSpecification extends BaseIvySpecification {
 
   def existingAndNonExistingArtifacts = {
     val m = getModule(anotherExample)
-    ivyUpdate(m) should throwA[ResolveException]("download failed: com.example#another-example;1.0.0!non-existing.txt")
+    ivyUpdate(m) should throwA[ResolveException](
+      "download failed: com.example#another-example;1.0.0!non-existing.txt"
+    )
   }
 
   private def artifact1 = new File(getClass.getResource("/artifact1.jar").toURI.getPath)
@@ -61,12 +63,10 @@ class FakeResolverSpecification extends BaseIvySpecification {
     ("org.example", "my-module", "0.0.1-SNAPSHOT") -> List(
       FakeArtifact("artifact1", "jar", "jar", artifact1)
     ),
-
     ("com.example", "example", "1.0.0") -> List(
       FakeArtifact("artifact1", "jar", "jar", artifact1),
       FakeArtifact("artifact2", "txt", "txt", artifact2)
     ),
-
     ("com.example", "another-example", "1.0.0") -> List(
       FakeArtifact("artifact1", "jar", "jar", artifact1),
       FakeArtifact("non-existing", "txt", "txt", new File("non-existing-file"))

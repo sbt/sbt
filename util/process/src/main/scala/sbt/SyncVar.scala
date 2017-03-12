@@ -13,7 +13,8 @@ private[sbt] final class SyncVar[A] {
 
   /** Waits until a value is set, gets it, and finally clears the value. */
   def take(): A = synchronized {
-    try get finally unset()
+    try get
+    finally unset()
   }
 
   /** Sets the value, whether or not it is currently defined. */
@@ -36,4 +37,3 @@ private[sbt] final class SyncVar[A] {
     notifyAll()
   }
 }
-

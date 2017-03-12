@@ -31,13 +31,17 @@ class FileExamplesTest extends Specification {
       fileExamples().toList should containTheSameElementsAs(prefixedPathsOnly)
     }
 
-    "produce sub-dir contents only when appending a file separator to the directory" in new directoryStructure(withCompletionPrefix = "far" + File.separator) {
+    "produce sub-dir contents only when appending a file separator to the directory" in new directoryStructure(
+      withCompletionPrefix = "far" + File.separator
+    ) {
       fileExamples().toList should containTheSameElementsAs(prefixedPathsOnly)
     }
   }
 
   "listing files with a sub-path prefix" should {
-    "produce matching paths only" in new directoryStructure(withCompletionPrefix = "far" + File.separator + "ba") {
+    "produce matching paths only" in new directoryStructure(
+      withCompletionPrefix = "far" + File.separator + "ba"
+    ) {
       fileExamples().toList should containTheSameElementsAs(prefixedPathsOnly)
     }
   }
@@ -60,16 +64,16 @@ class FileExamplesTest extends Specification {
       (childFiles ++ childDirectories ++ nestedFiles ++ nestedDirectories).map(relativize(baseDir, _).get)
 
     def prefixedPathsOnly: List[String] =
-      allRelativizedPaths.filter(_ startsWith withCompletionPrefix).map(_ substring withCompletionPrefix.length)
+      allRelativizedPaths
+        .filter(_ startsWith withCompletionPrefix)
+        .map(_ substring withCompletionPrefix.length)
 
-    override def delayedInit(testBody: => Unit): Unit = {
-      withTemporaryDirectory {
-        tempDir =>
-          createSampleDirStructure(tempDir)
-          fileExamples = new FileExamples(baseDir, withCompletionPrefix)
-          testBody
+    override def delayedInit(testBody: => Unit): Unit =
+      withTemporaryDirectory { tempDir =>
+        createSampleDirStructure(tempDir)
+        fileExamples = new FileExamples(baseDir, withCompletionPrefix)
+        testBody
       }
-    }
 
     private def createSampleDirStructure(tempDir: File): Unit = {
       childFiles = toChildFiles(tempDir, List("foo", "bar", "bazaar"))

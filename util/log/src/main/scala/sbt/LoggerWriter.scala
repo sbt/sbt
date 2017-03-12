@@ -4,10 +4,13 @@
 package sbt
 
 /**
- * Provides a `java.io.Writer` interface to a `Logger`.  Content is line-buffered and logged at `level`.
- * A line is delimited by `nl`, which is by default the platform line separator.
- */
-class LoggerWriter(delegate: Logger, unbufferedLevel: Option[Level.Value], nl: String = System.getProperty("line.separator")) extends java.io.Writer {
+  * Provides a `java.io.Writer` interface to a `Logger`.  Content is line-buffered and logged at `level`.
+  * A line is delimited by `nl`, which is by default the platform line separator.
+  */
+class LoggerWriter(delegate: Logger,
+                   unbufferedLevel: Option[Level.Value],
+                   nl: String = System.getProperty("line.separator"))
+    extends java.io.Writer {
   def this(delegate: Logger, level: Level.Value) = this(delegate, Some(level))
   def this(delegate: Logger) = this(delegate, None)
 

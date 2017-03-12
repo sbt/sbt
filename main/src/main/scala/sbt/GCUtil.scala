@@ -11,16 +11,15 @@ private[sbt] object GCUtil {
   val defaultMinForcegcInterval: Duration = 60.seconds
   val lastGcCheck: AtomicLong = new AtomicLong(0L)
 
-  def forceGcWithInterval(minForcegcInterval: Duration, log: Logger): Unit =
-    {
-      val now = System.currentTimeMillis
-      val last = lastGcCheck.get
-      // This throttles System.gc calls to interval
-      if (now - last > minForcegcInterval.toMillis) {
-        lastGcCheck.lazySet(now)
-        forceGc(log)
-      }
+  def forceGcWithInterval(minForcegcInterval: Duration, log: Logger): Unit = {
+    val now = System.currentTimeMillis
+    val last = lastGcCheck.get
+    // This throttles System.gc calls to interval
+    if (now - last > minForcegcInterval.toMillis) {
+      lastGcCheck.lazySet(now)
+      forceGc(log)
     }
+  }
 
   def forceGc(log: Logger): Unit =
     try {

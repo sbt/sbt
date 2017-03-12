@@ -10,7 +10,7 @@ class ScaladocInterface {
   def run(args: Array[String], log: Logger, delegate: xsbti.Reporter) = (new Runner(args, log, delegate)).run
 }
 private class Runner(args: Array[String], log: Logger, delegate: xsbti.Reporter) {
-  import scala.tools.nsc.{ doc, Global, reporters }
+  import scala.tools.nsc.{ doc, reporters, Global }
   import reporters.Reporter
   val docSettings: doc.Settings = new doc.Settings(Log.settingsError(log))
   val command = Command(args.toList, docSettings)
@@ -53,14 +53,13 @@ private class Runner(args: Array[String], log: Logger, delegate: xsbti.Reporter)
         val run = new Run
         run compile command.files
 
-        val generator =
-          {
-            import doc._
-            new DefaultDocDriver {
-              lazy val global: compiler.type = compiler
-              lazy val settings = docSettings
-            }
+        val generator = {
+          import doc._
+          new DefaultDocDriver {
+            lazy val global: compiler.type = compiler
+            lazy val settings = docSettings
           }
+        }
         generator.process(run.units)
       }
     }

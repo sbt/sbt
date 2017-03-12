@@ -16,13 +16,12 @@ object ProjectNavigation {
 }
 final class ProjectNavigation(s: State) {
   val extracted = Project extract s
-  import extracted.{ currentRef, structure, session }
+  import extracted.{ currentRef, session, structure }
 
-  def setProject(nuri: URI, nid: String) =
-    {
-      val neval = if (currentRef.build == nuri) session.currentEval else mkEval(nuri)
-      updateCurrent(s.put(sessionSettings, session.setCurrent(nuri, nid, neval)))
-    }
+  def setProject(nuri: URI, nid: String) = {
+    val neval = if (currentRef.build == nuri) session.currentEval else mkEval(nuri)
+    updateCurrent(s.put(sessionSettings, session.setCurrent(nuri, nid, neval)))
+  }
   def mkEval(nuri: URI) = Load.lazyEval(structure.units(nuri).unit)
   def getRoot(uri: URI) = Load.getRootProject(structure.units)(uri)
 
@@ -41,7 +40,9 @@ final class ProjectNavigation(s: State) {
     if (structure.units(uri).defined.contains(to))
       setProject(uri, to)
     else
-      fail("Invalid project name '" + to + "' in build " + uri + " (type 'projects' to list available projects).")
+      fail(
+        "Invalid project name '" + to + "' in build " + uri + " (type 'projects' to list available projects)."
+      )
 
   def changeBuild(newBuild: URI): State =
     if (structure.units contains newBuild)
@@ -49,21 +50,19 @@ final class ProjectNavigation(s: State) {
     else
       fail("Invalid build unit '" + newBuild + "' (type 'projects' to list available builds).")
 
-  def fail(msg: String): State =
-    {
-      s.log.error(msg)
-      s.fail
-    }
+  def fail(msg: String): State = {
+    s.log.error(msg)
+    s.fail
+  }
 
   import complete.Parser._
   import complete.Parsers._
 
-  val parser: Parser[Option[ResolvedReference]] =
-    {
-      val reference = Act.resolvedReference(structure.index.keyIndex, currentRef.build, success(()))
-      val root = token('/' ^^^ rootRef)
-      success(None) | some(token(Space) ~> (root | reference))
-    }
+  val parser: Parser[Option[ResolvedReference]] = {
+    val reference = Act.resolvedReference(structure.index.keyIndex, currentRef.build, success(()))
+    val root = token('/' ^^^ rootRef)
+    success(None) | some(token(Space) ~> (root | reference))
+  }
   def rootRef = ProjectRef(currentRef.build, getRoot(currentRef.build))
   val command: Parser[() => State] = Command.applyEffect(parser)(apply)
 }

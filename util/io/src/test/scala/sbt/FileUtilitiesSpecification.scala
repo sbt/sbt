@@ -20,12 +20,11 @@ object WriteContentSpecification extends Properties("Write content") {
   implicit lazy val validChar: Arbitrary[Char] = Arbitrary(for (i <- Gen.choose(0, 0xd7ff)) yield i.toChar)
   implicit lazy val validString: Arbitrary[String] = Arbitrary(arbitrary[List[Char]] map (_.mkString))
 
-  private def largeUnzip() =
-    {
-      testUnzip[Product]
-      testUnzip[scala.tools.nsc.Global]
-      true
-    }
+  private def largeUnzip() = {
+    testUnzip[Product]
+    testUnzip[scala.tools.nsc.Global]
+    true
+  }
   private def testUnzip[T](implicit mf: scala.reflect.Manifest[T]) =
     unzipFile(IO.classLocationFile(mf.runtimeClass))
   private def unzipFile(jar: File) =
@@ -73,5 +72,7 @@ object WriteContentSpecification extends Properties("Write content") {
     }
 
   private def withTemporaryFile[T](f: File => T): T =
-    withTemporaryDirectory { dir => f(new java.io.File(dir, "out")) }
+    withTemporaryDirectory { dir =>
+      f(new java.io.File(dir, "out"))
+    }
 }

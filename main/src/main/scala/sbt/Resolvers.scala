@@ -19,15 +19,18 @@ object Resolvers {
     val from = new File(uri)
     val to = uniqueSubdirectoryFor(uri, in = info.staging)
 
-    if (from.isDirectory) Some { () => if (from.canWrite) from else creates(to) { IO.copyDirectory(from, to) } }
-    else None
+    if (from.isDirectory) Some { () =>
+      if (from.canWrite) from else creates(to) { IO.copyDirectory(from, to) }
+    } else None
   }
 
   val remote: Resolver = (info: ResolveInfo) => {
     val url = info.uri.toURL
     val to = uniqueSubdirectoryFor(info.uri, in = info.staging)
 
-    Some { () => creates(to) { IO.unzipURL(url, to) } }
+    Some { () =>
+      creates(to) { IO.unzipURL(url, to) }
+    }
   }
 
   val subversion: Resolver = (info: ResolveInfo) => {
@@ -40,31 +43,27 @@ object Resolvers {
 
     if (uri.hasFragment) {
       val revision = uri.getFragment
-      Some {
-        () =>
-          creates(localCopy) {
-            run("svn", "checkout", "-q", "-r", revision, from, to)
-          }
+      Some { () =>
+        creates(localCopy) {
+          run("svn", "checkout", "-q", "-r", revision, from, to)
+        }
       }
     } else
-      Some {
-        () =>
-          creates(localCopy) {
-            run("svn", "checkout", "-q", from, to)
-          }
+      Some { () =>
+        creates(localCopy) {
+          run("svn", "checkout", "-q", from, to)
+        }
       }
   }
 
   val mercurial: Resolver = new DistributedVCS {
     override val scheme = "hg"
 
-    override def clone(from: String, to: File): Unit = {
+    override def clone(from: String, to: File): Unit =
       run("hg", "clone", "-q", from, to.getAbsolutePath)
-    }
 
-    override def checkout(branch: String, in: File): Unit = {
+    override def checkout(branch: String, in: File): Unit =
       run(Some(in), "hg", "checkout", "-q", branch)
-    }
   }.toResolver
 
   val git: Resolver = (info: ResolveInfo) => {
@@ -80,11 +79,12 @@ object Resolvers {
           run(Some(localCopy), "git", "checkout", "-q", branch)
         }
       }
-    } else Some { () =>
-      creates(localCopy) {
-        run("git", "clone", "--depth", "1", from, localCopy.getAbsolutePath)
+    } else
+      Some { () =>
+        creates(localCopy) {
+          run("git", "clone", "--depth", "1", from, localCopy.getAbsolutePath)
+        }
       }
-    }
   }
 
   abstract class DistributedVCS {
@@ -101,14 +101,16 @@ object Resolvers {
 
       if (uri.hasFragment) {
         val branch = uri.getFragment
-        Some {
-          () =>
-            creates(localCopy) {
-              clone(from, to = localCopy)
-              checkout(branch, in = localCopy)
-            }
+        Some { () =>
+          creates(localCopy) {
+            clone(from, to = localCopy)
+            checkout(branch, in = localCopy)
+          }
         }
-      } else Some { () => creates(localCopy) { clone(from, to = localCopy) } }
+      } else
+        Some { () =>
+          creates(localCopy) { clone(from, to = localCopy) }
+        }
     }
 
     private def normalized(uri: URI) = uri.copy(scheme = scheme)
@@ -134,18 +136,17 @@ object Resolvers {
       sys.error("Nonzero exit code (" + result + "): " + command.mkString(" "))
   }
 
-  def creates(file: File)(f: => Unit) =
-    {
-      if (!file.exists)
-        try {
-          f
-        } catch {
-          case e: Throwable =>
-            IO.delete(file)
-            throw e
-        }
-      file
-    }
+  def creates(file: File)(f: => Unit) = {
+    if (!file.exists)
+      try {
+        f
+      } catch {
+        case e: Throwable =>
+          IO.delete(file)
+          throw e
+      }
+    file
+  }
 
   def uniqueSubdirectoryFor(uri: URI, in: File) = {
     in.mkdirs()

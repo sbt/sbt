@@ -7,10 +7,11 @@ import TaskGen._
 import math.abs
 
 object TaskRunnerForkTest extends Properties("TaskRunner Fork") {
-  property("fork m tasks and wait for all to complete") = forAll(MaxTasksGen, MaxWorkersGen) { (m: Int, workers: Int) =>
-    val values = (0 until m).toList
-    checkResult(tryRun(values.fork(f => ()).join.map(_.toList), false, workers), values)
-    true
+  property("fork m tasks and wait for all to complete") = forAll(MaxTasksGen, MaxWorkersGen) {
+    (m: Int, workers: Int) =>
+      val values = (0 until m).toList
+      checkResult(tryRun(values.fork(f => ()).join.map(_.toList), false, workers), values)
+      true
   }
   property("Fork and reduce 2") = forAll(MaxTasksGen, MaxWorkersGen) { (m: Int, workers: Int) =>
     (m > 1) ==> {

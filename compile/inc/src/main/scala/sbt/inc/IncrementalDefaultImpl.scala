@@ -5,24 +5,27 @@ import xsbti.api.Source
 import xsbt.api.SameAPI
 import java.io.File
 
-private final class IncrementalDefaultImpl(log: Logger, options: IncOptions) extends IncrementalCommon(log, options) {
+private final class IncrementalDefaultImpl(log: Logger, options: IncOptions)
+    extends IncrementalCommon(log, options) {
 
   // Package objects are fragile: if they inherit from an invalidated source, get "class file needed by package is missing" error
   //  This might be too conservative: we probably only need package objects for packages of invalidated sources.
-  override protected def invalidatedPackageObjects(invalidated: Set[File], relations: Relations, apis: APIs): Set[File] =
+  override protected def invalidatedPackageObjects(invalidated: Set[File],
+                                                   relations: Relations,
+                                                   apis: APIs): Set[File] =
     invalidated flatMap relations.publicInherited.internal.reverse filter apis.hasPackageObject
 
-  override protected def sameAPI[T](src: T, a: Source, b: Source): Option[SourceAPIChange[T]] = {
+  override protected def sameAPI[T](src: T, a: Source, b: Source): Option[SourceAPIChange[T]] =
     if (SameAPI(a, b))
       None
     else {
       val sourceApiChange = SourceAPIChange(src)
       Some(sourceApiChange)
     }
-  }
 
   /** Invalidates sources based on initially detected 'changes' to the sources, products, and dependencies.*/
-  override protected def invalidateByExternal(relations: Relations, externalAPIChange: APIChange[String]): Set[File] = {
+  override protected def invalidateByExternal(relations: Relations,
+                                              externalAPIChange: APIChange[String]): Set[File] = {
     val modified = externalAPIChange.modified
     // Propagate public inheritance dependencies transitively.
     // This differs from normal because we need the initial crossing from externals to sources in this project.

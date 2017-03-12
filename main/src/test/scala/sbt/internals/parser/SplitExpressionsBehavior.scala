@@ -5,11 +5,11 @@ import java.io.File
 import org.specs2.mutable.SpecificationLike
 
 trait SplitExpression {
-  def split(s: String, file: File = new File("noFile"))(implicit splitter: SplitExpressions.SplitExpression) = splitter(file, s.split("\n").toSeq)
+  def split(s: String, file: File = new File("noFile"))(implicit splitter: SplitExpressions.SplitExpression) =
+    splitter(file, s.split("\n").toSeq)
 }
 
-trait SplitExpressionsBehavior extends SplitExpression {
-  this: SpecificationLike =>
+trait SplitExpressionsBehavior extends SplitExpression { this: SpecificationLike =>
 
   def oldExpressionsSplitter(implicit splitter: SplitExpressions.SplitExpression): Unit = {
 
@@ -28,8 +28,7 @@ trait SplitExpressionsBehavior extends SplitExpression {
     }
 
     "parse a config containing two imports and a setting" in {
-      val (imports, settingsAndDefs) = split(
-        """import foo.Bar
+      val (imports, settingsAndDefs) = split("""import foo.Bar
               import foo.Bar
 
              version := "1.0"
@@ -53,7 +52,8 @@ trait SplitExpressionsBehavior extends SplitExpression {
     }
 
     "parse a config containgn a lazy val" in {
-      val (imports, settingsAndDefs) = split("""lazy val root = (project in file(".")).enablePlugins­(PlayScala)""")
+      val (imports, settingsAndDefs) =
+        split("""lazy val root = (project in file(".")).enablePlugins­(PlayScala)""")
       imports.isEmpty should beTrue
       settingsAndDefs.isEmpty should beFalse
     }
@@ -79,8 +79,7 @@ lazy val root = (project in file(".")).enablePlugins­(PlayScala)""")
     }
 
     "parse a config containing two imports and a setting with no blank line" in {
-      val (imports, settingsAndDefs) = split(
-        """import foo.Bar
+      val (imports, settingsAndDefs) = split("""import foo.Bar
               import foo.Bar
              version := "1.0"
         """.stripMargin)

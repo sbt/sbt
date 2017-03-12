@@ -3,7 +3,7 @@ package sbt.compiler.javac
 import java.io.File
 
 import sbt.Logger.o2m
-import xsbti.{ Problem, Severity, Maybe, Position }
+import xsbti.{ Maybe, Position, Problem, Severity }
 
 /** A wrapper around xsbti.Position so we can pass in Java input. */
 final case class JavaPosition(_sourceFilePath: String, _line: Int, _contents: String) extends Position {
@@ -31,12 +31,14 @@ object JavaNoPosition extends Position {
 
 /** A wrapper around xsbti.Problem with java-specific options. */
 final case class JavaProblem(position: Position, severity: Severity, message: String) extends xsbti.Problem {
-  override def category: String = "javac" // TODO - what is this even supposed to be?  For now it appears unused.
+  override def category: String =
+    "javac" // TODO - what is this even supposed to be?  For now it appears unused.
   override def toString = s"$severity @ $position - $message"
 }
 
 /** A parser that is able to parse java's error output successfully. */
-class JavaErrorParser(relativeDir: File = new File(new File(".").getAbsolutePath).getCanonicalFile) extends util.parsing.combinator.RegexParsers {
+class JavaErrorParser(relativeDir: File = new File(new File(".").getAbsolutePath).getCanonicalFile)
+    extends util.parsing.combinator.RegexParsers {
   // Here we track special handlers to catch "Note:" and "Warning:" lines.
   private val NOTE_LINE_PREFIXES = Array("Note: ", "\u6ce8: ", "\u6ce8\u610f\uff1a ")
   private val WARNING_PREFIXES = Array("warning", "\u8b66\u544a", "\u8b66\u544a\uff1a")
@@ -88,7 +90,9 @@ class JavaErrorParser(relativeDir: File = new File(new File(".").getAbsolutePath
 
   // Helper to extract an integer from a string
   private object ParsedInteger {
-    def unapply(s: String): Option[Int] = try Some(Integer.parseInt(s)) catch { case e: NumberFormatException => None }
+    def unapply(s: String): Option[Int] =
+      try Some(Integer.parseInt(s))
+      catch { case e: NumberFormatException => None }
   }
   // Parses a line number
   val line: Parser[Int] = allUntilChar(':') ^? {
@@ -99,8 +103,8 @@ class JavaErrorParser(relativeDir: File = new File(new File(".").getAbsolutePath
   val fileAndLineNo: Parser[(String, Int)] = {
     val linuxFile = allUntilChar(':') ^^ { _.trim() }
     val windowsRootFile = linuxFile ~ SEMICOLON ~ linuxFile ^^ { case root ~ _ ~ path => s"$root:$path" }
-    val linuxOption = linuxFile ~ SEMICOLON ~ line ^^ { case f ~ _ ~ l => (f, l) }
-    val windowsOption = windowsRootFile ~ SEMICOLON ~ line ^^ { case f ~ _ ~ l => (f, l) }
+    val linuxOption = linuxFile ~ SEMICOLON ~ line ^^ { case f ~ _ ~ l                => (f, l) }
+    val windowsOption = windowsRootFile ~ SEMICOLON ~ line ^^ { case f ~ _ ~ l        => (f, l) }
     (linuxOption | windowsOption)
   }
 
@@ -165,44 +169,43 @@ class JavaErrorParser(relativeDir: File = new File(new File(".").getAbsolutePath
   val javacError: Parser[Problem] =
     JAVAC ~ SEMICOLON ~ restOfLine ^^ {
       case _ ~ _ ~ error =>
-        new JavaProblem(
-          JavaNoPosition,
-          Severity.Error,
-          s"javac:$error")
+        new JavaProblem(JavaNoPosition, Severity.Error, s"javac:$error")
     }
 
   val potentialProblem: Parser[Problem] = warningMessage | errorMessage | noteMessage | javacError
 
   val javacOutput: Parser[Seq[Problem]] = rep(potentialProblem)
-  /**
-   * Example:
-   *
-   * Test.java:4: cannot find symbol
-   * symbol  : method baz()
-   * location: class Foo
-   * return baz();
-   * ^
-   *
-   * Test.java:8: warning: [deprecation] RMISecurityException(java.lang.String) in java.rmi.RMISecurityException has been deprecated
-   * throw new java.rmi.RMISecurityException("O NOES");
-   * ^
-   */
 
+  /**
+    * Example:
+    *
+    * Test.java:4: cannot find symbol
+    * symbol  : method baz()
+    * location: class Foo
+    * return baz();
+    * ^
+    *
+    * Test.java:8: warning: [deprecation] RMISecurityException(java.lang.String) in java.rmi.RMISecurityException has been deprecated
+    * throw new java.rmi.RMISecurityException("O NOES");
+    * ^
+    */
   final def parseProblems(in: String, logger: sbt.Logger): Seq[Problem] =
     parse(javacOutput, in) match {
       case Success(result, _) => result
       case Failure(msg, n) =>
-        logger.warn("Unexpected javac output at:${n.pos.longString}.  Please report to sbt-dev@googlegroups.com.")
+        logger.warn(
+          "Unexpected javac output at:${n.pos.longString}.  Please report to sbt-dev@googlegroups.com."
+        )
         Seq.empty
       case Error(msg, n) =>
-        logger.warn("Unexpected javac output at:${n.pos.longString}.  Please report to sbt-dev@googlegroups.com.")
+        logger.warn(
+          "Unexpected javac output at:${n.pos.longString}.  Please report to sbt-dev@googlegroups.com."
+        )
         Seq.empty
     }
 
 }
 
 object JavaErrorParser {
-  def main(args: Array[String]): Unit = {
-
-  }
+  def main(args: Array[String]): Unit = {}
 }

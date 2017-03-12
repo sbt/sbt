@@ -23,36 +23,51 @@ private[sbt] trait ClassFile {
   def stringValue(a: AttributeInfo): String
 
   /**
-   * If the given fieldName represents a ConstantValue field, parses its representation from
-   * the constant pool and returns it.
-   */
+    * If the given fieldName represents a ConstantValue field, parses its representation from
+    * the constant pool and returns it.
+    */
   def constantValue(fieldName: String): Option[AnyRef] =
-    this.fields.find(_.name.exists(_ == fieldName)).toSeq.flatMap(_.attributes).collectFirst {
-      case ai @ classfile.AttributeInfo(Some("ConstantValue"), _) =>
-        constantPool(Parser.entryIndex(ai))
-    }.map {
-      case Constant(ConstantString, nextOffset, _, _) =>
-        // follow the indirection from ConstantString to ConstantUTF8
-        val nextConstant = constantPool(nextOffset)
-        nextConstant.value.getOrElse {
-          throw new IllegalStateException(s"Empty UTF8 value in constant pool: $nextConstant")
-        }
-      case constant @ Constant((ConstantFloat | ConstantLong | ConstantDouble | ConstantInteger), _, _, ref) =>
-        ref.getOrElse {
-          throw new IllegalStateException(s"Empty primitive value in constant pool: $constant")
-        }
-      case constant =>
-        throw new IllegalStateException(s"Unsupported ConstantValue type: $constant")
-    }
+    this.fields
+      .find(_.name.exists(_ == fieldName))
+      .toSeq
+      .flatMap(_.attributes)
+      .collectFirst {
+        case ai @ classfile.AttributeInfo(Some("ConstantValue"), _) =>
+          constantPool(Parser.entryIndex(ai))
+      }
+      .map {
+        case Constant(ConstantString, nextOffset, _, _) =>
+          // follow the indirection from ConstantString to ConstantUTF8
+          val nextConstant = constantPool(nextOffset)
+          nextConstant.value.getOrElse {
+            throw new IllegalStateException(s"Empty UTF8 value in constant pool: $nextConstant")
+          }
+        case constant @ Constant(
+              (ConstantFloat | ConstantLong | ConstantDouble | ConstantInteger),
+              _,
+              _,
+              ref
+            ) =>
+          ref.getOrElse {
+            throw new IllegalStateException(s"Empty primitive value in constant pool: $constant")
+          }
+        case constant =>
+          throw new IllegalStateException(s"Unsupported ConstantValue type: $constant")
+      }
 }
 
-private[sbt] final case class Constant(tag: Byte, nameIndex: Int, typeIndex: Int, value: Option[AnyRef]) extends NotNull {
+private[sbt] final case class Constant(tag: Byte, nameIndex: Int, typeIndex: Int, value: Option[AnyRef])
+    extends NotNull {
   def this(tag: Byte, nameIndex: Int, typeIndex: Int) = this(tag, nameIndex, typeIndex, None)
   def this(tag: Byte, nameIndex: Int) = this(tag, nameIndex, -1)
   def this(tag: Byte, value: AnyRef) = this(tag, -1, -1, Some(value))
   def wide = tag == ConstantLong || tag == ConstantDouble
 }
-private[sbt] final case class FieldOrMethodInfo(accessFlags: Int, name: Option[String], descriptor: Option[String], attributes: IndexedSeq[AttributeInfo]) extends NotNull {
+private[sbt] final case class FieldOrMethodInfo(accessFlags: Int,
+                                                name: Option[String],
+                                                descriptor: Option[String],
+                                                attributes: IndexedSeq[AttributeInfo])
+    extends NotNull {
   def isStatic = (accessFlags & ACC_STATIC) == ACC_STATIC
   def isPublic = (accessFlags & ACC_PUBLIC) == ACC_PUBLIC
   def isMain = isPublic && isStatic && descriptor.exists(_ == "([Ljava/lang/String;)V")

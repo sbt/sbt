@@ -32,10 +32,11 @@ object Pack {
 }
 
 import java.net.URL
+
 /**
- * This is somewhat of a mess and is not entirely correct.  jarsigner doesn't work properly
- * on scalaz and it is difficult to determine whether a jar is both signed and valid.
- */
+  * This is somewhat of a mess and is not entirely correct.  jarsigner doesn't work properly
+  * on scalaz and it is difficult to determine whether a jar is both signed and valid.
+  */
 object SignJar {
   final class SignOption private[SignJar] (val toList: List[String], val signOnly: Boolean) {
     override def toString = toList.mkString(" ")
@@ -58,9 +59,13 @@ object SignJar {
     val arguments = options.toList.flatMap(_.toList) ::: jarPath.getAbsolutePath :: alias :: Nil
     execute("signing", arguments)(fork)
   }
+
   /** Uses jarsigner to verify the given jar.*/
   def verify(jarPath: File, options: Seq[SignOption])(fork: (String, List[String]) => Int): Unit = {
-    val arguments = options.filter(!_.signOnly).toList.flatMap(_.toList) ::: VerifyOption :: jarPath.getAbsolutePath :: Nil
+    val arguments = options
+      .filter(!_.signOnly)
+      .toList
+      .flatMap(_.toList) ::: VerifyOption :: jarPath.getAbsolutePath :: Nil
     execute("verifying", arguments)(fork)
   }
   private def execute(action: String, arguments: List[String])(fork: (String, List[String]) => Int): Unit = {

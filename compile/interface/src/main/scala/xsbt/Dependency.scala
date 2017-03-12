@@ -14,21 +14,22 @@ import java.io.File
 object Dependency {
   def name = "xsbt-dependency"
 }
+
 /**
- * Extracts dependency information from each compilation unit.
- *
- * This phase uses CompilationUnit.depends and CallbackGlobal.inheritedDependencies
- * to collect all symbols that given compilation unit depends on. Those symbols are
- * guaranteed to represent Class-like structures.
- *
- * The CallbackGlobal.inheritedDependencies is populated by the API phase. See,
- * ExtractAPI class.
- *
- * When dependency symbol is processed, it is mapped back to either source file where
- * it's defined in (if it's available in current compilation run) or classpath entry
- * where it originates from. The Symbol->Classfile mapping is implemented by
- * LocateClassFile that we inherit from.
- */
+  * Extracts dependency information from each compilation unit.
+  *
+  * This phase uses CompilationUnit.depends and CallbackGlobal.inheritedDependencies
+  * to collect all symbols that given compilation unit depends on. Those symbols are
+  * guaranteed to represent Class-like structures.
+  *
+  * The CallbackGlobal.inheritedDependencies is populated by the API phase. See,
+  * ExtractAPI class.
+  *
+  * When dependency symbol is processed, it is mapped back to either source file where
+  * it's defined in (if it's available in current compilation run) or classpath entry
+  * where it originates from. The Symbol->Classfile mapping is implemented by
+  * LocateClassFile that we inherit from.
+  */
 final class Dependency(val global: CallbackGlobal) extends LocateClassFile with GlobalHelpers {
   import global._
 
@@ -36,7 +37,7 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile with 
   private class DependencyPhase(prev: Phase) extends GlobalPhase(prev) {
     override def description = "Extracts dependency information"
     def name = Dependency.name
-    def apply(unit: CompilationUnit): Unit = {
+    def apply(unit: CompilationUnit): Unit =
       if (!unit.isJava) {
         // build dependencies structure
         val sourceFile = unit.source.file.file
@@ -45,27 +46,35 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile with 
           dependencyExtractor.traverse(unit.body)
 
           dependencyExtractor.topLevelDependencies foreach processDependency(context = DependencyByMemberRef)
-          dependencyExtractor.topLevelInheritanceDependencies foreach processDependency(context = DependencyByInheritance)
+          dependencyExtractor.topLevelInheritanceDependencies foreach processDependency(
+            context = DependencyByInheritance
+          )
         } else {
           unit.depends foreach processDependency(context = DependencyByMemberRef)
-          inheritedDependencies.getOrElse(sourceFile, Nil: Iterable[Symbol]) foreach processDependency(context = DependencyByInheritance)
+          inheritedDependencies.getOrElse(sourceFile, Nil: Iterable[Symbol]) foreach processDependency(
+            context = DependencyByInheritance
+          )
         }
+
         /**
-         * Handles dependency on given symbol by trying to figure out if represents a term
-         * that is coming from either source code (not necessarily compiled in this compilation
-         * run) or from class file and calls respective callback method.
-         */
+          * Handles dependency on given symbol by trying to figure out if represents a term
+          * that is coming from either source code (not necessarily compiled in this compilation
+          * run) or from class file and calls respective callback method.
+          */
         def processDependency(context: DependencyContext)(on: Symbol) = {
-          def binaryDependency(file: File, className: String) = callback.binaryDependency(file, className, sourceFile, context)
+          def binaryDependency(file: File, className: String) =
+            callback.binaryDependency(file, className, sourceFile, context)
           val onSource = on.sourceFile
           if (onSource == null) {
             classFile(on) match {
               case Some((f, className, inOutDir)) =>
                 if (inOutDir && on.isJavaDefined) registerTopLevelSym(on)
                 f match {
-                  case ze: ZipArchive#Entry => for (zip <- ze.underlyingSource; zipFile <- Option(zip.file)) binaryDependency(zipFile, className)
-                  case pf: PlainFile        => binaryDependency(pf.file, className)
-                  case _                    => ()
+                  case ze: ZipArchive#Entry =>
+                    for (zip <- ze.underlyingSource; zipFile <- Option(zip.file))
+                      binaryDependency(zipFile, className)
+                  case pf: PlainFile => binaryDependency(pf.file, className)
+                  case _             => ()
                 }
               case None => ()
             }
@@ -73,7 +82,6 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile with 
             callback.sourceDependency(onSource.file, sourceFile, context)
         }
       }
-    }
   }
 
   private class ExtractDependenciesTraverser extends Traverser {
@@ -89,9 +97,11 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile with 
     def topLevelDependencies: Iterator[Symbol] = _dependencies.map(enclosingTopLevelClass).iterator
 
     private val _inheritanceDependencies = collection.mutable.HashSet.empty[Symbol]
-    protected def addInheritanceDependency(dep: Symbol): Unit = if (dep ne NoSymbol) _inheritanceDependencies += dep
+    protected def addInheritanceDependency(dep: Symbol): Unit =
+      if (dep ne NoSymbol) _inheritanceDependencies += dep
     def inheritanceDependencies: Iterator[Symbol] = _inheritanceDependencies.iterator
-    def topLevelInheritanceDependencies: Iterator[Symbol] = _inheritanceDependencies.map(enclosingTopLevelClass).iterator
+    def topLevelInheritanceDependencies: Iterator[Symbol] =
+      _inheritanceDependencies.map(enclosingTopLevelClass).iterator
 
     /*
      * Some macros appear to contain themselves as original tree.
@@ -132,16 +142,22 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile with 
 
       case Template(parents, self, body) =>
         // use typeSymbol to dealias type aliases -- we want to track the dependency on the real class in the alias's RHS
-        def flattenTypeToSymbols(tp: Type): List[Symbol] = if (tp eq null) Nil else tp match {
-          // rt.typeSymbol is redundant if we list out all parents, TODO: what about rt.decls?
-          case rt: RefinedType => rt.parents.flatMap(flattenTypeToSymbols)
-          case _               => List(tp.typeSymbol)
-        }
+        def flattenTypeToSymbols(tp: Type): List[Symbol] =
+          if (tp eq null) Nil
+          else
+            tp match {
+              // rt.typeSymbol is redundant if we list out all parents, TODO: what about rt.decls?
+              case rt: RefinedType => rt.parents.flatMap(flattenTypeToSymbols)
+              case _               => List(tp.typeSymbol)
+            }
 
         val inheritanceTypes = parents.map(_.tpe).toSet
         val inheritanceSymbols = inheritanceTypes.flatMap(flattenTypeToSymbols)
 
-        debuglog("Parent types for " + tree.symbol + " (self: " + self.tpt.tpe + "): " + inheritanceTypes + " with symbols " + inheritanceSymbols.map(_.fullName))
+        debuglog(
+          "Parent types for " + tree.symbol + " (self: " + self.tpt.tpe + "): " + inheritanceTypes + " with symbols " + inheritanceSymbols
+            .map(_.fullName)
+        )
 
         inheritanceSymbols.foreach(addInheritanceDependency)
 
@@ -163,11 +179,11 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile with 
   private final def debuglog(msg: => String): Unit = if (settings.debug.value) log(msg)
 
   /**
-   * We capture enclosing classes only because that's what CompilationUnit.depends does and we don't want
-   * to deviate from old behaviour too much for now.
-   *
-   * NOTE: for Scala 2.8 and 2.9 this method is provided through SymbolCompat
-   */
+    * We capture enclosing classes only because that's what CompilationUnit.depends does and we don't want
+    * to deviate from old behaviour too much for now.
+    *
+    * NOTE: for Scala 2.8 and 2.9 this method is provided through SymbolCompat
+    */
   private def enclosingTopLevelClass(sym: Symbol): Symbol = sym.enclosingTopLevelClass
 
 }

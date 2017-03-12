@@ -7,10 +7,9 @@ import org.scalacheck._
 import Prop._
 
 object ParserSpecification extends Properties("Parser") {
-  property("able to parse all relevant classes") =
-    Prop.forAll(classes) { (c: Class[_]) =>
-      Parser(IO.classfileLocation(c)) ne null
-    }
+  property("able to parse all relevant classes") = Prop.forAll(classes) { (c: Class[_]) =>
+    Parser(IO.classfileLocation(c)) ne null
+  }
 
   implicit def classes: Gen[Class[_]] =
     Gen.oneOf(

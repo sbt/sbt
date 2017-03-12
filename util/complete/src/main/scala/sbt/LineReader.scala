@@ -13,7 +13,9 @@ abstract class JLine extends LineReader {
   protected[this] val handleCONT: Boolean
   protected[this] val reader: ConsoleReader
 
-  def readLine(prompt: String, mask: Option[Char] = None) = JLine.withJLine { unsynchronizedReadLine(prompt, mask) }
+  def readLine(prompt: String, mask: Option[Char] = None) = JLine.withJLine {
+    unsynchronizedReadLine(prompt, mask)
+  }
 
   private[this] def unsynchronizedReadLine(prompt: String, mask: Option[Char]) =
     readLineWithHistory(prompt, mask) match {
@@ -24,8 +26,7 @@ abstract class JLine extends LineReader {
   private[this] def readLineWithHistory(prompt: String, mask: Option[Char]): String =
     reader.getHistory match {
       case fh: FileHistory =>
-        try { readLineDirect(prompt, mask) }
-        finally { fh.flush() }
+        try { readLineDirect(prompt, mask) } finally { fh.flush() }
       case _ => readLineDirect(prompt, mask)
     }
 
@@ -34,20 +35,19 @@ abstract class JLine extends LineReader {
       Signals.withHandler(() => resume(), signal = Signals.CONT)(() => readLineDirectRaw(prompt, mask))
     else
       readLineDirectRaw(prompt, mask)
-  private[this] def readLineDirectRaw(prompt: String, mask: Option[Char]): String =
-    {
-      val newprompt = handleMultilinePrompt(prompt)
-      mask match {
-        case Some(m) => reader.readLine(newprompt, m)
-        case None    => reader.readLine(newprompt)
-      }
+  private[this] def readLineDirectRaw(prompt: String, mask: Option[Char]): String = {
+    val newprompt = handleMultilinePrompt(prompt)
+    mask match {
+      case Some(m) => reader.readLine(newprompt, m)
+      case None    => reader.readLine(newprompt)
     }
+  }
 
   private[this] def handleMultilinePrompt(prompt: String): String = {
     val lines = """\r?\n""".r.split(prompt)
     lines.length match {
       case 0 | 1 => prompt
-      case _ =>
+      case _     =>
         // Workaround for regression jline/jline2#205
         reader.getOutput.write(lines.init.mkString("\n") + "\n")
         lines.last
@@ -70,12 +70,12 @@ private object JLine {
   //  older Scala, since it shaded classes but not the system property
   private[sbt] def fixTerminalProperty() {
     val newValue = System.getProperty(TerminalProperty) match {
-      case "jline.UnixTerminal" => "unix"
+      case "jline.UnixTerminal"                             => "unix"
       case null if System.getProperty("sbt.cygwin") != null => "unix"
-      case "jline.WindowsTerminal" => "windows"
-      case "jline.AnsiWindowsTerminal" => "windows"
-      case "jline.UnsupportedTerminal" => "none"
-      case x => x
+      case "jline.WindowsTerminal"                          => "windows"
+      case "jline.AnsiWindowsTerminal"                      => "windows"
+      case "jline.UnsupportedTerminal"                      => "none"
+      case x                                                => x
     }
     if (newValue != null) System.setProperty(TerminalProperty, newValue)
   }
@@ -88,10 +88,11 @@ private object JLine {
       val t = terminal
       t.synchronized { f(t) }
     }
+
   /**
-   * For accessing the JLine Terminal object.
-   * This ensures synchronized access as well as re-enabling echo after getting the Terminal.
-   */
+    * For accessing the JLine Terminal object.
+    * This ensures synchronized access as well as re-enabling echo after getting the Terminal.
+    */
   def usingTerminal[T](f: jline.Terminal => T): T =
     withTerminal { t =>
       t.restore
@@ -114,11 +115,11 @@ private object JLine {
   def withJLine[T](action: => T): T =
     withTerminal { t =>
       t.init
-      try { action }
-      finally { t.restore }
+      try { action } finally { t.restore }
     }
 
-  def simple(historyPath: Option[File], handleCONT: Boolean = HandleCONT): SimpleReader = new SimpleReader(historyPath, handleCONT)
+  def simple(historyPath: Option[File], handleCONT: Boolean = HandleCONT): SimpleReader =
+    new SimpleReader(historyPath, handleCONT)
   val MaxHistorySize = 500
   val HandleCONT = !java.lang.Boolean.getBoolean("sbt.disable.cont") && Signals.supported(Signals.CONT)
 }
@@ -126,17 +127,18 @@ private object JLine {
 trait LineReader {
   def readLine(prompt: String, mask: Option[Char] = None): Option[String]
 }
-final class FullReader(historyPath: Option[File], complete: Parser[_], val handleCONT: Boolean = JLine.HandleCONT) extends JLine {
-  protected[this] val reader =
-    {
-      val cr = JLine.createReader(historyPath)
-      sbt.complete.JLineCompletion.installCustomCompletor(cr, complete)
-      cr
-    }
+final class FullReader(historyPath: Option[File],
+                       complete: Parser[_],
+                       val handleCONT: Boolean = JLine.HandleCONT)
+    extends JLine {
+  protected[this] val reader = {
+    val cr = JLine.createReader(historyPath)
+    sbt.complete.JLineCompletion.installCustomCompletor(cr, complete)
+    cr
+  }
 }
 
 class SimpleReader private[sbt] (historyPath: Option[File], val handleCONT: Boolean) extends JLine {
   protected[this] val reader = JLine.createReader(historyPath)
 }
 object SimpleReader extends SimpleReader(None, JLine.HandleCONT)
-

@@ -9,33 +9,43 @@ import Def.{ compiled, flattenLocals, ScopedKey }
 import Predef.{ any2stringadd => _, _ }
 
 object SettingGraph {
-  def apply(structure: BuildStructure, basedir: File, scoped: ScopedKey[_], generation: Int)(implicit display: Show[ScopedKey[_]]): SettingGraph =
-    {
-      val cMap = flattenLocals(compiled(structure.settings, false)(structure.delegates, structure.scopeLocal, display))
-      def loop(scoped: ScopedKey[_], generation: Int): SettingGraph =
-        {
-          val key = scoped.key
-          val scope = scoped.scope
-          val definedIn = structure.data.definingScope(scope, key) map { sc => display(ScopedKey(sc, key)) }
-          val depends = cMap.get(scoped) match { case Some(c) => c.dependencies.toSet; case None => Set.empty }
-          // val related = cMap.keys.filter(k => k.key == key && k.scope != scope)
-          // val reverse = reverseDependencies(cMap, scoped)
+  def apply(structure: BuildStructure, basedir: File, scoped: ScopedKey[_], generation: Int)(
+      implicit display: Show[ScopedKey[_]]
+  ): SettingGraph = {
+    val cMap = flattenLocals(
+      compiled(structure.settings, false)(structure.delegates, structure.scopeLocal, display)
+    )
+    def loop(scoped: ScopedKey[_], generation: Int): SettingGraph = {
+      val key = scoped.key
+      val scope = scoped.scope
+      val definedIn = structure.data.definingScope(scope, key) map { sc =>
+        display(ScopedKey(sc, key))
+      }
+      val depends = cMap.get(scoped) match { case Some(c) => c.dependencies.toSet; case None => Set.empty }
+      // val related = cMap.keys.filter(k => k.key == key && k.scope != scope)
+      // val reverse = reverseDependencies(cMap, scoped)
 
-          SettingGraph(display(scoped), definedIn,
-            Project.scopedKeyData(structure, scope, key),
-            key.description, basedir,
-            depends map { (x: ScopedKey[_]) => loop(x, generation + 1) })
+      SettingGraph(
+        display(scoped),
+        definedIn,
+        Project.scopedKeyData(structure, scope, key),
+        key.description,
+        basedir,
+        depends map { (x: ScopedKey[_]) =>
+          loop(x, generation + 1)
         }
-      loop(scoped, generation)
+      )
     }
+    loop(scoped, generation)
+  }
 }
 
 case class SettingGraph(name: String,
-    definedIn: Option[String],
-    data: Option[ScopedKeyData[_]],
-    description: Option[String],
-    basedir: File,
-    depends: Set[SettingGraph]) {
+                        definedIn: Option[String],
+                        data: Option[ScopedKeyData[_]],
+                        description: Option[String],
+                        basedir: File,
+                        depends: Set[SettingGraph]) {
   def dataString: String =
     data map { d =>
       d.settingValue map {
@@ -44,11 +54,13 @@ case class SettingGraph(name: String,
       } getOrElse { d.typeName }
     } getOrElse { "" }
 
-  def dependsAscii(defaultWidth: Int) = Graph.toAscii(this,
-    (x: SettingGraph) => x.depends.toSeq.sortBy(_.name),
-    (x: SettingGraph) => "%s = %s" format (x.definedIn getOrElse { "" }, x.dataString),
-    defaultWidth
-  )
+  def dependsAscii(defaultWidth: Int) =
+    Graph.toAscii(
+      this,
+      (x: SettingGraph) => x.depends.toSeq.sortBy(_.name),
+      (x: SettingGraph) => "%s = %s" format (x.definedIn getOrElse { "" }, x.dataString),
+      defaultWidth
+    )
 }
 
 object Graph {

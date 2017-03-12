@@ -37,7 +37,13 @@ class ErrorSpec extends AbstractSpec with ScalaCheck {
           | } /* */ //
           |}
         """.stripMargin
-      MissingBracketHandler.findMissingText(buildSbt, buildSbt.length, 2, "fake.txt", new MessageOnlyException("fake")) must throwA[MessageOnlyException]
+      MissingBracketHandler.findMissingText(
+        buildSbt,
+        buildSbt.length,
+        2,
+        "fake.txt",
+        new MessageOnlyException("fake")
+      ) must throwA[MessageOnlyException]
     }
 
     "handle xml error " in {
@@ -56,7 +62,7 @@ class ErrorSpec extends AbstractSpec with ScalaCheck {
 
   }
 
-  private def containsLineNumber(buildSbt: String) = {
+  private def containsLineNumber(buildSbt: String) =
     try {
       split(buildSbt)
       throw new IllegalStateException(s"${classOf[MessageOnlyException].getName} expected")
@@ -71,5 +77,4 @@ class ErrorSpec extends AbstractSpec with ScalaCheck {
             false
         }
     }
-  }
 }

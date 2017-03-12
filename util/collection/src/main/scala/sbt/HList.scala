@@ -6,9 +6,9 @@ package sbt
 import Types._
 
 /**
- * A minimal heterogeneous list type.  For background, see
- * http://apocalisp.wordpress.com/2010/07/06/type-level-programming-in-scala-part-6a-heterogeneous-list basics/
- */
+  * A minimal heterogeneous list type.  For background, see
+  * http://apocalisp.wordpress.com/2010/07/06/type-level-programming-in-scala-part-6a-heterogeneous-list basics/
+  */
 sealed trait HList {
   type Wrap[M[_]] <: HList
 }

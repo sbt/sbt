@@ -1,24 +1,25 @@
 package sbt
 
-import sbt.impl.{ GroupID, GroupArtifactID }
+import sbt.impl.{ GroupArtifactID, GroupID }
 
-final class SbtExclusionRule(
-    val organization: String,
-    val name: String,
-    val artifact: String,
-    val configurations: Seq[String],
-    val crossVersion: CrossVersion) {
+final class SbtExclusionRule(val organization: String,
+                             val name: String,
+                             val artifact: String,
+                             val configurations: Seq[String],
+                             val crossVersion: CrossVersion) {
 
   def copy(organization: String = this.organization,
-    name: String = this.name,
-    artifact: String = this.artifact,
-    configurations: Seq[String] = this.configurations,
-    crossVersion: CrossVersion = this.crossVersion): SbtExclusionRule =
-    SbtExclusionRule(organization = organization,
+           name: String = this.name,
+           artifact: String = this.artifact,
+           configurations: Seq[String] = this.configurations,
+           crossVersion: CrossVersion = this.crossVersion): SbtExclusionRule =
+    SbtExclusionRule(
+      organization = organization,
       name = name,
       artifact = artifact,
       configurations = configurations,
-      crossVersion = crossVersion)
+      crossVersion = crossVersion
+    )
 }
 
 object SbtExclusionRule {
@@ -29,10 +30,10 @@ object SbtExclusionRule {
     new SbtExclusionRule(organization, name, "*", Nil, CrossVersion.Disabled)
 
   def apply(organization: String,
-    name: String,
-    artifact: String,
-    configurations: Seq[String],
-    crossVersion: CrossVersion): SbtExclusionRule =
+            name: String,
+            artifact: String,
+            configurations: Seq[String],
+            crossVersion: CrossVersion): SbtExclusionRule =
     new SbtExclusionRule(organization, name, artifact, configurations, crossVersion)
 
   implicit def groupIdToExclusionRule(organization: GroupID): SbtExclusionRule =

@@ -7,7 +7,7 @@ import sbinary.{ CollectionTypes, DefaultProtocol, Format, Input, JavaFormats, O
 import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, File, InputStream, OutputStream }
 import java.net.{ URI, URL }
 import Types.:+:
-import DefaultProtocol.{ asProduct2, asSingleton, BooleanFormat, ByteFormat, IntFormat, wrap }
+import DefaultProtocol.{ asProduct2, asSingleton, wrap, BooleanFormat, ByteFormat, IntFormat }
 import scala.xml.NodeSeq
 
 trait Cache[I, O] {
@@ -28,33 +28,35 @@ object Cache extends CacheImplicits {
           val out = f(in)
           store(out)
           out
-      }
+    }
 
   def debug[I](label: String, c: InputCache[I]): InputCache[I] =
     new InputCache[I] {
       type Internal = c.Internal
       def convert(i: I) = c.convert(i)
-      def read(from: Input) =
-        {
-          val v = c.read(from)
-          println(label + ".read: " + v)
-          v
-        }
+      def read(from: Input) = {
+        val v = c.read(from)
+        println(label + ".read: " + v)
+        v
+      }
       def write(to: Out, v: Internal): Unit = {
         println(label + ".write: " + v)
         c.write(to, v)
       }
       def equiv: Equiv[Internal] = new Equiv[Internal] {
-        def equiv(a: Internal, b: Internal) =
-          {
-            val equ = c.equiv.equiv(a, b)
-            println(label + ".equiv(" + a + ", " + b + "): " + equ)
-            equ
-          }
+        def equiv(a: Internal, b: Internal) = {
+          val equ = c.equiv.equiv(a, b)
+          println(label + ".equiv(" + a + ", " + b + "): " + equ)
+          equ
+        }
       }
     }
 }
-trait CacheImplicits extends BasicCacheImplicits with SBinaryFormats with HListCacheImplicits with UnionImplicits
+trait CacheImplicits
+    extends BasicCacheImplicits
+    with SBinaryFormats
+    with HListCacheImplicits
+    with UnionImplicits
 trait BasicCacheImplicits {
   implicit def basicCache[I, O](implicit in: InputCache[I], outFormat: Format[O]): Cache[I, O] =
     new BasicCache()(in, outFormat)
@@ -66,16 +68,16 @@ trait BasicCacheImplicits {
     new InputCache[Option[T]] {
       type Internal = Option[t.Internal]
       def convert(v: Option[T]): Internal = v.map(x => t.convert(x))
-      def read(from: Input) =
-        {
-          val isDefined = BooleanFormat.reads(from)
-          if (isDefined) Some(t.read(from)) else None
+      def read(from: Input) = {
+        val isDefined = BooleanFormat.reads(from)
+        if (isDefined) Some(t.read(from)) else None
+      }
+      def write(to: Out, j: Internal): Unit = {
+        BooleanFormat.writes(to, j.isDefined)
+        j foreach { x =>
+          t.write(to, x)
         }
-      def write(to: Out, j: Internal): Unit =
-        {
-          BooleanFormat.writes(to, j.isDefined)
-          j foreach { x => t.write(to, x) }
-        }
+      }
       def equiv = optEquiv(t.equiv)
     }
 
@@ -99,26 +101,25 @@ trait BasicCacheImplicits {
   implicit def stringSetEquiv: Equiv[Set[String]] = defaultEquiv
   implicit def stringMapEquiv: Equiv[Map[String, String]] = defaultEquiv
 
-  def streamFormat[T](write: (T, OutputStream) => Unit, f: InputStream => T): Format[T] =
-    {
-      val toBytes = (t: T) => { val bos = new ByteArrayOutputStream; write(t, bos); bos.toByteArray }
-      val fromBytes = (bs: Array[Byte]) => f(new ByteArrayInputStream(bs))
-      wrap(toBytes, fromBytes)(DefaultProtocol.ByteArrayFormat)
-    }
+  def streamFormat[T](write: (T, OutputStream) => Unit, f: InputStream => T): Format[T] = {
+    val toBytes = (t: T) => { val bos = new ByteArrayOutputStream; write(t, bos); bos.toByteArray }
+    val fromBytes = (bs: Array[Byte]) => f(new ByteArrayInputStream(bs))
+    wrap(toBytes, fromBytes)(DefaultProtocol.ByteArrayFormat)
+  }
 
-  implicit def xmlInputCache(implicit strEq: InputCache[String]): InputCache[NodeSeq] = wrapIn[NodeSeq, String](_.toString, strEq)
+  implicit def xmlInputCache(implicit strEq: InputCache[String]): InputCache[NodeSeq] =
+    wrapIn[NodeSeq, String](_.toString, strEq)
 
   implicit def seqCache[T](implicit t: InputCache[T]): InputCache[Seq[T]] =
     new InputCache[Seq[T]] {
       type Internal = Seq[t.Internal]
       def convert(v: Seq[T]) = v.map(x => t.convert(x))
-      def read(from: Input) =
-        {
-          val size = IntFormat.reads(from)
-          def next(left: Int, acc: List[t.Internal]): Internal =
-            if (left <= 0) acc.reverse else next(left - 1, t.read(from) :: acc)
-          next(size, Nil)
-        }
+      def read(from: Input) = {
+        val size = IntFormat.reads(from)
+        def next(left: Int, acc: List[t.Internal]): Internal =
+          if (left <= 0) acc.reverse else next(left - 1, t.read(from) :: acc)
+        next(size, Nil)
+      }
       def write(to: Out, vs: Internal): Unit = {
         val size = vs.length
         IntFormat.writes(to, size)
@@ -155,16 +156,16 @@ trait BasicCacheImplicits {
 }
 
 trait HListCacheImplicits {
-  implicit def hConsCache[H, T <: HList](implicit head: InputCache[H], tail: InputCache[T]): InputCache[H :+: T] =
+  implicit def hConsCache[H, T <: HList](implicit head: InputCache[H],
+                                         tail: InputCache[T]): InputCache[H :+: T] =
     new InputCache[H :+: T] {
       type Internal = (head.Internal, tail.Internal)
       def convert(in: H :+: T) = (head.convert(in.head), tail.convert(in.tail))
-      def read(from: Input) =
-        {
-          val h = head.read(from)
-          val t = tail.read(from)
-          (h, t)
-        }
+      def read(from: Input) = {
+        val h = head.read(from)
+        val t = tail.read(from)
+        (h, t)
+      }
       def write(to: Out, j: Internal): Unit = {
         head.write(to, j._1)
         tail.write(to, j._2)
@@ -178,18 +179,18 @@ trait HListCacheImplicits {
 
   implicit def hNilCache: InputCache[HNil] = Cache.singleton(HNil: HNil)
 
-  implicit def hConsFormat[H, T <: HList](implicit head: Format[H], tail: Format[T]): Format[H :+: T] = new Format[H :+: T] {
-    def reads(from: Input) =
-      {
+  implicit def hConsFormat[H, T <: HList](implicit head: Format[H], tail: Format[T]): Format[H :+: T] =
+    new Format[H :+: T] {
+      def reads(from: Input) = {
         val h = head.reads(from)
         val t = tail.reads(from)
         HCons(h, t)
       }
-    def writes(to: Out, hc: H :+: T): Unit = {
-      head.writes(to, hc.head)
-      tail.writes(to, hc.tail)
+      def writes(to: Out, hc: H :+: T): Unit = {
+        head.writes(to, hc.head)
+        tail.writes(to, hc.tail)
+      }
     }
-  }
 
   implicit def hNilFormat: Format[HNil] = asSingleton(HNil)
 }
@@ -198,13 +199,12 @@ trait UnionImplicits {
     new InputCache[UB] {
       type Internal = Found[_]
       def convert(in: UB) = uc.find(in)
-      def read(in: Input) =
-        {
-          val index = ByteFormat.reads(in)
-          val (cache, clazz) = uc.at(index)
-          val value = cache.read(in)
-          new Found[cache.Internal](cache, clazz, value, index)
-        }
+      def read(in: Input) = {
+        val index = ByteFormat.reads(in)
+        val (cache, clazz) = uc.at(index)
+        val value = cache.read(in)
+        new Found[cache.Internal](cache, clazz, value, index)
+      }
       def write(to: Out, i: Internal): Unit = {
         def write0[I](f: Found[I]): Unit = {
           ByteFormat.writes(to, f.index.toByte)
@@ -214,22 +214,24 @@ trait UnionImplicits {
       }
       def equiv: Equiv[Internal] = new Equiv[Internal] {
         def equiv(a: Internal, b: Internal) =
-          {
-            if (a.clazz == b.clazz)
-              force(a.cache.equiv, a.value, b.value)
-            else
-              false
-          }
+          if (a.clazz == b.clazz)
+            force(a.cache.equiv, a.value, b.value)
+          else
+            false
         def force[T <: UB, UB](e: Equiv[T], a: UB, b: UB) = e.equiv(a.asInstanceOf[T], b.asInstanceOf[T])
       }
     }
 
-  implicit def unionCons[H <: UB, UB, T <: HList](implicit head: InputCache[H], mf: Manifest[H], t: UnionCache[T, UB]): UnionCache[H :+: T, UB] =
+  implicit def unionCons[H <: UB, UB, T <: HList](implicit head: InputCache[H],
+                                                  mf: Manifest[H],
+                                                  t: UnionCache[T, UB]): UnionCache[H :+: T, UB] =
     new UnionCache[H :+: T, UB] {
       val size = 1 + t.size
       def c = mf.runtimeClass
       def find(value: UB): Found[_] =
-        if (c.isInstance(value)) new Found[head.Internal](head, c, head.convert(value.asInstanceOf[H]), size - 1) else t.find(value)
+        if (c.isInstance(value))
+          new Found[head.Internal](head, c, head.convert(value.asInstanceOf[H]), size - 1)
+        else t.find(value)
       def at(i: Int): (InputCache[_ <: UB], Class[_]) = if (size == i + 1) (head, c) else t.at(i)
     }
 

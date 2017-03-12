@@ -36,27 +36,22 @@ object InputCache {
 }
 
 class BasicCache[I, O](implicit input: InputCache[I], outFormat: Format[O]) extends Cache[I, O] {
-  def apply(file: File)(in: I) =
-    {
-      val j = input.convert(in)
-      try { applyImpl(file, j) }
-      catch { case e: Exception => Right(update(file)(j)) }
-    }
+  def apply(file: File)(in: I) = {
+    val j = input.convert(in)
+    try { applyImpl(file, j) } catch { case e: Exception => Right(update(file)(j)) }
+  }
   protected def applyImpl(file: File, in: input.Internal) =
-    {
-      Using.fileInputStream(file) { stream =>
-        val previousIn = input.read(stream)
-        if (input.equiv.equiv(in, previousIn))
-          Left(outFormat.reads(stream))
-        else
-          Right(update(file)(in))
-      }
+    Using.fileInputStream(file) { stream =>
+      val previousIn = input.read(stream)
+      if (input.equiv.equiv(in, previousIn))
+        Left(outFormat.reads(stream))
+      else
+        Right(update(file)(in))
     }
-  protected def update(file: File)(in: input.Internal) = (out: O) =>
-    {
-      Using.fileOutputStream(false)(file) { stream =>
-        input.write(stream, in)
-        outFormat.writes(stream, out)
-      }
+  protected def update(file: File)(in: input.Internal) = (out: O) => {
+    Using.fileOutputStream(false)(file) { stream =>
+      input.write(stream, in)
+      outFormat.writes(stream, out)
     }
+  }
 }

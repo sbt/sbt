@@ -9,9 +9,9 @@ import org.specs2.runner.JUnitRunner
 class NameHashingSpecification extends Specification {
 
   /**
-   * Very basic test which checks whether a name hash is insensitive to
-   * definition order (across the whole compilation unit).
-   */
+    * Very basic test which checks whether a name hash is insensitive to
+    * definition order (across the whole compilation unit).
+    */
   "new member" in {
     val nameHashing = new NameHashing
     val def1 = new Def(Array.empty, strTpe, Array.empty, "foo", publicAccess, defaultModifiers, Array.empty)
@@ -29,9 +29,9 @@ class NameHashingSpecification extends Specification {
   }
 
   /**
-   * Very basic test which checks whether a name hash is insensitive to
-   * definition order (across the whole compilation unit).
-   */
+    * Very basic test which checks whether a name hash is insensitive to
+    * definition order (across the whole compilation unit).
+    */
   "definition order" in {
     val nameHashing = new NameHashing
     val def1 = new Def(Array.empty, intTpe, Array.empty, "bar", publicAccess, defaultModifiers, Array.empty)
@@ -51,21 +51,21 @@ class NameHashingSpecification extends Specification {
   }
 
   /**
-   * Very basic test which asserts that a name hash is sensitive to definition location.
-   *
-   * For example, if we have:
-   * // Foo1.scala
-   * class Foo { def xyz: Int = ... }
-   * object Foo
-   *
-   * and:
-   * // Foo2.scala
-   * class Foo
-   * object Foo { def xyz: Int = ... }
-   *
-   * then hash for `xyz` name should differ in those two cases
-   * because method `xyz` was moved from class to an object.
-   */
+    * Very basic test which asserts that a name hash is sensitive to definition location.
+    *
+    * For example, if we have:
+    * // Foo1.scala
+    * class Foo { def xyz: Int = ... }
+    * object Foo
+    *
+    * and:
+    * // Foo2.scala
+    * class Foo
+    * object Foo { def xyz: Int = ... }
+    *
+    * then hash for `xyz` name should differ in those two cases
+    * because method `xyz` was moved from class to an object.
+    */
   "definition location" in {
     val nameHashing = new NameHashing
     val deff = new Def(Array.empty, intTpe, Array.empty, "bar", publicAccess, defaultModifiers, Array.empty)
@@ -87,32 +87,41 @@ class NameHashingSpecification extends Specification {
   }
 
   /**
-   * Test if members introduced in parent class affect hash of a name
-   * of a child class.
-   *
-   * For example, if we have:
-   * // Test1.scala
-   * class Parent
-   * class Child extends Parent
-   *
-   * and:
-   * // Test2.scala
-   * class Parent { def bar: Int = ... }
-   * class Child extends Parent
-   *
-   * then hash for `Child` name should be the same in both
-   * cases.
-   */
+    * Test if members introduced in parent class affect hash of a name
+    * of a child class.
+    *
+    * For example, if we have:
+    * // Test1.scala
+    * class Parent
+    * class Child extends Parent
+    *
+    * and:
+    * // Test2.scala
+    * class Parent { def bar: Int = ... }
+    * class Child extends Parent
+    *
+    * then hash for `Child` name should be the same in both
+    * cases.
+    */
   "definition in parent class" in {
     val parentA = simpleClass("Parent")
-    val barMethod = new Def(Array.empty, intTpe, Array.empty, "bar", publicAccess, defaultModifiers, Array.empty)
+    val barMethod =
+      new Def(Array.empty, intTpe, Array.empty, "bar", publicAccess, defaultModifiers, Array.empty)
     val parentB = simpleClass("Parent", barMethod)
     val childA = {
-      val structure = new Structure(lzy(Array[Type](parentA.structure)), lzy(Array.empty[Definition]), lzy(Array.empty[Definition]))
+      val structure = new Structure(
+        lzy(Array[Type](parentA.structure)),
+        lzy(Array.empty[Definition]),
+        lzy(Array.empty[Definition])
+      )
       simpleClass("Child", structure)
     }
     val childB = {
-      val structure = new Structure(lzy(Array[Type](parentB.structure)), lzy(Array.empty[Definition]), lzy(Array[Definition](barMethod)))
+      val structure = new Structure(
+        lzy(Array[Type](parentB.structure)),
+        lzy(Array.empty[Definition]),
+        lzy(Array[Definition](barMethod))
+      )
       simpleClass("Child", structure)
     }
     val parentANameHashes = nameHashesForClass(parentA)
@@ -126,31 +135,51 @@ class NameHashingSpecification extends Specification {
   }
 
   /**
-   * Checks if changes to structural types that appear in method signature
-   * affect name hash of the method. For example, if we have:
-   *
-   * // Test1.scala
-   * class A {
-   * 	def foo: { bar: Int }
-   * }
-   *
-   * // Test2.scala
-   * class A {
-   *   def foo: { bar: String }
-   * }
-   *
-   * then name hash for "foo" should be different in those two cases.
-   */
+    * Checks if changes to structural types that appear in method signature
+    * affect name hash of the method. For example, if we have:
+    *
+    * // Test1.scala
+    * class A {
+    * 	def foo: { bar: Int }
+    * }
+    *
+    * // Test2.scala
+    * class A {
+    *   def foo: { bar: String }
+    * }
+    *
+    * then name hash for "foo" should be different in those two cases.
+    */
   "structural type in definition" in {
+
     /** def foo: { bar: Int } */
     val fooMethod1 = {
-      val barMethod1 = new Def(Array.empty, intTpe, Array.empty, "bar", publicAccess, defaultModifiers, Array.empty)
-      new Def(Array.empty, simpleStructure(barMethod1), Array.empty, "foo", publicAccess, defaultModifiers, Array.empty)
+      val barMethod1 =
+        new Def(Array.empty, intTpe, Array.empty, "bar", publicAccess, defaultModifiers, Array.empty)
+      new Def(
+        Array.empty,
+        simpleStructure(barMethod1),
+        Array.empty,
+        "foo",
+        publicAccess,
+        defaultModifiers,
+        Array.empty
+      )
     }
+
     /** def foo: { bar: String } */
     val fooMethod2 = {
-      val barMethod2 = new Def(Array.empty, strTpe, Array.empty, "bar", publicAccess, defaultModifiers, Array.empty)
-      new Def(Array.empty, simpleStructure(barMethod2), Array.empty, "foo", publicAccess, defaultModifiers, Array.empty)
+      val barMethod2 =
+        new Def(Array.empty, strTpe, Array.empty, "bar", publicAccess, defaultModifiers, Array.empty)
+      new Def(
+        Array.empty,
+        simpleStructure(barMethod2),
+        Array.empty,
+        "foo",
+        publicAccess,
+        defaultModifiers,
+        Array.empty
+      )
     }
     val aClass1 = simpleClass("A", fooMethod1)
     val aClass2 = simpleClass("A", fooMethod2)
@@ -165,30 +194,30 @@ class NameHashingSpecification extends Specification {
   }
 
   /**
-   * Checks that private vars are included in the hash of the public API of traits.
-   * Including the private vars of traits is required because classes that implement a trait
-   * have to define getters and setters for these vars.
-   * For instance, if trait Foo is initially defined as:
-   *     trait Foo { private var x = new A }
-   * changing it to
-   *     trait Foo { private var x = new B }
-   * requires us to recompile all implementors of trait Foo, because scalac generates setters and getters
-   * for the private vars of trait Foo in its implementor. If the clients of trait Foo are not recompiled,
-   * we get abstract method errors at runtime, because the types expected by the setter (for instance) does not
-   * match.
-   */
+    * Checks that private vars are included in the hash of the public API of traits.
+    * Including the private vars of traits is required because classes that implement a trait
+    * have to define getters and setters for these vars.
+    * For instance, if trait Foo is initially defined as:
+    *     trait Foo { private var x = new A }
+    * changing it to
+    *     trait Foo { private var x = new B }
+    * requires us to recompile all implementors of trait Foo, because scalac generates setters and getters
+    * for the private vars of trait Foo in its implementor. If the clients of trait Foo are not recompiled,
+    * we get abstract method errors at runtime, because the types expected by the setter (for instance) does not
+    * match.
+    */
   "private var in traits are included in API hash" in {
     /* trait Foo { private var x } */
     val fooTrait1 =
-      simpleTrait("Foo",
+      simpleTrait(
+        "Foo",
         simpleStructure(new Var(emptyType, "x", privateAccess, defaultModifiers, Array.empty)),
-        publicAccess)
+        publicAccess
+      )
 
     /* trait Foo */
     val fooTrait2 =
-      simpleTrait("Foo",
-        simpleStructure(),
-        publicAccess)
+      simpleTrait("Foo", simpleStructure(), publicAccess)
 
     val api1 = new SourceAPI(Array.empty, Array(fooTrait1))
     val api2 = new SourceAPI(Array.empty, Array(fooTrait2))
@@ -200,15 +229,15 @@ class NameHashingSpecification extends Specification {
   "private vals in traits are included in API hash" in {
     /* trait Foo { private val x } */
     val fooTrait1 =
-      simpleTrait("Foo",
+      simpleTrait(
+        "Foo",
         simpleStructure(new Val(emptyType, "x", privateAccess, defaultModifiers, Array.empty)),
-        publicAccess)
+        publicAccess
+      )
 
     /* trait Foo */
     val fooTrait2 =
-      simpleTrait("Foo",
-        simpleStructure(),
-        publicAccess)
+      simpleTrait("Foo", simpleStructure(), publicAccess)
 
     val api1 = new SourceAPI(Array.empty, Array(fooTrait1))
     val api2 = new SourceAPI(Array.empty, Array(fooTrait2))
@@ -220,16 +249,27 @@ class NameHashingSpecification extends Specification {
   "private objects in traits are included in API hash" in {
     /* trait Foo { private object x } */
     val fooTrait1 =
-      simpleTrait("Foo",
+      simpleTrait(
+        "Foo",
         simpleStructure(
-          new ClassLike(DefinitionType.Module, lzy(emptyType), lzy(simpleStructure()), Array.empty, Array.empty, "x", privateAccess, defaultModifiers, Array.empty)),
-        publicAccess)
+          new ClassLike(
+            DefinitionType.Module,
+            lzy(emptyType),
+            lzy(simpleStructure()),
+            Array.empty,
+            Array.empty,
+            "x",
+            privateAccess,
+            defaultModifiers,
+            Array.empty
+          )
+        ),
+        publicAccess
+      )
 
     /* trait Foo */
     val fooTrait2 =
-      simpleTrait("Foo",
-        simpleStructure(),
-        publicAccess)
+      simpleTrait("Foo", simpleStructure(), publicAccess)
 
     val api1 = new SourceAPI(Array.empty, Array(fooTrait1))
     val api2 = new SourceAPI(Array.empty, Array(fooTrait2))
@@ -241,15 +281,17 @@ class NameHashingSpecification extends Specification {
   "private non-synthetic def in traits are not included in API hash" in {
     /* trait Foo { private def x } */
     val fooTrait1 =
-      simpleTrait("Foo",
-        simpleStructure(new Def(Array.empty, emptyType, Array.empty, "x", privateAccess, defaultModifiers, Array.empty)),
-        publicAccess)
+      simpleTrait(
+        "Foo",
+        simpleStructure(
+          new Def(Array.empty, emptyType, Array.empty, "x", privateAccess, defaultModifiers, Array.empty)
+        ),
+        publicAccess
+      )
 
     /* trait Foo */
     val fooTrait2 =
-      simpleTrait("Foo",
-        simpleStructure(),
-        publicAccess)
+      simpleTrait("Foo", simpleStructure(), publicAccess)
 
     val api1 = new SourceAPI(Array.empty, Array(fooTrait1))
     val api2 = new SourceAPI(Array.empty, Array(fooTrait2))
@@ -262,15 +304,17 @@ class NameHashingSpecification extends Specification {
     /* trait Foo { private <superaccessor> def x } */
     val modifiers = new xsbti.api.Modifiers(false, false, false, false, false, false, false, true)
     val fooTrait1 =
-      simpleTrait("Foo",
-        simpleStructure(new Def(Array.empty, emptyType, Array.empty, "x", privateAccess, modifiers, Array.empty)),
-        publicAccess)
+      simpleTrait(
+        "Foo",
+        simpleStructure(
+          new Def(Array.empty, emptyType, Array.empty, "x", privateAccess, modifiers, Array.empty)
+        ),
+        publicAccess
+      )
 
     /* trait Foo */
     val fooTrait2 =
-      simpleTrait("Foo",
-        simpleStructure(),
-        publicAccess)
+      simpleTrait("Foo", simpleStructure(), publicAccess)
 
     val api1 = new SourceAPI(Array.empty, Array(fooTrait1))
     val api2 = new SourceAPI(Array.empty, Array(fooTrait2))
@@ -282,15 +326,17 @@ class NameHashingSpecification extends Specification {
   "private types in traits are included not in API hash" in {
     /* trait Foo { private type x } */
     val fooTrait1 =
-      simpleTrait("Foo",
-        simpleStructure(new TypeAlias(emptyType, Array.empty, "x", privateAccess, defaultModifiers, Array.empty)),
-        publicAccess)
+      simpleTrait(
+        "Foo",
+        simpleStructure(
+          new TypeAlias(emptyType, Array.empty, "x", privateAccess, defaultModifiers, Array.empty)
+        ),
+        publicAccess
+      )
 
     /* trait Foo */
     val fooTrait2 =
-      simpleTrait("Foo",
-        simpleStructure(),
-        publicAccess)
+      simpleTrait("Foo", simpleStructure(), publicAccess)
 
     val api1 = new SourceAPI(Array.empty, Array(fooTrait1))
     val api2 = new SourceAPI(Array.empty, Array(fooTrait2))
@@ -300,22 +346,23 @@ class NameHashingSpecification extends Specification {
   }
 
   /**
-   * Checks that private vars in non-top-level traits are included as well.
-   */
+    * Checks that private vars in non-top-level traits are included as well.
+    */
   "private variables in nested traits are include in the API hash" in {
     /* class A { trait Foo { private var x } } */
     val classA1 =
-      simpleClass("A",
-        simpleTrait("Foo",
+      simpleClass(
+        "A",
+        simpleTrait(
+          "Foo",
           simpleStructure(new Var(emptyType, "x", privateAccess, defaultModifiers, Array.empty)),
-          publicAccess))
+          publicAccess
+        )
+      )
 
     /* class A { trait Foo } */
     val classA2 =
-      simpleClass("A",
-        simpleTrait("Foo",
-          simpleStructure(),
-          publicAccess))
+      simpleClass("A", simpleTrait("Foo", simpleStructure(), publicAccess))
 
     val api1 = new SourceAPI(Array.empty, Array(classA1))
     val api2 = new SourceAPI(Array.empty, Array(classA2))
@@ -325,22 +372,23 @@ class NameHashingSpecification extends Specification {
   }
 
   /**
-   * Checks that private traits are NOT included in the hash.
-   */
+    * Checks that private traits are NOT included in the hash.
+    */
   "private inner traits are not included in the API hash" in {
     /* class Foo { private trait T { private var x } } */
     val classFoo1 =
-      simpleClass("Foo",
-        simpleTrait("T",
+      simpleClass(
+        "Foo",
+        simpleTrait(
+          "T",
           simpleStructure(new Var(emptyType, "x", privateAccess, defaultModifiers, Array.empty)),
-          privateAccess))
+          privateAccess
+        )
+      )
 
     /** class Foo { private trait T } */
     val classFoo2 =
-      simpleClass("Foo",
-        simpleTrait("T",
-          simpleStructure(),
-          privateAccess))
+      simpleClass("Foo", simpleTrait("T", simpleStructure(), privateAccess))
 
     /** class Foo */
     val classFoo3 =
@@ -354,18 +402,19 @@ class NameHashingSpecification extends Specification {
   }
 
   /**
-   * Checks that private members are NOT included in the hash of the public API of classes.
-   */
+    * Checks that private members are NOT included in the hash of the public API of classes.
+    */
   "private members in classes are not included in the api hash" in {
     /* class Foo { private var x } */
     val classFoo1 =
-      simpleClass("Foo",
-        simpleStructure(new Var(emptyType, "x", privateAccess, defaultModifiers, Array.empty)))
+      simpleClass(
+        "Foo",
+        simpleStructure(new Var(emptyType, "x", privateAccess, defaultModifiers, Array.empty))
+      )
 
     /* class Foo */
     val classFoo2 =
-      simpleClass("Foo",
-        simpleStructure())
+      simpleClass("Foo", simpleStructure())
 
     val api1 = new SourceAPI(Array.empty, Array(classFoo1))
     val api2 = new SourceAPI(Array.empty, Array(classFoo2))
@@ -375,34 +424,39 @@ class NameHashingSpecification extends Specification {
   }
 
   /**
-   * Checks that private members do NOT contribute to name hashes.
-   * Test for https://github.com/sbt/sbt/issues/2324
-   */
+    * Checks that private members do NOT contribute to name hashes.
+    * Test for https://github.com/sbt/sbt/issues/2324
+    */
   "private members in classes do not contribute to name hashes" in {
     /* class Foo { private val x } */
     val classFoo =
-      simpleClass("Foo",
-        simpleStructure(new Val(emptyType, "x", privateAccess, defaultModifiers, Array.empty)))
+      simpleClass(
+        "Foo",
+        simpleStructure(new Val(emptyType, "x", privateAccess, defaultModifiers, Array.empty))
+      )
     val nameHashes = nameHashesForClass(classFoo)
     // make sure there's no name hash for the private member "x"
     Seq("Foo") === nameHashes.regularMembers.map(_.name).toSeq
   }
 
-  private def assertNameHashEqualForRegularName(name: String, nameHashes1: _internalOnly_NameHashes,
-    nameHashes2: _internalOnly_NameHashes) = {
+  private def assertNameHashEqualForRegularName(name: String,
+                                                nameHashes1: _internalOnly_NameHashes,
+                                                nameHashes2: _internalOnly_NameHashes) = {
     val nameHash1 = nameHashForRegularName(nameHashes1, name)
     val nameHash2 = nameHashForRegularName(nameHashes1, name)
     nameHash1 === nameHash2
   }
 
-  private def assertNameHashNotEqualForRegularName(name: String, nameHashes1: _internalOnly_NameHashes,
-    nameHashes2: _internalOnly_NameHashes) = {
+  private def assertNameHashNotEqualForRegularName(name: String,
+                                                   nameHashes1: _internalOnly_NameHashes,
+                                                   nameHashes2: _internalOnly_NameHashes) = {
     val nameHash1 = nameHashForRegularName(nameHashes1, name)
     val nameHash2 = nameHashForRegularName(nameHashes2, name)
     nameHash1 !=== nameHash2
   }
 
-  private def nameHashForRegularName(nameHashes: _internalOnly_NameHashes, name: String): _internalOnly_NameHash =
+  private def nameHashForRegularName(nameHashes: _internalOnly_NameHashes,
+                                     name: String): _internalOnly_NameHash =
     try {
       nameHashes.regularMembers.find(_.name == name).get
     } catch {
@@ -417,20 +471,39 @@ class NameHashingSpecification extends Specification {
 
   private def lzy[T](x: T): Lazy[T] = new Lazy[T] { def get: T = x }
 
-  private def simpleStructure(defs: Definition*) = new Structure(lzy(Array.empty[Type]), lzy(defs.toArray), lzy(Array.empty[Definition]))
+  private def simpleStructure(defs: Definition*) =
+    new Structure(lzy(Array.empty[Type]), lzy(defs.toArray), lzy(Array.empty[Definition]))
 
   private def simpleClass(name: String, defs: Definition*): ClassLike = {
     val structure = simpleStructure(defs: _*)
     simpleClass(name, structure)
   }
 
-  private def simpleClass(name: String, structure: Structure): ClassLike = {
-    new ClassLike(DefinitionType.ClassDef, lzy(emptyType), lzy(structure), Array.empty, Array.empty, name, publicAccess, defaultModifiers, Array.empty)
-  }
+  private def simpleClass(name: String, structure: Structure): ClassLike =
+    new ClassLike(
+      DefinitionType.ClassDef,
+      lzy(emptyType),
+      lzy(structure),
+      Array.empty,
+      Array.empty,
+      name,
+      publicAccess,
+      defaultModifiers,
+      Array.empty
+    )
 
-  private def simpleTrait(name: String, structure: Structure, access: Access): ClassLike = {
-    new ClassLike(DefinitionType.Trait, lzy(emptyType), lzy(structure), Array.empty, Array.empty, name, access, defaultModifiers, Array.empty)
-  }
+  private def simpleTrait(name: String, structure: Structure, access: Access): ClassLike =
+    new ClassLike(
+      DefinitionType.Trait,
+      lzy(emptyType),
+      lzy(structure),
+      Array.empty,
+      Array.empty,
+      name,
+      access,
+      defaultModifiers,
+      Array.empty
+    )
 
   private val emptyType = new EmptyType
   private val intTpe = new Projection(emptyType, "Int")

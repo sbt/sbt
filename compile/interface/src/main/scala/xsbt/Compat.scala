@@ -4,40 +4,40 @@ import scala.tools.nsc.Global
 import scala.tools.nsc.symtab.Flags
 
 /**
- * Collection of hacks that make it possible for the compiler interface
- * to stay source compatible with Scala compiler 2.9, 2.10 and 2.11.
- *
- * One common technique used in `Compat` class is use of implicit conversions to deal
- * with methods that got renamed or moved between different Scala compiler versions.
- *
- * Let's pick a specific example. In Scala 2.9 and 2.10 there was a method called `toplevelClass`
- * defined on `Symbol`. In 2.10 that method has been deprecated and `enclosingTopLevelClass`
- * method has been introduce as a replacement. In Scala 2.11 the old `toplevelClass` method has
- * been removed. How can we pick the right version based on availability of those two methods?
- *
- * We define an implicit conversion from Symbol to a class that contains both method definitions:
- *
- *   implicit def symbolCompat(sym: Symbol): SymbolCompat = new SymbolCompat(sym)
- *   class SymbolCompat(sym: Symbol) {
- *     def enclosingTopLevelClass: Symbol = sym.toplevelClass
- *     def toplevelClass: Symbol =
- *       throw new RuntimeException("For source compatibility only: should not get here.")
- *   }
- *
- * We assume that client code (code in compiler interface) should always call `enclosingTopLevelClass`
- * method. If we compile that code against 2.11 it will just directly link against method provided by
- * Symbol. However, if we compile against 2.9 or 2.10 `enclosingTopLevelClass` won't be found so the
- * implicit conversion defined above will kick in. That conversion will provide `enclosingTopLevelClass`
- * that simply forwards to the old `toplevelClass` method that is available in 2.9 and 2.10 so that
- * method will be called in the end. There's one twist: since `enclosingTopLevelClass` forwards to
- * `toplevelClass` which doesn't exist in 2.11! Therefore, we need to also define `toplevelClass`
- * that will be provided by an implicit conversion as well. However, we should never reach that method
- * at runtime if either `enclosingTopLevelClass` or `toplevelClass` is available on Symbol so this
- * is purely source compatibility stub.
- *
- * The technique described above is used in several places below.
- *
- */
+  * Collection of hacks that make it possible for the compiler interface
+  * to stay source compatible with Scala compiler 2.9, 2.10 and 2.11.
+  *
+  * One common technique used in `Compat` class is use of implicit conversions to deal
+  * with methods that got renamed or moved between different Scala compiler versions.
+  *
+  * Let's pick a specific example. In Scala 2.9 and 2.10 there was a method called `toplevelClass`
+  * defined on `Symbol`. In 2.10 that method has been deprecated and `enclosingTopLevelClass`
+  * method has been introduce as a replacement. In Scala 2.11 the old `toplevelClass` method has
+  * been removed. How can we pick the right version based on availability of those two methods?
+  *
+  * We define an implicit conversion from Symbol to a class that contains both method definitions:
+  *
+  *   implicit def symbolCompat(sym: Symbol): SymbolCompat = new SymbolCompat(sym)
+  *   class SymbolCompat(sym: Symbol) {
+  *     def enclosingTopLevelClass: Symbol = sym.toplevelClass
+  *     def toplevelClass: Symbol =
+  *       throw new RuntimeException("For source compatibility only: should not get here.")
+  *   }
+  *
+  * We assume that client code (code in compiler interface) should always call `enclosingTopLevelClass`
+  * method. If we compile that code against 2.11 it will just directly link against method provided by
+  * Symbol. However, if we compile against 2.9 or 2.10 `enclosingTopLevelClass` won't be found so the
+  * implicit conversion defined above will kick in. That conversion will provide `enclosingTopLevelClass`
+  * that simply forwards to the old `toplevelClass` method that is available in 2.9 and 2.10 so that
+  * method will be called in the end. There's one twist: since `enclosingTopLevelClass` forwards to
+  * `toplevelClass` which doesn't exist in 2.11! Therefore, we need to also define `toplevelClass`
+  * that will be provided by an implicit conversion as well. However, we should never reach that method
+  * at runtime if either `enclosingTopLevelClass` or `toplevelClass` is available on Symbol so this
+  * is purely source compatibility stub.
+  *
+  * The technique described above is used in several places below.
+  *
+  */
 abstract class Compat {
   val global: Global
   import global._
@@ -46,12 +46,12 @@ abstract class Compat {
   val ScalaObjectClass = definitions.ScalaObjectClass
 
   /**
-   * Traverses given type and collects result of applying a partial function `pf`.
-   *
-   * NOTE: This class exists in Scala 2.10 as CollectTypeCollector but does not in earlier
-   * versions (like 2.9) of Scala compiler that incremental cmpiler supports so we had to
-   * reimplement that class here.
-   */
+    * Traverses given type and collects result of applying a partial function `pf`.
+    *
+    * NOTE: This class exists in Scala 2.10 as CollectTypeCollector but does not in earlier
+    * versions (like 2.9) of Scala compiler that incremental cmpiler supports so we had to
+    * reimplement that class here.
+    */
   class CollectTypeTraverser[T](pf: PartialFunction[Type, T]) extends TypeTraverser {
     var collected: List[T] = Nil
     def traverse(tpe: Type): Unit = {
@@ -95,14 +95,14 @@ abstract class Compat {
   }
 
   val DummyValue = 0
-  def hasMacro(s: Symbol): Boolean =
-    {
-      val MACRO = Flags.MACRO // will be DummyValue for versions before 2.10
-      MACRO != DummyValue && s.hasFlag(MACRO)
-    }
+  def hasMacro(s: Symbol): Boolean = {
+    val MACRO = Flags.MACRO // will be DummyValue for versions before 2.10
+    MACRO != DummyValue && s.hasFlag(MACRO)
+  }
   def moduleSuffix(s: Symbol): String = s.moduleSuffix
 
-  private[this] def sourceCompatibilityOnly: Nothing = throw new RuntimeException("For source compatibility only: should not get here.")
+  private[this] def sourceCompatibilityOnly: Nothing =
+    throw new RuntimeException("For source compatibility only: should not get here.")
 
   private[this] final implicit def miscCompat(n: AnyRef): MiscCompat = new MiscCompat
 

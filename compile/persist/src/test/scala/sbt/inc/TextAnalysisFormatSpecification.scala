@@ -10,28 +10,36 @@ import Prop._
 object TextAnalysisFormatTest extends Properties("TextAnalysisFormat") {
 
   val nameHashing = true
-  val dummyOutput = new xsbti.compile.SingleOutput { def outputDirectory: java.io.File = new java.io.File("dummy") }
-  val commonSetup = new CompileSetup(dummyOutput, new CompileOptions(Nil, Nil), "2.10.4", xsbti.compile.CompileOrder.Mixed, nameHashing)
+  val dummyOutput = new xsbti.compile.SingleOutput {
+    def outputDirectory: java.io.File = new java.io.File("dummy")
+  }
+  val commonSetup = new CompileSetup(
+    dummyOutput,
+    new CompileOptions(Nil, Nil),
+    "2.10.4",
+    xsbti.compile.CompileOrder.Mixed,
+    nameHashing
+  )
   val commonHeader = """format version: 5
-                    |output mode:
-                    |1 items
-                    |0 -> single
-                    |output directories:
-                    |1 items
-                    |output dir -> dummy
-                    |compile options:
-                    |0 items
-                    |javac options:
-                    |0 items
-                    |compiler version:
-                    |1 items
-                    |0 -> 2.10.4
-                    |compile order:
-                    |1 items
-                    |0 -> Mixed
-                    |name hashing:
-                    |1 items
-                    |0 -> true""".stripMargin
+                       |output mode:
+                       |1 items
+                       |0 -> single
+                       |output directories:
+                       |1 items
+                       |output dir -> dummy
+                       |compile options:
+                       |0 items
+                       |javac options:
+                       |0 items
+                       |compiler version:
+                       |1 items
+                       |0 -> 2.10.4
+                       |compile order:
+                       |1 items
+                       |0 -> Mixed
+                       |name hashing:
+                       |1 items
+                       |0 -> true""".stripMargin
 
   property("Write and read empty Analysis") = {
 
@@ -85,19 +93,20 @@ object TextAnalysisFormatTest extends Properties("TextAnalysisFormat") {
 
   }
 
-  property("Write and read complex Analysis") = forAllNoShrink(TestCaseGenerators.genAnalysis(nameHashing)) { analysis: Analysis =>
-    val writer = new StringWriter
+  property("Write and read complex Analysis") = forAllNoShrink(TestCaseGenerators.genAnalysis(nameHashing)) {
+    analysis: Analysis =>
+      val writer = new StringWriter
 
-    TextAnalysisFormat.write(writer, analysis, commonSetup)
+      TextAnalysisFormat.write(writer, analysis, commonSetup)
 
-    val result = writer.toString
+      val result = writer.toString
 
-    result.startsWith(commonHeader)
-    val reader = new BufferedReader(new StringReader(result))
+      result.startsWith(commonHeader)
+      val reader = new BufferedReader(new StringReader(result))
 
-    val (readAnalysis, readSetup) = TextAnalysisFormat.read(reader)
+      val (readAnalysis, readSetup) = TextAnalysisFormat.read(reader)
 
-    compare(analysis, readAnalysis)
+      compare(analysis, readAnalysis)
   }
 
   // Compare two analyses with useful labelling when they aren't equal.

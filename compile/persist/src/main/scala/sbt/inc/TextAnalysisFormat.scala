@@ -47,7 +47,7 @@ object TextAnalysisFormat {
   // Some types are not required for external inspection/manipulation of the analysis file,
   // and are complex to serialize as text. So we serialize them as base64-encoded sbinary-serialized blobs.
   // TODO: This is a big performance hit. Figure out a more efficient way to serialize API objects?
-  import sbinary.DefaultProtocol.{ immutableMapFormat, immutableSetFormat, StringFormat, tuple2Format }
+  import sbinary.DefaultProtocol.{ immutableMapFormat, immutableSetFormat, tuple2Format, StringFormat }
   import AnalysisFormats._
   implicit val compilationF = xsbt.api.CompilationFormat
 
@@ -81,25 +81,25 @@ object TextAnalysisFormat {
   private[this] object VersionF {
     val currentVersion = "5"
 
-    def write(out: Writer): Unit = {
+    def write(out: Writer): Unit =
       out.write("format version: %s\n".format(currentVersion))
-    }
 
     private val versionPattern = """format version: (\w+)""".r
-    def read(in: BufferedReader): Unit = {
+    def read(in: BufferedReader): Unit =
       in.readLine() match {
         case versionPattern(version) => validateVersion(version)
         case s: String               => throw new ReadException("\"format version: <version>\"", s)
         case null                    => throw new EOFException
       }
-    }
 
-    def validateVersion(version: String): Unit = {
+    def validateVersion(version: String): Unit =
       // TODO: Support backwards compatibility?
       if (version != currentVersion) {
-        throw new ReadException("File uses format version %s, but we are compatible with version %s only.".format(version, currentVersion))
+        throw new ReadException(
+          "File uses format version %s, but we are compatible with version %s only."
+            .format(version, currentVersion)
+        )
       }
-    }
   }
 
   private[this] object RelationsF {
@@ -183,7 +183,10 @@ object TextAnalysisFormat {
     }
 
     def write(out: Writer, stamps: Stamps): Unit = {
-      def doWriteMap[V](header: String, m: Map[File, V]) = writeMap(out)(header, m, { v: V => v.toString })
+      def doWriteMap[V](header: String, m: Map[File, V]) =
+        writeMap(out)(header, m, { v: V =>
+          v.toString
+        })
 
       doWriteMap(Headers.products, stamps.products)
       doWriteMap(Headers.sources, stamps.sources)
@@ -192,7 +195,8 @@ object TextAnalysisFormat {
     }
 
     def read(in: BufferedReader): Stamps = {
-      def doReadMap[V](expectedHeader: String, s2v: String => V) = readMap(in)(expectedHeader, new File(_), s2v)
+      def doReadMap[V](expectedHeader: String, s2v: String => V) =
+        readMap(in)(expectedHeader, new File(_), s2v)
       val products = doReadMap(Headers.products, Stamp.fromString)
       val sources = doReadMap(Headers.sources, Stamp.fromString)
       val binaries = doReadMap(Headers.binaries, Stamp.fromString)
@@ -236,8 +240,10 @@ object TextAnalysisFormat {
     val stringToSourceInfo = ObjectStringifier.stringToObj[SourceInfo] _
     val sourceInfoToString = ObjectStringifier.objToString[SourceInfo] _
 
-    def write(out: Writer, infos: SourceInfos): Unit = writeMap(out)(Headers.infos, infos.allInfos, sourceInfoToString, inlineVals = false)
-    def read(in: BufferedReader): SourceInfos = SourceInfos.make(readMap(in)(Headers.infos, new File(_), stringToSourceInfo))
+    def write(out: Writer, infos: SourceInfos): Unit =
+      writeMap(out)(Headers.infos, infos.allInfos, sourceInfoToString, inlineVals = false)
+    def read(in: BufferedReader): SourceInfos =
+      SourceInfos.make(readMap(in)(Headers.infos, new File(_), stringToSourceInfo))
   }
 
   private[this] object CompilationsF {
@@ -251,8 +257,8 @@ object TextAnalysisFormat {
     def write(out: Writer, compilations: Compilations): Unit =
       writeSeq(out)(Headers.compilations, compilations.allCompilations, compilationToString)
 
-    def read(in: BufferedReader): Compilations = Compilations.make(
-      readSeq[Compilation](in)(Headers.compilations, stringToCompilation))
+    def read(in: BufferedReader): Compilations =
+      Compilations.make(readSeq[Compilation](in)(Headers.compilations, stringToCompilation))
   }
 
   private[this] object CompileSetupF {
@@ -272,12 +278,15 @@ object TextAnalysisFormat {
 
     def write(out: Writer, setup: CompileSetup): Unit = {
       val (mode, outputAsMap) = setup.output match {
-        case s: SingleOutput   => (singleOutputMode, Map(singleOutputKey -> s.outputDirectory))
-        case m: MultipleOutput => (multipleOutputMode, m.outputGroups.map(x => x.sourceDirectory -> x.outputDirectory).toMap)
+        case s: SingleOutput => (singleOutputMode, Map(singleOutputKey -> s.outputDirectory))
+        case m: MultipleOutput =>
+          (multipleOutputMode, m.outputGroups.map(x => x.sourceDirectory -> x.outputDirectory).toMap)
       }
 
       writeSeq(out)(Headers.outputMode, mode :: Nil, identity[String])
-      writeMap(out)(Headers.outputDir, outputAsMap, { f: File => f.getPath })
+      writeMap(out)(Headers.outputDir, outputAsMap, { f: File =>
+        f.getPath
+      })
       writeSeq(out)(Headers.compileOptions, setup.options.options, identity[String])
       writeSeq(out)(Headers.javacOptions, setup.options.javacOptions, identity[String])
       writeSeq(out)(Headers.compilerVersion, setup.compilerVersion :: Nil, identity[String])
@@ -297,27 +306,36 @@ object TextAnalysisFormat {
       val nameHashing = readSeq(in)(Headers.nameHashing, s2b).head
 
       val output = outputDirMode match {
-        case Some(s) => s match {
-          case `singleOutputMode` => new SingleOutput {
-            val outputDirectory = outputAsMap(singleOutputKey)
-          }
-          case `multipleOutputMode` => new MultipleOutput {
-            val outputGroups: Array[MultipleOutput.OutputGroup] = outputAsMap.toArray.map {
-              case (src: File, out: File) => new MultipleOutput.OutputGroup {
-                val sourceDirectory = src
-                val outputDirectory = out
-                override def toString = s"OutputGroup($src -> $out)"
+        case Some(s) =>
+          s match {
+            case `singleOutputMode` =>
+              new SingleOutput {
+                val outputDirectory = outputAsMap(singleOutputKey)
               }
-            }
-            override def toString = s"MultipleOuput($outputGroups)"
+            case `multipleOutputMode` =>
+              new MultipleOutput {
+                val outputGroups: Array[MultipleOutput.OutputGroup] = outputAsMap.toArray.map {
+                  case (src: File, out: File) =>
+                    new MultipleOutput.OutputGroup {
+                      val sourceDirectory = src
+                      val outputDirectory = out
+                      override def toString = s"OutputGroup($src -> $out)"
+                    }
+                }
+                override def toString = s"MultipleOuput($outputGroups)"
+              }
+            case str: String => throw new ReadException("Unrecognized output mode: " + str)
           }
-          case str: String => throw new ReadException("Unrecognized output mode: " + str)
-        }
         case None => throw new ReadException("No output mode specified")
       }
 
-      new CompileSetup(output, new CompileOptions(compileOptions, javacOptions), compilerVersion,
-        xsbti.compile.CompileOrder.valueOf(compileOrder), nameHashing)
+      new CompileSetup(
+        output,
+        new CompileOptions(compileOptions, javacOptions),
+        compilerVersion,
+        xsbti.compile.CompileOrder.valueOf(compileOrder),
+        nameHashing
+      )
     }
   }
 
@@ -343,19 +361,19 @@ object TextAnalysisFormat {
 
   private[this] def expectHeader(in: BufferedReader, expectedHeader: String): Unit = {
     val header = in.readLine()
-    if (header != expectedHeader + ":") throw new ReadException(expectedHeader, if (header == null) "EOF" else header)
+    if (header != expectedHeader + ":")
+      throw new ReadException(expectedHeader, if (header == null) "EOF" else header)
   }
 
   private[this] def writeSize(out: Writer, n: Int): Unit = out.write("%d items\n".format(n))
 
   private val itemsPattern = """(\d+) items""".r
-  private[this] def readSize(in: BufferedReader): Int = {
+  private[this] def readSize(in: BufferedReader): Int =
     in.readLine() match {
       case itemsPattern(nStr) => Integer.parseInt(nStr)
       case s: String          => throw new ReadException("\"<n> items\"", s)
       case null               => throw new EOFException
     }
-  }
 
   private[this] def writeSeq[T](out: Writer)(header: String, s: Seq[T], t2s: T => String): Unit = {
     // We write sequences as idx -> element maps, for uniformity with maps/relations.
@@ -370,7 +388,12 @@ object TextAnalysisFormat {
   private[this] def readSeq[T](in: BufferedReader)(expectedHeader: String, s2t: String => T): Seq[T] =
     (readPairs(in)(expectedHeader, identity[String], s2t).toSeq.sortBy(_._1) map (_._2))
 
-  private[this] def writeMap[K, V](out: Writer)(header: String, m: Map[K, V], v2s: V => String, inlineVals: Boolean = true)(implicit ord: Ordering[K]): Unit = {
+  private[this] def writeMap[K, V](out: Writer)(
+      header: String,
+      m: Map[K, V],
+      v2s: V => String,
+      inlineVals: Boolean = true
+  )(implicit ord: Ordering[K]): Unit = {
     writeHeader(out, header)
     writeSize(out, m.size)
     m.keys.toSeq.sorted foreach { k =>
@@ -382,7 +405,9 @@ object TextAnalysisFormat {
     }
   }
 
-  private[this] def readPairs[K, V](in: BufferedReader)(expectedHeader: String, s2k: String => K, s2v: String => V): Traversable[(K, V)] = {
+  private[this] def readPairs[K, V](
+      in: BufferedReader
+  )(expectedHeader: String, s2k: String => K, s2v: String => V): Traversable[(K, V)] = {
     def toPair(s: String): (K, V) = {
       if (s == null) throw new EOFException
       val p = s.indexOf(" -> ")
@@ -396,7 +421,8 @@ object TextAnalysisFormat {
     for (i <- 0 until n) yield toPair(in.readLine())
   }
 
-  private[this] def readMap[K, V](in: BufferedReader)(expectedHeader: String, s2k: String => K, s2v: String => V): Map[K, V] = {
+  private[this] def readMap[K, V](
+      in: BufferedReader
+  )(expectedHeader: String, s2k: String => K, s2v: String => V): Map[K, V] =
     readPairs(in)(expectedHeader, s2k, s2v).toMap
-  }
 }

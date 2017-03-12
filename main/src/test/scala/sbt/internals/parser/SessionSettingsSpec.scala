@@ -26,43 +26,47 @@ abstract class AbstractSessionSettingsSpec(folder: String) extends AbstractSpec 
     }
   }
 
-  private def runTestOnFiles(expectedResultAndMap: File => Seq[(List[String], Seq[SessionSetting])]): MatchResult[GenTraversableOnce[File]] = {
+  private def runTestOnFiles(
+      expectedResultAndMap: File => Seq[(List[String], Seq[SessionSetting])]
+  ): MatchResult[GenTraversableOnce[File]] = {
 
-    val allFiles = rootDir.listFiles(new FilenameFilter() {
-      def accept(dir: File, name: String) = name.endsWith(".sbt.txt")
-    }).toList
-    foreach(allFiles) {
-      file =>
-        val originalLines = Source.fromFile(file).getLines().toList
-        foreach(expectedResultAndMap(file)) {
-          case (expectedResultList, commands) =>
-            val resultList = SbtRefactorings.applySessionSettings((file, originalLines), commands)
-            val expected = SbtParser(file, expectedResultList)
-            val result = SbtParser(file, resultList._2)
-            result.settings must_== expected.settings
+    val allFiles = rootDir
+      .listFiles(new FilenameFilter() {
+        def accept(dir: File, name: String) = name.endsWith(".sbt.txt")
+      })
+      .toList
+    foreach(allFiles) { file =>
+      val originalLines = Source.fromFile(file).getLines().toList
+      foreach(expectedResultAndMap(file)) {
+        case (expectedResultList, commands) =>
+          val resultList = SbtRefactorings.applySessionSettings((file, originalLines), commands)
+          val expected = SbtParser(file, expectedResultList)
+          val result = SbtParser(file, resultList._2)
+          result.settings must_== expected.settings
 
-        }
+      }
     }
   }
 
   protected def replace(f: File) = {
-    val dirs = rootDir.listFiles(new FilenameFilter() {
-      def accept(dir: File, name: String) = {
-        val startsWith = f.getName + "_"
-        name.startsWith(startsWith)
-      }
-    }).toSeq
-    dirs.flatMap {
-      dir =>
-        val files = dir.listFiles(new FilenameFilter {
-          override def accept(dir: File, name: String) = name.endsWith(".set")
-        })
-        files.map { file =>
-          val seq = Source.fromFile(file).getLines().toSeq
-          val result = Source.fromFile(file.getAbsolutePath + ".result").getLines().toList
-          val sessionSettings = seq.map(line => (null, Seq(line)))
-          (result, sessionSettings)
+    val dirs = rootDir
+      .listFiles(new FilenameFilter() {
+        def accept(dir: File, name: String) = {
+          val startsWith = f.getName + "_"
+          name.startsWith(startsWith)
         }
+      })
+      .toSeq
+    dirs.flatMap { dir =>
+      val files = dir.listFiles(new FilenameFilter {
+        override def accept(dir: File, name: String) = name.endsWith(".set")
+      })
+      files.map { file =>
+        val seq = Source.fromFile(file).getLines().toSeq
+        val result = Source.fromFile(file.getAbsolutePath + ".result").getLines().toList
+        val sessionSettings = seq.map(line => (null, Seq(line)))
+        (result, sessionSettings)
+      }
     }
   }
 

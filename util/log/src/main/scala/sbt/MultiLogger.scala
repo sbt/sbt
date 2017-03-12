@@ -1,4 +1,3 @@
-
 /* sbt -- Simple Build Tool
  * Copyright 2008, 2009, 2010 Mark Harrah
  */
@@ -27,7 +26,8 @@ class MultiLogger(delegates: List[AbstractLogger]) extends BasicLogger {
   def log(level: Level.Value, message: => String): Unit = dispatch(new Log(level, message))
   def success(message: => String): Unit = dispatch(new Success(message))
   def logAll(events: Seq[LogEvent]): Unit = delegates.foreach(_.logAll(events))
-  def control(event: ControlEvent.Value, message: => String): Unit = delegates.foreach(_.control(event, message))
+  def control(event: ControlEvent.Value, message: => String): Unit =
+    delegates.foreach(_.control(event, message))
   private[this] def dispatch(event: LogEvent): Unit = {
     val plainEvent = if (allSupportCodes) event else removeEscapes(event)
     for (d <- delegates)
@@ -37,14 +37,13 @@ class MultiLogger(delegates: List[AbstractLogger]) extends BasicLogger {
         d.log(plainEvent)
   }
 
-  private[this] def removeEscapes(event: LogEvent): LogEvent =
-    {
-      import ConsoleLogger.{ removeEscapeSequences => rm }
-      event match {
-        case s: Success => new Success(rm(s.msg))
-        case l: Log => new Log(l.level, rm(l.msg))
-        case ce: ControlEvent => new ControlEvent(ce.event, rm(ce.msg))
-        case _: Trace | _: SetLevel | _: SetTrace | _: SetSuccess => event
-      }
+  private[this] def removeEscapes(event: LogEvent): LogEvent = {
+    import ConsoleLogger.{ removeEscapeSequences => rm }
+    event match {
+      case s: Success                                           => new Success(rm(s.msg))
+      case l: Log                                               => new Log(l.level, rm(l.msg))
+      case ce: ControlEvent                                     => new ControlEvent(ce.event, rm(ce.msg))
+      case _: Trace | _: SetLevel | _: SetTrace | _: SetSuccess => event
     }
+  }
 }

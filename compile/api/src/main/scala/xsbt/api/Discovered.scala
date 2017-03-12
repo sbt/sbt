@@ -3,7 +3,10 @@
  */
 package xsbt.api
 
-final case class Discovered(baseClasses: Set[String], annotations: Set[String], hasMain: Boolean, isModule: Boolean) {
+final case class Discovered(baseClasses: Set[String],
+                            annotations: Set[String],
+                            hasMain: Boolean,
+                            isModule: Boolean) {
   def isEmpty = baseClasses.isEmpty && annotations.isEmpty
 }
 object Discovered {

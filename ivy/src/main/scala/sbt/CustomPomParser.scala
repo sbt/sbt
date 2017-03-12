@@ -1,10 +1,19 @@
 package sbt
 
 import org.apache.ivy.core.module.id.ModuleRevisionId
-import org.apache.ivy.core.module.descriptor.{ DefaultArtifact, DefaultExtendsDescriptor, DefaultModuleDescriptor, ModuleDescriptor }
+import org.apache.ivy.core.module.descriptor.{
+  DefaultArtifact,
+  DefaultExtendsDescriptor,
+  DefaultModuleDescriptor,
+  ModuleDescriptor
+}
 import org.apache.ivy.core.module.descriptor.{ DefaultDependencyDescriptor, DependencyDescriptor }
 import org.apache.ivy.plugins.parser.{ ModuleDescriptorParser, ModuleDescriptorParserRegistry, ParserSettings }
-import org.apache.ivy.plugins.parser.m2.{ ReplaceMavenConfigurationMappings, PomModuleDescriptorBuilder, PomModuleDescriptorParser }
+import org.apache.ivy.plugins.parser.m2.{
+  PomModuleDescriptorBuilder,
+  PomModuleDescriptorParser,
+  ReplaceMavenConfigurationMappings
+}
 import org.apache.ivy.plugins.repository.Resource
 import org.apache.ivy.plugins.namespace.NamespaceTransformer
 import org.apache.ivy.util.extendable.ExtendableItem
@@ -15,18 +24,25 @@ import java.util.regex.Pattern
 import sbt.mavenint.{ PomExtraDependencyAttributes, SbtPomExtraProperties }
 
 @deprecated("We now use an Aether-based pom parser.", "0.13.8")
-final class CustomPomParser(delegate: ModuleDescriptorParser, transform: (ModuleDescriptorParser, ModuleDescriptor) => ModuleDescriptor) extends ModuleDescriptorParser {
+final class CustomPomParser(delegate: ModuleDescriptorParser,
+                            transform: (ModuleDescriptorParser, ModuleDescriptor) => ModuleDescriptor)
+    extends ModuleDescriptorParser {
   override def parseDescriptor(ivySettings: ParserSettings, descriptorURL: URL, validate: Boolean) =
     transform(this, delegate.parseDescriptor(ivySettings, descriptorURL, validate))
 
-  override def parseDescriptor(ivySettings: ParserSettings, descriptorURL: URL, res: Resource, validate: Boolean) =
+  override def parseDescriptor(ivySettings: ParserSettings,
+                               descriptorURL: URL,
+                               res: Resource,
+                               validate: Boolean) =
     transform(this, delegate.parseDescriptor(ivySettings, descriptorURL, res, validate))
 
-  override def toIvyFile(is: InputStream, res: Resource, destFile: File, md: ModuleDescriptor) = delegate.toIvyFile(is, res, destFile, md)
+  override def toIvyFile(is: InputStream, res: Resource, destFile: File, md: ModuleDescriptor) =
+    delegate.toIvyFile(is, res, destFile, md)
 
   override def accept(res: Resource) = delegate.accept(res)
   override def getType() = delegate.getType()
-  override def getMetadataArtifact(mrid: ModuleRevisionId, res: Resource) = delegate.getMetadataArtifact(mrid, res)
+  override def getMetadataArtifact(mrid: ModuleRevisionId, res: Resource) =
+    delegate.getMetadataArtifact(mrid, res)
 }
 @deprecated("We now use an Aether-based pom parser.", "0.13.8")
 object CustomPomParser {
@@ -51,7 +67,8 @@ object CustomPomParser {
   private[this] val TransformedHashKey = "e:sbtTransformHash"
   // A hash of the parameters transformation is based on.
   // If a descriptor has a different hash, we need to retransform it.
-  private[this] def makeCoords(mrid: ModuleRevisionId): String = s"${mrid.getOrganisation}:${mrid.getName}:${mrid.getRevision}"
+  private[this] def makeCoords(mrid: ModuleRevisionId): String =
+    s"${mrid.getOrganisation}:${mrid.getName}:${mrid.getRevision}"
 
   // We now include the ModuleID in a hash, to ensure that parent-pom transformations don't corrupt child poms.
   private[this] def MakeTransformHash(md: ModuleDescriptor): String = {
@@ -69,84 +86,90 @@ object CustomPomParser {
     if (transformedByThisVersion(md)) md
     else defaultTransformImpl(parser, md)
 
-  private[this] def transformedByThisVersion(md: ModuleDescriptor): Boolean =
-    {
-      val oldTransformedHashKey = "sbtTransformHash"
-      val extraInfo = md.getExtraInfo
-      val MyHash = MakeTransformHash(md)
-      // sbt 0.13.1 used "sbtTransformHash" instead of "e:sbtTransformHash" until #1192 so read both
-      Option(extraInfo).isDefined &&
-        ((Option(extraInfo get TransformedHashKey) orElse Option(extraInfo get oldTransformedHashKey)) match {
-          case Some(MyHash) => true
-          case _            => false
-        })
-    }
+  private[this] def transformedByThisVersion(md: ModuleDescriptor): Boolean = {
+    val oldTransformedHashKey = "sbtTransformHash"
+    val extraInfo = md.getExtraInfo
+    val MyHash = MakeTransformHash(md)
+    // sbt 0.13.1 used "sbtTransformHash" instead of "e:sbtTransformHash" until #1192 so read both
+    Option(extraInfo).isDefined &&
+    ((Option(extraInfo get TransformedHashKey) orElse Option(extraInfo get oldTransformedHashKey)) match {
+      case Some(MyHash) => true
+      case _            => false
+    })
+  }
 
-  private[this] def defaultTransformImpl(parser: ModuleDescriptorParser, md: ModuleDescriptor): ModuleDescriptor =
-    {
-      val properties = getPomProperties(md)
+  private[this] def defaultTransformImpl(parser: ModuleDescriptorParser,
+                                         md: ModuleDescriptor): ModuleDescriptor = {
+    val properties = getPomProperties(md)
 
-      // Extracts extra attributes (currently, sbt and Scala versions) stored in the <properties> element of the pom.
-      // These are attached to the module itself.
-      val filtered = shouldBeUnqualified(properties)
+    // Extracts extra attributes (currently, sbt and Scala versions) stored in the <properties> element of the pom.
+    // These are attached to the module itself.
+    val filtered = shouldBeUnqualified(properties)
 
-      // Extracts extra attributes for the dependencies.
-      // Because the <dependency> tag in pom.xml cannot include additional metadata,
-      //  sbt includes extra attributes in a 'extraDependencyAttributes' property.
-      // This is read/written from/to a pure string (no element structure) because Ivy only
-      //  parses the immediate text nodes of the property.
-      val extraDepAttributes = getDependencyExtra(filtered)
+    // Extracts extra attributes for the dependencies.
+    // Because the <dependency> tag in pom.xml cannot include additional metadata,
+    //  sbt includes extra attributes in a 'extraDependencyAttributes' property.
+    // This is read/written from/to a pure string (no element structure) because Ivy only
+    //  parses the immediate text nodes of the property.
+    val extraDepAttributes = getDependencyExtra(filtered)
 
-      // Fixes up the detected extension in some cases missed by Ivy.
-      val convertArtifacts = artifactExtIncorrect(md)
+    // Fixes up the detected extension in some cases missed by Ivy.
+    val convertArtifacts = artifactExtIncorrect(md)
 
-      // Merges artifact sections for duplicate dependency definitions
-      val mergeDuplicates = IvySbt.hasDuplicateDependencies(md.getDependencies)
+    // Merges artifact sections for duplicate dependency definitions
+    val mergeDuplicates = IvySbt.hasDuplicateDependencies(md.getDependencies)
 
-      val unqualify = toUnqualify(filtered)
+    val unqualify = toUnqualify(filtered)
 
-      // Here we always add extra attributes.  There's a scenario where parent-pom information corrupts child-poms with "e:" namespaced xml elements
-      // and we have to force the every generated xml file to have the appropriate xml namespace
-      addExtra(unqualify, extraDepAttributes, parser, md)
-    }
+    // Here we always add extra attributes.  There's a scenario where parent-pom information corrupts child-poms with "e:" namespaced xml elements
+    // and we have to force the every generated xml file to have the appropriate xml namespace
+    addExtra(unqualify, extraDepAttributes, parser, md)
+  }
   // The <properties> element of the pom is used to store additional metadata, such as for sbt plugins or for the base URL for API docs.
   // This is done because the pom XSD does not appear to allow extra metadata anywhere else.
   // The extra sbt plugin metadata in pom.xml does not need to be readable by maven, but the other information may be.
   // However, the pom.xml needs to be valid in all cases because other tools like repository managers may read the pom.xml.
-  private[sbt] def getPomProperties(md: ModuleDescriptor): Map[String, String] =
-    {
-      import collection.JavaConverters._
-      PomModuleDescriptorBuilder.extractPomProperties(md.getExtraInfo).asInstanceOf[java.util.Map[String, String]].asScala.toMap
-    }
+  private[sbt] def getPomProperties(md: ModuleDescriptor): Map[String, String] = {
+    import collection.JavaConverters._
+    PomModuleDescriptorBuilder
+      .extractPomProperties(md.getExtraInfo)
+      .asInstanceOf[java.util.Map[String, String]]
+      .asScala
+      .toMap
+  }
   private[sbt] def toUnqualify(propertyAttributes: Map[String, String]): Map[String, String] =
     (propertyAttributes - ExtraAttributesKey) map { case (k, v) => ("e:" + k, v) }
 
   private[this] def artifactExtIncorrect(md: ModuleDescriptor): Boolean =
     md.getConfigurations.exists(conf => md.getArtifacts(conf.getName).exists(art => JarPackagings(art.getExt)))
-  private[this] def shouldBeUnqualified(m: Map[String, String]): Map[String, String] = m.filterKeys(unqualifiedKeys)
+  private[this] def shouldBeUnqualified(m: Map[String, String]): Map[String, String] =
+    m.filterKeys(unqualifiedKeys)
 
   private[this] def condAddExtra(properties: Map[String, String], id: ModuleRevisionId): ModuleRevisionId =
     if (properties.isEmpty) id else addExtra(properties, id)
-  private[this] def addExtra(properties: Map[String, String], id: ModuleRevisionId): ModuleRevisionId =
-    {
-      import collection.JavaConverters._
-      val oldExtra = qualifiedExtra(id)
-      val newExtra = (oldExtra ++ properties).asJava
-      ModuleRevisionId.newInstance(id.getOrganisation, id.getName, id.getBranch, id.getRevision, newExtra)
-    }
+  private[this] def addExtra(properties: Map[String, String], id: ModuleRevisionId): ModuleRevisionId = {
+    import collection.JavaConverters._
+    val oldExtra = qualifiedExtra(id)
+    val newExtra = (oldExtra ++ properties).asJava
+    ModuleRevisionId.newInstance(id.getOrganisation, id.getName, id.getBranch, id.getRevision, newExtra)
+  }
 
   private[this] def getDependencyExtra(m: Map[String, String]): Map[ModuleRevisionId, Map[String, String]] =
     PomExtraDependencyAttributes.getDependencyExtra(m)
 
-  def qualifiedExtra(item: ExtendableItem): Map[String, String] = PomExtraDependencyAttributes.qualifiedExtra(item)
+  def qualifiedExtra(item: ExtendableItem): Map[String, String] =
+    PomExtraDependencyAttributes.qualifiedExtra(item)
   def filterCustomExtra(item: ExtendableItem, include: Boolean): Map[String, String] =
-    (qualifiedExtra(item) filterKeys { k => qualifiedIsExtra(k) == include })
+    (qualifiedExtra(item) filterKeys { k =>
+      qualifiedIsExtra(k) == include
+    })
 
   def writeDependencyExtra(s: Seq[DependencyDescriptor]): Seq[String] =
     PomExtraDependencyAttributes.writeDependencyExtra(s)
 
   // parses the sequence of dependencies with extra attribute information, with one dependency per line
-  def readDependencyExtra(s: String): Seq[ModuleRevisionId] = PomExtraDependencyAttributes.readDependencyExtra(s)
+  def readDependencyExtra(s: String): Seq[ModuleRevisionId] =
+    PomExtraDependencyAttributes.readDependencyExtra(s)
 
   def qualifiedIsExtra(k: String): Boolean = PomExtraDependencyAttributes.qualifiedIsExtra(k)
 
@@ -155,20 +178,27 @@ object CustomPomParser {
   //  with the extra attributes from the <properties> section
   def simplify(id: ModuleRevisionId): ModuleRevisionId = PomExtraDependencyAttributes.simplify(id)
 
-  private[this] def addExtra(dep: DependencyDescriptor, extra: Map[ModuleRevisionId, Map[String, String]]): DependencyDescriptor =
-    {
-      val extras = if (extra.isEmpty) None else extra get simplify(dep.getDependencyRevisionId)
-      extras match {
-        case None             => dep
-        case Some(extraAttrs) => transform(dep, revId => addExtra(extraAttrs, revId))
-      }
+  private[this] def addExtra(dep: DependencyDescriptor,
+                             extra: Map[ModuleRevisionId, Map[String, String]]): DependencyDescriptor = {
+    val extras = if (extra.isEmpty) None else extra get simplify(dep.getDependencyRevisionId)
+    extras match {
+      case None             => dep
+      case Some(extraAttrs) => transform(dep, revId => addExtra(extraAttrs, revId))
     }
-  private[this] def transform(dep: DependencyDescriptor, f: ModuleRevisionId => ModuleRevisionId): DependencyDescriptor =
-    DefaultDependencyDescriptor.transformInstance(dep, namespaceTransformer(dep.getDependencyRevisionId, f), false)
-  private[this] def extraTransformer(txId: ModuleRevisionId, extra: Map[String, String]): NamespaceTransformer =
+  }
+  private[this] def transform(dep: DependencyDescriptor,
+                              f: ModuleRevisionId => ModuleRevisionId): DependencyDescriptor =
+    DefaultDependencyDescriptor.transformInstance(
+      dep,
+      namespaceTransformer(dep.getDependencyRevisionId, f),
+      false
+    )
+  private[this] def extraTransformer(txId: ModuleRevisionId,
+                                     extra: Map[String, String]): NamespaceTransformer =
     namespaceTransformer(txId, revId => addExtra(extra, revId))
 
-  private[this] def namespaceTransformer(txId: ModuleRevisionId, f: ModuleRevisionId => ModuleRevisionId): NamespaceTransformer =
+  private[this] def namespaceTransformer(txId: ModuleRevisionId,
+                                         f: ModuleRevisionId => ModuleRevisionId): NamespaceTransformer =
     new NamespaceTransformer {
       def transform(revId: ModuleRevisionId): ModuleRevisionId = if (revId == txId) f(revId) else revId
       def isIdentity = false
@@ -179,53 +209,73 @@ object CustomPomParser {
     VersionRange.stripMavenVersionRange(dd.getDependencyRevisionId.getRevision) match {
       case Some(newVersion) =>
         val id = dd.getDependencyRevisionId
-        val newId = ModuleRevisionId.newInstance(id.getOrganisation, id.getName, id.getBranch, newVersion, id.getExtraAttributes)
+        val newId = ModuleRevisionId.newInstance(
+          id.getOrganisation,
+          id.getName,
+          id.getBranch,
+          newVersion,
+          id.getExtraAttributes
+        )
         transform(dd, _ => newId)
       case None => dd
     }
   private[sbt] lazy val versionRangeFlag = sys.props.get("sbt.modversionrange") map { _.toLowerCase == "true" } getOrElse true
 
   import collection.JavaConverters._
-  def addExtra(properties: Map[String, String], dependencyExtra: Map[ModuleRevisionId, Map[String, String]], parser: ModuleDescriptorParser, md: ModuleDescriptor): ModuleDescriptor =
-    {
-      val dmd = new DefaultModuleDescriptor(parser, md.getResource)
+  def addExtra(properties: Map[String, String],
+               dependencyExtra: Map[ModuleRevisionId, Map[String, String]],
+               parser: ModuleDescriptorParser,
+               md: ModuleDescriptor): ModuleDescriptor = {
+    val dmd = new DefaultModuleDescriptor(parser, md.getResource)
 
-      val mrid = addExtra(properties, md.getModuleRevisionId)
-      val resolvedMrid = addExtra(properties, md.getResolvedModuleRevisionId)
-      dmd.setModuleRevisionId(mrid)
-      dmd.setResolvedModuleRevisionId(resolvedMrid)
+    val mrid = addExtra(properties, md.getModuleRevisionId)
+    val resolvedMrid = addExtra(properties, md.getResolvedModuleRevisionId)
+    dmd.setModuleRevisionId(mrid)
+    dmd.setResolvedModuleRevisionId(resolvedMrid)
 
-      dmd.setDefault(md.isDefault)
-      dmd.setHomePage(md.getHomePage)
-      dmd.setDescription(md.getDescription)
-      dmd.setLastModified(md.getLastModified)
-      dmd.setStatus(md.getStatus())
-      dmd.setPublicationDate(md.getPublicationDate())
-      dmd.setResolvedPublicationDate(md.getResolvedPublicationDate())
+    dmd.setDefault(md.isDefault)
+    dmd.setHomePage(md.getHomePage)
+    dmd.setDescription(md.getDescription)
+    dmd.setLastModified(md.getLastModified)
+    dmd.setStatus(md.getStatus())
+    dmd.setPublicationDate(md.getPublicationDate())
+    dmd.setResolvedPublicationDate(md.getResolvedPublicationDate())
 
-      for (l <- md.getLicenses) dmd.addLicense(l)
-      for ((key, value) <- md.getExtraInfo.asInstanceOf[java.util.Map[String, String]].asScala) dmd.addExtraInfo(key, value)
-      dmd.addExtraInfo(TransformedHashKey, MakeTransformHash(md)) // mark as transformed by this version, so we don't need to do it again
-      for ((key, value) <- md.getExtraAttributesNamespaces.asInstanceOf[java.util.Map[String, String]].asScala) dmd.addExtraAttributeNamespace(key, value)
-      IvySbt.addExtraNamespace(dmd)
+    for (l <- md.getLicenses) dmd.addLicense(l)
+    for ((key, value) <- md.getExtraInfo.asInstanceOf[java.util.Map[String, String]].asScala)
+      dmd.addExtraInfo(key, value)
+    dmd.addExtraInfo(TransformedHashKey, MakeTransformHash(md)) // mark as transformed by this version, so we don't need to do it again
+    for ((key, value) <- md.getExtraAttributesNamespaces.asInstanceOf[java.util.Map[String, String]].asScala)
+      dmd.addExtraAttributeNamespace(key, value)
+    IvySbt.addExtraNamespace(dmd)
 
-      val withExtra = md.getDependencies map { dd => addExtra(dd, dependencyExtra) }
-      val withVersionRangeMod: Seq[DependencyDescriptor] =
-        if (versionRangeFlag) withExtra map { stripVersionRange }
-        else withExtra
-      val unique = IvySbt.mergeDuplicateDefinitions(withVersionRangeMod)
-      unique foreach dmd.addDependency
-
-      for (ed <- md.getInheritedDescriptors) dmd.addInheritedDescriptor(new DefaultExtendsDescriptor(md, ed.getLocation, ed.getExtendsTypes))
-      for (conf <- md.getConfigurations) {
-        dmd.addConfiguration(conf)
-        for (art <- md.getArtifacts(conf.getName)) {
-          val ext = art.getExt
-          val newExt = if (JarPackagings(ext)) "jar" else ext
-          val nart = new DefaultArtifact(mrid, art.getPublicationDate, art.getName, art.getType, newExt, art.getUrl, art.getQualifiedExtraAttributes)
-          dmd.addArtifact(conf.getName, nart)
-        }
-      }
-      dmd
+    val withExtra = md.getDependencies map { dd =>
+      addExtra(dd, dependencyExtra)
     }
+    val withVersionRangeMod: Seq[DependencyDescriptor] =
+      if (versionRangeFlag) withExtra map { stripVersionRange } else withExtra
+    val unique = IvySbt.mergeDuplicateDefinitions(withVersionRangeMod)
+    unique foreach dmd.addDependency
+
+    for (ed <- md.getInheritedDescriptors)
+      dmd.addInheritedDescriptor(new DefaultExtendsDescriptor(md, ed.getLocation, ed.getExtendsTypes))
+    for (conf <- md.getConfigurations) {
+      dmd.addConfiguration(conf)
+      for (art <- md.getArtifacts(conf.getName)) {
+        val ext = art.getExt
+        val newExt = if (JarPackagings(ext)) "jar" else ext
+        val nart = new DefaultArtifact(
+          mrid,
+          art.getPublicationDate,
+          art.getName,
+          art.getType,
+          newExt,
+          art.getUrl,
+          art.getQualifiedExtraAttributes
+        )
+        dmd.addArtifact(conf.getName, nart)
+      }
+    }
+    dmd
+  }
 }

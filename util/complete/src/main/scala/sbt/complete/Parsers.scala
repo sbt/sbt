@@ -6,10 +6,19 @@ package sbt.complete
 import Parser._
 import java.io.File
 import java.net.URI
-import java.lang.Character.{ getType, MATH_SYMBOL, OTHER_SYMBOL, DASH_PUNCTUATION, OTHER_PUNCTUATION, MODIFIER_SYMBOL, CURRENCY_SYMBOL }
+import java.lang.Character.{
+  getType,
+  CURRENCY_SYMBOL,
+  DASH_PUNCTUATION,
+  MATH_SYMBOL,
+  MODIFIER_SYMBOL,
+  OTHER_PUNCTUATION,
+  OTHER_SYMBOL
+}
 
 /** Provides standard implementations of commonly useful [[Parser]]s. */
 trait Parsers {
+
   /** Matches the end of input, providing no useful result on success. */
   lazy val EOF = not(any)
 
@@ -69,7 +78,12 @@ trait Parsers {
 
   /** Returns true if `c` an operator character. */
   def isOpChar(c: Char) = !isDelimiter(c) && isOpType(getType(c))
-  def isOpType(cat: Int) = cat match { case MATH_SYMBOL | OTHER_SYMBOL | DASH_PUNCTUATION | OTHER_PUNCTUATION | MODIFIER_SYMBOL | CURRENCY_SYMBOL => true; case _ => false }
+  def isOpType(cat: Int) = cat match {
+    case MATH_SYMBOL | OTHER_SYMBOL | DASH_PUNCTUATION | OTHER_PUNCTUATION | MODIFIER_SYMBOL |
+        CURRENCY_SYMBOL =>
+      true; case _      => false
+  }
+
   /** Returns true if `c` is a dash `-`, a letter, digit, or an underscore `_`. */
   def isIDChar(c: Char) = isScalaIDChar(c) || c == '-'
 
@@ -91,15 +105,15 @@ trait Parsers {
   lazy val OptNotSpace = NotSpaceClass.*.string
 
   /**
-   * Matches a non-empty String consisting of whitespace characters.
-   * The suggested tab completion is a single, constant space character.
-   */
+    * Matches a non-empty String consisting of whitespace characters.
+    * The suggested tab completion is a single, constant space character.
+    */
   lazy val Space = SpaceClass.+.examples(" ")
 
   /**
-   * Matches a possibly empty String consisting of whitespace characters.
-   * The suggested tab completion is a single, constant space character.
-   */
+    * Matches a possibly empty String consisting of whitespace characters.
+    * The suggested tab completion is a single, constant space character.
+    */
   lazy val OptSpace = SpaceClass.*.examples(" ")
 
   /** Parses a non-empty String that contains only valid URI characters, as defined by [[URIChar]].*/
@@ -119,11 +133,15 @@ trait Parsers {
 
   /** Matches any character except a double quote or whitespace. */
   lazy val NotDQuoteSpaceClass =
-    charClass({ c: Char => (c != DQuoteChar) && !c.isWhitespace }, "non-double-quote-space character")
+    charClass({ c: Char =>
+      (c != DQuoteChar) && !c.isWhitespace
+    }, "non-double-quote-space character")
 
   /** Matches any character except a double quote or backslash. */
   lazy val NotDQuoteBackslashClass =
-    charClass({ c: Char => (c != DQuoteChar) && (c != BackslashChar) }, "non-double-quote-backslash character")
+    charClass({ c: Char =>
+      (c != DQuoteChar) && (c != BackslashChar)
+    }, "non-double-quote-backslash character")
 
   /** Matches a single character that is valid somewhere in a URI. */
   lazy val URIChar = charClass(alphanum) | chars("_-!.~'()*,;:$&+=?/[]@%#")
@@ -132,10 +150,10 @@ trait Parsers {
   def alphanum(c: Char) = ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9')
 
   /**
-   * @param base the directory used for completion proposals (when the user presses the TAB key). Only paths under this
-   *             directory will be proposed.
-   * @return the file that was parsed from the input string. The returned path may or may not exist.
-   */
+    * @param base the directory used for completion proposals (when the user presses the TAB key). Only paths under this
+    *             directory will be proposed.
+    * @return the file that was parsed from the input string. The returned path may or may not exist.
+    */
   def fileParser(base: File): Parser[File] =
     OptSpace ~> StringBasic
       .examples(new FileExamples(base))
@@ -157,92 +175,102 @@ trait Parsers {
   lazy val Bool = ("true" ^^^ true) | ("false" ^^^ false)
 
   /**
-   * Parses a potentially quoted String value.  The value may be verbatim quoted ([[StringVerbatim]]),
-   * quoted with interpreted escapes ([[StringEscapable]]), or unquoted ([[NotQuoted]]).
-   */
+    * Parses a potentially quoted String value.  The value may be verbatim quoted ([[StringVerbatim]]),
+    * quoted with interpreted escapes ([[StringEscapable]]), or unquoted ([[NotQuoted]]).
+    */
   lazy val StringBasic = StringVerbatim | StringEscapable | NotQuoted
 
   /**
-   * Parses a verbatim quoted String value, discarding the quotes in the result.  This kind of quoted text starts with triple quotes `"""`
-   * and ends at the next triple quotes and may contain any character in between.
-   */
+    * Parses a verbatim quoted String value, discarding the quotes in the result.  This kind of quoted text starts with triple quotes `"""`
+    * and ends at the next triple quotes and may contain any character in between.
+    */
   lazy val StringVerbatim: Parser[String] = VerbatimDQuotes ~>
     any.+.string.filter(!_.contains(VerbatimDQuotes), _ => "Invalid verbatim string") <~
     VerbatimDQuotes
 
   /**
-   * Parses a string value, interpreting escapes and discarding the surrounding quotes in the result.
-   * See [[EscapeSequence]] for supported escapes.
-   */
+    * Parses a string value, interpreting escapes and discarding the surrounding quotes in the result.
+    * See [[EscapeSequence]] for supported escapes.
+    */
   lazy val StringEscapable: Parser[String] =
     (DQuoteChar ~> (NotDQuoteBackslashClass | EscapeSequence).+.string <~ DQuoteChar |
       (DQuoteChar ~ DQuoteChar) ^^^ "")
 
   /**
-   * Parses a single escape sequence into the represented Char.
-   * Escapes start with a backslash and are followed by `u` for a [[UnicodeEscape]] or by `b`, `t`, `n`, `f`, `r`, `"`, `'`, `\` for standard escapes.
-   */
+    * Parses a single escape sequence into the represented Char.
+    * Escapes start with a backslash and are followed by `u` for a [[UnicodeEscape]] or by `b`, `t`, `n`, `f`, `r`, `"`, `'`, `\` for standard escapes.
+    */
   lazy val EscapeSequence: Parser[Char] =
     BackslashChar ~> ('b' ^^^ '\b' | 't' ^^^ '\t' | 'n' ^^^ '\n' | 'f' ^^^ '\f' | 'r' ^^^ '\r' |
       '\"' ^^^ '\"' | '\'' ^^^ '\'' | '\\' ^^^ '\\' | UnicodeEscape)
 
   /**
-   * Parses a single unicode escape sequence into the represented Char.
-   * A unicode escape begins with a backslash, followed by a `u` and 4 hexadecimal digits representing the unicode value.
-   */
+    * Parses a single unicode escape sequence into the represented Char.
+    * A unicode escape begins with a backslash, followed by a `u` and 4 hexadecimal digits representing the unicode value.
+    */
   lazy val UnicodeEscape: Parser[Char] =
-    ("u" ~> repeat(HexDigit, 4, 4)) map { seq => Integer.parseInt(seq.mkString, 16).toChar }
+    ("u" ~> repeat(HexDigit, 4, 4)) map { seq =>
+      Integer.parseInt(seq.mkString, 16).toChar
+    }
 
   /** Parses an unquoted, non-empty String value that cannot start with a double quote and cannot contain whitespace.*/
   lazy val NotQuoted = (NotDQuoteSpaceClass ~ OptNotSpace) map { case (c, s) => c.toString + s }
 
   /**
-   * Applies `rep` zero or more times, separated by `sep`.
-   * The result is the (possibly empty) sequence of results from the multiple `rep` applications.  The `sep` results are discarded.
-   */
+    * Applies `rep` zero or more times, separated by `sep`.
+    * The result is the (possibly empty) sequence of results from the multiple `rep` applications.  The `sep` results are discarded.
+    */
   def repsep[T](rep: Parser[T], sep: Parser[_]): Parser[Seq[T]] =
     rep1sep(rep, sep) ?? Nil
 
   /**
-   * Applies `rep` one or more times, separated by `sep`.
-   * The result is the non-empty sequence of results from the multiple `rep` applications.  The `sep` results are discarded.
-   */
+    * Applies `rep` one or more times, separated by `sep`.
+    * The result is the non-empty sequence of results from the multiple `rep` applications.  The `sep` results are discarded.
+    */
   def rep1sep[T](rep: Parser[T], sep: Parser[_]): Parser[Seq[T]] =
     (rep ~ (sep ~> rep).*).map { case (x ~ xs) => x +: xs }
 
   /** Wraps the result of `p` in `Some`.*/
-  def some[T](p: Parser[T]): Parser[Option[T]] = p map { v => Some(v) }
+  def some[T](p: Parser[T]): Parser[Option[T]] = p map { v =>
+    Some(v)
+  }
 
   /**
-   * Applies `f` to the result of `p`, transforming any exception when evaluating
-   * `f` into a parse failure with the exception `toString` as the message.
-   */
+    * Applies `f` to the result of `p`, transforming any exception when evaluating
+    * `f` into a parse failure with the exception `toString` as the message.
+    */
   def mapOrFail[S, T](p: Parser[S])(f: S => T): Parser[T] =
-    p flatMap { s => try { success(f(s)) } catch { case e: Exception => failure(e.toString) } }
+    p flatMap { s =>
+      try { success(f(s)) } catch { case e: Exception => failure(e.toString) }
+    }
 
   /**
-   * Parses a space-delimited, possibly empty sequence of arguments.
-   * The arguments may use quotes and escapes according to [[StringBasic]].
-   */
-  def spaceDelimited(display: String): Parser[Seq[String]] = (token(Space) ~> token(StringBasic, display)).* <~ SpaceClass.*
+    * Parses a space-delimited, possibly empty sequence of arguments.
+    * The arguments may use quotes and escapes according to [[StringBasic]].
+    */
+  def spaceDelimited(display: String): Parser[Seq[String]] =
+    (token(Space) ~> token(StringBasic, display)).* <~ SpaceClass.*
 
   /** Applies `p` and uses `true` as the result if it succeeds and turns failure into a result of `false`. */
   def flag[T](p: Parser[T]): Parser[Boolean] = (p ^^^ true) ?? false
 
   /**
-   * Defines a sequence parser where the parser used for each part depends on the previously parsed values.
-   * `p` is applied to the (possibly empty) sequence of already parsed values to obtain the next parser to use.
-   * The parsers obtained in this way are separated by `sep`, whose result is discarded and only the sequence
-   * of values from the parsers returned by `p` is used for the result.
-   */
-  def repeatDep[A](p: Seq[A] => Parser[A], sep: Parser[Any]): Parser[Seq[A]] =
-    {
-      def loop(acc: Seq[A]): Parser[Seq[A]] = {
-        val next = (sep ~> p(acc)) flatMap { result => loop(acc :+ result) }
-        next ?? acc
+    * Defines a sequence parser where the parser used for each part depends on the previously parsed values.
+    * `p` is applied to the (possibly empty) sequence of already parsed values to obtain the next parser to use.
+    * The parsers obtained in this way are separated by `sep`, whose result is discarded and only the sequence
+    * of values from the parsers returned by `p` is used for the result.
+    */
+  def repeatDep[A](p: Seq[A] => Parser[A], sep: Parser[Any]): Parser[Seq[A]] = {
+    def loop(acc: Seq[A]): Parser[Seq[A]] = {
+      val next = (sep ~> p(acc)) flatMap { result =>
+        loop(acc :+ result)
       }
-      p(Vector()) flatMap { first => loop(Seq(first)) }
+      next ?? acc
     }
+    p(Vector()) flatMap { first =>
+      loop(Seq(first))
+    }
+  }
 
   /** Applies String.trim to the result of `p`. */
   def trimmed(p: Parser[String]) = p map { _.trim }
@@ -259,6 +287,7 @@ object Parsers extends Parsers
 
 /** Provides common [[Parser]] implementations and helper methods.*/
 object DefaultParsers extends Parsers with ParserMain {
+
   /** Applies parser `p` to input `s` and returns `true` if the parse was successful. */
   def matches(p: Parser[_], s: String): Boolean =
     apply(p)(s).resultEmpty.isValid

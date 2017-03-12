@@ -16,12 +16,11 @@ object AnalysisStore {
       backing.set(analysis, setup)
       last = Some((analysis, setup))
     }
-    def get(): Option[(Analysis, CompileSetup)] =
-      {
-        if (last.isEmpty)
-          last = backing.get()
-        last
-      }
+    def get(): Option[(Analysis, CompileSetup)] = {
+      if (last.isEmpty)
+        last = backing.get()
+      last
+    }
   }
   def sync(backing: AnalysisStore): AnalysisStore = new AnalysisStore {
     def set(analysis: Analysis, setup: CompileSetup): Unit = synchronized { backing.set(analysis, setup) }

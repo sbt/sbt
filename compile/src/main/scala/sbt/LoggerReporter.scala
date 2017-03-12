@@ -43,7 +43,9 @@ object LoggerReporter {
     }
 }
 
-class LoggerReporter(maximumErrors: Int, log: Logger, sourcePositionMapper: Position => Position = { p => p }) extends xsbti.Reporter {
+class LoggerReporter(maximumErrors: Int, log: Logger, sourcePositionMapper: Position => Position = { p =>
+  p
+}) extends xsbti.Reporter {
   val positions = new mutable.HashMap[PositionKey, Severity]
   val count = new EnumMap[Severity, Int](classOf[Severity])
   private[this] val allProblems = new mutable.ListBuffer[Problem]
@@ -79,16 +81,15 @@ class LoggerReporter(maximumErrors: Int, log: Logger, sourcePositionMapper: Posi
       print(severityLogger(severity), pos, msg)
   }
   def severityLogger(severity: Severity): (=> String) => Unit =
-    m =>
-      {
-        (severity match {
-          case Error => log.error(m)
-          case Warn  => log.warn(m)
-          case SInfo => log.info(m)
-        })
-      }
+    m => {
+      (severity match {
+        case Error => log.error(m)
+        case Warn  => log.warn(m)
+        case SInfo => log.info(m)
+      })
+    }
 
-  def print(log: (=> String) => Unit, pos: Position, msg: String): Unit = {
+  def print(log: (=> String) => Unit, pos: Position, msg: String): Unit =
     if (pos.sourcePath.isEmpty && pos.line.isEmpty)
       log(msg)
     else {
@@ -102,34 +103,29 @@ class LoggerReporter(maximumErrors: Int, log: Logger, sourcePositionMapper: Posi
           log(space + "^") // pointer to the column position of the error/warning
       }
     }
+
+  def log(pos: Position, msg: String, severity: Severity): Unit = {
+    val mappedPos = sourcePositionMapper(pos)
+    allProblems += problem("", mappedPos, msg, severity)
+    severity match {
+      case Warn | Error => {
+        if (!testAndLog(mappedPos, severity))
+          display(mappedPos, msg, severity)
+      }
+      case _ => display(mappedPos, msg, severity)
+    }
   }
 
-  def log(pos: Position, msg: String, severity: Severity): Unit =
-    {
-      val mappedPos = sourcePositionMapper(pos)
-      allProblems += problem("", mappedPos, msg, severity)
-      severity match {
-        case Warn | Error =>
-          {
-            if (!testAndLog(mappedPos, severity))
-              display(mappedPos, msg, severity)
-          }
-        case _ => display(mappedPos, msg, severity)
-      }
-    }
-
   def testAndLog(pos: Position, severity: Severity): Boolean =
-    {
-      if (pos.offset.isEmpty || pos.sourceFile.isEmpty)
-        false
+    if (pos.offset.isEmpty || pos.sourceFile.isEmpty)
+      false
+    else {
+      val key = new PositionKey(pos)
+      if (positions.get(key).exists(_.ordinal >= severity.ordinal))
+        true
       else {
-        val key = new PositionKey(pos)
-        if (positions.get(key).exists(_.ordinal >= severity.ordinal))
-          true
-        else {
-          positions(key) = severity
-          false
-        }
+        positions(key) = severity
+        false
       }
     }
 }

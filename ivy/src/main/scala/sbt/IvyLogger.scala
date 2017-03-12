@@ -9,7 +9,7 @@ import org.apache.ivy.util.{ Message, MessageLogger, MessageLoggerEngine }
 private final class IvyLoggerInterface(logger: Logger) extends MessageLogger {
   def rawlog(msg: String, level: Int): Unit = log(msg, level)
   def log(msg: String, level: Int): Unit = {
-    import Message.{ MSG_DEBUG, MSG_VERBOSE, MSG_INFO, MSG_WARN, MSG_ERR }
+    import Message.{ MSG_DEBUG, MSG_ERR, MSG_INFO, MSG_VERBOSE, MSG_WARN }
     level match {
       case MSG_DEBUG   => debug(msg)
       case MSG_VERBOSE => verbose(msg)
@@ -43,6 +43,7 @@ private final class IvyLoggerInterface(logger: Logger) extends MessageLogger {
   def setShowProgress(progress: Boolean): Unit = ()
 }
 private final class SbtMessageLoggerEngine extends MessageLoggerEngine {
+
   /** This is a hack to filter error messages about 'unknown resolver ...'. */
   override def error(msg: String): Unit = if (SbtIvyLogger.acceptError(msg)) super.error(msg)
   override def sumupProblems(): Unit = clearProblems()

@@ -8,6 +8,7 @@ import java.util.regex.Pattern
 
 /** A `java.io.FileFilter` with additional methods for combining filters. */
 trait FileFilter extends java.io.FileFilter with NotNull {
+
   /** Constructs a filter that accepts a `File` if it matches either this filter or the given `filter`. */
   def ||(filter: FileFilter): FileFilter = new SimpleFileFilter(file => accept(file) || filter.accept(file))
 
@@ -23,6 +24,7 @@ trait FileFilter extends java.io.FileFilter with NotNull {
 
 /** A filter on Strings.  This also functions as a [[FileFilter]] by applying the String filter to the value of a File's `getName`. */
 trait NameFilter extends FileFilter with NotNull {
+
   /** Returns `true` to include the `name`, `false` to exclude it. */
   def accept(name: String): Boolean
 
@@ -93,27 +95,31 @@ object NameFilter {
   }
 }
 object FileFilter {
+
   /** Allows a String to be used where a `NameFilter` is expected and any asterisks (`*`) will be interpreted as wildcards.  See [[sbt.GlobFilter]].*/
   implicit def globFilter(s: String): NameFilter = GlobFilter(s)
 }
 
 /** Constructs a filter from a String, interpreting wildcards.  See the [[apply]] method. */
 object GlobFilter {
+
   /**
-   * Constructs a [[NameFilter]] from a String, interpreting `*` as a wildcard.
-   * Control characters, as determined by `java.lang.Character.isISOControl` are not allowed
-   * due to the implementation restriction of using Java's `Pattern` and `Pattern.quote`,
-   * which do not handle these characters.
-   */
-  def apply(expression: String): NameFilter =
-    {
-      require(!expression.exists(java.lang.Character.isISOControl), "Control characters not allowed in filter expression.")
-      if (expression == "*")
-        AllPassFilter
-      else if (expression.indexOf('*') < 0) // includes case where expression is empty
-        new ExactFilter(expression)
-      else
-        new PatternFilter(Pattern.compile(expression.split("\\*", -1).map(quote).mkString(".*")))
-    }
+    * Constructs a [[NameFilter]] from a String, interpreting `*` as a wildcard.
+    * Control characters, as determined by `java.lang.Character.isISOControl` are not allowed
+    * due to the implementation restriction of using Java's `Pattern` and `Pattern.quote`,
+    * which do not handle these characters.
+    */
+  def apply(expression: String): NameFilter = {
+    require(
+      !expression.exists(java.lang.Character.isISOControl),
+      "Control characters not allowed in filter expression."
+    )
+    if (expression == "*")
+      AllPassFilter
+    else if (expression.indexOf('*') < 0) // includes case where expression is empty
+      new ExactFilter(expression)
+    else
+      new PatternFilter(Pattern.compile(expression.split("\\*", -1).map(quote).mkString(".*")))
+  }
   private def quote(s: String) = if (s.isEmpty) "" else Pattern.quote(s.replaceAll("\n", """\n"""))
 }

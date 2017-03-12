@@ -18,7 +18,9 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
       "absent" nonEmpty absent _,
       //			"sync" twoArg("Two directory paths", sync _),
       "newer" twoArg ("Two paths", newer _),
-      "pause" noArg { println("Pausing in " + baseDirectory); readLine("Press enter to continue. "); println() },
+      "pause" noArg {
+        println("Pausing in " + baseDirectory); readLine("Press enter to continue. "); println()
+      },
       "sleep" oneArg ("Time in milliseconds", time => Thread.sleep(time.toLong)),
       "exec" nonEmpty (execute _),
       "copy" copy (to => rebase(baseDirectory, to)),
@@ -46,18 +48,19 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
     val lines1 = IO.readLines(fromString(file1))
     val lines2 = IO.readLines(fromString(file2))
     if (lines1 != lines2)
-      scriptError("File contents are different:\n" + lines1.mkString("\n") + "\nAnd:\n" + lines2.mkString("\n"))
+      scriptError(
+        "File contents are different:\n" + lines1.mkString("\n") + "\nAnd:\n" + lines2.mkString("\n")
+      )
   }
 
-  def newer(a: String, b: String) =
-    {
-      val pathA = fromString(a)
-      val pathB = fromString(b)
-      val isNewer = pathA.exists && (!pathB.exists || pathA.lastModified > pathB.lastModified)
-      if (!isNewer) {
-        scriptError(s"$pathA is not newer than $pathB")
-      }
+  def newer(a: String, b: String) = {
+    val pathA = fromString(a)
+    val pathB = fromString(b)
+    val isNewer = pathA.exists && (!pathB.exists || pathA.lastModified > pathB.lastModified)
+    if (!isNewer) {
+      scriptError(s"$pathA is not newer than $pathB")
     }
+  }
   def exists(paths: List[String]): Unit = {
     val notPresent = fromStrings(paths).filter(!_.exists)
     if (notPresent.nonEmpty)
@@ -69,7 +72,7 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
       scriptError("File(s) existed: " + present.mkString("[ ", " , ", " ]"))
   }
   def execute(command: List[String]): Unit = execute0(command.head, command.tail)
-  def execute0(command: String, args: List[String]): Unit = {
+  def execute0(command: String, args: List[String]): Unit =
     if (command.trim.isEmpty)
       scriptError("Command was empty.")
     else {
@@ -77,7 +80,6 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
       if (exitValue != 0)
         sys.error("Nonzero exit value (" + exitValue + ")")
     }
-  }
 
   // these are for readability of the command list
   implicit def commandBuilder(s: String): CommandBuilder = new CommandBuilder(s)
@@ -117,6 +119,10 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
     def wrongArguments(args: List[String]): Some[String] =
       scriptError("Command '" + commandName + "' does not accept arguments (found '" + spaced(args) + "').")
     def wrongArguments(requiredArgs: String, args: List[String]): Some[String] =
-      scriptError("Wrong number of arguments to " + commandName + " command.  " + requiredArgs + " required, found: '" + spaced(args) + "'.")
+      scriptError(
+        "Wrong number of arguments to " + commandName + " command.  " + requiredArgs + " required, found: '" + spaced(
+          args
+        ) + "'."
+      )
   }
 }

@@ -3,22 +3,22 @@ package sbt
 import sbt.Tests.{ Output, Summary }
 
 /**
- * Logs information about tests after they finish.
- *
- * Log output can be customised by providing a specialised instance of this
- * trait via the `testResultLogger` setting.
- *
- * @since 0.13.5
- */
+  * Logs information about tests after they finish.
+  *
+  * Log output can be customised by providing a specialised instance of this
+  * trait via the `testResultLogger` setting.
+  *
+  * @since 0.13.5
+  */
 trait TestResultLogger {
 
   /**
-   * Perform logging.
-   *
-   * @param log The target logger to write output to.
-   * @param results The test results about which to log.
-   * @param taskName The task about which we are logging. Eg. "my-module-b/test:test"
-   */
+    * Perform logging.
+    *
+    * @param log The target logger to write output to.
+    * @param results The test results about which to log.
+    * @param taskName The task about which we are logging. Eg. "my-module-b/test:test"
+    */
   def run(log: Logger, results: Output, taskName: String): Unit
 
   /** Only allow invocation if certain criteria is met, else use another `TestResultLogger` (defaulting to nothing) . */
@@ -52,14 +52,15 @@ object TestResultLogger {
   def const(f: Logger => Unit) = apply((l, _, _) => f(l))
 
   /**
-   * Selects a `TestResultLogger` based on a given predicate.
-   *
-   * @param t The `TestResultLogger` to choose if the predicate passes.
-   * @param f The `TestResultLogger` to choose if the predicate fails.
-   */
+    * Selects a `TestResultLogger` based on a given predicate.
+    *
+    * @param t The `TestResultLogger` to choose if the predicate passes.
+    * @param f The `TestResultLogger` to choose if the predicate fails.
+    */
   def choose(cond: (Output, String) => Boolean, t: TestResultLogger, f: TestResultLogger) =
-    TestResultLogger((log, results, taskName) =>
-      (if (cond(results, taskName)) t else f).run(log, results, taskName))
+    TestResultLogger(
+      (log, results, taskName) => (if (cond(results, taskName)) t else f).run(log, results, taskName)
+    )
 
   /** Transforms the input to be completely silent when the subject module doesn't contain any tests. */
   def silenceWhenNoTests(d: Defaults.Main) =
@@ -71,12 +72,12 @@ object TestResultLogger {
   object Defaults {
 
     /** SBT's default `TestResultLogger`. Use `copy()` to change selective portions. */
-    case class Main(
-        printStandard_? : Output => Boolean = Defaults.printStandard_?,
-        printSummary: TestResultLogger = Defaults.printSummary,
-        printStandard: TestResultLogger = Defaults.printStandard,
-        printFailures: TestResultLogger = Defaults.printFailures,
-        printNoTests: TestResultLogger = Defaults.printNoTests) extends TestResultLogger {
+    case class Main(printStandard_? : Output => Boolean = Defaults.printStandard_?,
+                    printSummary: TestResultLogger = Defaults.printSummary,
+                    printStandard: TestResultLogger = Defaults.printStandard,
+                    printFailures: TestResultLogger = Defaults.printFailures,
+                    printNoTests: TestResultLogger = Defaults.printNoTests)
+        extends TestResultLogger {
 
       override def run(log: Logger, results: Output, taskName: String): Unit = {
         def run(r: TestResultLogger): Unit = r.run(log, results, taskName)
@@ -117,14 +118,29 @@ object TestResultLogger {
     val printStandard = TestResultLogger((log, results, _) => {
       val (skippedCount, errorsCount, passedCount, failuresCount, ignoredCount, canceledCount, pendingCount) =
         results.events.foldLeft((0, 0, 0, 0, 0, 0, 0)) {
-          case ((skippedAcc, errorAcc, passedAcc, failureAcc, ignoredAcc, canceledAcc, pendingAcc), (name, testEvent)) =>
-            (skippedAcc + testEvent.skippedCount, errorAcc + testEvent.errorCount, passedAcc + testEvent.passedCount, failureAcc + testEvent.failureCount,
-              ignoredAcc + testEvent.ignoredCount, canceledAcc + testEvent.canceledCount, pendingAcc + testEvent.pendingCount)
+          case (
+              (skippedAcc, errorAcc, passedAcc, failureAcc, ignoredAcc, canceledAcc, pendingAcc),
+              (name, testEvent)
+              ) =>
+            (
+              skippedAcc + testEvent.skippedCount,
+              errorAcc + testEvent.errorCount,
+              passedAcc + testEvent.passedCount,
+              failureAcc + testEvent.failureCount,
+              ignoredAcc + testEvent.ignoredCount,
+              canceledAcc + testEvent.canceledCount,
+              pendingAcc + testEvent.pendingCount
+            )
         }
       val totalCount = failuresCount + errorsCount + skippedCount + passedCount
       val base = s"Total $totalCount, Failed $failuresCount, Errors $errorsCount, Passed $passedCount"
 
-      val otherCounts = Seq("Skipped" -> skippedCount, "Ignored" -> ignoredCount, "Canceled" -> canceledCount, "Pending" -> pendingCount)
+      val otherCounts = Seq(
+        "Skipped" -> skippedCount,
+        "Ignored" -> ignoredCount,
+        "Canceled" -> canceledCount,
+        "Pending" -> pendingCount
+      )
       val extra = otherCounts.filter(_._2 > 0).map { case (label, count) => s", $label $count" }
 
       val postfix = base + extra.mkString
@@ -152,8 +168,8 @@ object TestResultLogger {
       show("Error during tests:", Level.Error, select(TestResult.Error))
     })
 
-    val printNoTests = TestResultLogger((log, results, taskName) =>
-      log.info("No tests to run for " + taskName)
+    val printNoTests = TestResultLogger(
+      (log, results, taskName) => log.info("No tests to run for " + taskName)
     )
   }
 }
