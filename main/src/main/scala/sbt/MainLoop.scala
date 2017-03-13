@@ -74,7 +74,12 @@ object MainLoop {
       val loggedState = state.copy(globalLogging = newLogging)
       def isInteractive = System.console() != null
       def hasShell = state.remainingCommands contains "shell"
-      if (isInteractive && !hasShell) {
+      /**
+       * The "boot" command adds "iflast shell" ("if last shell")
+       * which basically means it falls back to shell if there are no further commands
+       */
+      def endsWithBoot = state.remainingCommands.lastOption exists (_ == "boot")
+      if (isInteractive && !hasShell && !endsWithBoot) {
         state.log warn "Executing in batch mode."
         state.log warn "  For better performance, hit [ENTER] to switch to interactive mode, or"
         state.log warn "  consider launching sbt without any commands, or explicitly passing 'shell'"
