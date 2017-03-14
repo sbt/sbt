@@ -340,18 +340,27 @@ ${listConflicts(conflicting)}""")
       case ap: AutoPlugin => model(ap)
     }
 
+  private val autoImport = "autoImport"
+
+  /** Determines whether a plugin has a stable autoImport member by:
+    *
+    * 1. Checking whether there exists a public field.
+    * 2. Checking whether there exists a public object.
+    *
+    * The above checks work for inherited members too.
+    *
+    * @param ap The found plugin.
+    * @param loader The plugin loader.
+    * @return True if plugin has a stable member `autoImport`, otherwise false.
+    */
   private[sbt] def hasAutoImportGetter(ap: AutoPlugin, loader: ClassLoader): Boolean = {
-    import reflect.runtime.{universe => ru}
+    val pluginClazz = ap.getClass
     import util.control.Exception.catching
-    val m = ru.runtimeMirror(loader)
-    val im = m.reflect(ap)
-    val hasGetterOpt = catching(classOf[ScalaReflectionException]) opt {
-      im.symbol.asType.toType.declaration(ru.newTermName("autoImport")) match {
-        case ru.NoSymbol => false
-        case sym => sym.asTerm.isGetter || sym.asTerm.isModule
-      }
-    }
-    hasGetterOpt getOrElse false
+    catching(classOf[NoSuchFieldException])
+      .opt(pluginClazz.getField(autoImport))
+      .orElse(catching(classOf[ClassNotFoundException]).opt(
+        Class.forName(s"${pluginClazz.getName}$autoImport$$", false, loader)))
+      .isDefined
   }
 
   /** Debugging method to time how long it takes to run various compilation tasks. */
