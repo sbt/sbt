@@ -230,6 +230,17 @@ lazy val cli = project
     },
     packExcludeArtifactTypes += "pom",
     resourceGenerators in Compile += packageBin.in(bootstrap).in(Compile).map { jar =>
+      import java.nio.file.Files
+      import java.nio.charset.StandardCharsets
+
+      val content = Files.readAllBytes(jar.toPath)
+      val header =
+        """#!/usr/bin/env sh
+          |exec java $JAVA_OPTS -noverify -jar "$0" "$@"
+        """.stripMargin
+
+      Files.write(jar.toPath, header.getBytes(StandardCharsets.UTF_8) ++ content)
+
       Seq(jar)
     }.taskValue,
     ProguardKeys.proguardVersion in Proguard := "5.3",
@@ -479,6 +490,9 @@ lazy val okhttp = project
     )
   )
 
+lazy val echo = project
+  .settings(commonSettings)
+
 lazy val jvm = project
   .aggregate(
     coreJvm,
@@ -491,7 +505,8 @@ lazy val jvm = project
     `sbt-launcher`,
     doc,
     `http-server`,
-    okhttp
+    okhttp,
+    echo
   )
   .settings(commonSettings)
   .settings(noPublishSettings)
