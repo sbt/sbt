@@ -479,6 +479,9 @@ lazy val okhttp = project
     )
   )
 
+lazy val echo = project
+  .settings(commonSettings)
+
 lazy val jvm = project
   .aggregate(
     coreJvm,
@@ -491,7 +494,8 @@ lazy val jvm = project
     `sbt-launcher`,
     doc,
     `http-server`,
-    okhttp
+    okhttp,
+    echo
   )
   .settings(commonSettings)
   .settings(noPublishSettings)
