@@ -5,7 +5,7 @@ package sbt
 
 import java.io.File
 
-import compiler.{ Eval, EvalDefinitions, EvalImports }
+import compiler.{ Eval, EvalDefinitions, EvalImports, EvalSbtFile }
 import complete.DefaultParsers.validID
 import Def.{ ScopedKey, Setting }
 import Scope.GlobalScope
@@ -54,7 +54,7 @@ object EvaluateConfigurations {
   @deprecated("We no longer merge build.sbt files together unless they are in the same directory.", "0.13.6")
   def apply(eval: Eval, srcs: Seq[File], imports: Seq[String]): LazyClassLoaded[LoadedSbtFile] =
     {
-      val loadFiles = srcs.sortBy(_.getName) map { src => evaluateSbtFile(eval, src, IO.readLines(src), imports, 0) }
+      val loadFiles = srcs.sortBy(_.getName) map { src => evaluateSbtFileAtOnce(eval, src, IO.readLines(src), imports, 0) }
       loader => (LoadedSbtFile.empty /: loadFiles) { (loaded, load) => loaded merge load(loader) }
     }
 
@@ -92,7 +92,7 @@ object EvaluateConfigurations {
    */
   def evaluateConfiguration(eval: Eval, file: File, lines: Seq[String], imports: Seq[String], offset: Int): LazyClassLoaded[Seq[Setting[_]]] =
     {
-      val l = evaluateSbtFile(eval, file, lines, imports, offset)
+      val l = evaluateSbtFileAtOnce(eval, file, lines, imports, offset)
       loader => l(loader).settings
     }
 
@@ -173,6 +173,70 @@ object EvaluateConfigurations {
     }
   }
 
+  private[sbt] def evaluateSbtFileAtOnce(
+    eval: Eval,
+    targetDir: File,
+    lines: Seq[String],
+    defaultImports: Seq[String],
+    offset: Int): LazyClassLoaded[LoadedSbtFile] = {
+
+    // TODO: Detect for which project the project manipulations should be done.
+    // For that, store the file on the `LoadedSbtFile` or its parent directory.
+    val targetName = targetDir.getPath
+    val parsed = parseConfiguration(targetDir, lines, defaultImports, offset)
+    val definitions = parsed.definitions
+    val settings = parsed.settings
+    val imports = parsed.imports
+
+    val evaluatedSbtFile: EvalSbtFile =
+      loadSbtFile(eval, targetName, imports, definitions, settings, targetDir)
+    val allGeneratedFiles: Seq[File] = evaluatedSbtFile.generated
+    val fromDefinitionsOwner = List(evaluatedSbtFile.enclosingModule)
+    val importForDefinitions = BuildUtil.importAllRoot(fromDefinitionsOwner)
+    val definedSbtValues = DefinedSbtValues(evaluatedSbtFile.getEvalDefinitions)
+
+    (loader: ClassLoader) => {
+      import internals.{ ProjectSettings, ProjectManipulation }
+      val (loadedSbtValues, loadedSettings) =
+        evaluatedSbtFile.loadDefinitionsAndSettings(loader)
+
+      // Load settings and assign them positions at sbt file
+      val loadedDslEntries = loadedSettings.zip(settings).map {
+        case (loadedSetting, (_, range)) =>
+          val dslEntry = loadedSetting.asInstanceOf[internals.DslEntry]
+          val pos = RangePosition(targetName, range.shift(1))
+          dslEntry.withPos(pos)
+      }
+
+      // Get the settings and project manipulations defined by the user
+      val empty = (List.empty[Def.Setting[_]], List.empty[Project => Project])
+      val (settings0, manipulations) = loadedDslEntries.foldLeft(empty) {
+        case (previous @ (accSettings, accManipulations), loadedEntry) =>
+          loadedEntry match {
+            case ProjectSettings(settings1) =>
+              (settings1 ++: accSettings, accManipulations)
+            case ProjectManipulation(manipulation) =>
+              (accSettings, manipulation :: accManipulations)
+            case _ => previous
+          }
+      }
+
+      // Get the defined projects by the user
+      val projects = loadedSbtValues.collect {
+        case p: Project => resolveBase(targetDir.getParentFile, p)
+      }
+
+      new LoadedSbtFile(
+        settings0.reverse,
+        projects,
+        importForDefinitions,
+        manipulations.reverse,
+        definedSbtValues,
+        allGeneratedFiles
+      )
+    }
+  }
+
   /** move a project to be relative to this file after we've evaluated it. */
   private[this] def resolveBase(f: File, p: Project) = p.copy(base = IO.resolve(f, p.base))
   @deprecated("Will no longer be public.", "0.13.6")
@@ -220,6 +284,34 @@ object EvaluateConfigurations {
         result.getValue(loader).asInstanceOf[internals.DslEntry].withPos(pos)
     }
     EvalResult(result.generated, loadDslEntry)
+  }
+
+  private[this] def loadSbtFile(
+    eval: Eval,
+    fileName: String,
+    imports: Seq[(String, Int)],
+    definitions: Seq[(String, LineRange)],
+    settings: Seq[(String, LineRange)],
+    target: File): compiler.EvalSbtFile = {
+    def toRanges(xs: Seq[(String, LineRange)]) =
+      xs.map { case (s, r) => (s, r.start to r.end) }
+
+    val positionedDefs = toRanges(definitions)
+    val positionedSettings = toRanges(settings)
+    val importTrees = new EvalImports(imports, fileName)
+    // FIXME: The API should assume type is same for all settings
+    val dslType = Some(SettingsDefinitionName)
+    val settingsTypes = positionedSettings.map(_ => dslType)
+
+    eval.evalSbtFile(
+      positionedDefs,
+      positionedSettings,
+      settingsTypes,
+      importTrees,
+      fileName,
+      target,
+      extractedValTypes
+    )
   }
 
   /**

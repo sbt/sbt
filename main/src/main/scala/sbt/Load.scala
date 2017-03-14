@@ -772,7 +772,7 @@ object Load {
     // TODO - We should import vals defined in other sbt files here, if we wish to
     // share.  For now, build.sbt files have their own unique namespace.
     def loadSettingsFile(src: File): LoadedSbtFile =
-      EvaluateConfigurations.evaluateSbtFile(eval(), src, IO.readLines(src), loadedPlugins.detected.imports, 0)(loader)
+      EvaluateConfigurations.evaluateSbtFileAtOnce(eval(), src, IO.readLines(src), loadedPlugins.detected.imports, 0)(loader)
     // How to merge SbtFiles we read into one thing
     def merge(ls: Seq[LoadedSbtFile]): LoadedSbtFile = (LoadedSbtFile.empty /: ls) { _ merge _ }
     // Loads a given file, or pulls from the cache.

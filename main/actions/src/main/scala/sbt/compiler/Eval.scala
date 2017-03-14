@@ -56,16 +56,35 @@ final class EvalDefinitions(val loader: ClassLoader => ClassLoader,
   /**
    * Get the values of all the definitions.
    *
-   *
    * @param parent The parent class loader on which to load the module defs.
    * @return The values of all the evaluated definitions.
    */
   def values(parent: ClassLoader): Seq[Any] = {
-    // TODO: `loader(parent)` could be cached ? .
+    // TODO(jvican): This should be further optimized.
     val module = Eval.getModule(enclosingModule, loader(parent))
     for (n <- names)
       yield module.getClass.getMethod(n).invoke(module)
   }
+}
+
+final class EvalSettings(val loader: ClassLoader => ClassLoader)
+
+final class EvalSbtFile(
+    val loader: ClassLoader => ClassLoader,
+    val definitionsNames: Seq[String],
+    val settingsNames: Seq[String],
+    val generated: Seq[File],
+    val enclosingModule: String) {
+
+  def loadDefinitionsAndSettings(parent: ClassLoader): (Seq[Any], Seq[Any]) = {
+    val module = Eval.getModule(enclosingModule, loader(parent))
+    val definitions = definitionsNames.map(name => Eval.getValue(module, name))
+    val settings = settingsNames.map(name => Eval.getValue(module, name))
+    definitions -> settings
+  }
+
+  def getEvalDefinitions: EvalDefinitions =
+    new EvalDefinitions(loader, definitionsNames, generated, enclosingModule)
 }
 
 /**
@@ -196,7 +215,7 @@ final class Eval(optionsWithoutClasspath: Seq[String],
         atPhase(run.typerPhase.next) { (new TypeExtractor).getType(unit.body) }
     }
 
-    val ir = evalCommon(expression :: Nil, imports, tpeName, evaluator)
+    val ir = evalCommon(expression :: Nil, imports, tpeName.toList, evaluator)
     val valueLoader = (cl: ClassLoader) =>
       Eval.getValue[Any](ir.enclosingModule, ir.loader(cl))
     new EvalResult(ir.extra, valueLoader, ir.generated, ir.enclosingModule)
@@ -246,7 +265,7 @@ final class Eval(optionsWithoutClasspath: Seq[String],
 
       def extra(run: Run, unit: CompilationUnit): List[String] = {
         atPhase(run.typerPhase.next) {
-          new ValExtractor(valTypes.toSet).getVals(unit.body)
+          new ValExtractor(valTypes.toSet).getValNames(unit.body)
         }
       }
 
@@ -256,7 +275,7 @@ final class Eval(optionsWithoutClasspath: Seq[String],
       def extraHash: String = target.getAbsolutePath
     }
 
-    val ir = evalCommon(definitions.map(_._1), imports, Some(""), evaluator)
+    val ir = evalCommon(definitions.map(_._1), imports, Nil, evaluator)
     new EvalDefinitions(ir.loader, ir.extra, ir.generated, ir.enclosingModule)
   }
 
@@ -265,20 +284,20 @@ final class Eval(optionsWithoutClasspath: Seq[String],
    *
    * @param lines The lines of the source file that are part of the unit.
    * @param imports The imports to be accessible at compilation.
-   * @param tpeName The expected type.
+   * @param expectedTypes The expected types.
    * @param evaluator An evaluator that returns compiler information.
    * @tparam T The compiler information that we expect it to return.
    * @return An instance of [[IR]] that is later process by the use sites.
    */
   private[this] def evalCommon[T](lines: Seq[String],
     imports: EvalImports,
-    tpeName: Option[String],
+    expectedTypes: Seq[String],
     evaluator: Evaluator[T]): IR[T] = {
     // Generate the name of the module from the hash of all the inputs
     val importExprs = imports.exprs.map(_._1)
     val extraH = evaluator.extraHash
     val inputs = CompilationInputs(lines, target, scalacOptions, classpath)
-    val hash = hashInputs(inputs, importExprs, tpeName, extraH)
+    val hash = hashInputs(inputs, importExprs, expectedTypes, extraH)
     val moduleName = makeModuleName(hash)
 
     // Get the evaluation information and the loader generator
@@ -352,6 +371,88 @@ final class Eval(optionsWithoutClasspath: Seq[String],
         new URLClassLoader(Array(dir.toURI.toURL), parent))
   }
 
+  def evalSbtFile(
+    definitions: Seq[(String, scala.Range)],
+    settings: Seq[(String, scala.Range)],
+    settingsTypes: Seq[Option[String]],
+    imports: EvalImports,
+    srcName: String,
+    target: File,
+    definitionTypesToExtract: Seq[String]): EvalSbtFile = {
+
+    val settingsNames: Seq[TermName] = generateSettingNamesFor(settings.size)
+    val evaluator = new Evaluator[SbtMetadata] {
+      val (_, settingsUnits) = mkUnitsForDefs(srcName, settings)
+      val (_, defUnits) = mkUnitsForDefs(srcName, definitions)
+
+      // Order expressions in definition order assuming start line is unique
+      val orderedExpressions: Seq[(String, Range)] =
+        (settings ++ definitions).sortBy { case (_, range) => range.start }
+      val (fullUnit, _) = mkUnitsForDefs(srcName, orderedExpressions)
+
+      def unlink = true
+      def makeUnit: CompilationUnit = fullUnit
+
+      private val sectionDelimiter = "~~~~~"
+
+      def read(file: File): SbtMetadata = {
+        val lines = IO.read(file).lines.toList
+        val at = lines.indexOf(sectionDelimiter)
+        val (settingsTypes, delimWithDefinitions) = lines.splitAt(at)
+        SbtMetadata(delimWithDefinitions.tail, settingsTypes)
+      }
+
+      def write(value: SbtMetadata, f: File): Unit = {
+        // TODO(jvican): Make sure this goes okay when definitions are empty
+        val settingsSection = value.settingsTypes.mkString("\n")
+        val definitionsSection = value.definitionNames.mkString("\n")
+        IO.write(f, s"$settingsSection\n$sectionDelimiter\n$definitionsSection")
+      }
+
+      def extraHash: String = target.getAbsolutePath
+
+      def unitBody(unit: CompilationUnit,
+        imports: Seq[Tree],
+        moduleName: String): Tree = {
+
+        val parser = new syntaxAnalyzer.UnitParser(unit)
+        val parsedSettings = settingsUnits.map(parseSetting)
+        val defTrees = defUnits.flatMap(parseDefinitions)
+        val expectedSettingsTypes = settingsTypes.map(expectedType)
+        val settingsWithTypes = parsedSettings.zip(expectedSettingsTypes)
+        val settingTrees = settingsNames.zip(settingsWithTypes)
+
+        wrapInModule(parser, imports, defTrees, settingTrees, moduleName)
+      }
+
+      /** Gets the additional information to be stored for later processing. */
+      def extra(run: Run, unit: CompilationUnit): SbtMetadata = {
+        val (settingsTypes, definitionNames) = atPhase(run.typerPhase.next) {
+          val body = unit.body
+          val settingsTypes = new TypesExtractor(settingsNames).getTypes(body)
+          val toExtract = definitionTypesToExtract.toSet
+          val definitionNames = new ValExtractor(toExtract).getValNames(body)
+          settingsTypes -> definitionNames
+        }
+        SbtMetadata(definitionNames, settingsTypes)
+      }
+    }
+
+    val allLines = definitions.map(_._1) ++ settings.map(_._1)
+    val allTypes = settingsTypes.flatten
+    val ir = evalCommon(allLines, imports, allTypes, evaluator)
+
+    val compilerInfo = ir.extra
+    val definitionNames = compilerInfo.definitionNames
+    new EvalSbtFile(
+      ir.loader,
+      definitionNames,
+      settingsNames.map(_.decoded),
+      ir.generated,
+      ir.enclosingModule
+    )
+  }
+
   /* ************************************************************************ */
   /* ***************************** Utilities ******************************** */
   /* ************************************************************************ */
@@ -393,31 +494,71 @@ final class Eval(optionsWithoutClasspath: Seq[String],
   }
 
   /**
-   * Tree traverser that obtains the names of vals in a top-level module
-   * whose type is the subtype of one of the provided `tpes`.
+   * Extract the types of the methods whose name is contained in `names`.
+   *
+   * @param names The names of the definitions whose type should be extracted.
    */
-  private[this] final class ValExtractor(tpes: Set[String]) extends Traverser {
-    private[this] var vals = List[String]()
-    def getVals(t: Tree): List[String] = { vals = Nil; traverse(t); vals }
-    def isAcceptableType(tpe: Type): Boolean = {
-      tpe.baseClasses.exists { sym =>
-        tpes.contains(sym.fullName)
-      }
+  private[this] final class TypesExtractor(names: Seq[TermName])
+      extends Traverser {
+    import scala.collection.mutable
+    private[this] val types = mutable.HashMap.empty[String, String]
+
+    def getTypes(t: Tree): Seq[String] = {
+      types.clear()
+      traverse(t)
+      // Return types in order of definition
+      // Remember that names are <WrapValName><index>
+      types.toSeq.sortBy(_._1).map(_._2)
     }
-    override def traverse(tree: Tree): Unit = tree match {
-      case ValDef(_, n, actualTpe, _) if isTopLevelModule(tree.symbol.owner) && isAcceptableType(actualTpe.tpe) =>
-        vals ::= nme.localToGetter(n).encoded
-      case _ => super.traverse(tree)
+
+    override def traverse(tree: Tree): Unit = {
+      tree match {
+        case d: DefDef if names.contains(d.symbol.name.decodedName) =>
+          val sym = d.symbol
+          val definitionName = sym.name.decodedName.toString
+          types += definitionName -> sym.tpe.finalResultType.toString
+        case _ => super.traverse(tree)
+      }
     }
   }
 
   /**
-   * Check whether a module is top level or not.
-   *
-   * Removed in commit `e5b050814deb2e7e1d6d05511d3a6cb6b013b549`.
+   * Tree traverser that obtains the names of vals in a top-level module
+   * whose type is the subtype of one of the provided `tpes`.
    */
-  private[this] def isTopLevelModule(s: Symbol): Boolean =
-    s.hasFlag(reflect.internal.Flags.MODULE) && s.owner.isPackageClass
+  private[this] final class ValExtractor(definitionTypes: Set[String]) extends Traverser {
+    private[this] var vals = List[String]()
+    def getValNames(t: Tree): List[String] = { vals = Nil; traverse(t); vals }
+
+    // Removed in commit `e5b050814deb2e7e1d6d05511d3a6cb6b013b549`.
+    private def isTopLevelModule(s: Symbol): Boolean =
+      s.hasFlag(reflect.internal.Flags.MODULE) && s.owner.isPackageClass
+
+    /**
+     * Check whether a val definition can be extracted or not.
+     *
+     * A valid val has the following properties:
+     *   - Its owner is a top-level tree.
+     *   - Its name does not contain `WrapValName`.
+     *   - Its type is a subtype of the ones provided in `definitionTypes`.
+     */
+    private def isValidVal(valDef: ValDef): Boolean = {
+      val sym = valDef.symbol
+      isTopLevelModule(sym.owner) &&
+        !sym.nameString.contains(Eval.WrapValName) && {
+          val tpe = valDef.tpt.tpe
+          tpe.baseClasses.exists { sym =>
+            definitionTypes.contains(sym.fullName)
+          }
+        }
+    }
+
+    override def traverse(tree: Tree): Unit = tree match {
+      case t: ValDef if isValidVal(t) =>
+        vals ::= nme.localToGetter(t.name).encoded
+      case _ => super.traverse(tree)
+    }
+  }
 
   // TODO: reuse the code from `Analyzer`
   private[this] def classExists(dir: File, name: String) =
@@ -441,6 +582,11 @@ final class Eval(optionsWithoutClasspath: Seq[String],
   private[this] def mkUnit(srcName: String, firstLine: Int, s: String) =
     new CompilationUnit(new EvalSourceFile(srcName, firstLine, s))
 
+  private[this] def createUnitAtLines(srcName: String,
+    content: String,
+    lineMap: Array[Int]): CompilationUnit =
+    new CompilationUnit(fragmentSourceFile(srcName, content, lineMap))
+
   /**
    * Construct a [[CompilationUnit]] for each definition and another one
    * for batch compilation.
@@ -452,21 +598,19 @@ final class Eval(optionsWithoutClasspath: Seq[String],
    */
   private[this] def mkUnitsForDefs(srcName: String,
     definitions: Seq[(String, scala.Range)]): (CompilationUnit, Seq[CompilationUnit]) = {
-    def fragmentUnit(content: String, lineMap: Array[Int]) =
-      new CompilationUnit(fragmentSourceFile(srcName, content, lineMap))
-
     import collection.mutable.ListBuffer
     val lines = new ListBuffer[Int]()
     val defs = new ListBuffer[CompilationUnit]()
     val fullContent = new java.lang.StringBuilder()
     for ((defString, range) <- definitions) {
-      defs += fragmentUnit(defString, range.toArray)
+      defs += createUnitAtLines(srcName, defString, range.toArray)
       fullContent.append(defString)
       lines ++= range
       fullContent.append("\n\n")
       lines ++= (range.end :: range.end :: Nil)
     }
-    val fullUnit = fragmentUnit(fullContent.toString, lines.toArray)
+    val fullUnit =
+      createUnitAtLines(srcName, fullContent.toString, lines.toArray)
     (fullUnit, defs.toSeq)
   }
 
@@ -502,6 +646,9 @@ private[sbt] object Eval {
   private[sbt] def checkError(reporter: Reporter, label: String) =
     if (reporter.hasErrors) throw new EvalException(label)
 
+  import scala.collection.mutable
+  private[sbt] val moduleCache = mutable.WeakHashMap.empty[ClassLoader, Any]
+
   /** The name of the synthetic val in the synthetic module that an expression is assigned to. */
   final val WrapValName = "$sbtdef"
 
@@ -519,6 +666,12 @@ private[sbt] object Eval {
     val accessor = module.getClass.getMethod(WrapValName)
     val value = accessor.invoke(module)
     value.asInstanceOf[T]
+  }
+
+  private[sbt] def getValue(moduleInstance: Any, name: String): Any = {
+    val accessor = moduleInstance.getClass.getMethod(name)
+    val value = accessor.invoke(moduleInstance)
+    value
   }
 
   /**
@@ -613,6 +766,9 @@ private[sbt] trait SbtParser {
   protected def parseDefinitions(du: CompilationUnit): Seq[Tree] =
     parse(du, definitionErrorStrings, parseDefinitions)._2
 
+  protected def parseSetting(unit: CompilationUnit): Tree =
+    parse(unit, settingErrorStrings, _.expr())._2
+
   /**
    * Parse sbt definitions.
    *
@@ -639,29 +795,30 @@ private[sbt] trait SbtCodegen {
   val global: Global
   import global._
   import syntaxAnalyzer.UnitParser
+  import Eval.WrapValName
 
   protected def makeModuleName(hash: String): String = "$" + Hash.halve(hash)
 
   /**
-   * Create a synthetic module that contains `imports` and `definitions`.
+   * Create a synthetic module that contains `imports` and `members`.
    *
    * It produces a tree equivalent to:
    * {{{
+   *   <imports>
    *   object <objectName> {
-   *     <imports>
-   *     <definitions>
+   *     <members>
    *   }
    * }}}
    *
    * @param parser A parser instance.
-   * @param imports The imports accessible to the module definitions.
-   * @param definitions The definitions of the module.
+   * @param imports The imports accessible to the module's members.
+   * @param members The members of the module.
    * @param moduleName The name of the synthetic module.
    * @return
    */
   protected def syntheticModule(parser: UnitParser,
     imports: Seq[Tree],
-    definitions: List[Tree],
+    members: List[Tree],
     moduleName: String): Tree = {
     // Generate an empty constructor for the module template
     val emptyName = nme.EMPTY.toTypeName
@@ -672,7 +829,7 @@ private[sbt] trait SbtCodegen {
       DefDef(NoMods, nme.CONSTRUCTOR, Nil, List(Nil), TypeTree(), body)
 
     // Generate the synthetic module
-    val moduleDefinitions = emptyConstructor :: definitions
+    val moduleDefinitions = emptyConstructor :: members
     def moduleBody: Template =
       Template(List(gen.scalaAnyRefConstr), emptyValDef, moduleDefinitions)
     def moduleDef = ModuleDef(NoMods, newTermName(moduleName), moduleBody)
@@ -688,8 +845,8 @@ private[sbt] trait SbtCodegen {
    *
    * It produces a tree equivalent to:
    * {{{
+   *   <imports>
    *   object <objectName> {
-   *     <imports>
    *     def WrapValName: <tpt> = <tree>
    *   }
    * }}}
@@ -706,11 +863,68 @@ private[sbt] trait SbtCodegen {
     tree: Tree,
     tpt: Tree,
     moduleName: String): Tree = {
-    import Eval.WrapValName
     val method = DefDef(NoMods, newTermName(WrapValName), Nil, Nil, tpt, tree)
     syntheticModule(parser, imports, method :: Nil, moduleName)
   }
 
+  /**
+   * Generate the names for settings in order of the definition.
+   *
+   * @param size The number of settings to be named.
+   * @return A sequence of named settings.
+   */
+  def generateSettingNamesFor(size: Int): Seq[TermName] =
+    List.tabulate(size)(index => newTermName(s"$WrapValName$index"))
+
+  type ExpectedSettingType = Tree
+  type DefinedSetting = (Tree, ExpectedSettingType)
+
+  /**
+   * Wrap sbt definitions and settings into a concrete module.
+   *
+   * This is a new encoding for sbt builds that is done to be faster. The
+   * previous encoding required compiling definitions first and then compiling
+   * settings independently in the order of definition. This meant creating
+   * a [[Run]] every time a setting was evaluated.
+   *
+   * It produces a tree equivalent to:
+   * {{{
+   *   object <objectName> {
+   *     <imports>
+   *     <definitions>
+   *     <setting-definitions>
+   *   }
+   * }}}
+   *
+   * where a `setting-definition` has the following encoding:
+   *
+   * {{{
+   *   def WrapValName<index>: <tpt> = <tree>
+   * }}}
+   *
+   * and a `definition` is just a [[Tree]].
+   *
+   * @param parser A parser.
+   * @param imports The imports to be used.
+   * @param definitions The definitions from the sbt file.
+   * @param namedSettings The settings with expected types from sbt file.
+   * @param moduleName The name of the enclosing object.
+   * @return The augmented tree.
+   */
+  def wrapInModule(parser: UnitParser,
+    imports: Seq[Tree],
+    definitions: Seq[Tree],
+    namedSettings: Seq[(TermName, DefinedSetting)],
+    moduleName: String): Tree = {
+
+    val settingsDefinitions = namedSettings.map {
+      case (methodName, (tree, tpt)) =>
+        DefDef(NoMods, methodName, Nil, Nil, tpt, tree)
+    }
+
+    val insideModule = definitions ++: settingsDefinitions.toList
+    syntheticModule(parser, imports, insideModule, moduleName)
+  }
 }
 
 private[sbt] trait SbtDefinitions {
@@ -827,6 +1041,15 @@ private[sbt] trait SbtDefinitions {
       super.offsetToLine(offset) + startLine
   }
 
+  /**
+   *
+   * @param definitionNames
+   * @param settingsTypes
+   */
+  case class SbtMetadata(
+    definitionNames: Seq[String],
+    settingsTypes: Seq[String])
+
 }
 
 /** Define utils to hash inputs to the sbt compiler. */
@@ -851,7 +1074,7 @@ private[sbt] trait SbtHashGen { self: SbtDefinitions =>
    */
   def hashInputs(compilationInputs: CompilationInputs,
     importExprs: Seq[String],
-    typeName: Option[String],
+    tpes: Seq[String],
     extra: String): String = {
     val allBytes =
       stringSeqBytes(compilationInputs.content) ::
@@ -859,7 +1082,7 @@ private[sbt] trait SbtHashGen { self: SbtDefinitions =>
         stringSeqBytes(compilationInputs.scalacOptions) ::
         seqBytes(compilationInputs.classpath)(fileModifiedBytes) ::
         stringSeqBytes(importExprs) ::
-        optBytes(typeName)(bytes) ::
+        stringSeqBytes(tpes) ::
         bytes(extra) ::
         Nil
     Hash.toHex(Hash(bytes(allBytes)))
