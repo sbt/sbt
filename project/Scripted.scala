@@ -37,6 +37,8 @@ object Scripted {
   import DefaultParsers._
   // Paging, 1-index based.
   case class ScriptedTestPage(page: Int, total: Int)
+  // FIXME: Duplicated with ScriptedPlugin.scriptedParser, this can be
+  // avoided once we upgrade build.properties to 0.13.14
   def scriptedParser(scriptedBase: File): Parser[Seq[String]] =
     {
       val scriptedFiles: NameFilter = ("test": NameFilter) | "pending"
