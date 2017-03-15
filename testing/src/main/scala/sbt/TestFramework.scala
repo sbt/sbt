@@ -31,7 +31,7 @@ case class TestFramework(implClassNames: String*) {
     frameworkClassNames match {
       case head :: tail =>
         try {
-          Some(Class.forName(head, true, loader).newInstance match {
+          Some(Class.forName(head, true, loader).getDeclaredConstructor().newInstance() match {
             case newFramework: Framework    => newFramework
             case oldFramework: OldFramework => new FrameworkWrapper(oldFramework)
           })

@@ -93,7 +93,7 @@ object Scripted {
     val noJLine = new classpath.FilteredLoader(scriptedSbtInstance.loader, "jline." :: Nil)
     val loader = classpath.ClasspathUtilities.toLoader(scriptedSbtClasspath.files, noJLine)
     val bridgeClass = Class.forName("sbt.test.ScriptedRunner", true, loader)
-    val bridge = bridgeClass.newInstance.asInstanceOf[SbtScriptedRunner]
+    val bridge = bridgeClass.getDeclaredConstructor().newInstance().asInstanceOf[SbtScriptedRunner]
     try {
       // Using java.util.List to encode File => Unit.
       val callback = new java.util.AbstractList[File] {
