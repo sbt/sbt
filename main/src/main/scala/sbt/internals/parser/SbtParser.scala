@@ -3,15 +3,17 @@ package internals
 package parser
 
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 
 import sbt.internals.parser.SbtParser._
 
 import scala.compat.Platform.EOL
-import scala.reflect.internal.util.BatchSourceFile
+import scala.reflect.internal.util.{ BatchSourceFile, Position }
 import scala.reflect.io.VirtualDirectory
 import scala.tools.nsc.interactive.RangePositions
 import scala.tools.nsc.{ CompilerCommand, Global }
-import scala.tools.nsc.reporters.StoreReporter
+import scala.tools.nsc.reporters.{ Reporter, StoreReporter }
+import scala.util.Random
 
 private[sbt] object SbtParser {
   val END_OF_LINE_CHAR = '\n'
@@ -37,17 +39,49 @@ private[sbt] object SbtParser {
    * Provides the previous error reporting functionality in
    * [[scala.tools.reflect.ToolBox]].
    *
-   * This is a sign that this whole parser should be rewritten.
+   * This parser is a wrapper around a collection of reporters that are
+   * indexed by a unique key. This is used to ensure that the reports of
+   * one parser don't collide with other ones in concurrent settings.
+   *
+   * This parser is a sign that this whole parser should be rewritten.
    * There are exceptions everywhere and the logic to work around
    * the scalac parser bug heavily relies on them and it's tied
    * to the test suite. Ideally, we only want to throw exceptions
    * when we know for a fact that the user-provided snippet doesn't
    * parse.
    */
-  private[sbt] class ParserStoreReporter extends StoreReporter {
-    def throwParserErrorsIfAny(fileName: String): Unit = {
-      if (parserReporter.hasErrors) {
-        val seq = parserReporter.infos.map { info =>
+  private[sbt] class UniqueParserReporter extends Reporter {
+
+    private val reporters = new ConcurrentHashMap[String, StoreReporter]()
+
+    override def info0(pos: Position, msg: String, severity: Severity, force: Boolean): Unit = {
+      val reporter = getReporter(pos.source.file.name)
+      severity.id match {
+        case 0 => reporter.info(pos, msg, force)
+        case 1 => reporter.warning(pos, msg)
+        case 2 => reporter.error(pos, msg)
+      }
+    }
+
+    def getOrCreateReporter(uniqueFileName: String): StoreReporter = {
+      val reporter = reporters.get(uniqueFileName)
+      if (reporter == null) {
+        val newReporter = new StoreReporter
+        reporters.put(uniqueFileName, newReporter)
+        newReporter
+      } else reporter
+    }
+
+    private def getReporter(fileName: String) = {
+      val reporter = reporters.get(fileName)
+      if (reporter == null)
+        sys.error(s"Sbt parser failure: no reporter for $fileName.")
+      reporter
+    }
+
+    def throwParserErrorsIfAny(reporter: StoreReporter, fileName: String): Unit = {
+      if (reporter.hasErrors) {
+        val seq = reporter.infos.map { info =>
           s"""[$fileName]:${info.pos.line}: ${info.msg}"""
         }
         val errorMessage = seq.mkString(EOL)
@@ -56,24 +90,24 @@ private[sbt] object SbtParser {
             s"$errorMessage\n${SbtParser.XmlErrorMessage}"
           else errorMessage
         throw new MessageOnlyException(error)
-      }
+      } else ()
     }
   }
 
-  private[sbt] final val parserReporter = new ParserStoreReporter
+  private[sbt] final val globalReporter = new UniqueParserReporter
 
   private[sbt] final lazy val defaultGlobalForParser = {
     import scala.reflect.internal.util.NoPosition
     val options = "-cp" :: s"$defaultClasspath" :: "-Yrangepos" :: Nil
-    val reportError = (msg: String) => parserReporter.error(NoPosition, msg)
+    val reportError = (msg: String) => globalReporter.error(NoPosition, msg)
     val command = new CompilerCommand(options, reportError)
     val settings = command.settings
     settings.outputDirs.setSingleOutput(new VirtualDirectory("(memory)", None))
 
-    // Mixing RangePositions is necessary, otherwise global ignores -Yrangepos
-    val global = new Global(settings, parserReporter) with RangePositions
+    // Mix RangePositions, otherwise global ignores -Yrangepos
+    val global = new Global(settings, globalReporter) with RangePositions
     val run = new global.Run
-    // Necessary to have a dummy unit for initialization...
+    // Add required dummy unit for initialization...
     val initFile = new BatchSourceFile("<wrapper-init>", "")
     val _ = new global.CompilationUnit(initFile)
     global.phase = run.parserPhase
@@ -85,20 +119,27 @@ private[sbt] object SbtParser {
   /**
    * Parse code reusing the same [[Run]] instance.
    *
-   * The access to this method has to be synchronized (no more than one
-   * thread can access to it at the same time since it reuses the same
-   * [[Global]], which mutates the whole universe).
+   * @param code The code to be parsed.
+   * @param filePath The file name where the code comes from.
+   * @param reporterId0 The reporter id is the key used to get the pertinent
+   *                    reporter. Given that the parsing reuses a global
+   *                    instance, this reporter id makes sure that every parsing
+   *                    session gets its own errors in a concurrent setting.
+   *                    The reporter id must be unique per parsing session.
+   * @return
    */
-  private[sbt] def parse(code: String, fileName: String): Seq[Tree] = synchronized {
+  private[sbt] def parse(code: String, filePath: String, reporterId0: Option[String]): (Seq[Tree], String) = {
     import defaultGlobalForParser._
-    parserReporter.reset()
-    val wrapperFile = new BatchSourceFile("<wrapper>", code)
+    val reporterId = reporterId0.getOrElse(s"$filePath-${Random.nextInt}")
+    val reporter = globalReporter.getOrCreateReporter(reporterId)
+    reporter.reset()
+    val wrapperFile = new BatchSourceFile(reporterId, code)
     val unit = new CompilationUnit(wrapperFile)
     val parser = new syntaxAnalyzer.UnitParser(unit)
     val parsedTrees = parser.templateStats()
     parser.accept(scala.tools.nsc.ast.parser.Tokens.EOF)
-    parserReporter.throwParserErrorsIfAny(fileName)
-    parsedTrees
+    globalReporter.throwParserErrorsIfAny(reporter, filePath)
+    parsedTrees -> reporterId
   }
 }
 
@@ -151,7 +192,7 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
     val indexedLines = lines.toIndexedSeq
     val content = indexedLines.mkString(END_OF_LINE)
     val fileName = file.getAbsolutePath
-    val parsedTrees: Seq[Tree] = parse(content, fileName)
+    val (parsedTrees, reporterId) = parse(content, fileName, None)
 
     // Check No val (a,b) = foo *or* val a,b = foo as these are problematic to range positions and the WHOLE architecture.
     def isBadValDef(t: Tree): Boolean =
@@ -179,9 +220,9 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
      * @return originalStatement or originalStatement with missing bracket
      */
     def parseStatementAgain(t: Tree, originalStatement: String): String = {
-      val statement = util.Try(parse(originalStatement, fileName)) match {
+      val statement = util.Try(parse(originalStatement, fileName, Some(reporterId))) match {
         case util.Failure(th) =>
-          val missingText = findMissingText(content, t.pos.end, t.pos.line, fileName, th)
+          val missingText = findMissingText(content, t.pos.end, t.pos.line, fileName, th, Some(reporterId))
           originalStatement + missingText
         case _ =>
           originalStatement
@@ -259,16 +300,16 @@ private[sbt] object MissingBracketHandler {
    * @param originalException - original exception
    * @return missing text
    */
-  private[sbt] def findMissingText(content: String, positionEnd: Int, positionLine: Int, fileName: String, originalException: Throwable): String = {
+  private[sbt] def findMissingText(content: String, positionEnd: Int, positionLine: Int, fileName: String, originalException: Throwable, reporterId: Option[String] = Some(Random.nextInt.toString)): String = {
     findClosingBracketIndex(content, positionEnd) match {
       case Some(index) =>
         val text = content.substring(positionEnd, index + 1)
         val textWithoutBracket = text.substring(0, text.length - 1)
-        util.Try(SbtParser.parse(textWithoutBracket, fileName)) match {
+        util.Try(SbtParser.parse(textWithoutBracket, fileName, reporterId)) match {
           case util.Success(_) =>
             text
-          case util.Failure(th) =>
-            findMissingText(content, index + 1, positionLine, fileName, originalException)
+          case util.Failure(_) =>
+            findMissingText(content, index + 1, positionLine, fileName, originalException, reporterId)
         }
       case _ =>
         throw new MessageOnlyException(s"""[$fileName]:$positionLine: ${originalException.getMessage}""".stripMargin)
