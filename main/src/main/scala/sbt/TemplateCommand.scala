@@ -69,7 +69,7 @@ private[sbt] object TemplateCommandUtil {
   private def call(interfaceClassName: String, methodName: String, loader: ClassLoader)(argTypes: Class[_]*)(args: AnyRef*): AnyRef =
     {
       val interfaceClass = getInterfaceClass(interfaceClassName, loader)
-      val interface = interfaceClass.newInstance.asInstanceOf[AnyRef]
+      val interface = interfaceClass.getDeclaredConstructor().newInstance().asInstanceOf[AnyRef]
       val method = interfaceClass.getMethod(methodName, argTypes: _*)
       try { method.invoke(interface, args: _*) }
       catch {

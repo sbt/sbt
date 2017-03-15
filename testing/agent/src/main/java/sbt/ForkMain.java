@@ -227,7 +227,7 @@ final public class ForkMain {
 				Framework framework = null;
 				for (final String implClassName : implClassNames) {
 					try {
-						final Object rawFramework = Class.forName(implClassName).newInstance();
+						final Object rawFramework = Class.forName(implClassName).getDeclaredConstructor().newInstance();
 						if (rawFramework instanceof Framework)
 							framework = (Framework) rawFramework;
 						else
