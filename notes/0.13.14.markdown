@@ -26,6 +26,7 @@
 - Fixes script mode ignoring quotation. [#2551][2551] by [@ekrich][@ekrich]
 - Fixes IllegalStateException that Ivy gets into sometimes. [#2827][2827]/[#2015][2015] by [@eed3si9n][@eed3si9n]
 - Fixes null sourceFile causing NPE. [#2766][2766] by [@avdv][@avdv]
+- Fixes version parsing in validation. [#3011][3011] by [@eed3si9n][@eed3si9n]
 
 ### Maven version range improvement
 
@@ -84,6 +85,7 @@ Special thanks to the contributors for making this release a success. According 
   [2902]: https://github.com/sbt/sbt/pull/2902
   [2993]: https://github.com/sbt/sbt/pull/2993
   [2943]: https://github.com/sbt/sbt/pull/2943
+  [3011]: https://github.com/sbt/sbt/issues/3011
   [@eed3si9n]: https://github.com/eed3si9n
   [@dwijnand]: https://github.com/dwijnand
   [@Duhemm]: https://github.com/Duhemm
