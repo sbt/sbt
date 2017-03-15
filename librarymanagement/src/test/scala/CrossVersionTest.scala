@@ -114,6 +114,9 @@ class CrossVersionTest extends UnitSpec {
   it should "return binary Scala version for 2.10.1 as 2.10" in {
     CrossVersion.binaryScalaVersion("2.10.1") shouldBe "2.10"
   }
+  it should "return binary Scala version for 2.20170314093845.0-87654321 as 2.20170314093845.0-87654321" in {
+    CrossVersion.binaryScalaVersion("2.20170314093845.0-87654321") shouldBe "2.20170314093845.0-87654321"
+  }
   it should "return patch Scala version for 2.11.8 as 2.11.8" in {
     CrossVersion(CrossVersion.patch, "2.11.8", "dummy").map(_("artefact")) shouldBe Some("artefact_2.11.8")
   }
