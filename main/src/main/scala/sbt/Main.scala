@@ -52,8 +52,9 @@ final class xMain extends xsbti.AppMain {
       val errorMessage = s"WARN: No sbt.version set in project/build.properties, base directory: $baseDir"
       try {
         if (isSbtProject(baseDir, projectDir)) {
-          val newBuildPropsLines = s"sbt.version=$sbtVersion" :: buildPropsLines
-          IO.writeLines(buildProps, newBuildPropsLines)
+          val line = s"sbt.version=$sbtVersion"
+          IO.writeLines(buildProps, line :: buildPropsLines)
+          println(s"Updated file $buildProps setting sbt.version to: $sbtVersion")
         } else
           println(errorMessage)
       } catch {
