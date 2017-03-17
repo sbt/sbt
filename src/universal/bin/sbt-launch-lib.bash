@@ -197,7 +197,7 @@ copyRt() {
     vlog "[copyRt] java9_rt = '$java9_rt'"
     if [[ ! -f "$java9_rt" ]]; then
       echo Copying runtime jar.
-      mkdir "$java9_ext"
+      mkdir -p "$java9_ext"
       execRunner "$java_cmd" \
         ${JAVA_OPTS} \
         ${SBT_OPTS:-$default_sbt_opts} \
