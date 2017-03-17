@@ -150,15 +150,6 @@ object SettingQuery {
     } yield Act.taskKeyExtra(index, defaultConfigs, keyMap, proj, confAmb, partialMask)
   }
 
-  def scopedKeyParser(structure: BuildStructure, currentBuild: URI): Parser[ScopedKey[_]] =
-    scopedKey(
-      structure.index.keyIndex,
-      currentBuild,
-      structure.extra.configurationsForAxis,
-      structure.index.keyMap,
-      structure.data
-    )
-
   def scopedKeySelected(
     index: KeyIndex,
     currentBuild: URI,
@@ -178,4 +169,13 @@ object SettingQuery {
     data: Settings[Scope]
   ): Parser[ScopedKey[_]] =
     scopedKeySelected(index, currentBuild, defaultConfigs, keyMap, data).map(_.key)
+
+  def scopedKeyParser(structure: BuildStructure, currentBuild: URI): Parser[ScopedKey[_]] =
+    scopedKey(
+      structure.index.keyIndex,
+      currentBuild,
+      structure.extra.configurationsForAxis,
+      structure.index.keyMap,
+      structure.data
+    )
 }
