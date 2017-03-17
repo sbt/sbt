@@ -75,28 +75,25 @@ object SettingQuery {
       structure.data
     )
 
+  def getSettingValue[A](structure: BuildStructure, key: Def.ScopedKey[A]): Either[String, A] =
+    structure.data.get(key.scope, key.key)
+      .toRight(s"Key ${Def displayFull key} not found")
+      .flatMap {
+        case _: Task[_]      => Left(s"Key ${Def displayFull key} is a task, can only query settings")
+        case _: InputTask[_] => Left(s"Key ${Def displayFull key} is an input task, can only query settings")
+        case x               => Right(x)
+      }
+
+  def toJsonString[A: Manifest](x: A): String = x.toString
+
+  def getSettingJsonStringValue[A](structure: BuildStructure, key: Def.ScopedKey[A]): Either[String, String] =
+    getSettingValue(structure, key) map (toJsonString(_)(key.key.manifest))
+
   def handleSettingQuery(req: SettingQuery, structure: BuildStructure, currentBuild: URI): SettingQueryResponse = {
     val key = Parser.parse(req.setting, scopedKeyParser(structure, currentBuild))
 
-    def getSettingValue[A](key: Def.ScopedKey[A]): Either[String, A] =
-      structure.data.get(key.scope, key.key)
-        .toRight(s"Key ${Def displayFull key} not found")
-        .flatMap {
-          case _: Task[_]      => Left(s"Key ${Def displayFull key} is a task, can only query settings")
-          case _: InputTask[_] => Left(s"Key ${Def displayFull key} is an input task, can only query settings")
-          case x               => Right(x)
-        }
+    val result: Either[String, String] = key flatMap (getSettingJsonStringValue(structure, _))
 
-    val values: Either[String, Any] = key match {
-      case Left(msg)  => Left(s"Invalid programmatic input: $msg")
-      case Right(key) => getSettingValue(key)
-    }
-
-    val jsonValues: String = values match {
-      case Left(errors) => errors
-      case Right(value) => value.toString
-    }
-
-    SettingQueryResponse(jsonValues)
+    SettingQueryResponse(result.merge)
   }
 }
