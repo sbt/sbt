@@ -8,6 +8,8 @@ package server
 import java.net.URI
 import scala.util.{ Left, Right }
 import sbt.protocol._
+import sjsonnew._
+import sjsonnew.support.scalajson.unsafe._
 
 object SettingQuery {
   import sbt.internal.util.{ AttributeKey, Settings }
@@ -84,7 +86,18 @@ object SettingQuery {
         case x               => Right(x)
       }
 
-  def toJsonString[A: Manifest](x: A): String = x.toString
+  def getJsonWriter[A: Manifest](x: A): Option[JsonWriter[A]] = None
+
+  def toJsonStringStrict[A: Manifest](x: A): Either[String, String] =
+    getJsonWriter[A](x)
+      .toRight(s"JsonWriter for ${manifest[A]} not found")
+      .map(implicit jsonWriter => CompactPrinter(Converter.toJsonUnsafe(x)))
+
+  def toJsonString[A: Manifest](x: A): String =
+    toJsonStringStrict(x) match {
+      case Right(s) => s
+      case Left(_)  => x.toString
+    }
 
   def getSettingJsonStringValue[A](structure: BuildStructure, key: Def.ScopedKey[A]): Either[String, String] =
     getSettingValue(structure, key) map (toJsonString(_)(key.key.manifest))
