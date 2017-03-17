@@ -84,7 +84,7 @@ final class NetworkChannel(val name: String, connection: Socket, structure: Buil
 
     val key = Parser.parse(req.setting, SettingQuery.scopedKeyParser(structure, currentBuild))
 
-    def getSettingValue[A](key: Def.ScopedKey[A]) =
+    def getSettingValue[A](key: Def.ScopedKey[A]): Either[String, A] =
       structure.data.get(key.scope, key.key)
         .toRight(s"Key ${Def displayFull key} not found")
         .flatMap {
@@ -93,12 +93,12 @@ final class NetworkChannel(val name: String, connection: Socket, structure: Buil
           case x               => Right(x)
         }
 
-    val values = key match {
+    val values: Either[String, Any] = key match {
       case Left(msg)  => Left(s"Invalid programmatic input: $msg")
-      case Right(key) => Right(getSettingValue(key))
+      case Right(key) => getSettingValue(key)
     }
 
-    val jsonValues = values match {
+    val jsonValues: String = values match {
       case Left(errors) => errors
       case Right(value) => value.toString
     }
