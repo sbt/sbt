@@ -140,7 +140,7 @@ process_args () {
                  export PATH="$2/bin:$PATH" &&
                  shift 2 ;;
 
-            -D*) addJava "$1" && shift ;;
+          "-D*") addJava "$1" && shift ;;
             -J*) addJava "${1:2}" && shift ;;
               *) addResidual "$1" && shift ;;
     esac
