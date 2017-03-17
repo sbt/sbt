@@ -74,7 +74,7 @@ private[sbt] final class CommandExchange {
       def onIncomingSocket(socket: Socket): Unit =
         {
           s.log.info(s"new client connected from: ${socket.getPort}")
-          val channel = new NetworkChannel(newChannelName, socket, Project structure s, Project.session(s).currentBuild)
+          val channel = new NetworkChannel(newChannelName, socket, Project structure s)
           subscribe(channel)
           channel.publishEventMessage(ChannelAcceptedEvent(channel.name))
         }

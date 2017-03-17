@@ -5,12 +5,12 @@ package sbt
 package internal
 package server
 
-import java.net.{ Socket, SocketTimeoutException, URI }
+import java.net.{ Socket, SocketTimeoutException }
 import java.util.concurrent.atomic.AtomicBoolean
 import sbt.protocol._
 import sjsonnew._
 
-final class NetworkChannel(val name: String, connection: Socket, structure: BuildStructure, currentBuild: URI) extends CommandChannel {
+final class NetworkChannel(val name: String, connection: Socket, structure: BuildStructure) extends CommandChannel {
   private val running = new AtomicBoolean(true)
   private val delimiter: Byte = '\n'.toByte
   private val out = connection.getOutputStream
@@ -79,7 +79,7 @@ final class NetworkChannel(val name: String, connection: Socket, structure: Buil
     append(Exec(cmd.commandLine, cmd.execId orElse Some(Exec.newExecId), Some(CommandSource(name))))
 
   private def onSettingQuery(req: SettingQuery) =
-    StandardMain.exchange publishEventMessage SettingQuery.handleSettingQuery(req, structure, currentBuild)
+    StandardMain.exchange publishEventMessage SettingQuery.handleSettingQuery(req, structure)
 
   def shutdown(): Unit = {
     println("Shutting down client connection")

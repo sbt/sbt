@@ -66,10 +66,10 @@ object SettingQuery {
   ): Parser[ScopedKey[_]] =
     scopedKeySelected(index, currentBuild, defaultConfigs, keyMap, data).map(_.key)
 
-  def scopedKeyParser(structure: BuildStructure, currentBuild: URI): Parser[ScopedKey[_]] =
+  def scopedKeyParser(structure: BuildStructure): Parser[ScopedKey[_]] =
     scopedKey(
       structure.index.keyIndex,
-      currentBuild,
+      structure.root,
       structure.extra.configurationsForAxis,
       structure.index.keyMap,
       structure.data
@@ -89,8 +89,8 @@ object SettingQuery {
   def getSettingJsonStringValue[A](structure: BuildStructure, key: Def.ScopedKey[A]): Either[String, String] =
     getSettingValue(structure, key) map (toJsonString(_)(key.key.manifest))
 
-  def handleSettingQuery(req: SettingQuery, structure: BuildStructure, currentBuild: URI): SettingQueryResponse = {
-    val key = Parser.parse(req.setting, scopedKeyParser(structure, currentBuild))
+  def handleSettingQuery(req: SettingQuery, structure: BuildStructure): SettingQueryResponse = {
+    val key = Parser.parse(req.setting, scopedKeyParser(structure))
 
     val result: Either[String, String] = key flatMap (getSettingJsonStringValue(structure, _))
 
