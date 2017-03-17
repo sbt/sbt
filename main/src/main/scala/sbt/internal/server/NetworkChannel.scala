@@ -79,32 +79,8 @@ final class NetworkChannel(val name: String, connection: Socket, structure: Buil
   private def onExecCommand(cmd: ExecCommand) =
     append(Exec(cmd.commandLine, cmd.execId orElse Some(Exec.newExecId), Some(CommandSource(name))))
 
-  private def onSettingQuery(req: SettingQuery) = {
-    import sbt.internal.util.complete.Parser
-
-    val key = Parser.parse(req.setting, SettingQuery.scopedKeyParser(structure, currentBuild))
-
-    def getSettingValue[A](key: Def.ScopedKey[A]): Either[String, A] =
-      structure.data.get(key.scope, key.key)
-        .toRight(s"Key ${Def displayFull key} not found")
-        .flatMap {
-          case _: Task[_]      => Left(s"Key ${Def displayFull key} is a task, can only query settings")
-          case _: InputTask[_] => Left(s"Key ${Def displayFull key} is an input task, can only query settings")
-          case x               => Right(x)
-        }
-
-    val values: Either[String, Any] = key match {
-      case Left(msg)  => Left(s"Invalid programmatic input: $msg")
-      case Right(key) => getSettingValue(key)
-    }
-
-    val jsonValues: String = values match {
-      case Left(errors) => errors
-      case Right(value) => value.toString
-    }
-
-    StandardMain.exchange publishEventMessage SettingQueryResponse(jsonValues)
-  }
+  private def onSettingQuery(req: SettingQuery) =
+    StandardMain.exchange publishEventMessage SettingQuery.handleSettingQuery(req, structure, currentBuild)
 
   def shutdown(): Unit = {
     println("Shutting down client connection")
@@ -178,4 +154,29 @@ object SettingQuery {
       structure.index.keyMap,
       structure.data
     )
+
+  def handleSettingQuery(req: SettingQuery, structure: BuildStructure, currentBuild: URI): SettingQueryResponse = {
+    val key = Parser.parse(req.setting, scopedKeyParser(structure, currentBuild))
+
+    def getSettingValue[A](key: Def.ScopedKey[A]): Either[String, A] =
+      structure.data.get(key.scope, key.key)
+        .toRight(s"Key ${Def displayFull key} not found")
+        .flatMap {
+          case _: Task[_]      => Left(s"Key ${Def displayFull key} is a task, can only query settings")
+          case _: InputTask[_] => Left(s"Key ${Def displayFull key} is an input task, can only query settings")
+          case x               => Right(x)
+        }
+
+    val values: Either[String, Any] = key match {
+      case Left(msg)  => Left(s"Invalid programmatic input: $msg")
+      case Right(key) => getSettingValue(key)
+    }
+
+    val jsonValues: String = values match {
+      case Left(errors) => errors
+      case Right(value) => value.toString
+    }
+
+    SettingQueryResponse(jsonValues)
+  }
 }
