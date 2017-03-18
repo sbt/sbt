@@ -16,7 +16,7 @@ import sbt.internal.util.ManagedLogger
 import org.apache.logging.log4j.core.Appender
 
 sealed abstract class LogManager {
-  def apply(data: Settings[Scope], state: State, task: ScopedKey[_], writer: PrintWriter): Logger
+  def apply(data: Settings[Scope], state: State, task: ScopedKey[_], writer: PrintWriter): ManagedLogger
   def backgroundLog(data: Settings[Scope], state: State, task: ScopedKey[_]): ManagedLogger
 }
 
@@ -25,7 +25,7 @@ object LogManager {
   private val generateId: AtomicInteger = new AtomicInteger
 
   // This is called by mkStreams
-  def construct(data: Settings[Scope], state: State): (ScopedKey[_], PrintWriter) => Logger = (task: ScopedKey[_], to: PrintWriter) =>
+  def construct(data: Settings[Scope], state: State): (ScopedKey[_], PrintWriter) => ManagedLogger = (task: ScopedKey[_], to: PrintWriter) =>
     {
       val manager: LogManager = (logManager in task.scope).get(data) getOrElse { defaultManager(state.globalLogging.console) }
       manager(data, state, task, to)
@@ -47,7 +47,7 @@ object LogManager {
 
   def withLoggers(
     screen: (ScopedKey[_], State) => Appender = (sk, s) => defaultScreen(s.globalLogging.console),
-    backed: PrintWriter => Appender = defaultBacked(),
+    backed: PrintWriter => Appender = defaultBacked,
     relay: Unit => Appender = defaultRelay,
     extra: ScopedKey[_] => Seq[Appender] = _ => Nil
   ): LogManager = new DefaultLogManager(screen, backed, relay, extra)
@@ -58,7 +58,7 @@ object LogManager {
       relay: Unit => Appender,
       extra: ScopedKey[_] => Seq[Appender]
   ) extends LogManager {
-    def apply(data: Settings[Scope], state: State, task: ScopedKey[_], to: PrintWriter): Logger =
+    def apply(data: Settings[Scope], state: State, task: ScopedKey[_], to: PrintWriter): ManagedLogger =
       defaultLogger(data, state, task, screen(task, state), backed(to), relay(()), extra(task).toList)
 
     def backgroundLog(data: Settings[Scope], state: State, task: ScopedKey[_]): ManagedLogger =
@@ -67,7 +67,7 @@ object LogManager {
 
   // This is the main function that is used to generate the logger for tasks.
   def defaultLogger(data: Settings[Scope], state: State, task: ScopedKey[_],
-    console: Appender, backed: Appender, relay: Appender, extra: List[Appender]): Logger =
+    console: Appender, backed: Appender, relay: Appender, extra: List[Appender]): ManagedLogger =
     {
       val execOpt = state.currentCommand
       val loggerName: String = s"${task.key.label}-${generateId.incrementAndGet}"
@@ -103,7 +103,7 @@ object LogManager {
   def suppressedMessage(key: ScopedKey[_], state: State): SuppressedTraceContext => Option[String] =
     {
       lazy val display = Project.showContextKey(state)
-      def commandBase = "last " + display(unwrapStreamsKey(key))
+      def commandBase = "last " + display.show(unwrapStreamsKey(key))
       def command(useColor: Boolean) = if (useColor) BLUE + commandBase + RESET else "'" + commandBase + "'"
       context => Some("Stack trace suppressed: run %s for the full output.".format(command(context.useColor)))
     }

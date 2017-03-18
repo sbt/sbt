@@ -1,7 +1,8 @@
 package sbt
 
 import sbt.internal.util.Types.const
-import sbt.internal.util.{ Attributed, AttributeKey, Init, Show }
+import sbt.internal.util.{ Attributed, AttributeKey, Init }
+import sbt.util.Show
 import sbt.internal.util.complete.Parser
 import java.io.File
 import java.net.URI
@@ -21,16 +22,16 @@ object Def extends Init[Scope] with TaskMacroExtra {
 
   lazy val showFullKey: Show[ScopedKey[_]] = showFullKey(None)
   def showFullKey(keyNameColor: Option[String]): Show[ScopedKey[_]] =
-    new Show[ScopedKey[_]] { def apply(key: ScopedKey[_]) = displayFull(key, keyNameColor) }
+    Show[ScopedKey[_]]((key: ScopedKey[_]) => displayFull(key, keyNameColor))
 
-  def showRelativeKey(current: ProjectRef, multi: Boolean, keyNameColor: Option[String] = None): Show[ScopedKey[_]] = new Show[ScopedKey[_]] {
-    def apply(key: ScopedKey[_]) =
-      Scope.display(key.scope, colored(key.key.label, keyNameColor), ref => displayRelative(current, multi, ref))
-  }
-  def showBuildRelativeKey(currentBuild: URI, multi: Boolean, keyNameColor: Option[String] = None): Show[ScopedKey[_]] = new Show[ScopedKey[_]] {
-    def apply(key: ScopedKey[_]) =
-      Scope.display(key.scope, colored(key.key.label, keyNameColor), ref => displayBuildRelative(currentBuild, multi, ref))
-  }
+  def showRelativeKey(current: ProjectRef, multi: Boolean, keyNameColor: Option[String] = None): Show[ScopedKey[_]] =
+    Show[ScopedKey[_]]((key: ScopedKey[_]) =>
+      Scope.display(key.scope, colored(key.key.label, keyNameColor), ref => displayRelative(current, multi, ref)))
+
+  def showBuildRelativeKey(currentBuild: URI, multi: Boolean, keyNameColor: Option[String] = None): Show[ScopedKey[_]] =
+    Show[ScopedKey[_]]((key: ScopedKey[_]) =>
+      Scope.display(key.scope, colored(key.key.label, keyNameColor), ref => displayBuildRelative(currentBuild, multi, ref)))
+
   def displayRelative(current: ProjectRef, multi: Boolean, project: Reference): String = project match {
     case BuildRef(current.build)      => "{.}/"
     case `current`                    => if (multi) current.project + "/" else ""

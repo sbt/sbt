@@ -12,7 +12,8 @@ import DefaultParsers._
 import sbt.internal.util.Types.idFun
 import java.net.URI
 import sbt.internal.CommandStrings.{ MultiTaskCommand, ShowCommand }
-import sbt.internal.util.{ AttributeEntry, AttributeKey, AttributeMap, IMap, Settings, Show, Util }
+import sbt.internal.util.{ AttributeEntry, AttributeKey, AttributeMap, IMap, Settings, Util }
+import sbt.util.Show
 
 final class ParsedKey(val key: ScopedKey[_], val mask: ScopeMask)
 
@@ -100,7 +101,7 @@ object Act {
   def noValidKeys = failure("No such key.")
 
   def showAmbiguous(keys: Seq[ScopedKey[_]])(implicit show: Show[ScopedKey[_]]): String =
-    keys.take(3).map(x => show(x)).mkString("", ", ", if (keys.size > 3) ", ..." else "")
+    keys.take(3).map(x => show.show(x)).mkString("", ", ", if (keys.size > 3) ", ..." else "")
 
   def isValid(data: Settings[Scope])(parsed: ParsedKey): Boolean =
     {
@@ -256,7 +257,7 @@ object Act {
           val preparedPairs = anyKeyValues(structure, kvs)
           val showConfig = Aggregation.defaultShow(state, showTasks = action == ShowAction)
           evaluatingParser(state, structure, showConfig)(preparedPairs) map { evaluate => () => {
-            val keyStrings = preparedPairs.map(pp => showKey(pp.key)).mkString(", ")
+            val keyStrings = preparedPairs.map(pp => showKey.show(pp.key)).mkString(", ")
             state.log.debug("Evaluating tasks: " + keyStrings)
             evaluate()
           }

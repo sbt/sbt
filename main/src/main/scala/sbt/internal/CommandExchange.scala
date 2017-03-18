@@ -5,7 +5,7 @@ import java.net.SocketException
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 import sbt.internal.server._
-import sbt.internal.util.ChannelLogEntry
+import sbt.internal.util.StringEvent
 import sbt.protocol.{ EventMessage, Serialization, ChannelAcceptedEvent }
 import scala.collection.mutable.ListBuffer
 import scala.annotation.tailrec
@@ -101,7 +101,7 @@ private[sbt] final class CommandExchange {
       val toDel: ListBuffer[CommandChannel] = ListBuffer.empty
       val bytes = Serialization.serializeEvent(event)
       event match {
-        case entry: ChannelLogEntry =>
+        case entry: StringEvent =>
           channels.foreach {
             case c: ConsoleChannel =>
               if (entry.channelName.isEmpty || entry.channelName == Some(c.name)) {

@@ -43,6 +43,10 @@ trait Import {
   type SetLevel = sbt.util.SetLevel
   type SetSuccess = sbt.util.SetSuccess
   type SetTrace = sbt.util.SetTrace
+  val Show = sbt.util.Show
+  type Show[T] = sbt.util.Show[T]
+  val ShowLines = sbt.util.ShowLines
+  type ShowLines[A] = sbt.util.ShowLines[A]
   type Success = sbt.util.Success
   type Trace = sbt.util.Trace
 
@@ -141,10 +145,6 @@ trait Import {
   val ScalaKeywords = sbt.internal.util.ScalaKeywords
   type Settings[S] = sbt.internal.util.Settings[S]
   type SharedAttributeKey[T] = sbt.internal.util.SharedAttributeKey[T]
-  val Show = sbt.internal.util.Show
-  type Show[T] = sbt.internal.util.Show[T]
-  val ShowLines = sbt.internal.util.ShowLines
-  type ShowLines[A] = sbt.internal.util.ShowLines[A]
   val Signals = sbt.internal.util.Signals
   val SimpleReader = sbt.internal.util.SimpleReader
   type SimpleReader = sbt.internal.util.SimpleReader

@@ -35,8 +35,8 @@ import Keys.{
   update
 }
 import tools.nsc.reporters.ConsoleReporter
-import sbt.internal.util.{ Attributed, Settings, Show, ~> }
-import sbt.util.{ Eval => Ev }
+import sbt.internal.util.{ Attributed, Settings, ~> }
+import sbt.util.{ Eval => Ev, Show }
 import sbt.internal.util.Attributed.data
 import Scope.GlobalScope
 import sbt.internal.util.Types.const

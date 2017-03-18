@@ -9,7 +9,7 @@ import sjsonnew.support.scalajson.unsafe.{ Parser, Converter, CompactPrinter }
 import scala.json.ast.unsafe.{ JValue, JObject, JString }
 import java.nio.ByteBuffer
 import scala.util.{ Success, Failure }
-import sbt.internal.util.ChannelLogEntry
+import sbt.internal.util.StringEvent
 
 object Serialization {
   def serializeEvent[A: JsonFormat](event: A): Array[Byte] =
@@ -59,9 +59,9 @@ object Serialization {
       Parser.parseFromByteBuffer(buffer) match {
         case Success(json) =>
           detectType(json) match {
-            case Some("ChannelLogEntry") =>
+            case Some("StringEvent") =>
               import sbt.internal.util.codec.JsonProtocol._
-              Converter.fromJson[ChannelLogEntry](json) match {
+              Converter.fromJson[StringEvent](json) match {
                 case Success(event) => Right(event)
                 case Failure(e)     => Left(e.getMessage)
               }
