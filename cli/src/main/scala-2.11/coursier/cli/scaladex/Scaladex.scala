@@ -74,7 +74,7 @@ case class Scaladex[F[_]](fetch: String => EitherT[F, String, String], F: Nondet
 
     val s = fetch(
       // FIXME Escaping
-      s"https://index.scala-lang.org/api/search?q=$name&target=$target&scalaVersion=$scalaVersion&cli=true"
+      s"https://index.scala-lang.org/api/search?q=$name&target=$target&scalaVersion=$scalaVersion"
     )
 
     s.flatMap(s => EitherT.fromDisjunction[F](s.decodeEither[List[Scaladex.SearchResult]].disjunction))
@@ -107,7 +107,7 @@ case class Scaladex[F[_]](fetch: String => EitherT[F, String, String], F: Nondet
 
     val s = fetch(
       // FIXME Escaping
-      s"https://index.scala-lang.org/api/scastie/project?organization=$organization&repository=$repository"
+      s"https://index.scala-lang.org/api/project?organization=$organization&repository=$repository"
     )
 
     case class Result(artifacts: List[String])
