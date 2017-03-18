@@ -54,6 +54,7 @@ package object coursier {
 
   type ModuleVersion = (core.Module, String)
 
+  type ProjectCache = Map[ModuleVersion, (Artifact.Source, Project)]
 
   type Repository = core.Repository
   val Repository = core.Repository
@@ -69,7 +70,7 @@ package object coursier {
       dependencies: Set[Dependency] = Set.empty,
       forceVersions: Map[Module, String] = Map.empty,
       conflicts: Set[Dependency] = Set.empty,
-      projectCache: Map[ModuleVersion, (Artifact.Source, Project)] = Map.empty,
+      projectCache: ProjectCache = Map.empty,
       errorCache: Map[ModuleVersion, Seq[String]] = Map.empty,
       finalDependencies: Map[Dependency, Seq[Dependency]] = Map.empty,
       filter: Option[Dependency => Boolean] = None,

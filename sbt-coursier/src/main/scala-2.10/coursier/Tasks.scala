@@ -1,27 +1,25 @@
 package coursier
 
-import java.io.{ File, InputStream, OutputStreamWriter }
+import java.io.{File, InputStream, OutputStreamWriter}
 import java.net.URL
-import java.util.concurrent.{ ExecutorService, Executors }
+import java.util.concurrent.{ExecutorService, Executors}
 
-import coursier.core.{ Authentication, Publication }
-import coursier.ivy.{ IvyRepository, PropertiesPattern }
+import coursier.core.{Authentication, Publication}
+import coursier.ivy.{IvyRepository, PropertiesPattern}
 import coursier.Keys._
 import coursier.Structure._
 import coursier.internal.FileUtil
-import coursier.util.{ Config, Print }
+import coursier.util.{Config, Print}
 import org.apache.ivy.core.module.id.ModuleRevisionId
-
-import sbt.{ UpdateReport, Classpaths, Resolver, Def }
+import sbt.{ClasspathDep, Classpaths, Def, ProjectRef, Resolver, UpdateReport}
 import sbt.Keys._
 
 import scala.collection.mutable
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
-
-import scalaz.{ \/-, -\/ }
-import scalaz.concurrent.{ Task, Strategy }
+import scalaz.{-\/, \/-}
+import scalaz.concurrent.{Strategy, Task}
 
 object Tasks {
 
@@ -317,6 +315,28 @@ object Tasks {
     }
   }
 
+  def parentProjectCacheTask: Def.Initialize[sbt.Task[Map[Seq[sbt.Resolver],Seq[coursier.ProjectCache]]]] =
+    (sbt.Keys.state,
+      sbt.Keys.thisProjectRef).flatMap{ (state, projectRef) =>
+
+      val projectDeps = structure(state).allProjects
+        .find(_.id == projectRef.project)
+        .map(_.dependencies.map(_.project.project).toSet)
+        .getOrElse(Set.empty)
+
+      val projects = structure(state).allProjectRefs.filter(p => projectDeps(p.project))
+
+      coursierRecursiveResolvers.forAllProjects(state, projects).flatMap{ m =>
+        coursierResolution.forAllProjects(state, m.keys.toSeq).map{ n =>
+          n.foldLeft(Map.empty[Seq[Resolver], Seq[ProjectCache]]){ case (caches, (ref, resolution)) =>
+            m.get(ref).fold(caches)(resolvers =>
+              caches.updated(resolvers, resolution.projectCache +: caches.getOrElse(resolvers, Seq.empty)))
+          }
+        }
+      }
+    }
+
+
   def resolutionTask(
     sbtClassifiers: Boolean = false
   ) = Def.task {
@@ -400,6 +420,11 @@ object Tasks {
         else
           coursierRecursiveResolvers.value.distinct
 
+      val parentProjectCache: ProjectCache = coursierParentProjectCache.value
+          .get(resolvers)
+          .map(_.foldLeft[ProjectCache](Map.empty)(_ ++ _))
+          .getOrElse(Map.empty)
+
       // TODO Warn about possible duplicated modules from source repositories?
 
       val verbosityLevel = coursierVerbosity.value
@@ -421,7 +446,8 @@ object Tasks {
           // order matters here
           userForceVersions ++
           forcedScalaModules(so, sv) ++
-          interProjectDependencies.map(_.moduleVersion)
+          interProjectDependencies.map(_.moduleVersion),
+        projectCache = parentProjectCache
       )
 
       if (verbosityLevel >= 2) {
