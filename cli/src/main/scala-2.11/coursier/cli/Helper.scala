@@ -763,6 +763,10 @@ class Helper(
         val (_, mainClass) = mainClasses.head
         mainClass
       } else {
+
+        // TODO Move main class detection code to the coursier-extra module to come, add non regression tests for it
+        // In particular, check the main class for scalafmt, scalafix, ammonite, ...
+
         // Trying to get the main class of the first artifact
         val mainClassOpt = for {
           (module, _, _) <- allModuleVersionConfigs.headOption
@@ -776,7 +780,17 @@ class Helper(
           }
         } yield mainClass
 
-        mainClassOpt.getOrElse {
+        def sameOrgOnlyMainClassOpt = for {
+          (module, _, _) <- allModuleVersionConfigs.headOption
+          orgMainClasses = mainClasses.collect {
+            case ((org, name), mainClass)
+              if org == module.organization =>
+              mainClass
+          }.toSet
+          if orgMainClasses.size == 1
+        } yield orgMainClasses.head
+
+        mainClassOpt.orElse(sameOrgOnlyMainClassOpt).getOrElse {
           Helper.errPrintln(s"Cannot find default main class. Specify one with -M or --main.")
           sys.exit(255)
         }
