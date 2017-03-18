@@ -1,6 +1,7 @@
 package coursier
 
 import java.util.GregorianCalendar
+import java.util.concurrent.ConcurrentHashMap
 
 import coursier.maven.MavenSource
 
@@ -8,43 +9,57 @@ import sbt._
 
 object ToSbt {
 
-  def moduleId(dependency: Dependency, extraProperties: Seq[(String, String)]): sbt.ModuleID =
-    sbt.ModuleID(
-      dependency.module.organization,
-      dependency.module.name,
-      dependency.version,
-      configurations = Some(dependency.configuration),
-      extraAttributes = dependency.module.attributes ++ extraProperties
-    )
+  private def caching[K, V](f: K => V): K => V = {
 
-  def artifact(module: Module, artifact: Artifact, extraProperties: Seq[(String, String)]): sbt.Artifact =
-    sbt.Artifact(
-      module.name,
-      // FIXME Get these two from publications
-      artifact.attributes.`type`,
-      MavenSource.typeExtension(artifact.attributes.`type`),
-      Some(artifact.attributes.classifier)
-        .filter(_.nonEmpty)
-        .orElse(MavenSource.typeDefaultClassifierOpt(artifact.attributes.`type`)),
-      Nil,
-      Some(url(artifact.url)),
-      module.attributes ++ extraProperties
-    )
+    val cache = new ConcurrentHashMap[K, V]
 
-  def moduleReport(
-    dependency: Dependency,
-    dependees: Seq[(Dependency, Project)],
-    project: Project,
-    artifacts: Seq[(Artifact, Option[File])]
-  ): sbt.ModuleReport = {
+    key =>
+      val previousValueOpt = Option(cache.get(key))
+
+      previousValueOpt.getOrElse {
+        val value = f(key)
+        val concurrentValueOpt = Option(cache.putIfAbsent(key, value))
+        concurrentValueOpt.getOrElse(value)
+      }
+  }
+
+  val moduleId = caching[(Dependency, Map[String, String]), sbt.ModuleID] {
+    case (dependency, extraProperties) =>
+      sbt.ModuleID(
+        dependency.module.organization,
+        dependency.module.name,
+        dependency.version,
+        configurations = Some(dependency.configuration),
+        extraAttributes = dependency.module.attributes ++ extraProperties
+      )
+  }
+
+  val artifact = caching[(Module, Map[String, String], Artifact), sbt.Artifact] {
+    case (module, extraProperties, artifact) =>
+      sbt.Artifact(
+        module.name,
+        // FIXME Get these two from publications
+        artifact.attributes.`type`,
+        MavenSource.typeExtension(artifact.attributes.`type`),
+        Some(artifact.attributes.classifier)
+          .filter(_.nonEmpty)
+          .orElse(MavenSource.typeDefaultClassifierOpt(artifact.attributes.`type`)),
+        Nil,
+        Some(url(artifact.url)),
+        module.attributes ++ extraProperties
+      )
+  }
+
+  val moduleReport = caching[(Dependency, Seq[(Dependency, Project)], Project, Seq[(Artifact, Option[File])]), sbt.ModuleReport] {
+    case (dependency, dependees, project, artifacts) =>
 
     val sbtArtifacts = artifacts.collect {
       case (artifact, Some(file)) =>
-        (ToSbt.artifact(dependency.module, artifact, project.properties), file)
+        (ToSbt.artifact(dependency.module, project.properties.toMap, artifact), file)
     }
     val sbtMissingArtifacts = artifacts.collect {
       case (artifact, None) =>
-        ToSbt.artifact(dependency.module, artifact, project.properties)
+        ToSbt.artifact(dependency.module, project.properties.toMap, artifact)
     }
 
     val publicationDate = project.info.publication.map { dt =>
@@ -54,7 +69,7 @@ object ToSbt {
     val callers = dependees.map {
       case (dependee, dependeeProj) =>
         new Caller(
-          ToSbt.moduleId(dependee, dependeeProj.properties),
+          ToSbt.moduleId(dependee, dependeeProj.properties.toMap),
           dependeeProj.configurations.keys.toVector,
           dependee.module.attributes ++ dependeeProj.properties,
           // FIXME Set better values here
@@ -66,7 +81,7 @@ object ToSbt {
     }
 
     new sbt.ModuleReport(
-      module = ToSbt.moduleId(dependency, project.properties),
+      module = ToSbt.moduleId(dependency, project.properties.toMap),
       artifacts = sbtArtifacts,
       missingArtifacts = sbtMissingArtifacts,
       status = None,
