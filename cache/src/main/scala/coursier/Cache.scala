@@ -758,7 +758,7 @@ object Cache {
 
   def parseChecksum(content: String): Option[BigInteger] = {
     val lines = content
-      .linesIterator
+      .lines
       .toVector
 
     parseChecksumLine(lines) orElse parseChecksumAlternative(lines)
