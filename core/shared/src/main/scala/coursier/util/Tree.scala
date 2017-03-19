@@ -1,57 +1,73 @@
 package coursier.util
 
-import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
+import scala.annotation.tailrec
 
 object Tree {
 
-  def apply[T](roots: IndexedSeq[T])(children: T => Seq[T], print: T => String): String = {
-    /**
-      * Add elements to the stack
-      * @param stack a mutable stack which will have elements
-      * @param elems elements to add
-      * @param isLast a list that contains whether an element is the last in its siblings or not.
-      *               The first element is the deepest, due to the fact prepending a List is faster than appending
-      */
-    def push(stack: mutable.Stack[(T, List[Boolean])], elems: Seq[T], isLast: List[Boolean]) = {
-      // Reverse the list because the stack is LIFO but elems must be shown in the order
-      for ((x, idx) <- elems.zipWithIndex.reverse) {
-        stack.push((x, (idx == elems.length - 1) :: isLast))
-      }
+  def apply[T](roots: IndexedSeq[T])(children: T => Seq[T], show: T => String): String = {
+
+    val buffer = new StringBuilder
+    val printLine: (String) => Unit = { line =>
+      buffer.append(line).append('\n')
     }
 
-    def prefix(isLast: List[Boolean]): String = {
-      // Reverse the list because its first element is the deepest element
-      isLast.reverse.zipWithIndex.map {
-        case (last, idx) =>
-          if (idx == isLast.length - 1)
-            if (last) "└─ " else "├─ "
-          else
-            if (last) "   " else "|  "
-      }.mkString("")
+    def last[E, O](seq: Seq[E])(f: E => O) =
+      seq.takeRight(1).map(f)
+    def init[E, O](seq: Seq[E])(f: E => O) =
+      seq.dropRight(1).map(f)
+
+    /**
+      * Add elements to the stack
+      * @param elems elements to add
+      * @param isLast a list that contains whether an element is the last in its siblings or not.
+      */
+    def childrenWithLast(elems: Seq[T],
+                         isLast: Seq[Boolean]): Seq[(T, Seq[Boolean])] = {
+
+      val isNotLast = isLast :+ false
+
+      init(elems)(_ -> isNotLast) ++
+        last(elems)(_ -> (isLast :+ true))
+    }
+
+    /**
+      * Has to end with a "─"
+      */
+    def showLine(isLast: Seq[Boolean]): String = {
+      val initPrefix = init(isLast) {
+        case true => "   "
+        case false => "|  "
+      }.mkString
+
+      val lastPrefix = last(isLast) {
+        case true => "└─ "
+        case false => "├─ "
+      }.mkString
+
+      initPrefix + lastPrefix
     }
 
     // Depth-first traverse
-    def helper(elems: Seq[T], acc: String => Unit): Unit = {
-      val stack = new mutable.Stack[(T, List[Boolean])]()
-      val seen = new mutable.HashSet[T]()
+    @tailrec
+    def helper(stack: Seq[(T, Seq[Boolean])], seen: Set[T]): Unit = {
+      stack match {
+        case (elem, isLast) +: next =>
+          printLine(showLine(isLast) + show(elem))
 
-      push(stack, elems, List[Boolean]())
-
-      while (stack.nonEmpty) {
-        val (elem, isLast) = stack.pop()
-        acc(prefix(isLast) + print(elem))
-
-        if (! seen.contains(elem)) {
-          push(stack, children(elem), isLast)
-          seen.add(elem)
-        }
+          if (!seen(elem))
+            helper(childrenWithLast(children(elem), isLast) ++ next,
+                   seen + elem)
+          else
+            helper(next, seen)
+        case Seq() =>
       }
     }
 
-    val b = new ArrayBuffer[String]
-    helper(roots, b += _)
-    b.mkString("\n")
+    helper(childrenWithLast(roots, Vector[Boolean]()), Set.empty)
+
+    buffer
+      .dropRight(1) // drop last appended '\n'
+      .toString
   }
 
 }
