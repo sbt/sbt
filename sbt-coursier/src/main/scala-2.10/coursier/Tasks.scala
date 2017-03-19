@@ -167,7 +167,7 @@ object Tasks {
         } yield {
           val publish = publishArtifact.in(projectRef).in(pkgTask).in(config).getOrElse(state, false)
           if (publish)
-            Option(artifact.in(projectRef).in(pkgTask).in(config).getOrElse(state, null))
+            artifact.in(projectRef).in(pkgTask).in(config).find(state)
               .map(targetConfig -> _)
           else
             None
@@ -200,9 +200,7 @@ object Tasks {
       // Second-way of getting artifacts from SBT
       // No obvious way of getting the corresponding  publishArtifact  value for the ones
       // only here, it seems.
-      val extraSbtArtifacts = Option(artifacts.in(projectRef).getOrElse(state, null))
-        .toSeq
-        .flatten
+      val extraSbtArtifacts = artifacts.in(projectRef).getOrElse(state, Nil)
         .filterNot(stdArtifactsSet)
 
       // Seems that SBT does that - if an artifact has no configs,
