@@ -243,14 +243,14 @@ object Cache {
     Option(handlerClsCache.get(protocol)) match {
       case None =>
         val clsName = s"coursier.cache.protocol.${protocol.capitalize}Handler"
-        def clsOpt(loader: ClassLoader) =
+        def clsOpt(loader: ClassLoader): Option[Class[_]] =
           try Some(loader.loadClass(clsName))
           catch {
             case _: ClassNotFoundException =>
               None
           }
 
-        val clsOpt0 = clsOpt(Thread.currentThread().getContextClassLoader)
+        val clsOpt0: Option[Class[_]] = clsOpt(Thread.currentThread().getContextClassLoader)
           .orElse(clsOpt(getClass.getClassLoader))
 
         def printError(e: Exception): Unit =
