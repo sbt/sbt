@@ -4,8 +4,8 @@
 
 A Scala library to fetch dependencies from Maven / Ivy repositories
 
-[![Build Status](https://travis-ci.org/alexarchambault/coursier.svg?branch=master)](https://travis-ci.org/alexarchambault/coursier)
-[![Build status (Windows)](https://ci.appveyor.com/api/projects/status/trtum5b7washfbj9?svg=true)](https://ci.appveyor.com/project/alexarchambault/coursier)
+[![Build Status](https://travis-ci.org/coursier/coursier.svg?branch=master)](https://travis-ci.org/coursier/coursier)
+[![Build status (Windows)](https://ci.appveyor.com/api/projects/status/trtum5b7washfbj9?svg=true)](https://ci.appveyor.com/project/coursier/coursier)
 [![Join the chat at https://gitter.im/alexarchambault/coursier](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/alexarchambault/coursier?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Maven Central](https://img.shields.io/maven-central/v/io.get-coursier/coursier_2.11.svg)](https://maven-badges.herokuapp.com/maven-central/io.get-coursier/coursier_2.11)
 [![Scaladoc](http://javadoc-badge.appspot.com/io.get-coursier/coursier_2.11.svg?label=scaladoc)](http://javadoc-badge.appspot.com/io.get-coursier/coursier_2.11)
@@ -394,7 +394,7 @@ Welcome to the Ammonite Repl 0.7.0
 ### bootstrap
 
 The `bootstrap` generates tiny bootstrap launchers, able to pull their dependencies from
-repositories on first launch. For example, the launcher of coursier is [generated](https://github.com/alexarchambault/coursier/blob/master/project/generate-launcher.sh) with a command like
+repositories on first launch. For example, the launcher of coursier is [generated](https://github.com/coursier/coursier/blob/master/project/generate-launcher.sh) with a command like
 ```
 $ ./coursier bootstrap \
     io.get-coursier:coursier-cli_2.11:1.0.0-M15 \
@@ -417,9 +417,9 @@ libraryDependencies ++= Seq(
 The first module, `"io.get-coursier" %% "coursier" % "1.0.0-M15"`, mainly depends on
 `scalaz-core` (and only it, *not* `scalaz-concurrent` for example). It contains among others,
 definitions,
-mainly in [`Definitions.scala`](https://github.com/alexarchambault/coursier/blob/master/core/shared/src/main/scala/coursier/core/Definitions.scala),
-[`Resolution`](https://github.com/alexarchambault/coursier/blob/master/core/shared/src/main/scala/coursier/core/Resolution.scala), representing a particular state of the resolution,
-and [`ResolutionProcess`](https://github.com/alexarchambault/coursier/blob/master/core/shared/src/main/scala/coursier/core/ResolutionProcess.scala),
+mainly in [`Definitions.scala`](https://github.com/coursier/coursier/blob/master/core/shared/src/main/scala/coursier/core/Definitions.scala),
+[`Resolution`](https://github.com/coursier/coursier/blob/master/core/shared/src/main/scala/coursier/core/Resolution.scala), representing a particular state of the resolution,
+and [`ResolutionProcess`](https://github.com/coursier/coursier/blob/master/core/shared/src/main/scala/coursier/core/ResolutionProcess.scala),
 that expects to be given metadata, wrapped in any `Monad`, then feeds these to `Resolution`, and at the end gives
 you the final `Resolution`, wrapped in the same `Monad` it was given input. This final `Resolution` has all the dependencies,
 including the transitive ones.
@@ -511,7 +511,7 @@ The monad used by `Fetch.from` is `scalaz.concurrent.Task`, but the resolution p
 monad - any stack-safe monad would do.
 
 With this `fetch` method, we can now go on with the resolution. Calling `process` on `start` above gives a
-[`ResolutionProcess`](https://github.com/alexarchambault/coursier/blob/master/core/shared/src/main/scala/coursier/core/ResolutionProcess.scala),
+[`ResolutionProcess`](https://github.com/coursier/coursier/blob/master/core/shared/src/main/scala/coursier/core/ResolutionProcess.scala),
 that drives the resolution. It is loosely inspired by the `Process` of scalaz-stream.
 It is an immutable structure, that represents the various states the resolution process can be in.
 
@@ -534,7 +534,7 @@ val resolution = start.process.run(fetch).run
 ```
 
 To get additional feedback during the resolution, we can give the `Cache.default` method above
-a [`Cache.Logger`](https://github.com/alexarchambault/coursier/blob/cf269c6895e19f2d590f08811406724304332950/cache/src/main/scala/coursier/Cache.scala#L484-L490).
+a [`Cache.Logger`](https://github.com/coursier/coursier/blob/cf269c6895e19f2d590f08811406724304332950/cache/src/main/scala/coursier/Cache.scala#L484-L490).
 
 By default, downloads happen in a global fixed thread pool (with 6 threads, allowing for 6 parallel downloads), but
 you can supply your own thread pool to `Cache.default`.
@@ -568,7 +568,7 @@ We're using the `Cache.file` method, that can also be given a `Logger` (for more
 ### Scala JS demo
 
 *coursier* is also compiled to Scala JS, and can be tested in the browser via its
-[demo](http://alexarchambault.github.io/coursier/#demo).
+[demo](http://coursier.github.io/coursier/#demo).
 
 ## Extra features
 
@@ -776,7 +776,7 @@ coursier is now aiming directly at `1.0.0`.
 
 The last features I'd like to add until a feature freeze are mainly a
 better / nicer output, for both the command-line tools and the SBT plugin.
-These are tracked via GitHub [issues](https://github.com/alexarchambault/coursier/issues?q=is%3Aopen+is%3Aissue+milestone%3A1.0.0), along with other points.
+These are tracked via GitHub [issues](https://github.com/coursier/coursier/issues?q=is%3Aopen+is%3Aissue+milestone%3A1.0.0), along with other points.
 Milestones will keep being released until then.
 Then coursier should undergo `RC` releases, with no new features added, and
 only fixes and minor refactorings between them.
