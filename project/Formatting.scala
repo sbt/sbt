@@ -1,15 +1,13 @@
-import sbt._
-import sbt.Keys._
-import com.typesafe.sbt.SbtScalariform._
-import ScalariformKeys.{ format => scalariformFormat, preferences => scalariformPreferences }
+import sbt._, Keys._
+import com.typesafe.sbt.SbtScalariform._, autoImport._
 
 object Formatting {
-  lazy val BuildConfig = config("build") extend Compile
-  lazy val BuildSbtConfig = config("buildsbt") extend Compile
+  val BuildConfig = config("build") extend Compile
+  val BuildSbtConfig = config("buildsbt") extend Compile
 
   val scalariformCheck = taskKey[Unit]("Checks that the existing code is formatted, via git diff")
 
-  lazy val prefs: Seq[Setting[_]] = {
+  private val prefs: Seq[Setting[_]] = {
     import scalariform.formatter.preferences._
     Seq(
       scalariformPreferences ~= (_
@@ -20,8 +18,8 @@ object Formatting {
     )
   }
 
-  lazy val settings: Seq[Setting[_]] = Seq() ++ scalariformSettings ++ prefs
-  lazy val sbtFilesSettings: Seq[Setting[_]] = Seq() ++ scalariformSettings ++ prefs ++
+  val settings: Seq[Setting[_]] = Seq() ++ prefs
+  val sbtFilesSettings: Seq[Setting[_]] = Seq() ++ prefs ++
     inConfig(BuildConfig)(configScalariformSettings) ++
     inConfig(BuildSbtConfig)(configScalariformSettings) ++
     Seq(
