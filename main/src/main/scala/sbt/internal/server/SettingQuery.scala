@@ -86,7 +86,7 @@ object SettingQuery {
         case x               => Right(x)
       }
 
-  def getJsonWriter[A: Manifest](x: A): Option[JsonWriter[A]] = None
+  def getJsonWriter[A: Manifest](x: A): Option[JsonWriter[A]] = JsonFormatRegistry lookup x
 
   def toJsonStringStrict[A: Manifest](x: A): Either[String, String] =
     getJsonWriter[A](x)
