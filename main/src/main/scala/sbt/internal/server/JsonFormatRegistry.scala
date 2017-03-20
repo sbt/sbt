@@ -9,19 +9,14 @@ import java.io.File
 import java.net.{ URI, URL }
 import scala.{ collection => sc }, sc.{ immutable => sci }, sci.{ Seq => sciSeq }
 import sbt.librarymanagement.LibraryManagementCodec._
-import sjsonnew._
+import sjsonnew.{ JsonFormat => JF }
 
 /** A registry of JsonFormat instances.
   *
   * Used to lookup, given a value of type 'A', its 'JsonFormat[A]' instance.
   */
 object JsonFormatRegistry {
-  type MF[A]   = Manifest[A]
-  type JF[A]   = JsonFormat[A]
-  type CTag[A] = scala.reflect.ClassTag[A]
-
-  @inline def ?[A](implicit z: A): A     = z
-  @inline def classTag[A: CTag]: CTag[A] = ?
+  @inline def ?[A](implicit z: A): A = z
 
   val    UnitJF: JF[Unit]    = ?
   val BooleanJF: JF[Boolean] = ?
@@ -38,8 +33,8 @@ object JsonFormatRegistry {
   val     URIJF: JF[URI]     = ?
   val     URLJF: JF[URL]     = ?
 
-  def cast[A](z: JsonFormat[_]): JsonFormat[A]                = z.asInstanceOf[JsonFormat[A]]
-  def castAndWrap[A](z: JsonFormat[_]): Option[JsonFormat[A]] = Some(cast(z))
+  def cast[A](z: JF[_]): JF[A]                = z.asInstanceOf[JF[A]]
+  def castAndWrap[A](z: JF[_]): Option[JF[A]] = Some(cast(z))
 
   // TODO: Any way to de-duplify here?
   def   tuple1JF[A: Manifest]: Option[JF[  Tuple1[A]]] = lookup(manifest[A]) map { implicit elemJF: JF[A] => ? }
@@ -92,7 +87,7 @@ object JsonFormatRegistry {
 //    }
 //  }
 
-  def lookup[A: Manifest]: Option[JsonFormat[A]] = manifest[A] match {
+  def lookup[A: Manifest]: Option[JF[A]] = manifest[A] match {
     case Manifest.Unit                                => castAndWrap[A](   UnitJF)
     case Manifest.Boolean                             => castAndWrap[A](BooleanJF)
     case Manifest.Byte                                => castAndWrap[A](   ByteJF)
