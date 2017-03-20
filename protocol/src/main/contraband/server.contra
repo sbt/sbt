@@ -41,7 +41,7 @@ type ExecStatusEvent implements EventMessage {
 }
 
 type SettingQueryResponse implements EventMessage {
-  value: String!
+  value: scala.json.ast.unsafe.JValue!
 }
 
 # enum Status {

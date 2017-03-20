@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.protocol
 final class SettingQueryResponse private (
-  val value: String) extends sbt.protocol.EventMessage() with Serializable {
+  val value: scala.json.ast.unsafe.JValue) extends sbt.protocol.EventMessage() with Serializable {
   
   
   
@@ -19,14 +19,14 @@ final class SettingQueryResponse private (
   override def toString: String = {
     "SettingQueryResponse(" + value + ")"
   }
-  protected[this] def copy(value: String = value): SettingQueryResponse = {
+  protected[this] def copy(value: scala.json.ast.unsafe.JValue = value): SettingQueryResponse = {
     new SettingQueryResponse(value)
   }
-  def withValue(value: String): SettingQueryResponse = {
+  def withValue(value: scala.json.ast.unsafe.JValue): SettingQueryResponse = {
     copy(value = value)
   }
 }
 object SettingQueryResponse {
   
-  def apply(value: String): SettingQueryResponse = new SettingQueryResponse(value)
+  def apply(value: scala.json.ast.unsafe.JValue): SettingQueryResponse = new SettingQueryResponse(value)
 }

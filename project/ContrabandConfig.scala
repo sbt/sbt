@@ -22,6 +22,7 @@ object ContrabandConfig {
     case "Option" | "Set" | "scala.Vector" => { tpe => getFormats(oneArg(tpe)) }
     case "Map" | "Tuple2" | "scala.Tuple2" => { tpe => twoArgs(tpe).flatMap(getFormats) }
     case "Int" | "Long"                    => { _ => Nil }
+    case "scala.json.ast.unsafe.JValue"    => { _ => "sbt.internal.JValueFormat" :: Nil }
   }
 
   /** Returns the list of formats required to encode the given `TpeRef`. */
