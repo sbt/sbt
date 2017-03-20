@@ -8,7 +8,6 @@ package server
 import java.io.File
 import java.net.{ URI, URL }
 import scala.{ collection => sc }, sc.{ immutable => sci }, sci.{ Seq => sciSeq }
-import scala.util.{ Left, Right }
 import sbt.librarymanagement.LibraryManagementCodec._
 import sjsonnew._
 
@@ -17,6 +16,7 @@ import sjsonnew._
   * Used to lookup, given a value of type 'A', its 'JsonFormat[A]' instance.
   */
 object JsonFormatRegistry {
+  type MF[A]   = Manifest[A]
   type JF[A]   = JsonFormat[A]
   type CTag[A] = scala.reflect.ClassTag[A]
 
@@ -41,41 +41,41 @@ object JsonFormatRegistry {
   def cast[A](z: JsonFormat[_]): JsonFormat[A]                = z.asInstanceOf[JsonFormat[A]]
   def castAndWrap[A](z: JsonFormat[_]): Option[JsonFormat[A]] = Some(cast(z))
 
-  def optionJF[A](x: Option[A]): Option[JF[Option[A]]] = x match {
-    case None    => castAndWrap(?[JF[Option[Int]]])
-    case Some(x) => lookup(x) map (implicit elemJF => ?)
-  }
+  // TODO: Any way to de-duplify here?
+  def   tuple1JF[A: Manifest]: Option[JF[  Tuple1[A]]] = lookup(manifest[A]) map { implicit elemJF: JF[A] => ? }
+  def   optionJF[A: Manifest]: Option[JF[  Option[A]]] = lookup(manifest[A]) map { implicit elemJF: JF[A] => ? }
+  def     listJF[A: Manifest]: Option[JF[    List[A]]] = lookup(manifest[A]) map { implicit elemJF: JF[A] => ? }
+  def    arrayJF[A: Manifest]: Option[JF[   Array[A]]] = lookup(manifest[A]) map { implicit elemJF: JF[A] => ? }
+  def   vectorJF[A: Manifest]: Option[JF[  Vector[A]]] = lookup(manifest[A]) map { implicit elemJF: JF[A] => ? }
+  def   sciSeqJF[A: Manifest]: Option[JF[  sciSeq[A]]] = lookup(manifest[A]) map { implicit elemJF: JF[A] => ? }
+  def      seqJF[A: Manifest]: Option[JF[     Seq[A]]] = lookup(manifest[A]) map { implicit elemJF: JF[A] => ? }
+//def optionalJF[A: Manifest]: Option[JF[Optional[A]]] = lookup(manifest[A]) map { implicit elemJF: JF[A] => ? } // TODO: Upgrade sjsonnew version
 
-  def eitherJF[A, B](x: Either[A, B]): Option[JF[Either[A, B]]] = x match {
-    case Left(x) => lookup(x) map { implicit lJF: JF[A] =>
-      implicit val rJF: JF[B] = cast(UnitJF)
-      ?[JF[Either[A, B]]]
-    }
-    case Right(x) => lookup(x) map { implicit rJF: JF[B] =>
-      implicit val lJF: JF[A] = cast(UnitJF)
-      ?[JF[Either[A, B]]]
-    }
-  }
-
-  def tuple1JF[A](x: Tuple1[A]): Option[JF[Tuple1[A]]] = lookup(x._1) map { implicit elemJF: JF[A] => ? }
-
-  def tuple2JF[A, B](x: (A, B)): Option[JF[(A, B)]] =
-    for (aJF <- lookup(x._1); bJF <- lookup(x._2)) yield {
+  def eitherJF[A: Manifest, B: Manifest]: Option[JF[Either[A, B]]] =
+    for (aJF <- lookup(manifest[A]); bJF <- lookup(manifest[B])) yield {
       implicit val aJFi: JF[A] = aJF
       implicit val bJFi: JF[B] = bJF
       ?
     }
 
-  def tuple3JF[A, B, C](x: (A, B, C)): Option[JF[(A, B, C)]] =
-    for (aJF <- lookup(x._1); bJF <- lookup(x._2); cJF <- lookup(x._3)) yield {
+
+  def tuple2JF[A: Manifest, B: Manifest]: Option[JF[(A, B)]] =
+    for (aJF <- lookup(manifest[A]); bJF <- lookup(manifest[B])) yield {
+      implicit val aJFi: JF[A] = aJF
+      implicit val bJFi: JF[B] = bJF
+      ?
+    }
+
+  def tuple3JF[A: Manifest, B: Manifest, C: Manifest]: Option[JF[(A, B, C)]] =
+    for (aJF <- lookup(manifest[A]); bJF <- lookup(manifest[B]); cJF <- lookup(manifest[C])) yield {
       implicit val aJFi: JF[A] = aJF
       implicit val bJFi: JF[B] = bJF
       implicit val cJFi: JF[C] = cJF
       ?
     }
 
-  def tuple4JF[A, B, C, D](x: (A, B, C, D)): Option[JF[(A, B, C, D)]] =
-    for (aJF <- lookup(x._1); bJF <- lookup(x._2); cJF <- lookup(x._3); dJF <- lookup(x._4)) yield {
+  def tuple4JF[A: Manifest, B: Manifest, C: Manifest, D: Manifest]: Option[JF[(A, B, C, D)]] =
+    for (aJF <- lookup(manifest[A]); bJF <- lookup(manifest[B]); cJF <- lookup(manifest[C]); dJF <- lookup(manifest[D])) yield {
       implicit val aJFi: JF[A] = aJF
       implicit val bJFi: JF[B] = bJF
       implicit val cJFi: JF[C] = cJF
@@ -83,78 +83,43 @@ object JsonFormatRegistry {
       ?
     }
 
-  def listJF[A](x: List[A]): Option[JF[List[A]]] = x match {
-    case Nil    => castAndWrap(?[JF[List[Int]]])
-    case x :: _ => lookup(x) map { implicit elemJF: JF[A] => ? }
-  }
-
-  def arrayJF[A](x: Array[A]): Option[JF[Array[A]]] = x match {
-    case Array()      => castAndWrap(?[JF[Array[Int]]])
-    case Array(x, _*) => lookup(x) map { implicit elemJF: JF[A] =>
-      implicit val ctag: CTag[A] = classTag[AnyRef].asInstanceOf[CTag[A]] // if A is a primitive.. boom
-      ?
-    }
-  }
-
-  // Map is a PITA, because it needs a JsonKeyFormat, not the "Key"
-//  def mapJF[A, B](x: Map[A, B]): Option[JF[Map[A, B]]] = x.headOption match {
-//    case None         => castAndWrap(?[JF[Map[Int, Int]]])
-//    case Some((a, b)) => for (aJF <- lookup(a); bJF <- lookup(b)) yield {
+  // Map is a PITA, because it needs a JsonKeyFormat, note the "Key"
+//  def mapJF[A: Manifest, B: Manifest]: Option[JF[Map[A, B]]] =
+//    for (aJF <- lookup(manifest[A]); bJF <- lookup(manifest[A])) yield {
 //      implicit val aJFi: JF[A] = aJF
 //      implicit val bJFi: JF[B] = bJF
-//      ?[JF[Map[A, B]]]
-//      mapFormat[A, B]
+//      ?
 //    }
 //  }
 
-  def vectorJF[A](x: Vector[A]): Option[JF[Vector[A]]] = x match {
-    case Vector()      => castAndWrap(?[JF[Vector[Int]]])
-    case Vector(x, _*) => lookup(x) map { implicit elemJF: JF[A] => ? }
-  }
-
-  def sciSeqJF[A](x: sciSeq[A]): Option[JF[sciSeq[A]]] = x match {
-    case sci.Seq()      => castAndWrap(?[JF[sciSeq[Int]]])
-    case sci.Seq(x, _*) => lookup(x) map { implicit elemJF: JF[A] => ? }
-  }
-
-  def seqJF[A](x: Seq[A]): Option[JF[Seq[A]]] = x match {
-    case Seq()      => castAndWrap(?[JF[Seq[Int]]])
-    case Seq(x, _*) => lookup(x) map { implicit elemJF: JF[A] => ? }
-  }
-
-  // TODO: Upgrade sjsonnew version
-//  def optional[A](x: Optional[A]): Option[JF[Optional[A]]] =
-//    if (x.isPresent) lookup(x.get) map { implicit elemJF: JF[A] => ? }
-//    else castAndWrap(?[JF[Optional[Int]]])
-
-  def lookup[A](value: A): Option[JsonFormat[A]] = value match {
-    case _: Unit         => castAndWrap[A](   UnitJF)
-    case _: Boolean      => castAndWrap[A](BooleanJF)
-    case _: Byte         => castAndWrap[A](   ByteJF)
-    case _: Short        => castAndWrap[A](  ShortJF)
-    case _: Char         => castAndWrap[A](   CharJF)
-    case _: Int          => castAndWrap[A](    IntJF)
-    case _: Long         => castAndWrap[A](   LongJF)
-    case _: Float        => castAndWrap[A](  FloatJF)
-    case _: Double       => castAndWrap[A]( DoubleJF)
-    case _: String       => castAndWrap[A]( StringJF)
-    case _: Symbol       => castAndWrap[A]( SymbolJF)
-    case _: File         => castAndWrap[A](   FileJF)
-    case _: URI          => castAndWrap[A](    URIJF)
-    case _: URL          => castAndWrap[A](    URLJF)
-    case x: Option[_]    =>   optionJF(x) map cast
-    case x: Either[_, _] =>   eitherJF(x) map cast
-    case x: Tuple1[_]    =>   tuple1JF(x) map cast
-    case x: (_, _)       =>   tuple2JF(x) map cast
-    case x: (_, _, _)    =>   tuple3JF(x) map cast
-    case x: (_, _, _, _) =>   tuple4JF(x) map cast
-    case x: List[_]      =>     listJF(x) map cast
-    case x: Array[_]     =>    arrayJF(x) map cast
-//  case x: Map[_, _]    =>      mapJF(x) map cast
-    case x: Vector[_]    =>   vectorJF(x) map cast
-    case x: sciSeq[_]    =>   sciSeqJF(x) map cast
-    case x: Seq[_]       =>      seqJF(x) map cast
-//  case x: Optional[_]  => optionalJF(x) map cast
-    case _               => None
+  def lookup[A: Manifest]: Option[JsonFormat[A]] = manifest[A] match {
+    case Manifest.Unit                                => castAndWrap[A](   UnitJF)
+    case Manifest.Boolean                             => castAndWrap[A](BooleanJF)
+    case Manifest.Byte                                => castAndWrap[A](   ByteJF)
+    case Manifest.Short                               => castAndWrap[A](  ShortJF)
+    case Manifest.Char                                => castAndWrap[A](   CharJF)
+    case Manifest.Int                                 => castAndWrap[A](    IntJF)
+    case Manifest.Long                                => castAndWrap[A](   LongJF)
+    case Manifest.Float                               => castAndWrap[A](  FloatJF)
+    case Manifest.Double                              => castAndWrap[A]( DoubleJF)
+    case m if m.runtimeClass == classOf[String]       => castAndWrap[A]( StringJF)
+    case m if m.runtimeClass == classOf[Symbol]       => castAndWrap[A]( SymbolJF)
+    case m if m.runtimeClass == classOf[File]         => castAndWrap[A](   FileJF)
+    case m if m.runtimeClass == classOf[URI]          => castAndWrap[A](    URIJF)
+    case m if m.runtimeClass == classOf[URL]          => castAndWrap[A](    URLJF)
+    case m if m.runtimeClass == classOf[Option[_]]    =>   optionJF(m.typeArguments.head) map cast
+    case m if m.runtimeClass == classOf[Either[_, _]] =>   eitherJF(m.typeArguments.head, m.typeArguments(1)) map cast
+    case m if m.runtimeClass == classOf[Tuple1[_]]    =>   tuple1JF(m.typeArguments.head) map cast
+    case m if m.runtimeClass == classOf[(_, _)]       =>   tuple2JF(m.typeArguments.head, m.typeArguments(1)) map cast
+    case m if m.runtimeClass == classOf[(_, _, _)]    =>   tuple3JF(m.typeArguments.head, m.typeArguments(1), m.typeArguments(2)) map cast
+    case m if m.runtimeClass == classOf[(_, _, _, _)] =>   tuple4JF(m.typeArguments.head, m.typeArguments(1), m.typeArguments(2), m.typeArguments(3)) map cast
+    case m if m.runtimeClass == classOf[List[_]]      =>     listJF(m.typeArguments.head) map cast
+    case m if m.runtimeClass == classOf[Array[_]]     =>    arrayJF(m.typeArguments.head) map cast
+//  case m if m.runtimeClass == classOf[Map[_, _]]    =>      mapJF(m.typeArguments.head, m.typeArguments(1)) map cast
+    case m if m.runtimeClass == classOf[Vector[_]]    =>   vectorJF(m.typeArguments.head) map cast
+    case m if m.runtimeClass == classOf[sciSeq[_]]    =>   sciSeqJF(m.typeArguments.head) map cast
+    case m if m.runtimeClass == classOf[Seq[_]]       =>      seqJF(m.typeArguments.head) map cast
+//  case m if m.runtimeClass == classOf[Optional[_]]  => optionalJF(m.typeArguments.head) map cast
+    case _                                            => None
   }
 }
