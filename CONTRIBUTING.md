@@ -182,7 +182,7 @@ Integration tests
 Scripted integration tests reside in `sbt/src/sbt-test` and are
 written using the same testing infrastructure sbt plugin authors can
 use to test their own plugins with sbt. You can read more about this
-style of tests [here](http://eed3si9n.com/testing-sbt-plugins).
+style of tests [here](http://www.scala-sbt.org/1.0/docs/Testing-sbt-plugins).
 
 You can run the integration tests with the `sbt scripted` sbt
 command. To run a single test, such as the test in
