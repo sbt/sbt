@@ -98,19 +98,21 @@ object SettingQuery {
       case Left(_)  => Converter toJsonUnsafe x.toString
     }
 
-  def getSettingJsonStringValue[A](structure: BuildStructure, key: Def.ScopedKey[A]): Either[String, JValue] =
+  def getSettingJsonValue[A](structure: BuildStructure, key: Def.ScopedKey[A]): Either[String, JValue] =
     getSettingValue(structure, key) map (toJson(_)(key.key.manifest))
 
   def handleSettingQuery(req: SettingQuery, structure: BuildStructure): SettingQueryResponse = {
     val key = Parser.parse(req.setting, scopedKeyParser(structure))
 
-    val result: Either[String, JValue] = key flatMap (getSettingJsonStringValue(structure, _))
+    val result =
+      for {
+        key <- key
+        json <- getSettingJsonValue(structure, key)
+      } yield SettingQuerySuccess(json, key.key.manifest.toString)
 
-    val finalResult: JValue = result match {
-      case Right(j) => j
-      case Left(s)  => Converter toJsonUnsafe s
+    result match {
+      case Right(x) => x
+      case Left(s)  => SettingQueryFailure(s)
     }
-
-    SettingQueryResponse(finalResult)
   }
 }
