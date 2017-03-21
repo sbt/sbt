@@ -426,7 +426,7 @@ lazy val `sbt-shading` = project
           scala.Console.err.println(
            s"""Warning: using jarjar $fallback, which doesn't properly shade Scala JARs (classes with '$$' aren't shaded).
               |See the instructions around
-              |https://github.com/alexarchambault/coursier/blob/630a780487d662dd994ed1c3246895a22c00cf21/scripts/travis.sh#L40
+              |https://github.com/coursier/coursier/blob/630a780487d662dd994ed1c3246895a22c00cf21/scripts/travis.sh#L40
               |to use a version fine with Scala JARs.""".stripMargin
           )
 
@@ -557,11 +557,11 @@ lazy val `coursier` = project.in(file("."))
 lazy val releaseSettings = Seq(
   publishMavenStyle := true,
   licenses := Seq("Apache 2.0" -> url("http://opensource.org/licenses/Apache-2.0")),
-  homepage := Some(url("https://github.com/alexarchambault/coursier")),
+  homepage := Some(url("https://github.com/coursier/coursier")),
   scmInfo := Some(ScmInfo(
-    url("https://github.com/alexarchambault/coursier.git"),
-    "scm:git:github.com/alexarchambault/coursier.git",
-    Some("scm:git:git@github.com:alexarchambault/coursier.git")
+    url("https://github.com/coursier/coursier.git"),
+    "scm:git:github.com/coursier/coursier.git",
+    Some("scm:git:git@github.com:coursier/coursier.git")
   )),
   pomExtra := {
     <developers>

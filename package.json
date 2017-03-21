@@ -1,5 +1,5 @@
 {
-  "repository": "https://github.com/alexarchambault/coursier.git",
+  "repository": "https://github.com/coursier/coursier.git",
   "license": "Apache-2.0",
   "devDependencies": {
     "cheerio": "0.22.0",
