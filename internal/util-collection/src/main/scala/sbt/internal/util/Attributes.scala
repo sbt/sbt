@@ -5,6 +5,7 @@ package sbt.internal.util
 
 import Types._
 import scala.reflect.Manifest
+import sbt.util.OptJsonWriter
 
 // T must be invariant to work properly.
 //  Because it is sealed and the only instances go through AttributeKey.apply,
