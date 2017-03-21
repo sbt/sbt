@@ -12,11 +12,11 @@ trait OptJsonWriter0 {
 object OptJsonWriter extends OptJsonWriter0 {
   implicit def lift[A](implicit z: JsonWriter[A]): SomeJsonWriter[A] = SomeJsonWriter(z)
 
-  trait OptOut0 {
+  trait StrictMode0 {
     implicit def conflictingFallback1[A]: NoJsonWriter[A] = NoJsonWriter()
     implicit def conflictingFallback2[A]: NoJsonWriter[A] = NoJsonWriter()
   }
-  object OptOut extends OptOut0 {
+  object StrictMode extends StrictMode0 {
     implicit def lift[A](implicit z: JsonWriter[A]): SomeJsonWriter[A] = SomeJsonWriter(z)
   }
 }
