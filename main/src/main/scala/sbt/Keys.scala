@@ -368,7 +368,7 @@ object Keys {
 
   val moduleName = SettingKey[String]("module-name", "The name of the current module, used for dependency management.", BSetting)
   val version = SettingKey[String]("version", "The version/revision of the current module.", APlusSetting)
-  val isSnapshot = SettingKey[Boolean]("is-snapshot", "True if the the version of the project is a snapshot version.", BPlusSetting)
+  val isSnapshot = SettingKey[Boolean]("is-snapshot", "True if the version of the project is a snapshot version.", BPlusSetting)
   val moduleID = SettingKey[ModuleID]("module-id", "A dependency management descriptor.  This is currently used for associating a ModuleID with a classpath entry.", BPlusSetting)
   val projectID = SettingKey[ModuleID]("project-id", "The dependency management descriptor for the current module.", BMinusSetting)
   val overrideBuildResolvers = SettingKey[Boolean]("override-build-resolvers", "Whether or not all the build resolvers should be overridden with what's defined from the launcher.", BMinusSetting)
