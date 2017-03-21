@@ -8,8 +8,10 @@ package server
 import java.net.URI
 import scala.json.ast.unsafe.JValue
 import scala.util.{ Left, Right }
+import sbt.util.{ SomeJsonWriter, NoJsonWriter }
 import sbt.librarymanagement.LibraryManagementCodec._
 import sbt.protocol._
+import sjsonnew._
 import sjsonnew.support.scalajson.unsafe._
 
 object SettingQuery {
@@ -87,19 +89,17 @@ object SettingQuery {
         case x               => Right(x)
       }
 
-  def toJsonStringStrict[A: Manifest](x: A): Either[String, JValue] =
-    JsonFormatRegistry.lookup[A]
-      .toRight(s"JsonWriter for ${manifest[A]} not found")
-      .map(implicit jsonWriter => Converter toJsonUnsafe x)
+  def getJsonWriter[A](key: AttributeKey[A]): Either[String, JsonWriter[A]] = key.optJsonWriter match {
+    case SomeJsonWriter(jw) => Right(jw)
+    case NoJsonWriter()     => Left(s"JsonWriter for ${key.manifest} not found")
+  }
 
-  def toJson[A: Manifest](x: A): JValue =
-    toJsonStringStrict(x) match {
-      case Right(j) => j
-      case Left(_)  => Converter toJsonUnsafe x.toString
-    }
+  def toJson[A: JsonWriter](x: A): JValue = Converter toJsonUnsafe x
 
   def getSettingJsonValue[A](structure: BuildStructure, key: Def.ScopedKey[A]): Either[String, JValue] =
-    getSettingValue(structure, key) map (toJson(_)(key.key.manifest))
+    getSettingValue(structure, key) flatMap (value =>
+      getJsonWriter(key.key) map { implicit jw: JsonWriter[A] => toJson(value) }
+    )
 
   def handleSettingQuery(req: SettingQuery, structure: BuildStructure): SettingQueryResponse = {
     val key = Parser.parse(req.setting, scopedKeyParser(structure))
