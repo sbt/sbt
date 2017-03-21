@@ -39,6 +39,8 @@ sealed trait AttributeKey[T] {
 
   /** Identifies the relative importance of a key among other keys.*/
   def rank: Int
+
+  def optJsonWriter: OptJsonWriter[T]
 }
 private[sbt] abstract class SharedAttributeKey[T] extends AttributeKey[T] {
   override final def toString = label
@@ -50,32 +52,33 @@ private[sbt] abstract class SharedAttributeKey[T] extends AttributeKey[T] {
   final def isLocal: Boolean = false
 }
 object AttributeKey {
-  def apply[T](name: String)(implicit mf: Manifest[T]): AttributeKey[T] =
+  def apply[T](name: String)(implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] =
     make(name, None, Nil, Int.MaxValue)
 
-  def apply[T](name: String, rank: Int)(implicit mf: Manifest[T]): AttributeKey[T] =
+  def apply[T](name: String, rank: Int)(implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] =
     make(name, None, Nil, rank)
 
-  def apply[T](name: String, description: String)(implicit mf: Manifest[T]): AttributeKey[T] =
+  def apply[T](name: String, description: String)(implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] =
     apply(name, description, Nil)
 
-  def apply[T](name: String, description: String, rank: Int)(implicit mf: Manifest[T]): AttributeKey[T] =
+  def apply[T](name: String, description: String, rank: Int)(implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] =
     apply(name, description, Nil, rank)
 
-  def apply[T](name: String, description: String, extend: Seq[AttributeKey[_]])(implicit mf: Manifest[T]): AttributeKey[T] =
+  def apply[T](name: String, description: String, extend: Seq[AttributeKey[_]])(implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] =
     apply(name, description, extend, Int.MaxValue)
 
-  def apply[T](name: String, description: String, extend: Seq[AttributeKey[_]], rank: Int)(implicit mf: Manifest[T]): AttributeKey[T] =
+  def apply[T](name: String, description: String, extend: Seq[AttributeKey[_]], rank: Int)(implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] =
     make(name, Some(description), extend, rank)
 
-  private[this] def make[T](name: String, description0: Option[String], extend0: Seq[AttributeKey[_]], rank0: Int)(implicit mf: Manifest[T]): AttributeKey[T] = new SharedAttributeKey[T] {
+  private[this] def make[T](name: String, description0: Option[String], extend0: Seq[AttributeKey[_]], rank0: Int)(implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] = new SharedAttributeKey[T] {
     def manifest = mf
     val label = Util.hyphenToCamel(name)
     def description = description0
     def extend = extend0
     def rank = rank0
+    def optJsonWriter = ojw
   }
-  private[sbt] def local[T](implicit mf: Manifest[T]): AttributeKey[T] = new AttributeKey[T] {
+  private[sbt] def local[T](implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] = new AttributeKey[T] {
     def manifest = mf
     def label = LocalLabel
     def description = None
@@ -83,6 +86,7 @@ object AttributeKey {
     override def toString = label
     def isLocal: Boolean = true
     def rank = Int.MaxValue
+    val optJsonWriter = ojw
   }
   private[sbt] final val LocalLabel = "$" + "local"
 }
