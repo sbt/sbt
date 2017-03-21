@@ -1,5 +1,5 @@
 addSbtPlugin("org.xerial.sbt" % "sbt-pack" % "0.8.2")
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.14")
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.15")
 addSbtPlugin("com.jsuereth" % "sbt-pgp" % "1.0.0")
 addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.4.0")
 addSbtPlugin("org.tpolecat" % "tut-plugin" % "0.4.8")
