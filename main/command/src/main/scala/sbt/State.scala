@@ -5,6 +5,7 @@ package sbt
 
 import java.io.File
 import java.util.concurrent.Callable
+import sbt.BasicCommandStrings.Shell
 
 /**
  * Data structure representing all command execution information.
@@ -183,8 +184,9 @@ object State {
       }
       def isInteractive = System.console() != null
       def hasInput = System.console().reader().ready()
+      def hasShellCmd = s.definedCommands exists { case c: SimpleCommand => c.name == Shell; case _ => false }
       s.remainingCommands match {
-        case Seq()           => if (isInteractive && hasInput) doX("shell", Nil) else exit(true)
+        case Seq()           => if (isInteractive && hasInput && hasShellCmd) doX(Shell, Nil) else exit(true)
         case Seq(x, xs @ _*) => doX(x, xs)
       }
     }
