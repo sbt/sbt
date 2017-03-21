@@ -75,7 +75,8 @@ lazy val utilCollection = (project in internalPath / "util-collection").
   settings(
     commonSettings,
     Util.keywordsSettings,
-    name := "Util Collection"
+    name := "Util Collection",
+    libraryDependencies ++= Seq(sjsonnew)
   )
 
 lazy val utilApplyMacro = (project in internalPath / "util-appmacro").
