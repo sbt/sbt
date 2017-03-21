@@ -6,7 +6,7 @@ A Scala library to fetch dependencies from Maven / Ivy repositories
 
 [![Build Status](https://travis-ci.org/coursier/coursier.svg?branch=master)](https://travis-ci.org/coursier/coursier)
 [![Build status (Windows)](https://ci.appveyor.com/api/projects/status/trtum5b7washfbj9?svg=true)](https://ci.appveyor.com/project/coursier/coursier)
-[![Join the chat at https://gitter.im/alexarchambault/coursier](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/alexarchambault/coursier?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Join the chat at https://gitter.im/coursier/coursier](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/coursier/coursier?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Maven Central](https://img.shields.io/maven-central/v/io.get-coursier/coursier_2.11.svg)](https://maven-badges.herokuapp.com/maven-central/io.get-coursier/coursier_2.11)
 [![Scaladoc](http://javadoc-badge.appspot.com/io.get-coursier/coursier_2.11.svg?label=scaladoc)](http://javadoc-badge.appspot.com/io.get-coursier/coursier_2.11)
 
@@ -763,7 +763,7 @@ Once RCs will be considered stable enough, `1.0.0` should be released.
 - Your name here :-)
 
 Don't hesitate to pick an issue to contribute, and / or ask for help for how to proceed
-on the [Gitter channel](https://gitter.im/alexarchambault/coursier).
+on the [Gitter channel](https://gitter.im/coursier/coursier).
 
 ## Projects using coursier
 
