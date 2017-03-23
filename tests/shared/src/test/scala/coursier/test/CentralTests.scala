@@ -23,13 +23,15 @@ object CentralTests extends TestSuite {
   ) = {
     val repositories0 = extraRepo.toSeq ++ repositories
 
+    val fetch = Platform.fetch(repositories0)
+
     Resolution(
       deps,
       filter = filter,
       userActivations = profiles.map(_.iterator.map(_ -> true).toMap)
     )
       .process
-      .run(repositories0)
+      .run(fetch)
       .runF
   }
 

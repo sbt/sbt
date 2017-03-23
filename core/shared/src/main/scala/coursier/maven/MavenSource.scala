@@ -65,14 +65,47 @@ final case class MavenSource(
       case Some(classifiers) =>
         val classifiersSet = classifiers.toSet
 
-        project.publications.collect {
-          case (_, p) if classifiersSet(p.classifier) =>
-            p
-        }
+        if (project.publications.isEmpty)
+          // For repositories not providing directory listings, give a try to some publications anyway
+          classifiers.map { classifier =>
+            Publication(
+              dependency.module.name,
+              "jar",
+              "jar",
+              classifier
+            )
+          }
+        else
+          project.publications.collect {
+            case (_, p) if classifiersSet(p.classifier) =>
+              p
+          }
 
       case None =>
 
-        if (dependency.attributes.classifier.nonEmpty)
+        if (project.publications.isEmpty) {
+
+          // For repositories not providing directory listings, give a try to some publications anyway
+
+          val type0 = if (dependency.attributes.`type`.isEmpty) "jar" else dependency.attributes.`type`
+
+          val extension = MavenSource.typeExtension(type0)
+
+          val classifier =
+            if (dependency.attributes.classifier.isEmpty)
+              MavenSource.typeDefaultClassifier(type0)
+            else
+              dependency.attributes.classifier
+
+          Seq(
+            Publication(
+              dependency.module.name,
+              type0,
+              extension,
+              classifier
+            )
+          )
+        } else if (dependency.attributes.classifier.nonEmpty)
           // FIXME We're ignoring dependency.attributes.`type` in this case
           project.publications.collect {
             case (_, p) if p.classifier == dependency.attributes.classifier =>

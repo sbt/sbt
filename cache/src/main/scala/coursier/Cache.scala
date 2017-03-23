@@ -319,6 +319,43 @@ object Cache {
   def url(s: String): URL =
     new URL(null, s, handlerFor(s).orNull)
 
+  def urlConnection(url0: String, authentication: Option[Authentication]) = {
+    var conn: URLConnection = null
+
+    try {
+      conn = url(url0).openConnection() // FIXME Should this be closed?
+      // Dummy user-agent instead of the default "Java/...",
+      // so that we are not returned incomplete/erroneous metadata
+      // (Maven 2 compatibility? - happens for snapshot versioning metadata)
+      conn.setRequestProperty("User-Agent", "")
+
+      for (auth <- authentication)
+        conn match {
+          case authenticated: AuthenticatedURLConnection =>
+            authenticated.authenticate(auth)
+          case conn0: HttpURLConnection =>
+            conn0.setRequestProperty(
+              "Authorization",
+              "Basic " + basicAuthenticationEncode(auth.user, auth.password)
+            )
+          case _ =>
+          // FIXME Authentication is ignored
+        }
+
+      conn
+    } catch {
+      case NonFatal(e) =>
+        if (conn != null)
+          conn match {
+            case conn0: HttpURLConnection =>
+              conn0.getInputStream.close()
+              conn0.disconnect()
+            case _ =>
+          }
+        throw e
+    }
+  }
+
   private def download(
     artifact: Artifact,
     cache: File,
@@ -339,45 +376,6 @@ object Cache {
       .map(a => localFile(a.url, cache, a.authentication.map(_.user)))
 
     def referenceFileExists: Boolean = referenceFileOpt.exists(_.exists())
-
-    def urlConn(url0: String) = {
-      var conn: URLConnection = null
-
-      try {
-        conn = url(url0).openConnection() // FIXME Should this be closed?
-        // Dummy user-agent instead of the default "Java/...",
-        // so that we are not returned incomplete/erroneous metadata
-        // (Maven 2 compatibility? - happens for snapshot versioning metadata,
-        // this is SO FSCKING CRAZY)
-        conn.setRequestProperty("User-Agent", "")
-
-        for (auth <- artifact.authentication)
-          conn match {
-            case authenticated: AuthenticatedURLConnection =>
-              authenticated.authenticate(auth)
-            case conn0: HttpURLConnection =>
-              conn0.setRequestProperty(
-                "Authorization",
-                "Basic " + basicAuthenticationEncode(auth.user, auth.password)
-              )
-            case _ =>
-            // FIXME Authentication is ignored
-          }
-
-        conn
-      } catch {
-        case NonFatal(e) =>
-          if (conn != null)
-            conn match {
-              case conn0: HttpURLConnection =>
-                conn0.getInputStream.close()
-                conn0.disconnect()
-              case _ =>
-            }
-          throw e
-      }
-    }
-
 
     def fileLastModified(file: File): EitherT[Task, FileError, Option[Long]] =
       EitherT {
@@ -402,7 +400,7 @@ object Cache {
           var conn: URLConnection = null
 
           try {
-            conn = urlConn(url)
+            conn = urlConnection(url, artifact.authentication)
 
             conn match {
               case c: HttpURLConnection =>
@@ -558,7 +556,7 @@ object Cache {
               var conn: URLConnection = null
 
               try {
-                conn = urlConn(url)
+                conn = urlConnection(url, artifact.authentication)
 
                 val partialDownload = conn match {
                   case conn0: HttpURLConnection if alreadyDownloaded > 0L =>
@@ -571,7 +569,7 @@ object Cache {
                         // unrecognized Content-Range header -> start a new connection with no resume
                         conn0.getInputStream.close()
                         conn0.disconnect()
-                        conn = urlConn(url)
+                        conn = urlConnection(url, artifact.authentication)
                         false
                       }
                     }
