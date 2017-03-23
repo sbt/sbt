@@ -5,8 +5,7 @@ val commonSettings = Seq(
   scalaVersion := "2.11.4",
   resolvers += Resolver.sonatypeRepo("snapshots"),
   resolvers += Resolver.sonatypeRepo("releases"),
-  addCompilerPlugin("org.scalamacros" % "paradise" % paradiseVersion cross CrossVersion.full),
-  incOptions := incOptions.value.withNameHashing(true)
+  addCompilerPlugin("org.scalamacros" % "paradise" % paradiseVersion cross CrossVersion.full)
 )
 
 lazy val root = (project in file(".")).

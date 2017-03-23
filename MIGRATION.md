@@ -13,3 +13,4 @@ Migration notes
 - Renames early command feature from `--<command>` to `early(<command>)`.
 - Log options `-error`, `-warn`, `-info`, `-debug` are added as shorthand for `"early(error)"` etc.
 - `sbt.Process` and `sbt.ProcessExtra` are gone. Use `scala.sys.process` instead.
+- `incOptions.value.withNameHashing(...)` option is removed.
