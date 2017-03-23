@@ -152,9 +152,10 @@ object CentralTests extends TestSuite {
     version: String,
     artifactType: String,
     extension: String,
-    attributes: Attributes = Attributes()
+    attributes: Attributes = Attributes(),
+    extraRepo: Option[Repository] = None
   ): Future[Unit] =
-    withArtifact(module, version, artifactType, attributes = attributes) { artifact =>
+    withArtifact(module, version, artifactType, attributes = attributes, extraRepo = extraRepo) { artifact =>
       assert(artifact.url.endsWith("." + extension))
     }
 
@@ -228,11 +229,23 @@ object CentralTests extends TestSuite {
 
     'snapshotMetadata - {
       // Let's hope this one won't change too much
-      resolutionCheck(
-        Module("com.github.fommil", "java-logging"),
-        "1.2-SNAPSHOT",
+      val mod = Module("com.github.fommil", "java-logging")
+      val version = "1.2-SNAPSHOT"
+      val extraRepo = MavenRepository("https://oss.sonatype.org/content/repositories/public/")
+
+      * - resolutionCheck(
+        mod,
+        version,
         configuration = "runtime",
-        extraRepo = Some(MavenRepository("https://oss.sonatype.org/content/repositories/public/"))
+        extraRepo = Some(extraRepo)
+      )
+
+      * - ensureHasArtifactWithExtension(
+        mod,
+        version,
+        "jar",
+        "jar",
+        extraRepo = Some(extraRepo)
       )
     }
 
