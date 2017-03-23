@@ -292,13 +292,7 @@ final case class MavenRepository(
 
       val files = WebPage.listFiles(listFilesUrl, rawListFilesPage)
 
-      val versioning = proj0
-        .snapshotVersioning
-        .flatMap(versioning =>
-          mavenVersioning(versioning, "", "")
-        )
-
-      val prefix = s"${module.name}-${versioning.getOrElse(version)}"
+      val prefix = s"${module.name}-${versioningValue.getOrElse(version)}"
 
       val packagingTpeMap = proj0.packagingOpt
         .map { packaging =>
