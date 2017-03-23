@@ -18,11 +18,17 @@ object Compiler {
   val DefaultMaxErrors = 100
   private[sbt] def defaultCompilerBridgeSource(sv: String): ModuleID =
     VersionNumber(sv) match {
+      // 2.10 and before
       case VersionNumber(ns, _, _) if (ns.size == 3) && (ns(0) == 2) && (ns(1) <= 10) => scalaCompilerBridgeSource2_10
+      // 2.11
+      case VersionNumber(ns, _, _) if (ns.size == 3) && (ns(0) == 2) && (ns(1) == 11) => scalaCompilerBridgeSource2_11
       case _                                                                          => scalaCompilerBridgeSource2_12
     }
   private[sbt] def scalaCompilerBridgeSource2_10: ModuleID =
     ModuleID(xsbti.ArtifactInfo.SbtOrganization, "compiler-bridge_2.10",
+      ComponentCompiler.incrementalVersion).withConfigurations(Some("component")).sources()
+  private[sbt] def scalaCompilerBridgeSource2_11: ModuleID =
+    ModuleID(xsbti.ArtifactInfo.SbtOrganization, "compiler-bridge_2.11",
       ComponentCompiler.incrementalVersion).withConfigurations(Some("component")).sources()
   private[sbt] def scalaCompilerBridgeSource2_12: ModuleID =
     ModuleID(xsbti.ArtifactInfo.SbtOrganization, "compiler-bridge_2.12",
