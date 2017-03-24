@@ -4,7 +4,7 @@ lazy val OtherScala = config("other-scala").hide
 
 configs(OtherScala)
 
-libraryDependencies += "org.scala-lang" % "scala-compiler" % "2.11.1" % OtherScala.name
+libraryDependencies += "org.scala-lang" % "scala-compiler" % "2.11.8" % OtherScala.name
 
 managedClasspath in OtherScala := Classpaths.managedJars(OtherScala, classpathTypes.value, update.value)
 
@@ -13,7 +13,7 @@ scalaInstance := {
   val rawJars = (managedClasspath in OtherScala).value.map(_.data)
   val scalaHome = (target.value / "scala-home")
   def removeVersion(name: String): String =
-    name.replaceAll("\\-2.11.1", "")
+    name.replaceAll("\\-2.11.8", "")
   for(jar <- rawJars) {
     val tjar = scalaHome / s"lib/${removeVersion(jar.getName)}"
     IO.copyFile(jar, tjar)
@@ -27,6 +27,6 @@ libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.3.3" % "test"
 
-scalaVersion := "2.11.0"
+scalaVersion := "2.11.8"
 
 ivyScala := ivyScala.value map (_.withOverrideScalaVersion(sbtPlugin.value))
