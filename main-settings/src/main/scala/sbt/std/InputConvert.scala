@@ -73,7 +73,7 @@ object InitParserConvert extends Convert {
       case _                        => Converted.NotApplicable[c.type]
     }
 
-  private def wrap[T](c: blackbox.Context)(tree: c.Tree): Converted[c.type] = {
+  private def wrap[T: c.WeakTypeTag](c: blackbox.Context)(tree: c.Tree): Converted[c.type] = {
     val e = c.Expr[State => Parser[T]](tree)
     val t = c.universe.reify { Def.valueStrict[State => Parser[T]](e.splice) }
     Converted.Success[c.type](t.tree)
