@@ -1,8 +1,8 @@
 name := "foo"
 
-scalaVersion := "2.10.4"
+scalaVersion := "2.10.6"
 
-crossScalaVersions := List("2.10.4", "2.11.0")
+crossScalaVersions := List("2.10.6", "2.11.8")
 
 incOptions := incOptions.value.withClassfileManagerType(
   xsbti.Maybe.just(new xsbti.compile.TransactionalManagerType(

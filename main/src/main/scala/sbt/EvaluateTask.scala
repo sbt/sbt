@@ -4,8 +4,8 @@
 package sbt
 
 import sbt.internal.{ Load, BuildStructure, TaskTimings, TaskName, GCUtil }
-import sbt.internal.util.{ Attributed, ErrorHandling, HList, RMap, Show, Signals, Types }
-import sbt.util.Logger
+import sbt.internal.util.{ Attributed, ErrorHandling, HList, RMap, Signals, Types }
+import sbt.util.{ Logger, Show }
 import sbt.librarymanagement.{ Resolver, UpdateReport }
 
 import scala.concurrent.duration.Duration
@@ -288,12 +288,12 @@ object EvaluateTask {
       val msgString = (msg.toList ++ ex.toList.map(ErrorHandling.reducedToString)).mkString("\n\t")
       val log = getStreams(key, streams).log
       val display = contextDisplay(state, log.ansiCodesSupported)
-      log.error("(" + display(key) + ") " + msgString)
+      log.error("(" + display.show(key) + ") " + msgString)
     }
   }
   private[this] def contextDisplay(state: State, highlight: Boolean) = Project.showContextKey(state, if (highlight) Some(RED) else None)
   def suppressedMessage(key: ScopedKey[_])(implicit display: Show[ScopedKey[_]]): String =
-    "Stack trace suppressed.  Run 'last %s' for the full log.".format(display(key))
+    "Stack trace suppressed.  Run 'last %s' for the full log.".format(display.show(key))
 
   def getStreams(key: ScopedKey[_], streams: Streams): TaskStreams =
     streams(ScopedKey(Project.fillTaskAxis(key).scope, Keys.streams.key))

@@ -1,7 +1,6 @@
 val defaultSettings = Seq(
   scalaVersion := "2.10.6",
-  libraryDependencies += scalaVersion("org.scala-lang" % "scala-reflect" % _ ).value //,
-  //incOptions := incOptions.value.withNameHashing(true)
+  libraryDependencies += scalaVersion("org.scala-lang" % "scala-reflect" % _ ).value
 )
 
 lazy val root = (project in file(".")).

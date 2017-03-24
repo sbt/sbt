@@ -11,11 +11,11 @@ import Keys.{ stateBuildStructure, commands, configuration, historyPath, project
 import Scope.{ GlobalScope, ThisScope }
 import Def.{ Flattened, Initialize, ScopedKey, Setting }
 import sbt.internal.{ Load, BuildStructure, LoadedBuild, LoadedBuildUnit, SettingGraph, SettingCompletions, AddSettings, SessionSettings }
-import sbt.internal.util.{ AttributeKey, AttributeMap, Dag, Relation, Settings, Show, ~> }
+import sbt.internal.util.{ AttributeKey, AttributeMap, Dag, Relation, Settings, ~> }
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util.complete.DefaultParsers
 import sbt.librarymanagement.Configuration
-import sbt.util.Eval
+import sbt.util.{ Eval, Show }
 import sjsonnew.JsonFormat
 
 import language.experimental.macros
@@ -522,7 +522,7 @@ object Project extends ProjectExtra {
         if (scopes.isEmpty) ""
         else {
           val (limited, more) = if (scopes.size <= max) (scopes, "\n") else (scopes.take(max), "\n...\n")
-          limited.map(sk => prefix(sk) + display(sk)).mkString(label + ":\n\t", "\n\t", more)
+          limited.map(sk => prefix(sk) + display.show(sk)).mkString(label + ":\n\t", "\n\t", more)
         }
 
       data + "\n" +
@@ -543,7 +543,7 @@ object Project extends ProjectExtra {
   }
   def graphSettings(structure: BuildStructure, actual: Boolean, graphName: String, file: File)(implicit display: Show[ScopedKey[_]]): Unit = {
     val rel = relation(structure, actual)
-    val keyToString = display.apply _
+    val keyToString = display.show _
     DotGraph.generateGraph(file, graphName, rel, keyToString, keyToString)
   }
   def relation(structure: BuildStructure, actual: Boolean)(implicit display: Show[ScopedKey[_]]): Relation[ScopedKey[_], ScopedKey[_]] =
@@ -564,7 +564,7 @@ object Project extends ProjectExtra {
   def showUses(defs: Seq[ScopedKey[_]])(implicit display: Show[ScopedKey[_]]): String =
     showKeys(defs)
   private[this] def showKeys(s: Seq[ScopedKey[_]])(implicit display: Show[ScopedKey[_]]): String =
-    s.map(display.apply).sorted.mkString("\n\t", "\n\t", "\n\n")
+    s.map(display.show).sorted.mkString("\n\t", "\n\t", "\n\n")
 
   def definitions(structure: BuildStructure, actual: Boolean, key: AttributeKey[_])(implicit display: Show[ScopedKey[_]]): Seq[Scope] =
     relation(structure, actual)(display)._1s.toSeq flatMap { sk => if (sk.key == key) sk.scope :: Nil else Nil }

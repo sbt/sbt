@@ -5,7 +5,8 @@ import Project._
 import Scope.GlobalScope
 import Def.{ ScopedKey, Setting }
 import sbt.internal.util.complete.Parser
-import sbt.internal.util.{ AttributeKey, Show }
+import sbt.internal.util.AttributeKey
+import sbt.util.Show
 import std.Transform.DummyTaskMap
 
 final case class Extracted(structure: BuildStructure, session: SessionSettings, currentRef: ProjectRef)(implicit val showKey: Show[ScopedKey[_]]) {
@@ -96,9 +97,9 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
   private[this] def resolve[T](key: ScopedKey[T]): ScopedKey[T] =
     Project.mapScope(Scope.resolveScope(GlobalScope, currentRef.build, rootProject))(key.scopedKey)
   private def getOrError[T](scope: Scope, key: AttributeKey[_], value: Option[T])(implicit display: Show[ScopedKey[_]]): T =
-    value getOrElse sys.error(display(ScopedKey(scope, key)) + " is undefined.")
+    value getOrElse sys.error(display.show(ScopedKey(scope, key)) + " is undefined.")
   private def getOrError[T](scope: Scope, key: AttributeKey[T])(implicit display: Show[ScopedKey[_]]): T =
-    structure.data.get(scope, key) getOrElse sys.error(display(ScopedKey(scope, key)) + " is undefined.")
+    structure.data.get(scope, key) getOrElse sys.error(display.show(ScopedKey(scope, key)) + " is undefined.")
 
   def append(settings: Seq[Setting[_]], state: State): State =
     {

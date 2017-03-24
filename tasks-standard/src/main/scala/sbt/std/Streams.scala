@@ -23,7 +23,7 @@ import sbt.internal.io.DeferredWriter
 import sbt.io.IO
 import sbt.io.syntax._
 
-import sbt.util.Logger
+import sbt.internal.util.ManagedLogger
 
 import sjsonnew.{ IsoString, SupportConverter }
 import sbt.internal.util.{ CacheStoreFactory, DirectoryStoreFactory, Input, Output, PlainInput, PlainOutput }
@@ -76,10 +76,10 @@ sealed trait TaskStreams[Key] {
 
   // default logger
   /** Obtains the default logger. */
-  final lazy val log: Logger = log(default)
+  final lazy val log: ManagedLogger = log(default)
 
   /** Creates a Logger that logs to stream with ID `sid`.*/
-  def log(sid: String): Logger
+  def log(sid: String): ManagedLogger
 
   private[this] def getID(s: Option[String]) = s getOrElse default
 }
@@ -120,7 +120,7 @@ object Streams {
       synchronized { streams.values.foreach(_.close()); streams.clear() }
   }
 
-  def apply[Key, J: IsoString](taskDirectory: Key => File, name: Key => String, mkLogger: (Key, PrintWriter) => Logger, converter: SupportConverter[J]): Streams[Key] = new Streams[Key] {
+  def apply[Key, J: IsoString](taskDirectory: Key => File, name: Key => String, mkLogger: (Key, PrintWriter) => ManagedLogger, converter: SupportConverter[J]): Streams[Key] = new Streams[Key] {
 
     def apply(a: Key): ManagedStreams[Key] = new ManagedStreams[Key] {
       private[this] var opened: List[Closeable] = Nil
@@ -153,7 +153,7 @@ object Streams {
       lazy val cacheStoreFactory: CacheStoreFactory =
         new DirectoryStoreFactory(cacheDirectory, converter)
 
-      def log(sid: String): Logger = mkLogger(a, text(sid))
+      def log(sid: String): ManagedLogger = mkLogger(a, text(sid))
 
       def make[T <: Closeable](a: Key, sid: String)(f: File => T): T = synchronized {
         checkOpen()

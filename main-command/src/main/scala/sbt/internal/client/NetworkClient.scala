@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import scala.collection.mutable.ListBuffer
 import scala.util.control.NonFatal
 import sbt.protocol._
-import sbt.internal.util.{ JLine, ChannelLogEntry, ConsoleAppender }
+import sbt.internal.util.{ JLine, StringEvent, ConsoleAppender }
 import sbt.util.Level
 
 class NetworkClient(arguments: List[String]) { self =>
@@ -47,7 +47,7 @@ class NetworkClient(arguments: List[String]) { self =>
     val socket = new Socket(InetAddress.getByName(host), port)
     new ServerConnection(socket) {
       override def onEvent(event: EventMessage): Unit = self.onEvent(event)
-      override def onLogEntry(event: ChannelLogEntry): Unit = self.onLogEntry(event)
+      override def onLogEntry(event: StringEvent): Unit = self.onLogEntry(event)
       override def onShutdown(): Unit =
         {
           running.set(false)
@@ -55,7 +55,7 @@ class NetworkClient(arguments: List[String]) { self =>
     }
   }
 
-  def onLogEntry(event: ChannelLogEntry): Unit =
+  def onLogEntry(event: StringEvent): Unit =
     {
       val level = event.level match {
         case "debug" => Level.Debug

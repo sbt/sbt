@@ -1,8 +1,8 @@
 package sbt
 package internal
 
-import sbt.internal.util.{ AttributeKey, complete, Relation, Settings, Show, Types, Util }
-
+import sbt.internal.util.{ AttributeKey, complete, Relation, Settings, Types, Util }
+import sbt.util.Show
 import sbt.librarymanagement.Configuration
 
 import Project._
@@ -71,7 +71,7 @@ private[sbt] object SettingCompletions {
   private[this] def setSummary(redefined: Set[ScopedKey[_]], affected: Set[ScopedKey[_]], verbose: Boolean)(implicit display: Show[ScopedKey[_]]): String =
     {
       val QuietLimit = 3
-      def strings(in: Set[ScopedKey[_]]): Seq[String] = in.toSeq.map(sk => display(sk)).sorted
+      def strings(in: Set[ScopedKey[_]]): Seq[String] = in.toSeq.map(sk => display.show(sk)).sorted
       def lines(in: Seq[String]): (String, Boolean) =
         if (in.isEmpty)
           ("no settings or tasks.", false)

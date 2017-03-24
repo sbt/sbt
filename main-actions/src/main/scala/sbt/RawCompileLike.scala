@@ -18,9 +18,10 @@ import sbt.internal.util.FileInfo.{ exists, hash, lastModified }
 import xsbti.compile.ClasspathOptions
 
 import sbt.util.Logger
+import sbt.internal.util.ManagedLogger
 
 object RawCompileLike {
-  type Gen = (Seq[File], Seq[File], File, Seq[String], Int, Logger) => Unit
+  type Gen = (Seq[File], Seq[File], File, Seq[String], Int, ManagedLogger) => Unit
 
   private def optionFiles(options: Seq[String], fileInputOpts: Seq[String]): List[File] =
     {

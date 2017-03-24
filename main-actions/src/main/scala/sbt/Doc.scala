@@ -15,6 +15,7 @@ import xsbti.Reporter
 import xsbti.compile.JavaTools
 
 import sbt.util.Logger
+import sbt.internal.util.ManagedLogger
 
 object Doc {
   import RawCompileLike._
@@ -36,16 +37,16 @@ object Doc {
   val javaSourcesOnly: File => Boolean = _.getName.endsWith(".java")
 
   private[sbt] final class Scaladoc(maximumErrors: Int, compiler: AnalyzingCompiler) extends Doc {
-    def apply(label: String, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger): Unit = {
+    def apply(label: String, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: ManagedLogger): Unit = {
       generate("Scala", label, compiler.doc, sources, classpath, outputDirectory, options, maximumErrors, log)
     }
   }
 }
 
 sealed trait Doc {
-  type Gen = (Seq[File], Seq[File], File, Seq[String], Int, Logger) => Unit
+  type Gen = (Seq[File], Seq[File], File, Seq[String], Int, ManagedLogger) => Unit
 
-  private[sbt] final def generate(variant: String, label: String, docf: Gen, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], maxErrors: Int, log: Logger): Unit = {
+  private[sbt] final def generate(variant: String, label: String, docf: Gen, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], maxErrors: Int, log: ManagedLogger): Unit = {
     val logSnip = variant + " API documentation"
     if (sources.isEmpty)
       log.info("No sources available, skipping " + logSnip + "...")
