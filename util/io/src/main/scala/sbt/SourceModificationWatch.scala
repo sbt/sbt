@@ -8,6 +8,11 @@ import annotation.tailrec
 object SourceModificationWatch {
   @tailrec def watch(sourcesFinder: PathFinder, pollDelayMillis: Int, state: WatchState)(terminationCondition: => Boolean): (Boolean, WatchState) =
     {
+      if (pollDelayMillis < 1000) {
+        throw new IllegalArgumentException(
+            "pollDelayMillis must be at least 1000 since many filesystems only support second-level granularity for last-modification time")
+      }
+
       import state._
 
       val sourceFiles: Iterable[java.io.File] = sourcesFinder.get
