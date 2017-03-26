@@ -1039,6 +1039,17 @@ final case class Resolution(
   def dependencyClassifiersArtifacts(classifiers: Seq[String]): Seq[(Dependency, Artifact)] =
     dependencyArtifacts0(Some(classifiers))
 
+  /**
+    * Returns errors on dependencies
+    * @return errors
+    */
+  def metadataErrors: Seq[(ModuleVersion, Seq[String])] = errorCache.toSeq
+
+  /**
+    * Returns errors on dependencies, but that don't have POM-related errors
+    * @return errors
+    */
+  @deprecated("use metadataErrors instead")
   def errors: Seq[(Dependency, Seq[String])] =
     for {
       dep <- dependencies.toSeq
