@@ -54,7 +54,7 @@ object CacheFetchTests extends TestSuite {
       cleanTmpDir()
     }
 
-    val errors = res.errors
+    val errors = res.metadataErrors
 
     assert(errors.isEmpty)
   }
