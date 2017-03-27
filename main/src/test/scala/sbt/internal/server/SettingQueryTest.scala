@@ -173,6 +173,10 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
     "t/startYear"      in qok("null", "scala.Option[Int]")
     "t/scalaArtifacts" in qok("""["scala-library","scala-compiler","scala-reflect","scala-actors","scalap"]""", "scala.collection.Seq[java.lang.String]")
 
+    "t/libraryDependencies" in qok(
+      """[{"organization":"org.scala-lang","name":"scala-library","revision":"2.12.1","isChanging":false,"isTransitive":true,"isForce":false,"crossVersion":{"type":"Disabled"}}]""",
+      "scala.collection.Seq[sbt.librarymanagement.ModuleID]")
+
     "scalaVersion"    in qko("Not a valid project ID: scalaVersion\\nscalaVersion\\n            ^")
     "t/scalacOptions" in qko(s"Key {$baseUri}t/compile:scalacOptions is a task, can only query settings")
     "t/fooo"          in qko("Expected ':' (if selecting a configuration)\\nNot a valid key: fooo (similar: fork)\\nt/fooo\\n      ^")
