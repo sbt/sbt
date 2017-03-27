@@ -25,7 +25,7 @@ object InitializeConvert extends Convert {
       case _                                                         => Converted.NotApplicable
     }
 
-  private def convert[T](c: blackbox.Context)(in: c.Tree): Converted[c.type] =
+  private def convert[T: c.WeakTypeTag](c: blackbox.Context)(in: c.Tree): Converted[c.type] =
     {
       val i = c.Expr[Initialize[T]](in)
       val t = c.universe.reify(i.splice).tree

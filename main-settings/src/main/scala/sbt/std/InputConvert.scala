@@ -48,13 +48,13 @@ object FullConvert extends Convert {
       case _                => Converted.NotApplicable[c.type]
     }
 
-  private def wrapInit[T](c: blackbox.Context)(tree: c.Tree): Converted[c.type] = {
+  private def wrapInit[T: c.WeakTypeTag](c: blackbox.Context)(tree: c.Tree): Converted[c.type] = {
     val i = c.Expr[Initialize[T]](tree)
     val t = c.universe.reify(Def.toITask(i.splice)).tree
     Converted.Success[c.type](t)
   }
 
-  private def wrapTask[T](c: blackbox.Context)(tree: c.Tree): Converted[c.type] = {
+  private def wrapTask[T: c.WeakTypeTag](c: blackbox.Context)(tree: c.Tree): Converted[c.type] = {
     val i = c.Expr[Task[T]](tree)
     val t = c.universe.reify(Def.valueStrict[Task[T]](i.splice)).tree
     Converted.Success[c.type](t)
