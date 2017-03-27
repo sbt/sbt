@@ -468,6 +468,13 @@ object CentralTests extends TestSuite {
       )
     }
 
+    'ignoreWhitespaces - {
+      resolutionCheck(
+        Module("org.jboss.resteasy", "resteasy-jaxrs"),
+        "3.0.9.Final"
+      )
+    }
+
     'nd4jNative - {
       // In particular:
       // - uses OS-based activation,

@@ -7,9 +7,18 @@ import scalaz._
 object Pom {
   import coursier.util.Xml._
 
+  /**
+    * Returns either a property's key-value pair or an error if the elem is not an element.
+    *
+    * This method trims all spaces, whereas Maven has an option to preserve them.
+    *
+    * @param elem a property element
+    * @return the key and the value of the property
+    * @see [[https://issues.apache.org/jira/browse/MNG-5380]]
+    */
   def property(elem: Node): String \/ (String, String) = {
     // Not matching with Text, which fails on scala-js if the property value has xml comments
-    if (elem.isElement) \/-(elem.label -> elem.textContent)
+    if (elem.isElement) \/-(elem.label -> elem.textContent.trim)
     else -\/(s"Can't parse property $elem")
   }
 
