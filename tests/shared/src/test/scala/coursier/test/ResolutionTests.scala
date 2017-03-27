@@ -50,6 +50,10 @@ object ResolutionTests extends TestSuite {
         "" -> Dependency(Module("acme", "play"), "2.4.1",
           exclusions = Set(("*", "config"))))),
 
+    Project(Module("acme", "module-with-missing-pom"), "1.0.0",
+      dependencyManagement = Seq(
+        "import" -> Dependency(Module("acme", "missing-pom"), "1.0.0"))),
+
     Project(Module("hudsucker", "mail"), "10.0",
       Seq(
         "test" -> Dependency(Module("${project.groupId}", "test-util"), "${project.version}"))),
@@ -226,6 +230,20 @@ object ResolutionTests extends TestSuite {
         )
 
         assert(res == expected)
+      }
+    }
+    'missingPom{
+      async {
+        val dep = Dependency(Module("acme", "module-with-missing-pom"), "1.0.0")
+        val res = await(resolve0(
+          Set(dep)
+        ))
+
+        // A missing POM dependency is not reported correctly. That's why the method is deprecated.
+        assert(res.errors == Seq.empty)
+
+        // metadataErrors have that
+        assert(res.metadataErrors == Seq((Module("acme", "missing-pom"), "1.0.0") -> List("Not found")))
       }
     }
     'single{

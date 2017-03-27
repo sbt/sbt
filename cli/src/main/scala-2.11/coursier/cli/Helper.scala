@@ -467,13 +467,13 @@ class Helper(
     errPrintln("\nMaximum number of iterations reached!")
   }
 
-  if (res.errors.nonEmpty) {
+  if (res.metadataErrors.nonEmpty) {
     anyError = true
     errPrintln(
-      s"\nError:\n" +
-      res.errors.map {
-        case (dep, errs) =>
-          s"  ${dep.module}:${dep.version}:\n${errs.map("    " + _.replace("\n", "    \n")).mkString("\n")}"
+      "\nError:\n" +
+      res.metadataErrors.map {
+        case ((module, version), errors) =>
+          s"  $module:$version\n${errors.map("    " + _.replace("\n", "    \n")).mkString("\n")}"
       }.mkString("\n")
     )
   }
