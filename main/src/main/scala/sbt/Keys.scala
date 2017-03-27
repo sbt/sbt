@@ -34,6 +34,7 @@ import sbt.internal.io.WatchState
 import sbt.internal.util.{ AttributeKey, CacheStore, SourcePosition }
 
 import sbt.librarymanagement.Configurations.CompilerPlugin
+import sbt.librarymanagement.LibraryManagementCodec._
 import sbt.librarymanagement.{
   Artifact,
   Configuration,

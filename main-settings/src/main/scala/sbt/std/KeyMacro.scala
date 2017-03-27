@@ -4,10 +4,12 @@ package std
 import scala.annotation.tailrec
 import scala.reflect.macros._
 
+import sbt.util.OptJsonWriter
+
 private[sbt] object KeyMacro {
   def settingKeyImpl[T: c.WeakTypeTag](c: blackbox.Context)(description: c.Expr[String]): c.Expr[SettingKey[T]] =
-    keyImpl[T, SettingKey[T]](c) { (name, mf) =>
-      c.universe.reify { SettingKey[T](name.splice, description.splice)(mf.splice) }
+    keyImpl2[T, SettingKey[T]](c) { (name, mf, ojw) =>
+      c.universe.reify { SettingKey[T](name.splice, description.splice)(mf.splice, ojw.splice) }
     }
   def taskKeyImpl[T: c.WeakTypeTag](c: blackbox.Context)(description: c.Expr[String]): c.Expr[TaskKey[T]] =
     keyImpl[T, TaskKey[T]](c) { (name, mf) =>
@@ -22,6 +24,11 @@ private[sbt] object KeyMacro {
     f: (c.Expr[String], c.Expr[Manifest[T]]) => c.Expr[S]
   ): c.Expr[S] =
     f(getName(c), getImplicit[Manifest[T]](c))
+
+  private def keyImpl2[T: c.WeakTypeTag, S: c.WeakTypeTag](c: blackbox.Context)(
+    f: (c.Expr[String], c.Expr[Manifest[T]], c.Expr[OptJsonWriter[T]]) => c.Expr[S]
+  ): c.Expr[S] =
+    f(getName(c), getImplicit[Manifest[T]](c), getImplicit[OptJsonWriter[T]](c))
 
   private def getName[S: c.WeakTypeTag, T: c.WeakTypeTag](c: blackbox.Context): c.Expr[String] = {
     import c.universe._

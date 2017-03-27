@@ -3,19 +3,20 @@
  */
 package sbt
 
-/** An abstraction on top of Settings for build configuration and task definition. */
+import scala.language.experimental.macros
 
 import java.io.File
 
-import ConcurrentRestrictions.Tag
-import Def.{ Initialize, KeyedInitialize, ScopedKey, Setting, setting }
 import sbt.io.{ FileFilter, PathFinder }
 import sbt.io.syntax._
-import std.TaskExtra.{ task => mktask, _ }
 import sbt.internal.util.Types._
 import sbt.internal.util.{ ~>, AList, AttributeKey, Settings, SourcePosition }
+import sbt.util.OptJsonWriter
+import sbt.ConcurrentRestrictions.Tag
+import sbt.Def.{ Initialize, KeyedInitialize, ScopedKey, Setting, setting }
+import std.TaskExtra.{ task => mktask, _ }
 
-import language.experimental.macros
+/** An abstraction on top of Settings for build configuration and task definition. */
 
 sealed trait Scoped { def scope: Scope; val key: AttributeKey[_] }
 
@@ -471,17 +472,17 @@ object TaskKey {
 
 /** Constructs SettingKeys, which are associated with a value to define a basic setting.*/
 object SettingKey {
-  def apply[T: Manifest](label: String, description: String = "", rank: Int = KeyRanks.DefaultSettingRank): SettingKey[T] =
+  def apply[T: Manifest: OptJsonWriter](label: String, description: String = "", rank: Int = KeyRanks.DefaultSettingRank): SettingKey[T] =
     apply(AttributeKey[T](label, description, rank))
 
-  def apply[T: Manifest](label: String, description: String, extend1: Scoped, extendN: Scoped*): SettingKey[T] =
+  def apply[T: Manifest: OptJsonWriter](label: String, description: String, extend1: Scoped, extendN: Scoped*): SettingKey[T] =
     apply(AttributeKey[T](label, description, extendScoped(extend1, extendN)))
 
-  def apply[T: Manifest](label: String, description: String, rank: Int, extend1: Scoped, extendN: Scoped*): SettingKey[T] =
+  def apply[T: Manifest: OptJsonWriter](label: String, description: String, rank: Int, extend1: Scoped, extendN: Scoped*): SettingKey[T] =
     apply(AttributeKey[T](label, description, extendScoped(extend1, extendN), rank))
 
   def apply[T](akey: AttributeKey[T]): SettingKey[T] =
     new SettingKey[T] { val key = akey; def scope = Scope.ThisScope }
 
-  def local[T: Manifest]: SettingKey[T] = apply[T](AttributeKey.local[T])
+  def local[T: Manifest: OptJsonWriter]: SettingKey[T] = apply[T](AttributeKey.local[T])
 }
