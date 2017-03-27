@@ -79,7 +79,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierArtifactsChecksums := Seq(None),
     coursierCachePolicies := CachePolicy.default,
     coursierTtl := Cache.defaultTtl,
-    coursierVerbosity := Settings.defaultVerbosityLevel,
+    coursierVerbosity := Settings.defaultVerbosityLevel(sLog.value),
     mavenProfiles := Set.empty,
     coursierResolvers <<= Tasks.coursierResolversTask,
     coursierRecursiveResolvers <<= Tasks.coursierRecursiveResolversTask,

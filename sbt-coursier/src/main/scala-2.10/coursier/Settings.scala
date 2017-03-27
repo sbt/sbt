@@ -1,5 +1,7 @@
 package coursier
 
+import sbt.Logger
+
 import scala.util.{Failure, Success, Try}
 
 object Settings {
@@ -10,7 +12,7 @@ object Settings {
     else
       1
 
-  def defaultVerbosityLevel: Int = {
+  def defaultVerbosityLevel(logger: Logger): Int = {
 
     def fromOption(value: Option[String], description: String): Option[Int] =
       value.filter(_.nonEmpty).flatMap {
@@ -18,8 +20,8 @@ object Settings {
           Try(str.toInt) match {
             case Success(level) => Some(level)
             case Failure(ex) =>
-              Console.err.println(
-                s"Warning: unrecognized $description value (should be an integer), ignoring it."
+              logger.warn(
+                s"unrecognized $description value (should be an integer), ignoring it."
               )
               None
           }
