@@ -1,7 +1,8 @@
 package sbt
 package std
 
-import reflect.macros._
+import scala.annotation.tailrec
+import scala.reflect.macros._
 
 private[sbt] object KeyMacro {
   def settingKeyImpl[T: c.WeakTypeTag](c: blackbox.Context)(description: c.Expr[String]): c.Expr[SettingKey[T]] =
@@ -17,20 +18,28 @@ private[sbt] object KeyMacro {
       c.universe.reify { InputKey[T](name.splice, description.splice)(mf.splice) }
     }
 
-  def keyImpl[T: c.WeakTypeTag, S: c.WeakTypeTag](c: blackbox.Context)(f: (c.Expr[String], c.Expr[Manifest[T]]) => c.Expr[S]): c.Expr[S] =
-    {
-      import c.universe._
-      val enclosingValName = definingValName(c, methodName => s"""$methodName must be directly assigned to a val, such as `val x = $methodName[Int]("description")`.""")
-      val name = c.Expr[String](Literal(Constant(enclosingValName)))
-      val mf = c.Expr[Manifest[T]](c.inferImplicitValue(weakTypeOf[Manifest[T]]))
-      f(name, mf)
-    }
+  def keyImpl[T: c.WeakTypeTag, S: c.WeakTypeTag](c: blackbox.Context)(
+    f: (c.Expr[String], c.Expr[Manifest[T]]) => c.Expr[S]
+  ): c.Expr[S] =
+    f(getName(c), getImplicit[Manifest[T]](c))
+
+  private def getName[S: c.WeakTypeTag, T: c.WeakTypeTag](c: blackbox.Context): c.Expr[String] = {
+    import c.universe._
+    val enclosingValName = definingValName(c, methodName => s"""$methodName must be directly assigned to a val, such as `val x = $methodName[Int]("description")`.""")
+    c.Expr[String](Literal(Constant(enclosingValName)))
+  }
+
+  private def getImplicit[T: c.WeakTypeTag](c: blackbox.Context): c.Expr[T] = {
+    import c.universe._
+    c.Expr[T](c.inferImplicitValue(weakTypeOf[T]))
+  }
+
   def definingValName(c: blackbox.Context, invalidEnclosingTree: String => String): String =
     {
       import c.universe.{ Apply => ApplyTree, _ }
       val methodName = c.macroApplication.symbol.name
       def processName(n: Name): String = n.decodedName.toString.trim // trim is not strictly correct, but macros don't expose the API necessary
-      def enclosingVal(trees: List[c.Tree]): String =
+      @tailrec def enclosingVal(trees: List[c.Tree]): String =
         {
           trees match {
             case vd @ ValDef(_, name, _, _) :: ts                                               => processName(name)
@@ -44,6 +53,7 @@ private[sbt] object KeyMacro {
         }
       enclosingVal(enclosingTrees(c).toList)
     }
+
   def enclosingTrees(c: blackbox.Context): Seq[c.Tree] =
     c.asInstanceOf[reflect.macros.runtime.Context].callsiteTyper.context.enclosingContextChain.map(_.tree.asInstanceOf[c.Tree])
 }
