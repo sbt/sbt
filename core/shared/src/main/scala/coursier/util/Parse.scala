@@ -13,7 +13,7 @@ object Parse {
 
   private def defaultScalaVersion = scala.util.Properties.versionNumberString
 
-  @deprecated("use the variant accepting a default scala version")
+  @deprecated("use the variant accepting a default scala version", "1.0.0-M13")
   def module(s: String): Either[String, Module] =
     module(s, defaultScalaVersion)
 
@@ -71,7 +71,7 @@ object Parse {
     (errors, values)
   }
 
-  @deprecated("use the variant accepting a default scala version")
+  @deprecated("use the variant accepting a default scala version", "1.0.0-M13")
   def modules(l: Seq[String]): (Seq[String], Seq[Module]) =
     modules(l, defaultScalaVersion)
 
@@ -83,7 +83,7 @@ object Parse {
   def modules(l: Seq[String], defaultScalaVersion: String): (Seq[String], Seq[Module]) =
     valuesAndErrors(module(_, defaultScalaVersion), l)
 
-  @deprecated("use the variant accepting a default scala version")
+  @deprecated("use the variant accepting a default scala version", "1.0.0-M13")
   def moduleVersion(s: String): Either[String, (Module, String)] =
     moduleVersion(s, defaultScalaVersion)
 
@@ -113,7 +113,7 @@ object Parse {
     }
   }
 
-  @deprecated("use the variant accepting a default scala version")
+  @deprecated("use the variant accepting a default scala version", "1.0.0-M13")
   def moduleVersionConfig(s: String): Either[String, (Module, String, Option[String])] =
     moduleVersionConfig(s, defaultScalaVersion)
 
@@ -157,7 +157,7 @@ object Parse {
     }
   }
 
-  @deprecated("use the variant accepting a default scala version")
+  @deprecated("use the variant accepting a default scala version", "1.0.0-M13")
   def moduleVersions(l: Seq[String]): (Seq[String], Seq[(Module, String)]) =
     moduleVersions(l, defaultScalaVersion)
 
@@ -169,7 +169,7 @@ object Parse {
   def moduleVersions(l: Seq[String], defaultScalaVersion: String): (Seq[String], Seq[(Module, String)]) =
     valuesAndErrors(moduleVersion(_, defaultScalaVersion), l)
 
-  @deprecated("use the variant accepting a default scala version")
+  @deprecated("use the variant accepting a default scala version", "1.0.0-M13")
   def moduleVersionConfigs(l: Seq[String]): (Seq[String], Seq[(Module, String, Option[String])]) =
     moduleVersionConfigs(l, defaultScalaVersion)
 

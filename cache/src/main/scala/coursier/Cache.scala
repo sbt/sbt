@@ -1024,7 +1024,7 @@ object Cache {
 
     def downloadingArtifact(url: String, file: File): Unit = {}
 
-    @deprecated("Use / override the variant with 3 arguments instead")
+    @deprecated("Use / override the variant with 3 arguments instead", "1.0.0-M10")
     def downloadLength(url: String, length: Long): Unit = {}
     def downloadLength(url: String, totalLength: Long, alreadyDownloaded: Long): Unit = {
       downloadLength(url, totalLength)
