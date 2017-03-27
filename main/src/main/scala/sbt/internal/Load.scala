@@ -699,7 +699,7 @@ private[sbt] object Load {
    *                     sbt file to resolve a project.
    * @param log  A logger to report auto-plugin issues to.
    */
-  private[this] def resolveProject(
+  private[sbt] def resolveProject(
     p: Project,
     projectPlugins: Seq[AutoPlugin],
     loadedPlugins: LoadedPlugins,
