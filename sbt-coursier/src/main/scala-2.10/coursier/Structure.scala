@@ -6,12 +6,11 @@ import scala.language.implicitConversions
 
 // things from sbt-structure
 object Structure {
-  import Def.Initialize._
 
-  def structure(state: State): Load.BuildStructure =
+  def structure(state: State): BuildStructure =
     sbt.Project.structure(state)
 
-  implicit def `enrich SettingKey`[T](key: SettingKey[T]) = new {
+  implicit class `enrich SettingKey`[T](key: SettingKey[T]) {
     def find(state: State): Option[T] =
       key.get(structure(state).data)
 
@@ -22,7 +21,7 @@ object Structure {
       find(state).getOrElse(default)
   }
 
-  implicit def `enrich TaskKey`[T](key: TaskKey[T]) = new {
+  implicit class `enrich TaskKey`[T](key: TaskKey[T]) {
     def find(state: State): Option[sbt.Task[T]] =
       key.get(structure(state).data)
 
@@ -31,11 +30,6 @@ object Structure {
 
     def forAllProjects(state: State, projects: Seq[ProjectRef]): sbt.Task[Map[ProjectRef, T]] = {
       val tasks = projects.flatMap(p => key.in(p).get(structure(state).data).map(_.map(it => (p, it))))
-      std.TaskExtra.joinTasks(tasks).join.map(_.toMap)
-    }
-
-    def forAllConfigurations(state: State, configurations: Seq[sbt.Configuration]): sbt.Task[Map[sbt.Configuration, T]] = {
-      val tasks = configurations.flatMap(c => key.in(c).get(structure(state).data).map(_.map(it => (c, it))))
       std.TaskExtra.joinTasks(tasks).join.map(_.toMap)
     }
   }

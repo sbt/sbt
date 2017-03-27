@@ -308,8 +308,8 @@ lazy val cli = project
 
             def zipEntries(zipStream: ZipInputStream): Iterator[(ZipEntry, Array[Byte])] =
               new Iterator[(ZipEntry, Array[Byte])] {
-                var nextEntry = Option.empty[ZipEntry]
-                def update() =
+                private var nextEntry = Option.empty[ZipEntry]
+                private def update() =
                   nextEntry = Option(zipStream.getNextEntry)
 
                 update()
@@ -623,12 +623,14 @@ lazy val scalaVersionAgnosticCommonSettings = Seq(
     Resolver.sonatypeRepo("releases")
   ),
   scalacOptions ++= {
-    scalaBinaryVersion.value match {
+    val targetJvm = scalaBinaryVersion.value match {
       case "2.10" | "2.11" =>
         Seq("-target:jvm-1.6")
       case _ =>
         Seq()
     }
+
+    targetJvm ++ Seq("-feature", "-deprecation")
   },
   javacOptions ++= {
     scalaBinaryVersion.value match {

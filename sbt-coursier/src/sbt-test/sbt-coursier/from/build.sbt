@@ -14,7 +14,7 @@ libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.41" from {
   if (!f.exists()) {
     val url0 = "https://repo1.maven.org/maven2/com/chuusai/shapeless_2.11/2.3.0/shapeless_2.11-2.3.0.jar"
 
-    scala.Console.err.println(s"Fetching $url0")
+    sLog.value.warn(s"Fetching $url0")
 
     val url = new java.net.URL(url0)
 
