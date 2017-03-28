@@ -14,3 +14,4 @@ Migration notes
 - Log options `-error`, `-warn`, `-info`, `-debug` are added as shorthand for `"early(error)"` etc.
 - `sbt.Process` and `sbt.ProcessExtra` are gone. Use `scala.sys.process` instead.
 - `incOptions.value.withNameHashing(...)` option is removed.
+- the scripted plugin is cross-versioned now, so you must use %% when depending on it
