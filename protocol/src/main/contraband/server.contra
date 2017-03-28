@@ -40,8 +40,15 @@ type ExecStatusEvent implements EventMessage {
   commandQueue: [String]
 }
 
-type SettingQueryResponse implements EventMessage {
-  value: String!
+interface SettingQueryResponse implements EventMessage {}
+
+type SettingQuerySuccess implements SettingQueryResponse {
+  value: scala.json.ast.unsafe.JValue!
+  contentType: String!
+}
+
+type SettingQueryFailure implements SettingQueryResponse {
+  message: String!
 }
 
 # enum Status {

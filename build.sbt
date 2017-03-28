@@ -181,7 +181,8 @@ lazy val protocolProj = (project in file("protocol")).
     testedBaseSettings,
     name := "Protocol",
     libraryDependencies ++= Seq(sjsonNewScalaJson),
-    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala"
+    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
+    contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats
   ).
   configure(addSbtUtilLogging)
 
@@ -211,6 +212,7 @@ lazy val mainSettingsProj = (project in file("main-settings")).
 // The main integration project for sbt.  It brings all of the projects together, configures them, and provides for overriding conventions.
 lazy val mainProj = (project in file("main")).
   dependsOn(actionsProj, mainSettingsProj, runProj, commandProj).
+  disablePlugins(SbtScalariform).
   settings(
     testedBaseSettings,
     name := "Main",
