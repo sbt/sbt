@@ -23,7 +23,7 @@ object Docs {
   def ghPagesSettings = ghpages.settings ++ Seq(
     git.remoteRepo := "git@github.com:sbt/sbt.github.com.git",
     localRepoDirectory,
-    ghkeys.synchLocal <<= synchLocalImpl,
+    ghkeys.synchLocal := synchLocalImpl.value,
     GitKeys.gitBranch in ghkeys.updatedRepository := Some("master")
   )
 
@@ -35,14 +35,15 @@ object Docs {
   }
 
   def siteIncludeSxr(prefix: String) = Seq(
-    mappings in sxr <<= sxr.map(dir => Path.allSubpaths(dir).toSeq)
+    mappings in sxr := Path.allSubpaths(sxr.value).toSeq
   ) ++ site.addMappingsToSiteDir(mappings in sxr, prefix)
 
-  def synchLocalImpl = (ghkeys.privateMappings, ghkeys.updatedRepository, version, streams) map {
-    (mappings, repo, v, s) =>
-      val versioned = repo / v
+  def synchLocalImpl = Def task {
+      val repo = ghkeys.updatedRepository.value
+      val versioned = repo / version.value
       IO.delete(versioned / "sxr")
       IO.delete(versioned / "api")
+      val mappings = ghkeys.privateMappings.value
       val toCopy = for ((file, target) <- mappings if siteInclude(file)) yield (file, versioned / target)
       IO.copy(toCopy)
       repo

@@ -17,12 +17,15 @@ object Transform {
   lazy val conscriptConfigs = TaskKey[Unit]("conscript-configs")
 
   def conscriptSettings(launch: Reference) = Seq(
-    conscriptConfigs <<= (managedResources in launch in Compile, sourceDirectory in Compile).map { (res, src) =>
+    conscriptConfigs := {
+      val res = (managedResources in launch in Compile).value
+      val src = (sourceDirectory in Compile).value
       val source = res.find(_.getName == "sbt.boot.properties") getOrElse sys.error("No managed boot.properties file.")
       copyConscriptProperties(source, src / "conscript")
       ()
     }
   )
+
   def copyConscriptProperties(source: File, conscriptBase: File): Seq[File] =
     {
       IO.delete(conscriptBase)
@@ -47,33 +50,42 @@ object Transform {
   )
   def transSourceSettings = Seq(
     inputSourceDirectory := sourceDirectory.value / "input_sources",
-    inputSourceDirectories <<= Seq(inputSourceDirectory).join,
-    inputSources <<= inputSourceDirectories.map(dirs => (dirs ** (-DirectoryFilter)).get),
-    fileMappings in transformSources <<= transformSourceMappings,
-    transformSources <<= (fileMappings in transformSources, sourceProperties) map { (rs, props) =>
+    inputSourceDirectories := Seq(inputSourceDirectory.value),
+    inputSources := (inputSourceDirectories.value ** (-DirectoryFilter)).get,
+    fileMappings in transformSources := transformSourceMappings.value,
+    transformSources := {
+      val rs = (fileMappings in transformSources).value
+      val props = sourceProperties.value
       rs map { case (in, out) => transform(in, out, props) }
     },
-    sourceGenerators <+= transformSources
+    sourceGenerators += transformSources.taskValue
   )
-  def transformSourceMappings = (inputSources, inputSourceDirectories, sourceManaged) map { (ss, sdirs, sm) =>
+  def transformSourceMappings = Def task {
+    val ss = inputSources.value
+    val sdirs = inputSourceDirectories.value
+    val sm = sourceManaged.value
     ((ss --- sdirs) pair (rebase(sdirs, sm) | flat(sm))).toSeq
   }
   def configSettings = transResourceSettings ++ Seq(
-    resourceProperties <<= (organization, version, scalaVersion, isSnapshot) map { (org, v, sv, isSnapshot) =>
-      Map("org" -> org, "sbt.version" -> v, "scala.version" -> sv)
-    }
+    resourceProperties :=
+      Map("org" -> organization.value, "sbt.version" -> version.value, "scala.version" -> scalaVersion.value)
   )
   def transResourceSettings = Seq(
     inputResourceDirectory := sourceDirectory.value / "input_resources",
-    inputResourceDirectories <<= Seq(inputResourceDirectory).join,
-    inputResources <<= inputResourceDirectories.map(dirs => (dirs ** (-DirectoryFilter)).get),
-    fileMappings in transformResources <<= transformResourceMappings,
-    transformResources <<= (fileMappings in transformResources, resourceProperties) map { (rs, props) =>
+    inputResourceDirectories := Seq(inputResourceDirectory.value),
+    inputResources := (inputResourceDirectories.value ** (-DirectoryFilter)).get,
+    fileMappings in transformResources := transformResourceMappings.value,
+    transformResources := {
+      val rs = (fileMappings in transformResources).value
+      val props = resourceProperties.value
       rs map { case (in, out) => transform(in, out, props) }
     },
-    resourceGenerators <+= transformResources
+    resourceGenerators += transformResources.taskValue
   )
-  def transformResourceMappings = (inputResources, inputResourceDirectories, resourceManaged) map { (rs, rdirs, rm) =>
+  def transformResourceMappings = Def task {
+    val rs = inputResources.value
+    val rdirs = inputResourceDirectories.value
+    val rm = resourceManaged.value
     ((rs --- rdirs) pair (rebase(rdirs, rm) | flat(rm))).toSeq
   }
 
