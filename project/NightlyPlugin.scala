@@ -3,22 +3,18 @@ import Keys._
 import Dependencies._
 
 object NightlyPlugin extends AutoPlugin {
-  import autoImport._
-
   override def trigger = allRequirements
   override def requires = plugins.JvmPlugin
-  object autoImport {
-    lazy val includeTestDependencies = SettingKey[Boolean]("includeTestDependencies", "Doesn't declare test dependencies.")
 
-    def testDependencies = libraryDependencies <++= includeTestDependencies { incl =>
-      if (incl) Seq(
-        scalaCheck % Test,
-        specs2 % Test,
-        junit % Test
-      )
+  object autoImport {
+    val includeTestDependencies = settingKey[Boolean]("Doesn't declare test dependencies.")
+
+    def testDependencies = libraryDependencies ++= (
+      if (includeTestDependencies.value) Seq(scalaCheck % Test, specs2 % Test, junit % Test)
       else Seq()
-    }
+    )
   }
+  import autoImport._
 
   override def buildSettings: Seq[Setting[_]] = Seq(
     // Avoid 2.12.x nightlies

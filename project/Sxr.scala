@@ -18,21 +18,21 @@ object Sxr {
     scalacOptions += "-Xplugin:" + managedClasspath.value.files.filter(_.getName.contains("sxr")).absString,
     scalacOptions += "-Ystop-after:sxr",
     target := target.in(taskGlobal).value / "browse",
-    sxr in taskGlobal <<= sxrTask
+    sxr in taskGlobal := sxrTask.value
   )
   def taskGlobal = ThisScope.copy(task = Global)
-  def sxrTask = (sources, target, scalacOptions, classpathOptions, scalaInstance, fullClasspath, streams) map { (srcs, out, opts, cpOpts, si, cp, s) =>
-    val cache = s.cacheDirectory
+  def sxrTask = Def task {
+    val out = target.value
     val outputDir = out.getParentFile / (out.getName + ".sxr")
-    val f = FileFunction.cached(cache / "sxr", FilesInfo.hash) { in =>
-      s.log.info("Generating sxr output in " + outputDir.getAbsolutePath + "...")
+    val f = FileFunction.cached(streams.value.cacheDirectory / "sxr", FilesInfo.hash) { in =>
+      streams.value.log.info("Generating sxr output in " + outputDir.getAbsolutePath + "...")
       IO.delete(out)
       IO.createDirectory(out)
-      val comp = new compiler.RawCompiler(si, cpOpts, s.log)
-      comp(in.toSeq.sorted, cp.files, out, opts)
+      val comp = new compiler.RawCompiler(scalaInstance.value, classpathOptions.value, streams.value.log)
+      comp(in.toSeq.sorted, fullClasspath.value.files, out, scalacOptions.value)
       Set(outputDir)
     }
-    f(srcs.toSet)
+    f(sources.value.toSet)
     outputDir
   }
 }

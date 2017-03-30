@@ -1,13 +1,13 @@
 import scala.util.control.NonFatal
 import sbt._
 import Keys._
-import StringUtilities.normalize
 
 object Util {
-  val ExclusiveTest = Tags.Tag("exclusive-test")
-  lazy val componentID = SettingKey[Option[String]]("component-id")
-  lazy val scalaKeywords = TaskKey[Set[String]]("scala-keywords")
-  lazy val generateKeywords = TaskKey[File]("generateKeywords")
+  val ExclusiveTest: Tags.Tag = Tags.Tag("exclusive-test")
+
+  val componentID: SettingKey[Option[String]] = settingKey[Option[String]]("")
+  val scalaKeywords: TaskKey[Set[String]] = taskKey[Set[String]]("")
+  val generateKeywords: TaskKey[File] = taskKey[File]("")
 
   def noPublishSettings: Seq[Setting[_]] = Seq(publish := {})
 
@@ -19,10 +19,15 @@ object Util {
       })
     )
 
-  lazy val javaOnlySettings = Seq[Setting[_]]( /*crossPaths := false, */ compileOrder := CompileOrder.JavaThenScala, unmanagedSourceDirectories in Compile <<= Seq(javaSource in Compile).join)
+  lazy val javaOnlySettings: Seq[Setting[_]] = Seq(
+    // crossPaths := false,
+    compileOrder := CompileOrder.JavaThenScala,
+    unmanagedSourceDirectories in Compile := Seq((javaSource in Compile).value)
+  )
+
   lazy val baseScalacOptions = Seq(
     scalacOptions ++= Seq("-Xelide-below", "0"),
-    scalacOptions <++= scalaVersion map CrossVersion.partialVersion map {
+    scalacOptions ++= (CrossVersion partialVersion scalaVersion.value match {
       case Some((2, 9)) | Some((2, 8)) => Nil // support 2.9 for some subprojects for the Scala Eclipse IDE
       case _ => Seq(
         "-encoding", "utf8",
@@ -38,16 +43,17 @@ object Util {
         "-Ywarn-unused",
         "-Ywarn-unused-import"
       )
-    },
-    scalacOptions <++= scalaVersion map CrossVersion.partialVersion map {
+    }),
+    scalacOptions ++= (CrossVersion partialVersion scalaVersion.value match {
       case Some((2, 10)) => Seq("-deprecation", "-Xlint")
       case _             => Seq()
-    }
+    })
   )
 
-  def projectComponent = projectID <<= (projectID, componentID) { (pid, cid) =>
-    cid match { case Some(id) => pid extra ("e:component" -> id); case None => pid }
-  }
+  def projectComponent: Setting[_] = projectID := (componentID.value match {
+    case Some(id) => projectID.value extra ("e:component" -> id)
+    case None     => projectID.value
+  })
 
   lazy val apiDefinitions = TaskKey[Seq[File]]("api-definitions")
 
@@ -129,6 +135,7 @@ object Util {
       val g = new scala.tools.nsc.Global(new scala.tools.nsc.Settings)
       g.nme.keywords.map(_.toString)
     }
+
   def writeScalaKeywords(base: File, keywords: Set[String]): File =
     {
       val init = keywords.map(tn => '"' + tn + '"').mkString("Set(", ", ", ")")
@@ -143,10 +150,11 @@ object %s {
       IO.write(out, keywordsSrc)
       out
     }
+
   def keywordsSettings: Seq[Setting[_]] = inConfig(Compile)(Seq(
     scalaKeywords := getScalaKeywords,
-    generateKeywords <<= (sourceManaged, scalaKeywords) map writeScalaKeywords,
-    sourceGenerators <+= generateKeywords map (x => Seq(x))
+    generateKeywords := writeScalaKeywords(sourceManaged.value, scalaKeywords.value),
+    sourceGenerators += Def.task(Seq(generateKeywords.value)).taskValue
   ))
 }
 
@@ -159,9 +167,9 @@ object Licensed {
   def seePaths(base: File, noticeString: String): Seq[File] = seeRegex.findAllIn(noticeString).matchData.map(d => licensePath(base, d.group(1))).toList
 
   def settings: Seq[Setting[_]] = Seq(
-    notice <<= baseDirectory(_ / "NOTICE"),
-    unmanagedResources in Compile <++= (notice, extractLicenses) map { _ +: _ },
-    extractLicenses <<= (baseDirectory in ThisBuild, notice, streams) map extractLicenses0
+    notice := (baseDirectory.value / "NOTICE"),
+    unmanagedResources in Compile ++= notice.value +: extractLicenses.value,
+    extractLicenses := extractLicenses0((baseDirectory in ThisBuild).value, notice.value, streams.value)
   )
   def extractLicenses0(base: File, note: File, s: TaskStreams): Seq[File] =
     if (!note.exists) Nil else
