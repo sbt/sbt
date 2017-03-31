@@ -41,6 +41,48 @@ abstract class PatternsFunctions {
   }
 }
 
+trait SshBasedRepositoryExtra {
+  /** The object representing the configured ssh connection for this repository. */
+  def connection: SshConnection
+
+  type RepositoryType <: SshBasedRepository
+  protected def copy(connection: SshConnection): RepositoryType
+  private def copy(authentication: SshAuthentication): RepositoryType =
+    copy(connection withAuthentication authentication)
+
+  /** Configures this to use the specified user name and password when connecting to the remote repository. */
+  def as(user: String, password: String): RepositoryType = as(user, Some(password))
+  def as(user: String): RepositoryType = as(user, None)
+  def as(user: String, password: Option[String]): RepositoryType = copy(PasswordAuthentication(user, password))
+
+  /** Configures this to use the specified keyfile and password for the keyfile when connecting to the remote repository. */
+  def as(user: String, keyfile: File): RepositoryType = as(user, keyfile, None)
+  def as(user: String, keyfile: File, password: String): RepositoryType = as(user, keyfile, Some(password))
+
+  def as(user: String, keyfile: File, password: Option[String]): RepositoryType =
+    copy(KeyFileAuthentication(user, keyfile, password))
+}
+
+trait SshRepositoryExtra extends SshBasedRepositoryExtra {
+  def name: String
+  def patterns: sbt.librarymanagement.Patterns
+  def publishPermissions: Option[String]
+
+  type RepositoryType = SshRepository
+
+  protected def copy(connection: SshConnection): SshRepository =
+    SshRepository(name, connection, patterns, publishPermissions)
+}
+
+trait SftpRepositoryExtra extends SshBasedRepositoryExtra {
+  def name: String
+  def patterns: sbt.librarymanagement.Patterns
+
+  type RepositoryType = SftpRepository
+
+  protected def copy(connection: SshConnection): SftpRepository = SftpRepository(name, connection, patterns)
+}
+
 /** A repository that conforms to sbt launcher's interface */
 private[sbt] class FakeRepository(resolver: DependencyResolver) extends xsbti.Repository {
   def rawRepository = new RawRepository(resolver)

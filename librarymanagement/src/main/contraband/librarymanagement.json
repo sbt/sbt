@@ -514,6 +514,7 @@
               "target": "Scala",
               "type": "interface",
               "doc": "sbt interface for an Ivy ssh-based repository (ssh and sftp).  Requires the Jsch library..",
+              "parents": "sbt.librarymanagement.SshBasedRepositoryExtra",
               "fields": [
                 { "name": "connection", "type": "sbt.librarymanagement.SshConnection" }
               ],
@@ -524,6 +525,7 @@
                   "target": "Scala",
                   "type": "record",
                   "doc": "sbt interface for an Ivy repository over ssh.  More convenient construction is done using Resolver.ssh.",
+                  "parents": "sbt.librarymanagement.SshRepositoryExtra",
                   "fields": [
                     { "name": "publishPermissions", "type": "String?" }
                   ],
@@ -542,6 +544,7 @@
                   "target": "Scala",
                   "type": "record",
                   "doc": "sbt interface for an Ivy repository over sftp.  More convenient construction is done using Resolver.sftp.",
+                  "parents": "sbt.librarymanagement.SftpRepositoryExtra",
                   "extra": [
                     "def this(name: String, connection: sbt.librarymanagement.SshConnection, patterns: sbt.librarymanagement.Patterns) = ",
                     "  this(name, patterns, connection)"
