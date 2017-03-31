@@ -138,11 +138,16 @@
           "namespace": "sbt.librarymanagement",
           "target": "Scala",
           "doc": [
-            "Cross-versions a module using the result of applying `remapVersion` to the binary version.",
-            "For example, if `remapVersion = v => \"2.10\"` and the binary version is \"2.9.2\" or \"2.10\",",
-            "the module is cross-versioned with \"2.10\"."
+            "Cross-versions a module using the result of",
+            "prepending `prefix` and appending `suffix` to the binary version.",
+            "For example, if `prefix = \"foo_\"` and `suffix = \"_bar\"` and the binary version is \"2.10\",",
+            "the module is cross-versioned with \"foo_2.10_bar\"."
           ],
-          "type": "record"
+          "type": "record",
+          "fields": [
+            { "name": "prefix", "type": "String", "default": "\"\"", "since": "0.0.1" },
+            { "name": "suffix", "type": "String", "default": "\"\"", "since": "0.0.1" }
+          ]
         },
         {
           "name": "Patch",
@@ -150,7 +155,7 @@
           "target": "Scala",
           "doc": [
             "Cross-versions a module by stripping off -bin-suffix.",
-            "This is intented for patch-version compatible alternative replacements."
+            "This is intended for patch-version compatible alternative replacements."
           ],
           "type": "record"
         },
@@ -160,9 +165,14 @@
           "target": "Scala",
           "type": "record",
           "doc": [
-            "Cross-versions a module with the result of applying `remapVersion` to the full version.",
-            "For example, if `remapVersion = v => \"2.10\"` and the full version is \"2.9.2\" or \"2.10.3\",",
-            "the module is cross-versioned with \"2.10\"."
+            "Cross-versions a module with the result of",
+            "prepending `prefix` and appending `suffix` to the full version.",
+            "For example, if `prefix = \"foo_\"` and `suffix = \"_bar\"` and the full version is \"2.12.1\",",
+            "the module is cross-versioned with \"foo_2.12.1_bar\"."
+          ],
+          "fields": [
+            { "name": "prefix", "type": "String", "default": "\"\"", "since": "0.0.1" },
+            { "name": "suffix", "type": "String", "default": "\"\"", "since": "0.0.1" }
           ]
         }
       ],
