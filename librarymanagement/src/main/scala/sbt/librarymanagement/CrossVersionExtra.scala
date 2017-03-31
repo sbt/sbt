@@ -16,19 +16,19 @@ abstract class CrossVersionFunctions {
   def full: CrossVersion = Full()
 
   /**
-   * Cross-versions a module with the result of appending `suffix` to the full version.
+   * Cross-versions a module with the result of prepending `prefix` and appending `suffix` to the full version.
    * (typically the full Scala version).  See also [[sbt.librarymanagement.Full]]
    */
-  def fullSuffixed(suffix: String): CrossVersion = Full(suffix)
+  def fullWith(prefix: String, suffix: String): CrossVersion = Full(prefix, suffix)
 
   /** Cross-versions a module with the binary version (typically the binary Scala version).  */
   def binary: CrossVersion = Binary()
 
   /**
-   * Cross-versions a module with the result of appending `suffix` to the binary version
+   * Cross-versions a module with the result of prepending `prefix` and appending `suffix` to the binary version
    * (typically the binary Scala version).  See also [[sbt.librarymanagement.Binary]].
    */
-  def binarySuffixed(suffix: String): CrossVersion = Binary(suffix)
+  def binaryWith(prefix: String, suffix: String): CrossVersion = Binary(prefix, suffix)
 
   /**
    * Cross-versions a module with the full Scala version excluding any `-bin` suffix.
@@ -53,9 +53,9 @@ abstract class CrossVersionFunctions {
   def apply(cross: CrossVersion, fullVersion: String, binaryVersion: String): Option[String => String] =
     cross match {
       case _: Disabled => None
-      case b: Binary   => append(binaryVersion + b.suffix)
+      case b: Binary   => append(b.prefix + binaryVersion + b.suffix)
       case _: Patch    => append(patchFun(fullVersion))
-      case f: Full     => append(fullVersion + f.suffix)
+      case f: Full     => append(f.prefix + fullVersion + f.suffix)
     }
 
   /** Constructs the cross-version function defined by `module` and `is`, if one is configured. */

@@ -138,12 +138,16 @@
           "namespace": "sbt.librarymanagement",
           "target": "Scala",
           "doc": [
-            "Cross-versions a module using the result of appending `suffix` to the binary version.",
-            "For example, if `suffix = \"_foo\"` and the binary version is \"2.10\",",
-            "the module is cross-versioned with \"2.10_foo\"."
+            "Cross-versions a module using the result of",
+            "prepending `prefix` and appending `suffix` to the binary version.",
+            "For example, if `prefix = \"foo_\"` and `suffix = \"_bar\"` and the binary version is \"2.10\",",
+            "the module is cross-versioned with \"foo_2.10_bar\"."
           ],
           "type": "record",
-          "fields": [ { "name": "suffix", "type": "String", "default": "\"\"", "since": "0.0.1" } ]
+          "fields": [
+            { "name": "prefix", "type": "String", "default": "\"\"", "since": "0.0.1" },
+            { "name": "suffix", "type": "String", "default": "\"\"", "since": "0.0.1" }
+          ]
         },
         {
           "name": "Patch",
@@ -161,11 +165,15 @@
           "target": "Scala",
           "type": "record",
           "doc": [
-            "Cross-versions a module with the result of appending `suffix` to the full version.",
-            "For example, if `suffix = \"_foo\"` and the full version is \"2.12.1\",",
-            "the module is cross-versioned with \"2.12.1_foo\"."
+            "Cross-versions a module with the result of",
+            "prepending `prefix` and appending `suffix` to the full version.",
+            "For example, if `prefix = \"foo_\"` and `suffix = \"_bar\"` and the full version is \"2.12.1\",",
+            "the module is cross-versioned with \"foo_2.12.1_bar\"."
           ],
-          "fields": [ { "name": "suffix", "type": "String", "default": "\"\"", "since": "0.0.1" } ]
+          "fields": [
+            { "name": "prefix", "type": "String", "default": "\"\"", "since": "0.0.1" },
+            { "name": "suffix", "type": "String", "default": "\"\"", "since": "0.0.1" }
+          ]
         }
       ],
       "parentsCompanion": "sbt.librarymanagement.CrossVersionFunctions"
