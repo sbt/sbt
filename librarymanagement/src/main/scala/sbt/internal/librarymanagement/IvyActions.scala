@@ -21,7 +21,6 @@ import sbt.util.{ Logger, ShowLines }
 import sbt.internal.util.{ SourcePosition, LinePosition, RangePosition, LineRange }
 import sbt.librarymanagement._
 import sbt.internal.librarymanagement.syntax._
-import sbt.internal.librarymanagement._
 
 final class DeliverConfiguration(val deliverIvyPattern: String, val status: String, val configurations: Option[Vector[Configuration]], val logging: UpdateLogging)
 final class PublishConfiguration(val ivyFile: Option[File], val resolverName: String, val artifacts: Map[Artifact, File], val checksums: Vector[String], val logging: UpdateLogging,

@@ -6,6 +6,7 @@ import java.io.File
 import sbt.internal._, librarymanagement._, util.UnitSpec
 import scala.json.ast.unsafe._
 import sjsonnew._, support.scalajson.unsafe._
+import org.scalatest.Assertion
 
 import LibraryManagementCodec._
 
@@ -61,11 +62,13 @@ class DMSerializationSpec extends UnitSpec {
   lazy val moduleReportExample =
     ModuleReport(ModuleID("org", "name", "1.0"), Vector.empty, Vector.empty)
 
-  def roundtrip[A: JsonReader: JsonWriter](a: A): Unit =
+  def roundtrip[A: JsonReader: JsonWriter](a: A): Assertion =
     roundtripBuilder(a) { _ shouldBe _ }
-  def roundtripStr[A: JsonReader: JsonWriter](a: A): Unit =
+
+  def roundtripStr[A: JsonReader: JsonWriter](a: A): Assertion =
     roundtripBuilder(a) { _.toString shouldBe _.toString }
-  def roundtripBuilder[A: JsonReader: JsonWriter](a: A)(f: (A, A) => Unit): Unit =
+
+  def roundtripBuilder[A: JsonReader: JsonWriter](a: A)(f: (A, A) => Assertion): Assertion =
     {
       val json = isoString to (Converter toJsonUnsafe a)
       println(json)

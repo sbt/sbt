@@ -58,12 +58,12 @@ object Credentials {
   private[this] val UserKeys = List("user", "user.name", "username")
   private[this] val PasswordKeys = List("password", "pwd", "pass", "passwd")
 
-  import collection.JavaConversions._
+  import collection.JavaConverters._
   private[this] def read(from: File): Map[String, String] =
     {
       val properties = new java.util.Properties
       IO.load(properties, from)
-      properties.map { case (k, v) => (k.toString, v.toString.trim) }.toMap
+      properties.asScala.map { case (k, v) => (k.toString, v.toString.trim) }.toMap
     }
 }
 

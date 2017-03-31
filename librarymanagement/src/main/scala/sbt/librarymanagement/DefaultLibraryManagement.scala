@@ -2,7 +2,6 @@ package sbt
 package librarymanagement
 
 import java.io.File
-import scala.util.Try
 import sbt.internal.librarymanagement._
 import sbt.util.Logger
 import sbt.io.Hash
@@ -61,7 +60,7 @@ class DefaultLibraryManagement(ivyConfiguration: IvyConfiguration, log: Logger) 
     log.debug(s"Attempting to fetch ${dependenciesNames(module)}. This operation may fail.")
     IvyActions.updateEither(module, updateConfiguration, UnresolvedWarningConfiguration(), LogicalClock.unknown, None, log) match {
       case Left(unresolvedWarning) =>
-        log.debug("Couldn't retrieve module ${dependenciesNames(module)}.")
+        log.debug(s"Couldn't retrieve module ${dependenciesNames(module)}.")
         None
 
       case Right(updateReport) =>

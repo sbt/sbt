@@ -123,13 +123,13 @@ private[sbt] class CachedResolutionResolveCache(fileToStore: File => CacheStore)
     }
   def extractOverrides(md0: ModuleDescriptor): Vector[IvyOverride] =
     {
-      import scala.collection.JavaConversions._
-      (md0.getAllDependencyDescriptorMediators.getAllRules).toSeq.toVector sortBy {
+      import scala.collection.JavaConverters._
+      md0.getAllDependencyDescriptorMediators.getAllRules.asScala.toSeq.toVector sortBy {
         case (k, v) =>
           k.toString
       } collect {
         case (k: MapMatcher, v: OverrideDependencyDescriptorMediator) =>
-          val attr: Map[Any, Any] = k.getAttributes.toMap
+          val attr: Map[Any, Any] = k.getAttributes.asScala.toMap
           val module = IvyModuleId.newInstance(attr(IvyPatternHelper.ORGANISATION_KEY).toString, attr(IvyPatternHelper.MODULE_KEY).toString)
           val pm = k.getPatternMatcher
           IvyOverride(module, pm, v)
