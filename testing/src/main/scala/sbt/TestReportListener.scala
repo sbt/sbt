@@ -5,8 +5,7 @@
 package sbt
 
 import testing.{ Logger => TLogger, Event => TEvent, Status => TStatus }
-import sbt.internal.util.{ BufferedLogger, FullLogger }
-import sbt.util.Level
+import sbt.protocol.testing._
 
 trait TestReportListener {
   /** called for each class or equivalent grouping */
@@ -19,23 +18,25 @@ trait TestReportListener {
   def endGroup(name: String, t: Throwable): Unit
 
   /** called if test completed */
-  def endGroup(name: String, result: TestResult.Value): Unit
+  def endGroup(name: String, result: TestResult): Unit
 
   /** Used by the test framework for logging test results*/
   def contentLogger(test: TestDefinition): Option[ContentLogger] = None
 }
+
+final class ContentLogger(val log: TLogger, val flush: () => Unit)
 
 trait TestsListener extends TestReportListener {
   /** called once, at beginning. */
   def doInit(): Unit
 
   /** called once, at end. */
-  def doComplete(finalResult: TestResult.Value): Unit
+  def doComplete(finalResult: TestResult): Unit
 }
 
 /** Provides the overall `result` of a group of tests (a suite) and test counts for each result type. */
 final class SuiteResult(
-    val result: TestResult.Value,
+    val result: TestResult,
     val passedCount: Int, val failureCount: Int, val errorCount: Int,
     val skippedCount: Int, val ignoredCount: Int, val canceledCount: Int, val pendingCount: Int
 ) {
@@ -65,7 +66,7 @@ object SuiteResult {
 }
 
 abstract class TestEvent {
-  def result: Option[TestResult.Value]
+  def result: Option[TestResult]
   def detail: Seq[TEvent] = Nil
 }
 object TestEvent {
@@ -75,8 +76,8 @@ object TestEvent {
       override val detail = events
     }
 
-  private[sbt] def overallResult(events: Seq[TEvent]): TestResult.Value =
-    (TestResult.Passed /: events) { (sum, event) =>
+  private[sbt] def overallResult(events: Seq[TEvent]): TestResult =
+    ((TestResult.Passed: TestResult) /: events) { (sum, event) =>
       (sum, event.status) match {
         case (TestResult.Error, _)  => TestResult.Error
         case (_, TStatus.Error)     => TestResult.Error
@@ -85,61 +86,4 @@ object TestEvent {
         case _                      => TestResult.Passed
       }
     }
-}
-
-object TestLogger {
-  @deprecated("Doesn't provide for underlying resources to be released.", "0.13.1")
-  def apply(logger: sbt.util.Logger, logTest: TestDefinition => sbt.util.Logger, buffered: Boolean): TestLogger =
-    new TestLogger(new TestLogging(wrap(logger), tdef => contentLogger(logTest(tdef), buffered)))
-
-  @deprecated("Doesn't provide for underlying resources to be released.", "0.13.1")
-  def contentLogger(log: sbt.util.Logger, buffered: Boolean): ContentLogger =
-    {
-      val blog = new BufferedLogger(FullLogger(log))
-      if (buffered) blog.record()
-      new ContentLogger(wrap(blog), () => blog.stopQuietly())
-    }
-
-  final class PerTest private[sbt] (val log: sbt.util.Logger, val flush: () => Unit, val buffered: Boolean)
-
-  def make(global: sbt.util.Logger, perTest: TestDefinition => PerTest): TestLogger =
-    {
-      def makePerTest(tdef: TestDefinition): ContentLogger =
-        {
-          val per = perTest(tdef)
-          val blog = new BufferedLogger(FullLogger(per.log))
-          if (per.buffered) blog.record()
-          new ContentLogger(wrap(blog), () => { blog.stopQuietly(); per.flush() })
-        }
-      val config = new TestLogging(wrap(global), makePerTest)
-      new TestLogger(config)
-    }
-
-  def wrap(logger: sbt.util.Logger): TLogger =
-    new TLogger {
-      def error(s: String) = log(Level.Error, s)
-      def warn(s: String) = log(Level.Warn, s)
-      def info(s: String) = log(Level.Info, s)
-      def debug(s: String) = log(Level.Debug, s)
-      def trace(t: Throwable) = logger.trace(t)
-      private def log(level: Level.Value, s: String) = logger.log(level, s)
-      def ansiCodesSupported() = logger.ansiCodesSupported
-    }
-}
-final class TestLogging(val global: TLogger, val logTest: TestDefinition => ContentLogger)
-final class ContentLogger(val log: TLogger, val flush: () => Unit)
-class TestLogger(val logging: TestLogging) extends TestsListener {
-  import logging.{ global => log, logTest }
-
-  def startGroup(name: String): Unit = ()
-  def testEvent(event: TestEvent): Unit = ()
-  def endGroup(name: String, t: Throwable): Unit = {
-    log.trace(t)
-    log.error("Could not run test " + name + ": " + t.toString)
-  }
-  def endGroup(name: String, result: TestResult.Value): Unit = ()
-  def doInit: Unit = ()
-  /** called once, at end of test group. */
-  def doComplete(finalResult: TestResult.Value): Unit = ()
-  override def contentLogger(test: TestDefinition): Option[ContentLogger] = Some(logTest(test))
 }

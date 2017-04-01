@@ -17,6 +17,7 @@ import sbt.internal.librarymanagement._
 import sbt.internal.librarymanagement.mavenint.{ PomExtraDependencyAttributes, SbtPomExtraProperties }
 import sbt.internal.librarymanagement.syntax._
 import sbt.internal.librarymanagement.{ CustomPomParser, DependencyFilter }
+import sbt.internal.testing.TestLogger
 import sbt.internal.util._
 import sbt.internal.util.Attributed.data
 import sbt.internal.util.CacheImplicits._

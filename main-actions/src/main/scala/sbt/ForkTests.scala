@@ -12,6 +12,7 @@ import Tests.{ Output => TestOutput, _ }
 import sbt.io.IO
 import sbt.util.Logger
 import sbt.ConcurrentRestrictions.Tag
+import sbt.protocol.testing._
 
 private[sbt] object ForkTests {
   def apply(runners: Map[TestFramework, Runner], tests: List[TestDefinition], config: Execution, classpath: Seq[File], fork: ForkOptions, log: Logger, tag: Tag): Task[TestOutput] = {
