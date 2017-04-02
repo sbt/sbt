@@ -63,7 +63,7 @@ final case class MavenRepository(
   root: String,
   changing: Option[Boolean] = None,
   /** Hackish hack for sbt plugins mainly - what this does really sucks */
-  sbtAttrStub: Boolean = false,
+  sbtAttrStub: Boolean = true,
   authentication: Option[Authentication] = None
 ) extends Repository {
 
