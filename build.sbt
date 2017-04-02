@@ -1,136 +1,34 @@
-import java.io.FileOutputStream
-import com.typesafe.sbt.pgp.PgpSettings
 
-val binaryCompatibilityVersion = "1.0.0-M14"
-val binaryCompatibility212Version = "1.0.0-M15"
+import Aliases._
+import CoursierSettings._
+import Publish._
 
-parallelExecution in Global := false
-
-lazy val IntegrationTest = config("it") extend Test
-
-lazy val scalazVersion = "7.2.8"
+parallelExecution.in(Global) := false
 
 lazy val core = crossProject
-  .settings(commonSettings)
-  .settings(mimaPreviousArtifactSettings)
-  .jvmConfigure(_
-    .enablePlugins(_root_.coursier.ShadingPlugin)
-  )
+  .jvmConfigure(_.enablePlugins(ShadingPlugin))
   .jvmSettings(
-    libraryDependencies ++= {
-
-      val extra =
-        if (scalaBinaryVersion.value == "2.10")
-          // directly depending on that one so that it doesn't get shaded
-          Seq("org.scalamacros" %% "quasiquotes" % "2.1.0")
-        else
-          Nil
-
-      Seq("com.lihaoyi" %% "fastparse" % "0.4.2" % "shaded") ++ extra
-    },
-    shadingSettings
+    shading,
+    quasiQuotesIfNecessary,
+    scalaXmlIfNecessary,
+    libs ++= Seq(
+      Deps.fastParse % "shaded",
+      Deps.jsoup
+    ),
+    generatePropertyFile
   )
   .jsSettings(
-    libraryDependencies += "com.lihaoyi" %%% "fastparse" % "0.4.2"
+    libs ++= Seq(
+      CrossDeps.fastParse.value,
+      CrossDeps.scalaJsDom.value
+    )
   )
   .settings(
+    shared,
     name := "coursier",
-    libraryDependencies ++= Seq(
-      "org.scalaz" %%% "scalaz-core" % scalazVersion
-    ),
-    mimaBinaryIssueFilters ++= {
-      import com.typesafe.tools.mima.core._
-
-      Seq(
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.defaultPublications"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.defaultPackaging"),
-        ProblemFilters.exclude[MissingClassProblem]("coursier.maven.MavenSource$DocSourcesArtifactExtensions"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.compatibility.package.listWebPageDirectoryElements"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.compatibility.package.listWebPageSubDirectories"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.compatibility.package.listWebPageFiles"),
-        ProblemFilters.exclude[MissingTypesProblem]("coursier.core.Project$"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Project.apply"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.core.Project.copy$default$13"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.core.Project.copy$default$12"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Project.copy"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Project.this"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.copy$default$5"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.packagingBlacklist"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.copy"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.this"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.apply$default$5"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.ignorePackaging"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.<init>$default$5"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.maven.MavenRepository.apply"),
-        ProblemFilters.exclude[FinalClassProblem]("coursier.core.Activation$Os"),
-        ProblemFilters.exclude[FinalClassProblem]("coursier.core.Version"),
-        ProblemFilters.exclude[FinalClassProblem]("coursier.core.Authentication"),
-        ProblemFilters.exclude[FinalClassProblem]("coursier.core.VersionInterval"),
-        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.Pattern"),
-        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.Pattern$Chunk$Opt"),
-        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.PropertiesPattern$ChunkOrProperty$Const"),
-        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.PropertiesPattern$ChunkOrProperty$Opt"),
-        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.PropertiesPattern"),
-        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.Pattern$Chunk$Var"),
-        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.IvyRepository"),
-        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.Pattern$Chunk$Const"),
-        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.PropertiesPattern$ChunkOrProperty$Prop"),
-        ProblemFilters.exclude[FinalClassProblem]("coursier.ivy.PropertiesPattern$ChunkOrProperty$Var"),
-        ProblemFilters.exclude[FinalClassProblem]("coursier.maven.MavenRepository"),
-        ProblemFilters.exclude[FinalClassProblem]("coursier.maven.MavenSource"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.package#Resolution.apply$default$9"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.package#Resolution.apply"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.core.Resolution.copy$default$9"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("coursier.core.Resolution.copyWithCache$default$8"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Resolution.copy"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Resolution.profileActivation"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Resolution.copyWithCache"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Resolution.this"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Activation.copy"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Activation.this"),
-        ProblemFilters.exclude[MissingTypesProblem]("coursier.core.Activation$"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Activation.apply"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Resolution.profiles"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.core.Resolution.apply")
-      )
-    }
-  )
-  .jvmSettings(
-    libraryDependencies ++=
-      Seq(
-        "org.jsoup" % "jsoup" % "1.10.2"
-      ) ++ {
-        if (scalaBinaryVersion.value == "2.10") Seq()
-        else Seq(
-          "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
-        )
-      },
-    resourceGenerators.in(Compile) += {
-      (target, version).map { (dir, ver) =>
-        import sys.process._
-
-        val f = dir / "coursier.properties"
-        dir.mkdirs()
-
-        val p = new java.util.Properties
-
-        p.setProperty("version", ver)
-        p.setProperty("commit-hash", Seq("git", "rev-parse", "HEAD").!!.trim)
-
-        val w = new FileOutputStream(f)
-        p.store(w, "Coursier properties")
-        w.close()
-
-        println(s"Wrote $f")
-
-        Seq(f)
-      }.taskValue
-    }
-  )
-  .jsSettings(
-    libraryDependencies ++= Seq(
-      "org.scala-js" %%% "scalajs-dom" % "0.9.1"
-    )
+    libs += CrossDeps.scalazCore.value,
+    Mima.previousArtifacts,
+    Mima.coreFilters
   )
 
 lazy val coreJvm = core.jvm
@@ -139,234 +37,79 @@ lazy val coreJs = core.js
 lazy val `fetch-js` = project
   .enablePlugins(ScalaJSPlugin)
   .dependsOn(coreJs)
-  .settings(commonSettings)
-  .settings(noPublishSettings)
   .settings(
-    name := "coursier-fetch-js"
+    shared,
+    dontPublish,
+    coursierPrefix
   )
 
 lazy val tests = crossProject
   .dependsOn(core)
-  .settings(commonSettings)
-  .settings(noPublishSettings)
-  .configs(IntegrationTest)
-  .settings(Defaults.itSettings)
-  .settings(
-    name := "coursier-tests",
-    libraryDependencies += {
-      val asyncVersion =
-        if (scalaBinaryVersion.value == "2.10")
-          "0.9.5"
-        else
-          "0.9.6"
-
-        "org.scala-lang.modules" %% "scala-async" % asyncVersion % "provided"
-    },
-    libraryDependencies += "com.lihaoyi" %%% "utest" % "0.4.5" % "test",
-    unmanagedResourceDirectories in Test += (baseDirectory in LocalRootProject).value / "tests" / "shared" / "src" / "test" / "resources",
-    testFrameworks += new TestFramework("utest.runner.Framework")
-  )
+  .jvmConfigure(_.dependsOn(cache % "test"))
+  .jsConfigure(_.dependsOn(`fetch-js` % "test"))
   .jsSettings(
-    scalaJSStage in Global := FastOptStage
+    scalaJSStage.in(Global) := FastOptStage
+  )
+  .configs(Integration)
+  .settings(
+    shared,
+    dontPublish,
+    hasITs,
+    coursierPrefix,
+    libs += Deps.scalaAsync.value,
+    utest,
+    sharedTestResources
   )
 
-lazy val testsJvm = tests.jvm.dependsOn(cache % "test")
-lazy val testsJs = tests.js.dependsOn(`fetch-js` % "test")
+lazy val testsJvm = tests.jvm
+lazy val testsJs = tests.js
 
 lazy val cache = project
   .dependsOn(coreJvm)
-  .settings(commonSettings)
-  .settings(mimaPreviousArtifactSettings)
   .settings(
-    name := "coursier-cache",
-    libraryDependencies += "org.scalaz" %% "scalaz-concurrent" % scalazVersion,
-    mimaBinaryIssueFilters ++= {
-      import com.typesafe.tools.mima.core._
-
-      Seq(
-        ProblemFilters.exclude[DirectMissingMethodProblem]("coursier.TermDisplay#UpdateDisplayRunnable.cleanDisplay"),
-        ProblemFilters.exclude[FinalClassProblem]("coursier.TermDisplay$DownloadInfo"),
-        ProblemFilters.exclude[FinalClassProblem]("coursier.TermDisplay$CheckUpdateInfo"),
-        ProblemFilters.exclude[FinalClassProblem]("coursier.util.Base64$B64Scheme"),
-        ProblemFilters.exclude[MissingClassProblem]("coursier.TermDisplay$Message$Stop$"),
-        ProblemFilters.exclude[MissingClassProblem]("coursier.TermDisplay$Message"),
-        ProblemFilters.exclude[MissingClassProblem]("coursier.TermDisplay$Message$"),
-        ProblemFilters.exclude[MissingClassProblem]("coursier.TermDisplay$Message$Update$"),
-        ProblemFilters.exclude[MissingClassProblem]("coursier.TermDisplay$UpdateDisplayThread")
-      )
-    }
+    shared,
+    Mima.previousArtifacts,
+    coursierPrefix,
+    libs += Deps.scalazConcurrent,
+    Mima.cacheFilters
   )
 
 lazy val bootstrap = project
-  .settings(scalaVersionAgnosticCommonSettings)
-  .settings(noPublishSettings)
   .settings(
-    name := "coursier-bootstrap",
-    artifactName := {
-      val artifactName0 = artifactName.value
-      (sv, m, artifact) =>
-        if (artifact.`type` == "jar" && artifact.extension == "jar")
-          "bootstrap.jar"
-        else
-          artifactName0(sv, m, artifact)
-    },
-    crossPaths := false,
-    autoScalaLibrary := false
+    pureJava,
+    dontPublish,
+    renameMainJar("bootstrap.jar")
   )
 
 lazy val cli = project
   .dependsOn(coreJvm, cache)
-  .settings(commonSettings)
-  .settings(noPublishForScalaVersionSettings("2.10", "2.12"))
-  .settings(packAutoSettings)
-  .settings(proguardSettings)
   .settings(
-    name := "coursier-cli",
-    libraryDependencies ++= {
+    shared,
+    dontPublishIn("2.10", "2.12"),
+    generatePack,
+    proguard,
+    coursierPrefix,
+    libs ++= {
       if (scalaBinaryVersion.value == "2.11")
-        Seq("com.github.alexarchambault" %% "case-app" % "1.1.3")
+        Seq(Deps.caseApp)
       else
         Seq()
     },
-    packExcludeArtifactTypes += "pom",
-    resourceGenerators in Compile += packageBin.in(bootstrap).in(Compile).map { jar =>
-      import java.nio.file.Files
-      import java.nio.charset.StandardCharsets
-
-      val content = Files.readAllBytes(jar.toPath)
-      val header =
-        """#!/usr/bin/env sh
-          |exec java $JAVA_OPTS -noverify -jar "$0" "$@"
-        """.stripMargin
-
-      Files.write(jar.toPath, header.getBytes(StandardCharsets.UTF_8) ++ content)
-
-      Seq(jar)
-    }.taskValue,
-    ProguardKeys.proguardVersion in Proguard := "5.3",
-    ProguardKeys.options in Proguard ++= Seq(
-      "-dontwarn",
-      "-keep class coursier.cli.Coursier {\n  public static void main(java.lang.String[]);\n}",
-      "-keep class coursier.cli.IsolatedClassLoader {\n  public java.lang.String[] getIsolationTargets();\n}",
-      "-adaptresourcefilenames **.properties"
-    ),
-    javaOptions in (Proguard, ProguardKeys.proguard) := Seq("-Xmx3172M"),
-    artifactPath in Proguard := (ProguardKeys.proguardDirectory in Proguard).value / "coursier-standalone.jar",
-    artifacts ++= {
-      if (scalaBinaryVersion.value == "2.11")
-        Seq(
-          Artifact(
-            moduleName.value,
-            "jar",
-            "jar",
-            "standalone"
-          )
-        )
-      else
-        Nil
-    },
-    packagedArtifacts <++= {
-      (
-        moduleName,
-        scalaBinaryVersion,
-        ProguardKeys.proguard in Proguard,
-        packageBin.in(bootstrap) in Compile
-      ).map {
-        (mod, sbv, files, bootstrapJar) =>
-          if (sbv == "2.11") {
-            import java.util.zip.{ ZipEntry, ZipOutputStream, ZipInputStream }
-            import java.io.{ ByteArrayOutputStream, FileInputStream, FileOutputStream, File, InputStream, IOException }
-
-            val f0 = files match {
-              case Seq(f) => f
-              case Seq() =>
-                throw new Exception("Found no proguarded files. Expected one.")
-              case _ =>
-                throw new Exception("Found several proguarded files. Don't know how to publish all of them.")
-            }
-
-            val f = new File(f0.getParentFile, f0.getName.stripSuffix(".jar") + "-with-bootstrap.jar")
-
-            val is = new FileInputStream(f0)
-            val os = new FileOutputStream(f)
-            val bootstrapZip = new ZipInputStream(is)
-            val outputZip = new ZipOutputStream(os)
-
-            def readFullySync(is: InputStream) = {
-              val buffer = new ByteArrayOutputStream
-              val data = Array.ofDim[Byte](16384)
-
-              var nRead = is.read(data, 0, data.length)
-              while (nRead != -1) {
-                buffer.write(data, 0, nRead)
-                nRead = is.read(data, 0, data.length)
-              }
-
-              buffer.flush()
-              buffer.toByteArray
-            }
-
-            def zipEntries(zipStream: ZipInputStream): Iterator[(ZipEntry, Array[Byte])] =
-              new Iterator[(ZipEntry, Array[Byte])] {
-                private var nextEntry = Option.empty[ZipEntry]
-                private def update() =
-                  nextEntry = Option(zipStream.getNextEntry)
-
-                update()
-
-                def hasNext = nextEntry.nonEmpty
-                def next() = {
-                  val ent = nextEntry.get
-                  val data = readFullySync(zipStream)
-
-                  update()
-
-                  (ent, data)
-                }
-              }
-
-            for ((ent, data) <- zipEntries(bootstrapZip)) {
-              outputZip.putNextEntry(ent)
-              outputZip.write(data)
-              outputZip.closeEntry()
-            }
-
-            outputZip.putNextEntry(new ZipEntry("bootstrap.jar"))
-            outputZip.write(readFullySync(new FileInputStream(bootstrapJar)))
-            outputZip.closeEntry()
-
-            outputZip.close()
-
-            is.close()
-            os.close()
-
-
-            Map(
-              // FIXME Same Artifact as above
-              Artifact(
-                mod,
-                "jar",
-                "jar",
-                "standalone"
-              ) -> f
-            )
-          } else
-            Map.empty[Artifact, File]
-      }
-    }
+    addBootstrapJarAsResource,
+    proguardedCli
   )
 
 lazy val web = project
   .enablePlugins(ScalaJSPlugin)
   .dependsOn(coreJs, `fetch-js`)
-  .settings(commonSettings)
-  .settings(noPublishSettings)
   .settings(
-    libraryDependencies ++= {
+    shared,
+    dontPublish,
+    libs ++= {
       if (scalaBinaryVersion.value == "2.11")
         Seq(
-          "be.doeraene" %%% "scalajs-jquery" % "0.9.1",
-          "com.github.japgolly.scalajs-react" %%% "core" % "0.9.0"
+          CrossDeps.scalaJsJquery.value,
+          CrossDeps.scalaJsReact.value
         )
       else
         Seq()
@@ -379,119 +122,97 @@ lazy val web = project
       else
         dir / "dummy"
     },
-    test in Test := (),
-    testOnly in Test := (),
-    resolvers += "Webjars Bintray" at "https://dl.bintray.com/webjars/maven/",
+    noTests,
+    webjarBintrayRepository,
     jsDependencies ++= Seq(
-      ("org.webjars.bower" % "bootstrap" % "3.3.4" intransitive()) / "bootstrap.min.js" commonJSName "Bootstrap",
-      ("org.webjars.bower" % "react" % "0.12.2" intransitive()) / "react-with-addons.js" commonJSName "React",
-      ("org.webjars.bower" % "bootstrap-treeview" % "1.2.0" intransitive()) / "bootstrap-treeview.min.js" commonJSName "Treeview",
-      ("org.webjars.bower" % "raphael" % "2.1.4" intransitive()) / "raphael-min.js" commonJSName "Raphael"
+      WebDeps.bootstrap
+        .intransitive()
+        ./("bootstrap.min.js")
+        .commonJSName("Bootstrap"),
+      WebDeps.react
+        .intransitive()
+        ./("react-with-addons.js")
+        .commonJSName("React"),
+      WebDeps.bootstrapTreeView
+        .intransitive()
+        ./("bootstrap-treeview.min.js")
+        .commonJSName("Treeview"),
+      WebDeps.raphael
+        .intransitive()
+        ./("raphael-min.js")
+        .commonJSName("Raphael")
     )
   )
 
 lazy val doc = project
   .dependsOn(coreJvm, cache)
-  .settings(commonSettings)
-  .settings(noPublishSettings)
-  .settings(tutSettings)
   .settings(
+    shared,
+    dontPublish,
+    tutSettings,
     tutSourceDirectory := baseDirectory.value,
-    tutTargetDirectory := baseDirectory.value / ".."
+    tutTargetDirectory := baseDirectory.in(LocalRootProject).value
   )
 
 // Don't try to compile that if you're not in 2.10
 lazy val `sbt-coursier` = project
   .dependsOn(coreJvm, cache)
-  .settings(pluginSettings)
+  .settings(plugin)
 
 // Don't try to compile that if you're not in 2.10
 lazy val `sbt-shading` = project
-  .enablePlugins(_root_.coursier.ShadingPlugin)
+  .enablePlugins(ShadingPlugin)
   .dependsOn(`sbt-coursier`)
-  .settings(pluginSettings)
   .settings(
-    resolvers += Resolver.mavenLocal,
-    libraryDependencies ++= {
-      val coursierJarjarVersion = "1.0.1-coursier-SNAPSHOT"
-      def coursierJarjarFoundInM2 = (file(sys.props("user.home")) / s".m2/repository/org/anarres/jarjar/jarjar-core/$coursierJarjarVersion").exists()
-
-      val jarjarVersion =
-        if (sys.env.contains("CI") || coursierJarjarFoundInM2 || !isSnapshot.value)
-          coursierJarjarVersion
-        else {
-          val fallback = "1.0.0"
-
-          // streams.value.log.warn( // "a setting cannot depend on a task"
-          scala.Console.err.println(
-           s"""Warning: using jarjar $fallback, which doesn't properly shade Scala JARs (classes with '$$' aren't shaded).
-              |See the instructions around
-              |https://github.com/coursier/coursier/blob/630a780487d662dd994ed1c3246895a22c00cf21/scripts/travis.sh#L40
-              |to use a version fine with Scala JARs.""".stripMargin
-          )
-
-          fallback
-        }
-
-      Seq(
-        "org.anarres.jarjar" % "jarjar-core" % jarjarVersion % "shaded",
-        // dependencies of jarjar-core - directly depending on these so that they don't get shaded
-        "com.google.code.findbugs" % "jsr305" % "2.0.2",
-        "org.ow2.asm" % "asm-commons" % "5.0.3",
-        "org.ow2.asm" % "asm-util" % "5.0.3",
-        "org.slf4j" % "slf4j-api" % "1.7.12"
-      )
-    },
-    shadingSettings
+    plugin,
+    shading,
+    localM2Repository, // for a possibly locally published jarjar
+    libs += Deps.jarjar.value % "shaded",
+    // dependencies of jarjar-core - directly depending on these so that they don't get shaded
+    libs ++= Deps.jarjarTransitiveDeps
   )
 
 lazy val `sbt-launcher` = project
   .dependsOn(cache)
-  .settings(commonSettings)
-  .settings(packAutoSettings)
   .settings(
-    libraryDependencies ++= Seq(
-      "com.github.alexarchambault" %% "case-app" % "1.1.3",
-      "org.scala-sbt" % "launcher-interface" % "1.0.0",
-      "com.typesafe" % "config" % "1.3.1"
-    ),
-    packExcludeArtifactTypes += "pom"
+    shared,
+    generatePack,
+    libs ++= Seq(
+      Deps.caseApp,
+      Deps.sbtLauncherInterface,
+      Deps.typesafeConfig
+    )
   )
 
-val http4sVersion = "0.8.6"
-
 lazy val `http-server` = project
-  .settings(commonSettings)
-  .settings(packAutoSettings)
-  .settings(noPublishForScalaVersionSettings("2.10", "2.12"))
   .settings(
+    shared,
+    generatePack,
+    dontPublishIn("2.10", "2.12"),
     name := "http-server-java7",
-    libraryDependencies ++= {
+    libs ++= {
       if (scalaBinaryVersion.value == "2.11")
         Seq(
-          "org.http4s" %% "http4s-blazeserver" % http4sVersion,
-          "org.http4s" %% "http4s-dsl" % http4sVersion,
-          "org.slf4j" % "slf4j-nop" % "1.7.22",
-          "com.github.alexarchambault" %% "case-app" % "1.1.3"
+          Deps.http4sBlazeServer,
+          Deps.http4sDsl,
+          Deps.slf4jNop,
+          Deps.caseApp
         )
       else
         Seq()
-    },
-    packExcludeArtifactTypes += "pom"
+    }
   )
 
 lazy val okhttp = project
   .dependsOn(cache)
-  .settings(commonSettings)
   .settings(
-    name := "coursier-okhttp",
-    libraryDependencies ++= Seq(
-      "com.squareup.okhttp" % "okhttp-urlconnection" % "2.7.5"
-    )
+    shared,
+    coursierPrefix,
+    libs += Deps.okhttpUrlConnection
   )
 
 lazy val echo = project
-  .settings(commonSettings)
+  .settings(shared)
 
 lazy val jvm = project
   .aggregate(
@@ -508,10 +229,9 @@ lazy val jvm = project
     okhttp,
     echo
   )
-  .settings(commonSettings)
-  .settings(noPublishSettings)
-  .settings(releaseSettings)
   .settings(
+    shared,
+    dontPublish,
     moduleName := "coursier-jvm"
   )
 
@@ -522,14 +242,14 @@ lazy val js = project
     testsJs,
     web
   )
-  .settings(commonSettings)
-  .settings(noPublishSettings)
-  .settings(releaseSettings)
   .settings(
+    shared,
+    dontPublish,
     moduleName := "coursier-js"
   )
 
-lazy val `coursier` = project.in(file("."))
+lazy val coursier = project
+  .in(file("."))
   .aggregate(
     coreJvm,
     coreJs,
@@ -547,158 +267,55 @@ lazy val `coursier` = project.in(file("."))
     `http-server`,
     okhttp
   )
-  .settings(commonSettings)
-  .settings(noPublishSettings)
-  .settings(releaseSettings)
   .settings(
+    shared,
+    dontPublish,
     moduleName := "coursier-root"
   )
 
-lazy val releaseSettings = Seq(
-  publishMavenStyle := true,
-  licenses := Seq("Apache 2.0" -> url("http://opensource.org/licenses/Apache-2.0")),
-  homepage := Some(url("https://github.com/coursier/coursier")),
-  scmInfo := Some(ScmInfo(
-    url("https://github.com/coursier/coursier.git"),
-    "scm:git:github.com/coursier/coursier.git",
-    Some("scm:git:git@github.com:coursier/coursier.git")
-  )),
-  pomExtra := {
-    <developers>
-      <developer>
-        <id>alexarchambault</id>
-        <name>Alexandre Archambault</name>
-        <url>https://github.com/alexarchambault</url>
-      </developer>
-    </developers>
-  },
-  publishTo := {
-    val nexus = "https://oss.sonatype.org/"
-    if (isSnapshot.value)
-      Some("snapshots" at nexus + "content/repositories/snapshots")
-    else
-      Some("releases"  at nexus + "service/local/staging/deploy/maven2")
-  },
-  credentials ++= {
-    Seq("SONATYPE_USER", "SONATYPE_PASS").map(sys.env.get) match {
-      case Seq(Some(user), Some(pass)) =>
-        Seq(Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", user, pass))
-      case _ =>
-        Seq()
-    }
+
+lazy val addBootstrapJarAsResource = {
+  resourceGenerators.in(Compile) += packageBin.in(bootstrap).in(Compile).map(Seq(_)).taskValue
+}
+
+lazy val addBootstrapInProguardedJar = {
+  ProguardKeys.proguard.in(Proguard) := {
+    val bootstrapJar = packageBin.in(bootstrap).in(Compile).value
+    val source = proguardedJar.value
+
+    val dest = source.getParentFile / (source.getName.stripSuffix(".jar") + "-with-bootstrap.jar")
+
+    ZipUtil.addToZip(source, dest, Seq("bootstrap.jar" -> bootstrapJar))
+
+    Seq(dest)
   }
-)
+}
 
-lazy val noPublishSettings = Seq(
-  publish := (),
-  publishLocal := (),
-  publishArtifact := false
-)
-
-def noPublishForScalaVersionSettings(sbv: String*) = Seq(
-  publish := {
-    if (sbv.contains(scalaBinaryVersion.value))
-      ()
-    else
-      publish.value
-  },
-  publishLocal := {
-    if (sbv.contains(scalaBinaryVersion.value))
-      ()
-    else
-      publishLocal.value
-  },
-  publishArtifact := {
-    if (sbv.contains(scalaBinaryVersion.value))
-      false
-    else
-      publishArtifact.value
-  }
-)
-
-lazy val scalaVersionAgnosticCommonSettings = Seq(
-  organization := "io.get-coursier",
-  resolvers ++= Seq(
-    "Scalaz Bintray Repo" at "https://dl.bintray.com/scalaz/releases",
-    Resolver.sonatypeRepo("releases")
+lazy val proguardedCli = Seq(
+  ProguardKeys.proguardVersion.in(Proguard) := "5.3",
+  ProguardKeys.options.in(Proguard) ++= Seq(
+    "-dontwarn",
+    "-keep class coursier.cli.Coursier {\n  public static void main(java.lang.String[]);\n}",
+    "-keep class coursier.cli.IsolatedClassLoader {\n  public java.lang.String[] getIsolationTargets();\n}",
+    "-adaptresourcefilenames **.properties"
   ),
-  scalacOptions ++= {
-    val targetJvm = scalaBinaryVersion.value match {
-      case "2.10" | "2.11" =>
-        Seq("-target:jvm-1.6")
-      case _ =>
-        Seq()
-    }
-
-    targetJvm ++ Seq("-feature", "-deprecation")
-  },
-  javacOptions ++= {
-    scalaBinaryVersion.value match {
-      case "2.10" | "2.11" =>
-        Seq(
-          "-source", "1.6",
-          "-target", "1.6"
-        )
-      case _ =>
-        Seq()
-    }
-  },
-  javacOptions in Keys.doc := Seq()
-) ++ releaseSettings
-
-lazy val commonSettings = scalaVersionAgnosticCommonSettings ++ Seq(
-  scalaVersion := "2.12.1",
-  crossScalaVersions := Seq("2.12.1", "2.11.8", "2.10.6"),
-  libraryDependencies ++= {
-    if (scalaBinaryVersion.value == "2.10")
-      Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full))
+  javaOptions.in(Proguard, ProguardKeys.proguard) := Seq("-Xmx3172M"),
+  artifactPath.in(Proguard) := ProguardKeys.proguardDirectory.in(Proguard).value / "coursier-standalone.jar",
+  artifacts ++= {
+    if (scalaBinaryVersion.value == "2.11")
+      Seq(proguardedArtifact.value)
     else
-      Seq()
+      Nil
+  },
+  addBootstrapInProguardedJar,
+  packagedArtifacts ++= {
+    if (scalaBinaryVersion.value == "2.11")
+      Map(proguardedArtifact.value -> proguardedJar.value)
+    else
+      Map()
   }
 )
 
-lazy val pluginSettings =
-  scalaVersionAgnosticCommonSettings ++
-  noPublishForScalaVersionSettings("2.11", "2.12") ++
-  ScriptedPlugin.scriptedSettings ++
-  Seq(
-    scriptedLaunchOpts ++= Seq(
-      "-Xmx1024M",
-      "-XX:MaxPermSize=256M",
-      "-Dplugin.version=" + version.value,
-      "-Dsbttest.base=" + (sourceDirectory.value / "sbt-test").getAbsolutePath
-    ),
-    scriptedBufferLog := false,
-    sbtPlugin := (scalaBinaryVersion.value == "2.10"),
-    resolvers ++= Seq(
-      // added so that 2.10 artifacts of the other modules can be found by
-      // the too-naive-for-now inter-project resolver of the coursier SBT plugin
-      Resolver.sonatypeRepo("snapshots"),
-      // added for sbt-scripted to be fine even with ++2.11.x
-      Resolver.typesafeIvyRepo("releases")
-    )
-  )
-
-lazy val mimaPreviousArtifactSettings = Seq(
-  mimaPreviousArtifacts := {
-    val version = scalaBinaryVersion.value match {
-      case "2.12" => binaryCompatibility212Version
-      case _ => binaryCompatibilityVersion
-    }
-
-    Set(organization.value %% moduleName.value % version)
-  }
-)
-
-lazy val shadingSettings =
-  inConfig(Shading)(PgpSettings.projectSettings) ++
-     // ytf does this have to be repeated here?
-     // Can't figure out why configuration get lost without this in particular...
-    _root_.coursier.ShadingPlugin.projectSettings ++
-    Seq(
-      shadingNamespace := "coursier.shaded",
-      publish := publish.in(Shading).value,
-      publishLocal := publishLocal.in(Shading).value,
-      PgpKeys.publishSigned := PgpKeys.publishSigned.in(Shading).value,
-      PgpKeys.publishLocalSigned := PgpKeys.publishLocalSigned.in(Shading).value
-    )
+lazy val sharedTestResources = {
+  unmanagedResourceDirectories.in(Test) += baseDirectory.in(LocalRootProject).value / "tests" / "shared" / "src" / "test" / "resources"
+}
