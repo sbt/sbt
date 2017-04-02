@@ -49,12 +49,12 @@ object CacheFetchTests extends TestSuite {
         )
       )
 
-      startRes.process.run(fetch).run
+      startRes.process.run(fetch).unsafePerformSync
     } finally {
       cleanTmpDir()
     }
 
-    val errors = res.errors
+    val errors = res.metadataErrors
 
     assert(errors.isEmpty)
   }

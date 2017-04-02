@@ -1049,7 +1049,7 @@ final case class Resolution(
     * Returns errors on dependencies, but that don't have POM-related errors
     * @return errors
     */
-  @deprecated("use metadataErrors instead")
+  @deprecated("use metadataErrors instead", "1.0.0-RC1")
   def errors: Seq[(Dependency, Seq[String])] =
     for {
       dep <- dependencies.toSeq

@@ -174,8 +174,8 @@ class Launcher(
         System.err.println(s"Resolved Scala $version (organization $scalaOrg)")
     }
 
-    if (res.errors.nonEmpty) {
-      Console.err.println(s"Errors:\n${res.errors.map("  " + _).mkString("\n")}")
+    if (res.metadataErrors.nonEmpty) {
+      Console.err.println(s"Errors:\n${res.metadataErrors.map("  " + _).mkString("\n")}")
       sys.exit(1)
     }
 
@@ -328,8 +328,8 @@ class Launcher(
         System.err.println(s"Resolved ${id0.groupID}:${id0.name}:${id0.version}$extraMsg")
     }
 
-    if (res.errors.nonEmpty) {
-      Console.err.println(s"Errors:\n${res.errors.map("  " + _).mkString("\n")}")
+    if (res.metadataErrors.nonEmpty) {
+      Console.err.println(s"Errors:\n${res.metadataErrors.map("  " + _).mkString("\n")}")
       sys.exit(1)
     }
 
@@ -463,8 +463,8 @@ class Launcher(
           System.err.println(s"Resolved org.scala-sbt:interface:$sbtVersion")
       }
 
-      if (res.errors.nonEmpty) {
-        Console.err.println(s"Errors:\n${res.errors.map("  " + _).mkString("\n")}")
+      if (res.metadataErrors.nonEmpty) {
+        Console.err.println(s"Errors:\n${res.metadataErrors.map("  " + _).mkString("\n")}")
         sys.exit(1)
       }
 
@@ -582,8 +582,8 @@ class Launcher(
           System.err.println(s"Resolved org.scala-sbt:compiler-interface:$sbtVersion")
       }
 
-      if (res.errors.nonEmpty) {
-        Console.err.println(s"Errors:\n${res.errors.map("  " + _).mkString("\n")}")
+      if (res.metadataErrors.nonEmpty) {
+        Console.err.println(s"Errors:\n${res.metadataErrors.map("  " + _).mkString("\n")}")
         sys.exit(1)
       }
 
