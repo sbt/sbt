@@ -80,22 +80,22 @@ class TestLogger(val logging: TestLogging) extends TestsListener {
   import sbt.protocol.testing.codec.JsonProtocol._
 
   def startGroup(name: String): Unit =
-    managed.logEvent(Level.Debug, StartTestGroupEvent(name))
+    managed.logEvent(Level.Info, StartTestGroupEvent(name))
   def testEvent(event: TestEvent): Unit =
-    managed.logEvent(Level.Debug, toTestItemEvent(event))
+    managed.logEvent(Level.Info, toTestItemEvent(event))
   def endGroup(name: String, t: Throwable): Unit = {
     log.trace(t)
     log.error("Could not run test " + name + ": " + t.toString)
-    managed.logEvent(Level.Debug, EndTestGroupErrorEvent(
+    managed.logEvent(Level.Info, EndTestGroupErrorEvent(
       name,
       t.getMessage + "\n" + t.getStackTrace.toList.mkString("\n")
     ))
   }
   def endGroup(name: String, result: TestResult): Unit =
-    managed.logEvent(Level.Debug, EndTestGroupEvent(name, result))
-  def doInit: Unit = managed.logEvent(Level.Debug, TestInitEvent())
+    managed.logEvent(Level.Info, EndTestGroupEvent(name, result))
+  def doInit: Unit = managed.logEvent(Level.Info, TestInitEvent())
   /** called once, at end of test group. */
   def doComplete(finalResult: TestResult): Unit =
-    managed.logEvent(Level.Debug, TestCompleteEvent(finalResult))
+    managed.logEvent(Level.Info, TestCompleteEvent(finalResult))
   override def contentLogger(test: TestDefinition): Option[ContentLogger] = Some(logTest(test))
 }
