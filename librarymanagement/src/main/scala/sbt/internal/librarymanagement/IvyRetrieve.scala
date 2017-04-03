@@ -13,8 +13,7 @@ import report.{ ArtifactDownloadReport, ConfigurationResolveReport, ResolveRepor
 import resolve.{ IvyNode, IvyNodeCallers }
 import IvyNodeCallers.{ Caller => IvyCaller }
 import ivyint.SbtDefaultDependencyDescriptor
-import sbt.librarymanagement._
-import sbt.internal.librarymanagement.syntax._
+import sbt.librarymanagement._, syntax._
 
 object IvyRetrieve {
   def reports(report: ResolveReport): Vector[ConfigurationResolveReport] =

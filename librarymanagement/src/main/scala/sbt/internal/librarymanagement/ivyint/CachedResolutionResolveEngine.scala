@@ -22,8 +22,7 @@ import annotation.tailrec
 import scala.concurrent.duration._
 import sbt.io.{ DirectoryFilter, Hash, IO }
 import sbt.util.Logger
-import sbt.librarymanagement._
-import sbt.internal.librarymanagement.syntax._
+import sbt.librarymanagement._, syntax._
 import sbt.internal.util.CacheStore
 
 private[sbt] object CachedResolutionResolveCache {
