@@ -156,7 +156,6 @@ object FromSbt {
       Some(
         MavenRepository(
           root0,
-          sbtAttrStub = true,
           authentication = authentication
         )
       )

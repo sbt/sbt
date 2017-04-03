@@ -134,11 +134,10 @@ class Helper(
 
     var repos = (if (common.noDefault) Nil else defaultRepositories) ++ repos0
 
-    if (common.sbtPluginHack)
-      repos = repos.map {
-        case m: MavenRepository => m.copy(sbtAttrStub = true)
-        case other => other
-      }
+    repos = repos.map {
+      case m: MavenRepository => m.copy(sbtAttrStub = common.sbtPluginHack)
+      case other => other
+    }
 
     if (common.dropInfoAttr)
       repos = repos.map {

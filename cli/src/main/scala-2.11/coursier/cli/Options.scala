@@ -37,7 +37,7 @@ final case class CommonOptions(
   @Help("Do not add default repositories (~/.ivy2/local, and Central)")
     noDefault: Boolean = false,
   @Help("Modify names in Maven repository paths for SBT plugins")
-    sbtPluginHack: Boolean = false,
+    sbtPluginHack: Boolean = true,
   @Help("Drop module attributes starting with 'info.' - these are sometimes used by projects built with SBT")
     dropInfoAttr: Boolean = false,
   @Help("Force module version")
