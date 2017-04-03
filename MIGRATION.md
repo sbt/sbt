@@ -15,3 +15,4 @@ Migration notes
 - `sbt.Process` and `sbt.ProcessExtra` are gone. Use `scala.sys.process` instead.
 - `incOptions.value.withNameHashing(...)` option is removed.
 - the scripted plugin is cross-versioned now, so you must use %% when depending on it
+- Removed the methods settingsSets from Project (along with add/setSbtFiles)
