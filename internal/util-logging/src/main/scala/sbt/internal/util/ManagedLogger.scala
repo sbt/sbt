@@ -42,7 +42,7 @@ class ManagedLogger(
       val tag = StringTypeTag[A]
       LogExchange.getOrElseUpdateJsonCodec(tag.key, implicitly[JsonFormat[A]])
       // println("logEvent " + tag.key)
-      val entry: ObjectEvent[A] = new ObjectEvent(level, v, channelName, execId, tag.key)
+      val entry: ObjectEvent[A] = ObjectEvent(level, v, channelName, execId, tag.key)
       xlogger.log(
         ConsoleAppender.toXLevel(level),
         new ObjectMessage(entry)
