@@ -20,13 +20,13 @@ final class RichUpdateReport(report: UpdateReport) {
   /** Obtains all successfully retrieved files in configurations, modules, and artifacts matching the specified filter. */
   private[sbt] def matching(f: DependencyFilter): Seq[File] = select0(f).distinct
 
-  /** Obtains all successfully retrieved files matching all provided filters.  An unspecified argument matches all files. */
-  def select(
-    configuration: ConfigurationFilter = configurationFilter(),
-    module: ModuleFilter = moduleFilter(),
-    artifact: ArtifactFilter = artifactFilter()
-  ): Seq[File] =
+  /** Obtains all successfully retrieved files matching all provided filters. */
+  def select(configuration: ConfigurationFilter, module: ModuleFilter, artifact: ArtifactFilter): Seq[File] =
     matching(DependencyFilter.make(configuration, module, artifact))
+
+  def select(configuration: ConfigurationFilter): Seq[File] = select(configuration, moduleFilter(), artifactFilter())
+  def select(module: ModuleFilter): Seq[File] = select(configurationFilter(), module, artifactFilter())
+  def select(artifact: ArtifactFilter): Seq[File] = select(configurationFilter(), moduleFilter(), artifact)
 
   private[this] def select0(f: DependencyFilter): Seq[File] =
     for (cReport <- report.configurations; mReport <- cReport.modules; (artifact, file) <- mReport.artifacts if f(cReport.configuration, mReport.module, artifact)) yield {
