@@ -263,8 +263,8 @@ class ConsoleAppender private[ConsoleAppender] (
     }
   def objectEventToLines(oe: ObjectEvent[_]): Vector[String] =
     {
-      val tag = oe.tag
-      LogExchange.stringCodec[AnyRef](tag) match {
+      val contentType = oe.contentType
+      LogExchange.stringCodec[AnyRef](contentType) match {
         case Some(codec) => codec.showLines(oe.message.asInstanceOf[AnyRef]).toVector
         case _           => Vector(oe.message.toString)
       }

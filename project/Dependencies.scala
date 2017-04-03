@@ -41,7 +41,7 @@ object Dependencies {
   val sjsonnew = "com.eed3si9n" %% "sjson-new-core" % sjsonnewVersion
   val sjsonnewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % sjsonnewVersion
 
-  def log4jVersion = "2.7"
+  def log4jVersion = "2.8.1"
   val log4jApi = "org.apache.logging.log4j" % "log4j-api" % log4jVersion
   val log4jCore = "org.apache.logging.log4j" % "log4j-core" % log4jVersion
   val log4jSlf4jImpl = "org.apache.logging.log4j" % "log4j-slf4j-impl" % log4jVersion

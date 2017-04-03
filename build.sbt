@@ -2,7 +2,7 @@ import Dependencies._
 import Util._
 import com.typesafe.tools.mima.core._, ProblemFilters._
 
-def baseVersion: String = "1.0.0-M19"
+def baseVersion: String = "1.0.0-M21"
 def internalPath   = file("internal")
 
 def commonSettings: Seq[Setting[_]] = Seq(
@@ -73,6 +73,7 @@ lazy val utilControl = (project in internalPath / "util-control").
 lazy val utilCollection = (project in internalPath / "util-collection").
   dependsOn(utilTesting % Test).
   settings(
+    crossScalaVersions := Seq(scala210, scala211, scala212),
     commonSettings,
     Util.keywordsSettings,
     name := "Util Collection",
