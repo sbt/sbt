@@ -98,7 +98,8 @@ final case class SparkSubmit(
         sparkVersion,
         options.yarnVersion,
         options.defaultAssemblyDependencies.getOrElse(options.autoAssembly),
-        options.assemblyDependencies.flatMap(_.split(",")).filter(_.nonEmpty),
+        options.assemblyDependencies.flatMap(_.split(",")).filter(_.nonEmpty) ++
+          options.sparkAssemblyDependencies.flatMap(_.split(",")).filter(_.nonEmpty).map(_ + s":$sparkVersion"),
         options.common
       )
 

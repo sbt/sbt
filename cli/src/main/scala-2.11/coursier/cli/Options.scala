@@ -268,6 +268,7 @@ final case class SparkSubmitOptions(
   @Help("Include default dependencies in Spark Yarn assembly or jars (see --auto-assembly). If --auto-assembly is false, the corresponding dependencies will still be shunted from the job classpath if this option is true. (Default: same as --auto-assembly)")
     defaultAssemblyDependencies: Option[Boolean] = None,
   assemblyDependencies: List[String] = Nil,
+  sparkAssemblyDependencies: List[String] = Nil,
   noDefaultSubmitDependencies: Boolean = false,
   submitDependencies: List[String] = Nil,
   @Help("Spark version - if empty, deduced from the job classpath. (Default: empty)")
