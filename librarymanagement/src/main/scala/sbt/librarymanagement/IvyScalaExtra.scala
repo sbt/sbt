@@ -28,7 +28,7 @@ object ScalaArtifacts {
 
   private[sbt] def toolDependencies(org: String, version: String, isDotty: Boolean = false): Seq[ModuleID] =
     if (isDotty)
-      Seq(ModuleID(org, DottyIDPrefix, version).withConfigurations(Some(Configurations.ScalaTool.name + "->compile"))
+      Seq(ModuleID(org, DottyIDPrefix, version).withConfigurations(Some(Configurations.ScalaTool.name + "->default(compile)"))
         .withCrossVersion(CrossVersion.binary))
     else
       Seq(
@@ -62,13 +62,24 @@ private[sbt] abstract class IvyScalaFunctions {
       // Mediate only for the dependencies in scalaVersion configurations. https://github.com/sbt/sbt/issues/2786
       def configQualifies: Boolean =
         (dd.getModuleConfigurations exists { scalaVersionConfigs })
+      // Do not rewrite the dependencies of Scala dependencies themselves, this prevents bootstrapping
+      // a Scala compiler using another Scala compiler.
+      def dependeeQualifies: Boolean =
+        dd.getParentRevisionId == null || (
+          dd.getParentRevisionId.getName match {
+            case name @ (CompilerID | LibraryID | ReflectID | ActorsID | ScalapID) =>
+              false
+            case _ =>
+              true
+          }
+        )
       val transformer =
         new NamespaceTransformer {
           def transform(mrid: ModuleRevisionId): ModuleRevisionId = {
             if (mrid == null) mrid
             else
               mrid.getName match {
-                case name @ (CompilerID | LibraryID | ReflectID | ActorsID | ScalapID) if configQualifies =>
+                case name @ (CompilerID | LibraryID | ReflectID | ActorsID | ScalapID) if configQualifies && dependeeQualifies =>
                   ModuleRevisionId.newInstance(scalaOrganization, name, mrid.getBranch, scalaVersion, mrid.getQualifiedExtraAttributes)
                 case _ => mrid
               }
