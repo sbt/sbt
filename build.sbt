@@ -101,11 +101,14 @@ lazy val bundledLauncherProj =
 
 // Runner for uniform test interface
 lazy val testingProj = (project in file("testing")).
+  enablePlugins(ContrabandPlugin, JsonCodecPlugin).
   dependsOn(testAgentProj).
   settings(
     baseSettings,
     name := "Testing",
-    libraryDependencies ++= Seq(testInterface,launcherInterface)
+    libraryDependencies ++= Seq(testInterface,launcherInterface, sjsonNewScalaJson),
+    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
+    contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats
   ).
   configure(addSbtIO, addSbtCompilerClasspath, addSbtUtilLogging)
 

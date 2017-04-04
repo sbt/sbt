@@ -10,12 +10,9 @@ import org.scalatools.testing.{ Framework => OldFramework }
 import sbt.internal.inc.classpath.{ ClasspathUtilities, DualLoader }
 import sbt.internal.inc.ScalaInstance
 import scala.annotation.tailrec
-import sbt.util.Logger
+import sbt.internal.util.ManagedLogger
 import sbt.io.IO
-
-object TestResult extends Enumeration {
-  val Passed, Failed, Error = Value
-}
+import sbt.protocol.testing.TestResult
 
 object TestFrameworks {
   val ScalaCheck = new TestFramework("org.scalacheck.ScalaCheckFramework")
@@ -27,7 +24,7 @@ object TestFrameworks {
 
 case class TestFramework(implClassNames: String*) {
   @tailrec
-  private def createFramework(loader: ClassLoader, log: Logger, frameworkClassNames: List[String]): Option[Framework] = {
+  private def createFramework(loader: ClassLoader, log: ManagedLogger, frameworkClassNames: List[String]): Option[Framework] = {
     frameworkClassNames match {
       case head :: tail =>
         try {
@@ -45,7 +42,7 @@ case class TestFramework(implClassNames: String*) {
     }
   }
 
-  def create(loader: ClassLoader, log: Logger): Option[Framework] =
+  def create(loader: ClassLoader, log: ManagedLogger): Option[Framework] =
     createFramework(loader, log, implClassNames.toList)
 }
 final class TestDefinition(val name: String, val fingerprint: Fingerprint, val explicitlySpecified: Boolean, val selectors: Array[Selector]) {
@@ -58,7 +55,7 @@ final class TestDefinition(val name: String, val fingerprint: Fingerprint, val e
   override def hashCode: Int = (name.hashCode, TestFramework.hashCode(fingerprint)).hashCode
 }
 
-final class TestRunner(delegate: Runner, listeners: Seq[TestReportListener], log: Logger) {
+final class TestRunner(delegate: Runner, listeners: Seq[TestReportListener], log: ManagedLogger) {
 
   final def tasks(testDefs: Set[TestDefinition]): Array[TestTask] =
     delegate.tasks(testDefs.map(df => new TaskDef(df.name, df.fingerprint, df.explicitlySpecified, df.selectors)).toArray)
@@ -106,7 +103,7 @@ object TestFramework {
       case _                                => sys.error("Could not call 'fingerprints' on framework " + framework)
     }
 
-  private[sbt] def safeForeach[T](it: Iterable[T], log: Logger)(f: T => Unit): Unit =
+  private[sbt] def safeForeach[T](it: Iterable[T], log: ManagedLogger)(f: T => Unit): Unit =
     it.foreach(i => try f(i) catch { case NonFatal(e) => log.trace(e); log.error(e.toString) })
 
   private[sbt] def hashCode(f: Fingerprint): Int = f match {
@@ -132,9 +129,9 @@ object TestFramework {
     runners: Map[TestFramework, Runner],
     testLoader: ClassLoader,
     tests: Seq[TestDefinition],
-    log: Logger,
+    log: ManagedLogger,
     listeners: Seq[TestReportListener]
-  ): (() => Unit, Seq[(String, TestFunction)], TestResult.Value => () => Unit) =
+  ): (() => Unit, Seq[(String, TestFunction)], TestResult => () => Unit) =
     {
       val mappedTests = testMap(frameworks.values.toSeq, tests)
       if (mappedTests.isEmpty)
@@ -160,7 +157,7 @@ object TestFramework {
       map.toMap.mapValues(_.toSet)
     }
 
-  private def createTestTasks(loader: ClassLoader, runners: Map[Framework, TestRunner], tests: Map[Framework, Set[TestDefinition]], ordered: Seq[TestDefinition], log: Logger, listeners: Seq[TestReportListener]) =
+  private def createTestTasks(loader: ClassLoader, runners: Map[Framework, TestRunner], tests: Map[Framework, Set[TestDefinition]], ordered: Seq[TestDefinition], log: ManagedLogger, listeners: Seq[TestReportListener]) =
     {
       val testsListeners = listeners collect { case tl: TestsListener => tl }
 
@@ -178,7 +175,7 @@ object TestFramework {
             }
         }
 
-      val endTask = (result: TestResult.Value) => foreachListenerSafe(_.doComplete(result))
+      val endTask = (result: TestResult) => foreachListenerSafe(_.doComplete(result))
       (startTask, order(testTasks, ordered), endTask)
     }
   private[this] def withContextLoader[T](loader: ClassLoader)(eval: => T): T =

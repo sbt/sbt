@@ -7,6 +7,7 @@ import java.io.File
 import sbt.io.IO
 
 import scala.collection.mutable.Map
+import sbt.protocol.testing.TestResult
 
 // Assumes exclusive ownership of the file.
 private[sbt] class TestStatusReporter(f: File) extends TestsListener {
@@ -16,11 +17,11 @@ private[sbt] class TestStatusReporter(f: File) extends TestsListener {
   def startGroup(name: String): Unit = { succeeded remove name }
   def testEvent(event: TestEvent): Unit = ()
   def endGroup(name: String, t: Throwable): Unit = ()
-  def endGroup(name: String, result: TestResult.Value): Unit = {
+  def endGroup(name: String, result: TestResult): Unit = {
     if (result == TestResult.Passed)
       succeeded(name) = System.currentTimeMillis
   }
-  def doComplete(finalResult: TestResult.Value): Unit = {
+  def doComplete(finalResult: TestResult): Unit = {
     TestStatus.write(succeeded, "Successful Tests", f)
   }
 }

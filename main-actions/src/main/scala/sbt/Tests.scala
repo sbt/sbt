@@ -15,7 +15,9 @@ import ConcurrentRestrictions.Tag
 import testing.{ AnnotatedFingerprint, Fingerprint, Framework, SubclassFingerprint, Runner, TaskDef, SuiteSelector, Task => TestTask }
 import scala.annotation.tailrec
 
+import sbt.internal.util.ManagedLogger
 import sbt.util.Logger
+import sbt.protocol.testing.TestResult
 
 sealed trait TestOption
 object Tests {
@@ -26,7 +28,7 @@ object Tests {
    * @param events The result of each test group (suite) executed during this test run.
    * @param summaries Explicit summaries directly provided by test frameworks.  This may be empty, in which case a default summary will be generated.
    */
-  final case class Output(overall: TestResult.Value, events: Map[String, SuiteResult], summaries: Iterable[Summary])
+  final case class Output(overall: TestResult, events: Map[String, SuiteResult], summaries: Iterable[Summary])
 
   /**
    * Summarizes a test run.
@@ -162,7 +164,7 @@ object Tests {
       in.filter(t => seen.add(f(t)))
     }
 
-  def apply(frameworks: Map[TestFramework, Framework], testLoader: ClassLoader, runners: Map[TestFramework, Runner], discovered: Seq[TestDefinition], config: Execution, log: Logger): Task[Output] =
+  def apply(frameworks: Map[TestFramework, Framework], testLoader: ClassLoader, runners: Map[TestFramework, Runner], discovered: Seq[TestDefinition], config: Execution, log: ManagedLogger): Task[Output] =
     {
       val o = processOptions(config, discovered, log)
       testTask(testLoader, frameworks, runners, o.tests, o.setup, o.cleanup, log, o.testListeners, config)
@@ -170,7 +172,7 @@ object Tests {
 
   def testTask(loader: ClassLoader, frameworks: Map[TestFramework, Framework], runners: Map[TestFramework, Runner], tests: Seq[TestDefinition],
     userSetup: Iterable[ClassLoader => Unit], userCleanup: Iterable[ClassLoader => Unit],
-    log: Logger, testListeners: Seq[TestReportListener], config: Execution): Task[Output] =
+    log: ManagedLogger, testListeners: Seq[TestReportListener], config: Execution): Task[Output] =
     {
       def fj(actions: Iterable[() => Unit]): Task[Unit] = nop.dependsOn(actions.toSeq.fork(_()): _*)
       def partApp(actions: Iterable[ClassLoader => Unit]) = actions.toSeq map { a => () => a(loader) }
@@ -249,12 +251,20 @@ object Tests {
 
   def processResults(results: Iterable[(String, SuiteResult)]): Output =
     Output(overall(results.map(_._2.result)), results.toMap, Iterable.empty)
+
+  private def severity(r: TestResult): Int =
+    r match {
+      case TestResult.Passed => 0
+      case TestResult.Failed => 1
+      case TestResult.Error  => 2
+    }
+
   def foldTasks(results: Seq[Task[Output]], parallel: Boolean): Task[Output] =
     if (results.isEmpty)
       task { Output(TestResult.Passed, Map.empty, Nil) }
     else if (parallel)
       reduced(results.toIndexedSeq, {
-        case (Output(v1, m1, _), Output(v2, m2, _)) => Output(if (v1.id < v2.id) v2 else v1, m1 ++ m2, Iterable.empty)
+        case (Output(v1, m1, _), Output(v2, m2, _)) => Output(if (severity(v1) < severity(v2)) v2 else v1, m1 ++ m2, Iterable.empty)
       })
     else {
       def sequence(tasks: List[Task[Output]], acc: List[Output]): Task[List[Output]] = tasks match {
@@ -266,8 +276,8 @@ object Tests {
         Output(overall(rs), ms reduce (_ ++ _), Iterable.empty)
       }
     }
-  def overall(results: Iterable[TestResult.Value]): TestResult.Value =
-    (TestResult.Passed /: results) { (acc, result) => if (acc.id < result.id) result else acc }
+  def overall(results: Iterable[TestResult]): TestResult =
+    ((TestResult.Passed: TestResult) /: results) { (acc, result) => if (severity(acc) < severity(result)) result else acc }
   def discover(frameworks: Seq[Framework], analysis: CompileAnalysis, log: Logger): (Seq[TestDefinition], Set[String]) =
     discover(frameworks flatMap TestFramework.getFingerprints, allDefs(analysis), log)
 

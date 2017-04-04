@@ -8,6 +8,7 @@ import scala.collection.mutable.ListBuffer
 import scala.util.DynamicVariable
 import scala.xml.{ Elem, Node => XNode, XML }
 import testing.{ Event => TEvent, Status => TStatus, OptionalThrowable, TestSelector }
+import sbt.protocol.testing.TestResult
 
 /**
  * A tests listener that outputs the results it receives in junit xml
@@ -161,7 +162,7 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
    * Ends the current suite, wraps up the result and writes it to an XML file
    *  in the output folder that is named after the suite.
    */
-  override def endGroup(name: String, result: TestResult.Value) = {
+  override def endGroup(name: String, result: TestResult) = {
     writeSuite()
   }
 
@@ -177,7 +178,7 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
   }
 
   /**Does nothing, as we write each file after a suite is done.*/
-  override def doComplete(finalResult: TestResult.Value): Unit = {}
+  override def doComplete(finalResult: TestResult): Unit = {}
 
   /**Returns None*/
   override def contentLogger(test: TestDefinition): Option[ContentLogger] = None

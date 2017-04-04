@@ -26,7 +26,7 @@ lazy val root = (project in file(".")).
       }
       def startGroup(name: String): Unit = ()
       def endGroup(name: String, t: Throwable): Unit = ()
-      def endGroup(name: String, result: TestResult.Value): Unit = ()
+      def endGroup(name: String, result: TestResult): Unit = ()
     },
     check := {
       val exists = marker.exists

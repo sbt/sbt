@@ -3,51 +3,44 @@
  */
 package sbt
 
-import scala.concurrent.duration.FiniteDuration
-import sbt.internal._
-import sbt.internal.util.Attributed.data
-import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
-import sbt.internal.librarymanagement.mavenint.{ PomExtraDependencyAttributes, SbtPomExtraProperties }
-import Project.{ inConfig, inScope, inTask, richInitialize, richInitializeTask, richTaskSessionVar }
 import Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
-import sbt.internal.librarymanagement.{ CustomPomParser, DependencyFilter }
-import sbt.librarymanagement.Artifact.{ DocClassifier, SourceClassifier }
-import sbt.librarymanagement.{ Configuration, Configurations, ConflictManager, CrossVersion, MavenRepository, Resolver, ScalaArtifacts, UpdateOptions }
-import sbt.librarymanagement.Configurations.{ Compile, CompilerPlugin, IntegrationTest, names, Provided, Runtime, Test }
-import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
-import sbt.internal.util.complete._
-import std.TaskExtra._
-import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
-
-import sjsonnew.{ IsoLList, JsonFormat, LList, LNil }, LList.:*:
-import sbt.internal.util.CacheImplicits._
-import sbt.librarymanagement.{ `package` => _, _ }
-import sbt.internal.librarymanagement._
-import sbt.internal.librarymanagement.syntax._
-import sbt.internal.util._
-import sbt.util.{ Level, Logger, ShowLines }
-import scala.xml.NodeSeq
-import scala.util.control.NonFatal
-
-import org.apache.ivy.core.module.{ descriptor, id }
-import descriptor.ModuleDescriptor, id.ModuleRevisionId
 import java.io.{ File, PrintWriter }
 import java.net.{ URI, URL }
 import java.util.concurrent.{ TimeUnit, Callable }
-import sbt.internal.CommandStrings.ExportStream
-
-import xsbti.{ CrossValue, Maybe }
-import sbt.util.InterfaceUtil.{ f1, o2m }
-
-import sbt.internal.util.Types._
-
-import sbt.internal.io.WatchState
-import sbt.io.{ AllPassFilter, FileFilter, GlobFilter, HiddenFileFilter, IO, NameFilter, NothingFilter, Path, PathFinder, SimpleFileFilter, DirectoryFilter, Hash }
-
-import Path._
-import sbt.io.syntax._
 import Keys._
+import org.apache.ivy.core.module.{ descriptor, id }, descriptor.ModuleDescriptor, id.ModuleRevisionId
+import Project.{ inConfig, inScope, inTask, richInitialize, richInitializeTask, richTaskSessionVar }
+import sbt.internal._
+import sbt.internal.CommandStrings.ExportStream
+import sbt.internal.io.WatchState
+import sbt.internal.librarymanagement._
+import sbt.internal.librarymanagement.mavenint.{ PomExtraDependencyAttributes, SbtPomExtraProperties }
+import sbt.internal.librarymanagement.syntax._
+import sbt.internal.librarymanagement.{ CustomPomParser, DependencyFilter }
+import sbt.internal.testing.TestLogger
+import sbt.internal.util._
+import sbt.internal.util.Attributed.data
+import sbt.internal.util.CacheImplicits._
+import sbt.internal.util.complete._
+import sbt.internal.util.Types._
+import sbt.io.syntax._
+import sbt.io.{ AllPassFilter, FileFilter, GlobFilter, HiddenFileFilter, IO, NameFilter, NothingFilter, Path, PathFinder, SimpleFileFilter, DirectoryFilter, Hash }, Path._
+import sbt.librarymanagement.Artifact.{ DocClassifier, SourceClassifier }
+import sbt.librarymanagement.Configurations.{ Compile, CompilerPlugin, IntegrationTest, names, Provided, Runtime, Test }
+import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
+import sbt.librarymanagement.{ `package` => _, _ }
+import sbt.librarymanagement.{ Configuration, Configurations, ConflictManager, CrossVersion, MavenRepository, Resolver, ScalaArtifacts, UpdateOptions }
+import sbt.util.InterfaceUtil.{ f1, o2m }
+import sbt.util.{ Level, Logger, ShowLines }
+import scala.concurrent.duration.FiniteDuration
+import scala.util.control.NonFatal
+import scala.xml.NodeSeq
+import Scope.{ fillTaskAxis, GlobalScope, ThisScope }
+import sjsonnew.{ IsoLList, JsonFormat, LList, LNil }, LList.:*:
+import std.TaskExtra._
+import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
 import xsbti.compile.IncToolOptionsUtil
+import xsbti.{ CrossValue, Maybe }
 
 // incremental compiler
 import xsbt.api.Discovery

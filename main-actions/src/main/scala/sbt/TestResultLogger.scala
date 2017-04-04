@@ -2,6 +2,7 @@ package sbt
 
 import sbt.Tests.{ Output, Summary }
 import sbt.util.{ Level, Logger }
+import sbt.protocol.testing.TestResult
 
 /**
  * Logs information about tests after they finish.
@@ -138,7 +139,7 @@ object TestResultLogger {
     })
 
     val printFailures = TestResultLogger((log, results, _) => {
-      def select(resultTpe: TestResult.Value) = results.events collect {
+      def select(resultTpe: TestResult) = results.events collect {
         case (name, tpe) if tpe.result == resultTpe =>
           scala.reflect.NameTransformer.decode(name)
       }
