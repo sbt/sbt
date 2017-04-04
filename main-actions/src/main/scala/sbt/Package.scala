@@ -94,8 +94,13 @@ object Package {
       ManifestAttributes((attribKeys zip attribVals) ++ { homepage map (h => (IMPLEMENTATION_URL, h.toString)) }: _*)
     }
   def makeJar(sources: Seq[(File, String)], jar: File, manifest: Manifest, log: Logger): Unit = {
-    log.info("Packaging " + jar.getAbsolutePath + " ...")
-    IO.delete(jar)
+    val path = jar.getAbsolutePath
+    log.info("Packaging " + path + " ...")
+    if (jar.exists)
+      if (jar.isFile)
+        IO.delete(jar)
+      else
+        sys.error(path + " exists, but is not a regular file")
     log.debug(sourcesDebugString(sources))
     IO.jar(sources, jar, manifest)
     log.info("Done packaging.")
