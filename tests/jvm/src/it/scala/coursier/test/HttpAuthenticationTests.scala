@@ -23,7 +23,7 @@ object HttpAuthenticationTests extends TestSuite {
             s"basic authentication with user '$user' and password '$password', serving the right " +
             "files.\n" + Console.RESET +
             "Run one from the coursier sources with\n" +
-            "  ./coursier launch -r http://dl.bintray.com/scalaz/releases " +
+            "  ./coursier launch -r https://dl.bintray.com/scalaz/releases " +
             "io.get-coursier:simple-web-server_2.11:1.0.0-M12 -- " +
             "-d tests/jvm/src/test/resources/test-repo/http/abc.com -u user -P pass -r realm -v"
         )

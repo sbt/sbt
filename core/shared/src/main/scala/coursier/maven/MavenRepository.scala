@@ -286,35 +286,46 @@ final case class MavenRepository(
 
     for {
       str <- fetch(projectArtifact(module, version, versioningValue))
-      rawListFilesPage <- fetch(artifactFor(listFilesUrl))
+      rawListFilesPageOpt <- EitherT(F.map(fetch(artifactFor(listFilesUrl)).run) {
+        e => \/-(e.toOption): String \/ Option[String]
+      })
       proj0 <- EitherT(F.point[String \/ Project](parseRawPom(str)))
     } yield {
 
-      val files = WebPage.listFiles(listFilesUrl, rawListFilesPage)
+      val foundPublications =
+        rawListFilesPageOpt match {
+          case Some(rawListFilesPage) =>
 
-      val prefix = s"${module.name}-${versioningValue.getOrElse(version)}"
+            val files = WebPage.listFiles(listFilesUrl, rawListFilesPage)
 
-      val packagingTpeMap = proj0.packagingOpt
-        .map { packaging =>
-          (MavenSource.typeDefaultClassifier(packaging), MavenSource.typeExtension(packaging)) -> packaging
-        }
-        .toMap
+            val prefix = s"${module.name}-${versioningValue.getOrElse(version)}"
 
-      val foundPublications = files
-        .flatMap(isArtifact(_, prefix))
-        .map {
-          case (classifier, ext) =>
-            val tpe = packagingTpeMap.getOrElse(
-              (classifier, ext),
-              MavenSource.classifierExtensionDefaultTypeOpt(classifier, ext).getOrElse(ext)
-            )
-            val config = MavenSource.typeDefaultConfig(tpe).getOrElse("compile")
-            config -> Publication(
-              module.name,
-              tpe,
-              ext,
-              classifier
-            )
+            val packagingTpeMap = proj0.packagingOpt
+              .map { packaging =>
+                (MavenSource.typeDefaultClassifier(packaging), MavenSource.typeExtension(packaging)) -> packaging
+              }
+              .toMap
+
+            files
+              .flatMap(isArtifact(_, prefix))
+              .map {
+                case (classifier, ext) =>
+                  val tpe = packagingTpeMap.getOrElse(
+                    (classifier, ext),
+                    MavenSource.classifierExtensionDefaultTypeOpt(classifier, ext).getOrElse(ext)
+                  )
+                  val config = MavenSource.typeDefaultConfig(tpe).getOrElse("compile")
+                  config -> Publication(
+                    module.name,
+                    tpe,
+                    ext,
+                    classifier
+                  )
+              }
+
+          case None =>
+            // Publications can't be listed - MavenSource then handles that
+            Nil
         }
 
       val proj = Pom.addOptionalDependenciesInConfig(

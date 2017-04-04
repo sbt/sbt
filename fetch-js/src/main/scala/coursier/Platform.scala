@@ -88,7 +88,7 @@ object Platform {
     )
   }
 
-  implicit def fetch(
+  def fetch(
     repositories: Seq[core.Repository]
   ): Fetch.Metadata[Task] =
     Fetch.from(repositories, Platform.artifact)

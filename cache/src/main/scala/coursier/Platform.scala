@@ -42,19 +42,12 @@ object Platform {
 
   val artifact: Fetch.Content[Task] = { artifact =>
     EitherT {
-      val url = Cache.url(artifact.url)
-
-      val conn = url.openConnection()
-      // Dummy user-agent instead of the default "Java/...",
-      // so that we are not returned incomplete/erroneous metadata
-      // (Maven 2 compatibility? - happens for snapshot versioning metadata,
-      // this is SO FUCKING CRAZY)
-      conn.setRequestProperty("User-Agent", "")
+      val conn = Cache.urlConnection(artifact.url, artifact.authentication)
       readFully(conn.getInputStream())
     }
   }
 
-  implicit def fetch(
+  def fetch(
     repositories: Seq[core.Repository]
   ): Fetch.Metadata[Task] =
     Fetch.from(repositories, Platform.artifact)
