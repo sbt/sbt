@@ -177,16 +177,19 @@ object ConsoleAppender {
   private[this] def os = System.getProperty("os.name")
   private[this] def isWindows = os.toLowerCase(Locale.ENGLISH).indexOf("windows") >= 0
 
-  def apply(out: PrintStream): ConsoleAppender = apply(generateName, ConsoleOut.printStreamOut(out))
-  def apply(out: PrintWriter): ConsoleAppender = apply(generateName, ConsoleOut.printWriterOut(out))
-  def apply(): ConsoleAppender = apply(generateName, ConsoleOut.systemOut)
-  def apply(name: String): ConsoleAppender = apply(name, ConsoleOut.systemOut, formatEnabled, formatEnabled, noSuppressedMessage)
-  def apply(out: ConsoleOut): ConsoleAppender = apply(generateName, out, formatEnabled, formatEnabled, noSuppressedMessage)
-  def apply(name: String, out: ConsoleOut): ConsoleAppender = apply(name, out, formatEnabled, formatEnabled, noSuppressedMessage)
+  def apply(out: PrintStream): ConsoleAppender = apply(ConsoleOut.printStreamOut(out))
+  def apply(out: PrintWriter): ConsoleAppender = apply(ConsoleOut.printWriterOut(out))
+  def apply(): ConsoleAppender = apply(ConsoleOut.systemOut)
+  def apply(name: String): ConsoleAppender = apply(name, ConsoleOut.systemOut)
+  def apply(out: ConsoleOut): ConsoleAppender = apply(generateName, out)
+  def apply(name: String, out: ConsoleOut): ConsoleAppender = apply(name, out, formatEnabled)
+
   def apply(name: String, out: ConsoleOut, suppressedMessage: SuppressedTraceContext => Option[String]): ConsoleAppender =
     apply(name, out, formatEnabled, formatEnabled, suppressedMessage)
+
   def apply(name: String, out: ConsoleOut, useColor: Boolean): ConsoleAppender =
     apply(name, out, formatEnabled, useColor, noSuppressedMessage)
+
   def apply(name: String, out: ConsoleOut, ansiCodesSupported: Boolean,
     useColor: Boolean, suppressedMessage: SuppressedTraceContext => Option[String]): ConsoleAppender =
     {
@@ -194,8 +197,9 @@ object ConsoleAppender {
       appender.start
       appender
     }
-  def generateName: String =
-    "out-" + generateId.incrementAndGet
+
+  def generateName: String = "out-" + generateId.incrementAndGet
+
   private val generateId: AtomicInteger = new AtomicInteger
 
   private[this] val EscapeSequence = (27.toChar + "[^@-~]*[@-~]").r
@@ -322,7 +326,6 @@ class ConsoleAppender private[ConsoleAppender] (
       setColor(messageColor)
       out.print(line)
       reset()
-      out.print(s" ($name)")
       out.println()
     }
 }
