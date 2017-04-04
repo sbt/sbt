@@ -898,7 +898,7 @@ object Defaults extends BuildCommon {
         scalaRun.value.run(mainClass, data(classpath.value), parser.parsed, streams.value.log).get
       }
     }
-  def runnerTask: Initialize[Task[ScalaRun]] = runnerInit
+  def runnerTask: Setting[Task[ScalaRun]] = runner := runnerInit.value
   def runnerInit: Initialize[Task[ScalaRun]] = Def.task {
     val tmp = taskTemporaryDirectory.value
     val resolvedScope = resolvedScoped.value.scope
@@ -1201,11 +1201,8 @@ object Defaults extends BuildCommon {
 
   // 1. runnerSettings is added unscoped via JvmPlugin.
   // 2. In addition it's added scoped to run task.
-  lazy val runnerSettings: Seq[Setting[_]] =
-    Seq(
-      runner := runnerInit.value,
-      forkOptions := forkOptionsTask.value
-    )
+  lazy val runnerSettings: Seq[Setting[_]] = Seq(runnerTask, forkOptions := forkOptionsTask.value)
+
   lazy val baseTasks: Seq[Setting[_]] = projectTasks ++ packageBase
   lazy val configSettings: Seq[Setting[_]] = Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig ++ Classpaths.compilerPluginConfig ++ deprecationSettings
 
