@@ -100,7 +100,8 @@ final case class SparkSubmit(
         options.defaultAssemblyDependencies.getOrElse(options.autoAssembly),
         options.assemblyDependencies.flatMap(_.split(",")).filter(_.nonEmpty) ++
           options.sparkAssemblyDependencies.flatMap(_.split(",")).filter(_.nonEmpty).map(_ + s":$sparkVersion"),
-        options.common
+        options.common,
+        options.artifactOptions.artifactTypes(sources = false, javadoc = false)
       )
 
       val extraConf =
@@ -120,7 +121,8 @@ final case class SparkSubmit(
         options.yarnVersion,
         options.defaultAssemblyDependencies.getOrElse(true),
         options.assemblyDependencies.flatMap(_.split(",")).filter(_.nonEmpty),
-        options.common
+        options.common,
+        options.artifactOptions.artifactTypes(sources = false, javadoc = false)
       )
 
       val (assembly, assemblyJars) = assemblyAndJarsOrError match {

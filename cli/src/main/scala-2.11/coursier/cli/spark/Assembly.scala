@@ -191,7 +191,7 @@ object Assembly {
     default: Boolean,
     extraDependencies: Seq[String],
     options: CommonOptions,
-    artifactTypes: Set[String] = Set("jar")
+    artifactTypes: Set[String]
   ): Seq[File] = {
 
     val helper = sparkJarsHelper(scalaVersion, sparkVersion, yarnVersion, default, extraDependencies, options)
@@ -206,7 +206,7 @@ object Assembly {
     default: Boolean,
     extraDependencies: Seq[String],
     options: CommonOptions,
-    artifactTypes: Set[String] = Set("jar"),
+    artifactTypes: Set[String],
     checksumSeed: Array[Byte] = "v1".getBytes("UTF-8")
   ): Either[String, (File, Seq[File])] = {
 
