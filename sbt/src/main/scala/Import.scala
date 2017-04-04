@@ -8,6 +8,10 @@ trait Import {
   type URI = java.net.URI
   type URL = java.net.URL
 
+  // sbt.testing
+  type TestResult = sbt.protocol.testing.TestResult
+  val TestResult = sbt.protocol.testing.TestResult
+
   // sbt.io
   val AllPassFilter = sbt.io.AllPassFilter
   val DirectoryFilter = sbt.io.DirectoryFilter
