@@ -52,8 +52,9 @@ final class xMain extends xsbti.AppMain {
       import BasicCommandStrings.runEarly
       import BuiltinCommands.defaults
       import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
-      if (!java.lang.Boolean.getBoolean("sbt.skip.version.write"))
+      if (!java.lang.Boolean.getBoolean("sbt.skip.version.write")) {
         setSbtVersion(configuration.baseDirectory(), configuration.provider().id().version())
+      }
       runManaged(initialState(
         configuration,
         Seq(defaults, early),
