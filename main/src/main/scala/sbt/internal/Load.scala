@@ -618,7 +618,7 @@ private[sbt] object Load {
       // Discover any new project definition for the base directory of this project, and load all settings.
       // Also return any newly discovered project instances.
       def discoverAndLoad(p: Project): (Project, Seq[Project], Seq[File]) = {
-        val (root, discovered, files, generated) = discover(p.auto, p.base) match {
+        val (root, discovered, files, generated) = discover(AddSettings.allDefaults, p.base) match {
           case DiscoveredProjects(Some(root), rest, files, generated) =>
             // TODO - We assume here the project defined in a build.sbt WINS because the original was
             //        a phony.  However, we may want to 'merge' the two, or only do this if the original was a default
@@ -738,7 +738,7 @@ private[sbt] object Load {
           case p: AutoPlugins      => autoPluginSettings(p)
           case q: Sequence         => (Seq.empty[Setting[_]] /: q.sequence) { (b, add) => b ++ expandSettings(add) }
         }
-        expandSettings(p.auto)
+        expandSettings(AddSettings.allDefaults)
       }
       // Finally, a project we can use in buildStructure.
       p.copy(settingsEval = Ev.later(allSettings)).setAutoPlugins(projectPlugins).prefixConfigs(autoConfigs: _*)

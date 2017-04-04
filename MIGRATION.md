@@ -16,3 +16,4 @@ Migration notes
 - `incOptions.value.withNameHashing(...)` option is removed.
 - `TestResult.Value` is now `TestResult`.
 - the scripted plugin is cross-versioned now, so you must use %% when depending on it
+- Removed the methods settingsSets from Project (along with add/setSbtFiles)
