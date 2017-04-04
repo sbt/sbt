@@ -1,10 +1,9 @@
 /* sbt -- Simple Build Tool
  * Copyright 2011  Mark Harrah
  */
-package sbt.internal.librarymanagement
+package sbt.librarymanagement
 
 import sbt.io.{ AllPassFilter, NameFilter }
-import sbt.librarymanagement._
 
 trait DependencyFilterExtra {
   def moduleFilter(organization: NameFilter = AllPassFilter, name: NameFilter = AllPassFilter, revision: NameFilter = AllPassFilter): ModuleFilter =

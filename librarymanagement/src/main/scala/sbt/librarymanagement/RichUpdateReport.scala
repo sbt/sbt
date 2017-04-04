@@ -1,13 +1,11 @@
 package sbt
-package internal
 package librarymanagement
 
 import java.io.File
-import sbt.librarymanagement._
 
 /** Provides extra methods for filtering the contents of an `UpdateReport` and for obtaining references to a selected subset of the underlying files. */
 final class RichUpdateReport(report: UpdateReport) {
-  def recomputeStamps(): UpdateReport =
+  private[sbt] def recomputeStamps(): UpdateReport =
     {
       val files = report.cachedDescriptor +: allFiles
       val stamps = files.map(f => (f, f.lastModified)).toMap
@@ -17,14 +15,18 @@ final class RichUpdateReport(report: UpdateReport) {
   import DependencyFilter._
 
   /** Obtains all successfully retrieved files in all configurations and modules. */
-  def allFiles: Seq[File] = matching(DependencyFilter.allPass)
+  private[sbt] def allFiles: Seq[File] = matching(DependencyFilter.allPass)
 
   /** Obtains all successfully retrieved files in configurations, modules, and artifacts matching the specified filter. */
-  def matching(f: DependencyFilter): Seq[File] = select0(f).distinct
+  private[sbt] def matching(f: DependencyFilter): Seq[File] = select0(f).distinct
 
-  /** Obtains all successfully retrieved files matching all provided filters.  An unspecified argument matches all files. */
-  def select(configuration: ConfigurationFilter = configurationFilter(), module: ModuleFilter = moduleFilter(), artifact: ArtifactFilter = artifactFilter()): Seq[File] =
+  /** Obtains all successfully retrieved files matching all provided filters. */
+  def select(configuration: ConfigurationFilter, module: ModuleFilter, artifact: ArtifactFilter): Seq[File] =
     matching(DependencyFilter.make(configuration, module, artifact))
+
+  def select(configuration: ConfigurationFilter): Seq[File] = select(configuration, moduleFilter(), artifactFilter())
+  def select(module: ModuleFilter): Seq[File] = select(configurationFilter(), module, artifactFilter())
+  def select(artifact: ArtifactFilter): Seq[File] = select(configurationFilter(), moduleFilter(), artifact)
 
   private[this] def select0(f: DependencyFilter): Seq[File] =
     for (cReport <- report.configurations; mReport <- cReport.modules; (artifact, file) <- mReport.artifacts if f(cReport.configuration, mReport.module, artifact)) yield {
@@ -39,7 +41,8 @@ final class RichUpdateReport(report: UpdateReport) {
         .withArtifacts(modReport.artifacts filter { case (art, file) => f(configuration, modReport.module, art) })
         .withMissingArtifacts(modReport.missingArtifacts filter { art => f(configuration, modReport.module, art) })
     }
-  def substitute(f: (String, ModuleID, Vector[(Artifact, File)]) => Vector[(Artifact, File)]): UpdateReport =
+
+  private[sbt] def substitute(f: (String, ModuleID, Vector[(Artifact, File)]) => Vector[(Artifact, File)]): UpdateReport =
     moduleReportMap { (configuration, modReport) =>
       val newArtifacts = f(configuration, modReport.module, modReport.artifacts)
       modReport
@@ -47,19 +50,19 @@ final class RichUpdateReport(report: UpdateReport) {
         .withMissingArtifacts(modReport.missingArtifacts)
     }
 
-  def toSeq: Seq[(String, ModuleID, Artifact, File)] =
+  private[sbt] def toSeq: Seq[(String, ModuleID, Artifact, File)] =
     for (confReport <- report.configurations; modReport <- confReport.modules; (artifact, file) <- modReport.artifacts) yield (confReport.configuration, modReport.module, artifact, file)
 
-  def allMissing: Seq[(String, ModuleID, Artifact)] =
+  private[sbt] def allMissing: Seq[(String, ModuleID, Artifact)] =
     for (confReport <- report.configurations; modReport <- confReport.modules; artifact <- modReport.missingArtifacts) yield (confReport.configuration, modReport.module, artifact)
 
-  def addMissing(f: ModuleID => Seq[Artifact]): UpdateReport =
+  private[sbt] def addMissing(f: ModuleID => Seq[Artifact]): UpdateReport =
     moduleReportMap { (configuration, modReport) =>
       modReport
         .withMissingArtifacts((modReport.missingArtifacts ++ f(modReport.module)).distinct)
     }
 
-  def moduleReportMap(f: (String, ModuleReport) => ModuleReport): UpdateReport =
+  private[sbt] def moduleReportMap(f: (String, ModuleReport) => ModuleReport): UpdateReport =
     {
       val newConfigurations = report.configurations.map { confReport =>
         import confReport._
