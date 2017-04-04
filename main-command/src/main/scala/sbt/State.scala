@@ -205,16 +205,9 @@ object State {
       def hasInput = System.console().reader().ready()
       s.remainingCommands match {
         case List()           => if (isInteractive && hasInput) doX(Exec("shell", s.source), Nil) else exit(true)
-        case List(x, xs @ _*) => doX(x, xs)
+        case List(x, xs @ _*) => doX(x, xs.toList)
       }
     }
-      s.remainingCommands match {
-        case List() => exit(true)
-        case x :: xs =>
-          log.debug(s"> $x")
-          f(x, s.copy(remainingCommands = xs, currentCommand = Some(x), history = x :: s.history))
-      }
-
     def :::(newCommands: List[String]): State = ++:(newCommands map { Exec(_, s.source) })
     def ++:(newCommands: List[Exec]): State = s.copy(remainingCommands = newCommands ::: s.remainingCommands)
     def ::(command: String): State = +:(Exec(command, s.source))
