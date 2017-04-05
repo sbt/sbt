@@ -330,7 +330,7 @@ final case class MavenRepository(
 
       val proj = Pom.addOptionalDependenciesInConfig(
         proj0.copy(configurations = defaultConfigurations),
-        Set("", "compile"),
+        Set("", "default"),
         "optional"
       )
 
