@@ -6,7 +6,7 @@ package std
 
 import scala.sys.process.{ BasicIO, ProcessIO, ProcessBuilder }
 
-import sbt.internal.util.AList
+import sbt.internal.util.{ AList, AttributeMap }
 import sbt.internal.util.Types._
 import java.io.{ BufferedInputStream, BufferedReader, File, InputStream }
 import sbt.io.IO
@@ -120,9 +120,14 @@ trait TaskExtra {
     def failure: Task[Incomplete] = mapFailure(idFun)
     def result: Task[Result[S]] = mapR(idFun)
 
-    def flatMapR[T](f: Result[S] => Task[T]): Task[T] = Task(Info(), new FlatMapped[T, K](in, f, ml))
-    def mapR[T](f: Result[S] => T): Task[T] = Task(Info(), new Mapped[T, K](in, f, ml))
-    def dependsOn(tasks: Task[_]*): Task[S] = Task(Info(), new DependsOn(in, tasks))
+    // The "taskDefinitionKey" is used, at least, by the ".previous" functionality.
+    // But apparently it *cannot* survive a task map/flatMap/etc. See actions/depends-on.
+    private def newInfo[A]: Info[A] =
+      Info[A](AttributeMap(in.info.attributes.entries.filter(_.key.label != "taskDefinitionKey")))
+
+    def flatMapR[T](f: Result[S] => Task[T]): Task[T] = Task(newInfo, new FlatMapped[T, K](in, f, ml))
+    def mapR[T](f: Result[S] => T): Task[T] = Task(newInfo, new Mapped[T, K](in, f, ml))
+    def dependsOn(tasks: Task[_]*): Task[S] = Task(newInfo, new DependsOn(in, tasks))
 
     def flatMap[T](f: S => Task[T]): Task[T] = flatMapR(f compose successM)
     def flatFailure[T](f: Incomplete => Task[T]): Task[T] = flatMapR(f compose failM)
