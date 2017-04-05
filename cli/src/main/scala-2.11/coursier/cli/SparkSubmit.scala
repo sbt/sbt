@@ -120,7 +120,8 @@ final case class SparkSubmit(
         sparkVersion,
         options.yarnVersion,
         options.defaultAssemblyDependencies.getOrElse(true),
-        options.assemblyDependencies.flatMap(_.split(",")).filter(_.nonEmpty),
+        options.assemblyDependencies.flatMap(_.split(",")).filter(_.nonEmpty) ++
+          options.sparkAssemblyDependencies.flatMap(_.split(",")).filter(_.nonEmpty).map(_ + s":$sparkVersion"),
         options.common,
         options.artifactOptions.artifactTypes(sources = false, javadoc = false)
       )
