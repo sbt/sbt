@@ -73,8 +73,8 @@ lazy val utilControl = (project in internalPath / "util-control").
 lazy val utilCollection = (project in internalPath / "util-collection").
   dependsOn(utilTesting % Test).
   settings(
-    crossScalaVersions := Seq(scala210, scala211, scala212),
     commonSettings,
+    crossScalaVersions := Seq(scala210, scala211, scala212),
     Util.keywordsSettings,
     name := "Util Collection",
     libraryDependencies ++= Seq(sjsonnew)
