@@ -785,8 +785,8 @@ object Defaults extends BuildCommon {
       val combined = cPart.toList ++ classifier.toList
       if (combined.isEmpty) a.withClassifier(None).withConfigurations(cOpt.toVector) else {
         val classifierString = combined mkString "-"
-        val confs = cOpt.toVector flatMap { c => artifactConfigurations(a, c, classifier) }
-        a.withClassifier(Some(classifierString)).withType(Artifact.classifierType(classifierString)).withConfigurations(confs)
+        a.withClassifier(Some(classifierString)).withType(Artifact.classifierType(classifierString))
+          .withConfigurations(cOpt.toVector)
       }
     }
   @deprecated("The configuration(s) should not be decided based on the classifier.", "1.0")
