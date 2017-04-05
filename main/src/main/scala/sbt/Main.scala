@@ -39,12 +39,12 @@ import sbt.io.IO
 import sbt.io.syntax._
 import StandardMain._
 
-import java.io.File
+import java.io.{ File, IOException }
 import java.net.URI
 import java.util.Locale
 import scala.util.control.NonFatal
 
-/** This class is the entry point for sbt.*/
+/** This class is the entry point for sbt. */
 final class xMain extends xsbti.AppMain {
   def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
     {
@@ -52,13 +52,46 @@ final class xMain extends xsbti.AppMain {
       import BasicCommandStrings.runEarly
       import BuiltinCommands.defaults
       import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
+      if (!java.lang.Boolean.getBoolean("sbt.skip.version.write")) {
+        setSbtVersion(configuration.baseDirectory(), configuration.provider().id().version())
+      }
       runManaged(initialState(
         configuration,
         Seq(defaults, early),
         runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
       ))
     }
+
+  private val sbtVersionRegex = """sbt\.version\s*=.*""".r
+  private def isSbtVersionLine(s: String) = sbtVersionRegex.pattern matcher s matches ()
+
+  private def isSbtProject(baseDir: File, projectDir: File) =
+    projectDir.exists() || (baseDir * "*.sbt").get.nonEmpty
+
+  private def setSbtVersion(baseDir: File, sbtVersion: String) = {
+    val projectDir = baseDir / "project"
+    val buildProps = projectDir / "build.properties"
+
+    val buildPropsLines = if (buildProps.canRead) IO.readLines(buildProps) else Nil
+
+    val sbtVersionAbsent = buildPropsLines forall (!isSbtVersionLine(_))
+
+    if (sbtVersionAbsent) {
+      val errorMessage = s"WARN: No sbt.version set in project/build.properties, base directory: $baseDir"
+      try {
+        if (isSbtProject(baseDir, projectDir)) {
+          val line = s"sbt.version=$sbtVersion"
+          IO.writeLines(buildProps, line :: buildPropsLines)
+          println(s"Updated file $buildProps setting sbt.version to: $sbtVersion")
+        } else
+          println(errorMessage)
+      } catch {
+        case _: IOException => println(errorMessage)
+      }
+    }
+  }
 }
+
 final class ScriptMain extends xsbti.AppMain {
   def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
     {
