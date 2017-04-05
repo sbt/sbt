@@ -49,15 +49,12 @@ sealed trait ProjectDefinition[PR <: ProjectReference] {
    */
   def aggregate: Seq[PR]
 
-  @deprecated("Delegation between projects should be replaced by directly sharing settings.", "0.13.0")
-  def delegates: Seq[PR]
-
   /** The references to projects that are classpath dependencies of this project. */
   def dependencies: Seq[ClasspathDep[PR]]
 
   /** The references to projects that are aggregate and classpath dependencies of this project. */
   def uses: Seq[PR] = aggregate ++ dependencies.map(_.project)
-  def referenced: Seq[PR] = delegates ++ uses
+  def referenced: Seq[PR] = uses
 
   /**
    * The defined [[Plugins]] associated with this project.
@@ -168,9 +165,6 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
     copy(dependenciesEval = dependenciesEval flatMap { ds0 =>
       Eval.later { deps } map { ds1 => ds0 ++ ds1 }
     })
-
-  // @deprecated("Delegation between projects should be replaced by directly sharing settings.", "0.13.0")
-  // def delegateTo(from: ProjectReference*): Project = copy(delegates = delegates ++ from)
 
   /**
    * Adds projects to be aggregated.  When a user requests a task to run on this project from the command line,

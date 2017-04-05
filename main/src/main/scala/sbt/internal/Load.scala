@@ -149,8 +149,10 @@ private[sbt] object Load {
   def configInheritRef(lb: LoadedBuild, ref: ProjectRef, config: ConfigKey): Seq[ConfigKey] =
     configurationOpt(lb.units, ref.build, ref.project, config).toList.flatMap(_.extendsConfigs).map(c => ConfigKey(c.name))
 
-  def projectInherit(lb: LoadedBuild, ref: ProjectRef): Seq[ProjectRef] =
-    getProject(lb.units, ref.build, ref.project).delegates
+  def projectInherit(lb: LoadedBuild, ref: ProjectRef): Seq[ProjectRef] = {
+    val _ = getProject(lb.units, ref.build, ref.project)
+    Nil
+  }
 
   // build, load, and evaluate all units.
   //  1) Compile all plugin definitions
