@@ -62,8 +62,6 @@ object DefaultOptions {
   def addResolvers: Setting[_] = Keys.resolvers ++= { resolvers(Keys.isSnapshot.value) }
   def addPluginResolvers: Setting[_] = Keys.resolvers ++= pluginResolvers(Keys.sbtPlugin.value, Keys.isSnapshot.value)
 
-  @deprecated("Use `credentials(State)` instead to make use of configuration path dynamically configured via `Keys.globalSettingsDirectory`; relying on ~/.ivy2 is not recommended anymore.", "0.12.0")
-  def credentials: Credentials = Credentials(userHome / ".ivy2" / ".credentials")
   def credentials(state: State): Credentials = Credentials(getGlobalSettingsDirectory(state, getGlobalBase(state)) / ".credentials")
   def addCredentials: Setting[_] = Keys.credentials += { credentials(Keys.state.value) }
 

@@ -439,13 +439,6 @@ object Keys {
   val state = Def.stateKey
   val streamsManager = Def.streamsManagerKey
 
-  @deprecated("Implementation detail.", "0.13.1")
-  val isDummyTask = Def.isDummyTask
-  @deprecated("Implementation detail.", "0.13.1")
-  val dummyState = Def.dummyState
-  @deprecated("Implementation detail.", "0.13.2")
-  val dummyStreamsManager = Def.dummyStreamsManager
-
   val stateStreams = AttributeKey[Streams]("streams-manager", "Streams manager, which provides streams for different contexts.  Setting this on State will override the default Streams implementation.")
   val resolvedScoped = Def.resolvedScoped
   val pluginData = TaskKey[PluginData]("plugin-data", "Information from the plugin build needed in the main build definition.", DTask)
@@ -464,11 +457,4 @@ object Keys {
 
   type Streams = std.Streams[ScopedKey[_]]
   type TaskStreams = std.TaskStreams[ScopedKey[_]]
-
-  @deprecated("Implementation detail.", "0.13.1")
-  def dummy[T: Manifest](name: String, description: String): (TaskKey[T], Task[T]) = Def.dummy(name, description)
-  @deprecated("Implementation detail.", "0.13.1")
-  def dummyTask[T](name: String): Task[T] = Def.dummyTask(name)
-  @deprecated("Implementation detail.", "0.13.1")
-  def isDummy(t: Task[_]): Boolean = Def.isDummy(t)
 }

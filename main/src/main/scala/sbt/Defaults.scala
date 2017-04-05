@@ -382,14 +382,6 @@ object Defaults extends BuildCommon {
 
   def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] = generators { _.join.map(_.flatten) }
 
-  @deprecated("Use the new <key>.all(<ScopeFilter>) API", "0.13.0")
-  def inAllConfigurations[T](key: TaskKey[T]): Initialize[Task[Seq[T]]] = (state, thisProjectRef) flatMap { (state, ref) =>
-    val structure = Project structure state
-    val configurations = Project.getProject(ref, structure).toList.flatMap(_.configurations)
-    configurations.flatMap { conf =>
-      key in (ref, conf) get structure.data
-    } join
-  }
   def watchTransitiveSourcesTask: Initialize[Task[Seq[File]]] = {
     import ScopeFilter.Make.{ inDependencies => inDeps, _ }
     val selectDeps = ScopeFilter(inAggregates(ThisProject) || inDeps(ThisProject))
@@ -425,8 +417,6 @@ object Defaults extends BuildCommon {
       }
     }
 
-  @deprecated("Use scalaInstanceTask.", "0.13.0")
-  def scalaInstanceSetting = scalaInstanceTask
   def scalaInstanceTask: Initialize[Task[ScalaInstance]] = Def.taskDyn {
     // if this logic changes, ensure that `unmanagedScalaInstanceOnly` and `update` are changed
     //  appropriately to avoid cycles
@@ -441,6 +431,7 @@ object Defaults extends BuildCommon {
           scalaInstanceFromUpdate
     }
   }
+
   // Returns the ScalaInstance only if it was not constructed via `update`
   //  This is necessary to prevent cycles between `update` and `scalaInstance`
   private[sbt] def unmanagedScalaInstanceOnly: Initialize[Task[Option[ScalaInstance]]] = Def.taskDyn {
@@ -527,14 +518,7 @@ object Defaults extends BuildCommon {
   )) ++ inScope(GlobalScope)(Seq(
     derive(testGrouping := singleTestGroupDefault.value)
   ))
-  @deprecated("Doesn't provide for closing the underlying resources.", "0.13.1")
-  def testLogger(manager: Streams, baseKey: Scoped)(tdef: TestDefinition): Logger =
-    {
-      val scope = baseKey.scope
-      val extra = scope.extra match { case Select(x) => x; case _ => AttributeMap.empty }
-      val key = ScopedKey(scope.copy(extra = Select(testExtra(extra, tdef))), baseKey.key)
-      manager(key).log
-    }
+
   private[this] def closeableTestLogger(manager: Streams, baseKey: Scoped, buffered: Boolean)(tdef: TestDefinition): TestLogger.PerTest =
     {
       val scope = baseKey.scope
@@ -543,12 +527,18 @@ object Defaults extends BuildCommon {
       val s = manager(key)
       new TestLogger.PerTest(s.log, () => s.close(), buffered)
     }
+
   def buffered(log: Logger): Logger = new BufferedLogger(FullLogger(log))
-  def testExtra(extra: AttributeMap, tdef: TestDefinition): AttributeMap =
-    {
-      val mod = tdef.fingerprint match { case f: SubclassFingerprint => f.isModule; case f: AnnotatedFingerprint => f.isModule; case _ => false }
-      extra.put(name.key, tdef.name).put(isModule, mod)
+
+  def testExtra(extra: AttributeMap, tdef: TestDefinition): AttributeMap = {
+    val mod = tdef.fingerprint match {
+      case f: SubclassFingerprint  => f.isModule
+      case f: AnnotatedFingerprint => f.isModule
+      case _                       => false
     }
+    extra.put(name.key, tdef.name).put(isModule, mod)
+  }
+
   def singleTestGroup(key: Scoped): Initialize[Task[Seq[Tests.Group]]] = inTask(key, singleTestGroupDefault)
   def singleTestGroupDefault: Initialize[Task[Seq[Tests.Group]]] = Def.task {
     val tests = definedTests.value
@@ -740,13 +730,6 @@ object Defaults extends BuildCommon {
   def packageDocMappings = doc map { Path.allSubpaths(_).toSeq }
   def packageSrcMappings = concatMappings(resourceMappings, sourceMappings)
 
-  @deprecated("Use `packageBinMappings` instead", "0.12.0")
-  def packageBinTask = packageBinMappings
-  @deprecated("Use `packageDocMappings` instead", "0.12.0")
-  def packageDocTask = packageDocMappings
-  @deprecated("Use `packageSrcMappings` instead", "0.12.0")
-  def packageSrcTask = packageSrcMappings
-
   private type Mappings = Initialize[Task[Seq[(File, String)]]]
   def concatMappings(as: Mappings, bs: Mappings) = (as zipWith bs)((a, b) => (a, b) map { case (a, b) => a ++ b })
 
@@ -772,6 +755,7 @@ object Defaults extends BuildCommon {
       val f = artifactName.value
       (crossTarget.value / f(ScalaVersion((scalaVersion in artifactName).value, (scalaBinaryVersion in artifactName).value), projectID.value, art.value)).asFile
     }
+
   def artifactSetting: Initialize[Artifact] =
     Def.setting {
       val a = artifact.value
@@ -789,18 +773,14 @@ object Defaults extends BuildCommon {
         a.withClassifier(Some(classifierString)).withType(Artifact.classifierType(classifierString)).withConfigurations(confs)
       }
     }
-  @deprecated("The configuration(s) should not be decided based on the classifier.", "1.0")
+
+  @deprecated("The configuration(s) should not be decided based on the classifier.", "1.0.0")
   def artifactConfigurations(base: Artifact, scope: Configuration, classifier: Option[String]): Iterable[Configuration] =
     classifier match {
       case Some(c) => Artifact.classifierConf(c) :: Nil
       case None    => scope :: Nil
     }
 
-  @deprecated("Use `Util.pairID` instead", "0.12.0")
-  def pairID = Util.pairID
-
-  @deprecated("Use `packageTaskSettings` instead", "0.12.0")
-  def packageTasks(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File, String)]]]) = packageTaskSettings(key, mappingsTask)
   def packageTaskSettings(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File, String)]]]) =
     inTask(key)(Seq(
       key in TaskGlobal := packageTask.value,
@@ -810,6 +790,7 @@ object Defaults extends BuildCommon {
       artifact := artifactSetting.value,
       artifactPath := artifactPathSetting(artifact).value
     ))
+
   def packageTask: Initialize[Task[File]] =
     Def.task {
       val config = packageConfiguration.value
@@ -817,12 +798,16 @@ object Defaults extends BuildCommon {
       Package(config, s.cacheStoreFactory, s.log)
       config.jar
     }
+
   def packageConfigurationTask: Initialize[Task[Package.Configuration]] =
     Def.task { new Package.Configuration(mappings.value, artifactPath.value, packageOptions.value) }
+
   def askForMainClass(classes: Seq[String]): Option[String] =
     sbt.SelectMainClass(Some(SimpleReader readLine _), classes)
+
   def pickMainClass(classes: Seq[String]): Option[String] =
     sbt.SelectMainClass(None, classes)
+
   private def pickMainClassOrWarn(classes: Seq[String], logger: Logger): Option[String] = {
     classes match {
       case multiple if multiple.size > 1 => logger.warn("Multiple main classes detected.  Run 'show discoveredMainClasses' to see the list")
@@ -950,8 +935,6 @@ object Defaults extends BuildCommon {
   def bgStopTask: Initialize[InputTask[Unit]] = foreachJobTask { (manager, handle) => manager.stop(handle) }
   def bgWaitForTask: Initialize[InputTask[Unit]] = foreachJobTask { (manager, handle) => manager.waitFor(handle) }
 
-  @deprecated("Use `docTaskSettings` instead", "0.12.0")
-  def docSetting(key: TaskKey[File]) = docTaskSettings(key)
   def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[_]] = inTask(key)(Seq(
     apiMappings ++= { if (autoAPIMappings.value) APIMappings.extract(dependencyClasspath.value, streams.value.log).toMap else Map.empty[File, URL] },
     fileInputOptions := Seq("-doc-root-content", "-diagrams-dot-path"),
@@ -1021,9 +1004,6 @@ object Defaults extends BuildCommon {
     try exported(w, command)
     finally w.close() // workaround for #937
   }
-
-  @deprecated("Use inTask(compile)(compileInputsSettings)", "0.13.0")
-  def compileTaskSettings: Seq[Setting[_]] = inTask(compile)(compileInputsSettings)
 
   def compileTask: Initialize[Task[CompileAnalysis]] = Def.task {
     val setup: Setup = compileIncSetup.value
@@ -1166,38 +1146,6 @@ object Defaults extends BuildCommon {
       recurse ?? Nil
     }
 
-  @deprecated("Use the new <key>.all(<ScopeFilter>) API", "0.13.0")
-  def inDependencies[T](key: SettingKey[T], default: ProjectRef => T, includeRoot: Boolean = true, classpath: Boolean = true, aggregate: Boolean = false): Initialize[Seq[T]] =
-    forDependencies[T, T](ref => (key in ref) ?? default(ref), includeRoot, classpath, aggregate)
-
-  @deprecated("Use the new <key>.all(<ScopeFilter>) API", "0.13.0")
-  def forDependencies[T, V](init: ProjectRef => Initialize[V], includeRoot: Boolean = true, classpath: Boolean = true, aggregate: Boolean = false): Initialize[Seq[V]] =
-    Def.bind((loadedBuild, thisProjectRef).identity) {
-      case (lb, base) =>
-        transitiveDependencies(base, lb, includeRoot, classpath, aggregate) map init join;
-    }
-
-  def transitiveDependencies(base: ProjectRef, structure: LoadedBuild, includeRoot: Boolean, classpath: Boolean = true, aggregate: Boolean = false): Seq[ProjectRef] =
-    {
-      def tdeps(enabled: Boolean, f: ProjectRef => Seq[ProjectRef]): Seq[ProjectRef] =
-        {
-          val full = if (enabled) Dag.topologicalSort(base)(f) else Nil
-          if (includeRoot) full else full dropRight 1
-        }
-      def fullCp = tdeps(classpath, getDependencies(structure, classpath = true, aggregate = false))
-      def fullAgg = tdeps(aggregate, getDependencies(structure, classpath = false, aggregate = true))
-      (classpath, aggregate) match {
-        case (true, true)  => (fullCp ++ fullAgg).distinct
-        case (true, false) => fullCp
-        case _             => fullAgg
-      }
-    }
-  def getDependencies(structure: LoadedBuild, classpath: Boolean = true, aggregate: Boolean = false): ProjectRef => Seq[ProjectRef] =
-    ref => Project.getProject(ref, structure).toList flatMap { p =>
-      (if (classpath) p.dependencies.map(_.project) else Nil) ++
-        (if (aggregate) p.aggregate else Nil)
-    }
-
   val CompletionsID = "completions"
 
   def noAggregation: Seq[Scoped] = Seq(run, runMain, bgRun, bgRunMain, console, consoleQuick, consoleProject)
@@ -1293,12 +1241,14 @@ object Classpaths {
 
   def packaged(pkgTasks: Seq[TaskKey[File]]): Initialize[Task[Map[Artifact, File]]] =
     enabledOnly(packagedArtifact.task, pkgTasks) apply (_.join.map(_.toMap))
+
   def artifactDefs(pkgTasks: Seq[TaskKey[File]]): Initialize[Seq[Artifact]] =
     enabledOnly(artifact, pkgTasks)
 
   def enabledOnly[T](key: SettingKey[T], pkgTasks: Seq[TaskKey[File]]): Initialize[Seq[T]] =
     (forallIn(key, pkgTasks) zipWith forallIn(publishArtifact, pkgTasks))(_ zip _ collect { case (a, true) => a })
-  def forallIn[T](key: SettingKey[T], pkgTasks: Seq[TaskKey[_]]): Initialize[Seq[T]] =
+
+  def forallIn[T](key: Scoped.ScopingSetting[SettingKey[T]], pkgTasks: Seq[TaskKey[_]]): Initialize[Seq[T]] =
     pkgTasks.map(pkg => key in pkg.scope in pkg).join
 
   private[this] def publishGlobalDefaults = Defaults.globalDefaults(Seq(
@@ -1913,18 +1863,23 @@ object Classpaths {
 		f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)*/
 	}*/
 
-  def defaultRepositoryFilter = (repo: MavenRepository) => !repo.root.startsWith("file:")
-  def getPublishTo(repo: Option[Resolver]): Resolver = repo getOrElse sys.error("Repository for publishing is not specified.")
+  def defaultRepositoryFilter: MavenRepository => Boolean = repo => !repo.root.startsWith("file:")
+
+  def getPublishTo(repo: Option[Resolver]): Resolver =
+    repo getOrElse sys.error("Repository for publishing is not specified.")
 
   def deliverConfig(outputDirectory: File, status: String = "release", logging: UpdateLogging = UpdateLogging.DownloadOnly) =
     new DeliverConfiguration(deliverPattern(outputDirectory), status, None, logging)
-  @deprecated("Previous semantics allowed overwriting cached files, which was unsafe. Please specify overwrite parameter.", "0.13.2")
-  def publishConfig(artifacts: Map[Artifact, File], ivyFile: Option[File], checksums: Seq[String], resolverName: String, logging: UpdateLogging): PublishConfiguration =
-    publishConfig(artifacts, ivyFile, checksums, resolverName, logging, overwrite = true)
-  def publishConfig(artifacts: Map[Artifact, File], ivyFile: Option[File], checksums: Seq[String], resolverName: String = "local", logging: UpdateLogging = UpdateLogging.DownloadOnly, overwrite: Boolean = false) =
+
+  def publishConfig(
+      artifacts: Map[Artifact, File], ivyFile: Option[File], checksums: Seq[String],
+      resolverName: String = "local", logging: UpdateLogging = UpdateLogging.DownloadOnly,
+      overwrite: Boolean = false
+  ) =
     new PublishConfiguration(ivyFile, resolverName, artifacts, checksums.toVector, logging, overwrite)
 
-  def deliverPattern(outputPath: File): String = (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
+  def deliverPattern(outputPath: File): String =
+    (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
 
   def projectDependenciesTask: Initialize[Task[Seq[ModuleID]]] =
     Def.task {
@@ -1937,10 +1892,12 @@ object Classpaths {
         }
       }
     }
+
   private[sbt] def depMap: Initialize[Task[Map[ModuleRevisionId, ModuleDescriptor]]] =
     Def.taskDyn {
       depMap(buildDependencies.value classpathTransitiveRefs thisProjectRef.value, settingsData.value, streams.value.log)
     }
+
   private[sbt] def depMap(projects: Seq[ProjectRef], data: Settings[Scope], log: Logger): Initialize[Task[Map[ModuleRevisionId, ModuleDescriptor]]] =
     Def.value {
       projects.flatMap(ivyModule in _ get data).join.map { mod =>
@@ -2156,54 +2113,41 @@ object Classpaths {
     flatten(defaultConfiguration in p get data) getOrElse Configurations.Default
   def flatten[T](o: Option[Option[T]]): Option[T] = o flatMap idFun
 
-  val sbtIvySnapshots = Resolver.sbtIvyRepo("snapshots")
-
-  lazy val typesafeReleases = Resolver.typesafeIvyRepo("releases")
-
-  @deprecated("Use `typesafeReleases` instead", "0.12.0")
-  lazy val typesafeResolver = typesafeReleases
-  @deprecated("Use `Resolver.typesafeIvyRepo` instead", "0.12.0")
-  def typesafeRepo(status: String) = Resolver.typesafeIvyRepo(status)
-
-  lazy val sbtPluginReleases = Resolver.sbtPluginRepo("releases")
+  val sbtIvySnapshots: URLRepository = Resolver.sbtIvyRepo("snapshots")
+  val typesafeReleases: URLRepository = Resolver.typesafeIvyRepo("releases")
+  val sbtPluginReleases: URLRepository = Resolver.sbtPluginRepo("releases")
 
   def modifyForPlugin(plugin: Boolean, dep: ModuleID): ModuleID =
     if (plugin) dep.withConfigurations(Some(Provided.name)) else dep
 
-  @deprecated("Explicitly specify the organization using the other variant.", "0.13.0")
-  def autoLibraryDependency(auto: Boolean, plugin: Boolean, version: String): Seq[ModuleID] =
-    if (auto)
-      modifyForPlugin(plugin, ScalaArtifacts.libraryDependency(version)) :: Nil
-    else
-      Nil
   def autoLibraryDependency(auto: Boolean, plugin: Boolean, org: String, version: String): Seq[ModuleID] =
     if (auto)
       modifyForPlugin(plugin, ModuleID(org, ScalaArtifacts.LibraryID, version)) :: Nil
     else
       Nil
-  def addUnmanagedLibrary: Seq[Setting[_]] = Seq(
-    unmanagedJars in Compile ++= unmanagedScalaLibrary.value
-  )
-  def unmanagedScalaLibrary: Initialize[Task[Seq[File]]] =
-    Def.taskDyn {
-      if (autoScalaLibrary.value && scalaHome.value.isDefined)
-        Def.task { scalaInstance.value.libraryJar :: Nil }
-      else
-        Def.task { Nil }
-    }
+
+  def addUnmanagedLibrary: Seq[Setting[_]] =
+    Seq(unmanagedJars in Compile ++= unmanagedScalaLibrary.value)
+
+  def unmanagedScalaLibrary: Initialize[Task[Seq[File]]] = Def.taskDyn {
+    if (autoScalaLibrary.value && scalaHome.value.isDefined)
+      Def.task { scalaInstance.value.libraryJar :: Nil }
+    else
+      Def.task { Nil }
+  }
 
   import DependencyFilter._
   def managedJars(config: Configuration, jarTypes: Set[String], up: UpdateReport): Classpath =
     up.filter(configurationFilter(config.name) && artifactFilter(`type` = jarTypes)).toSeq.map {
       case (conf, module, art, file) =>
-        Attributed(file)(AttributeMap.empty.put(artifact.key, art).put(moduleID.key, module).put(configuration.key, config))
-    } distinct;
+        Attributed(file)(
+          AttributeMap.empty.put(artifact.key, art).put(moduleID.key, module).put(configuration.key, config)
+        )
+    }.distinct
 
   def findUnmanagedJars(config: Configuration, base: File, filter: FileFilter, excl: FileFilter): Classpath =
     (base * (filter -- excl) +++ (base / config.name).descendantsExcept(filter, excl)).classpath
 
-  @deprecated("Specify the classpath that includes internal dependencies", "0.13.0")
-  def autoPlugins(report: UpdateReport): Seq[String] = autoPlugins(report, Nil)
   def autoPlugins(report: UpdateReport, internalPluginClasspath: Seq[File]): Seq[String] =
     {
       val pluginClasspath = report.matching(configurationFilter(CompilerPlugin.name)) ++ internalPluginClasspath
@@ -2227,14 +2171,6 @@ object Classpaths {
       if (autoCompilerPlugins.value) options ++ newPlugins.filterNot(existing) else options
     }
   )
-
-  @deprecated("Doesn't properly handle non-standard Scala organizations.", "0.13.0")
-  def substituteScalaFiles(scalaInstance: ScalaInstance, report: UpdateReport): UpdateReport =
-    substituteScalaFiles(scalaInstance, ScalaArtifacts.Organization, report)
-
-  @deprecated("Directly provide the jar files per Scala version.", "0.13.0")
-  def substituteScalaFiles(scalaInstance: ScalaInstance, scalaOrg: String, report: UpdateReport): UpdateReport =
-    substituteScalaFiles(scalaOrg, report)(const(scalaInstance.allJars))
 
   def substituteScalaFiles(scalaOrg: String, report: UpdateReport)(scalaJars: String => Seq[File]): UpdateReport =
     report.substitute { (configuration, module, arts) =>
@@ -2384,14 +2320,12 @@ trait BuildExtra extends BuildCommon with DefExtra {
       Seq(artLocal := artifact.value, taskLocal := taskDef.value, art, pkgd)
     }
 
-  // because this was commonly used, this might need to be kept longer than usual
-  @deprecated("In build.sbt files, this call can be removed.  In other cases, this can usually be replaced by Seq.", "0.13.0")
-  def seq(settings: Setting[_]*): SettingsDefinition = new Def.SettingList(settings)
-
   def externalIvySettings(file: Initialize[File] = inBase("ivysettings.xml"), addMultiResolver: Boolean = true): Setting[Task[IvyConfiguration]] =
     externalIvySettingsURI(file(_.toURI), addMultiResolver)
+
   def externalIvySettingsURL(url: URL, addMultiResolver: Boolean = true): Setting[Task[IvyConfiguration]] =
     externalIvySettingsURI(Def.value(url.toURI), addMultiResolver)
+
   def externalIvySettingsURI(uri: Initialize[URI], addMultiResolver: Boolean = true): Setting[Task[IvyConfiguration]] =
     {
       val other = Def.task { (baseDirectory.value, appConfiguration.value, projectResolver.value, updateOptions.value, streams.value) }
@@ -2404,10 +2338,12 @@ trait BuildExtra extends BuildCommon with DefExtra {
           }
       }).value
     }
+
   private[this] def inBase(name: String): Initialize[File] = Def.setting { baseDirectory.value / name }
 
   def externalIvyFile(file: Initialize[File] = inBase("ivy.xml"), iScala: Initialize[Option[IvyScala]] = ivyScala): Setting[Task[ModuleSettings]] =
     moduleSettings := IvyFileConfiguration(ivyValidate.value, iScala.value, file.value, managedScalaInstance.value)
+
   def externalPom(file: Initialize[File] = inBase("pom.xml"), iScala: Initialize[Option[IvyScala]] = ivyScala): Setting[Task[ModuleSettings]] =
     moduleSettings := PomConfiguration(ivyValidate.value, ivyScala.value, file.value, managedScalaInstance.value)
 
@@ -2419,6 +2355,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
       val args = spaceDelimited().parsed
       r.run(mainClass, data(cp), baseArguments ++ args, streams.value.log).get
     }
+
   def runTask(config: Configuration, mainClass: String, arguments: String*): Initialize[Task[Unit]] =
     Def.task {
       val cp = (fullClasspath in config).value
@@ -2426,9 +2363,14 @@ trait BuildExtra extends BuildCommon with DefExtra {
       val s = streams.value
       r.run(mainClass, data(cp), arguments, s.log).get
     }
+
   // public API
   /** Returns a vector of settings that create custom run input task. */
-  def fullRunInputTask(scoped: InputKey[Unit], config: Configuration, mainClass: String, baseArguments: String*): Vector[Setting[_]] =
+  def fullRunInputTask(scoped: InputKey[Unit], config: Configuration, mainClass: String, baseArguments: String*): Vector[Setting[_]] = {
+    // Use Def.inputTask with the `Def.spaceDelimited()` parser
+    def inputTask[T](f: TaskKey[Seq[String]] => Initialize[Task[T]]): Initialize[InputTask[T]] =
+      InputTask.apply(Def.value((s: State) => Def.spaceDelimited()))(f)
+
     Vector(
       scoped := (inputTask { result =>
         (initScoped(scoped.scopedKey, runnerInit)
@@ -2440,6 +2382,8 @@ trait BuildExtra extends BuildCommon with DefExtra {
           }
       }).evaluated
     ) ++ inTask(scoped)(forkOptions := forkOptionsTask.value)
+  }
+
   // public API
   /** Returns a vector of settings that create custom run task. */
   def fullRunTask(scoped: TaskKey[Unit], config: Configuration, mainClass: String, arguments: String*): Vector[Setting[_]] =
@@ -2467,15 +2411,13 @@ trait BuildExtra extends BuildCommon with DefExtra {
   def filterKeys(ss: Seq[Setting[_]], transitive: Boolean = false)(f: ScopedKey[_] => Boolean): Seq[Setting[_]] =
     ss filter (s => f(s.key) && (!transitive || s.dependencies.forall(f)))
 }
+
 trait DefExtra {
   private[this] val ts: TaskSequential = new TaskSequential {}
   implicit def toTaskSequential(d: Def.type): TaskSequential = ts
 }
-trait BuildCommon {
-  @deprecated("Use Def.inputTask with the `Def.spaceDelimited()` parser.", "0.13.0")
-  def inputTask[T](f: TaskKey[Seq[String]] => Initialize[Task[T]]): Initialize[InputTask[T]] =
-    InputTask.apply(Def.value((s: State) => Def.spaceDelimited()))(f)
 
+trait BuildCommon {
   /**
    * Allows a String to be used where a `NameFilter` is expected.
    * Asterisks (`*`) in the string are interpreted as wildcards.

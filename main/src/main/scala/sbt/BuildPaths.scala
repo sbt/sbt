@@ -8,7 +8,6 @@ import KeyRanks.DSetting
 
 import sbt.io.{ GlobFilter, Path }
 import sbt.internal.util.AttributeKey
-import sbt.util.Logger
 
 object BuildPaths {
   val globalBaseDirectory = AttributeKey[File]("global-base-directory", "The base directory for global sbt configuration and staging.", DSetting)
@@ -72,11 +71,6 @@ object BuildPaths {
   def outputDirectory(base: File) = base / DefaultTargetName
 
   def projectStandard(base: File) = base / "project"
-
-  @deprecated("Use projectStandard.  The alternative project directory location has been removed.", "0.13.0")
-  def projectHidden(base: File) = projectStandard(base)
-  @deprecated("Use projectStandard.  The alternative project directory location has been removed.", "0.13.0")
-  def selectProjectDir(base: File, log: Logger) = projectStandard(base)
 
   final val PluginsDirectoryName = "plugins"
   final val DefaultTargetName = "target"

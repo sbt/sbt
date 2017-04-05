@@ -27,9 +27,6 @@ import scala.Console.RED
 import std.Transform.DummyTaskMap
 import TaskName._
 
-@deprecated("Use EvaluateTaskConfig instead.", "0.13.5")
-final case class EvaluateConfig(cancelable: Boolean, restrictions: Seq[Tags.Rule], checkCycles: Boolean = false, progress: ExecuteProgress[Task] = EvaluateTask.defaultProgress)
-
 /**
  * An API that allows you to cancel executing tasks upon some signal.
  *
@@ -40,8 +37,9 @@ trait RunningTaskEngine {
   /** Attempts to kill and shutdown the running task engine.*/
   def cancelAndShutdown(): Unit
 }
+
 /**
- * A strategy for being able to cancle tasks.
+ * A strategy for being able to cancel tasks.
  *
  * Implementations of this trait determine what will trigger `cancel()` for
  * the task engine, providing in the `start` method.
@@ -51,6 +49,7 @@ trait RunningTaskEngine {
 trait TaskCancellationStrategy {
   /** The state used by this task. */
   type State
+
   /**
    * Called when task evaluation starts.
    *
@@ -58,9 +57,11 @@ trait TaskCancellationStrategy {
    * @return Whatever state you need to cleanup in your finish method.
    */
   def onTaskEngineStart(canceller: RunningTaskEngine): State
+
   /** Called when task evaluation completes, either in success or failure. */
   def onTaskEngineFinish(state: State): Unit
 }
+
 object TaskCancellationStrategy {
   /** An empty handler that does not cancel tasks. */
   object Null extends TaskCancellationStrategy {
@@ -69,14 +70,16 @@ object TaskCancellationStrategy {
     def onTaskEngineFinish(state: Unit): Unit = ()
     override def toString: String = "Null"
   }
+
   /** Cancel handler which registers for SIGINT and cancels tasks when it is received. */
   object Signal extends TaskCancellationStrategy {
     type State = Signals.Registration
-    def onTaskEngineStart(canceller: RunningTaskEngine): Signals.Registration = {
+
+    def onTaskEngineStart(canceller: RunningTaskEngine): Signals.Registration =
       Signals.register(() => canceller.cancelAndShutdown())
-    }
-    def onTaskEngineFinish(registration: Signals.Registration): Unit =
-      registration.remove()
+
+    def onTaskEngineFinish(registration: Signals.Registration): Unit = registration.remove()
+
     override def toString: String = "Signal"
   }
 }
@@ -93,28 +96,15 @@ sealed trait EvaluateTaskConfig {
   def checkCycles: Boolean
   def progressReporter: ExecuteProgress[Task]
   def cancelStrategy: TaskCancellationStrategy
-  /**
-   * If true, we force a finalizer/gc run (or two) after task execution completes when needed.
-   */
+
+  /** If true, we force a finalizer/gc run (or two) after task execution completes when needed. */
   def forceGarbageCollection: Boolean
 
-  /**
-   * Interval to force GC.
-   */
+  /** Interval to force GC. */
   def minForcegcInterval: Duration
 }
-object EvaluateTaskConfig {
-  @deprecated("Use the alternative that specifies minForcegcInterval", "0.13.9")
-  def apply(
-    restrictions: Seq[Tags.Rule],
-    checkCycles: Boolean,
-    progressReporter: ExecuteProgress[Task],
-    cancelStrategy: TaskCancellationStrategy,
-    forceGarbageCollection: Boolean
-  ): EvaluateTaskConfig =
-    apply(restrictions, checkCycles, progressReporter, cancelStrategy, forceGarbageCollection,
-      GCUtil.defaultMinForcegcInterval)
 
+object EvaluateTaskConfig {
   /** Raw constructor for EvaluateTaskConfig. */
   def apply(
     restrictions: Seq[Tags.Rule],
@@ -123,26 +113,28 @@ object EvaluateTaskConfig {
     cancelStrategy: TaskCancellationStrategy,
     forceGarbageCollection: Boolean,
     minForcegcInterval: Duration
-  ): EvaluateTaskConfig = {
-    val r = restrictions
-    val check = checkCycles
-    val cs = cancelStrategy
-    val pr = progressReporter
-    val fgc = forceGarbageCollection
-    val mfi = minForcegcInterval
-    object SimpleEvaluateTaskConfig extends EvaluateTaskConfig {
-      def restrictions = r
-      def checkCycles = check
-      def progressReporter = pr
-      def cancelStrategy = cs
-      def forceGarbageCollection = fgc
-      def minForcegcInterval = mfi
-    }
-    SimpleEvaluateTaskConfig
-  }
+  ): EvaluateTaskConfig =
+    DefaultEvaluateTaskConfig(
+      restrictions, checkCycles, progressReporter, cancelStrategy, forceGarbageCollection, minForcegcInterval
+    )
+
+  private[this] case class DefaultEvaluateTaskConfig(
+    restrictions: Seq[Tags.Rule],
+    checkCycles: Boolean,
+    progressReporter: ExecuteProgress[Task],
+    cancelStrategy: TaskCancellationStrategy,
+    forceGarbageCollection: Boolean,
+    minForcegcInterval: Duration
+  ) extends EvaluateTaskConfig
 }
 
-final case class PluginData(dependencyClasspath: Seq[Attributed[File]], definitionClasspath: Seq[Attributed[File]], resolvers: Option[Seq[Resolver]], report: Option[UpdateReport], scalacOptions: Seq[String]) {
+final case class PluginData(
+  dependencyClasspath: Seq[Attributed[File]],
+  definitionClasspath: Seq[Attributed[File]],
+  resolvers: Option[Seq[Resolver]],
+  report: Option[UpdateReport],
+  scalacOptions: Seq[String]
+) {
   val classpath: Seq[Attributed[File]] = definitionClasspath ++ dependencyClasspath
 }
 
@@ -162,32 +154,6 @@ object EvaluateTask {
 
   val SystemProcessors = Runtime.getRuntime.availableProcessors
 
-  @deprecated("Use extractedTaskConfig.", "0.13.0")
-  def defaultConfig(state: State): EvaluateConfig =
-    {
-      val extracted = Project.extract(state)
-      extractedConfig(extracted, extracted.structure, state)
-    }
-
-  @deprecated("Use extractedTaskConfig.", "0.13.0")
-  def defaultConfig(extracted: Extracted, structure: BuildStructure) =
-    EvaluateConfig(false, restrictions(extracted, structure), progress = defaultProgress)
-
-  @deprecated("Use other extractedTaskConfig", "0.13.2")
-  def extractedConfig(extracted: Extracted, structure: BuildStructure): EvaluateConfig =
-    {
-      val workers = restrictions(extracted, structure)
-      val canCancel = cancelable(extracted, structure)
-      EvaluateConfig(cancelable = canCancel, restrictions = workers, progress = defaultProgress)
-    }
-  @deprecated("Use other extractedTaskConfig", "0.13.5")
-  def extractedConfig(extracted: Extracted, structure: BuildStructure, state: State): EvaluateConfig =
-    {
-      val workers = restrictions(extracted, structure)
-      val canCancel = cancelable(extracted, structure)
-      val progress = executeProgress(extracted, structure, state)
-      EvaluateConfig(cancelable = canCancel, restrictions = workers, progress = progress)
-    }
   def extractedTaskConfig(extracted: Extracted, structure: BuildStructure, state: State): EvaluateTaskConfig =
     {
       val rs = restrictions(extracted, structure)
@@ -207,15 +173,19 @@ object EvaluateTask {
       val extracted = Project.extract(state)
       restrictions(extracted, extracted.structure)
     }
+
   def restrictions(extracted: Extracted, structure: BuildStructure): Seq[Tags.Rule] =
     getSetting(Keys.concurrentRestrictions, defaultRestrictions(extracted, structure), extracted, structure)
+
   def maxWorkers(extracted: Extracted, structure: BuildStructure): Int =
     if (getSetting(Keys.parallelExecution, true, extracted, structure))
       SystemProcessors
     else
       1
+
   def cancelable(extracted: Extracted, structure: BuildStructure): Boolean =
     getSetting(Keys.cancelable, false, extracted, structure)
+
   def cancelStrategy(extracted: Extracted, structure: BuildStructure, state: State): TaskCancellationStrategy =
     getSetting(Keys.taskCancelStrategy, { (_: State) => TaskCancellationStrategy.Null }, extracted, structure)(state)
 
