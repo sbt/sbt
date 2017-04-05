@@ -152,11 +152,6 @@ private[sbt] object SettingCompletions {
       }
     }
 
-  /**
-   * For a setting definition `definingKey <<= (..., in, ...) { ... }`,
-   * `keyFilter(definingKey)(in)` returns true when `in` is an allowed input for `definingKey` based on whether they are settings or not.
-   * For example, if `definingKey` is for a setting, `in` may only be a setting itself.
-   */
   def keyFilter(definingKey: AttributeKey[_]): AttributeKey[_] => Boolean =
     if (isSetting(definingKey)) isSetting _ else isTaskOrSetting _
 

@@ -70,11 +70,6 @@ object TaskMacro {
   final val TransformInitName = "transform"
   final val InputTaskCreateDynName = "createDyn"
   final val InputTaskCreateFreeName = "createFree"
-  final val append1Migration = "`<+=` operator is deprecated. Try `lhs += { x.value }`\n  or see http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html."
-  final val appendNMigration = "`<++=` operator is deprecated. Try `lhs ++= { x.value }`\n  or see http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html."
-  final val assignMigration =
-    """`<<=` operator is deprecated. Use `key := { x.value }` or `key ~= (old => { newValue })`.
-      |See http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html""".stripMargin
 
   def taskMacroImpl[T: c.WeakTypeTag](c: blackbox.Context)(t: c.Expr[T]): c.Expr[Initialize[Task[T]]] =
     Instance.contImpl[T, Id](c, FullInstance, FullConvert, MixedBuilder)(Left(t), Instance.idTransform[c.type])
@@ -97,35 +92,7 @@ object TaskMacro {
       c.Expr[Setting[Task[T]]](assign)
     }
 
-  // Error macros (Restligeist)
-  // These macros are there just so we can fail old operators like `<<=` and provide useful migration information.
-
-  def fakeSettingAssignPosition[T: c.WeakTypeTag](c: blackbox.Context)(app: c.Expr[Initialize[T]]): c.Expr[Setting[T]] =
-    ContextUtil.selectMacroImpl[Setting[T]](c) { (ts, pos) =>
-      c.abort(pos, assignMigration)
-    }
-  def fakeSettingAppend1Position[S: c.WeakTypeTag, V: c.WeakTypeTag](c: blackbox.Context)(v: c.Expr[Initialize[V]])(a: c.Expr[Append.Value[S, V]]): c.Expr[Setting[S]] =
-    ContextUtil.selectMacroImpl[Setting[S]](c) { (ts, pos) =>
-      c.abort(pos, append1Migration)
-    }
-  def fakeSettingAppendNPosition[S: c.WeakTypeTag, V: c.WeakTypeTag](c: blackbox.Context)(vs: c.Expr[Initialize[V]])(a: c.Expr[Append.Values[S, V]]): c.Expr[Setting[S]] =
-    ContextUtil.selectMacroImpl[Setting[S]](c) { (ts, pos) =>
-      c.abort(pos, appendNMigration)
-    }
-  def fakeItaskAssignPosition[T: c.WeakTypeTag](c: blackbox.Context)(app: c.Expr[Initialize[Task[T]]]): c.Expr[Setting[Task[T]]] =
-    ContextUtil.selectMacroImpl[Setting[Task[T]]](c) { (ts, pos) =>
-      c.abort(pos, assignMigration)
-    }
-  def fakeTaskAppend1Position[S: c.WeakTypeTag, V: c.WeakTypeTag](c: blackbox.Context)(v: c.Expr[Initialize[Task[V]]])(a: c.Expr[Append.Value[S, V]]): c.Expr[Setting[Task[S]]] =
-    ContextUtil.selectMacroImpl[Setting[Task[S]]](c) { (ts, pos) =>
-      c.abort(pos, append1Migration)
-    }
-  def fakeTaskAppendNPosition[S: c.WeakTypeTag, V: c.WeakTypeTag](c: blackbox.Context)(vs: c.Expr[Initialize[Task[V]]])(a: c.Expr[Append.Values[S, V]]): c.Expr[Setting[Task[S]]] =
-    ContextUtil.selectMacroImpl[Setting[Task[S]]](c) { (ts, pos) =>
-      c.abort(pos, appendNMigration)
-    }
-
-  /* Implementations of <<= macro variations for tasks and settings. These just get the source position of the call site.*/
+  // These macros get the source position of the call site.
 
   def itaskAssignPosition[T: c.WeakTypeTag](c: blackbox.Context)(app: c.Expr[Initialize[Task[T]]]): c.Expr[Setting[Task[T]]] =
     settingAssignPosition(c)(app)
