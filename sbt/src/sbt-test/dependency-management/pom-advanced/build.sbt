@@ -12,8 +12,13 @@ lazy val root = (project in file(".")).
 
 val local = "local-maven-repo" at "file://" + (Path.userHome / ".m2" /"repository").absolutePath
 
-def pomIncludeRepository(base: File, prev: MavenRepository => Boolean) = (r: MavenRepository) =>
-  if(base / "repo.none" exists) false else if(base / "repo.all" exists) true else prev(r)
+def pomIncludeRepository(base: File, prev: MavenRepository => Boolean): MavenRepository => Boolean =
+  {
+    case r: MavenRepository if (r.name == "local-preloaded") => false
+    case r: MavenRepository if (base  / "repo.none" exists)  => false
+    case r: MavenRepository if (base / "repo.all" exists)    => true
+    case r: MavenRepository => prev(r)
+  }
 
 def addSlash(s: String): String =
   s match {
