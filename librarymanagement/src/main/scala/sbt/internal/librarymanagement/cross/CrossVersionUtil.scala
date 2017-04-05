@@ -15,6 +15,9 @@ object CrossVersionUtil {
   def isDisabled(s: String): Boolean = (s == falseString) || (s == noneString) || (s == disabledString)
   def isBinary(s: String): Boolean = (s == binaryString)
 
+  private lazy val intPattern = """\d{1,10}"""
+  private lazy val basicVersion = """(""" + intPattern + """)\.(""" + intPattern + """)\.(""" + intPattern + """)"""
+
   private[sbt] def isSbtApiCompatible(v: String): Boolean = sbtApiVersion(v).isDefined
   /**
    * Returns sbt binary interface x.y API compatible with the given version string v.
@@ -23,9 +26,9 @@ object CrossVersionUtil {
    */
   private[sbt] def sbtApiVersion(v: String): Option[(Int, Int)] =
     {
-      val ReleaseV = """(\d+)\.(\d+)\.(\d+)(-\d+)?""".r
-      val CandidateV = """(\d+)\.(\d+)\.(\d+)(-RC\d+)""".r
-      val NonReleaseV = """(\d+)\.(\d+)\.(\d+)([-\w+]*)""".r
+      val ReleaseV = (basicVersion + """(-\d+)?""").r
+      val CandidateV = (basicVersion + """(-RC\d+)""").r
+      val NonReleaseV = (basicVersion + """([-\w+]*)""").r
       v match {
         case ReleaseV(x, y, z, ht)                   => Some((x.toInt, y.toInt))
         case CandidateV(x, y, z, ht)                 => Some((x.toInt, y.toInt))
@@ -40,9 +43,9 @@ object CrossVersionUtil {
    */
   private[sbt] def scalaApiVersion(v: String): Option[(Int, Int)] =
     {
-      val ReleaseV = """(\d+)\.(\d+)\.(\d+)(-\d+)?""".r
-      val BinCompatV = """(\d+)\.(\d+)\.(\d+)-bin(-.*)?""".r
-      val NonReleaseV = """(\d+)\.(\d+)\.(\d+)(-\w+)""".r
+      val ReleaseV = (basicVersion + """(-\d+)?""").r
+      val BinCompatV = (basicVersion + """-bin(-.*)?""").r
+      val NonReleaseV = (basicVersion + """(-\w+)""").r
       v match {
         case ReleaseV(x, y, z, ht)                   => Some((x.toInt, y.toInt))
         case BinCompatV(x, y, z, ht)                 => Some((x.toInt, y.toInt))
@@ -50,7 +53,7 @@ object CrossVersionUtil {
         case _                                       => None
       }
     }
-  private[sbt] val PartialVersion = """(\d+)\.(\d+)(?:\..+)?""".r
+  private[sbt] val PartialVersion = ("""(""" + intPattern + """)\.(""" + intPattern + """)(?:\..+)?""").r
   private[sbt] def partialVersion(s: String): Option[(Int, Int)] =
     s match {
       case PartialVersion(major, minor) => Some((major.toInt, minor.toInt))
