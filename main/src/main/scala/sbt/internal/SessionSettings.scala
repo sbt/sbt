@@ -20,21 +20,24 @@ import sbt.io.IO
 /**
  * Represents (potentially) transient settings added into a build via commands/user.
  *
- * @param currentBuild
- * The current sbt build with which we scope new settings
- * @param currentProject
- * The current project with which we scope new settings.
- * @param original
- * The original list of settings for this build.
- * @param append
- * Settings which have been defined and appended that may ALSO be saved to disk.
- * @param rawAppend
- * Settings which have been defined and appended which CANNOT be saved to disk
- * @param currentEval
- * A compiler we can use to compile new setting strings.
+ * @param currentBuild The current sbt build with which we scope new settings
+ * @param currentProject The current project with which we scope new settings.
+ * @param original The original list of settings for this build.
+ * @param append Settings which have been defined and appended that may ALSO be saved to disk.
+ * @param rawAppend Settings which have been defined and appended which CANNOT be saved to disk
+ * @param currentEval A compiler we can use to compile new setting strings.
  */
-final case class SessionSettings(currentBuild: URI, currentProject: Map[URI, String], original: Seq[Setting[_]], append: SessionMap, rawAppend: Seq[Setting[_]], currentEval: () => Eval) {
-  assert(currentProject contains currentBuild, "Current build (" + currentBuild + ") not associated with a current project.")
+final case class SessionSettings(
+    currentBuild: URI,
+    currentProject: Map[URI, String],
+    original: Seq[Setting[_]],
+    append: SessionMap,
+    rawAppend: Seq[Setting[_]],
+    currentEval: () => Eval
+) {
+
+  assert(currentProject contains currentBuild,
+    s"Current build ($currentBuild) not associated with a current project.")
 
   /**
    * Modifiy the current state.
@@ -44,7 +47,8 @@ final case class SessionSettings(currentBuild: URI, currentProject: Map[URI, Str
    * @param eval  The mechanism to compile new settings.
    * @return  A new SessionSettings object
    */
-  def setCurrent(build: URI, project: String, eval: () => Eval): SessionSettings = copy(currentBuild = build, currentProject = currentProject.updated(build, project), currentEval = eval)
+  def setCurrent(build: URI, project: String, eval: () => Eval): SessionSettings =
+    copy(currentBuild = build, currentProject = currentProject.updated(build, project), currentEval = eval)
 
   /**
    * @return  The current ProjectRef with which we scope settings.
@@ -86,6 +90,7 @@ final case class SessionSettings(currentBuild: URI, currentProject: Map[URI, Str
 object SessionSettings {
   /** A session setting is simply a tuple of a Setting[_] and the strings which define it. */
   type SessionSetting = (Setting[_], Seq[String])
+
   type SessionMap = Map[ProjectRef, Seq[SessionSetting]]
   type SbtConfigFile = (File, Seq[String])
 
@@ -305,7 +310,7 @@ save, save-all
   def range: Parser[(Int, Int)] = (NatBasic ~ ('-' ~> NatBasic).?).map { case lo ~ hi => (lo, hi getOrElse lo) }
 
   /** The raw implementation of the session command. */
-  def command(s: State) = Command.applyEffect(parser) {
+  def command(s: State): Parser[() => State] = Command.applyEffect(parser) {
     case p: Print  => if (p.all) printAllSettings(s) else printSettings(s)
     case v: Save   => if (v.all) saveAllSettings(s) else saveSettings(s)
     case c: Clear  => if (c.all) clearAllSettings(s) else clearSettings(s)

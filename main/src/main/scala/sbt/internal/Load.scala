@@ -242,16 +242,26 @@ private[sbt] object Load {
     }
 
   // Reevaluates settings after modifying them.  Does not recompile or reload any build components.
-  def reapply(newSettings: Seq[Setting[_]], structure: BuildStructure)(implicit display: Show[ScopedKey[_]]): BuildStructure =
+  def reapply(
+      newSettings: Seq[Setting[_]], structure: BuildStructure
+  )(implicit display: Show[ScopedKey[_]]): BuildStructure =
     {
       val transformed = finalTransforms(newSettings)
       val newData = Def.make(transformed)(structure.delegates, structure.scopeLocal, display)
-      val newIndex = structureIndex(newData, transformed, index => BuildUtil(structure.root, structure.units, index, newData), structure.units)
+      def extra(index: KeyIndex) = BuildUtil(structure.root, structure.units, index, newData)
+      val newIndex = structureIndex(newData, transformed, extra, structure.units)
       val newStreams = mkStreams(structure.units, structure.root, newData)
-      new BuildStructure(units = structure.units, root = structure.root, settings = transformed, data = newData, index = newIndex, streams = newStreams, delegates = structure.delegates, scopeLocal = structure.scopeLocal)
+      new BuildStructure(
+        units = structure.units, root = structure.root, settings = transformed, data = newData,
+        index = newIndex, streams = newStreams, delegates = structure.delegates,
+        scopeLocal = structure.scopeLocal)
     }
 
-  def isProjectThis(s: Setting[_]) = s.key.scope.project match { case This | Select(ThisProject) => true; case _ => false }
+  def isProjectThis(s: Setting[_]): Boolean =
+    s.key.scope.project match {
+      case This | Select(ThisProject) => true
+      case _ => false
+    }
 
   def buildConfigurations(loaded: LoadedBuild, rootProject: URI => String, injectSettings: InjectSettings): Seq[Setting[_]] =
     {
@@ -291,7 +301,8 @@ private[sbt] object Load {
       () => eval
     }
 
-  def mkEval(unit: BuildUnit): Eval = mkEval(unit.definitions, unit.plugins, unit.plugins.pluginData.scalacOptions)
+  def mkEval(unit: BuildUnit): Eval =
+    mkEval(unit.definitions, unit.plugins, unit.plugins.pluginData.scalacOptions)
 
   def mkEval(defs: LoadedDefinitions, plugs: LoadedPlugins, options: Seq[String]): Eval =
     mkEval(defs.target ++ plugs.classpath, defs.base, options)
@@ -335,7 +346,8 @@ private[sbt] object Load {
       BuildLoader(components, fail, s, config)
     }
 
-  def load(file: File, loaders: BuildLoader, extra: List[URI]): PartBuild = loadURI(IO.directoryURI(file), loaders, extra)
+  def load(file: File, loaders: BuildLoader, extra: List[URI]): PartBuild =
+    loadURI(IO.directoryURI(file), loaders, extra)
 
   def loadURI(uri: URI, loaders: BuildLoader, extra: List[URI]): PartBuild =
     {

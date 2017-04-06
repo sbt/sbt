@@ -9,7 +9,11 @@ import Plugins._
 import PluginsDebug._
 import java.net.URI
 
-private[sbt] class PluginsDebug(val available: List[AutoPlugin], val nameToKey: Map[String, AttributeKey[_]], val provided: Relation[AutoPlugin, AttributeKey[_]]) {
+private[sbt] class PluginsDebug(
+    val available: List[AutoPlugin],
+    val nameToKey: Map[String, AttributeKey[_]],
+    val provided: Relation[AutoPlugin, AttributeKey[_]]
+) {
   /**
    * The set of [[AutoPlugin]]s that might define a key named `keyName`.
    * Because plugins can define keys in different scopes, this should only be used as a guideline.
@@ -18,20 +22,23 @@ private[sbt] class PluginsDebug(val available: List[AutoPlugin], val nameToKey: 
     case None      => Set.empty
     case Some(key) => provided.reverse(key)
   }
-  /** Describes alternative approaches for defining key [[keyName]] in [[context]].*/
+
+  /** Describes alternative approaches for defining key `keyName` in [[Context]]. */
   def toEnable(keyName: String, context: Context): List[PluginEnable] =
     providers(keyName).toList.map(plugin => pluginEnable(context, plugin))
 
-  /** Provides text to suggest how [[notFoundKey]] can be defined in [[context]]. */
+  /** Provides text to suggest how `notFoundKey` can be defined in [[Context]]. */
   def debug(notFoundKey: String, context: Context): String =
     {
       val (activated, deactivated) = Util.separate(toEnable(notFoundKey, context)) {
         case pa: PluginActivated   => Left(pa)
         case pd: EnableDeactivated => Right(pd)
       }
-      val activePrefix = if (activated.nonEmpty) s"Some already activated plugins define $notFoundKey: ${activated.mkString(", ")}\n" else ""
+      val activePrefix = if (activated.isEmpty) "" else
+        s"Some already activated plugins define $notFoundKey: ${activated.mkString(", ")}\n"
       activePrefix + debugDeactivated(notFoundKey, deactivated)
     }
+
   private[this] def debugDeactivated(notFoundKey: String, deactivated: Seq[EnableDeactivated]): String =
     {
       val (impossible, possible) = Util.separate(deactivated) {
@@ -41,23 +48,27 @@ private[sbt] class PluginsDebug(val available: List[AutoPlugin], val nameToKey: 
       if (possible.nonEmpty) {
         val explained = possible.map(explainPluginEnable)
         val possibleString =
-          if (explained.size > 1) explained.zipWithIndex.map { case (s, i) => s"$i. $s" }.mkString(s"Multiple plugins are available that can provide $notFoundKey:\n", "\n", "")
+          if (explained.size > 1) explained.zipWithIndex.map { case (s, i) => s"$i. $s" }
+            .mkString(s"Multiple plugins are available that can provide $notFoundKey:\n", "\n", "")
           else s"$notFoundKey is provided by an available (but not activated) plugin:\n${explained.mkString}"
         def impossiblePlugins = impossible.map(_.plugin.label).mkString(", ")
-        val imPostfix = if (impossible.isEmpty) "" else s"\n\nThere are other available plugins that provide $notFoundKey, but they are impossible to add: $impossiblePlugins"
+        val imPostfix = if (impossible
+          .isEmpty) "" else s"\n\nThere are other available plugins that provide $notFoundKey, but they are " +
+          s"impossible to add: $impossiblePlugins"
         possibleString + imPostfix
       } else if (impossible.isEmpty)
         s"No available plugin provides key $notFoundKey."
       else {
         val explanations = impossible.map(explainPluginEnable)
-        explanations.mkString(s"Plugins are available that could provide $notFoundKey, but they are impossible to add:\n\t", "\n\t", "")
+        val preamble = s"Plugins are available that could provide $notFoundKey"
+        explanations.mkString(s"$preamble, but they are impossible to add:\n\t", "\n\t", "")
       }
     }
 
-  /** Text that suggests how to activate [[plugin]] in [[context]] if possible and if it is not already activated.*/
+  /** Text that suggests how to activate [[AutoPlugin]] in [[Context]] if possible and if it is not already activated. */
   def help(plugin: AutoPlugin, context: Context): String =
-    if (context.enabled.contains(plugin)) activatedHelp(plugin)
-    else deactivatedHelp(plugin, context)
+    if (context.enabled.contains(plugin)) activatedHelp(plugin) else deactivatedHelp(plugin, context)
+
   private def activatedHelp(plugin: AutoPlugin): String =
     {
       val prefix = s"${plugin.label} is activated."
@@ -67,6 +78,7 @@ private[sbt] class PluginsDebug(val available: List[AutoPlugin], val nameToKey: 
       val confsString = if (configs.isEmpty) "" else s"\nIt defines these configurations: ${multi(configs.map(_.name))}"
       prefix + keysString + confsString
     }
+
   private def deactivatedHelp(plugin: AutoPlugin, context: Context): String =
     {
       val prefix = s"${plugin.label} is NOT activated."
@@ -105,6 +117,7 @@ private[sbt] object PluginsDebug {
       import extracted._
       structure.units.values.toList.flatMap(availableAutoPlugins).map(plugin => (plugin.label, plugin)).toMap
     }
+
   private[this] def availableAutoPlugins(build: LoadedBuildUnit): Seq[AutoPlugin] =
     build.unit.plugins.detected.autoPlugins map { _.value }
 
@@ -120,7 +133,10 @@ private[sbt] object PluginsDebug {
       lazy val debug = PluginsDebug(context.available)
       if (!pluginsThisBuild.contains(plugin)) {
         val availableInBuilds: List[URI] = perBuild.toList.filter(_._2(plugin)).map(_._1)
-        s"Plugin ${plugin.label} is only available in builds:\n\t${availableInBuilds.mkString("\n\t")}\nSwitch to a project in one of those builds using `project` and rerun this command for more information."
+        val s1 = s"Plugin ${plugin.label} is only available in builds:"
+        val s2 = availableInBuilds.mkString("\n\t")
+        val s3 = s"Switch to a project in one of those builds using `project` and rerun this command for more information."
+        s"$s1\n\t$s2\n$s3"
       } else if (definesPlugin(currentProject))
         debug.activatedHelp(plugin)
       else {
@@ -128,7 +144,8 @@ private[sbt] object PluginsDebug {
         val definedInAggregated = thisAggregated.filter(ref => definesPlugin(projectForRef(ref)))
         if (definedInAggregated.nonEmpty) {
           val projectNames = definedInAggregated.map(_.project) // TODO: usually in this build, but could technically require the build to be qualified
-          s"Plugin ${plugin.label} is not activated on this project, but this project aggregates projects where it is activated:\n\t${projectNames.mkString("\n\t")}"
+          val s2 = projectNames.mkString("\n\t")
+          s"Plugin ${plugin.label} is not activated on this project, but this project aggregates projects where it is activated:\n\t$s2"
         } else {
           val base = debug.deactivatedHelp(plugin, context)
           val aggNote = if (thisAggregated.nonEmpty) "Note: This project aggregates other projects and this" else "Note: This"
@@ -139,7 +156,7 @@ private[sbt] object PluginsDebug {
       }
     }
 
-  /** Precomputes information for debugging plugins. */
+  /** Pre-computes information for debugging plugins. */
   def apply(available: List[AutoPlugin]): PluginsDebug =
     {
       val keyR = definedKeys(available)
@@ -154,36 +171,58 @@ private[sbt] object PluginsDebug {
    * @param deducePlugin The function used to compute the model.
    * @param available All [[AutoPlugin]]s available for consideration.
    */
-  final case class Context(initial: Plugins, enabled: Seq[AutoPlugin], deducePlugin: (Plugins, Logger) => Seq[AutoPlugin], available: List[AutoPlugin], log: Logger)
+  final case class Context(
+      initial: Plugins,
+      enabled: Seq[AutoPlugin],
+      deducePlugin: (Plugins, Logger) => Seq[AutoPlugin],
+      available: List[AutoPlugin],
+      log: Logger
+  )
 
   /** Describes the steps to activate a plugin in some context. */
   sealed abstract class PluginEnable
+
   /** Describes a [[plugin]] that is already activated in the [[context]].*/
   final case class PluginActivated(plugin: AutoPlugin, context: Context) extends PluginEnable
+
   sealed abstract class EnableDeactivated extends PluginEnable
+
   /** Describes a [[plugin]] that cannot be activated in a [[context]] due to [[contradictions]] in requirements. */
-  final case class PluginImpossible(plugin: AutoPlugin, context: Context, contradictions: Set[AutoPlugin]) extends EnableDeactivated
+  final case class PluginImpossible(plugin: AutoPlugin, context: Context, contradictions: Set[AutoPlugin])
+      extends EnableDeactivated
 
   /**
    * Describes the requirements for activating [[plugin]] in [[context]].
    * @param context The base plugins, exclusions, and ultimately activated plugins
    * @param blockingExcludes Existing exclusions that prevent [[plugin]] from being activated and must be dropped
-   * @param enablingPlugins [[AutoPlugin]]s that are not currently enabled, but need to be enabled for [[plugin]] to activate
-   * @param extraEnabledPlugins Plugins that will be enabled as a result of [[plugin]] activating, but are not required for [[plugin]] to activate
+   * @param enablingPlugins [[AutoPlugin]]s that are not currently enabled,
+   *                        but need to be enabled for [[plugin]] to activate
+   * @param extraEnabledPlugins Plugins that will be enabled as a result of [[plugin]] activating,
+   *                            but are not required for [[plugin]] to activate
    * @param willRemove Plugins that will be deactivated as a result of [[plugin]] activating
-   * @param deactivate Describes plugins that must be deactivated for [[plugin]] to activate.  These require an explicit exclusion or dropping a transitive [[AutoPlugin]].
+   * @param deactivate Describes plugins that must be deactivated for [[plugin]] to activate.
+   *                   These require an explicit exclusion or dropping a transitive [[AutoPlugin]].
    */
-  final case class PluginRequirements(plugin: AutoPlugin, context: Context, blockingExcludes: Set[AutoPlugin], enablingPlugins: Set[AutoPlugin], extraEnabledPlugins: Set[AutoPlugin], willRemove: Set[AutoPlugin], deactivate: List[DeactivatePlugin]) extends EnableDeactivated
+  final case class PluginRequirements(
+      plugin: AutoPlugin,
+      context: Context,
+      blockingExcludes: Set[AutoPlugin],
+      enablingPlugins: Set[AutoPlugin],
+      extraEnabledPlugins: Set[AutoPlugin],
+      willRemove: Set[AutoPlugin],
+      deactivate: List[DeactivatePlugin]
+  ) extends EnableDeactivated
 
   /**
    * Describes a [[plugin]] that must be removed in order to activate another plugin in some context.
    * The [[plugin]] can always be directly, explicitly excluded.
-   * @param removeOneOf If non-empty, removing one of these [[AutoPlugin]]s will deactivate [[plugin]] without affecting the other plugin.  If empty, a direct exclusion is required.
+   * @param removeOneOf If non-empty, removing one of these [[AutoPlugin]]s will deactivate [[plugin]] without
+   *                    affecting the other plugin.  If empty, a direct exclusion is required.
    * @param newlySelected If false, this plugin was selected in the original context.
    */
   final case class DeactivatePlugin(plugin: AutoPlugin, removeOneOf: Set[AutoPlugin], newlySelected: Boolean)
 
-  /** Determines how to enable [[plugin]] in [[context]]. */
+  /** Determines how to enable [[AutoPlugin]] in [[Context]]. */
   def pluginEnable(context: Context, plugin: AutoPlugin): PluginEnable =
     if (context.enabled.contains(plugin))
       PluginActivated(plugin, context)
@@ -237,12 +276,15 @@ private[sbt] object PluginsDebug {
       // The model that results when the minimal plugins are enabled and the minimal plugins are excluded.
       //  This can include more plugins than just `minRequiredPlugins` because the plugins required for `plugin`
       //  might activate other plugins as well.
-      val incrementalInputs = and(includeAll(minRequiredPlugins ++ initialPlugins), excludeAll(minAbsentPlugins ++ initialExcludes -- minRequiredPlugins))
+      val incrementalInputs = and(
+        includeAll(minRequiredPlugins ++ initialPlugins),
+        excludeAll(minAbsentPlugins ++ initialExcludes -- minRequiredPlugins)
+      )
       val incrementalModel = context.deducePlugin(incrementalInputs, context.log).toSet
 
       // Plugins that are newly enabled as a result of selecting the plugins needed for `plugin`, but aren't strictly required for `plugin`.
       //   These could be excluded and `plugin` and the user's current plugins would still be activated.
-      val extraPlugins = incrementalModel.toSet -- minRequiredPlugins -- initialModel
+      val extraPlugins = incrementalModel -- minRequiredPlugins -- initialModel
 
       // Plugins that will no longer be enabled as a result of enabling `plugin`.
       val willRemove = initialModel -- incrementalModel
@@ -318,8 +360,10 @@ private[sbt] object PluginsDebug {
 
   private[this] def excludedPluginError(transitive: Boolean)(dependency: AutoPlugin) =
     s"Required ${transitiveString(transitive)}dependency ${dependency.label} was excluded."
+
   private[this] def excludedPluginsError(transitive: Boolean)(dependencies: List[AutoPlugin]) =
     s"Required ${transitiveString(transitive)}dependencies were excluded:\n\t${labels(dependencies).mkString("\n\t")}"
+
   private[this] def transitiveString(transitive: Boolean) =
     if (transitive) "(transitive) " else ""
 
@@ -328,6 +372,7 @@ private[sbt] object PluginsDebug {
 
   private[this] def requiredPlugin(plugin: AutoPlugin) =
     s"Required plugin ${plugin.label} not present."
+
   private[this] def requiredPlugins(plugins: List[AutoPlugin]) =
     s"Required plugins not present:\n\t${plugins.map(_.label).mkString("\n\t")}"
 
@@ -343,6 +388,7 @@ private[sbt] object PluginsDebug {
 
   private[this] def willAddPlugin(base: AutoPlugin)(plugin: AutoPlugin) =
     s"Enabling ${base.label} will also enable ${plugin.label}"
+
   private[this] def willAddPlugins(base: AutoPlugin)(plugins: List[AutoPlugin]) =
     s"Enabling ${base.label} will also enable:\n\t${labels(plugins).mkString("\n\t")}"
 
@@ -351,6 +397,7 @@ private[sbt] object PluginsDebug {
 
   private[this] def willRemovePlugin(base: AutoPlugin)(plugin: AutoPlugin) =
     s"Enabling ${base.label} will disable ${plugin.label}"
+
   private[this] def willRemovePlugins(base: AutoPlugin)(plugins: List[AutoPlugin]) =
     s"Enabling ${base.label} will disable:\n\t${labels(plugins).mkString("\n\t")}"
 
@@ -359,10 +406,13 @@ private[sbt] object PluginsDebug {
 
   private[this] def needToDeactivate(deactivate: List[DeactivatePlugin]): String =
     str(deactivate)(deactivate1, deactivateN)
+
   private[this] def deactivateN(plugins: List[DeactivatePlugin]): String =
     plugins.map(deactivateString).mkString("These plugins need to be deactivated:\n\t", "\n\t", "")
+
   private[this] def deactivate1(deactivate: DeactivatePlugin): String =
     s"Need to deactivate ${deactivateString(deactivate)}"
+
   private[this] def deactivateString(d: DeactivatePlugin): String =
     {
       val removePluginsString: String =
@@ -377,8 +427,17 @@ private[sbt] object PluginsDebug {
   private[this] def pluginImpossible(plugin: AutoPlugin, contradictions: Set[AutoPlugin]): String =
     str(contradictions.toList)(pluginImpossible1(plugin), pluginImpossibleN(plugin))
 
-  private[this] def pluginImpossible1(plugin: AutoPlugin)(contradiction: AutoPlugin): String =
-    s"There is no way to enable plugin ${plugin.label}.  It (or its dependencies) requires plugin ${contradiction.label} to both be present and absent.  Please report the problem to the plugin's author."
-  private[this] def pluginImpossibleN(plugin: AutoPlugin)(contradictions: List[AutoPlugin]): String =
-    s"There is no way to enable plugin ${plugin.label}.  It (or its dependencies) requires these plugins to be both present and absent:\n\t${labels(contradictions).mkString("\n\t")}\nPlease report the problem to the plugin's author."
+  private[this] def pluginImpossible1(plugin: AutoPlugin)(contradiction: AutoPlugin): String = {
+    val s1 = s"There is no way to enable plugin ${plugin.label}."
+    val s2 = s"It (or its dependencies) requires plugin ${contradiction.label} to both be present and absent."
+    val s3 = s"Please report the problem to the plugin's author."
+    s"$s1  $s2  $s3"
+  }
+
+  private[this] def pluginImpossibleN(plugin: AutoPlugin)(contradictions: List[AutoPlugin]): String = {
+    val s1 = s"There is no way to enable plugin ${plugin.label}."
+    val s2 = s"It (or its dependencies) requires these plugins to be both present and absent:"
+    val s3 = s"Please report the problem to the plugin's author."
+    s"$s1  $s2:\n\t${labels(contradictions).mkString("\n\t")}\n$s3"
+  }
 }

@@ -17,15 +17,15 @@ object BasicCommandStrings {
   val TerminateAction: String = Exit
 
   def helpBrief = (HelpCommand, s"Displays this help message or prints detailed help on requested commands (run '$HelpCommand <command>').")
-  def helpDetailed = HelpCommand + """
+  def helpDetailed = s"""$HelpCommand
 
 	Prints a help summary.
 
-""" + HelpCommand + """ <command>
+$HelpCommand <command>
 
 	Prints detailed help for command <command>.
 
-""" + HelpCommand + """ <regular expression>
+$HelpCommand <regular expression>
 
 	Searches the help according to the provided regular expression.
 """
@@ -50,6 +50,7 @@ object BasicCommandStrings {
       val detailed = levels.map(l => (l.toString, logLevelDetail(l))).toMap
       Help(brief, detailed)
     }
+
   private[this] def logLevelDetail(level: Level.Value): String =
     s"""$level
 
@@ -130,24 +131,21 @@ object BasicCommandStrings {
 
   val AliasCommand = "alias"
   def AliasDetailed =
-    AliasCommand + """
+    s"""$AliasCommand
 
 	Prints a list of defined aliases.
 
-""" +
-      AliasCommand + """ name
+$AliasCommand name
 
 	Prints the alias defined for `name`.
 
-""" +
-      AliasCommand + """ name=value
+$AliasCommand name=value
 
 	Sets the alias `name` to `value`, replacing any existing alias with that name.
 	Whenever `name` is entered, the corresponding `value` is run.
 	If any argument is provided to `name`, it is appended as argument to `value`.
 
-""" +
-      AliasCommand + """ name=
+$AliasCommand name=
 
 	Removes the alias for `name`."""
 
@@ -194,9 +192,9 @@ object BasicCommandStrings {
   def IfLast = "iflast"
   def IfLastCommon = "If there are no more commands after this one, 'command' is run."
   def IfLastDetailed =
-    IfLast + """ <command>
+    s"""$IfLast <command>
 
-	""" + IfLastCommon
+	$IfLastCommon"""
 
   val ContinuousExecutePrefix = "~"
   def continuousDetail = "Executes the specified command whenever source files change."
