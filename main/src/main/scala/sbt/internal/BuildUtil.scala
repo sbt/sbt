@@ -68,7 +68,6 @@ object BuildUtil {
     // check for cycles
     for ((_, lbu) <- units; proj <- lbu.defined.values) {
       deps(proj)(_.dependencies.map(_.project))
-      deps(proj)(_.delegates)
       deps(proj)(_.aggregate)
     }
   }
