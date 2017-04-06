@@ -315,7 +315,7 @@ lazy val docProjects: ScopeFilter = ScopeFilter(
   inConfigurations(Compile)
 )
 def fullDocSettings = Util.baseScalacOptions ++ Docs.settings ++ Sxr.settings ++ Seq(
-  scalacOptions += "-Ymacro-no-expand", // for both sxr and doc
+  scalacOptions += "-Ymacro-expand:none", // for both sxr and doc
   sources in sxr := {
     val allSources = (sources ?? Nil).all(docProjects).value
     allSources.flatten.distinct
