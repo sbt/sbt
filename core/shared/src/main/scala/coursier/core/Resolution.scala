@@ -351,7 +351,7 @@ object Resolution {
   private val mavenScopes = {
     val base = Map[String, Set[String]](
       "compile" -> Set("compile"),
-      "optional" -> Set("compile", "optional"),
+      "optional" -> Set("compile", "optional", "runtime"),
       "provided" -> Set(),
       "runtime" -> Set("compile", "runtime"),
       "test" -> Set()

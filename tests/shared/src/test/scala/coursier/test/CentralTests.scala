@@ -135,8 +135,17 @@ object CentralTests extends TestSuite {
     extraRepo: Option[Repository]
   )(
     f: Seq[Artifact] => T
+  ): Future[T] = 
+    withArtifacts(Set(dep), artifactType, extraRepo)(f)
+
+  def withArtifacts[T](
+    deps: Set[Dependency],
+    artifactType: String,
+    extraRepo: Option[Repository]
+  )(
+    f: Seq[Artifact] => T
   ): Future[T] = async {
-    val res = await(resolve(Set(dep), extraRepo = extraRepo))
+    val res = await(resolve(deps, extraRepo = extraRepo))
 
     assert(res.errors.isEmpty)
     assert(res.conflicts.isEmpty)
@@ -346,6 +355,32 @@ object CentralTests extends TestSuite {
 
       'compile - check("compile")
       'runtime - check("runtime")
+    }
+
+    'optionalScope - {
+
+      def intransitiveCompiler(config: String) =
+        Dependency(
+          Module("org.scala-lang", "scala-compiler"), "2.11.8",
+          configuration = config,
+          transitive = false
+        )
+
+      withArtifacts(
+        Set(
+          intransitiveCompiler("default"),
+          intransitiveCompiler("optional")
+        ),
+        "jar",
+        None
+      ) {
+        case Seq() =>
+          throw new Exception("Expected one JAR")
+        case Seq(jar) =>
+          () // ok
+        case other =>
+          throw new Exception(s"Got too many JARs (${other.mkString})")
+      }
     }
 
     'packaging - {
