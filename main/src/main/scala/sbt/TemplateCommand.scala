@@ -10,29 +10,29 @@ import xsbti.AppConfiguration
 import sbt.librarymanagement._
 import sbt.internal.librarymanagement.IvyConfiguration
 import sbt.internal.inc.classpath.ClasspathUtilities
-import BasicCommandStrings._, BasicKeys._, Command.applyEffect
+import BasicCommandStrings._, BasicKeys._
 
 private[sbt] object TemplateCommandUtil {
   def templateCommand: Command =
-    Command.make(TemplateCommand, templateBrief, templateDetailed)(templateCommandParser)
+    Command(TemplateCommand, templateBrief, templateDetailed)(templateCommandParser)(runTemplate)
 
-  def templateCommandParser(state: State): Parser[() => State] = {
-    val p = (token(Space) ~> repsep(StringBasic, token(Space))) | (token(EOF) map (_ => Nil))
+  private def templateCommandParser(state: State): Parser[Seq[String]] =
+    (token(Space) ~> repsep(StringBasic, token(Space))) | (token(EOF) map (_ => Nil))
+
+  private def runTemplate(state: State, inputArg: Seq[String]): State = {
     val infos = (state get templateResolverInfos getOrElse Nil).toList
     val log = state.globalLogging.full
     val extracted = (Project extract state)
     val (s2, ivyConf) = extracted.runTask(Keys.ivyConfiguration, state)
     val globalBase = BuildPaths.getGlobalBase(state)
     val ivyScala = extracted.get(Keys.ivyScala in Keys.updateSbtClassifiers)
-    applyEffect(p)({ inputArg =>
-      val arguments = inputArg.toList ++
-        (state.remainingCommands match {
-          case exec :: Nil if exec.commandLine == "shell" => Nil
-          case xs                                         => xs map (_.commandLine)
-        })
-      run(infos, arguments, state.configuration, ivyConf, globalBase, ivyScala, log)
-      "exit" :: s2.copy(remainingCommands = Nil)
-    })
+    val arguments = inputArg.toList ++
+      (state.remainingCommands match {
+        case exec :: Nil if exec.commandLine == "shell" => Nil
+        case xs                                         => xs map (_.commandLine)
+      })
+    run(infos, arguments, state.configuration, ivyConf, globalBase, ivyScala, log)
+    "exit" :: s2.copy(remainingCommands = Nil)
   }
 
   private def run(

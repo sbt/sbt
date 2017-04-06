@@ -68,15 +68,13 @@ object BasicCommands {
     }
 
   def completionsCommand: Command =
-    Command.make(CompletionsCommand, CompletionsBrief, CompletionsDetailed)(completionsParser)
+    Command(CompletionsCommand, CompletionsBrief, CompletionsDetailed)(completionsParser)(runCompletions(_)(_))
 
-  def completionsParser(state: State): Parser[() => State] =
-    {
-      val notQuoted = (NotQuoted ~ any.*) map { case (nq, s) => nq ++ s }
-      val quotedOrUnquotedSingleArgument = Space ~> (StringVerbatim | StringEscapable | notQuoted)
-
-      applyEffect(token(quotedOrUnquotedSingleArgument ?? "" examples ("", " ")))(runCompletions(state))
-    }
+  def completionsParser(state: State): Parser[String] = {
+    val notQuoted = (NotQuoted ~ any.*) map { case (nq, s) => nq ++ s }
+    val quotedOrUnquotedSingleArgument = Space ~> (StringVerbatim | StringEscapable | notQuoted)
+    token(quotedOrUnquotedSingleArgument ?? "" examples ("", " "))
+  }
 
   def runCompletions(state: State)(input: String): State = {
     Parser.completions(state.combinedParser, input, 9).get map {
@@ -220,24 +218,22 @@ object BasicCommands {
     }
   }
 
-  def client: Command = Command.make(Client, Help.more(Client, ClientDetailed))(clientParser)
+  def client: Command = Command(Client, Help.more(Client, ClientDetailed))(_ => clientParser)(runClient)
 
-  def clientParser(s0: State): Parser[() => State] =
-    {
-      val p = (token(Space) ~> repsep(StringBasic, token(Space))) | (token(EOF) map (_ => Nil))
-      applyEffect(p)({ inputArg =>
-        val arguments = inputArg.toList ++
-          (s0.remainingCommands match {
-            case e :: Nil if e.commandLine == "shell" => Nil
-            case xs                                   => xs map { _.commandLine }
-          })
-        NetworkClient.run(arguments)
-        "exit" :: s0.copy(remainingCommands = Nil)
+  def clientParser: Parser[Seq[String]] =
+    (token(Space) ~> repsep(StringBasic, token(Space))) | (token(EOF) map (_ => Nil))
+
+  def runClient(s0: State, inputArg: Seq[String]): State = {
+    val arguments = inputArg.toList ++
+      (s0.remainingCommands match {
+        case e :: Nil if e.commandLine == "shell" => Nil
+        case xs                                   => xs map (_.commandLine)
       })
-    }
+    NetworkClient.run(arguments)
+    "exit" :: s0.copy(remainingCommands = Nil)
+  }
 
-  def read: Command =
-    Command.make(ReadCommand, Help.more(ReadCommand, ReadDetailed))(s => applyEffect(readParser(s))(doRead(s)))
+  def read: Command = Command(ReadCommand, Help.more(ReadCommand, ReadDetailed))(readParser)(doRead(_)(_))
 
   def readParser(s: State): Parser[Either[Int, Seq[File]]] =
     {
@@ -282,14 +278,13 @@ object BasicCommands {
       }
     }
 
-  def alias: Command = Command.make(AliasCommand, Help.more(AliasCommand, AliasDetailed)) { s =>
+  def alias: Command = Command(AliasCommand, Help.more(AliasCommand, AliasDetailed)) { s =>
     val name = token(OpOrID.examples(aliasNames(s): _*))
     val assign = token(OptSpace ~ '=' ~ OptSpace)
     val sfree = removeAliases(s)
     val to = matched(sfree.combinedParser, partial = true).failOnException | any.+.string
-    val base = (OptSpace ~> (name ~ (assign ~> to.?).?).?)
-    applyEffect(base)(t => runAlias(s, t))
-  }
+    OptSpace ~> (name ~ (assign ~> to.?).?).?
+  }(runAlias)
 
   def runAlias(s: State, args: Option[(String, Option[Option[String]])]): State =
     args match {
