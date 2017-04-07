@@ -3,6 +3,12 @@ import _root_.bintray.InternalBintrayKeys._
 import _root_.bintray.{BintrayRepo, Bintray}
 import NativePackagerHelper._
 
+lazy val sbtOfflineInstall =
+  sys.props.getOrElse("sbt.build.offline", sys.env.getOrElse("sbt.build.offline", "false")) match {
+    case "true" => true
+    case "1"    => true
+    case _      => false
+  }
 lazy val sbtVersionToRelease = sys.props.getOrElse("sbt.build.version", sys.env.getOrElse("sbt.build.version", {
         sys.error("-Dsbt.build.version must be set")
       }))
@@ -12,13 +18,15 @@ val sbtLaunchJarLocation = SettingKey[File]("sbt-launch-jar-location")
 val sbtLaunchJar = TaskKey[File]("sbt-launch-jar", "Resolves SBT launch jar")
 val moduleID = (organization) apply { (o) => ModuleID(o, "sbt", sbtVersionToRelease) }
 
+lazy val bintrayDebianUrl = settingKey[String]("API point for Debian packages")
+lazy val bintrayDebianExperimentalUrl = settingKey[String]("API point for Debian experimental packages")
+lazy val bintrayRpmUrl = settingKey[String]("API point for RPM packages")
+lazy val bintrayRpmExperimentalUrl = settingKey[String]("API point for RPM experimental packages")
+lazy val bintrayGenericPackagesUrl = settingKey[String]("API point for generic packages")
+lazy val bintrayTripple = settingKey[(String, String, String)]("id, url, and pattern")
+
 val bintrayLinuxPattern = "[module]/[revision]/[module]-[revision].[ext]"
 val bintrayGenericPattern = "[module]/[revision]/[module]/[revision]/[module]-[revision].[ext]"
-val bintrayDebianUrl = "https://api.bintray.com/content/sbt/debian/"
-val bintrayDebianExperimentalUrl = "https://api.bintray.com/content/sbt/debian-experimental/"
-val bintrayRpmUrl = "https://api.bintray.com/content/sbt/rpm/"
-val bintrayRpmExperimentalUrl = "https://api.bintray.com/content/sbt/rpm-experimental/"
-val bintrayGenericPackagesUrl = "https://api.bintray.com/content/sbt/native-packages/"
 val bintrayReleaseAllStaged = TaskKey[Unit]("bintray-release-all-staged", "Release all staged artifacts on bintray.")
 val windowsBuildId = settingKey[Int]("build id for Windows installer")
 
@@ -119,10 +127,14 @@ val root = (project in file(".")).
       val rtExportJar = (packageBin in Compile in java9rtexport).value
       Seq(launchJar -> "bin/sbt-launch.jar", rtExportJar -> "bin/java9-rt-export.jar")
     },
-    mappings in Universal ++= {
-      val _ = (exportRepo in dist).value
-      directory((target in dist).value / "lib")
-    },
+    mappings in Universal ++= (Def.taskDyn {
+      if (sbtOfflineInstall)
+        Def.task {
+          val _ = (exportRepo in dist).value
+          directory((target in dist).value / "lib")
+        }
+      else Def.task { Seq[(File, String)]() }
+    }).value,
     stage in Universal := {
       val old = (stage in Universal).value
       val sd = (stagingDirectory in Universal).value
@@ -163,32 +175,41 @@ def downloadUrlForVersion(v: String) = (v split "[^\\d]" flatMap (i => catching(
   case _                             => "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch/"+v+"/sbt-launch.jar"
 }
 
-def makePublishTo(id: String, url: String, pattern: String): Setting[_] = {
-  publishTo := {
-    val resolver = Resolver.url(id, new URL(url))(Patterns(pattern))
-    Some(resolver)
-  }
-}
-
 def makePublishToForConfig(config: Configuration) = {
   val v = sbtVersionToRelease
-  val (id, url, pattern) =
-    config.name match {
-      case Debian.name if isExperimental => ("debian-experimental", bintrayDebianExperimentalUrl, bintrayLinuxPattern)
-      case Debian.name => ("debian", bintrayDebianUrl, bintrayLinuxPattern)
-      case Rpm.name if isExperimental => ("rpm-experimental", bintrayRpmExperimentalUrl, bintrayLinuxPattern)
-      case Rpm.name    => ("rpm", bintrayRpmUrl, bintrayLinuxPattern)
-      case _           => ("native-packages", bintrayGenericPackagesUrl, bintrayGenericPattern)
-    }
+
   // Add the publish to and ensure global resolvers has the resolver we just configured.
   inConfig(config)(Seq(
-    bintrayOrganization := Some("sbt"),
-    bintrayRepository := id,
+    bintrayOrganization := {
+      // offline installation exceeds 50MB file limit for OSS organization
+      if (sbtOfflineInstall) Some("lightbend")
+      else Some("sbt")
+    },
+    bintrayRepository := bintrayTripple.value._1,
     bintrayRepo := Bintray.cachedRepo(bintrayEnsureCredentials.value,
       bintrayOrganization.value,
       bintrayRepository.value),
     bintrayPackage := "sbt",
-    makePublishTo(id, url, pattern),
+
+    bintrayDebianUrl             := s"https://api.bintray.com/content/${bintrayOrganization.value.get}/debian/",
+    bintrayDebianExperimentalUrl := s"https://api.bintray.com/content/${bintrayOrganization.value.get}/debian-experimental/",
+    bintrayRpmUrl                := s"https://api.bintray.com/content/${bintrayOrganization.value.get}/rpm/",
+    bintrayRpmExperimentalUrl    := s"https://api.bintray.com/content/${bintrayOrganization.value.get}/rpm-experimental/",
+    bintrayGenericPackagesUrl    := s"https://api.bintray.com/content/${bintrayOrganization.value.get}/native-packages/",
+    bintrayTripple := {
+      config.name match {
+        case Debian.name if isExperimental => ("debian-experimental", bintrayDebianExperimentalUrl.value, bintrayLinuxPattern)
+        case Debian.name                   => ("debian", bintrayDebianUrl.value, bintrayLinuxPattern)
+        case Rpm.name if isExperimental    => ("rpm-experimental", bintrayRpmExperimentalUrl.value, bintrayLinuxPattern)
+        case Rpm.name                      => ("rpm", bintrayRpmUrl.value, bintrayLinuxPattern)
+        case _                             => ("native-packages", bintrayGenericPackagesUrl.value, bintrayGenericPattern)
+      }
+    },
+    publishTo := {
+      val (id, url, pattern) = bintrayTripple.value
+      val resolver = Resolver.url(id, new URL(url))(Patterns(pattern))
+      Some(resolver)
+    },
     bintrayReleaseAllStaged := bintrayRelease(bintrayRepo.value, bintrayPackage.value, version.value, sLog.value)
     // Uncomment to release right after publishing
     // publish <<= (publish, bintrayRepo, bintrayPackage, version, sLog) apply { (publish, bintrayRepo, bintrayPackage, version, sLog) =>
