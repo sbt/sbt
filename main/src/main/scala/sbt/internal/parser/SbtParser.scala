@@ -125,7 +125,7 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
       case _         => false
     }
 
-    /**
+    /*
      * See BugInParser
      * @param t - tree
      * @param originalStatement - original
