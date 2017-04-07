@@ -578,9 +578,9 @@
       "type": "record",
       "doc": "Basic SCM information for a project module",
       "fields": [
-        { "name": "browseUrl",     "type": "java.net.URL" },
-        { "name": "connection",    "type": "String"       },
-        { "name": "devConnection", "type": "String?"      }
+        { "name": "browseUrl",     "type": "java.net.URL"                                     },
+        { "name": "connection",    "type": "String"                                           },
+        { "name": "devConnection", "type": "String?",     "default": "None", "since": "0.0.1" }
       ]
     },
     {
