@@ -3,6 +3,12 @@ import _root_.bintray.InternalBintrayKeys._
 import _root_.bintray.{BintrayRepo, Bintray}
 import NativePackagerHelper._
 
+lazy val sbtOfflineInstall =
+  sys.props.getOrElse("sbt.build.offline", sys.env.getOrElse("sbt.build.offline", "false")) match {
+    case "true" => true
+    case "1"    => true
+    case _      => false
+  }
 lazy val sbtVersionToRelease = sys.props.getOrElse("sbt.build.version", sys.env.getOrElse("sbt.build.version", {
         sys.error("-Dsbt.build.version must be set")
       }))
@@ -119,10 +125,14 @@ val root = (project in file(".")).
       val rtExportJar = (packageBin in Compile in java9rtexport).value
       Seq(launchJar -> "bin/sbt-launch.jar", rtExportJar -> "bin/java9-rt-export.jar")
     },
-    mappings in Universal ++= {
-      val _ = (exportRepo in dist).value
-      directory((target in dist).value / "lib")
-    },
+    mappings in Universal ++= (Def.taskDyn {
+      if (sbtOfflineInstall)
+        Def.task {
+          val _ = (exportRepo in dist).value
+          directory((target in dist).value / "lib")
+        }
+      else Def.task { Seq[(File, String)]() }
+    }).value,
     stage in Universal := {
       val old = (stage in Universal).value
       val sd = (stagingDirectory in Universal).value
