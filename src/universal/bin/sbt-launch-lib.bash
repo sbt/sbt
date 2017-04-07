@@ -160,7 +160,7 @@ process_args () {
 syncPreloaded() {
   [[ -f "$HOME/.sbt/preloaded/org.scala-sbt/sbt/$init_sbt_version/jars/sbt.jar" ]] || {
     # lib/local-preloaded exists (This is optional)
-    [[ -f "$sbt_home/lib/local-preloaded/" ]] && {
+    [[ -d "$sbt_home/lib/local-preloaded/" ]] && {
       command -v rsync >/dev/null 2>&1 && {
         mkdir -p "$HOME/.sbt/preloaded"
         rsync -a --ignore-existing "$sbt_home/lib/local-preloaded/" "$HOME/.sbt/preloaded"

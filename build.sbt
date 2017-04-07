@@ -4,7 +4,7 @@ import _root_.bintray.{BintrayRepo, Bintray}
 import NativePackagerHelper._
 
 lazy val sbtOfflineInstall =
-  sys.props.getOrElse("sbt.build.offline", sys.env.getOrElse("sbt.build.offline", "false")) match {
+  sys.props.getOrElse("sbt.build.offline", sys.env.getOrElse("sbt.build.offline", "true")) match {
     case "true" => true
     case "1"    => true
     case _      => false
@@ -182,7 +182,7 @@ def makePublishToForConfig(config: Configuration) = {
   inConfig(config)(Seq(
     bintrayOrganization := {
       // offline installation exceeds 50MB file limit for OSS organization
-      if (sbtOfflineInstall) Some("lightbend")
+      if (sbtOfflineInstall) Some("sbt")
       else Some("sbt")
     },
     bintrayRepository := bintrayTripple.value._1,
