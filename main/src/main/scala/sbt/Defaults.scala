@@ -1939,7 +1939,7 @@ object Classpaths {
           i.url.getProtocol match {
             case "file" =>
               // This hackery is to deal suitably with UNC paths on Windows. Once we can assume Java7, Paths should save us from this.
-              val file = try { new File(i.url.toURI) } catch { case e: java.net.URISyntaxException => new File(i.url.getPath) }
+              val file = IO.toFile(i.url)
               Resolver.file(i.id, file)(patterns)
             case _ => Resolver.url(i.id, i.url)(patterns)
           }
