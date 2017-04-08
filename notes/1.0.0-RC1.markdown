@@ -8,8 +8,8 @@ Allows to launch applications from their Scaladex name via the `coursier launch`
 
 Example:
 ```
-$ coursier launch lihaoyi/Ammonite
-$ coursier launch scalameta/scalafmt
+$ coursier launch lihaoyi/ammonite
+$ coursier launch olafurpg/scalafmt
 ```
 
 ### New sbt-shading plugin
