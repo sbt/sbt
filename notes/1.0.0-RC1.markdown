@@ -1,0 +1,102 @@
+## Changes
+
+### New features
+
+* Allow to launch applications from their Scaladex name via the `coursier launch` command ([#385], thanks to [@MasseGuillaume] too)
+
+Example
+```
+$ coursier launch lihaoyi/Ammonite
+$ coursier launch scalameta/scalafmt
+```
+
+* Add sbt-shading plugin ([#426])
+
+Allows to shade dependencies like
+```
+lazy val myProj = project
+  .enablePlugins(coursier.ShadingPlugin)
+  .settings(
+    shadingNamespace := "myproj.shaded",
+    libraryDependencies += "com" %% "foo" % "0.2.3" % "shaded"
+  )
+```
+`sbt myProj/shading:publish` then publishes `myProj` with `com.foo` shaded under the `myproj.shaded` namespace.
+
+* Add experimental 100% coursier-based sbt launcher ([#439], available at [csbt])
+
+Try it from the coursier sources with
+```
+$ ./csbt
+```
+
+Allows to add plugins from `project/build.properties` (optionally renamed to `sbt.properties` at the root of the project), like
+```
+sbt.version=0.13.13
+
+plugins = [
+  "org.xerial.sbt:sbt-pack:0.8.2"
+  ...
+]
+```
+
+* Helper syntax for bintray Ivy repositories ([#481], thanks to [@olafurpg])
+
+Example
+```
+$ coursier launch -r bintray-ivy:org/repo-name ...
+```
+
+### Bug fixes
+
+* Fix javadoc and sources of scala-library / scala-reflect not found when using the same Scala version as sbt ([#406])
+* Better handling of packaging / artifact types / optional dependencies from Maven repositories ([#430]) - fixes broken or buggy `sbt console`, missing JARs for dependencies having packaging POM in their POM file.
+* Fix minor glitch in progress bar display ([#439], display not cleaned properly after progress bars)
+* No more `Unrecognized repository inter-project` when running `sbt updateSbtClassifiers` ([#439])
+* Don't trap parent POM or dependency management metadata errors ([#437], thanks to [@kzys])
+* Trim Maven properties ([#421], thanks to [@kzys])
+
+### Version bumps
+
+* Switch to scala 2.12.1 ([#426])
+* Switch to scalaz 7.2.8 ([#426])
+* Switch to scalajs 0.6.15 ([#467])
+
+### Other
+
+* Fix typos in README ([#413], thanks to [@n4to4])
+* Shade fastparse dependency ([#443])
+* Use sbt credentials by default ([#445], thanks to [@Jentsch], no more `coursierUseSbtCredentials` key to set to `true`)
+* Some code clean up ([#472], thanks to [@Jentsch], [#474], [#476])
+* Have `MavenRepository` be fine with sbt plugins by default ([#477], no more flag to manually set to true)
+* Tweaks in `coursier spark-submit` command ([#478], [#484], [#486])
+
+
+[#385]: https://github.com/alexarchambault/coursier/pull/385
+[#406]: https://github.com/alexarchambault/coursier/pull/406
+[#413]: https://github.com/alexarchambault/coursier/pull/413
+[#421]: https://github.com/alexarchambault/coursier/pull/421
+[#426]: https://github.com/alexarchambault/coursier/pull/426
+[#430]: https://github.com/alexarchambault/coursier/pull/430
+[#437]: https://github.com/alexarchambault/coursier/pull/437
+[#439]: https://github.com/alexarchambault/coursier/pull/439
+[#443]: https://github.com/alexarchambault/coursier/pull/443
+[#445]: https://github.com/alexarchambault/coursier/pull/445
+[#467]: https://github.com/alexarchambault/coursier/pull/467
+[#472]: https://github.com/alexarchambault/coursier/pull/472
+[#474]: https://github.com/alexarchambault/coursier/pull/474
+[#476]: https://github.com/alexarchambault/coursier/pull/476
+[#477]: https://github.com/alexarchambault/coursier/pull/477
+[#478]: https://github.com/alexarchambault/coursier/pull/478
+[#481]: https://github.com/alexarchambault/coursier/pull/481
+[#484]: https://github.com/alexarchambault/coursier/pull/484
+[#486]: https://github.com/alexarchambault/coursier/pull/486
+[@Jentsch]: https://github.com/Jentsch
+[@kzys]: https://github.com/kzys
+[@MasseGuillaume]: https://github.com/MasseGuillaume
+[@n4to4]: https://github.com/n4to4
+[@olafurpg]: https://github.com/olafurpg
+
+### Non-backward compatible changes
+
+* Some internal (but public) API changed, it is recommended to re-compile your code against `1.0.0-RC1`.

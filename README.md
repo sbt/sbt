@@ -73,7 +73,7 @@ Lastly, it can be used programmatically via its [API](#api) and has a Scala JS [
 
 Enable the SBT plugin by adding
 ```scala
-addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.0-M15")
+addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.0-RC1")
 ```
 to `~/.sbt/0.13/plugins/build.sbt` (enables it globally), or to the `project/plugins.sbt` file
 of an SBT project. Tested with SBT 0.13.8 / 0.13.9 / 0.13.11 / 0.13.12 / 0.13.13.
@@ -111,8 +111,8 @@ $ ./coursier fetch org.apache.spark:spark-sql_2.11:1.6.1 com.twitter:algebird-sp
 Add to your `build.sbt`
 ```scala
 libraryDependencies ++= Seq(
-  "io.get-coursier" %% "coursier" % "1.0.0-M15",
-  "io.get-coursier" %% "coursier-cache" % "1.0.0-M15"
+  "io.get-coursier" %% "coursier" % "1.0.0-RC1",
+  "io.get-coursier" %% "coursier-cache" % "1.0.0-RC1"
 )
 ```
 
@@ -215,7 +215,7 @@ of the cache used by a particular project, in case you have any doubt about what
 
 Enable the SBT plugin globally by adding
 ```scala
-addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.0-M15")
+addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.0-RC1")
 ```
 to `~/.sbt/0.13/plugins/build.sbt`
 
@@ -368,7 +368,7 @@ The `bootstrap` generates tiny bootstrap launchers, able to pull their dependenc
 repositories on first launch. For example, the launcher of coursier is [generated](https://github.com/coursier/coursier/blob/master/project/generate-launcher.sh) with a command like
 ```
 $ ./coursier bootstrap \
-    io.get-coursier:coursier-cli_2.11:1.0.0-M15 \
+    io.get-coursier:coursier-cli_2.11:1.0.0-RC1 \
     -b -f -o coursier \
     -M coursier.cli.Coursier
 ```
@@ -380,12 +380,12 @@ See `./coursier bootstrap --help` for a list of the available options.
 Add to your `build.sbt`
 ```scala
 libraryDependencies ++= Seq(
-  "io.get-coursier" %% "coursier" % "1.0.0-M15",
-  "io.get-coursier" %% "coursier-cache" % "1.0.0-M15"
+  "io.get-coursier" %% "coursier" % "1.0.0-RC1",
+  "io.get-coursier" %% "coursier-cache" % "1.0.0-RC1"
 )
 ```
 
-The first module, `"io.get-coursier" %% "coursier" % "1.0.0-M15"`, mainly depends on
+The first module, `"io.get-coursier" %% "coursier" % "1.0.0-RC1"`, mainly depends on
 `scalaz-core` (and only it, *not* `scalaz-concurrent` for example). It contains among others,
 definitions,
 mainly in [`Definitions.scala`](https://github.com/coursier/coursier/blob/master/core/shared/src/main/scala/coursier/core/Definitions.scala),
@@ -395,7 +395,7 @@ that expects to be given metadata, wrapped in any `Monad`, then feeds these to `
 you the final `Resolution`, wrapped in the same `Monad` it was given input. This final `Resolution` has all the dependencies,
 including the transitive ones.
 
-The second module, `"io.get-coursier" %% "coursier-cache" % "1.0.0-M15"`, is precisely in charge of fetching
+The second module, `"io.get-coursier" %% "coursier-cache" % "1.0.0-RC1"`, is precisely in charge of fetching
 these input metadata. It uses `scalaz.concurrent.Task` as a `Monad` to wrap them. It also fetches artifacts (JARs, etc.).
 It caches all of these (metadata and artifacts) on disk, and validates checksums too.
 
@@ -440,7 +440,7 @@ scala> val repositories = Seq(
      |   Cache.ivy2Local,
      |   MavenRepository("https://repo1.maven.org/maven2")
      | )
-repositories: Seq[coursier.core.Repository] = List(IvyRepository(Pattern(List(Const(file://), Var(user.home), Const(/local/), Var(organisation), Const(/), Var(module), Const(/), Opt(WrappedArray(Const(scala_), Var(scalaVersion), Const(/))), Opt(WrappedArray(Const(sbt_), Var(sbtVersion), Const(/))), Var(revision), Const(/), Var(type), Const(s/), Var(artifact), Opt(WrappedArray(Const(-), Var(classifier))), Const(.), Var(ext))),None,None,true,true,true,true,None), MavenRepository(https://repo1.maven.org/maven2,None,false,None))
+repositories: Seq[coursier.core.Repository] = List(IvyRepository(Pattern(List(Const(file://), Var(user.home), Const(/local/), Var(organisation), Const(/), Var(module), Const(/), Opt(WrappedArray(Const(scala_), Var(scalaVersion), Const(/))), Opt(WrappedArray(Const(sbt_), Var(sbtVersion), Const(/))), Var(revision), Const(/), Var(type), Const(s/), Var(artifact), Opt(WrappedArray(Const(-), Var(classifier))), Const(.), Var(ext))),None,None,true,true,true,true,None), MavenRepository(https://repo1.maven.org/maven2,None,true,None))
 ```
 The first one, `Cache.ivy2Local`, is defined in `coursier.Cache`, itself from the `coursier-cache` module that
 we added above. As we can see, it is an `IvyRepository`, picking things under `~/.ivy2/local`. An `IvyRepository`
@@ -467,7 +467,7 @@ scala> MavenRepository(
      |   "https://nexus.corp.com/content/repositories/releases",
      |   authentication = Some(Authentication("user", "pass"))
      | )
-res6: coursier.maven.MavenRepository = MavenRepository(https://nexus.corp.com/content/repositories/releases,None,false,Some(Authentication(user, *******)))
+res6: coursier.maven.MavenRepository = MavenRepository(https://nexus.corp.com/content/repositories/releases,None,true,Some(Authentication(user, *******)))
 ```
 
 Now that we have repositories, we're going to mix these with things from the `coursier-cache` module,
@@ -752,11 +752,15 @@ Once RCs will be considered stable enough, `1.0.0` should be released.
 
 - Erem Boto ([@eboto](https://github.com/eboto))
 - Erik LaBianca ([@easel](https://github.com/easel))
+- Guillaume Massé ([@MasseGuillaume](https://github.com/MasseGuillaume))
 - Han Ju ([@darkjh](https://github.com/darkjh))
 - Jameel Al-Aziz ([@jalaziz](https://github.com/jalaziz))
+- Jentsch ([@Jentsch](https://github.com/Jentsch))
 - joriscode ([@joriscode](https://github.com/joriscode))
 - Kazuyoshi Kato ([@kzys](https://github.com/kzys))
 - Lars Hupel ([@larsrh](https://github.com/larsrh))
+- n4to4 ([@n4to4](https://github.com/n4to4))
+- Ólafur Páll Geirsson ([@olafurpg](https://github.com/olafurpg))
 - Rodrigo Fernandes ([@rtfpessoa](https://github.com/rtfpessoa))
 - Roman Iakovlev ([@RomanIakovlev](https://github.com/RomanIakovlev))
 - Simon Ochsenreither ([@soc](https://github.com/soc))
