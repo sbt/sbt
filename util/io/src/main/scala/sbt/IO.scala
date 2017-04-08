@@ -122,9 +122,17 @@ object IO {
   /**
    * Constructs a File corresponding to `url`, which must have a scheme of `file`.
    * This method properly works around an issue with a simple conversion to URI and then to a File.
+   *
+   * On Windows this can accept the following patterns of URLs:
+   *
+   * `val u0 = new URL("file:C:\\Users\\foo/.sbt/preloaded")`,
+   * `val u1 = new URL("file:/C:\\Users\\foo/.sbt/preloaded")`,
+   * `val u2 = new URL("file://unc/Users/foo/.sbt/preloaded")`,
+   * `val u3 = new URL("file:///C:\\Users\\foo/.sbt/preloaded")`, and
+   * `val u4 = new URL("file:////unc/Users/foo/.sbt/preloaded")`.
    */
   def toFile(url: URL): File =
-    try { new File(url.toURI) }
+    try { uriToFile(url.toURI) }
     catch { case _: URISyntaxException => new File(url.getPath) }
 
   /** Converts the given URL to a File.  If the URL is for an entry in a jar, the File for the jar is returned. */
@@ -139,20 +147,26 @@ object IO {
       case _ => None
     }
 
-  private[this] def uriToFile(uriString: String): File =
+  private[this] def uriToFile(uriString: String): File = uriToFile(new URI(uriString))
+
+  /**
+   * Converts the given file URI to a File.
+   */
+  private[this] def uriToFile(uri: URI): File =
     {
-      val uri = new URI(uriString)
       assert(uri.getScheme == FileScheme, "Expected protocol to be '" + FileScheme + "' in URI " + uri)
-      if (uri.getAuthority eq null)
-        new File(uri)
-      else {
-        /* https://github.com/sbt/sbt/issues/564
-			* http://blogs.msdn.com/b/ie/archive/2006/12/06/file-uris-in-windows.aspx
-			* http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=5086147
-			* The specific problem here is that `uri` will have a defined authority component for UNC names like //foo/bar/some/path.jar
-			* but the File constructor requires URIs with an undefined authority component.
-			*/
-        new File(uri.getSchemeSpecificPart)
+      val part = uri.getSchemeSpecificPart
+      Option(uri.getAuthority) match {
+        case None if part startsWith "/" => new File(uri)
+        case _ =>
+          // https://github.com/sbt/sbt/issues/564
+          // https://github.com/sbt/sbt/issues/3086
+          // http://blogs.msdn.com/b/ie/archive/2006/12/06/file-uris-in-windows.aspx
+          // http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=5086147
+          // The specific problem here is that `uri` will have a defined authority component for UNC names like //foo/bar/some/path.jar
+          // but the File constructor requires URIs with an undefined authority component.
+          if (part startsWith "/") new File(part)
+          else new File("//" + part)
       }
     }
 
