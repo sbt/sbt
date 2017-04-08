@@ -102,11 +102,12 @@ val root = (project in file(".")).
     rpmProvides := Seq("sbt"),
 
     // WINDOWS SPECIFIC
-    windowsBuildId := 1,
+    windowsBuildId := 0,
     version in Windows := {
       val bid = windowsBuildId.value
       val sv = sbtVersionToRelease
       (sv split "[^\\d]" filterNot (_.isEmpty)) match {
+        case Array(major,minor,bugfix, _*) if bid == 0 => Seq(major, minor, bugfix) mkString "."
         case Array(major,minor,bugfix, _*) => Seq(major, minor, bugfix, bid.toString) mkString "."
         case Array(major,minor) => Seq(major, minor, "0", bid.toString) mkString "."
         case Array(major) => Seq(major, "0", "0", bid.toString) mkString "."

@@ -11,6 +11,7 @@
 
 @echo off
 set SBT_HOME=%~dp0
+set SBT_ARGS=
 
 rem FIRST we load the config file of extra options.
 set FN=%SBT_HOME%\..\conf\sbtconfig.txt
@@ -95,19 +96,18 @@ goto :eof
 
 :process
 rem parses 1.7, 1.8, 9, etc out of java version "1.8.0_91"
-"%_JAVACMD%" -Xmx512M -version 2> "%TEMP%.\out.txt"
+"%_JAVACMD%" -Xmx512M -version 2> "%TEMP%\out.txt"
 set JAVA_VERSION=0
-findstr /c:"version \"9" "%TEMP%.\out.txt"
+>nul findstr /c:"version \"9" "%TEMP%\out.txt"
 if /I %ERRORLEVEL% EQU 0 (set JAVA_VERSION=9)
-findstr /c:"version \"1.8" "%TEMP%.\out.txt"
+>nul findstr /c:"version \"1.8" "%TEMP%\out.txt"
 if /I %ERRORLEVEL% EQU 0 (set JAVA_VERSION=1.8)
-findstr /c:"version \"1.7" "%TEMP%.\out.txt"
+>nul findstr /c:"version \"1.7" "%TEMP%\out.txt"
 if /I %ERRORLEVEL% EQU 0 (set JAVA_VERSION=1.7)
-findstr /c:"version \"1.6" "%TEMP%.\out.txt"
+>nul findstr /c:"version \"1.6" "%TEMP%\out.txt"
 if /I %ERRORLEVEL% EQU 0 (set JAVA_VERSION=1.6)
-findstr /c:"version \"1.5" "%TEMP%.\out.txt"
+>nul findstr /c:"version \"1.5" "%TEMP%\out.txt"
 if /I %ERRORLEVEL% EQU 0 (set JAVA_VERSION=1.5)
-
 exit /B 0
 
 :checkjava
