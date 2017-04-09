@@ -181,6 +181,7 @@ def makePublishToForConfig(config: Configuration) = {
 
   // Add the publish to and ensure global resolvers has the resolver we just configured.
   inConfig(config)(Seq(
+    name := "sbt",
     bintrayOrganization := {
       // offline installation exceeds 50MB file limit for OSS organization
       if (sbtOfflineInstall) Some("sbt")
