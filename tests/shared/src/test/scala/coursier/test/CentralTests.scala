@@ -538,6 +538,13 @@ object CentralTests extends TestSuite {
         configuration = "optional"
       )
     }
+
+    'deepLearning4j - {
+      resolutionCheck(
+        Module("org.deeplearning4j", "deeplearning4j-core"),
+        "0.8.0"
+      )
+    }
   }
 
 }
