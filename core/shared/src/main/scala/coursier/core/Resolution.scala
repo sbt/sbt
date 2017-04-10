@@ -395,16 +395,16 @@ object Resolution {
     // loose attempt at substituting properties in each others in properties0
     // doesn't try to go recursive for now, but that could be made so if necessary
 
-    val (done, remaining) = properties0.partition {
-      case (_, value) =>
-        propRegex.findFirstIn(value).isEmpty
-    }
+    val done = properties0
+      .collect {
+        case kv @ (_, value) if propRegex.findFirstIn(value).isEmpty =>
+          kv
+      }
+      .toMap
 
-    lazy val doneMap = done.toMap
-
-    done ++ remaining.map {
+    properties0.map {
       case (k, v) =>
-        k -> substituteProps(v, doneMap)
+        k -> substituteProps(v, done)
     }
   }
 
@@ -895,8 +895,8 @@ final case class Resolution(
     val approxProperties0 =
       project.parent
         .filter(projectCache.contains)
-        .map(projectCache(_)._2.properties.toMap)
-        .fold(project.properties)(project.properties ++ _)
+        .map(projectCache(_)._2.properties)
+        .fold(project.properties)(_ ++ project.properties)
 
     // 1.1 (see above)
     val approxProperties = propertiesMap(approxProperties0) ++ projectProperties(project)
@@ -919,9 +919,8 @@ final case class Resolution(
 
     val project0 = project.copy(
       properties = project.parent  // belongs to 1.5 & 1.6
-        .filter(projectCache.contains)
-        .map(projectCache(_)._2.properties)
-        .fold(properties0)(_ ++ properties0)
+        .flatMap(projectCache.get)
+        .fold(properties0)(_._2.properties ++ properties0)
     )
 
     val propertiesMap0 = propertiesMap(projectProperties(project0))
