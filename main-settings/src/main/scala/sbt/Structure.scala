@@ -54,7 +54,8 @@ sealed abstract class SettingKey[T] extends ScopedTaskable[T] with KeyedInitiali
 
   final def transform(f: T => T, source: SourcePosition): Setting[T] = set(scopedKey(f), source)
 
-  protected[this] def make[S](other: Initialize[S], source: SourcePosition)(f: (T, S) => T): Setting[T] = set((this, other)(f), source)
+  protected[this] def make[S](other: Initialize[S], source: SourcePosition)(f: (T, S) => T): Setting[T] =
+    set((this, other)(f), source)
 }
 
 /**
@@ -83,7 +84,7 @@ sealed abstract class TaskKey[T] extends ScopedTaskable[T] with KeyedInitialize[
   final def removeN[V](vs: Initialize[Task[V]], source: SourcePosition)(implicit r: Remove.Values[T, V]): Setting[Task[T]] = make(vs, source)(r.removeValues)
 
   private[this] def make[S](other: Initialize[Task[S]], source: SourcePosition)(f: (T, S) => T): Setting[Task[T]] =
-    set((this, other) { (a, b) => (a, b) map f.tupled }, source)
+    set((this, other)((a, b) => (a, b) map f.tupled), source)
 }
 
 /**
@@ -210,7 +211,8 @@ object Scoped {
   final class RichInitializeTask[S](i: Initialize[Task[S]]) extends RichInitTaskBase[S, Task] {
     protected def onTask[T](f: Task[S] => Task[T]): Initialize[Task[T]] = i apply f
 
-    def dependsOn(tasks: AnyInitTask*): Initialize[Task[S]] = (i, Initialize.joinAny[Task](tasks)) { (thisTask, deps) => thisTask.dependsOn(deps: _*) }
+    def dependsOn(tasks: AnyInitTask*): Initialize[Task[S]] =
+      (i, Initialize.joinAny[Task](tasks))((thisTask, deps) => thisTask.dependsOn(deps: _*))
 
     def failure: Initialize[Task[Incomplete]] = i(_.failure)
     def result: Initialize[Task[Result[S]]] = i(_.result)
@@ -220,12 +222,14 @@ object Scoped {
     def runBefore[T](tasks: Initialize[Task[T]]*): Initialize[Task[S]] = nonLocal(tasks, Def.runBefore)
 
     private[this] def nonLocal(tasks: Seq[AnyInitTask], key: AttributeKey[Seq[Task[_]]]): Initialize[Task[S]] =
-      (Initialize.joinAny[Task](tasks), i) { (ts, i) => i.copy(info = i.info.set(key, ts)) }
+      (Initialize.joinAny[Task](tasks), i)((ts, i) => i.copy(info = i.info.set(key, ts)))
   }
 
   final class RichInitializeInputTask[S](i: Initialize[InputTask[S]]) extends RichInitTaskBase[S, InputTask] {
     protected def onTask[T](f: Task[S] => Task[T]): Initialize[InputTask[T]] = i(_ mapTask f)
-    def dependsOn(tasks: AnyInitTask*): Initialize[InputTask[S]] = (i, Initialize.joinAny[Task](tasks)) { (thisTask, deps) => thisTask.mapTask(_.dependsOn(deps: _*)) }
+
+    def dependsOn(tasks: AnyInitTask*): Initialize[InputTask[S]] =
+      (i, Initialize.joinAny[Task](tasks))((thisTask, deps) => thisTask.mapTask(_.dependsOn(deps: _*)))
   }
 
   sealed abstract class RichInitTaskBase[S, R[_]] {

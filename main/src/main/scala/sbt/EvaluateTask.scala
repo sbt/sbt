@@ -77,11 +77,12 @@ object TaskCancellationStrategy {
   /** Cancel handler which registers for SIGINT and cancels tasks when it is received. */
   object Signal extends TaskCancellationStrategy {
     type State = Signals.Registration
-    def onTaskEngineStart(canceller: RunningTaskEngine): Signals.Registration = {
+
+    def onTaskEngineStart(canceller: RunningTaskEngine): Signals.Registration =
       Signals.register(() => canceller.cancelAndShutdown())
-    }
-    def onTaskEngineFinish(registration: Signals.Registration): Unit =
-      registration.remove()
+
+    def onTaskEngineFinish(registration: Signals.Registration): Unit = registration.remove()
+
     override def toString: String = "Signal"
   }
 }
@@ -98,14 +99,11 @@ sealed trait EvaluateTaskConfig {
   def checkCycles: Boolean
   def progressReporter: ExecuteProgress[Task]
   def cancelStrategy: TaskCancellationStrategy
-  /**
-   * If true, we force a finalizer/gc run (or two) after task execution completes when needed.
-   */
+
+  /** If true, we force a finalizer/gc run (or two) after task execution completes when needed. */
   def forceGarbageCollection: Boolean
 
-  /**
-   * Interval to force GC.
-   */
+  /** Interval to force GC. */
   def minForcegcInterval: Duration
 }
 
@@ -148,7 +146,13 @@ object EvaluateTaskConfig {
   }
 }
 
-final case class PluginData(dependencyClasspath: Seq[Attributed[File]], definitionClasspath: Seq[Attributed[File]], resolvers: Option[Seq[Resolver]], report: Option[UpdateReport], scalacOptions: Seq[String]) {
+final case class PluginData(
+  dependencyClasspath: Seq[Attributed[File]],
+  definitionClasspath: Seq[Attributed[File]],
+  resolvers: Option[Seq[Resolver]],
+  report: Option[UpdateReport],
+  scalacOptions: Seq[String]
+) {
   val classpath: Seq[Attributed[File]] = definitionClasspath ++ dependencyClasspath
 }
 

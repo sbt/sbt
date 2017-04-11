@@ -496,7 +496,9 @@ private[sbt] object Load {
   def emptyBuild(uri: URI) = sys.error(s"No root project defined for build unit '$uri'")
   def noBuild(uri: URI) = sys.error(s"Build unit '$uri' not defined.")
   def noProject(uri: URI, id: String) = sys.error(s"No project '$id' defined in '$uri'.")
-  def noConfiguration(uri: URI, id: String, conf: String) = sys.error(s"No configuration '$conf' defined in project '$id' in '$uri'")
+
+  def noConfiguration(uri: URI, id: String, conf: String) =
+    sys.error(s"No configuration '$conf' defined in project '$id' in '$uri'")
 
   // Called from builtinLoader
   def loadUnit(uri: URI, localBase: File, s: State, config: LoadBuildConfiguration): BuildUnit =

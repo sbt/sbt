@@ -548,11 +548,16 @@ object Defaults extends BuildCommon {
     }
 
   def buffered(log: Logger): Logger = new BufferedLogger(FullLogger(log))
-  def testExtra(extra: AttributeMap, tdef: TestDefinition): AttributeMap =
-    {
-      val mod = tdef.fingerprint match { case f: SubclassFingerprint => f.isModule; case f: AnnotatedFingerprint => f.isModule; case _ => false }
-      extra.put(name.key, tdef.name).put(isModule, mod)
+
+  def testExtra(extra: AttributeMap, tdef: TestDefinition): AttributeMap = {
+    val mod = tdef.fingerprint match {
+      case f: SubclassFingerprint  => f.isModule
+      case f: AnnotatedFingerprint => f.isModule
+      case _                       => false
     }
+    extra.put(name.key, tdef.name).put(isModule, mod)
+  }
+
   def singleTestGroup(key: Scoped): Initialize[Task[Seq[Tests.Group]]] = inTask(key, singleTestGroupDefault)
   def singleTestGroupDefault: Initialize[Task[Seq[Tests.Group]]] = Def.task {
     val tests = definedTests.value
@@ -794,7 +799,8 @@ object Defaults extends BuildCommon {
           .withConfigurations(cOpt.toVector)
       }
     }
-  @deprecated("The configuration(s) should not be decided based on the classifier.", "1.0")
+
+  @deprecated("The configuration(s) should not be decided based on the classifier.", "1.0.0")
   def artifactConfigurations(base: Artifact, scope: Configuration, classifier: Option[String]): Iterable[Configuration] =
     classifier match {
       case Some(c) => Artifact.classifierConf(c) :: Nil
@@ -805,7 +811,9 @@ object Defaults extends BuildCommon {
   def pairID = Util.pairID
 
   @deprecated("Use `packageTaskSettings` instead", "0.12.0")
-  def packageTasks(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File, String)]]]) = packageTaskSettings(key, mappingsTask)
+  def packageTasks(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File, String)]]]) =
+    packageTaskSettings(key, mappingsTask)
+
   def packageTaskSettings(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File, String)]]]) =
     inTask(key)(Seq(
       key in TaskGlobal := packageTask.value,
@@ -1311,7 +1319,8 @@ object Classpaths {
 
   def enabledOnly[T](key: SettingKey[T], pkgTasks: Seq[TaskKey[File]]): Initialize[Seq[T]] =
     (forallIn(key, pkgTasks) zipWith forallIn(publishArtifact, pkgTasks))(_ zip _ collect { case (a, true) => a })
-  def forallIn[T](key: SettingKey[T], pkgTasks: Seq[TaskKey[_]]): Initialize[Seq[T]] =
+
+  def forallIn[T](key: Scoped.ScopingSetting[SettingKey[T]], pkgTasks: Seq[TaskKey[_]]): Initialize[Seq[T]] =
     pkgTasks.map(pkg => key in pkg.scope in pkg).join
 
   private[this] def publishGlobalDefaults = Defaults.globalDefaults(Seq(
@@ -1926,19 +1935,30 @@ object Classpaths {
 		f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)*/
 	}*/
 
-  def defaultRepositoryFilter = (repo: MavenRepository) => !repo.root.startsWith("file:")
-  def getPublishTo(repo: Option[Resolver]): Resolver = repo getOrElse sys.error("Repository for publishing is not specified.")
+  def defaultRepositoryFilter: MavenRepository => Boolean = repo => !repo.root.startsWith("file:")
+
+  def getPublishTo(repo: Option[Resolver]): Resolver =
+    repo getOrElse sys.error("Repository for publishing is not specified.")
 
   def deliverConfig(outputDirectory: File, status: String = "release", logging: UpdateLogging = UpdateLogging.DownloadOnly) =
     new DeliverConfiguration(deliverPattern(outputDirectory), status, None, logging)
 
   @deprecated("Previous semantics allowed overwriting cached files, which was unsafe. Please specify overwrite parameter.", "0.13.2")
-  def publishConfig(artifacts: Map[Artifact, File], ivyFile: Option[File], checksums: Seq[String], resolverName: String, logging: UpdateLogging): PublishConfiguration =
+  def publishConfig(
+      artifacts: Map[Artifact, File], ivyFile: Option[File], checksums: Seq[String],
+      resolverName: String, logging: UpdateLogging
+  ): PublishConfiguration =
     publishConfig(artifacts, ivyFile, checksums, resolverName, logging, overwrite = true)
-  def publishConfig(artifacts: Map[Artifact, File], ivyFile: Option[File], checksums: Seq[String], resolverName: String = "local", logging: UpdateLogging = UpdateLogging.DownloadOnly, overwrite: Boolean = false) =
+
+  def publishConfig(
+      artifacts: Map[Artifact, File], ivyFile: Option[File], checksums: Seq[String],
+      resolverName: String = "local", logging: UpdateLogging = UpdateLogging.DownloadOnly,
+      overwrite: Boolean = false
+  ) =
     new PublishConfiguration(ivyFile, resolverName, artifacts, checksums.toVector, logging, overwrite)
 
-  def deliverPattern(outputPath: File): String = (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
+  def deliverPattern(outputPath: File): String =
+    (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
 
   def projectDependenciesTask: Initialize[Task[Seq[ModuleID]]] =
     Def.task {
@@ -2197,23 +2217,25 @@ object Classpaths {
       modifyForPlugin(plugin, ModuleID(org, ScalaArtifacts.LibraryID, version)) :: Nil
     else
       Nil
-  def addUnmanagedLibrary: Seq[Setting[_]] = Seq(
-    unmanagedJars in Compile ++= unmanagedScalaLibrary.value
-  )
-  def unmanagedScalaLibrary: Initialize[Task[Seq[File]]] =
-    Def.taskDyn {
-      if (autoScalaLibrary.value && scalaHome.value.isDefined)
-        Def.task { scalaInstance.value.libraryJar :: Nil }
-      else
-        Def.task { Nil }
-    }
+
+  def addUnmanagedLibrary: Seq[Setting[_]] =
+    Seq(unmanagedJars in Compile ++= unmanagedScalaLibrary.value)
+
+  def unmanagedScalaLibrary: Initialize[Task[Seq[File]]] = Def.taskDyn {
+    if (autoScalaLibrary.value && scalaHome.value.isDefined)
+      Def.task { scalaInstance.value.libraryJar :: Nil }
+    else
+      Def.task { Nil }
+  }
 
   import DependencyFilter._
   def managedJars(config: Configuration, jarTypes: Set[String], up: UpdateReport): Classpath =
     up.filter(configurationFilter(config.name) && artifactFilter(`type` = jarTypes)).toSeq.map {
       case (conf, module, art, file) =>
-        Attributed(file)(AttributeMap.empty.put(artifact.key, art).put(moduleID.key, module).put(configuration.key, config))
-    } distinct;
+        Attributed(file)(
+          AttributeMap.empty.put(artifact.key, art).put(moduleID.key, module).put(configuration.key, config)
+        )
+    }.distinct
 
   def findUnmanagedJars(config: Configuration, base: File, filter: FileFilter, excl: FileFilter): Classpath =
     (base * (filter -- excl) +++ (base / config.name).descendantsExcept(filter, excl)).classpath

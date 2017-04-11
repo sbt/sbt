@@ -614,14 +614,19 @@ object Project extends ProjectExtra {
     import SessionVar.{ persistAndSet, resolveContext, set, transform => tx }
 
     def updateState(f: (State, S) => State): Def.Initialize[Task[S]] = i(t => tx(t, f))
-    def storeAs(key: TaskKey[S])(implicit f: JsonFormat[S]): Def.Initialize[Task[S]] = (Keys.resolvedScoped, i) { (scoped, task) =>
-      tx(task, (state, value) => persistAndSet(resolveContext(key, scoped.scope, state), state, value)(f))
-    }
+
+    def storeAs(key: TaskKey[S])(implicit f: JsonFormat[S]): Def.Initialize[Task[S]] =
+      (Keys.resolvedScoped, i)((scoped, task) =>
+        tx(task, (state, value) => persistAndSet(resolveContext(key, scoped.scope, state), state, value)(f))
+      )
+
     def keepAs(key: TaskKey[S]): Def.Initialize[Task[S]] =
-      (i, Keys.resolvedScoped)((t, scoped) => tx(t, (state, value) => set(resolveContext(key, scoped.scope, state), state, value)))
+      (i, Keys.resolvedScoped)((t, scoped) =>
+        tx(t, (state, value) => set(resolveContext(key, scoped.scope, state), state, value))
+      )
   }
 
-  import reflect.macros._
+  import scala.reflect.macros._
 
   def projectMacroImpl(c: blackbox.Context): c.Expr[Project] =
     {
@@ -636,7 +641,7 @@ private[sbt] trait GeneratedRootProject
 
 trait ProjectExtra0 {
   implicit def wrapProjectReferenceSeqEval[T](rs: => Seq[T])(implicit ev: T => ProjectReference): Seq[Eval[ProjectReference]] =
-    rs map { r => Eval.later(r: ProjectReference) }
+    rs map (r => Eval.later(r: ProjectReference))
 }
 
 trait ProjectExtra extends ProjectExtra0 {
@@ -646,19 +651,30 @@ trait ProjectExtra extends ProjectExtra0 {
   implicit def wrapProjectReferenceEval[T](ref: => T)(implicit ev: T => ProjectReference): Eval[ProjectReference] =
     Eval.later(ref: ProjectReference)
 
-  implicit def wrapSettingDefinitionEval[T](d: => T)(implicit ev: T => Def.SettingsDefinition): Eval[Def.SettingsDefinition] = Eval.later(d)
-  implicit def wrapSettingSeqEval(ss: => Seq[Setting[_]]): Eval[Def.SettingsDefinition] = Eval.later(new Def.SettingList(ss))
+  implicit def wrapSettingDefinitionEval[T](d: => T)(implicit ev: T => Def.SettingsDefinition): Eval[Def.SettingsDefinition] =
+    Eval.later(d)
 
-  implicit def configDependencyConstructor[T](p: T)(implicit ev: T => ProjectReference): Constructor = new Constructor(p)
-  implicit def classpathDependency[T](p: T)(implicit ev: T => ProjectReference): ClasspathDep[ProjectReference] = new ClasspathDependency(p, None)
+  implicit def wrapSettingSeqEval(ss: => Seq[Setting[_]]): Eval[Def.SettingsDefinition] =
+    Eval.later(new Def.SettingList(ss))
+
+  implicit def configDependencyConstructor[T](p: T)(implicit ev: T => ProjectReference): Constructor =
+    new Constructor(p)
+
+  implicit def classpathDependency[T](p: T)(implicit ev: T => ProjectReference): ClasspathDep[ProjectReference] =
+    ClasspathDependency(p, None)
 
   // These used to be in Project so that they didn't need to get imported (due to Initialize being nested in Project).
   // Moving Initialize and other settings types to Def and decoupling Project, Def, and Structure means these go here for now
-  implicit def richInitializeTask[T](init: Initialize[Task[T]]): Scoped.RichInitializeTask[T] = new Scoped.RichInitializeTask(init)
-  implicit def richInitializeInputTask[T](init: Initialize[InputTask[T]]): Scoped.RichInitializeInputTask[T] = new Scoped.RichInitializeInputTask(init)
+  implicit def richInitializeTask[T](init: Initialize[Task[T]]): Scoped.RichInitializeTask[T] =
+    new Scoped.RichInitializeTask(init)
+
+  implicit def richInitializeInputTask[T](init: Initialize[InputTask[T]]): Scoped.RichInitializeInputTask[T] =
+    new Scoped.RichInitializeInputTask(init)
+
   implicit def richInitialize[T](i: Initialize[T]): Scoped.RichInitialize[T] = new Scoped.RichInitialize[T](i)
 
-  implicit def richTaskSessionVar[T](init: Initialize[Task[T]]): Project.RichTaskSessionVar[T] = new Project.RichTaskSessionVar(init)
+  implicit def richTaskSessionVar[T](init: Initialize[Task[T]]): Project.RichTaskSessionVar[T] =
+    new Project.RichTaskSessionVar(init)
 
   def inThisBuild(ss: Seq[Setting[_]]): Seq[Setting[_]] =
     inScope(ThisScope.copy(project = Select(ThisBuild)))(ss)

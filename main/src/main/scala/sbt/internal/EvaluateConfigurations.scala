@@ -204,13 +204,12 @@ private[sbt] object EvaluateConfigurations {
    * @return A method that given an sbt classloader, can return the actual Seq[Setting[_]] defined by
    *         the expression.
    */
-  @deprecated("Build DSL now includes non-Setting[_] type settings.", "0.13.6") // Note: This method is used by the SET command, so we may want to evaluate that sucker a bit.
+  // Build DSL now includes non-Setting[_] type settings.
+  // Note: This method is used by the SET command, so we may want to evaluate that sucker a bit.
   def evaluateSetting(eval: Eval, name: String, imports: Seq[(String, Int)], expression: String, range: LineRange): LazyClassLoaded[Seq[Setting[_]]] =
-    {
-      evaluateDslEntry(eval, name, imports, expression, range).result andThen {
-        case DslEntry.ProjectSettings(values) => values
-        case _                                => Nil
-      }
+    evaluateDslEntry(eval, name, imports, expression, range).result andThen {
+      case DslEntry.ProjectSettings(values) => values
+      case _                                => Nil
     }
 
   /**

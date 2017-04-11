@@ -51,9 +51,9 @@ object BuildUtil {
 
   def dependencies(units: Map[URI, LoadedBuildUnit]): BuildDependencies =
     {
-      import collection.mutable.HashMap
-      val agg = new HashMap[ProjectRef, Seq[ProjectRef]]
-      val cp = new HashMap[ProjectRef, Seq[ClasspathDep[ProjectRef]]]
+      import scala.collection.mutable
+      val agg = new mutable.HashMap[ProjectRef, Seq[ProjectRef]]
+      val cp = new mutable.HashMap[ProjectRef, Seq[ClasspathDep[ProjectRef]]]
       for (lbu <- units.values; rp <- lbu.defined.values) {
         val ref = ProjectRef(lbu.unit.uri, rp.id)
         cp(ref) = rp.dependencies
@@ -97,7 +97,7 @@ object BuildUtil {
     {
       val depPairs =
         for {
-          (uri, unit) <- units.toIterable
+          (uri, unit) <- units.toIterable // don't lose this toIterable, doing so breaks actions/cross-multiproject & actions/update-state-fail
           project <- unit.defined.values
           ref = ProjectRef(uri, project.id)
           agg <- project.aggregate
