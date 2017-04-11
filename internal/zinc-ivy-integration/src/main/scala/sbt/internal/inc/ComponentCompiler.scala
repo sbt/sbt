@@ -11,8 +11,9 @@ package inc
 
 import java.io.File
 import sbt.io.{ Hash, IO }
-import sbt.internal.librarymanagement.{ IvyConfiguration, JsonUtil, IvySbt, InlineConfiguration, RetrieveConfiguration, IvyActions, UnresolvedWarningConfiguration, LogicalClock }
+import sbt.internal.librarymanagement.{ IvyConfiguration, JsonUtil, IvySbt, InlineConfiguration, RetrieveConfiguration, IvyActions, UnresolvedWarningConfiguration, LogicalClock, UnresolvedWarning }
 import sbt.librarymanagement.{ Configurations, ModuleID, ModuleInfo, Resolver, UpdateConfiguration, UpdateLogging, UpdateOptions, ArtifactTypeFilter }
+import sbt.librarymanagement.syntax._
 import sbt.util.Logger
 import sbt.internal.util.{ BufferedLogger, CacheStore, FullLogger }
 
@@ -76,10 +77,12 @@ private[inc] class IvyComponentCompiler(compiler: RawCompiler, manager: ZincComp
         IO.withTemporaryDirectory { retrieveDirectory =>
 
           update(getModule(sourcesModule), retrieveDirectory) match {
-            case Seq() =>
-              throw new InvalidComponent(s"Couldn't retrieve source module: $sourcesModule")
+            case Left(uw) =>
+              import sbt.util.ShowLines._
+              throw new InvalidComponent(s"Couldn't retrieve source module: $sourcesModule\n" +
+                uw.lines.mkString("\n"))
 
-            case allArtifacts =>
+            case Right(allArtifacts) =>
               val (sources, xsbtiJars) = allArtifacts partition (_.getName endsWith "-sources.jar")
               AnalyzingCompiler.compileSources(sources, targetJar, xsbtiJars, sourcesModule.name, compiler, log)
               manager.define(binID, Seq(targetJar))
@@ -124,30 +127,24 @@ private[inc] class IvyComponentCompiler(compiler: RawCompiler, manager: ZincComp
       s"unknown"
   }
 
-  private def update(module: ivySbt.Module, retrieveDirectory: File): Seq[File] = {
-
+  private def update(module: ivySbt.Module, retrieveDirectory: File): Either[UnresolvedWarning, Vector[File]] = {
     val retrieveConfiguration = RetrieveConfiguration(retrieveDirectory, Resolver.defaultRetrievePattern, false, None)
-    val updateConfiguration = UpdateConfiguration(Some(retrieveConfiguration), true, UpdateLogging.DownloadOnly, ArtifactTypeFilter.forbid(Set("doc")))
+    val updateConfiguration = UpdateConfiguration(
+      Some(retrieveConfiguration),
+      missingOk = false, UpdateLogging.DownloadOnly, ArtifactTypeFilter.forbid(Set("doc"))
+    )
 
     buffered.info(s"Attempting to fetch ${dependenciesNames(module)}. This operation may fail.")
     IvyActions.updateEither(module, updateConfiguration, UnresolvedWarningConfiguration(), LogicalClock.unknown, None, buffered) match {
       case Left(unresolvedWarning) =>
         buffered.debug(s"Couldn't retrieve module ${dependenciesNames(module)}.")
-        Nil
+        Left(unresolvedWarning)
 
       case Right(updateReport) =>
-        val allFiles =
-          for {
-            conf <- updateReport.configurations
-            m <- conf.modules
-            (_, f) <- m.artifacts
-          } yield f
-
+        val allFiles = updateReport.allFiles
         buffered.debug(s"Files retrieved for ${dependenciesNames(module)}:")
         buffered.debug(allFiles mkString ", ")
-
-        allFiles
-
+        Right(allFiles.toVector)
     }
   }
 }
