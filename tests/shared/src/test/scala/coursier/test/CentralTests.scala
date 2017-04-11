@@ -121,27 +121,31 @@ object CentralTests extends TestSuite {
     version: String,
     artifactType: String,
     attributes: Attributes = Attributes(),
-    extraRepo: Option[Repository] = None
+    extraRepo: Option[Repository] = None,
+    classifierOpt: Option[String] = None,
+    transitive: Boolean = false
   )(
     f: Seq[Artifact] => T
   ): Future[T] = {
-    val dep = Dependency(module, version, transitive = false, attributes = attributes)
-    withArtifacts(dep, artifactType, extraRepo)(f)
+    val dep = Dependency(module, version, transitive = transitive, attributes = attributes)
+    withArtifacts(dep, artifactType, extraRepo, classifierOpt)(f)
   }
 
   def withArtifacts[T](
     dep: Dependency,
     artifactType: String,
-    extraRepo: Option[Repository]
+    extraRepo: Option[Repository],
+    classifierOpt: Option[String]
   )(
     f: Seq[Artifact] => T
   ): Future[T] = 
-    withArtifacts(Set(dep), artifactType, extraRepo)(f)
+    withArtifacts(Set(dep), artifactType, extraRepo, classifierOpt)(f)
 
   def withArtifacts[T](
     deps: Set[Dependency],
     artifactType: String,
-    extraRepo: Option[Repository]
+    extraRepo: Option[Repository],
+    classifierOpt: Option[String]
   )(
     f: Seq[Artifact] => T
   ): Future[T] = async {
@@ -151,7 +155,7 @@ object CentralTests extends TestSuite {
     assert(res.conflicts.isEmpty)
     assert(res.isDone)
 
-    val artifacts = res.dependencyArtifacts.map(_._2).filter { a =>
+    val artifacts = classifierOpt.fold(res.dependencyArtifacts)(c => res.dependencyClassifiersArtifacts(Seq(c))).map(_._2).filter { a =>
       a.`type` == artifactType
     }
 
@@ -372,6 +376,7 @@ object CentralTests extends TestSuite {
           intransitiveCompiler("optional")
         ),
         "jar",
+        None,
         None
       ) {
         case Seq() =>
@@ -544,6 +549,35 @@ object CentralTests extends TestSuite {
         Module("org.deeplearning4j", "deeplearning4j-core"),
         "0.8.0"
       )
+    }
+
+    'tarGzZipArtifacts - {
+      val mod = Module("org.apache.maven", "apache-maven")
+      val version = "3.3.9"
+
+      * - resolutionCheck(mod, version)
+
+      val expectedTarGzArtifactUrls = Set(
+        "https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.3.9/apache-maven-3.3.9-bin.tar.gz",
+        "https://repo1.maven.org/maven2/commons-logging/commons-logging/1.1.3/commons-logging-1.1.3-bin.tar.gz"
+      )
+
+      val expectedZipArtifactUrls = Set(
+        "https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.3.9/apache-maven-3.3.9-bin.zip",
+        "https://repo1.maven.org/maven2/commons-logging/commons-logging/1.1.3/commons-logging-1.1.3-bin.zip"
+      )
+
+      * - withArtifacts(mod, version, "tar.gz", classifierOpt = Some("bin"), transitive = true) { artifacts =>
+        assert(artifacts.length == 2)
+        val urls = artifacts.map(_.url).toSet
+        assert(urls == expectedTarGzArtifactUrls)
+      }
+
+      * - withArtifacts(mod, version, "zip", classifierOpt = Some("bin"), transitive = true) { artifacts =>
+        assert(artifacts.length == 2)
+        val urls = artifacts.map(_.url).toSet
+        assert(urls == expectedZipArtifactUrls)
+      }
     }
   }
 

@@ -13,7 +13,7 @@ final case class MavenSource(
   import Repository._
   import MavenRepository._
 
-  def artifacts(
+  private def artifactsUnknownPublications(
     dependency: Dependency,
     project: Project,
     overrideClassifiers: Option[Seq[String]]
@@ -46,7 +46,6 @@ final case class MavenSource(
           .withDefaultChecksums
 
       if (publication.ext == "jar")
-        // TODO Get available signature / checksums from directory listing
         artifact = artifact.withDefaultSignature
 
       artifact
@@ -61,77 +60,187 @@ final case class MavenSource(
       )
     }
 
-    val publications0 = overrideClassifiers match {
+    overrideClassifiers match {
       case Some(classifiers) =>
-        val classifiersSet = classifiers.toSet
 
-        if (project.publications.isEmpty)
-          // For repositories not providing directory listings, give a try to some publications anyway
-          classifiers.map { classifier =>
-            Publication(
-              dependency.module.name,
-              "jar",
-              "jar",
-              classifier
-            )
-          }
-        else
-          project.publications.collect {
-            case (_, p) if classifiersSet(p.classifier) =>
-              p
-          }
+        classifiers.map { classifier =>
+          Publication(
+            dependency.module.name,
+            "jar",
+            "jar",
+            classifier
+          )
+        }.map(artifactWithExtra)
 
       case None =>
 
-        if (project.publications.isEmpty) {
+        val type0 = if (dependency.attributes.`type`.isEmpty) "jar" else dependency.attributes.`type`
 
-          // For repositories not providing directory listings, give a try to some publications anyway
+        val extension = MavenSource.typeExtension(type0)
 
-          val type0 = if (dependency.attributes.`type`.isEmpty) "jar" else dependency.attributes.`type`
+        val classifier =
+          if (dependency.attributes.classifier.isEmpty)
+            MavenSource.typeDefaultClassifier(type0)
+          else
+            dependency.attributes.classifier
 
-          val extension = MavenSource.typeExtension(type0)
-
-          val classifier =
-            if (dependency.attributes.classifier.isEmpty)
-              MavenSource.typeDefaultClassifier(type0)
-            else
-              dependency.attributes.classifier
-
-          Seq(
-            Publication(
-              dependency.module.name,
-              type0,
-              extension,
-              classifier
-            )
+        Seq(
+          Publication(
+            dependency.module.name,
+            type0,
+            extension,
+            classifier
           )
-        } else if (dependency.attributes.classifier.nonEmpty)
+        ).map(artifactWithExtra)
+    }
+  }
+
+  private def artifactsKnownPublications(
+    dependency: Dependency,
+    project: Project,
+    overrideClassifiers: Option[Seq[String]]
+  ): Seq[Artifact] = {
+
+    final case class EnrichedPublication(
+      publication: Publication,
+      extra: Map[String, EnrichedPublication]
+    ) {
+      def artifact: Artifact = {
+
+        val versioning = project
+          .snapshotVersioning
+          .flatMap(versioning =>
+            mavenVersioning(versioning, publication.classifier, publication.`type`)
+          )
+
+        val path = dependency.module.organization.split('.').toSeq ++ Seq(
+          MavenRepository.dirModuleName(dependency.module, sbtAttrStub),
+          project.actualVersion,
+          s"${dependency.module.name}-${versioning getOrElse project.actualVersion}${Some(publication.classifier).filter(_.nonEmpty).map("-" + _).mkString}.${publication.ext}"
+        )
+
+        val changing0 = changing.getOrElse(project.actualVersion.contains("-SNAPSHOT"))
+
+        val extra0 = extra.mapValues(_.artifact).iterator.toMap
+
+        Artifact(
+          root + path.mkString("/"),
+          extra0.filterKeys(MavenSource.checksumTypes).mapValues(_.url).iterator.toMap,
+          extra0,
+          publication.attributes,
+          changing = changing0,
+          authentication = authentication
+        )
+      }
+    }
+
+    def extensionIsExtra(publications: Seq[EnrichedPublication], ext: String, tpe: String): Seq[EnrichedPublication] = {
+
+      val (withExt, other) = publications.partition(_.publication.ext.endsWith("." + ext))
+
+      var withExtMap = withExt.map(p => (p.publication.classifier, p.publication.ext.stripSuffix("." + ext)) -> p).toMap
+
+      other.map { p =>
+        val key = (p.publication.classifier, p.publication.ext)
+        withExtMap.get(key).fold(p) { sigPub =>
+          withExtMap -= key
+          p.copy(
+            extra = p.extra + (tpe -> sigPub)
+          )
+        }
+      } ++ withExtMap.values
+    }
+
+    def groupedEnrichedPublications(publications: Seq[Publication]): Seq[EnrichedPublication] = {
+
+      def helperSameName(publications: Seq[Publication]): Seq[EnrichedPublication] = {
+
+        val publications0 = publications.map { pub =>
+          EnrichedPublication(pub, Map())
+        }
+
+        Seq("sha1" -> "SHA-1", "md5" -> "MD5", "asc" -> "sig").foldLeft(publications0) {
+          case (pub, (ext, tpe)) =>
+            extensionIsExtra(pub, ext, tpe)
+        }
+      }
+
+      publications
+        .groupBy(_.name)
+        .mapValues(helperSameName)
+        .values
+        .toVector
+        .flatten
+    }
+
+    val enrichedPublications = groupedEnrichedPublications(project.publications.map(_._2))
+
+    val metadataArtifactOpt = enrichedPublications.collectFirst {
+      case pub if pub.publication.name == dependency.module.name &&
+          pub.publication.ext == "pom" &&
+          pub.publication.classifier.isEmpty =>
+        pub.artifact
+    }
+
+    def withMetadataExtra(artifact: Artifact) =
+      metadataArtifactOpt.fold(artifact) { metadataArtifact =>
+        artifact.copy(
+          extra = artifact.extra + ("metadata" -> metadataArtifact)
+        )
+      }
+
+    val res = overrideClassifiers match {
+      case Some(classifiers) =>
+        val classifiersSet = classifiers.toSet
+
+        enrichedPublications.collect {
+          case p if classifiersSet(p.publication.classifier) =>
+            p.artifact
+        }
+
+      case None =>
+
+        if (dependency.attributes.classifier.nonEmpty)
           // FIXME We're ignoring dependency.attributes.`type` in this case
-          project.publications.collect {
-            case (_, p) if p.classifier == dependency.attributes.classifier =>
-              p
+          enrichedPublications.collect {
+            case p if p.publication.classifier == dependency.attributes.classifier =>
+              p.artifact
           }
         else if (dependency.attributes.`type`.nonEmpty)
-          project.publications.collect {
-            case (_, p)
-              if p.`type` == dependency.attributes.`type` ||
-                (p.ext == dependency.attributes.`type` && project.packagingOpt.toSeq.contains(p.`type`)) // wow
-              =>
-              p
+          enrichedPublications.collect {
+            case p
+              if p.publication.`type` == dependency.attributes.`type` ||
+                (p.publication.ext == dependency.attributes.`type` && project.packagingOpt.toSeq.contains(p.publication.`type`)) // wow
+            =>
+              p.artifact
           }
         else
-          project.publications.collect {
-            case (_, p) if p.classifier.isEmpty =>
-              p
+          enrichedPublications.collect {
+            case p if p.publication.classifier.isEmpty =>
+              p.artifact
           }
     }
 
-    publications0.map(artifactWithExtra)
+    res.map(withMetadataExtra)
+  }
+
+  def artifacts(
+    dependency: Dependency,
+    project: Project,
+    overrideClassifiers: Option[Seq[String]]
+  ): Seq[Artifact] = {
+
+    if (project.publications.isEmpty)
+      artifactsUnknownPublications(dependency, project, overrideClassifiers)
+    else
+      artifactsKnownPublications(dependency, project, overrideClassifiers)
   }
 }
 
 object MavenSource {
-  
+
+  private val checksumTypes = Set("MD5", "SHA-1")
+
   val typeExtensions: Map[String, String] = Map(
     "eclipse-plugin" -> "jar",
     "maven-plugin"   -> "jar",
