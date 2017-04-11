@@ -143,10 +143,6 @@ private[sbt] object EvaluateConfigurations {
   /** move a project to be relative to this file after we've evaluated it. */
   private[this] def resolveBase(f: File, p: Project) = p.copy(base = IO.resolve(f, p.base))
 
-  @deprecated("Will no longer be public.", "0.13.6")
-  def flatten(mksettings: Seq[ClassLoader => Seq[Setting[_]]]): ClassLoader => Seq[Setting[_]] =
-    loader => mksettings.flatMap(_ apply loader)
-
   def addOffset(offset: Int, lines: Seq[(String, Int)]): Seq[(String, Int)] =
     lines.map { case (s, i) => (s, i + offset) }
 

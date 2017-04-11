@@ -147,10 +147,6 @@ final class DetectedPlugins(val autoPlugins: Seq[DetectedAutoPlugin], val builds
         else None
     }.partition(nonTopLevelPlugin)
 
-  /** A function to select the right [[AutoPlugin]]s from [[autoPlugins]] for a [[Project]]. */
-  @deprecated("Use deducePluginsFromProject", "0.13.8")
-  lazy val deducePlugins: (Plugins, Logger) => Seq[AutoPlugin] = Plugins.deducer(autoPlugins.toList map { _.value })
-
   /** Selects the right [[AutoPlugin]]s from a [[Project]]. */
   def deducePluginsFromProject(p: Project, log: Logger): Seq[AutoPlugin] =
     {

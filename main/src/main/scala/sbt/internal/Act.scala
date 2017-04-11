@@ -280,9 +280,6 @@ object Act {
         (MultiTaskCommand ^^^ MultiAction)) <~ Space
     ) ?? SingleAction
 
-  @deprecated("No longer used.", "0.13.2")
-  def showParser = token((ShowCommand ~ Space) ^^^ true) ?? false
-
   def scopedKeyParser(state: State): Parser[ScopedKey[_]] = scopedKeyParser(Project extract state)
   def scopedKeyParser(extracted: Extracted): Parser[ScopedKey[_]] = scopedKeyParser(extracted.structure, extracted.currentRef)
   def scopedKeyParser(structure: BuildStructure, currentRef: ProjectRef): Parser[ScopedKey[_]] =

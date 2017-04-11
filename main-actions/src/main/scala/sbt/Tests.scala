@@ -311,11 +311,6 @@ object Tests {
       val mains = discovered collect { case (df, di) if di.hasMain => df.name }
       (tests, mains.toSet)
     }
-
-  @deprecated("Tests.showResults() has been superseded with TestResultLogger and setting 'testResultLogger'.", "0.13.5")
-  def showResults(log: Logger, results: Output, noTestsMessage: => String): Unit =
-    TestResultLogger.Default.copy(printNoTests = TestResultLogger.const(_ info noTestsMessage))
-      .run(log, results, "")
 }
 
 final class TestsFailedException extends RuntimeException("Tests unsuccessful") with FeedbackProvidedException

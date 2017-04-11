@@ -349,9 +349,6 @@ object BuiltinCommands {
       s
   }
 
-  @deprecated("Use Inspect.output", "0.13.0")
-  def inspectOutput(s: State, option: Inspect.Mode, sk: Def.ScopedKey[_]): String = Inspect.output(s, option, sk)
-
   def lastGrep = Command(LastGrepCommand, lastGrepBrief, lastGrepDetailed)(lastGrepParser) {
     case (s, (pattern, Some(sks))) =>
       val (str, _, display) = extractLast(s)
@@ -372,18 +369,6 @@ object BuiltinCommands {
     token(Space ~> flag("every" ~ Space)) ~
       SettingCompletions.settingParser(structure.data, structure.index.keyMap, currentProject)
   }
-
-  @deprecated("Use Inspect.parser", "0.13.0")
-  def inspectParser: State => Parser[(Inspect.Mode, Def.ScopedKey[_])] = Inspect.parser
-
-  @deprecated("Use Inspect.spacedModeParser", "0.13.0")
-  val spacedModeParser: State => Parser[Inspect.Mode] = Inspect.spacedModeParser
-
-  @deprecated("Use Inspect.allKeyParser", "0.13.0")
-  def allKeyParser(s: State): Parser[AttributeKey[_]] = Inspect.allKeyParser(s)
-
-  @deprecated("Use Inspect.spacedKeyParser", "0.13.0")
-  val spacedKeyParser: State => Parser[Def.ScopedKey[_]] = Inspect.spacedKeyParser
 
   val spacedAggregatedParser = (s: State) => Act.requireSession(s, token(Space) ~> Act.aggregatedKeyParser(s))
   val aggregatedKeyValueParser: State => Parser[Option[AnyKeys]] = (s: State) => spacedAggregatedParser(s).map(x => Act.keyValues(s)(x)).?
@@ -520,9 +505,6 @@ object BuiltinCommands {
   def project: Command = Command.make(ProjectCommand, projectBrief, projectDetailed)(ProjectNavigation.command)
 
   def loadFailed: Command = Command(LoadFailed)(loadProjectParser)(doLoadFailed)
-
-  @deprecated("No longer used.", "0.13.2")
-  def handleLoadFailed(s: State): State = doLoadFailed(s, "")
 
   @tailrec
   private[this] def doLoadFailed(s: State, loadArg: String): State =

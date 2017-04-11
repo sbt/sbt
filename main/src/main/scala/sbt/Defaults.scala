@@ -382,14 +382,6 @@ object Defaults extends BuildCommon {
 
   def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] = generators { _.join.map(_.flatten) }
 
-  @deprecated("Use the new <key>.all(<ScopeFilter>) API", "0.13.0")
-  def inAllConfigurations[T](key: TaskKey[T]): Initialize[Task[Seq[T]]] = (state, thisProjectRef) flatMap { (state, ref) =>
-    val structure = Project structure state
-    val configurations = Project.getProject(ref, structure).toList.flatMap(_.configurations)
-    configurations.flatMap { conf =>
-      key in (ref, conf) get structure.data
-    } join
-  }
   def watchTransitiveSourcesTask: Initialize[Task[Seq[File]]] = {
     import ScopeFilter.Make.{ inDependencies => inDeps, _ }
     val selectDeps = ScopeFilter(inAggregates(ThisProject) || inDeps(ThisProject))
@@ -425,8 +417,6 @@ object Defaults extends BuildCommon {
       }
     }
 
-  @deprecated("Use scalaInstanceTask.", "0.13.0")
-  def scalaInstanceSetting = scalaInstanceTask
   def scalaInstanceTask: Initialize[Task[ScalaInstance]] = Def.taskDyn {
     // if this logic changes, ensure that `unmanagedScalaInstanceOnly` and `update` are changed
     //  appropriately to avoid cycles
@@ -528,15 +518,6 @@ object Defaults extends BuildCommon {
   )) ++ inScope(GlobalScope)(Seq(
     derive(testGrouping := singleTestGroupDefault.value)
   ))
-
-  @deprecated("Doesn't provide for closing the underlying resources.", "0.13.1")
-  def testLogger(manager: Streams, baseKey: Scoped)(tdef: TestDefinition): Logger =
-    {
-      val scope = baseKey.scope
-      val extra = scope.extra match { case Select(x) => x; case _ => AttributeMap.empty }
-      val key = ScopedKey(scope.copy(extra = Select(testExtra(extra, tdef))), baseKey.key)
-      manager(key).log
-    }
 
   private[this] def closeableTestLogger(manager: Streams, baseKey: Scoped, buffered: Boolean)(tdef: TestDefinition): TestLogger.PerTest =
     {
@@ -749,13 +730,6 @@ object Defaults extends BuildCommon {
   def packageDocMappings = doc map { Path.allSubpaths(_).toSeq }
   def packageSrcMappings = concatMappings(resourceMappings, sourceMappings)
 
-  @deprecated("Use `packageBinMappings` instead", "0.12.0")
-  def packageBinTask = packageBinMappings
-  @deprecated("Use `packageDocMappings` instead", "0.12.0")
-  def packageDocTask = packageDocMappings
-  @deprecated("Use `packageSrcMappings` instead", "0.12.0")
-  def packageSrcTask = packageSrcMappings
-
   private type Mappings = Initialize[Task[Seq[(File, String)]]]
   def concatMappings(as: Mappings, bs: Mappings) = (as zipWith bs)((a, b) => (a, b) map { case (a, b) => a ++ b })
 
@@ -806,13 +780,6 @@ object Defaults extends BuildCommon {
       case Some(c) => Artifact.classifierConf(c) :: Nil
       case None    => scope :: Nil
     }
-
-  @deprecated("Use `Util.pairID` instead", "0.12.0")
-  def pairID = Util.pairID
-
-  @deprecated("Use `packageTaskSettings` instead", "0.12.0")
-  def packageTasks(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File, String)]]]) =
-    packageTaskSettings(key, mappingsTask)
 
   def packageTaskSettings(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File, String)]]]) =
     inTask(key)(Seq(
@@ -968,9 +935,6 @@ object Defaults extends BuildCommon {
   def bgStopTask: Initialize[InputTask[Unit]] = foreachJobTask { (manager, handle) => manager.stop(handle) }
   def bgWaitForTask: Initialize[InputTask[Unit]] = foreachJobTask { (manager, handle) => manager.waitFor(handle) }
 
-  @deprecated("Use `docTaskSettings` instead", "0.12.0")
-  def docSetting(key: TaskKey[File]) = docTaskSettings(key)
-
   def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[_]] = inTask(key)(Seq(
     apiMappings ++= { if (autoAPIMappings.value) APIMappings.extract(dependencyClasspath.value, streams.value.log).toMap else Map.empty[File, URL] },
     fileInputOptions := Seq("-doc-root-content", "-diagrams-dot-path"),
@@ -1040,9 +1004,6 @@ object Defaults extends BuildCommon {
     try exported(w, command)
     finally w.close() // workaround for #937
   }
-
-  @deprecated("Use inTask(compile)(compileInputsSettings)", "0.13.0")
-  def compileTaskSettings: Seq[Setting[_]] = inTask(compile)(compileInputsSettings)
 
   def compileTask: Initialize[Task[CompileAnalysis]] = Def.task {
     val setup: Setup = compileIncSetup.value
@@ -1183,39 +1144,6 @@ object Defaults extends BuildCommon {
         distinctParser(notMatching, raw) map { result => if (raw) ex +: result else matching.toSeq ++ result }
       }
       recurse ?? Nil
-    }
-
-  @deprecated("Use the new <key>.all(<ScopeFilter>) API", "0.13.0")
-  def inDependencies[T](key: SettingKey[T], default: ProjectRef => T, includeRoot: Boolean = true, classpath: Boolean = true, aggregate: Boolean = false): Initialize[Seq[T]] =
-    forDependencies[T, T](ref => (key in ref) ?? default(ref), includeRoot, classpath, aggregate)
-
-  @deprecated("Use the new <key>.all(<ScopeFilter>) API", "0.13.0")
-  def forDependencies[T, V](init: ProjectRef => Initialize[V], includeRoot: Boolean = true, classpath: Boolean = true, aggregate: Boolean = false): Initialize[Seq[V]] =
-    Def.bind((loadedBuild, thisProjectRef).identity) {
-      case (lb, base) =>
-        transitiveDependencies(base, lb, includeRoot, classpath, aggregate) map init join;
-    }
-
-  def transitiveDependencies(base: ProjectRef, structure: LoadedBuild, includeRoot: Boolean, classpath: Boolean = true, aggregate: Boolean = false): Seq[ProjectRef] =
-    {
-      def tdeps(enabled: Boolean, f: ProjectRef => Seq[ProjectRef]): Seq[ProjectRef] =
-        {
-          val full = if (enabled) Dag.topologicalSort(base)(f) else Nil
-          if (includeRoot) full else full dropRight 1
-        }
-      def fullCp = tdeps(classpath, getDependencies(structure, classpath = true, aggregate = false))
-      def fullAgg = tdeps(aggregate, getDependencies(structure, classpath = false, aggregate = true))
-      (classpath, aggregate) match {
-        case (true, true)  => (fullCp ++ fullAgg).distinct
-        case (true, false) => fullCp
-        case _             => fullAgg
-      }
-    }
-
-  def getDependencies(structure: LoadedBuild, classpath: Boolean = true, aggregate: Boolean = false): ProjectRef => Seq[ProjectRef] =
-    ref => Project.getProject(ref, structure).toList flatMap { p =>
-      (if (classpath) p.dependencies.map(_.project) else Nil) ++
-        (if (aggregate) p.aggregate else Nil)
     }
 
   val CompletionsID = "completions"
@@ -1943,13 +1871,6 @@ object Classpaths {
   def deliverConfig(outputDirectory: File, status: String = "release", logging: UpdateLogging = UpdateLogging.DownloadOnly) =
     new DeliverConfiguration(deliverPattern(outputDirectory), status, None, logging)
 
-  @deprecated("Previous semantics allowed overwriting cached files, which was unsafe. Please specify overwrite parameter.", "0.13.2")
-  def publishConfig(
-      artifacts: Map[Artifact, File], ivyFile: Option[File], checksums: Seq[String],
-      resolverName: String, logging: UpdateLogging
-  ): PublishConfiguration =
-    publishConfig(artifacts, ivyFile, checksums, resolverName, logging, overwrite = true)
-
   def publishConfig(
       artifacts: Map[Artifact, File], ivyFile: Option[File], checksums: Seq[String],
       resolverName: String = "local", logging: UpdateLogging = UpdateLogging.DownloadOnly,
@@ -2199,12 +2120,6 @@ object Classpaths {
   def modifyForPlugin(plugin: Boolean, dep: ModuleID): ModuleID =
     if (plugin) dep.withConfigurations(Some(Provided.name)) else dep
 
-  @deprecated("Explicitly specify the organization using the other variant.", "0.13.0")
-  def autoLibraryDependency(auto: Boolean, plugin: Boolean, version: String): Seq[ModuleID] =
-    if (auto)
-      modifyForPlugin(plugin, ScalaArtifacts.libraryDependency(version)) :: Nil
-    else
-      Nil
   def autoLibraryDependency(auto: Boolean, plugin: Boolean, org: String, version: String): Seq[ModuleID] =
     if (auto)
       modifyForPlugin(plugin, ModuleID(org, ScalaArtifacts.LibraryID, version)) :: Nil
@@ -2233,8 +2148,6 @@ object Classpaths {
   def findUnmanagedJars(config: Configuration, base: File, filter: FileFilter, excl: FileFilter): Classpath =
     (base * (filter -- excl) +++ (base / config.name).descendantsExcept(filter, excl)).classpath
 
-  @deprecated("Specify the classpath that includes internal dependencies", "0.13.0")
-  def autoPlugins(report: UpdateReport): Seq[String] = autoPlugins(report, Nil)
   def autoPlugins(report: UpdateReport, internalPluginClasspath: Seq[File]): Seq[String] =
     {
       val pluginClasspath = report.matching(configurationFilter(CompilerPlugin.name)) ++ internalPluginClasspath
@@ -2258,14 +2171,6 @@ object Classpaths {
       if (autoCompilerPlugins.value) options ++ newPlugins.filterNot(existing) else options
     }
   )
-
-  @deprecated("Doesn't properly handle non-standard Scala organizations.", "0.13.0")
-  def substituteScalaFiles(scalaInstance: ScalaInstance, report: UpdateReport): UpdateReport =
-    substituteScalaFiles(scalaInstance, ScalaArtifacts.Organization, report)
-
-  @deprecated("Directly provide the jar files per Scala version.", "0.13.0")
-  def substituteScalaFiles(scalaInstance: ScalaInstance, scalaOrg: String, report: UpdateReport): UpdateReport =
-    substituteScalaFiles(scalaOrg, report)(const(scalaInstance.allJars))
 
   def substituteScalaFiles(scalaOrg: String, report: UpdateReport)(scalaJars: String => Seq[File]): UpdateReport =
     report.substitute { (configuration, module, arts) =>

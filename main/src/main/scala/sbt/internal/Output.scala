@@ -20,10 +20,6 @@ import sbt.io.IO
 object Output {
   final val DefaultTail = "> "
 
-  @deprecated("Explicitly provide None for the stream ID.", "0.13.0")
-  def last(keys: Values[_], streams: Streams, printLines: Seq[String] => Unit)(implicit display: Show[ScopedKey[_]]): Unit =
-    last(keys, streams, printLines, None)(display)
-
   def last(keys: Values[_], streams: Streams, printLines: Seq[String] => Unit, sid: Option[String])(implicit display: Show[ScopedKey[_]]): Unit =
     printLines(flatLines(lastLines(keys, streams, sid))(idFun))
 
@@ -56,9 +52,6 @@ object Output {
       val outputs = keys map { (kv: KeyValue[_]) => KeyValue(kv.key, lastLines(kv.key, streams, sid)) }
       outputs.filterNot(_.value.isEmpty)
     }
-
-  @deprecated("Explicitly provide None for the stream ID.", "0.13.0")
-  def lastLines(key: ScopedKey[_], mgr: Streams): Seq[String] = lastLines(key, mgr, None)
 
   def lastLines(key: ScopedKey[_], mgr: Streams, sid: Option[String]): Seq[String] =
     mgr.use(key) { s =>

@@ -27,9 +27,6 @@ import scala.Console.RED
 import std.Transform.DummyTaskMap
 import TaskName._
 
-@deprecated("Use EvaluateTaskConfig instead.", "0.13.5")
-final case class EvaluateConfig(cancelable: Boolean, restrictions: Seq[Tags.Rule], checkCycles: Boolean = false, progress: ExecuteProgress[Task] = EvaluateTask.defaultProgress)
-
 /**
  * An API that allows you to cancel executing tasks upon some signal.
  *
@@ -108,17 +105,6 @@ sealed trait EvaluateTaskConfig {
 }
 
 object EvaluateTaskConfig {
-  @deprecated("Use the alternative that specifies minForcegcInterval", "0.13.9")
-  def apply(
-    restrictions: Seq[Tags.Rule],
-    checkCycles: Boolean,
-    progressReporter: ExecuteProgress[Task],
-    cancelStrategy: TaskCancellationStrategy,
-    forceGarbageCollection: Boolean
-  ): EvaluateTaskConfig =
-    apply(restrictions, checkCycles, progressReporter, cancelStrategy, forceGarbageCollection,
-      GCUtil.defaultMinForcegcInterval)
-
   /** Raw constructor for EvaluateTaskConfig. */
   def apply(
     restrictions: Seq[Tags.Rule],
@@ -168,32 +154,6 @@ object EvaluateTask {
 
   val SystemProcessors = Runtime.getRuntime.availableProcessors
 
-  @deprecated("Use extractedTaskConfig.", "0.13.0")
-  def defaultConfig(state: State): EvaluateConfig =
-    {
-      val extracted = Project.extract(state)
-      extractedConfig(extracted, extracted.structure, state)
-    }
-
-  @deprecated("Use extractedTaskConfig.", "0.13.0")
-  def defaultConfig(extracted: Extracted, structure: BuildStructure) =
-    EvaluateConfig(false, restrictions(extracted, structure), progress = defaultProgress)
-
-  @deprecated("Use other extractedTaskConfig", "0.13.2")
-  def extractedConfig(extracted: Extracted, structure: BuildStructure): EvaluateConfig =
-    {
-      val workers = restrictions(extracted, structure)
-      val canCancel = cancelable(extracted, structure)
-      EvaluateConfig(cancelable = canCancel, restrictions = workers, progress = defaultProgress)
-    }
-  @deprecated("Use other extractedTaskConfig", "0.13.5")
-  def extractedConfig(extracted: Extracted, structure: BuildStructure, state: State): EvaluateConfig =
-    {
-      val workers = restrictions(extracted, structure)
-      val canCancel = cancelable(extracted, structure)
-      val progress = executeProgress(extracted, structure, state)
-      EvaluateConfig(cancelable = canCancel, restrictions = workers, progress = progress)
-    }
   def extractedTaskConfig(extracted: Extracted, structure: BuildStructure, state: State): EvaluateTaskConfig =
     {
       val rs = restrictions(extracted, structure)

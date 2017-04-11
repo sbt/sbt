@@ -8,11 +8,11 @@ import sbt.librarymanagement.{ Configuration, Configurations, Resolver, UpdateOp
 import sbt.internal.librarymanagement.{ DefaultFileToStore, InlineIvyConfiguration, IvyPaths }
 
 import java.io.File
-import java.net.{ URI, URL }
+import java.net.URI
 import compiler.Eval
 import scala.annotation.tailrec
 import collection.mutable
-import sbt.internal.inc.{ Analysis, ClasspathOptionsUtil, ModuleUtilities }
+import sbt.internal.inc.ClasspathOptionsUtil
 import sbt.internal.inc.classpath.ClasspathUtilities
 import Project.inScope
 import Def.{ isDummy, ScopedKey, ScopeLocal, Setting }
@@ -321,11 +321,6 @@ private[sbt] object Load {
       }
     }
   }
-
-  @deprecated("This method is no longer used", "0.13.6")
-  def configurations(srcs: Seq[File], eval: () => Eval, imports: Seq[String]): ClassLoader => LoadedSbtFile =
-    if (srcs.isEmpty) const(LoadedSbtFile.empty)
-    else EvaluateConfigurations(eval(), srcs, imports)
 
   def load(file: File, s: State, config: LoadBuildConfiguration): PartBuild =
     load(file, builtinLoader(s, config.copy(pluginManagement = config.pluginManagement.shift, extraBuilds = Nil)), config.extraBuilds.toList)
@@ -931,27 +926,8 @@ private[sbt] object Load {
       config.evalPluginDef(Project.structure(pluginState), pluginState)
     }
 
-  @deprecated("Use ModuleUtilities.getCheckedObjects[BuildDef].", "0.13.2")
-  def loadDefinitions(loader: ClassLoader, defs: Seq[String]): Seq[BuildDef] =
-    defs map { definition => loadDefinition(loader, definition) }
-
-  @deprecated("Use ModuleUtilities.getCheckedObject[BuildDef].", "0.13.2")
-  def loadDefinition(loader: ClassLoader, definition: String): BuildDef =
-    ModuleUtilities.getObject(definition, loader).asInstanceOf[BuildDef]
-
   def loadPlugins(dir: File, data: PluginData, loader: ClassLoader): LoadedPlugins =
     new LoadedPlugins(dir, data, loader, PluginDiscovery.discoverAll(data, loader))
-
-  @deprecated("Use PluginDiscovery.onClasspath", "0.13.2")
-  def onClasspath(classpath: Seq[File])(url: URL): Boolean =
-    PluginDiscovery.onClasspath(classpath)(url)
-
-  @deprecated("No longer used.", "0.13.2")
-  def findDefinitions(analysis: Analysis): Seq[String] = discover(analysis, "sbt.internal.BuildDef")
-
-  @deprecated("Use PluginDiscovery.sourceModuleNames", "0.13.2")
-  def discover(analysis: Analysis, subclasses: String*): Seq[String] =
-    PluginDiscovery.sourceModuleNames(analysis, subclasses: _*)
 
   def initialSession(structure: BuildStructure, rootEval: () => Eval, s: State): SessionSettings = {
     val session = s get Keys.sessionSettings
@@ -977,19 +953,6 @@ private[sbt] object Load {
 
   def defaultEvalOptions: Seq[String] = Nil
 
-  @deprecated("Use BuildUtil.baseImports", "0.13.0")
-  def baseImports = BuildUtil.baseImports
-  @deprecated("Use BuildUtil.checkCycles", "0.13.0")
-  def checkCycles(units: Map[URI, LoadedBuildUnit]): Unit = BuildUtil.checkCycles(units)
-  @deprecated("Use BuildUtil.importAll", "0.13.0")
-  def importAll(values: Seq[String]): Seq[String] = BuildUtil.importAll(values)
-  @deprecated("Use BuildUtil.importAllRoot", "0.13.0")
-  def importAllRoot(values: Seq[String]): Seq[String] = BuildUtil.importAllRoot(values)
-  @deprecated("Use BuildUtil.rootedNames", "0.13.0")
-  def rootedName(s: String): String = BuildUtil.rootedName(s)
-  @deprecated("Use BuildUtil.getImports", "0.13.0")
-  def getImports(unit: BuildUnit): Seq[String] = BuildUtil.getImports(unit)
-
   def referenced[PR <: ProjectReference](definitions: Seq[ProjectDefinition[PR]]): Seq[PR] = definitions flatMap { _.referenced }
 
   final class EvaluatedConfigurations(val eval: Eval, val settings: Seq[Setting[_]])
@@ -1012,9 +975,6 @@ private[sbt] object Load {
         case _ => "null"
       }
   }
-
-  @deprecated("Use BuildUtil.apply", "0.13.0")
-  def buildUtil(root: URI, units: Map[URI, LoadedBuildUnit], keyIndex: KeyIndex, data: Settings[Scope]): BuildUtil[ResolvedProject] = BuildUtil(root, units, keyIndex, data)
 
   /** Debugging method to time how long it takes to run various compilation tasks. */
   private[sbt] def timed[T](label: String, log: Logger)(t: => T): T = {

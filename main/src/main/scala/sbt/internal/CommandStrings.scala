@@ -24,11 +24,6 @@ object CommandStrings {
 
 	Evaluates the given Scala expression and prints the result and type."""
 
-  @deprecated("Misnomer: was only for `show`.  Use showBrief.", "0.13.2")
-  def actBrief = showBrief
-  @deprecated("Misnomer: was only for `show`.  Use showDetailed.", "0.13.2")
-  def actDetailed = showDetailed
-
   def actHelp = showHelp ++ multiTaskHelp
 
   def multiTaskHelp = Help(MultiTaskCommand, (multiTaskSyntax, multiTaskBrief), multiTaskDetailed)
