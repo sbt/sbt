@@ -5,10 +5,6 @@ package sbt
 
 import scala.language.experimental.macros
 
-import java.io.File
-
-import sbt.io.{ FileFilter, PathFinder }
-import sbt.io.syntax._
 import sbt.internal.util.Types._
 import sbt.internal.util.{ ~>, AList, AttributeKey, Settings, SourcePosition }
 import sbt.util.OptJsonWriter
@@ -269,29 +265,6 @@ object Scoped {
   implicit def richAnyTaskSeq(in: Seq[AnyInitTask]): RichAnyTaskSeq = new RichAnyTaskSeq(in)
   final class RichAnyTaskSeq(keys: Seq[AnyInitTask]) {
     def dependOn: Initialize[Task[Unit]] = Initialize.joinAny[Task](keys).apply(deps => nop.dependsOn(deps: _*))
-  }
-
-  implicit def richFileSetting(s: SettingKey[File]): RichFileSetting = new RichFileSetting(s)
-  implicit def richFilesSetting(s: SettingKey[Seq[File]]): RichFilesSetting = new RichFilesSetting(s)
-
-  final class RichFileSetting(s: SettingKey[File]) extends RichFileBase {
-    @deprecated("Use a standard setting definition.", "0.13.0")
-    def /(c: String): Initialize[File] = s { _ / c }
-    protected[this] def map0(f: PathFinder => PathFinder) = s(file => finder(f)(file :: Nil))
-  }
-  final class RichFilesSetting(s: SettingKey[Seq[File]]) extends RichFileBase {
-    @deprecated("Use a standard setting definition.", "0.13.0")
-    def /(s: String): Initialize[Seq[File]] = map0 { _ / s }
-    protected[this] def map0(f: PathFinder => PathFinder) = s(finder(f))
-  }
-  sealed abstract class RichFileBase {
-    @deprecated("Use a standard setting definition.", "0.13.0")
-    def *(filter: FileFilter): Initialize[Seq[File]] = map0 { _ * filter }
-    @deprecated("Use a standard setting definition.", "0.13.0")
-    def **(filter: FileFilter): Initialize[Seq[File]] = map0 { _ ** filter }
-    protected[this] def map0(f: PathFinder => PathFinder): Initialize[Seq[File]]
-    protected[this] def finder(f: PathFinder => PathFinder): Seq[File] => Seq[File] =
-      in => f(in).get
   }
 
   // this is the least painful arrangement I came up with
