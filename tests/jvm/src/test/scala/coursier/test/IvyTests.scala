@@ -73,7 +73,8 @@ object IvyTests extends TestSuite {
       * - CentralTests.withArtifacts(
         dep = dep,
         artifactType = "jar",
-        extraRepo = Some(repo)
+        extraRepo = Some(repo),
+        classifierOpt = None
       ) {
         case Seq(artifact) =>
           assert(artifact.url == mainJarUrl)
@@ -84,7 +85,8 @@ object IvyTests extends TestSuite {
       * - CentralTests.withArtifacts(
         dep = dep.copy(configuration = "test"),
         artifactType = "jar",
-        extraRepo = Some(repo)
+        extraRepo = Some(repo),
+        classifierOpt = None
       ) {
         case Seq(artifact1, artifact2) =>
           val urls = Set(

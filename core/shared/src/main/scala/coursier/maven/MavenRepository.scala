@@ -266,7 +266,7 @@ final case class MavenRepository(
       // TODO There should be a regex for that...
       if (fileName.startsWith(prefix)) {
         val end = fileName.stripPrefix(prefix)
-        val idx = end.lastIndexOf('.')
+        val idx = end.indexOf('.')
         if (idx >= 0) {
           val ext = end.drop(idx + 1)
           val rem = end.take(idx)
