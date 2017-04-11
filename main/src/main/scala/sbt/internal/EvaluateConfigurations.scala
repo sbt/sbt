@@ -23,8 +23,6 @@ import sbt.io.IO
  *  1. Parsing high-level constructs (definitions, settings, imports)
  *  2. Compiling scala code into local .class files
  *  3. Evaluating the expressions and obtaining in-memory objects of the results (Setting[_] instances, or val references).
- *
- *
  */
 private[sbt] object EvaluateConfigurations {
 
@@ -46,7 +44,6 @@ private[sbt] object EvaluateConfigurations {
    *  return a parsed, compiled + evaluated [[LoadedSbtFile]].   The result has
    *  raw sbt-types that can be accessed and used.
    */
-  @deprecated("We no longer merge build.sbt files together unless they are in the same directory.", "0.13.6")
   def apply(eval: Eval, srcs: Seq[File], imports: Seq[String]): LazyClassLoaded[LoadedSbtFile] =
     {
       val loadFiles = srcs.sortBy(_.getName) map { src => evaluateSbtFile(eval, src, IO.readLines(src), imports, 0) }
@@ -142,13 +139,17 @@ private[sbt] object EvaluateConfigurations {
         new LoadedSbtFile(settings, projects, importDefs, manipulations, definitions, allGeneratedFiles)
       }
     }
+
   /** move a project to be relative to this file after we've evaluated it. */
   private[this] def resolveBase(f: File, p: Project) = p.copy(base = IO.resolve(f, p.base))
+
   @deprecated("Will no longer be public.", "0.13.6")
   def flatten(mksettings: Seq[ClassLoader => Seq[Setting[_]]]): ClassLoader => Seq[Setting[_]] =
     loader => mksettings.flatMap(_ apply loader)
+
   def addOffset(offset: Int, lines: Seq[(String, Int)]): Seq[(String, Int)] =
     lines.map { case (s, i) => (s, i + offset) }
+
   def addOffsetToRange(offset: Int, ranges: Seq[(String, LineRange)]): Seq[(String, LineRange)] =
     ranges.map { case (s, r) => (s, r shift offset) }
 
@@ -226,19 +227,23 @@ private[sbt] object EvaluateConfigurations {
 
   private[this] def splitSettingsDefinitions(lines: Seq[(String, LineRange)]): (Seq[(String, LineRange)], Seq[(String, LineRange)]) =
     lines partition { case (line, range) => isDefinition(line) }
+
   private[this] def isDefinition(line: String): Boolean =
     {
       val trimmed = line.trim
       DefinitionKeywords.exists(trimmed startsWith _)
     }
+
   private[this] def extractedValTypes: Seq[String] =
     Seq(classOf[Project], classOf[InputKey[_]], classOf[TaskKey[_]], classOf[SettingKey[_]]).map(_.getName)
+
   private[this] def evaluateDefinitions(eval: Eval, name: String, imports: Seq[(String, Int)], definitions: Seq[(String, LineRange)], file: Option[File]): compiler.EvalDefinitions =
     {
       val convertedRanges = definitions.map { case (s, r) => (s, r.start to r.end) }
       eval.evalDefinitions(convertedRanges, new EvalImports(imports, name), name, file, extractedValTypes)
     }
 }
+
 object Index {
   def taskToKeyMap(data: Settings[Scope]): Map[Task[_], ScopedKey[Task[_]]] =
     {
@@ -247,10 +252,13 @@ object Index {
       val pairs = for (scope <- data.scopes; AttributeEntry(key, value: Task[_]) <- data.data(scope).entries) yield (value, ScopedKey(scope, key.asInstanceOf[AttributeKey[Task[_]]])) // unclear why this cast is needed even with a type test in the above filter
       pairs.toMap[Task[_], ScopedKey[Task[_]]]
     }
+
   def allKeys(settings: Seq[Setting[_]]): Set[ScopedKey[_]] =
     settings.flatMap(s => if (s.key.key.isLocal) Nil else s.key +: s.dependencies).filter(!_.key.isLocal).toSet
+
   def attributeKeys(settings: Settings[Scope]): Set[AttributeKey[_]] =
     settings.data.values.flatMap(_.keys).toSet[AttributeKey[_]]
+
   def stringToKeyMap(settings: Set[AttributeKey[_]]): Map[String, AttributeKey[_]] =
     stringToKeyMap0(settings)(_.label)
 
@@ -263,7 +271,9 @@ object Index {
       else
         sys.error(duplicates map { case (k, tps) => "'" + k + "' (" + tps.mkString(", ") + ")" } mkString ("Some keys were defined with the same name but different types: ", ", ", ""))
     }
+
   private[this]type TriggerMap = collection.mutable.HashMap[Task[_], Seq[Task[_]]]
+
   def triggers(ss: Settings[Scope]): Triggers[Task] =
     {
       val runBefore = new TriggerMap
@@ -276,6 +286,7 @@ object Index {
       val onComplete = Keys.onComplete in GlobalScope get ss getOrElse { () => () }
       new Triggers[Task](runBefore, triggeredBy, map => { onComplete(); map })
     }
+
   private[this] def update(map: TriggerMap, base: Task[_], tasksOpt: Option[Seq[Task[_]]]): Unit =
     for (tasks <- tasksOpt; task <- tasks)
       map(task) = base +: map.getOrElse(task, Nil)

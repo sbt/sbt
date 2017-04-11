@@ -40,8 +40,9 @@ trait RunningTaskEngine {
   /** Attempts to kill and shutdown the running task engine.*/
   def cancelAndShutdown(): Unit
 }
+
 /**
- * A strategy for being able to cancle tasks.
+ * A strategy for being able to cancel tasks.
  *
  * Implementations of this trait determine what will trigger `cancel()` for
  * the task engine, providing in the `start` method.
@@ -51,6 +52,7 @@ trait RunningTaskEngine {
 trait TaskCancellationStrategy {
   /** The state used by this task. */
   type State
+
   /**
    * Called when task evaluation starts.
    *
@@ -58,9 +60,11 @@ trait TaskCancellationStrategy {
    * @return Whatever state you need to cleanup in your finish method.
    */
   def onTaskEngineStart(canceller: RunningTaskEngine): State
+
   /** Called when task evaluation completes, either in success or failure. */
   def onTaskEngineFinish(state: State): Unit
 }
+
 object TaskCancellationStrategy {
   /** An empty handler that does not cancel tasks. */
   object Null extends TaskCancellationStrategy {
@@ -69,6 +73,7 @@ object TaskCancellationStrategy {
     def onTaskEngineFinish(state: Unit): Unit = ()
     override def toString: String = "Null"
   }
+
   /** Cancel handler which registers for SIGINT and cancels tasks when it is received. */
   object Signal extends TaskCancellationStrategy {
     type State = Signals.Registration
@@ -103,6 +108,7 @@ sealed trait EvaluateTaskConfig {
    */
   def minForcegcInterval: Duration
 }
+
 object EvaluateTaskConfig {
   @deprecated("Use the alternative that specifies minForcegcInterval", "0.13.9")
   def apply(
@@ -207,15 +213,19 @@ object EvaluateTask {
       val extracted = Project.extract(state)
       restrictions(extracted, extracted.structure)
     }
+
   def restrictions(extracted: Extracted, structure: BuildStructure): Seq[Tags.Rule] =
     getSetting(Keys.concurrentRestrictions, defaultRestrictions(extracted, structure), extracted, structure)
+
   def maxWorkers(extracted: Extracted, structure: BuildStructure): Int =
     if (getSetting(Keys.parallelExecution, true, extracted, structure))
       SystemProcessors
     else
       1
+
   def cancelable(extracted: Extracted, structure: BuildStructure): Boolean =
     getSetting(Keys.cancelable, false, extracted, structure)
+
   def cancelStrategy(extracted: Extracted, structure: BuildStructure, state: State): TaskCancellationStrategy =
     getSetting(Keys.taskCancelStrategy, { (_: State) => TaskCancellationStrategy.Null }, extracted, structure)(state)
 

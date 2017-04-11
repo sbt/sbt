@@ -84,6 +84,7 @@ object BuildUtil {
 
   /** Import just the names. */
   def importNames(names: Seq[String]): Seq[String] = if (names.isEmpty) Nil else names.mkString("import ", ", ", "") :: Nil
+
   /** Prepend `_root_` and import just the names. */
   def importNamesRoot(names: Seq[String]): Seq[String] = importNames(names map rootedName)
 

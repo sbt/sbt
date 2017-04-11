@@ -120,6 +120,7 @@ object InputTask {
       val t: Task[I] = Task(Info[I]().set(key, None), Pure(f, false))
       (key, t)
     }
+
   private[this] def subForDummy[I, T](marker: AttributeKey[Option[I]], value: I, task: Task[T]): Task[T] =
     {
       val seen = new java.util.IdentityHashMap[Task[_], Task[_]]

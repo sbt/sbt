@@ -166,7 +166,6 @@ final class DetectedPlugins(val autoPlugins: Seq[DetectedAutoPlugin], val builds
   private[this] def autoImports(pluginNames: Seq[String]) = pluginNames.map(_ + ".autoImport")
 
   private[this] def nonTopLevelPlugin(name: String) = name.contains('.')
-
 }
 
 /**
@@ -181,6 +180,7 @@ final class LoadedPlugins(val base: File, val pluginData: PluginData, val loader
   def fullClasspath: Seq[Attributed[File]] = pluginData.classpath
   def classpath = data(fullClasspath)
 }
+
 /**
  * The loaded, but unresolved build unit.
  * @param uri The uniquely identifying URI for the build.

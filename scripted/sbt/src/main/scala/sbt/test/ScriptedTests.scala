@@ -153,15 +153,19 @@ class ScriptedRunner {
     }
     runAll(allTests)
   }
+
   def runAll(tests: Seq[() => Option[String]]): Unit = {
     val errors = for (test <- tests; err <- test()) yield err
     if (errors.nonEmpty)
       sys.error(errors.mkString("Failed tests:\n\t", "\n\t", "\n"))
   }
+
   def get(tests: Seq[String], baseDirectory: File, log: Logger): Seq[ScriptedTest] =
     if (tests.isEmpty) listTests(baseDirectory, log) else parseTests(tests)
+
   def listTests(baseDirectory: File, log: Logger): Seq[ScriptedTest] =
     (new ListTests(baseDirectory, _ => true, log)).listTests
+
   def parseTests(in: Seq[String]): Seq[ScriptedTest] =
     for (testString <- in) yield {
       val Array(group, name) = testString.split("/").map(_.trim)

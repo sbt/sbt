@@ -441,6 +441,7 @@ object Defaults extends BuildCommon {
           scalaInstanceFromUpdate
     }
   }
+
   // Returns the ScalaInstance only if it was not constructed via `update`
   //  This is necessary to prevent cycles between `update` and `scalaInstance`
   private[sbt] def unmanagedScalaInstanceOnly: Initialize[Task[Option[ScalaInstance]]] = Def.taskDyn {
@@ -527,6 +528,7 @@ object Defaults extends BuildCommon {
   )) ++ inScope(GlobalScope)(Seq(
     derive(testGrouping := singleTestGroupDefault.value)
   ))
+
   @deprecated("Doesn't provide for closing the underlying resources.", "0.13.1")
   def testLogger(manager: Streams, baseKey: Scoped)(tdef: TestDefinition): Logger =
     {
@@ -535,6 +537,7 @@ object Defaults extends BuildCommon {
       val key = ScopedKey(scope.copy(extra = Select(testExtra(extra, tdef))), baseKey.key)
       manager(key).log
     }
+
   private[this] def closeableTestLogger(manager: Streams, baseKey: Scoped, buffered: Boolean)(tdef: TestDefinition): TestLogger.PerTest =
     {
       val scope = baseKey.scope
@@ -543,6 +546,7 @@ object Defaults extends BuildCommon {
       val s = manager(key)
       new TestLogger.PerTest(s.log, () => s.close(), buffered)
     }
+
   def buffered(log: Logger): Logger = new BufferedLogger(FullLogger(log))
   def testExtra(extra: AttributeMap, tdef: TestDefinition): AttributeMap =
     {
@@ -772,6 +776,7 @@ object Defaults extends BuildCommon {
       val f = artifactName.value
       (crossTarget.value / f(ScalaVersion((scalaVersion in artifactName).value, (scalaBinaryVersion in artifactName).value), projectID.value, art.value)).asFile
     }
+
   def artifactSetting: Initialize[Artifact] =
     Def.setting {
       val a = artifact.value
@@ -810,6 +815,7 @@ object Defaults extends BuildCommon {
       artifact := artifactSetting.value,
       artifactPath := artifactPathSetting(artifact).value
     ))
+
   def packageTask: Initialize[Task[File]] =
     Def.task {
       val config = packageConfiguration.value
@@ -817,12 +823,16 @@ object Defaults extends BuildCommon {
       Package(config, s.cacheStoreFactory, s.log)
       config.jar
     }
+
   def packageConfigurationTask: Initialize[Task[Package.Configuration]] =
     Def.task { new Package.Configuration(mappings.value, artifactPath.value, packageOptions.value) }
+
   def askForMainClass(classes: Seq[String]): Option[String] =
     sbt.SelectMainClass(Some(SimpleReader readLine _), classes)
+
   def pickMainClass(classes: Seq[String]): Option[String] =
     sbt.SelectMainClass(None, classes)
+
   private def pickMainClassOrWarn(classes: Seq[String], logger: Logger): Option[String] = {
     classes match {
       case multiple if multiple.size > 1 => logger.warn("Multiple main classes detected.  Run 'show discoveredMainClasses' to see the list")
@@ -952,6 +962,7 @@ object Defaults extends BuildCommon {
 
   @deprecated("Use `docTaskSettings` instead", "0.12.0")
   def docSetting(key: TaskKey[File]) = docTaskSettings(key)
+
   def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[_]] = inTask(key)(Seq(
     apiMappings ++= { if (autoAPIMappings.value) APIMappings.extract(dependencyClasspath.value, streams.value.log).toMap else Map.empty[File, URL] },
     fileInputOptions := Seq("-doc-root-content", "-diagrams-dot-path"),
@@ -1192,6 +1203,7 @@ object Defaults extends BuildCommon {
         case _             => fullAgg
       }
     }
+
   def getDependencies(structure: LoadedBuild, classpath: Boolean = true, aggregate: Boolean = false): ProjectRef => Seq[ProjectRef] =
     ref => Project.getProject(ref, structure).toList flatMap { p =>
       (if (classpath) p.dependencies.map(_.project) else Nil) ++
@@ -1293,6 +1305,7 @@ object Classpaths {
 
   def packaged(pkgTasks: Seq[TaskKey[File]]): Initialize[Task[Map[Artifact, File]]] =
     enabledOnly(packagedArtifact.task, pkgTasks) apply (_.join.map(_.toMap))
+
   def artifactDefs(pkgTasks: Seq[TaskKey[File]]): Initialize[Seq[Artifact]] =
     enabledOnly(artifact, pkgTasks)
 
@@ -1918,6 +1931,7 @@ object Classpaths {
 
   def deliverConfig(outputDirectory: File, status: String = "release", logging: UpdateLogging = UpdateLogging.DownloadOnly) =
     new DeliverConfiguration(deliverPattern(outputDirectory), status, None, logging)
+
   @deprecated("Previous semantics allowed overwriting cached files, which was unsafe. Please specify overwrite parameter.", "0.13.2")
   def publishConfig(artifacts: Map[Artifact, File], ivyFile: Option[File], checksums: Seq[String], resolverName: String, logging: UpdateLogging): PublishConfiguration =
     publishConfig(artifacts, ivyFile, checksums, resolverName, logging, overwrite = true)
@@ -1937,10 +1951,12 @@ object Classpaths {
         }
       }
     }
+
   private[sbt] def depMap: Initialize[Task[Map[ModuleRevisionId, ModuleDescriptor]]] =
     Def.taskDyn {
       depMap(buildDependencies.value classpathTransitiveRefs thisProjectRef.value, settingsData.value, streams.value.log)
     }
+
   private[sbt] def depMap(projects: Seq[ProjectRef], data: Settings[Scope], log: Logger): Initialize[Task[Map[ModuleRevisionId, ModuleDescriptor]]] =
     Def.value {
       projects.flatMap(ivyModule in _ get data).join.map { mod =>
@@ -2390,8 +2406,10 @@ trait BuildExtra extends BuildCommon with DefExtra {
 
   def externalIvySettings(file: Initialize[File] = inBase("ivysettings.xml"), addMultiResolver: Boolean = true): Setting[Task[IvyConfiguration]] =
     externalIvySettingsURI(file(_.toURI), addMultiResolver)
+
   def externalIvySettingsURL(url: URL, addMultiResolver: Boolean = true): Setting[Task[IvyConfiguration]] =
     externalIvySettingsURI(Def.value(url.toURI), addMultiResolver)
+
   def externalIvySettingsURI(uri: Initialize[URI], addMultiResolver: Boolean = true): Setting[Task[IvyConfiguration]] =
     {
       val other = Def.task { (baseDirectory.value, appConfiguration.value, projectResolver.value, updateOptions.value, streams.value) }
@@ -2404,10 +2422,12 @@ trait BuildExtra extends BuildCommon with DefExtra {
           }
       }).value
     }
+
   private[this] def inBase(name: String): Initialize[File] = Def.setting { baseDirectory.value / name }
 
   def externalIvyFile(file: Initialize[File] = inBase("ivy.xml"), iScala: Initialize[Option[IvyScala]] = ivyScala): Setting[Task[ModuleSettings]] =
     moduleSettings := IvyFileConfiguration(ivyValidate.value, iScala.value, file.value, managedScalaInstance.value)
+
   def externalPom(file: Initialize[File] = inBase("pom.xml"), iScala: Initialize[Option[IvyScala]] = ivyScala): Setting[Task[ModuleSettings]] =
     moduleSettings := PomConfiguration(ivyValidate.value, ivyScala.value, file.value, managedScalaInstance.value)
 
@@ -2419,6 +2439,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
       val args = spaceDelimited().parsed
       r.run(mainClass, data(cp), baseArguments ++ args, streams.value.log).get
     }
+
   def runTask(config: Configuration, mainClass: String, arguments: String*): Initialize[Task[Unit]] =
     Def.task {
       val cp = (fullClasspath in config).value
@@ -2426,6 +2447,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
       val s = streams.value
       r.run(mainClass, data(cp), arguments, s.log).get
     }
+
   // public API
   /** Returns a vector of settings that create custom run input task. */
   def fullRunInputTask(scoped: InputKey[Unit], config: Configuration, mainClass: String, baseArguments: String*): Vector[Setting[_]] =
@@ -2467,6 +2489,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
   def filterKeys(ss: Seq[Setting[_]], transitive: Boolean = false)(f: ScopedKey[_] => Boolean): Seq[Setting[_]] =
     ss filter (s => f(s.key) && (!transitive || s.dependencies.forall(f)))
 }
+
 trait DefExtra {
   private[this] val ts: TaskSequential = new TaskSequential {}
   implicit def toTaskSequential(d: Def.type): TaskSequential = ts

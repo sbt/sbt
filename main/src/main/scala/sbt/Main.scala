@@ -570,6 +570,7 @@ object BuiltinCommands {
       SessionSettings.checkSession(session, s)
       Project.setProject(session, structure, s)
     }
+
   def registerCompilerCache(s: State): State =
     {
       val maxCompilers = System.getProperty("sbt.resident.limit")

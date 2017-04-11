@@ -206,6 +206,7 @@ object Scoped {
     def ??[T >: S](or: => T): Initialize[Task[T]] = Def.optional(scopedKey)(_ getOrElse mktask(or))
     def or[T >: S](i: Initialize[Task[T]]): Initialize[Task[T]] = (this.? zipWith i)((x, y) => (x, y) map { case (a, b) => a getOrElse b })
   }
+
   final class RichInitializeTask[S](i: Initialize[Task[S]]) extends RichInitTaskBase[S, Task] {
     protected def onTask[T](f: Task[S] => Task[T]): Initialize[Task[T]] = i apply f
 
@@ -217,9 +218,11 @@ object Scoped {
     def xtriggeredBy[T](tasks: Initialize[Task[T]]*): Initialize[Task[S]] = nonLocal(tasks, Def.triggeredBy)
     def triggeredBy[T](tasks: Initialize[Task[T]]*): Initialize[Task[S]] = nonLocal(tasks, Def.triggeredBy)
     def runBefore[T](tasks: Initialize[Task[T]]*): Initialize[Task[S]] = nonLocal(tasks, Def.runBefore)
+
     private[this] def nonLocal(tasks: Seq[AnyInitTask], key: AttributeKey[Seq[Task[_]]]): Initialize[Task[S]] =
       (Initialize.joinAny[Task](tasks), i) { (ts, i) => i.copy(info = i.info.set(key, ts)) }
   }
+
   final class RichInitializeInputTask[S](i: Initialize[InputTask[S]]) extends RichInitTaskBase[S, InputTask] {
     protected def onTask[T](f: Task[S] => Task[T]): Initialize[InputTask[T]] = i(_ mapTask f)
     def dependsOn(tasks: AnyInitTask*): Initialize[InputTask[S]] = (i, Initialize.joinAny[Task](tasks)) { (thisTask, deps) => thisTask.mapTask(_.dependsOn(deps: _*)) }
@@ -359,7 +362,6 @@ object Scoped {
     def identityMap = map(mkTuple10)
     protected def convert[M[_], R](z: Fun[M, R]) = z.tupled
   }
-
   final class RichTaskable11[A, B, C, D, E, F, G, H, I, J, K](t11: ((ST[A], ST[B], ST[C], ST[D], ST[E], ST[F], ST[G], ST[H], ST[I], ST[J], ST[K]))) extends RichTaskables[AList.T11K[A, B, C, D, E, F, G, H, I, J, K]#l](t11)(AList.tuple11[A, B, C, D, E, F, G, H, I, J, K]) {
     type Fun[M[_], Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K]) => Ret
     def identityMap = map(mkTuple11)
