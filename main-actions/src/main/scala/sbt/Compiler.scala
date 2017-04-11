@@ -19,22 +19,19 @@ object Compiler {
 
   private[sbt] def defaultCompilerBridgeSource(sv: String): ModuleID =
     VersionNumber(sv) match {
-      // 2.10 and before
-      case VersionNumber(ns, _, _) if (ns.size == 3) && (ns(0) == 2) && (ns(1) <= 10) => scalaCompilerBridgeSource2_10
-      // 2.11
-      case VersionNumber(ns, _, _) if (ns.size == 3) && (ns(0) == 2) && (ns(1) == 11) => scalaCompilerBridgeSource2_11
-      case _                                                                          => scalaCompilerBridgeSource2_12
+      case VersionNumber(Seq(2, y, _), _, _) if y <= 10 => scalaCompilerBridgeSource2_10
+      case VersionNumber(Seq(2, y, _), _, _) if y == 11 => scalaCompilerBridgeSource2_11
+      case _                                            => scalaCompilerBridgeSource2_12
     }
 
-  private[sbt] def scalaCompilerBridgeSource2_10: ModuleID =
-    ModuleID(xsbti.ArtifactInfo.SbtOrganization, "compiler-bridge_2.10",
-      ComponentCompiler.incrementalVersion).withConfigurations(Some("component")).sources()
-  private[sbt] def scalaCompilerBridgeSource2_11: ModuleID =
-    ModuleID(xsbti.ArtifactInfo.SbtOrganization, "compiler-bridge_2.11",
-      ComponentCompiler.incrementalVersion).withConfigurations(Some("component")).sources()
-  private[sbt] def scalaCompilerBridgeSource2_12: ModuleID =
-    ModuleID(xsbti.ArtifactInfo.SbtOrganization, "compiler-bridge_2.12",
-      ComponentCompiler.incrementalVersion).withConfigurations(Some("component")).sources()
+  private[this] def scalaCompilerBridgeSource(suffix: String): ModuleID =
+    ModuleID(xsbti.ArtifactInfo.SbtOrganization, s"compiler-bridge_$suffix", ComponentCompiler.incrementalVersion)
+      .withConfigurations(Some("component"))
+      .sources()
+
+  private[sbt] def scalaCompilerBridgeSource2_10: ModuleID = scalaCompilerBridgeSource("2.10")
+  private[sbt] def scalaCompilerBridgeSource2_11: ModuleID = scalaCompilerBridgeSource("2.11")
+  private[sbt] def scalaCompilerBridgeSource2_12: ModuleID = scalaCompilerBridgeSource("2.12")
 
   def compilers(
     cpOptions: ClasspathOptions, ivyConfiguration: IvyConfiguration, fileToStore: File => CacheStore
