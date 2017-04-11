@@ -8,16 +8,16 @@ import sbt._
 
 object ToSbt {
 
-  def moduleId(dependency: Dependency): sbt.ModuleID =
+  def moduleId(dependency: Dependency, extraProperties: Seq[(String, String)]): sbt.ModuleID =
     sbt.ModuleID(
       dependency.module.organization,
       dependency.module.name,
       dependency.version,
       configurations = Some(dependency.configuration),
-      extraAttributes = dependency.module.attributes
+      extraAttributes = dependency.module.attributes ++ extraProperties
     )
 
-  def artifact(module: Module, artifact: Artifact): sbt.Artifact =
+  def artifact(module: Module, artifact: Artifact, extraProperties: Seq[(String, String)]): sbt.Artifact =
     sbt.Artifact(
       module.name,
       // FIXME Get these two from publications
@@ -28,7 +28,7 @@ object ToSbt {
         .orElse(MavenSource.typeDefaultClassifierOpt(artifact.attributes.`type`)),
       Nil,
       Some(url(artifact.url)),
-      Map.empty
+      module.attributes ++ extraProperties
     )
 
   def moduleReport(
@@ -40,11 +40,11 @@ object ToSbt {
 
     val sbtArtifacts = artifacts.collect {
       case (artifact, Some(file)) =>
-        (ToSbt.artifact(dependency.module, artifact), file)
+        (ToSbt.artifact(dependency.module, artifact, project.properties), file)
     }
     val sbtMissingArtifacts = artifacts.collect {
       case (artifact, None) =>
-        ToSbt.artifact(dependency.module, artifact)
+        ToSbt.artifact(dependency.module, artifact, project.properties)
     }
 
     val publicationDate = project.info.publication.map { dt =>
@@ -54,7 +54,7 @@ object ToSbt {
     val callers = dependees.map {
       case (dependee, dependeeProj) =>
         new Caller(
-          ToSbt.moduleId(dependee),
+          ToSbt.moduleId(dependee, dependeeProj.properties),
           dependeeProj.configurations.keys.toVector,
           dependee.module.attributes ++ dependeeProj.properties,
           // FIXME Set better values here
@@ -66,7 +66,7 @@ object ToSbt {
     }
 
     new sbt.ModuleReport(
-      module = ToSbt.moduleId(dependency),
+      module = ToSbt.moduleId(dependency, project.properties),
       artifacts = sbtArtifacts,
       missingArtifacts = sbtMissingArtifacts,
       status = None,
