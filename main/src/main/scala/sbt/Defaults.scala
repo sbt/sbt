@@ -2461,7 +2461,11 @@ trait BuildExtra extends BuildCommon with DefExtra {
 
   // public API
   /** Returns a vector of settings that create custom run input task. */
-  def fullRunInputTask(scoped: InputKey[Unit], config: Configuration, mainClass: String, baseArguments: String*): Vector[Setting[_]] =
+  def fullRunInputTask(scoped: InputKey[Unit], config: Configuration, mainClass: String, baseArguments: String*): Vector[Setting[_]] = {
+    // Use Def.inputTask with the `Def.spaceDelimited()` parser
+    def inputTask[T](f: TaskKey[Seq[String]] => Initialize[Task[T]]): Initialize[InputTask[T]] =
+      InputTask.apply(Def.value((s: State) => Def.spaceDelimited()))(f)
+
     Vector(
       scoped := (inputTask { result =>
         (initScoped(scoped.scopedKey, runnerInit)
@@ -2473,6 +2477,8 @@ trait BuildExtra extends BuildCommon with DefExtra {
           }
       }).evaluated
     ) ++ inTask(scoped)(forkOptions := forkOptionsTask.value)
+  }
+
   // public API
   /** Returns a vector of settings that create custom run task. */
   def fullRunTask(scoped: TaskKey[Unit], config: Configuration, mainClass: String, arguments: String*): Vector[Setting[_]] =
@@ -2505,11 +2511,8 @@ trait DefExtra {
   private[this] val ts: TaskSequential = new TaskSequential {}
   implicit def toTaskSequential(d: Def.type): TaskSequential = ts
 }
-trait BuildCommon {
-  @deprecated("Use Def.inputTask with the `Def.spaceDelimited()` parser.", "0.13.0")
-  def inputTask[T](f: TaskKey[Seq[String]] => Initialize[Task[T]]): Initialize[InputTask[T]] =
-    InputTask.apply(Def.value((s: State) => Def.spaceDelimited()))(f)
 
+trait BuildCommon {
   /**
    * Allows a String to be used where a `NameFilter` is expected.
    * Asterisks (`*`) in the string are interpreted as wildcards.

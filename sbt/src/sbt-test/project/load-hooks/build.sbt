@@ -11,14 +11,14 @@
   )
 }
 
-InputKey[Unit]("checkCount") := (inputTask { argsTask =>
-	(argsTask, state) map { (args, s) =>
-		def get(label: String) = s get AttributeKey[Int](label) getOrElse 0
-		val loadCount = get("load-count")
-		val unloadCount = get("unload-count")
-		val expectedLoad = args(0).toInt
-		val expectedUnload = args(1).toInt
-		assert(expectedLoad == loadCount, "Expected load count: " + expectedLoad + ", got: " + loadCount)
-		assert(expectedUnload == unloadCount, "Expected unload count: " + expectedUnload + ", got: " + unloadCount)
-	}
-}).evaluated
+InputKey[Unit]("checkCount") := {
+  val s = state.value
+  val args = Def.spaceDelimited().parsed
+  def get(label: String) = s get AttributeKey[Int](label) getOrElse 0
+  val loadCount = get("load-count")
+  val unloadCount = get("unload-count")
+  val expectedLoad = args(0).toInt
+  val expectedUnload = args(1).toInt
+  assert(expectedLoad == loadCount, s"Expected load count: $expectedLoad, got: $loadCount")
+  assert(expectedUnload == unloadCount, s"Expected unload count: $expectedUnload, got: $unloadCount")
+}
