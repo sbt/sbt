@@ -91,10 +91,6 @@ object InputTask {
       separate(p)(act)
     }
 
-  @deprecated("Use another InputTask constructor or the `Def.inputTask` macro.", "0.13.0")
-  def apply[I, T](p: State => Parser[I])(action: TaskKey[I] => Initialize[Task[T]]): Initialize[InputTask[T]] =
-    apply(Def.value(p))(action)
-
   /**
    * The proper solution is to have a Manifest context bound and accept slight source incompatibility,
    * The affected InputTask construction methods are all deprecated and so it is better to keep complete
