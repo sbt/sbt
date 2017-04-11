@@ -1,6 +1,6 @@
 import sbt.internal.librarymanagement.syntax._
 
-seq(externalIvySettings(), externalIvyFile())
+Seq(externalIvySettings(), externalIvyFile())
 
 TaskKey[Unit]("check") := {
 	val files = update.value.matching( moduleFilter(organization = "org.scalacheck", name = "scalacheck*", revision = "1.11.4") )

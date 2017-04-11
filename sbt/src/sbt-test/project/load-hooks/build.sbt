@@ -1,5 +1,3 @@
-
-
 {
   val loadCount = AttributeKey[Int]("load-count")
   val unloadCount = AttributeKey[Int]("unload-count")
@@ -7,9 +5,9 @@
     val previous = s get key getOrElse 0
     s.put(key, previous + 1)
   }
-  seq(
-	onLoad in Global ~= (f(loadCount) compose _),
-	onUnload in Global ~= (f(unloadCount) compose _)
+  Seq(
+    onLoad in Global ~= (f(loadCount) compose _),
+    onUnload in Global ~= (f(unloadCount) compose _)
   )
 }
 

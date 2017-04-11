@@ -2415,10 +2415,6 @@ trait BuildExtra extends BuildCommon with DefExtra {
       Seq(artLocal := artifact.value, taskLocal := taskDef.value, art, pkgd)
     }
 
-  // because this was commonly used, this might need to be kept longer than usual
-  @deprecated("In build.sbt files, this call can be removed.  In other cases, this can usually be replaced by Seq.", "0.13.0")
-  def seq(settings: Setting[_]*): SettingsDefinition = new Def.SettingList(settings)
-
   def externalIvySettings(file: Initialize[File] = inBase("ivysettings.xml"), addMultiResolver: Boolean = true): Setting[Task[IvyConfiguration]] =
     externalIvySettingsURI(file(_.toURI), addMultiResolver)
 
