@@ -16,7 +16,11 @@ lazy val root = (project in file(".")).
       val tests = (definedTests in Test).value
       assert(tests.size == 3)
       for (idx <- 0 until groups) yield
-        new Group(groupId(idx), tests, SubProcess(Seq("-Dgroup.prefix=" + groupPrefix(idx))))
+        new Group(
+          groupId(idx),
+          tests,
+          SubProcess(ForkOptions(runJVMOptions = Seq("-Dgroup.prefix=" + groupPrefix(idx))))
+        )
     },
     check := {
       val files =

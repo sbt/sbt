@@ -110,10 +110,6 @@ object Tests {
 
   /** Configures a group of tests to be forked in a new JVM with forking options specified by `config`. */
   final case class SubProcess(config: ForkOptions) extends TestRunPolicy
-  object SubProcess {
-    @deprecated("Construct SubProcess with a ForkOptions argument.", "0.13.0")
-    def apply(javaOptions: Seq[String]): SubProcess = SubProcess(ForkOptions(runJVMOptions = javaOptions))
-  }
 
   /** A named group of tests configured to run in the same JVM or be forked. */
   final case class Group(name: String, tests: Seq[TestDefinition], runPolicy: TestRunPolicy)
