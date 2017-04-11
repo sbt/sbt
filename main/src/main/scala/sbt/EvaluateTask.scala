@@ -127,23 +127,19 @@ object EvaluateTaskConfig {
     cancelStrategy: TaskCancellationStrategy,
     forceGarbageCollection: Boolean,
     minForcegcInterval: Duration
-  ): EvaluateTaskConfig = {
-    val r = restrictions
-    val check = checkCycles
-    val cs = cancelStrategy
-    val pr = progressReporter
-    val fgc = forceGarbageCollection
-    val mfi = minForcegcInterval
-    object SimpleEvaluateTaskConfig extends EvaluateTaskConfig {
-      def restrictions = r
-      def checkCycles = check
-      def progressReporter = pr
-      def cancelStrategy = cs
-      def forceGarbageCollection = fgc
-      def minForcegcInterval = mfi
-    }
-    SimpleEvaluateTaskConfig
-  }
+  ): EvaluateTaskConfig =
+    DefaultEvaluateTaskConfig(
+      restrictions, checkCycles, progressReporter, cancelStrategy, forceGarbageCollection, minForcegcInterval
+    )
+
+  private[this] case class DefaultEvaluateTaskConfig(
+    restrictions: Seq[Tags.Rule],
+    checkCycles: Boolean,
+    progressReporter: ExecuteProgress[Task],
+    cancelStrategy: TaskCancellationStrategy,
+    forceGarbageCollection: Boolean,
+    minForcegcInterval: Duration
+  ) extends EvaluateTaskConfig
 }
 
 final case class PluginData(
