@@ -4,7 +4,7 @@ addSbtPlugin("com.typesafe.sbtscalariform" % "sbtscalariform" % "0.3.0", sbtVers
 
 scalaBinaryVersion := "2.9.1"
 
-resolvers += Classpaths.typesafeResolver
+resolvers += Classpaths.typesafeReleases
 
 dependencyOverrides := Set("com.typesafe.sbtscalariform" % "sbtscalariform" % "0.3.1")
 

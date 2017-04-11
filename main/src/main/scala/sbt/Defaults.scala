@@ -2192,16 +2192,9 @@ object Classpaths {
     flatten(defaultConfiguration in p get data) getOrElse Configurations.Default
   def flatten[T](o: Option[Option[T]]): Option[T] = o flatMap idFun
 
-  val sbtIvySnapshots = Resolver.sbtIvyRepo("snapshots")
-
-  lazy val typesafeReleases = Resolver.typesafeIvyRepo("releases")
-
-  @deprecated("Use `typesafeReleases` instead", "0.12.0")
-  lazy val typesafeResolver = typesafeReleases
-  @deprecated("Use `Resolver.typesafeIvyRepo` instead", "0.12.0")
-  def typesafeRepo(status: String) = Resolver.typesafeIvyRepo(status)
-
-  lazy val sbtPluginReleases = Resolver.sbtPluginRepo("releases")
+  val sbtIvySnapshots: URLRepository = Resolver.sbtIvyRepo("snapshots")
+  val typesafeReleases: URLRepository = Resolver.typesafeIvyRepo("releases")
+  val sbtPluginReleases: URLRepository = Resolver.sbtPluginRepo("releases")
 
   def modifyForPlugin(plugin: Boolean, dep: ModuleID): ModuleID =
     if (plugin) dep.withConfigurations(Some(Provided.name)) else dep
