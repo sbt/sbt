@@ -342,9 +342,9 @@ object Defaults extends BuildCommon {
   ))
 
   lazy val projectTasks: Seq[Setting[_]] = Seq(
-    cleanFiles := Seq(managedDirectory.value, target.value),
-    cleanKeepFiles := historyPath.value.toList,
-    clean := doClean(cleanFiles.value, cleanKeepFiles.value),
+    cleanFiles := cleanFilesTask.value,
+    cleanKeepFiles := historyPath.value.toVector,
+    clean := IO.delete(cleanFiles.value),
     consoleProject := consoleProjectTask.value,
     watchTransitiveSources := watchTransitiveSourcesTask.value,
     watch := watchSetting.value
@@ -775,15 +775,23 @@ object Defaults extends BuildCommon {
     pickMainClass(classes)
   }
 
-  def doClean(clean: Seq[File], preserve: Seq[File]): Unit =
-    IO.withTemporaryDirectory { temp =>
-      val (dirs, files) = preserve.filter(_.exists).flatMap(_.***.get).partition(_.isDirectory)
-      val mappings = files.zipWithIndex map { case (f, i) => (f, new File(temp, i.toHexString)) }
-      IO.move(mappings)
-      IO.delete(clean)
-      IO.createDirectories(dirs) // recreate empty directories
-      IO.move(mappings.map(_.swap))
+  /** Implements `cleanFiles` task. */
+  def cleanFilesTask: Initialize[Task[Vector[File]]] =
+    Def.task {
+      val filesAndDirs = Vector(managedDirectory.value, target.value)
+      val preserve = cleanKeepFiles.value
+      val (dirs, fs) = filesAndDirs.filter(_.exists).partition(_.isDirectory)
+      val preserveSet = preserve.filter(_.exists).toSet
+      // performance reasons, only the direct items under `filesAndDirs` are allowed to be preserved.
+      val dirItems = dirs flatMap { _.*("*").get }
+      (preserveSet diff dirItems.toSet) match {
+        case xs if xs.isEmpty => ()
+        case xs               => sys.error(s"cleanKeepFiles contains directory/file that are not directly under cleanFiles: $xs")
+      }
+      val toClean = (dirItems filterNot { preserveSet(_) }) ++ fs
+      toClean
     }
+
   def runMainTask(classpath: Initialize[Task[Classpath]], scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[Unit]] =
     {
       import DefaultParsers._
