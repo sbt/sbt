@@ -13,6 +13,7 @@ object Tags {
   val Test = Tag("test")
   val Update = Tag("update")
   val Publish = Tag("publish")
+  val Clean = Tag("clean")
 
   val CPU = Tag("cpu")
   val Network = Tag("network")

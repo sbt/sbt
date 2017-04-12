@@ -344,7 +344,7 @@ object Defaults extends BuildCommon {
   lazy val projectTasks: Seq[Setting[_]] = Seq(
     cleanFiles := cleanFilesTask.value,
     cleanKeepFiles := historyPath.value.toVector,
-    clean := IO.delete(cleanFiles.value),
+    clean := (Def.task { IO.delete(cleanFiles.value) } tag (Tags.Clean)).value,
     consoleProject := consoleProjectTask.value,
     watchTransitiveSources := watchTransitiveSourcesTask.value,
     watch := watchSetting.value
@@ -647,10 +647,15 @@ object Defaults extends BuildCommon {
   def detectTests: Initialize[Task[Seq[TestDefinition]]] = (loadedTestFrameworks, compile, streams) map { (frameworkMap, analysis, s) =>
     Tests.discover(frameworkMap.values.toList, analysis, s.log)._1
   }
-  def defaultRestrictions: Initialize[Seq[Tags.Rule]] = parallelExecution { par =>
-    val max = EvaluateTask.SystemProcessors
-    Tags.limitAll(if (par) max else 1) :: Tags.limit(Tags.ForkedTestGroup, 1) :: Nil
-  }
+  def defaultRestrictions: Initialize[Seq[Tags.Rule]] =
+    Def.setting {
+      val par = parallelExecution.value
+      val max = EvaluateTask.SystemProcessors
+      Tags.limitAll(if (par) max else 1) ::
+        Tags.limit(Tags.ForkedTestGroup, 1) ::
+        Tags.exclusiveGroup(Tags.Clean) ::
+        Nil
+    }
 
   lazy val packageBase: Seq[Setting[_]] = Seq(
     artifact := Artifact(moduleName.value)
