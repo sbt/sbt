@@ -193,7 +193,7 @@ checkJava() {
 }
 
 copyRt() {
-  if [[ "$java_version" > "8" ]]; then
+  if [[ "$java_version" == "9" ]]; then
     rtexport=$(rt_export_file)
     java9_ext=$("$java_cmd" ${JAVA_OPTS} ${SBT_OPTS:-$default_sbt_opts} ${java_args[@]} \
       -jar "$rtexport" --rt-ext-dir)
