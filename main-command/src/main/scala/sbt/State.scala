@@ -9,6 +9,7 @@ import sbt.util.Logger
 import sbt.internal.util.{ AttributeKey, AttributeMap, ErrorHandling, ExitHook, ExitHooks, GlobalLogging }
 import sbt.internal.util.complete.HistoryCommands
 import sbt.internal.inc.classpath.ClassLoaderCache
+import sbt.BasicCommandStrings.Shell
 
 /**
  * Data structure representing all command execution information.
@@ -203,8 +204,9 @@ object State {
       }
       def isInteractive = System.console() != null
       def hasInput = System.console().reader().ready()
+      def hasShellCmd = s.definedCommands exists { case c: SimpleCommand => c.name == Shell; case _ => false }
       s.remainingCommands match {
-        case List()           => if (isInteractive && hasInput) doX(Exec("shell", s.source), Nil) else exit(true)
+        case List()           => if (isInteractive && hasInput && hasShellCmd) doX(Exec(Shell, s.source), Nil) else exit(true)
         case List(x, xs @ _*) => doX(x, xs.toList)
       }
     }

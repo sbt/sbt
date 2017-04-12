@@ -44,6 +44,9 @@ import java.net.URI
 import java.util.Locale
 import scala.util.control.NonFatal
 
+import BasicCommandStrings.{ Shell, Server }
+import CommandStrings.BootCommand
+
 /** This class is the entry point for sbt. */
 final class xMain extends xsbti.AppMain {
   def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
@@ -55,11 +58,11 @@ final class xMain extends xsbti.AppMain {
       if (!java.lang.Boolean.getBoolean("sbt.skip.version.write")) {
         setSbtVersion(configuration.baseDirectory(), configuration.provider().id().version())
       }
-      runManaged(initialState(
-        configuration,
+      val state = initialState(configuration,
         Seq(defaults, early),
-        runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
-      ))
+        runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil)
+      notifyUsersAboutShell(state)
+      runManaged(state)
     }
 
   private val sbtVersionRegex = """sbt\.version\s*=.*""".r
@@ -90,6 +93,23 @@ final class xMain extends xsbti.AppMain {
       }
     }
   }
+
+  private def isInteractive = System.console() != null
+  private def hasCommand(state: State, cmd: String): Boolean =
+    (state.remainingCommands find { x => x.commandLine == cmd }).isDefined
+
+  /**
+   * The "boot" command adds "iflast shell" ("if last shell")
+   * which basically means it falls back to shell if there are no further commands
+   */
+  private def endsWithBoot(state: State) = state.remainingCommands.lastOption exists (_.commandLine == BootCommand)
+
+  private def notifyUsersAboutShell(state: State) =
+    if (isInteractive && !hasCommand(state, Shell) && !hasCommand(state, Server) && !endsWithBoot(state)) {
+      state.log warn "Executing in batch mode."
+      state.log warn "  For better performance, hit [ENTER] to switch to interactive mode, or"
+      state.log warn "  consider launching sbt without any commands, or explicitly passing 'shell'"
+    }
 }
 
 final class ScriptMain extends xsbti.AppMain {
