@@ -61,8 +61,6 @@ object BasicCommands {
       System.out.println(message)
       s
     }
-  @deprecated("Use Help.moreMessage", "0.13.0")
-  def moreHelp(more: Seq[String]): String = Help.moreMessage(more)
 
   def completionsCommand = Command.make(CompletionsCommand, CompletionsBrief, CompletionsDetailed)(completionsParser)
   def completionsParser(state: State) =

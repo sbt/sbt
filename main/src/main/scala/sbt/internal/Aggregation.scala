@@ -7,9 +7,8 @@ package internal
 import Def.ScopedKey
 import Keys.{ showSuccess, showTiming, timingFormat }
 import sbt.internal.util.complete.Parser
-import sbt.internal.util.{ Dag, HList, Relation, Settings, Util }
+import sbt.internal.util.{ Dag, HList, Settings, Util }
 import sbt.util.{ Logger, Show }
-import java.net.URI
 import Parser.{ seq, failure, success }
 import std.Transform.DummyTaskMap
 
@@ -194,8 +193,4 @@ object Aggregation {
 
   def aggregationEnabled(key: ScopedKey[_], data: Settings[Scope]): Boolean =
     Keys.aggregate in Scope.fillTaskAxis(key.scope, key.key) get data getOrElse true
-
-  @deprecated("Use BuildUtil.aggregationRelation", "0.13.0")
-  def relation(units: Map[URI, LoadedBuildUnit]): Relation[ProjectRef, ProjectRef] =
-    BuildUtil.aggregationRelation(units)
 }

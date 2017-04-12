@@ -69,10 +69,12 @@ sealed trait ProjectDefinition[PR <: ProjectReference] {
   private[sbt] def autoPlugins: Seq[AutoPlugin]
 
   override final def hashCode: Int = id.hashCode ^ base.hashCode ^ getClass.hashCode
+
   override final def equals(o: Any) = o match {
     case p: ProjectDefinition[_] => p.getClass == this.getClass && p.id == id && p.base == base
     case _                       => false
   }
+
   override def toString =
     {
       val agg = ifNonEmpty("aggregate", aggregate)
@@ -82,8 +84,10 @@ sealed trait ProjectDefinition[PR <: ProjectReference] {
       val fields = s"id $id" :: s"base: $base" :: agg ::: dep ::: conf ::: (s"plugins: List($plugins)" :: autos)
       s"Project(${fields.mkString(", ")})"
     }
+
   private[this] def ifNonEmpty[T](label: String, ts: Iterable[T]): List[String] = if (ts.isEmpty) Nil else s"$label: $ts" :: Nil
 }
+
 sealed trait Project extends ProjectDefinition[ProjectReference] {
   private[sbt] def settingsEval: Eval[Seq[Def.Setting[_]]]
   private[sbt] def aggregateEval: Eval[Seq[ProjectReference]]
@@ -119,6 +123,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
         settingsEval,
         configurations, plugins, autoPlugins, projectOrigin)
     }
+
   def resolveBuild(resolveRef: ProjectReference => ProjectReference): Project =
     {
       def resolveRefs(prs: Seq[ProjectReference]) = prs map resolveRef
@@ -224,6 +229,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference] {
     unresolved(id, base, aggregateEval = aggregateEval, dependenciesEval = dependenciesEval, delegatesEval = delegatesEval, settingsEval, configurations, plugins, autoPlugins, origin)
   }
 }
+
 sealed trait ResolvedProject extends ProjectDefinition[ProjectRef] {
   /** The [[AutoPlugin]]s enabled for this project as computed from [[plugins]].*/
   def autoPlugins: Seq[AutoPlugin]
@@ -546,7 +552,6 @@ object Project extends ProjectExtra {
   def reverseDependencies(cMap: Map[ScopedKey[_], Flattened], scoped: ScopedKey[_]): Iterable[ScopedKey[_]] =
     for ((key, compiled) <- cMap; dep <- compiled.dependencies if dep == scoped) yield key
 
-  //@deprecated("Use SettingCompletions.setAll when available.", "0.13.0")
   def setAll(extracted: Extracted, settings: Seq[Def.Setting[_]]): SessionSettings =
     SettingCompletions.setAll(extracted, settings).session
 
@@ -609,14 +614,19 @@ object Project extends ProjectExtra {
     import SessionVar.{ persistAndSet, resolveContext, set, transform => tx }
 
     def updateState(f: (State, S) => State): Def.Initialize[Task[S]] = i(t => tx(t, f))
-    def storeAs(key: TaskKey[S])(implicit f: JsonFormat[S]): Def.Initialize[Task[S]] = (Keys.resolvedScoped, i) { (scoped, task) =>
-      tx(task, (state, value) => persistAndSet(resolveContext(key, scoped.scope, state), state, value)(f))
-    }
+
+    def storeAs(key: TaskKey[S])(implicit f: JsonFormat[S]): Def.Initialize[Task[S]] =
+      (Keys.resolvedScoped, i)((scoped, task) =>
+        tx(task, (state, value) => persistAndSet(resolveContext(key, scoped.scope, state), state, value)(f))
+      )
+
     def keepAs(key: TaskKey[S]): Def.Initialize[Task[S]] =
-      (i, Keys.resolvedScoped)((t, scoped) => tx(t, (state, value) => set(resolveContext(key, scoped.scope, state), state, value)))
+      (i, Keys.resolvedScoped)((t, scoped) =>
+        tx(t, (state, value) => set(resolveContext(key, scoped.scope, state), state, value))
+      )
   }
 
-  import reflect.macros._
+  import scala.reflect.macros._
 
   def projectMacroImpl(c: blackbox.Context): c.Expr[Project] =
     {
@@ -631,44 +641,62 @@ private[sbt] trait GeneratedRootProject
 
 trait ProjectExtra0 {
   implicit def wrapProjectReferenceSeqEval[T](rs: => Seq[T])(implicit ev: T => ProjectReference): Seq[Eval[ProjectReference]] =
-    rs map { r => Eval.later(r: ProjectReference) }
+    rs map (r => Eval.later(r: ProjectReference))
 }
 
 trait ProjectExtra extends ProjectExtra0 {
   implicit def classpathDependencyEval[T](p: => T)(implicit ev: T => ClasspathDep[ProjectReference]): Eval[ClasspathDep[ProjectReference]] =
     Eval.later(p: ClasspathDep[ProjectReference])
+
   implicit def wrapProjectReferenceEval[T](ref: => T)(implicit ev: T => ProjectReference): Eval[ProjectReference] =
     Eval.later(ref: ProjectReference)
 
-  implicit def wrapSettingDefinitionEval[T](d: => T)(implicit ev: T => Def.SettingsDefinition): Eval[Def.SettingsDefinition] = Eval.later(d)
-  implicit def wrapSettingSeqEval(ss: => Seq[Setting[_]]): Eval[Def.SettingsDefinition] = Eval.later(new Def.SettingList(ss))
+  implicit def wrapSettingDefinitionEval[T](d: => T)(implicit ev: T => Def.SettingsDefinition): Eval[Def.SettingsDefinition] =
+    Eval.later(d)
 
-  implicit def configDependencyConstructor[T](p: T)(implicit ev: T => ProjectReference): Constructor = new Constructor(p)
-  implicit def classpathDependency[T](p: T)(implicit ev: T => ProjectReference): ClasspathDep[ProjectReference] = new ClasspathDependency(p, None)
+  implicit def wrapSettingSeqEval(ss: => Seq[Setting[_]]): Eval[Def.SettingsDefinition] =
+    Eval.later(new Def.SettingList(ss))
+
+  implicit def configDependencyConstructor[T](p: T)(implicit ev: T => ProjectReference): Constructor =
+    new Constructor(p)
+
+  implicit def classpathDependency[T](p: T)(implicit ev: T => ProjectReference): ClasspathDep[ProjectReference] =
+    ClasspathDependency(p, None)
 
   // These used to be in Project so that they didn't need to get imported (due to Initialize being nested in Project).
   // Moving Initialize and other settings types to Def and decoupling Project, Def, and Structure means these go here for now
-  implicit def richInitializeTask[T](init: Initialize[Task[T]]): Scoped.RichInitializeTask[T] = new Scoped.RichInitializeTask(init)
-  implicit def richInitializeInputTask[T](init: Initialize[InputTask[T]]): Scoped.RichInitializeInputTask[T] = new Scoped.RichInitializeInputTask(init)
+  implicit def richInitializeTask[T](init: Initialize[Task[T]]): Scoped.RichInitializeTask[T] =
+    new Scoped.RichInitializeTask(init)
+
+  implicit def richInitializeInputTask[T](init: Initialize[InputTask[T]]): Scoped.RichInitializeInputTask[T] =
+    new Scoped.RichInitializeInputTask(init)
+
   implicit def richInitialize[T](i: Initialize[T]): Scoped.RichInitialize[T] = new Scoped.RichInitialize[T](i)
 
-  implicit def richTaskSessionVar[T](init: Initialize[Task[T]]): Project.RichTaskSessionVar[T] = new Project.RichTaskSessionVar(init)
+  implicit def richTaskSessionVar[T](init: Initialize[Task[T]]): Project.RichTaskSessionVar[T] =
+    new Project.RichTaskSessionVar(init)
 
   def inThisBuild(ss: Seq[Setting[_]]): Seq[Setting[_]] =
     inScope(ThisScope.copy(project = Select(ThisBuild)))(ss)
+
   def inConfig(conf: Configuration)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
     inScope(ThisScope.copy(config = Select(conf)))((configuration :== conf) +: ss)
+
   def inTask(t: Scoped)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
     inScope(ThisScope.copy(task = Select(t.key)))(ss)
+
   def inScope(scope: Scope)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
     Project.transform(Scope.replaceThis(scope), ss)
 
   private[sbt] def inThisBuild[T](i: Initialize[T]): Initialize[T] =
     inScope(ThisScope.copy(project = Select(ThisBuild)), i)
+
   private[sbt] def inConfig[T](conf: Configuration, i: Initialize[T]): Initialize[T] =
     inScope(ThisScope.copy(config = Select(conf)), i)
+
   private[sbt] def inTask[T](t: Scoped, i: Initialize[T]): Initialize[T] =
     inScope(ThisScope.copy(task = Select(t.key)), i)
+
   private[sbt] def inScope[T](scope: Scope, i: Initialize[T]): Initialize[T] =
     i mapReferenced Project.mapScope(Scope.replaceThis(scope))
 

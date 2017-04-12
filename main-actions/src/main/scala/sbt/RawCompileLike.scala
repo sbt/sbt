@@ -17,7 +17,6 @@ import sbt.internal.util.{ CacheStoreFactory, FilesInfo, HashFileInfo, HNil, Mod
 import sbt.internal.util.FileInfo.{ exists, hash, lastModified }
 import xsbti.compile.ClasspathOptions
 
-import sbt.util.Logger
 import sbt.internal.util.ManagedLogger
 
 object RawCompileLike {
