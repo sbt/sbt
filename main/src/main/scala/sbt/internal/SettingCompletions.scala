@@ -116,7 +116,7 @@ private[sbt] object SettingCompletions {
       val full = for {
         defineKey <- scopedKeyParser(keyMap, settings, context)
         a <- assign(defineKey)
-        deps <- valueParser(defineKey, a, inputScopedKey(keyFilter(defineKey.key)))
+        _ <- valueParser(defineKey, a, inputScopedKey(keyFilter(defineKey.key)))
       } yield () // parser is currently only for completion and the parsed data structures are not used
 
       matched(full) | any.+.string

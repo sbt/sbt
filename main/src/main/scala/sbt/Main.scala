@@ -4,28 +4,14 @@
 package sbt
 
 import sbt.internal.{
-  Act,
-  Aggregation,
-  BuildStructure,
-  BuildUnit,
-  CommandExchange,
-  CommandStrings,
-  EvaluateConfigurations,
-  Inspect,
-  IvyConsole,
-  Load,
-  LoadedBuildUnit,
-  Output,
-  PluginsDebug,
-  ProjectNavigation,
-  Script,
-  SessionSettings,
-  SetResult,
-  SettingCompletions,
-  LogManager,
-  DefaultBackgroundJobService
+  Act, Aggregation, BuildStructure, BuildUnit, CommandExchange, CommandStrings,
+  EvaluateConfigurations, Inspect, IvyConsole, Load, LoadedBuildUnit, Output,
+  PluginsDebug, ProjectNavigation, Script, SessionSettings, SetResult,
+  SettingCompletions, LogManager, DefaultBackgroundJobService
 }
-import sbt.internal.util.{ AttributeKey, AttributeMap, ConsoleOut, GlobalLogging, LineRange, MainAppender, SimpleReader, Types }
+import sbt.internal.util.{
+  AttributeKey, AttributeMap, ConsoleOut, GlobalLogging, LineRange, MainAppender, SimpleReader, Types
+}
 import sbt.util.{ Level, Logger }
 
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
@@ -124,6 +110,7 @@ final class ScriptMain extends xsbti.AppMain {
       ))
     }
 }
+
 final class ConsoleMain extends xsbti.AppMain {
   def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
     runManaged(initialState(
@@ -175,11 +162,17 @@ object BuiltinCommands {
 
   def ConsoleCommands: Seq[Command] = Seq(ignore, exit, IvyConsole.command, setLogLevel, early, act, nop)
   def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, setLogLevel, early, act, nop)
-  def DefaultCommands: Seq[Command] = Seq(ignore, help, completionsCommand, about, tasks, settingsCommand, loadProject, templateCommand,
-    projects, project, reboot, read, history, set, sessionCommand, inspect, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
-    Cross.crossRestoreSession, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, setLogLevel, plugin, plugins,
-    ifLast, multi, shell, server, BasicCommands.client, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, early, initialize, act) ++
-    compatCommands
+
+  def DefaultCommands: Seq[Command] = Seq(
+    ignore, help, completionsCommand, about, tasks, settingsCommand, loadProject,
+    templateCommand, projects, project, reboot, read, history, set, sessionCommand,
+    inspect, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
+    Cross.crossRestoreSession, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure,
+    setLogLevel, plugin, plugins, ifLast, multi, shell, server, BasicCommands.client,
+    continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit,
+    early, initialize, act
+  ) ++ compatCommands
+
   def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
 
   def boot = Command.make(BootCommand)(bootParser)
@@ -215,6 +208,7 @@ object BuiltinCommands {
       val allPluginNames = e.structure.units.values.flatMap(u => list(u.unit)).toSeq.distinct
       if (allPluginNames.isEmpty) "" else allPluginNames.mkString("Available Plugins: ", ", ", "")
     }
+
   def aboutScala(s: State, e: Extracted): String =
     {
       val scalaVersion = e.getOpt(Keys.scalaVersion)
@@ -228,6 +222,7 @@ object BuiltinCommands {
         case (None, None, None)         => ""
       }
     }
+
   def aboutString(s: State): String =
     {
       val (name, ver, scalaVer, about) = (sbtName(s), sbtVersion(s), scalaVersion(s), aboutProject(s))
@@ -236,14 +231,22 @@ object BuiltinCommands {
 			|%s, %s plugins, and build definitions are using Scala %s
 			|""".stripMargin.format(name, ver, about, name, name, scalaVer)
     }
-  private[this] def selectScalaVersion(sv: Option[String], si: ScalaInstance): String = sv match { case Some(si.version) => si.version; case _ => si.actualVersion }
+
+  private[this] def selectScalaVersion(sv: Option[String], si: ScalaInstance): String =
+    sv match {
+      case Some(si.version) => si.version
+      case _                => si.actualVersion
+    }
+
   private[this] def quiet[T](t: => T): Option[T] = try { Some(t) } catch { case e: Exception => None }
 
-  def settingsCommand = showSettingLike(SettingsCommand, settingsPreamble, KeyRanks.MainSettingCutoff, key => !isTask(key.manifest))
+  def settingsCommand: Command =
+    showSettingLike(SettingsCommand, settingsPreamble, KeyRanks.MainSettingCutoff, key => !isTask(key.manifest))
 
-  def tasks = showSettingLike(TasksCommand, tasksPreamble, KeyRanks.MainTaskCutoff, key => isTask(key.manifest))
+  def tasks: Command =
+    showSettingLike(TasksCommand, tasksPreamble, KeyRanks.MainTaskCutoff, key => isTask(key.manifest))
 
-  def showSettingLike(command: String, preamble: String, cutoff: Int, keep: AttributeKey[_] => Boolean) =
+  def showSettingLike(command: String, preamble: String, cutoff: Int, keep: AttributeKey[_] => Boolean): Command =
     Command(command, settingsBrief(command), settingsDetailed(command))(showSettingParser(keep)) {
       case (s: State, (verbosity: Int, selected: Option[String])) =>
         if (selected.isEmpty) System.out.println(preamble)
@@ -304,20 +307,22 @@ object BuiltinCommands {
     s.copy(definedCommands = DefaultCommands)
   }
 
-  def initialize = Command.command(InitCommand) { s =>
+  def initialize: Command = Command.command(InitCommand) { s =>
     /*"load-commands -base ~/.sbt/commands" :: */ readLines(readable(sbtRCs(s))).toList ::: s
   }
 
-  def eval = Command.single(EvalCommand, Help.more(EvalCommand, evalDetailed)) { (s, arg) =>
+  def eval: Command = Command.single(EvalCommand, Help.more(EvalCommand, evalDetailed)) { (s, arg) =>
     if (Project.isProjectLoaded(s)) loadedEval(s, arg) else rawEval(s, arg)
     s
   }
+
   private[this] def loadedEval(s: State, arg: String): Unit = {
     val extracted = Project extract s
     import extracted._
     val result = session.currentEval().eval(arg, srcName = "<eval>", imports = autoImports(extracted))
     s.log.info(s"ans: ${result.tpe} = ${result.getValue(currentLoader)}")
   }
+
   private[this] def rawEval(s: State, arg: String): Unit = {
     val app = s.configuration.provider
     val classpath = app.mainClasspath ++ app.scalaProvider.jars
@@ -325,15 +330,17 @@ object BuiltinCommands {
     s.log.info(s"ans: ${result.tpe} = ${result.getValue(app.loader)}")
   }
 
-  def sessionCommand: Command = Command.make(SessionCommand, sessionBrief, SessionSettings.Help)(SessionSettings.command)
+  def sessionCommand: Command =
+    Command.make(SessionCommand, sessionBrief, SessionSettings.Help)(SessionSettings.command)
 
   def reapply(newSession: SessionSettings, structure: BuildStructure, s: State): State =
     {
       s.log.info("Reapplying settings...")
-      // Here, for correct behavior, we also need to re-inject a settings logger, as we'll be re-evaluating settings.
+      // For correct behavior, we also need to re-inject a settings logger, as we'll be re-evaluating settings
       val loggerInject = LogManager.settingsLogger(s)
       val withLogger = newSession.appendRaw(loggerInject :: Nil)
-      val newStructure = Load.reapply(withLogger.mergeSettings, structure)(Project.showContextKey(newSession, structure))
+      val show = Project.showContextKey(newSession, structure)
+      val newStructure = Load.reapply(withLogger.mergeSettings, structure)(show)
       Project.setProject(newSession, newStructure, s)
     }
 
@@ -354,7 +361,9 @@ object BuiltinCommands {
         arg,
         LineRange(0, 0)
       )(cl)
-      val setResult = if (all) SettingCompletions.setAll(extracted, settings) else SettingCompletions.setThis(s, extracted, settings, arg)
+      val setResult =
+        if (all) SettingCompletions.setAll(extracted, settings)
+        else SettingCompletions.setThis(s, extracted, settings, arg)
       s.log.info(setResult.quietSummary)
       s.log.debug(setResult.verboseSummary)
       reapply(setResult.session, structure, s)
@@ -369,7 +378,7 @@ object BuiltinCommands {
       s
   }
 
-  def lastGrep = Command(LastGrepCommand, lastGrepBrief, lastGrepDetailed)(lastGrepParser) {
+  def lastGrep: Command = Command(LastGrepCommand, lastGrepBrief, lastGrepDetailed)(lastGrepParser) {
     case (s, (pattern, Some(sks))) =>
       val (str, _, display) = extractLast(s)
       Output.lastGrep(sks, str.streams(s), pattern, printLast(s))(display)
@@ -469,32 +478,38 @@ object BuiltinCommands {
       for (id <- build.defined.keys.toSeq.sorted) log.info("\t" + prefix(id) + id)
     }
 
-  def act = Command.customHelp(Act.actParser, actHelp)
-  def actHelp = (s: State) => CommandStrings.showHelp ++ CommandStrings.multiTaskHelp ++ keysHelp(s)
+  def act: Command = Command.customHelp(Act.actParser, actHelp)
+  def actHelp: State => Help = s => CommandStrings.showHelp ++ CommandStrings.multiTaskHelp ++ keysHelp(s)
+
   def keysHelp(s: State): Help =
     if (Project.isProjectLoaded(s))
       Help.detailOnly(taskDetail(allTaskAndSettingKeys(s)))
     else
       Help.empty
-  def plugins = Command.command(PluginsCommand, pluginsBrief, pluginsDetailed) { s =>
+
+  def plugins: Command = Command.command(PluginsCommand, pluginsBrief, pluginsDetailed) { s =>
     val helpString = PluginsDebug.helpAll(s)
     System.out.println(helpString)
     s
   }
+
   val pluginParser: State => Parser[AutoPlugin] = s => {
     val autoPlugins: Map[String, AutoPlugin] = PluginsDebug.autoPluginMap(s)
     token(Space) ~> Act.knownPluginParser(autoPlugins, "plugin")
   }
-  def plugin = Command(PluginCommand)(pluginParser) { (s, plugin) =>
+
+  def plugin: Command = Command(PluginCommand)(pluginParser) { (s, plugin) =>
     val helpString = PluginsDebug.help(plugin, s)
     System.out.println(helpString)
     s
   }
 
-  def projects = Command(ProjectsCommand, (ProjectsCommand, projectsBrief), projectsDetailed)(s => projectsParser(s).?) {
-    case (s, Some(modifyBuilds)) => transformExtraBuilds(s, modifyBuilds)
-    case (s, None)               => showProjects(s); s
-  }
+  def projects: Command =
+    Command(ProjectsCommand, (ProjectsCommand, projectsBrief), projectsDetailed)(s => projectsParser(s).?) {
+      case (s, Some(modifyBuilds)) => transformExtraBuilds(s, modifyBuilds)
+      case (s, None)               => showProjects(s); s
+    }
+
   def showProjects(s: State): Unit = {
     val extracted = Project extract s
     import extracted._
@@ -502,6 +517,7 @@ object BuiltinCommands {
     listBuild(curi, structure.units(curi), true, cid, s.log)
     for ((uri, build) <- structure.units if curi != uri) listBuild(uri, build, false, cid, s.log)
   }
+
   def transformExtraBuilds(s: State, f: List[URI] => List[URI]): State =
     {
       val original = Project.extraBuilds(s)
@@ -553,11 +569,11 @@ object BuiltinCommands {
       Nil
 
   def loadProject: Command =
-    Command(LoadProject, LoadProjectBrief, LoadProjectDetailed)(loadProjectParser) { (s, arg) =>
+    Command(LoadProject, LoadProjectBrief, LoadProjectDetailed)(loadProjectParser)((s, arg) =>
       loadProjectCommands(arg) ::: s
-    }
+    )
 
-  private[this] def loadProjectParser = (s: State) => matched(Project.loadActionParser)
+  private[this] def loadProjectParser: State => Parser[String] = _ => matched(Project.loadActionParser)
   private[this] def loadProjectCommand(command: String, arg: String): String = s"$command $arg".trim
 
   def loadProjectImpl: Command = Command(LoadProjectImpl)(_ => Project.loadActionParser)(doLoadProject)

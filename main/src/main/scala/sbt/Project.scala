@@ -361,8 +361,10 @@ object Project extends ProjectExtra {
 
   def getProjectForReference(ref: Reference, structure: BuildStructure): Option[ResolvedProject] =
     ref match { case pr: ProjectRef => getProject(pr, structure); case _ => None }
+
   def getProject(ref: ProjectRef, structure: BuildStructure): Option[ResolvedProject] = getProject(ref, structure.units)
   def getProject(ref: ProjectRef, structure: LoadedBuild): Option[ResolvedProject] = getProject(ref, structure.units)
+
   def getProject(ref: ProjectRef, units: Map[URI, LoadedBuildUnit]): Option[ResolvedProject] =
     (units get ref.build).flatMap(_.defined get ref.project)
 
@@ -371,6 +373,7 @@ object Project extends ProjectExtra {
       val previousOnUnload = orIdentity(s get Keys.onUnload.key)
       previousOnUnload(s.runExitHooks())
     }
+
   def setProject(session: SessionSettings, structure: BuildStructure, s: State): State =
     {
       val unloaded = runUnloadHooks(s)
@@ -386,6 +389,7 @@ object Project extends ProjectExtra {
   def getHooks(data: Settings[Scope]): (State => State, State => State) = (getHook(Keys.onLoad, data), getHook(Keys.onUnload, data))
 
   def current(state: State): ProjectRef = session(state).current
+
   def updateCurrent(s: State): State =
     {
       val structure = Project.structure(s)
@@ -410,6 +414,7 @@ object Project extends ProjectExtra {
         .put(templateResolverInfos.key, trs)
       s.copy(attributes = setCond(shellPrompt.key, prompt, newAttrs), definedCommands = newDefinedCommands)
     }
+
   def setCond[T](key: AttributeKey[T], vopt: Option[T], attributes: AttributeMap): AttributeMap =
     vopt match { case Some(v) => attributes.put(key, v); case None => attributes.remove(key) }
 
@@ -528,20 +533,21 @@ object Project extends ProjectExtra {
   def relation(structure: BuildStructure, actual: Boolean)(implicit display: Show[ScopedKey[_]]): Relation[ScopedKey[_], ScopedKey[_]] =
     relation(structure.settings, actual)(structure.delegates, structure.scopeLocal, display)
 
-  private[sbt] def relation(settings: Seq[Def.Setting[_]], actual: Boolean)(implicit delegates: Scope => Seq[Scope], scopeLocal: Def.ScopeLocal, display: Show[ScopedKey[_]]): Relation[ScopedKey[_], ScopedKey[_]] =
+  private[sbt] def relation(settings: Seq[Def.Setting[_]], actual: Boolean)(
+      implicit delegates: Scope => Seq[Scope], scopeLocal: Def.ScopeLocal, display: Show[ScopedKey[_]]
+  ): Relation[ScopedKey[_], ScopedKey[_]] =
     {
-      type Rel = Relation[ScopedKey[_], ScopedKey[_]]
       val cMap = Def.flattenLocals(Def.compiled(settings, actual))
-      ((Relation.empty: Rel) /: cMap) {
-        case (r, (key, value)) =>
-          r + (key, value.dependencies)
-      }
+      val emptyRelation = Relation.empty[ScopedKey[_], ScopedKey[_]]
+      (emptyRelation /: cMap) { case (r, (key, value)) => r + (key, value.dependencies) }
     }
 
   def showDefinitions(key: AttributeKey[_], defs: Seq[Scope])(implicit display: Show[ScopedKey[_]]): String =
     showKeys(defs.map(scope => ScopedKey(scope, key)))
+
   def showUses(defs: Seq[ScopedKey[_]])(implicit display: Show[ScopedKey[_]]): String =
     showKeys(defs)
+
   private[this] def showKeys(s: Seq[ScopedKey[_]])(implicit display: Show[ScopedKey[_]]): String =
     s.map(display.show).sorted.mkString("\n\t", "\n\t", "\n\n")
 
@@ -575,20 +581,24 @@ object Project extends ProjectExtra {
   def projectReturn(s: State): List[File] = getOrNil(s, ProjectReturn)
   def inPluginProject(s: State): Boolean = projectReturn(s).length > 1
   def setProjectReturn(s: State, pr: List[File]): State = s.copy(attributes = s.attributes.put(ProjectReturn, pr))
-  def loadAction(s: State, action: LoadAction.Value) = action match {
+
+  def loadAction(s: State, action: LoadAction.Value): (State, File) = action match {
     case Return =>
       projectReturn(s) match {
-        case current :: returnTo :: rest => (setProjectReturn(s, returnTo :: rest), returnTo)
-        case _                           => sys.error("Not currently in a plugin definition")
+        case _ /* current */ :: returnTo :: rest => (setProjectReturn(s, returnTo :: rest), returnTo)
+        case _                                   => sys.error("Not currently in a plugin definition")
       }
+
     case Current =>
       val base = s.configuration.baseDirectory
       projectReturn(s) match { case Nil => (setProjectReturn(s, base :: Nil), base); case x :: xs => (s, x) }
+
     case Plugins =>
-      val (newBase, oldStack) = if (Project.isProjectLoaded(s))
-        (Project.extract(s).currentUnit.unit.plugins.base, projectReturn(s))
-      else // support changing to the definition project if it fails to load
-        (BuildPaths.projectStandard(s.baseDir), s.baseDir :: Nil)
+      val (newBase, oldStack) =
+        if (Project.isProjectLoaded(s))
+          (Project.extract(s).currentUnit.unit.plugins.base, projectReturn(s))
+        else // support changing to the definition project if it fails to load
+          (BuildPaths.projectStandard(s.baseDir), s.baseDir :: Nil)
       val newS = setProjectReturn(s, newBase :: oldStack)
       (newS, newBase)
   }
@@ -603,6 +613,7 @@ object Project extends ProjectExtra {
       val mfi = EvaluateTask.minForcegcInterval(extracted, extracted.structure)
       runTask(taskKey, state, EvaluateTaskConfig(r, checkCycles, p, ch, fgc, mfi))
     }
+
   def runTask[T](taskKey: ScopedKey[Task[T]], state: State, config: EvaluateTaskConfig): Option[(State, Result[T])] = {
     val extracted = Project.extract(state)
     EvaluateTask(extracted.structure, taskKey, state, extracted.currentRef, config)

@@ -2,47 +2,43 @@ package sbt
 
 import java.lang.reflect.InvocationTargetException
 import java.io.File
+
+import sbt.io._, syntax._
 import sbt.util._
-import sbt.internal.util._
+import sbt.internal.util.complete.{ DefaultParsers, Parser }, DefaultParsers._
 import xsbti.AppConfiguration
-import sbt.internal.inc.classpath.ClasspathUtilities
-import BasicCommandStrings._
-import BasicKeys._
-import complete.DefaultParsers
-import DefaultParsers._
-import Command.applyEffect
-import sbt.io._
-import sbt.io.syntax._
 import sbt.librarymanagement._
 import sbt.internal.librarymanagement.IvyConfiguration
+import sbt.internal.inc.classpath.ClasspathUtilities
+import BasicCommandStrings._, BasicKeys._
 
 private[sbt] object TemplateCommandUtil {
-  def templateCommand = Command.make(TemplateCommand, templateBrief, templateDetailed)(templateCommandParser)
-  def templateCommandParser(state: State) =
-    {
-      val p = (token(Space) ~> repsep(StringBasic, token(Space))) | (token(EOF) map { case _ => Nil })
-      val infos = (state get templateResolverInfos) match {
-        case Some(infos) => infos.toList
-        case None        => Nil
-      }
-      val log = state.globalLogging.full
-      val extracted = (Project extract state)
-      val (s2, ivyConf) = extracted.runTask(Keys.ivyConfiguration, state)
-      val globalBase = BuildPaths.getGlobalBase(state)
-      val ivyScala = extracted.get(Keys.ivyScala in Keys.updateSbtClassifiers)
-      applyEffect(p)({ inputArg =>
-        val arguments = inputArg.toList ++
-          (state.remainingCommands.toList match {
-            case exec :: Nil if exec.commandLine == "shell" => Nil
-            case xs                                         => xs map { _.commandLine }
-          })
-        run(infos, arguments, state.configuration, ivyConf, globalBase, ivyScala, log)
-        "exit" :: s2.copy(remainingCommands = Nil)
-      })
-    }
+  def templateCommand: Command =
+    Command(TemplateCommand, templateBrief, templateDetailed)(templateCommandParser)(runTemplate)
 
-  private def run(infos: List[TemplateResolverInfo], arguments: List[String], config: AppConfiguration,
-    ivyConf: IvyConfiguration, globalBase: File, ivyScala: Option[IvyScala], log: Logger): Unit =
+  private def templateCommandParser(state: State): Parser[Seq[String]] =
+    (token(Space) ~> repsep(StringBasic, token(Space))) | (token(EOF) map (_ => Nil))
+
+  private def runTemplate(state: State, inputArg: Seq[String]): State = {
+    val infos = (state get templateResolverInfos getOrElse Nil).toList
+    val log = state.globalLogging.full
+    val extracted = (Project extract state)
+    val (s2, ivyConf) = extracted.runTask(Keys.ivyConfiguration, state)
+    val globalBase = BuildPaths.getGlobalBase(state)
+    val ivyScala = extracted.get(Keys.ivyScala in Keys.updateSbtClassifiers)
+    val arguments = inputArg.toList ++
+      (state.remainingCommands match {
+        case exec :: Nil if exec.commandLine == "shell" => Nil
+        case xs                                         => xs map (_.commandLine)
+      })
+    run(infos, arguments, state.configuration, ivyConf, globalBase, ivyScala, log)
+    "exit" :: s2.copy(remainingCommands = Nil)
+  }
+
+  private def run(
+      infos: List[TemplateResolverInfo], arguments: List[String], config: AppConfiguration,
+      ivyConf: IvyConfiguration, globalBase: File, ivyScala: Option[IvyScala], log: Logger
+  ): Unit =
     infos find { info =>
       val loader = infoLoader(info, config, ivyConf, globalBase, ivyScala, log)
       val hit = tryTemplate(info, arguments, loader)
@@ -54,6 +50,7 @@ private[sbt] object TemplateCommandUtil {
       case Some(_) => // do nothing
       case None    => System.err.println("Template not found for: " + arguments.mkString(" "))
     }
+
   private def tryTemplate(info: TemplateResolverInfo, arguments: List[String], loader: ClassLoader): Boolean =
     {
       val resultObj = call(info.implementationClass, "isDefined", loader)(
@@ -61,12 +58,21 @@ private[sbt] object TemplateCommandUtil {
       )(arguments.toArray)
       resultObj.asInstanceOf[Boolean]
     }
+
   private def runTemplate(info: TemplateResolverInfo, arguments: List[String], loader: ClassLoader): Unit =
     call(info.implementationClass, "run", loader)(classOf[Array[String]])(arguments.toArray)
-  private def infoLoader(info: TemplateResolverInfo, config: AppConfiguration,
-    ivyConf: IvyConfiguration, globalBase: File, ivyScala: Option[IvyScala], log: Logger): ClassLoader =
-    ClasspathUtilities.toLoader(classpathForInfo(info, ivyConf, globalBase, ivyScala, log), config.provider.loader)
-  private def call(interfaceClassName: String, methodName: String, loader: ClassLoader)(argTypes: Class[_]*)(args: AnyRef*): AnyRef =
+
+  private def infoLoader(
+      info: TemplateResolverInfo, config: AppConfiguration, ivyConf: IvyConfiguration, globalBase: File,
+      ivyScala: Option[IvyScala], log: Logger
+  ): ClassLoader = {
+    val cp = classpathForInfo(info, ivyConf, globalBase, ivyScala, log)
+    ClasspathUtilities.toLoader(cp, config.provider.loader)
+  }
+
+  private def call(
+      interfaceClassName: String, methodName: String, loader: ClassLoader
+  )(argTypes: Class[_]*)(args: AnyRef*): AnyRef =
     {
       val interfaceClass = getInterfaceClass(interfaceClassName, loader)
       val interface = interfaceClass.getDeclaredConstructor().newInstance().asInstanceOf[AnyRef]
@@ -76,10 +82,14 @@ private[sbt] object TemplateCommandUtil {
         case e: InvocationTargetException => throw e.getCause
       }
     }
+
   private def getInterfaceClass(name: String, loader: ClassLoader) = Class.forName(name, true, loader)
 
   // Cache files under ~/.sbt/0.13/templates/org_name_version
-  private def classpathForInfo(info: TemplateResolverInfo, ivyConf: IvyConfiguration, globalBase: File, ivyScala: Option[IvyScala], log: Logger): List[File] =
+  private def classpathForInfo(
+      info: TemplateResolverInfo, ivyConf: IvyConfiguration, globalBase: File, ivyScala: Option[IvyScala],
+      log: Logger
+  ): List[File] =
     {
       val lm = new DefaultLibraryManagement(ivyConf, log)
       val templatesBaseDirectory = new File(globalBase, "templates")
