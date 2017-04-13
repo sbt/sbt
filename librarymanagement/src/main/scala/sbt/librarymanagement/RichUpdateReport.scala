@@ -18,28 +18,29 @@ final class RichUpdateReport(report: UpdateReport) {
   import DependencyFilter._
 
   /** Obtains all successfully retrieved files in all configurations and modules. */
-  def allFiles: Seq[File] = matching(DependencyFilter.allPass)
+  def allFiles: Vector[File] = matching(DependencyFilter.allPass)
 
   /** Obtains all successfully retrieved files in configurations, modules, and artifacts matching the specified filter. */
-  def matching(f: DependencyFilter): Seq[File] = select0(f).distinct
+  def matching(f: DependencyFilter): Vector[File] = select0(f).distinct
 
   /** Obtains all successfully retrieved files matching all provided filters. */
-  def select(configuration: ConfigurationFilter, module: ModuleFilter, artifact: ArtifactFilter): Seq[File] =
+  def select(configuration: ConfigurationFilter, module: ModuleFilter, artifact: ArtifactFilter): Vector[File] =
     matching(DependencyFilter.make(configuration, module, artifact))
 
-  def select(configuration: ConfigurationFilter): Seq[File] = select(configuration, moduleFilter(), artifactFilter())
-  def select(module: ModuleFilter): Seq[File] = select(configurationFilter(), module, artifactFilter())
-  def select(artifact: ArtifactFilter): Seq[File] = select(configurationFilter(), moduleFilter(), artifact)
+  def select(configuration: ConfigurationFilter): Vector[File] = select(configuration, moduleFilter(), artifactFilter())
+  def select(module: ModuleFilter): Vector[File] = select(configurationFilter(), module, artifactFilter())
+  def select(artifact: ArtifactFilter): Vector[File] = select(configurationFilter(), moduleFilter(), artifact)
 
-  private[this] def select0(f: DependencyFilter): Seq[File] =
+  private[this] def select0(f: DependencyFilter): Vector[File] =
     for {
       cReport <- report.configurations
       mReport <- cReport.modules
       (artifact, file) <- mReport.artifacts
       if f(cReport.configuration, mReport.module, artifact)
     } yield {
-      if (file == null)
+      if (file == null) {
         sys.error(s"Null file: conf=${cReport.configuration}, module=${mReport.module}, art: $artifact")
+      }
       file
     }
 
@@ -63,14 +64,15 @@ final class RichUpdateReport(report: UpdateReport) {
         .withMissingArtifacts(modReport.missingArtifacts)
     }
 
-  def toSeq: Seq[(String, ModuleID, Artifact, File)] =
+  def toSeq: Seq[(String, ModuleID, Artifact, File)] = toVector
+  def toVector: Vector[(String, ModuleID, Artifact, File)] =
     for {
       confReport <- report.configurations
       modReport <- confReport.modules
       (artifact, file) <- modReport.artifacts
     } yield (confReport.configuration, modReport.module, artifact, file)
 
-  def allMissing: Seq[(String, ModuleID, Artifact)] =
+  def allMissing: Vector[(String, ModuleID, Artifact)] =
     for {
       confReport <- report.configurations
       modReport <- confReport.modules
