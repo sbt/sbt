@@ -12,6 +12,9 @@ import scala.annotation.tailrec
 import BasicKeys.serverPort
 import java.net.Socket
 import sjsonnew.JsonFormat
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
+import scala.util.{ Success, Failure }
 
 /**
  * The command exchange merges multiple command channels (e.g. network and console),
@@ -81,7 +84,15 @@ private[sbt] final class CommandExchange {
       server match {
         case Some(x) => // do nothing
         case _ =>
-          server = Some(Server.start("127.0.0.1", port, onIncomingSocket, s.log))
+          val x = Server.start("127.0.0.1", port, onIncomingSocket, s.log)
+          Await.ready(x.ready, Duration("10s"))
+          x.ready.value match {
+            case Some(Success(_)) =>
+            case Some(Failure(e)) =>
+              s.log.error(e.toString)
+            case None    => // this won't happen because we awaited
+          }
+          server = Some(x)
       }
       s
     }
