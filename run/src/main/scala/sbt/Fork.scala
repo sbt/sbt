@@ -20,7 +20,15 @@ import scala.sys.process.Process
  * @param connectInput If true, the standard input of the forked process is connected to the standard input of this process.  Otherwise, it is connected to an empty input stream.  Connecting input streams can be problematic, especially on versions before Java 7.
  * @param envVars The environment variables to provide to the forked process.  By default, none are provided.
  */
-final case class ForkOptions(javaHome: Option[File] = None, outputStrategy: Option[OutputStrategy] = None, bootJars: Seq[File] = Nil, workingDirectory: Option[File] = None, runJVMOptions: Seq[String] = Nil, connectInput: Boolean = false, envVars: Map[String, String] = Map.empty)
+final case class ForkOptions(
+  javaHome: Option[File] = None,
+  outputStrategy: Option[OutputStrategy] = None,
+  bootJars: Seq[File] = Nil,
+  workingDirectory: Option[File] = None,
+  runJVMOptions: Seq[String] = Nil,
+  connectInput: Boolean = false,
+  envVars: Map[String, String] = Map.empty
+)
 
 /** Configures where the standard output and error streams from a forked process go.*/
 sealed abstract class OutputStrategy

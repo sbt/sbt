@@ -57,10 +57,10 @@ object ScriptedPlugin extends AutoPlugin {
       ModuleUtilities.getObject("sbt.test.ScriptedTests", loader)
     }
 
-  def scriptedRunTask: Initialize[Task[Method]] = (scriptedTests) map {
-    (m) =>
-      m.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[Array[String]], classOf[File], classOf[Array[String]])
-  }
+  def scriptedRunTask: Initialize[Task[Method]] = Def task (
+    scriptedTests.value.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[Array[String]],
+      classOf[File], classOf[Array[String]])
+  )
 
   import DefaultParsers._
   case class ScriptedTestPage(page: Int, total: Int)

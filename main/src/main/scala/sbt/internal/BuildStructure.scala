@@ -147,10 +147,6 @@ final class DetectedPlugins(val autoPlugins: Seq[DetectedAutoPlugin], val builds
         else None
     }.partition(nonTopLevelPlugin)
 
-  /** A function to select the right [[AutoPlugin]]s from [[autoPlugins]] for a [[Project]]. */
-  @deprecated("Use deducePluginsFromProject", "0.13.8")
-  lazy val deducePlugins: (Plugins, Logger) => Seq[AutoPlugin] = Plugins.deducer(autoPlugins.toList map { _.value })
-
   /** Selects the right [[AutoPlugin]]s from a [[Project]]. */
   def deducePluginsFromProject(p: Project, log: Logger): Seq[AutoPlugin] =
     {
@@ -166,7 +162,6 @@ final class DetectedPlugins(val autoPlugins: Seq[DetectedAutoPlugin], val builds
   private[this] def autoImports(pluginNames: Seq[String]) = pluginNames.map(_ + ".autoImport")
 
   private[this] def nonTopLevelPlugin(name: String) = name.contains('.')
-
 }
 
 /**
@@ -181,6 +176,7 @@ final class LoadedPlugins(val base: File, val pluginData: PluginData, val loader
   def fullClasspath: Seq[Attributed[File]] = pluginData.classpath
   def classpath = data(fullClasspath)
 }
+
 /**
  * The loaded, but unresolved build unit.
  * @param uri The uniquely identifying URI for the build.

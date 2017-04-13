@@ -9,17 +9,17 @@ lazy val root = (project in file(".")).
     managedClasspath in Provided := ((classpathTypes, update) map { (cpts, report) => Classpaths.managedJars(Provided, cpts, report) }).value
   )
 
-def checkTask = InputTask(_ => parser ) { result =>
-    (result, managedClasspath in Provided, fullClasspath in Compile, fullClasspath in Test, fullClasspath in Runtime) map { case ((conf, names), p, c, t, r) =>
-      println("Checking: " + conf.name)
-      checkClasspath(conf match {
-        case Provided => p
-        case Compile => c
-        case Test => t
-        case Runtime => r
-      }, names.toSet)
-    }
-  }
+def checkTask = Def.inputTask {
+  val result = parser.parsed
+  val (conf, names) = result
+  println("Checking: " + conf.name)
+  checkClasspath(conf match {
+    case Provided => managedClasspath in Provided value
+    case Compile  => fullClasspath in Compile value
+    case Test     => fullClasspath in Test value
+    case Runtime  => fullClasspath in Runtime value
+  }, names.toSet)
+}
 
 lazy val check = InputKey[Unit]("check")
 def parser: Parser[(Configuration,Seq[String])] = (Space ~> token(cp(Compile) | cp(Runtime) | cp(Provided) | cp(Test))) ~ spaceDelimited("<module-names>")

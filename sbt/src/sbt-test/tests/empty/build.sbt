@@ -4,6 +4,7 @@ testGrouping := {
     new Tests.Group(
       name = test.name,
       tests = Seq(test),
-      runPolicy = Tests.SubProcess(javaOptions = Seq.empty[String]))
+      runPolicy = Tests.SubProcess(ForkOptions(runJVMOptions = Seq.empty[String]))
+    )
   }
 }

@@ -110,10 +110,6 @@ object Tests {
 
   /** Configures a group of tests to be forked in a new JVM with forking options specified by `config`. */
   final case class SubProcess(config: ForkOptions) extends TestRunPolicy
-  object SubProcess {
-    @deprecated("Construct SubProcess with a ForkOptions argument.", "0.13.0")
-    def apply(javaOptions: Seq[String]): SubProcess = SubProcess(ForkOptions(runJVMOptions = javaOptions))
-  }
 
   /** A named group of tests configured to run in the same JVM or be forked. */
   final case class Group(name: String, tests: Seq[TestDefinition], runPolicy: TestRunPolicy)
@@ -315,11 +311,6 @@ object Tests {
       val mains = discovered collect { case (df, di) if di.hasMain => df.name }
       (tests, mains.toSet)
     }
-
-  @deprecated("Tests.showResults() has been superseded with TestResultLogger and setting 'testResultLogger'.", "0.13.5")
-  def showResults(log: Logger, results: Output, noTestsMessage: => String): Unit =
-    TestResultLogger.Default.copy(printNoTests = TestResultLogger.const(_ info noTestsMessage))
-      .run(log, results, "")
 }
 
 final class TestsFailedException extends RuntimeException("Tests unsuccessful") with FeedbackProvidedException

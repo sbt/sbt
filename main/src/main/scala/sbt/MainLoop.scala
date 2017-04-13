@@ -122,11 +122,5 @@ object MainLoop {
     newState
   }
 
-  @deprecated("Use State.handleError", "0.13.0")
-  def handleException(e: Throwable, s: State): State = s.handleError(e)
-
-  @deprecated("Use State.handleError", "0.13.0")
-  def handleException(t: Throwable, s: State, log: Logger): State = State.handleException(t, s, log)
-
   def logFullException(e: Throwable, log: Logger): Unit = State.logFullException(e, log)
 }

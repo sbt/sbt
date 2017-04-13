@@ -27,12 +27,13 @@ lazy val root = (project in file(".")).
 
 def demoState(s: State, i: Int): State = s put (sample, i + 1)
 
-def checkInit: Initialize[InputTask[Unit]] = InputTask( (_: State) => token(Space ~> IntBasic) ~ token(Space ~> IntBasic).?) { key =>
-  (key, updateDemo, state) map { case ((curExpected, prevExpected), value, s) =>
-    val prev = s get sample
-    assert(value == curExpected, "Expected current value to be " + curExpected + ", got " + value)
-    assert(prev == prevExpected, "Expected previous value to be " + prevExpected + ", got " + prev)
-  }
+def checkInit: Initialize[InputTask[Unit]] = Def inputTask {
+  val key = (token(Space ~> IntBasic) ~ token(Space ~> IntBasic).?).parsed
+  val (curExpected, prevExpected) = key
+  val value = updateDemo.value
+  val prev = state.value get sample
+  assert(value == curExpected, s"Expected current value to be $curExpected, got $value")
+  assert(prev == prevExpected, s"Expected previous value to be $prevExpected, got $prev")
 }
 
 def  inMemorySetting = keep    :=  (getPrevious(keep)    map { case None =>  3; case Some(x) => x + 1}  keepAs(keep)).value

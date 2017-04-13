@@ -10,11 +10,11 @@ scalaVersion in update := {
   }
 }
 
-InputKey[Unit]("check") := (inputTask { argsT =>
-  (argsT, scalaVersion in ThisBuild, scalaVersion, scalaVersion in update) map { (args, svTB, svP, svU) =>
-    def check(label: String, i: Int, actual: String) = assert(args(i) == actual, "Expected " + label + "='" + args(i) + "' got '" + actual + "'")
-    check("scalaVersion in ThisBuild", 0, svTB)
-    check("scalaVersion", 1, svP)
-    check("scalaVersion in update", 2, svU)
-  }
-}).evaluated
+InputKey[Unit]("check") := {
+  val args = Def.spaceDelimited().parsed
+  def check(label: String, i: Int, actual: String) =
+    assert(args(i) == actual, s"Expected $label='${args(i)}' got '$actual'")
+  check("scalaVersion in ThisBuild", 0, scalaVersion in ThisBuild value)
+  check("scalaVersion", 1, scalaVersion.value)
+  check("scalaVersion in update", 2, scalaVersion in update value)
+}

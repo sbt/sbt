@@ -20,6 +20,7 @@ import sbt.internal.{
   ProjectNavigation,
   Script,
   SessionSettings,
+  SetResult,
   SettingCompletions,
   LogManager,
   DefaultBackgroundJobService
@@ -323,7 +324,9 @@ object BuiltinCommands {
     val result = Load.mkEval(classpath, s.baseDir, Nil).eval(arg, srcName = "<eval>", imports = new EvalImports(Nil, ""))
     s.log.info(s"ans: ${result.tpe} = ${result.getValue(app.loader)}")
   }
-  def sessionCommand = Command.make(SessionCommand, sessionBrief, SessionSettings.Help)(SessionSettings.command)
+
+  def sessionCommand: Command = Command.make(SessionCommand, sessionBrief, SessionSettings.Help)(SessionSettings.command)
+
   def reapply(newSession: SessionSettings, structure: BuildStructure, s: State): State =
     {
       s.log.info("Reapplying settings...")
@@ -333,7 +336,8 @@ object BuiltinCommands {
       val newStructure = Load.reapply(withLogger.mergeSettings, structure)(Project.showContextKey(newSession, structure))
       Project.setProject(newSession, newStructure, s)
     }
-  def set = Command(SetCommand, setBrief, setDetailed)(setParser) {
+
+  def set: Command = Command(SetCommand, setBrief, setDetailed)(setParser) {
     case (s, (all, arg)) =>
       val extracted = Project extract s
       import extracted._
@@ -355,17 +359,15 @@ object BuiltinCommands {
       s.log.debug(setResult.verboseSummary)
       reapply(setResult.session, structure, s)
   }
-  // @deprecated("Use SettingCompletions.setThis", "0.13.0")
-  def setThis(s: State, extracted: Extracted, settings: Seq[Def.Setting[_]], arg: String) =
+
+  def setThis(s: State, extracted: Extracted, settings: Seq[Def.Setting[_]], arg: String): SetResult =
     SettingCompletions.setThis(s, extracted, settings, arg)
-  def inspect = Command(InspectCommand, inspectBrief, inspectDetailed)(Inspect.parser) {
+
+  def inspect: Command = Command(InspectCommand, inspectBrief, inspectDetailed)(Inspect.parser) {
     case (s, (option, sk)) =>
       s.log.info(Inspect.output(s, option, sk))
       s
   }
-
-  @deprecated("Use Inspect.output", "0.13.0")
-  def inspectOutput(s: State, option: Inspect.Mode, sk: Def.ScopedKey[_]): String = Inspect.output(s, option, sk)
 
   def lastGrep = Command(LastGrepCommand, lastGrepBrief, lastGrepDetailed)(lastGrepParser) {
     case (s, (pattern, Some(sks))) =>
@@ -387,18 +389,6 @@ object BuiltinCommands {
     token(Space ~> flag("every" ~ Space)) ~
       SettingCompletions.settingParser(structure.data, structure.index.keyMap, currentProject)
   }
-
-  @deprecated("Use Inspect.parser", "0.13.0")
-  def inspectParser: State => Parser[(Inspect.Mode, Def.ScopedKey[_])] = Inspect.parser
-
-  @deprecated("Use Inspect.spacedModeParser", "0.13.0")
-  val spacedModeParser: State => Parser[Inspect.Mode] = Inspect.spacedModeParser
-
-  @deprecated("Use Inspect.allKeyParser", "0.13.0")
-  def allKeyParser(s: State): Parser[AttributeKey[_]] = Inspect.allKeyParser(s)
-
-  @deprecated("Use Inspect.spacedKeyParser", "0.13.0")
-  val spacedKeyParser: State => Parser[Def.ScopedKey[_]] = Inspect.spacedKeyParser
 
   val spacedAggregatedParser = (s: State) => Act.requireSession(s, token(Space) ~> Act.aggregatedKeyParser(s))
   val aggregatedKeyValueParser: State => Parser[Option[AnyKeys]] = (s: State) => spacedAggregatedParser(s).map(x => Act.keyValues(s)(x)).?
@@ -532,12 +522,9 @@ object BuiltinCommands {
         removeBase.map(toRemove => (xs: List[URI]) => xs.filterNot(toRemove.toSet))
     }
 
-  def project = Command.make(ProjectCommand, projectBrief, projectDetailed)(ProjectNavigation.command)
+  def project: Command = Command.make(ProjectCommand, projectBrief, projectDetailed)(ProjectNavigation.command)
 
-  def loadFailed = Command(LoadFailed)(loadProjectParser)(doLoadFailed)
-
-  @deprecated("No longer used.", "0.13.2")
-  def handleLoadFailed(s: State): State = doLoadFailed(s, "")
+  def loadFailed: Command = Command(LoadFailed)(loadProjectParser)(doLoadFailed)
 
   @tailrec
   private[this] def doLoadFailed(s: State, loadArg: String): State =
@@ -548,28 +535,33 @@ object BuiltinCommands {
       def ignoreMsg = if (Project.isProjectLoaded(s)) "using previously loaded project" else "no project loaded"
 
       result match {
-        case ""                    => retry
-        case _ if matches("retry") => retry
-        case _ if matches(Quit)    => s.exit(ok = false)
-        case _ if matches("ignore") =>
-          s.log.warn(s"Ignoring load failure: $ignoreMsg."); s
-        case _ if matches("last") => LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
-        case _                    => println("Invalid response."); doLoadFailed(s, loadArg)
+        case ""                     => retry
+        case _ if matches("retry")  => retry
+        case _ if matches(Quit)     => s.exit(ok = false)
+        case _ if matches("ignore") => s.log.warn(s"Ignoring load failure: $ignoreMsg."); s
+        case _ if matches("last")   => LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
+        case _                      => println("Invalid response."); doLoadFailed(s, loadArg)
       }
     }
 
-  def loadProjectCommands(arg: String) =
+  def loadProjectCommands(arg: String): List[String] =
     StashOnFailure ::
       (OnFailure + " " + loadProjectCommand(LoadFailed, arg)) ::
       loadProjectCommand(LoadProjectImpl, arg) ::
       PopOnFailure ::
       State.FailureWall ::
       Nil
-  def loadProject = Command(LoadProject, LoadProjectBrief, LoadProjectDetailed)(loadProjectParser) { (s, arg) => loadProjectCommands(arg) ::: s }
+
+  def loadProject: Command =
+    Command(LoadProject, LoadProjectBrief, LoadProjectDetailed)(loadProjectParser) { (s, arg) =>
+      loadProjectCommands(arg) ::: s
+    }
+
   private[this] def loadProjectParser = (s: State) => matched(Project.loadActionParser)
   private[this] def loadProjectCommand(command: String, arg: String): String = s"$command $arg".trim
 
-  def loadProjectImpl = Command(LoadProjectImpl)(_ => Project.loadActionParser)(doLoadProject)
+  def loadProjectImpl: Command = Command(LoadProjectImpl)(_ => Project.loadActionParser)(doLoadProject)
+
   def doLoadProject(s0: State, action: LoadAction.Value): State =
     {
       val (s1, base) = Project.loadAction(SessionVar.clear(s0), action)
@@ -590,6 +582,7 @@ object BuiltinCommands {
       SessionSettings.checkSession(session, s)
       Project.setProject(session, structure, s)
     }
+
   def registerCompilerCache(s: State): State =
     {
       val maxCompilers = System.getProperty("sbt.resident.limit")
@@ -605,7 +598,7 @@ object BuiltinCommands {
       s.put(Keys.stateCompilerCache, cache)
     }
 
-  def server = Command.command(Server, Help.more(Server, ServerDetailed)) { s0 =>
+  def server: Command = Command.command(Server, Help.more(Server, ServerDetailed)) { s0 =>
     import sbt.internal.{ ConsolePromptEvent, ConsoleUnpromptEvent }
     val exchange = StandardMain.exchange
     val s1 = exchange run s0

@@ -51,9 +51,9 @@ object BuildUtil {
 
   def dependencies(units: Map[URI, LoadedBuildUnit]): BuildDependencies =
     {
-      import collection.mutable.HashMap
-      val agg = new HashMap[ProjectRef, Seq[ProjectRef]]
-      val cp = new HashMap[ProjectRef, Seq[ClasspathDep[ProjectRef]]]
+      import scala.collection.mutable
+      val agg = new mutable.HashMap[ProjectRef, Seq[ProjectRef]]
+      val cp = new mutable.HashMap[ProjectRef, Seq[ClasspathDep[ProjectRef]]]
       for (lbu <- units.values; rp <- lbu.defined.values) {
         val ref = ProjectRef(lbu.unit.uri, rp.id)
         cp(ref) = rp.dependencies
@@ -76,14 +76,12 @@ object BuildUtil {
 
   def getImports(unit: BuildUnit): Seq[String] = unit.plugins.detected.imports ++ unit.definitions.dslDefinitions.imports
 
-  @deprecated("Use getImports(Seq[String]).", "0.13.2")
-  def getImports(pluginNames: Seq[String], buildNames: Seq[String]): Seq[String] = getImports(pluginNames ++ buildNames)
-
   /** `import sbt._, Keys._`, and wildcard import `._` for all names. */
   def getImports(names: Seq[String]): Seq[String] = baseImports ++ importAllRoot(names)
 
   /** Import just the names. */
   def importNames(names: Seq[String]): Seq[String] = if (names.isEmpty) Nil else names.mkString("import ", ", ", "") :: Nil
+
   /** Prepend `_root_` and import just the names. */
   def importNamesRoot(names: Seq[String]): Seq[String] = importNames(names map rootedName)
 
@@ -96,7 +94,7 @@ object BuildUtil {
     {
       val depPairs =
         for {
-          (uri, unit) <- units.toIterable
+          (uri, unit) <- units.toIterable // don't lose this toIterable, doing so breaks actions/cross-multiproject & actions/update-state-fail
           project <- unit.defined.values
           ref = ProjectRef(uri, project.id)
           agg <- project.aggregate

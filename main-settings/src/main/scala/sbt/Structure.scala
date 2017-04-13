@@ -5,10 +5,6 @@ package sbt
 
 import scala.language.experimental.macros
 
-import java.io.File
-
-import sbt.io.{ FileFilter, PathFinder }
-import sbt.io.syntax._
 import sbt.internal.util.Types._
 import sbt.internal.util.{ ~>, AList, AttributeKey, Settings, SourcePosition }
 import sbt.util.OptJsonWriter
@@ -54,7 +50,8 @@ sealed abstract class SettingKey[T] extends ScopedTaskable[T] with KeyedInitiali
 
   final def transform(f: T => T, source: SourcePosition): Setting[T] = set(scopedKey(f), source)
 
-  protected[this] def make[S](other: Initialize[S], source: SourcePosition)(f: (T, S) => T): Setting[T] = set((this, other)(f), source)
+  protected[this] def make[S](other: Initialize[S], source: SourcePosition)(f: (T, S) => T): Setting[T] =
+    set((this, other)(f), source)
 }
 
 /**
@@ -83,7 +80,7 @@ sealed abstract class TaskKey[T] extends ScopedTaskable[T] with KeyedInitialize[
   final def removeN[V](vs: Initialize[Task[V]], source: SourcePosition)(implicit r: Remove.Values[T, V]): Setting[Task[T]] = make(vs, source)(r.removeValues)
 
   private[this] def make[S](other: Initialize[Task[S]], source: SourcePosition)(f: (T, S) => T): Setting[Task[T]] =
-    set((this, other) { (a, b) => (a, b) map f.tupled }, source)
+    set((this, other)((a, b) => (a, b) map f.tupled), source)
 }
 
 /**
@@ -206,10 +203,12 @@ object Scoped {
     def ??[T >: S](or: => T): Initialize[Task[T]] = Def.optional(scopedKey)(_ getOrElse mktask(or))
     def or[T >: S](i: Initialize[Task[T]]): Initialize[Task[T]] = (this.? zipWith i)((x, y) => (x, y) map { case (a, b) => a getOrElse b })
   }
+
   final class RichInitializeTask[S](i: Initialize[Task[S]]) extends RichInitTaskBase[S, Task] {
     protected def onTask[T](f: Task[S] => Task[T]): Initialize[Task[T]] = i apply f
 
-    def dependsOn(tasks: AnyInitTask*): Initialize[Task[S]] = (i, Initialize.joinAny[Task](tasks)) { (thisTask, deps) => thisTask.dependsOn(deps: _*) }
+    def dependsOn(tasks: AnyInitTask*): Initialize[Task[S]] =
+      (i, Initialize.joinAny[Task](tasks))((thisTask, deps) => thisTask.dependsOn(deps: _*))
 
     def failure: Initialize[Task[Incomplete]] = i(_.failure)
     def result: Initialize[Task[Result[S]]] = i(_.result)
@@ -217,12 +216,16 @@ object Scoped {
     def xtriggeredBy[T](tasks: Initialize[Task[T]]*): Initialize[Task[S]] = nonLocal(tasks, Def.triggeredBy)
     def triggeredBy[T](tasks: Initialize[Task[T]]*): Initialize[Task[S]] = nonLocal(tasks, Def.triggeredBy)
     def runBefore[T](tasks: Initialize[Task[T]]*): Initialize[Task[S]] = nonLocal(tasks, Def.runBefore)
+
     private[this] def nonLocal(tasks: Seq[AnyInitTask], key: AttributeKey[Seq[Task[_]]]): Initialize[Task[S]] =
-      (Initialize.joinAny[Task](tasks), i) { (ts, i) => i.copy(info = i.info.set(key, ts)) }
+      (Initialize.joinAny[Task](tasks), i)((ts, i) => i.copy(info = i.info.set(key, ts)))
   }
+
   final class RichInitializeInputTask[S](i: Initialize[InputTask[S]]) extends RichInitTaskBase[S, InputTask] {
     protected def onTask[T](f: Task[S] => Task[T]): Initialize[InputTask[T]] = i(_ mapTask f)
-    def dependsOn(tasks: AnyInitTask*): Initialize[InputTask[S]] = (i, Initialize.joinAny[Task](tasks)) { (thisTask, deps) => thisTask.mapTask(_.dependsOn(deps: _*)) }
+
+    def dependsOn(tasks: AnyInitTask*): Initialize[InputTask[S]] =
+      (i, Initialize.joinAny[Task](tasks))((thisTask, deps) => thisTask.mapTask(_.dependsOn(deps: _*)))
   }
 
   sealed abstract class RichInitTaskBase[S, R[_]] {
@@ -262,29 +265,6 @@ object Scoped {
   implicit def richAnyTaskSeq(in: Seq[AnyInitTask]): RichAnyTaskSeq = new RichAnyTaskSeq(in)
   final class RichAnyTaskSeq(keys: Seq[AnyInitTask]) {
     def dependOn: Initialize[Task[Unit]] = Initialize.joinAny[Task](keys).apply(deps => nop.dependsOn(deps: _*))
-  }
-
-  implicit def richFileSetting(s: SettingKey[File]): RichFileSetting = new RichFileSetting(s)
-  implicit def richFilesSetting(s: SettingKey[Seq[File]]): RichFilesSetting = new RichFilesSetting(s)
-
-  final class RichFileSetting(s: SettingKey[File]) extends RichFileBase {
-    @deprecated("Use a standard setting definition.", "0.13.0")
-    def /(c: String): Initialize[File] = s { _ / c }
-    protected[this] def map0(f: PathFinder => PathFinder) = s(file => finder(f)(file :: Nil))
-  }
-  final class RichFilesSetting(s: SettingKey[Seq[File]]) extends RichFileBase {
-    @deprecated("Use a standard setting definition.", "0.13.0")
-    def /(s: String): Initialize[Seq[File]] = map0 { _ / s }
-    protected[this] def map0(f: PathFinder => PathFinder) = s(finder(f))
-  }
-  sealed abstract class RichFileBase {
-    @deprecated("Use a standard setting definition.", "0.13.0")
-    def *(filter: FileFilter): Initialize[Seq[File]] = map0 { _ * filter }
-    @deprecated("Use a standard setting definition.", "0.13.0")
-    def **(filter: FileFilter): Initialize[Seq[File]] = map0 { _ ** filter }
-    protected[this] def map0(f: PathFinder => PathFinder): Initialize[Seq[File]]
-    protected[this] def finder(f: PathFinder => PathFinder): Seq[File] => Seq[File] =
-      in => f(in).get
   }
 
   // this is the least painful arrangement I came up with
@@ -359,7 +339,6 @@ object Scoped {
     def identityMap = map(mkTuple10)
     protected def convert[M[_], R](z: Fun[M, R]) = z.tupled
   }
-
   final class RichTaskable11[A, B, C, D, E, F, G, H, I, J, K](t11: ((ST[A], ST[B], ST[C], ST[D], ST[E], ST[F], ST[G], ST[H], ST[I], ST[J], ST[K]))) extends RichTaskables[AList.T11K[A, B, C, D, E, F, G, H, I, J, K]#l](t11)(AList.tuple11[A, B, C, D, E, F, G, H, I, J, K]) {
     type Fun[M[_], Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K]) => Ret
     def identityMap = map(mkTuple11)

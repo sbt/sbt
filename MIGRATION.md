@@ -17,3 +17,8 @@ Migration notes
 - `TestResult.Value` is now `TestResult`.
 - the scripted plugin is cross-versioned now, so you must use %% when depending on it
 - Removed the methods settingsSets from Project (along with add/setSbtFiles)
+- Dropped deprecated InputTask apply method and inputTask DSL method - replace with `Def.inputTask` & `Def.spaceDelimited().parsed`
+- Dropped deprecated ProjectReference implicit lifts - replace with `RootProject(<uri>)`, `RootProject(<file>)` or `LocalProject(<string>)`
+- Dropped deprecated seq DSL method - replace with `Seq` or just enumerate without wrapping
+- Dropped deprecated File/Seq[File] setting enrichments - replace with `.value` and `Def.setting`
+- Dropped deprecated SubProcess apply overload - replace with `SubProcess(ForkOptions(runJVMOptions = ..))`
