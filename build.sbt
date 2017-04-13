@@ -2,6 +2,7 @@ import scala.util.control.Exception.catching
 import _root_.bintray.InternalBintrayKeys._
 import _root_.bintray.{BintrayRepo, Bintray}
 import NativePackagerHelper._
+import com.typesafe.sbt.packager.SettingsHelper._
 
 lazy val sbtOfflineInstall =
   sys.props.getOrElse("sbt.build.offline", sys.env.getOrElse("sbt.build.offline", "true")) match {
@@ -86,6 +87,7 @@ val root = (project in file(".")).
       ) withUser "root" withGroup "root" withPerms "0644" gzipped) asDocs()
     },
     debianChangelog in Debian := { Some(sourceDirectory.value / "debian" / "changelog") },
+    addPackage(Debian, packageBin in Debian, "deb"),
     // RPM SPECIFIC
     version in Rpm := {
       val stable = (sbtVersionToRelease split "[^\\d]" filterNot (_.isEmpty) mkString ".")
