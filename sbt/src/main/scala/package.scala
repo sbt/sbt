@@ -6,7 +6,7 @@ package object sbt extends sbt.IOSyntax0
     with sbt.internal.util.Types
     with sbt.internal.librarymanagement.impl.DependencyBuilders
     with sbt.ProjectExtra
-    with sbt.internal.librarymanagement.DependencyFilterExtra
+    with sbt.librarymanagement.DependencyFilterExtra
     with sbt.BuildExtra
     with sbt.TaskMacroExtra
     with sbt.ScopeFilter.Make

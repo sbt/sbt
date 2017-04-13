@@ -15,8 +15,6 @@ import sbt.internal.CommandStrings.ExportStream
 import sbt.internal.io.WatchState
 import sbt.internal.librarymanagement._
 import sbt.internal.librarymanagement.mavenint.{ PomExtraDependencyAttributes, SbtPomExtraProperties }
-import sbt.internal.librarymanagement.syntax._
-import sbt.internal.librarymanagement.{ CustomPomParser, DependencyFilter }
 import sbt.internal.testing.TestLogger
 import sbt.internal.util._
 import sbt.internal.util.Attributed.data
@@ -29,7 +27,7 @@ import sbt.librarymanagement.Artifact.{ DocClassifier, SourceClassifier }
 import sbt.librarymanagement.Configurations.{ Compile, CompilerPlugin, IntegrationTest, names, Provided, Runtime, Test }
 import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
 import sbt.librarymanagement.{ `package` => _, _ }
-import sbt.librarymanagement.{ Configuration, Configurations, ConflictManager, CrossVersion, MavenRepository, Resolver, ScalaArtifacts, UpdateOptions }
+import sbt.librarymanagement.syntax._
 import sbt.util.InterfaceUtil.{ f1, o2m }
 import sbt.util.{ Level, Logger, ShowLines }
 import scala.concurrent.duration.FiniteDuration
