@@ -98,7 +98,11 @@ val root = (project in file(".")).
     rpmVendor := "lightbend",
     rpmUrl := Some("http://github.com/sbt/sbt-launcher-package"),
     rpmLicense := Some("BSD"),
-    rpmRequirements := Seq("java-1.8.0-devel"),
+    // This is intentionally empty. java-devel could bring in JDK 9-ea on Fedora,
+    // and java-1.8.0-devel doesn't work on CentOS 6 and 7.
+    // https://github.com/sbt/sbt-launcher-package/issues/151
+    // https://github.com/elastic/logstash/issues/6275#issuecomment-261359933
+    rpmRequirements := Seq(),
     rpmProvides := Seq("sbt"),
 
     // WINDOWS SPECIFIC
