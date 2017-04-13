@@ -12,9 +12,21 @@ declare -a scalac_args
 declare -a sbt_commands
 declare java_cmd=java
 declare java_version
-declare -r sbt_bin_dir="$(dirname "$(realpath "$0")")"
-declare -r sbt_home="$(dirname "$sbt_bin_dir")"
 declare init_sbt_version=
+
+declare SCRIPT=$0
+while [ -h "$SCRIPT" ] ; do
+  ls=$(ls -ld "$SCRIPT")
+  # Drop everything prior to ->
+  link=$(expr "$ls" : '.*-> \(.*\)$')
+  if expr "$link" : '/.*' > /dev/null; then
+    SCRIPT="$link"
+  else
+    SCRIPT=$(dirname "$SCRIPT")/"$link"
+  fi
+done
+declare -r sbt_bin_dir="$(dirname "$SCRIPT")"
+declare -r sbt_home="$(dirname "$sbt_bin_dir")"
 
 echoerr () {
   echo 1>&2 "$@"
