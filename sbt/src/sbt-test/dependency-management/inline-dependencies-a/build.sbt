@@ -1,4 +1,4 @@
-import sbt.internal.librarymanagement.syntax._
+import sbt.librarymanagement.syntax._
 
 libraryDependencies += "org.scalacheck" % "scalacheck" % "1.5"
 
