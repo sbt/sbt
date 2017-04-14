@@ -31,7 +31,7 @@ import java.net.URI
 import java.util.Locale
 import scala.util.control.NonFatal
 
-import BasicCommandStrings.{ Shell, Server }
+import BasicCommandStrings.{ Shell, OldShell }
 import CommandStrings.BootCommand
 
 /** This class is the entry point for sbt. */
@@ -92,7 +92,7 @@ final class xMain extends xsbti.AppMain {
   private def endsWithBoot(state: State) = state.remainingCommands.lastOption exists (_.commandLine == BootCommand)
 
   private def notifyUsersAboutShell(state: State) =
-    if (isInteractive && !hasCommand(state, Shell) && !hasCommand(state, Server) && !endsWithBoot(state)) {
+    if (isInteractive && !hasCommand(state, Shell) && !hasCommand(state, OldShell) && !endsWithBoot(state)) {
       state.log warn "Executing in batch mode."
       state.log warn "  For better performance, hit [ENTER] to switch to interactive mode, or"
       state.log warn "  consider launching sbt without any commands, or explicitly passing 'shell'"
@@ -168,7 +168,7 @@ object BuiltinCommands {
     templateCommand, projects, project, reboot, read, history, set, sessionCommand,
     inspect, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
     Cross.crossRestoreSession, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure,
-    setLogLevel, plugin, plugins, ifLast, multi, shell, server, BasicCommands.client,
+    setLogLevel, plugin, plugins, ifLast, multi, shell, oldshell, BasicCommands.client,
     continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit,
     early, initialize, act
   ) ++ compatCommands
@@ -614,13 +614,13 @@ object BuiltinCommands {
       s.put(Keys.stateCompilerCache, cache)
     }
 
-  def server: Command = Command.command(Server, Help.more(Server, ServerDetailed)) { s0 =>
+  def shell: Command = Command.command(Shell, Help.more(Shell, ShellDetailed)) { s0 =>
     import sbt.internal.{ ConsolePromptEvent, ConsoleUnpromptEvent }
     val exchange = StandardMain.exchange
     val s1 = exchange run s0
     exchange publishEventMessage ConsolePromptEvent(s0)
     val exec: Exec = exchange.blockUntilNextExec
-    val newState = s1.copy(onFailure = Some(Exec(Server, None)), remainingCommands = exec +: Exec(Server, None) +: s1.remainingCommands).setInteractive(true)
+    val newState = s1.copy(onFailure = Some(Exec(Shell, None)), remainingCommands = exec +: Exec(Shell, None) +: s1.remainingCommands).setInteractive(true)
     exchange publishEventMessage ConsoleUnpromptEvent(exec.source)
     if (exec.commandLine.trim.isEmpty) newState
     else newState.clearGlobalLog
