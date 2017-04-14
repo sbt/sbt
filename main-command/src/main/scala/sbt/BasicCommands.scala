@@ -29,7 +29,7 @@ import scala.util.control.NonFatal
 object BasicCommands {
   lazy val allBasicCommands: Seq[Command] = Seq(
     nop, ignore, help, completionsCommand, multi, ifLast, append, setOnFailure, clearOnFailure,
-    stashOnFailure, popOnFailure, reboot, call, early, exit, continuous, history, shell, client,
+    stashOnFailure, popOnFailure, reboot, call, early, exit, continuous, history, oldshell, client,
     read, alias
   ) ++ compatCommands
 
@@ -202,7 +202,7 @@ object BasicCommands {
       }
     }
 
-  def shell: Command = Command.command(Shell, Help.more(Shell, ShellDetailed)) { s =>
+  def oldshell: Command = Command.command(OldShell, Help.more(Shell, OldShellDetailed)) { s =>
     val history = (s get historyPath) getOrElse Some(new File(s.baseDir, ".history"))
     val prompt = (s get shellPrompt) match { case Some(pf) => pf(s); case None => "> " }
     val reader = new FullReader(history, s.combinedParser)
@@ -211,7 +211,7 @@ object BasicCommands {
       case Some(line) =>
         val newState = s.copy(
           onFailure = Some(Exec(Shell, None)),
-          remainingCommands = Exec(line, s.source) +: Exec(Shell, None) +: s.remainingCommands
+          remainingCommands = Exec(line, s.source) +: Exec(OldShell, None) +: s.remainingCommands
         ).setInteractive(true)
         if (line.trim.isEmpty) newState else newState.clearGlobalLog
       case None => s.setInteractive(false)

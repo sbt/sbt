@@ -150,10 +150,10 @@ $AliasCommand name=
 	Removes the alias for `name`."""
 
   def Shell = "shell"
-  def ShellDetailed = "Provides an interactive prompt from which commands can be run."
+  def ShellDetailed = "Provides an interactive prompt and network server from which commands can be run."
 
-  def Server = "server"
-  def ServerDetailed = "Provides a network server and an interactive prompt from which commands can be run."
+  def OldShell = "oldshell"
+  def OldShellDetailed = "Provides an interactive prompt from which commands can be run."
 
   def Client = "client"
   def ClientDetailed = "Provides an interactive prompt from which commands can be run on a server."
