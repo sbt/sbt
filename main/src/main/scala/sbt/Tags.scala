@@ -13,6 +13,7 @@ object Tags {
   val Test = Tag("test")
   val Update = Tag("update")
   val Publish = Tag("publish")
+  val Clean = Tag("clean")
 
   val CPU = Tag("cpu")
   val Network = Tag("network")
@@ -24,7 +25,7 @@ object Tags {
    * Describes a restriction on concurrently executing tasks.
    * A Rule is constructed using one of the Tags.limit* methods.
    */
-  sealed trait Rule { // TODO: make this an abstract class for 0.14
+  abstract class Rule {
     def apply(m: TagMap): Boolean
     def ||(r: Rule): Rule = new Or(this, r)
     def &&(r: Rule): Rule = new And(this, r)
