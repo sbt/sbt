@@ -15,7 +15,7 @@ import sbt.internal.librarymanagement.{ IvyConfiguration, JsonUtil, IvySbt, Inli
 import sbt.librarymanagement.{ Configurations, ModuleID, ModuleInfo, Resolver, UpdateConfiguration, UpdateLogging, UpdateOptions, ArtifactTypeFilter }
 import sbt.librarymanagement.syntax._
 import sbt.util.Logger
-import sbt.internal.util.{ BufferedLogger, CacheStore, FullLogger }
+import sbt.internal.util.{ BufferedLogger, FullLogger }
 
 private[sbt] object ComponentCompiler {
   // val xsbtiID = "xsbti"
@@ -23,11 +23,11 @@ private[sbt] object ComponentCompiler {
   val binSeparator = "-bin_"
   val javaVersion = System.getProperty("java.class.version")
 
-  def interfaceProvider(manager: ZincComponentManager, ivyConfiguration: IvyConfiguration, fileToStore: File => CacheStore, sourcesModule: ModuleID): CompilerBridgeProvider = new CompilerBridgeProvider {
+  def interfaceProvider(manager: ZincComponentManager, ivyConfiguration: IvyConfiguration, sourcesModule: ModuleID): CompilerBridgeProvider = new CompilerBridgeProvider {
     def apply(scalaInstance: xsbti.compile.ScalaInstance, log: Logger): File =
       {
         // this is the instance used to compile the interface component
-        val componentCompiler = new IvyComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptionsUtil.auto, log), manager, ivyConfiguration, fileToStore, sourcesModule, log)
+        val componentCompiler = new IvyComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptionsUtil.auto, log), manager, ivyConfiguration, sourcesModule, log)
         log.debug("Getting " + sourcesModule + " from component compiler for Scala " + scalaInstance.version)
         componentCompiler()
       }
@@ -47,13 +47,13 @@ private[sbt] object ComponentCompiler {
  * The compiled classes are cached using the provided component manager according
  * to the actualVersion field of the RawCompiler.
  */
-private[inc] class IvyComponentCompiler(compiler: RawCompiler, manager: ZincComponentManager, ivyConfiguration: IvyConfiguration, fileToStore: File => CacheStore, sourcesModule: ModuleID, log: Logger) {
+private[inc] class IvyComponentCompiler(compiler: RawCompiler, manager: ZincComponentManager, ivyConfiguration: IvyConfiguration, sourcesModule: ModuleID, log: Logger) {
   import ComponentCompiler._
   // private val xsbtiInterfaceModuleName = "compiler-interface"
   // private val xsbtiInterfaceID = s"interface-$incrementalVersion"
   private val sbtOrgTemp = JsonUtil.sbtOrgTemp
   private val modulePrefixTemp = "temp-module-"
-  private val ivySbt: IvySbt = new IvySbt(ivyConfiguration, fileToStore)
+  private val ivySbt: IvySbt = new IvySbt(ivyConfiguration)
   private val buffered = new BufferedLogger(FullLogger(log))
 
   def apply(): File = {
