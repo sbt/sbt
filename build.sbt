@@ -127,23 +127,21 @@ lazy val utilLogic = (project in internalPath / "util-logic").
   )
 
 // Persisted caching based on sjson-new
-lazy val utilCache = (project in internalPath / "util-cache").
+lazy val utilCache = (project in file("util-cache")).
   dependsOn(utilCollection, utilTesting % Test).
   settings(
     commonSettings,
     name := "Util Cache",
-    libraryDependencies ++= Seq(sjsonnew, scalaReflect.value),
-    libraryDependencies += sjsonnewScalaJson % Test
+    libraryDependencies ++= Seq(sjsonnewScalaJson, scalaReflect.value)
   ).
   configure(addSbtIO)
 
 // Builds on cache to provide caching for filesystem-related operations
-lazy val utilTracking = (project in internalPath / "util-tracking").
+lazy val utilTracking = (project in file("util-tracking")).
   dependsOn(utilCache, utilTesting % Test).
   settings(
     commonSettings,
-    name := "Util Tracking",
-    libraryDependencies += sjsonnewScalaJson % Test
+    name := "Util Tracking"
   ).
   configure(addSbtIO)
 
