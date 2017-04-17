@@ -7,7 +7,7 @@ import sbt.util.Logger
 import sbt.io.Hash
 
 class DefaultLibraryManagement(ivyConfiguration: IvyConfiguration, log: Logger) extends LibraryManagement {
-  private[sbt] val ivySbt: IvySbt = new IvySbt(ivyConfiguration, DefaultFileToStore)
+  private[sbt] val ivySbt: IvySbt = new IvySbt(ivyConfiguration)
   private val sbtOrgTemp = JsonUtil.sbtOrgTemp
   private val modulePrefixTemp = "temp-module-"
 

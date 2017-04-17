@@ -16,7 +16,7 @@ class CustomPomParserTest extends UnitSpec {
       val local = MavenRepository("Test Repo", repoUrl.toExternalForm)
       val paths = IvyPaths(new File("."), Some(cacheDir))
       val conf = new InlineIvyConfiguration(paths, Vector(local), Vector.empty, Vector.empty, false, None, Vector("sha1", "md5"), None, UpdateOptions(), log)
-      val ivySbt = new IvySbt(conf, DefaultFileToStore)
+      val ivySbt = new IvySbt(conf)
       val resolveOpts = new ResolveOptions().setConfs(Array("default"))
       val mrid = ModuleRevisionId.newInstance("com.test", "test-artifact", "1.0.0-SNAPSHOT")
 

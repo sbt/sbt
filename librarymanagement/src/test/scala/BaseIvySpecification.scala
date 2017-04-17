@@ -8,13 +8,6 @@ import sbt.internal.util.ConsoleLogger
 import sbt.librarymanagement._
 import Configurations._
 
-import sbt.internal.util.FileBasedStore
-
-import sjsonnew.IsoString
-import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
-
-import scala.json.ast.unsafe.JValue
-
 trait BaseIvySpecification extends UnitSpec {
   def currentBase: File = new File(".")
   def currentTarget: File = currentBase / "target" / "ivyhome"
@@ -22,8 +15,6 @@ trait BaseIvySpecification extends UnitSpec {
   def currentDependency: File = currentBase / "target" / "dependency"
   def defaultModuleId: ModuleID = ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile"))
 
-  implicit val isoString: IsoString[JValue] = IsoString.iso(CompactPrinter.apply, FixedParser.parseUnsafe)
-  val fileToStore = (f: File) => new FileBasedStore(f, Converter)
   lazy val log = ConsoleLogger()
 
   def configurations = Vector(Compile, Test, Runtime)
@@ -47,7 +38,7 @@ trait BaseIvySpecification extends UnitSpec {
       moduleInfo = ModuleInfo("foo"),
       dependencies = deps
     ).withConfigurations(configurations)
-    val ivySbt = new IvySbt(mkIvyConfiguration(uo), fileToStore)
+    val ivySbt = new IvySbt(mkIvyConfiguration(uo))
     new ivySbt.Module(moduleSetting)
   }
 
