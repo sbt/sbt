@@ -12,16 +12,12 @@ import org.apache.ivy.plugins.repository.{ ArtifactResourceResolver, Resource, R
 import org.apache.ivy.plugins.resolver.util.ResolvedResource
 import org.apache.ivy.util.FileUtil
 import sbt.io.Path
-import sbt.util.Logger
 import sbt.librarymanagement._
-
-import sbt.internal.util.{ CacheStore, FileBasedStore }
+import sbt.util.Logger
 
 import scala.json.ast.unsafe._
 import scala.collection.mutable
 import jawn.{ SupportParser, MutableFacade }
-import sjsonnew.IsoString
-import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 
 class NotInCache(val id: ModuleID, cause: Throwable)
   extends RuntimeException(NotInCache(id, cause), cause) {
@@ -35,9 +31,7 @@ private object NotInCache {
     }
 }
 /** Provides methods for working at the level of a single jar file with the default Ivy cache.*/
-class IvyCache(val ivyHome: Option[File], fileToStore: File => CacheStore) {
-  def this(ivyHome: Option[File]) = this(ivyHome, DefaultFileToStore)
-
+class IvyCache(val ivyHome: Option[File]) {
   def lockFile = new File(ivyHome getOrElse Path.userHome, ".sbt.cache.lock")
   /** Caches the given 'file' with the given ID.  It may be retrieved or cleared using this ID.*/
   def cacheJar(moduleID: ModuleID, file: File, lock: Option[xsbti.GlobalLock], log: Logger): Unit = {
@@ -92,7 +86,7 @@ class IvyCache(val ivyHome: Option[File], fileToStore: File => CacheStore) {
       val local = Resolver.defaultLocal
       val paths = IvyPaths(new File("."), ivyHome)
       val conf = new InlineIvyConfiguration(paths, Vector(local), Vector.empty, Vector.empty, false, lock, IvySbt.DefaultChecksums, None, UpdateOptions(), log)
-      (new IvySbt(conf, fileToStore), local)
+      (new IvySbt(conf), local)
     }
   /** Creates a default jar artifact based on the given ID.*/
   private def defaultArtifact(moduleID: ModuleID): IvyArtifact =
@@ -130,9 +124,4 @@ object FixedParser extends SupportParser[JValue] {
         JObject(array)
       }
     }
-}
-
-object DefaultFileToStore extends (File => CacheStore) {
-  private implicit lazy val isoString: IsoString[JValue] = IsoString.iso(CompactPrinter.apply _, FixedParser.parseUnsafe _)
-  override def apply(f: File): CacheStore = new FileBasedStore(f, Converter)
 }

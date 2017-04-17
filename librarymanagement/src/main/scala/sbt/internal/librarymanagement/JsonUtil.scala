@@ -3,22 +3,18 @@ package sbt.internal.librarymanagement
 import java.io.File
 import org.apache.ivy.core
 import core.module.descriptor.ModuleDescriptor
-import sbt.util.Logger
-import sbt.internal.util.CacheStore
+import sbt.util.{ CacheStore, Logger }
 import sbt.librarymanagement._
 import sbt.librarymanagement.LibraryManagementCodec._
-import JsonUtil._
 
 private[sbt] object JsonUtil {
   def sbtOrgTemp = "org.scala-sbt.temp"
   def fakeCallerOrganization = "org.scala-sbt.temp-callers"
-}
 
-private[sbt] class JsonUtil(fileToStore: File => CacheStore) {
   def parseUpdateReport(md: ModuleDescriptor, path: File, cachedDescriptor: File, log: Logger): UpdateReport =
     {
       try {
-        val lite = fileToStore(path).read[UpdateReportLite]
+        val lite = CacheStore(path).read[UpdateReportLite]
         fromLite(lite, cachedDescriptor)
       } catch {
         case e: Throwable =>
@@ -29,7 +25,7 @@ private[sbt] class JsonUtil(fileToStore: File => CacheStore) {
   def writeUpdateReport(ur: UpdateReport, graphPath: File): Unit =
     {
       sbt.io.IO.createDirectory(graphPath.getParentFile)
-      fileToStore(graphPath).write(toLite(ur))
+      CacheStore(graphPath).write(toLite(ur))
     }
   def toLite(ur: UpdateReport): UpdateReportLite =
     UpdateReportLite(ur.configurations map { cr =>

@@ -30,9 +30,8 @@ import sbt.util.Logger
 import sbt.librarymanagement._
 import Resolver.PluginPattern
 import ivyint.{ CachedResolutionResolveEngine, CachedResolutionResolveCache, SbtDefaultDependencyDescriptor }
-import sbt.internal.util.CacheStore
 
-final class IvySbt(val configuration: IvyConfiguration, fileToStore: File => CacheStore) { self =>
+final class IvySbt(val configuration: IvyConfiguration) { self =>
   import configuration.baseDirectory
 
   /*
@@ -93,8 +92,7 @@ final class IvySbt(val configuration: IvyConfiguration, fileToStore: File => Cac
           setEventManager(new EventManager())
           if (configuration.updateOptions.cachedResolution) {
             setResolveEngine(new ResolveEngine(getSettings, getEventManager, getSortEngine) with CachedResolutionResolveEngine {
-              override private[sbt] val fileToStore: File => CacheStore = self.fileToStore
-              val cachedResolutionResolveCache = IvySbt.cachedResolutionResolveCache(fileToStore)
+              val cachedResolutionResolveCache = IvySbt.cachedResolutionResolveCache
               val projectResolver = prOpt
               def makeInstance = mkIvy
             })
@@ -141,7 +139,7 @@ final class IvySbt(val configuration: IvyConfiguration, fileToStore: File => Cac
     withIvy(log) { i =>
       val prOpt = Option(i.getSettings.getResolver(ProjectResolver.InterProject)) map { case pr: ProjectResolver => pr }
       if (configuration.updateOptions.cachedResolution) {
-        IvySbt.cachedResolutionResolveCache(fileToStore).clean(md, prOpt)
+        IvySbt.cachedResolutionResolveCache.clean(md, prOpt)
       }
     }
 
@@ -251,7 +249,7 @@ private[sbt] object IvySbt {
   val DefaultIvyFilename = "ivy.xml"
   val DefaultMavenFilename = "pom.xml"
   val DefaultChecksums = Vector("sha1", "md5")
-  private[sbt] def cachedResolutionResolveCache(fileToStore: File => CacheStore): CachedResolutionResolveCache = new CachedResolutionResolveCache(fileToStore)
+  private[sbt] def cachedResolutionResolveCache: CachedResolutionResolveCache = new CachedResolutionResolveCache
 
   def defaultIvyFile(project: File) = new File(project, DefaultIvyFilename)
   def defaultIvyConfiguration(project: File) = new File(project, DefaultIvyConfigFilename)

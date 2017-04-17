@@ -21,9 +21,8 @@ import org.apache.ivy.plugins.matcher.{ MapMatcher, PatternMatcher }
 import annotation.tailrec
 import scala.concurrent.duration._
 import sbt.io.{ DirectoryFilter, Hash, IO }
-import sbt.util.Logger
 import sbt.librarymanagement._, syntax._
-import sbt.internal.util.CacheStore
+import sbt.util.Logger
 
 private[sbt] object CachedResolutionResolveCache {
   def createID(organization: String, name: String, revision: String) =
@@ -38,9 +37,8 @@ private[sbt] object CachedResolutionResolveCache {
   lazy val yyyymmdd: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd")
 }
 
-private[sbt] class CachedResolutionResolveCache(fileToStore: File => CacheStore) {
+private[sbt] class CachedResolutionResolveCache {
   import CachedResolutionResolveCache._
-  val jsonUtil = new JsonUtil(fileToStore)
   val updateReportCache: concurrent.Map[ModuleRevisionId, Either[ResolveException, UpdateReport]] = concurrent.TrieMap()
   // Used for subproject
   val projectReportCache: concurrent.Map[(ModuleRevisionId, LogicalClock), Either[ResolveException, UpdateReport]] = concurrent.TrieMap()
@@ -165,7 +163,7 @@ private[sbt] class CachedResolutionResolveCache(fileToStore: File => CacheStore)
         else None) match {
           case Some(path) =>
             log.debug(s"parsing ${path.getAbsolutePath.toString}")
-            val ur = jsonUtil.parseUpdateReport(md, path, cachedDescriptor, log)
+            val ur = JsonUtil.parseUpdateReport(md, path, cachedDescriptor, log)
             if (ur.allFiles forall { _.exists }) {
               updateReportCache(md.getModuleRevisionId) = Right(ur)
               Some(Right(ur))
@@ -199,7 +197,7 @@ private[sbt] class CachedResolutionResolveCache(fileToStore: File => CacheStore)
               if (changing) {
                 cleanDynamicGraph()
               }
-              jsonUtil.writeUpdateReport(ur, gp)
+              JsonUtil.writeUpdateReport(ur, gp)
               // limit the update cache size
               if (updateReportCache.size > maxUpdateReportCacheSize) {
                 updateReportCache.remove(updateReportCache.head._1)
@@ -257,9 +255,6 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
   private[sbt] def projectResolver: Option[ProjectResolver]
   private[sbt] def makeInstance: Ivy
   private[sbt] val ignoreTransitiveForce: Boolean = true
-
-  private[sbt] val fileToStore: File => CacheStore
-  private val jsonUtil = new JsonUtil(fileToStore)
 
   def withIvy[A](log: Logger)(f: Ivy => A): A =
     withIvy(new IvyLoggerInterface(log))(f)
@@ -432,7 +427,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
           if (mr.evicted || mr.problem.nonEmpty) None
           else
             // https://github.com/sbt/sbt/issues/1763
-            Some(mr.withCallers(jsonUtil.filterOutArtificialCallers(mr.callers)))
+            Some(mr.withCallers(JsonUtil.filterOutArtificialCallers(mr.callers)))
         } match {
           case Vector() => None
           case ms       => Some(OrganizationArtifactReport(report0.organization, report0.name, ms))
