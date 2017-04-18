@@ -11,10 +11,11 @@ import sbt.io.syntax._
 import sbt.io.IO
 
 import sbt.internal.util.Types.:+:
-import sbt.internal.util.CacheImplicits._
-import sbt.internal.util.Tracked.inputChanged
-import sbt.internal.util.{ CacheStoreFactory, FilesInfo, HashFileInfo, HNil, ModifiedFileInfo, PlainFileInfo }
-import sbt.internal.util.FileInfo.{ exists, hash, lastModified }
+import sbt.util.CacheImplicits._
+import sbt.util.Tracked.inputChanged
+import sbt.util.{ CacheStoreFactory, FilesInfo, HashFileInfo, ModifiedFileInfo, PlainFileInfo }
+import sbt.internal.util.HNil
+import sbt.util.FileInfo.{ exists, hash, lastModified }
 import xsbti.compile.ClasspathOptions
 
 import sbt.internal.util.ManagedLogger
@@ -47,8 +48,8 @@ object RawCompileLike {
       implicit val stringEquiv: Equiv[String] = defaultEquiv
       implicit val fileEquiv: Equiv[File] = defaultEquiv
       implicit val intEquiv: Equiv[Int] = defaultEquiv
-      val cachedComp = inputChanged(cacheStoreFactory derive "inputs") { (inChanged, in: Inputs) =>
-        inputChanged(cacheStoreFactory derive "output") { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
+      val cachedComp = inputChanged(cacheStoreFactory make "inputs") { (inChanged, in: Inputs) =>
+        inputChanged(cacheStoreFactory make "output") { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
           if (inChanged || outChanged)
             doCompile(sources, classpath, outputDirectory, options, maxErrors, log)
           else

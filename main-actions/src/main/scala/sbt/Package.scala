@@ -14,10 +14,11 @@ import sjsonnew.JsonFormat
 
 import sbt.util.Logger
 
-import sbt.internal.util.{ CacheStoreFactory, FilesInfo, HNil, ModifiedFileInfo, PlainFileInfo }
-import sbt.internal.util.FileInfo.{ exists, lastModified }
-import sbt.internal.util.CacheImplicits._
-import sbt.internal.util.Tracked.inputChanged
+import sbt.util.{ CacheStoreFactory, FilesInfo, ModifiedFileInfo, PlainFileInfo }
+import sbt.internal.util.HNil
+import sbt.util.FileInfo.{ exists, lastModified }
+import sbt.util.CacheImplicits._
+import sbt.util.Tracked.inputChanged
 
 sealed trait PackageOption
 object Package {
@@ -59,10 +60,10 @@ object Package {
     }
     setVersion(main)
 
-    val cachedMakeJar = inputChanged(cacheStoreFactory derive "inputs") { (inChanged, inputs: Map[File, String] :+: FilesInfo[ModifiedFileInfo] :+: Manifest :+: HNil) =>
+    val cachedMakeJar = inputChanged(cacheStoreFactory make "inputs") { (inChanged, inputs: Map[File, String] :+: FilesInfo[ModifiedFileInfo] :+: Manifest :+: HNil) =>
       import exists.format
       val sources :+: _ :+: manifest :+: HNil = inputs
-      inputChanged(cacheStoreFactory derive "output") { (outChanged, jar: PlainFileInfo) =>
+      inputChanged(cacheStoreFactory make "output") { (outChanged, jar: PlainFileInfo) =>
         if (inChanged || outChanged)
           makeJar(sources.toSeq, jar.file, manifest, log)
         else

@@ -31,7 +31,7 @@ import KeyRanks._
 import sbt.internal.{ BuildStructure, LoadedBuild, PluginDiscovery, BuildDependencies, SessionSettings, LogManager }
 import sbt.io.FileFilter
 import sbt.internal.io.WatchState
-import sbt.internal.util.{ AttributeKey, CacheStore, SourcePosition }
+import sbt.internal.util.{ AttributeKey, SourcePosition }
 
 import sbt.librarymanagement.Configurations.CompilerPlugin
 import sbt.librarymanagement.LibraryManagementCodec._
@@ -79,8 +79,6 @@ import sbt.BuildSyntax._
 
 object Keys {
   val TraceValues = "-1 to disable, 0 for up to the first sbt frame, or a positive number to set the maximum number of frames shown."
-
-  val fileToStore = SettingKey[File => CacheStore]("file-to-store", "How to go from a file to a store.", ASetting)
 
   // logging
   val logLevel = SettingKey[Level.Value]("log-level", "The amount of logging sent to the screen.", ASetting)

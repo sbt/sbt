@@ -2,7 +2,8 @@ package sbt
 
 import Def.{ Initialize, ScopedKey }
 import Previous._
-import sbt.internal.util.{ ~>, IMap, Input, Output, RMap, StampedFormat }
+import sbt.internal.util.{ ~>, IMap, RMap }
+import sbt.util.{ Input, Output, StampedFormat }
 import sjsonnew.JsonFormat
 
 /**

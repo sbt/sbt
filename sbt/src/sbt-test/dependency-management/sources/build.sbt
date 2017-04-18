@@ -1,4 +1,4 @@
-import sbt.internal.librarymanagement.syntax._
+import sbt.librarymanagement.syntax._
 
 lazy val root = (project in file(".")).
   settings(
