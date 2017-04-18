@@ -695,9 +695,8 @@ object Cache {
     val urls =
       artifact.url +: {
         checksums
-          .intersect(artifact.checksumUrls.keySet)
           .toSeq
-          .map(artifact.checksumUrls)
+          .flatMap(artifact.checksumUrls.get)
       }
 
     val tasks =
