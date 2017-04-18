@@ -16,6 +16,14 @@ private[sbt] object SbtParser {
   private[parser] val NOT_FOUND_INDEX = -1
   private[sbt] val FAKE_FILE = new File("fake")
   private[parser] val XML_ERROR = "';' expected but 'val' found."
+
+  import scala.reflect.runtime._
+  import scala.tools.reflect.ToolBox
+  private[parser] lazy val toolbox =
+    universe.rootMirror.mkToolBox(options = "-Yrangepos")
+  private[parser] def parse(code: String) = synchronized {
+    toolbox.parse(code)
+  }
 }
 
 /**
@@ -60,24 +68,21 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
   val (imports, settings, settingsTrees) = splitExpressions(file, lines)
 
   private def splitExpressions(file: File, lines: Seq[String]): (Seq[(String, Int)], Seq[(String, LineRange)], Seq[(String, Tree)]) = {
-    import sbt.internal.parser.MissingBracketHandler._
+    import sbt.internals.parser.MissingBracketHandler.findMissingText
 
     import scala.compat.Platform.EOL
-    import scala.reflect.runtime._
-    import scala.tools.reflect.{ ToolBox, ToolBoxError }
+    import scala.tools.reflect.ToolBoxError
 
-    val mirror = universe.runtimeMirror(this.getClass.getClassLoader)
-    val toolbox = mirror.mkToolBox(options = "-Yrangepos")
     val indexedLines = lines.toIndexedSeq
     val content = indexedLines.mkString(END_OF_LINE)
     val fileName = file.getAbsolutePath
 
     val parsed =
       try {
-        toolbox.parse(content)
+        SbtParser.parse(content)
       } catch {
         case e: ToolBoxError =>
-          val seq = toolbox.frontEnd.infos.map { i =>
+          val seq = SbtParser.toolbox.frontEnd.infos.map { i =>
             s"""[$fileName]:${i.pos.line}: ${i.msg}"""
           }
           val errorMessage = seq.mkString(EOL)
@@ -98,6 +103,8 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
             errorMessage
           }
           throw new MessageOnlyException(error)
+      } finally {
+        SbtParser.toolbox.frontEnd.infos.clear()
       }
     val parsedTrees = parsed match {
       case Block(stmt, expr) =>
@@ -132,7 +139,7 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
      * @return originalStatement or originalStatement with missing bracket
      */
     def parseStatementAgain(t: Tree, originalStatement: String): String = {
-      val statement = scala.util.Try(toolbox.parse(originalStatement)) match {
+      val statement = scala.util.Try(SbtParser.parse(originalStatement)) match {
         case scala.util.Failure(th) =>
           val missingText = findMissingText(content, t.pos.end, t.pos.line, fileName, th)
           originalStatement + missingText
