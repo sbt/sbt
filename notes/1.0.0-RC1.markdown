@@ -104,7 +104,7 @@ $ coursier launch -r bintray-ivy:org/repo-name ...
 [@MasseGuillaume]: https://github.com/MasseGuillaume
 [@n4to4]: https://github.com/n4to4
 [@olafurpg]: https://github.com/olafurpg
-[csbt]: https://github.com/coursier/coursier/blob/v1.0.0-RC/csbt
+[csbt]: https://github.com/coursier/coursier/blob/v1.0.0-RC1/csbt
 
 ## Non-backward compatible changes
 
