@@ -19,8 +19,7 @@ object ConsoleProject {
       ScalaInstance(scalaProvider.version, scalaProvider.launcher)
     }
     val sourcesModule = extracted.get(Keys.scalaCompilerBridgeSource)
-    val fileToStore = extracted.get(Keys.fileToStore)
-    val compiler = Compiler.scalaCompiler(scalaInstance, ClasspathOptionsUtil.repl, None, ivyConf, fileToStore, sourcesModule)(state.configuration, log)
+    val compiler = Compiler.scalaCompiler(scalaInstance, ClasspathOptionsUtil.repl, None, ivyConf, sourcesModule)(state.configuration, log)
     val imports = BuildUtil.getImports(unit.unit) ++ BuildUtil.importAll(bindings.map(_._1))
     val importString = imports.mkString("", ";\n", ";\n\n")
     val initCommands = importString + extra

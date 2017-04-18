@@ -18,7 +18,6 @@ import sbt.internal.librarymanagement.mavenint.{ PomExtraDependencyAttributes, S
 import sbt.internal.testing.TestLogger
 import sbt.internal.util._
 import sbt.internal.util.Attributed.data
-import sbt.internal.util.CacheImplicits._
 import sbt.internal.util.complete._
 import sbt.internal.util.Types._
 import sbt.io.syntax._
@@ -29,7 +28,8 @@ import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion
 import sbt.librarymanagement.{ `package` => _, _ }
 import sbt.librarymanagement.syntax._
 import sbt.util.InterfaceUtil.{ f1, o2m }
-import sbt.util.{ Level, Logger, ShowLines }
+import sbt.util._
+import sbt.util.CacheImplicits._
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 import scala.xml.NodeSeq
@@ -127,7 +127,6 @@ object Defaults extends BuildCommon {
       includeFilter in unmanagedSources :== ("*.java" | "*.scala") && new SimpleFileFilter(_.isFile),
       includeFilter in unmanagedJars :== "*.jar" | "*.so" | "*.dll" | "*.jnilib" | "*.zip",
       includeFilter in unmanagedResources :== AllPassFilter,
-      fileToStore :== DefaultFileToStore,
       bgList := { bgJobService.value.jobs },
       ps := psTask.value,
       bgStop := bgStopTask.evaluated,
@@ -319,7 +318,7 @@ object Defaults extends BuildCommon {
     compilers := {
       val compilers = Compiler.compilers(
         scalaInstance.value, classpathOptions.value, javaHome.value, bootIvyConfiguration.value,
-        fileToStore.value, scalaCompilerBridgeSource.value
+        scalaCompilerBridgeSource.value
       )(appConfiguration.value, streams.value.log)
       if (java.lang.Boolean.getBoolean("sbt.disable.interface.classloader.cache")) compilers else {
         compilers.withScalac(
@@ -1124,7 +1123,7 @@ object Defaults extends BuildCommon {
       val t = classDirectory.value
       val dirs = resourceDirectories.value
       val s = streams.value
-      val cacheStore = s.cacheStoreFactory derive "copy-resources"
+      val cacheStore = s.cacheStoreFactory make "copy-resources"
       val mappings = (resources.value --- dirs) pair (rebase(dirs, t) | flat(t))
       s.log.debug("Copy resource mappings: " + mappings.mkString("\n\t", "\n\t", ""))
       Sync(cacheStore)(mappings)
@@ -1505,7 +1504,7 @@ object Classpaths {
   private[sbt] def ivySbt0: Initialize[Task[IvySbt]] =
     Def.task {
       Credentials.register(credentials.value, streams.value.log)
-      new IvySbt(ivyConfiguration.value, fileToStore.value)
+      new IvySbt(ivyConfiguration.value)
     }
   def moduleSettings0: Initialize[Task[ModuleSettings]] = Def.task {
     InlineConfiguration(ivyValidate.value, ivyScala.value,
@@ -1580,6 +1579,7 @@ object Classpaths {
   def withExcludes(out: File, classifiers: Seq[String], lock: xsbti.GlobalLock)(f: Map[ModuleID, Set[String]] => UpdateReport): UpdateReport =
     {
       import sbt.librarymanagement.LibraryManagementCodec._
+      import sbt.util.FileBasedStore
       implicit val isoString: sjsonnew.IsoString[scala.json.ast.unsafe.JValue] = sjsonnew.IsoString.iso(
         sjsonnew.support.scalajson.unsafe.CompactPrinter.apply,
         sjsonnew.support.scalajson.unsafe.Parser.parseUnsafe
@@ -1768,7 +1768,7 @@ object Classpaths {
           out.allFiles.forall(f => fileUptodate(f, out.stamps)) &&
           fileUptodate(out.cachedDescriptor, out.stamps)
 
-      val outStore = cacheStoreFactory derive "output"
+      val outStore = cacheStoreFactory make "output"
       def skipWork: In => UpdateReport = {
         import LibraryManagementCodec._
         Tracked.lastOutput[In, UpdateReport](outStore) {
@@ -1801,7 +1801,7 @@ object Classpaths {
       }
       def doWork: In => UpdateReport = {
         import AltLibraryManagementCodec._
-        Tracked.inputChanged(cacheStoreFactory derive "inputs")(doWorkInternal)
+        Tracked.inputChanged(cacheStoreFactory make "inputs")(doWorkInternal)
       }
       val f = if (skip && !force) skipWork else doWork
       f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)
@@ -1833,8 +1833,8 @@ object Classpaths {
         case NonFatal(e) => Map()
       }
 
-    val outCacheStore = cacheStoreFactory derive "output_dsp"
-    val f = Tracked.inputChanged(cacheStoreFactory derive "input_dsp") { (inChanged: Boolean, in: Seq[ModuleID]) =>
+    val outCacheStore = cacheStoreFactory make "output_dsp"
+    val f = Tracked.inputChanged(cacheStoreFactory make "input_dsp") { (inChanged: Boolean, in: Seq[ModuleID]) =>
 
       implicit val NoPositionFormat: JsonFormat[NoPosition.type] = asSingleton(NoPosition)
       implicit val LinePositionFormat: IsoLList.Aux[LinePosition, String :*: Int :*: LNil] = LList.iso(

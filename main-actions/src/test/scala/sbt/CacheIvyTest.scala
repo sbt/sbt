@@ -6,7 +6,7 @@ import Prop._
 import sbt.librarymanagement._
 
 class CacheIvyTest extends Properties("CacheIvy") {
-  import sbt.internal.util.{ CacheStore, SingletonCache }
+  import sbt.util.{ CacheStore, SingletonCache }
   import SingletonCache._
 
   import sjsonnew._

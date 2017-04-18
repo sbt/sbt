@@ -5,8 +5,9 @@ package sbt
 
 import java.io.File
 
-import sbt.internal.util.{ CacheStore, FileInfo, Relation }
-import sbt.internal.util.CacheImplicits._
+import sbt.internal.util.Relation
+import sbt.util.CacheImplicits._
+import sbt.util.{ FileInfo, CacheStore }
 
 import sbt.io.IO
 

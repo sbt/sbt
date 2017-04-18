@@ -10,7 +10,7 @@ import Predef.{ conforms => _, _ }
 import sbt.io.syntax._
 import sbt.io.IO
 
-import sbt.internal.util.CacheStoreFactory
+import sbt.util.CacheStoreFactory
 import xsbti.Reporter
 import xsbti.compile.JavaTools
 

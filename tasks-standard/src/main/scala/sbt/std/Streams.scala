@@ -26,7 +26,7 @@ import sbt.io.syntax._
 import sbt.internal.util.ManagedLogger
 
 import sjsonnew.{ IsoString, SupportConverter }
-import sbt.internal.util.{ CacheStoreFactory, DirectoryStoreFactory, Input, Output, PlainInput, PlainOutput }
+import sbt.util.{ CacheStoreFactory, DirectoryStoreFactory, Input, Output, PlainInput, PlainOutput }
 
 // no longer specific to Tasks, so 'TaskStreams' should be renamed
 /**

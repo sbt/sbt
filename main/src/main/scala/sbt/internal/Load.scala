@@ -5,7 +5,7 @@ package sbt
 package internal
 
 import sbt.librarymanagement.{ Configuration, Configurations, Resolver, UpdateOptions }
-import sbt.internal.librarymanagement.{ DefaultFileToStore, InlineIvyConfiguration, IvyPaths }
+import sbt.internal.librarymanagement.{ InlineIvyConfiguration, IvyPaths }
 
 import java.io.File
 import java.net.URI
@@ -75,7 +75,7 @@ private[sbt] object Load {
       val ivyPaths = IvyPaths(baseDirectory, bootIvyHome(state.configuration))
       val ivyConfiguration = new InlineIvyConfiguration(ivyPaths, Resolver.withDefaultResolvers(Nil).toVector,
         Vector.empty, Vector.empty, localOnly, lock, checksums, None, UpdateOptions(), log)
-      val compilers = Compiler.compilers(ClasspathOptionsUtil.boot, ivyConfiguration, DefaultFileToStore)(state.configuration, log)
+      val compilers = Compiler.compilers(ClasspathOptionsUtil.boot, ivyConfiguration)(state.configuration, log)
       val evalPluginDef = EvaluateTask.evalPluginDef(log) _
       val delegates = defaultDelegates
       val pluginMgmt = PluginManagement(loader)
