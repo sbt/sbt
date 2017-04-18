@@ -120,28 +120,28 @@ object PropertiesPattern {
     implicit def fromString(s: String): ChunkOrProperty = Const(s)
   }
 
-  private object Parser {
+  private def parser: Parser[Seq[ChunkOrProperty]] = {
 
-    private val notIn = s"[]{}()$$".toSet
-    private val chars = P(CharsWhile(c => !notIn(c)).!)
-    private val noHyphenChars = P(CharsWhile(c => !notIn(c) && c != '-').!)
+    val notIn = s"[]{}()$$".toSet
+    val chars = P(CharsWhile(c => !notIn(c)).!)
+    val noHyphenChars = P(CharsWhile(c => !notIn(c) && c != '-').!)
 
-    private val constant = P(chars).map(ChunkOrProperty.Const)
+    val constant = P(chars).map(ChunkOrProperty.Const)
 
-    private lazy val property: Parser[ChunkOrProperty.Prop] =
+    lazy val property: Parser[ChunkOrProperty.Prop] =
       P(s"$${" ~ noHyphenChars ~ ("-" ~ chunks).? ~ "}")
         .map { case (name, altOpt) => ChunkOrProperty.Prop(name, altOpt) }
 
-    private lazy val variable: Parser[ChunkOrProperty.Var] = P("[" ~ chars ~ "]").map(ChunkOrProperty.Var)
+    lazy val variable: Parser[ChunkOrProperty.Var] = P("[" ~ chars ~ "]").map(ChunkOrProperty.Var)
 
-    private lazy val optional: Parser[ChunkOrProperty.Opt] = P("(" ~ chunks ~ ")")
+    lazy val optional: Parser[ChunkOrProperty.Opt] = P("(" ~ chunks ~ ")")
       .map(l => ChunkOrProperty.Opt(l: _*))
 
     lazy val chunks: Parser[Seq[ChunkOrProperty]] = P((constant | property | variable | optional).rep)
       .map(_.toVector) // "Vector" is more readable than "ArrayBuffer"
-  }
 
-  def parser: Parser[Seq[ChunkOrProperty]] = Parser.chunks
+    chunks
+  }
 
 
   def parse(pattern: String): String \/ PropertiesPattern =
