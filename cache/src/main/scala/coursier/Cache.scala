@@ -624,14 +624,16 @@ object Cache {
         }
       }
 
+    def errFile(file: File) = new File(file.getParentFile, "." + file.getName + ".error")
+
     def remoteKeepErrors(file: File, url: String): EitherT[Task, FileError, Unit] = {
 
-      val errFile = new File(file.getParentFile, "." + file.getName + ".error")
+      val errFile0 = errFile(file)
 
       def validErrFileExists =
         EitherT {
           Task {
-            (referenceFileExists && errFile.exists()).right[FileError]
+            (referenceFileExists && errFile0.exists()).right[FileError]
           }
         }
 
@@ -639,8 +641,8 @@ object Cache {
         EitherT {
           Task {
             if (referenceFileExists) {
-              if (!errFile.exists())
-                FileUtil.write(errFile, "".getBytes("UTF-8"))
+              if (!errFile0.exists())
+                FileUtil.write(errFile0, "".getBytes("UTF-8"))
             }
 
             ().right[FileError]
@@ -650,8 +652,8 @@ object Cache {
       def deleteErrFile =
         EitherT {
           Task {
-            if (errFile.exists())
-              errFile.delete()
+            if (errFile0.exists())
+              errFile0.delete()
 
             ().right[FileError]
           }
@@ -681,6 +683,23 @@ object Cache {
       }
     }
 
+    def localInfo(file: File, url: String): EitherT[Task, FileError, Boolean] = {
+
+      val errFile0 = errFile(file)
+
+      // memo-ized
+
+      lazy val res =
+        if (file.exists())
+          true.right[FileError]
+        else if (referenceFileExists && errFile0.exists())
+          FileError.NotFound(url, Some(true)).left[Boolean]
+        else
+          false.right[FileError]
+
+      EitherT(Task(res))
+    }
+
     def checkFileExists(file: File, url: String, log: Boolean = true): EitherT[Task, FileError, Unit] =
       EitherT {
         Task {
@@ -699,11 +718,38 @@ object Cache {
           .flatMap(artifact.checksumUrls.get)
       }
 
+    val cachePolicy0 = cachePolicy match {
+      case CachePolicy.UpdateChanging if !artifact.changing =>
+        CachePolicy.FetchMissing
+      case CachePolicy.LocalUpdateChanging if !artifact.changing =>
+        CachePolicy.LocalOnly
+      case other =>
+        other
+    }
+
+    val requiredArtifactCheck = artifact.extra.get("required") match {
+      case None =>
+        EitherT(Task.now(().right[FileError]))
+      case Some(required) =>
+        cachePolicy0 match {
+          case CachePolicy.LocalOnly | CachePolicy.LocalUpdateChanging | CachePolicy.LocalUpdate =>
+            val file = localFile(required.url, cache, artifact.authentication.map(_.user))
+            localInfo(file, required.url).flatMap {
+              case true =>
+                EitherT(Task.now(().right[FileError]))
+              case false =>
+                EitherT(Task.now(FileError.NotFound(file.toString).left[Unit]))
+            }
+          case _ =>
+            EitherT(Task.now(().right[FileError]))
+        }
+    }
+
     val tasks =
       for (url <- urls) yield {
         val file = localFile(url, cache, artifact.authentication.map(_.user))
 
-        val res =
+        def res =
           if (url.startsWith("file:/")) {
             // for debug purposes, flaky with URL-encoded chars anyway
             // def filtered(s: String) =
@@ -719,15 +765,6 @@ object Cache {
                 remoteKeepErrors(file, url)
               case false =>
                 EitherT(Task.now[FileError \/ Unit](().right))
-            }
-
-            val cachePolicy0 = cachePolicy match {
-              case CachePolicy.UpdateChanging if !artifact.changing =>
-                CachePolicy.FetchMissing
-              case CachePolicy.LocalUpdateChanging if !artifact.changing =>
-                CachePolicy.LocalOnly
-              case other =>
-                other
             }
 
             cachePolicy0 match {
@@ -746,8 +783,10 @@ object Cache {
             }
           }
 
-
-        res.run.map((file, url) -> _)
+        requiredArtifactCheck
+          .flatMap(_ => res)
+          .run
+          .map((file, url) -> _)
       }
 
     Nondeterminism[Task].gather(tasks)
