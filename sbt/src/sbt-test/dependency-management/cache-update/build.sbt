@@ -21,11 +21,11 @@ TaskKey[Unit]("check") := {
 
   type In = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
 
-  import sbt.internal.util.CacheImplicits._
+  import sbt.util.CacheImplicits._
   import sbt.Classpaths.AltLibraryManagementCodec._
 
   val f: In => Unit =
-    Tracked.inputChanged(cacheStoreFactory derive "inputs") { (inChanged: Boolean, in: In) =>
+    Tracked.inputChanged(cacheStoreFactory make "inputs") { (inChanged: Boolean, in: In) =>
       if (inChanged)
         sys.error(s"Update cache is invalidated: ${module.owner.configuration}, ${module.moduleSettings}, $config")
     }
