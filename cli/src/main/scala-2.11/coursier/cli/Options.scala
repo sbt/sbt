@@ -29,7 +29,7 @@ final case class CommonOptions(
   @Short("N")
     maxIterations: Int = 100,
   @Help("Repository - for multiple repositories, separate with comma and/or add this option multiple times (e.g. -r central,ivy2local -r sonatype-snapshots, or equivalently -r central,ivy2local,sonatype-snapshots)")
-  @Value("maven|sonatype:repo|ivy2local|bintray:org/repo|bintray-ivy:org/repo|typesafe-ivy:releases|ivy:pattern")
+  @Value("maven|sonatype:$repo|ivy2local|bintray:$org/$repo|bintray-ivy:$org/$repo|typesafe:ivy-$repo|ivy:$pattern")
   @Short("r")
     repository: List[String] = Nil,
   @Help("Source repository - for multiple repositories, separate with comma and/or add this option multiple times")
