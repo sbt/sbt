@@ -333,30 +333,46 @@ private[sbt] object Load {
     }
   }
 
-  def load(file: File, s: State, config: LoadBuildConfiguration): PartBuild =
-    load(file, builtinLoader(s, config.copy(pluginManagement = config.pluginManagement.shift, extraBuilds = Nil)), config.extraBuilds.toList)
+  /** Loads the unresolved build units and computes its settings.
+    *
+    * @param root The root directory.
+    * @param s The given state.
+    * @param config The configuration of the loaded build.
+    * @return An instance of [[PartBuild]] with all the unresolved build units.
+    */
+  def load(root: File, s: State, config: LoadBuildConfiguration): PartBuild = {
+    val manager = config.pluginManagement.shift
+    // Forced type ascription, otherwise scalac does not compile it
+    val newConfig: LoadBuildConfiguration =
+      config.copy(pluginManagement = manager, extraBuilds = Nil)
+    val loader = builtinLoader(s, newConfig)
+    loadURI(IO.directoryURI(root), loader, config.extraBuilds.toList)
+  }
 
-  def builtinLoader(s: State, config: LoadBuildConfiguration): BuildLoader =
-    {
-      val fail = (uri: URI) => sys.error("Invalid build URI (no handler available): " + uri)
-      val resolver = (info: BuildLoader.ResolveInfo) => RetrieveUnit(info)
-      val build = (info: BuildLoader.BuildInfo) => Some(() =>
-        loadUnit(info.uri, info.base, info.state, info.config))
-      val components = BuildLoader.components(resolver, build, full = BuildLoader.componentLoader)
-      BuildLoader(components, fail, s, config)
-    }
+  /** Creates a loader for the build.
+    *
+    * @param s The given state.
+    * @param config The configuration of the loaded build.
+    * @return A [[BuildLoader]].
+    */
+  def builtinLoader(s: State, config: LoadBuildConfiguration): BuildLoader = {
+    val fail = (uri: URI) =>
+      sys.error("Invalid build URI (no handler available): " + uri)
+    val resolver = (info: BuildLoader.ResolveInfo) => RetrieveUnit(info)
+    val build = (info: BuildLoader.BuildInfo) => Some(() =>
+      loadUnit(info.uri, info.base, info.state, info.config))
+    val loader = BuildLoader.componentLoader
+    val components = BuildLoader.components(resolver, build, full = loader)
+    BuildLoader(components, fail, s, config)
+  }
 
-  def load(file: File, loaders: BuildLoader, extra: List[URI]): PartBuild =
-    loadURI(IO.directoryURI(file), loaders, extra)
-
-  def loadURI(uri: URI, loaders: BuildLoader, extra: List[URI]): PartBuild =
-    {
+  private def loadURI(uri: URI, loader: BuildLoader, extra: List[URI]): PartBuild = {
       IO.assertAbsolute(uri)
-      val (referenced, map, newLoaders) = loadAll(uri :: extra, Map.empty, loaders, Map.empty)
+      val (referenced, map, newLoaders) = loadAll(uri +: extra, Map.empty, loader, Map.empty)
       checkAll(referenced, map)
       val build = new PartBuild(uri, map)
       newLoaders transformAll build
-    }
+  }
 
   def addOverrides(unit: BuildUnit, loaders: BuildLoader): BuildLoader =
     loaders updatePluginManagement PluginManagement.extractOverrides(unit.plugins.fullClasspath)
@@ -395,21 +411,35 @@ private[sbt] object Load {
       Project.transform(resolve, unit.definitions.builds.flatMap(_.settings))
     }
 
-  @tailrec def loadAll(bases: List[URI], references: Map[URI, List[ProjectReference]], loaders: BuildLoader, builds: Map[URI, PartBuildUnit]): (Map[URI, List[ProjectReference]], Map[URI, PartBuildUnit], BuildLoader) =
+  @tailrec private def loadAll(
+     bases: List[URI],
+     references: Map[URI, List[ProjectReference]],
+     loaders: BuildLoader,
+     builds: Map[URI, PartBuildUnit]
+  ): (Map[URI, List[ProjectReference]], Map[URI, PartBuildUnit], BuildLoader) = {
+    def loadURI(base: URI, bases: List[URI]) = {
+      val (loadedBuild, refs) = loaded(loaders(base))
+      val uris = refs.flatMap(Reference.uri)
+      val buildUnit = loadedBuild.unit
+      checkBuildBase(buildUnit.localBase)
+      val resolvers = addResolvers(buildUnit, builds.isEmpty, loaders.resetPluginDepth)
+      val updatedLoader = addOverrides(buildUnit, resolvers)
+      val updatedReferences = references.updated(base, refs)
+      val updatedBuilds = builds.updated(base, loadedBuild)
+      val sortedRemaining = uris.reverse_:::(bases).sorted
+      (sortedRemaining, updatedReferences, updatedLoader, updatedBuilds)
+    }
+
     bases match {
       case b :: bs =>
-        if (builds contains b)
-          loadAll(bs, references, loaders, builds)
+        if (builds contains b) loadAll(bs, references, loaders, builds)
         else {
-          val (loadedBuild, refs) = loaded(loaders(b))
-          checkBuildBase(loadedBuild.unit.localBase)
-          val newLoader = addOverrides(loadedBuild.unit, addResolvers(loadedBuild.unit, builds.isEmpty, loaders.resetPluginDepth))
-          // it is important to keep the load order stable, so we sort the remaining URIs
-          val remainingBases = (refs.flatMap(Reference.uri) reverse_::: bs).sorted
-          loadAll(remainingBases, references.updated(b, refs), newLoader, builds.updated(b, loadedBuild))
+          val (newBases, newReferences, newLoaders, newBuilds) = loadURI(b, bs)
+          loadAll(newBases, newReferences, newLoaders, newBuilds)
         }
       case Nil => (references, builds, loaders)
     }
+  }
 
   def checkProjectBase(buildBase: File, projectBase: File): Unit = {
     checkDirectory(projectBase)
