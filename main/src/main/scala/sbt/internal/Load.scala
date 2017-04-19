@@ -1015,12 +1015,18 @@ private[sbt] object Load {
       }
   }
 
+  /** Variable to control the indentation of the timing logs. */
+  private var timedIndentation: Int = 0
+
   /** Debugging method to time how long it takes to run various compilation tasks. */
   private[sbt] def timed[T](label: String, log: Logger)(t: => T): T = {
+    timedIndentation += 1
     val start = System.nanoTime
     val result = t
     val elapsed = System.nanoTime - start
-    log.debug(label + " took " + (elapsed / 1e6) + " ms")
+    timedIndentation -= 1
+    val prefix = " " * 2 * timedIndentation
+    log.debug(s"$prefix$label took ${elapsed / 1e6}ms")
     result
   }
 }
