@@ -7,6 +7,6 @@
 
 ### Improvements
 
-- Changes publishTo & otherResolvers from SettingKey's to TaskKey's. [#2059][2059]/[#2662][2662] by [@dwijnand][@dwijnand]
+- Changes `publishTo` and `otherResolvers` from SettingKeys to TaskKeys. [#2059][2059]/[#2662][2662] by [@dwijnand][@dwijnand]
 
 ### Bug fixes
