@@ -17,6 +17,7 @@ We are working with Scala Center to provide [an automatic migration tool][sbt-mi
 - Zinc 1 drops support for Scala 2.9 and earlier. Scala 2.10 must use 2.10.2 and above. Scala 2.11 must use 2.11.2 and above. (latest patch releases are recommended)
 - Many of the case classes are replaced with pseudo case classes generated using Contraband. Migrate `.copy(foo = xxx)` to `withFoo(xxx)`.
 - Changes `publishTo` and `otherResolvers` from SettingKeys to TaskKeys. [#2059][2059]/[#2662][2662] by [@dwijnand][@dwijnand]
+- `PathFinder`'s `.***` method is renamed to `.allPaths` method.
 - Drops sbt 0.12 style hyphen-separated key names (use `publishLocal` instead of `publish-local`).
 - Renames early command feature from `--<command>` to `early(<command>)`.
 - Log options `-error`, `-warn`, `-info`, `-debug` are added as shorthand for `"early(error)"` etc.
