@@ -282,10 +282,34 @@ final case class MavenRepository(
         None
 
 
+    val projectArtifact0 = projectArtifact(module, version, versioningValue)
+
     val listFilesUrl = urlFor(modulePath(module, version)) + "/"
 
+    val listFilesArtifact =
+      Artifact(
+        listFilesUrl,
+        Map.empty,
+        Map(
+          "metadata" -> projectArtifact0
+        ),
+        Attributes("", ""),
+        changing = changing.getOrElse(version.contains("-SNAPSHOT")),
+        authentication
+      )
+
+    val requiringDirListingProjectArtifact = projectArtifact0
+      .copy(
+        extra = projectArtifact0.extra + (
+          // In LocalUpdate and LocalUpdateChanging mode, makes getting the POM fail if the POM
+          // is in cache, but no info about the directory listing is (directory listing not in cache and no kept error
+          // for it).
+          "required" -> listFilesArtifact
+        )
+      )
+
     for {
-      str <- fetch(projectArtifact(module, version, versioningValue))
+      str <- fetch(requiringDirListingProjectArtifact)
       rawListFilesPageOpt <- EitherT(F.map(fetch(artifactFor(listFilesUrl)).run) {
         e => \/-(e.toOption): String \/ Option[String]
       })
