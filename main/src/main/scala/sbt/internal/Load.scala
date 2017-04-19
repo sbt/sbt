@@ -897,41 +897,66 @@ private[sbt] object Load {
   def buildPlugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins =
     loadPluginDefinition(dir, config, buildPluginDefinition(dir, s, config))
 
-  def loadPluginDefinition(dir: File, config: LoadBuildConfiguration, pluginData: PluginData): LoadedPlugins =
-    {
-      val (definitionClasspath, pluginLoader) = pluginDefinitionLoader(config, pluginData)
-      loadPlugins(dir, pluginData.copy(dependencyClasspath = definitionClasspath), pluginLoader)
-    }
+  /** Loads the plugins.
+    *
+    * @param dir The base directory for the build.
+    * @param config The configuration for the the build.
+    * @param pluginData The data required to load plugins.
+    * @return An instance of the loaded build with plugin information.
+    */
+  def loadPluginDefinition(dir: File,
+                           config: LoadBuildConfiguration,
+                           pluginData: PluginData): LoadedPlugins = {
+    val definitionClasspath = pluginData.definitionClasspath
+    val dependencyClasspath = pluginData.dependencyClasspath
+    val pluginLoader: ClassLoader =
+      pluginDefinitionLoader(config, dependencyClasspath, definitionClasspath)
+    val fullDependencyClasspath: Def.Classpath =
+      buildPluginClasspath(config, pluginData.dependencyClasspath)
+    val newData = pluginData.copy(dependencyClasspath = fullDependencyClasspath)
+    loadPlugins(dir, newData, pluginLoader)
+  }
 
-  def pluginDefinitionLoader(config: LoadBuildConfiguration, dependencyClasspath: Seq[Attributed[File]]): (Seq[Attributed[File]], ClassLoader) =
-    pluginDefinitionLoader(config, dependencyClasspath, Nil)
-
-  def pluginDefinitionLoader(config: LoadBuildConfiguration, pluginData: PluginData): (Seq[Attributed[File]], ClassLoader) =
-    pluginDefinitionLoader(config, pluginData.dependencyClasspath, pluginData.definitionClasspath)
-
+  /** Constructs the classpath required to load plugins, the so-called
+    * dependency classpath, from the provided classpath and the current config.
+    *
+    * @param config The configuration that declares classpath entries.
+    * @param depcp The user-defined dependency classpath.
+    * @return A classpath aggregating both without repeated entries.
+    */
   def buildPluginClasspath(config: LoadBuildConfiguration,
                            depcp: Seq[Attributed[File]]): Def.Classpath = {
     if (depcp.isEmpty) config.classpath
     else (depcp ++ config.classpath).distinct
   }
 
-  def pluginDefinitionLoader(config: LoadBuildConfiguration, depcp: Seq[Attributed[File]], defcp: Seq[Attributed[File]]): (Seq[Attributed[File]], ClassLoader) =
-    {
-      val definitionClasspath = buildPluginClasspath(config, depcp)
-      val pm = config.pluginManagement
-      // only the dependencyClasspath goes in the common plugin class loader ...
-      def addToLoader() = pm.loader add Path.toURLs(data(depcp))
-
-      val parentLoader = if (depcp.isEmpty) pm.initialLoader else { addToLoader(); pm.loader }
-      val pluginLoader =
-        if (defcp.isEmpty)
-          parentLoader
-        else {
-          // ... the build definition classes get their own loader so that they don't conflict with other build definitions (#511)
-          ClasspathUtilities.toLoader(data(defcp), parentLoader)
-        }
-      (definitionClasspath, pluginLoader)
+  /** Creates a classloader with a hierarchical structure, where the parent
+    * classloads the dependency classpath and the return classloader classloads
+    * the definition classpath.
+    *
+    * @param config The configuration for the whole sbt build.
+    * @param dependencyClasspath The dependency classpath (sbt dependencies).
+    * @param definitionClasspath The definition classpath for build definitions.
+    * @return A classloader ready to class load plugins.
+    */
+  def pluginDefinitionLoader(config: LoadBuildConfiguration,
+                             dependencyClasspath: Def.Classpath,
+                             definitionClasspath: Def.Classpath): ClassLoader = {
+    val manager = config.pluginManagement
+    val parentLoader: ClassLoader = {
+      if (dependencyClasspath.isEmpty) manager.initialLoader
+      else {
+        // Load only the dependency classpath for the common plugin classloader
+        val loader = manager.loader
+        loader.add(Path.toURLs(data(dependencyClasspath)))
+        loader
+      }
     }
+
+    // Load the definition classpath separately to avoid conflicts, see #511.
+    if (definitionClasspath.isEmpty) parentLoader
+    else ClasspathUtilities.toLoader(data(definitionClasspath), parentLoader)
+  }
 
   def buildPluginDefinition(dir: File, s: State, config: LoadBuildConfiguration): PluginData =
     {
