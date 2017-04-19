@@ -34,7 +34,7 @@ import Keys.{
   thisProjectRef,
   update
 }
-import tools.nsc.reporters.ConsoleReporter
+import scala.tools.nsc.reporters.ConsoleReporter
 import sbt.internal.util.{ Attributed, Settings, ~> }
 import sbt.util.{ Eval => Ev, Show }
 import sbt.internal.util.Attributed.data
@@ -909,13 +909,15 @@ private[sbt] object Load {
   def pluginDefinitionLoader(config: LoadBuildConfiguration, pluginData: PluginData): (Seq[Attributed[File]], ClassLoader) =
     pluginDefinitionLoader(config, pluginData.dependencyClasspath, pluginData.definitionClasspath)
 
+  def buildPluginClasspath(config: LoadBuildConfiguration,
+                           depcp: Seq[Attributed[File]]): Def.Classpath = {
+    if (depcp.isEmpty) config.classpath
+    else (depcp ++ config.classpath).distinct
+  }
+
   def pluginDefinitionLoader(config: LoadBuildConfiguration, depcp: Seq[Attributed[File]], defcp: Seq[Attributed[File]]): (Seq[Attributed[File]], ClassLoader) =
     {
-      val definitionClasspath =
-        if (depcp.isEmpty)
-          config.classpath
-        else
-          (depcp ++ config.classpath).distinct
+      val definitionClasspath = buildPluginClasspath(config, depcp)
       val pm = config.pluginManagement
       // only the dependencyClasspath goes in the common plugin class loader ...
       def addToLoader() = pm.loader add Path.toURLs(data(depcp))
@@ -1000,7 +1002,7 @@ private[sbt] object Load {
 
 final case class LoadBuildConfiguration(
     stagingDirectory: File,
-    classpath: Seq[Attributed[File]],
+    classpath: Def.Classpath,
     loader: ClassLoader,
     compilers: Compilers,
     evalPluginDef: (BuildStructure, State) => PluginData,
@@ -1012,21 +1014,21 @@ final case class LoadBuildConfiguration(
     extraBuilds: Seq[URI],
     log: Logger
 ) {
-  lazy val (globalPluginClasspath, _) = Load.pluginDefinitionLoader(this, Load.globalPluginClasspath(globalPlugin))
+  lazy val globalPluginClasspath: Def.Classpath =
+    Load.buildPluginClasspath(this, Load.globalPluginClasspath(globalPlugin))
 
-  private[sbt] lazy val globalPluginDefs = {
-    val pluginData = globalPlugin match {
-      case Some(x) => PluginData(x.data.fullClasspath, x.data.internalClasspath, Some(x.data.resolvers), Some(x.data.updateReport), Nil)
-      case None    => PluginData(globalPluginClasspath, Nil, None, None, Nil)
+  lazy val detectedGlobalPlugins: DetectedPlugins = {
+    val pluginData: PluginData = {
+      globalPlugin.map { info =>
+        val data = info.data
+        PluginData(data.fullClasspath, data.internalClasspath,
+          Some(data.resolvers), Some(data.updateReport), Nil)
+      }.getOrElse(PluginData(globalPluginClasspath))
     }
-    val baseDir = globalPlugin match {
-      case Some(x) => x.base
-      case _       => stagingDirectory
-    }
-    Load.loadPluginDefinition(baseDir, this, pluginData)
+    val baseDir = globalPlugin.map(_.base).getOrElse(stagingDirectory)
+    val globalPlugins = Load.loadPluginDefinition(baseDir, this, pluginData)
+    globalPlugins.detected
   }
-
-  lazy val detectedGlobalPlugins = globalPluginDefs.detected
 }
 
 final class IncompatiblePluginsException(msg: String, cause: Throwable) extends Exception(msg, cause)
