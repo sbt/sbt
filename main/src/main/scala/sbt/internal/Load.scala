@@ -34,7 +34,7 @@ import Keys.{
   thisProjectRef,
   update
 }
-import tools.nsc.reporters.ConsoleReporter
+import scala.tools.nsc.reporters.ConsoleReporter
 import sbt.internal.util.{ Attributed, Settings, ~> }
 import sbt.util.{ Eval => Ev, Show }
 import sbt.internal.util.Attributed.data
@@ -333,30 +333,46 @@ private[sbt] object Load {
     }
   }
 
-  def load(file: File, s: State, config: LoadBuildConfiguration): PartBuild =
-    load(file, builtinLoader(s, config.copy(pluginManagement = config.pluginManagement.shift, extraBuilds = Nil)), config.extraBuilds.toList)
+  /** Loads the unresolved build units and computes its settings.
+    *
+    * @param root The root directory.
+    * @param s The given state.
+    * @param config The configuration of the loaded build.
+    * @return An instance of [[PartBuild]] with all the unresolved build units.
+    */
+  def load(root: File, s: State, config: LoadBuildConfiguration): PartBuild = {
+    val manager = config.pluginManagement.shift
+    // Forced type ascription, otherwise scalac does not compile it
+    val newConfig: LoadBuildConfiguration =
+      config.copy(pluginManagement = manager, extraBuilds = Nil)
+    val loader = builtinLoader(s, newConfig)
+    loadURI(IO.directoryURI(root), loader, config.extraBuilds.toList)
+  }
 
-  def builtinLoader(s: State, config: LoadBuildConfiguration): BuildLoader =
-    {
-      val fail = (uri: URI) => sys.error("Invalid build URI (no handler available): " + uri)
-      val resolver = (info: BuildLoader.ResolveInfo) => RetrieveUnit(info)
-      val build = (info: BuildLoader.BuildInfo) => Some(() =>
-        loadUnit(info.uri, info.base, info.state, info.config))
-      val components = BuildLoader.components(resolver, build, full = BuildLoader.componentLoader)
-      BuildLoader(components, fail, s, config)
-    }
+  /** Creates a loader for the build.
+    *
+    * @param s The given state.
+    * @param config The configuration of the loaded build.
+    * @return A [[BuildLoader]].
+    */
+  def builtinLoader(s: State, config: LoadBuildConfiguration): BuildLoader = {
+    val fail = (uri: URI) =>
+      sys.error("Invalid build URI (no handler available): " + uri)
+    val resolver = (info: BuildLoader.ResolveInfo) => RetrieveUnit(info)
+    val build = (info: BuildLoader.BuildInfo) => Some(() =>
+      loadUnit(info.uri, info.base, info.state, info.config))
+    val loader = BuildLoader.componentLoader
+    val components = BuildLoader.components(resolver, build, full = loader)
+    BuildLoader(components, fail, s, config)
+  }
 
-  def load(file: File, loaders: BuildLoader, extra: List[URI]): PartBuild =
-    loadURI(IO.directoryURI(file), loaders, extra)
-
-  def loadURI(uri: URI, loaders: BuildLoader, extra: List[URI]): PartBuild =
-    {
+  private def loadURI(uri: URI, loader: BuildLoader, extra: List[URI]): PartBuild = {
       IO.assertAbsolute(uri)
-      val (referenced, map, newLoaders) = loadAll(uri :: extra, Map.empty, loaders, Map.empty)
+      val (referenced, map, newLoaders) = loadAll(uri +: extra, Map.empty, loader, Map.empty)
       checkAll(referenced, map)
       val build = new PartBuild(uri, map)
       newLoaders transformAll build
-    }
+  }
 
   def addOverrides(unit: BuildUnit, loaders: BuildLoader): BuildLoader =
     loaders updatePluginManagement PluginManagement.extractOverrides(unit.plugins.fullClasspath)
@@ -395,21 +411,35 @@ private[sbt] object Load {
       Project.transform(resolve, unit.definitions.builds.flatMap(_.settings))
     }
 
-  @tailrec def loadAll(bases: List[URI], references: Map[URI, List[ProjectReference]], loaders: BuildLoader, builds: Map[URI, PartBuildUnit]): (Map[URI, List[ProjectReference]], Map[URI, PartBuildUnit], BuildLoader) =
+  @tailrec private def loadAll(
+     bases: List[URI],
+     references: Map[URI, List[ProjectReference]],
+     loaders: BuildLoader,
+     builds: Map[URI, PartBuildUnit]
+  ): (Map[URI, List[ProjectReference]], Map[URI, PartBuildUnit], BuildLoader) = {
+    def loadURI(base: URI, bases: List[URI]) = {
+      val (loadedBuild, refs) = loaded(loaders(base))
+      val uris = refs.flatMap(Reference.uri)
+      val buildUnit = loadedBuild.unit
+      checkBuildBase(buildUnit.localBase)
+      val resolvers = addResolvers(buildUnit, builds.isEmpty, loaders.resetPluginDepth)
+      val updatedLoader = addOverrides(buildUnit, resolvers)
+      val updatedReferences = references.updated(base, refs)
+      val updatedBuilds = builds.updated(base, loadedBuild)
+      val sortedRemaining = uris.reverse_:::(bases).sorted
+      (sortedRemaining, updatedReferences, updatedLoader, updatedBuilds)
+    }
+
     bases match {
       case b :: bs =>
-        if (builds contains b)
-          loadAll(bs, references, loaders, builds)
+        if (builds contains b) loadAll(bs, references, loaders, builds)
         else {
-          val (loadedBuild, refs) = loaded(loaders(b))
-          checkBuildBase(loadedBuild.unit.localBase)
-          val newLoader = addOverrides(loadedBuild.unit, addResolvers(loadedBuild.unit, builds.isEmpty, loaders.resetPluginDepth))
-          // it is important to keep the load order stable, so we sort the remaining URIs
-          val remainingBases = (refs.flatMap(Reference.uri) reverse_::: bs).sorted
-          loadAll(remainingBases, references.updated(b, refs), newLoader, builds.updated(b, loadedBuild))
+          val (newBases, newReferences, newLoaders, newBuilds) = loadURI(b, bs)
+          loadAll(newBases, newReferences, newLoaders, newBuilds)
         }
       case Nil => (references, builds, loaders)
     }
+  }
 
   def checkProjectBase(buildBase: File, projectBase: File): Unit = {
     checkDirectory(projectBase)
@@ -897,39 +927,66 @@ private[sbt] object Load {
   def buildPlugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins =
     loadPluginDefinition(dir, config, buildPluginDefinition(dir, s, config))
 
-  def loadPluginDefinition(dir: File, config: LoadBuildConfiguration, pluginData: PluginData): LoadedPlugins =
-    {
-      val (definitionClasspath, pluginLoader) = pluginDefinitionLoader(config, pluginData)
-      loadPlugins(dir, pluginData.copy(dependencyClasspath = definitionClasspath), pluginLoader)
+  /** Loads the plugins.
+    *
+    * @param dir The base directory for the build.
+    * @param config The configuration for the the build.
+    * @param pluginData The data required to load plugins.
+    * @return An instance of the loaded build with plugin information.
+    */
+  def loadPluginDefinition(dir: File,
+                           config: LoadBuildConfiguration,
+                           pluginData: PluginData): LoadedPlugins = {
+    val definitionClasspath = pluginData.definitionClasspath
+    val dependencyClasspath = pluginData.dependencyClasspath
+    val pluginLoader: ClassLoader =
+      pluginDefinitionLoader(config, dependencyClasspath, definitionClasspath)
+    val fullDependencyClasspath: Def.Classpath =
+      buildPluginClasspath(config, pluginData.dependencyClasspath)
+    val newData = pluginData.copy(dependencyClasspath = fullDependencyClasspath)
+    loadPlugins(dir, newData, pluginLoader)
+  }
+
+  /** Constructs the classpath required to load plugins, the so-called
+    * dependency classpath, from the provided classpath and the current config.
+    *
+    * @param config The configuration that declares classpath entries.
+    * @param depcp The user-defined dependency classpath.
+    * @return A classpath aggregating both without repeated entries.
+    */
+  def buildPluginClasspath(config: LoadBuildConfiguration,
+                           depcp: Seq[Attributed[File]]): Def.Classpath = {
+    if (depcp.isEmpty) config.classpath
+    else (depcp ++ config.classpath).distinct
+  }
+
+  /** Creates a classloader with a hierarchical structure, where the parent
+    * classloads the dependency classpath and the return classloader classloads
+    * the definition classpath.
+    *
+    * @param config The configuration for the whole sbt build.
+    * @param dependencyClasspath The dependency classpath (sbt dependencies).
+    * @param definitionClasspath The definition classpath for build definitions.
+    * @return A classloader ready to class load plugins.
+    */
+  def pluginDefinitionLoader(config: LoadBuildConfiguration,
+                             dependencyClasspath: Def.Classpath,
+                             definitionClasspath: Def.Classpath): ClassLoader = {
+    val manager = config.pluginManagement
+    val parentLoader: ClassLoader = {
+      if (dependencyClasspath.isEmpty) manager.initialLoader
+      else {
+        // Load only the dependency classpath for the common plugin classloader
+        val loader = manager.loader
+        loader.add(Path.toURLs(data(dependencyClasspath)))
+        loader
+      }
     }
 
-  def pluginDefinitionLoader(config: LoadBuildConfiguration, dependencyClasspath: Seq[Attributed[File]]): (Seq[Attributed[File]], ClassLoader) =
-    pluginDefinitionLoader(config, dependencyClasspath, Nil)
-
-  def pluginDefinitionLoader(config: LoadBuildConfiguration, pluginData: PluginData): (Seq[Attributed[File]], ClassLoader) =
-    pluginDefinitionLoader(config, pluginData.dependencyClasspath, pluginData.definitionClasspath)
-
-  def pluginDefinitionLoader(config: LoadBuildConfiguration, depcp: Seq[Attributed[File]], defcp: Seq[Attributed[File]]): (Seq[Attributed[File]], ClassLoader) =
-    {
-      val definitionClasspath =
-        if (depcp.isEmpty)
-          config.classpath
-        else
-          (depcp ++ config.classpath).distinct
-      val pm = config.pluginManagement
-      // only the dependencyClasspath goes in the common plugin class loader ...
-      def addToLoader() = pm.loader add Path.toURLs(data(depcp))
-
-      val parentLoader = if (depcp.isEmpty) pm.initialLoader else { addToLoader(); pm.loader }
-      val pluginLoader =
-        if (defcp.isEmpty)
-          parentLoader
-        else {
-          // ... the build definition classes get their own loader so that they don't conflict with other build definitions (#511)
-          ClasspathUtilities.toLoader(data(defcp), parentLoader)
-        }
-      (definitionClasspath, pluginLoader)
-    }
+    // Load the definition classpath separately to avoid conflicts, see #511.
+    if (definitionClasspath.isEmpty) parentLoader
+    else ClasspathUtilities.toLoader(data(definitionClasspath), parentLoader)
+  }
 
   def buildPluginDefinition(dir: File, s: State, config: LoadBuildConfiguration): PluginData =
     {
@@ -988,19 +1045,25 @@ private[sbt] object Load {
       }
   }
 
+  /** Variable to control the indentation of the timing logs. */
+  private var timedIndentation: Int = 0
+
   /** Debugging method to time how long it takes to run various compilation tasks. */
   private[sbt] def timed[T](label: String, log: Logger)(t: => T): T = {
+    timedIndentation += 1
     val start = System.nanoTime
     val result = t
     val elapsed = System.nanoTime - start
-    log.debug(label + " took " + (elapsed / 1e6) + " ms")
+    timedIndentation -= 1
+    val prefix = " " * 2 * timedIndentation
+    log.debug(s"$prefix$label took ${elapsed / 1e6}ms")
     result
   }
 }
 
 final case class LoadBuildConfiguration(
     stagingDirectory: File,
-    classpath: Seq[Attributed[File]],
+    classpath: Def.Classpath,
     loader: ClassLoader,
     compilers: Compilers,
     evalPluginDef: (BuildStructure, State) => PluginData,
@@ -1012,21 +1075,21 @@ final case class LoadBuildConfiguration(
     extraBuilds: Seq[URI],
     log: Logger
 ) {
-  lazy val (globalPluginClasspath, _) = Load.pluginDefinitionLoader(this, Load.globalPluginClasspath(globalPlugin))
+  lazy val globalPluginClasspath: Def.Classpath =
+    Load.buildPluginClasspath(this, Load.globalPluginClasspath(globalPlugin))
 
-  private[sbt] lazy val globalPluginDefs = {
-    val pluginData = globalPlugin match {
-      case Some(x) => PluginData(x.data.fullClasspath, x.data.internalClasspath, Some(x.data.resolvers), Some(x.data.updateReport), Nil)
-      case None    => PluginData(globalPluginClasspath, Nil, None, None, Nil)
+  lazy val detectedGlobalPlugins: DetectedPlugins = {
+    val pluginData: PluginData = {
+      globalPlugin.map { info =>
+        val data = info.data
+        PluginData(data.fullClasspath, data.internalClasspath,
+          Some(data.resolvers), Some(data.updateReport), Nil)
+      }.getOrElse(PluginData(globalPluginClasspath))
     }
-    val baseDir = globalPlugin match {
-      case Some(x) => x.base
-      case _       => stagingDirectory
-    }
-    Load.loadPluginDefinition(baseDir, this, pluginData)
+    val baseDir = globalPlugin.map(_.base).getOrElse(stagingDirectory)
+    val globalPlugins = Load.loadPluginDefinition(baseDir, this, pluginData)
+    globalPlugins.detected
   }
-
-  lazy val detectedGlobalPlugins = globalPluginDefs.detected
 }
 
 final class IncompatiblePluginsException(msg: String, cause: Throwable) extends Exception(msg, cause)

@@ -97,6 +97,17 @@ object BuildLoader {
   }
 }
 
+/** Defines the responsible for loading builds.
+  *
+  * @param fail A reporter for failures.
+  * @param state The state.
+  * @param config The current configuration for any build.
+  * @param resolvers The structure responsible of mapping base directories.
+  * @param builders The structure responsible of mapping to build units.
+  * @param transformer An instance to modify the created build unit.
+  * @param full The structure responsible of mapping to loaded build units.
+  * @param transformAll A function specifying which builds units should be transformed.
+  */
 final class BuildLoader(
     val fail: URI => Nothing,
     val state: State,
