@@ -1484,14 +1484,14 @@ object Classpaths {
       def work = (_: In) match {
         case conf :+: settings :+: config :+: HNil =>
           import ShowLines._
-          log.info("Updating " + label + "...")
+          log.debug("Updating " + label + "...")
           val r = IvyActions.updateEither(module, config, uwConfig, logicalClock, depDir, log) match {
             case Right(ur) => ur
             case Left(uw) =>
               uw.lines foreach { log.warn(_) }
               throw uw.resolveException
           }
-          log.info("Done updating.")
+          log.debug("Done updating.")
           val result = transform(r)
           val ew = EvictionWarning(module, ewo, result, log)
           ew.lines foreach { log.warn(_) }
