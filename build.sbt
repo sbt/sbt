@@ -58,7 +58,7 @@ def minimalSettings: Seq[Setting[_]] =
   publishPomSettings ++ Release.javaVersionCheckSettings
 
 def baseSettings: Seq[Setting[_]] =
-  minimalSettings ++ Seq(projectComponent) ++ baseScalacOptions ++ Licensed.settings ++ Formatting.settings
+  minimalSettings ++ Seq(projectComponent) ++ baseScalacOptions ++ Licensed.settings
 
 def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
@@ -221,7 +221,6 @@ lazy val mainSettingsProj = (project in file("main-settings")).
 // The main integration project for sbt.  It brings all of the projects together, configures them, and provides for overriding conventions.
 lazy val mainProj = (project in file("main")).
   dependsOn(actionsProj, mainSettingsProj, runProj, commandProj).
-  disablePlugins(SbtScalariform).
   settings(
     testedBaseSettings,
     name := "Main",
@@ -277,7 +276,7 @@ def projectsWithMyProvided = allProjects.map(p => p.copy(configurations = (p.con
 lazy val nonRoots = projectsWithMyProvided.map(p => LocalProject(p.id))
 
 def rootSettings = fullDocSettings ++
-  Util.publishPomSettings ++ otherRootSettings ++ Formatting.sbtFilesSettings ++
+  Util.publishPomSettings ++ otherRootSettings ++
   Transform.conscriptSettings(bundledLauncherProj)
 def otherRootSettings = Seq(
   scripted := scriptedTask.evaluated,
