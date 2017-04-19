@@ -107,6 +107,8 @@ lazy val testingProj = (project in file("testing")).
     baseSettings,
     name := "Testing",
     libraryDependencies ++= Seq(testInterface,launcherInterface, sjsonNewScalaJson),
+    managedSourceDirectories in Compile +=
+      baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats
   ).
@@ -184,6 +186,8 @@ lazy val protocolProj = (project in file("protocol")).
     testedBaseSettings,
     name := "Protocol",
     libraryDependencies ++= Seq(sjsonNewScalaJson),
+    managedSourceDirectories in Compile +=
+      baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats
   ).
@@ -197,6 +201,8 @@ lazy val commandProj = (project in file("main-command")).
     testedBaseSettings,
     name := "Command",
     libraryDependencies ++= Seq(launcherInterface, sjsonNewScalaJson, templateResolverApi),
+    managedSourceDirectories in Compile +=
+      baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
     contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats
   ).
