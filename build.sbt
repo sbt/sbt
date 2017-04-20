@@ -361,6 +361,13 @@ def customCommands: Seq[Setting[_]] = Seq(
   otherUnitTests := {
     test.all(otherProjects).value
   },
+  commands += Command.command("scalafmtCheck") { state =>
+    sys.process.Process("git diff --name-only --exit-code").! match {
+      case 0 => // ok
+      case x => sys.error("git diff detected! Did you compile before committing?")
+    }
+    state
+  },
   commands += Command.command("release-sbt-local") { state =>
     "clean" ::
     "so compile" ::
