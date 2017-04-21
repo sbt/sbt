@@ -43,6 +43,40 @@ object VersionTests extends TestSuite {
       assert(max == v241)
     }
 
+    'buildMetadata - {
+      * - {
+        assert(compare("1.2", "1.2+foo") < 0)
+
+        // Semver § 10: two versions that differ only in the build metadata, have the same precedence
+        assert(compare("1.2+bar", "1.2+foo") == 0)
+        assert(compare("1.2+bar.1", "1.2+bar.2") == 0)
+      }
+
+      'shouldNotParseMetadata - {
+        * - {
+          val items = Version("1.2+bar.2").items
+          val expectedItems = Seq(
+            Version.Number(1), Version.Number(2), Version.BuildMetadata("bar.2")
+          )
+          assert(items == expectedItems)
+        }
+        * - {
+          val items = Version("1.2+bar-2").items
+          val expectedItems = Seq(
+            Version.Number(1), Version.Number(2), Version.BuildMetadata("bar-2")
+          )
+          assert(items == expectedItems)
+        }
+        * - {
+          val items = Version("1.2+bar+foo").items
+          val expectedItems = Seq(
+            Version.Number(1), Version.Number(2), Version.BuildMetadata("bar+foo")
+          )
+          assert(items == expectedItems)
+        }
+      }
+    }
+
     // Adapted from aether-core/aether-util/src/test/java/org/eclipse/aether/util/version/GenericVersionTest.java
     // Only one test doesn't pass (see FIXME below)
 
