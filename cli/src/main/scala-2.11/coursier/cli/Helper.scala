@@ -396,7 +396,14 @@ class Helper(
       fetchQuiet
 
   if (verbosityLevel >= 1) {
-    errPrintln(s"  Dependencies:\n${Print.dependenciesUnknownConfigs(dependencies, Map.empty)}")
+    errPrintln(
+      s"  Dependencies:\n" +
+        Print.dependenciesUnknownConfigs(
+          dependencies,
+          Map.empty,
+          printExclusions = verbosityLevel >= 2
+        )
+    )
 
     if (forceVersions.nonEmpty) {
       errPrintln("  Force versions:")
@@ -522,9 +529,18 @@ class Helper(
 
     val depsStr =
       if (reverseTree || tree)
-        Print.dependencyTree(dependencies, res, printExclusions = verbosityLevel >= 1, reverse = reverseTree)
+        Print.dependencyTree(
+          dependencies,
+          res,
+          printExclusions = verbosityLevel >= 1,
+          reverse = reverseTree
+        )
       else
-        Print.dependenciesUnknownConfigs(trDeps, projCache)
+        Print.dependenciesUnknownConfigs(
+          trDeps,
+          projCache,
+          printExclusions = verbosityLevel >= 1
+        )
 
     if (printResultStdout)
       println(depsStr)
@@ -554,7 +570,11 @@ class Helper(
     anyError = true
     errPrintln(
       s"\nConflict:\n" +
-      Print.dependenciesUnknownConfigs(res.conflicts.toVector, projCache)
+      Print.dependenciesUnknownConfigs(
+        res.conflicts.toVector,
+        projCache,
+        printExclusions = verbosityLevel >= 1
+      )
     )
   }
 

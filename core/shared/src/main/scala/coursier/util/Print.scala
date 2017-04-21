@@ -4,16 +4,32 @@ import coursier.core.{ Attributes, Dependency, Module, Orders, Project, Resoluti
 
 object Print {
 
-  def dependency(dep: Dependency): String = {
-    val exclusionsStr = dep.exclusions.toVector.sorted.map {
-      case (org, name) =>
-        s"\n  exclude($org, $name)"
-    }.mkString
+  def dependency(dep: Dependency): String =
+    dependency(dep, printExclusions = false)
 
-    s"${dep.module}:${dep.version}:${dep.configuration}$exclusionsStr"
+  def dependency(dep: Dependency, printExclusions: Boolean): String = {
+
+    def exclusionsStr = dep
+      .exclusions
+      .toVector
+      .sorted
+      .map {
+        case (org, name) =>
+          s"\n  exclude($org, $name)"
+      }
+      .mkString
+
+    s"${dep.module}:${dep.version}:${dep.configuration}" + (if (printExclusions) exclusionsStr else "")
   }
 
-  def dependenciesUnknownConfigs(deps: Seq[Dependency], projects: Map[(Module, String), Project]): String = {
+  def dependenciesUnknownConfigs(deps: Seq[Dependency], projects: Map[(Module, String), Project]): String =
+    dependenciesUnknownConfigs(deps, projects, printExclusions = false)
+
+  def dependenciesUnknownConfigs(
+    deps: Seq[Dependency],
+    projects: Map[(Module, String), Project],
+    printExclusions: Boolean
+  ): String = {
 
     val deps0 = deps.map { dep =>
       dep.copy(
@@ -38,7 +54,7 @@ object Print {
         (dep.module.organization, dep.module.name, dep.module.toString, dep.version)
       }
 
-    deps1.map(dependency).mkString("\n")
+    deps1.map(dependency(_, printExclusions)).mkString("\n")
   }
 
   private def compatibleVersions(first: String, second: String): Boolean = {
