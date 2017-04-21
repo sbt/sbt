@@ -340,10 +340,6 @@ object Pom {
       release = text(xmlVersioning, "release", "Release version")
         .getOrElse("")
 
-      versionsOpt = xmlVersioning.children
-        .find(_.label == "versions")
-        .map(_.children.filter(_.label == "version").flatMap(_.children.collectFirst{case Text(t) => t}))
-
       lastUpdatedOpt = text(xmlVersioning, "lastUpdated", "Last update date and time")
         .toOption
         .flatMap(parseDateTime)
@@ -371,7 +367,7 @@ object Pom {
           text(_, "localCopy", "Snapshot local copy")
             .toOption
         )
-        .collect{
+        .collect {
           case "true" => true
           case "false" => false
         }
