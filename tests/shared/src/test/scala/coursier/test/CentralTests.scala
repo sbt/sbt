@@ -579,6 +579,13 @@ object CentralTests extends TestSuite {
         assert(urls == expectedZipArtifactUrls)
       }
     }
+
+    'groupIdVersionProperties - {
+      resolutionCheck(
+        Module("org.apache.directory.shared", "shared-ldap"),
+        "0.9.19"
+      )
+    }
   }
 
 }
