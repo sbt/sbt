@@ -138,6 +138,11 @@ final case class PluginData(
   val classpath: Seq[Attributed[File]] = definitionClasspath ++ dependencyClasspath
 }
 
+object PluginData {
+  private[sbt] def apply(dependencyClasspath: Def.Classpath): PluginData =
+    PluginData(dependencyClasspath, Nil, None, None, Nil)
+}
+
 object EvaluateTask {
   import std.Transform
   import Keys.state
