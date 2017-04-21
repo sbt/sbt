@@ -110,7 +110,8 @@ testLauncherJava6() {
 }
 
 testSbtCoursierJava6() {
-  sbt ++${SCALA_VERSION} publishLocal
+  sbt ++${SCALA_VERSION} coreJVM/publishLocal cache/publishLocal sbt-coursier/publishLocal
+
   git clone https://github.com/alexarchambault/scalacheck-shapeless.git
   cd scalacheck-shapeless
   cd project
@@ -125,6 +126,23 @@ testSbtCoursierJava6() {
     -e CI=true \
     openjdk:6-jre \
       /bin/bash -c "cd /root/project && /root/bin/sbt update"
+  cd ..
+
+  # ensuring resolution error doesn't throw NoSuchMethodError
+  mkdir -p foo/project
+  cd foo
+  echo 'libraryDependencies += "foo" % "bar" % "1.0"' >> build.sbt
+  echo 'addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.0-SNAPSHOT")' >> project/plugins.sbt
+  echo 'sbt.version=0.13.15' >> project/build.properties
+  docker run -it --rm \
+    -v $HOME/.ivy2/local:/root/.ivy2/local \
+    -v $(pwd):/root/project \
+    -v $(pwd)/../bin:/root/bin \
+    -e CI=true \
+    openjdk:6-jre \
+      /bin/bash -c "cd /root/project && /root/bin/sbt update || true" | tee -a output
+  grep "coursier.ResolutionException: Encountered 1 error" output
+  echo "Ok, found ResolutionException in output"
   cd ..
 }
 
