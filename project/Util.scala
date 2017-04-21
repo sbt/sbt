@@ -28,21 +28,27 @@ object Util {
   lazy val baseScalacOptions = Seq(
     scalacOptions ++= Seq("-Xelide-below", "0"),
     scalacOptions ++= (CrossVersion partialVersion scalaVersion.value match {
-      case Some((2, 9)) | Some((2, 8)) => Nil // support 2.9 for some subprojects for the Scala Eclipse IDE
-      case _ => Seq(
-        "-encoding", "utf8",
-        "-deprecation", "-feature", "-unchecked", "-Xlint",
-        "-language:existentials",
-        "-language:higherKinds",
-        "-language:implicitConversions",
-        "-language:postfixOps",
-        "-Xfuture",
-        "-Yno-adapted-args",
-        "-Ywarn-dead-code",
-        "-Ywarn-numeric-widen",
-        "-Ywarn-unused",
-        "-Ywarn-unused-import"
-      )
+      case Some((2, 9)) | Some((2, 8)) =>
+        Nil // support 2.9 for some subprojects for the Scala Eclipse IDE
+      case _ =>
+        Seq(
+          "-encoding",
+          "utf8",
+          "-deprecation",
+          "-feature",
+          "-unchecked",
+          "-Xlint",
+          "-language:existentials",
+          "-language:higherKinds",
+          "-language:implicitConversions",
+          "-language:postfixOps",
+          "-Xfuture",
+          "-Yno-adapted-args",
+          "-Ywarn-dead-code",
+          "-Ywarn-numeric-widen",
+          "-Ywarn-unused",
+          "-Ywarn-unused-import"
+        )
     }),
     scalacOptions ++= (CrossVersion partialVersion scalaVersion.value match {
       case Some((2, 10)) => Seq("-deprecation", "-Xlint")
@@ -50,49 +56,63 @@ object Util {
     })
   )
 
-  def projectComponent: Setting[_] = projectID := (componentID.value match {
-    case Some(id) => projectID.value extra ("e:component" -> id)
-    case None     => projectID.value
-  })
+  def projectComponent: Setting[_] =
+    projectID := (componentID.value match {
+      case Some(id) => projectID.value extra ("e:component" -> id)
+      case None     => projectID.value
+    })
 
   lazy val apiDefinitions = TaskKey[Seq[File]]("api-definitions")
 
-  def generateAPICached(defs: Seq[File], cp: Classpath, out: File, main: Option[String], run: ScalaRun, s: TaskStreams): Seq[File] =
-    {
-      def gen() = generateAPI(defs, cp, out, main, run, s)
-      val f = FileFunction.cached(s.cacheDirectory / "gen-api", FilesInfo.hash) { _ => gen().toSet } // TODO: check if output directory changed
-      f(defs.toSet).toSeq
+  def generateAPICached(defs: Seq[File],
+                        cp: Classpath,
+                        out: File,
+                        main: Option[String],
+                        run: ScalaRun,
+                        s: TaskStreams): Seq[File] = {
+    def gen() = generateAPI(defs, cp, out, main, run, s)
+    val f = FileFunction.cached(s.cacheDirectory / "gen-api", FilesInfo.hash) { _ =>
+      gen().toSet
+    } // TODO: check if output directory changed
+    f(defs.toSet).toSeq
+  }
+  def generateAPI(defs: Seq[File],
+                  cp: Classpath,
+                  out: File,
+                  main: Option[String],
+                  run: ScalaRun,
+                  s: TaskStreams): Seq[File] = {
+    IO.delete(out)
+    IO.createDirectory(out)
+    val args = "xsbti.api" :: out.getAbsolutePath :: defs.map(_.getAbsolutePath).toList
+    val mainClass = main getOrElse "No main class defined for datatype generator"
+    toError(run.run(mainClass, cp.files, args, s.log))
+    (out ** "*.java").get
+  }
+  def lastCompilationTime(analysis: sbt.inc.Analysis): Long = {
+    val lastCompilation = analysis.compilations.allCompilations.lastOption
+    lastCompilation.map(_.startTime) getOrElse 0L
+  }
+  def generateVersionFile(version: String,
+                          dir: File,
+                          s: TaskStreams,
+                          analysis: sbt.inc.Analysis): Seq[File] = {
+    import java.util.{ Date, TimeZone }
+    val formatter = new java.text.SimpleDateFormat("yyyyMMdd'T'HHmmss")
+    formatter.setTimeZone(TimeZone.getTimeZone("GMT"))
+    val timestamp = formatter.format(new Date)
+    val content = versionLine(version) + "\ntimestamp=" + timestamp
+    val f = dir / "xsbt.version.properties"
+    if (!f.exists || f.lastModified < lastCompilationTime(analysis) || !containsVersion(f,
+                                                                                        version)) {
+      s.log.info("Writing version information to " + f + " :\n" + content)
+      IO.write(f, content)
     }
-  def generateAPI(defs: Seq[File], cp: Classpath, out: File, main: Option[String], run: ScalaRun, s: TaskStreams): Seq[File] =
-    {
-      IO.delete(out)
-      IO.createDirectory(out)
-      val args = "xsbti.api" :: out.getAbsolutePath :: defs.map(_.getAbsolutePath).toList
-      val mainClass = main getOrElse "No main class defined for datatype generator"
-      toError(run.run(mainClass, cp.files, args, s.log))
-      (out ** "*.java").get
-    }
-  def lastCompilationTime(analysis: sbt.inc.Analysis): Long =
-    {
-      val lastCompilation = analysis.compilations.allCompilations.lastOption
-      lastCompilation.map(_.startTime) getOrElse 0L
-    }
-  def generateVersionFile(version: String, dir: File, s: TaskStreams, analysis: sbt.inc.Analysis): Seq[File] =
-    {
-      import java.util.{ Date, TimeZone }
-      val formatter = new java.text.SimpleDateFormat("yyyyMMdd'T'HHmmss")
-      formatter.setTimeZone(TimeZone.getTimeZone("GMT"))
-      val timestamp = formatter.format(new Date)
-      val content = versionLine(version) + "\ntimestamp=" + timestamp
-      val f = dir / "xsbt.version.properties"
-      if (!f.exists || f.lastModified < lastCompilationTime(analysis) || !containsVersion(f, version)) {
-        s.log.info("Writing version information to " + f + " :\n" + content)
-        IO.write(f, content)
-      }
-      f :: Nil
-    }
+    f :: Nil
+  }
   def versionLine(version: String): String = "version=" + version
-  def containsVersion(propFile: File, version: String): Boolean = IO.read(propFile).contains(versionLine(version))
+  def containsVersion(propFile: File, version: String): Boolean =
+    IO.read(propFile).contains(versionLine(version))
 
   def binID = "compiler-interface-bin"
   def srcID = "compiler-interface-src"
@@ -101,23 +121,25 @@ object Util {
     pomPostProcess := cleanPom _
   )
 
-  def cleanPom(pomNode: scala.xml.Node) =
-    {
-      import scala.xml._
-      def cleanNodes(nodes: Seq[Node]): Seq[Node] = nodes flatMap {
-        case elem @ Elem(prefix, "dependency", attributes, scope, children @ _*) if excludePomDependency(elem) =>
-          NodeSeq.Empty
-        case Elem(prefix, "classifier", attributes, scope, children @ _*) =>
-          NodeSeq.Empty
-        case Elem(prefix, label, attributes, scope, children @ _*) =>
-          val cleanedNodes = cleanNodes(children)
-          Elem(prefix, label, attributes, scope, cleanedNodes.isEmpty, cleanedNodes: _*).theSeq
-        case other => other
-      }
-      cleanNodes(pomNode.theSeq)(0)
+  def cleanPom(pomNode: scala.xml.Node) = {
+    import scala.xml._
+    def cleanNodes(nodes: Seq[Node]): Seq[Node] = nodes flatMap {
+      case elem @ Elem(prefix, "dependency", attributes, scope, children @ _*)
+          if excludePomDependency(elem) =>
+        NodeSeq.Empty
+      case Elem(prefix, "classifier", attributes, scope, children @ _*) =>
+        NodeSeq.Empty
+      case Elem(prefix, label, attributes, scope, children @ _*) =>
+        val cleanedNodes = cleanNodes(children)
+        Elem(prefix, label, attributes, scope, cleanedNodes.isEmpty, cleanedNodes: _*).theSeq
+      case other => other
     }
+    cleanNodes(pomNode.theSeq)(0)
+  }
 
-  def excludePomDependency(node: scala.xml.Node) = node \ "artifactId" exists { n => excludePomArtifact(n.text) }
+  def excludePomDependency(node: scala.xml.Node) = node \ "artifactId" exists { n =>
+    excludePomArtifact(n.text)
+  }
 
   def excludePomArtifact(artifactId: String) = (artifactId startsWith "compiler-bridge")
 
@@ -130,32 +152,32 @@ object Util {
     exclusive == 0 || all == 1
   }
 
-  def getScalaKeywords: Set[String] =
-    {
-      val g = new scala.tools.nsc.Global(new scala.tools.nsc.Settings)
-      g.nme.keywords.map(_.toString)
-    }
+  def getScalaKeywords: Set[String] = {
+    val g = new scala.tools.nsc.Global(new scala.tools.nsc.Settings)
+    g.nme.keywords.map(_.toString)
+  }
 
-  def writeScalaKeywords(base: File, keywords: Set[String]): File =
-    {
-      val init = keywords.map(tn => '"' + tn + '"').mkString("Set(", ", ", ")")
-      val ObjectName = "ScalaKeywords"
-      val PackageName = "sbt"
-      val keywordsSrc =
-        """package %s
+  def writeScalaKeywords(base: File, keywords: Set[String]): File = {
+    val init = keywords.map(tn => '"' + tn + '"').mkString("Set(", ", ", ")")
+    val ObjectName = "ScalaKeywords"
+    val PackageName = "sbt"
+    val keywordsSrc =
+      """package %s
 object %s {
 	val values = %s
 }""".format(PackageName, ObjectName, init)
-      val out = base / PackageName.replace('.', '/') / (ObjectName + ".scala")
-      IO.write(out, keywordsSrc)
-      out
-    }
+    val out = base / PackageName.replace('.', '/') / (ObjectName + ".scala")
+    IO.write(out, keywordsSrc)
+    out
+  }
 
-  def keywordsSettings: Seq[Setting[_]] = inConfig(Compile)(Seq(
-    scalaKeywords := getScalaKeywords,
-    generateKeywords := writeScalaKeywords(sourceManaged.value, scalaKeywords.value),
-    sourceGenerators += Def.task(Seq(generateKeywords.value)).taskValue
-  ))
+  def keywordsSettings: Seq[Setting[_]] =
+    inConfig(Compile)(
+      Seq(
+        scalaKeywords := getScalaKeywords,
+        generateKeywords := writeScalaKeywords(sourceManaged.value, scalaKeywords.value),
+        sourceGenerators += Def.task(Seq(generateKeywords.value)).taskValue
+      ))
 }
 
 object Licensed {
@@ -163,16 +185,24 @@ object Licensed {
   lazy val extractLicenses = TaskKey[Seq[File]]("extract-licenses")
 
   lazy val seeRegex = """\(see (.*?)\)""".r
-  def licensePath(base: File, str: String): File = { val path = base / str; if (path.exists) path else sys.error("Referenced license '" + str + "' not found at " + path) }
-  def seePaths(base: File, noticeString: String): Seq[File] = seeRegex.findAllIn(noticeString).matchData.map(d => licensePath(base, d.group(1))).toList
+  def licensePath(base: File, str: String): File = {
+    val path = base / str;
+    if (path.exists) path else sys.error("Referenced license '" + str + "' not found at " + path)
+  }
+  def seePaths(base: File, noticeString: String): Seq[File] =
+    seeRegex.findAllIn(noticeString).matchData.map(d => licensePath(base, d.group(1))).toList
 
   def settings: Seq[Setting[_]] = Seq(
     notice := (baseDirectory.value / "NOTICE"),
     unmanagedResources in Compile ++= notice.value +: extractLicenses.value,
-    extractLicenses := extractLicenses0((baseDirectory in ThisBuild).value, notice.value, streams.value)
+    extractLicenses := extractLicenses0((baseDirectory in ThisBuild).value,
+                                        notice.value,
+                                        streams.value)
   )
   def extractLicenses0(base: File, note: File, s: TaskStreams): Seq[File] =
-    if (!note.exists) Nil else
-      try { seePaths(base, IO.read(note)) }
-      catch { case NonFatal(e) => s.log.warn("Could not read NOTICE"); Nil }
+    if (!note.exists) Nil
+    else
+      try { seePaths(base, IO.read(note)) } catch {
+        case NonFatal(e) => s.log.warn("Could not read NOTICE"); Nil
+      }
 }

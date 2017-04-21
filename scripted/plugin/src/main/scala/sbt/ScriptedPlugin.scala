@@ -23,7 +23,9 @@ object ScriptedPlugin extends AutoPlugin {
     val scriptedClasspath = TaskKey[PathFinder]("scripted-classpath")
     val scriptedTests = TaskKey[AnyRef]("scripted-tests")
     val scriptedRun = TaskKey[Method]("scripted-run")
-    val scriptedLaunchOpts = SettingKey[Seq[String]]("scripted-launch-opts", "options to pass to jvm launching scripted tasks")
+    val scriptedLaunchOpts = SettingKey[Seq[String]](
+      "scripted-launch-opts",
+      "options to pass to jvm launching scripted tasks")
     val scriptedDependencies = TaskKey[Unit]("scripted-dependencies")
     val scripted = InputKey[Unit]("scripted")
   }
@@ -58,64 +60,72 @@ object ScriptedPlugin extends AutoPlugin {
     }
 
   def scriptedRunTask: Initialize[Task[Method]] = Def task (
-    scriptedTests.value.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[Array[String]],
-      classOf[File], classOf[Array[String]])
+    scriptedTests.value.getClass.getMethod("run",
+                                           classOf[File],
+                                           classOf[Boolean],
+                                           classOf[Array[String]],
+                                           classOf[File],
+                                           classOf[Array[String]])
   )
 
   import DefaultParsers._
   case class ScriptedTestPage(page: Int, total: Int)
 
-  private[sbt] def scriptedParser(scriptedBase: File): Parser[Seq[String]] =
-    {
+  private[sbt] def scriptedParser(scriptedBase: File): Parser[Seq[String]] = {
 
-      val scriptedFiles: NameFilter = ("test": NameFilter) | "pending"
-      val pairs = (scriptedBase * AllPassFilter * AllPassFilter * scriptedFiles).get map { (f: File) =>
+    val scriptedFiles: NameFilter = ("test": NameFilter) | "pending"
+    val pairs = (scriptedBase * AllPassFilter * AllPassFilter * scriptedFiles).get map {
+      (f: File) =>
         val p = f.getParentFile
         (p.getParentFile.getName, p.getName)
-      }
-      val pairMap = pairs.groupBy(_._1).mapValues(_.map(_._2).toSet);
-
-      val id = charClass(c => !c.isWhitespace && c != '/').+.string
-      val groupP = token(id.examples(pairMap.keySet.toSet)) <~ token('/')
-
-      // A parser for page definitions
-      val pageP: Parser[ScriptedTestPage] = ("*" ~ NatBasic ~ "of" ~ NatBasic) map {
-        case _ ~ page ~ _ ~ total => ScriptedTestPage(page, total)
-      }
-      // Grabs the filenames from a given test group in the current page definition.
-      def pagedFilenames(group: String, page: ScriptedTestPage): Seq[String] = {
-        val files = pairMap(group).toSeq.sortBy(_.toLowerCase)
-        val pageSize = files.size / page.total
-        // The last page may loose some values, so we explicitly keep them
-        val dropped = files.drop(pageSize * (page.page - 1))
-        if (page.page == page.total) dropped
-        else dropped.take(pageSize)
-      }
-      def nameP(group: String) = {
-        token("*".id | id.examples(pairMap(group)))
-      }
-      val PagedIds: Parser[Seq[String]] =
-        for {
-          group <- groupP
-          page <- pageP
-          files = pagedFilenames(group, page)
-          // TODO -  Fail the parser if we don't have enough files for the given page size
-          //if !files.isEmpty
-        } yield files map (f => group + '/' + f)
-
-      val testID = (for (group <- groupP; name <- nameP(group)) yield (group, name))
-      val testIdAsGroup = matched(testID) map (test => Seq(test))
-      //(token(Space) ~> matched(testID)).*
-      (token(Space) ~> (PagedIds | testIdAsGroup)).* map (_.flatten)
     }
+    val pairMap = pairs.groupBy(_._1).mapValues(_.map(_._2).toSet);
+
+    val id = charClass(c => !c.isWhitespace && c != '/').+.string
+    val groupP = token(id.examples(pairMap.keySet.toSet)) <~ token('/')
+
+    // A parser for page definitions
+    val pageP: Parser[ScriptedTestPage] = ("*" ~ NatBasic ~ "of" ~ NatBasic) map {
+      case _ ~ page ~ _ ~ total => ScriptedTestPage(page, total)
+    }
+    // Grabs the filenames from a given test group in the current page definition.
+    def pagedFilenames(group: String, page: ScriptedTestPage): Seq[String] = {
+      val files = pairMap(group).toSeq.sortBy(_.toLowerCase)
+      val pageSize = files.size / page.total
+      // The last page may loose some values, so we explicitly keep them
+      val dropped = files.drop(pageSize * (page.page - 1))
+      if (page.page == page.total) dropped
+      else dropped.take(pageSize)
+    }
+    def nameP(group: String) = {
+      token("*".id | id.examples(pairMap(group)))
+    }
+    val PagedIds: Parser[Seq[String]] =
+      for {
+        group <- groupP
+        page <- pageP
+        files = pagedFilenames(group, page)
+        // TODO -  Fail the parser if we don't have enough files for the given page size
+        //if !files.isEmpty
+      } yield files map (f => group + '/' + f)
+
+    val testID = (for (group <- groupP; name <- nameP(group)) yield (group, name))
+    val testIdAsGroup = matched(testID) map (test => Seq(test))
+    //(token(Space) ~> matched(testID)).*
+    (token(Space) ~> (PagedIds | testIdAsGroup)).* map (_.flatten)
+  }
 
   def scriptedTask: Initialize[InputTask[Unit]] = Def.inputTask {
     val args = scriptedParser(sbtTestDirectory.value).parsed
     scriptedDependencies.value
     try {
       scriptedRun.value.invoke(
-        scriptedTests.value, sbtTestDirectory.value, scriptedBufferLog.value: java.lang.Boolean,
-        args.toArray, sbtLauncher.value, scriptedLaunchOpts.value.toArray
+        scriptedTests.value,
+        sbtTestDirectory.value,
+        scriptedBufferLog.value: java.lang.Boolean,
+        args.toArray,
+        sbtLauncher.value,
+        scriptedLaunchOpts.value.toArray
       )
     } catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
   }

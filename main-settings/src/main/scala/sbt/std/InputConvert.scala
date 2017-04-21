@@ -33,7 +33,8 @@ object ParserConvert extends Convert {
 /** Convert instance for plain `Task`s not within the settings system. */
 object TaskConvert extends Convert {
   def apply[T: c.WeakTypeTag](c: blackbox.Context)(nme: String, in: c.Tree): Converted[c.type] =
-    if (nme == InputWrapper.WrapTaskName) Converted.Success[c.type](in) else Converted.NotApplicable[c.type]
+    if (nme == InputWrapper.WrapTaskName) Converted.Success[c.type](in)
+    else Converted.NotApplicable[c.type]
 }
 
 /** Converts an input `Tree` of type `Initialize[T]`, `Initialize[Task[T]]`, or `Task[T]` into a `Tree` of type `Initialize[Task[T]]`.*/

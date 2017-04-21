@@ -45,14 +45,21 @@ private[sbt] final class TaskTimings(shutdown: Boolean) extends ExecuteProgress[
     if (!shutdown)
       start = System.nanoTime
   }
-  def registered(state: Unit, task: Task[_], allDeps: Iterable[Task[_]], pendingDeps: Iterable[Task[_]]) = {
-    pendingDeps foreach { t => if (transformNode(t).isEmpty) anonOwners.put(t, task) }
+  def registered(state: Unit,
+                 task: Task[_],
+                 allDeps: Iterable[Task[_]],
+                 pendingDeps: Iterable[Task[_]]) = {
+    pendingDeps foreach { t =>
+      if (transformNode(t).isEmpty) anonOwners.put(t, task)
+    }
   }
   def ready(state: Unit, task: Task[_]) = ()
   def workStarting(task: Task[_]) = timings.put(task, System.nanoTime)
   def workFinished[T](task: Task[T], result: Either[Task[T], Result[T]]) = {
     timings.put(task, System.nanoTime - timings.get(task))
-    result.left.foreach { t => calledBy.put(t, task) }
+    result.left.foreach { t =>
+      calledBy.put(t, task)
+    }
   }
   def completed[T](state: Unit, task: Task[T], result: Result[T]) = ()
   def allCompleted(state: Unit, results: RMap[Task, Result]) =
@@ -68,22 +75,30 @@ private[sbt] final class TaskTimings(shutdown: Boolean) extends ExecuteProgress[
     import collection.JavaConverters._
     def sumTimes(in: Seq[(Task[_], Long)]) = in.map(_._2).sum
     val timingsByName = timings.asScala.toSeq.groupBy { case (t, time) => mappedName(t) } mapValues (sumTimes)
-    val times = timingsByName.toSeq.sortBy(_._2).reverse
+    val times = timingsByName.toSeq
+      .sortBy(_._2)
+      .reverse
       .map {
         case (name, time) =>
           (if (omitPaths) reFilePath.replaceFirstIn(name, "") else name, divide(time))
-      }.filter { _._2 > threshold }
+      }
+      .filter { _._2 > threshold }
     if (times.size > 0) {
       val maxTaskNameLength = times.map { _._1.length }.max
       val maxTime = times.map { _._2 }.max.toString.length
       times.foreach {
         case (taskName, time) =>
-          println(s"  ${taskName.padTo(maxTaskNameLength, ' ')}: ${"".padTo(maxTime - time.toString.length, ' ')}$time $unit")
+          println(s"  ${taskName.padTo(maxTaskNameLength, ' ')}: ${""
+            .padTo(maxTime - time.toString.length, ' ')}$time $unit")
       }
     }
   }
   private[this] def inferredName(t: Task[_]): Option[String] = nameDelegate(t) map mappedName
-  private[this] def nameDelegate(t: Task[_]): Option[Task[_]] = Option(anonOwners.get(t)) orElse Option(calledBy.get(t))
-  private[this] def mappedName(t: Task[_]): String = definedName(t) orElse inferredName(t) getOrElse anonymousName(t)
-  private[this] def divide(time: Long) = (1L to divider.toLong).fold(time) { (a, b) => a / 10L }
+  private[this] def nameDelegate(t: Task[_]): Option[Task[_]] =
+    Option(anonOwners.get(t)) orElse Option(calledBy.get(t))
+  private[this] def mappedName(t: Task[_]): String =
+    definedName(t) orElse inferredName(t) getOrElse anonymousName(t)
+  private[this] def divide(time: Long) = (1L to divider.toLong).fold(time) { (a, b) =>
+    a / 10L
+  }
 }

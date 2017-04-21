@@ -7,11 +7,11 @@ import java.io.File
 import org.specs2.mutable.SpecificationLike
 
 trait SplitExpression {
-  def split(s: String, file: File = new File("noFile"))(implicit splitter: SplitExpressions.SplitExpression) = splitter(file, s.split("\n").toSeq)
+  def split(s: String, file: File = new File("noFile"))(
+      implicit splitter: SplitExpressions.SplitExpression) = splitter(file, s.split("\n").toSeq)
 }
 
-trait SplitExpressionsBehavior extends SplitExpression {
-  this: SpecificationLike =>
+trait SplitExpressionsBehavior extends SplitExpression { this: SpecificationLike =>
 
   def newExpressionsSplitter(implicit splitter: SplitExpressions.SplitExpression): Unit = {
 
@@ -24,7 +24,8 @@ scalaVersion := "2.10.4"""")
     }
 
     "parse a setting and val without intervening blank line" in {
-      val (imports, settings) = split("""version := "1.0"
+      val (imports, settings) =
+        split("""version := "1.0"
 lazy val root = (project in file(".")).enablePlugins­(PlayScala)""")
 
       imports.isEmpty should beTrue

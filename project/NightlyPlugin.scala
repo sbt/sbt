@@ -29,8 +29,8 @@ object NightlyPlugin extends AutoPlugin {
   override def projectSettings: Seq[Setting[_]] = Seq(
     crossVersion in update := {
       scalaVersion.value match {
-        case sv if sv startsWith "2.8." => crossVersion.value
-        case sv if sv startsWith "2.9." => crossVersion.value
+        case sv if sv startsWith "2.8."  => crossVersion.value
+        case sv if sv startsWith "2.9."  => crossVersion.value
         case sv if sv startsWith "2.10." => crossVersion.value
         case sv if sv startsWith "2.11." => CrossVersion.full
         case sv if sv startsWith "2.12." => CrossVersion.full

@@ -16,12 +16,14 @@ import sbt.protocol.testing.TestResult
  * @param outputDir path to the dir in which a folder with results is generated
  */
 class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
+
   /**Current hostname so we know which machine executed the tests*/
   val hostname =
     try InetAddress.getLocalHost.getHostName
     catch {
       case x: IOException => "localhost"
     }
+
   /**The dir in which we put all result files. Is equal to the given dir + "/test-reports"*/
   val targetDir = new File(outputDir + "/test-reports/")
 
@@ -64,9 +66,11 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
       val (errors, failures, tests) = (count(TStatus.Error), count(TStatus.Failure), events.size)
 
       /** Junit XML reports don't differentiate between ignored, skipped or pending tests */
-      val ignoredSkippedPending = count(TStatus.Ignored) + count(TStatus.Skipped) + count(TStatus.Pending)
+      val ignoredSkippedPending = count(TStatus.Ignored) + count(TStatus.Skipped) + count(
+        TStatus.Pending)
 
-      val result = <testsuite hostname={ hostname } name={ name } tests={ tests + "" } errors={ errors + "" } failures={ failures + "" } skipped={ ignoredSkippedPending + "" } time={ (duration / 1000.0).toString }>
+      val result =
+        <testsuite hostname={ hostname } name={ name } tests={ tests + "" } errors={ errors + "" } failures={ failures + "" } skipped={ ignoredSkippedPending + "" } time={ (duration / 1000.0).toString }>
                      { properties }
                      {
                        for (e <- events) yield <testcase classname={ name } name={
@@ -119,7 +123,9 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
   /**
    * Adds all details for the given even to the current suite.
    */
-  override def testEvent(event: TestEvent): Unit = for (e <- event.detail) { testSuite.value.addEvent(e) }
+  override def testEvent(event: TestEvent): Unit = for (e <- event.detail) {
+    testSuite.value.addEvent(e)
+  }
 
   /**
    * called for each class or equivalent grouping

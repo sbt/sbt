@@ -2,7 +2,10 @@ package sbt
 package internal
 package parser
 
-abstract class CheckIfParsedSpec(implicit val splitter: SplitExpressions.SplitExpression = EvaluateConfigurations.splitExpressions) extends AbstractSpec {
+abstract class CheckIfParsedSpec(
+    implicit val splitter: SplitExpressions.SplitExpression =
+      EvaluateConfigurations.splitExpressions)
+    extends AbstractSpec {
 
   this.getClass.getName should {
 
@@ -21,13 +24,12 @@ abstract class CheckIfParsedSpec(implicit val splitter: SplitExpressions.SplitEx
     }
   }
 
-  private def shouldContains(b: Boolean) = s"""Should ${
-    if (b) {
+  private def shouldContains(b: Boolean) =
+    s"""Should ${if (b) {
       "contain"
     } else {
       "not contain"
-    }
-  }"""
+    }}"""
 
   protected val files: Seq[(String, String, Boolean, Boolean)]
 

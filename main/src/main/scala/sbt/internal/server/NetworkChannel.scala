@@ -10,7 +10,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 import sbt.protocol._
 import sjsonnew._
 
-final class NetworkChannel(val name: String, connection: Socket, structure: BuildStructure) extends CommandChannel {
+final class NetworkChannel(val name: String, connection: Socket, structure: BuildStructure)
+    extends CommandChannel {
   private val running = new AtomicBoolean(true)
   private val delimiter: Byte = '\n'.toByte
   private val out = connection.getOutputStream
@@ -33,10 +34,12 @@ final class NetworkChannel(val name: String, connection: Socket, structure: Buil
               val chunk = buffer.take(delimPos)
               buffer = buffer.drop(delimPos + 1)
 
-              Serialization.deserializeCommand(chunk).fold(
-                errorDesc => println("Got invalid chunk from client: " + errorDesc),
-                onCommand
-              )
+              Serialization
+                .deserializeCommand(chunk)
+                .fold(
+                  errorDesc => println("Got invalid chunk from client: " + errorDesc),
+                  onCommand
+                )
             }
 
           } catch {
@@ -51,24 +54,21 @@ final class NetworkChannel(val name: String, connection: Socket, structure: Buil
   }
   thread.start()
 
-  def publishEvent[A: JsonFormat](event: A): Unit =
-    {
-      val bytes = Serialization.serializeEvent(event)
-      publishBytes(bytes)
-    }
+  def publishEvent[A: JsonFormat](event: A): Unit = {
+    val bytes = Serialization.serializeEvent(event)
+    publishBytes(bytes)
+  }
 
-  def publishEventMessage(event: EventMessage): Unit =
-    {
-      val bytes = Serialization.serializeEventMessage(event)
-      publishBytes(bytes)
-    }
+  def publishEventMessage(event: EventMessage): Unit = {
+    val bytes = Serialization.serializeEventMessage(event)
+    publishBytes(bytes)
+  }
 
-  def publishBytes(event: Array[Byte]): Unit =
-    {
-      out.write(event)
-      out.write(delimiter.toInt)
-      out.flush()
-    }
+  def publishBytes(event: Array[Byte]): Unit = {
+    out.write(event)
+    out.write(delimiter.toInt)
+    out.flush()
+  }
 
   def onCommand(command: CommandMessage): Unit = command match {
     case x: ExecCommand  => onExecCommand(x)
@@ -76,7 +76,8 @@ final class NetworkChannel(val name: String, connection: Socket, structure: Buil
   }
 
   private def onExecCommand(cmd: ExecCommand) =
-    append(Exec(cmd.commandLine, cmd.execId orElse Some(Exec.newExecId), Some(CommandSource(name))))
+    append(
+      Exec(cmd.commandLine, cmd.execId orElse Some(Exec.newExecId), Some(CommandSource(name))))
 
   private def onSettingQuery(req: SettingQuery) =
     StandardMain.exchange publishEventMessage SettingQuery.handleSettingQuery(req, structure)

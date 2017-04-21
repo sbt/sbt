@@ -2,6 +2,7 @@ import sbt.contraband.ast._
 import sbt.contraband.CodecCodeGen
 
 object ContrabandConfig {
+
   /** Extract the only type parameter from a TpeRef */
   def oneArg(tpe: Type): Type = {
     val pat = s"""${tpe.removeTypeParameters.name}[<\\[](.+?)[>\\]]""".r
@@ -19,11 +20,21 @@ object ContrabandConfig {
   /** Codecs that were manually written. */
   val myCodecs: PartialFunction[String, Type => List[String]] = {
     // TODO: These are handled by BasicJsonProtocol, and sbt-contraband should handle them by default, imo
-    case "Option" | "Set" | "scala.Vector" => { tpe => getFormats(oneArg(tpe)) }
-    case "Map" | "Tuple2" | "scala.Tuple2" => { tpe => twoArgs(tpe).flatMap(getFormats) }
-    case "Int" | "Long"                    => { _ => Nil }
-    case "sbt.testing.Status"              => { _ => "sbt.internal.testing.StatusFormats" :: Nil }
-    case "scala.json.ast.unsafe.JValue"    => { _ => "sbt.internal.util.codec.JValueFormats" :: Nil }
+    case "Option" | "Set" | "scala.Vector" => { tpe =>
+      getFormats(oneArg(tpe))
+    }
+    case "Map" | "Tuple2" | "scala.Tuple2" => { tpe =>
+      twoArgs(tpe).flatMap(getFormats)
+    }
+    case "Int" | "Long" => { _ =>
+      Nil
+    }
+    case "sbt.testing.Status" => { _ =>
+      "sbt.internal.testing.StatusFormats" :: Nil
+    }
+    case "scala.json.ast.unsafe.JValue" => { _ =>
+      "sbt.internal.util.codec.JValueFormats" :: Nil
+    }
   }
 
   /** Returns the list of formats required to encode the given `TpeRef`. */

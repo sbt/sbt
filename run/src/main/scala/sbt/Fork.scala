@@ -21,13 +21,13 @@ import scala.sys.process.Process
  * @param envVars The environment variables to provide to the forked process.  By default, none are provided.
  */
 final case class ForkOptions(
-  javaHome: Option[File] = None,
-  outputStrategy: Option[OutputStrategy] = None,
-  bootJars: Seq[File] = Nil,
-  workingDirectory: Option[File] = None,
-  runJVMOptions: Seq[String] = Nil,
-  connectInput: Boolean = false,
-  envVars: Map[String, String] = Map.empty
+    javaHome: Option[File] = None,
+    outputStrategy: Option[OutputStrategy] = None,
+    bootJars: Seq[File] = Nil,
+    workingDirectory: Option[File] = None,
+    runJVMOptions: Seq[String] = Nil,
+    connectInput: Boolean = false,
+    envVars: Map[String, String] = Map.empty
 )
 
 /** Configures where the standard output and error streams from a forked process go.*/
@@ -61,6 +61,7 @@ case class CustomOutput(output: OutputStream) extends OutputStrategy
  * @param runnerClass If Some, this will be prepended to the `arguments` passed to the `apply` or `fork` methods.
  */
 final class Fork(val commandName: String, val runnerClass: Option[String]) {
+
   /**
    * Forks the configured process, waits for it to complete, and returns the exit code.
    * The command executed is the `commandName` defined for this Fork instance.
@@ -75,29 +76,32 @@ final class Fork(val commandName: String, val runnerClass: Option[String]) {
    * It is configured according to `config`.
    * If `runnerClass` is defined for this Fork instance, it is prepended to `arguments` to define the arguments passed to the forked command.
    */
-  def fork(config: ForkOptions, arguments: Seq[String]): Process =
-    {
-      import config.{ envVars => env, _ }
-      val executable = Fork.javaCommand(javaHome, commandName).getAbsolutePath
-      val preOptions = makeOptions(runJVMOptions, bootJars, arguments)
-      val (classpathEnv, options) = Fork.fitClasspath(preOptions)
-      val command = executable +: options
+  def fork(config: ForkOptions, arguments: Seq[String]): Process = {
+    import config.{ envVars => env, _ }
+    val executable = Fork.javaCommand(javaHome, commandName).getAbsolutePath
+    val preOptions = makeOptions(runJVMOptions, bootJars, arguments)
+    val (classpathEnv, options) = Fork.fitClasspath(preOptions)
+    val command = executable +: options
 
-      val environment = env ++ classpathEnv.map(value => Fork.ClasspathEnvKey -> value)
-      val process = Process(command, workingDirectory, environment.toList: _*)
+    val environment = env ++ classpathEnv.map(value => Fork.ClasspathEnvKey -> value)
+    val process = Process(command, workingDirectory, environment.toList: _*)
 
-      outputStrategy.getOrElse(StdoutOutput) match {
-        case StdoutOutput           => process.run(connectInput)
-        case BufferedOutput(logger) => logger.buffer { process.run(logger, connectInput) }
-        case LoggedOutput(logger)   => process.run(logger, connectInput)
-        case CustomOutput(output)   => (process #> output).run(connectInput)
-      }
+    outputStrategy.getOrElse(StdoutOutput) match {
+      case StdoutOutput           => process.run(connectInput)
+      case BufferedOutput(logger) => logger.buffer { process.run(logger, connectInput) }
+      case LoggedOutput(logger)   => process.run(logger, connectInput)
+      case CustomOutput(output)   => (process #> output).run(connectInput)
     }
-  private[this] def makeOptions(jvmOptions: Seq[String], bootJars: Iterable[File], arguments: Seq[String]): Seq[String] =
-    {
-      val boot = if (bootJars.isEmpty) None else Some("-Xbootclasspath/a:" + bootJars.map(_.getAbsolutePath).mkString(File.pathSeparator))
-      jvmOptions ++ boot.toList ++ runnerClass.toList ++ arguments
-    }
+  }
+  private[this] def makeOptions(jvmOptions: Seq[String],
+                                bootJars: Iterable[File],
+                                arguments: Seq[String]): Seq[String] = {
+    val boot =
+      if (bootJars.isEmpty) None
+      else
+        Some("-Xbootclasspath/a:" + bootJars.map(_.getAbsolutePath).mkString(File.pathSeparator))
+    jvmOptions ++ boot.toList ++ runnerClass.toList ++ arguments
+  }
 }
 object Fork {
   private val ScalacMainClass = "scala.tools.nsc.Main"
@@ -112,7 +116,9 @@ object Fork {
   private val ClasspathEnvKey = "CLASSPATH"
   private[this] val ClasspathOptionLong = "-classpath"
   private[this] val ClasspathOptionShort = "-cp"
-  private[this] def isClasspathOption(s: String) = s == ClasspathOptionLong || s == ClasspathOptionShort
+  private[this] def isClasspathOption(s: String) =
+    s == ClasspathOptionLong || s == ClasspathOptionShort
+
   /** Maximum length of classpath string before passing the classpath in an environment variable instead of an option. */
   private[this] val MaxConcatenatedOptionLength = 5000
 
@@ -124,19 +130,18 @@ object Fork {
   private[this] def optionsTooLong(options: Seq[String]): Boolean =
     options.mkString(" ").length > MaxConcatenatedOptionLength
 
-  private[this] val isWindows: Boolean = System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("windows")
-  private[this] def convertClasspathToEnv(options: Seq[String]): (Option[String], Seq[String]) =
-    {
-      val (preCP, cpAndPost) = options.span(opt => !isClasspathOption(opt))
-      val postCP = cpAndPost.drop(2)
-      val classpathOption = cpAndPost.drop(1).headOption
-      val newOptions = if (classpathOption.isDefined) preCP ++ postCP else options
-      (classpathOption, newOptions)
-    }
+  private[this] val isWindows: Boolean =
+    System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("windows")
+  private[this] def convertClasspathToEnv(options: Seq[String]): (Option[String], Seq[String]) = {
+    val (preCP, cpAndPost) = options.span(opt => !isClasspathOption(opt))
+    val postCP = cpAndPost.drop(2)
+    val classpathOption = cpAndPost.drop(1).headOption
+    val newOptions = if (classpathOption.isDefined) preCP ++ postCP else options
+    (classpathOption, newOptions)
+  }
 
-  private def javaCommand(javaHome: Option[File], name: String): File =
-    {
-      val home = javaHome.getOrElse(new File(System.getProperty("java.home")))
-      new File(new File(home, "bin"), name)
-    }
+  private def javaCommand(javaHome: Option[File], name: String): File = {
+    val home = javaHome.getOrElse(new File(System.getProperty("java.home")))
+    new File(new File(home, "bin"), name)
+  }
 }

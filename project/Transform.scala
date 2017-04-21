@@ -20,28 +20,29 @@ object Transform {
     conscriptConfigs := {
       val res = (managedResources in launch in Compile).value
       val src = (sourceDirectory in Compile).value
-      val source = res.find(_.getName == "sbt.boot.properties") getOrElse sys.error("No managed boot.properties file.")
+      val source = res.find(_.getName == "sbt.boot.properties") getOrElse sys.error(
+        "No managed boot.properties file.")
       copyConscriptProperties(source, src / "conscript")
       ()
     }
   )
 
-  def copyConscriptProperties(source: File, conscriptBase: File): Seq[File] =
-    {
-      IO.delete(conscriptBase)
-      val pairs = Seq(
-        "sbt.xMain" -> "xsbt",
-        "sbt.ScriptMain" -> "scalas",
-        "sbt.ConsoleMain" -> "screpl"
-      )
-      for ((main, dir) <- pairs) yield {
-        val file = conscriptBase / dir / "launchconfig"
-        copyPropertiesFile(source, main, file)
-        file
-      }
+  def copyConscriptProperties(source: File, conscriptBase: File): Seq[File] = {
+    IO.delete(conscriptBase)
+    val pairs = Seq(
+      "sbt.xMain" -> "xsbt",
+      "sbt.ScriptMain" -> "scalas",
+      "sbt.ConsoleMain" -> "screpl"
+    )
+    for ((main, dir) <- pairs) yield {
+      val file = conscriptBase / dir / "launchconfig"
+      copyPropertiesFile(source, main, file)
+      file
     }
+  }
   def copyPropertiesFile(source: File, newMain: String, target: File): Unit = {
-    def subMain(line: String): String = if (line.trim.startsWith("class:")) "  class: " + newMain else line
+    def subMain(line: String): String =
+      if (line.trim.startsWith("class:")) "  class: " + newMain else line
     IO.writeLines(target, IO.readLines(source) map subMain)
   }
 
@@ -68,7 +69,9 @@ object Transform {
   }
   def configSettings = transResourceSettings ++ Seq(
     resourceProperties :=
-      Map("org" -> organization.value, "sbt.version" -> version.value, "scala.version" -> scalaVersion.value)
+      Map("org" -> organization.value,
+          "sbt.version" -> version.value,
+          "scala.version" -> scalaVersion.value)
   )
   def transResourceSettings = Seq(
     inputResourceDirectory := sourceDirectory.value / "input_resources",
@@ -89,14 +92,16 @@ object Transform {
     ((rs --- rdirs) pair (rebase(rdirs, rm) | flat(rm))).toSeq
   }
 
-  def transform(in: File, out: File, map: Map[String, String]): File =
-    {
-      def get(key: String): String = map.getOrElse(key, sys.error("No value defined for key '" + key + "'"))
-      val newString = Property.replaceAllIn(IO.read(in), mtch => get(mtch.group(1)))
-      if (Some(newString) != read(out))
-        IO.write(out, newString)
-      out
-    }
-  def read(file: File): Option[String] = try { Some(IO.read(file)) } catch { case _: java.io.IOException => None }
+  def transform(in: File, out: File, map: Map[String, String]): File = {
+    def get(key: String): String =
+      map.getOrElse(key, sys.error("No value defined for key '" + key + "'"))
+    val newString = Property.replaceAllIn(IO.read(in), mtch => get(mtch.group(1)))
+    if (Some(newString) != read(out))
+      IO.write(out, newString)
+    out
+  }
+  def read(file: File): Option[String] = try { Some(IO.read(file)) } catch {
+    case _: java.io.IOException => None
+  }
   lazy val Property = """\$\{\{([\w.-]+)\}\}""".r
 }

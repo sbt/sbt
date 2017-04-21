@@ -14,6 +14,7 @@ import sbt.util.Logger
 import sbt.protocol._
 
 object MainLoop {
+
   /** Entry point to run the remaining commands in State with managed global logging.*/
   def runLogged(state: State): xsbti.MainResult = {
     // We've disabled jline shutdown hooks to prevent classloader leaks, and have been careful to always restore
@@ -48,14 +49,14 @@ object MainLoop {
 
   /** Runs the next sequence of commands, cleaning up global logging after any exceptions. */
   def runAndClearLast(state: State, logBacking: GlobalLogBacking): RunNext =
-    try
-      runWithNewLog(state, logBacking)
+    try runWithNewLog(state, logBacking)
     catch {
       case e: xsbti.FullReload =>
         deleteLastLog(logBacking)
         throw e // pass along a reboot request
       case NonFatal(e) =>
-        System.err.println("sbt appears to be exiting abnormally.\n  The log file for this session is at " + logBacking.file)
+        System.err.println(
+          "sbt appears to be exiting abnormally.\n  The log file for this session is at " + logBacking.file)
         deleteLastLog(logBacking)
         throw e
     }
@@ -72,7 +73,8 @@ object MainLoop {
       val newLogging = state.globalLogging.newAppender(full, out, logBacking)
       // transferLevels(state, newLogging)
       val loggedState = state.copy(globalLogging = newLogging)
-      try run(loggedState) finally out.close()
+      try run(loggedState)
+      finally out.close()
     }
 
   // /** Transfers logging and trace levels from the old global loggers to the new ones. */
@@ -110,7 +112,10 @@ object MainLoop {
   def processCommand(exec: Exec, state: State): State = {
     import DefaultParsers._
     val channelName = exec.source map (_.channelName)
-    StandardMain.exchange publishEventMessage ExecStatusEvent("Processing", channelName, exec.execId, Vector())
+    StandardMain.exchange publishEventMessage ExecStatusEvent("Processing",
+                                                              channelName,
+                                                              exec.execId,
+                                                              Vector())
     val parser = Command combine state.definedCommands
     val newState = parse(exec.commandLine, parser(state)) match {
       case Right(s) => s() // apply command.  command side effects happen here
@@ -118,7 +123,11 @@ object MainLoop {
         state.log error errMsg
         state.fail
     }
-    StandardMain.exchange publishEventMessage ExecStatusEvent("Done", channelName, exec.execId, newState.remainingCommands.toVector map (_.commandLine))
+    StandardMain.exchange publishEventMessage ExecStatusEvent(
+      "Done",
+      channelName,
+      exec.execId,
+      newState.remainingCommands.toVector map (_.commandLine))
     newState
   }
 

@@ -29,7 +29,8 @@ private[sbt] final class LoadedSbtFile(
       generatedFiles ++ o.generatedFiles
     )
 
-  def clearProjects = new LoadedSbtFile(settings, Nil, importedDefs, manipulations, definitions, generatedFiles)
+  def clearProjects =
+    new LoadedSbtFile(settings, Nil, importedDefs, manipulations, definitions, generatedFiles)
 }
 
 /**
@@ -42,7 +43,9 @@ private[sbt] final class DefinedSbtValues(val sbtFiles: Seq[compiler.EvalDefinit
     sbtFiles flatMap (_ values parent)
 
   def classloader(parent: ClassLoader): ClassLoader =
-    sbtFiles.foldLeft(parent) { (cl, e) => e.loader(cl) }
+    sbtFiles.foldLeft(parent) { (cl, e) =>
+      e.loader(cl)
+    }
 
   def imports: Seq[String] = {
     // TODO - Sanity check duplicates and such, so users get a nice warning rather
@@ -69,16 +72,18 @@ private[sbt] final class DefinedSbtValues(val sbtFiles: Seq[compiler.EvalDefinit
     new DefinedSbtValues(sbtFiles ++ other.sbtFiles)
 }
 private[sbt] object DefinedSbtValues {
+
   /** Construct a DefinedSbtValues object directly from the underlying representation. */
   def apply(eval: compiler.EvalDefinitions): DefinedSbtValues =
     new DefinedSbtValues(Seq(eval))
+
   /** Construct an empty value object. */
   def empty = new DefinedSbtValues(Nil)
 
 }
 
 private[sbt] object LoadedSbtFile {
+
   /** Represents an empty .sbt file: no Projects, imports, or settings.*/
   def empty = new LoadedSbtFile(Nil, Nil, Nil, Nil, DefinedSbtValues.empty, Nil)
 }
-

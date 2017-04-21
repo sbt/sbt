@@ -23,31 +23,34 @@ object ScopeFilter {
    * If a task filter is not supplied, global is selected.
    * Generally, always specify the project axis.
    */
-  def apply(projects: ProjectFilter = inProjects(ThisProject), configurations: ConfigurationFilter = globalAxis, tasks: TaskFilter = globalAxis): ScopeFilter =
+  def apply(projects: ProjectFilter = inProjects(ThisProject),
+            configurations: ConfigurationFilter = globalAxis,
+            tasks: TaskFilter = globalAxis): ScopeFilter =
     new ScopeFilter {
-      private[sbt] def apply(data: Data): Scope => Boolean =
-        {
-          val pf = projects(data)
-          val cf = configurations(data)
-          val tf = tasks(data)
-          s => pf(s.project) && cf(s.config) && tf(s.task)
-        }
+      private[sbt] def apply(data: Data): Scope => Boolean = {
+        val pf = projects(data)
+        val cf = configurations(data)
+        val tf = tasks(data)
+        s =>
+          pf(s.project) && cf(s.config) && tf(s.task)
+      }
     }
 
   def debug(delegate: ScopeFilter): ScopeFilter =
     new ScopeFilter {
-      private[sbt] def apply(data: Data): Scope => Boolean =
-        {
-          val d = delegate(data)
-          scope => {
+      private[sbt] def apply(data: Data): Scope => Boolean = {
+        val d = delegate(data)
+        scope =>
+          {
             val accept = d(scope)
             println((if (accept) "ACCEPT " else "reject ") + scope)
             accept
           }
-        }
+      }
     }
 
   final class SettingKeyAll[T] private[sbt] (i: Initialize[T]) {
+
     /**
      * Evaluates the initialization in all scopes selected by the filter.  These are dynamic dependencies, so
      * static inspections will not show them.
@@ -57,6 +60,7 @@ object ScopeFilter {
     }
   }
   final class TaskKeyAll[T] private[sbt] (i: Initialize[Task[T]]) {
+
     /**
      * Evaluates the task in all scopes selected by the filter.  These are dynamic dependencies, so
      * static inspections will not show them.
@@ -69,20 +73,26 @@ object ScopeFilter {
 
   private[sbt] val Make = new Make {}
   trait Make {
+
     /** Selects the Scopes used in `<key>.all(<ScopeFilter>)`.*/
     type ScopeFilter = Base[Scope]
 
     /** Selects Scopes with a global task axis. */
     def inGlobalTask: TaskFilter = globalAxis[AttributeKey[_]]
+
     /** Selects Scopes with a global project axis. */
     def inGlobalProject: ProjectFilter = globalAxis[Reference]
+
     /** Selects Scopes with a global configuration axis. */
     def inGlobalConfiguration: ConfigurationFilter = globalAxis[ConfigKey]
 
     /** Selects all scopes that apply to a single project.  Global and build-level scopes are excluded. */
-    def inAnyProject: ProjectFilter = selectAxis(const { case p: ProjectRef => true; case _ => false })
+    def inAnyProject: ProjectFilter =
+      selectAxis(const { case p: ProjectRef => true; case _ => false })
+
     /** Accepts all values for the task axis except Global. */
     def inAnyTask: TaskFilter = selectAny[AttributeKey[_]]
+
     /** Accepts all values for the configuration axis except Global. */
     def inAnyConfiguration: ConfigurationFilter = selectAny[ConfigKey]
 
@@ -90,18 +100,31 @@ object ScopeFilter {
      * Selects Scopes that have a project axis that is aggregated by `ref`, transitively if `transitive` is true.
      * If `includeRoot` is true, Scopes with `ref` itself as the project axis value are also selected.
      */
-    def inAggregates(ref: ProjectReference, transitive: Boolean = true, includeRoot: Boolean = true): ProjectFilter =
-      byDeps(ref, transitive = transitive, includeRoot = includeRoot, aggregate = true, classpath = false)
+    def inAggregates(ref: ProjectReference,
+                     transitive: Boolean = true,
+                     includeRoot: Boolean = true): ProjectFilter =
+      byDeps(ref,
+             transitive = transitive,
+             includeRoot = includeRoot,
+             aggregate = true,
+             classpath = false)
 
     /**
      * Selects Scopes that have a project axis that is a dependency of `ref`, transitively if `transitive` is true.
      * If `includeRoot` is true, Scopes with `ref` itself as the project axis value are also selected.
      */
-    def inDependencies(ref: ProjectReference, transitive: Boolean = true, includeRoot: Boolean = true): ProjectFilter =
-      byDeps(ref, transitive = transitive, includeRoot = includeRoot, aggregate = false, classpath = true)
+    def inDependencies(ref: ProjectReference,
+                       transitive: Boolean = true,
+                       includeRoot: Boolean = true): ProjectFilter =
+      byDeps(ref,
+             transitive = transitive,
+             includeRoot = includeRoot,
+             aggregate = false,
+             classpath = true)
 
     /** Selects Scopes that have a project axis with one of the provided values.*/
-    def inProjects(projects: ProjectReference*): ProjectFilter = ScopeFilter.inProjects(projects: _*)
+    def inProjects(projects: ProjectReference*): ProjectFilter =
+      ScopeFilter.inProjects(projects: _*)
 
     /** Selects Scopes that have a task axis with one of the provided values.*/
     def inTasks(tasks: Scoped*): TaskFilter = {
@@ -123,7 +146,9 @@ object ScopeFilter {
    * Information provided to Scope filters.  These provide project relationships,
    * project reference resolution, and the list of all static Scopes.
    */
-  private final class Data(val units: Map[URI, LoadedBuildUnit], val resolve: ProjectReference => ProjectRef, val allScopes: Set[Scope])
+  private final class Data(val units: Map[URI, LoadedBuildUnit],
+                           val resolve: ProjectReference => ProjectRef,
+                           val allScopes: Set[Scope])
 
   /** Constructs a Data instance from the list of static scopes and the project relationships.*/
   private[this] val getData: Initialize[Data] =
@@ -136,20 +161,28 @@ object ScopeFilter {
         case None                     => build.root
       }
       val rootProject = Load.getRootProject(build.units)
-      val resolve: ProjectReference => ProjectRef = p => (p, thisRef) match {
-        case (ThisProject, Some(pref)) => pref
-        case _                         => Scope.resolveProjectRef(current, rootProject, p)
+      val resolve: ProjectReference => ProjectRef = p =>
+        (p, thisRef) match {
+          case (ThisProject, Some(pref)) => pref
+          case _                         => Scope.resolveProjectRef(current, rootProject, p)
       }
       new Data(build.units, resolve, scopes)
     }
 
-  private[this] def getDependencies(structure: Map[URI, LoadedBuildUnit], classpath: Boolean, aggregate: Boolean): ProjectRef => Seq[ProjectRef] =
-    ref => Project.getProject(ref, structure).toList flatMap { p =>
-      (if (classpath) p.dependencies.map(_.project) else Nil) ++
-        (if (aggregate) p.aggregate else Nil)
+  private[this] def getDependencies(structure: Map[URI, LoadedBuildUnit],
+                                    classpath: Boolean,
+                                    aggregate: Boolean): ProjectRef => Seq[ProjectRef] =
+    ref =>
+      Project.getProject(ref, structure).toList flatMap { p =>
+        (if (classpath) p.dependencies.map(_.project) else Nil) ++
+          (if (aggregate) p.aggregate else Nil)
     }
 
-  private[this] def byDeps(ref: ProjectReference, transitive: Boolean, includeRoot: Boolean, aggregate: Boolean, classpath: Boolean): ProjectFilter =
+  private[this] def byDeps(ref: ProjectReference,
+                           transitive: Boolean,
+                           includeRoot: Boolean,
+                           aggregate: Boolean,
+                           classpath: Boolean): ProjectFilter =
     inResolvedProjects { data =>
       val resolvedRef = data.resolve(ref)
       val direct = getDependencies(data.units, classpath = classpath, aggregate = aggregate)
@@ -176,15 +209,17 @@ object ScopeFilter {
   private[this] def selectAxis[T](f: Data => T => Boolean): AxisFilter[T] = new AxisFilter[T] {
     private[sbt] def apply(data: Data): ScopeAxis[T] => Boolean = {
       val g = f(data)
-      s => s match {
-        case Select(t) => g(t)
-        case _         => false
-      }
+      s =>
+        s match {
+          case Select(t) => g(t)
+          case _         => false
+        }
     }
   }
 
   /** Base functionality for filters on values of type `In` that need access to build data.*/
   sealed abstract class Base[In] { self =>
+
     /** Implements this filter. */
     private[ScopeFilter] def apply(data: Data): In => Boolean
 
@@ -196,7 +231,8 @@ object ScopeFilter {
       private[sbt] def apply(data: Data): In => Boolean = {
         val a = self(data)
         val b = other(data)
-        s => a(s) && b(s)
+        s =>
+          a(s) && b(s)
       }
     }
 
@@ -205,14 +241,17 @@ object ScopeFilter {
       private[sbt] def apply(data: Data): In => Boolean = {
         val a = self(data)
         val b = other(data)
-        s => a(s) || b(s)
+        s =>
+          a(s) || b(s)
       }
     }
+
     /** Constructs a filter that selects values that do not match this filter.*/
     def unary_- : Base[In] = new Base[In] {
       private[sbt] def apply(data: Data): In => Boolean = {
         val a = self(data)
-        s => !a(s)
+        s =>
+          !a(s)
       }
     }
   }

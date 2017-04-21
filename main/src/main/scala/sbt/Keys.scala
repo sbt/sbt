@@ -28,7 +28,14 @@ import descriptor.ModuleDescriptor, id.ModuleRevisionId
 import testing.Framework
 import KeyRanks._
 
-import sbt.internal.{ BuildStructure, LoadedBuild, PluginDiscovery, BuildDependencies, SessionSettings, LogManager }
+import sbt.internal.{
+  BuildStructure,
+  LoadedBuild,
+  PluginDiscovery,
+  BuildDependencies,
+  SessionSettings,
+  LogManager
+}
 import sbt.io.FileFilter
 import sbt.internal.io.WatchState
 import sbt.internal.util.{ AttributeKey, SourcePosition }
@@ -76,6 +83,8 @@ import sbt.internal.librarymanagement.{
 import sbt.util.{ Level, Logger }
 import org.apache.logging.log4j.core.Appender
 import sbt.BuildSyntax._
+
+// format: off
 
 object Keys {
   val TraceValues = "-1 to disable, 0 for up to the first sbt frame, or a positive number to set the maximum number of frames shown."
@@ -456,3 +465,5 @@ object Keys {
   type Streams = std.Streams[ScopedKey[_]]
   type TaskStreams = std.TaskStreams[ScopedKey[_]]
 }
+
+// format: on

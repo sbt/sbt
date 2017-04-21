@@ -14,5 +14,6 @@ class ProjectSpec extends Specification {
 
   def emptyFilename = ""
 
-  def normalizeEmptyFileName = Project.normalizeProjectID(emptyFilename) must equalTo(Right("root"))
+  def normalizeEmptyFileName =
+    Project.normalizeProjectID(emptyFilename) must equalTo(Right("root"))
 }

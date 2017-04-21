@@ -36,8 +36,13 @@ private[sbt] object TemplateCommandUtil {
   }
 
   private def run(
-      infos: List[TemplateResolverInfo], arguments: List[String], config: AppConfiguration,
-      ivyConf: IvyConfiguration, globalBase: File, ivyScala: Option[IvyScala], log: Logger
+      infos: List[TemplateResolverInfo],
+      arguments: List[String],
+      config: AppConfiguration,
+      ivyConf: IvyConfiguration,
+      globalBase: File,
+      ivyScala: Option[IvyScala],
+      log: Logger
   ): Unit =
     infos find { info =>
       val loader = infoLoader(info, config, ivyConf, globalBase, ivyScala, log)
@@ -51,57 +56,67 @@ private[sbt] object TemplateCommandUtil {
       case None    => System.err.println("Template not found for: " + arguments.mkString(" "))
     }
 
-  private def tryTemplate(info: TemplateResolverInfo, arguments: List[String], loader: ClassLoader): Boolean =
-    {
-      val resultObj = call(info.implementationClass, "isDefined", loader)(
-        classOf[Array[String]]
-      )(arguments.toArray)
-      resultObj.asInstanceOf[Boolean]
-    }
+  private def tryTemplate(info: TemplateResolverInfo,
+                          arguments: List[String],
+                          loader: ClassLoader): Boolean = {
+    val resultObj = call(info.implementationClass, "isDefined", loader)(
+      classOf[Array[String]]
+    )(arguments.toArray)
+    resultObj.asInstanceOf[Boolean]
+  }
 
-  private def runTemplate(info: TemplateResolverInfo, arguments: List[String], loader: ClassLoader): Unit =
+  private def runTemplate(info: TemplateResolverInfo,
+                          arguments: List[String],
+                          loader: ClassLoader): Unit =
     call(info.implementationClass, "run", loader)(classOf[Array[String]])(arguments.toArray)
 
   private def infoLoader(
-      info: TemplateResolverInfo, config: AppConfiguration, ivyConf: IvyConfiguration, globalBase: File,
-      ivyScala: Option[IvyScala], log: Logger
+      info: TemplateResolverInfo,
+      config: AppConfiguration,
+      ivyConf: IvyConfiguration,
+      globalBase: File,
+      ivyScala: Option[IvyScala],
+      log: Logger
   ): ClassLoader = {
     val cp = classpathForInfo(info, ivyConf, globalBase, ivyScala, log)
     ClasspathUtilities.toLoader(cp, config.provider.loader)
   }
 
   private def call(
-      interfaceClassName: String, methodName: String, loader: ClassLoader
-  )(argTypes: Class[_]*)(args: AnyRef*): AnyRef =
-    {
-      val interfaceClass = getInterfaceClass(interfaceClassName, loader)
-      val interface = interfaceClass.getDeclaredConstructor().newInstance().asInstanceOf[AnyRef]
-      val method = interfaceClass.getMethod(methodName, argTypes: _*)
-      try { method.invoke(interface, args: _*) }
-      catch {
-        case e: InvocationTargetException => throw e.getCause
-      }
+      interfaceClassName: String,
+      methodName: String,
+      loader: ClassLoader
+  )(argTypes: Class[_]*)(args: AnyRef*): AnyRef = {
+    val interfaceClass = getInterfaceClass(interfaceClassName, loader)
+    val interface = interfaceClass.getDeclaredConstructor().newInstance().asInstanceOf[AnyRef]
+    val method = interfaceClass.getMethod(methodName, argTypes: _*)
+    try { method.invoke(interface, args: _*) } catch {
+      case e: InvocationTargetException => throw e.getCause
     }
+  }
 
-  private def getInterfaceClass(name: String, loader: ClassLoader) = Class.forName(name, true, loader)
+  private def getInterfaceClass(name: String, loader: ClassLoader) =
+    Class.forName(name, true, loader)
 
   // Cache files under ~/.sbt/0.13/templates/org_name_version
   private def classpathForInfo(
-      info: TemplateResolverInfo, ivyConf: IvyConfiguration, globalBase: File, ivyScala: Option[IvyScala],
+      info: TemplateResolverInfo,
+      ivyConf: IvyConfiguration,
+      globalBase: File,
+      ivyScala: Option[IvyScala],
       log: Logger
-  ): List[File] =
-    {
-      val lm = new DefaultLibraryManagement(ivyConf, log)
-      val templatesBaseDirectory = new File(globalBase, "templates")
-      val templateId = s"${info.module.organization}_${info.module.name}_${info.module.revision}"
-      val templateDirectory = new File(templatesBaseDirectory, templateId)
-      def jars = (templateDirectory ** -DirectoryFilter).get
-      if (!(info.module.revision endsWith "-SNAPSHOT") && jars.nonEmpty) jars.toList
-      else {
-        IO.createDirectory(templateDirectory)
-        val m = lm.getModule(info.module.withConfigurations(Some("component")), ivyScala)
-        val xs = lm.update(m, templateDirectory)(_ => true).toList.flatten
-        xs
-      }
+  ): List[File] = {
+    val lm = new DefaultLibraryManagement(ivyConf, log)
+    val templatesBaseDirectory = new File(globalBase, "templates")
+    val templateId = s"${info.module.organization}_${info.module.name}_${info.module.revision}"
+    val templateDirectory = new File(templatesBaseDirectory, templateId)
+    def jars = (templateDirectory ** -DirectoryFilter).get
+    if (!(info.module.revision endsWith "-SNAPSHOT") && jars.nonEmpty) jars.toList
+    else {
+      IO.createDirectory(templateDirectory)
+      val m = lm.getModule(info.module.withConfigurations(Some("component")), ivyScala)
+      val xs = lm.update(m, templateDirectory)(_ => true).toList.flatten
+      xs
     }
+  }
 }

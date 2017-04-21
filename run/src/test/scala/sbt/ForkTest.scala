@@ -9,6 +9,7 @@ import sbt.internal.TestLogger
 import sbt.io.{ IO, Path }
 
 object ForkTest extends Properties("Fork") {
+
   /**
    * Heuristic for limiting the length of the classpath string.
    * Longer than this will hit hard limits in the total space
@@ -30,24 +31,27 @@ object ForkTest extends Properties("Fork") {
       "0" ::
       Nil
 
-  property("Arbitrary length classpath successfully passed.") = forAllNoShrink(genOptionName, genRelClasspath) { (optionName: Option[String], relCP: List[String]) =>
-    IO.withTemporaryDirectory { dir =>
-      TestLogger { log =>
-        val withScala = requiredEntries ::: relCP.map(rel => new File(dir, rel))
-        val absClasspath = trimClasspath(Path.makeString(withScala))
-        val args = optionName.map(_ :: absClasspath :: Nil).toList.flatten ++ mainAndArgs
-        val config = ForkOptions(outputStrategy = Some(LoggedOutput(log)))
-        val exitCode = try Fork.java(config, args) catch { case e: Exception => e.printStackTrace; 1 }
-        val expectedCode = if (optionName.isEmpty) 1 else 0
-        s"temporary directory: ${dir.getAbsolutePath}" |:
-          s"required classpath: ${requiredEntries.mkString("\n\t", "\n\t", "")}" |:
-          s"main and args: ${mainAndArgs.mkString(" ")}" |:
-          s"args length: ${args.mkString(" ").length}" |:
-          s"exitCode: $exitCode, expected: $expectedCode" |:
-          (exitCode == expectedCode)
-      }
+  property("Arbitrary length classpath successfully passed.") =
+    forAllNoShrink(genOptionName, genRelClasspath) {
+      (optionName: Option[String], relCP: List[String]) =>
+        IO.withTemporaryDirectory { dir =>
+          TestLogger { log =>
+            val withScala = requiredEntries ::: relCP.map(rel => new File(dir, rel))
+            val absClasspath = trimClasspath(Path.makeString(withScala))
+            val args = optionName.map(_ :: absClasspath :: Nil).toList.flatten ++ mainAndArgs
+            val config = ForkOptions(outputStrategy = Some(LoggedOutput(log)))
+            val exitCode = try Fork.java(config, args)
+            catch { case e: Exception => e.printStackTrace; 1 }
+            val expectedCode = if (optionName.isEmpty) 1 else 0
+            s"temporary directory: ${dir.getAbsolutePath}" |:
+              s"required classpath: ${requiredEntries.mkString("\n\t", "\n\t", "")}" |:
+              s"main and args: ${mainAndArgs.mkString(" ")}" |:
+              s"args length: ${args.mkString(" ").length}" |:
+              s"exitCode: $exitCode, expected: $expectedCode" |:
+              (exitCode == expectedCode)
+          }
+        }
     }
-  }
 
   private[this] def trimClasspath(cp: String): String =
     if (cp.length > MaximumClasspathLength) {
