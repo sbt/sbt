@@ -96,13 +96,22 @@ object ToSbt {
   def moduleReports(
     res: Resolution,
     classifiersOpt: Option[Seq[String]],
-    artifactFileOpt: (Module, String, Artifact) => Option[File]
+    artifactFileOpt: (Module, String, Artifact) => Option[File],
+    keepPomArtifact: Boolean = false
   ) = {
-    val depArtifacts =
+    val depArtifacts0 =
       classifiersOpt match {
         case None => res.dependencyArtifacts
         case Some(cl) => res.dependencyClassifiersArtifacts(cl)
       }
+
+    val depArtifacts =
+      if (keepPomArtifact)
+        depArtifacts0
+      else
+        depArtifacts0.filter {
+          case (_, a) => a.attributes != Attributes("pom", "")
+        }
 
     val groupedDepArtifacts = grouped(depArtifacts)
 
@@ -155,7 +164,8 @@ object ToSbt {
     resolution: Resolution,
     configs: Map[String, Set[String]],
     classifiersOpt: Option[Seq[String]],
-    artifactFileOpt: (Module, String, Artifact) => Option[File]
+    artifactFileOpt: (Module, String, Artifact) => Option[File],
+    keepPomArtifact: Boolean = false
   ): sbt.UpdateReport = {
 
     val configReports = configs.map {
@@ -163,7 +173,7 @@ object ToSbt {
         val configDeps = extends0.flatMap(configDependencies.getOrElse(_, Nil))
         val subRes = resolution.subset(configDeps)
 
-        val reports = ToSbt.moduleReports(subRes, classifiersOpt, artifactFileOpt)
+        val reports = ToSbt.moduleReports(subRes, classifiersOpt, artifactFileOpt, keepPomArtifact)
 
         new ConfigurationReport(
           config,
