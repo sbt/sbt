@@ -457,12 +457,24 @@ object Tasks {
       val useSbtCredentials = coursierUseSbtCredentials.value
 
       val authenticationByHost =
-        if (useSbtCredentials) {
-          val cred = sbt.Keys.credentials.value.map(sbt.Credentials.toDirect)
-          cred.map { c =>
-            c.host -> Authentication(c.userName, c.passwd)
-          }.toMap
-        } else
+        if (useSbtCredentials)
+          sbt.Keys.credentials
+            .value
+            .flatMap {
+              case dc: sbt.DirectCredentials => List(dc)
+              case fc: sbt.FileCredentials =>
+                sbt.Credentials.loadCredentials(fc.path) match {
+                  case Left(err) =>
+                    log.warn(s"$err, ignoring it")
+                    Nil
+                  case Right(dc) => List(dc)
+                }
+            }
+            .map { c =>
+              c.host -> Authentication(c.userName, c.passwd)
+            }
+            .toMap
+        else
           Map.empty[String, Authentication]
 
       val authenticationByRepositoryId = coursierCredentials.value.mapValues(_.authentication)
