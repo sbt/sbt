@@ -4,21 +4,25 @@ package test
 import utest._
 
 object VersionTests extends TestSuite {
+
   import core.Version
 
-  def compare(first: String, second: String) = Version(first).compare(Version(second))
+  def compare(first: String, second: String) =
+    Version(first).compare(Version(second))
 
   def increasing(versions: String*): Boolean =
     versions.iterator.sliding(2).withPartial(false).forall{case Seq(a, b) => compare(a, b) < 0 }
 
+
   val tests = TestSuite {
-    'stackOverflow{
+
+    'stackOverflow - {
       val s = "." * 100000
       val v = Version(s)
       assert(v.isEmpty)
     }
 
-    'empty{
+    'empty - {
       val v0 = Version("0")
       val v = Version("")
 
@@ -26,7 +30,7 @@ object VersionTests extends TestSuite {
       assert(v.isEmpty)
     }
 
-    'max{
+    'max - {
       val v21 = Version("2.1")
       val v22 = Version("2.2")
       val v23 = Version("2.3")
@@ -39,21 +43,15 @@ object VersionTests extends TestSuite {
       assert(max == v241)
     }
 
-    'numericOrdering{
-      assert(compare("1.2", "1.10") < 0)
-    }
-
     // Adapted from aether-core/aether-util/src/test/java/org/eclipse/aether/util/version/GenericVersionTest.java
     // Only one test doesn't pass (see FIXME below)
 
-    'EmptyVersion{
+    'emptyVersion - {
       assert(compare("0", "" ) == 0)
     }
 
 
-
-    'NumericOrdering
-    {
+    'numericOrdering - {
       assert(compare("2", "10" ) < 0)
       assert(compare("1.2", "1.10" ) < 0)
       assert(compare("1.0.2", "1.0.10" ) < 0)
@@ -63,16 +61,14 @@ object VersionTests extends TestSuite {
     }
 
 
-    'Delimiters
-    {
+    'delimiters - {
       assert(compare("1.0", "1-0" ) == 0)
       assert(compare("1.0", "1_0" ) == 0)
       assert(compare("1.a", "1a" ) == 0)
     }
 
 
-    'LeadingZerosAreSemanticallyIrrelevant
-    {
+    'leadingZerosAreSemanticallyIrrelevant - {
       assert(compare("1", "01" ) == 0)
       assert(compare("1.2", "1.002" ) == 0)
       assert(compare("1.2.3", "1.2.0003" ) == 0)
@@ -80,8 +76,7 @@ object VersionTests extends TestSuite {
     }
 
 
-    'TrailingZerosAreSemanticallyIrrelevant
-    {
+    'trailingZerosAreSemanticallyIrrelevant - {
       assert(compare("1", "1.0.0.0.0.0.0.0.0.0.0.0.0.0" ) == 0)
       assert(compare("1", "1-0-0-0-0-0-0-0-0-0-0-0-0-0" ) == 0)
       assert(compare("1", "1.0-0.0-0.0-0.0-0.0-0.0-0.0" ) == 0)
@@ -90,8 +85,7 @@ object VersionTests extends TestSuite {
     }
 
 
-    'TrailingZerosBeforeQualifierAreSemanticallyIrrelevant
-    {
+    'trailingZerosBeforeQualifierAreSemanticallyIrrelevant - {
       assert(compare("1.0-ga", "1.0.0-ga" ) == 0)
       assert(compare("1.0.ga", "1.0.0.ga" ) == 0)
       assert(compare("1.0ga", "1.0.0ga" ) == 0)
@@ -109,8 +103,7 @@ object VersionTests extends TestSuite {
     }
 
 
-    'TrailingDelimitersAreSemanticallyIrrelevant
-    {
+    'trailingDelimitersAreSemanticallyIrrelevant - {
       assert(compare("1", "1............." ) == 0)
       assert(compare("1", "1-------------" ) == 0)
       assert(compare("1.0", "1............." ) == 0)
@@ -118,8 +111,7 @@ object VersionTests extends TestSuite {
     }
 
 
-    'InitialDelimiters
-    {
+    'initialDelimiters - {
       assert(compare("0.1", ".1" ) == 0)
       assert(compare("0.0.1", "..1" ) == 0)
       assert(compare("0.1", "-1" ) == 0)
@@ -127,8 +119,7 @@ object VersionTests extends TestSuite {
     }
 
 
-    'ConsecutiveDelimiters
-    {
+    'consecutiveDelimiters - {
       assert(compare("1.0.1", "1..1" ) == 0)
       assert(compare("1.0.0.1", "1...1" ) == 0)
       assert(compare("1.0.1", "1--1" ) == 0)
@@ -136,20 +127,17 @@ object VersionTests extends TestSuite {
     }
 
 
-    'UnlimitedNumberOfVersionComponents
-    {
+    'unlimitedNumberOfVersionComponents - {
       assert(compare("1.0.1.2.3.4.5.6.7.8.9.0.1.2.10", "1.0.1.2.3.4.5.6.7.8.9.0.1.2.3" ) > 0)
     }
 
 
-    'UnlimitedNumberOfDigitsInNumericComponent
-    {
+    'unlimitedNumberOfDigitsInNumericComponent - {
       assert(compare("1.1234567890123456789012345678901", "1.123456789012345678901234567891" ) > 0)
     }
 
 
-    'TransitionFromDigitToLetterAndViceVersaIsEqualivantToDelimiter
-    {
+    'transitionFromDigitToLetterAndViceVersaIsEqualivantToDelimiter - {
       assert(compare("1alpha10", "1.alpha.10" ) == 0)
       assert(compare("1alpha10", "1-alpha-10" ) == 0)
 
@@ -158,8 +146,7 @@ object VersionTests extends TestSuite {
     }
 
 
-    'WellKnownQualifierOrdering
-    {
+    'wellKnownQualifierOrdering - {
       assert(compare("1-alpha1", "1-a1" ) == 0)
       assert(compare("1-alpha", "1-beta" ) < 0)
       assert(compare("1-beta1", "1-b1" ) == 0)
@@ -186,8 +173,7 @@ object VersionTests extends TestSuite {
     }
 
 
-    'WellKnownQualifierVersusUnknownQualifierOrdering
-    {
+    'wellKnownQualifierVersusUnknownQualifierOrdering - {
       assert(compare("1-abc", "1-alpha" ) > 0)
       assert(compare("1-abc", "1-beta" ) > 0)
       assert(compare("1-abc", "1-milestone" ) > 0)
@@ -198,8 +184,7 @@ object VersionTests extends TestSuite {
     }
 
 
-    'WellKnownSingleCharQualifiersOnlyRecognizedIfImmediatelyFollowedByNumber
-    {
+    'wellKnownSingleCharQualifiersOnlyRecognizedIfImmediatelyFollowedByNumber - {
       assert(compare("1.0a", "1.0" ) > 0)
       assert(compare("1.0-a", "1.0" ) > 0)
       assert(compare("1.0.a", "1.0" ) > 0)
@@ -229,16 +214,14 @@ object VersionTests extends TestSuite {
     }
 
 
-    'UnknownQualifierOrdering
-    {
+    'unknownQualifierOrdering - {
       assert(compare("1-abc", "1-abcd" ) < 0)
       assert(compare("1-abc", "1-bcd" ) < 0)
       assert(compare("1-abc", "1-aac" ) > 0)
     }
 
 
-    'CaseInsensitiveOrderingOfQualifiers
-    {
+    'caseInsensitiveOrderingOfQualifiers - {
       assert(compare("1.alpha", "1.ALPHA" ) == 0)
       assert(compare("1.alpha", "1.Alpha" ) == 0)
 
@@ -269,8 +252,7 @@ object VersionTests extends TestSuite {
     }
 
 
-    'QualifierVersusNumberOrdering
-    {
+    'qualifierVersusNumberOrdering - {
       assert(compare("1-ga", "1-1" ) < 0)
       assert(compare("1.ga", "1.1" ) < 0)
       assert(compare("1-ga", "1.0" ) == 0)
@@ -291,8 +273,7 @@ object VersionTests extends TestSuite {
 
 
 
-    'MinimumSegment
-    {
+    'minimumSegment - {
       assert(compare("1.min", "1.0-alpha-1" ) < 0)
       assert(compare("1.min", "1.0-SNAPSHOT" ) < 0)
       assert(compare("1.min", "1.0" ) < 0)
@@ -305,8 +286,7 @@ object VersionTests extends TestSuite {
     }
 
 
-    'MaximumSegment
-    {
+    'maximumSegment - {
       assert(compare("1.max", "1.0-alpha-1" ) > 0)
       assert(compare("1.max", "1.0-SNAPSHOT" ) > 0)
       assert(compare("1.max", "1.0" ) > 0)
@@ -319,8 +299,7 @@ object VersionTests extends TestSuite {
     }
 
 
-    'VersionEvolution
-    {
+    'versionEvolution - {
       assert(increasing( "0.9.9-SNAPSHOT", "0.9.9", "0.9.10-SNAPSHOT", "0.9.10", "1.0-alpha-2-SNAPSHOT", "1.0-alpha-2",
         "1.0-alpha-10-SNAPSHOT", "1.0-alpha-10", "1.0-beta-1-SNAPSHOT", "1.0-beta-1",
         "1.0-rc-1-SNAPSHOT", "1.0-rc-1", "1.0-SNAPSHOT", "1.0", "1.0-sp-1-SNAPSHOT", "1.0-sp-1"))
@@ -337,8 +316,7 @@ object VersionTests extends TestSuite {
     }
 
 
-//    'CaseInsensitiveOrderingOfQualifiersIsLocaleIndependent
-//    {
+//    'caseInsensitiveOrderingOfQualifiersIsLocaleIndependent - {
 //      import java.util.Locale
 //      val orig = Locale.getDefault
 //      try {
