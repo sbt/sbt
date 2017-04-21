@@ -1,0 +1,4 @@
+bouncycastle:bctsp-jdk14:138:compile
+org.bouncycastle:bcmail-jdk14:1.38:compile
+org.bouncycastle:bcprov-jdk14:1.38:compile
+org.bouncycastle:bctsp-jdk14:1.38:compile

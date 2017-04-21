@@ -586,6 +586,13 @@ object CentralTests extends TestSuite {
         "0.9.19"
       )
     }
+
+    'relocation - {
+      resolutionCheck(
+        Module("bouncycastle", "bctsp-jdk14"),
+        "138"
+      )
+    }
   }
 
 }
