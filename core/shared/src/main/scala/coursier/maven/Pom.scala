@@ -322,6 +322,19 @@ object Pom {
     ))
   }
 
+  /** If `snapshotVersion` is missing, guess it based on
+    * `version`, `timestamp` and `buildNumber`, as is done in:
+    * https://github.com/sbt/ivy/blob/2.3.x-sbt/src/java/org/apache/ivy/plugins/resolver/IBiblioResolver.java
+    */
+  def guessedSnapshotVersion(
+    version: String,
+    timestamp: String,
+    buildNumber: Int
+  ): SnapshotVersion = {
+    val value = s"${version.dropRight("SNAPSHOT".length)}$timestamp-$buildNumber"
+    SnapshotVersion("*", "*", value, None)
+  }
+
   def snapshotVersioning(node: Node): String \/ SnapshotVersioning = {
     import Scalaz._
 
@@ -392,7 +405,10 @@ object Pom {
       buildNumber,
       localCopy,
       lastUpdatedOpt,
-      snapshotVersions
+      if (!snapshotVersions.isEmpty)
+        snapshotVersions
+      else
+        buildNumber.map(bn => guessedSnapshotVersion(version, timestamp, bn)).toList
     )
   }
 

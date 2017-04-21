@@ -34,7 +34,10 @@ object MavenRepository {
   ): Option[String] =
     snapshotVersioning
       .snapshotVersions
-      .find(v => v.classifier == classifier && v.extension == extension)
+      .find(v =>
+        (v.classifier == classifier || v.classifier == "*") &&
+        (v.extension == extension || v.extension == "*")
+       )
       .map(_.value)
       .filter(_.nonEmpty)
 
