@@ -48,23 +48,21 @@ class NetworkClient(arguments: List[String]) { self =>
     new ServerConnection(socket) {
       override def onEvent(event: EventMessage): Unit = self.onEvent(event)
       override def onLogEntry(event: StringEvent): Unit = self.onLogEntry(event)
-      override def onShutdown(): Unit =
-        {
-          running.set(false)
-        }
+      override def onShutdown(): Unit = {
+        running.set(false)
+      }
     }
   }
 
-  def onLogEntry(event: StringEvent): Unit =
-    {
-      val level = event.level match {
-        case "debug" => Level.Debug
-        case "info"  => Level.Info
-        case "warn"  => Level.Warn
-        case "error" => Level.Error
-      }
-      console.appendLog(level, event.message)
+  def onLogEntry(event: StringEvent): Unit = {
+    val level = event.level match {
+      case "debug" => Level.Debug
+      case "info"  => Level.Info
+      case "warn"  => Level.Warn
+      case "error" => Level.Error
     }
+    console.appendLog(level, event.message)
+  }
 
   def onEvent(event: EventMessage): Unit =
     event match {
@@ -84,41 +82,39 @@ class NetworkClient(arguments: List[String]) { self =>
       case e => println(e.toString)
     }
 
-  def start(): Unit =
-    {
-      val reader = JLine.simple(None, JLine.HandleCONT, injectThreadSleep = true)
-      while (running.get) {
-        reader.readLine("> ", None) match {
-          case Some("exit") =>
-            running.set(false)
-          case Some(s) =>
-            val execId = UUID.randomUUID.toString
-            publishCommand(ExecCommand(s, execId))
-            lock.synchronized {
-              pendingExecIds += execId
-            }
-            while (pendingExecIds contains execId) {
-              Thread.sleep(100)
-            }
-          case _ => //
-        }
+  def start(): Unit = {
+    val reader = JLine.simple(None, JLine.HandleCONT, injectThreadSleep = true)
+    while (running.get) {
+      reader.readLine("> ", None) match {
+        case Some("exit") =>
+          running.set(false)
+        case Some(s) =>
+          val execId = UUID.randomUUID.toString
+          publishCommand(ExecCommand(s, execId))
+          lock.synchronized {
+            pendingExecIds += execId
+          }
+          while (pendingExecIds contains execId) {
+            Thread.sleep(100)
+          }
+        case _ => //
       }
     }
+  }
 
-  def publishCommand(command: CommandMessage): Unit =
-    {
-      val bytes = Serialization.serializeCommand(command)
-      try {
-        connection.publish(bytes)
-      } catch {
-        case e: SocketException =>
-        // log.debug(e.getMessage)
-        // toDel += client
-      }
-      lock.synchronized {
-        status.set("Processing")
-      }
+  def publishCommand(command: CommandMessage): Unit = {
+    val bytes = Serialization.serializeCommand(command)
+    try {
+      connection.publish(bytes)
+    } catch {
+      case e: SocketException =>
+      // log.debug(e.getMessage)
+      // toDel += client
     }
+    lock.synchronized {
+      status.set("Processing")
+    }
+  }
 }
 
 object NetworkClient {

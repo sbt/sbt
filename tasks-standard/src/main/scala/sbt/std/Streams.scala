@@ -26,7 +26,14 @@ import sbt.io.syntax._
 import sbt.internal.util.ManagedLogger
 
 import sjsonnew.{ IsoString, SupportConverter }
-import sbt.util.{ CacheStoreFactory, DirectoryStoreFactory, Input, Output, PlainInput, PlainOutput }
+import sbt.util.{
+  CacheStoreFactory,
+  DirectoryStoreFactory,
+  Input,
+  Output,
+  PlainInput,
+  PlainOutput
+}
 
 // no longer specific to Tasks, so 'TaskStreams' should be renamed
 /**
@@ -35,6 +42,7 @@ import sbt.util.{ CacheStoreFactory, DirectoryStoreFactory, Input, Output, Plain
  * For example, logging for test:compile is by default sent to the "out" stream in the test:compile context.
  */
 sealed trait TaskStreams[Key] {
+
   /** The default stream ID, used when an ID is not provided. */
   def default = outID
 
@@ -59,7 +67,8 @@ sealed trait TaskStreams[Key] {
   def readBinary(a: Key, sid: String = default): BufferedInputStream
 
   final def readText(a: Key, sid: Option[String]): BufferedReader = readText(a, getID(sid))
-  final def readBinary(a: Key, sid: Option[String]): BufferedInputStream = readBinary(a, getID(sid))
+  final def readBinary(a: Key, sid: Option[String]): BufferedInputStream =
+    readBinary(a, getID(sid))
 
   def key: Key
 
@@ -91,16 +100,16 @@ sealed trait ManagedStreams[Key] extends TaskStreams[Key] {
 
 trait Streams[Key] {
   def apply(a: Key): ManagedStreams[Key]
-  def use[T](key: Key)(f: TaskStreams[Key] => T): T =
-    {
-      val s = apply(key)
-      s.open()
-      try { f(s) } finally { s.close() }
-    }
+  def use[T](key: Key)(f: TaskStreams[Key] => T): T = {
+    val s = apply(key)
+    s.open()
+    try { f(s) } finally { s.close() }
+  }
 }
 trait CloseableStreams[Key] extends Streams[Key] with java.io.Closeable
 object Streams {
-  private[this] val closeQuietly = (c: Closeable) => try { c.close() } catch { case _: IOException => () }
+  private[this] val closeQuietly = (c: Closeable) =>
+    try { c.close() } catch { case _: IOException => () }
 
   def closeable[Key](delegate: Streams[Key]): CloseableStreams[Key] = new CloseableStreams[Key] {
     private[this] val streams = new collection.mutable.HashMap[Key, ManagedStreams[Key]]
@@ -120,7 +129,10 @@ object Streams {
       synchronized { streams.values.foreach(_.close()); streams.clear() }
   }
 
-  def apply[Key, J: IsoString](taskDirectory: Key => File, name: Key => String, mkLogger: (Key, PrintWriter) => ManagedLogger, converter: SupportConverter[J]): Streams[Key] = new Streams[Key] {
+  def apply[Key, J: IsoString](taskDirectory: Key => File,
+                               name: Key => String,
+                               mkLogger: (Key, PrintWriter) => ManagedLogger,
+                               converter: SupportConverter[J]): Streams[Key] = new Streams[Key] {
 
     def apply(a: Key): ManagedStreams[Key] = new ManagedStreams[Key] {
       private[this] var opened: List[Closeable] = Nil
@@ -133,13 +145,18 @@ object Streams {
         make(a, sid)(f => new PlainOutput(new FileOutputStream(f), converter))
 
       def readText(a: Key, sid: String = default): BufferedReader =
-        make(a, sid)(f => new BufferedReader(new InputStreamReader(new FileInputStream(f), IO.defaultCharset)))
+        make(a, sid)(f =>
+          new BufferedReader(new InputStreamReader(new FileInputStream(f), IO.defaultCharset)))
 
       def readBinary(a: Key, sid: String = default): BufferedInputStream =
         make(a, sid)(f => new BufferedInputStream(new FileInputStream(f)))
 
       def text(sid: String = default): PrintWriter =
-        make(a, sid)(f => new PrintWriter(new DeferredWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(f), IO.defaultCharset)))))
+        make(a, sid)(
+          f =>
+            new PrintWriter(
+              new DeferredWriter(new BufferedWriter(
+                new OutputStreamWriter(new FileOutputStream(f), IO.defaultCharset)))))
 
       def binary(sid: String = default): BufferedOutputStream =
         make(a, sid)(f => new BufferedOutputStream(new FileOutputStream(f)))

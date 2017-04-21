@@ -52,7 +52,9 @@ object Assign {
 		bk ++= Seq(z.value)
 	)*/
 
-  val zz = Def.task { mk.value + tk.value + mk.value + tk.value + mk.value + tk.value + mk.value + tk.value + mk.value + tk.value + mk.value + tk.value }
+  val zz = Def.task {
+    mk.value + tk.value + mk.value + tk.value + mk.value + tk.value + mk.value + tk.value + mk.value + tk.value + mk.value + tk.value
+  }
 
   import DefaultParsers._
   val p = Def.setting { name.value ~> Space ~> ID }
@@ -61,7 +63,7 @@ object Assign {
     name := "asdf",
     tk := (math.random * 1000).toInt,
     isk := dummys.value.parsed // should not compile: cannot use a task to define the parser
-  //		ik := { if( tsk.parsed.value == "blue") tk.value else mk.value }
+    //		ik := { if( tsk.parsed.value == "blue") tk.value else mk.value }
   )
 
   val it1 = Def.inputTask {

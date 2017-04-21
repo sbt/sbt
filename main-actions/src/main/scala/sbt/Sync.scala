@@ -26,42 +26,44 @@ import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
  * It is safe to use for its intended purpose: copying resources to a class output directory.
  */
 object Sync {
-  def apply(store: CacheStore, inStyle: FileInfo.Style = FileInfo.lastModified, outStyle: FileInfo.Style = FileInfo.exists): Traversable[(File, File)] => Relation[File, File] =
-    mappings =>
-      {
-        val relation = Relation.empty ++ mappings
-        noDuplicateTargets(relation)
-        val currentInfo = relation._1s.map(s => (s, inStyle(s))).toMap
+  def apply(store: CacheStore,
+            inStyle: FileInfo.Style = FileInfo.lastModified,
+            outStyle: FileInfo.Style = FileInfo.exists)
+    : Traversable[(File, File)] => Relation[File, File] =
+    mappings => {
+      val relation = Relation.empty ++ mappings
+      noDuplicateTargets(relation)
+      val currentInfo = relation._1s.map(s => (s, inStyle(s))).toMap
 
-        val (previousRelation, previousInfo) = readInfo(store)(inStyle.format)
-        val removeTargets = previousRelation._2s -- relation._2s
+      val (previousRelation, previousInfo) = readInfo(store)(inStyle.format)
+      val removeTargets = previousRelation._2s -- relation._2s
 
-        def outofdate(source: File, target: File): Boolean =
-          !previousRelation.contains(source, target) ||
-            (previousInfo get source) != (currentInfo get source) ||
-            !target.exists ||
-            target.isDirectory != source.isDirectory
+      def outofdate(source: File, target: File): Boolean =
+        !previousRelation.contains(source, target) ||
+          (previousInfo get source) != (currentInfo get source) ||
+          !target.exists ||
+          target.isDirectory != source.isDirectory
 
-        val updates = relation filter outofdate
+      val updates = relation filter outofdate
 
-        val (cleanDirs, cleanFiles) = (updates._2s ++ removeTargets).partition(_.isDirectory)
+      val (cleanDirs, cleanFiles) = (updates._2s ++ removeTargets).partition(_.isDirectory)
 
-        IO.delete(cleanFiles)
-        IO.deleteIfEmpty(cleanDirs)
-        updates.all.foreach((copy _).tupled)
+      IO.delete(cleanFiles)
+      IO.deleteIfEmpty(cleanDirs)
+      updates.all.foreach((copy _).tupled)
 
-        writeInfo(store, relation, currentInfo)(inStyle.format)
-        relation
-      }
+      writeInfo(store, relation, currentInfo)(inStyle.format)
+      relation
+    }
 
   def copy(source: File, target: File): Unit =
     if (source.isFile)
       IO.copyFile(source, target, true)
     else if (!target.exists) // we don't want to update the last modified time of an existing directory
-    {
-      IO.createDirectory(target)
-      IO.copyLastModified(source, target)
-    }
+      {
+        IO.createDirectory(target)
+        IO.copyLastModified(source, target)
+      }
 
   def noDuplicateTargets(relation: Relation[File, File]): Unit = {
     val dups = relation.reverseMap.filter {
@@ -75,7 +77,8 @@ object Sync {
       sys.error("Duplicate mappings:" + dups.mkString)
   }
 
-  implicit def relationFormat[A, B](implicit af: JsonFormat[Map[A, Set[B]]], bf: JsonFormat[Map[B, Set[A]]]): JsonFormat[Relation[A, B]] =
+  implicit def relationFormat[A, B](implicit af: JsonFormat[Map[A, Set[B]]],
+                                    bf: JsonFormat[Map[B, Set[A]]]): JsonFormat[Relation[A, B]] =
     new JsonFormat[Relation[A, B]] {
       def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Relation[A, B] =
         jsOpt match {
@@ -98,12 +101,15 @@ object Sync {
 
     }
 
-  def writeInfo[F <: FileInfo](store: CacheStore, relation: Relation[File, File], info: Map[File, F])(implicit infoFormat: JsonFormat[F]): Unit =
+  def writeInfo[F <: FileInfo](store: CacheStore,
+                               relation: Relation[File, File],
+                               info: Map[File, F])(implicit infoFormat: JsonFormat[F]): Unit =
     store.write((relation, info))
 
   type RelationInfo[F] = (Relation[File, File], Map[File, F])
 
-  def readInfo[F <: FileInfo](store: CacheStore)(implicit infoFormat: JsonFormat[F]): RelationInfo[F] =
+  def readInfo[F <: FileInfo](store: CacheStore)(
+      implicit infoFormat: JsonFormat[F]): RelationInfo[F] =
     store.read(default = (Relation.empty[File, File], Map.empty[File, F]))
 
 }

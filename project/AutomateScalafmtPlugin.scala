@@ -18,7 +18,7 @@ object AutomateScalafmtPlugin extends AutoPlugin {
             },
             sourceDirectories.in(scalafmtInc) := Seq(scalaSource.value),
             scalafmtInc := {
-              val cache   = streams.value.cacheDirectory / "scalafmt"
+              val cache = streams.value.cacheDirectory / "scalafmt"
               val include = includeFilter.in(scalafmtInc).value
               val exclude = excludeFilter.in(scalafmtInc).value
               val sources =

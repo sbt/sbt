@@ -16,7 +16,9 @@ object BasicCommandStrings {
   /** The command name to terminate the program.*/
   val TerminateAction: String = Exit
 
-  def helpBrief = (HelpCommand, s"Displays this help message or prints detailed help on requested commands (run '$HelpCommand <command>').")
+  def helpBrief =
+    (HelpCommand,
+     s"Displays this help message or prints detailed help on requested commands (run '$HelpCommand <command>').")
   def helpDetailed = s"""$HelpCommand
 
 	Prints a help summary.
@@ -30,26 +32,29 @@ $HelpCommand <regular expression>
 	Searches the help according to the provided regular expression.
 """
 
-  def CompletionsDetailed = "Displays a list of completions for the given argument string (run 'completions <string>')."
+  def CompletionsDetailed =
+    "Displays a list of completions for the given argument string (run 'completions <string>')."
   def CompletionsBrief = (CompletionsCommand, CompletionsDetailed)
 
   def templateBrief = (TemplateCommand, "Creates a new sbt build.")
   def templateDetailed = TemplateCommand + """ [--options] <template>
   Create a new sbt build based on the given template."""
 
-  def HistoryHelpBrief = (HistoryCommands.Start -> "History command help.  Lists and describes all history commands.")
-  def historyHelp = Help(Nil, (HistoryHelpBrief +: HistoryCommands.descriptions).toMap, Set(HistoryCommands.Start))
+  def HistoryHelpBrief =
+    (HistoryCommands.Start -> "History command help.  Lists and describes all history commands.")
+  def historyHelp =
+    Help(Nil, (HistoryHelpBrief +: HistoryCommands.descriptions).toMap, Set(HistoryCommands.Start))
 
   def exitBrief = "Terminates the build."
 
-  def logLevelHelp =
-    {
-      val levels = Level.values.toSeq
-      val levelList = levels.mkString(", ")
-      val brief = ("<log-level>", "Sets the logging level to 'log-level'.  Valid levels: " + levelList)
-      val detailed = levels.map(l => (l.toString, logLevelDetail(l))).toMap
-      Help(brief, detailed)
-    }
+  def logLevelHelp = {
+    val levels = Level.values.toSeq
+    val levelList = levels.mkString(", ")
+    val brief =
+      ("<log-level>", "Sets the logging level to 'log-level'.  Valid levels: " + levelList)
+    val detailed = levels.map(l => (l.toString, logLevelDetail(l))).toMap
+    Help(brief, detailed)
+  }
 
   private[this] def logLevelDetail(level: Level.Value): String =
     s"""$level
@@ -70,11 +75,12 @@ $HelpCommand <regular expression>
   private[sbt] def isEarlyCommand(s: String): Boolean = {
     val levelOptions = Level.values.toSeq map { "-" + _ }
     (s.startsWith(EarlyCommand + "(") && s.endsWith(")")) ||
-      (levelOptions contains s)
+    (levelOptions contains s)
   }
 
   val EarlyCommand = "early"
-  val EarlyCommandBrief = (s"$EarlyCommand(<command>)", "Schedules a command to run before other commands on startup.")
+  val EarlyCommandBrief =
+    (s"$EarlyCommand(<command>)", "Schedules a command to run before other commands on startup.")
   val EarlyCommandDetailed =
     s"""$EarlyCommand(<command>)
 
@@ -117,7 +123,9 @@ $HelpCommand <regular expression>
 	  and is useful when working with development versions of sbt or Scala."""
 
   def Multi = ";"
-  def MultiBrief = (Multi + " <command> (" + Multi + " <command>)*", "Runs the provided semicolon-separated commands.")
+  def MultiBrief =
+    (Multi + " <command> (" + Multi + " <command>)*",
+     "Runs the provided semicolon-separated commands.")
   def MultiDetailed =
     Multi + " command1 " + Multi + """ command2 ...
 
@@ -150,7 +158,8 @@ $AliasCommand name=
 	Removes the alias for `name`."""
 
   def Shell = "shell"
-  def ShellDetailed = "Provides an interactive prompt and network server from which commands can be run."
+  def ShellDetailed =
+    "Provides an interactive prompt and network server from which commands can be run."
 
   def OldShell = "oldshell"
   def OldShellDetailed = "Provides an interactive prompt from which commands can be run."
@@ -168,7 +177,8 @@ $AliasCommand name=
     def ClearOnFailure = "--"
     def FailureWall = "---"
     def OnFailureDeprecated = deprecatedAlias(OnFailure, BasicCommandStrings.OnFailure)
-    def ClearOnFailureDeprecated = deprecatedAlias(ClearOnFailure, BasicCommandStrings.ClearOnFailure)
+    def ClearOnFailureDeprecated =
+      deprecatedAlias(ClearOnFailure, BasicCommandStrings.ClearOnFailure)
     def FailureWallDeprecated = deprecatedAlias(FailureWall, BasicCommandStrings.FailureWall)
     private[this] def deprecatedAlias(oldName: String, newName: String): String =
       s"The `$oldName` command is deprecated in favor of `$newName` and will be removed in 0.14.0"

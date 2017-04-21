@@ -15,7 +15,9 @@ object Sxr {
   def inSxrSettings = Seq(
     managedClasspath := update.value.matching(configurationFilter(sxrConf.name)).classpath,
     scalacOptions += "-P:sxr:base-directory:" + sourceDirectories.value.absString,
-    scalacOptions += "-Xplugin:" + managedClasspath.value.files.filter(_.getName.contains("sxr")).absString,
+    scalacOptions += "-Xplugin:" + managedClasspath.value.files
+      .filter(_.getName.contains("sxr"))
+      .absString,
     scalacOptions += "-Ystop-after:sxr",
     target := target.in(taskGlobal).value / "browse",
     sxr in taskGlobal := sxrTask.value
@@ -28,7 +30,8 @@ object Sxr {
       streams.value.log.info("Generating sxr output in " + outputDir.getAbsolutePath + "...")
       IO.delete(out)
       IO.createDirectory(out)
-      val comp = new compiler.RawCompiler(scalaInstance.value, classpathOptions.value, streams.value.log)
+      val comp =
+        new compiler.RawCompiler(scalaInstance.value, classpathOptions.value, streams.value.log)
       comp(in.toSeq.sorted, fullClasspath.value.files, out, scalacOptions.value)
       Set(outputDir)
     }

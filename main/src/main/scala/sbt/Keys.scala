@@ -28,7 +28,14 @@ import descriptor.ModuleDescriptor, id.ModuleRevisionId
 import testing.Framework
 import KeyRanks._
 
-import sbt.internal.{ BuildStructure, LoadedBuild, PluginDiscovery, BuildDependencies, SessionSettings, LogManager }
+import sbt.internal.{
+  BuildStructure,
+  LoadedBuild,
+  PluginDiscovery,
+  BuildDependencies,
+  SessionSettings,
+  LogManager
+}
 import sbt.io.FileFilter
 import sbt.internal.io.WatchState
 import sbt.internal.util.{ AttributeKey, SourcePosition }

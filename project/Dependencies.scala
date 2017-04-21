@@ -57,35 +57,56 @@ object Dependencies {
   lazy val sbtLmPath = getSbtModulePath("sbtlm.path", "sbt/lm")
   lazy val sbtZincPath = getSbtModulePath("sbtzinc.path", "sbt/zinc")
 
-  def addSbtModule(p: Project, path: Option[String], projectName: String, m: ModuleID, c: Option[Configuration] = None) =
+  def addSbtModule(p: Project,
+                   path: Option[String],
+                   projectName: String,
+                   m: ModuleID,
+                   c: Option[Configuration] = None) =
     path match {
-      case Some(f) => p dependsOn c.fold[ClasspathDependency](ProjectRef(file(f), projectName))(ProjectRef(file(f), projectName) % _)
-      case None    => p settings (libraryDependencies += c.fold(m)(m % _))
+      case Some(f) =>
+        p dependsOn c.fold[ClasspathDependency](ProjectRef(file(f), projectName))(
+          ProjectRef(file(f), projectName) % _)
+      case None => p settings (libraryDependencies += c.fold(m)(m % _))
     }
 
   def addSbtIO(p: Project): Project = addSbtModule(p, sbtIoPath, "io", sbtIO)
 
-  def addSbtUtilApplyMacro(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilApplyMacro", utilApplyMacro)
+  def addSbtUtilApplyMacro(p: Project): Project =
+    addSbtModule(p, sbtUtilPath, "utilApplyMacro", utilApplyMacro)
   def addSbtUtilCache(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilCache", utilCache)
-  def addSbtUtilCollection(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilCollection", utilCollection)
-  def addSbtUtilCompletion(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilComplete", utilCompletion)
-  def addSbtUtilControl(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilControl", utilControl)
-  def addSbtUtilLogging(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilLogging", utilLogging)
+  def addSbtUtilCollection(p: Project): Project =
+    addSbtModule(p, sbtUtilPath, "utilCollection", utilCollection)
+  def addSbtUtilCompletion(p: Project): Project =
+    addSbtModule(p, sbtUtilPath, "utilComplete", utilCompletion)
+  def addSbtUtilControl(p: Project): Project =
+    addSbtModule(p, sbtUtilPath, "utilControl", utilControl)
+  def addSbtUtilLogging(p: Project): Project =
+    addSbtModule(p, sbtUtilPath, "utilLogging", utilLogging)
   def addSbtUtilLogic(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilLogic", utilLogic)
-  def addSbtUtilRelation(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilRelation", utilRelation)
-  def addSbtUtilScripted(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilScripted", utilScripted)
-  def addSbtUtilTesting(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilTesting", utilTesting, Some(Test))
-  def addSbtUtilTracking(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilTracking", utilTracking)
+  def addSbtUtilRelation(p: Project): Project =
+    addSbtModule(p, sbtUtilPath, "utilRelation", utilRelation)
+  def addSbtUtilScripted(p: Project): Project =
+    addSbtModule(p, sbtUtilPath, "utilScripted", utilScripted)
+  def addSbtUtilTesting(p: Project): Project =
+    addSbtModule(p, sbtUtilPath, "utilTesting", utilTesting, Some(Test))
+  def addSbtUtilTracking(p: Project): Project =
+    addSbtModule(p, sbtUtilPath, "utilTracking", utilTracking)
 
   def addSbtLm(p: Project): Project = addSbtModule(p, sbtLmPath, "lm", libraryManagement)
 
-  def addSbtCompilerApiInfo(p: Project): Project = addSbtModule(p, sbtZincPath, "zincApiInfo", compilerApiInfo)
-  def addSbtCompilerBridge(p: Project): Project = addSbtModule(p, sbtZincPath, "compilerBridge", compilerBridge)
-  def addSbtCompilerClasspath(p: Project): Project = addSbtModule(p, sbtZincPath, "zincClasspath", compilerClasspath)
-  def addSbtCompilerInterface(p: Project): Project = addSbtModule(p, sbtZincPath, "compilerInterface", compilerInterface)
-  def addSbtCompilerIvyIntegration(p: Project): Project = addSbtModule(p, sbtZincPath, "zincIvyIntegration", compilerIvyIntegration)
+  def addSbtCompilerApiInfo(p: Project): Project =
+    addSbtModule(p, sbtZincPath, "zincApiInfo", compilerApiInfo)
+  def addSbtCompilerBridge(p: Project): Project =
+    addSbtModule(p, sbtZincPath, "compilerBridge", compilerBridge)
+  def addSbtCompilerClasspath(p: Project): Project =
+    addSbtModule(p, sbtZincPath, "zincClasspath", compilerClasspath)
+  def addSbtCompilerInterface(p: Project): Project =
+    addSbtModule(p, sbtZincPath, "compilerInterface", compilerInterface)
+  def addSbtCompilerIvyIntegration(p: Project): Project =
+    addSbtModule(p, sbtZincPath, "zincIvyIntegration", compilerIvyIntegration)
   def addSbtZinc(p: Project): Project = addSbtModule(p, sbtZincPath, "zinc", zinc)
-  def addSbtZincCompile(p: Project): Project = addSbtModule(p, sbtZincPath, "zincCompile", zincCompile)
+  def addSbtZincCompile(p: Project): Project =
+    addSbtModule(p, sbtZincPath, "zincCompile", zincCompile)
 
   val sjsonNewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % "0.7.0"
 

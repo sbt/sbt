@@ -6,7 +6,14 @@ package sbt
 import java.io.File
 import java.util.concurrent.Callable
 import sbt.util.Logger
-import sbt.internal.util.{ AttributeKey, AttributeMap, ErrorHandling, ExitHook, ExitHooks, GlobalLogging }
+import sbt.internal.util.{
+  AttributeKey,
+  AttributeMap,
+  ErrorHandling,
+  ExitHook,
+  ExitHooks,
+  GlobalLogging
+}
 import sbt.internal.util.complete.HistoryCommands
 import sbt.internal.inc.classpath.ClassLoaderCache
 import sbt.BasicCommandStrings.Shell
@@ -91,11 +98,13 @@ trait StateOps {
 
   /** Sets the next command processing action to be to rotate the global log and continue executing commands.*/
   def clearGlobalLog: State
+
   /** Sets the next command processing action to be to keep the previous log and continue executing commands.  */
   def keepLastLog: State
 
   /** Sets the next command processing action to be to exit with a zero exit code if `ok` is true and a nonzero exit code if `ok` if false.*/
   def exit(ok: Boolean): State
+
   /** Marks the currently executing command as failing.  This triggers failure handling by the command processor.  See also `State.onFailure`*/
   def fail: State
 
@@ -109,17 +118,22 @@ trait StateOps {
 
   /** Registers `newCommands` as available commands. */
   def ++(newCommands: Seq[Command]): State
+
   /** Registers `newCommand` as an available command. */
   def +(newCommand: Command): State
 
   /** Gets the value associated with `key` from the custom attributes map.*/
   def get[T](key: AttributeKey[T]): Option[T]
+
   /** Sets the value associated with `key` in the custom attributes map.*/
   def put[T](key: AttributeKey[T], value: T): State
+
   /** Removes the `key` and any associated value from the custom attributes map.*/
   def remove(key: AttributeKey[_]): State
+
   /** Sets the value associated with `key` in the custom attributes map by transforming the current value.*/
   def update[T](key: AttributeKey[T])(f: Option[T] => T): State
+
   /** Returns true if `key` exists in the custom attributes map, false if it does not exist.*/
   def has(key: AttributeKey[_]): Boolean
 
@@ -134,11 +148,13 @@ trait StateOps {
 
   /** Runs any defined exitHooks and then clears them.*/
   def runExitHooks(): State
+
   /** Registers a new exit hook, which will run when sbt exits or restarts.*/
   def addExitHook(f: => Unit): State
 
   /** An advisory flag that is `true` if this application will execute commands based on user input.*/
   def interactive: Boolean
+
   /** Changes the advisory `interactive` flag. */
   def setInteractive(flag: Boolean): State
 
@@ -150,17 +166,22 @@ trait StateOps {
 }
 
 object State {
+
   /** Indicates where command execution should resume after a failure.*/
   val FailureWall = BasicCommandStrings.FailureWall
 
   /** Represents the next action for the command processor.*/
   sealed trait Next
+
   /** Indicates that the command processor should process the next command.*/
   object Continue extends Next
+
   /** Indicates that the application should exit with the given result.*/
   final class Return(val result: xsbti.MainResult) extends Next
+
   /** Indicates that global logging should be rotated.*/
   final object ClearGlobalLog extends Next
+
   /** Indicates that the previous log file should be preserved instead of discarded.*/
   final object KeepLastLog extends Next
 
@@ -170,30 +191,33 @@ object State {
    * @param maxSize the maximum number of commands to keep, or 0 to keep an unlimited number.
    */
   final class History private[State] (val executed: Seq[Exec], val maxSize: Int) {
+
     /** Adds `command` as the most recently executed command.*/
-    def ::(command: Exec): History =
-      {
-        val prependTo = if (maxSize > 0 && executed.size >= maxSize) executed.take(maxSize - 1) else executed
-        new History(command +: prependTo, maxSize)
-      }
+    def ::(command: Exec): History = {
+      val prependTo =
+        if (maxSize > 0 && executed.size >= maxSize) executed.take(maxSize - 1) else executed
+      new History(command +: prependTo, maxSize)
+    }
+
     /** Changes the maximum number of commands kept, adjusting the current history if necessary.*/
     def setMaxSize(size: Int): History =
       new History(if (size <= 0) executed else executed.take(size), size)
     def currentOption: Option[Exec] = executed.headOption
     def previous: Option[Exec] = executed.drop(1).headOption
   }
+
   /** Constructs an empty command History with a default, finite command limit.*/
   def newHistory = new History(Vector.empty, HistoryCommands.MaxLines)
 
-  def defaultReload(state: State): Reboot =
-    {
-      val app = state.configuration.provider
-      new Reboot(
-        app.scalaProvider.version,
-        state.remainingCommands map { case e: Exec => e.commandLine },
-        app.id, state.configuration.baseDirectory
-      )
-    }
+  def defaultReload(state: State): Reboot = {
+    val app = state.configuration.provider
+    new Reboot(
+      app.scalaProvider.version,
+      state.remainingCommands map { case e: Exec => e.commandLine },
+      app.id,
+      state.configuration.baseDirectory
+    )
+  }
 
   /** Provides operations and transformations on State. */
   implicit def stateOps(s: State): StateOps = new StateOps {
@@ -204,22 +228,33 @@ object State {
       }
       def isInteractive = System.console() != null
       def hasInput = System.console().reader().ready()
-      def hasShellCmd = s.definedCommands exists { case c: SimpleCommand => c.name == Shell; case _ => false }
+      def hasShellCmd = s.definedCommands exists {
+        case c: SimpleCommand => c.name == Shell; case _ => false
+      }
       s.remainingCommands match {
-        case List()           => if (isInteractive && hasInput && hasShellCmd) doX(Exec(Shell, s.source), Nil) else exit(true)
+        case List() =>
+          if (isInteractive && hasInput && hasShellCmd) doX(Exec(Shell, s.source), Nil)
+          else exit(true)
         case List(x, xs @ _*) => doX(x, xs.toList)
       }
     }
     def :::(newCommands: List[String]): State = ++:(newCommands map { Exec(_, s.source) })
-    def ++:(newCommands: List[Exec]): State = s.copy(remainingCommands = newCommands ::: s.remainingCommands)
+    def ++:(newCommands: List[Exec]): State =
+      s.copy(remainingCommands = newCommands ::: s.remainingCommands)
     def ::(command: String): State = +:(Exec(command, s.source))
     def +:(command: Exec): State = (command :: Nil) ++: this
-    def ++(newCommands: Seq[Command]): State = s.copy(definedCommands = (s.definedCommands ++ newCommands).distinct)
+    def ++(newCommands: Seq[Command]): State =
+      s.copy(definedCommands = (s.definedCommands ++ newCommands).distinct)
     def +(newCommand: Command): State = this ++ (newCommand :: Nil)
     def baseDir: File = s.configuration.baseDirectory
     def setNext(n: Next) = s.copy(next = n)
     def continue = setNext(Continue)
-    def reboot(full: Boolean) = { runExitHooks(); throw new xsbti.FullReload((s.remainingCommands map { case e: Exec => e.commandLine }).toArray, full) }
+    def reboot(full: Boolean) = {
+      runExitHooks();
+      throw new xsbti.FullReload(
+        (s.remainingCommands map { case e: Exec => e.commandLine }).toArray,
+        full)
+    }
     def reload = runExitHooks().setNext(new Return(defaultReload(s)))
     def clearGlobalLog = setNext(ClearGlobalLog)
     def keepLastLog = setNext(KeepLastLog)
@@ -231,16 +266,16 @@ object State {
     def remove(key: AttributeKey[_]) = s.copy(attributes = s.attributes remove key)
     def log = s.globalLogging.full
     def handleError(t: Throwable): State = handleException(t, s, log)
-    def fail =
-      {
-        import BasicCommandStrings.Compat.{ FailureWall => CompatFailureWall }
-        val remaining =
-          s.remainingCommands.dropWhile(c => c.commandLine != FailureWall && c.commandLine != CompatFailureWall)
-        if (remaining.isEmpty)
-          applyOnFailure(s, Nil, exit(ok = false))
-        else
-          applyOnFailure(s, remaining, s.copy(remainingCommands = remaining))
-      }
+    def fail = {
+      import BasicCommandStrings.Compat.{ FailureWall => CompatFailureWall }
+      val remaining =
+        s.remainingCommands.dropWhile(c =>
+          c.commandLine != FailureWall && c.commandLine != CompatFailureWall)
+      if (remaining.isEmpty)
+        applyOnFailure(s, Nil, exit(ok = false))
+      else
+        applyOnFailure(s, remaining, s.copy(remainingCommands = remaining))
+    }
     private[this] def applyOnFailure(s: State, remaining: List[Exec], noHandler: => State): State =
       s.onFailure match {
         case Some(c) => s.copy(remainingCommands = c +: remaining, onFailure = None)
@@ -254,27 +289,30 @@ object State {
       s.copy(exitHooks = Set.empty)
     }
     def locked[T](file: File)(t: => T): T =
-      s.configuration.provider.scalaProvider.launcher.globalLock.apply(file, new Callable[T] { def call = t })
+      s.configuration.provider.scalaProvider.launcher.globalLock.apply(file, new Callable[T] {
+        def call = t
+      })
 
     def interactive = getBoolean(s, BasicKeys.interactive, false)
     def setInteractive(i: Boolean) = s.put(BasicKeys.interactive, i)
 
-    def classLoaderCache: ClassLoaderCache = s get BasicKeys.classLoaderCache getOrElse newClassLoaderCache
+    def classLoaderCache: ClassLoaderCache =
+      s get BasicKeys.classLoaderCache getOrElse newClassLoaderCache
     def initializeClassLoaderCache = s.put(BasicKeys.classLoaderCache, newClassLoaderCache)
-    private[this] def newClassLoaderCache = new ClassLoaderCache(s.configuration.provider.scalaProvider.launcher.topLoader)
+    private[this] def newClassLoaderCache =
+      new ClassLoaderCache(s.configuration.provider.scalaProvider.launcher.topLoader)
   }
 
   import ExceptionCategory._
 
-  private[sbt] def handleException(t: Throwable, s: State, log: Logger): State =
-    {
-      ExceptionCategory(t) match {
-        case AlreadyHandled => ()
-        case m: MessageOnly => log.error(m.message)
-        case f: Full        => logFullException(f.exception, log)
-      }
-      s.fail
+  private[sbt] def handleException(t: Throwable, s: State, log: Logger): State = {
+    ExceptionCategory(t) match {
+      case AlreadyHandled => ()
+      case m: MessageOnly => log.error(m.message)
+      case f: Full        => logFullException(f.exception, log)
     }
+    s.fail
+  }
   private[sbt] def logFullException(e: Throwable, log: Logger): Unit = {
     log.trace(e)
     log.error(ErrorHandling reducedToString e)

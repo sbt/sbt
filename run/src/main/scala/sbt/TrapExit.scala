@@ -32,6 +32,7 @@ import TrapExit._
  * This category of code should only be called by forking a new JVM.
  */
 object TrapExit {
+
   /**
    * Run `execute` in a managed context, using `log` for debugging messages.
    * `installManager` must be called before calling this method.
@@ -56,17 +57,15 @@ object TrapExit {
   def uninstallManager(previous: SecurityManager): Unit =
     System.setSecurityManager(previous)
 
-  private[this] def runUnmanaged(execute: => Unit, log: Logger): Int =
-    {
-      log.warn("Managed execution not possible: security manager not installed.")
-      try { execute; 0 }
-      catch {
-        case e: Exception =>
-          log.error("Error during execution: " + e.toString)
-          log.trace(e)
-          1
-      }
+  private[this] def runUnmanaged(execute: => Unit, log: Logger): Int = {
+    log.warn("Managed execution not possible: security manager not installed.")
+    try { execute; 0 } catch {
+      case e: Exception =>
+        log.error("Error during execution: " + e.toString)
+        log.trace(e)
+        1
     }
+  }
 
   private type ThreadID = String
 
@@ -98,29 +97,35 @@ object TrapExit {
     log.debug("\tInterrupted " + thread.getName)
   }
   // an uncaught exception handler that swallows InterruptedExceptions and otherwise defers to originalHandler
-  private final class TrapInterrupt(originalHandler: Thread.UncaughtExceptionHandler) extends Thread.UncaughtExceptionHandler {
+  private final class TrapInterrupt(originalHandler: Thread.UncaughtExceptionHandler)
+      extends Thread.UncaughtExceptionHandler {
     def uncaughtException(thread: Thread, e: Throwable): Unit = {
-      withCause[InterruptedException, Unit](e) { interrupted => () } { other => originalHandler.uncaughtException(thread, e) }
+      withCause[InterruptedException, Unit](e) { interrupted =>
+        ()
+      } { other =>
+        originalHandler.uncaughtException(thread, e)
+      }
       thread.setUncaughtExceptionHandler(originalHandler)
     }
   }
+
   /**
    * Recurses into the causes of the given exception looking for a cause of type CauseType.  If one is found, `withType` is called with that cause.
    *  If not, `notType` is called with the root cause.
    */
-  private def withCause[CauseType <: Throwable, T](e: Throwable)(withType: CauseType => T)(notType: Throwable => T)(implicit mf: Manifest[CauseType]): T =
-    {
-      val clazz = mf.runtimeClass
-      if (clazz.isInstance(e))
-        withType(e.asInstanceOf[CauseType])
-      else {
-        val cause = e.getCause
-        if (cause == null)
-          notType(e)
-        else
-          withCause(cause)(withType)(notType)(mf)
-      }
+  private def withCause[CauseType <: Throwable, T](e: Throwable)(withType: CauseType => T)(
+      notType: Throwable => T)(implicit mf: Manifest[CauseType]): T = {
+    val clazz = mf.runtimeClass
+    if (clazz.isInstance(e))
+      withType(e.asInstanceOf[CauseType])
+    else {
+      val cause = e.getCause
+      if (cause == null)
+        notType(e)
+      else
+        withCause(cause)(withType)(notType)(mf)
     }
+  }
 
 }
 
@@ -136,6 +141,7 @@ object TrapExit {
  * Only one AWT application is supported at a time, however.
  */
 private final class TrapExit(delegateManager: SecurityManager) extends SecurityManager {
+
   /** Tracks the number of running applications in order to short-cut SecurityManager checks when no applications are active.*/
   private[this] val running = new java.util.concurrent.atomic.AtomicInteger
 
@@ -143,47 +149,44 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
   private[this] val threadToApp = new CMap[ThreadID, App]
 
   /** Executes `f` in a managed context. */
-  def runManaged(f: xsbti.F0[Unit], xlog: xsbti.Logger): Int =
-    {
-      val _ = running.incrementAndGet()
-      try runManaged0(f, xlog)
-      finally running.decrementAndGet()
-    }
-  private[this] def runManaged0(f: xsbti.F0[Unit], xlog: xsbti.Logger): Int =
-    {
-      val log: Logger = xlog
-      val app = new App(f, log)
-      val executionThread = app.mainThread
-      try {
-        executionThread.start() // thread actually evaluating `f`
-        finish(app, log)
-      } catch {
-        case e: InterruptedException => // here, the thread that started the run has been interrupted, not the main thread of the executing code
-          cancel(executionThread, app, log)
-      } finally app.cleanup()
-    }
+  def runManaged(f: xsbti.F0[Unit], xlog: xsbti.Logger): Int = {
+    val _ = running.incrementAndGet()
+    try runManaged0(f, xlog)
+    finally running.decrementAndGet()
+  }
+  private[this] def runManaged0(f: xsbti.F0[Unit], xlog: xsbti.Logger): Int = {
+    val log: Logger = xlog
+    val app = new App(f, log)
+    val executionThread = app.mainThread
+    try {
+      executionThread.start() // thread actually evaluating `f`
+      finish(app, log)
+    } catch {
+      case e: InterruptedException => // here, the thread that started the run has been interrupted, not the main thread of the executing code
+        cancel(executionThread, app, log)
+    } finally app.cleanup()
+  }
+
   /** Interrupt all threads and indicate failure in the exit code. */
-  private[this] def cancel(executionThread: Thread, app: App, log: Logger): Int =
-    {
-      log.warn("Run canceled.")
-      executionThread.interrupt()
-      stopAllThreads(app)
-      1
-    }
+  private[this] def cancel(executionThread: Thread, app: App, log: Logger): Int = {
+    log.warn("Run canceled.")
+    executionThread.interrupt()
+    stopAllThreads(app)
+    1
+  }
 
   /**
    * Wait for all non-daemon threads for `app` to exit, for an exception to be thrown in the main thread,
    * or for `System.exit` to be called in a thread started by `app`.
    */
-  private[this] def finish(app: App, log: Logger): Int =
-    {
-      log.debug("Waiting for threads to exit or System.exit to be called.")
-      waitForExit(app)
-      log.debug("Interrupting remaining threads (should be all daemons).")
-      stopAllThreads(app) // should only be daemon threads left now
-      log.debug("Sandboxed run complete..")
-      app.exitCode.value.getOrElse(0)
-    }
+  private[this] def finish(app: App, log: Logger): Int = {
+    log.debug("Waiting for threads to exit or System.exit to be called.")
+    waitForExit(app)
+    log.debug("Interrupting remaining threads (should be all daemons).")
+    stopAllThreads(app) // should only be daemon threads left now
+    log.debug("Sandboxed run complete..")
+    app.exitCode.value.getOrElse(0)
+  }
 
   // wait for all non-daemon threads to terminate
   private[this] def waitForExit(app: App): Unit = {
@@ -212,6 +215,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
    * `log` is used for debug logging.
    */
   private final class App(val execute: xsbti.F0[Unit], val log: Logger) extends Runnable {
+
     /**
      * Tracks threads and groups created by this application.
      * To avoid leaks, keys are a unique identifier and values are held via WeakReference.
@@ -230,7 +234,8 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
     /** The ThreadGroup to use to try to track created threads. */
     val mainGroup: ThreadGroup = new ThreadGroup("run-main-group-" + id) {
       private[this] val handler = new LoggingExceptionHandler(log, None)
-      override def uncaughtException(t: Thread, e: Throwable): Unit = handler.uncaughtException(t, e)
+      override def uncaughtException(t: Thread, e: Throwable): Unit =
+        handler.uncaughtException(t, e)
     }
     val mainThread = new Thread(mainGroup, this, "run-main-" + id)
 
@@ -266,19 +271,18 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
      * Records a new thread both in the global [[TrapExit]] manager and for this [[App]].
      * Its uncaught exception handler is configured to log exceptions through `log`.
      */
-    def register(t: Thread): Unit =
-      {
-        val threadID = computeID(t)
-        if (!isDone(t) && threadID != creatorThreadID) {
-          val old = threads.putIfAbsent(threadID, new WeakReference(t))
-          if (old.isEmpty) { // wasn't registered
-            threadToApp.put(threadID, this)
-            setExceptionHandler(t)
-            if (!awtUsed && isEventQueue(t))
-              awtUsed = true
-          }
+    def register(t: Thread): Unit = {
+      val threadID = computeID(t)
+      if (!isDone(t) && threadID != creatorThreadID) {
+        val old = threads.putIfAbsent(threadID, new WeakReference(t))
+        if (old.isEmpty) { // wasn't registered
+          threadToApp.put(threadID, this)
+          setExceptionHandler(t)
+          if (!awtUsed && isEventQueue(t))
+            awtUsed = true
         }
       }
+    }
 
     /** Registers the logging exception handler on `t`, delegating to the existing handler if it isn't the default. */
     private[this] def setExceptionHandler(t: Thread): Unit = {
@@ -296,6 +300,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
       threads.remove(id)
       groups.remove(id)
     }
+
     /** Final cleanup for this application after it has terminated. */
     def cleanup(): Unit = {
       cleanup(threads)
@@ -333,16 +338,16 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
     private[this] def addUntrackedThreads(): Unit =
       groupThreadsSnapshot foreach register
 
-    private[this] def groupThreadsSnapshot: Seq[Thread] =
-      {
-        val snap = groups.readOnlySnapshot.values.map(_.get).filter(_ != null)
-        threadsInGroups(snap.toList, Nil)
-      }
+    private[this] def groupThreadsSnapshot: Seq[Thread] = {
+      val snap = groups.readOnlySnapshot.values.map(_.get).filter(_ != null)
+      threadsInGroups(snap.toList, Nil)
+    }
 
     // takes a snapshot of the threads in `toProcess`, acquiring nested locks on each group to do so
     // the thread groups are accumulated in `accum` and then the threads in each are collected all at
     // once while they are all locked.  This is the closest thing to a snapshot that can be accomplished.
-    private[this] def threadsInGroups(toProcess: List[ThreadGroup], accum: List[ThreadGroup]): List[Thread] = toProcess match {
+    private[this] def threadsInGroups(toProcess: List[ThreadGroup],
+                                      accum: List[ThreadGroup]): List[Thread] = toProcess match {
       case group :: tail =>
         // ThreadGroup implementation synchronizes on its methods, so by synchronizing here, we can workaround its quirks somewhat
         group.synchronized {
@@ -353,22 +358,20 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
     }
 
     // gets the immediate child ThreadGroups of `group`
-    private[this] def threadGroups(group: ThreadGroup): List[ThreadGroup] =
-      {
-        val upperBound = group.activeGroupCount
-        val groups = new Array[ThreadGroup](upperBound)
-        val childrenCount = group.enumerate(groups, false)
-        groups.take(childrenCount).toList
-      }
+    private[this] def threadGroups(group: ThreadGroup): List[ThreadGroup] = {
+      val upperBound = group.activeGroupCount
+      val groups = new Array[ThreadGroup](upperBound)
+      val childrenCount = group.enumerate(groups, false)
+      groups.take(childrenCount).toList
+    }
 
     // gets the immediate child Threads of `group`
-    private[this] def threads(group: ThreadGroup): List[Thread] =
-      {
-        val upperBound = group.activeCount
-        val threads = new Array[Thread](upperBound)
-        val childrenCount = group.enumerate(threads, false)
-        threads.take(childrenCount).toList
-      }
+    private[this] def threads(group: ThreadGroup): List[Thread] = {
+      val upperBound = group.activeCount
+      val threads = new Array[Thread](upperBound)
+      val childrenCount = group.enumerate(threads, false)
+      threads.take(childrenCount).toList
+    }
   }
 
   private[this] def stopAllThreads(app: App): Unit = {
@@ -381,7 +384,10 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
   }
 
   private[this] def interruptAllThreads(app: App): Unit =
-    app processThreads { t => if (!isSystemThread(t)) safeInterrupt(t, app.log) else app.log.debug(s"Not interrupting system thread $t") }
+    app processThreads { t =>
+      if (!isSystemThread(t)) safeInterrupt(t, app.log)
+      else app.log.debug(s"Not interrupting system thread $t")
+    }
 
   /** Gets the managed application associated with Thread `t` */
   private[this] def getApp(t: Thread): Option[App] =
@@ -411,6 +417,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
       throw new TrapExitSecurityException(status)
     }
   }
+
   /** This ensures that only actual calls to exit are trapped and not just calls to check if exit is allowed.*/
   private def isRealExit(element: StackTraceElement): Boolean =
     element.getClassName == "java.lang.Runtime" && element.getMethodName == "exit"
@@ -450,6 +457,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
     if (delegateManager ne null)
       delegateManager.checkAccess(t)
   }
+
   /**
    * This is specified to be called in every Thread's constructor and every time a ThreadGroup is created.
    * This allows us to reliably track every ThreadGroup that is created and map it back to the constructing application.
@@ -485,6 +493,7 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
       Thread.sleep(waitSeconds * 1000L) // AWT Thread doesn't exit immediately, so wait to interrupt it
     }
   }
+
   /** Returns true if the given thread is in the 'system' thread group or is an AWT thread other than AWT-EventQueue.*/
   private def isSystemThread(t: Thread) =
     if (t.getName.startsWith("AWT-"))
@@ -510,7 +519,9 @@ private final class ExitCode {
  * The default uncaught exception handler for managed executions.
  * It logs the thread and the exception.
  */
-private final class LoggingExceptionHandler(log: Logger, delegate: Option[Thread.UncaughtExceptionHandler]) extends Thread.UncaughtExceptionHandler {
+private final class LoggingExceptionHandler(log: Logger,
+                                            delegate: Option[Thread.UncaughtExceptionHandler])
+    extends Thread.UncaughtExceptionHandler {
   def uncaughtException(t: Thread, e: Throwable): Unit = {
     log.error("(" + t.getName + ") " + e.toString)
     log.trace(e)

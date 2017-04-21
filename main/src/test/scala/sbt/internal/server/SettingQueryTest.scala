@@ -24,14 +24,14 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
     def /(other: String): Path = if (other == ".") path else path resolve other
   }
 
-  val   baseDir: Path = Files createTempDirectory "sbt-setting-query-test"
+  val baseDir: Path = Files createTempDirectory "sbt-setting-query-test"
   val globalDir: Path = Files createTempDirectory "sbt-setting-query-test-global-dir"
-  val   bootDir: Path = Files createTempDirectory "sbt-setting-query-test-boot-dir"
-  val   ivyHome: Path = Files createTempDirectory "sbt-setting-query-test-ivy-home"
-  val   logFile: File = File.createTempFile("sbt", ".log")
+  val bootDir: Path = Files createTempDirectory "sbt-setting-query-test-boot-dir"
+  val ivyHome: Path = Files createTempDirectory "sbt-setting-query-test-ivy-home"
+  val logFile: File = File.createTempFile("sbt", ".log")
 
   val baseFile: File = baseDir.toFile
-  val baseUri: URI   = IO directoryURI baseFile
+  val baseUri: URI = IO directoryURI baseFile
   IO assertAbsolute baseUri
 
   val globalDirFile: File = globalDir.toFile
@@ -40,7 +40,9 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
 
   val noopLoader: ClassLoader = new URLClassLoader(Array(), null)
 
-  object NoGlobalLock extends GlobalLock { def apply[T](lockFile: File, run: Callable[T]) = run.call() }
+  object NoGlobalLock extends GlobalLock {
+    def apply[T](lockFile: File, run: Callable[T]) = run.call()
+  }
 
   lazy val structure: BuildStructure = {
     val projectSettings: Seq[Setting[_]] = Seq(scalaVersion := "2.12.1")
@@ -51,57 +53,65 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
       def provider(): AppProvider = new AppProvider {
         def scalaProvider(): ScalaProvider = new ScalaProvider { scalaProvider =>
           def launcher(): Launcher = new Launcher {
-            def getScala(version: String): ScalaProvider                                   = getScala(version, "")
-            def getScala(version: String, reason: String): ScalaProvider                   = getScala(version, reason, "org.scala-lang")
-            def getScala(version: String, reason: String, scalaOrg: String): ScalaProvider = scalaProvider
+            def getScala(version: String): ScalaProvider = getScala(version, "")
+            def getScala(version: String, reason: String): ScalaProvider =
+              getScala(version, reason, "org.scala-lang")
+            def getScala(version: String, reason: String, scalaOrg: String): ScalaProvider =
+              scalaProvider
 
             def app(id: ApplicationID, version: String): AppProvider = ???
 
-            def topLoader(): ClassLoader             = noopLoader
-            def globalLock(): GlobalLock             = NoGlobalLock
-            def bootDirectory(): File                = bootDir.toFile
+            def topLoader(): ClassLoader = noopLoader
+            def globalLock(): GlobalLock = NoGlobalLock
+            def bootDirectory(): File = bootDir.toFile
             def ivyRepositories(): Array[Repository] = Array()
             def appRepositories(): Array[Repository] = Array()
-            def isOverrideRepositories: Boolean      = false
-            def ivyHome(): File                      = SettingQueryTest.this.ivyHome.toFile
-            def checksums(): Array[String]           = Array()
+            def isOverrideRepositories: Boolean = false
+            def ivyHome(): File = SettingQueryTest.this.ivyHome.toFile
+            def checksums(): Array[String] = Array()
           }
           def version(): String = "2.12.1"
 
           def loader(): ClassLoader = noopLoader
-          def jars(): Array[File]   = Array(libraryJar, compilerJar)
+          def jars(): Array[File] = Array(libraryJar, compilerJar)
 
-          def libraryJar(): File  = new File("scala-library.jar")
+          def libraryJar(): File = new File("scala-library.jar")
           def compilerJar(): File = new File("scala-compiler.jar")
 
           def app(id: ApplicationID): AppProvider = ???
         }
 
         def id(): ApplicationID = sbt.ApplicationID(
-          "org.scala-sbt", "sbt", "0.13.13", "sbt.xMain",
-          components = Seq(), crossVersionedValue = CrossValue.Disabled, extra = Seq()
+          "org.scala-sbt",
+          "sbt",
+          "0.13.13",
+          "sbt.xMain",
+          components = Seq(),
+          crossVersionedValue = CrossValue.Disabled,
+          extra = Seq()
         )
 
         def loader(): ClassLoader = noopLoader
 
-        def entryPoint(): Class[_]           = ???
+        def entryPoint(): Class[_] = ???
         def mainClass(): Class[_ <: AppMain] = ???
-        def newMain(): AppMain               = ???
+        def newMain(): AppMain = ???
 
         def mainClasspath(): Array[File] = Array()
 
         def components(): ComponentProvider = new ComponentProvider {
-          def componentLocation(id: String): File                                   = ???
-          def component(componentID: String): Array[File]                           = ???
-          def defineComponent(componentID: String, components: Array[File]): Unit   = ???
+          def componentLocation(id: String): File = ???
+          def component(componentID: String): Array[File] = ???
+          def defineComponent(componentID: String, components: Array[File]): Unit = ???
           def addToComponent(componentID: String, components: Array[File]): Boolean = ???
-          def lockFile(): File                                                      = ???
+          def lockFile(): File = ???
         }
       }
     }
 
     val state: State =
-      StandardMain.initialState(appConfig, initialDefinitions = Seq(), preCommands = Seq())
+      StandardMain
+        .initialState(appConfig, initialDefinitions = Seq(), preCommands = Seq())
         .put(globalBaseDirectory, globalDirFile)
 
     val config0 = defaultPreGlobal(state, baseFile, globalDirFile, state.log)
@@ -109,41 +119,49 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
 
     val buildUnit: BuildUnit = {
       val loadedPlugins: LoadedPlugins =
-        noPlugins(projectStandard(baseFile), config.copy(pluginManagement = config.pluginManagement.forPlugin))
+        noPlugins(projectStandard(baseFile),
+                  config.copy(pluginManagement = config.pluginManagement.forPlugin))
 
       val project: Project = {
         val project0 = Project("t", baseFile) settings projectSettings
         val fileToLoadedSbtFileMap = new mutable.HashMap[File, LoadedSbtFile]
         val autoPlugins = loadedPlugins.detected.deducePluginsFromProject(project0, state.log)
         val injectSettings = config.injectSettings
-        resolveProject(project0, autoPlugins, loadedPlugins, injectSettings, fileToLoadedSbtFileMap, state.log)
+        resolveProject(project0,
+                       autoPlugins,
+                       loadedPlugins,
+                       injectSettings,
+                       fileToLoadedSbtFileMap,
+                       state.log)
       }
 
-      val projects: Seq[Project]      = Seq(project)
-      val   builds: Seq[BuildDef]     = BuildDef.defaultAggregated(project.id, Nil) :: Nil
-      val     defs: LoadedDefinitions = new LoadedDefinitions(baseFile, Nil, noopLoader, builds, projects, Nil)
+      val projects: Seq[Project] = Seq(project)
+      val builds: Seq[BuildDef] = BuildDef.defaultAggregated(project.id, Nil) :: Nil
+      val defs: LoadedDefinitions =
+        new LoadedDefinitions(baseFile, Nil, noopLoader, builds, projects, Nil)
       new BuildUnit(baseUri, baseFile, defs, loadedPlugins)
     }
 
     val (partBuildUnit: PartBuildUnit, projectRefs: List[ProjectReference]) = loaded(buildUnit)
-    val partBuildUnits: Map[URI, PartBuildUnit]          = Map(buildUnit.uri -> partBuildUnit)
+    val partBuildUnits: Map[URI, PartBuildUnit] = Map(buildUnit.uri -> partBuildUnit)
     val allProjectRefs: Map[URI, List[ProjectReference]] = Map(buildUnit.uri -> projectRefs)
     checkAll(allProjectRefs, partBuildUnits)
 
-    val   partBuild:   PartBuild = new PartBuild(baseUri, partBuildUnits)
+    val partBuild: PartBuild = new PartBuild(baseUri, partBuildUnits)
     val loadedBuild: LoadedBuild = resolveProjects(partBuild)
 
     val units: Map[URI, LoadedBuildUnit] = loadedBuild.units
 
-    val settings:   Seq[Setting[_]]     = finalTransforms(buildConfigurations(loadedBuild, getRootProject(units), config.injectSettings))
-    val delegates:  Scope => Seq[Scope] = defaultDelegates(loadedBuild)
-    val scopeLocal: ScopeLocal          = EvaluateTask.injectStreams
-    val display:    Show[ScopedKey[_]]  = Project showLoadingKey loadedBuild
+    val settings: Seq[Setting[_]] = finalTransforms(
+      buildConfigurations(loadedBuild, getRootProject(units), config.injectSettings))
+    val delegates: Scope => Seq[Scope] = defaultDelegates(loadedBuild)
+    val scopeLocal: ScopeLocal = EvaluateTask.injectStreams
+    val display: Show[ScopedKey[_]] = Project showLoadingKey loadedBuild
 
-    val data:  Settings[Scope]          = Def.make(settings)(delegates, scopeLocal, display)
+    val data: Settings[Scope] = Def.make(settings)(delegates, scopeLocal, display)
     val extra: KeyIndex => BuildUtil[_] = index => BuildUtil(baseUri, units, index, data)
 
-    val   index: StructureIndex   = structureIndex(data, settings, extra, units)
+    val index: StructureIndex = structureIndex(data, settings, extra, units)
     val streams: State => Streams = mkStreams(units, baseUri, data)
 
     val structure: BuildStructure =
@@ -163,22 +181,29 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
 
   // -.- avoid specs2's ko/ok
   import org.specs2.matcher.MatchResult
-  def qok(x: String, t: String): String => MatchResult[Any] = query(_) must_== """{"type":"SettingQuerySuccess","value":""" + x + ""","contentType":"""" + t + """"}"""
-  def qko(msg: String): String => MatchResult[Any]          = query(_) must_== """{"type":"SettingQueryFailure","message":"""" + msg + """"}"""
+  def qok(x: String, t: String): String => MatchResult[Any] =
+    query(_) must_== """{"type":"SettingQuerySuccess","value":""" + x + ""","contentType":"""" + t + """"}"""
+  def qko(msg: String): String => MatchResult[Any] =
+    query(_) must_== """{"type":"SettingQueryFailure","message":"""" + msg + """"}"""
 
   "setting query" should {
-    "t/scalaVersion"   in qok("\"2.12.1\"", "java.lang.String")
-    "t/pollInterval"   in qok("500", "Int")
-    "t/sourcesInBase"  in qok("true", "Boolean")
-    "t/startYear"      in qok("null", "scala.Option[Int]")
-    "t/scalaArtifacts" in qok("""["scala-library","scala-compiler","scala-reflect","scala-actors","scalap"]""", "scala.collection.Seq[java.lang.String]")
+    "t/scalaVersion" in qok("\"2.12.1\"", "java.lang.String")
+    "t/pollInterval" in qok("500", "Int")
+    "t/sourcesInBase" in qok("true", "Boolean")
+    "t/startYear" in qok("null", "scala.Option[Int]")
+    "t/scalaArtifacts" in qok(
+      """["scala-library","scala-compiler","scala-reflect","scala-actors","scalap"]""",
+      "scala.collection.Seq[java.lang.String]")
 
     "t/libraryDependencies" in qok(
       """[{"organization":"org.scala-lang","name":"scala-library","revision":"2.12.1","isChanging":false,"isTransitive":true,"isForce":false,"crossVersion":{"type":"Disabled"}}]""",
-      "scala.collection.Seq[sbt.librarymanagement.ModuleID]")
+      "scala.collection.Seq[sbt.librarymanagement.ModuleID]"
+    )
 
-    "scalaVersion"    in qko("Not a valid project ID: scalaVersion\\nscalaVersion\\n            ^")
-    "t/scalacOptions" in qko(s"Key {$baseUri}t/compile:scalacOptions is a task, can only query settings")
-    "t/fooo"          in qko("Expected ':' (if selecting a configuration)\\nNot a valid key: fooo (similar: fork)\\nt/fooo\\n      ^")
+    "scalaVersion" in qko("Not a valid project ID: scalaVersion\\nscalaVersion\\n            ^")
+    "t/scalacOptions" in qko(
+      s"Key {$baseUri}t/compile:scalacOptions is a task, can only query settings")
+    "t/fooo" in qko(
+      "Expected ':' (if selecting a configuration)\\nNot a valid key: fooo (similar: fork)\\nt/fooo\\n      ^")
   }
 }

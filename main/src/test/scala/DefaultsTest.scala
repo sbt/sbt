@@ -23,7 +23,8 @@ object DefaultsTest extends Specification {
     }
 
     "work correctly with excludes" in {
-      assertFiltered(List("Test*", "-Test2"), Map("Test1" -> true, "Test2" -> false, "Foo" -> false))
+      assertFiltered(List("Test*", "-Test2"),
+                     Map("Test1" -> true, "Test2" -> false, "Foo" -> false))
     }
 
     "work correctly without includes" in {
@@ -35,17 +36,19 @@ object DefaultsTest extends Specification {
     }
 
     "cope with multiple filters" in {
-      assertFiltered(List("T*1", "T*2", "-F*"), Map("Test1" -> true, "Test2" -> true, "Foo" -> false))
+      assertFiltered(List("T*1", "T*2", "-F*"),
+                     Map("Test1" -> true, "Test2" -> true, "Foo" -> false))
     }
 
     "cope with multiple exclusion filters, no includes" in {
-      assertFiltered(List("-A*", "-F*"), Map("Test1" -> true, "Test2" -> true, "AAA" -> false, "Foo" -> false))
+      assertFiltered(List("-A*", "-F*"),
+                     Map("Test1" -> true, "Test2" -> true, "AAA" -> false, "Foo" -> false))
     }
 
     "cope with multiple exclusion filters with includes" in {
-      assertFiltered(List("T*", "-T*1", "-T*2"), Map("Test1" -> false, "Test2" -> false, "Test3" -> true))
+      assertFiltered(List("T*", "-T*1", "-T*2"),
+                     Map("Test1" -> false, "Test2" -> false, "Test3" -> true))
     }
   }
 
 }
-

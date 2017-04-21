@@ -60,7 +60,8 @@ private[sbt] object ExecuteProgress {
   def empty[A[_]]: ExecuteProgress[A] = new ExecuteProgress[A] {
     type S = Unit
     def initial = ()
-    def registered(state: Unit, task: A[_], allDeps: Iterable[A[_]], pendingDeps: Iterable[A[_]]) = ()
+    def registered(state: Unit, task: A[_], allDeps: Iterable[A[_]], pendingDeps: Iterable[A[_]]) =
+      ()
     def ready(state: Unit, task: A[_]) = ()
     def workStarting(task: A[_]) = ()
     def workFinished[T](task: A[T], result: Either[A[T], Result[T]]) = ()

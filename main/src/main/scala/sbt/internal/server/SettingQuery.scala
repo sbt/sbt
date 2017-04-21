@@ -24,24 +24,28 @@ object SettingQuery {
   sealed trait ParsedExplicitAxis[+T]
   final object ParsedExplicitGlobal extends ParsedExplicitAxis[Nothing]
   final class ParsedExplicitValue[T](val value: T) extends ParsedExplicitAxis[T]
-  def explicitValue[T](t: Parser[T]): Parser[ParsedExplicitAxis[T]] = t map { v => new ParsedExplicitValue(v) }
+  def explicitValue[T](t: Parser[T]): Parser[ParsedExplicitAxis[T]] = t map { v =>
+    new ParsedExplicitValue(v)
+  }
 
-  def projectRef(index: KeyIndex, currentBuild: URI): Parser[ParsedExplicitAxis[ResolvedReference]] = {
+  def projectRef(index: KeyIndex,
+                 currentBuild: URI): Parser[ParsedExplicitAxis[ResolvedReference]] = {
     val global = token(Act.GlobalString ~ '/') ^^^ ParsedExplicitGlobal
     val trailing = '/' !!! "Expected '/' (if selecting a project)"
     global | explicitValue(Act.resolvedReference(index, currentBuild, trailing))
   }
 
-  def resolveProject(parsed: ParsedExplicitAxis[ResolvedReference]): Option[ResolvedReference] = parsed match {
-    case ParsedExplicitGlobal       => None
-    case pv: ParsedExplicitValue[_] => Some(pv.value)
-  }
+  def resolveProject(parsed: ParsedExplicitAxis[ResolvedReference]): Option[ResolvedReference] =
+    parsed match {
+      case ParsedExplicitGlobal       => None
+      case pv: ParsedExplicitValue[_] => Some(pv.value)
+    }
 
   def scopedKeyFull(
-    index: KeyIndex,
-    currentBuild: URI,
-    defaultConfigs: Option[ResolvedReference] => Seq[String],
-    keyMap: Map[String, AttributeKey[_]]
+      index: KeyIndex,
+      currentBuild: URI,
+      defaultConfigs: Option[ResolvedReference] => Seq[String],
+      keyMap: Map[String, AttributeKey[_]]
   ): Parser[Seq[Parser[ParsedKey]]] = {
     for {
       rawProject <- projectRef(index, currentBuild)
@@ -52,22 +56,22 @@ object SettingQuery {
   }
 
   def scopedKeySelected(
-    index: KeyIndex,
-    currentBuild: URI,
-    defaultConfigs: Option[ResolvedReference] => Seq[String],
-    keyMap: Map[String, AttributeKey[_]],
-    data: Settings[Scope]
+      index: KeyIndex,
+      currentBuild: URI,
+      defaultConfigs: Option[ResolvedReference] => Seq[String],
+      keyMap: Map[String, AttributeKey[_]],
+      data: Settings[Scope]
   ): Parser[ParsedKey] =
     scopedKeyFull(index, currentBuild, defaultConfigs, keyMap) flatMap { choices =>
       Act.select(choices, data)(showBuildRelativeKey(currentBuild, index.buildURIs.size > 1))
     }
 
   def scopedKey(
-    index: KeyIndex,
-    currentBuild: URI,
-    defaultConfigs: Option[ResolvedReference] => Seq[String],
-    keyMap: Map[String, AttributeKey[_]],
-    data: Settings[Scope]
+      index: KeyIndex,
+      currentBuild: URI,
+      defaultConfigs: Option[ResolvedReference] => Seq[String],
+      keyMap: Map[String, AttributeKey[_]],
+      data: Settings[Scope]
   ): Parser[ScopedKey[_]] =
     scopedKeySelected(index, currentBuild, defaultConfigs, keyMap, data).map(_.key)
 
@@ -81,25 +85,30 @@ object SettingQuery {
     )
 
   def getSettingValue[A](structure: BuildStructure, key: Def.ScopedKey[A]): Either[String, A] =
-    structure.data.get(key.scope, key.key)
+    structure.data
+      .get(key.scope, key.key)
       .toRight(s"Key ${Def displayFull key} not found")
       .flatMap {
-        case _: Task[_]      => Left(s"Key ${Def displayFull key} is a task, can only query settings")
-        case _: InputTask[_] => Left(s"Key ${Def displayFull key} is an input task, can only query settings")
-        case x               => Right(x)
+        case _: Task[_] => Left(s"Key ${Def displayFull key} is a task, can only query settings")
+        case _: InputTask[_] =>
+          Left(s"Key ${Def displayFull key} is an input task, can only query settings")
+        case x => Right(x)
       }
 
-  def getJsonWriter[A](key: AttributeKey[A]): Either[String, JsonWriter[A]] = key.optJsonWriter match {
-    case SomeJsonWriter(jw) => Right(jw)
-    case NoJsonWriter()     => Left(s"JsonWriter for ${key.manifest} not found")
-  }
+  def getJsonWriter[A](key: AttributeKey[A]): Either[String, JsonWriter[A]] =
+    key.optJsonWriter match {
+      case SomeJsonWriter(jw) => Right(jw)
+      case NoJsonWriter()     => Left(s"JsonWriter for ${key.manifest} not found")
+    }
 
   def toJson[A: JsonWriter](x: A): JValue = Converter toJsonUnsafe x
 
-  def getSettingJsonValue[A](structure: BuildStructure, key: Def.ScopedKey[A]): Either[String, JValue] =
+  def getSettingJsonValue[A](structure: BuildStructure,
+                             key: Def.ScopedKey[A]): Either[String, JValue] =
     getSettingValue(structure, key) flatMap (value =>
-      getJsonWriter(key.key) map { implicit jw: JsonWriter[A] => toJson(value) }
-    )
+      getJsonWriter(key.key) map { implicit jw: JsonWriter[A] =>
+        toJson(value)
+      })
 
   def handleSettingQuery(req: SettingQuery, structure: BuildStructure): SettingQueryResponse = {
     val key = Parser.parse(req.setting, scopedKeyParser(structure))

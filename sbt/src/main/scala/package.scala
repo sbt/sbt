@@ -1,7 +1,8 @@
 /* sbt -- Simple Build Tool
  * Copyright 2010, 2011 Mark Harrah
  */
-package object sbt extends sbt.IOSyntax0
+package object sbt
+    extends sbt.IOSyntax0
     with sbt.std.TaskExtra
     with sbt.internal.util.Types
     with sbt.internal.librarymanagement.impl.DependencyBuilders
@@ -17,7 +18,8 @@ package object sbt extends sbt.IOSyntax0
   def file(s: String): File = new File(s)
   def url(s: String): URL = new URL(s)
   implicit def fileToRichFile(file: File): sbt.io.RichFile = new sbt.io.RichFile(file)
-  implicit def filesToFinder(cc: Traversable[File]): sbt.io.PathFinder = sbt.io.PathFinder.strict(cc)
+  implicit def filesToFinder(cc: Traversable[File]): sbt.io.PathFinder =
+    sbt.io.PathFinder.strict(cc)
 
   // others
 

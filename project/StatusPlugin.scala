@@ -31,21 +31,19 @@ object StatusPlugin extends AutoPlugin {
     val status = extracted.get(publishStatus)
     // Set new version AND lock down the publishStatus to what it was, as
     // our release regexes no longer support ivy data format, due to other issues.
-    extracted.append(
-      (version in ThisBuild ~= stamp) ::
-        (publishStatus in ThisBuild := status) ::
-        Nil,
-      state)
+    extracted.append((version in ThisBuild ~= stamp) ::
+                       (publishStatus in ThisBuild := status) ::
+                       Nil,
+                     state)
   }
-  def stamp(v: String): String =
-    {
-      val Snapshot = "-SNAPSHOT" 
-      if (v endsWith Snapshot) (v stripSuffix Snapshot) + "-" + timestampString(System.currentTimeMillis)
-      else sys.error("Release version '" + v + "' cannot be stamped")
-    }
-  def timestampString(time: Long): String =
-    {
-      val format = new java.text.SimpleDateFormat("yyyyMMdd-HHmmss")
-      format.format(new java.util.Date(time))
-    }
+  def stamp(v: String): String = {
+    val Snapshot = "-SNAPSHOT"
+    if (v endsWith Snapshot)
+      (v stripSuffix Snapshot) + "-" + timestampString(System.currentTimeMillis)
+    else sys.error("Release version '" + v + "' cannot be stamped")
+  }
+  def timestampString(time: Long): String = {
+    val format = new java.text.SimpleDateFormat("yyyyMMdd-HHmmss")
+    format.format(new java.util.Date(time))
+  }
 }

@@ -27,11 +27,10 @@ object Package {
   }
   final case class MainClass(mainClassName: String) extends PackageOption
   final case class ManifestAttributes(attributes: (Attributes.Name, String)*) extends PackageOption
-  def ManifestAttributes(attributes: (String, String)*): ManifestAttributes =
-    {
-      val converted = for ((name, value) <- attributes) yield (new Attributes.Name(name), value)
-      new ManifestAttributes(converted: _*)
-    }
+  def ManifestAttributes(attributes: (String, String)*): ManifestAttributes = {
+    val converted = for ((name, value) <- attributes) yield (new Attributes.Name(name), value)
+    new ManifestAttributes(converted: _*)
+  }
 
   def mergeAttributes(a1: Attributes, a2: Attributes) = a1.asScala ++= a2.asScala
   // merges `mergeManifest` into `manifest` (mutating `manifest` in the process)
@@ -46,7 +45,9 @@ object Package {
     }
   }
 
-  final class Configuration(val sources: Seq[(File, String)], val jar: File, val options: Seq[PackageOption])
+  final class Configuration(val sources: Seq[(File, String)],
+                            val jar: File,
+                            val options: Seq[PackageOption])
   def apply(conf: Configuration, cacheStoreFactory: CacheStoreFactory, log: Logger): Unit = {
     val manifest = new Manifest
     val main = manifest.getMainAttributes
@@ -60,15 +61,17 @@ object Package {
     }
     setVersion(main)
 
-    val cachedMakeJar = inputChanged(cacheStoreFactory make "inputs") { (inChanged, inputs: Map[File, String] :+: FilesInfo[ModifiedFileInfo] :+: Manifest :+: HNil) =>
-      import exists.format
-      val sources :+: _ :+: manifest :+: HNil = inputs
-      inputChanged(cacheStoreFactory make "output") { (outChanged, jar: PlainFileInfo) =>
-        if (inChanged || outChanged)
-          makeJar(sources.toSeq, jar.file, manifest, log)
-        else
-          log.debug("Jar uptodate: " + jar.file)
-      }
+    val cachedMakeJar = inputChanged(cacheStoreFactory make "inputs") {
+      (inChanged,
+       inputs: Map[File, String] :+: FilesInfo[ModifiedFileInfo] :+: Manifest :+: HNil) =>
+        import exists.format
+        val sources :+: _ :+: manifest :+: HNil = inputs
+        inputChanged(cacheStoreFactory make "output") { (outChanged, jar: PlainFileInfo) =>
+          if (inChanged || outChanged)
+            makeJar(sources.toSeq, jar.file, manifest, log)
+          else
+            log.debug("Jar uptodate: " + jar.file)
+        }
     }
 
     val map = conf.sources.toMap
@@ -80,20 +83,27 @@ object Package {
     if (main.getValue(version) eq null)
       main.put(version, "1.0")
   }
-  def addSpecManifestAttributes(name: String, version: String, orgName: String): PackageOption =
-    {
-      import Attributes.Name._
-      val attribKeys = Seq(SPECIFICATION_TITLE, SPECIFICATION_VERSION, SPECIFICATION_VENDOR)
-      val attribVals = Seq(name, version, orgName)
-      ManifestAttributes(attribKeys zip attribVals: _*)
-    }
-  def addImplManifestAttributes(name: String, version: String, homepage: Option[java.net.URL], org: String, orgName: String): PackageOption =
-    {
-      import Attributes.Name._
-      val attribKeys = Seq(IMPLEMENTATION_TITLE, IMPLEMENTATION_VERSION, IMPLEMENTATION_VENDOR, IMPLEMENTATION_VENDOR_ID)
-      val attribVals = Seq(name, version, orgName, org)
-      ManifestAttributes((attribKeys zip attribVals) ++ { homepage map (h => (IMPLEMENTATION_URL, h.toString)) }: _*)
-    }
+  def addSpecManifestAttributes(name: String, version: String, orgName: String): PackageOption = {
+    import Attributes.Name._
+    val attribKeys = Seq(SPECIFICATION_TITLE, SPECIFICATION_VERSION, SPECIFICATION_VENDOR)
+    val attribVals = Seq(name, version, orgName)
+    ManifestAttributes(attribKeys zip attribVals: _*)
+  }
+  def addImplManifestAttributes(name: String,
+                                version: String,
+                                homepage: Option[java.net.URL],
+                                org: String,
+                                orgName: String): PackageOption = {
+    import Attributes.Name._
+    val attribKeys = Seq(IMPLEMENTATION_TITLE,
+                         IMPLEMENTATION_VERSION,
+                         IMPLEMENTATION_VENDOR,
+                         IMPLEMENTATION_VENDOR_ID)
+    val attribVals = Seq(name, version, orgName, org)
+    ManifestAttributes((attribKeys zip attribVals) ++ {
+      homepage map (h => (IMPLEMENTATION_URL, h.toString))
+    }: _*)
+  }
   def makeJar(sources: Seq[(File, String)], jar: File, manifest: Manifest, log: Logger): Unit = {
     val path = jar.getAbsolutePath
     log.info("Packaging " + path + " ...")

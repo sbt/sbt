@@ -14,25 +14,33 @@ import Predef.{ any2stringadd => _, _ }
 import sbt.io.IO
 
 object SettingGraph {
-  def apply(structure: BuildStructure, basedir: File, scoped: ScopedKey[_], generation: Int)(implicit display: Show[ScopedKey[_]]): SettingGraph =
-    {
-      val cMap = flattenLocals(compiled(structure.settings, false)(structure.delegates, structure.scopeLocal, display))
-      def loop(scoped: ScopedKey[_], generation: Int): SettingGraph =
-        {
-          val key = scoped.key
-          val scope = scoped.scope
-          val definedIn = structure.data.definingScope(scope, key) map { sc => display.show(ScopedKey(sc, key)) }
-          val depends = cMap.get(scoped) match { case Some(c) => c.dependencies.toSet; case None => Set.empty }
-          // val related = cMap.keys.filter(k => k.key == key && k.scope != scope)
-          // val reverse = reverseDependencies(cMap, scoped)
+  def apply(structure: BuildStructure, basedir: File, scoped: ScopedKey[_], generation: Int)(
+      implicit display: Show[ScopedKey[_]]): SettingGraph = {
+    val cMap = flattenLocals(
+      compiled(structure.settings, false)(structure.delegates, structure.scopeLocal, display))
+    def loop(scoped: ScopedKey[_], generation: Int): SettingGraph = {
+      val key = scoped.key
+      val scope = scoped.scope
+      val definedIn = structure.data.definingScope(scope, key) map { sc =>
+        display.show(ScopedKey(sc, key))
+      }
+      val depends = cMap.get(scoped) match {
+        case Some(c) => c.dependencies.toSet; case None => Set.empty
+      }
+      // val related = cMap.keys.filter(k => k.key == key && k.scope != scope)
+      // val reverse = reverseDependencies(cMap, scoped)
 
-          SettingGraph(display.show(scoped), definedIn,
-            Project.scopedKeyData(structure, scope, key),
-            key.description, basedir,
-            depends map { (x: ScopedKey[_]) => loop(x, generation + 1) })
-        }
-      loop(scoped, generation)
+      SettingGraph(display.show(scoped),
+                   definedIn,
+                   Project.scopedKeyData(structure, scope, key),
+                   key.description,
+                   basedir,
+                   depends map { (x: ScopedKey[_]) =>
+                     loop(x, generation + 1)
+                   })
     }
+    loop(scoped, generation)
+  }
 }
 
 case class SettingGraph(

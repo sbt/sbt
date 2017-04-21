@@ -8,6 +8,7 @@ import testing.{ Logger => TLogger, Event => TEvent, Status => TStatus }
 import sbt.protocol.testing._
 
 trait TestReportListener {
+
   /** called for each class or equivalent grouping */
   def startGroup(name: String): Unit
 
@@ -27,6 +28,7 @@ trait TestReportListener {
 final class ContentLogger(val log: TLogger, val flush: () => Unit)
 
 trait TestsListener extends TestReportListener {
+
   /** called once, at beginning. */
   def doInit(): Unit
 
@@ -37,8 +39,13 @@ trait TestsListener extends TestReportListener {
 /** Provides the overall `result` of a group of tests (a suite) and test counts for each result type. */
 final class SuiteResult(
     val result: TestResult,
-    val passedCount: Int, val failureCount: Int, val errorCount: Int,
-    val skippedCount: Int, val ignoredCount: Int, val canceledCount: Int, val pendingCount: Int
+    val passedCount: Int,
+    val failureCount: Int,
+    val errorCount: Int,
+    val skippedCount: Int,
+    val ignoredCount: Int,
+    val canceledCount: Int,
+    val pendingCount: Int
 ) {
   def +(other: SuiteResult): SuiteResult = {
     val combinedTestResult =
@@ -48,19 +55,35 @@ final class SuiteResult(
         case (TestResult.Error, _)                  => TestResult.Error
         case _                                      => TestResult.Failed
       }
-    new SuiteResult(combinedTestResult, passedCount + other.passedCount, failureCount + other.failureCount, errorCount + other.errorCount, skippedCount + other.skippedCount,
-      ignoredCount + other.ignoredCount, canceledCount + other.canceledCount, pendingCount + other.pendingCount)
+    new SuiteResult(
+      combinedTestResult,
+      passedCount + other.passedCount,
+      failureCount + other.failureCount,
+      errorCount + other.errorCount,
+      skippedCount + other.skippedCount,
+      ignoredCount + other.ignoredCount,
+      canceledCount + other.canceledCount,
+      pendingCount + other.pendingCount
+    )
   }
 }
 
 object SuiteResult {
+
   /** Computes the overall result and counts for a suite with individual test results in `events`. */
-  def apply(events: Seq[TEvent]): SuiteResult =
-    {
-      def count(status: TStatus) = events.count(_.status == status)
-      new SuiteResult(TestEvent.overallResult(events), count(TStatus.Success), count(TStatus.Failure), count(TStatus.Error),
-        count(TStatus.Skipped), count(TStatus.Ignored), count(TStatus.Canceled), count(TStatus.Pending))
-    }
+  def apply(events: Seq[TEvent]): SuiteResult = {
+    def count(status: TStatus) = events.count(_.status == status)
+    new SuiteResult(
+      TestEvent.overallResult(events),
+      count(TStatus.Success),
+      count(TStatus.Failure),
+      count(TStatus.Error),
+      count(TStatus.Skipped),
+      count(TStatus.Ignored),
+      count(TStatus.Canceled),
+      count(TStatus.Pending)
+    )
+  }
   val Error: SuiteResult = new SuiteResult(TestResult.Error, 0, 0, 0, 0, 0, 0, 0)
   val Empty: SuiteResult = new SuiteResult(TestResult.Passed, 0, 0, 0, 0, 0, 0, 0)
 }

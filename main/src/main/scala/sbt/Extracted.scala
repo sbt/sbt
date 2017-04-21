@@ -9,7 +9,9 @@ import sbt.internal.util.AttributeKey
 import sbt.util.Show
 import std.Transform.DummyTaskMap
 
-final case class Extracted(structure: BuildStructure, session: SessionSettings, currentRef: ProjectRef)(implicit val showKey: Show[ScopedKey[_]]) {
+final case class Extracted(structure: BuildStructure,
+                           session: SessionSettings,
+                           currentRef: ProjectRef)(implicit val showKey: Show[ScopedKey[_]]) {
   def rootProject = structure.rootProject
   lazy val currentUnit = structure units currentRef.build
   lazy val currentProject = currentUnit defined currentRef.project
@@ -29,7 +31,8 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
    * Other axes are resolved to be `Global` if they are not specified.
    */
   def getOpt[T](key: SettingKey[T]): Option[T] = structure.data.get(inCurrent(key.scope), key.key)
-  def getOpt[T](key: TaskKey[T]): Option[Task[T]] = structure.data.get(inCurrent(key.scope), key.key)
+  def getOpt[T](key: TaskKey[T]): Option[Task[T]] =
+    structure.data.get(inCurrent(key.scope), key.key)
 
   private[this] def inCurrent[T](scope: Scope): Scope =
     if (scope.project == This) scope.copy(project = Select(currentRef)) else scope
@@ -41,15 +44,15 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
    *
    * This method requests execution of only the given task and does not aggregate execution.  See `runAggregated` for that.
    */
-  def runTask[T](key: TaskKey[T], state: State): (State, T) =
-    {
-      import EvaluateTask._
-      val rkey = resolve(key.scopedKey)
-      val config = extractedTaskConfig(this, structure, state)
-      val value: Option[(State, Result[T])] = apply(structure, key.scopedKey, state, currentRef, config)
-      val (newS, result) = getOrError(rkey.scope, rkey.key, value)
-      (newS, processResult(result, newS.log))
-    }
+  def runTask[T](key: TaskKey[T], state: State): (State, T) = {
+    import EvaluateTask._
+    val rkey = resolve(key.scopedKey)
+    val config = extractedTaskConfig(this, structure, state)
+    val value: Option[(State, Result[T])] =
+      apply(structure, key.scopedKey, state, currentRef, config)
+    val (newS, result) = getOrError(rkey.scope, rkey.key, value)
+    (newS, processResult(result, newS.log))
+  }
 
   /**
    * Runs the input task specified by `key`, using the `input` as the input to it, and returns the transformed State
@@ -64,7 +67,9 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
     import EvaluateTask._
 
     val scopedKey = Scoped.scopedSetting(
-      Scope.resolveScope(Load.projectScope(currentRef), currentRef.build, structure.rootProject)(key.scope), key.key
+      Scope.resolveScope(Load.projectScope(currentRef), currentRef.build, structure.rootProject)(
+        key.scope),
+      key.key
     )
     val rkey = resolve(scopedKey.scopedKey)
     val inputTask = get(Scoped.scopedSetting(rkey.scope, rkey.key))
@@ -75,7 +80,8 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
     val config = extractedTaskConfig(this, structure, state)
     withStreams(structure, state) { str =>
       val nv = nodeView(state, str, rkey :: Nil)
-      val (newS, result) = EvaluateTask.runTask(task, state, str, structure.index.triggers, config)(nv)
+      val (newS, result) =
+        EvaluateTask.runTask(task, state, str, structure.index.triggers, config)(nv)
       (newS, processResult(result, newS.log))
     }
   }
@@ -86,25 +92,33 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
    * The project axis is what determines where aggregation starts, so ensure this is set to what you want.
    * Other axes are resolved to `Global` if unspecified.
    */
-  def runAggregated[T](key: TaskKey[T], state: State): State =
-    {
-      val rkey = resolve(key.scopedKey)
-      val keys = Aggregation.aggregate(rkey, ScopeMask(), structure.extra)
-      val tasks = Act.keyValues(structure)(keys)
-      Aggregation.runTasks(state, structure, tasks, DummyTaskMap(Nil), show = Aggregation.defaultShow(state, false))(showKey)
-    }
+  def runAggregated[T](key: TaskKey[T], state: State): State = {
+    val rkey = resolve(key.scopedKey)
+    val keys = Aggregation.aggregate(rkey, ScopeMask(), structure.extra)
+    val tasks = Act.keyValues(structure)(keys)
+    Aggregation.runTasks(state,
+                         structure,
+                         tasks,
+                         DummyTaskMap(Nil),
+                         show = Aggregation.defaultShow(state, false))(showKey)
+  }
 
   private[this] def resolve[T](key: ScopedKey[T]): ScopedKey[T] =
     Project.mapScope(Scope.resolveScope(GlobalScope, currentRef.build, rootProject))(key.scopedKey)
-  private def getOrError[T](scope: Scope, key: AttributeKey[_], value: Option[T])(implicit display: Show[ScopedKey[_]]): T =
+  private def getOrError[T](scope: Scope, key: AttributeKey[_], value: Option[T])(
+      implicit display: Show[ScopedKey[_]]): T =
     value getOrElse sys.error(display.show(ScopedKey(scope, key)) + " is undefined.")
-  private def getOrError[T](scope: Scope, key: AttributeKey[T])(implicit display: Show[ScopedKey[_]]): T =
-    structure.data.get(scope, key) getOrElse sys.error(display.show(ScopedKey(scope, key)) + " is undefined.")
+  private def getOrError[T](scope: Scope, key: AttributeKey[T])(
+      implicit display: Show[ScopedKey[_]]): T =
+    structure.data.get(scope, key) getOrElse sys.error(
+      display.show(ScopedKey(scope, key)) + " is undefined.")
 
-  def append(settings: Seq[Setting[_]], state: State): State =
-    {
-      val appendSettings = Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
-      val newStructure = Load.reapply(session.original ++ appendSettings, structure)
-      Project.setProject(session, newStructure, state)
-    }
+  def append(settings: Seq[Setting[_]], state: State): State = {
+    val appendSettings = Load.transformSettings(Load.projectScope(currentRef),
+                                                currentRef.build,
+                                                rootProject,
+                                                settings)
+    val newStructure = Load.reapply(session.original ++ appendSettings, structure)
+    Project.setProject(session, newStructure, state)
+  }
 }
