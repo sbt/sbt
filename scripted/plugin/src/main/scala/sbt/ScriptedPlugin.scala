@@ -9,6 +9,7 @@ import sbt.internal.util.complete.{ Parser, DefaultParsers }
 import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.internal.inc.ModuleUtilities
 import java.lang.reflect.Method
+import sbt.librarymanagement.CrossVersion.binarySbtVersion
 
 object ScriptedPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin
@@ -32,13 +33,23 @@ object ScriptedPlugin extends AutoPlugin {
   import autoImport._
   override lazy val projectSettings = Seq(
     ivyConfigurations ++= Seq(scriptedConf, scriptedLaunchConf),
-    scriptedSbt := sbtVersion.value,
+    scriptedSbt := (sbtVersion in pluginCrossBuild).value,
     sbtLauncher := getJars(scriptedLaunchConf).map(_.get.head).value,
     sbtTestDirectory := sourceDirectory.value / "sbt-test",
-    libraryDependencies ++= Seq(
-      "org.scala-sbt" %% "scripted-sbt" % scriptedSbt.value % scriptedConf.toString,
-      "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % scriptedLaunchConf.toString
-    ),
+    libraryDependencies ++= {
+      binarySbtVersion(scriptedSbt.value) match {
+        case "0.13" =>
+          Seq(
+            "org.scala-sbt" % "scripted-sbt" % scriptedSbt.value % scriptedConf.toString,
+            "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % scriptedLaunchConf.toString
+          )
+        case sv if sv startsWith "1.0." =>
+          Seq(
+            "org.scala-sbt" %% "scripted-sbt" % scriptedSbt.value % scriptedConf.toString,
+            "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % scriptedLaunchConf.toString
+          )
+      }
+    },
     scriptedBufferLog := true,
     scriptedClasspath := getJars(scriptedConf).value,
     scriptedTests := scriptedTestsTask.value,
