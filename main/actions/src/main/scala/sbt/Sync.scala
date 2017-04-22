@@ -68,6 +68,7 @@ object Sync {
   }
 
   import java.io.{ File, IOException }
+  import java.util.zip.ZipException
   import sbinary._
   import Operations.{ read, write }
   import DefaultProtocol.{ FileFormat => _, _ }
@@ -82,7 +83,15 @@ object Sync {
 
   def readInfo[F <: FileInfo](file: File)(implicit infoFormat: Format[F]): RelationInfo[F] =
     try { readUncaught(file)(infoFormat) }
-    catch { case e: IOException => (Relation.empty, Map.empty) }
+    catch {
+      case e: IOException  => (Relation.empty, Map.empty)
+      case e: ZipException => (Relation.empty, Map.empty)
+      case e: TranslatedException =>
+        e.getCause match {
+          case e: ZipException => (Relation.empty, Map.empty)
+          case _               => throw e
+        }
+    }
 
   def readUncaught[F <: FileInfo](file: File)(implicit infoFormat: Format[F]): RelationInfo[F] =
     IO.gzipFileIn(file) { in =>
