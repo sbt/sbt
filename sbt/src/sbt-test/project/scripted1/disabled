@@ -1,5 +1,7 @@
 # This tests that this sbt scripted plugin can launch the next one
-# It is currently disabled because there is no next plugin version
+# It is currently disabled because it requires JDK8 to run sbt 1.0.
+
+> ^^1.0.0-M5
 
 $ copy-file changes/A.scala src/sbt-test/a/b/A.scala
 > scripted

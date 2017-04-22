@@ -136,6 +136,10 @@ object Defaults extends BuildCommon {
     envVars :== Map.empty,
     sbtVersion := appConfiguration.value.provider.id.version,
     sbtBinaryVersion := binarySbtVersion(sbtVersion.value),
+    // `pluginCrossBuild` scoping is based on sbt-cross-building plugin.
+    // The idea here is to be able to define a `sbtVersion in pluginCrossBuild`, which
+    // directs the dependencies of the plugin to build to the specified sbt plugin version.
+    sbtVersion in pluginCrossBuild := sbtVersion.value,
     watchingMessage := Watched.defaultWatchingMessage,
     triggeredMessage := Watched.defaultTriggeredMessage,
     onLoad := idFun[State],
@@ -190,7 +194,16 @@ object Defaults extends BuildCommon {
     sourceManaged := configSrcSub(sourceManaged).value,
     scalaSource := sourceDirectory.value / "scala",
     javaSource := sourceDirectory.value / "java",
-    unmanagedSourceDirectories := makeCrossSources(scalaSource.value, javaSource.value, scalaBinaryVersion.value, crossPaths.value),
+    unmanagedSourceDirectories := {
+      makeCrossSources(scalaSource.value,
+        javaSource.value,
+        scalaBinaryVersion.value,
+        crossPaths.value) ++
+        makePluginCrossSources(sbtPlugin.value,
+          scalaSource.value,
+          (sbtBinaryVersion in pluginCrossBuild).value,
+          crossPaths.value)
+    },
     unmanagedSources := collectFiles(unmanagedSourceDirectories, includeFilter in unmanagedSources, excludeFilter in unmanagedSources).value,
     watchSources in ConfigGlobal ++= unmanagedSources.value,
     managedSourceDirectories := Seq(sourceManaged.value),
@@ -231,17 +244,31 @@ object Defaults extends BuildCommon {
       sbt.inc.ClassfileManager.transactional(crossTarget.value / "classes.bak", sbt.Logger.Null)),
     scalaInstance := scalaInstanceTask.value,
     crossVersion := (if (crossPaths.value) CrossVersion.binary else CrossVersion.Disabled),
-    crossTarget := makeCrossTarget(target.value, scalaBinaryVersion.value, sbtBinaryVersion.value, sbtPlugin.value, crossPaths.value),
+    scalaVersion := {
+      val scalaV = scalaVersion.value
+      val sv = (sbtBinaryVersion in pluginCrossBuild).value
+      if (sbtPlugin.value) scalaVersionFromSbtBinaryVersion(sv)
+      else scalaV
+    },
+    sbtBinaryVersion in pluginCrossBuild := binarySbtVersion((sbtVersion in pluginCrossBuild).value),
+    crossSbtVersions := Vector((sbtVersion in pluginCrossBuild).value),
+    crossTarget := makeCrossTarget(target.value,
+      scalaBinaryVersion.value,
+      (sbtBinaryVersion in pluginCrossBuild).value,
+      sbtPlugin.value,
+      crossPaths.value),
     clean := {
       val _ = clean.value
       IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log)
     },
     scalaCompilerBridgeSource := {
+      // This is a workaround for sbtVersion getting set to another value.
+      val sv = appConfiguration.value.provider.id.version
       if (ScalaInstance.isDotty(scalaVersion.value))
         // Maintained at https://github.com/lampepfl/dotty/tree/master/sbt-bridge
         ModuleID(scalaOrganization.value, "dotty-sbt-bridge", scalaVersion.value, Some("component")).sources()
       else
-        ModuleID(xsbti.ArtifactInfo.SbtOrganization, "compiler-interface", sbtVersion.value, Some("component")).sources()
+        ModuleID(xsbti.ArtifactInfo.SbtOrganization, "compiler-interface", sv, Some("component")).sources()
     }
   )
   // must be a val: duplication detected by object identity
@@ -258,11 +285,25 @@ object Defaults extends BuildCommon {
     derive(scalaBinaryVersion := binaryScalaVersion(scalaVersion.value))
   ))
 
+  private[sbt] def scalaVersionFromSbtBinaryVersion(sv: String): String =
+    VersionNumber(sv) match {
+      case VersionNumber(Seq(0, 12, _*), _, _) => "2.9.2"
+      case VersionNumber(Seq(0, 13, _*), _, _) => "2.10.6"
+      case VersionNumber(Seq(1, 0, _*), _, _)  => "2.12.2"
+      case _                                   => sys.error(s"Unsupported sbt binary version: $sv")
+    }
+
   def makeCrossSources(scalaSrcDir: File, javaSrcDir: File, sv: String, cross: Boolean): Seq[File] = {
     if (cross)
       Seq(scalaSrcDir.getParentFile / s"${scalaSrcDir.name}-$sv", scalaSrcDir, javaSrcDir)
     else
       Seq(scalaSrcDir, javaSrcDir)
+  }
+
+  def makePluginCrossSources(isPlugin: Boolean, scalaSrcDir: File,
+    sbtBinaryV: String, cross: Boolean): Seq[File] = {
+    if (cross && isPlugin) Vector(scalaSrcDir.getParentFile / s"${scalaSrcDir.name}-sbt-$sbtBinaryV")
+    else Vector()
   }
 
   def makeCrossTarget(t: File, sv: String, sbtv: String, plugin: Boolean, cross: Boolean): File =
@@ -1033,7 +1074,20 @@ object Defaults extends BuildCommon {
     projectCore ++ disableAggregation ++ Seq(
       // Missing but core settings
       baseDirectory := thisProject.value.base,
-      target := baseDirectory.value / "target"
+      target := baseDirectory.value / "target",
+      // Use (sbtVersion in pluginCrossBuild) to pick the sbt module to depend from the plugin.
+      // Because `sbtVersion in pluginCrossBuild` can be scoped to project level,
+      // this setting needs to be set here too.
+      sbtDependency in pluginCrossBuild := {
+        val app = appConfiguration.value
+        val id = app.provider.id
+        val sv = (sbtVersion in pluginCrossBuild).value
+        val scalaV = (scalaVersion in pluginCrossBuild).value
+        val binVersion = (scalaBinaryVersion in pluginCrossBuild).value
+        val cross = if (id.crossVersioned) CrossVersion.binary else CrossVersion.Disabled
+        val base = ModuleID(id.groupID, id.name, sv, crossVersion = cross)
+        CrossVersion(scalaV, binVersion)(base).copy(crossVersion = CrossVersion.Disabled)
+      }
     )
   // build.sbt is treated a Scala source of metabuild, so to enable deprecation flag on build.sbt we set the option here.
   lazy val deprecationSettings: Seq[Setting[_]] =
@@ -1301,7 +1355,7 @@ object Classpaths {
     // Override the default to handle mixing in the sbtPlugin + scala dependencies.
     allDependencies := {
       val base = projectDependencies.value ++ libraryDependencies.value
-      val pluginAdjust = if (sbtPlugin.value) sbtDependency.value.copy(configurations = Some(Provided.name)) +: base else base
+      val pluginAdjust = if (sbtPlugin.value) (sbtDependency in pluginCrossBuild).value.copy(configurations = Some(Provided.name)) +: base else base
       if (scalaHome.value.isDefined || ivyScala.value.isEmpty || !managedScalaInstance.value)
         pluginAdjust
       else {
@@ -1328,11 +1382,14 @@ object Classpaths {
       case _                                => base
     }
   }
-
-  def pluginProjectID: Initialize[ModuleID] = (sbtBinaryVersion in update, scalaBinaryVersion in update, projectID, sbtPlugin) {
-    (sbtBV, scalaBV, pid, isPlugin) =>
-      if (isPlugin) sbtPluginExtra(pid, sbtBV, scalaBV) else pid
-  }
+  def pluginProjectID: Initialize[ModuleID] =
+    Def.setting {
+      if (sbtPlugin.value)
+        sbtPluginExtra(projectID.value,
+          (sbtBinaryVersion in pluginCrossBuild).value,
+          (scalaBinaryVersion in pluginCrossBuild).value)
+      else projectID.value
+    }
   def ivySbt0: Initialize[Task[IvySbt]] =
     (ivyConfiguration, credentials, streams) map { (conf, creds, s) =>
       Credentials.register(creds, s.log)
@@ -1351,8 +1408,18 @@ object Classpaths {
       val explicit = buildStructure.value.units(thisProjectRef.value.build).unit.plugins.pluginData.resolvers
       explicit orElse bootRepositories(appConfiguration.value) getOrElse externalResolvers.value
     },
-    ivyConfiguration := new InlineIvyConfiguration(ivyPaths.value, externalResolvers.value, Nil, Nil, offline.value, Option(lock(appConfiguration.value)),
-      checksums.value, Some(target.value / "resolution-cache"), UpdateOptions(), streams.value.log),
+    ivyConfiguration := new InlineIvyConfiguration(
+      ivyPaths.value,
+      externalResolvers.value.toVector,
+      Vector.empty,
+      Vector.empty,
+      offline.value,
+      Option(lock(appConfiguration.value)),
+      checksums.value.toVector,
+      Some(crossTarget.value / "resolution-cache"),
+      UpdateOptions(),
+      streams.value.log
+    ),
     ivySbt := ivySbt0.value,
     classifiersModule := ((projectID, sbtDependency, transitiveClassifiers, loadedBuild, thisProjectRef) map { (pid, sbtDep, classifiers, lb, ref) =>
       val pluginClasspath = lb.units(ref.build).unit.plugins.fullClasspath
@@ -1695,13 +1762,24 @@ object Classpaths {
   def unmanagedDependencies: Initialize[Task[Classpath]] =
     (thisProjectRef, configuration, settingsData, buildDependencies) flatMap unmanagedDependencies0
   def mkIvyConfiguration: Initialize[Task[IvyConfiguration]] =
-    (fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums in update, appConfiguration,
-      target, updateOptions, streams) map { (rs, paths, other, moduleConfs, off, check, app, t, uo, s) =>
-        warnResolversConflict(rs ++: other, s.log)
-        val resCacheDir = t / "resolution-cache"
-
-        new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Option(lock(app)), check, Some(resCacheDir), uo, s.log)
-      }
+    Def.task {
+      val (rs, other) = (fullResolvers.value.toVector, otherResolvers.value.toVector)
+      val s = streams.value
+      warnResolversConflict(rs ++: other, s.log)
+      val resCacheDir = crossTarget.value / "resolution-cache"
+      new InlineIvyConfiguration(
+        ivyPaths.value,
+        rs,
+        other,
+        moduleConfigurations.value.toVector,
+        offline.value,
+        Option(lock(appConfiguration.value)),
+        (checksums in update).value.toVector,
+        Some(resCacheDir),
+        updateOptions.value,
+        s.log
+      )
+    }
 
   import java.util.LinkedHashSet
   import collection.JavaConversions.asScalaSet
