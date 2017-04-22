@@ -3,12 +3,12 @@
  */
 package sbt
 
-import java.io.File
-
+import java.io.{ File, IOException }
+import java.util.zip.ZipException
 import sbt.internal.util.Relation
+import sbt.internal.io.TranslatedException
 import sbt.util.CacheImplicits._
 import sbt.util.{ FileInfo, CacheStore }
-
 import sbt.io.IO
 
 import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
@@ -110,6 +110,17 @@ object Sync {
 
   def readInfo[F <: FileInfo](store: CacheStore)(
       implicit infoFormat: JsonFormat[F]): RelationInfo[F] =
-    store.read(default = (Relation.empty[File, File], Map.empty[File, F]))
+    try { readUncaught[F](store)(infoFormat) } catch {
+      case _: IOException  => (Relation.empty[File, File], Map.empty[File, F])
+      case _: ZipException => (Relation.empty[File, File], Map.empty[File, F])
+      case e: TranslatedException =>
+        e.getCause match {
+          case _: ZipException => (Relation.empty[File, File], Map.empty[File, F])
+          case _               => throw e
+        }
+    }
 
+  private def readUncaught[F <: FileInfo](store: CacheStore)(
+      implicit infoFormat: JsonFormat[F]): RelationInfo[F] =
+    store.read(default = (Relation.empty[File, File], Map.empty[File, F]))
 }
