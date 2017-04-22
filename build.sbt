@@ -7,7 +7,7 @@ import Sxr.sxr
 // but can be shared across the multi projects.
 def buildLevelSettings: Seq[Setting[_]] = inThisBuild(Seq(
   organization := "org.scala-sbt",
-  version := "0.13.15-SNAPSHOT",
+  version := "0.13.16-SNAPSHOT",
   bintrayOrganization := Some(if (publishStatus.value == "releases") "typesafe" else "sbt"),
   bintrayRepository := s"ivy-${publishStatus.value}",
   bintrayPackage := "sbt",
