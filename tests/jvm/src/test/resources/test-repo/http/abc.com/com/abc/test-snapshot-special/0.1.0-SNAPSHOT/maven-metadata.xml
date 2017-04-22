@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>com.abc</groupId>
+  <artifactId>test-snapshot-special</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <versioning>
+    <snapshot>
+      <timestamp>20170421.034426</timestamp>
+      <buildNumber>82</buildNumber>
+    </snapshot>
+    <lastUpdated>20170421034426</lastUpdated>
+  </versioning>
+</metadata>
