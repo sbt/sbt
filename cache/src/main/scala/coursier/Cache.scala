@@ -189,43 +189,77 @@ object Cache {
     } finally if (out != null) out.close()
   }
 
+
+  private def defaultRetryCount = 3
+
+  private lazy val retryCount =
+    sys.props
+      .get("coursier.sslexception-retry")
+      .flatMap(s => scala.util.Try(s.toInt).toOption)
+      .filter(_ >= 0)
+      .getOrElse(defaultRetryCount)
+
   private def downloading[T](
     url: String,
     file: File,
-    logger: Option[Logger]
+    logger: Option[Logger],
+    retry: Int = retryCount
   )(
     f: => FileError \/ T
-  ): FileError \/ T =
-    try {
-      val o = new Object
-      val prev = urlLocks.putIfAbsent(url, o)
-      if (prev == null) {
-        logger.foreach(_.downloadingArtifact(url, file))
+  ): FileError \/ T = {
 
-        val res =
-          try \/-(f)
-          catch {
-            case nfe: FileNotFoundException if nfe.getMessage != null =>
-              logger.foreach(_.downloadedArtifact(url, success = false))
-              -\/(-\/(FileError.NotFound(nfe.getMessage)))
-            case e: Exception =>
-              logger.foreach(_.downloadedArtifact(url, success = false))
-              throw e
-          }
-          finally {
-            urlLocks.remove(url)
-          }
+    @tailrec
+    def helper(retry: Int): FileError \/ T = {
 
-        for (res0 <- res)
-          logger.foreach(_.downloadedArtifact(url, success = res0.isRight))
+      val resOpt =
+        try {
+          val o = new Object
+          val prev = urlLocks.putIfAbsent(url, o)
 
-        res.merge
-      } else
-        -\/(FileError.ConcurrentDownload(url))
+          val res =
+            if (prev == null) {
+              logger.foreach(_.downloadingArtifact(url, file))
+
+              val res =
+                try \/-(f)
+                catch {
+                  case nfe: FileNotFoundException if nfe.getMessage != null =>
+                    logger.foreach(_.downloadedArtifact(url, success = false))
+                    -\/(-\/(FileError.NotFound(nfe.getMessage)))
+                  case e: Exception =>
+                    logger.foreach(_.downloadedArtifact(url, success = false))
+                    throw e
+                }
+                finally {
+                  urlLocks.remove(url)
+                }
+
+              for (res0 <- res)
+                logger.foreach(_.downloadedArtifact(url, success = res0.isRight))
+
+              res.merge[FileError \/ T]
+            } else
+              -\/(FileError.ConcurrentDownload(url))
+
+          Some(res)
+        }
+        catch {
+          case _: javax.net.ssl.SSLException if retry >= 1 =>
+            // TODO If Cache is made an (instantiated) class at some point, allow to log that exception.
+            None
+          case NonFatal(e) =>
+            Some(-\/(FileError.DownloadError(s"Caught $e${Option(e.getMessage).fold("")(" (" + _ + ")")}")))
+        }
+
+      resOpt match {
+        case Some(res) => res
+        case None =>
+          helper(retry - 1)
+      }
     }
-    catch { case e: Exception =>
-      -\/(FileError.DownloadError(s"Caught $e${Option(e.getMessage).fold("")(" (" + _ + ")")}"))
-    }
+
+    helper(retry)
+  }
 
   private def temporaryFile(file: File): File = {
     val dir = file.getParentFile

@@ -252,7 +252,7 @@ final case class MavenRepository(
       for {
         xml <- \/.fromEither(compatibility.xmlParse(str))
         _ <- if (xml.label == "project") \/-(()) else -\/("Project definition not found")
-        proj <- Pom.project(xml)
+        proj <- Pom.project(xml, relocationAsDependency = true)
       } yield proj
 
     def artifactFor(url: String) =

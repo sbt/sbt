@@ -1,0 +1,8 @@
+antlr:antlr:2.7.7:compile
+commons-collections:commons-collections:3.2.1:compile
+commons-lang:commons-lang:2.4:compile
+org.apache.directory.shared:shared-asn1:0.9.19:compile
+org.apache.directory.shared:shared-i18n:0.9.19:compile
+org.apache.directory.shared:shared-ldap:0.9.19:compile
+org.apache.directory.shared:shared-ldap-constants:0.9.19:compile
+org.slf4j:slf4j-api:1.5.10:compile

@@ -29,6 +29,10 @@ object Version {
         case (BigNumber(a), Number(b)) => a.compare(b)
         case (Qualifier(_, a), Qualifier(_, b)) => a.compare(b)
         case (Literal(a), Literal(b)) => a.compareToIgnoreCase(b)
+        case (BuildMetadata(_), BuildMetadata(_)) =>
+          // Semver § 10: two versions that differ only in the build metadata, have the same precedence.
+          // Might introduce some non-determinism though :-/
+          0
 
         case _ =>
           val rel0 = compareToEmpty
@@ -67,6 +71,10 @@ object Version {
     val order = -1
     override def compareToEmpty = if (value.isEmpty) 0 else 1
   }
+  final case class BuildMetadata(value: String) extends Item {
+    val order = 1
+    override def compareToEmpty = if (value.isEmpty) 0 else 1
+  }
 
   case object Min extends Item {
     val order = -8
@@ -97,6 +105,7 @@ object Version {
     case object Dot extends Separator
     case object Hyphen extends Separator
     case object Underscore extends Separator
+    case object Plus extends Separator
     case object None extends Separator
 
     def apply(s: String): (Item, Stream[(Separator, Item)]) = {
@@ -135,6 +144,7 @@ object Version {
           case '.' => (Dot, s.tail)
           case '-' => (Hyphen, s.tail)
           case '_' => (Underscore, s.tail)
+          case '+' => (Plus, s.tail)
           case _ => (None, s)
         }
       }
@@ -143,9 +153,13 @@ object Version {
         if (s.isEmpty) Stream()
         else {
           val (sep, rem0) = parseSeparator(s)
-          val (item, rem) = parseItem(rem0)
-
-          (sep, item) #:: helper(rem)
+          sep match {
+            case Plus =>
+              Stream((sep, BuildMetadata(rem0.mkString)))
+            case _ =>
+              val (item, rem) = parseItem(rem0)
+              (sep, item) #:: helper(rem)
+          }
         }
       }
 
@@ -154,50 +168,50 @@ object Version {
     }
   }
 
+  def postProcess(prevIsNumeric: Option[Boolean], item: Item, tokens0: Stream[(Tokenizer.Separator, Item)]): Stream[Item] = {
+    val tokens = {
+      var _tokens = tokens0
+
+      if (isNumeric(item)) {
+        val nextNonDotZero = _tokens.dropWhile{case (Tokenizer.Dot, n: Numeric) => n.isEmpty; case _ => false }
+        if (nextNonDotZero.forall(t => t._1 == Tokenizer.Hyphen || ((t._1 == Tokenizer.Dot || t._1 == Tokenizer.None) && !isNumeric(t._2)))) { // Dot && isNumeric(t._2)
+          _tokens = nextNonDotZero
+        }
+      }
+
+      _tokens
+    }
+
+    def ifFollowedByNumberElse(ifFollowedByNumber: Item, default: Item) = {
+      val followedByNumber = tokens.headOption
+        .exists{ case (Tokenizer.None, num: Numeric) if !num.isEmpty => true; case _ => false }
+
+      if (followedByNumber) ifFollowedByNumber
+      else default
+    }
+
+    def next =
+      if (tokens.isEmpty) Stream()
+      else postProcess(Some(isNumeric(item)), tokens.head._2, tokens.tail)
+
+    item match {
+      case Literal("min") => Min #:: next
+      case Literal("max") => Max #:: next
+      case Literal("a") =>
+        ifFollowedByNumberElse(qualifiersMap("alpha"), item) #:: next
+      case Literal("b") =>
+        ifFollowedByNumberElse(qualifiersMap("beta"), item) #:: next
+      case Literal("m") =>
+        ifFollowedByNumberElse(qualifiersMap("milestone"), item) #:: next
+      case _ =>
+        item #:: next
+    }
+  }
+
+  def isNumeric(item: Item) = item match { case _: Numeric => true; case _ => false }
+
   def items(repr: String): List[Item] = {
     val (first, tokens) = Tokenizer(repr)
-
-    def isNumeric(item: Item) = item match { case _: Numeric => true; case _ => false }
-
-    def postProcess(prevIsNumeric: Option[Boolean], item: Item, tokens0: Stream[(Tokenizer.Separator, Item)]): Stream[Item] = {
-      val tokens = {
-        var _tokens = tokens0
-
-        if (isNumeric(item)) {
-          val nextNonDotZero = _tokens.dropWhile{case (Tokenizer.Dot, n: Numeric) => n.isEmpty; case _ => false }
-          if (nextNonDotZero.forall(t => t._1 == Tokenizer.Hyphen || ((t._1 == Tokenizer.Dot || t._1 == Tokenizer.None) && !isNumeric(t._2)))) { // Dot && isNumeric(t._2)
-            _tokens = nextNonDotZero
-          }
-        }
-
-        _tokens
-      }
-
-      def ifFollowedByNumberElse(ifFollowedByNumber: Item, default: Item) = {
-        val followedByNumber = tokens.headOption
-          .exists{ case (Tokenizer.None, num: Numeric) if !num.isEmpty => true; case _ => false }
-
-        if (followedByNumber) ifFollowedByNumber
-        else default
-      }
-
-      def next =
-        if (tokens.isEmpty) Stream()
-        else postProcess(Some(isNumeric(item)), tokens.head._2, tokens.tail)
-
-      item match {
-        case Literal("min") => Min #:: next
-        case Literal("max") => Max #:: next
-        case Literal("a") =>
-          ifFollowedByNumberElse(qualifiersMap("alpha"), item) #:: next
-        case Literal("b") =>
-          ifFollowedByNumberElse(qualifiersMap("beta"), item) #:: next
-        case Literal("m") =>
-          ifFollowedByNumberElse(qualifiersMap("milestone"), item) #:: next
-        case _ =>
-          item #:: next
-      }
-    }
 
     postProcess(None, first, tokens).toList
   }

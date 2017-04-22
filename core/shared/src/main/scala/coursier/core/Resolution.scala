@@ -376,7 +376,11 @@ object Resolution {
       // although I can find no mention of them in any manual / spec
       "pom.groupId"         -> project.module.organization,
       "pom.artifactId"      -> project.module.name,
-      "pom.version"         -> project.version
+      "pom.version"         -> project.version,
+      // Required by some dependencies too (org.apache.directory.shared:shared-ldap:0.9.19 in particular)
+      "groupId"             -> project.module.organization,
+      "artifactId"          -> project.module.name,
+      "version"             -> project.version
     ) ++ project.properties ++ Seq(
       "project.groupId"     -> project.module.organization,
       "project.artifactId"  -> project.module.name,

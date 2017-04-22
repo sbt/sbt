@@ -140,7 +140,13 @@ object Pom {
   def packagingOpt(pom: Node): Option[String] =
     text(pom, "packaging", "").toOption
 
-  def project(pom: Node): String \/ Project = {
+  def project(pom: Node): String \/ Project =
+    project(pom, relocationAsDependency = false)
+
+  def project(
+    pom: Node,
+    relocationAsDependency: Boolean
+  ): String \/ Project = {
     import Scalaz._
 
     for {
@@ -242,10 +248,41 @@ object Pom {
           case \/-(d) => d
         }
 
+      val finalProjModule = projModule.copy(organization = groupId)
+
+      val relocationDependencyOpt =
+        if (relocationAsDependency)
+          pom.children
+            .find(_.label == "distributionManagement")
+            .flatMap(_.children.find(_.label == "relocation"))
+            .map { n =>
+
+              // see https://maven.apache.org/guides/mini/guide-relocation.html
+
+              val relocatedGroupId = text(n, "groupId", "").getOrElse(finalProjModule.organization)
+              val relocatedArtifactId = text(n, "artifactId", "").getOrElse(finalProjModule.name)
+              val relocatedVersion = text(n, "version", "").getOrElse(version)
+
+              "" -> Dependency(
+                finalProjModule.copy(
+                  organization = relocatedGroupId,
+                  name = relocatedArtifactId
+                ),
+                relocatedVersion,
+                "",
+                Set(),
+                Attributes("", ""),
+                optional = false,
+                transitive = true
+              )
+            }
+        else
+          None
+
       Project(
-        projModule.copy(organization = groupId),
+        finalProjModule,
         version,
-        deps.map {
+        (relocationDependencyOpt.toList ::: deps).map {
           case (config, dep0) =>
             val dep = extraAttrsMap.get(dep0.moduleVersion).fold(dep0)(attrs =>
               dep0.copy(module = dep0.module.copy(attributes = attrs))
@@ -353,10 +390,6 @@ object Pom {
       release = text(xmlVersioning, "release", "Release version")
         .getOrElse("")
 
-      versionsOpt = xmlVersioning.children
-        .find(_.label == "versions")
-        .map(_.children.filter(_.label == "version").flatMap(_.children.collectFirst{case Text(t) => t}))
-
       lastUpdatedOpt = text(xmlVersioning, "lastUpdated", "Last update date and time")
         .toOption
         .flatMap(parseDateTime)
@@ -384,7 +417,7 @@ object Pom {
           text(_, "localCopy", "Snapshot local copy")
             .toOption
         )
-        .collect{
+        .collect {
           case "true" => true
           case "false" => false
         }
