@@ -44,6 +44,23 @@ object Release {
     state
   }
 
+  val checkAppveyorStatus = ReleaseStep { state =>
+
+    val currentHash = state.vcs.currentHash
+
+    val build = Appveyor.branchLastBuild("alexarchambault/coursier-a7n6k", "master", state.log)
+
+    state.log.info(s"Found last build ${build.buildId} for branch master, status: ${build.status}")
+
+    if (build.commitId != currentHash)
+      sys.error(s"Last master Appveyor build corresponds to commit ${build.commitId}, expected $currentHash")
+
+    if (build.status != "success")
+      sys.error(s"Last master Appveyor build status: ${build.status}")
+
+    state
+  }
+
   val previousReleaseVersion = AttributeKey[String]("previousReleaseVersion")
   val initialVersion = AttributeKey[String]("initialVersion")
 
@@ -242,6 +259,7 @@ object Release {
   val settings = Seq(
     releaseProcess := Seq[ReleaseStep](
       checkTravisStatus,
+      checkAppveyorStatus,
       savePreviousReleaseVersion,
       checkSnapshotDependencies,
       inquireVersions,
