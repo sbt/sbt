@@ -62,6 +62,6 @@ object Publish {
     }
   )
 
-  lazy val released = pomStuff ++ pushToSonatypeStuff
+  lazy val released = pomStuff ++ pushToSonatypeStuff ++ Release.settings
 
 }
