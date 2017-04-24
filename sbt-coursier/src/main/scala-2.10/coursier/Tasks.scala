@@ -158,20 +158,67 @@ object Tasks {
       sbt.Keys.ivyConfigurations
     ).map { (state, projectRef, projId, sv, sbv, ivyConfs) =>
 
-      val packageTasks = Seq(packageBin, packageSrc, packageDoc)
+      val sbtBinArtifacts =
+        for ((config, targetConfig) <- configsMap) yield {
 
-      val sbtArtifacts =
-        for {
-          pkgTask <- packageTasks
-          (config, targetConfig) <- configsMap
-        } yield {
-          val publish = publishArtifact.in(projectRef).in(pkgTask).in(config).getOrElse(state, false)
+          val publish = publishArtifact
+            .in(projectRef)
+            .in(packageBin)
+            .in(config)
+            .getOrElse(state, false)
+
           if (publish)
-            artifact.in(projectRef).in(pkgTask).in(config).find(state)
+            artifact
+              .in(projectRef)
+              .in(packageBin)
+              .in(config)
+              .find(state)
               .map(targetConfig -> _)
           else
             None
         }
+
+      val sbtSourceArtifacts =
+        for ((config, _) <- configsMap) yield {
+
+          val publish = publishArtifact
+            .in(projectRef)
+            .in(packageSrc)
+            .in(config)
+            .getOrElse(state, false)
+
+          if (publish)
+            artifact
+              .in(projectRef)
+              .in(packageSrc)
+              .in(config)
+              .find(state)
+              .map("sources" -> _)
+          else
+            None
+        }
+
+      val sbtDocArtifacts =
+        for ((config, _) <- configsMap) yield {
+
+          val publish = publishArtifact
+            .in(projectRef)
+            .in(packageDoc)
+            .in(config)
+            .getOrElse(state, false)
+
+          if (publish)
+            artifact
+              .in(projectRef)
+              .in(packageDoc)
+              .in(config)
+              .find(state)
+              .map("docs" -> _)
+          else
+            None
+        }
+
+      val sbtArtifacts = sbtBinArtifacts ++ sbtSourceArtifacts ++ sbtDocArtifacts
 
       def artifactPublication(artifact: sbt.Artifact) = {
 
