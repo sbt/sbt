@@ -264,7 +264,6 @@ object Release {
       checkSnapshotDependencies,
       inquireVersions,
       saveInitialVersion,
-      runTest,
       setReleaseVersion,
       commitReleaseVersion,
       publishArtifacts,
