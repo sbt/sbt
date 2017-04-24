@@ -40,6 +40,8 @@ object Keys {
 
   val coursierConfigurations = TaskKey[Map[String, Set[String]]]("coursier-configurations")
 
+
+  val coursierParentProjectCache = TaskKey[Map[Seq[Resolver], Seq[ProjectCache]]]("coursier-parent-project-cache")
   val coursierResolution = TaskKey[Resolution]("coursier-resolution")
   val coursierSbtClassifiersResolution = TaskKey[Resolution]("coursier-sbt-classifiers-resolution")
 

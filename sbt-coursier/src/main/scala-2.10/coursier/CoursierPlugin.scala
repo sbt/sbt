@@ -32,6 +32,7 @@ object CoursierPlugin extends AutoPlugin {
 
     val coursierConfigurations = Keys.coursierConfigurations
 
+    val coursierParentProjectCache = Keys.coursierParentProjectCache
     val coursierResolution = Keys.coursierResolution
     val coursierSbtClassifiersResolution = Keys.coursierSbtClassifiersResolution
 
@@ -118,6 +119,7 @@ object CoursierPlugin extends AutoPlugin {
     coursierPublications <<= Tasks.coursierPublicationsTask(packageConfigs: _*),
     coursierSbtClassifiersModule <<= classifiersModule in updateSbtClassifiers,
     coursierConfigurations <<= Tasks.coursierConfigurationsTask(None),
+    coursierParentProjectCache <<= Tasks.parentProjectCacheTask,
     coursierResolution <<= Tasks.resolutionTask(),
     coursierSbtClassifiersResolution <<= Tasks.resolutionTask(
       sbtClassifiers = true
