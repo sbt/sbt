@@ -19,6 +19,31 @@ object Release {
       }
   }
 
+  val checkTravisStatus = ReleaseStep { state =>
+
+    val currentHash = state.vcs.currentHash
+
+    val build = Travis.builds("coursier/coursier", state.log)
+      .find { build =>
+        build.job_ids.headOption.exists { id =>
+          Travis.job(id, state.log).commit.sha == currentHash
+        }
+      }
+      .getOrElse {
+        sys.error(s"Status for commit $currentHash not found on Travis")
+      }
+
+    state.log.info(s"Found build ${build.id.value} for commit $currentHash, state: ${build.state}")
+
+    build.state match {
+      case "passed" =>
+      case _ =>
+        sys.error(s"Build for $currentHash in state ${build.state}")
+    }
+
+    state
+  }
+
   val previousReleaseVersion = AttributeKey[String]("previousReleaseVersion")
   val initialVersion = AttributeKey[String]("initialVersion")
 
@@ -216,6 +241,7 @@ object Release {
 
   val settings = Seq(
     releaseProcess := Seq[ReleaseStep](
+      checkTravisStatus,
       savePreviousReleaseVersion,
       checkSnapshotDependencies,
       inquireVersions,
