@@ -137,6 +137,8 @@ object Keys {
   val definedSbtPlugins = TaskKey[Set[String]]("defined-sbt-plugins", "The set of names of Plugin implementations defined by this project.", CTask)
   val discoveredSbtPlugins = TaskKey[PluginDiscovery.DiscoveredNames]("discovered-sbt-plugins", "The names of sbt plugin-related modules (modules that extend Build, Plugin, AutoPlugin) defined by this project.", CTask)
   val sbtPlugin = SettingKey[Boolean]("sbt-plugin", "If true, enables adding sbt as a dependency and auto-generation of the plugin descriptor file.", BMinusSetting)
+  val pluginCrossBuild = TaskKey[Unit]("pluginCrossBuild", "Dummy task to scope `sbtVersion in pluginCrossBuild`, which gets used for plugin compilation.")
+  val crossSbtVersions = SettingKey[Seq[String]]("crossSbtVersions", "The versions of Sbt used when cross-building an sbt plugin.")
   val printWarnings = TaskKey[Unit]("print-warnings", "Shows warnings from compilation, including ones that weren't printed initially.", BPlusTask)
   val fileInputOptions = SettingKey[Seq[String]]("file-input-options", "Options that take file input, which may invalidate the cache.", CSetting)
   val scalaCompilerBridgeSource = SettingKey[ModuleID]("scala-compiler-bridge-source", "Configures the module ID of the sources of the compiler bridge.", CSetting)
