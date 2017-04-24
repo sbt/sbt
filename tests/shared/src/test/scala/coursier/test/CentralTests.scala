@@ -151,7 +151,7 @@ object CentralTests extends TestSuite {
   ): Future[T] = async {
     val res = await(resolve(deps, extraRepo = extraRepo))
 
-    assert(res.errors.isEmpty)
+    assert(res.metadataErrors.isEmpty)
     assert(res.conflicts.isEmpty)
     assert(res.isDone)
 
@@ -444,7 +444,7 @@ object CentralTests extends TestSuite {
 
           val res = await(resolve(deps))
 
-          assert(res.errors.isEmpty)
+          assert(res.metadataErrors.isEmpty)
           assert(res.conflicts.isEmpty)
           assert(res.isDone)
 
@@ -479,7 +479,7 @@ object CentralTests extends TestSuite {
 
           val res = await(resolve(deps))
 
-          assert(res.errors.isEmpty)
+          assert(res.metadataErrors.isEmpty)
           assert(res.conflicts.isEmpty)
           assert(res.isDone)
 
