@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+
+# Import all the shared environment
+BASE_DIR=$(git rev-parse --show-toplevel)
+. "$BASE_DIR/scripts/hooks/shared-info"
+
+# Format sources
+echo "Formatting sources..."
+"$BASE_DIR/scripts/format"
+
+# Set up environment for the prepare-commit-msg hook
+git status > "$OLD_STATUS_FILE"
+git diff --staged > "$OLD_DIFF_FILE"
+
+# This correctly updates index and commit after formatting sources
+git add -u --ignore-removal
+
+# Make sure that if formatter leaves no staged element, we exit
+if [ $(git diff --staged | wc -l) -eq 0 ]; then
+  echo "nothing to commit, working tree clean"
+  exit 1
+fi

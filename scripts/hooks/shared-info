@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+OLD_STATUS_FILE="$BASE_DIR/.git/status-before-format.bak"
+OLD_DIFF_FILE="$BASE_DIR/.git/diff-before-format.bak"
