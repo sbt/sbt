@@ -78,7 +78,9 @@ val root = (project in file(".")).
     },
     // DEBIAN SPECIFIC
     version in Debian := sbtVersionToRelease,
-    debianPackageDependencies in Debian ++= Seq("openjdk-8-jdk", "bash (>= 3.2)"),
+    // Used to have "openjdk-8-jdk" but that doesn't work on Ubuntu 14.04 https://github.com/sbt/sbt/issues/3105
+    // before that we had java6-runtime-headless" and that was pulling in JDK9 on Ubuntu 16.04 https://github.com/sbt/sbt/issues/2931
+    debianPackageDependencies in Debian ++= Seq("bash (>= 3.2)"),
     debianPackageRecommends in Debian += "git",
     linuxPackageMappings in Debian += {
       val bd = sourceDirectory.value
