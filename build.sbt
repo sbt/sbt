@@ -18,11 +18,19 @@ def commonSettings: Seq[Setting[_]] = Seq(
   scalacOptions += "-Ywarn-unused",
   mimaPreviousArtifacts := Set(), // Some(organization.value %% moduleName.value % "1.0.0"),
   publishArtifact in Compile := true,
-  publishArtifact in Test := false
+  publishArtifact in Test := false,
+  commands += Command.command("scalafmtCheck") { state =>
+    sys.process.Process("git diff --name-only --exit-code").! match {
+      case 0 => // ok
+      case x => sys.error("git diff detected! Did you compile before committing?")
+    }
+    state
+  }
 )
 
 lazy val lmRoot = (project in file(".")).
   aggregate(lm).
+  disablePlugins(com.typesafe.sbt.SbtScalariform).
   settings(
     inThisBuild(Seq(
       homepage := Some(url("https://github.com/sbt/librarymanagement")),
@@ -41,6 +49,7 @@ lazy val lmRoot = (project in file(".")).
   )
 
 lazy val lm = (project in file("librarymanagement")).
+  disablePlugins(com.typesafe.sbt.SbtScalariform).
   settings(
     commonSettings,
     name := "librarymanagement",
