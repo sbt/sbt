@@ -37,68 +37,83 @@ object ReplaceMavenConfigurationMappings {
 
     // NOTE - This code is copied from org.apache.ivy.plugins.parser.m2.PomModuleDescriptorBuilder
     // except with altered default configurations...
-    REPLACEMENT_MAPPINGS.put("compile", new PomModuleDescriptorBuilder.ConfMapper {
-      def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean): Unit = {
-        if (isOptional) {
-          dd.addDependencyConfiguration("optional", "compile(*)")
-          // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
-          dd.addDependencyConfiguration("optional", "master(compile)")
-        } else {
-          dd.addDependencyConfiguration("compile", "compile(*)")
-          // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
-          dd.addDependencyConfiguration("compile", "master(compile)")
-          dd.addDependencyConfiguration("runtime", "runtime(*)")
+    REPLACEMENT_MAPPINGS.put(
+      "compile",
+      new PomModuleDescriptorBuilder.ConfMapper {
+        def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean): Unit = {
+          if (isOptional) {
+            dd.addDependencyConfiguration("optional", "compile(*)")
+            // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
+            dd.addDependencyConfiguration("optional", "master(compile)")
+          } else {
+            dd.addDependencyConfiguration("compile", "compile(*)")
+            // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
+            dd.addDependencyConfiguration("compile", "master(compile)")
+            dd.addDependencyConfiguration("runtime", "runtime(*)")
+          }
         }
       }
-    })
-    REPLACEMENT_MAPPINGS.put("provided", new PomModuleDescriptorBuilder.ConfMapper {
-      def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean): Unit = {
-        if (isOptional) {
-          dd.addDependencyConfiguration("optional", "compile(*)")
-          dd.addDependencyConfiguration("optional", "provided(*)")
-          dd.addDependencyConfiguration("optional", "runtime(*)")
-          // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
-          dd.addDependencyConfiguration("optional", "master(compile)")
-        } else {
-          dd.addDependencyConfiguration("provided", "compile(*)")
-          dd.addDependencyConfiguration("provided", "provided(*)")
-          dd.addDependencyConfiguration("provided", "runtime(*)")
-          // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
-          dd.addDependencyConfiguration("provided", "master(compile)")
+    )
+    REPLACEMENT_MAPPINGS.put(
+      "provided",
+      new PomModuleDescriptorBuilder.ConfMapper {
+        def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean): Unit = {
+          if (isOptional) {
+            dd.addDependencyConfiguration("optional", "compile(*)")
+            dd.addDependencyConfiguration("optional", "provided(*)")
+            dd.addDependencyConfiguration("optional", "runtime(*)")
+            // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
+            dd.addDependencyConfiguration("optional", "master(compile)")
+          } else {
+            dd.addDependencyConfiguration("provided", "compile(*)")
+            dd.addDependencyConfiguration("provided", "provided(*)")
+            dd.addDependencyConfiguration("provided", "runtime(*)")
+            // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
+            dd.addDependencyConfiguration("provided", "master(compile)")
+          }
         }
       }
-    })
+    )
 
-    REPLACEMENT_MAPPINGS.put("runtime", new PomModuleDescriptorBuilder.ConfMapper {
-      def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean): Unit = {
-        if (isOptional) {
-          dd.addDependencyConfiguration("optional", "compile(*)")
-          dd.addDependencyConfiguration("optional", "provided(*)")
-          // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
-          dd.addDependencyConfiguration("optional", "master(compile)")
-        } else {
-          dd.addDependencyConfiguration("runtime", "compile(*)")
-          dd.addDependencyConfiguration("runtime", "runtime(*)")
-          // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
-          dd.addDependencyConfiguration("runtime", "master(compile)")
+    REPLACEMENT_MAPPINGS.put(
+      "runtime",
+      new PomModuleDescriptorBuilder.ConfMapper {
+        def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean): Unit = {
+          if (isOptional) {
+            dd.addDependencyConfiguration("optional", "compile(*)")
+            dd.addDependencyConfiguration("optional", "provided(*)")
+            // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
+            dd.addDependencyConfiguration("optional", "master(compile)")
+          } else {
+            dd.addDependencyConfiguration("runtime", "compile(*)")
+            dd.addDependencyConfiguration("runtime", "runtime(*)")
+            // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
+            dd.addDependencyConfiguration("runtime", "master(compile)")
+          }
         }
       }
-    })
+    )
 
-    REPLACEMENT_MAPPINGS.put("test", new PomModuleDescriptorBuilder.ConfMapper {
-      def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean): Unit = {
-        dd.addDependencyConfiguration("test", "runtime(*)")
-        // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
-        dd.addDependencyConfiguration("test", "master(compile)")
+    REPLACEMENT_MAPPINGS.put(
+      "test",
+      new PomModuleDescriptorBuilder.ConfMapper {
+        def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean): Unit = {
+          dd.addDependencyConfiguration("test", "runtime(*)")
+          // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
+          dd.addDependencyConfiguration("test", "master(compile)")
+        }
       }
-    })
+    )
 
-    REPLACEMENT_MAPPINGS.put("system", new PomModuleDescriptorBuilder.ConfMapper {
-      def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean): Unit = {
-        // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
-        dd.addDependencyConfiguration("system", "master(compile)")
+    REPLACEMENT_MAPPINGS.put(
+      "system",
+      new PomModuleDescriptorBuilder.ConfMapper {
+        def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean): Unit = {
+          // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
+          dd.addDependencyConfiguration("system", "master(compile)")
+        }
       }
-    })
+    )
 
     REPLACEMENT_MAPPINGS
   }
@@ -106,13 +121,17 @@ object ReplaceMavenConfigurationMappings {
   def init(): Unit = {
     // Here we mutate a static final field, because we have to AND because it's evil.
     try {
-      val map = PomModuleDescriptorBuilder.MAVEN2_CONF_MAPPING.asInstanceOf[java.util.Map[String, PomModuleDescriptorBuilder.ConfMapper]]
+      val map = PomModuleDescriptorBuilder.MAVEN2_CONF_MAPPING
+        .asInstanceOf[java.util.Map[String, PomModuleDescriptorBuilder.ConfMapper]]
       map.clear()
       map.putAll(REPLACEMENT_MAVEN_MAPPINGS)
     } catch {
       case e: Exception =>
         // TODO - Log that Ivy may not be configured correctly and you could have maven/ivy issues.
-        throw new RuntimeException("FAILURE to install Ivy maven hooks.  Your ivy-maven interaction may suffer resolution errors", e)
+        throw new RuntimeException(
+          "FAILURE to install Ivy maven hooks.  Your ivy-maven interaction may suffer resolution errors",
+          e
+        )
     }
   }
 }

@@ -11,13 +11,13 @@ object AutomateScalafmtPlugin extends AutoPlugin {
       configurations.flatMap { c =>
         inConfig(c)(
           Seq(
-           compileInputs.in(compile) := {
+            compileInputs.in(compile) := {
               scalafmtInc.value
               compileInputs.in(compile).value
             },
             sourceDirectories.in(scalafmtInc) := Seq(scalaSource.value),
             scalafmtInc := {
-              val cache   = streams.value.cacheDirectory / "scalafmt"
+              val cache = streams.value.cacheDirectory / "scalafmt"
               val include = includeFilter.in(scalafmtInc).value
               val exclude = excludeFilter.in(scalafmtInc).value
               val sources =

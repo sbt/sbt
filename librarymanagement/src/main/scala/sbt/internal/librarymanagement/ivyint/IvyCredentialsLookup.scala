@@ -6,8 +6,10 @@ import collection.JavaConverters._
 
 /** A key used to store credentials in the ivy credentials store. */
 private[sbt] sealed trait CredentialKey
+
 /** Represents a key in the ivy credentials store that is only specific to a host. */
 private[sbt] case class Host(name: String) extends CredentialKey
+
 /** Represents a key in the ivy credentials store that is keyed to both a host and a "realm". */
 private[sbt] case class Realm(host: String, realm: String) extends CredentialKey
 

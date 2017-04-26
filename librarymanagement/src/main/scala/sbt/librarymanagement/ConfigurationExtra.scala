@@ -6,7 +6,8 @@ package sbt.librarymanagement
 object Configurations {
   def config(name: String) = Configuration(name)
   def default: Seq[Configuration] = defaultMavenConfigurations
-  def defaultMavenConfigurations: Seq[Configuration] = Seq(Compile, Runtime, Test, Provided, Optional)
+  def defaultMavenConfigurations: Seq[Configuration] =
+    Seq(Compile, Runtime, Test, Provided, Optional)
   def defaultInternal: Seq[Configuration] = Seq(CompileInternal, RuntimeInternal, TestInternal)
   def auxiliary: Seq[Configuration] = Seq(Pom)
   def names(cs: Seq[Configuration]) = cs.map(_.name)
@@ -24,7 +25,8 @@ object Configurations {
     case _               => c
   }
 
-  def internal(base: Configuration, ext: Configuration*) = config(base.name + "-internal").extend(ext: _*).hide
+  def internal(base: Configuration, ext: Configuration*) =
+    config(base.name + "-internal").extend(ext: _*).hide
   def fullInternal(base: Configuration): Configuration = internal(base, base, Optional, Provided)
   def optionalInternal(base: Configuration): Configuration = internal(base, base, Optional)
 
@@ -44,15 +46,24 @@ object Configurations {
 
   private[sbt] val DefaultMavenConfiguration = defaultConfiguration(true)
   private[sbt] val DefaultIvyConfiguration = defaultConfiguration(false)
-  private[sbt] def DefaultConfiguration(mavenStyle: Boolean) = if (mavenStyle) DefaultMavenConfiguration else DefaultIvyConfiguration
-  private[sbt] def defaultConfiguration(mavenStyle: Boolean) = if (mavenStyle) Configurations.Compile else Configurations.Default
-  private[sbt] def removeDuplicates(configs: Iterable[Configuration]) = Set(scala.collection.mutable.Map(configs.map(config => (config.name, config)).toSeq: _*).values.toList: _*)
+  private[sbt] def DefaultConfiguration(mavenStyle: Boolean) =
+    if (mavenStyle) DefaultMavenConfiguration else DefaultIvyConfiguration
+  private[sbt] def defaultConfiguration(mavenStyle: Boolean) =
+    if (mavenStyle) Configurations.Compile else Configurations.Default
+  private[sbt] def removeDuplicates(configs: Iterable[Configuration]) =
+    Set(
+      scala.collection.mutable
+        .Map(configs.map(config => (config.name, config)).toSeq: _*)
+        .values
+        .toList: _*
+    )
 
   /** Returns true if the configuration should be under the influence of scalaVersion. */
   private[sbt] def underScalaVersion(c: Configuration): Boolean =
     c match {
       case Default | Compile | IntegrationTest | Provided | Runtime | Test | Optional |
-        CompilerPlugin | CompileInternal | RuntimeInternal | TestInternal => true
+          CompilerPlugin | CompileInternal | RuntimeInternal | TestInternal =>
+        true
       case config =>
         config.extendsConfigs exists underScalaVersion
     }
@@ -68,8 +79,10 @@ abstract class ConfigurationExtra {
   require(name != null && !name.isEmpty)
   require(description != null)
 
-  def describedAs(newDescription: String) = Configuration(name, newDescription, isPublic, extendsConfigs, transitive)
-  def extend(configs: Configuration*) = Configuration(name, description, isPublic, configs.toVector ++ extendsConfigs, transitive)
+  def describedAs(newDescription: String) =
+    Configuration(name, newDescription, isPublic, extendsConfigs, transitive)
+  def extend(configs: Configuration*) =
+    Configuration(name, description, isPublic, configs.toVector ++ extendsConfigs, transitive)
   def notTransitive = intransitive
   def intransitive = Configuration(name, description, isPublic, extendsConfigs, false)
   def hide = Configuration(name, description, false, extendsConfigs, transitive)

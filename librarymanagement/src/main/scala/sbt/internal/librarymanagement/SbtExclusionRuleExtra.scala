@@ -9,7 +9,8 @@ abstract class SbtExclusionRuleFunctions {
 
   def apply(organization: String): SbtExclusionRule = apply(organization, "*")
 
-  implicit def groupIdToExclusionRule(organization: GroupID): SbtExclusionRule = apply(organization.groupID)
+  implicit def groupIdToExclusionRule(organization: GroupID): SbtExclusionRule =
+    apply(organization.groupID)
   implicit def stringToExclusionRule(organization: String): SbtExclusionRule = apply(organization)
 
   implicit def groupArtifactIDToExclusionRule(gaid: GroupArtifactID): SbtExclusionRule =

@@ -6,16 +6,16 @@ import sbt.util.{ Level, Logger }
 import Configurations._
 
 final class CompatibilityWarningOptions private[sbt] (
-  val configurations: Seq[Configuration],
-  val level: Level.Value
+    val configurations: Seq[Configuration],
+    val level: Level.Value
 )
 
 object CompatibilityWarningOptions {
   def default: CompatibilityWarningOptions =
     apply(configurations = List(Compile, Runtime), level = Level.Warn)
   def apply(
-    configurations: List[Configuration],
-    level: Level.Value
+      configurations: List[Configuration],
+      level: Level.Value
   ): CompatibilityWarningOptions =
     new CompatibilityWarningOptions(
       configurations = configurations,
@@ -24,12 +24,21 @@ object CompatibilityWarningOptions {
 }
 
 private[sbt] object CompatibilityWarning {
-  def run(config: CompatibilityWarningOptions, module: IvySbt#Module, mavenStyle: Boolean, log: Logger): Unit = {
+  def run(
+      config: CompatibilityWarningOptions,
+      module: IvySbt#Module,
+      mavenStyle: Boolean,
+      log: Logger
+  ): Unit = {
     if (mavenStyle) {
       processIntransitive(config, module, log)
     }
   }
-  def processIntransitive(config: CompatibilityWarningOptions, module: IvySbt#Module, log: Logger): Unit = {
+  def processIntransitive(
+      config: CompatibilityWarningOptions,
+      module: IvySbt#Module,
+      log: Logger
+  ): Unit = {
     val monitoredConfigsStr: Set[String] = (config.configurations map { _.name }).toSet
     val directDependencies: Seq[ModuleID] = module.moduleSettings match {
       case x: InlineConfiguration => x.dependencies

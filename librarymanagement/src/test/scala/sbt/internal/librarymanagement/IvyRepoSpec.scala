@@ -15,7 +15,8 @@ class IvyRepoSpec extends BaseIvySpecification with DependencyBuilders {
 
     module(
       ourModuleID,
-      Vector(dep), None //, UpdateOptions().withCachedResolution(true)
+      Vector(dep),
+      None //, UpdateOptions().withCachedResolution(true)
     )
   }
 
@@ -59,12 +60,26 @@ class IvyRepoSpec extends BaseIvySpecification with DependencyBuilders {
     val clMod = {
       val externalModules = Vector(dep)
       // Note: need to extract ourModuleID so we can plug it in here, can't fish it back out of the IvySbt#Module (`m`)
-      GetClassifiersModule(ourModuleID, externalModules, Vector(Configurations.Compile), attemptedClassifiers)
+      GetClassifiersModule(ourModuleID,
+                           externalModules,
+                           Vector(Configurations.Compile),
+                           attemptedClassifiers)
     }
 
-    val gcm = GetClassifiersConfiguration(clMod, Map.empty, c.withArtifactFilter(c.artifactFilter.invert), ivyScala, srcTypes, docTypes)
+    val gcm = GetClassifiersConfiguration(clMod,
+                                          Map.empty,
+                                          c.withArtifactFilter(c.artifactFilter.invert),
+                                          ivyScala,
+                                          srcTypes,
+                                          docTypes)
 
-    val report2 = IvyActions.updateClassifiers(m.owner, gcm, UnresolvedWarningConfiguration(), LogicalClock.unknown, None, Vector(), log)
+    val report2 = IvyActions.updateClassifiers(m.owner,
+                                               gcm,
+                                               UnresolvedWarningConfiguration(),
+                                               LogicalClock.unknown,
+                                               None,
+                                               Vector(),
+                                               log)
 
     import Inside._
     inside(report2.configuration("compile").map(_.modules)) {

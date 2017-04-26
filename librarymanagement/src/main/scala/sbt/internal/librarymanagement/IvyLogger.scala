@@ -44,6 +44,7 @@ private final class IvyLoggerInterface(logger: Logger) extends MessageLogger {
   def setShowProgress(progress: Boolean): Unit = ()
 }
 private final class SbtMessageLoggerEngine extends MessageLoggerEngine {
+
   /** This is a hack to filter error messages about 'unknown resolver ...'. */
   override def error(msg: String): Unit = if (SbtIvyLogger.acceptError(msg)) super.error(msg)
   override def sumupProblems(): Unit = clearProblems()

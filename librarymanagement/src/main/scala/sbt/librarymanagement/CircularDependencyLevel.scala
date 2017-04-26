@@ -1,6 +1,11 @@
 package sbt.librarymanagement
 
-import org.apache.ivy.plugins.circular.{ CircularDependencyStrategy, WarnCircularDependencyStrategy, IgnoreCircularDependencyStrategy, ErrorCircularDependencyStrategy }
+import org.apache.ivy.plugins.circular.{
+  CircularDependencyStrategy,
+  WarnCircularDependencyStrategy,
+  IgnoreCircularDependencyStrategy,
+  ErrorCircularDependencyStrategy
+}
 
 /**
  * Wrapper around circular dependency strategy.

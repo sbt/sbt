@@ -18,6 +18,7 @@ object Credentials {
   /** Add the provided credentials to Ivy's credentials cache.*/
   def add(realm: String, host: String, userName: String, passwd: String): Unit =
     CredentialsStore.INSTANCE.addCredentials(realm, host, userName, passwd)
+
   /** Load credentials from the given file into Ivy's credentials cache.*/
   def add(path: File, log: Logger): Unit =
     loadCredentials(path) match {
@@ -29,20 +30,26 @@ object Credentials {
   def allDirect(sc: Seq[Credentials]): Seq[DirectCredentials] = sc map toDirect
   def toDirect(c: Credentials): DirectCredentials = c match {
     case dc: DirectCredentials => dc
-    case fc: FileCredentials => loadCredentials(fc.path) match {
-      case Left(err) => sys.error(err)
-      case Right(dc) => dc
-    }
+    case fc: FileCredentials =>
+      loadCredentials(fc.path) match {
+        case Left(err) => sys.error(err)
+        case Right(dc) => dc
+      }
   }
 
   def loadCredentials(path: File): Either[String, DirectCredentials] =
     if (path.exists) {
       val properties = read(path)
-      def get(keys: List[String]) = keys.flatMap(properties.get).headOption.toRight(keys.head + " not specified in credentials file: " + path)
+      def get(keys: List[String]) =
+        keys
+          .flatMap(properties.get)
+          .headOption
+          .toRight(keys.head + " not specified in credentials file: " + path)
 
       IvyUtil.separate(List(RealmKeys, HostKeys, UserKeys, PasswordKeys).map(get)) match {
-        case (Nil, List(realm, host, user, pass)) => Right(new DirectCredentials(realm, host, user, pass))
-        case (errors, _)                          => Left(errors.mkString("\n"))
+        case (Nil, List(realm, host, user, pass)) =>
+          Right(new DirectCredentials(realm, host, user, pass))
+        case (errors, _) => Left(errors.mkString("\n"))
       }
     } else
       Left("Credentials file " + path + " does not exist")
@@ -59,16 +66,20 @@ object Credentials {
   private[this] val PasswordKeys = List("password", "pwd", "pass", "passwd")
 
   import collection.JavaConverters._
-  private[this] def read(from: File): Map[String, String] =
-    {
-      val properties = new java.util.Properties
-      IO.load(properties, from)
-      properties.asScala.map { case (k, v) => (k.toString, v.toString.trim) }.toMap
-    }
+  private[this] def read(from: File): Map[String, String] = {
+    val properties = new java.util.Properties
+    IO.load(properties, from)
+    properties.asScala.map { case (k, v) => (k.toString, v.toString.trim) }.toMap
+  }
 }
 
 sealed trait Credentials
 final class FileCredentials(val path: File) extends Credentials {
   override def toString = "FileCredentials('" + path + "')"
 }
-final class DirectCredentials(val realm: String, val host: String, val userName: String, val passwd: String) extends Credentials
+final class DirectCredentials(
+    val realm: String,
+    val host: String,
+    val userName: String,
+    val passwd: String
+) extends Credentials

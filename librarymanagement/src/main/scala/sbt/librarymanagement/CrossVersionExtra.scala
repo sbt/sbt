@@ -6,6 +6,7 @@ import sbt.internal.librarymanagement.cross.CrossVersionUtil
 final case class ScalaVersion(full: String, binary: String)
 
 abstract class CrossVersionFunctions {
+
   /** The first `major.minor` Scala version that the Scala binary version should be used for cross-versioning instead of the full version. */
   val TransitionScalaVersion = CrossVersionUtil.TransitionScalaVersion
 
@@ -50,7 +51,11 @@ abstract class CrossVersionFunctions {
    * full version `fullVersion` and binary version `binaryVersion`.  The behavior of the
    * constructed function is as documented for the [[sbt.librarymanagement.CrossVersion]] datatypes.
    */
-  def apply(cross: CrossVersion, fullVersion: String, binaryVersion: String): Option[String => String] =
+  def apply(
+      cross: CrossVersion,
+      fullVersion: String,
+      binaryVersion: String
+  ): Option[String => String] =
     cross match {
       case _: Disabled => None
       case b: Binary   => append(b.prefix + binaryVersion + b.suffix)
@@ -64,10 +69,15 @@ abstract class CrossVersionFunctions {
 
   /** Constructs the cross-version function defined by `module` and `is`, if one is configured. */
   def apply(module: ModuleID, is: Option[IvyScala]): Option[String => String] =
-    is flatMap { i => apply(module, i) }
+    is flatMap { i =>
+      apply(module, i)
+    }
 
   /** Cross-version each `Artifact` in `artifacts` according to cross-version function `cross`. */
-  def substituteCross(artifacts: Vector[Artifact], cross: Option[String => String]): Vector[Artifact] =
+  def substituteCross(
+      artifacts: Vector[Artifact],
+      cross: Option[String => String]
+  ): Vector[Artifact] =
     cross match {
       case None     => artifacts
       case Some(is) => substituteCrossA(artifacts, cross)
@@ -83,9 +93,14 @@ abstract class CrossVersionFunctions {
     name + "_" + cross
 
   /** Cross-versions `exclude` according to its `crossVersion`. */
-  private[sbt] def substituteCross(exclude: SbtExclusionRule, is: Option[IvyScala]): SbtExclusionRule = {
+  private[sbt] def substituteCross(
+      exclude: SbtExclusionRule,
+      is: Option[IvyScala]
+  ): SbtExclusionRule = {
     val fopt: Option[String => String] =
-      is flatMap { i => CrossVersion(exclude.crossVersion, i.scalaFullVersion, i.scalaBinaryVersion) }
+      is flatMap { i =>
+        CrossVersion(exclude.crossVersion, i.scalaFullVersion, i.scalaBinaryVersion)
+      }
     exclude.withName(applyCross(exclude.name, fopt))
   }
 
@@ -93,7 +108,10 @@ abstract class CrossVersionFunctions {
   def substituteCross(a: Artifact, cross: Option[String => String]): Artifact =
     a.withName(applyCross(a.name, cross))
 
-  private[sbt] def substituteCrossA(as: Vector[Artifact], cross: Option[String => String]): Vector[Artifact] =
+  private[sbt] def substituteCrossA(
+      as: Vector[Artifact],
+      cross: Option[String => String]
+  ): Vector[Artifact] =
     as.map(art => substituteCross(art, cross))
 
   /**
@@ -101,14 +119,14 @@ abstract class CrossVersionFunctions {
    * for the given full and binary Scala versions `scalaFullVersion` and `scalaBinaryVersion`
    * according to the ModuleID's cross-versioning setting.
    */
-  def apply(scalaFullVersion: String, scalaBinaryVersion: String): ModuleID => ModuleID = m =>
-    {
-      val cross = apply(m.crossVersion, scalaFullVersion, scalaBinaryVersion)
-      if (cross.isDefined)
-        m.withName(applyCross(m.name, cross)).withExplicitArtifacts(substituteCrossA(m.explicitArtifacts, cross))
-      else
-        m
-    }
+  def apply(scalaFullVersion: String, scalaBinaryVersion: String): ModuleID => ModuleID = m => {
+    val cross = apply(m.crossVersion, scalaFullVersion, scalaBinaryVersion)
+    if (cross.isDefined)
+      m.withName(applyCross(m.name, cross))
+        .withExplicitArtifacts(substituteCrossA(m.explicitArtifacts, cross))
+    else
+      m
+  }
 
   @deprecated("Use CrossVersion.isScalaApiCompatible or CrossVersion.isSbtApiCompatible", "0.13.0")
   def isStable(v: String): Boolean = isScalaApiCompatible(v)
@@ -152,6 +170,7 @@ abstract class CrossVersionFunctions {
   def binarySbtVersion(full: String): String = CrossVersionUtil.binarySbtVersion(full)
 
   @deprecated("Use CrossVersion.scalaApiVersion or CrossVersion.sbtApiVersion", "0.13.0")
-  def binaryVersion(full: String, cutoff: String): String = CrossVersionUtil.binaryVersion(full, cutoff)
+  def binaryVersion(full: String, cutoff: String): String =
+    CrossVersionUtil.binaryVersion(full, cutoff)
 
 }

@@ -12,20 +12,22 @@ import sbt.util.Logger
  * See also UpdateConfiguration in IvyActions.scala.
  */
 final class UpdateOptions private[sbt] (
-  // If set to CircularDependencyLevel.Error, halt the dependency resolution.
-  val circularDependencyLevel: CircularDependencyLevel,
-  // If set to true, prioritize inter-project resolver
-  val interProjectFirst: Boolean,
-  // If set to true, check all resolvers for snapshots.
-  val latestSnapshots: Boolean,
-  // If set to true, use consolidated resolution.
-  val consolidatedResolution: Boolean,
-  // If set to true, use cached resolution.
-  val cachedResolution: Boolean,
-  // Extension point for an alternative resolver converter.
-  val resolverConverter: UpdateOptions.ResolverConverter
+    // If set to CircularDependencyLevel.Error, halt the dependency resolution.
+    val circularDependencyLevel: CircularDependencyLevel,
+    // If set to true, prioritize inter-project resolver
+    val interProjectFirst: Boolean,
+    // If set to true, check all resolvers for snapshots.
+    val latestSnapshots: Boolean,
+    // If set to true, use consolidated resolution.
+    val consolidatedResolution: Boolean,
+    // If set to true, use cached resolution.
+    val cachedResolution: Boolean,
+    // Extension point for an alternative resolver converter.
+    val resolverConverter: UpdateOptions.ResolverConverter
 ) {
-  def withCircularDependencyLevel(circularDependencyLevel: CircularDependencyLevel): UpdateOptions =
+  def withCircularDependencyLevel(
+      circularDependencyLevel: CircularDependencyLevel
+  ): UpdateOptions =
     copy(circularDependencyLevel = circularDependencyLevel)
   def withInterProjectFirst(interProjectFirst: Boolean): UpdateOptions =
     copy(interProjectFirst = interProjectFirst)
@@ -42,17 +44,18 @@ final class UpdateOptions private[sbt] (
       cachedResolution = cachedResoluton,
       consolidatedResolution = cachedResolution
     )
+
   /** Extention point for an alternative resolver converter. */
   def withResolverConverter(resolverConverter: UpdateOptions.ResolverConverter): UpdateOptions =
     copy(resolverConverter = resolverConverter)
 
   private[sbt] def copy(
-    circularDependencyLevel: CircularDependencyLevel = this.circularDependencyLevel,
-    interProjectFirst: Boolean = this.interProjectFirst,
-    latestSnapshots: Boolean = this.latestSnapshots,
-    consolidatedResolution: Boolean = this.consolidatedResolution,
-    cachedResolution: Boolean = this.cachedResolution,
-    resolverConverter: UpdateOptions.ResolverConverter = this.resolverConverter
+      circularDependencyLevel: CircularDependencyLevel = this.circularDependencyLevel,
+      interProjectFirst: Boolean = this.interProjectFirst,
+      latestSnapshots: Boolean = this.latestSnapshots,
+      consolidatedResolution: Boolean = this.consolidatedResolution,
+      cachedResolution: Boolean = this.cachedResolution,
+      resolverConverter: UpdateOptions.ResolverConverter = this.resolverConverter
   ): UpdateOptions =
     new UpdateOptions(
       circularDependencyLevel,
@@ -73,16 +76,15 @@ final class UpdateOptions private[sbt] (
     case _ => false
   }
 
-  override def hashCode: Int =
-    {
-      var hash = 1
-      hash = hash * 31 + this.circularDependencyLevel.##
-      hash = hash * 31 + this.interProjectFirst.##
-      hash = hash * 31 + this.latestSnapshots.##
-      hash = hash * 31 + this.cachedResolution.##
-      hash = hash * 31 + this.resolverConverter.##
-      hash
-    }
+  override def hashCode: Int = {
+    var hash = 1
+    hash = hash * 31 + this.circularDependencyLevel.##
+    hash = hash * 31 + this.interProjectFirst.##
+    hash = hash * 31 + this.latestSnapshots.##
+    hash = hash * 31 + this.cachedResolution.##
+    hash = hash * 31 + this.resolverConverter.##
+    hash
+  }
 }
 
 object UpdateOptions {

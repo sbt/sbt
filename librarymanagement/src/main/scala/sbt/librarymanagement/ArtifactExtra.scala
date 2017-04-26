@@ -16,28 +16,48 @@ abstract class ArtifactExtra {
   def extraAttributes: Map[String, String]
 
   protected[this] def copy(
-    name: String = name,
-    `type`: String = `type`,
-    extension: String = extension,
-    classifier: Option[String] = classifier,
-    configurations: Vector[Configuration] = configurations,
-    url: Option[URL] = url,
-    extraAttributes: Map[String, String] = extraAttributes
+      name: String = name,
+      `type`: String = `type`,
+      extension: String = extension,
+      classifier: Option[String] = classifier,
+      configurations: Vector[Configuration] = configurations,
+      url: Option[URL] = url,
+      extraAttributes: Map[String, String] = extraAttributes
   ): Artifact
 
-  def extra(attributes: (String, String)*) = copy(extraAttributes = extraAttributes ++ ModuleID.checkE(attributes))
+  def extra(attributes: (String, String)*) =
+    copy(extraAttributes = extraAttributes ++ ModuleID.checkE(attributes))
 }
 
 import Configurations.{ Optional, Pom, Test }
 
 abstract class ArtifactFunctions {
-  def apply(name: String, extra: Map[String, String]): Artifact = Artifact(name, DefaultType, DefaultExtension, None, Vector.empty, None, extra)
-  def apply(name: String, classifier: String): Artifact = Artifact(name, DefaultType, DefaultExtension, Some(classifier), Vector.empty, None)
-  def apply(name: String, `type`: String, extension: String): Artifact = Artifact(name, `type`, extension, None, Vector.empty, None)
-  def apply(name: String, `type`: String, extension: String, classifier: String): Artifact = Artifact(name, `type`, extension, Some(classifier), Vector.empty, None)
-  def apply(name: String, url: URL): Artifact = Artifact(name, extract(url, DefaultType), extract(url, DefaultExtension), None, Vector.empty, Some(url))
+  def apply(name: String, extra: Map[String, String]): Artifact =
+    Artifact(name, DefaultType, DefaultExtension, None, Vector.empty, None, extra)
+  def apply(name: String, classifier: String): Artifact =
+    Artifact(name, DefaultType, DefaultExtension, Some(classifier), Vector.empty, None)
+  def apply(name: String, `type`: String, extension: String): Artifact =
+    Artifact(name, `type`, extension, None, Vector.empty, None)
+  def apply(name: String, `type`: String, extension: String, classifier: String): Artifact =
+    Artifact(name, `type`, extension, Some(classifier), Vector.empty, None)
+  def apply(name: String, url: URL): Artifact =
+    Artifact(
+      name,
+      extract(url, DefaultType),
+      extract(url, DefaultExtension),
+      None,
+      Vector.empty,
+      Some(url)
+    )
 
-  def apply(name: String, `type`: String, extension: String, classifier: Option[String], configurations: Vector[Configuration], url: Option[URL]): Artifact =
+  def apply(
+      name: String,
+      `type`: String,
+      extension: String,
+      classifier: Option[String],
+      configurations: Vector[Configuration],
+      url: Option[URL]
+  ): Artifact =
     Artifact(name, `type`, extension, classifier, configurations, url, Map.empty[String, String])
 
   val DefaultExtension = "jar"
@@ -66,29 +86,33 @@ abstract class ArtifactFunctions {
   assert(DefaultSourceTypes contains SourceType)
 
   def extract(url: URL, default: String): String = extract(url.toString, default)
-  def extract(name: String, default: String): String =
-    {
-      val i = name.lastIndexOf('.')
-      if (i >= 0)
-        name.substring(i + 1)
-      else
-        default
-    }
-  def defaultArtifact(file: File) =
-    {
-      val name = file.getName
-      val i = name.lastIndexOf('.')
-      val base = if (i >= 0) name.substring(0, i) else name
-      Artifact(base, extract(name, DefaultType), extract(name, DefaultExtension), None, Vector.empty, Some(file.toURI.toURL))
-    }
-  def artifactName(scalaVersion: ScalaVersion, module: ModuleID, artifact: Artifact): String =
-    {
-      import artifact._
-      val classifierStr = classifier match { case None => ""; case Some(c) => "-" + c }
-      val cross = CrossVersion(module.crossVersion, scalaVersion.full, scalaVersion.binary)
-      val base = CrossVersion.applyCross(artifact.name, cross)
-      base + "-" + module.revision + classifierStr + "." + artifact.extension
-    }
+  def extract(name: String, default: String): String = {
+    val i = name.lastIndexOf('.')
+    if (i >= 0)
+      name.substring(i + 1)
+    else
+      default
+  }
+  def defaultArtifact(file: File) = {
+    val name = file.getName
+    val i = name.lastIndexOf('.')
+    val base = if (i >= 0) name.substring(0, i) else name
+    Artifact(
+      base,
+      extract(name, DefaultType),
+      extract(name, DefaultExtension),
+      None,
+      Vector.empty,
+      Some(file.toURI.toURL)
+    )
+  }
+  def artifactName(scalaVersion: ScalaVersion, module: ModuleID, artifact: Artifact): String = {
+    import artifact._
+    val classifierStr = classifier match { case None => ""; case Some(c) => "-" + c }
+    val cross = CrossVersion(module.crossVersion, scalaVersion.full, scalaVersion.binary)
+    val base = CrossVersion.applyCross(artifact.name, cross)
+    base + "-" + module.revision + classifierStr + "." + artifact.extension
+  }
 
   val classifierTypeMap = Map(SourceClassifier -> SourceType, DocClassifier -> DocType)
   @deprecated("Configuration should not be decided from the classifier.", "1.0")
@@ -97,7 +121,8 @@ abstract class ArtifactFunctions {
       Test
     else
       Optional
-  def classifierType(classifier: String): String = classifierTypeMap.getOrElse(classifier.stripPrefix(TestsClassifier + "-"), DefaultType)
+  def classifierType(classifier: String): String =
+    classifierTypeMap.getOrElse(classifier.stripPrefix(TestsClassifier + "-"), DefaultType)
 
   /**
    * Create a classified explicit artifact, to be used when trying to resolve sources|javadocs from Maven. This is
@@ -105,5 +130,12 @@ abstract class ArtifactFunctions {
    * The artifact is created under the default configuration.
    */
   def classified(name: String, classifier: String): Artifact =
-    Artifact(name, classifierType(classifier), DefaultExtension, Some(classifier), Vector.empty, None)
+    Artifact(
+      name,
+      classifierType(classifier),
+      DefaultExtension,
+      Some(classifier),
+      Vector.empty,
+      None
+    )
 }

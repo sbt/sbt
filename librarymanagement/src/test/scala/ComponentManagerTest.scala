@@ -73,11 +73,16 @@ class ComponentManagerTest extends UnitSpec {
   }
 
   private def checksum(files: Iterable[File]): Seq[String] = files.map(checksum).toSeq
-  private def checksum(file: File): String = if (file.exists) ChecksumHelper.computeAsString(file, "sha1") else ""
-  private def defineFile(manager: ComponentManager, id: String, name: String): String = createFile(manager, id, name)(checksum)
-  private def defineFiles(manager: ComponentManager, id: String, names: String*): Seq[String] = createFiles(manager, id, names: _*)(checksum)
-  private def createFile[T](manager: ComponentManager, id: String, name: String)(f: File => T): T = createFiles(manager, id, name)(files => f(files.toList.head))
-  private def createFiles[T](manager: ComponentManager, id: String, names: String*)(f: Seq[File] => T): T =
+  private def checksum(file: File): String =
+    if (file.exists) ChecksumHelper.computeAsString(file, "sha1") else ""
+  private def defineFile(manager: ComponentManager, id: String, name: String): String =
+    createFile(manager, id, name)(checksum)
+  private def defineFiles(manager: ComponentManager, id: String, names: String*): Seq[String] =
+    createFiles(manager, id, names: _*)(checksum)
+  private def createFile[T](manager: ComponentManager, id: String, name: String)(f: File => T): T =
+    createFiles(manager, id, name)(files => f(files.toList.head))
+  private def createFiles[T](manager: ComponentManager, id: String, names: String*)(
+      f: Seq[File] => T): T =
     withTemporaryDirectory { dir =>
       val files = names.map(name => new File(dir, name))
       files.foreach(writeRandomContent)
@@ -87,7 +92,9 @@ class ComponentManagerTest extends UnitSpec {
   private def writeRandomContent(file: File) = IO.write(file, randomString)
   private def randomString = "asdf"
   private def withManager[T](f: ComponentManager => T): T =
-    withTemporaryDirectory { ivyHome => withManagerHome(ivyHome)(f) }
+    withTemporaryDirectory { ivyHome =>
+      withManagerHome(ivyHome)(f)
+    }
 
   private def withManagerHome[T](ivyHome: File)(f: ComponentManager => T): T =
     TestLogger { logger =>
@@ -105,19 +112,26 @@ class ComponentManagerTest extends UnitSpec {
           override def defineComponent(id: String, files: Array[File]): Unit = {
             val location = componentLocation(id)
             if (location.exists)
-              throw new RuntimeException(s"Cannot redefine component.  ID: $id, files: ${files.mkString(",")}")
+              throw new RuntimeException(
+                s"Cannot redefine component.  ID: $id, files: ${files.mkString(",")}")
             else {
-              IO.copy(files.map { f => f -> new java.io.File(location, f.getName) })
+              IO.copy(files.map { f =>
+                f -> new java.io.File(location, f.getName)
+              })
               ()
             }
           }
           override def addToComponent(id: String, files: Array[File]): Boolean = {
             val location = componentLocation(id)
-            IO.copy(files.map { f => f -> new java.io.File(location, f.getName) })
+            IO.copy(files.map { f =>
+              f -> new java.io.File(location, f.getName)
+            })
             true
           }
           override def component(id: String): Array[File] =
-            Option(componentLocation(id).listFiles()).map(_.filter(_.isFile)).getOrElse(Array.empty)
+            Option(componentLocation(id).listFiles())
+              .map(_.filter(_.isFile))
+              .getOrElse(Array.empty)
         }
         // A stubbed locking API.
         object locks extends xsbti.GlobalLock {

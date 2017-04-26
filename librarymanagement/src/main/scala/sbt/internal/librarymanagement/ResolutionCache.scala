@@ -19,10 +19,24 @@ import sbt.librarymanagement._
  * 2. Have them per-project for easier cleaning (possible with standard cache, but central to this custom one).
  * 3. Cache location includes extra attributes so that cross builds of a plugin do not overwrite each other.
  */
-private[sbt] final class ResolutionCache(base: File, settings: IvySettings) extends ResolutionCacheManager {
+private[sbt] final class ResolutionCache(base: File, settings: IvySettings)
+    extends ResolutionCacheManager {
   private[this] def resolvedFileInCache(m: ModuleRevisionId, name: String, ext: String): File = {
     val p = ResolvedPattern
-    val f = IvyPatternHelper.substitute(p, m.getOrganisation, m.getName, m.getBranch, m.getRevision, name, name, ext, null, null, m.getAttributes, null)
+    val f = IvyPatternHelper.substitute(
+      p,
+      m.getOrganisation,
+      m.getName,
+      m.getBranch,
+      m.getRevision,
+      name,
+      name,
+      ext,
+      null,
+      null,
+      m.getAttributes,
+      null
+    )
     new File(base, f)
   }
   private[this] val reportBase: File = new File(base, ReportDirectory)
@@ -62,11 +76,16 @@ private[sbt] final class ResolutionCache(base: File, settings: IvySettings) exte
   }
 }
 private[sbt] object ResolutionCache {
+
   /**
    * Removes cached files from the resolution cache for the module with ID `mrid`
    * and the resolveId (as set on `ResolveOptions`).
    */
-  private[sbt] def cleanModule(mrid: ModuleRevisionId, resolveId: String, manager: ResolutionCacheManager): Unit = {
+  private[sbt] def cleanModule(
+      mrid: ModuleRevisionId,
+      resolveId: String,
+      manager: ResolutionCacheManager
+  ): Unit = {
     val files =
       Option(manager.getResolvedIvyFileInCache(mrid)).toList :::
         Option(manager.getResolvedIvyPropertiesInCache(mrid)).toList :::
