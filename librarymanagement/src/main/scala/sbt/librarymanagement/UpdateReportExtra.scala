@@ -29,7 +29,9 @@ abstract class ConfigurationReportExtra {
   }
 
   def retrieve(f: (String, ModuleID, Artifact, File) => File): ConfigurationReport =
-    ConfigurationReport(configuration, modules map { _.retrieve((mid, art, file) => f(configuration, mid, art, file)) }, details)
+    ConfigurationReport(configuration, modules map {
+      _.retrieve((mid, art, file) => f(configuration, mid, art, file))
+    }, details)
 }
 
 abstract class ModuleReportExtra {
@@ -52,7 +54,8 @@ abstract class ModuleReportExtra {
   def licenses: Vector[(String, Option[String])]
   def callers: Vector[Caller]
 
-  protected[this] def arts: Vector[String] = artifacts.map(_.toString) ++ missingArtifacts.map(art => "(MISSING) " + art)
+  protected[this] def arts: Vector[String] =
+    artifacts.map(_.toString) ++ missingArtifacts.map(art => "(MISSING) " + art)
 
   def detailReport: String =
     s"\t\t- ${module.revision}\n" +
@@ -71,48 +74,50 @@ abstract class ModuleReportExtra {
         if (extraAttributes.isEmpty) None
         else { Some(extraAttributes.toString) }
       ) +
-        reportStr("isDefault", isDefault map { _.toString }) +
-        reportStr("branch", branch) +
-        reportStr(
-          "configurations",
-          if (configurations.isEmpty) None
-          else { Some(configurations.mkString(", ")) }
-        ) +
-          reportStr(
-            "licenses",
-            if (licenses.isEmpty) None
-            else { Some(licenses.mkString(", ")) }
-          ) +
-            reportStr(
-              "callers",
-              if (callers.isEmpty) None
-              else { Some(callers.mkString(", ")) }
-            )
+      reportStr("isDefault", isDefault map { _.toString }) +
+      reportStr("branch", branch) +
+      reportStr(
+        "configurations",
+        if (configurations.isEmpty) None
+        else { Some(configurations.mkString(", ")) }
+      ) +
+      reportStr(
+        "licenses",
+        if (licenses.isEmpty) None
+        else { Some(licenses.mkString(", ")) }
+      ) +
+      reportStr(
+        "callers",
+        if (callers.isEmpty) None
+        else { Some(callers.mkString(", ")) }
+      )
   private[sbt] def reportStr(key: String, value: Option[String]): String =
-    value map { x => s"\t\t\t$key: $x\n" } getOrElse ""
+    value map { x =>
+      s"\t\t\t$key: $x\n"
+    } getOrElse ""
 
   def retrieve(f: (ModuleID, Artifact, File) => File): ModuleReport =
     copy(artifacts = artifacts.map { case (art, file) => (art, f(module, art, file)) })
 
   protected[this] def copy(
-    module: ModuleID = module,
-    artifacts: Vector[(Artifact, File)] = artifacts,
-    missingArtifacts: Vector[Artifact] = missingArtifacts,
-    status: Option[String] = status,
-    publicationDate: Option[ju.Calendar] = publicationDate,
-    resolver: Option[String] = resolver,
-    artifactResolver: Option[String] = artifactResolver,
-    evicted: Boolean = evicted,
-    evictedData: Option[String] = evictedData,
-    evictedReason: Option[String] = evictedReason,
-    problem: Option[String] = problem,
-    homepage: Option[String] = homepage,
-    extraAttributes: Map[String, String] = extraAttributes,
-    isDefault: Option[Boolean] = isDefault,
-    branch: Option[String] = branch,
-    configurations: Vector[String] = configurations,
-    licenses: Vector[(String, Option[String])] = licenses,
-    callers: Vector[Caller] = callers
+      module: ModuleID = module,
+      artifacts: Vector[(Artifact, File)] = artifacts,
+      missingArtifacts: Vector[Artifact] = missingArtifacts,
+      status: Option[String] = status,
+      publicationDate: Option[ju.Calendar] = publicationDate,
+      resolver: Option[String] = resolver,
+      artifactResolver: Option[String] = artifactResolver,
+      evicted: Boolean = evicted,
+      evictedData: Option[String] = evictedData,
+      evictedReason: Option[String] = evictedReason,
+      problem: Option[String] = problem,
+      homepage: Option[String] = homepage,
+      extraAttributes: Map[String, String] = extraAttributes,
+      isDefault: Option[Boolean] = isDefault,
+      branch: Option[String] = branch,
+      configurations: Vector[String] = configurations,
+      licenses: Vector[(String, Option[String])] = licenses,
+      callers: Vector[Caller] = callers
   ): ModuleReport
 }
 
@@ -123,22 +128,21 @@ abstract class UpdateReportExtra {
   private[sbt] def stamps: Map[File, Long]
 
   /** All resolved modules in all configurations. */
-  def allModules: Vector[ModuleID] =
-    {
-      val key = (m: ModuleID) => (m.organization, m.name, m.revision)
-      configurations.flatMap(_.allModules).groupBy(key).toVector map {
-        case (k, v) =>
-          v reduceLeft { (agg, x) =>
-            agg.withConfigurations(
-              (agg.configurations, x.configurations) match {
-                case (None, _)            => x.configurations
-                case (Some(ac), None)     => Some(ac)
-                case (Some(ac), Some(xc)) => Some(s"$ac;$xc")
-              }
-            )
-          }
-      }
+  def allModules: Vector[ModuleID] = {
+    val key = (m: ModuleID) => (m.organization, m.name, m.revision)
+    configurations.flatMap(_.allModules).groupBy(key).toVector map {
+      case (k, v) =>
+        v reduceLeft { (agg, x) =>
+          agg.withConfigurations(
+            (agg.configurations, x.configurations) match {
+              case (None, _)            => x.configurations
+              case (Some(ac), None)     => Some(ac)
+              case (Some(ac), Some(xc)) => Some(s"$ac;$xc")
+            }
+          )
+        }
     }
+  }
 
   def retrieve(f: (String, ModuleID, Artifact, File) => File): UpdateReport =
     UpdateReport(cachedDescriptor, configurations map { _ retrieve f }, stats, stamps)

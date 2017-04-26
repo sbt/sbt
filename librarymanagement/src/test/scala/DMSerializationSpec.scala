@@ -52,11 +52,14 @@ class DMSerializationSpec extends UnitSpec {
   }
 
   lazy val updateReportExample =
-    UpdateReport(new File("./foo"), Vector(configurationReportExample),
-      UpdateStats(0, 0, 0, false), Map(new File("./foo") -> 0))
+    UpdateReport(new File("./foo"),
+                 Vector(configurationReportExample),
+                 UpdateStats(0, 0, 0, false),
+                 Map(new File("./foo") -> 0))
   lazy val configurationReportExample =
-    ConfigurationReport("compile", Vector(moduleReportExample),
-      Vector(organizationArtifactReportExample))
+    ConfigurationReport("compile",
+                        Vector(moduleReportExample),
+                        Vector(organizationArtifactReportExample))
   lazy val organizationArtifactReportExample =
     OrganizationArtifactReport("org", "name", Vector(moduleReportExample))
   lazy val moduleReportExample =
@@ -68,13 +71,13 @@ class DMSerializationSpec extends UnitSpec {
   def roundtripStr[A: JsonReader: JsonWriter](a: A): Assertion =
     roundtripBuilder(a) { _.toString shouldBe _.toString }
 
-  def roundtripBuilder[A: JsonReader: JsonWriter](a: A)(f: (A, A) => Assertion): Assertion =
-    {
-      val json = isoString to (Converter toJsonUnsafe a)
-      println(json)
-      val obj = Converter fromJsonUnsafe[A] (isoString from json)
-      f(a, obj)
-    }
+  def roundtripBuilder[A: JsonReader: JsonWriter](a: A)(f: (A, A) => Assertion): Assertion = {
+    val json = isoString to (Converter toJsonUnsafe a)
+    println(json)
+    val obj = Converter fromJsonUnsafe [A] (isoString from json)
+    f(a, obj)
+  }
 
-  implicit val isoString: IsoString[JValue] = IsoString.iso(CompactPrinter.apply, FixedParser.parseUnsafe)
+  implicit val isoString: IsoString[JValue] =
+    IsoString.iso(CompactPrinter.apply, FixedParser.parseUnsafe)
 }

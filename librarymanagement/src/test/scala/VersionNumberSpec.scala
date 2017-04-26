@@ -38,45 +38,72 @@ class VersionNumberSpec extends UnitSpec {
   it should "be SecSeg compat with 0.12.1" in beSecSegCompatWith("0.12.0", "0.12.1")
   it should "be SecSeg compat with 0.12.1-M1" in beSecSegCompatWith("0.12.0", "0.12.1-M1")
 
-  "0.1.0-SNAPSHOT" should "be parsed" in beParsedAs("0.1.0-SNAPSHOT", Seq(0, 1, 0), Seq("SNAPSHOT"), Seq())
-  it should "cascade" in generateCorrectCascadingNumbers("0.1.0-SNAPSHOT", Seq("0.1.0-SNAPSHOT", "0.1.0", "0.1"))
-  it should "be SemVer compat with 0.1.0-SNAPSHOT" in beSemVerCompatWith("0.1.0-SNAPSHOT", "0.1.0-SNAPSHOT")
+  "0.1.0-SNAPSHOT" should "be parsed" in beParsedAs("0.1.0-SNAPSHOT",
+                                                    Seq(0, 1, 0),
+                                                    Seq("SNAPSHOT"),
+                                                    Seq())
+  it should "cascade" in generateCorrectCascadingNumbers("0.1.0-SNAPSHOT",
+                                                         Seq("0.1.0-SNAPSHOT", "0.1.0", "0.1"))
+  it should "be SemVer compat with 0.1.0-SNAPSHOT" in beSemVerCompatWith("0.1.0-SNAPSHOT",
+                                                                         "0.1.0-SNAPSHOT")
   it should "not be SemVer compat with 0.1.0" in notBeSemVerCompatWith("0.1.0-SNAPSHOT", "0.1.0")
-  it should "be SemVer compat with 0.1.0-SNAPSHOT+001" in beSemVerCompatWith("0.1.0-SNAPSHOT", "0.1.0-SNAPSHOT+001")
-  it should "be SecSeg compat with 0.1.0-SNAPSHOT" in beSecSegCompatWith("0.1.0-SNAPSHOT", "0.1.0-SNAPSHOT")
+  it should "be SemVer compat with 0.1.0-SNAPSHOT+001" in beSemVerCompatWith("0.1.0-SNAPSHOT",
+                                                                             "0.1.0-SNAPSHOT+001")
+  it should "be SecSeg compat with 0.1.0-SNAPSHOT" in beSecSegCompatWith("0.1.0-SNAPSHOT",
+                                                                         "0.1.0-SNAPSHOT")
   it should "be not SecSeg compat with 0.1.0" in notBeSecSegCompatWith("0.1.0-SNAPSHOT", "0.1.0")
-  it should "be SecSeg compat with 0.1.0-SNAPSHOT+001" in beSecSegCompatWith("0.1.0-SNAPSHOT", "0.1.0-SNAPSHOT+001")
+  it should "be SecSeg compat with 0.1.0-SNAPSHOT+001" in beSecSegCompatWith("0.1.0-SNAPSHOT",
+                                                                             "0.1.0-SNAPSHOT+001")
 
   "0.1.0-M1" should "be parsed" in beParsedAs("0.1.0-M1", Seq(0, 1, 0), Seq("M1"), Seq())
-  it should "cascade" in generateCorrectCascadingNumbers("0.1.0-M1", Seq("0.1.0-M1", "0.1.0", "0.1"))
+  it should "cascade" in generateCorrectCascadingNumbers("0.1.0-M1",
+                                                         Seq("0.1.0-M1", "0.1.0", "0.1"))
 
   "0.1.0-RC1" should "be parsed" in beParsedAs("0.1.0-RC1", Seq(0, 1, 0), Seq("RC1"), Seq())
-  it should "cascade" in generateCorrectCascadingNumbers("0.1.0-RC1", Seq("0.1.0-RC1", "0.1.0", "0.1"))
+  it should "cascade" in generateCorrectCascadingNumbers("0.1.0-RC1",
+                                                         Seq("0.1.0-RC1", "0.1.0", "0.1"))
 
-  "0.1.0-MSERVER-1" should "be parsed" in beParsedAs("0.1.0-MSERVER-1", Seq(0, 1, 0), Seq("MSERVER", "1"), Seq())
-  it should "cascade" in generateCorrectCascadingNumbers("0.1.0-MSERVER-1", Seq("0.1.0-MSERVER-1", "0.1.0", "0.1"))
+  "0.1.0-MSERVER-1" should "be parsed" in beParsedAs("0.1.0-MSERVER-1",
+                                                     Seq(0, 1, 0),
+                                                     Seq("MSERVER", "1"),
+                                                     Seq())
+  it should "cascade" in generateCorrectCascadingNumbers("0.1.0-MSERVER-1",
+                                                         Seq("0.1.0-MSERVER-1", "0.1.0", "0.1"))
 
   "2.10.4-20140115-000117-b3a-sources" should "be parsed" in {
-    beParsedAs("2.10.4-20140115-000117-b3a-sources", Seq(2, 10, 4), Seq("20140115", "000117", "b3a", "sources"), Seq())
+    beParsedAs("2.10.4-20140115-000117-b3a-sources",
+               Seq(2, 10, 4),
+               Seq("20140115", "000117", "b3a", "sources"),
+               Seq())
   }
-  it should "cascade" in generateCorrectCascadingNumbers("2.10.4-20140115-000117-b3a-sources", Seq("2.10.4-20140115-000117-b3a-sources", "2.10.4", "2.10"))
-  it should "be SemVer compat with 2.0.0" in beSemVerCompatWith("2.10.4-20140115-000117-b3a-sources", "2.0.0")
-  it should "be not SecSeg compat with 2.0.0" in notBeSecSegCompatWith("2.10.4-20140115-000117-b3a-sources", "2.0.0")
+  it should "cascade" in generateCorrectCascadingNumbers(
+    "2.10.4-20140115-000117-b3a-sources",
+    Seq("2.10.4-20140115-000117-b3a-sources", "2.10.4", "2.10"))
+  it should "be SemVer compat with 2.0.0" in beSemVerCompatWith(
+    "2.10.4-20140115-000117-b3a-sources",
+    "2.0.0")
+  it should "be not SecSeg compat with 2.0.0" in notBeSecSegCompatWith(
+    "2.10.4-20140115-000117-b3a-sources",
+    "2.0.0")
 
   "20140115000117-b3a-sources" should "be parsed" in {
     beParsedAs("20140115000117-b3a-sources", Seq(20140115000117L), Seq("b3a", "sources"), Seq())
   }
-  it should "cascade" in generateCorrectCascadingNumbers("20140115000117-b3a-sources", Seq("20140115000117-b3a-sources"))
+  it should "cascade" in generateCorrectCascadingNumbers("20140115000117-b3a-sources",
+                                                         Seq("20140115000117-b3a-sources"))
 
   "1.0.0-alpha+001+002" should "be parsed" in {
     beParsedAs("1.0.0-alpha+001+002", Seq(1, 0, 0), Seq("alpha"), Seq("+001", "+002"))
   }
-  it should "cascade" in generateCorrectCascadingNumbers("1.0.0-alpha+001+002", Seq("1.0.0-alpha+001+002", "1.0.0", "1.0"))
+  it should "cascade" in generateCorrectCascadingNumbers(
+    "1.0.0-alpha+001+002",
+    Seq("1.0.0-alpha+001+002", "1.0.0", "1.0"))
 
   "non.space.!?string" should "be parsed" in {
     beParsedAs("non.space.!?string", Seq(), Seq(), Seq("non.space.!?string"))
   }
-  it should "cascade" in generateCorrectCascadingNumbers("non.space.!?string", Seq("non.space.!?string"))
+  it should "cascade" in generateCorrectCascadingNumbers("non.space.!?string",
+                                                         Seq("non.space.!?string"))
 
   "space !?string" should "be parsed as an error" in beParsedAsError("space !?string")
   "blank string" should "be parsed as an error" in beParsedAsError("")
@@ -89,8 +116,11 @@ class VersionNumberSpec extends UnitSpec {
       case VersionNumber(ns1, ts1, es1) =>
         sys.error(s"$ns1, $ts1, $es1")
     }
-  def breakDownTo(s: String, major: Option[Long], minor: Option[Long] = None,
-    patch: Option[Long] = None, buildNumber: Option[Long] = None) =
+  def breakDownTo(s: String,
+                  major: Option[Long],
+                  minor: Option[Long] = None,
+                  patch: Option[Long] = None,
+                  buildNumber: Option[Long] = None) =
     s match {
       case VersionNumber(ns, ts, es) =>
         val v = VersionNumber(ns, ts, es)

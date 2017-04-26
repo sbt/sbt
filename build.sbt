@@ -18,19 +18,29 @@ def commonSettings: Seq[Setting[_]] = Seq(
   scalacOptions += "-Ywarn-unused",
   mimaPreviousArtifacts := Set(), // Some(organization.value %% moduleName.value % "1.0.0"),
   publishArtifact in Compile := true,
-  publishArtifact in Test := false
+  publishArtifact in Test := false,
+  commands += Command.command("scalafmtCheck") { state =>
+    sys.process.Process("git diff --name-only --exit-code").! match {
+      case 0 => // ok
+      case x => sys.error("git diff detected! Did you compile before committing?")
+    }
+    state
+  }
 )
 
-lazy val lmRoot = (project in file(".")).
-  aggregate(lm).
-  settings(
-    inThisBuild(Seq(
-      homepage := Some(url("https://github.com/sbt/librarymanagement")),
-      description := "Library management module for sbt",
-      scmInfo := Some(ScmInfo(url("https://github.com/sbt/librarymanagement"), "git@github.com:sbt/librarymanagement.git")),
-      bintrayPackage := "librarymanagement",
-      git.baseVersion := baseVersion
-    )),
+lazy val lmRoot = (project in file("."))
+  .aggregate(lm)
+  .disablePlugins(com.typesafe.sbt.SbtScalariform)
+  .settings(
+    inThisBuild(
+      Seq(
+        homepage := Some(url("https://github.com/sbt/librarymanagement")),
+        description := "Library management module for sbt",
+        scmInfo := Some(ScmInfo(url("https://github.com/sbt/librarymanagement"),
+                                "git@github.com:sbt/librarymanagement.git")),
+        bintrayPackage := "librarymanagement",
+        git.baseVersion := baseVersion
+      )),
     commonSettings,
     name := "LM Root",
     publish := {},
@@ -40,14 +50,24 @@ lazy val lmRoot = (project in file(".")).
     customCommands
   )
 
-lazy val lm = (project in file("librarymanagement")).
-  settings(
+lazy val lm = (project in file("librarymanagement"))
+  .disablePlugins(com.typesafe.sbt.SbtScalariform)
+  .settings(
     commonSettings,
     name := "librarymanagement",
-    libraryDependencies ++= Seq(
-      ivy, jsch, scalaReflect.value, launcherInterface, sjsonnewScalaJson % Optional),
+    libraryDependencies ++= Seq(ivy,
+                                jsch,
+                                scalaReflect.value,
+                                launcherInterface,
+                                sjsonnewScalaJson % Optional),
     libraryDependencies ++= scalaXml.value,
-    resourceGenerators in Compile += Def.task(Util.generateVersionFile(version.value, resourceManaged.value, streams.value, (compile in Compile).value)).taskValue,
+    resourceGenerators in Compile += Def
+      .task(
+        Util.generateVersionFile(version.value,
+                                 resourceManaged.value,
+                                 streams.value,
+                                 (compile in Compile).value))
+      .taskValue,
     mimaBinaryIssueFilters ++= Seq(),
     contrabandFormatsForType in generateContrabands in Compile := DatatypeConfig.getFormats,
     // WORKAROUND sbt/sbt#2205 include managed sources in packageSrc
@@ -57,16 +77,21 @@ lazy val lm = (project in file("librarymanagement")).
       val base = baseDirectory.value
       (((srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)) toSeq)
     }
-  ).
-  configure(addSbtIO, addSbtUtilLogging, addSbtUtilTesting, addSbtUtilCollection, addSbtUtilCompletion, addSbtUtilCache).
-  enablePlugins(ContrabandPlugin, JsonCodecPlugin)
+  )
+  .configure(addSbtIO,
+             addSbtUtilLogging,
+             addSbtUtilTesting,
+             addSbtUtilCollection,
+             addSbtUtilCompletion,
+             addSbtUtilCache)
+  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
 
 def customCommands: Seq[Setting[_]] = Seq(
   commands += Command.command("release") { state =>
     // "clean" ::
     "so compile" ::
-    "so publishSigned" ::
-    "reload" ::
-    state
+      "so publishSigned" ::
+      "reload" ::
+      state
   }
 )

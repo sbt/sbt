@@ -44,7 +44,9 @@ object ErrorMessageAuthenticator {
       case originalOpt                                   => installIntoIvyImpl(originalOpt)
     } catch {
       case t: Throwable =>
-        Message.debug("Error occurred while trying to install debug messages into Ivy Authentication" + t.getMessage)
+        Message.debug(
+          "Error occurred while trying to install debug messages into Ivy Authentication" + t.getMessage
+        )
     }
     Some(ivy)
   }
@@ -57,8 +59,10 @@ object ErrorMessageAuthenticator {
       catch {
         case e: SecurityException if !securityWarningLogged =>
           securityWarningLogged = true
-          Message.warn("Not enough permissions to set the ErrorMessageAuthenticator. "
-            + "Helpful debug messages disabled!");
+          Message.warn(
+            "Not enough permissions to set the ErrorMessageAuthenticator. "
+              + "Helpful debug messages disabled!"
+          );
       }
     // We will try to use the original authenticator as backup authenticator.
     // Since there is no getter available, so try to use some reflection to
@@ -73,6 +77,7 @@ object ErrorMessageAuthenticator {
     doInstallIfIvy(originalAuthenticator)
   }
 }
+
 /**
  * An authenticator which just delegates to a previous authenticator and issues *nice*
  * error messages on failure to find credentials.
@@ -80,7 +85,8 @@ object ErrorMessageAuthenticator {
  * Since ivy installs its own credentials handler EVERY TIME it resolves or publishes, we want to
  * install this one at some point and eventually ivy will capture it and use it.
  */
-private[sbt] final class ErrorMessageAuthenticator(original: Option[Authenticator]) extends Authenticator {
+private[sbt] final class ErrorMessageAuthenticator(original: Option[Authenticator])
+    extends Authenticator {
 
   protected override def getPasswordAuthentication(): PasswordAuthentication = {
     // We're guaranteed to only get here if Ivy's authentication fails
@@ -104,14 +110,16 @@ private[sbt] final class ErrorMessageAuthenticator(original: Option[Authenticato
     // Grabs the authentication that would have been provided had we not been installed...
     def originalAuthentication: Option[PasswordAuthentication] = {
       Authenticator.setDefault(original.orNull)
-      try Option(Authenticator.requestPasswordAuthentication(
-        getRequestingHost,
-        getRequestingSite,
-        getRequestingPort,
-        getRequestingProtocol,
-        getRequestingPrompt,
-        getRequestingScheme
-      ))
+      try Option(
+        Authenticator.requestPasswordAuthentication(
+          getRequestingHost,
+          getRequestingSite,
+          getRequestingPort,
+          getRequestingProtocol,
+          getRequestingPrompt,
+          getRequestingScheme
+        )
+      )
       finally Authenticator.setDefault(this)
     }
     originalAuthentication.orNull

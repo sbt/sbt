@@ -24,53 +24,56 @@ abstract class ModuleIDExtra {
   def branchName: Option[String]
 
   protected[this] def copy(
-    organization: String = organization,
-    name: String = name,
-    revision: String = revision,
-    configurations: Option[String] = configurations,
-    isChanging: Boolean = isChanging,
-    isTransitive: Boolean = isTransitive,
-    isForce: Boolean = isForce,
-    explicitArtifacts: Vector[Artifact] = explicitArtifacts,
-    inclusions: Vector[InclusionRule] = inclusions,
-    exclusions: Vector[ExclusionRule] = exclusions,
-    extraAttributes: Map[String, String] = extraAttributes,
-    crossVersion: CrossVersion = crossVersion,
-    branchName: Option[String] = branchName
+      organization: String = organization,
+      name: String = name,
+      revision: String = revision,
+      configurations: Option[String] = configurations,
+      isChanging: Boolean = isChanging,
+      isTransitive: Boolean = isTransitive,
+      isForce: Boolean = isForce,
+      explicitArtifacts: Vector[Artifact] = explicitArtifacts,
+      inclusions: Vector[InclusionRule] = inclusions,
+      exclusions: Vector[ExclusionRule] = exclusions,
+      extraAttributes: Map[String, String] = extraAttributes,
+      crossVersion: CrossVersion = crossVersion,
+      branchName: Option[String] = branchName
   ): ModuleID
 
   protected def toStringImpl: String =
     s"""$organization:$name:$revision""" +
-      (configurations match { case Some(s) => ":" + s; case None => "" }) +
-      {
-        val attr = attributeString
-        if (attr == "") ""
-        else " " + attr
-      } +
+      (configurations match { case Some(s) => ":" + s; case None => "" }) + {
+      val attr = attributeString
+      if (attr == "") ""
+      else " " + attr
+    } +
       (if (extraAttributes.isEmpty) "" else " " + extraString)
 
-  protected def attributeString: String =
-    {
-      val buffer = ListBuffer.empty[String]
-      if (isChanging) {
-        buffer += "changing"
-      }
-      if (!isTransitive) {
-        buffer += "intransitive"
-      }
-      if (isForce) {
-        buffer += "force"
-      }
-      buffer.toList.mkString(";")
+  protected def attributeString: String = {
+    val buffer = ListBuffer.empty[String]
+    if (isChanging) {
+      buffer += "changing"
     }
+    if (!isTransitive) {
+      buffer += "intransitive"
+    }
+    if (isForce) {
+      buffer += "force"
+    }
+    buffer.toList.mkString(";")
+  }
 
   /** String representation of the extra attributes, excluding any information only attributes. */
-  def extraString: String = extraDependencyAttributes.map { case (k, v) => k + "=" + v } mkString ("(", ", ", ")")
+  def extraString: String =
+    extraDependencyAttributes.map { case (k, v) => k + "=" + v } mkString ("(", ", ", ")")
 
   /** Returns the extra attributes except for ones marked as information only (ones that typically would not be used for dependency resolution). */
-  def extraDependencyAttributes: Map[String, String] = extraAttributes.filterKeys(!_.startsWith(SbtPomExtraProperties.POM_INFO_KEY_PREFIX))
+  def extraDependencyAttributes: Map[String, String] =
+    extraAttributes.filterKeys(!_.startsWith(SbtPomExtraProperties.POM_INFO_KEY_PREFIX))
 
-  @deprecated("Use `cross(CrossVersion)`, the variant accepting a CrossVersion value constructed by a member of the CrossVersion object instead.", "0.12.0")
+  @deprecated(
+    "Use `cross(CrossVersion)`, the variant accepting a CrossVersion value constructed by a member of the CrossVersion object instead.",
+    "0.12.0"
+  )
   def cross(v: Boolean): ModuleID = cross(if (v) CrossVersion.binary else Disabled())
 
   /** Specifies the cross-version behavior for this module.  See [CrossVersion] for details.*/
@@ -111,7 +114,8 @@ abstract class ModuleIDExtra {
    * Declares the explicit artifacts for this module.  If this ModuleID represents a dependency,
    * these artifact definitions override the information in the dependency's published metadata.
    */
-  def artifacts(newArtifacts: Artifact*) = copy(explicitArtifacts = newArtifacts.toVector ++ explicitArtifacts)
+  def artifacts(newArtifacts: Artifact*) =
+    copy(explicitArtifacts = newArtifacts.toVector ++ explicitArtifacts)
 
   /**
    * Applies the provided exclusions to dependencies of this module.  Note that only exclusions that specify
@@ -120,13 +124,15 @@ abstract class ModuleIDExtra {
   def excludeAll(rules: InclExclRule*) = copy(exclusions = this.exclusions ++ rules)
 
   /** Excludes the dependency with organization `org` and `name` from being introduced by this dependency during resolution. */
-  def exclude(org: String, name: String) = excludeAll(InclExclRule().withOrganization(org).withName(name))
+  def exclude(org: String, name: String) =
+    excludeAll(InclExclRule().withOrganization(org).withName(name))
 
   /**
    * Adds extra attributes for this module.  All keys are prefixed with `e:` if they are not already so prefixed.
    * This information will only be published in an ivy.xml and not in a pom.xml.
    */
-  def extra(attributes: (String, String)*) = copy(extraAttributes = this.extraAttributes ++ ModuleID.checkE(attributes))
+  def extra(attributes: (String, String)*) =
+    copy(extraAttributes = this.extraAttributes ++ ModuleID.checkE(attributes))
 
   /**
    * Not recommended for new use.  This method is not deprecated, but the `update-classifiers` task is preferred
@@ -175,7 +181,9 @@ abstract class ModuleIDExtra {
 }
 
 abstract class ModuleIDFunctions {
+
   /** Prefixes all keys with `e:` if they are not already so prefixed. */
   def checkE(attributes: Seq[(String, String)]) =
-    for ((key, value) <- attributes) yield if (key.startsWith("e:")) (key, value) else ("e:" + key, value)
+    for ((key, value) <- attributes)
+      yield if (key.startsWith("e:")) (key, value) else ("e:" + key, value)
 }

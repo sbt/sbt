@@ -12,16 +12,28 @@ import sbt.internal.util.complete.DefaultParsers._
 private[sbt] object RepositoriesParser {
 
   private case class AfterPattern(artifactPattern: Option[String], flags: Int)
-  final case class PredefinedRepository(override val id: xsbti.Predefined) extends xsbti.PredefinedRepository
-  final case class MavenRepository(override val id: String, override val url: URL) extends xsbti.MavenRepository
-  final case class IvyRepository(override val id: String, override val url: URL, override val ivyPattern: String,
-    override val artifactPattern: String, override val mavenCompatible: Boolean, override val skipConsistencyCheck: Boolean,
-    override val descriptorOptional: Boolean, val bootOnly: Boolean) extends xsbti.IvyRepository
+  final case class PredefinedRepository(override val id: xsbti.Predefined)
+      extends xsbti.PredefinedRepository
+  final case class MavenRepository(override val id: String, override val url: URL)
+      extends xsbti.MavenRepository
+  final case class IvyRepository(
+      override val id: String,
+      override val url: URL,
+      override val ivyPattern: String,
+      override val artifactPattern: String,
+      override val mavenCompatible: Boolean,
+      override val skipConsistencyCheck: Boolean,
+      override val descriptorOptional: Boolean,
+      val bootOnly: Boolean
+  ) extends xsbti.IvyRepository
 
   // Predefined repositories
-  def local: Parser[xsbti.Repository] = "local" ^^^ new PredefinedRepository(xsbti.Predefined.Local)
-  def mavenLocal: Parser[xsbti.Repository] = "maven-local" ^^^ new PredefinedRepository(xsbti.Predefined.MavenLocal)
-  def mavenCentral: Parser[xsbti.Repository] = "maven-central" ^^^ new PredefinedRepository(xsbti.Predefined.MavenCentral)
+  def local: Parser[xsbti.Repository] =
+    "local" ^^^ new PredefinedRepository(xsbti.Predefined.Local)
+  def mavenLocal: Parser[xsbti.Repository] =
+    "maven-local" ^^^ new PredefinedRepository(xsbti.Predefined.MavenLocal)
+  def mavenCentral: Parser[xsbti.Repository] =
+    "maven-central" ^^^ new PredefinedRepository(xsbti.Predefined.MavenCentral)
   def predefinedResolver: Parser[xsbti.Repository] = local | mavenLocal | mavenCentral
 
   // Options
@@ -54,7 +66,16 @@ private[sbt] object RepositoriesParser {
         // scalac complains about the recursion depth if we pattern match over `ap` directly.
         ap match {
           case Some(AfterPattern(artifactPattern, Flags(dOpt, sc, bo, mc))) =>
-            new IvyRepository(name, uri.toURL, ivy, artifactPattern getOrElse ivy, mc, sc, dOpt, bo)
+            new IvyRepository(
+              name,
+              uri.toURL,
+              ivy,
+              artifactPattern getOrElse ivy,
+              mc,
+              sc,
+              dOpt,
+              bo
+            )
           case None =>
             new IvyRepository(name, uri.toURL, ivy, ivy, false, false, false, false)
         }
@@ -69,7 +90,8 @@ private[sbt] object RepositoriesParser {
   def apply(lines: Iterator[String]): Seq[xsbti.Repository] =
     if (lines.isEmpty) Nil
     else {
-      if (lines.next != "[repositories]") throw new Exception("Repositories file must start with '[repositories]'")
+      if (lines.next != "[repositories]")
+        throw new Exception("Repositories file must start with '[repositories]'")
       lines.flatMap(getResolver(_)(resolver)).toList
     }
   def apply(str: String): Seq[xsbti.Repository] = apply(str.lines)

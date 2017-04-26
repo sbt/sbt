@@ -19,27 +19,39 @@ object DatatypeConfig {
 
   /** Codecs that were manually written. */
   val myCodecs: PartialFunction[String, Type => List[String]] = {
-    case "scala.xml.NodeSeq" => { _ => "sbt.internal.librarymanagement.formats.NodeSeqFormat" :: Nil }
+    case "scala.xml.NodeSeq" => { _ =>
+      "sbt.internal.librarymanagement.formats.NodeSeqFormat" :: Nil
+    }
 
-    case "org.apache.ivy.plugins.resolver.DependencyResolver" =>
-      { _ => "sbt.internal.librarymanagement.formats.DependencyResolverFormat" :: Nil }
+    case "org.apache.ivy.plugins.resolver.DependencyResolver" => { _ =>
+      "sbt.internal.librarymanagement.formats.DependencyResolverFormat" :: Nil
+    }
 
-    case "xsbti.GlobalLock" => { _ => "sbt.internal.librarymanagement.formats.GlobalLockFormat" :: Nil }
-    case "xsbti.Logger"     => { _ => "sbt.internal.librarymanagement.formats.LoggerFormat" :: Nil }
+    case "xsbti.GlobalLock" => { _ =>
+      "sbt.internal.librarymanagement.formats.GlobalLockFormat" :: Nil
+    }
+    case "xsbti.Logger" => { _ =>
+      "sbt.internal.librarymanagement.formats.LoggerFormat" :: Nil
+    }
 
-    case "sbt.librarymanagement.UpdateOptions" =>
-      { _ => "sbt.internal.librarymanagement.formats.UpdateOptionsFormat" :: Nil }
+    case "sbt.librarymanagement.UpdateOptions" => { _ =>
+      "sbt.internal.librarymanagement.formats.UpdateOptionsFormat" :: Nil
+    }
 
     // TODO: These are handled by BasicJsonProtocol, and sbt-datatype should handle them by default, imo
-    case "Option" | "Set" | "scala.Vector" => { tpe => getFormats(oneArg(tpe)) }
-    case "Map" | "Tuple2" | "scala.Tuple2" => { tpe => twoArgs(tpe).flatMap(getFormats) }
-    case "Int" | "Long"                    => { _ => Nil }
+    case "Option" | "Set" | "scala.Vector" => { tpe =>
+      getFormats(oneArg(tpe))
+    }
+    case "Map" | "Tuple2" | "scala.Tuple2" => { tpe =>
+      twoArgs(tpe).flatMap(getFormats)
+    }
+    case "Int" | "Long" => { _ =>
+      Nil
+    }
   }
 
   /** Types for which we don't include the format -- they're just aliases to InclExclRule */
-  val excluded = Set(
-    "sbt.librarymanagement.InclusionRule",
-    "sbt.librarymanagement.ExclusionRule")
+  val excluded = Set("sbt.librarymanagement.InclusionRule", "sbt.librarymanagement.ExclusionRule")
 
   /** Returns the list of formats required to encode the given `TpeRef`. */
   val getFormats: Type => List[String] =

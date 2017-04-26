@@ -21,39 +21,48 @@ object IvyRetrieve {
 
   def moduleReports(confReport: ConfigurationResolveReport): Vector[ModuleReport] =
     for {
-      revId <- confReport.getModuleRevisionIds.toArray.toVector collect { case revId: ModuleRevisionId => revId }
+      revId <- confReport.getModuleRevisionIds.toArray.toVector collect {
+        case revId: ModuleRevisionId => revId
+      }
     } yield moduleRevisionDetail(confReport, confReport.getDependency(revId))
 
   @deprecated("Internal only. No longer in use.", "0.13.6")
-  def artifactReports(mid: ModuleID, artReport: Seq[ArtifactDownloadReport]): ModuleReport =
-    {
-      val (resolved, missing) = artifacts(mid, artReport)
-      ModuleReport(mid, resolved, missing)
-    }
+  def artifactReports(mid: ModuleID, artReport: Seq[ArtifactDownloadReport]): ModuleReport = {
+    val (resolved, missing) = artifacts(mid, artReport)
+    ModuleReport(mid, resolved, missing)
+  }
 
-  private[sbt] def artifacts(mid: ModuleID, artReport: Seq[ArtifactDownloadReport]): (Vector[(Artifact, File)], Vector[Artifact]) =
-    {
-      val missing = new mutable.ListBuffer[Artifact]
-      val resolved = new mutable.ListBuffer[(Artifact, File)]
-      for (r <- artReport) {
-        val fileOpt = Option(r.getLocalFile)
-        val art = toArtifact(r.getArtifact)
-        fileOpt match {
-          case Some(file) => resolved += ((art, file))
-          case None       => missing += art
-        }
+  private[sbt] def artifacts(
+      mid: ModuleID,
+      artReport: Seq[ArtifactDownloadReport]
+  ): (Vector[(Artifact, File)], Vector[Artifact]) = {
+    val missing = new mutable.ListBuffer[Artifact]
+    val resolved = new mutable.ListBuffer[(Artifact, File)]
+    for (r <- artReport) {
+      val fileOpt = Option(r.getLocalFile)
+      val art = toArtifact(r.getArtifact)
+      fileOpt match {
+        case Some(file) => resolved += ((art, file))
+        case None       => missing += art
       }
-      (resolved.toVector, missing.toVector)
     }
+    (resolved.toVector, missing.toVector)
+  }
 
   // We need this because current module report used as part of UpdateReport/ConfigurationReport contains
   // only the revolved modules.
   // Sometimes the entire module can be excluded via rules etc.
-  private[sbt] def organizationArtifactReports(confReport: ConfigurationResolveReport): Vector[OrganizationArtifactReport] = {
-    val moduleIds = confReport.getModuleIds.toArray.toVector collect { case mId: IvyModuleId => mId }
+  private[sbt] def organizationArtifactReports(
+      confReport: ConfigurationResolveReport
+  ): Vector[OrganizationArtifactReport] = {
+    val moduleIds = confReport.getModuleIds.toArray.toVector collect {
+      case mId: IvyModuleId => mId
+    }
     def organizationArtifact(mid: IvyModuleId): OrganizationArtifactReport = {
       val deps = confReport.getNodes(mid).toArray.toVector collect { case node: IvyNode => node }
-      OrganizationArtifactReport(mid.getOrganisation, mid.getName, deps map { moduleRevisionDetail(confReport, _) })
+      OrganizationArtifactReport(mid.getOrganisation, mid.getName, deps map {
+        moduleRevisionDetail(confReport, _)
+      })
     }
     moduleIds map { organizationArtifact }
   }
@@ -65,10 +74,16 @@ object IvyRetrieve {
       case x                 => Some(x.trim)
     }
 
-  private[sbt] def moduleRevisionDetail(confReport: ConfigurationResolveReport, dep: IvyNode): ModuleReport = {
+  private[sbt] def moduleRevisionDetail(
+      confReport: ConfigurationResolveReport,
+      dep: IvyNode
+  ): ModuleReport = {
     def toExtraAttributes(ea: ju.Map[_, _]): Map[String, String] =
       Map(ea.entrySet.toArray collect {
-        case entry: ju.Map.Entry[_, _] if nonEmptyString(entry.getKey.toString).isDefined && nonEmptyString(entry.getValue.toString).isDefined =>
+        case entry: ju.Map.Entry[_, _]
+            if nonEmptyString(entry.getKey.toString).isDefined && nonEmptyString(
+              entry.getValue.toString
+            ).isDefined =>
           (entry.getKey.toString, entry.getValue.toString)
       }: _*)
     def toCaller(caller: IvyCaller): Caller = {
@@ -80,11 +95,32 @@ object IvyRetrieve {
       val (extraAttributes, isForce, isChanging, isTransitive, isDirectlyForce) = ddOpt match {
         case Some(dd: SbtDefaultDependencyDescriptor) =>
           val mod = dd.dependencyModuleId
-          (toExtraAttributes(dd.getExtraAttributes), mod.isForce, mod.isChanging, mod.isTransitive, mod.isForce)
-        case Some(dd) => (toExtraAttributes(dd.getExtraAttributes), dd.isForce, dd.isChanging, dd.isTransitive, false)
-        case None     => (Map.empty[String, String], false, false, true, false)
+          (
+            toExtraAttributes(dd.getExtraAttributes),
+            mod.isForce,
+            mod.isChanging,
+            mod.isTransitive,
+            mod.isForce
+          )
+        case Some(dd) =>
+          (
+            toExtraAttributes(dd.getExtraAttributes),
+            dd.isForce,
+            dd.isChanging,
+            dd.isTransitive,
+            false
+          )
+        case None => (Map.empty[String, String], false, false, true, false)
       }
-      Caller(m, callerConfigurations, extraAttributes, isForce, isChanging, isTransitive, isDirectlyForce)
+      Caller(
+        m,
+        callerConfigurations,
+        extraAttributes,
+        isForce,
+        isChanging,
+        isTransitive,
+        isDirectlyForce
+      )
     }
     val revId = dep.getResolvedId
     val moduleId = toModuleID(revId)
@@ -106,9 +142,9 @@ object IvyRetrieve {
         val edOpt = Option(dep.getEvictedData(confReport.getConfiguration))
         edOpt match {
           case Some(ed) =>
-            (true,
-              nonEmptyString(Option(ed.getConflictManager) map { _.toString } getOrElse { "transitive" }),
-              nonEmptyString(ed.getDetail))
+            (true, nonEmptyString(Option(ed.getConflictManager) map { _.toString } getOrElse {
+              "transitive"
+            }), nonEmptyString(ed.getDetail))
           case None => (true, None, None)
         }
       case _ => (false, None, None)
@@ -133,40 +169,74 @@ object IvyRetrieve {
     val isDefault = Option(dep.getDescriptor) map { _.isDefault }
     val configurations = dep.getConfigurations(confReport.getConfiguration).toVector
     val licenses: Vector[(String, Option[String])] = mdOpt match {
-      case Some(md) => md.getLicenses.toVector collect {
-        case lic: IvyLicense if Option(lic.getName).isDefined =>
-          val temporaryURL = "http://localhost"
-          (lic.getName, nonEmptyString(lic.getUrl) orElse { Some(temporaryURL) })
-      }
+      case Some(md) =>
+        md.getLicenses.toVector collect {
+          case lic: IvyLicense if Option(lic.getName).isDefined =>
+            val temporaryURL = "http://localhost"
+            (lic.getName, nonEmptyString(lic.getUrl) orElse { Some(temporaryURL) })
+        }
       case _ => Vector.empty
     }
     val callers = dep.getCallers(confReport.getConfiguration).toVector map { toCaller }
     val (resolved, missing) = artifacts(moduleId, confReport getDownloadReports revId)
 
-    ModuleReport(moduleId, resolved, missing, status, publicationDate, resolver, artifactResolver,
-      evicted, evictedData, evictedReason, problem, homepage, extraAttributes, isDefault, branch,
-      configurations, licenses, callers)
+    ModuleReport(
+      moduleId,
+      resolved,
+      missing,
+      status,
+      publicationDate,
+      resolver,
+      artifactResolver,
+      evicted,
+      evictedData,
+      evictedReason,
+      problem,
+      homepage,
+      extraAttributes,
+      isDefault,
+      branch,
+      configurations,
+      licenses,
+      callers
+    )
   }
 
   def evicted(confReport: ConfigurationResolveReport): Seq[ModuleID] =
     confReport.getEvictedNodes.map(node => toModuleID(node.getId))
 
   def toModuleID(revID: ModuleRevisionId): ModuleID =
-    ModuleID(revID.getOrganisation, revID.getName, revID.getRevision).withExtraAttributes(IvySbt.getExtraAttributes(revID))
+    ModuleID(revID.getOrganisation, revID.getName, revID.getRevision)
+      .withExtraAttributes(IvySbt.getExtraAttributes(revID))
       .branch(nonEmptyString(revID.getBranch))
 
-  def toArtifact(art: IvyArtifact): Artifact =
-    {
-      import art._
-      Artifact(getName, getType, getExt, Option(getExtraAttribute("classifier")), getConfigurations.toVector map Configurations.config, Option(getUrl))
-    }
+  def toArtifact(art: IvyArtifact): Artifact = {
+    import art._
+    Artifact(
+      getName,
+      getType,
+      getExt,
+      Option(getExtraAttribute("classifier")),
+      getConfigurations.toVector map Configurations.config,
+      Option(getUrl)
+    )
+  }
 
   def updateReport(report: ResolveReport, cachedDescriptor: File): UpdateReport =
-    UpdateReport(cachedDescriptor, reports(report) map configurationReport, updateStats(report), Map.empty) recomputeStamps ()
+    UpdateReport(
+      cachedDescriptor,
+      reports(report) map configurationReport,
+      updateStats(report),
+      Map.empty
+    ) recomputeStamps ()
   def updateStats(report: ResolveReport): UpdateStats =
     UpdateStats(report.getResolveTime, report.getDownloadTime, report.getDownloadSize, false)
   def configurationReport(confReport: ConfigurationResolveReport): ConfigurationReport =
-    ConfigurationReport(confReport.getConfiguration, moduleReports(confReport), organizationArtifactReports(confReport))
+    ConfigurationReport(
+      confReport.getConfiguration,
+      moduleReports(confReport),
+      organizationArtifactReports(confReport)
+    )
 
   /**
    * Tries to find Ivy graph path the from node to target.

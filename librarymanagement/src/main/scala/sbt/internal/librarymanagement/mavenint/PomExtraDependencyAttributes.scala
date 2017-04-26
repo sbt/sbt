@@ -25,13 +25,16 @@ object PomExtraDependencyAttributes {
   val ExtraAttributesKey = "extraDependencyAttributes"
   val SbtVersionKey = "sbtVersion"
   val ScalaVersionKey = "scalaVersion"
+
   /**
    * Reads the extra dependency attributes out of a maven property.
    * @param props  The properties from an Aether resolution.
    * @return
    *         A map of module id to extra dependency attributes associated with dependencies on that module.
    */
-  def readFromAether(props: java.util.Map[String, AnyRef]): Map[ModuleRevisionId, Map[String, String]] = {
+  def readFromAether(
+      props: java.util.Map[String, AnyRef]
+  ): Map[ModuleRevisionId, Map[String, String]] = {
     import scala.collection.JavaConverters._
     (props.asScala get ExtraAttributesKey) match {
       case None => Map.empty
@@ -52,7 +55,10 @@ object PomExtraDependencyAttributes {
    * TODO - maybe we can just parse this directly here.  Note the `readFromAether` method uses
    *        whatever we set here.
    */
-  def transferDependencyExtraAttributes(from: Properties, to: java.util.Map[String, AnyRef]): Unit =
+  def transferDependencyExtraAttributes(
+      from: Properties,
+      to: java.util.Map[String, AnyRef]
+  ): Unit =
     Option(from.getProperty(ExtraAttributesKey, null)) foreach (to.put(ExtraAttributesKey, _))
 
   /**
@@ -72,16 +78,25 @@ object PomExtraDependencyAttributes {
     item.getQualifiedExtraAttributes.asInstanceOf[java.util.Map[String, String]].asScala.toMap
   }
   def filterCustomExtra(item: ExtendableItem, include: Boolean): Map[String, String] =
-    (qualifiedExtra(item) filterKeys { k => qualifiedIsExtra(k) == include })
+    (qualifiedExtra(item) filterKeys { k =>
+      qualifiedIsExtra(k) == include
+    })
 
-  def qualifiedIsExtra(k: String): Boolean = k.endsWith(ScalaVersionKey) || k.endsWith(SbtVersionKey)
+  def qualifiedIsExtra(k: String): Boolean =
+    k.endsWith(ScalaVersionKey) || k.endsWith(SbtVersionKey)
 
   // Reduces the id to exclude custom extra attributes
   // This makes the id suitable as a key to associate a dependency parsed from a <dependency> element
   //  with the extra attributes from the <properties> section
   def simplify(id: ModuleRevisionId): ModuleRevisionId = {
     import scala.collection.JavaConverters._
-    ModuleRevisionId.newInstance(id.getOrganisation, id.getName, id.getBranch, id.getRevision, filterCustomExtra(id, include = false).asJava)
+    ModuleRevisionId.newInstance(
+      id.getOrganisation,
+      id.getName,
+      id.getBranch,
+      id.getRevision,
+      filterCustomExtra(id, include = false).asJava
+    )
   }
 
   /** parses the sequence of dependencies with extra attribute information, with one dependency per line */

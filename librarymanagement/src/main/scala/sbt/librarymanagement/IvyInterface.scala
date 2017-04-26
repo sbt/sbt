@@ -14,7 +14,10 @@ abstract class ArtifactTypeFilterExtra {
   def types: Set[String]
   def inverted: Boolean
 
-  protected[this] def copy(types: Set[String] = types, inverted: Boolean = inverted): ArtifactTypeFilter
+  protected[this] def copy(
+      types: Set[String] = types,
+      inverted: Boolean = inverted
+  ): ArtifactTypeFilter
 
   def invert = copy(inverted = !inverted)
   def apply(a: descriptor.Artifact): Boolean = (types contains a.getType) ^ inverted
@@ -25,7 +28,9 @@ abstract class ArtifactTypeFilterFunctions {
   def forbid(types: Set[String]) = ArtifactTypeFilter(types, true)
 
   implicit def toIvyFilter(f: ArtifactTypeFilter): IvyFilter = new IvyFilter {
-    override def accept(o: Object): Boolean = Option(o) exists { case a: descriptor.Artifact => f.apply(a) }
+    override def accept(o: Object): Boolean = Option(o) exists {
+      case a: descriptor.Artifact => f.apply(a)
+    }
   }
 }
 

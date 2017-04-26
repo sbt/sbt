@@ -5,7 +5,7 @@ scala:
   - 2.12.1
 
 script:
-  - sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M "++$TRAVIS_SCALA_VERSION test"
+  - sbt -Dfile.encoding=UTF8 -J-XX:ReservedCodeCacheSize=256M ";++$TRAVIS_SCALA_VERSION test;scalafmtCheck"
 
 jdk:
   - oraclejdk8
