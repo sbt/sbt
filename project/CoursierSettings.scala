@@ -55,7 +55,7 @@ object CoursierSettings {
 
   lazy val shared = javaScalaPluginShared ++ Seq(
     scalaVersion := "2.12.1",
-    crossScalaVersions := Seq("2.12.1", "2.11.8", "2.10.6"),
+    crossScalaVersions := Seq("2.12.1", "2.11.11", "2.10.6"),
     libs ++= {
       if (scalaBinaryVersion.value == "2.10")
         Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full))

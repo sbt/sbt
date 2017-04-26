@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 
 if [ ! -e cli/target/scala-2.11/proguard/coursier-standalone.jar ]; then
   echo "Generating proguarded JAR..." 1>&2
-  sbt ++2.11.8 cli/proguard:proguard
+  sbt ++2.11.11 cli/proguard:proguard
 fi
 
 cat > coursier-standalone << EOF
