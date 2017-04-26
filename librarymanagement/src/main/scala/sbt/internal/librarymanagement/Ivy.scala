@@ -12,17 +12,17 @@ import org.apache.ivy.core.IvyPatternHelper
 import org.apache.ivy.core.cache.{ CacheMetadataOptions, DefaultRepositoryCacheManager }
 import org.apache.ivy.core.event.EventManager
 import org.apache.ivy.core.module.descriptor.{
-  Artifact => IArtifact,
   DefaultArtifact,
   DefaultDependencyArtifactDescriptor,
-  MDArtifact
+  MDArtifact,
+  Artifact => IArtifact
 }
 import org.apache.ivy.core.module.descriptor.{
   DefaultDependencyDescriptor,
   DefaultModuleDescriptor,
   DependencyDescriptor,
-  ModuleDescriptor,
-  License
+  License,
+  ModuleDescriptor
 }
 import org.apache.ivy.core.module.descriptor.OverrideDependencyDescriptorMediator
 import org.apache.ivy.core.module.id.{ ModuleId, ModuleRevisionId }
@@ -36,13 +36,13 @@ import org.apache.ivy.util.extendable.ExtendableItem
 
 import scala.xml.NodeSeq
 import scala.collection.mutable
-
 import sbt.util.Logger
 import sbt.librarymanagement._
 import Resolver.PluginPattern
 import ivyint.{
-  CachedResolutionResolveEngine,
   CachedResolutionResolveCache,
+  CachedResolutionResolveEngine,
+  ParallelResolveEngine,
   SbtDefaultDependencyDescriptor
 }
 
@@ -101,35 +101,59 @@ final class IvySbt(val configuration: IvyConfiguration) { self =>
     }
     is
   }
-  private[sbt] def mkIvy: Ivy = {
-    val i = new Ivy() {
-      private val loggerEngine = new SbtMessageLoggerEngine
-      override def getLoggerEngine = loggerEngine
-      override def bind(): Unit = {
-        val prOpt = Option(getSettings.getResolver(ProjectResolver.InterProject)) map {
-          case pr: ProjectResolver => pr
-        }
-        // We inject the deps we need before we can hook our resolve engine.
-        setSortEngine(new SortEngine(getSettings))
-        setEventManager(new EventManager())
-        if (configuration.updateOptions.cachedResolution) {
-          setResolveEngine(
-            new ResolveEngine(getSettings, getEventManager, getSortEngine)
-            with CachedResolutionResolveEngine {
-              val cachedResolutionResolveCache = IvySbt.cachedResolutionResolveCache
-              val projectResolver = prOpt
-              def makeInstance = mkIvy
-            }
-          )
-        } else setResolveEngine(new ResolveEngine(getSettings, getEventManager, getSortEngine))
-        super.bind()
-      }
-    }
 
-    i.setSettings(settings)
-    i.bind()
-    i.getLoggerEngine.pushLogger(new IvyLoggerInterface(configuration.log))
-    i
+  /** Defines a parallel [[CachedResolutionResolveEngine]].
+   *
+   * This is defined here because it needs access to [[mkIvy]].
+   */
+  private class ParallelCachedResolutionResolveEngine(
+      settings: IvySettings,
+      eventManager: EventManager,
+      sortEngine: SortEngine
+  ) extends ParallelResolveEngine(settings, eventManager, sortEngine)
+      with CachedResolutionResolveEngine {
+    def makeInstance: Ivy = mkIvy
+    val cachedResolutionResolveCache: CachedResolutionResolveCache =
+      IvySbt.cachedResolutionResolveCache
+    val projectResolver: Option[ProjectResolver] = {
+      val res = settings.getResolver(ProjectResolver.InterProject)
+      Option(res.asInstanceOf[ProjectResolver])
+    }
+  }
+
+  /** Provides a default ivy implementation that decides which resolution
+   * engine to use depending on the passed ivy configuration options. */
+  private class IvyImplementation extends Ivy {
+    private val loggerEngine = new SbtMessageLoggerEngine
+    override def getLoggerEngine: SbtMessageLoggerEngine = loggerEngine
+    override def bind(): Unit = {
+      val settings = getSettings
+      val eventManager = new EventManager()
+      val sortEngine = new SortEngine(settings)
+
+      // We inject the deps we need before we can hook our resolve engine.
+      setSortEngine(sortEngine)
+      setEventManager(eventManager)
+
+      val resolveEngine = {
+        // Decide to use cached resolution if user enabled it
+        if (configuration.updateOptions.cachedResolution)
+          new ParallelCachedResolutionResolveEngine(settings, eventManager, sortEngine)
+        else new ParallelResolveEngine(settings, eventManager, sortEngine)
+      }
+
+      setResolveEngine(resolveEngine)
+      super.bind()
+    }
+  }
+
+  private[sbt] def mkIvy: Ivy = {
+    val ivy = new IvyImplementation()
+    ivy.setSettings(settings)
+    ivy.bind()
+    val logger = new IvyLoggerInterface(configuration.log)
+    ivy.getLoggerEngine.pushLogger(logger)
+    ivy
   }
 
   private lazy val ivy: Ivy = mkIvy
