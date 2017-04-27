@@ -143,6 +143,12 @@ if /I "%JAVA_VERSION%" GEQ "9" (
 exit /B 0
 
 :sync_preloaded
+if "%INIT_SBT_VERSION%"=="" (
+  rem FIXME: better %INIT_SBT_VERSION% detection
+  FOR /F "tokens=* USEBACKQ" %%F IN (`dir /b "%SBT_HOME%\..\lib\local-preloaded\org.scala-sbt\sbt" /B`) DO (
+    SET INIT_SBT_VERSION=%%F
+  )
+)
 set PRELOAD_SBT_JAR="%UserProfile%\.sbt\preloaded\org.scala-sbt\sbt\%INIT_SBT_VERSION%\jars\sbt.jar"
 if /I "%JAVA_VERSION%" GEQ "1.8" (
   where robocopy >nul 2>nul
