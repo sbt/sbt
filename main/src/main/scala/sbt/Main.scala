@@ -99,7 +99,7 @@ object BuiltinCommands {
     ifLast, multi, shell, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, early, initialize, act) ++
     compatCommands
   def DefaultBootCommands: Seq[String] =
-    WriteSbtVersion :: NotifyUsersAboutShell :: LoadProject :: s"$IfLast $Shell" :: Nil
+    WriteSbtVersion :: LoadProject :: NotifyUsersAboutShell :: s"$IfLast $Shell" :: Nil
 
   def boot = Command.make(BootCommand)(bootParser)
 
@@ -576,9 +576,11 @@ object BuiltinCommands {
     (state.remainingCommands contains Shell) ||
       (state.remainingCommands.lastOption exists (_ == s"$IfLast $Shell"))
 
-  private def notifyUsersAboutShell(state: State) =
-    if (isInteractive && !intendsToInvokeShell(state) && !intendsToInvokeNew(state))
+  private def notifyUsersAboutShell(state: State): Unit = {
+    val suppress = Project extract state getOpt Keys.suppressSbtShellNotification getOrElse false
+    if (!suppress && isInteractive && !intendsToInvokeShell(state) && !intendsToInvokeNew(state))
       state.log info "Executing in batch mode. For better performance use sbt's shell; hit [ENTER] to do so now"
+  }
 
   private def NotifyUsersAboutShell = "notify-users-about-shell"
 
