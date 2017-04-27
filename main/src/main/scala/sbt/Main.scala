@@ -577,11 +577,8 @@ object BuiltinCommands {
       (state.remainingCommands.lastOption exists (_ == s"$IfLast $Shell"))
 
   private def notifyUsersAboutShell(state: State) =
-    if (isInteractive && !intendsToInvokeShell(state) && !intendsToInvokeNew(state)) {
-      state.log warn "Executing in batch mode."
-      state.log warn "  For better performance, hit [ENTER] to switch to interactive mode, or"
-      state.log warn "  consider launching sbt without any commands, or explicitly passing 'shell'"
-    }
+    if (isInteractive && !intendsToInvokeShell(state) && !intendsToInvokeNew(state))
+      state.log info "Executing in batch mode. For better performance use sbt's shell; hit [ENTER] to do so now"
 
   private def NotifyUsersAboutShell = "notify-users-about-shell"
 
