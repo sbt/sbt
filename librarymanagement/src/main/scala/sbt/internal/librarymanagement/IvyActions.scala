@@ -203,8 +203,18 @@ object IvyActions {
   }
 
   /**
-   * Resolves and retrieves dependencies.  'ivyConfig' is used to produce an Ivy file and configuration.
-   * 'updateConfig' configures the actual resolution and retrieval process.
+   * Updates one module's dependencies performing a dependency resolution and retrieval.
+   *
+   * The following mechanism uses ivy under the hood.
+   *
+   * @param module The module to be resolved.
+   * @param configuration The update configuration.
+   * @param uwconfig The configuration to handle unresolved warnings.
+   * @param logicalClock The clock necessary to cache ivy.
+   * @param depDir The base directory used for caching resolution.
+   * @param log The logger.
+   * @return The result, either an unresolved warning or an update report. Note that this
+   *         update report will or will not be successful depending on the `missingOk` option.
    */
   private[sbt] def updateEither(
       module: IvySbt#Module,
