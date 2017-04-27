@@ -64,9 +64,8 @@ private[sbt] class CachedResolutionResolveCache {
   val maxConflictCacheSize: Int = 1024
   val maxUpdateReportCacheSize: Int = 1024
 
-  def clean(md0: ModuleDescriptor, prOpt: Option[ProjectResolver]): Unit = {
-    updateReportCache.clear
-  }
+  def clean(): Unit = updateReportCache.clear
+
   def directDependencies(md0: ModuleDescriptor): Vector[DependencyDescriptor] =
     md0.getDependencies.toVector
   // Returns a vector of (module descriptor, changing, dd)
