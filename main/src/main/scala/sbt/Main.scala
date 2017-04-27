@@ -18,7 +18,7 @@ import java.net.URI
 import java.util.Locale
 import scala.util.control.NonFatal
 
-import BasicCommandStrings.Shell
+import BasicCommandStrings.{ Shell, TemplateCommand }
 import CommandStrings.BootCommand
 
 /** This class is the entry point for sbt. */
@@ -559,8 +559,10 @@ object BuiltinCommands {
     }
   }
 
+  private def intendsToInvokeNew(state: State) = state.remainingCommands contains TemplateCommand
+
   private def writeSbtVersion(state: State) =
-    if (!java.lang.Boolean.getBoolean("sbt.skip.version.write"))
+    if (!java.lang.Boolean.getBoolean("sbt.skip.version.write") && !intendsToInvokeNew(state))
       writeSbtVersionUnconditionally(state)
 
   private def WriteSbtVersion = "write-sbt-version"
@@ -575,7 +577,7 @@ object BuiltinCommands {
       (state.remainingCommands.lastOption exists (_ == s"$IfLast $Shell"))
 
   private def notifyUsersAboutShell(state: State) =
-    if (isInteractive && !intendsToInvokeShell(state)) {
+    if (isInteractive && !intendsToInvokeShell(state) && !intendsToInvokeNew(state)) {
       state.log warn "Executing in batch mode."
       state.log warn "  For better performance, hit [ENTER] to switch to interactive mode, or"
       state.log warn "  consider launching sbt without any commands, or explicitly passing 'shell'"
