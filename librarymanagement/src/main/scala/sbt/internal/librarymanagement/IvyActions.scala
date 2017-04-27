@@ -206,29 +206,6 @@ object IvyActions {
    * Resolves and retrieves dependencies.  'ivyConfig' is used to produce an Ivy file and configuration.
    * 'updateConfig' configures the actual resolution and retrieval process.
    */
-  @deprecated("This is no longer public.", "0.13.6")
-  def update(
-      module: IvySbt#Module,
-      configuration: UpdateConfiguration,
-      log: Logger
-  ): UpdateReport =
-    updateEither(
-      module,
-      configuration,
-      UnresolvedWarningConfiguration(),
-      LogicalClock.unknown,
-      None,
-      log
-    ) match {
-      case Right(r) => r
-      case Left(w) =>
-        throw w.resolveException
-    }
-
-  /**
-   * Resolves and retrieves dependencies.  'ivyConfig' is used to produce an Ivy file and configuration.
-   * 'updateConfig' configures the actual resolution and retrieval process.
-   */
   private[sbt] def updateEither(
       module: IvySbt#Module,
       configuration: UpdateConfiguration,
@@ -277,23 +254,6 @@ object IvyActions {
   def grouped[T](grouping: ModuleID => T)(mods: Seq[ModuleID]): Map[T, Set[String]] =
     mods groupBy (grouping) mapValues (_.map(_.revision).toSet)
 
-  @deprecated("This is no longer public.", "0.13.6")
-  def transitiveScratch(
-      ivySbt: IvySbt,
-      label: String,
-      config: GetClassifiersConfiguration,
-      log: Logger
-  ): UpdateReport =
-    transitiveScratch(
-      ivySbt,
-      label,
-      config,
-      UnresolvedWarningConfiguration(),
-      LogicalClock.unknown,
-      None,
-      log
-    )
-
   private[sbt] def transitiveScratch(
       ivySbt: IvySbt,
       label: String,
@@ -316,21 +276,6 @@ object IvyActions {
     val newConfig = config.copy(module = mod.copy(modules = report.allModules))
     updateClassifiers(ivySbt, newConfig, uwconfig, logicalClock, depDir, Vector(), log)
   }
-  @deprecated("This is no longer public.", "0.13.6")
-  def updateClassifiers(
-      ivySbt: IvySbt,
-      config: GetClassifiersConfiguration,
-      log: Logger
-  ): UpdateReport =
-    updateClassifiers(
-      ivySbt,
-      config,
-      UnresolvedWarningConfiguration(),
-      LogicalClock.unknown,
-      None,
-      Vector(),
-      log
-    )
 
   /**
    * Creates explicit artifacts for each classifier in `config.module`, and then attempts to resolve them directly. This
