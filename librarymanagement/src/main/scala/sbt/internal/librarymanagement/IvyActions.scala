@@ -723,13 +723,9 @@ object UnresolvedWarning {
         (id, modulePosition(id))
       }
     }
-    apply(err, failedPaths)
-  }
-  private[sbt] def apply(
-      err: ResolveException,
-      failedPaths: Seq[Seq[(ModuleID, Option[SourcePosition])]]
-  ): UnresolvedWarning =
     new UnresolvedWarning(err, failedPaths)
+  }
+
   private[sbt] def sourcePosStr(posOpt: Option[SourcePosition]): String =
     posOpt match {
       case Some(LinePosition(path, start))                  => s" ($path#L$start)"
