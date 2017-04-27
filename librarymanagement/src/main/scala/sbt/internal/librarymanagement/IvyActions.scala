@@ -575,27 +575,11 @@ object IvyActions {
       ivy: Ivy,
       report: UpdateReport,
       config: RetrieveConfiguration
-  ): UpdateReport =
-    retrieve(
-      log,
-      ivy,
-      report,
-      config.retrieveDirectory,
-      config.outputPattern,
-      config.sync,
-      config.configurationsToRetrieve
-    )
-
-  private def retrieve(
-      log: Logger,
-      ivy: Ivy,
-      report: UpdateReport,
-      base: File,
-      pattern: String,
-      sync: Boolean,
-      configurationsToRetrieve: Option[Set[Configuration]]
   ): UpdateReport = {
-    val configurationNames = configurationsToRetrieve match {
+    val toRetrieve = config.configurationsToRetrieve
+    val base = config.retrieveDirectory
+    val pattern = config.outputPattern
+    val configurationNames = toRetrieve match {
       case None          => None
       case Some(configs) => Some(configs.map(_.name))
     }
@@ -611,7 +595,7 @@ object IvyActions {
     }
     IO.copy(toCopy)
     val resolvedFiles = toCopy.map(_._2)
-    if (sync) {
+    if (config.sync) {
       val filesToDelete = existingFiles.filterNot(resolvedFiles.contains)
       filesToDelete foreach { f =>
         log.info(s"Deleting old dependency: ${f.getAbsolutePath}")
