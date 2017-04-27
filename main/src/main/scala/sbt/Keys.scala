@@ -64,6 +64,7 @@ object Keys {
   val shellPrompt = SettingKey(BasicKeys.shellPrompt)
   val analysis = AttributeKey[inc.Analysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.", DSetting)
   val watch = SettingKey(BasicKeys.watch)
+  val suppressSbtShellNotification = SettingKey[Boolean]("suppressSbtShellNotification", """True to suppress the "Executing in batch mode.." message.""", CSetting)
   val pollInterval = SettingKey[Int]("poll-interval", "Interval between checks for modified sources by the continuous execution command.", BMinusSetting)
   val watchSources = TaskKey[Seq[File]]("watch-sources", "Defines the sources in this project for continuous execution to watch for changes.", BMinusSetting)
   val watchTransitiveSources = TaskKey[Seq[File]]("watch-transitive-sources", "Defines the sources in all projects for continuous execution to watch.", CSetting)

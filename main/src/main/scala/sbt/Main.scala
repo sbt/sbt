@@ -18,7 +18,7 @@ import java.net.URI
 import java.util.Locale
 import scala.util.control.NonFatal
 
-import BasicCommandStrings.Shell
+import BasicCommandStrings.{ Shell, TemplateCommand }
 import CommandStrings.BootCommand
 
 /** This class is the entry point for sbt. */
@@ -29,58 +29,10 @@ final class xMain extends xsbti.AppMain {
       import BasicCommandStrings.runEarly
       import BuiltinCommands.{ initialize, defaults }
       import CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
-      if (!java.lang.Boolean.getBoolean("sbt.skip.version.write"))
-        setSbtVersion(configuration.baseDirectory(), configuration.provider().id().version())
       val state = initialState(configuration,
         Seq(defaults, early),
         runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil)
-      notifyUsersAboutShell(state)
       runManaged(state)
-    }
-
-  private val sbtVersionRegex = """sbt\.version\s*=.*""".r
-  private def isSbtVersionLine(s: String) = sbtVersionRegex.pattern matcher s matches ()
-
-  private def isSbtProject(baseDir: File, projectDir: File) =
-    projectDir.exists() || (baseDir * "*.sbt").get.nonEmpty
-
-  private def setSbtVersion(baseDir: File, sbtVersion: String) = {
-    val projectDir = baseDir / "project"
-    val buildProps = projectDir / "build.properties"
-
-    val buildPropsLines = if (buildProps.canRead) IO.readLines(buildProps) else Nil
-
-    val sbtVersionAbsent = buildPropsLines forall (!isSbtVersionLine(_))
-
-    if (sbtVersionAbsent) {
-      val errorMessage = s"WARN: No sbt.version set in project/build.properties, base directory: $baseDir"
-      try {
-        if (isSbtProject(baseDir, projectDir)) {
-          val line = s"sbt.version=$sbtVersion"
-          IO.writeLines(buildProps, line :: buildPropsLines)
-          println(s"Updated file $buildProps setting sbt.version to: $sbtVersion")
-        } else
-          println(errorMessage)
-      } catch {
-        case _: IOException => println(errorMessage)
-      }
-    }
-  }
-
-  private def isInteractive = System.console() != null
-  private def hasShell(state: State) = state.remainingCommands contains Shell
-
-  /**
-   * The "boot" command adds "iflast shell" ("if last shell")
-   * which basically means it falls back to shell if there are no further commands
-   */
-  private def endsWithBoot(state: State) = state.remainingCommands.lastOption exists (_ == BootCommand)
-
-  private def notifyUsersAboutShell(state: State) =
-    if (isInteractive && !hasShell(state) && !endsWithBoot(state)) {
-      state.log warn "Executing in batch mode."
-      state.log warn "  For better performance, hit [ENTER] to switch to interactive mode, or"
-      state.log warn "  consider launching sbt without any commands, or explicitly passing 'shell'"
     }
 }
 
@@ -143,9 +95,11 @@ object BuiltinCommands {
     projects, project, reboot, read, history, set, sessionCommand, inspect, loadProjectImpl, loadFailed,
     Cross.crossBuild, Cross.switchVersion, PluginCross.pluginCross, PluginCross.pluginSwitch,
     setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, setLogLevel, plugin, plugins,
+    writeSbtVersion, notifyUsersAboutShell,
     ifLast, multi, shell, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, early, initialize, act) ++
     compatCommands
-  def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
+  def DefaultBootCommands: Seq[String] =
+    WriteSbtVersion :: LoadProject :: NotifyUsersAboutShell :: s"$IfLast $Shell" :: Nil
 
   def boot = Command.make(BootCommand)(bootParser)
 
@@ -573,4 +527,61 @@ object BuiltinCommands {
         }
       s.put(Keys.stateCompilerCache, cache)
     }
+
+  private val sbtVersionRegex = """sbt\.version\s*=.*""".r
+  private def isSbtVersionLine(s: String) = sbtVersionRegex.pattern matcher s matches ()
+
+  private def isSbtProject(baseDir: File, projectDir: File) =
+    projectDir.exists() || (baseDir * "*.sbt").get.nonEmpty
+
+  private def writeSbtVersionUnconditionally(state: State) = {
+    val baseDir = state.baseDir
+    val sbtVersion = BuiltinCommands.sbtVersion(state)
+    val projectDir = baseDir / "project"
+    val buildProps = projectDir / "build.properties"
+
+    val buildPropsLines = if (buildProps.canRead) IO.readLines(buildProps) else Nil
+
+    val sbtVersionAbsent = buildPropsLines forall (!isSbtVersionLine(_))
+
+    if (sbtVersionAbsent) {
+      val warnMsg = s"No sbt.version set in project/build.properties, base directory: $baseDir"
+      try {
+        if (isSbtProject(baseDir, projectDir)) {
+          val line = s"sbt.version=$sbtVersion"
+          IO.writeLines(buildProps, line :: buildPropsLines)
+          state.log info s"Updated file $buildProps: set sbt.version to $sbtVersion"
+        } else
+          state.log warn warnMsg
+      } catch {
+        case _: IOException => state.log warn warnMsg
+      }
+    }
+  }
+
+  private def intendsToInvokeNew(state: State) = state.remainingCommands contains TemplateCommand
+
+  private def writeSbtVersion(state: State) =
+    if (!java.lang.Boolean.getBoolean("sbt.skip.version.write") && !intendsToInvokeNew(state))
+      writeSbtVersionUnconditionally(state)
+
+  private def WriteSbtVersion = "write-sbt-version"
+
+  private def writeSbtVersion: Command =
+    Command.command(WriteSbtVersion) { state => writeSbtVersion(state); state }
+
+  private def isInteractive = System.console() != null
+
+  private def intendsToInvokeCompile(state: State) = state.remainingCommands contains Keys.compile.key.label
+
+  private def notifyUsersAboutShell(state: State): Unit = {
+    val suppress = Project extract state getOpt Keys.suppressSbtShellNotification getOrElse false
+    if (!suppress && isInteractive && intendsToInvokeCompile(state))
+      state.log info "Executing in batch mode. For better performance use sbt's shell; hit [ENTER] to do so now"
+  }
+
+  private def NotifyUsersAboutShell = "notify-users-about-shell"
+
+  private def notifyUsersAboutShell: Command =
+    Command.command(NotifyUsersAboutShell) { state => notifyUsersAboutShell(state); state }
 }

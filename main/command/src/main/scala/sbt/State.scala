@@ -178,16 +178,16 @@ object State {
   /** Provides operations and transformations on State. */
   implicit def stateOps(s: State): StateOps = new StateOps {
     def process(f: (String, State) => State): State = {
-      def doX(x: String, xs: Seq[String]) = {
-        log.debug(s"> $x")
-        f(x, s.copy(remainingCommands = xs, history = x :: s.history))
+      def runCmd(cmd: String, remainingCommands: Seq[String]) = {
+        log.debug(s"> $cmd")
+        f(cmd, s.copy(remainingCommands = remainingCommands, history = cmd :: s.history))
       }
-      def isInteractive = System.console() != null
-      def hasInput = System.console().reader().ready()
+      def isInteractive = System.console != null
+      def hasInput = Option(System.console) exists (_.reader.ready())
       def hasShellCmd = s.definedCommands exists { case c: SimpleCommand => c.name == Shell; case _ => false }
       s.remainingCommands match {
-        case Seq()           => if (isInteractive && hasInput && hasShellCmd) doX(Shell, Nil) else exit(true)
-        case Seq(x, xs @ _*) => doX(x, xs)
+        case Seq()           => if (isInteractive && hasInput && hasShellCmd) runCmd(Shell, Nil) else exit(true)
+        case Seq(x, xs @ _*) => runCmd(x, xs)
       }
     }
     def :::(newCommands: Seq[String]): State = s.copy(remainingCommands = newCommands ++ s.remainingCommands)
