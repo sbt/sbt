@@ -30,6 +30,7 @@ val bintrayLinuxPattern = "[module]/[revision]/[module]-[revision].[ext]"
 val bintrayGenericPattern = "[module]/[revision]/[module]/[revision]/[module]-[revision].[ext]"
 val bintrayReleaseAllStaged = TaskKey[Unit]("bintray-release-all-staged", "Release all staged artifacts on bintray.")
 val windowsBuildId = settingKey[Int]("build id for Windows installer")
+val debianBuildId = settingKey[Int]("build id for Debian")
 
 // This build creates a SBT plugin with handy features *and* bundles the SBT script for distribution.
 val root = (project in file(".")).
@@ -77,7 +78,11 @@ val root = (project in file(".")).
       } yield link
     },
     // DEBIAN SPECIFIC
-    version in Debian := sbtVersionToRelease,
+    version in Debian := {
+      if (debianBuildId.value == 0) sbtVersionToRelease
+      else sbtVersionToRelease + "." + debianBuildId.value
+    },
+    debianBuildId := 2, // 0
     // Used to have "openjdk-8-jdk" but that doesn't work on Ubuntu 14.04 https://github.com/sbt/sbt/issues/3105
     // before that we had java6-runtime-headless" and that was pulling in JDK9 on Ubuntu 16.04 https://github.com/sbt/sbt/issues/2931
     debianPackageDependencies in Debian ++= Seq("bash (>= 3.2)"),
@@ -92,13 +97,15 @@ val root = (project in file(".")).
     addPackage(Debian, packageBin in Debian, "deb"),
     // RPM SPECIFIC
     version in Rpm := {
-      val stable = (sbtVersionToRelease split "[^\\d]" filterNot (_.isEmpty) mkString ".")
+      val stable0 = (sbtVersionToRelease split "[^\\d]" filterNot (_.isEmpty) mkString ".")
+      val stable = if (rpmRelease.value == "0") stable0
+                   else stable0 + "." + rpmRelease.value
       if (isExperimental) ((sbtVersionToRelease split "[^\\d]" filterNot (_.isEmpty)).toList match {
         case List(a, b, c, d) => List(0, 99, c, d).mkString(".")
       })
       else stable
     },
-    rpmRelease := "1",
+    rpmRelease := "2",
     rpmVendor := "lightbend",
     rpmUrl := Some("http://github.com/sbt/sbt-launcher-package"),
     rpmLicense := Some("BSD"),
@@ -155,13 +162,22 @@ val root = (project in file(".")).
     },
 
     // Misccelaneous publishing stuff...
-    projectID in Debian := moduleID.value,
+    projectID in Debian := {
+      val m = moduleID.value
+      m.copy(revision = (version in Debian).value)
+    },
     projectID in Windows := {
       val m = moduleID.value
       m.copy(revision = (version in Windows).value)
     },
-    projectID in Rpm := moduleID.value,
-    projectID in Universal := moduleID.value
+    projectID in Rpm := {
+      val m = moduleID.value
+      m.copy(revision = (version in Rpm).value)
+    },
+    projectID in Universal := {
+      val m = moduleID.value
+      m.copy(revision = (version in Universal).value)
+    }
   )
 
 lazy val java9rtexport = (project in file("java9-rt-export"))
