@@ -262,8 +262,7 @@ object IvyActions {
         )
     }
   }
-  @deprecated("No longer used.", "0.13.6")
-  def processUnresolved(err: ResolveException, log: Logger): Unit = ()
+
   def groupedConflicts[T](moduleFilter: ModuleFilter, grouping: ModuleID => T)(
       report: UpdateReport
   ): Map[T, Set[String]] =
@@ -685,7 +684,8 @@ object IvyActions {
       )
   }
 }
-final class ResolveException(
+
+private[sbt] final class ResolveException(
     val messages: Seq[String],
     val failed: Seq[ModuleID],
     val failedPaths: Map[ModuleID, Seq[ModuleID]]
