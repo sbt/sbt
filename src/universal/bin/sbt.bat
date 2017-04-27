@@ -144,7 +144,7 @@ exit /B 0
 
 :sync_preloaded
 set PRELOAD_SBT_JAR="%UserProfile%\.sbt\preloaded\org.scala-sbt\sbt\%INIT_SBT_VERSION%\jars\sbt.jar"
-if /I "%JAVA_VERSION%" GEQ "8" (
+if /I "%JAVA_VERSION%" GEQ "1.8" (
   where robocopy >nul 2>nul
   if %ERRORLEVEL% equ 0 (
     echo %PRELOAD_SBT_JAR%
