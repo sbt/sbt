@@ -122,6 +122,10 @@ object CrossVersionTest extends Specification {
       CrossVersion.binaryScalaVersion("2.20170314093845.0-87654321") must_== "2.20170314093845.0-87654321"
     }
 
+    "return binary Scala version for Dotty 0.1.1 as 0.1" in {
+      CrossVersion.binaryScalaVersion("0.1.1") must_== "0.1"
+    }
+
     "return patch Scala version for 2.11.8 as 2.11.8" in {
       CrossVersion(CrossVersion.patch, "2.11.8", "dummy").map(_("artefact")) must_== Some("artefact_2.11.8")
     }
