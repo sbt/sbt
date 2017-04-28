@@ -352,7 +352,7 @@ def otherRootSettings =
     scriptedUnpublished := scriptedUnpublishedTask.evaluated,
     scriptedSource := (sourceDirectory in sbtProj).value / "sbt-test",
     // scriptedPrescripted := { addSbtAlternateResolver _ },
-    scriptedLaunchOpts := List("-XX:MaxPermSize=256M", "-Xmx1G"),
+    scriptedLaunchOpts := List("-XX:MaxPermSize=256M", "-Xmx360M"),
     publishAll := { val _ = (publishLocal).all(ScopeFilter(inAnyProject)).value },
     publishLocalBinAll := { val _ = (publishLocalBin).all(ScopeFilter(inAnyProject)).value },
     aggregate in bintrayRelease := false
@@ -363,7 +363,7 @@ def otherRootSettings =
       },
       scriptedLaunchOpts := {
         List("-XX:MaxPermSize=256M",
-             "-Xmx1G",
+             "-Xmx512M",
              "-Dsbt.override.build.repos=true",
              s"""-Dsbt.repository.config=${scriptedSource.value / "repo.config"}""")
       },

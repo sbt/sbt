@@ -79,7 +79,7 @@ final class ScriptedTests(resourceBaseDirectory: File,
     val pendingMark = if (pending) PendingLabel else ""
     def testFailed(t: Throwable): Option[String] = {
       if (pending) buffered.clear() else buffered.stop()
-      buffered.error(s"x $label $pendingMark" + label + pendingMark)
+      buffered.error(s"x $label $pendingMark")
       if (!NonFatal(t)) throw t // We make sure fatal errors are rethrown
       if (t.isInstanceOf[TestException]) {
         t.getCause match {
