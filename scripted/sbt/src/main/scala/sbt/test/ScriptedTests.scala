@@ -138,20 +138,6 @@ object ScriptedTests extends ScriptedRunner {
 class ScriptedRunner {
   import ScriptedTests._
 
-  @deprecated("No longer used", "0.13.9")
-  def run(resourceBaseDirectory: File,
-          bufferLog: Boolean,
-          tests: Array[String],
-          bootProperties: File,
-          launchOpts: Array[String]): Unit =
-    run(resourceBaseDirectory,
-        bufferLog,
-        tests,
-        ConsoleLogger(),
-        bootProperties,
-        launchOpts,
-        emptyCallback) //new FullLogger(Logger.xlog2Log(log)))
-
   // This is called by project/Scripted.scala
   // Using java.util.List[File] to encode File => Unit
   def run(resourceBaseDirectory: File,
@@ -164,30 +150,6 @@ class ScriptedRunner {
       f: File =>
         prescripted.add(f); ()
     }) //new FullLogger(Logger.xlog2Log(log)))
-
-  @deprecated("No longer used", "0.13.9")
-  def run(resourceBaseDirectory: File,
-          bufferLog: Boolean,
-          tests: Array[String],
-          bootProperties: File,
-          launchOpts: Array[String],
-          prescripted: File => Unit): Unit =
-    run(resourceBaseDirectory,
-        bufferLog,
-        tests,
-        ConsoleLogger(),
-        bootProperties,
-        launchOpts,
-        prescripted)
-
-  @deprecated("No longer used", "0.13.9")
-  def run(resourceBaseDirectory: File,
-          bufferLog: Boolean,
-          tests: Array[String],
-          logger: AbstractLogger,
-          bootProperties: File,
-          launchOpts: Array[String]): Unit =
-    run(resourceBaseDirectory, bufferLog, tests, logger, bootProperties, launchOpts, emptyCallback)
 
   def run(resourceBaseDirectory: File,
           bufferLog: Boolean,
@@ -260,18 +222,6 @@ private[test] final class ListTests(baseDirectory: File,
   }
 }
 
-object CompatibilityLevel extends Enumeration {
-  val Full, Basic, Minimal, Minimal27, Minimal28 = Value
-
-  def defaultVersions(level: Value) =
-    level match {
-      case Full      => "2.7.4 2.7.7 2.9.0.RC1 2.8.0 2.8.1"
-      case Basic     => "2.7.7 2.7.4 2.8.1 2.8.0"
-      case Minimal   => "2.7.7 2.8.1"
-      case Minimal27 => "2.7.7"
-      case Minimal28 => "2.8.1"
-    }
-}
 class PendingTestSuccessException(label: String) extends Exception {
   override def getMessage: String =
     s"The pending test $label succeeded. Mark this test as passing to remove this failure."

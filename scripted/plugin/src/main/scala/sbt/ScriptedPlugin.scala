@@ -59,13 +59,14 @@ object ScriptedPlugin extends AutoPlugin {
       ModuleUtilities.getObject("sbt.test.ScriptedTests", loader)
     }
 
-  def scriptedRunTask: Initialize[Task[Method]] = Def task (
+  def scriptedRunTask: Initialize[Task[Method]] = Def.task(
     scriptedTests.value.getClass.getMethod("run",
                                            classOf[File],
                                            classOf[Boolean],
                                            classOf[Array[String]],
                                            classOf[File],
-                                           classOf[Array[String]])
+                                           classOf[Array[String]],
+                                           classOf[java.util.List[File]])
   )
 
   import DefaultParsers._
@@ -125,7 +126,8 @@ object ScriptedPlugin extends AutoPlugin {
         scriptedBufferLog.value: java.lang.Boolean,
         args.toArray,
         sbtLauncher.value,
-        scriptedLaunchOpts.value.toArray
+        scriptedLaunchOpts.value.toArray,
+        new java.util.ArrayList()
       )
     } catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
   }
