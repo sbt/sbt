@@ -8,20 +8,20 @@ package test
 import java.io.File
 
 import scala.util.control.NonFatal
-
 import sbt.internal.scripted.{
   CommentHandler,
   FileCommands,
   ScriptRunner,
-  TestScriptParser,
-  TestException
+  TestException,
+  TestScriptParser
 }
 import sbt.io.{ DirectoryFilter, HiddenFileFilter }
 import sbt.io.IO.wrapNull
 import sbt.internal.io.Resources
-
 import sbt.internal.util.{ BufferedLogger, ConsoleLogger, FullLogger }
 import sbt.util.{ AbstractLogger, Logger }
+
+import scala.collection.parallel.mutable.ParSeq
 
 final class ScriptedTests(resourceBaseDirectory: File,
                           bufferLog: Boolean,
@@ -40,7 +40,7 @@ final class ScriptedTests(resourceBaseDirectory: File,
   def scriptedTest(group: String,
                    name: String,
                    prescripted: File => Unit,
-                   log: Logger): Seq[() => Option[String]] = {
+                   log: Logger): Seq[TestRunner] = {
     import sbt.io.syntax._
     for (groupDir <- (resourceBaseDirectory * group).get; nme <- (groupDir * name).get) yield {
       val g = groupDir.getName
@@ -119,6 +119,10 @@ final class ScriptedTests(resourceBaseDirectory: File,
 }
 
 object ScriptedTests extends ScriptedRunner {
+
+  /** Represents the function that runs the scripted tests. */
+  type TestRunner = () => Option[String]
+
   val emptyCallback: File => Unit = { _ =>
     ()
   }
@@ -136,8 +140,6 @@ object ScriptedTests extends ScriptedRunner {
 }
 
 class ScriptedRunner {
-  import ScriptedTests._
-
   // This is called by project/Scripted.scala
   // Using java.util.List[File] to encode File => Unit
   def run(resourceBaseDirectory: File,
@@ -166,17 +168,56 @@ class ScriptedRunner {
     runAll(allTests)
   }
 
-  def runAll(tests: Seq[() => Option[String]]): Unit = {
+  def runInParallel(resourceBaseDirectory: File,
+                    bufferLog: Boolean,
+                    tests: Array[String],
+                    bootProperties: File,
+                    launchOpts: Array[String],
+                    prescripted: java.util.List[File]): Unit = {
+    val logger = ConsoleLogger()
+    val addTestFile = (f: File) => { prescripted.add(f); () }
+    runInParallel(resourceBaseDirectory,
+                  bufferLog,
+                  tests,
+                  logger,
+                  bootProperties,
+                  launchOpts,
+                  addTestFile)
+  }
+
+  def runInParallel(
+      resourceBaseDirectory: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      logger: AbstractLogger,
+      bootProperties: File,
+      launchOpts: Array[String],
+      prescripted: File => Unit
+  ): Unit = {
+    val runner = new ScriptedTests(resourceBaseDirectory, bufferLog, bootProperties, launchOpts)
+    val scriptedTests = get(tests, resourceBaseDirectory, logger)
+    val scriptedTestRunners = scriptedTests
+      .flatMap(t => runner.scriptedTest(t.group, t.name, prescripted, logger))
+    runAllInParallel(scriptedTestRunners.toParArray)
+  }
+
+  def runAll(tests: Seq[ScriptedTests.TestRunner]): Unit = {
     val errors = for (test <- tests; err <- test()) yield err
     if (errors.nonEmpty)
       sys.error(errors.mkString("Failed tests:\n\t", "\n\t", "\n"))
+  }
+
+  def runAllInParallel(tests: ParSeq[ScriptedTests.TestRunner]): Unit = {
+    val executedTests = tests.flatMap(test => test.apply().toList).toList
+    if (executedTests.nonEmpty)
+      sys.error(executedTests.mkString("Failed tests:\n\t", "\n\t", "\n"))
   }
 
   def get(tests: Seq[String], baseDirectory: File, log: Logger): Seq[ScriptedTest] =
     if (tests.isEmpty) listTests(baseDirectory, log) else parseTests(tests)
 
   def listTests(baseDirectory: File, log: Logger): Seq[ScriptedTest] =
-    (new ListTests(baseDirectory, _ => true, log)).listTests
+    new ListTests(baseDirectory, _ => true, log).listTests
 
   def parseTests(in: Seq[String]): Seq[ScriptedTest] =
     for (testString <- in) yield {

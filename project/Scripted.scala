@@ -89,12 +89,12 @@ object Scripted {
 
   // Interface to cross class loader
   type SbtScriptedRunner = {
-    def run(resourceBaseDirectory: File,
-            bufferLog: Boolean,
-            tests: Array[String],
-            bootProperties: File,
-            launchOpts: Array[String],
-            prescripted: java.util.List[File]): Unit
+    def runInParallel(resourceBaseDirectory: File,
+                      bufferLog: Boolean,
+                      tests: Array[String],
+                      bootProperties: File,
+                      launchOpts: Array[String],
+                      prescripted: java.util.List[File]): Unit
   }
 
   def doScripted(launcher: File,
@@ -120,7 +120,12 @@ object Scripted {
         def get(x: Int): sbt.File = ???
         def size(): Int = 0
       }
-      bridge.run(sourcePath, bufferLog, args.toArray, launcher, launchOpts.toArray, callback)
+      bridge.runInParallel(sourcePath,
+                           bufferLog,
+                           args.toArray,
+                           launcher,
+                           launchOpts.toArray,
+                           callback)
     } catch { case ite: java.lang.reflect.InvocationTargetException => throw ite.getCause }
   }
 }
