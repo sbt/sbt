@@ -201,17 +201,15 @@ class ScriptedRunner {
     runAllInParallel(scriptedTestRunners.toParArray)
   }
 
-  def runAll(tests: Seq[ScriptedTests.TestRunner]): Unit = {
-    val errors = for (test <- tests; err <- test()) yield err
-    if (errors.nonEmpty)
-      sys.error(errors.mkString("Failed tests:\n\t", "\n\t", "\n"))
-  }
+  private def reportErrors(errors: Seq[String]): Unit =
+    if (errors.nonEmpty) sys.error(errors.mkString("Failed tests:\n\t", "\n\t", "\n")) else ()
 
-  def runAllInParallel(tests: ParSeq[ScriptedTests.TestRunner]): Unit = {
-    val executedTests = tests.flatMap(test => test.apply().toList).toList
-    if (executedTests.nonEmpty)
-      sys.error(executedTests.mkString("Failed tests:\n\t", "\n\t", "\n"))
-  }
+  def runAll(tests: Seq[ScriptedTests.TestRunner]): Unit =
+    reportErrors(tests.flatMap(test => test.apply().toSeq))
+
+  // We cannot reuse `runAll` because parallel collections != collections
+  def runAllInParallel(tests: ParSeq[ScriptedTests.TestRunner]): Unit =
+    reportErrors(tests.flatMap(test => test.apply().toSeq).toList)
 
   def get(tests: Seq[String], baseDirectory: File, log: Logger): Seq[ScriptedTest] =
     if (tests.isEmpty) listTests(baseDirectory, log) else parseTests(tests)
