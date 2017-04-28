@@ -37,6 +37,8 @@ final class ScriptedTests(resourceBaseDirectory: File,
     scriptedTest(group, name, Logger.xlog2Log(log))
   def scriptedTest(group: String, name: String, log: Logger): Seq[() => Option[String]] =
     scriptedTest(group, name, emptyCallback, log)
+
+  /** Returns a sequence of test runners that have to be applied in the call site. */
   def scriptedTest(group: String,
                    name: String,
                    prescripted: File => Unit,
@@ -45,76 +47,68 @@ final class ScriptedTests(resourceBaseDirectory: File,
     for (groupDir <- (resourceBaseDirectory * group).get; nme <- (groupDir * name).get) yield {
       val g = groupDir.getName
       val n = nme.getName
-      val str = s"$g / $n"
+      val testLabel = s"$g / $n"
       () =>
         {
-          println("Running " + str)
+          println("Running " + testLabel)
           testResources.readWriteResourceDirectory(g, n) { testDirectory =>
             val disabled = new File(testDirectory, "disabled").isFile
             if (disabled) {
-              log.info("D " + str + " [DISABLED]")
+              log.info("D " + testLabel + " [DISABLED]")
               None
-            } else {
-              try { scriptedTest(str, testDirectory, prescripted, log); None } catch {
-                case _: TestException | _: PendingTestSuccessException => Some(str)
-              }
-            }
+            } else scriptedTest(testLabel, testDirectory, prescripted, log)
           }
         }
     }
   }
 
+  private val PendingLabel = "[PENDING]"
   private def scriptedTest(label: String,
                            testDirectory: File,
-                           prescripted: File => Unit,
-                           log: Logger): Unit = {
+                           preScriptedHook: File => Unit,
+                           log: Logger): Option[String] = {
     val buffered = new BufferedLogger(new FullLogger(log))
-    if (bufferLog)
-      buffered.record()
+    if (bufferLog) buffered.record()
 
-    def createParser() = {
-      val fileHandler = new FileCommands(testDirectory)
-      val sbtHandler = new SbtHandler(testDirectory, launcher, buffered, launchOpts)
-      new TestScriptParser(Map('$' -> fileHandler, '>' -> sbtHandler, '#' -> CommentHandler))
-    }
     val (file, pending) = {
       val normal = new File(testDirectory, ScriptFilename)
       val pending = new File(testDirectory, PendingScriptFilename)
       if (pending.isFile) (pending, true) else (normal, false)
     }
-    val pendingString = if (pending) " [PENDING]" else ""
 
-    def runTest() = {
-      val run = new ScriptRunner
-      val parser = createParser()
-      run(parser.parse(file))
-    }
-    def testFailed(): Unit = {
+    val pendingMark = if (pending) PendingLabel else ""
+    def testFailed(t: Throwable): Option[String] = {
       if (pending) buffered.clear() else buffered.stop()
-      buffered.error("x " + label + pendingString)
+      buffered.error(s"x $label $pendingMark" + label + pendingMark)
+      if (!NonFatal(t)) throw t // We make sure fatal errors are rethrown
+      if (t.isInstanceOf[TestException]) {
+        t.getCause match {
+          case null | _: java.net.SocketException =>
+            buffered.error(" Cause of test exception: " + t.getMessage)
+          case _ => t.printStackTrace()
+        }
+      }
+      if (pending) None else Some(label)
     }
 
-    try {
-      prescripted(testDirectory)
-      runTest()
-      buffered.info("+ " + label + pendingString)
-      if (pending) throw new PendingTestSuccessException(label)
-    } catch {
-      case e: TestException =>
-        testFailed()
-        e.getCause match {
-          case null | _: java.net.SocketException => buffered.error("   " + e.getMessage)
-          case _                                  => e.printStackTrace
-        }
-        if (!pending) throw e
-      case e: PendingTestSuccessException =>
-        testFailed()
-        buffered.error("  Mark as passing to remove this failure.")
-        throw e
-      case NonFatal(e) =>
-        testFailed()
-        if (!pending) throw e
-    } finally { buffered.clear() }
+    import scala.util.control.Exception.catching
+    catching(classOf[TestException]).withApply(testFailed).andFinally(buffered.clear).apply {
+      preScriptedHook(testDirectory)
+      val run = new ScriptRunner
+      val fileHandler = new FileCommands(testDirectory)
+      val sbtHandler = new SbtHandler(testDirectory, launcher, buffered, launchOpts)
+      val handlers = Map('$' -> fileHandler, '>' -> sbtHandler, '#' -> CommentHandler)
+      val parser = new TestScriptParser(handlers)
+      run(parser.parse(file))
+
+      // Handle successful tests
+      buffered.info(s"+ $label $pendingMark")
+      if (pending) {
+        buffered.clear()
+        buffered.error(" Pending test passed. Mark as passing to remove this failure.")
+        Some(label)
+      } else None
+    }
   }
 }
 
@@ -123,9 +117,7 @@ object ScriptedTests extends ScriptedRunner {
   /** Represents the function that runs the scripted tests. */
   type TestRunner = () => Option[String]
 
-  val emptyCallback: File => Unit = { _ =>
-    ()
-  }
+  val emptyCallback: File => Unit = _ => ()
   def main(args: Array[String]): Unit = {
     val directory = new File(args(0))
     val buffer = args(1).toBoolean
