@@ -182,11 +182,8 @@ object State {
         log.debug(s"> $cmd")
         f(cmd, s.copy(remainingCommands = remainingCommands, history = cmd :: s.history))
       }
-      def isInteractive = System.console != null
-      def hasInput = Option(System.console) exists (_.reader.ready())
-      def hasShellCmd = s.definedCommands exists { case c: SimpleCommand => c.name == Shell; case _ => false }
       s.remainingCommands match {
-        case Seq()           => if (isInteractive && hasInput && hasShellCmd) runCmd(Shell, Nil) else exit(true)
+        case Seq()           => exit(true)
         case Seq(x, xs @ _*) => runCmd(x, xs)
       }
     }

@@ -1,3 +1,6 @@
+### Fixes with compatibility implications
+
+- Removes the "hit \[ENTER\] to switch to interactive mode" feature. See below.
 
 ### Improvements
 
@@ -30,6 +33,23 @@ When informing the user about sbt's shell the messaging now:
 - never shows when sbt `new` is being run
 
 [#3091][3091]/[#3097][3097]/[#3147][3147] by [@dwijnand][@dwijnand]
+
+### Remove the "hit \[ENTER\] to switch to interactive mode" feature
+
+In sbt 0.13.15, in addition to notifying the user about the existence of sbt's shell, a feature was added to
+allow the user to switch to sbt's shell - a more pro-active approach to just displaying a message.
+
+Unfortunately sbt is often unintentionally invoked in shell scripts in "interactive mode" when no interaction is
+expected by, for exmaple, invoking `sbt package` instead of `sbt package < /dev/null`. In that case hitting
+\[ENTER\] would silently trigger sbt to run its shell, easily wrecking the script. In addition to that I was
+unhappy with the implementation as it created a tight coupling between sbt's command processing abstraction to
+sbt's shell command.
+
+If you want to stay in sbt's shell after running a task like `package` then invoke sbt like so:
+
+    sbt package shell
+
+[#3091][3091]/[#3153][3153] by [@dwijnand][@dwijnand]
 
 ### sbt-cross-building
 
@@ -67,6 +87,7 @@ Then, run:
   [3097]: https://github.com/sbt/sbt/issues/3097
   [3147]: https://github.com/sbt/sbt/pull/3147
   [3133]: https://github.com/sbt/sbt/pull/3133
+  [3153]: https://github.com/sbt/sbt/pull/3153
   [@jrudolph]: https://github.com/jrudolph
   [@eed3si9n]: https://github.com/eed3si9n
   [@dwijnand]: https://github.com/dwijnand
