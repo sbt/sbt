@@ -8,9 +8,10 @@ import org.http4s._
 import org.http4s.dsl._
 import org.http4s.headers.{Authorization, `Content-Type`}
 import org.http4s.server.blaze.BlazeBuilder
-import org.http4s.server.Server
+import org.http4s.server.{Server, ServerApp}
 
 import caseapp._
+import caseapp.core.WithHelp
 
 import scala.collection.JavaConverters._
 import scalaz.concurrent.Task
@@ -82,7 +83,7 @@ final case class HttpServerOptions(
     listPages: Boolean
 )
 
-object HttpServer extends CaseApp[HttpServerOptions] {
+object HttpServer {
 
   def write(baseDir: File, path: Seq[String], req: Request): Boolean = {
 
@@ -262,23 +263,25 @@ object HttpServer extends CaseApp[HttpServerOptions] {
 
     options.auth.checks()
 
+    val verbosityLevel = options.verbosity.verbosityLevel
+
     val builder = {
       var b = BlazeBuilder.bindHttp(options.port, options.host)
 
       if (options.acceptWrite || options.acceptPut)
-        b = b.mountService(putService(baseDir, options.auth, options.verbosity.verbosityLevel))
+        b = b.mountService(putService(baseDir, options.auth, verbosityLevel))
       if (options.acceptWrite || options.acceptPost)
-        b = b.mountService(postService(baseDir, options.auth, options.verbosity.verbosityLevel))
+        b = b.mountService(postService(baseDir, options.auth, verbosityLevel))
 
-      b = b.mountService(getService(baseDir, options.auth, options.verbosity.verbosityLevel, options.listPages))
+      b = b.mountService(getService(baseDir, options.auth, verbosityLevel, options.listPages))
 
       b
     }
 
-    if (options.verbosity.verbosityLevel >= 0) {
+    if (verbosityLevel >= 0) {
       Console.err.println(s"Listening on http://${options.host}:${options.port}")
 
-      if (options.verbosity.verbosityLevel >= 1 && options.host == "0.0.0.0") {
+      if (verbosityLevel >= 1 && options.host == "0.0.0.0") {
         Console.err.println(s"Listening on addresses")
         for (itf <- NetworkInterface.getNetworkInterfaces.asScala; addr <- itf.getInetAddresses.asScala)
           Console.err.println(s"  ${addr.getHostAddress} (${itf.getName})")
@@ -288,16 +291,38 @@ object HttpServer extends CaseApp[HttpServerOptions] {
     builder.start
   }
 
-  def run(options: HttpServerOptions, args: RemainingArgs): Unit = {
+}
 
-    if (args.args.nonEmpty)
-      Console.err.println(
-        s"Warning: ignoring extra arguments passed on the command-line (${args.args.mkString(", ")})"
-      )
+object HttpServerApp extends ServerApp {
 
-    server(options)
-      .unsafePerformSync
-      .awaitShutdown()
-  }
+  val app: CaseApp[HttpServerOptions] =
+    new CaseApp[HttpServerOptions] {
+      def run(options: HttpServerOptions, args: RemainingArgs) =
+        sys.error("unused")
+    }
+
+  def server(args: List[String]): Task[Server] =
+    app.parser.withHelp.detailedParse(args) match {
+      case Left(err) =>
+        app.error(err)
+        sys.error("unreached") // need to adjust return type of error method in CaseApp
+
+      case Right((WithHelp(usage, help, t), remainingArgs, extraArgs)) =>
+
+        if (help)
+          app.helpAsked()
+
+        if (usage)
+          app.usageAsked()
+
+        val extraArgs0 = remainingArgs ++ extraArgs
+
+        if (extraArgs0.nonEmpty)
+          Console.err.println(
+            s"Warning: ignoring extra arguments passed on the command-line (${extraArgs0.mkString(", ")})"
+          )
+
+        HttpServer.server(t)
+    }
 
 }
