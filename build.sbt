@@ -191,19 +191,13 @@ lazy val `http-server` = project
   .settings(
     shared,
     generatePack,
-    dontPublishIn("2.10", "2.12"),
-    name := "http-server-java7",
-    libs ++= {
-      if (scalaBinaryVersion.value == "2.11")
-        Seq(
-          Deps.http4sBlazeServer,
-          Deps.http4sDsl,
-          Deps.slf4jNop,
-          Deps.caseApp
-        )
-      else
-        Seq()
-    }
+    name := "http-server",
+    libs ++= Seq(
+      Deps.http4sBlazeServer,
+      Deps.http4sDsl,
+      Deps.slf4jNop,
+      Deps.caseApp12
+    )
   )
 
 lazy val okhttp = project
