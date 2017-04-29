@@ -5,6 +5,12 @@ VERSION="${VERSION:-1.0.0-SNAPSHOT}"
 
 cd "$(dirname "$0")/.."
 
+# synchronously fill cache so that two runs of this script don't try to download
+# a same file at the same time (and one of them fail because of locks)
+./coursier fetch \
+  "io.get-coursier:http-server-java7_2.11:$VERSION" \
+  -r https://dl.bintray.com/scalaz/releases
+
 ./coursier launch \
   "io.get-coursier:http-server-java7_2.11:$VERSION" \
   -r https://dl.bintray.com/scalaz/releases \

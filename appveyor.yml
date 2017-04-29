@@ -22,7 +22,7 @@ install:
         Set-Location -Path ..
       }
 build_script:
-  - sbt ++2.11.8 clean compile coreJVM/publishLocal http-server/publishLocal
+  - sbt ++2.11.11 clean compile coreJVM/publishLocal http-server/publishLocal
   - sbt ++2.10.6 clean compile
   - sbt ++2.10.6 coreJVM/publishLocal cache/publishLocal # to make the scripted tests happy
 test_script:
@@ -30,7 +30,7 @@ test_script:
   - ps: Start-Sleep -s 15 # wait for the first server to have downloaded its dependencies
   - ps: Start-Job -filepath .\scripts\start-it-no-listing-server.ps1 -ArgumentList $pwd
   - sbt ++2.12.1 testsJVM/test testsJVM/it:test # Would node be around for testsJS/test?
-  - sbt ++2.11.8 testsJVM/test testsJVM/it:test
+  - sbt ++2.11.11 testsJVM/test testsJVM/it:test
   - sbt ++2.10.6 testsJVM/test testsJVM/it:test sbt-coursier/scripted sbt-coursier/publishLocal sbt-shading/scripted
 cache:
   - C:\Users\appveyor\.ivy2\cache

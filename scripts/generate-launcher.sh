@@ -6,7 +6,7 @@ CACHE_VERSION=v1
 SBTPACK_LAUNCHER="$(dirname "$0")/../cli/target/pack/bin/coursier"
 
 if [ ! -f "$SBTPACK_LAUNCHER" ]; then
-  sbt ++2.11.8 cli/pack
+  sbt ++2.11.11 cli/pack
 fi
 
 "$SBTPACK_LAUNCHER" bootstrap \
