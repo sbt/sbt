@@ -1,13 +1,19 @@
 package sbt
 
-import java.io.{ IOException, StringWriter, PrintWriter, File }
+import java.io.{ File, IOException, PrintWriter, StringWriter }
 import java.net.InetAddress
 import java.util.Hashtable
 
 import scala.collection.mutable.ListBuffer
 import scala.util.DynamicVariable
 import scala.xml.{ Elem, Node => XNode, XML }
-import testing.{ Event => TEvent, Status => TStatus, OptionalThrowable, TestSelector }
+import testing.{
+  Event => TEvent,
+  NestedTestSelector,
+  Status => TStatus,
+  OptionalThrowable,
+  TestSelector
+}
 import sbt.protocol.testing.TestResult
 
 /**
@@ -75,8 +81,9 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
                      {
                        for (e <- events) yield <testcase classname={ name } name={
                          e.selector match {
-                           case selector: TestSelector=> selector.testName.split('.').last
-                           case _   => "(It is not a test)"
+                           case selector: TestSelector => selector.testName.split('.').last
+                           case nested: NestedTestSelector => nested.suiteId().split('.').last + "." + nested.testName()
+                           case other => s"(It is not a test it is a ${other.getClass.getCanonicalName})"
                          }
                        } time={ (e.duration() / 1000.0).toString }>
                                                  {
