@@ -362,8 +362,7 @@ def otherRootSettings =
         ()
       },
       scriptedLaunchOpts := {
-        List("-XX:MaxPermSize=256M",
-             "-Xmx512M",
+        List("-Xmx512M",
              "-Dsbt.override.build.repos=true",
              s"""-Dsbt.repository.config=${scriptedSource.value / "repo.config"}""")
       },
