@@ -140,17 +140,17 @@ final class ScriptedTests(resourceBaseDirectory: File,
           // Copy test's contents and reload the sbt instance to pick them up
           IO.copyDirectory(originalDir, tempTestDir)
 
-          // Reload and initialize (to reload contents of .sbtrc files)
-          val sbtHandler = handlers.getOrElse('>', sys.error("Missing sbt handler."))
-          val statement =
-            Statement(";reload;initialize", Nil, successExpected = true, line = -1)
-          runner.processStatement(sbtHandler.asInstanceOf[SbtHandler], statement, states)
+          val runTest = () => {
+            // Reload and initialize (to reload contents of .sbtrc files)
+            val sbtHandler = handlers.getOrElse('>', sys.error("Missing sbt handler."))
+            val statement =
+              Statement(";reload;initialize", Nil, successExpected = true, line = -1)
+            runner.processStatement(sbtHandler.asInstanceOf[SbtHandler], statement, states)
+            commonRunTest(label, tempTestDir, preHook, handlers, runner, states, buffer)
+          }
 
-          val runTest =
-            () => commonRunTest(label, tempTestDir, preHook, handlers, runner, states, buffer)
+          // Run the test and delete files (except global that holds local scala jars)
           val result = runOrHandleDisabled(label, tempTestDir, runTest, buffer)
-
-          // Delete test's files and clear buffer if successful
           IO.delete(tempTestDir.*("*" -- "global").get)
           result
       }
