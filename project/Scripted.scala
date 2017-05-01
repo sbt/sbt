@@ -70,7 +70,7 @@ object Scripted {
       else dropped.take(pageSize)
     }
     def nameP(group: String) = {
-      token("*".id | id.examples(pairMap(group)))
+      token("*".id | id.examples(pairMap.getOrElse(group, Set.empty[String])))
     }
     val PagedIds: Parser[Seq[String]] =
       for {
