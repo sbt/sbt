@@ -145,8 +145,12 @@ final class ScriptedTests(resourceBaseDirectory: File,
             val sbtHandler = handlers.getOrElse('>', sys.error("Missing sbt handler."))
             val statement =
               Statement(";reload;initialize", Nil, successExpected = true, line = -1)
-            runner.processStatement(sbtHandler.asInstanceOf[SbtHandler], statement, states)
-            commonRunTest(label, tempTestDir, preHook, handlers, runner, states, buffer)
+            // Run reload inside the hook to reuse error handling for pending tests
+            val wrapHook = (file: File) => {
+              preHook(file)
+              runner.processStatement(sbtHandler.asInstanceOf[SbtHandler], statement, states)
+            }
+            commonRunTest(label, tempTestDir, wrapHook, handlers, runner, states, buffer)
           }
 
           // Run the test and delete files (except global that holds local scala jars)
