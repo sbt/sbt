@@ -6,7 +6,7 @@ plugins_(
   "com.jsuereth"      % "sbt-pgp"         % "1.0.0",
   "com.typesafe.sbt"  % "sbt-proguard"    % "0.2.2",
   "com.github.gseitz" % "sbt-release"     % "1.0.4",
-  "org.scala-js"      % "sbt-scalajs"     % "0.6.15",
+  "org.scala-js"      % "sbt-scalajs"     % "0.6.16",
   "org.scoverage"     % "sbt-scoverage"   % "1.4.0",
   "io.get-coursier"   % "sbt-shading"     % coursierVersion,
   "org.xerial.sbt"    % "sbt-sonatype"    % "1.1",
