@@ -1,4 +1,14 @@
 import sbt.internal.inc.Analysis
+import xsbti.Maybe
+import xsbti.compile.{PreviousResult, CompileAnalysis, MiniSetup}
+
+previousCompile in Compile := {
+  if (!CompileState.isNew) {
+    val res = new PreviousResult(Maybe.nothing[CompileAnalysis], Maybe.nothing[MiniSetup])
+    CompileState.isNew = true
+    res
+  } else (previousCompile in Compile).value
+}
 
 /* Performs checks related to compilations:
  *  a) checks in which compilation given set of files was recompiled
@@ -22,7 +32,7 @@ TaskKey[Unit]("checkCompilations") := {
     val files = fileNames.map(new java.io.File(_))
     assert(recompiledFiles(iteration) == files, "%s != %s".format(recompiledFiles(iteration), files))
   }
-  assert(allCompilations.size == 2)
+  assert(allCompilations.size == 2, s"All compilations is ${allCompilations.size}")
   // B.scala is just compiled at the beginning
   recompiledFilesInIteration(0, Set("B.scala"))
   // A.scala is changed and recompiled
