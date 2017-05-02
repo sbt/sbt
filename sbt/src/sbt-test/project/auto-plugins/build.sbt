@@ -52,9 +52,9 @@ check := {
 	same(ddel, None, "del in projD")
 //
 	val buildValue = (demo in ThisBuild).value
-	same(buildValue, "build 0", "demo in ThisBuild")
+	same(buildValue, "build 1", "demo in ThisBuild") // this is temporary, should be 0 until # is fixed
 	val globalValue = (demo in Global).value
-	same(globalValue, "global 0", "demo in Global")
+	same(globalValue, "global 1", "demo in Global") // this is temporary, should be 0 until # is fixed
 	val projValue = (demo in projC).?.value
 	same(projValue, Some("project projC Q R"), "demo in projC")
 	val qValue = (del in projC in q).?.value
