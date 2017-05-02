@@ -43,7 +43,7 @@ object ResolutionError {
   final case class UnknownDownloadException(ex: Throwable) extends ResolutionError
   final case class Conflicts(description: String) extends ResolutionError
 
-  final case class MetadataDownloadErrors(errors: Seq[(Dependency, Seq[String])]) extends ResolutionError {
+  final case class MetadataDownloadErrors(errors: Seq[((Module, String), Seq[String])]) extends ResolutionError {
     def description(): String = {
 
       def grouped(errs: Seq[String]) =
@@ -64,8 +64,8 @@ object ResolutionError {
 
       lines += s"Encountered ${errors.length} error(s) in dependency resolution:"
 
-      for ((dep, errs) <- errors) {
-        lines += s"  ${dep.module}:${dep.version}:"
+      for (((mod, ver), errs) <- errors) {
+        lines += s"  $mod:$ver:"
 
         for ((type0, errs0) <- grouped(errs))
           if (type0.isEmpty)

@@ -677,7 +677,7 @@ object Tasks {
           startRes
             .process
             .run(fetch, maxIterations)
-            .attemptRun
+            .unsafePerformSyncAttempt
             .leftMap(ex =>
               ResolutionError.UnknownException(ex)
                 .throwException()
@@ -704,17 +704,17 @@ object Tasks {
           ).throwException()
         }
 
-        if (res.errors.nonEmpty) {
+        if (res.metadataErrors.nonEmpty) {
           val internalRepositoriesLen = internalRepositories.length
           val errors =
             if (repositories.length > internalRepositoriesLen)
             // drop internal repository errors
-              res.errors.map {
+              res.metadataErrors.map {
                 case (dep, errs) =>
                   dep -> errs.drop(internalRepositoriesLen)
               }
             else
-              res.errors
+              res.metadataErrors
 
           ResolutionError.MetadataDownloadErrors(errors)
             .throwException()
@@ -823,7 +823,7 @@ object Tasks {
 
         artifactsLogger.init(if (printOptionalMessage) log.info(artifactInitialMessage))
 
-        Task.gatherUnordered(artifactFileOrErrorTasks).attemptRun match {
+        Task.gatherUnordered(artifactFileOrErrorTasks).unsafePerformSyncAttempt match {
           case -\/(ex) =>
             ResolutionError.UnknownDownloadException(ex)
               .throwException()

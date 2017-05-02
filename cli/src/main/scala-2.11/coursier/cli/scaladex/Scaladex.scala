@@ -8,6 +8,7 @@ import argonaut._, Argonaut._, ArgonautShapeless._
 import coursier.core.{ Artifact, Attributes }
 import coursier.{ Fetch, Module }
 
+import scala.language.higherKinds
 import scalaz.{ -\/, EitherT, Monad, Nondeterminism, \/, \/- }
 import scalaz.Scalaz.ToEitherOps
 import scalaz.Scalaz.ToEitherOpsFromEither

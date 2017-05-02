@@ -455,7 +455,7 @@ class TermDisplay(
 
   /**
     *
-    * @return: whether any message was printed by this `TermDisplay`
+    * @return whether any message was printed by this `TermDisplay`
     */
   def stopDidPrintSomething(): Boolean = {
     scheduler.shutdown()

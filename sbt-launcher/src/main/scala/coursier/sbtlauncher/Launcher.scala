@@ -10,6 +10,7 @@ import coursier.ivy.IvyRepository
 import coursier.maven.MavenSource
 
 import scala.annotation.tailrec
+import scala.language.reflectiveCalls
 import scalaz.{-\/, \/-}
 import scalaz.concurrent.Task
 

@@ -10,7 +10,7 @@ package object compatibility {
   implicit val executionContext = scala.concurrent.ExecutionContext.global
 
   implicit class TaskExtensions[T](val underlying: Task[T]) extends AnyVal {
-    def runF: Future[T] = Future.successful(underlying.run)
+    def runF: Future[T] = Future.successful(underlying.unsafePerformSync)
   }
 
   def textResource(path: String)(implicit ec: ExecutionContext): Future[String] = Future {
