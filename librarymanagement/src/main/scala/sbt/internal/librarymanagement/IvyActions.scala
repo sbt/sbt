@@ -203,31 +203,18 @@ object IvyActions {
   }
 
   /**
-   * Resolves and retrieves dependencies.  'ivyConfig' is used to produce an Ivy file and configuration.
-   * 'updateConfig' configures the actual resolution and retrieval process.
-   */
-  @deprecated("This is no longer public.", "0.13.6")
-  def update(
-      module: IvySbt#Module,
-      configuration: UpdateConfiguration,
-      log: Logger
-  ): UpdateReport =
-    updateEither(
-      module,
-      configuration,
-      UnresolvedWarningConfiguration(),
-      LogicalClock.unknown,
-      None,
-      log
-    ) match {
-      case Right(r) => r
-      case Left(w) =>
-        throw w.resolveException
-    }
-
-  /**
-   * Resolves and retrieves dependencies.  'ivyConfig' is used to produce an Ivy file and configuration.
-   * 'updateConfig' configures the actual resolution and retrieval process.
+   * Updates one module's dependencies performing a dependency resolution and retrieval.
+   *
+   * The following mechanism uses ivy under the hood.
+   *
+   * @param module The module to be resolved.
+   * @param configuration The update configuration.
+   * @param uwconfig The configuration to handle unresolved warnings.
+   * @param logicalClock The clock necessary to cache ivy.
+   * @param depDir The base directory used for caching resolution.
+   * @param log The logger.
+   * @return The result, either an unresolved warning or an update report. Note that this
+   *         update report will or will not be successful depending on the `missingOk` option.
    */
   private[sbt] def updateEither(
       module: IvySbt#Module,
@@ -236,58 +223,33 @@ object IvyActions {
       logicalClock: LogicalClock,
       depDir: Option[File],
       log: Logger
-  ): Either[UnresolvedWarning, UpdateReport] =
+  ): Either[UnresolvedWarning, UpdateReport] = {
     module.withModule(log) {
-      case (ivy, md, default)
-          if module.owner.configuration.updateOptions.cachedResolution && depDir.isDefined =>
-        ivy.getResolveEngine match {
-          case x: CachedResolutionResolveEngine =>
-            val iw = IvySbt.inconsistentDuplicateWarning(md)
-            iw foreach { log.warn(_) }
-            val resolveOptions = new ResolveOptions
-            val resolveId = ResolveOptions.getDefaultResolveId(md)
-            resolveOptions.setResolveId(resolveId)
-            resolveOptions.setArtifactFilter(configuration.artifactFilter)
-            resolveOptions.setLog(ivyLogLevel(configuration.logging))
-            x.customResolve(
-              md,
-              configuration.missingOk,
-              logicalClock,
-              resolveOptions,
-              depDir getOrElse {
-                sys.error("dependency base directory is not specified")
-              },
-              log
-            ) match {
-              case Left(x) =>
-                Left(UnresolvedWarning(x, uwconfig))
-              case Right(uReport) =>
-                configuration.retrieve match {
-                  case Some(rConf) => Right(retrieve(log, ivy, uReport, rConf))
-                  case None        => Right(uReport)
-                }
-            }
+      case (ivy, moduleDescriptor, defaultConf) =>
+        // Warn about duplicated and inconsistent dependencies
+        val iw = IvySbt.inconsistentDuplicateWarning(moduleDescriptor)
+        iw.foreach(log.warn(_))
+
+        // Create inputs, resolve and retrieve the module descriptor
+        val inputs = ResolutionInputs(ivy, moduleDescriptor, configuration, log)
+        val resolutionResult: Either[ResolveException, UpdateReport] = {
+          if (module.owner.configuration.updateOptions.cachedResolution && depDir.isDefined) {
+            val cache = depDir.getOrElse(sys.error("Missing directory for cached resolution."))
+            cachedResolveAndRetrieve(inputs, logicalClock, cache)
+          } else resolveAndRetrieve(inputs, defaultConf)
         }
-      case (ivy, md, default) =>
-        val iw = IvySbt.inconsistentDuplicateWarning(md)
-        iw foreach { log.warn(_) }
-        val (report, err) =
-          resolve(configuration.logging)(ivy, md, default, configuration.artifactFilter)
-        err match {
-          case Some(x) if !configuration.missingOk =>
-            Left(UnresolvedWarning(x, uwconfig))
-          case _ =>
-            val cachedDescriptor = ivy.getSettings.getResolutionCacheManager
-              .getResolvedIvyFileInCache(md.getModuleRevisionId)
-            val uReport = IvyRetrieve.updateReport(report, cachedDescriptor)
-            configuration.retrieve match {
-              case Some(rConf) => Right(retrieve(log, ivy, uReport, rConf))
-              case None        => Right(uReport)
-            }
-        }
+
+        // Convert to unresolved warning or retrieve update report
+        resolutionResult.fold(
+          exception => Left(UnresolvedWarning(exception, uwconfig)),
+          updateReport => {
+            val retrieveConf = configuration.retrieve
+            Right(retrieveConf.map(retrieve(log, ivy, updateReport, _)).getOrElse(updateReport))
+          }
+        )
     }
-  @deprecated("No longer used.", "0.13.6")
-  def processUnresolved(err: ResolveException, log: Logger): Unit = ()
+  }
+
   def groupedConflicts[T](moduleFilter: ModuleFilter, grouping: ModuleID => T)(
       report: UpdateReport
   ): Map[T, Set[String]] =
@@ -301,23 +263,6 @@ object IvyActions {
 
   def grouped[T](grouping: ModuleID => T)(mods: Seq[ModuleID]): Map[T, Set[String]] =
     mods groupBy (grouping) mapValues (_.map(_.revision).toSet)
-
-  @deprecated("This is no longer public.", "0.13.6")
-  def transitiveScratch(
-      ivySbt: IvySbt,
-      label: String,
-      config: GetClassifiersConfiguration,
-      log: Logger
-  ): UpdateReport =
-    transitiveScratch(
-      ivySbt,
-      label,
-      config,
-      UnresolvedWarningConfiguration(),
-      LogicalClock.unknown,
-      None,
-      log
-    )
 
   private[sbt] def transitiveScratch(
       ivySbt: IvySbt,
@@ -341,21 +286,6 @@ object IvyActions {
     val newConfig = config.copy(module = mod.copy(modules = report.allModules))
     updateClassifiers(ivySbt, newConfig, uwconfig, logicalClock, depDir, Vector(), log)
   }
-  @deprecated("This is no longer public.", "0.13.6")
-  def updateClassifiers(
-      ivySbt: IvySbt,
-      config: GetClassifiersConfiguration,
-      log: Logger
-  ): UpdateReport =
-    updateClassifiers(
-      ivySbt,
-      config,
-      UnresolvedWarningConfiguration(),
-      LogicalClock.unknown,
-      None,
-      Vector(),
-      log
-    )
 
   /**
    * Creates explicit artifacts for each classifier in `config.module`, and then attempts to resolve them directly. This
@@ -496,64 +426,114 @@ object IvyActions {
       .withConfigurations(if (confs) m.configurations else None)
       .branch(m.branchName)
 
-  private[this] def resolve(logging: UpdateLogging)(
+  /**
+   * Represents the inputs to pass in to [[resolveAndRetrieve]] and [[cachedResolveAndRetrieve]].
+   *
+   * @param ivy The ivy instance to resolve and retrieve dependencies.
+   * @param module The module descriptor to be resolved.
+   * @param updateConfiguration The update configuration for [[ResolveOptions]].
+   * @param log The logger.
+   */
+  private case class ResolutionInputs(
       ivy: Ivy,
       module: DefaultModuleDescriptor,
-      defaultConf: String,
-      filter: ArtifactTypeFilter
-  ): (ResolveReport, Option[ResolveException]) = {
+      updateConfiguration: UpdateConfiguration,
+      log: Logger
+  )
+
+  /**
+   * Defines the internal entrypoint of module resolution and retrieval.
+   *
+   * This method is the responsible of populating [[ResolveOptions]] and pass
+   * it in to the ivy instance to perform the module resolution.
+   *
+   * It returns an already resolved [[UpdateReport]] instead of a [[ResolveReport]]
+   * like its counterpart [[CachedResolutionResolveEngine.customResolve]].
+   *
+   * @param inputs The resolution inputs.
+   * @param defaultModuleConfiguration The default ivy configuration.
+   * @return The result of the resolution.
+   */
+  private[this] def resolveAndRetrieve(
+      inputs: ResolutionInputs,
+      defaultModuleConfiguration: String
+  ): Either[ResolveException, UpdateReport] = {
+    // Populate resolve options from the passed arguments
+    val ivyInstance = inputs.ivy
+    val moduleDescriptor = inputs.module
+    val updateConfiguration = inputs.updateConfiguration
+    val logging = updateConfiguration.logging
     val resolveOptions = new ResolveOptions
-    val resolveId = ResolveOptions.getDefaultResolveId(module)
+    val resolveId = ResolveOptions.getDefaultResolveId(moduleDescriptor)
     resolveOptions.setResolveId(resolveId)
-    resolveOptions.setArtifactFilter(filter)
+    resolveOptions.setArtifactFilter(updateConfiguration.artifactFilter)
     resolveOptions.setLog(ivyLogLevel(logging))
     ResolutionCache.cleanModule(
-      module.getModuleRevisionId,
+      moduleDescriptor.getModuleRevisionId,
       resolveId,
-      ivy.getSettings.getResolutionCacheManager
+      ivyInstance.getSettings.getResolutionCacheManager
     )
-    val resolveReport = ivy.resolve(module, resolveOptions)
-    val err =
-      if (resolveReport.hasError) {
-        val messages = resolveReport.getAllProblemMessages.toArray.map(_.toString).distinct
-        val failedPaths = Map(resolveReport.getUnresolvedDependencies map { node =>
-          val m = IvyRetrieve.toModuleID(node.getId)
-          val path = IvyRetrieve.findPath(node, module.getModuleRevisionId) map { x =>
-            IvyRetrieve.toModuleID(x.getId)
-          }
-          m -> path
-        }: _*)
-        val failed = failedPaths.keys.toSeq
-        Some(new ResolveException(messages, failed, failedPaths))
-      } else None
-    (resolveReport, err)
+
+    val resolveReport = ivyInstance.resolve(moduleDescriptor, resolveOptions)
+    if (resolveReport.hasError && !inputs.updateConfiguration.missingOk) {
+      // If strict error, collect report information and generated UnresolvedWarning
+      val messages = resolveReport.getAllProblemMessages.toArray.map(_.toString).distinct
+      val failedPaths = resolveReport.getUnresolvedDependencies.map { node =>
+        val moduleID = IvyRetrieve.toModuleID(node.getId)
+        val path = IvyRetrieve
+          .findPath(node, moduleDescriptor.getModuleRevisionId)
+          .map(x => IvyRetrieve.toModuleID(x.getId))
+        moduleID -> path
+      }.toMap
+      val failedModules = failedPaths.keys.toSeq
+      Left(new ResolveException(messages, failedModules, failedPaths))
+    } else {
+      // If no strict error, we convert the resolve report into an update report
+      val cachedDescriptor = ivyInstance.getSettings.getResolutionCacheManager
+        .getResolvedIvyFileInCache(moduleDescriptor.getModuleRevisionId)
+      Right(IvyRetrieve.updateReport(resolveReport, cachedDescriptor))
+    }
   }
-  private def retrieve(
-      log: Logger,
-      ivy: Ivy,
-      report: UpdateReport,
-      config: RetrieveConfiguration
-  ): UpdateReport =
-    retrieve(
-      log,
-      ivy,
-      report,
-      config.retrieveDirectory,
-      config.outputPattern,
-      config.sync,
-      config.configurationsToRetrieve
-    )
+
+  /**
+   * Resolves and retrieves a module with a cache mechanism defined
+   * <a href="http://www.scala-sbt.org/0.13/docs/Cached-Resolution.html">here</a>.
+   *
+   * It's the cached version of [[resolveAndRetrieve]].
+   *
+   * @param inputs The resolution inputs.
+   * @param logicalClock The clock to check if a file is outdated or not.
+   * @param cache The optional cache dependency.
+   * @return The result of the cached resolution.
+   */
+  private[this] def cachedResolveAndRetrieve(
+      inputs: ResolutionInputs,
+      logicalClock: LogicalClock,
+      cache: File
+  ): Either[ResolveException, UpdateReport] = {
+    val log = inputs.log
+    val descriptor = inputs.module
+    val updateConfiguration = inputs.updateConfiguration
+    val resolver = inputs.ivy.getResolveEngine.asInstanceOf[CachedResolutionResolveEngine]
+    val resolveOptions = new ResolveOptions
+    val resolveId = ResolveOptions.getDefaultResolveId(descriptor)
+    resolveOptions.setResolveId(resolveId)
+    resolveOptions.setArtifactFilter(updateConfiguration.artifactFilter)
+    resolveOptions.setLog(ivyLogLevel(updateConfiguration.logging))
+    val acceptError = updateConfiguration.missingOk
+    resolver.customResolve(descriptor, acceptError, logicalClock, resolveOptions, cache, log)
+  }
 
   private def retrieve(
       log: Logger,
       ivy: Ivy,
       report: UpdateReport,
-      base: File,
-      pattern: String,
-      sync: Boolean,
-      configurationsToRetrieve: Option[Set[Configuration]]
+      config: RetrieveConfiguration
   ): UpdateReport = {
-    val configurationNames = configurationsToRetrieve match {
+    val toRetrieve = config.configurationsToRetrieve
+    val base = config.retrieveDirectory
+    val pattern = config.outputPattern
+    val configurationNames = toRetrieve match {
       case None          => None
       case Some(configs) => Some(configs.map(_.name))
     }
@@ -569,7 +549,7 @@ object IvyActions {
     }
     IO.copy(toCopy)
     val resolvedFiles = toCopy.map(_._2)
-    if (sync) {
+    if (config.sync) {
       val filesToDelete = existingFiles.filterNot(resolvedFiles.contains)
       filesToDelete foreach { f =>
         log.info(s"Deleting old dependency: ${f.getAbsolutePath}")
@@ -659,7 +639,8 @@ object IvyActions {
       )
   }
 }
-final class ResolveException(
+
+private[sbt] final class ResolveException(
     val messages: Seq[String],
     val failed: Seq[ModuleID],
     val failedPaths: Map[ModuleID, Seq[ModuleID]]
@@ -697,13 +678,9 @@ object UnresolvedWarning {
         (id, modulePosition(id))
       }
     }
-    apply(err, failedPaths)
-  }
-  private[sbt] def apply(
-      err: ResolveException,
-      failedPaths: Seq[Seq[(ModuleID, Option[SourcePosition])]]
-  ): UnresolvedWarning =
     new UnresolvedWarning(err, failedPaths)
+  }
+
   private[sbt] def sourcePosStr(posOpt: Option[SourcePosition]): String =
     posOpt match {
       case Some(LinePosition(path, start))                  => s" ($path#L$start)"

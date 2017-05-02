@@ -183,15 +183,10 @@ final class IvySbt(val configuration: IvyConfiguration) { self =>
    *
    * @param md - module descriptor of the original Ivy graph.
    */
-  private[sbt] def cleanCachedResolutionCache(md: ModuleDescriptor, log: Logger): Unit =
-    withIvy(log) { i =>
-      val prOpt = Option(i.getSettings.getResolver(ProjectResolver.InterProject)) map {
-        case pr: ProjectResolver => pr
-      }
-      if (configuration.updateOptions.cachedResolution) {
-        IvySbt.cachedResolutionResolveCache.clean(md, prOpt)
-      }
-    }
+  private[sbt] def cleanCachedResolutionCache(md: ModuleDescriptor, log: Logger): Unit = {
+    if (!configuration.updateOptions.cachedResolution) ()
+    else IvySbt.cachedResolutionResolveCache.clean()
+  }
 
   final class Module(rawModuleSettings: ModuleSettings) {
     val moduleSettings: ModuleSettings = IvySbt.substituteCross(rawModuleSettings)
