@@ -1,6 +1,5 @@
 package sbt.librarymanagement
 
-import sbt.internal.librarymanagement.SbtExclusionRule
 import sbt.internal.librarymanagement.cross.CrossVersionUtil
 
 final case class ScalaVersion(full: String, binary: String)
@@ -69,9 +68,7 @@ abstract class CrossVersionFunctions {
 
   /** Constructs the cross-version function defined by `module` and `is`, if one is configured. */
   def apply(module: ModuleID, is: Option[IvyScala]): Option[String => String] =
-    is flatMap { i =>
-      apply(module, i)
-    }
+    is.flatMap(i => apply(module, i))
 
   /** Cross-version each `Artifact` in `artifacts` according to cross-version function `cross`. */
   def substituteCross(
@@ -94,9 +91,9 @@ abstract class CrossVersionFunctions {
 
   /** Cross-versions `exclude` according to its `crossVersion`. */
   private[sbt] def substituteCross(
-      exclude: SbtExclusionRule,
+      exclude: ExclusionRule,
       is: Option[IvyScala]
-  ): SbtExclusionRule = {
+  ): ExclusionRule = {
     val fopt: Option[String => String] =
       is flatMap { i =>
         CrossVersion(exclude.crossVersion, i.scalaFullVersion, i.scalaBinaryVersion)
@@ -111,8 +108,7 @@ abstract class CrossVersionFunctions {
   private[sbt] def substituteCrossA(
       as: Vector[Artifact],
       cross: Option[String => String]
-  ): Vector[Artifact] =
-    as.map(art => substituteCross(art, cross))
+  ): Vector[Artifact] = as.map(art => substituteCross(art, cross))
 
   /**
    * Constructs a function that will cross-version a ModuleID

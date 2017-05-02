@@ -567,22 +567,30 @@ private[sbt] object IvySbt {
     )
   }
 
-  private def substituteCross(m: ModuleSettings): ModuleSettings =
+  private def substituteCross(m: ModuleSettings): ModuleSettings = {
     m.ivyScala match {
       case None     => m
       case Some(is) => substituteCross(m, is.scalaFullVersion, is.scalaBinaryVersion)
     }
+  }
+
   private def substituteCross(
       m: ModuleSettings,
       scalaFullVersion: String,
       scalaBinaryVersion: String
   ): ModuleSettings = {
-    val sub = CrossVersion(scalaFullVersion, scalaBinaryVersion)
     m match {
       case ic: InlineConfiguration =>
-        ic.withModule(sub(ic.module))
-          .withDependencies(ic.dependencies map sub)
-          .withOverrides(ic.overrides map sub)
+        val applyCross = CrossVersion(scalaFullVersion, scalaBinaryVersion)
+        def propagateCrossVersion(moduleID: ModuleID): ModuleID = {
+          val crossExclusions: Vector[ExclusionRule] =
+            moduleID.exclusions.map(CrossVersion.substituteCross(_, ic.ivyScala))
+          applyCross(moduleID)
+            .withExclusions(crossExclusions)
+        }
+        ic.withModule(applyCross(ic.module))
+          .withDependencies(ic.dependencies.map(propagateCrossVersion))
+          .withOverrides(ic.overrides map applyCross)
       case _ => m
     }
   }
@@ -852,13 +860,12 @@ private[sbt] object IvySbt {
 
   def addExcludes(
       moduleID: DefaultModuleDescriptor,
-      excludes: Seq[SbtExclusionRule],
+      excludes: Seq[ExclusionRule],
       ivyScala: Option[IvyScala]
-  ): Unit =
-    excludes foreach addExclude(moduleID, ivyScala)
+  ): Unit = excludes.foreach(exclude => addExclude(moduleID, ivyScala)(exclude))
+
   def addExclude(moduleID: DefaultModuleDescriptor, ivyScala: Option[IvyScala])(
-      exclude0: SbtExclusionRule
-  ): Unit = {
+      exclude0: ExclusionRule): Unit = {
     // this adds _2.11 postfix
     val exclude = CrossVersion.substituteCross(exclude0, ivyScala)
     val confs =

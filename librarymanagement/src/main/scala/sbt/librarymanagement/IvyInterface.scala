@@ -5,9 +5,30 @@ package sbt.librarymanagement
 
 import org.apache.ivy.core.module.descriptor
 import org.apache.ivy.util.filter.{ Filter => IvyFilter }
+import sbt.internal.librarymanagement.impl.{ GroupArtifactID, GroupID }
 
 abstract class InclExclRuleFunctions {
-  def everything = InclExclRule("*", "*", "*", Vector.empty)
+  def everything = InclExclRule("*", "*", "*", Vector.empty, Disabled())
+
+  def apply(organization: String, name: String): InclExclRule =
+    InclExclRule(organization, name, "*", Vector.empty, Disabled())
+
+  def apply(organization: String): InclExclRule = apply(organization, "*")
+
+  implicit def groupIdToExclusionRule(organization: GroupID): InclExclRule =
+    apply(organization.groupID)
+  implicit def stringToExclusionRule(organization: String): InclExclRule = apply(organization)
+
+  implicit def groupArtifactIDToExclusionRule(gaid: GroupArtifactID): InclExclRule =
+    InclExclRule(gaid.groupID, gaid.artifactID, "*", Vector.empty, gaid.crossVersion)
+
+  implicit def moduleIDToExclusionRule(moduleID: ModuleID): InclExclRule = {
+    val org = moduleID.organization
+    val name = moduleID.name
+    val version = moduleID.revision
+    val crossVersion = moduleID.crossVersion
+    InclExclRule(org, name, version, Vector.empty, crossVersion)
+  }
 }
 
 abstract class ArtifactTypeFilterExtra {
