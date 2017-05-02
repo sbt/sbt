@@ -106,7 +106,9 @@ final class ScriptedTests(resourceBaseDirectory: File,
       .toList
   }
 
-  /** Sets the name of the local root project for those tests run in batch mode.
+  /** Defines an auto plugin that is injected to sbt between every scripted session.
+   *
+   * It sets the name of the local root project for those tests run in batch mode.
    *
    * This is necessary because the current design to run tests in batch mode force
    * scripted tests to share one common sbt dir instead of each one having its own.
@@ -115,11 +117,28 @@ final class ScriptedTests(resourceBaseDirectory: File,
    * scripted tests that don't set the name for the root and whose test files check
    * information based on the name will fail.
    *
+   * The reason why we set the name here and not via `set` is because some tests
+   * dump the session to check that their settings have been correctly applied.
+   *
    * @param testName The test name used to extract the root project name.
    * @return A string-based implementation to run between every reload.
    */
-  private def setNameImplementation(testName: String) =
-    s"""set name in LocalRootProject := {if (name.value.startsWith("sbt_")) "$testName" else name.value}"""
+  private def createAutoPlugin(testName: String) =
+    s"""
+      |import sbt._, Keys._
+      |object InstrumentScripted extends AutoPlugin {
+      |  override def trigger = AllRequirements
+      |  override def globalSettings: Seq[Setting[_]] =
+      |    Seq(commands += setUpScripted) ++ super.globalSettings
+      |
+      |  def setUpScripted = Command.command("setUpScripted") { (state0: State) =>
+      |    val nameScriptedSetting = name.in(LocalRootProject).:=(
+      |        if (name.value.startsWith("sbt_")) "$testName" else name.value)
+      |    val state1 = Project.extract(state0).append(nameScriptedSetting, state0)
+      |    "initialize" :: state1
+      |  }
+      |}
+    """.stripMargin
 
   /** Defines the batch execution of scripted tests.
    *
@@ -162,9 +181,11 @@ final class ScriptedTests(resourceBaseDirectory: File,
 
           val runTest = () => {
             // Reload and initialize (to reload contents of .sbtrc files)
+            val pluginImplementation = createAutoPlugin(name)
+            IO.write(tempTestDir / "project" / "InstrumentScripted.scala", pluginImplementation)
             val sbtHandler = handlers.getOrElse('>', sys.error("Missing sbt handler."))
-            val cmds = s";reload;initialize;${setNameImplementation(name)}"
-            val statement = Statement(cmds, Nil, successExpected = true, line = -1)
+            val commandsToRun = ";reload;setUpScripted"
+            val statement = Statement(commandsToRun, Nil, successExpected = true, line = -1)
             // Run reload inside the hook to reuse error handling for pending tests
             val wrapHook = (file: File) => {
               preHook(file)
