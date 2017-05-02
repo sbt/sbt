@@ -62,6 +62,10 @@ is211() {
   echo "$SCALA_VERSION" | grep -q "^2\.11"
 }
 
+is212() {
+  echo "$SCALA_VERSION" | grep -q "^2\.12"
+}
+
 runSbtCoursierTests() {
   sbt ++$SCALA_VERSION coreJVM/publishLocal cache/publishLocal sbt-coursier/scripted
 }
@@ -174,7 +178,7 @@ else
   jvmCompile
   runJvmTests
 
-  if is210; then
+  if is210 || is212; then
     runSbtCoursierTests
     runSbtShadingTests
   fi

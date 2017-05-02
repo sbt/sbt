@@ -47,12 +47,12 @@ object CoursierPlugin extends AutoPlugin {
   import autoImport._
 
   lazy val treeSettings = Seq(
-    coursierDependencyTree <<= Tasks.coursierDependencyTreeTask(
+    coursierDependencyTree := Tasks.coursierDependencyTreeTask(
       inverse = false
-    ),
-    coursierDependencyInverseTree <<= Tasks.coursierDependencyTreeTask(
+    ).value,
+    coursierDependencyInverseTree := Tasks.coursierDependencyTreeTask(
       inverse = true
-    )
+    ).value
   )
 
   def makeIvyXmlBefore[T](
@@ -82,48 +82,48 @@ object CoursierPlugin extends AutoPlugin {
     coursierTtl := Cache.defaultTtl,
     coursierVerbosity := Settings.defaultVerbosityLevel(sLog.value),
     mavenProfiles := Set.empty,
-    coursierResolvers <<= Tasks.coursierResolversTask,
-    coursierRecursiveResolvers <<= Tasks.coursierRecursiveResolversTask,
-    coursierSbtResolvers <<= externalResolvers in updateSbtClassifiers,
+    coursierResolvers := Tasks.coursierResolversTask.value,
+    coursierRecursiveResolvers := Tasks.coursierRecursiveResolversTask.value,
+    coursierSbtResolvers := externalResolvers.in(updateSbtClassifiers).value,
     coursierUseSbtCredentials := true,
     coursierCredentials := Map.empty,
-    coursierFallbackDependencies <<= Tasks.coursierFallbackDependenciesTask,
+    coursierFallbackDependencies := Tasks.coursierFallbackDependenciesTask.value,
     coursierCache := Cache.default,
-    coursierArtifacts <<= Tasks.artifactFilesOrErrors(withClassifiers = false),
-    coursierClassifiersArtifacts <<= Tasks.artifactFilesOrErrors(
+    coursierArtifacts := Tasks.artifactFilesOrErrors(withClassifiers = false).value,
+    coursierClassifiersArtifacts := Tasks.artifactFilesOrErrors(
       withClassifiers = true
-    ),
-    coursierSbtClassifiersArtifacts <<= Tasks.artifactFilesOrErrors(
+    ).value,
+    coursierSbtClassifiersArtifacts := Tasks.artifactFilesOrErrors(
       withClassifiers = true,
       sbtClassifiers = true
-    ),
+    ).value,
     makeIvyXmlBefore(deliverLocalConfiguration, shadedConfigOpt),
     makeIvyXmlBefore(deliverConfiguration, shadedConfigOpt),
-    update <<= Tasks.updateTask(
+    update := Tasks.updateTask(
       shadedConfigOpt,
       withClassifiers = false
-    ),
-    updateClassifiers <<= Tasks.updateTask(
+    ).value,
+    updateClassifiers := Tasks.updateTask(
       shadedConfigOpt,
       withClassifiers = true,
       ignoreArtifactErrors = true
-    ),
-    updateSbtClassifiers in Defaults.TaskGlobal <<= Tasks.updateTask(
+    ).value,
+    updateSbtClassifiers.in(Defaults.TaskGlobal) := Tasks.updateTask(
       shadedConfigOpt,
       withClassifiers = true,
       sbtClassifiers = true,
       ignoreArtifactErrors = true
-    ),
-    coursierProject <<= Tasks.coursierProjectTask,
-    coursierInterProjectDependencies <<= Tasks.coursierInterProjectDependenciesTask,
-    coursierPublications <<= Tasks.coursierPublicationsTask(packageConfigs: _*),
-    coursierSbtClassifiersModule <<= classifiersModule in updateSbtClassifiers,
-    coursierConfigurations <<= Tasks.coursierConfigurationsTask(None),
-    coursierParentProjectCache <<= Tasks.parentProjectCacheTask,
-    coursierResolution <<= Tasks.resolutionTask(),
-    coursierSbtClassifiersResolution <<= Tasks.resolutionTask(
+    ).value,
+    coursierProject := Tasks.coursierProjectTask.value,
+    coursierInterProjectDependencies := Tasks.coursierInterProjectDependenciesTask.value,
+    coursierPublications := Tasks.coursierPublicationsTask(packageConfigs: _*).value,
+    coursierSbtClassifiersModule := classifiersModule.in(updateSbtClassifiers).value,
+    coursierConfigurations := Tasks.coursierConfigurationsTask(None).value,
+    coursierParentProjectCache := Tasks.parentProjectCacheTask.value,
+    coursierResolution := Tasks.resolutionTask().value,
+    coursierSbtClassifiersResolution := Tasks.resolutionTask(
       sbtClassifiers = true
-    )
+    ).value
   )
 
   override lazy val projectSettings = coursierSettings(None, Seq(Compile, Test).map(c => c -> c.name)) ++

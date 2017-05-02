@@ -7,6 +7,8 @@ import coursier.maven.MavenSource
 
 import sbt._
 
+import SbtCompatibility._
+
 object ToSbt {
 
   private def caching[K, V](f: K => V): K => V = {
@@ -28,26 +30,28 @@ object ToSbt {
       sbt.ModuleID(
         dependency.module.organization,
         dependency.module.name,
-        dependency.version,
-        configurations = Some(dependency.configuration),
-        extraAttributes = dependency.module.attributes ++ extraProperties
+        dependency.version
+      ).withConfigurations(
+        Some(dependency.configuration)
+      ).withExtraAttributes(
+        dependency.module.attributes ++ extraProperties
       )
   }
 
   val artifact = caching[(Module, Map[String, String], Artifact), sbt.Artifact] {
     case (module, extraProperties, artifact) =>
-      sbt.Artifact(
-        module.name,
+      sbt.Artifact(module.name)
         // FIXME Get these two from publications
-        artifact.attributes.`type`,
-        MavenSource.typeExtension(artifact.attributes.`type`),
-        Some(artifact.attributes.classifier)
-          .filter(_.nonEmpty)
-          .orElse(MavenSource.typeDefaultClassifierOpt(artifact.attributes.`type`)),
-        Nil,
-        Some(url(artifact.url)),
-        module.attributes ++ extraProperties
-      )
+        .withType(artifact.attributes.`type`)
+        .withExtension(MavenSource.typeExtension(artifact.attributes.`type`))
+        .withClassifier(
+          Some(artifact.attributes.classifier)
+            .filter(_.nonEmpty)
+            .orElse(MavenSource.typeDefaultClassifierOpt(artifact.attributes.`type`))
+        )
+        // .withConfigurations(Vector())
+        .withUrl(Some(url(artifact.url)))
+        .withExtraAttributes(module.attributes ++ extraProperties)
   }
 
   val moduleReport = caching[(Dependency, Seq[(Dependency, Project)], Project, Seq[(Artifact, Option[File])]), sbt.ModuleReport] {
@@ -63,12 +67,12 @@ object ToSbt {
     }
 
     val publicationDate = project.info.publication.map { dt =>
-      new GregorianCalendar(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second).getTime
+      new GregorianCalendar(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
     }
 
     val callers = dependees.map {
       case (dependee, dependeeProj) =>
-        new Caller(
+        Caller(
           ToSbt.moduleId(dependee, dependeeProj.properties.toMap),
           dependeeProj.configurations.keys.toVector,
           dependee.module.attributes ++ dependeeProj.properties,
@@ -80,26 +84,26 @@ object ToSbt {
         )
     }
 
-    new sbt.ModuleReport(
-      module = ToSbt.moduleId(dependency, project.properties.toMap),
-      artifacts = sbtArtifacts,
-      missingArtifacts = sbtMissingArtifacts,
-      status = None,
-      publicationDate = publicationDate,
-      resolver = None,
-      artifactResolver = None,
-      evicted = false,
-      evictedData = None,
-      evictedReason = None,
-      problem = None,
-      homepage = Some(project.info.homePage).filter(_.nonEmpty),
-      extraAttributes = dependency.module.attributes ++ project.properties,
-      isDefault = None,
-      branch = None,
-      configurations = project.configurations.keys.toVector,
-      licenses = project.info.licenses,
-      callers = callers
+    sbt.ModuleReport(
+      ToSbt.moduleId(dependency, project.properties.toMap),
+      sbtArtifacts.toVector,
+      sbtMissingArtifacts.toVector
     )
+      // .withStatus(None)
+      .withPublicationDate(publicationDate)
+      // .withResolver(None)
+      // .withArtifactResolver(None)
+      // .withEvicted(false)
+      // .withEvictedData(None)
+      // .withEvictedReason(None)
+      // .withProblem(None)
+      .withHomepage(Some(project.info.homePage).filter(_.nonEmpty))
+      .withExtraAttributes(dependency.module.attributes ++ project.properties)
+      // .withIsDefault(None)
+      // .withBranch(None)
+      .withConfigurations(project.configurations.keys.toVector)
+      .withLicenses(project.info.licenses.toVector)
+      .withCallers(callers.toVector)
   }
 
   private def grouped[K, V](map: Seq[(K, V)]): Map[K, Seq[V]] =
@@ -190,18 +194,17 @@ object ToSbt {
 
         val reports = ToSbt.moduleReports(subRes, classifiersOpt, artifactFileOpt, keepPomArtifact)
 
-        new ConfigurationReport(
+        ConfigurationReport(
           config,
           reports.toVector,
-          Nil,
-          Nil
+          Vector()
         )
     }
 
-    new UpdateReport(
+    UpdateReport(
       null,
       configReports.toVector,
-      new UpdateStats(-1L, -1L, -1L, cached = false),
+      UpdateStats(-1L, -1L, -1L, cached = false),
       Map.empty
     )
   }

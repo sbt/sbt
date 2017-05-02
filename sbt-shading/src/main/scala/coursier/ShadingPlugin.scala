@@ -6,6 +6,8 @@ import coursier.ivy.IvyXml.{mappings => ivyXmlMappings}
 import sbt.Keys._
 import sbt.{AutoPlugin, Compile, Configuration, TaskKey, inConfig}
 
+import SbtCompatibility._
+
 object ShadingPlugin extends AutoPlugin {
 
   override def trigger = noTrigger
@@ -13,10 +15,10 @@ object ShadingPlugin extends AutoPlugin {
   override def requires = sbt.plugins.IvyPlugin
 
   private val baseSbtConfiguration = Compile
-  val Shading = Configuration("shading", "", isPublic = false, List(baseSbtConfiguration), transitive = true)
+  val Shading = Configuration("shading", "", isPublic = false, Vector(baseSbtConfiguration), transitive = true)
 
   private val baseDependencyConfiguration = "compile"
-  val Shaded = Configuration("shaded", "", isPublic = true, List(), transitive = true)
+  val Shaded = Configuration("shaded", "", isPublic = true, Vector(), transitive = true)
 
   // make that a setting?
   val shadingNamespace = TaskKey[String]("shading-namespace")
@@ -53,17 +55,17 @@ object ShadingPlugin extends AutoPlugin {
   lazy val shadingDefaultArtifactTasks =
     makePom +: Seq(packageBin, packageSrc, packageDoc).map(_.in(Shading))
   lazy val shadingJvmPublishSettings = Seq(
-    artifacts <<= sbt.Classpaths.artifactDefs(shadingDefaultArtifactTasks),
-    packagedArtifacts <<= sbt.Classpaths.packaged(shadingDefaultArtifactTasks)
+    artifacts := sbt.Classpaths.artifactDefs(shadingDefaultArtifactTasks).value,
+    packagedArtifacts := sbt.Classpaths.packaged(shadingDefaultArtifactTasks).value
   )
 
   import CoursierPlugin.autoImport._
 
   override lazy val projectSettings =
     Seq(
-      coursierConfigurations <<= Tasks.coursierConfigurationsTask(
+      coursierConfigurations := Tasks.coursierConfigurationsTask(
         Some(baseDependencyConfiguration -> Shaded.name)
-      ),
+      ).value,
       ivyConfigurations := Shaded +: ivyConfigurations.value.map {
         conf =>
           if (conf.name == "compile")
@@ -87,7 +89,7 @@ object ShadingPlugin extends AutoPlugin {
           configuration := baseSbtConfiguration, // wuw
           ivyConfigurations := ivyConfigurations.in(baseSbtConfiguration).value
             .filter(_.name != Shaded.name)
-            .map(c => c.copy(extendsConfigs = c.extendsConfigs.filter(_.name != Shaded.name))),
+            .map(c => c.withExtendsConfigs(c.extendsConfigs.filter(_.name != Shaded.name))),
           libraryDependencies := libraryDependencies.in(baseSbtConfiguration).value.filter { dep =>
             val isShaded = dep.configurations.exists { mappings =>
               ivyXmlMappings(mappings).exists(_._1 == Shaded.name)

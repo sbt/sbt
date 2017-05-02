@@ -418,7 +418,7 @@ object Tasks {
 
   def resolutionTask(
     sbtClassifiers: Boolean = false
-  ) = Def.task {
+  ): Def.Initialize[sbt.Task[coursier.Resolution]] = Def.task {
 
     // let's update only one module at once, for a better output
     // Downloads are already parallel, no need to parallelize further anyway

@@ -7,7 +7,7 @@ import scala.language.implicitConversions
 // things from sbt-structure
 object Structure {
 
-  def structure(state: State): BuildStructure =
+  def structure(state: State) =
     sbt.Project.structure(state)
 
   implicit class `enrich SettingKey`[T](key: SettingKey[T]) {

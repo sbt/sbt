@@ -1,13 +1,13 @@
 package coursier
 
 import coursier.ivy.IvyRepository
-import coursier.ivy.IvyXml.{ mappings => ivyXmlMappings }
-
-import java.net.{ MalformedURLException, URL }
+import coursier.ivy.IvyXml.{mappings => ivyXmlMappings}
+import java.net.{MalformedURLException, URL}
 
 import coursier.core.Authentication
-import sbt.{ Resolver, CrossVersion, ModuleID }
-import sbt.mavenint.SbtPomExtraProperties
+import sbt.{CrossVersion, ModuleID, Resolver}
+
+import SbtCompatibility._
 
 object FromSbt {
 
@@ -24,9 +24,9 @@ object FromSbt {
     scalaVersion: => String,
     scalaBinaryVersion: => String
   ): String = crossVersion match {
-    case CrossVersion.Disabled => name
-    case f: CrossVersion.Full => name + "_" + f.remapVersion(scalaVersion)
-    case f: CrossVersion.Binary => name + "_" + f.remapVersion(scalaBinaryVersion)
+    case _: Disabled => name
+    case f: Full => name + "_" + f.remapVersion(scalaVersion)
+    case b: Binary => name + "_" + b.remapVersion(scalaBinaryVersion)
   }
 
   def attributes(attr: Map[String, String]): Map[String, String] =
@@ -178,20 +178,20 @@ object FromSbt {
     authentication: Option[Authentication]
   ): Option[Repository] =
     resolver match {
-      case sbt.MavenRepository(_, root) =>
-        mavenRepositoryOpt(root, log, authentication)
+      case r: SbtCompatibility.MavenRepository =>
+        mavenRepositoryOpt(r.root, log, authentication)
 
-      case sbt.FileRepository(_, _, patterns)
-        if patterns.ivyPatterns.lengthCompare(1) == 0 &&
-          patterns.artifactPatterns.lengthCompare(1) == 0 =>
+      case r: sbt.FileRepository
+        if r.patterns.ivyPatterns.lengthCompare(1) == 0 &&
+          r.patterns.artifactPatterns.lengthCompare(1) == 0 =>
 
-        val mavenCompatibleBaseOpt0 = mavenCompatibleBaseOpt(patterns)
+        val mavenCompatibleBaseOpt0 = mavenCompatibleBaseOpt(r.patterns)
 
         mavenCompatibleBaseOpt0 match {
           case None =>
             Some(IvyRepository(
-              "file://" + patterns.artifactPatterns.head,
-              metadataPatternOpt = Some("file://" + patterns.ivyPatterns.head),
+              "file://" + r.patterns.artifactPatterns.head,
+              metadataPatternOpt = Some("file://" + r.patterns.ivyPatterns.head),
               changing = Some(true),
               properties = ivyProperties,
               dropInfoAttributes = true,
@@ -201,17 +201,17 @@ object FromSbt {
             mavenRepositoryOpt("file://" + mavenCompatibleBase, log, authentication)
         }
 
-      case sbt.URLRepository(_, patterns)
-        if patterns.ivyPatterns.lengthCompare(1) == 0 &&
-          patterns.artifactPatterns.lengthCompare(1) == 0 =>
+      case r: sbt.URLRepository
+        if r.patterns.ivyPatterns.lengthCompare(1) == 0 &&
+          r.patterns.artifactPatterns.lengthCompare(1) == 0 =>
 
-        val mavenCompatibleBaseOpt0 = mavenCompatibleBaseOpt(patterns)
+        val mavenCompatibleBaseOpt0 = mavenCompatibleBaseOpt(r.patterns)
 
         mavenCompatibleBaseOpt0 match {
           case None =>
             Some(IvyRepository(
-              patterns.artifactPatterns.head,
-              metadataPatternOpt = Some(patterns.ivyPatterns.head),
+              r.patterns.artifactPatterns.head,
+              metadataPatternOpt = Some(r.patterns.ivyPatterns.head),
               changing = None,
               properties = ivyProperties,
               dropInfoAttributes = true,
