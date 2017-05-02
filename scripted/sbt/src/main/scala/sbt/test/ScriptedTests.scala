@@ -92,9 +92,8 @@ final class ScriptedTests(resourceBaseDirectory: File,
       case (groupDir, nameDir) =>
         val groupName = groupDir.getName
         val testName = nameDir.getName
-        val testLabel = s"$groupName / $testName"
         val testDirectory = testResources.readOnlyResourceDirectory(groupName, testName)
-        testLabel -> testDirectory
+        (groupName, testName) -> testDirectory
     }
 
     val batchSeed = labelsAndDirs.size / sbtInstances
@@ -106,6 +105,21 @@ final class ScriptedTests(resourceBaseDirectory: File,
       }
       .toList
   }
+
+  /** Sets the name of the local root project for those tests run in batch mode.
+   *
+   * This is necessary because the current design to run tests in batch mode force
+   * scripted tests to share one common sbt dir instead of each one having its own.
+   *
+   * Sbt extracts the local root project name from the directory name. So those
+   * scripted tests that don't set the name for the root and whose test files check
+   * information based on the name will fail.
+   *
+   * @param testName The test name used to extract the root project name.
+   * @return A string-based implementation to run between every reload.
+   */
+  private def setNameImplementation(testName: String) =
+    s"""set name in LocalRootProject := {if (name.value.startsWith("sbt_")) "$testName" else name.value}"""
 
   /** Defines the batch execution of scripted tests.
    *
@@ -125,7 +139,7 @@ final class ScriptedTests(resourceBaseDirectory: File,
    * @param log The logger.
    */
   private def runBatchedTests(
-      groupedTests: Seq[(String, File)],
+      groupedTests: Seq[((String, String), File)],
       tempTestDir: File,
       preHook: File => Unit,
       log: Logger
@@ -140,7 +154,8 @@ final class ScriptedTests(resourceBaseDirectory: File,
 
     def runBatchTests = {
       groupedTests.map {
-        case (label, originalDir) =>
+        case ((group, name), originalDir) =>
+          val label = s"$group / $name"
           println(s"Running $label")
           // Copy test's contents and reload the sbt instance to pick them up
           IO.copyDirectory(originalDir, tempTestDir)
@@ -148,8 +163,8 @@ final class ScriptedTests(resourceBaseDirectory: File,
           val runTest = () => {
             // Reload and initialize (to reload contents of .sbtrc files)
             val sbtHandler = handlers.getOrElse('>', sys.error("Missing sbt handler."))
-            val statement =
-              Statement(";reload;initialize", Nil, successExpected = true, line = -1)
+            val cmds = s";reload;initialize;${setNameImplementation(name)}"
+            val statement = Statement(cmds, Nil, successExpected = true, line = -1)
             // Run reload inside the hook to reuse error handling for pending tests
             val wrapHook = (file: File) => {
               preHook(file)
