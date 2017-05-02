@@ -17,6 +17,7 @@ import sbt.internal.util.{ BufferedLogger, ConsoleLogger, FullLogger }
 import sbt.util.{ AbstractLogger, Logger }
 
 import scala.collection.mutable
+import scala.collection.parallel.ForkJoinTaskSupport
 import scala.collection.parallel.mutable.ParSeq
 
 final class ScriptedTests(resourceBaseDirectory: File,
@@ -75,6 +76,7 @@ final class ScriptedTests(resourceBaseDirectory: File,
   def batchScriptedRunner(
       testGroupAndNames: Seq[(String, String)],
       prescripted: File => Unit,
+      sbtInstances: Int,
       log: Logger
   ): Seq[TestRunner] = {
     // Test group and names may be file filters (like '*')
@@ -95,11 +97,14 @@ final class ScriptedTests(resourceBaseDirectory: File,
         testLabel -> testDirectory
     }
 
-    val batchSeed = labelsAndDirs.size / 4
+    val batchSeed = labelsAndDirs.size / sbtInstances
     val batchSize = if (batchSeed == 0) labelsAndDirs.size else batchSeed
-    Seq(labelsAndDirs).map { batch => () =>
-      IO.withTemporaryDirectory(runBatchedTests(batch, _, prescripted, log))
-    }.toList
+    labelsAndDirs
+      .grouped(batchSize)
+      .map { batch => () =>
+        IO.withTemporaryDirectory(runBatchedTests(batch, _, prescripted, log))
+      }
+      .toList
   }
 
   /** Defines the batch execution of scripted tests.
@@ -293,7 +298,8 @@ class ScriptedRunner {
                   logger,
                   bootProperties,
                   launchOpts,
-                  addTestFile)
+                  addTestFile,
+                  1)
   }
 
   def runInParallel(
@@ -303,13 +309,17 @@ class ScriptedRunner {
       logger: AbstractLogger,
       bootProperties: File,
       launchOpts: Array[String],
-      prescripted: File => Unit
+      prescripted: File => Unit,
+      instances: Int
   ): Unit = {
     val runner = new ScriptedTests(resourceBaseDirectory, bufferLog, bootProperties, launchOpts)
     // The scripted tests mapped to the inputs that the user wrote after `scripted`.
     val scriptedTests = get(tests, resourceBaseDirectory, logger).map(st => (st.group, st.name))
-    val scriptedRunners = runner.batchScriptedRunner(scriptedTests, prescripted, logger)
-    runAll(scriptedRunners)
+    val scriptedRunners = runner.batchScriptedRunner(scriptedTests, prescripted, instances, logger)
+    val parallelRunners = scriptedRunners.toParArray
+    val pool = new java.util.concurrent.ForkJoinPool(instances)
+    parallelRunners.tasksupport = new ForkJoinTaskSupport(pool)
+    runAllInParallel(parallelRunners)
   }
 
   private def reportErrors(errors: Seq[String]): Unit =
@@ -319,8 +329,9 @@ class ScriptedRunner {
     reportErrors(toRun.flatMap(test => test.apply().flatten.toSeq))
 
   // We cannot reuse `runAll` because parallel collections != collections
-  def runAllInParallel(tests: ParSeq[ScriptedTests.TestRunner]): Unit =
+  def runAllInParallel(tests: ParSeq[ScriptedTests.TestRunner]): Unit = {
     reportErrors(tests.flatMap(test => test.apply().flatten.toSeq).toList)
+  }
 
   def get(tests: Seq[String], baseDirectory: File, log: Logger): Seq[ScriptedTest] =
     if (tests.isEmpty) listTests(baseDirectory, log) else parseTests(tests)

@@ -46,7 +46,7 @@ notifications:
     - sbt-dev-bot@googlegroups.com
 
 script:
-  - sbt -J-XX:ReservedCodeCacheSize=128m "$SBT_CMD"
+  - sbt -J-XX:ReservedCodeCacheSize=128m -J-Xmx1g -J-Xms1g "$SBT_CMD"
 
 before_cache:
   - find $HOME/.ivy2 -name "ivydata-*.properties" -print -delete
