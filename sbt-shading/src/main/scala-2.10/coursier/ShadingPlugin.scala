@@ -1,6 +1,8 @@
 package coursier
 
-import coursier.ivy.IvyXml.{ mappings => ivyXmlMappings }
+import java.io.File
+
+import coursier.ivy.IvyXml.{mappings => ivyXmlMappings}
 import sbt.Keys._
 import sbt.{AutoPlugin, Compile, Configuration, TaskKey, inConfig}
 
@@ -16,7 +18,14 @@ object ShadingPlugin extends AutoPlugin {
   private val baseDependencyConfiguration = "compile"
   val Shaded = Configuration("shaded", "", isPublic = true, List(), transitive = true)
 
+  // make that a setting?
   val shadingNamespace = TaskKey[String]("shading-namespace")
+
+  // make that a setting?
+  val shadeNamespaces = TaskKey[Set[String]]("shade-namespaces")
+
+  val toShadeJars = TaskKey[Seq[File]]("to-shade-jars")
+  val toShadeClasses = TaskKey[Seq[String]]("to-shade-classes")
 
   object autoImport {
 
@@ -26,7 +35,18 @@ object ShadingPlugin extends AutoPlugin {
     /** Ivy configuration for shaded dependencies */
     val Shaded = ShadingPlugin.Shaded
 
+    /** Namespace under which shaded things will be moved */
     val shadingNamespace = ShadingPlugin.shadingNamespace
+
+    /**
+      * Assume everything under these namespaces is to be shaded.
+      *
+      * Allows to speed the shading phase, if everything under some namespaces is to be shaded.
+      */
+    val shadeNamespaces = ShadingPlugin.shadeNamespaces
+
+    val toShadeJars = ShadingPlugin.toShadeJars
+    val toShadeClasses = ShadingPlugin.toShadeClasses
   }
 
   // same as similar things under sbt.Classpaths, tweaking a bit the configuration scope
@@ -50,7 +70,8 @@ object ShadingPlugin extends AutoPlugin {
             conf.extend(Shaded)
           else
             conf
-      }
+      },
+      shadeNamespaces := Set()
     ) ++
     inConfig(Shading)(
       sbt.Defaults.configSettings ++
@@ -76,20 +97,34 @@ object ShadingPlugin extends AutoPlugin {
           },
           // required for cross-projects in particular
           unmanagedSourceDirectories := (unmanagedSourceDirectories in Compile).value,
-          packageBin := {
-            coursier.Shading.createPackage(
-              packageBin.in(baseSbtConfiguration).value,
+          toShadeJars := {
+            coursier.Shading.toShadeJars(
               coursierProject.in(baseSbtConfiguration).value,
               coursierResolution.in(baseSbtConfiguration).value,
               coursierConfigurations.in(baseSbtConfiguration).value,
               Keys.coursierArtifacts.in(baseSbtConfiguration).value,
               classpathTypes.value,
-              shadingNamespace.?.value.getOrElse {
-                throw new NoSuchElementException("shadingNamespace key not set")
-              },
               baseDependencyConfiguration,
               Shaded.name,
               streams.value.log
+            )
+          },
+          toShadeClasses := {
+            coursier.Shading.toShadeClasses(
+              shadeNamespaces.value,
+              toShadeJars.value,
+              streams.value.log
+            )
+          },
+          packageBin := {
+            coursier.Shading.createPackage(
+              packageBin.in(baseSbtConfiguration).value,
+              shadingNamespace.?.value.getOrElse {
+                throw new NoSuchElementException("shadingNamespace key not set")
+              },
+              shadeNamespaces.value,
+              toShadeClasses.value,
+              toShadeJars.value
             )
           }
         )

@@ -54,23 +54,16 @@ object Shading {
     }
   }
 
-  def createPackage(
-    baseJar: File,
+  def toShadeJars(
     currentProject: Project,
     res: Resolution,
     configs: Map[String, Set[String]],
     artifactFilesOrErrors: Map[Artifact, FileError \/ File],
     classpathTypes: Set[String],
-    shadingNamespace: String,
     baseConfig: String,
     shadedConf: String,
     log: sbt.Logger
-  ) = {
-
-    val outputJar = new File(
-      baseJar.getParentFile,
-      baseJar.getName.stripSuffix(".jar") + "-shading.jar"
-    )
+  ): Seq[File] = {
 
     def configDependencies(config: String) = {
 
@@ -97,11 +90,6 @@ object Shading {
           .toSet
       )
     }
-
-    // Things could be split into intermediate tasks here, like
-    //   shadingDependencies: Seq[coursier.Dependency], dependencies whose JARs are to be shaded
-    //   shadingJars: Seq[java.io.File], JARs about to be shaded
-    // Note that shadingDependencies is not explicitly calculated below.
 
     val dependencyArtifacts = res.dependencyArtifacts
       .filter { case (_, a) => classpathTypes(a.`type`) }
@@ -154,19 +142,55 @@ object Shading {
         allShadedConfJars.map("  " + _).sorted.mkString("\n")
     )
 
-    val toShadeJars = allShadedConfJars.filterNot(noShadeJars.toSet)
+    allShadedConfJars.filterNot(noShadeJars.toSet)
+  }
+
+  def toShadeClasses(
+    shadeNamespaces: Set[String],
+    toShadeJars: Seq[File],
+    log: sbt.Logger
+  ): Seq[String] = {
 
     log.info(
       s"Shading ${toShadeJars.length} JAR(s):\n" +
         toShadeJars.map("  " + _).sorted.mkString("\n")
     )
 
-    val toShadeClasses = toShadeJars.flatMap(jarClassNames)
+    val toShadeClasses0 = toShadeJars.flatMap(jarClassNames)
 
-    log.info(s"Found ${toShadeClasses.length} class(es) in JAR(s) to be shaded")
-    log.debug(toShadeClasses.map("  " + _).sorted.mkString("\n"))
+    log.info(s"Found ${toShadeClasses0.length} class(es) in JAR(s) to be shaded")
+    log.debug(toShadeClasses0.map("  " + _).sorted.mkString("\n"))
+
+    shadeNamespaces.toVector.sorted.foldLeft(toShadeClasses0) {
+      (toShade, namespace) =>
+        val prefix = namespace + "."
+        val (filteredOut, remaining) = toShade.partition(_.startsWith(prefix))
+
+        log.info(s"${filteredOut.length} classes already filtered out by shaded namespace $namespace")
+        log.debug(filteredOut.map("  " + _).sorted.mkString("\n"))
+
+        remaining
+    }
+  }
+
+  def createPackage(
+    baseJar: File,
+    shadingNamespace: String,
+    shadeNamespaces: Set[String],
+    toShadeClasses: Seq[String],
+    toShadeJars: Seq[File]
+  ) = {
+
+    val outputJar = new File(
+      baseJar.getParentFile,
+      baseJar.getName.stripSuffix(".jar") + "-shading.jar"
+    )
 
     val processor = new DefaultJarProcessor
+
+    for (namespace <- shadeNamespaces)
+      processor.addClassRename(new ClassRename(namespace + ".**", shadingNamespace + ".@0"))
+
     for (cls <- toShadeClasses)
       processor.addClassRename(new ClassRename(cls, shadingNamespace + ".@0"))
 
