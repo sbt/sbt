@@ -96,14 +96,15 @@ final class ScriptedTests(resourceBaseDirectory: File,
         (groupName, testName) -> testDirectory
     }
 
-    val batchSeed = labelsAndDirs.size / sbtInstances
-    val batchSize = if (batchSeed == 0) labelsAndDirs.size else batchSeed
-    labelsAndDirs
-      .grouped(batchSize)
-      .map { batch => () =>
-        IO.withTemporaryDirectory(runBatchedTests(batch, _, prescripted, log))
-      }
-      .toList
+    if (labelsAndDirs.isEmpty) List()
+    else {
+      val batchSeed = labelsAndDirs.size / sbtInstances
+      val batchSize = if (batchSeed == 0) labelsAndDirs.size else batchSeed
+      labelsAndDirs
+        .grouped(batchSize)
+        .map(batch => () => IO.withTemporaryDirectory(runBatchedTests(batch, _, prescripted, log)))
+        .toList
+    }
   }
 
   /** Defines an auto plugin that is injected to sbt between every scripted session.
