@@ -352,7 +352,7 @@ def otherRootSettings =
     scriptedUnpublished := scriptedUnpublishedTask.evaluated,
     scriptedSource := (sourceDirectory in sbtProj).value / "sbt-test",
     // scriptedPrescripted := { addSbtAlternateResolver _ },
-    scriptedLaunchOpts := List("-Xmx1024M", "-Xms512M"),
+    scriptedLaunchOpts := List("-Xmx725M", "-Xms512M"),
     publishAll := { val _ = (publishLocal).all(ScopeFilter(inAnyProject)).value },
     publishLocalBinAll := { val _ = (publishLocalBin).all(ScopeFilter(inAnyProject)).value },
     aggregate in bintrayRelease := false
@@ -362,7 +362,7 @@ def otherRootSettings =
         ()
       },
       scriptedLaunchOpts := {
-        List("-Xmx1024M",
+        List("-Xmx725M",
              "-Xms512M",
              "-Dsbt.override.build.repos=true",
              s"""-Dsbt.repository.config=${scriptedSource.value / "repo.config"}""")
