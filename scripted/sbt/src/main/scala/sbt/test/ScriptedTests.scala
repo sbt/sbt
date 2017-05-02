@@ -111,7 +111,7 @@ final class ScriptedTests(resourceBaseDirectory: File,
    *
    * It sets the name of the local root project for those tests run in batch mode.
    *
-   * This is necessary because the current design to run tests in batch mode force
+   * This is necessary because the current design to run tests in batch mode forces
    * scripted tests to share one common sbt dir instead of each one having its own.
    *
    * Sbt extracts the local root project name from the directory name. So those
@@ -184,14 +184,22 @@ final class ScriptedTests(resourceBaseDirectory: File,
             // Reload and initialize (to reload contents of .sbtrc files)
             val pluginImplementation = createAutoPlugin(name)
             IO.write(tempTestDir / "project" / "InstrumentScripted.scala", pluginImplementation)
-            val sbtHandler = handlers.getOrElse('>', sys.error("Missing sbt handler."))
+            val sbtHandlerError = "Missing sbt handler. Scripted is misconfigured."
+            val sbtHandler = handlers.getOrElse('>', sbtHandlerError).asInstanceOf[SbtHandler]
             val commandsToRun = ";reload;setUpScripted"
             val statement = Statement(commandsToRun, Nil, successExpected = true, line = -1)
+
             // Run reload inside the hook to reuse error handling for pending tests
             val wrapHook = (file: File) => {
               preHook(file)
-              runner.processStatement(sbtHandler.asInstanceOf[SbtHandler], statement, states)
+              try runner.processStatement(sbtHandler, statement, states)
+              catch {
+                case t: Throwable =>
+                  val newMsg = "Reload for scripted batch execution failed."
+                  throw new TestException(statement, newMsg, t)
+              }
             }
+
             commonRunTest(label, tempTestDir, wrapHook, handlers, runner, states, buffer)
           }
 
