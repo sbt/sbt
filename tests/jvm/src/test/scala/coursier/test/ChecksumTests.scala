@@ -59,7 +59,7 @@ object ChecksumTests extends TestSuite {
           sumType,
           cache,
           Strategy.DefaultExecutorService
-        ).run.run
+        ).run.unsafePerformSync
 
       def artifact(url: String) = Artifact(
         url,

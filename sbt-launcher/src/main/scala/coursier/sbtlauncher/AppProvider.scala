@@ -2,6 +2,8 @@ package coursier.sbtlauncher
 
 import java.io.File
 
+import scala.language.existentials
+
 final case class AppProvider(
   scalaProvider: xsbti.ScalaProvider,
   id: xsbti.ApplicationID,

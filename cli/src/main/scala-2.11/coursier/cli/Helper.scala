@@ -163,6 +163,9 @@ class Helper(
   }
 
 
+  val loggerFallbackMode =
+    !progress && TermDisplay.defaultFallbackMode
+
   val (scaladexRawDependencies, otherRawDependencies) =
     rawDependencies.partition(s => s.contains("/") || !s.contains(":"))
 
@@ -364,9 +367,6 @@ class Helper(
     mapDependencies = if (typelevel) Some(Typelevel.swap(_)) else None
   )
 
-  val loggerFallbackMode =
-    !progress && TermDisplay.defaultFallbackMode
-
   val logger =
     if (verbosityLevel >= 0)
       Some(new TermDisplay(
@@ -465,7 +465,7 @@ class Helper(
             iterationCounter,
             0
           )
-        ).run
+        ).unsafePerformSync
 
         Console.err.println(s"Overhead: ${resolutionCounter.value - iterationCounter.value} ms")
 
@@ -491,7 +491,7 @@ class Helper(
         val res0 = startRes
           .process
           .run(fetch0, maxIterations)
-          .run
+          .unsafePerformSync
         val end = System.currentTimeMillis()
 
         Console.err.println(s"Resolution ${index + 1} / ${-benchmark}: ${end - start} ms")
@@ -515,7 +515,7 @@ class Helper(
       startRes
         .process
         .run(fetch0, maxIterations)
-        .run
+        .unsafePerformSync
 
   logger.foreach(_.stop())
 
@@ -674,7 +674,7 @@ class Helper(
 
     val task = Task.gatherUnordered(tasks)
 
-    val results = task.run
+    val results = task.unsafePerformSync
     val errors = results.collect{case (artifact, -\/(err)) => artifact -> err }
     val files0 = results.collect{case (artifact, \/-(f)) => f }
 
