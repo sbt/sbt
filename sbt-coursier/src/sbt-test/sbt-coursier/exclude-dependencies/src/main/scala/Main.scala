@@ -15,9 +15,18 @@ object Main extends App {
   val argonautFound = classFound("argonaut.Json")
   val argonautShapelessFound = classFound("argonaut.derive.MkEncodeJson")
 
-  assert(argonautShapelessFound)
-  assert(!shapelessFound)
-  assert(!argonautFound)
+  assert(
+    argonautShapelessFound,
+    "Expected to find class from argonaut-shapeless"
+  )
+  assert(
+    !shapelessFound,
+    "Expected not to find classes from shapeless"
+  )
+  assert(
+    !argonautFound,
+    "Expected not to find classes from argonaut"
+  )
 
   Files.write(new File("output").toPath, "OK".getBytes("UTF-8"))
 }

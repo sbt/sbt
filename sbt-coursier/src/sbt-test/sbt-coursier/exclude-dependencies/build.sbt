@@ -1,5 +1,9 @@
 scalaVersion := "2.11.8"
 
+organization := "io.get-coursier.test"
+name := "sbt-coursier-exclude-dependencies"
+version := "0.1.0-SNAPSHOT"
+
 coursierCachePolicies := {
   if (sys.props("os.name").startsWith("Windows"))
     coursierCachePolicies.value

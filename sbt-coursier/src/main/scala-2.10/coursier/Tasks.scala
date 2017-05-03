@@ -117,6 +117,31 @@ object Tasks {
       lazy val sv = scalaVersion.in(projectRef).get(state)
       lazy val sbv = scalaBinaryVersion.in(projectRef).get(state)
 
+      lazy val exclusions = {
+
+        var anyNonSupportedExclusionRule = false
+
+        val res = excludeDependencies
+          .in(projectRef)
+          .get(state)
+          .flatMap { rule =>
+            if (rule.artifact != "*" || rule.configurations.nonEmpty) {
+              state.log.warn(s"Unsupported exclusion rule $rule")
+              anyNonSupportedExclusionRule = true
+              Nil
+            } else
+              Seq(
+                (rule.organization, FromSbt.sbtCrossVersionName(rule.name, rule.crossVersion, sv, sbv))
+              )
+          }
+          .toSet
+
+        if (anyNonSupportedExclusionRule)
+          state.log.warn("Only supported exclusion rule fields: organization, name")
+
+        res
+      }
+
       for {
         allDependencies <- allDependenciesTask
       } yield {
@@ -125,12 +150,19 @@ object Tasks {
           .map { cfg => cfg.name -> cfg.extendsConfigs.map(_.name) }
           .toMap
 
-        FromSbt.project(
+        val proj = FromSbt.project(
           projId,
           allDependencies,
           configMap,
           sv,
           sbv
+        )
+
+        proj.copy(
+          dependencies = proj.dependencies.map {
+            case (config, dep) =>
+              (config, dep.copy(exclusions = dep.exclusions ++ exclusions))
+          }
         )
       }
     }
@@ -443,24 +475,6 @@ object Tasks {
         FromSbt.moduleVersion(_, sv, sbv)
       ).toMap
 
-      var anyNonSupportedExclusionRule = false
-      val exclusions = excludeDependencies.value.flatMap {
-        rule =>
-          if (
-            rule.artifact != "*" ||
-              rule.configurations.nonEmpty
-          ) {
-            log.warn(s"Unsupported exclusion rule $rule")
-            anyNonSupportedExclusionRule = true
-            Nil
-          } else
-            Seq((rule.organization,
-              FromSbt.sbtCrossVersionName(rule.name, rule.crossVersion, sv, sbv)))
-      }.toSet
-
-      if (anyNonSupportedExclusionRule)
-        log.warn("Only supported exclusion rule fields: organization, name")
-
       val resolvers =
         if (sbtClassifiers)
           coursierSbtResolvers.value
@@ -479,10 +493,7 @@ object Tasks {
       val userEnabledProfiles = mavenProfiles.value
 
       val startRes = Resolution(
-        currentProject.dependencies.map {
-          case (_, dep) =>
-            dep.copy(exclusions = dep.exclusions ++ exclusions)
-        }.toSet,
+        currentProject.dependencies.map(_._2).toSet,
         filter = Some(dep => !dep.optional),
         userActivations =
           if (userEnabledProfiles.isEmpty)
