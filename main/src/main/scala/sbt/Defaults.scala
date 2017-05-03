@@ -2119,7 +2119,7 @@ object Classpaths {
       else (evictionWarningOptions in update).value
     }
 
-    DependencyResolver.cachedUpdate(
+    LibraryManagement.cachedUpdate(
       s.cacheStoreFactory.sub(updateCacheName.value),
       Reference.display(thisProjectRef.value),
       ivyModule.value,

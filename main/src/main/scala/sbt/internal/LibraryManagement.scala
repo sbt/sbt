@@ -1,15 +1,16 @@
-package sbt.internal.librarymanagement
+package sbt.internal
 
 import java.io.File
 
-import sbt.internal.util.Types._
+import sbt.internal.librarymanagement._
 import sbt.internal.util.HNil
+import sbt.internal.util.Types._
 import sbt.librarymanagement._
-import sbt.util.{ CacheStore, CacheStoreFactory, Logger, Tracked }
 import sbt.librarymanagement.syntax._
 import sbt.util.CacheImplicits._
+import sbt.util.{ CacheStore, CacheStoreFactory, Logger, Tracked }
 
-object DependencyResolver {
+object LibraryManagement {
 
   private type UpdateInputs = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
 
@@ -90,16 +91,13 @@ object DependencyResolver {
             val culprit = t.getClass.getSimpleName
             log.warn(s"Update task caching failed due to $culprit.")
             log.warn("Report the following output to sbt:")
-            resolvedAgain.toString.lines foreach {
-              log.warn(_)
-            }
+            resolvedAgain.toString.lines.foreach(log.warn(_))
             log.trace(t)
             resolvedAgain
           }
           .apply(cachedResolve(updateInputs))
       }
-
-      import sbt.internal.librarymanagement.AltLibraryManagementCodec._
+      import AltLibraryManagementCodec._
       Tracked.inputChanged(cacheStoreFactory.make("inputs"))(doCachedResolve)
     }
 

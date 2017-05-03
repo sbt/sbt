@@ -22,7 +22,7 @@ TaskKey[Unit]("check") := {
   type In = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
 
   import sbt.util.CacheImplicits._
-  import sbt.internal.librarymanagement.AltLibraryManagementCodec._
+  import sbt.internal.AltLibraryManagementCodec._
 
   val f: In => Unit =
     Tracked.inputChanged(cacheStoreFactory make "inputs") { (inChanged: Boolean, in: In) =>

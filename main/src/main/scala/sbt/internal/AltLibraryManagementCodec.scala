@@ -1,11 +1,12 @@
-package sbt.internal.librarymanagement
+package sbt.internal
 
-import sbt.internal.util.{ HList, HNil }
+import sbt.internal.librarymanagement._
 import sbt.internal.util.Types._
+import sbt.internal.util.{ HList, HNil }
 import sbt.io.{ Hash, IO }
 import sbt.librarymanagement._
-import sbt.util._
 import sbt.util.CacheImplicits._
+import sbt.util._
 import sjsonnew.JsonFormat
 
 object AltLibraryManagementCodec extends LibraryManagementCodec {
