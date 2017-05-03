@@ -1,3 +1,4 @@
+import sbt.io.Path._
 import sbt._
 
 object SiteMap {

@@ -16,7 +16,8 @@ matrix:
 
 env:
   matrix:
-    - SBT_CMD=";mimaReportBinaryIssues;test:compile;scalafmtCheck;safeUnitTests;otherUnitTests"
+    - SBT_CMD=";test:compile;scalafmtCheck;safeUnitTests;otherUnitTests"
+  # - SBT_CMD="mimaReportBinaryIssues"
     - SBT_CMD="scripted actions/*"
     - SBT_CMD="scripted apiinfo/* compiler-project/* ivy-deps-management/*"
     - SBT_CMD="scripted dependency-management/*1of4"

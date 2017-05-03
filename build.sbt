@@ -44,16 +44,17 @@ def commonSettings: Seq[Setting[_]] =
     concurrentRestrictions in Global += Util.testExclusiveRestriction,
     testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
     javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
-    incOptions := incOptions.value.withNameHashing(true),
     crossScalaVersions := Seq(baseScalaVersion),
     bintrayPackage := (bintrayPackage in ThisBuild).value,
     bintrayRepository := (bintrayRepository in ThisBuild).value,
     publishArtifact in Test := false,
+    /*
     mimaPreviousArtifacts := Set.empty, // Set(organization.value % moduleName.value % "1.0.0"),
     mimaBinaryIssueFilters ++= {
       import com.typesafe.tools.mima.core._, ProblemFilters._
       Seq()
     },
+    */
     fork in compile := true,
     fork in run := true
   ) flatMap (_.settings)
@@ -69,9 +70,9 @@ def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
 
 lazy val sbtRoot: Project = (project in file("."))
-  .enablePlugins(ScriptedPlugin, SiteScaladocPlugin, GhpagesPlugin)
+  .enablePlugins(ScriptedPlugin) // , SiteScaladocPlugin, GhpagesPlugin)
   .configs(Sxr.sxrConf)
-  .aggregate(nonRoots: _*)
+  .aggregateSeq(nonRoots)
   .settings(
     buildLevelSettings,
     minimalSettings,
@@ -294,7 +295,8 @@ lazy val sbtProj = (project in file("sbt"))
 
 def scriptedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val result = scriptedSource(dir => (s: State) => Scripted.scriptedParser(dir)).parsed
-  publishLocalBinAll.value
+  // publishLocalBinAll.value // TODO: Restore scripted needing only binary jars.
+  publishAll.value
   // These two projects need to be visible in a repo even if the default
   // local repository is hidden, so we publish them to an alternate location and add
   // that alternate repo to the running scripted test (in Scripted.scriptedpreScripted).

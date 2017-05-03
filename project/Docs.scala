@@ -1,12 +1,17 @@
 import sbt._, Keys._
+/*
 import StatusPlugin.autoImport._
 import com.typesafe.sbt.site.SitePlugin.autoImport._
 import com.typesafe.sbt.site.SiteScaladocPlugin.autoImport._
 import com.typesafe.sbt.sbtghpages.GhpagesPlugin.autoImport._
 import com.typesafe.sbt.SbtGit, SbtGit.{ git, GitKeys }
 import Sxr.{ sxr, sxrConf }
+*/
 
 object Docs {
+  def settings: Seq[Setting[_]] = Nil
+
+  /*
   val siteExcludes = Set(".buildinfo", "objects.inv")
   def siteInclude(f: File) = !siteExcludes.contains(f.getName)
 
@@ -47,4 +52,5 @@ object Docs {
     IO.copy(toCopy)
     repo
   }
+  */
 }

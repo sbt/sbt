@@ -1,5 +1,7 @@
 import sbt._, Keys._
 
+import sbt.internal.librarymanagement.PublishConfiguration
+
 /** This local plugin provides ways of publishing just the binary jar. */
 object PublishBinPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin

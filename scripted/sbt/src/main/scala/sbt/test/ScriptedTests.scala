@@ -308,11 +308,16 @@ class ScriptedRunner {
           tests: Array[String],
           bootProperties: File,
           launchOpts: Array[String],
-          prescripted: java.util.List[File]): Unit =
+          prescripted: java.util.List[File]): Unit = {
+
+    // Force Log4J to not use a thread context classloader otherwise it throws a CCE
+    sys.props(org.apache.logging.log4j.util.LoaderUtil.IGNORE_TCCL_PROPERTY) = "true"
+
     run(resourceBaseDirectory, bufferLog, tests, ConsoleLogger(), bootProperties, launchOpts, {
       f: File =>
         prescripted.add(f); ()
     }) //new FullLogger(Logger.xlog2Log(log)))
+  }
 
   def run(resourceBaseDirectory: File,
           bufferLog: Boolean,

@@ -17,12 +17,11 @@ object NightlyPlugin extends AutoPlugin {
   import autoImport._
 
   override def buildSettings: Seq[Setting[_]] = Seq(
-    // Avoid 2.12.x nightlies
     // Avoid 2.9.x precompiled
     // Avoid 2.8.x precompiled
     includeTestDependencies := {
       val v = scalaVersion.value
-      v.startsWith("2.10.") || v.startsWith("2.11.")
+      v.startsWith("2.10.") || v.startsWith("2.11.") || v.startsWith("2.12.")
     }
   )
 
