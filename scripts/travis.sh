@@ -67,11 +67,17 @@ is212() {
 }
 
 runSbtCoursierTests() {
-  sbt ++$SCALA_VERSION coreJVM/publishLocal cache/publishLocal sbt-coursier/scripted
+  sbt ++$SCALA_VERSION coreJVM/publishLocal cache/publishLocal "sbt-coursier/scripted sbt-coursier/*"
+  if [ "$SCALA_VERSION" = "2.10" ]; then
+    sbt ++$SCALA_VERSION "sbt-coursier/scripted sbt-coursier-0.13/*"
+  fi
 }
 
 runSbtShadingTests() {
-  sbt ++$SCALA_VERSION sbt-coursier/publishLocal sbt-shading/scripted
+  sbt ++$SCALA_VERSION coreJVM/publishLocal cache/publishLocal sbt-coursier/publishLocal "sbt-shading/scripted sbt-shading/*"
+  if [ "$SCALA_VERSION" = "2.10" ]; then
+    sbt ++$SCALA_VERSION "sbt-shading/scripted sbt-shading-0.13/*"
+  fi
 }
 
 jsCompile() {

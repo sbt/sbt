@@ -3,6 +3,8 @@ package coursier
 import sbt._
 import sbt.Keys._
 
+import SbtCompatibility._
+
 object CoursierPlugin extends AutoPlugin {
 
   override def trigger = allRequirements
@@ -123,7 +125,28 @@ object CoursierPlugin extends AutoPlugin {
     coursierResolution := Tasks.resolutionTask().value,
     coursierSbtClassifiersResolution := Tasks.resolutionTask(
       sbtClassifiers = true
-    ).value
+    ).value,
+    ivyConfigurations := {
+      val confs = ivyConfigurations.value
+      val names = confs.map(_.name).toSet
+
+      // Yes, adding those back in sbt 1.0. Can't distinguish between config test (whose jars with classifier tests ought to
+      // be added), and sources / docs else (if their JARs are in compile, they would get added too then).
+
+      val extraSources =
+        if (names("sources"))
+          None
+        else
+          Some(Configuration("sources", "", isPublic = true, extendsConfigs = Vector.empty, transitive = false))
+
+      val extraDocs =
+        if (names("docs"))
+          None
+        else
+          Some(Configuration("docs", "", isPublic = true, extendsConfigs = Vector.empty, transitive = false))
+
+      confs ++ extraSources.toSeq ++ extraDocs.toSeq
+    }
   )
 
   override lazy val projectSettings = coursierSettings(None, Seq(Compile, Test).map(c => c -> c.name)) ++

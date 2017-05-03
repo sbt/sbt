@@ -33,8 +33,8 @@ test_script:
   - sbt ++2.12.1 testsJVM/test testsJVM/it:test # Would node be around for testsJS/test?
   - sbt ++2.11.11 testsJVM/test testsJVM/it:test
   - sbt ++2.10.6 testsJVM/test testsJVM/it:test
-  - sbt ++2.12.1 sbt-coursier/scripted sbt-coursier/publishLocal sbt-shading/scripted # for sbt 1.0
-  - sbt ++2.10.6 sbt-coursier/scripted sbt-coursier/publishLocal sbt-shading/scripted # for sbt 0.13
+  - sbt ++2.12.1 "sbt-coursier/scripted sbt-coursier/*" sbt-coursier/publishLocal "sbt-shading/scripted sbt-shading/*" # for sbt 1.0
+  - sbt ++2.10.6 "sbt-coursier/scripted sbt-coursier/*" "sbt-coursier/scripted sbt-coursier-0.13/*" sbt-coursier/publishLocal "sbt-shading/scripted sbt-shading/*" "sbt-shading/scripted sbt-shading-0.13/*" # for sbt 0.13
 cache:
   - C:\Users\appveyor\.ivy2\cache
   - C:\Users\appveyor\.m2

@@ -1,3 +1,7 @@
+
+// for SbtExclusionRule with sbt 1.0
+import sbt.internal.librarymanagement._
+
 scalaVersion := "2.11.8"
 
 organization := "io.get-coursier.test"

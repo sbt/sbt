@@ -146,9 +146,7 @@ object Tasks {
         allDependencies <- allDependenciesTask
       } yield {
 
-        val configMap = configurations
-          .map { cfg => cfg.name -> cfg.extendsConfigs.map(_.name) }
-          .toMap
+        val configMap = configurations.map(cfg => cfg.name -> cfg.extendsConfigs.map(_.name)).toMap
 
         val proj = FromSbt.project(
           projId,
@@ -190,6 +188,18 @@ object Tasks {
       val sbv = sbt.Keys.scalaBinaryVersion.value
       val ivyConfs = sbt.Keys.ivyConfigurations.value
 
+      val sourcesConfigOpt =
+        if (ivyConfigurations.value.exists(_.name == "sources"))
+          Some("sources")
+        else
+          None
+
+      val docsConfigOpt =
+        if (ivyConfigurations.value.exists(_.name == "docs"))
+          Some("docs")
+        else
+          None
+
       val sbtBinArtifacts =
         for ((config, targetConfig) <- configsMap) yield {
 
@@ -211,7 +221,7 @@ object Tasks {
         }
 
       val sbtSourceArtifacts =
-        for ((config, _) <- configsMap) yield {
+        for ((config, targetConfig) <- configsMap) yield {
 
           val publish = publishArtifact
             .in(projectRef)
@@ -225,13 +235,13 @@ object Tasks {
               .in(packageSrc)
               .in(config)
               .find(state)
-              .map("sources" -> _)
+              .map(sourcesConfigOpt.getOrElse(targetConfig) -> _)
           else
             None
         }
 
       val sbtDocArtifacts =
-        for ((config, _) <- configsMap) yield {
+        for ((config, targetConfig) <- configsMap) yield {
 
           val publish = publishArtifact
             .in(projectRef)
@@ -245,7 +255,7 @@ object Tasks {
               .in(packageDoc)
               .in(config)
               .find(state)
-              .map("docs" -> _)
+              .map(docsConfigOpt.getOrElse(targetConfig) -> _)
           else
             None
         }

@@ -16,7 +16,9 @@ resolvers += Resolver.url(
   Patterns(
     Resolver.ivyStylePatterns.ivyPatterns,
     Resolver.ivyStylePatterns.artifactPatterns,
-    isMavenCompatible = true
+    isMavenCompatible = true,
+    descriptorOptional = false,
+    skipConsistencyCheck = false
   )
 )
 
