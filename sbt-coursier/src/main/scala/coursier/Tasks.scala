@@ -178,15 +178,17 @@ object Tasks {
       coursierProject.forAllProjects(state, projects).map(_.values.toVector)
     }
 
-  def coursierPublicationsTask(configsMap: (sbt.Configuration, String)*): Def.Initialize[sbt.Task[Seq[(String, Publication)]]] =
-    (
-      sbt.Keys.state,
-      sbt.Keys.thisProjectRef,
-      sbt.Keys.projectID,
-      sbt.Keys.scalaVersion,
-      sbt.Keys.scalaBinaryVersion,
-      sbt.Keys.ivyConfigurations
-    ).map { (state, projectRef, projId, sv, sbv, ivyConfs) =>
+  def coursierPublicationsTask(
+    configsMap: (sbt.Configuration, String)*
+  ): Def.Initialize[sbt.Task[Seq[(String, Publication)]]] =
+    Def.task {
+
+      val state = sbt.Keys.state.value
+      val projectRef = sbt.Keys.thisProjectRef.value
+      val projId = sbt.Keys.projectID.value
+      val sv = sbt.Keys.scalaVersion.value
+      val sbv = sbt.Keys.scalaBinaryVersion.value
+      val ivyConfs = sbt.Keys.ivyConfigurations.value
 
       val sbtBinArtifacts =
         for ((config, targetConfig) <- configsMap) yield {
