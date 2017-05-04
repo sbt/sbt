@@ -54,6 +54,14 @@ isScalaJs() {
   [ "$SCALA_JS" = 1 ]
 }
 
+sbtCoursier() {
+  [ "$SBT_COURSIER" = 1 ]
+}
+
+sbtShading() {
+  [ "$SBT_SHADING" = 1 ]
+}
+
 is210() {
   echo "$SCALA_VERSION" | grep -q "^2\.10"
 }
@@ -182,27 +190,33 @@ if isScalaJs; then
 else
   integrationTestsRequirements
   jvmCompile
-  runJvmTests
 
-  if is210 || is212; then
-    runSbtCoursierTests
-    runSbtShadingTests
+  if sbtCoursier; then
+    if is210 || is212; then
+      runSbtCoursierTests
+    fi
+
+    if is210; then
+      testSbtCoursierJava6
+    fi
+  elif sbtShading; then
+    if is210 || is212; then
+      runSbtShadingTests
+    fi
+  else
+    runJvmTests
+
+    validateReadme
+    checkBinaryCompatibility
+
+    if is211; then
+      testLauncherJava6
+    fi
   fi
 
-  validateReadme
-  checkBinaryCompatibility
-
-  # We're not using a jdk6 matrix entry with Travis here as some sources of coursier require Java 7 to compile
+  # Not using a jdk6 matrix entry with Travis as some sources of coursier require Java 7 to compile
   # (even though it won't try to call Java 7 specific methods if it detects it runs under Java 6).
   # The tests here check that coursier is nonetheless fine when run under Java 6.
-
-  if is211; then
-    testLauncherJava6
-  fi
-
-  if is210; then
-    testSbtCoursierJava6
-  fi
 fi
 
 

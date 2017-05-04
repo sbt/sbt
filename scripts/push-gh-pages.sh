@@ -1,10 +1,10 @@
 #!/bin/bash
 set -ev
 
-TRAVIS_SCALA_VERSION="$1"
+SCALA_VERSION="$1"
 shift
 
-sbt ++${TRAVIS_SCALA_VERSION} web/fastOptJS
+sbt ++${SCALA_VERSION} web/fastOptJS
 
 HELPER="$(readlink -f "$(dirname "$0")/push-gh-pages-helper.sh")"
 
