@@ -49,7 +49,7 @@ object Util {
       IO.createDirectory(out)
       val args = "xsbti.api" :: out.getAbsolutePath :: defs.map(_.getAbsolutePath).toList
       val mainClass = main getOrElse "No main class defined for datatype generator"
-      toError(run.run(mainClass, cp.files, args, s.log))
+      run.run(mainClass, cp.files, args, s.log) foreach sys.error
       (out ** "*.java").get
     }
   def lastCompilationTime(analysis: sbt.inc.Analysis): Long =

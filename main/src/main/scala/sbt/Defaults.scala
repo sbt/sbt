@@ -21,7 +21,6 @@ import sbt.inc.{ Analysis, FileValueCache, IncOptions, Locate }
 import sbt.compiler.{ MixedAnalyzingCompiler, AggressiveCompile }
 import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
 
-import sys.error
 import scala.xml.NodeSeq
 import org.apache.ivy.core.module.{ descriptor, id }
 import descriptor.ModuleDescriptor, id.ModuleRevisionId
@@ -804,7 +803,7 @@ object Defaults extends BuildCommon {
       val parser = loadForParser(discoveredMainClasses)((s, names) => runMainParser(s, names getOrElse Nil))
       Def.inputTask {
         val (mainClass, args) = parser.parsed
-        toError(scalaRun.value.run(mainClass, data(classpath.value), args, streams.value.log))
+        scalaRun.value.run(mainClass, data(classpath.value), args, streams.value.log) foreach sys.error
       }
     }
 
@@ -814,7 +813,7 @@ object Defaults extends BuildCommon {
       val parser = Def.spaceDelimited()
       Def.inputTask {
         val mainClass = mainClassTask.value getOrElse sys.error("No main class detected.")
-        toError(scalaRun.value.run(mainClass, data(classpath.value), parser.parsed, streams.value.log))
+        scalaRun.value.run(mainClass, data(classpath.value), parser.parsed, streams.value.log) foreach sys.error
       }
     }
 
@@ -2141,29 +2140,27 @@ trait BuildExtra extends BuildCommon with DefExtra {
   def runInputTask(config: Configuration, mainClass: String, baseArguments: String*): Initialize[InputTask[Unit]] =
     inputTask { result =>
       (fullClasspath in config, runner in (config, run), streams, result) map { (cp, r, s, args) =>
-        toError(r.run(mainClass, data(cp), baseArguments ++ args, s.log))
+        r.run(mainClass, data(cp), baseArguments ++ args, s.log) foreach sys.error
       }
     }
   def runTask(config: Configuration, mainClass: String, arguments: String*): Initialize[Task[Unit]] =
     (fullClasspath in config, runner in (config, run), streams) map { (cp, r, s) =>
-      toError(r.run(mainClass, data(cp), arguments, s.log))
+      r.run(mainClass, data(cp), arguments, s.log) foreach sys.error
     }
 
   def fullRunInputTask(scoped: InputKey[Unit], config: Configuration, mainClass: String, baseArguments: String*): Setting[InputTask[Unit]] =
     scoped := (inputTask { result =>
       (initScoped(scoped.scopedKey, runnerInit) zipWith (fullClasspath in config, streams, result).identityMap) { (rTask, t) =>
-        (t, rTask) map {
-          case ((cp, s, args), r) =>
-            toError(r.run(mainClass, data(cp), baseArguments ++ args, s.log))
+        (t, rTask) map { case ((cp, s, args), r) =>
+          r.run(mainClass, data(cp), baseArguments ++ args, s.log) foreach sys.error
         }
       }
     }).evaluated
   def fullRunTask(scoped: TaskKey[Unit], config: Configuration, mainClass: String, arguments: String*): Setting[Task[Unit]] =
     scoped := ((initScoped(scoped.scopedKey, runnerInit) zipWith (fullClasspath in config, streams).identityMap) {
       case (rTask, t) =>
-        (t, rTask) map {
-          case ((cp, s), r) =>
-            toError(r.run(mainClass, data(cp), arguments, s.log))
+        (t, rTask) map { case ((cp, s), r) =>
+          r.run(mainClass, data(cp), arguments, s.log) foreach sys.error
         }
     }).value
   def initScoped[T](sk: ScopedKey[_], i: Initialize[T]): Initialize[T] = initScope(fillTaskAxis(sk.scope, sk.key), i)
@@ -2210,7 +2207,9 @@ trait BuildCommon {
     /** Converts the `Seq[File]` to a Classpath, which is an alias for `Seq[Attributed[File]]`. */
     def classpath: Classpath = Attributed blankSeq s
   }
-  def toError(o: Option[String]): Unit = o foreach error
+
+  @deprecated("use 'opt foreach sys.error' instead", "0.13.16")
+  def toError(o: Option[String]): Unit = o foreach sys.error
 
   def overrideConfigs(cs: Configuration*)(configurations: Seq[Configuration]): Seq[Configuration] =
     {
