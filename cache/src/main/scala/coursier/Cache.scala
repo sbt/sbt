@@ -906,7 +906,7 @@ object Cache {
   def file(
     artifact: Artifact,
     cache: File = default,
-    cachePolicy: CachePolicy = CachePolicy.FetchMissing,
+    cachePolicy: CachePolicy = CachePolicy.UpdateChanging,
     checksums: Seq[Option[String]] = defaultChecksums,
     logger: Option[Logger] = None,
     pool: ExecutorService = defaultPool,
@@ -961,7 +961,7 @@ object Cache {
 
   def fetch(
     cache: File = default,
-    cachePolicy: CachePolicy = CachePolicy.FetchMissing,
+    cachePolicy: CachePolicy = CachePolicy.UpdateChanging,
     checksums: Seq[Option[String]] = defaultChecksums,
     logger: Option[Logger] = None,
     pool: ExecutorService = defaultPool,
