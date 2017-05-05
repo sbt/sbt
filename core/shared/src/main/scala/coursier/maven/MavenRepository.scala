@@ -328,6 +328,7 @@ final case class MavenRepository(
             val prefix = s"${module.name}-${versioningValue.getOrElse(version)}"
 
             val packagingTpeMap = proj0.packagingOpt
+              .filter(_ != Pom.relocatedPackaging)
               .map { packaging =>
                 (MavenSource.typeDefaultClassifier(packaging), MavenSource.typeExtension(packaging)) -> packaging
               }

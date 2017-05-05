@@ -89,7 +89,6 @@ final case class Project(
     */
   actualVersionOpt: Option[String],
 
-  // Ivy-specific
   // First String is configuration
   publications: Seq[(String, Publication)],
 
