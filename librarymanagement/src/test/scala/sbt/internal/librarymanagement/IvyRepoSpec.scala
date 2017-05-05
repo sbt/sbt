@@ -44,7 +44,7 @@ class IvyRepoSpec extends BaseIvySpecification with DependencyBuilders {
     val m = makeModuleForDepWithSources
 
     // the "default" configuration used in updateEither.
-    val c = makeUpdateConfiguration
+    val c = makeUpdateConfiguration(false)
 
     val ivyScala = m.moduleSettings.ivyScala
     val srcTypes = Set("src")

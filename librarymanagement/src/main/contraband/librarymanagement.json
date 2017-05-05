@@ -634,7 +634,8 @@
         { "name": "retrieve",       "type": "sbt.internal.librarymanagement.RetrieveConfiguration?" },
         { "name": "missingOk",      "type": "boolean"                                               },
         { "name": "logging",        "type": "sbt.librarymanagement.UpdateLogging"                   },
-        { "name": "artifactFilter", "type": "sbt.librarymanagement.ArtifactTypeFilter"              }
+        { "name": "artifactFilter", "type": "sbt.librarymanagement.ArtifactTypeFilter"              },
+        { "name": "offline",        "type": "boolean"                                               }
       ]
     },
     {

@@ -68,7 +68,8 @@ class DefaultLibraryManagement(ivyConfiguration: IvyConfiguration, log: Logger)
       Some(retrieveConfiguration),
       true,
       UpdateLogging.DownloadOnly,
-      artifactFilter
+      artifactFilter,
+      false
     )
 
     log.debug(s"Attempting to fetch ${dependenciesNames(module)}. This operation may fail.")
