@@ -12,7 +12,7 @@ declare -a scalac_args
 declare -a sbt_commands
 declare java_cmd=java
 declare java_version
-declare init_sbt_version=
+declare init_sbt_version=_to_be_replaced
 
 declare SCRIPT=$0
 while [ -h "$SCRIPT" ] ; do

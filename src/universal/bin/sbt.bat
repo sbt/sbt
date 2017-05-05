@@ -53,7 +53,7 @@ rem We use the value of the JAVA_OPTS environment variable if defined, rather th
 set _JAVA_OPTS=%JAVA_OPTS%
 if "%_JAVA_OPTS%"=="" set _JAVA_OPTS=%CFG_OPTS%
 
-set INIT_SBT_VERSION=
+set INIT_SBT_VERSION=_TO_BE_REPLACED
 
 :args_loop
 if "%~1" == "" goto args_end
