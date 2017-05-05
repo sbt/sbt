@@ -54,14 +54,12 @@ trait BaseIvySpecification extends UnitSpec {
     val paths = IvyPaths(currentBase, Some(currentTarget))
     val other = Vector.empty
     val moduleConfs = Vector(ModuleConfiguration("*", chainResolver))
-    val off = false
     val check = Vector.empty
     val resCacheDir = currentTarget / "resolution-cache"
     new InlineIvyConfiguration(paths,
                                resolvers,
                                other,
                                moduleConfs,
-                               off,
                                None,
                                check,
                                Some(resCacheDir),

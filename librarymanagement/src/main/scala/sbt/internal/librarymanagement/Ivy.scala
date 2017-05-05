@@ -88,16 +88,10 @@ final class IvySbt(val configuration: IvyConfiguration) { self =>
       case i: InlineIvyConfiguration =>
         is.setVariable("ivy.checksums", i.checksums mkString ",")
         i.paths.ivyHome foreach is.setDefaultIvyUserDir
-        IvySbt.configureCache(is, i.localOnly, i.resolutionCacheDir)
-        IvySbt.setResolvers(
-          is,
-          i.resolvers,
-          i.otherResolvers,
-          i.localOnly,
-          configuration.updateOptions,
-          configuration.log
-        )
-        IvySbt.setModuleConfigurations(is, i.moduleConfigurations, configuration.log)
+        val log = configuration.log
+        IvySbt.configureCache(is, i.resolutionCacheDir)
+        IvySbt.setResolvers(is, i.resolvers, i.otherResolvers, configuration.updateOptions, log)
+        IvySbt.setModuleConfigurations(is, i.moduleConfigurations, log)
     }
     is
   }
@@ -342,13 +336,12 @@ private[sbt] object IvySbt {
       settings: IvySettings,
       resolvers: Seq[Resolver],
       other: Seq[Resolver],
-      localOnly: Boolean,
       updateOptions: UpdateOptions,
       log: Logger
   ): Unit = {
     def makeChain(label: String, name: String, rs: Seq[Resolver]) = {
       log.debug(label + " repositories:")
-      val chain = resolverChain(name, rs, localOnly, settings, updateOptions, log)
+      val chain = resolverChain(name, rs, settings, updateOptions, log)
       settings.addResolver(chain)
       chain
     }
@@ -362,18 +355,17 @@ private[sbt] object IvySbt {
     module.revision endsWith "-SNAPSHOT"
   private[sbt] def isChanging(mrid: ModuleRevisionId): Boolean =
     mrid.getRevision endsWith "-SNAPSHOT"
+
   def resolverChain(
       name: String,
       resolvers: Seq[Resolver],
-      localOnly: Boolean,
       settings: IvySettings,
       log: Logger
-  ): DependencyResolver =
-    resolverChain(name, resolvers, localOnly, settings, UpdateOptions(), log)
+  ): DependencyResolver = resolverChain(name, resolvers, settings, UpdateOptions(), log)
+
   def resolverChain(
       name: String,
       resolvers: Seq[Resolver],
-      localOnly: Boolean,
       settings: IvySettings,
       updateOptions: UpdateOptions,
       log: Logger
@@ -446,19 +438,12 @@ private[sbt] object IvySbt {
       )
     }
   }
-  private def configureCache(
-      settings: IvySettings,
-      localOnly: Boolean,
-      resCacheDir: Option[File]
-  ): Unit = {
-    configureResolutionCache(settings, localOnly, resCacheDir)
-    configureRepositoryCache(settings, localOnly)
+
+  private def configureCache(settings: IvySettings, resCacheDir: Option[File]): Unit = {
+    configureResolutionCache(settings, resCacheDir)
+    configureRepositoryCache(settings)
   }
-  private[this] def configureResolutionCache(
-      settings: IvySettings,
-      localOnly: Boolean,
-      resCacheDir: Option[File]
-  ): Unit = {
+  private[this] def configureResolutionCache(settings: IvySettings, resCacheDir: Option[File]) = {
     val base = resCacheDir getOrElse settings.getDefaultResolutionCacheBasedir
     settings.setResolutionCacheManager(new ResolutionCache(base, settings))
   }
@@ -485,7 +470,7 @@ private[sbt] object IvySbt {
       )
     }
 
-  private[this] def configureRepositoryCache(settings: IvySettings, localOnly: Boolean): Unit = {
+  private[this] def configureRepositoryCache(settings: IvySettings): Unit = {
     val cacheDir = settings.getDefaultRepositoryCacheBasedir()
     val manager = new DefaultRepositoryCacheManager("default-cache", settings, cacheDir) {
       override def findModuleInCache(
@@ -529,12 +514,8 @@ private[sbt] object IvySbt {
     manager.setDataFilePattern(PluginPattern + manager.getDataFilePattern)
     manager.setIvyPattern(PluginPattern + manager.getIvyPattern)
     manager.setUseOrigin(true)
-    if (localOnly)
-      manager.setDefaultTTL(java.lang.Long.MAX_VALUE)
-    else {
-      manager.setChangingMatcher(PatternMatcher.REGEXP)
-      manager.setChangingPattern(".*-SNAPSHOT")
-    }
+    manager.setChangingMatcher(PatternMatcher.REGEXP)
+    manager.setChangingPattern(".*-SNAPSHOT")
     settings.addRepositoryCacheManager(manager)
     settings.setDefaultRepositoryCacheManager(manager)
   }

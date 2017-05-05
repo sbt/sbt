@@ -729,7 +729,6 @@
             { "name": "resolvers",            "type": "sbt.librarymanagement.Resolver*"            },
             { "name": "otherResolvers",       "type": "sbt.librarymanagement.Resolver*"            },
             { "name": "moduleConfigurations", "type": "sbt.librarymanagement.ModuleConfiguration*" },
-            { "name": "localOnly",            "type": "boolean"                                    },
             { "name": "checksums",            "type": "String*"                                    },
             { "name": "resolutionCacheDir",   "type": "java.io.File?"                              }
           ],
@@ -739,7 +738,6 @@
             "  resolvers:            Vector[sbt.librarymanagement.Resolver],",
             "  otherResolvers:       Vector[sbt.librarymanagement.Resolver],",
             "  moduleConfigurations: Vector[sbt.librarymanagement.ModuleConfiguration],",
-            "  localOnly:            Boolean,",
             "  lock:                 Option[xsbti.GlobalLock],",
             "  checksums:            Vector[String],",
             "  resolutionCacheDir:   Option[java.io.File],",
@@ -747,7 +745,7 @@
             "  log:                  xsbti.Logger",
             ") =",
             "  this(lock, paths.baseDirectory, log, updateOptions, paths, resolvers, otherResolvers,",
-            "    moduleConfigurations, localOnly, checksums, resolutionCacheDir)"
+            "    moduleConfigurations, checksums, resolutionCacheDir)"
           ]
         },
         {
