@@ -3,6 +3,8 @@ package coursier
 import sbt._
 import sbt.Keys._
 
+import SbtCompatibility._
+
 object CoursierPlugin extends AutoPlugin {
 
   override def trigger = allRequirements
@@ -47,12 +49,12 @@ object CoursierPlugin extends AutoPlugin {
   import autoImport._
 
   lazy val treeSettings = Seq(
-    coursierDependencyTree <<= Tasks.coursierDependencyTreeTask(
+    coursierDependencyTree := Tasks.coursierDependencyTreeTask(
       inverse = false
-    ),
-    coursierDependencyInverseTree <<= Tasks.coursierDependencyTreeTask(
+    ).value,
+    coursierDependencyInverseTree := Tasks.coursierDependencyTreeTask(
       inverse = true
-    )
+    ).value
   )
 
   def makeIvyXmlBefore[T](
@@ -82,48 +84,69 @@ object CoursierPlugin extends AutoPlugin {
     coursierTtl := Cache.defaultTtl,
     coursierVerbosity := Settings.defaultVerbosityLevel(sLog.value),
     mavenProfiles := Set.empty,
-    coursierResolvers <<= Tasks.coursierResolversTask,
-    coursierRecursiveResolvers <<= Tasks.coursierRecursiveResolversTask,
-    coursierSbtResolvers <<= externalResolvers in updateSbtClassifiers,
+    coursierResolvers := Tasks.coursierResolversTask.value,
+    coursierRecursiveResolvers := Tasks.coursierRecursiveResolversTask.value,
+    coursierSbtResolvers := externalResolvers.in(updateSbtClassifiers).value,
     coursierUseSbtCredentials := true,
     coursierCredentials := Map.empty,
-    coursierFallbackDependencies <<= Tasks.coursierFallbackDependenciesTask,
+    coursierFallbackDependencies := Tasks.coursierFallbackDependenciesTask.value,
     coursierCache := Cache.default,
-    coursierArtifacts <<= Tasks.artifactFilesOrErrors(withClassifiers = false),
-    coursierClassifiersArtifacts <<= Tasks.artifactFilesOrErrors(
+    coursierArtifacts := Tasks.artifactFilesOrErrors(withClassifiers = false).value,
+    coursierClassifiersArtifacts := Tasks.artifactFilesOrErrors(
       withClassifiers = true
-    ),
-    coursierSbtClassifiersArtifacts <<= Tasks.artifactFilesOrErrors(
+    ).value,
+    coursierSbtClassifiersArtifacts := Tasks.artifactFilesOrErrors(
       withClassifiers = true,
       sbtClassifiers = true
-    ),
+    ).value,
     makeIvyXmlBefore(deliverLocalConfiguration, shadedConfigOpt),
     makeIvyXmlBefore(deliverConfiguration, shadedConfigOpt),
-    update <<= Tasks.updateTask(
+    update := Tasks.updateTask(
       shadedConfigOpt,
       withClassifiers = false
-    ),
-    updateClassifiers <<= Tasks.updateTask(
+    ).value,
+    updateClassifiers := Tasks.updateTask(
       shadedConfigOpt,
       withClassifiers = true,
       ignoreArtifactErrors = true
-    ),
-    updateSbtClassifiers in Defaults.TaskGlobal <<= Tasks.updateTask(
+    ).value,
+    updateSbtClassifiers.in(Defaults.TaskGlobal) := Tasks.updateTask(
       shadedConfigOpt,
       withClassifiers = true,
       sbtClassifiers = true,
       ignoreArtifactErrors = true
-    ),
-    coursierProject <<= Tasks.coursierProjectTask,
-    coursierInterProjectDependencies <<= Tasks.coursierInterProjectDependenciesTask,
-    coursierPublications <<= Tasks.coursierPublicationsTask(packageConfigs: _*),
-    coursierSbtClassifiersModule <<= classifiersModule in updateSbtClassifiers,
-    coursierConfigurations <<= Tasks.coursierConfigurationsTask(None),
-    coursierParentProjectCache <<= Tasks.parentProjectCacheTask,
-    coursierResolution <<= Tasks.resolutionTask(),
-    coursierSbtClassifiersResolution <<= Tasks.resolutionTask(
+    ).value,
+    coursierProject := Tasks.coursierProjectTask.value,
+    coursierInterProjectDependencies := Tasks.coursierInterProjectDependenciesTask.value,
+    coursierPublications := Tasks.coursierPublicationsTask(packageConfigs: _*).value,
+    coursierSbtClassifiersModule := classifiersModule.in(updateSbtClassifiers).value,
+    coursierConfigurations := Tasks.coursierConfigurationsTask(None).value,
+    coursierParentProjectCache := Tasks.parentProjectCacheTask.value,
+    coursierResolution := Tasks.resolutionTask().value,
+    coursierSbtClassifiersResolution := Tasks.resolutionTask(
       sbtClassifiers = true
-    )
+    ).value,
+    ivyConfigurations := {
+      val confs = ivyConfigurations.value
+      val names = confs.map(_.name).toSet
+
+      // Yes, adding those back in sbt 1.0. Can't distinguish between config test (whose jars with classifier tests ought to
+      // be added), and sources / docs else (if their JARs are in compile, they would get added too then).
+
+      val extraSources =
+        if (names("sources"))
+          None
+        else
+          Some(Configuration("sources", "", isPublic = true, extendsConfigs = Vector.empty, transitive = false))
+
+      val extraDocs =
+        if (names("docs"))
+          None
+        else
+          Some(Configuration("docs", "", isPublic = true, extendsConfigs = Vector.empty, transitive = false))
+
+      confs ++ extraSources.toSeq ++ extraDocs.toSeq
+    }
   )
 
   override lazy val projectSettings = coursierSettings(None, Seq(Compile, Test).map(c => c -> c.name)) ++

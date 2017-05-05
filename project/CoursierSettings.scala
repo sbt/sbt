@@ -138,9 +138,48 @@ object CoursierSettings {
     }
   }
 
+  lazy val divertThingsPlugin = {
+
+    val actualSbtBinaryVersion = Def.setting(
+      sbtBinaryVersion.in(pluginCrossBuild).value.split('.').take(2).mkString(".")
+    )
+
+    val sbtPluginScalaVersions = Map(
+      "0.13" -> "2.10",
+      "1.0"  -> "2.12"
+    )
+
+    val sbtScalaVersionMatch = Def.setting {
+      val sbtVer = actualSbtBinaryVersion.value
+      val scalaVer = scalaBinaryVersion.value
+
+      sbtPluginScalaVersions.get(sbtVer).toSeq.contains(scalaVer)
+    }
+
+    Seq(
+      baseDirectory := {
+        if (sbtScalaVersionMatch.value)
+          baseDirectory.value
+        else
+          baseDirectory.value / "dummy"
+      },
+      publish := {
+        if (sbtScalaVersionMatch.value)
+          publish.value
+      },
+      publishLocal := {
+        if (sbtScalaVersionMatch.value)
+          publishLocal.value
+      },
+      publishArtifact := {
+        sbtScalaVersionMatch.value && publishArtifact.value
+      }
+    )
+  }
+
   lazy val plugin =
     javaScalaPluginShared ++
-    Publish.dontPublishIn("2.11", "2.12") ++
+    divertThingsPlugin ++
     withScriptedTests ++
     Seq(
       scriptedLaunchOpts ++= Seq(
@@ -150,7 +189,20 @@ object CoursierSettings {
         "-Dsbttest.base=" + (sourceDirectory.value / "sbt-test").getAbsolutePath
       ),
       scriptedBufferLog := false,
-      sbtPlugin := (scalaBinaryVersion.value == "2.10"),
+      sbtPlugin := {
+        scalaBinaryVersion.value match {
+          case "2.10" | "2.12" => true
+          case _ => false
+        }
+      },
+      scalaVersion := appConfiguration.value.provider.scalaProvider.version, // required with sbt 0.13.16-M1, to avoid cyclic references
+      sbtVersion := {
+        scalaBinaryVersion.value match {
+          case "2.10" => "0.13.8"
+          case "2.12" => "1.0.0-M5"
+          case _ => sbtVersion.value
+        }
+      },
       resolvers ++= Seq(
         // added so that 2.10 artifacts of the other modules can be found by
         // the too-naive-for-now inter-project resolver of the coursier SBT plugin

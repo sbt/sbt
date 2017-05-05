@@ -24,14 +24,17 @@ install:
 build_script:
   - sbt ++2.11.11 clean compile coreJVM/publishLocal http-server/publishLocal
   - sbt ++2.10.6 clean compile
-  - sbt ++2.10.6 coreJVM/publishLocal cache/publishLocal # to make the scripted tests happy
+  - sbt ++2.12.1 coreJVM/publishLocal cache/publishLocal # to make the scripted sbt 1.0 tests happy
+  - sbt ++2.10.6 coreJVM/publishLocal cache/publishLocal # to make the scripted sbt 0.13 tests happy
 test_script:
   - ps: Start-Job -filepath .\scripts\start-it-auth-server.ps1 -ArgumentList $pwd
   - ps: Start-Sleep -s 15 # wait for the first server to have downloaded its dependencies
   - ps: Start-Job -filepath .\scripts\start-it-no-listing-server.ps1 -ArgumentList $pwd
   - sbt ++2.12.1 testsJVM/test testsJVM/it:test # Would node be around for testsJS/test?
   - sbt ++2.11.11 testsJVM/test testsJVM/it:test
-  - sbt ++2.10.6 testsJVM/test testsJVM/it:test sbt-coursier/scripted sbt-coursier/publishLocal sbt-shading/scripted
+  - sbt ++2.10.6 testsJVM/test testsJVM/it:test
+  - sbt ++2.12.1 "sbt-coursier/scripted sbt-coursier/*" sbt-coursier/publishLocal "sbt-shading/scripted sbt-shading/*" # for sbt 1.0
+  - sbt ++2.10.6 "sbt-coursier/scripted sbt-coursier/*" "sbt-coursier/scripted sbt-coursier-0.13/*" sbt-coursier/publishLocal "sbt-shading/scripted sbt-shading/*" "sbt-shading/scripted sbt-shading-0.13/*" # for sbt 0.13
 cache:
   - C:\Users\appveyor\.ivy2\cache
   - C:\Users\appveyor\.m2

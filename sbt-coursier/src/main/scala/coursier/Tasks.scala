@@ -146,9 +146,7 @@ object Tasks {
         allDependencies <- allDependenciesTask
       } yield {
 
-        val configMap = configurations
-          .map { cfg => cfg.name -> cfg.extendsConfigs.map(_.name) }
-          .toMap
+        val configMap = configurations.map(cfg => cfg.name -> cfg.extendsConfigs.map(_.name)).toMap
 
         val proj = FromSbt.project(
           projId,
@@ -178,15 +176,29 @@ object Tasks {
       coursierProject.forAllProjects(state, projects).map(_.values.toVector)
     }
 
-  def coursierPublicationsTask(configsMap: (sbt.Configuration, String)*): Def.Initialize[sbt.Task[Seq[(String, Publication)]]] =
-    (
-      sbt.Keys.state,
-      sbt.Keys.thisProjectRef,
-      sbt.Keys.projectID,
-      sbt.Keys.scalaVersion,
-      sbt.Keys.scalaBinaryVersion,
-      sbt.Keys.ivyConfigurations
-    ).map { (state, projectRef, projId, sv, sbv, ivyConfs) =>
+  def coursierPublicationsTask(
+    configsMap: (sbt.Configuration, String)*
+  ): Def.Initialize[sbt.Task[Seq[(String, Publication)]]] =
+    Def.task {
+
+      val state = sbt.Keys.state.value
+      val projectRef = sbt.Keys.thisProjectRef.value
+      val projId = sbt.Keys.projectID.value
+      val sv = sbt.Keys.scalaVersion.value
+      val sbv = sbt.Keys.scalaBinaryVersion.value
+      val ivyConfs = sbt.Keys.ivyConfigurations.value
+
+      val sourcesConfigOpt =
+        if (ivyConfigurations.value.exists(_.name == "sources"))
+          Some("sources")
+        else
+          None
+
+      val docsConfigOpt =
+        if (ivyConfigurations.value.exists(_.name == "docs"))
+          Some("docs")
+        else
+          None
 
       val sbtBinArtifacts =
         for ((config, targetConfig) <- configsMap) yield {
@@ -209,7 +221,7 @@ object Tasks {
         }
 
       val sbtSourceArtifacts =
-        for ((config, _) <- configsMap) yield {
+        for ((config, targetConfig) <- configsMap) yield {
 
           val publish = publishArtifact
             .in(projectRef)
@@ -223,13 +235,13 @@ object Tasks {
               .in(packageSrc)
               .in(config)
               .find(state)
-              .map("sources" -> _)
+              .map(sourcesConfigOpt.getOrElse(targetConfig) -> _)
           else
             None
         }
 
       val sbtDocArtifacts =
-        for ((config, _) <- configsMap) yield {
+        for ((config, targetConfig) <- configsMap) yield {
 
           val publish = publishArtifact
             .in(projectRef)
@@ -243,7 +255,7 @@ object Tasks {
               .in(packageDoc)
               .in(config)
               .find(state)
-              .map("docs" -> _)
+              .map(docsConfigOpt.getOrElse(targetConfig) -> _)
           else
             None
         }
@@ -418,7 +430,7 @@ object Tasks {
 
   def resolutionTask(
     sbtClassifiers: Boolean = false
-  ) = Def.task {
+  ): Def.Initialize[sbt.Task[coursier.Resolution]] = Def.task {
 
     // let's update only one module at once, for a better output
     // Downloads are already parallel, no need to parallelize further anyway

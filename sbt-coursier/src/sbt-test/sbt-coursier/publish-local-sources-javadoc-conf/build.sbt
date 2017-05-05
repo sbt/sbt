@@ -57,10 +57,22 @@ lazy val shared = Seq(
     val compileDocArtifacts = artifacts("compile", Some("javadoc"))
     val docArtifacts = artifacts("compile", Some("javadoc"), useClassifiersReport = true)
 
-    assert(compileSourceArtifacts.isEmpty)
-    assert(sourceArtifacts.length == 2)
-    assert(compileDocArtifacts.isEmpty)
-    assert(docArtifacts.length == 2)
+    assert(
+      compileSourceArtifacts.isEmpty,
+      "Expected no source artifact in main update report"
+    )
+    assert(
+      sourceArtifacts.length == 2,
+      "Expected 2 source artifacts in classifier report"
+    )
+    assert(
+      compileDocArtifacts.isEmpty,
+      "Expected no doc artifact in main update report"
+    )
+    assert(
+      docArtifacts.length == 2,
+      "Expected 2 doc artifacts in classifier report"
+    )
   }
 )
 

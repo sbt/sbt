@@ -6,13 +6,15 @@ import org.apache.ivy.core.module.id.ModuleRevisionId
 import scala.collection.JavaConverters._
 import scala.xml.{Node, PrefixedAttribute}
 
+import SbtCompatibility._
+
 object IvyXml {
 
   // These are required for publish to be fine, later on.
   def writeFiles(
     currentProject: Project,
     shadedConfigOpt: Option[(String, String)],
-    ivySbt: sbt.IvySbt,
+    ivySbt: IvySbt,
     log: sbt.Logger
   ): Unit = {
 
