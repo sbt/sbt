@@ -78,6 +78,8 @@ lazy val bootstrap = project
   .settings(
     pureJava,
     dontPublish,
+    // seems not to be automatically found with sbt 0.13.16-M1 :-/
+    mainClass := Some("coursier.Bootstrap"),
     renameMainJar("bootstrap.jar")
   )
 
@@ -261,6 +263,7 @@ lazy val coursier = project
     `sbt-launcher`,
     web,
     doc,
+    echo,
     `http-server`,
     okhttp
   )

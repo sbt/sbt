@@ -228,13 +228,13 @@ final case class MavenSource(
     dependency: Dependency,
     project: Project,
     overrideClassifiers: Option[Seq[String]]
-  ): Seq[Artifact] = {
-
-    if (project.publications.isEmpty)
+  ): Seq[Artifact] =
+    if (project.packagingOpt.toSeq.contains(Pom.relocatedPackaging))
+      Nil
+    else if (project.publications.isEmpty)
       artifactsUnknownPublications(dependency, project, overrideClassifiers)
     else
       artifactsKnownPublications(dependency, project, overrideClassifiers)
-  }
 }
 
 object MavenSource {

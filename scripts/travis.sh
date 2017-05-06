@@ -176,6 +176,17 @@ publish() {
   sbt ++${SCALA_VERSION} publish
 }
 
+testBootstrap() {
+  if is211; then
+    sbt ++${SCALA_VERSION} echo/publishLocal cli/pack
+    cli/target/pack/bin/coursier bootstrap -o cs-echo io.get-coursier:echo_2.11:1.0.0-SNAPSHOT
+    if [ "$(./cs-echo foo)" != foo ]; then
+      echo "Error: unexpected output from bootstrapped echo command." 1>&2
+      exit 1
+    fi
+  fi
+}
+
 
 # TODO Add coverage once https://github.com/scoverage/sbt-scoverage/issues/111 is fixed
 
@@ -205,6 +216,8 @@ else
     fi
   else
     runJvmTests
+
+    testBootstrap
 
     validateReadme
     checkBinaryCompatibility

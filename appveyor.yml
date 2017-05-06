@@ -40,3 +40,6 @@ cache:
   - C:\Users\appveyor\.m2
   - C:\Users\appveyor\.sbt
   - C:\Users\appveyor\.coursier
+branches:
+  only:
+    - master

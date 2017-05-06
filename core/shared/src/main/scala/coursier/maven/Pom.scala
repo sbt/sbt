@@ -296,7 +296,7 @@ object Pom {
         profiles,
         None,
         None,
-        packagingOpt(pom),
+        relocationDependencyOpt.fold(packagingOpt(pom))(_ => Some(relocatedPackaging)),
         None,
         Nil,
         Info(
@@ -444,6 +444,8 @@ object Pom {
         buildNumber.map(bn => guessedSnapshotVersion(version, timestamp, bn)).toList
     )
   }
+
+  val relocatedPackaging = s"$$relocated"
 
   val extraAttributeSeparator = ":#@#:"
   val extraAttributePrefix = "+"

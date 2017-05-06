@@ -588,10 +588,24 @@ object CentralTests extends TestSuite {
     }
 
     'relocation - {
-      resolutionCheck(
+      * - resolutionCheck(
         Module("bouncycastle", "bctsp-jdk14"),
         "138"
       )
+
+      'ignoreRelocationJars - {
+        val mod = Module("org.apache.commons", "commons-io")
+        val ver = "1.3.2"
+
+        val expectedUrl = "https://repo1.maven.org/maven2/commons-io/commons-io/1.3.2/commons-io-1.3.2.jar"
+
+        * - resolutionCheck(mod, ver)
+
+        * - withArtifacts(mod, ver, "jar", transitive = true) { artifacts =>
+          assert(artifacts.length == 1)
+          assert(artifacts.head.url == expectedUrl)
+        }
+      }
     }
   }
 
