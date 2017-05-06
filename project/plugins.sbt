@@ -20,7 +20,7 @@ libs ++= Seq(
 )
 
 // important: this line is matched / substituted during releases (via sbt-release)
-def coursierVersion = "1.0.0-RC1"
+def coursierVersion = "1.0.0-RC2"
 
 
 def plugins_(modules: ModuleID*) = modules.map(addSbtPlugin)

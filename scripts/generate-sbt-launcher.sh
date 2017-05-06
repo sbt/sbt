@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-VERSION=1.0.0-M15-2
+VERSION=1.0.0-RC2
 
 "$(dirname "$0")/../coursier" bootstrap \
   "io.get-coursier:sbt-launcher_2.12:$VERSION" \
