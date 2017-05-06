@@ -1,0 +1,40 @@
+### Changes
+
+* Lower memory load from sbt-coursier ([#462], thanks to [@vil1])
+* Better handling of Maven properties ([#491])
+* Clarify help message in CLI ([#490], thanks to [@olafurpg])
+* Various fixes ([#497], [#498], [#507], [#509])
+* Add support for relocated dependencies ([#507], [#529])
+* Retry downloads if an `SSLException` is caught ([#507])
+* Add support for build metadata in versions ([#507])
+* Better handling of snapshot versioning ([#508], thanks to [@smarter])
+* Use sbt-release for releases ([#512])
+* Switch to scala-js `0.6.16` ([#522])
+* Some clean-up ([#523], thanks to [@Jentsch], [#528])
+* Tweaking in sbt-shading plugin ([#526], [#527])
+* Cross-compile sbt plugins for sbt `1.0.0-M5` ([#525])
+
+[#462]: https://github.com/alexarchambault/coursier/pull/462
+[#490]: https://github.com/alexarchambault/coursier/pull/490
+[#491]: https://github.com/alexarchambault/coursier/pull/491
+[#497]: https://github.com/alexarchambault/coursier/pull/497
+[#498]: https://github.com/alexarchambault/coursier/pull/498
+[#507]: https://github.com/alexarchambault/coursier/pull/507
+[#508]: https://github.com/alexarchambault/coursier/pull/508
+[#509]: https://github.com/alexarchambault/coursier/pull/509
+[#512]: https://github.com/alexarchambault/coursier/pull/512
+[#522]: https://github.com/alexarchambault/coursier/pull/522
+[#523]: https://github.com/alexarchambault/coursier/pull/523
+[#525]: https://github.com/alexarchambault/coursier/pull/525
+[#526]: https://github.com/alexarchambault/coursier/pull/526
+[#527]: https://github.com/alexarchambault/coursier/pull/527
+[#528]: https://github.com/alexarchambault/coursier/pull/528
+[#529]: https://github.com/alexarchambault/coursier/pull/529
+[@vil1]: https://github.com/vil1
+[@olafurpg]: https://github.com/olafurpg
+[@smarter]: https://github.com/smarter
+[@Jentsch]: https://github.com/Jentsch
+
+### Non-backward compatible changes
+
+* N/A
