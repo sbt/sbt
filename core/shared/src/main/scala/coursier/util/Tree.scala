@@ -16,11 +16,11 @@ object Tree {
     def init[E, O](seq: Seq[E])(f: E => O) =
       seq.dropRight(1).map(f)
 
-    /**
-      * Add elements to the stack
-      * @param elems elements to add
-      * @param isLast a list that contains whether an element is the last in its siblings or not.
-      */
+    /*
+     * Add elements to the stack
+     * @param elems elements to add
+     * @param isLast a list that contains whether an element is the last in its siblings or not.
+     */
     def childrenWithLast(elems: Seq[T],
                          isLast: Seq[Boolean]): Seq[(T, Seq[Boolean])] = {
 
