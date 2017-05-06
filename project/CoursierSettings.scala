@@ -18,7 +18,7 @@ object CoursierSettings {
   }
 
   def sonatypeRepository(name: String) = {
-    resolvers += Resolver.sonatypeRepo("releases")
+    resolvers += Resolver.sonatypeRepo(name)
   }
 
   lazy val localM2Repository = {
