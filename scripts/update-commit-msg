@@ -1,0 +1,54 @@
+#!/usr/bin/env python
+import sys
+import subprocess
+import codecs
+
+# This script is compatible with both Python 2 and 3
+# Any modification to it must be verified against the two versions
+
+# Arguments: COMMIT_EDITMSG_FILE OLD_GIT_STATUS_FILE OLD_DIFF_FILE
+# where:
+#   - COMMIT_EDITMSG_FILE is the file storing the editmsg.
+#   - OLD_GIT_STATUS_FILE is the file storing the contents of the old git status.
+#   - OLD_DIFF_FILE is the file storing the contents of the old diff.
+
+def comment(lines):
+    return ["# " + line for line in lines]
+
+def remove_head(lines):
+    return lines[1:]
+
+def prepare_old_file_contents(filepath, process = lambda a: a):
+    with codecs.open(filepath, 'r', encoding = "utf-8") as old_file:
+        old_file_lines = old_file.readlines()
+        old_file.close()
+        return "".join(process(old_file_lines))
+
+def prepare_git_output(command, process = lambda a: a):
+    output = subprocess.check_output(command, stderr=subprocess.STDOUT, shell=True, universal_newlines = True)
+    output_lines = str.split(str(output), "\n")
+    return "\n".join(process(output_lines))
+
+# Get the old git status
+old_git_status_filepath = str(sys.argv[2])
+old_git_status = prepare_old_file_contents(old_git_status_filepath, comment)
+
+# Get the new git status
+new_git_status = prepare_git_output("git status", comment)
+
+# Get the old diff
+old_diff_filepath = str(sys.argv[3])
+old_diff = prepare_old_file_contents(old_diff_filepath, remove_head)
+
+# Get the new git diff
+new_diff = prepare_git_output("git diff --staged", remove_head)
+
+# Replace old content by new content
+with codecs.open(str(sys.argv[1]), "r+", encoding = "utf-8") as commit_editmsg_file:
+    commit_msg = commit_editmsg_file.read()
+    updated_status = commit_msg.replace(old_git_status, new_git_status)
+    updated_contents = commit_msg.replace(old_diff, new_diff)
+    commit_editmsg_file.seek(0)
+    commit_editmsg_file.write(updated_contents)
+    commit_editmsg_file.truncate()
+    commit_editmsg_file.close()

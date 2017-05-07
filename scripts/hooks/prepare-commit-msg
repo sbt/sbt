@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# Import all the shared environment
+BASE_DIR=$(git rev-parse --show-toplevel)
+. "$BASE_DIR/scripts/hooks/shared-info"
+
+# Update the commit message
+"$BASE_DIR/scripts/update-commit-msg" "$1" "$OLD_STATUS_FILE" "$OLD_DIFF_FILE"

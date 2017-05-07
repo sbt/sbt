@@ -2,9 +2,30 @@ import Util._
 import Dependencies._
 import Sxr.sxr
 
-import com.typesafe.tools.mima.core._, ProblemFilters._
-import com.typesafe.tools.mima.plugin.MimaKeys.{ binaryIssueFilters, previousArtifact }
+import com.typesafe.tools.mima.core._
 import com.typesafe.tools.mima.plugin.MimaPlugin.mimaDefaultSettings
+
+onLoad in Global := { (state: State) =>
+  // Set up the pre-commit hook to format sbt sources
+  val rootDir = (baseDirectory in ThisBuild).value
+  val hookNames = List("pre-commit", "prepare-commit-msg")
+  val scalafmtFile = rootDir / "scripts" / "scalafmt"
+  // This is just a paranoid protection
+  if (!scalafmtFile.canExecute)
+    sLog.value.error("Scalafmt is not installed for this repository.")
+  val logger = sLog.value
+  hookNames.foreach { hookName =>
+    val hook = rootDir / ".git" / "hooks" / hookName
+    if (!hook.exists) {
+      IO.copyFile(rootDir / "scripts" / "hooks" / hookName, hook)
+      hook.setExecutable(true)
+      logger.success(s"Scalafmt $hookName hook was set up.")
+    } else if (!hook.canExecute) {
+      logger.error(s"Hook $hookName exists but it's not executable.")
+    } else () // Hook already exists
+  }
+  (onLoad in Global).value.apply(state)
+}
 
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
@@ -432,13 +453,6 @@ def customCommands: Seq[Setting[_]] = Seq(
   },
   otherUnitTests := {
     test.all(otherProjects).value
-  },
-  commands += Command.command("scalafmtCheck") { state =>
-    sys.process.Process("git diff --name-only --exit-code").! match {
-      case 0 => // ok
-      case x => sys.error("git diff detected! Did you compile before committing?")
-    }
-    state
   },
   commands += Command.command("release-sbt-local") { state =>
     "clean" ::

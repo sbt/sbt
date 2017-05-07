@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# Use this script to format all the sources from any git branch
+
+set -eu
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+# Absolute path to this script, e.g. /home/user/bin/foo.sh
+SCRIPT=$(readlink -f "$0")
+# Absolute path this script is in, thus /home/user/bin
+SCRIPTS_DIR=$(dirname "$SCRIPT")
+
+"$SCRIPTS_DIR"/scalafmt --diff-branch "$CURRENT_BRANCH" "$@"

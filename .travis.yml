@@ -16,7 +16,7 @@ matrix:
 
 env:
   matrix:
-    - SBT_CMD=";test:compile;scalafmtCheck"
+    - SBT_CMD="test:compile"
     - SBT_CMD="mimaReportBinaryIssues"
     - SBT_CMD="safeUnitTests"
     - SBT_CMD="otherUnitTests"
@@ -46,6 +46,7 @@ notifications:
     - sbt-dev-bot@googlegroups.com
 
 script:
+  - ./scripts/check-format
   - sbt -J-XX:ReservedCodeCacheSize=128m "$SBT_CMD"
 
 before_cache:
