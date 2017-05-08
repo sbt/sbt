@@ -67,13 +67,30 @@ def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
 
 lazy val sbtRoot: Project = (project in file("."))
-  .enablePlugins(ScriptedPlugin)
+  .enablePlugins(ScriptedPlugin, SiteScaladocPlugin)
   .configs(Sxr.sxrConf)
   .aggregate(nonRoots: _*)
   .settings(
     buildLevelSettings,
     minimalSettings,
-    rootSettings,
+    Util.baseScalacOptions,
+    Docs.settings,
+    Sxr.settings,
+    scalacOptions += "-Ymacro-expand:none", // for both sxr and doc
+    sources in sxr := {
+      val allSources = (sources ?? Nil).all(docProjects).value
+      allSources.flatten.distinct
+    }, //sxr
+    sources in (Compile, doc) := (sources in sxr).value, // doc
+    Sxr.sourceDirectories := {
+      val allSourceDirectories = (sourceDirectories ?? Nil).all(docProjects).value
+      allSourceDirectories.flatten
+    },
+    fullClasspath in sxr := (externalDependencyClasspath in Compile in sbtProj).value,
+    dependencyClasspath in (Compile, doc) := (fullClasspath in sxr).value,
+    Util.publishPomSettings,
+    otherRootSettings,
+    Transform.conscriptSettings(bundledLauncherProj),
     publish := {},
     publishLocal := {}
   )
@@ -329,10 +346,6 @@ def allProjects =
 
 lazy val nonRoots = allProjects.map(p => LocalProject(p.id))
 
-def rootSettings =
-  fullDocSettings ++
-    Util.publishPomSettings ++ otherRootSettings ++
-    Transform.conscriptSettings(bundledLauncherProj)
 def otherRootSettings =
   Seq(
     scripted := scriptedTask.evaluated,
@@ -380,21 +393,6 @@ lazy val docProjects: ScopeFilter = ScopeFilter(
   inAnyProject -- inProjects(sbtRoot, sbtProj, scriptedSbtProj, scriptedPluginProj),
   inConfigurations(Compile)
 )
-def fullDocSettings = Util.baseScalacOptions ++ Docs.settings ++ Sxr.settings ++ Seq(
-  scalacOptions += "-Ymacro-expand:none", // for both sxr and doc
-  sources in sxr := {
-    val allSources = (sources ?? Nil).all(docProjects).value
-    allSources.flatten.distinct
-  }, //sxr
-  sources in (Compile, doc) := (sources in sxr).value, // doc
-  Sxr.sourceDirectories := {
-    val allSourceDirectories = (sourceDirectories ?? Nil).all(docProjects).value
-    allSourceDirectories.flatten
-  },
-  fullClasspath in sxr := (externalDependencyClasspath in Compile in sbtProj).value,
-  dependencyClasspath in (Compile, doc) := (fullClasspath in sxr).value
-)
-
 lazy val safeUnitTests = taskKey[Unit]("Known working tests (for both 2.10 and 2.11)")
 lazy val safeProjects: ScopeFilter = ScopeFilter(
   inProjects(mainSettingsProj, mainProj, actionsProj, runProj, stdTaskProj),

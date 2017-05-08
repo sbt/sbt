@@ -1,24 +1,23 @@
 import sbt._
 import Keys._
 import StatusPlugin.autoImport._
-import com.typesafe.sbt.{ SbtGhPages, SbtGit, SbtSite, site => sbtsite }
-import SbtSite.{ site, SiteKeys }
+import com.typesafe.sbt.site.SitePlugin.autoImport._
+import com.typesafe.sbt.site.SiteScaladocPlugin.autoImport._
+import com.typesafe.sbt.{ SbtGhPages, SbtGit }
 import SbtGhPages.{ ghpages, GhPagesKeys => ghkeys }
 import SbtGit.{ git, GitKeys }
-import sbtsite.SphinxSupport
-import SiteKeys.{ makeSite, siteMappings }
-import Sxr.sxr
+import Sxr.{ sxr, sxrConf }
 import SiteMap.Entry
 
 object Docs {
   val siteExcludes = Set(".buildinfo", "objects.inv")
   def siteInclude(f: File) = !siteExcludes.contains(f.getName)
 
-  def settings: Seq[Setting[_]] =
-    site.settings ++
-      site.includeScaladoc("api") ++
-      siteIncludeSxr("sxr") ++
-      ghPagesSettings
+  def settings: Seq[Setting[_]] = Def settings (
+    siteSubdirName in SiteScaladoc := "api",
+    siteIncludeSxr("sxr"),
+    ghPagesSettings
+  )
 
   def ghPagesSettings = ghpages.settings ++ Seq(
     git.remoteRepo := "git@github.com:sbt/sbt.github.com.git",
@@ -34,10 +33,11 @@ object Docs {
     Path.userHome / ".sbt" / "ghpages" / status / organization.value / name.value
   }
 
-  def siteIncludeSxr(prefix: String) =
-    Seq(
-      mappings in sxr := Path.allSubpaths(sxr.value).toSeq
-    ) ++ site.addMappingsToSiteDir(mappings in sxr, prefix)
+  def siteIncludeSxr(prefix: String) = Def settings (
+    mappings in sxr := Path.allSubpaths(sxr.value).toSeq,
+    siteSubdirName in sxrConf := prefix,
+    addMappingsToSiteDir(mappings in sxr, siteSubdirName in sxrConf)
+  )
 
   def synchLocalImpl = Def task {
     val repo = ghkeys.updatedRepository.value
