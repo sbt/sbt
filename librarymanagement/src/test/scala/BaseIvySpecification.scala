@@ -74,7 +74,8 @@ trait BaseIvySpecification extends UnitSpec {
                         false,
                         UpdateLogging.Full,
                         ArtifactTypeFilter.forbid(Set("src", "doc")),
-                        offline)
+                        offline,
+                        false)
   }
 
   def ivyUpdateEither(module: IvySbt#Module): Either[UnresolvedWarning, UpdateReport] = {

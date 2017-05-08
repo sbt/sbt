@@ -635,7 +635,8 @@
         { "name": "missingOk",      "type": "boolean"                                               },
         { "name": "logging",        "type": "sbt.librarymanagement.UpdateLogging"                   },
         { "name": "artifactFilter", "type": "sbt.librarymanagement.ArtifactTypeFilter"              },
-        { "name": "offline",        "type": "boolean"                                               }
+        { "name": "offline",        "type": "boolean"                                               },
+        { "name": "frozen",         "type": "boolean"                                               }
       ]
     },
     {

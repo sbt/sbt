@@ -69,6 +69,7 @@ class DefaultLibraryManagement(ivyConfiguration: IvyConfiguration, log: Logger)
       true,
       UpdateLogging.DownloadOnly,
       artifactFilter,
+      false,
       false
     )
 

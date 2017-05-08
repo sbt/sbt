@@ -469,6 +469,10 @@ object IvyActions {
     resolveOptions.setArtifactFilter(updateConfiguration.artifactFilter)
     resolveOptions.setUseCacheOnly(updateConfiguration.offline)
     resolveOptions.setLog(ivyLogLevel(logging))
+    if (updateConfiguration.frozen) {
+      resolveOptions.setTransitive(false)
+      resolveOptions.setCheckIfChanged(false)
+    }
     ResolutionCache.cleanModule(
       moduleDescriptor.getModuleRevisionId,
       resolveId,
@@ -522,6 +526,10 @@ object IvyActions {
     resolveOptions.setArtifactFilter(updateConfiguration.artifactFilter)
     resolveOptions.setUseCacheOnly(updateConfiguration.offline)
     resolveOptions.setLog(ivyLogLevel(updateConfiguration.logging))
+    if (updateConfiguration.frozen) {
+      resolveOptions.setTransitive(false)
+      resolveOptions.setCheckIfChanged(false)
+    }
     val acceptError = updateConfiguration.missingOk
     resolver.customResolve(descriptor, acceptError, logicalClock, resolveOptions, cache, log)
   }
