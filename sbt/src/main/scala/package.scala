@@ -26,6 +26,8 @@ package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtr
 
   final val ThisScope = Scope.ThisScope
   final val GlobalScope = Scope.GlobalScope
+  // Added for sbt 1.0 compatibility
+  final val Zero = Global
 
   import sbt.{ Configurations => C }
   final val Compile = C.Compile
