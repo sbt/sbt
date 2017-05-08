@@ -312,8 +312,6 @@ def scriptedUnpublishedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
 
 lazy val publishLauncher = TaskKey[Unit]("publish-launcher")
 
-lazy val myProvided = config("provided") intransitive
-
 def allProjects =
   Seq(
     testingProj,
@@ -332,10 +330,7 @@ def allProjects =
     bundledLauncherProj
   )
 
-def projectsWithMyProvided =
-  allProjects.map(p =>
-    p.copy(configurations = (p.configurations.filter(_ != Provided)) :+ myProvided))
-lazy val nonRoots = projectsWithMyProvided.map(p => LocalProject(p.id))
+lazy val nonRoots = allProjects.map(p => LocalProject(p.id))
 
 def rootSettings =
   fullDocSettings ++
