@@ -64,7 +64,7 @@ object Dependencies {
                    c: Option[Configuration] = None) =
     path match {
       case Some(f) =>
-        p dependsOn c.fold[ClasspathDependency](ProjectRef(file(f), projectName))(
+        p dependsOn c.fold[ClasspathDep[ProjectReference]](ProjectRef(file(f), projectName))(
           ProjectRef(file(f), projectName) % _)
       case None => p settings (libraryDependencies += c.fold(m)(m % _))
     }

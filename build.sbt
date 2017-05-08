@@ -2,10 +2,6 @@ import Util._
 import Dependencies._
 import Sxr.sxr
 
-import com.typesafe.tools.mima.core._, ProblemFilters._
-import com.typesafe.tools.mima.plugin.MimaKeys.{ binaryIssueFilters, previousArtifact }
-import com.typesafe.tools.mima.plugin.MimaPlugin.mimaDefaultSettings
-
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 def buildLevelSettings: Seq[Setting[_]] =
@@ -52,11 +48,12 @@ def commonSettings: Seq[Setting[_]] =
     crossScalaVersions := Seq(baseScalaVersion),
     bintrayPackage := (bintrayPackage in ThisBuild).value,
     bintrayRepository := (bintrayRepository in ThisBuild).value,
-    mimaDefaultSettings,
     publishArtifact in Test := false,
     mimaPreviousArtifacts := Set.empty, // Set(organization.value % moduleName.value % "1.0.0"),
-    mimaBinaryIssueFilters ++= Seq(
-      )
+    mimaBinaryIssueFilters ++= {
+      import com.typesafe.tools.mima.core._, ProblemFilters._
+      Seq()
+    }
   ) flatMap (_.settings)
 
 def minimalSettings: Seq[Setting[_]] =
@@ -70,13 +67,30 @@ def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
 
 lazy val sbtRoot: Project = (project in file("."))
-  .enablePlugins(ScriptedPlugin)
+  .enablePlugins(ScriptedPlugin, SiteScaladocPlugin, GhpagesPlugin)
   .configs(Sxr.sxrConf)
   .aggregate(nonRoots: _*)
   .settings(
     buildLevelSettings,
     minimalSettings,
-    rootSettings,
+    Util.baseScalacOptions,
+    Docs.settings,
+    Sxr.settings,
+    scalacOptions += "-Ymacro-expand:none", // for both sxr and doc
+    sources in sxr := {
+      val allSources = (sources ?? Nil).all(docProjects).value
+      allSources.flatten.distinct
+    }, //sxr
+    sources in (Compile, doc) := (sources in sxr).value, // doc
+    Sxr.sourceDirectories := {
+      val allSourceDirectories = (sourceDirectories ?? Nil).all(docProjects).value
+      allSourceDirectories.flatten
+    },
+    fullClasspath in sxr := (externalDependencyClasspath in Compile in sbtProj).value,
+    dependencyClasspath in (Compile, doc) := (fullClasspath in sxr).value,
+    Util.publishPomSettings,
+    otherRootSettings,
+    Transform.conscriptSettings(bundledLauncherProj),
     publish := {},
     publishLocal := {}
   )
@@ -312,8 +326,6 @@ def scriptedUnpublishedTask: Def.Initialize[InputTask[Unit]] = Def.inputTask {
 
 lazy val publishLauncher = TaskKey[Unit]("publish-launcher")
 
-lazy val myProvided = config("provided") intransitive
-
 def allProjects =
   Seq(
     testingProj,
@@ -332,15 +344,8 @@ def allProjects =
     bundledLauncherProj
   )
 
-def projectsWithMyProvided =
-  allProjects.map(p =>
-    p.copy(configurations = (p.configurations.filter(_ != Provided)) :+ myProvided))
-lazy val nonRoots = projectsWithMyProvided.map(p => LocalProject(p.id))
+lazy val nonRoots = allProjects.map(p => LocalProject(p.id))
 
-def rootSettings =
-  fullDocSettings ++
-    Util.publishPomSettings ++ otherRootSettings ++
-    Transform.conscriptSettings(bundledLauncherProj)
 def otherRootSettings =
   Seq(
     scripted := scriptedTask.evaluated,
@@ -388,21 +393,6 @@ lazy val docProjects: ScopeFilter = ScopeFilter(
   inAnyProject -- inProjects(sbtRoot, sbtProj, scriptedSbtProj, scriptedPluginProj),
   inConfigurations(Compile)
 )
-def fullDocSettings = Util.baseScalacOptions ++ Docs.settings ++ Sxr.settings ++ Seq(
-  scalacOptions += "-Ymacro-expand:none", // for both sxr and doc
-  sources in sxr := {
-    val allSources = (sources ?? Nil).all(docProjects).value
-    allSources.flatten.distinct
-  }, //sxr
-  sources in (Compile, doc) := (sources in sxr).value, // doc
-  Sxr.sourceDirectories := {
-    val allSourceDirectories = (sourceDirectories ?? Nil).all(docProjects).value
-    allSourceDirectories.flatten
-  },
-  fullClasspath in sxr := (externalDependencyClasspath in Compile in sbtProj).value,
-  dependencyClasspath in (Compile, doc) := (fullClasspath in sxr).value
-)
-
 lazy val safeUnitTests = taskKey[Unit]("Known working tests (for both 2.10 and 2.11)")
 lazy val safeProjects: ScopeFilter = ScopeFilter(
   inProjects(mainSettingsProj, mainProj, actionsProj, runProj, stdTaskProj),
