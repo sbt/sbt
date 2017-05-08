@@ -2,10 +2,6 @@ import Util._
 import Dependencies._
 import Sxr.sxr
 
-import com.typesafe.tools.mima.core._, ProblemFilters._
-import com.typesafe.tools.mima.plugin.MimaKeys.{ binaryIssueFilters, previousArtifact }
-import com.typesafe.tools.mima.plugin.MimaPlugin.mimaDefaultSettings
-
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 def buildLevelSettings: Seq[Setting[_]] =
@@ -52,11 +48,12 @@ def commonSettings: Seq[Setting[_]] =
     crossScalaVersions := Seq(baseScalaVersion),
     bintrayPackage := (bintrayPackage in ThisBuild).value,
     bintrayRepository := (bintrayRepository in ThisBuild).value,
-    mimaDefaultSettings,
     publishArtifact in Test := false,
     mimaPreviousArtifacts := Set.empty, // Set(organization.value % moduleName.value % "1.0.0"),
-    mimaBinaryIssueFilters ++= Seq(
-      )
+    mimaBinaryIssueFilters ++= {
+      import com.typesafe.tools.mima.core._, ProblemFilters._
+      Seq()
+    }
   ) flatMap (_.settings)
 
 def minimalSettings: Seq[Setting[_]] =
