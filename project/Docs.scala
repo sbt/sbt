@@ -1,13 +1,10 @@
-import sbt._
-import Keys._
+import sbt._, Keys._
 import StatusPlugin.autoImport._
 import com.typesafe.sbt.site.SitePlugin.autoImport._
 import com.typesafe.sbt.site.SiteScaladocPlugin.autoImport._
-import com.typesafe.sbt.{ SbtGhPages, SbtGit }
-import SbtGhPages.{ ghpages, GhPagesKeys => ghkeys }
-import SbtGit.{ git, GitKeys }
+import com.typesafe.sbt.sbtghpages.GhpagesPlugin.autoImport._
+import com.typesafe.sbt.SbtGit, SbtGit.{ git, GitKeys }
 import Sxr.{ sxr, sxrConf }
-import SiteMap.Entry
 
 object Docs {
   val siteExcludes = Set(".buildinfo", "objects.inv")
@@ -19,14 +16,14 @@ object Docs {
     ghPagesSettings
   )
 
-  def ghPagesSettings = ghpages.settings ++ Seq(
+  def ghPagesSettings = Def settings (
     git.remoteRepo := "git@github.com:sbt/sbt.github.com.git",
     localRepoDirectory,
-    ghkeys.synchLocal := synchLocalImpl.value,
-    GitKeys.gitBranch in ghkeys.updatedRepository := Some("master")
+    ghpagesSynchLocal := synchLocalImpl.value,
+    ghpagesBranch := "master"
   )
 
-  def localRepoDirectory = ghkeys.repository := {
+  def localRepoDirectory = ghpagesRepository := {
     // distinguish between building to update the site or not so that CI jobs
     //  that don't commit+publish don't leave uncommitted changes in the working directory
     val status = if (isSnapshot.value) "snapshot" else "public"
@@ -40,11 +37,11 @@ object Docs {
   )
 
   def synchLocalImpl = Def task {
-    val repo = ghkeys.updatedRepository.value
+    val repo = ghpagesUpdatedRepository.value
     val versioned = repo / version.value
     IO.delete(versioned / "sxr")
     IO.delete(versioned / "api")
-    val mappings = ghkeys.privateMappings.value
+    val mappings = ghpagesPrivateMappings.value
     val toCopy = for ((file, target) <- mappings if siteInclude(file))
       yield (file, versioned / target)
     IO.copy(toCopy)

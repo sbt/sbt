@@ -67,7 +67,7 @@ def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
 
 lazy val sbtRoot: Project = (project in file("."))
-  .enablePlugins(ScriptedPlugin, SiteScaladocPlugin)
+  .enablePlugins(ScriptedPlugin, SiteScaladocPlugin, GhpagesPlugin)
   .configs(Sxr.sxrConf)
   .aggregate(nonRoots: _*)
   .settings(
