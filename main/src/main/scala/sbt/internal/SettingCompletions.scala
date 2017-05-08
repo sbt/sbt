@@ -7,7 +7,7 @@ import sbt.librarymanagement.Configuration
 
 import Project._
 import Def.{ ScopedKey, Setting }
-import Scope.GlobalScope
+import Scope.Global
 import Types.{ const, idFun }
 import complete._
 import DefaultParsers._
@@ -230,8 +230,8 @@ private[sbt] object SettingCompletions {
                                              "configuration")
     val taskParser =
       axisParser[AttributeKey[_]](_.task, k => keyScalaID(k.label), _.description, "task")
-    val nonGlobal = (configParser ~ taskParser) map { case (c, t) => Scope(This, c, t, Global) }
-    val global = inParser ~> token((Space ~ GlobalID) ^^^ GlobalScope)
+    val nonGlobal = (configParser ~ taskParser) map { case (c, t) => Scope(This, c, t, Zero) }
+    val global = inParser ~> token((Space ~ GlobalID) ^^^ Global)
     global | nonGlobal
   }
 
@@ -377,8 +377,8 @@ private[sbt] object SettingCompletions {
     appendableClasses.exists(_ isAssignableFrom underlying)
   }
 
-  /** The simple name of the global scope axis, which can be used to reference it in the default setting context. */
-  final val GlobalID = Global.getClass.getSimpleName.stripSuffix("$")
+  /** The simple name of the Global scope, which can be used to reference it in the default setting context. */
+  final val GlobalID = Scope.Global.getClass.getSimpleName.stripSuffix("$")
 
   /** Character used to quote a Scala identifier that would otherwise be interpreted as a keyword.*/
   final val Backtick = '`'

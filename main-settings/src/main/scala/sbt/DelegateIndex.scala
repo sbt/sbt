@@ -14,9 +14,9 @@ private final class DelegateIndex0(refs: Map[ProjectRef, ProjectDelegates]) exte
     refs.get(ref) match {
       case Some(pd) =>
         pd.confs.get(conf) match {
-          case Some(cs) => cs; case None => Select(conf) :: Global :: Nil
+          case Some(cs) => cs; case None => Select(conf) :: Zero :: Nil
         }
-      case None => Select(conf) :: Global :: Nil
+      case None => Select(conf) :: Zero :: Nil
     }
 }
 private final class ProjectDelegates(val ref: ProjectRef,

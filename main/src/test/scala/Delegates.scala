@@ -3,7 +3,6 @@ package sbt
 import Project._
 import sbt.internal.util.Types.idFun
 import sbt.internal.TestBuild._
-
 import org.scalacheck._
 import Prop._
 import Gen._
@@ -27,16 +26,16 @@ object Delegates extends Properties("delegates") {
     }
   }
 
-  property("An initially Global axis is Global in all delegates") = allAxes(alwaysGlobal)
+  property("An initially Zero axis is Zero in all delegates") = allAxes(alwaysZero)
 
-  property("Projects precede builds precede Global") = forAll { (keys: Keys) =>
+  property("Projects precede builds precede Zero") = forAll { (keys: Keys) =>
     allDelegates(keys) { (scope, ds) =>
       val projectAxes = ds.map(_.project)
       val nonProject = projectAxes.dropWhile {
         case Select(_: ProjectRef) => true; case _ => false
       }
       val global = nonProject.dropWhile { case Select(_: BuildRef) => true; case _ => false }
-      global forall { _ == Global }
+      global forall { _ == Zero }
     }
   }
   property("Initial scope present with all combinations of Global axes") = allAxes(
@@ -66,16 +65,16 @@ object Delegates extends Properties("delegates") {
         ("Delegates:\n\t" + delegates.map(scope => Scope.display(scope, "_")).mkString("\n\t")) |:
         f(scope, delegates)
     }: _*)
-  def alwaysGlobal(s: Scope, ds: Seq[Scope], axis: Scope => ScopeAxis[_]): Prop =
-    (axis(s) != Global) ||
+  def alwaysZero(s: Scope, ds: Seq[Scope], axis: Scope => ScopeAxis[_]): Prop =
+    (axis(s) != Zero) ||
       all(ds map { d =>
-        (axis(d) == Global): Prop
+        (axis(d) == Zero): Prop
       }: _*)
   def globalCombinations(s: Scope, ds: Seq[Scope], axis: Scope => ScopeAxis[_]): Prop = {
-    val mods = List[Scope => Scope](_.copy(project = Global),
-                                    _.copy(config = Global),
-                                    _.copy(task = Global),
-                                    _.copy(extra = Global))
+    val mods = List[Scope => Scope](_.copy(project = Zero),
+                                    _.copy(config = Zero),
+                                    _.copy(task = Zero),
+                                    _.copy(extra = Zero))
     val modAndIdent = mods.map(_ :: idFun[Scope] :: Nil)
 
     def loop(cur: Scope, acc: List[Scope], rem: List[Seq[Scope => Scope]]): Seq[Scope] =

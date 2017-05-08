@@ -20,13 +20,16 @@ object Resolve {
       }
   }
   def resolveTask(mask: ScopeMask)(scope: Scope): Scope =
-    if (mask.task) scope else scope.copy(task = Global)
+    if (mask.task) scope
+    else scope.copy(task = Zero)
 
   def resolveProject(current: ScopeAxis[Reference], mask: ScopeMask)(scope: Scope): Scope =
-    if (mask.project) scope else scope.copy(project = current)
+    if (mask.project) scope
+    else scope.copy(project = current)
 
   def resolveExtra(mask: ScopeMask)(scope: Scope): Scope =
-    if (mask.extra) scope else scope.copy(extra = Global)
+    if (mask.extra) scope
+    else scope.copy(extra = Zero)
 
   def resolveConfig[P](index: BuildUtil[P], key: AttributeKey[_], mask: ScopeMask)(
       scope: Scope): Scope =
@@ -37,7 +40,7 @@ object Resolve {
         case Select(ref) =>
           val r = index resolveRef ref
           (Some(r), index.projectFor(r))
-        case Global | This =>
+        case Zero | This =>
           (None, index.rootProject(index.root))
       }
       val task = scope.task.toOption
@@ -45,8 +48,7 @@ object Resolve {
       val definesKey = (c: ScopeAxis[ConfigKey]) =>
         keyIndex.keys(resolvedRef, c.toOption.map(_.name), task) contains key.label
       val projectConfigs = index.configurations(proj).map(ck => Select(ck))
-      val config
-        : ScopeAxis[ConfigKey] = (Global +: projectConfigs) find definesKey getOrElse Global
+      val config: ScopeAxis[ConfigKey] = (Zero +: projectConfigs) find definesKey getOrElse Zero
       scope.copy(config = config)
     }
 }

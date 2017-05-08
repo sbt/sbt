@@ -106,7 +106,7 @@ object Defaults extends BuildCommon {
 
   def configSrcSub(key: SettingKey[File]): Initialize[File] =
     Def.setting {
-      (key in ThisScope.copy(config = Global)).value / nameForSrc(configuration.value.name)
+      (key in ThisScope.copy(config = Zero)).value / nameForSrc(configuration.value.name)
     }
   def nameForSrc(config: String) = if (config == Configurations.Compile.name) "main" else config
   def prefix(config: String) = if (config == Configurations.Compile.name) "" else config + "-"
@@ -620,8 +620,18 @@ object Defaults extends BuildCommon {
     testOnly := inputTests(testOnly).evaluated,
     testQuick := inputTests(testQuick).evaluated
   )
-  lazy val TaskGlobal: Scope = ThisScope.copy(task = Global)
-  lazy val ConfigGlobal: Scope = ThisScope.copy(config = Global)
+
+  /**
+   * A scope whose task axis is set to Zero.
+   */
+  lazy val TaskZero: Scope = ThisScope.copy(task = Zero)
+  lazy val TaskGlobal: Scope = TaskZero
+
+  /**
+   * A scope whose configuration axis is set to Zero.
+   */
+  lazy val ConfigZero: Scope = ThisScope.copy(config = Zero)
+  lazy val ConfigGlobal: Scope = ConfigZero
   def testTaskOptions(key: Scoped): Seq[Setting[_]] =
     inTask(key)(
       Seq(
@@ -631,9 +641,9 @@ object Defaults extends BuildCommon {
                                               test in resolvedScoped.value.scope,
                                               logBuffered.value)) +:
             new TestStatusReporter(succeededFile(streams.in(test).value.cacheDirectory)) +:
-            testListeners.in(TaskGlobal).value
+            testListeners.in(TaskZero).value
         },
-        testOptions := Tests.Listeners(testListeners.value) +: (testOptions in TaskGlobal).value,
+        testOptions := Tests.Listeners(testListeners.value) +: (testOptions in TaskZero).value,
         testExecution := testExecutionTask(key).value
       )) ++ inScope(GlobalScope)(
       Seq(
@@ -994,7 +1004,7 @@ object Defaults extends BuildCommon {
                           mappingsTask: Initialize[Task[Seq[(File, String)]]]) =
     inTask(key)(
       Seq(
-        key in TaskGlobal := packageTask.value,
+        key in TaskZero := packageTask.value,
         packageConfiguration := packageConfigurationTask.value,
         mappings := mappingsTask.value,
         packagedArtifact := (artifact.value -> key.value),
@@ -1187,7 +1197,7 @@ object Defaults extends BuildCommon {
           else Map.empty[File, URL]
         },
         fileInputOptions := Seq("-doc-root-content", "-diagrams-dot-path"),
-        key in TaskGlobal := {
+        key in TaskZero := {
           val s = streams.value
           val cs: Compilers = compilers.value
           val srcs = sources.value
@@ -2747,7 +2757,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
     val add = (s: State) => BasicCommands.addAlias(s, name, value)
     val remove = (s: State) => BasicCommands.removeAlias(s, name)
     def compose(setting: SettingKey[State => State], f: State => State) =
-      setting in Global ~= (_ compose f)
+      setting in GlobalScope ~= (_ compose f)
     Seq(compose(onLoad, add), compose(onUnload, remove))
   }
 

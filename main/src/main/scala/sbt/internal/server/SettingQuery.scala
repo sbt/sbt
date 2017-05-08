@@ -30,7 +30,7 @@ object SettingQuery {
 
   def projectRef(index: KeyIndex,
                  currentBuild: URI): Parser[ParsedExplicitAxis[ResolvedReference]] = {
-    val global = token(Act.GlobalString ~ '/') ^^^ ParsedExplicitGlobal
+    val global = token(Act.ZeroString ~ '/') ^^^ ParsedExplicitGlobal
     val trailing = '/' !!! "Expected '/' (if selecting a project)"
     global | explicitValue(Act.resolvedReference(index, currentBuild, trailing))
   }

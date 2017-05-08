@@ -20,7 +20,7 @@ final case class Extracted(structure: BuildStructure,
   /**
    * Gets the value assigned to `key` in the computed settings map.
    * If the project axis is not explicitly specified, it is resolved to be the current project according to the extracted `session`.
-   * Other axes are resolved to be `Global` if they are not specified.
+   * Other axes are resolved to be `Zero` if they are not specified.
    */
   def get[T](key: SettingKey[T]): T = getOrError(inCurrent(key.scope), key.key)
   def get[T](key: TaskKey[T]): Task[T] = getOrError(inCurrent(key.scope), key.key)
@@ -28,7 +28,7 @@ final case class Extracted(structure: BuildStructure,
   /**
    * Gets the value assigned to `key` in the computed settings map wrapped in Some.  If it does not exist, None is returned.
    * If the project axis is not explicitly specified, it is resolved to be the current project according to the extracted `session`.
-   * Other axes are resolved to be `Global` if they are not specified.
+   * Other axes are resolved to be `Zero` if they are not specified.
    */
   def getOpt[T](key: SettingKey[T]): Option[T] = structure.data.get(inCurrent(key.scope), key.key)
   def getOpt[T](key: TaskKey[T]): Option[Task[T]] =
@@ -40,7 +40,7 @@ final case class Extracted(structure: BuildStructure,
   /**
    * Runs the task specified by `key` and returns the transformed State and the resulting value of the task.
    * If the project axis is not defined for the key, it is resolved to be the current project.
-   * Other axes are resolved to `Global` if unspecified.
+   * Other axes are resolved to `Zero` if unspecified.
    *
    * This method requests execution of only the given task and does not aggregate execution.  See `runAggregated` for that.
    */
@@ -59,7 +59,7 @@ final case class Extracted(structure: BuildStructure,
    * and the resulting value of the input task.
    *
    * If the project axis is not defined for the key, it is resolved to be the current project.
-   * Other axes are resolved to `Global` if unspecified.
+   * Other axes are resolved to `Zero` if unspecified.
    *
    * This method requests execution of only the given task and does not aggregate execution.
    */
@@ -90,7 +90,7 @@ final case class Extracted(structure: BuildStructure,
    * Runs the tasks selected by aggregating `key` and returns the transformed State.
    * If the project axis is not defined for the key, it is resolved to be the current project.
    * The project axis is what determines where aggregation starts, so ensure this is set to what you want.
-   * Other axes are resolved to `Global` if unspecified.
+   * Other axes are resolved to `Zero` if unspecified.
    */
   def runAggregated[T](key: TaskKey[T], state: State): State = {
     val rkey = resolve(key.scopedKey)

@@ -34,6 +34,7 @@ package object sbt
     if (m.isDefined) Some(m.get) else None
 
   final val ThisScope = Scope.ThisScope
+  final val Global = Scope.Global
   final val GlobalScope = Scope.GlobalScope
 
   import sbt.{ Configurations => C }

@@ -18,7 +18,7 @@ import sbt.util.Show
 final class ParsedKey(val key: ScopedKey[_], val mask: ScopeMask)
 
 object Act {
-  val GlobalString = "*"
+  val ZeroString = "*"
 
   // this does not take aggregation into account
   def scopedKey(index: KeyIndex,
@@ -86,11 +86,9 @@ object Act {
                     task: Option[AttributeKey[_]],
                     extra: ScopeAxis[AttributeMap],
                     key: AttributeKey[_]): ScopedKey[_] =
-    ScopedKey(Scope(toAxis(proj, Global),
-                    toAxis(conf map ConfigKey.apply, Global),
-                    toAxis(task, Global),
-                    extra),
-              key)
+    ScopedKey(
+      Scope(toAxis(proj, Zero), toAxis(conf map ConfigKey.apply, Zero), toAxis(task, Zero), extra),
+      key)
 
   def select(allKeys: Seq[Parser[ParsedKey]], data: Settings[Scope])(
       implicit show: Show[ScopedKey[_]]): Parser[ParsedKey] =
@@ -119,8 +117,8 @@ object Act {
         }
     }
   def selectByTask(ss: Seq[ParsedKey]): Seq[ParsedKey] = {
-    val (selects, globals) = ss.partition(_.key.scope.task.isSelect)
-    if (globals.nonEmpty) globals else selects
+    val (selects, zeros) = ss.partition(_.key.scope.task.isSelect)
+    if (zeros.nonEmpty) zeros else selects
   }
 
   def noValidKeys = failure("No such key.")
@@ -147,7 +145,7 @@ object Act {
 
   def config(confs: Set[String]): Parser[ParsedAxis[String]] = {
     val sep = ':' !!! "Expected ':' (if selecting a configuration)"
-    token((GlobalString ^^^ ParsedGlobal | value(examples(ID, confs, "configuration"))) <~ sep) ?? Omitted
+    token((ZeroString ^^^ ParsedZero | value(examples(ID, confs, "configuration"))) <~ sep) ?? Omitted
   }
 
   def configs(explicit: ParsedAxis[String],
@@ -158,7 +156,7 @@ object Act {
       case Omitted =>
         None +: defaultConfigurations(proj, index, defaultConfigs).flatMap(
           nonEmptyConfig(index, proj))
-      case ParsedGlobal       => None :: Nil
+      case ParsedZero         => None :: Nil
       case pv: ParsedValue[x] => Some(pv.value) :: Nil
     }
   def defaultConfigurations(
@@ -206,7 +204,7 @@ object Act {
                 knownValues: IMap[AttributeKey, Set]): Parser[ScopeAxis[AttributeMap]] = {
     val extrasP = extrasParser(knownKeys, knownValues)
     val extras = token('(', hide = _ == 1 && knownValues.isEmpty) ~> extrasP <~ token(')')
-    optionalAxis(extras, Global)
+    optionalAxis(extras, Zero)
   }
 
   def taskAxis(d: Option[String],
@@ -219,11 +217,11 @@ object Act {
     val valid = allKnown ++ normKeys
     val suggested = normKeys.map(_._1).toSet
     val keyP = filterStrings(examples(ID, suggested, "key"), valid.keySet, "key") map valid
-    (token(value(keyP) | GlobalString ^^^ ParsedGlobal) <~ token("::".id)) ?? Omitted
+    (token(value(keyP) | ZeroString ^^^ ParsedZero) <~ token("::".id)) ?? Omitted
   }
   def resolveTask(task: ParsedAxis[AttributeKey[_]]): Option[AttributeKey[_]] =
     task match {
-      case ParsedGlobal | Omitted                     => None
+      case ParsedZero | Omitted                       => None
       case t: ParsedValue[AttributeKey[_]] @unchecked => Some(t.value)
     }
 
@@ -259,9 +257,9 @@ object Act {
   }
 
   def projectRef(index: KeyIndex, currentBuild: URI): Parser[ParsedAxis[ResolvedReference]] = {
-    val global = token(GlobalString ~ '/') ^^^ ParsedGlobal
+    val zero = token(ZeroString ~ '/') ^^^ ParsedZero
     val trailing = '/' !!! "Expected '/' (if selecting a project)"
-    global | value(resolvedReference(index, currentBuild, trailing))
+    zero | value(resolvedReference(index, currentBuild, trailing))
   }
   def resolvedReference(index: KeyIndex,
                         currentBuild: URI,
@@ -287,7 +285,7 @@ object Act {
                      current: ProjectRef): Option[ResolvedReference] =
     parsed match {
       case Omitted             => Some(current)
-      case ParsedGlobal        => None
+      case ParsedZero          => None
       case pv: ParsedValue[rr] => Some(pv.value)
     }
 
@@ -374,7 +372,7 @@ object Act {
   sealed trait ParsedAxis[+T] {
     final def isExplicit = this != Omitted
   }
-  final object ParsedGlobal extends ParsedAxis[Nothing]
+  final object ParsedZero extends ParsedAxis[Nothing]
   final object Omitted extends ParsedAxis[Nothing]
   final class ParsedValue[T](val value: T) extends ParsedAxis[T]
   def value[T](t: Parser[T]): Parser[ParsedAxis[T]] = t map { v =>

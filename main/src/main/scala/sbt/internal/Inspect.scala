@@ -8,6 +8,7 @@ import DefaultParsers._
 import Def.ScopedKey
 import Types.idFun
 import java.io.File
+import Scope.Global
 
 object Inspect {
   sealed trait Mode
