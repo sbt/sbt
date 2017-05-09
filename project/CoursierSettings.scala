@@ -18,7 +18,7 @@ object CoursierSettings {
   }
 
   def sonatypeRepository(name: String) = {
-    resolvers += Resolver.sonatypeRepo("releases")
+    resolvers += Resolver.sonatypeRepo(name)
   }
 
   lazy val localM2Repository = {
@@ -70,26 +70,27 @@ object CoursierSettings {
   )
 
   lazy val generatePropertyFile = 
-    resourceGenerators.in(Compile) += {
-      (target, version).map { (dir, ver) =>
-        import sys.process._
+    resourceGenerators.in(Compile) += Def.task {
+      import sys.process._
+
+      val dir = target.value
+      val ver = version.value
   
-        val f = dir / "coursier.properties"
-        dir.mkdirs()
+      val f = dir / "coursier.properties"
+      dir.mkdirs()
   
-        val p = new java.util.Properties
+      val p = new java.util.Properties
   
-        p.setProperty("version", ver)
-        p.setProperty("commit-hash", Seq("git", "rev-parse", "HEAD").!!.trim)
+      p.setProperty("version", ver)
+      p.setProperty("commit-hash", Seq("git", "rev-parse", "HEAD").!!.trim)
   
-        val w = new java.io.FileOutputStream(f)
-        p.store(w, "Coursier properties")
-        w.close()
+      val w = new java.io.FileOutputStream(f)
+      p.store(w, "Coursier properties")
+      w.close()
   
-        println(s"Wrote $f")
+      println(s"Wrote $f")
   
-        Seq(f)
-      }.taskValue
+      Seq(f)
     }
 
   lazy val coursierPrefix = {
