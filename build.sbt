@@ -19,6 +19,7 @@ def commonSettings: Seq[Setting[_]] = Seq(
   mimaPreviousArtifacts := Set(), // Some(organization.value %% moduleName.value % "1.0.0"),
   publishArtifact in Compile := true,
   publishArtifact in Test := false,
+  parallelExecution in Test := false,
   commands += Command.command("scalafmtCheck") { state =>
     sys.process.Process("git diff --name-only --exit-code").! match {
       case 0 => // ok
