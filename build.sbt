@@ -3,6 +3,7 @@ import _root_.bintray.InternalBintrayKeys._
 import _root_.bintray.{BintrayRepo, Bintray}
 import NativePackagerHelper._
 import com.typesafe.sbt.packager.SettingsHelper._
+import DebianConstants._
 
 lazy val sbtOfflineInstall =
   sys.props.getOrElse("sbt.build.offline", sys.env.getOrElse("sbt.build.offline", "true")) match {
@@ -97,6 +98,9 @@ val root = (project in file(".")).
     },
     debianChangelog in Debian := { Some(sourceDirectory.value / "debian" / "changelog") },
     addPackage(Debian, packageBin in Debian, "deb"),
+    maintainerScripts in Debian := maintainerScriptsAppend((maintainerScripts in Debian).value)(
+      Postinst -> s"/usr/share/sbt/bin/sbt about"
+    ),
     // RPM SPECIFIC
     version in Rpm := {
       val stable0 = (sbtVersionToRelease split "[^\\d]" filterNot (_.isEmpty) mkString ".")
@@ -117,6 +121,9 @@ val root = (project in file(".")).
     // https://github.com/elastic/logstash/issues/6275#issuecomment-261359933
     rpmRequirements := Seq(),
     rpmProvides := Seq("sbt"),
+    maintainerScripts in Rpm := maintainerScriptsAppend((maintainerScripts in Rpm).value)(
+      RpmConstants.Post -> s"/usr/share/sbt/bin/sbt about"
+    ),
 
     // WINDOWS SPECIFIC
     windowsBuildId := 0,
