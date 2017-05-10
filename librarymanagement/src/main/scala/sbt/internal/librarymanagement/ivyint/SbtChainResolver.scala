@@ -255,6 +255,11 @@ private[sbt] case class SbtChainResolver(
      * This is a custom sbt chain operation that produces better error output and deals with
      * cases that the conventional ivy resolver does not. It accumulates the resolution of
      * several resolvers and returns the module which fits the provided resolution strategy.
+     *
+     * These are the differences with regard to the default ivy [[ChainResolver]]:
+     *   1. It skips resolution if "return first" is set to true.
+     *   2. It skips resolution if a previously resolved or cached resolution is found.
+     *   3. It always checks all the resolvers and compares timestamps for changing dependencies.
      */
     def getDependency(dd: DependencyDescriptor, data0: ResolveData): ResolvedModuleRevision = {
       val isDynamic = dd.isChanging || IvySbt.isChanging(dd.getDependencyRevisionId)
