@@ -13,7 +13,12 @@ lazy val core = crossProject
     scalaXmlIfNecessary,
     libs ++= Seq(
       Deps.fastParse % "shaded",
-      Deps.jsoup
+      Deps.jsoup % "shaded"
+    ),
+    shadeNamespaces ++= Set(
+      "org.jsoup",
+      "fastparse",
+      "sourcecode"
     ),
     generatePropertyFile
   )
