@@ -155,7 +155,7 @@ object LogManager {
       Some("Stack trace suppressed: run %s for the full output.".format(command(context.useColor)))
   }
   def unwrapStreamsKey(key: ScopedKey[_]): ScopedKey[_] = key.scope.task match {
-    case Select(task) => ScopedKey(key.scope.copy(task = Global), task)
+    case Select(task) => ScopedKey(key.scope.copy(task = Zero), task)
     case _            => key // should never get here
   }
 

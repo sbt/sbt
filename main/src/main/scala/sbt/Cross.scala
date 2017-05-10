@@ -264,7 +264,7 @@ object Cross {
     import extracted._
 
     val newSettings = projects.flatMap { project =>
-      val scope = Scope(Select(project), Global, Global, Global)
+      val scope = Scope(Select(project), Zero, Zero, Zero)
 
       instance match {
         case Some((home, inst)) =>
@@ -285,7 +285,7 @@ object Cross {
 
     // Filter out any old scala version settings that were added, this is just for hygiene.
     val filteredRawAppend = session.rawAppend.filter(_.key match {
-      case ScopedKey(Scope(Select(ref), Global, Global, Global), key)
+      case ScopedKey(Scope(Select(ref), Zero, Zero, Zero), key)
           if filterKeys.contains(key) && projects.contains(ref) =>
         false
       case _ => true

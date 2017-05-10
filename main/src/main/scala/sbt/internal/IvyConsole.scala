@@ -20,6 +20,7 @@ import java.io.File
 import Configurations.Compile
 import Def.Setting
 import Keys._
+import Scope.Global
 
 import sbt.io.IO
 

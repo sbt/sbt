@@ -12,6 +12,7 @@ import java.io.File
 import Keys._
 import EvaluateConfigurations.{ evaluateConfiguration => evaluate }
 import Configurations.Compile
+import Scope.Global
 
 import sbt.io.{ Hash, IO }
 

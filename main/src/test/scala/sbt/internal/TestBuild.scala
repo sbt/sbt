@@ -72,27 +72,27 @@ abstract class TestBuild {
       }
       x
     }
-    lazy val (taskAxes, globalTaskAxis, onlyTaskAxis, multiTaskAxis) = {
+    lazy val (taskAxes, zeroTaskAxis, onlyTaskAxis, multiTaskAxis) = {
       import collection.mutable
       import mutable.HashSet
 
-      // task axis of Scope is set to Global and the value of the second map is the original task axis
+      // task axis of Scope is set to Zero and the value of the second map is the original task axis
       val taskAxesMappings =
         for ((scope, keys) <- data.data.toIterable; key <- keys.keys)
           yield
-            (ScopedKey(scope.copy(task = Global), key), scope.task): (ScopedKey[_],
-                                                                      ScopeAxis[AttributeKey[_]])
+            (ScopedKey(scope.copy(task = Zero), key), scope.task): (ScopedKey[_],
+                                                                    ScopeAxis[AttributeKey[_]])
 
       val taskAxes = Relation.empty ++ taskAxesMappings
-      val global = new HashSet[ScopedKey[_]]
+      val zero = new HashSet[ScopedKey[_]]
       val single = new HashSet[ScopedKey[_]]
       val multi = new HashSet[ScopedKey[_]]
       for ((skey, tasks) <- taskAxes.forwardMap) {
         def makeKey(task: ScopeAxis[AttributeKey[_]]) =
           ScopedKey(skey.scope.copy(task = task), skey.key)
-        val hasGlobal = tasks(Global)
+        val hasGlobal = tasks(Zero)
         if (hasGlobal)
-          global += skey
+          zero += skey
         else {
           val keys = tasks map makeKey
           keys.size match {
@@ -102,7 +102,7 @@ abstract class TestBuild {
           }
         }
       }
-      (taskAxes, global.toSet, single.toSet, multi.toSet)
+      (taskAxes, zero.toSet, single.toSet, multi.toSet)
     }
   }
   final class Env(val builds: Seq[Build], val tasks: Seq[Taskk]) {
@@ -138,10 +138,10 @@ abstract class TestBuild {
       )
     lazy val allFullScopes: Seq[Scope] =
       for {
-        (ref, p) <- (Global, root.root) +: allProjects.map { case (ref, p) => (Select(ref), p) }
-        t <- Global +: tasks.map(t => Select(t.key))
-        c <- Global +: p.configurations.map(c => Select(ConfigKey(c.name)))
-      } yield Scope(project = ref, config = c, task = t, extra = Global)
+        (ref, p) <- (Zero, root.root) +: allProjects.map { case (ref, p) => (Select(ref), p) }
+        t <- Zero +: tasks.map(t => Select(t.key))
+        c <- Zero +: p.configurations.map(c => Select(ConfigKey(c.name)))
+      } yield Scope(project = ref, config = c, task = t, extra = Zero)
   }
   def getKey: Taskk => AttributeKey[_] = _.key
   def toConfigKey: Config => ConfigKey = c => ConfigKey(c.name)
@@ -186,10 +186,10 @@ abstract class TestBuild {
       tAxis <- oneOrGlobal(env.tasks map getKey)
       pAxis <- orGlobal(
         frequency((1, BuildRef(build.uri)), (3, ProjectRef(build.uri, project.id))))
-    } yield Scope(pAxis, cAxis, tAxis, Global)
+    } yield Scope(pAxis, cAxis, tAxis, Zero)
 
   def orGlobal[T](gen: Gen[T]): Gen[ScopeAxis[T]] =
-    frequency((1, gen map Select.apply), (1, Global))
+    frequency((1, gen map Select.apply), (1, Zero))
   def oneOrGlobal[T](gen: Seq[T]): Gen[ScopeAxis[T]] = orGlobal(oneOf(gen))
 
   def makeParser(structure: Structure): Parser[ScopedKey[_]] = {

@@ -24,8 +24,8 @@ object ScopeFilter {
    * Generally, always specify the project axis.
    */
   def apply(projects: ProjectFilter = inProjects(ThisProject),
-            configurations: ConfigurationFilter = globalAxis,
-            tasks: TaskFilter = globalAxis): ScopeFilter =
+            configurations: ConfigurationFilter = zeroAxis,
+            tasks: TaskFilter = zeroAxis): ScopeFilter =
     new ScopeFilter {
       private[sbt] def apply(data: Data): Scope => Boolean = {
         val pf = projects(data)
@@ -77,23 +77,32 @@ object ScopeFilter {
     /** Selects the Scopes used in `<key>.all(<ScopeFilter>)`.*/
     type ScopeFilter = Base[Scope]
 
-    /** Selects Scopes with a global task axis. */
-    def inGlobalTask: TaskFilter = globalAxis[AttributeKey[_]]
+    /** Selects Scopes with a Zero task axis. */
+    def inZeroTask: TaskFilter = zeroAxis[AttributeKey[_]]
 
-    /** Selects Scopes with a global project axis. */
-    def inGlobalProject: ProjectFilter = globalAxis[Reference]
+    @deprecated("Use inZeroTask", "1.0.0")
+    def inGlobalTask: TaskFilter = inZeroTask
 
-    /** Selects Scopes with a global configuration axis. */
-    def inGlobalConfiguration: ConfigurationFilter = globalAxis[ConfigKey]
+    /** Selects Scopes with a Zero project axis. */
+    def inZeroProject: ProjectFilter = zeroAxis[Reference]
 
-    /** Selects all scopes that apply to a single project.  Global and build-level scopes are excluded. */
+    @deprecated("Use inZeroProject", "1.0.0")
+    def inGlobalProject: ProjectFilter = inZeroProject
+
+    /** Selects Scopes with a Zero configuration axis. */
+    def inZeroConfiguration: ConfigurationFilter = zeroAxis[ConfigKey]
+
+    @deprecated("Use inZeroConfiguration", "1.0.0")
+    def inGlobalConfiguration: ConfigurationFilter = inZeroConfiguration
+
+    /** Selects all scopes that apply to a single project. Zero and build-level scopes are excluded. */
     def inAnyProject: ProjectFilter =
       selectAxis(const { case p: ProjectRef => true; case _ => false })
 
-    /** Accepts all values for the task axis except Global. */
+    /** Accepts all values for the task axis except Zero. */
     def inAnyTask: TaskFilter = selectAny[AttributeKey[_]]
 
-    /** Accepts all values for the configuration axis except Global. */
+    /** Accepts all values for the configuration axis except Zero. */
     def inAnyConfiguration: ConfigurationFilter = selectAny[ConfigKey]
 
     /**
@@ -201,9 +210,9 @@ object ScopeFilter {
   private[this] def inResolvedProjects(projects: Data => Seq[ProjectRef]): ProjectFilter =
     selectAxis(data => projects(data).toSet)
 
-  private[this] def globalAxis[T]: AxisFilter[T] = new AxisFilter[T] {
+  private[this] def zeroAxis[T]: AxisFilter[T] = new AxisFilter[T] {
     private[sbt] def apply(data: Data): ScopeAxis[T] => Boolean =
-      _ == Global
+      _ == Zero
   }
   private[this] def selectAny[T]: AxisFilter[T] = selectAxis(const(const(true)))
   private[this] def selectAxis[T](f: Data => T => Boolean): AxisFilter[T] = new AxisFilter[T] {

@@ -1,11 +1,12 @@
 lazy val taskX = taskKey[Set[Int]]("numbers")
 lazy val filterX = ScopeFilter( inDependencies(ThisProject, transitive=false, includeRoot=false) )
 
-lazy val filterA: ScopeFilter.ScopeFilter = ScopeFilter( 
+lazy val filterA: ScopeFilter.ScopeFilter = ScopeFilter(
 	inAggregates( LocalProject(e.id) ),
-	inConfigurations(Compile,Test) || inGlobalConfiguration,
-	inTasks(console) || inGlobalTask
+	inConfigurations(Compile,Test) || inZeroConfiguration,
+	inTasks(console) || inZeroTask
 )
+
 lazy val eGlobal = Set(192, 210)
 lazy val cGlobal = Set(123, 57)
 lazy val cCompile = Set(694)

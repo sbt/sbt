@@ -271,7 +271,7 @@ object BuildStreams {
   def pathComponent[T](axis: ScopeAxis[T], scoped: ScopedKey[_], label: String)(
       show: T => String): String =
     axis match {
-      case Global => GlobalPath
+      case Zero => GlobalPath
       case This =>
         sys.error("Unresolved This reference for " + label + " in " + displayFull(scoped))
       case Select(t) => show(t)
@@ -293,7 +293,7 @@ object BuildStreams {
                   scoped: ScopedKey[_],
                   data: Settings[Scope]): File =
     scoped.scope.project match {
-      case Global                           => refTarget(GlobalScope, units(root).localBase, data) / GlobalPath
+      case Zero                             => refTarget(GlobalScope, units(root).localBase, data) / GlobalPath
       case Select(br @ BuildRef(uri))       => refTarget(br, units(uri).localBase, data) / BuildUnitPath
       case Select(pr @ ProjectRef(uri, id)) => refTarget(pr, units(uri).defined(id).base, data)
       case Select(pr) =>

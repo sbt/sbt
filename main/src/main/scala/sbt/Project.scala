@@ -19,7 +19,7 @@ import Keys.{
   serverPort,
   watch
 }
-import Scope.{ GlobalScope, ThisScope }
+import Scope.{ Global, ThisScope }
 import Def.{ Flattened, Initialize, ScopedKey, Setting }
 import sbt.internal.{
   Load,
@@ -544,7 +544,7 @@ object Project extends ProjectExtra {
 
   def orIdentity[T](opt: Option[T => T]): T => T = opt getOrElse idFun
   def getHook[T](key: SettingKey[T => T], data: Settings[Scope]): T => T =
-    orIdentity(key in GlobalScope get data)
+    orIdentity(key in Global get data)
   def getHooks(data: Settings[Scope]): (State => State, State => State) =
     (getHook(Keys.onLoad, data), getHook(Keys.onUnload, data))
 

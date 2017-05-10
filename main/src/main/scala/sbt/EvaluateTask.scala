@@ -22,7 +22,7 @@ import Keys.{
   transformState
 }
 import Project.richInitializeTask
-import Scope.GlobalScope
+import Scope.Global
 import scala.Console.RED
 import std.Transform.DummyTaskMap
 import TaskName._
@@ -238,9 +238,9 @@ object EvaluateTask {
     key in extracted.currentRef get structure.data getOrElse default
 
   def injectSettings: Seq[Setting[_]] = Seq(
-    (state in GlobalScope) ::= dummyState,
-    (streamsManager in GlobalScope) ::= Def.dummyStreamsManager,
-    (executionRoots in GlobalScope) ::= dummyRoots
+    (state in Global) ::= dummyState,
+    (streamsManager in Global) ::= Def.dummyStreamsManager,
+    (executionRoots in Global) ::= dummyRoots
   )
 
   def evalPluginDef(log: Logger)(pluginDef: BuildStructure, state: State): PluginData = {

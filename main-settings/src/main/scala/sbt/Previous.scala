@@ -5,6 +5,8 @@ import Previous._
 import sbt.internal.util.{ ~>, IMap, RMap }
 import sbt.util.{ Input, Output, StampedFormat }
 import sjsonnew.JsonFormat
+import Scope.Global
+import scala.util.control.NonFatal
 
 /**
  * Reads the previous value of tasks on-demand.  The read values are cached so that they are only read once per task execution.
@@ -84,11 +86,11 @@ object Previous {
 
   private def read[T](input: Input, format: JsonFormat[T]): Option[T] =
     try Some(input.read()(format))
-    catch { case e: Exception => None }
+    catch { case NonFatal(_) => None }
 
   private def write[T](output: Output, format: JsonFormat[T], value: T): Unit =
     try output.write(value)(format)
-    catch { case e: Exception => () }
+    catch { case NonFatal(_) => () }
 
   /** Public as a macro implementation detail.  Do not call directly. */
   def runtime[T](skey: TaskKey[T])(implicit format: JsonFormat[T]): Initialize[Task[Option[T]]] = {

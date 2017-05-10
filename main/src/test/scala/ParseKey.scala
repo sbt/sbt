@@ -47,7 +47,7 @@ object ParseKey extends Properties("Key parser test") {
       }
     }
 
-  property("An unspecified task axis resolves to Global") = forAllNoShrink(structureDefinedKey) {
+  property("An unspecified task axis resolves to Zero") = forAllNoShrink(structureDefinedKey) {
     (skm: StructureKeyMask) =>
       import skm.{ structure, key }
       val mask = skm.mask.copy(task = false)
@@ -57,12 +57,12 @@ object ParseKey extends Properties("Key parser test") {
         ("Mask: " + mask) |:
         parse(structure, string) {
         case Left(err) => false
-        case Right(sk) => sk.scope.task == Global
+        case Right(sk) => sk.scope.task == Zero
       }
   }
 
   property(
-    "An unspecified configuration axis resolves to the first configuration directly defining the key or else Global") =
+    "An unspecified configuration axis resolves to the first configuration directly defining the key or else Zero") =
     forAllNoShrink(structureDefinedKey) { (skm: StructureKeyMask) =>
       import skm.{ structure, key }
       val mask = ScopeMask(config = false)

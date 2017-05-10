@@ -349,7 +349,7 @@ private[sbt] object Load {
               // map This to thisScope, Select(p) to mapRef(uri, rootProject, p)
               transformSettings(projectScope(ref), uri, rootProject, settings)
           }
-          val buildScope = Scope(Select(BuildRef(uri)), Global, Global, Global)
+          val buildScope = Scope(Select(BuildRef(uri)), Zero, Zero, Zero)
           val buildBase = baseDirectory :== build.localBase
           val buildSettings =
             transformSettings(buildScope,
@@ -371,7 +371,7 @@ private[sbt] object Load {
                         settings: Seq[Setting[_]]): Seq[Setting[_]] =
     Project.transform(Scope.resolveScope(thisScope, uri, rootProject), settings)
 
-  def projectScope(project: Reference): Scope = Scope(Select(project), Global, Global, Global)
+  def projectScope(project: Reference): Scope = Scope(Select(project), Zero, Zero, Zero)
 
   def lazyEval(unit: BuildUnit): () => Eval = {
     lazy val eval = mkEval(unit)
