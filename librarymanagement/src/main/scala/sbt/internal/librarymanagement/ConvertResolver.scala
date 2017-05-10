@@ -202,7 +202,7 @@ private[sbt] object ConvertResolver {
           resolver
         }
         case repo: ChainedResolver =>
-          IvySbt.resolverChain(repo.name, repo.resolvers, false, settings, log)
+          IvySbt.resolverChain(repo.name, repo.resolvers, settings, log)
         case repo: RawRepository => repo.resolver
       }
   }

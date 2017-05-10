@@ -19,7 +19,6 @@ class CustomPomParserTest extends UnitSpec {
                                             Vector(local),
                                             Vector.empty,
                                             Vector.empty,
-                                            false,
                                             None,
                                             Vector("sha1", "md5"),
                                             None,
