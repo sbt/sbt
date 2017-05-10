@@ -185,7 +185,6 @@ object CoursierSettings {
     Seq(
       scriptedLaunchOpts ++= Seq(
         "-Xmx1024M",
-        "-XX:MaxPermSize=256M",
         "-Dplugin.version=" + version.value,
         "-Dsbttest.base=" + (sourceDirectory.value / "sbt-test").getAbsolutePath
       ),
