@@ -161,7 +161,7 @@ object Shading {
     log.info(s"Found ${toShadeClasses0.length} class(es) in JAR(s) to be shaded")
     log.debug(toShadeClasses0.map("  " + _).sorted.mkString("\n"))
 
-    shadeNamespaces.toVector.sorted.foldLeft(toShadeClasses0) {
+    val toShadeClasses = shadeNamespaces.toVector.sorted.foldLeft(toShadeClasses0) {
       (toShade, namespace) =>
         val prefix = namespace + "."
         val (filteredOut, remaining) = toShade.partition(_.startsWith(prefix))
@@ -171,6 +171,13 @@ object Shading {
 
         remaining
     }
+
+    if (shadeNamespaces.nonEmpty) {
+      log.info(s"${toShadeClasses.length} remaining class(es) to be shaded")
+      log.debug(toShadeClasses.map("  " + _).sorted.mkString("\n"))
+    }
+
+    toShadeClasses
   }
 
   def createPackage(
