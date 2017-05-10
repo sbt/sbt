@@ -16,29 +16,18 @@ matrix:
 
 env:
   matrix:
-    - SBT_CMD=";test:compile;scalafmtCheck"
-    - SBT_CMD="mimaReportBinaryIssues"
-    - SBT_CMD="safeUnitTests"
-    - SBT_CMD="otherUnitTests"
+    - SBT_CMD=";mimaReportBinaryIssues;test:compile;scalafmtCheck;safeUnitTests;otherUnitTests"
     - SBT_CMD="scripted actions/*"
-    - SBT_CMD="scripted apiinfo/*"
-    - SBT_CMD="scripted compiler-project/*"
+    - SBT_CMD="scripted apiinfo/* compiler-project/* ivy-deps-management/*"
     - SBT_CMD="scripted dependency-management/*1of4"
     - SBT_CMD="scripted dependency-management/*2of4"
     - SBT_CMD="scripted dependency-management/*3of4"
     - SBT_CMD="scripted dependency-management/*4of4"
-    - SBT_CMD="scripted ivy-deps-management/*"
-    - SBT_CMD="scripted java/*"
-    - SBT_CMD="scripted package/*"
+    - SBT_CMD="scripted java/* package/* reporter/* run/* project-load/*"
     - SBT_CMD="scripted project/*1of2"
     - SBT_CMD="scripted project/*2of2"
-    - SBT_CMD="scripted reporter/*"
-    - SBT_CMD="scripted run/*"
-    - SBT_CMD="scripted source-dependencies/*1of3"
-    - SBT_CMD="scripted source-dependencies/*2of3"
-    - SBT_CMD="scripted source-dependencies/*3of3"
+    - SBT_CMD="scripted source-dependencies/*"
     - SBT_CMD="scripted tests/*"
-    - SBT_CMD="scripted project-load/*"
     - SBT_CMD="repoOverrideTest:scripted dependency-management/*"
 
 notifications:
@@ -46,7 +35,8 @@ notifications:
     - sbt-dev-bot@googlegroups.com
 
 script:
-  - sbt -J-XX:ReservedCodeCacheSize=128m "$SBT_CMD"
+  # It doesn't need that much memory because compile and run are forked
+  - sbt -J-XX:ReservedCodeCacheSize=128m -J-Xmx800M -J-Xms800M -J-server "$SBT_CMD"
 
 before_cache:
   - find $HOME/.ivy2 -name "ivydata-*.properties" -print -delete

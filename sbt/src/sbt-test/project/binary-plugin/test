@@ -3,7 +3,7 @@ $ copy-file changes/define/build.sbt build.sbt
 $ copy-file changes/define/A.scala A.scala
 $ copy-file changes/define/D.scala D.scala
 
-# reload implied
+> reload
 > publishLocal
 
 # Now we remove the source code and define a project which uses the build.

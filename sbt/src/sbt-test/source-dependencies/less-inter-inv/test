@@ -1,4 +1,5 @@
 # 1 iteration from initial full compile
+> recordPreviousIterations
 > run
 $ copy-file changes/A2.scala A.scala
 

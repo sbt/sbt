@@ -1,5 +1,4 @@
 # Quoting @eed3si9n in https://github.com/dwijnand/sbt-lm/pull/1 :
-#
 # > After several experiments, I'm actually convinced that force() is unrelated to the scripted scenario,
 # > and it's # currently passing by virtue of the questionable caching behavior:
 # > https://github.com/sbt/sbt/blob/c223dccb542beaf763a3a2909cda74bdad39beca/ivy/src/main/scala/sbt/ivyint/CachedResolutionResolveEngine.scala#L715

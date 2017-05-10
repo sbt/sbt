@@ -3,7 +3,6 @@ package internal
 package parser
 
 import sbt.internal.util.{ LineRange, MessageOnlyException }
-
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -14,10 +13,9 @@ import scala.reflect.internal.util.{ BatchSourceFile, Position }
 import scala.reflect.io.VirtualDirectory
 import scala.reflect.internal.Positions
 import scala.tools.nsc.{ CompilerCommand, Global }
-import scala.tools.nsc.reporters.{ Reporter, StoreReporter }
+import scala.tools.nsc.reporters.{ ConsoleReporter, Reporter, StoreReporter }
 import scala.util.Random
-
-import scala.util.{ Success, Failure }
+import scala.util.{ Failure, Success }
 
 private[sbt] object SbtParser {
   val END_OF_LINE_CHAR = '\n'
@@ -78,9 +76,10 @@ private[sbt] object SbtParser {
 
     private def getReporter(fileName: String) = {
       val reporter = reporters.get(fileName)
-      if (reporter == null)
-        sys.error(s"Sbt parser failure: no reporter for $fileName.")
-      reporter
+      if (reporter == null) {
+        scalacGlobalInitReporter.getOrElse(
+          sys.error(s"Sbt forgot to initialize `scalacGlobalInitReporter`."))
+      } else reporter
     }
 
     def throwParserErrorsIfAny(reporter: StoreReporter, fileName: String): Unit = {
@@ -99,14 +98,15 @@ private[sbt] object SbtParser {
   }
 
   private[sbt] final val globalReporter = new UniqueParserReporter
+  private[sbt] var scalacGlobalInitReporter: Option[ConsoleReporter] = None
 
   private[sbt] final lazy val defaultGlobalForParser = {
-    import scala.reflect.internal.util.NoPosition
     val options = "-cp" :: s"$defaultClasspath" :: "-Yrangepos" :: Nil
-    val reportError = (msg: String) => globalReporter.error(NoPosition, msg)
+    val reportError = (msg: String) => System.err.println(msg)
     val command = new CompilerCommand(options, reportError)
     val settings = command.settings
     settings.outputDirs.setSingleOutput(new VirtualDirectory("(memory)", None))
+    scalacGlobalInitReporter = Some(new ConsoleReporter(settings))
 
     // Mix Positions, otherwise global ignores -Yrangepos
     val global = new Global(settings, globalReporter) with Positions

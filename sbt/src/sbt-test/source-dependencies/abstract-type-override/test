@@ -4,6 +4,7 @@
 # See https://github.com/sbt/sbt/issues/726 for details
 
 # introduces first compile iteration
+> recordPreviousIterations
 > compile
 # this change adds a comment and does not change api so introduces
 # only one additional compile iteration
@@ -11,4 +12,4 @@ $ copy-file changes/Bar1.scala src/main/scala/Bar.scala
 # second iteration
 #> compile
 # check if there are only two compile iterations performed
-> checkNumberOfCompilerIterations 2
+> checkIterations 2

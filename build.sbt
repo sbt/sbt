@@ -53,7 +53,9 @@ def commonSettings: Seq[Setting[_]] =
     mimaBinaryIssueFilters ++= {
       import com.typesafe.tools.mima.core._, ProblemFilters._
       Seq()
-    }
+    },
+    fork in compile := true,
+    fork in run := true
   ) flatMap (_.settings)
 
 def minimalSettings: Seq[Setting[_]] =
@@ -352,7 +354,7 @@ def otherRootSettings =
     scriptedUnpublished := scriptedUnpublishedTask.evaluated,
     scriptedSource := (sourceDirectory in sbtProj).value / "sbt-test",
     // scriptedPrescripted := { addSbtAlternateResolver _ },
-    scriptedLaunchOpts := List("-XX:MaxPermSize=256M", "-Xmx1G"),
+    scriptedLaunchOpts := List("-Xmx1500M", "-Xms512M", "-server"),
     publishAll := { val _ = (publishLocal).all(ScopeFilter(inAnyProject)).value },
     publishLocalBinAll := { val _ = (publishLocalBin).all(ScopeFilter(inAnyProject)).value },
     aggregate in bintrayRelease := false
@@ -362,8 +364,9 @@ def otherRootSettings =
         ()
       },
       scriptedLaunchOpts := {
-        List("-XX:MaxPermSize=256M",
-             "-Xmx1G",
+        List("-Xmx1500M",
+             "-Xms512M",
+             "-server",
              "-Dsbt.override.build.repos=true",
              s"""-Dsbt.repository.config=${scriptedSource.value / "repo.config"}""")
       },
