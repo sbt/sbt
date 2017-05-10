@@ -46,6 +46,8 @@ val root = (project in file(".")).
       val _ = (clean in dist).value
       clean.value
     },
+    pgpSecretRing := file(s"""${sys.props("user.home")}""") / ".ssh" / "scalasbt.key",
+    pgpPublicRing := file(s"""${sys.props("user.home")}""") / ".ssh" / "scalasbt.pub",
     publishToSettings,
     sbtLaunchJarUrl := downloadUrlForVersion(sbtVersionToRelease),
     sbtLaunchJarLocation := { target.value / "sbt-launch.jar" },
