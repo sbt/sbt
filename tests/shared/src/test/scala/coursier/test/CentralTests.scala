@@ -616,6 +616,13 @@ object CentralTests extends TestSuite {
       }
     }
 
+    'entities - {
+      'odash - resolutionCheck(
+        Module("org.codehaus.plexus", "plexus"),
+        "1.0.4"
+      )
+    }
+
     'parentBeforeImports - {
       * - resolutionCheck(
         Module("org.kie", "kie-api"),

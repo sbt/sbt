@@ -2,6 +2,8 @@ package coursier.core
 
 import coursier.util.Xml
 
+import java.util.regex.Pattern.quote
+
 import scala.collection.JavaConverters._
 import scala.xml.{ Attribute, MetaData, Null }
 
@@ -14,11 +16,23 @@ package object compatibility {
     def letter = c.isLetter
   }
 
+  private val entityPattern = (quote("&") + "[a-zA-Z]+" + quote(";")).r
+
   private val utf8Bom = "\ufeff"
 
   def xmlParse(s: String): Either[String, Xml.Node] = {
+
+    val content =
+      if (entityPattern.findFirstIn(s).isEmpty)
+        s
+      else
+        Entities.entities.foldLeft(s) {
+          case (s0, (target, replacement)) =>
+            s0.replace(target, replacement)
+        }
+
     def parse =
-      try Right(scala.xml.XML.loadString(s.stripPrefix(utf8Bom)))
+      try Right(scala.xml.XML.loadString(content.stripPrefix(utf8Bom)))
       catch { case e: Exception => Left(e.toString + Option(e.getMessage).fold("")(" (" + _ + ")")) }
 
     def fromNode(node: scala.xml.Node): Xml.Node =
