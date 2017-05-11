@@ -2,6 +2,8 @@ import scala.util.control.NonFatal
 import sbt._
 import Keys._
 
+import sbt.internal.inc.Analysis
+
 object Util {
   val ExclusiveTest: Tags.Tag = Tags.Tag("exclusive-test")
 
@@ -86,17 +88,17 @@ object Util {
     IO.createDirectory(out)
     val args = "xsbti.api" :: out.getAbsolutePath :: defs.map(_.getAbsolutePath).toList
     val mainClass = main getOrElse "No main class defined for datatype generator"
-    toError(run.run(mainClass, cp.files, args, s.log))
+    run.run(mainClass, cp.files, args, s.log).failed foreach (e => sys error e.getMessage)
     (out ** "*.java").get
   }
-  def lastCompilationTime(analysis: sbt.inc.Analysis): Long = {
+  def lastCompilationTime(analysis: Analysis): Long = {
     val lastCompilation = analysis.compilations.allCompilations.lastOption
     lastCompilation.map(_.startTime) getOrElse 0L
   }
   def generateVersionFile(version: String,
                           dir: File,
                           s: TaskStreams,
-                          analysis: sbt.inc.Analysis): Seq[File] = {
+                          analysis: Analysis): Seq[File] = {
     import java.util.{ Date, TimeZone }
     val formatter = new java.text.SimpleDateFormat("yyyyMMdd'T'HHmmss")
     formatter.setTimeZone(TimeZone.getTimeZone("GMT"))

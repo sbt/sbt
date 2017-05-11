@@ -1,8 +1,8 @@
-import org.scalafmt.bootstrap.ScalafmtBootstrap
+import org.scalafmt.cli.Cli
 import org.scalafmt.sbt.ScalafmtPlugin
 import sbt._
 import sbt.Keys._
-import sbt.inc.Analysis
+import sbt.internal.inc.Analysis
 
 // Taken from https://github.com/akka/alpakka/blob/master/project/AutomateScalafmtPlugin.scala
 object AutomateScalafmtPlugin extends AutoPlugin {
@@ -18,7 +18,7 @@ object AutomateScalafmtPlugin extends AutoPlugin {
             },
             sourceDirectories.in(scalafmtInc) := Seq(scalaSource.value),
             scalafmtInc := {
-              val cache = streams.value.cacheDirectory / "scalafmt"
+              val cache = streams.value.cacheStoreFactory / "scalafmt"
               val include = includeFilter.in(scalafmtInc).value
               val exclude = excludeFilter.in(scalafmtInc).value
               val sources =
@@ -39,14 +39,14 @@ object AutomateScalafmtPlugin extends AutoPlugin {
                   handler(files)
                   files
                 }
-                FileFunction.cached(cache)(FilesInfo.hash, FilesInfo.exists)(update(handler, msg))(
+                FileFunction.cached(cache, FilesInfo.hash, FilesInfo.exists)(update(handler, msg))(
                   sources
                 )
               }
               def formattingHandler(files: Set[File]) =
                 if (files.nonEmpty) {
                   val filesArg = files.map(_.getAbsolutePath).mkString(",")
-                  ScalafmtBootstrap.main(List("--quiet", "-i", "-f", filesArg))
+                  Cli.main(Array("--quiet", "-i", "-f", filesArg))
                 }
               format(formattingHandler, "Formatting")
               format(_ => (), "Reformatted") // Recalculate the cache

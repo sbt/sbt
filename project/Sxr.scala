@@ -2,6 +2,10 @@ import sbt._
 import Keys._
 import Scope.ThisScope
 
+import sbt.librarymanagement.syntax._
+
+import sbt.internal.inc.RawCompiler
+
 object Sxr {
   val sxrConf = config("sxr").hide
   val sxr = TaskKey[File]("sxr")
@@ -31,7 +35,7 @@ object Sxr {
       IO.delete(out)
       IO.createDirectory(out)
       val comp =
-        new compiler.RawCompiler(scalaInstance.value, classpathOptions.value, streams.value.log)
+        new RawCompiler(scalaInstance.value, classpathOptions.value, streams.value.log)
       comp(in.toSeq.sorted, fullClasspath.value.files, out, scalacOptions.value)
       Set(outputDir)
     }

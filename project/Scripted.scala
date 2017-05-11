@@ -1,6 +1,8 @@
 import sbt._
 import Keys._
 import Def.Initialize
+import sbt.internal.inc.ScalaInstance
+import sbt.internal.inc.classpath
 
 import scala.language.reflectiveCalls
 

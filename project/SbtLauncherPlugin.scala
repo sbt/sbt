@@ -1,3 +1,4 @@
+import sbt.io.Path._
 import sbt._
 import Keys._
 
@@ -41,7 +42,7 @@ object SbtLauncherPlugin extends AutoPlugin {
       IO.unzip(jar, dir)
       IO.copy(overrides.map({ case (n, f) => (f, dir / n) }), overwrite = true)
       // TODO - is the ok for creating a jar?
-      IO.zip((dir.*** --- dir) pair relativeTo(dir), target)
+      IO.zip((dir.allPaths --- dir) pair relativeTo(dir), target)
     }
     target
   }
