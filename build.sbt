@@ -88,8 +88,15 @@ lazy val bootstrap = project
     renameMainJar("bootstrap.jar")
   )
 
+lazy val extra = project
+  .dependsOn(coreJvm)
+  .settings(
+    shared,
+    coursierPrefix
+  )
+
 lazy val cli = project
-  .dependsOn(coreJvm, cache)
+  .dependsOn(coreJvm, cache, extra)
   .settings(
     shared,
     dontPublishIn("2.10", "2.12"),
@@ -166,7 +173,7 @@ lazy val doc = project
 
 // Don't try to compile that if you're not in 2.10
 lazy val `sbt-coursier` = project
-  .dependsOn(coreJvm, cache)
+  .dependsOn(coreJvm, cache, extra)
   .settings(plugin)
 
 // Don't try to compile that if you're not in 2.10
@@ -224,6 +231,7 @@ lazy val jvm = project
     testsJvm,
     cache,
     bootstrap,
+    extra,
     cli,
     `sbt-coursier`,
     `sbt-shading`,
@@ -262,6 +270,7 @@ lazy val coursier = project
     testsJs,
     cache,
     bootstrap,
+    extra,
     cli,
     `sbt-coursier`,
     `sbt-shading`,
