@@ -32,6 +32,14 @@ object CentralTests extends TestSuite {
     )
       .process
       .run(fetch)
+      .map { res =>
+
+        assert(res.metadataErrors.isEmpty)
+        assert(res.conflicts.isEmpty)
+        assert(res.isDone)
+
+        res
+      }
       .runF
   }
 

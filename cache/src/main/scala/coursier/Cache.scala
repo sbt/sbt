@@ -957,8 +957,6 @@ object Cache {
     }
   }
 
-  private val utf8Bom = "\ufeff"
-
   def fetch(
     cache: File = default,
     cachePolicy: CachePolicy = CachePolicy.UpdateChanging,
@@ -981,7 +979,7 @@ object Cache {
         def notFound(f: File) = Left(s"${f.getCanonicalPath} not found")
 
         def read(f: File) =
-          try Right(new String(FileUtil.readAllBytes(f), "UTF-8").stripPrefix(utf8Bom))
+          try Right(new String(FileUtil.readAllBytes(f), "UTF-8"))
           catch {
             case NonFatal(e) =>
               Left(s"Could not read (file:${f.getCanonicalPath}): ${e.getMessage}")

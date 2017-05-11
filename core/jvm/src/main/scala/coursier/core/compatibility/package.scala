@@ -14,9 +14,11 @@ package object compatibility {
     def letter = c.isLetter
   }
 
+  private val utf8Bom = "\ufeff"
+
   def xmlParse(s: String): Either[String, Xml.Node] = {
     def parse =
-      try Right(scala.xml.XML.loadString(s))
+      try Right(scala.xml.XML.loadString(s.stripPrefix(utf8Bom)))
       catch { case e: Exception => Left(e.toString + Option(e.getMessage).fold("")(" (" + _ + ")")) }
 
     def fromNode(node: scala.xml.Node): Xml.Node =
