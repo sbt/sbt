@@ -31,11 +31,7 @@ object Resolution {
 
     def fromActivation = profile.activation.isActive(properties, osInfo, jdkVersion)
 
-    val res = fromUserOrDefault.getOrElse(fromActivation)
-
-    // println(s"Profile\n$profile\n$res\n")
-
-    res
+    fromUserOrDefault.getOrElse(fromActivation)
   }
 
   /**
