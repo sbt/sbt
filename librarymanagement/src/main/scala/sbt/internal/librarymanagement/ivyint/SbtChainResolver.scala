@@ -52,13 +52,17 @@ private[sbt] case class SbtChainResolver(
 
   // TODO - We need to special case the project resolver so it always "wins" when resolving with inter-project dependencies.
 
-  // Initialize ourselves.
-  setName(name)
-  setReturnFirst(true)
-  setCheckmodified(false)
-  // Here we append all the resolvers we were passed *AND* look for
-  // a project resolver, which we will special-case.
-  resolvers.foreach(add)
+  def initializeChainResolver(): Unit = {
+    // Initialize ourselves.
+    setName(name)
+    setReturnFirst(true)
+    setCheckmodified(false)
+
+    /* Append all the resolvers to the extended chain resolvers since we get its value later on */
+    resolvers.foreach(add)
+  }
+
+  initializeChainResolver()
 
   // Technically, this should be applied to module configurations.
   // That would require custom subclasses of all resolver types in ConvertResolver (a delegation approach does not work).
@@ -129,7 +133,8 @@ private[sbt] case class SbtChainResolver(
         resolved0: Option[ResolvedModuleRevision],
         useLatest: Boolean,
         data: ResolveData,
-        descriptor: DependencyDescriptor
+        descriptor: DependencyDescriptor,
+        resolvers: Seq[DependencyResolver]
     ): Seq[Either[Throwable, TriedResolution]] = {
       var currentlyResolved = resolved0
 
@@ -243,9 +248,35 @@ private[sbt] case class SbtChainResolver(
       internalOrExternal.orElse(cachedModule)
     }
 
-    // The ivy implementation guarantees that all resolvers implement `DependencyResolver`
-    def getDependencyResolvers: Vector[DependencyResolver] =
-      getResolvers.toArray.collect { case r: DependencyResolver => r }.toVector
+    /** Cleans unnecessary module id information not provided by [[IvyRetrieve.toModuleID()]]. */
+    private final val moduleResolvers = updateOptions.moduleResolvers.map {
+      case (key, value) =>
+        val cleanKey = ModuleID(key.organization, key.name, key.revision)
+          .withExtraAttributes(key.extraAttributes)
+          .withBranchName(key.branchName)
+        cleanKey -> value
+    }
+
+    /**
+     * Gets the list of resolvers to use for resolving a given descriptor.
+     *
+     * NOTE: The ivy implementation guarantees that all resolvers implement dependency resolver.
+     * @param descriptor The descriptor to be resolved.
+     */
+    def getDependencyResolvers(descriptor: DependencyDescriptor): Vector[DependencyResolver] = {
+      val moduleRevisionId = descriptor.getDependencyRevisionId
+      val moduleID = IvyRetrieve.toModuleID(moduleRevisionId)
+      val resolverForModule = moduleResolvers.get(moduleID)
+      val ivyResolvers = getResolvers.toArray // Get resolvers from chain resolver directly
+      val allResolvers = ivyResolvers.collect { case r: DependencyResolver => r }.toVector
+      // Double check that dependency resolver will always be the super trait of a resolver
+      assert(ivyResolvers.size == allResolvers.size, "ALERT: Some ivy resolvers were filtered.")
+      val mappedResolver = resolverForModule.flatMap(r => allResolvers.find(_.getName == r.name))
+      mappedResolver match {
+        case Some(uniqueResolver) => Vector(uniqueResolver)
+        case None                 => allResolvers
+      }
+    }
 
     def findInterProjectResolver(resolvers: Seq[DependencyResolver]): Option[DependencyResolver] =
       resolvers.find(_.getName == ProjectResolver.InterProject)
@@ -279,10 +310,10 @@ private[sbt] case class SbtChainResolver(
       val resolvedOrCached = getCached(dd, data0, resolved0)
 
       val cached: Option[ResolvedModuleRevision] = if (useLatest) None else resolvedOrCached
-      val resolvers = getDependencyResolvers
+      val resolvers = getDependencyResolvers(dd)
       val interResolver = findInterProjectResolver(resolvers)
       // TODO: Please, change `Option` return types so that this goes away
-      lazy val results = getResults(cached, useLatest, data, dd)
+      lazy val results = getResults(cached, useLatest, data, dd, resolvers)
       lazy val errors = results.collect { case Left(t) => t }
       val runResolution = () => results
       val resolved = resolveByAllMeans(cached, useLatest, interResolver, runResolution, dd, data)

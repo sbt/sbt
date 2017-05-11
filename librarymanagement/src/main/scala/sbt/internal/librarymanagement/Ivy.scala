@@ -349,6 +349,8 @@ private[sbt] object IvySbt {
     val mainChain = makeChain("Default", "sbt-chain", resolvers)
     settings.setDefaultResolver(mainChain.getName)
   }
+
+  // TODO: Expose the changing semantics to the caller so that users can specify a regex
   private[sbt] def isChanging(dd: DependencyDescriptor): Boolean =
     dd.isChanging || isChanging(dd.getDependencyRevisionId)
   private[sbt] def isChanging(module: ModuleID): Boolean =
@@ -370,32 +372,23 @@ private[sbt] object IvySbt {
       updateOptions: UpdateOptions,
       log: Logger
   ): DependencyResolver = {
-    def mapResolvers(rs: Seq[Resolver]) =
-      rs.map(r => ConvertResolver(r, settings, updateOptions, log))
-    val (projectResolvers, rest) = resolvers.partition(_.name == "inter-project")
+    val ivyResolvers = resolvers.map(r => ConvertResolver(r, settings, updateOptions, log))
+    val (projectResolvers, rest) =
+      ivyResolvers.partition(_.getName == ProjectResolver.InterProject)
     if (projectResolvers.isEmpty)
-      new ivyint.SbtChainResolver(name, mapResolvers(rest), settings, updateOptions, log)
+      ivyint.SbtChainResolver(name, rest, settings, updateOptions, log)
     else {
-      // Here we set up a "first repo wins" chain resolver
-      val delegate = new ivyint.SbtChainResolver(
-        name + "-delegate",
-        mapResolvers(rest),
-        settings,
-        updateOptions,
-        log
-      )
-      val prs = mapResolvers(projectResolvers)
-      // Here we construct a chain resolver which will FORCE looking at the project resolver first.
-      new ivyint.SbtChainResolver(
-        name,
-        prs :+ delegate,
-        settings,
-        UpdateOptions().withLatestSnapshots(false),
-        log
-      )
-
+      // Force that we always look at the project resolver first by wrapping the chain resolver
+      val delegatedName = s"$name-delegate"
+      val delegate = ivyint.SbtChainResolver(delegatedName, rest, settings, updateOptions, log)
+      val initialResolvers = projectResolvers :+ delegate
+      val freshOptions = UpdateOptions()
+        .withLatestSnapshots(false)
+        .withModuleResolvers(updateOptions.moduleResolvers)
+      ivyint.SbtChainResolver(name, initialResolvers, settings, freshOptions, log)
     }
   }
+
   def addResolvers(resolvers: Seq[Resolver], settings: IvySettings, log: Logger): Unit = {
     for (r <- resolvers) {
       log.debug("\t" + r)

@@ -23,7 +23,9 @@ final class UpdateOptions private[sbt] (
     // If set to true, use cached resolution.
     val cachedResolution: Boolean,
     // Extension point for an alternative resolver converter.
-    val resolverConverter: UpdateOptions.ResolverConverter
+    val resolverConverter: UpdateOptions.ResolverConverter,
+    // Map the unique resolver to be checked for the module ID
+    val moduleResolvers: Map[ModuleID, Resolver]
 ) {
   def withCircularDependencyLevel(
       circularDependencyLevel: CircularDependencyLevel
@@ -49,13 +51,17 @@ final class UpdateOptions private[sbt] (
   def withResolverConverter(resolverConverter: UpdateOptions.ResolverConverter): UpdateOptions =
     copy(resolverConverter = resolverConverter)
 
+  def withModuleResolvers(moduleResolvers: Map[ModuleID, Resolver]): UpdateOptions =
+    copy(moduleResolvers = moduleResolvers)
+
   private[sbt] def copy(
       circularDependencyLevel: CircularDependencyLevel = this.circularDependencyLevel,
       interProjectFirst: Boolean = this.interProjectFirst,
       latestSnapshots: Boolean = this.latestSnapshots,
       consolidatedResolution: Boolean = this.consolidatedResolution,
       cachedResolution: Boolean = this.cachedResolution,
-      resolverConverter: UpdateOptions.ResolverConverter = this.resolverConverter
+      resolverConverter: UpdateOptions.ResolverConverter = this.resolverConverter,
+      moduleResolvers: Map[ModuleID, Resolver] = this.moduleResolvers
   ): UpdateOptions =
     new UpdateOptions(
       circularDependencyLevel,
@@ -63,7 +69,8 @@ final class UpdateOptions private[sbt] (
       latestSnapshots,
       consolidatedResolution,
       cachedResolution,
-      resolverConverter
+      resolverConverter,
+      moduleResolvers
     )
 
   override def equals(o: Any): Boolean = o match {
@@ -72,7 +79,8 @@ final class UpdateOptions private[sbt] (
         this.interProjectFirst == o.interProjectFirst &&
         this.latestSnapshots == o.latestSnapshots &&
         this.cachedResolution == o.cachedResolution &&
-        this.resolverConverter == o.resolverConverter
+        this.resolverConverter == o.resolverConverter &&
+        this.moduleResolvers == o.moduleResolvers
     case _ => false
   }
 
@@ -83,6 +91,7 @@ final class UpdateOptions private[sbt] (
     hash = hash * 31 + this.latestSnapshots.##
     hash = hash * 31 + this.cachedResolution.##
     hash = hash * 31 + this.resolverConverter.##
+    hash = hash * 31 + this.moduleResolvers.##
     hash
   }
 }
@@ -97,6 +106,7 @@ object UpdateOptions {
       latestSnapshots = true,
       consolidatedResolution = false,
       cachedResolution = false,
-      resolverConverter = PartialFunction.empty
+      resolverConverter = PartialFunction.empty,
+      moduleResolvers = Map.empty
     )
 }
