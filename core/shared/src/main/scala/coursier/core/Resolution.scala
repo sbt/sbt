@@ -785,31 +785,42 @@ final case class Resolution(
     project: Project
   ): Set[ModuleVersion] = {
 
-    val approxProperties0 =
-      project.parent
-        .flatMap(projectCache.get)
-        .map(_._2.properties)
-        .fold(project.properties)(project.properties ++ _)
+    val needsParent =
+      project.parent.exists { par =>
+        val parentFound = projectCache.contains(par) || errorCache.contains(par)
+        !parentFound
+      }
 
-    val approxProperties = propertiesMap(approxProperties0) ++ projectProperties(project)
+    if (needsParent)
+      project.parent.toSet
+    else {
 
-    val profileDependencies =
-      profiles(
-        project,
-        approxProperties,
-        osInfo,
-        jdkVersion,
-        userActivations
-      ).flatMap(p => p.dependencies ++ p.dependencyManagement)
+      val approxProperties0 =
+        project.parent
+          .flatMap(projectCache.get)
+          .map(_._2.properties)
+          .fold(project.properties)(project.properties ++ _)
 
-    val modules = withProperties(
-      project.dependencies ++ project.dependencyManagement ++ profileDependencies,
-      approxProperties
-    ).collect {
-      case ("import", dep) => dep.moduleVersion
+      val approxProperties = propertiesMap(approxProperties0) ++ projectProperties(project)
+
+      val profileDependencies =
+        profiles(
+          project,
+          approxProperties,
+          osInfo,
+          jdkVersion,
+          userActivations
+        ).flatMap(p => p.dependencies ++ p.dependencyManagement)
+
+      val modules = withProperties(
+        project.dependencies ++ project.dependencyManagement ++ profileDependencies,
+        approxProperties
+      ).collect {
+        case ("import", dep) => dep.moduleVersion
+      }
+
+      modules.toSet
     }
-
-    modules.toSet ++ project.parent
   }
 
   /**

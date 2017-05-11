@@ -607,6 +607,14 @@ object CentralTests extends TestSuite {
         }
       }
     }
+
+    'parentBeforeImports - {
+      * - resolutionCheck(
+        Module("org.kie", "kie-api"),
+        "6.5.0.Final",
+        extraRepo = Some(MavenRepository("https://repository.jboss.org/nexus/content/repositories/public"))
+      )
+    }
   }
 
 }
