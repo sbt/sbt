@@ -7,9 +7,9 @@ import DebianConstants._
 
 lazy val sbtOfflineInstall =
   sys.props.getOrElse("sbt.build.offline", sys.env.getOrElse("sbt.build.offline", "true")) match {
-    case "true" => true
-    case "1"    => true
-    case _      => false
+    case "true" | "1"  => true
+    case "false" | "0" => false
+    case _             => false
   }
 lazy val sbtVersionToRelease = sys.props.getOrElse("sbt.build.version", sys.env.getOrElse("sbt.build.version", {
         sys.error("-Dsbt.build.version must be set")
@@ -47,6 +47,8 @@ val root = (project in file(".")).
       val _ = (clean in dist).value
       clean.value
     },
+    useGpg := true,
+    usePgpKeyHex("642AC823"),
     pgpSecretRing := file(s"""${sys.props("user.home")}""") / ".ssh" / "scalasbt.key",
     pgpPublicRing := file(s"""${sys.props("user.home")}""") / ".ssh" / "scalasbt.pub",
     publishToSettings,
@@ -85,7 +87,7 @@ val root = (project in file(".")).
       if (debianBuildId.value == 0) sbtVersionToRelease
       else sbtVersionToRelease + "." + debianBuildId.value
     },
-    debianBuildId := 2, // 0
+    debianBuildId := 3, // 0
     // Used to have "openjdk-8-jdk" but that doesn't work on Ubuntu 14.04 https://github.com/sbt/sbt/issues/3105
     // before that we had java6-runtime-headless" and that was pulling in JDK9 on Ubuntu 16.04 https://github.com/sbt/sbt/issues/2931
     debianPackageDependencies in Debian ++= Seq("bash (>= 3.2)"),
@@ -111,7 +113,7 @@ val root = (project in file(".")).
       })
       else stable
     },
-    rpmRelease := "2",
+    rpmRelease := "3",
     rpmVendor := "lightbend",
     rpmUrl := Some("http://github.com/sbt/sbt-launcher-package"),
     rpmLicense := Some("BSD"),

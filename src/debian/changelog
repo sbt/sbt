@@ -4,7 +4,7 @@ sbt (0.13.15) stable; urgency=low
   * Adds preliminary compatibility with JDK 9. Using this requires 0.13.15+ launcher. #2951 by @retronym
   * Adds "local-preloaded" repository for offline installation
 
- -- Eugene Yokota <eed3si9n@gmail.com> Mon, 10 Apr 2017 00:00:00 +0000
+ -- Eugene Yokota <eed3si9n@gmail.com>  Mon, 10 Apr 2017 00:00:00 +0000
 
 sbt (0.13.13) stable; urgency=low
 
@@ -39,3 +39,4 @@ sbt (0.11.2-build-0100)
   * First debian package release
 
  -- Joshua Suereth <joshua.suereth@typesafe.com>  2011-11-29
+
