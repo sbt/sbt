@@ -7,6 +7,7 @@ import java.io.File
 
 import sbt.internal.TestLogger
 import sbt.io.{ IO, Path }
+import OutputStrategy._
 
 object ForkTest extends Properties("Fork") {
 
@@ -39,7 +40,7 @@ object ForkTest extends Properties("Fork") {
             val withScala = requiredEntries ::: relCP.map(rel => new File(dir, rel))
             val absClasspath = trimClasspath(Path.makeString(withScala))
             val args = optionName.map(_ :: absClasspath :: Nil).toList.flatten ++ mainAndArgs
-            val config = ForkOptions(outputStrategy = Some(LoggedOutput(log)))
+            val config = ForkOptions().withOutputStrategy(LoggedOutput(log))
             val exitCode = try Fork.java(config, args)
             catch { case e: Exception => e.printStackTrace; 1 }
             val expectedCode = if (optionName.isEmpty) 1 else 0

@@ -44,7 +44,7 @@ class ForkRun(config: ForkOptions) extends ScalaRun {
     val scalaOptions = classpathOption(classpath) ::: mainClass :: options.toList
     val configLogged =
       if (config.outputStrategy.isDefined) config
-      else config.copy(outputStrategy = Some(LoggedOutput(log)))
+      else config.withOutputStrategy(OutputStrategy.LoggedOutput(log))
     // fork with Java because Scala introduces an extra class loader (#702)
     Fork.java.fork(configLogged, scalaOptions)
   }

@@ -8,6 +8,15 @@ trait Import {
   type URI = java.net.URI
   type URL = java.net.URL
 
+  // sbt
+  val StdoutOutput = sbt.OutputStrategy.StdoutOutput
+  type BufferedOutput = sbt.OutputStrategy.BufferedOutput
+  val BufferedOutput = sbt.OutputStrategy.BufferedOutput
+  type LoggedOutput = sbt.OutputStrategy.LoggedOutput
+  val LoggedOutput = sbt.OutputStrategy.LoggedOutput
+  type CustomOutput = sbt.OutputStrategy.CustomOutput
+  val CustomOutput = sbt.OutputStrategy.CustomOutput
+
   // sbt.testing
   type TestResult = sbt.protocol.testing.TestResult
   val TestResult = sbt.protocol.testing.TestResult
