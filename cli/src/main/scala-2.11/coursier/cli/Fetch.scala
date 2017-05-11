@@ -23,6 +23,9 @@ final case class Fetch(
     )
   )
 
+  // Some progress lines seem to be scraped without this.
+  Console.out.flush()
+
   val out =
     if (options.classpath)
       files0
