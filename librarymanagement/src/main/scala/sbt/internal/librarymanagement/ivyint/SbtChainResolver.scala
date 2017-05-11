@@ -259,7 +259,12 @@ private[sbt] case class SbtChainResolver(
      * These are the differences with regard to the default ivy [[ChainResolver]]:
      *   1. It skips resolution if "return first" is set to true.
      *   2. It skips resolution if a previously resolved or cached resolution is found.
-     *   3. It always checks all the resolvers and compares timestamps for changing dependencies.
+     *   3. It always checks all the resolvers and compares timestamps for changing dependencies
+     *      if and only if `latestSnapshots` is enabled in the update options, regardless of what
+     *      the latest strategies are (http://ant.apache.org/ivy/history/2.3.0/settings/latest-strategies.html).
+     *      See https://github.com/sbt/sbt/pull/1520 for more information on this topic.
+     *
+     * Note the tradeoff here in SNAPSHOTs: correctness vs slowness.
      */
     def getDependency(dd: DependencyDescriptor, data0: ResolveData): ResolvedModuleRevision = {
       val isDynamic = dd.isChanging || IvySbt.isChanging(dd.getDependencyRevisionId)
