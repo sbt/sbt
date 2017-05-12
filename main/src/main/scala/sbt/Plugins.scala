@@ -13,6 +13,7 @@ import Def.Setting
 import Plugins._
 import annotation.tailrec
 import sbt.util.Logger
+import PluginTrigger._
 
 /**
  * An AutoPlugin defines a group of settings and the conditions where the settings are automatically added to a build (called "activation").
@@ -134,10 +135,6 @@ object AutoPluginException {
   def apply(origin: LogicException): AutoPluginException =
     new AutoPluginException(Plugins.translateMessage(origin), Some(origin))
 }
-
-sealed trait PluginTrigger
-case object AllRequirements extends PluginTrigger
-case object NoTrigger extends PluginTrigger
 
 /** An expression that matches `AutoPlugin`s. */
 sealed trait Plugins {

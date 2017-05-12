@@ -327,18 +327,6 @@ final case class ResolvedClasspathDependency(project: ProjectRef, configuration:
 final case class ClasspathDependency(project: ProjectReference, configuration: Option[String])
     extends ClasspathDep[ProjectReference]
 
-/**
- * Indicate whether the project was created organically, synthesized by a plugin,
- * or is a "generic root" project supplied by sbt when a project doesn't exist for `file(".")`.
- */
-sealed trait ProjectOrigin
-object ProjectOrigin {
-  case object Organic extends ProjectOrigin
-  case object ExtraProject extends ProjectOrigin
-  case object DerivedProject extends ProjectOrigin
-  case object GenericRoot extends ProjectOrigin
-}
-
 object Project extends ProjectExtra {
 
   private abstract class ProjectDef[PR <: ProjectReference](
