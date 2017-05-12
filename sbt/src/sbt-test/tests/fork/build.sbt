@@ -19,7 +19,7 @@ lazy val root = (project in file(".")).
         new Group(
           groupId(idx),
           tests,
-          SubProcess(ForkOptions(runJVMOptions = Seq("-Dgroup.prefix=" + groupPrefix(idx))))
+          SubProcess(ForkOptions().withRunJVMOptions(Vector("-Dgroup.prefix=" + groupPrefix(idx))))
         )
     },
     check := {

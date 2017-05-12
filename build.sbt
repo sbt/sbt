@@ -167,9 +167,13 @@ lazy val stdTaskProj = (project in file("tasks-standard"))
 
 // Embedded Scala code runner
 lazy val runProj = (project in file("run"))
+  .enablePlugins(ContrabandPlugin)
   .settings(
     testedBaseSettings,
-    name := "Run"
+    name := "Run",
+    managedSourceDirectories in Compile +=
+      baseDirectory.value / "src" / "main" / "contraband-scala",
+    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala"
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtCompilerClasspath)
 

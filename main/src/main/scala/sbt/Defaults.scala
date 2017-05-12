@@ -682,13 +682,13 @@ object Defaults extends BuildCommon {
   def forkOptionsTask: Initialize[Task[ForkOptions]] =
     Def.task {
       ForkOptions(
-        // bootJars is empty by default because only jars on the user's classpath should be on the boot classpath
-        bootJars = Nil,
         javaHome = javaHome.value,
-        connectInput = connectInput.value,
         outputStrategy = outputStrategy.value,
-        runJVMOptions = javaOptions.value,
+        // bootJars is empty by default because only jars on the user's classpath should be on the boot classpath
+        bootJars = Vector(),
         workingDirectory = Some(baseDirectory.value),
+        runJVMOptions = javaOptions.value.toVector,
+        connectInput = connectInput.value,
         envVars = envVars.value
       )
     }

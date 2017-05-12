@@ -3,56 +3,10 @@
  */
 package sbt
 
-import java.io.{ File, OutputStream }
+import java.io.File
 import java.util.Locale
-
-import sbt.util.Logger
 import scala.sys.process.Process
-
-/**
- * Configures forking.
- *
- * @param javaHome The Java installation to use.  If not defined, the Java home for the current process is used.
- * @param outputStrategy Configures the forked standard output and error streams.  If not defined, StdoutOutput is used, which maps the forked output to the output of this process and the forked error to the error stream of the forking process.
- * @param bootJars The list of jars to put on the forked boot classpath.  By default, this is empty.
- * @param workingDirectory The directory to use as the working directory for the forked process.  By default, this is the working directory of the forking process.
- * @param runJVMOptions The options to prepend to all user-specified arguments.  By default, this is empty.
- * @param connectInput If true, the standard input of the forked process is connected to the standard input of this process.  Otherwise, it is connected to an empty input stream.  Connecting input streams can be problematic, especially on versions before Java 7.
- * @param envVars The environment variables to provide to the forked process.  By default, none are provided.
- */
-final case class ForkOptions(
-    javaHome: Option[File] = None,
-    outputStrategy: Option[OutputStrategy] = None,
-    bootJars: Seq[File] = Nil,
-    workingDirectory: Option[File] = None,
-    runJVMOptions: Seq[String] = Nil,
-    connectInput: Boolean = false,
-    envVars: Map[String, String] = Map.empty
-)
-
-/** Configures where the standard output and error streams from a forked process go.*/
-sealed abstract class OutputStrategy
-
-/**
- * Configures the forked standard output to go to standard output of this process and
- * for the forked standard error to go to the standard error of this process.
- */
-case object StdoutOutput extends OutputStrategy
-
-/**
- * Logs the forked standard output at the `info` level and the forked standard error at the `error` level.
- * The output is buffered until the process completes, at which point the logger flushes it (to the screen, for example).
- */
-case class BufferedOutput(logger: Logger) extends OutputStrategy
-
-/** Logs the forked standard output at the `info` level and the forked standard error at the `error` level. */
-case class LoggedOutput(logger: Logger) extends OutputStrategy
-
-/**
- * Configures the forked standard output to be sent to `output` and the forked standard error
- * to be sent to the standard error of this process.
- */
-case class CustomOutput(output: OutputStream) extends OutputStrategy
+import OutputStrategy._
 
 /**
  * Represents a command that can be forked.
@@ -83,14 +37,17 @@ final class Fork(val commandName: String, val runnerClass: Option[String]) {
     val (classpathEnv, options) = Fork.fitClasspath(preOptions)
     val command = executable +: options
 
-    val environment = env ++ classpathEnv.map(value => Fork.ClasspathEnvKey -> value)
+    val environment: List[(String, String)] = env.toList ++
+      (classpathEnv map { value =>
+        Fork.ClasspathEnvKey -> value
+      })
     val process = Process(command, workingDirectory, environment.toList: _*)
 
     outputStrategy.getOrElse(StdoutOutput) match {
-      case StdoutOutput           => process.run(connectInput)
-      case BufferedOutput(logger) => logger.buffer { process.run(logger, connectInput) }
-      case LoggedOutput(logger)   => process.run(logger, connectInput)
-      case CustomOutput(output)   => (process #> output).run(connectInput)
+      case StdoutOutput        => process.run(connectInput)
+      case out: BufferedOutput => out.logger.buffer { process.run(out.logger, connectInput) }
+      case out: LoggedOutput   => process.run(out.logger, connectInput)
+      case out: CustomOutput   => (process #> out.output).run(connectInput)
     }
   }
   private[this] def makeOptions(jvmOptions: Seq[String],
