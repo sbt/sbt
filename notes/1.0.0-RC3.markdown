@@ -1,0 +1,12 @@
+### Changes
+
+* Shade jsoup dependency from core ([#534])
+* Better support for Typelevel Scala in sbt-coursier ([#541])
+* Various fixes ([#541])
+
+[#534]: https://github.com/alexarchambault/coursier/pull/534
+[#541]: https://github.com/alexarchambault/coursier/pull/541
+
+### Non-backward compatible changes
+
+* None
