@@ -15,16 +15,27 @@ import sbt.io.IO
 import sbt.protocol.testing.TestResult
 
 object TestFrameworks {
-  val ScalaCheck = new TestFramework("org.scalacheck.ScalaCheckFramework")
+  val ScalaCheck = TestFramework("org.scalacheck.ScalaCheckFramework")
   val ScalaTest =
-    new TestFramework("org.scalatest.tools.Framework", "org.scalatest.tools.ScalaTestFramework")
-  val Specs = new TestFramework("org.specs.runner.SpecsFramework")
+    TestFramework("org.scalatest.tools.Framework", "org.scalatest.tools.ScalaTestFramework")
+  val Specs = TestFramework("org.specs.runner.SpecsFramework")
   val Specs2 =
-    new TestFramework("org.specs2.runner.Specs2Framework", "org.specs2.runner.SpecsFramework")
-  val JUnit = new TestFramework("com.novocode.junit.JUnitFramework")
+    TestFramework("org.specs2.runner.Specs2Framework", "org.specs2.runner.SpecsFramework")
+  val JUnit = TestFramework("com.novocode.junit.JUnitFramework")
 }
 
-case class TestFramework(implClassNames: String*) {
+final class TestFramework(val implClassNames: String*) extends Serializable {
+  override def equals(o: Any): Boolean = o match {
+    case x: TestFramework => (this.implClassNames.toList == x.implClassNames.toList)
+    case _                => false
+  }
+  override def hashCode: Int = {
+    37 * (17 + implClassNames.##) + "TestFramework".##
+  }
+  override def toString: String = {
+    "TestFramework(" + implClassNames.mkString(", ") + ")"
+  }
+
   @tailrec
   private def createFramework(loader: ClassLoader,
                               log: ManagedLogger,
@@ -108,6 +119,8 @@ final class TestRunner(delegate: Runner, listeners: Seq[TestReportListener], log
 }
 
 object TestFramework {
+  def apply(implClassNames: String*): TestFramework = new TestFramework(implClassNames: _*)
+
   def getFingerprints(framework: Framework): Seq[Fingerprint] =
     framework.getClass.getMethod("fingerprints").invoke(framework) match {
       case fingerprints: Array[Fingerprint] => fingerprints.toList
