@@ -1,0 +1,2 @@
+org.kie:kie-api:6.5.0.Final:compile
+org.slf4j:slf4j-api:1.7.2:compile

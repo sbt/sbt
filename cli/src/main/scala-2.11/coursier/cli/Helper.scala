@@ -7,7 +7,7 @@ import java.util.jar.{ Manifest => JManifest }
 import java.util.concurrent.Executors
 
 import coursier.cli.scaladex.Scaladex
-import coursier.cli.typelevel.Typelevel
+import coursier.extra.Typelevel
 import coursier.ivy.IvyRepository
 import coursier.util.{Print, Parse}
 

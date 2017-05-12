@@ -1,4 +1,4 @@
-package coursier.cli.typelevel
+package coursier.extra
 
 import coursier.{Dependency, Module}
 

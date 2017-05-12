@@ -5,6 +5,7 @@ import java.net.URL
 import java.util.concurrent.{ExecutorService, Executors}
 
 import coursier.core.{Authentication, Publication}
+import coursier.extra.Typelevel
 import coursier.ivy.{IvyRepository, PropertiesPattern}
 import coursier.Keys._
 import coursier.Structure._
@@ -504,6 +505,8 @@ object Tasks {
 
       val userEnabledProfiles = mavenProfiles.value
 
+      val typelevel = scalaOrganization.value == Typelevel.typelevelOrg
+
       val startRes = Resolution(
         currentProject.dependencies.map(_._2).toSet,
         filter = Some(dep => !dep.optional),
@@ -517,7 +520,8 @@ object Tasks {
           userForceVersions ++
           forcedScalaModules(so, sv) ++
           interProjectDependencies.map(_.moduleVersion),
-        projectCache = parentProjectCache
+        projectCache = parentProjectCache,
+        mapDependencies = if (typelevel) Some(Typelevel.swap(_)) else None
       )
 
       if (verbosityLevel >= 2) {

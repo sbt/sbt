@@ -95,6 +95,8 @@ final case class MavenSource(
     }
   }
 
+  private val types = Map("sha1" -> "SHA-1", "md5" -> "MD5", "asc" -> "sig")
+
   private def artifactsKnownPublications(
     dependency: Dependency,
     project: Project,
@@ -134,40 +136,40 @@ final case class MavenSource(
       }
     }
 
-    def extensionIsExtra(publications: Seq[EnrichedPublication], ext: String, tpe: String): Seq[EnrichedPublication] = {
-
-      val (withExt, other) = publications.partition(_.publication.ext.endsWith("." + ext))
-
-      var withExtMap = withExt.map(p => (p.publication.classifier, p.publication.ext.stripSuffix("." + ext)) -> p).toMap
-
-      other.map { p =>
-        val key = (p.publication.classifier, p.publication.ext)
-        withExtMap.get(key).fold(p) { sigPub =>
-          withExtMap -= key
-          p.copy(
-            extra = p.extra + (tpe -> sigPub)
-          )
-        }
-      } ++ withExtMap.values
-    }
-
     def groupedEnrichedPublications(publications: Seq[Publication]): Seq[EnrichedPublication] = {
 
-      def helperSameName(publications: Seq[Publication]): Seq[EnrichedPublication] = {
+      def helper(publications: Seq[Publication]): Seq[EnrichedPublication] = {
 
-        val publications0 = publications.map { pub =>
-          EnrichedPublication(pub, Map())
+        var publications0 = publications
+          .map { pub =>
+            pub.ext -> EnrichedPublication(pub, Map())
+          }
+          .toMap
+
+        val byLength = publications0.toVector.sortBy(-_._1.length)
+
+        for {
+          (ext, _) <- byLength
+          idx = ext.lastIndexOf('.')
+          if idx >= 0
+          subExt = ext.substring(idx + 1)
+          baseExt = ext.substring(0, idx)
+          tpe <- types.get(subExt)
+          mainPub <- publications0.get(baseExt)
+        } {
+          val pub = publications0(ext)
+          publications0 += baseExt -> mainPub.copy(
+            extra = mainPub.extra + (tpe -> pub)
+          )
+          publications0 -= ext
         }
 
-        Seq("sha1" -> "SHA-1", "md5" -> "MD5", "asc" -> "sig").foldLeft(publications0) {
-          case (pub, (ext, tpe)) =>
-            extensionIsExtra(pub, ext, tpe)
-        }
+        publications0.values.toVector
       }
 
       publications
-        .groupBy(_.name)
-        .mapValues(helperSameName)
+        .groupBy(p => (p.name, p.classifier))
+        .mapValues(helper)
         .values
         .toVector
         .flatten

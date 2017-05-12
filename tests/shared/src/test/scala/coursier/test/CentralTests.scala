@@ -32,6 +32,14 @@ object CentralTests extends TestSuite {
     )
       .process
       .run(fetch)
+      .map { res =>
+
+        assert(res.metadataErrors.isEmpty)
+        assert(res.conflicts.isEmpty)
+        assert(res.isDone)
+
+        res
+      }
       .runF
   }
 
@@ -155,9 +163,14 @@ object CentralTests extends TestSuite {
     assert(res.conflicts.isEmpty)
     assert(res.isDone)
 
-    val artifacts = classifierOpt.fold(res.dependencyArtifacts)(c => res.dependencyClassifiersArtifacts(Seq(c))).map(_._2).filter { a =>
-      a.`type` == artifactType
-    }
+    val artifacts = classifierOpt
+      .fold(res.dependencyArtifacts)(c => res.dependencyClassifiersArtifacts(Seq(c)))
+      .map(_._2)
+      .filter {
+        if (artifactType == "*") _ => true
+        else
+          _.`type` == artifactType
+      }
 
     f(artifacts)
   }
@@ -605,6 +618,55 @@ object CentralTests extends TestSuite {
           assert(artifacts.length == 1)
           assert(artifacts.head.url == expectedUrl)
         }
+      }
+    }
+
+    'entities - {
+      'odash - resolutionCheck(
+        Module("org.codehaus.plexus", "plexus"),
+        "1.0.4"
+      )
+    }
+
+    'parentBeforeImports - {
+      * - resolutionCheck(
+        Module("org.kie", "kie-api"),
+        "6.5.0.Final",
+        extraRepo = Some(MavenRepository("https://repository.jboss.org/nexus/content/repositories/public"))
+      )
+    }
+
+    'signaturesOfSignatures - {
+      val mod = Module("org.yaml", "snakeyaml")
+      val ver = "1.17"
+
+      def hasSha1(a: Artifact) = a.extra.contains("SHA-1")
+      def hasMd5(a: Artifact) = a.extra.contains("MD5")
+      def hasSig(a: Artifact) = a.extra.contains("sig")
+      def sigHasSig(a: Artifact) = a.extra.get("sig").exists(hasSig)
+
+      * - resolutionCheck(mod, ver)
+
+      * - withArtifacts(mod, ver, "*") { artifacts =>
+
+        val jarOpt = artifacts.find(_.`type` == "bundle")
+        val pomOpt = artifacts.find(_.`type` == "pom")
+
+        if (artifacts.length != 2 || jarOpt.isEmpty || pomOpt.isEmpty)
+          artifacts.foreach(println)
+
+        assert(artifacts.length == 2)
+        assert(jarOpt.nonEmpty)
+        assert(pomOpt.nonEmpty)
+
+        assert(jarOpt.forall(hasSha1))
+        assert(pomOpt.forall(hasSha1))
+        assert(jarOpt.forall(hasMd5))
+        assert(pomOpt.forall(hasMd5))
+        assert(jarOpt.forall(hasSig))
+        assert(pomOpt.forall(hasSig))
+        assert(jarOpt.forall(sigHasSig))
+        assert(pomOpt.forall(sigHasSig))
       }
     }
   }
