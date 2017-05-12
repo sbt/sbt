@@ -306,34 +306,45 @@ private[sbt] case class SbtChainResolver(
     }
   }
 
-  // Ivy seem to not want to use the module descriptor found at the latest resolver
+  /* Ivy keeps module descriptors in memory, so we need to make sure that the
+   * resolved module revision is in fact the one found in the latest resolver. */
   private[this] def reparseModuleDescriptor(
       dd: DependencyDescriptor,
       data: ResolveData,
       resolver: DependencyResolver,
-      rmr: ResolvedModuleRevision
-  ): ResolvedModuleRevision =
-    // TODO - Redownloading/parsing the ivy file is not really the best way to make this correct.
-    //        We should figure out a better alternative, or directly attack the resolvers Ivy uses to
-    //        give them correct behavior around -SNAPSHOT.
+      previouslyResolved: ResolvedModuleRevision
+  ): ResolvedModuleRevision = {
+    // TODO: Figure out better alternative or directly attack the
+    // resolvers ivy uses to get correct behaviour for SNAPSHOT
     Option(resolver.findIvyFileRef(dd, data)) flatMap { ivyFile =>
       ivyFile.getResource match {
         case r: FileResource =>
+          val urlDescriptor = r.getFile.toURI.toURL
           try {
-            val parser = rmr.getDescriptor.getParser
-            val md = parser.parseDescriptor(settings, r.getFile.toURI.toURL, r, false)
-            Some(new ResolvedModuleRevision(resolver, resolver, md, rmr.getReport, true))
+            val parser = previouslyResolved.getDescriptor.getParser
+            val md = parser.parseDescriptor(settings, urlDescriptor, r, false)
+            val report = previouslyResolved.getReport
+            // Note that we always set force for SNAPSHOT resolution...
+            Some(new ResolvedModuleRevision(resolver, resolver, md, report, true))
           } catch {
-            case _: ParseException => None
+            case _: ParseException =>
+              Message.warn(s"The descriptor in $urlDescriptor from $resolver could not be parsed.")
+              Some(previouslyResolved)
           }
-        case _ => None
+        case unhandledResource =>
+          val unhandledClassName = unhandledResource.getClass.getName
+          val tip = s"Returning previously resolved $previouslyResolved."
+          Message.debug(s"Latest snapshots option does not handle `$unhandledClassName`. $tip")
+          Some(previouslyResolved)
       }
     } getOrElse {
-      Message.warn(
-        s"Unable to reparse ${dd.getDependencyRevisionId} from $resolver, using ${rmr.getPublicationDate}"
-      )
-      rmr
+      val previousRevision = dd.getDependencyRevisionId
+      val date = previouslyResolved.getPublicationDate
+      // Change from warn to debug -- see https://github.com/sbt/sbt/issues/2650.
+      Message.debug(s"Unable to find new descriptor for $previousRevision at $date in $resolver.")
+      previouslyResolved
     }
+  }
 
   /** Ported from BasicResolver#findFirstAirfactRef. */
   private[this] def findFirstArtifactRef(
