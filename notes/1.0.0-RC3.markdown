@@ -1,6 +1,6 @@
 ### Changes
 
-* Shade jsoup dependency from core ([#534])
+* Shade jsoup dependency in core ([#534])
 * Better support for Typelevel Scala in sbt-coursier ([#541])
 * Various fixes ([#541])
 
