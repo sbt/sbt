@@ -1,0 +1,4 @@
+> 'set scalaOrganization := "org.other"'
+> ++2.12.0-M5-bin-other-patch-1
+> 'set scalaBinaryVersion := "2.12.0-M5"'
+> checkDependencies

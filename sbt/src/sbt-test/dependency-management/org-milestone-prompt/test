@@ -1,0 +1,2 @@
+> 'set scalaOrganization := "org.other"'
+> checkDependencies
