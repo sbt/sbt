@@ -160,8 +160,15 @@ object EvaluateTask {
   import TaskExtra._
   import Keys.state
 
+  lazy private val sharedProgress = new TaskTimings(shutdown = true)
+
   private[sbt] def defaultProgress: ExecuteProgress[Task] =
-    if (java.lang.Boolean.getBoolean("sbt.task.timings")) new TaskTimings else ExecuteProgress.empty[Task]
+    if (java.lang.Boolean.getBoolean("sbt.task.timings")) {
+      if (java.lang.Boolean.getBoolean("sbt.task.timings.shutdown"))
+        sharedProgress
+      else
+        new TaskTimings(shutdown = false)
+    } else ExecuteProgress.empty[Task]
 
   val SystemProcessors = Runtime.getRuntime.availableProcessors
 
