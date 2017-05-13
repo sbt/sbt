@@ -400,4 +400,8 @@ object Keys {
   def dummyTask[T](name: String): Task[T] = Def.dummyTask(name)
   @deprecated("Implementation detail.", "0.13.1")
   def isDummy(t: Task[_]): Boolean = Def.isDummy(t)
+
+  val helpList = help(console)
+
+  def help(t: TaskKey[_]): Help = Help((t.key.label, t.key.description.getOrElse("")))
 }

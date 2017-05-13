@@ -28,7 +28,8 @@ final case class State(
     history: State.History,
     attributes: AttributeMap,
     globalLogging: GlobalLogging,
-    next: State.Next) extends Identity {
+    next: State.Next,
+    taskHelpList: Help = Help.empty) extends Identity {
   lazy val combinedParser = Command.combine(definedCommands)(this)
 }
 
