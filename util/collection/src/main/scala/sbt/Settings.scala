@@ -415,7 +415,7 @@ trait Init[Scope] {
       allDefs flatMap { case d: DerivedSetting[_] => (derivedToStruct get d map (_.outputs)).toStream.flatten; case s => Stream(s) }
     }
 
-  sealed trait Initialize[T] {
+  sealed trait Initialize[+T] {
     def dependencies: Seq[ScopedKey[_]]
     def apply[S](g: T => S): Initialize[S]
 
@@ -594,7 +594,7 @@ trait Init[Scope] {
       case Some(i) => Right(new Optional(i.validateKeyReferenced(g).right.toOption, f))
     }
     def mapConstant(g: MapConstant): Initialize[T] = new Optional(a map mapConstantT(g).fn, f)
-    def evaluate(ss: Settings[Scope]): T = f(a.flatMap(i => trapBadRef(evaluateT(ss)(i))))
+    def evaluate(ss: Settings[Scope]): T = f(a.flatMap(i => trapBadRef(evaluateT(ss)(i))): Option[Id[S]])
     // proper solution is for evaluate to be deprecated or for external use only and a new internal method returning Either be used
     private[this] def trapBadRef[A](run: => A): Option[A] = try Some(run) catch { case e: InvalidReference => None }
     private[sbt] def processAttributes[S](init: S)(f: (S, AttributeMap) => S): S = a match {
