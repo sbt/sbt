@@ -23,7 +23,8 @@ object CrossVersion {
    * For example, if `remapVersion = v => "2.10"` and the binary version is "2.9.2" or "2.10",
    * the module is cross-versioned with "2.10".
    */
-  final class Binary(val remapVersion: String => String) extends CrossVersion {
+  final class Binary @deprecated("Use the other constructor that doesn't take a function", "0.13.14") (val remapVersion: String => String) extends CrossVersion {
+    def this() = this(idFun)
     override def toString = "Binary"
   }
 
@@ -32,13 +33,19 @@ object CrossVersion {
    * For example, if `remapVersion = v => "2.10"` and the full version is "2.9.2" or "2.10.3",
    * the module is cross-versioned with "2.10".
    */
-  final class Full(val remapVersion: String => String) extends CrossVersion {
+  final class Full @deprecated("Use the other constructor that doesn't take a function", "0.13.14") (val remapVersion: String => String) extends CrossVersion {
+    def this() = this(idFun)
     override def toString = "Full"
   }
+
+  /** Cross-versions a module with the full Scala version excluding any `-bin` suffix. */
+  final class Patch extends CrossVersion { override def toString = "Patch" }
 
   private val disabledTag = implicitly[FastTypeTag[Disabled.type]]
   private val binaryTag = implicitly[FastTypeTag[Binary]]
   private val fullTag = implicitly[FastTypeTag[Full]]
+  private val patchTag = implicitly[FastTypeTag[Patch]]
+
   implicit val pickler: Pickler[CrossVersion] = new Pickler[CrossVersion] {
     val tag = implicitly[FastTypeTag[CrossVersion]]
     def pickle(a: CrossVersion, builder: PBuilder): Unit = {
@@ -47,6 +54,7 @@ object CrossVersion {
         case Disabled  => disabledTag
         case x: Binary => binaryTag
         case x: Full   => fullTag
+        case _: Patch  => patchTag
       })
       builder.beginEntry(a)
       builder.endEntry()
@@ -65,6 +73,7 @@ object CrossVersion {
         case t if t == disabledTag => Disabled
         case t if t == binaryTag   => binary
         case t if t == fullTag     => full
+        case t if t == patchTag    => patch
       }
       reader.endEntry()
       reader.popHints()
@@ -73,21 +82,23 @@ object CrossVersion {
   }
 
   /** Cross-versions a module with the full version (typically the full Scala version). */
-  def full: CrossVersion = new Full(idFun)
+  def full: CrossVersion = new Full()
 
   /**
    * Cross-versions a module with the result of applying `remapVersion` to the full version
    * (typically the full Scala version).  See also [[sbt.CrossVersion.Full]].
    */
+  @deprecated("Use 'full' instead.", "0.13.14")
   def fullMapped(remapVersion: String => String): CrossVersion = new Full(remapVersion)
 
   /** Cross-versions a module with the binary version (typically the binary Scala version).  */
-  def binary: CrossVersion = new Binary(idFun)
+  def binary: CrossVersion = new Binary()
 
   /**
    * Cross-versions a module with the result of applying `remapVersion` to the binary version
    * (typically the binary Scala version).  See also [[sbt.CrossVersion.Binary]].
    */
+  @deprecated("Use 'binary' instead.", "0.13.14")
   def binaryMapped(remapVersion: String => String): CrossVersion = new Binary(remapVersion)
 
   private[this] def idFun[T]: T => T = x => x
@@ -95,7 +106,7 @@ object CrossVersion {
   /**
    * Cross-versions a module with the full Scala version excluding any `-bin` suffix.
    */
-  def patch: CrossVersion = new Full(patchFun)
+  def patch: CrossVersion = new Patch
 
   private[this] def patchFun(fullVersion: String): String = {
     val BinCompatV = """(\d+)\.(\d+)\.(\d+)(-\w+)??-bin(-.*)?""".r
@@ -118,6 +129,7 @@ object CrossVersion {
       case Disabled  => None
       case b: Binary => append(b.remapVersion(binaryVersion))
       case f: Full   => append(f.remapVersion(fullVersion))
+      case _: Patch  => append(patchFun(fullVersion))
     }
 
   /** Constructs the cross-version function defined by `module` and `is`, if one is configured. */
