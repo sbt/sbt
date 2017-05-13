@@ -13,6 +13,7 @@
   [@topping]: https://github.com/topping
   [@WarsawScala]: https://github.com/WarsawScala
   [@kretes]: https://github.com/kretes
+  [1180]: https://github.com/sbt/sbt/issues/1180
   [1237]: https://github.com/sbt/sbt/issues/1237
   [1430]: https://github.com/sbt/sbt/issues/1430
   [1544]: https://github.com/sbt/sbt/issues/1544
@@ -62,6 +63,7 @@ Here are examples:
 - Don't hardcode existing relations in `TextAnalysisFormat`. [#1572][1572] by [@Duhemm][@Duhemm]
 - Adds `developers` key. [#1590][1590] by [@jedesah][@jedesah]
 - Will warn when none or multiple main classes detected. [#1648][1648] by [@kretes][@kretes]
+- Discovered main classes are now sorted. [#1180][1180] by [@kretes][@kretes]
 
 ### Bug fixes
 
