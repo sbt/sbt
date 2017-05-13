@@ -22,7 +22,7 @@ private[sbt] object ForkTests {
 
     val main =
       if (opts.tests.isEmpty)
-        constant(TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty))
+        constant(TestOutput(TestResult.Passed, mutable.ListBuffer.empty[(String, SuiteResult)], Iterable.empty))
       else
         mainTestTask(runners, opts, classpath, fork, log, config.parallel).tagw(config.tags: _*)
     main.tag(tag).dependsOn(all(opts.setup): _*) flatMap { results =>
@@ -39,8 +39,8 @@ private[sbt] object ForkTests {
       }
 
       object Acceptor extends Runnable {
-        val resultsAcc = mutable.Map.empty[String, SuiteResult]
-        lazy val result = TestOutput(overall(resultsAcc.values.map(_.result)), resultsAcc.toMap, Iterable.empty)
+        val resultsAcc = mutable.ListBuffer.empty[(String, SuiteResult)]
+        lazy val result = TestOutput(overall(resultsAcc.map(_._2.result)), resultsAcc, Iterable.empty)
 
         def run() {
           val socket =
@@ -96,7 +96,7 @@ private[sbt] object ForkTests {
         val ec = Fork.java(fork, options)
         val result =
           if (ec != 0)
-            TestOutput(TestResult.Error, Map("Running java with options " + options.mkString(" ") + " failed with exit code " + ec -> SuiteResult.Error), Iterable.empty)
+            TestOutput(TestResult.Error, mutable.ListBuffer("Running java with options " + options.mkString(" ") + " failed with exit code " + ec -> SuiteResult.Error), Iterable.empty)
           else {
             // Need to wait acceptor thread to finish its business
             acceptorThread.join()
@@ -117,7 +117,7 @@ private[sbt] object ForkTests {
       case _                       => sys.error("Unknown fingerprint type: " + f.getClass)
     }
 }
-private final class React(is: ObjectInputStream, os: ObjectOutputStream, log: Logger, listeners: Seq[TestReportListener], results: mutable.Map[String, SuiteResult]) {
+private final class React(is: ObjectInputStream, os: ObjectOutputStream, log: Logger, listeners: Seq[TestReportListener], results: mutable.Buffer[(String, SuiteResult)]) {
   import ForkTags._
   @annotation.tailrec def react(): Unit = is.readObject match {
     case `Done` =>
