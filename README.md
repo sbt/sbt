@@ -9,6 +9,8 @@
 sbt
 ===
 
+[![Join the chat at https://gitter.im/sbt/sbt](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/sbt/sbt?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 sbt is a build tool for Scala, Java, and more.
 
 For general documentation, see http://www.scala-sbt.org/.
