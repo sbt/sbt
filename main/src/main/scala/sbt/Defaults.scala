@@ -1378,8 +1378,8 @@ object Classpaths {
   private[sbt] def defaultProjectID: Initialize[ModuleID] = Def.setting {
     val base = ModuleID(organization.value, moduleName.value, version.value).cross(crossVersion in projectID value).artifacts(artifacts.value: _*)
     apiURL.value match {
-      case Some(u) if autoAPIMappings.value => base.extra(SbtPomExtraProperties.POM_API_KEY -> u.toExternalForm)
-      case _                                => base
+      case Some(u) => base.extra(SbtPomExtraProperties.POM_API_KEY -> u.toExternalForm)
+      case _       => base
     }
   }
   def pluginProjectID: Initialize[ModuleID] =
