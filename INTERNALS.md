@@ -2,11 +2,11 @@
 
 ## The model
 
-Mainly in [Definitions.scala](https://github.com/alexarchambault/coursier/blob/master/core/shared/src/main/scala/coursier/core/Definitions.scala), [Resolution.scala](https://github.com/alexarchambault/coursier/blob/master/core/shared/src/main/scala/coursier/core/Resolution.scala), and [ResolutionProcess.scala](https://github.com/alexarchambault/coursier/blob/master/core/shared/src/main/scala/coursier/core/ResolutionProcess.scala).
+Mainly in [Definitions.scala](https://github.com/coursier/coursier/blob/master/core/shared/src/main/scala/coursier/core/Definitions.scala), [Resolution.scala](https://github.com/coursier/coursier/blob/master/core/shared/src/main/scala/coursier/core/Resolution.scala), and [ResolutionProcess.scala](https://github.com/coursier/coursier/blob/master/core/shared/src/main/scala/coursier/core/ResolutionProcess.scala).
 
 ### Module
 
-[definition](https://github.com/alexarchambault/coursier/blob/462c16d6db98d35e180a25b0f87aa47083ad98aa/core/shared/src/main/scala/coursier/core/Definitions.scala#L12-L16)
+[definition](https://github.com/coursier/coursier/blob/462c16d6db98d35e180a25b0f87aa47083ad98aa/core/shared/src/main/scala/coursier/core/Definitions.scala#L12-L16)
 
 Uniquely designates a... module. Typically, just an organisation (`org.scala-lang`) and a name (`scala-library`). At times, can also contains so called attributes: (unordered) key-value pairs. E.g. the SBT plugins usually have some, like `scalaVersion` with value `2.10` and `sbtVersion` with value `0.13`.
 
@@ -16,7 +16,7 @@ During resolution, all dependencies with the same module have their versions rec
 
 ### Dependency
 
-[definition](https://github.com/alexarchambault/coursier/blob/462c16d6db98d35e180a25b0f87aa47083ad98aa/core/shared/src/main/scala/coursier/core/Definitions.scala#L43-L54)
+[definition](https://github.com/coursier/coursier/blob/462c16d6db98d35e180a25b0f87aa47083ad98aa/core/shared/src/main/scala/coursier/core/Definitions.scala#L43-L54)
 
 A dependency towards a given module, with a given version (can be a version interval too, like `[2.2,2.3)` - TODO add support for `last.revision`).
 
@@ -24,7 +24,7 @@ TODO Add a word about the various fields of `Dependency`
 
 ### Project
 
-[definition](https://github.com/alexarchambault/coursier/blob/462c16d6db98d35e180a25b0f87aa47083ad98aa/core/shared/src/main/scala/coursier/core/Definitions.scala#L69-L96)
+[definition](https://github.com/coursier/coursier/blob/462c16d6db98d35e180a25b0f87aa47083ad98aa/core/shared/src/main/scala/coursier/core/Definitions.scala#L69-L96)
 
 Metadata about a given version of a module.
 
@@ -34,7 +34,7 @@ TODO Describe the various fields of `Project`
 
 ### Resolution
 
-[definition](https://github.com/alexarchambault/coursier/blob/462c16d6db98d35e180a25b0f87aa47083ad98aa/core/shared/src/main/scala/coursier/core/Resolution.scala#L477-L487)
+[definition](https://github.com/coursier/coursier/blob/462c16d6db98d35e180a25b0f87aa47083ad98aa/core/shared/src/main/scala/coursier/core/Resolution.scala#L477-L487)
 
 State of the resolution.
 
@@ -45,7 +45,7 @@ Properties of Resolution: TODO describe the most important methods of `Resolutio
 
 ### ResolutionProcess
 
-[definition](https://github.com/alexarchambault/coursier/blob/462c16d6db98d35e180a25b0f87aa47083ad98aa/core/shared/src/main/scala/coursier/core/ResolutionProcess.scala)
+[definition](https://github.com/coursier/coursier/blob/462c16d6db98d35e180a25b0f87aa47083ad98aa/core/shared/src/main/scala/coursier/core/ResolutionProcess.scala)
 
 Proceeds with the resolution per se, starting from an initial state (a `Resolution` instance), until the final one.
 

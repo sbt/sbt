@@ -78,7 +78,7 @@ object Activation {
     val empty = Os(None, Set(), None, None)
 
     // below logic adapted from https://github.com/sonatype/plexus-utils/blob/f2beca21c75084986b49b3ab7b5f0f988021dcea/src/main/java/org/codehaus/plexus/util/Os.java
-    // brought in https://github.com/alexarchambault/coursier/issues/341 by @eboto
+    // brought in https://github.com/coursier/coursier/issues/341 by @eboto
 
     private val standardFamilies = Set(
       "windows",

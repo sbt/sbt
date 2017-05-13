@@ -1,4 +1,4 @@
-[coursier](http://github.com/alexarchambault/coursier) is a dependency resolver / fetcher *à la* Maven / Ivy, entirely
+[coursier](http://github.com/coursier/coursier) is a dependency resolver / fetcher *à la* Maven / Ivy, entirely
 rewritten from scratch in Scala. It aims at being fast and easy to embed
 in other contexts. Its very core (`core` module) aims at being
 extremely pure, and only requires to be fed external data (Ivy / Maven metadata) via a monad.
@@ -21,7 +21,7 @@ Compared to the default dependency resolution of SBT, it adds:
 * no global lock (no "Waiting for ~/.ivy2/.sbt.ivy.lock to be available").
 
 From the command-line, it also has:
-* a [launcher](https://github.com/alexarchambault/coursier#launch), able to launch apps distributed via Maven / Ivy repositories,
-* a [bootstrap](https://github.com/alexarchambault/coursier#bootstrap) generator, able to generate stripped launchers of these apps.
+* a [launcher](https://github.com/coursier/coursier#launch), able to launch apps distributed via Maven / Ivy repositories,
+* a [bootstrap](https://github.com/coursier/coursier#bootstrap) generator, able to generate stripped launchers of these apps.
 
-Lastly, it can be used programmatically via its [API](https://github.com/alexarchambault/coursier#api) and has a Scala JS [demo](https://github.com/alexarchambault/coursier#scala-js-demo).
+Lastly, it can be used programmatically via its [API](https://github.com/coursier/coursier#api) and has a Scala JS [demo](https://github.com/coursier/coursier#scala-js-demo).
