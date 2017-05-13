@@ -1,177 +1,194 @@
 package sbt
 
-import java.lang.Runnable
-import java.util.concurrent.{ atomic, Executor, LinkedBlockingQueue }
-import atomic.{ AtomicBoolean, AtomicInteger }
-import Types.{ :+:, ConstK, Id }
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.Executor
+import Types.Id
+import scala.concurrent.duration.Duration
+import scala.concurrent.{ Await, Promise }
 
-object EvaluationState extends Enumeration {
-  val New, Blocked, Ready, Calling, Evaluated = Value
+sealed trait EvaluationState[+T]
+
+object EvaluationState {
+  /** New */
+  object New extends EvaluationState[Nothing]
+
+  /** Being evaluated */
+  object Started extends EvaluationState[Nothing]
+
+  /** Being evaluated */
+  class Blocked(initial: Int) extends EvaluationState[Nothing] {
+    val count = new AtomicInteger(initial)
+  }
+
+  /** Evaluation finished */
+  class Evaluated[+T](val value: T) extends EvaluationState[T]
+}
+
+final class EvaluateExecutor(executor: Executor) {
+  private[this] val result = Promise[Unit]()
+
+  private[this] val runningCount = new AtomicInteger
+
+  private[this] def runnable(work: => Unit) = new Runnable {
+    runningCount.incrementAndGet()
+    def run() = if (!result.isCompleted) {
+      try {
+        work
+        if (runningCount.decrementAndGet() == 0) result.trySuccess(())
+      } catch {
+        case e: Throwable => result.tryFailure(e)
+      }
+    }
+  }
+
+  /** Execute the work, and wait until all submitted work has finished. May be called only once. */
+  def evaluate(work: => Unit)(duration: Duration): Unit = {
+    assert(runningCount.get == 0 && !result.isCompleted, "evaluate() already called")
+    runnable(work).run()
+    Await.result(result.future, duration)
+  }
+
+  /** Execute the work asynchronously */
+  def submit(work: => Unit): Unit = executor.execute(runnable(work))
 }
 
 abstract class EvaluateSettings[Scope] {
-  protected val init: Init[Scope]
+  protected[this] val init: Init[Scope]
   import init._
-  protected def executor: Executor
-  protected def compiledSettings: Seq[Compiled[_]]
+  protected[this] def executor: Executor
 
-  import EvaluationState.{ Value => EvaluationState, _ }
+  private[this] val evaluateExecutor = new EvaluateExecutor(executor)
 
-  private[this] val complete = new LinkedBlockingQueue[Option[Throwable]]
+  protected[this] def compiledSettings: Seq[Compiled[_]]
+
+  import EvaluationState._
+
   private[this] val static = PMap.empty[ScopedKey, INode]
   private[this] val allScopes: Set[Scope] = compiledSettings.map(_.key.scope).toSet
-  private[this] def getStatic[T](key: ScopedKey[T]): INode[T] = static get key getOrElse sys.error("Illegal reference to key " + key)
 
   private[this] val transform: Initialize ~> INode = new (Initialize ~> INode) {
     def apply[T](i: Initialize[T]): INode[T] = i match {
-      case k: Keyed[s, T] @unchecked          => single(getStatic(k.scopedKey), k.transform)
-      case a: Apply[k, T] @unchecked          => new MixedNode[k, T](a.alist.transform[Initialize, INode](a.inputs, transform), a.f, a.alist)
-      case b: Bind[s, T] @unchecked           => new BindNode[s, T](transform(b.in), x => transform(b.f(x)))
-      case init.StaticScopes                  => strictConstant(allScopes.asInstanceOf[T]) // can't convince scalac that StaticScopes => T == Set[Scope]
+      case k: Keyed[s, T] @unchecked => static.get(k.scopedKey).fold(sys.error(s"Illegal reference to key ${k.scopedKey}"))(single(_, k.transform))
+      case a: Apply[k, T] @unchecked =>
+        val a0 = a.asInstanceOf[Apply[({ type a[b[c]] = Any })#a, T]] // scalac fails to realize that k is higher-kinded
+        mixed(a0.alist.transform(a0.inputs, this), a0.f, a0.alist)
+      case b: Bind[s, T] @unchecked           => bind(apply(b.in), (x: s) => apply(b.f(x)))
+      case StaticScopes                       => strictConstant(allScopes.asInstanceOf[T]) // cast since T is unbounded; TODO: fix types so this isn't just assumed
       case v: Value[T] @unchecked             => constant(v.value)
       case v: ValidationCapture[T] @unchecked => strictConstant(v.key)
       case t: TransformCapture                => strictConstant(t.f)
-      case o: Optional[s, T] @unchecked => o.a match {
-        case None    => constant(() => o.f(None))
-        case Some(i) => single[s, T](transform(i), x => o.f(Some(x)))
-      }
+      case o: Optional[s, T] @unchecked       => o.a.fold(strictConstant(o.f(None)))(i => single(apply(i), (x: s) => o.f(Some(x))))
     }
   }
   private[this] lazy val roots: Seq[INode[_]] = compiledSettings flatMap { cs =>
-    (cs.settings map { s =>
+    cs.settings map { s =>
       val t = transform(s.init)
       static(s.key) = t
-      t
-    }): Seq[INode[_]]
+      t: INode[_]
+    }
   }
-  private[this] var running = new AtomicInteger
-  private[this] var cancel = new AtomicBoolean(false)
 
-  def run(implicit delegates: Scope => Seq[Scope]): Settings[Scope] =
+  final def run(implicit delegates: Scope => Seq[Scope]): Settings[Scope] =
     {
-      assert(running.get() == 0, "Already running")
-      startWork()
-      roots.foreach(_.registerIfNew())
-      workComplete()
-      complete.take() foreach { ex =>
-        cancel.set(true)
-        throw ex
+      evaluateExecutor.evaluate(roots.foreach(_.start()))(Duration.Inf)
+      (empty /: static.toTypedSeq) {
+        case (ss, static.TPair(key, node)) => if (key.key.isLocal) ss else ss.set(key.scope, key.key, node.value)
       }
-      getResults(delegates)
-    }
-  private[this] def getResults(implicit delegates: Scope => Seq[Scope]) =
-    (empty /: static.toTypedSeq) {
-      case (ss, static.TPair(key, node)) =>
-        if (key.key.isLocal) ss else ss.set(key.scope, key.key, node.get)
-    }
-  private[this] val getValue = new (INode ~> Id) { def apply[T](node: INode[T]) = node.get }
-
-  private[this] def submitEvaluate(node: INode[_]) = submit(node.evaluate())
-  private[this] def submitCallComplete[T](node: BindNode[_, T], value: T) = submit(node.callComplete(value))
-  private[this] def submit(work: => Unit): Unit =
-    {
-      startWork()
-      executor.execute(new Runnable { def run = if (!cancel.get()) run0(work) })
-    }
-  private[this] def run0(work: => Unit): Unit =
-    {
-      try { work } catch { case e: Throwable => complete.put(Some(e)) }
-      workComplete()
     }
 
-  private[this] def startWork(): Unit = running.incrementAndGet()
-  private[this] def workComplete(): Unit =
-    if (running.decrementAndGet() == 0)
-      complete.put(None)
+  private[this] val getValue = new (INode ~> Id) { def apply[T](node: INode[T]) = node.value }
 
   private[this] sealed abstract class INode[T] {
-    private[this] var state: EvaluationState = New
-    private[this] var value: T = _
-    private[this] val blocking = new collection.mutable.ListBuffer[INode[_]]
-    private[this] var blockedOn: Int = 0
-    private[this] val calledBy = new collection.mutable.ListBuffer[BindNode[_, T]]
+    self =>
 
-    override def toString = getClass.getName + " (state=" + state + ",blockedOn=" + blockedOn + ",calledBy=" + calledBy.size + ",blocking=" + blocking.size + "): " +
-      keyString
+    /** Current state */
+    private[this] var state: EvaluationState[T] = New
 
-    private[this] def keyString =
-      (static.toSeq.flatMap { case (key, value) => if (value eq this) init.showFullKey(key) :: Nil else Nil }).headOption getOrElse "non-static"
+    /** Handlers to call once evaluation is complete. */
+    private[this] val completeCallbacks = new collection.mutable.ListBuffer[() => Unit]
 
-    final def get: T = synchronized {
-      assert(value != null, toString + " not evaluated")
-      value
-    }
-    final def doneOrBlock(from: INode[_]): Boolean = synchronized {
-      val ready = state == Evaluated
-      if (!ready) blocking += from
-      registerIfNew()
-      ready
-    }
-    final def isDone: Boolean = synchronized { state == Evaluated }
-    final def isNew: Boolean = synchronized { state == New }
-    final def isCalling: Boolean = synchronized { state == Calling }
-    final def registerIfNew(): Unit = synchronized { if (state == New) register() }
-    private[this] def register(): Unit = {
-      assert(state == New, "Already registered and: " + toString)
-      val deps = dependsOn
-      blockedOn = deps.size - deps.count(_.doneOrBlock(this))
-      if (blockedOn == 0)
-        schedule()
-      else
-        state = Blocked
+    override def toString = {
+      val keyString = static.toSeq.collectFirst { case (key, `self`) => init.showFullKey(key) } getOrElse "non-static"
+      s"${getClass.getName} (state=$state,onComplete=${completeCallbacks.size}): $keyString"
     }
 
-    final def schedule(): Unit = synchronized {
-      assert(state == New || state == Blocked, "Invalid state for schedule() call: " + toString)
-      state = Ready
-      submitEvaluate(this)
+    /** Get the evaluated value. May be called only when evaluation has completed. */
+    final def value: T = state.asInstanceOf[Evaluated[T]].value
+
+    /** Set the evaluated value. May be called only once. */
+    final protected[this] def value_=(value: T) = {
+      assert(!state.isInstanceOf[Evaluated[_]], s"value_=() already called: $this")
+      val result = new Evaluated(value)
+      synchronized(state = result)
+      completeCallbacks foreach (_())
+      completeCallbacks.clear()
     }
-    final def unblocked(): Unit = synchronized {
-      assert(state == Blocked, "Invalid state for unblocked() call: " + toString)
-      blockedOn -= 1
-      assert(blockedOn >= 0, "Negative blockedOn: " + blockedOn + " for " + toString)
-      if (blockedOn == 0) schedule()
-    }
-    final def evaluate(): Unit = synchronized { evaluate0() }
-    protected final def makeCall(source: BindNode[_, T], target: INode[T]): Unit = {
-      assert(state == Ready, "Invalid state for call to makeCall: " + toString)
-      state = Calling
-      target.call(source)
-    }
-    protected final def setValue(v: T): Unit = {
-      assert(state != Evaluated, "Already evaluated (trying to set value to " + v + "): " + toString)
-      if (v == null) sys.error("Setting value cannot be null: " + keyString)
-      value = v
-      state = Evaluated
-      blocking foreach { _.unblocked() }
-      blocking.clear()
-      calledBy foreach { node => submitCallComplete(node, value) }
-      calledBy.clear()
-    }
-    final def call(by: BindNode[_, T]): Unit = synchronized {
-      registerIfNew()
-      state match {
-        case Evaluated => submitCallComplete(by, value)
-        case _         => calledBy += by
+
+    /** Start evaluation, if not started. */
+    final def start(): Unit = {
+      val isNew = synchronized {
+        val isNew = state eq New
+        if (isNew) state = Started
+        isNew
+      }
+      if (isNew) {
+        val dependencies = dependsOn
+        if (dependencies.isEmpty) {
+          evaluateExecutor.submit(evaluate())
+        } else {
+          val blocked = new Blocked(dependencies.size)
+          state = blocked
+          dependencies.foreach(_.onComplete(
+            if (blocked.count.decrementAndGet() == 0) evaluateExecutor.submit(evaluate())
+          ))
+        }
       }
     }
-    protected def dependsOn: Seq[INode[_]]
-    protected def evaluate0(): Unit
+
+    /** Call the callback when evaluation is complete. */
+    final def onComplete(callback: => Unit) = {
+      val evaluated = synchronized {
+        val evaluated = state.isInstanceOf[Evaluated[_]]
+        if (!evaluated) {
+          completeCallbacks += (() => callback)
+        }
+        evaluated
+      }
+      if (evaluated) callback else start()
+    }
+
+    /** Dependencies */
+    protected def dependsOn: Iterable[INode[_]]
+
+    /** Perform the evaluation. Implementations should eventually call [[value_=()]]. */
+    protected def evaluate(): Unit
   }
 
-  private[this] def strictConstant[T](v: T): INode[T] = constant(() => v)
-  private[this] def constant[T](f: () => T): INode[T] = new MixedNode[ConstK[Unit]#l, T]((), _ => f(), AList.empty)
-  private[this] def single[S, T](in: INode[S], f: S => T): INode[T] = new MixedNode[({ type l[L[x]] = L[S] })#l, T](in, f, AList.single[S])
-  private[this] final class BindNode[S, T](in: INode[S], f: S => INode[T]) extends INode[T] {
-    protected def dependsOn = in :: Nil
-    protected def evaluate0(): Unit = makeCall(this, f(in.get))
-    def callComplete(value: T): Unit = synchronized {
-      assert(isCalling, "Invalid state for callComplete(" + value + "): " + toString)
-      setValue(value)
-    }
+  private[this] def strictConstant[T](v: T): INode[T] = new INode[T] {
+    protected[this] def dependsOn = Nil
+    protected[this] def evaluate() = value = v
   }
-  private[this] final class MixedNode[K[L[x]], T](in: K[INode], f: K[Id] => T, alist: AList[K]) extends INode[T] {
-    protected def dependsOn = alist.toList(in)
-    protected def evaluate0(): Unit = setValue(f(alist.transform(in, getValue)))
+
+  private[this] def constant[T](f: () => T): INode[T] = new INode[T] {
+    protected[this] def dependsOn = Nil
+    protected[this] def evaluate() = value = f()
+  }
+
+  private[this] def single[S, T](in: INode[S], f: S => T): INode[T] = new INode[T] {
+    protected[this] def dependsOn = in :: Nil
+    protected[this] def evaluate() = value = f(in.value)
+  }
+
+  private[this] final def mixed[K[_[_]], T](in: K[INode], f: K[Id] => T, alist: AList[K]): INode[T] = new INode[T] {
+    protected[this] def dependsOn = alist.toList(in)
+    protected[this] def evaluate() = value = f(alist.transform(in, getValue))
+  }
+
+  private[this] final def bind[S, T](in: INode[S], f: S => INode[T]): INode[T] = new INode[T] {
+    protected[this] def dependsOn = in :: Nil
+    protected[this] def evaluate() = {
+      val node = f(in.value)
+      node.onComplete(evaluateExecutor.submit { value = node.value }) // submit prevents StackOverflowError
+    }
   }
 }
