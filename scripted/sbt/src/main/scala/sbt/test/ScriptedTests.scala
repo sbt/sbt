@@ -128,7 +128,7 @@ final class ScriptedTests(resourceBaseDirectory: File,
     s"""
       |import sbt._, Keys._
       |object InstrumentScripted extends AutoPlugin {
-      |  override def trigger = AllRequirements
+      |  override def trigger = allRequirements
       |  override def globalSettings: Seq[Setting[_]] =
       |    Seq(commands += setUpScripted) ++ super.globalSettings
       |

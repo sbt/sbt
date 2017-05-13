@@ -16,6 +16,8 @@ trait Import {
   val LoggedOutput = sbt.OutputStrategy.LoggedOutput
   type CustomOutput = sbt.OutputStrategy.CustomOutput
   val CustomOutput = sbt.OutputStrategy.CustomOutput
+  val AllRequirements = sbt.PluginTrigger.AllRequirements
+  val NoTrigger = sbt.PluginTrigger.NoTrigger
 
   // sbt.testing
   type TestResult = sbt.protocol.testing.TestResult
