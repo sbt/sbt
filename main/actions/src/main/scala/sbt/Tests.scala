@@ -266,8 +266,21 @@ object Tests {
     }
   def overall(results: Iterable[TestResult.Value]): TestResult.Value =
     (TestResult.Passed /: results) { (acc, result) => if (acc.id < result.id) result else acc }
-  def discover(frameworks: Seq[Framework], analysis: Analysis, log: Logger): (Seq[TestDefinition], Set[String]) =
-    discover(frameworks flatMap TestFramework.getFingerprints, allDefs(analysis), log)
+  def discover(frameworks: Seq[Framework], analysis: Analysis, log: Logger): (Seq[TestDefinition], Set[String]) = {
+    val (discoveredTestDefinitions, mains) = discover(frameworks flatMap TestFramework.getFingerprints, allDefs(analysis), log)
+    val enumeratedTestDefinitions = enumerate(frameworks)
+    (discoveredTestDefinitions ++ enumeratedTestDefinitions, mains)
+  }
+
+  def enumerate(frameworks: Seq[Framework]): Seq[TestDefinition] = {
+    val enumeratingFrameworks = frameworks.map(f => (f, scala.util.Try(f.getClass.getMethod("enumerateTests")))).filter(frameworkAndMethod => frameworkAndMethod._2.isSuccess)
+    enumeratingFrameworks.flatMap(frameworkAndMethod => frameworkAndMethod._2.get.invoke(frameworkAndMethod._1) match {
+      case names: Array[String] => names.map(name => {
+        new TestDefinition(name, frameworkAndMethod._1.fingerprints.head, true, Array(new SuiteSelector))
+      }).toSeq
+      case _ => Seq.empty[TestDefinition]
+    })
+  }
 
   def allDefs(analysis: Analysis) = analysis.apis.internal.values.flatMap(_.api.definitions).toSeq
   def discover(fingerprints: Seq[Fingerprint], definitions: Seq[Definition], log: Logger): (Seq[TestDefinition], Set[String]) =
