@@ -205,10 +205,12 @@ object Release {
     val baseDir = Project.extract(state).get(baseDirectory.in(ThisBuild))
     val pluginsSbtFile = baseDir / "project" / "plugins.sbt"
     val projectPluginsSbtFile = baseDir / "project" / "project" / "plugins.sbt"
+    val projectProjectPluginsSbtFile = baseDir / "project" / "project" / "project" / "plugins.sbt"
 
     val files = Seq(
       pluginsSbtFile,
-      projectPluginsSbtFile
+      projectPluginsSbtFile,
+      projectProjectPluginsSbtFile
     )
 
     for (f <- files) {
