@@ -194,11 +194,17 @@ lazy val `sbt-launcher` = project
   .settings(
     shared,
     generatePack,
-    libs ++= Seq(
-      Deps.caseApp,
-      Deps.sbtLauncherInterface,
-      Deps.typesafeConfig
-    )
+    dontPublishIn("2.10", "2.12"),
+    libs ++= {
+      if (scalaBinaryVersion.value == "2.11")
+        Seq(
+          Deps.caseApp,
+          Deps.sbtLauncherInterface,
+          Deps.typesafeConfig
+        )
+      else
+        Nil
+    }
   )
 
 lazy val `http-server` = project
