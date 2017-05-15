@@ -73,12 +73,12 @@ object Settings {
     resourceGenerators.in(Compile) += Def.task {
       import sys.process._
 
-      val dir = target.value
+      val dir = classDirectory.in(Compile).value / "coursier"
       val ver = version.value
   
       val f = dir / "coursier.properties"
       dir.mkdirs()
-  
+
       val p = new java.util.Properties
   
       p.setProperty("version", ver)
