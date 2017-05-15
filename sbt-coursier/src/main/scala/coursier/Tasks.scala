@@ -1,6 +1,6 @@
 package coursier
 
-import java.io.{File, InputStream, OutputStreamWriter}
+import java.io.{File, OutputStreamWriter}
 import java.net.URL
 import java.util.concurrent.{ExecutorService, Executors}
 
@@ -9,14 +9,11 @@ import coursier.extra.Typelevel
 import coursier.ivy.{IvyRepository, PropertiesPattern}
 import coursier.Keys._
 import coursier.Structure._
-import coursier.internal.FileUtil
 import coursier.util.{Config, Print}
-import org.apache.ivy.core.module.id.ModuleRevisionId
-import sbt.{ClasspathDep, Classpaths, Def, ProjectRef, Resolver, UpdateReport}
+import sbt.{Classpaths, Def, Resolver, UpdateReport}
 import sbt.Keys._
 
 import scala.collection.mutable
-import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
 import scalaz.{-\/, \/-}
