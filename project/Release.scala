@@ -231,6 +231,42 @@ object Release {
     state
   }
 
+  val mimaVersionsPattern = s"(?m)^(\\s+)${Pattern.quote("\"\" // binary compatibility versions")}$$".r
+
+  val updateMimaVersions = ReleaseStep { state =>
+
+    val vcs = state.vcs
+
+    val (releaseVer, _) = state.get(ReleaseKeys.versions).getOrElse {
+      sys.error(s"${ReleaseKeys.versions.label} key not set")
+    }
+
+    val baseDir = Project.extract(state).get(baseDirectory.in(ThisBuild))
+    val mimaScalaFile = baseDir / "project" / "Mima.scala"
+
+    val content = Source.fromFile(mimaScalaFile)(Codec.UTF8).mkString
+
+    mimaVersionsPattern.findAllIn(content).toVector match {
+      case Seq() => sys.error(s"Found no matches in $mimaScalaFile")
+      case Seq(_) =>
+      case _ => sys.error(s"Found too many matches in $mimaScalaFile")
+    }
+
+    val newContent = mimaVersionsPattern.replaceAllIn(
+      content,
+      m => {
+        val indent = m.group(1)
+        indent + "\"" + releaseVer + "\",\n" +
+          indent + "\"\" // binary compatibility versions"
+      }
+    )
+
+    Files.write(mimaScalaFile.toPath, newContent.getBytes(StandardCharsets.UTF_8))
+    vcs.add(mimaScalaFile.getAbsolutePath).!!(state.log)
+
+    state
+  }
+
   val commitUpdates = ReleaseStep(
     action = { state =>
 
@@ -312,11 +348,13 @@ object Release {
       releaseStepCommand("tut"),
       stageReadme,
       updatePluginsSbt,
+      updateMimaVersions,
       commitUpdates,
       reallyTagRelease,
       setNextVersion,
       commitNextVersion,
       ReleaseStep(_.reload),
+      releaseStepCommand("mimaReportBinaryIssues"),
       pushChanges
     ),
     releasePublishArtifactsAction := PgpKeys.publishSigned.value
