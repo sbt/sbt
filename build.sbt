@@ -235,7 +235,7 @@ lazy val okhttp = project
   )
 
 lazy val echo = project
-  .settings(shared)
+  .settings(pureJava)
 
 lazy val jvm = project
   .dummy
