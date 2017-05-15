@@ -88,7 +88,7 @@ object Settings {
       p.store(w, "Coursier properties")
       w.close()
   
-      println(s"Wrote $f")
+      state.value.log.info(s"Wrote $f")
   
       Seq(f)
     }

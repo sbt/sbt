@@ -5,7 +5,7 @@ import sbt.Keys._
 object Deps {
 
   def quasiQuotes = "org.scalamacros" %% "quasiquotes" % "2.1.0"
-  def fastParse = "com.lihaoyi" %% "fastparse" % "0.4.2"
+  def fastParse = "com.lihaoyi" %% "fastparse" % SharedVersions.fastParse
   def jsoup = "org.jsoup" % "jsoup" % "1.10.2"
   def scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
   def scalazConcurrent = "org.scalaz" %% "scalaz-concurrent" % SharedVersions.scalaz
