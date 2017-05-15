@@ -261,7 +261,7 @@ object MavenSource {
     typeExtensions.getOrElse(`type`, `type`)
 
   // see https://github.com/apache/maven/blob/c023e58104b71e27def0caa034d39ab0fa0373b6/maven-core/src/main/resources/META-INF/plexus/artifact-handlers.xml
-  // discussed in https://github.com/alexarchambault/coursier/issues/298
+  // discussed in https://github.com/coursier/coursier/issues/298
   val typeDefaultClassifiers: Map[String, String] = Map(
     "test-jar"    -> "tests",
     "javadoc"     -> "javadoc",

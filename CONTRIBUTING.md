@@ -2,7 +2,7 @@
 
 ## Compiling / testing via the command-line tool
 
-The [command-line tool](https://github.com/alexarchambault/coursier#command-line-1) of coursier allows to quickly test changes in the `core`, `cache`, and `cli` modules. To get a freshly compiled launcher for it, type
+The [command-line tool](https://github.com/coursier/coursier#command-line-1) of coursier allows to quickly test changes in the `core`, `cache`, and `cli` modules. To get a freshly compiled launcher for it, type
 ```
 $ sbt ++2.11.8 cli/pack
 ```
@@ -96,7 +96,7 @@ and tweaked a bit more depending on what should be tested.
 
 ## coursier build matrix
 
-The CI(s) of coursier (Linux and Mac with [Travis](https://travis-ci.org/alexarchambault/coursier/), Windows with [Appveyor](https://ci.appveyor.com/project/alexarchambault/coursier)) test a variety of things. Testing all of those locally can be quite cumbersome. Each of those is susceptible to make the CI fail - often for good reasons, sometimes for less good ones:
+The CI(s) of coursier (Linux and Mac with [Travis](https://travis-ci.org/coursier/coursier/), Windows with [Appveyor](https://ci.appveyor.com/project/alexarchambault/coursier)) test a variety of things. Testing all of those locally can be quite cumbersome. Each of those is susceptible to make the CI fail - often for good reasons, sometimes for less good ones:
 
 - 3 Scala versions (currently, `2.10.6`, `2.11.8`, and `2.12.1`),
 - 2 sbt plugins (`sbt-coursier` and `sbt-shading`), each with its own test suite,
