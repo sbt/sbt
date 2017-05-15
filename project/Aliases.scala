@@ -18,4 +18,10 @@ object Aliases {
 
   def ShadingPlugin = coursier.ShadingPlugin
 
+
+  implicit class ProjectOps(val proj: Project) extends AnyVal {
+    def dummy: Project =
+      proj.in(file(s"target/${proj.id}"))
+  }
+
 }

@@ -137,7 +137,7 @@ lazy val web = project
       if (scalaBinaryVersion.value == "2.11")
         dir
       else
-        dir / "dummy"
+        dir / "target" / "dummy"
     },
     noTests,
     webjarBintrayRepository,
@@ -226,6 +226,7 @@ lazy val echo = project
   .settings(shared)
 
 lazy val jvm = project
+  .dummy
   .aggregate(
     coreJvm,
     testsJvm,
@@ -248,6 +249,7 @@ lazy val jvm = project
   )
 
 lazy val js = project
+  .dummy
   .aggregate(
     coreJs,
     `fetch-js`,

@@ -162,7 +162,7 @@ object Settings {
         if (sbtScalaVersionMatch.value)
           baseDirectory.value
         else
-          baseDirectory.value / "dummy"
+          baseDirectory.value / "target" / "dummy"
       },
       publish := {
         if (sbtScalaVersionMatch.value)
