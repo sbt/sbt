@@ -21,7 +21,7 @@ object HttpUtil {
     buffer.toByteArray
   }
 
-  def fetch(url: String, log: Logger): String = {
+  def fetch(url: String, log: Logger, extraHeaders: Seq[(String, String)] = Nil): String = {
 
     val url0 = new URL(url)
 
@@ -36,7 +36,8 @@ object HttpUtil {
       try {
         conn = url0.openConnection()
         httpConn = conn.asInstanceOf[HttpURLConnection]
-        httpConn.setRequestProperty("Accept", "application/vnd.travis-ci.2+json")
+        for ((k, v) <- extraHeaders)
+          httpConn.setRequestProperty(k, v)
         is = conn.getInputStream
 
         (readFully(is), httpConn.getResponseCode)
