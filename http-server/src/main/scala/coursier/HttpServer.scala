@@ -19,13 +19,13 @@ import scalaz.concurrent.Task
 final case class AuthOptions(
   @ExtraName("u")
   @ValueDescription("user")
-    user: String,
+    user: String = "",
   @ExtraName("P")
   @ValueDescription("password")
-    password: String,
+    password: String = "",
   @ExtraName("r")
   @ValueDescription("realm")
-    realm: String
+    realm: String = ""
 ) {
   def checks(): Unit = {
     if (user.nonEmpty && password.isEmpty)
@@ -50,21 +50,21 @@ final case class AuthOptions(
 
 final case class VerbosityOptions(
   @ExtraName("v")
-    verbose: Int @@ Counter,
+    verbose: Int @@ Counter = Tag.of(0),
   @ExtraName("q")
-    quiet: Boolean
+    quiet: Boolean = false
 ) {
   lazy val verbosityLevel = Tag.unwrap(verbose) - (if (quiet) 1 else 0)
 }
 
 final case class HttpServerOptions(
   @Recurse
-    auth: AuthOptions,
+    auth: AuthOptions = AuthOptions(),
   @Recurse
-    verbosity: VerbosityOptions,
+    verbosity: VerbosityOptions = VerbosityOptions(),
   @ExtraName("d")
   @ValueDescription("served directory")
-    directory: String,
+    directory: String = ".",
   @ExtraName("h")
   @ValueDescription("host")
     host: String = "0.0.0.0",
@@ -72,15 +72,15 @@ final case class HttpServerOptions(
   @ValueDescription("port")
     port: Int = 8080,
   @ExtraName("s")
-    acceptPost: Boolean,
+    acceptPost: Boolean = false,
   @ExtraName("t")
-    acceptPut: Boolean,
+    acceptPut: Boolean = false,
   @ExtraName("w")
   @HelpMessage("Accept write requests. Equivalent to -s -t")
-    acceptWrite: Boolean,
+    acceptWrite: Boolean = false,
   @ExtraName("l")
   @HelpMessage("Generate content listing pages for directories")
-    listPages: Boolean
+    listPages: Boolean = false
 )
 
 object HttpServer {

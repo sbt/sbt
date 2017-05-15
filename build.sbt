@@ -308,7 +308,7 @@ lazy val addBootstrapInProguardedJar = {
 }
 
 lazy val proguardedCli = Seq(
-  ProguardKeys.proguardVersion.in(Proguard) := "5.3",
+  ProguardKeys.proguardVersion.in(Proguard) := SharedVersions.proguard,
   ProguardKeys.options.in(Proguard) ++= Seq(
     "-dontwarn",
     "-keep class coursier.cli.Coursier {\n  public static void main(java.lang.String[]);\n}",
