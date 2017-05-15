@@ -11,7 +11,7 @@ import xerial.sbt.Pack.{packAutoSettings, packExcludeArtifactTypes}
 
 import Aliases._
 
-object CoursierSettings {
+object Settings {
 
   lazy val scalazBintrayRepository = {
     resolvers += "Scalaz Bintray Repo" at "https://dl.bintray.com/scalaz/releases"

@@ -1,6 +1,6 @@
 
 import Aliases._
-import CoursierSettings._
+import Settings._
 import Publish._
 
 parallelExecution.in(Global) := false
