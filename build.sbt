@@ -263,7 +263,7 @@ lazy val js = project
   )
 
 lazy val coursier = project
-  .in(file("."))
+  .in(root)
   .aggregate(
     coreJvm,
     coreJs,
