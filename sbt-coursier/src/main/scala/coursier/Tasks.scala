@@ -425,6 +425,9 @@ object Tasks {
       }
     }
 
+  private val noOptionalFilter: Option[Dependency => Boolean] = Some(dep => !dep.optional)
+  private val typelevelOrgSwap: Option[Dependency => Dependency] = Some(Typelevel.swap(_))
+
 
   def resolutionTask(
     sbtClassifiers: Boolean = false
@@ -506,7 +509,7 @@ object Tasks {
 
       val startRes = Resolution(
         currentProject.dependencies.map(_._2).toSet,
-        filter = Some(dep => !dep.optional),
+        filter = noOptionalFilter,
         userActivations =
           if (userEnabledProfiles.isEmpty)
             None
@@ -518,7 +521,7 @@ object Tasks {
           forcedScalaModules(so, sv) ++
           interProjectDependencies.map(_.moduleVersion),
         projectCache = parentProjectCache,
-        mapDependencies = if (typelevel) Some(Typelevel.swap(_)) else None
+        mapDependencies = if (typelevel) typelevelOrgSwap else None
       )
 
       if (verbosityLevel >= 2) {
@@ -1060,7 +1063,7 @@ object Tasks {
       reportsCache.getOrElseUpdate(
         ReportCacheKey(
           currentProject,
-          res.copy(filter = None),
+          res,
           withClassifiers,
           sbtClassifiers
         ),
