@@ -60,6 +60,7 @@ lazy val lm = (project in file("librarymanagement"))
                                 jsch,
                                 scalaReflect.value,
                                 launcherInterface,
+                                gigahorseOkhttp,
                                 sjsonnewScalaJson % Optional),
     libraryDependencies ++= scalaXml.value,
     resourceGenerators in Compile += Def
