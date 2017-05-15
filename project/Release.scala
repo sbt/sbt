@@ -5,6 +5,7 @@ import java.util.regex.Pattern
 import com.typesafe.sbt.pgp.PgpKeys
 import sbt._
 import sbt.Keys._
+import sbt.Package.ManifestAttributes
 import sbtrelease.ReleasePlugin.autoImport._
 import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations._
 
@@ -257,6 +258,40 @@ object Release {
     }
   )
 
+  val addReleaseToManifest = ReleaseStep { state =>
+
+    val (releaseVer, _) = state.get(ReleaseKeys.versions).getOrElse {
+      sys.error(s"${ReleaseKeys.versions.label} key not set")
+    }
+
+    val tag = "v" + releaseVer
+
+    reapply(
+      Seq(
+        // Tag will be one commit after the one with which the publish was really made, because of the commit
+        // updating scripts / plugins.
+        packageOptions += ManifestAttributes("Vcs-Release-Tag" -> tag)
+      ),
+      state
+    )
+  }
+
+  // tagRelease from sbt-release seem to use the next version (snapshot one typically) rather than the released one :/
+  val reallyTagRelease = ReleaseStep { state =>
+
+    val (releaseVer, _) = state.get(ReleaseKeys.versions).getOrElse {
+      sys.error(s"${ReleaseKeys.versions.label} key not set")
+    }
+
+    val sign = Project.extract(state).get(releaseVcsSign)
+
+    val tag = "v" + releaseVer
+
+    state.vcs.tag(tag, s"Releasing $tag", sign).!(state.log)
+
+    state
+  }
+
 
   val settings = Seq(
     releaseProcess := Seq[ReleaseStep](
@@ -268,6 +303,7 @@ object Release {
       saveInitialVersion,
       setReleaseVersion,
       commitReleaseVersion,
+      addReleaseToManifest,
       publishArtifacts,
       releaseStepCommand("sonatypeRelease"),
       updateScripts,
@@ -277,7 +313,7 @@ object Release {
       stageReadme,
       updatePluginsSbt,
       commitUpdates,
-      tagRelease,
+      reallyTagRelease,
       setNextVersion,
       commitNextVersion,
       ReleaseStep(_.reload),
