@@ -163,10 +163,10 @@ lazy val web = project
 
 lazy val doc = project
   .dependsOn(coreJvm, cache)
+  .enablePlugins(TutPlugin)
   .settings(
     shared,
     dontPublish,
-    tutSettings,
     tutSourceDirectory := baseDirectory.value,
     tutTargetDirectory := baseDirectory.in(LocalRootProject).value
   )

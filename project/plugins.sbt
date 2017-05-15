@@ -11,7 +11,7 @@ plugins_(
   "io.get-coursier"   % "sbt-shading"     % coursierVersion,
   "org.xerial.sbt"    % "sbt-sonatype"    % "1.1",
   "com.timushev.sbt"  % "sbt-updates"     % "0.3.0",
-  "org.tpolecat"      % "tut-plugin"      % "0.4.8"
+  "org.tpolecat"      % "tut-plugin"      % "0.5.1"
 )
 
 libs ++= Seq(
