@@ -47,24 +47,24 @@ object Tasks {
     structure(state).allProjectRefs.filter(p => deps(p.project))
   }
 
-  def coursierResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] =
-    (
-      externalResolvers,
-      sbtPlugin,
-      sbtResolver,
-      bootResolvers,
-      overrideBuildResolvers
-    ).map { (extRes, isSbtPlugin, sbtRes, bootResOpt, overrideFlag) =>
-      bootResOpt.filter(_ => overrideFlag).getOrElse {
-        var resolvers = extRes
-        if (isSbtPlugin)
-          resolvers = Seq(
-            sbtRes,
-            Classpaths.sbtPluginReleases
-          ) ++ resolvers
-        resolvers
-      }
+  def coursierResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] = Def.task {
+
+    val extRes = externalResolvers.value
+    val isSbtPlugin = sbtPlugin.value
+    val sbtRes = sbtResolver.value
+    val bootResOpt = bootResolvers.value
+    val overrideFlag = overrideBuildResolvers.value
+
+    bootResOpt.filter(_ => overrideFlag).getOrElse {
+      var resolvers = extRes
+      if (isSbtPlugin)
+        resolvers = Seq(
+          sbtRes,
+          Classpaths.sbtPluginReleases
+        ) ++ resolvers
+      resolvers
     }
+  }
 
   def coursierRecursiveResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] =
     (
