@@ -31,7 +31,8 @@ We are working with Scala Center to provide [an automatic migration tool][sbt-mi
 - Drops deprecated `seq(..)` DSL method. Use `Seq` or pass in the settings without wrapping.
 - Drops deprecated `File`/`Seq[File]` setting enrichments. Use `.value` and `Def.setting`.
 - Drops deprecated `SubProcess` `apply` overload. Use `SubProcess(ForkOptions(runJVMOptions = ..))`.
-- Drops `toError(o: Option[String]): Unit` in favour of `o foreach sys.error`.
+- Drops `toError(opt: Option[String]): Unit` (equivalent to `opt foreach sys.error`); if used to wrap
+    `ScalaRun#run` then the replacement is `scalaRun.run(...).failed foreach (sys error _.getMessage)`
 - A number of the methods on `sbt.Path` (such as `relativeTo` and `rebase` and `flat`) are now no longer in the
     default namespace by virtue of being mixed into the sbt package object. Use `sbt.io.Path` to access them
     again.
