@@ -2,7 +2,7 @@ import Dependencies._
 import Util._
 import com.typesafe.tools.mima.core._, ProblemFilters._
 
-def baseVersion: String = "1.0.0-M21"
+def baseVersion: String = "1.0.0-M24"
 def internalPath   = file("internal")
 
 def commonSettings: Seq[Setting[_]] = Seq(
