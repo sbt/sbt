@@ -15,6 +15,8 @@ final class ObjectEvent[A](
   val contentType: String,
   val json: JValue
 ) extends Serializable {
+  override def toString: String =
+    s"ObjectEvent($level, $message, $channelName, $execId, $contentType, $json)"
 }
 
 object ObjectEvent {
