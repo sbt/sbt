@@ -48,14 +48,14 @@ abstract class BridgeProviderSpecification extends BaseIvySpecification {
     val sourceModule = ModuleID(
       xsbti.ArtifactInfo.SbtOrganization,
       bridgeId,
-      ComponentCompiler.incrementalVersion).withConfigurations(Some("component")).sources()
+      ZincComponentCompiler.incrementalVersion).withConfigurations(Some("component")).sources()
 
     val raw = new RawCompiler(instance, ClasspathOptionsUtil.auto, log)
     val manager = new ZincComponentManager(lock, provider(targetDir), secondaryCacheOpt, log)
     val componentCompiler =
-      new IvyComponentCompiler(raw, manager, ivyConfiguration, sourceModule, log)
+      new ZincComponentCompiler(raw, manager, ivyConfiguration, sourceModule, log)
 
-    val bridge = componentCompiler.apply()
+    val bridge = componentCompiler.getCompiledBridgeJar
     val target = targetDir / s"target-bridge-$scalaVersion.jar"
     IO.copyFile(bridge, target)
     target

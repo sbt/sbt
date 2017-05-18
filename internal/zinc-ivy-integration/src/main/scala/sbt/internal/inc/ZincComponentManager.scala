@@ -30,18 +30,14 @@ class ZincComponentManager(globalLock: xsbti.GlobalLock,
 
   /** Get all of the files for component 'id', throwing an exception if no files exist for the component. */
   def files(id: String)(ifMissing: IfMissing): Iterable[File] = {
-    def fromSecondary =
-      lockSecondaryCache {
-        update(id)
-        getOrElse(createAndCache)
-      } getOrElse notFound
+    def notFound = invalid("Could not find required component '" + id + "'")
     def getOrElse(orElse: => Iterable[File]): Iterable[File] = {
       val existing = provider.component(id)
       if (existing.isEmpty) orElse
       else existing
     }
-    def notFound = invalid("Could not find required component '" + id + "'")
-    def createAndCache =
+
+    def createAndCache = {
       ifMissing match {
         case IfMissing.Fail => notFound
         case d: IfMissing.Define =>
@@ -51,8 +47,30 @@ class ZincComponentManager(globalLock: xsbti.GlobalLock,
           }
           getOrElse(notFound)
       }
-    lockLocalCache { getOrElse(fromSecondary) }
+    }
+
+    def fromSecondary: Iterable[File] = {
+      lockSecondaryCache {
+        update(id)
+        getOrElse(createAndCache)
+      }.getOrElse(notFound)
+    }
+
+    lockLocalCache(getOrElse(fromSecondary))
   }
+
+  /** Get the file for component 'id', throwing an exception if no files or multiple files exist for the component. */
+  def file(id: String)(ifMissing: IfMissing): File = {
+    files(id)(ifMissing).toList match {
+      case x :: Nil => x
+      case xs =>
+        invalid("Expected single file for component '" + id + "', found: " + xs.mkString(", "))
+    }
+  }
+
+  /** Associate a component id to a series of jars. */
+  def define(id: String, files: Iterable[File]): Unit =
+    lockLocalCache(provider.defineComponent(id, files.toSeq.toArray))
 
   /** This is used to lock the local cache in project/boot/.  By checking the local cache first, we can avoid grabbing a global lock. */
   private def lockLocalCache[T](action: => T): T = lock(provider.lockFile)(action)
@@ -66,28 +84,16 @@ class ZincComponentManager(globalLock: xsbti.GlobalLock,
   private def lock[T](file: File)(action: => T): T =
     globalLock(file, new Callable[T] { def call = action })
 
-  /** Get the file for component 'id', throwing an exception if no files or multiple files exist for the component. */
-  def file(id: String)(ifMissing: IfMissing): File =
-    files(id)(ifMissing).toList match {
-      case x :: Nil => x
-      case xs =>
-        invalid("Expected single file for component '" + id + "', found: " + xs.mkString(", "))
-    }
   private def invalid(msg: String) = throw new InvalidComponent(msg)
-
-  def define(id: String, files: Iterable[File]) = lockLocalCache {
-    provider.defineComponent(id, files.toSeq.toArray)
-  }
 
   /** Retrieve the file for component 'id' from the secondary cache. */
   private def update(id: String): Unit = {
-    secondaryCacheDir map { dir =>
+    secondaryCacheDir foreach { dir =>
       val file = seondaryCacheFile(id, dir)
       if (file.exists) {
         define(id, Seq(file))
       }
     }
-    ()
   }
 
   /** Install the files for component 'id' to the secondary cache. */
@@ -107,20 +113,7 @@ class ZincComponentManager(globalLock: xsbti.GlobalLock,
     new File(new File(dir, sbtOrg), fileName)
   }
 }
-class InvalidComponent(msg: String, cause: Throwable) extends RuntimeException(msg, cause) {
-  def this(msg: String) = this(msg, null)
-}
-sealed trait IfMissing
-object IfMissing {
-  def fail: IfMissing = Fail
 
-  /** f is expected to call ZincComponentManager.define.  */
-  def define(useSecondaryCache: Boolean, f: => Unit): IfMissing = new Define(useSecondaryCache, f)
-  object Fail extends IfMissing
-  final class Define(val useSecondaryCache: Boolean, define: => Unit) extends IfMissing {
-    def run(): Unit = define
-  }
-}
 object ZincComponentManager {
   lazy val (version, timestamp) = {
     val properties = new java.util.Properties
