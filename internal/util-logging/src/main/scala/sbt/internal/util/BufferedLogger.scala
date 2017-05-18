@@ -38,7 +38,7 @@ class BufferedAppender private[BufferedAppender] (name: String, delegate: Append
   def append(event: XLogEvent): Unit =
     {
       if (recording) {
-        buffer += event
+        buffer += event.toImmutable
       } else delegate.append(event)
     }
 
