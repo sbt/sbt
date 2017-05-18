@@ -135,7 +135,7 @@ private[inc] class ZincComponentCompiler(
               val mod = bridgeSources.toString
               val unresolvedLines = unresolvedWarningLines.showLines(uw)
               val unretrievedMessage = s"The compiler bridge sources $mod could not be retrieved."
-              throw new InvalidComponent(s"$unresolvedLines\n$unresolvedLines")
+              throw new InvalidComponent(s"$unretrievedMessage\n$unresolvedLines")
 
             case Right(allArtifacts) =>
               val (srcs, xsbtiJars) = allArtifacts.partition(_.getName.endsWith("-sources.jar"))
