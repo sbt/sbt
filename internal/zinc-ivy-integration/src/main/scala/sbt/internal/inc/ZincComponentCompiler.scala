@@ -56,8 +56,8 @@ private[sbt] object ZincComponentCompiler {
                                            bridgeModule: ModuleID)
       extends CompilerBridgeProvider {
 
-    override def getBridgeSources(scalaInstance: xsbti.compile.ScalaInstance,
-                                  logger: xsbti.Logger): File = {
+    override def getCompiledBridge(scalaInstance: xsbti.compile.ScalaInstance,
+                                   logger: xsbti.Logger): File = {
       val autoClasspath = ClasspathOptionsUtil.auto
       val bridgeCompiler = new RawCompiler(scalaInstance, autoClasspath, logger)
       val ivyComponent =
