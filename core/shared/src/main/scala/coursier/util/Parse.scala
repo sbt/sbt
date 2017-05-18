@@ -190,12 +190,19 @@ object Parse {
       MavenRepository(s"https://dl.bintray.com/${s.stripPrefix("bintray:")}").right
     else if (s.startsWith("bintray-ivy:"))
       IvyRepository.fromPattern(
-        s"https://dl.bintray.com/${s.stripPrefix("bintray-ivy:").stripSuffix("/")}" +: "/" +:
+        s"https://dl.bintray.com/${s.stripPrefix("bintray-ivy:").stripSuffix("/")}/" +:
           coursier.ivy.Pattern.default
       ).right
     else if (s.startsWith("typesafe:ivy-"))
       IvyRepository.fromPattern(
-        (s"https://repo.typesafe.com/typesafe/ivy-" + s.stripPrefix("typesafe:ivy-") + "/") +:
+        s"https://repo.typesafe.com/typesafe/ivy-${s.stripPrefix("typesafe:ivy-")}/" +:
+          coursier.ivy.Pattern.default
+      ).right
+    else if (s.startsWith("typesafe:"))
+      MavenRepository(s"https://repo.typesafe.com/typesafe/${s.stripPrefix("typesafe:")}").right
+    else if (s.startsWith("sbt-plugin:"))
+      IvyRepository.fromPattern(
+        s"https://repo.scala-sbt.org/scalasbt/sbt-plugin-${s.stripPrefix("sbt-plugin:")}/" +:
           coursier.ivy.Pattern.default
       ).right
     else if (s.startsWith("ivy:"))
