@@ -239,8 +239,16 @@ object ResolutionTests extends TestSuite {
           Set(dep)
         ))
 
-        // A missing POM dependency is not reported correctly. That's why the method is deprecated.
-        assert(res.errors == Seq.empty)
+        val directDependencyErrors =
+          for {
+            dep <- res.dependencies.toSeq
+            err <- res.errorCache
+              .get(dep.moduleVersion)
+              .toSeq
+          } yield (dep, err)
+
+        // Error originates from a dependency import, not directly from a dependency
+        assert(directDependencyErrors.isEmpty)
 
         // metadataErrors have that
         assert(res.metadataErrors == Seq((Module("acme", "missing-pom"), "1.0.0") -> List("Not found")))

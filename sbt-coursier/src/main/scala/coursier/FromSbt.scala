@@ -7,6 +7,8 @@ import java.net.{MalformedURLException, URL}
 import coursier.core.Authentication
 import sbt.{CrossVersion, ModuleID, Resolver}
 
+import scalaz.{-\/, \/-}
+
 import SbtCompatibility._
 
 object FromSbt {
@@ -189,14 +191,25 @@ object FromSbt {
 
         mavenCompatibleBaseOpt0 match {
           case None =>
-            Some(IvyRepository(
+
+            val repo = IvyRepository.parse(
               "file://" + r.patterns.artifactPatterns.head,
               metadataPatternOpt = Some("file://" + r.patterns.ivyPatterns.head),
               changing = Some(true),
               properties = ivyProperties,
               dropInfoAttributes = true,
               authentication = authentication
-            ))
+            ) match {
+              case -\/(err) =>
+                sys.error(
+                  s"Cannot parse Ivy patterns ${r.patterns.artifactPatterns.head} and ${r.patterns.ivyPatterns.head}: $err"
+                )
+              case \/-(repo) =>
+                repo
+            }
+
+            Some(repo)
+
           case Some(mavenCompatibleBase) =>
             mavenRepositoryOpt("file://" + mavenCompatibleBase, log, authentication)
         }
@@ -209,14 +222,25 @@ object FromSbt {
 
         mavenCompatibleBaseOpt0 match {
           case None =>
-            Some(IvyRepository(
+
+            val repo = IvyRepository.parse(
               r.patterns.artifactPatterns.head,
               metadataPatternOpt = Some(r.patterns.ivyPatterns.head),
               changing = None,
               properties = ivyProperties,
               dropInfoAttributes = true,
               authentication = authentication
-            ))
+            ) match {
+              case -\/(err) =>
+                sys.error(
+                  s"Cannot parse Ivy patterns ${r.patterns.artifactPatterns.head} and ${r.patterns.ivyPatterns.head}: $err"
+                )
+              case \/-(repo) =>
+                repo
+            }
+
+            Some(repo)
+
           case Some(mavenCompatibleBase) =>
             mavenRepositoryOpt(mavenCompatibleBase, log, authentication)
         }

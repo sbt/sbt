@@ -1,6 +1,6 @@
 package coursier
 
-import java.io.{File, InputStream, OutputStreamWriter}
+import java.io.{File, OutputStreamWriter}
 import java.net.URL
 import java.util.concurrent.{ExecutorService, Executors}
 
@@ -9,14 +9,11 @@ import coursier.extra.Typelevel
 import coursier.ivy.{IvyRepository, PropertiesPattern}
 import coursier.Keys._
 import coursier.Structure._
-import coursier.internal.FileUtil
 import coursier.util.{Config, Print}
-import org.apache.ivy.core.module.id.ModuleRevisionId
-import sbt.{ClasspathDep, Classpaths, Def, ProjectRef, Resolver, UpdateReport}
+import sbt.{Classpaths, Def, Resolver, UpdateReport}
 import sbt.Keys._
 
 import scala.collection.mutable
-import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
 import scalaz.{-\/, \/-}
@@ -47,43 +44,45 @@ object Tasks {
     structure(state).allProjectRefs.filter(p => deps(p.project))
   }
 
-  def coursierResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] =
-    (
-      externalResolvers,
-      sbtPlugin,
-      sbtResolver,
-      bootResolvers,
-      overrideBuildResolvers
-    ).map { (extRes, isSbtPlugin, sbtRes, bootResOpt, overrideFlag) =>
-      bootResOpt.filter(_ => overrideFlag).getOrElse {
-        var resolvers = extRes
-        if (isSbtPlugin)
-          resolvers = Seq(
-            sbtRes,
-            Classpaths.sbtPluginReleases
-          ) ++ resolvers
-        resolvers
-      }
+  def coursierResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] = Def.task {
+
+    val extRes = externalResolvers.value
+    val isSbtPlugin = sbtPlugin.value
+    val sbtRes = sbtResolver.value
+    val bootResOpt = bootResolvers.value
+    val overrideFlag = overrideBuildResolvers.value
+
+    bootResOpt.filter(_ => overrideFlag).getOrElse {
+      var resolvers = extRes
+      if (isSbtPlugin)
+        resolvers = Seq(
+          sbtRes,
+          Classpaths.sbtPluginReleases
+        ) ++ resolvers
+      resolvers
     }
+  }
 
   def coursierRecursiveResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] =
-    (
-      sbt.Keys.state,
-      sbt.Keys.thisProjectRef
-    ).flatMap { (state, projectRef) =>
+    Def.taskDyn {
+
+      val state = sbt.Keys.state.value
+      val projectRef = sbt.Keys.thisProjectRef.value
 
       val projects = allRecursiveInterDependencies(state, projectRef)
 
-      coursierResolvers
+      val t = coursierResolvers
         .forAllProjects(state, projectRef +: projects)
         .map(_.values.toVector.flatten)
+
+      Def.task(t.value)
     }
 
   def coursierFallbackDependenciesTask: Def.Initialize[sbt.Task[Seq[(Module, String, URL, Boolean)]]] =
-    (
-      sbt.Keys.state,
-      sbt.Keys.thisProjectRef
-    ).flatMap { (state, projectRef) =>
+    Def.taskDyn {
+
+      val state = sbt.Keys.state.value
+      val projectRef = sbt.Keys.thisProjectRef.value
 
       val projects = allRecursiveInterDependencies(state, projectRef)
 
@@ -91,9 +90,8 @@ object Tasks {
         .forAllProjects(state, projectRef +: projects)
         .map(_.values.toVector.flatten)
 
-      for {
-        allDependencies <- allDependenciesTask
-      } yield {
+      Def.task {
+        val allDependencies = allDependenciesTask.value
 
         FromSbt.fallbackDependencies(
           allDependencies,
@@ -104,10 +102,10 @@ object Tasks {
     }
 
   def coursierProjectTask: Def.Initialize[sbt.Task[Project]] =
-    (
-      sbt.Keys.state,
-      sbt.Keys.thisProjectRef
-    ).flatMap { (state, projectRef) =>
+    Def.taskDyn {
+
+      val state = sbt.Keys.state.value
+      val projectRef = sbt.Keys.thisProjectRef.value
 
       // should projectID.configurations be used instead?
       val configurations = ivyConfigurations.in(projectRef).get(state)
@@ -143,9 +141,9 @@ object Tasks {
         res
       }
 
-      for {
-        allDependencies <- allDependenciesTask
-      } yield {
+      Def.task {
+
+        val allDependencies = allDependenciesTask.value
 
         val configMap = configurations.map(cfg => cfg.name -> cfg.extendsConfigs.map(_.name)).toMap
 
@@ -167,14 +165,16 @@ object Tasks {
     }
 
   def coursierInterProjectDependenciesTask: Def.Initialize[sbt.Task[Seq[Project]]] =
-    (
-      sbt.Keys.state,
-      sbt.Keys.thisProjectRef
-    ).flatMap { (state, projectRef) =>
+    Def.taskDyn {
+
+      val state = sbt.Keys.state.value
+      val projectRef = sbt.Keys.thisProjectRef.value
 
       val projects = allRecursiveInterDependencies(state, projectRef)
 
-      coursierProject.forAllProjects(state, projects).map(_.values.toVector)
+      val t = coursierProject.forAllProjects(state, projects).map(_.values.toVector)
+
+      Def.task(t.value)
     }
 
   def coursierPublicationsTask(
@@ -408,8 +408,10 @@ object Tasks {
   }
 
   def parentProjectCacheTask: Def.Initialize[sbt.Task[Map[Seq[sbt.Resolver],Seq[coursier.ProjectCache]]]] =
-    (sbt.Keys.state,
-      sbt.Keys.thisProjectRef).flatMap{ (state, projectRef) =>
+    Def.taskDyn {
+
+      val state = sbt.Keys.state.value
+      val projectRef = sbt.Keys.thisProjectRef.value
 
       val projectDeps = structure(state).allProjects
         .find(_.id == projectRef.project)
@@ -418,15 +420,26 @@ object Tasks {
 
       val projects = structure(state).allProjectRefs.filter(p => projectDeps(p.project))
 
-      coursierRecursiveResolvers.forAllProjects(state, projects).flatMap{ m =>
-        coursierResolution.forAllProjects(state, m.keys.toSeq).map{ n =>
-          n.foldLeft(Map.empty[Seq[Resolver], Seq[ProjectCache]]){ case (caches, (ref, resolution)) =>
-            m.get(ref).fold(caches)(resolvers =>
-              caches.updated(resolvers, resolution.projectCache +: caches.getOrElse(resolvers, Seq.empty)))
+      val t =
+        for {
+          m <- coursierRecursiveResolvers.forAllProjects(state, projects)
+          n <- coursierResolution.forAllProjects(state, m.keys.toSeq)
+        } yield
+          n.foldLeft(Map.empty[Seq[Resolver], Seq[ProjectCache]]) {
+            case (caches, (ref, resolution)) =>
+              m.get(ref).fold(caches) { resolvers =>
+                caches.updated(
+                  resolvers,
+                  resolution.projectCache +: caches.getOrElse(resolvers, Nil)
+                )
+              }
           }
-        }
-      }
+
+      Def.task(t.value)
     }
+
+  private val noOptionalFilter: Option[Dependency => Boolean] = Some(dep => !dep.optional)
+  private val typelevelOrgSwap: Option[Dependency => Dependency] = Some(Typelevel.swap(_))
 
 
   def resolutionTask(
@@ -509,7 +522,7 @@ object Tasks {
 
       val startRes = Resolution(
         currentProject.dependencies.map(_._2).toSet,
-        filter = Some(dep => !dep.optional),
+        filter = noOptionalFilter,
         userActivations =
           if (userEnabledProfiles.isEmpty)
             None
@@ -521,7 +534,7 @@ object Tasks {
           forcedScalaModules(so, sv) ++
           interProjectDependencies.map(_.moduleVersion),
         projectCache = parentProjectCache,
-        mapDependencies = if (typelevel) Some(Typelevel.swap(_)) else None
+        mapDependencies = if (typelevel) typelevelOrgSwap else None
       )
 
       if (verbosityLevel >= 2) {
@@ -1063,7 +1076,7 @@ object Tasks {
       reportsCache.getOrElseUpdate(
         ReportCacheKey(
           currentProject,
-          res.copy(filter = None),
+          res,
           withClassifiers,
           sbtClassifiers
         ),

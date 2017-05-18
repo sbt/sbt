@@ -51,11 +51,14 @@ object Travis {
     job: JobDetails
   )
 
+  val extraHeaders = Seq(
+    "Accept" -> "application/vnd.travis-ci.2+json"
+  )
 
   def builds(repo: String, log: Logger): List[Build] = {
 
     val url = s"https://api.travis-ci.org/repos/$repo/builds"
-    val resp = HttpUtil.fetch(url, log)
+    val resp = HttpUtil.fetch(url, log, extraHeaders)
 
     resp.decodeEither[Builds] match {
       case Left(err) =>
@@ -69,7 +72,7 @@ object Travis {
   def job(id: JobId, log: Logger): Job = {
 
     val url = s"https://api.travis-ci.org/jobs/${id.value}"
-    val resp = HttpUtil.fetch(url, log)
+    val resp = HttpUtil.fetch(url, log, extraHeaders)
 
     resp.decodeEither[Job] match {
       case Left(err) =>

@@ -9,7 +9,7 @@ object Properties {
     p.load(
       getClass
         .getClassLoader
-        .getResourceAsStream("coursier.properties")
+        .getResourceAsStream("coursier/coursier.properties")
     )
     p
   }

@@ -1,10 +1,11 @@
 package coursier.web
 
 import japgolly.scalajs.react.React
-import scala.scalajs.js.annotation.JSExport
+
+import scala.scalajs.js.annotation.{JSExport, JSExportTopLevel}
 import org.scalajs.dom.document
 
-@JSExport
+@JSExportTopLevel("CoursierWeb")
 object Main {
   @JSExport
   def main(): Unit = {

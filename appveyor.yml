@@ -22,7 +22,8 @@ install:
         Set-Location -Path ..
       }
 build_script:
-  - sbt ++2.11.11 clean compile coreJVM/publishLocal http-server/publishLocal
+  - sbt ++2.11.11 clean compile coreJVM/publishLocal
+  - sbt ++2.12.1 http-server/publishLocal
   - sbt ++2.10.6 clean compile
   - sbt ++2.12.1 coreJVM/publishLocal cache/publishLocal extra/publishLocal # to make the scripted sbt 1.0 tests happy
   - sbt ++2.10.6 coreJVM/publishLocal cache/publishLocal extra/publishLocal # to make the scripted sbt 0.13 tests happy

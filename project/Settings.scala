@@ -11,7 +11,7 @@ import xerial.sbt.Pack.{packAutoSettings, packExcludeArtifactTypes}
 
 import Aliases._
 
-object CoursierSettings {
+object Settings {
 
   lazy val scalazBintrayRepository = {
     resolvers += "Scalaz Bintray Repo" at "https://dl.bintray.com/scalaz/releases"
@@ -73,12 +73,12 @@ object CoursierSettings {
     resourceGenerators.in(Compile) += Def.task {
       import sys.process._
 
-      val dir = target.value
+      val dir = classDirectory.in(Compile).value / "coursier"
       val ver = version.value
   
       val f = dir / "coursier.properties"
       dir.mkdirs()
-  
+
       val p = new java.util.Properties
   
       p.setProperty("version", ver)
@@ -88,7 +88,7 @@ object CoursierSettings {
       p.store(w, "Coursier properties")
       w.close()
   
-      println(s"Wrote $f")
+      state.value.log.info(s"Wrote $f")
   
       Seq(f)
     }
@@ -162,7 +162,7 @@ object CoursierSettings {
         if (sbtScalaVersionMatch.value)
           baseDirectory.value
         else
-          baseDirectory.value / "dummy"
+          baseDirectory.value / "target" / "dummy"
       },
       publish := {
         if (sbtScalaVersionMatch.value)

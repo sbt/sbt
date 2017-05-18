@@ -1,6 +1,6 @@
 
 import Aliases._
-import CoursierSettings._
+import Settings._
 import Publish._
 
 parallelExecution.in(Global) := false
@@ -137,7 +137,7 @@ lazy val web = project
       if (scalaBinaryVersion.value == "2.11")
         dir
       else
-        dir / "dummy"
+        dir / "target" / "dummy"
     },
     noTests,
     webjarBintrayRepository,
@@ -163,10 +163,10 @@ lazy val web = project
 
 lazy val doc = project
   .dependsOn(coreJvm, cache)
+  .enablePlugins(TutPlugin)
   .settings(
     shared,
     dontPublish,
-    tutSettings,
     tutSourceDirectory := baseDirectory.value,
     tutTargetDirectory := baseDirectory.in(LocalRootProject).value
   )
@@ -194,11 +194,17 @@ lazy val `sbt-launcher` = project
   .settings(
     shared,
     generatePack,
-    libs ++= Seq(
-      Deps.caseApp,
-      Deps.sbtLauncherInterface,
-      Deps.typesafeConfig
-    )
+    dontPublishIn("2.10", "2.12"),
+    libs ++= {
+      if (scalaBinaryVersion.value == "2.11")
+        Seq(
+          Deps.caseApp,
+          Deps.sbtLauncherInterface,
+          Deps.typesafeConfig
+        )
+      else
+        Nil
+    }
   )
 
 lazy val `http-server` = project
@@ -206,12 +212,18 @@ lazy val `http-server` = project
     shared,
     generatePack,
     name := "http-server",
-    libs ++= Seq(
-      Deps.http4sBlazeServer,
-      Deps.http4sDsl,
-      Deps.slf4jNop,
-      Deps.caseApp12
-    )
+    dontPublishIn("2.10", "2.11"),
+    libs ++= {
+      if (scalaBinaryVersion.value == "2.12")
+        Seq(
+          Deps.http4sBlazeServer,
+          Deps.http4sDsl,
+          Deps.slf4jNop,
+          Deps.caseApp12
+        )
+      else
+        Nil
+    }
   )
 
 lazy val okhttp = project
@@ -223,9 +235,10 @@ lazy val okhttp = project
   )
 
 lazy val echo = project
-  .settings(shared)
+  .settings(pureJava)
 
 lazy val jvm = project
+  .dummy
   .aggregate(
     coreJvm,
     testsJvm,
@@ -248,6 +261,7 @@ lazy val jvm = project
   )
 
 lazy val js = project
+  .dummy
   .aggregate(
     coreJs,
     `fetch-js`,
@@ -261,7 +275,7 @@ lazy val js = project
   )
 
 lazy val coursier = project
-  .in(file("."))
+  .in(root)
   .aggregate(
     coreJvm,
     coreJs,
@@ -306,7 +320,7 @@ lazy val addBootstrapInProguardedJar = {
 }
 
 lazy val proguardedCli = Seq(
-  ProguardKeys.proguardVersion.in(Proguard) := "5.3",
+  ProguardKeys.proguardVersion.in(Proguard) := SharedVersions.proguard,
   ProguardKeys.options.in(Proguard) ++= Seq(
     "-dontwarn",
     "-keep class coursier.cli.Coursier {\n  public static void main(java.lang.String[]);\n}",

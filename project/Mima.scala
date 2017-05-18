@@ -6,12 +6,21 @@ import com.typesafe.tools.mima.plugin.MimaKeys._
 
 object Mima {
 
-  def binaryCompatibilityVersion = "1.0.0-RC1"
+  // Important: the line with the "binary compatibility versions" comment below is matched during releases
+  def binaryCompatibilityVersions = Set(
+    "1.0.0-RC1",
+    "1.0.0-RC2",
+    "1.0.0-RC3",
+    "" // binary compatibility versions
+  )
 
 
   lazy val previousArtifacts = Seq(
     mimaPreviousArtifacts := {
-      Set(organization.value %% moduleName.value % binaryCompatibilityVersion)
+      binaryCompatibilityVersions.collect {
+        case ver if ver.nonEmpty =>
+          organization.value %% moduleName.value % ver
+      }
     }
   )
 

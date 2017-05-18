@@ -5,6 +5,7 @@ import java.util.regex.Pattern
 import com.typesafe.sbt.pgp.PgpKeys
 import sbt._
 import sbt.Keys._
+import sbt.Package.ManifestAttributes
 import sbtrelease.ReleasePlugin.autoImport._
 import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations._
 
@@ -205,10 +206,12 @@ object Release {
     val baseDir = Project.extract(state).get(baseDirectory.in(ThisBuild))
     val pluginsSbtFile = baseDir / "project" / "plugins.sbt"
     val projectPluginsSbtFile = baseDir / "project" / "project" / "plugins.sbt"
+    val projectProjectPluginsSbtFile = baseDir / "project" / "project" / "project" / "plugins.sbt"
 
     val files = Seq(
       pluginsSbtFile,
-      projectPluginsSbtFile
+      projectPluginsSbtFile,
+      projectProjectPluginsSbtFile
     )
 
     for (f <- files) {
@@ -224,6 +227,42 @@ object Release {
       Files.write(f.toPath, newContent.getBytes(StandardCharsets.UTF_8))
       vcs.add(f.getAbsolutePath).!!(state.log)
     }
+
+    state
+  }
+
+  val mimaVersionsPattern = s"(?m)^(\\s+)${Pattern.quote("\"\" // binary compatibility versions")}$$".r
+
+  val updateMimaVersions = ReleaseStep { state =>
+
+    val vcs = state.vcs
+
+    val (releaseVer, _) = state.get(ReleaseKeys.versions).getOrElse {
+      sys.error(s"${ReleaseKeys.versions.label} key not set")
+    }
+
+    val baseDir = Project.extract(state).get(baseDirectory.in(ThisBuild))
+    val mimaScalaFile = baseDir / "project" / "Mima.scala"
+
+    val content = Source.fromFile(mimaScalaFile)(Codec.UTF8).mkString
+
+    mimaVersionsPattern.findAllIn(content).toVector match {
+      case Seq() => sys.error(s"Found no matches in $mimaScalaFile")
+      case Seq(_) =>
+      case _ => sys.error(s"Found too many matches in $mimaScalaFile")
+    }
+
+    val newContent = mimaVersionsPattern.replaceAllIn(
+      content,
+      m => {
+        val indent = m.group(1)
+        indent + "\"" + releaseVer + "\",\n" +
+          indent + "\"\" // binary compatibility versions"
+      }
+    )
+
+    Files.write(mimaScalaFile.toPath, newContent.getBytes(StandardCharsets.UTF_8))
+    vcs.add(mimaScalaFile.getAbsolutePath).!!(state.log)
 
     state
   }
@@ -255,6 +294,40 @@ object Release {
     }
   )
 
+  val addReleaseToManifest = ReleaseStep { state =>
+
+    val (releaseVer, _) = state.get(ReleaseKeys.versions).getOrElse {
+      sys.error(s"${ReleaseKeys.versions.label} key not set")
+    }
+
+    val tag = "v" + releaseVer
+
+    reapply(
+      Seq(
+        // Tag will be one commit after the one with which the publish was really made, because of the commit
+        // updating scripts / plugins.
+        packageOptions += ManifestAttributes("Vcs-Release-Tag" -> tag)
+      ),
+      state
+    )
+  }
+
+  // tagRelease from sbt-release seem to use the next version (snapshot one typically) rather than the released one :/
+  val reallyTagRelease = ReleaseStep { state =>
+
+    val (releaseVer, _) = state.get(ReleaseKeys.versions).getOrElse {
+      sys.error(s"${ReleaseKeys.versions.label} key not set")
+    }
+
+    val sign = Project.extract(state).get(releaseVcsSign)
+
+    val tag = "v" + releaseVer
+
+    state.vcs.tag(tag, s"Releasing $tag", sign).!(state.log)
+
+    state
+  }
+
 
   val settings = Seq(
     releaseProcess := Seq[ReleaseStep](
@@ -266,6 +339,7 @@ object Release {
       saveInitialVersion,
       setReleaseVersion,
       commitReleaseVersion,
+      addReleaseToManifest,
       publishArtifacts,
       releaseStepCommand("sonatypeRelease"),
       updateScripts,
@@ -274,11 +348,13 @@ object Release {
       releaseStepCommand("tut"),
       stageReadme,
       updatePluginsSbt,
+      updateMimaVersions,
       commitUpdates,
-      tagRelease,
+      reallyTagRelease,
       setNextVersion,
       commitNextVersion,
       ReleaseStep(_.reload),
+      releaseStepCommand("mimaReportBinaryIssues"),
       pushChanges
     ),
     releasePublishArtifactsAction := PgpKeys.publishSigned.value
