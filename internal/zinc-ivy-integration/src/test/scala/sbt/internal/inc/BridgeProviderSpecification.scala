@@ -20,15 +20,8 @@ import xsbti.{ ComponentProvider, GlobalLock }
  * Base class for test suites that must be able to fetch and compile the compiler bridge.
  */
 abstract class BridgeProviderSpecification extends BaseIvySpecification {
-  def realLocal: Resolver = {
-    val pList = Vector(s"$${user.home}/.ivy2/local/${Resolver.localBasePattern}")
-    FileRepository(
-      "local",
-      Resolver.defaultFileConfiguration,
-      Patterns().withIvyPatterns(pList).withArtifactPatterns(pList).withIsMavenCompatible(false))
-  }
-
-  override def resolvers: Vector[Resolver] = Vector(realLocal, DefaultMavenRepository)
+  override def resolvers: Vector[Resolver] =
+    Vector(ZincComponentCompiler.LocalResolver, DefaultMavenRepository)
   private val ivyConfiguration = mkIvyConfiguration(UpdateOptions())
 
   def secondaryCacheDirectory: File = {

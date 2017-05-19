@@ -137,6 +137,14 @@ private[sbt] object ZincComponentCompiler {
                         scalaJarsTarget: File): CompilerBridgeProvider =
     new ZincCompilerBridgeProvider(manager, ivyConfiguration, scalaJarsTarget)
 
+  private final val LocalIvy = s"$${user.home}/.ivy2/local/${Resolver.localBasePattern}"
+  final val LocalResolver: Resolver = {
+    val toUse = Vector(LocalIvy)
+    val ivyPatterns = Patterns().withIsMavenCompatible(false)
+    val finalPatterns = ivyPatterns.withIvyPatterns(toUse).withArtifactPatterns(toUse)
+    FileRepository("local", Resolver.defaultFileConfiguration, finalPatterns)
+  }
+
   def getDefaultConfiguration(baseDirectory: File,
                               ivyHome: File,
                               resolvers0: Array[Resolver],
