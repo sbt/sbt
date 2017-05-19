@@ -11,7 +11,8 @@ package inc
 
 import java.io.File
 import java.util.concurrent.Callable
-import sbt.util.Logger
+
+import sbt.internal.util.FullLogger
 import sbt.io.IO
 
 /**
@@ -26,7 +27,8 @@ import sbt.io.IO
 class ZincComponentManager(globalLock: xsbti.GlobalLock,
                            provider: xsbti.ComponentProvider,
                            secondaryCacheDir: Option[File],
-                           val log: Logger) {
+                           log0: xsbti.Logger) {
+  val log = new FullLogger(log0)
 
   /** Get all of the files for component 'id', throwing an exception if no files exist for the component. */
   def files(id: String)(ifMissing: IfMissing): Iterable[File] = {

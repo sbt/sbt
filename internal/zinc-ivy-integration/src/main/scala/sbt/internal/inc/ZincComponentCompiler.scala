@@ -137,6 +137,31 @@ private[sbt] object ZincComponentCompiler {
                         scalaJarsTarget: File): CompilerBridgeProvider =
     new ZincCompilerBridgeProvider(manager, ivyConfiguration, scalaJarsTarget)
 
+  def getDefaultConfiguration(baseDirectory: File,
+                              ivyHome: File,
+                              resolvers0: Array[Resolver],
+                              log: xsbti.Logger): IvyConfiguration = {
+    import sbt.io.syntax._
+    val empty = Vector.empty
+    val checksums = empty
+    val otherResolvers = empty
+    val resolvers = resolvers0.toVector
+    val updateOptions = UpdateOptions()
+    val paths = IvyPaths(baseDirectory, Some(ivyHome))
+    val resolutionCache = Some(ivyHome / "resolution-cache")
+    val chainResolver = ChainedResolver("zinc-chain", resolvers)
+    val moduleConfs = Vector(ModuleConfiguration("*", chainResolver))
+    new InlineIvyConfiguration(paths,
+                               resolvers,
+                               otherResolvers,
+                               moduleConfs,
+                               false,
+                               None,
+                               checksums,
+                               resolutionCache,
+                               updateOptions,
+                               log)
+  }
 }
 
 /**
