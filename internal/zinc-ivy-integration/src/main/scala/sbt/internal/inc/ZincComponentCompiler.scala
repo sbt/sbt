@@ -101,7 +101,7 @@ private[sbt] object ZincComponentCompiler {
       val ivyModule = ZincIvyActions.getModule(ivySbt, wrapper, dependencies)
       ZincIvyActions.update(ivyModule, scalaJarsTarget, noSource = true, fullLogger) match {
         case Left(uw) =>
-          val unresolvedLines = unresolvedWarningLines.showLines(uw)
+          val unresolvedLines = unresolvedWarningLines.showLines(uw).mkString("\n")
           val unretrievedMessage = s"The Scala compiler and library could not be retrieved."
           throw new InvalidComponent(s"$unretrievedMessage\n$unresolvedLines")
         case Right(allArtifacts) =>
@@ -211,7 +211,7 @@ private[inc] class ZincComponentCompiler(
           ZincIvyActions.update(ivyModuleForBridge, retrieveDirectory, false, buffered) match {
             case Left(uw) =>
               val mod = bridgeSources.toString
-              val unresolvedLines = unresolvedWarningLines.showLines(uw)
+              val unresolvedLines = unresolvedWarningLines.showLines(uw).mkString("\n")
               val unretrievedMessage = s"The compiler bridge sources $mod could not be retrieved."
               throw new InvalidComponent(s"$unretrievedMessage\n$unresolvedLines")
 
