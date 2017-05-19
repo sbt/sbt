@@ -845,7 +845,7 @@ object Defaults extends BuildCommon {
             val forkedConfig = config.copy(parallel = config.parallel && forkedParallelExecution)
             s.log.debug(s"Forking tests - parallelism = ${forkedConfig.parallel}")
             ForkTests(runners,
-                      tests.toList,
+                      tests.toVector,
                       forkedConfig,
                       cp.files,
                       opts,
@@ -855,7 +855,7 @@ object Defaults extends BuildCommon {
             if (javaOptions.nonEmpty) {
               s.log.warn("javaOptions will be ignored, fork is set to false")
             }
-            Tests(frameworks, loader, runners, tests, config, s.log)
+            Tests(frameworks, loader, runners, tests.toVector, config, s.log)
         }
     }
     val output = Tests.foldTasks(groupTasks, config.parallel)

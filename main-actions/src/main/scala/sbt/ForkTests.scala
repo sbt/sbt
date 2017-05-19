@@ -16,7 +16,7 @@ import sbt.protocol.testing._
 
 private[sbt] object ForkTests {
   def apply(runners: Map[TestFramework, Runner],
-            tests: List[TestDefinition],
+            tests: Vector[TestDefinition],
             config: Execution,
             classpath: Seq[File],
             fork: ForkOptions,
