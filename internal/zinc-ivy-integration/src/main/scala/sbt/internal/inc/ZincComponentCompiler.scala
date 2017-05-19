@@ -10,6 +10,7 @@ package internal
 package inc
 
 import java.io.File
+import java.net.URLClassLoader
 
 import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.io.{ Hash, IO }
@@ -20,8 +21,6 @@ import sbt.librarymanagement.syntax._
 import sbt.util.{ InterfaceUtil, Logger }
 import xsbti.compile.CompilerBridgeProvider
 
-import scala.reflect.internal.util.ScalaClassLoader.URLClassLoader
-
 private[sbt] object ZincComponentCompiler {
   final val binSeparator = "-bin_"
   final val javaClassVersion = System.getProperty("java.class.version")
@@ -31,23 +30,57 @@ private[sbt] object ZincComponentCompiler {
 
   private final val ZincVersionPropertyFile = "/incrementalcompiler.version.properties"
   private final val ZincVersionProperty = "version"
-  final lazy val incrementalVersion: String = {
+  private final lazy val incrementalVersion: String = {
     val cl = this.getClass.getClassLoader
     ResourceLoader.getPropertiesFor(ZincVersionPropertyFile, cl).getProperty(ZincVersionProperty)
   }
 
-  private class ZincCompilerBridgeProvider(manager: ZincComponentManager,
-                                           ivyConfiguration: IvyConfiguration,
-                                           bridgeModule: ModuleID)
-      extends CompilerBridgeProvider {
+  /** Defines the internal implementation of a bridge provider. */
+  private class ZincCompilerBridgeProvider(
+      manager: ZincComponentManager,
+      ivyConfiguration: IvyConfiguration,
+      scalaJarsTarget: File
+  ) extends CompilerBridgeProvider {
+
+    private val CompileConf = Some(Configurations.Compile.name)
+    private def getDefaultBridgeModule(scalaVersion: String): ModuleID = {
+      def compilerBridgeId(scalaVersion: String) = {
+        // Defaults to bridge for 2.12 for Scala versions bigger than 2.12.x
+        scalaVersion match {
+          case sc if (sc startsWith "2.10.") => "compiler-bridge_2.10"
+          case sc if (sc startsWith "2.11.") => "compiler-bridge_2.11"
+          case _                             => "compiler-bridge_2.12"
+        }
+      }
+
+      import xsbti.ArtifactInfo.SbtOrganization
+      val bridgeId = compilerBridgeId(scalaVersion)
+      ModuleID(SbtOrganization, bridgeId, incrementalVersion)
+        .withConfigurations(CompileConf)
+        .sources()
+    }
+
+    /**
+     * Defines a richer interface for Scala users that want to pass in an explicit module id.
+     *
+     * Note that this method cannot be defined in [[CompilerBridgeProvider]] because [[ModuleID]]
+     * is a Scala-defined class to which the compiler bridge cannot depend on.
+     */
+    def getCompiledBridge(bridgeSources: ModuleID,
+                          scalaInstance: xsbti.compile.ScalaInstance,
+                          logger: xsbti.Logger): File = {
+      val autoClasspath = ClasspathOptionsUtil.auto
+      val raw = new RawCompiler(scalaInstance, autoClasspath, logger)
+      val zinc = new ZincComponentCompiler(raw, manager, ivyConfiguration, bridgeSources, logger)
+      logger.debug(InterfaceUtil.f0(s"Getting $bridgeSources for Scala ${scalaInstance.version}"))
+      zinc.getCompiledBridgeJar
+    }
 
     override def getCompiledBridge(scalaInstance: xsbti.compile.ScalaInstance,
                                    logger: xsbti.Logger): File = {
-      val autoClasspath = ClasspathOptionsUtil.auto
-      val raw = new RawCompiler(scalaInstance, autoClasspath, logger)
-      val zinc = new ZincComponentCompiler(raw, manager, ivyConfiguration, bridgeModule, logger)
-      logger.debug(InterfaceUtil.f0(s"Getting $bridgeModule for Scala ${scalaInstance.version}"))
-      zinc.getCompiledBridgeJar
+      val scalaVersion = scalaInstance.actualVersion()
+      val bridgeSources = getDefaultBridgeModule(scalaVersion)
+      getCompiledBridge(bridgeSources, scalaInstance, logger)
     }
 
     private final case class ScalaArtifacts(compiler: File, library: File, others: Vector[File])
@@ -56,10 +89,9 @@ private[sbt] object ZincComponentCompiler {
       def isPrefixedWith(artifact: File, prefix: String) = artifact.getName.startsWith(prefix)
 
       import xsbti.ArtifactInfo._
-      import Configurations.Compile
       import UnresolvedWarning.unresolvedWarningLines
       val fullLogger = new FullLogger(logger)
-      val CompileConf = Some(Compile.name)
+      val CompileConf = Some(Configurations.Compile.name)
       val dummyModule = ModuleID(JsonUtil.sbtOrgTemp, s"tmp-scala-$scalaVersion", scalaVersion)
       val scalaLibrary = ModuleID(ScalaOrganization, ScalaLibraryID, scalaVersion)
       val scalaCompiler = ModuleID(ScalaOrganization, ScalaCompilerID, scalaVersion)
@@ -67,22 +99,20 @@ private[sbt] object ZincComponentCompiler {
       val wrapper = dummyModule.withConfigurations(CompileConf)
       val ivySbt: IvySbt = new IvySbt(ivyConfiguration)
       val ivyModule = ZincIvyActions.getModule(ivySbt, wrapper, dependencies)
-      IO.withTemporaryDirectory { retrieveDirectory =>
-        ZincIvyActions.update(ivyModule, retrieveDirectory, fullLogger) match {
-          case Left(uw) =>
-            val unresolvedLines = unresolvedWarningLines.showLines(uw)
-            val unretrievedMessage = s"The Scala compiler and library could not be retrieved."
-            throw new InvalidComponent(s"$unretrievedMessage\n$unresolvedLines")
-          case Right(allArtifacts) =>
-            val isScalaCompiler = (f: File) => isPrefixedWith(f, "scala-compiler-")
-            val isScalaLibrary = (f: File) => isPrefixedWith(f, "scala-library-")
-            val maybeScalaCompiler = allArtifacts.find(isScalaCompiler)
-            val maybeScalaLibrary = allArtifacts.find(isScalaLibrary)
-            val others = allArtifacts.filterNot(a => isScalaCompiler(a) || isScalaLibrary(a))
-            val scalaCompiler = maybeScalaCompiler.getOrElse(throw MissingScalaJar.compiler)
-            val scalaLibrary = maybeScalaLibrary.getOrElse(throw MissingScalaJar.library)
-            ScalaArtifacts(scalaCompiler, scalaLibrary, others)
-        }
+      ZincIvyActions.update(ivyModule, scalaJarsTarget, noSource = true, fullLogger) match {
+        case Left(uw) =>
+          val unresolvedLines = unresolvedWarningLines.showLines(uw)
+          val unretrievedMessage = s"The Scala compiler and library could not be retrieved."
+          throw new InvalidComponent(s"$unretrievedMessage\n$unresolvedLines")
+        case Right(allArtifacts) =>
+          val isScalaCompiler = (f: File) => isPrefixedWith(f, "scala-compiler-")
+          val isScalaLibrary = (f: File) => isPrefixedWith(f, "scala-library-")
+          val maybeScalaCompiler = allArtifacts.find(isScalaCompiler)
+          val maybeScalaLibrary = allArtifacts.find(isScalaLibrary)
+          val others = allArtifacts.filterNot(a => isScalaCompiler(a) || isScalaLibrary(a))
+          val scalaCompiler = maybeScalaCompiler.getOrElse(throw MissingScalaJar.compiler)
+          val scalaLibrary = maybeScalaLibrary.getOrElse(throw MissingScalaJar.library)
+          ScalaArtifacts(scalaCompiler, scalaLibrary, others)
       }
     }
 
@@ -93,6 +123,7 @@ private[sbt] object ZincComponentCompiler {
       val scalaCompiler = scalaArtifacts.compiler
       val scalaLibrary = scalaArtifacts.library
       val jarsToLoad = (scalaCompiler +: scalaLibrary +: scalaArtifacts.others).toArray
+      assert(jarsToLoad.forall(_.exists), "One or more jar(s) in the Scala instance do not exist.")
       val loader = new URLClassLoader(toURLs(jarsToLoad), ClasspathUtilities.rootLoader)
       val properties = ResourceLoader.getSafePropertiesFor("compiler.properties", loader)
       val loaderVersion = Option(properties.getProperty("version.number"))
@@ -103,8 +134,8 @@ private[sbt] object ZincComponentCompiler {
 
   def interfaceProvider(manager: ZincComponentManager,
                         ivyConfiguration: IvyConfiguration,
-                        sourcesModule: ModuleID): CompilerBridgeProvider =
-    new ZincCompilerBridgeProvider(manager, ivyConfiguration, sourcesModule)
+                        scalaJarsTarget: File): CompilerBridgeProvider =
+    new ZincCompilerBridgeProvider(manager, ivyConfiguration, scalaJarsTarget)
 
 }
 
@@ -177,7 +208,7 @@ private[inc] class ZincComponentCompiler(
       val target = new File(binaryDirectory, s"$compilerBridgeId.jar")
       buffered bufferQuietly {
         IO.withTemporaryDirectory { retrieveDirectory =>
-          ZincIvyActions.update(ivyModuleForBridge, retrieveDirectory, buffered) match {
+          ZincIvyActions.update(ivyModuleForBridge, retrieveDirectory, false, buffered) match {
             case Left(uw) =>
               val mod = bridgeSources.toString
               val unresolvedLines = unresolvedWarningLines.showLines(uw)
@@ -232,33 +263,34 @@ object ZincIvyActions {
     module.moduleSettings match {
       case ic: InlineConfiguration =>
         // Pretty print the module as `ModuleIDExtra.toStringImpl` does.
-        val dependency =
-          ic.dependencies.map(m => s"${m.organization}:${m.name}:${m.revision}").headOption
-        dependency.getOrElse(sys.error("Fatal: more than one dependency in dummy bridge module."))
+        ic.dependencies.map(m => s"${m.organization}:${m.name}:${m.revision}").mkString(", ")
       case _ => sys.error("Fatal: configuration to download was not inline.")
     }
   }
 
   private final val warningConf = UnresolvedWarningConfiguration()
   private final val defaultRetrievePattern = Resolver.defaultRetrievePattern
-  private def defaultUpdateConfiguration(retrieveDirectory: File): UpdateConfiguration = {
-    val retrieve = RetrieveConfiguration(retrieveDirectory, defaultRetrievePattern, false, None)
+  private def defaultUpdateConfiguration(targetDir: File, noSource: Boolean): UpdateConfiguration = {
+    val retrieve = RetrieveConfiguration(targetDir, defaultRetrievePattern, false, None)
     val logLevel = UpdateLogging.DownloadOnly
-    val noDocs = ArtifactTypeFilter.forbid(Set("doc"))
-    UpdateConfiguration(Some(retrieve), missingOk = false, logLevel, noDocs)
+    val defaultExcluded = Set("doc")
+    val finalExcluded = if (noSource) defaultExcluded + "src" else defaultExcluded
+    val artifactFilter = ArtifactTypeFilter.forbid(finalExcluded)
+    UpdateConfiguration(Some(retrieve), missingOk = false, logLevel, artifactFilter)
   }
 
   private[inc] def update(module: IvyModule,
                           retrieveDirectory: File,
+                          noSource: Boolean = false,
                           logger: Logger): Either[UnresolvedWarning, Vector[File]] = {
     import IvyActions.updateEither
-    val updateConfiguration = defaultUpdateConfiguration(retrieveDirectory)
+    val updateConfiguration = defaultUpdateConfiguration(retrieveDirectory, noSource)
     val dependencies = prettyPrintDependency(module)
-    logger.info(s"Attempting to fetch $dependencies. This operation may fail.")
+    logger.info(s"Attempting to fetch $dependencies.")
     val clockForCache = LogicalClock.unknown
     updateEither(module, updateConfiguration, warningConf, clockForCache, None, logger) match {
       case Left(unresolvedWarning) =>
-        logger.debug(s"Couldn't retrieve module ${prettyPrintDependency(module)}.")
+        logger.debug(s"Couldn't retrieve module(s) ${prettyPrintDependency(module)}.")
         Left(unresolvedWarning)
 
       case Right(updateReport) =>
