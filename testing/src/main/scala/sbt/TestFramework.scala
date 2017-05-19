@@ -73,7 +73,7 @@ final class TestDefinition(val name: String,
   override def hashCode: Int = (name.hashCode, TestFramework.hashCode(fingerprint)).hashCode
 }
 
-final class TestRunner(delegate: Runner, listeners: Seq[TestReportListener], log: ManagedLogger) {
+final class TestRunner(delegate: Runner, listeners: Vector[TestReportListener], log: ManagedLogger) {
 
   final def tasks(testDefs: Set[TestDefinition]): Array[TestTask] =
     delegate.tasks(
@@ -93,10 +93,12 @@ final class TestRunner(delegate: Runner, listeners: Seq[TestReportListener], log
       // here we get the results! here is where we'd pass in the event listener
       val results = new scala.collection.mutable.ListBuffer[Event]
       val handler = new EventHandler { def handle(e: Event): Unit = { results += e } }
-      val loggers = listeners.flatMap(_.contentLogger(testDefinition))
+      val loggers: Vector[ContentLogger] = listeners.flatMap(_.contentLogger(testDefinition))
       val nestedTasks =
         try testTask.execute(handler, loggers.map(_.log).toArray)
-        finally loggers.foreach(_.flush())
+        finally {
+          loggers.foreach(_.flush())
+        }
       val event = TestEvent(results)
       safeListenersCall(_.testEvent(event))
       (SuiteResult(results), nestedTasks.toSeq)
@@ -157,13 +159,13 @@ object TestFramework {
       frameworks: Map[TestFramework, Framework],
       runners: Map[TestFramework, Runner],
       testLoader: ClassLoader,
-      tests: Seq[TestDefinition],
+      tests: Vector[TestDefinition],
       log: ManagedLogger,
-      listeners: Seq[TestReportListener]
-  ): (() => Unit, Seq[(String, TestFunction)], TestResult => () => Unit) = {
+      listeners: Vector[TestReportListener]
+  ): (() => Unit, Vector[(String, TestFunction)], TestResult => () => Unit) = {
     val mappedTests = testMap(frameworks.values.toSeq, tests)
     if (mappedTests.isEmpty)
-      (() => (), Nil, _ => () => ())
+      (() => (), Vector(), _ => () => ())
     else
       createTestTasks(testLoader, runners.map {
         case (tf, r) => (frameworks(tf), new TestRunner(r, listeners, log))
@@ -171,7 +173,7 @@ object TestFramework {
   }
 
   private[this] def order(mapped: Map[String, TestFunction],
-                          inputs: Seq[TestDefinition]): Seq[(String, TestFunction)] =
+                          inputs: Vector[TestDefinition]): Vector[(String, TestFunction)] =
     for (d <- inputs; act <- mapped.get(d.name)) yield (d.name, act)
 
   private[this] def testMap(frameworks: Seq[Framework],
@@ -193,9 +195,10 @@ object TestFramework {
   private def createTestTasks(loader: ClassLoader,
                               runners: Map[Framework, TestRunner],
                               tests: Map[Framework, Set[TestDefinition]],
-                              ordered: Seq[TestDefinition],
+                              ordered: Vector[TestDefinition],
                               log: ManagedLogger,
-                              listeners: Seq[TestReportListener]) = {
+                              listeners: Vector[TestReportListener])
+    : (() => Unit, Vector[(String, TestFunction)], TestResult => (() => Unit)) = {
     val testsListeners = listeners collect { case tl: TestsListener => tl }
 
     def foreachListenerSafe(f: TestsListener => Unit): () => Unit =

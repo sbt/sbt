@@ -128,13 +128,13 @@ object Tests {
   final case class Group(name: String, tests: Seq[TestDefinition], runPolicy: TestRunPolicy)
 
   private[sbt] final class ProcessedOptions(
-      val tests: Seq[TestDefinition],
-      val setup: Seq[ClassLoader => Unit],
-      val cleanup: Seq[ClassLoader => Unit],
-      val testListeners: Seq[TestReportListener]
+      val tests: Vector[TestDefinition],
+      val setup: Vector[ClassLoader => Unit],
+      val cleanup: Vector[ClassLoader => Unit],
+      val testListeners: Vector[TestReportListener]
   )
   private[sbt] def processOptions(config: Execution,
-                                  discovered: Seq[TestDefinition],
+                                  discovered: Vector[TestDefinition],
                                   log: Logger): ProcessedOptions = {
     import collection.mutable.{ HashSet, ListBuffer }
     val testFilters = new ListBuffer[String => Boolean]
@@ -172,7 +172,10 @@ object Tests {
       if (orderedFilters.isEmpty) filtered0
       else orderedFilters.flatMap(f => filtered0.filter(d => f(d.name))).toList.distinct
     val uniqueTests = distinctBy(tests)(_.name)
-    new ProcessedOptions(uniqueTests, setup.toList, cleanup.toList, testListeners.toList)
+    new ProcessedOptions(uniqueTests.toVector,
+                         setup.toVector,
+                         cleanup.toVector,
+                         testListeners.toVector)
   }
 
   private[this] def distinctBy[T, K](in: Seq[T])(f: T => K): Seq[T] = {
@@ -183,7 +186,7 @@ object Tests {
   def apply(frameworks: Map[TestFramework, Framework],
             testLoader: ClassLoader,
             runners: Map[TestFramework, Runner],
-            discovered: Seq[TestDefinition],
+            discovered: Vector[TestDefinition],
             config: Execution,
             log: ManagedLogger): Task[Output] = {
     val o = processOptions(config, discovered, log)
@@ -201,11 +204,11 @@ object Tests {
   def testTask(loader: ClassLoader,
                frameworks: Map[TestFramework, Framework],
                runners: Map[TestFramework, Runner],
-               tests: Seq[TestDefinition],
+               tests: Vector[TestDefinition],
                userSetup: Iterable[ClassLoader => Unit],
                userCleanup: Iterable[ClassLoader => Unit],
                log: ManagedLogger,
-               testListeners: Seq[TestReportListener],
+               testListeners: Vector[TestReportListener],
                config: Execution): Task[Output] = {
     def fj(actions: Iterable[() => Unit]): Task[Unit] = nop.dependsOn(actions.toSeq.fork(_()): _*)
     def partApp(actions: Iterable[ClassLoader => Unit]) = actions.toSeq map { a => () =>
