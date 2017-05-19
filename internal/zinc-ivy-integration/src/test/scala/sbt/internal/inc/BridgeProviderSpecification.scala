@@ -10,14 +10,15 @@ import sbt.internal.librarymanagement.JsonUtil
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.librarymanagement.{
-  ModuleID,
-  UpdateOptions,
-  Resolver,
-  Patterns,
+  DefaultMavenRepository,
   FileRepository,
-  DefaultMavenRepository
+  ModuleID,
+  Patterns,
+  Resolver,
+  UpdateOptions
 }
 import sbt.util.Logger
+import xsbti.compile.CompilerBridgeProvider
 import xsbti.{ ComponentProvider, GlobalLock }
 
 /**
@@ -42,20 +43,29 @@ abstract class BridgeProviderSpecification extends BaseIvySpecification {
   }
   def secondaryCacheOpt: Option[File] = Some(secondaryCacheDirectory)
 
-  def getCompilerBridge(targetDir: File, log: Logger, scalaVersion: String): File = {
-    val instance = scalaInstance(scalaVersion)
+  def compilerBridgeId(scalaVersion: String) = {
+    scalaVersion match {
+      case sc if (sc startsWith "2.10.") => "compiler-bridge_2.10"
+      case sc if (sc startsWith "2.11.") => "compiler-bridge_2.11"
+      case _                             => "compiler-bridge_2.12"
+    }
+  }
+
+  def getZincProvider(targetDir: File, scalaVersion: String, log: Logger): CompilerBridgeProvider = {
+    import xsbti.ArtifactInfo.SbtOrganization
+    import ZincComponentCompiler.incrementalVersion
     val bridgeId = compilerBridgeId(scalaVersion)
-    val sourceModule = ModuleID(
-      xsbti.ArtifactInfo.SbtOrganization,
-      bridgeId,
-      ZincComponentCompiler.incrementalVersion).withConfigurations(Some("component")).sources()
+    val sourceModule = ModuleID(SbtOrganization, bridgeId, incrementalVersion)
+      .withConfigurations(Some("component"))
+      .sources()
+    val manager = new ZincComponentManager(lock, compProvider(targetDir), secondaryCacheOpt, log)
+    ZincComponentCompiler.interfaceProvider(manager, ivyConfiguration, sourceModule)
+  }
 
-    val raw = new RawCompiler(instance, ClasspathOptionsUtil.auto, log)
-    val manager = new ZincComponentManager(lock, provider(targetDir), secondaryCacheOpt, log)
-    val componentCompiler =
-      new ZincComponentCompiler(raw, manager, ivyConfiguration, sourceModule, log)
-
-    val bridge = componentCompiler.getCompiledBridgeJar
+  def getCompilerBridge(targetDir: File, log: Logger, scalaVersion: String): File = {
+    val provider = getZincProvider(targetDir, scalaVersion, log)
+    val scalaInstance = provider.getScalaInstance(scalaVersion, log)
+    val bridge = provider.getCompiledBridge(scalaInstance, log)
     val target = targetDir / s"target-bridge-$scalaVersion.jar"
     IO.copyFile(bridge, target)
     target
@@ -108,13 +118,6 @@ abstract class BridgeProviderSpecification extends BaseIvySpecification {
                       version)
   }
 
-  def compilerBridgeId(scalaVersion: String) =
-    scalaVersion match {
-      case sc if (sc startsWith "2.10.") => "compiler-bridge_2.10"
-      case sc if (sc startsWith "2.11.") => "compiler-bridge_2.11"
-      case _                             => "compiler-bridge_2.12"
-    }
-
   def scalaLoader(jars: Seq[File]) =
     new URLClassLoader(sbt.io.Path.toURLs(jars), ClasspathUtilities.rootLoader)
   def scalaVersion(scalaLoader: ClassLoader): Option[String] =
@@ -146,7 +149,7 @@ abstract class BridgeProviderSpecification extends BaseIvySpecification {
     override def apply[T](file: File, callable: Callable[T]): T = callable.call()
   }
 
-  private def provider(targetDir: File): ComponentProvider = new ComponentProvider {
+  private def compProvider(targetDir: File): ComponentProvider = new ComponentProvider {
 
     override def lockFile(): File = targetDir / "lock"
 
