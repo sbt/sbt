@@ -18,11 +18,17 @@ import xsbti.{ ComponentProvider, GlobalLock }
 
 /**
  * Base class for test suites that must be able to fetch and compile the compiler bridge.
+ *
+ * This is a very good example on how to instantiate the compiler bridge provider.
  */
-abstract class BridgeProviderSpecification extends BaseIvySpecification {
-  override def resolvers: Vector[Resolver] =
-    Vector(ZincComponentCompiler.LocalResolver, DefaultMavenRepository)
-  private val ivyConfiguration = mkIvyConfiguration(UpdateOptions())
+abstract class BridgeProviderSpecification extends UnitSpec {
+  def currentBase: File = new File(".")
+  def currentTarget: File = currentBase / "target" / "ivyhome"
+  def currentManaged: File = currentBase / "target" / "lib_managed"
+
+  val resolvers = Array(ZincComponentCompiler.LocalResolver, DefaultMavenRepository)
+  private val ivyConfiguration =
+    ZincComponentCompiler.getDefaultConfiguration(currentBase, currentTarget, resolvers, log)
 
   def secondaryCacheDirectory: File = {
     val target = file("target").getAbsoluteFile
