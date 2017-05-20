@@ -20,7 +20,7 @@ import sbt.internal.util.FullLogger
 import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
 import sbt.util.{ InterfaceUtil, Logger }
-import xsbti.GlobalLock
+import xsbti.{ ComponentProvider, GlobalLock }
 import xsbti.compile.CompilerBridgeProvider
 
 private[sbt] object ZincComponentCompiler {
@@ -149,6 +149,27 @@ private[sbt] object ZincComponentCompiler {
 
   def getDefaultLock: GlobalLock = new GlobalLock {
     override def apply[T](file: File, callable: Callable[T]): T = callable.call()
+  }
+
+  /** Defines a default component provider that manages the component in a given directory. */
+  private final class DefaultComponentProvider(targetDir: File) extends ComponentProvider {
+    import sbt.io.syntax._
+    private val LockFile = targetDir / "lock"
+    override def lockFile(): File = LockFile
+    override def componentLocation(id: String): File = targetDir / id
+    override def component(componentID: String): Array[File] =
+      IO.listFiles(targetDir / componentID)
+    override def defineComponent(componentID: String, files: Array[File]): Unit =
+      files.foreach(f => IO.copyFile(f, targetDir / componentID / f.getName))
+    override def addToComponent(componentID: String, files: Array[File]): Boolean = {
+      defineComponent(componentID, files)
+      true
+    }
+  }
+
+  def getDefaultComponentProvider(targetDir: File): ComponentProvider = {
+    require(targetDir.isDirectory)
+    new DefaultComponentProvider(targetDir)
   }
 
   def getDefaultConfiguration(baseDirectory: File,

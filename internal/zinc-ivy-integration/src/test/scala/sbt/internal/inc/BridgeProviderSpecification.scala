@@ -30,8 +30,10 @@ abstract class BridgeProviderSpecification extends BaseIvySpecification {
   }
 
   def getZincProvider(targetDir: File, log: Logger): CompilerBridgeProvider = {
+    val lock = ZincComponentCompiler.getDefaultLock
     val secondaryCache = Some(secondaryCacheDirectory)
-    val manager = new ZincComponentManager(lock, compProvider(targetDir), secondaryCache, log)
+    val componentProvider = ZincComponentCompiler.getDefaultComponentProvider(targetDir)
+    val manager = new ZincComponentManager(lock, componentProvider, secondaryCache, log)
     ZincComponentCompiler.interfaceProvider(manager, ivyConfiguration, currentManaged)
   }
 
@@ -49,23 +51,5 @@ abstract class BridgeProviderSpecification extends BaseIvySpecification {
                     logger: Logger): xsbti.compile.ScalaInstance = {
     val provider = getZincProvider(targetDir, logger)
     provider.getScalaInstance(scalaVersion, logger)
-  }
-
-  private val lock: GlobalLock = new GlobalLock {
-    override def apply[T](file: File, callable: Callable[T]): T = callable.call()
-  }
-
-  private def compProvider(targetDir: File): ComponentProvider = new ComponentProvider {
-    override def lockFile(): File = targetDir / "lock"
-    override def componentLocation(id: String): File =
-      throw new UnsupportedOperationException
-    override def component(componentID: String): Array[File] =
-      IO.listFiles(targetDir / componentID)
-    override def defineComponent(componentID: String, files: Array[File]): Unit =
-      files.foreach(f => IO.copyFile(f, targetDir / componentID / f.getName))
-    override def addToComponent(componentID: String, files: Array[File]): Boolean = {
-      defineComponent(componentID, files)
-      true
-    }
   }
 }

@@ -48,7 +48,7 @@ public final class ZincBridgeProvider {
     }
 
     /**
-     * Defines a global lock that does nothing but calling the callable to synchronize
+     * Returns a global lock that does nothing but calling the callable to synchronize
      * across threads. The lock file is used to resolve and download dependencies via ivy.
      * <p>
      * This operation is necesary to invoke {@link ZincBridgeProvider#getProvider(File, GlobalLock, ComponentProvider, IvyConfiguration, Logger)}.
@@ -57,6 +57,21 @@ public final class ZincBridgeProvider {
      */
     public static GlobalLock getDefaultLock() {
         return ZincComponentCompiler$.MODULE$.getDefaultLock();
+    }
+
+    /**
+     * Returns a default component provider that retrieves and installs component managers
+     * (like the compiled bridge sources) under a given target directory.
+     * <p>
+     * This is the most simplistic implementation of a component provider. If you need more
+     * advanced feature, like management of component via proxies (for companies) or access to
+     * other servers, you need to implement your own component provider.
+     *
+     * @param componentsRoot The directory in which components will be installed and retrieved.
+     * @return A default component provider.
+     */
+    public static ComponentProvider getDefaultComponentProvider(File componentsRoot) {
+        return ZincComponentCompiler$.MODULE$.getDefaultComponentProvider(componentsRoot);
     }
 
     /**
