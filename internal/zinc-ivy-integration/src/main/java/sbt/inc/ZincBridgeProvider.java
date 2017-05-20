@@ -48,20 +48,6 @@ public final class ZincBridgeProvider {
     }
 
     /**
-     * Cast a CheckedException as an unchecked one.
-     *
-     * @param throwable to cast
-     * @param <T>       the type of the Throwable
-     * @return this method will never return a Throwable instance, it will just throw it.
-     * @throws T the throwable as an unchecked throwable
-     */
-    @SuppressWarnings("unchecked")
-    private static <T extends Throwable> RuntimeException rethrow(Throwable throwable) throws T {
-        throw (T) throwable; // rely on vacuous cast
-    }
-
-
-    /**
      * Defines a global lock that does nothing but calling the callable to synchronize
      * across threads. The lock file is used to resolve and download dependencies via ivy.
      * <p>
@@ -70,19 +56,7 @@ public final class ZincBridgeProvider {
      * @return A default global lock.
      */
     public static GlobalLock getDefaultLock() {
-        return new GlobalLock() {
-            @Override
-            public <T> T apply(File lockFile, Callable<T> run) {
-                T value = null;
-                try {
-                    value = run.call();
-                } catch (Exception e) {
-                    // Rethrow runtime exception because apply does not define throwing Exception
-                    rethrow(e);
-                }
-                return value;
-            }
-        };
+        return ZincComponentCompiler$.MODULE$.getDefaultLock();
     }
 
     /**

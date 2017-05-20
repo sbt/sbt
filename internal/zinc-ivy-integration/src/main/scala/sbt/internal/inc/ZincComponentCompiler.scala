@@ -11,6 +11,7 @@ package inc
 
 import java.io.File
 import java.net.URLClassLoader
+import java.util.concurrent.Callable
 
 import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.io.{ Hash, IO }
@@ -19,6 +20,7 @@ import sbt.internal.util.FullLogger
 import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
 import sbt.util.{ InterfaceUtil, Logger }
+import xsbti.GlobalLock
 import xsbti.compile.CompilerBridgeProvider
 
 private[sbt] object ZincComponentCompiler {
@@ -143,6 +145,10 @@ private[sbt] object ZincComponentCompiler {
     val ivyPatterns = Patterns().withIsMavenCompatible(false)
     val finalPatterns = ivyPatterns.withIvyPatterns(toUse).withArtifactPatterns(toUse)
     FileRepository("local", Resolver.defaultFileConfiguration, finalPatterns)
+  }
+
+  def getDefaultLock: GlobalLock = new GlobalLock {
+    override def apply[T](file: File, callable: Callable[T]): T = callable.call()
   }
 
   def getDefaultConfiguration(baseDirectory: File,
