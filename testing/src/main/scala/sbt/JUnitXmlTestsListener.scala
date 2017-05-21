@@ -70,9 +70,12 @@ class JUnitXmlTestsListener(val outputDir: String) extends TestsListener {
                      {
                        for (e <- events) yield <testcase classname={ name } name={
                          e.selector match {
-                           case selector: TestSelector => selector.testName.split('.').last
-                           case nested: NestedTestSelector => nested.suiteId().split('.').last + "." + nested.testName()
-                           case other => s"(It is not a test it is a ${other.getClass.getCanonicalName})"
+                           case selector: TestSelector =>
+                             selector.testName.split('.').last
+                           case nested: NestedTestSelector =>
+                             nested.suiteId().split('.').last + "." + nested.testName()
+                           case other =>
+                             s"(It is not a test it is a ${other.getClass.getCanonicalName})"
                          }
                        } time={ (e.duration() / 1000.0).toString }>
                                                  {
