@@ -58,11 +58,29 @@ final class EvictionWarningOptions private[sbt] (
 
 object EvictionWarningOptions {
   def empty: EvictionWarningOptions =
-    new EvictionWarningOptions(Vector(), false, false, false, false, false, defaultGuess)
+    new EvictionWarningOptions(Vector(),
+      warnScalaVersionEviction = false,
+      warnDirectEvictions = false,
+      warnTransitiveEvictions = false,
+      infoAllEvictions = false,
+      showCallers = false,
+      defaultGuess)
   def default: EvictionWarningOptions =
-    new EvictionWarningOptions(Vector(Compile), true, true, false, false, false, defaultGuess)
+    new EvictionWarningOptions(Vector(Compile),
+      warnScalaVersionEviction = true,
+      warnDirectEvictions = true,
+      warnTransitiveEvictions = true,
+      infoAllEvictions = false,
+      showCallers = true,
+      defaultGuess)
   def full: EvictionWarningOptions =
-    new EvictionWarningOptions(Vector(Compile), true, true, true, true, true, defaultGuess)
+    new EvictionWarningOptions(Vector(Compile),
+      warnScalaVersionEviction = true,
+      warnDirectEvictions = true,
+      warnTransitiveEvictions = true,
+      infoAllEvictions = true,
+      showCallers = true,
+      defaultGuess)
 
   lazy val defaultGuess: Function1[(ModuleID, Option[ModuleID], Option[IvyScala]), Boolean] =
     guessSecondSegment orElse guessSemVer orElse guessFalse
