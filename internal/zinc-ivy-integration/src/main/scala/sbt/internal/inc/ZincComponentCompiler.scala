@@ -21,7 +21,7 @@ import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
 import sbt.util.{ InterfaceUtil, Logger }
 import xsbti.{ ComponentProvider, GlobalLock }
-import xsbti.compile.CompilerBridgeProvider
+import xsbti.compile.{ ClasspathOptionsUtil, CompilerBridgeProvider }
 
 private[sbt] object ZincComponentCompiler {
   final val binSeparator = "-bin_"
