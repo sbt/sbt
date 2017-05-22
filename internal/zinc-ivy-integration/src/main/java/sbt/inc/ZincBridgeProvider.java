@@ -1,5 +1,6 @@
 package sbt.inc;
 
+import sbt.internal.inc.ZincComponentCompiler;
 import sbt.internal.inc.ZincComponentCompiler$;
 import sbt.internal.inc.ZincComponentManager;
 import sbt.internal.librarymanagement.IvyConfiguration;
@@ -24,7 +25,7 @@ public final class ZincBridgeProvider {
      * @return A local ivy resolver.
      */
     public static Resolver getLocalResolver() {
-        return ZincComponentCompiler$.MODULE$.LocalResolver();
+        return ZincComponentCompiler.LocalResolver();
     }
 
     /**
@@ -44,7 +45,7 @@ public final class ZincBridgeProvider {
      * @return A default ivy configuration ready for fetching Zinc compiler components.
      */
     public static IvyConfiguration getDefaultConfiguration(File baseDirectory, File ivyHome, Resolver[] resolvers, Logger logger) {
-        return ZincComponentCompiler$.MODULE$.getDefaultConfiguration(baseDirectory, ivyHome, resolvers, logger);
+        return ZincComponentCompiler.getDefaultConfiguration(baseDirectory, ivyHome, resolvers, logger);
     }
 
     /**
@@ -56,7 +57,7 @@ public final class ZincBridgeProvider {
      * @return A default global lock.
      */
     public static GlobalLock getDefaultLock() {
-        return ZincComponentCompiler$.MODULE$.getDefaultLock();
+        return ZincComponentCompiler.getDefaultLock();
     }
 
     /**
@@ -71,7 +72,7 @@ public final class ZincBridgeProvider {
      * @return A default component provider.
      */
     public static ComponentProvider getDefaultComponentProvider(File componentsRoot) {
-        return ZincComponentCompiler$.MODULE$.getDefaultComponentProvider(componentsRoot);
+        return ZincComponentCompiler.getDefaultComponentProvider(componentsRoot);
     }
 
     /**
@@ -91,6 +92,6 @@ public final class ZincBridgeProvider {
                                                      IvyConfiguration ivyConfiguration,
                                                      Logger logger) {
         ZincComponentManager manager = new ZincComponentManager(lock, componentProvider, None$.empty(), logger);
-        return ZincComponentCompiler$.MODULE$.interfaceProvider(manager, ivyConfiguration, scalaJarsTarget);
+        return ZincComponentCompiler.interfaceProvider(manager, ivyConfiguration, scalaJarsTarget);
     }
 }
