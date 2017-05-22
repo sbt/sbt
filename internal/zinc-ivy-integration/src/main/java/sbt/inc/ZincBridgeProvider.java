@@ -15,7 +15,7 @@ import xsbti.compile.CompilerBridgeProvider;
 import java.io.File;
 import java.util.concurrent.Callable;
 
-public final class ZincBridgeProvider {
+public interface ZincBridgeProvider {
     /**
      * Returns an ivy resolver to resolve dependencies locally in the default `.ivy2/local`.
      * <p>
