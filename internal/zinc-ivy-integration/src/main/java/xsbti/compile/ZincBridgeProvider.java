@@ -1,7 +1,6 @@
-package sbt.inc;
+package xsbti.compile;
 
 import sbt.internal.inc.ZincComponentCompiler;
-import sbt.internal.inc.ZincComponentCompiler$;
 import sbt.internal.inc.ZincComponentManager;
 import sbt.internal.librarymanagement.IvyConfiguration;
 import sbt.librarymanagement.Resolver;
@@ -10,10 +9,8 @@ import scala.None$;
 import xsbti.ComponentProvider;
 import xsbti.GlobalLock;
 import xsbti.Logger;
-import xsbti.compile.CompilerBridgeProvider;
 
 import java.io.File;
-import java.util.concurrent.Callable;
 
 public interface ZincBridgeProvider {
     /**
