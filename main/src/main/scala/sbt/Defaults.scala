@@ -2151,16 +2151,18 @@ trait BuildExtra extends BuildCommon with DefExtra {
   def fullRunInputTask(scoped: InputKey[Unit], config: Configuration, mainClass: String, baseArguments: String*): Setting[InputTask[Unit]] =
     scoped := (inputTask { result =>
       (initScoped(scoped.scopedKey, runnerInit) zipWith (fullClasspath in config, streams, result).identityMap) { (rTask, t) =>
-        (t, rTask) map { case ((cp, s, args), r) =>
-          r.run(mainClass, data(cp), baseArguments ++ args, s.log) foreach sys.error
+        (t, rTask) map {
+          case ((cp, s, args), r) =>
+            r.run(mainClass, data(cp), baseArguments ++ args, s.log) foreach sys.error
         }
       }
     }).evaluated
   def fullRunTask(scoped: TaskKey[Unit], config: Configuration, mainClass: String, arguments: String*): Setting[Task[Unit]] =
     scoped := ((initScoped(scoped.scopedKey, runnerInit) zipWith (fullClasspath in config, streams).identityMap) {
       case (rTask, t) =>
-        (t, rTask) map { case ((cp, s), r) =>
-          r.run(mainClass, data(cp), arguments, s.log) foreach sys.error
+        (t, rTask) map {
+          case ((cp, s), r) =>
+            r.run(mainClass, data(cp), arguments, s.log) foreach sys.error
         }
     }).value
   def initScoped[T](sk: ScopedKey[_], i: Initialize[T]): Initialize[T] = initScope(fillTaskAxis(sk.scope, sk.key), i)
