@@ -23,11 +23,13 @@ import macros._
  * The returned list of ValDefs should be the ValDefs from `inputs`, but with non-empty right-hand sides.
  */
 trait TupleBuilder {
+
   /** A convenience alias for a list of inputs (associated with a Universe of type U). */
   type Inputs[U <: Universe with Singleton] = List[Instance.Input[U]]
 
   /** Constructs a one-time use Builder for Context `c` and type constructor `tcType`. */
-  def make(c: blackbox.Context)(tcType: c.Type, inputs: Inputs[c.universe.type]): BuilderResult[c.type]
+  def make(c: blackbox.Context)(tcType: c.Type,
+                                inputs: Inputs[c.universe.type]): BuilderResult[c.type]
 }
 
 trait BuilderResult[C <: blackbox.Context with Singleton] {
@@ -52,4 +54,3 @@ trait BuilderResult[C <: blackbox.Context with Singleton] {
 	* non-empty right hand sides. Each `ValDef` may refer to `param` and previous `ValDef`s in the list.*/
   def extract(param: ValDef): List[ValDef]
 }
-
