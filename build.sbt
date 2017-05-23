@@ -149,21 +149,22 @@ lazy val testAgentProj = (project in file("testing") / "agent").settings(
 
 // Basic task engine
 lazy val taskProj = (project in file("tasks"))
+.dependsOn(settingsDataProj)
   .settings(
     testedBaseSettings,
     name := "Tasks"
   )
-  .configure(addSbtUtilControl, addSbtUtilCollection)
+  .configure(addSbtUtilControl)
 
 // Standard task system.  This provides map, flatMap, join, and more on top of the basic task model.
 lazy val stdTaskProj = (project in file("tasks-standard"))
-  .dependsOn(taskProj % "compile;test->test")
+  .dependsOn(taskProj % "compile;test->test", settingsDataProj)
   .settings(
     testedBaseSettings,
     name := "Task System",
     testExclusive
   )
-  .configure(addSbtUtilCollection, addSbtUtilLogging, addSbtUtilCache, addSbtIO)
+  .configure(addSbtUtilLogging, addSbtUtilCache, addSbtIO)
 
 // Embedded Scala code runner
 lazy val runProj = (project in file("run"))
@@ -249,16 +250,38 @@ lazy val commandProj = (project in file("main-command"))
              addSbtCompilerClasspath,
              addSbtLm)
 
+// The settings collection project defines all the data structures for settings,
+// attributes and init -- the core collection that is used internally to
+// represent the underlying sbt model.
+lazy val settingsDataProj = (project in file("core-settings")).
+  settings(
+    commonSettings,
+    crossScalaVersions := Seq(scala210, scala211, scala212),
+    Util.keywordsSettings,
+    name := "Core Settings",
+    libraryDependencies ++= Seq(sjsonnew)
+  )
+  .configure(addSbtUtilTesting)
+
+// The core macro project defines the main logic of the DSL, abstracted
+// away from several sbt implementators (tasks, settings, et cetera).
+lazy val coreMacrosProj = (project in file("core-macros")).
+  dependsOn(settingsDataProj).
+  settings(
+    commonSettings,
+    name := "Core Macros",
+    libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value
+  )
+
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
 lazy val mainSettingsProj = (project in file("main-settings"))
-  .dependsOn(commandProj, stdTaskProj)
+  .dependsOn(commandProj, stdTaskProj, coreMacrosProj)
   .settings(
     testedBaseSettings,
     name := "Main Settings"
   )
   .configure(
     addSbtUtilCache,
-    addSbtUtilApplyMacro,
     addSbtCompilerInterface,
     addSbtUtilRelation,
     addSbtUtilLogging,

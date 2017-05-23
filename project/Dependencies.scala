@@ -18,9 +18,7 @@ object Dependencies {
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
-  private val utilApplyMacro = "org.scala-sbt" %% "util-apply-macro" % utilVersion
   private val utilCache = "org.scala-sbt" %% "util-cache" % utilVersion
-  private val utilCollection = "org.scala-sbt" %% "util-collection" % utilVersion
   private val utilCompletion = "org.scala-sbt" %% "util-completion" % utilVersion
   private val utilControl = "org.scala-sbt" %% "util-control" % utilVersion
   private val utilLogging = "org.scala-sbt" %% "util-logging" % utilVersion
@@ -71,11 +69,7 @@ object Dependencies {
 
   def addSbtIO(p: Project): Project = addSbtModule(p, sbtIoPath, "io", sbtIO)
 
-  def addSbtUtilApplyMacro(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilApplyMacro", utilApplyMacro)
   def addSbtUtilCache(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilCache", utilCache)
-  def addSbtUtilCollection(p: Project): Project =
-    addSbtModule(p, sbtUtilPath, "utilCollection", utilCollection)
   def addSbtUtilCompletion(p: Project): Project =
     addSbtModule(p, sbtUtilPath, "utilComplete", utilCompletion)
   def addSbtUtilControl(p: Project): Project =
@@ -108,7 +102,10 @@ object Dependencies {
   def addSbtZincCompile(p: Project): Project =
     addSbtModule(p, sbtZincPath, "zincCompile", zincCompile)
 
-  val sjsonNewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % "0.7.0"
+
+  val sjsonnewVersion = "0.7.0"
+  val sjsonnew = "com.eed3si9n" %% "sjson-new-core" % sjsonnewVersion
+  val sjsonNewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % sjsonnewVersion
 
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.13.4"
   val specs2 = "org.specs2" %% "specs2" % "2.4.17"
