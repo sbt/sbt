@@ -254,14 +254,13 @@ lazy val coreMacrosProj = (project in file("core-macros"))
 
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
 lazy val mainSettingsProj = (project in file("main-settings"))
-  .dependsOn(commandProj, stdTaskProj)
+  .dependsOn(commandProj, stdTaskProj, coreMacrosProj)
   .settings(
     testedBaseSettings,
     name := "Main Settings"
   )
   .configure(
     addSbtUtilCache,
-    addSbtUtilApplyMacro,
     addSbtCompilerInterface,
     addSbtUtilRelation,
     addSbtUtilLogging,
