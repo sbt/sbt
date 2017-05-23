@@ -143,17 +143,24 @@ final class EvictionPair private[sbt] (
 object EvictionPair {
   implicit val evictionPairLines: ShowLines[EvictionPair] = ShowLines { a: EvictionPair =>
     val revs = a.evicteds map { _.module.revision }
-    val revsStr = if (revs.size <= 1) revs.mkString else "(" + revs.mkString(", ") + ")"
-    val winnerRev = (a.winner map { r =>
-      val callers: String =
-        if (a.showCallers)
-          r.callers match {
-            case Seq() => ""
-            case cs    => (cs map { _.caller.toString }).mkString(" (caller: ", ", ", ")")
-          } else ""
-      r.module.revision + callers
-    }) map { " -> " + _ } getOrElse ""
-    Seq(s"\t* ${a.organization}:${a.name}:${revsStr}$winnerRev")
+    val revsStr = if (revs.size <= 1) revs.mkString else "{" + revs.mkString(", ") + "}"
+    val seen: mutable.Set[ModuleID] = mutable.Set()
+    val callers: List[String] = (a.evicteds.toList ::: a.winner.toList) flatMap { r =>
+      val rev = r.module.revision
+      r.callers.toList flatMap { caller =>
+        if (seen(caller.caller)) Nil
+        else {
+          seen += caller.caller
+          List(f"\t    +- ${caller}%-50s (depends on $rev)")
+        }
+      }
+    }
+    val winnerRev = a.winner match {
+      case Some(r) => s":${r.module.revision} is selected over ${revsStr}"
+      case _       => " is evicted completely"
+    }
+    val title = s"\t* ${a.organization}:${a.name}$winnerRev"
+    title :: (if (a.showCallers) callers.reverse else Nil) ::: List("")
   }
 }
 
@@ -285,13 +292,13 @@ object EvictionWarning {
     }
 
     if (a.directEvictions.nonEmpty || a.transitiveEvictions.nonEmpty) {
-      out += "There may be incompatibilities among your library dependencies."
-      out += "Here are some of the libraries that were evicted:"
+      out += "Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:"
+      out += ""
       out ++= (a.directEvictions flatMap { _.lines })
       out ++= (a.transitiveEvictions flatMap { _.lines })
     }
 
-    if (a.allEvictions.nonEmpty && a.reportedEvictions.nonEmpty && !a.options.showCallers) {
+    if (a.allEvictions.nonEmpty && a.reportedEvictions.nonEmpty) {
       out += "Run 'evicted' to see detailed eviction warnings"
     }
 
@@ -312,6 +319,6 @@ object EvictionWarning {
         }
       }
       if (out.isEmpty) Nil
-      else List("Here are other libraries that were evicted:") ::: out.toList
+      else List("Here are other depedency conflicts that were resolved:", "") ::: out.toList
     } else Nil
 }

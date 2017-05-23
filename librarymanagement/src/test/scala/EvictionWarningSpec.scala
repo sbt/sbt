@@ -90,7 +90,8 @@ class EvictionWarningSpec extends BaseIvySpecification {
     EvictionWarning(m, defaultOptions.withShowCallers(false), report, log).lines shouldBe
       List(
         "Scala version was updated by one of library dependencies:",
-        "\t* org.scala-lang:scala-library:2.10.2 -> 2.10.3",
+        "\t* org.scala-lang:scala-library:2.10.3 is selected over 2.10.2",
+        "",
         "To force scalaVersion, add the following:",
         "\tivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }",
         "Run 'evicted' to see detailed eviction warnings"
@@ -103,9 +104,13 @@ class EvictionWarningSpec extends BaseIvySpecification {
     EvictionWarning(m, defaultOptions, report, log).lines shouldBe
       List(
         "Scala version was updated by one of library dependencies:",
-        "\t* org.scala-lang:scala-library:2.10.2 -> 2.10.3 (caller: com.typesafe.akka:akka-actor_2.10:2.3.0, com.example:foo:0.1.0)",
+        "\t* org.scala-lang:scala-library:2.10.3 is selected over 2.10.2",
+        "\t    +- com.typesafe.akka:akka-actor_2.10:2.3.0            (depends on 2.10.3)",
+        "\t    +- com.example:foo:0.1.0                              (depends on 2.10.2)",
+        "",
         "To force scalaVersion, add the following:",
-        "\tivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }"
+        "\tivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }",
+        "Run 'evicted' to see detailed eviction warnings"
       )
   }
 
@@ -145,9 +150,12 @@ class EvictionWarningSpec extends BaseIvySpecification {
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions, report, log).lines shouldBe
       List(
-        "There may be incompatibilities among your library dependencies.",
-        "Here are some of the libraries that were evicted:",
-        "\t* commons-io:commons-io:1.4 -> 2.4 (caller: com.example:foo:0.1.0)"
+        "Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
+        "",
+        "\t* commons-io:commons-io:2.4 is selected over 1.4",
+        "\t    +- com.example:foo:0.1.0                              (depends on 1.4)",
+        "",
+        "Run 'evicted' to see detailed eviction warnings"
       )
   }
 
@@ -156,9 +164,12 @@ class EvictionWarningSpec extends BaseIvySpecification {
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions.withShowCallers(true), report, log).lines shouldBe
       List(
-        "There may be incompatibilities among your library dependencies.",
-        "Here are some of the libraries that were evicted:",
-        "\t* commons-io:commons-io:1.4 -> 2.4 (caller: com.example:foo:0.1.0)"
+        "Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
+        "",
+        "\t* commons-io:commons-io:2.4 is selected over 1.4",
+        "\t    +- com.example:foo:0.1.0                              (depends on 1.4)",
+        "",
+        "Run 'evicted' to see detailed eviction warnings"
       )
   }
 
@@ -208,9 +219,12 @@ class EvictionWarningSpec extends BaseIvySpecification {
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions, report, log).lines shouldBe
       List(
-        "There may be incompatibilities among your library dependencies.",
-        "Here are some of the libraries that were evicted:",
-        "\t* com.typesafe.akka:akka-actor_2.10:2.1.4 -> 2.3.4 (caller: com.example:foo:0.1.0)"
+        "Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
+        "",
+        "\t* com.typesafe.akka:akka-actor_2.10:2.3.4 is selected over 2.1.4",
+        "\t    +- com.example:foo:0.1.0                              (depends on 2.1.4)",
+        "",
+        "Run 'evicted' to see detailed eviction warnings"
       )
   }
 
@@ -241,9 +255,14 @@ class EvictionWarningSpec extends BaseIvySpecification {
     val report = ivyUpdate(m)
     EvictionWarning(m, defaultOptions, report, log).lines shouldBe
       List(
-        "There may be incompatibilities among your library dependencies.",
-        "Here are some of the libraries that were evicted:",
-        "\t* com.typesafe.akka:akka-actor_2.10:2.1.4 -> 2.3.4 (caller: com.typesafe.akka:akka-remote_2.10:2.3.4, org.w3:banana-sesame_2.10:0.4, org.w3:banana-rdf_2.10:0.4)"
+        "Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
+        "",
+        "\t* com.typesafe.akka:akka-actor_2.10:2.3.4 is selected over 2.1.4",
+        "\t    +- com.typesafe.akka:akka-remote_2.10:2.3.4           (depends on 2.3.4)",
+        "\t    +- org.w3:banana-rdf_2.10:0.4                         (depends on 2.1.4)",
+        "\t    +- org.w3:banana-sesame_2.10:0.4                      (depends on 2.1.4)",
+        "",
+        "Run 'evicted' to see detailed eviction warnings"
       )
   }
 }
