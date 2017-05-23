@@ -22,8 +22,12 @@ object Opts {
     def sourceUrl(u: String): Seq[String] = Seq("-doc-source-url", u)
     def title(t: String): Seq[String] = Seq("-doc-title", t)
     def version(v: String): Seq[String] = Seq("-doc-version", v)
-    def externalAPI(mappings: Iterable[(File, URL)]): Seq[String] = if (mappings.isEmpty) Nil else
-      mappings.map { case (f, u) => s"${f.getAbsolutePath}#${u.toExternalForm}" }.mkString("-doc-external-doc:", ",", "") :: Nil
+    @deprecated("Use `externalScalaAPI` instead", "0.13.8")
+    def externalAPI(mappings: Iterable[(File, URL)]): Seq[String] = externalScalaAPI(mappings)
+    def externalScalaAPI(mappings: Iterable[(File, URL)]): Seq[String] = if (mappings.isEmpty) Nil else
+      mappings.map { case (f, u) => s"${f.getAbsolutePath}#$u" }.mkString("-doc-external-doc:", ",", "") :: Nil
+    def externalJavaAPI(mappings: Iterable[(File, URL)]): Seq[String] = if (mappings.isEmpty) Nil else
+      mappings.map { case (_, u) => s"-link $u" }.toSeq
   }
   object resolver {
     import Path._

@@ -6,18 +6,34 @@ import java.net.{ MalformedURLException, URL }
 import sbt.mavenint.SbtPomExtraProperties
 
 private[sbt] object APIMappings {
-  def extract(cp: Seq[Attributed[File]], log: Logger): Seq[(File, URL)] =
-    cp.flatMap(entry => extractFromEntry(entry, log))
+  def extractScala(cp: Seq[Attributed[File]], log: Logger): Seq[(File, URL)] =
+    cp.flatMap(entry => extractScalaFromEntry(entry, log))
+  def extractJava(cp: Seq[Attributed[File]], log: Logger): Seq[(File, URL)] =
+    cp.flatMap(entry => extractJavaFromEntry(entry, log))
 
-  def extractFromEntry(entry: Attributed[File], log: Logger): Option[(File, URL)] =
-    entry.get(Keys.entryApiURL) match {
+  def extractScalaFromEntry(entry: Attributed[File], log: Logger): Option[(File, URL)] =
+    entry.get(Keys.scalaEntryApiURL) match {
       case Some(u) => Some((entry.data, u))
-      case None    => entry.get(Keys.moduleID.key).flatMap { mid => extractFromID(entry.data, mid, log) }
+      case None    => entry.get(Keys.moduleID.key).flatMap { mid =>
+        extractFromID(entry.data, mid, SbtPomExtraProperties.POM_SCALA_API_KEY, log) match {
+          // Try legacy key as fallback for backward compatibility
+          case None => extractFromID(entry.data, mid, SbtPomExtraProperties.POM_API_KEY, log)
+          case x    => x
+        }
+      }
     }
 
-  private[this] def extractFromID(entry: File, mid: ModuleID, log: Logger): Option[(File, URL)] =
+  def extractJavaFromEntry(entry: Attributed[File], log: Logger): Option[(File, URL)] =
+    entry.get(Keys.javaEntryApiURL) match {
+      case Some(u) => Some((entry.data, u))
+      case None    => entry.get(Keys.moduleID.key).flatMap { mid =>
+        extractFromID(entry.data, mid, SbtPomExtraProperties.POM_JAVA_API_KEY, log)
+      }
+    }
+
+  private[this] def extractFromID(entry: File, mid: ModuleID, propKey: String, log: Logger): Option[(File, URL)] =
     for {
-      urlString <- mid.extraAttributes.get(SbtPomExtraProperties.POM_API_KEY)
+      urlString <- mid.extraAttributes.get(propKey)
       u <- parseURL(urlString, entry, log)
     } yield (entry, u)
 
@@ -28,8 +44,11 @@ private[sbt] object APIMappings {
         None
     }
 
-  def store[T](attr: Attributed[T], entryAPI: Option[URL]): Attributed[T] = entryAPI match {
+  def store[T](attr: Attributed[T], scalaEntry: Option[URL], javaEntry: Option[URL]): Attributed[T] =
+    storeURL(storeURL(attr, Keys.scalaEntryApiURL, scalaEntry), Keys.javaEntryApiURL, javaEntry)
+
+  private[this] def storeURL[T](attr: Attributed[T], key: AttributeKey[URL], entry: Option[URL]): Attributed[T] = entry match {
     case None    => attr
-    case Some(u) => attr.put(Keys.entryApiURL, u)
+    case Some(u) => attr.put(key, u)
   }
 }

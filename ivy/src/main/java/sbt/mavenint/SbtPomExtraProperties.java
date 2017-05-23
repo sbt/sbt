@@ -12,7 +12,11 @@ public class SbtPomExtraProperties {
     public static final String POM_INFO_KEY_PREFIX = "info.";
     public static final String POM_SCALA_VERSION = "scalaVersion";
     public static final String POM_SBT_VERSION = "sbtVersion";
+    /** @deprecated Use {@link #POM_SCALA_API_KEY} instead */
+    @Deprecated
     public static final String POM_API_KEY = "info.apiURL";
+    public static final String POM_SCALA_API_KEY = "info.scalaApiURL";
+    public static final String POM_JAVA_API_KEY = "info.javaApiURL";
 
     public static final String LICENSE_COUNT_KEY = "license.count";
 

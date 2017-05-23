@@ -36,12 +36,15 @@ object CustomPomParser {
 
   /** The key prefix that indicates that this is used only to store extra information and is not intended for dependency resolution.*/
   val InfoKeyPrefix = SbtPomExtraProperties.POM_INFO_KEY_PREFIX
+  @deprecated("Use `ScalaApiURLKey` instead.", "0.13.8")
   val ApiURLKey = SbtPomExtraProperties.POM_API_KEY
+  val ScalaApiURLKey = SbtPomExtraProperties.POM_SCALA_API_KEY
+  val JavaApiURLKey = SbtPomExtraProperties.POM_JAVA_API_KEY
 
   val SbtVersionKey = PomExtraDependencyAttributes.SbtVersionKey
   val ScalaVersionKey = PomExtraDependencyAttributes.ScalaVersionKey
   val ExtraAttributesKey = PomExtraDependencyAttributes.ExtraAttributesKey
-  private[this] val unqualifiedKeys = Set(SbtVersionKey, ScalaVersionKey, ExtraAttributesKey, ApiURLKey)
+  private[this] val unqualifiedKeys = Set(SbtVersionKey, ScalaVersionKey, ExtraAttributesKey, ApiURLKey, ScalaApiURLKey, JavaApiURLKey)
 
   // packagings that should be jars, but that Ivy doesn't handle as jars
   // TODO - move this elsewhere.
