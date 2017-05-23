@@ -850,7 +850,7 @@ object Defaults extends BuildCommon {
       val srcs = sources.value
       val out = target.value
       val sOpts = scalacOptions.value
-      val jOpts = javacOptions.value
+      val jOpts = javaDocOptions.value
       val xapis = apiMappings.value
       val hasScala = srcs.exists(_.name.endsWith(".scala"))
       val hasJava = srcs.exists(_.name.endsWith(".java"))
