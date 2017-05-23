@@ -244,13 +244,13 @@ lazy val commandProj = (project in file("main-command"))
 
 // The core macro project defines the main logic of the DSL, abstracted
 // away from several sbt implementators (tasks, settings, et cetera).
-lazy val coreMacrosProj = (project in file("core-macros")).
-  settings(
+lazy val coreMacrosProj = (project in file("core-macros"))
+  .settings(
     commonSettings,
     name := "Core Macros",
     libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value
   )
-    .configure(addSbtUtilCollection)
+  .configure(addSbtUtilCollection)
 
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
 lazy val mainSettingsProj = (project in file("main-settings"))
