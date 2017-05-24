@@ -71,6 +71,7 @@ def testedBaseSettings: Seq[Setting[_]] =
 
 lazy val sbtRoot: Project = (project in file("."))
   .enablePlugins(ScriptedPlugin) // , SiteScaladocPlugin, GhpagesPlugin)
+  .enablePlugins(ScalafmtPlugin)
   .configs(Sxr.sxrConf)
   .aggregateSeq(nonRoots)
   .settings(
@@ -107,6 +108,7 @@ lazy val bundledLauncherProj =
       Release.launcherSettings(sbtLaunchJar)
     )
     .enablePlugins(SbtLauncherPlugin)
+    .enablePlugins(ScalafmtPlugin)
     .settings(
       name := "sbt-launch",
       moduleName := "sbt-launch",
@@ -125,6 +127,7 @@ lazy val bundledLauncherProj =
 // Runner for uniform test interface
 lazy val testingProj = (project in file("testing"))
   .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
+  .enablePlugins(ScalafmtPlugin)
   .dependsOn(testAgentProj)
   .settings(
     baseSettings,
@@ -138,17 +141,20 @@ lazy val testingProj = (project in file("testing"))
   .configure(addSbtIO, addSbtCompilerClasspath, addSbtUtilLogging)
 
 // Testing agent for running tests in a separate process.
-lazy val testAgentProj = (project in file("testing") / "agent").settings(
-  minimalSettings,
-  crossScalaVersions := Seq(baseScalaVersion),
-  crossPaths := false,
-  autoScalaLibrary := false,
-  name := "Test Agent",
-  libraryDependencies += testInterface
-)
+lazy val testAgentProj = (project in file("testing") / "agent")
+  .enablePlugins(ScalafmtPlugin)
+  .settings(
+    minimalSettings,
+    crossScalaVersions := Seq(baseScalaVersion),
+    crossPaths := false,
+    autoScalaLibrary := false,
+    name := "Test Agent",
+    libraryDependencies += testInterface
+  )
 
 // Basic task engine
 lazy val taskProj = (project in file("tasks"))
+  .enablePlugins(ScalafmtPlugin)
   .settings(
     testedBaseSettings,
     name := "Tasks"
@@ -157,6 +163,7 @@ lazy val taskProj = (project in file("tasks"))
 
 // Standard task system.  This provides map, flatMap, join, and more on top of the basic task model.
 lazy val stdTaskProj = (project in file("tasks-standard"))
+  .enablePlugins(ScalafmtPlugin)
   .dependsOn(taskProj % "compile;test->test")
   .settings(
     testedBaseSettings,
@@ -167,7 +174,7 @@ lazy val stdTaskProj = (project in file("tasks-standard"))
 
 // Embedded Scala code runner
 lazy val runProj = (project in file("run"))
-  .enablePlugins(ContrabandPlugin)
+  .enablePlugins(ContrabandPlugin, ScalafmtPlugin)
   .settings(
     testedBaseSettings,
     name := "Run",
@@ -178,6 +185,7 @@ lazy val runProj = (project in file("run"))
   .configure(addSbtIO, addSbtUtilLogging, addSbtCompilerClasspath)
 
 lazy val scriptedSbtProj = (project in scriptedPath / "sbt")
+  .enablePlugins(ScalafmtPlugin)
   .dependsOn(commandProj)
   .settings(
     baseSettings,
@@ -187,6 +195,7 @@ lazy val scriptedSbtProj = (project in scriptedPath / "sbt")
   .configure(addSbtIO, addSbtUtilLogging, addSbtCompilerInterface, addSbtUtilScripted)
 
 lazy val scriptedPluginProj = (project in scriptedPath / "plugin")
+  .enablePlugins(ScalafmtPlugin)
   .dependsOn(sbtProj)
   .settings(
     baseSettings,
@@ -196,6 +205,7 @@ lazy val scriptedPluginProj = (project in scriptedPath / "plugin")
 
 // Implementation and support code for defining actions.
 lazy val actionsProj = (project in file("main-actions"))
+  .enablePlugins(ScalafmtPlugin)
   .dependsOn(runProj, stdTaskProj, taskProj, testingProj)
   .settings(
     testedBaseSettings,
@@ -217,7 +227,7 @@ lazy val actionsProj = (project in file("main-actions"))
   )
 
 lazy val protocolProj = (project in file("protocol"))
-  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
+  .enablePlugins(ContrabandPlugin, JsonCodecPlugin, ScalafmtPlugin)
   .settings(
     testedBaseSettings,
     name := "Protocol",
@@ -231,7 +241,7 @@ lazy val protocolProj = (project in file("protocol"))
 
 // General command support and core commands not specific to a build system
 lazy val commandProj = (project in file("main-command"))
-  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
+  .enablePlugins(ContrabandPlugin, JsonCodecPlugin, ScalafmtPlugin)
   .dependsOn(protocolProj)
   .settings(
     testedBaseSettings,
@@ -252,6 +262,7 @@ lazy val commandProj = (project in file("main-command"))
 // The core macro project defines the main logic of the DSL, abstracted
 // away from several sbt implementators (tasks, settings, et cetera).
 lazy val coreMacrosProj = (project in file("core-macros"))
+  .enablePlugins(ScalafmtPlugin)
   .settings(
     commonSettings,
     name := "Core Macros",
@@ -279,6 +290,7 @@ lazy val generateToolboxClasspath = Def.task {
 
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
 lazy val mainSettingsProj = (project in file("main-settings"))
+  .enablePlugins(ScalafmtPlugin)
   .dependsOn(commandProj, stdTaskProj, coreMacrosProj)
   .settings(
     testedBaseSettings,
@@ -298,7 +310,7 @@ lazy val mainSettingsProj = (project in file("main-settings"))
 
 // The main integration project for sbt.  It brings all of the projects together, configures them, and provides for overriding conventions.
 lazy val mainProj = (project in file("main"))
-  .enablePlugins(ContrabandPlugin)
+  .enablePlugins(ContrabandPlugin, ScalafmtPlugin)
   .dependsOn(actionsProj, mainSettingsProj, runProj, commandProj)
   .settings(
     testedBaseSettings,
@@ -319,6 +331,7 @@ lazy val mainProj = (project in file("main"))
 //  technically, we need a dependency on all of mainProj's dependencies, but we don't do that since this is strictly an integration project
 //  with the sole purpose of providing certain identifiers without qualification (with a package object)
 lazy val sbtProj = (project in file("sbt"))
+  .enablePlugins(ScalafmtPlugin)
   .dependsOn(mainProj, scriptedSbtProj % "test->test")
   .settings(
     baseSettings,
@@ -463,13 +476,6 @@ def customCommands: Seq[Setting[_]] = Seq(
   },
   otherUnitTests := {
     test.all(otherProjects).value
-  },
-  commands += Command.command("scalafmtCheck") { state =>
-    sys.process.Process("git diff --name-only --exit-code").! match {
-      case 0 => // ok
-      case x => sys.error("git diff detected! Did you compile before committing?")
-    }
-    state
   },
   commands += Command.command("release-sbt-local") { state =>
     "clean" ::
