@@ -54,7 +54,7 @@ def commonSettings: Seq[Setting[_]] =
       import com.typesafe.tools.mima.core._, ProblemFilters._
       Seq()
     },
-    */
+     */
     fork in compile := true,
     fork in run := true
   ) flatMap (_.settings)
@@ -259,12 +259,31 @@ lazy val coreMacrosProj = (project in file("core-macros"))
   )
   .configure(addSbtUtilCollection)
 
+/* Write all the compile-time dependencies of the spores macro to a file,
+ * in order to read it from the created Toolbox to run the neg tests. */
+lazy val generateToolboxClasspath = Def.task {
+  val classpathAttributes = (dependencyClasspath in Compile).value
+  val dependenciesClasspath =
+    classpathAttributes.map(_.data.getAbsolutePath).mkString(":")
+  val scalaBinVersion = (scalaBinaryVersion in Compile).value
+  val targetDir = (target in Compile).value
+  val compiledClassesDir = targetDir / s"scala-$scalaBinVersion/classes"
+  val testClassesDir = targetDir / s"scala-$scalaBinVersion/test-classes"
+  val classpath = s"$compiledClassesDir:$testClassesDir:$dependenciesClasspath"
+  val resourceDir = (resourceDirectory in Compile).value
+  resourceDir.mkdir() // In case it doesn't exist
+  val toolboxTestClasspath = resourceDir / "toolbox.classpath"
+  IO.write(toolboxTestClasspath, classpath)
+  List(toolboxTestClasspath.getAbsoluteFile)
+}
+
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
 lazy val mainSettingsProj = (project in file("main-settings"))
   .dependsOn(commandProj, stdTaskProj, coreMacrosProj)
   .settings(
     testedBaseSettings,
-    name := "Main Settings"
+    name := "Main Settings",
+    resourceGenerators in Compile += generateToolboxClasspath.taskValue
   )
   .configure(
     addSbtUtilCache,
