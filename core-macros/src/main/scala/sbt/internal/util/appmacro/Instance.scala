@@ -86,6 +86,8 @@ object Instance {
       nt: c.WeakTypeTag[N[T]],
       it: c.TypeTag[i.type]
   ): c.Expr[i.M[N[T]]] = {
+    println("STARTING CONTIMPL")
+    println("=================")
     import c.universe.{ Apply => ApplyTree, _ }
 
     val util = ContextUtil[c.type](c)
@@ -97,6 +99,8 @@ object Instance {
       case Left(l)  => (l.tree, nt.tpe.dealias)
       case Right(r) => (r.tree, mttpe)
     }
+    println("TREE TYPE")
+    println(treeType)
     // the Symbol for the anonymous function passed to the appropriate Instance.map/flatMap/pure method
     // this Symbol needs to be known up front so that it can be used as the owner of synthetic vals
     val functionSym = util.functionSymbol(tree.pos)
@@ -183,9 +187,17 @@ object Instance {
     }
 
     // applies the transformation
+    println("TREE")
+    println(tree)
+    import util.PropertyChecker
+    val isInvalid: PropertyChecker =
+      (s: String, tpe: Type, tree: Tree) => t.isLeft && convert.asPredicate(c).apply(s, tpe, tree)
+    util.checkMacroViolations(tree, isInvalid)
     val tx = util.transformWrappers(tree, (n, tpe, t, replace) => sub(n, tpe, t, replace))
     // resetting attributes must be: a) local b) done here and not wider or else there are obscure errors
     val tr = makeApp(inner(tx))
+    println("FINAL TREE")
+    println(tr)
     c.Expr[i.M[N[T]]](tr)
   }
 

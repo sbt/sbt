@@ -8,18 +8,7 @@ package sbt.std
 import scala.reflect._
 
 object TestUtil {
-  import tools.reflect.{ ToolBox, ToolBoxError }
-
-  def intercept[T <: Throwable: ClassTag](test: => Any): T = {
-    try {
-      test
-      throw new Exception(s"Expected exception ${classTag[T]}")
-    } catch {
-      case t: Throwable =>
-        if (classTag[T].runtimeClass != t.getClass) throw t
-        else t.asInstanceOf[T]
-    }
-  }
+  import tools.reflect.ToolBox
 
   def eval(code: String, compileOptions: String = ""): Any = {
     val tb = mkToolbox(compileOptions)
@@ -37,19 +26,5 @@ object TestUtil {
     val classpathFile = scala.io.Source.fromFile(resource.toURI)
     val completeSporesCoreClasspath = classpathFile.getLines.mkString
     completeSporesCoreClasspath
-  }
-
-  def expectError(errorSnippet: String,
-                  compileOptions: String = "-Xmacro-settings:debug-spores",
-                  baseCompileOptions: String = s"-cp $toolboxClasspath")(code: String): Unit = {
-    val errorMessage = intercept[ToolBoxError] {
-      eval(code, s"$compileOptions $baseCompileOptions")
-    }.getMessage
-    val userMessage =
-      s"""
-         |FOUND: $errorMessage
-         |EXPECTED: $errorSnippet
-      """.stripMargin
-    assert(errorMessage.contains(errorSnippet), userMessage)
   }
 }
