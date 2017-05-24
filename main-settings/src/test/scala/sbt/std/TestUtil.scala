@@ -8,7 +8,6 @@ package sbt.std
 import scala.reflect._
 
 object TestUtil {
-  import scala.language.postfixOps
   import tools.reflect.{ ToolBox, ToolBoxError }
 
   def intercept[T <: Throwable: ClassTag](test: => Any): T = {
@@ -42,7 +41,7 @@ object TestUtil {
 
   def expectError(errorSnippet: String,
                   compileOptions: String = "-Xmacro-settings:debug-spores",
-                  baseCompileOptions: String = s"-cp $toolboxClasspath")(code: String) {
+                  baseCompileOptions: String = s"-cp $toolboxClasspath")(code: String): Unit = {
     val errorMessage = intercept[ToolBoxError] {
       eval(code, s"$compileOptions $baseCompileOptions")
     }.getMessage

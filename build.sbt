@@ -285,7 +285,9 @@ lazy val generateToolboxClasspath = Def.task {
   resourceDir.mkdir() // In case it doesn't exist
   val toolboxTestClasspath = resourceDir / "toolbox.classpath"
   IO.write(toolboxTestClasspath, classpath)
-  List(toolboxTestClasspath.getAbsoluteFile)
+  val result = List(toolboxTestClasspath.getAbsoluteFile)
+  streams.value.log.success("Wrote the classpath for the macro neg test suite.")
+  result
 }
 
 // Fixes scope=Scope for Setting (core defined in collectionProj) to define the settings system used in build definitions
