@@ -29,6 +29,50 @@ final case class ModuleID(organization: String, name: String, revision: String, 
   /** Specifies the cross-version behavior for this module.  See [CrossVersion] for details.*/
   def cross(v: CrossVersion): ModuleID = copy(crossVersion = v)
 
+  /** Copy with a new organization. */
+  def withOrganization(organization: String): ModuleID =
+    copy(organization = organization)
+
+  /** Copy with a new name. */
+  def withName(name: String): ModuleID =
+    copy(name = name)
+
+  /** Copy with a new revision. */
+  def withRevision(revision: String): ModuleID =
+    copy(revision = revision)
+
+  /** Copy with new configurations. */
+  def withConfigurations(configurations: Option[String]): ModuleID =
+    copy(configurations = configurations)
+
+  /** Copy with new isChanging. */
+  def withIsChanging(isChanging: Boolean): ModuleID =
+    copy(isChanging = isChanging)
+
+  /** Copy with new isTransitive. */
+  def withIsTransitive(isTransitive: Boolean): ModuleID =
+    copy(isTransitive = isTransitive)
+
+  /** Copy with new isForce. */
+  def withIsForce(isForce: Boolean): ModuleID =
+    copy(isForce = isForce)
+
+  /** Copy with new explicitArtifacts. */
+  def withExplicitArtifacts(explicitArtifacts: Vector[Artifact]): ModuleID =
+    copy(explicitArtifacts = explicitArtifacts)
+
+  /** Copy with new exclusions. */
+  def withExclusions(exclusions: Vector[ExclusionRule]): ModuleID =
+    copy(exclusions = exclusions)
+
+  /** Copy with new extraAttributes. */
+  def withExtraAttributes(extraAttributes: Map[String, String]): ModuleID =
+    copy(extraAttributes = extraAttributes)
+
+  /** Copy with new crossVersion. */
+  def withCrossVersion(crossVersion: CrossVersion): ModuleID =
+    copy(crossVersion = crossVersion)
+
   // () required for chaining
   /** Do not follow dependencies of this module.  Synonym for `intransitive`.*/
   def notTransitive() = intransitive()
