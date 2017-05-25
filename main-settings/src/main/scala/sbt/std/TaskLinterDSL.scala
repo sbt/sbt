@@ -40,11 +40,12 @@ object TaskLinterDSL extends LinterDSL {
           case Typed(expr, tt: TypeTree) if tt.original != null =>
             tt.original match {
               case Annotated(annot, arg) =>
-                annot.tpe match {
-                  case AnnotatedType(annotations, _) =>
+                Option(annot.tpe) match {
+                  case Some(AnnotatedType(annotations, _)) =>
                     val symAnnotations = annotations.map(_.tree.tpe.typeSymbol)
                     val isUnchecked = symAnnotations.contains(unchecked)
                     if (isUnchecked) {
+                      // Unwrap the expression behind the typed that sbt macro adds
                       val toAdd = arg match {
                         case Typed(`expr`, _) => `expr`
                         case `tree`           => `tree`
@@ -53,6 +54,7 @@ object TaskLinterDSL extends LinterDSL {
                     }
                   case _ =>
                 }
+              case _ =>
             }
             super.traverse(expr)
           case tree => super.traverse(tree)
