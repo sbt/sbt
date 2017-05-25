@@ -10,6 +10,7 @@ lazy val root = (project in file(".")).
     version := "1.0-SNAPSHOT",
     autoScalaLibrary := false,
     checkIvyXml := {
+      val resolverConverter = updateOptions.value.resolverConverter
       ivySbt.value.withIvy(streams.value.log) { ivy =>
         val cacheDir = ivy.getSettings.getDefaultRepositoryCacheBasedir
         val xmlFile  =
@@ -18,7 +19,7 @@ lazy val root = (project in file(".")).
         if(lines.isEmpty) sys.error(s"Unable to read $xmlFile, could not resolve geronimo...")
         // Note: We do not do this if the maven plugin is enabled, because there is no rewrite of ivy.xml, extra attributes
         // are handled in a different mechanism.  This is a hacky mechanism to detect that.
-        val isMavenResolver = updateOptions.value.resolverConverter != PartialFunction.empty
+        val isMavenResolver = resolverConverter != PartialFunction.empty
         if(!isMavenResolver) assert(lines contains "xmlns:e", s"Failed to appropriately modify ivy.xml file for sbt extra attributes!\n$lines")
 
         val xmlFile2 = cacheDir / "com.example" / "example-child" / "ivy-1.0-SNAPSHOT.xml"

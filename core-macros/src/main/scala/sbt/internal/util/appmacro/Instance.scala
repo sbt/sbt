@@ -188,7 +188,7 @@ object Instance {
     }
 
     // applies the transformation
-    linter.runLinter(c)(tree, t.isLeft)
+    linter.runLinter(c)(tree)
     val tx = util.transformWrappers(tree, (n, tpe, t, replace) => sub(n, tpe, t, replace))
     // resetting attributes must be: a) local b) done here and not wider or else there are obscure errors
     val tr = makeApp(inner(tx))

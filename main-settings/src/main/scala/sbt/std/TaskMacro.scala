@@ -99,7 +99,7 @@ object TaskMacro {
 
   def taskDynMacroImpl[T: c.WeakTypeTag](c: blackbox.Context)(
       t: c.Expr[Initialize[Task[T]]]): c.Expr[Initialize[Task[T]]] =
-    Instance.contImpl[T, Id](c, FullInstance, FullConvert, MixedBuilder, EmptyLinter)(
+    Instance.contImpl[T, Id](c, FullInstance, FullConvert, MixedBuilder, TaskDynLinterDSL)(
       Right(t),
       Instance.idTransform[c.type])
 
@@ -503,13 +503,13 @@ object TaskMacro {
 object PlainTaskMacro {
   def task[T](t: T): Task[T] = macro taskImpl[T]
   def taskImpl[T: c.WeakTypeTag](c: blackbox.Context)(t: c.Expr[T]): c.Expr[Task[T]] =
-    Instance.contImpl[T, Id](c, TaskInstance, TaskConvert, MixedBuilder, TaskLinterDSL)(
+    Instance.contImpl[T, Id](c, TaskInstance, TaskConvert, MixedBuilder, OnlyTaskLinterDSL)(
       Left(t),
       Instance.idTransform[c.type])
 
   def taskDyn[T](t: Task[T]): Task[T] = macro taskDynImpl[T]
   def taskDynImpl[T: c.WeakTypeTag](c: blackbox.Context)(t: c.Expr[Task[T]]): c.Expr[Task[T]] =
-    Instance.contImpl[T, Id](c, TaskInstance, TaskConvert, MixedBuilder, LinterDSL.Empty)(
+    Instance.contImpl[T, Id](c, TaskInstance, TaskConvert, MixedBuilder, OnlyTaskDynLinterDSL)(
       Right(t),
       Instance.idTransform[c.type])
 }

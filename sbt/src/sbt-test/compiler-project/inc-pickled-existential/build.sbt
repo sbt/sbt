@@ -6,10 +6,11 @@ logLevel := Level.Debug
 // Reset compiler iterations, necessary because tests run in batch mode
 val recordPreviousIterations = taskKey[Unit]("Record previous iterations.")
 recordPreviousIterations := {
+  val log = streams.value.log
   CompileState.previousIterations = {
     val previousAnalysis = (previousCompile in Compile).value.analysis
     if (previousAnalysis.isEmpty) {
-      streams.value.log.info("No previous analysis detected")
+      log.info("No previous analysis detected")
       0
     } else {
       previousAnalysis.get match {

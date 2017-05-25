@@ -38,4 +38,32 @@ class TaskPosSpec {
       else bar.value: @unchecked
     }
   }
+
+  locally {
+    // This is fix 1 for appearance of tasks inside anons
+    import sbt._
+    import sbt.Def._
+    val foo = taskKey[String]("")
+    var condition = true
+    val baz = Def.task[String] {
+      val fooResult = foo.value
+      val anon = () => fooResult + " "
+      if (condition) anon()
+      else ""
+    }
+  }
+
+  locally {
+    // This is fix 2 for appearance of tasks inside anons
+    import sbt._
+    import sbt.Def._
+    val foo = taskKey[String]("")
+    var condition = true
+    val baz = Def.taskDyn[String] {
+      val anon1 = (value: String) => value + " "
+      if (condition) {
+        Def.task(anon1(foo.value))
+      } else Def.task("")
+    }
+  }
 }
