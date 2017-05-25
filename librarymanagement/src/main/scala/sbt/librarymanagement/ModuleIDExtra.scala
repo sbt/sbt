@@ -22,6 +22,7 @@ abstract class ModuleIDExtra {
   def extraAttributes: Map[String, String]
   def crossVersion: CrossVersion
   def branchName: Option[String]
+  def checksum: Option[Checksum]
 
   protected[this] def copy(
       organization: String = organization,
@@ -36,12 +37,14 @@ abstract class ModuleIDExtra {
       exclusions: Vector[ExclusionRule] = exclusions,
       extraAttributes: Map[String, String] = extraAttributes,
       crossVersion: CrossVersion = crossVersion,
-      branchName: Option[String] = branchName
+      branchName: Option[String] = branchName,
+      checksum: Option[Checksum] = checksum
   ): ModuleID
 
   protected def toStringImpl: String =
     s"""$organization:$name:$revision""" +
-      (configurations match { case Some(s) => ":" + s; case None => "" }) + {
+      (checksum match { case Some(s)       => s": ${s.`type`} ${s.digest}"; case None => "" }) +
+      (configurations match { case Some(s) => ":" + s; case None                      => "" }) + {
       val attr = attributeString
       if (attr == "") ""
       else " " + attr
