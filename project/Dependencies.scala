@@ -57,6 +57,7 @@ object Dependencies {
   val scalaXml = scala211Module("scala-xml", "1.0.5")
   val sjsonnewVersion = "0.7.0"
   val sjsonnewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % sjsonnewVersion
+  val gigahorseOkhttp = "com.eed3si9n" %% "gigahorse-okhttp" % "0.3.0"
 
   private def scala211Module(name: String, moduleVersion: String) =
     Def.setting {
