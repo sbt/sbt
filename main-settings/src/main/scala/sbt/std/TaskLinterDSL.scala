@@ -16,7 +16,7 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
     import ctx.universe._
     val isTask = convert.asPredicate(ctx)
     class traverser extends Traverser {
-      private val unchecked = symbolOf[sbt.unchecked].asClass
+      private val unchecked = symbolOf[sbt.sbtUnchecked].asClass
       private val uncheckedWrappers = MutableSet.empty[Tree]
       var insideIf: Boolean = false
       var insideAnon: Boolean = false

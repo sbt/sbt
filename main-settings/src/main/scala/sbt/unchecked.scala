@@ -10,4 +10,4 @@ import scala.annotation.Annotation
  *
  *  @since 1.0.0
  */
-class unchecked extends Annotation
+class sbtUnchecked extends Annotation

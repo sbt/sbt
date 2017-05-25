@@ -34,8 +34,8 @@ class TaskPosSpec {
     val bar = taskKey[String]("")
     var condition = true
     val baz = Def.task[String] {
-      if (condition) foo.value: @unchecked
-      else bar.value: @unchecked
+      if (condition) foo.value: @sbtUnchecked
+      else bar.value: @sbtUnchecked
     }
   }
 
