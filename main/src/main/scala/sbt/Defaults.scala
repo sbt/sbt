@@ -1867,8 +1867,9 @@ object Classpaths {
     // Override the default to handle mixing in the sbtPlugin + scala dependencies.
     allDependencies := {
       val base = projectDependencies.value ++ libraryDependencies.value
+      val dependency = sbtDependency.value
       val pluginAdjust =
-        if (sbtPlugin.value) sbtDependency.value.withConfigurations(Some(Provided.name)) +: base
+        if (sbtPlugin.value) dependency.withConfigurations(Some(Provided.name)) +: base
         else base
       if (scalaHome.value.isDefined || ivyScala.value.isEmpty || !managedScalaInstance.value)
         pluginAdjust
@@ -2124,11 +2125,11 @@ object Classpaths {
       }
     }
 
-    val evictionOptions = {
+    val evictionOptions = Def.taskDyn {
       if (executionRoots.value.exists(_.key == evicted.key))
-        EvictionWarningOptions.empty
-      else (evictionWarningOptions in update).value
-    }
+        Def.task(EvictionWarningOptions.empty)
+      else Def.task((evictionWarningOptions in update).value)
+    }.value
 
     LibraryManagement.cachedUpdate(
       s.cacheStoreFactory.sub(updateCacheName.value),

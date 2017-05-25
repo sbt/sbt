@@ -115,8 +115,7 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
    * A function that checks the provided tree for illegal references to M instances defined in the
    *  expression passed to the macro and for illegal dereferencing of M instances.
    */
-  def checkReferences(defs: collection.Set[Symbol],
-                      isWrapper: PropertyChecker): Tree => Unit = {
+  def checkReferences(defs: collection.Set[Symbol], isWrapper: PropertyChecker): Tree => Unit = {
     case s @ ApplyTree(TypeApply(Select(_, nme), tpe :: Nil), qual :: Nil) =>
       if (isWrapper(nme.decodedName.toString, tpe.tpe, qual))
         ctx.error(s.pos, DynamicDependencyError)
@@ -124,28 +123,6 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
       ctx.error(id.pos, DynamicReferenceError + ": " + name)
     case _ => ()
   }
-
-  class TaskMacroViolationDiscovery(isInvalid: PropertyChecker) extends Traverser {
-    var insideIf: Boolean = false
-    override def traverse(tree: ctx.universe.Tree): Unit = {
-      tree match {
-        case If(condition, thenp, elsep) =>
-          super.traverse(condition)
-          insideIf = true
-          super.traverse(thenp)
-          super.traverse(elsep)
-          insideIf = false
-        case s @ ApplyTree(TypeApply(Select(_, nme), tpe :: Nil), qual :: Nil) =>
-          if (insideIf && isInvalid(nme.decodedName.toString, tpe.tpe, qual)) {
-            ctx.error(s.pos, "DSL error: a task value cannot be obtained inside if.")
-          }
-        case _ => super.traverse(tree)
-      }
-    }
-  }
-
-  def checkMacroViolations(tree: Tree, isInvalid: PropertyChecker) =
-    new TaskMacroViolationDiscovery(isInvalid).traverse(tree)
 
   /** Constructs a ValDef with a parameter modifier, a unique name, with the provided Type and with an empty rhs. */
   def freshMethodParameter(tpe: Type): ValDef =

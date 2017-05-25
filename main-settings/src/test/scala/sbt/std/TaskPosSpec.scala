@@ -26,4 +26,16 @@ class TaskPosSpec {
       else bar
     }
   }
+
+  locally {
+    import sbt._
+    import sbt.Def._
+    val foo = taskKey[String]("")
+    val bar = taskKey[String]("")
+    var condition = true
+    val baz = Def.task[String] {
+      if (condition) foo.value: @unchecked
+      else bar.value: @unchecked
+    }
+  }
 }

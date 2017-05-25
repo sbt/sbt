@@ -2,8 +2,15 @@ package sbt
 package std
 
 import Def.{ Initialize, Setting }
-import sbt.internal.util.Types.{ const, idFun, Id }
-import sbt.internal.util.appmacro.{ ContextUtil, Converted, Instance, MixedBuilder, MonadInstance }
+import sbt.internal.util.Types.{ Id, const, idFun }
+import sbt.internal.util.appmacro.{
+  ContextUtil,
+  Converted,
+  Instance,
+  LinterDSL,
+  MixedBuilder,
+  MonadInstance
+}
 import Instance.Transform
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.internal.util.{ AList, LinePosition, NoPosition, SourcePosition }
@@ -82,15 +89,17 @@ object TaskMacro {
     """`<<=` operator is deprecated. Use `key := { x.value }` or `key ~= (old => { newValue })`.
       |See http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html""".stripMargin
 
+  import LinterDSL.{ Empty => EmptyLinter }
+
   def taskMacroImpl[T: c.WeakTypeTag](c: blackbox.Context)(
       t: c.Expr[T]): c.Expr[Initialize[Task[T]]] =
-    Instance.contImpl[T, Id](c, FullInstance, FullConvert, MixedBuilder)(
+    Instance.contImpl[T, Id](c, FullInstance, FullConvert, MixedBuilder, TaskLinterDSL)(
       Left(t),
       Instance.idTransform[c.type])
 
   def taskDynMacroImpl[T: c.WeakTypeTag](c: blackbox.Context)(
       t: c.Expr[Initialize[Task[T]]]): c.Expr[Initialize[Task[T]]] =
-    Instance.contImpl[T, Id](c, FullInstance, FullConvert, MixedBuilder)(
+    Instance.contImpl[T, Id](c, FullInstance, FullConvert, MixedBuilder, EmptyLinter)(
       Right(t),
       Instance.idTransform[c.type])
 
@@ -356,7 +365,9 @@ object TaskMacro {
     }
     val cond = c.Expr[T](conditionInputTaskTree(c)(t.tree))
     Instance
-      .contImpl[T, M](c, InitializeInstance, InputInitConvert, MixedBuilder)(Left(cond), inner)
+      .contImpl[T, M](c, InitializeInstance, InputInitConvert, MixedBuilder, EmptyLinter)(
+        Left(cond),
+        inner)
   }
 
   private[this] def conditionInputTaskTree(c: blackbox.Context)(t: c.Tree): c.Tree = {
@@ -397,13 +408,17 @@ object TaskMacro {
     val inner: Transform[c.type, M] = new Transform[c.type, M] {
       def apply(in: c.Tree): c.Tree = f(c.Expr[T](in)).tree
     }
-    Instance.contImpl[T, M](c, ParserInstance, ParserConvert, MixedBuilder)(Left(t), inner)
+    Instance.contImpl[T, M](c, ParserInstance, ParserConvert, MixedBuilder, LinterDSL.Empty)(
+      Left(t),
+      inner)
   }
 
   private[this] def iTaskMacro[T: c.WeakTypeTag](c: blackbox.Context)(
       t: c.Expr[T]): c.Expr[Task[T]] =
     Instance
-      .contImpl[T, Id](c, TaskInstance, TaskConvert, MixedBuilder)(Left(t), Instance.idTransform)
+      .contImpl[T, Id](c, TaskInstance, TaskConvert, MixedBuilder, EmptyLinter)(
+        Left(t),
+        Instance.idTransform)
 
   private[this] def inputTaskDynMacro0[T: c.WeakTypeTag](c: blackbox.Context)(
       t: c.Expr[Initialize[Task[T]]]): c.Expr[Initialize[InputTask[T]]] = {
@@ -488,13 +503,13 @@ object TaskMacro {
 object PlainTaskMacro {
   def task[T](t: T): Task[T] = macro taskImpl[T]
   def taskImpl[T: c.WeakTypeTag](c: blackbox.Context)(t: c.Expr[T]): c.Expr[Task[T]] =
-    Instance.contImpl[T, Id](c, TaskInstance, TaskConvert, MixedBuilder)(
+    Instance.contImpl[T, Id](c, TaskInstance, TaskConvert, MixedBuilder, TaskLinterDSL)(
       Left(t),
       Instance.idTransform[c.type])
 
   def taskDyn[T](t: Task[T]): Task[T] = macro taskDynImpl[T]
   def taskDynImpl[T: c.WeakTypeTag](c: blackbox.Context)(t: c.Expr[Task[T]]): c.Expr[Task[T]] =
-    Instance.contImpl[T, Id](c, TaskInstance, TaskConvert, MixedBuilder)(
+    Instance.contImpl[T, Id](c, TaskInstance, TaskConvert, MixedBuilder, LinterDSL.Empty)(
       Right(t),
       Instance.idTransform[c.type])
 }
