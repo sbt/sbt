@@ -31,6 +31,7 @@ private[sbt] case class SbtChainResolver(
     updateOptions: UpdateOptions,
     log: Logger
 ) extends ChainResolver {
+  override def setCheckmodified(check: Boolean): Unit = super.setCheckmodified(check)
 
   override def equals(o: Any): Boolean = o match {
     case o: SbtChainResolver =>

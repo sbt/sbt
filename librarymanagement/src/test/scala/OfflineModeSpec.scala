@@ -44,7 +44,7 @@ class OfflineModeSpec extends BaseIvySpecification with DependencyBuilders {
 
     val offlineResolution =
       IvyActions.updateEither(toResolve, offlineConf, warningConf, noClock, targetDir, log)
-    assert(offlineResolution.isRight)
+    assert(offlineResolution.isRight, s"Offline resolution has failed with $offlineResolution.")
 
     val resolveTime = offlineResolution.right.get.stats.resolveTime
     // Only check the estimate for the non cached resolution, otherwise resolution is cached

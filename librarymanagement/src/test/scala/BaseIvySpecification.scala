@@ -53,8 +53,8 @@ trait BaseIvySpecification extends UnitSpec {
   def mkIvyConfiguration(uo: UpdateOptions): IvyConfiguration = {
     val paths = IvyPaths(currentBase, Some(currentTarget))
     val other = Vector.empty
-    val moduleConfs = Vector(ModuleConfiguration("*", chainResolver))
     val check = Vector.empty
+    val moduleConfs = Vector(ModuleConfiguration("*", chainResolver))
     val resCacheDir = currentTarget / "resolution-cache"
     new InlineIvyConfiguration(paths,
                                resolvers,

@@ -5,10 +5,15 @@ package sbt.internal.librarymanagement
 
 import java.net.URL
 import java.util.Collections
+
 import org.apache.ivy.core.module.descriptor.DependencyDescriptor
 import org.apache.ivy.core.resolve.ResolveData
 import org.apache.ivy.core.settings.IvySettings
-import org.apache.ivy.plugins.repository.{ RepositoryCopyProgressListener, TransferEvent }
+import org.apache.ivy.plugins.repository.{
+  RepositoryCopyProgressListener,
+  Resource,
+  TransferEvent
+}
 import org.apache.ivy.plugins.resolver.{
   BasicResolver,
   DependencyResolver,
@@ -24,9 +29,10 @@ import org.apache.ivy.plugins.resolver.{
   URLResolver
 }
 import org.apache.ivy.plugins.repository.url.{ URLRepository => URLRepo }
-import org.apache.ivy.plugins.repository.file.{ FileRepository => FileRepo, FileResource }
-import java.io.{ IOException, File }
-import org.apache.ivy.util.{ FileUtil, ChecksumHelper }
+import org.apache.ivy.plugins.repository.file.{ FileResource, FileRepository => FileRepo }
+import java.io.{ File, IOException }
+
+import org.apache.ivy.util.{ ChecksumHelper, FileUtil, Message }
 import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact }
 import sbt.io.IO
 import sbt.util.Logger
@@ -156,6 +162,7 @@ private[sbt] object ConvertResolver {
               extends IBiblioResolver
               with ChecksumFriendlyURLResolver
               with DescriptorRequired {
+            override def getResource(resource: Resource, dest: File): Long = get(resource, dest)
             def setPatterns(): Unit = {
               // done this way for access to protected methods.
               setArtifactPatterns(pattern)
@@ -170,7 +177,9 @@ private[sbt] object ConvertResolver {
           resolver
         }
         case repo: SshRepository => {
-          val resolver = new SshResolver with DescriptorRequired
+          val resolver = new SshResolver with DescriptorRequired {
+            override def getResource(resource: Resource, dest: File): Long = get(resource, dest)
+          }
           initializeSSHResolver(resolver, repo, settings)
           repo.publishPermissions.foreach(perm => resolver.setPublishPermissions(perm))
           resolver
@@ -187,6 +196,7 @@ private[sbt] object ConvertResolver {
             // in local files for non-changing revisions.
             // This will be fully enforced in sbt 1.0.
             setRepository(new WarnOnOverwriteFileRepo())
+            override def getResource(resource: Resource, dest: File): Long = get(resource, dest)
           }
           resolver.setName(repo.name)
           initializePatterns(resolver, repo.patterns, settings)
@@ -196,7 +206,9 @@ private[sbt] object ConvertResolver {
           resolver
         }
         case repo: URLRepository => {
-          val resolver = new URLResolver with ChecksumFriendlyURLResolver with DescriptorRequired
+          val resolver = new URLResolver with ChecksumFriendlyURLResolver with DescriptorRequired {
+            override def getResource(resource: Resource, dest: File): Long = get(resource, dest)
+          }
           resolver.setName(repo.name)
           initializePatterns(resolver, repo.patterns, settings)
           resolver
@@ -208,11 +220,59 @@ private[sbt] object ConvertResolver {
   }
 
   private sealed trait DescriptorRequired extends BasicResolver {
+    // Works around implementation restriction to access protected method `get`
+    def getResource(resource: Resource, dest: File): Long
+
+    override def getAndCheck(resource: Resource, dest: File): Long = {
+      // Follows the same semantics that private method `check` as defined in ivy `BasicResolver`
+      def check(resource: Resource, destination: File, algorithm: String) = {
+        if (!ChecksumHelper.isKnownAlgorithm(algorithm)) {
+          throw new IllegalArgumentException(s"Unknown checksum algorithm: $algorithm")
+        }
+        val checksumResource = resource.clone(s"${resource.getName}.$algorithm")
+        if (checksumResource.exists) {
+          Message.debug(s"$algorithm file found for $resource: checking...")
+          val checksumFile = File.createTempFile("ivytmp", algorithm)
+          try {
+            getResource(checksumResource, checksumFile)
+            try {
+              ChecksumHelper.check(dest, checksumFile, algorithm)
+              Message.verbose(s"$algorithm OK for $resource")
+              true
+            } catch {
+              case e: IOException =>
+                dest.delete()
+                throw e
+            }
+          } finally {
+            checksumFile.delete()
+          }
+        } else false
+      }
+
+      val size = getResource(resource, dest)
+      val checksums = getChecksumAlgorithms
+      checksums.foldLeft(false) { (failed, checksum) =>
+        // Continue checking until we hit a failure
+        if (failed) failed
+        else check(resource, dest, checksum)
+      }
+      size
+    }
+    var i = 0
     override def getDependency(dd: DependencyDescriptor, data: ResolveData) = {
+      val moduleID = IvyRetrieve.toModuleID(dd.getDependencyRevisionId)
+      print(" " * i)
+      println(s"Downloading and checking for $moduleID")
+      i += 2
       val prev = descriptorString(isAllownomd)
       setDescriptor(descriptorString(hasExplicitURL(dd)))
-      try super.getDependency(dd, data)
+      val t = try super.getDependency(dd, data)
       finally setDescriptor(prev)
+      i -= 2
+      print(" " * i)
+      println(s"End $moduleID")
+      t
     }
     def descriptorString(optional: Boolean) =
       if (optional) BasicResolver.DESCRIPTOR_OPTIONAL else BasicResolver.DESCRIPTOR_REQUIRED
