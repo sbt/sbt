@@ -77,7 +77,7 @@ object TaskLinterDSLFeedback {
        |  Regular tasks always evaluate task inside the bodies of if expressions.
        |
        |${startGreen}SOLUTION${reset}:
-       |  1. If you only want to evaluate it when the if predicate is true, use a dynamic task.
+       |  1. If you only want to evaluate it when the if predicate is true or false, use a dynamic task.
        |  2. Otherwise, make the static evaluation explicit by evaluating `${offendingValue}` outside the if expression.
     """.stripMargin
 }
