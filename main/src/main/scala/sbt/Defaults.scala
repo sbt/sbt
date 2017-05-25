@@ -337,7 +337,8 @@ object Defaults extends BuildCommon {
       val srcs = unmanagedSources.value
       val f = (includeFilter in unmanagedSources).value
       val excl = (excludeFilter in unmanagedSources).value
-      if (sourcesInBase.value) (srcs +++ baseDirectory.value * (f -- excl)).get else srcs
+      val baseDir = baseDirectory.value
+      if (sourcesInBase.value) (srcs +++ baseDir * (f -- excl)).get else srcs
     }
   )
 
@@ -405,11 +406,12 @@ object Defaults extends BuildCommon {
         bootIvyConfiguration.value,
         scalaCompilerBridgeSource.value
       )(appConfiguration.value, streams.value.log)
+      val classLoaderCache = state.value.classLoaderCache
       if (java.lang.Boolean.getBoolean("sbt.disable.interface.classloader.cache")) compilers
       else {
         compilers.withScalac(
           compilers.scalac match {
-            case x: AnalyzingCompiler => x.withClassLoaderCache(state.value.classLoaderCache)
+            case x: AnalyzingCompiler => x.withClassLoaderCache(classLoaderCache)
             case x                    => x
           }
         )
@@ -426,8 +428,9 @@ object Defaults extends BuildCommon {
     compileAnalysisFilename := {
       // Here, if the user wants cross-scala-versioning, we also append it
       // to the analysis cache, so we keep the scala versions separated.
+      val binVersion = scalaBinaryVersion.value
       val extra =
-        if (crossPaths.value) s"_${scalaBinaryVersion.value}"
+        if (crossPaths.value) s"_$binVersion"
         else ""
       s"inc_compile${extra}.zip"
     },
@@ -553,11 +556,11 @@ object Defaults extends BuildCommon {
     def file(id: String) = files(id).headOption getOrElse sys.error(s"Missing ${id}.jar")
     val allFiles = toolReport.modules.flatMap(_.artifacts.map(_._2))
     val libraryJar = file(ScalaArtifacts.LibraryID)
+    val binVersion = scalaBinaryVersion.value
     val compilerJar =
       if (ScalaInstance.isDotty(scalaVersion.value))
-        file(ScalaArtifacts.dottyID(scalaBinaryVersion.value))
-      else
-        file(ScalaArtifacts.CompilerID)
+        file(ScalaArtifacts.dottyID(binVersion))
+      else file(ScalaArtifacts.CompilerID)
     val otherJars = allFiles.filterNot(x => x == libraryJar || x == compilerJar)
     new ScalaInstance(scalaVersion.value,
                       makeClassLoader(state.value)(libraryJar :: compilerJar :: otherJars.toList),
@@ -590,9 +593,11 @@ object Defaults extends BuildCommon {
       data(fullClasspath.value),
       scalaInstance.value,
       IO.createUniqueDirectory(taskTemporaryDirectory.value)),
-    loadedTestFrameworks := testFrameworks.value
-      .flatMap(f => f.create(testLoader.value, streams.value.log).map(x => (f, x)).toIterable)
-      .toMap,
+    loadedTestFrameworks := {
+      val loader = testLoader.value
+      val log = streams.value.log
+      testFrameworks.value.flatMap(f => f.create(loader, log).map(x => (f, x)).toIterable).toMap
+    },
     definedTests := detectTests.value,
     definedTestNames := (definedTests map (_.map(_.name).distinct) storeAs definedTestNames triggeredBy compile).value,
     testFilter in testQuick := testQuickFilter.value,
@@ -1193,8 +1198,9 @@ object Defaults extends BuildCommon {
     inTask(key)(
       Seq(
         apiMappings ++= {
-          if (autoAPIMappings.value)
-            APIMappings.extract(dependencyClasspath.value, streams.value.log).toMap
+          val dependencyCp = dependencyClasspath.value
+          val log = streams.value.log
+          if (autoAPIMappings.value) APIMappings.extract(dependencyCp, log).toMap
           else Map.empty[File, URL]
         },
         fileInputOptions := Seq("-doc-root-content", "-diagrams-dot-path"),
@@ -1393,9 +1399,9 @@ object Defaults extends BuildCommon {
              PomExtraDependencyAttributes.ScalaVersionKey -> scalaV)
       .withCrossVersion(Disabled())
 
-  def discoverSbtPluginNames: Initialize[Task[PluginDiscovery.DiscoveredNames]] = Def.task {
-    if (sbtPlugin.value) PluginDiscovery.discoverSourceAll(compile.value)
-    else PluginDiscovery.emptyDiscoveredNames
+  def discoverSbtPluginNames: Initialize[Task[PluginDiscovery.DiscoveredNames]] = Def.taskDyn {
+    if (sbtPlugin.value) Def.task(PluginDiscovery.discoverSourceAll(compile.value))
+    else Def.task(PluginDiscovery.emptyDiscoveredNames)
   }
 
   def copyResourcesTask =
@@ -1686,7 +1692,8 @@ object Classpaths {
         bootResolvers.value match {
           case Some(repos) if overrideBuildResolvers.value => proj +: repos
           case _ =>
-            val base = if (sbtPlugin.value) sbtResolver.value +: sbtPluginReleases +: rs else rs
+            val sbtResolverValue = sbtResolver.value
+            val base = if (sbtPlugin.value) sbtResolverValue +: sbtPluginReleases +: rs else rs
             proj +: base
         }
       }).value,
@@ -1769,14 +1776,18 @@ object Classpaths {
                                                  else "release",
                                                logging = ivyLoggingLevel.value),
     deliverConfiguration := deliverLocalConfiguration.value,
-    publishConfiguration := publishConfig(
-      packagedArtifacts.in(publish).value,
-      if (publishMavenStyle.value) None else Some(deliver.value),
-      resolverName = getPublishTo(publishTo.value).name,
-      checksums = checksums.in(publish).value,
-      logging = ivyLoggingLevel.value,
-      overwrite = isSnapshot.value
-    ),
+    publishConfiguration := {
+      // TODO(jvican): I think this is a bug.
+      val delivered = deliver.value
+      publishConfig(
+        packagedArtifacts.in(publish).value,
+        if (publishMavenStyle.value) None else Some(delivered),
+        resolverName = getPublishTo(publishTo.value).name,
+        checksums = checksums.in(publish).value,
+        logging = ivyLoggingLevel.value,
+        overwrite = isSnapshot.value
+      )
+    },
     publishLocalConfiguration := publishConfig(
       packagedArtifacts.in(publishLocal).value,
       Some(deliverLocal.value),
@@ -1795,8 +1806,11 @@ object Classpaths {
     ivySbt := ivySbt0.value,
     ivyModule := { val is = ivySbt.value; new is.Module(moduleSettings.value) },
     transitiveUpdate := transitiveUpdateTask.value,
-    updateCacheName := "update_cache" + (if (crossPaths.value) s"_${scalaBinaryVersion.value}"
-                                         else ""),
+    updateCacheName := {
+      val binVersion = scalaBinaryVersion.value
+      val suffix = if (crossPaths.value) s"_$binVersion" else ""
+      s"update_cache$suffix"
+    },
     evictionWarningOptions in update := EvictionWarningOptions.default,
     dependencyPositions := dependencyPositionsTask.value,
     unresolvedWarningConfiguration in update := UnresolvedWarningConfiguration(
@@ -1839,17 +1853,19 @@ object Classpaths {
       val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
       val uwConfig = (unresolvedWarningConfiguration in update).value
       val depDir = dependencyCacheDirectory.value
+      val ivy = ivyScala.value
+      val st = state.value
       withExcludes(out, mod.classifiers, lock(app)) { excludes =>
         IvyActions.updateClassifiers(
           is,
           GetClassifiersConfiguration(mod,
                                       excludes,
                                       c.withArtifactFilter(c.artifactFilter.invert),
-                                      ivyScala.value,
+                                      ivy,
                                       srcTypes,
                                       docTypes),
           uwConfig,
-          LogicalClock(state.value.hashCode),
+          LogicalClock(st.hashCode),
           Some(depDir),
           Vector.empty,
           s.log
@@ -1867,15 +1883,17 @@ object Classpaths {
     // Override the default to handle mixing in the sbtPlugin + scala dependencies.
     allDependencies := {
       val base = projectDependencies.value ++ libraryDependencies.value
+      val dependency = sbtDependency.value
       val pluginAdjust =
-        if (sbtPlugin.value) sbtDependency.value.withConfigurations(Some(Provided.name)) +: base
+        if (sbtPlugin.value) dependency.withConfigurations(Some(Provided.name)) +: base
         else base
+      val sbtOrg = scalaOrganization.value
+      val version = scalaVersion.value
       if (scalaHome.value.isDefined || ivyScala.value.isEmpty || !managedScalaInstance.value)
         pluginAdjust
       else {
-        val version = scalaVersion.value
         val isDotty = ScalaInstance.isDotty(version)
-        ScalaArtifacts.toolDependencies(scalaOrganization.value, version, isDotty) ++ pluginAdjust
+        ScalaArtifacts.toolDependencies(sbtOrg, version, isDotty) ++ pluginAdjust
       }
     }
   )
@@ -1978,11 +1996,14 @@ object Classpaths {
           val app = appConfiguration.value
           val srcTypes = sourceArtifactTypes.value
           val docTypes = docArtifactTypes.value
-          val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
+          val log = s.log
+          val out = is.withIvy(log)(_.getSettings.getDefaultIvyUserDir)
           val uwConfig = (unresolvedWarningConfiguration in update).value
           val depDir = dependencyCacheDirectory.value
+          val ivy = ivyScala.value
+          val st = state.value
           withExcludes(out, mod.classifiers, lock(app)) { excludes =>
-            val noExplicitCheck = ivyScala.value.map(_.withCheckExplicit(false))
+            val noExplicitCheck = ivy.map(_.withCheckExplicit(false))
             IvyActions.transitiveScratch(
               is,
               "sbt",
@@ -1993,9 +2014,9 @@ object Classpaths {
                                           srcTypes,
                                           docTypes),
               uwConfig,
-              LogicalClock(state.value.hashCode),
+              LogicalClock(st.hashCode),
               Some(depDir),
-              s.log
+              log
             )
           }
         } tag (Tags.Update, Tags.Network)).value
@@ -2124,11 +2145,11 @@ object Classpaths {
       }
     }
 
-    val evictionOptions = {
+    val evictionOptions = Def.taskDyn {
       if (executionRoots.value.exists(_.key == evicted.key))
-        EvictionWarningOptions.empty
-      else (evictionWarningOptions in update).value
-    }
+        Def.task(EvictionWarningOptions.empty)
+      else Def.task((evictionWarningOptions in update).value)
+    }.value
 
     LibraryManagement.cachedUpdate(
       s.cacheStoreFactory.sub(updateCacheName.value),

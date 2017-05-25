@@ -1,8 +1,8 @@
-package sbt
-package std
+package sbt.std
 
 import sbt.internal.util.complete
 import sbt.internal.util.complete.DefaultParsers
+import sbt.{ Def, InputTask, Task }
 
 /*object UseTask
 {
@@ -20,6 +20,7 @@ import sbt.internal.util.complete.DefaultParsers
 }*/
 object Assign {
   import java.io.File
+
   import Def.{ Initialize, inputKey, macroValueT, parserToInput, settingKey, taskKey }
   //	import UseTask.{x,y,z,a,set,plain}
 

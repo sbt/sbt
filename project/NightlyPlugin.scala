@@ -10,7 +10,8 @@ object NightlyPlugin extends AutoPlugin {
     val includeTestDependencies = settingKey[Boolean]("Doesn't declare test dependencies.")
 
     def testDependencies = libraryDependencies ++= (
-      if (includeTestDependencies.value) Seq(scalaCheck % Test, specs2 % Test, junit % Test)
+      if (includeTestDependencies.value)
+        Seq(scalaCheck % Test, specs2 % Test, junit % Test, scalatest % Test)
       else Seq()
     )
   }

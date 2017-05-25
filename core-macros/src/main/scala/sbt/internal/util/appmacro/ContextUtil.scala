@@ -109,12 +109,13 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
   def illegalReference(defs: collection.Set[Symbol], sym: Symbol): Boolean =
     sym != null && sym != NoSymbol && defs.contains(sym)
 
+  type PropertyChecker = (String, Type, Tree) => Boolean
+
   /**
    * A function that checks the provided tree for illegal references to M instances defined in the
    *  expression passed to the macro and for illegal dereferencing of M instances.
    */
-  def checkReferences(defs: collection.Set[Symbol],
-                      isWrapper: (String, Type, Tree) => Boolean): Tree => Unit = {
+  def checkReferences(defs: collection.Set[Symbol], isWrapper: PropertyChecker): Tree => Unit = {
     case s @ ApplyTree(TypeApply(Select(_, nme), tpe :: Nil), qual :: Nil) =>
       if (isWrapper(nme.decodedName.toString, tpe.tpe, qual))
         ctx.error(s.pos, DynamicDependencyError)

@@ -6,11 +6,12 @@ logLevel := Level.Debug
 
 // Reset compile status because scripted tests are run in batch mode
 previousCompile in Compile := {
+  val previous = (previousCompile in Compile).value
   if (!CompileState.isNew) {
     val res = new PreviousResult(Maybe.nothing[CompileAnalysis], Maybe.nothing[MiniSetup])
     CompileState.isNew = true
     res
-  } else (previousCompile in Compile).value
+  } else previous
 }
 
 // disable sbt's heuristic which recompiles everything in case

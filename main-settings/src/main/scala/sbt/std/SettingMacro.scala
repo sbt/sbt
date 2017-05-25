@@ -2,9 +2,16 @@ package sbt
 package std
 
 import Def.Initialize
-import sbt.internal.util.Types.{ idFun, Id }
+import sbt.internal.util.Types.{ Id, idFun }
 import sbt.internal.util.AList
-import sbt.internal.util.appmacro.{ Convert, Converted, Instance, MixedBuilder, MonadInstance }
+import sbt.internal.util.appmacro.{
+  Convert,
+  Converted,
+  Instance,
+  LinterDSL,
+  MixedBuilder,
+  MonadInstance
+}
 
 object InitializeInstance extends MonadInstance {
   type M[x] = Initialize[x]
@@ -41,15 +48,16 @@ object InitializeConvert extends Convert {
 }
 
 object SettingMacro {
+  import LinterDSL.{ Empty => EmptyLinter }
   def settingMacroImpl[T: c.WeakTypeTag](c: blackbox.Context)(
       t: c.Expr[T]): c.Expr[Initialize[T]] =
-    Instance.contImpl[T, Id](c, InitializeInstance, InitializeConvert, MixedBuilder)(
+    Instance.contImpl[T, Id](c, InitializeInstance, InitializeConvert, MixedBuilder, EmptyLinter)(
       Left(t),
       Instance.idTransform[c.type])
 
   def settingDynMacroImpl[T: c.WeakTypeTag](c: blackbox.Context)(
       t: c.Expr[Initialize[T]]): c.Expr[Initialize[T]] =
-    Instance.contImpl[T, Id](c, InitializeInstance, InitializeConvert, MixedBuilder)(
+    Instance.contImpl[T, Id](c, InitializeInstance, InitializeConvert, MixedBuilder, EmptyLinter)(
       Right(t),
       Instance.idTransform[c.type])
 }

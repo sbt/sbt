@@ -81,7 +81,12 @@ object Instance {
       c: blackbox.Context,
       i: Instance with Singleton,
       convert: Convert,
-      builder: TupleBuilder)(t: Either[c.Expr[T], c.Expr[i.M[T]]], inner: Transform[c.type, N])(
+      builder: TupleBuilder,
+      linter: LinterDSL
+  )(
+      t: Either[c.Expr[T], c.Expr[i.M[T]]],
+      inner: Transform[c.type, N]
+  )(
       implicit tt: c.WeakTypeTag[T],
       nt: c.WeakTypeTag[N[T]],
       it: c.TypeTag[i.type]
@@ -183,6 +188,7 @@ object Instance {
     }
 
     // applies the transformation
+    linter.runLinter(c)(tree)
     val tx = util.transformWrappers(tree, (n, tpe, t, replace) => sub(n, tpe, t, replace))
     // resetting attributes must be: a) local b) done here and not wider or else there are obscure errors
     val tr = makeApp(inner(tx))

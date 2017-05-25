@@ -110,6 +110,7 @@ object Dependencies {
 
   val sjsonNewScalaJson = "com.eed3si9n" %% "sjson-new-scalajson" % "0.7.0"
 
+  val scalatest = "org.scalatest" %% "scalatest" % "3.0.1"
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.13.4"
   val specs2 = "org.specs2" %% "specs2" % "2.4.17"
   val junit = "junit" % "junit" % "4.11"
