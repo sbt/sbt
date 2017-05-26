@@ -396,7 +396,8 @@ def allProjects =
     mainSettingsProj,
     mainProj,
     sbtProj,
-    bundledLauncherProj
+    bundledLauncherProj,
+    coreMacrosProj
   )
 
 lazy val nonRoots = allProjects.map(p => LocalProject(p.id))
