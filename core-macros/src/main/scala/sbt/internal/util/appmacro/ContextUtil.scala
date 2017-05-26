@@ -27,6 +27,7 @@ object ContextUtil {
     import c.universe._
     c.macroApplication match {
       case s @ Select(Apply(_, t :: Nil), tp) => f(c.Expr[Any](t), s.pos)
+      case a @ Apply(_, t :: Nil)             => f(c.Expr[Any](t), a.pos)
       case x                                  => unexpectedTree(x)
     }
   }
