@@ -265,12 +265,13 @@ private[sbt] object ConvertResolver {
     private final val PartEnd = ".part"
     private final val JarEnd = ".jar"
     private final val TemporaryJar = JarEnd + PartEnd
+
     override def getAndCheck(resource: Resource, target: File): Long = {
       val targetPath = target.getAbsolutePath
       if (!managedChecksumsEnabled || !targetPath.endsWith(TemporaryJar)) {
         super.getAndCheck(resource, target)
       } else {
-        // This is where we differ from ivy behaviour
+        // +ivy deviation
         val size = getResource(resource, target)
         val checksumAlgorithms = getChecksumAlgorithms
         checksumAlgorithms.foldLeft(false) { (checked, algorithm) =>
@@ -279,6 +280,7 @@ private[sbt] object ConvertResolver {
           if (checked) checked
           else downloadChecksum(resource, target, checksumFile, algorithm)
         }
+        // -ivy deviation
         size
       }
     }
