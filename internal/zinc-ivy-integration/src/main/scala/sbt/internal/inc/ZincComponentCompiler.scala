@@ -78,8 +78,8 @@ private[sbt] object ZincComponentCompiler {
       zinc.getCompiledBridgeJar
     }
 
-    override def getCompiledBridge(scalaInstance: xsbti.compile.ScalaInstance,
-                                   logger: xsbti.Logger): File = {
+    override def fetchCompiledBridge(scalaInstance: xsbti.compile.ScalaInstance,
+                                     logger: xsbti.Logger): File = {
       val scalaVersion = scalaInstance.actualVersion()
       val bridgeSources = getDefaultBridgeModule(scalaVersion)
       getCompiledBridge(bridgeSources, scalaInstance, logger)
@@ -118,8 +118,8 @@ private[sbt] object ZincComponentCompiler {
       }
     }
 
-    override def getScalaInstance(scalaVersion: String,
-                                  logger: xsbti.Logger): xsbti.compile.ScalaInstance = {
+    override def fetchScalaInstance(scalaVersion: String,
+                                    logger: xsbti.Logger): xsbti.compile.ScalaInstance = {
       import sbt.io.Path.toURLs
       val scalaArtifacts = getScalaArtifacts(scalaVersion, logger)
       val scalaCompiler = scalaArtifacts.compiler

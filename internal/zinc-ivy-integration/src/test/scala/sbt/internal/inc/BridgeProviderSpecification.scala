@@ -45,8 +45,8 @@ abstract class BridgeProviderSpecification extends UnitSpec {
 
   def getCompilerBridge(targetDir: File, log: Logger, scalaVersion: String): File = {
     val provider = getZincProvider(targetDir, log)
-    val scalaInstance = provider.getScalaInstance(scalaVersion, log)
-    val bridge = provider.getCompiledBridge(scalaInstance, log)
+    val scalaInstance = provider.fetchScalaInstance(scalaVersion, log)
+    val bridge = provider.fetchCompiledBridge(scalaInstance, log)
     val target = targetDir / s"target-bridge-$scalaVersion.jar"
     IO.copyFile(bridge, target)
     target
@@ -56,6 +56,6 @@ abstract class BridgeProviderSpecification extends UnitSpec {
                     targetDir: File,
                     logger: Logger): xsbti.compile.ScalaInstance = {
     val provider = getZincProvider(targetDir, logger)
-    provider.getScalaInstance(scalaVersion, logger)
+    provider.fetchScalaInstance(scalaVersion, logger)
   }
 }
