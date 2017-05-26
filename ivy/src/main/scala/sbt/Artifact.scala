@@ -9,6 +9,30 @@ import sbt.serialization._
 
 final case class Artifact(name: String, `type`: String, extension: String, classifier: Option[String], configurations: Iterable[Configuration], url: Option[URL], extraAttributes: Map[String, String]) {
   def extra(attributes: (String, String)*) = Artifact(name, `type`, extension, classifier, configurations, url, extraAttributes ++ ModuleID.checkE(attributes))
+
+  /** Copy with a new type. */
+  def withType(`type`: String): Artifact =
+    copy(`type` = `type`)
+
+  /** Copy with a new extension. */
+  def withExtension(extension: String): Artifact =
+    copy(extension = extension)
+
+  /** Copy with a new classifier. */
+  def withClassifier(classifier: Option[String]): Artifact =
+    copy(classifier = classifier)
+
+  /** Copy with new configurations. */
+  def withConfigurations(configurations: Vector[Configuration]): Artifact =
+    copy(configurations = configurations)
+
+  /** Copy with a new url. */
+  def withUrl(url: Option[URL]): Artifact =
+    copy(url = url)
+
+  /** Copy with new extraAttributes. */
+  def withExtraAttributes(extraAttributes: Map[String, String]): Artifact =
+    copy(extraAttributes = extraAttributes)
 }
 
 import Configurations.{ config, Docs, Optional, Pom, Sources, Test }
