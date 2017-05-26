@@ -9,6 +9,9 @@ import sbt.util.Logger
  * While UpdateConfiguration is passed into update at runtime,
  * UpdateOption is intended to be used while setting up the Ivy object.
  *
+ * @param managedChecksums Managed checksums tells ivy whether it should only download the
+ *                         checksum files and let the caller handle the verification.
+ *
  * See also UpdateConfiguration in IvyActions.scala.
  */
 final class UpdateOptions private[sbt] (
@@ -22,7 +25,7 @@ final class UpdateOptions private[sbt] (
     val consolidatedResolution: Boolean,
     // If set to true, use cached resolution.
     val cachedResolution: Boolean,
-    // If set to true, use cached resolution.
+    // If set to true, use managed checksums.
     val managedChecksums: Boolean,
     // Extension point for an alternative resolver converter.
     val resolverConverter: UpdateOptions.ResolverConverter,

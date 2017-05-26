@@ -3,7 +3,7 @@ package sbt.librarymanagement
 import org.scalatest.Assertion
 import sbt.internal.librarymanagement._
 import sbt.internal.librarymanagement.impl.DependencyBuilders
-import sbt.io.IO
+import sbt.io.{ FileFilter, IO, Path }
 
 class OfflineModeSpec extends BaseIvySpecification with DependencyBuilders {
   private final def targetDir = Some(currentDependency)
