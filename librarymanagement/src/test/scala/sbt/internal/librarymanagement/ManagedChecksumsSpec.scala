@@ -43,6 +43,7 @@ class ManagedChecksumsSpec extends BaseIvySpecification with DependencyBuilders 
                                moduleConfs,
                                None,
                                check,
+                               managedChecksums = true,
                                Some(resCacheDir),
                                uo,
                                log)
@@ -63,7 +64,7 @@ class ManagedChecksumsSpec extends BaseIvySpecification with DependencyBuilders 
 
   "Managed checksums" should "should download the checksum files" in {
     cleanAll()
-    val updateOptions = UpdateOptions().withManagedChecksums(true)
+    val updateOptions = UpdateOptions()
     val toResolve = module(defaultModuleId, dependencies, None, updateOptions)
     val res = IvyActions.updateEither(toResolve, onlineConf, warningConf, noClock, targetDir, log)
     assert(res.isRight, s"Resolution with managed checksums failed! $res")

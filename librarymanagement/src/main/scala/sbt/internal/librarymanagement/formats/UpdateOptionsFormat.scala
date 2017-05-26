@@ -26,19 +26,17 @@ trait UpdateOptionsFormat { self: BasicJsonProtocol with ModuleIDFormats with Re
           uo.latestSnapshots,
           uo.consolidatedResolution,
           uo.cachedResolution,
-          uo.managedChecksums,
           uo.moduleResolvers
       ),
-      (xs: (String, Boolean, Boolean, Boolean, Boolean, Boolean, Map[ModuleID, Resolver])) =>
+      (xs: (String, Boolean, Boolean, Boolean, Boolean, Map[ModuleID, Resolver])) =>
         new UpdateOptions(
           levels(xs._1),
           xs._2,
           xs._3,
           xs._4,
           xs._5,
-          xs._6,
           PartialFunction.empty,
-          xs._7
+          xs._6
       )
     )
 

@@ -742,6 +742,7 @@
             { "name": "otherResolvers",       "type": "sbt.librarymanagement.Resolver*"            },
             { "name": "moduleConfigurations", "type": "sbt.librarymanagement.ModuleConfiguration*" },
             { "name": "checksums",            "type": "String*"                                    },
+            { "name": "managedChecksums",     "type": "Boolean"                                    },
             { "name": "resolutionCacheDir",   "type": "java.io.File?"                              }
           ],
           "extra": [
@@ -752,12 +753,13 @@
             "  moduleConfigurations: Vector[sbt.librarymanagement.ModuleConfiguration],",
             "  lock:                 Option[xsbti.GlobalLock],",
             "  checksums:            Vector[String],",
+            "  managedChecksums:     Boolean,",
             "  resolutionCacheDir:   Option[java.io.File],",
             "  updateOptions:        sbt.librarymanagement.UpdateOptions,",
             "  log:                  xsbti.Logger",
             ") =",
             "  this(lock, paths.baseDirectory, log, updateOptions, paths, resolvers, otherResolvers,",
-            "    moduleConfigurations, checksums, resolutionCacheDir)"
+            "    moduleConfigurations, checksums, managedChecksums, resolutionCacheDir)"
           ]
         },
         {

@@ -141,7 +141,7 @@ private[sbt] object ConvertResolver {
   def apply(r: Resolver, settings: IvySettings, log: Logger): DependencyResolver =
     apply(r, settings, UpdateOptions(), log)
 
-  private[librarymanagement] val ManagedChecksums = "managedChecksums"
+  private[librarymanagement] val ManagedChecksums = "sbt.managedChecksums"
 
   /** Converts the given sbt resolver into an Ivy resolver. */
   def apply(
@@ -149,11 +149,8 @@ private[sbt] object ConvertResolver {
       settings: IvySettings,
       updateOptions: UpdateOptions,
       log: Logger
-  ): DependencyResolver = {
-    // Pass in to the resolver converter the update options via ivy settings
-    settings.setVariable(ManagedChecksums, updateOptions.managedChecksums.toString)
+  ): DependencyResolver =
     (updateOptions.resolverConverter orElse defaultConvert)((r, settings, log))
-  }
 
   /** The default implementation of converter. */
   lazy val defaultConvert: ResolverConverter = {
