@@ -24,8 +24,8 @@ trait UpdateOptionsFormat { self: BasicJsonProtocol with ModuleIDFormats with Re
           uo.circularDependencyLevel.name,
           uo.interProjectFirst,
           uo.latestSnapshots,
-          uo.consolidatedResolution,
           uo.cachedResolution,
+          uo.gigahorse,
           uo.moduleResolvers
       ),
       (xs: (String, Boolean, Boolean, Boolean, Boolean, Map[ModuleID, Resolver])) =>

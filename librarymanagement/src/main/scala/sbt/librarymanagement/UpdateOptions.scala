@@ -18,10 +18,10 @@ final class UpdateOptions private[sbt] (
     val interProjectFirst: Boolean,
     // If set to true, check all resolvers for snapshots.
     val latestSnapshots: Boolean,
-    // If set to true, use consolidated resolution.
-    val consolidatedResolution: Boolean,
     // If set to true, use cached resolution.
     val cachedResolution: Boolean,
+    // If set to true, use Gigahorse
+    val gigahorse: Boolean,
     // Extension point for an alternative resolver converter.
     val resolverConverter: UpdateOptions.ResolverConverter,
     // Map the unique resolver to be checked for the module ID
@@ -35,17 +35,11 @@ final class UpdateOptions private[sbt] (
     copy(interProjectFirst = interProjectFirst)
   def withLatestSnapshots(latestSnapshots: Boolean): UpdateOptions =
     copy(latestSnapshots = latestSnapshots)
-  @deprecated("Use withCachedResolution instead.", "0.13.7")
-  def withConsolidatedResolution(consolidatedResolution: Boolean): UpdateOptions =
-    copy(
-      consolidatedResolution = consolidatedResolution,
-      cachedResolution = consolidatedResolution
-    )
   def withCachedResolution(cachedResoluton: Boolean): UpdateOptions =
-    copy(
-      cachedResolution = cachedResoluton,
-      consolidatedResolution = cachedResolution
-    )
+    copy(cachedResolution = cachedResoluton)
+
+  def withGigahorse(gigahorse: Boolean): UpdateOptions =
+    copy(gigahorse = gigahorse)
 
   /** Extention point for an alternative resolver converter. */
   def withResolverConverter(resolverConverter: UpdateOptions.ResolverConverter): UpdateOptions =
@@ -58,8 +52,8 @@ final class UpdateOptions private[sbt] (
       circularDependencyLevel: CircularDependencyLevel = this.circularDependencyLevel,
       interProjectFirst: Boolean = this.interProjectFirst,
       latestSnapshots: Boolean = this.latestSnapshots,
-      consolidatedResolution: Boolean = this.consolidatedResolution,
       cachedResolution: Boolean = this.cachedResolution,
+      gigahorse: Boolean = this.gigahorse,
       resolverConverter: UpdateOptions.ResolverConverter = this.resolverConverter,
       moduleResolvers: Map[ModuleID, Resolver] = this.moduleResolvers
   ): UpdateOptions =
@@ -67,8 +61,8 @@ final class UpdateOptions private[sbt] (
       circularDependencyLevel,
       interProjectFirst,
       latestSnapshots,
-      consolidatedResolution,
       cachedResolution,
+      gigahorse,
       resolverConverter,
       moduleResolvers
     )
@@ -79,6 +73,7 @@ final class UpdateOptions private[sbt] (
         this.interProjectFirst == o.interProjectFirst &&
         this.latestSnapshots == o.latestSnapshots &&
         this.cachedResolution == o.cachedResolution &&
+        this.gigahorse == o.gigahorse &&
         this.resolverConverter == o.resolverConverter &&
         this.moduleResolvers == o.moduleResolvers
     case _ => false
@@ -90,6 +85,7 @@ final class UpdateOptions private[sbt] (
     hash = hash * 31 + this.interProjectFirst.##
     hash = hash * 31 + this.latestSnapshots.##
     hash = hash * 31 + this.cachedResolution.##
+    hash = hash * 31 + this.gigahorse.##
     hash = hash * 31 + this.resolverConverter.##
     hash = hash * 31 + this.moduleResolvers.##
     hash
@@ -104,8 +100,8 @@ object UpdateOptions {
       circularDependencyLevel = CircularDependencyLevel.Warn,
       interProjectFirst = true,
       latestSnapshots = true,
-      consolidatedResolution = false,
       cachedResolution = false,
+      gigahorse = true,
       resolverConverter = PartialFunction.empty,
       moduleResolvers = Map.empty
     )

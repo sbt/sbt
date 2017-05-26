@@ -33,7 +33,7 @@ import org.apache.ivy.plugins.matcher.PatternMatcher
 import org.apache.ivy.plugins.resolver.DependencyResolver
 import org.apache.ivy.util.{ Message, MessageLogger }
 import org.apache.ivy.util.extendable.ExtendableItem
-
+import org.apache.ivy.util.url._
 import scala.xml.NodeSeq
 import scala.collection.mutable
 import sbt.util.Logger
@@ -43,7 +43,8 @@ import ivyint.{
   CachedResolutionResolveCache,
   CachedResolutionResolveEngine,
   ParallelResolveEngine,
-  SbtDefaultDependencyDescriptor
+  SbtDefaultDependencyDescriptor,
+  GigahorseUrlHandler
 }
 
 final class IvySbt(val configuration: IvyConfiguration) { self =>
@@ -72,9 +73,19 @@ final class IvySbt(val configuration: IvyConfiguration) { self =>
       case None       => action()
     }
   }
-  private lazy val settings: IvySettings = {
-    val is = new IvySettings
 
+  private lazy val basicUrlHandler: URLHandler = new BasicURLHandler
+  private lazy val gigahorseUrlHandler: URLHandler = {
+    val dispatcher = new URLHandlerDispatcher
+    val handler = new GigahorseUrlHandler
+    dispatcher.setDownloader("http", handler)
+    dispatcher.setDownloader("https", handler)
+    dispatcher
+  }
+  private lazy val settings: IvySettings = {
+    if (configuration.updateOptions.gigahorse) URLHandlerRegistry.setDefault(gigahorseUrlHandler)
+    else URLHandlerRegistry.setDefault(basicUrlHandler)
+    val is = new IvySettings
     is.setBaseDir(baseDirectory)
     is.setCircularDependencyStrategy(
       configuration.updateOptions.circularDependencyLevel.ivyStrategy
