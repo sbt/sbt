@@ -150,6 +150,7 @@ object BuiltinCommands {
 
   def ConsoleCommands: Seq[Command] =
     Seq(ignore, exit, IvyConsole.command, setLogLevel, early, act, nop)
+
   def ScriptCommands: Seq[Command] =
     Seq(ignore, exit, Script.command, setLogLevel, early, act, nop)
 
@@ -175,6 +176,8 @@ object BuiltinCommands {
       loadFailed,
       Cross.crossBuild,
       Cross.switchVersion,
+      PluginCross.pluginCross,
+      PluginCross.pluginSwitch,
       Cross.crossRestoreSession,
       setOnFailure,
       clearOnFailure,

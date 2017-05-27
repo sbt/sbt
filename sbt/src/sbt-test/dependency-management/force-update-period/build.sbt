@@ -2,6 +2,8 @@ libraryDependencies += "log4j" % "log4j" % "1.2.16" % "compile"
 
 autoScalaLibrary := false
 
+crossPaths := false
+
 TaskKey[Unit]("check-last-update-time") := (streams map { (s) =>
   val fullUpdateOutput = s.cacheDirectory / "out"
   val timeDiff = System.currentTimeMillis()-fullUpdateOutput.lastModified()

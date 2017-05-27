@@ -24,7 +24,7 @@ import sbt.librarymanagement.CrossVersion
 
 object Cross {
 
-  private def spacedFirst(name: String) = opOrIDSpaced(name) ~ any.+
+  private[sbt] def spacedFirst(name: String) = opOrIDSpaced(name) ~ any.+
 
   private case class Switch(version: ScalaVersion, verbose: Boolean, command: Option[String])
   private trait ScalaVersion {
@@ -77,7 +77,7 @@ object Cross {
   private def crossRestoreSessionParser(state: State): Parser[String] =
     token(CrossRestoreSessionCommand)
 
-  private def requireSession[T](p: State => Parser[T]): State => Parser[T] =
+  private[sbt] def requireSession[T](p: State => Parser[T]): State => Parser[T] =
     s => if (s get sessionSettings isEmpty) failure("No project loaded") else p(s)
 
   private def resolveAggregates(extracted: Extracted): Seq[ProjectRef] = {
