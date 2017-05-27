@@ -177,25 +177,20 @@ private[sbt] object ZincComponentCompiler {
                               resolvers0: Array[Resolver],
                               log: xsbti.Logger): IvyConfiguration = {
     import sbt.io.syntax._
-    val empty = Vector.empty
-    val checksums = empty
-    val otherResolvers = empty
     val resolvers = resolvers0.toVector
-    val updateOptions = UpdateOptions()
-    val paths = IvyPaths(baseDirectory, Some(ivyHome))
-    val resolutionCache = Some(ivyHome / "resolution-cache")
     val chainResolver = ChainedResolver("zinc-chain", resolvers)
-    val moduleConfs = Vector(ModuleConfiguration("*", chainResolver))
-    new InlineIvyConfiguration(paths,
-                               resolvers,
-                               otherResolvers,
-                               moduleConfs,
-                               false,
-                               None,
-                               checksums,
-                               resolutionCache,
-                               updateOptions,
-                               log)
+    new InlineIvyConfiguration(
+      paths = IvyPaths(baseDirectory, Some(ivyHome)),
+      resolvers = resolvers,
+      otherResolvers = Vector.empty,
+      moduleConfigurations = Vector(ModuleConfiguration("*", chainResolver)),
+      lock = None,
+      checksums = Vector.empty,
+      managedChecksums = false,
+      resolutionCacheDir = Some(ivyHome / "resolution-cache"),
+      updateOptions = UpdateOptions(),
+      log = log
+    )
   }
 }
 
@@ -336,7 +331,12 @@ object ZincIvyActions {
     val defaultExcluded = Set("doc")
     val finalExcluded = if (noSource) defaultExcluded + "src" else defaultExcluded
     val artifactFilter = ArtifactTypeFilter.forbid(finalExcluded)
-    UpdateConfiguration(Some(retrieve), missingOk = false, logLevel, artifactFilter)
+    UpdateConfiguration(retrieve = Some(retrieve),
+                        missingOk = false,
+                        logging = logLevel,
+                        artifactFilter = artifactFilter,
+                        offline = false,
+                        frozen = false)
   }
 
   private[inc] def update(module: IvyModule,
