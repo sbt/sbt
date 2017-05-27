@@ -222,20 +222,23 @@ object State {
   /** Provides operations and transformations on State. */
   implicit def stateOps(s: State): StateOps = new StateOps {
     def process(f: (Exec, State) => State): State = {
-      def doX(x: Exec, xs: List[Exec]) = {
-        log.debug(s"> $x")
-        f(x, s.copy(remainingCommands = xs, currentCommand = Some(x), history = x :: s.history))
+      def runCmd(cmd: Exec, remainingCommands: List[Exec]) = {
+        log.debug(s"> $cmd")
+        f(cmd,
+          s.copy(remainingCommands = remainingCommands,
+                 currentCommand = Some(cmd),
+                 history = cmd :: s.history))
       }
-      def isInteractive = System.console() != null
-      def hasInput = System.console().reader().ready()
+      def isInteractive = System.console != null
+      def hasInput = Option(System.console) exists (_.reader.ready())
       def hasShellCmd = s.definedCommands exists {
         case c: SimpleCommand => c.name == Shell; case _ => false
       }
       s.remainingCommands match {
         case List() =>
-          if (isInteractive && hasInput && hasShellCmd) doX(Exec(Shell, s.source), Nil)
+          if (isInteractive && hasInput && hasShellCmd) runCmd(Exec(Shell, s.source), Nil)
           else exit(true)
-        case List(x, xs @ _*) => doX(x, xs.toList)
+        case List(x, xs @ _*) => runCmd(x, xs.toList)
       }
     }
     def :::(newCommands: List[String]): State = ++:(newCommands map { Exec(_, s.source) })
