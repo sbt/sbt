@@ -14,6 +14,7 @@ abstract class ArtifactExtra {
   def configurations: Vector[Configuration]
   def url: Option[URL]
   def extraAttributes: Map[String, String]
+  def checksum: Option[Checksum]
 
   protected[this] def copy(
       name: String = name,
@@ -22,7 +23,8 @@ abstract class ArtifactExtra {
       classifier: Option[String] = classifier,
       configurations: Vector[Configuration] = configurations,
       url: Option[URL] = url,
-      extraAttributes: Map[String, String] = extraAttributes
+      extraAttributes: Map[String, String] = extraAttributes,
+      checksum: Option[Checksum] = checksum
   ): Artifact
 
   def extra(attributes: (String, String)*) =
@@ -33,7 +35,7 @@ import Configurations.{ Optional, Pom, Test }
 
 abstract class ArtifactFunctions {
   def apply(name: String, extra: Map[String, String]): Artifact =
-    Artifact(name, DefaultType, DefaultExtension, None, Vector.empty, None, extra)
+    Artifact(name, DefaultType, DefaultExtension, None, Vector.empty, None, extra, None)
   def apply(name: String, classifier: String): Artifact =
     Artifact(name, DefaultType, DefaultExtension, Some(classifier), Vector.empty, None)
   def apply(name: String, `type`: String, extension: String): Artifact =
@@ -50,6 +52,7 @@ abstract class ArtifactFunctions {
       Some(url)
     )
 
+  private final val empty = Map.empty[String, String]
   def apply(
       name: String,
       `type`: String,
@@ -57,8 +60,7 @@ abstract class ArtifactFunctions {
       classifier: Option[String],
       configurations: Vector[Configuration],
       url: Option[URL]
-  ): Artifact =
-    Artifact(name, `type`, extension, classifier, configurations, url, Map.empty[String, String])
+  ): Artifact = Artifact(name, `type`, extension, classifier, configurations, url, empty, None)
 
   val DefaultExtension = "jar"
   val DefaultType = "jar"

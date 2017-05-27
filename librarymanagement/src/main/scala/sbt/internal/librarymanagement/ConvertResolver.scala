@@ -5,10 +5,15 @@ package sbt.internal.librarymanagement
 
 import java.net.URL
 import java.util.Collections
+
 import org.apache.ivy.core.module.descriptor.DependencyDescriptor
 import org.apache.ivy.core.resolve.ResolveData
 import org.apache.ivy.core.settings.IvySettings
-import org.apache.ivy.plugins.repository.{ RepositoryCopyProgressListener, TransferEvent }
+import org.apache.ivy.plugins.repository.{
+  RepositoryCopyProgressListener,
+  Resource,
+  TransferEvent
+}
 import org.apache.ivy.plugins.resolver.{
   BasicResolver,
   DependencyResolver,
@@ -24,9 +29,10 @@ import org.apache.ivy.plugins.resolver.{
   URLResolver
 }
 import org.apache.ivy.plugins.repository.url.{ URLRepository => URLRepo }
-import org.apache.ivy.plugins.repository.file.{ FileRepository => FileRepo, FileResource }
-import java.io.{ IOException, File }
-import org.apache.ivy.util.{ FileUtil, ChecksumHelper }
+import org.apache.ivy.plugins.repository.file.{ FileResource, FileRepository => FileRepo }
+import java.io.{ File, IOException }
+
+import org.apache.ivy.util.{ ChecksumHelper, FileUtil, Message }
 import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact }
 import sbt.io.IO
 import sbt.util.Logger
@@ -135,6 +141,8 @@ private[sbt] object ConvertResolver {
   def apply(r: Resolver, settings: IvySettings, log: Logger): DependencyResolver =
     apply(r, settings, UpdateOptions(), log)
 
+  private[librarymanagement] val ManagedChecksums = "sbt.managedChecksums"
+
   /** Converts the given sbt resolver into an Ivy resolver. */
   def apply(
       r: Resolver,
@@ -147,6 +155,7 @@ private[sbt] object ConvertResolver {
   /** The default implementation of converter. */
   lazy val defaultConvert: ResolverConverter = {
     case (r, settings, log) =>
+      val managedChecksums = settings.getVariable(ManagedChecksums).toBoolean
       r match {
         case repo: MavenRepository => {
           val pattern = Collections.singletonList(
@@ -156,6 +165,8 @@ private[sbt] object ConvertResolver {
               extends IBiblioResolver
               with ChecksumFriendlyURLResolver
               with DescriptorRequired {
+            override val managedChecksumsEnabled: Boolean = managedChecksums
+            override def getResource(resource: Resource, dest: File): Long = get(resource, dest)
             def setPatterns(): Unit = {
               // done this way for access to protected methods.
               setArtifactPatterns(pattern)
@@ -170,7 +181,10 @@ private[sbt] object ConvertResolver {
           resolver
         }
         case repo: SshRepository => {
-          val resolver = new SshResolver with DescriptorRequired
+          val resolver = new SshResolver with DescriptorRequired {
+            override val managedChecksumsEnabled: Boolean = managedChecksums
+            override def getResource(resource: Resource, dest: File): Long = get(resource, dest)
+          }
           initializeSSHResolver(resolver, repo, settings)
           repo.publishPermissions.foreach(perm => resolver.setPublishPermissions(perm))
           resolver
@@ -187,6 +201,8 @@ private[sbt] object ConvertResolver {
             // in local files for non-changing revisions.
             // This will be fully enforced in sbt 1.0.
             setRepository(new WarnOnOverwriteFileRepo())
+            override val managedChecksumsEnabled: Boolean = managedChecksums
+            override def getResource(resource: Resource, dest: File): Long = get(resource, dest)
           }
           resolver.setName(repo.name)
           initializePatterns(resolver, repo.patterns, settings)
@@ -196,7 +212,10 @@ private[sbt] object ConvertResolver {
           resolver
         }
         case repo: URLRepository => {
-          val resolver = new URLResolver with ChecksumFriendlyURLResolver with DescriptorRequired
+          val resolver = new URLResolver with ChecksumFriendlyURLResolver with DescriptorRequired {
+            override val managedChecksumsEnabled: Boolean = managedChecksums
+            override def getResource(resource: Resource, dest: File): Long = get(resource, dest)
+          }
           resolver.setName(repo.name)
           initializePatterns(resolver, repo.patterns, settings)
           resolver
@@ -208,11 +227,67 @@ private[sbt] object ConvertResolver {
   }
 
   private sealed trait DescriptorRequired extends BasicResolver {
+    // Works around implementation restriction to access protected method `get`
+    def getResource(resource: Resource, dest: File): Long
+
+    /**
+     * Defines an option to tell ivy to disable checksums when downloading and
+     * let the user handle verifying these checksums.
+     *
+     * This means that the checksums are stored in the ivy cache directory. This
+     * is good for reproducibility from outside ivy. Sbt can check that jars are
+     * not corrupted, ever, independently of trusting whatever it's there in the
+     * local directory.
+     */
+    def managedChecksumsEnabled: Boolean
+
+    import sbt.io.syntax._
+    private def downloadChecksum(resource: Resource,
+                                 target: File,
+                                 targetChecksumFile: File,
+                                 algorithm: String): Boolean = {
+      if (!ChecksumHelper.isKnownAlgorithm(algorithm))
+        throw new IllegalArgumentException(s"Unknown checksum algorithm: $algorithm")
+
+      val checksumResource = resource.clone(s"${resource.getName}.$algorithm")
+      if (!checksumResource.exists) false
+      else {
+        Message.debug(s"$algorithm file found for $resource: downloading...")
+        // Resource must be cleaned up outside of this function if it's invalid
+        getResource(checksumResource, targetChecksumFile)
+        true
+      }
+    }
+
+    private final val PartEnd = ".part"
+    private final val JarEnd = ".jar"
+    private final val TemporaryJar = JarEnd + PartEnd
+
+    override def getAndCheck(resource: Resource, target: File): Long = {
+      val targetPath = target.getAbsolutePath
+      if (!managedChecksumsEnabled || !targetPath.endsWith(TemporaryJar)) {
+        super.getAndCheck(resource, target)
+      } else {
+        // +ivy deviation
+        val size = getResource(resource, target)
+        val checksumAlgorithms = getChecksumAlgorithms
+        checksumAlgorithms.foldLeft(false) { (checked, algorithm) =>
+          // Continue checking until we hit a failure
+          val checksumFile = new File(targetPath.stripSuffix(PartEnd) + s".$algorithm")
+          if (checked) checked
+          else downloadChecksum(resource, target, checksumFile, algorithm)
+        }
+        // -ivy deviation
+        size
+      }
+    }
+
     override def getDependency(dd: DependencyDescriptor, data: ResolveData) = {
       val prev = descriptorString(isAllownomd)
       setDescriptor(descriptorString(hasExplicitURL(dd)))
-      try super.getDependency(dd, data)
+      val t = try super.getDependency(dd, data)
       finally setDescriptor(prev)
+      t
     }
     def descriptorString(optional: Boolean) =
       if (optional) BasicResolver.DESCRIPTOR_OPTIONAL else BasicResolver.DESCRIPTOR_REQUIRED

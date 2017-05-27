@@ -540,6 +540,7 @@ object IvyActions {
       report: UpdateReport,
       config: RetrieveConfiguration
   ): UpdateReport = {
+    val copyChecksums = ivy.getVariable(ConvertResolver.ManagedChecksums).toBoolean
     val toRetrieve = config.configurationsToRetrieve
     val base = config.retrieveDirectory
     val pattern = config.outputPattern
@@ -551,9 +552,9 @@ object IvyActions {
     val toCopy = new collection.mutable.HashSet[(File, File)]
     val retReport = report retrieve { (conf, mid, art, cached) =>
       configurationNames match {
-        case None => performRetrieve(conf, mid, art, base, pattern, cached, toCopy)
+        case None => performRetrieve(conf, mid, art, base, pattern, cached, copyChecksums, toCopy)
         case Some(names) if names(conf) =>
-          performRetrieve(conf, mid, art, base, pattern, cached, toCopy)
+          performRetrieve(conf, mid, art, base, pattern, cached, copyChecksums, toCopy)
         case _ => cached
       }
     }
@@ -577,10 +578,27 @@ object IvyActions {
       base: File,
       pattern: String,
       cached: File,
+      copyChecksums: Boolean,
       toCopy: collection.mutable.HashSet[(File, File)]
   ): File = {
     val to = retrieveTarget(conf, mid, art, base, pattern)
     toCopy += ((cached, to))
+
+    if (copyChecksums) {
+      // Copy over to the lib managed directory any checksum for a jar if it exists
+      // TODO(jvican): Support user-provided checksums
+      val cachePath = cached.getAbsolutePath
+      IvySbt.DefaultChecksums.foreach { checksum =>
+        if (cachePath.endsWith(".jar")) {
+          val cacheChecksum = new File(s"$cachePath.$checksum")
+          if (cacheChecksum.exists()) {
+            val toChecksum = new File(s"${to.getAbsolutePath}.$checksum")
+            toCopy += ((cacheChecksum, toChecksum))
+          }
+        }
+      }
+    }
+
     to
   }
 

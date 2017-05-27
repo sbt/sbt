@@ -3,7 +3,7 @@ package sbt.librarymanagement
 import org.scalatest.Assertion
 import sbt.internal.librarymanagement._
 import sbt.internal.librarymanagement.impl.DependencyBuilders
-import sbt.io.IO
+import sbt.io.{ FileFilter, IO, Path }
 
 class OfflineModeSpec extends BaseIvySpecification with DependencyBuilders {
   private final def targetDir = Some(currentDependency)
@@ -44,7 +44,7 @@ class OfflineModeSpec extends BaseIvySpecification with DependencyBuilders {
 
     val offlineResolution =
       IvyActions.updateEither(toResolve, offlineConf, warningConf, noClock, targetDir, log)
-    assert(offlineResolution.isRight)
+    assert(offlineResolution.isRight, s"Offline resolution has failed with $offlineResolution.")
 
     val resolveTime = offlineResolution.right.get.stats.resolveTime
     // Only check the estimate for the non cached resolution, otherwise resolution is cached

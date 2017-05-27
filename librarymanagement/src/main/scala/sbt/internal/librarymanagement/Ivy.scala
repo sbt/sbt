@@ -98,6 +98,7 @@ final class IvySbt(val configuration: IvyConfiguration) { self =>
         IvySbt.loadURI(is, e.uri)
       case i: InlineIvyConfiguration =>
         is.setVariable("ivy.checksums", i.checksums mkString ",")
+        is.setVariable(ConvertResolver.ManagedChecksums, i.managedChecksums.toString)
         i.paths.ivyHome foreach is.setDefaultIvyUserDir
         val log = configuration.log
         IvySbt.configureCache(is, i.resolutionCacheDir)

@@ -110,6 +110,7 @@ class IvyCache(val ivyHome: Option[File]) {
       Vector.empty,
       lock,
       IvySbt.DefaultChecksums,
+      false,
       None,
       UpdateOptions(),
       log

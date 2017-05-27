@@ -15,7 +15,8 @@
         { "name": "classifier",      "type": "Option[String]",                       "default": "None",                      "since": "0.0.1" },
         { "name": "configurations",  "type": "sbt.librarymanagement.Configuration*", "default": "Vector.empty",              "since": "0.0.1" },
         { "name": "url",             "type": "Option[java.net.URL]",                 "default": "None",                      "since": "0.0.1" },
-        { "name": "extraAttributes", "type": "Map[String, String]",                  "default": "Map.empty",                 "since": "0.0.1" }
+        { "name": "extraAttributes", "type": "Map[String, String]",                  "default": "Map.empty",                 "since": "0.0.1" },
+        { "name": "checksum",        "type": "Option[sbt.librarymanagement.Checksum]", "default": "None",                    "since": "0.0.1" }
       ],
       "parentsCompanion": "sbt.librarymanagement.ArtifactFunctions"
     },
@@ -267,21 +268,31 @@
         { "name": "organization",      "type": "String"                                                                                               },
         { "name": "name",              "type": "String"                                                                                               },
         { "name": "revision",          "type": "String"                                                                                               },
-        { "name": "configurations",    "type": "Option[String]",                      "default": "None",                             "since": "0.0.1" },
-        { "name": "isChanging",        "type": "boolean",                             "default": "false",                            "since": "0.0.1" },
-        { "name": "isTransitive",      "type": "boolean",                             "default": "true",                             "since": "0.0.1" },
-        { "name": "isForce",           "type": "boolean",                             "default": "false",                            "since": "0.0.1" },
-        { "name": "explicitArtifacts", "type": "sbt.librarymanagement.Artifact*",     "default": "Vector.empty",                     "since": "0.0.1" },
-        { "name": "inclusions",        "type": "sbt.librarymanagement.InclExclRule*", "default": "Vector.empty",                     "since": "0.0.1" },
-        { "name": "exclusions",        "type": "sbt.librarymanagement.InclExclRule*", "default": "Vector.empty",                     "since": "0.0.1" },
-        { "name": "extraAttributes",   "type": "Map[String, String]",                 "default": "Map.empty",                        "since": "0.0.1" },
-        { "name": "crossVersion",      "type": "sbt.librarymanagement.CrossVersion",  "default": "sbt.librarymanagement.Disabled()", "since": "0.0.1" },
-        { "name": "branchName",        "type": "Option[String]",                      "default": "None",                             "since": "0.0.1" }
+        { "name": "configurations",    "type": "Option[String]",                         "default": "None",                             "since": "0.0.1" },
+        { "name": "isChanging",        "type": "boolean",                                "default": "false",                            "since": "0.0.1" },
+        { "name": "isTransitive",      "type": "boolean",                                "default": "true",                             "since": "0.0.1" },
+        { "name": "isForce",           "type": "boolean",                                "default": "false",                            "since": "0.0.1" },
+        { "name": "explicitArtifacts", "type": "sbt.librarymanagement.Artifact*",        "default": "Vector.empty",                     "since": "0.0.1" },
+        { "name": "inclusions",        "type": "sbt.librarymanagement.InclExclRule*",    "default": "Vector.empty",                     "since": "0.0.1" },
+        { "name": "exclusions",        "type": "sbt.librarymanagement.InclExclRule*",    "default": "Vector.empty",                     "since": "0.0.1" },
+        { "name": "extraAttributes",   "type": "Map[String, String]",                    "default": "Map.empty",                        "since": "0.0.1" },
+        { "name": "crossVersion",      "type": "sbt.librarymanagement.CrossVersion",     "default": "sbt.librarymanagement.Disabled()", "since": "0.0.1" },
+        { "name": "branchName",        "type": "Option[String]",                         "default": "None",                             "since": "0.0.1" }
       ],
       "toString": [
         "this.toStringImpl"
       ],
       "parentsCompanion": "sbt.librarymanagement.ModuleIDFunctions"
+    },
+    {
+       "name": "Checksum",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "fields": [
+        { "name": "digest", "type": "String"                    },
+        { "name": "type",   "type": "String", "default": "sha1" }
+      ]
     },
     {
       "name": "ModuleInfo",
@@ -731,6 +742,7 @@
             { "name": "otherResolvers",       "type": "sbt.librarymanagement.Resolver*"            },
             { "name": "moduleConfigurations", "type": "sbt.librarymanagement.ModuleConfiguration*" },
             { "name": "checksums",            "type": "String*"                                    },
+            { "name": "managedChecksums",     "type": "Boolean"                                    },
             { "name": "resolutionCacheDir",   "type": "java.io.File?"                              }
           ],
           "extra": [
@@ -741,12 +753,13 @@
             "  moduleConfigurations: Vector[sbt.librarymanagement.ModuleConfiguration],",
             "  lock:                 Option[xsbti.GlobalLock],",
             "  checksums:            Vector[String],",
+            "  managedChecksums:     Boolean,",
             "  resolutionCacheDir:   Option[java.io.File],",
             "  updateOptions:        sbt.librarymanagement.UpdateOptions,",
             "  log:                  xsbti.Logger",
             ") =",
             "  this(lock, paths.baseDirectory, log, updateOptions, paths, resolvers, otherResolvers,",
-            "    moduleConfigurations, checksums, resolutionCacheDir)"
+            "    moduleConfigurations, checksums, managedChecksums, resolutionCacheDir)"
           ]
         },
         {
