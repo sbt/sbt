@@ -8,7 +8,8 @@ object CrossVersionUtil {
   val noneString = "none"
   val disabledString = "disabled"
   val binaryString = "binary"
-  val TransitionScalaVersion = "2.10"
+  val TransitionDottyVersion = "" // Dotty always respects binary compatibility
+  val TransitionScalaVersion = "2.10" // ...but scalac doesn't until Scala 2.10
   val TransitionSbtVersion = "0.12"
 
   def isFull(s: String): Boolean = (s == trueString) || (s == fullString)
@@ -61,8 +62,15 @@ object CrossVersionUtil {
       case PartialVersion(major, minor) => Some((major.toInt, minor.toInt))
       case _                            => None
     }
-  def binaryScalaVersion(full: String): String =
-    binaryVersionWithApi(full, TransitionScalaVersion)(scalaApiVersion)
+  def binaryScalaVersion(full: String): String = {
+    val cutoff =
+      if (full.startsWith("0."))
+        TransitionDottyVersion
+      else
+        TransitionScalaVersion
+
+    binaryVersionWithApi(full, cutoff)(scalaApiVersion)
+  }
   def binarySbtVersion(full: String): String =
     binaryVersionWithApi(full, TransitionSbtVersion)(sbtApiVersion)
   private[sbt] def binaryVersion(full: String, cutoff: String): String =
