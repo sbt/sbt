@@ -229,15 +229,8 @@ object State {
                  currentCommand = Some(cmd),
                  history = cmd :: s.history))
       }
-      def isInteractive = System.console != null
-      def hasInput = Option(System.console) exists (_.reader.ready())
-      def hasShellCmd = s.definedCommands exists {
-        case c: SimpleCommand => c.name == Shell; case _ => false
-      }
       s.remainingCommands match {
-        case List() =>
-          if (isInteractive && hasInput && hasShellCmd) runCmd(Exec(Shell, s.source), Nil)
-          else exit(true)
+        case List()           => exit(true)
         case List(x, xs @ _*) => runCmd(x, xs.toList)
       }
     }

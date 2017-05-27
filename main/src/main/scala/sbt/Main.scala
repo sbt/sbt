@@ -759,15 +759,13 @@ object BuiltinCommands {
       writeSbtVersion(state); state
     }
 
-  private def isInteractive = System.console() != null
-
   private def intendsToInvokeCompile(state: State) =
     state.remainingCommands contains Keys.compile.key.label
 
   private def notifyUsersAboutShell(state: State): Unit = {
     val suppress = Project extract state getOpt Keys.suppressSbtShellNotification getOrElse false
-    if (!suppress && isInteractive && intendsToInvokeCompile(state))
-      state.log info "Executing in batch mode. For better performance use sbt's shell; hit [ENTER] to do so now"
+    if (!suppress && intendsToInvokeCompile(state))
+      state.log info "Executing in batch mode. For better performance use sbt's shell"
   }
 
   private def NotifyUsersAboutShell = "notify-users-about-shell"
