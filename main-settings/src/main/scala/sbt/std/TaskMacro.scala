@@ -211,7 +211,9 @@ object TaskMacro {
     val typeArgs = ttpe.typeArgs
     v.tree.tpe match {
       // To allow Initialize[Task[A]] in the position of += RHS, we're going to call "taskValue" automatically.
-      case tpe if typeArgs.nonEmpty && (tpe weak_<:< c.weakTypeOf[Initialize[_]]) =>
+      case tpe
+          if typeArgs.nonEmpty && (typeArgs.head weak_<:< c.weakTypeOf[Task[_]])
+            && (tpe weak_<:< c.weakTypeOf[Initialize[_]]) =>
         c.macroApplication match {
           case Apply(Apply(TypeApply(Select(preT, nmeT), targs), _), _) =>
             val tree = Apply(
