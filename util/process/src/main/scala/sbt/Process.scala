@@ -11,14 +11,70 @@ import java.net.URL
 trait ProcessExtra {
   import Process._
   implicit def builderToProcess(builder: JProcessBuilder): ProcessBuilder = apply(builder)
-  implicit def fileToProcess(file: File): FilePartialBuilder = apply(file)
+//implicit def fileToProcess(file: File): FilePartialBuilder = apply(file)
   implicit def urlToProcess(url: URL): URLPartialBuilder = apply(url)
   @deprecated("Use string interpolation", "0.13.0")
   implicit def xmlToProcess(command: scala.xml.Elem): ProcessBuilder = apply(command)
   implicit def buildersToProcess[T](builders: Seq[T])(implicit convert: T => SourcePartialBuilder): Seq[SourcePartialBuilder] = applySeq(builders)
 
-  implicit def stringToProcess(command: String): ProcessBuilder = apply(command)
-  implicit def stringSeqToProcess(command: Seq[String]): ProcessBuilder = apply(command)
+//implicit def stringToProcess(command: String): ProcessBuilder = apply(command)
+//implicit def stringSeqToProcess(command: Seq[String]): ProcessBuilder = apply(command)
+  
+  implicit def fileToProcess(file: File): FilePartialBuilder =
+    if(onWindows) apply(new File(windowsAlternativeToFile(file).getOrElse("cmd /c "+file))) else apply(file)
+  implicit def stringToProcess(command: String): ProcessBuilder = apply(tryWindowsCompatibility(command))
+  implicit def stringSeqToProcess(command: Seq[String]): ProcessBuilder = apply(tryWindowsCompatibilitySeq(command))
+
+  lazy val onWindows = sys.props("os.name").startsWith("Windows")
+  
+  def tryWindowsCompatibilitySeq(command:Seq[String]):Seq[String] =
+    tryWindowsCompatibility(command.head) +: command.tail
+
+  /** Looks for a Windows executable with the same file name in the same folder.
+    * @param actualFile which is actually a file that exists.
+    * @return optionally path to a Windows executable.
+    */
+  def windowsAlternativeToFile(actualFile:File):Option[String] = {
+    val withoutExtension = actualFile.getName.takeWhile(_ != '.') //remove extension if there is one
+    val sameDirectory = actualFile.getParentFile
+    val extensionsOfSameNameFiles =
+      sameDirectory.listFiles()
+        .filter((f: File) => f.getName.startsWith(withoutExtension)) //only files of same name
+        .map((f: File) => f.getName.drop(withoutExtension.length)) //only their extensions
+    extensionsOfSameNameFiles.find(_ == ".bat") //batch files take precedence
+      .orElse(extensionsOfSameNameFiles.find(_ == ".exe"))
+      .map(ext =>actualFile.getParent+withoutExtension+ext)
+  }
+  /** This method tries to make things work on Windows under the most common conditions
+    *  without forcing people to modify their build scripts.
+    *
+    * This method does not handle all cases, it only aims to avoid time being wasted on obvious ones.
+    *
+    * To bypass this method, which could only ever be nesessary on Windows:
+    *   use sbt.Process(...) directly instead of implicit conversions defined above, as in: "command" !
+    *
+    * @param originalCommand might work directly on Unix but not on Windows.
+    */
+  def tryWindowsCompatibility(originalCommand:String):String = {
+    if(!onWindows) return originalCommand //no special treatment for "special" OSes
+    if(originalCommand.startsWith("cmd") || originalCommand.contains(".exe") || originalCommand.contains(".bat"))
+      originalCommand //clearly build script authors have taken care of things, accept the command
+    else {
+      val tryDirect = new File(originalCommand)
+      if (tryDirect.isFile) {//just a file, probably a script of some kind
+        windowsAlternativeToFile(tryDirect)
+      } else {
+        val beforeArgs = originalCommand.takeWhile(_ != ' ') //lets find a file name in front of an arguments list
+        val maybeFile = new File(beforeArgs)
+        if (maybeFile.isFile) {
+          windowsAlternativeToFile(maybeFile)
+            .map(_ + originalCommand.drop(beforeArgs.length))
+        } else None //okay, maybe it is just a command line
+      }
+    }.getOrElse {
+      "cmd /c "+originalCommand //maybe Windows knows how to handle it
+    }
+  }
 }
 
 /** Methods for constructing simple commands that can then be combined. */
