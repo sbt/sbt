@@ -15,7 +15,8 @@
         { "name": "classifier",      "type": "Option[String]",                       "default": "None",                      "since": "0.0.1" },
         { "name": "configurations",  "type": "sbt.librarymanagement.Configuration*", "default": "Vector.empty",              "since": "0.0.1" },
         { "name": "url",             "type": "Option[java.net.URL]",                 "default": "None",                      "since": "0.0.1" },
-        { "name": "extraAttributes", "type": "Map[String, String]",                  "default": "Map.empty",                 "since": "0.0.1" }
+        { "name": "extraAttributes", "type": "Map[String, String]",                  "default": "Map.empty",                 "since": "0.0.1" },
+        { "name": "checksum",        "type": "Option[sbt.librarymanagement.Checksum]", "default": "None",                    "since": "0.0.1" }
       ],
       "parentsCompanion": "sbt.librarymanagement.ArtifactFunctions"
     },
@@ -276,8 +277,7 @@
         { "name": "exclusions",        "type": "sbt.librarymanagement.InclExclRule*",    "default": "Vector.empty",                     "since": "0.0.1" },
         { "name": "extraAttributes",   "type": "Map[String, String]",                    "default": "Map.empty",                        "since": "0.0.1" },
         { "name": "crossVersion",      "type": "sbt.librarymanagement.CrossVersion",     "default": "sbt.librarymanagement.Disabled()", "since": "0.0.1" },
-        { "name": "branchName",        "type": "Option[String]",                         "default": "None",                             "since": "0.0.1" },
-        { "name": "checksum",          "type": "Option[sbt.librarymanagement.Checksum]", "default": "None",                             "since": "0.0.1" }
+        { "name": "branchName",        "type": "Option[String]",                         "default": "None",                             "since": "0.0.1" }
       ],
       "toString": [
         "this.toStringImpl"
