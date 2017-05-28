@@ -20,7 +20,6 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
       private val settingKeyType = typeOf[sbt.SettingKey[_]]
       private val inputKeyType = typeOf[sbt.InputKey[_]]
       private val uncheckedWrappers = MutableSet.empty[Tree]
-      private val identsWithValue = MutableSet.empty[Ident]
       var insideIf: Boolean = false
       var insideAnon: Boolean = false
       var disableNoValueReport: Boolean = false
@@ -61,11 +60,6 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
       override def traverse(tree: ctx.universe.Tree): Unit = {
         tree match {
           case ap @ Apply(TypeApply(Select(_, nme), tpe :: Nil), qual :: Nil) =>
-            // Keep track of wrapped idents to detect missing `.value`
-            qual match {
-              case i: Ident => identsWithValue.add(i)
-              case _        => ()
-            }
             val shouldIgnore = uncheckedWrappers.contains(ap)
             val wrapperName = nme.decodedName.toString
             if (!shouldIgnore && isTask(wrapperName, tpe.tpe, qual)) {
