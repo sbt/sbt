@@ -7,19 +7,17 @@ import sbt.std.TestUtil._
 class TaskNegSpec extends FunSuite {
   import tools.reflect.ToolBoxError
   def expectError(errorSnippet: String,
-                  compileOptions: String = "-Xfatal-warnings",
+                  compileOptions: String = "",
                   baseCompileOptions: String = s"-cp $toolboxClasspath")(code: String) = {
     val errorMessage = intercept[ToolBoxError] {
       eval(code, s"$compileOptions $baseCompileOptions")
-      println("SUCCESS")
+      println(s"Test failed -- compilation was successful! Expected:\n$errorSnippet")
     }.getMessage
-    println(errorMessage)
     val userMessage =
       s"""
          |FOUND: $errorMessage
          |EXPECTED: $errorSnippet
       """.stripMargin
-    println(userMessage)
     assert(errorMessage.contains(errorSnippet), userMessage)
   }
 
@@ -168,4 +166,131 @@ class TaskNegSpec extends FunSuite {
       """.stripMargin
     }
   }
+
+  test("Detect a missing `.value` inside a task") {
+    expectError(TaskLinterDSLFeedback.missingValueForKey("fooNeg")) {
+      """
+        |import sbt._
+        |import sbt.Def._
+        |
+        |val fooNeg = taskKey[String]("")
+        |
+        |def avoidDCE = {println(""); ""}
+        |val bazNeg = Def.task[String] {
+        |  fooNeg
+        |  avoidDCE
+        |}
+      """.stripMargin
+    }
+  }
+
+  test("Detect a missing `.value` inside a val definition of a task") {
+    expectError(TaskLinterDSLFeedback.missingValueForKey("fooNeg2")) {
+      """
+        |import sbt._
+        |import sbt.Def._
+        |
+        |val fooNeg2 = taskKey[String]("")
+        |
+        |def avoidDCE = {println(""); ""}
+        |val bazNeg = Def.task[String] {
+        |  val _ = fooNeg2
+        |  avoidDCE
+        |}
+      """.stripMargin
+    }
+  }
+
+  test("Detect a missing `.value` inside a val definition of an inner method of a task") {
+    expectError(TaskLinterDSLFeedback.missingValueForKey("fooNeg2")) {
+      """
+        |import sbt._
+        |import sbt.Def._
+        |
+        |val fooNeg2 = taskKey[String]("")
+        |
+        |def avoidDCE = {println(""); ""}
+        |val bazNeg = Def.task[String] {
+        |  def inner = {
+        |    val _ = fooNeg2
+        |    avoidDCE
+        |  }
+        |  inner
+        |}
+      """.stripMargin
+    }
+  }
+
+  test("Detect a missing `.value` inside an inner method of a task") {
+    expectError(TaskLinterDSLFeedback.missingValueForKey("fooNeg3")) {
+      """
+        |import sbt._
+        |import sbt.Def._
+        |
+        |val fooNeg3 = taskKey[String]("")
+        |def avoidDCE = {println(""); ""}
+        |val bazNeg = Def.task[String] {
+        |  def inner: String = {
+        |    fooNeg3
+        |    avoidDCE
+        |  }
+        |  inner
+        |}
+      """.stripMargin
+    }
+  }
+
+  test("Detect a missing `.value` inside a task whose return type is Unit") {
+    expectError(TaskLinterDSLFeedback.missingValueForKey("fooNeg4")) {
+      """
+        |import sbt._
+        |import sbt.Def._
+        |
+        |val fooNeg4 = taskKey[String]("")
+        |
+        |val bazNeg = Def.task[Unit] {
+        |  fooNeg4
+        |}
+      """.stripMargin
+    }
+  }
+
+  // Enable these tests when https://github.com/scala/bug/issues/10340 is fixed
+
+  /*
+  test("Detect a missing `.value` inside a val of an inner method of a task returning a literal") {
+    expectError(TaskLinterDSLFeedback.missingValueForKey("fooNeg3")) {
+      """
+        |import sbt._
+        |import sbt.Def._
+        |
+        |val fooNeg3 = taskKey[String]("")
+        |
+        |val bazNeg = Def.task[String] {
+        |  def inner: String = {
+        |    val _ = fooNeg3
+        |    ""
+        |  }
+        |  inner
+        |}
+      """.stripMargin
+    }
+  }
+
+  test("Detect a missing `.value` inside a val of a task returning a literal") {
+    expectError(TaskLinterDSLFeedback.missingValueForKey("fooNeg3")) {
+      """
+        |import sbt._
+        |import sbt.Def._
+        |
+        |val fooNeg3 = taskKey[String]("")
+        |
+        |val bazNeg = Def.task[String] {
+        |  val _ = fooNeg3
+        |  ""
+        |}
+      """.stripMargin
+    }
+  }
+ */
 }
