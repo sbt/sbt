@@ -31,6 +31,30 @@ class TaskPosSpec {
     import sbt._
     import sbt.Def._
     val foo = taskKey[String]("")
+    var condition = true
+    val baz = Def.task[String] {
+      val fooAnon = () => foo.value: @sbtUnchecked
+      if (condition) fooAnon()
+      else fooAnon()
+    }
+  }
+
+  locally {
+    import sbt._
+    import sbt.Def._
+    val foo = taskKey[String]("")
+    var condition = true
+    val baz = Def.task[String] {
+      val fooAnon = () => (foo.value: @sbtUnchecked) + ""
+      if (condition) fooAnon()
+      else fooAnon()
+    }
+  }
+
+  locally {
+    import sbt._
+    import sbt.Def._
+    val foo = taskKey[String]("")
     val bar = taskKey[String]("")
     var condition = true
     val baz = Def.task[String] {
@@ -74,6 +98,18 @@ class TaskPosSpec {
     val foo = taskKey[String]("")
     val baz = Def.taskDyn[String] {
       foo
+    }
+  }
+
+  locally {
+    // missing .value error should not happen inside task dyn
+    import sbt._
+    import sbt.Def._
+    val foo = taskKey[String]("")
+    val avoidDCE = ""
+    val baz = Def.task[String] {
+      foo: @sbtUnchecked
+      avoidDCE
     }
   }
 
