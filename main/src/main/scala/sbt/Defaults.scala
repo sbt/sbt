@@ -1186,6 +1186,7 @@ object Defaults extends BuildCommon {
     val s = streams.value
     val opts = forkOptions.value
     val options = javaOptions.value
+    val trap = trapExit.value
     if (fork.value) {
       s.log.debug(s"javaOptions: $options")
       new ForkRun(opts)
@@ -1200,7 +1201,7 @@ object Defaults extends BuildCommon {
                                            mask)
         s.log.warn(s"$showJavaOptions will be ignored, $showFork is set to false")
       }
-      new Run(si, trapExit.value, tmp)
+      new Run(si, trap, tmp)
     }
   }
 

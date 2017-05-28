@@ -62,7 +62,7 @@ class TaskNegSpec extends FunSuite {
     }
   }
 
-  test("Fail on task invocation inside inside `if` of task returned by dynamic task") {
+  test("Fail on task invocation inside `if` of task returned by dynamic task") {
     expectError(TaskLinterDSLFeedback.useOfValueInsideIfExpression("fooNeg")) {
       """
         |import sbt._
@@ -77,6 +77,37 @@ class TaskNegSpec extends FunSuite {
         |    Def.task {
         |      if (condition) {
         |        fooNeg.value
+        |      } else ""
+        |    }
+        |  } else Def.task("")
+        |}
+      """.stripMargin
+    }
+  }
+
+  test("Fail on task invocation inside nested `if` of task returned by dynamic task") {
+    val fooNegCatch = TaskLinterDSLFeedback.useOfValueInsideIfExpression("fooNeg")
+    val barNegCatch = TaskLinterDSLFeedback.useOfValueInsideIfExpression("barNeg")
+    expectError(List(fooNegCatch, barNegCatch).mkString("\n")) {
+      """
+        |import sbt._
+        |import sbt.Def._
+        |
+        |val fooNeg = taskKey[String]("")
+        |val barNeg = taskKey[String]("")
+        |var condition = true
+        |
+        |val bazNeg = Def.taskDyn[String] {
+        |  if (condition) {
+        |    Def.task {
+        |      if (condition) {
+        |        val first = if (!condition && condition) {
+        |          fooNeg.value
+        |        } else ""
+        |        if ("true".toBoolean) first
+        |        else {
+        |          barNeg.value
+        |        }
         |      } else ""
         |    }
         |  } else Def.task("")
@@ -120,6 +151,27 @@ class TaskNegSpec extends FunSuite {
         |
         |val bazNeg = Def.task[String] {
         |  val anon = () => fooNeg.value
+        |  if (condition) anon()
+        |  else anon()
+        |}
+      """.stripMargin
+    }
+  }
+
+  test("Fail on task invocation inside nested anonymous function returned by regular task") {
+    val fooNegError = TaskLinterDSLFeedback.useOfValueInsideAnon("fooNeg")
+    val barNegError = TaskLinterDSLFeedback.useOfValueInsideAnon("barNeg")
+    expectError(List(fooNegError, barNegError).mkString("\n")) {
+      """
+        |import sbt._
+        |import sbt.Def._
+        |
+        |val fooNeg = taskKey[String]("")
+        |val barNeg = taskKey[String]("")
+        |var condition = true
+        |
+        |val bazNeg = Def.task[String] {
+        |  val anon = () => { val _ = () => fooNeg.value; barNeg.value}
         |  if (condition) anon()
         |  else anon()
         |}

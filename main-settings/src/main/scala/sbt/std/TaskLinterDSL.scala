@@ -84,20 +84,22 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
             traverse(qual)
           case If(condition, thenp, elsep) =>
             traverse(condition)
+            val previousInsideIf = insideIf
             insideIf = true
             traverse(thenp)
             traverse(elsep)
-            insideIf = false
+            insideIf = previousInsideIf
           case Typed(expr, tpt: TypeTree) if tpt.original != null =>
             handleUncheckedAnnotation(expr, tpt)
             traverse(expr)
             traverse(tpt)
           case Function(vparams, body) =>
-            super.traverseTrees(vparams)
+            traverseTrees(vparams)
             if (!vparams.exists(_.mods.hasFlag(Flag.SYNTHETIC))) {
+              val previousInsideAnon = insideAnon
               insideAnon = true
               traverse(body)
-              insideAnon = false
+              insideAnon = previousInsideAnon
             } else traverse(body)
           case Block(stmts, expr) =>
             if (!isDynamicTask) {
