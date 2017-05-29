@@ -32,35 +32,35 @@ private[sbt] object ZincComponentCompiler {
 
   private final val ZincVersionPropertyFile = "/incrementalcompiler.version.properties"
   private final val ZincVersionProperty = "version"
-  private final lazy val incrementalVersion: String = {
+  private[sbt] final lazy val incrementalVersion: String = {
     val cl = this.getClass.getClassLoader
     ResourceLoader.getPropertiesFor(ZincVersionPropertyFile, cl).getProperty(ZincVersionProperty)
   }
 
+  private val CompileConf = Some(Configurations.Compile.name)
+  private[sbt] def getDefaultBridgeModule(scalaVersion: String): ModuleID = {
+    def compilerBridgeId(scalaVersion: String) = {
+      // Defaults to bridge for 2.12 for Scala versions bigger than 2.12.x
+      scalaVersion match {
+        case sc if (sc startsWith "2.10.") => "compiler-bridge_2.10"
+        case sc if (sc startsWith "2.11.") => "compiler-bridge_2.11"
+        case _                             => "compiler-bridge_2.12"
+      }
+    }
+    import xsbti.ArtifactInfo.SbtOrganization
+    val bridgeId = compilerBridgeId(scalaVersion)
+    ModuleID(SbtOrganization, bridgeId, incrementalVersion)
+      .withConfigurations(CompileConf)
+      .sources()
+  }
+
   /** Defines the internal implementation of a bridge provider. */
   private class ZincCompilerBridgeProvider(
+      userProvidedBridgeSources: Option[ModuleID],
       manager: ZincComponentManager,
       ivyConfiguration: IvyConfiguration,
       scalaJarsTarget: File
   ) extends CompilerBridgeProvider {
-
-    private val CompileConf = Some(Configurations.Compile.name)
-    private def getDefaultBridgeModule(scalaVersion: String): ModuleID = {
-      def compilerBridgeId(scalaVersion: String) = {
-        // Defaults to bridge for 2.12 for Scala versions bigger than 2.12.x
-        scalaVersion match {
-          case sc if (sc startsWith "2.10.") => "compiler-bridge_2.10"
-          case sc if (sc startsWith "2.11.") => "compiler-bridge_2.11"
-          case _                             => "compiler-bridge_2.12"
-        }
-      }
-
-      import xsbti.ArtifactInfo.SbtOrganization
-      val bridgeId = compilerBridgeId(scalaVersion)
-      ModuleID(SbtOrganization, bridgeId, incrementalVersion)
-        .withConfigurations(CompileConf)
-        .sources()
-    }
 
     /**
      * Defines a richer interface for Scala users that want to pass in an explicit module id.
@@ -68,21 +68,21 @@ private[sbt] object ZincComponentCompiler {
      * Note that this method cannot be defined in [[CompilerBridgeProvider]] because [[ModuleID]]
      * is a Scala-defined class to which the compiler bridge cannot depend on.
      */
-    def getCompiledBridge(bridgeSources: ModuleID,
-                          scalaInstance: xsbti.compile.ScalaInstance,
-                          logger: xsbti.Logger): File = {
+    def compiledBridge(bridgeSources: ModuleID,
+                       scalaInstance: xsbti.compile.ScalaInstance,
+                       logger: xsbti.Logger): File = {
       val autoClasspath = ClasspathOptionsUtil.auto
       val raw = new RawCompiler(scalaInstance, autoClasspath, logger)
       val zinc = new ZincComponentCompiler(raw, manager, ivyConfiguration, bridgeSources, logger)
       logger.debug(InterfaceUtil.f0(s"Getting $bridgeSources for Scala ${scalaInstance.version}"))
-      zinc.getCompiledBridgeJar
+      zinc.compiledBridgeJar
     }
 
     override def fetchCompiledBridge(scalaInstance: xsbti.compile.ScalaInstance,
                                      logger: xsbti.Logger): File = {
       val scalaVersion = scalaInstance.actualVersion()
-      val bridgeSources = getDefaultBridgeModule(scalaVersion)
-      getCompiledBridge(bridgeSources, scalaInstance, logger)
+      val bridgeSources = userProvidedBridgeSources getOrElse getDefaultBridgeModule(scalaVersion)
+      compiledBridge(bridgeSources, scalaInstance, logger)
     }
 
     private final case class ScalaArtifacts(compiler: File, library: File, others: Vector[File])
@@ -134,10 +134,20 @@ private[sbt] object ZincComponentCompiler {
     }
   }
 
+  // Used by ZincUtil.
+  def interfaceProvider(compilerBridgeSource: ModuleID,
+                        manager: ZincComponentManager,
+                        ivyConfiguration: IvyConfiguration,
+                        scalaJarsTarget: File): CompilerBridgeProvider =
+    new ZincCompilerBridgeProvider(Some(compilerBridgeSource),
+                                   manager,
+                                   ivyConfiguration,
+                                   scalaJarsTarget)
+
   def interfaceProvider(manager: ZincComponentManager,
                         ivyConfiguration: IvyConfiguration,
                         scalaJarsTarget: File): CompilerBridgeProvider =
-    new ZincCompilerBridgeProvider(manager, ivyConfiguration, scalaJarsTarget)
+    new ZincCompilerBridgeProvider(None, manager, ivyConfiguration, scalaJarsTarget)
 
   private final val LocalIvy = s"$${user.home}/.ivy2/local/${Resolver.localBasePattern}"
   final val LocalResolver: Resolver = {
@@ -211,7 +221,7 @@ private[inc] class ZincComponentCompiler(
   private final val ivySbt: IvySbt = new IvySbt(ivyConfiguration)
   private final val buffered = new BufferedLogger(FullLogger(log))
 
-  def getCompiledBridgeJar: File = {
+  def compiledBridgeJar: File = {
     val jarBinaryName = createBridgeSourcesID(bridgeSources)
     manager.file(jarBinaryName)(IfMissing.define(true, compileAndInstall(jarBinaryName)))
   }
@@ -290,7 +300,6 @@ object ZincIvyActions {
   /** Define the default configurations for a Zinc module wrapper. */
   private final val DefaultConfigurations: Vector[Configuration] =
     Vector(Configurations.Component, Configurations.Compile)
-  private final val DefaultUpdateOptions = UpdateOptions()
 
   /**
    * Create a module from its dummy wrapper and its dependencies.
