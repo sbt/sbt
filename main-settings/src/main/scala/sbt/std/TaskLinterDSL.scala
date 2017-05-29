@@ -5,7 +5,6 @@ import sbt.internal.util.appmacro.{ Convert, Converted, LinterDSL }
 
 import scala.collection.mutable.{ HashSet => MutableSet }
 import scala.io.AnsiColor
-import scala.reflect.internal.util.Position
 import scala.reflect.macros.blackbox
 
 abstract class BaseTaskLinterDSL extends LinterDSL {
@@ -17,9 +16,13 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
     val isTask = convert.asPredicate(ctx)
     class traverser extends Traverser {
       private val unchecked = symbolOf[sbt.sbtUnchecked].asClass
+      private val taskKeyType = typeOf[sbt.TaskKey[_]]
+      private val settingKeyType = typeOf[sbt.SettingKey[_]]
+      private val inputKeyType = typeOf[sbt.InputKey[_]]
       private val uncheckedWrappers = MutableSet.empty[Tree]
       var insideIf: Boolean = false
       var insideAnon: Boolean = false
+      var disableNoValueReport: Boolean = false
 
       def handleUncheckedAnnotation(exprAtUseSite: Tree, tt: TypeTree): Unit = {
         tt.original match {
@@ -44,42 +47,75 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
         }
       }
 
+      @inline def isKey(tpe: Type): Boolean =
+        tpe <:< taskKeyType || tpe <:< settingKeyType || tpe <:< inputKeyType
+
+      def detectAndErrorOnKeyMissingValue(i: Ident): Unit = {
+        if (isKey(i.tpe)) {
+          val keyName = i.name.decodedName.toString
+          ctx.error(i.pos, TaskLinterDSLFeedback.missingValueForKey(keyName))
+        } else ()
+      }
+
       override def traverse(tree: ctx.universe.Tree): Unit = {
         tree match {
-          case s @ Apply(TypeApply(Select(selectQual, nme), tpe :: Nil), qual :: Nil) =>
-            val shouldIgnore = uncheckedWrappers.contains(s)
+          case ap @ Apply(TypeApply(Select(_, nme), tpe :: Nil), qual :: Nil) =>
+            val shouldIgnore = uncheckedWrappers.contains(ap)
             val wrapperName = nme.decodedName.toString
             if (!shouldIgnore && isTask(wrapperName, tpe.tpe, qual)) {
               val qualName =
                 if (qual.symbol != null) qual.symbol.name.decodedName.toString
-                else s.pos.lineContent
+                else ap.pos.lineContent
               if (insideIf && !isDynamicTask) {
                 // Error on the use of value inside the if of a regular task (dyn task is ok)
-                ctx.error(s.pos, TaskLinterDSLFeedback.useOfValueInsideIfExpression(qualName))
+                ctx.error(ap.pos, TaskLinterDSLFeedback.useOfValueInsideIfExpression(qualName))
               }
               if (insideAnon) {
                 // Error on the use of anonymous functions in any task or dynamic task
-                ctx.error(s.pos, TaskLinterDSLFeedback.useOfValueInsideAnon(qualName))
+                ctx.error(ap.pos, TaskLinterDSLFeedback.useOfValueInsideAnon(qualName))
               }
-            } else traverse(selectQual)
+            }
             traverse(qual)
           case If(condition, thenp, elsep) =>
             traverse(condition)
+            val previousInsideIf = insideIf
             insideIf = true
             traverse(thenp)
             traverse(elsep)
-            insideIf = false
+            insideIf = previousInsideIf
           case Typed(expr, tpt: TypeTree) if tpt.original != null =>
             handleUncheckedAnnotation(expr, tpt)
             traverse(expr)
             traverse(tpt)
-          case f @ Function(vparams, body) =>
-            super.traverseTrees(vparams)
+          case Function(vparams, body) =>
+            traverseTrees(vparams)
             if (!vparams.exists(_.mods.hasFlag(Flag.SYNTHETIC))) {
+              val previousInsideAnon = insideAnon
               insideAnon = true
               traverse(body)
-              insideAnon = false
+              insideAnon = previousInsideAnon
             } else traverse(body)
+          case Block(stmts, expr) =>
+            if (!isDynamicTask) {
+              /* The missing .value analysis is dumb on purpose because it's expensive.
+               * Detecting valid use cases of idents whose type is an sbt key is difficult
+               * and dangerous because we may miss some corner cases. Instead, we report
+               * on the easiest cases in which we are certain that the user does not want
+               * to have a stale key reference. Those are idents in the rhs of a val definition
+               * whose name is `_` and those idents that are in statement position inside blocks. */
+              stmts.foreach {
+                // TODO: Consider using unused names analysis to be able to report on more cases
+                case ValDef(_, valName, _, rhs) if valName == termNames.WILDCARD =>
+                  rhs match {
+                    case i: Ident => detectAndErrorOnKeyMissingValue(i)
+                    case _        => ()
+                  }
+                case i: Ident => detectAndErrorOnKeyMissingValue(i)
+                case _        => ()
+              }
+            }
+            traverseTrees(stmts)
+            traverse(expr)
           case _ => super.traverse(tree)
         }
       }
@@ -138,69 +174,11 @@ object TaskLinterDSLFeedback {
        |  2. Otherwise, make the static evaluation explicit by evaluating `$task` outside the if expression.
     """.stripMargin
 
-  /*  If(
-    Ident(TermName("condition")),
-    Typed(
-      Typed(Apply(TypeApply(Select(Ident(sbt.std.InputWrapper),
-                                   TermName("wrapInitTask_$u2603$u2603")),
-                            List(TypeTree())),
-                  List(Ident(TermName("foo")))),
-            TypeTree()),
-      TypeTree().setOriginal(
-        Annotated(
-          Apply(Select(New(Ident(TypeName("unchecked"))), termNames.CONSTRUCTOR), List()),
-          Typed(Apply(TypeApply(Select(Ident(sbt.std.InputWrapper),
-                                       TermName("wrapInitTask_$u2603$u2603")),
-                                List(TypeTree())),
-                      List(Ident(TermName("foo")))),
-                TypeTree())
-        ))
-    ),
-    Typed(
-      Typed(Apply(TypeApply(Select(Ident(sbt.std.InputWrapper),
-                                   TermName("wrapInitTask_$u2603$u2603")),
-                            List(TypeTree())),
-                  List(Ident(TermName("bar")))),
-            TypeTree()),
-      TypeTree().setOriginal(
-        Annotated(
-          Apply(Select(New(Ident(TypeName("unchecked"))), termNames.CONSTRUCTOR), List()),
-          Typed(Apply(TypeApply(Select(Ident(sbt.std.InputWrapper),
-                                       TermName("wrapInitTask_$u2603$u2603")),
-                                List(TypeTree())),
-                      List(Ident(TermName("bar")))),
-                TypeTree())
-        ))
-    )
-  )*/
-
-  /*  Block(
-    List(
-      ValDef(
-        Modifiers(),
-        TermName("anon"),
-        TypeTree(),
-        Function(
-          List(),
-          Apply(
-            Select(
-              Typed(
-                Apply(TypeApply(Select(Ident(sbt.std.InputWrapper),
-                                       TermName("wrapInitTask_$u2603$u2603")),
-                                List(TypeTree())),
-                      List(Ident(TermName("fooNeg")))),
-                TypeTree()
-              ),
-              TermName("$plus")
-            ),
-            List(Literal(Constant("")))
-          )
-        )
-      )),
-    If(
-      Ident(TermName("condition")),
-      Apply(Select(Ident(TermName("anon")), TermName("apply")), List()),
-      Apply(Select(Ident(TermName("anon")), TermName("apply")), List())
-    )
-  )*/
+  def missingValueForKey(key: String) =
+    s"""${startBold}The key `$key` is not being invoked inside the task definition.$reset
+       |
+       |${ProblemHeader}: Keys missing `.value` are not initialized and their dependency is not registered.
+       |
+       |${SolutionHeader}: Replace `$key` by `$key.value` or remove it if unused.
+    """.stripMargin
 }
