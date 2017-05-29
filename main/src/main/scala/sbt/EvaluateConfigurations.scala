@@ -4,7 +4,8 @@
 package sbt
 
 import java.io.File
-import compiler.{ Eval, EvalImports }
+
+import compiler.{ Eval, EvalDefinitions, EvalImports, EvalSbtFile }
 import complete.DefaultParsers.validID
 import Def.{ ScopedKey, Setting }
 import Scope.GlobalScope
@@ -27,7 +28,14 @@ object EvaluateConfigurations {
 
   type LazyClassLoaded[T] = ClassLoader => T
 
-  private[sbt] case class TrackedEvalResult[T](generated: Seq[File], result: LazyClassLoaded[T])
+  /**
+   * Represents the result of a [[sbt.internals.DslEntry]] evaluation.
+   *
+   * @param generated The generated class files for the evaluation.
+   * @param result A function that will return the loaded value.
+   * @tparam T The expected result type of the loaded value.
+   */
+  private[sbt] case class EvalResult[T](generated: Seq[File], result: LazyClassLoaded[T])
 
   /**
    * This represents the parsed expressions in a build sbt, as well as where they were defined.
@@ -46,7 +54,7 @@ object EvaluateConfigurations {
   @deprecated("We no longer merge build.sbt files together unless they are in the same directory.", "0.13.6")
   def apply(eval: Eval, srcs: Seq[File], imports: Seq[String]): LazyClassLoaded[LoadedSbtFile] =
     {
-      val loadFiles = srcs.sortBy(_.getName) map { src => evaluateSbtFile(eval, src, IO.readLines(src), imports, 0) }
+      val loadFiles = srcs.sortBy(_.getName) map { src => evaluateSbtFileAtOnce(eval, src, IO.readLines(src), imports, 0) }
       loader => (LoadedSbtFile.empty /: loadFiles) { (loaded, load) => loaded merge load(loader) }
     }
 
@@ -84,62 +92,151 @@ object EvaluateConfigurations {
    */
   def evaluateConfiguration(eval: Eval, file: File, lines: Seq[String], imports: Seq[String], offset: Int): LazyClassLoaded[Seq[Setting[_]]] =
     {
-      val l = evaluateSbtFile(eval, file, lines, imports, offset)
+      val l = evaluateSbtFileAtOnce(eval, file, lines, imports, offset)
       loader => l(loader).settings
     }
 
   /**
    * Evaluates a parsed sbt configuration file.
    *
-   * @param eval    The evaluating scala compiler instance we use to handle evaluating scala configuration.
-   * @param file    The file we've parsed
-   * @param imports The default imports to use in this .sbt configuration.
+   * @param eval The sbt evaluation logic.
+   * @param targetDir The target directory to store class files.
+   * @param defaultImports The default imports to use in this .sbt configuration.
    *
    * @return A function which can take an sbt classloader and return the raw types/configuration
    *         which was compiled/parsed for the given file.
    */
-  private[sbt] def evaluateSbtFile(eval: Eval, file: File, lines: Seq[String], imports: Seq[String], offset: Int): LazyClassLoaded[LoadedSbtFile] =
-    {
-      // TODO - Store the file on the LoadedSbtFile (or the parent dir) so we can accurately do
-      //        detection for which project project manipulations should be applied.
-      val name = file.getPath
-      val parsed = parseConfiguration(file, lines, imports, offset)
-      val (importDefs, definitions) =
-        if (parsed.definitions.isEmpty) (Nil, DefinedSbtValues.empty) else {
-          val definitions = evaluateDefinitions(eval, name, parsed.imports, parsed.definitions, Some(file))
-          val imp = BuildUtil.importAllRoot(definitions.enclosingModule :: Nil)
-          val projs = (loader: ClassLoader) => definitions.values(loader).map(p => resolveBase(file.getParentFile, p.asInstanceOf[Project]))
-          (imp, DefinedSbtValues(definitions))
-        }
-      val allImports = importDefs.map(s => (s, -1)) ++ parsed.imports
-      val dslEntries = parsed.settings map {
-        case (dslExpression, range) =>
-          evaluateDslEntry(eval, name, allImports, dslExpression, range)
-      }
-      eval.unlinkDeferred()
-      // Tracks all the files we generated from evaluating the sbt file.
-      val allGeneratedFiles = (definitions.generated ++ dslEntries.flatMap(_.generated))
-      loader => {
-        val projects =
-          definitions.values(loader).collect {
-            case p: Project => resolveBase(file.getParentFile, p)
-          }
-        val (settingsRaw, manipulationsRaw) =
-          dslEntries map (_.result apply loader) partition {
-            case internals.ProjectSettings(_) => true
-            case _                            => false
-          }
-        val settings = settingsRaw flatMap {
-          case internals.ProjectSettings(settings) => settings
-          case _                                   => Nil
-        }
-        val manipulations = manipulationsRaw map {
-          case internals.ProjectManipulation(f) => f
-        }
-        // TODO -get project manipulations.
-        new LoadedSbtFile(settings, projects, importDefs, manipulations, definitions, allGeneratedFiles)
+  private[sbt] def evaluateSbtFile(
+    eval: Eval,
+    targetDir: File,
+    lines: Seq[String],
+    defaultImports: Seq[String],
+    offset: Int): LazyClassLoaded[LoadedSbtFile] = {
+
+    // TODO: Detect for which project the project manipulations should be done.
+    // For that, store the file on the `LoadedSbtFile` or its parent directory.
+    val targetName = targetDir.getPath
+    val parsed = parseConfiguration(targetDir, lines, defaultImports, offset)
+    val definitions = parsed.definitions
+    val imports = parsed.imports
+    val (importsForDefinitions, definedSbtValues) = {
+      if (definitions.isEmpty) (Nil, DefinedSbtValues.empty)
+      else {
+        val sbtDefs: EvalDefinitions =
+          evaluateDefinitions(eval, targetName, imports, definitions, targetDir)
+        val imp = BuildUtil.importAllRoot(sbtDefs.enclosingModule :: Nil)
+        (imp, DefinedSbtValues(sbtDefs))
       }
     }
+
+    val allImports = importsForDefinitions.map(s => (s, -1)) ++ imports
+    val dslEntries = parsed.settings.map {
+      case (dslExpression, range) =>
+        evaluateDslEntry(eval, targetName, allImports, dslExpression, range)
+    }
+    eval.unlinkDeferred()
+
+    val allGeneratedFiles =
+      definedSbtValues.generated ++ dslEntries.flatMap(_.generated)
+
+    (loader: ClassLoader) => {
+      import internals.{ ProjectSettings, ProjectManipulation }
+      val loadedDslEntries = dslEntries.map(_.result.apply(loader))
+      val loadedSbtValues = definedSbtValues.values(loader)
+
+      // Get the settings and project manipulations defined by the user
+      val empty = (List.empty[Def.Setting[_]], List.empty[Project => Project])
+      val (settings, manipulations) = loadedDslEntries.foldLeft(empty) {
+        case (previous @ (accSettings, accManipulations), loadedEntry) =>
+          loadedEntry match {
+            case ProjectSettings(settings0) =>
+              (settings0 ++: accSettings, accManipulations)
+            case ProjectManipulation(manipulation) =>
+              (accSettings, manipulation :: accManipulations)
+            case _ => previous
+          }
+      }
+
+      // Get the defined projects by the user
+      val projects = loadedSbtValues.collect {
+        case p: Project => resolveBase(targetDir.getParentFile, p)
+      }
+
+      new LoadedSbtFile(
+        settings.reverse,
+        projects,
+        importsForDefinitions,
+        manipulations.reverse,
+        definedSbtValues,
+        allGeneratedFiles
+      )
+    }
+  }
+
+  private[sbt] def evaluateSbtFileAtOnce(
+    eval: Eval,
+    targetDir: File,
+    lines: Seq[String],
+    defaultImports: Seq[String],
+    offset: Int): LazyClassLoaded[LoadedSbtFile] = {
+
+    // TODO: Detect for which project the project manipulations should be done.
+    // For that, store the file on the `LoadedSbtFile` or its parent directory.
+    val targetName = targetDir.getPath
+    val parsed = parseConfiguration(targetDir, lines, defaultImports, offset)
+    val definitions = parsed.definitions
+    val settings = parsed.settings
+    val imports = parsed.imports
+
+    val evaluatedSbtFile: EvalSbtFile =
+      loadSbtFile(eval, targetName, imports, definitions, settings, targetDir)
+    val allGeneratedFiles: Seq[File] = evaluatedSbtFile.generated
+    val fromDefinitionsOwner = List(evaluatedSbtFile.enclosingModule)
+    val importForDefinitions = BuildUtil.importAllRoot(fromDefinitionsOwner)
+    val definedSbtValues = DefinedSbtValues(evaluatedSbtFile.getEvalDefinitions)
+
+    (loader: ClassLoader) => {
+      import internals.{ ProjectSettings, ProjectManipulation }
+      val (loadedSbtValues, loadedSettings) =
+        evaluatedSbtFile.loadDefinitionsAndSettings(loader)
+
+      // Load settings and assign them positions at sbt file
+      val loadedDslEntries = loadedSettings.zip(settings).map {
+        case (loadedSetting, (_, range)) =>
+          val dslEntry = loadedSetting.asInstanceOf[internals.DslEntry]
+          val pos = RangePosition(targetName, range.shift(1))
+          dslEntry.withPos(pos)
+      }
+
+      // Get the settings and project manipulations defined by the user
+      val empty = (List.empty[Def.Setting[_]], List.empty[Project => Project])
+      val (settings0, manipulations) = loadedDslEntries.foldLeft(empty) {
+        case (previous @ (accSettings, accManipulations), loadedEntry) =>
+          loadedEntry match {
+            case ProjectSettings(settings1) =>
+              (settings1 ++: accSettings, accManipulations)
+            case ProjectManipulation(manipulation) =>
+              (accSettings, manipulation :: accManipulations)
+            case _ => previous
+          }
+      }
+
+      // Get the defined projects by the user
+      val projects = loadedSbtValues.collect {
+        case p: Project => resolveBase(targetDir.getParentFile, p)
+      }
+
+      new LoadedSbtFile(
+        settings0.reverse,
+        projects,
+        importForDefinitions,
+        manipulations.reverse,
+        definedSbtValues,
+        allGeneratedFiles
+      )
+    }
+  }
+
   /** move a project to be relative to this file after we've evaluated it. */
   private[this] def resolveBase(f: File, p: Project) = p.copy(base = IO.resolve(f, p.base))
   @deprecated("Will no longer be public.", "0.13.6")
@@ -162,7 +259,9 @@ object EvaluateConfigurations {
    * This actually compiles a scala expression which represents a sbt.internals.DslEntry.
    *
    * @param eval The mechanism to compile and evaluate Scala expressions.
-   * @param name The name for the thing we're compiling
+   * @param fileName The file name of the sbt file that holds this dsl entry. It
+   *                 may be a dummy name for evaluations that are written in
+   *                 the sbt shell. Several dsl entries can share this name.
    * @param imports The scala imports to have in place when we compile the expression
    * @param expression The scala expression we're compiling
    * @param range The original position in source of the expression, for error messages.
@@ -170,20 +269,49 @@ object EvaluateConfigurations {
    * @return A method that given an sbt classloader, can return the actual [[internals.DslEntry]] defined by
    *         the expression, and the sequence of .class files generated.
    */
-  private[sbt] def evaluateDslEntry(eval: Eval, name: String, imports: Seq[(String, Int)], expression: String, range: LineRange): TrackedEvalResult[internals.DslEntry] = {
+  private[sbt] def evaluateDslEntry(eval: Eval, fileName: String, imports: Seq[(String, Int)], expression: String, range: LineRange): EvalResult[internals.DslEntry] = {
     // TODO - Should we try to namespace these between.sbt files?  IF they hash to the same value, they may actually be
     // exactly the same setting, so perhaps we don't care?
     val result = try {
-      eval.eval(expression, imports = new EvalImports(imports, name), srcName = name, tpeName = Some(SettingsDefinitionName), line = range.start)
+      eval.eval(expression, imports = new EvalImports(imports, fileName), srcName = fileName, tpeName = Some(SettingsDefinitionName), line = range.start)
     } catch {
       case e: sbt.compiler.EvalException => throw new MessageOnlyException(e.getMessage)
     }
     // TODO - keep track of configuration classes defined.
-    TrackedEvalResult(result.generated,
-      loader => {
-        val pos = RangePosition(name, range shift 1)
+    val loadDslEntry = {
+      (loader: ClassLoader) =>
+        val pos = RangePosition(fileName, range.shift(1))
         result.getValue(loader).asInstanceOf[internals.DslEntry].withPos(pos)
-      })
+    }
+    EvalResult(result.generated, loadDslEntry)
+  }
+
+  private[this] def loadSbtFile(
+    eval: Eval,
+    fileName: String,
+    imports: Seq[(String, Int)],
+    definitions: Seq[(String, LineRange)],
+    settings: Seq[(String, LineRange)],
+    target: File): compiler.EvalSbtFile = {
+    def toRanges(xs: Seq[(String, LineRange)]) =
+      xs.map { case (s, r) => (s, r.start to r.end) }
+
+    val positionedDefs = toRanges(definitions)
+    val positionedSettings = toRanges(settings)
+    val importTrees = new EvalImports(imports, fileName)
+    // FIXME: The API should assume type is same for all settings
+    val dslType = Some(SettingsDefinitionName)
+    val settingsTypes = positionedSettings.map(_ => dslType)
+
+    eval.evalSbtFile(
+      positionedDefs,
+      positionedSettings,
+      settingsTypes,
+      importTrees,
+      fileName,
+      target,
+      extractedValTypes
+    )
   }
 
   /**
@@ -265,10 +393,10 @@ object EvaluateConfigurations {
     }
   private[this] def extractedValTypes: Seq[String] =
     Seq(classOf[Project], classOf[InputKey[_]], classOf[TaskKey[_]], classOf[SettingKey[_]]).map(_.getName)
-  private[this] def evaluateDefinitions(eval: Eval, name: String, imports: Seq[(String, Int)], definitions: Seq[(String, LineRange)], file: Option[File]): compiler.EvalDefinitions =
+  private[this] def evaluateDefinitions(eval: Eval, name: String, imports: Seq[(String, Int)], definitions: Seq[(String, LineRange)], target: File): compiler.EvalDefinitions =
     {
       val convertedRanges = definitions.map { case (s, r) => (s, r.start to r.end) }
-      eval.evalDefinitions(convertedRanges, new EvalImports(imports, name), name, file, extractedValTypes)
+      eval.evalDefinitions(convertedRanges, new EvalImports(imports, name), name, target, extractedValTypes)
     }
 }
 object Index {
