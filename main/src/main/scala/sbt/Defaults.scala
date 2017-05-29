@@ -153,7 +153,7 @@ object Defaults extends BuildCommon {
     Previous.references :== new Previous.References,
     concurrentRestrictions := defaultRestrictions.value,
     parallelExecution :== true,
-    pollInterval :== 500,
+    pollInterval :== 1000,
     logBuffered :== false,
     commands :== Nil,
     showSuccess :== true,
