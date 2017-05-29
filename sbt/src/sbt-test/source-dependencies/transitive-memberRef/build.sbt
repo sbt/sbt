@@ -8,7 +8,7 @@ logLevel := Level.Debug
 previousCompile in Compile := {
   val previous = (previousCompile in Compile).value
   if (!CompileState.isNew) {
-    val res = new PreviousResult(Maybe.nothing[CompileAnalysis], Maybe.nothing[MiniSetup])
+    val res = new PreviousResult(none[CompileAnalysis].asJava, none[MiniSetup].asJava)
     CompileState.isNew = true
     res
   } else previous
@@ -34,7 +34,7 @@ TaskKey[Unit]("checkCompilations") := {
   val allCompilations = analysis.compilations.allCompilations
   val recompiledFiles: Seq[Set[java.io.File]] = allCompilations map { c =>
     val recompiledFiles = analysis.apis.internal.collect {
-      case (cn, api) if api.compilationTimestamp == c.startTime => findFile(cn)
+      case (cn, api) if api.compilationTimestamp == c.getStartTime => findFile(cn)
     }
     recompiledFiles.toSet
   }

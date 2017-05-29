@@ -5,7 +5,8 @@ package sbt
 package internal
 
 import sbt.util.Logger
-import sbt.internal.inc.{ ClasspathOptionsUtil, ScalaInstance }
+import sbt.internal.inc.{ ScalaInstance, ZincUtil }
+import xsbti.compile.ClasspathOptionsUtil
 
 object ConsoleProject {
   def apply(state: State, extra: String, cleanupCommands: String = "", options: Seq[String] = Nil)(
@@ -19,12 +20,21 @@ object ConsoleProject {
       val scalaProvider = state.configuration.provider.scalaProvider
       ScalaInstance(scalaProvider.version, scalaProvider.launcher)
     }
-    val sourcesModule = extracted.get(Keys.scalaCompilerBridgeSource)
-    val compiler = Compiler.scalaCompiler(scalaInstance,
-                                          ClasspathOptionsUtil.repl,
-                                          None,
-                                          ivyConf,
-                                          sourcesModule)(state.configuration, log)
+    val g = BuildPaths.getGlobalBase(state)
+    val zincDir = BuildPaths.getZincDirectory(state, g)
+    val app = state.configuration
+    val launcher = app.provider.scalaProvider.launcher
+    val compiler = ZincUtil.scalaCompiler(
+      scalaInstance = scalaInstance,
+      classpathOptions = ClasspathOptionsUtil.repl,
+      globalLock = launcher.globalLock,
+      componentProvider = app.provider.components,
+      secondaryCacheDir = Option(zincDir),
+      ivyConfiguration = ivyConf,
+      compilerBridgeSource = extracted.get(Keys.scalaCompilerBridgeSource),
+      scalaJarsTarget = zincDir,
+      log = log
+    )
     val imports = BuildUtil.getImports(unit.unit) ++ BuildUtil.importAll(bindings.map(_._1))
     val importString = imports.mkString("", ";\n", ";\n\n")
     val initCommands = importString + extra

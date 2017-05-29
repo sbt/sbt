@@ -38,8 +38,13 @@ object LibraryManagement {
 
       log.info(s"Updating $label...")
       val reportOrUnresolved: Either[UnresolvedWarning, UpdateReport] =
+        //try {
         IvyActions.updateEither(module, updateConfig, uwConfig, logicalClock, depDir, log)
-
+      // } catch {
+      //   case e: Throwable =>
+      //     e.printStackTrace
+      //     throw e
+      // }
       val report = reportOrUnresolved match {
         case Right(report0) => report0
         case Left(unresolvedWarning) =>

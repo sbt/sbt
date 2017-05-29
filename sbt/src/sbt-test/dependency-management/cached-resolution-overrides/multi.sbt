@@ -16,7 +16,7 @@ def commonSettings: Seq[Def.Setting[_]] =
 
 def consolidatedResolutionSettings: Seq[Def.Setting[_]] =
   commonSettings ++ Seq(
-    updateOptions := updateOptions.value.withConsolidatedResolution(true)
+    updateOptions := updateOptions.value.withCachedResolution(true)
   )
 
 // overrides cached

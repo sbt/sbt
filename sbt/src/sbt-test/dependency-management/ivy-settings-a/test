@@ -1,3 +1,4 @@
+> debug
 > update
 # works because scalaVersion is the same as sbtScalaVersion
 > compile

@@ -8,10 +8,12 @@ package object sbt
     with sbt.internal.librarymanagement.impl.DependencyBuilders
     with sbt.ProjectExtra
     with sbt.librarymanagement.DependencyFilterExtra
+    with sbt.librarymanagement.LibraryManagementSyntax
     with sbt.BuildExtra
     with sbt.TaskMacroExtra
     with sbt.ScopeFilter.Make
     with sbt.BuildSyntax
+    with sbt.OptionSyntax
     with sbt.Import {
   // IO
   def uri(s: String): URI = new URI(s)
@@ -29,9 +31,6 @@ package object sbt
     val Mixed = xsbti.compile.CompileOrder.Mixed
   }
   type CompileOrder = xsbti.compile.CompileOrder
-
-  implicit def maybeToOption[S](m: xsbti.Maybe[S]): Option[S] =
-    if (m.isDefined) Some(m.get) else None
 
   final val ThisScope = Scope.ThisScope
   final val Global = Scope.Global
