@@ -2,8 +2,6 @@ package sbt
 package internals
 package parser
 
-import scala.reflect.runtime.universe._
-
 private[sbt] object SbtRefactorings {
 
   import sbt.internals.parser.SbtParser.{ END_OF_LINE, FAKE_FILE }
@@ -82,7 +80,8 @@ private[sbt] object SbtRefactorings {
     seq.toMap
   }
 
-  private def extractSettingName(tree: Tree): String =
+  import scala.tools.nsc.Global
+  private def extractSettingName(tree: Global#Tree): String =
     tree.children match {
       case h :: _ =>
         extractSettingName(h)
