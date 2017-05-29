@@ -1,0 +1,1 @@
+name := "Inspect build project"

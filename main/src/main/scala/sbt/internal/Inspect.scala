@@ -16,9 +16,11 @@ object Inspect {
   private[sbt] case object DependencyTreeMode extends Mode { override def toString = "tree" }
   private[sbt] case object UsesMode extends Mode { override def toString = "inspect" }
   private[sbt] case object DefinitionsMode extends Mode { override def toString = "definitions" }
+  private[sbt] case object BuildMode extends Mode { override def toString = "build" }
   val DependencyTree: Mode = DependencyTreeMode
   val Uses: Mode = UsesMode
   val Definitions: Mode = DefinitionsMode
+  val Build: Mode = BuildMode
 
   def parser: State => Parser[(Inspect.Mode, ScopedKey[_])] =
     (s: State) =>
@@ -26,13 +28,16 @@ object Inspect {
         case opt @ (UsesMode | DefinitionsMode) =>
           allKeyParser(s).map(key => (opt, Def.ScopedKey(Global, key)))
         case opt @ (DependencyTreeMode | Details(_)) => spacedKeyParser(s).map(key => (opt, key))
+        case opt @ BuildMode =>
+          success(sbt.Keys.thisProject.in(ThisProject).scopedKey).map(sk => (opt, sk))
     }
   val spacedModeParser: (State => Parser[Mode]) = (s: State) => {
     val actual = "actual" ^^^ Details(true)
     val tree = "tree" ^^^ DependencyTree
     val uses = "uses" ^^^ Uses
     val definitions = "definitions" ^^^ Definitions
-    token(Space ~> (tree | actual | uses | definitions)) ?? Details(false)
+    val build = "build" ^^^ Build
+    token(Space ~> (tree | actual | uses | definitions | build)) ?? Details(false)
   }
 
   def allKeyParser(s: State): Parser[AttributeKey[_]] = {
@@ -57,6 +62,8 @@ object Inspect {
         Project.showUses(Project.usedBy(structure, true, sk.key))
       case DefinitionsMode =>
         Project.showDefinitions(sk.key, Project.definitions(structure, true, sk.key))
+      case BuildMode =>
+        Project.showUnused(structure)
     }
   }
 

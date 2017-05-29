@@ -733,6 +733,31 @@ object Project extends ProjectExtra {
   def showUses(defs: Seq[ScopedKey[_]])(implicit display: Show[ScopedKey[_]]): String =
     showKeys(defs)
 
+  import sbt.internal.util.Settings
+  def showUnused(structure: BuildStructure)(implicit display: Show[ScopedKey[_]]): String = {
+    val compiledMap = Def.compiled(structure.settings, actual = true)(
+      structure.delegates,
+      structure.scopeLocal,
+      display
+    )
+    val cleanCompiledMap = Def.flattenLocals(compiledMap)
+    val used = cleanCompiledMap.values.flatMap(_.dependencies).toSet
+    val unused = cleanCompiledMap.keys.filter(!used.contains(_)).toSet
+    val userOrPluginDefinedUnusedKeys = for {
+      unusedScopedKey <- unused.iterator
+      compiled <- compiledMap.get(unusedScopedKey).iterator
+      posString <- compiled.settings.iterator.flatMap(_.positionString)
+      isDefault = posString.contains("Defaults.scala") ||
+        posString.contains("BuildDef.scala") ||
+        posString.contains("Load.scala") ||
+        posString.contains("LogManager.scala") ||
+        posString.contains("EvaluateTask.scala") ||
+        posString.contains("Giter8ResolverPlugin.scala")
+      if (!isDefault)
+    } yield unusedScopedKey
+    showUses(userOrPluginDefinedUnusedKeys.toVector)
+  }
+
   private[this] def showKeys(s: Seq[ScopedKey[_]])(implicit display: Show[ScopedKey[_]]): String =
     s.map(display.show).sorted.mkString("\n\t", "\n\t", "\n\n")
 
