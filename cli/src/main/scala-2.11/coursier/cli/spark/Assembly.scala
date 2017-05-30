@@ -223,9 +223,7 @@ object Assembly {
           throw new Exception(s"SHA-1 file not found for ${a.url}")
       }
 
-      val sumOpt = Cache.parseChecksum(
-        new String(FileUtil.readAllBytes(f), "UTF-8")
-      )
+      val sumOpt = Cache.parseRawChecksum(FileUtil.readAllBytes(f))
 
       sumOpt match {
         case Some(sum) =>

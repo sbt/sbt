@@ -1,6 +1,7 @@
 package coursier
 
 import java.io._
+import java.nio.charset.Charset
 
 import scala.language.implicitConversions
 
@@ -23,6 +24,8 @@ object Platform {
     buffer.toByteArray
   }
 
+  private lazy val UTF_8 = Charset.forName("UTF-8")
+
   def readFully(is: => InputStream) =
     Task {
       \/.fromTryCatchNonFatal {
@@ -31,7 +34,7 @@ object Platform {
           try readFullySync(is0)
           finally is0.close()
 
-        new String(b, "UTF-8")
+        new String(b, UTF_8)
       } .leftMap{
         case e: java.io.FileNotFoundException if e.getMessage != null =>
           s"Not found: ${e.getMessage}"

@@ -838,6 +838,18 @@ object Cache {
     parseChecksumLine(lines) orElse parseChecksumAlternative(lines)
   }
 
+  def parseRawChecksum(content: Array[Byte]): Option[BigInteger] =
+    if (content.length == 16 || content.length == 20)
+      Some(new BigInteger(content))
+    else {
+      val s = new String(content, UTF_8)
+      val lines = s
+        .lines
+        .toVector
+
+      parseChecksumLine(lines) orElse parseChecksumAlternative(lines)
+    }
+
   // matches md5 or sha1
   private val checksumPattern = Pattern.compile("^[0-9a-f]{32}([0-9a-f]{8})?")
 
@@ -870,9 +882,7 @@ object Cache {
           val sumFile = localFile(sumUrl, cache, artifact.authentication.map(_.user))
 
           Task {
-            val sumOpt = parseChecksum(
-              new String(FileUtil.readAllBytes(sumFile), UTF_8)
-            )
+            val sumOpt = parseRawChecksum(FileUtil.readAllBytes(sumFile))
 
             sumOpt match {
               case None =>
