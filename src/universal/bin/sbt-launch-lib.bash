@@ -12,7 +12,7 @@ declare -a scalac_args
 declare -a sbt_commands
 declare java_cmd=java
 declare java_version
-declare init_sbt_version=
+declare init_sbt_version=_to_be_replaced
 
 declare SCRIPT=$0
 while [ -h "$SCRIPT" ] ; do
@@ -170,6 +170,10 @@ process_args () {
 }
 
 syncPreloaded() {
+  if [[ "$init_sbt_version" == "" ]]; then
+    # FIXME: better $init_sbt_version detection
+    init_sbt_version="$(ls -1 "$sbt_home/lib/local-preloaded/org.scala-sbt/sbt/")"
+  fi
   [[ -f "$HOME/.sbt/preloaded/org.scala-sbt/sbt/$init_sbt_version/jars/sbt.jar" ]] || {
     # lib/local-preloaded exists (This is optional)
     [[ -d "$sbt_home/lib/local-preloaded/" ]] && {

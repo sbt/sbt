@@ -166,9 +166,11 @@ val root = (project in file(".")).
       val old = (stage in Universal).value
       val sd = (stagingDirectory in Universal).value
       val x = IO.read(sd / "bin" / "sbt-launch-lib.bash")
-      IO.write(sd / "bin" / "sbt-launch-lib.bash", x.replaceAllLiterally("declare init_sbt_version=", s"declare init_sbt_version=$sbtVersionToRelease"))
+      IO.write(sd / "bin" / "sbt-launch-lib.bash", x.replaceAllLiterally(
+        "declare init_sbt_version=_to_be_replaced", s"declare init_sbt_version=$sbtVersionToRelease"))
       val y = IO.read(sd / "bin" / "sbt.bat")
-      IO.write(sd / "bin" / "sbt.bat", y.replaceAllLiterally("set INIT_SBT_VERSION=", s"set INIT_SBT_VERSION=$sbtVersionToRelease"))
+      IO.write(sd / "bin" / "sbt.bat", y.replaceAllLiterally(
+        "set INIT_SBT_VERSION=_TO_BE_REPLACED", s"set INIT_SBT_VERSION=$sbtVersionToRelease"))
       old
     },
 

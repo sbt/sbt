@@ -53,6 +53,8 @@ rem We use the value of the JAVA_OPTS environment variable if defined, rather th
 set _JAVA_OPTS=%JAVA_OPTS%
 if "%_JAVA_OPTS%"=="" set _JAVA_OPTS=%CFG_OPTS%
 
+set INIT_SBT_VERSION=_TO_BE_REPLACED
+
 :args_loop
 if "%~1" == "" goto args_end
 
@@ -143,15 +145,21 @@ if /I "%JAVA_VERSION%" GEQ "9" (
 exit /B 0
 
 :sync_preloaded
+if "%INIT_SBT_VERSION%"=="" (
+  rem FIXME: better %INIT_SBT_VERSION% detection
+  FOR /F "tokens=* USEBACKQ" %%F IN (`dir /b "%SBT_HOME%\..\lib\local-preloaded\org.scala-sbt\sbt" /B`) DO (
+    SET INIT_SBT_VERSION=%%F
+  )
+)
 set PRELOAD_SBT_JAR="%UserProfile%\.sbt\preloaded\org.scala-sbt\sbt\%INIT_SBT_VERSION%\jars\sbt.jar"
-if /I "%JAVA_VERSION%" GEQ "8" (
+if /I "%JAVA_VERSION%" GEQ "1.8" (
   where robocopy >nul 2>nul
   if %ERRORLEVEL% equ 0 (
     echo %PRELOAD_SBT_JAR%
     if not exist %PRELOAD_SBT_JAR% (
       if exist "%SBT_HOME%\..\lib\local-preloaded\" (
         echo 'about to robocopy'
-        robocopy "%SBT_HOME%\..\lib\local-preloaded\" "%UserProfile%\.sbt\preloaded"
+        robocopy "%SBT_HOME%\..\lib\local-preloaded" "%UserProfile%\.sbt\preloaded" /E
       )
     )
   )
