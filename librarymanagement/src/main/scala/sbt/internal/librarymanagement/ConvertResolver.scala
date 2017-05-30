@@ -155,7 +155,10 @@ private[sbt] object ConvertResolver {
   /** The default implementation of converter. */
   lazy val defaultConvert: ResolverConverter = {
     case (r, settings, log) =>
-      val managedChecksums = settings.getVariable(ManagedChecksums).toBoolean
+      val managedChecksums = Option(settings.getVariable(ManagedChecksums)) match {
+        case Some(x) => x.toBoolean
+        case _       => false
+      }
       r match {
         case repo: MavenRepository => {
           val pattern = Collections.singletonList(
