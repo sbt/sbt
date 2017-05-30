@@ -96,7 +96,8 @@ lazy val sbtRoot: Project = (project in file("."))
     otherRootSettings,
     Transform.conscriptSettings(bundledLauncherProj),
     publish := {},
-    publishLocal := {}
+    publishLocal := {},
+    skip in publish := true
   )
 
 // This is used to configure an sbt-launcher for this version of sbt.
@@ -500,9 +501,9 @@ def customCommands: Seq[Setting[_]] = Seq(
   commands += Command.command("release-sbt") { state =>
     // TODO - Any sort of validation
     "clean" ::
-      "conscript-configs" ::
-      "so compile" ::
-      "so publishSigned" ::
+      "conscriptConfigs" ::
+      "compile" ::
+      "publishSigned" ::
       "bundledLauncherProj/publishLauncher" ::
       state
   },
