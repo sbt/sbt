@@ -180,7 +180,7 @@ object ToSbt {
 
   def updateReport(
     configDependencies: Map[String, Seq[Dependency]],
-    resolution: Resolution,
+    resolutions: Map[String, Resolution],
     configs: Map[String, Set[String]],
     classifiersOpt: Option[Seq[String]],
     artifactFileOpt: (Module, String, Artifact) => Option[File],
@@ -190,7 +190,7 @@ object ToSbt {
     val configReports = configs.map {
       case (config, extends0) =>
         val configDeps = extends0.flatMap(configDependencies.getOrElse(_, Nil))
-        val subRes = resolution.subset(configDeps)
+        val subRes = resolutions(config).subset(configDeps)
 
         val reports = ToSbt.moduleReports(subRes, classifiersOpt, artifactFileOpt, keepPomArtifact)
 

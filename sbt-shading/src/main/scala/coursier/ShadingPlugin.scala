@@ -102,7 +102,16 @@ object ShadingPlugin extends AutoPlugin {
           toShadeJars := {
             coursier.Shading.toShadeJars(
               coursierProject.in(baseSbtConfiguration).value,
-              coursierResolution.in(baseSbtConfiguration).value,
+              coursierResolutions
+                .in(baseSbtConfiguration)
+                .value
+                .collectFirst {
+                  case (configs, res) if configs(baseDependencyConfiguration) =>
+                    res
+                }
+                .getOrElse {
+                  sys.error(s"Resolution for configuration $baseDependencyConfiguration not found")
+                },
               coursierConfigurations.in(baseSbtConfiguration).value,
               Keys.coursierArtifacts.in(baseSbtConfiguration).value,
               classpathTypes.value,

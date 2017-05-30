@@ -9,7 +9,7 @@ import coursier.extra.Typelevel
 import coursier.ivy.{IvyRepository, PropertiesPattern}
 import coursier.Keys._
 import coursier.Structure._
-import coursier.util.{Config, Print}
+import coursier.util.Print
 import sbt.{Classpaths, Def, Resolver, UpdateReport}
 import sbt.Keys._
 
@@ -344,18 +344,18 @@ object Tasks {
     project: Project,
     repositories: Seq[Repository],
     userEnabledProfiles: Set[String],
-    resolution: Resolution,
+    resolution: Map[Set[String], Resolution],
     sbtClassifiers: Boolean
   )
 
   private final case class ReportCacheKey(
     project: Project,
-    resolution: Resolution,
+    resolution: Map[Set[String], Resolution],
     withClassifiers: Boolean,
     sbtClassifiers: Boolean
   )
 
-  private val resolutionsCache = new mutable.HashMap[ResolutionCacheKey, Resolution]
+  private val resolutionsCache = new mutable.HashMap[ResolutionCacheKey, Map[Set[String], Resolution]]
   // these may actually not need to be cached any more, now that the resolutions
   // are cached
   private val reportsCache = new mutable.HashMap[ReportCacheKey, UpdateReport]
@@ -423,28 +423,76 @@ object Tasks {
       val t =
         for {
           m <- coursierRecursiveResolvers.forAllProjects(state, projects)
-          n <- coursierResolution.forAllProjects(state, m.keys.toSeq)
+          n <- coursierResolutions.forAllProjects(state, m.keys.toSeq)
         } yield
           n.foldLeft(Map.empty[Seq[Resolver], Seq[ProjectCache]]) {
-            case (caches, (ref, resolution)) =>
-              m.get(ref).fold(caches) { resolvers =>
-                caches.updated(
-                  resolvers,
-                  resolution.projectCache +: caches.getOrElse(resolvers, Nil)
-                )
+            case (caches, (ref, resolutions)) =>
+              val mainResOpt = resolutions.collectFirst {
+                case (k, v) if k("compile") => v
               }
+
+              val r = for {
+                resolvers <- m.get(ref)
+                resolution <- mainResOpt
+              } yield
+                caches.updated(resolvers, resolution.projectCache +: caches.getOrElse(resolvers, Seq.empty))
+
+              r.getOrElse(caches)
           }
 
       Def.task(t.value)
     }
 
+
+  def ivyGraphsTask = Def.task {
+
+    // probably bad complexity, but that shouldn't matter given the size of the graphs involved...
+
+    val p = coursierProject.value
+
+    final class Wrapper(val set: mutable.HashSet[String]) {
+      def ++=(other: Wrapper): this.type = {
+        set ++= other.set
+        this
+      }
+    }
+
+    val sets =
+      new mutable.HashMap[String, Wrapper] ++= p.configurations.map {
+        case (k, l) =>
+          val s = new mutable.HashSet[String]()
+          s ++= l
+          s += k
+          k -> new Wrapper(s)
+      }
+
+    for (k <- p.configurations.keys) {
+      val s = sets(k)
+
+      var foundNew = true
+      while (foundNew) {
+        foundNew = false
+        for (other <- s.set.toVector) {
+          val otherS = sets(other)
+          if (!otherS.eq(s)) {
+            s ++= otherS
+            sets += other -> s
+            foundNew = true
+          }
+        }
+      }
+    }
+
+    sets.values.toVector.distinct.map(_.set.toSet)
+  }
+
   private val noOptionalFilter: Option[Dependency => Boolean] = Some(dep => !dep.optional)
   private val typelevelOrgSwap: Option[Dependency => Dependency] = Some(Typelevel.swap(_))
 
 
-  def resolutionTask(
+  def resolutionsTask(
     sbtClassifiers: Boolean = false
-  ): Def.Initialize[sbt.Task[coursier.Resolution]] = Def.task {
+  ): Def.Initialize[sbt.Task[Map[Set[String], coursier.Resolution]]] = Def.task {
 
     // let's update only one module at once, for a better output
     // Downloads are already parallel, no need to parallelize further anyway
@@ -454,7 +502,7 @@ object Tasks {
 
       lazy val projectName = thisProjectRef.value.project
 
-      val (currentProject, fallbackDependencies) =
+      val (currentProject, fallbackDependencies, configGraphs) =
         if (sbtClassifiers) {
           val sv = scalaVersion.value
           val sbv = scalaBinaryVersion.value
@@ -473,12 +521,12 @@ object Tasks {
             sbv
           )
 
-          (proj, fallbackDeps)
+          (proj, fallbackDeps, Vector(cm.configurations.map(_.name).toSet))
         } else {
           val proj = coursierProject.value
           val publications = coursierPublications.value
           val fallbackDeps = coursierFallbackDependencies.value
-          (proj.copy(publications = publications), fallbackDeps)
+          (proj.copy(publications = publications), fallbackDeps, coursierConfigGraphs.value)
         }
 
       val interProjectDependencies = coursierInterProjectDependencies.value
@@ -519,23 +567,6 @@ object Tasks {
       val userEnabledProfiles = mavenProfiles.value
 
       val typelevel = scalaOrganization.value == Typelevel.typelevelOrg
-
-      val startRes = Resolution(
-        currentProject.dependencies.map(_._2).toSet,
-        filter = noOptionalFilter,
-        userActivations =
-          if (userEnabledProfiles.isEmpty)
-            None
-          else
-            Some(userEnabledProfiles.iterator.map(_ -> true).toMap),
-        forceVersions =
-          // order matters here
-          userForceVersions ++
-          forcedScalaModules(so, sv) ++
-          interProjectDependencies.map(_.moduleVersion),
-        projectCache = parentProjectCache,
-        mapDependencies = if (typelevel) typelevelOrgSwap else None
-      )
 
       if (verbosityLevel >= 2) {
         log.info("InterProjectRepository")
@@ -653,7 +684,31 @@ object Tasks {
         }.map(withAuthenticationByHost(_, authenticationByHost)) ++
         fallbackDependenciesRepositories
 
-      def resolution = {
+      def startRes(configs: Set[String]) = Resolution(
+        currentProject
+          .dependencies
+          .collect {
+            case (config, dep) if configs(config) =>
+              dep
+          }
+          .toSet,
+        filter = noOptionalFilter,
+        userActivations =
+          if (userEnabledProfiles.isEmpty)
+            None
+          else
+            Some(userEnabledProfiles.iterator.map(_ -> true).toMap),
+        forceVersions =
+          // order matters here
+          userForceVersions ++
+            (if (configs("compile") || configs("scala-tool")) forcedScalaModules(so, sv) else Map()) ++
+            interProjectDependencies.map(_.moduleVersion),
+        projectCache = parentProjectCache,
+        mapDependencies = if (typelevel && (configs("compile") || configs("scala-tool"))) typelevelOrgSwap else None
+      )
+
+      def resolution(startRes: Resolution) = {
+
         var pool: ExecutorService = null
         var resLogger: TermDisplay = null
 
@@ -763,15 +818,20 @@ object Tasks {
         res
       }
 
+      val allStartRes = configGraphs.map(configs => configs -> startRes(configs)).toMap
+
       resolutionsCache.getOrElseUpdate(
         ResolutionCacheKey(
           currentProject,
           repositories,
           userEnabledProfiles,
-          startRes.copy(filter = None),
+          allStartRes,
           sbtClassifiers
         ),
-        resolution
+        allStartRes.map {
+          case (config, startRes) =>
+            config -> resolution(startRes)
+        }
       )
     }
   }
@@ -800,12 +860,11 @@ object Tasks {
 
       val verbosityLevel = coursierVerbosity.value
 
-      val res = {
+      val res =
         if (withClassifiers && sbtClassifiers)
-          coursierSbtClassifiersResolution
+          Seq(coursierSbtClassifiersResolution.value)
         else
-          coursierResolution
-      }.value
+          coursierResolutions.value.values.toVector
 
       val classifiers =
         if (withClassifiers)
@@ -820,8 +879,8 @@ object Tasks {
 
       val allArtifacts =
         classifiers match {
-          case None => res.artifacts
-          case Some(cl) => res.classifiersArtifacts(cl)
+          case None => res.flatMap(_.artifacts)
+          case Some(cl) => res.flatMap(_.classifiersArtifacts(cl))
         }
 
       var pool: ExecutorService = null
@@ -833,7 +892,7 @@ object Tasks {
         pool = Executors.newFixedThreadPool(parallelDownloads, Strategy.DefaultDaemonThreadFactory)
         artifactsLogger = createLogger()
 
-        val artifactFileOrErrorTasks = allArtifacts.toVector.map { a =>
+        val artifactFileOrErrorTasks = allArtifacts.toVector.distinct.map { a =>
           def f(p: CachePolicy) =
             Cache.file(
               a,
@@ -916,6 +975,48 @@ object Tasks {
     res
   }
 
+  // Move back to coursier.util (in core module) after 1.0?
+  private def allDependenciesByConfig(
+    res: Map[String, Resolution],
+    depsByConfig: Map[String, Set[Dependency]],
+    configs: Map[String, Set[String]]
+  ): Map[String, Set[Dependency]] = {
+
+    val allDepsByConfig = depsByConfig.map {
+      case (config, deps) =>
+        config -> res(config).subset(deps).minDependencies
+    }
+
+    val filteredAllDepsByConfig = allDepsByConfig.map {
+      case (config, allDeps) =>
+        val allExtendedConfigs = configs.getOrElse(config, Set.empty) - config
+        val inherited = allExtendedConfigs
+          .flatMap(allDepsByConfig.getOrElse(_, Set.empty))
+
+        config -> (allDeps -- inherited)
+    }
+
+    filteredAllDepsByConfig
+  }
+
+  // Move back to coursier.util (in core module) after 1.0?
+  private def dependenciesWithConfig(
+    res: Map[String, Resolution],
+    depsByConfig: Map[String, Set[Dependency]],
+    configs: Map[String, Set[String]]
+  ): Set[Dependency] =
+    allDependenciesByConfig(res, depsByConfig, configs)
+      .flatMap {
+        case (config, deps) =>
+          deps.map(dep => dep.copy(configuration = s"$config->${dep.configuration}"))
+      }
+      .groupBy(_.copy(configuration = ""))
+      .map {
+        case (dep, l) =>
+          dep.copy(configuration = l.map(_.configuration).mkString(";"))
+      }
+      .toSet
+
   def updateTask(
     shadedConfigOpt: Option[(String, String)],
     withClassifiers: Boolean,
@@ -969,12 +1070,17 @@ object Tasks {
 
       val verbosityLevel = coursierVerbosity.value
 
-      val res = {
-        if (withClassifiers && sbtClassifiers)
-          coursierSbtClassifiersResolution
-        else
-          coursierResolution
-      }.value
+      val res =
+        if (withClassifiers && sbtClassifiers) {
+          val r = coursierSbtClassifiersResolution.value
+          Map(cm.configurations.map(c => c.name).toSet -> r)
+        } else
+          coursierResolutions.value
+
+      val configResolutions = res.flatMap {
+        case (configs, r) =>
+          configs.iterator.map((_, r))
+      }
 
       def report = {
 
@@ -999,13 +1105,13 @@ object Tasks {
         }
 
         if (verbosityLevel >= 2) {
-          val finalDeps = Config.dependenciesWithConfig(
-            res,
+          val finalDeps = dependenciesWithConfig(
+            configResolutions,
             depsByConfig.map { case (k, l) => k -> l.toSet },
             configs
           )
 
-          val projCache = res.projectCache.mapValues { case (_, p) => p }
+          val projCache = res.values.foldLeft(Map.empty[ModuleVersion, Project])(_ ++ _.projectCache.mapValues(_._2))
           val repr = Print.dependenciesUnknownConfigs(finalDeps.toVector, projCache)
           log.info(repr.split('\n').map("  " + _).mkString("\n"))
         }
@@ -1058,7 +1164,7 @@ object Tasks {
 
         ToSbt.updateReport(
           depsByConfig,
-          res,
+          configResolutions,
           configs,
           classifiers,
           artifactFileOpt(
@@ -1112,37 +1218,43 @@ object Tasks {
         proj.copy(publications = publications)
       }
 
-    val res = {
-      if (sbtClassifiers)
-        coursierSbtClassifiersResolution
-      else
-        coursierResolution
-    }.value
+    val resolutions =
+      if (sbtClassifiers) {
+        val r = coursierSbtClassifiersResolution.value
+        Map(currentProject.configurations.keySet -> r)
+      } else
+        coursierResolutions.value
 
     val config = configuration.value.name
     val configs = coursierConfigurations.value
 
     val includedConfigs = configs.getOrElse(config, Set.empty) + config
 
-    val dependencies0 = currentProject.dependencies.collect {
-      case (cfg, dep) if includedConfigs(cfg) => dep
-    }.sortBy { dep =>
-      (dep.module.organization, dep.module.name, dep.version)
-    }
+    for {
+      (subGraphConfigs, res) <- resolutions
+      if subGraphConfigs.exists(includedConfigs)
+    } {
 
-    val subRes = res.subset(dependencies0.toSet)
+      val dependencies0 = currentProject.dependencies.collect {
+        case (cfg, dep) if includedConfigs(cfg) && subGraphConfigs(cfg) => dep
+      }.sortBy { dep =>
+        (dep.module.organization, dep.module.name, dep.version)
+      }
 
-    // use sbt logging?
-    println(
-      projectName + "\n" +
-      Print.dependencyTree(
-        dependencies0,
-        subRes,
-        printExclusions = true,
-        inverse,
-        colors = !sys.props.get("sbt.log.noformat").toSeq.contains("true")
+      val subRes = res.subset(dependencies0.toSet)
+
+      // use sbt logging?
+      println(
+        s"$projectName (configurations ${subGraphConfigs.toVector.sorted.mkString(", ")})" + "\n" +
+          Print.dependencyTree(
+            dependencies0,
+            subRes,
+            printExclusions = true,
+            inverse,
+            colors = !sys.props.get("sbt.log.noformat").toSeq.contains("true")
+          )
       )
-    )
+    }
   }
 
 }

@@ -34,6 +34,7 @@ object Keys {
   val coursierFallbackDependencies = TaskKey[Seq[(Module, String, URL, Boolean)]]("coursier-fallback-dependencies")
 
   val coursierProject = TaskKey[Project]("coursier-project")
+  val coursierConfigGraphs = TaskKey[Seq[Set[String]]]("coursier-config-graphs")
   val coursierInterProjectDependencies = TaskKey[Seq[Project]]("coursier-inter-project-dependencies", "Projects the current project depends on, possibly transitively")
   val coursierPublications = TaskKey[Seq[(String, Publication)]]("coursier-publications")
 
@@ -43,7 +44,12 @@ object Keys {
 
 
   val coursierParentProjectCache = TaskKey[Map[Seq[Resolver], Seq[ProjectCache]]]("coursier-parent-project-cache")
-  val coursierResolution = TaskKey[Resolution]("coursier-resolution")
+  val coursierResolutions = TaskKey[Map[Set[String], Resolution]]("coursier-resolutions")
+
+  private[coursier] val actualCoursierResolution = TaskKey[Resolution]("coursier-resolution")
+
+  @deprecated("Use coursierResolutions instead", "1.0.0-RC4")
+  val coursierResolution = actualCoursierResolution
   val coursierSbtClassifiersResolution = TaskKey[Resolution]("coursier-sbt-classifiers-resolution")
 
   val coursierDependencyTree = TaskKey[Unit](
