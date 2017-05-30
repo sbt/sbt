@@ -1,5 +1,3 @@
-import sbt.librarymanagement.syntax._
-
 externalIvySettings()
 
 libraryDependencies += "org.scalacheck" % "scalacheck" % "1.5"

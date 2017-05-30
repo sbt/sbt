@@ -1,5 +1,3 @@
-import sbt.librarymanagement.syntax._
-
 lazy val root = (project in file(".")).
   settings(
     libraryDependencies += "net.liftweb" % "lift-webkit" % "1.0" intransitive(),

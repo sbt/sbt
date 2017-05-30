@@ -38,11 +38,12 @@ import sbt.internal.util.{
 import sbt.util.{ Level, Logger }
 
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
-import sbt.internal.inc.{ CompilerCache, ScalaInstance }
+import sbt.internal.inc.ScalaInstance
 import sbt.compiler.EvalImports
 import Types.{ const, idFun }
 import Aggregation.AnyKeys
 import Project.LoadAction
+import xsbti.compile.CompilerCache
 
 import scala.annotation.tailrec
 import sbt.io.IO
@@ -695,7 +696,7 @@ object BuiltinCommands {
           case e: NumberFormatException =>
             throw new RuntimeException("Resident compiler limit must be an integer.", e)
         }
-        if (num <= 0) CompilerCache.fresh else CompilerCache(num)
+        if (num <= 0) CompilerCache.fresh else CompilerCache.createCacheFor(num)
       }
     s.put(Keys.stateCompilerCache, cache)
   }

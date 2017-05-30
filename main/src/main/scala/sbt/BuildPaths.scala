@@ -27,6 +27,9 @@ object BuildPaths {
     "The base directory for caching dependency resolution.",
     DSetting)
 
+  val globalZincDirectory =
+    AttributeKey[File]("global-zinc-directory", "The base directory for Zinc internals.", DSetting)
+
   import sbt.io.syntax._
 
   def getGlobalBase(state: State): File = {
@@ -59,6 +62,9 @@ object BuildPaths {
                 DependencyBaseProperty,
                 defaultDependencyBase(globalBase))(state)
 
+  def getZincDirectory(state: State, globalBase: File): File =
+    fileSetting(globalZincDirectory, GlobalZincProperty, defaultGlobalZinc(globalBase))(state)
+
   private[this] def fileSetting(stateKey: AttributeKey[File], property: String, default: File)(
       state: State): File =
     getFileSetting(stateKey, property, default)(state)
@@ -81,6 +87,7 @@ object BuildPaths {
   private[this] def defaultStaging(globalBase: File) = globalBase / "staging"
   private[this] def defaultGlobalPlugins(globalBase: File) = globalBase / PluginsDirectoryName
   private[this] def defaultDependencyBase(globalBase: File) = globalBase / "dependency"
+  private[this] def defaultGlobalZinc(globalBase: File) = globalBase / "zinc"
 
   def configurationSources(base: File): Seq[File] = (base * (GlobFilter("*.sbt") - ".sbt")).get
   def pluginDirectory(definitionBase: File) = definitionBase / PluginsDirectoryName
@@ -98,6 +105,7 @@ object BuildPaths {
   final val GlobalPluginsProperty = "sbt.global.plugins"
   final val GlobalSettingsProperty = "sbt.global.settings"
   final val DependencyBaseProperty = "sbt.dependency.base"
+  final val GlobalZincProperty = "sbt.global.zinc"
 
   def crossPath(base: File, instance: xsbti.compile.ScalaInstance): File =
     base / ("scala_" + instance.version)
