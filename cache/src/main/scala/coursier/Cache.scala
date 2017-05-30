@@ -19,6 +19,7 @@ import scalaz.Scalaz.ToEitherOps
 import scalaz.concurrent.{ Task, Strategy }
 
 import java.io.{ Serializable => _, _ }
+import java.nio.charset.Charset
 
 import scala.concurrent.duration.{ Duration, DurationInt }
 import scala.util.Try
@@ -29,6 +30,9 @@ trait AuthenticatedURLConnection extends URLConnection {
 }
 
 object Cache {
+
+  // java.nio.charset.StandardCharsets.UTF_8 not available in Java 6
+  private val UTF_8 = Charset.forName("UTF-8")
 
   // Check SHA-1 if available, else be fine with no checksum
   val defaultChecksums = Seq(Some("SHA-1"), None)
@@ -337,7 +341,7 @@ object Cache {
   ).r
 
   private def basicAuthenticationEncode(user: String, password: String): String =
-    (user + ":" + password).getBytes("UTF-8").toBase64
+    (user + ":" + password).getBytes(UTF_8).toBase64
 
   /**
     * Returns a `java.net.URL` for `s`, possibly using the custom protocol handlers found under the
@@ -676,7 +680,7 @@ object Cache {
           Task {
             if (referenceFileExists) {
               if (!errFile0.exists())
-                FileUtil.write(errFile0, "".getBytes("UTF-8"))
+                FileUtil.write(errFile0, "".getBytes(UTF_8))
             }
 
             ().right[FileError]
@@ -867,7 +871,7 @@ object Cache {
 
           Task {
             val sumOpt = parseChecksum(
-              new String(FileUtil.readAllBytes(sumFile), "UTF-8")
+              new String(FileUtil.readAllBytes(sumFile), UTF_8)
             )
 
             sumOpt match {
@@ -979,7 +983,7 @@ object Cache {
         def notFound(f: File) = Left(s"${f.getCanonicalPath} not found")
 
         def read(f: File) =
-          try Right(new String(FileUtil.readAllBytes(f), "UTF-8"))
+          try Right(new String(FileUtil.readAllBytes(f), UTF_8))
           catch {
             case NonFatal(e) =>
               Left(s"Could not read (file:${f.getCanonicalPath}): ${e.getMessage}")
