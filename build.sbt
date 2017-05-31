@@ -274,6 +274,21 @@ lazy val js = project
     moduleName := "coursier-js"
   )
 
+// run sbt-plugins/publishLocal to publish all that necessary for plugins
+lazy val `sbt-plugins` = project
+  .dummy
+  .aggregate(
+    coreJvm,
+    cache,
+    extra,
+    `sbt-coursier`,
+    `sbt-shading`
+  )
+  .settings(
+    shared,
+    dontPublish
+  )
+
 lazy val coursier = project
   .in(root)
   .aggregate(
