@@ -1142,13 +1142,23 @@ object Tasks {
             artifact -> file
         }
 
-        val artifactErrors = artifactFilesOrErrors0.toVector.collect {
-          case (_, -\/(err)) =>
-            err
-        }
+        val (ignoredArtifactErrors, artifactErrors) = artifactFilesOrErrors0
+          .toVector
+          .collect {
+            case (a, -\/(err)) =>
+              a -> err
+          }
+          .partition {
+            case (a, err) =>
+              val notFound = err match {
+                case _: FileError.NotFound => true
+                case _ => false
+              }
+              a.isOptional && notFound
+          }
 
         if (artifactErrors.nonEmpty) {
-          val error = ResolutionError.DownloadErrors(artifactErrors)
+          val error = ResolutionError.DownloadErrors(artifactErrors.map(_._2))
 
           if (ignoreArtifactErrors)
             log.warn(error.description(verbosityLevel >= 1))
@@ -1156,7 +1166,7 @@ object Tasks {
             error.throwException()
         }
 
-        // can be non empty only if ignoreArtifactErrors is true
+        // can be non empty only if ignoreArtifactErrors is true or some optional artifacts are not found
         val erroredArtifacts = artifactFilesOrErrors0.collect {
           case (artifact, -\/(_)) =>
             artifact

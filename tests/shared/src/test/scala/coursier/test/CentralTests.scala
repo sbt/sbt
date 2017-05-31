@@ -9,10 +9,16 @@ import coursier.test.compatibility._
 
 import scala.concurrent.Future
 
-object CentralTests extends TestSuite {
+object CentralTests extends CentralTests
+
+abstract class CentralTests extends TestSuite {
+
+  def centralBase = "https://repo1.maven.org/maven2"
+
+  final def isActualCentral = centralBase == "https://repo1.maven.org/maven2"
 
   val repositories = Seq[Repository](
-    MavenRepository("https://repo1.maven.org/maven2/")
+    MavenRepository(centralBase)
   )
 
   def resolve(
@@ -347,7 +353,7 @@ object CentralTests extends TestSuite {
     'versionFromDependency - {
       val mod = Module("org.apache.ws.commons", "XmlSchema")
       val version = "1.1"
-      val expectedArtifactUrl = "https://repo1.maven.org/maven2/org/apache/ws/commons/XmlSchema/1.1/XmlSchema-1.1.jar"
+      val expectedArtifactUrl = s"$centralBase/org/apache/ws/commons/XmlSchema/1.1/XmlSchema-1.1.jar"
 
       * - resolutionCheck(mod, version)
 
@@ -404,12 +410,27 @@ object CentralTests extends TestSuite {
     'packaging - {
       'aar - {
         // random aar-based module found on Central
-        ensureHasArtifactWithExtension(
-          Module("com.yandex.android", "speechkit"),
-          "2.5.0",
-          "aar",
-          "aar"
+        val module = Module("com.yandex.android", "speechkit")
+        val version = "2.5.0"
+        val tpe = "aar"
+
+        * - ensureHasArtifactWithExtension(
+          module,
+          version,
+          tpe,
+          tpe,
+          attributes = Attributes(tpe)
         )
+
+        * - {
+          if (isActualCentral)
+            ensureHasArtifactWithExtension(
+              module,
+              version,
+              tpe,
+              tpe
+            )
+        }
       }
 
       'bundle - {
@@ -570,26 +591,52 @@ object CentralTests extends TestSuite {
 
       * - resolutionCheck(mod, version)
 
+      val mainTarGzUrl = s"$centralBase/org/apache/maven/apache-maven/3.3.9/apache-maven-3.3.9-bin.tar.gz"
       val expectedTarGzArtifactUrls = Set(
-        "https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.3.9/apache-maven-3.3.9-bin.tar.gz",
-        "https://repo1.maven.org/maven2/commons-logging/commons-logging/1.1.3/commons-logging-1.1.3-bin.tar.gz"
+        mainTarGzUrl,
+        s"$centralBase/commons-logging/commons-logging/1.1.3/commons-logging-1.1.3-bin.tar.gz"
       )
 
+      val mainZipUrl = s"$centralBase/org/apache/maven/apache-maven/3.3.9/apache-maven-3.3.9-bin.zip"
       val expectedZipArtifactUrls = Set(
-        "https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.3.9/apache-maven-3.3.9-bin.zip",
-        "https://repo1.maven.org/maven2/commons-logging/commons-logging/1.1.3/commons-logging-1.1.3-bin.zip"
+        mainZipUrl,
+        s"$centralBase/commons-logging/commons-logging/1.1.3/commons-logging-1.1.3-bin.zip"
       )
 
-      * - withArtifacts(mod, version, "tar.gz", classifierOpt = Some("bin"), transitive = true) { artifacts =>
-        assert(artifacts.length == 2)
-        val urls = artifacts.map(_.url).toSet
-        assert(urls == expectedTarGzArtifactUrls)
+      'tarGz - {
+        * - {
+          if (isActualCentral)
+            withArtifacts(mod, version, "tar.gz", classifierOpt = Some("bin"), transitive = true) { artifacts =>
+              assert(artifacts.length == 2)
+              val urls = artifacts.map(_.url).toSet
+              assert(urls == expectedTarGzArtifactUrls)
+            }
+        }
+        * - {
+          withArtifacts(mod, version, "tar.gz", attributes = Attributes("tar.gz", "bin"), classifierOpt = Some("bin"), transitive = true) { artifacts =>
+            assert(artifacts.nonEmpty)
+            val urls = artifacts.map(_.url).toSet
+            assert(urls.contains(mainTarGzUrl))
+          }
+        }
       }
 
-      * - withArtifacts(mod, version, "zip", classifierOpt = Some("bin"), transitive = true) { artifacts =>
-        assert(artifacts.length == 2)
-        val urls = artifacts.map(_.url).toSet
-        assert(urls == expectedZipArtifactUrls)
+      'zip - {
+        * - {
+          if (isActualCentral)
+            withArtifacts(mod, version, "zip", classifierOpt = Some("bin"), transitive = true) { artifacts =>
+              assert(artifacts.length == 2)
+              val urls = artifacts.map(_.url).toSet
+              assert(urls == expectedZipArtifactUrls)
+            }
+        }
+        * - {
+          withArtifacts(mod, version, "zip", attributes = Attributes("zip", "bin"), classifierOpt = Some("bin"), transitive = true) { artifacts =>
+            assert(artifacts.nonEmpty)
+            val urls = artifacts.map(_.url).toSet
+            assert(urls.contains(mainZipUrl))
+          }
+        }
       }
     }
 
@@ -610,7 +657,7 @@ object CentralTests extends TestSuite {
         val mod = Module("org.apache.commons", "commons-io")
         val ver = "1.3.2"
 
-        val expectedUrl = "https://repo1.maven.org/maven2/commons-io/commons-io/1.3.2/commons-io-1.3.2.jar"
+        val expectedUrl = s"$centralBase/commons-io/commons-io/1.3.2/commons-io-1.3.2.jar"
 
         * - resolutionCheck(mod, ver)
 
@@ -640,8 +687,8 @@ object CentralTests extends TestSuite {
       val mod = Module("org.yaml", "snakeyaml")
       val ver = "1.17"
 
-      def hasSha1(a: Artifact) = a.extra.contains("SHA-1")
-      def hasMd5(a: Artifact) = a.extra.contains("MD5")
+      def hasSha1(a: Artifact) = a.checksumUrls.contains("SHA-1")
+      def hasMd5(a: Artifact) = a.checksumUrls.contains("MD5")
       def hasSig(a: Artifact) = a.extra.contains("sig")
       def sigHasSig(a: Artifact) = a.extra.get("sig").exists(hasSig)
 
@@ -649,24 +696,27 @@ object CentralTests extends TestSuite {
 
       * - withArtifacts(mod, ver, "*") { artifacts =>
 
-        val jarOpt = artifacts.find(_.`type` == "bundle")
+        val jarOpt = artifacts.find(_.`type` == "bundle").orElse(artifacts.find(_.`type` == "jar"))
         val pomOpt = artifacts.find(_.`type` == "pom")
 
-        if (artifacts.length != 2 || jarOpt.isEmpty || pomOpt.isEmpty)
-          artifacts.foreach(println)
-
-        assert(artifacts.length == 2)
         assert(jarOpt.nonEmpty)
-        assert(pomOpt.nonEmpty)
-
         assert(jarOpt.forall(hasSha1))
-        assert(pomOpt.forall(hasSha1))
         assert(jarOpt.forall(hasMd5))
-        assert(pomOpt.forall(hasMd5))
         assert(jarOpt.forall(hasSig))
-        assert(pomOpt.forall(hasSig))
-        assert(jarOpt.forall(sigHasSig))
-        assert(pomOpt.forall(sigHasSig))
+
+        if (isActualCentral) {
+          if (artifacts.length != 2 || jarOpt.isEmpty || pomOpt.isEmpty)
+            artifacts.foreach(println)
+
+          assert(jarOpt.forall(_.`type` == "bundle"))
+          assert(artifacts.length == 2)
+          assert(pomOpt.nonEmpty)
+          assert(pomOpt.forall(hasSha1))
+          assert(pomOpt.forall(hasMd5))
+          assert(pomOpt.forall(hasSig))
+          assert(jarOpt.forall(sigHasSig))
+          assert(pomOpt.forall(sigHasSig))
+        }
       }
     }
   }

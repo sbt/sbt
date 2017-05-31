@@ -675,16 +675,47 @@ class Helper(
     val task = Task.gatherUnordered(tasks)
 
     val results = task.unsafePerformSync
-    val errors = results.collect{case (artifact, -\/(err)) => artifact -> err }
-    val files0 = results.collect{case (artifact, \/-(f)) => f }
+
+    val (ignoredErrors, errors) = results
+      .collect {
+        case (artifact, -\/(err)) =>
+          artifact -> err
+      }
+      .partition {
+        case (a, err) =>
+          val notFound = err match {
+            case _: FileError.NotFound => true
+            case _ => false
+          }
+          a.isOptional && notFound
+      }
+
+    val files0 = results.collect {
+      case (artifact, \/-(f)) =>
+        f
+    }
 
     logger.foreach(_.stop())
 
+    if (verbosityLevel >= 2)
+      errPrintln(
+        "  Ignoring error(s):\n" +
+        ignoredErrors
+          .map {
+            case (artifact, error) =>
+              s"${artifact.url}: $error"
+          }
+          .mkString("\n")
+      )
+
     exitIf(errors.nonEmpty) {
       s"  Error:\n" +
-      errors.map { case (artifact, error) =>
-        s"${artifact.url}: $error"
-      }.mkString("\n")
+      errors
+        .map {
+          case (artifact, error) =>
+            s"${artifact.url}: $error"
+        }
+        .mkString("\n")
     }
 
     files0
