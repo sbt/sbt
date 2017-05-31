@@ -599,7 +599,10 @@ object Project extends ProjectExtra {
       import c.universe._
       val enclosingValName = std.KeyMacro.definingValName(c, methodName => s"""$methodName must be directly assigned to a val, such as `val x = $methodName`.""")
       val name = c.Expr[String](Literal(Constant(enclosingValName)))
-      reify { Project(name.splice, new File(name.splice)) }
+      reify {
+        val hyphenated = Util.camelToHypen(name.splice)
+        Project(hyphenated, new File(hyphenated))
+      }
     }
 }
 
