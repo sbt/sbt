@@ -1,0 +1,6 @@
+# Run the visualize command and check for the output
+> visualize
+$ exists actual_dependencies.dot 
+$ exists declared_dependencies.dot 
+# $ copy-file actual_dependencies.dot /tmp
+# $ copy-file declared_dependencies.dot /tmp

@@ -445,6 +445,7 @@ object Keys {
   val settingsData = std.FullInstance.settingsData
   val streams = TaskKey[TaskStreams]("streams", "Provides streams for logging and persisting data.", DTask)
   val taskDefinitionKey = Def.taskDefinitionKey
+  val visualize = TaskKey[Unit]("visualize", "Creates a visualization of sbt tasks of the current build.", DTask)
   val (executionRoots, dummyRoots) = Def.dummy[Seq[ScopedKey[_]]]("execution-roots", "The list of root tasks for this task execution.  Roots are the top-level tasks that were directly requested to be run.")
 
   val state = Def.stateKey
