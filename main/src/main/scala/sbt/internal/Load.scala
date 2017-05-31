@@ -4,18 +4,13 @@
 package sbt
 package internal
 
-import sbt.librarymanagement.{ Configuration, Configurations, Resolver, UpdateOptions }
-import sbt.internal.librarymanagement.{ InlineIvyConfiguration, IvyPaths }
-
+import BuildPaths._
+import BuildStreams._
+import collection.mutable
+import compiler.Eval
+import Def.{ isDummy, ScopedKey, ScopeLocal, Setting }
 import java.io.File
 import java.net.URI
-import compiler.Eval
-import scala.annotation.tailrec
-import collection.mutable
-import sbt.internal.inc.ClasspathOptionsUtil
-import sbt.internal.inc.classpath.ClasspathUtilities
-import Project.inScope
-import Def.{ isDummy, ScopedKey, ScopeLocal, Setting }
 import Keys.{
   appConfiguration,
   baseDirectory,
@@ -34,17 +29,20 @@ import Keys.{
   thisProjectRef,
   update
 }
-import scala.tools.nsc.reporters.ConsoleReporter
-import sbt.internal.util.{ Attributed, Settings, ~> }
-import sbt.util.{ Eval => Ev, Show }
+import Project.inScope
+import sbt.internal.inc.classpath.ClasspathUtilities
+import sbt.internal.librarymanagement.{ InlineIvyConfiguration, IvyPaths }
+import sbt.internal.inc.{ ZincUtil, ScalaInstance }
 import sbt.internal.util.Attributed.data
-import Scope.GlobalScope
 import sbt.internal.util.Types.const
-import BuildPaths._
-import BuildStreams._
+import sbt.internal.util.{ Attributed, Settings, ~> }
 import sbt.io.{ GlobFilter, IO, Path }
-import sbt.util.Logger
-import xsbti.compile.Compilers
+import sbt.librarymanagement.{ Configuration, Configurations, Resolver, UpdateOptions }
+import sbt.util.{ Eval => Ev, Show, Logger }
+import scala.annotation.tailrec
+import scala.tools.nsc.reporters.ConsoleReporter
+import Scope.GlobalScope
+import xsbti.compile.{ ClasspathOptionsUtil, Compilers }
 
 private[sbt] object Load {
   // note that there is State passed in but not pulled out
@@ -70,27 +68,43 @@ private[sbt] object Load {
                        baseDirectory: File,
                        globalBase: File,
                        log: Logger): LoadBuildConfiguration = {
-    val provider = state.configuration.provider
-    val scalaProvider = provider.scalaProvider
+    val app = state.configuration
+    val provider = app.provider
+    val scalaProvider = app.provider.scalaProvider
+    val launcher = scalaProvider.launcher
     val stagingDirectory = getStagingDirectory(state, globalBase).getCanonicalFile
     val loader = getClass.getClassLoader
     val classpath = Attributed.blankSeq(provider.mainClasspath ++ scalaProvider.jars)
-    val localOnly = false
-    val lock = None
-    val checksums = Vector.empty
-    val ivyPaths = IvyPaths(baseDirectory, bootIvyHome(state.configuration))
-    val ivyConfiguration = new InlineIvyConfiguration(ivyPaths,
-                                                      Resolver.withDefaultResolvers(Nil).toVector,
-                                                      Vector.empty,
-                                                      Vector.empty,
-                                                      localOnly,
-                                                      lock,
-                                                      checksums,
-                                                      None,
-                                                      UpdateOptions(),
-                                                      log)
-    val compilers =
-      Compiler.compilers(ClasspathOptionsUtil.boot, ivyConfiguration)(state.configuration, log)
+    val ivyConfiguration = new InlineIvyConfiguration(
+      paths = IvyPaths(baseDirectory, bootIvyHome(state.configuration)),
+      resolvers = Resolver.withDefaultResolvers(Nil).toVector,
+      otherResolvers = Vector.empty,
+      moduleConfigurations = Vector.empty,
+      lock = None,
+      checksums = Vector.empty,
+      managedChecksums = false,
+      resolutionCacheDir = None,
+      updateOptions = UpdateOptions(),
+      log = log
+    )
+    val si = ScalaInstance(scalaProvider.version, scalaProvider.launcher)
+    val zincDir = BuildPaths.getZincDirectory(state, globalBase)
+    val classpathOptions = ClasspathOptionsUtil.boot
+    val scalac = ZincUtil.scalaCompiler(
+      scalaInstance = si,
+      classpathOptions = classpathOptions,
+      globalLock = launcher.globalLock,
+      componentProvider = app.provider.components,
+      secondaryCacheDir = Option(zincDir),
+      ivyConfiguration = ivyConfiguration,
+      compilerBridgeSource = ZincUtil.getDefaultBridgeModule(scalaProvider.version),
+      scalaJarsTarget = zincDir,
+      log = log
+    )
+    val compilers = ZincUtil.compilers(instance = si,
+                                       classpathOptions = classpathOptions,
+                                       javaHome = None,
+                                       scalac)
     val evalPluginDef = EvaluateTask.evalPluginDef(log) _
     val delegates = defaultDelegates
     val pluginMgmt = PluginManagement(loader)

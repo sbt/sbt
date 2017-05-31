@@ -8,14 +8,12 @@ val recordPreviousIterations = taskKey[Unit]("Record previous iterations.")
 recordPreviousIterations := {
   val log = streams.value.log
   CompileState.previousIterations = {
-    val previousAnalysis = (previousCompile in Compile).value.analysis
-    if (previousAnalysis.isEmpty) {
-      log.info("No previous analysis detected")
-      0
-    } else {
-      previousAnalysis.get match {
-        case a: Analysis => a.compilations.allCompilations.size
-      }
+    val previousAnalysis = (previousCompile in Compile).value.analysis.asScala
+    previousAnalysis match {
+      case None =>
+        log.info("No previous analysis detected")
+        0
+      case Some(a: Analysis) => a.compilations.allCompilations.size
     }
   }
 }

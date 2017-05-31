@@ -6,6 +6,7 @@ package sbt
 import Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
 import java.io.{ File, PrintWriter }
 import java.net.{ URI, URL }
+import java.util.Optional
 import java.util.concurrent.{ TimeUnit, Callable }
 import Keys._
 import org.apache.ivy.core.module.{ descriptor, id }, descriptor.ModuleDescriptor,
@@ -20,6 +21,8 @@ import Project.{
 }
 import sbt.internal._
 import sbt.internal.CommandStrings.ExportStream
+import sbt.internal.inc.ZincUtil
+import sbt.internal.inc.JavaInterfaceUtil._
 import sbt.internal.io.WatchState
 import sbt.internal.librarymanagement._
 import sbt.internal.librarymanagement.mavenint.{
@@ -59,7 +62,7 @@ import sbt.librarymanagement.Configurations.{
 import sbt.librarymanagement.CrossVersion.{ binarySbtVersion, binaryScalaVersion, partialVersion }
 import sbt.librarymanagement.{ `package` => _, _ }
 import sbt.librarymanagement.syntax._
-import sbt.util.InterfaceUtil.{ f1, o2m }
+import sbt.util.InterfaceUtil.f1
 import sbt.util._
 import sbt.util.CacheImplicits._
 import scala.concurrent.duration.FiniteDuration
@@ -70,11 +73,14 @@ import sjsonnew.{ IsoLList, JsonFormat, LList, LNil }, LList.:*:
 import std.TaskExtra._
 import testing.{ Framework, Runner, AnnotatedFingerprint, SubclassFingerprint }
 import xsbti.compile.IncToolOptionsUtil
-import xsbti.{ CrossValue, Maybe }
+import xsbti.CrossValue
 
 // incremental compiler
 import xsbt.api.Discovery
 import xsbti.compile.{
+  ClassFileManagerType,
+  ClasspathOptionsUtil,
+  CompilerCache,
   Compilers,
   CompileAnalysis,
   CompileOptions,
@@ -92,13 +98,11 @@ import xsbti.compile.{
 import sbt.internal.inc.{
   AnalyzingCompiler,
   Analysis,
-  CompilerCache,
   FileValueCache,
   Locate,
   LoggerReporter,
   MixedAnalyzingCompiler,
-  ScalaInstance,
-  ClasspathOptionsUtil
+  ScalaInstance
 }
 
 object Defaults extends BuildCommon {
@@ -353,10 +357,11 @@ object Defaults extends BuildCommon {
   )
 
   def compileBase = inTask(console)(compilersSetting :: Nil) ++ compileBaseGlobal ++ Seq(
-    incOptions := incOptions.value.withClassfileManagerType(
-      Maybe.just(
-        new TransactionalManagerType(crossTarget.value / "classes.bak", sbt.util.Logger.Null))
-    ),
+    incOptions := incOptions.value
+      .withClassfileManagerType(
+        Option(new TransactionalManagerType(crossTarget.value / "classes.bak",
+                                            sbt.util.Logger.Null): ClassFileManagerType).toOptional
+      ),
     scalaInstance := scalaInstanceTask.value,
     crossVersion := (if (crossPaths.value) CrossVersion.binary else Disabled()),
     scalaVersion := {
@@ -364,9 +369,7 @@ object Defaults extends BuildCommon {
       val sv = (sbtBinaryVersion in pluginCrossBuild).value
       val isPlugin = sbtPlugin.value
       if (isPlugin) {
-        val x = scalaVersionFromSbtBinaryVersion(sv)
-        println(s"scalaVersionFromSbtBinaryVersion($sv) = $x")
-        x
+        scalaVersionFromSbtBinaryVersion(sv)
       } else scalaV
     },
     sbtBinaryVersion in pluginCrossBuild := binarySbtVersion(
@@ -389,7 +392,7 @@ object Defaults extends BuildCommon {
         ModuleID(scalaOrganization.value, "dotty-sbt-bridge", scalaVersion.value)
           .withConfigurations(Some("component"))
           .sources()
-      else Compiler.defaultCompilerBridgeSource(scalaVersion.value)
+      else ZincUtil.getDefaultBridgeModule(scalaVersion.value)
     }
   )
   // must be a val: duplication detected by object identity
@@ -441,13 +444,26 @@ object Defaults extends BuildCommon {
 
   def compilersSetting = {
     compilers := {
-      val compilers = Compiler.compilers(
-        scalaInstance.value,
-        classpathOptions.value,
-        javaHome.value,
-        bootIvyConfiguration.value,
-        scalaCompilerBridgeSource.value
-      )(appConfiguration.value, streams.value.log)
+      val st = state.value
+      val g = BuildPaths.getGlobalBase(st)
+      val zincDir = BuildPaths.getZincDirectory(st, g)
+      val app = appConfiguration.value
+      val launcher = app.provider.scalaProvider.launcher
+      val scalac = ZincUtil.scalaCompiler(
+        scalaInstance = scalaInstance.value,
+        classpathOptions = classpathOptions.value,
+        globalLock = launcher.globalLock,
+        componentProvider = app.provider.components,
+        secondaryCacheDir = Option(zincDir),
+        ivyConfiguration = bootIvyConfiguration.value,
+        compilerBridgeSource = scalaCompilerBridgeSource.value,
+        scalaJarsTarget = zincDir,
+        log = streams.value.log
+      )
+      val compilers = ZincUtil.compilers(instance = scalaInstance.value,
+                                         classpathOptions = classpathOptions.value,
+                                         javaHome = javaHome.value,
+                                         scalac)
       val classLoaderCache = state.value.classLoaderCache
       if (java.lang.Boolean.getBoolean("sbt.disable.interface.classloader.cache")) compilers
       else {
@@ -1186,6 +1202,7 @@ object Defaults extends BuildCommon {
     val s = streams.value
     val opts = forkOptions.value
     val options = javaOptions.value
+    val trap = trapExit.value
     if (fork.value) {
       s.log.debug(s"javaOptions: $options")
       new ForkRun(opts)
@@ -1200,7 +1217,7 @@ object Defaults extends BuildCommon {
                                            mask)
         s.log.warn(s"$showJavaOptions will be ignored, $showFork is set to false")
       }
-      new Run(si, trapExit.value, tmp)
+      new Run(si, trap, tmp)
     }
   }
 
@@ -1349,6 +1366,7 @@ object Defaults extends BuildCommon {
     // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
     compileIncrementalTaskImpl(streams.value, (compileInputs in compile).value)
   }
+  private val incCompiler = ZincUtil.defaultIncrementalCompiler
   private[this] def compileIncrementalTaskImpl(s: TaskStreams, ci: Inputs): CompileResult = {
     lazy val x = s.text(ExportStream)
     def onArgs(cs: Compilers) =
@@ -1363,16 +1381,17 @@ object Defaults extends BuildCommon {
     //)
     val compilers: Compilers = ci.compilers
     val i = ci.withCompilers(onArgs(compilers))
-    try Compiler.compile(i, s.log)
-    finally x.close() // workaround for #937
+    try {
+      incCompiler.compile(i, s.log)
+    } finally x.close() // workaround for #937
   }
   def compileIncSetupTask = Def.task {
     val lookup = new PerClasspathEntryLookup {
       private val cachedAnalysisMap = analysisMap(dependencyClasspath.value)
       private val cachedPerEntryDefinesClassLookup = Keys.classpathEntryDefinesClass.value
 
-      override def analysis(classpathEntry: File): Maybe[CompileAnalysis] =
-        o2m(cachedAnalysisMap(classpathEntry))
+      override def analysis(classpathEntry: File): Optional[CompileAnalysis] =
+        cachedAnalysisMap(classpathEntry).toOptional
       override def definesClass(classpathEntry: File): DefinesClass =
         cachedPerEntryDefinesClassLookup(classpathEntry)
     }
@@ -1384,7 +1403,7 @@ object Defaults extends BuildCommon {
       compilerCache.value,
       incOptions.value,
       (compilerReporter in compile).value,
-      xsbti.Maybe.nothing(),
+      None.toOptional,
       // TODO - task / setting for extra,
       Array.empty
     )
@@ -1398,12 +1417,12 @@ object Defaults extends BuildCommon {
         scalacOptions.value.toArray,
         javacOptions.value.toArray,
         maxErrors.value,
-        f1(Compiler.foldMappers(sourcePositionMappers.value)),
+        f1(foldMappers(sourcePositionMappers.value)),
         compileOrder.value
       ),
       compilerReporter := new LoggerReporter(maxErrors.value,
                                              streams.value.log,
-                                             Compiler.foldMappers(sourcePositionMappers.value)),
+                                             foldMappers(sourcePositionMappers.value)),
       compileInputs := new Inputs(
         compilers.value,
         compileOptions.value,
@@ -1412,13 +1431,25 @@ object Defaults extends BuildCommon {
       )
     )
   }
+
+  private[sbt] def foldMappers[A](mappers: Seq[A => Option[A]]) =
+    mappers.foldRight({ p: A =>
+      p
+    }) { (mapper, mappers) =>
+      { p: A =>
+        mapper(p).getOrElse(mappers(p))
+      }
+    }
+  private[sbt] def none[A]: Option[A] = (None: Option[A])
+  private[sbt] def jnone[A]: Optional[A] = none[A].toOptional
   def compileAnalysisSettings: Seq[Setting[_]] = Seq(
     previousCompile := {
       val setup = compileIncSetup.value
       val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile)
       store.get() match {
-        case Some((an, setup)) => new PreviousResult(Maybe.just(an), Maybe.just(setup))
-        case None              => new PreviousResult(Maybe.nothing[CompileAnalysis], Maybe.nothing[MiniSetup])
+        case Some((an, setup)) =>
+          new PreviousResult(Option(an).toOptional, Option(setup).toOptional)
+        case None => new PreviousResult(jnone[CompileAnalysis], jnone[MiniSetup])
       }
     }
   )
@@ -1429,8 +1460,9 @@ object Defaults extends BuildCommon {
       val max = maxErrors.value
       val spms = sourcePositionMappers.value
       val problems =
-        analysis.infos.allInfos.values.flatMap(i => i.reportedProblems ++ i.unreportedProblems)
-      val reporter = new LoggerReporter(max, streams.value.log, Compiler.foldMappers(spms))
+        analysis.infos.allInfos.values.flatMap(i =>
+          i.getReportedProblems ++ i.getUnreportedProblems)
+      val reporter = new LoggerReporter(max, streams.value.log, foldMappers(spms))
       problems foreach { p =>
         reporter.display(p)
       }
@@ -1791,10 +1823,14 @@ object Classpaths {
       // Tell the UpdateConfiguration which artifact types are special (for sources and javadocs)
       val specialArtifactTypes = sourceArtifactTypes.value union docArtifactTypes.value
       // By default, to retrieve all types *but* these (it's assumed that everything else is binary/resource)
-      UpdateConfiguration(retrieveConfiguration.value,
-                          false,
-                          ivyLoggingLevel.value,
-                          ArtifactTypeFilter.forbid(specialArtifactTypes))
+      UpdateConfiguration(
+        retrieve = retrieveConfiguration.value,
+        missingOk = false,
+        logging = ivyLoggingLevel.value,
+        artifactFilter = ArtifactTypeFilter.forbid(specialArtifactTypes),
+        offline = offline.value,
+        frozen = false
+      )
     },
     retrieveConfiguration := {
       if (retrieveManaged.value)
@@ -2021,16 +2057,16 @@ object Classpaths {
             explicit orElse bootRepositories(appConfiguration.value) getOrElse externalResolvers.value
           },
           ivyConfiguration := new InlineIvyConfiguration(
-            ivyPaths.value,
-            externalResolvers.value.toVector,
-            Vector.empty,
-            Vector.empty,
-            offline.value,
-            Option(lock(appConfiguration.value)),
-            checksums.value.toVector,
-            Some(crossTarget.value / "resolution-cache"),
-            UpdateOptions(),
-            streams.value.log
+            paths = ivyPaths.value,
+            resolvers = externalResolvers.value.toVector,
+            otherResolvers = Vector.empty,
+            moduleConfigurations = Vector.empty,
+            lock = Option(lock(appConfiguration.value)),
+            checksums = checksums.value.toVector,
+            managedChecksums = false,
+            resolutionCacheDir = Some(crossTarget.value / "resolution-cache"),
+            updateOptions = UpdateOptions(),
+            log = streams.value.log
           ),
           ivySbt := ivySbt0.value,
           classifiersModule := classifiersModuleTask.value,
@@ -2425,7 +2461,7 @@ object Classpaths {
           }
         case _ =>
           Def.task {
-            val analysisOpt = previousCompile.value.analysis
+            val analysisOpt = previousCompile.value.analysis.toOption
             dirs map { x =>
               (x,
                if (analysisOpt.isDefined) analysisOpt.get
@@ -2449,7 +2485,7 @@ object Classpaths {
           }
         case _ =>
           Def.task {
-            val analysisOpt = previousCompile.value.analysis
+            val analysisOpt = previousCompile.value.analysis.toOption
             Seq(jar) map { x =>
               (x,
                if (analysisOpt.isDefined) analysisOpt.get
@@ -2492,18 +2528,18 @@ object Classpaths {
       val (rs, other) = (fullResolvers.value.toVector, otherResolvers.value.toVector)
       val s = streams.value
       warnResolversConflict(rs ++: other, s.log)
-      val resCacheDir = crossTarget.value / "resolution-cache"
       new InlineIvyConfiguration(
-        ivyPaths.value,
-        rs,
-        other,
-        moduleConfigurations.value.toVector,
-        offline.value,
-        Option(lock(appConfiguration.value)),
-        (checksums in update).value.toVector,
-        Some(resCacheDir),
-        updateOptions.value,
-        s.log
+        paths = ivyPaths.value,
+        resolvers = rs,
+        otherResolvers = other,
+        moduleConfigurations = moduleConfigurations.value.toVector,
+        // offline.value,
+        lock = Option(lock(appConfiguration.value)),
+        checksums = (checksums in update).value.toVector,
+        managedChecksums = false,
+        resolutionCacheDir = Some(crossTarget.value / "resolution-cache"),
+        updateOptions = updateOptions.value,
+        log = s.log
       )
     }
 
@@ -3076,7 +3112,7 @@ trait BuildCommon {
     overridden ++ newConfigs
   }
 
-  // these are intended for use in input tasks for creating parsers
+  // these are intended for use in in put tasks for creating parsers
   def getFromContext[T](task: TaskKey[T], context: ScopedKey[_], s: State): Option[T] =
     SessionVar.get(SessionVar.resolveContext(task.scopedKey, context.scope, s), s)
 

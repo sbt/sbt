@@ -38,8 +38,13 @@ object LibraryManagement {
 
       log.info(s"Updating $label...")
       val reportOrUnresolved: Either[UnresolvedWarning, UpdateReport] =
+        //try {
         IvyActions.updateEither(module, updateConfig, uwConfig, logicalClock, depDir, log)
-
+      // } catch {
+      //   case e: Throwable =>
+      //     e.printStackTrace
+      //     throw e
+      // }
       val report = reportOrUnresolved match {
         case Right(report0) => report0
         case Left(unresolvedWarning) =>
@@ -71,17 +76,22 @@ object LibraryManagement {
     def skipResolve(cache: CacheStore): UpdateInputs => UpdateReport = {
       import sbt.librarymanagement.LibraryManagementCodec._
       Tracked.lastOutput[UpdateInputs, UpdateReport](cache) {
-        case (_, Some(out)) => out
+        case (_, Some(out)) => markAsCached(out)
         case _ =>
           sys.error("Skipping update requested, but update has not previously run successfully.")
       }
     }
 
+    // Mark UpdateReport#stats as "cached." This is used by the dependers later
+    // to determine whether they now need to run update in the above `upToDate`.
+    def markAsCached(ur: UpdateReport): UpdateReport =
+      ur.withStats(ur.stats.withCached(true))
+
     def doResolve(cache: CacheStore): UpdateInputs => UpdateReport = {
       val doCachedResolve = { (inChanged: Boolean, updateInputs: UpdateInputs) =>
         import sbt.librarymanagement.LibraryManagementCodec._
         val cachedResolve = Tracked.lastOutput[UpdateInputs, UpdateReport](cache) {
-          case (_, Some(out)) if upToDate(inChanged, out) => out
+          case (_, Some(out)) if upToDate(inChanged, out) => markAsCached(out)
           case _                                          => resolve(updateInputs)
         }
         import scala.util.control.Exception.catching

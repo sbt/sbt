@@ -37,10 +37,10 @@ object AltLibraryManagementCodec extends LibraryManagementCodec {
                  RawRepository]
 
   type InlineIvyHL = (IvyPaths :+: Vector[Resolver] :+: Vector[Resolver] :+: Vector[
-    ModuleConfiguration] :+: Boolean :+: Vector[String] :+: HNil)
+    ModuleConfiguration] :+: Vector[String] :+: Boolean :+: HNil)
   def inlineIvyToHL(i: InlineIvyConfiguration): InlineIvyHL = (
-    i.paths :+: i.resolvers :+: i.otherResolvers :+: i.moduleConfigurations :+: i.localOnly
-      :+: i.checksums :+: HNil
+    i.paths :+: i.resolvers :+: i.otherResolvers :+: i.moduleConfigurations :+:
+      i.checksums :+: i.managedChecksums :+: HNil
   )
 
   type ExternalIvyHL = PlainFileInfo :+: Array[Byte] :+: HNil
